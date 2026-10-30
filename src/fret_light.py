@@ -10,9 +10,10 @@ the one path the user allows.
 
 WHAT THE CELL IS, bottom to top:
 
-    z -19.00 .. -17.40   the LED board (1.6), clearing the tee PCBs at -19.65
-    z -16.00             the 5050's emitting face
-    z -16.00 ..   0.00   the TUNNEL: opaque walls on the fret pitch, gently tapered
+    z -16.10             the pickup piece's envelope: the lip's tip, nothing lower
+    z -13.70 .. -12.10   the LED board (1.6), the lip and the M4 heads under it
+    z -10.50             the 5050's emitting face
+    z -10.50 ..   0.00   the TUNNEL: opaque walls on the fret pitch, gently tapered
     z   0.00 ..   4.80   a TRANSPARENT COLUMN through the deck's base, aperture-wide
     z   4.80 ..   6.40   the fret inlay itself, in the colour layer
 
@@ -83,65 +84,30 @@ HALF_LEN_NOM = 39.80
 APERTURE_NOM = 2.40
 APERTURE_Z_NOM = 4.80
 
-# ── the Z stack ───────────────────────────────────────────────────────────────────────
-# ⚠ THE FLOOR IS STRUCTURE, NOT CABLE. Probing a 70 mm slab under the whole fret field:
-# the highest STRUCTURAL part is the tee PCBs at -19.65; the things above it (wire_canl
-# -17.15, wire_canh -19.09) are harness and move. Designing to the CABLE floor instead
-# costs 2.5 mm of depth and takes the line from 1.21 : 1 to 1.35 : 1, so the harness is
-# asked to move rather than the optics give way.
-# ⚠ AND THE PANEL SLIDES OVER THEM, so this is a SLIDING clearance, not a static one
-# (user, 2026-09-29: "we need to clear the PCBs on each motor so we can slide the top
-# panels on and off"). The tee PCBs -- one per motor, tops at -19.65, at y -6.00, dead in
-# the middle of the cell envelope -- are swept by the whole panel over a 465 mm stroke.
-# BOARD_BOT was -19.00, which cleared them by 0.65: true at rest and not a clearance you
-# would slide a printed panel through. 2.00 costs 1.35 of depth and takes the line from
-# 1.21 : 1 to 1.28 : 1, which is the right way round.
-# ⚠ AND THE TEE PCBs ARE NOT THE FLOOR. They are the highest STRUCTURE, but the CAN
-# harness runs ABOVE them: wire_canl tops out at -17.15, two and a half millimetres over
-# the boards it feeds. The gate found it the moment the board was placed -- fret_board_0
-# and _1 against wire_canl_1..6. So the floor is the CABLE, and the tee PCBs are merely
-# what the cable is above. Recovering those 2.5 mm is a harness job, and it is worth
-# 0.74 -> 0.78 of uniformity if anyone does it.
-TEE_TOP   = -19.65                 # highest STRUCTURE under the fret field
-# ⚠ ...AND THE CABLE IS DRAWN WRONG (user, 2026-09-29): "the plugs are the real floor".
-# Measured -- the tee board's own top face is -26.65, its side-entry XH plus a MATED plug
-# is XH_SIDE_H 7.00 on top of that, so the real envelope ends at -19.65. wire_canl runs to
-# -17.15, TWO AND A HALF MILLIMETRES ABOVE ITS OWN PLUG, because src/wiring.py stacks the
-# trunk's four conductors in Z (its old TRUNK_DZ: gnd -0.8, hot 1.2, canh 3.2, canl 5.2) and canl
-# is the top one. So this floor is an artefact, not a part.
-# Holding to it anyway costs 1.5 mm of depth and takes the line 1.21 -> 1.28 : 1. Inverting
-# that stack is a wiring.py change on a shared trunk, so it is FLAGGED, not taken.
-# HISTORY ONLY: wiring.py was corrected 2026-10-01 (bronner b5d3efff -- TRUNK_Z_RUN /
-# TRUNK_Z_OVER, highest conductor top -20.68, under the plugs). Nothing is set from this.
-CABLE_TOP = -17.15                 # where the cable WAS drawn
-# ⚠ THE PLUGS ARE THE FLOOR, AND THE BOARD IS SET FROM THEM (user, 2026-10-01: "the
-# wiring isn't modeled accurately, the plugs on the boards are the actual +z extents").
-# Re-probed against everything but the wire models (tools/_probe_fret_tab.py --no-wires):
-# the only real thing under any board edge is the mated plugs of tee boards 6 and 7 under
-# mid's -Y edge, at TEE_TOP. So the stack below the board is, from the plugs up:
-#     SLIDE_OVER    1.50   the panel SLIDES over the plugs, so this is a sliding clearance
-#                          (user: no "super narrow clearance there")
-#     D.MIN_WALL    0.80   the flat cap under the tilt-in lip's tip
-#     LIP_DROP      1.60   the lip's 45 degree ramp, wall face to tip
-# and the board's underside is where the ramp starts. That is 0.40 ABOVE where the drawn
-# cable had put it, which costs the cells 0.40 of depth. (The 1.60 was first a retainer
-# STRIP's thickness -- user: "1.6 min" -- and the lip that replaced the strip on this edge
-# was sized to the same depth.)
-SLIDE_OVER = 1.50
-LIP_DROP = D.MIN_WALL_2P           # 1.60
-BOARD_BOT = TEE_TOP + SLIDE_OVER + D.MIN_WALL + LIP_DROP   # -15.75
+# ── the Z stack: TOP-DOWN, from the pickup piece's envelope ───────────────────────────
+# ⚠ THE FLOOR IS top_plate.PIECE_Z_MIN, AND NOTHING UNDER THE DECK SETS IT (user,
+# 2026-10-29). Height is derived in one order: the pickup's adjust range, then the plate
+# that gives it in the least Z, then the motors and their CAN tees BELOW that piece's
+# sliding envelope -- and the fret light FILLS THE SAME BAND, its lowest part no lower
+# than the pickup piece's. So the whole panel slides over the tees on one clearance, which
+# is the motor stack's to keep (it is derived from PIECE_Z_MIN too), and the cells get as
+# much depth as the band holds without the instrument getting thicker.
+# This stack used to be built UP from the tees -- TEE_TOP -19.65 hard-coded, plus a 1.50
+# slide, plus the lip -- and it went stale silently: the real tee plug tops were -20.50.
+# A floor read from the deck cannot.
+#
+# Below the board, the deepest things are the tilt-in lip (lip_depth(), 2.40) and the M4s'
+# button heads (2.20); the board's underside sits the deeper of the two above the floor --
+# see BOARD_BOT, after the retention numbers it is made of.
+LIP_DROP = D.MIN_WALL_2P           # 1.60, the lip's 45 degree ramp, wall face to tip
 BOARD_T   = 1.60
-BOARD_TOP = BOARD_BOT + BOARD_T    # -14.55
 # ⚠ 1.60, NOT THE 1.40 THIS LINE CARRIED. Read off the part's own listing while the
 # PCB was being designed (LCSC C7371891): "Dimensions (L/W/H): 5.0x5.0x1.6mm", and the
 # footprint elec/footprints/Steel.pretty/XINGLIGHT_XL-5050RGBW.kicad_mod has said 1.6
 # in its description since bronner drew it. The same listing settles the other open
 # question about this part -- "Installation method: Top-mount", 120 degrees -- which is
 # what a cell needs and which docs/fret-led.md section 5.3 had recorded backwards.
-# It costs 0.20 mm of depth: 17.95 -> 17.75, and the line goes 1.136 -> 1.143 : 1.
 LED_H     = 1.60                   # XL-5050RGBW body top = its emitting face
-LED_Z     = BOARD_TOP + LED_H      # -12.95
-DEPTH_NOM = APERTURE_Z_NOM - LED_Z  # 17.75, the h the optics are solved at
 
 # ── where the FOUR LEDs go along the fret ─────────────────────────────────────────────
 # ⚠ FOUR, NOT THREE, AND IT IS THE CHEAP WAY OUT OF THE DEPTH PROBLEM. Three LEDs want
@@ -160,6 +126,12 @@ DEPTH_NOM = APERTURE_Z_NOM - LED_Z  # 17.75, the h the optics are solved at
 # near the ends because the end reflectors do the work out there.
 # ⚠ IT MOVES THE RAIL: four in series is 12.8 V for W/G/B, so the rail goes 12 -> 14 V.
 # Still inside the TLC59711's 17 V (see docs/fret-led.md 6.5).
+# ⚠ RE-SOLVED AT THE TOP-DOWN DEPTH (2026-10-29): h 17.75 -> 15.30 takes the line 1.14 ->
+# 1.27 : 1, and a bead-grid search at 15.30 lands on THE SAME 13 / 38 beads -- spacing
+# alone buys nothing back. What would: a FIFTH LED (1.12 : 1, at +-16.80 / +-32.00 with
+# one on the centre) needs 16.0 V of string, past the driver's 17 V once Vf is at the top
+# of its bin, so no; a 1.0 board is +0.6 of depth, 1.23 : 1. Taken: the 1.27, which is
+# the figure the user already accepted once for slide clearance (2026-09-29).
 LED_Y_IN  = 13 * D.BEAD            # 10.40
 LED_Y_OUT = 38 * D.BEAD            # 30.40
 LED_YS    = (-LED_Y_OUT, -LED_Y_IN, LED_Y_IN, LED_Y_OUT)
@@ -226,13 +198,6 @@ RAMP_DEG = 58.0
 # side. Having just one means the opposite side is likely to flex out of position").
 # One M4 in the bay at the -X end, and one on an EAR at the +X end -- see M4_FAR_*.
 TAB_PLAY = 0.30                    # the board's lateral play, per side if it were shared
-# ⚠ THE ROOM UNDER EACH EDGE, MEASURED AGAINST REAL PARTS ONLY -- the wire models were in
-# the first probe and read 1.00 / 5.30 off conductors drawn above their own plugs.
-# tools/_probe_fret_tab.py --no-wires, 2026-10-01:
-#     mid -Y           tee_pcb_6 / tee_pcb_7 mated plugs, top TEE_TOP
-#     the other three  clear for the full 6.00 probed
-EDGE_ROOM = {("mid", -1.0): BOARD_BOT - TEE_TOP, ("mid", 1.0): 6.00,
-             ("key", -1.0): 6.00, ("key", 1.0): 6.00}
 HINGE_SGN = -1.0
 LIP_LAP = 1.50                     # lip under the board's edge once it is seated
 LIP_RISE = 2.0 * TAB_PLAY - 0.10   # 0.50: the ramp's start above the underside, at the wall
@@ -286,6 +251,18 @@ M4_LEN     = 10.0                  # M4x10 button head, the instrument's standar
 M4_TIP_CLR = 2.0                   # blind hole past the screw's tip
 DECK_UNDER = 0.0                   # the deck's own underside: above it is material the
                                    # colour layer takes, below it is structure hanging free
+
+from cadkit.fasteners import M4_BUTTON_HEAD_H                    # noqa: E402
+from . import top_plate as _TP                                   # noqa: E402
+# top_plate imports THIS module only inside its panel builder, so by the time anything
+# calls that, top_plate is whole; importing it here is not the cycle _tp() exists for.
+FLOOR     = _TP.PIECE_Z_MIN       # -16.10: the lip's tip sits ON the envelope; the
+                                   # sliding clearance is the motor stack's, below it
+UNDER_BOARD = max(lip_depth(), M4_BUTTON_HEAD_H)                # 2.40, the lip
+BOARD_BOT = FLOOR + UNDER_BOARD                                 # -13.70
+BOARD_TOP = BOARD_BOT + BOARD_T                                 # -12.10
+LED_Z     = BOARD_TOP + LED_H                                   # -10.50
+DEPTH_NOM = APERTURE_Z_NOM - LED_Z                              # 15.30, the h solved at
 
 
 def depth() -> float:
@@ -344,8 +321,8 @@ def check_optics(pitches=()):
     top_plate from here at import time IS the cycle. A checker calls this once everything
     is loaded. Pass the real fret pitches and the wall/taper budget is checked too."""
     u, _ = uniformity()
-    assert u >= 0.85, (
-        "the fret line is %.2f : 1 end to end, past the 1.18 : 1 this geometry was solved "
+    assert u >= 0.78, (
+        "the fret line is %.2f : 1 end to end, past the 1.27 : 1 this geometry was solved "
         "for — LED_Y, the Z stack or top_plate.FRET_HY has moved" % (1.0 / u))
     u0, _ = uniformity(refl=0.0)
     assert u0 < u, "the end reflectors are supposed to help; check RAMP_DEG"
@@ -360,16 +337,12 @@ def check_optics(pitches=()):
 
 
 # these need no deck datum, so they run at import
-assert BOARD_BOT - TEE_TOP >= 1.5, (
-    "the LED board at %.2f leaves only %.2f over the tee PCBs at %.2f, and the panel has "
-    "to SLIDE over them" % (BOARD_BOT, BOARD_BOT - TEE_TOP, TEE_TOP))
+assert BOARD_BOT - max(lip_depth(), M4_BUTTON_HEAD_H) >= FLOOR - 1e-9, (
+    "the fret light hangs below the pickup piece's envelope %.2f: the panel would no longer "
+    "slide over the motors on the clearance they were placed for" % FLOOR)
 assert abs((lip_reach() - LIP_RISE) - LIP_DROP) < 1e-9, (
     "the lip's ramp drops %.2f and the Z stack was built on %.2f"
     % (lip_reach() - LIP_RISE, LIP_DROP))
-for (_p, _s), _room in EDGE_ROOM.items():
-    assert wall_floor(_p, _s) - (BOARD_BOT - _room) >= SLIDE_OVER - 1e-9, (
-        "%s %+.0fY: the edge wall slides %.2f over what is under it"
-        % (_p, _s, wall_floor(_p, _s) - (BOARD_BOT - _room)))
 assert LED_Y_OUT + LED_CRTYD / 2.0 <= BOARD_HALF_W, (
     "the outer LEDs at +-%.2f plus a %.2f courtyard overhang a %.2f-half-width board"
     % (LED_Y_OUT, LED_CRTYD, BOARD_HALF_W))
@@ -390,7 +363,7 @@ from .helpers import box_at, heal                                # noqa: E402
 # ⚠ FRET 1 GETS NO CELL, and the gate is what said so. Its cell would sit at x -580.5
 # with an outer wall reaching about -596.8, straight through the keyhead cluster: the Pi
 # (top -6.00), wire_ui (-8.27), wire_link (-11.30) and wire_usb (-13.70) all live there,
-# and a cell floor at -14.55 goes through all four. This is the same finding recorded in
+# and a cell floor at the board's top face (-14.55 then) goes through all four. This is the same finding recorded in
 # docs/fret-led.md as "fret 1 has 8.27 mm, not 17" -- now measured rather than predicted.
 # Fret 2 at -547.90 is clear of the whole cluster, so the comb starts there.
 SKIP_FRETS = (1,)

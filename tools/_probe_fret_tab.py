@@ -20,8 +20,8 @@ SKIP = ("fret_", "top_plate") + (("wire_", "motor_pigtail") if "--no-wires" in s
 def main():
     comps = [(n, wp.val()) for n, wp in collect_components()
              if not n.startswith(SKIP)]
-    print("board z %.2f..%.2f, half-width %.2f; cable top %.2f, tee top %.2f\n"
-          % (FL.BOARD_BOT, FL.BOARD_TOP, FL.BOARD_HALF_W, FL.CABLE_TOP, FL.TEE_TOP))
+    print("board z %.2f..%.2f, half-width %.2f; floor %.2f (envelope %.2f)\n"
+          % (FL.BOARD_BOT, FL.BOARD_TOP, FL.BOARD_HALF_W, FL.FLOOR, FL.FLOOR))
     for panel in ("key", "mid"):
         x0, x1 = FL.board_span(panel)
         for sgn, side in ((-1.0, "-Y"), (1.0, "+Y")):
