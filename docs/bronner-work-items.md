@@ -5,8 +5,8 @@
 Optical R2: 0 unconnected, 0 violations, 263/263 parts in the CAD, quality 1 soft FAIL (A12 silk
 0.12) + 6 OPEN manual items. Same router pass as variant B (U10 and Y1 via keepouts, no pin escape);
 ULPI D3..D6 ripped and closed by close_last IN THAT ORDER. Any other order tried left one with no
-path: the pass lives in `opt/r2/orders.py`-style scratch, not in the flow, so a re-route must redo
-it. Leads: `opt_cables` / `wiring.optical_feed` run down `opt_cable_hole`; R1 fit is
+path: BOARD_NOTES["close_order"] + cadkit finish.py run it (proved from raw router output: 25
+unconnected to 0, 0 violations). R1 hole offset 0.05 kept, lead's ruling. Leads: `opt_cables` / `wiring.optical_feed` run down `opt_cable_hole`; R1 fit is
 `cad_geom_check._r1_fit` (detectors exact, the two M4 mounts 0.05 off from the pilot's growth, which
 R1's O4.4 takes). R1 stays reproducible behind OPTICAL_REV; the CAD only passes at R2.
 

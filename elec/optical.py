@@ -4614,6 +4614,9 @@ BOARD_NOTES["quality"] = {
 if OP.OPTICAL_REV != 1:
     # R2's J2 is the top-entry B4B-XH-A: through-hole posts only, no reinforcement tab
     del BOARD_NOTES["quality"]["unconnected"]["J2.MP"]
+    # U7's ULPI row fans out so tightly that close_last only finishes it in this order; seven
+    # others each left one net with no path (2026-10-30). Needs cadkit finish.py's close_order.
+    BOARD_NOTES["close_order"] = ["ULPI_D3", "ULPI_D4", "ULPI_D5", "ULPI_D6"]
 
 
 def _assert_matches_cad(net_path):
