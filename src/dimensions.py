@@ -1229,8 +1229,8 @@ NUT_SCREW_D     = M4.shaft_clr_d        # 4.4  — set-screw shaft clearance
 NUT_SCREW_L     = M4.screw_l            # 10.0. The boss is NOT one screw tall: the
                                 # insert sinks to a small gap off the string (nut_block.INSERT_GAP)
                                 # and this screw's surplus length stands PROUD of the top surface.
-NUT_PIN_D       = 2.0           # Ø2 break-dowel NOMINAL diameter
-NUT_PIN_L       = 4.0           # Ø2×4 dowel length (axis Y)
+NUT_PIN_D       = 4.0           # Ø4 break-dowel NOMINAL diameter (McMaster 91595A119; was Ø2)
+NUT_PIN_L       = 4.0           # Ø4×4 dowel length (axis Y)
 NUT_PIN_CLR     = 0.4           # clearance perimeter around the dowel in its pocket (drop-in fit,
                                 # all faces -- the seat is Ø+2*clr and length+2*clr)
 

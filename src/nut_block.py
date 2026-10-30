@@ -74,7 +74,7 @@ from cadkit.holes import teardrop_hole
 PRINT_UP = (1.0, 0.0, 0.0)                      # build axis: the -X face is the bed
 
 # ── hardware ───────────────────────────────────────────────────────────────
-PIN_D    = D.NUT_PIN_D                          # Ø2 break dowel (one per string)
+PIN_D    = D.NUT_PIN_D                          # Ø4 break dowel (one per string)
 PIN_L    = D.NUT_PIN_L
 
 ROD_D = D.BRIDGE_AXLE_D                         # Ø8 -- the bridge axle's own shaft (user)
@@ -496,7 +496,7 @@ _DROP_NEED = G_ENVELOPE + THREAD_CLR            # 2.832 for a .080
 INS_DROP  = math.ceil(_DROP_NEED / D.BEAD) * D.BEAD          # 3.2, on the grid
 INS_H     = 5 * D.BEAD                          # 4.0 of body below the flat
 DIVOT_OFF = ROD_D / 2 - PIN_D / 2 - ROD_Z       # 11.59, cradle centre ABOVE the flat
-DIVOT_D   = PIN_D + 0.3                         # 2.3, the dowel's cradle
+DIVOT_D   = PIN_D + 0.3                         # 4.3, the dowel's cradle
 # The insert reaches from just past the dowel back under the rod, so the flat spans both
 # the cradle and the clamp area. It stops short of the trough's -X wall.
 INS_X1    = X_FRONT                             # FLUSH with the block's +X face: the
@@ -546,15 +546,16 @@ def clamp_y(i: int) -> float:
 # here can hold. What is per-string now is a Y layout differing by millimetres, which any
 # printer holds trivially. The precision moved off the machine and onto the string.
 # Both lobes are the FEATURE plus a hair, not a round number -- the padding is wall
-# taken from the neighbour, and at the bass end there is none to spare. 4.3 puts the
-# dowel-lobe wall on the 1.6 two-bead target exactly.
-INS_LOBE_W  = PIN_L + 0.3                       # 4.3, the dowel lobe
-CRADLE_L  = INS_LOBE_W                          # the trough is the DOWEL LOBE's width,
-                                                # anchored on that lobe's +Y edge -- see
-                                                # slide_insert. Cutting it to PIN_L + a
-                                                # float instead leaves a 0.05 rind of
-                                                # insert standing at the lobe's edge,
-                                                # which is a sliver on both SKUs.
+# taken from the neighbour, and at the bass end there is none to spare.
+# THE Ø4 DOWEL (user, 2026-10-29: "I got the new dowels from mcmaster"; McMaster 91595A119,
+# trialled 2026-10-28 as a scratch build). SKU A's two lobes are both PIN_L wide -- "a
+# consistent 4mm thickness for A with parallel angles" -- so the taper's two edges are
+# parallel and the wall rule below derives its angle at 36.9 deg. The bass inserts follow the
+# same rule (insert_lobes): every edge of every insert steps the same S, so every taper in the
+# block runs at A's angle.
+INS_LOBE_W  = PIN_L                             # 4.0, the dowel lobe = the dowel
+CRADLE_L  = PIN_L + 0.3                         # the trough: the dowel and a float, centred
+                                                # on the string (slide_insert)
 
 
 # SKU B's insert is a PITCH WIDE and butts its neighbours. That is what replaces the
@@ -573,15 +574,11 @@ CRADLE_L  = INS_LOBE_W                          # the trough is the DOWEL LOBE's
 # pocket either side -- exactly the floating fragment this whole change is removing. Full
 # width, they abut, and there is nothing left between them to come loose.
 STACK_CLR = 0.1                                 # total Y slip in the shared slot
-BASS_W    = D.NUT_PITCH - STACK_CLR             # 6.4: they touch
 BASS_CLR  = STACK_CLR / 2 + 0.01                # per side; the +0.01 makes neighbouring
                                                 # pockets OVERLAP rather than share a
                                                 # face, so their union is one clean
                                                 # opening instead of a coincident-face
                                                 # boolean
-BASS_OFF  = 0.4                                 # the clamp lobe's +Y edge above nut_y:
-                                                # low enough to cover the deepest bass
-                                                # coil, high enough to abut the neighbour
 
 # THE BASS INSERTS ARE PRINTED SMALLER THAN THEIR PLAN, BY BASS_FIT ALL ROUND (user,
 # 2026-10-28). On the full-height coupon (bench_joinery insert_slots_full) at STACK_CLR 0.1
@@ -597,12 +594,8 @@ BASS_OFF  = 0.4                                 # the clamp lobe's +Y edge above
 BASS_FIT = (0.30 - STACK_CLR) / 2.0             # 0.10, off every face of a bass insert
 
 
-# SKU B's -Y STEP: how far its dowel lobe's -Y edge stands inward (+Y) of its clamp lobe's. The
-# pocket's shoulder there is what stops an insert walking +X; SKU C copies it (user).
-BASS_STEP_LO = INS_LOBE_W / 2 - BASS_OFF        # 1.75
-
 # ── SKU C: STRING 10 ON ITS OWN, AS WIDE AS IT LIKES (user) ─────────────────────
-# The longstanding string-10 clip was SKU B's clamp lobe. It hangs BASS_W from BASS_OFF above
+# The longstanding string-10 clip was SKU B's clamp lobe. It hung a full pitch from just above
 # its string, which covers strings 8 and 9 with 1.1 to spare but not the outermost: that coil
 # marches -Y furthest, and at the .070 its last turn ran 0.33 past the lobe into the end wall
 # for the whole insert run (2.6 mm3, invisible to the gate, which lets keyhead_endplate touch
@@ -610,8 +603,8 @@ BASS_STEP_LO = INS_LOBE_W / 2 - BASS_OFF        # 1.75
 #
 # String 10 has nothing -Y of it, so its insert can simply be wider. SKU C keeps SKU B's +Y
 # edges -- it still abuts string 9 -- and runs its CLAMP lobe out to SKU_C_LO, with the dowel lobe
-# stepping back in by SKU B's own -Y step (user: that shoulder keeps the insert from walking +X,
-# and the taper up to it prints like every other insert's). That edge covers the coil for every gauge
+# stepping back in by SKU_C_STEP (user: that shoulder keeps the insert from walking +X, and the
+# taper up to it prints like every other insert's). That edge covers the coil for every gauge
 # up to D.STRING_GAUGE_MAX with LANE_CLR of air (it is a printed wall, like a finger), on the
 # bead grid from the string's own Y. SAMPLED, not just the two ends: the whole-turn count
 # (_k_min_g) can step between them, and a step is where the coil jumps.
@@ -693,6 +686,30 @@ assert _TAPER_COS < 1.0, (
     f"the two clearances alone take {2 * INS_CLR:.2f} of it")
 TAPER_TAN = math.sqrt(1.0 - _TAPER_COS ** 2) / _TAPER_COS
 
+# SKU C'S -Y STEP. Every other edge steps S = -CLAMP_C, but SKU C's -Y taper runs over string
+# 10's coil (see _sku_c_taper_gap): the coil's +X extreme, at rod-axis height, reaches into the
+# run from x_s to x_e, and at a full S the pocket edge there stands 0.33 over a .080 winding
+# (the trial had to switch its assert off for it). So that one edge steps only as far as every
+# gauge SKU C takes allows with INS_CLR of air (a pocket fit), floored to 0.1 -- still a
+# shoulder, so the insert still cannot walk +X (user), and at a shallower angle than A's, which
+# prints the same. The +Y edge steps S.
+def _sku_c_step_max() -> float:
+    s = -CLAMP_C
+    x_e = DOWEL_X - DIVOT_D / 2
+    x_s = x_e - s / TAPER_TAN
+    lim = s
+    for g in _SKU_C_GAUGES:
+        x1 = min(ROD_X + ROD_D / 2.0 + g, x_e)
+        if x1 > x_s:
+            lim = min(lim, (outer_coil_lo(g) - INS_CLR - SKU_C_LO + _clr(SKU_C))
+                      * (x_e - x_s) / (x1 - x_s))
+    return lim
+
+
+SKU_C_STEP = math.floor(_sku_c_step_max() / 0.1 + 1e-9) * 0.1
+assert SKU_C_STEP >= D.MIN_WALL / 2, (
+    f"SKU C's -Y step is down to {SKU_C_STEP:.2f}: string 10's coil leaves no shoulder")
+
 
 def insert_lobes(i: int):
     """(dowel lobe, clamp lobe) as (y_centre, width) pairs -- the insert's plan.
@@ -701,20 +718,43 @@ def insert_lobes(i: int):
     the string): one fixed window for every SKU A string, so they are all one part. Sizing
     it to each coil is what made every insert a different part."""
     if i < N_FINGERED:
-        return ((D.nut_y(i), INS_LOBE_W), (D.nut_y(i) + CLAMP_C, CLAMP_W))
+        return ((D.nut_y(i), INS_LOBE_W), (D.nut_y(i) + CLAMP_C, INS_LOBE_W))
+    # THE BASS STACK, SHARED BY NEED (user, 2026-10-28: "only extend the inserts as far as
+    # needed ... then give the extra space to the next string's insert"; strings 8-10 have no
+    # finger wall, so the slot's width is theirs to share out). EVERY INSERT PARALLEL, ONE
+    # WIDTH ("do they all keep the parallel angle and consistent width properties that we had
+    # for A"): each edge steps SKU A's own offset S between its clamp lobe and its dowel lobe,
+    # so a boundary between two bass neighbours is one number b (its clamp-lobe Y; its
+    # dowel-lobe Y is b + S), placed in the middle of the range that leaves both strings their
+    # needs (_bass_need), less STACK_CLR/2 each side. The stack's outer edges stay put: string
+    # 8's against the s7 finger, string 10's clamp lobe at SKU_C_LO.
+    S = -CLAMP_C
+
+    def bnd(k):                     # between bass strings k and k + 1, at the clamp lobe
+        (dlo, _), (clo, _) = _bass_need(k)
+        (_, dhi), (_, chi) = _bass_need(k + 1)
+        return (min(clo, dlo - S) + max(chi, dhi - S)) / 2.0
+
+    hi = (D.nut_y(i) + INS_LOBE_W / 2 - S if i == N_FINGERED
+          else bnd(i - 1) - STACK_CLR / 2.0)
     if i == SKU_C:
-        # SKU C keeps SKU B's +Y edges (it abuts string 9). Its clamp lobe runs to SKU_C_LO; its DOWEL
-        # lobe stops BASS_STEP_LO short of that, so the -Y edge steps inward exactly like every other
-        # insert's -- the pocket shoulder that makes is what keeps it from walking +X (user).
-        dhi, chi = D.nut_y(i) + INS_LOBE_W / 2, D.nut_y(i) + BASS_OFF
-        dlo = SKU_C_LO + BASS_STEP_LO
-        return (((dhi + dlo) / 2, dhi - dlo), ((chi + SKU_C_LO) / 2, chi - SKU_C_LO))
-    # SKU B's dowel lobe is OFFSET -Y, not centred. Centred, a 6.4 lobe reaches 3.2 past
-    # the string and left string 7 a 0.79 wall (user). It only has to CONTAIN the dowel,
-    # so it is hung from just clear of the dowel's own end and runs -Y from there: the
-    # bass three still abut each other, and s7 gets its 1.6 back.
-    return ((D.nut_y(i) + INS_LOBE_W / 2 - BASS_W / 2, BASS_W),
-            (D.nut_y(i) + BASS_OFF - BASS_W / 2, BASS_W))
+        # ...but SKU C's -Y edge steps only SKU_C_STEP: a full S would run its taper over
+        # string 10's coil (see SKU_C_STEP). Its +Y edge still steps S, against string 9.
+        lo = SKU_C_LO
+        return (((hi + S + lo + SKU_C_STEP) / 2.0, hi + S - lo - SKU_C_STEP),
+                ((hi + lo) / 2.0, hi - lo))
+    lo = bnd(i) + STACK_CLR / 2.0
+    w = hi - lo
+    return ((lo + S + w / 2.0, w), (lo + w / 2.0, w))
+
+
+def _bass_need(i: int):
+    """(dowel, clamp) Y spans a bass insert has to cover: its dowel, and its coil's contact
+    with the flat plus CLAMP_PAD."""
+    dowel = (D.nut_y(i) - PIN_L / 2.0, D.nut_y(i) + PIN_L / 2.0)
+    clamp = (clamp_y(i) - clamp_span(i) / 2.0 - CLAMP_PAD,
+             clamp_y(i) + clamp_span(i) / 2.0 + CLAMP_PAD)
+    return dowel, clamp
 
 
 def _plan(i: int):
@@ -760,7 +800,7 @@ def _plan(i: int):
             (INS_X1, yhd), (x_e, yhd), (x_s, yhc), (INS_X0, yhc)]
 
 
-# SKU C'S -Y TAPER RUNS OVER STRING 10'S COIL. The step (BASS_STEP_LO) tapers in from x_s to x_e,
+# SKU C'S -Y TAPER RUNS OVER STRING 10'S COIL. The step (SKU_C_STEP) tapers in from x_s to x_e,
 # and the coil's +X extreme (at rod-axis height) reaches into that run -- so the tapered pocket edge
 # has to clear the coil there, for every gauge SKU C takes. The edge only moves +Y going +X, so the
 # tightest point is the furthest +X the coil gets. Guarded because the margin is thin at a .080.
@@ -774,7 +814,7 @@ def _sku_c_taper_gap(g: float) -> float:
 
 
 _SKU_C_TAPER_GAP = min(_sku_c_taper_gap(g) for g in _SKU_C_GAUGES)
-assert _SKU_C_TAPER_GAP >= 0.0, (
+assert _SKU_C_TAPER_GAP >= INS_CLR - 1e-9, (
     f"string 10's coil reaches {-_SKU_C_TAPER_GAP:.2f} past SKU C's tapered pocket edge for some gauge "
     f"up to {D.GAUGE_MAX_IN:.3f} in -- the -Y step has been drawn over the winding")
 
@@ -899,8 +939,7 @@ def slide_insert(i: int) -> cq.Workplane:
     #
     # It stays open at the TOP: the cradle centre IS the neck's top face, so the cut
     # leaves a half-round and the dowel drops straight in.
-    y_hi = dy + dw / 2.0
-    body = body.cut(cyl_y(DIVOT_D, CRADLE_L, y0=y_hi - CRADLE_L,
+    body = body.cut(cyl_y(DIVOT_D, CRADLE_L, y0=D.nut_y(i) - CRADLE_L / 2.0,
                           x=DOWEL_X, z=fz + DIVOT_OFF))
 
     # ── TWO 45 DEG LEAD-INS FOR THREADING (user) ──────────────────────────

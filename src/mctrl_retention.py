@@ -135,7 +135,7 @@ def ledge_target():
 
 
 def _ledge():
-    """The post J3 comes down on: off the floor top, up to the housing's underside, under the
+    """The post J3 comes down on: off the bed, up to the housing's underside, under the
     housing only, FIT off the laminate. Its Y run is the longest stretch under the housing
     that nothing seated BELOW J3 uses -- each such part slides down through that band on the
     way in (J6's plug overlaps the housing's -Y end)."""
@@ -153,7 +153,7 @@ def _ledge():
     assert yb - ya >= 4 * B and x1 - x0 >= 4 * B, (
         f"the motor controller's ledge under {LEDGE_REF} is only {x1 - x0:.2f} x {yb - ya:.2f}: "
         f"the parts under the housing take the rest")
-    return (x0, x1, ya, yb, MB.FLOOR_TOP, hz0)
+    return (x0, x1, ya, yb, CH.Z_BOT, hz0)            # on the bed, like the guides: it fills its side of the port
 
 
 def _box(b, dz0=0.0):
