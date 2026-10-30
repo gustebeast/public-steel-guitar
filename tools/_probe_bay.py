@@ -4,7 +4,7 @@ where the Pi cluster lives. Measure it rather than derive it."""
 import cadquery as cq
 from src.build import collect_components
 
-Z0 = -14.55          # fret_light.BOARD_TOP
+Z0 = -12.10          # fret_light.BOARD_TOP
 HY = 35.2            # fret_light.BOARD_HALF_W
 
 

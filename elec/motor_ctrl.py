@@ -1868,6 +1868,8 @@ if __name__ == "__main__":
     netcheck.no_orphan_pins(os.path.join(OUT_DIR, "motor_ctrl.net"))
     import volts_decl                   # A16: generated, see volts_decl.py
     volts_decl.into(BOARD_NOTES, "motor_ctrl")
+    import r1_silk                        # ordered R1: silk as sent
+    r1_silk.as_ordered(BOARD_NOTES)
     with open(os.path.join(OUT_DIR, "motor_ctrl.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.1f x %.1f mm, %d placements"

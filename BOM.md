@@ -1952,7 +1952,7 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 | 40 | Ci11–Cm54 | ADC input coupling — **10 nF C0G**: INxP from each TIA, INxM to GND (single-ended AC-coupled, SBAS993B Fig. 31) | 0402 | 1.00 × 0.50 × 0.55 |
 | 2 | R50, R51 | I2C2 pull-ups 4k7 ×2 (all five converters share one bus and one address, written together; SHDNZ is tied high at each part and firmware issues the software reset) | 0402 | 1.00 × 0.50 × 0.55 |
 | 1 | J1 | USB-C receptacle — 10 ch audio + MIDI + DFU | USB-C | 8.94 × 7.35 × 3.16 |
-| 1 | J2 | **24 V in** from the instrument trunk — side entry, −X edge, 2 cavities empty ⚠ **no source yet, see below** | XH-SM-4 | 6.10 × 15.00 × 7.00 |
+| 1 | J2 | **24 V in** from the instrument trunk — R2: top entry B4B-XH-A (C144395) beside the -Y notch, 2 cavities empty (the ordered R1 board: side entry S4B-XH-SM4-TB, C161861) | XH-TE-4V | 12.40 × 6.80 × 7.00 |
 | 5 | U1–U5 | quad op-amp — 4× transimpedance amp | SOIC-14 | 6.00 × 8.65 × 1.75 |
 | 1 | U7 | USB 2.0 high-speed ULPI PHY | QFN-32 | 5.00 × 5.00 × 0.90 |
 | 1 | U8 | LDO — 3V3 digital, **AP2114H-3.3, tab = VOUT not GND** (0.51 W) | **SOT-223** | 6.50 × 3.50 × 1.80 |

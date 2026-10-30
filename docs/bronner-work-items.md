@@ -63,7 +63,99 @@ cutting into the chassis. For R2 we should add an action item to move J7 +z and 
    0.34 above the body's underside, so no ledge fits under it, and this rev's stop is the
    -X/-Y body adapter, which only works with the leg fitted.
 
+## R2, optical (lead, 2026-10-29) -- PLACED (741b6d9c), ROUTE PROFILE NEXT
+
+**State, 2026-10-29 (late).** Final lead ruling: NO growth, J1 notched, J2 top entry; edge ~-100
+is inside the -105.05 rail. Built behind `OPTICAL_REV` (default 2) in src/optical_pickup.py:
+- edge -100.805 (lowest courtyard but J1's, less EDGE_KEEP); board 57.21 x 166.54.
+- J1 centred in its notch (x -7.32..6.68, y -100.81..-94.70).
+- J2 is B4B-XH-A (C144395) at (-14.30, -95.97). Its courtyard was read off KiCad (13.49 x 6.84; the layout centres courtyards).
+- U10 is turned 0 at +X of J1's pair pins: its R1 spot put the PHY face 1.26 under the MCU caps. TP5 moves +1.9.
+- elec/optical.py:
+  - The hand-laid copper is written in R1's frame (CY_DRAW) and shifted once by `_to_board_frame`.
+  - R2 drops the route-specific repairs; re-search them after the route.
+  - The pair is pinned to J1 A6/A7, and J1's silk goes to F.Fab.
+- **R1 drift fixed:** cadkit's M4 pilot change had slid the MCU block 0.05 mm off the ordered board. Frozen at 16.25583, and R1 placements now equal the committed board.
+- Placed board: pair laid; DRC = the 20 declared optics courtyards only.
+- cadkit 443e277 (layout pair fixes + A12 ink bleed) has gone to the lead to propagate.
+- Optical_guard J2 hole data sent to branner.
+- **TODO:**
+  - route profile (4 passes, 40 min cap, scratch copy) -> repairs -> commit the routed board;
+  - opt_cables J1/J2 paths + the bridge_endplate conduit cut from the derived conduit;
+  - INSTALL_NOTES R1 stop-gap; retire the optical-cables deferral rule;
+  - re-finish output_panel R2 after the propagation (ink bleed).
+
+**Routing, 2026-10-29 (night).** Full flow in scratch (opt/r2/full.sh: layout, route 5 passes, unwick, repair_planes, finish --keep-route).
+- Run 5: after close_last, 1 unconnected (ULPI_D6, "no path" from U7.18) with 0 violations. A12 was still flagged on the pair vias; A14 flagged the via in U7.
+- Fixes for those:
+  - cadkit 68d52f7, the stitcher keeping clear of vias: the A12 pair via is gone. Sent to the lead.
+  - pin_escapes U7.18 (R1's In2 via at the pin): A14 is ok.
+- Run 6 added the U10 *router* via keepout (canonical route.py `router_via_keepouts`, uncommitted, opt-in). Result: 30 unconnected, ULPI_D5 with no copper, and a Y1 OSC_IN / +3V3D via clearance error. WORSE.
+- Run 7 (running): the same without the router keepout. That is the A/B.
+- Also fixed: the stale J2.MP in quality.unconnected (R2's top-entry XH has no tab).
+- A12 silk 0.12 and the verify 188.53 outline are scratch-project artefacts (silk.py / export_geom can't import cadkit there).
+- Answered the lead / branner on the output board drop: max THT tail 3.4 (XH posts; solid() draws all THT at 3.4).
+
+Earlier plan (superseded where it says growth):
+
+Lead rulings, 2026-10-29:
+- **Right-angle plugs only.** Drop the straight-plug pass-through. This follows the user's
+  10-07 ruling ("use a downward right angled usb C ... we can always redesign plastic to
+  account for the cable").
+- **Conduit size.** Size it to pass what is actually fitted: the B0FKYR7V34 down-angle
+  overmould (12.2 x 5.2), and J2's XH housing on its thin axis (12.4 x 5.75) if it has to
+  pass through.
+- **Board edge** at about -94 (world), with the compute section repacked and grown -X
+  where the strip allows. The strip stays aligned to the strings and bearings exactly as R1.
+- **R1 stays reproducible** behind `OPTICAL_REV=1` (TAIL_X1_R1 etc.), with an INSTALL_NOTES
+  stop-gap: the R1 board spills over -Y, and its leads run outside to the output board.
+
+Measured on the R1 board (board.json frame = world + 28.3):
+- PCB_YM -122.58. J1 (11.48, -117.8), J2 (-22.56, -116.5).
+- The compute section spans y -65.95..-122.58 and x -32.16..25.06 (57 x 57).
+- The MCU U6 sits at board y -37 (world -65), reaching to about world -78. Everything below
+  it fills world -78..-122.6, i.e. 44.6 deep:
+  - LDO row U8 / U9 / U11
+  - buck U13 / L1
+  - PHY U7 + Y2
+  - U10 ESD
+  - J1 / J2
+- Target: world -78..-94 = 16 deep at 57 wide. The difference (about 1600 mm2) has to come
+  from -X growth of the compute section. The board there is 1.6 FR4 over open deck, 3.7 up.
+- Conduit today: Y -124.58..-145.08 (20.4 deep in Y, sized for a STRAIGHT 17.5 plug).
+  R2 sizes it from the right-angle overmould and the XH thin axis, inside the -105.05 rail.
+- ⚠ J2's XH plug is 14.0 long mated (housing + wire relief) and points -Y. If it stays
+  side-entry, its length, not the conduit, sets the edge. Check whether the pair can turn
+  down within the housing length, or whether J2 should become top-entry.
+- The rail comes from motor_bank.RAIL_INNER_Y. Derive from it; do not type -105.05
+  (main still has standoff 17.2 until branner lands 7.5).
+
 ## R2 BACKLOG, output_panel (user via the lead, 2026-10-20) -- NOT the current rev, which fabs as is
+
+**R2-0. 66 -> 56 deep, 98 wide, J1 centred (lead + user, 2026-10-29) -- IN PROGRESS.** The
+-Y rail at standoff 7.5 is string 10's motor back (-103.45) + MOTOR_INSTALL_CLR = -105.05 (the
+Pi's Xilaghy plug, -96.69, stays inside it), and rail to string 10's pulley flange - 0.5
+(-48.75) is 56.0. The lost area went into the -X edge (GROW_X 24, R1 12).
+`OUTPUT_PANEL_REV` (default 2) in `elec/output_panel.py`; `OUTPUT_PANEL_REV=1` rebuilds the board
+in hand exactly (board.json identical but for quality-note text), and `elec/rev1/` keeps its geometry.
+- User ruling: J10 moves off the panel edge (-15.4, +0.4) with its 24 V bar and return re-laid
+  on B.Cu; J1 sits EXACTLY halfway between J5 and J6 (derived in R2_MOVES, not typed).
+  Plug gaps against real plug bodies: J1-J5 2.55, J1-J6 2.35 (R1 2.31), so no plug limit.
+- R2_MOVES: rigid-group shifts searched on courtyards placed as layout.py does (scratch solver).
+  D2/D3/R1/R2 move rigidly with J1 so R1's ESD fanout carries over unchanged.
+- `elec/output_panel.frozen.r2.json` = THRU, HUB_UP, HUB_DN2, DRAWN: fanouts kept (THRU's R1
+  copper moved rigidly, the HUB pairs' from a routed R2 board), the middle one coupled In2 run
+  per rail (scratch A* on the laid board), 2 vias a rail.
+- C56 (J10's 24 V bypass) moves with J10, mirrored to the pin-6 end.
+- cadkit 0638800: the stitcher keeps 0.45 drill-to-drill from other pads' holes (preference,
+  falls back), which cleared a GND stitch 0.151 from J1's shell slot (A12). Lead to propagate.
+  Every un-frozen 56 route had split THRU (skew 9-11, layer mismatch, 3 vias).
+  `freeze_pairs.py` y offset is 5.0 for R2.
+- Profile: 12-15 min a route on a copy.
+- Submit only after branner's standoff 7.5 lands on main, merged onto it (lead).
+- Then: re-route the J2 -> Pi `wire_usb` lead and retire its chassis_0 rule.
+- ⚠ R2-1 below (two RJ45s, ~16 x 21 each) wants MORE board; it was written before the
+  shrink. Decide it against the 56 before placing anything.
 
 **R2-1. Ethernet pass-through, the J1 -> J2 USB pattern.** Two RJ45s on the output board: one on the
 -X edge fed from the Pi's built-in GbE by a short stock Cat6 patch (~0.2-0.3 m), one in the panel,

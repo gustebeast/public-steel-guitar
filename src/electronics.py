@@ -429,6 +429,7 @@ OP_PANEL_CLR = D.OP_PANEL_CLR             # (in dimensions: motor_bank's rail re
 # against Neutrik's 7 N withdrawal force.
 OP_PANEL_T = 2 * D.BEAD
 JACK_WALL_X = JACK_TIP - OP_PANEL_T                   # the panel's inner face
+OUTPUT_PANEL_REV = BG.OUTPUT_PANEL_REV       # 2 = R2 (default), 1 = the board in hand: src/board_geom
 # (JACK_Z, the jack row's height, is DERIVED from the floor up now: see OP_UNDER_Z below.)
 # THE PANEL ROW IS NO LONGER EVENLY PITCHED, and it is not meant to be. TS and USB
 # are now BOARD parts on output_panel and their spacing (31.27) is set by that board;
@@ -1443,6 +1444,17 @@ OP_PLATE_T = 3 * D.BEAD                   # the cradle's plate (bridge_endplate.
 OP_TAIL_CLR = 0.3                         # air under the pins' cut ends, at least
 OP_STANDOFF = math.ceil((_OP_TAIL + OP_TAIL_CLR) / D.BEAD - 1e-9) * D.BEAD   # 4.0
 OP_UNDER_Z = OP_FLOOR_Z + max(OP_PLATE_T + OP_STANDOFF, _OP_M4.anchor_min_wall)   # -62.85
+# ⚠ R1 RIDES HIGHER: ITS J8 FACES STRING 10'S CLAMP (lead, 2026-10-29: R2 drops, R1 is the
+# stop-gap). The board in hand takes the pickup's cores into J8 from +Y, and on the floor that
+# entry is inside string 10's clamp sweep (it rolls 1.4 past the board's edge at the bottom of
+# its travel). So R1 stands only as low as keeps J8's holes a core's radius and a fit (one bead)
+# over that drive's screw-pulley flange, which the belt and clamp ride inside; build.py proves
+# the lead-in against the posed clamp. R2 turned J8 to enter from -Y, and lies on the floor.
+if OUTPUT_PANEL_REV < 2:
+    from . import screw_terminal as _ST                                 # noqa: E402
+    _OP_J8_H = min(p[2] for p, _d in _ST.way_points("output_panel", "J8"))   # over the underside
+    OP_UNDER_Z = max(OP_UNDER_Z, D.screw_pulley_z(D.N_STRINGS - 1) + D.PULLEY_FLANGE_OD / 2.0
+                     + D.BEAD - _OP_J8_H)                                # -53.9
 JACK_Z = OP_UNDER_Z + _OP_T + BG.mouth("output_panel", "J5")["axis_h"]           # -53.11
 # the three connectors a player reaches through the panel, in the order they sit along it
 OP_PANEL_REFS = ("J5", "J1", "J6")          # 1/4 in jack, USB-C, 24 V inlet

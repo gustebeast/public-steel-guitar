@@ -208,7 +208,7 @@ CAP_LEAD_IN = 4.0
 from .chassis import Y_LO as _Y_LO, T as _RAIL_T
 from .chassis import WT_LANE_Y as CH_WT_LANE_Y, WT_ZF as CH_WT_ZF, WT_H as CH_WT_H
 from .chassis import WT_X1 as CH_WT_X1, WT_RUNS as CH_WT_RUNS
-from .chassis import WT_D as CH_WT_D, WT_T as CH_WT_T
+from .chassis import WT_D as CH_WT_D, WT_T as CH_WT_T, WT_Y0 as CH_WT_Y0
 from . import motor_bank as MB                          # back_y: where each motor's pigtail leaves
 from .motor_bank import FLOOR_TOP as _RIB_TOP           # -65.15 (rib tops = above = rib-free)
 RAIL_INNER_Y = _Y_LO + _RAIL_T / 2                       # -Y rail inner face (chassis.RAIL_INNER_Y)
@@ -470,8 +470,33 @@ def optical_feed():
     mid = [(q[0], q[1], q[2]) for q in old[2:-3]]
     centre = ([ac, (ac[0], old[1][1], ac[2]), (mid[0][0], old[1][1], ac[2])] + mid[1:]
               + [(bc[0], old[-3][1], old[-3][2]), (bc[0], bc[1], old[-3][2]), bc])
+    if OP.OPTICAL_REV != 1:
+        # R2's J2 is TOP ENTRY: the pair leaves the plug UP (out_a), to the level the old
+        # centre line crosses at (old[0], over the plug), then follows it
+        centre = ([ac, (ac[0], ac[1], old[0][2]), (ac[0], old[1][1], old[0][2])] + mid
+                  + [(bc[0], old[-3][1], old[-3][2]), (bc[0], bc[1], old[-3][2]), bc])
     half = (a[1][0][0] - a[0][0][0]) / 2.0
     legs = bundle_paths(centre, [(0.0, -half), (0.0, half)], across=(1.0, 0.0, 0.0))
+    if max(abs(legs[0][-1][m] - b[0][0][m]) for m in range(3)) > 0.05:
+        # R2's lead (down the notch, -X under the recess roof, up the riser, over to J9)
+        # carries its cross-section round TURNED OVER: a rotation-minimising frame cannot
+        # land a closed set of turns the right way round. A two-conductor lead takes a HALF
+        # TWIST for that -- so the pair is laid from each end, J2's half aimed by J2's way
+        # row and J9's by J9's, and the halves meet mid-riser, where the conductors cross.
+        k = next(i for i in range(1, len(centre) - 1)
+                 if abs(centre[i][0] - centre[i + 1][0]) < 1e-6
+                 and abs(centre[i][1] - centre[i + 1][1]) < 1e-6
+                 and abs(centre[i][0] - OP.PWR_X_RISE) < 1e-6)
+        mid = tuple((centre[k][m] + centre[k + 1][m]) / 2.0 for m in range(3))
+        head = bundle_paths(centre[:k + 1] + [mid], [(0.0, -half), (0.0, half)],
+                            across=(1.0, 0.0, 0.0))
+        bw = tuple(b[1][0][m] - b[0][0][m] for m in range(3))
+        bn = math.sqrt(sum(v * v for v in bw))
+        tail = bundle_paths(centre[k + 1:][::-1] + [mid], [(0.0, -half), (0.0, half)],
+                            across=tuple(v / bn for v in bw))
+        # the head ends and the tail starts at mid-riser, each conductor on the other's
+        # side: the step between them is the twist
+        legs = [list(head[i]) + list(reversed(tail[i])) for i in range(2)]
     out = []
     for k in _cable("optical feed", a, b):
         for end, pin in ((legs[k][0], a[k][0]), (legs[k][-1], b[k][0])):
@@ -1398,9 +1423,20 @@ def build_wires():
     out += [("wire_usb_plug_pi", _hp), ("wire_usb_ribbon", _rb), ("wire_usb_joint", _jt)]
     _USB_COL_X = CH_WT_RUNS[0][0] - 3.0            # just -X of the trough's end
     _USB_TURN_X = _pe[0] + EL.PI_CRADLE_WALL + EL.PI_USB_SADDLE_FIT + WIRE_OD["wire_usb"] / 2.0 + 0.5
+    # INTO THE TROUGH OVER ITS LIP, not through it: the lip stands to CH_WT_ZF + CH_WT_H
+    # (-15.2) and the lane is under that, so the lead crosses at the lip's top, clear, and
+    # drops into its lane inside (it went through 1.6 of lip at the lane's height, 9 mm3,
+    # once the +X face move put its riser over a trough run).
+    # It climbs only AT the lip: over the pickup the top plate hangs to -16.1 (y -71..-52),
+    # so it runs out at the lane's height under that and rises one clearance short of the lip.
+    _USB_OVER = CH_WT_ZF + CH_WT_H + WIRE_OD["wire_usb"] / 2.0 + 0.3
+    _lip_y1 = CH_WT_Y0 + CH_WT_D                          # the lip's +Y face
+    _y_rise = _lip_y1 + WIRE_OD["wire_usb"] / 2.0 + 0.3
     _run(out, "wire_usb",
          [_c_usb, (_USB_X, _c_usb[1], _c_usb[2]), (_USB_X, _c_usb[1], LANE_USB),
-          (_USB_X, _ym, LANE_USB), (_USB_COL_X, _ym, LANE_USB), (_USB_COL_X, _ym, _pe[2]),
+          (_USB_X, _y_rise, LANE_USB), (_USB_X, _y_rise, _USB_OVER),
+          (_USB_X, _ym, _USB_OVER), (_USB_X, _ym, LANE_USB),
+          (_USB_COL_X, _ym, LANE_USB), (_USB_COL_X, _ym, _pe[2]),
           (_USB_TURN_X, _ym, _pe[2]), (_USB_TURN_X, _pe[1], _pe[2]), _pe],
          WIRE_OD["wire_usb"])
     # THE HUB'S LEAD STAYS OUT OF THE TROUGH'S FIRST PIECE: the 24 V head has the lanes over
@@ -1678,8 +1714,8 @@ def build_wires():
     # INTO THE TWO WIRE HOLES, not at the terminal's face (2026-10-20): the jacket stops
     # 10 mm out and the core and the braid go one to each hole, 3 mm in -- J8 is drawn as
     # the part now (src/screw_terminal.py), holes and all.
-    # ⚠ AND IT COMES DOWN ONTO J8 FROM ABOVE STRING 10'S DRIVE, not across it (2026-10-29). J8's
-    # entry faces +Y, at string 10's belt lane, and the board now lies on the floor
+    # ⚠ ON R1 IT COMES DOWN ONTO J8 FROM ABOVE STRING 10'S DRIVE, not across it (2026-10-29). R1's
+    # J8 entry faces +Y, at string 10's belt lane, and the board now lies on the floor
     # (electronics.OP_UNDER_Z): a jacket run out 10 mm at the holes' height sat in the lane and
     # string 10's clamp ran through it (9 mm3, check_carriage_travel). So the jacket stays over
     # that screw pulley's flange -- which the belt and its clamp ride inside -- and stops over
@@ -1688,15 +1724,28 @@ def build_wires():
     _ways = EL.op_term_ways()
     _lead = 4.0
     _jx = (_ways[0][0][0] + _ways[-1][0][0]) / 2.0
-    _jy = _ways[0][0][1] + (3.0 + 1.0) * _ways[0][1][1]   # 1.0 off the entry face, over the lead-in
-    _jz = (D.screw_pulley_z(D.N_STRINGS - 1) + D.PULLEY_FLANGE_OD / 2.0
-           + WIRE_OD["wire_pickup"] / 2.0 + D.BEAD)       # over string 10's drive
-    assert _jz > _ways[0][0][2], "the pickup lead's jacket would end under J8's holes"
-    out.append(("wire_pickup", _wire([
-        (_pk_x, _pk_y, _PM.PK_BOT),        # leaves the coil's underside
-        (_pk_x, _pk_y, _jz),               # straight down, clear of the plate
-        (_pk_x, _jy, _jz),                 # over to J8's entry line
-        (_jx, _jy, _jz)], WIRE_OD["wire_pickup"])))   # +X to the terminal's column
+    _dy = _ways[0][1][1]                             # the entry's direction: +Y (R1), or -Y turned
+    if _dy > 0:
+        # R1: the jacket over string 10's drive, the cores down the 1.3 between board and clamp
+        _jy = _ways[0][0][1] + (3.0 + 1.0) * _dy     # 1.0 off the entry face, over the lead-in
+        _jz = (D.screw_pulley_z(D.N_STRINGS - 1) + D.PULLEY_FLANGE_OD / 2.0
+               + WIRE_OD["wire_pickup"] / 2.0 + D.BEAD)   # over string 10's drive
+        assert _jz > _ways[0][0][2], "the pickup lead's jacket would end under J8's holes"
+        _pts = [(_pk_x, _pk_y, _PM.PK_BOT),          # leaves the coil's underside
+                (_pk_x, _pk_y, _jz),                 # straight down, clear of the plate
+                (_pk_x, _jy, _jz),                   # over to J8's entry line
+                (_jx, _jy, _jz)]                     # +X to the terminal's column
+    else:
+        # R2's J8 IS TURNED (entry -Y, output_panel.py): the lead comes over the housing's
+        # top and drops in front of its face, over the board -- never down its +Y side,
+        # which is string 10's clamp sweep on the dropped board
+        _jy = _ways[0][0][1] + _dy * (3.0 + 10.0)    # 10 mm off the entry face
+        _jz = _ways[0][0][2]
+        _top = max(v.val().BoundingBox().zmax for v in EL.output_panel_term().values())
+        _zo = _top + WIRE_OD["wire_pickup"] / 2.0 + 1.0
+        _pts = [(_pk_x, _pk_y, _PM.PK_BOT), (_pk_x, _pk_y, _zo), (_jx, _pk_y, _zo),
+                (_jx, _jy, _zo), (_jx, _jy, _jz)]
+    out.append(("wire_pickup", _wire(_pts, WIRE_OD["wire_pickup"])))
     _split_jacket(out, "wire_pickup", (_jx, _jy, _jz),
                   [(p, d, net) for (p, d), net in zip(_ways, ("PICKUP_HOT", "AGND"))],
                   WIRE_OD["wire_pickup_core"], lead=_lead)

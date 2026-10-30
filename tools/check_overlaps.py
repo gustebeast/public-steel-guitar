@@ -337,13 +337,9 @@ DEFERRED = {
             # the USB run no longer goes to the Pi through the -Y rail -- both optical leads
             # now end a few cm away on the output board, J4 and J9 -- so the gate checks them
             # again. Parked, the collision had been invisible for four days.)
-            # THE OPTICAL BOARD INTO THE BRIDGE ENDPLATE, 479.5 mm3 (deferred 2026-09-22
-            # at the USER's instruction, so bronner's motor_ctrl respin + LED strip board
-            # can land). OWNER bronner. ** THIS IS A REAL COLLISION IN WORK THE AUTHOR
-            # CALLED "in progress" ** -- the board is sunk into the endplate, not touching
-            # it. It must come out before the optical board is ordered or the endplate is
-            # printed; nothing may be designed against either surface while it stands.
-            frozenset({"bridge_endplate", "optical_pcb"}),
+            # (THE OPTICAL BOARD INTO THE BRIDGE ENDPLATE, 479.5 mm3, deferred 2026-09-22,
+            # OWNER bronner, is RETIRED 2026-10-29: the build no longer reports the pair and
+            # the two solids intersect in 0.0 mm3 on the shared cache of that day. Gated again.)
             # (body_adapter vs leg_trrs_patch / leg_trrs_plug, deleted 2026-10-29: the leg's
             # joint is the pogo boards now and neither part is built.)
             # (the 24 V runs vs motor/chassis deferral, OWNER bronner, is UN-deferred
@@ -398,10 +394,8 @@ DEFERRED_RULES = (
     # (The two R1 foot-LED deferrals -- the shortened light run and string 1's faceplate wall
     #  at the new standoff -- are RETIRED, 2026-10-29: the notch rev re-derives both boards on
     #  the live geometry, notched round string 1's motor, and the gate is clean of them.)
-    # Same change, OWNER bronner: the output board moved -X 1.63 with the face and its J2 -> Pi
-    #  USB lead now clips chassis_0 (4.4 mm3). Re-routed in the Xilaghy follow-up.
-    (re.compile(r"^wire_usb$"), re.compile(r"^chassis_0$"),
-     "output J2 -> Pi USB lead vs the chassis after the +X face move (OWNER bronner, Xilaghy follow-up)"),
+    # (wire_usb vs chassis_0, OWNER bronner, RETIRED 2026-10-29: it went through the wall
+    #  trough's lip at its lane's height; it crosses over the lip's top now.)
     # The pedal-board-components-vs-bar rule (2026-09-15) is RETIRED (2026-10-29): the boards
     # are single pedalN_pcb solids now, so its pedalN_<REF> pattern matched nothing, and
     # neither the board nor its silk touches the bar. What the knee-family whitelist was
@@ -412,6 +406,23 @@ DEFERRED_RULES = (
     # the UI board and the optical board's cables. The UI station has since been relocated
     # inside the wall (brenner, 2026-10-29), so only the optical cables are left. OWNER
     # bronner (optical cables).
+    # THE UI STATION vs THE COLOUR TOP PLATE AT THE R2 RAIL (2026-10-30, lead ruling). The
+    # output board's R2 geom (56 deep) takes the -Y rail from -115.45 to -105.05
+    # (motor_bank._OP_W reads it live); ui_panel places the UI board off RAIL_INNER_Y, so the
+    # station follows 10.4 +Y and the top plate's window for it does not. The user's body-
+    # narrowing clearance (2026-10-29: the UI board may clip until relocated) covers it.
+    # OWNER brenner: RETIRE when the UI window is re-fitted to the -105.05 rail.
+    (re.compile(r"^(ui_clamp|ui_display)$"), re.compile(r"^top_plate_color_3$"),
+     "UI station vs the colour top plate's window at the R2 -105.05 rail: user's narrowing "
+     "clearance (OWNER brenner, retire when the UI window is re-fitted)"),
+    # OPTICAL R2's 24 V PAIR THROUGH THE R1 HAND GUARD (2026-10-29). R2's J2 is top entry
+    # beside J1's notch, and the guard still has R1's roof over that spot. Agreed order
+    # (lead): bronner submits R2, then branner re-shapes optical_guard for it (J2's opening
+    # open to +Z, nothing over the notch's X span up to PCB_TOP + 14). OWNER branner.
+    # J1's down-angle plug stands in the notch under the same roof.
+    (re.compile(r"^(wire_opt_\w+|optical_cable_usb)$"), re.compile(r"^optical_guard$"),
+     "optical R2's 24 V pair / USB plug vs the R1 guard roof: branner re-shapes the guard for R2 "
+     "(OWNER branner, agreed order: after bronner's R2 submit)"),
     (re.compile(r"^(wire_opt_\w+|optical_cable_usb)$"),
      re.compile(r"^(chassis_\d+|top_plate(_color)?_\d+|wire_\w+)$"),
      "user 2026-10-29: allowed to clip until relocated (optical board cables vs the "

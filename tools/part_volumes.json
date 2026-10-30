@@ -55,7 +55,7 @@
   },
   "chassis_0": {
    "material": "petg-gf",
-   "volume_mm3": 599218.3
+   "volume_mm3": 606443.3
   },
   "chassis_0_light": {
    "material": "pctg",
@@ -63,7 +63,7 @@
   },
   "chassis_1": {
    "material": "petg-gf",
-   "volume_mm3": 663365.6
+   "volume_mm3": 671685.8
   },
   "chassis_1_light": {
    "material": "pctg",
@@ -71,7 +71,7 @@
   },
   "chassis_2": {
    "material": "petg-gf",
-   "volume_mm3": 604682.8
+   "volume_mm3": 608900.0
   },
   "chassis_2_light": {
    "material": "pctg",
@@ -311,7 +311,7 @@
   },
   "top_plate_3_color": {
    "material": "pctg",
-   "volume_mm3": 115832.8
+   "volume_mm3": 109597.0
   },
   "top_plate_4": {
    "material": "pctg",
@@ -319,7 +319,7 @@
   },
   "top_plate_4_color": {
    "material": "pctg",
-   "volume_mm3": 116071.6
+   "volume_mm3": 111530.4
   },
   "ui_clamp": {
    "material": "petg-gf",

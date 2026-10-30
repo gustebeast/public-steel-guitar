@@ -20,7 +20,9 @@ ESTIMATED (not dimensioned on the sheet; from the listing's photos, scaled off t
     so the head is 1.8 below the top
   * the back's top edge chamfered 2.0
 
-THE WIRE-ENTRY FACE IS THE BOARD'S +Y. The routed board's fab box runs 3.85 below the pads
+THE WIRE-ENTRY FACE IS THE BOARD'S +Y -- unturned. output_panel R2 turns J8 180 degrees (its
++Y entry sat in string 10's clamp sweep on the dropped board), so there it faces -Y: the part
+is drawn unturned and turned about its pad row (_turn), and way_points turn with it. The routed board's fab box runs 3.85 below the pads
 and 4.05 above (KiCad's -4.0 / +3.8 with its Y flipped), so the 4.0 side -- the entry --
 is +Y: the side src/wiring.py has always landed the pickup lead on.
 """
@@ -50,25 +52,43 @@ def _box(w, l, h, x, y, z):
     return cq.Workplane("XY").box(w, l, h).translate((x, y, z))
 
 
-def _frame(board, ref):
-    """(pin x list, pin y, seat z, way count) of a terminal on `board`, in the board's frame."""
+def _turned(board, ref):
+    """(turned, pad-row centre x, pad y): TURNED is the footprint at 180 degrees, its entry
+    facing -Y (output_panel R2's J8). Only 0 and 180 are drawn."""
     f = BG.footprint(board, ref)
-    assert abs(float(f.get("rot") or 0.0)) < 1e-6, (
-        "%s %s is turned %s: only the unturned case was checked against its pads"
-        % (board, ref, f.get("rot")))
+    rot = float(f.get("rot") or 0.0) % 360.0
+    assert min(abs(rot), abs(rot - 180.0), abs(rot - 360.0)) < 1e-6, (
+        "%s %s is turned %s: only 0 and 180 were checked against its pads" % (board, ref, rot))
+    xs = [p[0] for p in f["pads"].values()]
+    return abs(rot - 180.0) < 1e-6, (min(xs) + max(xs)) / 2.0, next(iter(f["pads"].values()))[1]
+
+
+def _frame(board, ref):
+    """(pin x list, pin y, seat z, way count) of a terminal on `board`, in the board's frame
+    AS IF UNTURNED: a turned part is drawn so and then turned about its pad row (_turn)."""
+    f = BG.footprint(board, ref)
+    turned, cx, _py = _turned(board, ref)
     pads = sorted(f["pads"].items(), key=lambda kv: int(kv[0]))
-    xs = [p[1][0] for p in pads]
+    xs = [(2.0 * cx - p[1][0]) if turned else p[1][0] for p in pads]
     y = pads[0][1][1]
     assert all(abs(p[1][1] - y) < 1e-6 for p in pads), "%s %s: pads not in one row" % (board, ref)
     assert all(abs(b - a - PITCH) < 0.01 for a, b in zip(xs, xs[1:])), (
         "%s %s: pads are not on the %.2f pitch" % (board, ref, PITCH))
     # the routed fab box agrees with the drawing to its line width, or this is not the part
     x0, x1, y0, y1 = f["fab"]
+    if turned:
+        y0, y1 = 2.0 * y - y1, 2.0 * y - y0
     assert abs((x1 - x0) - (PITCH * len(xs) + LIP)) < 0.2 and abs((y1 - y0) - DEPTH) < 0.2, (
         "%s %s: fab box %.2f x %.2f is not an MX126-5.0 of %d ways"
         % (board, ref, x1 - x0, y1 - y0, len(xs)))
-    assert (y1 - y) > (y - y0), "%s %s: the entry (4.0) side is not +Y" % (board, ref)
+    assert (y1 - y) > (y - y0), "%s %s: the entry (4.0) side is not +Y unturned" % (board, ref)
     return xs, y, BG.load(board)["thickness_mm"], len(xs)
+
+
+def _turn(board, ref, wp):
+    """A Workplane drawn unturned, turned with the footprint about its pad row."""
+    turned, cx, py = _turned(board, ref)
+    return wp.rotate((cx, py, 0.0), (cx, py, 1.0), 180.0) if turned else wp
 
 
 def parts(board="output_panel", ref="J8") -> dict:
@@ -93,7 +113,7 @@ def parts(board="output_panel", ref="J8") -> dict:
         pin = _box(PIN_W, PIN_T, PIN_BELOW - t, x, py, -(PIN_BELOW - t) / 2.0)   # below the board only
         for s in (head, pin):
             metal = s if metal is None else metal.union(s)
-    return {"housing": body, "metal": metal}
+    return {"housing": _turn(board, ref, body), "metal": _turn(board, ref, metal)}
 
 
 def way_points(board="output_panel", ref="J8"):
@@ -101,11 +121,17 @@ def way_points(board="output_panel", ref="J8"):
     hole (3 mm in from the face) and the direction out of the hole (+Y)."""
     xs, py, t, _n = _frame(board, ref)
     face = py + PIN_TO_ENTRY
+    turned, cx, _ = _turned(board, ref)
+    if turned:                       # way n where pin n is: the point and its exit turned
+        return [((2.0 * cx - x, 2.0 * py - (face - 3.0), t + HOLE_Z), (0.0, -1.0, 0.0))
+                for x in xs]
     return [((x, face - 3.0, t + HOLE_Z), (0.0, 1.0, 0.0)) for x in xs]
 
 
 def summary() -> str:
     xs, py, t, n = _frame("output_panel", "J8")
+    if _turned("output_panel", "J8")[0]:
+        py = py - 2.0 * PIN_TO_ENTRY             # so `py + PIN_TO_ENTRY` reads the turned face
     return ("J8 MX126-5.0-%02dP: %.1f wide, %.1f deep, %.1f tall; wire holes O%.1f at %.1f "
             "off the board, face at y %.2f; %s; strip %.0f-%.0f mm"
             % (n, PITCH * n + LIP, DEPTH, H, HOLE_D, HOLE_Z, py + PIN_TO_ENTRY, SCREW, *STRIP_MM))

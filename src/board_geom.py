@@ -42,6 +42,28 @@ from cadkit.board_geom import Boards, SILK_CAP, SILK_T, fp_name, mask_rgb  # noq
 GEOM_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                         "elec", "geom")          # tracked: elec/out is git-ignored
 
+# THE BOARD REVISION THE MODEL IS BUILT WITH, per board that has more than one (the same
+# environment variables the generators read, so one switch sets both). 2 is the default
+# everywhere; 1 is the ordered board in hand, whose geometry lives in elec/rev1 (it is NOT in
+# elec/geom: see elec/rev1/README.md). Anything that has to differ by revision branches on
+# these -- e.g. electronics' output-board height (R1 rides higher than R2's floor term).
+OUTPUT_PANEL_REV = int(os.environ.get("OUTPUT_PANEL_REV", "2"))
+OPTICAL_REV = int(os.environ.get("OPTICAL_REV", "2"))
+assert OUTPUT_PANEL_REV in (1, 2) and OPTICAL_REV in (1, 2), "a board REV is 1 or 2"
+REV1_DIR = os.path.join(os.path.dirname(GEOM_DIR), "rev1")
+_REV = {"output_panel": OUTPUT_PANEL_REV, "optical": OPTICAL_REV}
+
+
+def _with_revs(boards):
+    """`boards` with each rev-1 board's geometry read from elec/rev1 instead of elec/geom.
+    Boards.load caches per board name, so the rev-1 file is put in that cache up front."""
+    import json
+    for name, rev in _REV.items():
+        if rev == 1:
+            with open(os.path.join(REV1_DIR, name + ".geom.json"), encoding="utf-8") as fh:
+                boards._cache[name] = json.load(fh)
+    return boards
+
 # THE SOLDER MASK EACH BOARD IS ORDERED IN, where it is not the fab's default green. A
 # board is drawn in it (src/build.py's colours), so the model shows the board that will
 # be in the hand. The order itself is each board's "order_options" in elec/<board>.py:
@@ -131,8 +153,8 @@ def _silk_font():
 
 
 _FONT = _silk_font()
-BOARDS = Boards(GEOM_DIR, height=_HEIGHT, tail=_TAIL, tht_legs=_THT_LEGS, panel=_PANEL,
-                **({"silk_font": _FONT, "silk_cap": SILK_FONT_CAP} if _FONT else {}))
+BOARDS = _with_revs(Boards(GEOM_DIR, height=_HEIGHT, tail=_TAIL, tht_legs=_THT_LEGS, panel=_PANEL,
+                           **({"silk_font": _FONT, "silk_cap": SILK_FONT_CAP} if _FONT else {})))
 
 HEIGHT, TAIL, THT_LEGS, PANEL = BOARDS.HEIGHT, BOARDS.TAIL, BOARDS.THT_LEGS, BOARDS.PANEL
 
@@ -141,9 +163,9 @@ def on_the_bench(unmated) -> Boards:
     """The same boards with the same part facts, as they lie on a BENCH: `unmated` names
     the (board, ref) headers nothing is plugged into there (in the instrument every
     header has its plug)."""
-    return Boards(GEOM_DIR, height=_HEIGHT, tail=_TAIL, tht_legs=_THT_LEGS, panel=_PANEL,
-                  unmated=unmated,
-                  **({"silk_font": _FONT, "silk_cap": SILK_FONT_CAP} if _FONT else {}))
+    return _with_revs(Boards(GEOM_DIR, height=_HEIGHT, tail=_TAIL, tht_legs=_THT_LEGS,
+                             panel=_PANEL, unmated=unmated,
+                             **({"silk_font": _FONT, "silk_cap": SILK_FONT_CAP} if _FONT else {})))
 
 
 load = BOARDS.load
