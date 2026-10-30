@@ -566,6 +566,41 @@ nominal numbers look fine but the finished solid is a razor. The overlap gate
 does NOT catch thin material (see its caveats), so **verify these on the real
 solid** with a point-probe / cross-section, not on paper.
 
+## Printed corners — draw them with `Printed`, don't hand-round
+
+A corner prints according to which way the part builds. An edge along the build direction is
+made by the nozzle and comes out round; an edge in the layer plane is stepped by layers; a
+diagonal is between. `cadkit.print_corners` holds the measured numbers.
+
+**Draw printed solids with `Printed`.** It puts each corner's radius in the profile, before the
+extrude, so it costs a few wire calls and never a fillet on a finished solid. Don't fillet finished
+solids to get this, and don't search a big part's edges for it: both slow the build.
+
+```python
+from cadkit.print_corners import Printed
+P = Printed(up=PART_UP, nozzle_d=0.8)
+body = P.box(40, 20, 10, z=5)
+body = body.union(P.prism(pts, along=(1, 0, 0), h=12, at=(0, 0, 3), sharp={2}))
+body = body.cut(P.cutter(pts, along=(0, 0, 1), h=8, at=(0, 0, 2)))
+```
+
+- `sharp={i}` leaves a corner as drawn, `r={i: radius}` overrides one. A corner with too little room
+  gets the largest radius that fits.
+- **A pocket that seats a square part:** a concave corner drawn r 2.0 fouls the mate. Pass
+  `seat_r=` (the mate's corner radius) and `c=` (the clearance). A sharp pocket corner still prints
+  about 1.05, so if that is more than the mate allows, round or chamfer the mate
+  (`seat_radius()` says by how much).
+- Adopt it per call as you touch a part. There is no big-bang rewrite.
+
+**Cuts and unions still make tips** where two features meet, and no drawing call can see those.
+`corner_sites()` reads the finished solid, and a project's fast print check runs
+`sites_from_edges()` on the mesh it already has, so it costs milliseconds. It flags a TIP: a convex
+edge under 80 degrees whose printed end stands half a bead or more back of the drawn one. Each
+site comes with a hint. Fix it in the profile, or end the tip in a flat one bead wide.
+
+Only PETG-GF on a 0.8 nozzle was measured. Other nozzles scale by nozzle size, other materials reuse
+the numbers, and diagonals are a cos^2 blend of the two measured ends; none of those was printed.
+
 ## Materials — say what a part is made of where it is made
 
 The viewer shows every part as its material: the filament's colour and surface for a
