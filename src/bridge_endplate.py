@@ -1068,10 +1068,8 @@ def _build() -> cq.Workplane:
     # seats have); -X of that it stays FOOT_Z, which is where the board goes down before it
     # slides +X under the shelf (INSTALL_NOTES).
     _rc_y0, _rc_y1 = _rc_y - _rc_w / 2.0, _rc_y + _rc_w / 2.0
-    # (R2 only: R1 stands higher -- electronics.OP_UNDER_Z -- and its jacks reach the rail band)
-    from .electronics import OUTPUT_PANEL_REV
     _rings = [r for r in (seat_ring(i).val().BoundingBox() for i in range(D.N_STRINGS))
-              if r.ymin < _rc_y1 and r.ymax > _rc_y0] if OUTPUT_PANEL_REV >= 2 else []
+              if r.ymin < _rc_y1 and r.ymax > _rc_y0]
     _shelf_x0 = min((r.xmin for r in _rings), default=JACK_WALL_X)
     _shelf_z = min((r.zmin for r in _rings), default=FOOT_Z)
     for _x0, _x1, _zt in ((XLO - 1.0, JACK_WALL_X, _shelf_z), (XLO - 1.0, _shelf_x0, FOOT_Z)):
@@ -1167,37 +1165,10 @@ def _build() -> cq.Workplane:
                              z=CH.TP_GZ0 - LIP_DZ / 2))
     # ── AXLE PATH, cut after every union for the reason written in _arm ──────────────
     body = body.cut(_axle_negative())
-    # ── CABLE CONDUIT, cut LAST so nothing unioned later refills it ──────────────────
-    # Down from this part's top face, then out its -X face into the chassis interior.
-    # Sized to pass a CONNECTOR one at a time -- see optical_pickup.opt_conduit. The
-    # magnetic pickup's top panel is never touched: the deck ends at TP.PX0 = -16.60 and
-    # the endplate begins there, so out past the board this face is open sky.
-    #
-    # IT MUST BE LAST. Cut earlier, the +Z RETENTION LIP above was unioned afterwards and
-    # partly refilled it -- leaving a 0.25 mm sliver that read as a printability blip when
-    # the real fault was structural.
-    #
-    # AND THE LIP HAS TO GO WITH IT across this Y band. The lip hangs off the -X FACE, and
-    # the conduit removes that face here, so leaving the lip would leave a 5 x 5 tab rooted
-    # on nothing -- worse than not having it. Trimming it costs 19.5 mm of its 57.4 mm run,
-    # leaving 37.6 mm CONTIGUOUS (65%) still trapped by the deck panels, which is the one
-    # piece of load-bearing material the conduit spends. There is no placement that avoids
-    # it: the lip spans y -128.35..-71.30 and the conduit must sit -Y of the board at
-    # -108.85..-131.85, so they overlap wherever it goes inside the endplate. The only
-    # alternative was routing the USB lead ~47 mm back +Y to clear the lip entirely, which
-    # buys whole-lip retention at the cost of a doubled-back cable and a longer run.
-    # (R2: NONE OF THAT. One closed house-section shaft, optical_pickup.opt_cable_hole, and the
-    #  -X face and the lip stay whole: user, 2026-10-30.)
-    if OP.OPTICAL_REV == 1:
-        body = body.cut(OP.opt_conduit())
-        body = body.cut(OP.opt_pwr_slot())        # the optical 24 V lead's way down to J9
-        body = body.cut(OP.opt_usb_notch())       # J1's down-angle plug: its leg's way down
-        body = body.cut(box_at(LIP_DX + 2.0, OP.CONDUIT_D, LIP_DZ + 2.0,
-                               x=XLO - (LIP_DX + 2.0) / 2 + 1.0,
-                               y=(OP.CONDUIT_Y0 + OP.CONDUIT_Y1) / 2,
-                               z=CH.TP_GZ0 - LIP_DZ / 2))
-    else:
-        body = body.cut(OP.opt_cable_hole())
+    # ── THE OPTICAL CABLE HOLE, cut LAST so nothing unioned later refills it ──
+    # One closed house-section shaft (user, 2026-10-30): optical_pickup.opt_cable_hole. The
+    # -X face and the retention lip stay whole.
+    body = body.cut(OP.opt_cable_hole())
     # ── AND THE O-BAND'S NOTCH, LAST FOR THE SAME REASON THE CONDUIT IS ──────────
     # ⚠ THIS WAS FIRST PUT WITH THE EARLY CUTS AND SILENTLY DID ALMOST NOTHING. Placed
     # before the unions it removed 151 mm3 of the ~1100 it should, because _screw_rail,
