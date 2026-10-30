@@ -1513,6 +1513,7 @@ def _pickup_mount_components():
     # what it is, and coloured off the loose-wire scheme already in this table: violet for
     # USB, red for 24 V.
     out.append(("optical_cable_usb", OP.opt_cables("usb")))
+    out.append(("optical_cable_usb_metal", OP.opt_cables("metal")))
     from . import wiring as _WRo
     out += _WRo.optical_feed()          # its two conductors, J9 -> J2 ways 1 and 2
     # The two M4 grips that locate the board: heat-set insert seated in the endplate's
@@ -2100,6 +2101,7 @@ def optical_work_components():
     # the change, so it has to be visible in the view that reviews it.
     out = [("optical_pcb", OP.opt_pcb()),
            ("optical_cable_usb", OP.opt_cables("usb")),
+           ("optical_cable_usb_metal", OP.opt_cables("metal")),
            *__import__("src.wiring", fromlist=["w"]).optical_feed(),
            ("bridge_endplate", PARTS["bridge_endplate"][0]()),
            ("motor_ctrl", EL.motor_ctrl()),
@@ -2596,6 +2598,7 @@ _COLORS = {
     # ⚠ MATCHED TO THE LOOSE-WIRE COLOURS BELOW, not picked fresh: a USB run is a USB
     # run whether it is drawn as a wire or as a modelled cable, and the old single entry
     # was (0.15,0.15,0.17) -- near-black, which this project reserves for TPU.
+    "optical_cable_usb_metal": (0.75, 0.76, 0.78),   # the plugs' steel tongues
     "optical_cable_usb": (0.03, 0.03, 0.035),  # black, as the bought lead is: the optical board USB ribbon and its two plugs
     "optical_insert":  (0.72, 0.60, 0.30),   # M4 heat-set brass, board grips
     "optical_screw":   (0.72, 0.74, 0.78),   # M4x20 button, through the guard and the board

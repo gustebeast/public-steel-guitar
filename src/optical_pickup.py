@@ -3658,7 +3658,7 @@ def opt_cables(which: str = "usb") -> cq.Workplane:
     """The USB lead with its plugs, at true size -- an assembly aid, not a part -- or the
     line the 24 V pair is planned along.
 
-    `which` is "usb" (J1's down-angle plug, its ribbon, and J4's plug at the output board:
+    `which` is "metal" (the plugs' two tongues, seated in J1 and J4), "usb" (J1's down-angle plug, its ribbon, and J4's plug at the output board:
     one bought lead, drawn black as it is) or "pwr_path" (the centre line of J2's pair as
     a list of points; its two conductors are wiring.optical_feed's, and its crimp housing
     is the one the board's export seats in the header).
@@ -3669,6 +3669,17 @@ def opt_cables(which: str = "usb") -> cq.Workplane:
     # That lead is two conductors side by side at the connector's own pitch, 3.8 across
     # (wiring.optical_feed); it was drawn as one O4.0 solid, "6x 26 AWG", from when the
     # link had six ways, and every clearance on its route was set against that.
+    if which == "metal":
+        from .electronics import op_mouth, op_top
+        from .board_geom import HEIGHT as _H, footprint as _fp, fp_name as _fpn
+        p1, x4, top4 = part("J1"), op_mouth("J4")[0], op_top("J4")
+        zc4 = top4[2] - _H[_fpn(_fp("output_panel", "J4")["fpid"])] / 2.0
+        tip = (box_at(USBC_TONGUE_W, USBC_MATE_L, USBC_TONGUE_T, x=p1["x"],
+                      y=usb_face_y() + USBC_MATE_L / 2.0, z=PCB_TOP + PKG[p1["pkg"]][2] / 2)
+               .edges("|Y").fillet(USBC_TONGUE_T / 2.0 - 0.01))
+        return tip.union(box_at(USBC_MATE_L, USBC_TONGUE_W, USBC_TONGUE_T,
+                                x=x4 + USBC_MATE_L / 2.0, y=top4[1], z=zc4)
+                         .edges("|X").fillet(USBC_TONGUE_T / 2.0 - 0.01))
     USB_OD, XH_OD = 2.6, 4.0
     out = None
 
@@ -3826,7 +3837,8 @@ FOOT_ROOF_Z = CH.KH_DT_Z0                # the board recess's roof, which the ca
 # The USB ribbon's run, on edge: its slack runs -X past the bay under chassis_0, whose band starts
 # at z -29.85 over x -134.8..-88, so the ribbon's top edge stays 0.35 under that, not the recess's roof.
 RIBBON_Z = -29.85 - 0.35 - RIBBON_W / 2.0                  # -35.6
-USBC_MATE_L = 6.65                      # the plug's stroke: a USB-C tongue's length
+USBC_MATE_L = 6.6                       # the plug's stroke: its metal tongue, as measured
+USBC_TONGUE_W, USBC_TONGUE_T = 8.25, 2.4    # ...and its section, USB-C's nominal, not measured
 USB_J4_JOG = 5.0                        # the ribbon's step -X over J4's boot, to rise
                                         # outside the J7 pair's loop
 USB_BACK_DY = 6.0                       # the doubled-back slack's leg, +Y of the run

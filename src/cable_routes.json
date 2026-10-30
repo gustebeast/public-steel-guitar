@@ -2,7 +2,7 @@
  "bus B lever head": {
   "a": [
    -546.3058708498986,
-   -24.212599999999977,
+   -13.812599999999971,
    -89.68862925010151
   ],
   "b": [
@@ -16,18 +16,18 @@
   "pts": [
    [
     -546.3059,
-    -24.2126,
+    -13.8126,
     -89.6886
    ],
    [
-    -564.5279,
-    -27.7813,
-    -93.3708
+    -567.639,
+    -17.9656,
+    -93.7119
    ],
    [
-    -570.428,
-    -29.4043,
-    -94.7514
+    -574.2864,
+    -20.2483,
+    -95.1637
    ],
    [
     -598.75,
@@ -35,35 +35,36 @@
     -103.053
    ]
   ],
-  "length": 57.04,
+  "length": 62.54,
   "parts": {
-   "keyhead_endplate": "87130fc1256fb066644fede5c6e964977d604e88",
-   "chassis_2": "d44a04e07128f6c8d747ecf92782a75f2b6e5b1a",
+   "keyhead_endplate": "a5bb0e53314085ceed220f8b93297cc43bda86af",
+   "chassis_2": "6b199804b81c23805f3e5ca38511aeb90a655ef3",
    "motor_ctrl": "a593419fb830eef35e19ed0b70224dcd1c357985",
-   "knee_housing": "74ec2ae4bc86a9f4cdb3f451b6e36c68ccac8b1d",
-   "main_cart_base": "fe70492dd4af2f21eb7c78a29f295f95c0cc6ca8",
-   "main_cart_piston": "447caf0eedf842688879ad877e4f39878c01e565",
-   "half_stop_cart_base": "eccc343bc1bda4f82259abe734996e417f1e1e01",
-   "half_stop_cart_piston": "22971b7e562f69313329e4f387312d252afb4884",
-   "kl_pcb": "7b8e1e43add38c6c6a6135e2195ff7481ab1bdc7",
-   "kl_pcb_shim": "97e7cc1cfbfad6bfb856ed1b7ae7de7d3eec7c89",
-   "main_spring": "20abf2aeaa66f8eaa334953b4448d71bb24f3308",
-   "main_spring_seat_washer": "bdb6113dc76022bd257d28db6aba9c3719e1e99e",
-   "main_spring_tension_screw": "38620b2bd23d422507d791dc39f2e54107a151e6",
-   "main_spring_tension_insert": "71babe73ff64cbbc246ca9e0bfdf8b900ca26672",
-   "main_position_screw": "2057639c109fa322b552d1ae610c63f848a1d8b9",
-   "main_position_insert": "cff806f280ccaa53cc45c46c03978709639d712d",
-   "main_position_washer": "3156e6ef9600361b7dac6987dd57186175fc552c",
-   "half_stop_spring": "106277b3dc212ae351dd4a617b1044cf40e47daa",
-   "half_stop_spring_seat_washer": "1c7f89f2bc58736532253a9cd68a7d3794723d79",
-   "half_stop_spring_tension_screw": "bb84dd34fe56f83cd6e463a9ac58259727e49af1",
-   "half_stop_spring_tension_insert": "c005450ecd4fc01c6b6e84343b1f66187c3bad1c",
-   "half_stop_position_screw": "5a9a10c3908734716302873d4856a49bca77ad06",
-   "half_stop_position_insert": "85d4ea9051303ecfe915c113357e64f0f3ff42e2",
-   "half_stop_position_washer": "6617ae986692fdbbce00c03d3d6c9abfeef07f1e",
-   "kl_travel_stop_insert": "86812ab6471210b6c3745f4e99513ee9cdb77e74",
-   "kl_travel_stop_screw": "62dc9f154f2342686917023d02ca023d8fa89166",
+   "knee_housing": "997996d5a67464fc3ac49cff35affc27d842e971",
+   "main_cart_base": "a0a91348de1fc1a5126d59a011c9806ff5fd54ec",
+   "main_cart_piston": "013bfd548a13b5d9cc2fec5903a035f922df70e5",
+   "half_stop_cart_base": "cf9a84dca0c91ac33cc80cf82c4f1f828a54bc22",
+   "half_stop_cart_piston": "3f9aa5c718f67db5a24289b4b843f510f6241d45",
+   "kl_pcb": "0db86dbfa82adb76c4f649213670f0edf6bc6eae",
+   "kl_pcb_shim": "537776c8f27252ca53f6f184985bdccbc0795940",
+   "main_spring": "08e4cb9f10db547b544a61c86627c9378f8e5b0c",
+   "main_spring_seat_washer": "adbdf45495209553a76699721093cb5060ea76c2",
+   "main_spring_tension_screw": "b01f300d90d3669230c6b625a6398ee666823a03",
+   "main_spring_tension_insert": "d30f38d0b7990bc1f89f66ab0f9681e19c5d9093",
+   "main_position_screw": "4cf01ebb044e0e3e11299067644fec4d94b1f0c3",
+   "main_position_insert": "65e2a6694482e76b31d38dc0ea8d36c47cc40793",
+   "main_position_washer": "5221c121608495e2541c28c5abc96e5a9e5deac2",
+   "half_stop_spring": "5d871d22aeb54e736eb3a929d28abd2ec2d8ba9d",
+   "half_stop_spring_seat_washer": "5d414e7c385a45223000e17d8df467d56e8fad72",
+   "half_stop_spring_tension_screw": "878502ba7bb6a005929b176a20d5c8b110ec9925",
+   "half_stop_spring_tension_insert": "5928d1de550afbf0fa4dfb727402be24ce7a85fe",
+   "half_stop_position_screw": "7fbb61bd9ab46379100727f927a3be65af817ef2",
+   "half_stop_position_insert": "fa9f7575978ee5c438a07d38f78d0814983dfc52",
+   "half_stop_position_washer": "2feade036ccbf8295ec80026cb1bb83957edba28",
+   "kl_travel_stop_insert": "883b80ae69924b6cb4b7cc659f0277d93d00eb32",
+   "kl_travel_stop_screw": "8fd3bc640366c696d2d94c5e83562c9dec0c1328",
    "motor_0": "53be9ecedad7322cb323e650e3ce37f3bff56681",
+   "motor_stack_0": "6c726e19af4f01779f888f65c910ac9dab046480",
    "motor_driver_0": "883d72407be754bf11ab255d06673052fb6ede8d",
    "motor_screws_0": "081c2646f0c9abb196d781e354b64e6b2c47e108",
    "motor_buttons_0": "27e4fbc371e57dbf8dbccc9f92ec77ecde5487df",
@@ -72,6 +73,9 @@
    "motor_driver_1": "460bf2fafd5674f4cd9d7cb9a977f458cd5e5b6c",
    "motor_screws_1": "21c0577f47354d1d5823b2cab57fdcdd17173ba4",
    "motor_buttons_1": "86c5b755c561631cc2309e555139dcf6d53d72a0",
+   "nut_height_screw_2": "1a6e061ca967ecff0aee26ae49ddb13c1f1f3dcc",
+   "nut_height_screw_3": "609eb649a711708f9ab0bce3c86f8826e93a0a57",
+   "nut_height_insert_3": "b9f14d9be33cca2c912a67a782b96cb2dd3987dd",
    "nut_height_screw_4": "232edcfa5636554b3b6fd92a25d8d42cef300b25",
    "nut_height_insert_4": "ad5cf7c50b87003cd0576254d4d502aa41199f3c",
    "nut_height_screw_5": "a6418975e96574bb7f28cd19b6141ec264e57efd",
@@ -85,8 +89,8 @@
    "nut_height_screw_9": "0f4dae36c9ff7f25d114c4154b8ecf231d591aeb",
    "nut_height_insert_9": "072c99a46da4396f57ae82193e20609d8520e107"
   },
-  "build": 980,
-  "routed": "2026-10-29"
+  "build": 987,
+  "routed": "2026-10-30"
  },
  "bus B pedal cable": {
   "a": [
@@ -116,8 +120,8 @@
   ],
   "length": 83.85,
   "parts": {
-   "keyhead_endplate": "87130fc1256fb066644fede5c6e964977d604e88",
-   "chassis_2": "d44a04e07128f6c8d747ecf92782a75f2b6e5b1a",
+   "keyhead_endplate": "a5bb0e53314085ceed220f8b93297cc43bda86af",
+   "chassis_2": "6b199804b81c23805f3e5ca38511aeb90a655ef3",
    "body_adapter_0": "f2520a4142869e23bc52d8af8a0dfbae6b2102d4",
    "fixed_tenon": "6a9200cde0db607e9bfeceabf42dba99a45baca3",
    "pogo_male_board_top": "6b140955d59565d46d6a165ae6433360ef64f8ab",
@@ -129,11 +133,11 @@
    "pogo_female_screw_top": "6285411da54edb7a2e481134c405ed2e62c3e10e",
    "pogo_female_insert_top": "367f3dbc9d555d8e127302cd2fc310523c58372a",
    "pogo_male_screw_top": "0b607fbeda8cf4b3745cfb4e1fecd6a20e4d3b77",
-   "body_adapter_3": "7718f087b8c2a76a0e39f0fa02d798533e62e3e2",
+   "body_adapter_3": "39de8300a4602c837d0336a7b244021331ba2968",
    "pi4_sd": "c5f66045c0ce6ee4e5462ba1ee6f14f002fa9a5c",
    "pi4_card": "b93c6d6765977b2405bde5ef6d6512045f0d9ea8",
    "motor_ctrl": "a593419fb830eef35e19ed0b70224dcd1c357985",
-   "foot_pcb_a": "432391375b7f563409dfdda8ae1244583cc25b66",
+   "foot_pcb_a": "0896d966d0ef1e3be6a6219708e9d3fa9da8bb23",
    "motor_0": "53be9ecedad7322cb323e650e3ce37f3bff56681",
    "motor_face_0": "6a6099f086cebd5c11be5140b96adb8c55e81811",
    "motor_stack_0": "6c726e19af4f01779f888f65c910ac9dab046480",
@@ -171,8 +175,8 @@
    "nut_height_screw_9": "0f4dae36c9ff7f25d114c4154b8ecf231d591aeb",
    "nut_height_insert_9": "072c99a46da4396f57ae82193e20609d8520e107"
   },
-  "build": 980,
-  "routed": "2026-10-29"
+  "build": 988,
+  "routed": "2026-10-30"
  },
  "bus B pedal cable, leg slid out": {
   "a": [
@@ -211,8 +215,8 @@
   ],
   "length": 107.95,
   "parts": {
-   "keyhead_endplate": "87130fc1256fb066644fede5c6e964977d604e88",
-   "chassis_2": "d44a04e07128f6c8d747ecf92782a75f2b6e5b1a",
+   "keyhead_endplate": "a5bb0e53314085ceed220f8b93297cc43bda86af",
+   "chassis_2": "6b199804b81c23805f3e5ca38511aeb90a655ef3",
    "chassis_light_2": "70140359d6628a4f3400e2f0d82bda9565aa1375",
    "body_adapter_0": "f2520a4142869e23bc52d8af8a0dfbae6b2102d4",
    "fixed_tenon": "6a9200cde0db607e9bfeceabf42dba99a45baca3",
@@ -227,11 +231,11 @@
    "pogo_male_screw_top": "0b607fbeda8cf4b3745cfb4e1fecd6a20e4d3b77",
    "lock_pin_screw_0": "d3badda892ab4cc49a4db8054998f7973aa4117c",
    "lock_pin_insert_0": "0ff403f8628f70601d2dd11464eca7a464a4cf18",
-   "body_adapter_3": "7718f087b8c2a76a0e39f0fa02d798533e62e3e2",
+   "body_adapter_3": "39de8300a4602c837d0336a7b244021331ba2968",
    "pi4_sd": "c5f66045c0ce6ee4e5462ba1ee6f14f002fa9a5c",
    "pi4_card": "b93c6d6765977b2405bde5ef6d6512045f0d9ea8",
    "motor_ctrl": "a593419fb830eef35e19ed0b70224dcd1c357985",
-   "foot_pcb_a": "432391375b7f563409dfdda8ae1244583cc25b66",
+   "foot_pcb_a": "0896d966d0ef1e3be6a6219708e9d3fa9da8bb23",
    "motor_0": "53be9ecedad7322cb323e650e3ce37f3bff56681",
    "motor_face_0": "6a6099f086cebd5c11be5140b96adb8c55e81811",
    "motor_stack_0": "6c726e19af4f01779f888f65c910ac9dab046480",
@@ -269,8 +273,8 @@
    "nut_height_screw_9": "0f4dae36c9ff7f25d114c4154b8ecf231d591aeb",
    "nut_height_insert_9": "072c99a46da4396f57ae82193e20609d8520e107"
   },
-  "build": 980,
-  "routed": "2026-10-29"
+  "build": 988,
+  "routed": "2026-10-30"
  },
  "fret LED lead": {
   "a": [
@@ -310,7 +314,7 @@
   ],
   "length": 79.39,
   "parts": {
-   "chassis_2": "d44a04e07128f6c8d747ecf92782a75f2b6e5b1a",
+   "chassis_2": "6b199804b81c23805f3e5ca38511aeb90a655ef3",
    "pi4": "862c475ab8ae5f76dc7fa9b74c7eac47bb4623e5",
    "pi4_shells": "81385156f964a5db8867e54012c921482dcb6254",
    "pi4_lids": "d3d8cfc43fb34464b8cdde5b6f1270e73c49e227",
@@ -323,8 +327,8 @@
    "pi_cap": "7a53c78bd37ac6a05c61bd5dd25ee67f4b31648e",
    "motor_ctrl": "a593419fb830eef35e19ed0b70224dcd1c357985",
    "fret_pcb_key": "65a1ba72a2711f4f0bbe0199bc8cbfa5a1ee2067",
-   "top_plate_4": "3049e4ec716b678c76c2c19bd5bd71d7476f88bf",
-   "top_plate_color_4": "767b88308286ad253a63030586dc8a96b025e216",
+   "top_plate_4": "4dd284a22fd898ffb2a70f3937dc5360d054d24c",
+   "top_plate_color_4": "883852042ab2f99222d9727a797faf170a9ab70d",
    "tee_pcb_0": "c7c89c25717db9fed8c7fa3bfec5b547d0a111ae",
    "tee_pcb_1": "1a3e6c87af0053091377c90d4216033bd3a6301f",
    "ui_ribbon_socket_1": "499a7b072c57f0d4e920fa5b9a950d50eb782685",
@@ -352,8 +356,8 @@
    "string_8": "df8732395bb460a5b9285844ba63bcebf80c4d28",
    "string_9": "434896f5d57e4aa593ee2830ef902e0bc0a97415"
   },
-  "build": 980,
-  "routed": "2026-10-29"
+  "build": 988,
+  "routed": "2026-10-30"
  },
  "fret LED lead, keyhead panel out": {
   "a": [
@@ -440,7 +444,7 @@
   ],
   "length": 291.16,
   "parts": {
-   "chassis_2": "d44a04e07128f6c8d747ecf92782a75f2b6e5b1a",
+   "chassis_2": "6b199804b81c23805f3e5ca38511aeb90a655ef3",
    "pi4": "862c475ab8ae5f76dc7fa9b74c7eac47bb4623e5",
    "pi4_shells": "81385156f964a5db8867e54012c921482dcb6254",
    "pi4_lids": "d3d8cfc43fb34464b8cdde5b6f1270e73c49e227",
@@ -453,8 +457,8 @@
    "pi_cap": "7a53c78bd37ac6a05c61bd5dd25ee67f4b31648e",
    "motor_ctrl": "a593419fb830eef35e19ed0b70224dcd1c357985",
    "fret_pcb_key": "65a1ba72a2711f4f0bbe0199bc8cbfa5a1ee2067",
-   "top_plate_4": "3049e4ec716b678c76c2c19bd5bd71d7476f88bf",
-   "top_plate_color_4": "767b88308286ad253a63030586dc8a96b025e216",
+   "top_plate_4": "4dd284a22fd898ffb2a70f3937dc5360d054d24c",
+   "top_plate_color_4": "883852042ab2f99222d9727a797faf170a9ab70d",
    "tee_pcb_0": "c7c89c25717db9fed8c7fa3bfec5b547d0a111ae",
    "tee_pcb_1": "1a3e6c87af0053091377c90d4216033bd3a6301f",
    "ui_ribbon_socket_1": "499a7b072c57f0d4e920fa5b9a950d50eb782685",
@@ -493,7 +497,7 @@
    "nut_height_screw_9": "0f4dae36c9ff7f25d114c4154b8ecf231d591aeb",
    "nut_height_insert_9": "072c99a46da4396f57ae82193e20609d8520e107"
   },
-  "build": 980,
-  "routed": "2026-10-29"
+  "build": 988,
+  "routed": "2026-10-30"
  }
 }
