@@ -1192,6 +1192,7 @@ the +X (bridge) side and is open toward -X and up.
    dowel, until the string is over it. The string pulls it down into the seat.
 3. The lip stops about 0.3 under the string. A string that touches it means the dowel is not
    seated.
+
 ## Optical leads: 24 V through the cable hole first, then the USB lead (2026-10-30)
 
 On the R2 optical board both leads reach the output board through one closed house-shaped hole
