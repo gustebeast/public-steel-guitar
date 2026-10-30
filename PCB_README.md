@@ -122,8 +122,9 @@ Millimetres, **board-centred, +Y up** (the CAD's frame — `layout.py` flips to 
 
 `layout.py` reads a few more, each documented where it is used (`diff_pairs`,
 `local_nets`, `corridors`, `via_keepouts`, `slug_max`, `land_resize`, `post_route_*`,
-`repair_tracks`/`repair_vias`, `stitch_exceptions`). Reach for those only when a route
-shows you need one.
+`repair_tracks`/`repair_vias`, `stitch_exceptions`), and `route.py` reads
+`router_via_keepouts` (board-local `[x0, y0, x1, y1]` boxes the ROUTER may not put a via in;
+`via_keepouts` fences only the stitcher). Reach for those only when a route shows you need one.
 
 ### Footprints
 
