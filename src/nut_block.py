@@ -185,7 +185,7 @@ assert _BAR_CLR >= 0.8, (
 # height the M4 clamp inserts needed to drop in from +Z. Those screws are gone (the
 # sliding insert IS the clamp) and with them the only reason this block stood above the
 # strings. What is left to cover is the ROD BORE, so that sets it.
-NUT_TOP  = ROD_Z + ROD_BORE / 2 + D.MIN_WALL_2P  # a two-bead lid over the rod
+NUT_TOP  = ROD_Z + ROD_BORE / 2 + 3 * D.BEAD     # a three-bead lid over the rod (user: two printed badly)
 NUT_BASE = D.DECK_TOP_Z - D.STRING_Z             # prism base sits on the deck plane
 
 
