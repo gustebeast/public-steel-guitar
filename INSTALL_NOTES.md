@@ -1088,21 +1088,20 @@ Coming apart: clamp off, board off its posts, then release J1's actuator before 
 the cable. Molex rate the module's socket for 30 insertions, so take the cable out of
 the module only when the module itself is being replaced.
 
-## The motor controller drops in from above; the -X/-Y leg is its floor (2026-10-29)
+## The motor controller drops in from above and lands on a post under J3 (2026-10-29)
 
 The motor board slides straight down (+Z to -Z) into its guides behind string 1's motor:
 - a channel takes its -Y edge (the edge away from the motor);
 - two short posts on the floor take its +Y edge;
-- a low wall between it and string 1's motor stops its +Y edge (it no longer sits flush on the motor).
+- its face sits flush on string 1's motor.
 
 Nothing is screwed. The keyhead deck panel's rib, 0.3 above the board's top edge, stops it
 lifting, so **seat the board before that panel goes on**. Sight down both faces as it drops:
 nothing on the board should touch a guide on the way in.
 
-**Its -Z stop is the -X/-Y leg's body adapter, not the chassis.** The board's bottom edge sits
-0.34 above the underside (so J2/J6 can be squeezed from below), and with that leg fitted, the
-adapter's top face is what it rests on. With the leg off, nothing stops the board from dropping
-toward the floor port except its cables and the plugs resting on the table. So:
-- **fit the -X/-Y leg before standing the instrument upright with the deck on**;
-- **never carry it legs-off with the deck on** unless the controller is unplugged and secured
-  (tape it to the guides, or lift it out).
+**It comes to rest on a printed post under J3** (the 6-way white header, the 24 V link to
+the output board): the housing sits on the post's top. Its bottom edge then hangs 0.34 above
+the underside, so J2/J6 can be squeezed from below. The post stands under the header only, so
+J3's lead can be plugged in before the board goes down or after. It holds with the legs on or
+off. (It used to rest on the -X/-Y leg's adapter; the 7.5 pulley standoff moved the
+board off it.)

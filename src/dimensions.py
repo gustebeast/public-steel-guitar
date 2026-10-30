@@ -818,27 +818,22 @@ MOTOR_X0        = (-(KEYHEAD_INBOARD_X + MOTOR_END_CLR + MOTOR_SQ / 2)
 # cannot import electronics need it: the chassis (the board's floor port), motor_bank (string
 # 1's back stop IS the board's +Y wall) and wiring. build.py asserts all of it against the
 # placed board.
-#   Y1  the board's +Y edge: string 1's motor back less MOTOR_CLR, a MCTRL_STOP_T printed
-#       stop and its fit. The user's 2026-10-29 "move the board so it sits flush against the
-#       motor" held while the standoff was 17.2; the shaft cut (7.5) took the motors 9.7 +Y
-#       and the board with them, but the -Y rail -- the output board's term -- only 0.1, so
-#       the -X/-Y body adapter, the board's ONLY -Z stop, ended up -Y of the laminate.
-#       Backing the board off by a wall + fit puts its -Y end 1.4 over the adapter again
-#       (main had 1.9 over it, so the bus-B plugs still have 0.5 MORE room from the leg than
-#       the flush board had), and the gap it opens is the board's +Y stop
-#       (mctrl_retention). TYPED, because the adapter is the leg's: build.py asserts the
-#       overlap, so a standoff or rail move that loses it fails the build. String 1's motor is still stopped by its short back wall +X of
-#       the board (motor_bank.back_wall_x0), so the PCB is never the stop.
+#   Y1  the board's +Y edge: string 1's motor back less MOTOR_CLR -- NO WALL BETWEEN THEM
+#       (user, 2026-10-29: "drop that and move the board so it sits flush against the motor";
+#       and again at the 7.5 standoff: "the further +y the better so we want to go to its
+#       extent"). String 1's motor is stopped by a short back wall +X of the board instead
+#       (motor_bank.back_wall_x0), so the PCB is never the stop. The board follows the motors,
+#       the -Y rail does not, so the -X/-Y body adapter is no longer under it: its -Z stop is
+#       mctrl_retention's ledge under J1.
 #   Y0  ...less the board's routed length.
 #   X   the standing board with its mated plugs, in world X.
 #   DIP how far its bottom edge hangs below the floor's underside (its bus-B plugs are
 #       reached from outside), before the plugs.
 MCTRL_FIT       = 0.3            # board to printed pocket (electronics.CRADLE_CLR)
-MCTRL_STOP_T    = 11 * BEAD      # 8.8: the printed +Y stop between the board and string 1's motor
 MCTRL_Y1        = (string_y(0) - MOTOR_PULLEY_STANDOFF - MOTOR_BODY_L
-                   - MOTOR_CLR - MCTRL_STOP_T - MCTRL_FIT)   # -27.45: behind string 1's motor
+                   - MOTOR_CLR)   # -18.35: behind string 1's motor
 MCTRL_L         = 55.0           # routed outline, along Y
-MCTRL_Y0        = MCTRL_Y1 - MCTRL_L                                                         # -82.45
+MCTRL_Y0        = MCTRL_Y1 - MCTRL_L                                                         # -73.35
 MCTRL_X         = (-606.5, -591.7)
 MCTRL_PORT_CLR  = 0.5            # round whatever of the board enters the floor
 MCTRL_DIP       = 2.0
