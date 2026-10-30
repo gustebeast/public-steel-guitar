@@ -310,10 +310,11 @@ def _legible_refs(stem):
     minimum (1.0 mm high, 0.15 stroke -- quality A12). layout.py sets these when it places
     a part; a board routed before that changed keeps its old size until it is re-routed,
     and --keep-route exists so that it does not have to be. Run as a child, like every
-    other step: pcbnew aborts in teardown often enough that it must not take finish with it."""
+    other step: pcbnew aborts in teardown often enough that it must not take finish with it.
+    Footprints' silk lines get the same floor: the libraries draw 0.12, the fab's minimum is 0.15."""
     code = (
         "import sys, pcbnew\n"
-        "b = pcbnew.LoadBoard(sys.argv[1]); n = 0\n"
+        "b = pcbnew.LoadBoard(sys.argv[1]); n = w = 0\n"
         "for fp in b.GetFootprints():\n"
         "    for f in fp.GetFields():\n"
         "        if f.IsVisible() and f.GetLayer() in (pcbnew.F_SilkS, pcbnew.B_SilkS):\n"
@@ -321,8 +322,12 @@ def _legible_refs(stem):
         "            if h < 0.999 or t < 0.149:\n"
         "                f.SetTextSize(pcbnew.VECTOR2I(pcbnew.FromMM(max(h, 1.0)), pcbnew.FromMM(max(h, 1.0))))\n"
         "                f.SetTextThickness(pcbnew.FromMM(max(t, 0.15))); n += 1\n"
+        "    for g in fp.GraphicalItems():\n"
+        "        if g.GetClass() != 'PCB_TEXT' and g.GetLayer() in (pcbnew.F_SilkS, pcbnew.B_SilkS):\n"
+        "            if 0 < g.GetWidth() < pcbnew.FromMM(0.15):\n"
+        "                g.SetWidth(pcbnew.FromMM(0.15)); w += 1\n"
         "pcbnew.SaveBoard(sys.argv[1], b)\n"
-        "print('  %d designator(s) raised to the legible minimum' % n)\n"
+        "print('  %d designator(s) raised to the legible minimum, %d silk line(s) to 0.15' % (n, w))\n"
         "sys.stdout.flush()\n"
         "import os; os._exit(0)\n")
     proc = subprocess.run([PY, "-c", code, stem + ".kicad_pcb"], stdin=subprocess.DEVNULL,
