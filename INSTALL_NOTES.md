@@ -1224,3 +1224,15 @@ the other nine. That shelf covers the board's +X 23 mm, so the board cannot go s
 
 Out is the reverse: nut off, screw out, then pull it -X until it is clear of the panel, lift
 it 4 mm, slide it out from under the shelf and lift it out of the bay.
+
+## Optical leads: 24 V through the cable hole first, then the USB lead (2026-10-30)
+
+On the R2 optical board both leads reach the output board through one closed house-shaped hole
+in the bridge endplate, under the USB notch in the optical board's -Y edge. It is sized to pass
+one plug at a time, so the order matters:
+
+1. Feed the **24 V lead** through first, with the XH-4 housing (the bigger plug) going through
+   on its own, and lay the pair along the hole's -Y wall.
+2. Then feed the **USB lead's** head through flat, beside the pair. Its ribbon stays in the hole.
+3. The USB-C plug at J1 needs the wider pocket at the top of the hole: it backs off -Y into it
+   to come out of its socket. Leave the pocket clear.
