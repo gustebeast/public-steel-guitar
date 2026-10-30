@@ -177,7 +177,7 @@ def dowel() -> cq.Workplane:
     return prof.revolve(360.0, (0, 0, 0), (0, 1, 0)).translate((0.0, -L / 2.0, 0.0))
 
 
-# (set_screw() and m4_insert() moved to freecad/fasteners.py -- imported above so every project shares
+# (set_screw() and m4_insert() moved to cadkit/fasteners.py -- imported above so every project shares
 #  the SAME dummy geometry, not just the dimensions.)
 
 

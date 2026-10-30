@@ -1217,7 +1217,7 @@ assert BRIDGE_ARM_Y - BRIDGE_ARM_W / 2 > STRING_FIELD_W / 2, (
 # so editing any buffer here resizes both ends together -- never a hardcoded tip. The
 # keyhead nut block (nut_block.py) reads these same constants to place its features.
 # These four ARE cadkit's M4 spec — read from it rather than repeated. They used to be
-# literals whose comment pointed at "freecad/fasteners.py", a path the cadkit migration
+# literals whose comment pointed at a path the cadkit migration
 # retired, so the numbers had already outlived their own citation. It matters more than
 # tidiness here: ENDPLATE_W is computed from NUT_INSERT_D, so BOTH endplates' width (and
 # with it the bridge's whole X datum chain) hangs off a heat-set insert's diameter. If

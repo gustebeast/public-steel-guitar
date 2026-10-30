@@ -2,7 +2,7 @@
 
 WHY A SAMPLER. The overlap gate compares parts, the bead checker reads constants; neither can
 see a wall that came out thin from the INTERACTION of two cuts. Every sliver the user has found
-by eye in FreeCAD was of that kind -- a cut meeting another cut's face, leaving a rib nobody
+by eye in the viewer was of that kind -- a cut meeting another cut's face, leaving a rib nobody
 wrote. This walks lines through the FINISHED solid and reports contiguous runs of material
 shorter than the rule, which is the only way to measure a wall that no constant describes.
 

@@ -1,6 +1,6 @@
 """Overlap checker for the pedal-steel assembly.
 
-Project glue over the shared engine in ``freecad/overlap_check.py``: this file
+Project glue over the shared engine in ``cadkit/overlap_check.py``: this file
 supplies the placed parts (``src.build.collect_components``) and the project's
 ``intended()`` whitelist of designed contacts (screw-in-nut, bushing-in-rail,
 motor-on-bank, …); the engine runs the parallel boolean scan and reports the
