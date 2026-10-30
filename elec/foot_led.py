@@ -548,6 +548,7 @@ def _manual(board, n_drv):
 # capacitor either side of it over theirs; the bulk capacitor serves the strings through the
 # planes and takes the end
 ROW_GAP = 0.45
+EDGE_CRT = 0.50                      # a courtyard to the routed outline (lead, 2026-10-29)
 ROW_LEFT = (0.25 - fp_box(C_FP)[0] / 2.0 - ROW_GAP - fp_box(R_FP)[0] - ROW_GAP
             - fp_box(C08_FP)[0])
 
@@ -729,7 +730,8 @@ def build(board, passes=20):
         # driver and its row move +X until the row starts at that section's end. U1 still sits
         # inside its own three zones, so its returns stay short.
         if board == "a":
-            xd = max(xd, FL.narrow_keepout()[1] - ROW_LEFT)
+            xd = max(xd, FL.narrow_keepout()[1] + EDGE_CRT - ROW_LEFT)   # its first
+            # courtyard EDGE_CRT off the step's inner corner, not on it (user, 2026-10-29)
         # (no clamp against the supply row any more: it is in the middle, and the
         # drivers are what it has to stay clear of rather than the other way round)
         u = Part(name="TLC5971", ref_prefix="U", ref="U%d" % (k + 1),
@@ -857,6 +859,26 @@ def build(board, passes=20):
             if fx0 < kx1 and fx1 > kx0 and fy1 > ky - 0.30 - 1e-9:
                 bad.append("%s's body reaches %.2f, over the -Y shoulder at %.2f" % (ref, fy1, ky))
         assert not bad, "foot_led_a: " + "; ".join(bad)
+    # EVERY COURTYARD EDGE_CRT OFF THE ROUTED OUTLINE, the notch's inner corner included (user,
+    # 2026-10-29: C21 sat with its courtyard ON that corner). The pogos and the socket are
+    # the exceptions, and both are asserted as copper: the pogo lands POGO_EDGE off the edge
+    # (foot_light.check_optics), the socket's mounting lands J_EDGE, and its courtyard runs
+    # out past the board's end over the plug's approach on purpose.
+    hl, hw = length / 2.0, BOARD_W / 2.0
+    poly = FL.outline_poly(board)
+    near = []
+    for ref, (cx0, cx1, cy0, cy1) in boxes(place, fps).items():
+        if ref == "J1" or any(ref in r for r in pogo_refs.values()):
+            continue
+        d = min(cx0 + hl, hl - cx1, cy0 + hw, hw - cy1)
+        if poly is not None:
+            xn, yn = poly[3][0], poly[4][1]
+            # the notched-away corner is x < xn, y > yn: a box's distance to it
+            dx, dy = max(cx0 - xn, 0.0), max(yn - cy1, 0.0)
+            d = min(d, max(dx, dy))
+        if d < EDGE_CRT - 1e-9:
+            near.append("%s %.2f" % (ref, d))
+    assert not near, "%s: courtyards within %.2f of the edge: %s" % (name, EDGE_CRT, ", ".join(near))
     # the buck's cell is laid out to TI's figure, closer than the lane-keeping gap this
     # check enforces; real courtyard overlaps are still DRC's to refuse
     cell = ["U10"] + sorted(BUCK_CELL)
