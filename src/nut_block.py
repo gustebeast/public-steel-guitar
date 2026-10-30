@@ -991,8 +991,13 @@ def slide_insert(i: int) -> cq.Workplane:
                       .intersect(box_at(INS_X1 + 1.0 - lip_x0, 4000.0, LIP_H + 1.0,
                                         x=(lip_x0 + INS_X1 + 1.0) / 2, y=0.0,
                                         z=zc + (LIP_H - 1.0) / 2)))
-    body = body.cut(teardrop_hole(DIVOT_D, CRADLE_L, (DOWEL_X, D.nut_y(i) - CRADLE_L / 2.0,
-                                                      fz + DIVOT_OFF),
+    # THE TROUGH RUNS OUT THROUGH THE PLAN'S EDGE on +Y, and on -Y too where there is no seating
+    # wall (SKU A): it stopping just short left a sheet under a bead, on +Y of strings 9-10 and
+    # in the taper at SKU A's -Y end (thin_sites). The -Y wall of B and C stays: the dowel seats
+    # on it. Past the plan's edge this is air, so CRADLE_L is still what the dowel has.
+    ty0 = D.nut_y(i) - CRADLE_L / 2.0 - (1.0 if i < N_FINGERED else 0.0)
+    ty1 = D.nut_y(i) + CRADLE_L / 2.0 + 1.0
+    body = body.cut(teardrop_hole(DIVOT_D, ty1 - ty0, (DOWEL_X, ty0, fz + DIVOT_OFF),
                                   (0.0, 1.0, 0.0), (-1.0, 0.0, 0.0), nozzle=0.0))
     # WHERE THE NECK STOPS SHORT OF THE APEX (the heavy SKUs: nx0 is set by the coil) its -X face
     # meets the flank in a 45 deg fin instead of the neck's top: round that too, a bead where
@@ -1000,8 +1005,7 @@ def slide_insert(i: int) -> cq.Workplane:
     ax = DOWEL_X - DIVOT_D / 2 * math.sqrt(2.0)
     r = min(D.BEAD, (DOWEL_X - DIVOT_D / 2 * math.sqrt(0.5) - nx0) / (1 + math.sqrt(0.5)))
     if ax - nx0 < r * math.tan(math.radians(22.5)):
-        ty0 = D.nut_y(i) - CRADLE_L / 2.0
-        body = body.cut(_fin_round(nx0, zc - (nx0 - ax), r, ty0, ty0 + CRADLE_L + 1.0))
+        body = body.cut(_fin_round(nx0, zc - (nx0 - ax), r, ty0, ty1))
 
     # ── TWO 45 DEG LEAD-INS FOR THREADING (user) ──────────────────────────
     # The flat meets the insert's -X end face, and it meets the neck's -X face, at square
