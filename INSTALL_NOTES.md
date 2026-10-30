@@ -1161,13 +1161,6 @@ out at +X, then A, letting the lead follow it back through the channel.
 
 ## The output board goes in low, short of home, and slides +X under string 10's seat (2026-10-29)
 
-**R1 stop-gap (the board in hand, `OUTPUT_PANEL_REV=1`):** R1 does not lie on the floor. Its
-pickup terminal J8 takes the leads from +Y, toward string 10's belt clamp, so R1 stands about
-9 mm higher (underside z -53.9), with J8's holes over string 10's drive. With R1 there is no
-shelf over the board: it drops straight in a couple of millimetres short of home and slides
-+X onto the panel as before. Bring the pickup lead over string 10's screw pulley and drop the
-two cores straight into J8 from above its entry. The steps below are for R2.
-
 The output board (`output_panel`) lies on the chassis floor now: its cradle's plate rests on
 the floor and the board stands only as high as its M4 insert's anchor needs (underside at
 z -62.85, the pins' cut ends 2.7 above the plate). Over it, the bridge endplate's screw rail
@@ -1199,6 +1192,7 @@ the +X (bridge) side and is open toward -X and up.
    dowel, until the string is over it. The string pulls it down into the seat.
 3. The lip stops about 0.3 under the string. A string that touches it means the dowel is not
    seated.
+
 ## Optical leads: 24 V through the cable hole first, then the USB lead (2026-10-30)
 
 On the R2 optical board both leads reach the output board through one closed house-shaped hole
