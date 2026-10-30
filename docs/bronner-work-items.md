@@ -197,6 +197,8 @@ JLC-assemblable, sensibly priced USB-C receptacle (mid-mount or raised) centres 
 it, checking land and panel hole. Otherwise keep the current part and do not ask again. Report which
 way it went and the price delta.
 
+**R2-5 result (2026-10-30): keep TYPE-C-31-M-12, price delta 0.** The mouth sits 6 mm under J5 and J6, and no stocked right-angle receptacle makes that up: the JLC search found 6.8 to 8.35 mm shells, and GT-USB-7051A, the taller one, is a vertical part that faces up, not at the panel. Closed.
+
 **Power governor, firmware, NOT BUILT (priority decided by the user, 2026-10-30).** The brick's
 6.67 A is shared in this order: (1) Pi, boards, audio, always; (2) motors, under a hard cap on
 simultaneous movers, others wait ms; (3) J1, not throttleable, 0.35 A reserved while a device is
@@ -207,7 +209,7 @@ the trip). 0.8 A per mover stays unmeasured until then. Confirm SERVO42D's worki
 
 **R2-2 example device (user, 2026-10-30): the MVX2U.** It's an example of what the port should support, not a design target; the user may plug in something else. On the bring-up checklist: its current draw, and Linux playback through it.
 
-**Optical R2 U8 heat (found 2026-10-30, open).** AP2114 sheet Rev 2.2 p.7: SOT-223 128 C/W with no heatsink, TJ max 150. 1.72 V across it, 45 C ambient, using that figure: 332 mA typical 0.57 W, 118 C; 402 mA 0.69 W, 133 C; 582 mA all-peripherals 1.00 W, 173 C, over the limit. The hub adds up to 120 mA of that (100 is the panel's estimate). M25 still needs this text, and its 0.79 W corner was already 146 C. Fix options: more +3V3D copper on the tab, or the hub and bridge on their own LDO.
+**Optical R2 U8 heat (found 2026-10-30, open).** Lead's order: after output_panel R2, once branner's stack lands; blocks ordering optical R2. Tab copper first, quantified from the real copper area; separate LDO only if copper can't hold the all-peripherals corner under TJ max. Correct M25 with it.  AP2114 sheet Rev 2.2 p.7: SOT-223 128 C/W with no heatsink, TJ max 150. 1.72 V across it, 45 C ambient, using that figure: 332 mA typical 0.57 W, 118 C; 402 mA 0.69 W, 133 C; 582 mA all-peripherals 1.00 W, 173 C, over the limit. The hub adds up to 120 mA of that (100 is the panel's estimate). M25 still needs this text, and its 0.79 W corner was already 146 C. Fix options: more +3V3D copper on the tab, or the hub and bridge on their own LDO.
 
 **R2-3. J8 (the pickup's screw terminal) takes the SLOTTED screw: one screwdriver for the instrument.** Rev 1 is MX126-5.0-02P-GN01-Cu-**S**-A, M2.5 cross head; the SERVO42D motor terminals are slotted (2.0-2.5 mm flat blade). The same MX126 body is ordered with a slotted screw by the code letter **Y** (maker's ordering code: Y slotted, S cross, PS flat cross), so R2 orders MX126-5.0-02P-GN01-Cu-**Y**-A and one 2.5 x 0.4 mm flat blade drives both. Check before committing: that exact Y part is stocked at LCSC (the MX127 Y variant was, C-number not yet confirmed for MX126), and the same footprint and drawing. Confirm on the rev 1 boards that J8's head really is cross. src/screw_terminal.py SCREW changes with it (user, 2026-10-20).
 
