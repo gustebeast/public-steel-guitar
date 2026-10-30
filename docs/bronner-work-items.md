@@ -63,7 +63,29 @@ cutting into the chassis. For R2 we should add an action item to move J7 +z and 
    0.34 above the body's underside, so no ledge fits under it, and this rev's stop is the
    -X/-Y body adapter, which only works with the leg fitted.
 
-## R2, optical (lead, 2026-10-29) -- APPROVED, PREP STARTED
+## R2, optical (lead, 2026-10-29) -- PLACED (741b6d9c), ROUTE PROFILE NEXT
+
+**State, 2026-10-29 (late).** Final lead ruling: NO growth, J1 notched, J2 top entry; edge ~-100
+is inside the -105.05 rail. Built behind `OPTICAL_REV` (default 2) in src/optical_pickup.py:
+- edge -100.805 (lowest courtyard but J1's, less EDGE_KEEP); board 57.21 x 166.54.
+- J1 centred in its notch (x -7.32..6.68, y -100.81..-94.70).
+- J2 is B4B-XH-A (C144395) at (-14.30, -95.97). Its courtyard was read off KiCad (13.49 x 6.84; the layout centres courtyards).
+- U10 is turned 0 at +X of J1's pair pins: its R1 spot put the PHY face 1.26 under the MCU caps. TP5 moves +1.9.
+- elec/optical.py:
+  - The hand-laid copper is written in R1's frame (CY_DRAW) and shifted once by `_to_board_frame`.
+  - R2 drops the route-specific repairs; re-search them after the route.
+  - The pair is pinned to J1 A6/A7, and J1's silk goes to F.Fab.
+- **R1 drift fixed:** cadkit's M4 pilot change had slid the MCU block 0.05 mm off the ordered board. Frozen at 16.25583, and R1 placements now equal the committed board.
+- Placed board: pair laid; DRC = the 20 declared optics courtyards only.
+- cadkit 443e277 (layout pair fixes + A12 ink bleed) has gone to the lead to propagate.
+- Optical_guard J2 hole data sent to branner.
+- **TODO:**
+  - route profile (4 passes, 40 min cap, scratch copy) -> repairs -> commit the routed board;
+  - opt_cables J1/J2 paths + the bridge_endplate conduit cut from the derived conduit;
+  - INSTALL_NOTES R1 stop-gap; retire the optical-cables deferral rule;
+  - re-finish output_panel R2 after the propagation (ink bleed).
+
+Earlier plan (superseded where it says growth):
 
 Lead rulings, 2026-10-29:
 - **Right-angle plugs only.** Drop the straight-plug pass-through. This follows the user's
