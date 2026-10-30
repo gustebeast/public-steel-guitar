@@ -43,7 +43,7 @@
   },
   "bridge_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 330795.6
+   "volume_mm3": 296782.3
   },
   "cart_base": {
    "material": "pctg",
@@ -55,7 +55,7 @@
   },
   "chassis_0": {
    "material": "petg-gf",
-   "volume_mm3": 606443.3
+   "volume_mm3": 589986.1
   },
   "chassis_0_light": {
    "material": "pctg",
@@ -63,7 +63,7 @@
   },
   "chassis_1": {
    "material": "petg-gf",
-   "volume_mm3": 671685.8
+   "volume_mm3": 657446.2
   },
   "chassis_1_light": {
    "material": "pctg",
@@ -71,7 +71,7 @@
   },
   "chassis_2": {
    "material": "petg-gf",
-   "volume_mm3": 608900.0
+   "volume_mm3": 594631.5
   },
   "chassis_2_light": {
    "material": "pctg",
@@ -95,7 +95,7 @@
   },
   "keyhead_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 253029.5
+   "volume_mm3": 238978.3
   },
   "kl_axle": {
    "material": "pctg",
@@ -187,7 +187,7 @@
   },
   "optical_guard": {
    "material": "petg-gf",
-   "volume_mm3": 12632.5
+   "volume_mm3": 10514.4
   },
   "pedal_bar_a": {
    "material": "petg-gf",
@@ -283,43 +283,43 @@
   },
   "top_plate_0": {
    "material": "pctg",
-   "volume_mm3": 65175.6
+   "volume_mm3": 61174.6
   },
   "top_plate_0_color": {
    "material": "pctg",
-   "volume_mm3": 18721.8
+   "volume_mm3": 17388.1
   },
   "top_plate_1": {
    "material": "pctg",
-   "volume_mm3": 19496.7
+   "volume_mm3": 18498.3
   },
   "top_plate_1_color": {
    "material": "pctg",
-   "volume_mm3": 6291.2
+   "volume_mm3": 5958.4
   },
   "top_plate_2": {
    "material": "pctg",
-   "volume_mm3": 19496.7
+   "volume_mm3": 18498.3
   },
   "top_plate_2_color": {
    "material": "pctg",
-   "volume_mm3": 6291.2
+   "volume_mm3": 5958.4
   },
   "top_plate_3": {
    "material": "pctg",
-   "volume_mm3": 186182.2
+   "volume_mm3": 175569.9
   },
   "top_plate_3_color": {
    "material": "pctg",
-   "volume_mm3": 109597.0
+   "volume_mm3": 106021.2
   },
   "top_plate_4": {
    "material": "pctg",
-   "volume_mm3": 243229.0
+   "volume_mm3": 230769.0
   },
   "top_plate_4_color": {
    "material": "pctg",
-   "volume_mm3": 111530.4
+   "volume_mm3": 107377.1
   },
   "ui_clamp": {
    "material": "petg-gf",
