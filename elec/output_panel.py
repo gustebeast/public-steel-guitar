@@ -2854,6 +2854,15 @@ if REV != 1:
     BOARD_NOTES["silk_words"] = [
         (_t, _wx - (GROW_X - 12.0) / 2.0, _wy - (R2_MOVES[_t.split()[0]][1] + SHRINK_Y / 2.0), _f)
         for _t, _wx, _wy, _f in BOARD_NOTES["silk_words"]]
+if REV != 1:
+    # J5 0.55 -Y MORE, FOR STRING 10's CLAMP (branner, 2026-10-30): on the dropped board the
+    # clamp at the bottom of its travel rolls to y -50.25 (world) at J5's -X/+Y body corner,
+    # which stood at -50.10 (0.14 mm3). 0.55 = the 0.15 contact + 0.40, over the 0.3 fit;
+    # it is all the room there is -- J5's courtyard is then 0.04 off C1's (0.59 gap before).
+    # AFTER J1's derivation on purpose: J1 keeps its place (0.28 off J5/J6's exact middle,
+    # which no one can see) and with it the frozen THRU pair. Nothing else on the board's
+    # +Y band is over 3.9 tall in the clamp's x span (J8, turned, sits -X of it).
+    R2_MOVES["J5"] = (R2_MOVES["J5"][0], R2_MOVES["J5"][1] - 0.55)
 for _ref, (_dx, _dy) in R2_MOVES.items():
     _x, _y, _rot = BOARD_NOTES["placements"][_ref]
     BOARD_NOTES["placements"][_ref] = (_x + _dx, _y + _dy, _rot)
