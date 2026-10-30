@@ -22,6 +22,7 @@ plate's cutouts must match the routed board's. It finds each board's pose for it
 the only thing this file has to know is WHICH solid the assembly draws for each board --
 _cad() below -- plus the one check that is ours alone (the UI deck's placement rule).
 """
+import json
 import os
 import sys
 
@@ -161,9 +162,45 @@ def _rev_silk(board):
     return 1
 
 
+# Optical R1, on the bench, goes on R2's mounts and lines up with the same strings (user,
+# 2026-10-30). R1's geom sits 10.995 further +Y, its centre being further +Y on the shorter board.
+# The M4 pilot's growth moved R2's two mounts 0.05 in each axis: R1's O4.4 still takes the M4.
+_R1_FIT_DY = -10.995
+_R1_FIT_HOLE = 0.05
+
+
+def _r1_fit(board):
+    """Optical R2's holes and detectors against R1's, the one thing R1 still has to match."""
+    if board != "optical":
+        return 0
+    r1 = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "rev1",
+                                     "optical.geom.json"), encoding="utf-8"))
+    r2 = BG.load(board)
+
+    def mid(poly):
+        xs, ys = [q[0] for q in poly], [q[1] for q in poly]
+        return (max(xs) + min(xs)) / 2.0, (max(ys) + min(ys)) / 2.0
+
+    pairs = [("hole %d" % k, mid(a), mid(b), _R1_FIT_HOLE + 0.0015)
+             for k, (a, b) in enumerate(zip(r2["holes"], r1["holes"]))]
+    if len(r2["holes"]) != len(r1["holes"]):
+        pairs.append(("hole count", (0, 0), (1e3, 0), 0.0))
+    fp1 = {f["ref"]: f for f in r1["footprints"]}
+    for f in r2["footprints"]:
+        if f["ref"].startswith("PD"):
+            f1 = fp1[f["ref"]]
+            pairs.append((f["ref"], (f["x"], f["y"]), (f1["x"], f1["y"]), 0.0015))
+    bad = 0
+    for name, a, b, tol in pairs:
+        if abs(a[0] - b[0]) > tol or abs(a[1] - b[1] - _R1_FIT_DY) > tol:
+            print("   optical: R1 does not fit R2's %s: R2 %s, R1 %s" % (name, a, b))
+            bad += 1
+    return bad
+
+
 def check(board, verbose=True):
     solid, ink = _cad(board)
-    return _rev_silk(board) + _CHK.check(board, solid, BG.load(board), verbose=verbose,
+    return _rev_silk(board) + _r1_fit(board) + _CHK.check(board, solid, BG.load(board), verbose=verbose,
                                          strict_ends=True, ends_ok=ENDS_OK.get(board), ink=ink)
 
 
