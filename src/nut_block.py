@@ -905,18 +905,6 @@ RAMP_END  = _max_ramp(lambda i: INS_X0, +1.0)   # at the flat's -X end
 RAMP_NECK = _max_ramp(_neck_x0, -1.0)           # at the neck's foot
 
 
-def _fin_round(x0: float, ztop: float, r: float, y0: float, y1: float) -> cq.Workplane:
-    """Cutter for a 45 deg fin in the XZ section: plastic stands +X of the face x = x0 and under
-    a line falling +X from (x0, ztop). Leaves the fin's tip round, r, tangent to both."""
-    c0, c1 = x0 + r, ztop - r - r * math.sqrt(2.0)                      # centre of the round
-    fx, fz = c0 + r * math.sqrt(0.5), c1 + r * math.sqrt(0.5)           # tangent on the line
-    a = math.radians(112.5)
-    return (cq.Workplane("XZ").moveTo(x0 - 1.0, c1).lineTo(x0, c1)
-            .threePointArc((c0 + r * math.cos(a), c1 + r * math.sin(a)), (fx, fz))
-            .lineTo(fx - 3.0, fz + 3.0).lineTo(x0 - 1.0, fz + 3.0).close()
-            .extrude(y1 - y0).translate((0.0, y1, 0.0)))
-
-
 def slide_insert(i: int) -> cq.Workplane:
     """String i's insert, placed where the string will hold it. The POCKET is this part's
     plan offset by its fit (insert_pocket), so the two cannot drift."""
@@ -991,21 +979,9 @@ def slide_insert(i: int) -> cq.Workplane:
                       .intersect(box_at(INS_X1 + 1.0 - lip_x0, 4000.0, LIP_H + 1.0,
                                         x=(lip_x0 + INS_X1 + 1.0) / 2, y=0.0,
                                         z=zc + (LIP_H - 1.0) / 2)))
-    # THE TROUGH RUNS OUT THROUGH THE PLAN'S EDGE on +Y, and on -Y too where there is no seating
-    # wall (SKU A): it stopping just short left a sheet under a bead, on +Y of strings 9-10 and
-    # in the taper at SKU A's -Y end (thin_sites). The -Y wall of B and C stays: the dowel seats
-    # on it. Past the plan's edge this is air, so CRADLE_L is still what the dowel has.
-    ty0 = D.nut_y(i) - CRADLE_L / 2.0 - (1.0 if i < N_FINGERED else 0.0)
-    ty1 = D.nut_y(i) + CRADLE_L / 2.0 + 1.0
-    body = body.cut(teardrop_hole(DIVOT_D, ty1 - ty0, (DOWEL_X, ty0, fz + DIVOT_OFF),
+    body = body.cut(teardrop_hole(DIVOT_D, CRADLE_L, (DOWEL_X, D.nut_y(i) - CRADLE_L / 2.0,
+                                                      fz + DIVOT_OFF),
                                   (0.0, 1.0, 0.0), (-1.0, 0.0, 0.0), nozzle=0.0))
-    # WHERE THE NECK STOPS SHORT OF THE APEX (the heavy SKUs: nx0 is set by the coil) its -X face
-    # meets the flank in a 45 deg fin instead of the neck's top: round that too, a bead where
-    # the flank has the room, and never past the flank's foot, where the seat starts.
-    ax = DOWEL_X - DIVOT_D / 2 * math.sqrt(2.0)
-    r = min(D.BEAD, (DOWEL_X - DIVOT_D / 2 * math.sqrt(0.5) - nx0) / (1 + math.sqrt(0.5)))
-    if ax - nx0 < r * math.tan(math.radians(22.5)):
-        body = body.cut(_fin_round(nx0, zc - (nx0 - ax), r, ty0, ty1))
 
     # ── TWO 45 DEG LEAD-INS FOR THREADING (user) ──────────────────────────
     # The flat meets the insert's -X end face, and it meets the neck's -X face, at square
@@ -1028,25 +1004,7 @@ def slide_insert(i: int) -> cq.Workplane:
                 .polyline([(x0, fz), (x0 + run, fz), (x0, fz + abs(run))]).close()
                 .extrude(2 * HW).translate((0.0, HW, 0.0)))
         body = body.union(ramp.intersect(keep))
-    # THE END RAMP'S TIP IS THE LAST THING PRINTED, a 45 deg fin against the -X end face (the
-    # corner validator's flag, 2026-10-30), so it gets the same bead. A thread rides the slope
-    # below it and never reaches it.
-    body = body.cut(_fin_round(INS_X0, fz + RAMP_END, D.BEAD, -HW, HW))
-    # AND THE NECK'S -X FACE MEETS THE PLAN'S -Y TAPER AT AN ACUTE ANGLE, a fin the height of the
-    # neck, top of the part in the print. Round in plan, from over the threading ramp up.
-    (px0, py0), (px1, py1) = _plan(i)[1], _plan(i)[2]
-    th = math.atan2(py1 - py0, px1 - px0)
-    half = (math.pi / 2.0 - th) / 2.0
-    py = py0 + (nx0 - px0) * math.tan(th) + (BASS_FIT / math.cos(th) if i >= N_FINGERED else 0.0)
-    ll = D.BEAD / math.tan(half)
-    ax1, ay1 = nx0 + ll * math.cos(th), py + ll * math.sin(th)          # tangent on the taper
-    cc = (nx0 + D.BEAD, py + ll)                                        # centre of the round
-    mid = math.pi * 1.25 + th / 2.0
-    fin = (cq.Workplane("XY").moveTo(nx0 - 1.0, py + ll).lineTo(nx0, py + ll)
-           .threePointArc((cc[0] + D.BEAD * math.cos(mid), cc[1] + D.BEAD * math.sin(mid)), (ax1, ay1))
-           .lineTo(ax1, py - 2.0).lineTo(nx0 - 1.0, py - 2.0).close()
-           .extrude(zc + LIP_H + 1.0 - (fz + RAMP_NECK)).translate((0, 0, fz + RAMP_NECK)))
-    return body.cut(fin)
+    return body
 
 
 # ONE POCKET DEPTH FOR ALL TEN (user). It used to come off insert_flat_z, which carries
