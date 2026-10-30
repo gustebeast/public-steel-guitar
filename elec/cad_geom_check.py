@@ -41,7 +41,12 @@ def _cad(board):
     assembly has nothing to hand over here and fails."""
     if board == "output_panel":
         from src import electronics as EL
-        return EL.output_panel(), EL.output_panel_silk()
+        # J8 is drawn as its own part (screw_terminal, output_panel_term), not in the board
+        # solid. R1 passed without it only because J8's probe landed on a neighbour's body.
+        sol = EL.output_panel()
+        for v in EL.output_panel_term().values():
+            sol = sol.union(v)
+        return sol, EL.output_panel_silk()
     if board == "motor_ctrl":
         from src import electronics as EL
         return EL.motor_ctrl(), EL.motor_ctrl_silk()
