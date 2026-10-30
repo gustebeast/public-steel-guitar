@@ -566,15 +566,16 @@ nominal numbers look fine but the finished solid is a razor. The overlap gate
 does NOT catch thin material (see its caveats), so **verify these on the real
 solid** with a point-probe / cross-section, not on paper.
 
-## Printed corners — draw them with `Printed`, don't hand-round
+## Printed corners and thin features — the model shows what prints
 
-A corner prints according to which way the part builds. An edge along the build direction is
-made by the nozzle and comes out round; an edge in the layer plane is stepped by layers; a
-diagonal is between. `cadkit.print_corners` holds the measured numbers.
+Judge a bend by its axis. A bend IN A LAYER (an edge along the build direction) is limited by how
+tightly the nozzle turns, and comes out round. Along the BUILD AXIS there is no turning limit: a
+flat top meeting a wall is a clean corner and needs no round. What limits that axis is stacking:
+every layer needs a bead's width, and a feature needs a whole layer's height.
 
-**Draw printed solids with `Printed`.** It puts each corner's radius in the profile, before the
-extrude, so it costs a few wire calls and never a fillet on a finished solid. Don't fillet finished
-solids to get this, and don't search a big part's edges for it: both slow the build.
+**Draw printed solids with `Printed`, don't hand-round.** It rounds in-layer corners in the profile,
+before the extrude, and leaves corners in the layer plane sharp. It costs a few wire calls and never
+a fillet on a finished solid; don't fillet finished solids or search a big part's edges for this.
 
 ```python
 from cadkit.print_corners import Printed
@@ -592,14 +593,22 @@ body = body.cut(P.cutter(pts, along=(0, 0, 1), h=8, at=(0, 0, 2)))
   (`seat_radius()` says by how much).
 - Adopt it per call as you touch a part. There is no big-bang rewrite.
 
-**Cuts and unions still make tips** where two features meet, and no drawing call can see those.
-`corner_sites()` reads the finished solid, and a project's fast print check runs
-`sites_from_edges()` on the mesh it already has, so it costs milliseconds. It flags a TIP: a convex
-edge under 80 degrees whose printed end stands half a bead or more back of the drawn one. Each
-site comes with a hint. Fix it in the profile, or end the tip in a flat one bead wide.
+**The width check reads the finished solid**, because cuts and unions leave thin material no
+drawing call can see. `thin_sites()` slices the part every layer, on the mesh a tool already has:
 
-Only PETG-GF on a 0.8 nozzle was measured. Other nozzles scale by nozzle size, other materials reuse
-the numbers, and diagonals are a cos^2 blend of the two measured ends; none of those was printed.
+- **POINT:** narrower than a bead. The model claims material no bead can lay. Draw what prints: a
+  bead-wide strip on whole layers. An acute tip gets blunted, not rounded.
+- **SINGLE:** a bead up to 1.6. It prints as one line. That is not an error; it is reported so you
+  can see it and accept it.
+- **STEP:** a wedge or sheet under one layer tall. A slice can't see this, so it has its own test.
+- **TIP** (`corner_sites()`): a convex edge crossing the layers whose rounded end stands well back
+  of the drawn one.
+
+A round cut that just breaks a wall leaves a thin tip either side of the opening: open it as a
+square slot through the wall.
+
+Only PETG-GF on a 0.8 nozzle was measured. Other nozzles scale by nozzle size and other materials
+reuse the numbers; none of those was printed.
 
 ## Materials — say what a part is made of where it is made
 

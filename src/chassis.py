@@ -1075,6 +1075,14 @@ def _floor_negatives():
         out.append(cq.Workplane("XY").add(cq.Solid.makeCylinder(
             _NB.HS_HEAD_CAV_D / 2.0, (MB.FLOOR_TOP - Z_BOT) + 2.0,
             cq.Vector(D.NUT_BLOCK_X + _hx, _hy, Z_BOT - 1.0), cq.Vector(0, 0, 1))))
+        # ...AND A CAVITY THAT BREAKS THE -X END FACE OPENS AS A SLOT. Its O8.4 pokes 0.4 past
+        # that face, which left a 27 degree sliver either side of the opening, 6.7 back of
+        # drawn in print. Square sides out through the face end it in a plain corner.
+        _hc = D.NUT_BLOCK_X + _hx
+        if _hc - _NB.HS_HEAD_CAV_D / 2.0 < _SHELL_NX:
+            _sl = (_hc - _SHELL_NX) + 2.0
+            out.append(box_at(_sl, _NB.HS_HEAD_CAV_D, (MB.FLOOR_TOP - Z_BOT) + 2.0,
+                              x=_hc - _sl / 2.0, y=_hy, z=(MB.FLOOR_TOP + Z_BOT) / 2.0))
     return out
 
 

@@ -3387,7 +3387,7 @@ def opt_pcb() -> cq.Workplane:
     # 1.6 mm of laminate at each point. A fab house would have shipped solid laminate there.
     # ⚠ CYLINDERS, NOT box_at. The note this replaces records that they were SQUARE prisms
     # when they last existed here -- which is both a CAD/fab divergence and the reason the
-    # FreeCAD render showed square holes. `cyl` matches what the mill actually makes.
+    # viewer render showed square holes. `cyl` matches what the mill actually makes.
     # ⚠ AND FROM mount_points(), THE SAME SOURCE THE SCREW AND THE FAB READ. Three things
     # have to agree here -- the CAD plate, the Edge.Cuts circle and the screw -- and the last
     # time they were hand-typed the placement disagreed with both (Cd11 sitting 0.47 mm inside
