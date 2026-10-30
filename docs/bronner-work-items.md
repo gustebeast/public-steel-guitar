@@ -192,6 +192,11 @@ diagnostics).** The brick enters at J6, so one sense at the inlet sees the whole
 - Uses: logged amps and volts, read remotely; bring-up's per-motor current; the power governor's
   real total, including a stall or a USB device firmware could not predict.
 
+**R2-5. J1 vertical centring (user via lead, 2026-10-30).** Horizontal centring stands. If a stocked,
+JLC-assemblable, sensibly priced USB-C receptacle (mid-mount or raised) centres it vertically, use
+it, checking land and panel hole. Otherwise keep the current part and do not ask again. Report which
+way it went and the price delta.
+
 **Power governor, firmware, NOT BUILT (priority decided by the user, 2026-10-30).** The brick's
 6.67 A is shared in this order: (1) Pi, boards, audio, always; (2) motors, under a hard cap on
 simultaneous movers, others wait ms; (3) J1, not throttleable, 0.35 A reserved while a device is
@@ -199,6 +204,8 @@ attached; (4) lights take what is left, scaled instantly and dimmed BEFORE motor
 enforces this today. Lights must fail safe if the Pi hangs. Cap set from a hiccup-finding test
 under string load (one motor on a multimeter, then 2, 3, 4 movers with lights full, margin below
 the trip). 0.8 A per mover stays unmeasured until then. Confirm SERVO42D's working-current setting.
+
+**R2-2 example device (user, 2026-10-30): the MVX2U.** It's an example of what the port should support, not a design target; the user may plug in something else. On the bring-up checklist: its current draw, and Linux playback through it.
 
 **R2-3. J8 (the pickup's screw terminal) takes the SLOTTED screw: one screwdriver for the instrument.** Rev 1 is MX126-5.0-02P-GN01-Cu-**S**-A, M2.5 cross head; the SERVO42D motor terminals are slotted (2.0-2.5 mm flat blade). The same MX126 body is ordered with a slotted screw by the code letter **Y** (maker's ordering code: Y slotted, S cross, PS flat cross), so R2 orders MX126-5.0-02P-GN01-Cu-**Y**-A and one 2.5 x 0.4 mm flat blade drives both. Check before committing: that exact Y part is stocked at LCSC (the MX127 Y variant was, C-number not yet confirmed for MX126), and the same footprint and drawing. Confirm on the rev 1 boards that J8's head really is cross. src/screw_terminal.py SCREW changes with it (user, 2026-10-20).
 
