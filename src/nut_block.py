@@ -849,25 +849,7 @@ def _part_wire(i: int):
     stack. The pocket is cut from _plan_wire itself."""
     if i < N_FINGERED:
         return _plan_wire(i)
-    # (each edge moved in and its neighbours re-met: offset2D's arc mode leaves a 0.1 sliver of
-    # cylinder in every concave corner, and its other modes fail on this outline)
-    pts = _plan(i)
-    n = len(pts)
-    area = sum(pts[k][0] * pts[(k + 1) % n][1] - pts[(k + 1) % n][0] * pts[k][1] for k in range(n))
-    sgn = 1.0 if area > 0 else -1.0                      # which side of an edge is inside
-    lines = []
-    for k in range(n):
-        (x0, y0), (x1, y1) = pts[k], pts[(k + 1) % n]
-        ln = math.hypot(x1 - x0, y1 - y0)
-        nx, ny = -sgn * (y1 - y0) / ln, sgn * (x1 - x0) / ln
-        lines.append((nx, ny, nx * x0 + ny * y0 + BASS_FIT))
-    out = []
-    for k in range(n):
-        a1, b1, c1 = lines[k - 1]
-        a2, b2, c2 = lines[k]
-        det = a1 * b2 - a2 * b1
-        out.append(((c1 * b2 - c2 * b1) / det, (a1 * c2 - a2 * c1) / det))
-    return cq.Workplane("XY").polyline(out).close()
+    return _plan_wire(i).offset2D(-BASS_FIT, kind="arc")
 
 
 NECK_CLR_X = 0.4                                # air +X of the coil, before the neck
@@ -997,13 +979,8 @@ def slide_insert(i: int) -> cq.Workplane:
                       .intersect(box_at(INS_X1 + 1.0 - lip_x0, 4000.0, LIP_H + 1.0,
                                         x=(lip_x0 + INS_X1 + 1.0) / 2, y=0.0,
                                         z=zc + (LIP_H - 1.0) / 2)))
-    # THE TROUGH RUNS OUT THROUGH THE PLAN'S EDGE on +Y, and on -Y too where there is no seating
-    # wall (SKU A): it stopping just short left a sheet under a bead, on +Y of strings 9-10 and
-    # in the taper at SKU A's -Y end (thin_sites). The -Y wall of B and C stays: the dowel seats
-    # on it. Past the plan's edge this is air, so CRADLE_L is still what the dowel has.
-    ty0 = D.nut_y(i) - CRADLE_L / 2.0 - (1.0 if i < N_FINGERED else 0.0)
-    ty1 = D.nut_y(i) + CRADLE_L / 2.0 + 1.0
-    body = body.cut(teardrop_hole(DIVOT_D, ty1 - ty0, (DOWEL_X, ty0, fz + DIVOT_OFF),
+    body = body.cut(teardrop_hole(DIVOT_D, CRADLE_L, (DOWEL_X, D.nut_y(i) - CRADLE_L / 2.0,
+                                                      fz + DIVOT_OFF),
                                   (0.0, 1.0, 0.0), (-1.0, 0.0, 0.0), nozzle=0.0))
 
     # ── TWO 45 DEG LEAD-INS FOR THREADING (user) ──────────────────────────
