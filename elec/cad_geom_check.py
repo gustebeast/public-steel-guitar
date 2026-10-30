@@ -102,8 +102,8 @@ BOARDS = ("output_panel", "motor_ctrl", "optical", "lever_sensor", "can_tee",
 def _ui_rule_check():
     """Does the UI board's routed switch land where the deck's placement rule says?
 
-    src/ui_panel.py owns the rule -- the inputs on the board's -Y edge, the board just off
-    the -Y rail (2026-10-29), the knob's +X edge level with the window's -- and
+    src/ui_panel.py owns the rule -- the inputs either side of the display on its Y
+    (2026-10-30) -- and
     elec/ui_board.py places SW1 from it. Nothing downstream compares the
     two: the CAD draws the ROUTED switch, so if the placement drifted the deck's hole
     would drift with it, silently and consistently. This is the one check that reads
@@ -117,8 +117,7 @@ def _ui_rule_check():
         print("   ui_board: the routed switch is at (%.3f, %.3f) and the placement rule "
               "wants (%.3f, %.3f) -- %.3f off" % (kx, ky, wx, wy, off))
         return 1
-    # ...and the power button's: its cap's -X edge on the window's, its centre on the
-    # knob's Y (ui_panel.power_x)
+    # ...and the power button's (ui_panel.power_x)
     px, py = UIP.routed("SW2")
     p_off = max(abs(px - UIP.power_x()), abs(py - wy))
     if p_off > 0.05:
