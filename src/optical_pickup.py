@@ -246,7 +246,7 @@ PKG = {
     "SOT-23":   (2.90, 2.40, 1.30),
     "SOT-23-5": (2.90, 2.80, 1.45),
     "QFN-24":   (4.00, 4.00, 0.90),   # CH334F, R2's U31
-    "SOIC-16":  (9.90, 6.00, 1.75),   # CH340C, R2's U32
+    "SOIC-16":  (6.00, 9.90, 1.75),   # CH340C, R2's U32
     "SOD-123":  (2.70, 1.60, 1.25),   # DSS16
     "SOT-23-6": (2.90, 2.80, 1.45),   # same envelope as the -5; the buck (see U13)
     "IND-4040": (4.10, 4.10, 3.10),   # 4x4 shielded power inductor, buck output. DRAWN AT
@@ -379,7 +379,7 @@ CRTYD = {
     "SOT-23":   (3.95, 3.49),
     "SOT-23-5": (4.19, 3.49),
     "QFN-24":   (5.30, 5.30),   # KiCad HVQFN-24-1EP_4x4mm
-    "SOIC-16":  (11.00, 7.40),  # KiCad SOIC-16_3.9x9.9mm
+    "SOIC-16":  (7.40, 11.00),  # KiCad SOIC-16_3.9x9.9mm
     "SOD-123":  (4.20, 1.90),
     "SOT-23-6": (4.19, 3.49),
     "SOT-563":  (4.19, 3.49),   # the real part is SOT-23-6 -- see the U10 note
@@ -2623,8 +2623,8 @@ PARTS = _parts()
 # (dx, dy) world mm on R1's placements.
 R2_MOVES = {} if OPTICAL_REV == 1 else {
     **dict.fromkeys(('J1', 'R32', 'R33'), (-11.80, 29.88)), # j1 (+3.0 for the plug's 11.8, user 2026-10-30)
-    **dict.fromkeys(('U10',), (-5.03, 27.255)), # u10: turned 0, +X of J1's moved shell (R2_ROT)
-    **dict.fromkeys(('TP5',), (4.50, -20.50)),   # tp5: into the -Y band, U10 took its spot
+    **dict.fromkeys(('U10',), (-4.43, 27.755)), # u10: turned 0, +X of J1's moved shell (R2_ROT)
+    **dict.fromkeys(('TP5',), (2.00, -18.65)),   # tp5: into the -Y band, U10 took its spot
     **dict.fromkeys(('C130',), (-19.53, 26.90)), # c130
     **dict.fromkeys(('U7', 'C119', 'C120', 'C121', 'C122', 'C125', 'C136', 'C137', 'C138', 'C139', 'C145', 'Y2', 'R37', 'R39'), (7.99, 12.80)), # phy
     **dict.fromkeys(('C160', 'C161', 'C163', 'C165', 'C166', 'U13', 'R40', 'R41', 'L1', 'C162', 'C167'), (0.00, 13.97)), # buck
@@ -2662,17 +2662,17 @@ R2_J2 = (None, -95.97, 0.0)
 # search found no escape at all. Turned 0, that face looks +X, at open board toward U7.
 R2_ROT = {"U10": 0.0}
 R2_FLASH = (
-    ("U31", "USB 2.0 HS hub: J1 up, the PHY and U32 down", "QFN-24", 11.60, -106.00, 0.0),
+    ("U31", "USB 2.0 HS hub: J1 up, the PHY and U32 down", "QFN-24", 11.60, -106.00, 90.0),
     ("Y3", "12 MHz crystal, U31 (no load caps: CH334 has 16 pF on each pin)", "3225", 11.60, -110.60, 0.0),
-    ("U32", "USB-serial bridge, U6's USART1 ROM loader", "SOIC-16", 20.50, -107.00, 90.0),
-    ("Q2", "BOOT0 high side, gate on U32's DTR#", "SOT-23", 7.80, -111.60, 0.0),
-    ("D11", "NRST pulled by U32's RTS#", "SOD-123", 14.80, -112.60, 0.0),
+    ("U32", "USB-serial bridge, U6's USART1 ROM loader", "SOIC-16", 20.50, -107.00, 0.0),
+    ("Q2", "BOOT0 high side, gate on U32's DTR#", "SOT-23", 20.50, -99.60, 0.0),
+    ("D11", "NRST pulled by U32's RTS#", "SOD-123", 15.20, -110.50, 90.0),
     ("C180", "U31 VDD33 bypass", "0402", 7.80, -106.00, 90.0),
     ("C181", "U31 VDD33 bulk", "0805C", 7.80, -103.20, 90.0),
     ("C182", "U31 V5 bypass", "0402", 7.80, -108.20, 90.0),
     ("C183", "U32 VCC bypass", "0402", 15.60, -102.40, 0.0),
     ("R52", "U31 OVCUR# pull-up", "0402", 15.60, -104.40, 0.0),
-    ("R53", "Q2 gate pull-up: BOOT0 stays low until the bridge asserts DTR#", "0402", 11.00, -113.20, 0.0),
+    ("R53", "Q2 gate pull-up: BOOT0 stays low until the bridge asserts DTR#", "0402", 16.60, -100.00, 0.0),
 )
 if OPTICAL_REV != 1:
     for _p in PARTS:

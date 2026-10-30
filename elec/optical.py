@@ -391,8 +391,8 @@ def _flash_path(up_dp, up_dm, phy_dp, phy_dm, v3d, gnd, boot0, nrst, u6):
                value="CH340C", description="USB-serial, the ROM loader's way in (LCSC C84681)",
                footprint="Package_SO:SOIC-16_3.9x9.9mm_P1.27mm",
                pins=[Pin(num=i, func=P) for i in range(1, 17)])
-    # pins as KiCad's Interface_USB library: 1 GND 2 TXD 3 RXD 4 V3 5 UD+ 6 UD- 13 DTR# 14 RTS#
-    # 16 VCC. V3 ties to VCC at 3.3 V. NOT YET READ on WCH's sheet (LCSC refused the PDF).
+    # WCH CH340DS1-EN V3C pp.3-4, SOP16: 1 GND 2 TXD 3 RXD 4 V3 5 UD+ 6 UD- 7 NC 8 OUT# 13 DTR#
+    # 14 RTS# 15 R232 (own pull-down) 16 VCC. V3 ties to VCC at 3.3 V; unused I/O may dangle.
     gnd += u32[1]
     tx, rx, dtr, rts = Net("FLASH_TX"), Net("FLASH_RX"), Net("FLASH_DTR_N"), Net("FLASH_RTS_N")
     tx += u32[2], u6[PIN["PB15"]]       # bridge's TXD into USART1_RX
@@ -4296,6 +4296,13 @@ BOARD_NOTES["quality"] = {
               "converter can be taken off the bus alone by grounding its SHDNZ pull-up's "
               "pad. No pad on MID, on purpose. docs/optical-bringup-diagnostics.md has the "
               "order of work",
+        "M43": "R2. (a) J1 -> U10 -> U31 hub -> U32 CH340C -> U6 USART1, PB14 TX / PB15 RX. (b) "
+               "ST's ROM loader, AN2606 Rev 61 Table 113, USART1 on PA9/PA10 or PB14/PB15. (c) the "
+               "host holds DTR# low (Q2 lifts BOOT0) and pulses RTS# low (D11 pulls NRST), no "
+               "firmware of ours and no hand on the board: first flash, update and recovery alike. "
+               "Bridge needs no firmware. NOT YET PROVEN ON A BOARD. Host software must leave the "
+               "port's DTR/RTS alone except to flash: opening it can assert both and hold U6 in "
+               "reset. TP1-TP5 stay for dead hardware",
         "M11": "finish.py's CAD check: 258 of 258 routed parts present in the CAD, "
                "every one where the CAD draws it. The lead's full build on main "
                "b0e7a911 (2026-10-05) with this board's geometry: 1010 components, 0 "
@@ -4638,6 +4645,16 @@ BOARD_NOTES["quality"] = {
         }
     ],
     "pinouts": {
+        "CH340C": "WCH CH340DS1-EN V3C pp.3-4, SOP16 column: 1 GND, 2 TXD, 3 RXD, 4 V3, 5 UD+, 6 "
+                  "UD-, 7 NC, 8 OUT#, 9-12 CTS# DSR# RI# DCD#, 13 DTR#, 14 RTS#, 15 R232, 16 VCC. "
+                  "KiCad's SOIC-16 numbers the same. Board: 2 FLASH_TX, 3 FLASH_RX, 4 and 16 "
+                  "+3V3D (p.3: at 3.3 V connect V3 to VCC), 5/6 U31's DN2, 13 FLASH_DTR_N, 14 "
+                  "FLASH_RTS_N, the rest open (p.4 note). Read 2026-10-30",
+        "CH334F": "WCH CH334 datasheet V2.5 Table 1-3, 4F column, as output_panel U4, re-read "
+                  "against V2.91. Board: 14/15 up, 11/12 DN1 the PHY, 9/10 DN2 U32, 3/4 Y3",
+        "AO3401A": "AOS AO3401A package drawing, same SOT-23 as AO3400A: 1 G, 2 S, 3 D. NOT READ "
+                   "on its own sheet yet",
+        "DSS16": "SOD-123, 1 cathode (bar), 2 anode, as the buck catch diodes on the LED boards",
         "B4B-XH-A": "R2's J2. JST eXH.pdf p.5, Header / Top entry type: seen from the slotted "
                     "wall, No. 1 circuit is the right-hand post. KiCad JST_XH_B4B-XH-A has that "
                     "wall at -Y and pad 1 at the -X end: the same post (as motor_ctrl). Board: "
