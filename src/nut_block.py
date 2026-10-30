@@ -497,6 +497,14 @@ INS_DROP  = math.ceil(_DROP_NEED / D.BEAD) * D.BEAD          # 3.2, on the grid
 INS_H     = 5 * D.BEAD                          # 4.0 of body below the flat
 DIVOT_OFF = ROD_D / 2 - PIN_D / 2 - ROD_Z       # 11.59, cradle centre ABOVE the flat
 DIVOT_D   = PIN_D + 0.3                         # 4.3, the dowel's cradle
+# THE CRADLE'S +X LIP (user). The seat runs 180 deg, from -135 (the printable -X flank) round
+# the bottom to +45 here, or short of +45 if the string says so. Everything off the dowel's
+# crown is the same for every gauge: the crown is the string's underside, and the flat, so the
+# insert, moves with the gauge. LIP_STRING_CLR is the air left under the string with the
+# dowel seated, which is DIVOT_D/2 - PIN_D/2 below the centre of the cut.
+LIP_STRING_CLR = 0.3
+_CROWN_SEATED = PIN_D / 2 - (DIVOT_D / 2 - PIN_D / 2)   # 1.85 over the centre of the cut
+LIP_H = min(DIVOT_D / 2 * math.sin(math.radians(45.0)), _CROWN_SEATED - LIP_STRING_CLR)
 # The insert reaches from just past the dowel back under the rod, so the flat spans both
 # the cradle and the clamp area. It stops short of the trough's -X wall.
 INS_X1    = X_FRONT                             # FLUSH with the block's +X face: the
@@ -892,7 +900,8 @@ def slide_insert(i: int) -> cq.Workplane:
     # the dowel lobe, plus a NECK rising from the flat to the cradle. The flat bears on
     # the wrap far below the dowel now, so the insert has to carry the dowel back up; the
     # neck stops AT the cradle centre, which is a dowel-radius under the crown and so
-    # still below the string plane -- nothing of the insert can foul the bar either.
+    # still below the string plane -- nothing of the insert can foul the bar either. Only
+    # the +X lip (LIP_H) rises above that, and it stops short of the string.
     body = _part_wire(i).extrude(INS_H).translate((0, 0, fz - INS_H))
     # THE HEIGHT-ADJUST EXTENSION (user): a tall foot down to the screw that pushes the insert up --
     # the insert's OWN PLAN carried all the way down (user), so the -Y shoulder that stops it walking
@@ -937,10 +946,29 @@ def slide_insert(i: int) -> cq.Workplane:
     # dowel seats against. Either way the dowel has INS_LOBE_W - PIN_L of float, and no
     # rind of insert is left standing anywhere.
     #
-    # It stays open at the TOP: the cradle centre IS the neck's top face, so the cut
-    # leaves a half-round and the dowel drops straight in.
-    body = body.cut(cyl_y(DIVOT_D, CRADLE_L, y0=D.nut_y(i) - CRADLE_L / 2.0,
-                          x=DOWEL_X, z=fz + DIVOT_OFF))
+    # THE DOWEL COMES IN ON THE DIAGONAL, -X +Z TO +X -Z (user). The cradle centre IS the
+    # neck's top face, so a plain round cut left a half-round whose -X extreme is a flat
+    # ceiling with the part printing -X up, and at Ø4.3 that stopped being a corner a
+    # slicer gets away with. So the seat is turned 45 deg about the dowel, which does not
+    # move: -X it stops at -135, which is where the teardrop's flank (the same cut as the
+    # axle's, apex print-up) leaves the circle, and the lip below makes up the 180 on +X.
+    # That flank is also the -X side of the dowel's way in, and the lip's top the +X side.
+    #
+    # nozzle=0, A SHARP APEX: the apex lands exactly on the neck's top face, so the part
+    # keeps only the half of it below that face. Dulled, that half would be the flat
+    # ceiling this is here to remove.
+    #
+    # THE LIP IS ADDED BEFORE THE CUT, +X of the 45 deg point only: the cut then leaves the
+    # arc running out to +45 at the lip's top, and SKU B's wall at the end of the trough
+    # stays the height it was.
+    wall_x = DOWEL_X + LIP_H
+    body = body.union(_part_wire(i).extrude(LIP_H + 1.0).translate((0, 0, fz + DIVOT_OFF - 1.0))
+                      .intersect(box_at(INS_X1 + 1.0 - wall_x, 4000.0, LIP_H + 1.0,
+                                        x=(wall_x + INS_X1 + 1.0) / 2, y=0.0,
+                                        z=fz + DIVOT_OFF + (LIP_H - 1.0) / 2)))
+    body = body.cut(teardrop_hole(DIVOT_D, CRADLE_L, (DOWEL_X, D.nut_y(i) - CRADLE_L / 2.0,
+                                                      fz + DIVOT_OFF),
+                                  (0.0, 1.0, 0.0), (-1.0, 0.0, 0.0), nozzle=0.0))
 
     # ── TWO 45 DEG LEAD-INS FOR THREADING (user) ──────────────────────────
     # The flat meets the insert's -X end face, and it meets the neck's -X face, at square
