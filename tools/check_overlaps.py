@@ -406,6 +406,15 @@ DEFERRED_RULES = (
     # the UI board and the optical board's cables. The UI station has since been relocated
     # inside the wall (brenner, 2026-10-29), so only the optical cables are left. OWNER
     # bronner (optical cables).
+    # THE UI STATION vs THE COLOUR TOP PLATE AT THE R2 RAIL (2026-10-30, lead ruling). The
+    # output board's R2 geom (56 deep) takes the -Y rail from -115.45 to -105.05
+    # (motor_bank._OP_W reads it live); ui_panel places the UI board off RAIL_INNER_Y, so the
+    # station follows 10.4 +Y and the top plate's window for it does not. The user's body-
+    # narrowing clearance (2026-10-29: the UI board may clip until relocated) covers it.
+    # OWNER brenner: RETIRE when the UI window is re-fitted to the -105.05 rail.
+    (re.compile(r"^(ui_clamp|ui_display)$"), re.compile(r"^top_plate_color_3$"),
+     "UI station vs the colour top plate's window at the R2 -105.05 rail: user's narrowing "
+     "clearance (OWNER brenner, retire when the UI window is re-fitted)"),
     # OPTICAL R2's 24 V PAIR THROUGH THE R1 HAND GUARD (2026-10-29). R2's J2 is top entry
     # beside J1's notch, and the guard still has R1's roof over that spot. Agreed order
     # (lead): bronner submits R2, then branner re-shapes optical_guard for it (J2's opening
