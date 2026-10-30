@@ -2834,6 +2834,13 @@ if REV != 1:
     # same offset is open board, and its PWR_GND end lands over the B.Cu return lane.
     R2_MOVES["C56"] = (_J10_PADS[5] + C56_DX + GROW_X / 2.0 - _pl["C56"][0],
                        _J10_Y + C56_DY - _pl["C56"][1])
+if REV != 1:
+    # THE SOCKET LABELS ARE IN THE BOARD FILE'S mm (x right, y DOWN, R1's laminate), so they
+    # follow their sockets by hand: x with the -X edge (GROW_X past R1's), y by the socket's
+    # R2 move and the re-centre, flipped.
+    BOARD_NOTES["silk_words"] = [
+        (_t, _wx - (GROW_X - 12.0) / 2.0, _wy - (R2_MOVES[_t.split()[0]][1] + SHRINK_Y / 2.0), _f)
+        for _t, _wx, _wy, _f in BOARD_NOTES["silk_words"]]
 for _ref, (_dx, _dy) in R2_MOVES.items():
     _x, _y, _rot = BOARD_NOTES["placements"][_ref]
     BOARD_NOTES["placements"][_ref] = (_x + _dx, _y + _dy, _rot)
