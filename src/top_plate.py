@@ -672,9 +672,21 @@ def _pickup_piece():
                                M4.shaft_clr_d + 0.4, TZ - (BZ - 1.0),
                                (jx, jy, TZ), (0.0, 0.0, -1.0),
                                print_up=PIECE_UP, overshoot=1.0)
+    # ...AND A RELIEF THAT BREAKS INTO THE PICKUP'S OPENING OR THE RETENTION RELIEF OPENS AS A
+    # SLOT. A round pocket just breaking a wall leaves a thin tip either side of the opening,
+    # which prints 2 to 5 back of drawn; square sides into the wall end it in a plain corner.
+    _d = M4.boss_od + D.BEAD
+    _cx0, _cx1 = PICKUP_X_NOM - CAVITY_X / 2, PICKUP_X_NOM + CAVITY_X / 2
+    _rx0, _rx1 = RET_SCREW_X - RET_RELIEF_W / 2, RET_SCREW_X + RET_RELIEF_W / 2
     for jx, jy in JACK_POS:
-        body = body.cut(cyl(M4.boss_od + D.BEAD, JACK_BOSS_RELIEF + 0.5, z=BZ - 0.5)
-                        .translate((jx, jy, 0.0)))
+        body = body.cut(cyl(_d, JACK_BOSS_RELIEF + 0.5, z=BZ - 0.5).translate((jx, jy, 0.0)))
+        _in_ret = RET_RELIEF_Y0 < jy < RET_RELIEF_Y1
+        for _wall in ((_rx0, _rx1) if _in_ret else (_cx0, _cx1)):
+            if abs(_wall - jx) < _d / 2.0:
+                _x0, _x1 = sorted((jx, _wall + math.copysign(1.0, _wall - jx)))
+                body = body.cut(box_at(_x1 - _x0, _d, JACK_BOSS_RELIEF + 0.5,
+                                       x=(_x0 + _x1) / 2, y=jy,
+                                       z=BZ - 0.5 + (JACK_BOSS_RELIEF + 0.5) / 2))
     return heal(body)
 
 
