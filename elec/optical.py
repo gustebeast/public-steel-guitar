@@ -4028,6 +4028,11 @@ if OP.OPTICAL_REV != 1:
     _u10_ko = [_ux - 0.60, _uy - 1.30, _ux + 0.60, _uy + 1.30]
     BOARD_NOTES["via_keepouts"] = list(BOARD_NOTES["via_keepouts"]) + [_u10_ko]
     BOARD_NOTES["router_via_keepouts"] = [_u10_ko]          # cadkit route.py: the router too
+    # ...AND NONE UNDER Y1 (the MCU's crystal): two routes stood a +3V3D via against its
+    # OSC_IN pad, the one violation that kept close_last from running. Its courtyard, 4.29
+    # x 3.59 -- the oscillator's loop has no business carrying a rail's via anyway.
+    _yx, _yy, _ = _placements(CX, CY)["Y1"]
+    BOARD_NOTES["router_via_keepouts"].append([_yx - 2.15, _yy - 1.80, _yx + 2.15, _yy + 1.80])
 
 
 # ── the quality pass (cadkit/PCB_QUALITY.md) ──────────────────────────────────────────────
