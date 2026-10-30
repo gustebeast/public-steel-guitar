@@ -476,6 +476,27 @@ def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
             print("  %d stitch via(s) fenced with a %.2f mm via keepout (plane clearance "
                   "%.2f)" % (len(outs), pcbnew.ToMM(worst) + 0.15, pcbnew.ToMM(worst)))
 
+    # `router_via_keepouts` (board-local [x0, y0, x1, y1] mm): places the ROUTER may not
+    # put a via. `via_keepouts` fences only the stitcher, and on the optical R2 board the
+    # router stood a VBUS via under the ESD array, between the USB pair's two pass-through
+    # links, 0.106 mm from D-. Opt-in, so no other board's route changes.
+    rko = notes.get("router_via_keepouts", ()) if notes else ()
+    if rko:
+        outs = []
+        for x0_, y0_, x1_, y1_ in rko:
+            a_, b_ = layout._to_board(x0_, y0_), layout._to_board(x1_, y1_)
+            xs = sorted((pcbnew.ToMM(a_.x) * 1000.0, pcbnew.ToMM(b_.x) * 1000.0))
+            ys = sorted((-pcbnew.ToMM(a_.y) * 1000.0, -pcbnew.ToMM(b_.y) * 1000.0))
+            pts = ["%.1f %.1f" % p_ for p_ in ((xs[0], ys[0]), (xs[1], ys[0]), (xs[1], ys[1]),
+                                              (xs[0], ys[1]), (xs[0], ys[0]))]
+            outs.append('    (via_keepout "" (polygon signal 0  %s))\n' % "  ".join(pts))
+        txt = open(dsn, encoding="utf-8").read()
+        at = txt.find("    (via ")
+        if at < 0:
+            raise SystemExit("no (via ...) line in the DSN structure to anchor keepouts")
+        open(dsn, "w", encoding="utf-8").write(txt[:at] + "".join(outs) + txt[at:])
+        print("  %d router via keepout(s) from the notes" % len(outs))
+
     # ⚠ THE ROUTER IS GIVEN MORE CLEARANCE THAN THE FAB RULE, ON PURPOSE. freerouting
     # routes right up to the clearance it is handed, and its geometry and KiCad's do not
     # round the same way -- so a board it considers finished comes back with tracks
