@@ -85,6 +85,17 @@ is inside the -105.05 rail. Built behind `OPTICAL_REV` (default 2) in src/optica
   - INSTALL_NOTES R1 stop-gap; retire the optical-cables deferral rule;
   - re-finish output_panel R2 after the propagation (ink bleed).
 
+**Routing, 2026-10-29 (night).** Full flow in scratch (opt/r2/full.sh: layout, route 5 passes, unwick, repair_planes, finish --keep-route).
+- Run 5: after close_last, 1 unconnected (ULPI_D6, "no path" from U7.18) with 0 violations. A12 was still flagged on the pair vias; A14 flagged the via in U7.
+- Fixes for those:
+  - cadkit 68d52f7, the stitcher keeping clear of vias: the A12 pair via is gone. Sent to the lead.
+  - pin_escapes U7.18 (R1's In2 via at the pin): A14 is ok.
+- Run 6 added the U10 *router* via keepout (canonical route.py `router_via_keepouts`, uncommitted, opt-in). Result: 30 unconnected, ULPI_D5 with no copper, and a Y1 OSC_IN / +3V3D via clearance error. WORSE.
+- Run 7 (running): the same without the router keepout. That is the A/B.
+- Also fixed: the stale J2.MP in quality.unconnected (R2's top-entry XH has no tab).
+- A12 silk 0.12 and the verify 188.53 outline are scratch-project artefacts (silk.py / export_geom can't import cadkit there).
+- Answered the lead / branner on the output board drop: max THT tail 3.4 (XH posts; solid() draws all THT at 3.4).
+
 Earlier plan (superseded where it says growth):
 
 Lead rulings, 2026-10-29:

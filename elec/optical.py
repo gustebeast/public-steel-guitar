@@ -4018,6 +4018,16 @@ if OP.OPTICAL_REV != 1:
     # (silk_edge_clearance, both corners). The outline goes to F.Fab with the others --
     # the plug's own body says where the socket is.
     BOARD_NOTES["strip_silk"] = BOARD_NOTES["strip_silk"] + ("J1",)
+    # ULPI_D6 (U7.18): R2 put the PHY 12.7 mm under the MCU pin where R1 had 25.5, and D6 is
+    # the one ULPI line whose escape the router then never finds (two routes, no copper at
+    # all; close_last: no path). R1 took it straight down to In2 at the pin -- that via, laid.
+    BOARD_NOTES["pin_escapes"] = tuple(BOARD_NOTES["pin_escapes"]) + ("U7.18",)
+    # NO VIA UNDER U10's BODY. The pair's two pass-through links run under it 1.9 apart
+    # (pins 1-6, 3-4), and the router stood a VBUS via between them at 0.106 mm from D-.
+    _ux, _uy, _ = _placements(CX, CY)["U10"]
+    _u10_ko = [_ux - 0.60, _uy - 1.30, _ux + 0.60, _uy + 1.30]
+    BOARD_NOTES["via_keepouts"] = list(BOARD_NOTES["via_keepouts"]) + [_u10_ko]
+    # BOARD_NOTES["router_via_keepouts"] = [_u10_ko]   # A/B 10-29: with it, 30 unconnected + Y1 clearance
 
 
 # ── the quality pass (cadkit/PCB_QUALITY.md) ──────────────────────────────────────────────
@@ -4593,6 +4603,9 @@ BOARD_NOTES["quality"] = {
                               "2026-10-05",
     },
 }
+if OP.OPTICAL_REV != 1:
+    # R2's J2 is the top-entry B4B-XH-A: through-hole posts only, no reinforcement tab
+    del BOARD_NOTES["quality"]["unconnected"]["J2.MP"]
 
 
 def _assert_matches_cad(net_path):
