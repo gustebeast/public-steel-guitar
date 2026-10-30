@@ -93,7 +93,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src import optical_pickup as OP  # noqa: E402  (the geometry source -- see above)
 
-OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
+OUT_DIR = (os.environ.get("OPTICAL_OUT")       # a scratch copy, so a trial never touches elec/out
+           or os.path.join(os.path.dirname(os.path.abspath(__file__)), "out"))
 os.makedirs(OUT_DIR, exist_ok=True)
 os.chdir(OUT_DIR)
 
@@ -145,6 +146,7 @@ FP = {
     "TP_SMALL": "TestPoint:TestPoint_Pad_D1.0mm",
     "USB-C":    "Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12",
     "XH-SM-4Y": "Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal",
+    "XH-TE-4V": "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical",     # R2's J2
 }
 # The 0402s are a mix of R and C; the CAD's package name does not say which, so the
 # REF prefix does. Same for 0603 (all resistors: the LED ballasts) and the 0805s.
@@ -1508,10 +1510,13 @@ def optical():
     # socket puts nothing on them either. The panel end IS a true 2-way (B2B-XH-A exists
     # in the through-hole line), so the cable is 2-way at one end and 4-way at the other,
     # which is free when the harness is crimped to length anyway.
-    j2 = Part(name="S4B-XH-SM4-TB", ref_prefix="J", ref="J2", dest="NETLIST",
-              tool="skidl", value="S4B-XH-SM4-TB",
+    # R2: TOP ENTRY (src/optical_pickup.py R2_J2) -- the same XHP-4 plug, so the lead
+    # and its way order are unchanged.
+    _j2_mpn = "S4B-XH-SM4-TB" if OP.OPTICAL_REV == 1 else "B4B-XH-A"
+    j2 = Part(name=_j2_mpn, ref_prefix="J", ref="J2", dest="NETLIST",
+              tool="skidl", value=_j2_mpn,
               description="24 V in -- 1=+24V 2=PWR_GND, ways 3/4 unpopulated",
-              footprint="Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal",
+              footprint=FP[OP.part("J2")["pkg"]],
               pins=[Pin(num=i + 1, name=n, func=P)
                     for i, n in enumerate(("+24V", "PWR_GND", "NC3", "NC4"))])
     # the first two ways of the instrument's one order (harness.py: power, GND, ...)
@@ -1835,7 +1840,7 @@ def _cell_pt(k, dx, dy):
     180 -- the frame every cell offset in this file and in src/optical_pickup.py is written
     in. The two converters at the +Y end are turned 0, so the offset mirrors through the
     centre."""
-    ux, uy, rot = _placements(CX, CY)["U%d" % (14 + k)]
+    ux, uy, rot = _placements(CX, CY_DRAW)["U%d" % (14 + k)]
     sgn = 1.0 if abs(rot - 180.0) < 1e-6 else -1.0
     return (ux + sgn * dx, uy + sgn * dy)
 
@@ -1853,14 +1858,18 @@ def _mcu_feed():
       to    a via beside C100, pin 49's bypass capacitor at the MCU's south-west corner
     30 mm at 0.8 mm in 1 oz copper is 18 mohm, 6 mV at 0.35 A. The ring round the MCU is
     still the router's."""
-    P = _placements(CX, CY)
-    for ref, x, y in (("C131", -12.98, -62.08), ("C100", -2.87, -51.87)):
+    P = _placements(CX, CY_DRAW)
+    # R2: U8's row moved rigidly (src/optical_pickup.py R2_MOVES "ldo"); its end of the
+    # trunk moves with it, the MCU's end stays where C100 still is.
+    _dy = OP.R2_MOVES.get("C131", (0.0, 0.0))[1]
+    assert OP.R2_MOVES.get("C131", (0.0, 0.0))[0] == 0.0, "_mcu_feed only follows a Y move"
+    for ref, x, y in (("C131", -12.98, -62.08 + _dy), ("C100", -2.87, -51.87)):
         px, py, _ = P[ref]
         assert abs(px - x) < 0.03 and abs(py - y) < 0.03, (
             "%s is not where _mcu_feed draws to: (%.3f, %.3f), drawn for (%.3f, %.3f)"
             % (ref, px, py, x, y))
-    a, b = (-14.75, -62.08), (-3.95, -51.39)
-    tracks = [("+3V3D", "F.Cu", 0.8, [(-16.17, -62.08), a, (-13.93, -62.08)]),
+    a, b = (-14.75, -62.08 + _dy), (-3.95, -51.39)
+    tracks = [("+3V3D", "F.Cu", 0.8, [(-16.17, -62.08 + _dy), a, (-13.93, -62.08 + _dy)]),
               ("+3V3D", "B.Cu", 0.8, [a, (-14.75, -58.50), (-7.64, -51.39), b]),
               ("+3V3D", "F.Cu", 0.5, [b, (-2.87, -51.39)])]
     return tracks, [("+3V3D",) + a, ("+3V3D",) + b]
@@ -1896,7 +1905,7 @@ def _phy_copper():
       way out to its capacitor), STP steps down and runs past it to a via 1.5 further
       out, DIR and NXT turn down and away. 0.15 or more between any two of them.
       1V8    also pin 15 to pin 26, under the package (at the end of this function)"""
-    P = _placements(CX, CY)
+    P = _placements(CX, CY_DRAW)
     ux, uy, rot = P["U7"]
     assert abs(rot - 90.0) < 1e-6, "the offsets below are for U7 turned 90, not %s" % rot
     for ref, dx, dy in (("Y2", -10.275, 0.50), ("C119", -5.155, 2.54), ("C145", -5.155, 1.36),
@@ -2266,7 +2275,7 @@ def _v3a_spine(w=0.2, spine_w=0.3):
     power rail costs when the signal layers are full. The local bypass is unaffected --
     each Cd still sits against its own pin 8 on F.Cu, which is the part that matters.
     """
-    P = _placements(CX, CY)
+    P = _placements(CX, CY_DRAW)
     strings = [n for n in range(1, 11) if ("Cd%d" % n) in P]
     cds = sorted(((n, P["Cd%d" % n]) for n in strings), key=lambda kv: -kv[1][1])
     assert cds, "no op-amp decoupling caps placed -- did Cd get renamed?"
@@ -2315,7 +2324,7 @@ def _v3a_spine(w=0.2, spine_w=0.3):
 
 def _v3a_vias():
     """One via per +3V3A station: ten op-amps, five converters. See _v3a_spine."""
-    P = _placements(CX, CY)
+    P = _placements(CX, CY_DRAW)
     out = [("+3V3A", P["Cd%d" % n][0] + _V3A_DX, P["Cd%d" % n][1] + 0.48 - _V3A_DROP)
            for n in range(1, 11) if ("Cd%d" % n) in P]
     out += [("+3V3A",) + _cell_pt(k, _V3A_SPINE, _V3A_CS_DY) for k in range(5)]
@@ -2391,7 +2400,7 @@ def _door_keepout(pad=0.55, lo=0.50, hi=1.80):
     one of them its ground. Read back from the placed parts by reference so the fence
     cannot drift off the door it is fencing.
     """
-    P = _placements(CX, CY)
+    P = _placements(CX, CY_DRAW)
     out = []
     for k in range(1, 6):
         for i in range(1, 5):
@@ -2431,7 +2440,7 @@ def _v5_spine(spine_w=0.8, tap_w=0.3, dx=-2.94):
     Widths: the spine carries all ten emitters (1068 mA worst case) and each tap carries
     one (107 mA).
     """
-    P = _placements(CX, CY)
+    P = _placements(CX, CY_DRAW)
     rs = sorted(((r, P[r]) for r in ("R%d" % i for i in range(1, 11)) if r in P),
                 key=lambda kv: -kv[1][1])
     if not rs:
@@ -2486,7 +2495,7 @@ def _led_row_spine(spine_w=0.8, tap_w=0.3, dx=-1.36):
     clearance either side of a 0.3 track. Tight and real; if a detector land ever grows,
     this is the first thing that breaks.
     """
-    P = _placements(CX, CY)
+    P = _placements(CX, CY_DRAW)
     ds = sorted(((r, P[r]) for r in ("D%d" % i for i in range(1, 11)) if r in P),
                 key=lambda kv: -kv[1][1])
     if not ds:
@@ -2507,7 +2516,7 @@ def _led_row_spine(spine_w=0.8, tap_w=0.3, dx=-1.36):
 
 def _led_row_vias():
     """The via per emitter where LED_ROW surfaces, east of V5_PRE's spine."""
-    P = _placements(CX, CY)
+    P = _placements(CX, CY_DRAW)
     return [("LED_ROW", P[r][0] - 0.79 + _LED_VIA_DX, P[r][1])
             for r in ("D%d" % i for i in range(1, 11)) if r in P]
 
@@ -2596,7 +2605,7 @@ def _mid_spine(spine_w=0.3, w=0.25):
     lands themselves are 0.4 and 0.475. The one opening is between the lower detector's
     bottom land and the V5_PRE tap below it -- 0.931, which a via fits by 0.031.
     """
-    P = _placements(CX, CY)
+    P = _placements(CX, CY_DRAW)
     strings = [n for n in range(1, 11)
                if ("PD%dA" % n) in P and ("PD%dB" % n) in P and ("U%d" % (20 + n)) in P]
     assert strings, "no detector/op-amp pairs placed -- did the refs change?"
@@ -2638,7 +2647,7 @@ def _mid_spine(spine_w=0.3, w=0.25):
 def _mid_vias():
     """Three per string: the anode group, pin 5 and pin 3. See _mid_spine for why none of
     the three can be reached on a signal layer."""
-    P = _placements(CX, CY)
+    P = _placements(CX, CY_DRAW)
     out = []
     for n in range(1, 11):
         if ("PD%dA" % n) not in P or ("U%d" % (20 + n)) not in P:
@@ -2888,6 +2897,11 @@ BOARD_X0, BOARD_X1 = min(_XS), max(_XS)
 BOARD_Y0, BOARD_Y1 = min(_YS), max(_YS)
 CX, CY = (BOARD_X0 + BOARD_X1) / 2.0, (BOARD_Y0 + BOARD_Y1) / 2.0
 BOARD_W, BOARD_L = BOARD_X1 - BOARD_X0, BOARD_Y1 - BOARD_Y0
+# R2 moved the -Y edge, and this frame is the board's CENTRE (outline_mm is a centred
+# layout region), so every hand-laid coordinate in this file -- written against R1's board --
+# would land off by the centre's move. They stay written in R1's frame: the copper builders
+# take placements against CY_DRAW, and _to_board_frame shifts the result once, below.
+CY_DRAW = CY if OP.OPTICAL_REV == 1 else (OP.PCB_YM_R1 + BOARD_Y1) / 2.0
 
 def _buck_sw():
     """The buck's switch node, laid rather than routed: the one net on this board that
@@ -2895,7 +2909,7 @@ def _buck_sw():
     of U13's top pad (pin 12), 0.5 mm, along the top of the regulator's row above C165
     and R40, into L1's near land: 6.5 mm. Positions come from the CAD's U13 and L1, so
     the track moves with them."""
-    at = {q["ref"]: (q["x"] - CX, q["y"] - CY) for q in OP.PARTS}
+    at = {q["ref"]: (q["x"] - CX, q["y"] - CY_DRAW) for q in OP.PARTS}
     ux, uy = at["U13"]
     lx = at["L1"][0] - 1.50                       # L1's SW land
     top = uy + 2.00
@@ -3612,7 +3626,11 @@ BOARD_NOTES = {
     # That is a geometric defect, not a numeric one, and no budget value fixes it.
     # The chain is the order the signal physically travels: PHY -> ESD array -> socket.
     "diff_pairs": [{"nets": ["USB_DP", "USB_DM"], "chain": ["U7", "U10", "J1"],
-                    "gap": 0.2, "width": 0.2}],
+                    "gap": 0.2, "width": 0.2,
+                    # R2: the run turns south onto J1 from U10 at its +X, which leaves
+                    # D+ on the WEST rail -- A6 / A7, not the nearer B6 (cadkit layout
+                    # best_pair). R1 arrives square from above and picks A6 / A7 anyway.
+                    "pads": {"J1": ("A6", "A7")}}],
     # In2.Cu is the pair's escape layer: it sits directly under the In1.Cu ground
     # plane, so the run is referenced to solid copper for its whole length, and it
     # carries no pads at all -- which is what makes a clear path possible under two
@@ -3973,6 +3991,43 @@ for _net, (_nt, _nv) in STALE_REPAIRS.items():
         "dog-leg AND the ten stubs plus five vias that feed the SHDNZ pull-ups -- so either "
         "the count is stale or this gate is about to delete working copper."
         % (_net, _t_gone, _v_gone, _nt, _nv))
+
+
+def _to_board_frame():
+    """Shift the hand-laid copper from R1's frame (CY_DRAW) to this board's (CY). R2 also
+    drops the post-route repairs: each fits the ONE route it was searched against, and R2 is
+    a new placement and a new route -- re-search them against it, never carry them over."""
+    dy = CY_DRAW - CY
+    if OP.OPTICAL_REV != 1:
+        BOARD_NOTES["repair_tracks"], BOARD_NOTES["repair_vias"] = [], []
+    if abs(dy) < 1e-9:
+        return
+    BOARD_NOTES["tracks"] = [t[:3] + ([(x, y + dy) for x, y in t[3]],) + tuple(t[4:])
+                             for t in BOARD_NOTES["tracks"]]
+    BOARD_NOTES["vias"] = [(v[0], v[1], v[2] + dy) + tuple(v[3:])
+                           for v in BOARD_NOTES["vias"]]
+    BOARD_NOTES["via_keepouts"] = [[k[0], k[1] + dy, k[2], k[3] + dy]
+                                   for k in BOARD_NOTES["via_keepouts"]]
+    BOARD_NOTES["escape_runs"] = {k: (lay, [(x, y + dy) for x, y in pts])
+                                  for k, (lay, pts) in BOARD_NOTES["escape_runs"].items()}
+
+
+_to_board_frame()
+if OP.OPTICAL_REV != 1:
+    # R2: J1 stands in its notch, and its silkscreen outline crosses the notch's top edge
+    # (silk_edge_clearance, both corners). The outline goes to F.Fab with the others --
+    # the plug's own body says where the socket is.
+    BOARD_NOTES["strip_silk"] = BOARD_NOTES["strip_silk"] + ("J1",)
+    # ULPI_D6 (U7.18): R2 put the PHY 12.7 mm under the MCU pin where R1 had 25.5, and D6 is
+    # the one ULPI line whose escape the router then never finds (two routes, no copper at
+    # all; close_last: no path). R1 took it straight down to In2 at the pin -- that via, laid.
+    BOARD_NOTES["pin_escapes"] = tuple(BOARD_NOTES["pin_escapes"]) + ("U7.18",)
+    # NO VIA UNDER U10's BODY. The pair's two pass-through links run under it 1.9 apart
+    # (pins 1-6, 3-4), and the router stood a VBUS via between them at 0.106 mm from D-.
+    _ux, _uy, _ = _placements(CX, CY)["U10"]
+    _u10_ko = [_ux - 0.60, _uy - 1.30, _ux + 0.60, _uy + 1.30]
+    BOARD_NOTES["via_keepouts"] = list(BOARD_NOTES["via_keepouts"]) + [_u10_ko]
+    BOARD_NOTES["router_via_keepouts"] = [_u10_ko]          # cadkit route.py: the router too
 
 
 # ── the quality pass (cadkit/PCB_QUALITY.md) ──────────────────────────────────────────────
@@ -4548,6 +4603,9 @@ BOARD_NOTES["quality"] = {
                               "2026-10-05",
     },
 }
+if OP.OPTICAL_REV != 1:
+    # R2's J2 is the top-entry B4B-XH-A: through-hole posts only, no reinforcement tab
+    del BOARD_NOTES["quality"]["unconnected"]["J2.MP"]
 
 
 def _assert_matches_cad(net_path):
@@ -4612,6 +4670,9 @@ if __name__ == "__main__":
         raise SystemExit("the CAD sourcing table and the netlist disagree -- see above")
     import volts_decl                   # A16: generated, see volts_decl.py
     volts_decl.into(BOARD_NOTES, "optical")
+    import r1_silk                        # ordered R1: silk as sent
+    if OP.OPTICAL_REV == 1:
+        r1_silk.as_ordered(BOARD_NOTES)
     with open(os.path.join(OUT_DIR, "optical.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.2f x %.2f mm, %d placements, x%d per instrument"

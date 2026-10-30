@@ -1275,7 +1275,10 @@ def op_cradle():
     # on 2026-09-21. The -X growth moved J2 12 mm relative to everything else (its mouth
     # rides the -X edge), so the literal would have silently re-described an empty patch of
     # board. Derived, it stays "the clear strip past J2" whatever the outline does.
-    _PY_X0 = _BG.footprint("output_panel", "J2")["fab"][1] + 0.34 - rcx
+    # ⚠ THE BODY OR THE LEGS, WHICHEVER REACHES FURTHER (2026-10-29): R2's J2 is a USB-C
+    # whose THT shell legs stand 0.48 past its fab body, and the pad sat 1 mm3 into them.
+    _j2 = _BG.footprint("output_panel", "J2")
+    _PY_X0 = max(_j2["fab"][1], (_j2.get("tht") or _j2["fab"])[1]) + 0.34 - rcx
     cr = cr.union(box_at(_pad, _pad, standoff, x=_PY_X0 + _pad / 2.0, y=_pyc,
                          z=standoff / 2.0))
     # 45 DEG GUSSETS under the -X pads. This part builds -X off a bed at the panel face, so
@@ -1292,10 +1295,9 @@ def op_cradle():
     # off that pulley's swept flange (motor_bank._OP_EDGE_LIM), but the wall stands
     # clr + wall beyond the edge and sat inside the swept circle (check_sweep, 2026-10-29,
     # with the rail in 3 beads). The same clearance, round the pulley's axis, comes out.
-    # (one bead = branner's D.OP_PULLEY_CLR; read that name once both branches are in)
-    _i, _clr = D.N_STRINGS - 1, getattr(D, "OP_PULLEY_CLR", D.BEAD)
+    _i = D.N_STRINGS - 1
     cr = cr.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        D.PULLEY_FLANGE_OD / 2.0 + _clr, 100.0,
+        D.PULLEY_FLANGE_OD / 2.0 + D.OP_PULLEY_CLR, 100.0,
         cq.Vector(D.screw_x(_i) - (cx + rcx), D.string_y(_i) - cy, -50.0))))
     return cr.translate((cx + rcx, cy, cz - standoff))
 

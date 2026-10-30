@@ -429,6 +429,7 @@ OP_PANEL_CLR = D.OP_PANEL_CLR             # (in dimensions: motor_bank's rail re
 # against Neutrik's 7 N withdrawal force.
 OP_PANEL_T = 2 * D.BEAD
 JACK_WALL_X = JACK_TIP - OP_PANEL_T                   # the panel's inner face
+OUTPUT_PANEL_REV = BG.OUTPUT_PANEL_REV       # 2 = R2 (default), 1 = the board in hand: src/board_geom
 JACK_Z = -51 * D.BEAD                  # -40.8 jack row centre height
 # THE PANEL ROW IS NO LONGER EVENLY PITCHED, and it is not meant to be. TS and USB
 # are now BOARD parts on output_panel and their spacing (31.27) is set by that board;
