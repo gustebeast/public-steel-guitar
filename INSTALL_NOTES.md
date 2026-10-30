@@ -1137,3 +1137,26 @@ keyhead can stay on.
 
 **Removal is the reverse:** lift the bridge endplate (the pogos push B out a little), slide B
 out at +X, then A, letting the lead follow it back through the channel.
+
+## The output board goes in low, short of home, and slides +X under string 10's seat (2026-10-29)
+
+The output board (`output_panel`) lies on the chassis floor now: its cradle's plate rests on
+the floor and the board stands only as high as its M4 insert's anchor needs (underside at
+z -62.85, the pins' cut ends 2.7 above the plate). Over it, the bridge endplate's screw rail
+runs on across string 10's bearing seat at the seat's own depth, so that seat is whole like
+the other nine. That shelf covers the board's +X 23 mm, so the board cannot go straight down.
+
+1. Plug the leads into **J7 and J10 first**, on the bench or with the board in the bay: J10
+   ends up under the shelf, with no room to get a plug onto it from above.
+2. Lower the board into the bay **about 25 mm short of home** (-X), connectors toward the
+   panel, its -Y edge against the -Y rail's inner face.
+3. **Hold it about 4 mm up** off the cradle's corner pads and slide it +X under the shelf.
+   Its pins stand 3.4 below it and would drag across the pads at their height.
+4. A few millimetres short of home, let it down onto the pads. Push it home: the USB-C, the
+   barrel and the TS jack's nose go into their panel holes, and the board's edge meets the
+   panel.
+5. One M4 button head goes down through the board's ear into its insert (2.5 mm key). The
+   TS jack's nut goes on from outside.
+
+Out is the reverse: nut off, screw out, then pull it -X until it is clear of the panel, lift
+it 4 mm, slide it out from under the shelf and lift it out of the bay.
