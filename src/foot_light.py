@@ -164,8 +164,8 @@ def depth():
 # anywhere but IN the LED row, which costs a 14 mm gap in the pitch and a 1.32 : 1 dip
 # there against the 1.11 the rest of the run holds. Mirror-image boards cost one extra
 # fab and assembly setup; the dip would have shown in four places.
-RAIL_IN    = 55.55                  # chassis body's inner face (measured)
-BOARD_Y1   = 55.20                  # board's +Y edge: 0.35 of play against the rail
+RAIL_IN    = D.RAIL_HI_INNER_Y                  # chassis body's inner face (measured)
+BOARD_Y1   = RAIL_IN - 0.35                  # board's +Y edge: 0.35 of play against the rail
 # ⚠ THE -Y EDGE IS STRING 1'S MOTOR, PLUS ONE WALL (user, 2026-10-02: "there's 9.25 mm
 # currently between the motor and the PCB. What if we drop that to 1.6"). The board was at
 # 38.00 because that was all the lane needed for a cable socket. The seam is four pogos

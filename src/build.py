@@ -1133,7 +1133,7 @@ _seat_v = [bridge_endplate.intersect(BE.seat_ring(_i)).val().Volume()
            for _i in range(D.N_STRINGS)]
 for _side in {D.screw_x(_i) for _i in range(D.N_STRINGS)}:
     _sv = [_v for _i, _v in enumerate(_seat_v) if D.screw_x(_i) == _side]
-    assert min(_sv) > max(_sv) - 12.0, (
+    assert min(_sv) > sorted(_sv)[len(_sv) // 2] - 12.0, (   # the median: string 1 has more, not less
         "a support-bearing seat has lost wall the others keep (mm3 of ring left, string "
         "1..10): " + ", ".join(f"{_v:.1f}" for _v in _seat_v))
 
@@ -2347,6 +2347,27 @@ def ui_work_components():
         if n not in have:
             out.append((n, w))
     return out
+
+
+def width_work_components():
+    """collect_components() without the legs, the pedal bar, the foot pedals and the knee
+    levers (and the levers' harness): the body as one live set for work on its WIDTH --
+    the rails, both endplates, the deck, the foot lights, the motor bank and the strings,
+    which is everything a rail's position reshapes (user, 2026-10-29). Those four groups
+    hang off the body and take minutes to build; the scoped view takes them from the
+    lead's cache instead."""
+    comps = [("bridge_endplate", bridge_endplate), ("bridge_bearings", C.bridge_bearings()),
+             ("keyhead_endplate", __import__("src.keyhead_endplate",
+                                             fromlist=["e"]).keyhead_endplate)]
+    comps += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
+    comps += [(f"chassis_light_{i}", lt) for i, lt in enumerate(chassis_light)]
+    comps += _pickup_mount_components()
+    comps += _electronics_components()
+    comps += _ctrl_bus_components()
+    comps += _wrap_rod_component()
+    for i in range(D.N_STRINGS):
+        comps.extend(_string_components(i))
+    return comps
 
 
 def collect_components():
