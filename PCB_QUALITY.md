@@ -395,6 +395,12 @@ reports the worst place and how many places fail. Copper-to-edge and track-to-tr
 spacing are left to DRC, whose loaded values the pipeline sets tighter than the fab's.
 A via drilled smaller than the fab's no-surcharge size is a note, so the order form is
 filled in to match.
+Outline-font (TrueType/OpenType) silk has no stroke width; each glyph is measured by
+eroding its outline. Where the face is thinner than the minimum at the board's size,
+`kicad_silk` lays an **ink bleed** (a filled rim `INK_BLEED`, 0.015 mm, round each text, in
+a group `silk_ink_bleed <mm>`) and A12 credits it — stroke + 2 × bleed — only on a board
+that carries the group. A board already ordered sets `silk_ink_bleed: 0` and waives the ink
+finding with the reason (it is soft), so re-finishing it reproduces what was sent.
 
 **How strict.** **Hard:** rings, holes, track width, pad gaps — the fab either makes it or
 does not, and a board outside the table comes back as an engineering query or a scrap

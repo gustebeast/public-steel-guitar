@@ -138,7 +138,9 @@ HARD = {
     "A6": ("are ONE net", "not 5.1 k", "resistors to ground on one CC"),
     "A10": ("cannot read the value",),
     "A11": ("",),
-    "A12": ("ring", "hole", "track width", "pad gap"),
+    # " ring", not "ring": the bare word matched "letteRING" in the outline-font ink
+    # finding and made it hard -- unwaivable even on a board already ordered.
+    "A12": (" ring", "hole", "track width", "pad gap"),
     "A13": ("",),
     "A17": ("nothing on its own side says which contact is way",
             "but gives no reason", "stale declaration"),
@@ -1449,14 +1451,23 @@ def fab_capability(ctx):
         decl = ctx.notes.get("silk_ink") or {}
         decl = {round(float(k), 3): float(v) for k, v in decl.items()}
         ink, cache = {}, {}             # size -> (thinnest ink mm, glyph, text, how)
+        # the labeller's INK BLEED (cadkit/kicad_silk.py): a group "silk_ink_bleed <mm>"
+        # of each text's ink grown by <mm> -- measured as printed, i.e. grown, and only
+        # when the board actually carries it
+        bleed = 0.0
+        for _g in b.Groups():
+            _w = _g.GetName().split(" ")
+            if _w[0] == "silk_ink_bleed" and len(_w) > 1 and len(list(_g.GetItems())):
+                bleed = float(_w[1])
         for t, n in outlined:
             size = round(MM(t.GetTextHeight()), 3)
             if size in decl:
                 ink[size] = (decl[size], "", n, "declared")
                 continue
-            w, g = _glyph_ink(pcbnew, b, t, cache)
+            w, g = _glyph_ink(pcbnew, b, t, cache, bleed)
             if w is not None and (size not in ink or w < ink[size][0]):
-                ink[size] = (w, g, n, "measured")
+                ink[size] = (w, g, n, "measured" + (" with %.3f bleed" % bleed
+                                                    if bleed else ""))
             ink.setdefault(size, None)
         unread = sorted(s for s, v in ink.items() if v is None)
         thin = sorted(s for s, v in ink.items()
@@ -2179,7 +2190,7 @@ def _names_net(word, net, aliases):
     return False
 
 
-def _glyph_ink(pcbnew, board, t, cache):
+def _glyph_ink(pcbnew, board, t, cache, bleed=0.0):
     """(thinnest ink mm, its glyph) of outline-font text `t`, or (None, None).
 
     Each distinct glyph is drawn alone in t's face, size and style, its ink taken as a
@@ -2221,7 +2232,7 @@ def _glyph_ink(pcbnew, board, t, cache):
         if ch.isspace():
             continue
         key = (t.GetFontName(), t.GetTextWidth(), t.GetTextHeight(), t.IsBold(),
-               t.IsItalic(), ch)
+               t.IsItalic(), ch, bleed)
         if key not in cache:
             try:
                 g = pcbnew.PCB_TEXT(board)
@@ -2231,7 +2242,12 @@ def _glyph_ink(pcbnew, board, t, cache):
                 ps = pcbnew.SHAPE_POLY_SET()
                 g.TransformTextToPolySet(ps, 0, err, pcbnew.ERROR_INSIDE)
                 ps.Simplify()
-                cache[key] = thinnest(ps)
+                # a bleed adds 2 x bleed to every STROKE. Measured on the unbled glyph
+                # and added, not by eroding the bled one: growing a glyph closes its
+                # hairline gaps ('9' at 1.5: tail onto bowl), and the bridge that makes
+                # reads as 0.043 mm "ink" that is no stroke of the letter.
+                w0 = thinnest(ps)
+                cache[key] = None if w0 is None else w0 + 2.0 * bleed
             except Exception:           # noqa: BLE001
                 cache[key] = None
         w = cache[key]
