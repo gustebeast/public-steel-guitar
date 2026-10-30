@@ -140,6 +140,7 @@ from . import chassis as CH
 from . import top_plate as TP
 from .helpers import box_at, cyl
 from cadkit.fasteners import M4
+from cadkit.holes import house_hole
 from cadkit.pcb import PCB_T as _PCB_T
 
 # ── where it sits ────────────────────────────────────────────────────────────
@@ -3951,6 +3952,8 @@ PWR_Z_BAY = -18.5                       # ...and its height over the bay: 1.0 ov
 # conduit (the pair's top is PWR_Z_TURN + 1.9) and the deck's underside at z 0: 0.2 off
 # each, which is all 10.8 mm of ribbon leaves.
 RIBBON_Z = PWR_Z_TURN + 1.9 + 0.2 + RIBBON_W / 2.0        # -5.6
+FOOT_ROOF_Z = CH.KH_DT_Z0                # the board recess's roof, which the cable hole opens into
+USBC_MATE_L = 6.65                      # the plug's stroke: a USB-C tongue's length
 USB_J4_JOG = 5.0                        # the ribbon's step -X over J4's boot, to rise
                                         # outside the J7 pair's loop
 USB_BACK_DY = 6.0                       # the doubled-back slack's leg, +Y of the run
@@ -3967,6 +3970,44 @@ def usb_face_y() -> float:
     if OPTICAL_REV == 1:
         return PCB_YM
     return usb_notch()[3] - 0.5 - 0.45
+
+
+# THE CABLE HOLE (user, 2026-10-30: "drill a house shape hole that is printable and can fit both
+# the USB C cable head and the JST. The slit you have cut now reduces the endplate strength
+# considerably and gives more room than we need for the cable"). On R2 it replaces the conduit,
+# the 24 V slot, the notch's cut and the retention lip's trim: one closed shaft from under J1's
+# notch down into the board's recess, which is open to the bay at the -X face. Its roof points
+# along the build (-X), so it prints without support, and the -X face and the lip stay whole.
+# Sized on the one plug that has to pass it, the XHP-4 (12.4 x 5.75) over the USB head (12.2 x
+# 5.2), plus a fit, up to whole beads. The 24 V lead goes through FIRST, so each plug has the
+# hole to itself but for that pair (2 x O1.3), and the USB head passing it sets the depth.
+CABLE_HOLE_FIT = 0.3
+CABLE_HOLE_L = math.ceil((max(_XH4_W, USBC_ANG_W) + 2 * CABLE_HOLE_FIT) / D.BEAD - 1e-9) * D.BEAD
+CABLE_HOLE_D = (math.ceil((max(_XH4_D, USBC_ANG_D + 1.3) + 2 * CABLE_HOLE_FIT) / D.BEAD - 1e-9)
+                * D.BEAD)                   # 7.2: the USB head beside the pair (O1.3) sets this
+
+
+def _cable_house(y0, y1, z0, z1):
+    """A house section in plan, y0..y1 wide, CABLE_HOLE_L of straight wall with its +X end on
+    J1's centre + L/2 and its roof beyond them toward the build, z0..z1."""
+    d = y1 - y0
+    return house_hole(d, z1 - z0, axis_point=(part("J1")["x"] + CABLE_HOLE_L / 2.0 - d / 2.0,
+                                              (y0 + y1) / 2.0, z0),
+                      axis_dir=(0.0, 0.0, 1.0), print_up=(-1.0, 0.0, 0.0), wall=CABLE_HOLE_L)
+
+
+def opt_cable_hole() -> cq.Workplane:
+    """R2's cable passage through the endplate (see CABLE_HOLE_FIT): the shaft, and over it the
+    pocket J1's plug needs: its head and boot hang below the board, and they back off -Y by the
+    plug's whole mating stroke to come out."""
+    ny1 = usb_notch()[3]
+    y1 = min(usb_face_y() - USBC_ANG_D / 2.0 + CABLE_HOLE_D / 2.0, ny1)
+    z_top = PLINTH_TOP + 1.0
+    shaft = _cable_house(y1 - CABLE_HOLE_D, y1, FOOT_ROOF_Z - 1.0, z_top)
+    p = part("J1")
+    zb = (PCB_TOP + PKG[p["pkg"]][2] / 2) - USBC_ANG_BODY / 2.0 - USBC_ANG_BOOT     # boot's foot
+    y_out = usb_face_y() - USBC_ANG_D - USBC_MATE_L - CABLE_HOLE_FIT
+    return shaft.union(_cable_house(y_out, y1, zb - CABLE_HOLE_FIT, z_top))
 
 
 def opt_usb_notch() -> cq.Workplane:
