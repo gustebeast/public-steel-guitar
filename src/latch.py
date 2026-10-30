@@ -286,8 +286,6 @@ SLIDER_UP = (1.0, 0.0, 0.0)       # the slider's build direction. leg_stack.PRIN
                                   # leg_stack without a cycle
 SPR_BORE_D = SPR_OD + 0.4         # 5.4 pocket in the slider
 SPR_ID = SPR_OD - 2 * SPR_WIRE    # 3.8 coil bore
-POST_D = SPR_ID - 0.8             # 3.0 guide post (0.4 radial clearance in the coil)
-POST_L = 6 * B                    # 4.8 post length off the tunnel's back wall
 SPR_SEAT = 10 * B                 # 8.0 blind-bore depth in the slider, up from
                                   # 6.4. Installed length is SPR_GAP + SPR_SEAT
                                   # and it has to clear SPR_SOLID + 0.5 at full
@@ -365,16 +363,6 @@ def _yz(dx, y0, y1, z0, z1, x):
 # ═══════════════════════════════════════════════════════════════════════════
 # MALE cutters (leg head / bar tower)
 # ═══════════════════════════════════════════════════════════════════════════
-def male_cutter(cx: float = LX_C) -> cq.Workplane:
-    """What the MALE half loses: the slider TUNNEL -- which also takes the
-    octagon's +Y shoulder away across the band, opening the void the hook
-    travels in -- plus the cover's dovetail. One cutter, so the head and the
-    tower cannot drift apart."""
-    up = _yz(LX_W + 2 * CLR, FACE_Y, BACK_Y, 0.0, BODY_Z1, cx)     # in the spigot
-    low = _yz(LOW_W + 2 * CLR, FACE_Y, BACK_Y, LOAD_Z, 0.0, cx)    # in the body
-    return up.union(low).union(_cover_slot(cx))
-
-
 SLOT_W = LOW_W + 2 * FLARE        # 16.0 slot mouth (the cover's outer width)
 # THE COVER'S X RUN. It enters at the head's +X face and slides -X until it butts
 # the solid head beyond the load window -- that butt IS the insertion stop, so no
@@ -403,23 +391,6 @@ LOCK_T = 2 * B                    # 1.6 into the cover's THICKNESS. The cover is
 LOCK_Z0 = LOAD_Z - 3 * B          # -14.4 the segment plug's top face
 LOCK_Z1 = LOAD_Z + 5 * B          # -8.0 how far it reaches INTO the cover, up
                                   # where the cover is at full thickness
-
-
-def cover_lock_tenon() -> cq.Workplane:
-    """The segment's lock post, in the COVER's frame. legs._segment places it."""
-    return _yz(LOCK_W, COVER_IN + LOCK_T, COVER_IN, LOCK_Z0, LOCK_Z1, 0.0)
-
-
-def cover_lock_way() -> cq.Workplane:
-    """The post's path THROUGH the head. The section socket tops out 1.6 mm
-    below the cover, so that last sliver of head material stands between the
-    plug's top face and the cover's underside -- the post cannot reach without
-    it (9.2 mm^3 of interference, measured). Runs the post's FULL height, not
-    just to the cover's underside: the dovetail's 45 deg flank leaves head
-    material just above LOAD_Z at this y, which stopped the post again (1.5
-    mm^3). Cut in leg_head."""
-    return _yz(LOCK_W + 2 * CLR, COVER_IN + LOCK_T + CLR, COVER_IN - CLR,
-               LOCK_Z0 - 1.0, LOCK_Z1, 0.0)
 
 
 def _cover_lock_pocket() -> cq.Workplane:
@@ -455,15 +426,6 @@ def _cover_slot(cx: float = LX_C) -> cq.Workplane:
             .extrude(COVER_X1 - COVER_X0)
             .translate((COVER_X0, 0, 0)))
     return cq.Workplane("XY").add(prof.val())
-
-
-def male_post(cx: float = LX_C) -> cq.Workplane:
-    """GUIDE POST for the coil, standing off the tunnel's back wall into the
-    spring's ID -- the project's coil pattern (the knee-lever cartridge pilots
-    its coil ID rather than cupping the end). Without it the coil is located at
-    ONE end only. It also reaches past the slider's back face, so it pilots the
-    slider against tilt."""
-    return cyl_y(POST_D, POST_L, y0=BACK_Y, x=cx, z=(PAD_Z0 + PAD_Z1) / 2)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -633,10 +595,6 @@ def _assert_spring():
     assert abs(SPR_TURNS * SPR_WIRE - SPR_SOLID) < 1e-6, "solid height must be turns*wire"
     assert spring_length(True) > SPR_SOLID + 0.5, "coil binds before the button bottoms"
     assert SPR_OD + 0.4 <= SPR_BORE_D + 1e-9, "coil does not clear its bore"
-    assert POST_D < SPR_ID - 0.4, "guide post binds inside the coil"
-    # the post must never reach the slider's bore floor, closest at full press
-    floor_pressed = BACK_Y + SPR_GAP + SPR_SEAT - STROKE
-    assert BACK_Y + POST_L < floor_pressed - 1.0, "guide post bottoms in the slider's bore"
 
 
 _assert_spring()

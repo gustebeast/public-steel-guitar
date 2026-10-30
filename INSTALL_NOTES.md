@@ -258,16 +258,11 @@ on the instrument the 2.5 mm key does not do (see BOM, Tools).
   the M4 x 10 in through the ear. Dropped in flat it will not go; out, it comes ear-first.
   The lip is what stops the board's far end lifting off the motor (coupon, user 2026-10-20).
 
-## Motors: cut each shaft to length BEFORE its pulley goes on (2026-10-29) -- HELD, DO NOT CUT YET
-
-**HELD (lead, 2026-10-29).** The motors still stand at the 17.2 standoff, where the shaft as bought fits
-and nothing needs cutting. The 15.6 cut belongs to the 12.0 standoff (branch `branner-standoff12`),
-which waits on the foot-LED boards and the output board being re-placed. Cutting a shaft is
-irreversible: do not cut until that lands and this note loses its HELD mark.
+## Motors: cut each shaft to length BEFORE its pulley goes on (2026-10-29)
 
 The SERVO42D's shaft comes 21.5 mm long off the faceplate. The instrument uses it only to the
-pulley's outer face (`components.MOTOR_SHAFT_CUT_L`: 15.6 at the 12.0 standoff), and the motors sit closer to their
-belts for it. Cut every motor once, on the bench, with the printed jig
+pulley's outer face (`components.MOTOR_SHAFT_CUT_L`, 11.5: the end of the flat plus the 8 mm
+pulley), and the motors sit closer to their belts for it. Cut every motor once, on the bench, with the printed jig
 (`tools/motor_shaft_saw_jig.step`), one Quick-Grip and the 6927A16 hacksaw blade. It works like
 the leadscrew saw jig, with no cap: the motor is square, so the clamp's soft pad goes straight on
 it. Nothing screws into the motor.
@@ -286,7 +281,8 @@ it. Nothing screws into the motor.
 6. Before unclamping, pick every filing off the slot, the cradle and the stub's end with a
    magnet, and off the faceplate round the boss -- the jig no longer covers it.
 7. Undo the clamp, lift the motor out.
-8. File the cut end back to `MOTOR_SHAFT_CUT_L` and square, then add a small 45° chamfer all round, so the
+8. File the cut end back to `MOTOR_SHAFT_CUT_L` (11.5) and square -- once the pulley is on, the end is
+   flush with the pulley's outer face -- then add a small 45° chamfer all round, so the
    pulley's bore starts on it without shaving plastic. Wipe the stub and check the faceplate
    round the boss for filings.
 9. Drop in the next motor (step 2). The jig stays where it is; only the clamp comes off.
@@ -295,10 +291,12 @@ it. Nothing screws into the motor.
 
 * The pulley's bore is a D the whole way through: line its flat up with the shaft's flat and
   push it on until it stops. It stops where the shaft's flat ends and the round part starts,
-  and that is its place -- no shim, no gauge. The cut shaft's end then sits about 0.4 inside
-  the pulley's outer face.
+  and that is its place -- no shim, no gauge. The cut shaft's end is then flush with the
+  pulley's outer face; if it stands proud, file it flush.
+* The pulley is symmetric (a sharp 45° flange each side, no hub), so it goes on either way
+  round -- only the D has to line up.
 * It seats where the flat starts, 3.5 mm off the faceplate (the bought shaft's flat is 18 mm
-  of its 21.5, dimensions.MOTOR_SHAFT_FLAT_L), 1.5 short of the motor's boss. If a motor's flat differs, the pulley's place moves
+  of its 21.5, dimensions.MOTOR_SHAFT_FLAT_L), its sharp flange edge 1.5 off the motor's boss. If a motor's flat differs, the pulley's place moves
   with it: measure it and the pulley gets re-drawn.
 
 ## Motor tees: ONE switch ON, nine OFF
@@ -1090,7 +1088,7 @@ Coming apart: clamp off, board off its posts, then release J1's actuator before 
 the cable. Molex rate the module's socket for 30 insertions, so take the cable out of
 the module only when the module itself is being replaced.
 
-## The motor controller drops in from above; the -X/-Y leg is its floor (2026-10-29)
+## The motor controller drops in from above and lands on a post under J3 (2026-10-29)
 
 The motor board slides straight down (+Z to -Z) into its guides behind string 1's motor:
 - a channel takes its -Y edge (the edge away from the motor);
@@ -1101,10 +1099,9 @@ Nothing is screwed. The keyhead deck panel's rib, 0.3 above the board's top edge
 lifting, so **seat the board before that panel goes on**. Sight down both faces as it drops:
 nothing on the board should touch a guide on the way in.
 
-**Its -Z stop is the -X/-Y leg's body adapter, not the chassis.** The board's bottom edge sits
-0.34 above the underside (so J2/J6 can be squeezed from below), and with that leg fitted, the
-adapter's top face is what it rests on. With the leg off, nothing stops the board from dropping
-toward the floor port except its cables and the plugs resting on the table. So:
-- **fit the -X/-Y leg before standing the instrument upright with the deck on**;
-- **never carry it legs-off with the deck on** unless the controller is unplugged and secured
-  (tape it to the guides, or lift it out).
+**It comes to rest on a printed post under J3** (the 6-way white header, the 24 V link to
+the output board): the housing sits on the post's top. Its bottom edge then hangs 0.34 above
+the underside, so J2/J6 can be squeezed from below. The post stands under the header only, so
+J3's lead can be plugged in before the board goes down or after. It holds with the legs on or
+off. (It used to rest on the -X/-Y leg's adapter; the 7.5 pulley standoff moved the
+board off it.)

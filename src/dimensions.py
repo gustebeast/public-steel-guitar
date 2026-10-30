@@ -707,14 +707,23 @@ MOTOR_HEIGHT_MEASURED = 51.1    # lowest flat (the cover's) -> top of the coil l
 # THE PULLEY'S STANDOFF OFF THE MOTOR FACEPLATE, and the motors' Y with it (each motor's
 # faceplate sits this far -Y of its belt plane's pulley). The single source: components,
 # motor_bank, MCTRL_Y1 and PI_PLUG_Y0 all read it.
-# 14.0 + 3.2: the motors stand 4 beads back (user, 2026-10-28: "go ahead and move the
-# motors"), because the shaft as bought stands 21.5 off the face and the next string's belt
-# clamp comes to 19.45 of it over full travel. Cutting the shaft and bringing them to 12.0
-# (branch branner-standoff12, with the saw jig) is HELD (lead, 2026-10-29): 5.2 further +Y
-# drives string 1's faceplate wall into the routed foot-LED boards (foot_light, 24.15 wide
-# between it and the +Y rail) and, on the -Y side, the output board into string 10's screw
-# pulley. It needs those boards re-placed first.
-MOTOR_PULLEY_STANDOFF = 14.0 + 4 * BEAD        # 17.2
+# DERIVED, NOT TYPED (user, 2026-10-29: "the pulley positioned on the shaft such that the belt
+# has a small but sufficient clearance from the motor plate boss ... The D flat plus the sharp
+# flange is a good clearance amount"). The pulley's -Y face sits exactly where the shaft's D
+# flat begins, so the D key's stop IS its seat, and the pulley is symmetric (two sharp 45 deg
+# flanges, no hub; components.motor_pulley). That puts the -Y flange's sharp edge 1.5 off the
+# 2.0 pilot boss and the belt's edge 3.0 off it.
+#   history: 14.0 + a 3.2 setback = 17.2 while the shaft stood 21.5 as bought; 12.0 once it was
+#   cut (user, earlier the same day); now this. The shaft is cut flush with the pulley's +Y
+#   face (components.MOTOR_SHAFT_CUT_L) with the saw jig.
+# The R1 foot-LED boards this squeezes against the +Y rail are DEFERRED (user,
+# tools/check_overlaps DEFERRED_RULES; rev-2 boards narrower); the output board is not, so
+# motor_bank.RAIL_BACK_CLR's output-board term holds the -Y rail where that board allows.
+MOTOR_PILOT_H = 2.0             # the faceplate's Ø22 pilot boss, proud of the face
+MOTOR_SHAFT_PROUD = 19.5        # out of the pilot boss
+MOTOR_SHAFT_FLAT_L = 18.0       # measured, from the tip
+MOTOR_PULLEY_STANDOFF = ((MOTOR_PILOT_H + MOTOR_SHAFT_PROUD - MOTOR_SHAFT_FLAT_L)
+                         + PULLEY_W / 2)       # 3.5 + 4.0 = 7.5
 # THE -Y RAIL'S INNER FACE IS STRING 10's MOTOR BACK LESS TWO BEADS (user, 2026-10-29: make
 # the instrument narrower; "leave a little clearance at the motor for installing it, but we
 # don't need much"). It was a 70 mm motor reserve plus a 4.8 gap for string 10's pigtail to
@@ -764,8 +773,7 @@ MOTOR_SHAFT_D   = 5.0
 # round (user, measured 2026-10-28; 15 had been assumed) -- 1.5 short of the boss. The
 # pulley's D stops where it ends, so this length IS the pulley's seat.
 MOTOR_SHAFT_FLAT = 4.5          # across the flat (the D's short dimension)
-MOTOR_SHAFT_PROUD = 19.5        # out of the pilot boss
-MOTOR_SHAFT_FLAT_L = 18.0       # measured, from the tip
+# (MOTOR_SHAFT_PROUD and MOTOR_SHAFT_FLAT_L are with MOTOR_PULLEY_STANDOFF, which derives from them)
 NEMA17_BOLT_SQ  = 31.0
 NEMA17_PILOT_D  = 22.0
 
@@ -810,20 +818,22 @@ MOTOR_X0        = (-(KEYHEAD_INBOARD_X + MOTOR_END_CLR + MOTOR_SQ / 2)
 # cannot import electronics need it: the chassis (the board's floor port), motor_bank (string
 # 1's back stop IS the board's +Y wall) and wiring. build.py asserts all of it against the
 # placed board.
-#   Y1  the board's +Y edge: string 1's motor back less MOTOR_CLR -- NO WALL BETWEEN THEM any
-#       more (user, 2026-10-29: "drop that and move the board so it sits flush against the
-#       motor"). It bought the bus-B plugs 1.9 more room from the -X/-Y leg. String 1's motor
-#       is stopped by a short back wall +X of the board instead (motor_bank.back_wall_x0), so
-#       the PCB is never the stop.
+#   Y1  the board's +Y edge: string 1's motor back less MOTOR_CLR -- NO WALL BETWEEN THEM
+#       (user, 2026-10-29: "drop that and move the board so it sits flush against the motor";
+#       and again at the 7.5 standoff: "the further +y the better so we want to go to its
+#       extent"). String 1's motor is stopped by a short back wall +X of the board instead
+#       (motor_bank.back_wall_x0), so the PCB is never the stop. The board follows the motors,
+#       the -Y rail does not, so the -X/-Y body adapter is no longer under it: its -Z stop is
+#       mctrl_retention's ledge under J1.
 #   Y0  ...less the board's routed length.
 #   X   the standing board with its mated plugs, in world X.
 #   DIP how far its bottom edge hangs below the floor's underside (its bus-B plugs are
 #       reached from outside), before the plugs.
 MCTRL_FIT       = 0.3            # board to printed pocket (electronics.CRADLE_CLR)
 MCTRL_Y1        = (string_y(0) - MOTOR_PULLEY_STANDOFF - MOTOR_BODY_L
-                   - MOTOR_CLR)   # -28.05: behind string 1's motor
+                   - MOTOR_CLR)   # -18.35: behind string 1's motor
 MCTRL_L         = 55.0           # routed outline, along Y
-MCTRL_Y0        = MCTRL_Y1 - MCTRL_L                                                         # -83.05
+MCTRL_Y0        = MCTRL_Y1 - MCTRL_L                                                         # -73.35
 MCTRL_X         = (-606.5, -591.7)
 MCTRL_PORT_CLR  = 0.5            # round whatever of the board enters the floor
 MCTRL_DIP       = 2.0

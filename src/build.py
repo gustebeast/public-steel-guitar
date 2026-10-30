@@ -329,19 +329,17 @@ assert len(chassis_segments[_mcr_seg[0]].val().Solids()) == 1, (
 _mcr_hit = _MCR.swept_clear()
 assert _mcr_hit < 1e-3, (
     "%.3f mm3 of the motor controller passes through its own guides on the way in" % _mcr_hit)
-# ⚠ ITS -Z STOP IS THE -X/-Y BODY ADAPTER (see mctrl_retention): the laminate's bottom edge
-# is 0.34 over the underside, too little for a ledge, and the adapter's top face lies under
-# its -Y end. Probe the ADAPTER'S SOLID there, not its bbox -- a chamfer would read as a stop.
-_mcl = _EL_ports.mctrl_capture_target()
-_mc_zb = _mcl[4] - _EL_ports.MCTRL_BOARD_X
-_mc_probe = box_at(_mcl[1] - _mcl[0], _mcl[3] - _mcl[2], 0.5,
-                   x=(_mcl[0] + _mcl[1]) / 2.0, y=(_mcl[2] + _mcl[3]) / 2.0,
-                   z=CH.Z_BOT - 0.25)
-_mc_under = _LS_PLUG.body_adapter(CH.LEG_STATIONS_X[1], CH.LEG_Y[1]).intersect(_mc_probe)
-_mc_stop = _mc_under.val().BoundingBox().ylen if _mc_under.solids().size() else 0.0
-assert _mc_stop >= D.MIN_WALL and _mc_zb - CH.Z_BOT <= 2 * D.MCTRL_FIT, (
-    "the motor controller has no -Z stop: the -X/-Y body adapter lies under %.2f of its "
-    "laminate (want >= %.2f) at %.2f below it" % (_mc_stop, D.MIN_WALL, _mc_zb - CH.Z_BOT))
+# ITS -Z STOP IS THE LEDGE UNDER J3 (see mctrl_retention). Probe the BUILT segment just under
+# the housing, not the ledge's box: the floor port or a later cut could take the post away.
+_mch = _MCR.ledge_target()
+_mcl0 = _MCR._ledge()
+_mc_probe = box_at(_mcl0[1] - _mcl0[0], _mcl0[3] - _mcl0[2], 0.2,
+                   x=(_mcl0[0] + _mcl0[1]) / 2.0, y=(_mcl0[2] + _mcl0[3]) / 2.0, z=_mch[4] - 0.1)
+_mc_stop = chassis_segments[_mcr_seg[0]].intersect(_mc_probe)
+_mc_stop = _mc_stop.val().Volume() if _mc_stop.solids().size() else 0.0
+assert _mc_stop >= 0.9 * _mc_probe.val().Volume(), (
+    "the motor controller has no -Z stop: the ledge under %s is %.2f mm3 of %.2f just under "
+    "its housing" % (_MCR.LEDGE_REF, _mc_stop, _mc_probe.val().Volume()))
 # ⚠ AND THE FLAT PI'S ANCHOR, WHICH MUST BE CUT HERE AND NOT IN THE CRADLE. pcb_cradle bores
 # its own boss, but that boss is EMBEDDED in the floor slab -- the M4 needs anchor_min_wall
 # below the board's underside, which is deeper than the standoff -- so the floor's own
@@ -1041,20 +1039,29 @@ CLAMP_RELIEF_CLR = 0.5
 CLAMP_RELIEF_STATIONS = 80
 
 
-def _clamp_relief(ep):
+def _clamp_relief(ep, roofed=False):
     """Boxes round every belt clamp's travel where it meets the endplate solid `ep` -- the
     clamp AS BUILT (belt_tensioner.clamp_components at that string's belt gap: both halves,
-    the screw and the insert)."""
+    the screw and the insert).
+
+    `roofed` is for a solid that prints +Z and stands -Y of the clamp (the chassis' faceplate
+    walls): each box runs on +Y out past the clamp's own swept reach, so it leaves no sliver
+    between, and a 45 deg roof on it rising +Y, so the wall left over it prints."""
     eb = ep.val().BoundingBox()
     out, g = None, CLAMP_RELIEF_CLR
     for i in range(D.N_STRINGS):
-        parts = [w.val() for _n, w in BTn.clamp_components(belt_cut(i)[1])]
+        # at this string's own belt gap AND at the default one, which is how
+        # check_carriage_travel poses it -- the relief must satisfy the gate that checks it
+        parts = ([w.val() for _n, w in BTn.clamp_components(belt_cut(i)[1])]
+                 + ([w.val() for _n, w in BTn.clamp_components()] if roofed else []))
         lo, hi = None, None              # ONE box per string over every station: a union of
-        for k in range(CLAMP_RELIEF_STATIONS + 1):   # per-station boxes leaves 0.01 mm2 stairs
+        reach_y = None                   # per-station boxes leaves 0.01 mm2 stairs
+        for k in range(CLAMP_RELIEF_STATIONS + 1):
             loc = clamp_location(i, D.CARRIAGE_TRAVEL * k / CLAMP_RELIEF_STATIONS)
             for h in parts:
                 hb = h.moved(loc)
                 bb = hb.BoundingBox()
+                reach_y = bb.ymax if reach_y is None else max(reach_y, bb.ymax)
                 if (bb.xmax < eb.xmin or bb.xmin > eb.xmax or bb.ymax < eb.ymin
                         or bb.ymin > eb.ymax or bb.zmax < eb.zmin or bb.zmin > eb.zmax):
                     continue
@@ -1067,8 +1074,15 @@ def _clamp_relief(ep):
                 hi = p1 if hi is None else tuple(map(max, hi, p1))
         if lo is None:
             continue
+        if roofed:
+            hi = (hi[0], reach_y, hi[2])
         bx = box_at(*(h - l + 2 * g for l, h in zip(lo, hi)),
                     *((l + h) / 2 for l, h in zip(lo, hi)))
+        if roofed:
+            y0, y1, zt = lo[1] - g, hi[1] + g, hi[2] + g
+            bx = bx.union(cq.Workplane("YZ").polyline([(y0, zt - 0.01), (y1, zt - 0.01),
+                                                       (y1, zt + y1 - y0)]).close()
+                          .extrude(hi[0] - lo[0] + 2 * g).translate((lo[0] - g, 0, 0)))
         out = bx if out is None else out.union(bx)
     return out
 
@@ -1102,6 +1116,26 @@ if _ep_relief is not None:
         "the belt clamps' travel relief cut the bridge endplate in two")
     BE.bridge_endplate = bridge_endplate
     PARTS["bridge_endplate"] = (partial(heal, bridge_endplate), *PARTS["bridge_endplate"][1:])
+
+# ⚠ ...AND OUT OF THE CHASSIS' FACEPLATE WALLS (2026-10-29). At the 7.5 standoff (the pulley
+# on the shaft's D, user) each motor's faceplate is 3.45 off its own clamp's -Y side, and the
+# 6.4 wall it sits against reached 2.2 into the clamp at every odd string (~115 mm3 each, and
+# the screws and inserts over the travel). The wall keeps its motor side -- what the faceplate
+# bears on -- and gives the clamp's lane up, roofed at 45 deg so what stands over it prints.
+for _csi, _seg in enumerate(chassis_segments):
+    _cr = _clamp_relief(_seg, roofed=True)
+    if _cr is None:
+        continue
+    _crb = _cr.val().BoundingBox()
+    assert CH.RAIL_INNER_Y < _crb.ymin and _crb.ymax < CH.Y_HI - CH.T / 2, (
+        "a belt clamp's relief reaches a side rail (y %.2f..%.2f): the rails are never cut"
+        % (_crb.ymin, _crb.ymax))
+    _n0 = len(_seg.val().Solids())
+    chassis_segments[_csi] = _seg.cut(_cr)
+    assert len(chassis_segments[_csi].val().Solids()) == _n0, (
+        "the belt clamps' travel relief cut chassis_%d apart" % _csi)
+    PARTS[f"chassis_{_csi}"] = (partial(heal, chassis_segments[_csi]),
+                                *PARTS[f"chassis_{_csi}"][1:])
 
 
 def belts_as_played():
