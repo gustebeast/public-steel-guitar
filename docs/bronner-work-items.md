@@ -192,6 +192,14 @@ diagnostics).** The brick enters at J6, so one sense at the inlet sees the whole
 - Uses: logged amps and volts, read remotely; bring-up's per-motor current; the power governor's
   real total, including a stall or a USB device firmware could not predict.
 
+**Power governor, firmware, NOT BUILT (priority decided by the user, 2026-10-30).** The brick's
+6.67 A is shared in this order: (1) Pi, boards, audio, always; (2) motors, under a hard cap on
+simultaneous movers, others wait ms; (3) J1, not throttleable, 0.35 A reserved while a device is
+attached; (4) lights take what is left, scaled instantly and dimmed BEFORE motors start. Nothing
+enforces this today. Lights must fail safe if the Pi hangs. Cap set from a hiccup-finding test
+under string load (one motor on a multimeter, then 2, 3, 4 movers with lights full, margin below
+the trip). 0.8 A per mover stays unmeasured until then. Confirm SERVO42D's working-current setting.
+
 **R2-3. J8 (the pickup's screw terminal) takes the SLOTTED screw: one screwdriver for the instrument.** Rev 1 is MX126-5.0-02P-GN01-Cu-**S**-A, M2.5 cross head; the SERVO42D motor terminals are slotted (2.0-2.5 mm flat blade). The same MX126 body is ordered with a slotted screw by the code letter **Y** (maker's ordering code: Y slotted, S cross, PS flat cross), so R2 orders MX126-5.0-02P-GN01-Cu-**Y**-A and one 2.5 x 0.4 mm flat blade drives both. Check before committing: that exact Y part is stocked at LCSC (the MX127 Y variant was, C-number not yet confirmed for MX126), and the same footprint and drawing. Confirm on the rev 1 boards that J8's head really is cross. src/screw_terminal.py SCREW changes with it (user, 2026-10-20).
 
 **R2-2. Panel USB-C J1 becomes DUAL-ROLE, auto-detected, still ONE port.** User rule: no second
