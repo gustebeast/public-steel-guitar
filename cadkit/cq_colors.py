@@ -11,7 +11,7 @@ hand. This wraps all of those into a `cq.Color` so build scripts can stay terse:
     assy.add(rail,     name="rail",     color=color("slategray"))
 
 Colours baked this way are written into the STEP file, so they show up in any
-STEP viewer (FreeCAD, KiCad, online viewers, ...), not just our viewer.
+STEP viewer (KiCad, online viewers, ...), not just our viewer.
 """
 
 import cadquery as cq

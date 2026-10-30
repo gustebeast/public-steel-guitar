@@ -1,8 +1,8 @@
 """Shared STEP exporter for CadQuery 3D-printing projects.
 
 A bare ``cq.exporters.export(obj, "housing.step")`` names the STEP *product*
-"Open CASCADE STEP translator 7.8 …", so slicers and viewers (Bambu Studio,
-FreeCAD) show that instead of "housing". This helper exports normally, then
+"Open CASCADE STEP translator 7.8 …", so slicers and viewers (Bambu Studio)
+show that instead of "housing". This helper exports normally, then
 rewrites the product name to match the file stem — giving a single, correctly
 named product that every viewer reads, with no extra wrapper assembly.
 

@@ -69,6 +69,7 @@ import cadquery as cq
 
 from . import dimensions as D
 from .helpers import box_at, cyl_y
+from cadkit.fitted_joint import LAYER
 from cadkit.holes import teardrop_hole
 
 PRINT_UP = (1.0, 0.0, 0.0)                      # build axis: the -X face is the bed
@@ -497,24 +498,26 @@ INS_DROP  = math.ceil(_DROP_NEED / D.BEAD) * D.BEAD          # 3.2, on the grid
 INS_H     = 5 * D.BEAD                          # 4.0 of body below the flat
 DIVOT_OFF = ROD_D / 2 - PIN_D / 2 - ROD_Z       # 11.59, cradle centre ABOVE the flat
 DIVOT_D   = PIN_D + 0.3                         # 4.3, the dowel's cradle
-# THE CRADLE'S +X LIP (user). The seat runs 180 deg, from -135 (the printable -X flank) round
-# the bottom to +45 here, or short of +45 if the string says so. Everything off the dowel's
+# THE CRADLE'S +X LIP (user): A SQUARE SHELF, TWO LAYERS ON THE BED. Everything off the dowel's
 # crown is the same for every gauge: the crown is the string's underside, and the flat, so the
-# insert, moves with the gauge. LIP_STRING_CLR is the air left under the string with the
-# dowel seated, which is DIVOT_D/2 - PIN_D/2 below the centre of the cut.
+# insert, moves with the gauge. LIP_STRING_CLR is the air left under the string with the dowel
+# seated, which is DIVOT_D/2 - PIN_D/2 below the centre of the cut.
+#
+# The first lip ran the arc on round to +45 and failed: past a point its layers were a strip
+# thinner than a bead. A shelf's last layer is what sets it, its width being LIP_H less the
+# arc's height at that layer, and at three layers (x 1.75) the arc has climbed to 1.25, leaving
+# 0.30: that same failure. Two layers end at the cradle's +X extreme, where the arc is at
+# height 0 and the whole of LIP_H is the layer's width. So the arc stops at 0 deg and the shelf
+# carries the wall straight up from there, tangent, for LIP_H. The seat is 135 deg of arc plus
+# that wall, the dowel held on +X above and below its centre. The 90 deg corner is fine: only
+# a bead's own radius limits it (user).
 LIP_STRING_CLR = 0.3
 _CROWN_SEATED = PIN_D / 2 - (DIVOT_D / 2 - PIN_D / 2)   # 1.85 over the centre of the cut
-LIP_H = min(DIVOT_D / 2 * math.sin(math.radians(45.0)), _CROWN_SEATED - LIP_STRING_CLR)
-# THE LIP'S TIP IS ROUND, BECAUSE THAT IS WHAT PRINTS (user, off the first print: "a sharp corner
-# that can't be replicated by the slicer"). Sharp, arc and top met at 45 deg in a fin no bead fits
-# in. It is a layer-made corner (the print's X is in its plane), whose least is one bead
-# (fit-finder results), tangent to the cradle's arc and the lip's top. The seat's arc therefore
-# ends at _LIP_SEAT_DEG, +14, and the nose stands on above it.
-LIP_R = 1 * D.BEAD
-_LIP_CZ = LIP_H - LIP_R                                 # over the centre of the cut
-_LIP_CX = math.sqrt((DIVOT_D / 2 + LIP_R) ** 2 - _LIP_CZ ** 2)   # off DOWEL_X
-_LIP_SEAT_DEG = math.degrees(math.atan2(_LIP_CZ, _LIP_CX))
-assert _LIP_CX < X_FRONT - DOWEL_X, "the lip's nose has run off its +X face"
+LIP_H = _CROWN_SEATED - LIP_STRING_CLR                  # 1.55, the shelf's width in the print
+LIP_LAYERS = 2
+assert abs(X_FRONT - (DOWEL_X + DIVOT_D / 2) - LIP_LAYERS * LAYER) < 1e-9, (
+    "the lip is not whole layers tall: it stands off the bed from the cradle's +X extreme")
+assert LIP_H >= D.BEAD, "the shelf's layers are under a bead wide"
 # The insert reaches from just past the dowel back under the rod, so the flat spans both
 # the cradle and the clamp area. It stops short of the trough's -X wall.
 INS_X1    = X_FRONT                             # FLUSH with the block's +X face: the
@@ -961,42 +964,24 @@ def slide_insert(i: int) -> cq.Workplane:
     # ceiling with the part printing -X up, and at Ø4.3 that stopped being a corner a
     # slicer gets away with. So the seat is turned 45 deg about the dowel, which does not
     # move: -X it stops at -135, which is where the teardrop's flank (the same cut as the
-    # axle's, apex print-up) leaves the circle, and the lip below makes up the 180 on +X.
-    # That flank is also the -X side of the dowel's way in, and the lip's top the +X side.
+    # axle's, apex print-up) leaves the circle, and the lip below holds the +X side.
+    # That flank is also the -X side of the dowel's way in.
     #
     # nozzle=0, A SHARP APEX: the apex lands exactly on the neck's top face, so the part
     # keeps only the half of it below that face. Dulled, that half would be the flat
     # ceiling this is here to remove.
     #
-    # THE LIP IS ADDED BEFORE THE CUT, its section running from the +X face over the top and
-    # round the nose (LIP_R) to the arc, so the cut finishes it, and SKU B's wall at the end of
-    # the trough stays the height it was.
+    # THE LIP IS ADDED BEFORE THE CUT, which it only touches on the tangent, and SKU B's wall
+    # at the end of the trough stays the height it was.
     zc = fz + DIVOT_OFF
-    cx, cz = DOWEL_X + _LIP_CX, zc + _LIP_CZ
-    tx = DOWEL_X + _LIP_CX * (DIVOT_D / 2) / (DIVOT_D / 2 + LIP_R)      # the nose meets the arc
-    tz = zc + _LIP_CZ * (DIVOT_D / 2) / (DIVOT_D / 2 + LIP_R)
-    lip = (cq.Workplane("XZ").moveTo(INS_X1, zc - 1.0).lineTo(INS_X1, zc + LIP_H)
-           .lineTo(cx, zc + LIP_H).threePointArc((cx - LIP_R, cz), (tx, tz))
-           .lineTo(tx, zc - 1.0).close().extrude(2 * HW).translate((0.0, HW, 0.0)))
-    body = body.union(lip.intersect(_part_wire(i).extrude(LIP_H + 2.0)
-                                    .translate((0, 0, zc - 1.0))))
+    lip_x0 = DOWEL_X + DIVOT_D / 2
+    body = body.union(_part_wire(i).extrude(LIP_H + 1.0).translate((0, 0, zc - 1.0))
+                      .intersect(box_at(INS_X1 + 1.0 - lip_x0, 4000.0, LIP_H + 1.0,
+                                        x=(lip_x0 + INS_X1 + 1.0) / 2, y=0.0,
+                                        z=zc + (LIP_H - 1.0) / 2)))
     body = body.cut(teardrop_hole(DIVOT_D, CRADLE_L, (DOWEL_X, D.nut_y(i) - CRADLE_L / 2.0,
                                                       fz + DIVOT_OFF),
                                   (0.0, 1.0, 0.0), (-1.0, 0.0, 0.0), nozzle=0.0))
-    # WHERE THE NECK STOPS SHORT OF THE APEX (the heavy SKUs: nx0 is set by the coil) its -X face
-    # meets the flank in a 45 deg fin instead of the neck's top: round that too, a bead where
-    # the flank has the room, and never past the flank's foot, where the seat starts.
-    ax = DOWEL_X - DIVOT_D / 2 * math.sqrt(2.0)
-    r = min(D.BEAD, (DOWEL_X - DIVOT_D / 2 * math.sqrt(0.5) - nx0) / (1 + math.sqrt(0.5)))
-    if ax - nx0 < r * math.tan(math.radians(22.5)):
-        c0, c1 = nx0 + r, zc - (nx0 + r - ax) - r * math.sqrt(2.0)      # centre of the round
-        fx, fz1 = c0 + r * math.sqrt(0.5), c1 + r * math.sqrt(0.5)      # tangent on the flank
-        tip = (cq.Workplane("XZ").moveTo(nx0 - 1.0, c1).lineTo(nx0, c1)
-               .threePointArc((c0 + r * math.cos(math.radians(112.5)),
-                               c1 + r * math.sin(math.radians(112.5))), (fx, fz1))
-               .lineTo(fx - 3.0, fz1 + 3.0).lineTo(nx0 - 1.0, fz1 + 3.0).close()
-               .extrude(2 * HW).translate((0.0, HW, 0.0)))
-        body = body.cut(tip)
 
     # ── TWO 45 DEG LEAD-INS FOR THREADING (user) ──────────────────────────
     # The flat meets the insert's -X end face, and it meets the neck's -X face, at square
