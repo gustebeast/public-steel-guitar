@@ -48,6 +48,12 @@ the tip away, and it is what a site is ranked by:
     bead / (2 * tan(a / 2)) back from the point.
 An edge already drawn round is a run of small turns, so it is never a site.
 
+THE ANGLE THAT COUNTS IS THE ONE A LAYER SEES. Each layer is a slice, so a diagonal edge is
+judged by the corner its two faces make in that slice, not by their dihedral: a 45 degree slope
+meeting a side wall has a 65 degree dihedral and a square corner with a wide strip behind it in
+every layer, which prints fine (found on the nut insert, 2026-10-30). An edge in the layer plane
+has no corner in a slice, so there the dihedral is the wedge the layers stack into.
+
 A CONCAVE edge only matters against something that has to seat in it, which a solid alone
 cannot say. Pass `mating`, boxes round the faces that seat; a sharp concave edge inside one
 is a POCKET site, and a sharp convex edge inside one is a TIP at any angle.
@@ -80,6 +86,7 @@ SHARP_TURN = 30.0        # a mesh edge turning less than this is a curved surfac
 TIP_ANGLE = 80.0         # a convex edge is a tip under this interior angle (deg)
 RECEDE_MIN = 0.5         # ...and flagged when it recedes this many beads
 LENGTH_MIN = 1.0         # ...along at least this many beads
+LAYER_EDGE = 10.0        # an edge within this of the layer plane is judged by its dihedral (deg)
 TESS = 0.05
 
 
@@ -144,13 +151,34 @@ def _chains(ids, ev):
     return list(out.values())
 
 
+def _layer_turn(V, ev, turn, normals, up):
+    """`turn`, with every edge that crosses the layers re-read as the corner its two faces make
+    in a layer: their normals with the build direction taken out. An edge within LAYER_EDGE of
+    the layer plane keeps its dihedral."""
+    u = _unit(up)
+    d = V[ev[:, 1]] - V[ev[:, 0]]
+    d = d / np.maximum(np.linalg.norm(d, axis=1), 1e-12)[:, None]
+    crosses = np.abs(d @ u) > math.sin(math.radians(LAYER_EDGE))
+    m = normals - (normals @ u)[:, :, None] * u
+    n = np.linalg.norm(m, axis=2)
+    ok = crosses & (n > 1e-6).all(axis=1)
+    c = (m[:, 0] * m[:, 1]).sum(axis=1) / np.maximum(n[:, 0] * n[:, 1], 1e-12)
+    out = np.array(turn, float)
+    out[ok] = np.degrees(np.arccos(np.clip(c[ok], -1.0, 1.0)))
+    return out
+
+
 def sites_from_edges(V, ev, turn, convex, up, nozzle_d=MEASURED_NOZZLE, mating=(),
-                     tip_angle=TIP_ANGLE, recede_min=RECEDE_MIN, length_min=LENGTH_MIN):
+                     tip_angle=TIP_ANGLE, recede_min=RECEDE_MIN, length_min=LENGTH_MIN,
+                     normals=None):
     """[site] from a closed mesh's edge arrays: V vertices, ev (n, 2) its adjacent-face edges,
-    turn their turning angles in degrees and convex their sign. Vectorised down to the few
-    candidates, so a tool already holding a mesh pays next to nothing."""
+    turn their turning angles in degrees, convex their sign, and normals (n, 2, 3) the two
+    faces' normals (without them every edge is judged by its dihedral). Vectorised down to the
+    few candidates, so a tool already holding a mesh pays next to nothing."""
     V, ev = np.asarray(V), np.asarray(ev)
     turn, convex = np.asarray(turn), np.asarray(convex).astype(bool)
+    if normals is not None:
+        turn = _layer_turn(V, ev, turn, np.asarray(normals), up)
     bead = nozzle_d
     tips = convex & (turn > 180.0 - tip_angle)
     if len(mating):
@@ -197,9 +225,12 @@ def corner_sites(shape, up, nozzle_d=MEASURED_NOZZLE, mating=(), tess=TESS, **kw
     import trimesh
     vs, fs = shape.tessellate(tess, 0.3)
     m = trimesh.Trimesh(np.array([v.toTuple() for v in vs]), np.array(fs), process=True)
+    adj = np.array(m.face_adjacency)
+    fn = np.array(m.face_normals)
     return sites_from_edges(np.array(m.vertices), np.array(m.face_adjacency_edges),
                             np.degrees(np.array(m.face_adjacency_angles)),
-                            np.array(m.face_adjacency_convex), up, nozzle_d, mating, **kw)
+                            np.array(m.face_adjacency_convex), up, nozzle_d, mating,
+                            normals=fn[adj], **kw)
 
 
 # -- the drawing calls -----------------------------------------------------------------
@@ -320,6 +351,11 @@ def _test():
     assert s and s[0]["share"] > 0.99 and s[0]["recede"] > 3.0, s
     s = corner_sites(wedge().val(), (1, 0, 0))
     assert s and s[0]["share"] < 0.01 and s[0]["angle"] < 31.0, s
+    # a 45 degree slope meeting a side wall: under TIP_ANGLE as a dihedral (the slope's corner
+    # cut across the wall makes one), a square corner in every layer, so quiet
+    ramp = (cq.Workplane("XZ").polyline([(0, 0), (20, 0), (20, 20), (0, 0)]).close().extrude(10)
+            .rotate((0, 0, 0), (0, 0, 1), 45)).val()
+    assert not [q for q in corner_sites(ramp, up) if 0.05 < q["share"] < 0.95 and q["angle"] > 80]
     # the same wedge drawn by Printed is quiet
     P = Printed(up)
     r = P.prism(pts, (0, 0, 1), 10).val()
