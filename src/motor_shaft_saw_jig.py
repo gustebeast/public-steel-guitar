@@ -51,7 +51,7 @@ COVER_TOP = AXIS_Z + SV.DRV_HALF                   # 45.7: what the cap bears on
 SHAFT_R = D.MOTOR_SHAFT_D / 2.0                    # 2.5
 BOSS_W = D.NEMA17_PILOT_D + 2 * MB.BOSS_CLR        # 22.8: the bay's boss slot
 BOSS_D = SV.PILOT_H + B / 2.0                      # 2.4 deep off the face
-CUT_L = C.MOTOR_SHAFT_CUT_L                        # 20.8 at the held 17.2 standoff (15.6 at 12.0)
+CUT_L = C.MOTOR_SHAFT_CUT_L                        # 15.6
 
 # ── the saw: the leadscrew jig's blade and slot ─────────────────────────────
 SLOT_W = SJ.SLOT_W                                 # 1.3, McMaster 6927A16

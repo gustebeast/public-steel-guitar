@@ -18,16 +18,18 @@ WHAT HOLDS EACH AXIS, read off the board as it stands (electronics.motor_ctrl(),
          and the floor port along the bottom edge. Three lines round the board, so it cannot
          swing about the channel (a lone edge slot is a hinge) or rock about its bottom edge.
   +Z     the top panel's capture rib, MCTRL_CAP_GAP over the top edge (top_plate._mctrl_capture).
-  -Z     ⚠ NOT IN THE CHASSIS -- see below.
+  -Z     the LEDGE: a post off the floor that J3's housing comes down on -- see below.
 
-⚠ THE -Z STOP IS THE -X/-Y BODY ADAPTER, AND ONLY WITH THE LEG ON. The laminate's bottom edge
-stands 0.34 above the body's underside (its Z is the user's: the bus-B plugs must be squeezable
-from outside), so there is no room for a printed ledge under it. The adapter's top face already
-lies under the laminate's -Y end; build.py asserts it does. It cannot grow +Y to take more of
-the edge: it prints +Y face on the bed (leg_stack.ADAPTER_UP, user). Legs off, nothing but the
-cables and the plugs resting on a table stop the board dropping -- INSTALL_NOTES says so.
-R2 (lead, 2026-10-29): bronner adds a laminate shoulder on a bare edge at mid-height; the
-channel's cheeks are where a ledge goes then -- a block across the channel under the shoulder.
+THE -Z STOP IS A LEDGE UNDER J3 (2026-10-29). The laminate's bottom edge stands 0.34 above the
+body's underside (its Z is the user's: the bus-B plugs must be squeezable from outside), so no
+printed ledge fits under the board itself, and the R1 outline has no hole or shoulder to hang
+it by. It used to rest on the -X/-Y body adapter (legs on only), but the board sits flush on
+string 1's motor (user: "the further +y the better") and the motors came 9.7 +Y with the 7.5
+standoff while the -Y rail did not, so the adapter is no longer under it. J3 is the lowest
+through-hole housing whose drop path is clear: a 6-way XH, so the load goes into six soldered
+pins, not an SMD joint (J1 sits over J2, which drops through the room a post would need). The
+post stands under the HOUSING only, LEDGE_IN short of its mated plug, whose wires leave +X.
+It works with the legs off too. R2 (lead): a laminate shoulder on a bare edge replaces it.
 
 EVERY GUIDE IS CLEAR OF THE WHOLE STROKE, not just the final pose. The board drops in from
 above, so a part on its face sweeps everything ABOVE its seated position; a guide may stand in
@@ -54,6 +56,8 @@ GUIDE_E_NEG = 7 * B               # the +Y guide's -X cheek: that face is bare 6
 GUIDE_E_POS = 2 * B               # its +X cheek: a part stands 2.2 in from the edge
 GUIDE_H = 10 * B                  # the +Y guide's cheeks: low posts off the floor
 SWEEP_CLR = 0.4                   # guide to any part that slides past it
+LEDGE_REF = "J3"                  # the through-hole housing the board comes to rest on
+LEDGE_IN = 0.5                    # the post stops this far inside the housing's mating face
 
 
 def _laminate():
@@ -103,11 +107,65 @@ def _boxes():
                 _top_under_parts(-1, y1 - GUIDE_E_NEG, y1, zg + GUIDE_H)))
     out.append((px0, px1, y1 - GUIDE_E_POS, y1, zf,
                 _top_under_parts(+1, y1 - GUIDE_E_POS, y1, zg + GUIDE_H)))
+    out.append(_ledge())
     for bx in out:
         assert bx[5] - bx[4] >= 4 * B, (
             "a motor-controller guide (x %.2f..%.2f, y %.2f..%.2f) is only %.2f tall: a part "
             "on the board sweeps the rest of it" % (bx[0], bx[1], bx[2], bx[3], bx[5] - bx[4]))
     return out
+
+
+def ledge_target():
+    """J3's housing in world, as (x0, x1, y0, y1, z0, z1): the header alone, off the board's
+    own fab box and the footprint's height, not the mated plug past it."""
+    from . import board_geom as BG
+    g = BG.load("motor_ctrl")
+    f = next(f for f in g["footprints"] if f["ref"] == LEDGE_REF)
+    assert "THT" in f["fpid"] or "B6B-XH-A" in f["fpid"], (
+        f"the motor controller's -Z ledge must bear on a through-hole part, not {f['fpid']}")
+    h = BG.BOARDS.HEIGHT[BG.fp_name(f["fpid"])]
+    o, ax = EL.board_frame("motor_ctrl")
+    fx0, fx1, fy0, fy1 = f["fab"]
+    pts = [tuple(o[k] + ax[0][k] * a + ax[1][k] * b + ax[2][k] * c for k in range(3))
+           for a in (fx0, fx1) for b in (fy0, fy1) for c in (0.0, h)]
+    lo = [min(p[k] for p in pts) for k in range(3)]
+    hi = [max(p[k] for p in pts) for k in range(3)]
+    x1 = _laminate()[1]
+    return x1, hi[0], lo[1], hi[1], lo[2], hi[2]
+
+
+def _ledge():
+    """The post J3 comes down on: off the floor, up to the housing's underside, under the
+    housing only, FIT off the laminate. Its Y run is the longest stretch under the housing
+    that nothing seated BELOW J3 uses -- each such part slides down through that band on the
+    way in (J6's plug overlaps the housing's -Y end)."""
+    hx0, hx1, hy0, hy1, hz0, _hz1 = ledge_target()
+    free = [(hy0 + FIT, hy1 - FIT)]
+    for p in _parts(+1):
+        if p.zmax > hz0 + 1e-6:
+            continue
+        a, b = p.ymin - SWEEP_CLR, p.ymax + SWEEP_CLR
+        free = [seg for lo, hi in free
+                for seg in ((lo, min(hi, a)), (max(lo, b), hi)) if seg[1] > seg[0]]
+    x0, x1 = hx0 + max(FIT, D.MCTRL_PORT_CLR), hx1 - LEDGE_IN     # past the laminate's port
+    # ...and it STANDS ON THE FLOOR: off every floor port (the plugs' openings run out under
+    # this band), or it would hang a ledge into one
+    y_lo, y_hi = hy0 + FIT, hy1 - FIT
+    foot = box_at(x1 - x0, y_hi - y_lo, 1.0, x=(x0 + x1) / 2, y=(y_lo + y_hi) / 2,
+                  z=MB.FLOOR_TOP - 0.5)
+    for c in EL.mctrl_floor_ports():
+        hit = c.intersect(foot)
+        for sol in hit.solids().vals():
+            pb = sol.BoundingBox()
+            a, b = pb.ymin - FIT, pb.ymax + FIT
+            free = [seg for lo, hi in free
+                    for seg in ((lo, min(hi, a)), (max(lo, b), hi)) if seg[1] > seg[0]]
+    assert free, f"every part of {LEDGE_REF}'s housing has a part or a floor port under it"
+    ya, yb = max(free, key=lambda r: r[1] - r[0])
+    assert yb - ya >= 4 * B and x1 - x0 >= 4 * B, (
+        f"the motor controller's ledge under {LEDGE_REF} is only {x1 - x0:.2f} x {yb - ya:.2f}: "
+        f"the parts under the housing take the rest")
+    return (x0, x1, ya, yb, MB.FLOOR_TOP, hz0)
 
 
 def _box(b, dz0=0.0):

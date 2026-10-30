@@ -615,10 +615,20 @@ def pi_cradle() -> cq.Workplane:
     x0, x1 = PI_PLINK_CUT
     cr = cr.cut(box_at(x1 - x0, 12.0, PI_Z + 5.0 - _MB_FLOOR.FLOOR_TOP, (x0 + x1) / 2.0,
                        PI_FP[3] + 0.15 + 6.0, (PI_Z + 5.0 + _MB_FLOOR.FLOOR_TOP) / 2.0))
+    # ...carried -Y down the -X wall to J3's own line when the motor board stands -Y of the
+    # Pi's edge (2026-10-29: it backed off string 1's motor onto the body adapter, D.MCTRL_Y1),
+    # since the columns start AT J3 and run +Y. Wall only, x up to the laminate's edge.
+    _j3y = way_pt("motor_ctrl", "J3", 1)[1] - PI_PLINK_HALF - CRADLE_CLR
+    if _j3y < PI_FP[3] + 0.15:
+        cr = cr.cut(box_at(PI_FP[0] - x0, PI_FP[3] + 0.15 - _j3y + 0.01,
+                           PI_Z + 5.0 - _MB_FLOOR.FLOOR_TOP, (x0 + PI_FP[0]) / 2.0,
+                           (PI_FP[3] + 0.15 + _j3y) / 2.0,
+                           (PI_Z + 5.0 + _MB_FLOOR.FLOOR_TOP) / 2.0))
     return cr.cut(pi_hold_bore()).union(pi_usb_saddle())
 
 
 PI_PLINK_CUT = (PI_FP[0] - 5.0, PI_FP[0] + 4.0)   # x: J3's link columns, + a wire and a fit
+PI_PLINK_HALF = 0.9                                # wiring.WIRE_OD["wire_plink"] / 2
 
 
 # -- the Pi's retention: the belt clamps' M3, through the board's own hole ---------------

@@ -688,11 +688,6 @@ def module_centre():
     return ui_x(), header_edge_y() + MOD_L / 2.0
 
 
-def view_y():
-    """World Y of the display's optical centre."""
-    return module_centre()[1] + VIEW_OFF_Y
-
-
 def header_row_y():
     """World Y of the module's near mounting-hole row (the through-hole version's 1x20
     row shared it)."""
