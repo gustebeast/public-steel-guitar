@@ -430,7 +430,7 @@ OP_PANEL_CLR = D.OP_PANEL_CLR             # (in dimensions: motor_bank's rail re
 OP_PANEL_T = 2 * D.BEAD
 JACK_WALL_X = JACK_TIP - OP_PANEL_T                   # the panel's inner face
 OUTPUT_PANEL_REV = BG.OUTPUT_PANEL_REV       # 2 = R2 (default), 1 = the board in hand: src/board_geom
-JACK_Z = -51 * D.BEAD                  # -40.8 jack row centre height
+# (JACK_Z, the jack row's height, is DERIVED from the floor up now: see OP_UNDER_Z below.)
 # THE PANEL ROW IS NO LONGER EVENLY PITCHED, and it is not meant to be. TS and USB
 # are now BOARD parts on output_panel and their spacing (31.27) is set by that board;
 # only the DC inlet is still a free-standing panel jack, and it MOVED OUT of the
@@ -1427,6 +1427,35 @@ def pi_cap_pin(ref, n):
 _OP = BG.load("output_panel")
 OP_BOARD_X, OP_BOARD_Y = _OP["outline_mm"]
 _OP_T = _OP["thickness_mm"]
+# THE OUTPUT BOARD SITS AS LOW AS ITS PINS ALLOW (user, 2026-10-29: "Why is the output board as
+# high +Z as it is? Why not lower it so it's just as far above the floor as needed to clear its
+# pins"). JACK_Z was a typed -40.8 and the board hung off it, 12 mm higher than anything needed.
+# The chain runs from the floor up now:
+#   the CHASSIS FLOOR (motor_bank.FLOOR_TOP -- under the whole board, in the bay and under the
+#   endplate's hollow foot alike), the cradle's plate lying on it (OP_PLATE_T), the longest
+#   THT tail below the board (3.4, every XH post and the R1 and R2 boards alike: bronner) plus
+#   a fit, rounded up to whole beads (OP_STANDOFF) -- or the M4 insert's anchor depth under the
+#   board's ear, if that is deeper (it is: 8.5 against 6.4, so the screw sets the height, not
+#   the pins) -- gives the board's underside; the TS jack's axis above that is the row height.
+from cadkit.pcb import XH_POST_TAIL as _OP_TAIL                        # noqa: E402
+from cadkit.fasteners import M4 as _OP_M4                              # noqa: E402
+OP_FLOOR_Z = _MB_FLOOR.FLOOR_TOP          # what the cradle's plate lies on (-71.35)
+OP_PLATE_T = 3 * D.BEAD                   # the cradle's plate (bridge_endplate.op_cradle)
+OP_TAIL_CLR = 0.3                         # air under the pins' cut ends, at least
+OP_STANDOFF = math.ceil((_OP_TAIL + OP_TAIL_CLR) / D.BEAD - 1e-9) * D.BEAD   # 4.0
+OP_UNDER_Z = OP_FLOOR_Z + max(OP_PLATE_T + OP_STANDOFF, _OP_M4.anchor_min_wall)   # -62.85
+# ⚠ R1 RIDES HIGHER: ITS J8 FACES STRING 10'S CLAMP (lead, 2026-10-29: R2 drops, R1 is the
+# stop-gap). The board in hand takes the pickup's cores into J8 from +Y, and on the floor that
+# entry is inside string 10's clamp sweep (it rolls 1.4 past the board's edge at the bottom of
+# its travel). So R1 stands only as low as keeps J8's holes a core's radius and a fit (one bead)
+# over that drive's screw-pulley flange, which the belt and clamp ride inside; build.py proves
+# the lead-in against the posed clamp. R2 turned J8 to enter from -Y, and lies on the floor.
+if OUTPUT_PANEL_REV < 2:
+    from . import screw_terminal as _ST                                 # noqa: E402
+    _OP_J8_H = min(p[2] for p, _d in _ST.way_points("output_panel", "J8"))   # over the underside
+    OP_UNDER_Z = max(OP_UNDER_Z, D.screw_pulley_z(D.N_STRINGS - 1) + D.PULLEY_FLANGE_OD / 2.0
+                     + D.BEAD - _OP_J8_H)                                # -53.9
+JACK_Z = OP_UNDER_Z + _OP_T + BG.mouth("output_panel", "J5")["axis_h"]           # -53.11
 # the three connectors a player reaches through the panel, in the order they sit along it
 OP_PANEL_REFS = ("J5", "J1", "J6")          # 1/4 in jack, USB-C, 24 V inlet
 
@@ -1465,14 +1494,13 @@ def op_origin():
 
     X: the board's +X edge sits OP_PANEL_CLR behind the panel's inner face.
     Y: the board's -Y edge sits OP_PANEL_CLR off the -Y rail's inner face.
-    Z: from the TS jack's BORE, not the board -- it is the part whose hole a player has
-       to hit with a plug, so it owns the row height and the board hangs where that puts
-       it. (The other two holes are wherever the board then puts THEIR axes; they used
-       to share this one Z, which is how the USB-C hole ended up 7.85 mm too high.)"""
-    ts = BG.mouth("output_panel", "J5")
+    Z: OP_UNDER_Z, the floor + plate + whatever clears the pins (or the M4's anchor). The
+       panel's holes follow the board (op_panel_openings): each is centred on its own
+       connector's axis. (They used to share the TS jack's one Z, which is how the USB-C hole
+       ended up 7.85 mm too high.)"""
     return (JACK_WALL_X - OP_PANEL_CLR - OP_BOARD_X / 2,
             CH.Y_LO + CH.T / 2.0 + OP_PANEL_CLR + OP_BOARD_Y / 2.0,
-            JACK_Z - _OP_T - ts["axis_h"])
+            OP_UNDER_Z)
 
 
 def op_panel_openings():
