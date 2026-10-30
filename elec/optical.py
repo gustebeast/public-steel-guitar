@@ -1008,7 +1008,8 @@ def optical():
     used = set(MCU_VDD) | set(MCU_VSS) | {
         PIN[k] for k in ("VSSA", "VDDA", "VREF+", "VBAT", "VDD33_USB", "PDR_ON",
                          "PH0", "PH1", "NRST", "BOOT0", "PA13", "PA14", "PB3", "PA2",
-                         "VCAP1", "VCAP2") + tuple(SAI_CLK.values()) + SAI_SD
+                         "VCAP1", "VCAP2") + (() if OP.OPTICAL_REV == 1 else ("PB14", "PB15"))
+        + tuple(SAI_CLK.values()) + SAI_SD
         + tuple(p for bus in I2C_BUS for p in bus)}
     used |= {PIN[p] for p in ULPI.values()}
     for n in mcu_pins:
@@ -4622,18 +4623,14 @@ BOARD_NOTES["quality"] = {
         },
         {
             "name": "ten emitters: ten anodes, a ballast each",
-            "pins": [
-                "D*.2"
-            ],
+            "pins": ["D%d.2" % i for i in range(1, 11)],
             "nets": 10,
             "each": 1,
             "pins_count": 10
         },
         {
             "name": "ten emitters: one switched cathode row",
-            "pins": [
-                "D*.1"
-            ],
+            "pins": ["D%d.1" % i for i in range(1, 11)],
             "nets": 1,
             "pins_count": 10
         },
@@ -4652,8 +4649,8 @@ BOARD_NOTES["quality"] = {
                   "FLASH_RTS_N, the rest open (p.4 note). Read 2026-10-30",
         "CH334F": "WCH CH334 datasheet V2.5 Table 1-3, 4F column, as output_panel U4, re-read "
                   "against V2.91. Board: 14/15 up, 11/12 DN1 the PHY, 9/10 DN2 U32, 3/4 Y3",
-        "AO3401A": "AOS AO3401A package drawing, same SOT-23 as AO3400A: 1 G, 2 S, 3 D. NOT READ "
-                   "on its own sheet yet",
+        "AO3401A": "AOS AO3401A Rev 3.1 December 2023 p.1 SOT23 drawing: G, S, D. Board: 1 "
+                   "FLASH_DTR_N, 2 +3V3D, 3 BOOT0",
         "DSS16": "SOD-123, 1 cathode (bar), 2 anode, as the buck catch diodes on the LED boards",
         "B4B-XH-A": "R2's J2. JST eXH.pdf p.5, Header / Top entry type: seen from the slotted "
                     "wall, No. 1 circuit is the right-hand post. KiCad JST_XH_B4B-XH-A has that "
@@ -4728,6 +4725,29 @@ BOARD_NOTES["quality"] = {
 if OP.OPTICAL_REV != 1:
     # R2's J2 is the top-entry B4B-XH-A: through-hole posts only, no reinforcement tab
     del BOARD_NOTES["quality"]["unconnected"]["J2.MP"]
+    _q = BOARD_NOTES["quality"]
+    _q["unconnected"]["U6"]["pins"] = " ".join(p for p in _q["unconnected"]["U6"]["pins"].split()
+                                               if p not in ("94", "95"))        # FLASH_RX, FLASH_TX
+    _q["unconnected"]["U31"] = {"pins": "2 5 6 7 8 13 16 17 18 21 22 23 24",
+                                "why": "CH334F: ports 3 and 4 unused, and the status and config pins "
+                                       "this board gives no job, as output_panel's U4"}
+    _q["unconnected"]["U32"] = {"pins": "7 8 9 10 11 12 15",
+                                "why": "CH340C: modem inputs and R232 unused; WCH V3C p.4, unused I/O "
+                                       "may dangle (own pull-ups, R232 own pull-down)"}
+    _q["decoupling"]["exempt"]["U32.4"] = (
+        "V3, tied to VCC because the chip runs at 3.3 V (WCH V3C p.3): the internal regulator's pin, "
+        "not a second load. C183 sits at VCC, pin 16")
+    BOARD_NOTES["silk_legend"] = True           # cadkit: a label with no site gets an identifier
+    BOARD_NOTES["quality"]["pinouts"]["TAXM12M4RFBCCT2T"] = (
+        "the same maker's 3225 four-land outline as Y1 (LCSC C133337): 1 and 3 the crystal, 2 and "
+        "4 the can. Board: 1 HUB_XI, 3 HUB_XO, 2 / 4 GND")
+    BOARD_NOTES["match"] = BOARD_NOTES["match"] + [
+        {"name": "USB_HS_HUB", "max_skew_mm": 8.3, "same_layer": True, "max_vias": 2,
+         "nets": ["HUB_PHY_DP", "HUB_PHY_DM"], "why": "the same 480 Mbps budget as USB_HS, "
+         "hub to PHY"},
+        {"name": "USB_FS_BRIDGE", "max_skew_mm": 20.0, "same_layer": False, "max_vias": 4,
+         "nets": ["HUB_CH_DP", "HUB_CH_DM"], "why": "12 Mbps to the serial bridge, a few mm "
+         "beside it: 83 ns a bit against 0.1 ns of skew"}]
     # the hub stands between: J1 -> U10 -> U31 up, U31 down -> PHY
     BOARD_NOTES["diff_pairs"] = [
         dict(BOARD_NOTES["diff_pairs"][0], chain=["U31", "U10", "J1"]),

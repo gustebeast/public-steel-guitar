@@ -2624,7 +2624,7 @@ PARTS = _parts()
 R2_MOVES = {} if OPTICAL_REV == 1 else {
     **dict.fromkeys(('J1', 'R32', 'R33'), (-11.80, 29.88)), # j1 (+3.0 for the plug's 11.8, user 2026-10-30)
     **dict.fromkeys(('U10',), (-4.43, 27.755)), # u10: turned 0, +X of J1's moved shell (R2_ROT)
-    **dict.fromkeys(('TP5',), (2.00, -18.65)),   # tp5: into the -Y band, U10 took its spot
+    **dict.fromkeys(('TP5',), (2.00, -18.40)),   # tp5: into the -Y band, U10 took its spot
     **dict.fromkeys(('C130',), (-19.53, 26.90)), # c130
     **dict.fromkeys(('U7', 'C119', 'C120', 'C121', 'C122', 'C125', 'C136', 'C137', 'C138', 'C139', 'C145', 'Y2', 'R37', 'R39'), (7.99, 12.80)), # phy
     **dict.fromkeys(('C160', 'C161', 'C163', 'C165', 'C166', 'U13', 'R40', 'R41', 'L1', 'C162', 'C167'), (0.00, 13.97)), # buck
@@ -2663,16 +2663,16 @@ R2_J2 = (None, -95.97, 0.0)
 R2_ROT = {"U10": 0.0}
 R2_FLASH = (
     ("U31", "USB 2.0 HS hub: J1 up, the PHY and U32 down", "QFN-24", 11.60, -106.00, 90.0),
-    ("Y3", "12 MHz crystal, U31 (no load caps: CH334 has 16 pF on each pin)", "3225", 11.60, -110.60, 0.0),
+    ("Y3", "12 MHz crystal, U31 (no load caps: CH334 has 16 pF on each pin)", "3225", 11.60, -110.60, 180.0),
     ("U32", "USB-serial bridge, U6's USART1 ROM loader", "SOIC-16", 20.50, -107.00, 0.0),
-    ("Q2", "BOOT0 high side, gate on U32's DTR#", "SOT-23", 20.50, -99.60, 0.0),
+    ("Q2", "BOOT0 high side, gate on U32's DTR#", "SOT-23", 19.60, -99.60, 0.0),
     ("D11", "NRST pulled by U32's RTS#", "SOD-123", 15.20, -110.50, 90.0),
     ("C180", "U31 VDD33 bypass", "0402", 7.80, -106.00, 90.0),
     ("C181", "U31 VDD33 bulk", "0805C", 7.80, -103.20, 90.0),
     ("C182", "U31 V5 bypass", "0402", 7.80, -108.20, 90.0),
-    ("C183", "U32 VCC bypass", "0402", 15.60, -102.40, 0.0),
+    ("C183", "U32 VCC bypass", "0402", 23.20, -100.40, 0.0),
     ("R52", "U31 OVCUR# pull-up", "0402", 15.60, -104.40, 0.0),
-    ("R53", "Q2 gate pull-up: BOOT0 stays low until the bridge asserts DTR#", "0402", 16.60, -100.00, 0.0),
+    ("R53", "Q2 gate pull-up: BOOT0 stays low until the bridge asserts DTR#", "0402", 16.20, -100.00, 0.0),
 )
 if OPTICAL_REV != 1:
     for _p in PARTS:
