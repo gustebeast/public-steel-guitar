@@ -144,10 +144,37 @@ def string_nut() -> cq.Workplane:
 
 
 # ── Nut-block hardware (Ø2 steel dowel + M4 cup-tip set screw) — DEMO ─────
+# McMaster 91595A119 (Ø4 x 4, 4140, DIN 6325 m6), "Round x Chamfer/Round", read off its 2-D
+# drawing at 135 px/mm (user, 2026-10-28: "they aren't perfect cylinders"). Along the axis from
+# the chamfered end: a dome to Ø3.59, a 15 deg chamfer out to Ø4, the straight barrel, then a
+# dome over the full Ø4. Read from a catalogue sketch, so good to ~0.05.
+DW_DOME_A = (0.52, 3.59)          # chamfer end: dome height, and the diameter it starts at
+DW_CHAMFER_L = 0.78               # ...then the chamfer out to NUT_PIN_D
+DW_DOME_B = 0.59                  # the other end's dome height, over the full NUT_PIN_D
+
+
+def _cap_mid(a, h, t_apex, sgn):
+    """The mid point of a spherical cap's arc (base radius a, height h, apex at t_apex on the
+    axis, the base sgn of the apex), as (r, t) -- for threePointArc."""
+    R = (a * a + h * h) / (2.0 * h)
+    half = math.asin(a / R) / 2.0
+    return (R * math.sin(half), t_apex + sgn * R * (1.0 - math.cos(half)))
+
+
 def dowel() -> cq.Workplane:
-    """Ø2×4 steel dowel (axis Y) — the gauged break pin. Short so it drops into
-    its top-open slot from above (the string then traps it)."""
-    return cyl_y(2.0, 4.0, y0=-2.0, x=0.0, z=0.0)
+    """The gauged break pin, McMaster 91595A119 Ø4 x 4, axis Y, centred on y = 0, the chamfered
+    end -Y. Short so it drops into its top-open cradle from above (the string then traps it)."""
+    d, L = D.NUT_PIN_D, D.NUT_PIN_L
+    h_a, d_a = DW_DOME_A
+    t1, t2 = h_a, h_a + DW_CHAMFER_L
+    t3 = L - DW_DOME_B
+    assert t3 > t2, "the dowel's domes and chamfer leave it no barrel"
+    prof = (cq.Workplane("XY").moveTo(0.0, 0.0)
+            .threePointArc(_cap_mid(d_a / 2.0, h_a, 0.0, +1), (d_a / 2.0, t1))
+            .lineTo(d / 2.0, t2).lineTo(d / 2.0, t3)
+            .threePointArc(_cap_mid(d / 2.0, DW_DOME_B, L, -1), (0.0, L))
+            .close())
+    return prof.revolve(360.0, (0, 0, 0), (0, 1, 0)).translate((0.0, -L / 2.0, 0.0))
 
 
 # (set_screw() and m4_insert() moved to freecad/fasteners.py -- imported above so every project shares

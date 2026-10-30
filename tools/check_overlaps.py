@@ -395,29 +395,9 @@ DEFERRED_RULES = (
     #  So: not declared away, RECLASSIFIED -- by the tool that owns the distinction. If these
     #  conductors ever start to RUN through each other, check_cable_pairs fails on it with a
     #  length, which is a better signal than this rule ever gave.)
-    # THE INSTRUMENT SHORTENING vs THE R1 FOOT-LED BOARDS (USER DEFERRED 2026-10-29: "push the
-    #  endplate changes anyway and add a comment to the overlap"). The +X endplate face came in
-    #  25.06 -> 23.43 and the keyhead 0.2 thinner, so the leg-to-leg light run is ~1.8 shorter;
-    #  foot_light derives pitch = run_len / N_LED, but the R1 boards are fabricated copper. They
-    #  now overlap each other at the seam (~35 mm3), the chassis (4.4) and the seam pogos (3.2
-    #  each). OWNER brenner: the rev-2 foot boards (the width re-place) are derived on the short
-    #  run and retire this. Exact names, so nothing else of the family hides behind it.
-    (re.compile(r"^foot_pcb_[ab]$"), re.compile(r"^(foot_pcb_[ab]|foot_pogo_pins|chassis_0)$"),
-     "R1 foot-LED boards vs the shortened light run (OWNER brenner, rev-2 foot boards)"),
-    # THE SHAFT CUT vs THE SAME BOARDS (USER DEFERRED 2026-10-29, via the lead: "the foot-LED
-    #  collisions are deferred, so the shaft cut goes ahead"). Standoff 17.2 -> 12.0 takes the
-    #  motors 5.2 +Y, and string 1's faceplate wall (chassis_1, chassis_2) with them, into the
-    #  R1 boards between the motor face and the +Y rail: ~870 mm3 over three pairs at 12.0. At
-    #  the 7.5 standoff (the pulley on the shaft's D, user) string 1's motor itself reaches board
-    #  A (54 mm3) and the boards' 24 V lead is pinched against string 1's faceplate wall and tee
-    #  (53 mm3). Same owner, same retirement -- the rev-2 boards and their lead are placed on the
-    #  7.5 layout. Exact names, so nothing else of the family hides behind it.
-    (re.compile(r"^foot_pcb_[ab]$"), re.compile(r"^(chassis_[12]|motor_0|motor_face_0)$"),
-     "R1 foot-LED boards vs string 1's motor and faceplate wall at the cut-shaft standoff "
-     "(OWNER brenner, rev-2 foot boards)"),
-    (re.compile(r"^wire_foot_led_v24$"), re.compile(r"^(chassis_2|tee_pcb_0)$"),
-     "R1 foot-LED boards' 24 V lead vs string 1's faceplate wall and tee at the cut-shaft "
-     "standoff (OWNER brenner, rev-2 foot boards)"),
+    # (The two R1 foot-LED deferrals -- the shortened light run and string 1's faceplate wall
+    #  at the new standoff -- are RETIRED, 2026-10-29: the notch rev re-derives both boards on
+    #  the live geometry, notched round string 1's motor, and the gate is clean of them.)
     # Same change, OWNER bronner: the output board moved -X 1.63 with the face and its J2 -> Pi
     #  USB lead now clips chassis_0 (4.4 mm3). Re-routed in the Xilaghy follow-up.
     (re.compile(r"^wire_usb$"), re.compile(r"^chassis_0$"),

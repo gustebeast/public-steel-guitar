@@ -53,6 +53,7 @@ drivers on each board. One LED coarser and the arithmetic stops dividing.
 from __future__ import annotations
 
 from . import dimensions as D
+from . import motor_bank as MB
 from . import pogo_part as PG
 from .components import MOTOR_PULLEY_STANDOFF
 
@@ -180,9 +181,30 @@ WALL_T     = D.MIN_WALL_2P          # 1.60
 # the run, a channel wall unioned back INTO the motor's fit -- found by sampling the
 # finished chassis (tools/_probe_foot_mouth.py), not by the gate: the motor's body ends
 # at 25.55 and never touched it.
-MOTOR_FACE = D.motor_pos(0)[1] - MOTOR_PULLEY_STANDOFF + D.MOTOR_CLR   # 25.95
-WALL_Y0    = MOTOR_FACE             # the -Y wall's outer face IS the pocket's own face
-BOARD_Y0   = MOTOR_FACE + WALL_T + SLOT_PLAY              # 27.85
+def _face(i):
+    """Motor i's pocket face in Y: its faceplate, plus the pocket's fit."""
+    return D.motor_pos(i)[1] - MOTOR_PULLEY_STANDOFF + D.MOTOR_CLR
+
+
+# ⚠ STRING 1'S MOTOR STANDS IN THE LANE, AND THE BOARD IS NOTCHED ROUND IT (user, 2026-10-29,
+# via the lead: "let string 1's motor move +Y and overlap the board's footprint ... cut a notch
+# out of the board only where string 1's motor body sits"). At the 7.5 standoff string 1's
+# pocket face is at 35.65, and its faceplate wall (motor_bank._wall, 6.40 thick, bed to Z_HI)
+# stands right across what was the board's -Y half. Every other motor's face is a string pitch
+# or more further -Y, so the board keeps its full width everywhere ELSE -- set by the nearest of
+# THOSE, string 2's -- and only over string 1's faceplate wall (NOTCH_X1 and -X of it) does
+# its -Y edge step in to string 1's face.
+# ⚠ WHICH IS WHY THE STRIP GOES IN FROM +X NOW (lead, 2026-10-29). Slid in from -X, every full-
+# width inch of both boards would have to pass string 1's faceplate wall. From +X, board A goes
+# first with its notched end leading -- that end fits the narrow section -- and nothing
+# full-width ever reaches string 1's motor.
+MOTOR_FACE = _face(0)               # string 1's: 35.65
+RUN_FACE   = max(_face(i) for i in range(1, D.N_STRINGS))      # string 2's: 26.15
+WALL_Y0    = RUN_FACE               # the -Y wall's outer face IS the pocket's own face
+BOARD_Y0   = RUN_FACE + WALL_T + SLOT_PLAY                # 28.05: the run
+NOTCH_Y0   = MOTOR_FACE + WALL_T + SLOT_PLAY              # 37.55: over string 1's motor
+NOTCH_X1   = MB.wall_x(0)[1]        # string 1's faceplate wall's +X end: the narrow section
+                                    # is -X of it, the full width +X of it
 # The component lane's centre is where it was: drivers, the buck and the supply row sit
 # on it, spaced along X. The 6.45 gained on the -Y side belongs to the pogos' first two.
 DRV_Y      = 42.55
@@ -229,8 +251,13 @@ SHOULDER_AIR = 0.35                 # a shoulder to the nearest barrel
 
 
 def _slot_y():
-    """(y0, y1) of the slot the board sits in."""
+    """(y0, y1) of the slot the board sits in, along the run."""
     return BOARD_Y0 - SLOT_PLAY, RAIL_IN
+
+
+def _notch_slot_y0():
+    """The slot's -Y wall over string 1's motor (x < NOTCH_X1)."""
+    return NOTCH_Y0 - SLOT_PLAY
 
 
 def trough_y():
@@ -293,8 +320,9 @@ HALVES     = ("a", "b")
 # -- eight pogos instead of sixteen, and the Pi's cable plugs straight into board A.
 # Everything between the ends is the same on both.
 BOARD_NAME = {"a": "foot_led_a", "b": "foot_led_b"}
-# ⚠ THE SEAM IS POGOS BECAUSE -X-ONLY INSERTION MAKES IT SO. The +X board is pushed the
-# full length of the channel first, so nothing can be plugged into it once it is home.
+# ⚠ THE SEAM IS POGOS BECAUSE ONE-ENDED INSERTION MAKES IT SO. Both boards go in through the
+# same mouth, one after the other, so nothing can be plugged into the first once the second is
+# behind it. (That mouth was -X until 2026-10-29; it is +X now, A first -- see MOTOR_FACE.)
 # The two boards meet TIP TO TIP, the way the fret boards do across the deck seam: four
 # side-mount pogos on one axis under each board, and pushing the second board home
 # against the first is what makes the joint.
@@ -322,11 +350,27 @@ BOARD_NAME = {"a": "foot_led_a", "b": "foot_led_b"}
 # ⚠ AND NOT FURTHER -X THAN THIS. The keyhead endplate's face is 15.3 from the window's
 # end. The mouth is J_MOUTH out, which leaves 8.8 for the mated plug (about 4.3 past the
 # mouth) and the lead's first bend.
-TAIL_A     = 7.0                    # board A's extra length past the window's -X end
+# ⚠ AND IT IS NOW ON THE NARROW SECTION, SO IT CANNOT SIT BESIDE THE LEDs (2026-10-29). The tail
+# is -X of the window, so it lies over string 1's motor, where the board's -Y edge is NOTCH_Y0.
+# The socket's mounting lands span 15.70 in Y and need all of that section; centred on it they
+# leave the signal lands squarely in line with the LED row. So the tail is however long it takes
+# for the signal lands' toes (J_TOE behind the mouth) to stop J_LED_AIR short of the first
+# LED's courtyard -- 10.7 today, where 7.0 did when the lands could sit beside the row.
 J_INSET    = 0.5                    # the socket's mouth, in from that end: its mounting
                                     # lands stand 0.2 proud of the mouth
-J_Y        = 41.50                  # world Y of the socket's centreline: its signal lands
-                                    # end 0.85 short of the end LED's courtyard
+J_TOE      = 5.30 + 3.25 + 4.50 / 2.0   # 10.80: mouth to the signal lands' toes (the .kicad_mod)
+J_HALF_W   = 6.95 + 1.80 / 2.0      # 7.85: centre to a mounting land's outer edge
+LED_CY     = 6.10                   # the LED's courtyard, square (as check_optics)
+J_LED_AIR  = 0.30
+J_EDGE     = 0.50                   # a mounting land to the board's edge
+PLUG_L     = 4.30                   # the mated XHP-4 past the socket's mouth
+J_Y        = (NOTCH_Y0 + BOARD_Y1) / 2.0    # 46.375: centred on the narrow section
+
+
+def tail_a():
+    """Board A's extra length past the window's -X end, for its cable socket."""
+    mouth = led_xs()[0] - LED_CY / 2.0 - J_LED_AIR - J_TOE
+    return window()[0] - (mouth - J_INSET)
 POGO_NETS  = ("+24V", "GND", "SCK", "SDT")      # -Y first
 POGO_PITCH = 3.80
 # pad centre to the board's end: the barrel is centred on its pad and a plunger at its
@@ -375,7 +419,7 @@ def board_span(half):
     The LED row runs to within half a pitch of the window's two ends and of the seam, so
     the seam costs no light at all; the tail carries no LED."""
     x0, x1 = window()[0], window()[1]
-    return (x0 - TAIL_A, seam_x()) if half == "a" else (seam_x(), x1)
+    return (x0 - tail_a(), seam_x()) if half == "a" else (seam_x(), x1)
 
 
 def board_cx(half):
@@ -397,6 +441,31 @@ def to_board_y(world_y):
     wrong side of the window and nothing downstream would notice: the board routes, the
     CAD renders, and the light misses the slot."""
     return (BOARD_Y0 + BOARD_W / 2.0) - world_y
+
+
+def outline_poly(half):
+    """Board A's outline in elec/'s board frame, notched round string 1's motor; None for B,
+    which is the plain rectangle (outline_mm).
+
+    The narrow section is every board X -X of NOTCH_X1 + SLOT_PLAY: there the board's -Y
+    edge is NOTCH_Y0. In the board frame world -Y is local +Y (to_board_y), so the notch takes
+    the +Y corner at the -X end."""
+    if half != "a":
+        return None
+    a, b = board_span("a")
+    hl, hw = (b - a) / 2.0, BOARD_W / 2.0
+    xn = to_board_x("a", NOTCH_X1 + SLOT_PLAY)
+    yn = to_board_y(NOTCH_Y0)
+    return [(-hl, -hw), (hl, -hw), (hl, hw), (xn, hw), (xn, yn), (-hl, yn)]
+
+
+def narrow_keepout():
+    """(x_lo, x_hi, y_min) in board A's frame: over string 1's motor, inside the channel, the
+    -Y shoulder holds the board's edge band up -- a part's body must stay +Y of it in WORLD,
+    which is local y below y_min. The tail (-X of the window) has no shoulder."""
+    x0 = to_board_x("a", window()[0])
+    xn = to_board_x("a", NOTCH_X1 + SLOT_PLAY)
+    return x0, xn, to_board_y(_notch_slot_y0() + SHOULDER_LO)
 
 
 def board_leds(half):
@@ -462,9 +531,15 @@ def check_optics():
         % (led_body - (ys[-1] + PG.POGO_PAD_W / 2.0)))
     assert TROUGH - HANG_MAX >= AIR_GAP - 1e-9
     # the cable socket: its tail and its plug stay inside the corridor cut for the boards
-    assert TAIL_A <= MOUTH_CUT, (
-        "board A's tail is %.1f and the corridor is cut %.1f past the window"
-        % (TAIL_A, MOUTH_CUT))
+    assert tail_a() + PLUG_L <= MOUTH_CUT, (
+        "board A's tail (%.1f) and its plug (%.1f) need more than the %.1f the corridor is cut "
+        "past the window" % (tail_a(), PLUG_L, MOUTH_CUT))
+    # the narrow section: the socket's lands inside it, and a board edge to stand on
+    assert (J_Y - J_HALF_W) - NOTCH_Y0 >= J_EDGE - 1e-9 and BOARD_Y1 - (J_Y + J_HALF_W) >= J_EDGE - 1e-9, (
+        "the socket's mounting lands (%.2f..%.2f) do not fit the narrow section %.2f..%.2f"
+        % (J_Y - J_HALF_W, J_Y + J_HALF_W, NOTCH_Y0, BOARD_Y1))
+    assert window()[0] < NOTCH_X1 < seam_x(), (
+        "string 1's faceplate wall ends at %.2f, outside board A" % NOTCH_X1)
     return u
 
 
@@ -490,7 +565,16 @@ def _lip(xl, xm, y_wall, sgn, foot_z, top_z):
 
 
 STOP_T  = 4 * D.BEAD                # 3.20 along X
-STOP_Y0 = 47.60                     # ...from just past the last pogo land to the rail
+
+
+def _sections():
+    """[(x0, x1, wall_y0, slot_y0)] of the channel along X: the narrow section over string 1's
+    motor, then the run. ONE list, so the walls, the lips and the cut cannot disagree."""
+    x0, x1 = window()[0], window()[1]
+    nx = min(max(NOTCH_X1, x0), x1)
+    return [(a, b, wy, sy) for a, b, wy, sy in ((x0, nx, MOTOR_FACE, _notch_slot_y0()),
+                                                (nx, x1, WALL_Y0, _slot_y()[0]))
+            if b - a > 1e-6]
 
 
 def channel():
@@ -499,30 +583,63 @@ def channel():
     Authored in WORLD coordinates, like the fret comb, because that is where the chassis
     works and where it has to land. Runs the WINDOW's length exactly -- the boards'
     tails hang out past both ends into the clear approach, which is also where their
-    connectors are, so nothing has to be threaded through a wall."""
-    x0, x1 = window()[0], window()[1]
+    connectors are, so nothing has to be threaded through a wall. Narrow over string 1's
+    motor, full width along the rest of the run (_sections).
+
+    ⚠ NO +X STOP ANY MORE: the strip goes in from +X, so anything standing across the slot's
+    +X end would stop board B getting in. Board B's stop is carried by the bridge endplate
+    instead, which goes on after the strip (end_stop). Board A's is here, at the -X end the
+    boards are pushed towards: two blocks, one on each shoulder's line, so the socket's plug
+    and its lead come out between them."""
     floor = window()[4]
     _led, board_bot, _bt, lip_foot, lip_top = z_stack()
-    sy0, sy1 = _slot_y()
-    ty0, ty1 = trough_y()
-    xm, xl = (x0 + x1) / 2.0, x1 - x0
+    _sy0, sy1 = _slot_y()
+    _ty0, ty1 = trough_y()
 
-    def run(y0, y1, z0, z1):
-        return box_at(xl, y1 - y0, z1 - z0, x=xm, y=(y0 + y1) / 2.0, z=(z0 + z1) / 2.0)
+    def run(xa, xb, y0, y1, z0, z1):
+        return box_at(xb - xa, y1 - y0, z1 - z0,
+                      x=(xa + xb) / 2.0, y=(y0 + y1) / 2.0, z=(z0 + z1) / 2.0)
 
-    out = run(WALL_Y0, sy0, floor, lip_top)                       # the -Y wall
-    # THE +X STOP. The seam pogos push the two boards apart with about 0.8 kgf, so the
-    # far board needs something to be pushed AGAINST. A block across the slot's end, on
-    # the LED row's side only: the +X board's own unused plungers stand 1.70 past its end
-    # across the pogo lane and must find air there.
-    out = out.union(box_at(STOP_T, sy1 - STOP_Y0, lip_foot - floor,
-                           x=x1 + STOP_T / 2.0, y=(STOP_Y0 + sy1) / 2.0,
-                           z=(floor + lip_foot) / 2.0))
-    out = out.union(run(sy0, ty0, floor, board_bot))              # -Y shoulder
-    out = out.union(run(ty1, sy1, floor, board_bot))              # +Y shoulder
-    out = out.union(_lip(xl, xm, sy0, +1.0, lip_foot, lip_top))
-    out = out.union(_lip(xl, xm, sy1, -1.0, lip_foot, lip_top))
+    out = None
+    for xa, xb, wy0, sy0 in _sections():
+        xm, xl = (xa + xb) / 2.0, xb - xa
+        part = run(xa, xb, wy0, sy0, floor, lip_top)                       # the -Y wall
+        part = part.union(run(xa, xb, sy0, sy0 + SHOULDER_LO, floor, board_bot))   # -Y shoulder
+        part = part.union(run(xa, xb, ty1, sy1, floor, board_bot))         # +Y shoulder
+        part = part.union(_lip(xl, xm, sy0, +1.0, lip_foot, lip_top))
+        part = part.union(_lip(xl, xm, sy1, -1.0, lip_foot, lip_top))
+        out = part if out is None else out.union(part)
+    # BOARD A'S STOP, at its -X end: the seam's pogos push it -X once B is home
+    ax = board_span("a")[0] - SLOT_PLAY
+    ny0 = _notch_slot_y0()
+    for y0, y1 in ((ny0, ny0 + SHOULDER_LO), (sy1 - SHOULDER_HI, sy1)):
+        out = out.union(run(ax - STOP_T, ax, y0, y1, floor, lip_top))
     return heal(out)
+
+
+FIN_T      = 4 * D.BEAD             # 3.20 in Y: board B's stop on the bridge endplate
+FIN_LEAD   = 3 * D.BEAD             # 2.40: the 45° lead-in under its face
+
+
+def end_stop(x_wall, y_face, z_top):
+    """Board B's +X stop: a fin the BRIDGE ENDPLATE carries, its -X face on the window's end.
+
+    The strip goes in from +X, so nothing fixed may stand across the slot's +X end -- and the
+    seam's pogos push board B +X once both are in, so something has to. The bridge endplate
+    goes on after the strip, dropping straight down, and its foot is hollow over this spot: a
+    plate in X-Z there, rooted on the end wall's inner face (x_wall) and hung from the screw
+    rail (z_top), stands right where the old chassis block did. It prints as a wall on that end
+    wall. Its lower -X edge is a 45° lead-in FIN_LEAD high, so a board B left a little proud
+    is pushed home as the endplate comes down rather than landed on.
+
+    y_face is the +Y side it stops at: the endplate's pocket round the leg shell."""
+    x1 = window()[1]
+    _led, board_bot, _bt, _lf, _lt = z_stack()
+    z0 = board_bot - FIN_LEAD
+    y0 = y_face - FIN_T
+    pts = [(x1 + FIN_LEAD, z0), (x_wall, z0), (x_wall, z_top), (x1, z_top), (x1, z0 + FIN_LEAD)]
+    return (cq.Workplane("XZ", origin=(0, y_face, 0))
+            .polyline(pts).close().extrude(FIN_T))
 
 
 def slot_cut():
@@ -546,21 +663,28 @@ def slot_cut():
     # past the window's -X end, and the slot cut used to stop AT that end -- so the wall
     # stood whole across the mouth and no board could have been slid in past it. Found as
     # 5.3 mm3 of one free plunger inside chassis_2 (the overlap gate now covers it).
-    x0, x1 = window()[0] - MOUTH_CUT, window()[1]
+    # The narrow section's corridor still starts MOUTH_CUT before the window: board A's tail,
+    # its socket's plug and the lead's first bend all stand out there.
     floor = window()[4]
     top = clear_top()
     foot = z_stack()[3]
-    sy0, sy1 = _slot_y()
-    yr = MOTOR_FACE + ROOF_REACH
-    # ONE section: up the slot wall to the board's top, then the ramp -- so even the fit's
-    # 0.30 over the board is under the 45° line and no flat is left at the wall
-    return (cq.Workplane("YZ", origin=(x0, 0, 0))
-            .polyline([(sy0, floor), (sy1, floor), (sy1, top), (yr, top),
-                       (yr, foot + (yr - sy0)), (sy0, foot)])
-            .close().extrude(x1 - x0))
+    _sy0, sy1 = _slot_y()
+    out = None
+    for i, (xa, xb, wy0, sy0) in enumerate(_sections()):
+        if i == 0:
+            xa -= MOUTH_CUT
+        yr = wy0 + ROOF_REACH
+        # each section: up the slot wall to the board's top, then the ramp -- so even the
+        # fit's 0.30 over the board is under the 45° line and no flat is left at the wall
+        cut = (cq.Workplane("YZ", origin=(xa, 0, 0))
+               .polyline([(sy0, floor), (sy1, floor), (sy1, top), (yr, top),
+                          (yr, foot + (yr - sy0)), (sy0, foot)])
+               .close().extrude(xb - xa))
+        out = cut if out is None else out.union(cut)
+    return out
 
 
-MOUTH_CUT = 16.0     # how far -X of the window the corridor is cut: past the wall's end
+MOUTH_CUT = 16.0     # how far -X of the window the corridor is cut: board A's tail and its plug
 
 # how far +Y of the motor's face the 45° roof is carried: the faceplate wall (6.40) and a
 # little, so the cut leaves the wall through its far face rather than stopping inside it

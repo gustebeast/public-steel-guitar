@@ -1019,6 +1019,13 @@ def _build() -> cq.Workplane:
             body = body.cut(_n)
         for _n in _esn(CH.LEG_STATIONS_X[0], _ly, 1.0, CH.Z_BOT, PRINT_UP, _s):
             body = body.cut(_n)
+    # THE FOOT STRIP'S +X STOP (2026-10-29): the strip now slides in from +X, so the chassis
+    # cannot carry a block across the slot's end any more. This endplate goes on after it, and
+    # its hollow foot is over that spot: a fin rooted on the end wall and hung from the screw
+    # rail, its -X face on the window's end (src/foot_light.end_stop).
+    from . import foot_light as _FL
+    body = body.union(_FL.end_stop(XHI - CH.T + D.BEAD, CH.Y_HI - CH.T / 2 - LEG_CLR,
+                                   _SR_BOT + D.BEAD))
     # PANEL I/O (the instrument's right face): the base's +X end wall is CH.T (10)
     # thick -- too deep for the jacks (their bodies span x -16..6) -- so RECESS its
     # interior back to a thin panel (OP_PANEL_T, 1.6) at the -Y jack corner (the wall face at
