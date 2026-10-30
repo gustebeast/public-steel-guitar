@@ -1075,6 +1075,26 @@ def _build() -> cq.Workplane:
     for _x0, _x1, _zt in ((XLO - 1.0, JACK_WALL_X, _shelf_z), (XLO - 1.0, _shelf_x0, FOOT_Z)):
         body = body.cut(box_at(_x1 - _x0, _rc_w, _zt - OP_FLOOR_Z,
                                x=(_x0 + _x1) / 2, y=_rc_y, z=(OP_FLOOR_Z + _zt) / 2))
+    # THE GUSSET IN THE RECESS'S +Y CORNER (user, 2026-10-29, on the inside corner above the TS
+    # jack: "recommend adding some material here for structural support"). The rail block over
+    # string 10 stops at the recess's +Y face, its underside at _SR_BOT, and the recess roof
+    # -Y of it is FOOT_Z: an 8.65 step with a square inside corner, the whole depth of the bay.
+    # A 45 deg triangle fills it, from the rail's bottom edge up to the roof -- the biggest that
+    # hangs nothing below the rail. The part builds -X, so the triangle is the build's own
+    # cross-section and prints without support. Over string 10's seat (the shelf, R2) the rail
+    # stands on to its own -Y edge, so the corner is there and so is the triangle. The seats
+    # and the pulley channels come back out of it (they reach -Y of the face at string 10).
+    from .screw_rail import ACROSS as _SR_ACROSS
+    _gl = FOOT_Z - _SR_BOT
+    for _x0, _x1, _yf in ((XLO, _shelf_x0, _rc_y1),
+                          (_shelf_x0, JACK_WALL_X, min(_rc_y1, -_SR_ACROSS / 2.0))):
+        if _x1 - _x0 < 1e-6:
+            continue
+        body = body.union(cq.Workplane("YZ", origin=(_x0, 0.0, 0.0))
+                          .polyline([(_yf + 0.01, _SR_BOT), (_yf + 0.01, FOOT_Z + 0.01),
+                                     (_yf - _gl, FOOT_Z + 0.01)]).close()
+                          .extrude(_x1 - _x0)
+                          .cut(_seat_cutter()).cut(_pulley_channel(PULLEY_CH_Z0, PULLEY_CH_Z1)))
     # ⚠ THE OUTPUT BOARD'S PLATE GOES ON AFTER THE RECESS, not before: the recess cut
     # above clears this whole band, so a cradle fused earlier would simply be deleted by
     # it. And BEFORE the panel openings, not after: anything of the cradle that reaches
