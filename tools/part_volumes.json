@@ -55,7 +55,7 @@
   },
   "chassis_0": {
    "material": "petg-gf",
-   "volume_mm3": 599218.3
+   "volume_mm3": 606443.3
   },
   "chassis_0_light": {
    "material": "pctg",
@@ -63,7 +63,7 @@
   },
   "chassis_1": {
    "material": "petg-gf",
-   "volume_mm3": 663365.6
+   "volume_mm3": 671685.8
   },
   "chassis_1_light": {
    "material": "pctg",
@@ -71,7 +71,7 @@
   },
   "chassis_2": {
    "material": "petg-gf",
-   "volume_mm3": 604682.8
+   "volume_mm3": 608900.0
   },
   "chassis_2_light": {
    "material": "pctg",
