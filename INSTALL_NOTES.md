@@ -1058,6 +1058,16 @@ the station's underside sweeps.
 * Coming apart is the reverse: both USB-A plugs and the ribbon out, leads laid down, then
   slide the panel off.
 
+## The UI clamp: tongue first, then the one M4 (2026-10-30)
+
+* **Where:** the UI station, on the mid panel, with the panel off the instrument and upside down.
+* **Do:** seat the display in its pocket and the board on the deck's posts and spigots, with
+  the ribbon plugged at both ends. Enter the clamp plate's -X tongue into the keeper past the
+  board's -X edge, heading -X, then swing the +X end down onto the spigot and fit the one M4.
+* **Why:** the deck can only reach the board in the two wings either side of the display, so
+  the M4 holds the knob's end and the keeper holds the power button's end.
+* **Coming apart:** the M4 out, swing the +X end away, draw the tongue out +X.
+
 ## The display's ribbon: into the module first, and check pin 1 before power (2026-10-19)
 
 The display (NHD-2.7-12864WDW3-M) joins the UI board by a 50 mm, 20-way flat cable
