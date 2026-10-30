@@ -31,8 +31,18 @@ PK_COIL_W = 31.0                                 # coil-core X width (flange ove
 PK_H_MIN = 15.0                                 # carrier-wall cap datum: walls stay this far
                                                # above the plate so they never top the pickup
                                                # (< PK_H) even raised -- never foul bar/strings
-GAP     = 3.0                                   # pickup top -> heaviest string bottom
-PK_TOP  = D.STRING_Z - D.STRING_GAUGE_MAX - GAP   # clear the heaviest string that fits, not the demo set's
+# THE ADJUST RANGE (user, 2026-10-29): pickup top -> heaviest string bottom, at the two ends of
+# the plate's travel. The DEEPEST pickup (PK_H) must reach down to GAP_MAX; the shallowest
+# (PK_H_MIN) must still reach up to GAP_MIN. The plate is drawn at the BOTTOM of its travel --
+# the deepest pickup at GAP_MAX -- so the gate sees the lowest it ever goes.
+GAP_MAX = 6.0
+# GAP_MIN is 3.0, today's top of travel, and NOT 1.5: the -Y retention boss rides 9.45 over the
+# plate top and the deck's relief over it stops one bead under the deck top (top_plate
+# RET_RELIEF_Z1), so the plate top can rise no further than -3.85 -- the 15 mm pickup's 2.82 gap.
+# 3.0 keeps the swept half-millimetre steps clear of it; a 16 mm pickup still reaches 2.0.
+GAP_MIN = 3.0
+PK_TOP  = D.STRING_Z - D.STRING_GAUGE_MAX - GAP_MAX   # clear the heaviest string that fits, not the demo set's
+PLATE_TRAVEL = (PK_H - PK_H_MIN) + (GAP_MAX - GAP_MIN)   # 10.0: what the jacks lift the plate
 PK_BOT  = PK_TOP - PK_H
 
 # mounting-ear holes: the pickup's own 4 corner holes, modelled on the demo body only (the
