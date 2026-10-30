@@ -183,6 +183,15 @@ PTP timestamps) and RTP-MIDI (rtpmidid) to LAN computers, alongside USB, no mode
 - Rejected: the Pi USB-C as host for a dongle (switched VBUS + CC Rp/Rd swap; VBUS is dead on
   purpose, Pi 4 USB-C VBUS = GPIO 5 V). Parts ~$5-10.
 
+**R2-4. 24 V inlet current and voltage, reported to the Pi (user, 2026-10-30, for remote
+diagnostics).** The brick enters at J6, so one sense at the inlet sees the whole instrument.
+- A shunt in the 24 V inlet and a monitor read by U1, which reports over its existing USB link: no
+  new wires to the Pi. Must read to the brick's 6.67 A, and voltage too, so a sag shows.
+- Candidate INA226-class (I2C, alert pin) if U1 has an I2C free, else a current-sense amp + divider
+  into two U1 ADC pins. Part, stock and shunt loss not yet checked.
+- Uses: logged amps and volts, read remotely; bring-up's per-motor current; the power governor's
+  real total, including a stall or a USB device firmware could not predict.
+
 **R2-3. J8 (the pickup's screw terminal) takes the SLOTTED screw: one screwdriver for the instrument.** Rev 1 is MX126-5.0-02P-GN01-Cu-**S**-A, M2.5 cross head; the SERVO42D motor terminals are slotted (2.0-2.5 mm flat blade). The same MX126 body is ordered with a slotted screw by the code letter **Y** (maker's ordering code: Y slotted, S cross, PS flat cross), so R2 orders MX126-5.0-02P-GN01-Cu-**Y**-A and one 2.5 x 0.4 mm flat blade drives both. Check before committing: that exact Y part is stocked at LCSC (the MX127 Y variant was, C-number not yet confirmed for MX126), and the same footprint and drawing. Confirm on the rev 1 boards that J8's head really is cross. src/screw_terminal.py SCREW changes with it (user, 2026-10-20).
 
 **R2-2. Panel USB-C J1 becomes DUAL-ROLE, auto-detected, still ONE port.** User rule: no second
