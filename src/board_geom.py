@@ -45,8 +45,8 @@ GEOM_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
 # THE BOARD REVISION THE MODEL IS BUILT WITH, per board that has more than one (the same
 # environment variables the generators read, so one switch sets both). 2 is the default
 # everywhere; 1 is the ordered board in hand, whose geometry lives in elec/rev1 (it is NOT in
-# elec/geom: see elec/rev1/README.md). Anything that has to differ by revision branches on
-# these -- e.g. electronics' output-board height (R1 rides higher than R2's floor term).
+# elec/geom: see elec/rev1/README.md). THE BOARDS ONLY: the plastic and the wiring are drawn for
+# R2 (user, 2026-10-30), so 1 regenerates an R1 board's files and is not an instrument build.
 OUTPUT_PANEL_REV = int(os.environ.get("OUTPUT_PANEL_REV", "2"))
 OPTICAL_REV = int(os.environ.get("OPTICAL_REV", "2"))
 PI_CAP_REV = int(os.environ.get("PI_CAP_REV", "2"))

@@ -3176,10 +3176,8 @@ def usb_notch():
 
 
 def pwr_col_x():
-    """X of the 24 V pair's drop into the conduit. R1: PWR_COL_DX +X of J2. R2: in the
-    notch, the pair's width plus USBC_NOTCH_CLR in from its -X end."""
-    if OPTICAL_REV == 1:
-        return part("J2")["x"] + PWR_COL_DX
+    """X of the 24 V pair's drop: in the notch, the pair's width plus USBC_NOTCH_CLR in from
+    its -X end."""
     return usb_notch()[0] + USBC_NOTCH_CLR + XH_OD / 2.0
 
 
@@ -3651,35 +3649,9 @@ assert CONDUIT_Y0 >= _WALL_Y - 1e-9, (
     f"conduit reaches y {CONDUIT_Y0:.2f}, past the {D.MIN_WALL_2P} exterior wall limit "
     f"{_WALL_Y:.2f} -- the longest plug ({max(PLUG_L.values()):.1f}) no longer fits the "
     f"endplate. Specify a shorter overmold or move the board +Y.")
-CONDUIT_XC = (BAND_X0 + D.BRIDGE_BASE_X1) / 2                 # centred in the endplate band
 
 
-# The channel is OPEN TO -X, and that is a printing requirement, not a convenience. The
-# endplate builds +X -> -X, so a blind vertical shaft would have material RESUME across its
-# whole -X face -- a 20.40 x 21 bridge over void, anchored only at its Y edges. Chamfering
-# that face at 45 deg cannot close it either: 20.40 of Y needs 10.2 mm of X and the shaft
-# would run out through XLO before it got there. Running the void out through the -X face
-# instead means material never resumes at all, every layer is a simple notch rooted on the
-# one below, and the cable arrives directly in the chassis interior where it needs to be.
-CONDUIT_X1 = D.BRIDGE_BASE_X1 - D.MIN_WALL_2P                 # 21.83, +X wall kept
 RUN_Z      = DECK_TOP - 16.0                                  # harness plane in the box
-CONDUIT_Z0 = RUN_Z - 4.75                                     # floor, half a bundle below
-
-
-def opt_conduit(grow: float = 0.0) -> cq.Workplane:
-    """The channel cutter: down from the endplate's top face, then out its -X face."""
-    x1 = CONDUIT_X1 + grow
-    # -X limit is the endplate's OWN FACE, not past it. Running 4 mm further -X (the first
-    # attempt) chewed 19.5 mm out of the 57.4 mm +Z RETENTION LIP, which protrudes -X in
-    # exactly this -Y bay and is what stops the endplate lifting out of the deck. Stopping
-    # at the face keeps the lip whole AND still prints: the void ends at the part's own -X
-    # surface, so material never resumes behind it. The cable clears the lip by height
-    # instead -- the lip hangs in the deck-bottom Z band and the harness plane is well below
-    # it, so the run passes underneath rather than through.
-    x0 = BAND_X0 - grow
-    return box_at(x1 - x0, CONDUIT_D + 2 * grow, (DECK_TOP + 1.0) - (CONDUIT_Z0 - grow),
-                  x=(x0 + x1) / 2, y=(CONDUIT_Y0 + CONDUIT_Y1) / 2,
-                  z=((CONDUIT_Z0 - grow) + DECK_TOP + 1.0) / 2)
 
 
 def opt_cables(which: str = "usb") -> cq.Workplane:
@@ -3839,7 +3811,6 @@ PWR_Z_TURN = RUN_Z - 3.5                # -13.1: the 24 V pair crosses UNDER the
                                         # ribbon, in a trench in the conduit's floor
                                         # (opt_pwr_slot). The pair is stacked in Z there,
                                         # 1.9 either side of this
-PWR_COL_DX = 7.5                        # the 24 V pair's drop, +X of J2's centre (see
                                         # opt_cables). Three pitches: the -Y rail's end
                                         # tenon reaches x -17.46 inside the conduit since
                                         # it became the fit-tested 8.0-deep joint (it was
@@ -3865,17 +3836,15 @@ USBC_NOTCH_CLR = 0.5
 
 
 def usb_face_y() -> float:
-    """y of J1's down-angle plug's MATING FACE. R1: the board's -Y edge, where J1's mouth
-    sits. R2: J1 stands back in its notch, so the face is under the notch's +Y edge: the
-    mouth 0.5 proud of it and the plug 0.45 off the mouth (as the conduit's assert has it)."""
-    if OPTICAL_REV == 1:
-        return PCB_YM
+    """y of J1's down-angle plug's MATING FACE. J1 stands back in its notch, so the face is
+    under the notch's +Y edge: the mouth 0.5 proud of it and the plug 0.45 off the mouth (as
+    the conduit's assert has it)."""
     return usb_notch()[3] - 0.5 - 0.45
 
 
 # THE CABLE HOLE (user, 2026-10-30: "drill a house shape hole that is printable and can fit both
 # the USB C cable head and the JST. The slit you have cut now reduces the endplate strength
-# considerably and gives more room than we need for the cable"). On R2 it replaces the conduit,
+# considerably and gives more room than we need for the cable"). It replaced the conduit,
 # the 24 V slot, the notch's cut and the retention lip's trim: one closed shaft from under J1's
 # notch down into the board's recess, which is open to the bay at the -X face. Its roof points
 # along the build (-X), so it prints without support, and the -X face and the lip stay whole.
@@ -3926,70 +3895,6 @@ def opt_cable_hole() -> cq.Workplane:
     zb = (PCB_TOP + PKG[p["pkg"]][2] / 2) - USBC_ANG_BODY / 2.0 - USBC_ANG_BOOT     # boot's foot
     y_out = usb_face_y() - USBC_ANG_D - USBC_MATE_L - CABLE_HOLE_FIT
     return shaft.union(_cable_house(y_out, y1, zb - CABLE_HOLE_FIT, z_top))
-
-
-def opt_usb_notch() -> cq.Workplane:
-    """The endplate cut J1's down-angle plug and its ribbon drop through: the 2 mm ledge
-    between the board's -Y edge and the conduit, taken away under the plug, down to the
-    foot of the ribbon's fold.
-
-    The ledge is what was left between the board's pocket and the conduit; it carries
-    nothing (the board ends at its +Y face). A down-angle overmould starts at the mating
-    face, so it, its boot and the ribbon come down exactly where the ledge stands.
-
-    Its -X end is a 45 degree ramp, not a wall: the endplate prints +X -> -X, and a square
-    end would be a 2 mm shelf starting in mid-air."""
-    p = part("J1")
-    c = USBC_NOTCH_CLR
-    if OPTICAL_REV != 1:
-        # R2: the conduit is UNDER the board's -Y band and the notch is over it, so the
-        # whole notch (J1's plug and, at its -X end, J2's pair) opens straight down into
-        # it, from the conduit's top up past the plinth. Its -X end ramps at 45 degrees
-        # across the notch's Y for the same reason as R1's: no wall starting in mid-air.
-        nx0, nx1, ny0, ny1 = usb_notch()
-        x0, x1 = nx0 - c, nx1 + c
-        z0, z1 = DECK_TOP, PLINTH_TOP + 0.5
-        w = ny1 - ny0
-        return (cq.Workplane("XY").workplane(offset=z0)
-                .polyline([(x1, ny0 - c), (x1, ny1), (x0, ny1), (x0 - w - c, ny0 - c)]).close()
-                .extrude(z1 - z0))
-    x1 = p["x"] + USBC_ANG_W / 2.0 + c
-    x0 = p["x"] - USBC_ANG_W / 2.0 - c
-    ya, yb = PCB_YM, CONDUIT_Y1 - 0.1               # into the conduit, so no skin is left
-    z0, z1 = RIBBON_Z - RIBBON_W / 2.0 - c, PLINTH_TOP + 0.5
-    ramp = ya - yb
-    return (cq.Workplane("XY").workplane(offset=z0)
-            .polyline([(x1, yb), (x1, ya), (x0, ya), (x0 - ramp, yb)]).close()
-            .extrude(z1 - z0))
-
-
-def opt_pwr_slot() -> cq.Workplane:
-    """The endplate cut the 24 V lead drops through, from the conduit's floor into the
-    output board's recess. It runs out through the endplate's -X face rather than stopping
-    inside it: the part prints -X off its +X face, so a void that ended inside would leave a
-    face of material printed over it -- a bridge. Open to the -X face, its only X-facing end
-    is at +X, which the print meets as a floor."""
-    x0, x1 = BAND_X0 - 1.0, pwr_col_x() + 5.0                      # the pair drops behind J2
-    y0, y1 = PWR_Y - 2.2, -120.8        # into the recess, which starts at -122.8
-    if OPTICAL_REV != 1:
-        # R2: the conduit is OVER the output board's recess (y -103.45..-94.70, the board's
-        # -Y band under it), so the slot is just the pair's own column, straight down
-        y0, y1 = PWR_Y - 2.2, PWR_Y + 2.2
-    # up past the lead's own turn: it crosses the conduit's +Y wall at PWR_Z_TURN, above the
-    # conduit's floor, so a slot that stopped at the floor left 2.8 mm3 of wall in the lead
-    z0, z1 = PWR_Z_REC - 2.1, PWR_Z_TURN + XH_OD / 2 + 0.5
-    slot = box_at(x1 - x0, y1 - y0, z1 - z0, x=(x0 + x1) / 2, y=(y0 + y1) / 2,
-                  z=(z0 + z1) / 2)
-    # ...and the TRENCH the pair crosses the conduit in, to reach the slot. The USB lead is
-    # a ribbon standing on edge between the deck and this pair (RIBBON_Z), and it needs
-    # 1.1 mm more than the conduit's floor left under it. Open to the -X face like the slot.
-    zt = PWR_Z_TURN - 1.9 - 0.5
-    assert zt < CONDUIT_Z0
-    if OPTICAL_REV != 1:
-        return slot                     # R2: the pair drops where it crosses (PWR_Y), no trench
-    return slot.union(box_at(x1 - x0, y0 - CONDUIT_Y0, CONDUIT_Z0 + 0.1 - zt,
-                             x=(x0 + x1) / 2, y=(y0 + CONDUIT_Y0) / 2,
-                             z=(zt + CONDUIT_Z0 + 0.1) / 2))
 
 
 def _assert_field_clear():
@@ -4263,22 +4168,21 @@ def _guard_windows():
         if _G_X1 - c < 2 * D.MIN_WALL_2P:
             c = _G_X1 + 5.0
         out.append((a, _G_Y0 - 5.0, c, y1 + GUARD_OPEN_CLR))
-    # R2: AND OVER J1'S NOTCH (lead, 2026-10-29: "nothing over the full X span of J1's notch").
+    # AND OVER J1'S NOTCH (lead, 2026-10-29: "nothing over the full X span of J1's notch").
     # R2's USB-C stands back in a notch in the board's -Y edge and its down-angle plug hangs in
     # it, and J2's 24 V pair rises out of its top-entry plug, crosses -Y of the roof's edge to
-    # the notch and drops down it (pwr_col_x). R1's roof covered all of that. The notch's own
+    # the notch and drops down it (pwr_col_x). The notch's own
     # span is opened out to the -Y edge like a connector's, and a strip of roof left between it
     # and J2's window -- two walls or less, which is where the pair crosses -- goes with it.
-    if OPTICAL_REV != 1:
-        nx0, nx1, _ny0, ny1 = usb_notch()
-        win = [nx0 - GUARD_OPEN_CLR, _G_Y0 - 5.0, nx1 + GUARD_OPEN_CLR, ny1 + GUARD_OPEN_CLR]
-        keep = []
-        for w in out:
-            if w[2] > win[0] - 2 * D.MIN_WALL_2P and w[0] < win[2] + 2 * D.MIN_WALL_2P:
-                win = [min(win[0], w[0]), win[1], max(win[2], w[2]), max(win[3], w[3])]
-            else:
-                keep.append(w)
-        out = keep + [tuple(win)]
+    nx0, nx1, _ny0, ny1 = usb_notch()
+    win = [nx0 - GUARD_OPEN_CLR, _G_Y0 - 5.0, nx1 + GUARD_OPEN_CLR, ny1 + GUARD_OPEN_CLR]
+    keep = []
+    for w in out:
+        if w[2] > win[0] - 2 * D.MIN_WALL_2P and w[0] < win[2] + 2 * D.MIN_WALL_2P:
+            win = [min(win[0], w[0]), win[1], max(win[2], w[2]), max(win[3], w[3])]
+        else:
+            keep.append(w)
+    out = keep + [tuple(win)]
     return out
 
 
