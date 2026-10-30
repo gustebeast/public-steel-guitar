@@ -198,17 +198,51 @@ def _face(i):
 # width inch of both boards would have to pass string 1's faceplate wall. From +X, board A goes
 # first with its notched end leading -- that end fits the narrow section -- and nothing
 # full-width ever reaches string 1's motor.
+# the pogo row, laid off the end LED (see BOARD_Y0). Module-level because the board's edge
+# is: the window's centre is the chassis's to measure (led_y()), so the LED's Y is written
+# down here and check_optics holds the two together.
+LED_Y_NOM    = 50.35
+POGO_LED_AIR = 0.45                 # the last land to the end LED's body: 0.30 let
+                                    # the pogo's mask clip D1's silk on board B (A18)
+POGO_EDGE    = 0.50                 # the first land to the board's edge, as the fret seam's
+POGO_PAD_HALF = PG.POGO_PAD_W / 2.0
+POGO_NETS  = ("+24V", "GND", "SCK", "SDT")      # -Y first
+POGO_PITCH = 3.80
+
+
+def pogo_y0_nom(led_y_=LED_Y_NOM):
+    """World Y of the FIRST (-Y) pogo axis: top-down from the end LED's body."""
+    last = led_y_ - LED_BODY / 2.0 - POGO_LED_AIR - POGO_PAD_HALF
+    return last - (len(POGO_NETS) - 1) * POGO_PITCH
+
+
 MOTOR_FACE = _face(0)               # string 1's: 35.65
 RUN_FACE   = max(_face(i) for i in range(1, D.N_STRINGS))      # string 2's: 26.15
 WALL_Y0    = RUN_FACE               # the -Y wall's outer face IS the pocket's own face
-BOARD_Y0   = RUN_FACE + WALL_T + SLOT_PLAY                # 28.05: the run
+# ⚠ THE RUN'S -Y EDGE IS THE POGO ROW'S, NOT THE MOTORS' (user, 2026-10-29: "make the PCB
+# narrower overall by removing the space here for the text and putting the pogo closer to
+# the board edge"). Everything else on the board stands well +Y of string 2's wall; the
+# seam's four pogos are the only thing that reaches -Y, so the row is laid TOP-DOWN off the
+# end LED's body (POGO_LED_AIR) and the edge is the minimum land-to-edge past the first one.
+# (It was string 2's face plus one wall, 28.05, and the row was hung off the -Y shoulder,
+# which left 2.9 of bare board -- the silk band -- between the row and the LEDs.)
+BOARD_Y0   = pogo_y0_nom() - POGO_PAD_HALF - POGO_EDGE                # 32.00
+assert BOARD_Y0 - SLOT_PLAY >= RUN_FACE + WALL_T - 1e-9, (
+    "the board's -Y edge at %.2f leaves under a wall against string 2's pocket face %.2f"
+    % (BOARD_Y0, RUN_FACE))
 NOTCH_Y0   = MOTOR_FACE + WALL_T + SLOT_PLAY              # 37.55: over string 1's motor
-NOTCH_X1   = MB.wall_x(0)[1]        # string 1's faceplate wall's +X end: the narrow section
-                                    # is -X of it, the full width +X of it
+# ⚠ THE MOTOR'S FIT, NOT ITS FACEPLATE WALL'S END (user, 2026-10-29: "consider changing the
+# cut area to go less far towards +x to give more room for this component" -- C21, which
+# sat on the step's corner). The wall runs a post's width (9.6) further +X to brace that
+# post, and the notch used to follow it; now the run's slot is cut through that stretch of
+# wall and post instead, over the channel's Z band only, and they still meet above and
+# below it.
+NOTCH_X1   = D.motor_pos(0)[0] + D.MOTOR_SQ / 2 + MB.MOTOR_CLR    # -562.70: the narrow
+                                    # section is -X of it, the full width +X of it
 # The component lane's centre is where it was: drivers, the buck and the supply row sit
 # on it, spaced along X. The 6.45 gained on the -Y side belongs to the pogos' first two.
 DRV_Y      = 42.55
-BOARD_W    = BOARD_Y1 - BOARD_Y0    # 24.15
+BOARD_W    = BOARD_Y1 - BOARD_Y0    # 23.20
 
 
 def led_y():
@@ -330,12 +364,13 @@ BOARD_NAME = {"a": "foot_led_a", "b": "foot_led_b"}
 # FOUR CIRCUITS, ONE PIN EACH: +24V, GND, SCK, SDT. The part is rated 12 A a pin and the
 # far board draws 0.37.
 #
-# WHERE THEY CAN STAND WAS MEASURED, AND IT IS A TIGHT ROW. A land is 3.50 wide. On the
-# -Y side the first barrel has to clear the shoulder; on the +Y side the last land has to
-# clear the end LED, and that LED sits at exactly the X a pogo needs, so the LED row's own
-# Y is closed to them. Between the two:
-#     shoulder  32.35 | 0.35 | barrel 1 ... four at POGO_PITCH 3.80 ... land 4 ends 47.40
+# WHERE THEY STAND IS THE BOARD'S WIDTH, SO IT IS A TIGHT ROW. A land is 3.50 wide. The
+# end LED sits at exactly the X a pogo needs, so the LED row's own Y is closed to them; the
+# row is laid -Y from that LED's body and the board ends POGO_EDGE past it (2026-10-29):
+#     edge 32.00 | 0.50 | land 1 ... four at POGO_PITCH 3.80 ... land 4 ends 47.40
 #     | 0.45 | LED body 47.85     (and 0.10 INSIDE its 6.10 courtyard -- see check_optics)
+# The first barrel then stands over the -Y shoulder's line, which stops for them
+# (shoulder_gap).
 # 3.80 leaves 0.30 of bare board between neighbouring lands and 0.70 between barrels. It
 # is under the 4.50 the fret seam uses and under the courtyards' own 4.00, which is why
 # elec/foot_led.py exempts these pairs from the courtyard check and asserts the copper.
@@ -371,8 +406,6 @@ def tail_a():
     """Board A's extra length past the window's -X end, for its cable socket."""
     mouth = led_xs()[0] - LED_CY / 2.0 - J_LED_AIR - J_TOE
     return window()[0] - (mouth - J_INSET)
-POGO_NETS  = ("+24V", "GND", "SCK", "SDT")      # -Y first
-POGO_PITCH = 3.80
 # pad centre to the board's end: the barrel is centred on its pad and a plunger at its
 # working length ends exactly at the board's edge, so two butted boards meet at the seam
 POGO_SETBACK = PG.POGO_WORK - PG.POGO_BODY_L / 2.0        # 4.05
@@ -380,8 +413,7 @@ POGO_SETBACK = PG.POGO_WORK - PG.POGO_BODY_L / 2.0        # 4.05
 
 def pogo_ys():
     """World Y of the four pogo axes, -Y first."""
-    y0 = (_slot_y()[0] + SHOULDER_LO + SHOULDER_AIR
-          + (PG.POGO_BODY_W + PG.POGO_FAB_STROKE) / 2.0)
+    y0 = pogo_y0_nom()
     return [y0 + i * POGO_PITCH for i in range(len(POGO_NETS))]
 
 
@@ -410,6 +442,17 @@ def led_xs():
 def seam_x():
     """Where the two boards meet: half a pitch past LED 23."""
     return window()[0] + run_len() / 2.0
+
+
+def shoulder_gap():
+    """(x0, x1) where the -Y shoulder stops for the seam's pogos.
+
+    The row is laid off the LEDs and the board's edge is POGO_EDGE past its first land, so the
+    first barrel stands over the shoulder's line. Each board's last POGO_SETBACK + a barrel
+    (and SHOULDER_AIR) is carried by the +Y shoulder and the -Y lip alone -- 6.65 of
+    cantilevered laminate on one edge."""
+    g = POGO_SETBACK + PG.POGO_BODY_L / 2.0 + SHOULDER_AIR
+    return seam_x() - g, seam_x() + g
 
 
 def board_span(half):
@@ -514,9 +557,18 @@ def check_optics():
         "the board's +Y edge at %.2f is inside the rail at %.2f" % (BOARD_Y1, RAIL_IN))
     # the pogo row, as BODIES rather than courtyards -- see POGO_PITCH
     ys = pogo_ys()
+    assert abs(led_y() - LED_Y_NOM) < 1e-6, (
+        "the window's centre is %.3f and the pogo row (so the board's -Y edge) was laid off "
+        "%.2f -- update LED_Y_NOM" % (led_y(), LED_Y_NOM))
+    assert ys[0] - POGO_PAD_HALF - BOARD_Y0 >= POGO_EDGE - 1e-9, (
+        "the first pogo land is %.2f off the board's edge" % (ys[0] - POGO_PAD_HALF - BOARD_Y0))
+    # the barrels stand where the -Y shoulder would, so it stops short of both boards' rows
     hb = (PG.POGO_BODY_W + PG.POGO_FAB_STROKE) / 2.0
-    assert ys[0] - hb - ty0 >= SHOULDER_AIR - 1e-9, (
-        "the first barrel is %.2f off the -Y shoulder" % (ys[0] - hb - ty0))
+    if ys[0] - hb - ty0 < SHOULDER_AIR - 1e-9:
+        g0, g1 = shoulder_gap()
+        reach = POGO_SETBACK + PG.POGO_BODY_L / 2.0 + SHOULDER_AIR
+        assert g0 <= seam_x() - reach + 1e-9 and seam_x() + reach - 1e-9 <= g1, (
+            "the -Y shoulder's gap %.2f..%.2f does not clear the seam's barrels" % (g0, g1))
     assert POGO_PITCH - PG.POGO_PAD_W >= 0.30 - 1e-9, (
         "%.2f of board between neighbouring pogo lands" % (POGO_PITCH - PG.POGO_PAD_W))
     # ⚠ AGAINST THE LED'S BODY, NOT ITS COURTYARD. This was 0.30 to the courtyard (6.10
@@ -604,7 +656,10 @@ def channel():
     for xa, xb, wy0, sy0 in _sections():
         xm, xl = (xa + xb) / 2.0, xb - xa
         part = run(xa, xb, wy0, sy0, floor, lip_top)                       # the -Y wall
-        part = part.union(run(xa, xb, sy0, sy0 + SHOULDER_LO, floor, board_bot))   # -Y shoulder
+        g0, g1 = shoulder_gap()                                         # -Y shoulder,
+        for sa, sb in ((xa, min(xb, g0)), (max(xa, g1), xb)):            # less the seam's
+            if sb - sa > 1e-6:                                           # pogo gap
+                part = part.union(run(sa, sb, sy0, sy0 + SHOULDER_LO, floor, board_bot))
         part = part.union(run(xa, xb, ty1, sy1, floor, board_bot))         # +Y shoulder
         part = part.union(_lip(xl, xm, sy0, +1.0, lip_foot, lip_top))
         part = part.union(_lip(xl, xm, sy1, -1.0, lip_foot, lip_top))
@@ -681,6 +736,19 @@ def slot_cut():
                           (yr, foot + (yr - sy0)), (sy0, foot)])
                .close().extrude(xb - xa))
         out = cut if out is None else out.union(cut)
+    # ⚠ AND WHERE THE RUN PASSES STRING 1's FACEPLATE WALL, THE RAMP GOES ON THROUGH IT. Since the
+    # notch stops at the motor's fit (NOTCH_X1), the run's slot crosses the wall's last 9.6 --
+    # its post-bracing stretch -- and its flat roof left the wall over it as an 8.6-span
+    # ceiling (print_check, 2026-10-29). So over that stretch the 45° line runs from the run's
+    # slot wall until it leaves the faceplate wall's +Y face.
+    rx0, rx1 = NOTCH_X1, MB.wall_x(0)[1]
+    if rx1 - rx0 > 1e-6:
+        sy0 = _slot_y()[0]
+        yr = MB._face_y(0) + MB.PLATE_T / 2.0 + D.MIN_WALL      # past the wall's +Y face
+        out = out.union(cq.Workplane("YZ", origin=(rx0, 0, 0))
+                        .polyline([(sy0, floor), (yr, floor), (yr, foot + (yr - sy0)),
+                                   (sy0, foot)])
+                        .close().extrude(rx1 - rx0))
     return out
 
 
@@ -761,18 +829,21 @@ LEAD_STUB  = 4.0                    # straight out of the mouth before the first
 # ⚠ AND THE KEYHEAD PANEL SLIDES ON OVER IT, PLUGGED IN (2026-10-23). The lead is in the
 # Pi cap before that panel goes on, so it has to clear the panel's whole SWEPT section --
 # the panel's YZ silhouette, every x -- not just where the panel parks. That silhouette
-# comes down to -17.95 at the fret board's two M4s (y 27.5-35.5 and 40-46.5) and to -18.75
-# at the motor-board capture rib (y -56 to -39), -18.15 just +Y of it; everywhere else over the lead it is -15.75
-# or higher (raster of the built parts, 0.1 mm). The lead used to fly at -17.05 and the
+# comes down to -18.75 at the motor-board capture rib (y -56 to -39), -18.15 just +Y of it;
+# everywhere else over the lead it is the pickup piece's envelope, top_plate.PIECE_Z_MIN
+# -16.10, or higher -- the fret light now hangs from that envelope (fret_light.FLOOR), its M4
+# heads at -15.90 where they were -17.95 (raster of the built parts, 0.1 mm, 2026-10-23;
+# the fret numbers re-read 2026-10-29). The lead used to fly at -17.05 and the
 # panel ran through it. So it now crosses LOW, in the one column where string 1's CAN tee
 # is low too, and drops lower still before the rib:
-LEAD_FLY   = 9.45                   # -19.60: 0.95 under the M4s' tips, 0.95 over the
+LEAD_FLY   = 9.45                   # -19.60: 3.50 under the envelope, 0.95 over the
                                     # highest thing under it in the column (-21.25 at y -4
                                     # to 4); the tee there is at -25.25
 LEAD_COL_X = -563.0                 # the first lane; the four take x -563.0 to -558.2. In
                                     # x -564 to -557 the tee stands no higher than -25.25 over
                                     # y 17-36 -- either side of it its connectors reach -20.50,
-                                    # which no height between them and the M4s clears with room
+                                    # which no height under the old -17.95 M4s cleared with room
+                                    # (the envelope's -16.10 leaves more now; not re-flown)
 LEAD_DIP_Y = -32.0                  # step down here, before the panel's -18.15 band (y -38.5
                                     # to -33.5) and the rib's beyond it
 LEAD_LOW   = 4.95 - LEAD_FLY        # to -24.10 there: the rib's -18.75 is 4.65 over the top
