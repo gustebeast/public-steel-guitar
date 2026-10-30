@@ -690,7 +690,7 @@ TAPER_TAN = math.sqrt(1.0 - _TAPER_COS ** 2) / _TAPER_COS
 # 10's coil (see _sku_c_taper_gap): the coil's +X extreme, at rod-axis height, reaches into the
 # run from x_s to x_e, and at a full S the pocket edge there stands 0.33 over a .080 winding
 # (the trial had to switch its assert off for it). So that one edge steps only as far as every
-# gauge SKU C takes allows with INS_CLR of air (a pocket fit), floored to 0.1 -- still a
+# gauge SKU C takes allows with INS_CLR of air (a pocket fit), floored to whole beads -- still a
 # shoulder, so the insert still cannot walk +X (user), and at a shallower angle than A's, which
 # prints the same. The +Y edge steps S.
 def _sku_c_step_max() -> float:
@@ -706,7 +706,7 @@ def _sku_c_step_max() -> float:
     return lim
 
 
-SKU_C_STEP = math.floor(_sku_c_step_max() / 0.1 + 1e-9) * 0.1
+SKU_C_STEP = math.floor(_sku_c_step_max() / D.BEAD + 1e-9) * D.BEAD
 assert SKU_C_STEP >= D.MIN_WALL / 2, (
     f"SKU C's -Y step is down to {SKU_C_STEP:.2f}: string 10's coil leaves no shoulder")
 

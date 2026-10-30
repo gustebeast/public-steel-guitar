@@ -33,7 +33,17 @@ from . import dimensions as D
 from .helpers import box_at, cyl_y
 from .components import MOTOR_PULLEY_STANDOFF
 
-PLATE_T      = 8 * D.BEAD        # 6.4 faceplate wall
+# THE FACEPLATE WALL STOPS SHORT OF THE BELT. It was 8 beads (6.4) when the faceplate stood
+# 12-17 off the string; at the 7.5 standoff (user: the pulley seated at the shaft's D flat) a
+# 6.4 wall reached 1.4 into every belt's -Y edge (the lead's full build, 2026-10-29: chassis vs
+# belt_0..9, up to 79 mm3). So it is the whole beads between the faceplate and the belt's -Y
+# edge, less BELT_WALL_CLR, never more than the old 6.4 -- and the tee board, whose +Y edge is
+# this wall's face, follows it.
+BELT_WALL_CLR = 0.5
+PLATE_T      = min(8 * D.BEAD, math.floor((MOTOR_PULLEY_STANDOFF - D.BELT_W / 2 - BELT_WALL_CLR)
+                                          / D.BEAD + 1e-9) * D.BEAD)   # 4.0 at the 7.5 standoff
+assert PLATE_T >= 4 * D.BEAD, (
+    "the faceplate wall is down to %.1f between the motor and its belt" % PLATE_T)
 
 BOARD_AIR  = 0.0                 # the tee board's underside ON the CAN's real top (user, coupon
                                  # round 2, 2026-10-20: 0.8 over the nominal 42.3 left the real
