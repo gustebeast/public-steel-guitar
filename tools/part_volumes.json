@@ -175,15 +175,15 @@
   },
   "nut_slide_insert_a": {
    "material": "pctg",
-   "volume_mm3": 4550.9
+   "volume_mm3": 4558.6
   },
   "nut_slide_insert_b": {
    "material": "pctg",
-   "volume_mm3": 6162.4
+   "volume_mm3": 6173.7
   },
   "nut_slide_insert_c": {
    "material": "pctg",
-   "volume_mm3": 10377.6
+   "volume_mm3": 10392.5
   },
   "optical_guard": {
    "material": "petg-gf",

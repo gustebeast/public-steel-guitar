@@ -610,6 +610,18 @@ square slot through the wall.
 Only PETG-GF on a 0.8 nozzle was measured. Other nozzles scale by nozzle size and other materials
 reuse the numbers; none of those was printed.
 
+## The slicer is the oracle for what prints
+
+`py -3.12 -m cadkit.slicer_check part.step --up 0,0,1` slices a part in its print pose with the real
+slicer, headless, on the user's own presets, and reports where the beads differ from the model, layer
+by layer, ranked by error volume. Fix print accuracy only where this shows error, and re-slice to
+prove the error dropped. `thin_sites` and `Printed` are hints: on the sample parts (`--test`) a 0.5
+fin called POINT printed whole, and only a 0.25 one was dropped. A single-layer EXCESS or MISSING
+sitting on a ZSTEP is the same flat face between layers, not an outline error.
+
+It runs Bambu Studio's command line with its own --datadir and raises if the set of open windows
+changes. It never opens one.
+
 ## Materials — say what a part is made of where it is made
 
 The viewer shows every part as its material: the filament's colour and surface for a
