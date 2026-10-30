@@ -28,6 +28,9 @@ vectorised:
            does not, which is why a face test alone was never enough.
   ISLAND   a vertex lower than everything round it, off the bed: material that starts in
            mid-air at a point.
+  TIP      a convex edge sharp enough that the printed end stands well back of the drawn one,
+           for that edge's orientation (cadkit.print_corners, on this same mesh): often left
+           by a cut, where no drawing call could see it.
 Ridge and island candidates are then settled against the solid (_held: is there material
 one layer down, within the cone?), so a corner that only LOOKS lowest is not reported.
 Hits that share a mesh vertex, or lie within NEAR, are one SITE, reported with its area
@@ -410,6 +413,21 @@ def _span(tris, res=0.02, cap=1500):
     return float(2.0 * distance_transform_edt(grid).max() * res)
 
 
+def _nozzle():
+    return float(_value("src.dimensions", "NOZZLE_D"))
+
+
+def _tips(V, ev, turn, convex, bed, R):
+    """cadkit.print_corners on the mesh already in hand: V is in the build frame, so up is +Z."""
+    from cadkit.print_corners import sites_from_edges
+    out = []
+    for s in sites_from_edges(V, ev, turn, convex, (0.0, 0.0, 1.0), _nozzle()):
+        p = np.asarray(s["at"])
+        out.append(dict(s, area=0.0, span=None, height=float(p[2] - bed), n=1,
+                        at=p @ R, geo=[np.array(s["ends"]) @ R]))
+    return out
+
+
 def analyse(shape, up, angle=ANGLE, tess=TESS):
     """[site dict] for a cadquery Shape building along `up` (bed = its lowest point)."""
     import trimesh
@@ -434,6 +452,7 @@ def analyse(shape, up, angle=ANGLE, tess=TESS):
     adj, ev = np.array(m.face_adjacency), np.array(m.face_adjacency_edges)
     sharp = m.face_adjacency_angles > math.radians(SHARP)
     convex = np.array(m.face_adjacency_convex)
+    tips = _tips(V, ev, np.degrees(np.array(m.face_adjacency_angles)), convex, bed, R)
     a, b = V[ev[:, 0]], V[ev[:, 1]]
     d = b - a
     d /= np.linalg.norm(d, axis=1)[:, None]
@@ -486,7 +505,7 @@ def analyse(shape, up, angle=ANGLE, tess=TESS):
         pts.append(V[i]); kind.append("island"); w.append(0.0); ang.append(90.0); z.append(V[i, 2])
         vid.append(np.array([i])); geo.append(V[i][None])
     if not pts:
-        return []
+        return tips
     P = np.array(pts)
     pairs = cKDTree(P).query_pairs(NEAR, output_type="ndarray")
     hv = np.concatenate([[k] * len(v) for k, v in enumerate(vid)]).astype(int)
@@ -522,7 +541,7 @@ def analyse(shape, up, angle=ANGLE, tess=TESS):
                           geo=[geo[i] @ Rinv.T for i in idx]))
     order = {"FLOATING": 0, "RIDGE": 1, "OVERHANG": 2, "CEILING": 3}
     sites.sort(key=lambda s: (order[s["kind"]], -(s["area"] + s["length"])))
-    return sites
+    return sites + tips
 
 
 def report(name, sites, up, min_area=0.0, min_length=0.0, ledge=2 * BEAD, quiet_ledges=False):
@@ -548,6 +567,9 @@ def report(name, sites, up, min_area=0.0, min_length=0.0, ledge=2 * BEAD, quiet_
             what = "%7.2f mm^2  %.0f deg off flat" % (s["area"], s["angle"])
         elif s["kind"] == "RIDGE":
             what = "%7.2f mm long  climbs %.0f deg (needs %.0f)" % (s["length"], 90 - s["angle"], 90 - ANGLE)
+        elif s["kind"] == "TIP":
+            what = "%7.2f mm long  %.0f deg, prints %.2f back of drawn: %s" % (
+                s["length"], s["angle"], s["recede"], s["hint"])
         else:
             what = "a point in mid-air"
         print("    %-8s %s   %.2f above the bed  at (%.2f, %.2f, %.2f)%s" % (
