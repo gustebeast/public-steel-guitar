@@ -51,14 +51,14 @@ OUTPUT_PANEL_REV = int(os.environ.get("OUTPUT_PANEL_REV", "2"))
 OPTICAL_REV = int(os.environ.get("OPTICAL_REV", "2"))
 assert OUTPUT_PANEL_REV in (1, 2) and OPTICAL_REV in (1, 2), "a board REV is 1 or 2"
 REV1_DIR = os.path.join(os.path.dirname(GEOM_DIR), "rev1")
-_REV = {"output_panel": OUTPUT_PANEL_REV, "optical": OPTICAL_REV}
+REV = {"output_panel": OUTPUT_PANEL_REV, "optical": OPTICAL_REV}
 
 
 def _with_revs(boards):
     """`boards` with each rev-1 board's geometry read from elec/rev1 instead of elec/geom.
     Boards.load caches per board name, so the rev-1 file is put in that cache up front."""
     import json
-    for name, rev in _REV.items():
+    for name, rev in REV.items():
         if rev == 1:
             with open(os.path.join(REV1_DIR, name + ".geom.json"), encoding="utf-8") as fh:
                 boards._cache[name] = json.load(fh)

@@ -146,10 +146,25 @@ ENDS_OK = {
 }
 
 
+def _rev_silk(board):
+    """Disagreements between a board's printed revision and its REV switch (0 or 1). A
+    board with a switch must print that rev: optical R2 went out in the model reading
+    'OPTICAL r1' because the labeller's default was never told otherwise."""
+    rev = BG.REV.get(board)
+    if rev is None:
+        return 0
+    found = [t["text"] for t in BG.load(board)["silk"]
+             if t["text"].split()[-1:] and t["text"].split()[-1] in ("r1", "r2", "r3")]
+    if [t.split()[-1] for t in found] == ["r%d" % rev]:
+        return 0
+    print("%-13s REV %d but the board prints %r" % (board, rev, found))
+    return 1
+
+
 def check(board, verbose=True):
     solid, ink = _cad(board)
-    return _CHK.check(board, solid, BG.load(board), verbose=verbose,
-                      strict_ends=True, ends_ok=ENDS_OK.get(board), ink=ink)
+    return _rev_silk(board) + _CHK.check(board, solid, BG.load(board), verbose=verbose,
+                                         strict_ends=True, ends_ok=ENDS_OK.get(board), ink=ink)
 
 
 def main(argv):
