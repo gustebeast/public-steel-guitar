@@ -1230,7 +1230,7 @@ def op_cradle():
     lying on the chassis floor (electronics.OP_UNDER_Z / OP_FLOOR_Z).
     """
     from cadkit.pcb import pcb_cradle
-    from .electronics import op_origin, OP_BOARD_Y, OP_PANEL_CLR, OP_FLOOR_Z, OP_PLATE_T
+    from .electronics import op_origin, OP_BOARD_Y, OP_PANEL_CLR, OP_FLOOR_Z, OP_PLATE_T, _OP_T
     cx, cy, cz = op_origin()
     standoff = cz - (OP_FLOOR_Z + OP_PLATE_T)    # board underside above the plate's top
     # ⚠ THE M4 GOES THROUGH THE BOARD NOW, not beside it (user, 2026-09-21: "the screw
@@ -1346,11 +1346,16 @@ def op_cradle():
     # +Y WALL CLEARS STRING 10'S SCREW PULLEY. The board's +Y edge is held D.OP_PULLEY_CLR
     # off that pulley's swept flange (motor_bank._OP_EDGE_LIM), but the wall stands
     # clr + wall beyond the edge and sat inside the swept circle (check_sweep, 2026-10-29,
-    # with the rail in 3 beads). The same clearance, round the pulley's axis, comes out.
+    # with the rail in 3 beads). The same clearance, round the pulley's axis, comes out --
+    # but only while the wall reaches the flange: on the floor (R2) its top is under the
+    # flange's underside, so there is nothing to clear, and the round cut only left a flat
+    # 8.5 mm ridge in the print (print_check, 2026-10-30).
     _i = D.N_STRINGS - 1
-    cr = cr.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        D.PULLEY_FLANGE_OD / 2.0 + D.OP_PULLEY_CLR, 100.0,
-        cq.Vector(D.screw_x(_i) - (cx + rcx), D.string_y(_i) - cy, -50.0))))
+    _wall_top = cz + _OP_T + 0.8                     # pcb_cradle's wall_over default
+    if _wall_top > D.screw_pulley_z(_i) - D.PULLEY_FLANGE_OD / 2.0:
+        cr = cr.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+            D.PULLEY_FLANGE_OD / 2.0 + D.OP_PULLEY_CLR, 100.0,
+            cq.Vector(D.screw_x(_i) - (cx + rcx), D.string_y(_i) - cy, -50.0))))
     return cr.translate((cx + rcx, cy, cz - standoff))
 
 
