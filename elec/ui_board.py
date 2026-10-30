@@ -34,7 +34,7 @@ actually fabbed -- which is the failure elec/export_geom.py exists to have ended
 
 -- WHY THE CONNECTORS ARE THE CONNECTORS THEY ARE ---------------------------
 J1 is a Molex 52271-2079: 20 ways at 1.0, 3.0 high, BOTTOM contact, flip-lock actuator,
-its mouth flush with the +Y edge and facing the module. Bottom contact because the cable
+its mouth facing +Y, under the module. Bottom contact because the cable
 arrives contacts-down: it leaves the module's socket contacts-up against that board and
 loops round under it without turning over (src/ui_panel.ffc_path). It was a 1x20 2.54
 header the module plugged onto, which needed a socket SOLDERED onto the bought module.
@@ -45,8 +45,7 @@ J2 is a RIGHT-ANGLE 2x7 IDC box header, and every word of that was forced:
   * right-angle, because the board hangs UNDER the deck with 11.74 mm of air over it and
     a vertical box header stands about 13.5. The ribbon leaves -X, under the deck,
     toward the keyhead bay, which is where the Pi is.
-  * 2x7 and not 2x10, because the board is 34 deep and a 2x10's shroud is 33.2 long. It
-    would fit nowhere that also clears the display module above it. The cost is the
+  * 2x7 and not 2x10, because the board is 32 deep and a 2x10's shroud is 33.2 long. The cost is the
     interleaved ground returns a 20-way would have carried: SCLK gets GND on one side
     and +3V3 -- an AC ground -- on the other, and that is the best a 14-way can do.
 
@@ -311,7 +310,11 @@ _J1_X = UI.board_local(UI.ui_x(), 0.0)[0]
 # on pass 1. The mouth sits 1.62 inside the edge (was 0.5) and the stiffener lies over the
 # difference; the actuator, OPENED, reaches 0.13 past the edge.
 _J1_ROW_SHIFT = 1.122
-_J1_Y = _HL - _J1_CRTYD[1] - _J1_ROW_SHIFT
+# ...AND ITS ROW IS WELL INSIDE THE BOARD SINCE THE INPUTS WENT EITHER SIDE OF THE DISPLAY
+# (2026-10-30): the board's +Y edge is set by the M4's boss, and the 50 mm ribbon only
+# reaches so far past the module's socket, so the mouth stands at the inputs' Y. The
+# pull-ups and the decoupling pair are laid off this row, so the cluster is unchanged.
+_J1_Y = UI.board_local(0.0, UI.input_y())[1] + 2.0 - _J1_FAB[1]
 
 
 def _j1_box(margin=0.0):
@@ -339,27 +342,19 @@ _J2_FAB_AHEAD = 2.135      # KiCad PinHeader_2x08_P1.27mm_Horizontal, from the P
 _J2_FAB_BACK = 1.775       #   2.135 to the plastic's front face (the pins run 4.0 further),
 _J2_FAB_HALF = 5.08        #   1.775 behind the rows; 5.08 either way along the rows
 _J2_X = -_HW + _J2_FAB_AHEAD
-# ...and its +Y end has to stay clear of the display module hanging over the board.
-# The module's -Y edge, in board coordinates:
-_MOD_EDGE_Y = UI.board_local(0.0, UI.module_centre()[1] - UI.MOD_L / 2.0)[1]
-# level with the knob and the button: the strip below the module is all there is
-# (2026-10-29), and J2's 10.16 sits in it with room either way
-_J2_Y = UI.board_local(0.0, UI.input_y())[1]
-assert _J2_Y + _J2_FAB_HALF <= _MOD_EDGE_Y - 1.0, (
-    "J2's shroud reaches y %+.2f and the display module's edge is at %+.2f -- the "
-    "ribbon header would stand under the module"
-    % (_J2_Y + _J2_FAB_HALF, _MOD_EDGE_Y))
+# just -Y of the inputs' line, so the socket on it stands clear of the clamp's keeper
+_J2_Y = UI.board_local(0.0, UI.input_y())[1] - 2.0
+assert _J2_Y + UI.IDC_B / 2.0 <= UI.KEEPER_Y - UI.KEEPER_W / 2.0 - 1.6, (
+    "the ribbon's socket reaches y %+.2f, into the clamp's keeper" % (_J2_Y + UI.IDC_B / 2.0))
 assert _J2_Y - _J2_FAB_HALF >= -_HL + 1.0, (
     "J2's shroud reaches y %+.2f against a -Y edge at %+.2f" % (_J2_Y - _J2_FAB_HALF, -_HL))
 
-# SW2, the power button: its cap's -X edge on the window's -X edge and its centre on the
-# knob's Y (user's sketch, 2026-10-04) -- ui_panel.power_x() is the rule. The footprint is
-# symmetric about its centre, so the placement IS the body's.
+# SW2, the power button: ui_panel.power_x() is the rule. The footprint is symmetric about
+# its centre, so the placement IS the body's.
 _PWR_X, _PWR_Y = UI.board_local(UI.power_x(), UI.input_y())
-_PWR_HALF = 4.25
-# ...and that X is what the cap's diameter was chosen for: the clamp plate under this
-# board takes a relief round each through-hole part, and the web left between this one's
-# and J2's has to be two beads.
+_PWR_HALF = UI.PWR_HALF
+# the clamp plate under this board takes a relief round each through-hole part, and the
+# web left between this one's and J2's has to be two beads
 assert (_PWR_X - _PWR_HALF) - (_J2_X + _J2_FAB_BACK) - 2 * UI.CLAMP_RELIEF \
     >= UI.D.MIN_WALL_2P - 1e-9, (
     "the power switch's body starts at x %+.2f and the ribbon header's ends at %+.2f: "
@@ -370,7 +365,10 @@ assert (_PWR_X - _PWR_HALF) - (_J2_X + _J2_FAB_BACK) - 2 * UI.CLAMP_RELIEF \
 # board into the clamp plate are what hold the station in X, Y and rotation. Central,
 # because that is what a Z-only fastener wants.
 _SCREW_X, _SCREW_Y = UI.SCREW_XY
-_BOSS_D = 8.0              # the deck-side boss the screw threads into (cadkit M4)
+_BOSS_D = UI.M4.insert_pilot_d + 2 * UI.D.MIN_WALL_2P   # the deck-side boss (ui_panel)
+# ...and the wings' numbers in ui_panel are typed, because they are read at import:
+assert abs(_SW_BODY_X - UI.SCREW_XY[0]) < 0.01 and abs(_PWR_X - UI.SPIGOTS[1][0]) < 0.05, (
+    "ui_panel's wing posts are not on the inputs: SW1 x %.2f, SW2 x %.2f" % (_SW_BODY_X, _PWR_X))
 _ENC_CRTYD = UI.ENC_SQ / 2.0 + 0.25
 
 # THE PULL-UPS ARE A ROW OF SEVEN BESIDE J1, standing on end, under the display module
@@ -381,19 +379,18 @@ _ENC_CRTYD = UI.ENC_SQ / 2.0 + 0.25
 # switch ends along the bottom, facing the encoder they come from.
 # Until the ribbon (2026-10-19) they ran along y 10 from x -20, which is where J1's lands
 # are now.
-_R_Y = 13.0
-_R_X0, _R_DX = 15.6, 1.6
+_R_Y = _J1_Y + 4.16
+_R_X0, _R_DX = _J1_X + 15.6, 1.6
 _R_HALF = (0.48, 0.98)              # an 0402 stood on end: its courtyard, half x and y
 _ROW = (_R_X0 - _R_HALF[0], _R_X0 + 6 * _R_DX + _R_HALF[0], _R_Y - _R_HALF[1], _R_Y + _R_HALF[1])
 assert _ROW[0] >= _j1_box()[1] + 0.3, "the pull-up row laps J1's courtyard"
-assert _ROW[2] >= _SW_BODY_Y + _ENC_CRTYD + 1.0, "the pull-up row laps the encoder"
 assert _ROW[3] <= _HL - 1.0, "the pull-up row is within 1.0 of the +Y edge"
 # THE TWO DECOUPLING PARTS ARE UNDER J1's VDD WAY, which is the one place on this board
 # where position IS the value: way 2, at x +8.5 with J1 turned round. C1's two lands sit
 # straight under ways 2 (+3V3) and 1 (GND); C2 under C1. Before the ribbon they stood at
 # the old header's pin 2, 2.7 and 5.4 mm from it.
-_C1_XY = (_J1_X + 9.0, 6.3)
-_C2_XY = (_J1_X + 9.0, 4.2)
+_C1_XY = (_J1_X + 9.0, _J1_Y - 2.54)
+_C2_XY = (_J1_X + 9.0, _J1_Y - 4.64)
 assert _C1_XY[1] + 0.48 <= _j1_box()[2] - 0.3, "C1 laps J1's courtyard"
 
 # EVERY HOLE IN THE BOARD HAS TO LAND ON BARE BOARD -- the M4 with its deck-side boss
@@ -531,7 +528,7 @@ BOARD_NOTES = {
                             "its maker's name (Molex since 2026-10-23); a laminated flat "
                             "cable has no loose strand or misplaced crimp to bridge them",
                   "A17:J1 ways": "20 ways at 1.0 mm: a block is 21 lines, 34 mm at the "
-                                 "legible 1.0 mm, the whole height of this 72 x 34 board. "
+                                 "legible 1.0 mm, the whole height of this 32 deep board. "
                                  "Nothing is crimped to it: the mate is a stock FFC, "
                                  "which goes in one way only (contacts down, into a "
                                  "bottom-contact socket). Ways 1 and 20 are numbered; the "
@@ -614,8 +611,8 @@ BOARD_NOTES = {
                    "0805 have a track on each pad and nothing to tombstone them",
             "M30": "JLCPCB's assembly capabilities page, read 2026-10-05: Economic PCBA "
                    "takes single-sided SMT and through-hole on 2 layers at 1.6 mm, a "
-                   "single board from 10 x 10 mm, 0402 and larger. This board is 72 x "
-                   "34, all parts on one face, nine 0402 / 0805 passives, one SMT FFC "
+                   "single board from 10 x 10 mm, 0402 and larger. This board is 121 x "
+                   "32, all parts on one face, nine 0402 / 0805 passives, one SMT FFC "
                    "socket and three through-hole parts. Standard PCBA starts at 70 x 70 "
                    "and would need "
                    "rails. Seven BOM lines: three basic passives and four extended "
@@ -653,8 +650,8 @@ BOARD_NOTES = {
                    "layers -- 72 of 72 plated holes have copper all round them on each, "
                    "the one unplated hole is the encoder's peg, and paste is on the nine "
                    "surface-mount parts only. Stack-up and finish are in ORDER.txt",
-            "M38": "the one ceramic over 0603 is C2, an 0805, 6.5 mm from the nearest "
-                   "edge of a 72 x 34 board held by a screw and two spigots; routed "
+            "M38": "the one ceramic over 0603 is C2, an 0805, mid-board on a 121 x "
+                   "32 board held by a screw and two spigots; routed "
                    "outline, no V-score, no tab. The M4 and both spigot holes are "
                    "unplated and isolated on purpose (they meet printed plastic). The "
                    "knob, the button and the display all face the player; the ribbon "
@@ -683,9 +680,8 @@ BOARD_NOTES = {
         # past the row's +X end: under the row it printed on top of R3's own
         # left of the socket's courtyard, clear of the -X spigot below it
         "J1": (round(_J1_X - _J1_CRTYD[2] - 2.5, 3), round(_J1_Y + 4.0, 3)),
-        "J2": (round(_J2_X + 3.0, 3), round(_J2_Y - 6.4, 3)),
-        # above the switch: below it is the board's -Y edge since the inputs moved there
-        "SW1": (round(_SW_X, 3), round(_SW_Y + 10.0, 3)),
+        "J2": (round(_J2_X + 3.0, 3), round(_J2_Y - 7.4, 3)),
+        "SW1": (round(_SW_X - 12.0, 3), round(_SW_Y, 3)),
         "SW2": (round(_PWR_X, 3), round(_PWR_Y - 5.8, 3)),
         "C1": (round(_C1_XY[0] + 3.0, 3), _C1_XY[1]), "C2": (round(_C2_XY[0] + 3.6, 3), _C2_XY[1]),
         # seven designators over a 1.6 mm row do not fit side by side, so they alternate
@@ -736,9 +732,8 @@ def _check_against_cad():
     # (centre x, centre y, half-extent x, half-extent y, margin x, margin y). The
     # centre is the BODY's, which for SW1 is not its placement -- see _ENC_OFF.
     extents = {
-        # the courtyard, flush with the +Y edge on purpose: the mouth faces the module
         "J1": ((_j1_box()[0] + _j1_box()[1]) / 2.0, (_j1_box()[2] + _j1_box()[3]) / 2.0,
-               _J1_CRTYD[2], (_J1_CRTYD[1] - _J1_CRTYD[0]) / 2.0, 1.0, 0.0),
+               _J1_CRTYD[2], (_J1_CRTYD[1] - _J1_CRTYD[0]) / 2.0, 1.0, 1.0),
         "SW1": (_SW_BODY_X, _SW_BODY_Y, UI.ENC_SQ / 2.0, UI.ENC_SQ / 2.0, 1.0, 1.0),
         "SW2": (_PWR_X, _PWR_Y, _PWR_HALF, _PWR_HALF, 1.0, 1.0),
         "J2": (_J2_X - (_J2_FAB_AHEAD - _J2_FAB_BACK) / 2.0, _J2_Y,
@@ -749,16 +744,11 @@ def _check_against_cad():
             "%s reaches x %+.2f on a %.1f board" % (ref, abs(x) + ex, BOARD_W))
         assert abs(y) + ey <= _HL - my + 1e-9, (
             "%s reaches y %+.2f on a %.1f board" % (ref, abs(y) + ey, BOARD_L))
-    # 2. the board stays inside the display module's own X shadow, which is what keeps
-    #    the station clear of the swappable band region at the bridge end
+    # 2. the board stops EDGE_WALL short of the swappable band region's seam
     from src import top_plate as TP
     bx, by = UI.board_centre()
-    assert bx + _HW <= UI.ui_x() + UI.MOD_W / 2.0 + 1e-9 and \
-        bx - _HW >= UI.ui_x() - UI.MOD_W / 2.0 - 1e-9, (
-            "the UI board is wider than the display module it hides behind")
-    assert UI.ui_x() + UI.MOD_W / 2.0 + UI.POCKET_CLR + UI.EDGE_WALL \
-        <= TP.REGION_X1 + 1e-9, (
-            "the display pocket's +X wall is inside the band region's seam")
+    assert bx + _HW + UI.EDGE_WALL <= TP.REGION_X1 + 1e-9, (
+        "the UI board's +X edge is inside the band region's seam")
     # 3. the board clears the -Y rail's inner face
     assert by - _HL >= TP.YL + UI.BOARD_WALL_CLR - 1e-9, (
         "the UI board reaches y %.2f and the -Y rail's inner face is %.2f"

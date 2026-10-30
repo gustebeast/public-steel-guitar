@@ -14,21 +14,22 @@ WARNING: THE DATUMS ARE FUNCTIONS, NOT MODULE CONSTANTS, and that is load-bearin
 top_plate.py imports THIS module (it cuts the deck), so this module cannot import
 top_plate at import time. Everything that needs the deck's own numbers takes them lazily.
 
--- WHERE IT SITS (user, 2026-09-25) ------------------------------------------
-X: as far +X as the deck allows. The bridge end of the deck is a grid of BAND_W slots
-that the pickup piece and its fillers SWAP AROUND in, so anything fixed there would block
-a pickup position. The station therefore stops at the -X end of that region, and it stops
-a full 1.6 mm short of it, because the display's pocket wall is what stands there and
-1.6 is two beads -- the thinnest wall this project will print.
+-- WHERE IT SITS (user, 2026-10-30, replacing 2026-09-25's and 2026-10-29's) ----------
+"Center the screen between the fretboard border and the -y edge of the top panel and then
+put the joystick to the screen +x and the power to the screen -x, trying to keep them as
+close to the screen as we can while maintaining sufficient clearance."
 
-Y: up from the -Y wall (user, 2026-10-29, replacing 2026-09-25's equal gaps): the board
-stands just off the -Y rail, the knob and the power button sit on its -Y edge, and the
-display is only as far +Y as their deck holes need -- so the board runs on under it.
-See board_centre() and header_edge_y().
+Y: the lit area's centre is halfway between the fret border and the deck's -Y edge, and
+both inputs share that Y. See screen_y().
 
-...and the KNOB's X is its own rule, because the X above places the DISPLAY. The cap's
-+X edge is level with the window's +X edge, so the two stand the same 9.90 off the seam.
-See knob_x(), which records the two wrong readings of "equally spaced" that came first.
+X: the bridge end of the deck is a grid of BAND_W slots that the pickup piece and its
+fillers SWAP AROUND in, so nothing fixed may enter it. The board's +X edge stops EDGE_WALL
+short of that seam, the knob stands on that edge, the display is a deck wall away from the
+knob's hole, and the power button a deck wall away on the display's other side. See
+knob_x(), ui_x() and power_x().
+
+The board runs under the module from one input to the other, so it is 121 long, and the
+deck can only reach it in the two wings either side of the pocket. See SCREW_XY.
 
 -- HOW IT GOES IN AND OUT (user, 2026-09-28) ---------------------------------
 THE STATION IS BUILT ONTO THE PANEL WHILE THE PANEL IS OFF THE INSTRUMENT, and then
@@ -36,45 +37,23 @@ the panel is slid on with all of it attached. In order: build the station onto t
 panel, slide that panel on, plug the ribbon into the Pi, slide the keyhead panel on,
 fit the endplate. Out is the reverse.
 
-ONE CLAMP PLATE AND TWO M4s HOLD IT. Plastic takes every direction but the one it
-installs along: the display's pocket walls and the window ledge, the board's cradle wall
-and four bearings. The clamp plate lies against the board's underside and its two screws
-pull the whole sandwich up into the deck's own bosses -- and four columns off it press
-the module's PCB into the ledge at its four mounting holes, which is the screen's only
-positive retention (the display's ribbon carries nothing). Undo the clamp and the station
-comes away as one piece; release the ribbon from J1 to part the board from the display.
+ONE CLAMP PLATE, ONE M4 AND ONE KEEPER HOLD IT. Plastic takes every direction but the one
+it installs along: the display's pocket walls and the window ledge, the two spigots and
+the deck's bearings. The clamp plate lies against the board's underside; its -X tongue
+hooks into a keeper on the deck, and the M4 at the knob's end pulls the +X end up -- and
+four columns off it press the module's PCB into the ledge at its four mounting holes,
+which is the screen's only positive retention (the display's ribbon carries nothing).
+Undo the M4, swing the +X end down and draw the tongue out: the station comes away as one
+piece. Release the ribbon from J1 to part the board from the display.
 
-WHAT IS ACTUALLY UNDER IT, measured rather than assumed. An earlier probe of mine
-reported 57.5 mm of clear air under the whole station and was WRONG -- it filtered out
-almost every part in the instrument and found two. Intersecting a prism over the
-station's plan with everything gives (re-measured 2026-10-14):
+WHAT IS ACTUALLY UNDER IT. The tee boards at -19.65 and the wires round them: the clamp's
+underside is at -15.9 and the tails reach -16.1, so the whole budget is about 2 mm, which
+is why the clamp lies AGAINST the board with reliefs for the tails.
 
-    under the BOARD     wire_usb at -18.31, then the 24 V link at -20.95 (wire_hub's
-                        top is at -16.20, but in the cable trough beside the tails, not
-                        under them -- see the slide note below)
-    under the DISPLAY   the tee boards at -19.65, then wire_pwr_hot at -20.00
-
-The board's own through-hole tails already reach -16.10, so the clearance under this
-station is about two millimetres, not five centimetres. That is why the clamp lies
-AGAINST the board with reliefs for the tails instead of hanging below them, and why its
-arm steps up to -8.0 before running +Y under the display.
-
-...AND THE PANEL SLIDES ON WITH ALL OF IT ATTACHED, which is a 361 mm stroke past the
-whole bay. Stepping the station along it against the Pi's three USB leads (2026-10-13,
-every 3 mm; the rest of the bay was not re-stepped this time), what it meets is the two
-USB-A leads where they stand up out of the bay to cross to the Pi's ports:
-
-    wire_link (motor board -> Pi)    panel 276 to 318 mm out, at x -470, z -12.7
-    wire_hub  (output panel -> Pi)   panel 354 to 357 mm out, at x -575, z -14.5
-
-Both are loose ends until they are plugged, so THE Pi's USB-A PLUGS GO IN AFTER THIS
-PANEL IS ON, in the same step as the ribbon, and come out before it slides off. Until
-then each lead lies down in the bay, under the trough lip. (INSTALL_NOTES.md says so.)
-
-In the trough itself nothing is near: at rest wire_hub's top is at -16.20 and the
-board's lowest tail at -16.10, but the lead is 1.05 further -Y, inside the trough and
-2.6 under its lip, with the trough's wall between the two. The nearest approach is
-1.72 mm, and it is the same at every point of the slide. wire_usb, lower, is 4.42 off.
+AND THE PANEL SLIDES ON WITH ALL OF IT ATTACHED, past the Pi's USB-A leads, so THE Pi's
+USB-A PLUGS GO IN AFTER THIS PANEL IS ON, in the same step as the ribbon, and come out
+before it slides off. (INSTALL_NOTES.md says so.) The cable trough's lip runs the whole
+stroke, top at -13.6: the clamp's near bar ramps up over it (clamp()).
 
 -- DOES THE SCREEN SIT LEVEL? (user, 2026-09-28) ------------------------------
 Its face lies on the window ledge, which is a flat, so level means only: does anything
@@ -82,9 +61,8 @@ hold it there. Nothing else touches the module now -- the ribbon below carries n
 so the face reaches the flat by construction and the clamp is the whole answer.
 
 HOLDING it there is the clamp: four columns, one at each of the module's mounting holes,
-reaching its PCB's back face. The far two stand on the arm's crossbar and the near two
-beside the board's ends. Until the ribbon (2026-10-19) the near end hung on the 1x20
-header's own pins and only the far end had posts.
+reaching its PCB's back face. The far two stand on the plate, past the board's +Y edge, and
+the near two on a bar past its -Y edge.
 
 -- THE DISPLAY'S CONNECTION IS A RIBBON (user, 2026-10-19) ---------------------
 "Solderless" ruled out the through-hole module: Newhaven ship it with twenty bare plated
@@ -92,7 +70,7 @@ holes, so any header on it is a hand-soldered joint on a bought part. Its siblin
 NHD-2.7-12864WDW3-M, is the same panel, outline, bezel and pin table with a 20-way
 1.0 mm FFC socket (Molex 52271-2079, bottom contact, 3.0 high) on its back. So the joint
 is now three bought parts and no solder at all: that socket, a stock 50 mm same-side FFC
-(JUSHUO JS10A-20P-050-4-8), and a JLC-placed Molex 52271-2079 on our board's +Y
+(JUSHUO JS10A-20P-050-4-8), and a JLC-placed Molex 52271-2079 on our board,
 edge, its mouth facing the module. See ffc_path() for the cable's route.
 
 -- THE STACK, TOP DOWN -------------------------------------------------------
@@ -108,8 +86,8 @@ edge, its mouth facing the module. See ffc_path() for the cable's route.
 
 THE BOARD'S Z IS NOT THE DISPLAY'S ANY MORE. It was set by the header stack under the
 module, and it stays where that put it because two other things pin it to the tenth:
-the encoder's collar clears the deck's underside by 0.9 above it, and the board passes
-0.30 over the cable trough's lip below it. BOARD_GAP keeps that number.
+the encoder's collar clears the deck's underside by 0.9 above it, and the clamp's 2 mm
+budget is below it. BOARD_GAP keeps that number.
 """
 from __future__ import annotations
 
@@ -240,13 +218,12 @@ PWR_CAP_UP = (0.0, 0.0, -1.0)
 CLAMP_UP = (0.0, 0.0, 1.0)
 
 # -- THE BOARD --------------------------------------------------------------
-# 72 x 34. The 72 was the old 1x20 header's 50.9 plus margin and is now the room the
-# encoder, the power switch and the ribbon header need across it; the 34 is the span
-# from the FFC socket's mouth on the +Y edge down past the encoder, and since 2026-10-29
-# all but the -Y 19.3 of it is under the display module. It stays inside the
-# display module's own 82 x 47.5 shadow in X, which is what keeps the whole station
-# clear of the swappable band region (see the module docstring).
-BOARD_W, BOARD_L = 72.0, 34.0
+# 121 x 32. The 121 is one input to the other: the knob's body and INPUT_EDGE at the +X end,
+# the power switch, the clamp's web and the ribbon header at the -X end. The 32 is what the
+# posts and the screw boss need above and below the encoder's 17 (see SCREW_XY).
+BOARD_W, BOARD_L = 121.0, 32.0
+BOARD_CY_OFF = 1.0                 # the board's centre, +Y of the inputs': the boss is
+                                   # bigger than the post on the other side
 BOARD_T = 1.6
 # MODULE REAR TO BOARD TOP. It was the header stack (an 8.5 socket on a 2.5 insulator,
 # 0.6 of it held back so the socket could never bottom before the face met the ledge).
@@ -286,26 +263,19 @@ J1_H = 3.0
 J1_SLOT = 1.0
 FFC_R_MIN = 1.2                    # the tightest bend drawn: four times its thickness
 FFC_TOP_Z = -2.5                   # the run under the module, clear of its rear parts
-# ONE M4, AND IT ONLY HAS TO HOLD Z (user, 2026-09-28). There were two, because one
-# screw through a 72 mm board is a hinge -- but the answer to a hinge is not a second
-# screw, it is plastic. X, Y and rotation are taken by two SPIGOTS that come down off
-# the deck, pass through clearance holes in the board and enter sockets in the clamp
-# plate. That is the project's own rule: plastic captures every direction but the one
-# you install along, and one M4 takes that one.
+# ONE M4, AND IT ONLY HAS TO HOLD Z (user, 2026-09-28). X, Y and rotation are taken by two
+# SPIGOTS that come down off the deck, pass through clearance holes in the board and enter
+# sockets in the clamp plate: plastic captures every direction but the one you install
+# along, and one M4 takes that one.
 #
-# Central in X, because that is what a Z-only fastener wants, and on the inputs' line in
-# Y: since the board went under the display (2026-10-29) everything the deck reaches down
-# to -- this boss, the posts, the spigots -- has to stand in the strip below the module,
-# between the power button's hole and the knob's.
-SCREW_XY = (0.0, -7.5)
-
-# THE TWO SPIGOTS, in board coordinates: on a diagonal of the strip below the display,
-# which is the only place the deck can reach the board (2026-10-29), so as far apart as
-# that strip allows -- x +-12 keeps their O6.6 keep-outs off the encoder's courtyard and
-# the power switch's, and the deck's holes for the two stand 1.6 clear of the posts'
-# faces. The switch nets that used to own the -Y half have the board under the module to
-# cross in now.
-SPIGOTS = ((-12.0, -13.0), (12.0, -2.0))
+# THE DECK ONLY REACHES THE BOARD IN ITS TWO WINGS, beside the module's pocket (2026-10-30),
+# so the M4 is at the knob's end -- the end a thumb pushes hardest -- and the clamp's -X
+# tongue in the KEEPER takes Z at the power button's. Each wing's bearings stand above and
+# below its input. Board coordinates; the knob's body is at (51.0, -1.0), asserted in
+# elec/ui_board.py, and the power switch's X is -49.6.
+SCREW_XY = (51.0, 12.5)
+SPIGOTS = ((51.0, -12.8), (-49.6, -11.5))
+THIRD_POST = (-49.6, 9.5)
 SPIGOT_D = 4.0
 SPIGOT_CLR = 0.3                   # per side, in the board's hole and the clamp's socket
 # 1.6, not 2.4: the socket is BLIND and the plate is only 3.2, so the depth and the
@@ -313,6 +283,13 @@ SPIGOT_CLR = 0.3                   # per side, in the board's hole and the clamp
 # hard floor, not the two-bead one this project builds to. check_thin found it. A O4
 # pin 1.6 deep is plenty for a locating feature that carries no load.
 SPIGOT_DEPTH = 1.6
+# THE KEEPER: a column off the deck past the board's -X edge, with a tunnel the clamp's
+# tongue enters heading -X. The deck prints face-down, so the tunnel's floor would be a
+# ceiling: it is a 45 degree ramp and the tongue's underside is chamfered to match.
+KEEPER_Y = 10.0                    # board coordinates: +Y of the ribbon's socket
+KEEPER_W = 8.0                     # the tongue
+KEEPER_CLR = 0.2
+KEEPER_FLOOR = D.MIN_WALL_2P
 
 # -- THE RIBBON TO THE PI ---------------------------------------------------
 # Its shape lives here rather than in wiring.py because elec/ui_board.py imports this
@@ -425,21 +402,12 @@ CLAMP_T    = 4 * D.BEAD
 # the two-bead floor between them. check_thin is what found that, at 1.43. (J1 is surface
 # mount since the ribbon; J2 and SW2 keep a 2-bead web between theirs, ui_board asserts.)
 CLAMP_RELIEF = 0.4
-CLAMP_RIB_W = 6.0                  # the arms that reach under the display
-# TWO ARMS, NOT ONE, and the ribbon is why: it hangs under the module's centre, 21 wide,
-# exactly where the single arm ran. They stand either side of it with 2.5 to spare.
-CLAMP_ARM_DX = 16.0
-CLAMP_POST_SQ = 4.0                # the near columns, beside the board's ends
+CLAMP_RIB_W = 6.0                  # the plate's far margin, past the far hole row
 # THE FAR POSTS are O4 for the last stretch up, inside the deck's pocket: the hole is 2.5
 # from the module's edge, so a O6 reached 0.5 past it and into the pocket's wall
 # (POCKET_CLR is 0.3). The arm's own O6 carries on below the deck.
 CLAMP_TIP_D = 2.0 * (HDR_EDGE_DY - 0.5)
-CLAMP_ARM_Z = -8.0                 # the arm's TOP, once it has stepped up past the
-                                   # board. Its UNDERSIDE then sits at -14.0, 5.65 clear
-                                   # of the highest thing under the display (the tee
-                                   # boards at -19.65). It was set when a CAN lead ran
-                                   # at -17.24 there, and at the plate's own level the
-                                   # arm would have stood 1.8 inside it
+CLAMP_ARM_Z = -6.0                 # the near bar's top
 # M4 x 10, the length the rest of the instrument already buys (2026-10-07: one screw
 # length fewer on the BOM; this was the x12). The head bears on the clamp's underside,
 # the shank climbs 3.2 of clamp and 1.6 of board, and 5.2 is left for the boss: the whole
@@ -475,9 +443,7 @@ PWR_TRAVEL = 2.5                   # ...and how far it has to be pushed to latch
 PWR_STEM_GRIP = 2.5
 # THE CAP'S DIAMETER IS A THUMB'S. It has to be followed a millimetre below the deck to
 # release it, which the user put at about 15 (2026-10-04); 19 beads is that on the grid.
-# ⚠ AND IT SETS THE SWITCH'S X, because the cap's -X edge is on the window's (the user's
-# alignment): a smaller cap walks the switch toward the ribbon header, and the clamp
-# plate has to keep a two-bead web between the reliefs it cuts under the two of them.
+# The clamp plate keeps a two-bead web between the switch's relief and the ribbon header's;
 # elec/ui_board.py asserts that web.
 PWR_CAP_D = 19 * D.BEAD            # 15.2, against the knob's 17
 PWR_HOLE_CLR = 0.3                 # per side, in the deck
@@ -572,92 +538,58 @@ def board_z0():
     return z_stack()[5]
 
 
-# -- Y: the board on the -Y wall, the inputs on its edge, the display just past them --
-# THE EQUAL GAPS ARE GONE (user, 2026-10-29): "move the inputs to the board edge and put
-# the board under the display as much as possible, only clearing it enough to fit the
-# input components. We can drop the placement rules about being equal spacing between
-# neighboring geometry." The body got 16.8 narrower that day and the spacing rule, which
-# hung everything off the deck's -Y edge, walked the board into the new wall. So the
-# chain now runs the other way, from the wall up, and nothing in it is a gap typed for
-# looks:
-#   * the board's -Y edge stands BOARD_WALL_CLR off the -Y rail's inner face;
-#   * the knob and the power button sit on that edge, INPUT_EDGE of bare board below them;
-#   * the display's header edge is the wider of their two deck holes, a two-bead wall and
-#     the pocket's fit clearance past them -- so the board runs on under the module.
-BOARD_WALL_CLR = 1.0               # board -Y edge to the -Y rail's inner face
-INPUT_EDGE = 1.0                   # bare board below the input bodies: ui_board's margin
+# -- WHERE IT SITS: see the module docstring ------------------------------------------
+BOARD_WALL_CLR = 1.0               # board -Y edge to the -Y rail's inner face, at least
+INPUT_EDGE = 1.0                   # bare board round the encoder's body: ui_board's margin
+PWR_HALF = 4.25                    # the power switch's body
 
 
-def board_centre():
-    """(x, y) of the UI board's centre: X the station's, the -Y edge BOARD_WALL_CLR off the
-    -Y rail's inner face.
+def fret_border_y():
+    """World Y of the fret border's -Y outer edge."""
+    return -_tp().BORDER_HY
 
-    THE BOARD OVERHANGS THE LOOSE TRUNK by the rail. There is no trough over this X
-    (chassis.WT_SKIP clears it for strings 9 and 10's motors) and the trunk lies loose on
-    the motor tops along the wall; the encoder's -Y terminals stand over it. Their z is
-    reported to the chassis's owner, who moves the trunk -- the board is placed for the
-    display and the inputs, not to dodge it (lead, 2026-10-29)."""
-    from . import chassis as CH
-    return ui_x(), CH.RAIL_INNER_Y + BOARD_WALL_CLR + BOARD_L / 2.0
+
+def screen_y():
+    """World Y of the LIT AREA's centre: halfway from the fret border to the deck's -Y edge
+    (user, 2026-10-30). The window, the bezel and the active area all share it."""
+    return (fret_border_y() + _tp().BY0) / 2.0
 
 
 def input_y():
-    """World Y of the knob's and the power button's centres: on the board's -Y edge, the
-    encoder's 17 body INPUT_EDGE inside it. The button shares the knob's Y (user's sketch,
-    2026-10-04); its 8.5 body is the smaller of the two, so the encoder sets it."""
-    return board_centre()[1] - BOARD_L / 2.0 + INPUT_EDGE + ENC_SQ / 2.0
+    """World Y of the knob's and the power button's centres: the screen's."""
+    return screen_y()
 
 
-def _input_hole_r():
-    """The larger of the two deck holes' radii, the knob's and the power button's."""
-    return max(knob_geometry()[3], PWR_CAP_D + 2 * PWR_HOLE_CLR) / 2.0
+def board_centre():
+    """(x, y) of the UI board's centre. Its +X edge is the knob's body and INPUT_EDGE."""
+    return (knob_x() + ENC_SQ / 2.0 + INPUT_EDGE - BOARD_W / 2.0,
+            input_y() + BOARD_CY_OFF)
 
 
 def header_edge_y():
-    """World Y of the module's header edge, the one its FFC socket is on. It faces -Y,
-    toward the inputs: the deck keeps a two-bead wall between their holes and the
-    module's pocket, and that is all the display is held off them."""
-    return input_y() + _input_hole_r() + D.MIN_WALL_2P + POCKET_CLR
-
-
-@lru_cache(maxsize=None)
-def ui_x():
-    """The station's X centre: the display's window, the knob and the board all share it.
-
-    Pushed as far +X as the deck allows. The band region's -X end is where the swappable
-    slots stop; the module's POCKET has to keep a printable wall to that seam, and the
-    pocket is the module's outline plus its fit clearance -- so the module's +X edge is
-    one wall plus one clearance short of the seam, and everything else hangs off that."""
-    TP = _tp()
-    mod_x1 = TP.REGION_X1 - EDGE_WALL - POCKET_CLR      # the module's +X edge
-    return mod_x1 - MOD_W / 2.0
+    """World Y of the module's header edge, the one its FFC socket is on. It faces -Y."""
+    return module_centre()[1] - MOD_L / 2.0
 
 
 @lru_cache(maxsize=None)
 def knob_x():
-    """THE RULE for the knob's X: its cap's +X edge is level with the WINDOW's +X edge,
-    so the two stand the same distance off the deck panel's +X seam (user, 2026-09-28).
+    """THE RULE for the knob's X: its body and INPUT_EDGE of board are EDGE_WALL short of
+    the band region's seam (nothing fixed may enter that region), and the cap stands 2.6 off
+    it. The display then comes as close as the knob's hole allows; see ui_x()."""
+    return _tp().REGION_X1 - EDGE_WALL - INPUT_EDGE - ENC_SQ / 2.0
 
-    Two wrong answers came before this one, and the difference between them is worth
-    stating because "equally spaced" can mean either.
 
-      * It first shared the display's X CENTRE, which is equal spacing about the screen
-        and leaves the knob 45 mm from the seam against 16.7 to the instrument's -Y edge.
-      * It then took the Y layout's own gap, 16.69, to the seam -- equal to the other
-        gaps in the station but NOT to the screen's own 9.90, which the user measured off
-        the model and which is what "equally spaced from the top panel edge" meant.
-
-    So the datum is the WINDOW, not the seam and not the module: the seam is only where
-    the deck happens to be divided, and the module is under the deck where nobody sees
-    it. Two visible things, one edge, one distance."""
-    return ui_x() + OPEN_W / 2.0 - KNOB_D / 2.0
+@lru_cache(maxsize=None)
+def ui_x():
+    """The display's X centre: its pocket a two-bead wall -X of the knob's hole."""
+    return knob_x() - knob_geometry()[3] / 2.0 - D.MIN_WALL_2P - POCKET_CLR - MOD_W / 2.0
 
 
 def power_x():
-    """THE RULE for the power button's X: its cap's -X edge is level with the WINDOW's
-    -X edge, as the knob's +X edge is with the window's +X (user's sketch, 2026-10-04).
-    Its Y is the knob's, input_y()."""
-    return ui_x() - OPEN_W / 2.0 + PWR_CAP_D / 2.0
+    """THE RULE for the power button's X: its hole a two-bead wall -X of the display's
+    pocket. Its Y is the knob's, input_y()."""
+    return (ui_x() - MOD_W / 2.0 - POCKET_CLR - D.MIN_WALL_2P
+            - (PWR_CAP_D + 2 * PWR_HOLE_CLR) / 2.0)
 
 
 def power_centre():
@@ -683,9 +615,8 @@ def knob_centre():
 
 def module_centre():
     """(x, y) of the display module's PCB centre. Its optical centre is VIEW_OFF_Y away
-    from it, on the side AWAY from the header -- and the header faces -Y, toward the
-    knob, because that is the side our board is on."""
-    return ui_x(), header_edge_y() + MOD_L / 2.0
+    from it, on the side AWAY from the header, which faces -Y."""
+    return ui_x(), screen_y() - VIEW_OFF_Y
 
 
 def header_row_y():
@@ -1128,9 +1059,9 @@ FOUR, spread as widely as the routed board allows, because the single M4 no long
     the overlap gate -- it caught two of these at 0.8 mm3 when the pull-ups moved into a
     row -- but as an anonymous solid-on-solid finding, and what you want to be told is
     WHICH post and WHICH part."""
-    # the four corners of the deck's ground between the power button's hole and the
-    # knob's, below the display's pocket (2026-10-29); the first two carry the spigots
-    return [SPIGOTS[0], SPIGOTS[1], (-12.0, -2.0), (12.0, -13.0)]
+    # the wings' ground above and below each input (2026-10-30); the first two carry the
+    # spigots
+    return [SPIGOTS[0], SPIGOTS[1], THIRD_POST]
 
 
 def bearings():
@@ -1141,7 +1072,7 @@ def bearings():
 
 
 def check_posts():
-    """[complaint] -- a post under the display module, or standing on a routed part.
+    """[complaint] -- a post under the display's pocket, or standing on a routed part.
 
     NOT an assertion, and not on the import path, for the same reason knob_centre()'s
     comparison is not: elec/ui_board.py imports this module, importing it builds the
@@ -1150,11 +1081,12 @@ def check_posts():
     called from elec/cad_geom_check.py, once the board it is checking against exists."""
     out = []
     half = POST_SQ / 2.0 + POST_CLR
-    edge = board_local(0.0, module_centre()[1] - MOD_L / 2.0)[1]
+    mx = board_local(module_centre()[0], 0.0)[0]
+    edge = MOD_W / 2.0 + POCKET_CLR
     for px, py in bearings():
-        if py + half > edge:
-            out.append("the post at (%+.1f, %+.1f) reaches y %+.2f, under the display "
-                       "module, whose edge is at %+.2f" % (px, py, py + half, edge))
+        if abs(px - mx) - half < edge:
+            out.append("the post at (%+.1f, %+.1f) stands under the display's pocket, "
+                       "+-%.2f of x %+.2f" % (px, py, edge, mx))
         for f in _bg().load("ui_board")["footprints"]:
             if not f["fab"]:
                 continue
@@ -1167,43 +1099,12 @@ def check_posts():
 
 
 def deck_mount():
-    """The cradle fused to the deck's underside: two locating walls and the columns.
-
-    ONE WALL, AND IT IS THE +X ONE. The board is located in X and Y by the screw
-    itself -- a 4.0 shank in a 4.5 hole is a 0.25 fit, which is a location -- and all
-    the wall has to do is stop it turning about that screw, which it does from 48 mm
-    away. The columns set Z and the screw pulls the board up onto them from below.
-
-    THERE IS NO -Y WALL, and the rail is why. The board's -Y edge sits BOARD_WALL_CLR
-    (1.0) from the -Y rail's inner face, and a two-bead wall with a fit gap either side is 2.2 -- it
-    would not go, and squeezing it to fit would put a printed fin a quarter of a
-    millimetre off a printed rail that the whole deck panel slides -X past. There is no
-    +Y wall either, because the display module hangs over that entire edge; the two
-    spigots hold the board that way.
-    """
-    _tz, bz, _face, _back, board_top, board_bot = z_stack()
+    """The cradle fused to the deck's underside: the posts, the spigots, the M4's boss and
+    the keeper. There is no locating wall: the two spigots stand 100 apart, and they take
+    X, Y and rotation between them."""
+    _tz, bz, _face, _back, board_top, _bb = z_stack()
     cx, cy = board_centre()
-    hw, hl = BOARD_W / 2.0, BOARD_L / 2.0
-    wall_t = D.MIN_WALL_2P
-    wall_h = bz - (board_bot - 0.8)
-    wall_z = (bz + board_bot - 0.8) / 2.0
-    inner = POST_CLR
-    y_stop = module_centre()[1] - MOD_L / 2.0 - POCKET_CLR      # the module's -Y edge
-    # ...AND IT STOPS SHORT OF THE WIRE TROUGH. The wall is the only thing on this
-    # panel that reaches below the board's underside, and the chassis's cable trough
-    # runs the length of the -Y rail with its lip top at chassis.WT_ZF + WT_H. The deck
-    # panel SLIDES OUT -X past all of it, so a wall that dipped over the trough would
-    # scrape 400 mm of lip. It gives the trough a clear millimetre and keeps the wall
-    # nearer the module, which is all the anti-rotation the one screw needs.
-    from . import chassis as CH
-    y0 = max(cy - hl - inner, CH.WT_Y0 + CH.WT_D + 1.0)
-    s = box_at(wall_t, y_stop - y0, wall_h,
-               x=cx + hw + inner + wall_t / 2.0, y=(y0 + y_stop) / 2.0, z=wall_z)
-    assert (wall_z - wall_h / 2.0 > CH.WT_ZF + CH.WT_H
-            or y0 > CH.WT_Y0 + CH.WT_D), (
-        "the UI cradle's wall dips to %.2f over the cable trough, whose lip tops out "
-        "at %.2f, and the deck panel slides -X past the whole length of it"
-        % (wall_z - wall_h / 2.0, CH.WT_ZF + CH.WT_H))
+    s = _keeper()
     for px, py in _posts():
         s = s.union(box_at(POST_SQ, POST_SQ, bz - board_top,
                            x=cx + px, y=cy + py, z=(bz + board_top) / 2.0))
@@ -1213,9 +1114,8 @@ def deck_mount():
     for px, py in SPIGOTS:
         s = s.union(cyl(SPIGOT_D, board_top - (clamp_top - SPIGOT_DEPTH),
                         z=clamp_top - SPIGOT_DEPTH).translate((cx + px, cy + py, 0)))
-    # the two screw bosses: columns like the posts, each with its insert pocket bored UP
-    # from its own end face -- which prints as a blind hole opening at the top. Their end
-    # faces are bearing surfaces too, which is why there are only two separate posts.
+    # the screw boss: a column like the posts, its insert pocket bored UP from its own end
+    # face -- which prints as a blind hole opening at the top. That face bears too.
     bx, by = cx + SCREW_XY[0], cy + SCREW_XY[1]
     s = s.union(cyl(M4.insert_pilot_d + 2 * D.MIN_WALL_2P, bz - board_top, z=board_top)
                 .translate((bx, by, 0)))
@@ -1239,89 +1139,96 @@ def clamp_z():
     return board_bot, board_bot - CLAMP_T
 
 
+def _keeper():
+    """The column off the deck that takes the clamp's tongue. See KEEPER_Y."""
+    bz = z_stack()[1]
+    top, bot = clamp_z()
+    cx, cy = board_centre()
+    k1 = cx - BOARD_W / 2.0 - POST_CLR                      # its +X face, off the board
+    run = CLAMP_T + 2 * KEEPER_CLR
+    k0 = k1 - run - D.MIN_WALL_2P
+    y = cy + KEEPER_Y
+    z0 = bot - KEEPER_CLR - KEEPER_FLOOR
+    s = box_at(k1 - k0, KEEPER_W + 2 * (KEEPER_CLR + D.MIN_WALL_2P), bz - z0,
+               x=(k0 + k1) / 2.0, y=y, z=(bz + z0) / 2.0)
+    zt, zf = top + KEEPER_CLR, bot - KEEPER_CLR
+    tunnel = (cq.Workplane("XZ", origin=(0, y + KEEPER_W / 2.0 + KEEPER_CLR, 0))
+              .polyline([(k1 + 1.0, zt), (k1 + 1.0, zf), (k1, zf), (k1 - run, zt)]).close()
+              .extrude(KEEPER_W + 2 * KEEPER_CLR))
+    return s.cut(tunnel)
+
+
+def _tongue():
+    """The clamp plate's -X tongue: its underside the keeper's 45 degree floor, KEEPER_CLR
+    off it, and its tip blunted to one bead of thickness."""
+    top, bot = clamp_z()
+    cx, cy = board_centre()
+    x1 = cx - BOARD_W / 2.0 + 1.0                           # in the plate
+    k1 = cx - BOARD_W / 2.0 - POST_CLR
+    xs = k1 + KEEPER_CLR * math.sqrt(2.0)                   # where the chamfer starts
+    tip = xs - (CLAMP_T - D.MIN_WALL)
+    return (cq.Workplane("XZ", origin=(0, cy + KEEPER_Y + KEEPER_W / 2.0, 0))
+            .polyline([(x1, top), (x1, bot), (xs, bot), (tip, top - D.MIN_WALL), (tip, top)])
+            .close().extrude(KEEPER_W))
+
+
 def clamp():
     """THE CLAMP PLATE: what actually holds the station in (user, 2026-09-28).
 
-    A printed plate against the board's underside, pulled up by two M4s into the deck's
-    own bosses. It does three things the single screw did not:
+    A printed plate against the board's underside. Its -X tongue hooks into the deck's
+    keeper and one M4 pulls its +X end up into the deck's boss:
 
-      * it SQUEEZES the board rather than hinging it. Its whole top face bears, against
-        four bearing faces on the deck -- two posts and the two bosses' own ends -- so
-        the board is gripped between opposed surfaces instead of pinched at one point.
-      * it HOLDS THE SCREEN. Four columns press the module's PCB up into the window
-        ledge, one at each mounting hole: the far two off a crossbar that two arms carry
-        +Y under the display, the near two off tabs beside the board's ends. The ribbon
-        carries nothing, so these are the module's whole retention.
+      * it SQUEEZES the board. Its whole top face bears against the deck's bearings.
+      * it HOLDS THE SCREEN. Four columns press the module's PCB up into the window ledge,
+        one at each mounting hole: the far two off the plate past the board's +Y edge, the
+        near two off a bar past its -Y edge.
       * and it is the ONE PART you undo.
 
-A RELIEF UNDER THE THROUGH-HOLE FOOTPRINTS ONLY, from board_geom.TAIL. Relieving
+    A RELIEF UNDER THE THROUGH-HOLE FOOTPRINTS ONLY, from board_geom.TAIL. Relieving
     every footprint was tried and is worse: the 0402s do not need it, and two of their
     reliefs left a 1.38 mm web between them -- under the two-bead floor.
 
-    THE COLUMNS BEAR ON THE MOUNTING-HOLE PADS, x +-36.70 on both hole rows, because
-    that is the one region of a module's back guaranteed to be clear of components. The
-    near two stand just outside the board's ends, so they bear 1.7 further out than the
-    hole: still on the pad's ring and the plain board round it. CONFIRM IT against the
-    real part before printing: Newhaven's rear view shows parts, and their drawing does
-    not dimension them."""
+    THE COLUMNS BEAR ON THE MOUNTING-HOLE PADS, x +-36.70 on both hole rows, because that
+    is the one region of a module's back guaranteed to be clear of components. CONFIRM IT
+    against the real part before printing: Newhaven's rear view shows parts, and their
+    drawing does not dimension them."""
     cx, cy = board_centre()
     top, bot = clamp_z()
-    hl = BOARD_L / 2.0
     pcb_back = mod_pcb_back()
+    mx, _my = module_centre()
+    far_y = header_row_y() + MOD_HOLE_DY
+    near_y = header_row_y()
     from . import chassis as CH
-    # ...AND ITS -Y EDGE STOPS CLEAR OF THE CABLE TROUGH, for the same reason the deck's
-    # wall does: the panel is slid on and off with the whole station bolted to it, and
-    # the trough's lip runs the length of the rail.
-    y0 = max(cy - hl - 2.0, CH.WT_Y0 + CH.WT_D + 0.5)
-    # +Y OF THE BOARD BY MORE THAN THE ARM IS WIDE, so the riser stands on plate that
-    # is not over the board -- at 2.0 it stood on the board itself and drove 121 mm3 of
-    # rib straight up through it. Its WIDTH is the board's, not more: the deck's own
-    # locating wall runs down the +X side and a wider plate lands inside it.
-    y1 = cy + hl + CLAMP_RIB_W + 2.0
-    s = box_at(BOARD_W, y1 - y0, CLAMP_T, x=cx, y=(y0 + y1) / 2.0,
-               z=(top + bot) / 2.0)
-    assert bot > CH.WT_ZF + CH.WT_H or y0 > CH.WT_Y0 + CH.WT_D, (
-        "the clamp plate reaches z %.2f over the cable trough, whose lip tops out at "
-        "%.2f" % (bot, CH.WT_ZF + CH.WT_H))
+    bar_x = 2 * MOD_HOLE_DX + CLAMP_RIB_W
+    # ...THE NEAR BAR RAMPS UP OVER THE CABLE TROUGH. The panel is slid on and off with the
+    # whole station bolted to it, and the trough's lip runs the length of the rail, its top
+    # above the plate's underside. So the plate stops short and a 45 degree face, which
+    # prints, carries the bar over the lip with 1.0 of air.
+    lip_y = CH.WT_Y0 + CH.WT_D
+    lip_z = CH.WT_ZF + CH.WT_H
+    y0 = lip_y + (lip_z + 1.0 - bot)
+    y1 = far_y + CLAMP_RIB_W / 2.0
+    s = box_at(BOARD_W, BOARD_L, CLAMP_T, x=cx, y=cy, z=(top + bot) / 2.0)
+    s = s.union(box_at(bar_x, y1 - y0, CLAMP_T, x=mx, y=(y0 + y1) / 2.0, z=(top + bot) / 2.0))
+    ym = near_y - CLAMP_TIP_D / 2.0                 # 1.0 off the rail's inner face
+    assert ym < lip_y and bot + (y0 - ym) < CLAMP_ARM_Z, (
+        "the near bar's ramp runs out at y %.2f" % ym)
+    s = s.union(cq.Workplane("YZ", origin=(mx - bar_x / 2.0, 0, 0))
+                .polyline([(y0 + 2.0, bot), (y0, bot), (ym, bot + (y0 - ym)),
+                           (ym, CLAMP_ARM_Z), (y0 + 2.0, CLAMP_ARM_Z)])
+                .close().extrude(bar_x))
+    s = s.union(_tongue())
     for _ref, (x0, x1, fy0, fy1), tail in _bg().tails("ui_board"):
         if tail <= 0.0:
             continue
         s = s.cut(box_at(x1 - x0 + 2 * CLAMP_RELIEF, fy1 - fy0 + 2 * CLAMP_RELIEF,
                          CLAMP_T + 2.0, x=cx + (x0 + x1) / 2.0, y=cy + (fy0 + fy1) / 2.0,
                          z=(top + bot) / 2.0))
-    # the arms to the display: up past the board, +Y to the far mounting-hole row, a
-    # crossbar there, and two posts to the module's back -- one arm each side of the
-    # ribbon, which hangs under the module's centre (see CLAMP_ARM_DX)
-    # ...AND THE ARM IS A FIN OFF THE BED, not a beam in mid-air. Drawn as a 6 mm bar
-    # at the arm's height it was a 35 mm bridge over nothing -- 650 mm2 of unsupported
-    # ceiling, on a part whose whole point is stiffness. Taken down to the plate's own
-    # underside it grows straight up off the bed, needs no support, and is four times
-    # the section it was.
-    mx, _my = module_centre()
-    far_y = header_row_y() + MOD_HOLE_DY
-    fin_y0 = y1 - CLAMP_RIB_W
-    for sx in (-1, 1):
-        s = s.union(box_at(CLAMP_RIB_W, far_y - fin_y0, CLAMP_ARM_Z - bot,
-                           x=mx + sx * CLAMP_ARM_DX, y=(fin_y0 + far_y) / 2.0,
-                           z=(bot + CLAMP_ARM_Z) / 2.0))
-    s = s.union(box_at(2 * MOD_HOLE_DX + CLAMP_RIB_W, CLAMP_RIB_W, CLAMP_ARM_Z - bot,
-                       x=mx, y=far_y, z=(bot + CLAMP_ARM_Z) / 2.0))
     bz = z_stack()[1]
     for sx in (-1, 1):
-        s = s.union(cyl(CLAMP_RIB_W, bz - 0.5 - CLAMP_ARM_Z, z=CLAMP_ARM_Z)
-                    .translate((mx + sx * MOD_HOLE_DX, far_y, 0)))
-        s = s.union(cyl(CLAMP_TIP_D, pcb_back - (bz - 0.6), z=bz - 0.6)
-                    .translate((mx + sx * MOD_HOLE_DX, far_y, 0)))
-    # ...and the NEAR row's two, on tabs off the plate's ends: the board is under that
-    # row, so they stand just outside it, as close to the holes as its edge allows
-    near_y = header_row_y()
-    px = BOARD_W / 2.0 + CLAMP_RELIEF + CLAMP_POST_SQ / 2.0
-    t0, t1 = BOARD_W / 2.0 - 1.0, px + CLAMP_POST_SQ / 2.0       # the tab, from inside
-    for sx in (-1, 1):                                              # the plate's end out
-        s = s.union(box_at(t1 - t0, CLAMP_POST_SQ, CLAMP_T, x=cx + sx * (t0 + t1) / 2.0,
-                           y=near_y, z=(top + bot) / 2.0))
-        s = s.union(box_at(CLAMP_POST_SQ, CLAMP_POST_SQ, pcb_back - bot,
-                           x=cx + sx * px, y=near_y, z=(bot + pcb_back) / 2.0))
+        for yc, z0 in ((far_y, bot), (near_y, CLAMP_ARM_Z - 1.0)):
+            s = s.union(cyl(CLAMP_TIP_D, pcb_back - z0, z=z0)
+                        .translate((mx + sx * MOD_HOLE_DX, yc, 0)))
     # the spigot sockets: blind, so the plate keeps a floor under them -- a through
     # hole would leave two O4.6 windows in the one part that is here for stiffness
     for px, py in SPIGOTS:
