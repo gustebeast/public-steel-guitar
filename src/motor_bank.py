@@ -309,17 +309,22 @@ def back_y(i):
     return body_box(i)[2]
 
 
+def wall_x(i):
+    """(x0, x1) of motor i's faceplate wall -- foot_light steps its channel round string 1's.
+
+    It runs +X to meet the +X post's outer face: 42.2 alone stops 0.45 short of a post that
+    has to stand off the motor by MOTOR_CLR, and a post the wall does not touch is a post
+    nothing braces. Its own Y band is clear of every neighbour, so the reach is free."""
+    mx = D.motor_pos(i)[0]
+    return mx - SEAT_HALF_W, mx + D.MOTOR_SQ / 2 + MOTOR_CLR + POST_T
+
+
 def _wall(i) -> cq.Workplane:
     """The faceplate wall: the pocket's +Y face and the one that carries the load. Unchanged
     in size (the motor's faceplate lies against it), but its Ø22 pilot bore now opens UPWARD
     in a slot the boss drops through, and the four NEMA17 bolt holes are gone with the bolts."""
-    mx, my, mz = D.motor_pos(i)
     fy = _face_y(i)
-    # It runs +X to meet the +X post's outer face: 42.2 alone stops 0.45 short of a post that
-    # has to stand off the motor by MOTOR_CLR, and a post the wall does not touch is a post
-    # nothing braces. Its own Y band is clear of every neighbour, so the reach is free.
-    _x1 = mx + D.MOTOR_SQ / 2 + MOTOR_CLR + POST_T
-    _x0 = mx - SEAT_HALF_W
+    _x0, _x1 = wall_x(i)
     wall = box_at(_x1 - _x0, PLATE_T, Z_HI - BED_Z,
                   x=(_x0 + _x1) / 2, y=fy, z=(Z_HI + BED_Z) / 2)
     wall = wall.edges("|Y and <Z").chamfer(14.0)   # big 45° buttress → bed (gusset)
