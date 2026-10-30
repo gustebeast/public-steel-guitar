@@ -5,10 +5,10 @@
 # REV: OUTPUT_PANEL_REV=1 writes elec/output_panel.frozen.json (the board in hand); rev 2
 # (the default) writes elec/output_panel.frozen.r2.json. The snapshot is stored in the
 # frame the generator AUTHORS in -- R1's y, edges +-33 -- so a rev-2 board's y comes back
-# down by SHRINK_Y / 2 = 2.8 (output_panel.REV note). An optional argument names the board.
+# down by SHRINK_Y / 2 = 5.0 (output_panel.REV note). An optional argument names the board.
 import pcbnew, json, os, sys
 REV = int(os.environ.get("OUTPUT_PANEL_REV", "2"))
-Y_OFF = 0.0 if REV == 1 else 2.8
+Y_OFF = 0.0 if REV == 1 else 5.0
 OUT = "elec/output_panel.frozen.json" if REV == 1 else "elec/output_panel.frozen.r2.json"
 b=pcbnew.LoadBoard(sys.argv[1] if len(sys.argv) > 1 else "elec/out/output_panel.kicad_pcb"); mm=pcbnew.ToMM
 NETS=("THRU_DP","THRU_DM","HUB_DN1_DP","HUB_DN1_DM","HUB_DN2_DP","HUB_DN2_DM","HUB_UP_DP","HUB_UP_DM")

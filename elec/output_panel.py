@@ -2525,9 +2525,14 @@ for _ref, (_x, _y, _rot) in BOARD_NOTES["placements"].items():
 # re-extract it with elec/freeze_pairs.py from a board that passes verify.py (see
 # docs/bronner-work-items.md) rather than editing the json by hand.
 import json as _json
-# R2 has its own snapshot (J1 moved, so R1's THRU copper no longer meets its pads); it is
-# kept in this same authored frame and was lifted from the first rev-2 board that passed
-# verify.py (THRU skew 0.22 mm over 101.6), 2026-10-29.
+# R2 has its own snapshot (J1 and J2 moved, so R1's copper no longer meets their pads), in
+# this same authored frame (y - SHRINK_Y/2). THRU, HUB_UP and HUB_DN2, DRAWN rather than
+# lifted: un-frozen 56-deep routes split THRU every time (skew 9-11, a layer mismatch, 3 vias
+# on DP) and one HUB pair or the other. Each pair keeps its fanouts -- THRU's R1 copper
+# moved rigidly (J1 / D2 / D3 end +6, -4.25; J2's pad-merge loops -6, -2), the HUB pairs'
+# from a routed R2 board -- and its middle is one coupled In2 run per rail, 0.5 mm pitch,
+# searched on the laid board (scratch A*), a via at each end: 2 vias a rail, F.Cu + In2 on
+# both. Copper: THRU 106.9 / 110.3, HUB_UP 44.2 / 48.0, HUB_DN2 46.4 / 48.8 mm (2026-10-29).
 _FROZEN = "output_panel.frozen.json" if REV == 1 else "output_panel.frozen.r2.json"
 with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), _FROZEN), encoding="utf-8") as _fh:
     _frozen = _json.load(_fh)
@@ -2794,13 +2799,14 @@ if REV != 1:
 #   the POT network takes the top-middle they vacated, U6 (3V3) beside it;
 #   U7's buffer and network sit under the top edge between the pot and J5;
 #   the jack's protection (C1, D5, R10) and the ring inverter U9 step -X off J5's new place;
-#   J1's ESD/CC parts (D2, D3, R1, R2) and C56 follow J1 down.
+#   J1's ESD/CC parts (D2, D3, R1, R2) follow J1 down; C56 goes with J10 (below).
+C56_DX, C56_DY = 3.75, 4.75            # R1's C56 vs J10 pin 1, mirrored
 R2_MOVES = {} if REV == 1 else dict(
     **{_r: (0.0, -9.0) for _r in "J5".split()},   # J5
     **{_r: (0.0, -7.0) for _r in "J2".split()},   # J2
     **{_r: (0.0, -5.0) for _r in "J3".split()},   # J3
     **{_r: (0.0, -3.0) for _r in "J4".split()},   # J4
-    **{_r: (0.0, -9.05) for _r in "D2 D3 R1 R2".split()},   # j1esd
+    **{_r: (0.0, -9.25) for _r in "D2 D3 R1 R2".split()},   # j1esd: rigid with J1, so R1's THRU copper between them carries over
     **{_r: (-30.0, -10.2) for _r in "J8 U8 U2 C19 C59 C24 R8 C13 C22 C37 C20 C21 C23 C38".split()},   # input
     **{_r: (-22.0, -12.4) for _r in "K1 Q1 D4 R5 R36 R28 R15".split()},   # relay
     **{_r: (-26.0, 12.0) for _r in "U10 C44 R21 R39 R40 R38 C62 C41 D7 U12 C47 R22 C42 C9".split()},   # pot
@@ -2808,7 +2814,6 @@ R2_MOVES = {} if REV == 1 else dict(
     **{_r: (-1.4, 10.2) for _r in "U7 R16 R17 R18 C39 C60 R9 R20 C8 C43 C7 C40".split()},   # u7
     **{_r: (-6.0, -9.0) for _r in "C1 D5 R10".split()},   # jackprot
     **{_r: (-4.8, -14.2) for _r in "U9".split()},   # u9
-    **{_r: (0.0, -9.25) for _r in "C56".split()},   # C56
 )
 if REV != 1:
     # J1 HALFWAY BETWEEN J5 AND J6 (user, 2026-10-29: "the USB C spaced halfway between the
@@ -2818,6 +2823,12 @@ if REV != 1:
     _pl = BOARD_NOTES["placements"]
     R2_MOVES["J1"] = (0.0, (_pl["J5"][1] + R2_MOVES["J5"][1] + _pl["J6"][1]
                             + R2_MOVES.get("J6", (0.0, 0.0))[1]) / 2.0 - _pl["J1"][1])
+    # C56 IS J10's 24 V BYPASS, so it moves with J10 -- but mirrored to the pin-6 end. R1's
+    # spot relative to pin 1 (3.75 inboard, 4.75 north) is now cut off from that pin by the
+    # THRU pair's J1 fanout, and under the row is J10's own housing and U3. At pin 6 the
+    # same offset is open board, and its PWR_GND end lands over the B.Cu return lane.
+    R2_MOVES["C56"] = (_J10_PADS[5] + C56_DX + GROW_X / 2.0 - _pl["C56"][0],
+                       _J10_Y + C56_DY - _pl["C56"][1])
 for _ref, (_dx, _dy) in R2_MOVES.items():
     _x, _y, _rot = BOARD_NOTES["placements"][_ref]
     BOARD_NOTES["placements"][_ref] = (_x + _dx, _y + _dy, _rot)

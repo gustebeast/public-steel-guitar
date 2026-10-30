@@ -1111,7 +1111,8 @@ toward the floor port except its cables and the plugs resting on the table. So:
 
 ## R1 stop-gap: the output board in hand, in an R2 instrument (2026-10-29)
 
-The R2 output board is 60.4 deep with its panel connectors moved (J5 -4.6, J1 -3.5); the R1
+The R2 output board is 56 deep and 98 wide with its panel connectors moved (J5 -9, J1 centred
+between J5 and J6, J10 off the panel edge); the R1
 board in hand is 66 deep. In an R2 body the R1 board's +Y band would sit in string 10's screw
 pulley and belt, and its jack, USB-C and inlet would not line up with the R2 panel's holes. So
 until R2 boards arrive, **the R1 board does not go in the cradle**:
