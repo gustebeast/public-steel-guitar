@@ -3,8 +3,8 @@
     py -3.12 -m tools.check_pickup_travel
 
 check_overlaps compares parts WHERE THEY SIT, and the plate sits at its lowest (the 22 mm
-demo pickup). The plate is a moving part: three leadscrew jacks lift it PK_H - PK_H_MIN for
-the shallowest pickup the mount supports. Its nut bosses stood 69-75 mm3 into the solid deck
+demo pickup at its widest string gap). The plate is a moving part: three leadscrew jacks lift
+it PM.PLATE_TRAVEL, to the shallowest pickup the mount supports at its narrowest gap. Its nut bosses stood 69-75 mm3 into the solid deck
 at the top of that travel for months and no gate could say so (2026-09-30). This lifts the
 plate, with the retention screw it carries, in half-millimetre steps against both deck
 solids and fails on any contact. It is check_sweep's idea, for a part that slides rather
@@ -25,7 +25,7 @@ def gate(comps, quiet=False) -> int:
     ``comps`` is [(name, solid)] -- src.build hands over the model it just built, so the
     gate costs ~90 small intersects and no second geometry pass."""
     from src import pickup_mount as PM
-    travel = PM.PK_H - PM.PK_H_MIN
+    travel = PM.PLATE_TRAVEL
     parts = {n: s for n, s in comps if n in MOVING + FIXED}
     missing = [n for n in MOVING + FIXED if n not in parts]
     if missing:
