@@ -164,10 +164,13 @@ in hand exactly (board.json identical but for quality-note text), and `elec/rev1
 - Profile: 12-15 min a route on a copy.
 - Submit only after branner's standoff 7.5 lands on main, merged onto it (lead).
 - Then: re-route the J2 -> Pi `wire_usb` lead and retire its chassis_0 rule.
-- ⚠ R2-1 below (two RJ45s, ~16 x 21 each) wants MORE board; it was written before the
-  shrink. Decide it against the 56 before placing anything.
+- R2-1 (two RJ45s) DROPPED, see below: nothing on this board reserves room for it.
 
-**R2-1. Ethernet pass-through, the J1 -> J2 USB pattern.** Two RJ45s on the output board: one on the
+**R2-1 DROPPED (user, 2026-10-30): no room at the endplate after the shrink. No RJ45 goes on the
+board. If Ethernet is wanted: an F-M adapter above the optical board, or a USB Ethernet dongle
+(user to try it for Dante). The text below is kept as the record only.**
+
+~~R2-1~~. Ethernet pass-through, the J1 -> J2 USB pattern. Two RJ45s on the output board: one on the
 -X edge fed from the Pi's built-in GbE by a short stock Cat6 patch (~0.2-0.3 m), one in the panel,
 traces between. For Dante via Inferno on the Pi (github.com/teodly/inferno; Pi 4 tested, software
 PTP timestamps) and RTP-MIDI (rtpmidid) to LAN computers, alongside USB, no mode switching.
@@ -180,6 +183,23 @@ PTP timestamps) and RTP-MIDI (rtpmidid) to LAN computers, alongside USB, no mode
 - Rejected: the Pi USB-C as host for a dongle (switched VBUS + CC Rp/Rd swap; VBUS is dead on
   purpose, Pi 4 USB-C VBUS = GPIO 5 V). Parts ~$5-10.
 
+**R2-4. 24 V inlet current and voltage, reported to the Pi (user, 2026-10-30, for remote
+diagnostics).** The brick enters at J6, so one sense at the inlet sees the whole instrument.
+- A shunt in the 24 V inlet and a monitor read by U1, which reports over its existing USB link: no
+  new wires to the Pi. Must read to the brick's 6.67 A, and voltage too, so a sag shows.
+- Candidate INA226-class (I2C, alert pin) if U1 has an I2C free, else a current-sense amp + divider
+  into two U1 ADC pins. Part, stock and shunt loss not yet checked.
+- Uses: logged amps and volts, read remotely; bring-up's per-motor current; the power governor's
+  real total, including a stall or a USB device firmware could not predict.
+
+**Power governor, firmware, NOT BUILT (priority decided by the user, 2026-10-30).** The brick's
+6.67 A is shared in this order: (1) Pi, boards, audio, always; (2) motors, under a hard cap on
+simultaneous movers, others wait ms; (3) J1, not throttleable, 0.35 A reserved while a device is
+attached; (4) lights take what is left, scaled instantly and dimmed BEFORE motors start. Nothing
+enforces this today. Lights must fail safe if the Pi hangs. Cap set from a hiccup-finding test
+under string load (one motor on a multimeter, then 2, 3, 4 movers with lights full, margin below
+the trip). 0.8 A per mover stays unmeasured until then. Confirm SERVO42D's working-current setting.
+
 **R2-3. J8 (the pickup's screw terminal) takes the SLOTTED screw: one screwdriver for the instrument.** Rev 1 is MX126-5.0-02P-GN01-Cu-**S**-A, M2.5 cross head; the SERVO42D motor terminals are slotted (2.0-2.5 mm flat blade). The same MX126 body is ordered with a slotted screw by the code letter **Y** (maker's ordering code: Y slotted, S cross, PS flat cross), so R2 orders MX126-5.0-02P-GN01-Cu-**Y**-A and one 2.5 x 0.4 mm flat blade drives both. Check before committing: that exact Y part is stocked at LCSC (the MX127 Y variant was, C-number not yet confirmed for MX126), and the same footprint and drawing. Confirm on the rev 1 boards that J8's head really is cross. src/screw_terminal.py SCREW changes with it (user, 2026-10-20).
 
 **R2-2. Panel USB-C J1 becomes DUAL-ROLE, auto-detected, still ONE port.** User rule: no second
@@ -187,13 +207,18 @@ USB port on the panel (endplate room + user confusion). Behaves like a phone / O
 - Computer attached (cable presents Rp): today's path, J1 data -> J2 -> Pi gadget port, J1 VBUS off.
 - Device attached (Rd: a synth's device port via a C-to-B cable, or an A-to-C OTG adapter with a
   USB-to-5-pin MIDI cable such as a UM-ONE): a USB 2.0 HS analog switch moves J1's pair to the
-  CH334F's spare downstream port 3, and a current-limited (~300 mA), reverse-blocking VBUS from the
+  CH334F's spare downstream port 3, and a current-limited (1.5 A, re-sized below), reverse-blocking VBUS from the
   board's own 5 V turns on. The Pi's role never changes: no reboot, no dwc2 role switching.
 - Parts ~$2-4: a role-detect controller (TUSB320-class in GPIO mode, or a TPS2581x source controller
   plus Rd -- my pick, open), a HS mux (TS3USB221-class), the VBUS load switch.
 - J2's VBUS stays dead exactly as now (Pi 4 USB-C VBUS = GPIO 5 V).
-- Budget: the 5 V buck is ~600 mA with a 257 mA worst case today; ~300 mA for J1 fits, a full
-  500 mA needs a bigger buck.
+- Budget, RE-SIZED (user, 2026-10-30: as big as the power budget allows for ethernet dongles and
+  audio interfaces, no phone fast charging): J1 sources 1.5 A (Type-C's 1.5 A advertisement, 7.5 W)
+  from a 3 A buck, LMR33630 in the proven `elec/buck_cell.py` cell, replacing U5's 0.6 A LMR16006.
+  Rail: 257 mA + serial chip + 1.5 A, about 1.8 A of 3 A. At 24 V: about 0.35 A at 90 % (assumed),
+  out of the 5.67 A motors and lights share, so a full port with motors at 4.6 A means lights
+  capped at about 0.72 A. Every "~300 mA" below now reads 1.5 A. Load switch to confirm: limit,
+  reverse blocking. 3 A at the port would need a bigger buck and is not worth it.
 - Use: MIDI out to hardware synths over USB (direct or via a USB-to-5-pin cable); USB MIDI pedals
   and controllers in; flash-drive preset backup.
 - Robustness constraints (user, 2026-10-20; items 4-5 CORRECTED the same day -- no Pi wires):
