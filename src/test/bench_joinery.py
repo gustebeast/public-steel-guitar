@@ -579,7 +579,11 @@ def _slot_rim():
     x0 = max(s.BoundingBox().xmin for s in keep.val().Solids()) if len(keep.val().Solids()) > 1         else keep.val().BoundingBox().xmin
     x0 = max(x0, *(NB._plan_wire(i).offset2D(NB._clr(i) + SLOT_RIM, kind="intersection")
                    .extrude(1.0).val().BoundingBox().xmin + D.NUT_BLOCK_X for i in SLOT_STRINGS))
-    return keep.val().intersect(_box((x0, None, None, None, None, None)))
+    keep = keep.val().intersect(_box((x0, None, None, None, None, None)))
+    # ...and everything of the endplate +X of the slots, across their Y (user, 2026-10-30: the
+    # rim alone "cut off the top bridge"): the height screws' roofs close the slots up there
+    bb = keep.BoundingBox()
+    return keep.fuse(_box((bb.xmax - 0.5, None, bb.ymin, bb.ymax, None, None)))
 
 
 def report(comps, where, export=False):
