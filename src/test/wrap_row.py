@@ -45,60 +45,35 @@ def profile(pts, fz):
     return w.lineTo(pts[-1][0], fz - 0.5).close()
 
 
-def flat(fz):
-    return None
-
-
-def chute45(fz):
-    return profile([(N.INS_X0, N.RAMP_END), (N.INS_X0 + N.RAMP_END, 0.0)], fz)
-
-
-def _pts30():
-    a = math.radians(30.0)
-    xt, zt = N.ROD_X - R * math.sin(a), R * (1 - math.cos(a))           # on the coil
-    x0 = xt + zt / math.tan(a)
-    return [(N.INS_X0, (x0 - N.INS_X0) * math.tan(a)), (x0, 0.0)]
-
-
-def chute30(fz):
-    return profile(_pts30(), fz)
-
-
-CURVE_R, CURVE_XT = 6.4, N.ROD_X - 0.4
-
-
-def _pts_curve():
-    """Floor tangent, turning up to 45 deg and no further (the print's limit), then straight."""
+def curve_pts(r, xt):
+    """Tangent to the floor at xt, turning up to 45 deg and no further (the print's limit), then
+    straight to the -X end."""
     pts = []
     for k in range(25, -1, -1):
         a = math.radians(45.0) * k / 25
-        pts.append((CURVE_XT - CURVE_R * math.sin(a), CURVE_R * (1 - math.cos(a))))
+        pts.append((xt - r * math.sin(a), r * (1 - math.cos(a))))
     xa, za = pts[0]
     return [(N.INS_X0, za + (xa - N.INS_X0))] + pts
-
-
-def curve(fz):
-    return profile(_pts_curve(), fz)
 
 
 CUP_R = R + N.INS_DROP                      # round the rod with the insert dropped
 
 
-def _pts_cup():
-    pts = []
+def cup_pts():
     x0 = N.INS_X0
+    pts = []
     for k in range(0, 26):
         x = x0 + (N.ROD_X - x0) * k / 25
         pts.append((x, CUP_R - math.sqrt(CUP_R ** 2 - (x - N.ROD_X) ** 2)))
     return pts
 
 
-def cup(fz):
-    return profile(_pts_cup(), fz)
-
-
-OPTIONS = [("flat", flat, None), ("45, today", chute45, [(N.INS_X0, N.RAMP_END), (N.INS_X0 + N.RAMP_END, 0.0)]),
-           ("30", chute30, _pts30()), ("curve r6.4 to 45", curve, _pts_curve()), ("cup r%.2f" % CUP_R, cup, _pts_cup())]
+# All attempts at losing the corner where a chute meets the floor, today's ramp being what failed
+OPTIONS = [("r2.4 to x-11", curve_pts(2.4, -11.0)),         # smallest round: most clamp flat kept
+           ("r4 to x-10", curve_pts(4.0, -10.0)),
+           ("r6.4 to x-8.4", curve_pts(6.4, -8.4)),
+           ("r9 to x-8", curve_pts(9.0, -8.0)),             # as big as the coil lets a 45 start
+           ("cup r%.2f" % CUP_R, cup_pts())]                # no straight at all
 
 
 def clearance(pts, g):
@@ -131,7 +106,7 @@ def block():
 
 
 def insert(k, i):
-    section = OPTIONS[k][1]
+    pts = OPTIONS[k][1]
     fz = N.insert_flat_z(i)
     body = N.slide_insert(i).val()
     bb = body.BoundingBox()
@@ -141,10 +116,8 @@ def insert(k, i):
     # today's end ramp off, the option on, in the insert's own plan
     body = body.cut(cq.Workplane("XY").box(N.RAMP_END + 1.0, 40.0, N.RAMP_END + 1.0, centered=False)
                     .translate((N.INS_X0 - 1.0, bb.ymin - 10.0, fz)))
-    s_ = section(fz)
-    if s_ is not None:
-        keep = N._part_wire(i).extrude(14.0).translate((0, 0, fz - 1.0))
-        body = body.union(s_.extrude(40.0).translate((0, bb.ymax + 10.0, 0)).intersect(keep))
+    keep = N._part_wire(i).extrude(14.0).translate((0, 0, fz - 1.0))
+    body = body.union(profile(pts, fz).extrude(40.0).translate((0, bb.ymax + 10.0, 0)).intersect(keep))
     mark = (cq.Workplane("YZ").workplane(offset=N.INS_X0 - 0.01)
             .center(D.nut_y(i) - 2.0, Z_FOOT + 2.4).text(str(k + 1), 3.2, 0.41))
     return body.cut(mark)
@@ -155,13 +128,11 @@ def main():
     out = sys.argv[1] if len(sys.argv) > 1 else os.path.join(here, "..", "..")
     print("INS_DROP %.2f, gap under the rod, dropped: string 1 %.2f" % (
         N.INS_DROP, N.INS_DROP + D.STRING_GAUGE[0]))
-    for label, _f, pts in OPTIONS:
-        if pts:
-            leave = pts[-1][0]
-            print("%-18s rise at the end %.2f, leaves the flat at x %.2f, flat left to the +X ramp "
-                  "%.2f; air to the coil at home: .036 %.2f  .036 fat %.2f  .070 %.2f" % (
-                      label, pts[0][1], leave, N._neck_x0(0) - N.RAMP_NECK - leave,
-                      clearance(pts, D.STRING_GAUGE[6]), clearance(pts, G), clearance(pts, D.STRING_GAUGE[9])))
+    for label, pts in OPTIONS:
+        leave = pts[-1][0]
+        print("%-16s rise %.2f, joins the flat at x %.2f, flat %.2f; air at home .015 %.2f .036 %.2f .070 %.2f" % (
+            label, pts[0][1], leave, N._neck_x0(0) - N.RAMP_NECK - leave, clearance(pts, D.STRING_GAUGE[0]),
+            clearance(pts, D.STRING_GAUGE[6]), clearance(pts, D.STRING_GAUGE[9])))
     b = print_pose(block(), ((0, 1, 0), -90))
     bb = b.val().BoundingBox()
     print("block %.1f x %.1f x %.1f tall, %d solid(s), valid %s, %.1f cm3" % (

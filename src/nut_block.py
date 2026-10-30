@@ -1377,7 +1377,7 @@ def all_stow_channels(z_end: float) -> cq.Workplane:
 # ── HEIGHT ADJUST: ONE M4 SCREW UNDER EACH INSERT (user) ─────────────────────────────
 # The sliding insert clamps its string by rising against the coil, and until now nothing pushed it
 # up. Each insert now grows a tall EXTENSION down into a new prism in the keyhead endplate
-# (keyhead_endplate.HS_*), and an M4 x 20 button head -- the pickup jacks' own SKU, on the
+# (keyhead_endplate.HS_*), and an M4 x 16 button head, on the
 # instrument's one 2.5 mm key -- pushes its foot up from below.
 #
 # THE NUT IS IN THE ENDPLATE, NOT THE INSERT. An M4 heat-set wants ~8 of width (M4.boss_od); SKU A
@@ -1539,7 +1539,7 @@ def height_screw_negatives(i: int):
 
 
 def height_screw(i: int) -> cq.Workplane:
-    """Dummy M4 x 20 button head, head DOWN, tip on string i's clamped insert foot (local frame)."""
+    """Dummy M4 x 16 button head, head DOWN, tip on string i's clamped insert foot (local frame)."""
     from cadkit.fasteners import m4_button_screw
     x, y = height_screw_xy(i)
     tip = HS_FLOOR + screw_reach(i)
