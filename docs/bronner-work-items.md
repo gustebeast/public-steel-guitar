@@ -192,6 +192,11 @@ diagnostics).** The brick enters at J6, so one sense at the inlet sees the whole
 - Uses: logged amps and volts, read remotely; bring-up's per-motor current; the power governor's
   real total, including a stall or a USB device firmware could not predict.
 
+**R2-5. J1 vertical centring (user via lead, 2026-10-30).** Horizontal centring stands. If a stocked,
+JLC-assemblable, sensibly priced USB-C receptacle (mid-mount or raised) centres it vertically, use
+it, checking land and panel hole. Otherwise keep the current part and do not ask again. Report which
+way it went and the price delta.
+
 **Power governor, firmware, NOT BUILT (priority decided by the user, 2026-10-30).** The brick's
 6.67 A is shared in this order: (1) Pi, boards, audio, always; (2) motors, under a hard cap on
 simultaneous movers, others wait ms; (3) J1, not throttleable, 0.35 A reserved while a device is
