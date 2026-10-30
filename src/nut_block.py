@@ -490,11 +490,21 @@ INS_CLR   = 0.2                                 # Y clearance in its pocket, eac
 # than forced. Both terms are the thickest string in the set, since one pocket depth
 # serves all ten.
 #
-# DERIVED, and it lands on the 3.2 it was already set to -- but as a number that moves if
-# the string set does, instead of a round one justified after the fact.
+# SET BY THE HEIGHT SCREW NOW, as far as it can take the insert (user, 2026-10-30: "1.6mm of
+# material +z of the inserts and then the PCTG starts"), which is what lets a hand reach in and
+# grab the string. The screw's whole length less the heat-set and that cap is its travel, and
+# of the travel the gauge envelope and the overlap into the rod are spoken for: what is left
+# is the drop. See THE STACK. It is well past what threading needs, and asserted to stay so.
+from cadkit.fasteners import M4, M4_BUTTON_HEAD_D, M4_BUTTON_HEAD_H
 THREAD_CLR = D.MIN_WALL                         # room to work the string round, not force it
 _DROP_NEED = G_ENVELOPE + THREAD_CLR            # 2.832 for a .080
-INS_DROP  = math.ceil(_DROP_NEED / D.BEAD) * D.BEAD          # 3.2, on the grid
+HS_SCREW_L     = 16.0                           # M4 x 16 button: McMaster stocks 16 and 20 (not 18).
+                                                # 20's travel would hang its head 4 below the bed
+HS_CAP         = D.MIN_WALL_2P                  # printed floor over the heat-set, and the screw's
+                                                # bore through it, under the insert's foot
+HS_ROD_OVERLAP = 2 * D.BEAD
+INS_DROP  = HS_SCREW_L - (M4.insert_depth + HS_CAP) - (G_ENVELOPE + HS_ROD_OVERLAP)     # 5.77
+assert INS_DROP >= _DROP_NEED, f"a {INS_DROP:.2f} drop will not thread a {G_ENVELOPE:.2f} string"
 INS_H     = 5 * D.BEAD                          # 4.0 of body below the flat
 DIVOT_OFF = ROD_D / 2 - PIN_D / 2 - ROD_Z       # 11.59, cradle centre ABOVE the flat
 DIVOT_D   = PIN_D + 0.3                         # 4.3, the dowel's cradle
@@ -1376,7 +1386,7 @@ def all_stow_channels(z_end: float) -> cq.Workplane:
 #
 # THE STACK, from the chassis up (local frame -- Z relative to STRING_Z):
 #   motor_bank.FLOOR_TOP  top of the wide corner rib the keyhead sits over (chassis)
-#   HS_PRISM_BOT          0.4 above that rib -- and the heat-sets' mouths, flush in it (user: the lower,
+#   HS_PRISM_BOT          2.0 above that rib -- and the heat-sets' mouths, flush in it (user: the lower,
 #                         the easier to reach). The heads hang below, down into the rib, which
 #                         chassis.py opens for them.
 #   HS_FLOOR              where a DROPPED insert's foot rests: the tip, screw fully undone
@@ -1387,15 +1397,10 @@ def all_stow_channels(z_end: float) -> cq.Workplane:
 #     before the head bottoms out: you always tighten against the string, never against the endplate.
 #   * FULLY UNDONE -- the insert dropped for threading, flat at _FZ_LOW -- the head still clears
 #     chassis.Z_BOT, where the leg's body adapter begins.
-from cadkit.fasteners import M4, M4_BUTTON_HEAD_D, M4_BUTTON_HEAD_H
 from . import motor_bank as _MB                  # motor_bank imports only dimensions/helpers/components
-HS_SCREW_L     = 20.0                            # M4 x 20 button, a STOCKED length (18 is not: McMaster
-                                                 # has 16 and 20). 20 not 16: it is the pickup jacks' SKU
-                                                 # already, and leaves 8.2 of floor over the heat-set (16: 4.2)
 HS_HEAD_CLR    = 0.4                             # radial air round a head in its chassis cavity
 HS_HEAD_CAV_D  = M4_BUTTON_HEAD_D + 2 * HS_HEAD_CLR
-HS_ROD_OVERLAP = 2 * D.BEAD
-HS_PRISM_BOT   = _MB.FLOOR_TOP + 0.4 - D.STRING_Z
+HS_PRISM_BOT   = _MB.FLOOR_TOP + 2.0 - D.STRING_Z    # 2 beads up: the head, fully undone, needs it
 # THE EXTENSION puts a DROPPED insert's foot on the floor: the lowest flat any string may set, less
 # the threading drop, less the body -- the same datum POCKET_Z0 is cut from.
 _FZ_LOW      = ROD_Z - ROD_D / 2.0 - G_ENVELOPE - INS_DROP
@@ -1404,9 +1409,8 @@ HS_REACH_MAX = _FZ_TIGHT - _FZ_LOW                 # the tip's whole travel, und
 HS_FLOOR     = HS_PRISM_BOT + HS_SCREW_L - HS_REACH_MAX
 INS_EXT_H    = (_FZ_LOW - INS_H) - HS_FLOOR
 assert INS_EXT_H > 0.0, "the height-adjust floor is above the insert body"
-assert HS_FLOOR - (HS_PRISM_BOT + M4.insert_depth) >= 4 * D.BEAD - 1e-9, (
-    f"only {HS_FLOOR - HS_PRISM_BOT - M4.insert_depth:.2f} of floor over the heat-set -- a "
-    f"{HS_SCREW_L:g} mm screw is too short for {HS_REACH_MAX:.2f} of travel")
+assert abs(HS_FLOOR - (HS_PRISM_BOT + M4.insert_depth + HS_CAP)) < 1e-9, (
+    f"the floor over the heat-set is {HS_FLOOR - HS_PRISM_BOT - M4.insert_depth:.2f}, not {HS_CAP}")
 HS_HEAD_LOW = HS_PRISM_BOT - HS_REACH_MAX - M4_BUTTON_HEAD_H     # a head's bottom, fully undone
 assert HS_HEAD_LOW >= _MB.BED_Z - D.STRING_Z - 1e-9, (
     f"fully undone, a height-screw head drops to z {HS_HEAD_LOW + D.STRING_Z:.2f}, below the bed "
