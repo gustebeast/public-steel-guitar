@@ -506,7 +506,8 @@ def _flip_merge(fp, na, nb, inner, width, clr, margin, via_margin,
                 % (fp.GetReference(), na, nb))
 
 
-def _diff_pairs(board, specs, outline=None, inner=None, clr=0.14):
+def _diff_pairs(board, specs, outline=None, inner=None, clr=0.14, declared=(),
+                declared_vias=()):
     """Route declared differential pairs AS PAIRS, before the autorouter sees them.
 
     ⚠ FREEROUTING HAS NO CONCEPT OF A DIFFERENTIAL PAIR. It routes DP and DM as two
@@ -562,6 +563,38 @@ def _diff_pairs(board, specs, outline=None, inner=None, clr=0.14):
     thru += [(q.GetBoundingBox(), q.GetNetname(),
               "%s.%s" % (f.GetReference(), q.GetNumber())) for q, f in pads
              if q.GetAttribute() in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH)]
+    # ⚠ AND THE DECLARED COPPER, WHICH IS NOT ON THE BOARD YET -- the same gap the
+    # stitcher closes (see _stitch_plane_pads). The pair goes down first, so it could run
+    # an inner rail straight through a declared via: optical R2's D+ crossed a +3V3D via at
+    # the PHY and the routed board would have shorted them. A declared via pierces every
+    # layer; a declared track is an obstacle to the surface checks, and to the inner run
+    # too when it is on that layer. Diagonals are cut into short pieces so their boxes stay
+    # close to the copper.
+    def _dbox(c0, c1, r):
+        return pcbnew.BOX2I(pcbnew.VECTOR2I(int(min(c0[0], c1[0]) - r),
+                                            int(min(c0[1], c1[1]) - r)),
+                            pcbnew.VECTOR2I(int(abs(c1[0] - c0[0]) + 2 * r),
+                                            int(abs(c1[1] - c0[1]) + 2 * r)))
+    for _dn, _dl, _dw, _dpts in declared:
+        _q = [_to_board(px_, py_) for px_, py_ in _dpts]
+        _r = pcbnew.FromMM(_dw) / 2.0
+        for a_, b_ in zip(_q, _q[1:]):
+            _k = max(1, int(math.hypot(b_.x - a_.x, b_.y - a_.y) // pcbnew.FromMM(0.5)))
+            for i_ in range(_k):
+                c0 = (a_.x + (b_.x - a_.x) * i_ / _k, a_.y + (b_.y - a_.y) * i_ / _k)
+                c1 = (a_.x + (b_.x - a_.x) * (i_ + 1) / _k,
+                      a_.y + (b_.y - a_.y) * (i_ + 1) / _k)
+                item = (_dbox(c0, c1, _r), _dn, "declared")
+                boxes.append(item)
+                if inner is not None and _dl == inner:
+                    thru.append(item)
+    for _dv in declared_vias:
+        _c = _to_board(_dv[1], _dv[2])
+        item = (_dbox((_c.x, _c.y), (_c.x, _c.y),
+                      pcbnew.FromMM(_dv[4] if len(_dv) > 4 else 0.6) / 2.0),
+                _dv[0], "declared via")
+        boxes.append(item)
+        thru.append(item)
     by_ref = {}
     for pad, fp in pads:
         by_ref.setdefault(fp.GetReference(), []).append(pad)
@@ -744,6 +777,21 @@ def _diff_pairs(board, specs, outline=None, inner=None, clr=0.14):
                         out.append(("TRK", p_start, q0, q1, run_layer))
                 out.append(("VIA", p_start, rail[i0], None, None))
                 out.append(("VIA", p_end, rail[i1], None, None))
+            # ⚠ A VIA AGAINST ITS PARTNER'S COPPER. Each rail is checked against the board,
+            # and the board does not hold the partner yet -- so where an escape leaves at
+            # an angle the two vias stagger, and one sat 0.1244 mm off the other net's
+            # stub where the fab rule is 0.127 (optical R2, U7). A through via pierces
+            # every layer, so it is checked against every segment of the other net.
+            if ok:
+                need = pcbnew.FromMM(0.3) + margin
+                for kv, pv, cv, _n1, _n2 in out:
+                    if kv != "VIA" or not ok:
+                        continue
+                    for kt, pt, q0, q1, _l in out:
+                        if kt == "TRK" and pt.GetNetname() != pv.GetNetname()                                 and _pt_seg(cv, q0, q1, math) < need:
+                            ok = False
+                            _DBG['partner'] = _DBG.get('partner', 0) + 1
+                            break
             if ok:
                 return out
         return None
@@ -789,6 +837,15 @@ def _diff_pairs(board, specs, outline=None, inner=None, clr=0.14):
                         if f.GetReference() == ref), None)
             cand = {n: [q for q in by_ref.get(ref, []) if q.GetNetname() == n]
                     for n in (na, nb)}
+            # ⚠ AN OPTIONAL PIN-DOWN, spec["pads"] = {ref: (pad numbers, ...)}: best_pair
+            # picks the NEAREST pair, and "crossing is always longer" holds only when the
+            # run arrives square to the pad row. A run that turns a corner onto a USB-C's
+            # interleaved row (B7 A6 A7 B6) can find the crossed pair nearer -- on the
+            # optical R2 board B6 beat A6 by a millimetre and the hop reported no clear
+            # path. Naming the pads is the designer's call; the search stays as it was.
+            if ref in spec.get("pads", {}):
+                keep = set(spec["pads"][ref])
+                cand = {n: [q for q in v if q.GetNumber() in keep] for n, v in cand.items()}
             if fpo is None or not cand[na] or not cand[nb]:
                 fps = None
                 break
@@ -961,6 +1018,14 @@ def _diff_pairs(board, specs, outline=None, inner=None, clr=0.14):
         done.append((na, "laid %d segment(s) as a coupled pair over %d hop(s)"
                      % (laid, len(stops) - 1)))
     return done
+
+
+def _pt_seg(p, a, b, math):
+    """Distance from point p to segment a-b (any units, all three alike)."""
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    L2 = dx * dx + dy * dy
+    t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2))
+    return math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy)
 
 
 def _escape_plan(fpo, m, pa, pb, hs, voff, margin, via_margin, na, nb,
@@ -4671,7 +4736,9 @@ def build(stem):
     # So the pair goes first and the handful of ground pads it displaces are declared.
     for name, msg in _diff_pairs(board, notes.get("diff_pairs", ()),
                                  outline=_outline_pts(notes),
-                                 inner=notes.get("diff_pair_inner")):
+                                 inner=notes.get("diff_pair_inner"),
+                                 declared=notes.get("tracks", ()),
+                                 declared_vias=notes.get("vias", ())):
         print("  diff pair %s: %s" % (name, msg))
 
     _slug = _slug_rings(board, notes.get("slug_max"))
