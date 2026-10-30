@@ -408,10 +408,8 @@ DEFERRED_RULES = (
     # bronner (optical cables).
     # (RETIRED 2026-10-30: optical R2's 24 V pair / USB plug vs the R1 hand guard. The guard
     #  opens over J1's notch on R2, merged with J2's window: optical_pickup._guard_windows.)
-    (re.compile(r"^(wire_opt_\w+|optical_cable_usb)$"),
-     re.compile(r"^(chassis_\d+|top_plate(_color)?_\d+|wire_\w+)$"),
-     "user 2026-10-29: allowed to clip until relocated (optical board cables vs the "
-     "narrowed body)"),
+    # (RETIRED 2026-10-30: the optical leads vs the narrowed body. They run down the cable hole
+    #  and under the chassis; cable on cable is the rule below.)
     # CABLE ON CABLE (user, 2026-10-29: "Cables colliding with other cables is fine, not
     # worth sacrificing instrument width over"). Wires already pass each other above; this
     # takes in the cable-end BODIES too -- the UI ribbon's IDC sockets, the optical USB lead

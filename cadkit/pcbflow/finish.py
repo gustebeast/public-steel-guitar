@@ -216,6 +216,40 @@ def _violation_nets(stem):
     return out
 
 
+def _close_order(stem):
+    """The last nets of a tight fan-out, ripped and closed one at a time in a stated order.
+
+    close_last takes open nets as DRC lists them, and on a fan-out the order decides it: optical
+    R2's ULPI_D3..D6 close only as D3, D4, D5, D6; each of seven other orders tried leaves one
+    with no path (2026-10-30). BOARD_NOTES["close_order"] lists the nets. Only runs with one of
+    them open, and the caller's strictly-better test still judges the result."""
+    try:
+        with open(stem + ".board.json", encoding="utf-8") as fh:
+            order = json.load(fh).get("close_order") or []
+    except OSError:
+        return
+    d = json.load(open(stem + ".finish.drc.json", encoding="utf-8"))
+    if not order or not any(i.get("description", "").find("[%s]" % n) >= 0 for n in order
+                            for u in d.get("unconnected_items", []) for i in u.get("items", [])):
+        return
+    code = ("import sys, pcbnew\n"
+            "b = pcbnew.LoadBoard(sys.argv[1])\n"
+            "for t in list(b.GetTracks()):\n"
+            "    if t.GetNetname() in sys.argv[2:]:\n"
+            "        b.Remove(t)\n"
+            "pcbnew.SaveBoard(sys.argv[1], b)\n"
+            "sys.stdout.flush()\n"
+            "import os; os._exit(0)\n")
+    subprocess.run([PY, "-c", code, stem + ".kicad_pcb"] + order, stdin=subprocess.DEVNULL,
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    print("  close_order: ripped %s, closing in that order" % ", ".join(order))
+    for k in range(len(order)):
+        _drc(stem)
+        os.environ["CLOSE_LAST_SKIP"] = ",".join(order[k + 1:])
+        _run("close_last.py", stem)
+    os.environ.pop("CLOSE_LAST_SKIP", None)
+
+
 def _run(script, stem):
     """Run a pipeline step, streaming its output as it arrives.
 
@@ -492,6 +526,10 @@ def finish(stem, rounds=1, keep_route=False):
             os.environ["CLOSE_LAST_SKIP"] = ",".join(sorted(_skip))
             try:
                 _run("close_last.py", stem)
+                if not _attempt:
+                    _drc(stem)
+                    _close_order(stem)
+                    os.environ["CLOSE_LAST_SKIP"] = ",".join(sorted(_skip))
                 _run("unwick.py", stem)
                 _run("repair_planes.py", stem)
                 _n3, _nets3, _v3 = _drc(stem)
