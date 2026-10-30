@@ -407,11 +407,17 @@ DEFERRED_RULES = (
     # THE SHAFT CUT vs THE SAME BOARDS (USER DEFERRED 2026-10-29, via the lead: "the foot-LED
     #  collisions are deferred, so the shaft cut goes ahead"). Standoff 17.2 -> 12.0 takes the
     #  motors 5.2 +Y, and string 1's faceplate wall (chassis_1, chassis_2) with them, into the
-    #  R1 boards between the motor face and the +Y rail: ~870 mm3 over three pairs. Same owner,
-    #  same retirement -- the rev-2 boards are placed on the 12.0 layout.
-    (re.compile(r"^foot_pcb_[ab]$"), re.compile(r"^chassis_[12]$"),
-     "R1 foot-LED boards vs string 1's faceplate wall at standoff 12 (OWNER brenner, rev-2 "
-     "foot boards)"),
+    #  R1 boards between the motor face and the +Y rail: ~870 mm3 over three pairs at 12.0. At
+    #  the 7.5 standoff (the pulley on the shaft's D, user) string 1's motor itself reaches board
+    #  A (54 mm3) and the boards' 24 V lead is pinched against string 1's faceplate wall and tee
+    #  (53 mm3). Same owner, same retirement -- the rev-2 boards and their lead are placed on the
+    #  7.5 layout. Exact names, so nothing else of the family hides behind it.
+    (re.compile(r"^foot_pcb_[ab]$"), re.compile(r"^(chassis_[12]|motor_0|motor_face_0)$"),
+     "R1 foot-LED boards vs string 1's motor and faceplate wall at the cut-shaft standoff "
+     "(OWNER brenner, rev-2 foot boards)"),
+    (re.compile(r"^wire_foot_led_v24$"), re.compile(r"^(chassis_2|tee_pcb_0)$"),
+     "R1 foot-LED boards' 24 V lead vs string 1's faceplate wall and tee at the cut-shaft "
+     "standoff (OWNER brenner, rev-2 foot boards)"),
     # Same change, OWNER bronner: the output board moved -X 1.63 with the face and its J2 -> Pi
     #  USB lead now clips chassis_0 (4.4 mm3). Re-routed in the Xilaghy follow-up.
     (re.compile(r"^wire_usb$"), re.compile(r"^chassis_0$"),

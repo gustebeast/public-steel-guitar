@@ -1050,7 +1050,10 @@ def _clamp_relief(ep, roofed=False):
     eb = ep.val().BoundingBox()
     out, g = None, CLAMP_RELIEF_CLR
     for i in range(D.N_STRINGS):
-        parts = [w.val() for _n, w in BTn.clamp_components(belt_cut(i)[1])]
+        # at this string's own belt gap AND at the default one, which is how
+        # check_carriage_travel poses it -- the relief must satisfy the gate that checks it
+        parts = ([w.val() for _n, w in BTn.clamp_components(belt_cut(i)[1])]
+                 + ([w.val() for _n, w in BTn.clamp_components()] if roofed else []))
         lo, hi = None, None              # ONE box per string over every station: a union of
         reach_y = None                   # per-station boxes leaves 0.01 mm2 stairs
         for k in range(CLAMP_RELIEF_STATIONS + 1):
