@@ -28,9 +28,14 @@ vectorised:
            does not, which is why a face test alone was never enough.
   ISLAND   a vertex lower than everything round it, off the bed: material that starts in
            mid-air at a point.
-  TIP      a convex edge sharp enough that the printed end stands well back of the drawn one,
-           for that edge's orientation (cadkit.print_corners, on this same mesh): often left
-           by a cut, where no drawing call could see it.
+  TIP      a convex edge crossing the layers, sharp enough in a layer that its printed end
+           stands well back of the drawn one.
+  POINT    material narrower than a bead in some layer: the model claims what no bead can lay.
+  SINGLE   a bead up to 1.6: it prints as one line. Not an error: there to see and accept.
+  STEP     a wedge or sheet under one layer tall.
+  RESIDUE  under 0.05 wide, a boolean's leftover.
+These last five are cadkit.print_corners on this same mesh, often left by a cut where no
+drawing call could see them. They are REPORT-ONLY: nothing here fails on them yet.
 Ridge and island candidates are then settled against the solid (_held: is there material
 one layer down, within the cone?), so a corner that only LOOKS lowest is not reported.
 Hits that share a mesh vertex, or lie within NEAR, are one SITE, reported with its area
@@ -417,14 +422,16 @@ def _nozzle():
     return float(_value("src.dimensions", "NOZZLE_D"))
 
 
-def _tips(V, ev, turn, convex, bed, R):
+def _tips(V, F, FN, adj, ev, turn, convex, bed, R):
     """cadkit.print_corners on the mesh already in hand: V is in the build frame, so up is +Z."""
-    from cadkit.print_corners import sites_from_edges
+    from cadkit.print_corners import sites_from_edges, thin_sites
+    n = _nozzle()
     out = []
-    for s in sites_from_edges(V, ev, turn, convex, (0.0, 0.0, 1.0), _nozzle()):
+    found = (sites_from_edges(V, ev, turn, convex, (0.0, 0.0, 1.0), n, normals=FN[adj])
+             + thin_sites(V, F, FN, ev, turn, convex, n))
+    for s in found:
         p = np.asarray(s["at"])
-        out.append(dict(s, area=0.0, span=None, height=float(p[2] - bed), n=1,
-                        at=p @ R, geo=[np.array(s["ends"]) @ R]))
+        out.append(dict(s, area=0.0, span=None, height=float(p[2] - bed), n=1, at=p @ R, geo=[]))
     return out
 
 
@@ -452,7 +459,8 @@ def analyse(shape, up, angle=ANGLE, tess=TESS):
     adj, ev = np.array(m.face_adjacency), np.array(m.face_adjacency_edges)
     sharp = m.face_adjacency_angles > math.radians(SHARP)
     convex = np.array(m.face_adjacency_convex)
-    tips = _tips(V, ev, np.degrees(np.array(m.face_adjacency_angles)), convex, bed, R)
+    tips = _tips(V, F, FN, np.array(m.face_adjacency), ev,
+                 np.degrees(np.array(m.face_adjacency_angles)), convex, bed, R)
     a, b = V[ev[:, 0]], V[ev[:, 1]]
     d = b - a
     d /= np.linalg.norm(d, axis=1)[:, None]
@@ -568,8 +576,11 @@ def report(name, sites, up, min_area=0.0, min_length=0.0, ledge=2 * BEAD, quiet_
         elif s["kind"] == "RIDGE":
             what = "%7.2f mm long  climbs %.0f deg (needs %.0f)" % (s["length"], 90 - s["angle"], 90 - ANGLE)
         elif s["kind"] == "TIP":
-            what = "%7.2f mm long  %.0f deg, prints %.2f back of drawn: %s" % (
+            what = "%7.2f mm long  %.0f deg in a layer, prints %.2f back of drawn: %s" % (
                 s["length"], s["angle"], s["recede"], s["hint"])
+        elif s["kind"] in ("POINT", "SINGLE", "STEP", "RESIDUE"):
+            what = "%5.2f wide, %.1f long, ~%.1f mm3: %s" % (
+                s["width"], s["length"], s["volume"], s["hint"])
         else:
             what = "a point in mid-air"
         print("    %-8s %s   %.2f above the bed  at (%.2f, %.2f, %.2f)%s" % (

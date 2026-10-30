@@ -1,7 +1,7 @@
 # bronner loop worklist (started 2026-09-21)
 
 The /loop re-reads this each tick. Tick = take the top OPEN item, do it, commit, re-render
-(copy scratch.step -> assembly.step: the user's "bronner" FreeCAD tab tracks assembly.step),
+(copy scratch.step -> assembly.step: the user's "bronner" viewer tab tracks assembly.step),
 mark it here. Items needing the user go to NEEDS USER, not skipped silently.
 
 ## OPEN

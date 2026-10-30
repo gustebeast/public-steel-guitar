@@ -1061,6 +1061,21 @@
     }
     return L;
   }
+  // the point of a circle or arc nearest to whatever `dist` measures from: its samples find the
+  // valley, then the true arc is searched inside it, so the figure is the kernel's and not the polyline's
+  function nearestOnArc(e, dist) {
+    const rel = e.pts[0].clone().sub(e.c), q = new THREE.Quaternion();
+    const at = t => rel.clone().applyQuaternion(q.setFromAxisAngle(e.d, e.sweep * t)).add(e.c);
+    const n = e.pts.length - 1;
+    let best = 0;
+    e.pts.forEach((p, i) => { if (dist(p) < dist(e.pts[best])) best = i; });
+    let lo = Math.max(0, best - 1) / n, hi = Math.min(n, best + 1) / n;
+    for (let i = 0; i < 60; i++) {
+      const m1 = lo + (hi - lo) / 3, m2 = hi - (hi - lo) / 3;
+      if (dist(at(m1)) < dist(at(m2))) hi = m2; else lo = m1;
+    }
+    return at((lo + hi) / 2);
+  }
   // the dimension between two entities: {big, lines[], a, b} with a-b the dimension line
   function between(ea, eb) {
     let A = refOf(ea), B = refOf(eb), flip = false;
@@ -1068,6 +1083,7 @@
     if (order[A.t] > order[B.t]) { [A, B] = [B, A]; flip = true; }
     const out = { lines: [] };
     const para = (u, v) => u.clone().cross(v).length() < 1e-5;
+    const arcA = (flip ? eb : ea).kind === 'circle' ? (flip ? eb : ea) : null;
     if (A.t === 'P' && B.t === 'P') {
       const d = B.p.clone().sub(A.p);
       out.big = `${f3(d.length())} mm`; out.a = A.p; out.b = B.p;
@@ -1079,11 +1095,23 @@
       out.big = `${f3(d)} mm`; out.a = A.p; out.b = foot;
       out.lines.push(`${A.what || 'point'} to ${B.what || 'line'}, square to it`);
       if (B.r) out.lines.push(`to its surface ${f3(Math.abs(d - B.r))}`);
+      if (arcA) {
+        const dist = p => p.distanceTo(onLine(B.p, B.d, p)), near = nearestOnArc(arcA, dist);
+        out.lines[0] = `nearest edge of the circle to ${B.what || 'line'}, square to it`;
+        out.lines.push(`from the circle's centre ${f3(d)}`);
+        out.big = `${f3(dist(near))} mm`; out.a = near; out.b = onLine(B.p, B.d, near);
+      }
     } else if (A.t === 'P' && B.t === 'PL') {
       const s = A.p.clone().sub(B.p).dot(B.n);
       out.big = `${f3(Math.abs(s))} mm`; out.a = A.p; out.b = A.p.clone().sub(B.n.clone().multiplyScalar(s));
       out.lines.push(`${A.what || 'point'} to plane, square to it`);
-      if (A.r) out.lines.push(`edge of it to the plane ${f3(Math.abs(Math.abs(s) - A.r))} (if it stands square)`);
+      if (arcA) {
+        const dist = p => Math.abs(p.clone().sub(B.p).dot(B.n)), near = nearestOnArc(arcA, dist);
+        out.lines[0] = 'nearest edge of the circle to the plane, square to it';
+        out.lines.push(`from the circle's centre ${f3(Math.abs(s))}`);
+        out.big = `${f3(dist(near))} mm`; out.a = near;
+        out.b = near.clone().sub(B.n.clone().multiplyScalar(near.clone().sub(B.p).dot(B.n)));
+      } else if (A.r) out.lines.push(`edge of it to the plane ${f3(Math.abs(Math.abs(s) - A.r))} (if it stands square)`);
     } else if (A.t === 'L' && B.t === 'L') {
       if (para(A.d, B.d)) {
         const foot = onLine(B.p, B.d, A.q);

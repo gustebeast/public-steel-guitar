@@ -693,18 +693,6 @@ Fold into the PCB quality loop: both boards are being reworked for it anyway.
 | ⚠ **DO NOT JUST ADD `motor_ctrl` — IT MAY BE A GRAZE, NOT A LANDING** (superseded by the row above, kept for the reasoning) | `_j2_pin()` returns *the mated plug's OUTER FACE*, so a correctly-drawn conductor **stops at the plug and never enters the board** — on that reading NONE of the four should touch `motor_ctrl`, and a declaration would hide a real fault. The tell: the four volumes are **not equal** (4.6 / 10.3 / 10.3 / —). A designed landing touches equally; unequal volumes with one conductor absent is the signature of a graze. **Measure where the contact sits relative to J2 before declaring anything.** The probe was written and interrupted — it needs `src.build`'s body list, not `PARTS` (which is a dict and omits the boards) |
 | ⚠ AND `pi4 ↔ wire_canb_{h,gnd,v5}_lkl_0` AT 2.2 mm³ EACH IS A SEPARATE, GENUINE FAULT | the lever feed grazes the **Raspberry Pi**, which is not a body this cable terminates on. By the gate's own doctrine that is a routing bug, not an allow-list gap. It must NOT be declared — it needs the lane fixed. Same class as the `wire_led_*`-through-the-endplate finding |
 | … what this DOES unblock | per-conductor pin-to-pin routing is **not** among the five attempts `check_overlaps` rules out — all five (`across` seed, way order, 2×2 section, wider ribbon, chord at the rise) are variants INSIDE the bundle model. And the file's own docstring says the lever segments already do pin-to-pin successfully “because both their connectors face the same way”. The open question is whether it survives the port |
-| FreeCAD hub integration (cadkit) | ✅ **DONE, LANDED, PROPAGATED 11/11** (`3097596`…`4c9575f` in canonical cadkit). PID and `_kill_hub()` deleted; a wedged or stale hub is reloaded IN PLACE via `--single-instance <macro>`, which was measured to execute the macro inside the running FreeCAD. Four bugs found by testing, one of which (adoption silently re-importing every tab) only appeared from a VENDORED copy. 38-check guard in `cadkit/freecad/test_hub.py`. See the section below |
-| ✅✅✅ **ACTUALLY FIXED, not just announced — an open window is now SEEN BY OLD LAUNCHERS TOO** (canonical `cadkit`, user's requirement: *“if a freecad window is open the system should see it and avoid opening another one”*) | the old launcher's own escape hatch makes coexistence possible: its `_code_is_stale()` documents *“Unknown/absent stamp reads as NOT stale”* and returns False when the file is missing. So `_compat_marker()` presents it with **a pid marker naming a LIVE FreeCAD** (its `_hub_running()` → True), **NO `.codestamp`** (not stale → no taskkill) and **a fresh `.heartbeat`** (not wedged) — and it drops its project in the **inbox**, which is exactly right |
-| … the new side keeps its own stamp under `.codestamp2` | so refresh-in-place is untouched, and **both** sides delete the old name: left in place it reads as a mismatch against the old copy's viewer hash, and the old answer to a mismatch is **taskkill**. The marker is **removed when nothing is running**, so a dead pid never persuades an old launcher that a hub exists |
-| ✅ **AND THE FIX IS ENTIRELY ON THE NEW SIDE** | an un-synced worktree needs **no** change — it only needs to SEE the marker. So one synced project running `show()` protects every stale one. Verified live: marker written naming pid 34084, `.codestamp` absent, `.codestamp2` intact, count 1 against one running window |
-| ⚠⚠ **BUT THE STEEL-GUITAR FAMILY CANNOT RECEIVE IT: `public-steel-guitar` IS STILL DIRTY** | **third** propagation blocked today by an uncommitted generated artefact in main — `tools/part_volumes.json` now, `tools/part_volumes.json` again, the `can_tee` DRC reports before. 10/11 consumers have the fix; **main and its `bronner`/`brenner`/`branner` worktrees do not**, and they are the ones with the duplicate-hub problem. **This now blocks a fix the user asked for**, which makes the dirty-main habit a real cost rather than friction |
-| ✅ **MITIGATED AS FAR AS IT CAN BE: the leak now ANNOUNCES ITSELF** (canonical `cadkit`, propagated 10/11) | `_freecad_running` → **`_freecad_count`** (the boolean threw away the fact that >1 is a fault), and `show()` calls `_warn_multi`, which prints the cause and the one-line cure to stderr on every build. **Verified against the three live hubs — it fires and names 3.** It does NOT prevent duplicates; nothing on this side can, and the delete→accumulate / write→kill dilemma below is unchanged |
-| ⚠ propagation BLOCKED for `public-steel-guitar`, for the SECOND time today | skipped as *“dirty working tree”* — **`tools/part_volumes.json`**, a generated build artefact, uncommitted in main. Earlier today it was the `can_tee` DRC artefacts. So main, and this worktree which takes cadkit **through** main, do not have the warning yet. **Generated artefacts left uncommitted in main block every cadkit propagation** — that is recurring friction, not a one-off, and it is the lead's tree to settle |
-| ⚠⚠⚠ **LIVE REGRESSION I CAUSED: UN-SYNCED WORKTREES NOW SPAWN A FreeCAD PER BUILD** (2026-09-30) | observed **3 running hubs, ~2 GB each**. Command lines: one from `public-steel-guitar` (1:20 PM) and **two from `public-steel-guitar-brenner`** (2:54, 3:19). brenner's vendored cadkit has **zero** occurrences of `_refresh_hub` / `_drop_legacy_marker` — it is the pre-sync code |
-| … the chain, and it is mine | brenner's OLD `_hub_running()` reads the **PID marker**. My `_drop_legacy_marker` **deletes that marker on every `show()`** from a synced project. So brenner concludes “no hub running” and spawns a new FreeCAD **every build**. I wrote that behaviour deliberately and described it as *“a duplicate window, which the user can close”* — **that was too soft**: it is one per build, unbounded |
-| … and there is NO clean middle ground — checked, not assumed | if the marker is WRITTEN instead, old code finds the PID alive, compares its own single-file codestamp against the new two-file one, reads “stale” and calls **`_kill_hub()`** — destroying the hub and every agent's tabs. **Delete → accumulate; write → kill.** The stamps cannot be made to match, because the whole point of the two-file stamp is that the macro is now updatable too |
-| → **THE REAL FIX IS ONE COMMAND, AND IT IS NOT MINE TO RUN**: brenner does `py -3.12 -m cadkit.tools.agent_sync sync` | `propagate.py` skips linked worktrees **by design** — they receive cadkit through their own sync — so every un-synced worktree is in this state. bronner synced (`02baf63`); brenner has not |
-| … what I chose meanwhile, and why | **left the deletion in place.** Accumulation costs RAM and is visible; the alternative silently destroys other agents' open tabs, and this session's entire cadkit work exists to stop builds killing FreeCAD. Recoverable beats destructive — but it needs brenner to sync **promptly**, and the three live hubs want closing by hand |
 | Pi retention | the user's printed spacer, built and gate-clean |
 | ⚠⚠⚠⚠ **ROOT CAUSE FOUND: `pi_port_pt` IS STILL IN THE TRAY FRAME AND THE Pi IS NOT** (2026-09-30) | `pi_port_pt` returns TRAY coords — its own docstring says *“feed it through `stand_pt`”* — and `wiring.py` duly does `SP(*EL.pi_port_pt(...))`. But `pi4()`'s docstring says *“⚠ NO stand(). This board is not in the tray any more — it lies on the chassis floor”*. **The board moved and its ports did not.** |
 | … measured, all three | `eth → world(−593.0, −72.0, −**15.0**)` · `usb3 → (−593.0, −72.0, −**33.0**)` · `usb2 → (−593.0, −72.0, −**49.0**)` — identical x and y, differing only in z, i.e. **the port stack of a STANDING board**. The Pi solid is now **flat**: x −588…−503, y −127…−71, z −68.95…−53.35. So the points sit **5 mm off its −X edge and up to 38 mm above it** |
@@ -1167,78 +1155,6 @@ Keep the ring, lip, wall, lean and M4 boss exactly as they are — only the root
 * Screws through boards (`optical_pcb`, `pi5`, `keyhead_endplate`) — declare the clamp or fix
   the missing hole.
 * `pickup_zplate` ↔ `wire_pickup` — must hold across the jack travel, not just the demo pose.
-
-## FreeCAD hub integration (cadkit) -- ✅ DONE, LANDED AND PROPAGATED 2026-09-30
-
-All four items are complete in canonical `../cadkit` and propagated to **11/11 consumers**
-(`tools/propagate.py`, pushed to github.com/gustebeast/cadkit). This worktree got it through
-`agent_sync sync`, which propagate skips linked worktrees for by design.
-
-**The test that gated everything came back the opposite way to expected, and that is what
-shaped the design.** `freecad.exe --single-instance <macro>` **executes the macro inside the
-already-running FreeCAD**: process count stays at 1 and `.codestamp` -- written only inside
-`start_hub` -- is rewritten. So the answer to "new code in a live hub" and "a wedged watch
-loop" is the SAME non-destructive call, and the PID plus `taskkill /F /T` had no job left.
-
-| item | state |
-| --- | --- |
-| 1. the test | ✅ `--single-instance` forwards a FILE into the running instance (+40 MB, 1 process), and forwards a MACRO too -- the macro is what mattered |
-| 2. documents carry provenance | ✅ source step/mtime/size live on `doc.Meta`; `_tracked()` reconciles `App.listDocuments()` against disk each tick. `_hub["projects"]` is gone |
-| 3. hot-reload the viewer | ✅ `view.FCMacro` reloads `freecad_viewer` on re-run, after `shutdown()` drops the old QTimer + shortcuts. Compiles the file FIRST, so a typo costs nothing |
-| 4. delete the PID and the kill | ✅ `_MARKER`, `_hub_running()`, `_kill_hub()` deleted. Liveness = heartbeat; loading = `.busy`; wedged or stale = re-run the macro in place |
-
-**Verified against the live hub, not just in a harness.** PID 31828 took three separate
-in-place reloads without ever restarting, both tabs intact each time, `.error` never written.
-
-### what only showed up by testing, and would have shipped otherwise
-
-* **A code update ORPHANED the tabs it inherited.** Tabs from an older hub carry no stamp, so
-  `_tracked()` did not see them: the tab looked fine and silently never refreshed again.
-  `_open_project` adopts lazily when a build next asks for that project, which is too late.
-  Fixed by adopting from the `.status` file the previous hub already wrote.
-* **⚠ ADOPTION WAS RE-IMPORTING EVERY TAB IT ADOPTED -- the exact cost it exists to avoid.**
-  `.status` wrote mtimes as `%.6f`; real mtimes carry finer digits (NTFS keeps 100 ns). The
-  stamped value compared unequal to the file, so every adopted tab re-imported its STEP on
-  the next tick. **This explains the one timeline I could not account for**: 104 s between a
-  reload and the status write is TWO big imports, not one. Fixed three ways, the first two
-  each sufficient: compare within `_MTIME_EPS`, snap adoption to the real mtime, and write
-  `repr(float)`.
-  **Found by running the test from a VENDORED copy, not from canonical** -- canonical's mtime
-  happened to be exactly representable at microsecond precision and the vendored ones' were
-  not. A test that only runs where it was written is a test that passes where it was written.
-* **The inbox open was the one blocking load with no `.busy` marker.** Measured on a real tab
-  open: **35 s of frozen heartbeat with `.busy` False** for a 128 MB assembly, well past the
-  30 s staleness limit. Same fault the marker was introduced for -- it used to be answered by
-  force-killing the hub mid-import, which is the crash the user reported. `start_hub`'s open
-  and `_tick`'s reload were already marked; this one was not.
-* **A macro failure was invisible from outside.** FreeCAD sends the traceback to its Report
-  view, which no build can read, while the launcher now DEPENDS on the macro running. It is
-  written to `<heartbeat>.error` and removed on success.
-
-### the guard
-
-`py -3.12 cadkit/freecad/test_hub.py` -- **38 checks** against a stubbed FreeCAD (the real
-module cannot be imported outside it, and FreeCAD's headless binary has no GUI modules
-either). Covers adoption, no duplicate tabs, stable-then-reload, a failed reload retrying
-WITHOUT stamping, the busy marker, shutdown/re-arm, and that both code stamps hash the same
-bytes. Mutation-checked: reintroducing the mutate-in-place `Meta` bug, a provenance read that
-always fails, a neutered `_adopt_from_status`, an unmarked inbox open, or BOTH mtime defences
-at once each makes it fail. `doc.Meta` semantics (dict, copy-on-read, survives save/reopen)
-were verified headlessly with `freecadcmd` before any of this was written.
-
-### ⚠ one consequence to know about
-
-**A project whose vendored cadkit is STALE will now push its old code into the hub.** That is
-not new -- the old code answered a stamp mismatch by killing FreeCAD and restarting it on its
-own version -- but it is why this worktree had to be synced before rendering again: its
-pre-provenance copy would have force-killed the user's FreeCAD. Any worktree that has not
-synced is in that state.
-
-**And one behaviour change:** if a FreeCAD is running that is NOT our hub (the user started
-it themselves), the hub is now planted INSIDE it rather than a second window being spawned.
-That is the user's own stated model -- "check if freecad is running at all, if not launch it,
-if so check if your tab is already there" -- and the macro no longer needs `FREECAD_VIEW_*`
-in its environment for it, because a forwarded macro runs with the RUNNING process's env.
 
 ## Done this session
 
@@ -4376,7 +4292,7 @@ of any placement change.
 
 The holes are in the fab data and **not** in the CAD's own plate model. This is the same check
 that once caught the comb missing from the fab data, firing in the other direction. It is also
-the direct answer to the user's "circular holes in KiCad, square holes in FreeCAD": the squares
+the direct answer to the user's "circular holes in KiCad, square holes in the render": the squares
 are the ten comb slots, and the CAD genuinely has no mount holes yet.
 
 ### ⚠ AND THE PICKUP HEIGHT JACK NEEDS A TRIM (user, with a screenshot)
@@ -4429,7 +4345,7 @@ Remaining unconnected: `+3V3A`, `ULPI_NXT`, `ULPI_D4`, `LED_ROW`, `SAI_FS`.
    is the only thing it exists for. With `_s[2]` it reproduces the 1.775 mm its own comment
    always claimed, against the 1.4435 a 2.5 mm hex key needs.
 4. **The CAD's holes were square.** The note in `opt_pcb` records that when they last existed
-   they were `box_at` prisms. That is the user's "circular in KiCad, square in FreeCAD",
+   they were `box_at` prisms. That is the user's "circular in KiCad, square in the render",
    and adding them back naively would have reproduced it. They are `cyl` now, from
    `mount_points()`, so the CAD plate / Edge.Cuts circle / screw cannot drift.
 
@@ -5990,8 +5906,8 @@ the one built before these text edits: its QUALITY.txt still says "SDO is unused
 
 ## THE WEB VIEWER IS BRONNER'S (user, 2026-10-09)
 
-Aim: the web page replaces FreeCAD as the way the instrument is looked at, locally and
-on GitHub Pages. FreeCAD had become slow, the lettering being part of it.
+Aim: the web page is the way the instrument is looked at, locally and
+on GitHub Pages.
 
 **Run it:** `py -3.12 cadkit/tools/agent_sync.py view` (an agent's part fresh in the
 lead's last build; the run prints the page's URL, one port per worktree from 8137). The
@@ -6018,7 +5934,7 @@ page and publishes the same model to GitHub Pages. The viewer lives in `cadkit.w
 | As printed | `tools/web_materials.py`, `docs/index.html` | ✅ local only. Key k: every printed part in its FILAMENT's colour and finish (user: PETG-GF black, PCTG forest green, and do materials affect the lighting). PETG-GF matte black (roughness 0.92), PCTG glossy forest green (0.22, full environment reflection), TPU dull black; bought parts keep their colours. The material is read from the build's PARTS table as text (the STEP folder), the instance name reduced as the build's colour lookup reduces it, and written on the GLB node. The deck is one print in two PCTG colours: its skin (`top_plate_color_N`) takes the green, the body under it that shows as fret lines is `pctg-alt`, a pale stand-in until that colour is chosen. Not modelled: PCTG's translucency. Unmapped, so still in build colours: anything PARTS does not name with a filament folder (the belt tensioner halves, the string nut, shims) |
 | Headers on hand-drawn boards | `tools/web_boards.py` | ✅ local only. User: all the JSTs are uncoloured blocks. The lever boards and the tee draw their side-entry header MATED (plug reach included) and where their own table says, so no corner sat on the F.Fab box; the leg joint boards draw it as a part of its own. Three more steps in the search: a box centred on the footprint of another size, a mated header reaching past the mouth, a separate part standing on the footprint. 798 models now; left as drawn: the four spring-pin blocks (their pins are modelled by hand already) and two optical regulators |
 | Axis views | `docs/index.html` | ✅ buttons +X −X +Y −Y +Z −Z (named by the CAD side looked from) and iso. The camera is PERSPECTIVE and only that (user, 2026-10-09: pick one and lock it in, whichever looks like the real thing) |
-| Promoted to cadkit; FreeCAD and `assembly.step` out of the build | `cadkit/web/`, `cadkit/scratch.py` (canonical b45ee05); `src/build.py`, `tools/export_glb.py`, `tools/scratch_view.py` | ✅ user: commit to the new viewer, remove the FreeCAD remnants, and cut build time for geometry work. `tools/web_*.py` moved to `cadkit.web` (only `tools/web_materials.py`, this project's filament table, stays). The build no longer writes `assembly.step` or calls FreeCAD; it serves the page it publishes. `cadkit/freecad` itself is deleted from canonical once the other ten projects import `cadkit.web` |
+| Promoted to cadkit; `assembly.step` out of the build | `cadkit/web/`, `cadkit/scratch.py` (canonical b45ee05); `src/build.py`, `tools/export_glb.py`, `tools/scratch_view.py` | ✅ user: commit to the new viewer and cut build time for geometry work. `tools/web_*.py` moved to `cadkit.web` (only `tools/web_materials.py`, this project's filament table, stays). The build no longer writes `assembly.step`; it serves the page it publishes.web` |
 | Build time, measured by stage | `src/build.py` `_stage`, printed at the end of every build | ✅ 643 s -> 381 s in this worktree (overlap pair cache cold in both). Dead-code report 188 s -> 0.5 s (it searched the whole repo once per definition; now one word count, output identical). `assembly.step` 20 s -> gone, replaced by a 3 s shared cache. What is left is geometry: import 83 s + collect_components 120 s, then the sweep gate 56 s and overlaps |
 | Scratch loop redone: the lead's cache, no crops | `cadkit/scratch.py`, `tools/scratch_view.py` | ✅ user: everyone uses the lead's cache unless they change a part; a part an agent built stays as they built it; crops are not needed. The lead's build leaves all 827 components as BREP under `.git/agent-sync/cache/` (64 MB, 3 s, unchanged parts not rewritten). `view` = scope rebuilt + own kept parts + the lead's build. From nothing to the whole model on the page: 32 s (was a full build per agent). `--start` / `--merge` / `--crop` are gone; `--own` builds everything here, `--lead` forgets the worktree's own parts; `scope --set a,b` takes several. Round trip checked on all 827: boxes agree to 5e-13 mm, volumes equal, a file read twice fingerprints the same (so the scoped gate's pair cache stays warm: 4437 of 4437 on the second run). 37 of 827 parts build to different BYTES in a new process, same geometry: those are rewritten every build, a build-determinism matter that predates this |
 | Scopes: a module read for a dimension no longer builds its parts | `cadkit/lazy.py` (canonical 8fa5c0a), tail assignments of `src/knee_lever.py` and `src/knee_lever_vert.py`, `tools/scratch_view.py` | ✅ user: improve the scopes. Import profile of `src.build` was knee_lever 30 s, chassis 15.5, build's own module level 11, knee_lever_vert 10, bridge_endplate 7; `chassis` reads only stations and `rib_mortise` from knee_lever yet paid for its six solids. Those are now `lazy(...)`: built on first use, still a `cq.Workplane`. `import src.build` 84 -> 63 s; a `src.bridge_endplate` scope 79 -> 35 s; a knee-lever scope unchanged (34 vs 39 s) because `scratch_view` forces every lazy solid of the module a scope names, so its builders' asserts still run. Full build: four gates green, `part_volumes.json` byte-identical, no knee part's bytes changed (the 34 files the shared cache rewrote are the 33 lettering parts and `vkl_kv_housing`, the standing byte-unstable set). Left to the lead: `chassis` (15.5 s) and `src/build.py` module level (11 s, and it builds `knee_housing` at import), both tied to import-time asserts |
@@ -6030,7 +5946,7 @@ the highlight draws the run again. Measured locally: 827 parts, 757k triangles, 
 160 draw calls.
 
 The silkscreen is NOT a cost on the web: all the lettering together is about 7 % of the
-triangles. It was only ever a FreeCAD cost, so "silk as a texture" is dropped.
+triangles. So "silk as a texture" is dropped.
 
 **The first viewer MR turned the sweep gate red, and it was the export's fault (build
 #862, backed out by the lead).** The mesher triangulated the build's own shapes in place.
@@ -6075,16 +5991,6 @@ they were left as they are. `vkl_kv_housing` is somebody else's part; the lead k
 **Viewer MRs are batched (lead, 2026-10-09; the user's standing rule):** after f80babb2,
 viewer changes stay local until a round worth a ten-minute build, or the user asks to see
 it published. Gate, board and fab work is still submitted when ready.
-
-**The other projects use the web viewer; the FreeCAD hub is deleted (2026-10-09).** Seven
-consumers switched and committed locally, one commit each (`from cadkit.web import show`,
-`View Assembly.cmd` runs `py -3.12 -m cadkit.web.view`, wording): cat-nip-ball 72f6a227,
-drill-bit-holder 6b42bd97, haptic-plank-logo 161768b, retractable-cable-spool 9bfdb8d,
-superglue-cap 07094812, toothpaste-dispenser cf165f9e, watering-backpack 182ea11. Not
-touched: single-ball-adapter (dirty tree, no `cadkit/web`, still imports the hub: it must
-be switched together with its next cadkit propagate) and plant-pot (the lead's uncommitted
-switch; README still describes FreeCAD). Canonical cadkit d08b68f deletes `cadkit/freecad`
-and `ScratchView`'s unused `crop=`; 0f121e6 makes `show(step)` serve from the STEP's folder.
 
 **Viewer: a ray traced lighting level (cadkit 10db352, 648bea4; awaiting propagate).** Fourth
 step of the light button. The drawn picture stays live; once the view is still a path
