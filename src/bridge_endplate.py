@@ -1186,13 +1186,18 @@ def _build() -> cq.Workplane:
     # -108.85..-131.85, so they overlap wherever it goes inside the endplate. The only
     # alternative was routing the USB lead ~47 mm back +Y to clear the lip entirely, which
     # buys whole-lip retention at the cost of a doubled-back cable and a longer run.
-    body = body.cut(OP.opt_conduit())
-    body = body.cut(OP.opt_pwr_slot())            # the optical 24 V lead's way down to J9
-    body = body.cut(OP.opt_usb_notch())           # J1's down-angle plug: its leg's way down
-    body = body.cut(box_at(LIP_DX + 2.0, OP.CONDUIT_D, LIP_DZ + 2.0,
-                           x=XLO - (LIP_DX + 2.0) / 2 + 1.0,
-                           y=(OP.CONDUIT_Y0 + OP.CONDUIT_Y1) / 2,
-                           z=CH.TP_GZ0 - LIP_DZ / 2))
+    # (R2: NONE OF THAT. One closed house-section shaft, optical_pickup.opt_cable_hole, and the
+    #  -X face and the lip stay whole: user, 2026-10-30.)
+    if OP.OPTICAL_REV == 1:
+        body = body.cut(OP.opt_conduit())
+        body = body.cut(OP.opt_pwr_slot())        # the optical 24 V lead's way down to J9
+        body = body.cut(OP.opt_usb_notch())       # J1's down-angle plug: its leg's way down
+        body = body.cut(box_at(LIP_DX + 2.0, OP.CONDUIT_D, LIP_DZ + 2.0,
+                               x=XLO - (LIP_DX + 2.0) / 2 + 1.0,
+                               y=(OP.CONDUIT_Y0 + OP.CONDUIT_Y1) / 2,
+                               z=CH.TP_GZ0 - LIP_DZ / 2))
+    else:
+        body = body.cut(OP.opt_cable_hole())
     # ── AND THE O-BAND'S NOTCH, LAST FOR THE SAME REASON THE CONDUIT IS ──────────
     # ⚠ THIS WAS FIRST PUT WITH THE EARLY CUTS AND SILENTLY DID ALMOST NOTHING. Placed
     # before the unions it removed 151 mm3 of the ~1100 it should, because _screw_rail,
