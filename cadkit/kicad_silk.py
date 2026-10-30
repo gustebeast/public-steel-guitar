@@ -922,12 +922,13 @@ def _legend(ref, pins, word, two_rows):
     return ref + "\n" + "\n".join(lines)
 
 
+ID_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ"     # silk_legend's identifiers: no I or O, they read as 1, 0
 WORD_REACH = 1.5           # mm a `silk_words` entry may sit from the point it was given
 
 
 def silk(stem, rev=None, dark=(), labels=None, short=None, refs=None, way_words=None,
          read=None, pinout=None, ends=None, face=None, reach=None, sited=None,
-         bleed=None):
+         bleed=None, id_legend=None):
     """Label `<stem>.kicad_pcb` in place. Returns the labels that found no free site
     (designators asked for by `refs` are reported but not returned: on a dense board
     most of them having no site is the expected result, not a finding)."""
@@ -949,6 +950,8 @@ def silk(stem, rev=None, dark=(), labels=None, short=None, refs=None, way_words=
         # `silk_ink_bleed`: 0 keeps a board's silk exactly as ORDERED (an R1 board,
         # frozen, with A12's ink waived in its notes) -- see INK_BLEED.
         bleed = _notes.get("silk_ink_bleed") if bleed is None else bleed
+        # `silk_legend`: step 7. Opt-in, so a frozen board's silk stays as ordered.
+        id_legend = _notes.get("silk_legend") if id_legend is None else id_legend
     bleed = INK_BLEED if bleed is None else float(bleed)
     way_words = dict(way_words or {})
     pinout, ends = set(pinout or ()), set(ends or ())
@@ -976,6 +979,7 @@ def silk(stem, rev=None, dark=(), labels=None, short=None, refs=None, way_words=
     sides = {False: Side(board, False, dark, read), True: Side(board, True, dark, read)}
     fps = sorted(board.GetFootprints(), key=lambda f: f.GetReference())
     done, missed = [], []
+    spelt = {}                              # label -> its full text, for step 7
 
     # 1. test pads FIRST: they have the least freedom, a pad's label is no use far away
     for fp in fps:
@@ -1009,6 +1013,7 @@ def silk(stem, rev=None, dark=(), labels=None, short=None, refs=None, way_words=
             done.append("%s=%s" % (ref, ref))
         else:
             missed.append(ref)
+            spelt[ref] = "%s %s" % (ref, label) if label != ref else ref
 
     # 1b. the things a PERSON operates or closes, by what they are FOR. A solder jumper
     #     named JP1 tells whoever holds the iron nothing; its value ("TERM", "BOOT0") does.
@@ -1034,6 +1039,7 @@ def silk(stem, rev=None, dark=(), labels=None, short=None, refs=None, way_words=
             done.append("%s=%s" % (ref, wanted[ref]))
         else:
             missed.append("%s (%s)" % (ref, wanted[ref]))
+            spelt["%s (%s)" % (ref, wanted[ref])] = "%s %s" % (ref, wanted[ref])
 
     # 1c. each connector's ways, named on the connector's OWN side, in line with the way.
     #     Before the name and the blocks: a way's word has one place it can be, and the
@@ -1203,6 +1209,7 @@ def silk(stem, rev=None, dark=(), labels=None, short=None, refs=None, way_words=
                and not _one_row([q for q in fp.Pads() if q.GetNumber().isdigit()]))
         legend = _legend(ref, pins, lambda v: (labels or {}).get(v, v), two)
         brief = _legend(ref, pins, lambda v: _short(v, way_words), two)
+        spelt[ref + " pinout"] = spelt[ref + " ways"] = brief
         own = fp.IsFlipped()
         rivals = [o.GetPosition() for o in fps if o is not fp and o.GetReference() != ref
                   and o.GetReference().startswith("J")]
@@ -1336,6 +1343,31 @@ def silk(stem, rev=None, dark=(), labels=None, short=None, refs=None, way_words=
             done.append("'%s' (%s)" % (text, face_))
         else:
             missed.append(text)
+
+    # 7. A LABEL WITH NO SITE IS NOT LOST (`silk_legend`). One character goes down beside
+    #    the part, and the same character with the full text wherever the board has room,
+    #    back face first. Last, so an identifier never takes a site a whole label wanted.
+    #    A way-1 mark is left out: a mark is already as short as a label gets.
+    if id_legend:
+        box = board.GetBoardEdgesBoundingBox()
+        span = max(box.GetWidth(), box.GetHeight()) / 1e6
+        spare = iter([c for c in ID_CHARS if c not in set(wanted.values())])
+        for label in list(missed):
+            fp = next((f for f in fps if f.GetReference() == label.split()[0]), None)
+            if fp is None or label.endswith("mark") or "way-1" in label:
+                continue
+            ident = next(spare, None)
+            if ident is None:
+                break
+            text = spelt.get(label, label)
+            key = "%s %s" % (ident, text)
+            here = sides[fp.IsFlipped()]
+            if not any(q.place_legible(key, SIZE_J, box.GetCenter(), span, step=1.0, wider=False)
+                       for q in (sides[not fp.IsFlipped()], here)):
+                continue
+            if here.place_legible(ident, SIZE_J, fp.GetPosition(), PINOUT_REACH, wider=False):
+                missed.remove(label)
+                done.append("%s as identifier %s" % (label, ident))
 
     for d in old:                           # after every read; the save is next
         board.Remove(d)

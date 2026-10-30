@@ -1075,14 +1075,6 @@ def _floor_negatives():
         out.append(cq.Workplane("XY").add(cq.Solid.makeCylinder(
             _NB.HS_HEAD_CAV_D / 2.0, (MB.FLOOR_TOP - Z_BOT) + 2.0,
             cq.Vector(D.NUT_BLOCK_X + _hx, _hy, Z_BOT - 1.0), cq.Vector(0, 0, 1))))
-        # ...AND A CAVITY THAT BREAKS THE -X END FACE OPENS AS A SLOT. Its O8.4 pokes 0.4 past
-        # that face, which left a 27 degree sliver either side of the opening, 6.7 back of
-        # drawn in print. Square sides out through the face end it in a plain corner.
-        _hc = D.NUT_BLOCK_X + _hx
-        if _hc - _NB.HS_HEAD_CAV_D / 2.0 < _SHELL_NX:
-            _sl = (_hc - _SHELL_NX) + 2.0
-            out.append(box_at(_sl, _NB.HS_HEAD_CAV_D, (MB.FLOOR_TOP - Z_BOT) + 2.0,
-                              x=_hc - _sl / 2.0, y=_hy, z=(MB.FLOOR_TOP + Z_BOT) / 2.0))
     return out
 
 
@@ -1169,6 +1161,19 @@ def _segments():
                 seg = seg.union(MB.plates[mi])
             else:                                     # a neighbour's plate may overhang in: relieve it
                 seg = seg.cut(MB.plates[mi])
+        # ...AND THE SHARED WALL GOES WHOLE WITH IT. Two motors' bays both describe the wall between
+        # them, so across a split the relief above left 0.25 of it here, 44 tall: the slicer drops
+        # that outright (slicer_check: 2026-10-30). It is the neighbour's wall; this side stops
+        # at its own motor's fit.
+        _own = [mi for mi, mx in enumerate(_motor_x) if b < mx < a]
+        if _own and _own[-1] + 1 < D.N_STRINGS:
+            _n = _own[-1] + 1
+            _ob = MB.body_box(_own[-1])
+            _sx0, _sx1 = _ob[1], MB.plates[_n].val().BoundingBox().xmin
+            _sy0 = MB.back_wall_y0(_n)
+            seg = seg.cut(box_at(_sx1 - _sx0, _ob[3] - _sy0, MB.SEAT_TOP - MB.FLOOR_TOP,
+                                 x=(_sx0 + _sx1) / 2, y=(_ob[3] + _sy0) / 2,
+                                 z=(MB.FLOOR_TOP + MB.SEAT_TOP) / 2))
         # EVERY motor's lift path, out of EVERYTHING fused above: a bay claims the whole gap on
         # each side (one 1.6 wall between two motors, not two 0.8 halves), so it reaches across
         # into its neighbour's fit and only this cut takes it back out. It is also what keeps
