@@ -4304,6 +4304,22 @@ def _guard_windows():
         if _G_X1 - c < 2 * D.MIN_WALL_2P:
             c = _G_X1 + 5.0
         out.append((a, _G_Y0 - 5.0, c, y1 + GUARD_OPEN_CLR))
+    # R2: AND OVER J1'S NOTCH (lead, 2026-10-29: "nothing over the full X span of J1's notch").
+    # R2's USB-C stands back in a notch in the board's -Y edge and its down-angle plug hangs in
+    # it, and J2's 24 V pair rises out of its top-entry plug, crosses -Y of the roof's edge to
+    # the notch and drops down it (pwr_col_x). R1's roof covered all of that. The notch's own
+    # span is opened out to the -Y edge like a connector's, and a strip of roof left between it
+    # and J2's window -- two walls or less, which is where the pair crosses -- goes with it.
+    if OPTICAL_REV != 1:
+        nx0, nx1, _ny0, ny1 = usb_notch()
+        win = [nx0 - GUARD_OPEN_CLR, _G_Y0 - 5.0, nx1 + GUARD_OPEN_CLR, ny1 + GUARD_OPEN_CLR]
+        keep = []
+        for w in out:
+            if w[2] > win[0] - 2 * D.MIN_WALL_2P and w[0] < win[2] + 2 * D.MIN_WALL_2P:
+                win = [min(win[0], w[0]), win[1], max(win[2], w[2]), max(win[3], w[3])]
+            else:
+                keep.append(w)
+        out = keep + [tuple(win)]
     return out
 
 

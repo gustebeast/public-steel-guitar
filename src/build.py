@@ -1108,35 +1108,60 @@ def _swept_relief(ep, posed_fn, roofed=False):
     return out
 
 
+# THE SUPPORT-BEARING SEATS ARE NEVER RELIEVED (user, 2026-10-29: string 10's bearing "isn't
+# fully seated"). String 10's clamp lane runs beside its seat, so the relief is shaped round every
+# seat's ring (BE.seat_ring: the seat's wall, MIN_WALL_2P all round, mouth to lip), and below
+# every seat is asserted to keep as much wall as the best of the ten.
+_seat_rings = BE.seat_ring(0)
+for _i in range(1, D.N_STRINGS):
+    _seat_rings = _seat_rings.union(BE.seat_ring(_i))
 _ep_relief = _clamp_relief(bridge_endplate)
 if _ep_relief is not None:
-    bridge_endplate = bridge_endplate.cut(_ep_relief)
-    # THE OUTPUT BOARD'S +Y WALL STAYS ONLY AT THE FAR +X END (user, 2026-10-29: keep the
-    # wall, "but only at the far +X end, where the belt doesn't go"). Everything of the cradle
-    # past the board's +Y edge and over the recess floor, -X of the clamps' reach plus
-    # CLAMP_RELIEF_CLR, comes out -- not a stair of relief boxes along the wall's length.
-    from . import electronics as _EL_OP
-    _opc = BE.op_cradle().val().BoundingBox()
-    _op_y1 = _EL_OP.op_origin()[1] + _EL_OP.OP_BOARD_Y / 2.0          # the board's +Y edge
-    # the recess floor -- or lower, to under string 10's belt: below the floor the wall still
-    # stood in the belt's -Y run past the board's +Y edge (0.5 mm3, z -57.1..-54.8, 2026-10-29).
-    # Only what is +Y of the board's edge comes out, so the board's own support is untouched.
-    _op_zf = min(_EL_OP.JACK_Z - BE.JACK_RECESS_DZ,
-                 D.screw_pulley_z(D.N_STRINGS - 1) - D.PULLEY_FLANGE_OD / 2.0 - CLAMP_RELIEF_CLR)
-    # ...AND -X OF STRING 10'S BELT, which wraps its screw pulley out to the flange's +X edge:
-    # trimmed to the clamps alone, a 1.3 mm stub of wall between their reach and the pulley
-    # cut stood in the belt's -Y run (5.5 mm3, build 2026-10-29). "where the belt doesn't go"
-    _xr = max(_ep_relief.val().BoundingBox().xmax,
-              D.screw_x(D.N_STRINGS - 1) + D.PULLEY_FLANGE_OD / 2.0) + CLAMP_RELIEF_CLR
-    if _xr > _opc.xmin:
-        _trim = box_at(_xr - (_opc.xmin - 1.0), _opc.ymax + 1.0 - _op_y1, _opc.zmax + 1.0 - _op_zf,
-                       x=(_xr + _opc.xmin - 1.0) / 2, y=(_op_y1 + _opc.ymax + 1.0) / 2,
-                       z=(_op_zf + _opc.zmax + 1.0) / 2).intersect(BE.op_cradle())
-        bridge_endplate = bridge_endplate.cut(_trim)
+    bridge_endplate = bridge_endplate.cut(_ep_relief.cut(_seat_rings))
+    # (THE OUTPUT BOARD'S CRADLE TRIM IS GONE, 2026-10-29. It took the cradle's +Y wall out
+    #  under string 10's belt, clamps and screw pulley while the board stood at -50.5. The board
+    #  lies on the floor now (electronics.OP_UNDER_Z), the wall's top is under the pulley's
+    #  flange, the clamps and the belt, and check_sweep / check_carriage_travel / the belt
+    #  assert below judge what is left.)
     assert len(bridge_endplate.val().Solids()) == 1, (
         "the belt clamps' travel relief cut the bridge endplate in two")
     BE.bridge_endplate = bridge_endplate
     PARTS["bridge_endplate"] = (partial(heal, bridge_endplate), *PARTS["bridge_endplate"][1:])
+# (compared within each side of the rail: the odd and even strings' screws sit at opposite x,
+#  so their seats have different neighbours, and string 1's is the last on its side.
+#  R2 only: R1's board stands higher (electronics.OP_UNDER_Z) and the recess still opens string
+#  10's seat over it -- the stop-gap, not the design.)
+if _EL_ports.OUTPUT_PANEL_REV >= 2:
+    _seat_v = [bridge_endplate.intersect(BE.seat_ring(_i)).val().Volume()
+               for _i in range(D.N_STRINGS)]
+    for _side in {D.screw_x(_i) for _i in range(D.N_STRINGS)}:
+        _sv = [_v for _i, _v in enumerate(_seat_v) if D.screw_x(_i) == _side]
+        assert min(_sv) > max(_sv) - 12.0, (
+            "a support-bearing seat has lost wall the others keep (mm3 of ring left, string "
+            "1..10): " + ", ".join(f"{_v:.1f}" for _v in _seat_v))
+
+# THE PICKUP'S SCREW TERMINAL MUST STAY WIREABLE OVER STRING 10'S WHOLE CLAMP TRAVEL (2026-10-29).
+# String 10's clamp rolls as it runs to the screw pulley and at the bottom of its travel reaches
+# 1.4 mm past the output board's +Y edge, right where J8 takes the pickup's two cores. With the
+# board on the floor, R1's +Y-facing entry sat 0.44 inside that sweep (check_carriage_travel).
+# So each hole's lead-in -- the conductor's last 4 mm out of the hole along its exit, and its
+# radius plus a fit round it -- is posed against the clamp at every relief station.
+_j8_in = None
+for (_pin, _dir) in _EL_ports.op_term_ways():
+    _end = [_pin[m] + 4.0 * _dir[m] for m in range(3)]
+    _r = _WR_FUSE.WIRE_OD["wire_pickup_core"] / 2.0 + CLAMP_RELIEF_CLR
+    _lo = [min(_pin[m], _end[m]) - _r for m in range(3)]
+    _hi = [max(_pin[m], _end[m]) + _r for m in range(3)]
+    _bx = box_at(*(h - l for l, h in zip(_lo, _hi)), *((l + h) / 2 for l, h in zip(_lo, _hi)))
+    _j8_in = _bx if _j8_in is None else _j8_in.union(_bx)
+_j8_v = 0.0
+for _k in range(CLAMP_RELIEF_STATIONS + 1):
+    _loc = clamp_location(D.N_STRINGS - 1, D.CARRIAGE_TRAVEL * _k / CLAMP_RELIEF_STATIONS)
+    for _n, _w in BTn.clamp_components():
+        _j8_v = max(_j8_v, _j8_in.val().intersect(_w.val().moved(_loc)).Volume())
+assert _j8_v < 1e-3, (
+    f"string 10's belt clamp runs through J8's lead-in ({_j8_v:.2f} mm3): the pickup's cores "
+    "cannot reach the output board's screw terminal")
 
 # ⚠ ...AND OUT OF THE CHASSIS' FACEPLATE WALLS (2026-10-29). At the 7.5 standoff (the pulley
 # on the shaft's D, user) each motor's faceplate is 3.45 off its own clamp's -Y side, and the

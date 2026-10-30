@@ -415,14 +415,8 @@ DEFERRED_RULES = (
     (re.compile(r"^(ui_clamp|ui_display)$"), re.compile(r"^top_plate_color_3$"),
      "UI station vs the colour top plate's window at the R2 -105.05 rail: user's narrowing "
      "clearance (OWNER brenner, retire when the UI window is re-fitted)"),
-    # OPTICAL R2's 24 V PAIR THROUGH THE R1 HAND GUARD (2026-10-29). R2's J2 is top entry
-    # beside J1's notch, and the guard still has R1's roof over that spot. Agreed order
-    # (lead): bronner submits R2, then branner re-shapes optical_guard for it (J2's opening
-    # open to +Z, nothing over the notch's X span up to PCB_TOP + 14). OWNER branner.
-    # J1's down-angle plug stands in the notch under the same roof.
-    (re.compile(r"^(wire_opt_\w+|optical_cable_usb)$"), re.compile(r"^optical_guard$"),
-     "optical R2's 24 V pair / USB plug vs the R1 guard roof: branner re-shapes the guard for R2 "
-     "(OWNER branner, agreed order: after bronner's R2 submit)"),
+    # (RETIRED 2026-10-30: optical R2's 24 V pair / USB plug vs the R1 hand guard. The guard
+    #  opens over J1's notch on R2, merged with J2's window: optical_pickup._guard_windows.)
     (re.compile(r"^(wire_opt_\w+|optical_cable_usb)$"),
      re.compile(r"^(chassis_\d+|top_plate(_color)?_\d+|wire_\w+)$"),
      "user 2026-10-29: allowed to clip until relocated (optical board cables vs the "

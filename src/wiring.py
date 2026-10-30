@@ -1193,7 +1193,7 @@ def build_wires():
     # board moved, so it ran through the PCB and out below it.
     #
     # Both pairs leave their top-entry headers UP, cross the endplate's recess along the
-    # board's -Y edge -- over the J7/J9 plug tops (-35.3), under the recess roof (-23.2) --
+    # board's -Y edge -- over the J7/J9 plug tops, under the recess roof (FOOT_Z, -23.2) --
     # and come out into the bay, where they turn for the wall.
     _j7e = conn_end("output_panel", "J7", ways=(1, 2))      # GND, 24 V; ways 3, 4 carry nothing
     _j10e = conn_end("output_panel", "J10")
@@ -1292,7 +1292,9 @@ def build_wires():
     assert WIRE_OD["wire_plink"] == 1.8 and WIRE_OD["wire_usb"] == 2.6       # PLINK_HALF, LANE_PWR2
     assert WIRE_OD["wire_plink"] / 2.0 == EL.PI_PLINK_HALF, "electronics.PI_PLINK_HALF is stale"
     _PL_OFFS = [(a * _PL_COL, b * _PL_ROW) for b in (-1, 0, 1) for a in (-1, 1)]
-    _PL_ZREC = -35.3 + 0.2 + _PL_HALF          # the recess: 0.2 over J7's and J9's plug tops
+    # the recess: 0.2 over J7's and J9's plug tops -- READ OFF THEM, so it follows the board down
+    # (it was a typed -35.3 + ..., which the board's drop to the floor would have left 12 mm up)
+    _PL_ZREC = max(EL.way_pt("output_panel", _r, 1)[2] for _r in ("J7", "J9")) + 0.2 + _PL_HALF
     _PL_ZTR = LANE_PWR2                        # the trough: on its floor, under the USB lead
     assert _PL_ZREC + _PL_HALF < _REC_Z7 - PWR_OFF - 0.9, "the link is into J7's pair in the recess"
     # AT THE KEYHEAD it turns +Y out of the trough's end, comes down under the Pi's 5 V
@@ -1712,20 +1714,33 @@ def build_wires():
     # INTO THE TWO WIRE HOLES, not at the terminal's face (2026-10-20): the jacket stops
     # 10 mm out and the core and the braid go one to each hole, 3 mm in -- J8 is drawn as
     # the part now (src/screw_terminal.py), holes and all.
+    # ⚠ ON R1 IT COMES DOWN ONTO J8 FROM ABOVE STRING 10'S DRIVE, not across it (2026-10-29). R1's
+    # J8 entry faces +Y, at string 10's belt lane, and the board now lies on the floor
+    # (electronics.OP_UNDER_Z): a jacket run out 10 mm at the holes' height sat in the lane and
+    # string 10's clamp ran through it (9 mm3, check_carriage_travel). So the jacket stays over
+    # that screw pulley's flange -- which the belt and its clamp ride inside -- and stops over
+    # the conductors' lead-in, and the two cores drop the rest of the way between the board's
+    # edge and the clamp's -Y face.
     _ways = EL.op_term_ways()
-    _jz = _ways[0][0][2]
+    _lead = 4.0
     _jx = (_ways[0][0][0] + _ways[-1][0][0]) / 2.0
-    _dy = _ways[0][1][1]                             # the entry's direction: +Y, or -Y turned
-    _jy = _ways[0][0][1] + _dy * (3.0 + 10.0)        # 10 mm off the entry face
+    _dy = _ways[0][1][1]                             # the entry's direction: +Y (R1), or -Y turned
     if _dy > 0:
+        # R1: the jacket over string 10's drive, the cores down the 1.3 between board and clamp
+        _jy = _ways[0][0][1] + (3.0 + 1.0) * _dy     # 1.0 off the entry face, over the lead-in
+        _jz = (D.screw_pulley_z(D.N_STRINGS - 1) + D.PULLEY_FLANGE_OD / 2.0
+               + WIRE_OD["wire_pickup"] / 2.0 + D.BEAD)   # over string 10's drive
+        assert _jz > _ways[0][0][2], "the pickup lead's jacket would end under J8's holes"
         _pts = [(_pk_x, _pk_y, _PM.PK_BOT),          # leaves the coil's underside
                 (_pk_x, _pk_y, _jz),                 # straight down, clear of the plate
-                (_pk_x, _jy, _jz),                   # -Y in its own X column
+                (_pk_x, _jy, _jz),                   # over to J8's entry line
                 (_jx, _jy, _jz)]                     # +X to the terminal's column
     else:
         # R2's J8 IS TURNED (entry -Y, output_panel.py): the lead comes over the housing's
         # top and drops in front of its face, over the board -- never down its +Y side,
         # which is string 10's clamp sweep on the dropped board
+        _jy = _ways[0][0][1] + _dy * (3.0 + 10.0)    # 10 mm off the entry face
+        _jz = _ways[0][0][2]
         _top = max(v.val().BoundingBox().zmax for v in EL.output_panel_term().values())
         _zo = _top + WIRE_OD["wire_pickup"] / 2.0 + 1.0
         _pts = [(_pk_x, _pk_y, _PM.PK_BOT), (_pk_x, _pk_y, _zo), (_jx, _pk_y, _zo),
@@ -1733,7 +1748,7 @@ def build_wires():
     out.append(("wire_pickup", _wire(_pts, WIRE_OD["wire_pickup"])))
     _split_jacket(out, "wire_pickup", (_jx, _jy, _jz),
                   [(p, d, net) for (p, d), net in zip(_ways, ("PICKUP_HOT", "AGND"))],
-                  WIRE_OD["wire_pickup_core"], lead=4.0)
+                  WIRE_OD["wire_pickup_core"], lead=_lead)
 
     check_cables([k for k in _CABLES if not k.startswith("bus B")])
     return out

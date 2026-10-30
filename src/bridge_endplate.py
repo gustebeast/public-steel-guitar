@@ -82,6 +82,18 @@ assert _SR_PRINT_UP == PRINT_UP, (
     "the same build direction — one of the two copies has drifted")
 
 
+def seat_ring(i: int) -> cq.Workplane:
+    """String i's support-bearing seat AND its wall: the seat's own teardrop (screw_rail._bore,
+    the bearing + 0.2) grown MIN_WALL_2P all round, from the seat's mouth less its install drop
+    up to the lip. Every seat must keep all of this (build asserts it), so nothing -- the panel
+    recess, a clamp relief, the output board's cradle trim -- may open one seat that the
+    other nine still have."""
+    from .screw_rail import BRG_DROP, _bore
+    z0 = _SR_BOT - BRG_DROP
+    return _bore(D.SUPPORT_BRG_OD + 0.2 + 2 * D.MIN_WALL_2P, _SR_LEDGE_TOP - z0,
+                 (D.screw_x(i), D.string_y(i), z0))
+
+
 def access_cutter(i: int, z0: float, z1: float) -> cq.Workplane:
     """String i's vertical access channel from z0 to z1: the 4.8 x 4.8 house, roof toward
     PRINT_UP (see dimensions.string_access_x). The chassis cuts the same outline under it."""
@@ -456,8 +468,6 @@ LIP_DX  = 7 * D.BEAD                            # 5.6 -X protrusion off the endp
 LIP_DZ  = 7 * D.BEAD                            # 5.6 Z height, hanging below the deck bottom (was 5.0)
 LIP_CLR = CH.EP_TOP_CLR                         # clearance to the rail inner face + skirt
 LIP_Y0  = CH.Y_LO + CH.T / 2 + LIP_CLR          # -Y rail inner face + clr (-128.35)
-# PANEL I/O RECESS: its floor stands this far below electronics.JACK_Z (see _build, op_cradle).
-JACK_RECESS_DZ = 14.0
 LIP_Y1  = -(TP.HY_CLAMP + TP.SKIRT_T) - LIP_CLR # pickup -Y skirt outer face - clr; self-tracks the
                                                 # top_plate -Y room (-(HY_CLAMP + SKIRT_T), ~-70.9 now
                                                 # that the room sizes to PK_MAX_L=102, not the Alumitone)
@@ -1030,7 +1040,7 @@ def _build() -> cq.Workplane:
     # thick -- too deep for the jacks (their bodies span x -16..6) -- so RECESS its
     # interior back to a thin panel (OP_PANEL_T, 1.6) at the -Y jack corner (the wall face at
     # JACK_WALL_X..XHI stays; the bodies seat through the recess into the hollow
-    # foot interior). Recess band z (JACK_Z-14)..FOOT_Z, inside the hollow's Y span
+    # foot interior). Recess band z OP_FLOOR_Z..FOOT_Z, inside the hollow's Y span
     # (the Y-INSTALL leg grooves top out at bed+7.34, 12.7 below the recess floor,
     # so the recess is back at its full pre-EP-tenon size).
     # Then the three jack holes - 1/4" TS line out, DC power inlet, USB-C (audio-interface
@@ -1041,13 +1051,52 @@ def _build() -> cq.Workplane:
     # the +Y. That only surfaced once JACK_TIP was fixed and the board arrived at the
     # panel at all; before that it was 20 mm inboard and never reached the wall to clash
     # with it. Read the board's own span and add a clearance each side.
-    from .electronics import (JACK_Z, JACK_WALL_X, JACK_TIP, OP_BOARD_Y,
+    from .electronics import (JACK_WALL_X, JACK_TIP, OP_BOARD_Y, OP_FLOOR_Z,
                               OP_PANEL_CLR, op_origin, op_panel_openings, op_rear_mounts)
     _rc_y = op_origin()[1]                           # the board's Y centre
     _rc_w = OP_BOARD_Y + 2 * OP_PANEL_CLR            # its span plus a fit clearance
-    body = body.cut(box_at(JACK_WALL_X - (XLO - 1.0), _rc_w, FOOT_Z - (JACK_Z - JACK_RECESS_DZ),
-                           x=((XLO - 1.0) + JACK_WALL_X) / 2, y=_rc_y,
-                           z=(FOOT_Z + (JACK_Z - JACK_RECESS_DZ)) / 2))
+    # ⚠ THE FLOOR IS THE CHASSIS FLOOR, not "14 under the jack row": the board sits as low as
+    # its pins allow (electronics.OP_UNDER_Z) and its plate lies on that floor, so the recess
+    # opens the end wall down to it and op_cradle refills the plate.
+    # ⚠ AND ITS ROOF IS THE SCREW RAIL'S UNDERSIDE OVER STRING 10'S SEAT (user, 2026-10-29: "copy
+    # the same shelf height we changed on the +Y side over to the -Y side, which would give full
+    # support to that string 10 bearing"). Up to FOOT_Z, the recess took the rail away over the
+    # whole board, and string 10's seat sits over the board's +Y edge: its ring was open on its
+    # -Y side from its install drop to the lip. The lowered board leaves that depth free, so
+    # from the -X face of every seat ring that reaches the recess on to the panel the roof is
+    # the ring's own bottom (the seat's mouth less its install drop: the wall the other nine
+    # seats have); -X of that it stays FOOT_Z, which is where the board goes down before it
+    # slides +X under the shelf (INSTALL_NOTES).
+    _rc_y0, _rc_y1 = _rc_y - _rc_w / 2.0, _rc_y + _rc_w / 2.0
+    # (R2 only: R1 stands higher -- electronics.OP_UNDER_Z -- and its jacks reach the rail band)
+    from .electronics import OUTPUT_PANEL_REV
+    _rings = [r for r in (seat_ring(i).val().BoundingBox() for i in range(D.N_STRINGS))
+              if r.ymin < _rc_y1 and r.ymax > _rc_y0] if OUTPUT_PANEL_REV >= 2 else []
+    _shelf_x0 = min((r.xmin for r in _rings), default=JACK_WALL_X)
+    _shelf_z = min((r.zmin for r in _rings), default=FOOT_Z)
+    for _x0, _x1, _zt in ((XLO - 1.0, JACK_WALL_X, _shelf_z), (XLO - 1.0, _shelf_x0, FOOT_Z)):
+        body = body.cut(box_at(_x1 - _x0, _rc_w, _zt - OP_FLOOR_Z,
+                               x=(_x0 + _x1) / 2, y=_rc_y, z=(OP_FLOOR_Z + _zt) / 2))
+    # THE GUSSET IN THE RECESS'S +Y CORNER (user, 2026-10-29, on the inside corner above the TS
+    # jack: "recommend adding some material here for structural support"). The rail block over
+    # string 10 stops at the recess's +Y face, its underside at _SR_BOT, and the recess roof
+    # -Y of it is FOOT_Z: an 8.65 step with a square inside corner, the whole depth of the bay.
+    # A 45 deg triangle fills it, from the rail's bottom edge up to the roof -- the biggest that
+    # hangs nothing below the rail. The part builds -X, so the triangle is the build's own
+    # cross-section and prints without support. Over string 10's seat (the shelf, R2) the rail
+    # stands on to its own -Y edge, so the corner is there and so is the triangle. The seats
+    # and the pulley channels come back out of it (they reach -Y of the face at string 10).
+    from .screw_rail import ACROSS as _SR_ACROSS
+    _gl = FOOT_Z - _SR_BOT
+    for _x0, _x1, _yf in ((XLO, _shelf_x0, _rc_y1),
+                          (_shelf_x0, JACK_WALL_X, min(_rc_y1, -_SR_ACROSS / 2.0))):
+        if _x1 - _x0 < 1e-6:
+            continue
+        body = body.union(cq.Workplane("YZ", origin=(_x0, 0.0, 0.0))
+                          .polyline([(_yf + 0.01, _SR_BOT), (_yf + 0.01, FOOT_Z + 0.01),
+                                     (_yf - _gl, FOOT_Z + 0.01)]).close()
+                          .extrude(_x1 - _x0)
+                          .cut(_seat_cutter()).cut(_pulley_channel(PULLEY_CH_Z0, PULLEY_CH_Z1)))
     # ⚠ THE OUTPUT BOARD'S PLATE GOES ON AFTER THE RECESS, not before: the recess cut
     # above clears this whole band, so a cradle fused earlier would simply be deleted by
     # it. And BEFORE the panel openings, not after: anything of the cradle that reaches
@@ -1177,13 +1226,13 @@ def op_cradle():
     Same rule as every board in the instrument: plastic everywhere but one direction, and
     one screw, one 2.5 mm key, locking that.
 
-    standoff is measured, not chosen: the board's underside above the recess floor at
-    JACK_Z - 14, so the base lands exactly on that floor.
+    standoff is measured, not chosen: the board's underside above the plate's top, the plate
+    lying on the chassis floor (electronics.OP_UNDER_Z / OP_FLOOR_Z).
     """
     from cadkit.pcb import pcb_cradle
-    from .electronics import op_origin, OP_BOARD_Y, OP_PANEL_CLR, JACK_Z
+    from .electronics import op_origin, OP_BOARD_Y, OP_PANEL_CLR, OP_FLOOR_Z, OP_PLATE_T, _OP_T
     cx, cy, cz = op_origin()
-    standoff = cz - (JACK_Z - JACK_RECESS_DZ)    # board underside above the recess floor
+    standoff = cz - (OP_FLOOR_Z + OP_PLATE_T)    # board underside above the plate's top
     # ⚠ THE M4 GOES THROUGH THE BOARD NOW, not beside it (user, 2026-09-21: "the screw
     # adjacent ... doesn't provide as strong of retention"). The board grew a mounting EAR
     # off its -X edge (elec/output_panel.py EAR_*), and the screw goes down through that ear
@@ -1213,10 +1262,13 @@ def op_cradle():
     # pcb_cradle's default, sized so the M4 anchor fits under the board -- 4.24 under the
     # whole 66 mm board for the sake of one screw. Only the BOSS needs that depth now: it
     # hangs below the plate as a column, the plate is 2.4.
-    _plate_t = 3 * D.BEAD
+    _plate_t = OP_PLATE_T
     cr = pcb_cradle(rw, OP_BOARD_Y, screw_xy=(hx, hy), spec=M4, open_edge="-x",
                     standoff=standoff, clr=OP_PANEL_CLR, base_t=_plate_t)
     _base_t = max(_plate_t, M4.anchor_min_wall - standoff)    # the boss column's depth
+    assert cz - standoff - _base_t >= OP_FLOOR_Z - 1e-6, (
+        "the output board's cradle hangs below the chassis floor it lies on: "
+        "electronics.OP_UNDER_Z has not left the M4 anchor its depth")
     cr = cr.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         M4.boss_od / 2.0, _base_t + standoff, cq.Vector(hx, hy, -_base_t))))
     # THE BOSS IS A HORIZONTAL BARREL IN THIS PRINT (the part builds -X; the boss's axis is
@@ -1294,11 +1346,16 @@ def op_cradle():
     # +Y WALL CLEARS STRING 10'S SCREW PULLEY. The board's +Y edge is held D.OP_PULLEY_CLR
     # off that pulley's swept flange (motor_bank._OP_EDGE_LIM), but the wall stands
     # clr + wall beyond the edge and sat inside the swept circle (check_sweep, 2026-10-29,
-    # with the rail in 3 beads). The same clearance, round the pulley's axis, comes out.
+    # with the rail in 3 beads). The same clearance, round the pulley's axis, comes out --
+    # but only while the wall reaches the flange: on the floor (R2) its top is under the
+    # flange's underside, so there is nothing to clear, and the round cut only left a flat
+    # 8.5 mm ridge in the print (print_check, 2026-10-30).
     _i = D.N_STRINGS - 1
-    cr = cr.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        D.PULLEY_FLANGE_OD / 2.0 + D.OP_PULLEY_CLR, 100.0,
-        cq.Vector(D.screw_x(_i) - (cx + rcx), D.string_y(_i) - cy, -50.0))))
+    _wall_top = cz + _OP_T + 0.8                     # pcb_cradle's wall_over default
+    if _wall_top > D.screw_pulley_z(_i) - D.PULLEY_FLANGE_OD / 2.0:
+        cr = cr.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+            D.PULLEY_FLANGE_OD / 2.0 + D.OP_PULLEY_CLR, 100.0,
+            cq.Vector(D.screw_x(_i) - (cx + rcx), D.string_y(_i) - cy, -50.0))))
     return cr.translate((cx + rcx, cy, cz - standoff))
 
 
