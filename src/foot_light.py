@@ -231,14 +231,12 @@ assert BOARD_Y0 - SLOT_PLAY >= RUN_FACE + WALL_T - 1e-9, (
     "the board's -Y edge at %.2f leaves under a wall against string 2's pocket face %.2f"
     % (BOARD_Y0, RUN_FACE))
 NOTCH_Y0   = MOTOR_FACE + WALL_T + SLOT_PLAY              # 37.55: over string 1's motor
-# ⚠ THE MOTOR'S FIT, NOT ITS FACEPLATE WALL'S END (user, 2026-10-29: "consider changing the
-# cut area to go less far towards +x to give more room for this component" -- C21, which
-# sat on the step's corner). The wall runs a post's width (9.6) further +X to brace that
-# post, and the notch used to follow it; now the run's slot is cut through that stretch of
-# wall and post instead, over the channel's Z band only, and they still meet above and
-# below it.
-NOTCH_X1   = D.motor_pos(0)[0] + D.MOTOR_SQ / 2 + MB.MOTOR_CLR    # -562.70: the narrow
-                                    # section is -X of it, the full width +X of it
+# ⚠ THE FACEPLATE WALL'S WHOLE LENGTH, POST-BRACING STRETCH INCLUDED (user, 2026-10-30). The
+# notch ran to the motor's fit for a day (-562.70, for C21's room), which took the run's slot
+# through the wall's last 9.6 -- the stretch that braces the +X post -- across the wall's whole
+# thickness over the channel's Z band. That wall carries the motor's load, so the notch
+# follows it and C21's room comes from the driver's row instead (elec/foot_led.py).
+NOTCH_X1   = MB.wall_x(0)[1]        # -553.10: the narrow section is -X of it, full width +X
 # The component lane's centre is where it was: drivers, the buck and the supply row sit
 # on it, spaced along X. The 6.45 gained on the -Y side belongs to the pogos' first two.
 DRV_Y      = 42.55
@@ -592,6 +590,14 @@ def check_optics():
         % (J_Y - J_HALF_W, J_Y + J_HALF_W, NOTCH_Y0, BOARD_Y1))
     assert window()[0] < NOTCH_X1 < seam_x(), (
         "string 1's faceplate wall ends at %.2f, outside board A" % NOTCH_X1)
+    # STRING 1's WALL STAYS WHOLE: only the narrow section may meet it, and that leaves WALL_T
+    # of it standing, so the full-width run has to start past its +X end, post stretch included
+    wx1 = MB.wall_x(0)[1]
+    assert NOTCH_X1 >= wx1 - 1e-9, (
+        "the full-width slot starts at %.2f, inside string 1's faceplate wall (+X end %.2f): "
+        "it would cut the wall that braces the +X post" % (NOTCH_X1, wx1))
+    assert NOTCH_Y0 - SLOT_PLAY - (MB._face_y(0) - MB.PLATE_T / 2.0) >= D.MIN_WALL_2P - 1e-9, (
+        "the narrow slot leaves under two beads of string 1's faceplate wall")
     return u
 
 
@@ -736,19 +742,6 @@ def slot_cut():
                           (yr, foot + (yr - sy0)), (sy0, foot)])
                .close().extrude(xb - xa))
         out = cut if out is None else out.union(cut)
-    # ⚠ AND WHERE THE RUN PASSES STRING 1's FACEPLATE WALL, THE RAMP GOES ON THROUGH IT. Since the
-    # notch stops at the motor's fit (NOTCH_X1), the run's slot crosses the wall's last 9.6 --
-    # its post-bracing stretch -- and its flat roof left the wall over it as an 8.6-span
-    # ceiling (print_check, 2026-10-29). So over that stretch the 45° line runs from the run's
-    # slot wall until it leaves the faceplate wall's +Y face.
-    rx0, rx1 = NOTCH_X1, MB.wall_x(0)[1]
-    if rx1 - rx0 > 1e-6:
-        sy0 = _slot_y()[0]
-        yr = MB._face_y(0) + MB.PLATE_T / 2.0 + D.MIN_WALL      # past the wall's +Y face
-        out = out.union(cq.Workplane("YZ", origin=(rx0, 0, 0))
-                        .polyline([(sy0, floor), (yr, floor), (yr, foot + (yr - sy0)),
-                                   (sy0, foot)])
-                        .close().extrude(rx1 - rx0))
     return out
 
 
