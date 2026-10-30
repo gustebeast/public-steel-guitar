@@ -761,18 +761,21 @@ LEAD_STUB  = 4.0                    # straight out of the mouth before the first
 # ⚠ AND THE KEYHEAD PANEL SLIDES ON OVER IT, PLUGGED IN (2026-10-23). The lead is in the
 # Pi cap before that panel goes on, so it has to clear the panel's whole SWEPT section --
 # the panel's YZ silhouette, every x -- not just where the panel parks. That silhouette
-# comes down to -17.95 at the fret board's two M4s (y 27.5-35.5 and 40-46.5) and to -18.75
-# at the motor-board capture rib (y -56 to -39), -18.15 just +Y of it; everywhere else over the lead it is -15.75
-# or higher (raster of the built parts, 0.1 mm). The lead used to fly at -17.05 and the
+# comes down to -18.75 at the motor-board capture rib (y -56 to -39), -18.15 just +Y of it;
+# everywhere else over the lead it is the pickup piece's envelope, top_plate.PIECE_Z_MIN
+# -16.10, or higher -- the fret light now hangs from that envelope (fret_light.FLOOR), its M4
+# heads at -15.90 where they were -17.95 (raster of the built parts, 0.1 mm, 2026-10-23;
+# the fret numbers re-read 2026-10-29). The lead used to fly at -17.05 and the
 # panel ran through it. So it now crosses LOW, in the one column where string 1's CAN tee
 # is low too, and drops lower still before the rib:
-LEAD_FLY   = 9.45                   # -19.60: 0.95 under the M4s' tips, 0.95 over the
+LEAD_FLY   = 9.45                   # -19.60: 3.50 under the envelope, 0.95 over the
                                     # highest thing under it in the column (-21.25 at y -4
                                     # to 4); the tee there is at -25.25
 LEAD_COL_X = -563.0                 # the first lane; the four take x -563.0 to -558.2. In
                                     # x -564 to -557 the tee stands no higher than -25.25 over
                                     # y 17-36 -- either side of it its connectors reach -20.50,
-                                    # which no height between them and the M4s clears with room
+                                    # which no height under the old -17.95 M4s cleared with room
+                                    # (the envelope's -16.10 leaves more now; not re-flown)
 LEAD_DIP_Y = -32.0                  # step down here, before the panel's -18.15 band (y -38.5
                                     # to -33.5) and the rib's beyond it
 LEAD_LOW   = 4.95 - LEAD_FLY        # to -24.10 there: the rib's -18.75 is 4.65 over the top
