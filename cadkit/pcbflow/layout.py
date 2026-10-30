@@ -3641,6 +3641,36 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
                 return False
         return True
 
+    # ⚠ DRILL TO DRILL, ON EVERY NET -- AS A PREFERENCE, NOT A RULE (2026-10-29). The note
+    # above says why a hard hole check broke the build: the search ring of a through-hole
+    # pad starts inside its OWN barrel. So the pad being stitched is left out, and a pad
+    # whose every site fails this test is searched again without it (the old behaviour),
+    # which cannot fail anything the old search found. What it catches: output_panel R2,
+    # a USB-C's GND pin stitched 0.151 mm (drill to drill) from the same socket's GND
+    # shell slot -- same net, so _clear_of skipped it, and quality A12 failed the board.
+    holes = []
+    for _fp in board.GetFootprints():
+        for _p in _fp.Pads():
+            if _p.GetAttribute() not in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH):
+                continue
+            _h = _p.GetEffectiveHoleShape()
+            _s = _h.GetSeg()
+            holes.append((_p, (_s.A.x, _s.A.y), (_s.B.x, _s.B.y), _h.GetWidth() / 2.0))
+    hole_gap = pcbnew.FromMM(0.45)              # JLCPCB hole to hole, quality A12's figure
+
+    def _hole_off_holes(x, y, own):
+        for _p, (ax, ay), (bx, by), hr in holes:
+            if _p is own:
+                continue
+            vx, vy = bx - ax, by - ay
+            L2 = vx * vx + vy * vy
+            t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((x - ax) * vx + (y - ay) * vy) / L2))
+            if (math.hypot(x - (ax + t * vx), y - (ay + t * vy)) - hr
+                    - pcbnew.FromMM(via_drill / 2.0) < hole_gap):
+                return False
+        return True
+    strict = [True]
+
     def _clear_of(x, y, netname, margin, layer=None):
         """True if (x, y) keeps `margin` from every pad or track NOT on `netname`.
 
@@ -3845,6 +3875,8 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
                 return False
             if not _hole_off_lands(x_, y_):
                 return False
+            if strict[0] and not _hole_off_holes(x_, y_, pad_):
+                return False
             if not all(_clear_of(px, py, pad_.GetNetname(), trk_lim, pad_.GetLayer())
                        for px, py in samples[1:]):
                 return False
@@ -3903,80 +3935,83 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
         dirs = sorted((math.pi * k / 4.0 for k in range(8)),
                       key=lambda a: abs(((a - out_a + math.pi) % (2 * math.pi)) - math.pi))
         placed = False
-        # ⚠ A FINE RADIAL STEP, because the spot that works is sometimes a slot rather
-        # than a field. The ESD array's centre pin is its GROUND -- where the clamp
-        # diodes dump what they catch -- and it is boxed in: the pair's two rails leave
-        # either side of it and the package's other pad row faces it across 0.96 mm.
-        # The only via position that clears everything is the middle of that lane, and
-        # the window is 0.08 mm wide. On a 0.15 mm step whether it is found at all is
-        # luck, and the failure mode is a protection device grounded only through the
-        # pour, which routing can orphan -- which is to say not grounded.
-        for step in range(84):
-            r = half + need + pcbnew.FromMM(0.05 * step)
-            # A stitch is a SHORT hop to the plane. Past a couple of millimetres it has
-            # stopped being that and become a wire with an impedance and a loop area,
-            # and the honest thing is to fail and say the pad has no room rather than
-            # quietly run one across the board.
-            if r - half > pcbnew.FromMM(max_reach):
-                break
-            for a in dirs:
-                x = int(pc.x + r * math.cos(a))
-                y = int(pc.y + r * math.sin(a))
-                # ⚠ CHECK THE WHOLE SEGMENT, NOT JUST THE VIA. The first version tested
-                # only the via's centre and let the short track from the pad run wherever
-                # it liked -- straight across U10's USB_DM pad, in one case, which DRC
-                # correctly called a short between GND and a USB data line. The track is
-                # copper too; sample along it and hold it to the same clearance.
-                # ⚠ SAMPLE BY LENGTH, NOT BY A FIXED COUNT. Five samples over a
-                # 5 mm track is one every 1.25 mm, and a 0.5 mm pad fits between two
-                # of them -- which is exactly how a GND stitch ended up laid straight
-                # across U10's USB_DM pad while every sample said it was clear.
-                if not _lay(pad, net, [(pc.x, pc.y), (x, y)]):
-                    continue
-                made += 1
-                placed = True
-                break
-            if placed:
-                break
+        for strict[0] in (True, False):
+            # ⚠ A FINE RADIAL STEP, because the spot that works is sometimes a slot rather
+            # than a field. The ESD array's centre pin is its GROUND -- where the clamp
+            # diodes dump what they catch -- and it is boxed in: the pair's two rails leave
+            # either side of it and the package's other pad row faces it across 0.96 mm.
+            # The only via position that clears everything is the middle of that lane, and
+            # the window is 0.08 mm wide. On a 0.15 mm step whether it is found at all is
+            # luck, and the failure mode is a protection device grounded only through the
+            # pour, which routing can orphan -- which is to say not grounded.
+            for step in range(84):
+                r = half + need + pcbnew.FromMM(0.05 * step)
+                # A stitch is a SHORT hop to the plane. Past a couple of millimetres it has
+                # stopped being that and become a wire with an impedance and a loop area,
+                # and the honest thing is to fail and say the pad has no room rather than
+                # quietly run one across the board.
+                if r - half > pcbnew.FromMM(max_reach):
+                    break
+                for a in dirs:
+                    x = int(pc.x + r * math.cos(a))
+                    y = int(pc.y + r * math.sin(a))
+                    # ⚠ CHECK THE WHOLE SEGMENT, NOT JUST THE VIA. The first version tested
+                    # only the via's centre and let the short track from the pad run wherever
+                    # it liked -- straight across U10's USB_DM pad, in one case, which DRC
+                    # correctly called a short between GND and a USB data line. The track is
+                    # copper too; sample along it and hold it to the same clearance.
+                    # ⚠ SAMPLE BY LENGTH, NOT BY A FIXED COUNT. Five samples over a
+                    # 5 mm track is one every 1.25 mm, and a 0.5 mm pad fits between two
+                    # of them -- which is exactly how a GND stitch ended up laid straight
+                    # across U10's USB_DM pad while every sample said it was clear.
+                    if not _lay(pad, net, [(pc.x, pc.y), (x, y)]):
+                        continue
+                    made += 1
+                    placed = True
+                    break
+                if placed:
+                    break
 
-        # ⚠ AN L, WHEN A STRAIGHT HOP CANNOT WORK -- and on the ESD array it cannot,
-        # ever, on any board. Its centre pin is GROUND and its two neighbours are the
-        # differential pair, so the only clear direction is straight out between two
-        # traces that are 0.5 mm apart by the time they leave the package. The nearest
-        # position with room for a via is 2.4 mm away around the corner of the part.
-        #
-        # This is what a person draws without thinking about it: down the lane between
-        # the two pad rows, out from under the belly, via. It is still a SHORT hop --
-        # the whole path is held to max_reach -- but it is allowed one turn. A straight
-        # line is tried first and almost always wins; this runs only for the pads that
-        # would otherwise be reported as having nowhere to go, which is the honest
-        # alternative and not a better one: a protection device grounded through the
-        # pour alone, where routing can orphan it, is not grounded.
-        if not placed:
-            dirs8 = [math.pi * k / 4.0 for k in range(8)]
-            for d1 in [pcbnew.FromMM(0.4 + 0.2 * k) for k in range(9)]:
-                for a1 in dirs:
-                    mx = int(pc.x + d1 * math.cos(a1))
-                    my = int(pc.y + d1 * math.sin(a1))
-                    for a2 in dirs8:
-                        if abs(((a2 - a1 + math.pi) % (2 * math.pi)) - math.pi) < 0.1:
-                            continue          # same heading: that is the straight try
-                        for k in range(24):
-                            d2 = half + need + pcbnew.FromMM(0.1 * k)
-                            if pcbnew.ToMM(d1 + d2) > max_reach:
-                                break
-                            x = int(mx + d2 * math.cos(a2))
-                            y = int(my + d2 * math.sin(a2))
-                            if _lay(pad, net, [(pc.x, pc.y), (mx, my), (x, y)]):
-                                made += 1
-                                placed = True
+            # ⚠ AN L, WHEN A STRAIGHT HOP CANNOT WORK -- and on the ESD array it cannot,
+            # ever, on any board. Its centre pin is GROUND and its two neighbours are the
+            # differential pair, so the only clear direction is straight out between two
+            # traces that are 0.5 mm apart by the time they leave the package. The nearest
+            # position with room for a via is 2.4 mm away around the corner of the part.
+            #
+            # This is what a person draws without thinking about it: down the lane between
+            # the two pad rows, out from under the belly, via. It is still a SHORT hop --
+            # the whole path is held to max_reach -- but it is allowed one turn. A straight
+            # line is tried first and almost always wins; this runs only for the pads that
+            # would otherwise be reported as having nowhere to go, which is the honest
+            # alternative and not a better one: a protection device grounded through the
+            # pour alone, where routing can orphan it, is not grounded.
+            if not placed:
+                dirs8 = [math.pi * k / 4.0 for k in range(8)]
+                for d1 in [pcbnew.FromMM(0.4 + 0.2 * k) for k in range(9)]:
+                    for a1 in dirs:
+                        mx = int(pc.x + d1 * math.cos(a1))
+                        my = int(pc.y + d1 * math.sin(a1))
+                        for a2 in dirs8:
+                            if abs(((a2 - a1 + math.pi) % (2 * math.pi)) - math.pi) < 0.1:
+                                continue          # same heading: that is the straight try
+                            for k in range(24):
+                                d2 = half + need + pcbnew.FromMM(0.1 * k)
+                                if pcbnew.ToMM(d1 + d2) > max_reach:
+                                    break
+                                x = int(mx + d2 * math.cos(a2))
+                                y = int(my + d2 * math.sin(a2))
+                                if _lay(pad, net, [(pc.x, pc.y), (mx, my), (x, y)]):
+                                    made += 1
+                                    placed = True
+                                    break
+                            if placed:
                                 break
                         if placed:
                             break
                     if placed:
                         break
-                if placed:
-                    break
+            if placed:
+                break
 
         if not placed:
             failed.append("%s.%s" % (fp.GetReference(), pad.GetNumber()))
