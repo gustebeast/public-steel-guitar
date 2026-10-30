@@ -4657,6 +4657,9 @@ if __name__ == "__main__":
         raise SystemExit("the CAD sourcing table and the netlist disagree -- see above")
     import volts_decl                   # A16: generated, see volts_decl.py
     volts_decl.into(BOARD_NOTES, "optical")
+    import r1_silk                        # ordered R1: silk as sent
+    if OP.OPTICAL_REV == 1:
+        r1_silk.as_ordered(BOARD_NOTES)
     with open(os.path.join(OUT_DIR, "optical.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.2f x %.2f mm, %d placements, x%d per instrument"
