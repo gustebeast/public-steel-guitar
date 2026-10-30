@@ -190,13 +190,18 @@ USB port on the panel (endplate room + user confusion). Behaves like a phone / O
 - Computer attached (cable presents Rp): today's path, J1 data -> J2 -> Pi gadget port, J1 VBUS off.
 - Device attached (Rd: a synth's device port via a C-to-B cable, or an A-to-C OTG adapter with a
   USB-to-5-pin MIDI cable such as a UM-ONE): a USB 2.0 HS analog switch moves J1's pair to the
-  CH334F's spare downstream port 3, and a current-limited (~300 mA), reverse-blocking VBUS from the
+  CH334F's spare downstream port 3, and a current-limited (1.5 A, re-sized below), reverse-blocking VBUS from the
   board's own 5 V turns on. The Pi's role never changes: no reboot, no dwc2 role switching.
 - Parts ~$2-4: a role-detect controller (TUSB320-class in GPIO mode, or a TPS2581x source controller
   plus Rd -- my pick, open), a HS mux (TS3USB221-class), the VBUS load switch.
 - J2's VBUS stays dead exactly as now (Pi 4 USB-C VBUS = GPIO 5 V).
-- Budget: the 5 V buck is ~600 mA with a 257 mA worst case today; ~300 mA for J1 fits, a full
-  500 mA needs a bigger buck.
+- Budget, RE-SIZED (user, 2026-10-30: as big as the power budget allows for ethernet dongles and
+  audio interfaces, no phone fast charging): J1 sources 1.5 A (Type-C's 1.5 A advertisement, 7.5 W)
+  from a 3 A buck, LMR33630 in the proven `elec/buck_cell.py` cell, replacing U5's 0.6 A LMR16006.
+  Rail: 257 mA + serial chip + 1.5 A, about 1.8 A of 3 A. At 24 V: about 0.35 A at 90 % (assumed),
+  out of the 5.67 A motors and lights share, so a full port with motors at 4.6 A means lights
+  capped at about 0.72 A. Every "~300 mA" below now reads 1.5 A. Load switch to confirm: limit,
+  reverse blocking. 3 A at the port would need a bigger buck and is not worth it.
 - Use: MIDI out to hardware synths over USB (direct or via a USB-to-5-pin cable); USB MIDI pedals
   and controllers in; flash-drive preset backup.
 - Robustness constraints (user, 2026-10-20; items 4-5 CORRECTED the same day -- no Pi wires):
