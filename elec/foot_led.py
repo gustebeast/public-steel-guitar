@@ -17,14 +17,16 @@ the page 2026-09-30: **Economic PCBA takes a single PCB from 10x10 to 470x500 mm
 Standard from 70x70 to 460x500.** 572.72 is past both, so one board cannot be built at
 any price. Two of 286.36 are a long way inside.
 
-⚠ AND TWO DESIGNS, WHICH DIFFER ONLY AT THEIR ENDS (user, 2026-10-04). Both slide in from
--X, the far one first, so nothing can be plugged into the far board once it is home and
-the joint between them is POGOS, tip to tip, made by pushing the second board against
-the first. The near board is the one a cable can reach:
+⚠ AND TWO DESIGNS, WHICH DIFFER ONLY AT THEIR ENDS (user, 2026-10-04). Both slide in
+through the same mouth, one after the other, so nothing can be plugged into the first once
+the second is behind it, and the joint between them is POGOS, tip to tip, made by pushing
+the second board against the first. The mouth is +X now, board A first with its lead already
+in J1 (2026-10-29): string 1's motor stands in the lane at the -X end and A is NOTCHED round
+it, so only A's narrow end may pass it (src/foot_light.py, MOTOR_FACE). The chain:
 
     Pi cap J6 --cable--> J1 [board A] J21..J24 -><- J11..J14 [board B]
 
-A is fed by a 4-way JST XH on a 7 mm tail at its -X end (XH is the instrument's 24 V
+A is fed by a 4-way JST XH on a ~10.7 mm tail at its -X end (XH is the instrument's 24 V
 connector; PH is its 5 V one) and carries the seam's four pogos at its +X end;
 B carries the seam's four at its -X end and nothing at the other. 24 V passes straight
 through A behind its fuse and the SPI chain runs J1 -> U1 .. U4 -> seam -> U1 .. U4, so
@@ -52,7 +54,7 @@ import skidl  # noqa: E402
 from skidl import ERC, Net, Part, Pin, generate_netlist  # noqa: E402
 
 import netcheck  # noqa: E402
-from placecheck import check_placement, fp_box  # noqa: E402
+from placecheck import MIN_GAP, boxes, check_placement, fp_box  # noqa: E402
 import buck_cell as BC  # noqa: E402
 
 P = Pin.types.PASSIVE
@@ -117,12 +119,13 @@ _J1_NET = {"GND": "GND", "V24": "+24V_IN", "SCK": "SCK_CABLE", "SDT": "SDT_CABLE
 # 1 k limits that to 2.7 mA. Against the pin's few pF it is a 10 ns corner, on a clock
 # TI allow to 10 MHz and edges the source resistor has already slowed.
 R_SERIES = "1k 1%"
-# They stand just past the socket's courtyard, each on the line of the way it is in series
-# with. Measured on the routed board from J1's pad centroid: the lands' centres are 3.25
-# towards +X, the courtyard ends at 6.05, and the ways are buck_cell.xh_way_dy apart
-# (0.01 nearer the LED row here: the row's own Y is rounded).
+# They stand just past the socket's courtyard: measured on the routed board from J1's pad
+# centroid, the lands' centres are 3.25 towards +X and the courtyard ends at 6.05.
+# ⚠ NOT ON THEIR WAYS' LINES ANY MORE (2026-10-29). The socket sits on the narrow section
+# over string 1's motor now, in line with the LED row (src/foot_light.tail_a), so just past
+# it on those lines is the first LED. They step -Y (world) of the row instead, SCK nearest it,
+# each a MIN_GAP clear of the row's courtyard and of each other.
 J_SERIES = (("R21", "SCK", 7.30), ("R22", "SDT", 7.30))
-J_SERIES_DY = 0.01
 J_ANCHOR = BC.XH_ANCHOR             # mouth to the pad centroid (buck_cell)
 J_Y = FL.to_board_y(FL.J_Y)
 import harness as _H                                  # noqa: E402
@@ -510,8 +513,13 @@ def _manual(board, n_drv):
                "board is ordered as a routed single with no V-score or tab, and in "
                "service the channel holds it flat along its whole length. Test pads: "
                "1.5 mm, 1.1 mm apart. No mounting hole. " + (
-               "J1's plug is pushed on from the open -X end of the channel" if a else
+               "J1's lead is plugged in on the bench, before the board slides in from the "
+               "channel's +X end (INSTALL_NOTES, foot lights)" if a else
                "Nothing is plugged into it"),
+        "M43": "decision: no firmware on this board, so it works as it arrives. Nothing on it "
+               "is programmable -- the four TLC5971s are shift-register drivers the Pi clocks "
+               "frame by frame, and the buck is analog -- so there is nothing to load, "
+               "update or recover",
         "M39": "no unused input. All 48 outputs are used. " + (
                "" if a else "U4's SCKO and SDTO are the end of the chain: push-pull "
                "outputs, left open. ") + "U10's PG is an open drain left open, as its "
@@ -533,6 +541,15 @@ def _manual(board, n_drv):
                "pad order must be read first)",
     }
     return m
+
+
+# The driver's passive row, from the driver's centre to the row's -X end: the VREG capacitor
+# stands over VREG (pin 15, +0.25 of the package centre), with IREF's resistor and VCC's
+# capacitor either side of it over theirs; the bulk capacitor serves the strings through the
+# planes and takes the end
+ROW_GAP = 0.45
+ROW_LEFT = (0.25 - fp_box(C_FP)[0] / 2.0 - ROW_GAP - fp_box(R_FP)[0] - ROW_GAP
+            - fp_box(C08_FP)[0])
 
 
 def build(board, passes=20):
@@ -575,15 +592,16 @@ def build(board, passes=20):
         # anchors on the pad centroid, J_ANCHOR behind the mouth
         place["J1"] = (-(half - FL.J_INSET) + J_ANCHOR, J_Y, 270.0)
         fps["J1"] = J_FP
-        for (ref, carries, dx), net in zip(J_SERIES, (sck, sdt)):
+        rh = fp_box(R_FP)[1]
+        for k, ((ref, carries, dx), net) in enumerate(zip(J_SERIES, (sck, sdt))):
             way = BC.xh_way(LED_WAYS, carries)
-            dy = BC.xh_way_dy(way) + J_SERIES_DY
+            y_w = FL.led_y() - FL.LED_CY / 2.0 - MIN_GAP - rh / 2.0 - k * (rh + MIN_GAP)
             cable = Net(J_PINS[way - 1])
             rs = _r(ref, R_SERIES, "%s in series at the cable: limits what a live Pi can "
                                    "push into a dark driver's input" % J_PINS[way - 1][:3])
             cable += j1[way], rs[1]
             net += rs[2]
-            place[ref] = (place["J1"][0] + dx, J_Y + dy, 0.0)
+            place[ref] = (place["J1"][0] + dx, FL.to_board_y(y_w), 0.0)
             fps[ref] = R_FP
         seam = (+1.0, 20, "out", {"+24V": v24, "GND": gnd, "SCK": sck_out, "SDT": sdt_out})
     else:
@@ -706,6 +724,12 @@ def build(board, passes=20):
         trio = zones[3 * k:3 * k + 3]
         mid = trio[len(trio) // 2]
         xd = sum(xs[i] for i in mid) / len(mid)   # the middle zone's centre
+        # ...unless its passive row (below) would land in board A's narrow section, over string
+        # 1's motor, where the -Y shoulder holds the edge band their row stands in: then the
+        # driver and its row move +X until the row starts at that section's end. U1 still sits
+        # inside its own three zones, so its returns stay short.
+        if board == "a":
+            xd = max(xd, FL.narrow_keepout()[1] - ROW_LEFT)
         # (no clamp against the supply row any more: it is in the middle, and the
         # drivers are what it has to stay clear of rather than the other way round)
         u = Part(name="TLC5971", ref_prefix="U", ref="U%d" % (k + 1),
@@ -753,13 +777,9 @@ def build(board, passes=20):
         # Above the package nothing has to pass.
         row = (("C%d" % (20 + k + 1), C08_FP), ("R%d" % (k + 1), R_FP),
                ("C%d" % (k + 1), C_FP), ("C%d" % (10 + k + 1), C_FP))
-        gap = 0.45
+        gap = ROW_GAP
         row_y = LANE_Y + fp_box(DRV_FP)[1] / 2.0 + gap + fp_box(C08_FP)[1] / 2.0
-        # the VREG capacitor stands over VREG (pin 15, +0.25 of the package centre), with
-        # IREF's resistor and VCC's capacitor either side of it over theirs; the bulk
-        # capacitor serves the strings through the planes and takes the end
-        x0 = (xd + 0.25 - fp_box(C_FP)[0] / 2.0 - gap - fp_box(R_FP)[0] - gap
-              - fp_box(C08_FP)[0])
+        x0 = xd + ROW_LEFT
         prow = Row(place, fps, x0, gap=gap, dirn=1.0, y=row_y)
         for ref, fp in row:
             prow.add(ref, fp)
@@ -808,19 +828,35 @@ def build(board, passes=20):
         # reason the pogo row is. The XH's courtyard is 16.7 x 12.0 because it includes
         # the plug's approach and both mounting lands; what actually comes near the LED
         # is the back of its body in X and its four signal lands in Y.
+        # It sits on the narrow section now, in line with the row (FL.tail_a), so it is the
+        # signal lands' TOES that have to stop short of the first LED's courtyard, in X.
         jx, jy, _rot = place["J1"]
         mouth = jx - J_ANCHOR
         lx, ly, _lrot = place[end_led[-1.0]]
-        led_half = 6.10 / 2.0                      # the LED's courtyard, as check_optics
-        body_back = mouth + 7.00                   # F.Fab: 7.00 deep from the mouth
-        lands_y = jy - (3.75 + 1.30 / 2.0)         # the signal lands' edge nearest the row
-        assert (lx - led_half) - body_back >= 0.30 - 1e-9, (
-            "the socket's body ends %.2f from the first LED's courtyard"
-            % ((lx - led_half) - body_back))
-        assert lands_y - (ly + led_half) >= 0.30 - 1e-9, (
-            "the socket's signal lands are %.2f from the first LED's courtyard"
-            % (lands_y - (ly + led_half)))
+        toes = mouth + FL.J_TOE
+        assert (lx - FL.LED_CY / 2.0) - toes >= FL.J_LED_AIR - 1e-9, (
+            "the socket's signal lands end %.2f from the first LED's courtyard"
+            % ((lx - FL.LED_CY / 2.0) - toes))
         exempt.append(("J1", end_led[-1.0]))
+        # THE NOTCH (2026-10-29): over string 1's motor the board is narrower. Every part there
+        # keeps its courtyard inside the outline, and inside the channel its body off the -Y
+        # shoulder too -- DRC sees the edge, but not the shoulder.
+        poly = FL.outline_poly("a")
+        xn, yn = poly[3][0], poly[4][1]
+        kx0, kx1, ky = FL.narrow_keepout()
+        bad = []
+        for ref, (cx0, cx1, cy0, cy1) in boxes(place, fps).items():
+            if cx0 < xn and cy1 > yn - 1e-9:
+                bad.append("%s's courtyard reaches %.2f, past the notch's edge %.2f" % (ref, cy1, yn))
+        crt = boxes(place, fps)
+        for ref in sorted(place):
+            try:                                   # its body; a test point has only a courtyard
+                fx0, fx1, fy0, fy1 = boxes({ref: place[ref]}, fps, "F.Fab")[ref]
+            except KeyError:
+                fx0, fx1, fy0, fy1 = crt[ref]
+            if fx0 < kx1 and fx1 > kx0 and fy1 > ky - 0.30 - 1e-9:
+                bad.append("%s's body reaches %.2f, over the -Y shoulder at %.2f" % (ref, fy1, ky))
+        assert not bad, "foot_led_a: " + "; ".join(bad)
     # the buck's cell is laid out to TI's figure, closer than the lane-keeping gap this
     # check enforces; real courtyard overlaps are still DRC's to refuse
     cell = ["U10"] + sorted(BUCK_CELL)
@@ -835,6 +871,8 @@ def build(board, passes=20):
 
     notes = dict(BOARD_NOTES)
     notes["outline_mm"] = (round(length, 3), round(BOARD_W, 3))
+    if FL.outline_poly(board):
+        notes["outline_poly"] = [(round(x, 3), round(y, 3)) for x, y in FL.outline_poly(board)]
     notes["placements"] = {k: list(v) for k, v in place.items()}
     notes["router_passes"] = passes
     # THE BUCK'S COPPER IS LAID, NOT ROUTED (buck_cell.copper says what and why), and

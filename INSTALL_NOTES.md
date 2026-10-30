@@ -1105,3 +1105,35 @@ the underside, so J2/J6 can be squeezed from below. The post stands under the he
 J3's lead can be plugged in before the board goes down or after. It holds with the legs on or
 off. (It used to rest on the -X/-Y leg's adapter; the 7.5 pulley standoff moved the
 board off it.)
+
+## Foot lights: plug the lead in first, then slide the strip in from +X (2026-10-29)
+
+The two foot-light boards (src/foot_light.py) slide along the channel over the light window,
+LEDs facing down. They go in from the **+X (bridge) end**, with the bridge endplate off. The
+keyhead can stay on.
+
+- **Why from +X:** string 1's motor stands in the strip's lane. Board A is notched round it and
+  is narrow from its -X end up to the end of that motor's faceplate wall. Everything else on
+  both boards is full width and cannot get past that wall. Going in from +X, only A's narrow
+  end ever reaches string 1's motor. **Never push either board in from -X:** it jams against
+  string 1's faceplate wall.
+
+1. **On the bench, plug the foot-light lead into board A's J1** (the 4-way XH on A's tail, its
+   mouth facing -X).
+2. **Feed the lead's free end into the channel at the +X end and draw it through to the -X
+   end.** The lead goes in AHEAD of the board: J1 is on board A's leading end, so the lead
+   leads too, and nothing on the board ever passes over it. At the -X end it comes up beside
+   string 1's motor, +Y of its faceplate wall. With the deck panels off you can lay it in
+   from above instead: the plug drops through between the lips.
+3. **Slide board A in from +X, tail first, LEDs down,** drawing the lead's slack out at the -X
+   end as it goes. It is home when its -X end meets the two stop blocks at the channel's -X
+   end. The plug and the lead leave between them.
+4. **Slide board B in from +X, its pogo end first, and push it home against A.** The four
+   seam pogos compress tip to tip, and they push B back +X when you let go, so hold it there.
+5. **Drop the bridge endplate on while still holding B home.** Its fin stands across the
+   slot's +X end and becomes B's stop. Its 45° lead-in pushes B the last ~2 mm home as the
+   endplate comes down, so a B left a little proud is not landed on.
+6. Take the lead's free end up to the Pi cap's J6 (foot light drop, XH 4: `24V, GND, SCK, SDT`).
+
+**Removal is the reverse:** lift the bridge endplate (the pogos push B out a little), slide B
+out at +X, then A, letting the lead follow it back through the channel.
