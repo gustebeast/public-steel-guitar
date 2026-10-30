@@ -4738,6 +4738,55 @@ if OP.OPTICAL_REV != 1:
         "V3, tied to VCC because the chip runs at 3.3 V (WCH V3C p.3): the internal regulator's pin, "
         "not a second load. C183 sits at VCC, pin 16")
     BOARD_NOTES["silk_legend"] = True           # cadkit: a label with no site gets an identifier
+    # The hub and the bridge are 120 mA more on +3V3D at the worst case: hub up to 100 (as
+    # output_panel's U4), CH340C 20 (WCH V3C p.8). 582 mA at U8, 1.20 A of 5 V, 0.30 A at 24 V.
+    for _pp in BOARD_NOTES["quality"]["power_paths"]:
+        if _pp["net"] in ("V24_IN", "+24V"):
+            _pp["amps"] = 0.30
+        elif _pp["net"] == "SW":
+            _pp["amps"] = 1.20
+        elif _pp["net"] == "V5_PRE" and _pp["to"] == ["U8.3"]:
+            _pp["amps"] = 0.57
+    _m = _q["manual"]
+    def _r2(item, old, new):
+        assert old in _m[item], (item, old)
+        _m[item] = _m[item].replace(old, new)
+    _r2("M6", "22.1 to 57.5 mm, a spread of 35.4 mm (about 0.23 ns)",
+        "14.6 to 57.2 mm on R2, a spread of 42.5 mm (about 0.28 ns)")
+    _r2("M8", "BOOT0: R30, 10k to ground (TP8 to hold it high). NRST: R31 10k up, C135.",
+        "BOOT0: R30, 10k to ground (TP8 to hold it high); Q2 lifts it only while U32 holds DTR# "
+        "low, R53 keeps Q2 off otherwise. NRST: R31 10k up, C135; D11 pulls it down only while "
+        "U32 holds RTS# low.")
+    _r2("M9", "SWD on bare 1.5 mm pads:", "M43 is the way in on R2; these are bench pads. SWD on "
+        "bare 1.5 mm pads:")
+    _r2("M10", "1.9 mm from the receptacle's pads", "5.6 mm from the receptacle's D+ pads on R2")
+    _r2("M11", "258 of 258 routed parts", "274 of 274 routed parts")
+    _r2("M18", "With this board up and the host down",
+        "R2's hub and bridge run on +3V3D, so they go down with the board and nothing feeds them "
+        "from VBUS. With this board up and the host down")
+    _r2("M23", "clamp array first, 1.9 mm from the receptacle, the pair passing through its pads. "
+        "Through path receptacle -> U10 -> PHY: F.Cu only, no via on either half, 10.7 and 10.8 mm "
+        "(0.17 mm apart, A3). The two vias on USB_DP are not on that path: they tie the "
+        "receptacle's second D+ contact (B6) to the first with 2.5 mm of In2, as D- ties its own "
+        "round on F.Cu -- the stub the unused cable orientation leaves, 5 mm, harmless at 480 "
+        "Mbit/s.",
+        "clamp array first, 5.6 mm from the receptacle, the pair passing through its pads. R2 has "
+        "two high-speed segments. J1 -> U10 -> U31: 37.3 and 37.9 mm, 0.60 apart, F.Cu and In2 "
+        "over the In1 plane, 3 vias on USB_DP and 2 on USB_DM. U31 -> U7: 17.9 and 18.0 mm, 0.14 "
+        "apart, 2 vias each. Not the single F.Cu run R1 had: the hub M43 needs is 23 mm from J1. "
+        "Within A3's budget on both.")
+    _r2("M27", "BOOT0: R30 and TP8, nothing else. NRST: R31, C135 and TP3.",
+        "BOOT0: R30, TP8 and Q2's drain, off at rest. NRST: R31, C135, TP3 and D11's anode, off "
+        "at rest. PB14 / PB15 carry U32 and nothing else.")
+    _r2("M28", "S4B-XH-SM4-TB, TYPE-C-31-M-12", "B4B-XH-A, TYPE-C-31-M-12, CH334F C5187527, CH340C "
+        "C84681, AO3401A C15127, DSS16 C7467023, TAXM12M4RFBCCT2T C133337")
+    _r2("M31", "the board's name and r1 on the front", "the board's name and rev on the front")
+    _r2("M33", "+3V3D: 212 typical, 462 at ST's 85 C all-peripherals maximum, of U8's 1 A; 0.79 W "
+        "in the SOT-223 at that corner. 5 V: 0.46 A typical, 1.08 A worst, of U13's 3 A. 24 V: 79 "
+        "mA typical, 0.26 A worst, through 3 A contacts, R44 (0.14 W of 1 W)",
+        "+3V3D on R2: 212 typical before the hub and bridge, 582 at ST's 85 C all-peripherals "
+        "maximum with them, of U8's 1 A; 0.99 W in the SOT-223 at that corner. 5 V: 1.20 A worst, "
+        "of U13's 3 A. 24 V: 0.30 A worst, through 3 A contacts, R44 (0.18 W of 1 W)")
     BOARD_NOTES["quality"]["pinouts"]["TAXM12M4RFBCCT2T"] = (
         "the same maker's 3225 four-land outline as Y1 (LCSC C133337): 1 and 3 the crystal, 2 and "
         "4 the can. Board: 1 HUB_XI, 3 HUB_XO, 2 / 4 GND")
