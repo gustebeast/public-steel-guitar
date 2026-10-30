@@ -212,6 +212,78 @@ def _outline(t):
     return bool(t.GetFontName())          # the stroke font has no name
 
 
+# ── INK BLEED: an outline face's thinnest stroke raised to the fab's minimum ──
+# ⚠ AN OUTLINE FACE HAS NO STROKE WIDTH TO RAISE. KiCad draws a TrueType/OpenType glyph
+# from its own outlines, and GetTextThickness() is ignored -- so when quality A12 measured
+# the instrument's face (2026-10-29) at 0.1299 mm in 'A' at size 1.5 against the fab's
+# 0.15, there was no field to set. Growing the SIZE to 1.732 would clear it and move
+# every label on every board. Instead each outline-font text is drawn a second time, as
+# a filled silk polygon of its own ink grown by INK_BLEED on every side: every stroke
+# gains 2 x INK_BLEED (0.130 -> 0.160) and the text's size, box and site are what they
+# were. The polygons sit in one group named "silk_ink_bleed <mm>", which is how the next
+# run removes them and how quality knows to measure the bled ink. Fractured (holes cut
+# in to the outline) so a filled polygon keeps its counters open.
+INK_BLEED = 0.015
+BLEED_GROUP = "silk_ink_bleed"
+
+
+def _bleed_texts(board):
+    """Every outline-font text that prints: board texts and visible footprint text, on
+    either silk layer."""
+    silk = (pcbnew.F_SilkS, pcbnew.B_SilkS)
+    out = [d for d in board.GetDrawings()
+           if d.GetClass() == "PCB_TEXT" and d.GetLayer() in silk and _outline(d)]
+    for fp in board.GetFootprints():
+        for t in list(fp.GraphicalItems()) + [fp.Reference(), fp.Value()]:
+            if (t.GetClass() in ("PCB_TEXT", "PCB_FIELD") and t.GetLayer() in silk
+                    and t.IsVisible() and _outline(t)):
+                out.append(t)
+    return out
+
+
+def old_bleed(board):
+    """The last run's bleed: (its groups, their polygons). Removed with the last run's
+    texts, AFTER the new ones are laid -- removing a drawing mid-run hands it back across
+    the SWIG boundary and the next read of the board raises on a SwigPyObject."""
+    groups = [g for g in board.Groups() if g.GetName().split(" ")[0] == BLEED_GROUP]
+    return groups, [it for g in groups for it in g.GetItems()]
+
+
+def add_bleed(board, grow=INK_BLEED):
+    """Lay the bleed for every outline-font text on the board; returns how many."""
+    err = MM(0.002)
+    grp = pcbnew.PCB_GROUP(board)
+    grp.SetName("%s %.3f" % (BLEED_GROUP, grow))
+    n = 0
+    for t in _bleed_texts(board):
+        ps = pcbnew.SHAPE_POLY_SET()
+        t.TransformTextToPolySet(ps, 0, err, pcbnew.ERROR_INSIDE)
+        if not ps.OutlineCount():
+            continue
+        ps.Simplify()
+        ring = pcbnew.SHAPE_POLY_SET(ps)
+        ring.Inflate(MM(grow), pcbnew.CORNER_STRATEGY_ROUND_ALL_CORNERS, err)
+        # the RIM only -- the grown ink less the glyph, and 1 um off it -- so the polygon
+        # stands beside its text rather than on it (DRC's silk_overlap counts touching:
+        # one warning per text otherwise). A micron is below any photoplot's resolution.
+        core = pcbnew.SHAPE_POLY_SET(ps)
+        core.Inflate(MM(0.001), pcbnew.CORNER_STRATEGY_ROUND_ALL_CORNERS, err)
+        ring.BooleanSubtract(core)
+        ps = ring
+        ps.Fracture()
+        sh = pcbnew.PCB_SHAPE(board, pcbnew.SHAPE_T_POLY)
+        sh.SetPolyShape(ps)
+        sh.SetFilled(True)
+        sh.SetWidth(0)
+        sh.SetLayer(t.GetLayer())
+        board.Add(sh)
+        grp.AddItem(sh)
+        n += 1
+    if n:
+        board.Add(grp)
+    return n
+
+
 # ── WHAT A FACE MAY PRINT (`glyphs`) ─────────────────────────────────────────
 # ⚠ A GLYPH BEING IN THE FONT DOES NOT MEAN IT DRAWS THE CHARACTER. A display face fills
 # ordinary code points with ornaments: the one this was written for draws "+" as a TH
@@ -854,7 +926,8 @@ WORD_REACH = 1.5           # mm a `silk_words` entry may sit from the point it w
 
 
 def silk(stem, rev=None, dark=(), labels=None, short=None, refs=None, way_words=None,
-         read=None, pinout=None, ends=None, face=None, reach=None, sited=None):
+         read=None, pinout=None, ends=None, face=None, reach=None, sited=None,
+         bleed=None):
     """Label `<stem>.kicad_pcb` in place. Returns the labels that found no free site
     (designators asked for by `refs` are reported but not returned: on a dense board
     most of them having no site is the expected result, not a finding)."""
@@ -873,6 +946,10 @@ def silk(stem, rev=None, dark=(), labels=None, short=None, refs=None, way_words=
         face = _notes.get("silk_font") if face is None else face
         reach = _notes.get("silk_pinout_reach") if reach is None else reach
         sited = _notes.get("silk_words") if sited is None else sited
+        # `silk_ink_bleed`: 0 keeps a board's silk exactly as ORDERED (an R1 board,
+        # frozen, with A12's ink waived in its notes) -- see INK_BLEED.
+        bleed = _notes.get("silk_ink_bleed") if bleed is None else bleed
+    bleed = INK_BLEED if bleed is None else float(bleed)
     way_words = dict(way_words or {})
     pinout, ends = set(pinout or ()), set(ends or ())
     read = float(read or 0.0) % 360.0
@@ -888,6 +965,7 @@ def silk(stem, rev=None, dark=(), labels=None, short=None, refs=None, way_words=
             if d.GetClass() == "PCB_SHAPE" and d.GetLayer() in (pcbnew.F_SilkS, pcbnew.B_SilkS)
             and d.GetShape() == pcbnew.SHAPE_T_CIRCLE and d.GetWidth() == 0
             and abs(d.GetRadius() - MM(MARK_D) // 2) <= 1]
+    bleed_groups, bleed_old = old_bleed(board)  # re-laid from the new labels at the end
     dark = tuple(dark)
     _set_face(face, board)
     if reach:
@@ -1261,6 +1339,12 @@ def silk(stem, rev=None, dark=(), labels=None, short=None, refs=None, way_words=
 
     for d in old:                           # after every read; the save is next
         board.Remove(d)
+    for g in bleed_groups:                  # ...and the last run's bleed, with them
+        for it in list(g.GetItems()):
+            g.RemoveItem(it)
+        board.Remove(g)
+    for it in bleed_old:
+        board.Remove(it)
     if FACE:
         bad = unverified_glyphs(board, FACE["glyphs"])
         if bad:
@@ -1271,6 +1355,10 @@ def silk(stem, rev=None, dark=(), labels=None, short=None, refs=None, way_words=
                              "label. The board on disk is as it was."
                              % (name, len(bad), FACE["family"],
                                 ", ".join("%r in %r" % (c, s) for s, c in bad[:8])))
+    n_bleed = add_bleed(board, bleed) if bleed > 0 else 0
+    if n_bleed:
+        print("    %s: ink bleed %.3f mm laid under %d outline-font text(s)"
+              % (name, bleed, n_bleed))
     board.Save(stem + ".kicad_pcb")
     # what this run lettered in, for the quality pass (which has the board's notes but
     # not a project's face): the family, and the characters verified in it
