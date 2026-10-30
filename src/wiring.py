@@ -208,7 +208,7 @@ CAP_LEAD_IN = 4.0
 from .chassis import Y_LO as _Y_LO, T as _RAIL_T
 from .chassis import WT_LANE_Y as CH_WT_LANE_Y, WT_ZF as CH_WT_ZF, WT_H as CH_WT_H
 from .chassis import WT_X1 as CH_WT_X1, WT_RUNS as CH_WT_RUNS
-from .chassis import WT_D as CH_WT_D, WT_T as CH_WT_T
+from .chassis import WT_D as CH_WT_D, WT_T as CH_WT_T, WT_Y0 as CH_WT_Y0
 from . import motor_bank as MB                          # back_y: where each motor's pigtail leaves
 from .motor_bank import FLOOR_TOP as _RIB_TOP           # -65.15 (rib tops = above = rib-free)
 RAIL_INNER_Y = _Y_LO + _RAIL_T / 2                       # -Y rail inner face (chassis.RAIL_INNER_Y)
@@ -1425,9 +1425,14 @@ def build_wires():
     # (-15.2) and the lane is under that, so the lead crosses at the lip's top, clear, and
     # drops into its lane inside (it went through 1.6 of lip at the lane's height, 9 mm3,
     # once the +X face move put its riser over a trough run).
+    # It climbs only AT the lip: over the pickup the top plate hangs to -16.1 (y -71..-52),
+    # so it runs out at the lane's height under that and rises one clearance short of the lip.
     _USB_OVER = CH_WT_ZF + CH_WT_H + WIRE_OD["wire_usb"] / 2.0 + 0.3
+    _lip_y1 = CH_WT_Y0 + CH_WT_D                          # the lip's +Y face
+    _y_rise = _lip_y1 + WIRE_OD["wire_usb"] / 2.0 + 0.3
     _run(out, "wire_usb",
-         [_c_usb, (_USB_X, _c_usb[1], _c_usb[2]), (_USB_X, _c_usb[1], _USB_OVER),
+         [_c_usb, (_USB_X, _c_usb[1], _c_usb[2]), (_USB_X, _c_usb[1], LANE_USB),
+          (_USB_X, _y_rise, LANE_USB), (_USB_X, _y_rise, _USB_OVER),
           (_USB_X, _ym, _USB_OVER), (_USB_X, _ym, LANE_USB),
           (_USB_COL_X, _ym, LANE_USB), (_USB_COL_X, _ym, _pe[2]),
           (_USB_TURN_X, _ym, _pe[2]), (_USB_TURN_X, _pe[1], _pe[2]), _pe],
