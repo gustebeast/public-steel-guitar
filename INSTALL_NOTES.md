@@ -1129,3 +1129,24 @@ until R2 boards arrive, **the R1 board does not go in the cradle**:
 
 To rebuild R1's design files (they match the copper in hand): `OUTPUT_PANEL_REV=1 py -3.12
 elec/output_panel.py`. Its geometry as made is `elec/rev1/output_panel.geom.json`.
+
+## R1 stop-gap: the optical board in hand, in an R2 instrument (2026-10-29)
+
+The R2 optical board is 166.5 long and ends at y -100.6, inside the -Y rail. The R1 board in hand
+is 188.5 long and its compute tail reaches y -122.6, about 17.5 mm past the rail's inner face
+(-105.05). Its sensing strip is identical, so it still sits under the strings and on the same
+bearings. Until R2 boards arrive:
+- Fit the R1 board as usual on its two M4s. Its -Y tail **spills over the -Y rail**, outside
+  the body. Before tightening, check it rides over the rail top without touching. If it bears
+  on the rail, shim the board's M4s to clear; do not file or cut the rail (the side wall is
+  never cut).
+- Leave the optical guard's -Y end off over the tail; the R2 guard is shaped for the R2 board.
+- Its leads do not use the conduit: J1 is side-on at the R1 edge and J2 is a side-entry XH.
+  Run both outside the body, over the rail, to the output board: J1's USB-C lead to the output
+  board's J4, and J2's 24 V pair to J9.
+- Nothing else in the instrument depends on it. The R2 board drops in later with its leads
+  down the conduit.
+
+To rebuild R1's design files (they match the copper in hand): `OPTICAL_REV=1 py -3.12
+elec/optical.py`. The placements match the ordered board exactly, including the MCU block
+that a cadkit change had slid by 0.05 mm (frozen back, 2026-10-29).
