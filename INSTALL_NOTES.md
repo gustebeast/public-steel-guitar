@@ -1206,7 +1206,7 @@ the +X (bridge) side and is open toward -X and up.
 ## Optical leads: 24 V through the cable hole first, then the USB lead (2026-10-30)
 
 On the R2 optical board both leads reach the output board through one closed house-shaped hole
-in the bridge endplate, under the USB notch in the optical board's -Y edge. It is sized to pass
+in the bridge endplate, under the closed cable hole in the optical board. It is sized to pass
 one plug at a time, so the order matters:
 
 1. Feed the **24 V lead** through first, with the XH-4 housing (the bigger plug) going through
