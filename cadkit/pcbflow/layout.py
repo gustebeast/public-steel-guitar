@@ -3721,6 +3721,17 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
             _h = _p.GetEffectiveHoleShape()
             _s = _h.GetSeg()
             holes.append((_p, (_s.A.x, _s.A.y), (_s.B.x, _s.B.y), _h.GetWidth() / 2.0))
+    # ...and every VIA's drill: the diff pair's (laid first) and the declared ones (laid
+    # after this, see declared_vias). Pads only let a GND stitch land 0.44 mm drill to
+    # drill from a USB pair via on optical R2 -- A12 again, from the other side.
+    for _t in board.GetTracks():
+        if _t.GetClass() == "PCB_VIA":
+            _q = _t.GetPosition()
+            holes.append((_t, (_q.x, _q.y), (_q.x, _q.y), _t.GetDrillValue() / 2.0))
+    for _dv in declared_vias:
+        _q = _to_board(_dv[1], _dv[2])
+        holes.append((None, (_q.x, _q.y), (_q.x, _q.y),
+                      pcbnew.FromMM(_dv[3] if len(_dv) > 3 else 0.3) / 2.0))
     hole_gap = pcbnew.FromMM(0.45)              # JLCPCB hole to hole, quality A12's figure
 
     def _hole_off_holes(x, y, own):

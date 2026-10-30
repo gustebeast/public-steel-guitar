@@ -27,12 +27,12 @@ from cadkit.fasteners import set_screw, m4_insert                # the ONE dummi
 # Tr8 (Ø7.1 ridge, Ø8.0 groove). It was 0.2 for the Tr5 thread's 0.3 groove, now gone.
 NOZZLE_D = 0.4
 
-MOTOR_PULLEY_STANDOFF = D.MOTOR_PULLEY_STANDOFF   # 12.0: pulley this far +Y of the motor faceplate
-# THE SHAFT IS CUT (user, 2026-10-29): the pulley needs it only to its own +Y face, so each
-# motor's shaft is sawn to this off its faceplate (src/motor_shaft_saw_jig.py, INSTALL_NOTES)
-# -- B/2 short of that face, so a blade that drifts away from the guide still leaves the stub
-# inside the bore.
-MOTOR_SHAFT_CUT_L = MOTOR_PULLEY_STANDOFF + D.PULLEY_W / 2.0 - D.BEAD / 2.0
+MOTOR_PULLEY_STANDOFF = D.MOTOR_PULLEY_STANDOFF   # 7.5: pulley this far +Y of the motor faceplate
+# THE SHAFT IS CUT FLUSH WITH THE PULLEY'S OUTER FACE (user, 2026-10-29: "we cut such that the
+# shaft ends up flush with the pulley outer surface"), so each motor's shaft is sawn to this
+# off its faceplate (src/motor_shaft_saw_jig.py, INSTALL_NOTES). The jig's slot stands +Y of
+# it, so the blade can only leave the stub long, and the file takes it to the face.
+MOTOR_SHAFT_CUT_L = MOTOR_PULLEY_STANDOFF + D.PULLEY_W / 2.0      # 11.5
 
 
 # ── Vertical leadscrew (axis Z) ──────────────────────────────────────────
@@ -144,10 +144,37 @@ def string_nut() -> cq.Workplane:
 
 
 # ── Nut-block hardware (Ø2 steel dowel + M4 cup-tip set screw) — DEMO ─────
+# McMaster 91595A119 (Ø4 x 4, 4140, DIN 6325 m6), "Round x Chamfer/Round", read off its 2-D
+# drawing at 135 px/mm (user, 2026-10-28: "they aren't perfect cylinders"). Along the axis from
+# the chamfered end: a dome to Ø3.59, a 15 deg chamfer out to Ø4, the straight barrel, then a
+# dome over the full Ø4. Read from a catalogue sketch, so good to ~0.05.
+DW_DOME_A = (0.52, 3.59)          # chamfer end: dome height, and the diameter it starts at
+DW_CHAMFER_L = 0.78               # ...then the chamfer out to NUT_PIN_D
+DW_DOME_B = 0.59                  # the other end's dome height, over the full NUT_PIN_D
+
+
+def _cap_mid(a, h, t_apex, sgn):
+    """The mid point of a spherical cap's arc (base radius a, height h, apex at t_apex on the
+    axis, the base sgn of the apex), as (r, t) -- for threePointArc."""
+    R = (a * a + h * h) / (2.0 * h)
+    half = math.asin(a / R) / 2.0
+    return (R * math.sin(half), t_apex + sgn * R * (1.0 - math.cos(half)))
+
+
 def dowel() -> cq.Workplane:
-    """Ø2×4 steel dowel (axis Y) — the gauged break pin. Short so it drops into
-    its top-open slot from above (the string then traps it)."""
-    return cyl_y(2.0, 4.0, y0=-2.0, x=0.0, z=0.0)
+    """The gauged break pin, McMaster 91595A119 Ø4 x 4, axis Y, centred on y = 0, the chamfered
+    end -Y. Short so it drops into its top-open cradle from above (the string then traps it)."""
+    d, L = D.NUT_PIN_D, D.NUT_PIN_L
+    h_a, d_a = DW_DOME_A
+    t1, t2 = h_a, h_a + DW_CHAMFER_L
+    t3 = L - DW_DOME_B
+    assert t3 > t2, "the dowel's domes and chamfer leave it no barrel"
+    prof = (cq.Workplane("XY").moveTo(0.0, 0.0)
+            .threePointArc(_cap_mid(d_a / 2.0, h_a, 0.0, +1), (d_a / 2.0, t1))
+            .lineTo(d / 2.0, t2).lineTo(d / 2.0, t3)
+            .threePointArc(_cap_mid(d / 2.0, DW_DOME_B, L, -1), (0.0, L))
+            .close())
+    return prof.revolve(360.0, (0, 0, 0), (0, 1, 0)).translate((0.0, -L / 2.0, 0.0))
 
 
 # (set_screw() and m4_insert() moved to freecad/fasteners.py -- imported above so every project shares
@@ -279,8 +306,9 @@ def screw_pulley(high: bool = False) -> cq.Workplane:
 # run "all the way" so it shows which way it goes on). The bore is the shaft's D end to end,
 # open at both ends. Its -Y face is where the shaft's flat begins: the D key stops on the
 # round shaft there, and THAT sets the pulley's place -- so the flat's length (dimensions.
-# MOTOR_SHAFT_FLAT_L, measured 18) sets it. Its +Y end is the +Y flange (the
-# shaft stands 0.3 past it): the hub no longer runs on past the tip, toward the next belt.
+# MOTOR_SHAFT_FLAT_L, measured 18) sets it. Its +Y end is the +Y flange, and the shaft is cut
+# flush with it (MOTOR_SHAFT_CUT_L). There is no hub either side (user, 2026-10-29): the bore is
+# the pulley's own 8 mm, all of it on the flat.
 # Drawn at the shaft's own sizes: a nozzle-drawn round hole prints under (cadkit's M4 pocket
 # needed +0.1 to let a 6.0 insert drop in). At 0.0 it went on but would not come off without
 # breaking it (user, 2026-10-28: "a touch too tight"), so 0.05 a side: still a grip, now a
@@ -290,19 +318,24 @@ MOTOR_BORE_CLR = 0.05           # on the bore's radius and its flat
 
 def motor_pulley(flat_deg: float = 0.0) -> cq.Workplane:
     """Flanged GT2 pulley on the motor shaft, axis Y, centred at y=0 (the motor's faceplate at
-    y = -MOTOR_PULLEY_STANDOFF). 45 deg flanges both sides, a hub down to where the shaft's
-    flat begins, an open D-bore whose flat faces +Z -- turned by `flat_deg` about Y, so the
-    build can keep it on the shaft's flat when it turns the pulley to mesh the belt."""
+    y = -MOTOR_PULLEY_STANDOFF). SYMMETRIC, NO HUB (user, 2026-10-29): both flanges are the
+    old +Y end's sharp one -- a 45 deg flare from PULLEY_OD to PULLEY_FLANGE_OD inside the
+    pulley's own width, ending in a sharp edge at each face. Its -Y face is where the shaft's
+    flat begins, so the D key's stop is its seat (dimensions.MOTOR_PULLEY_STANDOFF). An open
+    D-bore the full width, its flat facing +Z -- turned by `flat_deg` about Y, so the build can
+    keep it on the shaft's flat when it turns the pulley to mesh the belt."""
     from .servo42d import SHAFT_L
-    w, ft = D.PULLEY_W, D.PULLEY_FLANGE_T
-    y0 = -MOTOR_PULLEY_STANDOFF + SHAFT_L - D.MOTOR_SHAFT_FLAT_L     # the flat's start
-    y1 = w / 2                                                       # the +Y flange's face
-    out = (cyl_y(D.PULLEY_OD, y1 - y0, y0=y0)                        # hub + toothed band
-           .union(cyl_y(D.PULLEY_FLANGE_OD, ft, y0=-w / 2))          # -Y flange, belt face flat
-           .union(_cone(D.PULLEY_FLANGE_OD / 2, D.PULLEY_OD / 2, _CHAMFER,      # ...on a 45 deg
-                        cq.Vector(0, -w / 2, 0), cq.Vector(0, -1, 0)))          # cone to the hub
+    w = D.PULLEY_W
+    y0, y1 = -w / 2, w / 2
+    assert abs((-MOTOR_PULLEY_STANDOFF + SHAFT_L - D.MOTOR_SHAFT_FLAT_L) - y0) < 1e-9, (
+        "the pulley's -Y face is not where the shaft's D flat begins")
+    assert w - 2 * _CHAMFER >= D.BELT_W, (
+        "the belt (%.1f) does not fit between the two flares (%.2f)" % (D.BELT_W, w - 2 * _CHAMFER))
+    out = (cyl_y(D.PULLEY_OD, w, y0=y0)                              # toothed band
            .union(_cone(D.PULLEY_OD / 2, D.PULLEY_FLANGE_OD / 2, _CHAMFER,
-                        cq.Vector(0, w / 2 - _CHAMFER, 0), cq.Vector(0, 1, 0))))   # 45° +Y
+                        cq.Vector(0, y0 + _CHAMFER, 0), cq.Vector(0, -1, 0)))   # 45° -Y
+           .union(_cone(D.PULLEY_OD / 2, D.PULLEY_FLANGE_OD / 2, _CHAMFER,
+                        cq.Vector(0, y1 - _CHAMFER, 0), cq.Vector(0, 1, 0))))   # 45° +Y
     out = out.cut(_tooth_cutter("Y"))                                # 14 GT2 grooves
     r = D.MOTOR_SHAFT_D / 2.0 + MOTOR_BORE_CLR
     z_flat = D.MOTOR_SHAFT_FLAT - D.MOTOR_SHAFT_D / 2.0 + MOTOR_BORE_CLR

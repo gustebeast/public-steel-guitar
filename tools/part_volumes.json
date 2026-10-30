@@ -43,7 +43,7 @@
   },
   "bridge_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 327020.2
+   "volume_mm3": 330795.6
   },
   "cart_base": {
    "material": "pctg",
@@ -55,7 +55,7 @@
   },
   "chassis_0": {
    "material": "petg-gf",
-   "volume_mm3": 600117.0
+   "volume_mm3": 599218.3
   },
   "chassis_0_light": {
    "material": "pctg",
@@ -63,7 +63,7 @@
   },
   "chassis_1": {
    "material": "petg-gf",
-   "volume_mm3": 666938.2
+   "volume_mm3": 663365.6
   },
   "chassis_1_light": {
    "material": "pctg",
@@ -71,7 +71,7 @@
   },
   "chassis_2": {
    "material": "petg-gf",
-   "volume_mm3": 609988.0
+   "volume_mm3": 604682.8
   },
   "chassis_2_light": {
    "material": "pctg",
@@ -95,7 +95,7 @@
   },
   "keyhead_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 255192.3
+   "volume_mm3": 253029.5
   },
   "kl_axle": {
    "material": "pctg",
@@ -167,23 +167,23 @@
   },
   "motor_pulley": {
    "material": "pctg",
-   "volume_mm3": 640.7
+   "volume_mm3": 257.2
   },
   "motor_shaft_saw_jig": {
    "material": null,
-   "volume_mm3": 32422.1
+   "volume_mm3": 29854.8
   },
   "nut_slide_insert_a": {
    "material": "pctg",
-   "volume_mm3": 4337.7
+   "volume_mm3": 4555.6
   },
   "nut_slide_insert_b": {
    "material": "pctg",
-   "volume_mm3": 7000.0
+   "volume_mm3": 6169.6
   },
   "nut_slide_insert_c": {
    "material": "pctg",
-   "volume_mm3": 9199.9
+   "volume_mm3": 10383.2
   },
   "optical_guard": {
    "material": "petg-gf",
@@ -191,11 +191,11 @@
   },
   "pedal_bar_a": {
    "material": "petg-gf",
-   "volume_mm3": 420256.0
+   "volume_mm3": 419663.2
   },
   "pedal_bar_b": {
    "material": "petg-gf",
-   "volume_mm3": 481211.9
+   "volume_mm3": 480322.7
   },
   "pedal_bar_c": {
    "material": "petg-gf",
@@ -283,43 +283,43 @@
   },
   "top_plate_0": {
    "material": "pctg",
-   "volume_mm3": 65214.1
+   "volume_mm3": 65175.6
   },
   "top_plate_0_color": {
    "material": "pctg",
-   "volume_mm3": 18734.6
+   "volume_mm3": 18721.8
   },
   "top_plate_1": {
    "material": "pctg",
-   "volume_mm3": 19506.3
+   "volume_mm3": 19496.7
   },
   "top_plate_1_color": {
    "material": "pctg",
-   "volume_mm3": 6294.4
+   "volume_mm3": 6291.2
   },
   "top_plate_2": {
    "material": "pctg",
-   "volume_mm3": 19506.3
+   "volume_mm3": 19496.7
   },
   "top_plate_2_color": {
    "material": "pctg",
-   "volume_mm3": 6294.4
+   "volume_mm3": 6291.2
   },
   "top_plate_3": {
    "material": "pctg",
-   "volume_mm3": 186285.8
+   "volume_mm3": 186182.2
   },
   "top_plate_3_color": {
    "material": "pctg",
-   "volume_mm3": 115867.4
+   "volume_mm3": 115832.8
   },
   "top_plate_4": {
    "material": "pctg",
-   "volume_mm3": 243348.8
+   "volume_mm3": 243229.0
   },
   "top_plate_4_color": {
    "material": "pctg",
-   "volume_mm3": 116111.5
+   "volume_mm3": 116071.6
   },
   "ui_clamp": {
    "material": "petg-gf",

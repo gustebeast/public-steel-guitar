@@ -337,15 +337,11 @@ DEFERRED = {
             # the USB run no longer goes to the Pi through the -Y rail -- both optical leads
             # now end a few cm away on the output board, J4 and J9 -- so the gate checks them
             # again. Parked, the collision had been invisible for four days.)
-            # brenner's leg blind-mate against branner's decoupled body adapter at the
-            # -X/+Y corner: the patch lead 379 mm3, the plug 140 mm3. OWNER brenner --
-            # body_adapter lives in leg_stack, their registered scope, so both halves of
-            # this one are theirs.
             # (THE OPTICAL BOARD INTO THE BRIDGE ENDPLATE, 479.5 mm3, deferred 2026-09-22,
             # OWNER bronner, is RETIRED 2026-10-29: the build no longer reports the pair and
             # the two solids intersect in 0.0 mm3 on the shared cache of that day. Gated again.)
-            frozenset({"body_adapter", "leg_trrs_patch"}),
-            frozenset({"body_adapter", "leg_trrs_plug"}),
+            # (body_adapter vs leg_trrs_patch / leg_trrs_plug, deleted 2026-10-29: the leg's
+            # joint is the pogo boards now and neither part is built.)
             # (the 24 V runs vs motor/chassis deferral, OWNER bronner, is UN-deferred
             # 2026-09-21: it excused EVERY 24 V wire against ANY motor or chassis part, which
             # hid far more than the two clips it was written for -- the runs are rerouted
@@ -395,22 +391,18 @@ DEFERRED_RULES = (
     #  So: not declared away, RECLASSIFIED -- by the tool that owns the distinction. If these
     #  conductors ever start to RUN through each other, check_cable_pairs fails on it with a
     #  length, which is a better signal than this rule ever gave.)
-    # THE INSTRUMENT SHORTENING vs THE R1 FOOT-LED BOARDS (USER DEFERRED 2026-10-29: "push the
-    #  endplate changes anyway and add a comment to the overlap"). The +X endplate face came in
-    #  25.06 -> 23.43 and the keyhead 0.2 thinner, so the leg-to-leg light run is ~1.8 shorter;
-    #  foot_light derives pitch = run_len / N_LED, but the R1 boards are fabricated copper. They
-    #  now overlap each other at the seam (~35 mm3), the chassis (4.4) and the seam pogos (3.2
-    #  each). OWNER brenner: the rev-2 foot boards (the width re-place) are derived on the short
-    #  run and retire this. Exact names, so nothing else of the family hides behind it.
-    (re.compile(r"^foot_pcb_[ab]$"), re.compile(r"^(foot_pcb_[ab]|foot_pogo_pins|chassis_0)$"),
-     "R1 foot-LED boards vs the shortened light run (OWNER brenner, rev-2 foot boards)"),
+    # (The two R1 foot-LED deferrals -- the shortened light run and string 1's faceplate wall
+    #  at the new standoff -- are RETIRED, 2026-10-29: the notch rev re-derives both boards on
+    #  the live geometry, notched round string 1's motor, and the gate is clean of them.)
     # Same change, OWNER bronner: the output board moved -X 1.63 with the face and its J2 -> Pi
     #  USB lead now clips chassis_0 (4.4 mm3). Re-routed in the Xilaghy follow-up.
     (re.compile(r"^wire_usb$"), re.compile(r"^chassis_0$"),
      "output J2 -> Pi USB lead vs the chassis after the +X face move (OWNER bronner, Xilaghy follow-up)"),
-    (re.compile(r"^pedal\d+_[A-Z]+\d+$"), re.compile(r"^pedal_bar_[abc]$"),
-     "pedal board parts vs the pedal bar (30 pairs, ~195 mm3). USER DEFERRED: the bar is "
-     "to be redesigned around the boards later"),
+    # The pedal-board-components-vs-bar rule (2026-09-15) is RETIRED (2026-10-29): the boards
+    # are single pedalN_pcb solids now, so its pedalN_<REF> pattern matched nothing, and
+    # neither the board nor its silk touches the bar. What the knee-family whitelist was
+    # hiding instead -- each pcb_shim 241 mm3 into solid bar -- is cut
+    # (foot_pedal.shim_slot).
     # THE BODY NARROWED 16.8 / 15.2 (branner's -Y rail move, 2026-10-29). Two things were
     # cleared by the user to clip the new wall until they are relocated, and nothing else:
     # the UI board and the optical board's cables. The UI station has since been relocated

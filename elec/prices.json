@@ -176,13 +176,13 @@
       "order": "2 x $3.93 (pack of 100) = $7.86 for 110 needed"
     },
     "break_dowel": {
-      "usd": 0.254,
+      "usd": 1.39,
       "verified": "v",
       "per_instrument": 10,
       "vendor": "McMaster-Carr",
-      "sku": "91595A018",
-      "order": "2 x $12.70 (pack of 50) = $25.40 for 100 needed",
-      "what": "O2 x 4 dowel pin, 52100 -- the nut break pins"
+      "sku": "91595A119",
+      "order": "20 x $6.95 (pack of 5) = $139.00 for 100 needed",
+      "what": "O4 x 4 dowel pin, 4140, round/chamfer ends -- the nut break pins (was O2 x 4 91595A018)"
     },
     "guide_rod_o3_5": {
       "usd": 1.13,

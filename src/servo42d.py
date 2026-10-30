@@ -53,7 +53,7 @@ TOTAL_L = D.MOTOR_BODY_L       # 53.2 faceplate -> back of the driver's ribs
 LOWER_L = D.MOTOR_LOWER_L_MEASURED   # 51.6 ...to the lower screw heads, under the ribs
 LOOP_TOP = D.MOTOR_HEIGHT_MEASURED - DRV_SQ / 2  # 29.85: the loop, over the axis (the
                                                  # height was taken off the cover's flat)
-PILOT_D, PILOT_H = D.NEMA17_PILOT_D, 2.0
+PILOT_D, PILOT_H = D.NEMA17_PILOT_D, D.MOTOR_PILOT_H
 SHAFT_L = PILOT_H + D.MOTOR_SHAFT_PROUD   # 21.5 from the faceplate (see the docstring)
 HALF = SQ / 2
 
