@@ -505,6 +505,16 @@ DIVOT_D   = PIN_D + 0.3                         # 4.3, the dowel's cradle
 LIP_STRING_CLR = 0.3
 _CROWN_SEATED = PIN_D / 2 - (DIVOT_D / 2 - PIN_D / 2)   # 1.85 over the centre of the cut
 LIP_H = min(DIVOT_D / 2 * math.sin(math.radians(45.0)), _CROWN_SEATED - LIP_STRING_CLR)
+# THE LIP'S TIP IS ROUND, BECAUSE THAT IS WHAT PRINTS (user, off the first print: "a sharp corner
+# that can't be replicated by the slicer"). Sharp, arc and top met at 45 deg in a fin no bead fits
+# in. It is a layer-made corner (the print's X is in its plane), whose least is one bead
+# (fit-finder results), tangent to the cradle's arc and the lip's top. The seat's arc therefore
+# ends at _LIP_SEAT_DEG, +14, and the nose stands on above it.
+LIP_R = 1 * D.BEAD
+_LIP_CZ = LIP_H - LIP_R                                 # over the centre of the cut
+_LIP_CX = math.sqrt((DIVOT_D / 2 + LIP_R) ** 2 - _LIP_CZ ** 2)   # off DOWEL_X
+_LIP_SEAT_DEG = math.degrees(math.atan2(_LIP_CZ, _LIP_CX))
+assert _LIP_CX < X_FRONT - DOWEL_X, "the lip's nose has run off its +X face"
 # The insert reaches from just past the dowel back under the rod, so the flat spans both
 # the cradle and the clamp area. It stops short of the trough's -X wall.
 INS_X1    = X_FRONT                             # FLUSH with the block's +X face: the
@@ -958,17 +968,35 @@ def slide_insert(i: int) -> cq.Workplane:
     # keeps only the half of it below that face. Dulled, that half would be the flat
     # ceiling this is here to remove.
     #
-    # THE LIP IS ADDED BEFORE THE CUT, +X of the 45 deg point only: the cut then leaves the
-    # arc running out to +45 at the lip's top, and SKU B's wall at the end of the trough
-    # stays the height it was.
-    wall_x = DOWEL_X + LIP_H
-    body = body.union(_part_wire(i).extrude(LIP_H + 1.0).translate((0, 0, fz + DIVOT_OFF - 1.0))
-                      .intersect(box_at(INS_X1 + 1.0 - wall_x, 4000.0, LIP_H + 1.0,
-                                        x=(wall_x + INS_X1 + 1.0) / 2, y=0.0,
-                                        z=fz + DIVOT_OFF + (LIP_H - 1.0) / 2)))
+    # THE LIP IS ADDED BEFORE THE CUT, its section running from the +X face over the top and
+    # round the nose (LIP_R) to the arc, so the cut finishes it, and SKU B's wall at the end of
+    # the trough stays the height it was.
+    zc = fz + DIVOT_OFF
+    cx, cz = DOWEL_X + _LIP_CX, zc + _LIP_CZ
+    tx = DOWEL_X + _LIP_CX * (DIVOT_D / 2) / (DIVOT_D / 2 + LIP_R)      # the nose meets the arc
+    tz = zc + _LIP_CZ * (DIVOT_D / 2) / (DIVOT_D / 2 + LIP_R)
+    lip = (cq.Workplane("XZ").moveTo(INS_X1, zc - 1.0).lineTo(INS_X1, zc + LIP_H)
+           .lineTo(cx, zc + LIP_H).threePointArc((cx - LIP_R, cz), (tx, tz))
+           .lineTo(tx, zc - 1.0).close().extrude(2 * HW).translate((0.0, HW, 0.0)))
+    body = body.union(lip.intersect(_part_wire(i).extrude(LIP_H + 2.0)
+                                    .translate((0, 0, zc - 1.0))))
     body = body.cut(teardrop_hole(DIVOT_D, CRADLE_L, (DOWEL_X, D.nut_y(i) - CRADLE_L / 2.0,
                                                       fz + DIVOT_OFF),
                                   (0.0, 1.0, 0.0), (-1.0, 0.0, 0.0), nozzle=0.0))
+    # WHERE THE NECK STOPS SHORT OF THE APEX (the heavy SKUs: nx0 is set by the coil) its -X face
+    # meets the flank in a 45 deg fin instead of the neck's top: round that too, a bead where
+    # the flank has the room, and never past the flank's foot, where the seat starts.
+    ax = DOWEL_X - DIVOT_D / 2 * math.sqrt(2.0)
+    r = min(D.BEAD, (DOWEL_X - DIVOT_D / 2 * math.sqrt(0.5) - nx0) / (1 + math.sqrt(0.5)))
+    if ax - nx0 < r * math.tan(math.radians(22.5)):
+        c0, c1 = nx0 + r, zc - (nx0 + r - ax) - r * math.sqrt(2.0)      # centre of the round
+        fx, fz1 = c0 + r * math.sqrt(0.5), c1 + r * math.sqrt(0.5)      # tangent on the flank
+        tip = (cq.Workplane("XZ").moveTo(nx0 - 1.0, c1).lineTo(nx0, c1)
+               .threePointArc((c0 + r * math.cos(math.radians(112.5)),
+                               c1 + r * math.sin(math.radians(112.5))), (fx, fz1))
+               .lineTo(fx - 3.0, fz1 + 3.0).lineTo(nx0 - 1.0, fz1 + 3.0).close()
+               .extrude(2 * HW).translate((0.0, HW, 0.0)))
+        body = body.cut(tip)
 
     # ── TWO 45 DEG LEAD-INS FOR THREADING (user) ──────────────────────────
     # The flat meets the insert's -X end face, and it meets the neck's -X face, at square
