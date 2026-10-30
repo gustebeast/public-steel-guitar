@@ -1047,20 +1047,29 @@ def _clamp_relief(ep, roofed=False):
     `roofed` is for a solid that prints +Z and stands -Y of the clamp (the chassis' faceplate
     walls): each box runs on +Y out past the clamp's own swept reach, so it leaves no sliver
     between, and a 45 deg roof on it rising +Y, so the wall left over it prints."""
-    out, g = None, CLAMP_RELIEF_CLR
-    for i in range(D.N_STRINGS):
+    def posed(i):
         # at this string's own belt gap AND at the default one, which is how
         # check_carriage_travel poses it -- the relief must satisfy the gate that checks it
         parts = ([w.val() for _n, w in BTn.clamp_components(belt_cut(i)[1])]
                  + ([w.val() for _n, w in BTn.clamp_components()] if roofed else []))
-        # SPEED: pose everything first (no booleans), then clip the solid to the clamp's whole
-        # swept box ONCE, and intersect each posed part with that small clip, not with the
-        # whole solid -- 81 stations x 8 parts against a chassis segment took the lead build
-        # past 80 minutes (2026-10-29).
-        posed = []
+        out = []
         for k in range(CLAMP_RELIEF_STATIONS + 1):
             loc = clamp_location(i, D.CARRIAGE_TRAVEL * k / CLAMP_RELIEF_STATIONS)
-            posed += [h.moved(loc) for h in parts]
+            out += [h.moved(loc) for h in parts]
+        return out
+    return _swept_relief(ep, posed, roofed)
+
+
+def _swept_relief(ep, posed_fn, roofed=False):
+    """The relief boxes (see _clamp_relief) for the solids posed_fn(i) gives for each string,
+    in world, over whatever travel they cover."""
+    out, g = None, CLAMP_RELIEF_CLR
+    for i in range(D.N_STRINGS):
+        # SPEED: pose everything first (no booleans), then clip the solid to the whole swept
+        # box ONCE, and intersect each posed part with that small clip, not with the whole
+        # solid -- 81 stations x 8 parts against a chassis segment took the lead build past
+        # 80 minutes (2026-10-29).
+        posed = posed_fn(i)
         bbs = [hb.BoundingBox() for hb in posed]
         sb = [min(b.xmin for b in bbs), max(b.xmax for b in bbs), min(b.ymin for b in bbs),
               max(b.ymax for b in bbs), min(b.zmin for b in bbs), max(b.zmax for b in bbs)]
@@ -1169,6 +1178,39 @@ def _belt_args(i, down=0.0):
     x0, x1 = min(_CLAMP_XS), max(_CLAMP_XS)
     p = C.clamp_p(m, s, clamp_upper(i), x0, x1, down)
     return (m, s, clamp_upper(i), p, x0, x1, *BTn.belt_ends(belt_cut(i)[1]))
+
+
+# ⚠ ...AND EACH BELT'S LANE OUT OF THE CHASSIS' FACEPLATE WALLS (user, 2026-10-29: "Just need
+# to thin out the chassis a bit or raise the 45 angle so it starts at a higher z"). At the 7.5
+# standoff a 6.4 faceplate wall's +Y face stands 1.1 off the string, 1.4 inside the belt's -Y
+# edge (the lead's build: chassis vs belt_0..9, 5-79 mm3). The wall keeps its 6.4 -- the tee
+# board's +Y edge is its face, and thinning it moved every tee board and its 24 V leads into
+# the motors' coil leads -- and gives up only the belt's band, roofed at 45 deg like the clamp
+# relief. The belt moves only at its ends as the nut travels, so three stations cover it.
+def _belt_posed(i):
+    return [C.belt(*_belt_args(i, D.CARRIAGE_TRAVEL * k / 2.0)).val() for k in range(3)]
+
+
+for _csi, _seg in enumerate(chassis_segments):
+    _br = _swept_relief(_seg, _belt_posed, roofed=True)
+    if _br is None:
+        continue
+    _brb = _br.val().BoundingBox()
+    assert CH.RAIL_INNER_Y < _brb.ymin and _brb.ymax < CH.Y_HI - CH.T / 2, (
+        "a belt's relief reaches a side rail (y %.2f..%.2f): the rails are never cut"
+        % (_brb.ymin, _brb.ymax))
+    _n0 = len(_seg.val().Solids())
+    chassis_segments[_csi] = _seg.cut(_br)
+    assert len(chassis_segments[_csi].val().Solids()) == _n0, (
+        "the belts' relief cut chassis_%d apart" % _csi)
+    PARTS[f"chassis_{_csi}"] = (partial(heal, chassis_segments[_csi]),
+                                *PARTS[f"chassis_{_csi}"][1:])
+for _i in range(D.N_STRINGS):              # ...and the belt now clears every segment
+    for _bp in _belt_posed(_i):
+        for _csi, _seg in enumerate(chassis_segments):
+            _bx = _bp.intersect(_seg.val())
+            assert _bx.Volume() < 1e-3, (
+                "belt_%d is %.3f mm3 into chassis_%d after the belt relief" % (_i, _bx.Volume(), _csi))
 
 
 def _string_components(i):
