@@ -61,7 +61,7 @@ LEG_SHELL_X0 = CH.LEG_SHELL_NX[0]                # -X end of the kept leg shell 
 # New solid under the insert pockets for their extensions and height screws (nut_block's HEIGHT
 # ADJUST block). Y: the pockets plus a two-bead wall each side. X: from this part's -X face to the
 # extension pockets' roofs plus a two-bead wall -- which runs past XHI, so it is added AFTER the
-# thickness trim. Z: 0.4 over the chassis's wide corner rib (nut_block.HS_PRISM_BOT) up to 0.8 under the top
+# thickness trim. Z: 2.0 over the chassis's wide corner rib (nut_block.HS_PRISM_BOT) up to 0.8 under the top
 # plate.
 HS_X1 = D.NUT_BLOCK_X + NB.HS_POCKET_X1 + D.MIN_WALL_2P
 HS_Y0, HS_Y1 = NB._INS_LO - D.MIN_WALL_2P, NB._INS_HI + D.MIN_WALL_2P
