@@ -49,9 +49,10 @@ GEOM_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
 # these -- e.g. electronics' output-board height (R1 rides higher than R2's floor term).
 OUTPUT_PANEL_REV = int(os.environ.get("OUTPUT_PANEL_REV", "2"))
 OPTICAL_REV = int(os.environ.get("OPTICAL_REV", "2"))
-assert OUTPUT_PANEL_REV in (1, 2) and OPTICAL_REV in (1, 2), "a board REV is 1 or 2"
+PI_CAP_REV = int(os.environ.get("PI_CAP_REV", "2"))
+assert all(r in (1, 2) for r in (OUTPUT_PANEL_REV, OPTICAL_REV, PI_CAP_REV)), "a board REV is 1 or 2"
 REV1_DIR = os.path.join(os.path.dirname(GEOM_DIR), "rev1")
-REV = {"output_panel": OUTPUT_PANEL_REV, "optical": OPTICAL_REV}
+REV = {"output_panel": OUTPUT_PANEL_REV, "optical": OPTICAL_REV, "pi_cap": PI_CAP_REV}
 
 
 def _with_revs(boards):

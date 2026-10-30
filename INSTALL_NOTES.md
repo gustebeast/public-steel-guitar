@@ -1163,6 +1163,19 @@ To rebuild R1's design files (they match the copper in hand): `OPTICAL_REV=1 py 
 elec/optical.py`. The placements match the ordered board exactly, including the MCU block
 that a cadkit change had slid by 0.05 mm (frozen back, 2026-10-29).
 
+## R1 stop-gap: the Pi cap in hand, in an R2 instrument (2026-10-30)
+
+The R2 cap moved its ribbon header (J5) and the foot-light drop (J6) west so the Pi can go right
+up to the motors. On the R1 cap in hand both stand over string 2's motor driver, so the Pi cannot
+go in its R2 seat with that cap on. Until R2 caps arrive:
+- **Let the Pi sit loose, at an angle**, off its M3 and clear of the driver, with the cap on its
+  header and the ribbon and leads plugged in. Pad it so nothing conductive touches.
+- Nothing else in the instrument depends on the Pi's seat. The R2 cap drops in later with no
+  other change.
+
+To rebuild R1's design files (they match the board in hand): `PI_CAP_REV=1 PI_CAP_OUT=<a scratch
+folder> py -3.12 elec/pi_cap.py`. Its geometry as made is `elec/rev1/pi_cap.geom.json`.
+
 ## Foot lights: plug the lead in first, then slide the strip in from +X (2026-10-29)
 
 The two foot-light boards (src/foot_light.py) slide along the channel over the light window,
