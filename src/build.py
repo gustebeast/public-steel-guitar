@@ -1128,17 +1128,14 @@ if _ep_relief is not None:
     BE.bridge_endplate = bridge_endplate
     PARTS["bridge_endplate"] = (partial(heal, bridge_endplate), *PARTS["bridge_endplate"][1:])
 # (compared within each side of the rail: the odd and even strings' screws sit at opposite x,
-#  so their seats have different neighbours, and string 1's is the last on its side.
-#  R2 only: R1's board stands higher (electronics.OP_UNDER_Z) and the recess still opens string
-#  10's seat over it -- the stop-gap, not the design.)
-if _EL_ports.OUTPUT_PANEL_REV >= 2:
-    _seat_v = [bridge_endplate.intersect(BE.seat_ring(_i)).val().Volume()
-               for _i in range(D.N_STRINGS)]
-    for _side in {D.screw_x(_i) for _i in range(D.N_STRINGS)}:
-        _sv = [_v for _i, _v in enumerate(_seat_v) if D.screw_x(_i) == _side]
-        assert min(_sv) > max(_sv) - 12.0, (
-            "a support-bearing seat has lost wall the others keep (mm3 of ring left, string "
-            "1..10): " + ", ".join(f"{_v:.1f}" for _v in _seat_v))
+#  so their seats have different neighbours, and string 1's is the last on its side.)
+_seat_v = [bridge_endplate.intersect(BE.seat_ring(_i)).val().Volume()
+           for _i in range(D.N_STRINGS)]
+for _side in {D.screw_x(_i) for _i in range(D.N_STRINGS)}:
+    _sv = [_v for _i, _v in enumerate(_seat_v) if D.screw_x(_i) == _side]
+    assert min(_sv) > max(_sv) - 12.0, (
+        "a support-bearing seat has lost wall the others keep (mm3 of ring left, string "
+        "1..10): " + ", ".join(f"{_v:.1f}" for _v in _seat_v))
 
 # THE PICKUP'S SCREW TERMINAL MUST STAY WIREABLE OVER STRING 10'S WHOLE CLAMP TRAVEL (2026-10-29).
 # String 10's clamp rolls as it runs to the screw pulley and at the bottom of its travel reaches

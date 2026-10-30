@@ -4673,6 +4673,7 @@ if __name__ == "__main__":
         raise SystemExit("the CAD sourcing table and the netlist disagree -- see above")
     import volts_decl                   # A16: generated, see volts_decl.py
     volts_decl.into(BOARD_NOTES, "optical")
+    BOARD_NOTES["silk_rev"] = "r%d" % OP.OPTICAL_REV  # the printed rev IS the switch (cad_geom_check)
     import r1_silk                        # ordered R1: silk as sent
     if OP.OPTICAL_REV == 1:
         r1_silk.as_ordered(BOARD_NOTES)

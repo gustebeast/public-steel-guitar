@@ -3367,6 +3367,7 @@ if __name__ == "__main__":
     netcheck.no_orphan_pins(os.path.join(OUT_DIR, "output_panel.net"))
     import volts_decl                   # A16: generated, see volts_decl.py
     volts_decl.into(BOARD_NOTES, "output_panel")
+    BOARD_NOTES["silk_rev"] = "r%d" % REV  # the printed rev IS the switch (cad_geom_check)
     import r1_silk                        # ordered R1: silk as sent
     if REV == 1:
         r1_silk.as_ordered(BOARD_NOTES)

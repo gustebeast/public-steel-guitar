@@ -468,13 +468,10 @@ def optical_feed():
     # the old centre line with its two ends moved onto the ways: the plug end sideways and
     # down to the contacts' level, the J9 end onto the row
     mid = [(q[0], q[1], q[2]) for q in old[2:-3]]
-    centre = ([ac, (ac[0], old[1][1], ac[2]), (mid[0][0], old[1][1], ac[2])] + mid[1:]
+    # J2 is TOP ENTRY: the pair leaves the plug UP (out_a), to the level the old centre line
+    # crosses at (old[0], over the plug), then follows it
+    centre = ([ac, (ac[0], ac[1], old[0][2]), (ac[0], old[1][1], old[0][2])] + mid
               + [(bc[0], old[-3][1], old[-3][2]), (bc[0], bc[1], old[-3][2]), bc])
-    if OP.OPTICAL_REV != 1:
-        # R2's J2 is TOP ENTRY: the pair leaves the plug UP (out_a), to the level the old
-        # centre line crosses at (old[0], over the plug), then follows it
-        centre = ([ac, (ac[0], ac[1], old[0][2]), (ac[0], old[1][1], old[0][2])] + mid
-                  + [(bc[0], old[-3][1], old[-3][2]), (bc[0], bc[1], old[-3][2]), bc])
     half = (a[1][0][0] - a[0][0][0]) / 2.0
     legs = bundle_paths(centre, [(0.0, -half), (0.0, half)], across=(1.0, 0.0, 0.0))
     if max(abs(legs[0][-1][m] - b[0][0][m]) for m in range(3)) > 0.05:

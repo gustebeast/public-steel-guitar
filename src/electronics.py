@@ -1450,11 +1450,6 @@ OP_UNDER_Z = OP_FLOOR_Z + max(OP_PLATE_T + OP_STANDOFF, _OP_M4.anchor_min_wall) 
 # its travel). So R1 stands only as low as keeps J8's holes a core's radius and a fit (one bead)
 # over that drive's screw-pulley flange, which the belt and clamp ride inside; build.py proves
 # the lead-in against the posed clamp. R2 turned J8 to enter from -Y, and lies on the floor.
-if OUTPUT_PANEL_REV < 2:
-    from . import screw_terminal as _ST                                 # noqa: E402
-    _OP_J8_H = min(p[2] for p, _d in _ST.way_points("output_panel", "J8"))   # over the underside
-    OP_UNDER_Z = max(OP_UNDER_Z, D.screw_pulley_z(D.N_STRINGS - 1) + D.PULLEY_FLANGE_OD / 2.0
-                     + D.BEAD - _OP_J8_H)                                # -53.9
 JACK_Z = OP_UNDER_Z + _OP_T + BG.mouth("output_panel", "J5")["axis_h"]           # -53.11
 # the three connectors a player reaches through the panel, in the order they sit along it
 OP_PANEL_REFS = ("J5", "J1", "J6")          # 1/4 in jack, USB-C, 24 V inlet

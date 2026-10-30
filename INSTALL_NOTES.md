@@ -1129,49 +1129,13 @@ belt-clamp travel. So:
 - Tighten the M2.5 screws from above (0.4 N m). Keep the lead's jacket over the board, not
   hanging off the +Y edge: that side is the clamp's travel.
 
-The R1 board in hand keeps its +Y entry, see the stop-gap note below.
 
-## R1 stop-gap: the output board in hand, in an R2 instrument (2026-10-29)
+## R1 boards in hand, on the bench (2026-10-30)
 
-The R2 output board is 56 deep and 98 wide with its panel connectors moved (J5 -9, J1 centred
-between J5 and J6, J10 off the panel edge); the R1
-board in hand is 66 deep. In an R2 body the R1 board's +Y band would sit in string 10's screw
-pulley and belt, and its jack, USB-C and inlet would not line up with the R2 panel's holes. So
-until R2 boards arrive, **the R1 board does not go in the cradle**:
-- Lay it loose outside the instrument, next to the +X end. Use a non-conductive pad under it;
-  its back has exposed copper.
-- Run its inside leads out to it: the 24 V trunk (J7), the motor-controller link (J10), the
-  optical feed (J9) and the three USB-C leads (J2 to the Pi, J3 hub upstream, J4 to the optical
-  board). Take them through the empty panel openings, or under the open deck. The leads in
-  the BOM are long enough for this on the bench, not in a case.
-- Play and power it from the board's own connectors (J5 jack, J1 USB-C, J6 inlet), not
-  through the panel.
-- Nothing in the instrument depends on the board being in its cradle. The R2 board drops in
-  later with no other change.
-
-To rebuild R1's design files (they match the copper in hand): `OUTPUT_PANEL_REV=1 py -3.12
-elec/output_panel.py`. Its geometry as made is `elec/rev1/output_panel.geom.json`.
-
-## R1 stop-gap: the optical board in hand, in an R2 instrument (2026-10-29)
-
-The R2 optical board is 166.5 long and ends at y -100.6, inside the -Y rail. The R1 board in hand
-is 188.5 long and its compute tail reaches y -122.6, about 17.5 mm past the rail's inner face
-(-105.05). Its sensing strip is identical, so it still sits under the strings and on the same
-bearings. Until R2 boards arrive:
-- Fit the R1 board as usual on its two M4s. Its -Y tail **spills over the -Y rail**, outside
-  the body. Before tightening, check it rides over the rail top without touching. If it bears
-  on the rail, shim the board's M4s to clear; do not file or cut the rail (the side wall is
-  never cut).
-- Leave the optical guard's -Y end off over the tail; the R2 guard is shaped for the R2 board.
-- Its leads do not use the conduit: J1 is side-on at the R1 edge and J2 is a side-entry XH.
-  Run both outside the body, over the rail, to the output board: J1's USB-C lead to the output
-  board's J4, and J2's 24 V pair to J9.
-- Nothing else in the instrument depends on it. The R2 board drops in later with its leads
-  down the conduit.
-
-To rebuild R1's design files (they match the copper in hand): `OPTICAL_REV=1 py -3.12
-elec/optical.py`. The placements match the ordered board exactly, including the MCU block
-that a cadkit change had slid by 0.05 mm (frozen back, 2026-10-29).
+The design shows the R2 boards only. Until they arrive, the R1 boards are a bench stop-gap:
+- **Pi cap:** the Pi sits loose at an angle.
+- **Output board:** it stays outside the instrument.
+- **Optical board:** it goes on the same two mount holes and lines up with the strings; its tail may spill over the edge.
 
 ## Foot lights: plug the lead in first, then slide the strip in from +X (2026-10-29)
 
@@ -1207,13 +1171,6 @@ out at +X, then A, letting the lead follow it back through the channel.
 
 ## The output board goes in low, short of home, and slides +X under string 10's seat (2026-10-29)
 
-**R1 stop-gap (the board in hand, `OUTPUT_PANEL_REV=1`):** R1 does not lie on the floor. Its
-pickup terminal J8 takes the leads from +Y, toward string 10's belt clamp, so R1 stands about
-9 mm higher (underside z -53.9), with J8's holes over string 10's drive. With R1 there is no
-shelf over the board: it drops straight in a couple of millimetres short of home and slides
-+X onto the panel as before. Bring the pickup lead over string 10's screw pulley and drop the
-two cores straight into J8 from above its entry. The steps below are for R2.
-
 The output board (`output_panel`) lies on the chassis floor now: its cradle's plate rests on
 the floor and the board stands only as high as its M4 insert's anchor needs (underside at
 z -62.85, the pins' cut ends 2.7 above the plate). Over it, the bridge endplate's screw rail
@@ -1234,3 +1191,26 @@ the other nine. That shelf covers the board's +X 23 mm, so the board cannot go s
 
 Out is the reverse: nut off, screw out, then pull it -X until it is clear of the panel, lift
 it 4 mm, slide it out from under the shelf and lift it out of the bay.
+
+## The break dowel goes into its insert from the -X side, tilted over the lip (2026-10-30)
+
+The cradle on each nut slide insert is a 180 degree seat tilted 45 degrees, so it has a lip on
+the +X (bridge) side and is open toward -X and up.
+
+1. Lay the Ø4 dowel in from the -X side, against the lip, and let it roll down into the seat.
+2. Nothing holds it there until the string does: keep the insert level, or a finger on the
+   dowel, until the string is over it. The string pulls it down into the seat.
+3. The lip stops about 0.3 under the string. A string that touches it means the dowel is not
+   seated.
+
+## Optical leads: 24 V through the cable hole first, then the USB lead (2026-10-30)
+
+On the R2 optical board both leads reach the output board through one closed house-shaped hole
+in the bridge endplate, under the USB notch in the optical board's -Y edge. It is sized to pass
+one plug at a time, so the order matters:
+
+1. Feed the **24 V lead** through first, with the XH-4 housing (the bigger plug) going through
+   on its own, and lay the pair along the hole's -Y wall.
+2. Then feed the **USB lead's** head through flat, beside the pair. Its ribbon stays in the hole.
+3. The USB-C plug at J1 needs the wider pocket at the top of the hole: it backs off -Y into it
+   to come out of its socket. Leave the pocket clear.

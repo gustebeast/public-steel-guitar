@@ -45,20 +45,21 @@ GEOM_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
 # THE BOARD REVISION THE MODEL IS BUILT WITH, per board that has more than one (the same
 # environment variables the generators read, so one switch sets both). 2 is the default
 # everywhere; 1 is the ordered board in hand, whose geometry lives in elec/rev1 (it is NOT in
-# elec/geom: see elec/rev1/README.md). Anything that has to differ by revision branches on
-# these -- e.g. electronics' output-board height (R1 rides higher than R2's floor term).
+# elec/geom: see elec/rev1/README.md). THE BOARDS ONLY: the plastic and the wiring are drawn for
+# R2 (user, 2026-10-30), so 1 regenerates an R1 board's files and is not an instrument build.
 OUTPUT_PANEL_REV = int(os.environ.get("OUTPUT_PANEL_REV", "2"))
 OPTICAL_REV = int(os.environ.get("OPTICAL_REV", "2"))
-assert OUTPUT_PANEL_REV in (1, 2) and OPTICAL_REV in (1, 2), "a board REV is 1 or 2"
+PI_CAP_REV = int(os.environ.get("PI_CAP_REV", "2"))
+assert all(r in (1, 2) for r in (OUTPUT_PANEL_REV, OPTICAL_REV, PI_CAP_REV)), "a board REV is 1 or 2"
 REV1_DIR = os.path.join(os.path.dirname(GEOM_DIR), "rev1")
-_REV = {"output_panel": OUTPUT_PANEL_REV, "optical": OPTICAL_REV}
+REV = {"output_panel": OUTPUT_PANEL_REV, "optical": OPTICAL_REV, "pi_cap": PI_CAP_REV}
 
 
 def _with_revs(boards):
     """`boards` with each rev-1 board's geometry read from elec/rev1 instead of elec/geom.
     Boards.load caches per board name, so the rev-1 file is put in that cache up front."""
     import json
-    for name, rev in _REV.items():
+    for name, rev in REV.items():
         if rev == 1:
             with open(os.path.join(REV1_DIR, name + ".geom.json"), encoding="utf-8") as fh:
                 boards._cache[name] = json.load(fh)
