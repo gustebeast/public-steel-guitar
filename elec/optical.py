@@ -4541,6 +4541,11 @@ BOARD_NOTES["quality"] = {
         }
     ],
     "pinouts": {
+        "B4B-XH-A": "R2's J2. JST eXH.pdf p.5, Header / Top entry type: seen from the slotted "
+                    "wall, No. 1 circuit is the right-hand post. KiCad JST_XH_B4B-XH-A has that "
+                    "wall at -Y and pad 1 at the -X end: the same post (as motor_ctrl). Board: "
+                    "1 V24_IN, 2 GND, 3 and 4 no connect, power first as every lead. Read "
+                    "2026-10-30",
         "TYPE-C-31-M-12": "KiCad's USB_C_Receptacle_HRO_TYPE-C-31-M-12 names each land by "
                           "its USB Type-C contact (A1 ... B12), the names Korean Hroparts' "
                           "drawing prints beside the same lands; every net is attached by "
