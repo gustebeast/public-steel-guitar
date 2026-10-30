@@ -42,7 +42,7 @@ from src import optical_pickup as cad           # noqa: E402
 # each spelling MEANS as a footprint-name fragment. Anything not listed is skipped rather
 # than guessed -- a check that cries wolf gets switched off.
 BOM_PKG = {
-    "LQFP176": "LQFP-176", "USB-C": "USB_C_Receptacle", "XH-SM-4": "JST_XH_S4B-XH-SM4",
+    "LQFP176": "LQFP-176", "USB-C": "USB_C_Receptacle", "XH-SM-4": "JST_XH_S4B-XH-SM4", "XH-TE-4V": "JST_XH_B4B-XH-A",
     "SOIC-14": "SOIC-14", "QFN-24": "HVQFN-24", "QFN-32": "QFN-32", "SOT-223": "SOT-223",
     "SOT-23-5": "SOT-23-5", "SOT-23-6": "SOT-23-6", "SOT-23": "SOT-23",
     "SOT-563": "SOT-563", "3225": "Crystal_SMD_3225", "OSC3225": "Oscillator_SMD_Abracon_ASE-4Pin_3.2x2.5mm", "4040": "L_Sunlord_SWPA40", "RNX-12": "Texas_RNX0012",
@@ -87,7 +87,7 @@ def netlist_codes(stem):
 
 
 def main():
-    stem = os.path.join(HERE, "out", "optical")
+    stem = os.path.join(os.environ.get("OPTICAL_OUT") or os.path.join(HERE, "out"), "optical")
     if not os.path.isfile(stem + ".net"):
         raise SystemExit("no %s.net -- generate the netlist first" % stem)
     net = netlist_codes(stem)

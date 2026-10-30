@@ -123,6 +123,14 @@ Frames: absolute X/Y/Z. Components face +Z (UP, at the strings).
 from __future__ import annotations
 
 import math
+import os
+
+# ── REVISION (2026-10-29) ──────────────────────────────────────────────────────────────────
+# R1 is the board in hand (ordered): it reaches -Y to -122.58, past the narrowed body's -Y
+# rail, and stays reproducible with OPTICAL_REV=1. R2 (the default) is the same strip --
+# aligned to the strings and bearings exactly as R1 -- with the compute section re-packed
+# inside today's -X edge so the -Y edge clears the rail (see R2_MOVES).
+OPTICAL_REV = int(os.environ.get("OPTICAL_REV", "2"))
 
 import cadquery as cq
 from cadquery.selectors import NearestToPointSelector
@@ -308,6 +316,10 @@ PKG = {
     # ORIENTED FOR A -Y MOUNT: 15.0 runs along X (the edge), 6.10 is the body's reach into
     # the board in Y. ⚠ 15.0 is JST's published B for the 4 way -- CONFIRM on the part's
     # drawing before layout, exactly as the 6 way's 20.0 was.
+    # R2's J2: B4B-XH-A, THROUGH-HOLE TOP ENTRY. 12.4 x 5.75 body, and the pin row is
+    # 0.525 off its centre, so the envelope here is the body grown by twice that to stay
+    # symmetric about the pads (where the part is placed).
+    "XH-TE-4V": (12.40, 6.80, 7.00),
     "XH-SM-4Y": (15.00, 6.10, 7.00),  # JST S2B-XH-SM4-TB, SMT side entry, -Y
                                       # (2-way since 2026-09-18, user -- 5 mm shorter
                                       #  than the 4-way it replaced; see elec/optical.py)
@@ -385,6 +397,11 @@ CRTYD = {
     "IND-4040": (5.15, 4.59),
     "RNX12":    (2.90, 3.90),   # elec/footprints/Steel.pretty/Texas_RNX0012_...
     "USB-C":    (10.73, 9.51),
+    "XH-TE-4V": (13.49, 6.84),   # KiCad JST_XH_B4B-XH-A_1x04 Vertical, read off the
+                                 # laid board. The layout centres the COURTYARD on the
+                                 # placement ("anchor": "courtyard"), so the pin row sits
+                                 # 0.525 +Y of it. (It was grown to 7.80 to centre the
+                                 # pins instead, and the real J2 then overlapped U8.)
     "XH-SM-4Y": (16.79, 12.09),  # 12.09 in Y against a 6.10 body: a side-entry
                                  # connector's land reaches well back under it
 }
@@ -1449,7 +1466,10 @@ def _parts():
     # because the ROUTER says so, not because of a dimension." The board is at a hard-won
     # 0-unconnected baseline and the whole purpose of moving the mount was to STOP perturbing
     # the placement. The freed room is recorded here for whoever does want to spend it.
-    _mcu_x1 = TAIL_X1 - MOUNT_KEEP - MOUNT_CLR - ROW_GAP       # 16.256, frozen at its old value
+    # ⚠ A LITERAL NOW (2026-10-29): it was TAIL_X1 - MOUNT_KEEP - MOUNT_CLR - ROW_GAP, and
+    # cadkit's M4 insert pilot growing 0.1 (MOUNT_KEEP 4.60 -> 4.65) slid the whole MCU block
+    # 0.05 -X off the ordered R1 board -- 24 parts, caught by _mcu_feed's C100 assert.
+    _mcu_x1 = 16.25583                                          # the ordered R1 board's value
     add("U6", "MCU -- STM32H743IIT6, 5 SAI TDM lanes from the audio ADCs, USB OTG_HS via ULPI", _MCU_PKG,
         _mcu_x1 - CRTYD[_MCU_PKG][0] / 2, y)
     y -= CRTYD[_MCU_PKG][1] / 2 + CRTYD_GAP
@@ -2578,6 +2598,65 @@ def _parts():
 
 PARTS = _parts()
 
+# ── R2: THE COMPUTE SECTION RE-PACKED INSIDE THE -Y RAIL (lead, 2026-10-29) ─────────────────
+# The rail moved in to string 10's motor back + MOTOR_INSTALL_CLR (motor_bank.RAIL_INNER_Y,
+# -105.05 at the 7.5 standoff) and R1's -Y edge stands at -122.58. Rulings: no -X growth
+# (the picking hand works over that deck); right-angle plugs only, so the conduit is sized
+# for the down-angle USB-C and the 4-way XH's thin axis; J2 becomes TOP ENTRY so its 14 mm
+# mated side-entry plug stops setting the edge, and its pair goes over the -Y edge into the
+# conduit; J1 sits back in a notch so its plug hangs inside the outline.
+# Searched as RIGID GROUPS on R1's courtyards (scratch checker, 0.15 apart, 1.2 to every
+# edge), so each cell keeps the hand-laid copper elec/optical.py draws relative to it:
+#   j1    the socket with its ESD array and CC pull-downs, straight up under the MCU;
+#   phy   the PHY cell, +X of the socket and under the MCU's ULPI corner;
+#   buck  the buck cell, whole, under the MCU's -X half; ldo the 3V3D LDO row under it;
+#   u9 / u11 / fb1  the analog 3V3, the mid-rail buffer and the bead, into the empty band
+#         -X of the MCU (below the tail M4) -- beside the strip they feed;
+#   tp1-4 the SWD pads under them; the LED driver, R44 and TP10 in the corner +X of J1.
+# (dx, dy) world mm on R1's placements.
+R2_MOVES = {} if OPTICAL_REV == 1 else {
+    **dict.fromkeys(('J1', 'R32', 'R33'), (-11.80, 26.88)), # j1
+    **dict.fromkeys(('U10',), (-9.13, 27.255)), # u10: turned 0, its PHY face east (R2_ROT)
+    **dict.fromkeys(('TP5',), (1.90, 0.0)),     # tp5: off U10's PHY-side vias
+    **dict.fromkeys(('C130',), (-19.53, 26.90)), # c130
+    **dict.fromkeys(('U7', 'C119', 'C120', 'C121', 'C122', 'C125', 'C136', 'C137', 'C138', 'C139', 'C145', 'Y2', 'R37', 'R39'), (7.99, 12.80)), # phy
+    **dict.fromkeys(('C160', 'C161', 'C163', 'C165', 'C166', 'U13', 'R40', 'R41', 'L1', 'C162', 'C167'), (0.00, 13.97)), # buck
+    **dict.fromkeys(('C164', 'U8', 'C131'), (0.00, 1.64)), # ldo
+    **dict.fromkeys(('R34', 'R35', 'U11', 'C114', 'R42', 'C144'), (-27.58, 24.75)), # u11
+    **dict.fromkeys(('R43', 'C134', 'C140', 'U9', 'C132'), (-16.06, 18.91)), # u9
+    **dict.fromkeys(('FB1', 'C133'), (-47.66, 15.85)), # fb1
+    **dict.fromkeys(('TP1',), (0.04, 4.14)), # tp1
+    **dict.fromkeys(('TP2',), (-6.11, 4.14)), # tp2
+    **dict.fromkeys(('TP3',), (-12.26, 4.14)), # tp3
+    **dict.fromkeys(('TP4',), (-18.41, 4.14)), # tp4
+    **dict.fromkeys(('R44',), (37.53, 7.76)), # r44
+    **dict.fromkeys(('Q1',), (8.98, -6.04)), # q1 (0.30 +X: R44's real courtyard)
+    **dict.fromkeys(('R36',), (5.39, -13.60)), # r36
+    **dict.fromkeys(('R38',), (-2.97, -14.78)), # r38
+    **dict.fromkeys(('TP10',), (4.54, -0.94)), # tp10
+    **dict.fromkeys(('TP9',), (1.20, 14.20)), # tp9
+}
+# J2: the side-entry S4B-XH-SM4 becomes a B4B-XH-A, west of the notch, its pins on the
+# conduit's band so the pair turns straight down over the edge.
+R2_J2 = (-14.30, -95.97, 0.0)     # U8's courtyard + CRTYD_GAP above it
+# U10, THE ESD ARRAY, TURNS 0 AND SITS +X OF J1's PAIR PINS. With J1 on the notch its
+# R1 spot (straight above J1, turned 90) put its PHY face 1.26 mm under the MCU's
+# decoupling row (C101 / C142) -- no room for the pair's vias, and the layout's diff-pair
+# search found no escape at all. Turned 0, that face looks +X, at open board toward U7.
+R2_ROT = {"U10": 0.0}
+if OPTICAL_REV != 1:
+    for _p in PARTS:
+        _d = R2_MOVES.get(_p["ref"])
+        if _d:
+            _p["x"] += _d[0]
+            _p["y"] += _d[1]
+        if _p["ref"] in R2_ROT:
+            _p["rot"] = R2_ROT[_p["ref"]]
+        if _p["ref"] == "J2":
+            _p["pkg"] = "XH-TE-4V"
+            _p["x"], _p["y"], _p["rot"] = R2_J2
+            _p["desc"] = "power in -- 4-way top entry: 1=+24V 2=PWR_GND"
+
 
 # ── ORDERABILITY: every placed part -> a real LCSC/JLCPCB line ──────────────────────
 # PARTS above is a MODEL: description + package envelope, which is all the geometry and
@@ -2847,6 +2926,13 @@ _MPN_EXACT["C160"] = ("1206 X7R MLCC 50 V", "BASIC", 0.03,
                       "capacitance at 24 V DC bias, so the case size is the derating, "
                       "not the voltage rating")
 
+if OPTICAL_REV != 1:
+    # R2's J2 is TOP ENTRY (see R2_J2). The plug is the same XHP-4 the side-entry header
+    # took, so the lead does not change. C144395 is B4B-XH-A(LF)(SN), the code elec/fab.py
+    # already carries for it (stock 60,424 when that was recorded).
+    _MPN_EXACT["J2"] = ("B4B-XH-A(LF)(SN)", "C144395", 0.06,
+                        "4 way THT top-entry XH: 24V, PWR_GND, 2 cavities empty")
+
 
 def mpn(p):
     """The orderable line for a placed part. Exact ref wins; else longest prefix."""
@@ -2927,6 +3013,12 @@ def part_span(p):
 # follows the courtyard now; the mouth still overhangs it, which is what a
 # panel-facing connector is supposed to do.
 PCB_YM = part("J1")["y"] - CRTYD["USB-C"][1] / 2   # -Y end = the connector's LAND
+# R1's edge, kept under R2 too: elec/optical.py draws its hand-laid copper in R1's frame.
+PCB_YM_R1 = PCB_YM - R2_MOVES.get("J1", (0.0, 0.0))[1]
+if OPTICAL_REV != 1:
+    # R2: the lowest courtyard but J1's (which stands in its notch) plus the edge keep-out.
+    PCB_YM = min(p["y"] - part_wh(p, CRTYD)[1] / 2 for p in PARTS
+                 if p["ref"] != "J1" and p["y"] < Y_TAIL) - EDGE_KEEP
 PCB_L  = PCB_YP - PCB_YM
 # ⚠ O-BAND, EXPERIMENTAL (user asked to try it, 2026-09-23). The board is a C: the +Y wrap
 # reaches the main body only through the sensing strip, so every digital net between U6 and
@@ -3061,8 +3153,12 @@ USB_NOTCH_W = 14.00           # the overmould is 12.35 at most (USB Type-C 3.2.1
 
 def usb_notch():
     """(x0, x1, y0, y1) of the notch in the board's -Y edge in front of J1, strip frame."""
+    # Up to HRO's edge, USB_NOTCH_D in front of the land: on R1 the land IS the board edge;
+    # on R2 the socket stands back in the notch so the down-angle plug hangs inside the
+    # outline, and the notch is also the conduit's mouth.
     x = part("J1")["x"]
-    return (x - USB_NOTCH_W / 2, x + USB_NOTCH_W / 2, PCB_YM, PCB_YM + USB_NOTCH_D)
+    return (x - USB_NOTCH_W / 2, x + USB_NOTCH_W / 2, PCB_YM,
+            part("J1")["y"] - CRTYD["USB-C"][1] / 2 + USB_NOTCH_D)
 
 
 def mount_points():
@@ -3509,6 +3605,26 @@ _COND_SPAN = max(PLUG_L.values()) + 2 * CONDUIT_CLR           # 20.50: reach pas
 CONDUIT_D = max(_COND_PASS, _COND_SPAN)                       # 20.40, along Y
 CONDUIT_Y1 = PCB_YM - 2.0                                     # -124.58, clear of the board
 CONDUIT_Y0 = CONDUIT_Y1 - CONDUIT_D
+if OPTICAL_REV != 1:
+    # R2: RIGHT-ANGLE PLUGS ONLY (lead, 2026-10-29), so the shaft passes the down-angle
+    # USB-C and the XH housing on their thin axes, not a straight plug's length. It runs
+    # from the -Y rail's wall (motor_bank.RAIL_INNER_Y + MIN_WALL_2P) up to J1's notch,
+    # under the board's -Y band: the USB plug hangs in the notch, and J2's pair turns down
+    # over the board's -Y edge into the band between that edge and the wall.
+    from . import motor_bank as _MB_R2
+    CONDUIT_Y0 = _MB_R2.RAIL_INNER_Y + D.MIN_WALL_2P
+    CONDUIT_Y1 = usb_notch()[3]
+    CONDUIT_D = CONDUIT_Y1 - CONDUIT_Y0
+    _need = max(_XH4_D, USBC_ANG_D) + 2 * CONDUIT_CLR
+    assert CONDUIT_D >= _need - 1e-9, (
+        f"R2 conduit is {CONDUIT_D:.2f} deep in Y, under the {_need:.2f} that passes the "
+        f"XH housing / down-angle USB-C on its thin axis: raise J1 (R2_MOVES j1)")
+    assert PCB_YM >= CONDUIT_Y0 - 1e-9, (
+        f"R2 board edge {PCB_YM:.2f} reaches past the rail's wall {CONDUIT_Y0:.2f}")
+    _plug_y = usb_notch()[3] - 0.5 - 0.45 - USBC_ANG_D    # mouth 0.5 proud, plug 0.45 off
+    assert _plug_y >= CONDUIT_Y0 + CONDUIT_CLR - 1e-9, (
+        f"R2: J1's down-angle plug reaches y {_plug_y:.2f}, inside the conduit's "
+        f"{CONDUIT_CLR} clearance to its wall at {CONDUIT_Y0:.2f}")
 assert CONDUIT_Y0 >= _WALL_Y - 1e-9, (
     f"conduit reaches y {CONDUIT_Y0:.2f}, past the {D.MIN_WALL_2P} exterior wall limit "
     f"{_WALL_Y:.2f} -- the longest plug ({max(PLUG_L.values()):.1f}) no longer fits the "
