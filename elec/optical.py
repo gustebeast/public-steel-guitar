@@ -147,6 +147,9 @@ FP = {
     "USB-C":    "Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12",
     "XH-SM-4Y": "Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal",
     "XH-TE-4V": "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical",     # R2's J2
+    "QFN-24": "Package_DFN_QFN:HVQFN-24-1EP_4x4mm_P0.5mm_EP2.5x2.5mm",
+    "SOIC-16": "Package_SO:SOIC-16_3.9x9.9mm_P1.27mm",
+    "SOD-123": "Diode_SMD:D_SOD-123",
 }
 # The 0402s are a mix of R and C; the CAD's package name does not say which, so the
 # REF prefix does. Same for 0603 (all resistors: the LED ballasts) and the 0805s.
@@ -188,7 +191,7 @@ PIN = {  # port name -> LQFP176 pin
     "PA0": 40, "PA1": 41, "PA2": 42, "PA3": 47, "PA4": 50, "PA5": 51,
     "PA6": 52, "PA7": 53, "PA13": 124, "PA14": 137,
     "PB0": 56, "PB1": 57, "PB3": 161, "PB4": 162, "PB5": 163,
-    "PB10": 79, "PB11": 80, "PB12": 92, "PB13": 93,
+    "PB10": 79, "PB11": 80, "PB12": 92, "PB13": 93, "PB14": 94, "PB15": 95,
     "PC0": 32, "PC1": 33, "PC2_C": 34, "PC3_C": 35, "PC4": 54, "PC5": 55,
     # ULPI_DIR and ULPI_NXT, moved off the analog-switch pads -- see the note above ULPI
     "PI11": 13, "PH4": 45,
@@ -347,6 +350,85 @@ SAI_SD = ("PE6", "PE3", "PA0", "PI6", "PD1")     # lane k -> converter U(14 + k)
 I2C_BUS = (("PF0", "PF1"),)                       # (SDA, SCL): I2C2
 ADC_I2C = (0, 0, 0, 0, 0)                          # converter k -> bus
 ADC_ADDR = (0, 0, 0, 0, 0)                         # converter k -> ADDR1:ADDR0 strap
+
+
+def _flash_path(up_dp, up_dm, phy_dp, phy_dm, v3d, gnd, boot0, nrst, u6):
+    """R2's M43 path. Hands-free over J1: the host holds DTR# low (Q2 lifts BOOT0 over R30),
+    pulses RTS# low (D11 pulls NRST) and the ROM loader answers on USART1, PB14 / PB15 (AN2606
+    Rev 61 Table 113, docs/optical-bringup-diagnostics.md). No firmware of ours is involved in
+    any of it, so a bad image is no obstacle. PA9/PA10 could not escape; PB14/15 are unused.
+
+    Q2 and R53 rather than an inverter: nothing conducts at rest, and the bridge must pull DTR#
+    LOW to raise BOOT0, so a dead or unpowered bridge leaves the board booting normally."""
+    u31 = Part(name="CH334F", ref_prefix="U", ref="U31", tag="U31", dest="NETLIST", tool="skidl",
+               value="CH334F", description="4-port USB 2.0 HS hub (2 used): PHY + flash bridge "
+               "(LCSC C5187527)", footprint="Package_DFN_QFN:HVQFN-24-1EP_4x4mm_P0.5mm_EP2.5x2.5mm",
+               pins=[Pin(num=i, func=P) for i in range(1, 26)])
+    # output_panel.py's U4, from WCH's DS V2.5 Table 1-3 "4F" column, re-read against V2.91
+    hub_xi, hub_xo, ovcur = Net("HUB_XI"), Net("HUB_XO"), Net("HUB_OVCUR_N")
+    ch_dp, ch_dm = Net("HUB_CH_DP"), Net("HUB_CH_DM")
+    ovcur += u31[1]
+    hub_xo += u31[3]
+    hub_xi += u31[4]
+    ch_dm += u31[9]
+    ch_dp += u31[10]
+    phy_dm += u31[11]
+    phy_dp += u31[12]
+    up_dm += u31[14]
+    up_dp += u31[15]
+    v3d += u31[19], u31[20]
+    gnd += u31[25]
+    for n in (2, 5, 6, 7, 8, 13, 16, 17, 18, 21, 22, 23, 24):
+        Net("U31_NC_%d" % n).connect(u31[n])
+    y3 = Part(name="Crystal", ref_prefix="Y", ref="Y3", tag="Y3", dest="NETLIST", tool="skidl",
+              value="TAXM12M4RFBCCT2T", description="12 MHz, U31 (LCSC C133337)",
+              footprint="Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm",
+              pins=[Pin(num=i, func=P) for i in range(1, 5)])
+    hub_xi += y3[1]
+    hub_xo += y3[3]
+    gnd += y3[2], y3[4]
+    u32 = Part(name="CH340C", ref_prefix="U", ref="U32", tag="U32", dest="NETLIST", tool="skidl",
+               value="CH340C", description="USB-serial, the ROM loader's way in (LCSC C84681)",
+               footprint="Package_SO:SOIC-16_3.9x9.9mm_P1.27mm",
+               pins=[Pin(num=i, func=P) for i in range(1, 17)])
+    # WCH CH340DS1-EN V3C pp.3-4, SOP16: 1 GND 2 TXD 3 RXD 4 V3 5 UD+ 6 UD- 7 NC 8 OUT# 13 DTR#
+    # 14 RTS# 15 R232 (own pull-down) 16 VCC. V3 ties to VCC at 3.3 V; unused I/O may dangle.
+    gnd += u32[1]
+    tx, rx, dtr, rts = Net("FLASH_TX"), Net("FLASH_RX"), Net("FLASH_DTR_N"), Net("FLASH_RTS_N")
+    tx += u32[2], u6[PIN["PB15"]]       # bridge's TXD into USART1_RX
+    rx += u32[3], u6[PIN["PB14"]]       # USART1_TX into the bridge's RXD
+    v3d += u32[4], u32[16]
+    ch_dp += u32[5]
+    ch_dm += u32[6]
+    dtr += u32[13]
+    rts += u32[14]
+    for n in (7, 8, 9, 10, 11, 12, 15):
+        Net("U32_NC_%d" % n).connect(u32[n])
+    q2 = Part(name="Q_PMOS", ref_prefix="Q", ref="Q2", tag="Q2", dest="NETLIST", tool="skidl",
+              value="AO3401A", description="BOOT0 high side (LCSC C15127)",
+              footprint="Package_TO_SOT_SMD:SOT-23",
+              pins=[Pin(num=i, func=P) for i in range(1, 4)])
+    dtr += q2[1]                        # 1 G, 2 S, 3 D as AO3400A's drawing
+    v3d += q2[2]
+    boot0 += q2[3]
+    d11 = Part(name="D_Schottky", ref_prefix="D", ref="D11", tag="D11", dest="NETLIST",
+               tool="skidl", value="DSS16", description="NRST from RTS# (LCSC C7467023)",
+               footprint="Diode_SMD:D_SOD-123", pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
+    rts += d11[1]                       # cathode
+    nrst += d11[2]                      # anode
+    for ref, value, fp in (("C180", "100nF", _C_0402),
+                           ("C181", "10uF", "Capacitor_SMD:C_0805_2012Metric"),
+                           ("C182", "1uF", _C_0402),
+                           ("C183", "100nF", _C_0402)):
+        c = _c(ref, value, "flash path bypass", fp)
+        v3d += c[1]
+        gnd += c[2]
+    r = _r("R52", "10k", "U31 OVCUR# pull-up")
+    v3d += r[1]
+    ovcur += r[2]
+    r = _r("R53", "100k", "Q2 gate pull-up")
+    v3d += r[1]
+    dtr += r[2]
 
 
 def _r(ref, value, desc, fp=_R_0402):
@@ -926,7 +1008,8 @@ def optical():
     used = set(MCU_VDD) | set(MCU_VSS) | {
         PIN[k] for k in ("VSSA", "VDDA", "VREF+", "VBAT", "VDD33_USB", "PDR_ON",
                          "PH0", "PH1", "NRST", "BOOT0", "PA13", "PA14", "PB3", "PA2",
-                         "VCAP1", "VCAP2") + tuple(SAI_CLK.values()) + SAI_SD
+                         "VCAP1", "VCAP2") + (() if OP.OPTICAL_REV == 1 else ("PB14", "PB15"))
+        + tuple(SAI_CLK.values()) + SAI_SD
         + tuple(p for bus in I2C_BUS for p in bus)}
     used |= {PIN[p] for p in ULPI.values()}
     for n in mcu_pins:
@@ -973,8 +1056,10 @@ def optical():
         ulpi[sig] += u7[pin]
     gnd += u7[1], u7[2], u7[9], u7[33]    # GND, GND, RESET (active high), the flag
     phy_vbus += u7[4]
-    usb_dp += u7[7]
-    usb_dm += u7[8]
+    _phy_dp, _phy_dm = ((usb_dp, usb_dm) if OP.OPTICAL_REV == 1
+                        else (Net("HUB_PHY_DP"), Net("HUB_PHY_DM")))   # R2: U31 stands between
+    _phy_dp += u7[7]
+    _phy_dm += u7[8]
     v3d += u7[6], u7[16], u7[25], u7[30], u7[31]   # the four supply pins, and REG_EN
     v1v8 += u7[15], u7[26]
     v1v8a += u7[29]
@@ -1478,6 +1563,8 @@ def optical():
     vbus += j1["A4"], j1["B4"], j1["A9"], j1["B9"]
     usb_dp += j1["A6"], j1["B6"]
     usb_dm += j1["A7"], j1["B7"]
+    if OP.OPTICAL_REV != 1:
+        _flash_path(usb_dp, usb_dm, _phy_dp, _phy_dm, v3d, gnd, boot0, nrst, u6)
 
     # ── J2: 24 V in, on the instrument's standard 4-way ──────────────────────
     # ⚠ TWO WAYS, NOT FOUR (user, 2026-09-18). The doubling recorded below was real
@@ -2866,20 +2953,30 @@ def _outline_poly(cx, cy):
                 out.pop(i)
                 changed = True
                 break
-    # the notch in front of the USB-C (OP.usb_notch): four more corners in the -Y edge
-    nx0, nx1, ny0, ny1 = OP.usb_notch()
-    for i in range(len(out)):
-        a, b = out[i], out[(i + 1) % len(out)]
-        if (abs(a[1] - ny0) < 1e-9 and abs(b[1] - ny0) < 1e-9
-                and min(a[0], b[0]) < nx0 and max(a[0], b[0]) > nx1):
-            ins = [(nx0, ny0), (nx0, ny1), (nx1, ny1), (nx1, ny0)]
-            if a[0] > b[0]:
-                ins.reverse()
-            out[i + 1:i + 1] = ins
-            break
-    else:
-        raise RuntimeError("the USB notch found no -Y edge to stand in")
+    if OP.OPTICAL_REV == 1:
+        # the notch in front of the USB-C (OP.usb_notch): four more corners in the -Y edge
+        nx0, nx1, ny0, ny1 = OP.usb_notch()
+        for i in range(len(out)):
+            a, b = out[i], out[(i + 1) % len(out)]
+            if (abs(a[1] - ny0) < 1e-9 and abs(b[1] - ny0) < 1e-9
+                    and min(a[0], b[0]) < nx0 and max(a[0], b[0]) > nx1):
+                ins = [(nx0, ny0), (nx0, ny1), (nx1, ny1), (nx1, ny0)]
+                if a[0] > b[0]:
+                    ins.reverse()
+                out[i + 1:i + 1] = ins
+                break
+        else:
+            raise RuntimeError("the USB notch found no -Y edge to stand in")
     return [(x - cx, y - cy) for x, y in out]
+
+
+def _cable_hole():
+    """R2's closed hole at J1 (OP.usb_notch) as an outline slot, board-local."""
+    if OP.OPTICAL_REV == 1:
+        return []
+    x0, x1, y0, y1 = OP.usb_notch()
+    return [{"poly": [[x - CX, y - CY] for x, y in ((x0, y0), (x1, y0), (x1, y1), (x0, y1))],
+             "rects": [[x0 - CX, y0 - CY, x1 - CX, y1 - CY]]}]
 
 
 def _placements(cx, cy):
@@ -2946,7 +3043,8 @@ BOARD_NOTES = {
                         "rects": [[r[0] - CX, r[1] - CY, r[2] - CX, r[3] - CY]
                                   for r in (OP.O_SLOTS[_i],
                                             OP.O_SLOTS[len(OP.O_SLOTS) // 2 + _i])]}
-                       for _i, _p in enumerate(OP._slot_polys())] if OP.O_SHAPE else []),
+                       for _i, _p in enumerate(OP._slot_polys())] if OP.O_SHAPE else [])
+    + _cable_hole(),
     # ⚠ AND NOT THE JACK'S ACCESS HOLE, WHICH WAS HERE AND WAS A FAB DEFECT. The CAD
     # cut a O4.4 clearance hole for a driver to reach the pickup-height jack screw and
     # nothing emitted it, so it was added here -- correctly, for the board that existed
@@ -4199,6 +4297,13 @@ BOARD_NOTES["quality"] = {
               "converter can be taken off the bus alone by grounding its SHDNZ pull-up's "
               "pad. No pad on MID, on purpose. docs/optical-bringup-diagnostics.md has the "
               "order of work",
+        "M43": "R2. (a) J1 -> U10 -> U31 hub -> U32 CH340C -> U6 USART1, PB14 TX / PB15 RX. (b) "
+               "ST's ROM loader, AN2606 Rev 61 Table 113, USART1 on PA9/PA10 or PB14/PB15. (c) the "
+               "host holds DTR# low (Q2 lifts BOOT0) and pulses RTS# low (D11 pulls NRST), no "
+               "firmware of ours and no hand on the board: first flash, update and recovery alike. "
+               "Bridge needs no firmware. NOT YET PROVEN ON A BOARD. Host software must leave the "
+               "port's DTR/RTS alone except to flash: opening it can assert both and hold U6 in "
+               "reset. TP1-TP5 stay for dead hardware",
         "M11": "finish.py's CAD check: 258 of 258 routed parts present in the CAD, "
                "every one where the CAD draws it. The lead's full build on main "
                "b0e7a911 (2026-10-05) with this board's geometry: 1010 components, 0 "
@@ -4518,18 +4623,14 @@ BOARD_NOTES["quality"] = {
         },
         {
             "name": "ten emitters: ten anodes, a ballast each",
-            "pins": [
-                "D*.2"
-            ],
+            "pins": ["D%d.2" % i for i in range(1, 11)],
             "nets": 10,
             "each": 1,
             "pins_count": 10
         },
         {
             "name": "ten emitters: one switched cathode row",
-            "pins": [
-                "D*.1"
-            ],
+            "pins": ["D%d.1" % i for i in range(1, 11)],
             "nets": 1,
             "pins_count": 10
         },
@@ -4541,6 +4642,16 @@ BOARD_NOTES["quality"] = {
         }
     ],
     "pinouts": {
+        "CH340C": "WCH CH340DS1-EN V3C pp.3-4, SOP16 column: 1 GND, 2 TXD, 3 RXD, 4 V3, 5 UD+, 6 "
+                  "UD-, 7 NC, 8 OUT#, 9-12 CTS# DSR# RI# DCD#, 13 DTR#, 14 RTS#, 15 R232, 16 VCC. "
+                  "KiCad's SOIC-16 numbers the same. Board: 2 FLASH_TX, 3 FLASH_RX, 4 and 16 "
+                  "+3V3D (p.3: at 3.3 V connect V3 to VCC), 5/6 U31's DN2, 13 FLASH_DTR_N, 14 "
+                  "FLASH_RTS_N, the rest open (p.4 note). Read 2026-10-30",
+        "CH334F": "WCH CH334 datasheet V2.5 Table 1-3, 4F column, as output_panel U4, re-read "
+                  "against V2.91. Board: 14/15 up, 11/12 DN1 the PHY, 9/10 DN2 U32, 3/4 Y3",
+        "AO3401A": "AOS AO3401A Rev 3.1 December 2023 p.1 SOT23 drawing: G, S, D. Board: 1 "
+                   "FLASH_DTR_N, 2 +3V3D, 3 BOOT0",
+        "DSS16": "SOD-123, 1 cathode (bar), 2 anode, as the buck catch diodes on the LED boards",
         "B4B-XH-A": "R2's J2. JST eXH.pdf p.5, Header / Top entry type: seen from the slotted "
                     "wall, No. 1 circuit is the right-hand post. KiCad JST_XH_B4B-XH-A has that "
                     "wall at -Y and pad 1 at the -X end: the same post (as motor_ctrl). Board: "
@@ -4614,6 +4725,82 @@ BOARD_NOTES["quality"] = {
 if OP.OPTICAL_REV != 1:
     # R2's J2 is the top-entry B4B-XH-A: through-hole posts only, no reinforcement tab
     del BOARD_NOTES["quality"]["unconnected"]["J2.MP"]
+    _q = BOARD_NOTES["quality"]
+    _q["unconnected"]["U6"]["pins"] = " ".join(p for p in _q["unconnected"]["U6"]["pins"].split()
+                                               if p not in ("94", "95"))        # FLASH_RX, FLASH_TX
+    _q["unconnected"]["U31"] = {"pins": "2 5 6 7 8 13 16 17 18 21 22 23 24",
+                                "why": "CH334F: ports 3 and 4 unused, and the status and config pins "
+                                       "this board gives no job, as output_panel's U4"}
+    _q["unconnected"]["U32"] = {"pins": "7 8 9 10 11 12 15",
+                                "why": "CH340C: modem inputs and R232 unused; WCH V3C p.4, unused I/O "
+                                       "may dangle (own pull-ups, R232 own pull-down)"}
+    _q["decoupling"]["exempt"]["U32.4"] = (
+        "V3, tied to VCC because the chip runs at 3.3 V (WCH V3C p.3): the internal regulator's pin, "
+        "not a second load. C183 sits at VCC, pin 16")
+    BOARD_NOTES["silk_legend"] = True           # cadkit: a label with no site gets an identifier
+    # The hub and the bridge are 120 mA more on +3V3D at the worst case: hub up to 100 (as
+    # output_panel's U4), CH340C 20 (WCH V3C p.8). 582 mA at U8, 1.20 A of 5 V, 0.30 A at 24 V.
+    for _pp in BOARD_NOTES["quality"]["power_paths"]:
+        if _pp["net"] in ("V24_IN", "+24V"):
+            _pp["amps"] = 0.30
+        elif _pp["net"] == "SW":
+            _pp["amps"] = 1.20
+        elif _pp["net"] == "V5_PRE" and _pp["to"] == ["U8.3"]:
+            _pp["amps"] = 0.57
+    _m = _q["manual"]
+    def _r2(item, old, new):
+        assert old in _m[item], (item, old)
+        _m[item] = _m[item].replace(old, new)
+    _r2("M6", "22.1 to 57.5 mm, a spread of 35.4 mm (about 0.23 ns)",
+        "14.6 to 57.2 mm on R2, a spread of 42.5 mm (about 0.28 ns)")
+    _r2("M8", "BOOT0: R30, 10k to ground (TP8 to hold it high). NRST: R31 10k up, C135.",
+        "BOOT0: R30, 10k to ground (TP8 to hold it high); Q2 lifts it only while U32 holds DTR# "
+        "low, R53 keeps Q2 off otherwise. NRST: R31 10k up, C135; D11 pulls it down only while "
+        "U32 holds RTS# low.")
+    _r2("M9", "SWD on bare 1.5 mm pads:", "M43 is the way in on R2; these are bench pads. SWD on "
+        "bare 1.5 mm pads:")
+    _r2("M10", "1.9 mm from the receptacle's pads", "5.6 mm from the receptacle's D+ pads on R2")
+    _r2("M11", "258 of 258 routed parts", "274 of 274 routed parts")
+    _r2("M18", "With this board up and the host down",
+        "R2's hub and bridge run on +3V3D, so they go down with the board and nothing feeds them "
+        "from VBUS. With this board up and the host down")
+    _r2("M23", "clamp array first, 1.9 mm from the receptacle, the pair passing through its pads. "
+        "Through path receptacle -> U10 -> PHY: F.Cu only, no via on either half, 10.7 and 10.8 mm "
+        "(0.17 mm apart, A3). The two vias on USB_DP are not on that path: they tie the "
+        "receptacle's second D+ contact (B6) to the first with 2.5 mm of In2, as D- ties its own "
+        "round on F.Cu -- the stub the unused cable orientation leaves, 5 mm, harmless at 480 "
+        "Mbit/s.",
+        "clamp array first, 5.6 mm from the receptacle, the pair passing through its pads. R2 has "
+        "two high-speed segments. J1 -> U10 -> U31: 37.3 and 37.9 mm, 0.60 apart, F.Cu and In2 "
+        "over the In1 plane, 3 vias on USB_DP and 2 on USB_DM. U31 -> U7: 17.9 and 18.0 mm, 0.14 "
+        "apart, 2 vias each. Not the single F.Cu run R1 had: the hub M43 needs is 23 mm from J1. "
+        "Within A3's budget on both.")
+    _r2("M27", "BOOT0: R30 and TP8, nothing else. NRST: R31, C135 and TP3.",
+        "BOOT0: R30, TP8 and Q2's drain, off at rest. NRST: R31, C135, TP3 and D11's anode, off "
+        "at rest. PB14 / PB15 carry U32 and nothing else.")
+    _r2("M28", "S4B-XH-SM4-TB, TYPE-C-31-M-12", "B4B-XH-A, TYPE-C-31-M-12, CH334F C5187527, CH340C "
+        "C84681, AO3401A C15127, DSS16 C7467023, TAXM12M4RFBCCT2T C133337")
+    _r2("M31", "the board's name and r1 on the front", "the board's name and rev on the front")
+    _r2("M33", "+3V3D: 212 typical, 462 at ST's 85 C all-peripherals maximum, of U8's 1 A; 0.79 W "
+        "in the SOT-223 at that corner. 5 V: 0.46 A typical, 1.08 A worst, of U13's 3 A. 24 V: 79 "
+        "mA typical, 0.26 A worst, through 3 A contacts, R44 (0.14 W of 1 W)",
+        "+3V3D on R2: 212 typical before the hub and bridge, 582 at ST's 85 C all-peripherals "
+        "maximum with them, of U8's 1 A; 0.99 W in the SOT-223 at that corner. 5 V: 1.20 A worst, "
+        "of U13's 3 A. 24 V: 0.30 A worst, through 3 A contacts, R44 (0.18 W of 1 W)")
+    BOARD_NOTES["quality"]["pinouts"]["TAXM12M4RFBCCT2T"] = (
+        "the same maker's 3225 four-land outline as Y1 (LCSC C133337): 1 and 3 the crystal, 2 and "
+        "4 the can. Board: 1 HUB_XI, 3 HUB_XO, 2 / 4 GND")
+    BOARD_NOTES["match"] = BOARD_NOTES["match"] + [
+        {"name": "USB_HS_HUB", "max_skew_mm": 8.3, "same_layer": True, "max_vias": 2,
+         "nets": ["HUB_PHY_DP", "HUB_PHY_DM"], "why": "the same 480 Mbps budget as USB_HS, "
+         "hub to PHY"},
+        {"name": "USB_FS_BRIDGE", "max_skew_mm": 20.0, "same_layer": False, "max_vias": 4,
+         "nets": ["HUB_CH_DP", "HUB_CH_DM"], "why": "12 Mbps to the serial bridge, a few mm "
+         "beside it: 83 ns a bit against 0.1 ns of skew"}]
+    # the hub stands between: J1 -> U10 -> U31 up, U31 down -> PHY
+    BOARD_NOTES["diff_pairs"] = [
+        dict(BOARD_NOTES["diff_pairs"][0], chain=["U31", "U10", "J1"]),
+        {"nets": ["HUB_PHY_DP", "HUB_PHY_DM"], "chain": ["U7", "U31"], "gap": 0.2, "width": 0.2}]
     # U7's ULPI row fans out so tightly that close_last only finishes it in this order; seven
     # others each left one net with no path (2026-10-30). Needs cadkit finish.py's close_order.
     BOARD_NOTES["close_order"] = ["ULPI_D3", "ULPI_D4", "ULPI_D5", "ULPI_D6"]

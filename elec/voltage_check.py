@@ -307,7 +307,7 @@ RES_MODEL = {
         "R36": ("i", lambda L, R: L("LED_GATE")["v"] / (R("R36") + R("R38")), "gate series: only R38's pull-down current"),
         "R42": ("i", 0.001, "MID reference: the photodiodes' microamps; 1 mA allowed"),
         "R43": ("i", 0.05, "bead damper in series with C134: ripple current only; 50 mA allowed"),
-        "R44": ("i", 0.26, "buck input current, the board's own declared 0.26 A"),
+        "R44": ("i", 0.30, "buck input current, the board's own declared 0.30 A"),
     },
 }
 
@@ -368,15 +368,15 @@ CURRENTS = {
         ("J6", 1, 6.67, "the brick's full rated output against the jack's 7.5 A (the instrument is budgeted 3.5 A)"),
         ("J7", 1, 2.9, "motor trunk head, ONE contact (output_panel.py: 2.9 A with ten motors moving)"),
         ("J10", 2, 5.24, "feed 2 on two contacts, ten motors (output_panel.py; 3.8 A once the brick's 6.67 A is the limit)"),
-        ("J9", 1, 0.26, "optical board"),
-        ("F1", None, 0.26, "optical board's declared input current"),
+        ("J9", 1, 0.30, "optical board"),
+        ("F1", None, 0.30, "optical board's declared input current"),
         ("FB1", None, 0.3, "board 5 V"),
         ("L1", None, 0.3, "board 5 V"),
         ("Q2", None, 6.67, "the brick's full output through the switch"),
     ],
     "optical": [
         ("J2", 1, 0.26, "24 V in"),
-        ("L1", None, 1.07, "buck peak (optical.py power_paths)"),
+        ("L1", None, 1.20, "buck peak (optical.py power_paths)"),
         ("FB1", None, 0.17, "analog LDO feed"),
     ],
 }
