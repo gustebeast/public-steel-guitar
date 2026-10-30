@@ -226,6 +226,9 @@ GLOBAL_OK = {
     # and the BOTTOM joint's collar grips the same bought overmould the same way, with
     # the same SLV_SQUEEZE -- see src.bar_trrs
     frozenset({"bar_trrs_sleeve", "bar_trrs_plug"}),
+    # the USB lead's metal tongues, seated in the two sockets drawn solid
+    frozenset({"optical_cable_usb_metal", "optical_pcb"}),
+    frozenset({"optical_cable_usb_metal", "output_panel"}),
     # ── AND THE BAR HALF OF THAT SAME JOINT (src/bar_trrs.py, the bar-frame end) ──
     # the same mate as the top joint's, the other way up: this time the BOUGHT female
     # is the one fixed in the structure and the male is the half that floats
