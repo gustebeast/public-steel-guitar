@@ -2155,6 +2155,42 @@
    "mpn": "SMCJ24A",
    "src": "Brightking SMCJ series datasheet (LCSC C310039), electrical table row SMCJ24A: VRWM 24 V, VBR 26.7-29.5 V @1 mA, VC 38.9 V @ IPP 38.6 A (10/1000 us), 1500 W"
   },
+  "C84681": {
+   "kind": "ic",
+   "supply": {
+    "VCC": "16"
+   },
+   "supply_max": 6.0,
+   "supply_rec": 5.3,
+   "default": {
+    "n": "io",
+    "max": "VCC+0.5",
+    "drv": "VCC",
+    "weak": true
+   },
+   "pins": {
+    "1": {
+     "n": "GND",
+     "gnd": true
+    }
+   },
+   "src": "WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts",
+   "mpn": "CH340C"
+  },
+  "C15127": {
+   "kind": "fet",
+   "ch": "P",
+   "vds": 30.0,
+   "vgs": 12.0,
+   "id": 4.0,
+   "pins": {
+    "1": "G",
+    "2": "S",
+    "3": "D"
+   },
+   "src": "AOS AO3401A Rev 3.1 December 2023 p.1 absolute maximum ratings: VDS -30 V, VGS +/-12 V, ID -4 A at 25 C; SOT23 drawing G, S, D",
+   "mpn": "AO3401A"
+  },
   "C7467023": {
    "kind": "diode",
    "vr": 60.0,

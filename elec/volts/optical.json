@@ -347,7 +347,62 @@
    "v": 1.031,
    "why": "divider off V5_PRE: x 0.1994"
   },
+  "FLASH_DTR_N": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U32.13 (io) can reach its supply +3V3D; through R53"
+  },
+  "FLASH_RTS_N": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U32.14 (io) can reach its supply +3V3D"
+  },
+  "FLASH_RX": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U32.3 (io) can reach its supply +3V3D; U6.94 (io) can reach its supply +3V3D"
+  },
+  "FLASH_TX": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U32.2 (io) can reach its supply +3V3D; U6.95 (io) can reach its supply +3V3D"
+  },
   "GND": 0,
+  "HUB_CH_DM": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U31.9 (io) can reach its supply +3V3D; U32.6 (io) can reach its supply +3V3D"
+  },
+  "HUB_CH_DP": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U31.10 (io) can reach its supply +3V3D; U32.5 (io) can reach its supply +3V3D"
+  },
+  "HUB_OVCUR_N": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U31.1 (io) can reach its supply +3V3D; through R52"
+  },
+  "HUB_PHY_DM": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U31.11 (io) can reach its supply +3V3D; U7.8 (DM) can reach its supply +3V3D"
+  },
+  "HUB_PHY_DP": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U31.12 (io) can reach its supply +3V3D; U7.7 (DP) can reach its supply +3V3D"
+  },
+  "HUB_XI": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U31.4 (io) can reach its supply +3V3D"
+  },
+  "HUB_XO": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U31.3 (io) can reach its supply +3V3D"
+  },
   "I2C2_SCL": {
    "peak": 3.45,
    "v": 3.349,
@@ -757,6 +812,106 @@
    "peak": 3.45,
    "v": 3.349,
    "why": "U29.7 (OUTB) can reach its supply +3V3A"
+  },
+  "U31_NC_13": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U31.13 (io) can reach its supply +3V3D"
+  },
+  "U31_NC_16": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U31.16 (io) can reach its supply +3V3D"
+  },
+  "U31_NC_17": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U31.17 (io) can reach its supply +3V3D"
+  },
+  "U31_NC_18": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U31.18 (io) can reach its supply +3V3D"
+  },
+  "U31_NC_2": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U31.2 (io) can reach its supply +3V3D"
+  },
+  "U31_NC_21": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U31.21 (io) can reach its supply +3V3D"
+  },
+  "U31_NC_22": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U31.22 (io) can reach its supply +3V3D"
+  },
+  "U31_NC_23": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U31.23 (io) can reach its supply +3V3D"
+  },
+  "U31_NC_24": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U31.24 (io) can reach its supply +3V3D"
+  },
+  "U31_NC_5": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U31.5 (io) can reach its supply +3V3D"
+  },
+  "U31_NC_6": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U31.6 (io) can reach its supply +3V3D"
+  },
+  "U31_NC_7": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U31.7 (io) can reach its supply +3V3D"
+  },
+  "U31_NC_8": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U31.8 (io) can reach its supply +3V3D"
+  },
+  "U32_NC_10": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U32.10 (io) can reach its supply +3V3D"
+  },
+  "U32_NC_11": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U32.11 (io) can reach its supply +3V3D"
+  },
+  "U32_NC_12": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U32.12 (io) can reach its supply +3V3D"
+  },
+  "U32_NC_15": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U32.15 (io) can reach its supply +3V3D"
+  },
+  "U32_NC_7": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U32.7 (io) can reach its supply +3V3D"
+  },
+  "U32_NC_8": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U32.8 (io) can reach its supply +3V3D"
+  },
+  "U32_NC_9": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U32.9 (io) can reach its supply +3V3D"
   },
   "U6_NC_1": {
    "peak": 3.45,
@@ -1293,16 +1448,6 @@
    "v": 3.349,
    "why": "U6.9 (io) can reach its supply +3V3D"
   },
-  "U6_NC_94": {
-   "peak": 3.45,
-   "v": 3.349,
-   "why": "U6.94 (io) can reach its supply +3V3D"
-  },
-  "U6_NC_95": {
-   "peak": 3.45,
-   "v": 3.349,
-   "why": "U6.95 (io) can reach its supply +3V3D"
-  },
   "U6_NC_96": {
    "peak": 3.45,
    "v": 3.349,
@@ -1420,12 +1565,12 @@
   "USB_DM": {
    "peak": 3.45,
    "v": 3.349,
-   "why": "U7.8 (DM) can reach its supply +3V3D"
+   "why": "U31.14 (io) can reach its supply +3V3D"
   },
   "USB_DP": {
    "peak": 3.45,
    "v": 3.349,
-   "why": "U7.7 (DP) can reach its supply +3V3D"
+   "why": "U31.15 (io) can reach its supply +3V3D"
   },
   "V24_IN": {
    "peak": 34.37,
@@ -1668,6 +1813,22 @@
   "C167.1": {
    "max": 25.0,
    "src": "rated V -- CL21A226MAQNNNE (C45783): JLCPCB parts API attributes for C45783 (CL21A226MAQNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C180.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C181.1": {
+   "max": 25.0,
+   "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C182.1": {
+   "max": 25.0,
+   "src": "rated V -- CL05A105KA5NQNC (C52923): JLCPCB parts API attributes for C52923 (CL05A105KA5NQNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C183.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
   "Cd1.1": {
    "max": 50.0,
@@ -2249,6 +2410,14 @@
    "src": "LTE-C9901 (C2683614): Lite-On LTE-C9901 datasheet p.2 absolute maximum ratings (DC IF 60 mA, VR 5 V, PD 100 mW); p.3 VF typ 1.4 V @20 mA (no min/max given)",
    "why": "21.0 mA of 60 mA DC, 29 mW of 100 mW (VF typ 1.4 V)"
   },
+  "D11.1": {
+   "max": 60.0,
+   "src": "VRRM -- DSS16 (C7467023): FUXINSEMI DSS12 thru DSS120 Ver2.1 p.1, column DSS16: VRRM 60 V, VDC 60 V, I(AV) 1.0 A, IFSM 30 A, VF 0.70 V at 1 A; SOD-123, band = cathode"
+  },
+  "D11.2": {
+   "max": 60.0,
+   "src": "VRRM -- DSS16 (C7467023): FUXINSEMI DSS12 thru DSS120 Ver2.1 p.1, column DSS16: VRRM 60 V, VDC 60 V, I(AV) 1.0 A, IFSM 30 A, VF 0.70 V at 1 A; SOD-123, band = cathode"
+  },
   "D2.1": {
    "max": "none",
    "src": "LTE-C9901 (C2683614): Lite-On LTE-C9901 datasheet p.2 absolute maximum ratings (DC IF 60 mA, VR 5 V, PD 100 mW); p.3 VF typ 1.4 V @20 mA (no min/max given)",
@@ -2381,15 +2550,15 @@
   },
   "J2.1": {
    "max": 250.0,
-   "src": "rated V -- S4B-XH-SM4-TB(LF)(SN) (C161861): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+   "src": "rated V -- B4B-XH-A(LF)(SN) (C144395): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
   },
   "J2.3": {
    "max": 250.0,
-   "src": "rated V -- S4B-XH-SM4-TB(LF)(SN) (C161861): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+   "src": "rated V -- B4B-XH-A(LF)(SN) (C144395): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
   },
   "J2.4": {
    "max": 250.0,
-   "src": "rated V -- S4B-XH-SM4-TB(LF)(SN) (C161861): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+   "src": "rated V -- B4B-XH-A(LF)(SN) (C144395): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
   },
   "L1.1": {
    "max": "none",
@@ -2569,6 +2738,19 @@
    "max": 30.0,
    "src": "VDS -- AO3400A (C20917): AOS AO3400A datasheet p.1 absolute maximum ratings: VDS 30 V, VGS +/-12 V, ID 5.7 A"
   },
+  "Q2.1": {
+   "max": 12.0,
+   "src": "VGS -- AO3401A (C15127): AOS AO3401A Rev 3.1 December 2023 p.1 absolute maximum ratings: VDS -30 V, VGS +/-12 V, ID -4 A at 25 C; SOT23 drawing G, S, D"
+  },
+  "Q2.2": {
+   "max": "none",
+   "src": "AO3401A (C15127): AOS AO3401A Rev 3.1 December 2023 p.1 absolute maximum ratings: VDS -30 V, VGS +/-12 V, ID -4 A at 25 C; SOT23 drawing G, S, D",
+   "why": "reference terminal"
+  },
+  "Q2.3": {
+   "max": 30.0,
+   "src": "VDS -- AO3401A (C15127): AOS AO3401A Rev 3.1 December 2023 p.1 absolute maximum ratings: VDS -30 V, VGS +/-12 V, ID -4 A at 25 C; SOT23 drawing G, S, D"
+  },
   "R1.1": {
    "max": 50.0,
    "src": "element V -- ERJ2RKF1800X (C413069): JLCPCB parts API attributes for C413069 (ERJ2RKF1800X, Panasonic: 100 mW, 1 %), fetched 2026-10-06; limiting element voltage 50 V from Panasonic's ERJ-2RK series table (the API's 100 V is the overload figure)"
@@ -2724,6 +2906,22 @@
   "R51.2": {
    "max": 50.0,
    "src": "element V -- 0402WGF4701TCE (C25900): JLCPCB parts API attributes for C25900 (0402WGF4701TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R52.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R52.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R53.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R53.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
   },
   "R6.1": {
    "max": 50.0,
@@ -3790,6 +3988,162 @@
    "max": 6.0,
    "src": "abs max -- TLV9062IDGKR (C398356): TI TLV906x datasheet p.12 s8.1: supply (V+)-(V-) 6 V; inputs (V-)-0.5..(V+)+0.5 V, +/-10 mA; s8.3 VS 1.8-5.5 V; VSSOP-8 (DGK) pinout"
   },
+  "U31.1": {
+   "max": 3.85,
+   "src": "abs max -- CH334F (C5187527): WCH CH334/CH335 datasheet V2.91 p.19 s4.1: V5 -0.4..5.5 V; VDD33 -0.4..4.0 V; USB and other 3.3 V pins -0.4..VDD33+0.4 V; 5 V-tolerant inputs 5.3 V (not credited here). V5 (pin 19) is tied to VDD33 on this board and is rated as VDD33"
+  },
+  "U31.10": {
+   "max": 3.85,
+   "src": "abs max -- CH334F (C5187527): WCH CH334/CH335 datasheet V2.91 p.19 s4.1: V5 -0.4..5.5 V; VDD33 -0.4..4.0 V; USB and other 3.3 V pins -0.4..VDD33+0.4 V; 5 V-tolerant inputs 5.3 V (not credited here). V5 (pin 19) is tied to VDD33 on this board and is rated as VDD33"
+  },
+  "U31.11": {
+   "max": 3.85,
+   "src": "abs max -- CH334F (C5187527): WCH CH334/CH335 datasheet V2.91 p.19 s4.1: V5 -0.4..5.5 V; VDD33 -0.4..4.0 V; USB and other 3.3 V pins -0.4..VDD33+0.4 V; 5 V-tolerant inputs 5.3 V (not credited here). V5 (pin 19) is tied to VDD33 on this board and is rated as VDD33"
+  },
+  "U31.12": {
+   "max": 3.85,
+   "src": "abs max -- CH334F (C5187527): WCH CH334/CH335 datasheet V2.91 p.19 s4.1: V5 -0.4..5.5 V; VDD33 -0.4..4.0 V; USB and other 3.3 V pins -0.4..VDD33+0.4 V; 5 V-tolerant inputs 5.3 V (not credited here). V5 (pin 19) is tied to VDD33 on this board and is rated as VDD33"
+  },
+  "U31.13": {
+   "max": 3.85,
+   "src": "abs max -- CH334F (C5187527): WCH CH334/CH335 datasheet V2.91 p.19 s4.1: V5 -0.4..5.5 V; VDD33 -0.4..4.0 V; USB and other 3.3 V pins -0.4..VDD33+0.4 V; 5 V-tolerant inputs 5.3 V (not credited here). V5 (pin 19) is tied to VDD33 on this board and is rated as VDD33"
+  },
+  "U31.14": {
+   "max": 3.85,
+   "src": "abs max -- CH334F (C5187527): WCH CH334/CH335 datasheet V2.91 p.19 s4.1: V5 -0.4..5.5 V; VDD33 -0.4..4.0 V; USB and other 3.3 V pins -0.4..VDD33+0.4 V; 5 V-tolerant inputs 5.3 V (not credited here). V5 (pin 19) is tied to VDD33 on this board and is rated as VDD33"
+  },
+  "U31.15": {
+   "max": 3.85,
+   "src": "abs max -- CH334F (C5187527): WCH CH334/CH335 datasheet V2.91 p.19 s4.1: V5 -0.4..5.5 V; VDD33 -0.4..4.0 V; USB and other 3.3 V pins -0.4..VDD33+0.4 V; 5 V-tolerant inputs 5.3 V (not credited here). V5 (pin 19) is tied to VDD33 on this board and is rated as VDD33"
+  },
+  "U31.16": {
+   "max": 3.85,
+   "src": "abs max -- CH334F (C5187527): WCH CH334/CH335 datasheet V2.91 p.19 s4.1: V5 -0.4..5.5 V; VDD33 -0.4..4.0 V; USB and other 3.3 V pins -0.4..VDD33+0.4 V; 5 V-tolerant inputs 5.3 V (not credited here). V5 (pin 19) is tied to VDD33 on this board and is rated as VDD33"
+  },
+  "U31.17": {
+   "max": 3.85,
+   "src": "abs max -- CH334F (C5187527): WCH CH334/CH335 datasheet V2.91 p.19 s4.1: V5 -0.4..5.5 V; VDD33 -0.4..4.0 V; USB and other 3.3 V pins -0.4..VDD33+0.4 V; 5 V-tolerant inputs 5.3 V (not credited here). V5 (pin 19) is tied to VDD33 on this board and is rated as VDD33"
+  },
+  "U31.18": {
+   "max": 3.85,
+   "src": "abs max -- CH334F (C5187527): WCH CH334/CH335 datasheet V2.91 p.19 s4.1: V5 -0.4..5.5 V; VDD33 -0.4..4.0 V; USB and other 3.3 V pins -0.4..VDD33+0.4 V; 5 V-tolerant inputs 5.3 V (not credited here). V5 (pin 19) is tied to VDD33 on this board and is rated as VDD33"
+  },
+  "U31.19": {
+   "max": 4.0,
+   "src": "abs max -- CH334F (C5187527): WCH CH334/CH335 datasheet V2.91 p.19 s4.1: V5 -0.4..5.5 V; VDD33 -0.4..4.0 V; USB and other 3.3 V pins -0.4..VDD33+0.4 V; 5 V-tolerant inputs 5.3 V (not credited here). V5 (pin 19) is tied to VDD33 on this board and is rated as VDD33"
+  },
+  "U31.2": {
+   "max": 3.85,
+   "src": "abs max -- CH334F (C5187527): WCH CH334/CH335 datasheet V2.91 p.19 s4.1: V5 -0.4..5.5 V; VDD33 -0.4..4.0 V; USB and other 3.3 V pins -0.4..VDD33+0.4 V; 5 V-tolerant inputs 5.3 V (not credited here). V5 (pin 19) is tied to VDD33 on this board and is rated as VDD33"
+  },
+  "U31.20": {
+   "max": 4.0,
+   "src": "abs max -- CH334F (C5187527): WCH CH334/CH335 datasheet V2.91 p.19 s4.1: V5 -0.4..5.5 V; VDD33 -0.4..4.0 V; USB and other 3.3 V pins -0.4..VDD33+0.4 V; 5 V-tolerant inputs 5.3 V (not credited here). V5 (pin 19) is tied to VDD33 on this board and is rated as VDD33"
+  },
+  "U31.21": {
+   "max": 3.85,
+   "src": "abs max -- CH334F (C5187527): WCH CH334/CH335 datasheet V2.91 p.19 s4.1: V5 -0.4..5.5 V; VDD33 -0.4..4.0 V; USB and other 3.3 V pins -0.4..VDD33+0.4 V; 5 V-tolerant inputs 5.3 V (not credited here). V5 (pin 19) is tied to VDD33 on this board and is rated as VDD33"
+  },
+  "U31.22": {
+   "max": 3.85,
+   "src": "abs max -- CH334F (C5187527): WCH CH334/CH335 datasheet V2.91 p.19 s4.1: V5 -0.4..5.5 V; VDD33 -0.4..4.0 V; USB and other 3.3 V pins -0.4..VDD33+0.4 V; 5 V-tolerant inputs 5.3 V (not credited here). V5 (pin 19) is tied to VDD33 on this board and is rated as VDD33"
+  },
+  "U31.23": {
+   "max": 3.85,
+   "src": "abs max -- CH334F (C5187527): WCH CH334/CH335 datasheet V2.91 p.19 s4.1: V5 -0.4..5.5 V; VDD33 -0.4..4.0 V; USB and other 3.3 V pins -0.4..VDD33+0.4 V; 5 V-tolerant inputs 5.3 V (not credited here). V5 (pin 19) is tied to VDD33 on this board and is rated as VDD33"
+  },
+  "U31.24": {
+   "max": 3.85,
+   "src": "abs max -- CH334F (C5187527): WCH CH334/CH335 datasheet V2.91 p.19 s4.1: V5 -0.4..5.5 V; VDD33 -0.4..4.0 V; USB and other 3.3 V pins -0.4..VDD33+0.4 V; 5 V-tolerant inputs 5.3 V (not credited here). V5 (pin 19) is tied to VDD33 on this board and is rated as VDD33"
+  },
+  "U31.3": {
+   "max": 3.85,
+   "src": "abs max -- CH334F (C5187527): WCH CH334/CH335 datasheet V2.91 p.19 s4.1: V5 -0.4..5.5 V; VDD33 -0.4..4.0 V; USB and other 3.3 V pins -0.4..VDD33+0.4 V; 5 V-tolerant inputs 5.3 V (not credited here). V5 (pin 19) is tied to VDD33 on this board and is rated as VDD33"
+  },
+  "U31.4": {
+   "max": 3.85,
+   "src": "abs max -- CH334F (C5187527): WCH CH334/CH335 datasheet V2.91 p.19 s4.1: V5 -0.4..5.5 V; VDD33 -0.4..4.0 V; USB and other 3.3 V pins -0.4..VDD33+0.4 V; 5 V-tolerant inputs 5.3 V (not credited here). V5 (pin 19) is tied to VDD33 on this board and is rated as VDD33"
+  },
+  "U31.5": {
+   "max": 3.85,
+   "src": "abs max -- CH334F (C5187527): WCH CH334/CH335 datasheet V2.91 p.19 s4.1: V5 -0.4..5.5 V; VDD33 -0.4..4.0 V; USB and other 3.3 V pins -0.4..VDD33+0.4 V; 5 V-tolerant inputs 5.3 V (not credited here). V5 (pin 19) is tied to VDD33 on this board and is rated as VDD33"
+  },
+  "U31.6": {
+   "max": 3.85,
+   "src": "abs max -- CH334F (C5187527): WCH CH334/CH335 datasheet V2.91 p.19 s4.1: V5 -0.4..5.5 V; VDD33 -0.4..4.0 V; USB and other 3.3 V pins -0.4..VDD33+0.4 V; 5 V-tolerant inputs 5.3 V (not credited here). V5 (pin 19) is tied to VDD33 on this board and is rated as VDD33"
+  },
+  "U31.7": {
+   "max": 3.85,
+   "src": "abs max -- CH334F (C5187527): WCH CH334/CH335 datasheet V2.91 p.19 s4.1: V5 -0.4..5.5 V; VDD33 -0.4..4.0 V; USB and other 3.3 V pins -0.4..VDD33+0.4 V; 5 V-tolerant inputs 5.3 V (not credited here). V5 (pin 19) is tied to VDD33 on this board and is rated as VDD33"
+  },
+  "U31.8": {
+   "max": 3.85,
+   "src": "abs max -- CH334F (C5187527): WCH CH334/CH335 datasheet V2.91 p.19 s4.1: V5 -0.4..5.5 V; VDD33 -0.4..4.0 V; USB and other 3.3 V pins -0.4..VDD33+0.4 V; 5 V-tolerant inputs 5.3 V (not credited here). V5 (pin 19) is tied to VDD33 on this board and is rated as VDD33"
+  },
+  "U31.9": {
+   "max": 3.85,
+   "src": "abs max -- CH334F (C5187527): WCH CH334/CH335 datasheet V2.91 p.19 s4.1: V5 -0.4..5.5 V; VDD33 -0.4..4.0 V; USB and other 3.3 V pins -0.4..VDD33+0.4 V; 5 V-tolerant inputs 5.3 V (not credited here). V5 (pin 19) is tied to VDD33 on this board and is rated as VDD33"
+  },
+  "U32.10": {
+   "max": 3.95,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U32.11": {
+   "max": 3.95,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U32.12": {
+   "max": 3.95,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U32.13": {
+   "max": 3.95,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U32.14": {
+   "max": 3.95,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U32.15": {
+   "max": 3.95,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U32.16": {
+   "max": 6.0,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U32.2": {
+   "max": 3.95,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U32.3": {
+   "max": 3.95,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U32.4": {
+   "max": 6.0,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U32.5": {
+   "max": 3.95,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U32.6": {
+   "max": 3.95,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U32.7": {
+   "max": 3.95,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U32.8": {
+   "max": 3.95,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U32.9": {
+   "max": 3.95,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
   "U6.1": {
    "max": 4.0,
    "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
@@ -4606,6 +4960,16 @@
   "Y2.4": {
    "max": 3.63,
    "src": "operating -- CJO05-240003320B30 (C712738): CJ CJO05 oscillator datasheet p.2 s3.6: input voltage 3.3 Vdc +/-10 % (operating limit; no absolute maximum is published, so the pin is rated against 3.63 V)"
+  },
+  "Y3.1": {
+   "max": "none",
+   "src": "TAXM12M4RFBCCT2T (C133337): passive crystal: no voltage rating applies (drive level is a separate check, quality M24)",
+   "why": "no voltage rating applies"
+  },
+  "Y3.3": {
+   "max": "none",
+   "src": "TAXM12M4RFBCCT2T (C133337): passive crystal: no voltage rating applies (drive level is a separate check, quality M24)",
+   "why": "no voltage rating applies"
   }
  }
 }
