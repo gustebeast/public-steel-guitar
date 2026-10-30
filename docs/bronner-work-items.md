@@ -197,6 +197,10 @@ JLC-assemblable, sensibly priced USB-C receptacle (mid-mount or raised) centres 
 it, checking land and panel hole. Otherwise keep the current part and do not ask again. Report which
 way it went and the price delta.
 
+**R2-2 load switch picked (2026-10-30): TPS2553DBVR, C55266, 46,854 stock, $0.54.** TI SLVS841E pp.1 and 4: 1.5 A continuous at TJ up to 105 C (1.2 A to 125 C), ILIM 15k gives 1.61 to 1.80 A, 85 mOhm typ / 135 max, reverse comparator trips at VOUT - VIN 95 to 190 mV in 3 to 7 ms, 1 uA max reverse leak, EN active high, constant-current not latch-off (the -1 latches). DBV pins: 1 IN 2 GND 3 EN 4 FAULT# 5 ILIM 6 OUT. At 1.5 A it dissipates up to 0.30 W. Still to read: TUSB320LAI pins and modes. In stock: TUSB320LAIRWBR C132554 2,603; TS3USB221RSER C130085; INA226AIDGSR C49851 42,376; CH340C C84681. Nothing is in the netlist yet.
+
+**R2-3 result (2026-10-30): the slotted J8 is not stocked.** Only the -S- cross head (C5188434, 17,215) and the right-angle MX126R -S- show at JLC; no -Y- or -PS-. R2 keeps -S- unless a stocked slotted 5.0 mm 2-way with the same land turns up, so J8 stays the one cross-head screw; the tool question is with the user via the lead.
+
 **R2-5 result (2026-10-30): keep TYPE-C-31-M-12, price delta 0.** The mouth sits 6 mm under J5 and J6, and no stocked right-angle receptacle makes that up: the JLC search found 6.8 to 8.35 mm shells, and GT-USB-7051A, the taller one, is a vertical part that faces up, not at the panel. Closed.
 
 **Power governor, firmware, NOT BUILT (priority decided by the user, 2026-10-30).** The brick's
