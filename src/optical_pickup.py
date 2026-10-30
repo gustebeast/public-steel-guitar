@@ -2634,11 +2634,21 @@ R2_MOVES = {} if OPTICAL_REV == 1 else {
     **dict.fromkeys(('R36',), (5.39, -13.60)), # r36
     **dict.fromkeys(('R38',), (-2.97, -14.78)), # r38
     **dict.fromkeys(('TP10',), (4.54, -0.94)), # tp10
-    **dict.fromkeys(('TP9',), (1.20, 14.20)), # tp9
+    **dict.fromkeys(('TP9',), (-5.94, 12.55)), # tp9: -X of J2 (J2 moved -X for the notch's pair strip)
 }
 # J2: the side-entry S4B-XH-SM4 becomes a B4B-XH-A, west of the notch, its pins on the
 # conduit's band so the pair turns straight down over the edge.
-R2_J2 = (-14.30, -95.97, 0.0)     # U8's courtyard + CRTYD_GAP above it
+USB_NOTCH_D = 1.00            # back to HRO's edge
+USB_NOTCH_W = 14.00           # the overmould is 12.35 at most (USB Type-C 3.2.1), and the
+                              # mill leaves 0.5 mm radii in the corners
+# R2: THE 24 V PAIR GOES DOWN THE SAME NOTCH, -X of the plug. At standoff 7.5 the band
+# between the board's -Y edge and the rail's wall is under 3 mm, too little to drop the pair
+# over the edge; the notch is 5.9 deep and the conduit is open under it. One lead (XH_OD,
+# 4.0, as opt_cables draws it) and 0.5 each side.
+USB_NOTCH_PAIR = 4.0 + 2 * 0.5
+# x: EDGE_KEEP -X of the notch's widened end (usb_notch, USB_NOTCH_PAIR), on J1's moved x;
+# y: U8's courtyard + CRTYD_GAP above it.
+R2_J2 = (None, -95.97, 0.0)
 # U10, THE ESD ARRAY, TURNS 0 AND SITS +X OF J1's PAIR PINS. With J1 on the notch its
 # R1 spot (straight above J1, turned 90) put its PHY face 1.26 mm under the MCU's
 # decoupling row (C101 / C142) -- no room for the pair's vias, and the layout's diff-pair
@@ -2654,8 +2664,11 @@ if OPTICAL_REV != 1:
             _p["rot"] = R2_ROT[_p["ref"]]
         if _p["ref"] == "J2":
             _p["pkg"] = "XH-TE-4V"
-            _p["x"], _p["y"], _p["rot"] = R2_J2
+            _p["y"], _p["rot"] = R2_J2[1], R2_J2[2]
             _p["desc"] = "power in -- 4-way top entry: 1=+24V 2=PWR_GND"
+    _j1x = next(q["x"] for q in PARTS if q["ref"] == "J1")          # after J1's move
+    next(q for q in PARTS if q["ref"] == "J2")["x"] = (
+        _j1x - USB_NOTCH_W / 2 - USB_NOTCH_PAIR - EDGE_KEEP - CRTYD["XH-TE-4V"][0] / 2)
 
 
 # ── ORDERABILITY: every placed part -> a real LCSC/JLCPCB line ──────────────────────
@@ -3146,19 +3159,27 @@ _SECTIONS = ((HEAD_Y0, PCB_YP, PCB_X1S, TAIL_X1),      # +Y wrap, over the endpl
 # Moving the part would move the high-speed pair that was laid out behind it; taking
 # 1.0 mm of bare board away in front of it moves nothing. The courtyard stays where it
 # was: a keep-out, which is what it is.
-USB_NOTCH_D = 1.00            # back to HRO's edge
-USB_NOTCH_W = 14.00           # the overmould is 12.35 at most (USB Type-C 3.2.1), and the
-                              # mill leaves 0.5 mm radii in the corners
+# (USB_NOTCH_D / _W / _PAIR: defined with R2_J2, which derives J2's x from them)
 
 
 def usb_notch():
     """(x0, x1, y0, y1) of the notch in the board's -Y edge in front of J1, strip frame."""
     # Up to HRO's edge, USB_NOTCH_D in front of the land: on R1 the land IS the board edge;
     # on R2 the socket stands back in the notch so the down-angle plug hangs inside the
-    # outline, and the notch is also the conduit's mouth.
+    # outline, and the notch is also the conduit's mouth -- for J2's 24 V pair too, which
+    # drops through it -X of the plug (USB_NOTCH_PAIR, R2 only).
     x = part("J1")["x"]
-    return (x - USB_NOTCH_W / 2, x + USB_NOTCH_W / 2, PCB_YM,
+    return (x - USB_NOTCH_W / 2 - (USB_NOTCH_PAIR if OPTICAL_REV != 1 else 0.0),
+            x + USB_NOTCH_W / 2, PCB_YM,
             part("J1")["y"] - CRTYD["USB-C"][1] / 2 + USB_NOTCH_D)
+
+
+def pwr_col_x():
+    """X of the 24 V pair's drop into the conduit. R1: PWR_COL_DX +X of J2. R2: in the
+    notch, the pair's width plus USBC_NOTCH_CLR in from its -X end."""
+    if OPTICAL_REV == 1:
+        return part("J2")["x"] + PWR_COL_DX
+    return usb_notch()[0] + USBC_NOTCH_CLR + XH_OD / 2.0
 
 
 def mount_points():
@@ -3765,6 +3786,20 @@ def opt_cables(which: str = "usb") -> cq.Workplane:
             continue
         # (J2's crimp housing is not drawn here: the board's own export seats one in every
         #  JST header, from the routed footprint. PLUG_L is the room planned behind it.)
+        if ref == "J2" and OPTICAL_REV != 1:
+            # R2, TOP ENTRY: the pair leaves the plug UPWARD, PLUG_L (the room planned
+            # behind a mated XH plug, along its mating axis -- now +Z) over the header's
+            # base, crosses to the notch's -X end at the notch's mid-Y and drops through it
+            # beside J1's plug into the conduit (pwr_col_x, USB_NOTCH_PAIR).
+            nx0, nx1, ny0, ny1 = usb_notch()
+            yc, xc, zt = (ny0 + ny1) / 2.0, pwr_col_x(), PCB_TOP + plen
+            assert nx0 + od / 2.0 <= xc <= nx0 + USB_NOTCH_PAIR - od / 2.0 + 1e-9, (
+                f"J2's pair at x {xc:.2f} does not fit its strip of the notch")
+            _yturn[ref] = yc
+            _path[ref] = [(p["x"], p["y"], zt), (p["x"], yc, zt), (xc, yc, zt),
+                          (xc, yc, PWR_Z_TURN)]
+            _od[ref] = od
+            continue
         # TURN AT WHICHEVER BACK FACE IS FURTHER -Y -- its own, or that of any neighbour the
         # lead has to cross in X. Deriving it from the plug's own length alone is what let
         # the right-angle J1 drive through J2; deriving it from the neighbour alone would
@@ -3776,7 +3811,7 @@ def opt_cables(which: str = "usb") -> cq.Workplane:
         # The run's SOLID is |dx| + od wide (see the box below), so it reaches od/2 past the
         # endpoints this test used -- J2's path stops at x 2.2 but its copper reaches 4.2,
         # and the USB-C plug's overmold starts at 3.88. Test the solid, not the path.
-        col = p["x"] + (PWR_COL_DX if ref == "J2" else 0.0)
+        col = pwr_col_x() if ref == "J2" else p["x"]
         lo = min(p["x"], col) - od / 2.0
         hi = max(p["x"], col) + od / 2.0
         backs = [PCB_YM - plen]
@@ -3811,7 +3846,7 @@ def opt_cables(which: str = "usb") -> cq.Workplane:
     if "J2" in _WANT:
         # 24 V: across the conduit's floor to its +Y side, down the slot (opt_pwr_slot) into
         # the endplate's board recess, and onto J9 from above -- J9 is a top-entry XH.
-        xd = part("J2")["x"] + PWR_COL_DX
+        xd = pwr_col_x()
         j9 = op_top("J9")
         # J9 stands out in the bay since the power-button work (it was in the recess), inside
         # the plan of the J7 pair's balancing loop. So the lead leaves the recess under its
@@ -3944,7 +3979,7 @@ def opt_pwr_slot() -> cq.Workplane:
     inside it: the part prints -X off its +X face, so a void that ended inside would leave a
     face of material printed over it -- a bridge. Open to the -X face, its only X-facing end
     is at +X, which the print meets as a floor."""
-    x0, x1 = BAND_X0 - 1.0, part("J2")["x"] + PWR_COL_DX + 5.0    # the pair drops behind J2
+    x0, x1 = BAND_X0 - 1.0, pwr_col_x() + 5.0                      # the pair drops behind J2
     y0, y1 = PWR_Y - 2.2, -120.8        # into the recess, which starts at -122.8
     # up past the lead's own turn: it crosses the conduit's +Y wall at PWR_Z_TURN, above the
     # conduit's floor, so a slot that stopped at the floor left 2.8 mm3 of wall in the lead
