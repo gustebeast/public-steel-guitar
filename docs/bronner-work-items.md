@@ -63,6 +63,40 @@ cutting into the chassis. For R2 we should add an action item to move J7 +z and 
    0.34 above the body's underside, so no ledge fits under it, and this rev's stop is the
    -X/-Y body adapter, which only works with the leg fitted.
 
+## R2, optical (lead, 2026-10-29) -- APPROVED, PREP STARTED
+
+Lead rulings, 2026-10-29:
+- **Right-angle plugs only.** Drop the straight-plug pass-through. This follows the user's
+  10-07 ruling ("use a downward right angled usb C ... we can always redesign plastic to
+  account for the cable").
+- **Conduit size.** Size it to pass what is actually fitted: the B0FKYR7V34 down-angle
+  overmould (12.2 x 5.2), and J2's XH housing on its thin axis (12.4 x 5.75) if it has to
+  pass through.
+- **Board edge** at about -94 (world), with the compute section repacked and grown -X
+  where the strip allows. The strip stays aligned to the strings and bearings exactly as R1.
+- **R1 stays reproducible** behind `OPTICAL_REV=1` (TAIL_X1_R1 etc.), with an INSTALL_NOTES
+  stop-gap: the R1 board spills over -Y, and its leads run outside to the output board.
+
+Measured on the R1 board (board.json frame = world + 28.3):
+- PCB_YM -122.58. J1 (11.48, -117.8), J2 (-22.56, -116.5).
+- The compute section spans y -65.95..-122.58 and x -32.16..25.06 (57 x 57).
+- The MCU U6 sits at board y -37 (world -65), reaching to about world -78. Everything below
+  it fills world -78..-122.6, i.e. 44.6 deep:
+  - LDO row U8 / U9 / U11
+  - buck U13 / L1
+  - PHY U7 + Y2
+  - U10 ESD
+  - J1 / J2
+- Target: world -78..-94 = 16 deep at 57 wide. The difference (about 1600 mm2) has to come
+  from -X growth of the compute section. The board there is 1.6 FR4 over open deck, 3.7 up.
+- Conduit today: Y -124.58..-145.08 (20.4 deep in Y, sized for a STRAIGHT 17.5 plug).
+  R2 sizes it from the right-angle overmould and the XH thin axis, inside the -105.05 rail.
+- ⚠ J2's XH plug is 14.0 long mated (housing + wire relief) and points -Y. If it stays
+  side-entry, its length, not the conduit, sets the edge. Check whether the pair can turn
+  down within the housing length, or whether J2 should become top-entry.
+- The rail comes from motor_bank.RAIL_INNER_Y. Derive from it; do not type -105.05
+  (main still has standoff 17.2 until branner lands 7.5).
+
 ## R2 BACKLOG, output_panel (user via the lead, 2026-10-20) -- NOT the current rev, which fabs as is
 
 **R2-0. 66 -> 56 deep, 98 wide, J1 centred (lead + user, 2026-10-29) -- IN PROGRESS.** The
