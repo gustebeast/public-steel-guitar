@@ -188,7 +188,13 @@ HY_CLAMP = -PK_MAX_YM + YZONE                             # -Y skirt inner = ext
 OPEN_YC  = (OPEN_YP - HY_CLAMP) / 2                       # opening/floor Y centre
 OPEN_YW  = OPEN_YP + HY_CLAMP                             # opening/floor Y width
 # Z-plate the pickup slides on in X (fine tone) -- lifted/tilted by the 3 jacks:
-ZPL_T    = 3 * D.NOZZLE_D  # 2.4 (was 2.0)
+# 2.0, NOT 2.4 (user, 2026-10-29: the deepest pickup reaches a 6 mm string gap in as little Z
+# as possible). The plate is drawn at the bottom of its travel, and there its underside must not
+# hang below the jack screws' tips (SKIRT_DEEP_BOT), which the pickup region spends anyway. At
+# 2.4 it hung 0.33 below them and would have set the envelope by itself. The insert pocket still
+# leaves 1.0 of plate under it (asserted below) -- and the plate hangs on its nuts, so that floor
+# is what the load seats on, a pickup's weight.
+ZPL_T    = 2.0
 ZPL_TOP  = PM.PK_BOT                                      # pickup rests on the plate top
 ZPL_BOT  = ZPL_TOP - ZPL_T
 FLG_BOT  = ZPL_BOT
@@ -234,6 +240,16 @@ JACK_SCREW_L   = 20.0                              # NEW BOM part: M4×20 button
 FLOOR_BOT      = ZPL_BOT                           # -Y skirt / end-wall bottom, shallow section
 SKIRT_DEEP_BOT = JACK_HEAD_Z - JACK_SCREW_L        # the jack screws' tips: the deepest thing the
                                                    # pickup region reserves anyway (-16.10)
+# THE PICKUP PIECE'S ENVELOPE: the lowest it reaches anywhere in its travel. The screws are fixed
+# in Z (heads captured in the deck), the plate is drawn at its lowest, and the skirt stops at the
+# tips -- so it is the tips. Everything that sits under the piece (the motor bank's CAN tees as
+# it slides out, the fret light) clears THIS, not a number of its own.
+PIECE_Z_MIN = SKIRT_DEEP_BOT
+assert ZPL_BOT >= PIECE_Z_MIN - 1e-9, (
+    f"the Z-plate's underside {ZPL_BOT:.2f} at the bottom of its travel hangs below the jack "
+    f"screws' tips {PIECE_Z_MIN:.2f}: thin it or the envelope grows")
+assert (JACK_MOUTH_Z - M4.insert_depth) - ZPL_BOT >= D.MIN_WALL - 1e-9, (
+    "the jack insert's pocket leaves less than a bead of plate under it")
 # TOP-ACCESS at the PLATE's clear zones (pickup-agnostic): TWO +Y plate corners + ONE
 # deep -Y. Equalise the two +Y = X LEVEL; the -Y jack = across-string tilt. The -Y jack is
 # nudged slightly off-CENTRE (JACK_MX_OFF) to free the CENTRE for the retention setscrew --
