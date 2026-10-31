@@ -245,6 +245,9 @@ PKG = {
     "WQFN-24":  (4.00, 4.00, 0.80),   # TI RTW, TLV320ADC3140 (SBAS993B mechanical)
     "SOT-23":   (2.90, 2.40, 1.30),
     "SOT-23-5": (2.90, 2.80, 1.45),
+    "QFN-24":   (4.00, 4.00, 0.90),   # CH334F, R2's U31
+    "SOIC-16":  (6.00, 9.90, 1.75),   # CH340C, R2's U32
+    "SOD-123":  (2.70, 1.60, 1.25),   # DSS16
     "SOT-23-6": (2.90, 2.80, 1.45),   # same envelope as the -5; the buck (see U13)
     "IND-4040": (4.10, 4.10, 3.10),   # 4x4 shielded power inductor, buck output. DRAWN AT
                                       # THE LAND'S TALLEST PART, the 3.0 mm SWPA4030S; the
@@ -375,6 +378,9 @@ CRTYD = {
     "2512R":    (7.66, 3.86),   # KiCad R_2512_6332Metric
     "SOT-23":   (3.95, 3.49),
     "SOT-23-5": (4.19, 3.49),
+    "QFN-24":   (5.30, 5.30),   # KiCad HVQFN-24-1EP_4x4mm
+    "SOIC-16":  (7.40, 11.00),  # KiCad SOIC-16_3.9x9.9mm
+    "SOD-123":  (4.20, 1.90),
     "SOT-23-6": (4.19, 3.49),
     "SOT-563":  (4.19, 3.49),   # the real part is SOT-23-6 -- see the U10 note
     "TP":       (2.50, 2.50),   # KiCad's own courtyard for the D1.5 test pad
@@ -2616,9 +2622,9 @@ PARTS = _parts()
 #   tp1-4 the SWD pads under them; the LED driver, R44 and TP10 in the corner +X of J1.
 # (dx, dy) world mm on R1's placements.
 R2_MOVES = {} if OPTICAL_REV == 1 else {
-    **dict.fromkeys(('J1', 'R32', 'R33'), (-11.80, 26.88)), # j1
-    **dict.fromkeys(('U10',), (-9.13, 27.255)), # u10: turned 0, its PHY face east (R2_ROT)
-    **dict.fromkeys(('TP5',), (1.90, 0.0)),     # tp5: off U10's PHY-side vias
+    **dict.fromkeys(('J1', 'R32', 'R33'), (-11.80, 29.88)), # j1 (+3.0 for the plug's 11.8, user 2026-10-30)
+    **dict.fromkeys(('U10',), (-4.43, 27.755)), # u10: turned 0, +X of J1's moved shell (R2_ROT)
+    **dict.fromkeys(('TP5',), (2.00, -18.40)),   # tp5: into the -Y band, U10 took its spot
     **dict.fromkeys(('C130',), (-19.53, 26.90)), # c130
     **dict.fromkeys(('U7', 'C119', 'C120', 'C121', 'C122', 'C125', 'C136', 'C137', 'C138', 'C139', 'C145', 'Y2', 'R37', 'R39'), (7.99, 12.80)), # phy
     **dict.fromkeys(('C160', 'C161', 'C163', 'C165', 'C166', 'U13', 'R40', 'R41', 'L1', 'C162', 'C167'), (0.00, 13.97)), # buck
@@ -2655,6 +2661,19 @@ R2_J2 = (None, -95.97, 0.0)
 # decoupling row (C101 / C142) -- no room for the pair's vias, and the layout's diff-pair
 # search found no escape at all. Turned 0, that face looks +X, at open board toward U7.
 R2_ROT = {"U10": 0.0}
+R2_FLASH = (
+    ("U31", "USB 2.0 HS hub: J1 up, the PHY and U32 down", "QFN-24", 11.60, -106.00, 90.0),
+    ("Y3", "12 MHz crystal, U31 (no load caps: CH334 has 16 pF on each pin)", "3225", 11.60, -110.60, 180.0),
+    ("U32", "USB-serial bridge, U6's USART1 ROM loader", "SOIC-16", 20.50, -107.00, 0.0),
+    ("Q2", "BOOT0 high side, gate on U32's DTR#", "SOT-23", 19.60, -99.60, 0.0),
+    ("D11", "NRST pulled by U32's RTS#", "SOD-123", 15.20, -110.50, 90.0),
+    ("C180", "U31 VDD33 bypass", "0402", 7.80, -106.00, 90.0),
+    ("C181", "U31 VDD33 bulk", "0805C", 7.80, -103.20, 90.0),
+    ("C182", "U31 V5 bypass", "0402", 7.80, -108.20, 90.0),
+    ("C183", "U32 VCC bypass", "0402", 23.20, -100.40, 0.0),
+    ("R52", "U31 OVCUR# pull-up", "0402", 15.60, -104.40, 0.0),
+    ("R53", "Q2 gate pull-up: BOOT0 stays low until the bridge asserts DTR#", "0402", 16.20, -100.00, 0.0),
+)
 if OPTICAL_REV != 1:
     for _p in PARTS:
         _d = R2_MOVES.get(_p["ref"])
@@ -2667,6 +2686,11 @@ if OPTICAL_REV != 1:
             _p["pkg"] = "XH-TE-4V"
             _p["y"], _p["rot"] = R2_J2[1], R2_J2[2]
             _p["desc"] = "power in -- 4-way top entry: 1=+24V 2=PWR_GND"
+    # THE FIRMWARE PATH (M43, user 2026-10-30): the Pi flashes this board over J1 alone. ST's
+    # ROM USB is on PA11/PA12, unwired, and the PHY needs firmware, so a hub gives the cable a
+    # second device, a USB-serial chip, on USART1's ROM loader; DTR and RTS drive BOOT0 and NRST.
+    for _r, _d, _k, _x, _y, _rot in R2_FLASH:
+        PARTS.append({"ref": _r, "desc": _d, "pkg": _k, "x": _x, "y": _y, "rot": _rot})
     _j1x = next(q["x"] for q in PARTS if q["ref"] == "J1")          # after J1's move
     next(q for q in PARTS if q["ref"] == "J2")["x"] = (
         _j1x - USB_NOTCH_W / 2 - USB_NOTCH_PAIR - EDGE_KEEP - CRTYD["XH-TE-4V"][0] / 2)
@@ -2729,6 +2753,12 @@ _MPN_RULES = (
                                                     "five TLV320ADC3140s convert")),
     ("U7",   ("USB3300-EZK-TR",  "C108383",  1.455, "ULPI HS PHY, QFN-32 5x5. 17,431 in "
                                                 "stock 2026-10-05")),
+    ("U31",  ("CH334F",          "C5187527", 0.60, "HS hub, the panel's part. R2's M43 path")),
+    ("U32",  ("CH340C",          "C84681",   0.5458, "USB-serial, no crystal, DTR# and RTS#. "
+                                                    "106,932 in stock 2026-10-30")),
+    ("Q2",   ("AO3401A",         "C15127",   0.03, "P-FET, JLC basic, 1,019,825 in stock 2026-10-30")),
+    ("D11",  ("DSS16",           "C7467023", 0.05, "Schottky, the board family's catch diode")),
+    ("Y3",   ("TAXM12M4RFBCCT2T", "C133337", 0.15, "12 MHz 3225, the panel's hub crystal")),
     ("U10",  ("USBLC6-2SC6",     "C7519",    0.1829, "USB ESD array, @5+. NOTE SOT-23-6, not the "
                                                     "modelled SOT-563 -- envelope grows")),
     ("U11",  ("TLV9061IDBVR",    "C398358",  0.2505, "single of the same family as U1-U5, so the "
@@ -2880,7 +2910,7 @@ _MPN_RULES = (
 # ambiguous group is spelled out instead of pattern-matched.
 _MPN_EXACT = {r: ("0402 thick-film R", "BASIC", 0.002, "pulls / divider / gate")
               for r in ("R30", "R31", "R32", "R33", "R34", "R35", "R36", "R37", "R38", "R39",
-                        "R42", "R43", "R50", "R51")}
+                        "R42", "R43", "R50", "R51", "R52", "R53")}
 # The five SHDNZ pull-ups. Spelled out for the same reason as the group above: "Rs11" is
 # not in any R-prefix group's namespace and should not be quietly adopted by one.
 _MPN_EXACT.update({"Rs%d1" % k: ("0402 thick-film R", "BASIC", 0.002,
@@ -2907,6 +2937,9 @@ _MPN_EXACT.update({r: ("0402 thick-film R", "BASIC", 0.002, "buck feedback divid
                    for r in ("R40", "R41")})
 _MPN_EXACT.update({r: ("0402 X7R MLCC", "BASIC", 0.004, "buck HF bypass / bootstrap")
                    for r in ("C161", "C163", "C165", "C166")})
+_MPN_EXACT.update({r: ("0402 X7R MLCC", "BASIC", 0.002, "flash path bypass")
+                   for r in ("C180", "C182", "C183")})
+_MPN_EXACT["C181"] = ("0805 X7R MLCC", "BASIC", 0.01, "U31 VDD33 bulk")
 _MPN_EXACT["C167"] = ("0805 X7R MLCC", "BASIC", 0.01, "buck 5 V output bulk, second")
 _MPN_EXACT["C162"] = ("0805 X7R MLCC", "BASIC", 0.01, "buck 5 V output bulk")
 _MPN_EXACT["C164"] = ("0805 X7R MLCC", "BASIC", 0.01,
@@ -3031,8 +3064,8 @@ PCB_YM = part("J1")["y"] - CRTYD["USB-C"][1] / 2   # -Y end = the connector's LA
 PCB_YM_R1 = PCB_YM - R2_MOVES.get("J1", (0.0, 0.0))[1]
 if OPTICAL_REV != 1:
     # R2: the lowest courtyard but J1's (which stands in its notch) plus the edge keep-out.
-    PCB_YM = min(p["y"] - part_wh(p, CRTYD)[1] / 2 for p in PARTS
-                 if p["ref"] != "J1" and p["y"] < Y_TAIL) - EDGE_KEEP
+    # Over the rail to branner's limit (user, 2026-10-30), one bead inside the body's -115.45.
+    PCB_YM = -114.65
 PCB_L  = PCB_YP - PCB_YM
 # ⚠ O-BAND, EXPERIMENTAL (user asked to try it, 2026-09-23). The board is a C: the +Y wrap
 # reaches the main body only through the sensing strip, so every digital net between U6 and
@@ -3164,15 +3197,15 @@ _SECTIONS = ((HEAD_Y0, PCB_YP, PCB_X1S, TAIL_X1),      # +Y wrap, over the endpl
 
 
 def usb_notch():
-    """(x0, x1, y0, y1) of the notch in the board's -Y edge in front of J1, strip frame."""
-    # Up to HRO's edge, USB_NOTCH_D in front of the land: on R1 the land IS the board edge;
-    # on R2 the socket stands back in the notch so the down-angle plug hangs inside the
-    # outline, and the notch is also the conduit's mouth -- for J2's 24 V pair too, which
-    # drops through it -X of the plug (USB_NOTCH_PAIR, R2 only).
-    x = part("J1")["x"]
-    return (x - USB_NOTCH_W / 2 - (USB_NOTCH_PAIR if OPTICAL_REV != 1 else 0.0),
-            x + USB_NOTCH_W / 2, PCB_YM,
-            part("J1")["y"] - CRTYD["USB-C"][1] / 2 + USB_NOTCH_D)
+    """(x0, x1, y0, y1) of the board's cut at J1, strip frame. R1: a notch in the -Y edge.
+    R2: a CLOSED hole over the endplate's shaft. Install order (user, 2026-10-30): XH up it
+    alone, then the USB head beside the pair, then +Y into J1. So 12.0 head + 2 x O1.3 + 2 x 0.3
+    in X, the pair at the -X end, and 11.8 of head + fit in Y, ending at the rail's inner plane."""
+    x, y1 = part("J1")["x"], part("J1")["y"] - CRTYD["USB-C"][1] / 2 + USB_NOTCH_D
+    if OPTICAL_REV == 1:
+        return (x - USB_NOTCH_W / 2, x + USB_NOTCH_W / 2, PCB_YM, y1)
+    from . import motor_bank as _MB
+    return (x + 6.3 - 15.2, x + 6.3, _MB.RAIL_INNER_Y, y1)
 
 
 def pwr_col_x():
@@ -3401,8 +3434,9 @@ def opt_pcb() -> cq.Workplane:
     # also the shape pockets are cut from, and a pocket that followed the notch would put
     # plastic exactly where the plug's overmould has to go.
     _nx0, _nx1, _ny0, _ny1 = usb_notch()
-    pcb = pcb.cut(box_at(_nx1 - _nx0, (_ny1 - _ny0) + 1.0, PCB_T + 2.0,
-                         x=(_nx0 + _nx1) / 2, y=(_ny0 + _ny1) / 2 - 0.5,
+    _nslop = 1.0 if OPTICAL_REV == 1 else 0.0       # R1's runs out through the edge
+    pcb = pcb.cut(box_at(_nx1 - _nx0, (_ny1 - _ny0) + _nslop, PCB_T + 2.0,
+                         x=(_nx0 + _nx1) / 2, y=(_ny0 + _ny1) / 2 - _nslop / 2,
                          z=PCB_BOT + PCB_T / 2))
     # ⚠ NO JACK ACCESS HOLE, BECAUSE THE JACK IS NOT UNDER THE BOARD. This cut it, and
     # elec/optical.py emitted the matching circle on Edge.Cuts -- where it was a FAB
@@ -3584,11 +3618,11 @@ _USBC_W, _USBC_H = 12.35, 6.50                                # USB-IF MAX overm
 # THE LEAD IS CHOSEN (user, 2026-10-07): Amazon B0FKYR7V34, 30 cm, USB 2.0, the same
 # up/down-angle plug at both ends on a flat ribbon. THESE ARE THE SELLER'S PHOTO'S
 # DIMENSIONS, NOT A MEASUREMENT: re-read them off the part when one is in hand.
-USBC_ANG_W = 12.2               # overmould, along the socket's long axis
+USBC_ANG_W = 12.0               # overmould, along the socket's long axis
 USBC_ANG_D = 5.2                # mating face -> back of the overmould
-USBC_ANG_BODY = 10.5            # the overmould along the cable. ASSUMED centred on the
+USBC_ANG_BODY = 10.3            # the overmould along the cable. ASSUMED centred on the
                                 # plug's axis: the photo does not dimension where it sits
-USBC_ANG_BOOT = 8.5             # the ribbed relief past it
+USBC_ANG_BOOT = 8.4             # the ribbed relief past it
 USBC_BOOT_T = 3.5               # ...its thickness, ASSUMED (not dimensioned)
 USBC_RIBS = 5                   # ...and its ribs, counted off the photo
 RIBBON_W = 10.8                 # the flat cable, across
@@ -3635,16 +3669,6 @@ if OPTICAL_REV != 1:
     CONDUIT_Y0 = _MB_R2.RAIL_INNER_Y + D.MIN_WALL_2P
     CONDUIT_Y1 = usb_notch()[3]
     CONDUIT_D = CONDUIT_Y1 - CONDUIT_Y0
-    _need = max(_XH4_D, USBC_ANG_D) + 2 * CONDUIT_CLR
-    assert CONDUIT_D >= _need - 1e-9, (
-        f"R2 conduit is {CONDUIT_D:.2f} deep in Y, under the {_need:.2f} that passes the "
-        f"XH housing / down-angle USB-C on its thin axis: raise J1 (R2_MOVES j1)")
-    assert PCB_YM >= CONDUIT_Y0 - 1e-9, (
-        f"R2 board edge {PCB_YM:.2f} reaches past the rail's wall {CONDUIT_Y0:.2f}")
-    _plug_y = usb_notch()[3] - 0.5 - 0.45 - USBC_ANG_D    # mouth 0.5 proud, plug 0.45 off
-    assert _plug_y >= CONDUIT_Y0 + CONDUIT_CLR - 1e-9, (
-        f"R2: J1's down-angle plug reaches y {_plug_y:.2f}, inside the conduit's "
-        f"{CONDUIT_CLR} clearance to its wall at {CONDUIT_Y0:.2f}")
 assert CONDUIT_Y0 >= _WALL_Y - 1e-9, (
     f"conduit reaches y {CONDUIT_Y0:.2f}, past the {D.MIN_WALL_2P} exterior wall limit "
     f"{_WALL_Y:.2f} -- the longest plug ({max(PLUG_L.values()):.1f}) no longer fits the "
@@ -3861,53 +3885,44 @@ def usb_face_y() -> float:
 # the 24 V slot, the notch's cut and the retention lip's trim: one closed shaft from under J1's
 # notch down into the board's recess, which is open to the bay at the -X face. Its roof points
 # along the build (-X), so it prints without support, and the -X face and the lip stay whole.
-# Sized on the one plug that has to pass it, the XHP-4 (12.4 x 5.75) over the USB head (12.2 x
-# 5.2), plus a fit, up to whole beads. The 24 V lead goes through FIRST, so each plug has the
-# hole to itself but for that pair (2 x O1.3), and the USB head passing it sets the depth.
+# SIZED ON THE WHOLE USB HEAD (user, 2026-10-30: "it was sized assuming the head didn't have the
+# metal plug on it"), which comes up it straight, cable trailing, tongue pointing +Y, and only
+# then goes into J1: 11.8 along Y (5.2 of overmould + 6.6 of tongue) and 12.0 along X, with the
+# pair (2 x O1.3) beside it at the -X end, so the depth is the head's alone. The XHP-4 goes
+# first and passes inside that. A fit, up to whole beads. This is usb_notch()'s closed hole in
+# the board, carried down: the board's hole and the shaft are one plan.
 CABLE_HOLE_FIT = 0.3
-CABLE_HOLE_L = math.ceil((max(_XH4_W, USBC_ANG_W) + 2 * CABLE_HOLE_FIT) / D.BEAD - 1e-9) * D.BEAD
-CABLE_HOLE_D = (math.ceil((max(_XH4_D, USBC_ANG_D + 1.3) + 2 * CABLE_HOLE_FIT) / D.BEAD - 1e-9)
-                * D.BEAD)                   # 7.2: the USB head beside the pair (O1.3) sets this
+CABLE_HOLE_L = math.ceil((max(_XH4_W, USBC_ANG_W + 2.6) + 2 * CABLE_HOLE_FIT) / D.BEAD - 1e-9) * D.BEAD
+CABLE_HOLE_D = (math.ceil((max(_XH4_D, USBC_ANG_D + USBC_MATE_L) + 2 * CABLE_HOLE_FIT) / D.BEAD - 1e-9)
+                * D.BEAD)                   # 12.8: the USB head, tongue and all
 
 
-def _cable_house(y0, y1, z0, z1):
-    """A house section in plan, y0..y1 wide, CABLE_HOLE_L of straight wall with its +X end on
-    J1's centre + L/2 and its roof beyond them toward the build, z0..z1."""
-    d = y1 - y0
-    return house_hole(d, z1 - z0, axis_point=(part("J1")["x"] + CABLE_HOLE_L / 2.0 - d / 2.0,
-                                              (y0 + y1) / 2.0, z0),
-                      axis_dir=(0.0, 0.0, 1.0), print_up=(-1.0, 0.0, 0.0), wall=CABLE_HOLE_L)
-
-
-# THE 24 V PAIR IN THE SHAFT: down its -Y wall, past the board's -Y edge, side by side along X
-# at J2's pitch (wiring.optical_feed) and clear of the shaft's straight walls. One O1.3 fits
-# between that wall and the board's edge: y0 + 0.65 .. PCB_YM - 0.65, and the depth is the
-# plug plus exactly one wire (CABLE_HOLE_D). It goes through FIRST; the USB head follows.
-_HOLE_Y1 = min(usb_face_y() - USBC_ANG_D / 2.0 + CABLE_HOLE_D / 2.0, usb_notch()[3])
-PWR_Y = (_HOLE_Y1 - CABLE_HOLE_D + PCB_YM) / 2.0            # -101.25
-PWR_DROP_X = part("J1")["x"] - 4.7                          # -5.02
-assert PWR_Y - 0.65 >= _HOLE_Y1 - CABLE_HOLE_D - 1e-6 and PWR_Y + 0.65 <= PCB_YM + 0.02, (
-    f"the 24 V pair at y {PWR_Y:.2f} does not fit between the shaft's wall and the board")
-assert PWR_DROP_X - 1.25 - 0.65 >= part("J1")["x"] + CABLE_HOLE_L / 2.0 - CABLE_HOLE_L, (
-    "the 24 V pair stands past the shaft's straight wall")
-assert USBC_ANG_W + 2 * CABLE_HOLE_FIT <= CABLE_HOLE_L and _XH4_W + 2 * CABLE_HOLE_FIT <= CABLE_HOLE_L, (
-    "a plug no longer passes the shaft's length")
-assert (USBC_ANG_D + 1.3 + 2 * CABLE_HOLE_FIT <= CABLE_HOLE_D + 1e-9
-        and _XH4_D + 2 * CABLE_HOLE_FIT <= CABLE_HOLE_D + 1e-9), "a plug no longer passes its depth"
+# THE 24 V PAIR IN THE HOLE: at its -X end, beside where the USB head passes. It goes first.
+_nh = usb_notch()
+PWR_Y = (_nh[2] + _nh[3]) / 2.0
+PWR_DROP_X = _nh[0] + CABLE_HOLE_FIT + 1.3
+# The user's install order, in the board's hole: the XH alone, then the USB head beside the pair.
+assert abs(_nh[1] - _nh[0] - CABLE_HOLE_L) < 1e-9 and _nh[3] - _nh[2] >= CABLE_HOLE_D - 1e-9, (
+    f"usb_notch()'s hole {_nh} no longer covers the shaft's plan, {CABLE_HOLE_L} x {CABLE_HOLE_D}")
+_HEAD_BACK = usb_face_y() - USBC_MATE_L - USBC_ANG_D        # the head, unmated, coming up it
+assert _HEAD_BACK >= _nh[2] + CABLE_HOLE_FIT - 1e-9 and usb_face_y() <= _nh[2] + CABLE_HOLE_D - CABLE_HOLE_FIT + 1e-9, (
+    f"the unmated head {_HEAD_BACK:.2f}..{usb_face_y():.2f} does not fit the hole's Y {_nh[2:]}")
+assert USBC_ANG_W + 2.6 + 2 * CABLE_HOLE_FIT <= _nh[1] - _nh[0] + 1e-9, "USB head + pair too wide"
+assert USBC_ANG_D + USBC_MATE_L + 2 * CABLE_HOLE_FIT <= _nh[3] - _nh[2] + 1e-9, "USB head too long"
+assert _XH4_W + 2 * CABLE_HOLE_FIT <= _nh[1] - _nh[0] and _XH4_D + 2 * CABLE_HOLE_FIT <= _nh[3] - _nh[2], (
+    "the XH plug no longer passes")
 
 
 def opt_cable_hole() -> cq.Workplane:
-    """R2's cable passage through the endplate (see CABLE_HOLE_FIT): the shaft, and over it the
-    pocket J1's plug needs: its head and boot hang below the board, and they back off -Y by the
-    plug's whole mating stroke to come out."""
-    ny1 = usb_notch()[3]
-    y1 = min(usb_face_y() - USBC_ANG_D / 2.0 + CABLE_HOLE_D / 2.0, ny1)
-    z_top = PLINTH_TOP + 1.0
-    shaft = _cable_house(y1 - CABLE_HOLE_D, y1, FOOT_ROOF_Z - 1.0, z_top)
-    p = part("J1")
-    zb = (PCB_TOP + PKG[p["pkg"]][2] / 2) - USBC_ANG_BODY / 2.0 - USBC_ANG_BOOT     # boot's foot
-    y_out = usb_face_y() - USBC_ANG_D - USBC_MATE_L - CABLE_HOLE_FIT
-    return shaft.union(_cable_house(y_out, y1, zb - CABLE_HOLE_FIT, z_top))
+    """R2's cable passage through the endplate (see CABLE_HOLE_FIT): usb_notch()'s plan with its
+    roof toward the build, from the board's recess up through the top. The -Y wall stands on
+    the rail's inner plane, which is the rail's own wall below FOOT_ROOF_Z and is not cut."""
+    x0, x1, y0, _y1 = usb_notch()
+    d = CABLE_HOLE_D
+    y1 = y0 + d
+    return house_hole(d, PLINTH_TOP + 1.0 - (FOOT_ROOF_Z - 1.0),
+                      axis_point=(x1 - d / 2.0, (y0 + y1) / 2.0, FOOT_ROOF_Z - 1.0),
+                      axis_dir=(0.0, 0.0, 1.0), print_up=(-1.0, 0.0, 0.0), wall=x1 - x0)
 
 
 def _assert_field_clear():

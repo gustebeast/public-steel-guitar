@@ -612,9 +612,11 @@ assert PCB_PAD_TOP > PCB_PAD_BOT, "the board's pad has no thickness"
 
 
 def _pcb_pad() -> cq.Workplane:
-    """The board's seat: a box over its full X/Y envelope, PCB_PAD_BOT to PCB_PAD_TOP."""
+    """The board's seat: a box over its full X/Y envelope, PCB_PAD_BOT to PCB_PAD_TOP, and on
+    -Y out to the body's face (user, 2026-10-30: the prism goes to the edge, and only what the
+    cable hole needs is cut from it), which is past the board whatever the board does."""
     x0, x1 = OP.PCB_X1S, PCB_PAD_X1
-    y0, y1 = OP.PCB_YM, OP.PCB_YP
+    y0, y1 = min(OP.PCB_YM, CH.Y_LO - CH.T / 2), OP.PCB_YP
     return box_at(x1 - x0, y1 - y0, PCB_PAD_TOP - PCB_PAD_BOT,
                   x=(x0 + x1) / 2, y=(y0 + y1) / 2,
                   z=(PCB_PAD_BOT + PCB_PAD_TOP) / 2)
