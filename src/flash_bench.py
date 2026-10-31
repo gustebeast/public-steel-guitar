@@ -32,8 +32,8 @@ WHERE EVERY FIGURE COMES FROM
   * pads and headers: the routed boards (elec/geom), through src/board_geom.
   * WCH-LinkE header: the silkscreen of the user's own probe, v1.0, photographed
     2026-10-31 -- a 2x5 with NO pin numbers, so pins are named by signal and by place.
-    LINKE_ROWS matches it, both faces. Its pins really run off the board's end, parallel
-    to it; they are stood up here only so the leads read.
+    LINKE_ROWS matches it, both faces. The pins run off the board's end, parallel to it,
+    one row above the board's plane and one below, and a lead's socket goes on along them.
   * ST-LINK/V2 header: ST UM1075 rev 8, table 4.
   * ⚠ THE PROBES' OWN OUTLINES ARE NOT MEASURED. They are blocks the right kind of size
     with their headers in the right order; nothing here is a fit check on them.
@@ -47,6 +47,7 @@ from cadkit.cables import oct_cable
 from . import board_geom as BG
 
 PITCH = 2.54                 # both probes' headers
+SOCKET_OUT = 8.0             # of a socket past the pin's tip
 LEAD_OD = 1.3                # a jumper lead's insulation
 SOCKET = (2.5, 2.5, 14.0)    # a jumper lead's 2.54 mm female end
 
@@ -112,7 +113,7 @@ RGB = {"SWDIO": (0.10, 0.35, 0.85), "SWCLK": (0.95, 0.80, 0.10), "NRST": (0.92, 
 
 # ── where the stations stand on the bench (z 0 is the bench top) ─────────────────────
 AT = {"motor": (-40.0, 0.0), "panel": (95.0, 0.0), "optical": (290.0, 0.0)}
-PROBE_DY = 75.2              # a probe's header, +Y of its station
+PROBE_DY = 85.0              # a probe's header, +Y of its station
 RISE = 12.0                  # how high a lead arcs over the bench
 USB_RISE = 44.0              # a USB cable's, over everything else
 USB_OD = 3.2                 # a USB cable
@@ -142,6 +143,20 @@ def _label(lead, x, y, z):
             .translate((x, y, z)))
 
 
+def _lead_along(a, b, rise=RISE):
+    """A lead from `a` straight up, across, and in along +Y to a socket on the pin tip `b`."""
+    top = max(a[2], b[2]) + rise
+    e = (b[0], b[1] - SOCKET_OUT, b[2])
+    return oct_cable([a, (a[0], a[1], top), (e[0], e[1] - 12.0, top), (e[0], e[1] - 12.0, e[2]), e], LEAD_OD)
+
+
+def _socket_along(p):
+    """The jumper lead's female end, pushed on along +Y over the pin whose tip is `p`."""
+    w, d, h = SOCKET
+    return _box(p[0] - w / 2, p[0] + w / 2, p[1] - SOCKET_OUT, p[1] - SOCKET_OUT + h,
+                p[2] - d / 2, p[2] + d / 2)
+
+
 def _socket(p):
     """The jumper lead's female end, standing on header pin `p` (the pin's tip)."""
     w, d, h = SOCKET
@@ -149,15 +164,19 @@ def _socket(p):
 
 
 def linke(x, y):
-    """The WCH-LinkE lying flat, header pins standing up at (x, y): (body, pins,
-    {signal: pin tip})."""
-    body = _box(-9.0, 9.0, -8.0, 42.0, 0.0, 1.6).union(_box(-4.5, 4.5, 34.0, 42.0, 1.6, 4.8))
+    """The WCH-LinkE lying flat, chip side up, USB +Y, its header off the -Y end with the
+    pins along -Y: (body, pins, {signal: pin tip}). The silkscreen seen from above puts
+    U_RX at +X, and each back-row pin is under the front-row pin it pairs with."""
+    z0, z1 = 3.2, 4.8
+    zm = (z0 + z1) / 2
+    body = _box(-9.0, 9.0, -8.0, 42.0, z0, z1).union(_box(-6.35, 6.35, -10.5, -8.0, zm - 2.54, zm + 2.54))
     pins, tip = cq.Workplane("XY"), {}
     for r, row in enumerate(LINKE_ROWS):
+        pz = zm + (0.5 - r) * PITCH
         for c, sig in enumerate(row):
-            px, py = (c - 2) * PITCH, (0.5 - r) * PITCH - 4.0
-            pins = pins.union(_box(px - 0.32, px + 0.32, py - 0.32, py + 0.32, 1.6, 10.0))
-            tip[sig] = (x + px, y + py, 10.0)
+            px = (2 - c) * PITCH
+            pins = pins.union(_box(px - 0.32, px + 0.32, -19.0, -6.0, pz - 0.32, pz + 0.32))
+            tip[sig] = (x + px, y - 19.0, pz)
     return _mv(body, x, y), _mv(pins, x, y), tip
 
 
@@ -255,7 +274,7 @@ def components():
             body, pins, tip = linke(x0, y0 + PROBE_DY)
             add("wch_linke__%s" % st, body, RGB["probe"])
             add("wch_linke_pins__%s" % st, pins, RGB["pin"])
-            ends[("linke", st)] = ((x0, y0 + PROBE_DY + 42.0, 3.2), (0.0, 1.0, 0.0))
+            ends[("linke", st)] = ((x0, y0 + PROBE_DY + 42.0, 4.0), (0.0, 1.0, 0.0))
         # the tails: pad -> probe pin, one lead each, a 2.54 female end on the pin
         wch = dict(WCH)
         for sig, tp in TAILS[st]:
@@ -264,10 +283,11 @@ def components():
             a = pt((f["x"], f["y"], t))
             b_ = tip[sig if st == "optical" else wch[sig]]
             name = "%s_soldered_tail_%s" % (st, sig.lower())
-            add(name, _lead(a, b_), RGB[sig])
+            add(name, _lead(a, b_) if st == "optical" else _lead_along(a, b_), RGB[sig])
             add(name + "__solder", cq.Workplane("XY").circle(1.1).workplane(offset=0.9)
                 .circle(LEAD_OD / 2).loft().translate(a), RGB["solder"])
-            add(name + "__socket", _socket(b_), RGB["socket"])
+            add(name + "__socket", _socket(b_) if st == "optical" else _socket_along(b_),
+                RGB["socket"])
     # power: the brick's plug in the inlet, then each harness lead of the chain
 
     def way_out(st, ref, way):
