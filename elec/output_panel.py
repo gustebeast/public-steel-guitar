@@ -3218,7 +3218,7 @@ if REV != 1:
     _pl.update({
         "R60": _f(-12.0, -16.2, 90.0),
         "R3": _f(-8.9, -12.05), "R4": _f(-6.9, -12.2),     # J3's CC pull-downs: off the input slab
-        "J8": _f(-26.75, 22.8, 180.0),                     # pads where MX126's were
+        "J8": _f(-26.75, 20.8, 180.0),                     # 2.0 -Y of the MX126 pads: belt clamp 9 passes behind it
         # R2-4: the shunt drops into the 24 V track's last leg
         "R61": _f(36.8, -17.7, 270.0),
         "D10": _f(20.0, -13.0), "U16": _f(25.1, -21.9, 90.0), "C70": _f(26.1, -18.1, 180.0),
