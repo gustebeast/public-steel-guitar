@@ -835,8 +835,10 @@ def leg_shell_top(sx, yr):
     end's +Y shell, which stops at the screw rail's underside (-31.85): string 1's 688 seat
     sits beside it, and with the +Y rail in at the belt clamp the pocket left that seat 1.1
     of wall. Stopping the shell under the seat mouth puts the whole seat in endplate
-    (user, 2026-10-29)."""
-    if sx == LEG_STATIONS_X[0] and yr == Y_HI:
+    (user, 2026-10-29). The keyhead end matches it on both rails, so the two ends read alike
+    (user, 2026-10-30). The bridge's -Y shell keeps the foot line: the output board's recess
+    roof is that end's shelf."""
+    if sx == LEG_STATIONS_X[1] or yr == Y_HI:
         from .screw_rail import BOT
         return BOT
     return KH_DT_Z0
@@ -952,8 +954,9 @@ def _kh_tongue(yc, socket=False):
     UPPER on the foot<->rail-end face (x=KH_RAIL_X, z foot line..deck-groove floor). Both
     wide -X into the keyhead so the +X string pull is gripped. Body carries them; the
     keyhead drops on and sockets them. socket=True adds clearance + open tops for the cut."""
-    lower = _end_dt(_SHELL_NX, -1, yc, Z_BOT, KH_DT_Z0 - KH_DT_SEAT, socket, top_clr=KH_DT_SEAT)
-    upper = _end_dt(KH_RAIL_X, -1, yc, KH_DT_Z0, TP_GZ0 - TP_TG_DEPTH, socket)
+    z1 = leg_shell_top(LEG_STATIONS_X[1], yc)          # as _br_tongue: both follow the shell
+    lower = _end_dt(_SHELL_NX, -1, yc, Z_BOT, z1 - KH_DT_SEAT, socket, top_clr=KH_DT_SEAT)
+    upper = _end_dt(KH_RAIL_X, -1, yc, z1, TP_GZ0 - TP_TG_DEPTH, socket)
     return lower.union(upper)
 
 
