@@ -2628,7 +2628,8 @@ R2_MOVES = {} if OPTICAL_REV == 1 else {
     **dict.fromkeys(('C130',), (-19.53, 26.90)), # c130
     **dict.fromkeys(('U7', 'C119', 'C120', 'C121', 'C122', 'C125', 'C136', 'C137', 'C138', 'C139', 'C145', 'Y2', 'R37', 'R39'), (7.99, 12.80)), # phy
     **dict.fromkeys(('C160', 'C161', 'C163', 'C165', 'C166', 'U13', 'R40', 'R41', 'L1', 'C162', 'C167'), (0.00, 13.97)), # buck
-    **dict.fromkeys(('C164', 'U8', 'C131'), (0.00, 1.64)), # ldo
+    **dict.fromkeys(('U8', 'C131'), (0.00, 1.64)), # ldo
+    **dict.fromkeys(('C164',), (0.00, -2.56)),   # south of R54, on U8's input
     **dict.fromkeys(('R34', 'R35', 'U11', 'C114', 'R42', 'C144'), (-27.58, 24.75)), # u11
     **dict.fromkeys(('R43', 'C134', 'C140', 'U9', 'C132'), (-16.06, 18.91)), # u9
     **dict.fromkeys(('FB1', 'C133'), (-47.66, 15.85)), # fb1
@@ -2673,6 +2674,7 @@ R2_FLASH = (
     ("C183", "U32 VCC bypass", "0402", 23.20, -100.40, 0.0),
     ("R52", "U31 OVCUR# pull-up", "0402", 15.60, -104.40, 0.0),
     ("R53", "Q2 gate pull-up: BOOT0 stays low until the bridge asserts DTR#", "0402", 16.20, -100.00, 0.0),
+    ("R54", "U8 input series resistor, 1.2 R: takes 0.41 W off U8 (M25)", "2512R", -29.25, -88.05, 90.0),
 )
 if OPTICAL_REV != 1:
     for _p in PARTS:
@@ -2974,6 +2976,8 @@ _MPN_EXACT["C160"] = ("1206 X7R MLCC 50 V", "BASIC", 0.03,
                       "not the voltage rating")
 
 if OPTICAL_REV != 1:
+    _MPN_EXACT["R54"] = ("FRC2512F1R20TS", "C2960682", 0.0421,
+                         "1.2 R 1 % 1 W 2512, FOJAN: U8's input drop. 1 W to 70 C (sheet V3.0 p.5)")
     # R2's J2 is TOP ENTRY (see R2_J2). The plug is the same XHP-4 the side-entry header
     # took, so the lead does not change. C144395 is B4B-XH-A(LF)(SN), the code elec/fab.py
     # already carries for it (stock 60,424 when that was recorded).
