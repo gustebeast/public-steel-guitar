@@ -113,14 +113,23 @@
       "order": "7 x $9.44 (pack of 100) = $66.08 for 700 needed",
       "what": "M4x10 -- 10 CAN tees, 2 bay boards, 2 fret boards, 1 UI clamp (was M4x12), and per sensed control x 11: 2 position + 2 spring-tension (the feel cartridges) + 1 in the axle's -Y end"
     },
-    "m4_button_20": {
-      "usd": 0.1894,
+    "m4_button_16": {
+      "usd": 0.155,
       "verified": "v",
-      "per_instrument": 18,
+      "per_instrument": 10,
+      "vendor": "McMaster-Carr",
+      "sku": "92095A194",
+      "order": "1 x $15.50 (pack of 100) = $15.50 for 100 needed",
+      "what": "M4x16 -- 10 keyhead nut-height screws (nut_block.HS_SCREW_L)"
+    },
+    "m4_button_20": {
+      "usd": 0.2368,
+      "verified": "v",
+      "per_instrument": 8,
       "vendor": "McMaster-Carr",
       "sku": "92095A196",
-      "order": "4 x $9.47 (pack of 50) = $37.88 for 180 needed",
-      "what": "M4x20 -- 10 keyhead nut-height screws (were M4x18, not a stocked length; nut_block.HS_SCREW_L is 20 since 2026-09-30), 3 pickup jacks, 1 pickup -Y retention (was M4x12), 2 male pogo boards, 2 optical board through its hand guard"
+      "order": "2 x $9.47 (pack of 50) = $18.94 for 80 needed",
+      "what": "M4x20 -- 3 pickup jacks, 1 pickup -Y retention (was M4x12), 2 male pogo boards, 2 optical board through its hand guard"
     },
     "m3_shcs_12": {
       "usd": 0.0711,

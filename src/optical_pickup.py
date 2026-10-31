@@ -3885,22 +3885,16 @@ def usb_face_y() -> float:
 # the 24 V slot, the notch's cut and the retention lip's trim: one closed shaft from under J1's
 # notch down into the board's recess, which is open to the bay at the -X face. Its roof points
 # along the build (-X), so it prints without support, and the -X face and the lip stay whole.
-# Sized on the one plug that has to pass it, the XHP-4 (12.4 x 5.75) over the USB head (12.2 x
-# 5.2), plus a fit, up to whole beads. The 24 V lead goes through FIRST, so each plug has the
-# hole to itself but for that pair (2 x O1.3), and the USB head passing it sets the depth.
+# SIZED ON THE WHOLE USB HEAD (user, 2026-10-30: "it was sized assuming the head didn't have the
+# metal plug on it"), which comes up it straight, cable trailing, tongue pointing +Y, and only
+# then goes into J1: 11.8 along Y (5.2 of overmould + 6.6 of tongue) and 12.0 along X, with the
+# pair (2 x O1.3) beside it at the -X end, so the depth is the head's alone. The XHP-4 goes
+# first and passes inside that. A fit, up to whole beads. This is usb_notch()'s closed hole in
+# the board, carried down: the board's hole and the shaft are one plan.
 CABLE_HOLE_FIT = 0.3
-CABLE_HOLE_L = math.ceil((max(_XH4_W, USBC_ANG_W) + 2 * CABLE_HOLE_FIT) / D.BEAD - 1e-9) * D.BEAD
-CABLE_HOLE_D = (math.ceil((max(_XH4_D, USBC_ANG_D + 1.3) + 2 * CABLE_HOLE_FIT) / D.BEAD - 1e-9)
-                * D.BEAD)                   # 7.2: the USB head beside the pair (O1.3) sets this
-
-
-def _cable_house(y0, y1, z0, z1):
-    """A house section in plan, y0..y1 wide, CABLE_HOLE_L of straight wall with its +X end on
-    J1's centre + L/2 and its roof beyond them toward the build, z0..z1."""
-    d = y1 - y0
-    return house_hole(d, z1 - z0, axis_point=(part("J1")["x"] + CABLE_HOLE_L / 2.0 - d / 2.0,
-                                              (y0 + y1) / 2.0, z0),
-                      axis_dir=(0.0, 0.0, 1.0), print_up=(-1.0, 0.0, 0.0), wall=CABLE_HOLE_L)
+CABLE_HOLE_L = math.ceil((max(_XH4_W, USBC_ANG_W + 2.6) + 2 * CABLE_HOLE_FIT) / D.BEAD - 1e-9) * D.BEAD
+CABLE_HOLE_D = (math.ceil((max(_XH4_D, USBC_ANG_D + USBC_MATE_L) + 2 * CABLE_HOLE_FIT) / D.BEAD - 1e-9)
+                * D.BEAD)                   # 12.8: the USB head, tongue and all
 
 
 # THE 24 V PAIR IN THE HOLE: at its -X end, beside where the USB head passes. It goes first.
@@ -3908,6 +3902,11 @@ _nh = usb_notch()
 PWR_Y = (_nh[2] + _nh[3]) / 2.0
 PWR_DROP_X = _nh[0] + CABLE_HOLE_FIT + 1.3
 # The user's install order, in the board's hole: the XH alone, then the USB head beside the pair.
+assert abs(_nh[1] - _nh[0] - CABLE_HOLE_L) < 1e-9 and _nh[3] - _nh[2] >= CABLE_HOLE_D - 1e-9, (
+    f"usb_notch()'s hole {_nh} no longer covers the shaft's plan, {CABLE_HOLE_L} x {CABLE_HOLE_D}")
+_HEAD_BACK = usb_face_y() - USBC_MATE_L - USBC_ANG_D        # the head, unmated, coming up it
+assert _HEAD_BACK >= _nh[2] + CABLE_HOLE_FIT - 1e-9 and usb_face_y() <= _nh[2] + CABLE_HOLE_D - CABLE_HOLE_FIT + 1e-9, (
+    f"the unmated head {_HEAD_BACK:.2f}..{usb_face_y():.2f} does not fit the hole's Y {_nh[2:]}")
 assert USBC_ANG_W + 2.6 + 2 * CABLE_HOLE_FIT <= _nh[1] - _nh[0] + 1e-9, "USB head + pair too wide"
 assert USBC_ANG_D + USBC_MATE_L + 2 * CABLE_HOLE_FIT <= _nh[3] - _nh[2] + 1e-9, "USB head too long"
 assert _XH4_W + 2 * CABLE_HOLE_FIT <= _nh[1] - _nh[0] and _XH4_D + 2 * CABLE_HOLE_FIT <= _nh[3] - _nh[2], (
@@ -3915,17 +3914,15 @@ assert _XH4_W + 2 * CABLE_HOLE_FIT <= _nh[1] - _nh[0] and _XH4_D + 2 * CABLE_HOL
 
 
 def opt_cable_hole() -> cq.Workplane:
-    """R2's cable passage through the endplate (see CABLE_HOLE_FIT): the shaft, and over it the
-    pocket J1's plug needs: its head and boot hang below the board, and they back off -Y by the
-    plug's whole mating stroke to come out."""
-    ny1 = usb_notch()[3]
-    y1 = min(usb_face_y() - USBC_ANG_D / 2.0 + CABLE_HOLE_D / 2.0, ny1)
-    z_top = PLINTH_TOP + 1.0
-    shaft = _cable_house(y1 - CABLE_HOLE_D, y1, FOOT_ROOF_Z - 1.0, z_top)
-    p = part("J1")
-    zb = (PCB_TOP + PKG[p["pkg"]][2] / 2) - USBC_ANG_BODY / 2.0 - USBC_ANG_BOOT     # boot's foot
-    y_out = usb_face_y() - USBC_ANG_D - USBC_MATE_L - CABLE_HOLE_FIT
-    return shaft.union(_cable_house(y_out, y1, zb - CABLE_HOLE_FIT, z_top))
+    """R2's cable passage through the endplate (see CABLE_HOLE_FIT): usb_notch()'s plan with its
+    roof toward the build, from the board's recess up through the top. The -Y wall stands on
+    the rail's inner plane, which is the rail's own wall below FOOT_ROOF_Z and is not cut."""
+    x0, x1, y0, _y1 = usb_notch()
+    d = CABLE_HOLE_D
+    y1 = y0 + d
+    return house_hole(d, PLINTH_TOP + 1.0 - (FOOT_ROOF_Z - 1.0),
+                      axis_point=(x1 - d / 2.0, (y0 + y1) / 2.0, FOOT_ROOF_Z - 1.0),
+                      axis_dir=(0.0, 0.0, 1.0), print_up=(-1.0, 0.0, 0.0), wall=x1 - x0)
 
 
 def _assert_field_clear():
