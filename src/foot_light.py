@@ -164,8 +164,8 @@ def depth():
 # anywhere but IN the LED row, which costs a 14 mm gap in the pitch and a 1.32 : 1 dip
 # there against the 1.11 the rest of the run holds. Mirror-image boards cost one extra
 # fab and assembly setup; the dip would have shown in four places.
-RAIL_IN    = D.RAIL_HI_INNER_Y                  # chassis body's inner face (measured)
-BOARD_Y1   = RAIL_IN - 0.35                  # board's +Y edge: 0.35 of play against the rail
+RAIL_IN    = D.RAIL_HI_INNER_Y     # chassis body's inner face
+BOARD_Y1   = RAIL_IN - 0.35         # board's +Y edge: 0.35 of play against the rail
 # ⚠ THE -Y EDGE IS STRING 1'S MOTOR, PLUS ONE WALL (user, 2026-10-02: "there's 9.25 mm
 # currently between the motor and the PCB. What if we drop that to 1.6"). The board was at
 # 38.00 because that was all the lane needed for a cable socket. The seam is four pogos
@@ -201,7 +201,7 @@ def _face(i):
 # the pogo row, laid off the end LED (see BOARD_Y0). Module-level because the board's edge
 # is: the window's centre is the chassis's to measure (led_y()), so the LED's Y is written
 # down here and check_optics holds the two together.
-LED_Y_NOM    = 50.35
+LED_Y_NOM    = RAIL_IN - 5.20         # on the window, which follows the rail
 POGO_LED_AIR = 0.45                 # the last land to the end LED's body: 0.30 let
                                     # the pogo's mask clip D1's silk on board B (A18)
 POGO_EDGE    = 0.50                 # the first land to the board's edge, as the fret seam's
@@ -239,7 +239,7 @@ NOTCH_Y0   = MOTOR_FACE + WALL_T + SLOT_PLAY              # 37.55: over string 1
 NOTCH_X1   = MB.wall_x(0)[1]        # -553.10: the narrow section is -X of it, full width +X
 # The component lane's centre is where it was: drivers, the buck and the supply row sit
 # on it, spaced along X. The 6.45 gained on the -Y side belongs to the pogos' first two.
-DRV_Y      = 42.55
+DRV_Y      = RAIL_IN - 13.00
 BOARD_W    = BOARD_Y1 - BOARD_Y0    # 23.20
 
 
