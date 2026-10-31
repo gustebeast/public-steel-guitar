@@ -169,7 +169,8 @@ def foot_paths():
             cx = FOOT.LEAD_COL_X + r1[i] * WIRE_LANE
             z = low + r2[i] * FOOT_ZLANE
             dy = b[1] + PLUG_L
-            out.append([a, (xs, a[1], a[2]), (xs, a[1], fly), (cx, a[1], fly),
+            ry = a[1] + FOOT.LEAD_RISE_DY
+            out.append([a, (xs, a[1], a[2]), (xs, ry, a[2]), (xs, ry, fly), (cx, ry, fly),
                         (cx, FOOT.LEAD_DIP_Y, fly), (cx, FOOT.LEAD_DIP_Y, z),
                         (cx, dy, z), (b[0], dy, z), (b[0], dy, b[2]), b])
         return out

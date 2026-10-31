@@ -27,7 +27,7 @@
   },
   "body_adapter": {
    "material": "petg-gf",
-   "volume_mm3": 83388.7
+   "volume_mm3": 83333.4
   },
   "body_adapter_mx_my": {
    "material": "petg-gf",
@@ -39,11 +39,11 @@
   },
   "body_adapter_px_py": {
    "material": "petg-gf",
-   "volume_mm3": 83447.4
+   "volume_mm3": 83392.2
   },
   "bridge_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 307714.8
+   "volume_mm3": 308851.4
   },
   "cart_base": {
    "material": "pctg",
@@ -55,7 +55,7 @@
   },
   "chassis_0": {
    "material": "petg-gf",
-   "volume_mm3": 589986.1
+   "volume_mm3": 583467.3
   },
   "chassis_0_light": {
    "material": "pctg",
@@ -63,7 +63,7 @@
   },
   "chassis_1": {
    "material": "petg-gf",
-   "volume_mm3": 657009.9
+   "volume_mm3": 653675.9
   },
   "chassis_1_light": {
    "material": "pctg",
@@ -71,7 +71,7 @@
   },
   "chassis_2": {
    "material": "petg-gf",
-   "volume_mm3": 594981.7
+   "volume_mm3": 589796.0
   },
   "chassis_2_light": {
    "material": "pctg",
@@ -95,7 +95,7 @@
   },
   "keyhead_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 233434.7
+   "volume_mm3": 234916.4
   },
   "kl_axle": {
    "material": "pctg",
@@ -187,7 +187,7 @@
   },
   "optical_guard": {
    "material": "petg-gf",
-   "volume_mm3": 10834.0
+   "volume_mm3": 10697.3
   },
   "pedal_bar_a": {
    "material": "petg-gf",
@@ -227,7 +227,7 @@
   },
   "pickup_zplate": {
    "material": "petg-gf",
-   "volume_mm3": 15547.0
+   "volume_mm3": 14901.6
   },
   "ream_jig": {
    "material": null,
@@ -283,43 +283,43 @@
   },
   "top_plate_0": {
    "material": "pctg",
-   "volume_mm3": 61174.6
+   "volume_mm3": 61021.4
   },
   "top_plate_0_color": {
    "material": "pctg",
-   "volume_mm3": 17388.1
+   "volume_mm3": 17320.7
   },
   "top_plate_1": {
    "material": "pctg",
-   "volume_mm3": 18498.3
+   "volume_mm3": 18407.1
   },
   "top_plate_1_color": {
    "material": "pctg",
-   "volume_mm3": 5958.4
+   "volume_mm3": 5928.0
   },
   "top_plate_2": {
    "material": "pctg",
-   "volume_mm3": 18498.3
+   "volume_mm3": 18407.1
   },
   "top_plate_2_color": {
    "material": "pctg",
-   "volume_mm3": 5958.4
+   "volume_mm3": 5928.0
   },
   "top_plate_3": {
    "material": "pctg",
-   "volume_mm3": 175973.2
+   "volume_mm3": 174989.2
   },
   "top_plate_3_color": {
    "material": "pctg",
-   "volume_mm3": 106006.2
+   "volume_mm3": 105678.2
   },
   "top_plate_4": {
    "material": "pctg",
-   "volume_mm3": 230769.0
+   "volume_mm3": 229630.8
   },
   "top_plate_4_color": {
    "material": "pctg",
-   "volume_mm3": 107377.1
+   "volume_mm3": 106997.7
   },
   "ui_clamp": {
    "material": "petg-gf",

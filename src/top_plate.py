@@ -181,7 +181,6 @@ PK_MAX_L      = 102.0                                     # longest supported pi
 GRUB_SWEEP    = 5.5                                       # the retention screw's tip travel (RET_SCREW_L - RET_BOSS_L)
 PK_MIN_L      = PK_MAX_L - GRUB_SWEEP                     # 96.5 shortest retained (covers the whole cluster)
 PK_MAX_YM     = PK_YP - PK_MAX_L                          # ROOM -Y edge = the longest pickup's -Y face (~-51.9)
-PK_ROOM_CTR_Y = (PK_YP + PK_MAX_YM) / 2                   # plate/cavity centre (room grows -Y, not toward the rail)
 YZONE    = 16.0                                           # -Y utility-zone depth beyond the pickup
 OPEN_YP  = PK_YP + 0.6                                    # +Y opening edge (open bay; < rail YH)
 HY_CLAMP = -PK_MAX_YM + YZONE                             # -Y skirt inner = extended room -Y edge (~+67.9)
@@ -276,7 +275,12 @@ HEIGHT_HOLE = PICKUP_X_NOM
 # ── pickup RETENTION (user): +Y WALL + -Y SCREW lock the pickup to the PLATE only ─
 # (so the plate still moves up/down freely). The pickup's +Y face butts a wall that rises
 # from the plate; a horizontal M4 grub through a -Y boss pushes the pickup +Y against it.
-RET_WALL_T = 3 * D.NOZZLE_D                        # 2.4 +Y wall thickness (was 2.0)
+RET_WALL_T = 3 * D.NOZZLE_D                        # 2.4 -Y wall room on the plate (was 2.0)
+# The +Y WALL is 1.6, two beads (D.MIN_WALL_2P), not RET_WALL_T: the plate's +Y edge is its outer
+# face and has to stay clear of the chassis wall, which came in to string 1's belt clamp (user,
+# 2026-10-29). The wall still has to be there -- the grub clamps the pickup +Y against the PLATE;
+# pressed against the chassis instead, it would pin the deck panel and it could not slide off.
+RET_WALL_YP = D.MIN_WALL_2P
 RET_WALL_H = 8.0                                   # +Y wall height above the plate top (enough to lock, not tall)
 # ⚠ THE RETENTION SCREW IS AN M4 BUTTON HEAD, NOT A CUP-TIP GRUB (user, 2026-09-30:
 # "everything should be M4 with 2.5mm hex" -- an M4 set screw takes a 2.0 key). A head changes
@@ -323,7 +327,13 @@ assert RET_BOSS_L <= YZONE - D.BEAD, (
 RET_BOSS_TOP_Z = RET_SCREW_Z + M4.insert_pilot_d / 2 + D.MIN_WALL_2P   # 1.6 (2-bead quality floor) over the bore
 X_SLIDE   = 6.0                                    # pickup X-position room on the plate (+/-)
 PLATE_X   = PM.PK_W + 2 * X_SLIDE                  # green X (pickup + slide) ~50.6
-PLATE_Y   = (PK_YP - PK_MAX_YM) + 2 * RET_WALL_T   # green Y (LONGEST pickup + wall room each side) ~106.0
+PLATE_Y0  = PK_MAX_YM - RET_WALL_T                # green -Y edge (LONGEST pickup + wall room)
+PLATE_Y1  = PK_YP + RET_WALL_YP                   # green +Y edge = the +Y wall's outer face
+PLATE_Y   = PLATE_Y1 - PLATE_Y0                   # ~105.2
+PLATE_CTR_Y = (PLATE_Y0 + PLATE_Y1) / 2           # plate/cavity centre (room grows -Y, not toward the wall)
+assert PLATE_Y1 <= CH.Y_HI - CH.T / 2 - 0.5, (
+    f"the pickup plate's +Y face {PLATE_Y1:.2f} is within 0.5 of the chassis wall "
+    f"{CH.Y_HI - CH.T / 2:.2f}: the plate travels, and the pickup must clamp against it")
 # THE PICKUP'S LEAD LEAVES ITS UNDERSIDE, SO THE PLATE IT RESTS ON NEEDS A WAY THROUGH.
 # A slot rather than a hole because the pickup slides +/-X_SLIDE on the plate and takes its
 # lead with it. It sits under the pickup's own -Y end at every slide position, so the pickup
@@ -343,6 +353,9 @@ CAVITY_Y  = PLATE_Y + 1.5
 # either -- the flange tops out 2.5 below the deck's underside at the jacks' highest (the boss
 # top reaches the head shoulder first, 8.53 up), so it never has to enter the opening.
 LIGHT_FLANGE = 2.0
+# ...on -Y, -X and +X. Not on +Y: there the plate's edge is the retention wall's outer face, a
+# 0.65 gap from the chassis wall that came in to string 1's belt clamp (user, 2026-10-29), so a
+# flange would sit in the wall.
 # (Y hold-down CLAMP removed; retention above locks the pickup to the plate instead.)
 
 MARKER_FRETS = {3, 5, 7, 9, 12, 15, 17, 19, 21, 24}
@@ -506,7 +519,7 @@ def _pickup_cavity(grow=0.0):
     """The deck's pickup opening, optionally grown `grow` all round -- ONE definition, used by
     the cut that makes it and by the colour skin that lines it, so the two cannot drift."""
     return box_at(CAVITY_X + 2 * grow, CAVITY_Y + 2 * grow, (TZ - BZ) + 2,
-                  x=PICKUP_X_NOM, y=PK_ROOM_CTR_Y, z=(BZ + TZ) / 2)
+                  x=PICKUP_X_NOM, y=PLATE_CTR_Y, z=(BZ + TZ) / 2)
 
 
 def _cavity_skin():
@@ -685,13 +698,14 @@ def _pickup_zplate():
     from the boss top; the screw tail passes through a Ø4.4 hole in the flat plate). RETENTION
     (user): a +Y WALL the pickup butts + a -Y horizontal grub that pushes it +Y against the
     wall, locking the pickup to the PLATE only (so the plate still travels)."""
-    # the prism is the DECK OPENING plus LIGHT_FLANGE all round, not the pickup's own footprint:
+    # the prism is the DECK OPENING plus LIGHT_FLANGE round -Y/-X/+X (+Y stops at the wall), not the pickup's own footprint:
     # the pickup only needs PLATE_X x PLATE_Y to rest and slide on, but the plate is also the
     # lid over a lit body, and light does not care where the pickup ends (user)
-    plate = box_at(CAVITY_X + 2 * LIGHT_FLANGE, CAVITY_Y + 2 * LIGHT_FLANGE, ZPL_T,
-                   x=PICKUP_X_NOM, y=PK_ROOM_CTR_Y, z=(ZPL_BOT + ZPL_TOP) / 2)
+    fy0 = PLATE_CTR_Y - CAVITY_Y / 2 - LIGHT_FLANGE    # -Y: the flange laps the deck
+    plate = box_at(CAVITY_X + 2 * LIGHT_FLANGE, PLATE_Y1 - fy0, ZPL_T,   # +Y: no flange
+                   x=PICKUP_X_NOM, y=(fy0 + PLATE_Y1) / 2, z=(ZPL_BOT + ZPL_TOP) / 2)
     for jx, jy in JACK_POS:
-        dx, dy = jx - PICKUP_X_NOM, jy - PK_ROOM_CTR_Y
+        dx, dy = jx - PICKUP_X_NOM, jy - PLATE_CTR_Y
         if abs(dx) - PLATE_X / 2 >= abs(dy) - PLATE_Y / 2:      # jack juts past the green in X -> X-arm
             sg = 1.0 if dx > 0 else -1.0
             xe = PICKUP_X_NOM + sg * PLATE_X / 2
@@ -699,7 +713,7 @@ def _pickup_zplate():
             plate = plate.union(box_at(abs(xb - xa), NUB_W, ZPL_T,
                                        x=(xa + xb) / 2, y=jy, z=(ZPL_BOT + ZPL_TOP) / 2))
         else:                                                  # -> Y-arm
-            ye = PK_ROOM_CTR_Y + (PLATE_Y / 2 if dy > 0 else -PLATE_Y / 2)
+            ye = PLATE_Y1 if dy > 0 else PLATE_Y0
             plate = plate.union(box_at(NUB_W, abs(jy - ye) + NUB_W, ZPL_T,
                                        x=jx, y=(jy + ye) / 2, z=(ZPL_BOT + ZPL_TOP) / 2))
         # LEADSCREW NUT boss ON TOP (flat plate bottom): Ø8 boss up from the plate, Ø6×5
@@ -710,8 +724,8 @@ def _pickup_zplate():
         plate = plate.cut(cyl(M4.shaft_clr_d, (JACK_MOUTH_Z - M4.insert_depth) - (ZPL_BOT - 2),
                               z=ZPL_BOT - 2).translate((jx, jy, 0.0)))
     # +Y RETENTION WALL (rises from the plate top; the pickup +Y face butts its -Y face)
-    plate = plate.union(box_at(PM.PK_W, RET_WALL_T, RET_WALL_H,
-                               x=PICKUP_X_NOM, y=PK_YP + RET_WALL_T / 2,
+    plate = plate.union(box_at(PM.PK_W, RET_WALL_YP, RET_WALL_H,
+                               x=PICKUP_X_NOM, y=PK_YP + RET_WALL_YP / 2,
                                z=ZPL_TOP + RET_WALL_H / 2))
     # -Y RETENTION grub boss: a pedestal rising from the plate at the LONGEST supported pickup's -Y edge
     # (PK_MAX_YM), hosting a HORIZONTAL M4 heat-set insert (cadkit set-screw bore -> a cup-tip grub, which

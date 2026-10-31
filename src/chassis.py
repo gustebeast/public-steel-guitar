@@ -57,7 +57,7 @@ Z_BOT    = MB.BED_Z                    # print bed (shared with the motor walls)
 PRINT_UP = (0.0, 0.0, 1.0)
 # Rail CENTRES, defined so the INNER faces stay fixed as the wall T changes (the wall
 # grows outward): +Y inner clears the bearing arm, -Y inner clears the motor PCBs.
-Y_HI     = D.BRIDGE_AXLE_Y + 4 * D.BEAD + T / 2   # +Y rail (inner face = axle_Y + 3.2)
+Y_HI     = D.RAIL_HI_INNER_Y + T / 2                # +Y rail
 # THE -Y RAIL'S INNER FACE is motor_bank.RAIL_INNER_Y: string 10's motor back less the larger
 # of what that motor and the Pi's USB-C plug need (MB.RAIL_BACK_CLR). Nothing climbs behind the
 # motor any more -- its CAN drop leaves inside its own footprint -- so the old 4.8 pigtail gap
@@ -414,6 +414,13 @@ def foot_tenon_runs(sx, ly, syg):
     return out
 
 
+def _cut_all(body, tools):
+    """body less every tool, in one boolean: N cuts of a 2000-face solid are N times the work.
+    Fuses and cuts of many tools have lost material silently here before (see OCCT), so any
+    list that goes through this is checked by volume against the one-at-a-time cuts first."""
+    return cq.Workplane(obj=body.val().cut(*[t.val() for t in tools]).clean())
+
+
 def _mort_cutters(x0=None, x1=None):
     """Every lever mortise in [x0, x1] as ONE compound. The grid has ~70 stations and a
     separate boolean per station, repeated for each segment, dominates the build -- OCC cuts a
@@ -698,8 +705,7 @@ def _build_full() -> cq.Workplane:
         cq.Vector(0, 0, 1))))
     #   ^ the TRRS axis rides the octagon's deep waist (legs.TRRS_DY) — the
     #     well tracks the stub's relocated jack way
-    for _n in _floor_negatives():
-        body = body.cut(_n)
+    body = _cut_all(body, _floor_negatives())
     # (a 4 x 17 floor slot at x -34.5, y -116.5..-99.5 -- stopped at the -Y rail's inner
     #  face: the narrowed wall (2026-10-29) came to -116.35, and the side walls are never cut)
     _fs_y0 = max(-116.5, RAIL_INNER_Y)
@@ -829,6 +835,21 @@ LEG_Y = (Y_HI + T / 2 - LEG_W / 2,          # +Y legs: 42.75 (outer face 64.75)
          Y_LO - T / 2 + LEG_W / 2)          # -Y legs: -116.75
 
 
+def leg_shell_top(sx, yr):
+    """Where the kept leg shell stops (and the endplate pocket over it): the foot line
+    (KH_DT_Z0 = -23.15), with the endplate's solid fill band above it. EXCEPT the bridge
+    end's +Y shell, which stops at the screw rail's underside (-31.85): string 1's 688 seat
+    sits beside it, and with the +Y rail in at the belt clamp the pocket left that seat 1.1
+    of wall. Stopping the shell under the seat mouth puts the whole seat in endplate
+    (user, 2026-10-29). The keyhead end matches it on both rails, so the two ends read alike
+    (user, 2026-10-30). The bridge's -Y shell keeps the foot line: the output board's recess
+    roof is that end's shelf."""
+    if sx == LEG_STATIONS_X[1] or yr == Y_HI:
+        from .screw_rail import BOT
+        return BOT
+    return KH_DT_Z0
+
+
 def _leg_shell(sx, x0, x1):
     """The kept rail shell around one leg station (both rails), spanning x0..x1
     over the rail Y-bands, from the bed up to the FOOT LINE (z = KH_DT_Z0 =
@@ -837,9 +858,8 @@ def _leg_shell(sx, x0, x1):
     not the shell -- so the shell stops at -23.15 and the endplate band sits on
     top of it. Re-cut the leg dovetail slot in it afterward."""
     out = None
-    z1 = KH_DT_Z0                                     # foot line (-23.15); the endplate's
-                                                      # solid fill band takes over above this
     for yr, s in ((Y_HI, 1), (Y_LO, -1)):
+        z1 = leg_shell_top(sx, yr)
         # bottom EXACTLY on the bed (Z_BOT) -- the same constant the chassis/endplate
         # floors use -- so the shell can't poke below the instrument floor. (This is a
         # UNION, so it needs no -Z boolean overshoot; the leg-slot CUT below overshoots
@@ -940,8 +960,9 @@ def _kh_tongue(yc, socket=False):
     UPPER on the foot<->rail-end face (x=KH_RAIL_X, z foot line..deck-groove floor). Both
     wide -X into the keyhead so the +X string pull is gripped. Body carries them; the
     keyhead drops on and sockets them. socket=True adds clearance + open tops for the cut."""
-    lower = _end_dt(_SHELL_NX, -1, yc, Z_BOT, KH_DT_Z0 - KH_DT_SEAT, socket, top_clr=KH_DT_SEAT)
-    upper = _end_dt(KH_RAIL_X, -1, yc, KH_DT_Z0, TP_GZ0 - TP_TG_DEPTH, socket)
+    z1 = leg_shell_top(LEG_STATIONS_X[1], yc)          # as _br_tongue: both follow the shell
+    lower = _end_dt(_SHELL_NX, -1, yc, Z_BOT, z1 - KH_DT_SEAT, socket, top_clr=KH_DT_SEAT)
+    upper = _end_dt(KH_RAIL_X, -1, yc, z1, TP_GZ0 - TP_TG_DEPTH, socket)
     return lower.union(upper)
 
 
@@ -951,8 +972,13 @@ def _br_tongue(yc, socket=False):
     face (x=TP_EP_GX, z foot line..deck-groove floor). Both wide +X into the bridge so the
     +X bearing wrap (which pulls the bridge -X) can't draw the wide foot out. Body carries
     them; the bridge drops on and sockets them. socket=True adds clearance + open tops."""
-    lower = _end_dt(_SHELL_PX, +1, yc, Z_BOT, KH_DT_Z0 - KH_DT_SEAT, socket, top_clr=KH_DT_SEAT)
-    upper = _end_dt(TP_EP_GX, +1, yc, KH_DT_Z0, TP_GZ0 - TP_TG_DEPTH, socket)
+    # the lower tongue rides the leg shell, so it stops where the shell does (under string 1's
+    # seat on +Y): taller, it would stand off the shell's top with nothing under it
+    z1 = leg_shell_top(LEG_STATIONS_X[0], yc)
+    lower = _end_dt(_SHELL_PX, +1, yc, Z_BOT, z1 - KH_DT_SEAT, socket, top_clr=KH_DT_SEAT)
+    # ...and the upper one starts there: from the foot line it would hang over the lowered
+    # shell with its underside in the air
+    upper = _end_dt(TP_EP_GX, +1, yc, z1, TP_GZ0 - TP_TG_DEPTH, socket)
     return lower.union(upper)
 
 
@@ -1148,8 +1174,7 @@ def _segments():
         _flr = _bottom(a, b)                          # this segment's floor, laid fresh...
         if _flr is not None:
             seg = seg.union(_flr)
-            for _fn in _floor_negatives():            # ...and the chassis' own way through it
-                seg = seg.cut(_fn)
+            seg = _cut_all(seg, _floor_negatives())   # ...and the chassis' own way through it
         if _is_split(b):                              # −X boundary split → +X side → mortise
             for yr in (Y_HI, Y_LO):
                 seg = seg.cut(_seg_mortise(b, yr))
@@ -1178,11 +1203,11 @@ def _segments():
         # each side (one 1.6 wall between two motors, not two 0.8 halves), so it reaches across
         # into its neighbour's fit and only this cut takes it back out. It is also what keeps
         # every motor's way IN clear, whatever gets built over the bank.
-        for _mi in range(D.N_STRINGS):
-            seg = seg.cut(MB.lift_prism(_mi))
-            seg = seg.cut(MB.low_walls(_mi))  # back + side walls stop at BUMP_H, under its terminals
-            seg = seg.cut(MB.tee_pocket(_mi))     # ...and its tee board's, which reaches into
-                                                  # the neighbouring bay (40 board, 42.3 motor)
+        seg = _cut_all(seg, [f(_mi) for _mi in range(D.N_STRINGS)
+                             for f in (MB.lift_prism,
+                                       MB.low_walls,      # back + side walls stop at BUMP_H, under its terminals
+                                       MB.tee_pocket)])   # ...and its tee board's, which reaches into
+                                                          # the neighbouring bay (40 board, 42.3 motor)
         # THE HARNESS CORRIDOR is the wiring's, the whole length of the bank: the trunk rides it
         # at MB.HARNESS_Y1, so there is nowhere down here a bay may reach the rail. What survives is the part of each
         # bay's back wall ABOVE the corridor, and it gets a 45 deg underside so it is a wedge off
