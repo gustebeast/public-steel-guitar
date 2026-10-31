@@ -3245,13 +3245,11 @@ if REV != 1:
         ("ROLE_ID_N", 42.84, 3.18), ("ROLE_ID_N", 38.05, 2.75),
         # pin escapes: U4's port 4 sits between the crystal's vias, POT_SCK starts under U10
         ("HUB_DN4_DM", 2.0, -5.75), ("HUB_DN4_DM", -5.35, -5.0),
-        ("POT_SCK", 7.12, 18.0), ("POT_SCK", 11.75, 2.0))]
+        )]
     BOARD_NOTES["tracks"] += [
         ("HUB_DN4_DM", "F.Cu", 0.2, _pts((2.0, -4.94), (2.0, -5.75))),
         ("HUB_DN4_DM", "In2.Cu", 0.2, _pts((2.0, -5.75), (1.45, -5.2), (-5.15, -5.2), (-5.35, -5.0))),
         ("HUB_DN4_DM", "F.Cu", 0.2, _pts((-5.35, -5.0), (-6.09, -4.25), (-6.09, -3.28))),
-        ("POT_SCK", "F.Cu", 0.2, _pts((7.12, 19.55), (7.12, 18.0))),
-        ("POT_SCK", "F.Cu", 0.2, _pts((11.75, 0.94), (11.75, 2.0))),
         # the sense divider's tap on J1_VBUS, off C69
         ("J1_VBUS", "In2.Cu", 0.25, _pts((41.65, 6.3), (39.2, 6.3), (39.2, 4.05), (39.05, 3.9), (34.4, 3.9),
                                          (34.4, 2.45), (33.9, 1.95))),
