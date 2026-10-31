@@ -189,7 +189,7 @@ def _r2_ports(n):
     cc1 += n["j1"]["A5"], u13[1]
     cc2 += n["j1"]["B5"], u13[2]
     Net("U13_NC_3").connect(u13[3])                 # PORT open: DRP
-    u13_int = Net("ROLE_INT_N")                     # open drain; PC4 input pull-up holds it, no resistor
+    u13_int = Net("ROLE_INT_N")
     u13_int += u13[6], u1[24]                       # PC4
     sda += u13[7], u1[30]                           # PB11, I2C2
     scl += u13[8], u1[29]                           # PB10, I2C2
@@ -204,6 +204,7 @@ def _r2_ports(n):
     v3v3 += r42[1]
     r42[2] += u13[5]
     for tag, net, why in (("R43", id_n, "ROLE_ID_N up: at rest U14 stays on the Pi path"),
+                          ("R49", u13_int, "U13 INT_N up"),
                           ("R50", scl, "I2C2 SCL up"), ("R51", sda, "I2C2 SDA up")):
         r = _r(tag, "4k7", why)
         v3v3 += r[1]
@@ -3224,10 +3225,10 @@ if REV != 1:
         # R2-2, at J1, and its gate
         "U15": _f(44.1, -6.4), "R45": _f(46.9, -7.0, 90.0), "C55": _f(44.2, -8.75), "C71": _f(44.4, -3.1, 180.0),
         "C69": _f(41.65, 4.5, 270.0), "U13": _f(44.0, 4.2, 180.0), "C66": _f(44.05, 1.75, 180.0), "R41": _f(46.1, 6.05),
-        "R42": _f(43.85, 6.2), "R43": _f(42.6, 1.7, 90.0), "Q4": _f(38.7, 4.4, 90.0),
+        "R42": _f(43.85, 6.2), "R43": _f(42.6, 1.7, 90.0), "R49": _f(40.9, -1.4), "Q4": _f(38.7, 4.4, 90.0),
         "R54": _f(32.55, 2.6), "R44": _f(37.25, 1.6, 90.0), "Q5": _f(34.5, 5.0), "Q6": _f(40.4, 0.9, 180.0),
         "R46": _f(34.55, 2.7), "R47": _f(35.2, 1.6),
-        "R48": _f(41.4, -3.5), "R50": _f(20.2, 7.0), "R51": _f(20.45, 8.1),     # I2C2 up, by U1
+        "R48": _f(17.6, 7.2), "R50": _f(20.2, 7.0), "R51": _f(20.45, 8.1),     # I2C2 up, by U1
         # the mux, on the pair's In2 run, and its bypass over pin 10
         "U14": _f(-3.0, 12.6), "C67": _f(-2.85, 14.65),
         # M43, on the hub's fourth port
