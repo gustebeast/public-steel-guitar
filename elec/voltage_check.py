@@ -184,7 +184,7 @@ SEEDS = {
                                 why="inlet, ahead of the switch: steady as the rail; transient = a "
                                     "live plug ringing toward 2 x %.2f V into C55's 100 nF with "
                                     "Q2 off, held by D10 (lead Z about 4.5 ohm, 4.3 A)" % V24_BRICK)),
-        "VBUS_DET": ("abs", dict(v=1.0, vt=1.0, why="behind R41: TI's 900k keeps the pin under its 4 V "
+        "ROLE_VDET": ("abs", dict(v=1.0, vt=1.0, why="behind R41: TI's 900k keeps the pin under its 4 V "
                                                     "at 28 V on VBUS, so under 1 V at 5.5 V")),
         "SW": ("like", "+24V", 0.0, "buck switch node: VIN while the high side is on"),
         "V5_PRE": ("buck", "U5", "R11", "R12", "LMR33630: VFB max x (1 + top/bot), 1 % resistors; "

@@ -71,6 +71,16 @@
    "v": 5.174,
    "why": "U7.1 (OUT) can reach its supply +5V; through R9"
   },
+  "CC1": {
+   "peak": 5.5,
+   "v": 5.25,
+   "why": "USB-C CC: a host's Rp pull-up to VBUS"
+  },
+  "CC2": {
+   "peak": 5.5,
+   "v": 5.25,
+   "why": "USB-C CC: a host's Rp pull-up to VBUS"
+  },
   "DAC_ATT": {
    "v": 1.5,
    "why": "DAC out / 2 (R14, R15)"
@@ -270,10 +280,6 @@
    "v": 5.174,
    "why": "through R29"
   },
-  "N$10": {
-   "v": 0.0,
-   "why": "through R54"
-  },
   "N$2": {
    "peak": 5.432,
    "v": 5.174,
@@ -294,24 +300,18 @@
    "why": "pulled to ground"
   },
   "N$6": {
-   "peak": 5.5,
-   "v": 5.25,
-   "why": "USB-C CC: a host's Rp pull-up to VBUS"
-  },
-  "N$7": {
-   "peak": 5.5,
-   "v": 5.25,
-   "why": "USB-C CC: a host's Rp pull-up to VBUS"
-  },
-  "N$8": {
    "peak": 3.45,
    "v": 3.349,
    "why": "through R42"
   },
-  "N$9": {
+  "N$7": {
    "peak": 5.432,
    "v": 5.174,
    "why": "U15.5 (ILIM) can reach its supply V5_PRE"
+  },
+  "N$8": {
+   "v": 0.0,
+   "why": "through R54"
   },
   "NRST": {
    "peak": 3.45,
@@ -359,6 +359,20 @@
   "PI_DP": {
    "v": 3.6,
    "why": "USB 2.0 data, U14 to J2; FAULT = VBUS in the connector"
+  },
+  "PORT_EN": {
+   "v": 0.0,
+   "why": "pulled to ground"
+  },
+  "PORT_FAULT_N": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.43 (io) can reach its supply +3V3; through R48"
+  },
+  "PORT_SEEN": {
+   "peak": 5.0,
+   "v": 4.773,
+   "why": "divider off J1_VBUS: x 0.9091"
   },
   "POT_CS": {
    "peak": 3.259,
@@ -453,6 +467,10 @@
    "peak": 3.45,
    "v": 3.349,
    "why": "U1.42 (io) can reach its supply +3V3; through R49"
+  },
+  "ROLE_VDET": {
+   "v": 1.0,
+   "why": "behind R41: TI's 900k keeps the pin under its 4 V at 28 V on VBUS, so under 1 V at 5.5 V"
   },
   "SW": {
    "peak": 34.37,
@@ -590,28 +608,10 @@
    "v": 5.174,
    "why": "LMR33630: VFB max x (1 + top/bot), 1 % resistors; +5 % overshoot: 1.015 V x (1 + R11/R12) -> 5.17 V max"
   },
-  "VBUS_DET": {
-   "v": 1.0,
-   "why": "behind R41: TI's 900k keeps the pin under its 4 V at 28 V on VBUS, so under 1 V at 5.5 V"
-  },
-  "VBUS_EN": {
-   "v": 0.0,
-   "why": "pulled to ground"
-  },
-  "VBUS_FAULT_N": {
-   "peak": 3.45,
-   "v": 3.349,
-   "why": "U1.43 (io) can reach its supply +3V3; through R48"
-  },
   "VBUS_PI_NC": {
    "peak": 5.5,
    "v": 5.25,
    "why": "host VBUS on the cable; pads only"
-  },
-  "VBUS_SEEN": {
-   "peak": 5.0,
-   "v": 4.773,
-   "why": "divider off J1_VBUS: x 0.9091"
   },
   "VBUS_UP_NC": {
    "peak": 5.5,

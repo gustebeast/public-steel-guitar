@@ -176,7 +176,7 @@ def _r2_ports(n):
     u1, nrst, boot0 = n["u1"], n["nrst"], n["boot0"]
     vbus, id_n = n["vbus_panel"], Net("ROLE_ID_N")
     scl, sda = Net("I2C2_SCL"), Net("I2C2_SDA")
-    en, seen = Net("VBUS_EN"), Net("VBUS_SEEN")
+    en, seen = Net("PORT_EN"), Net("PORT_SEEN")
 
     def fix(tag, value, desc, fp, pins):
         return Part(name=value, ref_prefix=tag.rstrip("0123456789"), ref=tag, tag=tag,
@@ -185,8 +185,9 @@ def _r2_ports(n):
 
     u13 = fix("U13", "TUSB320LAIRWBR", "USB-C role detect (LCSC C132554)",
               "Steel:Texas_RWB0012A_X2QFN-12_1.6x1.6mm_P0.4mm", range(1, 13))
-    n["j1"]["A5"] += u13[1]
-    n["j1"]["B5"] += u13[2]
+    cc1, cc2 = Net("CC1"), Net("CC2")
+    cc1 += n["j1"]["A5"], u13[1]
+    cc2 += n["j1"]["B5"], u13[2]
     Net("U13_NC_3").connect(u13[3])                 # PORT open: DRP
     u13_int = Net("ROLE_INT_N")
     u13_int += u13[6], u1[42]                       # PC9
@@ -197,7 +198,7 @@ def _r2_ports(n):
     v3v3 += u13[12]
     r41 = _r("R41", "910k", "U13 VBUS_DET series, TI's 900k")
     vbus += r41[1]
-    r41_det = Net("VBUS_DET")
+    r41_det = Net("ROLE_VDET")
     r41_det += r41[2], u13[4]
     r42 = _r("R42", "10k", "U13 ADDR high: I2C on, 0x67")
     v3v3 += r42[1]
@@ -229,7 +230,7 @@ def _r2_ports(n):
     v5_pre += u15[1]
     gnd += u15[2]
     en += u15[3]
-    fault = Net("VBUS_FAULT_N")
+    fault = Net("PORT_FAULT_N")
     fault += u15[4], u1[43]                         # PA8
     r45 = _r("R45", "15k 1%", "U15 ILIM: 1.61 to 1.80 A")
     u15[5] += r45[1]
@@ -3162,9 +3163,10 @@ if REV != 1:
         ("V5_PRE", "F.Cu", 1.0, [BC.at(_BUCK, 0.0, BC.BULK["COUT_2"][0], -1.475)[:2],
                                  _f(13.2, -19.25)[:2], _f(14.4, -19.25)[:2]]),
         ("V5_PRE", "In2.Cu", 1.2, [_f(13.2, -19.25)[:2], _f(14.4, -19.25)[:2], _f(15.2, -20.9)[:2],
-                                   _f(26.5, -20.9)[:2], _f(27.6, -19.8)[:2], _f(35.0, -12.4)[:2],
-                                   _f(35.6, -9.2)[:2]]),
-        ("V5_PRE", "In2.Cu", 0.9, [_f(35.6, -9.2)[:2], _f(35.9, -8.85)[:2], _f(43.0, -8.85)[:2],
+                                   _f(35.0, -20.9)[:2]]),
+        ("V5_PRE", "In2.Cu", 0.6, [_f(26.5, -20.9)[:2], _f(27.6, -19.8)[:2]]),
+        ("V5_PRE", "In2.Cu", 0.9, [_f(35.0, -20.9)[:2], _f(35.9, -20.0)[:2], _f(35.9, -8.85)[:2],
+                                   _f(43.0, -8.85)[:2],
                                    _f(43.0, -5.2)[:2], _f(43.6, -4.6)[:2]]),
         ("V5_PRE", "In2.Cu", 0.6, [_f(43.6, -4.6)[:2], _f(44.4, -4.55)[:2]]),
         ("V5_PRE", "F.Cu", 1.0, [_f(28.2, -19.3)[:2], _f(28.2, -18.5)[:2]]),
@@ -3174,13 +3176,20 @@ if REV != 1:
     BOARD_NOTES["vias"] += [("V5_PRE",) + _f(_x5, _y5)[:2] for _x5, _y5 in (
         (13.2, -19.25), (14.4, -19.25), (27.6, -19.8), (28.2, -19.3), (43.6, -4.6), (44.4, -4.55))]
     # J1's two VBUS lands, either side of the pair: U15's end, and In2 across to the other
-    _jv = _f(45.9, -2.7)[:2], _f(45.9, 2.2)[:2]
-    BOARD_NOTES["vias"] += [("J1_VBUS",) + _jv[0], ("J1_VBUS",) + _jv[1]]
+    _jv = _f(46.2, -2.7)[:2], _f(46.2, 2.2)[:2]
+    BOARD_NOTES["vias"] += [("J1_VBUS",) + _jv[0], ("J1_VBUS",) + _jv[1],
+                            ("CC1",) + _f(45.1, -1.5)[:2], ("CC1",) + _f(45.1, 3.0)[:2]]
     BOARD_NOTES["tracks"] += [
         ("J1_VBUS", "F.Cu", 0.8, [_f(45.24, -5.45)[:2], _f(46.2, -4.5)[:2], _f(46.2, -2.7)[:2]]),
-        ("J1_VBUS", "F.Cu", 0.45, [_f(45.9, -2.7)[:2], _f(47.2, -2.7)[:2]]),
+        ("J1_VBUS", "F.Cu", 0.5, [_jv[0], _f(47.2, -2.7)[:2]]),
         ("J1_VBUS", "In2.Cu", 1.0, list(_jv)),
-        ("J1_VBUS", "F.Cu", 0.45, [_jv[1], _f(47.2, 2.2)[:2]]),
+        ("J1_VBUS", "F.Cu", 0.5, [_jv[1], _f(47.2, 2.2)[:2]]),
+        # CC: U13 turned to face J1, B5 straight in, A5 under the pair
+        ("CC2", "F.Cu", 0.15, [_f(46.9, 1.5)[:2], _f(45.55, 1.5)[:2], _f(45.55, 4.4)[:2],
+                               _f(44.67, 4.4)[:2]]),
+        ("CC1", "F.Cu", 0.15, [_f(46.9, -1.5)[:2], _f(45.1, -1.5)[:2]]),
+        ("CC1", "In2.Cu", 0.15, [_f(45.1, -1.5)[:2], _f(45.1, 3.0)[:2]]),
+        ("CC1", "F.Cu", 0.15, [_f(45.1, 3.0)[:2], _f(45.1, 3.7)[:2], _f(44.67, 4.0)[:2]]),
     ]
     _r61 = (36.8 - _FX, -17.7)
     BOARD_NOTES["tracks"] += [
@@ -3190,15 +3199,15 @@ if REV != 1:
     ]
     # U15's corner is too tight for the stitcher: its grounds get declared vias, pin 2's
     # under the package, the only side the V5_PRE feed leaves open
-    BOARD_NOTES["vias"] += [("GND",) + _f(43.75, -2.7)[:2], ("GND",) + _f(44.0, -6.4)[:2],
-                            ("GND",) + _f(41.9, -7.75)[:2], ("GND",) + _f(25.2, -18.45)[:2], ("GND",) + _f(44.0, 5.5)[:2]]
+    BOARD_NOTES["vias"] += [("GND",) + _f(43.55, -2.45)[:2], ("GND",) + _f(44.0, -6.4)[:2],
+                            ("GND",) + _f(41.9, -7.75)[:2], ("GND",) + _f(25.2, -18.45)[:2], ("GND",) + _f(44.0, 2.9)[:2]]
     BOARD_NOTES["tracks"] += [
-        ("GND", "F.Cu", 0.4, [_f(43.92, -3.1)[:2], _f(43.75, -2.7)[:2]]),
+        ("GND", "F.Cu", 0.4, [_f(43.92, -3.1)[:2], _f(43.55, -2.45)[:2]]),
         ("GND", "F.Cu", 0.4, [_f(42.96, -6.4)[:2], _f(44.0, -6.4)[:2]]),
         ("GND", "F.Cu", 0.4, [_f(41.45, -6.75)[:2], _f(41.9, -7.75)[:2], _f(41.45, -8.75)[:2]]),
         ("GND", "F.Cu", 0.25, [_f(24.1, -24.1)[:2], _f(24.6, -24.1)[:2]]),
-        ("GND", "F.Cu", 0.2, [_f(43.8, 4.95)[:2], _f(44.2, 4.95)[:2]]),
-        ("GND", "F.Cu", 0.2, [_f(44.0, 4.95)[:2], _f(44.0, 5.5)[:2]]),
+        ("GND", "F.Cu", 0.2, [_f(43.8, 3.45)[:2], _f(44.2, 3.45)[:2]]),
+        ("GND", "F.Cu", 0.2, [_f(44.0, 3.45)[:2], _f(44.0, 2.9)[:2]]),
         ("GND", "F.Cu", 0.25, [_f(25.6, -19.7)[:2], _f(25.6, -18.95)[:2], _f(25.2, -18.45)[:2]]),
     ]
     BOARD_NOTES["net_widths"].update({"V5_PRE": 0.6, "J1_VBUS": 1.0, "+24V_JACK": 0.5})
@@ -3212,7 +3221,7 @@ if REV != 1:
         "R23": _f(26.5, -18.2, 180.0), "C45": _f(24.0, -17.5, 180.0),
         # R2-2, at J1, and its gate
         "U15": _f(44.1, -6.4), "R45": _f(46.9, -7.0, 90.0), "C55": _f(44.2, -8.75), "C71": _f(44.4, -3.1, 180.0),
-        "C69": _f(41.65, 4.5, 270.0), "U13": _f(44.0, 4.2), "C66": _f(44.05, 2.35, 180.0), "R41": _f(46.1, 6.05),
+        "C69": _f(41.65, 4.5, 270.0), "U13": _f(44.0, 4.2, 180.0), "C66": _f(44.05, 1.75, 180.0), "R41": _f(46.1, 6.05),
         "R42": _f(43.85, 6.2), "R43": _f(42.6, 1.7, 90.0), "R49": _f(40.9, -1.4), "Q4": _f(38.7, 4.4, 90.0),
         "R54": _f(32.55, 2.6), "R44": _f(37.25, 1.6, 90.0), "Q5": _f(34.5, 5.0), "Q6": _f(40.4, 0.9, 180.0),
         "R46": _f(34.55, 2.7), "R47": _f(35.2, 1.6),
@@ -3220,7 +3229,7 @@ if REV != 1:
         # the mux, on the pair's In2 run, and its bypass over pin 10
         "U14": _f(-3.0, 12.6), "C67": _f(-2.85, 14.65),
         # M43, on the hub's fourth port
-        "U17": _f(-8.0, -0.8, 90.0), "C68": _f(-2.2, 2.6, 90.0),
+        "U17": _f(-8.0, -0.8, 90.0), "C68": _f(-11.6, -5.7),
         "Q7": _f(-15.05, -5.3, 90.0), "R52": _f(-6.6, -5.1), "D9": _f(-14.5, -0.3, 90.0),
     })
     BOARD_NOTES["match"] += [
@@ -3758,8 +3767,20 @@ if REV != 1:
     _q["unconnected"]["U5.8"] = "LMR33630 PG: open drain, nothing here wants it"
     _q["unconnected"]["U13.3"] = "PORT open: DRP (TUSB320 s7.4; firmware sets Try.SNK over I2C)"
     _q["unconnected"]["U16.3"] = "INA226 Alert: polled over I2C, the governor reads it, nothing interrupts"
-    _q["unconnected"]["U17.[7-9]|U17.1[0-2]|U17.15"] = ("CH340C: no modem lines, R232 has its own "
-                                                        "pull-down (DS p.4)")
+    _q["unconnected"]["U17"] = {"pins": "7 8 9 10 11 12 15",
+                                "why": "CH340C: no modem lines, R232 has its own pull-down (DS p.4)"}
+    for _g in _q["net_groups"]:
+        if _g["name"].startswith("USB-C data") or _g["name"].startswith("each receptacle"):
+            _g["nets"] = 8                          # J1 and J2 are separate pairs now, across U14
+    _q["net_groups"][[_g["name"][:10] for _g in _q["net_groups"]].index("USB-C data")]["name"] = (
+        "USB-C data: J1 and J2 either side of U14, J3 and J4 a pair each")
+    _q["decoupling"]["exempt"].update({
+        "U16.8": "INA226 VBUS: a sense input, 10 uA",
+        "U16.9": "INA226 IN-: a sense input",
+        "U16.10": "INA226 IN+: a sense input",
+        "J6": "+24V_JACK is 5 mohm from C55 through R61",
+        "U17.16": "CH340C VCC: tied to V3 (pin 4), C68 beside it, 6 mm: 20 mA at 12 Mbit/s",
+    })
     _q["pinouts"].update({
         "LMR33630BRNXR": "TI LMR33630 SNVSAN3F table 6-1, RNX VQFN: 1 PGND 2 VIN 3 SW 4 BOOT 5 VCC "
                          "6 AGND 7 FB 8 PG 9 EN 10 VIN 11 PGND 12 SW; the same pins as elec/buck_cell.py "
@@ -3780,6 +3801,12 @@ if REV != 1:
         "MX128-5.0-02P-Y": "maker's drawing MX128-5.0-XXP 22.09.14: 5.00 pitch, O1.40 holes, pin 1 "
                            "at the lip end; two-way, the nets are one pickup's two leads",
         "SMF24A": "SOD-123FL, 1 cathode (bar), 2 anode",
+    })
+    _q["waive"].update({
+        "A1:+24V_JACK J6.2>R61.1": "the neck at R61's 0805 land, 3 mm long: the land sets it. "
+                                   "1.6 W/m of rise for 6.67 A over 3 mm, into copper on both sides",
+        "A1:+24V_JACK J6.4>R61.1": "as J6.2",
+        "A1:+24V_IN R61.2>Q2.3": "as J6.2: 1.3 mm for 2 mm, between R61's land and Q2's source pad",
     })
     _m = _q["manual"]
     _m["M2"] = ("D4 (1N4148WT) and D9 (DSS16) pad 1 = K, D10 (SMF24A) pad 1 = K on +24V_IN. Q4 and Q7 "
