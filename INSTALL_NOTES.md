@@ -1242,8 +1242,8 @@ Plug a USB device in (an audio interface such as a Shure MVX2U) and the board po
 
 - **Where:** every string, `nut_wrap_rod`, `nut_slide_insert_*`.
 - **Do, for each string:**
-  1. Back the string's height screw right off, so the insert drops 5.8 mm. That opens a gap between
-     the rod and the top of the dropped insert: about 3.4 mm of opening along X.
+  1. Back the string's height screw right off, so the insert drops 5.8 mm. That opens a slot under the
+     rod, 2.8 mm tall at its tightest: the -X plastic stands to one .080 and 0.8 mm under the rod.
   2. Bring the string in over its dowel and pass the tip -X **under** the rod, straight along X by
      hand, and out through the lane's open -X end.
   3. Take the tip up the -X side, over the top of the rod and down the +X side, then back -X under
