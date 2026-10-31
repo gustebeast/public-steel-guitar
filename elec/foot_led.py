@@ -848,7 +848,7 @@ def build(board, passes=20):
         kx0, kx1, ky = FL.narrow_keepout()
         bad = []
         for ref, (cx0, cx1, cy0, cy1) in boxes(place, fps).items():
-            if cx0 < xn and cy1 > yn - 1e-9:
+            if cx0 < xn and cy1 > yn + 1e-9:
                 bad.append("%s's courtyard reaches %.2f, past the notch's edge %.2f" % (ref, cy1, yn))
         crt = boxes(place, fps)
         for ref in sorted(place):

@@ -1084,7 +1084,10 @@ LIGHT_WIN_W  = 8.0                                   # across Y
 # ONE XBAR INBOARD OF THE +Y RAIL'S CENTRE-LINE (user). The 1.2 left between the window and
 # the rail's inner face is NOT a wall and is not held to the wall rule: the window is a separate
 # MODEL only so the slicer can colour it, and it prints as one fused solid with the chassis.
-RAIL_HI_INNER_Y = BRIDGE_AXLE_Y + 4 * BEAD           # +Y rail inner face (chassis.Y_HI - T/2)
+# 54.60: the most the foot board's XH socket lets it in today, held until that board is settled. The seats and
+# the shelf follow it, so a smaller connector takes only this number, down to 0 beads (string 1's
+# clamp).
+RAIL_HI_INNER_Y = BRIDGE_AXLE_Y + 2.25                 # +Y rail inner face (chassis.Y_HI - T/2)
 LIGHT_WIN_DY = XBAR                                  # inboard of the +Y rail's centre-line
 LIGHT_WIN_YC = (RAIL_HI_INNER_Y + WALL_THICKNESS / 2) - LIGHT_WIN_DY
 LIGHT_WIN_Y0 = LIGHT_WIN_YC - LIGHT_WIN_W / 2        # -Y edge: where the mortises stop

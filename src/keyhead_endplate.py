@@ -118,10 +118,11 @@ def _build():
     for yr, s in ((CH.Y_HI, 1), (CH.Y_LO, -1)):
         yf = yr + s * CH.T / 2 + s * LEG_CLR        # shell outer face + clearance
         yi = yr - s * CH.T / 2 - s * LEG_CLR        # shell inner face + clearance
+        top = CH.leg_shell_top(CH.LEG_STATIONS_X[1], yr)   # the shelf, as the bridge end
         w = w.cut(box_at((XHI + 1.0) - (LEG_SHELL_X0 - LEG_CLR), abs(yf - yi),
-                         FOOT_Z - (CH.Z_BOT - 1.0),       # stop AT the foot line (= band floor):
+                         top - (CH.Z_BOT - 1.0),          # stop AT the shell top (= band floor):
                          x=((LEG_SHELL_X0 - LEG_CLR) + (XHI + 1.0)) / 2,   # no +0.1 step into the band
-                         y=(yf + yi) / 2, z=((CH.Z_BOT - 1.0) + FOOT_Z) / 2))
+                         y=(yf + yi) / 2, z=((CH.Z_BOT - 1.0) + top) / 2))
     # rail-end dovetail sockets (grip the rail tongues; X+Y lock vs the string tension)
     for ycc in (CH.Y_HI, CH.Y_LO):
         w = w.cut(CH._kh_tongue(ycc, socket=True))
