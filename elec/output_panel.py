@@ -267,7 +267,7 @@ def _r2_ports(n):
 
     v24_jack, v24_in = n["v24_jack"], n["v24_in"]
     u16 = fix("U16", "INA226AIDGSR", "inlet volts and amps, I2C2 at 0x40 (LCSC C49851)",
-              "Package_SO:MSOP-10_3x3mm_P0.5mm", range(1, 11))
+              "Steel:MSOP-10_3x3mm_P0.5mm_Tight", range(1, 11))   # KiCad's, courtyard 0.1 off the body
     gnd += u16[1], u16[2], u16[7]
     Net("U16_NC_3").connect(u16[3])                 # Alert not used
     sda += u16[4]
@@ -2889,8 +2889,8 @@ BOARD_NOTES["tracks"] += [
         #  The +24V bar is under the row's SOUTH side, so the two never meet.)
         ("PWR_GND", "F.Cu", 1.5, [(31.400, -15.200), (_J10_G[0], -14.000),
                                   (_J10_G[0], _J10_Y)]) if REV == 1 else
-        ("PWR_GND", "B.Cu", 2.0, [(31.400, -15.200), (23.950, -15.200)]),
-        ("PWR_GND", "B.Cu", 1.6, [(23.950, -15.200), (23.950, -5.400), (_J10_G[1], -5.400)]),
+        ("PWR_GND", "B.Cu", 2.0, [(31.400, -15.200), (23.850, -15.200)]),
+        ("PWR_GND", "B.Cu", 1.4, [(23.850, -15.200), (23.850, -5.400), (_J10_G[1], -5.400)]),
         # ...and on from way 2 to way 5 round the NORTH of the two switch ways, 1.0 mm
         # (half the return, 1.9 A). Not along the south: the 24 V bar is under there on
         # B.Cu and C28's ground via has its one site beside way 6.
@@ -3160,7 +3160,7 @@ if REV != 1:
                                    _f(43.0, -5.2)[:2], _f(43.6, -4.6)[:2]]),
         ("V5_PRE", "In2.Cu", 0.6, [_f(43.6, -4.6)[:2], _f(44.4, -4.55)[:2]]),
         ("V5_PRE", "F.Cu", 1.0, [_f(28.2, -19.3)[:2], _f(28.2, -18.5)[:2]]),
-        ("V5_PRE", "F.Cu", 0.6, [_f(42.96, -5.35)[:2], _f(43.6, -4.6)[:2], _f(44.4, -4.55)[:2]]),
+        ("V5_PRE", "F.Cu", 0.6, [_f(42.96, -5.45)[:2], _f(43.6, -4.6)[:2], _f(44.4, -4.55)[:2]]),
         ("V5_PRE", "F.Cu", 0.6, [_f(44.4, -4.55)[:2], _f(44.88, -3.1)[:2]]),
     ]
     BOARD_NOTES["vias"] += [("V5_PRE",) + _f(_x5, _y5)[:2] for _x5, _y5 in (
@@ -3169,7 +3169,7 @@ if REV != 1:
     _jv = _f(45.9, -2.7)[:2], _f(45.9, 2.2)[:2]
     BOARD_NOTES["vias"] += [("J1_VBUS",) + _jv[0], ("J1_VBUS",) + _jv[1]]
     BOARD_NOTES["tracks"] += [
-        ("J1_VBUS", "F.Cu", 0.8, [_f(45.24, -5.35)[:2], _f(46.2, -4.4)[:2], _f(46.2, -2.7)[:2]]),
+        ("J1_VBUS", "F.Cu", 0.8, [_f(45.24, -5.45)[:2], _f(46.2, -4.5)[:2], _f(46.2, -2.7)[:2]]),
         ("J1_VBUS", "F.Cu", 0.45, [_f(45.9, -2.7)[:2], _f(47.2, -2.7)[:2]]),
         ("J1_VBUS", "In2.Cu", 1.0, list(_jv)),
         ("J1_VBUS", "F.Cu", 0.45, [_jv[1], _f(47.2, 2.2)[:2]]),
@@ -3182,11 +3182,11 @@ if REV != 1:
     ]
     # U15's corner is too tight for the stitcher: its grounds get declared vias, pin 2's
     # under the package, the only side the V5_PRE feed leaves open
-    BOARD_NOTES["vias"] += [("GND",) + _f(43.75, -2.7)[:2], ("GND",) + _f(44.0, -6.3)[:2],
+    BOARD_NOTES["vias"] += [("GND",) + _f(43.75, -2.7)[:2], ("GND",) + _f(44.0, -6.4)[:2],
                             ("GND",) + _f(41.9, -7.75)[:2], ("GND",) + _f(25.2, -18.45)[:2], ("GND",) + _f(44.0, 5.5)[:2]]
     BOARD_NOTES["tracks"] += [
         ("GND", "F.Cu", 0.4, [_f(43.92, -3.1)[:2], _f(43.75, -2.7)[:2]]),
-        ("GND", "F.Cu", 0.4, [_f(42.96, -6.3)[:2], _f(44.0, -6.3)[:2]]),
+        ("GND", "F.Cu", 0.4, [_f(42.96, -6.4)[:2], _f(44.0, -6.4)[:2]]),
         ("GND", "F.Cu", 0.4, [_f(41.45, -6.75)[:2], _f(41.9, -7.75)[:2], _f(41.45, -8.75)[:2]]),
         ("GND", "F.Cu", 0.25, [_f(24.1, -24.1)[:2], _f(24.6, -24.1)[:2]]),
         ("GND", "F.Cu", 0.2, [_f(43.8, 4.95)[:2], _f(44.2, 4.95)[:2]]),
@@ -3203,18 +3203,24 @@ if REV != 1:
         "U16": _f(25.1, -21.9, 90.0), "C70": _f(26.0, -17.1, 180.0),
         "R23": _f(26.5, -18.2, 180.0), "C45": _f(24.0, -17.5, 180.0),
         # R2-2, at J1, and its gate
-        "U15": _f(44.1, -6.3), "R45": _f(46.9, -7.0, 90.0), "R48": _f(46.5, -8.6), "C55": _f(44.65, -8.6), "C71": _f(44.4, -3.1, 180.0),
-        "C69": _f(41.65, 4.5, 270.0), "U13": _f(44.0, 4.2), "C66": _f(43.9, 2.35, 180.0), "R41": _f(46.1, 6.05),
+        "U15": _f(44.1, -6.4), "R45": _f(46.9, -7.0, 90.0), "C55": _f(44.2, -8.75), "C71": _f(44.4, -3.1, 180.0),
+        "C69": _f(41.65, 4.5, 270.0), "U13": _f(44.0, 4.2), "C66": _f(44.05, 2.35, 180.0), "R41": _f(46.1, 6.05),
         "R42": _f(43.85, 6.2), "R43": _f(42.6, 1.7, 90.0), "R49": _f(40.9, -1.4), "Q4": _f(38.7, 4.4, 90.0),
         "R54": _f(32.55, 2.6), "R44": _f(37.25, 1.6, 90.0), "Q5": _f(34.5, 5.0), "Q6": _f(40.4, 0.9, 180.0),
         "R46": _f(34.55, 2.7), "R47": _f(35.2, 1.6),
-        "R50": _f(20.2, 7.0), "R51": _f(20.45, 8.1),     # I2C2 up, by U1
+        "R48": _f(17.6, 7.2), "R50": _f(20.2, 7.0), "R51": _f(20.45, 8.1),     # I2C2 up, by U1
         # the mux, on the pair's In2 run, and its bypass over pin 10
         "U14": _f(-3.0, 12.6), "C67": _f(-2.85, 14.65),
         # M43, on the hub's fourth port
         "U17": _f(-8.0, -0.8, 90.0), "C68": _f(-2.2, 2.6, 90.0),
         "Q7": _f(-15.05, -5.3, 90.0), "R52": _f(-6.6, -5.1), "D9": _f(-14.5, -0.3, 90.0),
     })
+    BOARD_NOTES["match"] += [
+        {"name": _name, "max_skew_mm": 8.3, "same_layer": True, "max_vias": 2, "nets": _nets,
+         "why": "USB 2.0 high speed, " + _why} for _name, _nets, _why in (
+            ("PI", ["PI_DP", "PI_DM"], "U14 to the Pi: the west half of what was THRU"),
+            ("HUB_DN3", ["HUB_DN3_DP", "HUB_DN3_DM"], "hub port 3 to U14: J1 as a host port"),
+            ("HUB_DN4", ["HUB_DN4_DP", "HUB_DN4_DM"], "hub port 4 to the flash bridge"))]
     # U14: J1's pair comes up from In2 east of the package, the Pi's goes down west of it; pins
     # in the U14 notes in _r2_ports. HUB_DN3 leaves pins 1 and 2 for the router.
     _ux, _uy = _f(-3.0, 12.6)[:2]
