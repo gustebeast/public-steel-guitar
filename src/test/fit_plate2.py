@@ -336,6 +336,11 @@ def _lead(body, hw, z0, z1, zlim, stations=LEAD, keep=None, L=None):
     return cq.Workplane("XY").newObject([out])
 
 
+_ROOT_STEP = {}          # the chamfer step make_pair settles on: a matter of the section alone,
+                         # so a joint of another length starts there, and the search's seven
+                         # rebuilds are not paid again. The gap is still measured on the result.
+
+
 def make_pair(name, tenon, socket, c, S, host_w, top, g=None, relief="both", L=None):
     """(token, cell, report) at clearance c, the socket's seat `g` off the host (default c);
     `relief` says which layer-made halves take S["lead"]: both / tenon / socket / none."""
@@ -344,7 +349,8 @@ def make_pair(name, tenon, socket, c, S, host_w, top, g=None, relief="both", L=N
     rt, rs = matched(c, MIN[_kind(tenon)], MIN[_kind(socket)])
     # with a ROOT chamfer the socket's sharp bed edge faces the tenon's ROUND root corner;
     # that one chamfer steps out (quarter-tenths) until it clears by c
-    d = 0.0
+    step_key = (tenon, socket, c, g, relief, host_w, top, repr(sorted(S.items())))
+    d = _ROOT_STEP.get(step_key, 0.0)
     while True:
         hw = host_w / 2.0
         token = F._box(0, L, -hw, hw, -2 * WALL, 0).union(_prism(profile(S), 0.0, L))
@@ -399,6 +405,7 @@ def make_pair(name, tenon, socket, c, S, host_w, top, g=None, relief="both", L=N
         if not S.get("root") or gp[0] >= min(c, g) - 0.005 or d > 1.0:
             break
         d = round(d + 0.025, 3)
+    _ROOT_STEP[step_key] = d
     # the joint's own clearance is measured above the mouth, the mouth's air reported apart
     # and below a cut-flat tip, whose extra air is by design (reported in mouth_air's max)
     below = S["tip"] - S["trunc"] - 0.5 if S.get("trunc") else 1e9
