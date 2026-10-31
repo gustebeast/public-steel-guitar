@@ -411,7 +411,7 @@
    "v": 50.0,
    "ohm": 1000.0,
    "case": "0402",
-   "src": "JLCPCB parts API attributes for C11702 (0402WGF1001TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+   "src": "JLCPCB parts API attributes for C11702, fetched 2026-10-30"
   },
   "C325452": {
    "mpn": "CC0402BRNPO9BN2R2",
@@ -2293,6 +2293,232 @@
    },
    "src": "Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA PULSED, continuous +/-5 mA at the wiper and +/-2.1 mA A to B for the 10k part (Rev. E, order review 2026-10-08; the board runs 0.31 mA). Operating supply 2.7..5.5 V. The check's 0.258 V on U10.12 is the rail's own 5 % allowance (the pot nets are declared at +5V against VDD + 0), not a pin margin",
    "mpn": "AD8402ARZ10"
+  },
+  "C132554": {
+   "mpn": "TUSB320LAIRWBR",
+   "kind": "ic",
+   "supply": {
+    "VDD": "12"
+   },
+   "supply_max": 6.0,
+   "supply_rec": 5.0,
+   "pins": {
+    "1": {
+     "n": "CC1",
+     "max": 6.0
+    },
+    "2": {
+     "n": "CC2",
+     "max": 6.0
+    },
+    "3": {
+     "n": "PORT",
+     "max": "VDD+0.3"
+    },
+    "4": {
+     "n": "VBUS_DET",
+     "max": 4.0
+    },
+    "5": {
+     "n": "ADDR",
+     "max": "VDD+0.3"
+    },
+    "6": {
+     "n": "INT_N",
+     "max": "VDD+0.3"
+    },
+    "7": {
+     "n": "SDA",
+     "max": "VDD+0.3"
+    },
+    "8": {
+     "n": "SCL",
+     "max": "VDD+0.3"
+    },
+    "9": {
+     "n": "ID",
+     "max": "VDD+0.3"
+    },
+    "10": {
+     "n": "GND",
+     "gnd": true
+    },
+    "11": {
+     "n": "EN_N",
+     "max": "VDD+0.3"
+    },
+    "12": {
+     "n": "VDD",
+     "max": 6.0,
+     "rec": 5.0
+    }
+   },
+   "src": "TI TUSB320 datasheet SLLSEN9 s6.1 p.4: VDD 6, CC1/CC2 6, control pins VDD+0.3, VBUS_DET 4; s6.3 VDD 2.7-5, VBUS 4-28 V through the 900k"
+  },
+  "C130085": {
+   "mpn": "TS3USB221RSER",
+   "kind": "ic",
+   "supply": {
+    "VCC": "10"
+   },
+   "supply_max": 4.6,
+   "supply_rec": 3.6,
+   "pins": {
+    "1": {
+     "n": "IO",
+     "max": 7.0
+    },
+    "2": {
+     "n": "IO",
+     "max": 7.0
+    },
+    "3": {
+     "n": "IO",
+     "max": 7.0
+    },
+    "4": {
+     "n": "IO",
+     "max": 7.0
+    },
+    "7": {
+     "n": "IO",
+     "max": 7.0
+    },
+    "8": {
+     "n": "IO",
+     "max": 7.0
+    },
+    "5": {
+     "n": "GND",
+     "gnd": true
+    },
+    "6": {
+     "n": "OE",
+     "max": 7.0
+    },
+    "9": {
+     "n": "S",
+     "max": 7.0
+    },
+    "10": {
+     "n": "VCC",
+     "max": 4.6,
+     "rec": 3.6
+    }
+   },
+   "src": "TI TS3USB221 datasheet p.4 absolute maximum: VCC 4.6, control input 7, switch I/O 7 V, on-state current 120 mA"
+  },
+  "C49851": {
+   "mpn": "INA226AIDGSR",
+   "kind": "ic",
+   "supply": {
+    "VS": "6"
+   },
+   "supply_max": 6.0,
+   "supply_rec": 5.5,
+   "pins": {
+    "1": {
+     "n": "A1",
+     "max": "VS+0.3"
+    },
+    "2": {
+     "n": "A0",
+     "max": "VS+0.3"
+    },
+    "3": {
+     "n": "ALERT",
+     "max": 6.0
+    },
+    "4": {
+     "n": "SDA",
+     "max": 6.0
+    },
+    "5": {
+     "n": "SCL",
+     "max": "VS+0.3"
+    },
+    "6": {
+     "n": "VS",
+     "max": 6.0,
+     "rec": 5.5
+    },
+    "7": {
+     "n": "GND",
+     "gnd": true
+    },
+    "8": {
+     "n": "VBUS",
+     "max": 40.0,
+     "rec": 36.0
+    },
+    "9": {
+     "n": "IN-",
+     "max": 40.0,
+     "rec": 36.0
+    },
+    "10": {
+     "n": "IN+",
+     "max": 40.0,
+     "rec": 36.0
+    }
+   },
+   "src": "TI INA226 datasheet SBOS547 s6.1 p.4: VS 6, IN+/IN- and VBUS -0.3..40, SDA 6, SCL VS+0.3; common mode 0-36 V"
+  },
+  "C5188463": {
+   "mpn": "MX128-5.0-02P-GN01-Cu-Y-A",
+   "kind": "conn",
+   "v": 300,
+   "i": 10,
+   "src": "JLCPCB parts API attributes for C5188463 (300 V, 10 A)"
+  },
+  "C6351848": {
+   "mpn": "PA0805FRF870R005L",
+   "kind": "res",
+   "p": 1.0,
+   "v": 50.0,
+   "ohm": 0.005,
+   "case": "0805",
+   "src": "JLCPCB parts API attributes for C6351848, fetched 2026-10-30; no voltage listed, 50 V entered so the check grades the 1 W, sqrt(PR) is 0.22 V"
+  },
+  "C25756": {
+   "mpn": "0402WGF1502TCE",
+   "kind": "res",
+   "p": 0.0625,
+   "v": 50.0,
+   "ohm": 15000.0,
+   "case": "0402",
+   "src": "JLCPCB parts API attributes for C25756, fetched 2026-10-30"
+  },
+  "C25800": {
+   "mpn": "0402WGF9103TCE",
+   "kind": "res",
+   "p": 0.0625,
+   "v": 50.0,
+   "ohm": 910000.0,
+   "case": "0402",
+   "src": "JLCPCB parts API attributes for C25800, fetched 2026-10-30"
+  },
+  "C169430": {
+   "kind": "tvs",
+   "vrwm": 24.0,
+   "vbr_min": 26.7,
+   "vbr_max": 29.5,
+   "vc": 38.9,
+   "ipp": 5.1,
+   "bidir": false,
+   "pins": {
+    "1": "K",
+    "2": "A"
+   },
+   "mpn": "SMF24A",
+   "src": "JLCPCB parts API attributes for C169430 (24 V, 29.5 V, 38.9 V at 5.1 A 10/1000 us, 200 W)"
+  },
+  "C48496": {
+   "kind": "ind",
+   "isat": 3.5,
+   "itemp": 3.0,
+   "mpn": "SWPA5040S4R7MT",
+   "src": "elec/buck_cell.py: Sunlord table, Isat 3.50 A guaranteed; DCR 39 mohm max; Itemp taken at the cell's 3 A"
   }
  }
 }

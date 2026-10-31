@@ -197,7 +197,8 @@ def _r2_ports(n):
     v3v3 += u13[12]
     r41 = _r("R41", "910k", "U13 VBUS_DET series, TI's 900k")
     vbus += r41[1]
-    r41[2] += u13[4]
+    r41_det = Net("VBUS_DET")
+    r41_det += r41[2], u13[4]
     r42 = _r("R42", "10k", "U13 ADDR high: I2C on, 0x67")
     v3v3 += r42[1]
     r42[2] += u13[5]
@@ -275,10 +276,17 @@ def _r2_ports(n):
     v3v3 += u16[6]
     v24_in += u16[8], u16[9]                        # VBUS, IN-: the load side
     v24_jack += u16[10]                             # IN+: the supply side
-    r61 = _r("R61", "5mR 0.5W", "inlet shunt: 6.67 A is 33 mV of the INA226's 81.9, 0.22 W",
+    r61 = _r("R61", "5mR 1W", "inlet shunt: 6.67 A is 33 mV of the INA226's 81.9, 0.22 W",
              "Resistor_SMD:R_0805_2012Metric")
     v24_jack += r61[1]
     v24_in += r61[2]
+
+    # A LIVE PLUG RINGS TOWARD 49 V AHEAD OF Q2 (M16) AND U16 IS RATED 40. D10 holds the inlet
+    # at 37 V; its surge goes to GND and back through R60, once, with nothing else powered.
+    d10 = _d("D10", "SMF24A", "inlet clamp for U16, 200 W (LCSC C169430)",
+             "Diode_SMD:D_SOD-123F")
+    v24_in += d10[1]
+    gnd += d10[2]
 
     # M43: optical's _flash_path, on hub port 4. U1's ROM loader answers on USART1
     u17 = fix("U17", "CH340C", "USB-serial, the ROM loader's way in (LCSC C84681)",
@@ -3200,7 +3208,7 @@ if REV != 1:
         "J8": _f(-26.75, 22.8, 180.0),                     # pads where MX126's were
         # R2-4: the shunt drops into the 24 V track's last leg
         "R61": _f(36.8, -17.7, 270.0),
-        "U16": _f(25.1, -21.9, 90.0), "C70": _f(26.0, -17.1, 180.0),
+        "D10": _f(20.0, -13.0), "U16": _f(25.1, -21.9, 90.0), "C70": _f(26.0, -17.1, 180.0),
         "R23": _f(26.5, -18.2, 180.0), "C45": _f(24.0, -17.5, 180.0),
         # R2-2, at J1, and its gate
         "U15": _f(44.1, -6.4), "R45": _f(46.9, -7.0, 90.0), "C55": _f(44.2, -8.75), "C71": _f(44.4, -3.1, 180.0),
@@ -3724,6 +3732,112 @@ BOARD_NOTES["quality"] = {
                "other contact on this board",
     },
 }
+
+if REV != 1:
+    # ── R2's notes. Each replaces R1's text outright; R1's stays above, for the board in hand.
+    BOARD_NOTES["silk_legend"] = True
+    _q = BOARD_NOTES["quality"]
+    _q["power_paths"] = [_e for _e in _q["power_paths"]
+                         if _e["net"] != "V5_PRE" and _e.get("to") != ["U5.5"]
+                         and not (_e["net"] == "+24V_IN" and _e["from"] in ("J6.2", "J6.4"))]
+    for _e in _q["power_paths"]:
+        if _e["net"].startswith("+24V") and _e.get("to") in (["F1.1"], ["J9.1"]):
+            _e["amps"] = 0.30                       # optical R2's worst case
+    _q["power_paths"] += [
+        {"net": "+24V_JACK", "from": "J6.2", "to": ["R61.1"], "amps": 6.67},
+        {"net": "+24V_JACK", "from": "J6.4", "to": ["R61.1"], "amps": 3.34},
+        {"net": "+24V_IN", "from": "R61.2", "to": ["Q2.3"], "amps": 6.67},
+        {"net": "+24V", "from": "Q2.2", "to": ["U5.2"], "amps": 0.40},
+        {"net": "V5_PRE", "from": "L1.2", "to": ["FB1.1"], "amps": 0.3},
+        {"net": "V5_PRE", "from": "L1.2", "to": ["U15.1"], "amps": 1.5},
+        {"net": "J1_VBUS", "from": "U15.6", "to": ["J1.A4", "J1.A9"], "amps": 1.5},
+    ]
+    _q["unconnected"]["J2.[AB]5"] = ("J2 is not a port: the far end of the path to the Pi, no CC "
+                                     "resistor (note at J2)")
+    del _q["unconnected"]["U5.4"]
+    _q["unconnected"]["U5.8"] = "LMR33630 PG: open drain, nothing here wants it"
+    _q["unconnected"]["U13.3"] = "PORT open: DRP (TUSB320 s7.4; firmware sets Try.SNK over I2C)"
+    _q["unconnected"]["U16.3"] = "INA226 Alert: polled over I2C, the governor reads it, nothing interrupts"
+    _q["unconnected"]["U17.[7-9]|U17.1[0-2]|U17.15"] = ("CH340C: no modem lines, R232 has its own "
+                                                        "pull-down (DS p.4)")
+    _q["pinouts"].update({
+        "LMR33630BRNXR": "TI LMR33630 SNVSAN3F table 6-1, RNX VQFN: 1 PGND 2 VIN 3 SW 4 BOOT 5 VCC "
+                         "6 AGND 7 FB 8 PG 9 EN 10 VIN 11 PGND 12 SW; the same pins as elec/buck_cell.py "
+                         "and the optical board's U13, EN on VIN",
+        "SWPA5040S4R7MT": "two-pad, unpolarised",
+        "TUSB320LAIRWBR": "TI TUSB320 SLLSEN9 pin table (RWB X2QFN-12) and drawing 4221631/B: 1 CC1 2 CC2 "
+                          "3 PORT 4 VBUS_DET 5 ADDR 6 INT_N/OUT3 7 SDA/OUT1 8 SCL/OUT2 9 ID 10 GND 11 EN_N "
+                          "12 VDD; land Steel:Texas_RWB0012A, from the same drawing",
+        "TS3USB221RSER": "TI TS3USB221 pin table (RSE UQFN-10): 1 1D+ 2 1D- 3 2D+ 4 2D- 5 GND 6 OE# 7 D- "
+                         "8 D+ 9 S 10 VCC. Board: channels used crossed, see _r2_ports",
+        "TPS2553DBVR": "TI SLVS841F p.5, DBV: 1 IN 2 GND 3 EN (active high on the 2553) 4 FAULT# 5 ILIM 6 OUT",
+        "INA226AIDGSR": "TI INA226 SBOS547 pin table (DGS VSSOP-10): 1 A1 2 A0 3 Alert 4 SDA 5 SCL 6 VS "
+                        "7 GND 8 VBUS 9 IN- 10 IN+",
+        "CH340C": "WCH CH340DS1-EN V3C pp.3-4, SOP16: 1 GND 2 TXD 3 RXD 4 V3 5 UD+ 6 UD- 13 DTR# 14 RTS# "
+                  "15 R232 16 VCC",
+        "AO3401A": "AOS AO3401A Rev 3.1 p.1 SOT23: 1 G, 2 S, 3 D",
+        "2N7002": "CJ 2N7002 SOT-23: 1 G, 2 S, 3 D",
+        "MX128-5.0-02P-Y": "maker's drawing MX128-5.0-XXP 22.09.14: 5.00 pitch, O1.40 holes, pin 1 "
+                           "at the lip end; two-way, the nets are one pickup's two leads",
+        "SMF24A": "SOD-123FL, 1 cathode (bar), 2 anode",
+    })
+    _m = _q["manual"]
+    _m["M2"] = ("D4 (1N4148WT) and D9 (DSS16) pad 1 = K, D10 (SMF24A) pad 1 = K on +24V_IN. Q4 and Q7 "
+                "(AO3401A) source on +3V3; Q5 and Q6 (2N7002) source on GND. " + _m["M2"].split("D4 (1N4148WT)")[1].split(". ", 1)[1])
+    _m["M4"] = ("U5 (LMR33630BRNXR, buck_cell.py): two input pairs C3 and C18 at pins 2 / 1 and 10 / 11, "
+                "bulk C2 and C17, 10 uF / 50 V 1206; C4 bootstrap on pins 3 / 4; C63 on VCC")
+    _m["M7"] = ("U5: 1.0 V x (1 + 100k / 24.9k) = 5.02 V; 4.7 uH at 1.4 MHz gives about 0.77 A of "
+                "ripple at 24 V in, peak 2.2 A at 1.8 A out, against 3.50 A Isat")
+    _m["M14"] = ("L1 SWPA5040S4R7MT: Isat 3.50 A min against the LMR33630's 2.9-4.1 A low-side limit "
+                 "(buck_cell.py); DCR 39 mohm, 0.13 W at 1.8 A. Shielded")
+    _m["M15"] = ("U5 is internally compensated: COUT C5, C64 (22 uF / 16 V 0805) and C65, as the "
+                 "optical board's U13. U6 unchanged: 0.3 W worst case through its leads")
+    _m["M16"] = ("the inlet is hot-plugged by design. Ahead of the switch: C55 (100 nF / 50 V), Q2 "
+                 "(60 V), the sense divider, and on R2 U16, rated 40 V. A ring toward 49 V meets D10 "
+                 "(SMF24A, VBR 29.5 max, VC 38.9 at 5.1 A): with a 2 uH lead and C55, Z about 4.5 ohm, "
+                 "about 4.3 A and 37 V. Behind the switch the rail is raised by Q2 at about 2 V/ms "
+                 "(C49 across gate and drain), as on R1. J9 / J7 / J10 are plugged with the supply off")
+    _m["M18"] = ("the board's 3V3 and 5 V rise together from one buck. The Pi and the optical board "
+                 "are powered separately. J2's VBUS is dead-ended on purpose. J1's is live only "
+                 "through U15, which blocks reverse current (95-190 mV comparator) and is held off by "
+                 "Q5 while a host's VBUS is on the port, so J1 cannot back-feed V5_PRE. The switch "
+                 "lines on J10 are pulled from this board's inlet only")
+    _m["M20"] = ("I2C2 on U1 (PB10, PB11): U13 at 0x67, U16 at 0x40, 4k7 up (R50, R51), about 30 mm. "
+                 "No CAN. USB: CC per port role (A6). I2S as R1: 20-30 mm clocks, no series "
+                 "resistors, short stubs at the package")
+    _m["M21"] = ("one ground plane, joined to the power return at ONE point, R60, at the west end of "
+                 "the buck's input slab. The buck stands on the plane (its heat, M25), so what crosses "
+                 "R60 is the buck's own 24 V return, about 0.4 A, and the USB-ground share of the "
+                 "motors' return, about a tenth by conductor resistance, entering at J2 / J3 / J4 on "
+                 "the -X edge. Neither path passes the converters at +Y. The hot loops are on F.Cu, "
+                 "inside the cell. If motor noise is ever heard, R60 becomes a bead; it is an 0603")
+    _m["M23"] = ("panel port J1, dual role: clamps on the pair (M10), U13 on CC, U14 selecting Pi or "
+                 "hub port 3 from ROLE_ID_N, which rests on the Pi. U15 sources 1.5 A from V5_PRE. "
+                 "Hub (self-powered, 3.3 V): upstream on J3 with 5k1 per CC, downstream J4 with 56 k "
+                 "pull-ups and VBUS from this board's 5 V, 100 nF at the connector (C57); port 4 is "
+                 "the flash bridge. The MCU hangs on hub port 1 as R1, its pair recorded at the pair")
+    _m["M25"] = ("U1 and U4: exposed pads on GND with vias to the plane (A8). Q2: as R1. U6: 0.3 W "
+                 "worst case. U5: about 1.35 W at 1.8 A out, 24 V in (SNVSAN3F fig 9-15, 9-17, "
+                 "extrapolated from 1.1 W at 1.4 A); 57-60 C/W on the cell's copper (buck_cell.py) is "
+                 "about 80 C of rise, about 125 C at 45 C ambient: at the limit with a device drawing "
+                 "the full 1.5 A in a hot room, thermal shutdown at 170 C. Normal 0.3 A load: 0.9 W, "
+                 "about 100 C. U15: 135 mohm x 1.5 A squared, 0.3 W. R61: 0.22 W of 1 W at 6.67 A")
+    _m["M33"] = ("5 V: 0.3 A at the doubled worst case plus J1's 1.5 A, 1.8 A against the buck's 3 A. "
+                 "3V3: MCU 22 mA, ADC 19, DAC 31, hub up to 100, CH340C 20, U13 / U14 / U16 under 1, "
+                 "pulls 5: about 0.2 A through a 600 mA regulator. 24 V: this board's own draw is "
+                 "0.4 A at J1's full load; the rest passes through on copper checked for it (A1)")
+    _m["M36"] = ("J9: F1, 1 A. J1's VBUS: U15, 1.61-1.80 A, constant current, FAULT# to U1. J4's VBUS: "
+                 "behind the 1.3 A bead. J7 and J10 are the trunk itself: limited by the supply, on "
+                 "copper sized for all of it at the inlet and 3.8 / 2.9 A at each outlet; contact "
+                 "loading M32")
+    _m["M38"] = ("ceramics larger than 0805 are C2 and C17 (1206, in the buck cell, along the row) and "
+                 "the two 100 V jack capacitors. All connectors are on the panel edge or reachable "
+                 "from above")
+    _m["M43"] = ("R2. J3 -> U4 hub port 4 -> U17 CH340C -> U1 USART1, PA9 TX / PA10 RX. The Pi holds "
+                 "DTR# low (Q7 lifts BOOT0 over R7), pulses RTS# low (D9 pulls NRST), and the ROM "
+                 "loader answers, as on optical R2. No firmware of ours is involved, so a bad image "
+                 "is no obstacle; a dead bridge leaves the board booting normally. TP1-TP5 stay as "
+                 "clip-on pads for bring-up. Sources: CH340DS1-EN V3C, CH32V307 RM, optical M43")
 
 
 if __name__ == "__main__":
