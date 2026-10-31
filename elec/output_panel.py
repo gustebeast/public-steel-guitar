@@ -3228,6 +3228,7 @@ if REV != 1:
         "R42": _f(43.85, 6.2), "R43": _f(42.6, 1.7, 90.0), "R49": _f(40.9, -1.4), "Q4": _f(38.7, 4.4, 90.0),
         "R54": _f(32.55, 2.6), "R44": _f(37.25, 1.6, 90.0), "Q5": _f(34.5, 5.0), "Q6": _f(40.4, 0.9, 180.0),
         "R46": _f(34.55, 2.7), "R47": _f(35.2, 1.6),
+        "R37": _f(10.5, 10.5),                  # beside U12: out of U1's east-row lanes
         "R48": _f(17.6, 7.2), "R50": _f(20.2, 7.0), "R51": _f(20.45, 8.1),     # I2C2 up, by U1
         # the mux, on the pair's In2 run, and its bypass over pin 10
         "U14": _f(-3.0, 12.6), "C67": _f(-2.85, 14.65),
@@ -3241,8 +3242,8 @@ if REV != 1:
     BOARD_NOTES["vias"] += [(_n,) + _f(_x, _y)[:2] for _n, _x, _y in (
         ("J1_VBUS", 41.65, 6.3), ("J1_VBUS", 33.9, 1.95),
         ("ROLE_ID_N", 42.84, 3.18), ("ROLE_ID_N", 38.05, 2.75),
-        # U1's east row is on 0.4 and a via is 0.6: staggered escapes, or the neighbours box a pin in
-        ("POT_SDI", 17.7, -3.0), ("RELAY", 16.9, -3.62), ("I2C2_SDA", 17.0, -1.4), ("POT_SCK", 17.1, -5.45))]
+        # U1's fan-out: a pin the neighbours' vias otherwise box in
+        ("POT_SDI", 17.1, -3.0))]
     BOARD_NOTES["tracks"] += [
         # the sense divider's tap on J1_VBUS, off C69
         ("J1_VBUS", "In2.Cu", 0.25, _pts((41.65, 6.3), (39.2, 6.3), (39.2, 4.05), (39.05, 3.9), (34.4, 3.9),
@@ -3251,10 +3252,7 @@ if REV != 1:
         ("ROLE_ID_N", "F.Cu", 0.2, _pts((43.4, 3.45), (42.84, 3.18))),
         ("ROLE_ID_N", "In2.Cu", 0.2, _pts((42.84, 3.18), (42.2, 2.54), (38.26, 2.54), (38.05, 2.75))),
         ("ROLE_ID_N", "F.Cu", 0.2, _pts((38.05, 2.75), (37.75, 3.3), (37.75, 3.78))),
-        ("POT_SDI", "F.Cu", 0.2, _pts((15.69, -3.0), (17.7, -3.0))),
-        ("RELAY", "F.Cu", 0.2, _pts((15.69, -3.4), (16.9, -3.62))),
-        ("I2C2_SDA", "F.Cu", 0.2, _pts((15.69, -1.4), (17.0, -1.4))),
-        ("POT_SCK", "F.Cu", 0.2, _pts((15.69, -5.4), (17.1, -5.45))),
+        ("POT_SDI", "F.Cu", 0.2, _pts((15.69, -3.0), (17.1, -3.0))),
     ]
     BOARD_NOTES["match"] += [
         {"name": _name, "max_skew_mm": 8.3, "same_layer": _same, "max_vias": 2, "nets": _nets,
