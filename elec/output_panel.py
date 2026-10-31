@@ -907,8 +907,8 @@ def output_panel():
                  5, 6, 7,                               # OSC_IN, OSC_OUT, NRST
                  61, 62, 35, 36, 38, 25, 48, 52, 63, 39, 1,
                  53, 58, 60,                            # I2S3: WS, CK, SD
-                 21, 20, 26, 27,    # PA5, PA4, PB0 pot SPI; PB1 the jack mode
-                 28) + (() if REV == 1 else (19, 24, 29, 30, 33, 44, 45))]   # 28: PB2 = BOOT1, held low on the jack-mode net
+                 27,                # PB1 the jack mode
+                 28) + ((21, 20, 26) if REV == 1 else (19, 24, 29, 30, 33, 41, 42, 43, 44, 45))]   # 28: PB2 = BOOT1, held low on the jack-mode net
     u1 = Part(name="CH32V307WCU6", ref_prefix="U", ref="U1", tag="U1", dest="NETLIST", tool="skidl",
               value="CH32V307WCU6",
               description="RISC-V MCU, USB2.0 HS with INTERNAL PHY (LCSC C5142795)",
@@ -945,9 +945,10 @@ def output_panel():
     # peripheral on it would buy nothing and cost a pin map that is already full.
     pot_cs, pot_sck, pot_sdi = Net("POT_CS"), Net("POT_SCK"), Net("POT_SDI")
     jack_mode = Net("JACK_MODE")   # 0 = balanced (inverted tip), 1 = stereo
-    pot_cs += u1[21]
-    pot_sck += u1[20]
-    pot_sdi += u1[26]
+    # R2: bit-banged, so on the north row facing U10. The east row was over capacity.
+    pot_cs += u1[21 if REV == 1 else 41]            # PC8 on R2
+    pot_sck += u1[20 if REV == 1 else 43]           # PA8 on R2
+    pot_sdi += u1[26 if REV == 1 else 42]           # PC9 on R2
     # ✅ ALL FOUR READ OFF THE TABLE, NOT INFERRED: 20 PA4, 21 PA5, 26 PB0, 27 PB1,
     # checked against .ins/ch32v307_qfn68.json -- the same QFN-68 column the other
     # twenty-four pins on this part were taken from. 27 was briefly written down as an
@@ -3242,8 +3243,7 @@ if REV != 1:
     BOARD_NOTES["vias"] += [(_n,) + _f(_x, _y)[:2] for _n, _x, _y in (
         ("J1_VBUS", 41.65, 6.3), ("J1_VBUS", 33.9, 1.95),
         ("ROLE_ID_N", 42.84, 3.18), ("ROLE_ID_N", 38.05, 2.75),
-        # U1's fan-out: a pin the neighbours' vias otherwise box in
-        ("POT_SDI", 17.1, -3.0))]
+        )]
     BOARD_NOTES["tracks"] += [
         # the sense divider's tap on J1_VBUS, off C69
         ("J1_VBUS", "In2.Cu", 0.25, _pts((41.65, 6.3), (39.2, 6.3), (39.2, 4.05), (39.05, 3.9), (34.4, 3.9),
@@ -3252,7 +3252,6 @@ if REV != 1:
         ("ROLE_ID_N", "F.Cu", 0.2, _pts((43.4, 3.45), (42.84, 3.18))),
         ("ROLE_ID_N", "In2.Cu", 0.2, _pts((42.84, 3.18), (42.2, 2.54), (38.26, 2.54), (38.05, 2.75))),
         ("ROLE_ID_N", "F.Cu", 0.2, _pts((38.05, 2.75), (37.75, 3.3), (37.75, 3.78))),
-        ("POT_SDI", "F.Cu", 0.2, _pts((15.69, -3.0), (17.1, -3.0))),
     ]
     BOARD_NOTES["match"] += [
         {"name": _name, "max_skew_mm": 8.3, "same_layer": _same, "max_vias": 2, "nets": _nets,
@@ -3341,7 +3340,7 @@ BOARD_NOTES["quality"] = {
         "U1": {
             "pins": ("2 3 4 8 9 10 11 14 15 16 19 22 23 24 29 30 33 34 37 40 41 42 43 44 45 46 47 54 55 56 57 59 64 65 66"
                      if REV == 1 else
-                     "2 3 4 8 9 10 11 14 15 16 22 23 34 37 40 41 42 43 46 47 54 55 56 57 59 64 65 66"),
+                     "2 3 4 8 9 10 11 14 15 16 20 21 22 23 26 34 37 40 46 47 54 55 56 57 59 64 65 66"),
             "why": "GPIO this board gives no function: left open, firmware leaves it an input with pull-down"
         },
         "U4": {
