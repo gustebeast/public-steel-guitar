@@ -43,7 +43,7 @@
   },
   "bridge_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 307050.0
+   "volume_mm3": 307714.8
   },
   "cart_base": {
    "material": "pctg",
@@ -187,7 +187,7 @@
   },
   "optical_guard": {
    "material": "petg-gf",
-   "volume_mm3": 10156.1
+   "volume_mm3": 10834.0
   },
   "pedal_bar_a": {
    "material": "petg-gf",
