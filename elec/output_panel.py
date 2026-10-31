@@ -3218,7 +3218,7 @@ if REV != 1:
     _pl.update({
         "R60": _f(-12.0, -16.2, 90.0),
         "R3": _f(-8.9, -12.05), "R4": _f(-6.9, -12.2),     # J3's CC pull-downs: off the input slab
-        "J8": _f(-26.75, 22.8, 180.0),                     # pads where MX126's were
+        "J8": _f(-26.75, 20.8, 180.0),                     # 2.0 -Y of the MX126 pads: belt clamp 9 passes behind it
         # R2-4: the shunt drops into the 24 V track's last leg
         "R61": _f(36.8, -17.7, 270.0),
         "D10": _f(20.0, -13.0), "U16": _f(25.1, -21.9, 90.0), "C70": _f(26.1, -18.1, 180.0),
@@ -3847,7 +3847,8 @@ if REV != 1:
                 "3.91 mm. HUB_DN1 and HUB_DN3 change layer because their pin orders oppose; HUB_DN4 does not matter at "
                 "12 Mbps. I2S is 12.288 MHz MCK and 3 MHz BCK: not a length-matched bus")
     _m["M11"] = ("finish.py's CAD check on the routed R2 board; the cached gate on this branch: 1046 components, 0 "
-                 "unintended overlaps, the rotating-part sweep clean. Belts not in that scope")
+                 "unintended overlaps, the rotating-part sweep and the carriage travel clean; check_overlaps "
+                 "--full (belts in): 1056 components, 0 unintended")
     _m["M13"] = ("U5, the shared LMR33630 cell (elec/buck_cell.py), measured on the routed board: C3 and C18 (100 nF) "
                  "0.75 and 1.2 mm from the VIN pins either side, C2 and C17 (10 uF) behind them on F.Cu; C4 0.8 mm from "
                  "BOOT; C63 0.65 mm from VCC. The cell stands on GND, not PWR_GND, with R60 the star")
