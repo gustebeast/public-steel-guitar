@@ -3842,6 +3842,15 @@ if REV != 1:
         "A1:+24V_IN R61.2>Q2.3": "as J6.2: 1.3 mm for 2 mm, between R61's land and Q2's source pad",
     })
     _m = _q["manual"]
+    _m["M6"] = ("USB 2.0 high speed on six pairs (HUB_UP, HUB_DN1, HUB_DN2, HUB_DN3, THRU, PI) and one full-speed "
+                "(HUB_DN4, to the CH340C), each declared over the In1 plane; verify: 7 groups, 0 problems, worst skew "
+                "3.91 mm. HUB_DN1 and HUB_DN3 change layer because their pin orders oppose; HUB_DN4 does not matter at "
+                "12 Mbps. I2S is 12.288 MHz MCK and 3 MHz BCK: not a length-matched bus")
+    _m["M11"] = ("OPEN UNTIL THE FULL GATE RUNS ON THIS REVISION: finish.py's CAD check needs heights for six new "
+                 "footprints, sent to cadkit")
+    _m["M13"] = ("U5, the shared LMR33630 cell (elec/buck_cell.py), measured on the routed board: C3 and C18 (100 nF) "
+                 "0.75 and 1.2 mm from the VIN pins either side, C2 and C17 (10 uF) behind them on F.Cu; C4 0.8 mm from "
+                 "BOOT; C63 0.65 mm from VCC. The cell stands on GND, not PWR_GND, with R60 the star")
     _m["M2"] = ("D4 (1N4148WT) and D9 (DSS16) pad 1 = K, D10 (SMF24A) pad 1 = K on +24V_IN. Q4 and Q7 "
                 "(AO3401A) source on +3V3; Q5 and Q6 (2N7002) source on GND. " + _m["M2"].split("D4 (1N4148WT)")[1].split(". ", 1)[1])
     _m["M4"] = ("U5 (LMR33630BRNXR, buck_cell.py): two input pairs C3 and C18 at pins 2 / 1 and 10 / 11, "
