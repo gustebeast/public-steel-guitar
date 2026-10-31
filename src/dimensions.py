@@ -1245,8 +1245,8 @@ SCREW_NX_WALL   = 3 * BEAD      # 2.4 solid wall -X behind the far insert's OD (
 ENDPLATE_W = (BREAK_PX_BUF + DOWEL_SCREW_RUN + SCREW_ROW_GAP
               + NUT_INSERT_D / 2 + SCREW_NX_WALL)            # = 25.0
 # THE KEYHEAD'S THICKNESS IS NOT SET HERE ANY MORE (user). It was a 28.8 literal sized for
-# two staggered rows of clamp inserts that no longer exist. nut_block.KEYHEAD_W now derives it
-# from the stow bores (two beads of bed face behind them), and chassis.KH_EP_THK reads that.
+# two staggered rows of clamp inserts that no longer exist. nut_block.KEYHEAD_W holds it, and
+# chassis.KH_EP_THK reads that.
 # ...AND ITS FRONT BUFFER IS ITS OWN NUMBER TOO (user: decouple the endplates). The
 # keyhead needs far less material +X of the break dowel than BREAK_PX_BUF's 4.0 -- just
 # enough to grow a 45 deg up to the dowel's MIDPOINT, since a dowel cradled to its own

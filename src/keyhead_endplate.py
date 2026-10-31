@@ -100,8 +100,8 @@ def _build():
     # face + both +-Y side faces stay solid; +X opens to the chassis box —
     # the rail-end shells + tongues come from the chassis side).
     w = endplate_base(XLO, XHI, "lo")
-    # nut block (the only thing reaching above the deck): ONE solid prism from the deck
-    # plane up to its lid over the wrap rod, fused on
+    # nut block (the only thing reaching above the deck): its fingers and end blocks, stood on
+    # this piece's floor at the deck plane, up to the lid over the wrap rod. Fused on
     w = w.union(NB.nut_block.translate((D.NUT_BLOCK_X, 0, D.STRING_Z)))
     # THE INSERT SLOTS RUN PAST THE NUT BLOCK'S BASE, so they have to be cut HERE too --
     # nut_block can only cut its own prism, and an insert at its lowest travel hangs well
@@ -131,8 +131,7 @@ def _build():
     # SAME shared source the chassis uses (legs.corner_groove_negatives).
     # For the keyhead that hosts: the 44-long END-WALL rebate (against
     # the wall's inner face — its blind inboard end is the stub's flush hard
-    # stop; the two crossing stow bores just poke its roof, shortening
-    # those string tails ~7), the crossing grooves' reach through the
+    # stop), the crossing grooves' reach through the
     # endplate's own side-wall band / tab, and nothing of the fin passage
     # (that crossing is all kept-shell). Groove roofs at bed + 7.34, far
     # below the dovetail sockets (-23.15..-6).
@@ -148,17 +147,6 @@ def _build():
             w = w.cut(_n)
         for _n in _esn(CH.LEG_STATIONS_X[1], _ly, -1.0, CH.Z_BOT, PRINT_UP, _s):
             w = w.cut(_n)
-    # STRING-END STOWAGE (one per string): a straight teardrop bore per string, set inboard of
-    # the -X face and leaning -Y as it descends (nut_block.STOW_TILT), from the nut block's top
-    # face down and out through the bed. The cut tail is fed in by hand. Its Y comes from the
-    # insert (nut_block.stow_y), so the hole does not move when the strings change.
-    w = w.cut(NB.all_stow_channels(CH.Z_BOT - 1.0 - D.STRING_Z)
-              .translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))
-    # RE-BORE THE WRAP ROD, after every union. The Ø8 rod dips below the deck plane, where the
-    # nut block stops and this part's base prism begins, and that prism filled the bottom of
-    # the bore back in (the gate: 905 mm3 of rod inside the endplate). Same cutter as the
-    # nut block's own, from the module that owns the rod.
-    w = w.cut(NB.rod_bore().translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))
     # ONE SOLID, CHECKED. The overlap gate reports interpenetration, not disconnection: a
     # fused feature that never touches the plate would leave the part quietly in TWO pieces.
     _n = len(w.val().Solids())

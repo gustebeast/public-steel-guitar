@@ -1227,3 +1227,37 @@ Plug a USB device in (an audio interface such as a Shure MVX2U) and the board po
 - Bring-up: with no firmware loaded, J1 must still reach the Pi from a computer (the mux rests there).
 - Firmware flashing is over the Pi, hands-free, through the hub's fourth port. The pads TP1-TP5 are
   only for first bench bring-up.
+
+## Keyhead: the wrap rod slides in by hand, no reaming
+
+- **Where:** `keyhead_endplate`, the row of bores through the end blocks and all the fingers, and
+  `nut_wrap_rod`.
+- **Do:** slide the rod in from -Y until it stops against the blind wall at +Y, by hand. If it binds,
+  clean the tight bore with a round file. Do not ream the bores.
+- **Why:** a bore printed about 0.1 out of line is fine. The rod is stiffer than the fingers, so a high
+  finger takes more at first, then creeps a little and hands the excess to its neighbours and the end
+  blocks. Expect the rod to settle 0.1-0.2 mm in the first weeks at tension; retune.
+
+## Stringing: the string goes UNDER the rod and wraps up
+
+- **Where:** every string, `nut_wrap_rod`, `nut_slide_insert_*`.
+- **Do, for each string:**
+  1. Back the string's height screw right off, so the insert drops 5.8 mm. That opens a gap between
+     the rod and the top of the dropped insert: about 3.4 mm of opening along X.
+  2. Bring the string in over its dowel and pass the tip -X **under** the rod, straight along X by
+     hand, and out through the lane's open -X end.
+  3. Take the tip up the -X side, over the top of the rod and down the +X side, then back -X under
+     the rod. Grab it on whichever side it comes out. Each turn lies on the **-Y** side of the last.
+     Three full turns, the same on every string, none crossing.
+  4. Leave the tail running -X along the top of the insert.
+  5. Pull the string snug and tighten the height screw until the insert clamps the coil against the
+     rod. Bring it to pitch.
+- **Why:** the old way, over the top of the rod and round under it, could not be done: a stiff tip binds
+  under the rod and the top panel closes the +X side. Nothing should guide the tip and no special
+  tool is needed. Clamping is what the coil's last turn and the tail rely on: about 9 N is left there
+  (assuming friction 0.15).
+- **Tails: OPEN.** The stow bores have gone. For now, cut each tail at the -X end of its insert's flat so
+  it stays inside its lane. Where a tail should finally go has not been decided.
+- ⚠ **Not tried yet** on the real part. `test_wrap_lift` tests this winding, the insert fit and the tail
+  hold. It uses an upside-down printed insert, not the new one.
+
