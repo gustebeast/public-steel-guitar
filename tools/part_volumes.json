@@ -43,7 +43,7 @@
   },
   "bridge_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 308851.4
+   "volume_mm3": 312277.0
   },
   "cart_base": {
    "material": "pctg",
@@ -55,7 +55,7 @@
   },
   "chassis_0": {
    "material": "petg-gf",
-   "volume_mm3": 583467.3
+   "volume_mm3": 580041.7
   },
   "chassis_0_light": {
    "material": "pctg",
@@ -95,7 +95,7 @@
   },
   "keyhead_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 227882.7
+   "volume_mm3": 242758.0
   },
   "kl_axle": {
    "material": "pctg",
@@ -175,15 +175,15 @@
   },
   "nut_slide_insert_a": {
    "material": "pctg",
-   "volume_mm3": 6337.5
+   "volume_mm3": 5067.5
   },
   "nut_slide_insert_b": {
    "material": "pctg",
-   "volume_mm3": 8727.1
+   "volume_mm3": 6963.8
   },
   "nut_slide_insert_c": {
    "material": "pctg",
-   "volume_mm3": 15291.3
+   "volume_mm3": 12208.2
   },
   "optical_guard": {
    "material": "petg-gf",
