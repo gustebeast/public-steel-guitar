@@ -3200,14 +3200,17 @@ if REV != 1:
     # U15's corner is too tight for the stitcher: its grounds get declared vias, pin 2's
     # under the package, the only side the V5_PRE feed leaves open
     BOARD_NOTES["vias"] += [("GND",) + _f(43.7, -2.4)[:2], ("GND",) + _f(44.0, -6.4)[:2],
-                            ("GND",) + _f(41.9, -7.75)[:2], ("GND",) + _f(25.2, -18.45)[:2], ("GND",) + _f(44.0, 2.9)[:2]]
+                            ("GND",) + _f(41.9, -7.75)[:2], ("GND",) + _f(25.2, -18.45)[:2]]
     BOARD_NOTES["tracks"] += [
         ("GND", "F.Cu", 0.4, [_f(43.92, -3.1)[:2], _f(43.7, -2.4)[:2]]),
         ("GND", "F.Cu", 0.4, [_f(42.96, -6.4)[:2], _f(44.0, -6.4)[:2]]),
         ("GND", "F.Cu", 0.4, [_f(41.45, -6.75)[:2], _f(41.9, -7.75)[:2], _f(41.45, -8.75)[:2]]),
         ("GND", "F.Cu", 0.25, [_f(24.1, -24.1)[:2], _f(24.6, -24.1)[:2]]),
         ("GND", "F.Cu", 0.2, [_f(43.8, 3.45)[:2], _f(44.2, 3.45)[:2]]),
-        ("GND", "F.Cu", 0.2, [_f(44.0, 3.45)[:2], _f(44.0, 2.9)[:2]]),
+        # U13's ground pins go to C66's ground end, and its +3V3 pin down the lane that leaves
+        ("GND", "F.Cu", 0.2, [_f(44.0, 3.45)[:2], _f(43.85, 3.05)[:2], _f(43.6, 2.5)[:2], _f(43.57, 1.75)[:2]]),
+        ("+3V3", "F.Cu", 0.2, [_f(44.6, 3.45)[:2], _f(44.55, 3.15)[:2], _f(44.35, 2.9)[:2], _f(44.35, 2.05)[:2],
+                               _f(44.53, 1.75)[:2]]),
         ("GND", "F.Cu", 0.25, [_f(25.6, -19.7)[:2], _f(25.6, -18.95)[:2], _f(25.2, -18.45)[:2]]),
     ]
     BOARD_NOTES["net_widths"].update({"V5_PRE": 0.6, "J1_VBUS": 1.0, "+24V_JACK": 0.5})
@@ -3233,11 +3236,18 @@ if REV != 1:
         "Q7": _f(-15.05, -5.3, 90.0), "R52": _f(-6.6, -5.1), "D9": _f(-14.5, -0.3, 90.0),
     })
     BOARD_NOTES["match"] += [
-        {"name": _name, "max_skew_mm": 8.3, "same_layer": True, "max_vias": 2, "nets": _nets,
-         "why": "USB 2.0 high speed, " + _why} for _name, _nets, _why in (
-            ("PI", ["PI_DP", "PI_DM"], "U14 to the Pi: the west half of what was THRU"),
-            ("HUB_DN3", ["HUB_DN3_DP", "HUB_DN3_DM"], "hub port 3 to U14: J1 as a host port"),
-            ("HUB_DN4", ["HUB_DN4_DP", "HUB_DN4_DM"], "hub port 4 to the flash bridge"))]
+        {"name": _name, "max_skew_mm": 8.3, "same_layer": _same, "max_vias": 2, "nets": _nets,
+         "why": _why} for _name, _same, _nets, _why in (
+            ("PI", True, ["PI_DP", "PI_DM"], "USB 2.0 high speed, U14 to the Pi: the west half of what was THRU"),
+            # same_layer off for the same reason as HUB_DN1: the hub and U14 order DM/DP
+            # oppositely (U14's channels are crossed for the THRU and PI pairs), so one
+            # conductor has to pass the other on another layer.
+            ("HUB_DN3", False, ["HUB_DN3_DP", "HUB_DN3_DM"],
+             "USB 2.0 high speed, hub port 3 to U14: J1 as a host port. 480 Mbps is 2,080 ps a bit; "
+             "the pin order forces the one layer change"),
+            # CH340C is a 12 Mbps device, 83 ns a bit, on a pair about 15 mm long: layers do not matter
+            ("HUB_DN4", False, ["HUB_DN4_DP", "HUB_DN4_DM"],
+             "USB 2.0 full speed, hub port 4 to the flash bridge"))]
     # U14: J1's pair comes up from In2 east of the package, the Pi's goes down west of it; pins
     # in the U14 notes in _r2_ports. HUB_DN3 leaves pins 1 and 2 for the router.
     _ux, _uy = _f(-3.0, 12.6)[:2]
