@@ -813,7 +813,7 @@ def leds(half):
 # ── the lead: board A's socket to the Pi cap ────────────────────────────────────────────
 # One 4-way XH-to-XH lead (harness.LED_DROP: 24 V, GND, SCK, SDT). It is DRAWN in src/led_leads.py, as four
 # conductors each on its own contact; what is here is where it may go.
-LEAD_STUB  = 4.0                    # straight out of the mouth before the first bend: the
+LEAD_STUB  = 4.0                     # straight out of the mouth before the first bend: the
                                     # XHP-4 housing stands about 4.3 past it
 # ⚠ IT GOES OVER STRING 1's MOTOR, BECAUSE THERE IS NO WAY ROUND IT. The socket is +Y of
 # that motor and the Pi is -Y of it; the motor is a 42 mm square from the bay floor up, its
@@ -829,6 +829,8 @@ LEAD_STUB  = 4.0                    # straight out of the mouth before the first
 # the fret numbers re-read 2026-10-29). The lead used to fly at -17.05 and the
 # panel ran through it. So it now crosses LOW, in the one column where string 1's CAN tee
 # is low too, and drops lower still before the rib:
+LEAD_RISE_DY = 0.50                 # the risers step +Y first: J1's -Y way is 0.5 off string 1's
+                                    # faceplate wall, and the lead is 1.4 across
 LEAD_FLY   = 9.45                   # -19.60: 3.50 under the envelope, 0.95 over the
                                     # highest thing under it in the column (-21.25 at y -4
                                     # to 4); the tee there is at -25.25
