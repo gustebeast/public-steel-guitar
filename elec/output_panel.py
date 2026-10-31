@@ -946,9 +946,9 @@ def output_panel():
     pot_cs, pot_sck, pot_sdi = Net("POT_CS"), Net("POT_SCK"), Net("POT_SDI")
     jack_mode = Net("JACK_MODE")   # 0 = balanced (inverted tip), 1 = stereo
     # R2: bit-banged, so on the north row facing U10. The east row was over capacity.
-    pot_cs += u1[21 if REV == 1 else 41]            # PC8 on R2
+    pot_cs += u1[21 if REV == 1 else 42]            # PC9 on R2
     pot_sck += u1[20 if REV == 1 else 43]           # PA8 on R2
-    pot_sdi += u1[26 if REV == 1 else 42]           # PC9 on R2
+    pot_sdi += u1[26 if REV == 1 else 41]           # PC8 on R2
     # ✅ ALL FOUR READ OFF THE TABLE, NOT INFERRED: 20 PA4, 21 PA5, 26 PB0, 27 PB1,
     # checked against .ins/ch32v307_qfn68.json -- the same QFN-68 column the other
     # twenty-four pins on this part were taken from. 27 was briefly written down as an
