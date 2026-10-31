@@ -414,6 +414,13 @@ def foot_tenon_runs(sx, ly, syg):
     return out
 
 
+def _cut_all(body, tools):
+    """body less every tool, in one boolean: N cuts of a 2000-face solid are N times the work.
+    Fuses and cuts of many tools have lost material silently here before (see OCCT), so any
+    list that goes through this is checked by volume against the one-at-a-time cuts first."""
+    return cq.Workplane(obj=body.val().cut(*[t.val() for t in tools]).clean())
+
+
 def _mort_cutters(x0=None, x1=None):
     """Every lever mortise in [x0, x1] as ONE compound. The grid has ~70 stations and a
     separate boolean per station, repeated for each segment, dominates the build -- OCC cuts a
@@ -698,8 +705,7 @@ def _build_full() -> cq.Workplane:
         cq.Vector(0, 0, 1))))
     #   ^ the TRRS axis rides the octagon's deep waist (legs.TRRS_DY) — the
     #     well tracks the stub's relocated jack way
-    for _n in _floor_negatives():
-        body = body.cut(_n)
+    body = _cut_all(body, _floor_negatives())
     # (a 4 x 17 floor slot at x -34.5, y -116.5..-99.5 -- stopped at the -Y rail's inner
     #  face: the narrowed wall (2026-10-29) came to -116.35, and the side walls are never cut)
     _fs_y0 = max(-116.5, RAIL_INNER_Y)
@@ -1168,8 +1174,7 @@ def _segments():
         _flr = _bottom(a, b)                          # this segment's floor, laid fresh...
         if _flr is not None:
             seg = seg.union(_flr)
-            for _fn in _floor_negatives():            # ...and the chassis' own way through it
-                seg = seg.cut(_fn)
+            seg = _cut_all(seg, _floor_negatives())   # ...and the chassis' own way through it
         if _is_split(b):                              # −X boundary split → +X side → mortise
             for yr in (Y_HI, Y_LO):
                 seg = seg.cut(_seg_mortise(b, yr))
@@ -1198,11 +1203,11 @@ def _segments():
         # each side (one 1.6 wall between two motors, not two 0.8 halves), so it reaches across
         # into its neighbour's fit and only this cut takes it back out. It is also what keeps
         # every motor's way IN clear, whatever gets built over the bank.
-        for _mi in range(D.N_STRINGS):
-            seg = seg.cut(MB.lift_prism(_mi))
-            seg = seg.cut(MB.low_walls(_mi))  # back + side walls stop at BUMP_H, under its terminals
-            seg = seg.cut(MB.tee_pocket(_mi))     # ...and its tee board's, which reaches into
-                                                  # the neighbouring bay (40 board, 42.3 motor)
+        seg = _cut_all(seg, [f(_mi) for _mi in range(D.N_STRINGS)
+                             for f in (MB.lift_prism,
+                                       MB.low_walls,      # back + side walls stop at BUMP_H, under its terminals
+                                       MB.tee_pocket)])   # ...and its tee board's, which reaches into
+                                                          # the neighbouring bay (40 board, 42.3 motor)
         # THE HARNESS CORRIDOR is the wiring's, the whole length of the bank: the trunk rides it
         # at MB.HARNESS_Y1, so there is nowhere down here a bay may reach the rail. What survives is the part of each
         # bay's back wall ABOVE the corridor, and it gets a 45 deg underside so it is a wedge off
