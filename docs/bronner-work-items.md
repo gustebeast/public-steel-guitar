@@ -183,6 +183,8 @@ PTP timestamps) and RTP-MIDI (rtpmidid) to LAN computers, alongside USB, no mode
 - Rejected: the Pi USB-C as host for a dongle (switched VBUS + CC Rp/Rd swap; VBUS is dead on
   purpose, Pi 4 USB-C VBUS = GPIO 5 V). Parts ~$5-10.
 
+**output_panel R2 as built (2026-10-30, netlist and placement).** Buck moved to the open strip north of D6, BC cell turn 0, stands on GND (its heat), R60 at the input end. V5_PRE goes COUT -> In2 -> U15 by J1, 1.2 / 0.9 mm. J1 pair: U14 sits on THRU's old In2 run, channels crossed so neither end crosses itself. U16 sits between J7 and Q2, R61 is a 5 mR 0805 (C6351848) because 1206 will not fit between Q2 and C31. **D10 SMF24A added**: U16 is rated 40 V and a live plug rings to 49 V ahead of Q2; it clamps to GND, 37 V. R41 910k: TI's table is 855/887/920 k, so it is inside, not a compromise. J6's B.Cu return moved to x 40.7 (1.4 mm), past the west shell pad, to clear J1's VBUS via. Heat: U5 about 125 C at 45 C ambient with 1.5 A on J1 (M25), at the limit; lower the advertised current before lowering anything else if the bench says so.
+
 **R2-4. 24 V inlet current and voltage, reported to the Pi (user, 2026-10-30, for remote
 diagnostics).** The brick enters at J6, so one sense at the inlet sees the whole instrument.
 - A shunt in the 24 V inlet and a monitor read by U1, which reports over its existing USB link: no
