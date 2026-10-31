@@ -367,7 +367,7 @@
   "PORT_FAULT_N": {
    "peak": 3.45,
    "v": 3.349,
-   "why": "U1.43 (io) can reach its supply +3V3; through R48"
+   "why": "U1.23 (io) can reach its supply +3V3; through R48"
   },
   "PORT_SEEN": {
    "peak": 5.0,
@@ -461,12 +461,12 @@
   "ROLE_ID_N": {
    "peak": 3.45,
    "v": 3.349,
-   "why": "U1.40 (io) can reach its supply +3V3; through R43"
+   "why": "U1.33 (io) can reach its supply +3V3; through R43"
   },
   "ROLE_INT_N": {
    "peak": 3.45,
    "v": 3.349,
-   "why": "U1.42 (io) can reach its supply +3V3; through R49"
+   "why": "U1.24 (io) can reach its supply +3V3; through R49"
   },
   "ROLE_VDET": {
    "v": 1.0,
@@ -1751,6 +1751,14 @@
    "max": 3.75,
    "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
   },
+  "U1.23": {
+   "max": 3.75,
+   "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
+  },
+  "U1.24": {
+   "max": 3.75,
+   "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
+  },
   "U1.25": {
    "max": 3.75,
    "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
@@ -1783,6 +1791,10 @@
    "max": 4.0,
    "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
   },
+  "U1.33": {
+   "max": 3.75,
+   "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
+  },
   "U1.35": {
    "max": 3.75,
    "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
@@ -1796,18 +1808,6 @@
    "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
   },
   "U1.39": {
-   "max": 3.75,
-   "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
-  },
-  "U1.40": {
-   "max": 3.75,
-   "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
-  },
-  "U1.42": {
-   "max": 3.75,
-   "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
-  },
-  "U1.43": {
    "max": 3.75,
    "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
   },
