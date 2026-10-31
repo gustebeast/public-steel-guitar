@@ -2294,7 +2294,7 @@ BOARD_NOTES = {
     # package toward J4, and a through via at the pad's centre lands on it. The hub draws
     # ~50 mA and its pad reaches ground through the F.Cu pour it sits in; nothing here
     # needs that via, and the pair does.
-    "stitch_exceptions": ("J2.SH", "J4.SH", "U4.25") + (() if REV == 1 else BC.STITCH_EXCEPTIONS + ("J8.1", "U15.2", "C71.2", "D2.2", "D3.2", "U16.2", "U16.7", "U13.10", "U13.11")),
+    "stitch_exceptions": ("J2.SH", "J4.SH", "U4.25") + (() if REV == 1 else BC.STITCH_EXCEPTIONS + ("J8.1", "U15.2", "C71.2", "D2.2", "D3.2", "U16.2", "U16.7", "C34.2", "U13.10", "U13.11")),
     # ⚠ NO local_nets HERE EITHER, AND NOW THERE IS A PATTERN. Measured on three
     # boards: it takes lever_sensor from 4 unconnected to 7, this board from 2 to 5, and
     # the optical board from 26 to 12. Pre-laying copper is not a general improvement --
@@ -3235,6 +3235,40 @@ if REV != 1:
         "U17": _f(-8.0, -0.8, 90.0), "C68": _f(-11.6, -5.7),
         "Q7": _f(-15.05, -5.3, 90.0), "R52": _f(-6.6, -5.1), "D9": _f(-14.5, -0.3, 90.0),
     })
+    # The connections the router left boxed in, laid. Vias first, then copper, nets in turn.
+    def _pts(*_p):
+        return [_f(_x, _y)[:2] for _x, _y in _p]
+    BOARD_NOTES["vias"] += [(_n,) + _f(_x, _y)[:2] for _n, _x, _y in (
+        ("+3V3", 26.55, -19.05), ("+3V3", 26.6, -16.4),
+        ("J1_VBUS", 41.65, 6.3), ("J1_VBUS", 33.9, 1.95),
+        ("ROLE_ID_N", 42.84, 3.18), ("ROLE_ID_N", 37.75, 3.05),
+        ("I2C2_SDA", 16.6, -1.4), ("I2C2_SDA", 21.5, 8.1), ("I2C2_SDA", 40.3, 5.0),
+        ("I2C2_SDA", 25.7, -22.5))]
+    BOARD_NOTES["tracks"] += [
+        # U16's supply passes under R23 to its bypass
+        ("+3V3", "F.Cu", 0.2, _pts((26.1, -19.8), (26.55, -19.05))),
+        ("+3V3", "In2.Cu", 0.3, _pts((26.55, -19.05), (26.6, -16.4))),
+        ("+3V3", "F.Cu", 0.2, _pts((26.6, -16.4), (26.48, -17.1))),
+        ("DAC_OUT_R", "F.Cu", 0.2, _pts((27.01, -18.2), (27.6, -17.6), (28.6, -16.6),
+                                        (28.6, -12.28), (29.89, -12.28))),
+        # the sense divider's tap on J1_VBUS, off C69
+        ("J1_VBUS", "F.Cu", 0.25, _pts((41.65, 6.3), (41.65, 5.45))),
+        ("J1_VBUS", "In2.Cu", 0.25, _pts((41.65, 6.3), (39.2, 6.3), (39.2, 4.05), (39.05, 3.9), (34.4, 3.9),
+                                         (34.4, 2.45), (33.9, 1.95))),
+        ("J1_VBUS", "F.Cu", 0.25, _pts((33.9, 1.95), (34.04, 2.7))),
+        ("ROLE_ID_N", "F.Cu", 0.2, _pts((43.4, 3.45), (42.84, 3.18))),
+        ("ROLE_ID_N", "In2.Cu", 0.2, _pts((42.84, 3.18), (42.2, 2.54), (38.26, 2.54), (37.75, 3.05))),
+        ("ROLE_ID_N", "F.Cu", 0.2, _pts((37.75, 3.05), (37.75, 3.78))),
+        # I2C2_SDA: U1 to its pull-up, then east to U13 and south to U16
+        ("I2C2_SDA", "F.Cu", 0.2, _pts((15.69, -1.4), (16.6, -1.4))),
+        ("I2C2_SDA", "In2.Cu", 0.2, _pts((16.6, -1.4), (16.6, 0.4), (18.9, 2.7), (18.9, 8.1), (21.5, 8.1))),
+        ("I2C2_SDA", "F.Cu", 0.2, _pts((20.96, 8.1), (21.5, 8.1))),
+        ("I2C2_SDA", "B.Cu", 0.2, _pts((21.5, 8.1), (21.5, 6.2), (40.3, 6.2), (40.3, 5.0))),
+        ("I2C2_SDA", "F.Cu", 0.2, _pts((40.3, 5.0), (40.6, 4.7), (42.5, 4.7), (42.8, 4.4), (43.33, 4.4))),
+        ("I2C2_SDA", "B.Cu", 0.2, _pts((16.6, -1.4), (18.1, -2.9), (18.1, -6.7), (19.65, -8.25), (19.65, -9.5),
+                                       (24.8, -14.65), (25.85, -14.65), (25.85, -21.0), (25.7, -21.3), (25.7, -22.5))),
+        ("I2C2_SDA", "F.Cu", 0.2, _pts((25.7, -22.5), (25.6, -23.0), (25.6, -24.0))),
+    ]
     BOARD_NOTES["match"] += [
         {"name": _name, "max_skew_mm": 8.3, "same_layer": _same, "max_vias": 2, "nets": _nets,
          "why": _why} for _name, _same, _nets, _why in (
