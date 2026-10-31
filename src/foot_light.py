@@ -10,7 +10,7 @@ always really for: light aimed at the player's feet. `src/fret_light.py` is the 
      slide the LED on."   (user, 2026-09-30)
 
 WHAT IT LIGHTS, measured off the chassis rather than typed: `chassis._light_band()` is a
-transparent band through the bottom prism, 8.00 wide in Y at y 50.35, running
+transparent band through the bottom prism, 8.00 wide in Y at y 49.40, running
 **572.72 mm** from x -592.46 to -19.74 (the run between the two legs' feet), and 10.50
 deep -- from the motor bay's floor at z -71.35 out to the bed face at -81.85. The strip
 sits ON TOP of that band and shines into it; the 10.50 of PCTG is the diffuser.
@@ -18,13 +18,13 @@ sits ON TOP of that band and shines into it; the 10.50 of PCTG is the diffuser.
 ⚠ EVERYTHING ABOVE IT IS EMPTY, AND THAT IS WHY THIS IS EASY. A box swept the whole run
 at 15 mm wide and 5.85 tall (a one-off probe, since retired; the board has since grown
 -Y to y 27.85): **clear end to end**, with the
-belt tensioners' lowest feature at z -65.22 and the +Y rail's inner face at y 55.55 the
+belt tensioners' lowest feature at z -65.22 and the +Y rail's inner face at y 54.60 the
 only two things anywhere near. That was measured before the strip and its slot were
 built; re-run 2026-10-14, the same probe finds only the strip itself and the slot's own
 chassis in the lane. The keyhead mouth, which is the one it goes in by (see the slot,
 below), holds the keyhead endplate -- not on yet when this slides in -- and the strip's
 own lead. The bridge mouth is no longer open: chassis_0 stands 3.2 into it (x -19.74 to
--16.54, y 47.60 to 55.00).
+-16.54, across the slot).
 
 ⚠ TWO BOARDS, AND IT IS THE ASSEMBLER'S LIMIT, NOT A CHOICE. JLCPCB's published assembly
 capability, read 2026-09-30: **Economic PCBA takes a single PCB from 10x10 to 470x500 mm;
@@ -152,15 +152,15 @@ def depth():
 
 
 # ── the Y lanes ───────────────────────────────────────────────────────────────────────
-# ⚠ THE +Y RAIL IS THE HARD EDGE. Its inner face is at y 55.55 and the window's centre
-# at 50.35, so there are 5.20 mm on the +Y side of the LED row and as much as we like on
+# ⚠ THE +Y RAIL IS THE HARD EDGE. Its inner face is at y 54.60 and the window's centre
+# at 49.40, so there are 5.20 mm on the +Y side of the LED row and as much as we like on
 # the -Y side. That asymmetry is what decides the whole layout: the LED row sits on the
 # window's centre, and everything else -- drivers, passives, the connector -- goes into a
 # lane BELOW it in Y.
 #
 # It also means the two boards cannot be one part number used twice. A single SKU would
 # have to be symmetric about the LED row to survive being turned end for end, and a board
-# centred on 50.35 may only be 2 x 5.20 = 10.40 wide -- too narrow to put a driver
+# centred on 49.40 may only be 2 x 5.20 = 10.40 wide -- too narrow to put a driver
 # anywhere but IN the LED row, which costs a 14 mm gap in the pitch and a 1.32 : 1 dip
 # there against the 1.11 the rest of the run holds. Mirror-image boards cost one extra
 # fab and assembly setup; the dip would have shown in four places.
@@ -226,7 +226,7 @@ WALL_Y0    = RUN_FACE               # the -Y wall's outer face IS the pocket's o
 # end LED's body (POGO_LED_AIR) and the edge is the minimum land-to-edge past the first one.
 # (It was string 2's face plus one wall, 28.05, and the row was hung off the -Y shoulder,
 # which left 2.9 of bare board -- the silk band -- between the row and the LEDs.)
-BOARD_Y0   = pogo_y0_nom() - POGO_PAD_HALF - POGO_EDGE                # 32.00
+BOARD_Y0   = pogo_y0_nom() - POGO_PAD_HALF - POGO_EDGE                # 31.05
 assert BOARD_Y0 - SLOT_PLAY >= RUN_FACE + WALL_T - 1e-9, (
     "the board's -Y edge at %.2f leaves under a wall against string 2's pocket face %.2f"
     % (BOARD_Y0, RUN_FACE))
@@ -365,7 +365,7 @@ BOARD_NAME = {"a": "foot_led_a", "b": "foot_led_b"}
 # WHERE THEY STAND IS THE BOARD'S WIDTH, SO IT IS A TIGHT ROW. A land is 3.50 wide. The
 # end LED sits at exactly the X a pogo needs, so the LED row's own Y is closed to them; the
 # row is laid -Y from that LED's body and the board ends POGO_EDGE past it (2026-10-29):
-#     edge 32.00 | 0.50 | land 1 ... four at POGO_PITCH 3.80 ... land 4 ends 47.40
+#     edge 31.05 | 0.50 | land 1 ... four at POGO_PITCH 3.80 ... land 4 ends 46.45
 #     | 0.45 | LED body 47.85     (and 0.10 INSIDE its 6.10 courtyard -- see check_optics)
 # The first barrel then stands over the -Y shoulder's line, which stops for them
 # (shoulder_gap).
@@ -397,7 +397,7 @@ LED_CY     = 6.10                   # the LED's courtyard, square (as check_opti
 J_LED_AIR  = 0.30
 J_EDGE     = 0.50                   # a mounting land to the board's edge
 PLUG_L     = 4.30                   # the mated XHP-4 past the socket's mouth
-J_Y        = (NOTCH_Y0 + BOARD_Y1) / 2.0    # 46.375: centred on the narrow section
+J_Y        = (NOTCH_Y0 + BOARD_Y1) / 2.0    # 45.90: centred on the narrow section
 
 
 def tail_a():
