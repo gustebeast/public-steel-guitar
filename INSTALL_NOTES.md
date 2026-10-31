@@ -1232,8 +1232,9 @@ Plug a USB device in (an audio interface such as a Shure MVX2U) and the board po
 
 - **Where:** `keyhead_endplate`, the row of bores through the end blocks and all the fingers, and
   `nut_wrap_rod`.
-- **Do:** slide the rod in from -Y until it stops against the blind wall at +Y, by hand. If it binds,
-  clean the tight bore with a round file. Do not ream the bores.
+- **Do:** slide the rod in from -Y until it stops against the wall at +Y, by hand. If it binds, clean
+  the tight bore with a round file. Do not ream the bores. To take it out, push the 2.5 key's long arm
+  into the small hole in the +Y face, along the rod, until the rod's -Y end stands out to grip.
 - **Why:** a bore printed about 0.1 out of line is fine. The rod is stiffer than the fingers, so a high
   finger takes more at first, then creeps a little and hands the excess to its neighbours and the end
   blocks. Expect the rod to settle 0.1-0.2 mm in the first weeks at tension; retune.
@@ -1249,15 +1250,17 @@ Plug a USB device in (an audio interface such as a Shure MVX2U) and the board po
   3. Take the tip up the -X side, over the top of the rod and down the +X side, then back -X under
      the rod. Grab it on whichever side it comes out. Each turn lies on the **-Y** side of the last.
      Three full turns, the same on every string, none crossing.
-  4. Leave the tail running -X along the top of the insert.
+  4. Lead the tail -X along the top of the insert and over the lane floor. Cut it about 60 mm past the
+     stow hole in that floor, bend it down and push it into the hole with your fingers.
   5. Pull the string snug and tighten the height screw until the insert clamps the coil against the
      rod. Bring it to pitch.
 - **Why:** the old way, over the top of the rod and round under it, could not be done: a stiff tip binds
   under the rod and the top panel closes the +X side. Nothing should guide the tip and no special
   tool is needed. Clamping is what the coil's last turn and the tail rely on: about 9 N is left there
   (assuming friction 0.15).
-- **Tails: OPEN.** The stow bores have gone. For now, cut each tail at the -X end of its insert's flat so
-  it stays inside its lane. Where a tail should finally go has not been decided.
+- **Tails:** each goes down its own hole in the lane floor, -X of the insert, so nothing stands past
+  the -X face. The bend at the mouth and the clamped coil hold it; no tool needed. ⚠ Tail length and
+  hold are not bench-tested.
 - ⚠ **Not tried yet** on the real part. `test_wrap_lift` tests this winding, the insert fit and the tail
   hold. It uses an upside-down printed insert, not the new one.
 

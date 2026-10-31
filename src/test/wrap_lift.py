@@ -65,6 +65,8 @@ def block():
     for i in range(N.N_FINGERED, D.N_STRINGS):
         body = body.cut(N.insert_pocket(i).intersect(above))
     body = body.cut(N.lanes().intersect(above))
+    for i in range(STRING, D.N_STRINGS):
+        body = body.cut(N.stow_channel(i, N.stow_y(i), Z0 - 1.0))
     body = body.cut(N._plan_wire(STRING).offset2D(N._clr(STRING), kind="arc")
                     .extrude(TOP + 1.0 - Z_POCKET).translate((0, 0, Z_POCKET)))
     body = body.cut(teardrop_hole(TOOL_D, CAP + 2.0, (N.ROD_X, D.nut_y(STRING) + N.CLAMP_C, Z0 - 1.0),

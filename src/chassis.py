@@ -769,7 +769,7 @@ def _build_full() -> cq.Workplane:
 # body wrap) over the leg, re-cutting the leg dovetail slot in it (_leg_shell).
 from . import nut_block as _NB                # nut_block imports dimensions + motor_bank only: no cycle
 KH_EP_THK     = _NB.KEYHEAD_W  # keyhead endplate thickness in X (= keyhead_endplate.T_EP),
-                               # held in nut_block.X_BACK. The -X legs, their shells
+                               # DERIVED from its stow bores (user). The -X legs, their shells
                                # and dovetails below all follow it by the flush-X rule.
 EP_LEG_CLR    = EP_TOP_CLR    # assembly clearance: endplate foot pocket vs the kept shell
                               # (= the top-joint clearance -- ONE value for both L joints)
@@ -836,18 +836,13 @@ LEG_Y = (Y_HI + T / 2 - LEG_W / 2,          # +Y legs: 42.75 (outer face 64.75)
 
 
 def leg_shell_top(sx, yr):
-    """Where the kept leg shell stops (and the endplate pocket over it): the foot line
-    (KH_DT_Z0 = -23.15), with the endplate's solid fill band above it. EXCEPT the bridge
-    end's +Y shell, which stops at the screw rail's underside (-31.85): string 1's 688 seat
-    sits beside it, and with the +Y rail in at the belt clamp the pocket left that seat 1.1
-    of wall. Stopping the shell under the seat mouth puts the whole seat in endplate
-    (user, 2026-10-29). The keyhead end matches it on both rails, so the two ends read alike
-    (user, 2026-10-30). The bridge's -Y shell keeps the foot line: the output board's recess
-    roof is that end's shelf."""
-    if sx == LEG_STATIONS_X[1] or yr == Y_HI:
-        from .screw_rail import BOT
-        return BOT
-    return KH_DT_Z0
+    """Where the kept leg shell stops (and the endplate pocket over it): the screw rail's underside
+    (-31.85), at all four corners (user, 2026-10-31), with the endplate's solid above it. It started at
+    the bridge's +Y corner, where string 1's 688 seat sits beside the shell: stopping it under the
+    seat mouth puts the whole seat in endplate. At the bridge's -Y corner the output board's recess
+    stands inboard of the rail (y -105.05 on), so the shelf and the recess do not meet."""
+    from .screw_rail import BOT
+    return BOT
 
 
 def _leg_shell(sx, x0, x1):

@@ -1450,18 +1450,21 @@ def _string_path(i, sy, rise_only=False):
     _LAP = 2.0 * rad                                       # one string diameter of overlap
     t_in = cq.Vector(math.sin(phi), 0.0, -math.cos(phi))   # the coil's heading at the touch
     out = out.union(_rod(brk, tang + t_in.multiply(_LAP), rad))
-    out = out.union(_wrap_coil(i, rad, hr))
-    # THE TAIL runs level off the bottom of the rod, along the flat (nut_block.tail_route).
+    coil = _wrap_coil(i, rad, hr)
+    # THE TAIL runs level off the bottom of the rod, along the flat, then down its stow bore, which
+    # leans -Y as it descends (nut_block.tail_route, .stow_y_at).
     pts = NB.tail_route(i)
-    ys = [wy, wy]
+    ys = [wy, wy, NB.stow_y_at(i, pts[2][1]), NB.stow_y_at(i, pts[3][1])]
     x0, z0 = pts[0]
     prev = cq.Vector(D.NUT_BLOCK_X + x0, wy, D.STRING_Z + z0)
-    out = out.union(_bead(prev, rad * 1.05))                # see _bead: the tail leaves
+    tail = _bead(prev, rad * 1.05)                          # see _bead: the tail leaves
     for (x, z), y in zip(pts[1:], ys[1:]):                  # TANGENT to the coil
         cur = cq.Vector(D.NUT_BLOCK_X + x, y, D.STRING_Z + z)
-        out = out.union(_rod(prev, cur, rad))
+        tail = tail.union(_rod(prev, cur, rad)).union(_bead(cur, rad))
         prev = cur
-    return out
+    # THE COIL IS NOT FUSED TO ITS RUNS. Both meet it on a tangent, which OCC meshes into spikes and
+    # notches at the junctions: the three solids simply overlap, and look like one string.
+    return cq.Workplane(obj=cq.Compound.makeCompound([out.val(), coil.val(), tail.val()]))
 
 
 def _wrap_coil(i, rad, hr):

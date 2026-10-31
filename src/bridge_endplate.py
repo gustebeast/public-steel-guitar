@@ -999,7 +999,7 @@ def _build() -> cq.Workplane:
     for yr, s in ((CH.Y_HI, 1), (CH.Y_LO, -1)):
         yf = yr + s * CH.T / 2 + s * LEG_CLR        # shell outer face + clearance
         yi = yr - s * CH.T / 2 - s * LEG_CLR        # shell inner face + clearance
-        top = CH.leg_shell_top(CH.LEG_STATIONS_X[0], yr)   # the foot line, or under the +Y seats
+        top = CH.leg_shell_top(CH.LEG_STATIONS_X[0], yr)   # the shelf, as every corner
         body = body.cut(box_at((LEG_SHELL_X1 + LEG_CLR) - (LEG_SHELL_X0 - 1.0),
                                abs(yf - yi), top - (CH.Z_BOT - 1.0),      # stop AT the shell top
                                x=((LEG_SHELL_X0 - 1.0) + (LEG_SHELL_X1 + LEG_CLR)) / 2,

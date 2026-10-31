@@ -133,8 +133,9 @@ def _break_at(rod_z: float, g: float) -> float:
 
 # THE BAR HAS TO CLEAR IT. A round bar resting on the strings at fret 0 is a circle of
 # BAR_R centred BAR_R above the string plane over the dowel; the rod must stay a margin
-# outside it. Tested circle-to-circle. BLOCK_TOP's outline is held to the same circle below.
-BAR_R   = 19.0 / 2                              # a typical steel bar
+# outside it. Tested circle-to-circle. A Ø25 bar sitting on the dowels touches no plastic (user), and
+# that circle is the only limit on plastic at +X and the top: BLOCK_TOP follows it.
+BAR_R   = 25.0 / 2                              # the biggest bar the player may rest at fret 0
 BAR_CLR_MIN = 0.8
 _BAR_CLR = math.hypot(DOWEL_X - ROD_X, BAR_R - ROD_Z) - BAR_R - ROD_D / 2
 assert _BAR_CLR >= BAR_CLR_MIN, (
@@ -142,11 +143,8 @@ assert _BAR_CLR >= BAR_CLR_MIN, (
     f"bar resting at fret 0 -- the first centimetre could not be barred")
 
 # ── Z extent ───────────────────────────────────────────────────────────────
-# NUT_TOP covers the rod with a three-bead lid. +X of the rod the top falls to FRONT_TOP, the old
-# block's height, under the bar (see BLOCK_TOP, once X_BACK exists): the +X opening stays as it was
-# (user).
+# NUT_TOP covers the rod with a three-bead lid. +X of the rod the top follows the bar (BLOCK_TOP).
 NUT_TOP  = ROD_Z + ROD_BORE / 2 + 3 * D.BEAD     # a three-bead lid over the rod (user: two printed badly)
-FRONT_TOP = -1.72                                # the block's +X end, as it stood
 NUT_BASE = D.DECK_TOP_Z - D.STRING_Z             # prism base sits on the deck plane
 
 
@@ -345,10 +343,10 @@ def exit_point(i: int):
 
 
 def tail_route(i: int):
-    """The tail's route from the rod, as (x, z) points: level along the flat to its -X end, where it
-    is cut. Where a tail finally goes is open (INSTALL_NOTES); it is drawn cut there."""
+    """The tail's route from the rod, as (x, z) points: level along the flat, over the lane floor, and
+    down its stow bore. The tail is cut to length and fed in by hand."""
     x0, z0 = exit_point(i)
-    return [(x0, z0), (INS_X0, z0)]
+    return [(x0, z0), (INS_X0, z0), (STOW_X, z0), (STOW_X, STOW_TAIL_END)]
 
 
 def exit_dir(i: int):
@@ -450,15 +448,12 @@ assert abs(X_FRONT - (DOWEL_X + DIVOT_D / 2) - LIP_LAYERS * LAYER) < 1e-9, (
     "the lip is not whole layers tall: it stands off the bed from the cradle's +X extreme")
 assert LIP_H >= D.BEAD, "the shelf's layers are under a bead wide"
 # The insert reaches from just past the dowel back under the rod, so the flat spans both
-# the cradle and the clamp area. It stops short of the trough's -X wall.
+# the cradle and the clamp area. What is left -X of it, under the lanes, carries the stow bores.
 INS_X1    = X_FRONT                             # FLUSH with the block's +X face: the
                                                 # insert is the last thing at this end, so
                                                 # it bears on the deck panel butting it and
                                                 # no block prints out over its slot
-# -X END: far enough back to clear the fattest winding, on the grid, rounded the safe
-# way (DOWN, i.e. -X: rounding the other way would pinch the coil).
-INS_X0    = math.floor((ROD_X - ROD_D / 2 - G_ENVELOPE - D.MIN_WALL)
-                       / D.BEAD) * D.BEAD
+INS_X0    = -19 * D.BEAD                        # -15.2: 2.4 of flat -X of the coil's contact, for the tail
 
 
 def insert_flat_z(i: int) -> float:
@@ -1006,24 +1001,17 @@ assert abs(outer_coil_lo(D.STRING_GAUGE[SKU_C])
            - (wrap_y(SKU_C)[1] - D.STRING_GAUGE[SKU_C] / 2)) < 1e-9, (
     "outer_coil_lo has drifted from wrap_y -- SKU C would be sized off a coil that is not the one drawn")
 
-# ── THE TOP PRISM IN Y: SET BY THE INSERTS, NOT BY THE ROD (user) ─────────────────
-# It used to grow -Y until it covered the whole 100 mm rod, which stretched it to -70.85 for no
-# structural reason. Now both faces come from the inserts:
-#   +Y FACE  string 1's pocket plus Y_WALL of solid for strength, on the bead grid.
-#   -Y FACE  the SAME length of material copied past string 10's pocket, so the block is
-#            symmetric about the insert field.
-Y_WALL  = 10 * D.BEAD                           # 8.0 solid past the outermost insert, for strength
+# ── THE TOP PRISM IN Y: SET BY THE ROD (user) ─────────────────────────────────
+# The rod is centred on the strings, whole in the block: it runs flush with the -Y face, where it goes
+# in, to ROD_END_W of wall at +Y, its stop. The wall has a hole on its axis for the 2.5 key (2.9 across
+# its corners), pushed in from +Y to send the rod back out.
+ROD_L  = D.BRIDGE_AXLE_L
+ROD_Y0, ROD_Y1 = -ROD_L / 2.0, ROD_L / 2.0
+ROD_PUSH_D = 4 * D.BEAD
 _INS_HI = max(y + w / 2.0 for (y, w) in insert_lobes(0)) + _clr(0)          # string 1's pocket, +Y
 _INS_LO = min(y - w / 2.0 for (y, w) in insert_lobes(SKU_C)) - _clr(SKU_C)  # string 10's pocket, -Y
-HW   = D.nut_y(0) + math.ceil((_INS_HI + Y_WALL - D.nut_y(0)) / D.BEAD - 1e-9) * D.BEAD   # the +Y face
-Y_LO = _INS_LO - (HW - _INS_HI)                                                             # the -Y face
-
-# THE ROD butts a ROD_END_W wall at the +Y face -- that wall IS its +Y stop -- and being a purchased
-# 100 mm (the bridge axle's Ø8 x 100), it ends wherever that puts it: out past the -Y face, lying in
-# the insertion run rod_bore cuts through the endplate below. The block no longer grows to hide it.
-ROD_L  = D.BRIDGE_AXLE_L
-ROD_Y1 = HW - ROD_END_W
-ROD_Y0 = ROD_Y1 - ROD_L
+HW   = ROD_Y1 + ROD_END_W                                                   # the +Y face
+Y_LO = ROD_Y0                                                               # the -Y face
 _ROD_NEED_Y0, _ROD_NEED_Y1 = rod_span()
 assert ROD_Y1 >= _ROD_NEED_Y1 - 1e-9 and ROD_Y0 <= _ROD_NEED_Y0 + 1e-9, (
     f"the {ROD_L:g} mm rod spans {ROD_Y0:.2f}..{ROD_Y1:.2f}, short of the "
@@ -1096,6 +1084,17 @@ def all_pockets() -> cq.Workplane:
     return out
 
 
+# ── THE STOW CHANNEL: one straight teardrop bore per string (see stow_channel) ──
+STOW_D = 4 * D.BEAD                             # 3.2: the bore the cut tail is stowed
+                                                # in. It was 6 beads, which is far more
+                                                # than a .070 tail needs (user) -- and an
+                                                # oversized bore here is not free: the
+                                                # teardrop's apex reaches d/2*sqrt(2), so
+                                                # every extra bead of diameter pushes the
+                                                # whole channel another 0.57 -X to keep
+                                                # its wall off the trough.
+
+
 WRAP_EPS = 0.05                                 # the coil is drawn a hair off the rod
 
 
@@ -1108,24 +1107,104 @@ def wrap_radius(i: int) -> float:
     return ROD_D / 2.0 + D.STRING_GAUGE[i] / 2.0 + WRAP_EPS
 
 
-# THE BED FACE STAYS WHERE THE STOW BORES PUT IT. They have gone, and with them the reason for this
-# number, but the -X legs and everything else in chassis.KH_EP_THK stand on it, and the lid over
-# the rod and the tail's way out are happy here.
-X_BACK = -22.062741699796955
+# WHERE THE CHANNEL SITS, AND IT IS SET BY THE SOCKET (user). The bore's own TEARDROP
+# TIP is what has to keep its distance, not its axis: the apex points +X (the build
+# direction) and reaches STOW_D/2 * sqrt(2) off centre, so a bore placed by its axis would
+# put 1.6 of wall on paper and 1.6 - 2.26 of it in the part.
+# The block only spans down to NUT_BASE, but the bore carries on into the endplate this
+# block is fused into, so the block's own cut is asked for the full depth and simply
+# intersected with the prism.
+STOW_Z_END = -40.0                              # well past the block's base
+STOW_TAIL_END = -72.0                           # where a tail stops, cut to length, in its bore
+STOW_KEEP = D.MIN_WALL_2P                       # wall between the channel's tip and the socket
+# ⚠ BOTH ENDS OF THAT WALL WERE MEASURED OFF THE WRONG FACE, and the two errors summed to the
+# 1.80 the user measured instead of 1.60 (2026-10-29). The socket is the insert's plan GROWN
+# by its fit (_clr, 0.2 on the fingered strings), so its wall stands -X of INS_X0; and
+# cadkit's teardrop_hole DULLS the apex to a nozzle-wide flat, nozzle/2 short of r*sqrt(2).
+# Measured off the cut faces, both of them.
+STOW_POCKET_X0 = INS_X0 - max(INS_CLR, BASS_CLR)  # the socket's -X wall, as cut
+STOW_APEX = max(STOW_D / 2.0 * _APEX - D.NOZZLE_D / 2.0, STOW_D / 2.0)   # the flat's +X reach
+STOW_X = STOW_POCKET_X0 - STOW_KEEP - STOW_APEX
+# THE BORES LEAN -Y AS THEY DESCEND (user). Straight down, strings 1 and 2 came out inside the +Y
+# leg's body stub at the keyhead corner (its -Y face ~y 21.1, its top ~9 above the endplate floor),
+# so their tails could not be reached from under the instrument. ONE tilt for all ten keeps them
+# parallel -- every web between neighbours is unchanged -- and it pivots where each bore meets the
+# top of its socket, so the entries stay exactly where stow_y puts them. The lean is in Y only,
+# square to the -X -> +X build, so the bore is still a cadkit teardrop with its apex +X.
+# 6.4 deg is the least that clears that stub with two beads of air; 7 puts string 1 ~5.7 clear of
+# its face where the bore reaches its height. A constant, not derived from the stub: that part
+# belongs to the leg-stack rework, so it is measured against in the build, not imported here.
+STOW_TILT_DEG = 7.0
+STOW_TILT = math.radians(STOW_TILT_DEG)
+STOW_PIVOT_Z = ROD_Z - ROD_D / 2.0 - _DROP_NEED + 1.0                    # just over the lane floor, where a bore opens
+# THE BED FACE IS TWO BEADS BEHIND THE STOW BORES (user). The keyhead used to be a fixed 28.8
+# (a literal sized for clamp inserts that no longer exist), which left 4.34 of solid behind
+# the bores doing nothing. The stow bore is the -X-most feature now, so the face follows it
+# and the thickness is whatever the string termination hardware actually needs. The bores
+# lean in Y only (STOW_TILT), so their -X reach is STOW_D/2 at every height.
+X_BACK = STOW_X - STOW_D / 2.0 - D.MIN_WALL_2P
 KEYHEAD_W = X_FRONT - X_BACK                      # the keyhead endplate's thickness in X
 
-# THE BLOCK'S TOP, (x, z) from the bed face: the lid over the rod, then down under the bar.
-BLOCK_TOP = [(X_BACK, NUT_TOP), (-10.4, NUT_TOP), (-3.2, FRONT_TOP), (X_FRONT, FRONT_TOP)]
+# THE BLOCK'S TOP, (x, z) from the bed face: the lid over the rod, then round the bar, then level.
+# Chords of a circle a hair bigger, so that they stay outside the one that matters.
+_ARC_R = BAR_R + BAR_CLR_MIN + 0.01
+_ARC_A = math.asin((NUT_TOP - BAR_R) / _ARC_R)   # below the bar's centre, where the lid meets it
+BLOCK_TOP = ([(X_BACK, NUT_TOP)]
+             + [(DOWEL_X - _ARC_R * math.sin(a), BAR_R - _ARC_R * math.cos(a))
+                for a in [(math.pi / 2 + _ARC_A) * (16 - k) / 16.0 for k in range(17)]]
+             + [(X_FRONT, BAR_R - _ARC_R)])
 _TOP_BAR = min(math.hypot(x0 + (x1 - x0) * k / 50.0 - DOWEL_X, z0 + (z1 - z0) * k / 50.0 - BAR_R) - BAR_R
                for (x0, z0), (x1, z1) in zip(BLOCK_TOP, BLOCK_TOP[1:]) for k in range(51))
-assert _TOP_BAR >= BAR_CLR_MIN, f"the block's top stands {_TOP_BAR:.2f} from a bar at fret 0"
-_LID_MIN = (abs((-3.2 + 10.4) * (NUT_TOP - ROD_Z) - (-10.4 - ROD_X) * (FRONT_TOP - NUT_TOP))
-            / math.hypot(-3.2 + 10.4, FRONT_TOP - NUT_TOP) - ROD_BORE / 2)
-assert _LID_MIN >= D.MIN_WALL_2P, f"{_LID_MIN:.2f} of wall from the rod's bore to the sloped top"
+assert _TOP_BAR >= BAR_CLR_MIN, f"the block's top stands {_TOP_BAR:.2f} from the bar at fret 0"
+_LID_MIN = math.hypot(DOWEL_X - ROD_X, BAR_R - ROD_Z) - _ARC_R - ROD_BORE / 2
+assert _LID_MIN >= D.MIN_WALL_2P - 0.1, f"{_LID_MIN:.2f} of wall from the rod's bore to the bar's arc"
 # The string must pass over the neck, for every gauge any SKU takes
 _NECK_AIR = min(-g - (DOWEL_X - _neck_x0(0)) * math.tan(math.radians(_break_at(ROD_Z, g)))
                 - (-g - PIN_D / 2) for g in (D.STRING_GAUGE[0], G_ENVELOPE))
 assert _NECK_AIR > 0.0, f"the string runs {-_NECK_AIR:.2f} into its insert's neck"
+
+
+def stow_y(i: int) -> float:
+    """Y of string i's stow bore (at the top of its socket): its -Y EDGE FLUSH WITH THE INSERT'S
+    -Y EDGE, i.e. the clamp lobe's, which the bore sits behind. From the INSERT, not the coil
+    (user) -- a hole in a printed part must not move when the strings change -- but biased -Y,
+    not centred: the coil always marches -Y, so whatever the gauge the tail leaves near that
+    end of the insert, and a centred bore made every tail cut back across the socket. Flush
+    lands within ~0.2 of where the bass tails actually leave."""
+    (_dy, _dw), (cy, cw) = insert_lobes(i)
+    return cy - cw / 2.0 + STOW_D / 2.0
+
+
+def stow_y_at(i: int, z: float) -> float:
+    """Y of string i's stow bore axis at height z (local frame): stow_y at and above the pivot,
+    leaning -Y by STOW_TILT below it."""
+    return stow_y(i) - max(0.0, STOW_PIVOT_Z - z) * math.tan(STOW_TILT)
+
+
+_STOW_WEBS = [abs(stow_y(i) - stow_y(i + 1)) - STOW_D for i in range(D.N_STRINGS - 1)]
+assert min(_STOW_WEBS) >= D.MIN_WALL_2P - 1e-9, (
+    f"two neighbouring stow bores leave only {min(_STOW_WEBS):.2f} of web between them -- "
+    f"under the {D.MIN_WALL_2P} two-bead floor")
+
+
+def stow_channel(i: int, y: float, z_end: float) -> cq.Workplane:
+    """String i's stow passage: ONE STRAIGHT TEARDROP BORE ALONG Z (user), opening in the lane floor.
+    The tail comes level off the rod, over that floor, is cut to length and pushed down by hand. Its
+    bend at the mouth and the insert's clamp keep it there, and nothing passes the -X face."""
+    dz = STOW_PIVOT_Z - z_end
+    y_end = y - dz * math.tan(STOW_TILT)          # leaning -Y on the way down (STOW_TILT)
+    return teardrop_hole(STOW_D, dz / math.cos(STOW_TILT), axis_point=(STOW_X, y_end, z_end),
+                         axis_dir=(0.0, math.sin(STOW_TILT), math.cos(STOW_TILT)),
+                         print_up=PRINT_UP)
+
+
+def all_stow_channels(z_end: float) -> cq.Workplane:
+    """Every tail's passage, fused and cut once -- the lesson the troughs taught."""
+    out = None
+    for i in range(D.N_STRINGS):
+        k = stow_channel(i, stow_y(i), z_end)            # from the insert, not the coil
+        out = k if out is None else out.union(k)
+    return out
 
 
 # ── HEIGHT ADJUST: ONE M4 SCREW UNDER EACH INSERT (user) ─────────────────────────────
@@ -1316,6 +1395,8 @@ for _i in range(D.N_STRINGS - 1):
         f"strings {_i + 1} and {_i + 2}: head cavities leave {_d - HS_HEAD_CAV_D:.2f} of web")
     assert _d - M4.insert_pilot_d >= D.MIN_WALL_2P - 1e-9, (
         f"strings {_i + 1} and {_i + 2}: heat-set pockets leave {_d - M4.insert_pilot_d:.2f} of wall")
+assert (_HS_ROW_A - M4.insert_pilot_d / 2.0) - (STOW_X + STOW_APEX) >= D.MIN_WALL_2P - 1e-9, (
+    "row A's heat-set pocket has walked into the stow bores")
 for _i in range(D.N_STRINGS):
     _x, _y = height_screw_xy(_i)
     (_dy, _dw), (_cy, _cw) = insert_lobes(_i)
@@ -1358,6 +1439,7 @@ def _build() -> cq.Workplane:
     # pocket cannot drift from the thing it has to accept.
     body = body.cut(all_pockets())
     body = body.cut(lanes())
+    body = body.cut(all_stow_channels(STOW_Z_END))
 
     # THE ROD BORE. BLIND at +Y: that wall is the rod's +Y stop, the same trick the bridge axle
     # uses. It slides in from -Y through all ten comb webs at once, so it must be a precision
@@ -1372,11 +1454,14 @@ def rod() -> cq.Workplane:
 
 
 def rod_bore() -> cq.Workplane:
-    """The rod's bore, in the local frame: open at -Y (the rod slides in there), BLIND at +Y.
+    """The rod's bore, in the local frame: open at -Y (the rod slides in there), stopped at +Y but
+    for the key's hole.
     It runs the rod's whole length past its seat, so the rod can start from outside the -Y face."""
     return teardrop_hole(ROD_BORE, (ROD_Y1 - ROD_Y0) + ROD_L,
                          axis_point=(ROD_X, ROD_Y0 - ROD_L, ROD_Z),
-                         axis_dir=(0.0, 1.0, 0.0), print_up=PRINT_UP)
+                         axis_dir=(0.0, 1.0, 0.0), print_up=PRINT_UP).union(
+        teardrop_hole(ROD_PUSH_D, ROD_END_W + 2.0, axis_point=(ROD_X, ROD_Y1 - 1.0, ROD_Z),
+                      axis_dir=(0.0, 1.0, 0.0), print_up=PRINT_UP))
 
 
 nut_block = _build()

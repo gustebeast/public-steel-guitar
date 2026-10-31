@@ -147,6 +147,10 @@ def _build():
             w = w.cut(_n)
         for _n in _esn(CH.LEG_STATIONS_X[1], _ly, -1.0, CH.Z_BOT, PRINT_UP, _s):
             w = w.cut(_n)
+    # STRING-END STOWAGE (one per string): a straight teardrop bore per string, from the lane floor
+    # down and out through the bed, leaning -Y as it descends (nut_block.STOW_TILT).
+    w = w.cut(NB.all_stow_channels(CH.Z_BOT - 1.0 - D.STRING_Z)
+              .translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))
     # ONE SOLID, CHECKED. The overlap gate reports interpenetration, not disconnection: a
     # fused feature that never touches the plate would leave the part quietly in TWO pieces.
     _n = len(w.val().Solids())
