@@ -190,10 +190,10 @@ def _r2_ports(n):
     cc2 += n["j1"]["B5"], u13[2]
     Net("U13_NC_3").connect(u13[3])                 # PORT open: DRP
     u13_int = Net("ROLE_INT_N")
-    u13_int += u13[6], u1[42]                       # PC9
+    u13_int += u13[6], u1[24]                       # PC4
     sda += u13[7], u1[30]                           # PB11, I2C2
     scl += u13[8], u1[29]                           # PB10, I2C2
-    id_n += u13[9], u1[40]                          # PC7, reads it and forces it
+    id_n += u13[9], u1[33]                          # PD8, reads it and forces it
     gnd += u13[10], u13[11]                         # EN_N low
     v3v3 += u13[12]
     r41 = _r("R41", "910k", "U13 VBUS_DET series, TI's 900k")
@@ -231,7 +231,7 @@ def _r2_ports(n):
     gnd += u15[2]
     en += u15[3]
     fault = Net("PORT_FAULT_N")
-    fault += u15[4], u1[43]                         # PA8
+    fault += u15[4], u1[23]                         # PA7
     r45 = _r("R45", "15k 1%", "U15 ILIM: 1.61 to 1.80 A")
     u15[5] += r45[1]
     gnd += r45[2]
@@ -908,7 +908,7 @@ def output_panel():
                  61, 62, 35, 36, 38, 25, 48, 52, 63, 39, 1,
                  53, 58, 60,                            # I2S3: WS, CK, SD
                  21, 20, 26, 27,    # PA5, PA4, PB0 pot SPI; PB1 the jack mode
-                 28) + (() if REV == 1 else (29, 30, 40, 42, 43, 44, 45))]   # 28: PB2 = BOOT1, held low on the jack-mode net
+                 28) + (() if REV == 1 else (23, 24, 29, 30, 33, 44, 45))]   # 28: PB2 = BOOT1, held low on the jack-mode net
     u1 = Part(name="CH32V307WCU6", ref_prefix="U", ref="U1", tag="U1", dest="NETLIST", tool="skidl",
               value="CH32V307WCU6",
               description="RISC-V MCU, USB2.0 HS with INTERNAL PHY (LCSC C5142795)",
@@ -3242,8 +3242,8 @@ if REV != 1:
         ("+3V3", 26.55, -19.05), ("+3V3", 26.6, -16.4),
         ("J1_VBUS", 41.65, 6.3), ("J1_VBUS", 33.9, 1.95),
         ("ROLE_ID_N", 42.84, 3.18), ("ROLE_ID_N", 38.05, 2.75),
-        # U1's fan-out: three pins the neighbours' vias otherwise box in
-        ("POT_SDI", 17.1, -3.0), ("PORT_FAULT_N", 11.75, 2.0), ("ROLE_INT_N", 12.45, 2.2))]
+        # U1's fan-out: a pin the neighbours' vias otherwise box in
+        ("POT_SDI", 17.1, -3.0))]
     BOARD_NOTES["tracks"] += [
         # U16's supply passes under R23 to its bypass
         ("+3V3", "F.Cu", 0.2, _pts((26.1, -19.8), (26.55, -19.05))),
@@ -3260,8 +3260,6 @@ if REV != 1:
         ("ROLE_ID_N", "In2.Cu", 0.2, _pts((42.84, 3.18), (42.2, 2.54), (38.26, 2.54), (38.05, 2.75))),
         ("ROLE_ID_N", "F.Cu", 0.2, _pts((38.05, 2.75), (37.75, 3.3), (37.75, 3.78))),
         ("POT_SDI", "F.Cu", 0.2, _pts((15.69, -3.0), (17.1, -3.0))),
-        ("PORT_FAULT_N", "F.Cu", 0.2, _pts((11.75, 0.94), (11.75, 2.0))),
-        ("ROLE_INT_N", "F.Cu", 0.2, _pts((12.15, 0.94), (12.15, 1.6), (12.45, 1.9), (12.45, 2.2))),
     ]
     BOARD_NOTES["match"] += [
         {"name": _name, "max_skew_mm": 8.3, "same_layer": _same, "max_vias": 2, "nets": _nets,
