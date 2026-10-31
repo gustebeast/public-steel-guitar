@@ -175,7 +175,7 @@ def _r2_ports(n):
     gnd, v3v3, v5_pre = n["gnd"], n["v3v3"], n["v5_pre"]
     u1, nrst, boot0 = n["u1"], n["nrst"], n["boot0"]
     vbus, id_n = n["vbus_panel"], Net("ROLE_ID_N")
-    scl, sda = Net("I2C2_SCL"), Net("I2C2_SDA")
+    scl, sda = Net("I2C_SCL"), Net("I2C_SDA")
     en, seen = Net("PORT_EN"), Net("PORT_SEEN")
 
     def fix(tag, value, desc, fp, pins):
@@ -191,8 +191,10 @@ def _r2_ports(n):
     Net("U13_NC_3").connect(u13[3])                 # PORT open: DRP
     u13_int = Net("ROLE_INT_N")
     u13_int += u13[6], u1[24]                       # PC4
-    sda += u13[7], u1[30]                           # PB11, I2C2
-    scl += u13[8], u1[29]                           # PB10, I2C2
+    sda += u13[7], u1[16]                           # PA2: bit-banged, see below
+    # ⚠ A SOFTWARE BUS. PB10/PB11 (I2C2) sit in the tightest part of the east row and left
+    # the bus open on ten routes. Two polled, 100 kHz slaves need no peripheral.
+    scl += u13[8], u1[15]                           # PA1
     id_n += u13[9], u1[33]                          # PD8, reads it and forces it
     gnd += u13[10], u13[11]                         # EN_N low
     v3v3 += u13[12]
@@ -205,7 +207,7 @@ def _r2_ports(n):
     r42[2] += u13[5]
     for tag, net, why in (("R43", id_n, "ROLE_ID_N up: at rest U14 stays on the Pi path"),
                           ("R49", u13_int, "U13 INT_N up"),
-                          ("R50", scl, "I2C2 SCL up"), ("R51", sda, "I2C2 SDA up")):
+                          ("R50", scl, "I2C SCL up"), ("R51", sda, "I2C SDA up")):
         r = _r(tag, "4k7", why)
         v3v3 += r[1]
         net += r[2]
@@ -231,7 +233,7 @@ def _r2_ports(n):
     gnd += u15[2]
     en += u15[3]
     fault = Net("PORT_FAULT_N")
-    fault += u15[4], u1[23]                         # PA7
+    fault += u15[4], u1[19]                         # PA3
     r45 = _r("R45", "15k 1%", "U15 ILIM: 1.61 to 1.80 A")
     u15[5] += r45[1]
     gnd += r45[2]
@@ -268,7 +270,7 @@ def _r2_ports(n):
     gnd += r47[2]
 
     v24_jack, v24_in = n["v24_jack"], n["v24_in"]
-    u16 = fix("U16", "INA226AIDGSR", "inlet volts and amps, I2C2 at 0x40 (LCSC C49851)",
+    u16 = fix("U16", "INA226AIDGSR", "inlet volts and amps, I2C at 0x40 (LCSC C49851)",
               "Steel:MSOP-10_3x3mm_P0.5mm_Tight", range(1, 11))   # KiCad's, courtyard 0.1 off the body
     gnd += u16[1], u16[2], u16[7]
     Net("U16_NC_3").connect(u16[3])                 # Alert not used
@@ -908,7 +910,7 @@ def output_panel():
                  61, 62, 35, 36, 38, 25, 48, 52, 63, 39, 1,
                  53, 58, 60,                            # I2S3: WS, CK, SD
                  21, 20, 26, 27,    # PA5, PA4, PB0 pot SPI; PB1 the jack mode
-                 28) + (() if REV == 1 else (23, 24, 29, 30, 33, 44, 45))]   # 28: PB2 = BOOT1, held low on the jack-mode net
+                 28) + (() if REV == 1 else (15, 16, 19, 24, 33, 44, 45))]   # 28: PB2 = BOOT1, held low on the jack-mode net
     u1 = Part(name="CH32V307WCU6", ref_prefix="U", ref="U1", tag="U1", dest="NETLIST", tool="skidl",
               value="CH32V307WCU6",
               description="RISC-V MCU, USB2.0 HS with INTERNAL PHY (LCSC C5142795)",
@@ -3228,7 +3230,7 @@ if REV != 1:
         "R42": _f(43.85, 6.2), "R43": _f(42.6, 1.7, 90.0), "R49": _f(40.9, -1.4), "Q4": _f(38.7, 4.4, 90.0),
         "R54": _f(32.55, 2.6), "R44": _f(37.25, 1.6, 90.0), "Q5": _f(34.5, 5.0), "Q6": _f(40.4, 0.9, 180.0),
         "R46": _f(34.55, 2.7), "R47": _f(35.2, 1.6),
-        "R48": _f(17.6, 7.2), "R50": _f(20.2, 7.0), "R51": _f(20.45, 8.1),     # I2C2 up, by U1
+        "R48": _f(20.6, -6.6), "R50": _f(20.6, -7.7), "R51": _f(20.6, -8.8),     # by U1's south-east corner
         # the mux, on the pair's In2 run, and its bypass over pin 10
         "U14": _f(-3.0, 12.6), "C67": _f(-2.85, 14.65),
         # M43, on the hub's fourth port
@@ -3350,7 +3352,7 @@ BOARD_NOTES["quality"] = {
         "U1": {
             "pins": ("2 3 4 8 9 10 11 14 15 16 19 22 23 24 29 30 33 34 37 40 41 42 43 44 45 46 47 54 55 56 57 59 64 65 66"
                      if REV == 1 else
-                     "2 3 4 8 9 10 11 14 15 16 19 22 34 37 40 41 42 43 46 47 54 55 56 57 59 64 65 66"),
+                     "2 3 4 8 9 10 11 14 22 23 29 30 34 37 40 41 42 43 46 47 54 55 56 57 59 64 65 66"),
             "why": "GPIO this board gives no function: left open, firmware leaves it an input with pull-down"
         },
         "U4": {
@@ -3867,7 +3869,7 @@ if REV != 1:
                  "through U15, which blocks reverse current (95-190 mV comparator) and is held off by "
                  "Q5 while a host's VBUS is on the port, so J1 cannot back-feed V5_PRE. The switch "
                  "lines on J10 are pulled from this board's inlet only")
-    _m["M20"] = ("I2C2 on U1 (PB10, PB11): U13 at 0x67, U16 at 0x40, 4k7 up (R50, R51), about 30 mm. "
+    _m["M20"] = ("Bit-banged I2C on U1 (PA1 SCL, PA2 SDA): U13 at 0x67, U16 at 0x40, 4k7 up (R50, R51), about 30 mm. "
                  "No CAN. USB: CC per port role (A6). I2S as R1: 20-30 mm clocks, no series "
                  "resistors, short stubs at the package")
     _m["M21"] = ("one ground plane, joined to the power return at ONE point, R60, at the west end of "
