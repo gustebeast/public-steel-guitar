@@ -2638,7 +2638,7 @@ _COLORS = {
     "pi_cap_silk":     (0.95, 0.95, 0.93),
     "motor_ctrl_silk": (0.95, 0.95, 0.93),
     "output_panel_silk": (0.95, 0.95, 0.93),
-    "output_panel_term": (0.16, 0.55, 0.32),        # J8: MX126 terminal block, green PA66
+    "output_panel_term": (0.16, 0.55, 0.32),        # J8: MX128 terminal block, green PA66
     "output_panel_term_metal": (0.72, 0.74, 0.78),  # its M2.5 screws and tinned pins
     "optical_guard":   (0.18, 0.18, 0.20),   # the hand guard over the board -- print it
                                              # DARK: it is the one surface facing the

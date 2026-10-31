@@ -77,6 +77,7 @@ from skidl import ERC, Net, Part, Pin, generate_netlist, subcircuit  # noqa: E40
 
 import harness                                      # noqa: E402
 import netcheck                                     # noqa: E402
+import buck_cell as BC                              # noqa: E402
 
 P = Pin.types.PASSIVE
 
@@ -96,6 +97,7 @@ TRS_FP = "Connector_Audio:Jack_6.35mm_Neutrik_NMJ6HCD2_Horizontal"
 DC_FP = "Steel:Kycon_KPJX-4S-S"
 XH_FP = "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"
 TERM_FP = "TerminalBlock:TerminalBlock_MaiXu_MX126-5.0-02P_1x02_P5.00mm"
+TERM_FP_R2 = "Steel:MaiXu_MX128-5.0-02P_1x02_P5.00mm"     # slotted: no second tool (R2-3)
 MCU_FP = "Package_DFN_QFN:QFN-68-1EP_8x8mm_P0.4mm_EP5.2x5.2mm"
 ADC_FP = "Package_SO:TSSOP-14_4.4x5mm_P0.65mm"     # PCM1808PWR is a 14-pin TSSOP
 DAC_FP = "Package_SO:TSSOP-20_4.4x6.5mm_P0.65mm"
@@ -159,6 +161,171 @@ def _usbc(tag, desc):
                 footprint=USBC_FP, pins=pins)
 
 
+def _r2_ports(n):
+    """R2's new circuits, built from output_panel()'s nets. Design and sources: work items
+    R2-2, R2-4, M43.
+
+    J1 IS DUAL-ROLE. U13 decides; its ID pin, open drain, goes low when J1 has a device on
+    it. That one net throws U14 and asks for VBUS, so a dead board rests on the Pi path. U1
+    writes Try.SNK and 1.5 A over I2C; with no firmware the port is a plain DRP at default
+    current. U1 forcing host = U1 pulling the same net, so it cannot get round the gate.
+
+    THE GATE: Q4 feeds U15's EN from ROLE_ID_N through R54. Q5 holds EN down if J1's VBUS is
+    already up. Q6 takes Q5's gate away once EN is high, so our own VBUS never turns us off."""
+    gnd, v3v3, v5_pre = n["gnd"], n["v3v3"], n["v5_pre"]
+    u1, nrst, boot0 = n["u1"], n["nrst"], n["boot0"]
+    vbus, id_n = n["vbus_panel"], Net("ROLE_ID_N")
+    scl, sda = Net("I2C2_SCL"), Net("I2C2_SDA")
+    en, seen = Net("PORT_EN"), Net("PORT_SEEN")
+
+    def fix(tag, value, desc, fp, pins):
+        return Part(name=value, ref_prefix=tag.rstrip("0123456789"), ref=tag, tag=tag,
+                    dest="NETLIST", tool="skidl", value=value, description=desc, footprint=fp,
+                    pins=[Pin(num=i, func=P) for i in pins])
+
+    u13 = fix("U13", "TUSB320LAIRWBR", "USB-C role detect (LCSC C132554)",
+              "Steel:Texas_RWB0012A_X2QFN-12_1.6x1.6mm_P0.4mm", range(1, 13))
+    cc1, cc2 = Net("CC1"), Net("CC2")
+    cc1 += n["j1"]["A5"], u13[1]
+    cc2 += n["j1"]["B5"], u13[2]
+    Net("U13_NC_3").connect(u13[3])                 # PORT open: DRP
+    u13_int = Net("ROLE_INT_N")
+    u13_int += u13[6], u1[24]                       # PC4
+    sda += u13[7], u1[30]                           # PB11, I2C2
+    scl += u13[8], u1[29]                           # PB10, I2C2
+    id_n += u13[9], u1[33]                          # PD8, reads it and forces it
+    gnd += u13[10], u13[11]                         # EN_N low
+    v3v3 += u13[12]
+    r41 = _r("R41", "910k", "U13 VBUS_DET series, TI's 900k")
+    vbus += r41[1]
+    r41_det = Net("ROLE_VDET")
+    r41_det += r41[2], u13[4]
+    r42 = _r("R42", "10k", "U13 ADDR high: I2C on, 0x67")
+    v3v3 += r42[1]
+    r42[2] += u13[5]
+    for tag, net, why in (("R43", id_n, "ROLE_ID_N up: at rest U14 stays on the Pi path"),
+                          ("R49", u13_int, "U13 INT_N up"),
+                          ("R50", scl, "I2C2 SCL up"), ("R51", sda, "I2C2 SDA up")):
+        r = _r(tag, "4k7", why)
+        v3v3 += r[1]
+        net += r[2]
+
+    u14 = fix("U14", "TS3USB221RSER", "J1's pair: Pi or hub port 3 (LCSC C130085)",
+              "Package_DFN_QFN:Texas_UQFN-10_1.5x2mm_P0.5mm", range(1, 11))
+    # CROSSED ON PURPOSE: the part's two channels are identical switches (D+ / 1D+ / 2D+ is
+    # one, D- / 1D- / 2D- the other), and the pair arrives with DP on the south side of the
+    # pin row at BOTH ends. Named straight, each end would need the pair to cross itself.
+    n["hub_dn3_dm"] += u14[1]
+    n["hub_dn3_dp"] += u14[2]
+    n["pi_dm"] += u14[3]
+    n["pi_dp"] += u14[4]
+    gnd += u14[5], u14[6]                           # OE# low: always on
+    n["thru_dp"] += u14[7]
+    n["thru_dm"] += u14[8]
+    id_n += u14[9]                                  # S low: D = 1D, the hub
+    v3v3 += u14[10]
+
+    u15 = fix("U15", "TPS2553DBVR", "J1 VBUS switch, 1.6-1.8 A, reverse-blocking (LCSC C55266)",
+              "Package_TO_SOT_SMD:SOT-23-6", range(1, 7))
+    v5_pre += u15[1]
+    gnd += u15[2]
+    en += u15[3]
+    fault = Net("PORT_FAULT_N")
+    fault += u15[4], u1[19]                         # PA3
+    r45 = _r("R45", "15k 1%", "U15 ILIM: 1.61 to 1.80 A")
+    u15[5] += r45[1]
+    gnd += r45[2]
+    vbus += u15[6]
+    r48 = _r("R48", "4k7", "U15 FAULT# up")
+    v3v3 += r48[1]
+    fault += r48[2]
+
+    q4 = fix("Q4", "AO3401A", "ROLE_ID_N low -> EN (LCSC C15127)",
+             "Package_TO_SOT_SMD:SOT-23", range(1, 4))
+    id_n += q4[1]
+    v3v3 += q4[2]
+    r54 = _r("R54", "1k", "Q4 to EN: Q5 can hold EN down against it")
+    q4[3] += r54[1]
+    en += r54[2]
+    r44 = _r("R44", "100k", "EN down at rest")
+    en += r44[1]
+    gnd += r44[2]
+    q5 = fix("Q5", "2N7002", "VBUS already up -> EN stays low", "Package_TO_SOT_SMD:SOT-23",
+             range(1, 4))
+    seen += q5[1]
+    gnd += q5[2]
+    en += q5[3]
+    q6 = fix("Q6", "2N7002", "EN high -> Q5 off: our VBUS is not a foreign one",
+             "Package_TO_SOT_SMD:SOT-23", range(1, 4))
+    en += q6[1]
+    gnd += q6[2]
+    seen += q6[3]
+    r46 = _r("R46", "100k", "VBUS_SEEN from J1")
+    vbus += r46[1]
+    seen += r46[2]
+    r47 = _r("R47", "1M", "VBUS_SEEN down")
+    seen += r47[1]
+    gnd += r47[2]
+
+    v24_jack, v24_in = n["v24_jack"], n["v24_in"]
+    u16 = fix("U16", "INA226AIDGSR", "inlet volts and amps, I2C2 at 0x40 (LCSC C49851)",
+              "Steel:MSOP-10_3x3mm_P0.5mm_Tight", range(1, 11))   # KiCad's, courtyard 0.1 off the body
+    gnd += u16[1], u16[2], u16[7]
+    Net("U16_NC_3").connect(u16[3])                 # Alert not used
+    sda += u16[4]
+    scl += u16[5]
+    v3v3 += u16[6]
+    v24_in += u16[8], u16[9]                        # VBUS, IN-: the load side
+    v24_jack += u16[10]                             # IN+: the supply side
+    r61 = _r("R61", "5mR 1W", "inlet shunt: 6.67 A is 33 mV of the INA226's 81.9, 0.22 W",
+             "Resistor_SMD:R_0805_2012Metric")
+    v24_jack += r61[1]
+    v24_in += r61[2]
+
+    # A LIVE PLUG RINGS TOWARD 49 V AHEAD OF Q2 (M16) AND U16 IS RATED 40. D10 holds the inlet
+    # at 37 V; its surge goes to GND and back through R60, once, with nothing else powered.
+    d10 = _d("D10", "SMF24A", "inlet clamp for U16, 200 W (LCSC C169430)",
+             "Diode_SMD:D_SOD-123F")
+    v24_in += d10[1]
+    gnd += d10[2]
+
+    # M43: optical's _flash_path, on hub port 4. U1's ROM loader answers on USART1
+    u17 = fix("U17", "CH340C", "USB-serial, the ROM loader's way in (LCSC C84681)",
+              "Package_SO:SOIC-16_3.9x9.9mm_P1.27mm", range(1, 17))
+    tx, rx, dtr, rts = Net("FLASH_TX"), Net("FLASH_RX"), Net("FLASH_DTR_N"), Net("FLASH_RTS_N")
+    gnd += u17[1]
+    tx += u17[2], u1[45]                            # bridge TXD -> PA10 RX
+    rx += u17[3], u1[44]                            # PA9 TX -> bridge RXD
+    v3v3 += u17[4], u17[16]
+    n["hub_dn4_dp"] += u17[5]
+    n["hub_dn4_dm"] += u17[6]
+    dtr += u17[13]
+    rts += u17[14]
+    for k in (7, 8, 9, 10, 11, 12, 15):
+        Net("U17_NC_%d" % k).connect(u17[k])
+    q7 = fix("Q7", "AO3401A", "BOOT0 high side (LCSC C15127)", "Package_TO_SOT_SMD:SOT-23",
+             range(1, 4))
+    dtr += q7[1]
+    v3v3 += q7[2]
+    boot0 += q7[3]
+    r52 = _r("R52", "100k", "Q7 gate up: nothing conducts at rest")
+    v3v3 += r52[1]
+    dtr += r52[2]
+    d9 = _d("D9", "DSS16", "NRST from RTS#", "Diode_SMD:D_SOD-123")
+    rts += d9[1]
+    nrst += d9[2]
+    for tag, net, why in (("C66", v3v3, "U13 VDD"), ("C67", v3v3, "U14 VCC"),
+                          ("C68", v3v3, "U17 VCC"), ("C70", v3v3, "U16 VS"),
+                          ("C71", v5_pre, "U15 IN")):
+        c = _c(tag, "100nF", why + " bypass")
+        net += c[1]
+        gnd += c[2]
+    c69 = _c("C69", "10uF/16V", "J1 VBUS output: USB-C's 10 uF limit",
+             "Capacitor_SMD:C_0805_2012Metric")
+    vbus += c69[1]
+    gnd += c69[2]
+
+
 @subcircuit
 # ⚠ EVERY REF IS PINNED, NOT JUST THE PASSIVES. _r and _c were given ref=tag earlier
 # today after skidl's creation-order numbering silently renamed three resistors on
@@ -211,7 +378,9 @@ def output_panel():
     # fed from its GPIO header. A host's VBUS would land straight on the motor
     # controller's 5 V output. It stops here, structurally, where no cable can
     # undo it.
-    vbus_panel = Net("VBUS_PANEL_NC")
+    # R2 (dual-role, work item R2-2): J1's VBUS is a real net, sourced through U15 only when
+    # the port has a device on it. J2's stays dead whatever J1 does, so the note above holds.
+    vbus_panel = Net("VBUS_PANEL_NC" if REV == 1 else "J1_VBUS")
     vbus_panel += j1["A4"], j1["B4"], j1["A9"], j1["B9"]
     thru_dp += j1["A6"], j1["B6"]
     thru_dm += j1["A7"], j1["B7"]
@@ -225,8 +394,10 @@ def output_panel():
     j2 = _usbc("J2", "to the Pi's USB-C gadget port, via a stock C-to-C lead")
     vbus_pi = Net("VBUS_PI_NC")
     vbus_pi += j2["A4"], j2["B4"], j2["A9"], j2["B9"]   # the lead's VBUS ends here, dead
-    thru_dp += j2["A6"], j2["B6"]
-    thru_dm += j2["A7"], j2["B7"]
+    # R2: U14 stands between them, so the Pi's side of the pair has its own name
+    pi_dp, pi_dm = (thru_dp, thru_dm) if REV == 1 else (Net("PI_DP"), Net("PI_DM"))
+    pi_dp += j2["A6"], j2["B6"]
+    pi_dm += j2["A7"], j2["B7"]
     gnd += j2["A1"], j2["A12"], j2["B1"], j2["B12"], j2["SH"]
     # CC left open on purpose: this port neither sources nor sinks, it is a wire to J1,
     # and J1's own pull-downs are what the player's computer sees.
@@ -425,7 +596,9 @@ def output_panel():
     # included, is on +24V behind Q2. See "THE POWER BUTTON" below J10.
     v24_in = Net("+24V_IN")
     v24_in.drive = Pin.drives.POWER
-    v24_in += j6[2], j6[4]
+    # R2: R61 stands between the jack and the switch, so the whole supply is measured (R2-4)
+    v24_jack = v24_in if REV == 1 else Net("+24V_JACK")
+    v24_jack += j6[2], j6[4]
     pgnd += j6[1], j6[3], j6["SH"]
     # Trunk out on the instrument's standard 4-way (harness.py: power, GND, data, data):
     # 24 V, GND, and NOTHING on ways 3 and 4. Any 4-way XH lead seats here, so a lead with
@@ -588,8 +761,9 @@ def output_panel():
     # screw terminal takes them as they are.
     pk_hot = Net("PICKUP_HOT")
     j8 = Part(name="SCREW_2", ref_prefix="J", ref="J8", tag="J8", dest="NETLIST", tool="skidl",
-              value="MX126-5.0-02P", description="magnetic pickup in, screw terminals",
-              footprint=TERM_FP,
+              value="MX126-5.0-02P" if REV == 1 else "MX128-5.0-02P-Y",
+              description="magnetic pickup in, screw terminals",
+              footprint=TERM_FP if REV == 1 else TERM_FP_R2,
               pins=[Pin(num=1, name="HOT", func=P), Pin(num=2, name="RET", func=P)])
     # R2 TURNS J8 180 DEGREES (lead, 2026-10-29): on the dropped board its +Y entry sat in
     # string 10's clamp sweep, so the wires come in from -Y, over the board. Turned about
@@ -733,8 +907,8 @@ def output_panel():
                  5, 6, 7,                               # OSC_IN, OSC_OUT, NRST
                  61, 62, 35, 36, 38, 25, 48, 52, 63, 39, 1,
                  53, 58, 60,                            # I2S3: WS, CK, SD
-                 21, 20, 26, 27,    # PA5, PA4, PB0 pot SPI; PB1 the jack mode
-                 28)]               # PB2 = BOOT1, held low on the jack-mode net
+                 27,                # PB1 the jack mode
+                 28) + ((21, 20, 26) if REV == 1 else (19, 24, 29, 30, 33, 41, 42, 43, 44, 45))]   # 28: PB2 = BOOT1, held low on the jack-mode net
     u1 = Part(name="CH32V307WCU6", ref_prefix="U", ref="U1", tag="U1", dest="NETLIST", tool="skidl",
               value="CH32V307WCU6",
               description="RISC-V MCU, USB2.0 HS with INTERNAL PHY (LCSC C5142795)",
@@ -771,9 +945,10 @@ def output_panel():
     # peripheral on it would buy nothing and cost a pin map that is already full.
     pot_cs, pot_sck, pot_sdi = Net("POT_CS"), Net("POT_SCK"), Net("POT_SDI")
     jack_mode = Net("JACK_MODE")   # 0 = balanced (inverted tip), 1 = stereo
-    pot_cs += u1[21]
-    pot_sck += u1[20]
-    pot_sdi += u1[26]
+    # R2: bit-banged, so on the north row facing U10. The east row was over capacity.
+    pot_cs += u1[21 if REV == 1 else 42]            # PC9 on R2
+    pot_sck += u1[20 if REV == 1 else 43]           # PA8 on R2
+    pot_sdi += u1[26 if REV == 1 else 41]           # PC8 on R2
     # ✅ ALL FOUR READ OFF THE TABLE, NOT INFERRED: 20 PA4, 21 PA5, 26 PB0, 27 PB1,
     # checked against .ins/ch32v307_qfn68.json -- the same QFN-68 column the other
     # twenty-four pins on this part were taken from. 27 was briefly written down as an
@@ -930,7 +1105,14 @@ def output_panel():
     hub_up_dp += u4[15]
     v3v3 += u4[19], u4[20]
     gnd += u4[25]
-    for n in (2, 5, 6, 7, 8, 13, 16, 17, 18, 21, 22, 23, 24):
+    hub_dn3_dp, hub_dn3_dm = Net("HUB_DN3_DP"), Net("HUB_DN3_DM")
+    hub_dn4_dp, hub_dn4_dm = Net("HUB_DN4_DP"), Net("HUB_DN4_DM")
+    if REV != 1:
+        hub_dn4_dm += u4[5]         # 4F column: 5 DM4, 6 DP4, 7 DM3, 8 DP3
+        hub_dn4_dp += u4[6]
+        hub_dn3_dm += u4[7]
+        hub_dn3_dp += u4[8]
+    for n in (2, 13, 16, 17, 18, 21, 22, 23, 24) + ((5, 6, 7, 8) if REV == 1 else ()):
         Net("U4_NC_%d" % n).connect(u4[n])
 
     # ── U5: 24 -> 5 V. THE ONE SWITCHER, and it lives in the inlet corner. ───
@@ -967,16 +1149,35 @@ def output_panel():
     # passes signal -- and it also means the worst-case supply current and the worst-case
     # audio path are the same state, not opposite ones.
 
-    u5 = Part(name="LMR16006XDDCR", ref_prefix="U", ref="U5", tag="U5", dest="NETLIST", tool="skidl",
-              value="LMR16006XDDCR", description="60 V 0.6 A buck, 24 V -> 5 V "
-              "(LCSC C87080)", footprint="Package_TO_SOT_SMD:SOT-23-6",
-              pins=[Pin(num=i, func=P) for i in range(1, 7)])
-    boot += u5[1]
-    pgnd += u5[2]
-    fb += u5[3]
-    Net("SHDN_NC").connect(u5[4])
-    v24 += u5[5]
-    sw += u5[6]
+    # R2: THE CONVERTER STANDS ON GND, not PWR_GND. It burns over a watt now and the RNX has no
+    # pad, so its slabs want the plane's vias (buck_cell's M25 arithmetic). R60 stays the one
+    # tie: it moves to the input end, where only the buck's own 24 V return crosses it.
+    bgnd = pgnd if REV == 1 else gnd
+    if REV == 1:
+        u5 = Part(name="LMR16006XDDCR", ref_prefix="U", ref="U5", tag="U5", dest="NETLIST",
+                  tool="skidl", value="LMR16006XDDCR", description="60 V 0.6 A buck, 24 V -> 5 V "
+                  "(LCSC C87080)", footprint="Package_TO_SOT_SMD:SOT-23-6",
+                  pins=[Pin(num=i, func=P) for i in range(1, 7)])
+        boot += u5[1]
+        pgnd += u5[2]
+        fb += u5[3]
+        Net("SHDN_NC").connect(u5[4])
+        v24 += u5[5]
+        sw += u5[6]
+    else:
+        # R2: the elec/buck_cell.py part, 3 A, so J1 can source 1.5 A (R2-2). Rail about 1.8 A.
+        u5 = Part(name="LMR33630", ref_prefix="U", ref="U5", tag="U5", dest="NETLIST",
+                  tool="skidl", value=BC.U_VALUE, description="24 V -> 5 V synchronous buck, "
+                  "1.4 MHz, 3 A (LCSC %s)" % BC.U_LCSC, footprint=BC.U_FP,
+                  pins=[Pin(num=n, func=P) for n in range(1, 13)])
+        bgnd += u5[1], u5[11], u5[6]
+        v24 += u5[2], u5[10], u5[9]
+        sw += u5[3], u5[12]
+        boot += u5[4]
+        buck_vcc = Net("BUCK_VCC")
+        buck_vcc += u5[5]
+        fb += u5[7]
+        Net("BUCK_PG_NC").connect(u5[8])
 
     # ── U6: 5 -> 3.3 V for the MCU, the hub and the converters' digital side ─
     u6 = Part(name="LDO_3V3", ref_prefix="U", ref="U6", tag="U6", dest="NETLIST", tool="skidl",
@@ -1321,12 +1522,14 @@ def output_panel():
               # limit, and its typical clears the maximum. Same series, same land.
               # Ripple 5 x (1 - 5 / 24) / (15 uH x 700 kHz) = 0.38 A, so the 0.257 A worst
               # load peaks at 0.45 A. LCSC C19634062, 3 x 3 x 1.5.
-              value="PNR3015-150M", description="15 uH buck output inductor, Isat 1.4 A, SHIELDED "
-              "-- it sits on the same board as a magnetic pickup's preamp",
+              value="PNR3015-150M" if REV == 1 else BC.L1_VALUE,
+              description=("15 uH buck output inductor, Isat 1.4 A, SHIELDED -- it sits on "
+                           "the same board as a magnetic pickup's preamp"
+                           if REV == 1 else BC.L1_DESC),
               # APV's own land (its sheet's a 1.0, b 1.1, c 2.7): pads 1.1 x 2.7 with 1.0
               # between them. The Taiyo Yuden NR-30xx land this used is 0.8 x 2.7 with 1.4,
               # which left the part's 0.9 mm terminals 0.25 mm short of pad on each inner side
-              footprint="Steel:L_APV_PNR3015",
+              footprint="Steel:L_APV_PNR3015" if REV == 1 else BC.L1_FP,
               pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
     sw += l1[1]
     v5_pre += l1[2]
@@ -1348,10 +1551,11 @@ def output_panel():
     # ── diodes ───────────────────────────────────────────────────────────────
     # 60 V, not 40: its cathode is the switch node, which stands at VIN, and the rail
     # clamp's catalogue point is 38.9 V -- 1.1 V under a 40 V part before any ring.
-    d1 = _d("D1", "DSS16", "buck catch diode, 60 V 1 A -- the LMR16006 is ASYNCHRONOUS, so "
-            "this is required, not optional", "Diode_SMD:D_SOD-123")
-    sw += d1[1]
-    pgnd += d1[2]
+    if REV == 1:
+        d1 = _d("D1", "DSS16", "buck catch diode, 60 V 1 A -- the LMR16006 is ASYNCHRONOUS, so "
+                "this is required, not optional", "Diode_SMD:D_SOD-123")
+        sw += d1[1]
+        pgnd += d1[2]
     for tag, net in (("D2", thru_dp), ("D3", thru_dm)):
         d = _d(tag, "LESD5L5.0CT1G", "panel USB data-line clamp, 0.5 pF, bidirectional "
                "(LCSC C5274293) -- J1 is the port a stranger plugs into")
@@ -1403,10 +1607,11 @@ def output_panel():
     pgnd += d6[2]
 
     # ── resistors ────────────────────────────────────────────────────────────
-    for tag, pin in (("R1", "A5"), ("R2", "B5")):
-        r = _r(tag, "5k1", "panel USB-C CC pull-down (upstream-facing port)")
-        j1[pin] += r[1]
-        gnd += r[2]
+    if REV == 1:        # R2: U13 has the CC pins and its own Rd
+        for tag, pin in (("R1", "A5"), ("R2", "B5")):
+            r = _r(tag, "5k1", "panel USB-C CC pull-down (upstream-facing port)")
+            j1[pin] += r[1]
+            gnd += r[2]
     for tag, pin in (("R3", "A5"), ("R4", "B5")):
         r = _r(tag, "5k1", "hub upstream CC pull-down")
         j3[pin] += r[1]
@@ -1450,10 +1655,11 @@ def output_panel():
     # arithmetic -- worth saying out loud, because "set at the bench" is not a value and
     # a divider with no value is a converter with no output voltage.
     r11 = _r("R11", "100k", "buck feedback divider, top")
-    r12 = _r("R12", "18k2 1%", "buck feedback divider, bottom -- 4.97 V with R11")
+    # R2's LMR33630: VFB 1.0 V, so 100k / 24k9 is 5.02 V, as on the optical board's U13
+    r12 = _r("R12", "18k2 1%" if REV == 1 else "24k9 1%", "buck feedback divider, bottom")
     v5_pre += r11[1]
     fb += r11[2], r12[1]
-    pgnd += r12[2]
+    bgnd += r12[2]
 
     # ── capacitors ───────────────────────────────────────────────────────────
     # ⚠ C1 IS A SAFETY PART, NOT A BYPASS -- R9/C1/D5 are the PHANTOM-POWER guard.
@@ -1470,20 +1676,36 @@ def output_panel():
     c2 = _c("C2", "10uF/50V", "24 V input bulk -- 1206 for the DC-bias derating",
             "Capacitor_SMD:C_1206_3216Metric")
     v24 += c2[1]
-    pgnd += c2[2]
+    bgnd += c2[2]
     c3 = _c("C3", "100nF/50V", "24 V input HF bypass")
     v24 += c3[1]
-    pgnd += c3[2]
+    bgnd += c3[2]
+    if REV != 1:
+        _c17 = _c("C17", "10uF/50V", "24 V input bulk, the buck cell's second",
+                  "Capacitor_SMD:C_1206_3216Metric")
+        v24 += _c17[1]
+        bgnd += _c17[2]
+        _c18 = _c("C18", "100nF/50V", "buck input HF bypass, pins 10 and 11")
+        v24 += _c18[1]
+        bgnd += _c18[2]
+        _c63 = _c("C63", "1uF/25V", "buck VCC bypass")
+        buck_vcc += _c63[1]
+        bgnd += _c63[2]
     # 100 nF, not the 10 nF that stood here: SNVSA24's pin table and its application
     # circuit both ask for 0.1 uF between CB and SW
-    c4 = _c("C4", "100nF", "buck bootstrap")
+    c4 = _c("C4", "100nF" if REV == 1 else "100nF/50V", "buck bootstrap")
     boot += c4[1]
     sw += c4[2]
-    for tag in ("C5", "C6"):
+    for tag in ("C5", "C6") + (() if REV == 1 else ("C64",)):
         c = _c(tag, "22uF/16V", "5 V bulk, BUCK SIDE of the bead",
                "Capacitor_SMD:C_0805_2012Metric")
         v5_pre += c[1]
-        pgnd += c[2]
+        bgnd += c[2]
+    if REV != 1:
+        _c65 = _c("C65", "100nF/50V", "buck output HF bypass")
+        v5_pre += _c65[1]
+        bgnd += _c65[2]
+        _r2_ports(locals())
     # THE GROUND TIE (see the J6/J7 note): the one place PWR_GND and GND meet, beside C5,
     # where the buck's output current comes back.
     r60 = _r("R60", "0R", "ground tie, PWR_GND to GND -- the instrument's star point",
@@ -1756,7 +1978,7 @@ BOARD_NOTES = {
     # the ear moved the router's first-pass choices and BOOT0 (a one-resistor strap across
     # the digital block) came back unrouted at the default pass count; more passes let the
     # optimiser rip up and re-lay rather than freeze the early mess (route.py PASSES note)
-    "router_passes": 20,   # 40 was tried with the USB-C sockets (2026-10-02): no better, see close_last.py
+    "router_passes": 20 if REV == 1 else 12,   # R2: the kept route is a 12-pass one. 40 was tried with the USB-C sockets (2026-10-02): no better, see close_last.py
     # THE HUB'S THREE PAIRS ARE LAID AS PAIRS (2026-09-21). With the CH334F's real pinout the
     # upstream and downstream pins sit on different faces of the package than the invented
     # one put them, and freerouting -- which has no notion of a pair -- came back with
@@ -2073,7 +2295,7 @@ BOARD_NOTES = {
     # package toward J4, and a through via at the pad's centre lands on it. The hub draws
     # ~50 mA and its pad reaches ground through the F.Cu pour it sits in; nothing here
     # needs that via, and the pair does.
-    "stitch_exceptions": ("J2.SH", "J4.SH", "U4.25"),
+    "stitch_exceptions": ("J2.SH", "J4.SH", "U4.25") + (() if REV == 1 else BC.STITCH_EXCEPTIONS + ("J8.1", "U15.2", "C71.2", "D2.2", "D3.2", "U16.2", "U16.7", "U13.10", "U13.11")),
     # ⚠ NO local_nets HERE EITHER, AND NOW THERE IS A PATTERN. Measured on three
     # boards: it takes lever_sensor from 4 unconnected to 7, this board from 2 to 5, and
     # the optical board from 26 to 12. Pre-laying copper is not a general improvement --
@@ -2549,6 +2771,25 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), _FROZEN), enc
 # layers to reach pins on the far side of the package.
 _frozen["tracks"] = [_t for _t in _frozen["tracks"] if not _t[0].startswith("HUB_DN1")]
 _frozen["vias"] = [_v for _v in _frozen["vias"] if not _v[0].startswith("HUB_DN1")]
+if REV != 1:
+    # R2: U14 CUTS THRU's long In2 run. Everything west of the cut is the Pi's pair now, the
+    # same copper under a new name; the U14 block below joins the two ends.
+    _cut = [-4.5, -11.3]
+    def _pi(_t):
+        _pts = [tuple(_p) for _p in _t[3]]
+        if not _t[0].startswith("THRU"):
+            return [_t]
+        if all(_x < _cut[1] for _x, _y in _pts):
+            return [[_t[0].replace("THRU", "PI"), _t[1], _t[2], _pts]]
+        if len(_pts) == 2 and _pts[0][0] > _cut[0] and _pts[1][0] < _cut[1]:   # the long run
+            _yr = _pts[0][1]
+            return [[_t[0], _t[1], _t[2], [_pts[0], (_cut[0], _yr)]],
+                    [_t[0].replace("THRU", "PI"), _t[1], _t[2], [(_cut[1], _yr), _pts[1]]]]
+        return [_t]
+    _frozen["tracks"] = [_q for _t in _frozen["tracks"] for _q in _pi(_t)]
+    _frozen["vias"] = [[_v[0].replace("THRU", "PI") if _v[1] < _cut[1] else _v[0]] + _v[1:]
+                       for _v in _frozen["vias"]]
+    _frozen["nets"] = list(_frozen["nets"]) + ["PI_DP", "PI_DM"]
 BOARD_NOTES["frozen_nets"] = list(_frozen["nets"])
 BOARD_NOTES["tracks"] = list(BOARD_NOTES.get("tracks", [])) + [
     (_n, _layer, _w, [tuple(_p) for _p in _pts]) for _n, _layer, _w, _pts in _frozen["tracks"]]
@@ -2593,6 +2834,7 @@ _LANE_Y, _ROW_Y = -31.0, -28.0
 #   J10's return leaves pin 3 on F.Cu, passes between the jack's two pegs, through the
 #            shield tab's land and north along x 33.75 into the FRONT SHELL LEG's land
 #            (the same net), and from that land 3.6 mm straight north into way 2.
+_JACK = "+24V_IN" if REV == 1 else "+24V_JACK"   # R2: R61 (block below) divides the track
 _QS = (19.90, -26.22)          # Q2 source pad;  tab spans x 10.40..16.80, y -31.4..-25.6
 # ways 1..6 with the part turned 180: 24 V, GND, switch, switch, GND, 24 V
 _J10_PADS = tuple(_x + _J10_D[0] for _x in (33.45, 30.95, 28.45, 25.95, 23.45, 20.95))
@@ -2614,12 +2856,12 @@ BOARD_NOTES["vias"] = list(BOARD_NOTES["vias"]) + [
 BOARD_NOTES["tracks"] += [
     (_n, _l, _w, [(_x + _g, _y) for _x, _y in _pts]) for _n, _l, _w, _pts in [
         # +24V_IN: pin 4 -> pin 2; pin 2 -> Q2 source
-        ("+24V_IN", "F.Cu", 2.0, [_p4, _p2]),
+        (_JACK, "F.Cu", 2.0, [_p4, _p2]),
         # 4.2 mm: the one stretch that carries the whole 6.67 A (4.12 mm for a 10 C rise).
         # It leaves the channel between the pin rows by its west mouth, between C31 and
         # FB1 on one side and pin 1's land on the other, 0.33 mm clear of each.
-        ("+24V_IN", "F.Cu", 4.2, [_p2, (24.050, -22.200), (20.850, -23.500),
-                                  (20.150, -25.400), _QS]),
+        *([("+24V_IN", "F.Cu", 4.2, [_p2, (24.050, -22.200), (20.850, -23.500),
+                                     (20.150, -25.400), _QS])] if REV == 1 else []),
         # +24V on F.Cu: the tab -> the lane -> J7 way 1
         ("+24V", "F.Cu", 2.0, [(11.5, _LANE_Y), (_J7_V, _LANE_Y)]),
         ("+24V", "F.Cu", 1.4, [(_J7_V, _ROW_Y), (_J7_V, _LANE_Y)]),
@@ -2657,8 +2899,8 @@ BOARD_NOTES["tracks"] += [
         #  The +24V bar is under the row's SOUTH side, so the two never meet.)
         ("PWR_GND", "F.Cu", 1.5, [(31.400, -15.200), (_J10_G[0], -14.000),
                                   (_J10_G[0], _J10_Y)]) if REV == 1 else
-        ("PWR_GND", "B.Cu", 2.0, [(31.400, -15.200), (29.000, -12.800), (29.000, -5.400),
-                                  (_J10_G[1], -5.400)]),
+        ("PWR_GND", "B.Cu", 2.0, [(31.400, -15.200), (23.850, -15.200)]),
+        ("PWR_GND", "B.Cu", 1.4, [(23.850, -15.200), (23.850, -5.400), (_J10_G[1], -5.400)]),
         # ...and on from way 2 to way 5 round the NORTH of the two switch ways, 1.0 mm
         # (half the return, 1.9 A). Not along the south: the 24 V bar is under there on
         # B.Cu and C28's ground via has its one site beside way 6.
@@ -2681,8 +2923,9 @@ BOARD_NOTES["tracks"] += [
 # How it fits: the PWR_GND lane runs west from the clamp's anode along the row on F.Cu, so
 # every ground pad drops straight onto it; the +24V feed comes along UNDER it on B.Cu and rises through
 # one via beside C2, which keeps F.Cu between D1 and C2 clear for the loop's return.
-BOARD_NOTES["vias"] = list(BOARD_NOTES["vias"]) + [("+24V", -25.925 + _g, -26.600)]
-BOARD_NOTES["tracks"] += [
+if REV == 1:
+    BOARD_NOTES["vias"] = list(BOARD_NOTES["vias"]) + [("+24V", -25.925 + _g, -26.600)]
+_corner = [
     (_n, _l, _w, [(_x + _g, _y) for _x, _y in _pts]) for _n, _l, _w, _pts in [
         # D6: its cathode straight off J7's 24 V post ...
         ("+24V", "F.Cu", 1.4, [(_J7_V, _ROW_Y), (_D6_K, _ROW_Y)]),
@@ -2724,7 +2967,9 @@ BOARD_NOTES["tracks"] += [
         ("PWR_GND", "F.Cu", 0.6, [(13.950, -23.500), (13.950, -24.700), (6.900, -24.700),
                                   (6.000, -25.600)]),
     ]]
-BOARD_NOTES["vias"] = list(BOARD_NOTES["vias"]) + [("PWR_GND", 6.000 + _g, -25.600)]
+BOARD_NOTES["tracks"] += _corner if REV == 1 else _corner[:3]       # R2: D6 only (its block below)
+if REV == 1:
+    BOARD_NOTES["vias"] = list(BOARD_NOTES["vias"]) + [("PWR_GND", 6.000 + _g, -25.600)]
 
 
 
@@ -2880,6 +3125,177 @@ for _ref, (_x, _y, _rot) in BOARD_NOTES["placements"].items():
     _dy = R2_MOVES.get(_ref, (0.0, 0.0))[1]
     assert abs((_y + BOARD_L / 2) - (_authored[_ref][1] + _dy + BOARD_L_R1 / 2)) < 1e-9, _ref
 
+if REV != 1:
+    # ── R2's NEW PARTS. Everything from here is in the frame the placements and tracks are in
+    # at this point; _FX is that frame's distance from the laminate's centre.
+    _FX = 4.75
+    def _f(_x, _y, _rot=0.0):
+        return (_x - _FX, _y, _rot)
+    _pl = BOARD_NOTES["placements"]
+    for _ref in "D1 R1 R2".split():
+        del _pl[_ref]
+
+    # THE BUCK LEFT THE -Y CORNER. It is BC's cell, 25 mm long, in the open strip north of D6,
+    # inductor going +X: the 1.8 A rail then starts 20 mm from FB1 rather than 47.
+    _BUCK = _f(-2.0, -16.9)[:2]
+    _CELL = dict(CIN_1="C2", CIN_2="C17", CIN_A="C3", CIN_B="C18", CBOOT="C4", CVCC="C63",
+                 RFBT="R11", RFBB="R12", COUT_1="C5", COUT_2="C64", COUT_HF="C65")
+    _pl["U5"] = _BUCK + (0.0,)
+    for _role, _ref in _CELL.items():
+        _pl[_ref] = BC.at(_BUCK, 0.0, *(BC.CORE.get(_role) or BC.BULK[_role]))
+    _pl["L1"] = BC.at(_BUCK, 0.0, *BC.BULK["L1"])
+    BOARD_NOTES["tracks"] += BC.copper(_BUCK, 0.0, v_in="+24V", v_out="V5_PRE")
+    BOARD_NOTES["vias"] += BC.vias(_BUCK, 0.0)
+    _yl = _LANE_Y + _sy                                 # the PWR_GND lane's y here
+    BOARD_NOTES["tracks"] += [
+        # the rest of COUT
+        ("V5_PRE", "F.Cu", 1.0, [BC.at(_BUCK, 0.0, BC.BULK["COUT_2"][0], -1.475)[:2],
+                                 BC.at(_BUCK, 0.0, BC.BULK["COUT_HF"][0], -1.475)[:2]]),
+        ("GND", "F.Cu", 1.0, [BC.at(_BUCK, 0.0, BC.BULK["COUT_2"][0], 1.60)[:2],
+                              BC.at(_BUCK, 0.0, BC.BULK["COUT_HF"][0], 1.60)[:2]]),
+        # the buck's feed, under D6: B.Cu off J7's 24 V post to the input link's via
+        ("+24V", "B.Cu", 0.8, [(_J7_V + _g, _yl), (BC.at(_BUCK, 0.0, *BC.VIN_LINK[0])[0], _yl),
+                               BC.at(_BUCK, 0.0, *BC.VIN_LINK[0])[:2]]),
+        # the lane from D6's anode to R60, the star point, at the west end of the input slab
+        ("PWR_GND", "F.Cu", 0.8, [(_D6_A + _g, _yl), _f(-12.0, _yl)[:2], _f(-12.0, -17.0)[:2]]),
+        ("GND", "F.Cu", 0.8, [_f(-12.0, -15.4)[:2], _f(-12.0, -14.5)[:2],
+                              BC.at(_BUCK, 0.0, BC.BULK["CIN_2"][0], 2.40)[:2]]),
+        # 1.8 A: straight down off COUT and east on In2, under J7's shoulder and U3, to U15
+        ("V5_PRE", "F.Cu", 1.0, [BC.at(_BUCK, 0.0, BC.BULK["COUT_2"][0], -1.475)[:2],
+                                 _f(13.2, -19.25)[:2], _f(14.4, -19.25)[:2]]),
+        ("V5_PRE", "In2.Cu", 1.2, [_f(13.2, -19.25)[:2], _f(14.4, -19.25)[:2], _f(15.2, -20.9)[:2],
+                                   _f(35.0, -20.9)[:2]]),
+        ("V5_PRE", "In2.Cu", 0.6, [_f(26.5, -20.9)[:2], _f(27.6, -19.8)[:2]]),
+        ("V5_PRE", "In2.Cu", 0.9, [_f(35.0, -20.9)[:2], _f(35.9, -20.0)[:2], _f(35.9, -8.85)[:2],
+                                   _f(43.0, -8.85)[:2],
+                                   _f(43.0, -5.2)[:2], _f(43.6, -4.6)[:2]]),
+        ("V5_PRE", "In2.Cu", 0.6, [_f(43.6, -4.6)[:2], _f(44.4, -4.55)[:2]]),
+        ("V5_PRE", "F.Cu", 1.0, [_f(28.2, -19.3)[:2], _f(28.2, -18.5)[:2]]),
+        ("V5_PRE", "F.Cu", 0.6, [_f(42.96, -5.45)[:2], _f(43.6, -4.6)[:2], _f(44.4, -4.55)[:2]]),
+        ("V5_PRE", "F.Cu", 0.6, [_f(44.4, -4.55)[:2], _f(44.88, -3.1)[:2]]),
+    ]
+    BOARD_NOTES["vias"] += [("V5_PRE",) + _f(_x5, _y5)[:2] for _x5, _y5 in (
+        (13.2, -19.25), (14.4, -19.25), (27.6, -19.8), (28.2, -19.3), (43.6, -4.6), (44.4, -4.55))]
+    # J1's two VBUS lands, either side of the pair: U15's end, and In2 across to the other
+    _jv = _f(46.2, -2.7)[:2], _f(46.2, 2.2)[:2]
+    BOARD_NOTES["vias"] += [("J1_VBUS",) + _jv[0], ("J1_VBUS",) + _jv[1],
+                            ("CC1",) + _f(44.95, -1.5)[:2], ("CC1",) + _f(44.95, 2.72)[:2]]
+    BOARD_NOTES["tracks"] += [
+        ("J1_VBUS", "F.Cu", 0.8, [_f(45.24, -5.45)[:2], _f(46.2, -4.5)[:2], _f(46.2, -2.7)[:2]]),
+        ("J1_VBUS", "F.Cu", 0.55, [_jv[0], _f(47.2, -2.7)[:2]]),
+        ("J1_VBUS", "In2.Cu", 1.0, list(_jv)),
+        ("J1_VBUS", "F.Cu", 0.55, [_jv[1], _f(47.2, 2.2)[:2]]),
+        # CC: U13 turned to face J1, B5 straight in, A5 under the pair
+        ("CC2", "F.Cu", 0.15, [_f(46.9, 1.5)[:2], _f(45.55, 1.5)[:2], _f(45.55, 4.4)[:2],
+                               _f(44.67, 4.4)[:2]]),
+        ("CC1", "F.Cu", 0.15, [_f(46.9, -1.5)[:2], _f(44.95, -1.5)[:2]]),
+        ("CC1", "In2.Cu", 0.15, [_f(44.95, -1.5)[:2], _f(44.95, 2.72)[:2]]),
+        ("CC1", "F.Cu", 0.15, [_f(44.95, 2.72)[:2], _f(44.95, 3.7)[:2], _f(44.67, 4.0)[:2]]),
+    ]
+    _r61 = (36.8 - _FX, -17.7)
+    BOARD_NOTES["tracks"] += [
+        ("+24V_JACK", "F.Cu", 3.0, [(_p2[0] + _g, _p2[1] + _sy), (_r61[0] + 3.2, -16.8)]),
+        ("+24V_JACK", "F.Cu", 1.3, [(_r61[0] + 3.2, -16.8), (_r61[0], -16.8)]),
+        ("+24V_IN", "F.Cu", 1.3, [(_r61[0], -18.6), (_QS[0] + _g, _QS[1] + _sy)]),
+    ]
+    # U15's corner is too tight for the stitcher: its grounds get declared vias, pin 2's
+    # under the package, the only side the V5_PRE feed leaves open
+    BOARD_NOTES["vias"] += [("GND",) + _f(43.7, -2.4)[:2], ("GND",) + _f(44.0, -6.4)[:2],
+                            ("GND",) + _f(41.9, -7.75)[:2], ("GND",) + _f(25.2, -18.45)[:2]]
+    BOARD_NOTES["tracks"] += [
+        ("GND", "F.Cu", 0.4, [_f(43.92, -3.1)[:2], _f(43.7, -2.4)[:2]]),
+        ("GND", "F.Cu", 0.4, [_f(42.96, -6.4)[:2], _f(44.0, -6.4)[:2]]),
+        ("GND", "F.Cu", 0.4, [_f(41.45, -6.75)[:2], _f(41.9, -7.75)[:2], _f(41.45, -8.75)[:2]]),
+        ("GND", "F.Cu", 0.25, [_f(24.1, -24.1)[:2], _f(24.6, -24.1)[:2]]),
+        ("GND", "F.Cu", 0.2, [_f(43.8, 3.45)[:2], _f(44.2, 3.45)[:2]]),
+        # U13's ground pins go to C66's ground end, and its +3V3 pin down the lane that leaves
+        ("GND", "F.Cu", 0.2, [_f(44.0, 3.45)[:2], _f(43.85, 3.05)[:2], _f(43.6, 2.5)[:2], _f(43.57, 1.75)[:2]]),
+        ("+3V3", "F.Cu", 0.2, [_f(44.6, 3.45)[:2], _f(44.55, 3.15)[:2], _f(44.35, 2.9)[:2], _f(44.35, 2.05)[:2],
+                               _f(44.53, 1.75)[:2]]),
+        ("GND", "F.Cu", 0.25, [_f(25.6, -19.7)[:2], _f(25.6, -18.95)[:2], _f(25.2, -18.45)[:2]]),
+    ]
+    BOARD_NOTES["net_widths"].update({"V5_PRE": 0.6, "J1_VBUS": 1.0, "+24V_JACK": 0.5})
+    _pl.update({
+        "R60": _f(-12.0, -16.2, 90.0),
+        "R3": _f(-8.9, -12.05), "R4": _f(-6.9, -12.2),     # J3's CC pull-downs: off the input slab
+        "J8": _f(-26.75, 20.8, 180.0),                     # 2.0 -Y of the MX126 pads: belt clamp 9 passes behind it
+        # R2-4: the shunt drops into the 24 V track's last leg
+        "R61": _f(36.8, -17.7, 270.0),
+        "D10": _f(20.0, -13.0), "U16": _f(25.1, -21.9, 90.0), "C70": _f(26.1, -18.1, 180.0),
+        "R23": _f(20.4, -15.4, 180.0), "C45": _f(18.2, -15.4, 180.0),
+        # R2-2, at J1, and its gate
+        "U15": _f(44.1, -6.4), "R45": _f(46.9, -7.0, 90.0), "C55": _f(44.2, -8.75), "C71": _f(44.4, -3.1, 180.0),
+        "C69": _f(50.5, -7.6), "U13": _f(44.0, 4.2, 180.0), "C66": _f(44.05, 1.75, 180.0), "R41": _f(46.1, 6.05),
+        "R42": _f(43.85, 6.2), "R43": _f(42.6, 1.7, 90.0), "R49": _f(40.9, -1.4), "Q4": _f(38.7, 4.4, 90.0),
+        "R54": _f(32.55, 2.6), "R44": _f(37.25, 1.6, 90.0), "Q5": _f(34.5, 5.0), "Q6": _f(40.4, 0.9, 180.0),
+        "R46": _f(34.55, 2.7), "R47": _f(35.2, 1.6),
+        "R37": _f(10.5, 10.5),                  # beside U12: out of U1's east-row lanes
+        "R48": _f(17.6, 7.2), "R50": _f(20.2, 7.0), "R51": _f(20.45, 8.1),     # I2C2 up, by U1
+        # the mux, on the pair's In2 run, and its bypass over pin 10
+        "U14": _f(-3.0, 12.6), "C67": _f(-2.85, 14.65),
+        # M43, on the hub's fourth port
+        "U17": _f(-8.0, -0.8, 90.0), "C68": _f(-11.6, -5.7),
+        "Q7": _f(-15.05, -5.3, 90.0), "R52": _f(-6.6, -5.1), "D9": _f(-14.5, -0.3, 90.0),
+    })
+    # The connections the router left boxed in, laid. Vias first, then copper, nets in turn.
+    def _pts(*_p):
+        return [_f(_x, _y)[:2] for _x, _y in _p]
+    BOARD_NOTES["vias"] += [(_n,) + _f(_x, _y)[:2] for _n, _x, _y in (
+        ("J1_VBUS", 41.65, 6.3), ("J1_VBUS", 33.9, 1.95),
+        ("ROLE_ID_N", 42.84, 3.18), ("ROLE_ID_N", 38.05, 2.75),
+        # pin escapes: U4's port 4 sits between the crystal's vias, POT_SCK starts under U10
+        ("HUB_DN4_DM", 2.0, -5.75), ("HUB_DN4_DM", -5.35, -5.0),
+        )]
+    BOARD_NOTES["tracks"] += [
+        ("HUB_DN4_DM", "F.Cu", 0.2, _pts((2.0, -4.94), (2.0, -5.75))),
+        ("HUB_DN4_DM", "In2.Cu", 0.2, _pts((2.0, -5.75), (1.45, -5.2), (-5.15, -5.2), (-5.35, -5.0))),
+        ("HUB_DN4_DM", "F.Cu", 0.2, _pts((-5.35, -5.0), (-6.09, -4.25), (-6.09, -3.28))),
+        # the sense divider's tap on J1_VBUS, off C69
+        ("J1_VBUS", "In2.Cu", 0.25, _pts((41.65, 6.3), (39.2, 6.3), (39.2, 4.05), (39.05, 3.9), (34.4, 3.9),
+                                         (34.4, 2.45), (33.9, 1.95))),
+        ("J1_VBUS", "F.Cu", 0.25, _pts((33.9, 1.95), (34.04, 2.7))),
+        ("ROLE_ID_N", "F.Cu", 0.2, _pts((43.4, 3.45), (42.84, 3.18))),
+        ("ROLE_ID_N", "In2.Cu", 0.2, _pts((42.84, 3.18), (42.2, 2.54), (38.26, 2.54), (38.05, 2.75))),
+        ("ROLE_ID_N", "F.Cu", 0.2, _pts((38.05, 2.75), (37.75, 3.3), (37.75, 3.78))),
+    ]
+    BOARD_NOTES["match"] += [
+        {"name": _name, "max_skew_mm": 8.3, "same_layer": _same, "max_vias": 2, "nets": _nets,
+         "why": _why} for _name, _same, _nets, _why in (
+            ("PI", True, ["PI_DP", "PI_DM"], "USB 2.0 high speed, U14 to the Pi: the west half of what was THRU"),
+            # same_layer off for the same reason as HUB_DN1: the hub and U14 order DM/DP
+            # oppositely (U14's channels are crossed for the THRU and PI pairs), so one
+            # conductor has to pass the other on another layer.
+            ("HUB_DN3", False, ["HUB_DN3_DP", "HUB_DN3_DM"],
+             "USB 2.0 high speed, hub port 3 to U14: J1 as a host port. 480 Mbps is 2,080 ps a bit; "
+             "the pin order forces the one layer change"),
+            # CH340C is a 12 Mbps device, 83 ns a bit, on a pair about 15 mm long: layers do not matter
+            ("HUB_DN4", False, ["HUB_DN4_DP", "HUB_DN4_DM"],
+             "USB 2.0 full speed, hub port 4 to the flash bridge"))]
+    # U14: J1's pair comes up from In2 east of the package, the Pi's goes down west of it; pins
+    # in the U14 notes in _r2_ports. HUB_DN3 leaves pins 1 and 2 for the router.
+    _ux, _uy = _f(-3.0, 12.6)[:2]
+    _uv = dict(dp_e=(_ux + 2.75, _uy - 0.2), dm_e=(_ux + 1.75, _uy + 0.8),
+               dm_w=(_ux - 1.85, _uy - 0.4), dp_w=(_ux - 2.65, _uy - 1.15))
+    BOARD_NOTES["vias"] += [("THRU_DP",) + _uv["dp_e"], ("THRU_DM",) + _uv["dm_e"],
+                            ("PI_DM",) + _uv["dm_w"], ("PI_DP",) + _uv["dp_w"]]
+    _yp, _ym = 9.4 + _sy, 9.9 + _sy         # the run's two rails
+    _cx = (-4.5, -11.3)
+    BOARD_NOTES["tracks"] += [
+        ("THRU_DP", "F.Cu", 0.2, [(_ux + 0.675, _uy - 0.25), _uv["dp_e"]]),
+        ("THRU_DM", "F.Cu", 0.2, [(_ux + 0.675, _uy + 0.25), (_ux + 1.2, _uy + 0.25), _uv["dm_e"]]),
+        ("PI_DM", "F.Cu", 0.2, [(_ux - 0.675, _uy - 0.25), (_ux - 1.15, _uy - 0.25), _uv["dm_w"]]),
+        ("PI_DP", "F.Cu", 0.2, [(_ux - 0.675, _uy - 0.75), (_ux - 1.15, _uy - 0.75),
+                                (_ux - 1.55, _uy - 1.15), _uv["dp_w"]]),
+        ("THRU_DP", "In2.Cu", 0.25, [(_cx[0], _yp), (_uv["dp_e"][0] + 0.4, _yp),
+                                     (_uv["dp_e"][0] + 0.4, _uy + 0.2), _uv["dp_e"]]),
+        ("THRU_DM", "In2.Cu", 0.25, [(_cx[0], _ym), (_uv["dm_e"][0] + 0.9, _ym),
+                                     (_uv["dm_e"][0], _ym - 0.9), _uv["dm_e"]]),
+        ("PI_DM", "In2.Cu", 0.25, [_uv["dm_w"], (_uv["dm_w"][0], _ym - 1.0),
+                                   (_uv["dm_w"][0] - 1.0, _ym), (_cx[1], _ym)]),
+        ("PI_DP", "In2.Cu", 0.25, [_uv["dp_w"], (_uv["dp_w"][0], _yp - 0.9),
+                                   (_uv["dp_w"][0] - 0.9, _yp), (_cx[1], _yp)]),
+    ]
+
 BOARD_NOTES["quality"] = {
     "decoupling": {"exempt": {
         "U10.6": "SHDN, a logic input strapped to +5V: it carries leakage only (1 uA, "
@@ -2927,11 +3343,13 @@ BOARD_NOTES["quality"] = {
         "J2.[AB]5": "J2 is not a port: the far end of the pass-through to the Pi, no CC resistor (note at J2)",
         "J7.[34]": "the trunk head carries no data: ways 3 and 4 have no conductor",
         "U1": {
-            "pins": "2 3 4 8 9 10 11 14 15 16 19 22 23 24 29 30 33 34 37 40 41 42 43 44 45 46 47 54 55 56 57 59 64 65 66",
+            "pins": ("2 3 4 8 9 10 11 14 15 16 19 22 23 24 29 30 33 34 37 40 41 42 43 44 45 46 47 54 55 56 57 59 64 65 66"
+                     if REV == 1 else
+                     "2 3 4 8 9 10 11 14 15 16 20 21 22 23 26 34 37 40 46 47 54 55 56 57 59 64 65 66"),
             "why": "GPIO this board gives no function: left open, firmware leaves it an input with pull-down"
         },
         "U4": {
-            "pins": "2 5 6 7 8 13 16 17 18 21 22 23 24",
+            "pins": "2 5 6 7 8 13 16 17 18 21 22 23 24" if REV == 1 else "2 13 16 17 18 21 22 23 24",
             "why": "CH334F: downstream ports 3 and 4 (two of its four are used: the MCU and J4), and its LED / power-enable / mode pins, left at their defaults"
         },
         "U5.4": "LMR16006 SHDN: left open is enabled (internal pull-up)",
@@ -3356,6 +3774,140 @@ BOARD_NOTES["quality"] = {
                "other contact on this board",
     },
 }
+
+if REV != 1:
+    # ── R2's notes. Each replaces R1's text outright; R1's stays above, for the board in hand.
+    BOARD_NOTES["silk_legend"] = True
+    _q = BOARD_NOTES["quality"]
+    _q["power_paths"] = [_e for _e in _q["power_paths"]
+                         if _e["net"] != "V5_PRE" and _e.get("to") != ["U5.5"]
+                         and not (_e["net"] == "+24V_IN" and _e["from"] in ("J6.2", "J6.4"))]
+    for _e in _q["power_paths"]:
+        if _e["net"].startswith("+24V") and _e.get("to") in (["F1.1"], ["J9.1"]):
+            _e["amps"] = 0.30                       # optical R2's worst case
+    _q["power_paths"] += [
+        {"net": "+24V_JACK", "from": "J6.2", "to": ["R61.1"], "amps": 6.67},
+        {"net": "+24V_JACK", "from": "J6.4", "to": ["R61.1"], "amps": 3.34},
+        {"net": "+24V_IN", "from": "R61.2", "to": ["Q2.3"], "amps": 6.67},
+        {"net": "+24V", "from": "Q2.2", "to": ["U5.2"], "amps": 0.40},
+        {"net": "V5_PRE", "from": "L1.2", "to": ["FB1.1"], "amps": 0.3},
+        {"net": "V5_PRE", "from": "L1.2", "to": ["U15.1"], "amps": 1.5},
+        {"net": "J1_VBUS", "from": "U15.6", "to": ["J1.A4", "J1.A9"], "amps": 1.5},
+    ]
+    _q["unconnected"]["J2.[AB]5"] = ("J2 is not a port: the far end of the path to the Pi, no CC "
+                                     "resistor (note at J2)")
+    del _q["unconnected"]["U5.4"]
+    _q["unconnected"]["U5.8"] = "LMR33630 PG: open drain, nothing here wants it"
+    _q["unconnected"]["U13.3"] = "PORT open: DRP (TUSB320 s7.4; firmware sets Try.SNK over I2C)"
+    _q["unconnected"]["U16.3"] = "INA226 Alert: polled over I2C, the governor reads it, nothing interrupts"
+    _q["unconnected"]["U17"] = {"pins": "7 8 9 10 11 12 15",
+                                "why": "CH340C: no modem lines, R232 has its own pull-down (DS p.4)"}
+    for _g in _q["net_groups"]:
+        if _g["name"].startswith("USB-C data") or _g["name"].startswith("each receptacle"):
+            _g["nets"] = 8                          # J1 and J2 are separate pairs now, across U14
+    _q["net_groups"][[_g["name"][:10] for _g in _q["net_groups"]].index("USB-C data")]["name"] = (
+        "USB-C data: J1 and J2 either side of U14, J3 and J4 a pair each")
+    _q["decoupling"]["exempt"].update({
+        "U16.8": "INA226 VBUS: a sense input, 10 uA",
+        "U16.9": "INA226 IN-: a sense input",
+        "U16.10": "INA226 IN+: a sense input",
+        "J6": "+24V_JACK is 5 mohm from C55 through R61",
+        "U17.16": "CH340C VCC: tied to V3 (pin 4), C68 beside it, 6 mm: 20 mA at 12 Mbit/s",
+    })
+    _q["pinouts"].update({
+        "LMR33630BRNXR": "TI LMR33630 SNVSAN3F table 6-1, RNX VQFN: 1 PGND 2 VIN 3 SW 4 BOOT 5 VCC "
+                         "6 AGND 7 FB 8 PG 9 EN 10 VIN 11 PGND 12 SW; the same pins as elec/buck_cell.py "
+                         "and the optical board's U13, EN on VIN",
+        "SWPA5040S4R7MT": "two-pad, unpolarised",
+        "TUSB320LAIRWBR": "TI TUSB320 SLLSEN9 pin table (RWB X2QFN-12) and drawing 4221631/B: 1 CC1 2 CC2 "
+                          "3 PORT 4 VBUS_DET 5 ADDR 6 INT_N/OUT3 7 SDA/OUT1 8 SCL/OUT2 9 ID 10 GND 11 EN_N "
+                          "12 VDD; land Steel:Texas_RWB0012A, from the same drawing",
+        "TS3USB221RSER": "TI TS3USB221 pin table (RSE UQFN-10): 1 1D+ 2 1D- 3 2D+ 4 2D- 5 GND 6 OE# 7 D- "
+                         "8 D+ 9 S 10 VCC. Board: channels used crossed, see _r2_ports",
+        "TPS2553DBVR": "TI SLVS841F p.5, DBV: 1 IN 2 GND 3 EN (active high on the 2553) 4 FAULT# 5 ILIM 6 OUT",
+        "INA226AIDGSR": "TI INA226 SBOS547 pin table (DGS VSSOP-10): 1 A1 2 A0 3 Alert 4 SDA 5 SCL 6 VS "
+                        "7 GND 8 VBUS 9 IN- 10 IN+",
+        "CH340C": "WCH CH340DS1-EN V3C pp.3-4, SOP16: 1 GND 2 TXD 3 RXD 4 V3 5 UD+ 6 UD- 13 DTR# 14 RTS# "
+                  "15 R232 16 VCC",
+        "AO3401A": "AOS AO3401A Rev 3.1 p.1 SOT23: 1 G, 2 S, 3 D",
+        "2N7002": "CJ 2N7002 SOT-23: 1 G, 2 S, 3 D",
+        "MX128-5.0-02P-Y": "maker's drawing MX128-5.0-XXP 22.09.14: 5.00 pitch, O1.40 holes, pin 1 "
+                           "at the lip end; two-way, the nets are one pickup's two leads",
+        "SMF24A": "SOD-123FL, 1 cathode (bar), 2 anode",
+    })
+    _q["waive"].update({
+        "A1:+24V_JACK J6.2>R61.1": "the neck at R61's 0805 land, 3 mm long: the land sets it. "
+                                   "1.6 W/m of rise for 6.67 A over 3 mm, into copper on both sides",
+        "A1:+24V_JACK J6.4>R61.1": "as J6.2",
+        "A1:+24V_IN R61.2>Q2.3": "as J6.2: 1.3 mm for 2 mm, between R61's land and Q2's source pad",
+    })
+    _m = _q["manual"]
+    _m["M6"] = ("USB 2.0 high speed on six pairs (HUB_UP, HUB_DN1, HUB_DN2, HUB_DN3, THRU, PI) and one full-speed "
+                "(HUB_DN4, to the CH340C), each declared over the In1 plane; verify: 7 groups, 0 problems, worst skew "
+                "3.91 mm. HUB_DN1 and HUB_DN3 change layer because their pin orders oppose; HUB_DN4 does not matter at "
+                "12 Mbps. I2S is 12.288 MHz MCK and 3 MHz BCK: not a length-matched bus")
+    _m["M11"] = ("finish.py's CAD check on the routed R2 board; the cached gate on this branch: 1046 components, 0 "
+                 "unintended overlaps, the rotating-part sweep and the carriage travel clean; check_overlaps "
+                 "--full (belts in): 1056 components, 0 unintended")
+    _m["M13"] = ("U5, the shared LMR33630 cell (elec/buck_cell.py), measured on the routed board: C3 and C18 (100 nF) "
+                 "0.75 and 1.2 mm from the VIN pins either side, C2 and C17 (10 uF) behind them on F.Cu; C4 0.8 mm from "
+                 "BOOT; C63 0.65 mm from VCC. The cell stands on GND, not PWR_GND, with R60 the star")
+    _m["M2"] = ("D4 (1N4148WT) and D9 (DSS16) pad 1 = K, D10 (SMF24A) pad 1 = K on +24V_IN. Q4 and Q7 "
+                "(AO3401A) source on +3V3; Q5 and Q6 (2N7002) source on GND. " + _m["M2"].split("D4 (1N4148WT)")[1].split(". ", 1)[1])
+    _m["M4"] = ("U5 (LMR33630BRNXR, buck_cell.py): two input pairs C3 and C18 at pins 2 / 1 and 10 / 11, "
+                "bulk C2 and C17, 10 uF / 50 V 1206; C4 bootstrap on pins 3 / 4; C63 on VCC")
+    _m["M7"] = ("U5: 1.0 V x (1 + 100k / 24.9k) = 5.02 V; 4.7 uH at 1.4 MHz gives about 0.77 A of "
+                "ripple at 24 V in, peak 2.2 A at 1.8 A out, against 3.50 A Isat")
+    _m["M14"] = ("L1 SWPA5040S4R7MT: Isat 3.50 A min against the LMR33630's 2.9-4.1 A low-side limit "
+                 "(buck_cell.py); DCR 39 mohm, 0.13 W at 1.8 A. Shielded")
+    _m["M15"] = ("U5 is internally compensated: COUT C5, C64 (22 uF / 16 V 0805) and C65, as the "
+                 "optical board's U13. U6 unchanged: 0.3 W worst case through its leads")
+    _m["M16"] = ("the inlet is hot-plugged by design. Ahead of the switch: C55 (100 nF / 50 V), Q2 "
+                 "(60 V), the sense divider, and on R2 U16, rated 40 V. A ring toward 49 V meets D10 "
+                 "(SMF24A, VBR 29.5 max, VC 38.9 at 5.1 A): with a 2 uH lead and C55, Z about 4.5 ohm, "
+                 "about 4.3 A and 37 V. Behind the switch the rail is raised by Q2 at about 2 V/ms "
+                 "(C49 across gate and drain), as on R1. J9 / J7 / J10 are plugged with the supply off")
+    _m["M18"] = ("the board's 3V3 and 5 V rise together from one buck. The Pi and the optical board "
+                 "are powered separately. J2's VBUS is dead-ended on purpose. J1's is live only "
+                 "through U15, which blocks reverse current (95-190 mV comparator) and is held off by "
+                 "Q5 while a host's VBUS is on the port, so J1 cannot back-feed V5_PRE. The switch "
+                 "lines on J10 are pulled from this board's inlet only")
+    _m["M20"] = ("I2C2 on U1 (PB10, PB11): U13 at 0x67, U16 at 0x40, 4k7 up (R50, R51), about 30 mm. "
+                 "No CAN. USB: CC per port role (A6). I2S as R1: 20-30 mm clocks, no series "
+                 "resistors, short stubs at the package")
+    _m["M21"] = ("one ground plane, joined to the power return at ONE point, R60, at the west end of "
+                 "the buck's input slab. The buck stands on the plane (its heat, M25), so what crosses "
+                 "R60 is the buck's own 24 V return, about 0.4 A, and the USB-ground share of the "
+                 "motors' return, about a tenth by conductor resistance, entering at J2 / J3 / J4 on "
+                 "the -X edge. Neither path passes the converters at +Y. The hot loops are on F.Cu, "
+                 "inside the cell. If motor noise is ever heard, R60 becomes a bead; it is an 0603")
+    _m["M23"] = ("panel port J1, dual role: clamps on the pair (M10), U13 on CC, U14 selecting Pi or "
+                 "hub port 3 from ROLE_ID_N, which rests on the Pi. U15 sources 1.5 A from V5_PRE. "
+                 "Hub (self-powered, 3.3 V): upstream on J3 with 5k1 per CC, downstream J4 with 56 k "
+                 "pull-ups and VBUS from this board's 5 V, 100 nF at the connector (C57); port 4 is "
+                 "the flash bridge. The MCU hangs on hub port 1 as R1, its pair recorded at the pair")
+    _m["M25"] = ("U1 and U4: exposed pads on GND with vias to the plane (A8). Q2: as R1. U6: 0.3 W "
+                 "worst case. U5: about 1.35 W at 1.8 A out, 24 V in (SNVSAN3F fig 9-15, 9-17, "
+                 "extrapolated from 1.1 W at 1.4 A); 57-60 C/W on the cell's copper (buck_cell.py) is "
+                 "about 80 C of rise, about 125 C at 45 C ambient: at the limit with a device drawing "
+                 "the full 1.5 A in a hot room, thermal shutdown at 170 C. Normal 0.3 A load: 0.9 W, "
+                 "about 100 C. U15: 135 mohm x 1.5 A squared, 0.3 W. R61: 0.22 W of 1 W at 6.67 A")
+    _m["M33"] = ("5 V: 0.3 A at the doubled worst case plus J1's 1.5 A, 1.8 A against the buck's 3 A. "
+                 "3V3: MCU 22 mA, ADC 19, DAC 31, hub up to 100, CH340C 20, U13 / U14 / U16 under 1, "
+                 "pulls 5: about 0.2 A through a 600 mA regulator. 24 V: this board's own draw is "
+                 "0.4 A at J1's full load; the rest passes through on copper checked for it (A1)")
+    _m["M36"] = ("J9: F1, 1 A. J1's VBUS: U15, 1.61-1.80 A, constant current, FAULT# to U1. J4's VBUS: "
+                 "behind the 1.3 A bead. J7 and J10 are the trunk itself: limited by the supply, on "
+                 "copper sized for all of it at the inlet and 3.8 / 2.9 A at each outlet; contact "
+                 "loading M32")
+    _m["M38"] = ("ceramics larger than 0805 are C2 and C17 (1206, in the buck cell, along the row) and "
+                 "the two 100 V jack capacitors. All connectors are on the panel edge or reachable "
+                 "from above")
+    _m["M43"] = ("R2. J3 -> U4 hub port 4 -> U17 CH340C -> U1 USART1, PA9 TX / PA10 RX. The Pi holds "
+                 "DTR# low (Q7 lifts BOOT0 over R7), pulses RTS# low (D9 pulls NRST), and the ROM "
+                 "loader answers, as on optical R2. No firmware of ours is involved, so a bad image "
+                 "is no obstacle; a dead bridge leaves the board booting normally. TP1-TP5 stay as "
+                 "clip-on pads for bring-up. Sources: CH340DS1-EN V3C, CH32V307 RM, optical M43")
 
 
 if __name__ == "__main__":

@@ -140,6 +140,11 @@ LCSC = {
     "KPJX-4S-S": "C2875467",        # Kycon KPJX-4S-S, 4-pin power jack; stock 44 on
                                     # 2026-10-01 -- THIN: check before a build of 10
     "MX126-5.0-02P": "C5188434",    # MAX MX126-5.0-02P-GN01-Cu-S-A, stock 48,416
+    "MX128-5.0-02P-Y": "C5188463",  # MAX MX128-5.0-02P-GN01-Cu-Y-A, slotted, stock 1,353 on 2026-10-30 -- output_panel R2 J8 (R2-3)
+    "TUSB320LAIRWBR": "C132554",    # TI USB-C role detect, X2QFN-12; 2,603 on 2026-10-30 -- THIN
+    "TS3USB221RSER": "C130085",     # TI USB 2:1 switch, UQFN-10; 64,390 on 2026-10-30
+    "SMF24A": "C169430",            # SOD-123FL TVS, 24 V stand-off, 200 W; 99,839 on 2026-10-30
+    "INA226AIDGSR": "C49851",       # TI power monitor, VSSOP-10; 42,364 on 2026-10-30
     # The two CLASS lines whose pinout the netlist actually writes out, so a part can be
     # checked against it pin for pin rather than chosen by name:
     "NMJ6HCD2": "C368502",          # Neutrik 1/4 in TRS jack, THT. 1350 in stock 2026-10-02
@@ -239,6 +244,10 @@ PASSIVES = {
     ("220nF/50V", "C_0603_1608Metric"):      "C64705",   # Samsung CL10B224KB8NNNC, 50 V X7R 10 %; 365,491 in stock
     ("0R", "R_0402_1005Metric"):             "C17168",   # UniOhm 0402WGF0000TCE; basic
     ("100R", "R_0402_1005Metric"):           "C25076",   # UniOhm 0402WGF1000TCE, 1 %; basic
+    ("1k", "R_0402_1005Metric"):             "C11702",   # UniOhm 0402WGF1001TCE, 1 %; basic
+    ("15k 1%", "R_0402_1005Metric"):         "C25756",   # UniOhm 0402WGF1502TCE, 1 %; basic
+    ("910k", "R_0402_1005Metric"):           "C25800",   # UniOhm 0402WGF9103TCE, 1 %; 30,482 on 2026-10-30. TI's 900k is 8 pieces at JLC
+    ("5mR 1W", "R_0805_2012Metric"):         "C6351848",  # Yageo PA0805FRF870R005L, 1 %; 10,923 on 2026-10-30 -- R2 inlet shunt
     ("100k", "R_0402_1005Metric"):           "C25741",   # UniOhm 0402WGF1003TCE, 1 %; basic
     ("100k 1%", "R_0402_1005Metric"):        "C25741",
     ("10k", "R_0402_1005Metric"):            "C25744",   # UniOhm 0402WGF1002TCE, 1 %; basic

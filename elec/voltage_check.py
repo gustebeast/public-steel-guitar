@@ -129,6 +129,8 @@ CAN_A = dict(v=5.0, vt=CAN_TVS["vbr_max"], vf=V24_STEADY,
 CAN_B = dict(v=5.0, vt=7.8, why="bus B: 5 V nodes; nothing above 5 V in its cable; transient = the "
                                  "ESD5B5.0 clamps' maximum breakdown (motor_ctrl D4 / D5, and each lever board's own)")
 
+_D10 = PARTS["C169430"]
+V24_INLET_CLAMP = _D10["vbr_max"] + (_D10["vc"] - _D10["vbr_max"]) * min(1.0, 4.3 / _D10["ipp"])
 # net -> spec.  ("abs", {...}) | ("like", net, dv) | ("ratio", net, k) | ("buck", ic, top, bot)
 #               | ("ldo", ic) | ("from", board, net)        -- last element is always the reason
 SEEDS = {
@@ -177,12 +179,15 @@ SEEDS = {
     },
     "output_panel": {
         "+24V": ("abs", RAIL24),
-        "+24V_IN": ("abs", dict(v=V24_STEADY, vt=max(V24_CLAMP, V24_LIVE_PLUG),
+        "+24V_JACK": ("like", "+24V_IN", 0.0, "the jack side of R61, 5 mohm from it"),
+        "+24V_IN": ("abs", dict(v=V24_STEADY, vt=max(V24_CLAMP, V24_INLET_CLAMP),
                                 why="inlet, ahead of the switch: steady as the rail; transient = a "
                                     "live plug ringing toward 2 x %.2f V into C55's 100 nF with "
-                                    "Q2 off (D6 is on the far side of Q2)" % V24_BRICK)),
+                                    "Q2 off, held by D10 (lead Z about 4.5 ohm, 4.3 A)" % V24_BRICK)),
+        "ROLE_VDET": ("abs", dict(v=1.0, vt=1.0, why="behind R41: TI's 900k keeps the pin under its 4 V "
+                                                    "at 28 V on VBUS, so under 1 V at 5.5 V")),
         "SW": ("like", "+24V", 0.0, "buck switch node: VIN while the high side is on"),
-        "V5_PRE": ("buck", "U5", "R11", "R12", "LMR16006: VFB max x (1 + top/bot), 1 % resistors; "
+        "V5_PRE": ("buck", "U5", "R11", "R12", "LMR33630: VFB max x (1 + top/bot), 1 % resistors; "
                                                "+5 % overshoot"),
         "+3V3": ("ldo", "U6", "AP2112K-3.3: 3.3 V +1.5 %; +3 % transient"),
         "VMID": ("ratio", "+5V", 0.5, "R17/R18 mid-rail"),
@@ -221,7 +226,9 @@ SEEDS = {
         "DAC_CAPM": ("abs", dict(lo=-3.4, v=0.0, vt=0.0, why="PCM5102A flying cap, negative side")),
         "THRU_DP": ("abs", dict(v=3.6, vt=3.6, vf=5.25, why="USB 2.0 data pass-through; FAULT = VBUS in the connector")),
         "THRU_DM": ("abs", dict(v=3.6, vt=3.6, vf=5.25, why="USB 2.0 data pass-through; FAULT = VBUS in the connector")),
-        "VBUS_PANEL_NC": ("abs", dict(v=5.25, vt=5.5, why="host VBUS on the cable; pads only (no PD negotiation: 5k1 on CC)")),
+        "PI_DP": ("abs", dict(v=3.6, vt=3.6, vf=5.25, why="USB 2.0 data, U14 to J2; FAULT = VBUS in the connector")),
+        "PI_DM": ("abs", dict(v=3.6, vt=3.6, vf=5.25, why="USB 2.0 data, U14 to J2; FAULT = VBUS in the connector")),
+        "J1_VBUS": ("abs", dict(v=5.25, vt=5.5, why="J1's VBUS: a host's on the cable, or U15 sourcing it; no PD, so 5 V either way")),
         "VBUS_PI_NC": ("abs", dict(v=5.25, vt=5.5, why="host VBUS on the cable; pads only")),
         "VBUS_UP_NC": ("abs", dict(v=5.25, vt=5.5, why="host VBUS on the cable; pads only")),
     },
@@ -300,6 +307,7 @@ RES_MODEL = {
         "R20": ("v", lambda L, R: L("+5V")["v"] / 2, "as R9; a TS plug shorts ring to sleeve"),
         "R13": ("i", lambda L, R: 3.0 / (R("R13") + R("R14") + R("R15")), "DAC peak into the 20 k attenuator"),
         "R23": ("i", lambda L, R: 3.0 / (R("R23") + R("R24") + R("R25")), "DAC peak into the 20 k attenuator"),
+        "R61": ("v", lambda L, R: 0.0334, "the inlet shunt: 6.67 A x 5 mohm"),
         "R33": ("v", lambda L, R: L("+24V_IN")["v"] / 2, "button held: R33+R34 across the inlet, half each"),
         "R34": ("v", lambda L, R: L("+24V_IN")["v"] / 2, "button held: R33+R34 across the inlet, half each"),
     },
@@ -371,7 +379,8 @@ CURRENTS = {
         ("J9", 1, 0.30, "optical board"),
         ("F1", None, 0.30, "optical board's declared input current"),
         ("FB1", None, 0.3, "board 5 V"),
-        ("L1", None, 0.3, "board 5 V"),
+        ("L1", None, 1.8, "board 5 V + J1's 1.5 A"),
+        ("J1", 1, 1.5, "J1 sourcing VBUS, U15's nominal (1.8 A at its limit)"),
         ("Q2", None, 6.67, "the brick's full output through the switch"),
     ],
     "optical": [

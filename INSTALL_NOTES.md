@@ -1214,3 +1214,16 @@ one plug at a time, so the order matters:
 2. Then feed the **USB lead's** head through flat, beside the pair. Its ribbon stays in the hole.
 3. The USB-C plug at J1 needs the wider pocket at the top of the hole: it backs off -Y into it
    to come out of its socket. Leave the pocket clear.
+
+## Output board R2: the panel USB-C port works both ways (2026-10-30)
+
+The panel socket J1 is one port with two jobs. Plug a computer in and it reaches the Pi, as before.
+Plug a USB device in (an audio interface such as a Shure MVX2U) and the board powers it, up to
+1.5 A, and connects it to the hub. Nothing to set.
+
+- J8 takes a **flat-blade** screwdriver now (slotted M2.5, 0.4 N m), wires 24-12 AWG.
+- Bring-up: with a device on J1, check VBUS at the port, the device's current on the inlet monitor,
+  and playback from Linux. Then a computer on J1 must still see the Pi's gadget port.
+- Bring-up: with no firmware loaded, J1 must still reach the Pi from a computer (the mux rests there).
+- Firmware flashing is over the Pi, hands-free, through the hub's fourth port. The pads TP1-TP5 are
+  only for first bench bring-up.
