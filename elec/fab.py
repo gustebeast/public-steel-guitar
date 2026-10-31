@@ -105,6 +105,7 @@ LCSC = {
     "TS5A3159DCKR": "C46388",        # SPDT analog switch, VIH 2.4 V at 5 V
     "RK73B3ATTE2R0J": "C5139521",    # 2 ohm 2512, KOA: optical R44, the 24 V input damper,
                                      # chosen for its one-pulse curve; 3,354 in stock 2026-10-05
+    "FRC2512F1R20TS": "C2960682",    # FOJAN 1.2 ohm 1 % 1 W 2512: optical R54, U8's input drop; 11,740 on 2026-10-31
     "BLM18KG601SN1D": "C85833",      # 0603 bead, 600R@100MHz, 1.3 A, DCR 150 mohm
     "1N4148WT": "C917006",           # SOD-523 switching diode, 75 V 150 mA
     "TAXM8M4RFDCET2T": "C403948",    # Yajingxin 8 MHz 3225, CL 12 pF, ESR 250 ohm max;

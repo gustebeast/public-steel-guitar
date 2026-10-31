@@ -1097,7 +1097,18 @@ def optical():
                     Pin(num=3, name="VI", func=P)])
     gnd += u8[1]
     v3d += u8[2]
-    v5_pre += u8[3]           # BUCK side: this LDO feeds the MCU and PHY
+    if OP.OPTICAL_REV == 1:
+        v5_pre += u8[3]       # BUCK side: this LDO feeds the MCU and PHY
+    # ⚠ R54 TAKES THE DROP U8 COULD NOT (R2, lead 2026-10-30). The hub and the bridge took U8 to
+    # 582 mA: 1.00 W over a SOT-223 thetaJC of 50.9 C/W, which no tab copper holds (M25). 1.2 R
+    # burns 0.41 W of it in a 1 W 2512, and C164 sits after it, so it also filters U8's input.
+    u8_in = v5_pre
+    if OP.OPTICAL_REV != 1:
+        u8_in = Net("U8_VIN")
+        r54 = _r("R54", "FRC2512F1R20TS", "U8 input series resistor, 1.2 R 1 % 1 W -- takes 0.41 W off U8 (LCSC C2960682)",
+                 "Resistor_SMD:R_2512_6332Metric")
+        v5_pre += r54[1]
+        u8_in += r54[2], u8[3]
     # ⚠ TPS7A2033, NOT THE SPX3819 THAT STOOD HERE (2026-10-04, quality M15). The SPX3819's
     # sheet gives no ceramic-capacitor stability at all: its application section asks for
     # "a high quality 2.2 uF aluminum electrolytic" or "a 1 uF tantalum" and says bench
@@ -1894,7 +1905,7 @@ def optical():
     # one 0805 and one BOM line already in the build.
     c164 = _c("C164", "10uF/16V", "U8 input bulk -- the only local cap on V5_PRE",
               "Capacitor_SMD:C_0805_2012Metric")
-    v5_pre += c164[1]
+    u8_in += c164[1]
     gnd += c164[2]
     # 100 nF, not 10: the TPS560430 datasheet specifies "a high quality 100-nF capacitor"
     # from CB to SW. Too small a bootstrap cap droops over the on-time and under-drives
@@ -2998,7 +3009,7 @@ BOARD_W, BOARD_L = BOARD_X1 - BOARD_X0, BOARD_Y1 - BOARD_Y0
 # layout region), so every hand-laid coordinate in this file -- written against R1's board --
 # would land off by the centre's move. They stay written in R1's frame: the copper builders
 # take placements against CY_DRAW, and _to_board_frame shifts the result once, below.
-CY_DRAW = CY if OP.OPTICAL_REV == 1 else (OP.PCB_YM_R1 + BOARD_Y1) / 2.0
+CY_DRAW = CY if OP.OPTICAL_REV == 1 else (OP.PCB_YM_R1 + 65.95) / 2.0   # 65.95: R1's +Y edge, before the rail came in
 
 def _buck_sw():
     """The buck's switch node, laid rather than routed: the one net on this board that
@@ -4746,11 +4757,27 @@ if OP.OPTICAL_REV != 1:
         elif _pp["net"] == "SW":
             _pp["amps"] = 1.20
         elif _pp["net"] == "V5_PRE" and _pp["to"] == ["U8.3"]:
-            _pp["amps"] = 0.57
+            _pp["to"] = ["R54.1"]
+            _pp["amps"] = 0.58
+    BOARD_NOTES["quality"]["power_paths"].append(
+        {"net": "U8_VIN", "from": "R54.2", "to": ["U8.3"], "amps": 0.58})
     _m = _q["manual"]
     def _r2(item, old, new):
         assert old in _m[item], (item, old)
         _m[item] = _m[item].replace(old, new)
+    _r2("M25", "U8's tab is VOUT (+3V3D), not ground, on its own land: 0.36 W typical. At ST's 85 C "
+        "all-peripherals maximum it would be 0.79 W, which a SOT-223 on this little copper should "
+        "not be asked to hold: firmware does not enable that set, and U8's temperature is on the "
+        "bring-up list.",
+        "U8's tab is VOUT (+3V3D), not ground, on its own land. Corner: 582 mA with the hub and "
+        "bridge. Without R54 that was 1.00 W, junction 45 + 12 (board) + 104 (53 C/W tab to air "
+        "solved off the routed copper, plus thetaJC 50.9, AP2114 Rev 2.2) = 161 C, on the 160 C "
+        "shutdown, and best-case tab copper still 153 C. R54, 1.2 R in series, takes 0.41 W "
+        "(41 % of a 1 W 2512; FOJAN FRC rates 1 W to 70 C, the board there is 57 to 65 C) and "
+        "leaves U8 0.59 W: 114 C at 10 W/m2K, 130 C at 6, against 150. Headroom: 4.9 V at V5_PRE "
+        "(5.02 V nominal less tolerance), 50 mV of track and 0.70 V in R54 leave 4.15 V, 0.85 V "
+        "over 3.3 V against 750 mV max dropout at 1 A. U8's temperature stays on the bring-up "
+        "list.")
     _r2("M6", "22.1 to 57.5 mm, a spread of 35.4 mm (about 0.23 ns)",
         "14.6 to 57.2 mm on R2, a spread of 42.5 mm (about 0.28 ns)")
     _r2("M8", "BOOT0: R30, 10k to ground (TP8 to hold it high). NRST: R31 10k up, C135.",

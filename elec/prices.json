@@ -2215,6 +2215,11 @@
       "verified": "v",
       "what": "ESD5B5.0ST1G C93623 -- JLCPCB parts API at qty 260"
     },
+    "optical:R54": {
+      "usd": 0.0421,
+      "verified": "v",
+      "what": "FRC2512F1R20TS C2960682 -- LCSC at qty 20, 2026-10-31"
+    },
     "optical:R44": {
       "usd": 0.5723,
       "verified": "v",

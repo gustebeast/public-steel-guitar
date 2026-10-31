@@ -1488,6 +1488,11 @@
    "v": 3.349,
    "why": "U7.5 (io) can reach its supply +3V3D"
   },
+  "U8_VIN": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "through R54"
+  },
   "U9_NC_4": {
    "v": 0.0,
    "why": "not connected"
@@ -2813,7 +2818,7 @@
   },
   "R35.1": {
    "max": 50.0,
-   "src": "element V -- 0402WGF1001TCE (C11702): JLCPCB parts API attributes for C11702 (0402WGF1001TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+   "src": "element V -- 0402WGF1001TCE (C11702): JLCPCB parts API attributes for C11702, fetched 2026-10-30"
   },
   "R36.1": {
    "max": 50.0,
@@ -2922,6 +2927,14 @@
   "R53.2": {
    "max": 50.0,
    "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R54.1": {
+   "max": 200.0,
+   "src": "element V -- FRC2512F1R20TS (C2960682): FOJAN FRC datasheet V3.0 p.4-5 (LCSC C2960682): 2512, 1 W at 70 C, 200 V"
+  },
+  "R54.2": {
+   "max": 200.0,
+   "src": "element V -- FRC2512F1R20TS (C2960682): FOJAN FRC datasheet V3.0 p.4-5 (LCSC C2960682): 2512, 1 W at 70 C, 200 V"
   },
   "R6.1": {
    "max": 50.0,
