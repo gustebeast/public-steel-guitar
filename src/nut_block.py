@@ -1324,22 +1324,27 @@ for _i in range(D.N_STRINGS):
     assert 0.0 <= screw_reach(_i) <= HS_REACH_MAX + 1e-9, f"string {_i + 1}'s screw reach is out of range"
 
 
+# THE LANES' FLOOR (user): the -X side's plastic stands up to the rod's underside less one string
+# clearance. One height for all ten, sized for the widest supported gauge, not a clearance per string.
+LANE_FLOOR = ROD_Z - ROD_D / 2.0 - _DROP_NEED
+
+
 def lanes() -> cq.Workplane:
-    """Every lane's way out -X, floor to sky: the clamp lobe carried past the bed face. What stands
+    """Every lane's way out -X, LANE_FLOOR to sky: the clamp lobe carried past the bed face. What stands
     between two lanes is a finger, held by the floor alone; the +X opening is the pockets' own."""
     out = None
     for i in range(D.N_STRINGS):
         (_dy, _dw), (cy, cw) = insert_lobes(i)
         c = _clr(i)
-        k = box_at(INS_X0 + 0.5 - (X_BACK - 1.0), cw + 2 * c, NUT_TOP + 1.0 - NUT_BASE,
-                   x=(INS_X0 + 0.5 + X_BACK - 1.0) / 2, y=cy, z=(NUT_TOP + 1.0 + NUT_BASE) / 2)
+        k = box_at(INS_X0 + 0.5 - (X_BACK - 1.0), cw + 2 * c, NUT_TOP + 1.0 - LANE_FLOOR,
+                   x=(INS_X0 + 0.5 + X_BACK - 1.0) / 2, y=cy, z=(NUT_TOP + 1.0 + LANE_FLOOR) / 2)
         out = k if out is None else out.union(k)
     # string 8 arrives past its clamp lobe's +Y edge, so that edge moves over for it as far +X as the
     # taper, where the pocket opens anyway: the finger it comes off is the one that carries the most
     y0, y1 = insert_lobes(N_FINGERED)[1][0] + insert_lobes(N_FINGERED)[1][1] / 2, _lane(N_FINGERED)[0]
     x1 = _plan(N_FINGERED)[2][0]
-    out = out.union(box_at(x1 - (X_BACK - 1.0), y1 - y0, NUT_TOP + 1.0 - NUT_BASE, x=(x1 + X_BACK - 1.0) / 2,
-                           y=(y0 + y1) / 2, z=(NUT_TOP + 1.0 + NUT_BASE) / 2))
+    out = out.union(box_at(x1 - (X_BACK - 1.0), y1 - y0, NUT_TOP + 1.0 - LANE_FLOOR, x=(x1 + X_BACK - 1.0) / 2,
+                           y=(y0 + y1) / 2, z=(NUT_TOP + 1.0 + LANE_FLOOR) / 2))
     return out
 
 
