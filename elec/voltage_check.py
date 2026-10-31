@@ -316,6 +316,7 @@ RES_MODEL = {
         "R42": ("i", 0.001, "MID reference: the photodiodes' microamps; 1 mA allowed"),
         "R43": ("i", 0.05, "bead damper in series with C134: ripple current only; 50 mA allowed"),
         "R44": ("i", 0.30, "buck input current, the board's own declared 0.30 A"),
+        "R54": ("i", 0.582, "U8 input: +3V3D at its 582 mA worst case (M25)"),
     },
 }
 

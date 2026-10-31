@@ -449,6 +449,15 @@
    "case": "0402",
    "src": "JLCPCB parts API attributes for C274897 (RC0402FR-079K09L, YAGEO), fetched 2026-10-06"
   },
+  "C2960682": {
+   "mpn": "FRC2512F1R20TS",
+   "kind": "res",
+   "p": 1.0,
+   "v": 200.0,
+   "ohm": 1.2,
+   "case": "2512",
+   "src": "FOJAN FRC datasheet V3.0 p.4-5 (LCSC C2960682): 2512, 1 W at 70 C, 200 V"
+  },
   "C5139521": {
    "mpn": "RK73B3ATTE2R0J",
    "kind": "res",

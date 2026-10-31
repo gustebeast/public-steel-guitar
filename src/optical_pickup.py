@@ -2674,7 +2674,7 @@ R2_FLASH = (
     ("C183", "U32 VCC bypass", "0402", 23.20, -100.40, 0.0),
     ("R52", "U31 OVCUR# pull-up", "0402", 15.60, -104.40, 0.0),
     ("R53", "Q2 gate pull-up: BOOT0 stays low until the bridge asserts DTR#", "0402", 16.20, -100.00, 0.0),
-    ("R54", "U8 input series resistor, 1.2 R: takes 0.41 W off U8 (M25)", "2512R", -29.25, -88.05, 90.0),
+    ("R54", "U8 input series resistor, 1.2 R: takes 0.41 W off U8 (M25)", "2512R", -29.25, -88.05, 270.0),
 )
 if OPTICAL_REV != 1:
     for _p in PARTS:
