@@ -769,7 +769,7 @@ def _build_full() -> cq.Workplane:
 # body wrap) over the leg, re-cutting the leg dovetail slot in it (_leg_shell).
 from . import nut_block as _NB                # nut_block imports dimensions + motor_bank only: no cycle
 KH_EP_THK     = _NB.KEYHEAD_W  # keyhead endplate thickness in X (= keyhead_endplate.T_EP),
-                               # DERIVED from its stow bores (user). The -X legs, their shells
+                               # held in nut_block.X_BACK. The -X legs, their shells
                                # and dovetails below all follow it by the flush-X rule.
 EP_LEG_CLR    = EP_TOP_CLR    # assembly clearance: endplate foot pocket vs the kept shell
                               # (= the top-joint clearance -- ONE value for both L joints)

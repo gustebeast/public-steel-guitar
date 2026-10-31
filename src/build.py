@@ -1429,12 +1429,9 @@ def _string_path(i, sy, rise_only=False):
     ny, wy = NB.wrap_y_drawn(i)                          # the coil AS WOUND (nut_block.WRAPS)
     rx, rz = D.NUT_BLOCK_X + NB.ROD_X, D.STRING_Z + NB.ROD_Z
     hr = NB.wrap_radius(i)                                 # helix radius: nut_block owns it
-    # THE WRAP IS ON THE ROD'S UNDERSIDE (-Z), so the path has no reversal left in it:
-    # the string leaves the dowel already descending, becomes TANGENT to the wrap circle
-    # on the way down, goes round underneath, and leaves at the bottom running straight
-    # -X to the clamp. TANGENCY is the part that has to be right -- aiming at the
-    # circle's lowest point instead would draw the string cutting through the rod on the
-    # way in. The touch point sits BREAK_ANGLE round from the bottom, +X side.
+    # THE STRING LANDS ON THE ROD'S UNDERSIDE: it leaves the dowel descending and becomes TANGENT to
+    # the wrap circle, on the +X side of the bottom, and the coil runs -X from there. TANGENCY is the
+    # part that has to be right.
     phi = NB.touch_angle(i)          # nut_block owns this -- see its docstring on why
     tang = cq.Vector(rx + hr * math.cos(phi), ny, rz + hr * math.sin(phi))
     # RUN THE STRAIGHT RUNS PAST THE TANGENT POINT, or they do not touch the coil.
@@ -1451,19 +1448,12 @@ def _string_path(i, sy, rise_only=False):
     # the .015 and 0.46 on the .070, well inside the string's own radius either way. The
     # wrap itself is untouched; this is the DEMO path's joinery, not the capstan geometry.
     _LAP = 2.0 * rad                                       # one string diameter of overlap
-    t_in = cq.Vector(-math.sin(phi), 0.0, math.cos(phi))   # the coil's heading at the touch
+    t_in = cq.Vector(math.sin(phi), 0.0, -math.cos(phi))   # the coil's heading at the touch
     out = out.union(_rod(brk, tang + t_in.multiply(_LAP), rad))
     out = out.union(_wrap_coil(i, rad, hr))
-    # THE TAIL FOLLOWS THE CHANNEL'S OWN CENTRELINE, from nut_block, so the string and the
-    # passage it lives in cannot drift apart -- the same one-description rule the pocket
-    # and the insert follow. It leaves at EXIT_DEG already descending, so there is no
-    # corner here at all: the -X run and the separate stow bore are both gone.
-    pts = NB.stow_route(i, (CH.Z_BOT + 8.4) - D.STRING_Z)   # stop above the tongue top
-    # The tail leaves the rod at the COIL's Y, but its bore sits behind the INSERT (nut_block.
-    # stow_y), so it crosses to the bore's Y as it rises in the socket: the exit and its stub
-    # stay on the coil, every point from the rise on follows the bore's axis -- which leans -Y
-    # as it descends (nut_block.STOW_TILT), so the descent is read off stow_y_at, not stow_y.
-    ys = [wy, wy] + [NB.stow_y_at(i, z) for _x, z in pts[2:]]
+    # THE TAIL runs level off the bottom of the rod, along the flat (nut_block.tail_route).
+    pts = NB.tail_route(i)
+    ys = [wy, wy]
     x0, z0 = pts[0]
     prev = cq.Vector(D.NUT_BLOCK_X + x0, wy, D.STRING_Z + z0)
     out = out.union(_bead(prev, rad * 1.05))                # see _bead: the tail leaves
@@ -1485,7 +1475,7 @@ def _wrap_coil(i, rad, hr):
     # right-handed helix then turns +X toward +Z -- phi INCREASING, which is the way the
     # string is already going when it meets the rod's top. Left-hand reverses that and
     # draws the coil winding back into its own entry.
-    helix = cq.Wire.makeHelix(pitch=p, height=h, radius=hr, lefthand=False)
+    helix = cq.Wire.makeHelix(pitch=p, height=h, radius=hr, lefthand=True)
     coil = (cq.Workplane("XZ").center(hr, 0).circle(rad)
             .sweep(cq.Workplane("XY").add(helix), isFrenet=True))
     # +90 about X (not -90): that lays the helix axis along -Y, so the coil marches
