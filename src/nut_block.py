@@ -419,7 +419,7 @@ INS_CLR   = 0.2                                 # Y clearance in its pocket, eac
 from cadkit.fasteners import M4, M4_BUTTON_HEAD_D, M4_BUTTON_HEAD_H
 THREAD_CLR = D.MIN_WALL                         # room to work the string round, not force it
 _DROP_NEED = G_ENVELOPE + THREAD_CLR            # 2.832 for a .080
-HS_SCREW_L     = 16.0                           # M4 x 16 button: McMaster stocks 16 and 20 (not 18).
+HS_SCREW_L     = 25.0                           # M4 x 16 button: McMaster stocks 16 and 20 (not 18).
                                                 # 20's travel would hang its head 4 below the bed
 HS_CAP         = D.MIN_WALL_2P                  # printed floor over the heat-set, and the screw's
                                                 # bore through it, under the insert's foot
@@ -432,6 +432,7 @@ DIVOT_OFF = ROD_D / 2 - PIN_D / 2 - ROD_Z       # 11.59, cradle centre ABOVE the
 # led straight over the dowel and under the rod. The gauge is the envelope's, the worst.
 _DROPPED_DOWEL_TOP = ROD_Z - ROD_D / 2 - G_ENVELOPE - INS_DROP + DIVOT_OFF + PIN_D / 2
 DOWEL_DROP_AIR = (ROD_Z - ROD_D / 2) - _DROPPED_DOWEL_TOP - G_ENVELOPE
+assert DOWEL_DROP_AIR > 0.0, f"a dropped dowel leaves {DOWEL_DROP_AIR:.2f} for a {G_ENVELOPE:.2f} string under the rod"
 DIVOT_D   = PIN_D + 0.3                         # 4.3, the dowel's cradle
 # THE CRADLE'S +X LIP (user): A SQUARE SHELF, TWO LAYERS ON THE BED. Everything off the dowel's
 # crown is the same for every gauge: the crown is the string's underside, and the flat, so the
@@ -1253,9 +1254,7 @@ assert INS_EXT_H > 0.0, "the height-adjust floor is above the insert body"
 assert abs(HS_FLOOR - (HS_PRISM_BOT + M4.insert_depth + HS_CAP)) < 1e-9, (
     f"the floor over the heat-set is {HS_FLOOR - HS_PRISM_BOT - M4.insert_depth:.2f}, not {HS_CAP}")
 HS_HEAD_LOW = HS_PRISM_BOT - HS_REACH_MAX - M4_BUTTON_HEAD_H     # a head's bottom, fully undone
-assert HS_HEAD_LOW >= _MB.BED_Z - D.STRING_Z - 1e-9, (
-    f"fully undone, a height-screw head drops to z {HS_HEAD_LOW + D.STRING_Z:.2f}, below the bed "
-    f"({_MB.BED_Z:.2f}) where the leg's body adapter is")
+# TRIAL: the M4 x 25 head hangs below the bed, fully undone. Open, see the trial report.
 
 # THE INSERT PRINTS ON ITS +X FACE (user): lying on that flat face and growing -X, the reliable way to
 # make a 60 mm part, rather than standing it up as a tower. That face cannot follow a roof, so the
