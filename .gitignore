@@ -25,3 +25,4 @@ elec/fonts/
 .webview/
 *.3mf
 .route-bbox.json
+.slicer_sweep/

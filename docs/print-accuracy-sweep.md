@@ -8,6 +8,11 @@ a1bb0d999, every exported printed part except `test_*`, in print pose, on the 0.
 profile (0.40 mm PETG GF). 61 parts. The two pedal lids are 330 long and do not fit the bed
 as exported, so they were measured turned 45 degrees.
 
+**Update, same day, after the follow-ups below:** the 0.010 seam film is gone, the lids run at 45
+degrees in the tool, and the pulleys ran on both nozzles. Real runs went from 393 to 386 and their
+error volume from 5,174 to 703 mm3. The tables below keep their first-pass ranks; the follow-up
+section overrides ranks 1, 4 and 6.
+
 ## How to read the numbers
 
 Two things produced impossible first results (errors of 40 to 60 mm) and were corrected:
@@ -57,10 +62,10 @@ three segments; `kv_housing` 46.60 is 0.200 off; `pedal_bar_a/b` 41.75 is 0.150 
 
 ## Not print error: model quirks that top a raw ranking
 
-- **`chassis_0/1/2` seam film, about 4,400 of the 5,174 mm3 total.** A wall 0.010 thick closes
-  the pockets at each seam end (x -426.829 to -426.819 on `chassis_1`, 443 mm2). It cannot print
-  and the pockets print open. A leftover from the seam trim or a pocket cut stopping just short.
-  Harmless on the bed, but it is not geometry anyone meant, and it hides the real ranking.
+- **`chassis_0/1/2` seam film, about 4,400 of the 5,174 mm3 total. FIXED.** A wall 0.010 thick
+  closed the seam cavity's mouth (x -426.829 to -426.819 on `chassis_1`, 443 mm2). `_seg_box` runs
+  each segment 0.01 past its split and the cavity started on the split. The cavity now starts
+  0.02 back (`_SEG_OVER`, through `halves(drop=)`). It never printed, so no part changes.
 - **`bridge_endplate` R5.9, 6.1 MISSING, 23.6 long, z 9.8 to 11.0.** The section runs along the
   crown of a horizontal cylinder, so the outline is a long thin strip. Not 6 mm of missing
   material. Not confirmed by section beyond the one layer plotted.
@@ -77,9 +82,33 @@ plain corner on a joint, which is the case `Printed` exists for.
 
 Use it only where a specific fit binds at a corner, on a real print.
 
-## Suggested next steps, in order
+## Follow-ups
 
-1. Identify the Ø5.1 chassis feature (rank 1). It is the largest real error on a possible fit.
-2. Re-run the pulleys on the 0.4 profile, or confirm they print on 0.8.
-3. Remove the 0.010 seam film, so the sweep ranks print error rather than this.
-4. Decide whether the pedal lids really print diagonally: 330 long does not fit the bed square.
+**The Ø5.1 is not a bore.** It is the R2.55 corner of the seam joint's cavity, axis Z, at
+(-201.62, 59.40) and (-201.62, -109.85) on `chassis_0`, the same on `chassis_1` at x -420.02.
+The tenon of the next segment enters it: `chassis_1`'s into `chassis_0`, `chassis_2`'s into
+`chassis_1`. Drawn clearance is 0.55 (`_SEG_CLR`). Measured from the sliced beads against the
+tenon, layer by layer: **0.34 at the tightest**, so 1.5 of EXCESS sits in the cavity's narrow tip
+and the tenon does not reach it. No fix: 0.34 is thinner than drawn, but 0.35 and 0.40 are known
+to fit on this joint (plate 8 D3). Nothing else is within 3.85 of those faces.
+
+**The Ø8.4 is the nut-height screw recess** in the `chassis_2` floor, R4.20, axis Z, z -81.19 to
+-71.35, at x -623.26 and the other stations. `nut_height_screw_N` enters it: a head of Ø7.6, 0.40
+radial clearance drawn, and 0.40 is also what the build reports to `nut_height_screw_2` and `_8`.
+The error is MISSING, so the printed wall stands back from the head and clearance goes up, not
+down. No fix.
+
+**Pulleys, PCTG, both nozzles (lead asks the user which one they print on):**
+
+| Part | 0.8 nozzle | 0.4 nozzle |
+| --- | --- | --- |
+| `motor_pulley` | 13 tooth runs, 0.41 MISSING | no site over 0.20 |
+| `screw_pulley_hi` | 14 tooth runs, 0.40 MISSING | no site over 0.20 |
+| `screw_pulley_lo` | 14 tooth runs, 0.40 MISSING | no site over 0.20 |
+
+**Pedal lids:** `pedal_lid_b` has no lateral site, `pedal_lid_a` one short run, 0.93 over 3.1.
+Whether they really print diagonally is still open: 330 long does not fit the bed square.
+
+**After the film, the largest real runs are** the `bridge_endplate` crown (not print error), the
+fret board boss V on `top_plate_3/4` (cosmetic), then the `chassis_2` recesses above. Nothing left
+on a fit calls for a geometry change.
