@@ -2249,11 +2249,12 @@ def cut_feel_rear(w, place, reach=0.0):
 # imports this module for the keeper's wound radius, so the constants have to live on
 # this side of that edge.
 CANB_WIRE_OD = 1.3                  # one bus-B conductor, 26 AWG, insulated
-CANB_BUNDLE_OD = 2.5                # the four of them together (BOM, Wire)
+CANB_BUNDLE_OD = (1.0 + math.sqrt(2.0)) * CANB_WIRE_OD   # 3.14: the four of them laid in a square
+CANB_FLAT_W = 4 * CANB_WIRE_OD      # 5.2: the same four laid side by side, the worst a hand winds
 KEEP_POST_D = 7 * D.NOZZLE_D        # 5.6 the barrel the slack winds onto
 KEEP_HEAD   = 3 * D.NOZZLE_D        # 2.4 of 45 deg flare at the top: the coil cannot
                                     # walk off, but it lifts over with a screwdriver
-KEEP_WOUND_D = 2 * (KEEP_POST_D + CANB_BUNDLE_OD) / 2.0 + CANB_BUNDLE_OD   # 10.6 wound OD
+KEEP_WOUND_D = 2 * (KEEP_POST_D + CANB_BUNDLE_OD) / 2.0 + CANB_BUNDLE_OD   # 11.9 wound OD
 # THE SUPPORT MATCHES THE POST, not the coil (user, 2026-09-23: "the supports could
 # also be cleaner to match the diameter of the post and join more aesthetically /
 # strongly"). It was as wide as the WOUND cable (10.6) -- a slab sticking out either side
@@ -2303,7 +2304,7 @@ KEEP_CLR_Y  = CR_Y1 - HOUS_HW + D.MIN_WALL_2P   # 11.5: the coil's inner face cl
                                     # screwdriver to get in (user: "move the columns
                                     # further from the lever so we have more space to
                                     # fit wiring").
-KEEP_COIL_R = (KEEP_POST_D + CANB_BUNDLE_OD) / 2.0       # wound centre line, 4.05
+KEEP_COIL_R = (KEEP_POST_D + CANB_BUNDLE_OD) / 2.0       # wound centre line, 4.37
 # THE POST STANDS ON THE BED AND GROWS TOWARD THE INSTRUMENT (user, 2026-09-23: "for
 # the cable winding posts, they create a print overhang... align them along the Z axis
 # instead of the Y axis", and "you can have the material for the cable winding start at

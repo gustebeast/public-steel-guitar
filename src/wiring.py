@@ -1984,6 +1984,7 @@ CANB_COIL_CLR = D.MIN_WALL / 2.0    # 0.4
 CANB_COIL_R = _KL.KEEP_COIL_R + CANB_COIL_CLR
 CANB_COIL_UP = 2 * D.BEAD            # 1.6 -- see lever_bus
 CANB_COIL_PITCH = 4 * D.BEAD        # 3.2 march per turn -- a bundle laid beside itself
+assert CANB_COIL_PITCH >= CANB_BUNDLE_OD, "the coil's turns run into each other"
 def _coil_layers():
     """[(radius, turns)] -- the slack wound in LAYERS, outer wraps riding on inner ones.
 
@@ -2006,6 +2007,11 @@ def _coil_layers():
         left -= n * 2.0 * math.pi * r
         r += CANB_BUNDLE_OD
     return out
+
+
+# THE POST TAKES THE SLACK EVEN WOUND FLAT: four wires side by side, the fattest a hand can lay them.
+assert max(n for _r, n in _coil_layers()) * _KL.CANB_FLAT_W <= _KL.KEEP_WIND_H, (
+    "the slack, wound flat, is taller than the keeper's winding height")
 
 
 def _coil_len(layers):
