@@ -865,6 +865,11 @@ def slide_insert(i: int) -> cq.Workplane:
     body = body.cut(teardrop_hole(DIVOT_D, CRADLE_L, (DOWEL_X, D.nut_y(i) - CRADLE_L / 2.0,
                                                       fz + DIVOT_OFF),
                                   (0.0, 1.0, 0.0), (-1.0, 0.0, 0.0), nozzle=0.0))
+    # THE NECK ENDS IN A FLAT (user), NOT THE POINT THAT FLANK LEAVES AGAINST ITS -X FACE: 45 deg, on the
+    # neck's last layers. Capped where the flank reaches the cradle's -X edge, so the flat is NECK_LIP
+    # wide, a bead on whole layers, and the seat, which ends lower at -135, is untouched.
+    cap_z = zc - (math.sqrt(2.0) - 1.0) * DIVOT_D / 2.0
+    body = body.cut(box_at(NECK_LIP + 1.0, 4000.0, 2.0, x=nx0 + (NECK_LIP - 1.0) / 2, y=0.0, z=cap_z + 1.0))
     return body
 
 
