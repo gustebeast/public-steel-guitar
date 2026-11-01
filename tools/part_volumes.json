@@ -27,7 +27,7 @@
   },
   "body_adapter": {
    "material": "petg-gf",
-   "volume_mm3": 83334.2
+   "volume_mm3": 83333.5
   },
   "body_adapter_mx_my": {
    "material": "petg-gf",
@@ -71,7 +71,7 @@
   },
   "chassis_2": {
    "material": "petg-gf",
-   "volume_mm3": 590557.9
+   "volume_mm3": 590558.7
   },
   "chassis_2_light": {
    "material": "pctg",
@@ -95,7 +95,7 @@
   },
   "keyhead_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 247517.0
+   "volume_mm3": 230968.1
   },
   "kl_axle": {
    "material": "pctg",
@@ -175,15 +175,15 @@
   },
   "nut_slide_insert_a": {
    "material": "pctg",
-   "volume_mm3": 5277.8
+   "volume_mm3": 3302.6
   },
   "nut_slide_insert_b": {
    "material": "pctg",
-   "volume_mm3": 7253.3
+   "volume_mm3": 4500.7
   },
   "nut_slide_insert_c": {
    "material": "pctg",
-   "volume_mm3": 12720.1
+   "volume_mm3": 7617.9
   },
   "optical_guard": {
    "material": "petg-gf",
