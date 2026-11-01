@@ -6,6 +6,10 @@ Not the instrument. It exists so that a missing lead is a missing object, seen b
 order goes in rather than on the day (docs/bench-order.md, Tools). Shown by
 `py -3.12 -m tools.flash_bench_view`, in a viewer tab of its own.
 
+THE BOARDS ARE THE R1s IN HAND (user, 2026-10-31), not the R2 design the rest of the model
+shows: this is a picture of the bench. The switch has to be set before board_geom is first
+imported, so the view runs in its own process and the assert below says if it did not.
+
 THREE STATIONS, one board each, set up one at a time (the lever sensor boards are not
 ordered yet and are flashed later, in their jig: src/lever_jig.py):
     motor     motor_ctrl                                                      WCH-LinkE
@@ -40,11 +44,18 @@ WHERE EVERY FIGURE COMES FROM
 """
 from __future__ import annotations
 
+import json
+import os
+import pathlib
+
 import cadquery as cq
 
 from cadkit.cables import oct_cable
 
-from . import board_geom as BG
+os.environ.update(OUTPUT_PANEL_REV="1", OPTICAL_REV="1", PI_CAP_REV="1")
+from . import board_geom as BG  # noqa: E402
+
+assert BG.OUTPUT_PANEL_REV == 1 and BG.OPTICAL_REV == 1, "board_geom was imported at R2 first"
 
 PITCH = 2.54                 # both probes' headers
 SOCKET_OUT = 8.0             # of a socket past the pin's tip
@@ -80,11 +91,13 @@ CHAIN = (
 )
 INLET = ("panel", "J6")      # where the brick's own plug goes
 # THE LEADS MADE ONCE, AT INSTRUMENT LENGTH (user, 2026-10-31): crimp to crimp, for the bench
-# and then the instrument. The longest conductor as src/wiring.py draws it (2026-10-31:
-# optical 173.0, power link 756.9, USB lead 192.2 of jacket + 4.3 of tail), + 10 of slack,
-# up to the next 5. Every conductor of a lead is cut the same. (lead, label)
-LEAD_MM = {"optical_power": ("OPTICAL POWER", 185), "power_link": ("POWER LINK", 770),
-           "motor_usb": ("USB TO PH-4", 210)}
+# and then the instrument. wiring.lead_cuts works them out, lay included; it cannot be imported
+# here (the R1 switch above), so they come through the file tools/lead_cuts.py writes.
+_CUTS = json.loads((pathlib.Path(__file__).resolve().parent / "lead_cuts.json")
+                   .read_text(encoding="utf-8"))
+LEAD_MM = {lead: (name, _CUTS[lead]) for lead, name in (
+    ("optical_power", "OPTICAL POWER"), ("power_link", "POWER LINK"),
+    ("motor_usb", "USB TO PH-4"))}      # (lead, label)
 LABEL_H = 9.0                # the labels' letters
 # USB: (lead, from, to, what it is). An end is a Pi USB-A port ("pi", n), a probe's own
 # socket ("linke", station) / ("stlink",), or a board's connector (station, ref).
@@ -223,16 +236,6 @@ def _usb(a, b, a_dir, b_dir, k):
     return oct_cable([a, a1, (a1[0], a1[1], top), (b1[0], b1[1], top), b1, b], USB_OD)
 
 
-def _board_solid(board):
-    """A board in its OWN frame (origin as routed, underside on z 0). The optical board
-    is drawn by its own module, where the instrument has it: brought back from there."""
-    if board != "optical":
-        return BOARDS.solid(board)
-    from . import optical_pickup as OP
-    dx, dy = OP._silk_to_world()
-    return OP.opt_pcb().translate((-dx, -dy, BG.load(board)["thickness_mm"] - OP.PCB_TOP))
-
-
 def _board_at(station):
     """(place, pad): the board's own frame onto the bench at its station, face up."""
     x0, y0 = AT[station]
@@ -259,7 +262,7 @@ def components():
         b = BOARD[st]
         x0, y0 = AT[st]
         place, pt = _board_at(st)
-        add("%s_board" % st, place(_board_solid(b)), BG.mask(b))
+        add("%s_board" % st, place(BOARDS.solid(b)), BG.mask(b))
         ink = BOARDS.ink(b)
         if ink is not None:
             add("%s_board_silk" % st, place(ink), (0.95, 0.95, 0.92))

@@ -60,6 +60,7 @@ from . import dimensions as D
 from . import chassis as CH
 from . import legs as LG                 # chassis already imports legs: no cycle
 from . import top_plate as TP
+from . import board_geom as BG
 from . import optical_pickup as OP
 from .endplate_base import endplate_base
 from .screw_rail import (screw_rail as _screw_rail, seat_cutter as _seat_cutter,
@@ -622,6 +623,34 @@ def _pcb_pad() -> cq.Workplane:
                   z=(PCB_PAD_BOT + PCB_PAD_TOP) / 2)
 
 
+# ── POCKETS FOR WHAT COMES THROUGH THE BOARD ─────────────────────────────────
+# The board bears on this pad, so anything through-hole needs somewhere to go (user, 2026-10-31):
+# J2's four legs, 3.4 under an untrimmed header (board_geom's XH tail), and each side of J1 its
+# two shell tabs and locating peg. The pockets are for R2; R1's J1 gets the same two, so a
+# board in hand seats on this plate as well, and R2 never sees them. Plain boxes: their
+# +X-facing wall is a ceiling in print (PRINT_UP -X), 2.4 to 7.2 long, so a short bridge.
+THT_POCKET_D = 5 * D.BEAD                     # 4.0: the longest tail + 0.6
+J2_POCKET = (13 * D.BEAD, 4 * D.BEAD)         # the row's lands, 9.2 x 1.95, + 0.6 all round
+J1_POCKET = (4 * D.BEAD, 9 * D.BEAD)          # tab and peg, x 2.56..4.82, y -1.85..4.18
+J1_POCKET_AT = (3.69, 1.165)                  # its centre off J1, +-x, in the board's frame
+J1_R1_WORLD = (11.481, -118.385)              # R1's J1 where the R1 board sits here
+assert THT_POCKET_D < PCB_PAD_TOP - PCB_PAD_BOT, "a pocket goes through the pad"
+
+
+def _tht_pockets() -> cq.Workplane:
+    dx, dy = OP._silk_to_world()
+    j1, j2 = BG.footprint("optical", "J1"), BG.footprint("optical", "J2")
+    x0, x1, y0, y1 = j2["tht"]
+    spots = [((x0 + x1) / 2 + dx, (y0 + y1) / 2 + dy, J2_POCKET)]
+    for cx, cy in ((j1["x"] + dx, j1["y"] + dy), J1_R1_WORLD):
+        spots += [(cx + sx * J1_POCKET_AT[0], cy + J1_POCKET_AT[1], J1_POCKET) for sx in (-1, 1)]
+    z = PCB_PAD_TOP - THT_POCKET_D / 2 + 0.5
+    out = cq.Workplane("XY")
+    for x, y, (lx, ly) in spots:
+        out = out.add(box_at(lx, ly, THT_POCKET_D + 1.0, x=x, y=y, z=z).val())
+    return out.combine()
+
+
 # ── THE O-BAND'S RELIEF ──────────────────────────────────────────────────────
 # The optical board is an O rather than a C now (optical_pickup.O_BAND_X0): its sensing
 # strip runs +X past the deck band and across this block, to give the digital nets a path
@@ -1182,7 +1211,7 @@ def _build() -> cq.Workplane:
     _rel = _o_band_relief()
     if _rel is not None:
         body = body.cut(_rel)
-    return body
+    return body.cut(_tht_pockets())       # after the same unions, the same reason
 
 
 def op_cradle():
