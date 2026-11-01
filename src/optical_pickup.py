@@ -4188,9 +4188,11 @@ assert GUARD_SEAT_Z - GUARD_T >= PCB_TOP, "no room for a 1.6 floor under the scr
 
 
 def _guard_windows():
-    """(x0, y0, x1, y1) notches for the parts that stand through the roof. Each runs out to
-    the board's -Y edge: they are connectors, and the plug comes in from there."""
+    """(x0, y0, x1, y1) openings for the parts that stand through the roof. R1's run out to
+    the board's -Y edge: its plug comes in from there. R2's are closed (user, 2026-10-31):
+    J2 is top entry and the leads come up the cable hole, so the roof carries on -Y of both."""
     out = []
+    edge = (lambda y: _G_Y0 - 5.0) if OPTICAL_REV == 1 else (lambda y: y - GUARD_OPEN_CLR)
     for ref in GUARD_WINDOW:
         x0, x1, y0, y1 = part_span(part(ref))
         a, c = x0 - GUARD_OPEN_CLR, x1 + GUARD_OPEN_CLR
@@ -4199,19 +4201,19 @@ def _guard_windows():
             a = _G_X0 - 5.0
         if _G_X1 - c < 2 * D.MIN_WALL_2P:
             c = _G_X1 + 5.0
-        out.append((a, _G_Y0 - 5.0, c, y1 + GUARD_OPEN_CLR))
+        out.append((a, edge(y0), c, y1 + GUARD_OPEN_CLR))
     # AND OVER J1'S NOTCH (lead, 2026-10-29: "nothing over the full X span of J1's notch").
     # R2's USB-C stands back in a notch in the board's -Y edge and its down-angle plug hangs in
     # it, and J2's 24 V pair rises out of its top-entry plug, crosses -Y of the roof's edge to
     # the notch and drops down it (pwr_col_x). The notch's own
     # span is opened out to the -Y edge like a connector's, and a strip of roof left between it
     # and J2's window -- two walls or less, which is where the pair crosses -- goes with it.
-    nx0, nx1, _ny0, ny1 = usb_notch()
-    win = [nx0 - GUARD_OPEN_CLR, _G_Y0 - 5.0, nx1 + GUARD_OPEN_CLR, ny1 + GUARD_OPEN_CLR]
+    nx0, nx1, ny0, ny1 = usb_notch()
+    win = [nx0 - GUARD_OPEN_CLR, edge(ny0), nx1 + GUARD_OPEN_CLR, ny1 + GUARD_OPEN_CLR]
     keep = []
     for w in out:
         if w[2] > win[0] - 2 * D.MIN_WALL_2P and w[0] < win[2] + 2 * D.MIN_WALL_2P:
-            win = [min(win[0], w[0]), win[1], max(win[2], w[2]), max(win[3], w[3])]
+            win = [min(win[0], w[0]), min(win[1], w[1]), max(win[2], w[2]), max(win[3], w[3])]
         else:
             keep.append(w)
     out = keep + [tuple(win)]
