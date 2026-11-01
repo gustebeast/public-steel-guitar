@@ -1006,7 +1006,9 @@ def _light_band():
     # bottom's whole span, and the -X +Y leg stub stood in that band -- 284 mm3 of transparent
     # material inside the adapter. The legs were there first, so the window gives way, and it
     # gives way exactly as far as the foot reaches and no further.
-    x0 = min(LEG_STATIONS_X) + LEG_W / 2
+    # ONE BEAD SHORT OF THE FOOT for now: the keyhead grew that far -X, the band sets the foot boards'
+    # X, and they are routed for this end. Take the bead out when foot_led_a is next routed.
+    x0 = min(LEG_STATIONS_X) + LEG_W / 2 + D.BEAD
     x1 = max(LEG_STATIONS_X) - LEG_W / 2
     x0, x1 = max(x0, _SHELL_NX), min(x1, _SHELL_PX)
     return box_at(x1 - x0, LIGHT_BAND_W, D.BOTTOM_T,
