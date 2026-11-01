@@ -640,9 +640,12 @@ assert THT_POCKET_D < PCB_PAD_TOP - PCB_PAD_BOT, "a pocket goes through the pad"
 def _tht_pockets() -> cq.Workplane:
     dx, dy = OP._silk_to_world()
     j1, j2 = BG.footprint("optical", "J1"), BG.footprint("optical", "J2")
-    x0, x1, y0, y1 = j2["tht"]
-    spots = [((x0 + x1) / 2 + dx, (y0 + y1) / 2 + dy, J2_POCKET)]
-    for cx, cy in ((j1["x"] + dx, j1["y"] + dy), J1_R1_WORLD):
+    spots, j1s = [], [J1_R1_WORLD]
+    if OP.OPTICAL_REV != 1:                   # under R1 this reads R1's board: no tails, J1 there
+        x0, x1, y0, y1 = j2["tht"]
+        spots.append(((x0 + x1) / 2 + dx, (y0 + y1) / 2 + dy, J2_POCKET))
+        j1s.insert(0, (j1["x"] + dx, j1["y"] + dy))
+    for cx, cy in j1s:
         spots += [(cx + sx * J1_POCKET_AT[0], cy + J1_POCKET_AT[1], J1_POCKET) for sx in (-1, 1)]
     z = PCB_PAD_TOP - THT_POCKET_D / 2 + 0.5
     out = cq.Workplane("XY")

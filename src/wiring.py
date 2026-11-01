@@ -526,7 +526,11 @@ def optical_feed():
     mid = [(q[0], q[1], q[2]) for q in old[2:-3]]
     # J2 is TOP ENTRY: the pair leaves the plug UP (out_a), to the level the old centre line
     # crosses at (old[0], over the plug), then follows it
-    centre = ([ac, (ac[0], ac[1], old[0][2]), (ac[0], old[1][1], old[0][2])] + mid
+    head = [ac, (ac[0], ac[1], old[0][2]), (ac[0], old[1][1], old[0][2])]
+    if OP.OPTICAL_REV == 1:     # R1's J2 enters from the side: straight out of it first
+        lead = tuple(ac[m] + CANB_LEAD * out_a[m] for m in range(3))
+        head = [ac, lead, (lead[0], lead[1], old[0][2])] + head[2:]
+    centre = (head + mid
               + [(bc[0], old[-3][1], old[-3][2]), (bc[0], bc[1], old[-3][2]), bc])
     half = (a[1][0][0] - a[0][0][0]) / 2.0
     legs = bundle_paths(centre, [(0.0, -half), (0.0, half)], across=(1.0, 0.0, 0.0))
