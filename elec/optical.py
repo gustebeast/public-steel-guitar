@@ -3409,6 +3409,7 @@ BOARD_NOTES = {
     # (route.py's own curve -- 1 -> 105, 3 -> 50, 10 -> 13, 25 -> 6, 50 -> 3 -- is from
     # before the pre-lay existed. Ten now lands at 5, not 13.)
     "router_passes": 10,
+    "thermal_pads": ["R30.2", "R32.2", "R33.2", "R35.2", "R37.2", "R38.2", "R41.2"],  # M29
     # How far route.py's post-route repair may reach to join two ends of one net it finds
     # in different islands. 7.0 because a route left I2C2_SDA 5.85 mm short of its own
     # spine -- the router came the whole way from R51 and stopped just before the
@@ -4765,8 +4766,8 @@ if OP.OPTICAL_REV != 1:
     _m["M29"] = ("four layers, 1.6 mm, 1 oz outside and 0.5 oz inside: JLCPCB's standard table, read 2026-10-04 "
                  "(A12 measured against it). Two-pad balance read off the routed board, 2026-11-01: seven 0402s had "
                  "one pad solid in the outer GND pour and the other on a 0.25 track (R30, R32, R33, R35, R37, R38, "
-                 "R41). Their GND pads now take thermal spokes, set on the kept board (no track moved, DRC unchanged, "
-                 "a re-route must set them again). R42 has three 0.25 tracks against one, which is no pour")
+                 "R41). Their GND pads now take thermal spokes (thermal_pads; no track moved, DRC unchanged). "
+                 "R42 has three 0.25 tracks against one, which is no pour")
     def _r2(item, old, new):
         assert old in _m[item], (item, old)
         _m[item] = _m[item].replace(old, new)
