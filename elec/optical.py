@@ -4762,6 +4762,11 @@ if OP.OPTICAL_REV != 1:
     BOARD_NOTES["quality"]["power_paths"].append(
         {"net": "U8_VIN", "from": "R54.2", "to": ["U8.3"], "amps": 0.58})
     _m = _q["manual"]
+    _m["M29"] = ("four layers, 1.6 mm, 1 oz outside and 0.5 oz inside: JLCPCB's standard table, read 2026-10-04 "
+                 "(A12 measured against it). Two-pad balance read off the routed board, 2026-11-01: seven 0402s had "
+                 "one pad solid in the outer GND pour and the other on a 0.25 track (R30, R32, R33, R35, R37, R38, "
+                 "R41). Their GND pads now take thermal spokes, set on the kept board (no track moved, DRC unchanged, "
+                 "a re-route must set them again). R42 has three 0.25 tracks against one, which is no pour")
     def _r2(item, old, new):
         assert old in _m[item], (item, old)
         _m[item] = _m[item].replace(old, new)

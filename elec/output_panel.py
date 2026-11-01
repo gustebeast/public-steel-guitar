@@ -3843,6 +3843,11 @@ if REV != 1:
         "A1:+24V_IN R61.2>Q2.3": "as J6.2: 1.3 mm for 2 mm, between R61's land and Q2's source pad",
     })
     _m = _q["manual"]
+    _m["M29"] = ("four layers, 1.6 mm, 1 oz outside and 0.5 oz inside: JLCPCB's standard table, read 2026-10-04 "
+                 "(A12 measured against it). Two-pad balance read off the routed board, 2026-11-01: no 0402 or SOD-523 "
+                 "has one pad in a pour and not the other. Widest track difference: C18 0.4 + 0.7 against 0.25, R32 0.5 "
+                 "+ 0.5 against 0.25, D8 0.5 x 2 against 0.25. All tracks, 0.7 the widest against a 0.56 pad; left as "
+                 "they are")
     _m["M6"] = ("USB 2.0 high speed on six pairs (HUB_UP, HUB_DN1, HUB_DN2, HUB_DN3, THRU, PI) and one full-speed "
                 "(HUB_DN4, to the CH340C), each declared over the In1 plane; verify: 7 groups, 0 problems, worst skew "
                 "3.91 mm. HUB_DN1 and HUB_DN3 change layer because their pin orders oppose; HUB_DN4 does not matter at "
