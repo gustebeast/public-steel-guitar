@@ -1345,7 +1345,7 @@ def _string_components(i):
     # viewing it, never saw one. Same placement as there, from the same module.
     out.append((f"nut_slide_insert_{i}",
                 NB.slide_insert(i).translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))))
-    # ...and the M4 x 16 that pushes it up, threading its heat-set in the endplate slab
+    # ...and the M4 x 25 that pushes it up, threading its heat-set in the endplate slab
     out.append((f"nut_height_screw_{i}",
                 NB.height_screw(i).translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))))
     out.append((f"nut_height_insert_{i}",
@@ -1429,9 +1429,9 @@ def _string_path(i, sy, rise_only=False):
     ny, wy = NB.wrap_y_drawn(i)                          # the coil AS WOUND (nut_block.WRAPS)
     rx, rz = D.NUT_BLOCK_X + NB.ROD_X, D.STRING_Z + NB.ROD_Z
     hr = NB.wrap_radius(i)                                 # helix radius: nut_block owns it
-    # THE STRING LANDS ON THE ROD'S UNDERSIDE: it leaves the dowel descending and becomes TANGENT to
-    # the wrap circle, on the +X side of the bottom, and the coil runs -X from there. TANGENCY is the
-    # part that has to be right.
+    # THE STRING LANDS ON THE ROD'S TOP: it leaves the dowel descending and becomes TANGENT to the wrap
+    # circle, just -X of the crown, and the coil runs on down the -X side. TANGENCY is the part that has
+    # to be right.
     phi = NB.touch_angle(i)          # nut_block owns this -- see its docstring on why
     tang = cq.Vector(rx + hr * math.cos(phi), ny, rz + hr * math.sin(phi))
     # RUN THE STRAIGHT RUNS PAST THE TANGENT POINT, or they do not touch the coil.
@@ -1448,13 +1448,13 @@ def _string_path(i, sy, rise_only=False):
     # the .015 and 0.46 on the .070, well inside the string's own radius either way. The
     # wrap itself is untouched; this is the DEMO path's joinery, not the capstan geometry.
     _LAP = 2.0 * rad                                       # one string diameter of overlap
-    t_in = cq.Vector(math.sin(phi), 0.0, -math.cos(phi))   # the coil's heading at the touch
+    t_in = cq.Vector(-math.sin(phi), 0.0, math.cos(phi))   # the coil's heading at the touch
     out = out.union(_rod(brk, tang + t_in.multiply(_LAP), rad))
     coil = _wrap_coil(i, rad, hr)
-    # THE TAIL runs level off the bottom of the rod, along the flat, then down its stow bore, which
+    # THE TAIL runs level off the top of the rod, over the lane, then down its stow bore, which
     # leans -Y as it descends (nut_block.tail_route, .stow_y_at).
     pts = NB.tail_route(i)
-    ys = [wy, wy, NB.stow_y_at(i, pts[2][1]), NB.stow_y_at(i, pts[3][1])]
+    ys = [wy, wy] + [NB.stow_y_at(i, z) for _x, z in pts[2:]]
     x0, z0 = pts[0]
     prev = cq.Vector(D.NUT_BLOCK_X + x0, wy, D.STRING_Z + z0)
     tail = _bead(prev, rad * 1.05)                          # see _bead: the tail leaves
@@ -1478,13 +1478,13 @@ def _wrap_coil(i, rad, hr):
     # right-handed helix then turns +X toward +Z -- phi INCREASING, which is the way the
     # string is already going when it meets the rod's top. Left-hand reverses that and
     # draws the coil winding back into its own entry.
-    helix = cq.Wire.makeHelix(pitch=p, height=h, radius=hr, lefthand=True)
+    helix = cq.Wire.makeHelix(pitch=p, height=h, radius=hr, lefthand=False)
     coil = (cq.Workplane("XZ").center(hr, 0).circle(rad)
             .sweep(cq.Workplane("XY").add(helix), isFrenet=True))
     # +90 about X (not -90): that lays the helix axis along -Y, so the coil marches
     # toward the THICKER neighbour and the fattest one runs out into free air.
     # ...then -90 about its OWN axis, which is what puts the start of the wrap on the
-    # ROD'S UNDERSIDE. makeHelix begins at angle 0 -- the +X side -- and leaving it there
+    # ROD'S TOP. makeHelix begins at angle 0 -- the +X side -- and leaving it there
     # would draw the string entering at the rod's mid-height, which is the reversal this
     # whole change exists to remove.
     coil = coil.rotate((0, 0, 0), (1, 0, 0), 90.0)
@@ -2476,7 +2476,7 @@ _COLORS = {
     "belt":            (0.13, 0.13, 0.13),   # GT2 black
     "string":          (0.85, 0.85, 0.85),
     "break_dowel":     (0.75, 0.75, 0.78),
-    "nut_height_screw": (0.72, 0.74, 0.78),   # M4 x 16 button, pushes the insert up
+    "nut_height_screw": (0.72, 0.74, 0.78),   # M4 x 25 button, pushes the insert up
     "nut_height_insert": (0.72, 0.60, 0.30),  # M4 heat-set in the keyhead slab
     "nut_slide_insert": (0.86, 0.72, 0.30),   # the sliding insert -- brass-ish, so it
                                               # reads apart from the steel it presses on

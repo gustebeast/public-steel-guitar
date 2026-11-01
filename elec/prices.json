@@ -113,14 +113,14 @@
       "order": "7 x $9.44 (pack of 100) = $66.08 for 700 needed",
       "what": "M4x10 -- 10 CAN tees, 2 bay boards, 2 fret boards, 1 UI clamp (was M4x12), and per sensed control x 11: 2 position + 2 spring-tension (the feel cartridges) + 1 in the axle's -Y end"
     },
-    "m4_button_16": {
-      "usd": 0.155,
+    "m4_button_25": {
+      "usd": 0.2182,
       "verified": "v",
       "per_instrument": 10,
       "vendor": "McMaster-Carr",
-      "sku": "92095A194",
-      "order": "1 x $15.50 (pack of 100) = $15.50 for 100 needed",
-      "what": "M4x16 -- 10 keyhead nut-height screws (nut_block.HS_SCREW_L)"
+      "sku": "92095A197",
+      "order": "2 x $10.91 (pack of 50) = $21.82 for 100 needed",
+      "what": "M4x25 -- 10 keyhead nut-height screws (nut_block.HS_SCREW_L). $10.91 per pack of 50, read 2026-11-01"
     },
     "m4_button_20": {
       "usd": 0.2368,

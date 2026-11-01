@@ -1241,35 +1241,35 @@ Plug a USB device in (an audio interface such as a Shure MVX2U) and the board po
 
 - **Where:** `keyhead_endplate`, the row of bores through the end blocks and all the fingers, and
   `nut_wrap_rod`.
-- **Do:** slide the rod in from -Y until it stops against the wall at +Y, by hand. If it binds, clean
-  the tight bore with a round file. Do not ream the bores. To take it out, push the 2.5 key's long arm
-  into the small hole in the +Y face, along the rod, until the rod's -Y end stands out to grip.
+- **Do:** slide the rod in from the keyhead's -Y face until it stops against the wall at +Y, by hand. If
+  it binds, clean the tight bore with a round file. Do not ream the bores. To take it out, strings off,
+  push the 2.5 key's long arm all the way into the small hole in the keyhead's +Y face: the rod's -Y end
+  then stands about 7 mm out of the -Y face to grip.
 - **Why:** a bore printed about 0.1 out of line is fine. The rod is stiffer than the fingers, so a high
   finger takes more at first, then creeps a little and hands the excess to its neighbours and the end
   blocks. Expect the rod to settle 0.1-0.2 mm in the first weeks at tension; retune.
 
-## Stringing: the string goes UNDER the rod and wraps up
+## Stringing: the string goes OVER the rod and round
 
-- **Where:** every string, `nut_wrap_rod`, `nut_slide_insert_*`.
+- **Where:** every string, `nut_wrap_rod`, `nut_slide_insert_*`, the M4 x 25 height screws.
 - **Do, for each string:**
-  1. Back the string's height screw right off, so the insert drops 5.8 mm. That opens a slot under the
-     rod, 2.8 mm tall at its tightest: the -X plastic stands to one .080 and 0.8 mm under the rod.
-  2. Bring the string in over its dowel and pass the tip -X **under** the rod, straight along X by
-     hand, and out through the lane's open -X end.
-  3. Take the tip up the -X side, over the top of the rod and down the +X side, then back -X under
-     the rod. Grab it on whichever side it comes out. Each turn lies on the **-Y** side of the last.
-     Three full turns, the same on every string, none crossing.
-  4. Lead the tail -X along the top of the insert and over the lane floor. Cut it about 60 mm past the
-     stow hole in that floor, bend it down and push it into the hole with your fingers.
+  1. Back the string's height screw right off with the 2.5 key, from under the keyhead, so the insert
+     drops 14.8 mm. The dowel goes with it, 2.4 mm below the rod, and the head stops just inside the bed.
+  2. Bring the string in over the dowel and over the **top** of the rod, then down the -X side.
+  3. Take the tip under the rod, in the room the insert left, up the +X side and back over the top. Each
+     turn lies on the **-Y** side of the last. Three full turns, the same on every string, none crossing.
+  4. The tail leaves over the top of the rod, heading -X out along the lane. Cut it about 60 mm past the
+     stow hole in the lane floor, bend it down and push it into the hole with your fingers.
   5. Pull the string snug and tighten the height screw until the insert clamps the coil against the
      rod. Bring it to pitch.
-- **Why:** the old way, over the top of the rod and round under it, could not be done: a stiff tip binds
-  under the rod and the top panel closes the +X side. Nothing should guide the tip and no special
-  tool is needed. Clamping is what the coil's last turn and the tail rely on: about 9 N is left there
-  (assuming friction 0.15).
+- **Why:** the string was wound the other way for a while so a tip could be fed under a high rod, but
+  the bar's cutaway left too little plastic over that rod. So the rod came down into the plate and the
+  winding went back. Clamping is what the coil's last turn relies on: about 9 N is left there (assuming
+  friction 0.15).
 - **Tails:** each goes down its own hole in the lane floor, -X of the insert, so nothing stands past
   the -X face. The bend at the mouth and the clamped coil hold it; no tool needed. ⚠ Tail length and
   hold are not bench-tested.
-- ⚠ **Not tried yet** on the real part. `test_wrap_lift` tests this winding, the insert fit and the tail
-  hold. It uses an upside-down printed insert, not the new one.
+- ⚠ **Not tried yet** on the real part. `test_wrap_s1` is a slice of the real keyhead at string 1. It tests
+  the drop, the wind, a light clamp and the slide down the stow hole. It has no deck panel, so it does
+  not test reaching in past the panel, and threading a stiff .080 is still unproven.
 
