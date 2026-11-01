@@ -132,7 +132,7 @@ def _silkfit(stem):
         # ⚠ THE INK FLOOR COMES OUT OF THE FAB TABLE, not a second copy of 0.15.
         # quality.py owns that table and A12 grades the result against the same
         # entry, so a fab change moves the fixer and the rule together.
-        floor = None
+        floor, raised = None, 0
         try:
             qpath = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                  "quality.py")
@@ -146,12 +146,12 @@ def _silkfit(stem):
             print("  silk ink NOT raised (%s: %s): A12 decides"
                   % (type(exc).__name__, exc))
         if floor:
-            mod.thicken_ink(board, floor, pcbnew=pcbnew, log=lambda m: print(" " + m))
+            raised = mod.thicken_ink(board, floor, pcbnew=pcbnew, log=lambda m: print(" " + m))[0]
 
         moved, demoted, kept = mod.fit_refs(
             board, notes=notes.get("quality", {}) or {},
             log=lambda m: print(" " + m), pcbnew=pcbnew)
-        if moved or demoted:
+        if raised or moved or demoted:
             board.Save(stem + ".kicad_pcb")
     except Exception as exc:                                # noqa: BLE001
         print("  silkfit FAILED (%s: %s): silk may be clipped -- A18 decides"
