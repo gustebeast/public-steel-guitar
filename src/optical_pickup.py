@@ -791,7 +791,9 @@ PLINTH_X0 = BAND_X0                                           # -16.60
 # +Y end sits FLUSH with the endplate's existing +Y extent (user): the head no longer sets
 # how far the endplate reaches. Affordable because the M4 grip moved inboard -- it needs
 # MIN_WALL_2P + pilot/2 = 4.60 to this edge and has 5.15.
-PCB_YP     = CH.Y_HI + CH.T / 2                               # 65.95, the rail outer face
+PCB_YP     = CH.Y_HI + CH.T / 2                               # 65.0, the rail outer face
+if OPTICAL_REV == 1:
+    PCB_YP = 65.95                        # the board as ordered, before the rail came in 0.95
 HEAD_LEN   = PCB_YP - HEAD_Y0                                 # 14.40, mirrored at -Y
 WRAP_Y     = Y_TAIL - HEAD_LEN                                # -65.95, compute starts here
 # COMPUTE SECTION WIDTH is set by the -Y EDGE, not by the MCU any more. Every cable now
@@ -3906,15 +3908,17 @@ _nh = usb_notch()
 PWR_Y = (_nh[2] + _nh[3]) / 2.0
 PWR_DROP_X = _nh[0] + CABLE_HOLE_FIT + 1.3
 # The user's install order, in the board's hole: the XH alone, then the USB head beside the pair.
-assert abs(_nh[1] - _nh[0] - CABLE_HOLE_L) < 1e-9 and _nh[3] - _nh[2] >= CABLE_HOLE_D - 1e-9, (
-    f"usb_notch()'s hole {_nh} no longer covers the shaft's plan, {CABLE_HOLE_L} x {CABLE_HOLE_D}")
-_HEAD_BACK = usb_face_y() - USBC_MATE_L - USBC_ANG_D        # the head, unmated, coming up it
-assert _HEAD_BACK >= _nh[2] + CABLE_HOLE_FIT - 1e-9 and usb_face_y() <= _nh[2] + CABLE_HOLE_D - CABLE_HOLE_FIT + 1e-9, (
-    f"the unmated head {_HEAD_BACK:.2f}..{usb_face_y():.2f} does not fit the hole's Y {_nh[2:]}")
-assert USBC_ANG_W + 2.6 + 2 * CABLE_HOLE_FIT <= _nh[1] - _nh[0] + 1e-9, "USB head + pair too wide"
-assert USBC_ANG_D + USBC_MATE_L + 2 * CABLE_HOLE_FIT <= _nh[3] - _nh[2] + 1e-9, "USB head too long"
-assert _XH4_W + 2 * CABLE_HOLE_FIT <= _nh[1] - _nh[0] and _XH4_D + 2 * CABLE_HOLE_FIT <= _nh[3] - _nh[2], (
-    "the XH plug no longer passes")
+# R2's hole only: R1's cut is a notch in the board's edge, with no shaft of its own to match.
+if OPTICAL_REV != 1:
+    assert abs(_nh[1] - _nh[0] - CABLE_HOLE_L) < 1e-9 and _nh[3] - _nh[2] >= CABLE_HOLE_D - 1e-9, (
+        f"usb_notch()'s hole {_nh} no longer covers the shaft's plan, {CABLE_HOLE_L} x {CABLE_HOLE_D}")
+    _HEAD_BACK = usb_face_y() - USBC_MATE_L - USBC_ANG_D        # the head, unmated, coming up it
+    assert _HEAD_BACK >= _nh[2] + CABLE_HOLE_FIT - 1e-9 and usb_face_y() <= _nh[2] + CABLE_HOLE_D - CABLE_HOLE_FIT + 1e-9, (
+        f"the unmated head {_HEAD_BACK:.2f}..{usb_face_y():.2f} does not fit the hole's Y {_nh[2:]}")
+    assert USBC_ANG_W + 2.6 + 2 * CABLE_HOLE_FIT <= _nh[1] - _nh[0] + 1e-9, "USB head + pair too wide"
+    assert USBC_ANG_D + USBC_MATE_L + 2 * CABLE_HOLE_FIT <= _nh[3] - _nh[2] + 1e-9, "USB head too long"
+    assert _XH4_W + 2 * CABLE_HOLE_FIT <= _nh[1] - _nh[0] and _XH4_D + 2 * CABLE_HOLE_FIT <= _nh[3] - _nh[2], (
+        "the XH plug no longer passes")
 
 
 def opt_cable_hole() -> cq.Workplane:

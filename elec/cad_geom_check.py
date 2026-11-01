@@ -170,7 +170,7 @@ _R1_FIT_HOLE = 0.05
 
 def _r1_fit(board):
     """Optical R2's holes and detectors against R1's, the one thing R1 still has to match."""
-    if board != "optical":
+    if board != "optical" or BG.REV["optical"] == 1:      # R1 against itself says nothing
         return 0
     r1 = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "rev1",
                                      "optical.geom.json"), encoding="utf-8"))

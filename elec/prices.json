@@ -4771,14 +4771,14 @@
       "what": "100R C25076 -- JLCPCB parts API at qty 30"
     },
     "motor_ctrl:R22": {
-      "usd": 0.0015,
+      "usd": 0.0022,
       "verified": "v",
-      "what": "49k9 1% C25897 -- JLCPCB parts API at qty 20"
+      "what": "49k9 1% C137969 -- JLCPCB parts API at qty 20"
     },
     "pi_cap:R5": {
-      "usd": 0.0015,
+      "usd": 0.0022,
       "verified": "v",
-      "what": "49k9 1% C25897 -- JLCPCB parts API at qty 20"
+      "what": "49k9 1% C137969 -- JLCPCB parts API at qty 20"
     },
     "output_panel:R31": {
       "usd": 0.0029,
