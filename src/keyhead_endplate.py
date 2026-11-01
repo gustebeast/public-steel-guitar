@@ -157,6 +157,22 @@ def _build():
     assert _n == 1, (
         "keyhead_endplate came out as %d disconnected solids -- a fused feature is not "
         "touching the plate." % _n)
+    # THE ROD BORE'S WALL, on the finished solid: every top face, finger and end block alike, off the
+    # bore's own cutter, teardrop included. The string load pulls the rod toward this wall.
+    _bore = NB.rod_bore().translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)).val()
+    _top = [f for f in w.val().Faces()
+            if f.geomType() == "PLANE" and f.Center().z > D.STRING_Z + NB.ROD_Z
+            and abs(f.normalAt().y) < 1e-6 and f.normalAt().z > 1e-6 and f.normalAt().x > -1e-6]
+    _wall = min(f.distance(_bore) for f in _top)
+    assert _wall >= D.MIN_WALL_2P, f"{_wall:.2f} of wall from the rod's bore to the top"
+    # THE END BLOCKS MATCH on the +X face, on the finished solid: the outermost webs either side of the
+    # pockets, at the lane floor's height (the top is rounded back from the face at the rod's).
+    _x = D.NUT_BLOCK_X + NB.X_FRONT - 0.05
+    _z = D.STRING_Z + NB.LANE_FLOOR
+    _ys = sorted((b.ymin, b.ymax) for b in (s.BoundingBox() for s in w.val().intersect(
+        box_at(0.02, 300.0, 0.02, x=_x, y=0.0, z=_z).val()).Solids()))
+    _a, _b = _ys[0][1] - _ys[0][0], _ys[-1][1] - _ys[-1][0]
+    assert abs(_a - _b) < 0.01, f"the end blocks are {_a:.2f} (-Y) and {_b:.2f} (+Y) wide"
     return heal(w)
 
 

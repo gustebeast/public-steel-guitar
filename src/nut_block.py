@@ -115,8 +115,10 @@ DOWEL_X = X_FRONT - DOWEL_KEEP - (PIN_D + 0.3) / 2
 # up). HIGHER opens the gap over the panel the tip is fed through but flattens the break over the
 # dowel; further -X eases the break and clears a bar at fret 0, whose circle the rod's three-bead
 # lid has to stay outside, and costs nothing now the -X wall has gone. At x -8 the lid stands in the
-# bar. Here: 20.4-20.6 deg, 4.8 of gap, 1.0 of air to the bar.
-ROD_X   = -16 * D.BEAD                          # -12.8 rod centre
+# bar. Here: 19.3-19.5 deg, inside the 15-20 that is enough for a dowel to end the speaking length and
+# no steeper, for no more load; 4.8 of gap; and 2.1 of wall from the bore to the bar's arc, measured
+# on the finished solid (keyhead_endplate).
+ROD_X   = -17 * D.BEAD                          # -13.6 rod centre
 ROD_Z   = -1 * D.BEAD                           # -0.8
 _G_MAX  = max(D.STRING_GAUGE)
 # THE INSERT'S TRAVEL IS SIZED FOR THE ENVELOPE, not the demo set: a heavier string must still
@@ -426,6 +428,11 @@ INS_DROP  = HS_SCREW_L - (M4.insert_depth + HS_CAP) - (G_ENVELOPE + HS_ROD_OVERL
 assert INS_DROP >= _DROP_NEED, f"a {INS_DROP:.2f} drop will not thread a {G_ENVELOPE:.2f} string"
 INS_H     = 5 * D.BEAD                          # 4.0 of body below the flat
 DIVOT_OFF = ROD_D / 2 - PIN_D / 2 - ROD_Z       # 11.59, cradle centre ABOVE the flat
+# FULLY DROPPED, THE DOWEL'S TOP IS UNDER THE ROD BY MORE THAN THE STRING (user), so a string can be
+# led straight over the dowel and under the rod. The gauge is the envelope's, the worst.
+_DROPPED_DOWEL_TOP = ROD_Z - ROD_D / 2 - G_ENVELOPE - INS_DROP + DIVOT_OFF + PIN_D / 2
+DOWEL_DROP_AIR = (ROD_Z - ROD_D / 2) - _DROPPED_DOWEL_TOP - G_ENVELOPE
+assert DOWEL_DROP_AIR > 0.0, f"a dropped dowel leaves {DOWEL_DROP_AIR:.2f} for a {G_ENVELOPE:.2f} string under the rod"
 DIVOT_D   = PIN_D + 0.3                         # 4.3, the dowel's cradle
 # THE CRADLE'S +X LIP (user): A SQUARE SHELF, TWO LAYERS ON THE BED. Everything off the dowel's
 # crown is the same for every gauge: the crown is the string's underside, and the flat, so the
@@ -453,7 +460,7 @@ INS_X1    = X_FRONT                             # FLUSH with the block's +X face
                                                 # insert is the last thing at this end, so
                                                 # it bears on the deck panel butting it and
                                                 # no block prints out over its slot
-INS_X0    = -19 * D.BEAD                        # -15.2: 2.4 of flat -X of the coil's contact, for the tail
+INS_X0    = -20 * D.BEAD                        # -16.0: 2.4 of flat -X of the coil's contact, for the tail
 
 
 def insert_flat_z(i: int) -> float:
@@ -1001,17 +1008,21 @@ assert abs(outer_coil_lo(D.STRING_GAUGE[SKU_C])
            - (wrap_y(SKU_C)[1] - D.STRING_GAUGE[SKU_C] / 2)) < 1e-9, (
     "outer_coil_lo has drifted from wrap_y -- SKU C would be sized off a coil that is not the one drawn")
 
-# ── THE TOP PRISM IN Y: SET BY THE ROD (user) ─────────────────────────────────
-# The rod is centred on the strings, whole in the block: it runs flush with the -Y face, where it goes
-# in, to ROD_END_W of wall at +Y, its stop. The wall has a hole on its axis for the 2.5 key (2.9 across
+# ── THE TOP PRISM IN Y: SET BY THE ROD, SYMMETRIC ABOUT THE POCKETS (user) ────
+# Past the pockets, on the +X face, the two end blocks are the same width. The rod sets that width: it
+# is whole in the block, flush with the -Y face, where it goes in, to ROD_END_W of wall at +Y, its stop,
+# so it sits a little -Y of the strings. The wall has a hole on its axis for the 2.5 key (2.9 across
 # its corners), pushed in from +Y to send the rod back out.
 ROD_L  = D.BRIDGE_AXLE_L
-ROD_Y0, ROD_Y1 = -ROD_L / 2.0, ROD_L / 2.0
 ROD_PUSH_D = 4 * D.BEAD
+_FACE_HI = max(y + w / 2.0 for (y, w) in insert_lobes(0)[:1]) + _clr(0)          # string 1's pocket, +Y
+_FACE_LO = min(y - w / 2.0 for (y, w) in insert_lobes(SKU_C)[:1]) - _clr(SKU_C)  # string 10's pocket, -Y
+END_BLOCK_W = (ROD_L + ROD_END_W - (_FACE_HI - _FACE_LO)) / 2.0
+HW   = _FACE_HI + END_BLOCK_W                                                    # the +Y face
+Y_LO = _FACE_LO - END_BLOCK_W                                                    # the -Y face
+ROD_Y0, ROD_Y1 = Y_LO, Y_LO + ROD_L
 _INS_HI = max(y + w / 2.0 for (y, w) in insert_lobes(0)) + _clr(0)          # string 1's pocket, +Y
 _INS_LO = min(y - w / 2.0 for (y, w) in insert_lobes(SKU_C)) - _clr(SKU_C)  # string 10's pocket, -Y
-HW   = ROD_Y1 + ROD_END_W                                                   # the +Y face
-Y_LO = ROD_Y0                                                               # the -Y face
 _ROD_NEED_Y0, _ROD_NEED_Y1 = rod_span()
 assert ROD_Y1 >= _ROD_NEED_Y1 - 1e-9 and ROD_Y0 <= _ROD_NEED_Y0 + 1e-9, (
     f"the {ROD_L:g} mm rod spans {ROD_Y0:.2f}..{ROD_Y1:.2f}, short of the "
@@ -1032,7 +1043,7 @@ assert _WORST_RES <= 60.0, (
     f"the worst string still leaves {_WORST_RES:.1f} N at the clamp — the wrap is not "
     f"doing its job and the clamp is back to bearing on plastic")
 
-BREAK_ANGLE = 10.0                              # MIN break angle over the dowel, so the DOWEL
+BREAK_ANGLE = 15.0                              # MIN break angle over the dowel, so the DOWEL
                                                 # (not the rod) terminates the speaking length
 assert _break_at(ROD_Z, D.STRING_GAUGE_MAX) >= BREAK_ANGLE, (
     f"a {D.GAUGE_MAX_IN:.3f} in string breaks only {_break_at(ROD_Z, D.STRING_GAUGE_MAX):.2f} deg over its "
@@ -1156,8 +1167,6 @@ BLOCK_TOP = ([(X_BACK, NUT_TOP)]
 _TOP_BAR = min(math.hypot(x0 + (x1 - x0) * k / 50.0 - DOWEL_X, z0 + (z1 - z0) * k / 50.0 - BAR_R) - BAR_R
                for (x0, z0), (x1, z1) in zip(BLOCK_TOP, BLOCK_TOP[1:]) for k in range(51))
 assert _TOP_BAR >= BAR_CLR_MIN, f"the block's top stands {_TOP_BAR:.2f} from the bar at fret 0"
-_LID_MIN = math.hypot(DOWEL_X - ROD_X, BAR_R - ROD_Z) - _ARC_R - ROD_BORE / 2
-assert _LID_MIN >= D.MIN_WALL_2P - 0.1, f"{_LID_MIN:.2f} of wall from the rod's bore to the bar's arc"
 # The string must pass over the neck, for every gauge any SKU takes
 _NECK_AIR = min(-g - (DOWEL_X - _neck_x0(0)) * math.tan(math.radians(_break_at(ROD_Z, g)))
                 - (-g - PIN_D / 2) for g in (D.STRING_GAUGE[0], G_ENVELOPE))
