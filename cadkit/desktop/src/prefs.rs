@@ -24,11 +24,13 @@ pub struct Prefs {
     pub range: String,
     /// the page's light level: 0..2 the browser's own (the page draws the model; nothing is traced), 3 path traced
     pub light: u8,
+    /// the printed look: each part's layers drawn on its surfaces (appearance only)
+    pub layers: bool,
 }
 
 impl Default for Prefs {
     fn default() -> Self {
-        Prefs { dlss: true, upscale: Upscale::Off, denoise: true, backend: "auto".into(), surface: "auto".into(), range: "hdr".into(), light: 3 }
+        Prefs { dlss: true, upscale: Upscale::Off, denoise: true, backend: "auto".into(), surface: "auto".into(), range: "hdr".into(), layers: false, light: 3 }
     }
 }
 
@@ -62,13 +64,16 @@ impl Prefs {
         if let Some(l) = v["light"].as_u64().filter(|l| *l <= 3) {
             p.light = l as u8;
         }
+        if let Some(b) = v["layers"].as_bool() {
+            p.layers = b;
+        }
         p
     }
 
     pub fn to_json(&self) -> Value {
         json!({
             "dlss": self.dlss, "upscale": self.upscale.name(), "denoise": self.denoise,
-            "backend": self.backend, "surface": self.surface, "range": self.range, "light": self.light,
+            "backend": self.backend, "surface": self.surface, "range": self.range, "light": self.light, "layers": self.layers,
         })
     }
 

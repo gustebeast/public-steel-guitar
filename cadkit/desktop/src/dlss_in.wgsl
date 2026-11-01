@@ -5,7 +5,7 @@
 // (Ported from the new_codes tracer's, where it was first proved; the parts here are rigid, so where a point
 // was is its part's motion alone.)
 
-struct Part { idx_off: u32, vtx_off: u32, flags: u32, pad: u32, color: vec4f, mr: vec4f }
+struct Part { idx_off: u32, vtx_off: u32, flags: u32, pitch: f32, color: vec4f, mr: vec4f, lay: vec4f }
 struct Mot { r0: vec4f, r1: vec4f, r2: vec4f }
 
 @group(0) @binding(0) var<uniform> G: Globals;

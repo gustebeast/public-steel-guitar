@@ -325,7 +325,10 @@ def silk_units(done):
     return out
 
 
-def write_glb(parts, out: pathlib.Path, extras=None, units=None, mats=None) -> None:
+DEFAULT_LAYER = 0.4                # mm: a part with no layer height of its own
+
+
+def write_glb(parts, out: pathlib.Path, extras=None, units=None, mats=None, lays=None) -> None:
     """parts = [(name, pos float32 (n,3), tri uint32 (m,3), (r, g, b, a), col)]: `col`
     is None, or uint8 (n,4) per-vertex colour (linear, as glTF's COLOR_0), and then the
     part's material is plain white under it. A part whose `mats` entry is a filament
@@ -381,6 +384,8 @@ def write_glb(parts, out: pathlib.Path, extras=None, units=None, mats=None) -> N
             ex["unit"] = units[name]
         if mats and mats.get(name):                # its filament, or what else it is made of
             ex["mat"] = mats[name]
+        if lays and name in lays:                  # how it printed: the viewer's layer lines
+            ex["lay"] = lays[name]
         if ex:
             nodes[-1]["extras"] = ex
     # CAD Z-up -> glTF Y-up at the one root, as cadquery's exporter did
@@ -623,7 +628,7 @@ class MeshCache:
 
 def export(parts, out_dir, stem="assembly", extras=None, meshed=None, quiet=False,
            boards=None, cache_dir=None, materials=None, whole=None, page=False,
-           units=None, parents=None, mesh_cache=None):
+           units=None, parents=None, mesh_cache=None, layers=None):
     """Write <stem>.glb and <stem>.geo.json into out_dir.
 
     parts     = [(name, solid, colour)]; solid is a cq.Workplane / cq.Shape /
@@ -650,6 +655,10 @@ def export(parts, out_dir, stem="assembly", extras=None, meshed=None, quiet=Fals
                 on the printer, so the page selects, hides and lists them as one. The
                 solids of one part are one thing without being told.
     parents   = optional {piece name: its part's name}, for pieces split by the caller.
+    layers    = optional {part name: build direction (x, y, z)} of the printed parts, in the
+                frame the part stands in, or (direction, layer height). Each gets the
+                viewer's layer lines; the part's bed plane is read off its mesh. A name
+                not in it stays smooth.
     whole     = names that must stay one part though drawn as several solids (see
                 pieces()); by default the names in the rig file beside the output.
     page      = True also writes the viewer page beside the model (index.html), which
@@ -758,7 +767,17 @@ def export(parts, out_dir, stem="assembly", extras=None, meshed=None, quiet=Fals
             one[n] = said or part
     for ink, board in silk_units(done).items():
         one[ink] = one.get(board, board)
-    write_glb(glb_parts, glb, extras=extras, units=one, mats=mats)
+    # HOW EACH PRINTED PART WAS LAID, for the viewer's layer lines: which way it built, and its
+    # bed plane, which is just the mesh's lowest point along that way
+    lays = {}
+    for n, m in done.items():
+        l = (layers or {}).get(parents.get(n, n)) if "__" not in n else None
+        if l is None:
+            continue
+        up, h = (l, DEFAULT_LAYER) if len(l) == 3 else l
+        u = np.asarray(up, float) / np.linalg.norm(up)
+        lays[n] = [round(float(c), 5) for c in u] + [round(float((m["pos"] @ u).min()), 4), h]
+    write_glb(glb_parts, glb, extras=extras, units=one, mats=mats, lays=lays)
     side.write_text(json.dumps({"format": FORMAT, "units": "mm", "parts": geo, "models": models},
                                separators=(",", ":")))
     if page:
