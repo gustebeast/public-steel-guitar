@@ -2,7 +2,7 @@ enable wgpu_ray_query;
 //!include common
 //!include tables
 
-struct Part { idx_off: u32, vtx_off: u32, flags: u32, pad: u32, color: vec4f, mr: vec4f }
+struct Part { idx_off: u32, vtx_off: u32, flags: u32, pitch: f32, color: vec4f, mr: vec4f, lay: vec4f }
 struct Vtx { nx: f32, ny: f32, nz: f32, col: u32 }
 
 @group(0) @binding(0) var<uniform> G: Globals;
@@ -98,9 +98,23 @@ fn occluded(o: vec3f, d: vec3f) -> bool {
   return i.kind != RAY_QUERY_INTERSECTION_NONE;
 }
 
-struct Surf { n: vec3f, base: vec3f, metal: f32, rough: f32, emit: vec3f }
+struct Surf { n: vec3f, g: vec3f, base: vec3f, metal: f32, rough: f32, emit: vec3f }
 
-fn surface(h: Hit) -> Surf {
+// LAYER LINES: one bead's rounded profile across each print layer, along the way the part built,
+// phased from its bed. Only the shading normal bends; `g` keeps the true one for the guide, so the
+// denoiser's edges stay where the surfaces are. A flat top has no tangent along the build, and
+// a layer under about a pixel fades out. o2w carries the direction with the part.
+fn layered(s: Surf, h: Hit, p: Part, at: vec3f, d: vec3f) -> vec3f {
+  let up = normalize(h.o2w * vec4f(p.lay.xyz, 0.0));
+  let t = up - s.g * dot(up, s.g);
+  let px = 2.0 * G.cam_pos.w * h.t / G.vsize.y / max(abs(dot(d, s.g)), 0.2);
+  let fade = 1.0 - smoothstep(0.2, 0.4, px / p.pitch);
+  if (fade <= 0.0 || dot(t, t) < 1e-4) { return s.g; }
+  let a = fract((dot(at - h.o2w[3], up) - p.lay.w) / p.pitch) * 2.0 - 1.0;
+  return normalize(s.g + t * (0.6 * fade * a / sqrt(1.0 - 0.96 * a * a)));
+}
+
+fn surface(h: Hit, at: vec3f, d: vec3f) -> Surf {
   let p = parts[h.part];
   let io = p.idx_off + 3u * h.prim;
   let v0 = verts[indices[io] + p.vtx_off];
@@ -110,7 +124,9 @@ fn surface(h: Hit) -> Surf {
   var s: Surf;
   // the normal is the part's own; a part the rig has moved is turned with it (poses are rigid)
   let nl = vec3f(v0.nx, v0.ny, v0.nz) * b.x + vec3f(v1.nx, v1.ny, v1.nz) * b.y + vec3f(v2.nx, v2.ny, v2.nz) * b.z;
-  s.n = normalize(h.o2w * vec4f(nl, 0.0));
+  s.g = normalize(h.o2w * vec4f(nl, 0.0));
+  s.n = s.g;
+  if ((G.flags & 128u) != 0u && p.pitch > 0.0) { s.n = layered(s, h, p, at, d); }
   s.base = p.color.rgb;
   s.metal = p.mr.x;
   s.rough = p.mr.y;
@@ -278,8 +294,8 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
     let veil = select(1.0, 0.0, veiled);
     g = Guide(0u, -1.0, pack4x8unorm(vec4f(1.0, 1.0, 1.0, veil)), 0xffffffffu);
     if (h.hit) {
-      let s = surface(h);
-      var n = s.n;
+      let s = surface(h, G.cam_pos.xyz + d * h.t, d);
+      var n = s.g;
       if (dot(n, d) > 0.0) { n = -n; }
       g = Guide(oct_enc(n), h.t, pack4x8unorm(vec4f(max(s.base, vec3f(0.04)), veil)), h.part);
     }
@@ -329,15 +345,15 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
         }
         break;
       }
-      let s = surface(h);
       let p = o + d * h.t;
+      let s = surface(h, p, d);
       let wo = -d;
       var n = s.n;
       if (dot(n, wo) < 0.0) { n = -n; }
       if (b == 0u) {
         met = h.part;
         alb0 = max(s.base, vec3f(0.04));
-        same = (g.depth >= 0.0 && h.part == g.id && dot(n, g_n) > 0.9) || (g_veil && (parts[h.part].flags & F_CLEAR) != 0u);
+        same = (g.depth >= 0.0 && h.part == g.id && abs(dot(s.g, g_n)) > 0.9) || (g_veil && (parts[h.part].flags & F_CLEAR) != 0u);
         Ld += s.emit;
       } else {
         Li += thr * s.emit;

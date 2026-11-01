@@ -24,6 +24,7 @@
 //! Options: --out <dir>; --backend vulkan|dx12 (default: vulkan, else dx12 if it can trace, which needs the
 //! dxcompiler.dll of an installed Windows SDK, or --dxc <path>); --state <file> where the window's place is kept
 //! (default: desk-window.json beside the exe).
+//! DESK_LAYERS=1 in the environment: the layer lines on, for a --selftest, which keeps no settings.
 //! DESK_TRACE=1 in the environment: every message, frame and key the shell sees, with its time, written to
 //! trace.txt in the --out folder at the end.
 //! DLSS (on unless DESK_DLSS=0): NVIDIA's Ray Reconstruction cleans the picture while it moves, on Vulkan with an RTX card,
@@ -1213,6 +1214,10 @@ impl App {
             g.r.settings.denoise = p.denoise;
             g.r.invalidate();
         }
+        if g.r.settings.layers != p.layers {
+            g.r.settings.layers = p.layers;
+            g.r.invalidate();
+        }
         g.r.settings.budget_ms = g.budget_auto;
         g.range = p.range.clone();
         screen_range(g);
@@ -2101,7 +2106,7 @@ fn main() {
         }
         Shell { data, tabs: vec![], active: None, list: true, projects: vec![], titles: HashMap::new(), next_id: 0, top: 0, poll_t: now, switch: None, last_switch: Value::Null, ready: false, pushed: String::new(), note, pshot: None }
     });
-    let prefs = Prefs::load(&prefs_file(&args));
+    let prefs = Prefs::load(&prefs_file(&args)).merged(&serde_json::json!({ "layers": std::env::var("DESK_LAYERS").map(|v| v == "1").ok() }));
     let mut app = App {
         args,
         proxy: event_loop.create_proxy(),
