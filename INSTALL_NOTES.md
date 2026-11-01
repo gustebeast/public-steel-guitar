@@ -1009,6 +1009,15 @@ else.
 The one row worth a label is the second: a motor drop or the bus-A head plugged into a light
 drop on the Pi cap. Mark the two light-drop leads at the Pi cap end.
 
+## Twist the leads before crimping (2026-11-01)
+
+Twist every lead that `src/wiring.py` labels twisted, at about one full turn per 25 mm: rail
+with its return, CAN_H with CAN_L, the two power-button throws together. Leave about 20 mm
+straight at each end for the fan-out into the housing. Cut to the length
+`py -3.12 -m tools.lead_cuts` gives, which already allows for the twist: a 25 mm lay uses up
+1.3 to 1.8 % of the wire, so a lead cut to its routed length comes out short. Stock USB leads,
+the UI ribbon and the shielded pickup cable are not twisted.
+
 ## Pickup piece: set the retention screw on the bench, and clear the leads before it slides
 
 - **The retention screw is an M4 x 20 button head driven from -Y, through a slot in the

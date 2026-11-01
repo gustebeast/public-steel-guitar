@@ -1678,6 +1678,7 @@ def _electronics_components():
     out += WR.tee_components()
     # out += WR.trrs_components()      # PARKED with the station above
     out += WR.build_wires()
+    WR.report_lead_cuts()
     return out
 
 
