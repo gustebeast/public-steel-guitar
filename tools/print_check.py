@@ -170,7 +170,7 @@ def up_of(name):
             return tuple(float(x) for x in _value(*dec[c])), c
     if re.match(r"chassis_\d+$", name):
         return tuple(float(x) for x in _value("src.chassis", "PRINT_UP")), "chassis"
-    if re.match(r"top_plate_\d+$", name):
+    if re.match(r"top_plate_(color_)?\d+$", name):
         return tuple(float(x) for x in _value("src.top_plate", "PIECE_UP")), "top_plate"
     raise KeyError("no declared build direction for %r: pass --up" % name)
 
