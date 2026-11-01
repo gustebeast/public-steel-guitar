@@ -35,6 +35,7 @@ tolerance RAISES rather than returning a cable with holes in it.
 from __future__ import annotations
 
 import math as _math
+import typing as _t
 
 import cadquery as cq
 
@@ -248,8 +249,55 @@ def flat_cable(pts, w: float, t: float, across=None) -> cq.Workplane:
 
 
 def path_length(pts) -> float:
-    """Polyline length, which for a cable is the LENGTH YOU HAVE TO BUY."""
+    """Polyline length. The wire to cut or buy is wire_length, which knows the lay."""
     return sum((vb - va).Length for va, vb in _segments(pts))
+
+
+# WIRE TO CUT IS LONGER THAN THE PATH IF THE WIRE IS TWISTED. A conductor in a lay is a helix
+# round the cable's axis, so it has further to go than the path it follows: 1.3 to 1.8 % for
+# ordinary hook-up wire, which is 14 mm on a 760 mm lead, more than the spare usually left on
+# one. So the lay is an argument with NO DEFAULT. A length that forgot to say cannot happen.
+TWIST_PITCH = 25.0      # mm per full turn: 40 turns a metre, a CAN pair's usual lay
+TWIST_TAIL = 20.0       # mm left straight at each crimped end, for the fan-out into the housing
+
+
+class Lay(_t.NamedTuple):
+    """How a conductor is laid: on a helix of `radius` and `pitch` (`outer` is the lay that helix itself follows)."""
+    radius: float
+    pitch: float
+    outer: _t.Optional["Lay"] = None
+
+    @property
+    def factor(self) -> float:
+        """Conductor length per unit of cable length."""
+        turn = 2.0 * _math.pi * self.radius / self.pitch
+        return _math.hypot(1.0, turn) * (self.outer.factor if self.outer else 1.0)
+
+    def over(self, mm: float, untwisted: float = 0.0) -> float:
+        """Conductor to cover `mm` of path, of which `untwisted` lies straight."""
+        assert 0.0 <= untwisted, "negative untwisted length"
+        return min(untwisted, mm) + max(mm - untwisted, 0.0) * self.factor
+
+
+STRAIGHT = Lay(0.0, 1.0)     # laid side by side, a ribbon, or a bought cable's jacket
+
+
+def twisted(od: float, pitch: float = TWIST_PITCH, ways: int = 2,
+            then: _t.Optional[Lay] = None) -> Lay:
+    """The lay of `ways` touching round conductors of insulated diameter `od`. Use the wire's
+    real diameter, not a model's drawn one. `then` is the lay the group itself goes on to,
+    as a four-core's pairs do round each other."""
+    assert ways >= 2, "one wire does not twist"
+    return Lay(od / (2.0 * _math.sin(_math.pi / ways)), pitch, then)
+
+
+def wire_length(pts, lay: Lay, untwisted: float = 0.0) -> float:
+    """The conductor it takes to follow `pts`, laid as `lay` says: the length to CUT, before
+    any spare. path_length is the path's own length, and the two only agree for STRAIGHT.
+    `lay` is required; `untwisted` is what stays straight, TWIST_TAIL for each crimped end."""
+    if not isinstance(lay, Lay):
+        raise TypeError("wire_length needs a Lay, STRAIGHT or twisted(od), got %r" % (lay,))
+    return lay.over(path_length(pts), untwisted)
 
 
 def bundle_paths(pts, offsets, across=None):
