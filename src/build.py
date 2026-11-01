@@ -296,9 +296,18 @@ for _pl in _plugs:
         "a bus-B plug on the motor controller (x %.1f..%.1f, y %.1f..%.1f) has %.2f to the "
         "-X/-Y body adapter -- under the %.1f a hand needs to pull it down past the leg"
         % (_pb.xmin, _pb.xmax, _pb.ymin, _pb.ymax, max(_gx, _gy), MCTRL_PLUG_FINGER))
+def _bb_apart(a, b):
+    """True when two shapes' bounding boxes miss: a boolean between them can only be empty, and
+    on a 2000-face chassis segment it still takes seconds to say so."""
+    p, q = a.BoundingBox(), b.BoundingBox()
+    return (p.xmax < q.xmin or q.xmax < p.xmin or p.ymax < q.ymin or q.ymax < p.ymin
+            or p.zmax < q.zmin or q.zmax < p.zmin)
+
+
 for _mp in _EL_ports.mctrl_floor_ports():
     for _csi in range(len(chassis_segments)):
-        chassis_segments[_csi] = chassis_segments[_csi].cut(_mp)
+        if not _bb_apart(_mp.val(), chassis_segments[_csi].val()):
+            chassis_segments[_csi] = chassis_segments[_csi].cut(_mp)
 # THE MOTOR CONTROLLER'S GUIDES (src/mctrl_retention.py), fused AFTER the floor ports: their
 # cheeks stand MCTRL_FIT off the laminate and the ports clear it by MCTRL_PORT_CLR, so cutting
 # afterwards would notch each cheek's foot -- a 0.2 step that prints as a ledge.
@@ -1133,7 +1142,7 @@ _seat_v = [bridge_endplate.intersect(BE.seat_ring(_i)).val().Volume()
            for _i in range(D.N_STRINGS)]
 for _side in {D.screw_x(_i) for _i in range(D.N_STRINGS)}:
     _sv = [_v for _i, _v in enumerate(_seat_v) if D.screw_x(_i) == _side]
-    assert min(_sv) > max(_sv) - 12.0, (
+    assert min(_sv) > sorted(_sv)[len(_sv) // 2] - 12.0, (   # the median: string 1 has more, not less
         "a support-bearing seat has lost wall the others keep (mm3 of ring left, string "
         "1..10): " + ", ".join(f"{_v:.1f}" for _v in _seat_v))
 
@@ -1230,6 +1239,8 @@ for _csi, _seg in enumerate(chassis_segments):
 for _i in range(D.N_STRINGS):              # ...and the belt now clears every segment
     for _bp in _belt_posed(_i):
         for _csi, _seg in enumerate(chassis_segments):
+            if _bb_apart(_bp, _seg.val()):
+                continue
             _bx = _bp.intersect(_seg.val())
             assert _bx.Volume() < 1e-3, (
                 "belt_%d is %.3f mm3 into chassis_%d after the belt relief" % (_i, _bx.Volume(), _csi))
@@ -1334,7 +1345,7 @@ def _string_components(i):
     # viewing it, never saw one. Same placement as there, from the same module.
     out.append((f"nut_slide_insert_{i}",
                 NB.slide_insert(i).translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))))
-    # ...and the M4 x 20 that pushes it up, threading its heat-set in the endplate slab
+    # ...and the M4 x 16 that pushes it up, threading its heat-set in the endplate slab
     out.append((f"nut_height_screw_{i}",
                 NB.height_screw(i).translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))))
     out.append((f"nut_height_insert_{i}",
@@ -1418,12 +1429,9 @@ def _string_path(i, sy, rise_only=False):
     ny, wy = NB.wrap_y_drawn(i)                          # the coil AS WOUND (nut_block.WRAPS)
     rx, rz = D.NUT_BLOCK_X + NB.ROD_X, D.STRING_Z + NB.ROD_Z
     hr = NB.wrap_radius(i)                                 # helix radius: nut_block owns it
-    # THE WRAP IS ON THE ROD'S UNDERSIDE (-Z), so the path has no reversal left in it:
-    # the string leaves the dowel already descending, becomes TANGENT to the wrap circle
-    # on the way down, goes round underneath, and leaves at the bottom running straight
-    # -X to the clamp. TANGENCY is the part that has to be right -- aiming at the
-    # circle's lowest point instead would draw the string cutting through the rod on the
-    # way in. The touch point sits BREAK_ANGLE round from the bottom, +X side.
+    # THE STRING LANDS ON THE ROD'S UNDERSIDE: it leaves the dowel descending and becomes TANGENT to
+    # the wrap circle, on the +X side of the bottom, and the coil runs -X from there. TANGENCY is the
+    # part that has to be right.
     phi = NB.touch_angle(i)          # nut_block owns this -- see its docstring on why
     tang = cq.Vector(rx + hr * math.cos(phi), ny, rz + hr * math.sin(phi))
     # RUN THE STRAIGHT RUNS PAST THE TANGENT POINT, or they do not touch the coil.
@@ -1440,27 +1448,23 @@ def _string_path(i, sy, rise_only=False):
     # the .015 and 0.46 on the .070, well inside the string's own radius either way. The
     # wrap itself is untouched; this is the DEMO path's joinery, not the capstan geometry.
     _LAP = 2.0 * rad                                       # one string diameter of overlap
-    t_in = cq.Vector(-math.sin(phi), 0.0, math.cos(phi))   # the coil's heading at the touch
+    t_in = cq.Vector(math.sin(phi), 0.0, -math.cos(phi))   # the coil's heading at the touch
     out = out.union(_rod(brk, tang + t_in.multiply(_LAP), rad))
-    out = out.union(_wrap_coil(i, rad, hr))
-    # THE TAIL FOLLOWS THE CHANNEL'S OWN CENTRELINE, from nut_block, so the string and the
-    # passage it lives in cannot drift apart -- the same one-description rule the pocket
-    # and the insert follow. It leaves at EXIT_DEG already descending, so there is no
-    # corner here at all: the -X run and the separate stow bore are both gone.
-    pts = NB.stow_route(i, (CH.Z_BOT + 8.4) - D.STRING_Z)   # stop above the tongue top
-    # The tail leaves the rod at the COIL's Y, but its bore sits behind the INSERT (nut_block.
-    # stow_y), so it crosses to the bore's Y as it rises in the socket: the exit and its stub
-    # stay on the coil, every point from the rise on follows the bore's axis -- which leans -Y
-    # as it descends (nut_block.STOW_TILT), so the descent is read off stow_y_at, not stow_y.
-    ys = [wy, wy] + [NB.stow_y_at(i, z) for _x, z in pts[2:]]
+    coil = _wrap_coil(i, rad, hr)
+    # THE TAIL runs level off the bottom of the rod, along the flat, then down its stow bore, which
+    # leans -Y as it descends (nut_block.tail_route, .stow_y_at).
+    pts = NB.tail_route(i)
+    ys = [wy, wy, NB.stow_y_at(i, pts[2][1]), NB.stow_y_at(i, pts[3][1])]
     x0, z0 = pts[0]
     prev = cq.Vector(D.NUT_BLOCK_X + x0, wy, D.STRING_Z + z0)
-    out = out.union(_bead(prev, rad * 1.05))                # see _bead: the tail leaves
+    tail = _bead(prev, rad * 1.05)                          # see _bead: the tail leaves
     for (x, z), y in zip(pts[1:], ys[1:]):                  # TANGENT to the coil
         cur = cq.Vector(D.NUT_BLOCK_X + x, y, D.STRING_Z + z)
-        out = out.union(_rod(prev, cur, rad))
+        tail = tail.union(_rod(prev, cur, rad)).union(_bead(cur, rad))
         prev = cur
-    return out
+    # THE COIL IS NOT FUSED TO ITS RUNS. Both meet it on a tangent, which OCC meshes into spikes and
+    # notches at the junctions: the three solids simply overlap, and look like one string.
+    return cq.Workplane(obj=cq.Compound.makeCompound([out.val(), coil.val(), tail.val()]))
 
 
 def _wrap_coil(i, rad, hr):
@@ -1474,7 +1478,7 @@ def _wrap_coil(i, rad, hr):
     # right-handed helix then turns +X toward +Z -- phi INCREASING, which is the way the
     # string is already going when it meets the rod's top. Left-hand reverses that and
     # draws the coil winding back into its own entry.
-    helix = cq.Wire.makeHelix(pitch=p, height=h, radius=hr, lefthand=False)
+    helix = cq.Wire.makeHelix(pitch=p, height=h, radius=hr, lefthand=True)
     coil = (cq.Workplane("XZ").center(hr, 0).circle(rad)
             .sweep(cq.Workplane("XY").add(helix), isFrenet=True))
     # +90 about X (not -90): that lays the helix axis along -Y, so the coil marches
@@ -2349,6 +2353,27 @@ def ui_work_components():
     return out
 
 
+def width_work_components():
+    """collect_components() without the legs, the pedal bar, the foot pedals and the knee
+    levers (and the levers' harness): the body as one live set for work on its WIDTH --
+    the rails, both endplates, the deck, the foot lights, the motor bank and the strings,
+    which is everything a rail's position reshapes (user, 2026-10-29). Those four groups
+    hang off the body and take minutes to build; the scoped view takes them from the
+    lead's cache instead."""
+    comps = [("bridge_endplate", bridge_endplate), ("bridge_bearings", C.bridge_bearings()),
+             ("keyhead_endplate", __import__("src.keyhead_endplate",
+                                             fromlist=["e"]).keyhead_endplate)]
+    comps += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
+    comps += [(f"chassis_light_{i}", lt) for i, lt in enumerate(chassis_light)]
+    comps += _pickup_mount_components()
+    comps += _electronics_components()
+    comps += _ctrl_bus_components()
+    comps += _wrap_rod_component()
+    for i in range(D.N_STRINGS):
+        comps.extend(_string_components(i))
+    return comps
+
+
 def collect_components():
     """EVERY placed thing in the instrument: [(name, cq.Workplane), ...].
 
@@ -2450,7 +2475,7 @@ _COLORS = {
     "belt":            (0.13, 0.13, 0.13),   # GT2 black
     "string":          (0.85, 0.85, 0.85),
     "break_dowel":     (0.75, 0.75, 0.78),
-    "nut_height_screw": (0.72, 0.74, 0.78),   # M4 x 20 button, pushes the insert up
+    "nut_height_screw": (0.72, 0.74, 0.78),   # M4 x 16 button, pushes the insert up
     "nut_height_insert": (0.72, 0.60, 0.30),  # M4 heat-set in the keyhead slab
     "nut_slide_insert": (0.86, 0.72, 0.30),   # the sliding insert -- brass-ish, so it
                                               # reads apart from the steel it presses on
@@ -2606,7 +2631,7 @@ _COLORS = {
     "pi_cap_silk":     (0.95, 0.95, 0.93),
     "motor_ctrl_silk": (0.95, 0.95, 0.93),
     "output_panel_silk": (0.95, 0.95, 0.93),
-    "output_panel_term": (0.16, 0.55, 0.32),        # J8: MX126 terminal block, green PA66
+    "output_panel_term": (0.16, 0.55, 0.32),        # J8: MX128 terminal block, green PA66
     "output_panel_term_metal": (0.72, 0.74, 0.78),  # its M2.5 screws and tinned pins
     "optical_guard":   (0.18, 0.18, 0.20),   # the hand guard over the board -- print it
                                              # DARK: it is the one surface facing the

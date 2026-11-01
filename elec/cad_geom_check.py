@@ -162,9 +162,8 @@ def _rev_silk(board):
 
 
 # Optical R1, on the bench, goes on R2's mounts and lines up with the same strings (user,
-# 2026-10-30). R1's geom sits 10.995 further +Y, its centre being further +Y on the shorter board.
+# 2026-10-30). Each geom is framed on its own board centre, so the check takes the shift from PD1A.
 # The M4 pilot's growth moved R2's two mounts 0.05 in each axis: R1's O4.4 still takes the M4.
-_R1_FIT_DY = -10.995
 _R1_FIT_HOLE = 0.05
 
 
@@ -180,18 +179,23 @@ def _r1_fit(board):
         xs, ys = [q[0] for q in poly], [q[1] for q in poly]
         return (max(xs) + min(xs)) / 2.0, (max(ys) + min(ys)) / 2.0
 
-    pairs = [("hole %d" % k, mid(a), mid(b), _R1_FIT_HOLE + 0.0015)
-             for k, (a, b) in enumerate(zip(r2["holes"], r1["holes"]))]
-    if len(r2["holes"]) != len(r1["holes"]):
-        pairs.append(("hole count", (0, 0), (1e3, 0), 0.0))
     fp1 = {f["ref"]: f for f in r1["footprints"]}
+    # the frame is each board's own centre, and R2's outline is not R1's: PD1A sets the shift
+    pd1 = next(f for f in r2["footprints"] if f["ref"] == "PD1A")
+    dy = pd1["y"] - fp1["PD1A"]["y"]
+    # R2's one extra hole is the cable hole; every R1 hole has its R2 hole, in the R1 frame
+    mids2 = [mid(a) for a in r2["holes"]]
+    pairs = [("hole %d" % k, min(mids2, key=lambda q: abs(q[0] - b[0]) + abs(q[1] - b[1] - dy)), b,
+              _R1_FIT_HOLE + 0.0015) for k, b in enumerate(mid(a) for a in r1["holes"])]
+    if len(r2["holes"]) != len(r1["holes"]) + 1:
+        pairs.append(("hole count", (0, 0), (1e3, 0), 0.0))
     for f in r2["footprints"]:
         if f["ref"].startswith("PD"):
             f1 = fp1[f["ref"]]
             pairs.append((f["ref"], (f["x"], f["y"]), (f1["x"], f1["y"]), 0.0015))
     bad = 0
     for name, a, b, tol in pairs:
-        if abs(a[0] - b[0]) > tol or abs(a[1] - b[1] - _R1_FIT_DY) > tol:
+        if abs(a[0] - b[0]) > tol or abs(a[1] - b[1] - dy) > tol:
             print("   optical: R1 does not fit R2's %s: R2 %s, R1 %s" % (name, a, b))
             bad += 1
     return bad

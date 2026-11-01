@@ -16,9 +16,10 @@ pub struct GpuPart {
     pub idx_off: u32,
     pub vtx_off: u32,
     pub flags: u32, // FLAG_*
-    pub pad: u32,
+    pub pitch: f32, // print layer height; 0: not printed, no lines
     pub color: [f32; 4],
     pub mr: [f32; 4], // metal, rough
+    pub lay: [f32; 4], // build direction, in the part's own frame; w: its bed plane along that
 }
 
 pub const FLAG_VCOL: u32 = 1;
@@ -153,7 +154,9 @@ pub fn load(d: &[u8]) -> Result<Scene, String> {
             (color, metal, rough, clear) = ([1.0; 4], 0.0, 0.6, false);
         }
         let flags = if vcol.is_some() { FLAG_VCOL } else { 0 } | if clear { FLAG_CLEAR } else { 0 };
-        s.gpu_parts.push(GpuPart { idx_off, vtx_off, flags, pad: 0, color, mr: [metal, rough, 0.0, 0.0] });
+        let l = |k: usize| node["extras"]["lay"][k].as_f64().unwrap_or(0.0) as f32;
+        s.gpu_parts.push(GpuPart { idx_off, vtx_off, flags, pitch: l(4), color, mr: [metal, rough, 0.0, 0.0],
+                                   lay: [l(0), l(1), l(2), l(3)] });
         s.parts.push(Part { name: node["name"].as_str().unwrap_or("").to_string(), idx_off, idx_count: (ia.count / 3 * 3) as u32, vtx_off, vtx_count: pa.count as u32, clear });
     }
     Ok(s)

@@ -150,7 +150,7 @@ assert abs(_BG.HEIGHT[_BG.fp_name(J_FP)] - FL.XH_H) < 1e-9, (
 # notice -- the board routes, the CAD renders, and the light misses the slot.
 LED_Y = FL.to_board_y(FL.led_y())           # -3.75
 LANE_Y = FL.to_board_y(FL.DRV_Y)            # +4.05
-BOARD_W = FL.BOARD_W                        # 17.20
+BOARD_W = FL.BOARD_W                        # 23.20
 
 # ⚠ THE MIDDLE ZONE TAKES THE PINS NEAREST THE LED ROW, and getting that backwards is
 # what left the last net unrouted for three attempts. The RGE is turned a quarter turn
@@ -848,7 +848,7 @@ def build(board, passes=20):
         kx0, kx1, ky = FL.narrow_keepout()
         bad = []
         for ref, (cx0, cx1, cy0, cy1) in boxes(place, fps).items():
-            if cx0 < xn and cy1 > yn - 1e-9:
+            if cx0 < xn and cy1 > yn + 1e-9:
                 bad.append("%s's courtyard reaches %.2f, past the notch's edge %.2f" % (ref, cy1, yn))
         crt = boxes(place, fps)
         for ref in sorted(place):
@@ -1023,7 +1023,7 @@ BOARD_NOTES = {
     # were zone returns that ran out of room in the same squeeze.
     #
     # Widening the board is the cheap fix and the chassis will not have it: the motor
-    # bay's structure comes in below y ~40 and the +Y rail's inner face is at 55.55, so
+    # bay's structure comes in below y ~40 and the +Y rail's inner face is at 54.60, so
     # the lane is what it is. Four layers puts GND and the rail on their own planes,
     # gives both outer layers back to routing, and turns every anode and every GND pad
     # into a via -- for about $19 on an order of five.

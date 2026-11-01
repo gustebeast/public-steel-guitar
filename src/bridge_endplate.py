@@ -612,9 +612,11 @@ assert PCB_PAD_TOP > PCB_PAD_BOT, "the board's pad has no thickness"
 
 
 def _pcb_pad() -> cq.Workplane:
-    """The board's seat: a box over its full X/Y envelope, PCB_PAD_BOT to PCB_PAD_TOP."""
+    """The board's seat: a box over its full X/Y envelope, PCB_PAD_BOT to PCB_PAD_TOP, and on
+    -Y out to the body's face (user, 2026-10-30: the prism goes to the edge, and only what the
+    cable hole needs is cut from it), which is past the board whatever the board does."""
     x0, x1 = OP.PCB_X1S, PCB_PAD_X1
-    y0, y1 = OP.PCB_YM, OP.PCB_YP
+    y0, y1 = min(OP.PCB_YM, CH.Y_LO - CH.T / 2), OP.PCB_YP
     return box_at(x1 - x0, y1 - y0, PCB_PAD_TOP - PCB_PAD_BOT,
                   x=(x0 + x1) / 2, y=(y0 + y1) / 2,
                   z=(PCB_PAD_BOT + PCB_PAD_TOP) / 2)
@@ -997,11 +999,12 @@ def _build() -> cq.Workplane:
     for yr, s in ((CH.Y_HI, 1), (CH.Y_LO, -1)):
         yf = yr + s * CH.T / 2 + s * LEG_CLR        # shell outer face + clearance
         yi = yr - s * CH.T / 2 - s * LEG_CLR        # shell inner face + clearance
+        top = CH.leg_shell_top(CH.LEG_STATIONS_X[0], yr)   # the shelf, as every corner
         body = body.cut(box_at((LEG_SHELL_X1 + LEG_CLR) - (LEG_SHELL_X0 - 1.0),
-                               abs(yf - yi), FOOT_Z - (CH.Z_BOT - 1.0),   # stop AT the foot line
+                               abs(yf - yi), top - (CH.Z_BOT - 1.0),      # stop AT the shell top
                                x=((LEG_SHELL_X0 - 1.0) + (LEG_SHELL_X1 + LEG_CLR)) / 2,
                                y=(yf + yi) / 2,
-                               z=((CH.Z_BOT - 1.0) + FOOT_Z) / 2))
+                               z=((CH.Z_BOT - 1.0) + top) / 2))
     # SOCKET the rail-end dovetail tongue on each rail (keyhead-style, low band z
     # -23.15..-6): the endplate drops straight down onto the rail tongues. No glue —
     # the deck panels trap the +Z retention lip (see the module docstring).

@@ -521,10 +521,10 @@
     const c = src.color, a = src.opacity ?? 1, [metal, rough, room] = finish || [0, 0.65];
     const key = c.getHexString() + ':' + a.toFixed(3) + ':' + metal + ':' + rough + ':' + room;
     if (!matCache.has(key))
-      matCache.set(key, new THREE.MeshStandardMaterial({
+      matCache.set(key, layShader(new THREE.MeshStandardMaterial({
         color: c.clone(), metalness: metal, roughness: rough, side: THREE.DoubleSide, clipShadows: true,
         envMapIntensity: room ?? (metal ? 1.0 : finish ? 0.6 : ENV),
-        transparent: a < 0.999, opacity: a, depthWrite: a >= 0.999 }));
+        transparent: a < 0.999, opacity: a, depthWrite: a >= 0.999 })));
     return matCache.get(key);
   }
   // a board's real components are meshes of their own, named <board part>__<ref>, but a
@@ -546,6 +546,76 @@
          roughnessFactor = mix(0.3, roughnessFactor, vColor.a);
        #endif`);
   };
+  layShader(vcMat);                       // (no lines on a board, but one attribute for the batch)
+
+  // LAYER LINES (a graphics setting, off by default): how the part printed, drawn by bending the
+  // shading normal with one bead's rounded profile along the way the part built, phased from its
+  // bed. No geometry changes. A flat top has no tangent along the build, so it shows nothing, and
+  // a layer under about a pixel fades out rather than shimmers. The `lay` attribute is the build
+  // direction scaled by the layer height, in the part's own frame, so a part the rig moves
+  // carries its lines with it; all zero on anything not printed. It exists only once asked for,
+  // and with the define off the program is the stock one.
+  let layersOn = false;
+  try { layersOn = localStorage.getItem('viewer-layers') === '1'; } catch {}
+  function layShader(m) {
+    const prior = m.onBeforeCompile;
+    m.customProgramCacheKey = () => 'lay' + (m.vertexColors ? 'c' : '');
+    m.onBeforeCompile = (sh, r) => {
+      prior.call(m, sh, r);
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>
+        #ifdef USE_LAY
+          attribute vec4 lay;
+          varying float vLayH; varying float vLayP; varying vec3 vLayUp;
+        #endif`).replace('#include <begin_vertex>', `#include <begin_vertex>
+        #ifdef USE_LAY
+          vLayP = length(lay.xyz);
+          vLayH = vLayP > 0.0 ? dot(position, lay.xyz) / vLayP - lay.w : 0.0;
+          vLayUp = normalMatrix * lay.xyz;
+        #endif`);
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+        #ifdef USE_LAY
+          varying float vLayH; varying float vLayP; varying vec3 vLayUp;
+        #endif`).replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        #ifdef USE_LAY
+          if (vLayP > 0.0) {
+            vec3 layT = normalize(vLayUp); layT -= normal * dot(layT, normal);
+            float layF = 1.0 - smoothstep(0.2, 0.4, fwidth(vLayH) / vLayP);
+            if (layF > 0.0 && dot(layT, layT) > 1e-4) {
+              float a = fract(vLayH / vLayP) * 2.0 - 1.0;
+              normal = normalize(normal + layT * (0.6 * layF * a / sqrt(1.0 - 0.96 * a * a)));
+            }
+          }
+        #endif`);
+    };
+    return m;
+  }
+  function setLayers(on) {
+    layersOn = on;
+    try { localStorage.setItem('viewer-layers', on ? '1' : '0'); } catch {}
+    if (on) {
+      const fill = (arr, p, start) => {
+        if (!p.lay) return;
+        const [x, y, z, bed, h] = p.lay, n = p.pos.length / 3;
+        for (let i = start; i < start + n; i++) arr.set([x * h, y * h, z * h, bed], i * 4);
+      };
+      for (const b of M.batches || []) if (!b.drawGeo.attributes.lay) {
+        const a = new Float32Array(b.drawGeo.attributes.position.count * 4);
+        for (const p of b.parts) fill(a, p, p.vStart);
+        b.drawGeo.setAttribute('lay', new THREE.BufferAttribute(a, 4));
+      }
+      for (const p of M.list || []) if (p.mesh && !p.mesh.geometry.attributes.lay) {
+        const a = new Float32Array(p.mesh.geometry.attributes.position.count * 4);
+        fill(a, p, 0);
+        p.mesh.geometry.setAttribute('lay', new THREE.BufferAttribute(a, 4));
+      }
+    }
+    for (const m of [...matCache.values(), vcMat]) {
+      if (!!m.defines?.USE_LAY === on) continue;
+      m.defines = m.defines || {};
+      if (on) m.defines.USE_LAY = 1; else delete m.defines.USE_LAY;
+      m.needsUpdate = true;
+    }
+  }
 
   // A FILAMENT NAMED ...-clear IS SEEN THROUGH: a clear part drawn solid hides what the
   // real one shows (the deck's base is clear so the fret lights shine up through it).
@@ -570,7 +640,7 @@
         clear ? { color: mesh.material.color, opacity: CLEAR } : mesh.material, FINISH[mesh.userData.mat]);
       const unit = mesh.userData.unit || unitOf(mesh.name);      // a board's lettering names its board
       const p = { name: mesh.name, unit, family: family(unit), mat, hidden: false, col,
-                  pos: g.attributes.position.array, idx: g.index.array,
+                  pos: g.attributes.position.array, idx: g.index.array, lay: mesh.userData.lay,
                   dynamic: moving.has(mesh.name), mesh: null, batch: null,
                   vStart: 0, iStart: 0, iCount: g.index.count };
       M.list.push(p); M.byName.set(p.name, p);
@@ -625,6 +695,7 @@
     }
     scene.add(root);
     root.updateWorldMatrix(true, true);
+    if (layersOn) setLayers(true);
     // the trees cost about a second on the whole instrument: after the first frame
     setTimeout(() => { for (const b of M.batches) b.pickGeo.computeBoundsTree({ indirect: true }); }, 50);
   }
@@ -1480,6 +1551,8 @@
     const traceWhy = NATIVE || rt.ok ? '' : "ray tracing needs the desktop app (or cadkit's local server): there is no tracer behind this page";
     row('lighting', 'light', [...LIGHT.slice(0, 3).map((t, k) => [k, t, '']), [3, NATIVE ? 'path traced' : LIGHT[3], traceWhy]], quality,
         NATIVE && quality < 3 ? 'drawn by the page, as in a browser: the path tracer rests' : '');
+    // the printed look: appearance only, on every lighting level
+    row('layer lines', 'layers', [[0, 'off', ''], [1, 'on', '']], layersOn ? 1 : 0);
     // the denoiser of the traced picture: DLSS while it moves (where the card has it), or the tracer's own, or none
     const dw = dlssWhy(i), den = !NATIVE ? 'own' : !p ? 'own' : p.dlss && !dw ? 'dlss' : p.denoise ? 'own' : 'none';
     row('denoising', 'denoiser', [['dlss', 'DLSS ray reconstruction', dw], ['own', 'edge-aware filter (built in)', ''], ['none', 'none', deskWhy]], den,
@@ -1699,7 +1772,8 @@
   const nat = { all: true, glb: '', cam: [], hidden: '', sel: null, clip: '', pose: {}, quiet: 0, env: null,
                 marks: '', blank: false, line: '', short: '', depth: null, tmp: new THREE.Matrix4(),
                 // (the light level kept by the shell is taken once, when it first answers)
-                gfx(i) { gfx.info = i; if (!gfx.took) { gfx.took = true; if (i.prefs.light !== quality) setQuality(i.prefs.light, true); }
+                gfx(i) { gfx.info = i; if (!gfx.took) { gfx.took = true; if (i.prefs.light !== quality) setQuality(i.prefs.light, true);
+                                                     if (i.prefs.layers !== layersOn) setLayers(i.prefs.layers); }
                          if (gfx.open) gfxDraw(); },
                 stats(s) { nat.short = s.spp + ' samples';
                            nat.line = 'path traced · ' + s.state + ' · ' + nat.short +
@@ -1829,6 +1903,11 @@
     if (k === 'light') {
       setQuality(+el.value, true);
       if (NATIVE) window.ipc.postMessage(JSON.stringify({ t: 'gfx', set: { light: quality } }));   // kept by the shell
+      return;
+    }
+    if (k === 'layers') {
+      setLayers(el.value === '1');
+      if (NATIVE) window.ipc.postMessage(JSON.stringify({ t: 'gfx', set: { layers: layersOn } }));
       return;
     }
     if (!NATIVE) return;                                 // (in a browser the rest has the one choice it can have)

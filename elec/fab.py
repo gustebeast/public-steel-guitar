@@ -105,6 +105,7 @@ LCSC = {
     "TS5A3159DCKR": "C46388",        # SPDT analog switch, VIH 2.4 V at 5 V
     "RK73B3ATTE2R0J": "C5139521",    # 2 ohm 2512, KOA: optical R44, the 24 V input damper,
                                      # chosen for its one-pulse curve; 3,354 in stock 2026-10-05
+    "FRC2512F1R20TS": "C2960682",    # FOJAN 1.2 ohm 1 % 1 W 2512: optical R54, U8's input drop; 11,740 on 2026-10-31
     "BLM18KG601SN1D": "C85833",      # 0603 bead, 600R@100MHz, 1.3 A, DCR 150 mohm
     "1N4148WT": "C917006",           # SOD-523 switching diode, 75 V 150 mA
     "TAXM8M4RFDCET2T": "C403948",    # Yajingxin 8 MHz 3225, CL 12 pF, ESR 250 ohm max;
@@ -140,6 +141,11 @@ LCSC = {
     "KPJX-4S-S": "C2875467",        # Kycon KPJX-4S-S, 4-pin power jack; stock 44 on
                                     # 2026-10-01 -- THIN: check before a build of 10
     "MX126-5.0-02P": "C5188434",    # MAX MX126-5.0-02P-GN01-Cu-S-A, stock 48,416
+    "MX128-5.0-02P-Y": "C5188463",  # MAX MX128-5.0-02P-GN01-Cu-Y-A, slotted, stock 1,353 on 2026-10-30 -- output_panel R2 J8 (R2-3)
+    "TUSB320LAIRWBR": "C132554",    # TI USB-C role detect, X2QFN-12; 2,603 on 2026-10-30 -- THIN
+    "TS3USB221RSER": "C130085",     # TI USB 2:1 switch, UQFN-10; 64,390 on 2026-10-30
+    "SMF24A": "C169430",            # SOD-123FL TVS, 24 V stand-off, 200 W; 99,839 on 2026-10-30
+    "INA226AIDGSR": "C49851",       # TI power monitor, VSSOP-10; 42,364 on 2026-10-30
     # The two CLASS lines whose pinout the netlist actually writes out, so a part can be
     # checked against it pin for pin rather than chosen by name:
     "NMJ6HCD2": "C368502",          # Neutrik 1/4 in TRS jack, THT. 1350 in stock 2026-10-02
@@ -176,6 +182,8 @@ LCSC = {
     "PCM1808PWR": "C55513",         # TI ADC, TSSOP-14 (SLES177B Pin Functions)
     "PCM5102APWR": "C107671",       # TI DAC, TSSOP-20 (SLAS859C Pin Functions, Figure 33)
     "CH334F": "C5187527",           # WCH HS hub, QFN-24 4x4 (DS V2.5 Table 1-3, "4F")
+    "CH340C": "C84681",             # WCH USB-serial, SOP-16, DTR# + RTS#, no crystal; 106,932 on 2026-10-30
+    "AO3401A": "C15127",            # P-FET SOT-23, JLC basic; 1,019,825 on 2026-10-30
     "G6K-2F-Y-DC5": "C47190",       # Omron DPDT, 5 V coil (terminal arrangement p.6): the TAPE-AND-REEL listing (G6K-2F-Y-TR DC5), 64,883 on 2026-10-08; the tube listing C326376 was down to 44
     "ESD5B5.0ST1G": "C93623",       # onsemi bidirectional 5 V TVS, SOD-523, ~166k
     # -- the UI board, 2026-09-25, every line read off the LCSC listing itself ------
@@ -237,6 +245,10 @@ PASSIVES = {
     ("220nF/50V", "C_0603_1608Metric"):      "C64705",   # Samsung CL10B224KB8NNNC, 50 V X7R 10 %; 365,491 in stock
     ("0R", "R_0402_1005Metric"):             "C17168",   # UniOhm 0402WGF0000TCE; basic
     ("100R", "R_0402_1005Metric"):           "C25076",   # UniOhm 0402WGF1000TCE, 1 %; basic
+    ("1k", "R_0402_1005Metric"):             "C11702",   # UniOhm 0402WGF1001TCE, 1 %; basic
+    ("15k 1%", "R_0402_1005Metric"):         "C25756",   # UniOhm 0402WGF1502TCE, 1 %; basic
+    ("910k", "R_0402_1005Metric"):           "C25800",   # UniOhm 0402WGF9103TCE, 1 %; 30,482 on 2026-10-30. TI's 900k is 8 pieces at JLC
+    ("5mR 1W", "R_0805_2012Metric"):         "C6351848",  # Yageo PA0805FRF870R005L, 1 %; 10,923 on 2026-10-30 -- R2 inlet shunt
     ("100k", "R_0402_1005Metric"):           "C25741",   # UniOhm 0402WGF1003TCE, 1 %; basic
     ("100k 1%", "R_0402_1005Metric"):        "C25741",
     ("10k", "R_0402_1005Metric"):            "C25744",   # UniOhm 0402WGF1002TCE, 1 %; basic

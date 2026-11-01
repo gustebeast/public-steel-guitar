@@ -153,6 +153,8 @@ struct PassP {
 #[derive(Clone, Copy)]
 pub struct Settings {
     pub denoise: bool,
+    /// each part's print layers on its surfaces
+    pub layers: bool,
     pub temporal: bool,
     pub spf_moving: u32,
     pub spf_still: u32,
@@ -165,7 +167,7 @@ pub struct Settings {
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { denoise: true, temporal: false, spf_moving: 1, spf_still: 1, budget_ms: 0.0, max_hist: 16.0, sigma_l: 4.0 }
+        Settings { denoise: true, layers: false, temporal: false, spf_moving: 1, spf_still: 1, budget_ms: 0.0, max_hist: 16.0, sigma_l: 4.0 }
     }
 }
 
@@ -975,7 +977,7 @@ impl Renderer {
             reset: reset as u32,
             mode,
             spf,
-            flags: if l.clip.is_some() { 2 } else { 0 } | if s.denoise { 0 } else { 1 } | if self.linear_out { 8 } else { 0 } | if self.power_out { 16 } else { 0 } | if use_dlss { 32 } else { 0 } | if self.hdr { 64 } else { 0 },
+            flags: if l.clip.is_some() { 2 } else { 0 } | if s.denoise { 0 } else { 1 } | if self.linear_out { 8 } else { 0 } | if self.power_out { 16 } else { 0 } | if use_dlss { 32 } else { 0 } | if self.hdr { 64 } else { 0 } | if s.layers { 128 } else { 0 },
             denoise: if s.denoise { 1.0 } else { 0.0 },
             hist_w,
             max_hist: s.max_hist,

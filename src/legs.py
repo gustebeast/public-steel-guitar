@@ -273,7 +273,7 @@ def _groove(length: float) -> cq.Workplane:
 # LEG_NY_FACE is chassis.LEG_Y[0] - LEG_W/2 spelled out from dimensions (legs cannot import
 # chassis); keyhead_endplate asserts the two agree.
 from . import nut_block as _NB                # nut_block imports dimensions + motor_bank only: no cycle
-LEG_NY_FACE = D.BRIDGE_AXLE_Y + 4 * D.BEAD + D.WALL_THICKNESS - SQ_W     # a +Y leg's -Y face
+LEG_NY_FACE = D.RAIL_HI_INNER_Y + D.WALL_THICKNESS - SQ_W     # a +Y leg's -Y face
 KEYHEAD_CLEAR_Y = (max(_NB.height_screw_xy(i)[1] for i in range(D.N_STRINGS))
                    + _NB.HS_HEAD_CAV_D / 2.0 + D.MIN_WALL_2P)   # +Y edge of the room the heads need
 # ...and the BRIDGE's string access channels (user, 2026-09-11). The +Y bridge-end leg stands under
@@ -300,8 +300,9 @@ SERVICE_CORNERS = ((-1.0, 1.0), (1.0, 1.0))
 # The LOCK PIN sits LOCK_PIN_DY OUTBOARD of the leg's centreline (user), which is what
 # leaves room for a long service slide: the second hole goes SERVICE_SLIDE inboard of it and
 # has to stay on a tenon whose run covers the foot's full 44.8 (SERVICE_SLIDE_MAX). 7.5
-# (user, 2026-09-11; was 7.0) is what lets the slide reach the bridge's need.
-LOCK_PIN_DY = 7.5
+# (user, 2026-09-11; was 7.0) was what let the slide reach the bridge's need; each bead the +Y rail
+# comes in lengthens the slide, so past that the pin moves out with it.
+LOCK_PIN_DY = max(7.5, SERVICE_SLIDE - (SQ_W / 2 - (_M4.shaft_clr_d / 2 + D.MIN_WALL_2P)))
 # ...and the screw itself (lock_pin_joint): a stock M4 button head recessed in the end
 # face, into a heat-set insert on the kept shell's face across the endplate<->shell gap
 SHELL_GAP = 0.4                    # that gap: chassis.EP_LEG_CLR, asserted equal there

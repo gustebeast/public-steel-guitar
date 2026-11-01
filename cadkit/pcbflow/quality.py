@@ -2619,8 +2619,16 @@ def connector_labels(ctx):
         d = decl.get(ref, {}) or {}
 
         # (a) the designator, in ink, on the connector's own side
+        # silk_legend: no site for the name, so one character on this side and "<id> <name>"
+        # in the legend, on either face (kicad_silk step 7).
+        ident = re.compile(r"^(\S) %s$" % re.escape(ref))
+        legend = [m.group(1) for s, _c, _b in mine["texts"] + other["texts"]
+                  for m in [ident.match(s)] if m]
         if any(token.search(s) for s, _c, _b in mine["texts"]):
             out.append((ref, True, "%s is named on its own side (%s)" % (ref, face)))
+        elif any(s == i for i in legend for s, _c, _b in mine["texts"]):
+            out.append((ref, True, "%s is named on its own side (%s) by its legend identifier"
+                        % (ref, face)))
         else:
             elsewhere = any(token.search(s) for s, _c, _b in other["texts"])
             out.append((ref, False, "%s: its designator is not printed on its own side (the "

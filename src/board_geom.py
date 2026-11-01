@@ -81,6 +81,11 @@ def mask(board: str):
 
 # Laid OVER cadkit's tables (project wins).
 _HEIGHT: dict = {
+    # output_panel R2. SOD-123F: SMF24A, 1.1 max; MSOP-10: INA226, 1.1 max; SOIC-16: CH340C, 1.75 max;
+    # X2QFN-12: TUSB320, 0.4 max; UQFN-10: TS3USB221, 0.55 max; MX128: as src/screw_terminal.py draws it
+    "D_SOD-123F": 1.10, "MSOP-10_3x3mm_P0.5mm_Tight": 1.10, "SOIC-16_3.9x9.9mm_P1.27mm": 1.75,
+    "Texas_RWB0012A_X2QFN-12_1.6x1.6mm_P0.4mm": 0.40, "Texas_UQFN-10_1.5x2mm_P0.5mm": 0.55,
+    "MaiXu_MX128-5.0-02P_1x02_P5.00mm": 14.0,
     # output_panel U10, the AD8402 gain pot: 14-lead narrow SOIC, 1.75 max (JEDEC MS-012-AB)
     "SOIC-14_3.9x8.7mm_P1.27mm": 1.75,
     # the tee's 8-way trunk: the same shell as cadkit's S4B-XH-A, eight ways long. The tee

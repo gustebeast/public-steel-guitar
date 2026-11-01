@@ -30,10 +30,10 @@ says why for each board.
 
 WHERE EVERY FIGURE COMES FROM
   * pads and headers: the routed boards (elec/geom), through src/board_geom.
-  * WCH-LinkE header: the MuseLab board's own picture on its Tindie listing, read
-    2026-10-12 -- a 2x5 with NO pin numbers, so pins are named by signal and by place.
-    WCH's manual gives the layout only as a figure that could not be read: CHECK THE
-    SILKSCREEN of the probe that arrives against LINKE_ROWS before the first wire.
+  * WCH-LinkE header: the silkscreen of the user's own probe, v1.0, photographed
+    2026-10-31 -- a 2x5 with NO pin numbers, so pins are named by signal and by place.
+    LINKE_ROWS matches it, both faces. Its pins really run off the board's end, parallel
+    to it; they are stood up here only so the leads read.
   * ST-LINK/V2 header: ST UM1075 rev 8, table 4.
   * ⚠ THE PROBES' OWN OUTLINES ARE NOT MEASURED. They are blocks the right kind of size
     with their headers in the right order; nothing here is a fit check on them.
@@ -78,6 +78,13 @@ CHAIN = (
       ("GND", 5, 5), ("V24", 6, 6))),
 )
 INLET = ("panel", "J6")      # where the brick's own plug goes
+# THE LEADS MADE ONCE, AT INSTRUMENT LENGTH (user, 2026-10-31): crimp to crimp, for the bench
+# and then the instrument. The longest conductor as src/wiring.py draws it (2026-10-31:
+# optical 173.0, power link 756.9, USB lead 192.2 of jacket + 4.3 of tail), + 10 of slack,
+# up to the next 5. Every conductor of a lead is cut the same. (lead, label)
+LEAD_MM = {"optical_power": ("OPTICAL POWER", 185), "power_link": ("POWER LINK", 770),
+           "motor_usb": ("USB TO PH-4", 210)}
+LABEL_H = 9.0                # the labels' letters
 # USB: (lead, from, to, what it is). An end is a Pi USB-A port ("pi", n), a probe's own
 # socket ("linke", station) / ("stlink",), or a board's connector (station, ref).
 USB = (
@@ -98,8 +105,8 @@ RGB = {"SWDIO": (0.10, 0.35, 0.85), "SWCLK": (0.95, 0.80, 0.10), "NRST": (0.92, 
        "GND": (0.05, 0.05, 0.05), "VAPP": (0.95, 0.45, 0.10),
        "V24": (0.85, 0.12, 0.10),
        "PWR_SW_UP": (0.55, 0.55, 0.58), "PWR_SW_DN": (0.55, 0.55, 0.58),
-       "probe": (0.10, 0.25, 0.60), "stlink": (0.90, 0.90, 0.92),
-       "brick": (0.10, 0.10, 0.11), "pin": (0.83, 0.66, 0.22), "socket": (0.06, 0.06, 0.06),
+       "probe": (0.04, 0.04, 0.05), "stlink": (0.90, 0.90, 0.92),
+       "label": (1.0, 0.85, 0.15), "brick": (0.10, 0.10, 0.11), "pin": (0.83, 0.66, 0.22), "socket": (0.06, 0.06, 0.06),
        "usb": (0.45, 0.25, 0.60), "solder": (0.80, 0.80, 0.82),
        "bench": (0.55, 0.42, 0.28)}
 
@@ -126,6 +133,13 @@ def _lead(a, b, rise=RISE):
     """A lead from `a` straight up, across and down onto `b` (it enters b from above)."""
     top = max(a[2], b[2]) + rise
     return oct_cable([a, (a[0], a[1], top), (b[0], b[1], top), b], LEAD_OD)
+
+
+def _label(lead, x, y, z):
+    """The floating length label beside a lead, lying flat, read from the bench's -Y side."""
+    name, mm = LEAD_MM[lead]
+    return (cq.Workplane("XY").text("%s  %d mm" % (name, mm), LABEL_H, 0.8)
+            .translate((x, y, z)))
 
 
 def _socket(p):
@@ -274,6 +288,9 @@ def components():
             add("%s_%d_%s" % (lead, w0, net.lower()),
                 oct_cable([a, a1, (a1[0], a1[1], top), (b1[0], b1[1], top), b1, b_], LEAD_OD),
                 RGB[net])
+            if j == 0:
+                add("label_" + lead, _label(lead, (a1[0] + b1[0]) / 2, (a1[1] + b1[1]) / 2 + 14.0,
+                                            top + 12.0), RGB["label"])
     # the host: the Pi on its own supply, and every USB lead
     pi_parts, mouths, power = pi4(*PI_AT)
     for n, w, rgb in pi_parts:
@@ -300,6 +317,9 @@ def components():
         for st in (("motor", "panel") if a == ("linke", None) else [None]):
             (pa, da), (pb, db) = ends[("linke", st) if st else a], ends[b]
             add(lead + ("__%s" % st if st else ""), _usb(pa, pb, da, db, k), RGB["usb"])
+            if lead in LEAD_MM:
+                add("label_" + lead, _label(lead, (pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2,
+                                            USB_RISE + 16.0), RGB["label"])
     return out
 
 
