@@ -74,7 +74,9 @@ an EMI defence: noise immunity comes from SHIELDING (audio), TWISTING
 
 from __future__ import annotations
 
+import json
 import math
+import pathlib
 
 import cadquery as cq
 
@@ -84,7 +86,8 @@ from . import electronics as EL
 from . import board_geom as BG
 from . import ui_panel as UI
 from . import knee_lever as _KL   # the keeper barrel the lever slack winds on
-from cadkit.cables import bundle_paths, flat_cable, flat_bends, oct_cable
+from cadkit.cables import (bundle_paths, flat_cable, flat_bends, oct_cable, path_length,
+                           STRAIGHT, TWIST_PITCH, TWIST_TAIL, twisted, wire_length)
 
 # modeled cable OD per net (mm): jacketed bundles (shielded/USB) drawn as ONE
 # round conductor at the jacket OD; the 24 V pair AND the CAN pairs as discrete
@@ -126,6 +129,19 @@ WIRE_OD = {
     # the motor drops (tee -> motor screw terminals): 22 AWG power pair, 26 AWG CAN pair
     "wire_drop_v24": 1.52, "wire_drop_gnd": 1.52, "wire_drop_canh": 1.27, "wire_drop_canl": 1.27,
 }
+# HOW EACH LEAD IS LAID (user, 2026-11-01). Every _cable and _run has to say, so a length read
+# off this file has the twist in it. Twist is the noise defence (the docstring): each pair in
+# a lead on its own lay, rail with its return, H with L, the two throws together. The
+# diameters are the wires', not the drawn ones above, and a mixed lead takes its thickest.
+LAY_22 = twisted(1.52)                    # 22 AWG, the 24 V leads
+LAY_26 = twisted(1.27)                    # 26 AWG, the 5 V leads
+LAY_BUS_B = twisted(1.3)                  # CANB_WIRE_OD
+# the leg harness's lay, INSTALL_NOTES "Leg blind-mate boards": pairs, then the pairs round
+# each other at five times that. 0.9 is leg_pogo.HARNESS_WIRE_OD.
+LAY_LEG = twisted(0.9, then=twisted(1.8, 5 * TWIST_PITCH))
+LEAD_SPARE = 10.0                         # on top of the wire to cut, then up to the next 5
+LEAD_CUTS = pathlib.Path(__file__).resolve().parent / "lead_cuts.json"
+
 # (_KNEE_B is gone with the two-conductor bus-B head it served -- a landing 20 mm short
 #  of LKL's board, waiting on a chassis follow-up. That follow-up is the wiring port, and
 #  ctrl_bus_b now runs all four conductors onto the board's own ways. See bus B below.)
@@ -298,6 +314,7 @@ CONN = {
 }
 _CABLES = {}        # cable -> {"a": [(pt, out, net)], "b": [...], "drawn": {k: name}}
 PATHS = {}          # conductor name -> (points, diameter): every lead as it was drawn
+LAYS = {}           # conductor name -> its Lay
 
 
 def conn_end(board, ref, ways=None, at=(0.0, 0.0, 0.0)):
@@ -310,14 +327,15 @@ def conn_end(board, ref, ways=None, at=(0.0, 0.0, 0.0)):
     return [(EL.way_pt(board, ref, n, at), d, names[n - 1]) for n in ways]
 
 
-def _cable(key, a, b):
+def _cable(key, a, b, lay):
     """Declare cable `key` between two ends (conn_end lists, or the same shape built by
-    hand for a connector another module owns). Conductor k joins a[k] to b[k]."""
+    hand for a connector another module owns). Conductor k joins a[k] to b[k]. `lay` is how
+    it is laid (cadkit.cables): required, because the wire to cut depends on it."""
     assert len(a) == len(b), "%s: %d ways at one end, %d at the other" % (key, len(a), len(b))
     for k, (ea, eb) in enumerate(zip(a, b)):
         assert ea[2] == eb[2], ("%s: conductor %d would join %s to %s -- the harness has "
                                 "every lead straight" % (key, k, ea[2], eb[2]))
-    _CABLES[key] = {"a": a, "b": b, "drawn": {}}
+    _CABLES[key] = {"a": a, "b": b, "drawn": {}, "lay": lay}
     return [k for k, e in enumerate(a) if e[2] != EH.NC]
 
 
@@ -366,10 +384,13 @@ def _usb_plug(mouth, sx, body, tongue, gap=0.0):
     return s, (mx + sx * (gap + bl), my, mz)
 
 
-def _run(out, name, pts, d, cable=None, k=None):
-    """Draw one conductor and remember its path; `cable`, `k` say which way pair it is."""
+def _run(out, name, pts, d, cable=None, k=None, lay=None):
+    """Draw one conductor and remember its path; `cable`, `k` say which way pair it is. A
+    conductor in no _cable says its own `lay`."""
+    assert (cable is None) != (lay is None), "%s: the lay comes from a cable or lay=" % name
     pts = [tuple(float(v) for v in q) for q in pts]
     PATHS[name] = (pts, d)
+    LAYS[name] = lay or _CABLES[cable]["lay"]
     if cable is not None:
         assert k not in _CABLES[cable]["drawn"], "%s: conductor %d drawn twice" % (cable, k)
         _CABLES[cable]["drawn"][k] = name
@@ -397,7 +418,42 @@ def _split_jacket(out, name, jacket_end, ends, d, lead=3.0):
         a, b = (-s if k < half else s), (-s if k % 2 == 0 else s)
         start = tuple(jacket_end[m] + a * row[m] + b * up[m] for m in range(3))
         _run(out, "%s_%d" % (name, k + 1),
-             [start, tuple(pin[m] + lead * dirn[m] for m in range(3)), pin], d)
+             [start, tuple(pin[m] + lead * dirn[m] for m in range(3)), pin], d, lay=STRAIGHT)
+
+
+def conductor_cut(name):
+    """The wire to cut for one drawn conductor, mm, before any spare."""
+    lay = LAYS[name]
+    return wire_length(PATHS[name][0], lay, 0.0 if lay is STRAIGHT else 2 * TWIST_TAIL)
+
+
+def cable_cut(key):
+    """(drawn, wire to cut) of cable `key`'s longest conductor, mm. All of a lead is cut alike."""
+    names = _CABLES[key]["drawn"].values()
+    return (max(path_length(PATHS[n][0]) for n in names), max(conductor_cut(n) for n in names))
+
+
+def lead_mm(mm):
+    """A cut length as it goes on a label: LEAD_SPARE more, up to the next 5."""
+    return int(math.ceil((mm + LEAD_SPARE) / 5.0) * 5)
+
+
+def lead_cuts():
+    """{lead: its label's length} for the leads made once, for the bench and then the
+    instrument (src/flash_bench.py), after build_wires() and optical_feed(). The USB lead is a
+    bought jacket and its tail. tools/lead_cuts.py writes these to LEAD_CUTS."""
+    tail = max(conductor_cut("wire_link_%d" % k) for k in range(1, 5))
+    return {"optical_power": lead_mm(cable_cut("optical feed")[1]),
+            "power_link": lead_mm(cable_cut("PWR_LINK")[1]),
+            "motor_usb": lead_mm(conductor_cut("wire_link") + tail)}
+
+
+def report_lead_cuts():
+    """A line if LEAD_CUTS no longer matches the cables, as a stale route is reported."""
+    if "optical feed" not in _CABLES:
+        return
+    if json.loads(LEAD_CUTS.read_text(encoding="utf-8")) != lead_cuts():
+        print("LEAD_CUTS is stale: py -3.12 -m tools.lead_cuts")
 
 
 _END_TOL = 0.05         # mm off the way's contact line
@@ -495,7 +551,7 @@ def optical_feed():
         # side: the step between them is the twist
         legs = [list(head[i]) + list(reversed(tail[i])) for i in range(2)]
     out = []
-    for k in _cable("optical feed", a, b):
+    for k in _cable("optical feed", a, b, LAY_22):
         for end, pin in ((legs[k][0], a[k][0]), (legs[k][-1], b[k][0])):
             assert max(abs(end[m] - pin[m]) for m in range(3)) < 0.05, (
                 "the optical feed's pair has turned over on the way: %r against way %d at %r"
@@ -1050,7 +1106,7 @@ def build_wires():
     _HEAD_TURN_Y = MB.body_box(0)[3] + _SV.PLUG_Y1 + WIRE_OD["wire_pwr_gnd"] / 2 + 0.6
     _SEG = {"GND": 11, "V24": 11, "CAN_H": 0, "CAN_L": 0}       # the names these have always had
     _ja = conn_end("motor_ctrl", "J1")
-    for k in _cable("bus A head", _ja, _tin[west[0]]):
+    for k in _cable("bus A head", _ja, _tin[west[0]], LAY_22):
         (pa, _, net), (pb, _, _) = _ja[k], _tin[west[0]][k]
         # ⚠ ALL FOUR RISERS ON ONE x NOW (2026-10-29): the cap reaches x -587.0 since its
         # ribbon band moved west, 4.7 off J1's plug, so lanes of x no longer fit beside
@@ -1083,7 +1139,7 @@ def build_wires():
     for k in range(9):
         _key = "bus A trunk %d" % k
         _a, _b = _tout[west[k]], _tin[west[k + 1]]
-        for j in _cable(_key, _a, _b):
+        for j in _cable(_key, _a, _b, LAY_22):
             net = _a[j][2]
             # the CAN pair's hops are numbered from 1 and the 24 V pair's from 2 (a hop that
             # no longer exists was _1): the names the colour and allow-list tables know
@@ -1137,7 +1193,7 @@ def build_wires():
             (x, y, z), d = _SV.terminal_way(*_TERM[net])
             motor_end.append(((mx + x, f + y, mz + z), d, net))
         key = "motor drop %d" % (i + 1)
-        _cable(key, motor_end, tend)
+        _cable(key, motor_end, tend, LAY_22)
         for side, nets, lvl, turns in ((1, ("V24", "GND"), _lvl_pwr, (-25.5, -23.5)),
                                        (-1, ("CAN_L", "CAN_H"), _lvl_can, (-29.5, -27.5))):
             # nets[0] is bound for the way FARTHER from this side: it takes the inner lane
@@ -1257,7 +1313,7 @@ def build_wires():
     # has to cross it -Y of that rise, where the pigtail is still down on the motor.
     _HEAD_IN = 11.0
     _HEAD_OUT = 6.0                      # +Y of the trough's line before coming down
-    for k in _cable("24 V head", _j7e, _tout[_WEST0][:2]):
+    for k in _cable("24 V head", _j7e, _tout[_WEST0][:2], LAY_22):
         net = _j7e[k][2]
         _run(out, _NAME[net] + "_0", _head(k, -PWR_OFF if net == "GND" else PWR_OFF),
              WIRE_OD[_NAME[net]], "24 V head", k)
@@ -1329,7 +1385,7 @@ def build_wires():
     _PL_Y0 = _jc[1] - 10.0             # the merge: at 4.0 a row's two conductors closed to 1.5
     _PL_REC_Y = _REC_Y + _PL_COL       # its -Y column on the line J7's pair takes, not past it
     _PL_RISE = CH_WT_X1 + 0.3 + _PL_HALF       # the climb into the trough, clear of its end face
-    _pl_live = _cable("PWR_LINK", _j10e, _j3e)
+    _pl_live = _cable("PWR_LINK", _j10e, _j3e, LAY_22)
     _pl_centre = [(_jc[0], _PL_Y0, _PL_ZREC), (_jc[0], _PL_REC_Y, _PL_ZREC),
                   (_BAY_X10, _PL_REC_Y, _PL_ZREC), (_BAY_X10, CHAN_Y, _PL_ZREC),
                   (_PL_RISE, CHAN_Y, _PL_ZREC)] + _lane(_PL_RISE, _PL_XT, _PL_ZTR) + [
@@ -1435,7 +1491,7 @@ def build_wires():
           (_USB_X, _ym, _USB_OVER), (_USB_X, _ym, LANE_USB),
           (_USB_COL_X, _ym, LANE_USB), (_USB_COL_X, _ym, _pe[2]),
           (_USB_TURN_X, _ym, _pe[2]), (_USB_TURN_X, _pe[1], _pe[2]), _pe],
-         WIRE_OD["wire_usb"])
+         WIRE_OD["wire_usb"], lay=STRAIGHT)        # bought: its twist is inside the jacket
     # THE HUB'S LEAD STAYS OUT OF THE TROUGH'S FIRST PIECE: the 24 V head has the lanes over
     # wire_usb there. It crosses the bay at its own lane's height instead, at J3's y, and
     # comes to the wall where the head has left (_EXIT7) and before the UI board begins.
@@ -1446,7 +1502,7 @@ def build_wires():
           (_HUB_IN, _c_hub[1], LANE_HUB), (_HUB_IN, _yh, LANE_HUB), (_USB_COL, _yh, LANE_HUB),
           (_USB_COL, _yh, _USB_FLY), (_USB_COL, _m_hub[1], _USB_FLY),
           (_PORT_APR_X, _m_hub[1], _USB_FLY), (_PORT_APR_X, _m_hub[1], _m_hub[2]), _a_hub],
-         WIRE_OD["wire_hub"])
+         WIRE_OD["wire_hub"], lay=STRAIGHT)
 
     # -- 5 V to the Pi's GPIO header, from the merged board's J5. It was never
     #    modelled while the power board existed -- that board fed the Pi and nothing
@@ -1481,7 +1537,7 @@ def build_wires():
     _V5_PITCH = 2.0                                 # O1.8 conductors side by side
     _V5_X0 = _PL_XT + _PL_COL + 0.9 + 3.6           # the first column: +X of the 24 V link's run
     _V5_Y0 = _LT_YL - 3 * _LT_PITCH - 2.2           # the last +X run: -Y of the lights' lanes
-    _v5_live = _cable("PI_5V_LINK", _v5a, _v5b)
+    _v5_live = _cable("PI_5V_LINK", _v5a, _v5b, LAY_26)
     for n, k in enumerate(_v5_live):
         (pa, _, net), (pb, _, _) = _v5a[k], _v5b[k]
         xt = _V5_X0 + n * _V5_PITCH
@@ -1526,7 +1582,7 @@ def build_wires():
     # lanes -- the +Y-most to the +X-most lane, so no -Y run crosses another's fly.
     _LT_CLIMB_X = _capbb.xmin - WIRE_OD["wire_lights"] / 2.0 - 0.2
     _LT_YS = (1.62, 0.0, EL.MCTRL_J7_SIDE, EL.MCTRL_J7_SIDE - 1.65)    # off J7's line, by way
-    _lt_live = _cable("LIGHTS_LINK", _lta, _ltb)
+    _lt_live = _cable("LIGHTS_LINK", _lta, _ltb, LAY_22)
     for n, k in enumerate(_lt_live):
         (pa, _, net), (pb, _, _) = _lta[k], _ltb[k]
         # ways 1, 2 on J7's own line at their own heights; 3, 4 beside them at the same two
@@ -1577,11 +1633,11 @@ def build_wires():
     _LINK_X = BAY_X - 3.0
     _LINK_RISE_X = _lt[0] + 2.8          # -590.7: -X of bus A's first riser
     _split_jacket(out, "wire_link", (_LINK_RISE_X, _lt[1], _lt[2]), _l4, 0.8, lead=1.2)
-    out.append(("wire_link", _wire([
+    _run(out, "wire_link", [
         (_LINK_RISE_X, _lt[1], _lt[2]), (_LINK_RISE_X, _lt[1], BAYFLY),
         (_LINK_X, _lt[1], BAYFLY), (_LINK_X, _lp[1], BAYFLY),
         (_PORT_APR_X, _lp[1], BAYFLY), (_PORT_APR_X, _lp[1], _lp[2]), _lp],
-        WIRE_OD["wire_link"])))
+        WIRE_OD["wire_link"], lay=STRAIGHT)
 
     # (the Teensy <-> transceiver CAN jumper pair is GONE: the transceivers now sit
     #  on the same board as the MCU, so that harness is copper instead of wire.)
@@ -2081,7 +2137,7 @@ def lever_bus(nodes):
             parts.append((f"wire_canb_{net}_{k}_0", _wire(pts, CANB_WIRE_OD)))
             parts.append((f"wire_canb_{net}_{k}_1", _wire(pts2, CANB_WIRE_OD)))
             seg = max(seg, _path_len(pts) + _path_len(pts2))
-        cuts.append((f"{n0} -> {n1}", seg + _coil_len(layers)))
+        cuts.append((f"{n0} -> {n1}", LAY_BUS_B.over(seg + _coil_len(layers), 2 * TWIST_TAIL)))
     return parts, cuts
 
 
@@ -2213,7 +2269,7 @@ def ctrl_bus_b(lkl):
     # the far end is leg_pogo's (its stub's own end points, taken as they are)
     assert [nm.upper() for nm, _pl in _PG.HARNESS_WIRES] == [e[2] for e in _j2e], (
         "leg_pogo's harness order is not J2's way order")
-    _cable("bus B pedal cable", [(ends[k], None, _j2e[k][2]) for k in range(n)], _j2e)
+    _cable("bus B pedal cable", [(ends[k], None, _j2e[k][2]) for k in range(n)], _j2e, LAY_LEG)
     for k, (q, (nm, _pl)) in enumerate(zip(_fan(legs, -1, j2, _dn, CANB_LEAD),
                                            _PG.HARNESS_WIRES)):
         _run(out, "pogo_wire_%s_5" % nm, q, _PG.HARNESS_WIRE_OD, "bus B pedal cable", k)
@@ -2252,7 +2308,8 @@ def ctrl_bus_b(lkl):
               + [j6c])
     legs2 = bundle_paths(centre, offs2, across=(0.0, 0.0, 1.0))
     legs2 = _fan(_fan(legs2, 0, far, d, _lead0), -1, j6, _dn, CANB_LEAD)
-    _cable("bus B lever head", [(far[k], tuple(d), _j6e[k][2]) for k in range(n)], _j6e)
+    _cable("bus B lever head", [(far[k], tuple(d), _j6e[k][2]) for k in range(n)], _j6e,
+           LAY_BUS_B)
     for k, _hn in enumerate(EH.PH_PINOUT):          # conductor k lands on way k + 1
         nm = {"GND": "gnd", "V5": "v5", "CAN_H": "h", "CAN_L": "l"}[_hn]
         _run(out, "wire_canb_%s_lkl_0" % nm, legs2[k], CANB_WIRE_OD, "bus B lever head", k)
@@ -2264,19 +2321,20 @@ def ctrl_bus_b(lkl):
 
 
 def pedal_cable_cut():
-    """(cut length, home run, service run) of the pedal cable, mm, after ctrl_bus_b().
+    """(cut length, home run, service run) of the pedal cable, mm, after ctrl_bus_b(). The
+    cut has the lay in it; the two runs are paths.
 
     Cut to reach the LONGER of its two poses -- leg home, and leg slid out for
     restringing with the cable still plugged in -- plus its run inside the leg's adapter
     (leg_pogo.body_path), the drop into J2 and PEDAL_CUT_SPARE. In the home pose the
     difference is slack the cable carries."""
-    from cadkit.cables import path_length
     home = path_length(PEDAL_ROUTES["home"])
     service = path_length(PEDAL_ROUTES["service"])
     inside = path_length(_PG.body_path())
     j2c = PATHS["pogo_wire_v5_5"][0][-1]
     drop = abs(PEDAL_ROUTES["home"][-1][2] - j2c[2])
-    return max(home, service) + inside + drop + PEDAL_CUT_SPARE, home, service
+    run = max(home, service) + inside + drop
+    return LAY_LEG.over(run, 2 * TWIST_TAIL) + PEDAL_CUT_SPARE, home, service
 
 
 def lever_bus_cut_list(nodes):

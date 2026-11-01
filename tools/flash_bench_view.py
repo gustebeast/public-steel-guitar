@@ -8,6 +8,7 @@ itself) and tells the viewer. It bumps no build number and publishes nothing.
 from __future__ import annotations
 
 import pathlib
+import shutil
 import sys
 
 import cadquery as cq
@@ -37,6 +38,21 @@ def material_of(name: str):
     return "painted"
 
 
+def _r1_geom() -> pathlib.Path:
+    """The viewer's part models read every board's file straight from a folder, not through
+    Boards.load, so they get a folder with the R1 boards in: elec/geom, elec/rev1 over it.
+    The ink it keeps per board goes with it, or an R2 outline stays in the cache."""
+    geom = ROOT / ".webview" / "geom"
+    geom.mkdir(parents=True, exist_ok=True)
+    for src in (REPO / "elec" / "geom", REPO / "elec" / "rev1"):
+        for f in src.glob("*.geom.json"):
+            shutil.copyfile(f, geom / f.name)
+            if src.name == "rev1":
+                (ROOT / ".webview" / "boards" / (f.name[:-len(".geom.json")] + ".ink.pkl")).unlink(
+                    missing_ok=True)
+    return geom
+
+
 def main() -> int:
     for s in (sys.stdout, sys.stderr):
         try:
@@ -47,6 +63,7 @@ def main() -> int:
     from src import flash_bench as FB
     parts = [(n, w, cq.Color(*rgb)) for n, w, rgb in FB.components()]
     ROOT.mkdir(parents=True, exist_ok=True)
+    FB.BOARDS.geom_dir = str(_r1_geom())
     ok = show(parts, root=ROOT, title="First flash: what plugs into what", boards=FB.BOARDS,
               materials=material_of, units=FB.unit_of, cache_dir=ROOT / ".webview" / "boards",
               mesh_cache=ROOT / ".webview" / "mesh")
