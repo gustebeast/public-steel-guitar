@@ -22,6 +22,7 @@ from . import chassis as CH
 from . import nut_block as NB
 from .endplate_base import endplate_base
 from .helpers import box_at, heal
+from cadkit.holes import teardrop_hole
 
 
 # ONE part (PETG-GF), FULL-WIDTH (rail outer to rail outer) so it TAKES OVER the whole −X
@@ -41,11 +42,16 @@ XHI  = CH.KH_X                             # +X (inboard) face (-611); the rail 
 XLO  = XHI - T_EP                          # -X outer (bed) face
 KX   = (XLO + XHI) / 2
 YFL  = CH.Y_LO - CH.T / 2                   # full width: -Y rail outer face
+YFH  = CH.Y_HI + CH.T / 2                   # and the +Y rail's
 # The wrap rod slides in from -Y along the whole of NB.rod_bore, so that run has to come out
 # through this part's -Y face -- anything short of it is material the rod cannot be pushed past.
 assert NB.ROD_Y0 - NB.ROD_L < YFL, (
     f"the rod's insertion run ends at y {NB.ROD_Y0 - NB.ROD_L:.2f}, inside the keyhead's -Y face "
     f"({YFL:.2f}) -- the {NB.ROD_L:g} mm rod could not be slid into position")
+# The stowed key pushes it back out from the +Y face, far enough to grip at the -Y one.
+KEY_LONG_ARM = 88.0                         # Bondhus 10954
+ROD_GRIP = KEY_LONG_ARM - (YFH - NB.ROD_Y1) - (NB.ROD_Y0 - YFL)
+assert ROD_GRIP >= 5.0, f"the key leaves only {ROD_GRIP:.2f} of rod standing out of the -Y face to grip"
 FOOT_Z = CH.KH_DT_Z0                       # foot line (-23.15): fill band bottom / wall-box top
 # FOOT POCKET: the chassis now KEEPS a ~10 mm rail shell hugging each -X leg socket
 # (CH._leg_shell over CH.LEG_SHELL_NX), capped at the foot line (z -23.15); the keyhead
@@ -153,6 +159,10 @@ def _build():
               .translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))
     w = w.cut(NB.lanes().translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))
     w = w.cut(NB.rod_bore().translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))
+    # THE KEY'S WAY OUT TO THE +Y FACE: the rod's in the plate now, so its push hole runs on to the skin.
+    w = w.cut(teardrop_hole(NB.ROD_PUSH_D, YFH - NB.ROD_Y1 + 1.0,
+                            axis_point=(D.NUT_BLOCK_X + NB.ROD_X, NB.ROD_Y1, D.STRING_Z + NB.ROD_Z),
+                            axis_dir=(0.0, 1.0, 0.0), print_up=PRINT_UP))
     # ONE SOLID, CHECKED. The overlap gate reports interpenetration, not disconnection: a
     # fused feature that never touches the plate would leave the part quietly in TWO pieces.
     _n = len(w.val().Solids())
@@ -169,7 +179,7 @@ def _build():
     _wall = min(f.distance(_bore) for f in _top)
     assert _wall >= D.MIN_WALL_2P, f"{_wall:.2f} of wall from the rod's bore to the top"
     # THE END BLOCKS MATCH on the +X face, on the finished solid: the outermost webs either side of the
-    # pockets, at the lane floor's height (the top is rounded back from the face at the rod's).
+    # pockets, just under the block's top.
     _x = D.NUT_BLOCK_X + NB.X_FRONT - 0.05
     _z = D.STRING_Z + NB.NUT_TOP - 0.5
     _ys = sorted((b.ymin, b.ymax) for b in (s.BoundingBox() for s in w.val().intersect(

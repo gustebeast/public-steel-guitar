@@ -4,14 +4,14 @@ THE WRAP CAPSTAN (user). The string does not go straight from the break edge to 
 clamp any more. It winds turns around a shared rod first, and the clamp behind it
 only has to hold what the capstan leaves:
 
-    bridge  ->  BREAK DOWEL  ->  UNDER THE WRAP ROD, up and round (n turns)  ->  CLAMP  ->  tail
+    bridge  ->  BREAK DOWEL  ->  OVER THE WRAP ROD, down the -X side and round (n turns)  ->  CLAMP  ->  tail
 
-THE WRAP IS TURNED OVER (user, 2026-10-31). The string used to land on the rod's top and go down the
--X side, and a stiff tip could not be got round under the rod: bench tests of every ramp and curve
-failed, and the top panel closes the +X side whatever the endplate does. So the rod stands higher and
-further -X, the string lands on its UNDERSIDE and wraps up the -X side, and the tip is fed by hand,
-straight along X, through the gap between the rod and the panel, and grabbed on both sides. The
-lanes run out through the -X face; the fingers hang on the floor alone (Z), with no wall or bar.
+THE WRAP GOES OVER THE ROD (user, 2026-11-01). The string lands on the rod's top, goes down the -X
+side, under, up the +X side and leaves over the top, heading -X, into its stow bore. It was turned over
+for a while so that a tip could be fed under the rod, but that put the rod high, where the bar's
+cutaway thinned the plastic over it. So the rod came down into the plate, clear of the bar, and the
+winding went back. The insert drops far enough on its M4 x 25 to leave the room under the rod for the
+tip, and the lanes run out through the -X face, so the fingers hang on the floor alone (Z).
 
 Capstan (Euler-Eytelwein), T = T0.e^-mu.theta, mu = 0.15 steel on steel:
 
@@ -111,14 +111,12 @@ X_FRONT = D.KEYHEAD_PX_BUF                      # +2.4: +X lip, reclaimed from 4
 # wall, and the dowel sits that far back from the face.
 DOWEL_KEEP = D.MIN_WALL                         # 0.8 of INSERT wall +X of the cradle
 DOWEL_X = X_FRONT - DOWEL_KEEP - (PIN_D + 0.3) / 2
-# THE ROD STANDS AS HIGH AND AS FAR -X AS THREE THINGS AGREE (user: under the string line, wrapping
-# up). HIGHER opens the gap over the panel the tip is fed through but flattens the break over the
-# dowel; further -X eases the break and clears a bar at fret 0, whose circle the rod's three-bead
-# lid has to stay outside, and costs nothing now the -X wall has gone. At x -8 the lid stands in the
-# bar. Here: 19.3-19.5 deg, inside the 15-20 that is enough for a dowel to end the speaking length and
-# no steeper, for no more load; 4.8 of gap; and 2.1 of wall from the bore to the bar's arc, measured
-# on the finished solid (keyhead_endplate).
-ROD_X   = -17 * D.BEAD                          # -13.6 rod centre
+# THE ROD STANDS LOW, IN THE PLATE, CLEAR OF THE BAR (user). HEIGHT sets the break: higher flattens it.
+# X eases it, and costs nothing now the lanes run out through the -X face. Thin to thick the break
+# spreads 5.6 deg, so no X puts all ten inside the 15-20 that is enough for a dowel to end the speaking
+# length and no steeper: here strings 1-5 stand up to 0.7 over it and the .080 keeps the 15 floor,
+# 20.7 down to 15.3.
+ROD_X   = -18 * D.BEAD                          # -14.4 rod centre
 ROD_Z   = -13 * D.BEAD                          # -10.4
 _G_MAX  = max(D.STRING_GAUGE)
 # THE INSERT'S TRAVEL IS SIZED FOR THE ENVELOPE, not the demo set: a heavier string must still
@@ -136,7 +134,7 @@ def _break_at(rod_z: float, g: float) -> float:
 # THE BAR HAS TO CLEAR IT. A round bar resting on the strings at fret 0 is a circle of
 # BAR_R centred BAR_R above the string plane over the dowel; the rod must stay a margin
 # outside it. Tested circle-to-circle. A Ø25 bar sitting on the dowels touches no plastic (user), and
-# that circle is the only limit on plastic at +X and the top: BLOCK_TOP follows it.
+# that circle is the only limit on plastic at +X and the top: BLOCK_TOP is checked against it.
 BAR_R   = 25.0 / 2                              # the biggest bar the player may rest at fret 0
 BAR_CLR_MIN = 0.8
 _BAR_CLR = math.hypot(DOWEL_X - ROD_X, BAR_R - ROD_Z) - BAR_R - ROD_D / 2
@@ -145,15 +143,15 @@ assert _BAR_CLR >= BAR_CLR_MIN, (
     f"bar resting at fret 0 -- the first centimetre could not be barred")
 
 # ── Z extent ───────────────────────────────────────────────────────────────
-# NUT_TOP covers the rod with a three-bead lid. +X of the rod the top follows the bar (BLOCK_TOP).
+# NUT_TOP covers the rod with a three-bead lid, and the block's top stays level there (BLOCK_TOP).
 NUT_TOP  = ROD_Z + ROD_BORE / 2 + 3 * D.BEAD     # a three-bead lid over the rod (user: two printed badly)
 NUT_BASE = D.DECK_TOP_Z - D.STRING_Z             # prism base sits on the deck plane
 
 
 def _touch_angle_g(g: float) -> float:
     """Angle about the rod axis (in the XZ plane, from +X) at which string i first
-    TOUCHES the wrap circle, coming down off its dowel. The LOWER of the two tangents,
-    because the string comes in under the rod.
+    TOUCHES the wrap circle, coming down off its dowel. The UPPER of the two tangents,
+    because the string comes in over the rod.
 
     THE ONE PLACE THIS IS COMPUTED. The turn count, the drawn string path and the coil's
     start phase all read it; when build.py owned a second copy the straight run and the
@@ -217,14 +215,13 @@ COIL_CLR = 0.2                                  # coil-to-coil air where there i
 # fattest coil in the zone; its -Y edge is then whatever leaves the finger exactly.
 LANE_HI = max(D.STRING_GAUGE[:N_FINGERED]) / 2 + LANE_CLR
 LANE_LO = -(D.NUT_PITCH - D.MIN_WALL_2P - LANE_HI)
-# WHERE THE TAIL LEAVES: at the bottom of the rod, heading -X (-90 deg), level along the insert's
-# flat and out through the lane. It lies where the clamp is, and the wrap's whole turns land it there
-# from the touch, about 20 deg round, on every string.
+# WHERE THE TAIL LEAVES: at the top of the rod, heading -X (90 deg), level out over the lane to its stow
+# bore. The wrap's whole turns land it there from the touch, about 20 deg back round, on every string.
 EXIT_DEG = 90.0
 
 # THE TAIL HAS TO LEAVE ON THE EXIT TANGENT, which quantises the turns: the coil enters at
-# touch_angle (set by the break geometry and the gauge) and must sweep, ANGLE FALLING (-X side up,
-# over, +X side down), to EXIT_DEG less a whole number of turns.
+# touch_angle (set by the break geometry and the gauge) and must sweep, ANGLE RISING (-X side down,
+# under, +X side up), to EXIT_DEG plus a whole number of turns.
 def _sweep0_g(g: float) -> float:
     """Turns from where a string of gauge g touches the rod round to the exit tangent."""
     return ((math.radians(EXIT_DEG) - _touch_angle_g(g)) % (2 * math.pi)) / (2 * math.pi)
@@ -345,15 +342,15 @@ def exit_point(i: int):
 
 
 def tail_route(i: int):
-    """The tail's route from the rod, as (x, z) points: level along the flat, over the lane floor, and
+    """The tail's route from the rod, as (x, z) points: level off the rod's top, out over the lane, and
     down its stow bore. The tail is cut to length and fed in by hand."""
     x0, z0 = exit_point(i)
-    return [(x0, z0), (INS_X0, z0), (STOW_X, z0), (STOW_X, STOW_TAIL_END)]
+    return [(x0, z0), (INS_X0, z0), (STOW_X, z0), (STOW_X, STOW_PIVOT_Z), (STOW_X, STOW_TAIL_END)]
 
 
 def exit_dir(i: int):
-    """Unit (x, z) the tail is travelling as it leaves. The angle falls, so the tangent at
-    phi is (sin phi, -cos phi) -- at EXIT_DEG -90 that is dead -X."""
+    """Unit (x, z) the tail is travelling as it leaves. The angle rises, so the tangent at
+    phi is (-sin phi, cos phi) -- at EXIT_DEG 90 that is dead -X."""
     a = exit_angle(i)
     return -math.sin(a), math.cos(a)
 
@@ -396,7 +393,7 @@ def residual(i: int) -> float:
 # THE OFFSET IS GAUGE-FREE, which is the whole trick:
 #     flat        = ROD_Z - ROD_D/2 - g      the wrap's lowest surface, where it bears
 #     dowel centre= -g - PIN_D/2             gauged, so string tops stay coplanar
-#     difference  = ROD_D/2 - PIN_D/2 - ROD_Z = 11.59, with no g in it
+#     difference  = ROD_D/2 - PIN_D/2 - ROD_Z = 12.40, with no g in it
 INS_CLR   = 0.2                                 # Y clearance in its pocket, each side
                                                 # (0.3 before: see TAPER_TAN, where every
                                                 # 0.1 of it comes straight off the wall
@@ -419,15 +416,14 @@ INS_CLR   = 0.2                                 # Y clearance in its pocket, eac
 from cadkit.fasteners import M4, M4_BUTTON_HEAD_D, M4_BUTTON_HEAD_H
 THREAD_CLR = D.MIN_WALL                         # room to work the string round, not force it
 _DROP_NEED = G_ENVELOPE + THREAD_CLR            # 2.832 for a .080
-HS_SCREW_L     = 25.0                           # M4 x 16 button: McMaster stocks 16 and 20 (not 18).
-                                                # 20's travel would hang its head 4 below the bed
+HS_SCREW_L     = 25.0                           # M4 x 25 button: 20 could not drop the dowel under the rod
 HS_CAP         = D.MIN_WALL_2P                  # printed floor over the heat-set, and the screw's
                                                 # bore through it, under the insert's foot
 HS_ROD_OVERLAP = 2 * D.BEAD
-INS_DROP  = HS_SCREW_L - (M4.insert_depth + HS_CAP) - (G_ENVELOPE + HS_ROD_OVERLAP)     # 5.77
+INS_DROP  = HS_SCREW_L - (M4.insert_depth + HS_CAP) - (G_ENVELOPE + HS_ROD_OVERLAP)     # 14.77
 assert INS_DROP >= _DROP_NEED, f"a {INS_DROP:.2f} drop will not thread a {G_ENVELOPE:.2f} string"
 INS_H     = 5 * D.BEAD                          # 4.0 of body below the flat
-DIVOT_OFF = ROD_D / 2 - PIN_D / 2 - ROD_Z       # 11.59, cradle centre ABOVE the flat
+DIVOT_OFF = ROD_D / 2 - PIN_D / 2 - ROD_Z       # 12.40, cradle centre ABOVE the flat
 # FULLY DROPPED, THE DOWEL'S TOP IS UNDER THE ROD BY MORE THAN THE STRING (user), so a string can be
 # led straight over the dowel and under the rod. The gauge is the envelope's, the worst.
 _DROPPED_DOWEL_TOP = ROD_Z - ROD_D / 2 - G_ENVELOPE - INS_DROP + DIVOT_OFF + PIN_D / 2
@@ -1015,7 +1011,7 @@ assert abs(outer_coil_lo(D.STRING_GAUGE[SKU_C])
 
 # ── THE TOP PRISM IN Y: SET BY THE ROD, SYMMETRIC ABOUT THE POCKETS (user) ────
 # Past the pockets, on the +X face, the two end blocks are the same width. The rod sets that width: it
-# is whole in the block, flush with the -Y face, where it goes in, to ROD_END_W of wall at +Y, its stop,
+# is whole in the block, flush with the block's -Y face, to ROD_END_W of wall at +Y, its stop,
 # so it sits a little -Y of the strings. The wall has a hole on its axis for the 2.5 key (2.9 across
 # its corners), pushed in from +Y to send the rod back out.
 ROD_L  = D.BRIDGE_AXLE_L
@@ -1161,8 +1157,7 @@ STOW_PIVOT_Z = ROD_Z - ROD_D / 2.0 - _DROP_NEED + 1.0                    # just 
 X_BACK = STOW_X - STOW_D / 2.0 - D.MIN_WALL_2P
 KEYHEAD_W = X_FRONT - X_BACK                      # the keyhead endplate's thickness in X
 
-# THE BLOCK'S TOP, (x, z) from the bed face: the lid over the rod, then round the bar, then level.
-# Chords of a circle a hair bigger, so that they stay outside the one that matters.
+# THE BLOCK'S TOP, (x, z) from the bed face: level, the rod's lid all the way to the +X face.
 BLOCK_TOP = [(X_BACK, NUT_TOP), (X_FRONT, NUT_TOP)]
 _TOP_BAR = min(math.hypot(x0 + (x1 - x0) * k / 50.0 - DOWEL_X, z0 + (z1 - z0) * k / 50.0 - BAR_R) - BAR_R
                for (x0, z0), (x1, z1) in zip(BLOCK_TOP, BLOCK_TOP[1:]) for k in range(51))
@@ -1219,7 +1214,7 @@ def all_stow_channels(z_end: float) -> cq.Workplane:
 # ── HEIGHT ADJUST: ONE M4 SCREW UNDER EACH INSERT (user) ─────────────────────────────
 # The sliding insert clamps its string by rising against the coil, and until now nothing pushed it
 # up. Each insert now grows a tall EXTENSION down into a new prism in the keyhead endplate
-# (keyhead_endplate.HS_*), and an M4 x 16 button head, on the
+# (keyhead_endplate.HS_*), and an M4 x 25 button head, on the
 # instrument's one 2.5 mm key -- pushes its foot up from below.
 #
 # THE NUT IS IN THE ENDPLATE, NOT THE INSERT. An M4 heat-set wants ~8 of width (M4.boss_od); SKU A
@@ -1228,9 +1223,9 @@ def all_stow_channels(z_end: float) -> cq.Workplane:
 #
 # THE STACK, from the chassis up (local frame -- Z relative to STRING_Z):
 #   motor_bank.FLOOR_TOP  top of the wide corner rib the keyhead sits over (chassis)
-#   HS_PRISM_BOT          2.0 above that rib -- and the heat-sets' mouths, flush in it (user: the lower,
-#                         the easier to reach). The heads hang below, down into the rib, which
-#                         chassis.py opens for them.
+#   HS_PRISM_BOT          the heat-sets' mouths, flush in it, as low as the M4 x 25 lets them be (user: the
+#                         lower, the easier to reach): the fully undone head just stays above the bed.
+#                         The heads hang below, down through the rib, which chassis.py opens for them.
 #   HS_FLOOR              where a DROPPED insert's foot rests: the tip, screw fully undone
 #
 # THE SCREW'S TWO ENDS (user) set the rest:
@@ -1242,19 +1237,23 @@ def all_stow_channels(z_end: float) -> cq.Workplane:
 from . import motor_bank as _MB                  # motor_bank imports only dimensions/helpers/components
 HS_HEAD_CLR    = 0.4                             # radial air round a head in its chassis cavity
 HS_HEAD_CAV_D  = M4_BUTTON_HEAD_D + 2 * HS_HEAD_CLR
-HS_PRISM_BOT   = _MB.FLOOR_TOP + 2.0 - D.STRING_Z    # 2 beads up: the head, fully undone, needs it
 # THE EXTENSION puts a DROPPED insert's foot on the floor: the lowest flat any string may set, less
 # the threading drop, less the body -- the same datum POCKET_Z0 is cut from.
 _FZ_LOW      = ROD_Z - ROD_D / 2.0 - G_ENVELOPE - INS_DROP
 _FZ_TIGHT    = ROD_Z - ROD_D / 2.0 + HS_ROD_OVERLAP
 HS_REACH_MAX = _FZ_TIGHT - _FZ_LOW                 # the tip's whole travel, undone to tightened
+_HS_HANG     = HS_REACH_MAX + M4_BUTTON_HEAD_H     # how far a fully undone head stands under the mouth
+HS_PRISM_BOT = (_MB.FLOOR_TOP + math.ceil((_MB.BED_Z + _HS_HANG - _MB.FLOOR_TOP) / D.BEAD - 1e-9) * D.BEAD
+                - D.STRING_Z)                      # the least whole beads over the rib that clear the bed
 HS_FLOOR     = HS_PRISM_BOT + HS_SCREW_L - HS_REACH_MAX
 INS_EXT_H    = (_FZ_LOW - INS_H) - HS_FLOOR
 assert INS_EXT_H > 0.0, "the height-adjust floor is above the insert body"
 assert abs(HS_FLOOR - (HS_PRISM_BOT + M4.insert_depth + HS_CAP)) < 1e-9, (
     f"the floor over the heat-set is {HS_FLOOR - HS_PRISM_BOT - M4.insert_depth:.2f}, not {HS_CAP}")
-HS_HEAD_LOW = HS_PRISM_BOT - HS_REACH_MAX - M4_BUTTON_HEAD_H     # a head's bottom, fully undone
-# TRIAL: the M4 x 25 head hangs below the bed, fully undone. Open, see the trial report.
+HS_HEAD_LOW = HS_PRISM_BOT - _HS_HANG             # a head's bottom, fully undone
+assert HS_HEAD_LOW >= _MB.BED_Z - D.STRING_Z - 1e-9, (
+    f"fully undone, a height-screw head drops to z {HS_HEAD_LOW + D.STRING_Z:.2f}, below the bed "
+    f"({_MB.BED_Z:.2f}) where the leg's body adapter is")
 
 # THE INSERT PRINTS ON ITS +X FACE (user): lying on that flat face and growing -X, the reliable way to
 # make a 60 mm part, rather than standing it up as a tower. That face cannot follow a roof, so the
@@ -1379,7 +1378,7 @@ def height_screw_negatives(i: int):
 
 
 def height_screw(i: int) -> cq.Workplane:
-    """Dummy M4 x 16 button head, head DOWN, tip on string i's clamped insert foot (local frame)."""
+    """Dummy M4 x 25 button head, head DOWN, tip on string i's clamped insert foot (local frame)."""
     from cadkit.fasteners import m4_button_screw
     x, y = height_screw_xy(i)
     tip = HS_FLOOR + screw_reach(i)
