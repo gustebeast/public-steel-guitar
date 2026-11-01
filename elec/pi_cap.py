@@ -654,6 +654,7 @@ BOARD_NOTES = {
              # Five bar/branch variants all left it open, which is what a missing bridge looks
              # like -- not router luck. This point is in the F cluster and the B main pour.
              ("GND", -12.50, 1.20)],
+    "thermal_pads": ["C3.2", "C4.2", "R5.2"],     # M29
     "router_passes": 20,           # 12 left UI_SW_D open after the 2026-10-29 band move
     # ⚠ EVERY PART IS ON ONE FACE, THE ONE TOWARD THE PI, and the socket is why: its body
     # is the standoff the cap hangs off the Pi's header by, so it has to be between the two
@@ -892,6 +893,12 @@ BOARD_NOTES = {
                   "uF). No other IC",
             "M8": "U1 EN: tied to IN, on whenever the Pi's 3V3 is. ILIM: R5 to ground. No address, "
                   "mode or boot pin on the board",
+            "M43": "no firmware on this board: U1 is a TPS2553 load switch and nothing else here is "
+                   "programmable, so it works as it arrives",
+            "M29": "four layers, 1.6 mm, 1 oz outside and 0.5 oz inside: JLCPCB's standard table, "
+                   "read 2026-10-04 (A12 measured against it). Two-pad balance read off the routed "
+                   "board, 2026-11-01: C3, C4 and R5 had their GND pad solid in the pour against a "
+                   "track on the other, so those pads take spokes (thermal_pads)",
             "M9": "no MCU, nothing to program. Every net on the board is on a through-hole "
                   "pin of J1 or J5 or on a connector land, all reachable with a probe from "
                   "the bare back face; ground is on eight socket pins",
@@ -1005,6 +1012,7 @@ if REV == 1:
     BOARD_NOTES["vias"] = (_v[:1] + [("GND", 21.50, -11.00)] + _v[1:3]
                            + [("GND", -14.00, -15.50), ("GND", 16.62, -10.91)] + _v[4:])
     BOARD_NOTES["router_passes"] = 12
+    del BOARD_NOTES["thermal_pads"]
     BOARD_NOTES["quality"]["connector_labels"]["J4"] = {'back_only': "the labeller tries the connector's own side first and finds no free site there for its five-line block at 1.5 mm in the board's face within 40 mm of the part, flat or turned, that is not along another connector's pins (run 2026-10-07, after the lead order change); the block is on the back, behind it"}
     for _n in ("UI_ENC_B", "UI_SW_B", "UI_SDIN"):
         del BOARD_NOTES["quality"]["return_slot_ok"][_n]

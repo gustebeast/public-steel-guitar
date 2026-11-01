@@ -822,6 +822,19 @@ def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
         print("  widened %d track(s) back up to the %.3f mm floor"
               % (necked, pcbnew.ToMM(floor)))
 
+    # PADS THAT TAKE SPOKES (notes["thermal_pads"], "R35.2"). A pour is solid to its pads
+    # (layout.py), but a small two-pad part with one pad solid in a pour and the other on a
+    # thin track can tombstone (PCB_QUALITY M29). The board names them, so a re-route keeps them.
+    if notes and notes.get("thermal_pads"):
+        want = set(notes["thermal_pads"])
+        for fp in board.GetFootprints():
+            for pad in fp.Pads():
+                name = "%s.%s" % (fp.GetReference(), pad.GetNumber())
+                if name in want:
+                    pad.SetLocalZoneConnection(pcbnew.ZONE_CONNECTION_THERMAL)
+                    want.discard(name)
+        assert not want, "thermal_pads names no such pad: %s" % sorted(want)
+
     # REFILL THE POURS. layout.py fills them at creation, before any routing
     # exists, so every via the router adds lands in copper that has no clearance
     # cut-out around it -- 164 violations on the first try, all of them a zone

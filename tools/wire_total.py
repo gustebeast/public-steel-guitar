@@ -14,7 +14,8 @@ way a typed figure can, and a cable added later is counted without anyone rememb
 
 WHAT IT IS NOT. Buying length, not conductor length in the strict sense: a four-conductor
 bundle drawn as four paths counts four times, which is right, but slack and strip
-allowance are only included where the harness model already draws them in. Treat it as
+allowance are only included where the harness model already draws them in. The table is
+drawn path; the line under it adds the twist. Treat it as
 the floor of a purchase, not a cut list.
 """
 from __future__ import annotations
@@ -66,6 +67,10 @@ def main():
     print("  %-12s %10d %10.2f" % ("TOTAL", len(RECORDS), total / 1000.0))
     print("\n  %d cable runs, %.2f m per instrument, %.1f m for a ten-instrument order"
           % (len(RECORDS), total / 1000.0, total / 100.0))
+    twist = sum(wiring.conductor_cut(n) - cables.path_length(wiring.PATHS[n][0])
+                for n in wiring.LAYS)
+    print("  + %.2f m taken up by twist on the leads wiring.py labels (src/led_leads.py is "
+          "drawn outside that, so not counted)" % (twist / 1000.0))
     return 0
 
 
