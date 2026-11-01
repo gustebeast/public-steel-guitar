@@ -251,6 +251,9 @@ def _tooth_cutter(axis: str, lo: float = None, length: float = None):
 # cone), so they build +Z and +Y respectively. Neither is posed into the assembly.
 SCREW_PULLEY_UP = (0.0, 0.0, 1.0)
 MOTOR_PULLEY_UP = (0.0, 1.0, 0.0)
+# ALL THREE PULLEYS PRINT ON A 0.4 NOZZLE (user, 2026-11-01), for the GT2 teeth: the sweep has no site
+# over 0.20 on 0.4, and every tooth tip 0.40 short on 0.8.
+PULLEY_NOZZLE_D = 0.4
 
 
 def screw_pulley(high: bool = False) -> cq.Workplane:

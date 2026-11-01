@@ -98,7 +98,7 @@ radial clearance drawn, and 0.40 is also what the build reports to `nut_height_s
 The error is MISSING, so the printed wall stands back from the head and clearance goes up, not
 down. No fix.
 
-**Pulleys, PCTG, both nozzles (lead asks the user which one they print on):**
+**Pulleys, PCTG, both nozzles. They print on 0.4 (user, 2026-11-01), so the 0.8 column does not apply:**
 
 | Part | 0.8 nozzle | 0.4 nozzle |
 | --- | --- | --- |
