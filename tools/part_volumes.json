@@ -55,15 +55,15 @@
   },
   "chassis_0": {
    "material": "petg-gf",
-   "volume_mm3": 580041.7
+   "volume_mm3": 581300.8
   },
   "chassis_0_light": {
    "material": "pctg",
-   "volume_mm3": 14690.6
+   "volume_mm3": 14722.0
   },
   "chassis_1": {
    "material": "petg-gf",
-   "volume_mm3": 653675.9
+   "volume_mm3": 653695.2
   },
   "chassis_1_light": {
    "material": "pctg",
@@ -71,11 +71,11 @@
   },
   "chassis_2": {
    "material": "petg-gf",
-   "volume_mm3": 589795.0
+   "volume_mm3": 590603.5
   },
   "chassis_2_light": {
    "material": "pctg",
-   "volume_mm3": 13053.4
+   "volume_mm3": 13021.9
   },
   "coil_mandrel": {
    "material": null,
@@ -95,7 +95,7 @@
   },
   "keyhead_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 242758.0
+   "volume_mm3": 247517.0
   },
   "kl_axle": {
    "material": "pctg",
@@ -175,15 +175,15 @@
   },
   "nut_slide_insert_a": {
    "material": "pctg",
-   "volume_mm3": 5067.5
+   "volume_mm3": 5279.1
   },
   "nut_slide_insert_b": {
    "material": "pctg",
-   "volume_mm3": 6963.8
+   "volume_mm3": 7255.7
   },
   "nut_slide_insert_c": {
    "material": "pctg",
-   "volume_mm3": 12208.2
+   "volume_mm3": 12725.3
   },
   "optical_guard": {
    "material": "petg-gf",
@@ -195,11 +195,11 @@
   },
   "pedal_bar_b": {
    "material": "petg-gf",
-   "volume_mm3": 480322.7
+   "volume_mm3": 480758.0
   },
   "pedal_bar_c": {
    "material": "petg-gf",
-   "volume_mm3": 303767.2
+   "volume_mm3": 304202.4
   },
   "pedal_detent_nub": {
    "material": "tpu",
@@ -211,11 +211,11 @@
   },
   "pedal_lid_a": {
    "material": "petg-gf",
-   "volume_mm3": 28275.0
+   "volume_mm3": 28309.4
   },
   "pedal_lid_b": {
    "material": "petg-gf",
-   "volume_mm3": 28288.7
+   "volume_mm3": 28323.0
   },
   "pedal_pcb_shim": {
    "material": "pctg",
