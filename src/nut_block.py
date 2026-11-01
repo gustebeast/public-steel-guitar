@@ -817,7 +817,7 @@ def slide_insert(i: int) -> cq.Workplane:
     #
     # There was never a reason for it: the pocket is the plan extruded, so that notch was
     # empty slot, not clearance for anything. Filling it is free material exactly where the
-    # part is weakest -- the neck is DIVOT_OFF (11.59) tall on an INS_H (4.00) body -- and it puts the
+    # part is weakest -- the neck is DIVOT_OFF (12.40) tall on an INS_H (4.00) body -- and it puts the
     # insert's own profile alongside the block's ramp instead of a step floating over it.
     #
     neck = (_part_wire(i).extrude(DIVOT_OFF).translate((0, 0, fz))
