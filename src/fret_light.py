@@ -360,13 +360,11 @@ import cadquery as cq                                            # noqa: E402
 from .helpers import box_at, heal                                # noqa: E402
 
 
-# ⚠ FRET 1 GETS NO CELL, and the gate is what said so. Its cell would sit at x -580.5
-# with an outer wall reaching about -596.8, straight through the keyhead cluster: the Pi
-# (top -6.00), wire_ui (-8.27), wire_link (-11.30) and wire_usb (-13.70) all live there,
-# and a cell floor at the board's top face (-14.55 then) goes through all four. This is the same finding recorded in
-# docs/fret-led.md as "fret 1 has 8.27 mm, not 17" -- now measured rather than predicted.
-# Fret 2 at -547.90 is clear of the whole cluster, so the comb starts there.
-SKIP_FRETS = (1,)
+# FRET 1 HAS A CELL (user, 2026-11-01). It had none while the Pi and three leads ran through
+# x -580; they have all moved, and over the board from there to the endplate only the fret
+# lead itself is left (measured 2026-11-01). docs/fret-led.md tells the older story.
+SKIP_FRETS = ()
+END_CELL_MAX = 11.50
 
 
 def fret_xs():
@@ -394,9 +392,11 @@ def _boundaries(xs, x_lo=None, x_hi=None):
     # last 11 mm) so the overlap gate never saw it, and it cost the mid board 0.80 mm
     # of its power bay, which is where the harness connector has to fit.
     end_min = LED_CRTYD / 2.0 + WALL / 2.0 + 0.2
+    # ...AND NOT PAST END_CELL_MAX AT THE -X END: half a cell past fret 1 is 16.3, which would
+    # leave the bay behind it too short for the buck.
     mids = [(xs[i] + xs[i + 1]) / 2.0 for i in range(len(xs) - 1)]
     lo = xs[0] + max((xs[0] - mids[0]) / 2.0, end_min)
-    hi = xs[-1] - max((mids[-1] - xs[-1]) / 2.0, end_min)
+    hi = xs[-1] - min(max((mids[-1] - xs[-1]) / 2.0, end_min), END_CELL_MAX)
     if x_hi is not None:
         lo = min(lo, x_hi - WALL / 2.0)
     if x_lo is not None:
@@ -646,10 +646,9 @@ def columns(x_lo=None, x_hi=None):
 #         in, which is 0.38 of clearance and was -0.62 before `_boundaries` stopped
 #         hanging a clamped wall half outside its panel. The checker in elec/fret_led.py
 #         is what found it, before the board was routed rather than after.
-#   key   the keyhead comb's end wall is at -555.59 and the panel runs to -610.80, so
-#         there is 55 mm of room. It stops at -573.00 because `wire_usb` crosses at
-#         z -14.55..-13.70 from -580.00 -X, and the board's top face IS -14.55.
-BOARD_BAY = {"mid": -360.50, "key": -573.00}
+#   key   the keyhead comb's end wall is at -591.98 and the endplate's +X face at -607.80.
+#         It stops 0.30 short of that face: J1 needs all of it.
+BOARD_BAY = {"mid": -360.50, "key": -607.50}
 BOARD_NAME = {"mid": "fret_led_mid", "key": "fret_led_key"}
 
 

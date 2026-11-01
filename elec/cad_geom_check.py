@@ -72,6 +72,7 @@ def _cad(board):
     if board in ("fret_led_mid", "fret_led_key"):
         # the two fret boards: the laminate with every routed body, and the LEDs, which
         # src/fret_light.py draws as their own part so they read as lit
+        from src import top_plate  # noqa: F401  (first: fret_light needs it whole)
         from src import fret_light as FL
         panel = board.rsplit("_", 1)[1]
         return FL.pcb(panel), FL.silk(panel)
