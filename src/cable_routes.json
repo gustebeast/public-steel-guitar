@@ -38,7 +38,7 @@
   "length": 62.33,
   "parts": {
    "keyhead_endplate": "ce47c702d596c52518145c602a33c74e57ec75ad",
-   "chassis_2": "af1664672291f99fbad20e2db3416ccd5fc33970",
+   "chassis_2": "b140fd77b704d17ac41b7a9375f8395aa57b4299",
    "motor_ctrl": "a593419fb830eef35e19ed0b70224dcd1c357985",
    "knee_housing": "7d8678f388ad2fdb77472d120e34979d17057d82",
    "main_cart_base": "62373b45f486404471146c04af133126fcb08e90",
@@ -89,7 +89,7 @@
    "nut_height_screw_9": "1fd45823572303df4ba16692bf38155f69b0424a",
    "nut_height_insert_9": "dc2600d32302bfbb291069f45908e122567e2653"
   },
-  "build": 1013,
+  "build": 1017,
   "routed": "2026-11-01"
  },
  "bus B pedal cable": {
@@ -121,7 +121,7 @@
   "length": 83.27,
   "parts": {
    "keyhead_endplate": "ce47c702d596c52518145c602a33c74e57ec75ad",
-   "chassis_2": "af1664672291f99fbad20e2db3416ccd5fc33970",
+   "chassis_2": "b140fd77b704d17ac41b7a9375f8395aa57b4299",
    "body_adapter_0": "ee92d85733d386d0539f3ff6a7eac0da816780b8",
    "fixed_tenon": "1d7a3fdaf96f36a114ba7f002766e9b3880919a3",
    "pogo_male_board_top": "7e81cdec89e924cf756eec2126edacaf79319376",
@@ -137,7 +137,7 @@
    "pi4_sd": "c5f66045c0ce6ee4e5462ba1ee6f14f002fa9a5c",
    "pi4_card": "b93c6d6765977b2405bde5ef6d6512045f0d9ea8",
    "motor_ctrl": "a593419fb830eef35e19ed0b70224dcd1c357985",
-   "foot_pcb_a": "3ae901b84f15712548577bed11593210e7c4ad0e",
+   "foot_pcb_a": "48622594b85e6e813ceeb49355e18b94489491f5",
    "motor_0": "53be9ecedad7322cb323e650e3ce37f3bff56681",
    "motor_face_0": "6a6099f086cebd5c11be5140b96adb8c55e81811",
    "motor_stack_0": "6c726e19af4f01779f888f65c910ac9dab046480",
@@ -165,7 +165,7 @@
    "nut_height_screw_9": "1fd45823572303df4ba16692bf38155f69b0424a",
    "nut_height_insert_9": "dc2600d32302bfbb291069f45908e122567e2653"
   },
-  "build": 1013,
+  "build": 1017,
   "routed": "2026-11-01"
  },
  "bus B pedal cable, leg slid out": {
@@ -206,8 +206,8 @@
   "length": 108.18,
   "parts": {
    "keyhead_endplate": "ce47c702d596c52518145c602a33c74e57ec75ad",
-   "chassis_2": "af1664672291f99fbad20e2db3416ccd5fc33970",
-   "chassis_light_2": "cfa2a807e1c9c60224126d7965497c1bb061f428",
+   "chassis_2": "b140fd77b704d17ac41b7a9375f8395aa57b4299",
+   "chassis_light_2": "685a4f695bf6a2b5d75ddbabd031a5cf602e3c60",
    "body_adapter_0": "ee92d85733d386d0539f3ff6a7eac0da816780b8",
    "fixed_tenon": "1d7a3fdaf96f36a114ba7f002766e9b3880919a3",
    "pogo_male_board_top": "7e81cdec89e924cf756eec2126edacaf79319376",
@@ -225,7 +225,7 @@
    "pi4_sd": "c5f66045c0ce6ee4e5462ba1ee6f14f002fa9a5c",
    "pi4_card": "b93c6d6765977b2405bde5ef6d6512045f0d9ea8",
    "motor_ctrl": "a593419fb830eef35e19ed0b70224dcd1c357985",
-   "foot_pcb_a": "3ae901b84f15712548577bed11593210e7c4ad0e",
+   "foot_pcb_a": "48622594b85e6e813ceeb49355e18b94489491f5",
    "motor_0": "53be9ecedad7322cb323e650e3ce37f3bff56681",
    "motor_face_0": "6a6099f086cebd5c11be5140b96adb8c55e81811",
    "motor_stack_0": "6c726e19af4f01779f888f65c910ac9dab046480",
@@ -253,7 +253,7 @@
    "nut_height_screw_9": "1fd45823572303df4ba16692bf38155f69b0424a",
    "nut_height_insert_9": "dc2600d32302bfbb291069f45908e122567e2653"
   },
-  "build": 1013,
+  "build": 1017,
   "routed": "2026-11-01"
  },
  "fret LED lead": {
@@ -267,7 +267,7 @@
    -66.183,
    -48.14999999999999
   ],
-  "r": 1.7,
+  "r": 1.695,
   "gates": [],
   "moved": [],
   "pts": [
@@ -294,7 +294,7 @@
   ],
   "length": 79.39,
   "parts": {
-   "chassis_2": "af1664672291f99fbad20e2db3416ccd5fc33970",
+   "chassis_2": "b140fd77b704d17ac41b7a9375f8395aa57b4299",
    "pi4": "862c475ab8ae5f76dc7fa9b74c7eac47bb4623e5",
    "pi4_shells": "81385156f964a5db8867e54012c921482dcb6254",
    "pi4_lids": "d3d8cfc43fb34464b8cdde5b6f1270e73c49e227",
@@ -336,7 +336,7 @@
    "string_8": "2e524f14a9ff5b317a6385c8282619313f8cb972",
    "string_9": "daba124531ae8952ca4e266d7827bb031c33df6c"
   },
-  "build": 1013,
+  "build": 1015,
   "routed": "2026-11-01"
  },
  "fret LED lead, keyhead panel out": {
@@ -350,7 +350,7 @@
    -66.183,
    -48.14999999999999
   ],
-  "r": 1.7,
+  "r": 1.695,
   "gates": [],
   "moved": [
    [
@@ -377,44 +377,49 @@
     -9.1
    ],
    [
-    -825.0268,
-    -1.794,
-    -13.5726
+    -826.1505,
+    -0.8965,
+    -12.2125
    ],
    [
-    -824.0542,
-    -2.9929,
+    -821.9578,
+    -5.0893,
     -16.4052
    ],
    [
-    -610.4191,
-    -30.6095,
+    -610.78,
+    -31.1239,
     -16.4052
    ],
    [
-    -604.9994,
-    -35.5014,
+    -601.8406,
+    -38.6309,
     -16.4052
    ],
    [
-    -599.8301,
-    -40.542,
-    -17.0292
+    -599.7443,
+    -40.7273,
+    -18.5016
    ],
    [
-    -594.8754,
-    -44.887,
-    -20.6632
+    -593.4552,
+    -44.92,
+    -22.6943
    ],
    [
-    -590.0826,
-    -49.1558,
-    -24.8828
+    -591.3589,
+    -47.0163,
+    -24.7906
    ],
    [
-    -572.419,
-    -65.166,
-    -41.7925
+    -574.5876,
+    -62.108,
+    -39.8858
+   ],
+   [
+    -570.3887,
+    -65.5382,
+    -43.8218
    ],
    [
     -566.85,
@@ -422,9 +427,9 @@
     -48.15
    ]
   ],
-  "length": 291.16,
+  "length": 290.34,
   "parts": {
-   "chassis_2": "af1664672291f99fbad20e2db3416ccd5fc33970",
+   "chassis_2": "b140fd77b704d17ac41b7a9375f8395aa57b4299",
    "pi4": "862c475ab8ae5f76dc7fa9b74c7eac47bb4623e5",
    "pi4_shells": "81385156f964a5db8867e54012c921482dcb6254",
    "pi4_lids": "d3d8cfc43fb34464b8cdde5b6f1270e73c49e227",
@@ -477,7 +482,7 @@
    "nut_height_screw_9": "1fd45823572303df4ba16692bf38155f69b0424a",
    "nut_height_insert_9": "dc2600d32302bfbb291069f45908e122567e2653"
   },
-  "build": 1013,
+  "build": 1015,
   "routed": "2026-11-01"
  }
 }

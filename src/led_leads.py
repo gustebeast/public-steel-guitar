@@ -44,12 +44,16 @@ _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.dirname(__file__)), 
 import harness as _H                                   # noqa: E402
 
 WAYS = tuple(_H.LED_DROP)                              # the lead's own order
-WIRE_OD = 1.4                    # 24 AWG over its insulation; XH crimps take 22-28 AWG
+# 24 V and its return are 22 AWG (the rule, BOM.md "Hook-up wire"); the clock and data are not a
+# rail, so they take the other gauge bought. WIRE_OD, their mean, is what lanes are kept to: two
+# fat ones may touch, and cable on cable is fine (user, 2026-10-29).
+WAY_OD = {"V24": 1.52, "GND": 1.52, "SCK": 1.27, "SDT": 1.27}
+WIRE_OD = sum(WAY_OD.values()) / len(WAY_OD)
 WIRE_LANE = 1.6                  # lane to lane where the four share a direction
 PLUG_L = 5.0                     # straight out of a mouth before any bend: the XHP-4
                                  # housing stands about 4.3 past it
 COLORS = {"GND": (0.05, 0.05, 0.05), "V24": (0.85, 0.12, 0.10),
-          "SCK": (0.92, 0.92, 0.88), "SDT": (0.15, 0.35, 0.85)}
+          "SCK": (0.90, 0.80, 0.10), "SDT": (0.10, 0.60, 0.20)}
 _CHECKED = {("F", -90.0), ("F", 0.0), ("F", 180.0)}
 
 
@@ -268,6 +272,6 @@ def parts():
     out = []
     for lead, paths in (("foot", foot_paths()), ("fret", fret_paths())):
         for way, pts in zip(WAYS, paths):
-            out.append(("wire_%s_led_%s" % (lead, way.lower()), oct_cable(pts, WIRE_OD)))
+            out.append(("wire_%s_led_%s" % (lead, way.lower()), oct_cable(pts, WAY_OD[way])))
     fret_routes()                                # the cut-length requests: drawn as above
     return out
