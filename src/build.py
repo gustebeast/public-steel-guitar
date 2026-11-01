@@ -1448,7 +1448,7 @@ def _string_path(i, sy, rise_only=False):
     # the .015 and 0.46 on the .070, well inside the string's own radius either way. The
     # wrap itself is untouched; this is the DEMO path's joinery, not the capstan geometry.
     _LAP = 2.0 * rad                                       # one string diameter of overlap
-    t_in = cq.Vector(math.sin(phi), 0.0, -math.cos(phi))   # the coil's heading at the touch
+    t_in = cq.Vector(-math.sin(phi), 0.0, math.cos(phi))   # the coil's heading at the touch
     out = out.union(_rod(brk, tang + t_in.multiply(_LAP), rad))
     coil = _wrap_coil(i, rad, hr)
     # THE TAIL runs level off the bottom of the rod, along the flat, then down its stow bore, which
@@ -1478,7 +1478,7 @@ def _wrap_coil(i, rad, hr):
     # right-handed helix then turns +X toward +Z -- phi INCREASING, which is the way the
     # string is already going when it meets the rod's top. Left-hand reverses that and
     # draws the coil winding back into its own entry.
-    helix = cq.Wire.makeHelix(pitch=p, height=h, radius=hr, lefthand=True)
+    helix = cq.Wire.makeHelix(pitch=p, height=h, radius=hr, lefthand=False)
     coil = (cq.Workplane("XZ").center(hr, 0).circle(rad)
             .sweep(cq.Workplane("XY").add(helix), isFrenet=True))
     # +90 about X (not -90): that lays the helix axis along -Y, so the coil marches

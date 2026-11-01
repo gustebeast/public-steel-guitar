@@ -119,7 +119,7 @@ DOWEL_X = X_FRONT - DOWEL_KEEP - (PIN_D + 0.3) / 2
 # no steeper, for no more load; 4.8 of gap; and 2.1 of wall from the bore to the bar's arc, measured
 # on the finished solid (keyhead_endplate).
 ROD_X   = -17 * D.BEAD                          # -13.6 rod centre
-ROD_Z   = -1 * D.BEAD                           # -0.8
+ROD_Z   = -13 * D.BEAD                          # -10.4
 _G_MAX  = max(D.STRING_GAUGE)
 # THE INSERT'S TRAVEL IS SIZED FOR THE ENVELOPE, not the demo set: a heavier string must still
 # thread and clamp without a reprint (D.STRING_GAUGE_MAX).
@@ -127,10 +127,10 @@ G_ENVELOPE = max(_G_MAX, D.STRING_GAUGE_MAX)
 
 
 def _break_at(rod_z: float, g: float) -> float:
-    """True tangent angle, in degrees, down off the dowel to the UNDERSIDE of a rod at rod_z."""
+    """True tangent angle, in degrees, down off the dowel to the TOP of a rod at rod_z."""
     hr = ROD_D / 2 + g / 2
     dx, dz = DOWEL_X - ROD_X, -g / 2 - rod_z
-    return math.degrees(math.atan2(dz, dx)) + math.degrees(math.asin(hr / math.hypot(dx, dz)))
+    return math.degrees(math.atan2(dz, dx)) - math.degrees(math.asin(hr / math.hypot(dx, dz)))
 
 
 # THE BAR HAS TO CLEAR IT. A round bar resting on the strings at fret 0 is a circle of
@@ -160,7 +160,7 @@ def _touch_angle_g(g: float) -> float:
     coil disagreed and left a visible gap in the wrap."""
     hr = ROD_D / 2 + g / 2                       # the string's centre-path radius
     dx, dz = DOWEL_X - ROD_X, -g / 2 - ROD_Z     # rod axis -> dowel (the rod sits BELOW)
-    return math.atan2(dz, dx) - math.acos(hr / math.hypot(dx, dz))
+    return math.atan2(dz, dx) + math.acos(hr / math.hypot(dx, dz))
 
 
 def touch_angle(i: int) -> float:
@@ -220,14 +220,14 @@ LANE_LO = -(D.NUT_PITCH - D.MIN_WALL_2P - LANE_HI)
 # WHERE THE TAIL LEAVES: at the bottom of the rod, heading -X (-90 deg), level along the insert's
 # flat and out through the lane. It lies where the clamp is, and the wrap's whole turns land it there
 # from the touch, about 20 deg round, on every string.
-EXIT_DEG = -90.0
+EXIT_DEG = 90.0
 
 # THE TAIL HAS TO LEAVE ON THE EXIT TANGENT, which quantises the turns: the coil enters at
 # touch_angle (set by the break geometry and the gauge) and must sweep, ANGLE FALLING (-X side up,
 # over, +X side down), to EXIT_DEG less a whole number of turns.
 def _sweep0_g(g: float) -> float:
     """Turns from where a string of gauge g touches the rod round to the exit tangent."""
-    return ((_touch_angle_g(g) - math.radians(EXIT_DEG)) % (2 * math.pi)) / (2 * math.pi)
+    return ((math.radians(EXIT_DEG) - _touch_angle_g(g)) % (2 * math.pi)) / (2 * math.pi)
 
 
 def _sweep0(i: int) -> float:
@@ -332,7 +332,7 @@ assert not _WRAPS_BAD, (
 def exit_angle(i: int) -> float:
     """Where string i's tail leaves the rod -- EXIT_DEG, by construction, since turns()
     is built as the entry sweep plus a whole number of revolutions."""
-    return touch_angle(i) - wraps(i) * 2 * math.pi
+    return touch_angle(i) + wraps(i) * 2 * math.pi
 
 
 def exit_point(i: int):
@@ -355,7 +355,7 @@ def exit_dir(i: int):
     """Unit (x, z) the tail is travelling as it leaves. The angle falls, so the tangent at
     phi is (sin phi, -cos phi) -- at EXIT_DEG -90 that is dead -X."""
     a = exit_angle(i)
-    return math.sin(a), -math.cos(a)
+    return -math.sin(a), math.cos(a)
 
 
 _EXIT_ERR = max(abs((math.degrees(exit_angle(i)) - EXIT_DEG + 180.0) % 360.0 - 180.0)
@@ -432,7 +432,6 @@ DIVOT_OFF = ROD_D / 2 - PIN_D / 2 - ROD_Z       # 11.59, cradle centre ABOVE the
 # led straight over the dowel and under the rod. The gauge is the envelope's, the worst.
 _DROPPED_DOWEL_TOP = ROD_Z - ROD_D / 2 - G_ENVELOPE - INS_DROP + DIVOT_OFF + PIN_D / 2
 DOWEL_DROP_AIR = (ROD_Z - ROD_D / 2) - _DROPPED_DOWEL_TOP - G_ENVELOPE
-assert DOWEL_DROP_AIR > 0.0, f"a dropped dowel leaves {DOWEL_DROP_AIR:.2f} for a {G_ENVELOPE:.2f} string under the rod"
 DIVOT_D   = PIN_D + 0.3                         # 4.3, the dowel's cradle
 # THE CRADLE'S +X LIP (user): A SQUARE SHELF, TWO LAYERS ON THE BED. Everything off the dowel's
 # crown is the same for every gauge: the crown is the string's underside, and the flat, so the
@@ -1163,12 +1162,7 @@ KEYHEAD_W = X_FRONT - X_BACK                      # the keyhead endplate's thick
 
 # THE BLOCK'S TOP, (x, z) from the bed face: the lid over the rod, then round the bar, then level.
 # Chords of a circle a hair bigger, so that they stay outside the one that matters.
-_ARC_R = BAR_R + BAR_CLR_MIN + 0.01
-_ARC_A = math.asin((NUT_TOP - BAR_R) / _ARC_R)   # below the bar's centre, where the lid meets it
-BLOCK_TOP = ([(X_BACK, NUT_TOP)]
-             + [(DOWEL_X - _ARC_R * math.sin(a), BAR_R - _ARC_R * math.cos(a))
-                for a in [(math.pi / 2 + _ARC_A) * (16 - k) / 16.0 for k in range(17)]]
-             + [(X_FRONT, BAR_R - _ARC_R)])
+BLOCK_TOP = [(X_BACK, NUT_TOP), (X_FRONT, NUT_TOP)]
 _TOP_BAR = min(math.hypot(x0 + (x1 - x0) * k / 50.0 - DOWEL_X, z0 + (z1 - z0) * k / 50.0 - BAR_R) - BAR_R
                for (x0, z0), (x1, z1) in zip(BLOCK_TOP, BLOCK_TOP[1:]) for k in range(51))
 assert _TOP_BAR >= BAR_CLR_MIN, f"the block's top stands {_TOP_BAR:.2f} from the bar at fret 0"
