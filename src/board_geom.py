@@ -81,6 +81,14 @@ def mask(board: str):
 
 # Laid OVER cadkit's tables (project wins).
 _HEIGHT: dict = {
+    # optical's R1, drawn from its geometry only on the first-flash bench (src/flash_bench.py);
+    # the instrument's optical board is drawn by src/optical_pickup.py
+    "Everlight_PD15-22B": 1.10,
+    "LQFP-176_24x24mm_P0.5mm": 1.6,
+    "R_2512_6332Metric": 0.6,
+    "SOT-223-3_TabPin2": 1.8,
+    "Texas_RTW_WQFN-24-1EP_4x4mm_P0.5mm_EP2.7x2.7mm": 0.8,
+    "VSSOP-8_3x3mm_P0.65mm": 1.1,
     # output_panel R2. SOD-123F: SMF24A, 1.1 max; MSOP-10: INA226, 1.1 max; SOIC-16: CH340C, 1.75 max;
     # X2QFN-12: TUSB320, 0.4 max; UQFN-10: TS3USB221, 0.55 max; MX128: as src/screw_terminal.py draws it
     "D_SOD-123F": 1.10, "MSOP-10_3x3mm_P0.5mm_Tight": 1.10, "SOIC-16_3.9x9.9mm_P1.27mm": 1.75,

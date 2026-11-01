@@ -3791,7 +3791,8 @@ if REV != 1:
         {"net": "+24V_IN", "from": "R61.2", "to": ["Q2.3"], "amps": 6.67},
         {"net": "+24V", "from": "Q2.2", "to": ["U5.2"], "amps": 0.40},
         {"net": "V5_PRE", "from": "L1.2", "to": ["FB1.1"], "amps": 0.3},
-        {"net": "V5_PRE", "from": "L1.2", "to": ["U15.1"], "amps": 1.5},
+        # 2 % of 5 V: quality's name reader takes "+5V", not "V5_PRE", so it fell back to 50 mV
+        {"net": "V5_PRE", "from": "L1.2", "to": ["U15.1"], "amps": 1.5, "max_drop_mv": 100.0},
         {"net": "J1_VBUS", "from": "U15.6", "to": ["J1.A4", "J1.A9"], "amps": 1.5},
     ]
     _q["unconnected"]["J2.[AB]5"] = ("J2 is not a port: the far end of the path to the Pi, no CC "

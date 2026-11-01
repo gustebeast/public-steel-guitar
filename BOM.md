@@ -523,10 +523,10 @@ fitted on every instrument.
 | Part | B/P | PN / source | ~Price | URL |
 |------|-----|-------------|--------|-----|
 | **Foot lighting PCB** | B | Custom, `elec/foot_led.py` — **TWO designs, one of each** (2026-10-04): `foot_led_a` 293.36 × 24.15 (the −X board: a 4-way XH cable socket on a 7 mm tail at its −X end, four seam spring pins at +X) and `foot_led_b` 286.36 × 24.15 (four seam spring pins at −X, nothing at +X). 4-layer, 36 LEDs, **12 zones**, 4× TLC5971 each. They lie end to end in a channel on the chassis bottom and fire DOWN through the 572.72 mm light window at the player’s feet; 72 LEDs at a 7.95 pitch. The boards sit 6.05 mm above the bay floor so the 5.75 mm socket clears it uncut. |
-| **Foot LED harness** | B | One **4-way JST XH** lead (XHP-4 both ends), board A’s J1 to the Pi daughter board’s J6: **24 V, GND, SCK, SDT**. About 215 mm along its route (socket, up the endplate, over string 1’s motor, down to the Pi cap) — cut 250. There is **no jumper between the two boards** any more: four spring pins on each meet tip to tip at the seam. XH because the lead carries 24 V — the instrument’s rule (2026-10-04) is **PH = 5 V, XH = 24 V**. **Conductors, way 1 to 4: black GND, red 24 V, white SCK, blue SDT** — 24 AWG, straight-through (way n to way n), drawn that way in the model (`src/led_leads.py`). |
+| **Foot LED harness** | B | One **4-way JST XH** lead (XHP-4 both ends), board A’s J1 to the Pi daughter board’s J6: **24 V, GND, SCK, SDT**. About 215 mm along its route (socket, up the endplate, over string 1’s motor, down to the Pi cap) — cut 250. There is **no jumper between the two boards** any more: four spring pins on each meet tip to tip at the seam. XH because the lead carries 24 V — the instrument’s rule (2026-10-04) is **PH = 5 V, XH = 24 V**. **Conductors, way 1 to 4: black GND and red 24 V in 22 AWG, yellow SCK and green SDT in 26 AWG** (the two gauges and the colours bought), straight-through (way n to way n), drawn that way in the model (`src/led_leads.py`). |
 | **Fret board retention** | B | **No loose parts.** Each LED board tilts in under a fixed 45° lip printed on its panel’s −Y edge and is held by **two M4 × 10 button heads into M4 heat-set inserts** on its +Y side: one in the bay at the −X end, one through an ear off the +Y edge at the +X end, outside the lit line — `fret_light.m4_joint`, cadkit ScrewJoints (docs/fret-led.md §8.9 – §8.11) | 4 × M4 × 10 + 4 × M4 insert, from the instrument’s stock | — |
 | **Fret lighting PCBs** | B | Custom, `elec/fret_led.py` — **TWO boards, one per deck panel, ONE chain**: `fret_led_key` 211.0 × 70.4 (frets 9–2, 8 zones, 32 LEDs, 3× TLC5971) carries the harness inlet and the only supply, and feeds `fret_led_mid` 210.8 × 70.4 (frets 24–10, 15 zones, 60 LEDs, 5×) over the deck-panel seam through **four tip-to-tip side-mount pogos a side** (+14V5, GND, SCK, SDT; docs/fret-led.md §9.1f — six with the rail doubled until 2026-10-04). **4-layer**, 1.6 mm, SMT throughout (the underside clears the CAN harness by 1.00 mm, so a through-hole tail would be in the cable). One RGBW zone per fret, **four LEDs in series per channel**. Parts: **TLC5971RGER** C543004 ×8 + **XL-5050RGBW** C7371891 ×92 + **LMR33630BRNXR** C2071384 ×1 (the 1.4 MHz part, for heat; alternate LMR33630CRNXR C2071783 on the same land; 24→14.52 V for both boards, 14.0 until the 2026-10-05 quality pass) + **SWPA5040S4R7MT** C48496 (4.7 µH, 5 × 5 × 4, Isat 3.50 A min; the 4 × 4 part saturated below the regulator's limit) + **S4B-XH-SM4-TB** C161861 ×1 + **JFC1206-1200FS** C136345 (2 A fuse) + **YZF0002-38080-02** **C5203987 ×8** + one M4 through each board. ⚠ **C5203987 IS THE ONE NEW SOURCING LINE**: Extended, SMT-assemblable, gold, 24 V / 12 A — the only side-mount pogo in the library rated above 12 V — **594 in stock on 2026-10-05 = 37 instruments at 16 each (8 here, 8 on the foot strip)**, and JLCPCB flag it High assembly difficulty. 92 channels, **1.38 A at 14.52 V** (0.93 A at 24 V) with every fret at full white (the absolute worst case; the effects daemon caps it) | **~$31 of parts** [m] — 92 LEDs $4.30, 8 drivers $19.28, 12 pogos $8.43, 1 supply ~$1.50; 4-layer fab ~$13/instrument (docs/fret-led.md §6.3) | — |
-| **Fret LED harness** | B | **4-way JST XH** (S4B-XH-SM4-TB, LCSC C161861, on both boards; XHP-4 both ends), the Pi daughter board’s J3 to `fret_led_key`’s J1: **24 V, GND, SCK, SDT** — the XH bus’s own supply order, so a motor-bus lead on this socket still powers it the right way round. It was a 4-way PH for a day and a 6-way PH before that; XH because it is 24 V (**PH = 5 V, XH = 24 V**, 2026-10-04). The seam between the two fret boards is four spring pins. **Cut 312**: it is plugged in with the keyhead panel still 253 mm out (J3 is under that panel once it is home), and the taut run in that pose is 287 (`led_leads.fret_lead_cut`, routed by `tools.route_cables`); home is 113, so about 174 lies loose in the bay. **Conductors, way 1 to 4: black GND, red 24 V, white SCK, blue SDT** — 24 AWG, straight-through (way n to way n), drawn that way in the model (`src/led_leads.py`). |
+| **Fret LED harness** | B | **4-way JST XH** (S4B-XH-SM4-TB, LCSC C161861, on both boards; XHP-4 both ends), the Pi daughter board’s J3 to `fret_led_key`’s J1: **24 V, GND, SCK, SDT** — the XH bus’s own supply order, so a motor-bus lead on this socket still powers it the right way round. It was a 4-way PH for a day and a 6-way PH before that; XH because it is 24 V (**PH = 5 V, XH = 24 V**, 2026-10-04). The seam between the two fret boards is four spring pins. **Cut 312**: it is plugged in with the keyhead panel still 253 mm out (J3 is under that panel once it is home), and the taut run in that pose is 287 (`led_leads.fret_lead_cut`, routed by `tools.route_cables`); home is 113, so about 174 lies loose in the bay. **Conductors, way 1 to 4: black GND and red 24 V in 22 AWG, yellow SCK and green SDT in 26 AWG** (the two gauges and the colours bought), straight-through (way n to way n), drawn that way in the model (`src/led_leads.py`). |
 | **Motor controller PCB** | B | Custom, `elec/motor_ctrl.py` — ⚠ **2026-09-30: the SECOND buck (U6, the LED strip's 5 V) and its inductor, fuse F4, crowbar D10 and nine passives are GONE** — the lights take fused 24 V from J7 (F3, 3 A) and each lit board regulates its own (`docs/lighting-bus.md`); what follows predates that where it mentions U6. CH32V307WCU6 + 2× SN65HVD230 + LMR16006 buck + **LMR33630ADDAR** C841384 $0.8138, U5 — the merged power PCB's 36 V 3 A synchronous buck, 24 V → 5 V for the Pi; full MPN named here 2026-09-19, it had no row anywhere + **5× B4B-XH** (the USB link to the Pi is one of them since 2026-09-21: the USB-C it replaced faced the −Y rail 5.5 mm away and no plug could reach it) + an **M4 mounting ear** (46 × 58 + 9.5 × 8.7 tab). **46 × 58**, 4-layer — size and connector count corrected 2026-09-19 from "3× XH. 40 × 35", which was **1,400 mm² against the real 2,668**, nearly double the area, on the row somebody sizes an enclosure from. Read from the board itself (`BOARD_W, BOARD_L`) and its built fab BOM, not retyped | **~$5 of parts** [m]; fab + assembly not yet quoted | — |
 | ~~Teensy 4.1~~ | — | **DELETED** ($31.50), with ~~**Teensy 4 Audio Shield Rev D**~~ ($9.80) and the teensy_ifc carrier. The Teensy's value was the Audio Library, USB high-speed and the codec, all irrelevant once no audio touches this board — the Pi does audio, and this board only reads angles off bus B and commands the motors on bus A. What could not be deleted is the pair of CAN transceivers (no general-purpose MCU integrates one), so a board was always going to exist; the only question was whether an MCU sat on it too | — | — |
 | **CAN transceiver** | B | SN65HVD230DR | **$0.6185 @10** [v] — **32,557 in stock** | [LCSC C12084](https://www.lcsc.com/product-detail/C12084.html) — was priced from DigiKey at $2.45/stock 0, which made it look unavailable; LCSC has it 4× cheaper and deep. Also the sensor boards' transceiver (3.3 V — single rail) |
@@ -1329,14 +1329,16 @@ board aside) is crimped from **two gauges** of one product line, McMaster **8054
 |---|---|---|---|---|---|
 | 22 AWG black | 8054T13, 25 ft | 7/30 | 0.06 in (1.52 mm) | 24 V return on XH | bought 2026-10-07 |
 | 22 AWG **red** | 8054T13, 25 ft, $3.91 | 7/30 | 1.52 mm | +24 V on XH | ordered 2026-10-20 (McMaster) |
-| 26 AWG black | 8054T11, 25 ft | 7/34 | 0.05 in (1.27 mm) | 5 V and the optical feed's return | bought 2026-10-07 |
-| 26 AWG **red** | 8054T11, 25 ft, $3.22 | 7/34 | 1.27 mm | +5 V (Pi), +24 V (optical feed) | ordered 2026-10-20 |
-| 26 AWG **yellow** | 8054T11, 25 ft, $3.22 | 7/34 | 1.27 mm | CAN_H | ordered 2026-10-20 |
-| 26 AWG **green** | 8054T11, 25 ft, $3.22 | 7/34 | 1.27 mm | CAN_L | ordered 2026-10-20 |
+| 26 AWG black | 8054T11, 25 ft | 7/34 | 0.05 in (1.27 mm) | 5 V return | bought 2026-10-07 |
+| 26 AWG **red** | 8054T11, 25 ft, $3.22 | 7/34 | 1.27 mm | +5 V | ordered 2026-10-20 |
+| 26 AWG **yellow** | 8054T11, 25 ft, $3.22 | 7/34 | 1.27 mm | CAN_H, and SCK on the LED leads | ordered 2026-10-20 |
+| 26 AWG **green** | 8054T11, 25 ft, $3.22 | 7/34 | 1.27 mm | CAN_L, and SDT on the LED leads | ordered 2026-10-20 |
 
-**THE RULE: 22 AWG for 24 V power on XH; 26 AWG for everything else.** One gauge cannot do
-it: the 24 V feeds want 22, and the PH contact does not take 22. Colours are the CAN
-scheme (black GND, red rail, yellow H, green L) on both gauges.
+**THE RULE (user, 2026-11-01): 24 V gets 22 and the larger JST connectors, 5 V gets 26 and the
+smaller JST connectors, no exceptions.** Larger is XH, smaller is PH. Signal conductors with
+neither rail (CAN, the LED leads' SCK and SDT) are 26. Colours are the CAN scheme (black GND,
+red rail, yellow H, green L) on both gauges; on an LED lead yellow is SCK and green is SDT,
+the ways CAN-H and CAN-L have on the XH bus.
 
 **Both gauges fit both crimps** (distributors' copies of JST's tables, 2026-10-20):
 SXH-001T-P0.6 (XH) takes AWG 28-22, insulation 0.9-1.9 mm; SPH-002T-P0.5S (PH) takes
@@ -1350,21 +1352,21 @@ AWG 30-24, insulation to 1.5 mm (0.8 or 0.9 minimum; sources differ). So 22 AWG 
 | east 24 V feed (panel J7 to the chain) | 1 x 22 per rail | ~2.5 A (54 % of the motors' ~4.6 A) | ~0.1 V | wire fine; the 3 A XH contact is the limit |
 | power link J10 to J3, ~0.75 m | 2 x 22 per rail | ~1.1 A | ~0.08 V | fine |
 | bus A head and trunk hops | 1 x 22 per rail | <= 2.5 A | small; the contacts dominate | fine |
-| Pi 5 V lead (PH, J5 to the cap's J2), ~0.14 m | 2 x 26 per rail | ~1.7 A (Pi worst ~3.3 A) | ~0.07 V wire + up to ~0.13 V in eight PH contacts, of the Pi's 0.37 V | fine; 24 AWG would save 0.02 V |
-| optical feed, ~0.16 m | 1 x 26 per rail | 0.12 A | ~5 mV | fine |
+| Pi 5 V lead (PH, J5 to the cap's J2), ~0.14 m | 2 x 26 per rail | ~1.7 A (Pi worst ~3.3 A) | ~0.07 V wire + up to ~0.13 V in eight PH contacts, of the Pi's 0.37 V | fine |
+| optical feed, ~0.16 m | 1 x 22 per rail | 0.12 A | ~2 mV | fine |
 | CAN pair, ~0.7 m | 26, twisted | mA | n/a | fine |
 
 The motors' current is still the unmeasured number (0.8 A per moving motor is derived):
 if it is higher, the XH contact gives out before the 22 AWG does, so a clamp-meter
 reading on the bench decides it, not more copper.
 
-**THE LEG HARNESS IS THE ONE EXCEPTION: 28 AWG, a third gauge, legs only** (outside the
-scope above: it is below the floor). Its four conductors are laid up as a 4-core in a
+**OPEN USER DECISION, THE LEG HARNESS: drawn in 28 AWG, a gauge not bought** (the user will
+revisit it; everything else is the rule above). Its four conductors are laid up as a 4-core in a
 O2.4 channel (`src/leg_pogo.py` HARNESS_D, the bores and the coil mandrel). Four round
 conductors bundle to d (1 + sqrt 2) = 2.414 d: at 28 AWG's 0.9 mm that is 2.17 and fits;
-at 26 AWG's 1.27 mm it is **3.07 and does not**. So the legs stay 28 AWG (8054T-class
-28 AWG, black / red / yellow / green, about 5.5 m modelled) unless the leg channel is
-opened to O3.1+ -- branner's geometry and the user's call, not decided here.
+at 26 AWG's 1.27 mm it is **3.07 and does not**. So the legs stay as drawn (8054T-class
+28 AWG, black / red / yellow / green, about 5.5 m modelled) until the leg channel is
+opened to O3.1+ or the user decides otherwise.
 **NOT BOUGHT YET:** the 2026-10-20 McMaster order was the 22 and 26 AWG spools only; the four
 28 AWG leg colours (one 25 ft spool each covers the ~5.5 m) are still to order, or drop if
 the channel opens to 26 AWG.
@@ -1528,14 +1530,13 @@ twisting + the bridge-side AFE buffer, not conductor size):
 > be answered by the same decision about how bus A carries its current.
 | CAN | 26 AWG twisted pair, 120 Ω terminated; the same cable's 24 V and GND conductors are **22 AWG** (two-gauge rule above, 2026-10-20) | ~2.2 |
 | Pi 5 V (motor_ctrl J5 to pi_cap J2, 6-way PH) | **2 × 26 AWG per rail**, ~140 mm (two-gauge rule above; NOT 20 AWG, which PH cannot take) | ~1.3 each |
-| 24 V → optical board | **2 × 26 AWG**, ~150 mm — panel **J9** (XHP-2) to optical **J2** (XHP-4, ways 3 and 4 EMPTY): **way 1 = +24 V, way 2 = GND** at both ends (`elec/harness.py` POWER_PAIR; this row said `1=GND 2=+24V 3=+24V 4=GND` on four wires until 2026-10-13, the order before 2026-10-07). ⚠ **Was missing entirely:** the connector exists at both ends and this row did not, found 2026-09-18. 26 AWG is ample here — the board draws **79 mA at 24 V** typical (324 mA on its 5 V rail through an 85 % buck), ~122 mA at the worst case in `elec/optical.py`'s budget, against XH's applicable #30–#22. It runs beside the ~150 mm USB cable between the same two boards | ~2.2 |
+| 24 V → optical board | **2 × 22 AWG**, ~150 mm — panel **J9** (XHP-2) to optical **J2** (XHP-4, ways 3 and 4 EMPTY): **way 1 = +24 V, way 2 = GND** at both ends (`elec/harness.py` POWER_PAIR; this row said `1=GND 2=+24V 3=+24V 4=GND` on four wires until 2026-10-13, the order before 2026-10-07). ⚠ **Was missing entirely:** the connector exists at both ends and this row did not, found 2026-09-18. 22 AWG by the rule, not for the current: the board draws **79 mA at 24 V** typical (324 mA on its 5 V rail through an 85 % buck), ~122 mA at the worst case in `elec/optical.py`'s budget. It runs beside the ~150 mm USB cable between the same two boards | ~1.5 each |
 | **bus B, pedal segments** | **4 × 26 AWG** twisted (+5 V / GND / CAN_H / CAN_L), **~100 mm each, ×5**, **PHR-4 both ends, straight** (way n to way n): one board's J2 (bus out) to the next one's J1 (bus in) — two 4-way connectors per board since 2026-10-19, so each segment is its own jumper (INSTALL_NOTES KL-5). Cut to fit: a pedal's station is printed into the bar, so these lengths are fixed. Each runs from its board's bay up through the **spur** into the trough (INSTALL_NOTES PB-1). The **levers** are the adjustable ones and they get the slack scheme instead — see `knee_lever.lace_loop` | ~2.5 bundled |
-| pickup / audio / DAC / out | 28 AWG **shielded** pair (mA signals — the shield is the spec) | ~2.0 |
 | USB panel → Pi | slim shielded USB-2 | ~2.6 |
-| logic (relay, link, TDM, OLED, joystick) | 28 AWG | ~1.4 |
+| motor controller to Pi (`wire_link`) | a stock USB-A to PH lead, bought with its plugs: not hook-up wire | ~1.4 |
 
-A 45 m hookup spool (~$20) covers power/CAN/control; ~1.5 m shielded pair
-(~$16) for the pickup/audio runs. **~$35.** Excludes the **11 control sensor drops** (5 pedals + 6 knee levers,
+The hook-up spools above cover power, CAN and control. The only audio wire is the pickup's own
+lead, into J8. Excludes the **11 control sensor drops** (5 pedals + 6 knee levers,
 not yet modelled) and the optical pickup's USB + 5 V feed. All cross-rib raceways pass ≤ Ø2.6 and sit above the
 knee-lever mortise plane — route no fatter cable through the floor trunk.
 
@@ -1798,8 +1799,8 @@ frustrates: JST pre-crimped leads [ASXHSXH22K203](https://www.digikey.com/en/pro
 (**$0.78 / $0.5878 @50** [v], 200 mm socket-socket — cut in half = 2 pigtails).
 Molded TRRS cables were dropped: DigiKey's are special-order/obsolete
 (SparkFun 14163/14164) and the lean topology needs none — if an external
-TRRS hop ever appears, any consumer 4-pole aux cable serves. Audio stays as
-already pinned above (Neutrik NMJ4HCD2 + shielded pair, single-point ground).
+TRRS hop ever appears, any consumer 4-pole aux cable serves. Audio stays on
+the output panel; the only audio wire is the pickup's own lead, into J8.
 ~~The SERVO42D's own I/O is XH2.54 native~~ **Corrected 2026-10-01:** the SERVO42D's I/O is
 2.54 mm **screw terminals** (Makerbase schematic V1.0_003; the user's video of the unit). The
 motor end of each pigtail is four ferruled wires; the XH standard starts at the tee.

@@ -43,7 +43,7 @@
   },
   "bridge_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 312277.0
+   "volume_mm3": 311912.7
   },
   "cart_base": {
    "material": "pctg",
@@ -71,11 +71,11 @@
   },
   "chassis_2": {
    "material": "petg-gf",
-   "volume_mm3": 590603.5
+   "volume_mm3": 590557.9
   },
   "chassis_2_light": {
    "material": "pctg",
-   "volume_mm3": 13021.9
+   "volume_mm3": 13084.9
   },
   "coil_mandrel": {
    "material": null,
@@ -175,19 +175,19 @@
   },
   "nut_slide_insert_a": {
    "material": "pctg",
-   "volume_mm3": 5279.1
+   "volume_mm3": 5277.8
   },
   "nut_slide_insert_b": {
    "material": "pctg",
-   "volume_mm3": 7255.7
+   "volume_mm3": 7253.3
   },
   "nut_slide_insert_c": {
    "material": "pctg",
-   "volume_mm3": 12725.3
+   "volume_mm3": 12720.1
   },
   "optical_guard": {
    "material": "petg-gf",
-   "volume_mm3": 10697.3
+   "volume_mm3": 11396.0
   },
   "pedal_bar_a": {
    "material": "petg-gf",
