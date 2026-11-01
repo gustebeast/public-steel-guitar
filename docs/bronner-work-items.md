@@ -58,6 +58,7 @@ floor, 26.5 mm3) and climbs the rail where the old drop was.
 User: "I do like the idea of moving the ports for R2. J7 is already placed poorly and requires
 cutting into the chassis. For R2 we should add an action item to move J7 +z and J2/6 +y."
 
+0. **J4 becomes a real USB socket with a stock cable** (user, 2026-10-15, asked again 2026-10-31): USB stays off hand-crimped JST from R2 on. The 210 mm USB to PH-4 lead serves rev 1 only.
 1. **J7 (lights link, vertical XH) +Z** so its lower ways stop sitting under the floor's top.
    Retires the chassis cut, the floor ports and the riser detour (MCTRL_J7_LEAD / PITCH / SIDE
    in src/electronics.py, about line 1941).

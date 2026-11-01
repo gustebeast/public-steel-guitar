@@ -306,6 +306,48 @@ version good enough; it would be one more unproven thing between us and the chip
 the second choice, worth the evening only if the ROM loader fails on `motor_ctrl`.
 `minichlink` / `ch32fun` need a WCH-Link for this chip.
 
+## `output_panel`'s USB loader and V1 firmware (2026-10-31, proven on the R1 board)
+
+After one LinkE flash the board takes its firmware over J3, through the hub, from the Pi.
+
+| Flash | What |
+|---|---|
+| 0x0000, 28 K | the loader (`firmware/output_panel/boot.c`), written once with the LinkE: `make boot` |
+| 0x7000, 4 K | the loader's record |
+| 0x8000 | the application: `make`, then `make usb` from the Pi, which runs `psgflash.py` |
+
+The board shows up as `1a86:fe0c` at 480 Mbit. The LinkE is `1a86:8010`, so go by the id, not
+the `ttyACM` number. The loader holds a 1.5 s window at each boot; `psgflash.py` asks a running
+application to go back to the loader, or catches that window if the board is power-cycled
+while it waits.
+
+V1 (`app.c`) is the bench firmware: enough to hear the optical pickup on the jack. Motors do
+not go through this board. They stay on `motor_ctrl` (`bench/psgbench/bench.py`).
+
+| Command | Does |
+|---|---|
+| `?` | `I psg-output-bench <ver> fs=<Hz> rev=<n>` |
+| `A <bytes>` + raw int16 LE, L then R | queues audio |
+| `S` | `S played queued short peakL peakR t_us` |
+| `R 0` / `R 1` | the relay; 1 puts the DAC on the jack |
+| `P <tip> <ring>` | the digital pot |
+| `J 0` / `J 1` | jack mode, 0 balanced, 1 stereo |
+| `B` | `OK`, then back to the loader |
+
+The rate is 48,076.9 Hz, the nearest the PLL gets to 48 kHz. On the Pi,
+`bench/psgbench/panel.py` drives it:
+
+```
+python3 -m psgbench.panel tone --hz 440 --seconds 3
+python3 -m psgbench.panel listen --string 3 --optical <control port>,<sample port> --gain 0.5
+python3 -m psgbench.panel status
+```
+
+Tested on the board: 48,077 Hz measured, a tone heard on headphones, and 2,401 synthetic 5 ms
+blocks through `listen`'s path with 2 frames short and a worst block of 2.2 ms. `listen` itself
+has not run against a real optical board. The relay clicks audibly when it changes over, which
+is the relay and is harmless.
+
 ## The bench test's software (user, 2026-10-13)
 
 What the bench is for: does the motor, belt, pulley and leadscrew change a string's tension
