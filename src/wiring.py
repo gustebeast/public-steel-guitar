@@ -47,7 +47,7 @@ HUE = gauge bucket, SHADE = the specific wire within the bucket:
 
   The gauge/shade rule still governs the NON-CAN nets:
   BLUE = power pair       (superseded for the CAN power rails above)
-  AMBER = 28 AWG logic    (light -> dark) wire_link (motor controller <-> Pi),
+  AMBER = bought leads    (light -> dark) wire_link (motor controller <-> Pi, a stock USB lead),
                           wire_ui (the UI board's 14-way ribbon, ONE flat prism)
   VIOLET = shielded USB-2 wire_usb: output panel J2 -> the Pi's USB-C (wire_hub, indigo: J3 -> a Pi USB-A)
   RED/BLACK/YELLOW/GREEN = the motor drops  wire_drop_{v24,gnd,canh,canl}_N
@@ -114,10 +114,11 @@ WIRE_OD = {
     # the 24 V link's four power conductors, and its two power-button throws: signal wire,
     # a few milliamps into a pull-up
     "wire_plink": 1.8, "wire_plink_sw": 1.3,
-    # the lights' feed and the same two throws going on to the cap: under an amp of LEDs
-    "wire_lights": 1.3,
-    # the optical board's 24 V feed: 26 AWG, a couple of hundred milliamps over 150 mm
-    "wire_opt": 1.3,
+    # the lights' feed: 24 V and its return are 22 AWG (the rule, BOM.md "Hook-up wire"), the
+    # same two throws going on to the cap are 26
+    "wire_lights_pwr": 1.52, "wire_lights": 1.3,
+    # the optical board's 24 V feed: 24 V is 22 AWG, however little it carries
+    "wire_opt": 1.52,
     "wire_link": 1.4,
     # THE UI'S RIBBON IS NOT A DIAMETER AT ALL, and this entry only exists because
     # the gate's colour and allow-list tables are keyed off the same names. It is drawn
@@ -1547,7 +1548,8 @@ def build_wires():
         pts += [(_LT_CLIMB_X, yc, _LT_FLY), (xc, yc, _LT_FLY),
                 (xc, yl, _LT_FLY), (xc, yl, pb[2]), (pb[0], yl, pb[2]), pb]
         _run(out, "wire_lights_%s_%d" % (_PL_SHORT[net], k + 1), pts,
-             WIRE_OD["wire_lights"], "LIGHTS_LINK", k)
+             WIRE_OD["wire_lights" if net.startswith("PWR_SW") else "wire_lights_pwr"],
+             "LIGHTS_LINK", k)
 
     # ── THE LED HARNESS IS NOT DRAWN HERE ANY MORE, AND THAT IS BRENNER'S CALL ────
     # Three blocks stood here: the cap's J3 to strip section 0, the three section-to-
