@@ -907,8 +907,7 @@ def output_panel():
                  5, 6, 7,                               # OSC_IN, OSC_OUT, NRST
                  61, 62, 35, 36, 38, 25, 48, 52, 63, 39, 1,
                  53, 58, 60,                            # I2S3: WS, CK, SD
-                 27,                # PB1 the jack mode
-                 28) + ((21, 20, 26) if REV == 1 else (19, 24, 29, 30, 33, 41, 42, 43, 44, 45))]   # 28: PB2 = BOOT1, held low on the jack-mode net
+                 28) + ((21, 20, 26, 27) if REV == 1 else (19, 24, 29, 30, 33, 40, 41, 43, 44, 45))]   # 28: PB2 = BOOT1, held low on the jack-mode net
     u1 = Part(name="CH32V307WCU6", ref_prefix="U", ref="U1", tag="U1", dest="NETLIST", tool="skidl",
               value="CH32V307WCU6",
               description="RISC-V MCU, USB2.0 HS with INTERNAL PHY (LCSC C5142795)",
@@ -946,7 +945,9 @@ def output_panel():
     pot_cs, pot_sck, pot_sdi = Net("POT_CS"), Net("POT_SCK"), Net("POT_SDI")
     jack_mode = Net("JACK_MODE")   # 0 = balanced (inverted tip), 1 = stereo
     # R2: bit-banged, so on the north row facing U10. The east row was over capacity.
-    pot_cs += u1[21 if REV == 1 else 42]            # PC9 on R2
+    # In the order they leave: SCK west to U10.9, SDI to U10.8, CS east of both to R39 / R40,
+    # and pin 42 open between SCK and SDI: three in a row walled the middle one in.
+    pot_cs += u1[21 if REV == 1 else 40]            # PC7 on R2
     pot_sck += u1[20 if REV == 1 else 43]           # PA8 on R2
     pot_sdi += u1[26 if REV == 1 else 41]           # PC8 on R2
     # ✅ ALL FOUR READ OFF THE TABLE, NOT INFERRED: 20 PA4, 21 PA5, 26 PB0, 27 PB1,
@@ -955,7 +956,8 @@ def output_panel():
     # inference from "26 is PB0 and they are adjacent", which is reasoning about a table
     # rather than reading one; the note above is explicit that nothing downstream can
     # catch a wrong pin number, so it was read.
-    jack_mode += u1[27]
+    if REV == 1:
+        jack_mode += u1[27]
     # ⚠ PB2 IS BOOT1, AND IT WAS FLOATING (bring-up review, 2026-10-07). The part samples
     # BOOT0 and BOOT1 together at reset: BOOT0 high with BOOT1 high is "run from SRAM",
     # not the ROM loader, so the one recovery path this board has (BOOT0 by tweezers,
@@ -964,6 +966,8 @@ def output_panel():
     # 1 mm of surface copper (repair_tracks) and no part.
     # FIRMWARE: PB2 STAYS AN INPUT FOR EVER. Driven as an output it fights PB1 and moves
     # the jack mode; pulled up it lifts JACK_MODE against R37.
+    # R2: PB2 IS THE DRIVER AND PB1 IS FREE (2026-11-01): one pin less in the east row. R37
+    # still reads BOOT1 low at reset, and PB2 is an output only once the part is running.
     jack_mode += u1[28]
     mclk = Net("I2S_MCK")
     mclk += u1[39]
@@ -3214,7 +3218,9 @@ if REV != 1:
                                _f(44.53, 1.75)[:2]]),
         ("GND", "F.Cu", 0.25, [_f(25.6, -19.7)[:2], _f(25.6, -18.95)[:2], _f(25.2, -18.45)[:2]]),
     ]
-    BOARD_NOTES["net_widths"].update({"V5_PRE": 0.6, "J1_VBUS": 1.0, "+24V_JACK": 0.5})
+    # (+24V_JACK's current is all in the declared copper above: what the router lays is U16's
+    #  sense branch, and at 0.5 it had no way through)
+    BOARD_NOTES["net_widths"].update({"V5_PRE": 0.6, "J1_VBUS": 1.0, "+24V_JACK": 0.25})
     _pl.update({
         "R60": _f(-12.0, -16.2, 90.0),
         "R3": _f(-8.9, -12.05), "R4": _f(-6.9, -12.2),     # J3's CC pull-downs: off the input slab
@@ -3345,7 +3351,7 @@ BOARD_NOTES["quality"] = {
         "U1": {
             "pins": ("2 3 4 8 9 10 11 14 15 16 19 22 23 24 29 30 33 34 37 40 41 42 43 44 45 46 47 54 55 56 57 59 64 65 66"
                      if REV == 1 else
-                     "2 3 4 8 9 10 11 14 15 16 20 21 22 23 26 34 37 40 46 47 54 55 56 57 59 64 65 66"),
+                     "2 3 4 8 9 10 11 14 15 16 20 21 22 23 26 27 34 37 42 46 47 54 55 56 57 59 64 65 66"),
             "why": "GPIO this board gives no function: left open, firmware leaves it an input with pull-down"
         },
         "U4": {
