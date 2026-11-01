@@ -1092,8 +1092,8 @@ generated from the instrument's geometry, placed by the board module rather than
 auto-arranger, routed by freerouting, and read BACK into the CAD from the routed file.
 
     fret_led_mid   frets 24..10   15 zones   60 channels   5 x TLC59711   209.8 x 70.4
-    fret_led_key   frets  9.. 2    8 zones   32 channels   3 x TLC59711   211.8 x 70.4
-    92 channels, 8 drivers, 1.38 A at 14 V with every fret at full white
+    fret_led_key   frets  9.. 1    9 zones   36 channels   3 x TLC59711   245.5 x 70.4
+    96 channels, 8 drivers, 1.44 A at 14.5 V with every fret at full white
 
 Every fret X, the four LED Y positions, the 70.4 width and the whole Z stack are IMPORTED
 from `src/fret_light.py`. Nothing is retyped, for the reason `optical.py` gives about its
@@ -1443,7 +1443,7 @@ Built in `src/fret_light.py` (geometry: pads, plungers, notches) and `elec/fret_
 
 ### What crosses the seam, and why it is not what 9.1b said
 
-    Pi cap --J1--> fret_led_key  U1 (fret 2) .. U3 (fret 8)
+    Pi cap --J1--> fret_led_key  U1 (fret 1) .. U3 (fret 8)
                      == +14V x2, GND x2, SCK_SEAM, SDT_SEAM ==>
                    fret_led_mid  U1 (fret 10) .. U5 (fret 24), chain end
 
@@ -1692,7 +1692,8 @@ trios and a pair, and "the middle of two" is `trio[1]` -- the +X one, which on t
 is fret 9, **3.68 mm from the board's own +X edge**. `layout.py` refused it outright: *"no
 room for a stitching via beside U3.19"*. The driver takes `trio[0]` instead, a whole fret
 pitch further in. ⚠ Not the midpoint of the two, which is the obvious alternative and is
-exactly where a comb wall stands.
+exactly where a comb wall stands. (Fret 1 joined the board on 2026-11-01 and made it three
+full trios, so nothing takes this path today; the rule stays for any short trio.)
 
 ## 9.3 ⚠ Every string is laid over a feed track that retraces it (2026-10-06)
 

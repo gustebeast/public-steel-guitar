@@ -1829,7 +1829,9 @@ MCTRL_PORT_CLR = D.MCTRL_PORT_CLR    # around whatever of the board enters the f
 
 MCTRL_CAP_GAP = CRADLE_CLR                  # 0.3, how far the board may lift before the rib
 MCTRL_CAP_T   = 4.0                         # rib thickness across the board (x)
-MCTRL_CAP_L   = 30.0                        # rib length along the board (y)
+# 26 from the board's -Y end, not 30 on its middle: the fret board's bay and J1's lead take
+# the rest (user, 2026-11-01). Its +Y end has to stay clear of led_leads' turn, last lane y -45.55
+MCTRL_CAP_L   = 26.0                        # rib length along the board (y)
 
 
 def mctrl_capture_target():

@@ -360,13 +360,11 @@ import cadquery as cq                                            # noqa: E402
 from .helpers import box_at, heal                                # noqa: E402
 
 
-# ⚠ FRET 1 GETS NO CELL, and the gate is what said so. Its cell would sit at x -580.5
-# with an outer wall reaching about -596.8, straight through the keyhead cluster: the Pi
-# (top -6.00), wire_ui (-8.27), wire_link (-11.30) and wire_usb (-13.70) all live there,
-# and a cell floor at the board's top face (-14.55 then) goes through all four. This is the same finding recorded in
-# docs/fret-led.md as "fret 1 has 8.27 mm, not 17" -- now measured rather than predicted.
-# Fret 2 at -547.90 is clear of the whole cluster, so the comb starts there.
-SKIP_FRETS = (1,)
+# FRET 1 HAS A CELL (user, 2026-11-01). It had none while the Pi and three leads ran through
+# x -580; they have all moved, and over the board from there to the endplate only the fret
+# lead itself is left (measured 2026-11-01). docs/fret-led.md tells the older story.
+SKIP_FRETS = ()
+END_CELL_MAX = 11.50
 
 
 def fret_xs():
@@ -394,9 +392,11 @@ def _boundaries(xs, x_lo=None, x_hi=None):
     # last 11 mm) so the overlap gate never saw it, and it cost the mid board 0.80 mm
     # of its power bay, which is where the harness connector has to fit.
     end_min = LED_CRTYD / 2.0 + WALL / 2.0 + 0.2
+    # ...AND NOT PAST END_CELL_MAX AT THE -X END: half a cell past fret 1 is 16.3, which would
+    # leave the bay behind it too short for the buck.
     mids = [(xs[i] + xs[i + 1]) / 2.0 for i in range(len(xs) - 1)]
     lo = xs[0] + max((xs[0] - mids[0]) / 2.0, end_min)
-    hi = xs[-1] - max((mids[-1] - xs[-1]) / 2.0, end_min)
+    hi = xs[-1] - min(max((mids[-1] - xs[-1]) / 2.0, end_min), END_CELL_MAX)
     if x_hi is not None:
         lo = min(lo, x_hi - WALL / 2.0)
     if x_lo is not None:
@@ -482,19 +482,29 @@ def edge_walls(x_lo=None, x_hi=None):
         bx0, bx1 = board_span(panel)
         if x_lo is not None and not (x_lo <= (bx0 + bx1) / 2.0 <= x_hi):
             continue
+        lo, hi = panel_range(panel)
+        first = min(_boundaries([x for _n, x in fret_xs() if lo <= x <= hi], lo, hi))
         for sgn in (-1.0, 1.0):
+            # ⚠ KEY'S J1 PLUGS IN THROUGH ITS HINGE EDGE (user, 2026-11-01), so wall and lip
+            # stop at the comb there and the bay's -Y edge is open; the M4 holds that end
+            if panel == "key" and sgn == HINGE_SGN:
+                continue_bay = False
+                wx0 = first
+            else:
+                continue_bay = True
+                wx0 = bx0
             floor = wall_floor(panel, sgn)
             y0 = sgn * (BOARD_HALF_W + edge_play(sgn))
             # the OUTER face stays where it was for both sides; the play moves the inner
             y1 = sgn * (BOARD_HALF_W + EDGE_WALL_OUT)
             # the datum wall stops short of the EAR, which leaves the board through it
             wx1 = bx1 if sgn == HINGE_SGN else ear_span(panel)[0] - TAB_PLAY
-            w = box_at(wx1 - bx0, abs(y1 - y0), BOARD_TOP - floor,
-                       x=(bx0 + wx1) / 2.0, y=(y0 + y1) / 2.0,
+            w = box_at(wx1 - wx0, abs(y1 - y0), BOARD_TOP - floor,
+                       x=(wx0 + wx1) / 2.0, y=(y0 + y1) / 2.0,
                        z=(BOARD_TOP + floor) / 2.0)
             out = w if out is None else out.union(w)
             if sgn == HINGE_SGN:
-                out = out.union(_lip(bx0, bx1, y0, sgn))
+                out = out.union(_lip(wx0, bx1, y0, sgn))
             # ⚠ THROUGH THE BAY THE WALL HAD NOTHING TO HANG FROM (user, from the render).
             # Along the comb it grows down out of the reflector wedge's flat underside; the
             # wedges stop at the comb's first wall and the board runs on into its bay, so
@@ -503,9 +513,7 @@ def edge_walls(x_lo=None, x_hi=None):
             # triangle copied through, which is a reflector where there is no light to
             # reflect and tapers to nothing at the deck -- user: "the 1.6mm thickness
             # rule is violated here. Why is this a triangle and not a straight wall?")
-            lo, hi = panel_range(panel)
-            first = min(_boundaries([x for _n, x in fret_xs() if lo <= x <= hi], lo, hi))
-            if first - bx0 > 1e-6:
+            if continue_bay and first - bx0 > 1e-6:
                 assert abs(y1 - y0) >= D.MIN_WALL_2P - 1e-9, abs(y1 - y0)
                 out = out.union(box_at(first - bx0, abs(y1 - y0), -BOARD_TOP,
                                        x=(bx0 + first) / 2.0, y=(y0 + y1) / 2.0,
@@ -646,10 +654,9 @@ def columns(x_lo=None, x_hi=None):
 #         in, which is 0.38 of clearance and was -0.62 before `_boundaries` stopped
 #         hanging a clamped wall half outside its panel. The checker in elec/fret_led.py
 #         is what found it, before the board was routed rather than after.
-#   key   the keyhead comb's end wall is at -555.59 and the panel runs to -610.80, so
-#         there is 55 mm of room. It stops at -573.00 because `wire_usb` crosses at
-#         z -14.55..-13.70 from -580.00 -X, and the board's top face IS -14.55.
-BOARD_BAY = {"mid": -360.50, "key": -573.00}
+#   key   the keyhead comb's end wall is at -591.98 and the endplate's +X face at -607.80.
+#         It stops 0.30 short of that face: J1 needs all of it.
+BOARD_BAY = {"mid": -360.50, "key": -607.50}
 BOARD_NAME = {"mid": "fret_led_mid", "key": "fret_led_key"}
 
 

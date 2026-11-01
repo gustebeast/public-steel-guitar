@@ -6,7 +6,7 @@ TWO BOARDS FROM ONE MODULE, because there are two deck panels and each board has
 come off with its own panel:
 
     fret_led_mid   frets 24..10   15 zones   60 channels   5 x TLC5971   210.3 x 70.4
-    fret_led_key   frets  9.. 2    8 zones   32 channels   3 x TLC5971   211.8 x 70.4
+    fret_led_key   frets  9.. 1    9 zones   36 channels   3 x TLC5971   245.5 x 70.4
 
 ⚠ THE GEOMETRY IS AN INPUT, NOT AN OUTPUT -- the second board in elec/ of which that
 is true (the first is optical.py, for the same reason). Every fret's X, the four LED
@@ -27,7 +27,7 @@ ONE CHAIN ACROSS TWO BOARDS, JOINED AT THE PANEL SEAM BY FOUR TIP-TO-TIP POGOS
 24 V -> 14.5 V buck for BOTH; the seam carries +14V5, GND and the TLC5971 chain out of
 key's last driver into mid's first:
 
-    Pi cap --J1--> fret_led_key: U1 (fret 2) .. U3 (fret 8)
+    Pi cap --J1--> fret_led_key: U1 (fret 1) .. U3 (fret 8)
                      --SCK_SEAM/SDT_SEAM, +14V5, GND over the seam-->
                    fret_led_mid: U1 (fret 10) .. U5 (fret 24), chain end
 
@@ -62,6 +62,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from src import top_plate  # noqa: E402,F401  (first: fret_light needs it whole)
 from src import fret_light as FL  # noqa: E402  (the geometry source -- see above)
 
 OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
@@ -483,14 +484,14 @@ DRV_PAD_VIAS = ((-1.10, 0.0), (+1.10, 0.0), (0.0, -1.10), (0.0, +1.10))
 R_SERIES = "1k 1%"
 
 # ── the buck's cell in the bay: buck_cell's frame, +x towards the inductor ────────────
-CELL_Y = -17.80                      # U10: the input slab ends 0.5 short of J1's courtyard
+CELL_Y = -5.00                       # U10: +Y of J1, which stands at the -Y edge
                                      # and the output HF capacitor 2.2 from the -Y edge
 CELL_REFS = {"CIN_A": "C32", "CIN_B": "C35", "CBOOT": "C33", "CVCC": "C34",
              "RFBB": "R11", "RFBT": "R10", "RFBP": "R12"}
 BULK_REFS = {"CIN_1": "C30", "CIN_2": "C31", "L1": "L1",
              "COUT_1": "C36", "COUT_2": "C37", "COUT_HF": "C38"}
 CELL_BULK = dict({ref: BC.BULK[role] for role, ref in BULK_REFS.items()}, **{
-    "TP1": (-6.50, +5.00, 0.0),      # +24V, beside the input bulk
+    "TP1": (-9.75, +5.00, 0.0),      # +24V, past the input bulk's ground slab, stubbed off the feed
     "TP3": (+2.50, +5.00, 0.0),      # GND
     "TP2": (+12.50, +5.00, 0.0),     # the rail, beside the output bulk
 })
@@ -671,11 +672,12 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
         net += tp[1]
 
     # ── THE BAY, the only part of this board laid out by hand ────────────────────────
-    # J1's mouth is its footprint's +Y and the placement anchors on the PAD CENTROID, so
-    # rot 270 turns the mouth -X and the centroid sits 5.8125 +X of it (4.4 from the
-    # footprint origin to the mouth, 1.4125 from the origin back to the centroid) -- the
-    # arithmetic elec/led_strip.py records for this exact part, whose first two layouts
-    # had the sign wrong and hung both connectors off the board ends.
+    # J1's mouth is its footprint's +Y and the placement anchors on the PAD CENTROID; KiCad's
+    # Y runs opposite to ours, so rot 0 turns the mouth world -Y and the centroid sits
+    # 5.8125 +Y of it (4.4 from the footprint origin to the mouth, 1.4125 from the origin
+    # back to the centroid) -- the arithmetic elec/led_strip.py records for this exact
+    # part, whose first two layouts had the sign wrong and hung both connectors off the
+    # board ends.
     #
     # ⚠ J1's COURTYARD REACHES 11.91 BACK FROM THE BOARD EDGE AND THE MID BOARD'S BAY IS
     # 10.50, and that is fine: the last 1.41 hangs over the first light cell, where the
@@ -707,23 +709,25 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
     # exchange the cell keeps one shape on both boards, with its ground and input slabs
     # taking the bulk capacitors in.
     bx0, bx1 = bay_x0 - cx, bay_x1 - cx
-    mouth = bx0 + 1.0
+    mouth = -FL.BOARD_HALF_W + 1.0
     # 5.25 from the board edge: 1.07 between the board edge and the feedback pair's far
     # courtyard on one side, and the whole rest of the bay for the test pads on the other
     col = bx0 + 5.25
     org, turn = (col, CELL_Y), 270.0
-    place["J1"] = (mouth + J_ANCHOR, 0.00, 270.0)
+    # J1 FACES -Y (user, 2026-11-01): -X it would be plugged straight at the endplate.
+    jx, jy = bx0 + 8.20, mouth + J_ANCHOR     # its fixing pad 0.30 in from the -X edge
+    place["J1"] = (jx, jy, 0.0)
     place["U10"] = BC.at(org, turn, 0.0, 0.0)
     for role, ref in CELL_REFS.items():
         place[ref] = BC.at(org, turn, *BC.CORE[role])
     for ref, (dx, dy, rot) in CELL_BULK.items():
         place[ref] = BC.at(org, turn, dx, dy, rot)
-    place["F1"] = (col, 12.00, 180.0)
+    place["F1"] = (col, CELL_Y + 29.80, 180.0)
     # the two series resistors, just past J1's courtyard on their own lands' lines (the
     # lands' centres are 3.25 +X of the pad centroid, the courtyard ends at 6.05, and
     # each stands on the line of the way it is in series with)
     for ref, way in series:
-        place[ref] = (mouth + J_ANCHOR + 7.30, BC.xh_way_dy(way), 0.0)
+        place[ref] = (jx - BC.xh_way_dy(way), jy + 7.30, 90.0)
         fps[ref] = R_FP
     fps.update(dict(
         [("J1", J_FP), ("U10", BUCK_FP), ("L1", IND_FP),
@@ -1138,9 +1142,9 @@ def build(panel):
     for k in range(n_drv):
         trio = zs[3 * k:3 * k + 3]
         # ⚠ THE DRIVER SITS ON A FRET CENTRE, AND ON THE -X ONE WHEN THE TRIO IS SHORT.
-        # It is the middle zone of a full three; the keyhead board's 8 zones leave a trio
-        # of TWO, and "the middle of two" is trio[1], the +X one -- which on that board is
-        # fret 9, 3.68 mm from the board's own +X edge. layout.py refused it outright:
+        # It is the middle zone of a full three; 8 zones on the keyhead board, as it was
+        # before fret 1, left a trio of TWO, and "the middle of two" is trio[1], the +X one
+        # -- fret 9, 3.68 mm from the board's own +X edge. layout.py refused it outright:
         # "no room for a stitching via beside U3.19". Taking trio[0] instead puts the
         # driver a whole fret pitch further in, with its two zones at side 0 and +1.
         # ⚠ AND NOT THE MIDPOINT OF THE TWO, which is the obvious alternative and is
@@ -1375,7 +1379,12 @@ def build(panel):
         for k, (_u, xd, _trio, _di, _f) in enumerate(drivers)] + laid
     if panel == HARNESS:
         # ...and the socket's ground way, which is the whole instrument's fret-light return
-        _trk, _via = BC.xh_ground_via(*place["J1"][:2], BC.xh_way(LED_WAYS, "GND"))
+        # buck_cell's ground via, for this J1: a quarter turn on from the rot 270 it is written for
+        _jx, _jy = place["J1"][:2]
+        _gx = round(_jx - BC.xh_way_dy(BC.xh_way(LED_WAYS, "GND")), 3)
+        _gy = round(_jy + BC.XH_TOE_VIA, 3)
+        _trk = ("GND", "F.Cu", 0.40, [(_gx, round(_jy + 3.50, 3)), (_gx, _gy)])
+        _via = ("GND", _gx, _gy)
         notes["tracks"] = list(notes.get("tracks", [])) + [_trk]
         notes["vias"] = notes["vias"] + [_via]
     # WHAT EACH SUPPLY NET CARRIES, all-white. The 14 V rail is made on the key board and
@@ -1426,7 +1435,9 @@ def build(panel):
             BC.at(*cell_org, dx=_fx, dy=-1.40)[:2],
             BC.at(*cell_org, dx=_fx + 1.30, dy=-1.40)[:2],
             BC.at(*cell_org, dx=_fx + 2.85, dy=0.15)[:2],
-            BC.at(*cell_org, dx=BC.BULK["CIN_2"][0], dy=0.15)[:2]])]
+            BC.at(*cell_org, dx=BC.BULK["CIN_2"][0], dy=0.15)[:2]]),
+            ("+24V", "F.Cu", 0.50, [BC.at(*cell_org, dx=-9.75, dy=0.15)[:2],
+                                    BC.at(*cell_org, dx=-9.75, dy=5.00)[:2]])]
         notes["vias"] = notes["vias"] + BC.vias(*cell_org) + BC.heat_vias(*cell_org)
         notes["stitch_exceptions"] = BC.STITCH_EXCEPTIONS
         waive = {

@@ -121,8 +121,9 @@ Even a perfect part would have to notch through a cell wall, which is one of the
 That last one is geometry, not catalogue, so it does not change when stock does.
 
 ⚠ **WHAT WOULD ACTUALLY REOPEN IT: give `fret_led_key` a bay at its +X end**, at the cost
-of fret 9's cell -- one unlit fret, at the panel seam. `SKIP_FRETS` already carries fret 1
-for a similar reason. That is a real trade and it belongs to whoever is weighing the header
+of fret 9's cell -- one unlit fret, at the panel seam. `SKIP_FRETS` carried fret 1 for a
+similar reason until 2026-11-01, when J1 turned to face -Y and gave that cell back. That is
+a real trade and it belongs to whoever is weighing the header
 count, not to this module.
 
 ### 1c The jumper is the one live route to TWO headers

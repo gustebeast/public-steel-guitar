@@ -816,7 +816,7 @@ def _mctrl_capture():
     x0, x1, y0, y1, ztop = EL.mctrl_capture_target()
     return box_at(EL.MCTRL_CAP_T, EL.MCTRL_CAP_L,
                   BZ - (ztop + EL.MCTRL_CAP_GAP),
-                  x=(x0 + x1) / 2.0, y=(y0 + y1) / 2.0,
+                  x=(x0 + x1) / 2.0, y=y0 + EL.MCTRL_CAP_L / 2.0,
                   z=(BZ + ztop + EL.MCTRL_CAP_GAP) / 2.0)
 
 
