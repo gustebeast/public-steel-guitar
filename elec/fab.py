@@ -274,7 +274,7 @@ PASSIVES = {
     ("330k", "R_0402_1005Metric"):           "C25778",   # UniOhm 0402WGF3303TCE, 1 %; preferred extended
     ("3k3", "R_0402_1005Metric"):            "C25890",   # UniOhm 0402WGF3301TCE, 1 %; basic
     ("470R", "R_0402_1005Metric"):           "C25117",   # UniOhm 0402WGF4700TCE, 1 %; basic
-    ("49k9 1%", "R_0402_1005Metric"):        "C25897",   # UniOhm 0402WGF4992TCE, 1 %; preferred extended, 31,254 in stock
+    ("49k9 1%", "R_0402_1005Metric"):        "C137969",   # Yageo RC0402FR-0749K9L, 1 %; 1,258,075 in stock 2026-11-01 (C25897, UniOhm, down to 11; boards already ordered carry it, this is for the next order)
     ("4k7", "R_0402_1005Metric"):            "C25900",   # UniOhm 0402WGF4701TCE, 1 %; basic
     ("56k", "R_0402_1005Metric"):            "C25796",   # UniOhm 0402WGF5602TCE, 1 %; preferred extended
     ("5k1", "R_0402_1005Metric"):            "C25905",   # UniOhm 0402WGF5101TCE, 1 %; basic
