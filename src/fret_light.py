@@ -482,19 +482,29 @@ def edge_walls(x_lo=None, x_hi=None):
         bx0, bx1 = board_span(panel)
         if x_lo is not None and not (x_lo <= (bx0 + bx1) / 2.0 <= x_hi):
             continue
+        lo, hi = panel_range(panel)
+        first = min(_boundaries([x for _n, x in fret_xs() if lo <= x <= hi], lo, hi))
         for sgn in (-1.0, 1.0):
+            # ⚠ KEY'S J1 PLUGS IN THROUGH ITS HINGE EDGE (user, 2026-11-01), so wall and lip
+            # stop at the comb there and the bay's -Y edge is open; the M4 holds that end
+            if panel == "key" and sgn == HINGE_SGN:
+                continue_bay = False
+                wx0 = first
+            else:
+                continue_bay = True
+                wx0 = bx0
             floor = wall_floor(panel, sgn)
             y0 = sgn * (BOARD_HALF_W + edge_play(sgn))
             # the OUTER face stays where it was for both sides; the play moves the inner
             y1 = sgn * (BOARD_HALF_W + EDGE_WALL_OUT)
             # the datum wall stops short of the EAR, which leaves the board through it
             wx1 = bx1 if sgn == HINGE_SGN else ear_span(panel)[0] - TAB_PLAY
-            w = box_at(wx1 - bx0, abs(y1 - y0), BOARD_TOP - floor,
-                       x=(bx0 + wx1) / 2.0, y=(y0 + y1) / 2.0,
+            w = box_at(wx1 - wx0, abs(y1 - y0), BOARD_TOP - floor,
+                       x=(wx0 + wx1) / 2.0, y=(y0 + y1) / 2.0,
                        z=(BOARD_TOP + floor) / 2.0)
             out = w if out is None else out.union(w)
             if sgn == HINGE_SGN:
-                out = out.union(_lip(bx0, bx1, y0, sgn))
+                out = out.union(_lip(wx0, bx1, y0, sgn))
             # ⚠ THROUGH THE BAY THE WALL HAD NOTHING TO HANG FROM (user, from the render).
             # Along the comb it grows down out of the reflector wedge's flat underside; the
             # wedges stop at the comb's first wall and the board runs on into its bay, so
@@ -503,9 +513,7 @@ def edge_walls(x_lo=None, x_hi=None):
             # triangle copied through, which is a reflector where there is no light to
             # reflect and tapers to nothing at the deck -- user: "the 1.6mm thickness
             # rule is violated here. Why is this a triangle and not a straight wall?")
-            lo, hi = panel_range(panel)
-            first = min(_boundaries([x for _n, x in fret_xs() if lo <= x <= hi], lo, hi))
-            if first - bx0 > 1e-6:
+            if continue_bay and first - bx0 > 1e-6:
                 assert abs(y1 - y0) >= D.MIN_WALL_2P - 1e-9, abs(y1 - y0)
                 out = out.union(box_at(first - bx0, abs(y1 - y0), -BOARD_TOP,
                                        x=(bx0 + first) / 2.0, y=(y0 + y1) / 2.0,

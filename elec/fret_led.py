@@ -6,7 +6,7 @@ TWO BOARDS FROM ONE MODULE, because there are two deck panels and each board has
 come off with its own panel:
 
     fret_led_mid   frets 24..10   15 zones   60 channels   5 x TLC5971   210.3 x 70.4
-    fret_led_key   frets  9.. 2    8 zones   32 channels   3 x TLC5971   211.8 x 70.4
+    fret_led_key   frets  9.. 1    9 zones   36 channels   3 x TLC5971   245.5 x 70.4
 
 ⚠ THE GEOMETRY IS AN INPUT, NOT AN OUTPUT -- the second board in elec/ of which that
 is true (the first is optical.py, for the same reason). Every fret's X, the four LED
@@ -27,7 +27,7 @@ ONE CHAIN ACROSS TWO BOARDS, JOINED AT THE PANEL SEAM BY FOUR TIP-TO-TIP POGOS
 24 V -> 14.5 V buck for BOTH; the seam carries +14V5, GND and the TLC5971 chain out of
 key's last driver into mid's first:
 
-    Pi cap --J1--> fret_led_key: U1 (fret 2) .. U3 (fret 8)
+    Pi cap --J1--> fret_led_key: U1 (fret 1) .. U3 (fret 8)
                      --SCK_SEAM/SDT_SEAM, +14V5, GND over the seam-->
                    fret_led_mid: U1 (fret 10) .. U5 (fret 24), chain end
 
@@ -672,11 +672,12 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
         net += tp[1]
 
     # ── THE BAY, the only part of this board laid out by hand ────────────────────────
-    # J1's mouth is its footprint's +Y and the placement anchors on the PAD CENTROID, so
-    # rot 270 turns the mouth -X and the centroid sits 5.8125 +X of it (4.4 from the
-    # footprint origin to the mouth, 1.4125 from the origin back to the centroid) -- the
-    # arithmetic elec/led_strip.py records for this exact part, whose first two layouts
-    # had the sign wrong and hung both connectors off the board ends.
+    # J1's mouth is its footprint's +Y and the placement anchors on the PAD CENTROID; KiCad's
+    # Y runs opposite to ours, so rot 0 turns the mouth world -Y and the centroid sits
+    # 5.8125 +Y of it (4.4 from the footprint origin to the mouth, 1.4125 from the origin
+    # back to the centroid) -- the arithmetic elec/led_strip.py records for this exact
+    # part, whose first two layouts had the sign wrong and hung both connectors off the
+    # board ends.
     #
     # ⚠ J1's COURTYARD REACHES 11.91 BACK FROM THE BOARD EDGE AND THE MID BOARD'S BAY IS
     # 10.50, and that is fine: the last 1.41 hangs over the first light cell, where the
@@ -1141,9 +1142,9 @@ def build(panel):
     for k in range(n_drv):
         trio = zs[3 * k:3 * k + 3]
         # ⚠ THE DRIVER SITS ON A FRET CENTRE, AND ON THE -X ONE WHEN THE TRIO IS SHORT.
-        # It is the middle zone of a full three; the keyhead board's 8 zones leave a trio
-        # of TWO, and "the middle of two" is trio[1], the +X one -- which on that board is
-        # fret 9, 3.68 mm from the board's own +X edge. layout.py refused it outright:
+        # It is the middle zone of a full three; 8 zones on the keyhead board, as it was
+        # before fret 1, left a trio of TWO, and "the middle of two" is trio[1], the +X one
+        # -- fret 9, 3.68 mm from the board's own +X edge. layout.py refused it outright:
         # "no room for a stitching via beside U3.19". Taking trio[0] instead puts the
         # driver a whole fret pitch further in, with its two zones at side 0 and +1.
         # ⚠ AND NOT THE MIDPOINT OF THE TWO, which is the obvious alternative and is

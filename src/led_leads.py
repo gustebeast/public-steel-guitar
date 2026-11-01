@@ -194,19 +194,24 @@ def _fret_ends():
 
 
 FRET_COL_X = -583.5              # the first lane; the rest step -X from it
+FRET_WALL_CLR = 1.5              # the turn's first lane off the comb's -Y wall
 
 
 def fret_paths():
+    """Straight out of J1 past its plug, +X under the panel to the column clear of the motor
+    board, down, and back into the cap's J3. J1 faces -Y (user, 2026-11-01), so the turn
+    comes before the motor board's capture rib, which stops short of these lanes."""
     (pa, oa), (pb, ob) = _fret_ends()
-    assert oa == (-1, 0, 0) and ob == (0, -1, 0), (oa, ob)
+    assert oa == (0, -1, 0) and ob == (0, -1, 0), (oa, ob)
 
     def build(r1, r2):
         out = []
         for i in range(4):
             a, b = pa[i], pb[i]
+            ty = a[1] - PLUG_L - FRET_WALL_CLR - r1[i] * WIRE_LANE
             cx = FRET_COL_X - r1[i] * WIRE_LANE
             dy = b[1] - PLUG_L - r2[i] * WIRE_LANE
-            out.append([a, (cx, a[1], a[2]), (cx, dy, a[2]), (cx, dy, b[2]),
+            out.append([a, (a[0], ty, a[2]), (cx, ty, a[2]), (cx, dy, a[2]), (cx, dy, b[2]),
                         (b[0], dy, b[2]), b])
         return out
     return _solve(build)

@@ -18,7 +18,7 @@ If you are reading this because you want to change something, read
 | `output_panel` | the front panel, both audio conversions, a USB hub | 1 |
 | `optical` | 10-string optical pickup: 20 photodiodes, 20 TIAs, USB HS | 1 |
 | `fret_led_mid` | frets 24–10: 15 RGBW zones, 60 LEDs, 5× TLC59711 | 1 |
-| `fret_led_key` | frets 9–2: 8 RGBW zones, 32 LEDs, 3× TLC59711 | 1 |
+| `fret_led_key` | frets 9–1: 9 RGBW zones, 36 LEDs, 3× TLC59711 | 1 |
 
 ⚠ **`fret_led_*` is the SECOND board whose geometry is an INPUT rather than an output**
 (the first is `optical`). One module, `fret_led.py`, cuts to two panels; every fret X, the
