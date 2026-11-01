@@ -11,15 +11,23 @@ because the plain result was impossible (errors of 40 to 60 mm):
    steps and shelf heights stay visible as ZSTEP.
 
     py -3.12 tools/slicer_sweep.py      resumable; results in .slicer_sweep/
+
+A part too long for the bed is turned 45 degrees to fit. The pulleys also run on PCTG on both
+nozzles, as name@0.4 and name@0.8; which one they print on is the user's fact, not this tool's.
+SLICER_SWEEP_STEPS names the checkout holding the print STEPs, if it is not this one.
 """
 import concurrent.futures as cf, json, os, pathlib, subprocess, sys, time
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 OUT = ROOT / ".slicer_sweep"
 WT = str(ROOT)
-MAIN = ROOT                 # the print STEPs: run it where a build has written them
+MAIN = pathlib.Path(os.environ.get("SLICER_SWEEP_STEPS", ROOT))     # where a build wrote the STEPs
 LIMIT = 1200
 JOBS = 2
+BED = 256.0
+PULLEYS = ("motor_pulley", "screw_pulley_hi", "screw_pulley_lo")
+PROFILES = {"0.4": ("Bambu Lab X2D 0.4 nozzle", "0.20mm PCTG", "3D-Fuel PETG PCTG @Bambu Lab X2D 0.4 nozzle"),
+            "0.8": ("Bambu Lab X2D 0.8 nozzle", "0.40mm PCTG", "3D-Fuel PETG PCTG @Bambu Lab X2D 0.8 nozzle")}
 
 
 def measure2(SC):
@@ -90,10 +98,17 @@ def one(name, src):
     else:
         shape, up = cq.importers.importStep(src).val(), (0.0, 0.0, 1.0)
     V, F = SC.mesh_of(shape)
+    turned = bool(max(V.max(axis=0)[:2] - V.min(axis=0)[:2]) > BED)
+    if turned:
+        c = 0.5 ** 0.5
+        V = V @ np.array(((c, c, 0.0), (-c, c, 0.0), (0.0, 0.0, 1.0)))
     t1 = time.time()
-    sites, layers, stats = SC.check(V, F, up, OUT / "work" / name)
+    work = OUT / "work" / name
+    prof = PROFILES.get(name.partition("@")[2])
+    settings = SC.presets(work / "presets", *prof) if prof else None
+    sites, layers, stats = SC.check(V, F, up, work, settings)
     sites = [dict(s, at=tuple(float(x) for x in s["at"])) for s in sites]
-    json.dump({"name": name, "src": src, "up": list(up), "stats": stats, "tris": len(F),
+    json.dump({"name": name, "src": src, "up": list(up), "stats": stats, "tris": len(F), "turned": turned,
                "box": [V.min(axis=0).tolist(), V.max(axis=0).tolist()],
                "t_mesh": t1 - t0, "t_check": time.time() - t1,
                "sites": [{k: (v if isinstance(v, (tuple, str)) else float(v)) for k, v in s.items()}
@@ -110,6 +125,8 @@ def jobs():
                 continue
             cached = n.startswith("chassis_") or n.startswith("top_plate_")
             out.append((n, "cache" if cached else str(p)))
+            if n in PULLEYS:
+                out += [("%s@%s" % (n, k), str(p)) for k in PROFILES]
     return out
 
 
