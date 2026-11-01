@@ -315,11 +315,11 @@
   },
   "top_plate_4": {
    "material": "pctg",
-   "volume_mm3": 229630.8
+   "volume_mm3": 228719.5
   },
   "top_plate_4_color": {
    "material": "pctg",
-   "volume_mm3": 106997.7
+   "volume_mm3": 110814.2
   },
   "ui_clamp": {
    "material": "petg-gf",
