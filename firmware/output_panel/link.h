@@ -23,5 +23,7 @@ void link_send(const void *d, uint16_t n);
 void link_say(const char *s);
 int link_take(uint8_t *dst);        /* one packet from the host, or -1 */
 uint64_t now_us(void);
+void Delay_Us(uint32_t n);
+void Delay_Ms(uint32_t n);
 void reset_to(uint32_t what);
 #endif

@@ -66,7 +66,7 @@ def loader():
         if r == "OK":
             return s
         try:
-            s.write(b"B")           # an application: back to the loader
+            s.write(b"B\x0a")       # an application: back to the loader
             s.close()
         except (OSError, serial.SerialException):
             pass

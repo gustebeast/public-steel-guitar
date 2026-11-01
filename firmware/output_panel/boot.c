@@ -25,7 +25,6 @@
 struct rec { uint32_t magic, len, crc, not_crc; };
 #define REC ((const struct rec *)(FLASH_BASE_ADDR + REC_ORG))
 
-void Delay_Ms(uint32_t n);
 void NMI_Handler(void) __attribute__((interrupt));
 void HardFault_Handler(void) __attribute__((interrupt));
 void NMI_Handler(void) { }
