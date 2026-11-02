@@ -148,7 +148,20 @@ def listen(a):
     conv, sa, sb = optical.string_inputs(a.string)
     print("panel:", p.ask("?"), "| optical:", o.command("?"))
     o.duty(a.duty)
-    o.select(range(5) if a.common else [conv])
+    want = list(range(5)) if a.common else [conv]
+    o.select(want)
+
+    def fresh():
+        """What arrived, less any left in the USB buffers by a run that was stopped."""
+        return [b for b in o.take() if all(k in b[2] for k in want)]
+
+    time.sleep(0.3)
+    got = fresh()
+    # U17 came up reading exactly zero after a power cut (bench 2026-11-02), cause not found
+    if got and any(not any(np.any(b[2][k]) for b in got) for k in want):
+        print("a converter is silent; configuring them again:", o.command("R"))
+        o.duty(a.duty)
+
     A, B = Lockin(), Lockin()
     common = optical.CommonNoise(a.string)
     ia, ib = 2 * a.string - 2, 2 * a.string - 1
@@ -172,7 +185,7 @@ def listen(a):
     # minutes as latency: run the lock-in on it, throw it away, then start at the right depth.
     settle = time.monotonic() + 0.3
     while time.monotonic() < settle:
-        blocks = o.take()
+        blocks = fresh()
         if blocks:
             xa, xb = pair(blocks)
             A(xa), B(xb)
@@ -184,7 +197,7 @@ def listen(a):
     depth, drops, most = [], 0, 0
     try:
         while not a.seconds or time.monotonic() - t0 < a.seconds:
-            blocks = o.take()
+            blocks = fresh()
             if not blocks:
                 time.sleep(0.0005)
                 continue
