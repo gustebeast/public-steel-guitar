@@ -142,6 +142,7 @@ LAY_BUS_B = twisted(1.3)                  # CANB_WIRE_OD
 LAY_LEG = twisted(0.9, then=twisted(1.8, 5 * TWIST_PITCH))
 LEAD_SPARE = 10.0                         # on top of the wire to cut, then up to the next 5
 LEAD_CUTS = pathlib.Path(__file__).resolve().parent / "lead_cuts.json"
+WIRE_CUTS = pathlib.Path(__file__).resolve().parent / "wire_cuts.json"
 
 # (_KNEE_B is gone with the two-conductor bus-B head it served -- a landing 20 mm short
 #  of LKL's board, waiting on a chassis follow-up. That follow-up is the wiring port, and
@@ -449,11 +450,35 @@ def lead_cuts():
             "motor_usb": lead_mm(conductor_cut("wire_link") + tail)}
 
 
+def _cable_cuts():
+    """{part name: its label's length} for every conductor of a declared cable."""
+    return {name: lead_mm(cable_cut(key)[1])
+            for key, c in _CABLES.items() for name in c["drawn"].values()}
+
+
+def wire_cuts(lever_parts, lever_cuts):
+    """{part name: the length to cut, wire plus spare} for every wire we cut ourselves, which
+    the viewer shows on the selected wire. lever_parts, lever_cuts = lever_bus(nodes), after
+    build_wires() and optical_feed(). tools/lead_cuts.py writes these to WIRE_CUTS."""
+    from . import led_leads as LL
+    out = _cable_cuts()
+    usb = lead_cuts()["motor_usb"]
+    out.update({"wire_link": usb}, **{"wire_link_%d" % k: usb for k in range(1, 5)})
+    for name, _ in lever_parts:                 # wire_canb_<net or coil>_<segment>_<n>
+        out[name] = lead_mm(lever_cuts[int(name.split("_")[-2])][1])
+    # their cut already holds its spare, so only the lay and the round up to 5
+    out.update(LL.wire_cuts(lambda mm: int(math.ceil(LAY_22.over(mm, 2 * TWIST_TAIL) / 5.0) * 5)))
+    return out
+
+
 def report_lead_cuts():
-    """A line if LEAD_CUTS no longer matches the cables, as a stale route is reported."""
+    """A line if LEAD_CUTS or WIRE_CUTS no longer match the cables, as a stale route is
+    reported."""
     if "optical feed" not in _CABLES:
         return
-    if json.loads(LEAD_CUTS.read_text(encoding="utf-8")) != lead_cuts():
+    saved = json.loads(WIRE_CUTS.read_text(encoding="utf-8"))
+    if (json.loads(LEAD_CUTS.read_text(encoding="utf-8")) != lead_cuts()
+            or any(saved.get(n) != mm for n, mm in _cable_cuts().items())):
         print("LEAD_CUTS is stale: py -3.12 -m tools.lead_cuts")
 
 

@@ -63,6 +63,7 @@ def build_glb(components=None, out: pathlib.Path = GLB, build_n=None) -> pathlib
     coordinates, which is the frame the rig's pivots are given in."""
     from cadkit.web import export
     from src.board_geom import BOARDS
+    from tools.lead_cuts import notes
     from tools.print_ups import ups
     from tools.web_materials import material_of, unit_of
     if components is None:
@@ -74,7 +75,7 @@ def build_glb(components=None, out: pathlib.Path = GLB, build_n=None) -> pathlib
     played = belts_as_played()
     components = [(name, played.get(name, wp)) for name, wp in components]
     parts = [(name, wp, _color_for(name)) for name, wp in components]
-    export(parts, out.parent, stem=out.stem, extras=dict(ABOUT, build=build_n), page=True,
+    export(parts, out.parent, stem=out.stem, extras=dict(ABOUT, build=build_n, notes=notes()), page=True,
            boards=BOARDS, cache_dir=REPO / ".webview" / "boards", materials=material_of,
            units=unit_of, mesh_cache=REPO / ".webview" / "mesh", layers=ups(components))
     print(f"  ({out.relative_to(REPO).as_posix()}, build #{build_n})")
