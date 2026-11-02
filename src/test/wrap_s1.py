@@ -1,7 +1,7 @@
 """String 1 coupon: a slice of the finished keyhead, not a model of it. Everything comes off the real
 solid, so the wrap space, the insert's travel, the screw's reach and the stow bore cannot drift from it.
 
-It proves two things (user): with the M4 x 25 the insert drops far enough to wrap the string round the
+It proves two things (user): with the M4 x 40 the insert drops far enough to wrap the string round the
 rod, and the screw brings it back up to clamp the coil, lightly. It also proves the tail goes down its
 stow bore. It is not a strength test.
 

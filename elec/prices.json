@@ -113,15 +113,6 @@
       "order": "7 x $9.44 (pack of 100) = $66.08 for 700 needed",
       "what": "M4x10 -- 10 CAN tees, 2 bay boards, 2 fret boards, 1 UI clamp (was M4x12), and per sensed control x 11: 2 position + 2 spring-tension (the feel cartridges) + 1 in the axle's -Y end"
     },
-    "m4_button_25": {
-      "usd": 0.2182,
-      "verified": "v",
-      "per_instrument": 10,
-      "vendor": "McMaster-Carr",
-      "sku": "92095A197",
-      "order": "2 x $10.91 (pack of 50) = $21.82 for 100 needed",
-      "what": "M4x25 -- 10 keyhead nut-height screws (nut_block.HS_SCREW_L). $10.91 per pack of 50, read 2026-11-01"
-    },
     "m4_button_20": {
       "usd": 0.2368,
       "verified": "v",
@@ -151,11 +142,11 @@
     "m4_button_40": {
       "usd": 0.4052,
       "verified": "v",
-      "per_instrument": 10,
+      "per_instrument": 20,
       "vendor": "McMaster-Carr",
       "sku": "92095A200",
-      "order": "4 x $10.13 (pack of 25) = $40.52 for 100 needed",
-      "what": "M4x40 -- 4 leg lock pins, 2 pedal-bar latch collars (one per bar-to-leg joint; the model draws one leg), 4 knee-lever travel stops (one per lateral lever housing: LKL, LKR, RKL, RKR -- the vertical lever has none). The latch and the stops were M4x30; both seats take the x40, which retires that length"
+      "order": "8 x $10.13 (pack of 25) = $81.04 for 200 needed",
+      "what": "M4x40 -- 10 keyhead nut-height screws (nut_block.HS_SCREW_L), 4 leg lock pins, 2 pedal-bar latch collars (one per bar-to-leg joint; the model draws one leg), 4 knee-lever travel stops (one per lateral lever housing: LKL, LKR, RKL, RKR -- the vertical lever has none). The latch and the stops were M4x30; both seats take the x40, which retires that length"
     },
     "m4_insert": {
       "usd": 0.219,
