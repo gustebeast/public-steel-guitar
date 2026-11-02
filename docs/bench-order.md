@@ -319,7 +319,10 @@ After one LinkE flash the board takes its firmware over J3, through the hub, fro
 The board shows up as `1a86:fe0c` at 480 Mbit. The LinkE is `1a86:8010`, so go by the id, not
 the `ttyACM` number. The loader holds a 1.5 s window at each boot; `psgflash.py` asks a running
 application to go back to the loader, or catches that window if the board is power-cycled
-while it waits.
+while it waits. The loader starts an 8 s watchdog before the application, which feeds it only
+where it reads USB, so a hung application falls back into that window until `psgflash.py`
+catches it (proven 2026-11-02: a hang at start-up and one with USB up, both rescued over USB
+alone). An application that keeps reading USB but ignores `B` still takes a power cycle on R1.
 
 V1 (`app.c`) is the bench firmware: enough to hear the optical pickup on the jack. Motors do
 not go through this board. They stay on `motor_ctrl` (`bench/psgbench/bench.py`).
