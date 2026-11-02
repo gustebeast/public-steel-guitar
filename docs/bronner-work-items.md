@@ -62,6 +62,19 @@ until the board is properly mounted on the test bench. U17 came up reading exact
 power cut, cause not found; `R` restored it and `listen` now does that itself. Firmware follow-up:
 setup is one shared I2C write before the clocks start, and any one ack reads as success.
 
+**Optical noise, nothing moving (R1 on the MSA, 2026-11-02).** Electronics alone about 3 counts.
+Light brings about 20-30: white to 20 kHz, nearly independent of light level. On top, a per-channel
+state of 100-220 counts (once about 1850) that drifts over seconds and moves between channels with
+tiny on-time changes. In 1370 channel-seconds with the carrier under 6000 it never appeared; from
+about 8000 up channels spent 13-100 % of the time in it. No channel sat at 6000-8000: the carrier
+jumps across that band as on-time rises a few ticks, so something in the chain changes state.
+Leading explanation, unproven: the short pulses overdrive the TIA or the converter input. Ruled
+out: edge coupling (no noise at 1-8 ticks), string motion (too broadband), bit errors (residuals
+smooth; other `F` settings far worse). Going below the threshold costs an estimated 14 dB of
+string SNR, so software alone is no fix. R2 has the same TIA, so settle this before ordering it.
+The user saw hand position change the noise and a finger on the strings silence it. Needs the
+user: 10 s hands off, 10 s finger on the strings, 10 s plastic pick on the strings.
+
 **Bench.** Optical and panel update and recover over USB; loader watchdogs on both. Panel
 watchdog is on agent/bronner-panelwd, awaiting merge when this was written. All 20 optical
 channels read at full rate, about 65 dB at on-time 32/4096. Do not read the earlier 18 dB common
