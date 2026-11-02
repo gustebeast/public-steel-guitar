@@ -26,8 +26,24 @@ Why output_panel moves missed: most pair failures were bystanders. R47, C52 and 
 pair; they landed on pair copper, which was ripped and re-laid at signal rules. D2 is on THRU
 itself. Supply failures (V5_PRE, +24V) came back at 0.2 mm because the ripped width was lost.
 
-**Next.** `eco.py`: refuse moves that disturb pair or matched-group copper, reported separately
-from misses, and carry ripped widths into close_widths. Then re-measure all three boards.
+**Re-measured with the fixes (cadkit c87534f).** `eco.py` now refuses moves that would take up
+pair or matched-group copper, carries ripped widths into close_widths, and counts clean against
+the unmoved board's own FAILs. All three boards, same seed:
+
+| Board | Moves | Refused | Connected | Clean |
+|---|---|---|---|---|
+| output_panel g1 | 18 | 1 | 12 of 17 | 12 |
+| optical R2 | 18 | 2 | 10 of 16 | 9 |
+| pi_cap R2 | 12 | 0 | 4 of 12 | 3 |
+
+No verify FAIL on any measured move: pair failures are gone, as refusals. Every miss is now open
+nets, 1 to 10 of them, except one output_panel move with a violation. The unmoved baselines
+through a scratch project are output_panel 1 FAIL (silk 'B'), optical 1 (silk 'NRST'), pi_cap 2
+(A17 J4 pinout, A19 silk spelling). output_panel showed 0 FAIL finishing with PCBFLOW_PROJECT =
+elec, so at least its FAIL depends on the project; cause not found. pi_cap's two are not yet
+explained. With parallel runs of all three the whole set took 43 minutes.
+
+**Next.** close_last's open nets on moved parts: why a 1 mm move leaves up to 10 open.
 
 **Bench.** Optical and panel update and recover over USB; loader watchdogs on both. Panel
 watchdog is on agent/bronner-panelwd, awaiting merge when this was written. All 20 optical
