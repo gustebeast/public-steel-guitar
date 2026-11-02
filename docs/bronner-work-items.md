@@ -1,5 +1,50 @@
 # bronner — open work items (2026-09-30)
 
+## Overnight summary: routing and local repair (2026-11-02)
+
+**Full reroutes of output_panel R2 do not converge.** Best board is scratch run g1: 0 open, 0
+violations, one soft FAIL (silk 'B' 0.8 mm). Holding g1's corridor nets left 2-3 open, and the
+open net moved as more were held. Keeping all copper and routing again timed out at 58 minutes
+in the Freerouting optimiser. The bar "0 open and 0 FAIL across nudges" is not met, so the kept
+board stands.
+
+**Local repair** (`cadkit/pcbflow/eco.py`, then `finish.py --keep-route`): one random legal move
+of a small part, 0.5 to 1.5 mm. "Connected" means 0 unconnected and 0 violations. "Clean" adds no
+verify FAIL and no quality FAIL.
+
+| Board | Moves | Connected | Clean | Time per move | Notes |
+|---|---|---|---|---|---|
+| output_panel g1 | 18 | 11-12 | 6-7 | about 1 min | two settings; before the pour refill; g1's silk 'B' FAIL not counted |
+| optical R2 | 18 | 10 | 8 | about 7 min | third run, the valid one; every trial has the board's own 5 OPEN |
+| pi_cap R2 | 12 | 5 | 1 | not recorded | many quality FAILs, several moves left 2-4 open |
+
+Two earlier optical runs are void: 6 of 18 (the refill landed mid-run) and 0 of 18 (launched
+without PCBFLOW_PROJECT, so the 20 declared overlaps counted). "Clean" here means 0 FAIL, not the
+order bar of 0 FAIL and 0 OPEN. No other R2 board exists to measure; motor_ctrl R2 is backlog.
+
+Why output_panel moves missed: most pair failures were bystanders. R47, C52 and C36 are on no
+pair; they landed on pair copper, which was ripped and re-laid at signal rules. D2 is on THRU
+itself. Supply failures (V5_PRE, +24V) came back at 0.2 mm because the ripped width was lost.
+
+**Next.** `eco.py`: refuse moves that disturb pair or matched-group copper, reported separately
+from misses, and carry ripped widths into close_widths. Then re-measure all three boards.
+
+**Bench.** Optical and panel update and recover over USB; loader watchdogs on both. Panel
+watchdog is on agent/bronner-panelwd, awaiting merge when this was written. All 20 optical
+channels read at full rate, about 65 dB at on-time 32/4096. Do not read the earlier 18 dB common
+noise figure: those amplifiers were saturated.
+
+**Needs the user.**
+1. g1 plus local repair, or the kept output_panel board. g1 also needs firmware pin moves and
+   `voltage_check --declare`.
+2. Where the optical light comes from, which holds optical R2 ordering work: run
+   `python3 -m psgbench.panel noise --duty 256` in open air, then again with a black card over an
+   emitter row.
+3. Channels 6B, 7A and 9B read 100+ counts once, near full scale; unexplained.
+4. Listening at the jack: frames reach the panel, but nobody has heard the output.
+5. Left as is, or waiting on the bench: lever sensor (user parked it), R2 J2, optical crimps,
+   M32, M42, motor_ctrl first flash.
+
 ## Bench firmware: optical sensors to the TRRS jack (user, 2026-11-02, for this evening)
 
 No instrument is printed yet, so no string runs over the sensors. Read real sensor data anyway
