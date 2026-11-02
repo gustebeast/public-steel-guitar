@@ -629,7 +629,7 @@ def pi_cradle() -> cq.Workplane:
 
 
 PI_PLINK_CUT = (PI_FP[0] - 5.0, PI_FP[0] + 4.0)   # x: J3's link columns, + a wire and a fit
-PI_PLINK_HALF = 0.9                                # wiring.WIRE_OD["wire_plink"] / 2
+PI_PLINK_HALF = 0.9                                # at least wiring.WIRE_OD["wire_plink"] / 2
 
 
 # -- the Pi's retention: the belt clamps' M3, through the board's own hole ---------------

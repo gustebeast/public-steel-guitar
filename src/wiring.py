@@ -243,7 +243,7 @@ TEE_Y  = RAIL_INNER_Y + 8.0                              # tee-board centre (14m
 # biggest: six conductors, two across and three high (see build_wires), 0.15 off the floor.
 # It was a pair at -22.9 until all six ways were drawn (2026-10-06).
 PLINK_COL, PLINK_ROW = 1.0, 1.75        # half the pair's spacing; row to row
-PLINK_HALF = PLINK_ROW + 1.8 / 2        # 2.65 from its centre to its top or bottom
+PLINK_HALF = PLINK_ROW + 1.8 / 2        # 2.65 from its centre to its top or bottom: the lane reserved, Ø1.8 over the Ø1.52 wire
 LANE_PWR2  = CH_WT_ZF + 0.15 + PLINK_HALF       # -23.6: its centre
 # THE TWO USB LEADS TO THE Pi (O2.6 each) lie on the 24 V link, and 4.8 mm of trough does not
 # take them side by side: they are STAGGERED, wire_usb against the rail and low, wire_hub
@@ -1347,8 +1347,8 @@ def build_wires():
     # the other two cables in it: the 24 V pairs top and bottom, the two thin throws in
     # the middle row. cadkit.bundle_paths carries that section round every corner.
     _PL_COL, _PL_ROW, _PL_HALF = PLINK_COL, PLINK_ROW, PLINK_HALF
-    assert WIRE_OD["wire_plink"] == 1.8 and WIRE_OD["wire_usb"] == 2.6       # PLINK_HALF, LANE_PWR2
-    assert WIRE_OD["wire_plink"] / 2.0 == EL.PI_PLINK_HALF, "electronics.PI_PLINK_HALF is stale"
+    assert WIRE_OD["wire_plink"] <= 1.8 and WIRE_OD["wire_usb"] == 2.6       # PLINK_HALF, LANE_PWR2
+    assert WIRE_OD["wire_plink"] / 2.0 <= EL.PI_PLINK_HALF, "electronics.PI_PLINK_HALF is stale"
     _PL_OFFS = [(a * _PL_COL, b * _PL_ROW) for b in (-1, 0, 1) for a in (-1, 1)]
     # the recess: 0.2 over J7's and J9's plug tops -- READ OFF THEM, so it follows the board down
     # (it was a typed -35.3 + ..., which the board's drop to the floor would have left 12 mm up)
