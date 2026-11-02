@@ -1,0 +1,13 @@
+[Unit]
+Description=USB gadget on the Pi's USB-C
+After=sys-kernel-config.mount
+Requires=sys-kernel-config.mount
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/psg-gadget.sh
+ExecStop=/usr/local/bin/psg-gadget.sh stop
+
+[Install]
+WantedBy=multi-user.target

@@ -678,9 +678,10 @@ takes about 2 A (an estimate from the driver's default phase current, not a
 measurement). (With the optional bench supply: the pigtail goes into the panel's J7,
 limit 2 A with one motor; at 0.3 A the supply folds back and it looks like a fault.)
 
-**The Pi's gadget port has never been run with VBUS absent.** The panel's J2 leaves VBUS
-open on purpose. If the Pi does not appear as a gadget through that lead, the first
-question is `dr_mode` and VBUS sensing on the Pi, not a dead panel.
+**The Pi's gadget port works with VBUS absent** (2026-11-02, computer to the panel's USB-C, `output_panel` J2 to the Pi's USB-C). `dtoverlay=dwc2,dr_mode=peripheral` under `[all]` in
+`config.txt`, and `bench/pi/psg-gadget.sh` run at boot by its service: `cafe:4010`, one
+serial port for now, `/dev/ttyGS0` on the Pi. It enumerated at high speed and 1 MB crossed
+it with every byte accounted for. The USB-A ports are a separate controller and are unaffected.
 
 **Meter only, before either meets power.** The tee: J1 way 1 = way 8 = J2 way 1; 2 = 7 =
 J2 way 2; 3 = 6 = J2 way 3; 4 = 5 = J2 way 4; 24 V to GND open; CAN_H to CAN_L open with
