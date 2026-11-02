@@ -408,12 +408,11 @@ for _i in range(D.N_STRINGS):
 # gate found it the moment the screws had dummies: a uniform 27.0 mm3 of screw and 23.3 of
 # insert buried in chassis on nearly every tee. The M4's 8.5 anchor puts the cradle base 5.3
 # into that material. Cut at the END of the pipeline, where nothing unions over it again.
-for _ctx, _cutters in _WR_FUSE.tee_hold_negatives():
-    for _csi in range(len(_seg_edges) - 1):
-        if _seg_edges[_csi + 1] < _ctx < _seg_edges[_csi]:
-            for _cut in _cutters:
-                chassis_segments[_csi] = chassis_segments[_csi].cut(_cut)
-            break
+for _, _cutters in _WR_FUSE.tee_hold_negatives():
+    for _cut in _cutters:                       # a seam can fall between a tee and its ear post
+        for _csi, _cs in enumerate(chassis_segments):
+            if not _bb_apart(_cs.val(), _cut.val()):
+                chassis_segments[_csi] = _cs.cut(_cut)
 chassis_light = list(chassis_light)
 for _i, _lt in enumerate(chassis_light):        # the transparent under-rail band
     PARTS[f"chassis_{_i}_light"] = (
