@@ -55,6 +55,13 @@ against 140-310, so `panel listen --mix diff` was added. 1A's largest peak was t
 `listen` also starts its DC filter on the first sample now: the carrier gap between the sensors
 would have reached the jack as a near full-scale step.
 
+**All ten strings heard (user, 2026-11-02).** R1 board on the user's MSA, every string through
+the Pi and panel to the jack on in-ears at `listen --mix diff --gain 3 --level 128`. User's
+verdict: good enough for pitch detection, far too noisy to use as a pickup. Noise work waits
+until the board is properly mounted on the test bench. U17 came up reading exactly zero after a
+power cut, cause not found; `R` restored it and `listen` now does that itself. Firmware follow-up:
+setup is one shared I2C write before the clocks start, and any one ack reads as success.
+
 **Bench.** Optical and panel update and recover over USB; loader watchdogs on both. Panel
 watchdog is on agent/bronner-panelwd, awaiting merge when this was written. All 20 optical
 channels read at full rate, about 65 dB at on-time 32/4096. Do not read the earlier 18 dB common
