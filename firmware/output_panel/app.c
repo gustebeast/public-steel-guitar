@@ -308,6 +308,7 @@ int main(void)
     while (1) {
         track();
         if (queued + DEF_USB_HS_PACK_LEN / 2 > TX_N - 8) continue;      /* wait in USB */
+        IWDG_ReloadCounter();             /* boot.c started it; fed only where USB is heard */
         int got = link_take(pkt);
         for (int i = 0; i < got; i++) byte_in(pkt[i]);
     }

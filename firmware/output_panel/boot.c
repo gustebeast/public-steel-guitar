@@ -3,8 +3,10 @@
  *
  * Every power-up it enumerates and waits WINDOW_US for a host to say H. Then it resets and
  * starts the application from a clean chip, if the record says the application is whole
- * (length and CRC-32, written last). So a bad application can always be replaced: power-cycle
- * with psgflash.py waiting. An application asks for the loader with reset_to(GO_LOADER).
+ * (length and CRC-32, written last). The watchdog starts before the application does, and the
+ * application has to keep feeding it: one that hangs is reset back here, and comes up again in
+ * this window, until psgflash.py catches one. An application asks for the loader with
+ * reset_to(GO_LOADER).
  *
  * The line protocol, one reply line per command:
  *   H                    stay in the loader                   -> OK
@@ -22,6 +24,7 @@
 
 #define WINDOW_US 1500000u
 #define REC_MAGIC 0x50534731u
+#define WATCHDOG_S 8u                     /* the application's start-up has to fit inside it */
 struct rec { uint32_t magic, len, crc, not_crc; };
 #define REC ((const struct rec *)(FLASH_BASE_ADDR + REC_ORG))
 
@@ -130,11 +133,21 @@ static void byte_in(uint8_t c)
     else if (n < sizeof ln - 1) ln[n++] = (char)c;
 }
 
+static void watchdog_start(void)
+{
+    IWDG_WriteAccessCmd(IWDG_WriteAccess_Enable);
+    IWDG_SetPrescaler(IWDG_Prescaler_256);     /* LSI 40 kHz: 156 Hz */
+    IWDG_SetReload(WATCHDOG_S * 156);
+    IWDG_ReloadCounter();
+    IWDG_Enable();                        /* only a reset stops it */
+}
+
 int main(void)
 {
     uint32_t go = BOOT_WORDS[0], chk = BOOT_WORDS[1];
     BOOT_WORDS[0] = 0; BOOT_WORDS[1] = 0;
     if (go == GO_APP && chk == ~GO_APP) {
+        watchdog_start();
         __disable_irq();
         ((void (*)(void))APP_ORG)();
     }
