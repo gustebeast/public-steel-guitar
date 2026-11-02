@@ -656,9 +656,10 @@ the J2 lead. Tag the port; do not tape it. The cap's seen face says so.
 
 **Every SERVO42D leaves its box as CAN ID 01, 500K, in the pulse-input mode** (maker's CAN
 manual V1.0.9, sections 3.2, 3.11, 3.12). On the bench the tee's drop IS the motor's
-supply, so each motor is set up **as the only motor on the tee**: set its ID from
-its own screen and buttons, one motor at a time; set the bus-control mode (SR_vFOC);
-calibrate it with nothing on the shaft, before the belt goes on. Never plug or unplug a
+supply, so each motor is set up **as the only motor at ID 1 on the bus**, the rest already
+renumbered and power off to add it. All three steps go over CAN from `servo.py` (run on one
+motor 2026-11-02): `set_id`, `set_mode`, and `calibrate` with nothing on the shaft, before the
+belt goes on. The screen does them too. Never plug or unplug a
 motor's power or CAN with the trunk live (manual 14.1): the tee is there to swap motors,
 with the power off.
 
