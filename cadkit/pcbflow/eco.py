@@ -94,9 +94,11 @@ def move(stem, moves):
     if hit:
         print("REFUSED: would take up matched copper on %s" % ", ".join(hit))
         raise SystemExit(REFUSED)
+    # a pour's width is the pour's: a 2.6 mm GND strap closed wide only clashes with its neighbours
+    poured = {z[0] for z in notes.get("zones", ())}
     widths = notes.setdefault("close_widths", {})
     for t in gone:
-        if t.GetClass() != "PCB_VIA":
+        if t.GetClass() != "PCB_VIA" and t.GetNetname() not in poured:
             widths[t.GetNetname()] = max(widths.get(t.GetNetname(), 0.0), pcbnew.ToMM(t.GetWidth()))
         board.Remove(t)
     # a stale pour against a moved pad is a violation, and close_last will not start on one
