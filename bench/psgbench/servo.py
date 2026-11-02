@@ -31,6 +31,8 @@ READ_ENCODER = 0x31         # reply: int48 accumulated counts
 READ_SPEED = 0x32           # reply: int16 rpm
 READ_ERROR = 0x39           # reply: int32 angle error, 51200 per turn
 ENABLE = 0xF3               # 1 byte: 1 on, 0 off
+CALIBRATE = 0x80            # 1 byte 0: answers 0 when it starts, 1 when it is done, about 11 s
+SET_ID = 0x8B               # u16: the reply comes from the new id; kept over a restart? not yet tried
 SET_MODE = 0x82             # 1 byte: 0..2 pulse-input modes, 3 SR_OPEN, 4 SR_CLOSE, 5 SR_vFOC
 SR_VFOC = 5
 MOVE_REL = 0xF4             # speed u16, acc u8, int24 counts, relative
@@ -87,6 +89,15 @@ class Servo:
 
     def set_mode(self, mode: int = SR_VFOC, at=None):
         return self._send(bytes([SET_MODE, mode]), at)
+
+    def calibrate(self, at=None):
+        """The shaft turns by itself: nothing on it."""
+        return self._send(bytes([CALIBRATE, 0]), at)
+
+    def set_id(self, new: int, at=None):
+        seq = self._send(bytes([SET_ID]) + new.to_bytes(2, "big"), at)
+        self.id = new
+        return seq
 
     def move_rel(self, counts: int, rpm: int, acc: int, at=None) -> int:
         """Turn by `counts` (16384 per turn) from where it is. Returns the frame's sequence
