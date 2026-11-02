@@ -2299,8 +2299,7 @@ BOARD_NOTES = {
     # package toward J4, and a through via at the pad's centre lands on it. The hub draws
     # ~50 mA and its pad reaches ground through the F.Cu pour it sits in; nothing here
     # needs that via, and the pair does.
-    "stitch_exceptions": ("J2.SH", "J4.SH", "U4.25") + (() if REV == 1 else BC.STITCH_EXCEPTIONS + ("U1.12",   # its via is held copper, beside the held I2S_MCK
-                                                                                                "J8.1", "U15.2", "C71.2", "D2.2", "D3.2", "U16.2", "U16.7", "U13.10", "U13.11")),
+    "stitch_exceptions": ("J2.SH", "J4.SH", "U4.25") + (() if REV == 1 else BC.STITCH_EXCEPTIONS + ("J8.1", "U15.2", "C71.2", "D2.2", "D3.2", "U16.2", "U16.7", "U13.10", "U13.11")),
     # ⚠ NO local_nets HERE EITHER, AND NOW THERE IS A PATTERN. Measured on three
     # boards: it takes lever_sensor from 4 unconnected to 7, this board from 2 to 5, and
     # the optical board from 26 to 12. Pre-laying copper is not a general improvement --
@@ -3541,7 +3540,6 @@ BOARD_NOTES["quality"] = {
     # and why. Way 1 is marked on the connector's own side in every case.
     "connector_labels": {
         "J6": {"back_only": "the labeller tries the connector's own side first and finds no free site there for its five-line block at 1.5 mm in the board's face within 40 mm of the part, flat or turned (run 2026-10-07, after the font change); the block is on the back, behind it"},
-        "J10": {"back_only": "the labeller tries the connector's own side first and finds no free site there for its seven-line block at 1.5 mm in the board's face within 40 mm of the part, flat or turned (run 2026-10-07, after the font change); the block is on the back, behind it"},
     },
     "waive": {
         # A1 reports one barrel and does not add parallel vias up. The tab has eight.
@@ -3938,6 +3936,36 @@ if REV != 1:
     BOARD_NOTES["tracks"] += [(_n, _l, _w, [tuple(_p) for _p in _ps])
                               for _n, _l, _w, _ps in _held["tracks"]]
     BOARD_NOTES["vias"] += [tuple(_v) for _v in _held["vias"]]
+
+
+if REV != 1:
+    # J10 ON THE -Y EDGE (2026-11-01). It stood in the middle of the busy half, 125 mm2 of pads
+    # no signal can cross, and its 24 V bars and return ran round U3 to reach it. Its two
+    # rails now extend the lanes that already run along the -Y edge to the buck, and its
+    # switch throws land beside JP1. Way 5 sits on R60's PWR_GND stub.
+    BOARD_NOTES["placements"].update({"J10": (-20.5, -23.0, 0.0), "C56": (-9.8, -23.0, 90.0)})
+
+    def _j10_old(_t):
+        _n, _l, _w, _ps = _t
+        return (_n == "+24V" and _l == "B.Cu" and (_ps[0][0] > 29.0 or _w == 1.2)) or                (_n == "PWR_GND" and _ps[0][0] > 19.0 and (_ps[0][1] > -15.0 or _l == "F.Cu")) or                (_n == "+24V" and _l == "F.Cu" and _w == 2.0) or                (_n == "+24V" and _l == "B.Cu" and _w == 0.8) or                (_n == "PWR_GND" and _l == "B.Cu" and _w == 1.5) or                (_n == "PWR_GND" and _l == "F.Cu" and _w == 0.8)
+    _kept_tracks = [_t for _t in BOARD_NOTES["tracks"] if not _j10_old(_t)]
+    BOARD_NOTES["tracks"] = _kept_tracks + [
+        ("+24V", "F.Cu", 2.4, [(23.5, -26.2), (8.25, -26.2)]),
+        ("+24V", "B.Cu", 2.0, [(8.25, -26.0), (-14.25, -26.0)]),
+        ("+24V", "B.Cu", 1.2, [(-14.25, -26.0), (-26.75, -26.0), (-26.75, -23.0)]),
+        ("+24V", "B.Cu", 1.2, [(-14.25, -26.0), (-14.25, -23.0)]),
+        ("+24V", "B.Cu", 0.8, [(-10.15, -26.0), (-10.15, -16.75)]),
+        ("PWR_GND", "B.Cu", 2.0, [(18.0, -26.0), (18.0, -20.6), (10.75, -20.6)]),
+        ("PWR_GND", "B.Cu", 1.6, [(10.75, -20.6), (10.0, -20.9), (-3.1, -20.9), (-3.1, -23.8)]),
+        ("PWR_GND", "B.Cu", 2.0, [(10.75, -20.6), (10.75, -23.0)]),
+        ("PWR_GND", "B.Cu", 1.5, [(-3.1, -23.8), (-8.1, -23.8)]),
+        ("PWR_GND", "F.Cu", 1.5, [(-5.5, -23.8), (-8.1, -23.8)]),
+        ("PWR_GND", "F.Cu", 1.2, [(-6.8, -23.8), (-6.8, -26.0)]),
+        ("PWR_GND", "F.Cu", 2.0, [(-3.1, -26.0), (-16.75, -26.0)]),
+        ("PWR_GND", "F.Cu", 1.5, [(-16.75, -26.0), (-24.25, -26.0), (-24.25, -23.0)]),
+        ("PWR_GND", "F.Cu", 0.8, [(-16.75, -26.0), (-16.75, -17.0)]),
+    ]
+    BOARD_NOTES["vias"] += [("PWR_GND", _x, -23.8) for _x in (-5.5, -6.8, -8.1)]
 
 
 if __name__ == "__main__":
