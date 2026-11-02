@@ -57,8 +57,7 @@ void usb_pins(void)
     /* the PHY: D0 PA3, D1 PB0, D2 PB1, D3 PB10, D4 PB11, D5 PB12, D6 PB13, D7 PB5,
        CK PA5, STP PC0, DIR PI11, NXT PH4 (elec/optical.py ULPI) */
     const uint32_t V = GPIO_SPEED_FREQ_VERY_HIGH;
-    /* Start with STP high, as a link coming out of reset should. It did not cure the wedge
-       described at reset_to, which only a power cycle has. */
+    /* Start with STP high, as a link coming out of reset should */
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_SET);
     pin(GPIOC, GPIO_PIN_0, GPIO_MODE_OUTPUT_PP, V, 0);
     HAL_Delay(2);
@@ -108,9 +107,9 @@ int usb_setup(void)
     return 0;
 }
 
-/* Every reset has to come through here. The PHY stays powered and its RESET pin is grounded;
-   a chip reset without this disconnect, as from the ST-LINK, left it off the bus until a power
-   cycle (found on the bench, 2026-11-01). Through here: four resets in a row, all clean. */
+/* The PHY stays powered through a reset and its RESET pin is grounded. Once, an ST-LINK reset
+   with USB up left it off the bus until a power cycle; resets from here, and the watchdog's
+   with USB up, have all come back (bench, 2026-11-01). Cause not found. */
 void reset_to(uint32_t go)
 {
     tud_disconnect();

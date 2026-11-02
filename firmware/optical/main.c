@@ -376,6 +376,7 @@ int main(void)
     while (u) { }                         /* nothing to talk to; TP12 has said why */
     uint8_t told = 0;
     while (1) {
+        IWDG1->KR = 0xAAAA;               /* boot.c started it; halting in a debugger trips it */
         tud_task();
         if (!told && tud_cdc_n_connected(0)) {
             told = 1;
