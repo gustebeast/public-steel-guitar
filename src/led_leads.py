@@ -272,6 +272,15 @@ def fret_lead_cut():
     return max(home, plug) + 2.0 * PLUG_L + FRET_CUT_SPARE, home, plug
 
 
+def wire_cuts(label):
+    """{part name: cut length}, for wiring.wire_cuts: `label` rounds a length of wire. Each
+    lead as the longest of its conductors, the fret lead in its plugging pose."""
+    from cadkit.cables import path_length
+    foot = max(path_length(p) for p in foot_paths()) + 2.0 * PLUG_L + FRET_CUT_SPARE
+    return {"wire_%s_led_%s" % (lead, way.lower()): label(mm)
+            for lead, mm in (("foot", foot), ("fret", fret_lead_cut()[0])) for way in WAYS}
+
+
 def parts():
     """[(name, solid)] -- eight conductors."""
     out = []

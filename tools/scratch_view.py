@@ -165,7 +165,8 @@ VIEW = ScratchView(
         boards=lambda: importlib.import_module("src.board_geom").BOARDS,
         materials=lambda n: importlib.import_module("tools.web_materials").material_of(n),
         units=lambda n: importlib.import_module("tools.web_materials").unit_of(n),
-        extras={"title": "Public Steel Guitar", "subtitle": "full assembly · C6 copedent"},
+        extras={"title": "Public Steel Guitar", "subtitle": "full assembly · C6 copedent",
+                "notes": importlib.import_module("tools.lead_cuts").notes()},
     ),
     # INNER-LOOP gates (`--gate`): the project's real gate functions, handed the
     # scratch model instead of a fresh 5.5-min rebuild. Scoping a gate by NAME
