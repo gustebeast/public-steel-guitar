@@ -9,18 +9,20 @@ copper in the way of where they now stand; `finish.py --keep-route` then closes 
 and runs every check. About a minute, against half an hour for a route.
 
 `trials` does that to scratch copies, one random legal move of a small part each (0.5 to 1.5 mm,
-courtyards clear), and counts how many come back clean. The board named is not touched. It is
-the number to read for "does this board survive a small change".
+courtyards clear), and counts how many come back clean, meaning no quality FAIL beyond what the
+unmoved board shows. The board named is not touched. It is the number to read for "does this
+board survive a small change".
 
 WHY IT EXISTS (output_panel R2, 2026-11-02). A full route of that board left 1 to 4 nets open,
 different ones each run, whatever was held. Keeping g1's whole copper and routing again did not
 work either: Freerouting spent 58 minutes optimising fixed copper and wrote nothing. Local
 repair closed 11 of 18 random moves with no route at all, 7 of them clean.
 
-⚠ WHAT IT CANNOT DO. close_last lays signal-width track and knows nothing of pairs, so a move
-that touches a matched pair fails skew or the via budget, and one on a supply net fails the
-current check. Those need a person, and the checks say so; read them, not just the
-unconnected count. The moved position is on the board only: copy it into the generator's
+⚠ WHAT IT WILL NOT DO. close_last knows nothing of pairs, so a move that takes up matched copper
+fails skew or the via budget, whether the part is on that net or only landed on its track
+(R47, C52 and C36 on output_panel were bystanders). `move` refuses those and exits REFUSED; they
+need a person. A supply keeps the widest width taken up from it, through close_widths, down
+close_last's own ladder, so read the checks and not just the unconnected count. The moved position is on the board only: copy it into the generator's
 placements, or the next regenerate puts the part back.
 
 ⚠ THE BOARD HAS TO START AT 0 UNEXPECTED VIOLATIONS: close_last refuses a board with any. A
@@ -34,6 +36,7 @@ import json
 import math
 import os
 import random
+import re
 import shutil
 import subprocess
 import sys
@@ -42,6 +45,7 @@ import pcbnew
 
 RIP = 3.0                   # mm, of the moved parts' own nets
 CLEAR = 0.75                # mm from a new pad centre to any track's edge
+REFUSED = 3                 # exit code: the move would disturb matched copper
 
 
 def _seg(p, a, c):
@@ -55,9 +59,17 @@ def _xy(v):
     return pcbnew.ToMM(v.x), pcbnew.ToMM(v.y)
 
 
+def _matched(notes):
+    """The nets a person has to re-lay: declared pairs and matched-length groups."""
+    return {n for k in ("diff_pairs", "match") for g in notes.get(k, ()) for n in g.get("nets", ())}
+
+
 def move(stem, moves):
     """Apply {ref: (x, y)} to stem.kicad_pcb; returns how many track pieces were taken up."""
     path = stem + ".kicad_pcb"
+    with open(stem + ".board.json", encoding="utf-8") as fh:
+        notes = json.load(fh)
+    matched = _matched(notes)
     board = pcbnew.LoadBoard(path)
     stood, stands, nets = [], [], set()
     for fp in board.GetFootprints():
@@ -78,11 +90,20 @@ def move(stem, moves):
         if (t.GetNetname() in nets and min(_seg(p, a, c) for p in stood + stands) < RIP) \
                 or any(_seg(p, a, c) < half + CLEAR for p in stands):
             gone.append(t)
+    hit = sorted({t.GetNetname() for t in gone} & matched)
+    if hit:
+        print("REFUSED: would take up matched copper on %s" % ", ".join(hit))
+        raise SystemExit(REFUSED)
+    widths = notes.setdefault("close_widths", {})
     for t in gone:
+        if t.GetClass() != "PCB_VIA":
+            widths[t.GetNetname()] = max(widths.get(t.GetNetname(), 0.0), pcbnew.ToMM(t.GetWidth()))
         board.Remove(t)
     # a stale pour against a moved pad is a violation, and close_last will not start on one
     pcbnew.ZONE_FILLER(board).Fill(board.Zones())
     pcbnew.SaveBoard(path, board)
+    with open(stem + ".board.json", "w", encoding="utf-8") as fh:
+        json.dump(notes, fh, indent=1)
     return len(gone)
 
 
@@ -119,13 +140,33 @@ def legal_moves(stem, count, seed=11):
     return out
 
 
-def trials(stem, count):
+def _finish(copy, name, env):
+    """Run finish --keep-route on `copy`; returns (result line, quality FAIL count)."""
     here = os.path.dirname(os.path.abspath(__file__))
+    r = subprocess.run([sys.executable, os.path.join(here, "finish.py"), "--keep-route", copy],
+                       capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
+    last = [ln for ln in r.stdout.splitlines() if ln.startswith(name + ": ")]
+    if not last:
+        tail = (r.stderr or r.stdout or "").strip().splitlines()[-1:] or [""]
+        return "finish wrote no result (exit %d): %s" % (r.returncode, tail[0]), None
+    fails = re.search(r"quality: (\d+) FAIL", last[-1])
+    return last[-1][len(name) + 2:], int(fails.group(1)) if fails else None
+
+
+def trials(stem, count):
     src, name = os.path.split(os.path.abspath(stem))
     base = src + "_eco"
     env = dict(os.environ)
     env.setdefault("PCBFLOW_PROJECT", os.path.dirname(src))
-    clean = connected = 0
+    clean = connected = refused = 0
+    dst = os.path.join(base, "t0")
+    shutil.rmtree(dst, ignore_errors=True)
+    shutil.copytree(src, dst)
+    line, floor = _finish(os.path.join(dst, name), name, env)
+    shutil.rmtree(dst, ignore_errors=True)
+    print(" 0 unmoved: %s" % line, flush=True)
+    if floor is None:
+        raise SystemExit("the unmoved board did not finish, so no trial can be read")
     for n, (ref, far, x, y) in enumerate(legal_moves(stem, count), 1):
         dst = os.path.join(base, "t%d" % n)
         shutil.rmtree(dst, ignore_errors=True)
@@ -136,20 +177,21 @@ def trials(stem, count):
         # its own process: a second LoadBoard in this one hands back a bare swig pointer
         t = subprocess.run([sys.executable, os.path.abspath(__file__), "move", copy,
                             os.path.join(dst, "moves.json")], capture_output=True, text=True)
+        if t.returncode == REFUSED:
+            refused += 1
+            print("%2d %-6s %.2f mm, %s" % (n, ref, far, t.stdout.strip()), flush=True)
+            shutil.rmtree(dst, ignore_errors=True)
+            continue
         taken = next((ln for ln in t.stdout.splitlines() if ln.startswith("took up")), "?")
-        r = subprocess.run([sys.executable, os.path.join(here, "finish.py"), "--keep-route", copy],
-                           capture_output=True, text=True, encoding="utf-8", errors="replace",
-                           env=env)
-        last = [ln for ln in r.stdout.splitlines() if ln.startswith(name + ": ")]
-        last = last[-1] if last else "finish wrote no result (exit %d)" % r.returncode
-        link = " 0 unconnected, 0 violation" in last
-        ok = link and "verify" not in last and "quality: 0 FAIL" in last
+        last, fails = _finish(copy, name, env)
+        link = " 0 unconnected, 0 violation" in " " + last
+        ok = link and "verify" not in last and fails is not None and fails <= floor
         connected += link
         clean += ok
-        print("%2d %-6s %.2f mm, %s: %s" % (n, ref, far, taken, last[len(name) + 2:]), flush=True)
+        print("%2d %-6s %.2f mm, %s: %s" % (n, ref, far, taken, last), flush=True)
         shutil.rmtree(dst, ignore_errors=True)
-    print("%s: %d of %d moves connected, %d of those clean of every check"
-          % (name, connected, count, clean))
+    print("%s: %d of %d moves refused; of the other %d, %d connected, %d of those clean of every "
+          "check" % (name, refused, count, count - refused, connected, clean))
 
 
 def main():
