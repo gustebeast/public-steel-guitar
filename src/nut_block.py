@@ -10,7 +10,7 @@ THE WRAP GOES OVER THE ROD (user, 2026-11-01). The string lands on the rod's top
 side, under, up the +X side and leaves over the top, heading -X, into its stow bore. It was turned over
 for a while so that a tip could be fed under the rod, but that put the rod high, where the bar's
 cutaway thinned the plastic over it. So the rod came down into the plate, clear of the bar, and the
-winding went back. The insert drops far enough on its M4 x 25 to leave the room under the rod for the
+winding went back. The insert drops far enough on its M4 x 40 to leave the room under the rod for the
 tip, and the lanes run out through the -X face, so the fingers hang on the floor alone (Z).
 
 Capstan (Euler-Eytelwein), T = T0.e^-mu.theta, mu = 0.15 steel on steel:
@@ -416,11 +416,13 @@ INS_CLR   = 0.2                                 # Y clearance in its pocket, eac
 from cadkit.fasteners import M4, M4_BUTTON_HEAD_D, M4_BUTTON_HEAD_H
 THREAD_CLR = D.MIN_WALL                         # room to work the string round, not force it
 _DROP_NEED = G_ENVELOPE + THREAD_CLR            # 2.832 for a .080
-HS_SCREW_L     = 25.0                           # M4 x 25 button: 20 could not drop the dowel under the rod
+HS_SCREW_L     = 40.0                           # M4 x 40 button, the longest in the shop
+HS_TIP_RISE    = 15.0                           # what the 40 has over the 25 the stack needs: the foot stops
+                                                # this far above the floor and the tip stands up in the empty slot
 HS_CAP         = D.MIN_WALL_2P                  # printed floor over the heat-set, and the screw's
                                                 # bore through it, under the insert's foot
 HS_ROD_OVERLAP = 2 * D.BEAD
-INS_DROP  = HS_SCREW_L - (M4.insert_depth + HS_CAP) - (G_ENVELOPE + HS_ROD_OVERLAP)     # 14.77
+INS_DROP  = HS_SCREW_L - HS_TIP_RISE - (M4.insert_depth + HS_CAP) - (G_ENVELOPE + HS_ROD_OVERLAP)     # 14.77
 assert INS_DROP >= _DROP_NEED, f"a {INS_DROP:.2f} drop will not thread a {G_ENVELOPE:.2f} string"
 INS_H     = 5 * D.BEAD                          # 4.0 of body below the flat
 DIVOT_OFF = ROD_D / 2 - PIN_D / 2 - ROD_Z       # 12.40, cradle centre ABOVE the flat
@@ -1214,7 +1216,7 @@ def all_stow_channels(z_end: float) -> cq.Workplane:
 # ── HEIGHT ADJUST: ONE M4 SCREW UNDER EACH INSERT (user) ─────────────────────────────
 # The sliding insert clamps its string by rising against the coil, and until now nothing pushed it
 # up. Each insert now grows a tall EXTENSION down into a new prism in the keyhead endplate
-# (keyhead_endplate.HS_*), and an M4 x 25 button head, on the
+# (keyhead_endplate.HS_*), and an M4 x 40 button head, on the
 # instrument's one 2.5 mm key -- pushes its foot up from below.
 #
 # THE NUT IS IN THE ENDPLATE, NOT THE INSERT. An M4 heat-set wants ~8 of width (M4.boss_od); SKU A
@@ -1223,10 +1225,11 @@ def all_stow_channels(z_end: float) -> cq.Workplane:
 #
 # THE STACK, from the chassis up (local frame -- Z relative to STRING_Z):
 #   motor_bank.FLOOR_TOP  top of the wide corner rib the keyhead sits over (chassis)
-#   HS_PRISM_BOT          the heat-sets' mouths, flush in it, as low as the M4 x 25 lets them be (user: the
+#   HS_PRISM_BOT          the heat-sets' mouths, flush in it, as low as the screw lets them be (user: the
 #                         lower, the easier to reach): the fully undone head just stays above the bed.
 #                         The heads hang below, down through the rib, which chassis.py opens for them.
-#   HS_FLOOR              where a DROPPED insert's foot rests: the tip, screw fully undone
+#   HS_FLOOR              the slot's printed floor, over the heat-set
+#   HS_TIP_LOW            where a DROPPED insert's foot rests: the tip, screw fully undone, HS_TIP_RISE over the floor
 #
 # THE SCREW'S TWO ENDS (user) set the rest:
 #   * TIGHTENED ALL THE WAY -- head seated on the bottom face, it can go no further -- the insert's flat
@@ -1245,8 +1248,9 @@ HS_REACH_MAX = _FZ_TIGHT - _FZ_LOW                 # the tip's whole travel, und
 _HS_HANG     = HS_REACH_MAX + M4_BUTTON_HEAD_H     # how far a fully undone head stands under the mouth
 HS_PRISM_BOT = (_MB.FLOOR_TOP + math.ceil((_MB.BED_Z + _HS_HANG - _MB.FLOOR_TOP) / D.BEAD - 1e-9) * D.BEAD
                 - D.STRING_Z)                      # the least whole beads over the rib that clear the bed
-HS_FLOOR     = HS_PRISM_BOT + HS_SCREW_L - HS_REACH_MAX
-INS_EXT_H    = (_FZ_LOW - INS_H) - HS_FLOOR
+HS_FLOOR     = HS_PRISM_BOT + HS_SCREW_L - HS_TIP_RISE - HS_REACH_MAX
+HS_TIP_LOW   = HS_FLOOR + HS_TIP_RISE              # the tip, screw fully undone: a dropped foot rests here
+INS_EXT_H    = (_FZ_LOW - INS_H) - HS_TIP_LOW
 assert INS_EXT_H > 0.0, "the height-adjust floor is above the insert body"
 assert abs(HS_FLOOR - (HS_PRISM_BOT + M4.insert_depth + HS_CAP)) < 1e-9, (
     f"the floor over the heat-set is {HS_FLOOR - HS_PRISM_BOT - M4.insert_depth:.2f}, not {HS_CAP}")
@@ -1272,7 +1276,7 @@ def insert_foot_z(i: int) -> float:
 
 def screw_reach(i: int) -> float:
     """How far above the floor string i's screw tip stands when that insert is clamped."""
-    return insert_foot_z(i) - HS_FLOOR
+    return insert_foot_z(i) - HS_TIP_LOW
 
 
 # TWO ROWS. The heads hang side by side in the chassis rib, each in its own HS_HEAD_CAV_D cavity, and on
@@ -1378,10 +1382,10 @@ def height_screw_negatives(i: int):
 
 
 def height_screw(i: int) -> cq.Workplane:
-    """Dummy M4 x 25 button head, head DOWN, tip on string i's clamped insert foot (local frame)."""
+    """Dummy M4 x 40 button head, head DOWN, tip on string i's clamped insert foot (local frame)."""
     from cadkit.fasteners import m4_button_screw
     x, y = height_screw_xy(i)
-    tip = HS_FLOOR + screw_reach(i)
+    tip = HS_TIP_LOW + screw_reach(i)
     s = m4_button_screw(HS_SCREW_L).rotate((0, 0, 0), (1, 0, 0), 180)   # head z 0..h, shank up to h + L
     return s.translate((x, y, tip - (M4_BUTTON_HEAD_H + HS_SCREW_L)))
 

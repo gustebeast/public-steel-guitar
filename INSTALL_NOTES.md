@@ -1252,7 +1252,7 @@ Plug a USB device in (an audio interface such as a Shure MVX2U) and the board po
 
 ## Stringing: the string goes OVER the rod and round
 
-- **Where:** every string, `nut_wrap_rod`, `nut_slide_insert_*`, the M4 x 25 height screws.
+- **Where:** every string, `nut_wrap_rod`, `nut_slide_insert_*`, the M4 x 40 height screws.
 - **Do, for each string:**
   1. Back the string's height screw right off with the 2.5 key, from under the keyhead, so the insert
      drops 14.8 mm. The dowel goes with it, 2.4 mm below the rod, and the head stops just inside the bed.
