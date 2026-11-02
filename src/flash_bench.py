@@ -197,8 +197,11 @@ def stlink(x, y):
     """The ST-LINK/V2, its 20-pin header's pins standing up at (x, y)."""
     body = _box(-16.0, 16.0, 8.0, 80.0, 0.0, 16.0).union(_box(-14.0, 14.0, -6.0, 8.0, 0.0, 6.0))
     pins, tip = cq.Workplane("XY"), {}
+    # UM1075 fig. 7 and 8: seen from the pin tips with the USB end up (the logo upside down),
+    # the key and the odd row are on the USB side and pin 1 is at the RIGHT. It stood at the
+    # left until 2026-11-01, and a board was wired to the mirror image from this drawing.
     for n in range(1, 21):
-        px, py = ((n - 1) // 2 - 4.5) * PITCH, (0.5 - (n - 1) % 2) * PITCH
+        px, py = (4.5 - (n - 1) // 2) * PITCH, (0.5 - (n - 1) % 2) * PITCH
         pins = pins.union(_box(px - 0.32, px + 0.32, py - 0.32, py + 0.32, 6.0, 12.0))
         tip[n] = (x + px, y + py, 12.0)
     return _mv(body, x, y), _mv(pins, x, y), {s: tip[n] for s, n in STLINK.items()}
