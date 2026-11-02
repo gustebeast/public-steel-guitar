@@ -102,13 +102,10 @@ def inputs(block_lanes: dict):
 
 
 class CommonNoise:
-    """Takes out what every channel hears at once. With the emitters lit, all twenty channels
-    carry the same broadband noise, about 2 counts in the audio band and 0.98 correlated
-    from channel to channel (bench, 2026-11-02), so the two photodiodes of a string cannot
-    average it away and the other strings can measure it. It is the median of the other
-    strings' channels, each less its own steady carrier, because a string that rings moves
-    a mean and hardly moves a median. Whether a ringing neighbour really stays out has not
-    met a string yet."""
+    """Takes out what every channel hears at once: the median of the other strings' channels,
+    each less its own steady carrier. Only of use when the amplifiers are saturated, which is
+    the one state where the channels were seen to share noise (2 counts, 0.98 correlated,
+    bench 2026-11-02); out of saturation that correlation is about zero. Off by default."""
 
     def __init__(self, string: int):
         self.others = [c for c in range(20) if c // 2 != string - 1]
@@ -207,6 +204,10 @@ class OpticalLink:
 
     def emitters(self, on: bool):
         return self.command("E %d" % (1 if on else 0))
+
+    def duty(self, ticks: int):
+        """The emitters' on-time, of 4096."""
+        return self.command("D %d" % ticks)
 
     def take(self):
         """Every block received since the last take() or select()."""
