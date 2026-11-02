@@ -1338,7 +1338,8 @@ board aside) is crimped from **two gauges** of one product line, McMaster **8054
 smaller JST connectors, no exceptions.** Larger is XH, smaller is PH. Signal conductors with
 neither rail (CAN, the LED leads' SCK and SDT) are 26. Colours are the CAN scheme (black GND,
 red rail, yellow H, green L) on both gauges; on an LED lead yellow is SCK and green is SDT,
-the ways CAN-H and CAN-L have on the XH bus.
+the ways CAN-H and CAN-L have on the XH bus. The power link's two button wires are signals
+with neither rail, so 26: yellow PWR_SW_UP, green PWR_SW_DN.
 
 **Both gauges fit both crimps** (distributors' copies of JST's tables, 2026-10-20):
 SXH-001T-P0.6 (XH) takes AWG 28-22, insulation 0.9-1.9 mm; SPH-002T-P0.5S (PH) takes

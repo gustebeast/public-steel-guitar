@@ -2730,12 +2730,12 @@ _COLORS.update({
 
 
 # The keyhead's three board-to-board leads, a conductor a part, in the harness's own
-# colours: black ground, red rail, and the power button's two throws orange (out) and
-# brown (latched in). And the lever chain's head, which is bus B like the rest of the
+# colours: black ground, red rail, and the power button's two throws yellow (out) and
+# green (latched in), the spools the BOM holds. And the lever chain's head, which is bus B like the rest of the
 # chain: its four had no entry of their own and came out the default grey, as did the
 # Pi's 5 V four (the lead's audit, 2026-10-06).
 _NET_RGB = {"gnd": (0.05, 0.05, 0.05), "v24": (0.85, 0.12, 0.10), "v5": (0.85, 0.12, 0.10),
-            "up": (0.95, 0.55, 0.10), "dn": (0.50, 0.32, 0.16)}
+            "up": (0.95, 0.80, 0.10), "dn": (0.10, 0.60, 0.25)}
 _COLORS.update({"wire_%s_%s" % (_lead, _net): _rgb
                 for _lead in ("plink", "lights", "5v", "opt")
                 for _net, _rgb in _NET_RGB.items()})
