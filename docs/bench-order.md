@@ -398,30 +398,33 @@ USB and a hang with USB up, then `?`, `T` and 1.6 MB/s of samples from `L 1`; th
 content checked the next night, below.** The converter registers were read off TI's datasheet; the frame format between the converters
 and the MCU is the likeliest thing to need its `F` command on the bench.
 
-**Sensors to the jack, measured on board 1, 2026-11-02, nothing over the sensors.** All twenty
-channels live, all five converters at full rate, no block dropped in 20 s. Blocks are 2.5 ms so
-that all five fit the USB FIFO. Noise in converter counts, 40 Hz to 15 kHz, 16 bits full scale:
+**Sensors to the jack, measured on board 1, 2026-11-02.** All twenty channels live, all five
+converters at full rate, no block dropped in 20 s. Blocks are 2.5 ms so that all five fit the
+USB FIFO. The board was on the bench, no cover, nothing placed over the sensors.
 
-| | one sensor | the pair, SUM / 2 |
-|---|---|---|
-| emitters off | 0.43 | 0.33 |
-| emitters lit | 2.05 | 2.03 |
-| emitters lit, common noise taken out | 0.30 | 0.24 |
+**At 50 % duty, the design's figure, the amplifiers are stuck at the rail.** There is no carrier
+on any channel, just 2 counts of noise, the same on all twenty (0.98 correlated) and the same at
+25, 50 and 100 %: a saturated amplifier passing its supply. It scales with the converter's gain,
+so it comes in ahead of the converter. Do not read that state as a quiet board. Each channel
+comes out of it at its own duty, the first at about 16 %, all twenty by 3 %:
 
-With the emitters lit every channel carries the same broadband noise, 0.98 correlated across all
-twenty, so the pair does nothing for it. It is the same at 25, 50 and 100 % duty, so it is the
-emitters being on, not their switching, and it is gone with them off. Its source is not found;
-the MID reference all channels share is the first suspect. `optical.CommonNoise` measures it on
-the other strings' channels and removes it, about 18 dB. At 6 % duty (CCR 256, set by hand
-through the debugger) one channel read 27,500 counts rms, unexplained: stay at 50 %.
+| On-time, of 4096 | Duty | Carrier, counts | Noise, 40 Hz to 15 kHz | String to string |
+|---|---|---|---|---|
+| 2048 | 50 % | 2 | 2 | 0.97 |
+| 128 | 3.1 % | 22,000 to 35,000 | 10 to 70, one channel 1,800 | 0.22 |
+| 32 | 0.8 % | 18,000 to 34,000 | 10 to 60 | -0.05 |
 
-`python3 -m psgbench.panel noise` prints that table for every string.
-`python3 -m psgbench.panel listen --string 3 --gain 8` puts a string on the jack: about 12 ms
-of queue ahead of the DAC plus the 2.5 ms block. **Not proven: anything that takes a real
-signal.** No carrier has been seen yet, only 1.6 counts of electrical feedthrough, so whether
-the emitters light, the gain, and whether a ringing neighbour stays out of the median all wait
-for something over the sensors. A white card held over a string's sensors, moved by hand, with
-`listen` running, answers the first two; a phone camera shows whether the emitters are lit.
+So the emitters light and all twenty sensors answer. At 32: about 14 counts of noise per sensor
+and 11 for the pair (SUM / 2), so about 65 dB, near the 67 dB the design estimated. In that run
+6B, 7A and 9B read over 100 counts, with carriers close to full scale; not explained yet.
+`listen` at 32 shows 26 ms ahead of the DAC, more than the 12 ms seen with `--common`. **What the light is coming from is not known:** a surface near the board, or light
+reaching a photodiode directly, which would still be there in the instrument and would matter
+before optical R2 is ordered. To tell them apart: run `noise --duty 256` with the board pointing
+at open air, then with a black card over one emitter's row, and see whether a carrier moves.
+
+`python3 -m psgbench.panel noise --duty 32` prints carrier and noise for every string.
+`python3 -m psgbench.panel listen --string 3 --duty 32` puts a string on the jack. `--common`
+takes all five converters and the noise they share, which only helps in saturation.
 
 **The tests** are `bench/psgbench/scenarios.py`, run one at a time:
 

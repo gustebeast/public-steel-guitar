@@ -24,8 +24,8 @@ Done means: a tone and live sensor data both reach the jack; noise figures recor
 proven. Both boards are on the Pi (2026-11-02); the LinkE and ST-LINK are still attached.
 
 **DONE 2026-11-02 except the signal itself:** all twenty channels, no drops, noise table and
-commands in `docs/bench-order.md`. Open: a white card over the sensors for the first real
-carrier; where the common noise comes from, before optical R2 is ordered; the 6 % duty reading.
+commands in `docs/bench-order.md`. At 50 % duty the amplifiers are saturated; at 3 % and under
+all twenty show a carrier. Open, before optical R2 is ordered: where that light comes from.
 
 ## Optical R2 routed, leads through the cable hole (2026-10-30)
 

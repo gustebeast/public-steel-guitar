@@ -17,6 +17,8 @@
  *   T                 -> T <sample count now>
  *   L <mask>          which converters to send: bit k = converter k (U14 + k); 0 stops
  *   E <0|1>           emitters off / gated at 48 kHz (default 1)
+ *   D <ticks>         emitters' on-time, of 4096 at 48 kHz (default 2048). Too much light for
+ *                     the amplifiers leaves them stuck at the rail, with no carrier at all
  *   W <page> <reg> <value>   write one converter register, all five at once (hex)
  *   R                 configure the converters again from reset
  *   F <0|1> <0|1>     frame sync one bit early (1) or with the first bit (0); sample on the
@@ -146,13 +148,14 @@ static int adc_setup(void)
 
 /* ---- the emitters: TIM2 channel 2, 196.608 MHz / 4096 = 48 kHz, half on ---------------- */
 static uint8_t emit_on = 1;
+static uint32_t emit_ticks = 2048;
 
 static void emit(int on)
 {
     emit_on = on != 0;
     __HAL_RCC_TIM2_CLK_ENABLE();
     TIM2->CR1 = 0;
-    TIM2->PSC = 0; TIM2->ARR = 4095; TIM2->CCR2 = on ? 2048 : 0;
+    TIM2->PSC = 0; TIM2->ARR = 4095; TIM2->CCR2 = on ? emit_ticks : 0;
     TIM2->CCMR1 = (6u << TIM_CCMR1_OC2M_Pos) | TIM_CCMR1_OC2PE;        /* PWM 1 */
     TIM2->CCER = TIM_CCER_CC2E;
     TIM2->EGR = TIM_EGR_UG;
@@ -305,7 +308,14 @@ static void line(const char *s)
         if (r_num(s + 1, &a, 10) && a < (1u << LANES)) { mask = (uint8_t)a; sent_halves = halves; say("OK L\n"); return; }
         break;
     case 'E':
-        if (r_num(s + 1, &a, 10)) { emit_on = a != 0; TIM2->CCR2 = a ? 2048 : 0; say("OK E\n"); return; }
+        if (r_num(s + 1, &a, 10)) { emit_on = a != 0; TIM2->CCR2 = a ? emit_ticks : 0; say("OK E\n"); return; }
+        break;
+    case 'D':
+        if (r_num(s + 1, &a, 10) && a <= 4096) {
+            emit_ticks = a;
+            if (emit_on) TIM2->CCR2 = a;
+            say("OK D\n"); return;
+        }
         break;
     case 'W':
         if ((s = r_num(s + 1, &a, 16)) && (s = r_num(s, &b, 16)) && r_num(s, &c, 16)) {

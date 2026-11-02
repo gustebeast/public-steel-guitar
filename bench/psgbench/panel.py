@@ -1,8 +1,8 @@
 """The output panel (firmware/output_panel): its controls, and samples to its jack.
 
     python3 -m psgbench.panel tone --hz 440 --seconds 3
-    python3 -m psgbench.panel listen --string 3 --gain 8 --seconds 30
-    python3 -m psgbench.panel noise
+    python3 -m psgbench.panel listen --string 3 --duty 32 --seconds 30
+    python3 -m psgbench.panel noise --duty 32
     python3 -m psgbench.panel status
 
 The jack hears the DAC only with the relay energised, so both commands throw it on the way
@@ -147,6 +147,7 @@ def listen(a):
     o = optical.OpticalLink()
     conv, sa, sb = optical.string_inputs(a.string)
     print("panel:", p.ask("?"), "| optical:", o.command("?"))
+    o.duty(a.duty)
     o.select(range(5) if a.common else [conv])
     A, B = Lockin(), Lockin()
     common = optical.CommonNoise(a.string)
@@ -216,12 +217,14 @@ def listen(a):
 
 
 def noise(a):
-    """Each string's noise, audio band, with nothing over the sensors: one photodiode against
-    the pair. Units are converter counts; `pair` is the gain of SUM / 2 over one alone."""
+    """Each string's carrier and noise, audio band: one photodiode against the pair. Units are
+    converter counts; `pair` is the gain of SUM / 2 over one alone. A carrier of a few counts
+    means the amplifier is saturated, not that it is quiet."""
     from scipy.signal import butter, sosfiltfilt
     band = butter(4, (40.0, 15000.0), btype="band", fs=48000.0, output="sos")
     o = optical.OpticalLink()
     print("optical:", o.command("?"))
+    o.duty(a.duty)
     for on in (False, True):
         o.emitters(on)
         o.select(range(5))
@@ -232,7 +235,7 @@ def noise(a):
         o.select([])
         print("emitters %s, %d blocks, %d dropped" % (
             "gated" if on else "off", len(blocks), sum(b[1] & 1 for b in blocks)))
-        print("string      A      B    SUM   DIFF   pair  corr | less common: A  SUM/2")
+        print("string carrier A,B      A      B    SUM   DIFF   pair  corr | less common: A  SUM/2")
         clean = [optical.CommonNoise(s) for s in range(1, 11)]
         m = np.concatenate([optical.inputs(b[2]) for b in blocks])
         for s in range(1, 11):
@@ -244,9 +247,13 @@ def noise(a):
             c = clean[s - 1](m)
             g = [sosfiltfilt(band, optical.demod(c[:, n]))[2000:-2000]
                  for n in (2 * s - 2, 2 * s - 1)]
-            print("%6d %6.2f %6.2f %6.2f %6.2f %5.1fdB %5.2f | %13.2f %6.2f" % (
-                s, *r, pair, np.corrcoef(f[0], f[1])[0, 1], g[0].std(), ((g[0] + g[1]) / 2).std()))
+            q = m[:len(m) // 4 * 4].reshape(-1, 4, 20).mean(axis=0)
+            amp = np.abs((q[0] - q[2]) + 1j * (q[1] - q[3])) / 2
+            print("%6d %7.0f %6.0f %6.2f %6.2f %6.2f %6.2f %5.1fdB %5.2f | %13.2f %6.2f" % (
+                s, amp[2 * s - 2], amp[2 * s - 1], *r, pair, np.corrcoef(f[0], f[1])[0, 1],
+                g[0].std(), ((g[0] + g[1]) / 2).std()))
     o.emitters(True)
+    o.duty(2048)
     o.close()
 
 
@@ -263,10 +270,12 @@ def main():
     c.add_argument("--gain", type=float, default=1.0, help="DAC per converter full scale")
     c.add_argument("--level", type=int, default=128)
     c.add_argument("--seconds", type=float, default=0.0, help="0: until ctrl-C")
-    c.add_argument("--no-common", dest="common", action="store_false",
-                   help="this string's converter alone, common noise left in")
+    c.add_argument("--common", action="store_true",
+                   help="all five converters, noise common to them taken out")
+    c.add_argument("--duty", type=int, default=32, help="emitters' on-time, of 4096")
     c = sub.add_parser("noise")
     c.add_argument("--seconds", type=float, default=2.0)
+    c.add_argument("--duty", type=int, default=32, help="emitters' on-time, of 4096")
     sub.add_parser("status")
     a = ap.parse_args()
     if a.cmd == "tone":
