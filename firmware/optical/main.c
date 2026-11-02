@@ -181,7 +181,9 @@ static int sai_setup(void)
         h->Instance = blk[k];
         h->Init.AudioMode = k == 0 ? SAI_MODEMASTER_RX : SAI_MODESLAVE_RX;
         h->Init.Synchro = k == 0 ? SAI_ASYNCHRONOUS : k == 1 ? SAI_SYNCHRONOUS : SAI_SYNCHRONOUS_EXT_SAI1;
-        h->Init.SynchroExt = k == 0 ? SAI_SYNCEXT_OUTBLOCKA_ENABLE : SAI_SYNCEXT_DISABLE;
+        /* on both of SAI1's blocks: HAL writes the whole GCR for each, so block B's init
+           would turn off the sync block A just gave SAI2 and SAI3, and they would read zeros */
+        h->Init.SynchroExt = k <= 1 ? SAI_SYNCEXT_OUTBLOCKA_ENABLE : SAI_SYNCEXT_DISABLE;
         h->Init.OutputDrive = SAI_OUTPUTDRIVE_DISABLE;
         h->Init.NoDivider = SAI_MASTERDIVIDER_DISABLE;
         h->Init.FIFOThreshold = SAI_FIFOTHRESHOLD_1QF;
