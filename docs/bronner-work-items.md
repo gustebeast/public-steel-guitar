@@ -6621,3 +6621,4 @@ geometry and texture/color/material. Then use the same model for the first flash
   link.c/link.h are the USBFS versions on PA11/PA12 (J4). `cafe:4008` for loader and application. The first bench image
   never reached USB because it linked RAM at 64 K on a chip set to 32 K; the new link scripts fix that. psgflash.py now
   waits 30 s for the loader (it gave up in about 4 s, inside the 8 s watchdog of an application hung with USB up).
+- 2026-11-02 optical: start-up checks each lane for a half-buffer of exact zeros and re-runs the converter setup, up to 3 times; `?` reports what stays silent (`silent=<lanes>`). Five parts on one address give no per-part ACK or read, so the data is the only evidence. The check and the report are tested by forcing a lane silent; a real silent converter has not been caught, and its cause is still unknown. Messages said on connect can be lost (a forced one never arrived), so the state is in `?`.

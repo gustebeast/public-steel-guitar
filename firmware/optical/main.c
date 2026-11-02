@@ -13,7 +13,7 @@
  *
  * Control port, lines from the host (decimal unless said):
  *   B                 back to the loader (boot.c): how psgflash.py gets in
- *   ?                 -> I psg-optical-bench <version> fs=192000 block=<frames> slots=4
+ *   ?                 -> I psg-optical-bench <version> fs=192000 block=<frames> slots=4 silent=<lanes>
  *   T                 -> T <sample count now>
  *   L <mask>          which converters to send: bit k = converter k (U14 + k); 0 stops
  *   E <0|1>           emitters off / gated at 48 kHz (default 1)
@@ -250,6 +250,25 @@ static uint64_t samples_now(void)
     return (uint64_t)h * FRAMES + (second ? in_buf - FRAMES : in_buf);
 }
 
+/* Five parts share one address, so an ACK says only that one of them answered and a read
+   would be the bus's wired-AND of all five: the data is the only sign of one that is not
+   running. A running converter never gives a half-buffer of exact zeros; U17 once came up
+   doing that after a power cut (bench, 2026-11-02), cause not found, and a second setup
+   cured it. Returns the lanes that are silent. */
+static uint32_t silent;                   /* the lanes still silent after start-up, for ? */
+
+static uint32_t lanes_silent(void)
+{
+    uint32_t h = halves - 1, quiet = 0;   /* the half lane 0 finished last */
+    for (int k = 0; k < LANES; k++) {
+        const int16_t *p = &buf[k][(h & 1) * HALF];
+        int any = 0;
+        for (int i = 0; i < HALF && !any; i++) any = p[i] != 0;
+        if (!any) quiet |= 1u << k;
+    }
+    return quiet;
+}
+
 /* ---- USB ------------------------------------------------------------------------------- */
 static void say(const char *s)
 {
@@ -295,7 +314,9 @@ static void line(const char *s)
     char l[80], *p; uint32_t a, b, c;
     switch (*s) {
     case '?':
-        say("I psg-optical-bench 1 fs=192000 block=480 slots=4\n"); return;
+        p = l; memcpy(p, "I psg-optical-bench 1 fs=192000 block=480 slots=4 silent=", 57); p += 57;
+        p = w_dec(p, silent); *p++ = '\n'; *p = 0;
+        say(l); return;
     case 'B':                             /* back to the loader, for psgflash.py */
         say("OK\n");
         for (uint32_t t = HAL_GetTick(); HAL_GetTick() - t < 20; ) tud_task();
@@ -383,6 +404,13 @@ int main(void)
     emit(1);
     int s = sai_setup();
     dbg(s ? "SAI: FAILED\r\n" : "SAI: running\r\n");
+    for (int tries = 0; !s; tries++) {
+        HAL_Delay(50);
+        silent = lanes_silent();
+        if (!silent || tries == 3) break;
+        dbg("converters: one silent, configuring them again\r\n");
+        adc_setup();
+    }
     int u = usb_setup();
     dbg(u ? "USB: core did not start (PHY, its clock, or a ULPI line)\r\n" : "USB: started\r\n");
     while (u) { }                         /* nothing to talk to; TP12 has said why */
