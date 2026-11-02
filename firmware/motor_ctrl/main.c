@@ -17,6 +17,9 @@
  *   S <bus> <id> <data>       send now (as sequence 0)
  *   Q <seq> <t_us> <bus> <id> <data>   send at t_us; lines must arrive in time order
  *   C                         -> OK C          drop everything queued
+ *   V <bus>                   -> V <errors, from ERRSR> <mailboxes, TSTATR> <PCLK1 Hz>
+ *                                errors bits 4-6 are the last error: 3 no ACK, 4/5 bit, 7 none yet;
+ *                                bits 16-23 what we sent wrong, 24-31 what we received wrong
  * Lines to the host:
  *   R <bus> <t_us> <id> <data>     a frame received
  *   X <seq> <bus> <t_us>           a frame handed to the controller
@@ -261,6 +264,17 @@ static void line(const char *s)
     case 'T':
         p = l; *p++ = 'T'; *p++ = ' '; p = w_dec(p, now_us()); *p++ = '\n';
         out_put(l, (uint16_t)(p - l)); return;
+    case 'V': {
+        uint64_t bus;
+        RCC_ClocksTypeDef ck;
+        if (!r_num(s + 1, &bus, 10) || bus > 1) break;
+        RCC_GetClocksFreq(&ck);
+        p = l;
+        *p++ = 'V'; *p++ = ' '; p = w_hex(p, BUS[bus]->ERRSR, 8); *p++ = ' ';
+        p = w_hex(p, BUS[bus]->TSTATR, 8); *p++ = ' '; p = w_dec(p, ck.PCLK1_Frequency); *p++ = '\n';
+        out_put(l, (uint16_t)(p - l));
+        return;
+    }
     case 'C':
         q_tail = q_head; say("OK C\n"); return;
     case 'B': {
