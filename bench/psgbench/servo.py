@@ -3,8 +3,10 @@
 Checked 2026-10-13 against Makerbase's "MKS SERVO42D/57D_CAN User Manual" V1.0.5: the
 checksum, every code and field below, 0x4000 counts per turn, and the move replies. The
 manual's own example frames are in tests/test_sim.py. Its defaults: CAN id 1, 500 kbit/s,
-replies on. NOT yet checked against a motor, and the motors' firmware version is unknown
-(the manual's history says F4 and F5 were reworked in later releases).
+replies on. Run on one motor 2026-11-02 through motor_ctrl: 31, 32, 39, 82, F3 and F4 all as
+written here, the F4 replies 1 then 2 included. Its firmware version is still unknown (the
+manual's history says F4 and F5 were reworked in later releases). F4 of +-4096 counts moved
+the encoder +-4142 and came back to the same count; why 1.1 % more is not known yet.
 
 Two things the manual says that a test must respect:
   * commands over the bus work in the SR_ work modes; SR_vFOC (mode 5) is the closed-loop
