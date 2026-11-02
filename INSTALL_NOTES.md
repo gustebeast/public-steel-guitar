@@ -1032,7 +1032,7 @@ the UI ribbon and the shielded pickup cable are not twisted.
   (6-16 mm under the deck). Push them down against the chassis floor, or lift them out
   over the rail, before the pickup piece moves.
 - **Order out:** strings, nut block and keyhead endplate, keyhead panel (slide it about
-  253 mm out, then unplug the fret lead at the Pi cap; see below), mid panel with the UI station on it (unplug the ribbon), then the bands and the
+  249 mm out, then unplug the fret lead at the Pi cap; see below), mid panel with the UI station on it (unplug the ribbon), then the bands and the
   pickup piece (unplug the pickup lead). In is the reverse.
 - **Tight spots on the way** (as drawn, plate at the bottom of its travel): the jack
   screws' tips pass 0.3-0.4 mm over the foot-light lead, and the deck's -Y edge passes
@@ -1044,14 +1044,15 @@ The keyhead panel carries the fret board, and once it is home the Pi cap's J3 is
 So the lead goes in with the panel partway on (`src/led_leads.py`, fret_plug_slide):
 
 1. The mid panel is home and the UI ribbon is already in the Pi cap's J5.
-2. Slide the keyhead panel on until its +X edge stops about **253 mm short of home**: 40 mm
+2. Slide the keyhead panel on until its +X edge stops about **249 mm short of home**: 40 mm
    -X of J3, enough for fingers and the XHP-4 housing.
-3. Plug the lead into the fret board's J1 (the panel's underside, -X end) and the cap's J3.
-4. Slide the panel home. The lead is cut 312 for step 3, so about 174 mm of it is spare at
+3. Plug the lead into the fret board's J1 and the cap's J3. J1 is on the panel's underside
+   at the -X end and its mouth faces -Y, through the gap at the end of the board's -Y wall.
+4. Slide the panel home. The lead is cut 324 for step 3, so about 240 mm of it is spare at
    home: lay it down flat in the bay as the panel goes, below the panel's underside
    (z -18.8; nothing higher than the cable trough's lip).
 
-Out is the reverse: slide the panel 253 mm out, then unplug J3.
+Out is the reverse: slide the panel 249 mm out, then unplug J3.
 
 ## The Pi's USB-A plugs go in after the mid deck panel is on
 

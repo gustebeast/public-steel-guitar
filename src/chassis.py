@@ -264,6 +264,9 @@ _SEG_CLR  = 0.55                       # plate 8 D3 (user, 2026-10-16): 0.35 and
                                        # 0.50 / 0.55 -- the loosest, 0.55, the winner -- LOCKED
                                        # (user, 2026-10-22: "we can lock that in as well")
 _SEG_HOST_W = 10 * D.BEAD              # 8.0: the tenon's host slab across Y, inside the rail
+_SEG_OVER = 0.01                       # _seg_box runs each segment this far past its split, so
+                                       # the cavity starts further back than that or it leaves
+                                       # a film this thick across its own mouth (slicer sweep)
 _SEG_JD   = 13 * D.BEAD                # 10.4 room into the +X segment for the fit-tested
                                        # nozzle/nozzle joint (4.8 head, 2.0 corners): it
                                        # stands 8.8 and its cavity ends c past that
@@ -296,7 +299,7 @@ _SEG_JZ0  = MB.FLOOR_TOP               # tenon base = the bottom prism's top fac
 def _seg_halves(length):
     """(tenon, cavity) of the seam joint, `length` along Z, in the joint frame (X install,
     Y across, Z depth past the seam plane) -- see fit_plate2.halves."""
-    ten, cav, _S = FIT.halves("N", "N", _SEG_CLR, length, 0.0, _SEG_HOST_W)
+    ten, cav, _S = FIT.halves("N", "N", _SEG_CLR, length, 0.0, _SEG_HOST_W, drop=2 * _SEG_OVER)
     bb = cav.val().BoundingBox()
     assert bb.zmax <= _SEG_JD + 1e-6, "seam cavity reaches %.2f, over _SEG_JD" % bb.zmax
     # the rail wall left beside the cavity is a printed wall like any other
@@ -1117,7 +1120,7 @@ def _bottom(a, b):
 
 def _seg_box(a, b):
     h = (Z_TOP + 18.0) - (Z_BOT - 6.0)
-    return box_at(abs(a - b) + 0.02, (Y_HI - Y_LO) + 40.0, h,
+    return box_at(abs(a - b) + 2 * _SEG_OVER, (Y_HI - Y_LO) + 40.0, h,
                   x=(a + b) / 2, y=(Y_HI + Y_LO) / 2, z=(Z_TOP + 18.0 + Z_BOT - 6.0) / 2)
 
 

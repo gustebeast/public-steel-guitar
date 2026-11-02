@@ -55,7 +55,7 @@
   },
   "chassis_0": {
    "material": "petg-gf",
-   "volume_mm3": 581300.8
+   "volume_mm3": 581291.8
   },
   "chassis_0_light": {
    "material": "pctg",
@@ -63,7 +63,7 @@
   },
   "chassis_1": {
    "material": "petg-gf",
-   "volume_mm3": 653695.2
+   "volume_mm3": 653686.1
   },
   "chassis_1_light": {
    "material": "pctg",
@@ -127,11 +127,11 @@
   },
   "knee_housing": {
    "material": "petg-gf",
-   "volume_mm3": 65662.9
+   "volume_mm3": 65718.9
   },
   "knee_housing_r": {
    "material": "petg-gf",
-   "volume_mm3": 66099.7
+   "volume_mm3": 66155.7
   },
   "knee_lever": {
    "material": "pctg",
@@ -139,7 +139,7 @@
   },
   "kv_housing": {
    "material": "petg-gf",
-   "volume_mm3": 114548.9
+   "volume_mm3": 114561.7
   },
   "kv_lever": {
    "material": "pctg",
@@ -315,11 +315,11 @@
   },
   "top_plate_4": {
    "material": "pctg",
-   "volume_mm3": 229630.8
+   "volume_mm3": 228719.5
   },
   "top_plate_4_color": {
    "material": "pctg",
-   "volume_mm3": 106997.7
+   "volume_mm3": 110814.2
   },
   "ui_clamp": {
    "material": "petg-gf",
