@@ -107,16 +107,16 @@ WIRE_OD = {
     "wire_canh": 1.3, "wire_canl": 1.3,       # bus A (motors)
     "wire_canbh": 1.3, "wire_canbl": 1.3,     # bus B (inputs)
 
-    "wire_pwr_hot": 1.8, "wire_pwr_gnd": 1.8,
+    "wire_pwr_hot": 1.52, "wire_pwr_gnd": 1.52,
     # 5 V to the Pi's GPIO header: 26 AWG, TWO conductors per rail (PI_5V_LINK). The Pi's
     # undervoltage trip is 4.63 V against a 5.00 nominal, so the whole budget is 0.37 V;
     # over this run the wire spends ~0.07 V at the Pi's worst 3.3 A and the eight PH
     # contacts up to ~0.13. (This said 20 AWG until 2026-10-20: PH takes 24-30 AWG, so
     # 20 could not be crimped. BOM.md, "Hook-up wire: two gauges".)
-    "wire_5v": 1.8,
+    "wire_5v": 1.27,
     # the 24 V link's four power conductors, and its two power-button throws: signal wire,
     # a few milliamps into a pull-up
-    "wire_plink": 1.8, "wire_plink_sw": 1.3,
+    "wire_plink": 1.52, "wire_plink_sw": 1.3,
     # the lights' feed: 24 V and its return are 22 AWG (the rule, BOM.md "Hook-up wire"), the
     # same two throws going on to the cap are 26
     "wire_lights_pwr": 1.52, "wire_lights": 1.3,
@@ -1539,7 +1539,7 @@ def build_wires():
     _LT_IN = 2.0                                    # the least run straight into J4's mouth
     _LT_PITCH = EL.MCTRL_J7_PITCH
     _LT_YL = _ltb[0][0][1] - _LT_IN                 # the lights' +X lanes start here, going -Y
-    _V5_PITCH = 2.0                                 # O1.8 conductors side by side
+    _V5_PITCH = 2.0                                 # conductors side by side
     _V5_X0 = _PL_XT + _PL_COL + 0.9 + 3.6           # the first column: +X of the 24 V link's run
     _V5_Y0 = _LT_YL - 3 * _LT_PITCH - 2.2           # the last +X run: -Y of the lights' lanes
     _v5_live = _cable("PI_5V_LINK", _v5a, _v5b, LAY_26)
