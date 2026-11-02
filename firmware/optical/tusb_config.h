@@ -21,8 +21,8 @@
 #define CFG_TUD_VENDOR            0
 #define CFG_TUD_CDC_NOTIFY        1
 #define CFG_TUD_CDC_RX_BUFSIZE    512
-/* A block of four converters is 30736 bytes and goes in whole or not at all; five (38416) do
-   not fit. 32768 is TinyUSB's ceiling: over it the FIFO's set-up fails, nothing says so, and
+/* A block of all five converters is 19216 bytes and goes in whole or not at all. 32768 is
+   TinyUSB's ceiling: over it the FIFO's set-up fails, nothing says so, and
    the board takes commands and never answers (found on the first flash, 2026-11-01). */
 #define CFG_TUD_CDC_TX_BUFSIZE    32768
 #define CFG_TUD_CDC_RX_EPSIZE     512

@@ -392,9 +392,33 @@ watchdog but stops listening on USB is the one case that still takes a power cyc
 Start-up reports each step on TP12 (115200 baud). **Proven on board 1, 2026-11-01:
 loader flashed, seven USB updates, rescued over USB alone from a cut-off update, a hang before
 USB and a hang with USB up, then `?`, `T` and 1.6 MB/s of samples from `L 1`; the sample
-content itself is not checked yet. A block holds four converters, not five: TinyUSB's 32 K
-buffer limit (`tusb_config.h`).** The converter registers were read off TI's datasheet; the frame format between the converters
+content checked the next night, below.** The converter registers were read off TI's datasheet; the frame format between the converters
 and the MCU is the likeliest thing to need its `F` command on the bench.
+
+**Sensors to the jack, measured on board 1, 2026-11-02, nothing over the sensors.** All twenty
+channels live, all five converters at full rate, no block dropped in 20 s. Blocks are 2.5 ms so
+that all five fit the USB FIFO. Noise in converter counts, 40 Hz to 15 kHz, 16 bits full scale:
+
+| | one sensor | the pair, SUM / 2 |
+|---|---|---|
+| emitters off | 0.43 | 0.33 |
+| emitters lit | 2.05 | 2.03 |
+| emitters lit, common noise taken out | 0.30 | 0.24 |
+
+With the emitters lit every channel carries the same broadband noise, 0.98 correlated across all
+twenty, so the pair does nothing for it. It is the same at 25, 50 and 100 % duty, so it is the
+emitters being on, not their switching, and it is gone with them off. Its source is not found;
+the MID reference all channels share is the first suspect. `optical.CommonNoise` measures it on
+the other strings' channels and removes it, about 18 dB. At 6 % duty (CCR 256, set by hand
+through the debugger) one channel read 27,500 counts rms, unexplained: stay at 50 %.
+
+`python3 -m psgbench.panel noise` prints that table for every string.
+`python3 -m psgbench.panel listen --string 3 --gain 8` puts a string on the jack: about 12 ms
+of queue ahead of the DAC plus the 2.5 ms block. **Not proven: anything that takes a real
+signal.** No carrier has been seen yet, only 1.6 counts of electrical feedthrough, so whether
+the emitters light, the gain, and whether a ringing neighbour stays out of the median all wait
+for something over the sensors. A white card held over a string's sensors, moved by hand, with
+`listen` running, answers the first two; a phone camera shows whether the emitters are lit.
 
 **The tests** are `bench/psgbench/scenarios.py`, run one at a time:
 

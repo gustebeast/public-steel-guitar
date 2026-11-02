@@ -23,6 +23,10 @@ Done means: a tone and live sensor data both reach the jack; noise figures recor
 `docs/bench-order.md`; updates by `make usb` only. What needs a string stays listed as not
 proven. Both boards are on the Pi (2026-11-02); the LinkE and ST-LINK are still attached.
 
+**DONE 2026-11-02 except the signal itself:** all twenty channels, no drops, noise table and
+commands in `docs/bench-order.md`. Open: a white card over the sensors for the first real
+carrier; where the common noise comes from, before optical R2 is ordered; the 6 % duty reading.
+
 ## Optical R2 routed, leads through the cable hole (2026-10-30)
 
 Optical R2: 0 unconnected, 0 violations, 263/263 parts in the CAD, quality 1 soft FAIL (A12 silk

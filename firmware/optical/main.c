@@ -39,7 +39,7 @@
 #define VERSION   1
 #define FS        192000
 #define SLOTS     4
-#define FRAMES    960                     /* a block: 5 ms */
+#define FRAMES    480                     /* a block: 2.5 ms; all five fit the USB FIFO */
 #define LANES     5
 #define HALF      (FRAMES * SLOTS)        /* samples in a block of one converter */
 
@@ -292,7 +292,7 @@ static void line(const char *s)
     char l[80], *p; uint32_t a, b, c;
     switch (*s) {
     case '?':
-        say("I psg-optical-bench 1 fs=192000 block=960 slots=4\n"); return;
+        say("I psg-optical-bench 1 fs=192000 block=480 slots=4\n"); return;
     case 'B':                             /* back to the loader, for psgflash.py */
         say("OK\n");
         for (uint32_t t = HAL_GetTick(); HAL_GetTick() - t < 20; ) tud_task();
