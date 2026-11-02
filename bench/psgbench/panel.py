@@ -142,7 +142,7 @@ def tone(a):
 
 
 def listen(a):
-    from scipy.signal import butter, sosfilt
+    from scipy.signal import butter, sosfilt, sosfilt_zi
     p = Panel()
     o = optical.OpticalLink()
     conv, sa, sb = optical.string_inputs(a.string)
@@ -163,7 +163,7 @@ def listen(a):
 
     fit = Fit(48000.0, p.fs)
     dc = butter(2, 20.0, btype="high", fs=48000.0, output="sos")
-    zi = np.zeros((dc.shape[0], 2))
+    zi = None
     p.jack(True)
     p.level(a.level)
     p.relay(True)
@@ -191,7 +191,11 @@ def listen(a):
             drops += sum(b[1] & 1 for b in blocks)
             most = max(most, len(blocks))
             xa, xb = pair(blocks)
-            y, zi = sosfilt(dc, A(xa) + B(xb), zi=zi)
+            ya, yb = A(xa), B(xb)
+            x = ya - yb if a.mix == "diff" else ya + yb
+            if zi is None:      # from the first sample, or the carrier is a step at the jack
+                zi = sosfilt_zi(dc) * x[0]
+            y, zi = sosfilt(dc, x, zi=zi)
             p.play(fit(y / 32768.0 * a.gain))
             if time.monotonic() >= next_check:
                 next_check = time.monotonic() + 0.25
@@ -273,6 +277,8 @@ def main():
     c.add_argument("--common", action="store_true",
                    help="all five converters, noise common to them taken out")
     c.add_argument("--duty", type=int, default=32, help="emitters' on-time, of 4096")
+    c.add_argument("--mix", choices=("sum", "diff"), default="sum",
+                   help="the two sensors: sum, or diff for motion across them")
     c = sub.add_parser("noise")
     c.add_argument("--seconds", type=float, default=2.0)
     c.add_argument("--duty", type=int, default=32, help="emitters' on-time, of 4096")

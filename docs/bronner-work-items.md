@@ -26,24 +26,34 @@ Why output_panel moves missed: most pair failures were bystanders. R47, C52 and 
 pair; they landed on pair copper, which was ripped and re-laid at signal rules. D2 is on THRU
 itself. Supply failures (V5_PRE, +24V) came back at 0.2 mm because the ripped width was lost.
 
-**Re-measured with the fixes (cadkit c87534f).** `eco.py` now refuses moves that would take up
-pair or matched-group copper, carries ripped widths into close_widths, and counts clean against
-the unmoved board's own FAILs. All three boards, same seed:
+**Re-measured with the fixes (cadkit fba122d).** `eco.py` refuses moves that would take up pair
+or matched-group copper, carries ripped widths into close_widths except on poured nets, and
+counts clean against the unmoved board's own FAILs. Same seed on all three:
 
 | Board | Moves | Refused | Connected | Clean |
 |---|---|---|---|---|
-| output_panel g1 | 18 | 1 | 12 of 17 | 12 |
+| output_panel g1 | 18 | 1 | 13 of 17 | 13 |
 | optical R2 | 18 | 2 | 10 of 16 | 9 |
-| pi_cap R2 | 12 | 0 | 4 of 12 | 3 |
+| pi_cap R2 | 12 | 0 | 12 of 12 | 12 |
 
-No verify FAIL on any measured move: pair failures are gone, as refusals. Every miss is now open
-nets, 1 to 10 of them, except one output_panel move with a violation. The unmoved baselines
-through a scratch project are output_panel 1 FAIL (silk 'B'), optical 1 (silk 'NRST'), pi_cap 2
-(A17 J4 pinout, A19 silk spelling). output_panel showed 0 FAIL finishing with PCBFLOW_PROJECT =
-elec, so at least its FAIL depends on the project; cause not found. pi_cap's two are not yet
-explained. With parallel runs of all three the whole set took 43 minutes.
+These replace the c87534f figures, which carried a 2.6 mm GND width into close_widths; that
+clashed with +24V and threw whole repairs away. The output_panel and pi_cap misses were re-read
+on this code; no verify FAIL on any move measured. The misses are open nets, 1 to 5 of them, and
+one output_panel move with a violation. Optical is the board left to improve.
 
-**Next.** close_last's open nets on moved parts: why a 1 mm move leaves up to 10 open.
+Unmoved baselines through a scratch project: output_panel 1 FAIL (silk 'B'), optical 1 (silk
+'NRST'), pi_cap 2 (A17 J4 pinout, A19 silk spelling). output_panel shows 0 FAIL finishing with
+PCBFLOW_PROJECT = elec, so at least its FAIL depends on the project; cause not found. pi_cap's
+two are not yet explained. So clean means no worse than the unmoved board, not 0 FAIL.
+
+**Next.** Optical's misses, then pi_cap's baseline FAILs.
+
+**First real string (R1 board on the user's MSA, 2026-11-02).** String 1 aligned, duty 32, none
+clipped. 1A and 1B both read 293.3 Hz with harmonics to 1760 Hz. Plucks about 200-650 rms over
+an 11-14 count floor, about 30 dB; the 65 dB figure is the carrier. DIFF beat SUM, 300-420 rms
+against 140-310, so `panel listen --mix diff` was added. 1A's largest peak was the 2nd harmonic.
+`listen` also starts its DC filter on the first sample now: the carrier gap between the sensors
+would have reached the jack as a near full-scale step.
 
 **Bench.** Optical and panel update and recover over USB; loader watchdogs on both. Panel
 watchdog is on agent/bronner-panelwd, awaiting merge when this was written. All 20 optical
