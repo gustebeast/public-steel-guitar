@@ -635,7 +635,8 @@ def export(parts, out_dir, stem="assembly", extras=None, meshed=None, quiet=Fals
                 TopoDS_Shape (or, with `meshed`, a function returning one: it is called
                 only if the part has to be re-cut), colour a cq.Color or an
                 (r, g, b[, a]) tuple. THE SOLIDS ARE NOT TOUCHED: every mesh is of a copy.
-    extras    = facts for the page, written into the file: "title", "subtitle", "build".
+    extras    = facts for the page, written into the file: "title", "subtitle", "build",
+                "notes" ({part name: a line the page shows while it is selected}).
     meshed    = optional {name: mesh_shape() result} to reuse (the local view's cache).
     mesh_cache = optional folder (outside version control) where each part's mesh is
                 kept between builds, by a hash of the part itself (MeshCache): a full
