@@ -80,6 +80,8 @@ def move(stem, moves):
             gone.append(t)
     for t in gone:
         board.Remove(t)
+    # a stale pour against a moved pad is a violation, and close_last will not start on one
+    pcbnew.ZONE_FILLER(board).Fill(board.Zones())
     pcbnew.SaveBoard(path, board)
     return len(gone)
 
