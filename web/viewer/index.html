@@ -894,7 +894,9 @@
       ? `<div class="name">${units[0]}</div>` + (selection.length > 1 ? `<div class="dim">board, lettering and components: ${selection.length} pieces</div>` : '')
       : `<div class="name">${units.length} parts</div><div class="dim">${fams.slice(0, 6).join(', ')}${fams.length > 6 ? ', …' : ''}</div>`;
     const sib = M.list.filter(p => fams.includes(p.family)).length;
-    el.innerHTML = `<h4>selected</h4>${head}<div class="bar" style="margin-top:6px">
+    const notes = [...new Set(selection.map(p => (M.notes || {})[p.name] || (M.notes || {})[p.unit]).filter(Boolean))];
+    const note = notes.map(n => `<div class="name">${n}</div>`).join('');
+    el.innerHTML = `<h4>selected</h4>${head}${note}<div class="bar" style="margin-top:6px">
       <div class="btn" data-a="hide">hide<span class="k">a</span></div>
       <div class="btn" data-a="isolate">isolate<span class="k">s</span></div>
       <div class="btn" data-a="zoom">zoom<span class="k">d</span></div>
@@ -1977,6 +1979,7 @@
     const gltf = await new GLTFLoader().loadAsync('assembly.glb?v=' + M.key);
     // what the export says the model IS: its name, a line about it, its build number
     const about = (gltf.asset && gltf.asset.extras) || {};
+    M.notes = about.notes || {};                        // part name -> a line about it
     document.title = $('title').textContent = about.title || 'Assembly';
     if (about.tabs === false) tabsOff();                // this model is published alone
     $('subtitle').textContent = about.subtitle || '';
