@@ -2743,12 +2743,19 @@ _COLORS.update({"wire_canb_%s_lkl" % _n: _COLORS["wire_canb_%s" % _n]
                 for _n in ("gnd", "v5", "h", "l")})
 
 
+# The USB lead's four as they go into J4: the jacket stays amber, the wires are a hand's pinning.
+_WAY_COLORS = {"wire_link_1": (0.85, 0.12, 0.10), "wire_link_2": (0.05, 0.05, 0.05),
+               "wire_link_3": (0.92, 0.92, 0.92), "wire_link_4": (0.10, 0.60, 0.25)}
+
+
 def _color_for(name):
     # STRIP EVERY TRAILING INDEX GROUP, not just the last one -- the same lesson
     # tools.check_overlaps.base() records, and this resolver had not learned it. A part
     # numbered twice (`wire_canb_gnd_0_0`: net, segment, half) kept one index after a
     # single strip, matched nothing in _COLORS, and came out the default white. The
     # overlap gate had already been bitten by exactly this and fixed; colours had not.
+    if name in _WAY_COLORS:
+        return cq.Color(*_WAY_COLORS[name])
     base = re.sub(r"(_\d+)+$", "", name)
     if base in _TPU_BASES or any(base.endswith(k) for k in _TPU_BASES):
         return cq.Color(*_TPU_BLACK)             # TPU is always black

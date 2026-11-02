@@ -110,6 +110,10 @@ USB = (
 )
 _MATED = {(BOARD[s], r) for _n, s0, r0, s1, r1, _w in CHAIN for s, r in ((s0, r0), (s1, r1))}
 _MATED |= {("motor_ctrl", "J4")}
+# THE USB LEAD'S FOUR, ONE BY ONE: way, signal, the wire's colour in a stock USB lead. elec/motor_ctrl
+# USB_WAYS is the order; way 1 is live 5 V from the Pi and lands on nothing at the board.
+J4_WAYS = ((1, "VBUS", "red"), (2, "GND", "black"), (3, "D-", "white"), (4, "D+", "green"))
+J4_JACKET = 24.0             # where the lead's jacket stops, out of the housing
 # every OTHER header is empty on the bench
 UNMATED = tuple((BOARD[s], f["ref"]) for s in BOARD for f in BG.load(BOARD[s])["footprints"]
                 if "JST" in f["fpid"] and (BOARD[s], f["ref"]) not in _MATED)
@@ -117,7 +121,8 @@ BOARDS = BG.on_the_bench(UNMATED)
 
 RGB = {"SWDIO": (0.10, 0.35, 0.85), "SWCLK": (0.95, 0.80, 0.10), "NRST": (0.92, 0.92, 0.92),
        "GND": (0.05, 0.05, 0.05), "VAPP": (0.95, 0.45, 0.10),
-       "V24": (0.85, 0.12, 0.10),
+       "V24": (0.85, 0.12, 0.10), "red": (0.85, 0.12, 0.10), "black": (0.05, 0.05, 0.05),
+       "white": (0.92, 0.92, 0.92), "green": (0.10, 0.60, 0.25),
        "PWR_SW_UP": (0.95, 0.80, 0.10), "PWR_SW_DN": (0.10, 0.60, 0.25),   # spools we hold: BOM
        "probe": (0.04, 0.04, 0.05), "stlink": (0.90, 0.90, 0.92),
        "label": (1.0, 0.85, 0.15), "brick": (0.10, 0.10, 0.11), "pin": (0.83, 0.66, 0.22), "socket": (0.06, 0.06, 0.06),
@@ -329,7 +334,15 @@ def components():
         _place, pt = _board_at(st)
         if ref == "J4" and st == "motor":
             plug = BOARDS.plug(BOARD[st], ref)
-            ends[(st, ref)] = (pt(plug["ways"][2]), tuple(plug["out"]))
+            o = tuple(plug["out"])
+            mid = [sum(c) / len(plug["ways"]) for c in zip(*(plug["ways"][w] for w in plug["ways"]))]
+            jacket = pt(tuple(mid[i] + J4_JACKET * o[i] for i in range(3)))
+            ends[(st, ref)] = (jacket, o)
+            for way, sig, colour in J4_WAYS:
+                w = pt(plug["ways"][way])
+                add("motor_usb_%d_%s" % (way, colour),
+                    oct_cable([jacket, tuple(w[i] + 8.0 * o[i] for i in range(3)), w], LEAD_OD),
+                    RGB[colour])
             continue
         f = BOARDS.footprint(BOARD[st], ref)
         t = BG.load(BOARD[st])["thickness_mm"]
@@ -375,6 +388,9 @@ def conductors():
         return "%s %s" % (BOARD[e[0]], e[1])
     for lead, a, b, what in USB:
         rows.append((lead, end(a), "%s (%s)" % (end(b), what)))
+    for way, sig, colour in J4_WAYS:
+        rows.append(("motor_usb_%d_%s" % (way, colour), "USB-A plug %s" % sig,
+                     "%s J4 way %d (%s wire)" % (BOARD["motor"], way, colour)))
     rows.append(("pi_usb_c_supply", "the Pi's own USB-C supply", "Pi USB-C power socket"))
     rows.append(("brick_plug", "the brick's own plug", "%s %s" % (BOARD[INLET[0]], INLET[1])))
     for lead, s0, r0, s1, r1, ways in CHAIN:
