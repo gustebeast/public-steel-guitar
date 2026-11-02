@@ -382,9 +382,14 @@ commands and one carrying the converters' samples untouched (192 kHz, whichever 
 converters are asked for), each block stamped with its sample count. No demodulation and no
 pitch detection on the board: that is all done afterwards on the Pi. Built on the Pi with
 Debian's ARM GCC against TinyUSB and ST's HAL (`~/src/tinyusb`, not in this repository);
-`make flash` writes it with `openocd` through the ST-LINK. Start-up reports each step on
-TP12 (115200 baud). **It compiles and links (31 kB); it has not run on a board.** The
-converter registers were read off TI's datasheet; the frame format between the converters
+`make boot` writes the USB loader (`boot.c`, sector 0) once through the ST-LINK and `make usb`
+sends the application through it with `psgflash.py`, in 0.2 s. An ST-LINK reset leaves the PHY
+off the bus until a power cycle, so power-cycle after `make boot`; the loader's own resets are
+clean. The loader waits 2 s for a host at every power-up, which is the way back from a bad
+application. Start-up reports each step on TP12 (115200 baud). **Proven on board 1, 2026-11-01:
+loader flashed, four USB updates, then `?`, `T` and 1.6 MB/s of samples from `L 1`; the sample
+content itself is not checked yet. A block holds four converters, not five: TinyUSB's 32 K
+buffer limit (`tusb_config.h`).** The converter registers were read off TI's datasheet; the frame format between the converters
 and the MCU is the likeliest thing to need its `F` command on the bench.
 
 **The tests** are `bench/psgbench/scenarios.py`, run one at a time:

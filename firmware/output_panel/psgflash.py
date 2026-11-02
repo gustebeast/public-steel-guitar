@@ -1,31 +1,34 @@
 #!/usr/bin/env python3
-"""Write output_panel's application over USB, through its loader (boot.c).
+"""Write a board's application over USB, through its loader (boot.c).
 
     python3 psgflash.py build/app.bin
+    python3 psgflash.py --ids cafe:4007,cafe:4006 --app 0x40000 --page 4096 build/app/optical.bin
 
-Finds the board's serial port (1a86:fe0c), asks a running application to go back to the
+Finds the board's serial port (output_panel 1a86:fe0c; optical cafe:4007 in its loader,
+cafe:4006 in its application, whose first port is the one that listens), asks a running application to go back to the
 loader, or catches the loader's window at power-up: if the board does not answer, power-cycle
 it while this waits. Standard library plus pyserial."""
+import argparse
 import binascii
 import glob
 import os
-import sys
 import time
 
 import serial
 
+IDS = [["1a86", "fe0c"]]
 APP = 0x8000
 PAGE = 256
 
 
 def port():
-    for tty in glob.glob("/sys/class/tty/ttyACM*"):
+    for tty in sorted(glob.glob("/sys/class/tty/ttyACM*")):
         d = os.path.realpath(tty + "/device/..")
         try:
             ids = [open(os.path.join(d, f)).read().strip() for f in ("idVendor", "idProduct")]
         except OSError:
             continue
-        if ids == ["1a86", "fe0c"]:
+        if ids in IDS:
             return "/dev/" + os.path.basename(tty)
     return None
 
@@ -40,7 +43,7 @@ def open_port(wait):
             except (OSError, serial.SerialException):
                 pass
         time.sleep(0.01)
-    raise SystemExit("no board on USB: power-cycle it with this running, or check J3")
+    raise SystemExit("no board on USB: power-cycle it with this running, or check its USB lead")
 
 
 def ask(s, cmd, wait=3.0):
@@ -75,7 +78,15 @@ def loader():
 
 
 def main():
-    img = open(sys.argv[1], "rb").read()
+    global IDS, APP, PAGE
+    a = argparse.ArgumentParser()
+    a.add_argument("image")
+    a.add_argument("--ids", default="1a86:fe0c")
+    a.add_argument("--app", type=lambda v: int(v, 0), default=APP)
+    a.add_argument("--page", type=int, default=PAGE)
+    o = a.parse_args()
+    IDS, APP, PAGE = [i.split(":") for i in o.ids.split(",")], o.app, o.page
+    img = open(o.image, "rb").read()
     n = len(img)
     img += b"\xff" * (-n % PAGE)
     crc = binascii.crc32(img)
