@@ -1,4 +1,5 @@
-/* output_panel's USB loader, at the bottom of flash. Written once with the WCH-LinkE; every
+/* The CH32V307 boards' USB loader, at the bottom of flash (output_panel, motor_ctrl; each
+ * builds this file against its own link.c and link.h). Written once with the WCH-LinkE; every
  * later firmware goes in over USB (psgflash.py on the Pi).
  *
  * Every power-up it enumerates and waits WINDOW_US for a host to say H. Then it resets and
@@ -19,7 +20,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "UART.h"
-#include "ch32v30x_usbhs_device.h"
 #include "link.h"
 
 #define WINDOW_US 1500000u
@@ -155,7 +155,7 @@ int main(void)
     if (!app_ok()) hold = 1;
     link_init();
     uint64_t end = now_us() + WINDOW_US;
-    static uint8_t pkt[DEF_USB_HS_PACK_LEN];
+    static uint8_t pkt[LINK_PACKET];
     while (1) {
         int got = link_take(pkt);
         for (int i = 0; i < got; i++) byte_in(pkt[i]);

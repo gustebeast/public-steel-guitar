@@ -46,7 +46,7 @@ Unmoved baselines through a scratch project: output_panel 1 FAIL (silk 'B'), opt
 PCBFLOW_PROJECT = elec, so at least its FAIL depends on the project; cause not found. pi_cap's
 two are not yet explained. So clean means no worse than the unmoved board, not 0 FAIL.
 
-**Next.** pi_cap's baseline FAILs. Retrying close_last one blamed net at a time changed nothing on any of the 46 moves (tried twice, reverted), so optical's remaining misses are not the retry logic.
+**Next.** pi_cap's baseline FAILs. Retrying close_last one blamed net at a time changed nothing on any of the 45 moves (tried twice, reverted), so optical's remaining misses are not the retry logic.
 
 **First real string (R1 board on the user's MSA, 2026-11-02).** String 1 aligned, duty 32, none
 clipped. 1A and 1B both read 293.3 Hz with harmonics to 1760 Hz. Plucks about 200-650 rms over
@@ -6617,3 +6617,7 @@ geometry and texture/color/material. Then use the same model for the first flash
 - 2026-10-17 viewer: HDR (cadkit 6d40bf2): "output" row -> "dynamic range" SDR/HDR; HDR = unclipped scRGB, SDR white at the desktop's, highlights rolled off to DXGI MaxLuminance; float surface on DX12 too. Proven with a 4x-exposure throwaway build (469 nits vs 499 peak); at the real lighting nothing exceeds SDR white. Test affordances: DESK_FLOOR_FPS, shot over_white. Lead asked to propagate.
 - 2026-10-17 ST-LINK/V2 ready on the Pi: V2J46S7, no-sudo access via stock udev rules; make probe/flash/rescue dry-run to "no target"; optical firmware rebuilt clean (31 kB). Waiting on PCBs.
 - 2026-10-20 wire: two-gauge rule (22 AWG 24 V on XH, 26 AWG everything else) written into BOM.md with per-run checks; 20 AWG Pi 5 V note fixed in src/wiring.py; prices.json wire note. McMaster order holds red 22, red/yellow/green 26 (25 ft, $13.57), not placed.
+- 2026-11-02 motor_ctrl resilient loader: runs on the R1 board. Shares output_panel's boot.c and psgflash.py;
+  link.c/link.h are the USBFS versions on PA11/PA12 (J4). `cafe:4008` for loader and application. The first bench image
+  never reached USB because it linked RAM at 64 K on a chip set to 32 K; the new link scripts fix that. psgflash.py now
+  waits 30 s for the loader (it gave up in about 4 s, inside the 8 s watchdog of an application hung with USB up).
