@@ -15,6 +15,8 @@ WHICH INPUT IS WHICH STRING is the board's wiring, and string_inputs() is it: se
 """
 from __future__ import annotations
 
+import glob
+import os
 import struct
 import threading
 import time
@@ -87,6 +89,43 @@ def string_signal(blocks, string: int):
     return first, a + b, a - b
 
 
+def inputs(block_lanes: dict):
+    """A received block's converters as one array (frames, 20), in the order 1A, 1B, 2A ...
+    10B. All five converters have to be in it."""
+    n = next(iter(block_lanes.values())).shape[0]
+    m = np.empty((n, 20))
+    for s in range(1, 11):
+        conv, sa, sb = string_inputs(s)
+        m[:, 2 * s - 2] = block_lanes[conv][:, sa]
+        m[:, 2 * s - 1] = block_lanes[conv][:, sb]
+    return m
+
+
+class CommonNoise:
+    """Takes out what every channel hears at once. With the emitters lit, all twenty channels
+    carry the same broadband noise, about 2 counts in the audio band and 0.98 correlated
+    from channel to channel (bench, 2026-11-02), so the two photodiodes of a string cannot
+    average it away and the other strings can measure it. It is the median of the other
+    strings' channels, each less its own steady carrier, because a string that rings moves
+    a mean and hardly moves a median. Whether a ringing neighbour really stays out has not
+    met a string yet."""
+
+    def __init__(self, string: int):
+        self.others = [c for c in range(20) if c // 2 != string - 1]
+        self.carrier = None
+
+    def __call__(self, m: np.ndarray):
+        """`m` is inputs(): frames a multiple of four, in step from one call to the next."""
+        n = len(m)
+        now = m.reshape(-1, 4, 20).mean(axis=0)
+        if self.carrier is None:
+            self.carrier = now
+        else:
+            self.carrier = self.carrier + (now - self.carrier) * min(1.0, n / 19200.0)
+        rest = m - np.tile(self.carrier, (n // 4, 1))
+        return m - np.median(rest[:, self.others], axis=1, keepdims=True)
+
+
 def demod(x: np.ndarray):
     """Lock-in at a quarter of the sample rate. `x` is one input's samples (a multiple of
     four of them, starting anywhere); returns its signal at 48 kHz, in the same units, as the
@@ -105,11 +144,30 @@ def demod(x: np.ndarray):
     return (z * np.exp(-1j * theta)).real / 2.0
 
 
+def find_ports():
+    """(control port, sample port) of the optical board's application, by id: the ttyACM
+    numbers move with whatever else is on the Pi."""
+    found = {}
+    for tty in sorted(glob.glob("/sys/class/tty/ttyACM*")):
+        try:
+            d = os.path.realpath(tty + "/device/..")
+            ids = [open(os.path.join(d, f)).read().strip() for f in ("idVendor", "idProduct")]
+            if ids == ["cafe", "4006"]:
+                found[open(tty + "/device/bInterfaceNumber").read().strip()] = tty
+        except OSError:
+            continue
+    if "00" not in found or "02" not in found:
+        raise RuntimeError("no optical board on USB (cafe:4006)")
+    return tuple("/dev/" + os.path.basename(found[i]) for i in ("00", "02"))
+
+
 class OpticalLink:
     """The board's two serial ports: `control` for commands, `stream` for samples."""
 
-    def __init__(self, control="/dev/ttyACM1", stream="/dev/ttyACM2"):
+    def __init__(self, control=None, stream=None):
         import serial
+        if control is None:
+            control, stream = find_ports()
         self.ctl = serial.Serial(control, 115200, timeout=0.2)
         self.dat = serial.Serial(stream, 115200, timeout=0.05)
         self.blocks = []

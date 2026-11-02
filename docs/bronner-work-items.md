@@ -1,5 +1,32 @@
 # bronner — open work items (2026-09-30)
 
+## Bench firmware: optical sensors to the TRRS jack (user, 2026-11-02, for this evening)
+
+No instrument is printed yet, so no string runs over the sensors. Read real sensor data anyway
+and get the whole path ready, so a string (or anything moved over a sensor) works first time:
+
+    two photodiodes per string -> optical board -> USB -> Pi -> USB -> output_panel -> TRRS jack
+
+- **Read the sensors.** Confirm the converters answer on I2C, then look at the sample stream
+  from `L 1`: channels in the right slots, sensible DC and noise with nothing over them. So far
+  only the byte rate is proven, not the content. Likeliest change is the frame format (`F`).
+- **Low-noise signal from the two sensors.** Combine each string's pair; SUM is the audio and
+  DIFF is the octave-error guard (see the optical pickup notes). Measure the noise floor of one
+  sensor against the pair, and report the figure rather than assume the gain.
+- **Send it out.** Pi code reads the optical stream and feeds `A` on the panel, keeping the
+  latency target. Start from `bench/psgbench/optical.py` and `panel.py`. A test tone first, so
+  the jack end is proven apart from the sensors, then live sensor data.
+- **All ten strings.** A block of all five converters (38416 bytes) does not fit TinyUSB's
+  32 K FIFO, so `stream_pump` has to send it in pieces or `FRAMES` has to shrink.
+
+Done means: a tone and live sensor data both reach the jack; noise figures recorded in
+`docs/bench-order.md`; updates by `make usb` only. What needs a string stays listed as not
+proven. Both boards are on the Pi (2026-11-02); the LinkE and ST-LINK are still attached.
+
+**DONE 2026-11-02 except the signal itself:** all twenty channels, no drops, noise table and
+commands in `docs/bench-order.md`. Open: a white card over the sensors for the first real
+carrier; where the common noise comes from, before optical R2 is ordered; the 6 % duty reading.
+
 ## Optical R2 routed, leads through the cable hole (2026-10-30)
 
 Optical R2: 0 unconnected, 0 violations, 263/263 parts in the CAD, quality 1 soft FAIL (A12 silk

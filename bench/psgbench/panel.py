@@ -1,13 +1,19 @@
 """The output panel (firmware/output_panel): its controls, and samples to its jack.
 
     python3 -m psgbench.panel tone --hz 440 --seconds 3
-    python3 -m psgbench.panel listen --string 3 --optical /dev/ttyACM2,/dev/ttyACM3 --gain 0.5
+    python3 -m psgbench.panel listen --string 3 --gain 8 --seconds 30
+    python3 -m psgbench.panel noise
     python3 -m psgbench.panel status
 
 The jack hears the DAC only with the relay energised, so both commands throw it on the way
 in and let it go on the way out. The lock-in here is the running form of optical.demod(),
-which needs the whole take: the carrier's phase is set from the first block, then each block
-goes straight out. The panel's clock sets the pace, because a write to it waits for room.
+which needs the whole take: the carrier's phase follows a slow average of the carrier, so it
+finds itself again when something first comes over the sensors. Gain is fixed, in DAC full
+scale per converter full scale: scaling to the signal would turn silence into full-level
+noise. The panel's clock sets the pace and the optical board's sets the supply, so the
+resampling is trimmed to hold what is on its way to the DAC at QUEUE frames. `S` is answered
+only after everything sent before it, so its round trip measures the Pi's USB buffers, and
+its queue figure the panel's ring.
 """
 from __future__ import annotations
 
@@ -20,6 +26,9 @@ import time
 import numpy as np
 
 from . import optical
+
+
+QUEUE = 480                             # frames, about 10 ms: the panel's share of the latency
 
 
 def find_port() -> str:
@@ -76,10 +85,15 @@ class Panel:
 
 
 class Fit:
-    """Linear interpolation from one fixed rate to another, block by block."""
+    """Linear interpolation from one rate to another, block by block. `trim` is a small
+    fractional change of rate, for holding a queue."""
 
     def __init__(self, fs_in: float, fs_out: float):
         self.step, self.at, self.last = fs_in / fs_out, 0.0, 0.0
+        self.nominal = self.step
+
+    def trim(self, fraction: float):
+        self.step = self.nominal * (1.0 + fraction)
 
     def __call__(self, x: np.ndarray) -> np.ndarray:
         x = np.concatenate(([self.last], x))
@@ -96,16 +110,15 @@ class Lockin:
         from scipy.signal import butter
         self.hp = butter(4, 8000.0, btype="high", fs=optical.FS, output="sos")
         self.zi = np.zeros((self.hp.shape[0], 2))
-        self.phase = None
+        self.carrier = 0j
 
     def __call__(self, x: np.ndarray) -> np.ndarray:
         from scipy.signal import sosfilt
         q, self.zi = sosfilt(self.hp, np.asarray(x, dtype=float), zi=self.zi)
         q = q.reshape(-1, 4)
         z = (q[:, 0] - q[:, 2]) + 1j * (q[:, 1] - q[:, 3])
-        if self.phase is None:
-            self.phase = np.angle(np.mean(z))
-        return (z * np.exp(-1j * self.phase)).real / 2.0
+        self.carrier += (np.mean(z) - self.carrier) * min(1.0, len(z) / 48000.0)
+        return (z * np.exp(-1j * np.angle(self.carrier))).real / 2.0
 
 
 def tone(a):
@@ -131,12 +144,22 @@ def tone(a):
 def listen(a):
     from scipy.signal import butter, sosfilt
     p = Panel()
-    ctl, dat = a.optical.split(",")
-    o = optical.OpticalLink(ctl, dat)
+    o = optical.OpticalLink()
     conv, sa, sb = optical.string_inputs(a.string)
     print("panel:", p.ask("?"), "| optical:", o.command("?"))
-    o.select([conv])
+    o.select(range(5) if a.common else [conv])
     A, B = Lockin(), Lockin()
+    common = optical.CommonNoise(a.string)
+    ia, ib = 2 * a.string - 2, 2 * a.string - 1
+
+    def pair(blocks):
+        """This string's two inputs, less the common noise if that is in use."""
+        if not a.common:
+            x = np.concatenate([b[2][conv] for b in blocks])
+            return x[:, sa], x[:, sb]
+        m = common(np.concatenate([optical.inputs(b[2]) for b in blocks]))
+        return m[:, ia], m[:, ib]
+
     fit = Fit(48000.0, p.fs)
     dc = butter(2, 20.0, btype="high", fs=48000.0, output="sos")
     zi = np.zeros((dc.shape[0], 2))
@@ -144,26 +167,87 @@ def listen(a):
     p.level(a.level)
     p.relay(True)
     print("string %d on the jack; ctrl-C stops" % a.string)
-    # a block's worth of the carrier's own level sets full scale; --gain goes from there
-    scale = None
+    # Everything the set-up above took is backlog, and at the trim's pace it would stay for
+    # minutes as latency: run the lock-in on it, throw it away, then start at the right depth.
+    settle = time.monotonic() + 0.3
+    while time.monotonic() < settle:
+        blocks = o.take()
+        if blocks:
+            xa, xb = pair(blocks)
+            A(xa), B(xb)
+        time.sleep(0.001)
+    s0 = p.status()
+    p.play(np.zeros(QUEUE))
+    o.take()
+    t0 = next_check = time.monotonic()
+    depth, drops, most = [], 0, 0
     try:
-        while True:
+        while not a.seconds or time.monotonic() - t0 < a.seconds:
             blocks = o.take()
             if not blocks:
-                time.sleep(0.001)
+                time.sleep(0.0005)
                 continue
-            x = np.concatenate([b[2][conv] for b in blocks])
-            raw = A(x[:, sa]) + B(x[:, sb])
-            if scale is None:
-                scale = 1.0 / max(float(np.max(np.abs(raw))), 1.0)
-            y, zi = sosfilt(dc, raw, zi=zi)
-            p.play(fit(y * scale * a.gain))
+            drops += sum(b[1] & 1 for b in blocks)
+            most = max(most, len(blocks))
+            xa, xb = pair(blocks)
+            y, zi = sosfilt(dc, A(xa) + B(xb), zi=zi)
+            p.play(fit(y / 32768.0 * a.gain))
+            if time.monotonic() >= next_check:
+                next_check = time.monotonic() + 0.25
+                t = time.monotonic()
+                q = p.status()["queued"]
+                ahead = (time.monotonic() - t) * p.fs + q
+                depth.append(ahead)
+                fit.trim(np.clip((ahead - QUEUE) / p.fs * 0.5, -0.002, 0.002))
     except KeyboardInterrupt:
         pass
+    s1 = p.status()
     p.relay(False)
+    print("frames %d, short %d, optical blocks dropped %d, most blocks at once %d" % (
+        s1["played"] - s0["played"], s1["short"] - s0["short"], drops, most))
+    if depth:
+        settled = depth[len(depth) // 2:]
+        print("on the way to the DAC: first %d, last half min %d mean %.0f max %d frames "
+              "(%.1f ms mean)" % (depth[0], min(settled), np.mean(settled), max(settled),
+                                  1e3 * np.mean(settled) / p.fs))
     o.select([])
     o.close()
     p.close()
+
+
+def noise(a):
+    """Each string's noise, audio band, with nothing over the sensors: one photodiode against
+    the pair. Units are converter counts; `pair` is the gain of SUM / 2 over one alone."""
+    from scipy.signal import butter, sosfiltfilt
+    band = butter(4, (40.0, 15000.0), btype="band", fs=48000.0, output="sos")
+    o = optical.OpticalLink()
+    print("optical:", o.command("?"))
+    for on in (False, True):
+        o.emitters(on)
+        o.select(range(5))
+        time.sleep(0.2)
+        o.take()
+        time.sleep(a.seconds)
+        blocks = o.take()
+        o.select([])
+        print("emitters %s, %d blocks, %d dropped" % (
+            "gated" if on else "off", len(blocks), sum(b[1] & 1 for b in blocks)))
+        print("string      A      B    SUM   DIFF   pair  corr | less common: A  SUM/2")
+        clean = [optical.CommonNoise(s) for s in range(1, 11)]
+        m = np.concatenate([optical.inputs(b[2]) for b in blocks])
+        for s in range(1, 11):
+            conv, sa, sb = optical.string_inputs(s)
+            _, x = optical.join(blocks, conv)
+            f = [sosfiltfilt(band, optical.demod(x[:, n]))[2000:-2000] for n in (sa, sb)]
+            r = [np.std(v) for v in (f[0], f[1], f[0] + f[1], f[0] - f[1])]
+            pair = 20 * np.log10(0.5 * (r[0] + r[1]) / (r[2] / 2))
+            c = clean[s - 1](m)
+            g = [sosfiltfilt(band, optical.demod(c[:, n]))[2000:-2000]
+                 for n in (2 * s - 2, 2 * s - 1)]
+            print("%6d %6.2f %6.2f %6.2f %6.2f %5.1fdB %5.2f | %13.2f %6.2f" % (
+                s, *r, pair, np.corrcoef(f[0], f[1])[0, 1], g[0].std(), ((g[0] + g[1]) / 2).std()))
+    o.emitters(True)
+    o.close()
 
 
 def main():
@@ -176,15 +260,21 @@ def main():
     c.add_argument("--level", type=int, default=128)
     c = sub.add_parser("listen")
     c.add_argument("--string", type=int, required=True)
-    c.add_argument("--optical", required=True, help="<control port>,<sample port>")
-    c.add_argument("--gain", type=float, default=1.0)
+    c.add_argument("--gain", type=float, default=1.0, help="DAC per converter full scale")
     c.add_argument("--level", type=int, default=128)
+    c.add_argument("--seconds", type=float, default=0.0, help="0: until ctrl-C")
+    c.add_argument("--no-common", dest="common", action="store_false",
+                   help="this string's converter alone, common noise left in")
+    c = sub.add_parser("noise")
+    c.add_argument("--seconds", type=float, default=2.0)
     sub.add_parser("status")
     a = ap.parse_args()
     if a.cmd == "tone":
         tone(a)
     elif a.cmd == "listen":
         listen(a)
+    elif a.cmd == "noise":
+        noise(a)
     else:
         p = Panel()
         print(p.ask("?"))

@@ -39,7 +39,7 @@
 #define VERSION   1
 #define FS        192000
 #define SLOTS     4
-#define FRAMES    960                     /* a block: 5 ms */
+#define FRAMES    480                     /* a block: 2.5 ms; all five fit the USB FIFO */
 #define LANES     5
 #define HALF      (FRAMES * SLOTS)        /* samples in a block of one converter */
 
@@ -181,7 +181,9 @@ static int sai_setup(void)
         h->Instance = blk[k];
         h->Init.AudioMode = k == 0 ? SAI_MODEMASTER_RX : SAI_MODESLAVE_RX;
         h->Init.Synchro = k == 0 ? SAI_ASYNCHRONOUS : k == 1 ? SAI_SYNCHRONOUS : SAI_SYNCHRONOUS_EXT_SAI1;
-        h->Init.SynchroExt = k == 0 ? SAI_SYNCEXT_OUTBLOCKA_ENABLE : SAI_SYNCEXT_DISABLE;
+        /* on both of SAI1's blocks: HAL writes the whole GCR for each, so block B's init
+           would turn off the sync block A just gave SAI2 and SAI3, and they would read zeros */
+        h->Init.SynchroExt = k <= 1 ? SAI_SYNCEXT_OUTBLOCKA_ENABLE : SAI_SYNCEXT_DISABLE;
         h->Init.OutputDrive = SAI_OUTPUTDRIVE_DISABLE;
         h->Init.NoDivider = SAI_MASTERDIVIDER_DISABLE;
         h->Init.FIFOThreshold = SAI_FIFOTHRESHOLD_1QF;
@@ -290,7 +292,7 @@ static void line(const char *s)
     char l[80], *p; uint32_t a, b, c;
     switch (*s) {
     case '?':
-        say("I psg-optical-bench 1 fs=192000 block=960 slots=4\n"); return;
+        say("I psg-optical-bench 1 fs=192000 block=480 slots=4\n"); return;
     case 'B':                             /* back to the loader, for psgflash.py */
         say("OK\n");
         for (uint32_t t = HAL_GetTick(); HAL_GetTick() - t < 20; ) tud_task();
