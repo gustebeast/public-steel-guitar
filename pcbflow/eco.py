@@ -23,9 +23,10 @@ current check. Those need a person, and the checks say so; read them, not just t
 unconnected count. The moved position is on the board only: copy it into the generator's
 placements, or the next regenerate puts the part back.
 
-⚠ THE BOARD HAS TO START AT 0 VIOLATIONS. close_last refuses a board with any, so on a board
-that has some every trial just reads as a failure: run `finish.py --keep-route` on a copy
-first. optical R2's copy of 2026-11-02 read 20 (each photodiode's courtyard on its emitter's).
+⚠ THE BOARD HAS TO START AT 0 UNEXPECTED VIOLATIONS: close_last refuses a board with any. A
+trial's copy lies outside the project, so PCBFLOW_PROJECT has to name it or the project's
+pcb_declared.py is not found and declared overlaps count against it. `trials` sets that for a
+board in the usual <project>/out; a board anywhere else needs it set by hand.
 """
 from __future__ import annotations
 
@@ -120,6 +121,8 @@ def trials(stem, count):
     here = os.path.dirname(os.path.abspath(__file__))
     src, name = os.path.split(os.path.abspath(stem))
     base = src + "_eco"
+    env = dict(os.environ)
+    env.setdefault("PCBFLOW_PROJECT", os.path.dirname(src))
     clean = connected = 0
     for n, (ref, far, x, y) in enumerate(legal_moves(stem, count), 1):
         dst = os.path.join(base, "t%d" % n)
@@ -133,7 +136,8 @@ def trials(stem, count):
                             os.path.join(dst, "moves.json")], capture_output=True, text=True)
         taken = next((ln for ln in t.stdout.splitlines() if ln.startswith("took up")), "?")
         r = subprocess.run([sys.executable, os.path.join(here, "finish.py"), "--keep-route", copy],
-                           capture_output=True, text=True, encoding="utf-8", errors="replace")
+                           capture_output=True, text=True, encoding="utf-8", errors="replace",
+                           env=env)
         last = [ln for ln in r.stdout.splitlines() if ln.startswith(name + ": ")]
         last = last[-1] if last else "finish wrote no result (exit %d)" % r.returncode
         link = " 0 unconnected, 0 violation" in last
