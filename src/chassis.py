@@ -17,9 +17,8 @@ straight DOWN onto it. The joint locks ±X (so string pull can never draw the se
 open) and ±Y by shape; Z — the install axis — needs no seam hardware at all, because
 the assembly closes over it: deck panels, then endplates, and finally the four LEG
 SCREWS, after which nothing can come apart (user). NO GLUE anywhere, and no seam
-fastener either. The cuts fall in the gaps BETWEEN ribs; each motor faceplate is fused
-WHOLE into the segment that owns its motor (_segments), so a plate straddling a cut
-just overhangs into the relieved neighbour — never sliced. Built in global position;
+fastener either. The cuts fall in the gaps BETWEEN ribs and run clean through the motor
+bays, which are all in place before the split (_segments). Built in global position;
 the segments assemble into the whole.
 """
 
@@ -229,20 +228,15 @@ SPLIT_X  = [D.lever_wall_x(_t)
             for _t in (-205.0, -428.0)]  # 2 cuts → 3 segments < BED_X, each on the centre of one of the grid's 1.6 WALLS, so the
                                        # plane itself misses every mortise (the seam JOINT is wider than a wall,
                                        # so the stations it covers are dropped instead -- see _seam_blocked). Was a
-                                       # 13 mm gap BETWEEN two ribs. The cut straddles a 43-wide motor
-                                       # plate, but that plate is fused WHOLE into the segment that owns
-                                       # its motor (see _segments): it overhangs the cut plane with its
-                                       # bolt holes intact and the neighbour is relieved. So the split is
-                                       # free of the motor-wall / bolt-column constraint -- it only has
-                                       # to clear the ribs (a rib and an 8 mm joint won't share a 3 mm gap).
+                                       # 13 mm gap BETWEEN two ribs. The cut runs through the motor bays
+                                       # that straddle it (see _segments).
 
 # Bridge-endplate joint: ENDPLATE_JOINT_Y are the two rail centre-lines the bridge
 # (and keyhead) sit over; kept for the bridge's foot/joint references.
 ENDPLATE_JOINT_Y = (Y_HI, Y_LO)
 
 # guard: a split PLANE (full-Y cut) must miss every rail-to-rail rib -- it would slice one
-# in half. (Motor plates are NOT a constraint any more: they fuse per segment, so the plane
-# may cross a plate's X-span; the plate goes whole to its motor's segment and overhangs.)
+# in half.
 for _s in SPLIT_X:
     _plane_hit = [rx for rx in _MORT_X if abs(_s - rx) < D.LEVER_MORT_W / 2]
     assert not _plane_hit, (f"SPLIT_X {_s} plane slices mortise(s) {_plane_hit} — it must land "
@@ -547,16 +541,6 @@ def _build_full() -> cq.Workplane:
     # and motor noise. It is also self-supporting by construction: a bay wall no longer bridges
     # a rib gap, because there are no rib gaps.
     #
-    # ⚠ THAT CLAIM IS TRUE OF RIB GAPS AND ONLY OF RIB GAPS, and a SEGMENT can still print with
-    # material over air. Measured on chassis_0 (tools.check_ceilings --min-span 0.81): motor 8
-    # sits at x -204.9, just +X of the split at -207.3, so its bay goes whole to chassis_0 by the
-    # rule three lines above -- but the FLOOR under it is drawn per segment and stops at the
-    # split. What is left on chassis_0 is a 1.6 mm bay wall about 40 mm tall, and a 20 x 2.4
-    # ledge beside it, whose first layer is 10.5 mm up from the bed with NOTHING beneath it for
-    # the 20 mm it hangs past the split. The assembly is fine -- chassis_1's floor arrives under
-    # it -- so this is a printing cost, not a geometry error, and it is the price of not cutting
-    # a motor plate in half at a seam. Either accept support material there, or clip the bay to
-    # the split the way the floor already is. NOT decided here: it is a seam decision.
     # (THE BOTTOM is not drawn here any more -- each SEGMENT draws its own, identically, at
     #  the top of the segment pipeline. See _bottom() and _segments.)
     # knee/pedal lever mounts: cut a christmas-tree mortise into EVERY rib (so a lever can mount in
@@ -646,8 +630,7 @@ def _build_full() -> cq.Workplane:
                                x=(_gx0 + TP_EP_GX) / 2, y=_yc,
                                z=(TP_GZ0 + Z_TOP + 1.0) / 2))
         body = body.cut(_deck_tg(_yc, _gx0, TP_EP_GX, mortise=True))
-    # NB: motor faceplate walls are NOT fused here -- _segments() adds each plate WHOLE to
-    # the print segment that owns its motor (so a split can cross a plate without slicing it).
+    # NB: motor faceplate walls are NOT fused here -- _segments() adds them, before its clip.
     # +X end: the bridge endplate TAKES OVER the +X end as a solid block (mirror of the
     # keyhead -X takeover): remove the rail ENTIRELY at x > TP_EP_GX (z full) so the
     # bridge fills it and IS the +X cross-tie (no separate crossbar); it's held by the
@@ -1162,9 +1145,10 @@ def _segments():
     # tongue tip (_SHELL_PX + KH_DT_DEPTH = 13.6); a smaller bound (the old X_BRIDGE+2 = 8)
     # sliced the tongue off at the segment boundary.
     edges = [_SHELL_PX + KH_DT_DEPTH + 2.0] + sorted(SPLIT_X, reverse=True) + [X_NUT]
-    # each motor's faceplate plate is fused WHOLE into the segment whose X-band holds its
-    # motor -- a plate straddling a split overhangs into the neighbour rather than being cut.
-    _motor_x = [D.motor_pos(i)[0] for i in range(D.N_STRINGS)]
+    # THE BAYS GO IN FIRST AND THE SPLIT CUTS THROUGH THEM (user, 2026-11-02). A plate straddling
+    # a split used to go whole to its motor's segment, so it hung past the plane over the
+    # neighbour's floor with nothing under it. Now every segment takes every plate, and the
+    # clip below the bays is what makes the seam one clean plane.
     segs = []
     for i in range(len(edges) - 1):
         a, b = edges[i], edges[i + 1]                 # a (+X) > b (−X)
@@ -1173,30 +1157,13 @@ def _segments():
         if _flr is not None:
             seg = seg.union(_flr)
             seg = _cut_all(seg, _floor_negatives())   # ...and the chassis' own way through it
-        if _is_split(b):                              # −X boundary split → +X side → mortise
-            for yr in (Y_HI, Y_LO):
-                seg = seg.cut(_seg_mortise(b, yr))
-        if _is_split(a):                              # +X boundary split → −X side → tenon
-            for yr in (Y_HI, Y_LO):
-                seg = seg.union(_seg_tenon(a, yr))
-        for mi, mx in enumerate(_motor_x):
-            if b < mx < a:                            # this segment OWNS the motor: fuse its plate whole
-                seg = seg.union(MB.plates[mi])
-            else:                                     # a neighbour's plate may overhang in: relieve it
-                seg = seg.cut(MB.plates[mi])
-        # ...AND THE SHARED WALL GOES WHOLE WITH IT. Two motors' bays both describe the wall between
-        # them, so across a split the relief above left 0.25 of it here, 44 tall: the slicer drops
-        # that outright (slicer_check: 2026-10-30). It is the neighbour's wall; this side stops
-        # at its own motor's fit.
-        _own = [mi for mi, mx in enumerate(_motor_x) if b < mx < a]
-        if _own and _own[-1] + 1 < D.N_STRINGS:
-            _n = _own[-1] + 1
-            _ob = MB.body_box(_own[-1])
-            _sx0, _sx1 = _ob[1], MB.plates[_n].val().BoundingBox().xmin
-            _sy0 = MB.back_wall_y0(_n)
-            seg = seg.cut(box_at(_sx1 - _sx0, _ob[3] - _sy0, MB.SEAT_TOP - MB.FLOOR_TOP,
-                                 x=(_sx0 + _sx1) / 2, y=(_ob[3] + _sy0) / 2,
-                                 z=(MB.FLOOR_TOP + MB.SEAT_TOP) / 2))
+        # A plate crossing a seam brings its holes with it: what stands in its place goes first.
+        for _pl in MB.plates:
+            _pb = _pl.val().BoundingBox()
+            if b < _pb.xmin < a < _pb.xmax or _pb.xmin < b < _pb.xmax < a:
+                seg = seg.cut(_pl)
+        for _pl in MB.plates:
+            seg = seg.union(_pl)
         # EVERY motor's lift path, out of EVERYTHING fused above: a bay claims the whole gap on
         # each side (one 1.6 wall between two motors, not two 0.8 halves), so it reaches across
         # into its neighbour's fit and only this cut takes it back out. It is also what keeps
@@ -1274,6 +1241,21 @@ def _segments():
                    x=(a + b) / 2, y=(FL.WALL_Y0 + FL.RAIL_IN) / 2, z=MB.FLOOR_TOP + 15.0))
         if _fc.solids().size():
             seg = seg.union(_fc)
+        seg = seg.intersect(_seg_box(a, b))           # the seam: one plane through the bays
+        # A plane on a motor's side fit leaves a film of bay wall: that wall is the neighbour's,
+        # whose half stops at the plane.
+        for _mi in range(D.N_STRINGS):
+            _lp = MB.lift_prism(_mi).val().BoundingBox()
+            if abs(_lp.xmin - b) < D.MIN_WALL:
+                _fx = b + D.MIN_WALL
+                seg = seg.cut(box_at(_fx - b + 1.0, _lp.ylen, _lp.zlen, x=(_fx + b - 1.0) / 2,
+                                     y=(_lp.ymin + _lp.ymax) / 2, z=(_lp.zmin + _lp.zmax) / 2))
+        if _is_split(b):                              # −X boundary split → +X side → mortise
+            for yr in (Y_HI, Y_LO):
+                seg = seg.cut(_seg_mortise(b, yr))
+        if _is_split(a):                              # +X boundary split → −X side → tenon
+            for yr in (Y_HI, Y_LO):
+                seg = seg.union(_seg_tenon(a, yr))
         segs.append(_largest(seg))
     return segs
 
