@@ -13,7 +13,9 @@ conversion, from a clock offset measured by asking it the time (see MotorCtrlLin
 """
 from __future__ import annotations
 
+import glob
 import heapq
+import os
 import threading
 import time
 from dataclasses import dataclass
@@ -124,13 +126,25 @@ class CanLink(_Base):
         self.bus.shutdown()
 
 
+def find_motor_port() -> str:
+    for tty in glob.glob("/sys/class/tty/ttyACM*"):
+        d = os.path.realpath(tty + "/device/..")
+        try:
+            ids = [open(os.path.join(d, f)).read().strip() for f in ("idVendor", "idProduct")]
+        except OSError:
+            continue
+        if ids == ["cafe", "4008"]:
+            return "/dev/" + os.path.basename(tty)
+    raise RuntimeError("no motor board on USB (cafe:4008)")
+
+
 class MotorCtrlLink(_Base):
     """firmware/motor_ctrl on a serial port (its line protocol is at the top of main.c)."""
 
-    def __init__(self, port="/dev/ttyACM0"):
+    def __init__(self, port=None):
         super().__init__()
         import serial
-        self.ser = serial.Serial(port, 115200, timeout=0.1)
+        self.ser = serial.Serial(port or find_motor_port(), 115200, timeout=0.1)
         self.offset = None              # computer time - board time, seconds
         self.errors: list[str] = []
         self._times: list[tuple[float, int]] = []

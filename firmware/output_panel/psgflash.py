@@ -58,8 +58,10 @@ def ask(s, cmd, wait=3.0):
 
 
 def loader():
-    """A serial port on the loader, held there."""
-    for _ in range(4):
+    """A serial port on the loader, held there. Longer than the watchdog: an application that
+    hangs with USB up answers nothing until it resets into the loader's window."""
+    end = time.time() + 30.0
+    while time.time() < end:
         s = open_port(60.0)
         try:
             s.reset_input_buffer()
@@ -73,7 +75,7 @@ def loader():
             s.close()
         except (OSError, serial.SerialException):
             pass
-        time.sleep(0.5)
+        time.sleep(0.2)
     raise SystemExit("the loader did not answer")
 
 

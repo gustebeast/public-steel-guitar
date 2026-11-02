@@ -184,7 +184,7 @@ into its USB-A ports. `py -3.12 -m tools.flash_bench_view` draws every lead.
 
 | Board | First flash, from the Pi | Its own USB path to the Pi | Can a BLANK chip be reached over that USB? |
 |---|---|---|---|
-| `motor_ctrl` (CH32V307) | **WCH-LinkE**; four soldered tails (TP1 to TP4) | **J4** (PHR-4) to a Pi USB-A port: the instrument's own lead | **yes by WCH's manual, not yet tried.** BOOT0 (pad TP6) at 3V3 through a power-up, then `wchisp`: "Flashing the CH32V307 boards without the LinkE", below |
+| `motor_ctrl` (CH32V307) | **WCH-LinkE**; four soldered tails (TP1 to TP4), once, for the loader | **J4** (PHR-4) to a Pi USB-A port: the instrument's own lead. `make usb` through the resilient loader, tested 2026-11-02 | **yes by WCH's manual, not yet tried.** For a board whose loader is gone: BOOT0 (pad TP6) at 3V3 through a power-up, then `wchisp`: "Flashing the CH32V307 boards without the LinkE", below |
 | `output_panel` (CH32V307) | **WCH-LinkE**; four soldered tails | **J3** (USB-C) to a Pi USB-A port: the hub's upstream, the MCU behind the hub | **probably, not yet tried.** BOOT0 has no pad: tweezers from R7 pad 1 to R6 pad 2 through a power-up, and the loader has to come up through the hub (same section) |
 | `optical` (STM32H743) | **ST-LINK/V2** in a Pi USB-A port; five soldered tails (TP1 to TP5) | **J1** (USB-C) to the panel's **J4**, through the hub and J3 | **no.** ST's ROM loader speaks USB only on the full-speed port (PA11/PA12), which this board does not wire; its high-speed port has no loader |
 
@@ -221,8 +221,8 @@ rule lets the `gus` user reach the probe without sudo. **The LinkE ARRIVED 2026-
 which is what it should say with no board. Not yet tried: talking to a CH32V chip, which
 waits for the boards (`wlink status` with a board on the leads is the first step). The
 motor_ctrl bench image builds clean on the Pi the same day (`~/psg/firmware/motor_ctrl`,
-identical to the repo's, `make` -> 11,460-byte .bin), so `make flash` is one command once a
-board is wired. If the probe ever fails there, the CH32V boards are flashed from a Windows
+identical to the repo's, `make` -> 11,460-byte .bin). It now builds as a loader and an
+application: `make boot` once with the LinkE, then `make usb`. If the probe ever fails there, the CH32V boards are flashed from a Windows
 PC with the same probe and leads (`wlink` for Windows, or WCH-LinkUtility).
 
 **Not drawn, because not tried: no probe at all for the optical board.** `openocd` can
@@ -280,8 +280,10 @@ two boards before it arrives. No board changes.
    `1a86:55e0`). If it does not, the lead or the loader is at fault and nothing has been
    written: stop there.
 4. **Pull the link apart** (both tails stay on the board), then
-   `cd ~/psg/firmware/motor_ctrl && make isp`. It erases, writes, verifies and resets.
-5. `lsusb` now shows the firmware's own serial port, and `/dev/ttyACM0` answers `?`.
+   `cd ~/psg/firmware/motor_ctrl && make isp`. It erases, writes the USB loader, verifies
+   and resets.
+5. `lsusb` now shows `cafe:4008`, the loader's serial port. `make usb` writes the
+   application; the same `cafe:4008` then answers `?`.
 6. To flash again: join the link, power-cycle, pull it apart, `make isp`.
 
 **`output_panel`, the same way, no soldering.** BOOT0 has no pad: R7 pad 1 is BOOT0 and R6
@@ -361,8 +363,13 @@ sends CAN frames at a time on the board's own microsecond clock and reports ever
 frame with its time. It knows nothing about the motors (its line protocol is at the top of
 `main.c`). Built on the Pi with Debian's RISC-V GCC against WCH's library, which is not in
 this repository: `make` in that folder, with `~/src/ch32v307` a checkout of
-`github.com/openwch/ch32v307`; `make flash` writes it through the WCH-LinkE. **It compiles
-and links (11 kB); it has not run on a board.**
+`github.com/openwch/ch32v307`; `make boot` writes the loader through the WCH-LinkE, once,
+and `make usb` writes the application through it (output_panel's `boot.c` and
+`psgflash.py`, with J4 as the USB port, `cafe:4008` for both images). The bare `B` command
+returns to the loader; `B <bus> <bit/s>` still sets a bus rate. Run on the board
+2026-11-02: USB update, updates stopped after the erase, half way and before the check
+(each stays in the loader and recovers), a hang before USB and a hang with USB up (each
+resets into the loader's window and is caught). The frame timing and CAN are not yet tested.
 
 **`bench/psgbench`** is the test side, in Python, run on the Pi (`cd bench; python3 -m
 pytest`):
@@ -428,7 +435,7 @@ takes all five converters and the noise they share, which only helps in saturati
 
 **The tests** are `bench/psgbench/scenarios.py`, run one at a time:
 
-    python3 -m psgbench.bench <scenario> --motor 1 --string 3 --counts 400 --limit 2000         --link motor:/dev/ttyACM0 --optical /dev/ttyACM1,/dev/ttyACM2 --out runs/
+    python3 -m psgbench.bench <scenario> --motor 1 --string 3 --counts 400 --limit 2000         --link motor --optical /dev/ttyACM1,/dev/ttyACM2 --out runs/
 
 | scenario | what it does | what it answers |
 |---|---|---|

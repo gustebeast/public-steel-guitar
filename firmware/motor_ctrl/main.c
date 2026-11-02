@@ -10,6 +10,7 @@
  *   bus 1 = bus B, CAN2 on PB12 (RX) / PB13 (TX)         -- the lever sensors
  *
  * Lines from the host (ASCII, '\n'; ids and data in hex, the rest decimal):
+ *   B                         back to the loader (../output_panel/boot.c)
  *   ?                         -> I psg-motor-bench <version> <t_us>
  *   T                         -> T <t_us>
  *   B <bus> <bit/s>           -> OK B ...      set a bus's bit rate (default 500000)
@@ -23,46 +24,16 @@
  *   E <what>                       a line refused, or the queue full
  *   L <count>                      output lost because the host was not reading
  *
- * NOT YET RUN ON A BOARD (2026-10-13): it compiles, and that is all that is known.
+ * Runs as the application under the USB loader. It feeds the loader's watchdog from the main
+ * loop, host or no host: this board has to run with the Pi absent.
  */
 #include <string.h>
 #include "ch32v30x.h"
 #include "ch32v30x_usbfs_device.h"
 #include "UART.h"
+#include "link.h"
 
 #define VERSION 1
-
-/* ---- the clock: SysTick free-running on HCLK, 64 bits ------------------------------- */
-static uint32_t ticks_per_us;
-
-static uint64_t now_us(void)
-{
-    uint32_t hi, lo, *p = (uint32_t *)&SysTick->CNT;
-    do { hi = p[1]; lo = p[0]; } while (hi != p[1]);
-    return (((uint64_t)hi << 32) | lo) / ticks_per_us;
-}
-
-void Delay_Us(uint32_t n)           /* the USB driver wants one; debug.c's would stop the clock */
-{
-    uint64_t end = now_us() + n;
-    while (now_us() < end) { }
-}
-
-/* ---- USB serial, on WCH's own CDC device code (their UART bridge's variables) -------- */
-volatile UART_CTL Uart;
-volatile uint32_t UARTx_Rx_DMACurCount, UARTx_Rx_DMALastCount;
-__attribute__((aligned(4))) uint8_t UART2_Tx_Buf[DEF_UARTx_TX_BUF_LEN];   /* host -> us */
-
-void UART2_USB_Init(void) { }       /* the host set a baud rate: there is no UART behind this */
-
-void UART2_ParaInit(uint8_t mode)
-{
-    memset((void *)&Uart, 0, sizeof Uart);
-    if (mode) {
-        Uart.Com_Cfg[0] = (uint8_t)115200; Uart.Com_Cfg[1] = (uint8_t)(115200 >> 8);
-        Uart.Com_Cfg[2] = (uint8_t)(115200 >> 16); Uart.Com_Cfg[6] = 8;
-    }
-}
 
 static uint8_t out_buf[8192];       /* us -> host */
 static volatile uint16_t out_head, out_tail;
@@ -97,25 +68,6 @@ static void out_pump(void)
     USBFS_Endp_DataUp(DEF_UEP3, pkt, n, DEF_UEP_CPY_LOAD);
     NVIC_EnableIRQ(USBFS_IRQn);
     out_zlp = (n == sizeof pkt);    /* a full packet needs a short one after it */
-}
-
-/* one packet from the host, or -1 */
-static int in_take(uint8_t *dst)
-{
-    if (!Uart.Tx_RemainNum) return -1;
-    int n = Uart.Tx_PackLen[Uart.Tx_DealNum];
-    memcpy(dst, &UART2_Tx_Buf[Uart.Tx_DealNum * DEF_USB_FS_PACK_LEN], n);
-    NVIC_DisableIRQ(USBFS_IRQn);
-    Uart.Tx_PackLen[Uart.Tx_DealNum] = 0;
-    if (++Uart.Tx_DealNum >= DEF_UARTx_TX_BUF_NUM_MAX) Uart.Tx_DealNum = 0;
-    Uart.Tx_RemainNum--;
-    if (Uart.USB_Down_StopFlag && Uart.Tx_RemainNum < 2) {
-        USBFSD->UEP2_RX_CTRL &= ~USBFS_UEP_R_RES_MASK;
-        USBFSD->UEP2_RX_CTRL |= USBFS_UEP_R_RES_ACK;
-        Uart.USB_Down_StopFlag = 0;
-    }
-    NVIC_EnableIRQ(USBFS_IRQn);
-    return n;
 }
 
 /* ---- writing lines ---------------------------------------------------------------------- */
@@ -313,6 +265,7 @@ static void line(const char *s)
         q_tail = q_head; say("OK C\n"); return;
     case 'B': {
         uint64_t bus;
+        if (!s[1]) { reset_to(GO_LOADER); }
         if ((s = r_num(s + 1, &bus, 10)) && bus <= 1 && r_num(s, &v, 10)
                 && can_rate((int)bus, (uint32_t)v) == 0) { say("OK B\n"); return; }
         break; }
@@ -339,7 +292,7 @@ static void in_pump(void)
 {
     static char ln[96]; static uint8_t n;
     uint8_t pkt[DEF_USBD_FS_PACK_SIZE];
-    int got = in_take(pkt);
+    int got = link_take(pkt);
     for (int i = 0; i < got; i++) {
         char c = (char)pkt[i];
         if (c == '\r') continue;
@@ -355,16 +308,11 @@ void HardFault_Handler(void) { NVIC_SystemReset(); while (1) { } }
 
 int main(void)
 {
-    SystemCoreClockUpdate();
-    ticks_per_us = SystemCoreClock / 1000000;
-    SysTick->CTLR = 0; SysTick->CNT = 0; SysTick->CMP = ~0ULL;
-    SysTick->CTLR = 0x5;            /* count HCLK, upward, no reload */
-    UART2_ParaInit(1);
+    link_init();
     can_setup();
-    USBFS_RCC_Init();
-    USBFS_Device_Init(ENABLE);
     uint32_t lost_said = 0;
     while (1) {
+        IWDG_ReloadCounter();           /* boot.c started it */
         q_run();
         in_pump();
         q_run();
