@@ -907,7 +907,7 @@ def output_panel():
                  5, 6, 7,                               # OSC_IN, OSC_OUT, NRST
                  61, 62, 35, 36, 38, 25, 48, 52, 63, 39, 1,
                  53, 58, 60,                            # I2S3: WS, CK, SD
-                 28) + ((21, 20, 26, 27) if REV == 1 else (19, 24, 29, 30, 33, 40, 41, 43, 44, 45))]   # 28: PB2 = BOOT1, held low on the jack-mode net
+                 28) + ((21, 20, 26, 27) if REV == 1 else (19, 24, 29, 30, 33, 40, 42, 43, 44, 45))]   # 28: PB2 = BOOT1, held low on the jack-mode net
     u1 = Part(name="CH32V307WCU6", ref_prefix="U", ref="U1", tag="U1", dest="NETLIST", tool="skidl",
               value="CH32V307WCU6",
               description="RISC-V MCU, USB2.0 HS with INTERNAL PHY (LCSC C5142795)",
@@ -949,7 +949,7 @@ def output_panel():
     # and pin 42 open between SCK and SDI: three in a row walled the middle one in.
     pot_cs += u1[21 if REV == 1 else 40]            # PC7 on R2
     pot_sck += u1[20 if REV == 1 else 43]           # PA8 on R2
-    pot_sdi += u1[26 if REV == 1 else 41]           # PC8 on R2
+    pot_sdi += u1[26 if REV == 1 else 42]           # PC9 on R2
     # ✅ ALL FOUR READ OFF THE TABLE, NOT INFERRED: 20 PA4, 21 PA5, 26 PB0, 27 PB1,
     # checked against .ins/ch32v307_qfn68.json -- the same QFN-68 column the other
     # twenty-four pins on this part were taken from. 27 was briefly written down as an
@@ -2299,7 +2299,8 @@ BOARD_NOTES = {
     # package toward J4, and a through via at the pad's centre lands on it. The hub draws
     # ~50 mA and its pad reaches ground through the F.Cu pour it sits in; nothing here
     # needs that via, and the pair does.
-    "stitch_exceptions": ("J2.SH", "J4.SH", "U4.25") + (() if REV == 1 else BC.STITCH_EXCEPTIONS + ("J8.1", "U15.2", "C71.2", "D2.2", "D3.2", "U16.2", "U16.7", "U13.10", "U13.11")),
+    "stitch_exceptions": ("J2.SH", "J4.SH", "U4.25") + (() if REV == 1 else BC.STITCH_EXCEPTIONS + ("U1.12",   # its via is held copper, beside the held I2S_MCK
+                                                                                                "J8.1", "U15.2", "C71.2", "D2.2", "D3.2", "U16.2", "U16.7", "U13.10", "U13.11")),
     # ⚠ NO local_nets HERE EITHER, AND NOW THERE IS A PATTERN. Measured on three
     # boards: it takes lever_sensor from 4 unconnected to 7, this board from 2 to 5, and
     # the optical board from 26 to 12. Pre-laying copper is not a general improvement --
@@ -3351,7 +3352,7 @@ BOARD_NOTES["quality"] = {
         "U1": {
             "pins": ("2 3 4 8 9 10 11 14 15 16 19 22 23 24 29 30 33 34 37 40 41 42 43 44 45 46 47 54 55 56 57 59 64 65 66"
                      if REV == 1 else
-                     "2 3 4 8 9 10 11 14 15 16 20 21 22 23 26 27 34 37 42 46 47 54 55 56 57 59 64 65 66"),
+                     "2 3 4 8 9 10 11 14 15 16 20 21 22 23 26 27 34 37 41 46 47 54 55 56 57 59 64 65 66"),
             "why": "GPIO this board gives no function: left open, firmware leaves it an input with pull-down"
         },
         "U4": {
@@ -3920,6 +3921,23 @@ if REV != 1:
                  "loader answers, as on optical R2. No firmware of ours is involved, so a bad image "
                  "is no obstacle; a dead bridge leaves the board booting normally. TP1-TP5 stay as "
                  "clip-on pads for bring-up. Sources: CH340DS1-EN V3C, CH32V307 RM, optical M43")
+
+
+if REV != 1:
+    # PARTS BESIDE WHAT THEY CONNECT TO (2026-11-01). Each CC pull-down stood 40 to 50 mm from
+    # its USB-C pin, across the busy half of the board, with room right beside the connector.
+    BOARD_NOTES["placements"].update({"R3": (-38.5, 9.25, 0.0), "R4": (-38.5, 6.25, 0.0),
+                                      "R29": (-38.5, -4.75, 0.0), "R30": (-38.5, -7.75, 0.0)})
+
+
+if REV != 1:
+    # SHORT HOPS AND USB PAIRS THE ROUTER LAYS BADLY, LAID BEFORE IT RUNS, as THRU and HUB_DN2 are.
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "output_panel.held.r2.json"), encoding="utf-8") as _fh:
+        _held = _json.load(_fh)
+    BOARD_NOTES["tracks"] += [(_n, _l, _w, [tuple(_p) for _p in _ps])
+                              for _n, _l, _w, _ps in _held["tracks"]]
+    BOARD_NOTES["vias"] += [tuple(_v) for _v in _held["vias"]]
 
 
 if __name__ == "__main__":
