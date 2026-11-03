@@ -90,6 +90,30 @@ def _hits(pcbnew, a, b):
     return c.OutlineCount() > 0
 
 
+def _bleed_ids(board):
+    """The uuids of kicad_silk's ink-bleed polygons (its BLEED_GROUP groups)."""
+    return {it.m_Uuid.AsString() for g in board.Groups()
+            if g.GetName().split(" ")[0] == "silk_ink_bleed" for it in g.GetItems()}
+
+
+def _bleed_mm(board):
+    """The bleed width kicad_silk laid (its group's name carries it), or 0."""
+    for g in board.Groups():
+        w = g.GetName().split(" ")
+        if w[0] == "silk_ink_bleed" and len(w) > 1:
+            return float(w[1])
+    return 0.0
+
+
+def _grown(pcbnew, ps, mm):
+    """`ps` with the bleed's rim on it: the ink a text prints once the rim is re-laid."""
+    if ps is None or mm <= 0:
+        return ps
+    g = pcbnew.SHAPE_POLY_SET(ps)
+    g.Inflate(pcbnew.FromMM(mm), pcbnew.CORNER_STRATEGY_ROUND_ALL_CORNERS, pcbnew.FromMM(ERR_MM))
+    return g
+
+
 def _centre(box):
     o, s = box.GetOrigin(), box.GetSize()
     return (o.x + s.x // 2, o.y + s.y // 2)
@@ -239,7 +263,10 @@ def clipped(board, pcbnew=None):
             # a solder-mask opening, so this used to report NEITHER -- and the fitter,
             # which shares this geometry, would happily park a designator off the
             # board and be told it printed as drawn.
-            if _off_board(box, extent):
+            # the INK's box, as fit_refs measures it: an outline-font field's own
+            # bounding box takes in the line's full height, and a designator the
+            # fitter had placed on the board read as past it (pi_cap R2 J5, 2026-11-03)
+            if _off_board(ps.BBox(), extent):
                 # The reported area is the WHOLE glyph: exact when the object is
                 # wholly outside, an upper bound when it straddles. It is not
                 # refined, because the figure only has to be non-zero to fail the
@@ -354,8 +381,18 @@ def fit_refs(board, notes=None, log=print, pcbnew=None):
                 ps = _poly_of(pcbnew, g, silk_layer)
                 if ps is not None:
                     silks.append((g.GetBoundingBox(), ps))
+        # ⚠ NOT THE INK BLEED. kicad_silk lays a rim round every outline-font text, 1 um
+        # off its glyphs; a field's polygon here is its text box, which takes in the
+        # rim, so every designator read as overlapping its OWN bleed and was moved for
+        # it -- 18 of 18 on pi_cap R2 (2026-11-03), where none needed to. The rim is
+        # re-laid round the texts after this pass (finish._relay_bleed).
+        bleed = _bleed_ids(board)
+        # ...but the rim is ink, and it is re-laid round the text where it lands: fit
+        # the text WITH it, or a designator parked flush on an opening prints its rim
+        # into it (pi_cap R2 J6, 0.0005 mm2, 2026-11-03)
+        rim = _bleed_mm(board)
         for d in board.GetDrawings():
-            if d.GetLayer() != silk_layer:
+            if d.GetLayer() != silk_layer or d.m_Uuid.AsString() in bleed:
                 continue
             ps = _poly_of(pcbnew, d, silk_layer)
             if ps is not None:
@@ -376,7 +413,7 @@ def fit_refs(board, notes=None, log=print, pcbnew=None):
 
         for fp, f in fields:
             ref = fp.GetReference()
-            base = _poly_of(pcbnew, f, silk_layer)
+            base = _grown(pcbnew, _poly_of(pcbnew, f, silk_layer), rim)
             if base is None:
                 continue
             box = f.GetBoundingBox()
@@ -426,7 +463,7 @@ def fit_refs(board, notes=None, log=print, pcbnew=None):
             _was = (f.GetTextAngle().AsDegrees(), f.IsKeepUpright())
             f.SetTextAngleDegrees(0.0)
             f.SetKeepUpright(True)
-            upright = _poly_of(pcbnew, f, silk_layer)
+            upright = _grown(pcbnew, _poly_of(pcbnew, f, silk_layer), rim)
             f.SetTextAngleDegrees(_was[0])
             f.SetKeepUpright(_was[1])
             if upright is None:
