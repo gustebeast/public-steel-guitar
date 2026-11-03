@@ -1126,7 +1126,9 @@ def build_wires():
     # columns at x -595.5 to -590.7, in the corridor's y). The first riser stands 0.2 clear
     # of the nearest of them, and the four lanes are packed to their own diameters rather
     # than at the connector's pitch, which keeps the last one clear of the 24 V link.
-    _HEAD_RISE = 2.8                  # J1's plug top to the first riser
+    # J1's plug top to the risers: 2.8 until the riser (R2) put the cap's -X edge at
+    # x -588.5 beside them, at J1's own y; 2.0 stands them 0.44 off it
+    _HEAD_RISE = 2.8 if BG.PI_CAP_REV == 1 else 2.0
     _HEAD_LANES = (0.0, 2.0, 3.8, 5.4)       # GND, 24 V (O1.8), CAN_H, CAN_L (O1.3)
     # STRING 1's MOTOR HAS ITS COIL LEAD ON TOP (the measured SERVO42D, 2026-10-20): a white
     # plug on the rear cap and four wires looping 8.7 over the motor back into the driver's
@@ -1390,6 +1392,11 @@ def build_wires():
     _PL_XT = CH_WT_RUNS[0][0] - 3.0                              # clear of the trough's end face
     _j5z = EL.way_pt("motor_ctrl", "J5", 1)[2]
     _PL_ZKEY = _j5z - WIRE_OD["wire_5v"] / 2.0 - 0.25 - _PL_HALF
+    # ...and over the cap, whose run it crosses: on the riser (R2) the cap's back stands
+    # 8.5 higher, past this level, so the bundle's lowest row goes over its top instead and
+    # the Pi's 5 V leads cross it there (cable on cable, which is allowed)
+    _PL_ZKEY = max(_PL_ZKEY, EL.pi_cap().val().BoundingBox().zmax + 0.2
+                   + WIRE_OD["wire_plink"] / 2.0 + _PL_ROW)
     # ⚠ J3 IS SIX WAYS STACKED IN Z at one x and y, on the standing board, and the corridor
     # in front of it is the foot strip's lead's as well (its four conductors come down the
     # board's face and cross to the cap's J6 at z -61.9, +Y and +X of here). No bundle can
@@ -1616,6 +1623,11 @@ def build_wires():
     # their own heights), climb there side by side, and fly +X over the cap to their old
     # lanes -- the +Y-most to the +X-most lane, so no -Y run crosses another's fly.
     _LT_CLIMB_X = _capbb.xmin - WIRE_OD["wire_lights"] / 2.0 - 0.2
+    # ...but never -X of J7's own step-outs (ways 3, 4 side-step a lead and a pitch out;
+    # way 1 steps out a pitch short of the column). On the riser (R2) the cap's -X extent
+    # is J5's header hanging off the SD end, past J7; the climb is in the corridor +Y of
+    # the cap, so it only has to clear the plug.
+    _LT_CLIMB_X = max(_LT_CLIMB_X, _lta[0][0][0] + EL.MCTRL_J7_LEAD + 2 * _LT_PITCH)
     _LT_YS = (1.62, 0.0, EL.MCTRL_J7_SIDE, EL.MCTRL_J7_SIDE - 1.65)    # off J7's line, by way
     _lt_live = _cable("LIGHTS_LINK", _lta, _ltb, LAY_22)
     for n, k in enumerate(_lt_live):
@@ -1740,41 +1752,79 @@ def build_wires():
         return tuple(_o5[m] + _a5[0][m] * bx + _a5[1][m] * by + _a5[2][m] * bz for m in range(3))
 
     _j5h = BG.HEIGHT[BG.fp_name(_j5f["fpid"])]
-    _pad_y = sum(q[1] for q in _j5pads) / len(_j5pads)
-    _mouth_y = max(_j5f["fab"][2:], key=lambda v: abs(v - _pad_y))         # the end away from the pads
-    _j5c = _cap_pt((min(q[0] for q in _j5pads) + max(q[0] for q in _j5pads)) / 2.0, _mouth_y,
-                   EL._CAP_T + _j5h / 2.0)
-    assert abs(_a5[1][1]) > 0.99 and abs(_j5f["fab"][3] - _j5f["fab"][2]) < abs(
-        _j5f["fab"][1] - _j5f["fab"][0]), "pi_cap J5's row no longer runs along world X"
-    #    ITS SOCKET at J5, the same part, the same way: on the pins to IDC_PIN_IN short of
-    #    their tips (the end of J5's fab box away from its pads), the ribbon coming down
-    #    into it and ending at its lower side, as an IDC cable's end does.
-    _sy = 1.0 if _a5[1][1] * (_mouth_y - _pad_y) > 0 else -1.0
-    _j5s = (_j5c[0], _j5c[1] - _sy * UI.IDC_PIN_IN, _j5c[2])
-    out.append(("ui_ribbon_socket_1", UI.idc_socket(_j5s, (0, _sy, 0), (0, 0, 1), (1, 0, 0))))
-    _ry = _j5s[1] + _sy * UI.IDC_CABLE_M
-    #    ...AND ROUND THE FRET BOARD'S -Y EDGE WALL, not through it (2026-10-29). With the
-    #    Pi up against the motors J5 sits under the keyhead panel's fret LED board, whose
-    #    edge wall and comb hang from the deck there: so the ribbon comes down just -Y of
-    #    both, passes under the wall, and steps +Y onto the socket's line. Under, not
-    #    beside, because the keyhead panel slides on along X after the ribbon is plugged
-    #    (plug-before-panel), and the wall's own section is what sweeps.
-    from . import fret_light as _FL
-    _clr = 1.0 + UI.RIBBON_T / 2.0
-    _wb = _FL.edge_walls().val().BoundingBox()
-    # the panel's -Y reach over the board: the edge wall's outer face, or the comb's
-    # end (the fret line's half length), whichever is further out
-    # ...and only while J5 IS under it: the Pi cap is to be redrawn shorter in +Y
-    # (user, 2026-10-29), and a J5 clear of the panel takes the straight drop again
-    _wall_y = -max(_FL.BOARD_HALF_W + _FL.EDGE_WALL_OUT, _FL.half_len())
-    centre = [(ex, uy, _j2m[2] - UI.IDC_BODY_R / 2.0), (ex, uy, umz), (ex - 12.0, uy, umz)]
-    if _ry + _clr > _wall_y:
-        _dy, _dz = _wall_y - _clr, _wb.zmin - _clr
-        centre += [(_j5c[0], uy, umz), (_j5c[0], _dy, umz), (_j5c[0], _dy, _dz),
-                   (_j5c[0], _ry, _dz)]
+    _px5 = sum(q[0] for q in _j5pads) / len(_j5pads)
+    _py5 = sum(q[1] for q in _j5pads) / len(_j5pads)
+    if BG.PI_CAP_REV != 1:
+        #    R2 ON THE RISER: J5 TURNED MOUTH -X, at the Pi's SD end beside J1 (elec/pi_cap.py
+        #    RISER), its row along world Y -- the same way round as the ribbon's other end on
+        #    the UI board. So the ribbon runs -X under the deck, steps across in its own plane
+        #    onto J5's line if the two rows are not on one line (two folds), and bends down
+        #    over the end of the cap onto the socket, its width along the pin row.
+        _fx0, _fx1, _fy0, _fy1 = _j5f["fab"]
+        assert abs(_a5[0][0]) > 0.99 and abs(_fy1 - _fy0) > abs(_fx1 - _fx0), (
+            "pi_cap J5's row no longer runs along world Y")
+        _mx = max((_fx0, _fx1), key=lambda v: abs(v - _px5))      # the end away from the pads
+        _j5c = _cap_pt(_mx, _py5, EL._CAP_T + _j5h / 2.0)
+        _sx = 1.0 if _a5[0][0] * (_mx - _px5) > 0 else -1.0
+        _j5s = (_j5c[0] - _sx * UI.IDC_PIN_IN, _j5c[1], _j5c[2])
+        out.append(("ui_ribbon_socket_1", UI.idc_socket(_j5s, (_sx, 0, 0), (0, 0, 1), (0, 1, 0))))
+        _rx = _j5s[0] + _sx * UI.IDC_CABLE_M
+        #    ⚠ THE DROP STANDS OFF motor_ctrl ABOVE THE CAP. The standing board's parts reach
+        #    x -591.5 over z -29.9..-24.9, through the socket's own column; so the ribbon
+        #    comes down DROP_OUT inboard of it, and steps out onto the socket's column in the
+        #    gap between those parts and the cap's back (a bend across its thickness).
+        #    ⚠ AND THE JOG IS WEST OF THE DECK'S SOLID BLOCK. The pocket the ribbon runs in
+        #    under the deck stops at y -39.8 between x -589.43 and -578.0 (the deck is full
+        #    depth there, to -16.1: measured off top_plate_color_4), and the ribbon's +Y edge
+        #    on J5's line is at -38.07. West of the block the pocket goes on. So the +Y run
+        #    stands half a width clear of it, and the last leg comes back +X to the drop.
+        _DROP_OUT = 2.2
+        _DECK_BLOCK_X0 = -589.43
+        _xd = _rx - _sx * _DROP_OUT
+        _zk = EL.pi_cap().val().BoundingBox().zmax + 0.2 + UI.RIBBON_T / 2.0 + 0.5
+        _uz2 = umz
+        centre = [(ex, uy, _j2m[2] - UI.IDC_BODY_R / 2.0), (ex, uy, umz), (ex - 12.0, uy, umz)]
+        _xj = min(_xd - _sx * 8.0, _DECK_BLOCK_X0 - UI.RIBBON_W / 2.0 - 0.3)
+        if abs(uy - _j5s[1]) > 1e-6:
+            centre += [(_xj, uy, _uz2), (_xj, _j5s[1], _uz2)]
+        centre += [(_xd, _j5s[1], _uz2), (_xd, _j5s[1], _zk), (_rx, _j5s[1], _zk),
+                   (_rx, _j5s[1], _j5s[2] - UI.IDC_BODY_R / 2.0)]
     else:
-        centre += [(_j5c[0], uy, umz), (_j5c[0], _ry, umz)]
-    centre += [(_j5c[0], _ry, _j5c[2] - UI.IDC_BODY_R / 2.0)]
+        _pad_y = _py5
+        _mouth_y = max(_j5f["fab"][2:], key=lambda v: abs(v - _pad_y))         # the end away from the pads
+        _j5c = _cap_pt((min(q[0] for q in _j5pads) + max(q[0] for q in _j5pads)) / 2.0, _mouth_y,
+                       EL._CAP_T + _j5h / 2.0)
+        assert abs(_a5[1][1]) > 0.99 and abs(_j5f["fab"][3] - _j5f["fab"][2]) < abs(
+            _j5f["fab"][1] - _j5f["fab"][0]), "pi_cap J5's row no longer runs along world X"
+        #    ITS SOCKET at J5, the same part, the same way: on the pins to IDC_PIN_IN short of
+        #    their tips (the end of J5's fab box away from its pads), the ribbon coming down
+        #    into it and ending at its lower side, as an IDC cable's end does.
+        _sy = 1.0 if _a5[1][1] * (_mouth_y - _pad_y) > 0 else -1.0
+        _j5s = (_j5c[0], _j5c[1] - _sy * UI.IDC_PIN_IN, _j5c[2])
+        out.append(("ui_ribbon_socket_1", UI.idc_socket(_j5s, (0, _sy, 0), (0, 0, 1), (1, 0, 0))))
+        _ry = _j5s[1] + _sy * UI.IDC_CABLE_M
+        #    ...AND ROUND THE FRET BOARD'S -Y EDGE WALL, not through it (2026-10-29). With the
+        #    Pi up against the motors J5 sits under the keyhead panel's fret LED board, whose
+        #    edge wall and comb hang from the deck there: so the ribbon comes down just -Y of
+        #    both, passes under the wall, and steps +Y onto the socket's line. Under, not
+        #    beside, because the keyhead panel slides on along X after the ribbon is plugged
+        #    (plug-before-panel), and the wall's own section is what sweeps.
+        from . import fret_light as _FL
+        _clr = 1.0 + UI.RIBBON_T / 2.0
+        _wb = _FL.edge_walls().val().BoundingBox()
+        # the panel's -Y reach over the board: the edge wall's outer face, or the comb's
+        # end (the fret line's half length), whichever is further out
+        # ...and only while J5 IS under it: the Pi cap is to be redrawn shorter in +Y
+        # (user, 2026-10-29), and a J5 clear of the panel takes the straight drop again
+        _wall_y = -max(_FL.BOARD_HALF_W + _FL.EDGE_WALL_OUT, _FL.half_len())
+        centre = [(ex, uy, _j2m[2] - UI.IDC_BODY_R / 2.0), (ex, uy, umz), (ex - 12.0, uy, umz)]
+        if _ry + _clr > _wall_y:
+            _dy, _dz = _wall_y - _clr, _wb.zmin - _clr
+            centre += [(_j5c[0], uy, umz), (_j5c[0], _dy, umz), (_j5c[0], _dy, _dz),
+                       (_j5c[0], _ry, _dz)]
+        else:
+            centre += [(_j5c[0], uy, umz), (_j5c[0], _ry, umz)]
+        centre += [(_j5c[0], _ry, _j5c[2] - UI.IDC_BODY_R / 2.0)]
     #    ...AND IT IS ONE PRISM, NOT FOURTEEN SWEEPS (user, 2026-09-28). It was drawn
     #    as fourteen conductors from bundle_paths, one octagonal solid each, which is the
     #    truth about a ribbon and the wrong model of it: nothing inside a ribbon can move

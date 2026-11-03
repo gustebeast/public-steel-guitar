@@ -10,6 +10,8 @@ EXAM  := $(WCH)/EVT/EXAM
 CDC   := $(EXAM)/USB/USBHS/DEVICE/SimulateCDC/User
 CROSS ?= riscv64-unknown-elf-
 VERSION ?= 1
+# the board: 1 as in hand, 2 adds J1's port and the inlet meter (make REV=2)
+REV   ?= 1
 B     := build
 
 VSRC := $(EXAM)/SRC/Core/core_riscv.c \
@@ -20,7 +22,7 @@ COMMON := $(B)/link.o $(B)/startup.o $(VOBJ)
 
 CFLAGS := -march=rv32imac_zicsr_zifencei -mabi=ilp32 -msmall-data-limit=8 -Os -g \
           -ffunction-sections -fdata-sections -fno-common -Wall \
-          --specs=picolibc.specs -DCH32V30x_D8C -DVERSION='"$(VERSION)"' \
+          --specs=picolibc.specs -DCH32V30x_D8C -DVERSION='"$(VERSION)"' -DREV=$(REV) \
           -I. -I$(EXAM)/SRC/Core -I$(EXAM)/SRC/Peripheral/inc -I$(EXAM)/SRC/Debug \
           -I$(CDC) -I$(CDC)/USB_Device -I$(CDC)/UART
 LDFLAGS := -nostartfiles -Wl,--gc-sections

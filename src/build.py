@@ -1677,6 +1677,7 @@ def _electronics_components():
     # pi_spacer is the ring under the Pi's M3 (electronics.pi_hold_pt) -- a printed piece,
     # not a dummy: it is what lets the belt clamps' M3 x 12 serve there too.
     out = [*EL.pi4_parts(), ("pi_cap", EL.pi_cap()), ("pi_spacer", EL.pi_spacer()),
+           *([("pi_riser", EL.pi_riser())] if EL.pi_riser() is not None else []),
            ("motor_ctrl", EL.motor_ctrl()),
            ("output_panel", EL.output_panel()),
            # J8, the pickup's screw terminal, as the part: green housing, steel screws and pins
@@ -2108,7 +2109,7 @@ BODY_WORK_PARTS = SCREW_ROW_PARTS + (
     # parts while this branch deleted teensy_/adc_stack/buck/analog_frontend and the
     # three free-standing panel jacks (they are PCB parts on the output+panel board
     # now). Keep main's additions, keep the deletions.
-        "pi4", "pi_cap", "pi_spacer", "motor_ctrl", "tee_", "wire_",
+        "pi4", "pi_cap", "pi_spacer", "pi_riser", "motor_ctrl", "tee_", "wire_",
         "output_panel", "ui_",
     "body_adapter", "lock_pin_", "adjust_", "fixed_", "bar_latch_", "leg_latch_",
     "top_plate", "pickup", "optical")   # the deck piece too: its skirt sets the bay's headroom
@@ -2646,6 +2647,7 @@ _COLORS = {
        for _k, (_c, _f) in __import__("src.pi4b", fromlist=["GROUPS"]).GROUPS.items()},
     "pi_cap":          _BG.mask("pi_cap"),   # PCB green
     "pi_spacer":       (0.85, 0.55, 0.20),   # PRINTED: the Pi's retention, not a board
+    "pi_riser":        (0.05, 0.05, 0.05),   # BOUGHT: Adafruit 4079 socket riser, black
     "output_panel":    _BG.mask("output_panel"),   # output + panel board (VBUS broken,
                                              # DAC + true-bypass relay + the TS jack)
     "motor_ctrl":      _BG.mask("motor_ctrl"),   # motor controller PCB (CH32V307 +

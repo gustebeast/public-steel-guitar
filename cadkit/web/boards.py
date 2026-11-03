@@ -811,7 +811,11 @@ def detail(meshed, shape_of, boards, cache_dir=None, log=print):
                 # no file anywhere: the part drawn here (cadkit.web.parts)
                 tip = 0.0 if (WP.fires(f["fpid"].split(":")[-1])
                               and plunger_drawn(f, h)) else None
-                own = _own_part(f, h, t, pose, panel, edge, tip)
+                # a holder the project says has nothing in it (Boards(unmated=...)):
+                # the record says so, and so does the cache key that is made from it
+                fe = (dict(f, empty=True)
+                      if (board, f["ref"]) in getattr(boards, "UNMATED", ()) else f)
+                own = _own_part(fe, h, t, pose, panel, edge, tip)
                 if own is None:
                     keep("no model in KiCad's library here, none drawn in web_parts")
                     continue

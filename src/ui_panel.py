@@ -310,7 +310,12 @@ RIBBON_T = 0.65                    # 0.635 flat cable, and each conductor's pitc
 # is declared here and cadkit.cables.flat_bends holds the modelled path to it. (Two until
 # 2026-10-06, when the path ended at a typed point instead of on the header; the second
 # turn, down onto the socket, is across the ribbon's width and is a plain bend.)
-RIBBON_FOLDS = 1
+# R2, ON THE RISER (2026-11-03): two. The cap's J5 turned mouth -X at the Pi's SD end, its row
+# along Y like this end's, so the ribbon runs -X straight to it and bends down onto it -- but the
+# two rows are 37.7 apart in Y (this header at y -80.8, J5 at -43.2), and that step across is
+# made in the ribbon's own plane: two 45 degree creases. R1 (bench) keeps the one.
+from .board_geom import PI_CAP_REV as _PI_CAP_REV    # noqa: E402
+RIBBON_FOLDS = 1 if _PI_CAP_REV == 1 else 2
 RIBBON_W = RIBBON_N * RIBBON_PITCH  # 10.16, the cable's own width. Every way's insulation
                                     # touches its neighbour's, so the ribbon is exactly as
                                     # wide as the ways it has -- which is also the width

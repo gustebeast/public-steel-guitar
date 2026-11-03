@@ -82,7 +82,7 @@ damps on each string, recorded with `python3 -m publicbench.panel capture --stri
 --seconds 10` (writes /tmp/take_s<N>.npz and .f32), then `bench/pi/pitch/pitchrun
 /tmp/take_s<N>.f32`. Hands off, three strings 3 s each: 0 note-ons, 0 voiced frames.
 
-**LOW PRIORITY, pi_cap R2 inside the Pi's footprint (user, 2026-11-02, via the lead).** The
+**CLOSED, pi_cap R2 inside the Pi's footprint (user, 2026-11-02, via the lead).** The
 user minds the cap reaching past the Pi, not the board's area. Now: cap y -62.45..-28.45 world,
 9.0 past the Pi's +Y edge (-37.45), toward the motors. Shift it -Y the full amount J1 allows:
 J1 needs 4.5 to the edge and the Pi's header is 3.5 in, so 8.0, leaving 1.0 past the Pi's edge.
@@ -91,6 +91,58 @@ there when the Pi stood upright, and that reason is gone. Exits: J5 and J6 out t
 ribbon out +X (option a). Then J5_DX, J6_DX and CAP_EXT_X can probably go back. Check under the
 cap against the Pi's DSI and CSI connectors (5.5 tall under 11.0), reroute, re-cut all five
 leads, quality pass, scoped gate. After optical repair and the pitch detector.
+
+*Scoped 2026-11-03: it does not fit as asked; needs the user.* Pi frame (src/pi4b.py) against
+the cap's front, whose 6 mm side-entry connectors stand 5.0 over the Pi. In the way at 5.0 or
+more: display FFC (x 1.5-5.5, y 16.8-39.2, 5.5 tall), camera FFC (x 45-49, y 0.3-22.7), audio
+jack (x 50.5-57.5, y 0-12.5, 6.0), Ethernet and USB from x 66.6 (13.5-16). J1 is fixed at
+x 7.1-57.9. So the board can span Pi x 0-60.5 (it reaches -2.5 now: CAP_EXT_X is past the
+SD end too). The row J2/J3/J4 takes 50.6 of that and must be the +Y_board edge: its plugs
+go in from that side, under nothing. J6 (XH, 16.7 x 12.0 courtyard) then has no place: in the
+row it makes 67 of 60.5; mouth -X west of J1 there is 6 mm for its 12; between J1 and the row
+it sits on the display FFC; at the +X end its plug meets Ethernet. J5 alone fits: mouth -X at
+the SD end, y_board -9..-1, its IDC plug hanging past the Pi's end (a plug, not board). The
+choice for the user: (A) the foot drop leaves the cap (chained from the fret strip or fed from
+motor_ctrl), then the cap fits inside the Pi but for J1's 1.0; (B) leave J6 hanging past the
+Pi's +Y edge, the rest inside; (C) leave the cap as it is.
+
+**CLOSED (user, 2026-11-03): C, the cap stays as it is.** B would not shrink the outline: J6's
+body would still reach 9-10 mm past the Pi's edge against about 11 now. Only A would, and the
+user chose not to move the foot drop for it.
+
+**REOPENED AS R2 (user, 2026-11-03): a riser between the Pi and the cap, Adafruit 4079.** User:
+"go with the 4079 riser as an R2 item". The 4079 is a 2x20 socket riser (male to female), 8.5
+body, 6 mm pins, $1.95 (1-9) / $1.76 (10-99), in stock (adafruit.com/product/4079, read
+2026-11-03). No shorter riser exists at Adafruit (2243 and the Pico 5 mm sockets solder into a
+board; 2223 and 1992 are taller); 8.5 is the standard socket body. What it buys: the cap's
+underside goes from 11.0 to 19.5 over the Pi, so its 6 mm connectors stand at 13.5 instead of
+5.0, which clears the display FFC (5.5), camera FFC and audio jack (6.0), the parts that made
+the cap not fit inside the Pi. Still in the way: Ethernet (13.5, exactly touching) and USB (16)
+from Pi x 66.6, so the cap stays at Pi x < 66.6 less a clearance. Headroom: cap top -43.55 to
+the top plate's underside -16.10 is 27.4 now, 18.9 after the lift.
+TO DO, R2 pi_cap (PI_CAP_REV 2; R1 builds as ordered, no riser):
+- `src/electronics.py` PI_CAP_STANDOFF + 8.5 for R2, the riser drawn as a bought part on the
+  Pi's header (51.5 x 5.0 x 8.5 body), its pins into the cap's J1.
+- Lay the cap out inside the Pi's footprint now that its connectors clear the FFCs and the jack:
+  the 2026-11-03 scoping above (row J2/J3/J4 on the +Y_board edge, J5 at the SD end, J6 over the
+  display FFC or between J1 and the row) is re-checked at 13.5; reroute, quality pass.
+- Every lead onto the cap re-cut (PI_5V_LINK, LIGHTS_LINK, fret / foot drops, UI ribbon onto J5).
+- BOM row + prices.json `modules` entry for the 4079; INSTALL_NOTES: riser onto the Pi first,
+  then the cap onto the riser.
+- Scoped gate.
+
+*Built 2026-11-03 (agent/bronner-riser-layout).* R2 outline x -33.0..32.2, y -9.0..17.0 in the
+placement frame, inside the Pi but for J1's 1.0. Row J2/J3/J4 on the +Y_board edge (J2 +4.02),
+J6 at the row's west end, mouth out of the row as J3's (world -Y; the foot lead comes down
+a plug length out and in), J5 mouth -X at the SD end, U1 group west. Route r4: 0
+unconnected, 0 violations, quality 0 FAIL, 4 OPEN (the order-time manual items). Declared for R2:
+J3/J4 pinouts back-only; R5.2 solid (the pour meets it at one neck, so spokes were starved);
+UI_ENC_B 16.60, UI_SCLK 5.94, UI_CS_N 5.82 across the socket's rows on the way to J5. The UI
+ribbon leaves J5 -X and takes 2 folds (INSTALL_NOTES). `_cap_place` now reads J1's pads from
+the geom, which also fixes main's cap drawn 3.5 east of the header.
+cadkit b7852dc + b2eaea3 (lead to propagate): silkfit took each designator's own ink-bleed rim
+for an obstacle and moved all of them; the moved ones left rims over pads; clipped() read an
+outline-font field's line box, not its ink; a designator is now fitted with its rim on.
 
 **First real string (R1 board on the user's MSA, 2026-11-02).** String 1 aligned, duty 32, none
 clipped. 1A and 1B both read 293.3 Hz with harmonics to 1760 Hz. Plucks about 200-650 rms over
@@ -414,6 +466,24 @@ attached; (4) lights take what is left, scaled instantly and dimmed BEFORE motor
 enforces this today. Lights must fail safe if the Pi hangs. Cap set from a hiccup-finding test
 under string load (one motor on a multimeter, then 2, 3, 4 movers with lights full, margin below
 the trip). 0.8 A per mover stays unmeasured until then. Confirm SERVO42D's working-current setting.
+
+**R2-2 robustness, checked against the netlist and firmware written (2026-11-03).** The seven
+constraints against `_r2_ports`: (1) no firmware = plain DRP at default current, attaches, and ID
+drives the mux and the gate; (2) Try.SNK and (5) the setting are I2C writes (U13 in I2C mode, as
+designed on 10-30); (3, 7) Q4 feeds EN only on ID low, Q5 holds EN at a few mV whenever J1's VBUS
+is up (4.5 V on its gate from R46/R47), Q6 latches Q5 off once EN is high, U15 blocks reverse,
+and U1 forcing host pulls the same ID net, so no GPIO gets past the gate; (4) FAULT#, INT_N, ID
+and I2C2 are U1 pins, no Pi wire; (6) U14 rests on the Pi path (S = ID, pulled up). One limit:
+Q5 is only sure of a foreign VBUS above about 2.75 V (2N7002 Vth 2.5 max through the divider);
+between vSafe0V and that it relies on U15's reverse comparator.
+Firmware, `firmware/output_panel` built `make REV=2` (REV=1, the default, builds byte-identical to
+before; both compiled on the Pi, -Wall clean): at start 1.5 A advertised and Try.SNK, MODE_SELECT
+left on the PORT pin so a host already attached is not dropped; `M 0|1|2` auto / host / device
+through TI's DISABLE_TERM sequence (SLLSEQ8D p.14); `H 1` forces host, host setting only; `U`
+reports attach state, setting, fault, forced, current offered; `V` the inlet's mV and mA (U16,
+R2-4). Register map read off SLLSEQ8D pp.17-19 (0x67 with ADDR high, p.3). Not run: no R2 board.
+Bring-up list for the first R2: the nine combinations of the table above, each mux position
+enumerating at 480 Mbps, a backfeeding device on a dead port (U15 off, Q5 on), the MVX2U.
 
 **R2-2 example device (user, 2026-10-30): the MVX2U.** It's an example of what the port should support, not a design target; the user may plug in something else. On the bring-up checklist: its current draw, and Linux playback through it.
 

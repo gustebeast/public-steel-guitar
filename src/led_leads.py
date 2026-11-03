@@ -158,7 +158,9 @@ def foot_paths():
     numbers and why each is what it is."""
     from . import foot_light as FOOT
     (pa, oa), (pb, ob) = _foot_ends()
-    assert oa == (-1, 0, 0) and ob == (0, 1, 0), (oa, ob)
+    # J6's mouth: +Y on R1 (the band past the Pi's edge), -Y on R2, in the row with J3 on
+    # the riser (PI_CAP_REV); the lead comes down a plug length out of it either way
+    assert oa == (-1, 0, 0) and ob in ((0, 1, 0), (0, -1, 0)), (oa, ob)
     assert abs(D.MOTOR_BELT_Z + D.MOTOR_SQ / 2.0 + FOOT.LEAD_FLY
                - (D.MOTOR_BELT_Z + D.MOTOR_SQ / 2.0 + FOOT.LEAD_FLY + FOOT.LEAD_LOW
                   + 3 * FOOT_ZLANE)) < 1e-6, "the foot lead's top lane is not the fly height"
@@ -172,7 +174,7 @@ def foot_paths():
             a, b = pa[i], pb[i]
             cx = FOOT.LEAD_COL_X + r1[i] * WIRE_LANE
             z = low + r2[i] * FOOT_ZLANE
-            dy = b[1] + PLUG_L
+            dy = b[1] + ob[1] * PLUG_L
             ry = a[1] + FOOT.LEAD_RISE_DY
             out.append([a, (xs, a[1], a[2]), (xs, ry, a[2]), (xs, ry, fly), (cx, ry, fly),
                         (cx, FOOT.LEAD_DIP_Y, fly), (cx, FOOT.LEAD_DIP_Y, z),

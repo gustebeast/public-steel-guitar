@@ -1300,3 +1300,18 @@ Plug a USB device in (an audio interface such as a Shure MVX2U) and the board po
   in with the board already standing. No floor trench.
 - **J2 / J6 (bus B) moved 14 / 15 mm +Y along the bottom edge**: a finger reaches each plug from
   below past the -X/-Y body adapter.
+
+
+## Pi cap R2: riser first, then the cap; plug the ribbon before the cap goes on (2026-11-03)
+
+- **The riser (Adafruit 4079) goes on the Pi's GPIO header first,** pressed fully down onto the
+  header's base, then the cap onto the riser. Both are straight 2x20 sockets; check pin 1 against
+  pin 1 before pressing (the cap only fits one way over the Pi).
+- **The cap now sits wholly over the Pi.** Its four power/light plugs (J2 Pi 5 V, J3 fret drop, J4
+  lights, J6 foot drop) all go in from the same side, the side away from the motors.
+- **The UI ribbon (J5) plugs in at the Pi's SD-card end,** its socket facing away from the Pi. Plug
+  it before the keyhead panel goes on.
+- **The ribbon makes two 45 degree creases** under the deck, a step of about 38 mm toward the
+  motors, so it reaches J5's line: crease it flat, the conductors keeping their order, then
+  bend it down over the cap's end onto the socket.
+- **R1 (bench) has no riser:** its cap sits directly on the header and hangs past the Pi's edge.
