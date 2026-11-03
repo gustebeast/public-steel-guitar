@@ -608,13 +608,14 @@ def main(argv=None):
             skipped.append("NOT CHECKED: %s" % (e.args[0] if e.args else e))
     for p in a.step:
         up = tuple(float(v) for v in a.up.split(",")) if a.up else (0.0, 0.0, 1.0)
-
-        def ld(p=p):
-            import cadquery as cq
-            if p.lower().endswith(".brep"):
-                return _read_brep(p)
-            return cq.importers.importStep(p).val()
-        jobs.append((pathlib.Path(p).stem, ld, up))
+        if p.lower().endswith(".brep"):
+            jobs.append((pathlib.Path(p).stem, (lambda p=p: _read_brep(p)), up))
+            continue
+        # a two-filament print is one STEP with a body per filament (build.PRINTS_WITH):
+        # each body is judged on its own, as each is sliced on its own
+        from cadkit.step_export import read_print_parts
+        for body, shape in read_print_parts(p):
+            jobs.append((body, (lambda s=shape: s), up))
     total = 0
     for name, ld, up in jobs:
         t = time.time()

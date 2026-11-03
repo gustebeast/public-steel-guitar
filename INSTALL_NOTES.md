@@ -1274,3 +1274,14 @@ Plug a USB device in (an audio interface such as a Shure MVX2U) and the board po
   the drop, the wind, a light clamp and the slide down the stow hole. It has no deck panel, so it does
   not test reaching in past the panel, and threading a stiff .080 is still unproven.
 
+## Two-filament prints: one file, a filament per part (2026-11-03)
+
+- **Where:** `petg-gf/chassis_0..2.step` (each holds `chassis_N` and `chassis_N_light`) and
+  `pctg/top_plate_N.step` (each holds `top_plate_N` and `top_plate_N_color`).
+- **What:** import the ONE file. Bambu loads it as one object with two named parts, both on
+  filament 1. Set each part's filament in the object list (right-click > Change Filament):
+  `chassis_N` PETG-GF, `chassis_N_light` clear PCTG; `top_plate_N` clear PCTG,
+  `top_plate_N_color` the colour PCTG. Don't move, re-orient or arrange the parts apart.
+- **Why:** each pair is one print, welded where the two filaments meet (the light window is keyed
+  into the chassis brick by brick). The file already has them in place and on their bed face; split
+  them and the weld is gone.
