@@ -52,7 +52,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
+OUT_DIR = (os.environ.get("MOTOR_CTRL_OUT")   # a trial or R1 rebuild goes to a COPY, never mid-run
+           or os.path.join(os.path.dirname(os.path.abspath(__file__)), "out"))
 os.makedirs(OUT_DIR, exist_ok=True)
 os.chdir(OUT_DIR)
 
@@ -990,6 +991,12 @@ def motor_ctrl():
 # routing failure stays separable from a placement failure.
 BOARD_W, BOARD_L = 61.8, 55.0
 
+# R1 (the board as ordered 2026-10-08, MOTOR_CTRL_REV=1) is every placement and note below as
+# they stood at that order; R2 (the default) is the backlog in docs/bronner-work-items.md,
+# "R2 BACKLOG, motor_ctrl", applied in the REV block under BOARD_NOTES.
+REV = int(os.environ.get("MOTOR_CTRL_REV", "2"))
+assert REV in (1, 2), "MOTOR_CTRL_REV is 1 (the board in hand) or 2"
+
 # THE MOUNTING EAR was added 2026-09-21 on the user's "having the screw adjacent ...
 # doesn't provide as strong of retention", and removed 2026-09-29 on their own report that
 # its hole was never used. Both are right: a screw through the board IS better retention,
@@ -1868,8 +1875,9 @@ if __name__ == "__main__":
     netcheck.no_orphan_pins(os.path.join(OUT_DIR, "motor_ctrl.net"))
     import volts_decl                   # A16: generated, see volts_decl.py
     volts_decl.into(BOARD_NOTES, "motor_ctrl")
-    import r1_silk                        # ordered R1: silk as sent
-    r1_silk.as_ordered(BOARD_NOTES)
+    if REV == 1:
+        import r1_silk                    # ordered R1: silk as sent
+        r1_silk.as_ordered(BOARD_NOTES)
     with open(os.path.join(OUT_DIR, "motor_ctrl.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.1f x %.1f mm, %d placements"
