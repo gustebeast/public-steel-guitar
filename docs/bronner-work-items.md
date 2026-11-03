@@ -110,6 +110,27 @@ Pi's +Y edge, the rest inside; (C) leave the cap as it is.
 body would still reach 9-10 mm past the Pi's edge against about 11 now. Only A would, and the
 user chose not to move the foot drop for it.
 
+**REOPENED AS R2 (user, 2026-11-03): a riser between the Pi and the cap, Adafruit 4079.** User:
+"go with the 4079 riser as an R2 item". The 4079 is a 2x20 socket riser (male to female), 8.5
+body, 6 mm pins, $1.95 (1-9) / $1.76 (10-99), in stock (adafruit.com/product/4079, read
+2026-11-03). No shorter riser exists at Adafruit (2243 and the Pico 5 mm sockets solder into a
+board; 2223 and 1992 are taller); 8.5 is the standard socket body. What it buys: the cap's
+underside goes from 11.0 to 19.5 over the Pi, so its 6 mm connectors stand at 13.5 instead of
+5.0, which clears the display FFC (5.5), camera FFC and audio jack (6.0), the parts that made
+the cap not fit inside the Pi. Still in the way: Ethernet (13.5, exactly touching) and USB (16)
+from Pi x 66.6, so the cap stays at Pi x < 66.6 less a clearance. Headroom: cap top -43.55 to
+the top plate's underside -16.10 is 27.4 now, 18.9 after the lift.
+TO DO, R2 pi_cap (PI_CAP_REV 2; R1 builds as ordered, no riser):
+- `src/electronics.py` PI_CAP_STANDOFF + 8.5 for R2, the riser drawn as a bought part on the
+  Pi's header (51.5 x 5.0 x 8.5 body), its pins into the cap's J1.
+- Lay the cap out inside the Pi's footprint now that its connectors clear the FFCs and the jack:
+  the 2026-11-03 scoping above (row J2/J3/J4 on the +Y_board edge, J5 at the SD end, J6 over the
+  display FFC or between J1 and the row) is re-checked at 13.5; reroute, quality pass.
+- Every lead onto the cap re-cut (PI_5V_LINK, LIGHTS_LINK, fret / foot drops, UI ribbon onto J5).
+- BOM row + prices.json `modules` entry for the 4079; INSTALL_NOTES: riser onto the Pi first,
+  then the cap onto the riser.
+- Scoped gate.
+
 **First real string (R1 board on the user's MSA, 2026-11-02).** String 1 aligned, duty 32, none
 clipped. 1A and 1B both read 293.3 Hz with harmonics to 1760 Hz. Plucks about 200-650 rms over
 an 11-14 count floor, about 30 dB; the 65 dB figure is the carrier. DIFF beat SUM, 300-420 rms
