@@ -1260,6 +1260,93 @@ def _segments():
     return segs
 
 
+# BRICKED SEAMS (user, 2026-11-02). Two filaments laid side by side in the same layers only touch
+# along a vertical face, and that face is the weakest bond on the printer -- yet it is all that
+# holds chassis_1's +Y rail on. So both faces are bricked: COURSES of whole layers, and in each
+# course the clear material keys into the opaque, never the other way. That is what keeps the
+# window looking like one clear bar: nothing opaque enters its 8.0, so its aperture and its bed
+# face are unchanged, and every key hides inside the opaque.
+#   RAIL SIDE (solid PETG out to the rail's outer face): a dovetail key every BRICK_P along X in
+#   every course, each course shifted half a pitch from the one below -- running bond. The
+#   dovetail locks Y within a layer, the stagger laps each key over the opaque below it.
+#   BODY SIDE: the lever mortises stop at the window, so below their ceilings the only opaque
+#   there is the 3.2 walls between them, too narrow for a dovetail. Each wall is laminated
+#   instead (alternate courses, its whole width) so the bond there is layer on layer; above the
+#   ceilings the floor runs unbroken and takes the same dovetails as the rail side.
+# The first course stays straight: that is the bed face, the one face of the window anyone sees.
+BRICK_H = 2 * D.BEAD                   # 1.6 a course: four 0.4 layers
+BRICK_P = 8 * D.BEAD                   # 6.4 dovetail pitch along X
+BRICK_N = 2 * D.BEAD                   # 1.6 the key's neck, at the window face
+BRICK_W = 4 * D.BEAD                   # 3.2 its head; the opaque between heads keeps 3.2
+BRICK_D = 3 * D.BEAD                   # 2.4 how far a key reaches into the opaque
+# the flat across a 72 deg corner is one bead wide when it starts this far back along each edge
+BRICK_F = D.BEAD / 2 / math.sin(math.radians(90 - math.degrees(math.atan2(
+    (BRICK_W - BRICK_N) / 2, BRICK_D))) / 2)
+
+
+def _dovetails(x0, x1, y_face, sy, z0, z1, phase):
+    """Dovetail keys along X in [x0, x1], on the face at y_face, reaching sy * BRICK_D, z0..z1.
+    Whole keys only: a key cut off by the seam or the window's end would leave a sliver.
+    A dovetail's corners are 72 deg, the head's in the clear and the neck's in the opaque, and the
+    slicer rounds both off; each gets a one-bead flat (BRICK_F back along both edges)."""
+    ux, uy = (BRICK_W - BRICK_N) / 2, BRICK_D                     # the flank, neck to head
+    ul = math.hypot(ux, uy)
+    ux, uy = ux / ul, uy / ul
+    out = []
+    k = math.ceil((x0 + BRICK_W / 2 + BRICK_F - phase) / BRICK_P)
+    while phase + k * BRICK_P + BRICK_W / 2 + BRICK_F <= x1:
+        xc = phase + k * BRICK_P
+        half = []                                                  # the +X half, face to head
+        half.append((BRICK_N / 2 + BRICK_F, -0.01))
+        half.append((BRICK_N / 2 + ux * BRICK_F, uy * BRICK_F))
+        half.append((BRICK_W / 2 - ux * BRICK_F, BRICK_D - uy * BRICK_F))
+        half.append((BRICK_W / 2 - BRICK_F, BRICK_D))
+        pts = ([(xc + dx, y_face + sy * dy) for dx, dy in half]
+               + [(xc - dx, y_face + sy * dy) for dx, dy in reversed(half)])
+        out.append(cq.Workplane("XY").polyline(pts).close().extrude(z1 - z0)
+                   .translate((0, 0, z0)).val())
+        k += 1
+    return out
+
+
+def _window_keys(s, x0, x1):
+    """Every key of one segment's window, as one compound: the material that changes filament.
+    `s` is the whole segment and [x0, x1] its share of the window, kept a pitch clear of the ends
+    (the seam joinery stands in the rail there)."""
+    y_in, y_out = D.LIGHT_WIN_Y0, D.LIGHT_WIN_Y0 + LIGHT_BAND_W
+    x0, x1 = x0 + BRICK_P, x1 - BRICK_P
+    top = MB.FLOOR_TOP
+    courses = []                       # the floor is not whole courses: the last one takes the rest
+    z = Z_BOT + BRICK_H
+    while z + 2 * BRICK_H <= top + 1e-6:
+        courses.append((z, z + BRICK_H))
+        z += BRICK_H
+    courses.append((z, top))
+    keys = []
+    for i, (z0, z1) in enumerate(courses):
+        keys += _dovetails(x0, x1, y_out, 1.0, z0, z1, (i % 2) * BRICK_P / 2)
+    # the body side: where the mortise ceilings are, read off the solid (a ray down a mortise)
+    xm = next(st for st in D.lever_grid_x() if x0 < st < x1)
+    ray = s.intersect(box_at(0.01, 0.01, top - Z_BOT, x=xm, y=y_in - 1.0, z=(Z_BOT + top) / 2))
+    ceil = min(q.BoundingBox().zmin for q in ray.solids().vals())
+    ceil = Z_BOT + math.ceil((ceil - Z_BOT) / 0.4 - 1e-6) * 0.4      # the next whole layer
+    if top - ceil >= 2 * 0.4:
+        keys += _dovetails(x0, x1, y_in, -1.0, ceil, top, 0.0)
+    # ...and the walls, from the solid too: whatever opaque meets the window under the ceilings.
+    # Each is read at one height but flares wider toward the bed (the mortise's own section), so
+    # the lamination is drawn a bead past it each side and the solid trims it to the wall.
+    row = s.intersect(box_at(x1 - x0, 0.01, 0.01, x=(x0 + x1) / 2, y=y_in - 1.0,
+                             z=Z_BOT + BRICK_H * 1.5))
+    for q in row.solids().vals():
+        b = q.BoundingBox()
+        for i, (z0, z1) in enumerate(courses):
+            if i % 2 == 0 and z1 <= ceil + 1e-6:
+                keys.append(box_at(b.xlen + 2 * D.BEAD, BRICK_D + 0.01, z1 - z0,
+                                   x=(b.xmin + b.xmax) / 2,
+                                   y=y_in - (BRICK_D - 0.01) / 2, z=(z0 + z1) / 2).val())
+    return cq.Workplane(obj=cq.Compound.makeCompound(keys))
+
+
 def _split_light(segs):
     """(opaque, transparent) for each segment. Same origin, printed as ONE object in two
     filaments -- the deck panels' base/colour pattern (build.py registers them as a pair).
@@ -1275,7 +1362,9 @@ def _split_light(segs):
             box_at(a - b, LIGHT_BAND_W + 2.0, D.BOTTOM_T + 2.0,
                    x=(a + b) / 2, y=Y_HI - LIGHT_BAND_DY,
                    z=(Z_BOT + MB.FLOOR_TOP) / 2))
-        out.append((s.cut(_light_band()), s.intersect(band)))
+        lb = _light_band().val().BoundingBox()
+        keys = _window_keys(s, max(b, lb.xmin), min(a, lb.xmax)).intersect(s)
+        out.append((s.cut(_light_band()).cut(keys), s.intersect(band).union(keys)))
     return out
 
 

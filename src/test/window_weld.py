@@ -4,8 +4,10 @@ that holds it until the seams go together.
 
 Print the two STEPs as ONE OBJECT, the rail and body in PETG-GF and the window in PCTG, on the 0.8
 nozzle, exactly as chassis_1 prints. Then look at the window's ends for peeling, and bend the rail
-over by hand until something gives. Break in the plastic: the weld holds. Clean peel along the
-window's faces: it does not, and the rail needs PETG-GF ties.
+over by hand until something gives. Break in the plastic: the joint holds. A clean peel along the
+window's faces: it does not.
+Both faces are bricked (chassis.BRICK_*): the clear keys into the opaque, course by course. The
+coupon's two cut ends slice through keys, so a little of each end is not the real joint.
 
     py -3.12 -m src.test.window_weld
 """
