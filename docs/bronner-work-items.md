@@ -166,6 +166,42 @@ damps on each string, recorded with `python3 -m publicbench.panel capture --stri
 --seconds 10` (writes /tmp/take_s<N>.npz and .f32), then `bench/pi/pitch/pitchrun
 /tmp/take_s<N>.f32`. Hands off, three strings 3 s each: 0 note-ons, 0 voiced frames.
 
+**Capture-replay harness (lead, 2026-11-03), `bench/pi/pitch/`.** The detector is now scored end
+to end through the same files a real capture writes, so the user's takes only have to be dropped in.
+- `takes.py` writes a synthetic take as `<stem>.npz` (sum, diff, fs, first, duty) and `<stem>.f32`
+  (the mix), exactly as `panel capture` does, plus `<stem>.json`, its truth. The string model: each
+  mode at sin(k pi xp)/k^2 for a pluck at xp, seen by two sensors a little apart (so SUM and DIFF
+  differ per harmonic), stretched partials, each decaying faster than the one below, 3 ms of
+  band-passed pick noise, a white floor of 13 counts, plucks at 300 rms. Sensor A's 2nd harmonic
+  can be raised (h2a 1.8 = the 1.5x-the-fundamental measured on string 1A). Kinds: pluck then damp,
+  slide two semitones up the bar, re-pluck while ringing, hands off.
+- `replay.py <dir> [--mix sum|diff]` runs `pitchrun` over every `.f32`. With a `.json` beside it, a
+  take is SCORED: note-ons == expect_on, onset under 25 ms, 5 committed frames within 20 cents under
+  60 ms, no octave on a committed frame, median error over `held` under 10 cents; hands off must
+  give 0 note-ons and 0 voiced frames. Without one it is REPORTED: each note-on and the pitch it
+  settled on. The .json format is in replay.py's docstring (plucks, expect_on, pitch breakpoints,
+  held), short enough to write by hand for a real take.
+- `synth.py [seed] [--keep DIR] [--mix sum]` writes the 43 synthetic takes (10 strings x 4 kinds, plus the sounding three of
+  string 1 at h2a 1.8) and replays them. Exit 1 on any failure.
+
+**Two detector fixes the harness found (`pitch.c`):**
+- A damp's last few ms doubled the note-on: the re-pluck test (the string not repeating itself a period
+  later) fires on the floor noise, which never repeats. A re-pluck must now stand ON_FLOOR over the floor,
+  as a pluck must.
+- Octave slips at the very end of a damp, env 2.3x the floor, where YIN reads noise: the note-off moves from
+  2x to 3x the floor (OFF_FLOOR).
+Before the fixes: 4 failures in seeds 1-3. After: 1 failure in 516 takes, seeds 1-12, DIFF mix;
+seed 1 SUM mix is clean.
+
+**Known miss, not tuned:** seed 12, string 1, re-pluck at h2a 1.8. The new pluck only lifts the envelope
+1.7x (ON_RATIO is 2), and at the same pitch the period test sees no break, so the second pluck is missed.
+The original detector misses it too. A re-pick of a still-ringing note at under +6 dB is not seen. Whether
+real re-picks are that soft is for the real captures to say before ON_RATIO is touched.
+
+**To score the user's takes:** capture as above, copy the `.npz`/`.f32` pairs into a directory, and run
+`python3 replay.py <dir>`. Unlabelled takes are reported straight away. Add a `.json` per take, with the
+pluck times read off the report, to have it scored.
+
 **CLOSED, pi_cap R2 inside the Pi's footprint (user, 2026-11-02, via the lead).** The
 user minds the cap reaching past the Pi, not the board's area. Now: cap y -62.45..-28.45 world,
 9.0 past the Pi's +Y edge (-37.45), toward the motors. Shift it -Y the full amount J1 allows:
