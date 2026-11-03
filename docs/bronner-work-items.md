@@ -1,5 +1,39 @@
 # bronner — open work items (2026-09-30)
 
+## MA730 switch: user chose MA730GQ-Z; STOPPED at the stock check (2026-11-03)
+
+**Ruling (user, via the lead, 2026-11-03):** MA730GQ-Z. In the user's words: "pins and center pad
+redone and firmware are no issue, priority is cost stock and performance (accuracy, reliability).
+Seems like MA730 fits the bill. $2 more does add up but it's not too bad".
+
+The lead set two checks to close before the board changes. If either failed, the work was to stop.
+- **Sensing point: PASS.** Datasheet rev 1.1, p.10, Figure 3 "Detection Point and Default Positive
+  Direction": the cross marks the sensitive point. It is 1.50 +-0.05 from the package edge (3.00 +-0.10
+  package, so at the centre) and 0.45 +-0.05 below the top (0.90 package). Zero angle: B pointing toward
+  the pin-1 edge; positive angle is clockwise seen from the top. The recommended magnet is a dia 5 x 3
+  N35 at a 1.5 air gap, at least 40 mT, with the sensor placed to 0.5 for good linearity (p.10).
+- **LCSC stock and part number: FAIL.** On LCSC's own site (Chrome, 2026-11-03), C161798 is not sold:
+  - the search for "MA730GQ-Z" gives "No exact matches";
+  - the search for "MA730" gives "No results";
+  - the product page JLC's own record links to (lcscGoodsUrl) shows "Part not found".
+  The 888 are JLCPCB's alone. The JLC record has componentSource "shop", an extended part, and
+  canPresaleNumber 872, so it reads as a JLC marketplace listing rather than LCSC stock. It is one
+  listing, with no restock behind it, at a 52-week factory lead time. DigiKey still has 4,958
+  (1589-1517-1-ND).
+
+**So the switch is not started.** Nothing on lever_sensor, its firmware or the BOM has changed.
+
+**Options for the user (via the lead):**
+1. MA730 anyway, from the JLC listing. 11 boards x 1 is well under 888, but JLC may drop the listing
+   at any time. A loose spare would come from DigiKey.
+2. MA730 bought at DigiKey and consigned to JLC for assembly: the stock is certain, at the cost of a
+   consignment step.
+3. AS5600-ASOM. LCSC's own site has it: C79815, 403 in stock, $1.727 at 1 (2026-11-03); DigiKey
+   ~49,900. It is I2C, so the board's bus stays, but it is SOIC-8 and 12 bit, and its sheet is not yet
+   read for accuracy or the field diagnostic.
+Leaning 2 if the MA730's accuracy is the point, or 3 if a single-source order matters more. The
+user's call.
+
 ## MT6701 replacement: survey and recommendation (lead, 2026-11-03) -- USER'S DECISION
 
 **Why.** U4 on lever_sensor is MT6701QT-STD, QFN-16 3x3. LCSC shows 0 stock under both of its
