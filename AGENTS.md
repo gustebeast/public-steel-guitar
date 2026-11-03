@@ -43,7 +43,7 @@ Two layers of reusable capability back a cadkit project:
     (print-validated); plain 45°-everywhere profiles cam apart along the up-ramp
     diagonal — don't reinvent this joint, call the library.
   - `cadkit.fitted_joint` — **print-fitted straight slide joints, for NEW work**.
-    `halves(tenon, socket, c, …)` with `clearance(tenon_mode, socket_mode)` uses
+    `halves(tenon, socket, c, …)` with `suggest(tenon, socket, length, tenons, fit, materials)` — clearance is PER JOINT — uses
     clearances measured per print pair (full length: up/up 0.45, N/N 0.55, N/down
     0.30 in PETG-GF with a 0.8 nozzle; `joint()`'s 0.15 default is far too tight). Corners are drawn at what prints and
     clearance is even all round. Provisional until full-length coupons are printed;
