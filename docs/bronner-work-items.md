@@ -46,7 +46,13 @@ Unmoved baselines through a scratch project: output_panel 1 FAIL (silk 'B'), opt
 PCBFLOW_PROJECT = elec, so at least its FAIL depends on the project; cause not found. pi_cap's
 two are not yet explained. So clean means no worse than the unmoved board, not 0 FAIL.
 
-**Next.** pi_cap's baseline FAILs. Retrying close_last one blamed net at a time changed nothing on any of the 45 moves (tried twice, reverted), so optical's remaining misses are not the retry logic.
+**pi_cap's baseline FAILs: not the board's (2026-11-02).** Both come from finishing a copy with no
+project: the default labeller writes no glyph record (A19) and J4's back-face reason is not read
+(A17). The same copy with `PCBFLOW_PROJECT=elec` finishes 0 FAIL, as does the board in place.
+output_panel's project-dependent FAIL is likely the same. finish now ends its summary line with
+`NO PROJECT` in that case (cadkit f39f085).
+
+**Next.** optical's 6 misses of 16. Retrying close_last one blamed net at a time changed nothing on any of the 45 moves (tried twice, reverted), so optical's remaining misses are not the retry logic.
 
 **First real string (R1 board on the user's MSA, 2026-11-02).** String 1 aligned, duty 32, none
 clipped. 1A and 1B both read 293.3 Hz with harmonics to 1760 Hz. Plucks about 200-650 rms over
