@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="PSG">
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+<title>PSG Pitch</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden;
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; touch-action: none; display: block;
+    position: fixed; left: 50%; top: 50%; transform-origin: 50% 50%; transition: none; }
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="Pitch controls"></canvas>
+<script src="font.js"></script>
+<script>
+"use strict";
+// The instrument's screen is a 1-bit white-on-black panel (NHD-2.7-12864WDW3: 128 x 64 over
+// 61.4 x 30.7 mm, a 0.48 mm pixel). This is a bigger panel of the same make: the whole phone,
+// at about the same pixel size (PIXEL_CSS, ~0.48 mm on a phone), every grid pixel a whole
+// number of device pixels.
+// ONE LAYOUT, PORTRAIT, HOWEVER THE PHONE THINKS IT IS TURNED (user): a phone lying flat on the
+// instrument flips orientation on its own. Android installs lock it (manifest, and
+// screen.orientation.lock on the first press); everywhere else, iPhone Safari included, the
+// canvas is turned back by the browser's own rotation, so the buttons stay put on the glass.
+const PIXEL_CSS = 3, GAP = 2, BORDER = 2;
+let GW = 1, GH = 1, HEAD = 12, LS = 1, AS = 2;
+const BUTTONS = [
+  {b: "pu", label: "PITCH", up: true, col: 0}, {b: "pd", label: "PITCH", up: false, col: 0},
+  {b: "hu", label: "HALF", up: true, col: 1},  {b: "hd", label: "HALF", up: false, col: 1},
+  {b: "wu", label: "WHOLE", up: true, col: 2}, {b: "wd", label: "WHOLE", up: false, col: 2},
+];
+
+function layout() {
+  // PITCH, HALF, WHOLE as rows, up on the left
+  const cols = 2, rows = 3;
+  HEAD = 7 * 2 + 6;
+  const bw = Math.floor((GW - GAP * (cols + 1)) / cols), bh = Math.floor((GH - HEAD - GAP * rows) / rows);
+  const ox = Math.floor((GW - (bw * cols + GAP * (cols - 1))) / 2);
+  BUTTONS.forEach(k => {
+    const c = k.up ? 0 : 1, r = k.col;
+    k.x = ox + c * (bw + GAP); k.y = HEAD + r * (bh + GAP); k.w = bw; k.h = bh;
+  });
+  // the label at the largest whole scale that fits WHOLE, the arrow at what is left
+  // (the label leaves room for an arrow at least its own size; the arrow is up to three times it)
+  LS = Math.max(1, Math.min(3, Math.floor((bw - 4 * BORDER) / textW("WHOLE")),
+                            Math.floor((bh - 6 * BORDER) / 14)));
+  AS = Math.max(1, Math.min(3 * LS, Math.floor((bw - 4 * BORDER) / 5),
+                            Math.floor((bh - 7 * LS - 6 * BORDER) / 7)));
+}
+
+const cv = document.getElementById("c"), g = cv.getContext("2d");
+let img = null, px = null;
+let state = {base: 0, bend: 0, can: {}, link: "..."}, online = false;
+const held = new Map();                       // pointerId -> button
+
+function set(x, y, on) { if (x >= 0 && y >= 0 && x < GW && y < GH) px[y * GW + x] = on ? 1 : 0; }
+function rect(x, y, w, h, on) { for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) set(i, j, on); }
+function frame(x, y, w, h, t, on, dashed) {
+  for (let i = 0; i < w; i++) for (let k = 0; k < t; k++) {
+    const d = !dashed || ((i >> 1) & 1) === 0;
+    set(x + i, y + k, on && d); set(x + i, y + h - 1 - k, on && d);
+  }
+  for (let j = 0; j < h; j++) for (let k = 0; k < t; k++) {
+    const d = !dashed || ((j >> 1) & 1) === 0;
+    set(x + k, y + j, on && d); set(x + w - 1 - k, y + j, on && d);
+  }
+}
+function textW(s, k = 1) { return (s.length * 6 - 1) * k; }
+function text(s, x, y, on, k = 1) {
+  for (const ch of s) {
+    const gl = FONT[ch] || FONT[" "];
+    for (let r = 0; r < 7; r++) for (let c = 0; c < 5; c++)
+      if (gl[r][c] === "1") rect(x + c * k, y + r * k, k, k, on);
+    x += 6 * k;
+  }
+}
+function fmt(v) { return (v >= 0 ? "+" : "-") + Math.abs(v).toFixed(2); }
+
+function draw() {
+  px.fill(0);
+  const lost = !online || state.link === "lost";
+  if (lost) rect(0, 0, GW, HEAD - GAP, 1);                     // inverted bar: no link
+  text(lost ? "NO LINK" : state.link === "mock" ? "MOCK" : "PSG", GAP + 2, 3, !lost, 2);
+  const v = fmt(state.base + state.bend);
+  text(v, GW - GAP - 2 - textW(v, 2), 3, !lost, 2);
+  for (const k of BUTTONS) {
+    const down = [...held.values()].includes(k.b), ok = state.can[k.b] !== false && online;
+    if (down) rect(k.x, k.y, k.w, k.h, 1);                    // pressed: inverted
+    frame(k.x, k.y, k.w, k.h, BORDER, true, !ok && !down);
+    // ink is white, or black on a pressed (inverted) button; a button at its limit keeps its
+    // name but loses its arrow and its border goes dashed
+    const top = k.y + ((k.h - 7 * LS - 3 * BORDER - 7 * AS) >> 1);
+    text(k.label, k.x + ((k.w - textW(k.label, LS)) >> 1), top, !down, LS);
+    if (ok || down) text(k.up ? "^" : "v", k.x + ((k.w - 5 * AS) >> 1), top + 7 * LS + 3 * BORDER, !down, AS);
+  }
+  for (let i = 0; i < px.length; i++) {
+    const c = px[i] ? 255 : 0, o = i * 4;
+    img.data[o] = img.data[o + 1] = img.data[o + 2] = c; img.data[o + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+}
+
+// the angle the browser has turned the page by: 0, 90, 180 or 270 (?angle= overrides, to test)
+const FORCE = new URLSearchParams(location.search).get("angle");
+function angle() {
+  let a = FORCE !== null ? +FORCE
+        : screen.orientation && typeof screen.orientation.angle === "number" ? screen.orientation.angle
+        : typeof window.orientation === "number" ? window.orientation : 0;
+  return ((Math.round(a / 90) * 90) % 360 + 360) % 360;
+}
+let ROT = 0, CW = 0, CH = 0;
+function fit() {
+  ROT = angle();
+  const side = ROT === 90 || ROT === 270;
+  const w = side ? window.innerHeight : window.innerWidth, h = side ? window.innerWidth : window.innerHeight;
+  const dpr = window.devicePixelRatio || 1;
+  const k = Math.max(1, Math.round(PIXEL_CSS * dpr));      // device pixels per grid pixel
+  GW = Math.floor(w * dpr / k); GH = Math.floor(h * dpr / k);
+  cv.width = GW; cv.height = GH;
+  CW = GW * k / dpr; CH = GH * k / dpr;
+  cv.style.width = CW + "px"; cv.style.height = CH + "px";
+  cv.style.transform = "translate(-50%, -50%) rotate(" + (-ROT) + "deg)";   // snaps: no transition
+  img = g.createImageData(GW, GH); px = new Uint8Array(GW * GH);
+  layout(); draw();
+}
+window.addEventListener("resize", fit);
+window.addEventListener("orientationchange", () => { fit(); setTimeout(fit, 250); });
+if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener("change", fit);
+
+// Android: full screen and a portrait lock, which both need a tap; tried once, on the first press
+let locked = false;
+function lockPortrait() {
+  if (locked) return;
+  locked = true;
+  const el = document.documentElement;
+  if (!el.requestFullscreen || !screen.orientation || !screen.orientation.lock) return;
+  el.requestFullscreen({navigationUI: "hide"}).then(() => screen.orientation.lock("portrait")).catch(() => {});
+}
+
+// ── the link ──────────────────────────────────────────────────────────────────
+let ws = null;
+function send(m) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); }
+function connect() {
+  ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws");
+  ws.onopen = () => { online = true; draw(); };
+  ws.onmessage = e => { state = JSON.parse(e.data); draw(); };
+  ws.onclose = () => { online = false; held.clear(); draw(); setTimeout(connect, 1000); };
+  ws.onerror = () => ws.close();
+}
+connect();
+setInterval(() => { if (held.size) send({t: "ping"}); }, 250);    // the server lets go after 1 s of silence
+
+// ── touch ─────────────────────────────────────────────────────────────────────
+function hit(e) {
+  // undo the counter-rotation: a touch is judged where it lands on the turned canvas
+  const dx = e.clientX - window.innerWidth / 2, dy = e.clientY - window.innerHeight / 2;
+  const t = ROT * Math.PI / 180, c = Math.round(Math.cos(t)), s = Math.round(Math.sin(t));
+  const u = c * dx - s * dy, v = s * dx + c * dy;
+  const x = (u + CW / 2) * GW / CW, y = (v + CH / 2) * GH / CH;
+  return BUTTONS.find(k => x >= k.x && x < k.x + k.w && y >= k.y && y < k.y + k.h);
+}
+cv.addEventListener("pointerdown", e => {
+  e.preventDefault();
+  lockPortrait();
+  const k = hit(e);
+  if (!k || state.can[k.b] === false || !online) return;
+  try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+  held.set(e.pointerId, k.b); send({t: "down", b: k.b}); draw();
+});
+function lift(e) {
+  const b = held.get(e.pointerId);
+  if (b === undefined) return;
+  held.delete(e.pointerId);
+  if (![...held.values()].includes(b)) send({t: "up", b: b});
+  draw();
+}
+cv.addEventListener("pointerup", lift);
+cv.addEventListener("pointercancel", lift);
+cv.addEventListener("lostpointercapture", lift);
+function letGo() { if (held.size) { held.clear(); send({t: "hide"}); draw(); } }
+document.addEventListener("visibilitychange", () => { if (document.hidden) letGo(); });
+window.addEventListener("pagehide", letGo);
+window.addEventListener("blur", letGo);
+for (const ev of ["contextmenu", "selectstart", "dblclick", "gesturestart"])
+  document.addEventListener(ev, e => e.preventDefault());
+document.addEventListener("touchmove", e => e.preventDefault(), {passive: false});
+fit();
+</script>
+</body>
+</html>
