@@ -44,8 +44,8 @@ Two layers of reusable capability back a cadkit project:
     diagonal — don't reinvent this joint, call the library.
   - `cadkit.fitted_joint` — **print-fitted straight slide joints, for NEW work**.
     `halves(tenon, socket, c, …)` with `clearance(tenon_mode, socket_mode)` uses
-    clearances measured per print pair (0.20–0.35 in PETG-GF with a 0.8 nozzle;
-    `joint()`'s 0.15 default is too tight). Corners are drawn at what prints and
+    clearances measured per print pair (full length: up/up 0.45, N/N 0.55, N/down
+    0.30 in PETG-GF with a 0.8 nozzle; `joint()`'s 0.15 default is far too tight). Corners are drawn at what prints and
     clearance is even all round. Provisional until full-length coupons are printed;
     see the JOINERY_README section.
   - `cadkit.board_geom` / `cadkit.board_check` / `cadkit/kicad_geom.py` /

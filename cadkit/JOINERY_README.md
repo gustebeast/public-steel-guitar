@@ -7,10 +7,10 @@ adding variants.
 ## Print-fitted joints (`fitted_joint.py`) — start here for NEW straight joints
 
 `fitted_joint.py` holds the newer rules, learned from the steel guitar's fit plates
-1–8 (2026-10). Its numbers were measured on PETG-GF with a 0.8 nozzle and 0.4
-layers. It is **provisional**: minimum-size coupons and the real sections as short
-coupons are done, but no full-length coupons have been printed yet. The full rule
-set, with the reasons, is in the module docstring.
+1–10 (2026-10). Its numbers were measured on PETG-GF with a 0.8 nozzle and 0.4
+layers. It is **provisional**: minimum-size coupons, the real sections as short
+coupons, and full-length coupons for three of the four pairs are done (up/down's is
+not). The full rule set, with the reasons, is in the module docstring.
 
 ```python
 from cadkit import fitted_joint as FJ
@@ -23,11 +23,17 @@ tenon, cavity, S = FJ.halves("N", "N", c, length, seat, host_w, size=None)
 - **Print modes per half:** `"N"` is nozzle-made (the profile lies in the layers).
   `"up"` is layer-made with the head toward the nozzle; as a socket, its mouth is
   on the bed. `"down"` is a layer-made socket with its mouth up.
-- **Measured clearances** (per side, for a long joint): N/N 0.35, N/up 0.30,
-  N/down 0.30, up/N 0.30, up/down 0.25, up/up 0.20. Use `MOUTH_UP_SIZE` with
-  up/down and `STANDING_SIZE` with up/up. All are far above `joint()`'s 0.15
-  default. Short friction-held joints run 0.05 tighter (`length="short"`).
-  Prints vary, so **err loose**.
+- **Measured clearances** (per side, for a long joint). **Full length**
+  (`FULL_LENGTH`, the steel guitar's real sites, 2026-10-22/27): **up/up 0.45**
+  (lever mount, 8 tenons), **N/N 0.55** (seam, 64 drop, 8 tenons), **N/down 0.30**
+  (endplate, confirmed). Step 1 only (minimum size, a floor): N/up 0.30, up/N 0.30,
+  up/down 0.25. `clearance(..., "long")` returns the full-length figure where there
+  is one. **Full length moved them by 0.15–0.25** (up/up was 0.20 at step 1), and
+  several tenons entering at once want more than one does, so treat a step-1-only
+  figure as the bottom of a bracket. Use `MOUTH_UP_SIZE` with up/down and
+  `STANDING_SIZE` with up/up. All are far above `joint()`'s 0.15 default. Short
+  friction-held joints run 0.05 tighter (`length="short"`). Prints vary, so
+  **err loose**.
 - **Corners are drawn at what prints:** nozzle-made at 2.0, layer-made at 0.8. The
   socket is the tenon's even offset by c, with matched radii and the seat c off the
   host. `halves()` asserts that the gap measured on the section is c.
