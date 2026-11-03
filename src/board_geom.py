@@ -152,7 +152,7 @@ _PANEL: dict = {}
 # in KiCad 10, a capital in this face stands 0.934 of the text size (1.308 at 1.4), and
 # the font's capital is 667 of a 1000 em. At the boards' 1.5 that is a 1.40 mm capital
 # and a 0.153 underscore bar here, as on the plot.
-SILK_FONT_FILE = "RennieMackintoshPSG-Bold.otf"
+SILK_FONT_FILE = "RennieMackintoshPublicSteelGuitar-Bold.otf"
 KICAD_CAP = 0.934                    # capital height / KiCad text size, measured
 SILK_FONT_CAP = 0.667 / KICAD_CAP    # 0.714 of an em per unit of text size
 

@@ -25,7 +25,7 @@ import numpy as np
 
 FS = 192000
 SLOTS = 4
-MAGIC = b"PSGO"
+MAGIC = b"OPTO"
 HEADER = struct.Struct("<4sBBHQ")
 
 

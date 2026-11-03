@@ -27,7 +27,7 @@ from cadkit import kicad_silk  # noqa: E402
 REV = "r1"                 # bumped by hand when a board is RE-ORDERED with changed copper
 
 # ⚠ THE INSTRUMENT'S LETTERING (user, 2026-10-07): every board, labels and designators
-# alike, in "Rennie Mackintosh PSG" Bold -- ITC's Rennie Mackintosh Bold with its
+# alike, in "Rennie Mackintosh Public Steel Guitar" Bold -- ITC's Rennie Mackintosh Bold with its
 # ornamental underscore redrawn as a bar (tools/make_silk_font.py; the .otf is licensed,
 # lives in elec/fonts/, is NOT in the repository, and has to be INSTALLED for the user
 # to get the boards as ordered).
@@ -40,12 +40,12 @@ REV = "r1"                 # bumped by hand when a board is RE-ORDERED with chan
 # fab's 0.15 minimum (at 1.4: 0.143). There is no smaller size to fall back to.
 # ⚠ WHAT IT MAY PRINT, AND WHICH FILE (quality A19). This is a display face: ITC drew "+"
 # as a TH ligature, "=" as TT, and ornaments on < > & ~ and most of the lower case. The
-# PSG file redraws "+" and "_" plain. `glyphs` is every character LOOKED AT, drawn from
-# the PSG file (2026-10-07: the capitals, the figures, r for the revision mark -- it
+# modified copy redraws "+" and "_" plain. `glyphs` is every character LOOKED AT, drawn from
+# the modified copy (2026-10-07: the capitals, the figures, r for the revision mark -- it
 # draws as a small capital -- and the punctuation below); a label needing any other
 # stops the labeller. `widths` proves the installed file is that one: its "+" is 0.97
 # of an H wide, and the ornament it replaces 1.42.
-SILK_FACE = {"family": "Rennie Mackintosh PSG", "bold": True, "size": 1.5,
+SILK_FACE = {"family": "Rennie Mackintosh Public Steel Guitar", "bold": True, "size": 1.5,
              "fallback": True,
              "glyphs": "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789r+_-/.()#%:,",
              "widths": {"+/H": 0.97}}

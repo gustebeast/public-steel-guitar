@@ -70,7 +70,7 @@ boot: $(B)/boot.bin
 	wlink flash --address 0x08000000 $<
 
 usb: $(B)/app.bin
-	python3 psgflash.py $<
+	python3 usbflash.py $<
 
 clean:
 	rm -rf $(B)

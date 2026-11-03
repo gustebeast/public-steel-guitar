@@ -3,7 +3,7 @@
  * The board (CH32V307WCU6, 8 MHz crystal) shows up on its USB as a serial port. The host
  * sends CAN frames to transmit, either now or at a time on THIS board's microsecond clock,
  * and gets every received frame back with the time it arrived. Nothing here knows what a
- * SERVO42D is: the motor protocol lives on the host (bench/psgbench/servo.py), where it is
+ * SERVO42D is: the motor protocol lives on the host (bench/guitarbench/servo.py), where it is
  * a text edit to correct once a real motor answers.
  *
  *   bus 0 = bus A, CAN1 remapped to PB8 (RX) / PB9 (TX)  -- the motors
@@ -11,7 +11,7 @@
  *
  * Lines from the host (ASCII, '\n'; ids and data in hex, the rest decimal):
  *   B                         back to the loader (../output_panel/boot.c)
- *   ?                         -> I psg-motor-bench <version> <t_us>
+ *   ?                         -> I public-steel-guitar-motor-bench <version> <t_us>
  *   T                         -> T <t_us>
  *   B <bus> <bit/s>           -> OK B ...      set a bus's bit rate (default 500000)
  *   S <bus> <id> <data>       send now (as sequence 0)
@@ -259,7 +259,7 @@ static void line(const char *s)
     uint64_t v; job_t j; char l[48], *p;
     switch (*s) {
     case '?':
-        say("I psg-motor-bench "); p = w_dec(l, VERSION); *p++ = ' '; p = w_dec(p, now_us());
+        say("I public-steel-guitar-motor-bench "); p = w_dec(l, VERSION); *p++ = ' '; p = w_dec(p, now_us());
         *p++ = '\n'; out_put(l, (uint16_t)(p - l)); return;
     case 'T':
         p = l; *p++ = 'T'; *p++ = ' '; p = w_dec(p, now_us()); *p++ = '\n';

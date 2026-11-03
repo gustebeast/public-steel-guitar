@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Write a board's application over USB, through its loader (boot.c).
 
-    python3 psgflash.py build/app.bin
-    python3 psgflash.py --ids cafe:4007,cafe:4006 --app 0x40000 --page 4096 build/app/optical.bin
+    python3 usbflash.py build/app.bin
+    python3 usbflash.py --ids cafe:4007,cafe:4006 --app 0x40000 --page 4096 build/app/optical.bin
 
 Finds the board's serial port (output_panel 1a86:fe0c; optical cafe:4007 in its loader,
 cafe:4006 in its application, whose first port is the one that listens), asks a running application to go back to the

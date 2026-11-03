@@ -4,17 +4,17 @@ import time
 import numpy as np
 import pytest
 
-from psgbench import pitch, servo
-from psgbench.link import CanLink
-from psgbench.run import Move, run
-from psgbench.sim import SimServo, string_audio
+from guitarbench import pitch, servo
+from guitarbench.link import CanLink
+from guitarbench.run import Move, run
+from guitarbench.sim import SimServo, string_audio
 
 
 @pytest.fixture
 def rig():
     sim = SimServo(can_id=1)
     sim.start()
-    link = CanLink(channel="psg-sim", interface="virtual")
+    link = CanLink(channel="guitar-sim", interface="virtual")
     s = servo.Servo(link, 1)
     s.enable()
     time.sleep(0.05)
@@ -81,19 +81,19 @@ def test_two_moves_in_order(rig):
 
 def test_a_plan_past_the_limit_is_refused_before_anything_moves(rig):
     link, sim, s = rig
-    from psgbench.run import TravelError
+    from guitarbench.run import TravelError
     with pytest.raises(TravelError):
         run(link, [Move(0.1, 1, 2000), Move(0.4, 1, 2000), Move(0.7, 1, -4000)], 3000)
     assert s.position() == 0
 
 
 def test_every_scenario_ends_where_it_began():
-    from psgbench import scenarios
+    from guitarbench import scenarios
     for name in scenarios.SCENARIOS:
         moves, reach = scenarios.plan(name, 1, 400)
         assert reach <= 4 * 400, name
 
 
 def test_string_lookup():
-    from psgbench import optical
+    from guitarbench import optical
     assert [optical.string_inputs(n) for n in (1, 2, 3, 10)] == [(0, 3, 2), (0, 1, 0), (1, 3, 2), (4, 1, 0)]

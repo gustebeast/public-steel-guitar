@@ -19,7 +19,7 @@ TWO FACES OF TYPE ARE ON TRIAL, and the print decides between them:
 
   * SEVEN SEGMENTS (`mark`): one stroke width everywhere by construction, so the V is
     exact and the stroke can be set in beads -- two of them in a figure 8 mm tall.
-  * THE INSTRUMENT'S OWN FONT (`font_mark`): Rennie Mackintosh PSG, the face on the
+  * THE INSTRUMENT'S OWN FONT (`font_mark`): Rennie Mackintosh Public Steel Guitar, the face on the
     boards and the display. Its strokes are 0.11 of its figure height -- 0.75 mm in a
     7 mm figure, ONE bead at 7.3 and two only at 14.5 -- so on a small part it is a
     hairline where the segments are a groove. It is cut the same way, each glyph tapered

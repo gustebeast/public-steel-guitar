@@ -1,9 +1,9 @@
 """Run one bench scenario and print what it found.
 
-    python3 -m psgbench.bench step --sim
-    python3 -m psgbench.bench sizes --motor 1 --string 3 --counts 400 --limit 2000 \\
+    python3 -m guitarbench.bench step --sim
+    python3 -m guitarbench.bench sizes --motor 1 --string 3 --counts 400 --limit 2000 \\
         --link motor --optical /dev/ttyACM1,/dev/ttyACM2
-    python3 -m psgbench.bench repeat --motor 1 --counts 400 --limit 500 --link can:can0 --wav take.wav
+    python3 -m guitarbench.bench repeat --motor 1 --counts 400 --limit 500 --link can:can0 --wav take.wav
 
 --link    motor:<port>   through the motor controller's USB (firmware/motor_ctrl)
           can:<channel>  through a USB-CAN adapter (socketcan)
@@ -54,7 +54,7 @@ def main(argv=None) -> int:
         from .servo import Servo
         from .sim import SimServo, string_audio
         sim = SimServo(can_id=a.motor); sim.start()
-        link = CanLink(channel="psg-sim", interface="virtual")
+        link = CanLink(channel="guitar-sim", interface="virtual")
         Servo(link, a.motor).enable(); time.sleep(0.05)
         limit = a.limit if a.limit is not None else reach
     else:

@@ -29,9 +29,9 @@ from fontTools.pens.transformPen import TransformPen
 from fontTools.ttLib import TTFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-FAMILY = "Rennie Mackintosh PSG"          # what KiCad is told to use
+FAMILY = "Rennie Mackintosh Public Steel Guitar"          # what KiCad is told to use
 STYLE = "Bold"
-OUT = os.path.join(ROOT, "elec", "fonts", "RennieMackintoshPSG-Bold.otf")
+OUT = os.path.join(ROOT, "elec", "fonts", "RennieMackintoshPublicSteelGuitar-Bold.otf")
 BAR_TOP = -22                             # font units: the bar's top, just under the baseline
 PLUS_ARM = 180                            # centre to arm tip: a 360 cross, about half a capital
 PLUS_ADV = 450                            # advance, near the digits'
