@@ -37,9 +37,9 @@ TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": 
 
 
 def icon_png(size=180) -> bytes:
-    """The home-screen icon: white "STEEL" on black, 1-bit, scaled by whole pixels."""
+    """The home-screen icon: white "PUBLIC" on black, 1-bit, scaled by whole pixels."""
     from font import text_bits
-    bits, w, h = text_bits("STEEL")
+    bits, w, h = text_bits("PUBLIC")
     k = max(1, (size * 3 // 5) // w)
     ox, oy = (size - w * k) // 2, (size - h * k) // 2
     rows = []
