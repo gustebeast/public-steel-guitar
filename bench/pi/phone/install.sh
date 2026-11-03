@@ -1,7 +1,7 @@
 #!/bin/bash
 # The phone page on the Pi, from this checkout:  sudo bench/pi/phone/install.sh
 # Names the Pi public-steel-guitar (avahi publishes public-steel-guitar.local), and runs
-# server.py (a copy, in /opt/psg) on ports 80 and 443, as you, from boot. docs/phone-ui.md.
+# server.py (a copy, in /opt/public-steel-guitar) on ports 80 and 443, as you, from boot. docs/phone-ui.md.
 set -e
 HERE=$(cd "$(dirname "$0")" && pwd)
 apt-get install -y avahi-daemon python3-serial openssl
@@ -14,7 +14,7 @@ usermod -aG dialout "$U"
 # HTTPS: a CA made here, once, and a server certificate from it for every name the Pi
 # answers to. Install the CA on the phone (http://public-steel-guitar.home/ca.crt) and the
 # page loads with no warning. docs/phone-ui.md.
-T=/var/lib/psg-phone/tls
+T=/var/lib/public-steel-guitar-phone/tls
 if [ ! -f "$T/server.crt" ]; then
   mkdir -p "$T"
   openssl req -x509 -newkey rsa:2048 -nodes -days 3650 -subj "/CN=public-steel-guitar local CA" \
@@ -34,15 +34,14 @@ if [ ! -f "$T/server.crt" ]; then
 fi
 chown -R "$U" "$T"
 # The service runs a copy in /opt, so an edit in the checkout cannot take it down mid-use.
-# Run this again after changing the page or psgbench.
-APP=/opt/psg/bench
-mkdir -p "$APP"
-rm -rf "$APP/pi" "$APP/psgbench"
-cp -r "$HERE/.." "$APP/pi"
-cp -r "$HERE/../../psgbench" "$APP/psgbench"
-sed "s/^User=.*/User=$U/" "$HERE/../psg-phone.service" > /etc/systemd/system/psg-phone.service
+# Run this again after changing anything in bench/.
+APP=/opt/public-steel-guitar/bench
+mkdir -p "$(dirname "$APP")"
+rm -rf "$APP"
+cp -r "$HERE/../.." "$APP"
+sed "s/^User=.*/User=$U/" "$HERE/../public-steel-guitar-phone.service" > /etc/systemd/system/public-steel-guitar-phone.service
 systemctl daemon-reload
-systemctl enable avahi-daemon psg-phone
-systemctl restart psg-phone
+systemctl enable avahi-daemon public-steel-guitar-phone
+systemctl restart public-steel-guitar-phone
 systemctl restart avahi-daemon
 echo "open https://public-steel-guitar.home on a phone on the same network (CA: http://public-steel-guitar.home/ca.crt)"

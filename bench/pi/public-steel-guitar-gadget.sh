@@ -4,7 +4,7 @@
 # The lead's VBUS is open on purpose, so nothing here may wait on it.
 set -e
 modprobe libcomposite
-G=/sys/kernel/config/usb_gadget/psg
+G=/sys/kernel/config/usb_gadget/public-steel-guitar
 if [ "$1" = stop ]; then
     echo "" > "$G/UDC" || true
     rm -f "$G/configs/c.1/acm.usb0"
@@ -19,7 +19,7 @@ echo 0x0200 > "$G/bcdUSB"
 mkdir -p "$G/strings/0x409" "$G/configs/c.1/strings/0x409" "$G/functions/acm.usb0"
 echo "Public Steel Guitar" > "$G/strings/0x409/manufacturer"
 echo "Public Steel Guitar" > "$G/strings/0x409/product"
-echo "psg" > "$G/configs/c.1/strings/0x409/configuration"
+echo "public-steel-guitar" > "$G/configs/c.1/strings/0x409/configuration"
 echo 100 > "$G/configs/c.1/MaxPower"
 ln -sf "$G/functions/acm.usb0" "$G/configs/c.1/"
 for _ in $(seq 100); do

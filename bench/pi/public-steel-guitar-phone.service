@@ -4,16 +4,16 @@ After=network-online.target avahi-daemon.service
 Wants=network-online.target
 
 [Service]
-# install.sh copies bench/pi and bench/psgbench here
-WorkingDirectory=/opt/psg/bench/pi/phone
-ExecStart=/usr/bin/python3 server.py --port 80 --state /var/lib/psg-phone/state.json --tls-dir /var/lib/psg-phone/tls
+# install.sh copies bench/ here
+WorkingDirectory=/opt/public-steel-guitar/bench/pi/phone
+ExecStart=/usr/bin/python3 server.py --port 80 --state /var/lib/public-steel-guitar-phone/state.json --tls-dir /var/lib/public-steel-guitar-phone/tls
 Restart=always
 RestartSec=2
 # install.sh writes the user who ran it: the bench scripts' user
-User=psg
+User=INSTALLER
 SupplementaryGroups=dialout
 AmbientCapabilities=CAP_NET_BIND_SERVICE
-StateDirectory=psg-phone
+StateDirectory=public-steel-guitar-phone
 
 [Install]
 WantedBy=multi-user.target

@@ -6,8 +6,8 @@ Requires=sys-kernel-config.mount
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/local/bin/psg-gadget.sh
-ExecStop=/usr/local/bin/psg-gadget.sh stop
+ExecStart=/usr/local/bin/public-steel-guitar-gadget.sh
+ExecStop=/usr/local/bin/public-steel-guitar-gadget.sh stop
 
 [Install]
 WantedBy=multi-user.target
