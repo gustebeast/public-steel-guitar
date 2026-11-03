@@ -63,19 +63,19 @@
   },
   "chassis_1": {
    "material": "petg-gf",
-   "volume_mm3": 648260.1
+   "volume_mm3": 615053.9
   },
   "chassis_1_light": {
    "material": "pctg",
-   "volume_mm3": 17190.1
+   "volume_mm3": 16371.5
   },
   "chassis_2": {
    "material": "petg-gf",
-   "volume_mm3": 591970.5
+   "volume_mm3": 625246.7
   },
   "chassis_2_light": {
    "material": "pctg",
-   "volume_mm3": 13084.9
+   "volume_mm3": 13903.5
   },
   "coil_mandrel": {
    "material": null,
