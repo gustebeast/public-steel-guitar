@@ -2,6 +2,7 @@
 import asyncio
 import base64
 import json
+import math
 import os
 import socket
 import struct
@@ -66,12 +67,13 @@ def test_driver_moves_fast_for_steps_and_slow_for_creep():
     m.log.clear()
     p.press("a", "hu")
     d.step(0.05)
-    assert {r[3] for r in m.log} == {P.FAST_RPM}
+    half = math.ceil(P.turns(1.0) / P.STEP_S * 60.0)          # a half step in STEP_S
+    assert {r[3] for r in m.log} == {half}
     assert m.log[0][2] == round(P.turns(1.0) * P.COUNTS_PER_TURN)
     p.release("a", "hu")
     m.log.clear()
     d.step(0.05)
-    assert m.log[0][2] == 0 and m.log[0][3] == P.FAST_RPM
+    assert m.log[0][2] == 0 and m.log[0][3] == half
     p.press("a", "pu")
     p.tick(0.05)
     m.log.clear()

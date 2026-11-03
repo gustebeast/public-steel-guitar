@@ -28,9 +28,11 @@ RAISE_MAX = 4.0           # semitones over open, base + bend
 LOWER_MIN = -12.0
 CREEP_ST_S = 0.35         # pitch up / down: 35 cents a second
 SLOW_RPM_MIN = 1
-# half and whole steps: half the 3000 rpm of bronner's 11-02 step (90 % of a whole tone in
-# 39 ms), user 2026-11-03
-FAST_RPM, FAST_ACC = 1500, 0
+FAST_RPM, FAST_ACC = 3000, 0       # the top speed: bronner's 11-02 step, a whole tone in 39 ms
+# HALF AND WHOLE STEPS TAKE STEP_S, at the even speed that covers each string's own distance
+# in it (user, 2026-11-03: the 3000 rpm step was instant, and so was 1500 -- a half step is a
+# quarter turn, 5 ms against 10). 0.25 s is about a pedal press.
+STEP_S = 0.25
 STRINGS = tuple(range(1, 11))       # string N = CAN id N on bus A
 # Which way a motor turns to RAISE pitch. Not known until a string is on a motor: the bench
 # finds it (docs/phone-ui.md) and sets it here, or with --raise-sign.
@@ -308,15 +310,16 @@ class Driver:
         bend = self.p.bend[1] if self.p.bend else 0.0
         if was is not None and abs(t - was) < 1e-6:
             return
-        fast = was is None or bend != self._bend_sent      # a step pressed or let go: quick
+        step = bend != self._bend_sent              # a step pressed or let go: over STEP_S
         self._bend_sent = bend
         for s in self.m.strings:
             c = self.counts(s, t)
-            if fast:
-                rpm, acc = FAST_RPM, FAST_ACC
+            acc = FAST_ACC
+            if was is None:
+                rpm = FAST_RPM
             else:
                 d = abs(c - self.counts(s, was)) / COUNTS_PER_TURN
-                rpm = int(min(FAST_RPM, max(SLOW_RPM_MIN, math.ceil(1.5 * d / max(dt, 1e-3) * 60.0))))
-                acc = FAST_ACC
+                per = STEP_S if step else max(dt, 1e-3) / 1.5
+                rpm = int(min(FAST_RPM, max(SLOW_RPM_MIN, math.ceil(d / per * 60.0))))
             self.m.move(s, c, rpm, acc)
         self.sent = t
