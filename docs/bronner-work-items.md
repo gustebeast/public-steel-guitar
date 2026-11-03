@@ -82,7 +82,7 @@ damps on each string, recorded with `python3 -m psgbench.panel capture --strings
 --seconds 10` (writes /tmp/take_s<N>.npz and .f32), then `bench/pi/pitch/pitchrun
 /tmp/take_s<N>.f32`. Hands off, three strings 3 s each: 0 note-ons, 0 voiced frames.
 
-**LOW PRIORITY, pi_cap R2 inside the Pi's footprint (user, 2026-11-02, via the lead).** The
+**CLOSED, pi_cap R2 inside the Pi's footprint (user, 2026-11-02, via the lead).** The
 user minds the cap reaching past the Pi, not the board's area. Now: cap y -62.45..-28.45 world,
 9.0 past the Pi's +Y edge (-37.45), toward the motors. Shift it -Y the full amount J1 allows:
 J1 needs 4.5 to the edge and the Pi's header is 3.5 in, so 8.0, leaving 1.0 past the Pi's edge.
@@ -105,6 +105,10 @@ the SD end, y_board -9..-1, its IDC plug hanging past the Pi's end (a plug, not 
 choice for the user: (A) the foot drop leaves the cap (chained from the fret strip or fed from
 motor_ctrl), then the cap fits inside the Pi but for J1's 1.0; (B) leave J6 hanging past the
 Pi's +Y edge, the rest inside; (C) leave the cap as it is.
+
+**CLOSED (user, 2026-11-03): C, the cap stays as it is.** B would not shrink the outline: J6's
+body would still reach 9-10 mm past the Pi's edge against about 11 now. Only A would, and the
+user chose not to move the foot drop for it.
 
 **First real string (R1 board on the user's MSA, 2026-11-02).** String 1 aligned, duty 32, none
 clipped. 1A and 1B both read 293.3 Hz with harmonics to 1760 Hz. Plucks about 200-650 rms over
