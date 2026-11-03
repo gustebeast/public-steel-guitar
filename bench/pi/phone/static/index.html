@@ -34,7 +34,7 @@
 // screen.orientation.lock on the first press); everywhere else, iPhone Safari included, the
 // canvas is turned back by the browser's own rotation, so the buttons stay put on the glass.
 const PIXEL_CSS = 3, GAP = 2, BORDER = 2;
-let GW = 1, GH = 1, HEAD = 12, LS = 1, AS = 2;
+let GW = 1, GH = 1, HEAD = 12, HS = 2, LS = 1, AS = 2;
 const BUTTONS = [
   {b: "pu", label: "PITCH", up: true, col: 0}, {b: "pd", label: "PITCH", up: false, col: 0},
   {b: "hu", label: "HALF", up: true, col: 1},  {b: "hd", label: "HALF", up: false, col: 1},
@@ -44,7 +44,10 @@ const BUTTONS = [
 function layout() {
   // PITCH, HALF, WHOLE as rows, up on the left
   const cols = 2, rows = 3;
-  HEAD = 7 * 2 + 6;
+  // the header: double size where its widest pair fits, NO LINK beside -12.00, else single
+  // (user: on a narrow phone PUBLIC ran into +0.00). Sized for the widest so it never jumps.
+  HS = textW("NO LINK", 2) + textW("-12.00", 2) + 2 * (GAP + 2) + 6 <= GW ? 2 : 1;
+  HEAD = 7 * HS + 6;
   const bw = Math.floor((GW - GAP * (cols + 1)) / cols), bh = Math.floor((GH - HEAD - GAP * rows) / rows);
   const ox = Math.floor((GW - (bw * cols + GAP * (cols - 1))) / 2);
   BUTTONS.forEach(k => {
@@ -91,9 +94,9 @@ function draw() {
   px.fill(0);
   const lost = !live();
   if (lost) rect(0, 0, GW, HEAD - GAP, 1);                     // inverted bar: no link
-  text(lost ? "NO LINK" : state.link === "mock" ? "MOCK" : "PUBLIC", GAP + 2, 3, !lost, 2);
+  text(lost ? "NO LINK" : state.link === "mock" ? "MOCK" : "PUBLIC", GAP + 2, 3, !lost, HS);
   const v = fmt(state.base + state.bend);
-  text(v, GW - GAP - 2 - textW(v, 2), 3, !lost, 2);
+  text(v, GW - GAP - 2 - textW(v, HS), 3, !lost, HS);
   for (const k of BUTTONS) {
     const down = [...held.values()].includes(k.b), ok = state.can[k.b] !== false && live();
     if (down) rect(k.x, k.y, k.w, k.h, 1);                    // pressed: inverted
