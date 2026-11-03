@@ -1902,7 +1902,7 @@ def mctrl_floor_ports():
     c = MCTRL_PORT_CLR
     return [box_at(k[1] - k[0] + 2 * c, yb - ya + 2 * c, h,
                    x=(k[0] + k[1]) / 2, y=(ya + yb) / 2, z=z0 + h / 2)
-            for k, ya, yb in runs] + [mctrl_wire_relief()]
+            for k, ya, yb in runs] + ([mctrl_wire_relief()] if BG.MOTOR_CTRL_REV == 1 else [])
 
 
 # ⚠ J7's LOWER WAYS ARE BELOW THE FLOOR'S TOP, AND THEIR WIRES HAD NO WAY OUT (2026-10-06).
@@ -1914,6 +1914,8 @@ def mctrl_floor_ports():
 # trench they leave through: from the plug's face, wide enough for the two to step sideways
 # and come up one behind the other to the heights ways 1 and 2 leave at (wiring.py draws
 # them there), open at the top, and through the floor's skin into the hollow under it.
+# R1 ONLY: R2 stands J7 13.90 down the board, its lowest way at z -67.6, all four over
+# the floor's top, so its mated plug opens no port and there is no trench.
 MCTRL_J7_LEAD = 1.5             # the plug's face to the first of the two risers
 MCTRL_J7_PITCH = 1.6            # riser to riser: an O1.3 conductor and 0.3 of air
 MCTRL_J7_SIDE = -1.7            # the side-step, in world Y: beside ways 1 and 2's own line

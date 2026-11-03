@@ -52,7 +52,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
+OUT_DIR = (os.environ.get("MOTOR_CTRL_OUT")   # a trial or R1 rebuild goes to a COPY, never mid-run
+           or os.path.join(os.path.dirname(os.path.abspath(__file__)), "out"))
 os.makedirs(OUT_DIR, exist_ok=True)
 os.chdir(OUT_DIR)
 
@@ -92,6 +93,42 @@ def _c(tag, value, desc, pkg="Capacitor_SMD:C_0402_1005Metric"):
     return Part(name="C", ref_prefix="C", ref=tag, tag=tag, dest="NETLIST", tool="skidl",
                 value=value, description=desc, footprint=pkg,
                 pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
+
+
+def _usb_c(gnd, vbus, dm, dp):
+    """R2's J4 (work items R2 backlog 0; user 2026-10-15 and 10-31: USB on a real socket and
+    a stock cable from R2 on, never on a hand-crimped JST). A VERTICAL receptacle, so the plug
+    still goes in where R1's PH did -- world +X, the mating direction this board's J4 has
+    always had -- and the lead to the Pi is a stock USB-C to USB-A cable.
+
+    ⚠ VERTICAL USB-C PARTS STOCKED AT JLC ARE MOSTLY SMD FOR A 0.8 BOARD (SHOU HAN TYPE-C 16P
+    LTH6.8 / 16PLT-H6.5: "RECOMMENDED PCB THICKNESS 0.8"); this board is 1.6. hanxia's H10.0
+    is through hole throughout, tails 2.1 under the seat, 1,765 in stock at $0.34 (2026-11-03).
+
+    The board is a USB DEVICE and runs off its own 24 V, so: CC1 and CC2 each 5.1k to ground
+    (Rd), which a USB-C host needs to see before it drives the port, and harmless on a C-to-A
+    cable; VBUS lands on nothing, as R1's way 1 did; both rows' D+ and D- joined (either
+    plug orientation); the shell to ground."""
+    j4 = Part(name="USB_C_Receptacle", ref_prefix="J", tag="J4", ref="J4", dest="NETLIST",
+              tool="skidl", value="HX-TYPE-C 16P 180 LC-B H10.0",
+              footprint="Steel:Hanxia_HX-TYPE-C-16P-180-LC-B-H10.0_Vertical",
+              description="USB 2.0 device to the Pi on a stock USB-C to USB-A cable, vertical "
+                          "receptacle, LCSC C49261584",
+              pins=[Pin(num=n, func=P) for n in
+                    ("A1", "A4", "A5", "A6", "A7", "A8", "A9", "A12",
+                     "B1", "B4", "B5", "B6", "B7", "B8", "B9", "B12")]
+                   + [Pin(num="SH", func=P)])
+    gnd += j4["A1"], j4["A12"], j4["B1"], j4["B12"], j4["SH"]
+    vbus += j4["A4"], j4["A9"], j4["B4"], j4["B9"]
+    dp += j4["A6"], j4["B6"]
+    dm += j4["A7"], j4["B7"]
+    Net("J4_NC_A8").connect(j4["A8"])     # SBU1: USB 2.0 uses neither SBU
+    Net("J4_NC_B8").connect(j4["B8"])
+    for tag, pin, net in (("R24", "A5", "CC1"), ("R25", "B5", "CC2")):
+        r = _r(tag, "5k1", "J4 %s to ground: Rd, a USB-C device's pull-down" % net)
+        cc = Net(net)
+        cc += j4[pin], r[1]
+        gnd += r[2]
 
 
 def _bind(part, ways, nets):
@@ -581,15 +618,18 @@ def motor_ctrl():
     # VBUS IS DELIBERATELY UNCONNECTED, as it was on the USB-C: the board runs off the 24 V
     # rail, and taking VBUS as well would leave the Pi's supply and the instrument's
     # arguing over who holds the rail. It is a landing for a future VBUS-present sense.
-    usb = Part(name="B4B-PH-K-S", ref_prefix="J", tag="J4", ref="J4", dest="NETLIST",
-               tool="skidl",
-               value="B4B-PH-K-S",
-               footprint="Connector_JST:JST_PH_B4B-PH-K_1x04_P2.00mm_Vertical",
-               description="USB 2.0 link to the Pi (USB-A -> PH lead): VBUS n/c, GND, D-, D+, "
-                           "LCSC C131334",
-               pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(USB_WAYS)])
     vbus = Net("VBUS_NC")
-    _bind(usb, USB_WAYS, {"GND": gnd, "VBUS": vbus, "D-": dm, "D+": dp})
+    if REV == 1:
+        usb = Part(name="B4B-PH-K-S", ref_prefix="J", tag="J4", ref="J4", dest="NETLIST",
+                   tool="skidl",
+                   value="B4B-PH-K-S",
+                   footprint="Connector_JST:JST_PH_B4B-PH-K_1x04_P2.00mm_Vertical",
+                   description="USB 2.0 link to the Pi (USB-A -> PH lead): VBUS n/c, GND, D-, D+, "
+                               "LCSC C131334",
+                   pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(USB_WAYS)])
+        _bind(usb, USB_WAYS, {"GND": gnd, "VBUS": vbus, "D-": dm, "D+": dp})
+    else:
+        _usb_c(gnd, vbus, dm, dp)
     # ── 24 V -> 5 V FOR THE Pi, AND THE CROWBAR THAT MATTERS MORE ────────────
     # THE POWER BOARD IS GONE AND THIS IS IT (user, 2026-09-15). It was its own
     # PCB in the tray; merging it here deletes a board, a connector and a cable --
@@ -989,6 +1029,12 @@ def motor_ctrl():
 # +Y edge at 20.50 had only 0.65 mm of slack). Route FIRST, then move the centre, so a
 # routing failure stays separable from a placement failure.
 BOARD_W, BOARD_L = 61.8, 55.0
+
+# R1 (the board as ordered 2026-10-08, MOTOR_CTRL_REV=1) is every placement and note below as
+# they stood at that order; R2 (the default) is the backlog in docs/bronner-work-items.md,
+# "R2 BACKLOG, motor_ctrl", applied in the REV block under BOARD_NOTES.
+REV = int(os.environ.get("MOTOR_CTRL_REV", "2"))
+assert REV in (1, 2), "MOTOR_CTRL_REV is 1 (the board in hand) or 2"
 
 # THE MOUNTING EAR was added 2026-09-21 on the user's "having the screw adjacent ...
 # doesn't provide as strong of retention", and removed 2026-09-29 on their own report that
@@ -1860,6 +1906,65 @@ BOARD_NOTES["quality"] = {
 }
 
 
+# ── R2 (MOTOR_CTRL_REV=2, the default): the backlog in docs/bronner-work-items.md ─────────
+# Board frame -> world, standing: board +X is world DOWN (x 30.9 is the floor edge, z -80.85;
+# z = -49.95 - x), board Y is world Y, the parts face world +X.
+if REV != 1:
+    _pl = BOARD_NOTES["placements"]
+    # R2-0: J4 the vertical USB-C (see _usb_c), centred where R1's PH was; its two Rd beside
+    # it, clear of J5, on CC1 / CC2's short way to the receptacle's A5 / B5
+    _pl["J4"] = (-25.90, -19.50, 90.0)
+    _pl["R24"] = (-21.00, -12.10, 90.0)     # 2.0 apart: courtyard to courtyard, and J4 below
+    _pl["R25"] = (-21.00, -10.10, 90.0)     # / J5 above each clear by 0.6 or more
+    # R2-2: bus B's two side-entry PH +14 along the floor edge, toward the board's +Y edge,
+    # for finger room at the -X/-Y body adapter
+    _pl["J2"] = (24.92, 2.50, 90.0)
+    # J6 as far +Y as the +Y guide's +X cheek allows (its body ends 25.5, the cheek's sweep
+    # band starts 25.9): the band under J3, where mctrl_retention's -Z ledge stands, has to be
+    # clear of J2's and J6's floor ports, and of any part below J3, for 4 beads. So the
+    # column beside J2 restacks -Y of it: C28 up off the floor edge (its port sat in that
+    # band), bus B's ESD pair D4 / D5 one place down (D5 stood under J3).
+    _pl["J6"] = (24.92, 19.50, 90.0)
+    _pl["C28"] = (19.30, 0.50, 90.0)
+    _pl["D4"] = (19.60, 3.50, 90.0)
+    _pl["D5"] = (19.60, 6.50, 90.0)
+    # R2-1: J7 up out of the floor. Its mated XHP-4 reaches 6.2 either side of the row's
+    # centre along the row (world Z); with 0.5 over the floor's top (-71.5) the centre has to
+    # be at z -64.8 or higher, so board x 14.85 or less. 13.90: J6's courtyard (moved +Y
+    # above) starts at x 24.46, and J7's reaches 11.0 past its centre; lowest way z -67.6.
+    # C29 (24 V bypass at the inlet J3) steps -X out of its courtyard.
+    _pl["J7"] = (13.90, 19.83, 0.0)
+    _pl["C29"] = (5.90, 17.00, 0.0)
+    _tr = BOARD_NOTES["tracks"]
+    _i = next(i for i, t in enumerate(_tr) if t[0] == "+24V_LED" and t[3][-1] == (17.46, 19.83))
+    _tr[_i] = ("+24V_LED", "F.Cu", 0.65, [(-25.6, 19.7), (-23.41, 19.7), (-22.03, 18.32),
+                                          (-19.36, 18.32), (-12.69, 25.0), (9.3, 25.0),
+                                          (10.15, 24.15), (10.15, 19.83)])
+    _i = next(i for i, t in enumerate(_tr) if t[0] == "+24V" and t[3][-1] == (7.52, 17.0))
+    _tr[_i] = ("+24V", "F.Cu", 0.3, [(2.85, 14.7), (4.75, 14.7), (5.42, 15.37), (5.42, 17.0)])
+    # R2-3 (a shoulder in the -Y edge for a chassis ledge) is NOT built: a ledge in a notch
+    # also stops the board's lower half on the way in, and a step (the lower -Y edge cut back)
+    # needs the strip C1 / TP2 / D1 stand in. The -Z stop stays mctrl_retention's post under
+    # J3, as on R1 -- which is what fixes J6's and C28's spots above.
+    _q = BOARD_NOTES["quality"]["unconnected"]
+    del _q["J4.1"]          # VBUS is on VBUS_NC, all four of its pins together: not "unconnected"
+    _q["J4.[AB]8"] = "USB-C SBU1 / SBU2: USB 2.0 uses neither"
+    # R2 moved the parts round U4's east pins and SENSE_24V no longer crosses that via row
+    del BOARD_NOTES["quality"]["return_slot_ok"]["SENSE_24V"]
+    BOARD_NOTES["quality"].setdefault("connector_labels", {})["J6"] = {"back_only":
+        "R2: J6 moved +15 to the board's +Y corner with J7 and C26 against it; the labeller "
+        "finds no free front site for its block (run 2026-11-03, r5); J2 beside it carries the "
+        "same four ways' words on the front, and J6's are on the back, behind it"}
+    BOARD_NOTES["quality"]["pinouts"]["HX-TYPE-C 16P 180 LC-B H10.0"] = (
+        "hanxia drawing HX-TYPE-C 16P 180 LC-B H10.0 TYPE C VERTICAL, 'RECOMMENDED P.C.B. "
+        "LAYOUT' (read 2026-11-03): row A A1 A4 A5 A6 A7 A8 A9 A12 and row B B12 B9 B8 B7 B6 "
+        "B5 B4 B1 at 1.00 pitch, the rows 1.65 apart, A1 opposite B12; the footprint "
+        "(Steel.pretty) draws the same rows, A at -Y, A1 at -X. Names are the USB Type-C "
+        "receptacle's own (GND A1/A12/B1/B12, VBUS A4/A9/B4/B9, CC1 A5, CC2 B5, D+ A6/B6, "
+        "D- A7/B7, SBU A8/B8), and a vertical receptacle is reversible, so the two rows "
+        "carrying the same pair is the whole of the pinout to get right")
+
+
 if __name__ == "__main__":
     motor_ctrl(tag="ctrl")
     ERC()
@@ -1867,9 +1972,10 @@ if __name__ == "__main__":
     netcheck.grounds_meet(os.path.join(OUT_DIR, "motor_ctrl.net"))
     netcheck.no_orphan_pins(os.path.join(OUT_DIR, "motor_ctrl.net"))
     import volts_decl                   # A16: generated, see volts_decl.py
-    volts_decl.into(BOARD_NOTES, "motor_ctrl")
-    import r1_silk                        # ordered R1: silk as sent
-    r1_silk.as_ordered(BOARD_NOTES)
+    volts_decl.into(BOARD_NOTES, "motor_ctrl" if REV != 1 else "motor_ctrl_r1")   # R1: as ordered
+    if REV == 1:
+        import r1_silk                    # ordered R1: silk as sent
+        r1_silk.as_ordered(BOARD_NOTES)
     with open(os.path.join(OUT_DIR, "motor_ctrl.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.1f x %.1f mm, %d placements"

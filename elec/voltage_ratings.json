@@ -80,6 +80,15 @@
    "case": "0402",
    "src": "JLCPCB parts API attributes for C25897 (0402WGF4992TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
   },
+  "C137969": {
+   "mpn": "RC0402FR-0749K9L",
+   "kind": "res",
+   "p": 0.0625,
+   "v": 50.0,
+   "ohm": 49900.0,
+   "case": "0402",
+   "src": "YAGEO RC0402FR-07 series, the series C163455 / C138058 / C138027 / C138045 / C274897 / C327251 are read from (JLCPCB parts API, 2026-10-06: 50 V, 62.5 mW for every value); fab.py's R22 from 2026-11-01"
+  },
   "C163455": {
    "mpn": "RC0402FR-0768RL",
    "kind": "res",
@@ -573,6 +582,13 @@
    "src": "Neutrik NMJ6HCD2 product page, technical data, read 2026-10-06: dielectric strength 1 kV dc; insulation resistance >= 1 Gohm at 500 V dc; rated current per contact 3 A; switch contact 0.5 A at 50 V. Neutrik gives no 'rated voltage' line: 50 V is the only working voltage it states, 1 kV dc the withstand",
    "mpn": "NMJ6HCD2",
    "v_peak": 1000.0
+  },
+  "C49261584": {
+   "kind": "conn",
+   "v": 20,
+   "i": null,
+   "src": "LCSC product page C49261584, specifications: 'Voltage Rating 20V' (read 2026-11-03; the hanxia drawing gives no rating). No current rating given: J4 carries USB 2.0 data and CC only",
+   "mpn": "HX-TYPE-C 16P 180 LC-B H10.0"
   },
   "C165948": {
    "kind": "conn",

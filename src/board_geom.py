@@ -50,9 +50,12 @@ GEOM_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
 OUTPUT_PANEL_REV = int(os.environ.get("OUTPUT_PANEL_REV", "2"))
 OPTICAL_REV = int(os.environ.get("OPTICAL_REV", "2"))
 PI_CAP_REV = int(os.environ.get("PI_CAP_REV", "2"))
-assert all(r in (1, 2) for r in (OUTPUT_PANEL_REV, OPTICAL_REV, PI_CAP_REV)), "a board REV is 1 or 2"
+MOTOR_CTRL_REV = int(os.environ.get("MOTOR_CTRL_REV", "2"))
+assert all(r in (1, 2) for r in (OUTPUT_PANEL_REV, OPTICAL_REV, PI_CAP_REV, MOTOR_CTRL_REV)), \
+    "a board REV is 1 or 2"
 REV1_DIR = os.path.join(os.path.dirname(GEOM_DIR), "rev1")
-REV = {"output_panel": OUTPUT_PANEL_REV, "optical": OPTICAL_REV, "pi_cap": PI_CAP_REV}
+REV = {"output_panel": OUTPUT_PANEL_REV, "optical": OPTICAL_REV, "pi_cap": PI_CAP_REV,
+       "motor_ctrl": MOTOR_CTRL_REV}
 
 
 def _with_revs(boards):
@@ -81,6 +84,7 @@ def mask(board: str):
 
 # Laid OVER cadkit's tables (project wins).
 _HEIGHT: dict = {
+    "Hanxia_HX-TYPE-C-16P-180-LC-B-H10.0_Vertical": 10.0,     # motor_ctrl R2 J4, drawing L
     # optical's R1, drawn from its geometry only on the first-flash bench (src/flash_bench.py);
     # the instrument's optical board is drawn by src/optical_pickup.py
     "Everlight_PD15-22B": 1.10,

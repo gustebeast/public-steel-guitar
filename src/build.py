@@ -295,7 +295,10 @@ assert _kh_n == 1, (
 # adapter as placed), so neither side can close on the other without the build saying so.
 # 4.8 STAYS (user, 2026-10-29, on J6's tight spot: "worst case you could just grip the plug
 # with some pliers") -- the J2/J6 re-place that would have bought 10 was cancelled for it.
-MCTRL_PLUG_FINGER = 6 * D.BEAD          # 4.8 of room round a plug, past its body: pliers
+from . import board_geom as _BG_REV
+# R2 moved J2 / J6 +14 / +15 along the floor edge (elec/motor_ctrl.py, R2-2) and buys the 10:
+# 12 beads, 9.6, a finger past the plug's body.
+MCTRL_PLUG_FINGER = (6 if _BG_REV.MOTOR_CTRL_REV == 1 else 12) * D.BEAD   # R1 4.8: pliers
 from . import leg_stack as _LS_PLUG
 _adb = _LS_PLUG.body_adapter(CH.LEG_STATIONS_X[1], CH.LEG_Y[1]).val().BoundingBox()
 _plugs = _EL_ports.motor_ctrl().intersect(
