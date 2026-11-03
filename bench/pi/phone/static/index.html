@@ -6,12 +6,12 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="PSG">
+<meta name="apple-mobile-web-app-title" content="Public Steel Guitar">
 <meta name="theme-color" content="#000000">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="icon" href="icon.png">
-<title>PSG Pitch</title>
+<title>Public Steel Guitar</title>
 <style>
   html, body { margin: 0; height: 100%; background: #000; overflow: hidden;
     -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
@@ -89,13 +89,13 @@ function fmt(v) { return (v >= 0 ? "+" : "-") + Math.abs(v).toFixed(2); }
 
 function draw() {
   px.fill(0);
-  const lost = !online || state.link === "lost";
+  const lost = !live();
   if (lost) rect(0, 0, GW, HEAD - GAP, 1);                     // inverted bar: no link
-  text(lost ? "NO LINK" : state.link === "mock" ? "MOCK" : "PSG", GAP + 2, 3, !lost, 2);
+  text(lost ? "NO LINK" : state.link === "mock" ? "MOCK" : "STEEL", GAP + 2, 3, !lost, 2);
   const v = fmt(state.base + state.bend);
   text(v, GW - GAP - 2 - textW(v, 2), 3, !lost, 2);
   for (const k of BUTTONS) {
-    const down = [...held.values()].includes(k.b), ok = state.can[k.b] !== false && online;
+    const down = [...held.values()].includes(k.b), ok = state.can[k.b] !== false && live();
     if (down) rect(k.x, k.y, k.w, k.h, 1);                    // pressed: inverted
     frame(k.x, k.y, k.w, k.h, BORDER, true, !ok && !down);
     // ink is white, or black on a pressed (inverted) button; a button at its limit keeps its
@@ -138,22 +138,17 @@ window.addEventListener("resize", fit);
 window.addEventListener("orientationchange", () => { fit(); setTimeout(fit, 250); });
 if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener("change", fit);
 
-// Android: full screen and a portrait lock, which both need a tap; tried once, on the first press
-let locked = false;
-function lockPortrait() {
-  if (locked) return;
-  locked = true;
-  const el = document.documentElement;
-  if (!el.requestFullscreen || !screen.orientation || !screen.orientation.lock) return;
-  el.requestFullscreen({navigationUI: "hide"}).then(() => screen.orientation.lock("portrait")).catch(() => {});
-}
 
 // ── the link ──────────────────────────────────────────────────────────────────
 let ws = null;
+// live: connected, and the server has the motors. Until then the page reads NO LINK and the
+// buttons do nothing, rather than looking ready while the port opens.
+function live() { return online && state.link !== "lost" && state.link !== "..."; }
+function shown() { send({t: document.hidden ? "hide" : "show"}); }
 function send(m) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); }
 function connect() {
   ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws");
-  ws.onopen = () => { online = true; draw(); };
+  ws.onopen = () => { online = true; shown(); draw(); };
   ws.onmessage = e => { state = JSON.parse(e.data); draw(); };
   ws.onclose = () => { online = false; held.clear(); draw(); setTimeout(connect, 1000); };
   ws.onerror = () => ws.close();
@@ -172,9 +167,8 @@ function hit(e) {
 }
 cv.addEventListener("pointerdown", e => {
   e.preventDefault();
-  lockPortrait();
   const k = hit(e);
-  if (!k || state.can[k.b] === false || !online) return;
+  if (!k || state.can[k.b] === false || !live()) return;
   try { cv.setPointerCapture(e.pointerId); } catch (_) {}
   held.set(e.pointerId, k.b); send({t: "down", b: k.b}); draw();
 });
@@ -189,11 +183,15 @@ cv.addEventListener("pointerup", lift);
 cv.addEventListener("pointercancel", lift);
 cv.addEventListener("lostpointercapture", lift);
 function letGo() { if (held.size) { held.clear(); send({t: "hide"}); draw(); } }
-document.addEventListener("visibilitychange", () => { if (document.hidden) letGo(); });
+document.addEventListener("visibilitychange", () => { if (document.hidden) letGo(); shown(); });
 window.addEventListener("pagehide", letGo);
 window.addEventListener("blur", letGo);
 for (const ev of ["contextmenu", "selectstart", "dblclick", "gesturestart"])
   document.addEventListener(ev, e => e.preventDefault());
+// A held button is a LONG PRESS to the phone: at about half a second it buzzes, getting ready
+// for a menu or a selection. Blocking the menu comes after the buzz; cancelling the touch at
+// its start stops the long-press timer itself. Pointer events still arrive.
+cv.addEventListener("touchstart", e => e.preventDefault(), {passive: false});
 document.addEventListener("touchmove", e => e.preventDefault(), {passive: false});
 fit();
 </script>

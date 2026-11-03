@@ -118,9 +118,45 @@ def test_a_busy_port_is_left_alone_until_a_press():
     assert d.home == {1: 0} and m.goal[1] == round(P.turns(1.0) * P.COUNTS_PER_TURN)
 
 
+def test_no_link_until_the_port_is_open_and_shut_when_no_page_shows():
+    import threading
+    gate = threading.Event()
+
+    class Slow(P.MockMotors):
+        name = "motor_ctrl"
+        link = None
+        IDLE_CLOSE = 0.0
+
+        def open(self):
+            gate.wait(2)
+            self.link = object()
+
+        def touch(self):
+            pass
+
+        def idle(self):
+            self.link = None
+
+        def close(self):
+            self.link = None
+    m = Slow(strings=(1,))
+    d = P.Driver(m, P.Pitch())
+    hub = S.Hub(d, m)
+    w = object()
+    hub.clients[w] = {"seen": 0.0, "shown": True}
+    hub._port(0.0)                                 # a page shows: the port opens on a thread
+    assert hub.snapshot()["link"] == "lost"
+    gate.set()
+    hub._opening.join(2) if hub._opening else None
+    assert hub.snapshot()["link"] == "motor_ctrl"
+    hub.clients[w]["shown"] = False                # the page goes to the background
+    hub._port(1.0)
+    assert m.link is None and hub.snapshot()["link"] == "lost"
+
+
 def test_font_covers_the_page():
     import font
-    for s in ("PITCH", "HALF", "WHOLE", "MOCK", "NO LINK", "PSG", "+0.123456789-.", "^v"):
+    for s in ("PITCH", "HALF", "WHOLE", "MOCK", "NO LINK", "STEEL", "+0.123456789-.", "^v"):
         assert all(ch in font.GLYPHS for ch in s)
     assert all(len(g) == 7 and all(len(r) == 5 for r in g) for g in font.GLYPHS.values())
 

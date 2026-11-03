@@ -1,5 +1,5 @@
 """synth.py: score the C detector on synthetic plucks at the bench's measured levels, until real
-plucked captures exist (`python3 -m psgbench.panel capture`).
+plucked captures exist (the bench package's `panel capture`).
 
     make && python3 synth.py [seed]
 

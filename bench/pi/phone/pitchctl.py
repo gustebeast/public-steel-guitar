@@ -164,13 +164,39 @@ def port_holders(dev: str) -> list[int]:
     return out
 
 
-class MotorCtrlMotors:
-    """The SERVO42Ds through motor_ctrl's USB link (bench/psgbench: link.py, servo.py).
+def _bench_modules(bench):
+    """servo and link from the bench package: the directory in bench/ that has both, found
+    rather than named, so the page follows that package through a rename."""
+    import importlib
+    for d in sorted(os.listdir(bench)):
+        if all(os.path.isfile(os.path.join(bench, d, f)) for f in ("__init__.py", "link.py", "servo.py")):
+            return importlib.import_module(d + ".servo"), importlib.import_module(d + ".link")
+    raise RuntimeError("no package with link.py and servo.py in " + bench)
 
-    THE PORT IS OPENED ONLY TO MOVE (user, 2026-11-03): the bench scripts use the same USB
-    port, so it is opened on a move and closed IDLE_CLOSE after the last one (the caller
-    says when nothing is held, `idle`). It is not opened while another process has it: the
-    move fails, and the page shows NO LINK. The motors hold their place with the port shut."""
+
+def _quick_link(link_mod):
+    """MotorCtrlLink with a 2-ask clock sync, not 40. Each ask waits out the reader's 0.1 s
+    read, so 40 took 4 s, every time the port opened. The offset only places frames sent `at`
+    a time on the board's clock, and this page sends every move at once."""
+    class QuickLink(link_mod.MotorCtrlLink):
+        def sync(self, n=2):
+            try:
+                return super().sync(min(n, 2))
+            except Exception:                  # from __init__: nothing else holds the port to shut
+                self._run = False
+                self.ser.close()
+                raise
+    return QuickLink
+
+
+class MotorCtrlMotors:
+    """The SERVO42Ds through motor_ctrl's USB link (the bench package's link.py and servo.py).
+
+    THE PORT IS HELD ONLY WHILE A PAGE IS ON SCREEN (user, 2026-11-03): the bench scripts use
+    the same USB port. The server opens it (`open`, off the event loop) when a page shows, and
+    closes it IDLE_CLOSE after the last one goes (`touch` while wanted, `idle` after). It is
+    not opened while another process has it, and the page shows NO LINK until it is open. The
+    motors hold their place with the port shut."""
     name = "motor_ctrl"
     IDLE_CLOSE = 3.0
 
@@ -178,8 +204,7 @@ class MotorCtrlMotors:
         import sys
         here = os.path.dirname(os.path.abspath(__file__))
         sys.path.insert(0, os.path.normpath(os.path.join(here, "..", "..")))     # bench/
-        from psgbench import servo
-        from psgbench import link
+        servo, link = _bench_modules(os.path.normpath(os.path.join(here, "..", "..")))
         self.servo, self._link_mod, self.port = servo, link, port
         self.strings = tuple(strings)
         self.link, self.motors = None, {}
@@ -192,11 +217,21 @@ class MotorCtrlMotors:
             who = port_holders(dev)
             if who:
                 raise PortBusy("%s is open in pid %s" % (dev, ",".join(map(str, who))))
-            self.link = self._link_mod.MotorCtrlLink(dev)
-            self.motors = {s: self.servo.Servo(self.link, s) for s in self.strings}
-            for m in self.motors.values():
-                m.enable(True)
+            link = _quick_link(self._link_mod)(dev)
+            self.link = link
+            try:
+                self.motors = {s: self.servo.Servo(link, s) for s in self.strings}
+                for m in self.motors.values():
+                    m.enable(True)
+            except Exception:
+                self.close()
+                raise
             self.ok = True
+        self._used = time.monotonic()
+
+    open = _open
+
+    def touch(self):
         self._used = time.monotonic()
 
     def idle(self):

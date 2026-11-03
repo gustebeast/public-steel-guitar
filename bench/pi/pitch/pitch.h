@@ -2,7 +2,7 @@
 
 The Pi's detector (control-architecture split: the Pi does pitch detection; the motor board
 never sees audio). One `pitch_t` per string, fed the string's demodulated signal at 48 kHz
-(psgbench.optical: SUM or DIFF of its two photodiodes) in blocks of any length.
+(the bench package's optical.py: SUM or DIFF of its two photodiodes) in blocks of any length.
 
     pitch_t p;
     pitch_init(&p, 48000.0f);
