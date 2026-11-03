@@ -1207,9 +1207,9 @@
       "what": "AP2112K-3.3TRG1 C51118 -- JLCPCB parts API at qty 120"
     },
     "output_panel:K1": {
-      "usd": 0.9153,
+      "usd": 0.9349,
       "verified": "v",
-      "what": "G6K-2F-Y-DC5 C47190 -- JLCPCB parts API at qty 10"
+      "what": "G6K-2F-Y-DC5 C47190 -- JLCPCB parts API at qty 10, 60,939 in stock, 2026-11-03"
     },
     "can_tee:J1": {
       "usd": 0.1416,
@@ -1322,9 +1322,9 @@
       "what": "LMR16006XDDCR C87080 -- JLCPCB parts API at qty 20"
     },
     "output_panel:U5": {
-      "usd": 0.4764,
+      "usd": 2.1239,
       "verified": "v",
-      "what": "LMR16006XDDCR C87080 -- JLCPCB parts API at qty 20"
+      "what": "LMR33630BRNXR C2071384 -- JLCPCB parts API at qty 50, 135 in stock, 2026-11-03"
     },
     "output_panel:J6": {
       "usd": 3.5131,
@@ -1432,9 +1432,9 @@
       "what": "B4B-XH-A C144395 -- JLCPCB parts API at qty 30"
     },
     "optical:J2": {
-      "usd": 0.3089,
+      "usd": 0.057,
       "verified": "v",
-      "what": "S4B-XH-SM4-TB C161861 -- JLCPCB parts API at qty 50"
+      "what": "B4B-XH-A C144395 -- JLCPCB parts API at qty 40, 654,082 in stock, 2026-11-03"
     },
     "fret_led_key:L1": {
       "usd": 0.0761,
@@ -1502,9 +1502,9 @@
       "what": "TAXM25M4RDBCCT2T C403946 -- JLCPCB parts API at qty 10"
     },
     "output_panel:J8": {
-      "usd": 0.0659,
+      "usd": 0.1381,
       "verified": "v",
-      "what": "MX126-5.0-02P C5188434 -- JLCPCB parts API at qty 10"
+      "what": "MX128-5.0-02P-Y C5188463 -- JLCPCB parts API at qty 10, 1,353 in stock, 2026-11-03"
     },
     "ui_board:J2": {
       "usd": 0.1911,
@@ -1590,6 +1590,31 @@
       "usd": 0.3746,
       "verified": "v",
       "what": "TS5A3159DCKR C46388 -- JLCPCB parts API at qty 10"
+    },
+    "output_panel:U13": {
+      "usd": 1.1202,
+      "verified": "v",
+      "what": "TUSB320LAIRWBR C132554 -- JLCPCB parts API at qty 10, 5,444 in stock, 2026-11-03"
+    },
+    "output_panel:U14": {
+      "usd": 0.2871,
+      "verified": "v",
+      "what": "TS3USB221RSER C130085 -- JLCPCB parts API at qty 10, 64,320 in stock, 2026-11-03"
+    },
+    "output_panel:U16": {
+      "usd": 0.5691,
+      "verified": "v",
+      "what": "INA226AIDGSR C49851 -- JLCPCB parts API at qty 10, 22,531 in stock, 2026-11-03"
+    },
+    "output_panel:U17": {
+      "usd": 0.456,
+      "verified": "v",
+      "what": "CH340C C84681 -- JLCPCB parts API at qty 20 (output_panel U17 + optical U32), 97,566 in stock, 2026-11-03"
+    },
+    "optical:U32": {
+      "usd": 0.456,
+      "verified": "v",
+      "what": "CH340C C84681 -- JLCPCB parts API at qty 20 (output_panel U17 + optical U32), 97,566 in stock, 2026-11-03"
     },
     "pi_cap:J1": {
       "usd": 0.3279,
@@ -2307,9 +2332,9 @@
       "what": "PNR3015-150M C19634062 -- JLCPCB parts API at qty 20"
     },
     "output_panel:L1": {
-      "usd": 0.0745,
+      "usd": 0.0768,
       "verified": "v",
-      "what": "PNR3015-150M C19634062 -- JLCPCB parts API at qty 20"
+      "what": "SWPA5040S4R7MT C48496 -- JLCPCB parts API at qty 40, 4,271 in stock, 2026-11-03"
     },
     "motor_ctrl:L2": {
       "usd": 0.1446,
@@ -2347,11 +2372,6 @@
       "what": "JFC1206-1300FS C136347 -- JLCPCB parts API at qty 10"
     },
     "motor_ctrl:D1": {
-      "usd": 0.017,
-      "verified": "v",
-      "what": "DSS16 C7467023 -- JLCPCB parts API at qty 20"
-    },
-    "output_panel:D1": {
       "usd": 0.017,
       "verified": "v",
       "what": "DSS16 C7467023 -- JLCPCB parts API at qty 20"
@@ -4595,16 +4615,6 @@
       "usd": 0.053,
       "verified": "v",
       "what": "2.2uF C377773 -- JLCPCB parts API at qty 50"
-    },
-    "output_panel:R1": {
-      "usd": 0.0024,
-      "verified": "v",
-      "what": "5k1 C25905 -- JLCPCB parts API at qty 60"
-    },
-    "output_panel:R2": {
-      "usd": 0.0024,
-      "verified": "v",
-      "what": "5k1 C25905 -- JLCPCB parts API at qty 60"
     },
     "output_panel:R3": {
       "usd": 0.0024,

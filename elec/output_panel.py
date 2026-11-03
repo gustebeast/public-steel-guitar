@@ -1445,7 +1445,8 @@ def output_panel():
     # that latching was required because "a held coil hums at the audio it is
     # switching". Wrong -- the coil is driven with DC and a static field does not
     # hum. The real cost of holding it is ~30 mA, which this rail has.
-    # OMRON G6K-2F-Y-DC5 (LCSC C326376), off Omron's own terminal arrangement (TOP VIEW,
+    # OMRON G6K-2F-Y-DC5 (LCSC C47190, the tape-and-reel listing fab.py orders; the tube
+    # listing C326376 ran down to 44), off Omron's own terminal arrangement (TOP VIEW,
     # datasheet p.6): coil 1 (+) / 8 (-); pole A COM 3, NC 2, NO 4; pole B COM 6, NC 7, NO 5.
     # It replaces an "FRT5-class" part numbered 1..10 with no datasheet behind it -- the
     # FRT5's own maker publishes no pin diagram that could be found, and its SMD variant is
@@ -1457,7 +1458,7 @@ def output_panel():
     ring_sel = Net("RING_SEL")   # pole B common: the right-hand signal, whichever source
     k1 = Part(name="G6K-2F-Y", ref_prefix="K", tag="K1", dest="NETLIST", tool="skidl",
               value="G6K-2F-Y-DC5", description="true-bypass select; DE-ENERGISED = DIRECT "
-              "(LCSC C326376)", footprint=RELAY_FP, pins=[Pin(num=i, func=P) for i in range(1, 9)])
+              "(LCSC C47190)", footprint=RELAY_FP, pins=[Pin(num=i, func=P) for i in range(1, 9)])
     v5 += k1[1]
     coil += k1[8]
     sel += k1[3]
