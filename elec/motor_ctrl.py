@@ -95,6 +95,42 @@ def _c(tag, value, desc, pkg="Capacitor_SMD:C_0402_1005Metric"):
                 pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
 
 
+def _usb_c(gnd, vbus, dm, dp):
+    """R2's J4 (work items R2 backlog 0; user 2026-10-15 and 10-31: USB on a real socket and
+    a stock cable from R2 on, never on a hand-crimped JST). A VERTICAL receptacle, so the plug
+    still goes in where R1's PH did -- world +X, the mating direction this board's J4 has
+    always had -- and the lead to the Pi is a stock USB-C to USB-A cable.
+
+    ⚠ VERTICAL USB-C PARTS STOCKED AT JLC ARE MOSTLY SMD FOR A 0.8 BOARD (SHOU HAN TYPE-C 16P
+    LTH6.8 / 16PLT-H6.5: "RECOMMENDED PCB THICKNESS 0.8"); this board is 1.6. hanxia's H10.0
+    is through hole throughout, tails 2.1 under the seat, 1,765 in stock at $0.34 (2026-11-03).
+
+    The board is a USB DEVICE and runs off its own 24 V, so: CC1 and CC2 each 5.1k to ground
+    (Rd), which a USB-C host needs to see before it drives the port, and harmless on a C-to-A
+    cable; VBUS lands on nothing, as R1's way 1 did; both rows' D+ and D- joined (either
+    plug orientation); the shell to ground."""
+    j4 = Part(name="USB_C_Receptacle", ref_prefix="J", tag="J4", ref="J4", dest="NETLIST",
+              tool="skidl", value="HX-TYPE-C 16P 180 LC-B H10.0",
+              footprint="Steel:Hanxia_HX-TYPE-C-16P-180-LC-B-H10.0_Vertical",
+              description="USB 2.0 device to the Pi on a stock USB-C to USB-A cable, vertical "
+                          "receptacle, LCSC C49261584",
+              pins=[Pin(num=n, func=P) for n in
+                    ("A1", "A4", "A5", "A6", "A7", "A8", "A9", "A12",
+                     "B1", "B4", "B5", "B6", "B7", "B8", "B9", "B12")]
+                   + [Pin(num="SH", func=P)])
+    gnd += j4["A1"], j4["A12"], j4["B1"], j4["B12"], j4["SH"]
+    vbus += j4["A4"], j4["A9"], j4["B4"], j4["B9"]
+    dp += j4["A6"], j4["B6"]
+    dm += j4["A7"], j4["B7"]
+    Net("J4_NC_A8").connect(j4["A8"])     # SBU1: USB 2.0 uses neither SBU
+    Net("J4_NC_B8").connect(j4["B8"])
+    for tag, pin, net in (("R24", "A5", "CC1"), ("R25", "B5", "CC2")):
+        r = _r(tag, "5k1", "J4 %s to ground: Rd, a USB-C device's pull-down" % net)
+        cc = Net(net)
+        cc += j4[pin], r[1]
+        gnd += r[2]
+
+
 def _bind(part, ways, nets):
     """Join each of `part`'s ways to the net its harness NAME maps to, and hold the order
     to the standard (harness.py). By name, never by way number."""
@@ -582,15 +618,18 @@ def motor_ctrl():
     # VBUS IS DELIBERATELY UNCONNECTED, as it was on the USB-C: the board runs off the 24 V
     # rail, and taking VBUS as well would leave the Pi's supply and the instrument's
     # arguing over who holds the rail. It is a landing for a future VBUS-present sense.
-    usb = Part(name="B4B-PH-K-S", ref_prefix="J", tag="J4", ref="J4", dest="NETLIST",
-               tool="skidl",
-               value="B4B-PH-K-S",
-               footprint="Connector_JST:JST_PH_B4B-PH-K_1x04_P2.00mm_Vertical",
-               description="USB 2.0 link to the Pi (USB-A -> PH lead): VBUS n/c, GND, D-, D+, "
-                           "LCSC C131334",
-               pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(USB_WAYS)])
     vbus = Net("VBUS_NC")
-    _bind(usb, USB_WAYS, {"GND": gnd, "VBUS": vbus, "D-": dm, "D+": dp})
+    if REV == 1:
+        usb = Part(name="B4B-PH-K-S", ref_prefix="J", tag="J4", ref="J4", dest="NETLIST",
+                   tool="skidl",
+                   value="B4B-PH-K-S",
+                   footprint="Connector_JST:JST_PH_B4B-PH-K_1x04_P2.00mm_Vertical",
+                   description="USB 2.0 link to the Pi (USB-A -> PH lead): VBUS n/c, GND, D-, D+, "
+                               "LCSC C131334",
+                   pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(USB_WAYS)])
+        _bind(usb, USB_WAYS, {"GND": gnd, "VBUS": vbus, "D-": dm, "D+": dp})
+    else:
+        _usb_c(gnd, vbus, dm, dp)
     # ── 24 V -> 5 V FOR THE Pi, AND THE CROWBAR THAT MATTERS MORE ────────────
     # THE POWER BOARD IS GONE AND THIS IS IT (user, 2026-09-15). It was its own
     # PCB in the tray; merging it here deletes a board, a connector and a cable --
@@ -1865,6 +1904,49 @@ BOARD_NOTES["quality"] = {
                "24 V, R22 (the current limit). Nothing needs a heatsink; U5's pad is GND",
     },
 }
+
+
+# ── R2 (MOTOR_CTRL_REV=2, the default): the backlog in docs/bronner-work-items.md ─────────
+# Board frame -> world, standing: board +X is world DOWN (x 30.9 is the floor edge, z -80.85;
+# z = -49.95 - x), board Y is world Y, the parts face world +X.
+SHOULDER = (-2.0, 2.0, 2.4)     # R2-3: the notch in the -Y edge, board x from..to, depth in y
+if REV != 1:
+    _pl = BOARD_NOTES["placements"]
+    # R2-0: J4 the vertical USB-C (see _usb_c), centred where R1's PH was; its two Rd beside
+    # it, clear of J5, on CC1 / CC2's short way to the receptacle's A5 / B5
+    _pl["J4"] = (-25.90, -19.50, 90.0)
+    _pl["R24"] = (-21.00, -12.00, 90.0)
+    _pl["R25"] = (-21.00, -10.40, 90.0)
+    # R2-2: bus B's two side-entry PH +14 along the floor edge, toward the board's +Y edge,
+    # for finger room at the -X/-Y body adapter; the bus bulk C28 stays in the gap between
+    _pl["J2"] = (24.92, 2.50, 90.0)
+    _pl["J6"] = (24.92, 18.50, 90.0)
+    _pl["C28"] = (25.60, 10.50, 0.0)
+    # R2-1: J7 up out of the floor. Its mated XHP-4 reaches 6.2 either side of the row's
+    # centre along the row (world Z); with 0.5 over the floor's top (-71.5) the centre has to
+    # be at z -64.8 or higher, so board x 14.85 or less. 14.50: the lowest way at z -68.2.
+    # C29 (24 V bypass at the inlet J3) steps 1.5 -X out of its courtyard.
+    _pl["J7"] = (14.50, 19.83, 0.0)
+    _pl["C29"] = (6.50, 17.00, 0.0)
+    _tr = BOARD_NOTES["tracks"]
+    _i = next(i for i, t in enumerate(_tr) if t[0] == "+24V_LED" and t[3][-1] == (17.46, 19.83))
+    _tr[_i] = ("+24V_LED", "F.Cu", 0.65, [(-25.6, 19.7), (-23.41, 19.7), (-22.03, 18.32),
+                                          (-19.36, 18.32), (-12.69, 25.0), (9.9, 25.0),
+                                          (10.75, 24.15), (10.75, 19.83)])
+    _i = next(i for i, t in enumerate(_tr) if t[0] == "+24V" and t[3][-1] == (7.52, 17.0))
+    _tr[_i] = ("+24V", "F.Cu", 0.3, [(2.85, 14.7), (5.35, 14.7), (6.02, 15.37), (6.02, 17.0)])
+    # R2-3: a shoulder of bare laminate in the -Y edge at mid-height, so the chassis guide
+    # channel can carry a printed ledge under it: a real -Z stop that does not need the leg
+    # fitted. -Y only: the +Y edge at mid-height carries +24V_LED along y 25.0.
+    _x0, _x1, _d = SHOULDER
+    _hx, _hy = BOARD_W / 2.0, BOARD_L / 2.0
+    BOARD_NOTES["outline_poly"] = [(_hx, -_hy), (_x1, -_hy), (_x1, -_hy + _d), (_x0, -_hy + _d),
+                                   (_x0, -_hy), (-_hx, -_hy), (-_hx, _hy), (_hx, _hy)]
+    _q = BOARD_NOTES["quality"]["unconnected"]
+    del _q["J4.1"]
+    _q["J4.A[49]"] = "USB-C VBUS: the board is not bus powered, VBUS lands on nothing"
+    _q["J4.B[49]"] = "USB-C VBUS: the board is not bus powered, VBUS lands on nothing"
+    _q["J4.[AB]8"] = "USB-C SBU1 / SBU2: USB 2.0 uses neither"
 
 
 if __name__ == "__main__":

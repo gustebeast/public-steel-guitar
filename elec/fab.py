@@ -59,6 +59,7 @@ LCSC = {
     "NUP2105LT1G": "C14486",        # onsemi dual CAN-line TVS, 24 V stand-off, SOT-23; 273,420
     "LMR16006XDDCR": "C87080",      # 60 V 0.6 A buck, lever + motor controller
     "TYPE-C-31-M-12": "C165948",    # USB-C receptacle, motor controller + panel
+    "HX-TYPE-C 16P 180 LC-B H10.0": "C49261584",  # motor_ctrl R2 J4: vertical USB-C, THT; 1,765 (2026-11-03)
     "CH32V203G6U6": "C5142280",     # lever board MCU
     "CH32V307WCU6": "C5142795",     # motor controller MCU
     "MT6701QT-STD": "C2913974",     # the angle sensor
