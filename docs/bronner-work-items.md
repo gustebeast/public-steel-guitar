@@ -1,5 +1,89 @@
 # bronner — open work items (2026-09-30)
 
+## MA730 switch: user chose MA730GQ-Z; STOPPED at the stock check (2026-11-03)
+
+**Ruling (user, via the lead, 2026-11-03):** MA730GQ-Z. In the user's words: "pins and center pad
+redone and firmware are no issue, priority is cost stock and performance (accuracy, reliability).
+Seems like MA730 fits the bill. $2 more does add up but it's not too bad".
+
+The lead set two checks to close before the board changes. If either failed, the work was to stop.
+- **Sensing point: PASS.** Datasheet rev 1.1, p.10, Figure 3 "Detection Point and Default Positive
+  Direction": the cross marks the sensitive point. It is 1.50 +-0.05 from the package edge (3.00 +-0.10
+  package, so at the centre) and 0.45 +-0.05 below the top (0.90 package). Zero angle: B pointing toward
+  the pin-1 edge; positive angle is clockwise seen from the top. The recommended magnet is a dia 5 x 3
+  N35 at a 1.5 air gap, at least 40 mT, with the sensor placed to 0.5 for good linearity (p.10).
+- **LCSC stock and part number: FAIL.** On LCSC's own site (Chrome, 2026-11-03), C161798 is not sold:
+  - the search for "MA730GQ-Z" gives "No exact matches";
+  - the search for "MA730" gives "No results";
+  - the product page JLC's own record links to (lcscGoodsUrl) shows "Part not found".
+  The 888 are JLCPCB's alone. The JLC record has componentSource "shop", an extended part, and
+  canPresaleNumber 872, so it reads as a JLC marketplace listing rather than LCSC stock. It is one
+  listing, with no restock behind it, at a 52-week factory lead time. DigiKey still has 4,958
+  (1589-1517-1-ND).
+
+**So the switch is not started.** Nothing on lever_sensor, its firmware or the BOM has changed.
+
+**Options for the user (via the lead):**
+1. MA730 anyway, from the JLC listing. 11 boards x 1 is well under 888, but JLC may drop the listing
+   at any time. A loose spare would come from DigiKey.
+2. MA730 bought at DigiKey and consigned to JLC for assembly: the stock is certain, at the cost of a
+   consignment step.
+3. AS5600-ASOM. LCSC's own site has it: C79815, 403 in stock, $1.727 at 1 (2026-11-03); DigiKey
+   ~49,900. It is I2C, so the board's bus stays, but it is SOIC-8 and 12 bit, and its sheet is not yet
+   read for accuracy or the field diagnostic.
+Leaning 2 if the MA730's accuracy is the point, or 3 if a single-source order matters more. The
+user's call.
+
+## MT6701 replacement: survey and recommendation (lead, 2026-11-03) -- USER'S DECISION
+
+**Why.** U4 on lever_sensor is MT6701QT-STD, QFN-16 3x3. LCSC shows 0 stock under both of its
+codes (C2913974, C2837232; JLCPCB parts API, 2026-11-03), and MagnTek has no DigiKey listing.
+Eleven boards need one each (D.N_SENSED).
+
+**What it does for us today.** It is read over I2C1 (PB6 SCL, PB7 SDA). Its Z/CSN goes to PB5,
+so the MCU can also read the SSI frame's field status (Mg[3:0]: magnet too strong or weak). The
+CH32V203G6U6 uses only PA11-14, PB5-8, so SPI1 (PA5 SCK, PA6 MISO, PA7 MOSI) is free.
+
+**Stocked at both LCSC and DigiKey (2026-11-03):**
+
+| Part | Package | Interface | Resolution | LCSC (JLCPCB API) | DigiKey | Notes |
+|---|---|---|---|---|---|---|
+| **MPS MA730GQ-Z** | QFN-16 3x3, 0.5 pitch (JEDEC MO-220 VEED-4) | SPI (+ ABZ, PWM) | 14 bit | C161798, 888, $4.08 at 100 | 1589-1517-1-ND, 4,958, $3.34 at 100 | Field-strength thresholds (MGL/MGH) readable: keeps the magnet diagnostic. 3.3 V, 12 mA. Factory lead time 52 wk |
+| ams AS5600-ASOM | SOIC-8 | I2C (0x36) | 12 bit | C79815, 403, $1.14 at 100 | AS5600-ASOM, ~49,900, $3.03 at 1 | Same bus as today; bigger package; specs below not read yet |
+| TI TMAG5273A2QDBVR | SOT-23-6 | I2C | 3D Hall, angle by CORDIC | C3715882, 2,629, $0.35 at 100 | 296-TMAG5273A2QDBVRCT-ND, 557, $0.87 at 100 | A 3-axis field sensor, not an encoder: angle accuracy and the ±133/266 mT range against our magnet not read yet |
+
+**Ruled out:** MA732GQ-Z (LCSC 6,009, DigiKey 0, 52 wk); MA780GQ-Z (LCSC 52); AS5047P-ATSM
+(DigiKey 47 at $9.95); TLE5012B E1000 (LCSC 20,449, DigiKey 1; the E5000 is 17,004 at DigiKey
+but 17 at LCSC); KTH7823 (a QFN-16 3x3 MagAlpha-type part, LCSC 4,341 at $1.32, not at
+DigiKey); MT6835 (none). TMAG5273A1 is 0 at DigiKey until 2027-01.
+
+**Recommendation: MA730GQ-Z.** It is the nearest to a drop-in:
+- The same 3 x 3 QFN-16 outline, so the chip-on-axle frame and the housing do not move.
+- Same resolution (14 bit).
+- It keeps the magnet-field diagnostic: MGL/MGH flags and thresholds, which MT6701 gave only over SSI.
+
+It is not pin-compatible, so lever_sensor needs a small respin:
+- **Pins.** Datasheet rev 1.1 p.2: 1 SSD, 2 A, 3 Z, 4 MOSI, 5 CS, 6 B, 7 MISO, 8 GND, 9 PWM,
+  10 TEST, 11 MGL, 12 SCLK, 13 VDD, 14 NC, 15 SSCK, 16 MGH, 17 pad. Only VDD (13) matches MT6701.
+- **Land.** p.26: the recommended exposed pad is 1.70 against MT6701's 1.45.
+- **Board.** U4's four SPI lines go to PA5/PA6/PA7 plus PB5 for CS (PB5 is already routed to the
+  sensor's corner). The I2C pull-ups and the MODE strap go.
+- **Firmware.** The I2C read becomes one 16-bit SPI frame (p.28).
+- **Price.** +$2 a board, about +$22 an instrument at 11.
+
+Open before committing:
+- The datasheet's package page does not mark the sensing point; confirm it is at the package
+  centre (MPS application notes) before the chip frame is reused.
+- LCSC's own catalogue search found nothing for C161798 on 2026-11-03. The LCSC-side stock
+  figure is the JLCPCB parts API's, so JLC assembly stock is probably fine but a loose LCSC
+  order may not be.
+
+If an I2C part is wanted, so the board keeps its bus and the firmware barely changes: AS5600,
+at the cost of a SOIC-8 footprint and 12 bits. Read its sheet first.
+
+Sources: MPS MA730 datasheet rev 1.1 (8/8/2022) pp.1, 2, 26, 28, read 2026-11-03. Stock and
+prices: JLCPCB parts API and DigiKey product pages, 2026-11-03.
+
 ## Overnight summary: routing and local repair (2026-11-02)
 
 **Full reroutes of output_panel R2 do not converge.** Best board is scratch run g1: 0 open, 0
