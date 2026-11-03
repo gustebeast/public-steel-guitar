@@ -84,6 +84,38 @@ at the cost of a SOIC-8 footprint and 12 bits. Read its sheet first.
 Sources: MPS MA730 datasheet rev 1.1 (8/8/2022) pp.1, 2, 26, 28, read 2026-11-03. Stock and
 prices: JLCPCB parts API and DigiKey product pages, 2026-11-03.
 
+## BOM audit HARDs, unpriced parts, and the MA730 driver on real V203 headers (lead, 2026-11-03)
+
+**bom_audit: the six older HARDs are cleared** (elec/prices.json, elec/output_panel.py). Prices are from
+the JLC parts API at each code's order quantity, 2026-11-03.
+- Repriced as the part each board actually carries:
+  - output_panel J8: MX128-5.0-02P-Y C5188463, $0.1381.
+  - output_panel L1: SWPA5040S4R7MT C48496, $0.0768.
+  - output_panel U5: LMR33630BRNXR C2071384, $2.1239. Only 135 in stock, against 50 for ten instruments.
+  - optical J2: B4B-XH-A C144395, $0.057.
+- Dropped: output_panel D1, R1, R2. Those designators are no longer on the board.
+- output_panel K1's description now cites C47190, the tape-and-reel listing fab.py orders, not the tube
+  listing C326376. K1 is repriced at C47190 too.
+- What bom_audit still reports: docs/order-parts.md is stale. agent/bronner-ma730-board regenerates it, so
+  that HARD goes when it lands. If not, run tools/order_list.py.
+
+**cost.py: no placed part is unpriced now.** The total moves from $1,363.95 to $1,367.72.
+- output_panel U13: TUSB320LAIRWBR C132554, $1.1202, 5,444 in stock.
+- output_panel U14: TS3USB221RSER C130085, $0.2871.
+- output_panel U16: INA226AIDGSR C49851, $0.5691.
+- output_panel U17 and optical U32: CH340C C84681, $0.456.
+
+**firmware/lever_sensor/ma730.c builds and links for the CH32V203 (D6).**
+- Built against WCH's own CH32V20x library: an openwch/ch32v20x checkout on the bench Pi at
+  ~/src/ch32v20x, beside the ch32v307 one. It is not in this repository.
+- The test app links the driver with WCH's startup_ch32v20x_D6, Link.ld (32K flash, 10K RAM), the GPIO,
+  RCC and SPI drivers, and debug.c's Delay_Us / Delay_Ms.
+- -Wall -Wextra gives no warnings in the driver. Sizes: ma730.o 544 bytes; the whole test app 1,784 text
+  and 2,068 data + bss.
+- One snag for the lever app's Makefile, in WCH's code, not ours: debug.c uses ptrdiff_t without
+  including stddef.h, which picolibc needs. The test built it with -include stddef.h. motor_ctrl avoids it
+  by supplying its own Delay_Us / Delay_Ms.
+
 ## Overnight summary: routing and local repair (2026-11-02)
 
 **Full reroutes of output_panel R2 do not converge.** Best board is scratch run g1: 0 open, 0
