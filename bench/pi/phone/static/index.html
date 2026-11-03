@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="Public Steel Guitar">
+<meta name="apple-mobile-web-app-title" content="Public">
 <meta name="theme-color" content="#000000">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon.png">
@@ -91,7 +91,7 @@ function draw() {
   px.fill(0);
   const lost = !live();
   if (lost) rect(0, 0, GW, HEAD - GAP, 1);                     // inverted bar: no link
-  text(lost ? "NO LINK" : state.link === "mock" ? "MOCK" : "STEEL", GAP + 2, 3, !lost, 2);
+  text(lost ? "NO LINK" : state.link === "mock" ? "MOCK" : "PUBLIC", GAP + 2, 3, !lost, 2);
   const v = fmt(state.base + state.bend);
   text(v, GW - GAP - 2 - textW(v, 2), 3, !lost, 2);
   for (const k of BUTTONS) {

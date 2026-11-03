@@ -156,7 +156,7 @@ def test_no_link_until_the_port_is_open_and_shut_when_no_page_shows():
 
 def test_font_covers_the_page():
     import font
-    for s in ("PITCH", "HALF", "WHOLE", "MOCK", "NO LINK", "STEEL", "+0.123456789-.", "^v"):
+    for s in ("PITCH", "HALF", "WHOLE", "MOCK", "NO LINK", "PUBLIC", "+0.123456789-.", "^v"):
         assert all(ch in font.GLYPHS for ch in s)
     assert all(len(g) == 7 and all(len(r) == 5 for r in g) for g in font.GLYPHS.values())
 
