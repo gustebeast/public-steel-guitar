@@ -92,6 +92,20 @@ ribbon out +X (option a). Then J5_DX, J6_DX and CAP_EXT_X can probably go back. 
 cap against the Pi's DSI and CSI connectors (5.5 tall under 11.0), reroute, re-cut all five
 leads, quality pass, scoped gate. After optical repair and the pitch detector.
 
+*Scoped 2026-11-03: it does not fit as asked; needs the user.* Pi frame (src/pi4b.py) against
+the cap's front, whose 6 mm side-entry connectors stand 5.0 over the Pi. In the way at 5.0 or
+more: display FFC (x 1.5-5.5, y 16.8-39.2, 5.5 tall), camera FFC (x 45-49, y 0.3-22.7), audio
+jack (x 50.5-57.5, y 0-12.5, 6.0), Ethernet and USB from x 66.6 (13.5-16). J1 is fixed at
+x 7.1-57.9. So the board can span Pi x 0-60.5 (it reaches -2.5 now: CAP_EXT_X is past the
+SD end too). The row J2/J3/J4 takes 50.6 of that and must be the +Y_board edge: its plugs
+go in from that side, under nothing. J6 (XH, 16.7 x 12.0 courtyard) then has no place: in the
+row it makes 67 of 60.5; mouth -X west of J1 there is 6 mm for its 12; between J1 and the row
+it sits on the display FFC; at the +X end its plug meets Ethernet. J5 alone fits: mouth -X at
+the SD end, y_board -9..-1, its IDC plug hanging past the Pi's end (a plug, not board). The
+choice for the user: (A) the foot drop leaves the cap (chained from the fret strip or fed from
+motor_ctrl), then the cap fits inside the Pi but for J1's 1.0; (B) leave J6 hanging past the
+Pi's +Y edge, the rest inside; (C) leave the cap as it is.
+
 **First real string (R1 board on the user's MSA, 2026-11-02).** String 1 aligned, duty 32, none
 clipped. 1A and 1B both read 293.3 Hz with harmonics to 1760 Hz. Plucks about 200-650 rms over
 an 11-14 count floor, about 30 dB; the 65 dB figure is the carrier. DIFF beat SUM, 300-420 rms
