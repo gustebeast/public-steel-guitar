@@ -112,6 +112,12 @@ SLOT_PLAY  = 0.30                   # board edge to the wall -- AND, via the 45�
                                     # the clearance over the board's top face
 LIP_OVER   = 1 * D.BEAD             # how far each lip reaches OVER the board: 1 bead
 LIP_CAP    = D.MIN_WALL             # the flat cap above the ramp: 1 bead
+# THE FLAT WALL UNDER EACH LIP IS 1.90, NOT THE BOARD'S 1.60 (user, 2026-11-03). On the
+# printed coupon the 45° ramp started 1.3 above the shoulder, against 1.60 drawn, and a
+# board measured 1.56: the lip came down onto the board's edge. Layer rounding does not
+# explain it (the model's heights round to 1.6 or 2.0). The ramp starts this far above the
+# board's top, erring loose: the board is not in hand to try, and a reprint costs more.
+LIP_LIFT   = 0.30
 # ⚠ WHAT THIS ASKS OF THE BELT CLAMPS, WHICH ARE BEING REDESIGNED (user, 2026-10-02, and
 # 2026-10-04: "we can ignore collision with the belt clamp"). The lips top out at floor +
 # 9.55 = -61.80 and the board's top is at -63.70. Today's placeholder tensioners come down
@@ -123,16 +129,16 @@ CEILING_CLR = 0.50
 def z_stack():
     """(led_face, board_bot, board_top, lip_foot, lip_top) in world Z.
 
-    ⚠ THE LIP'S FOOT IS THE BOARD'S OWN TOP PLANE, and that is the 45° ramp paying
-    for itself. The ramp starts on the slot wall at exactly board_top, so at the board's
-    EDGE -- SLOT_PLAY further in -- it stands SLOT_PLAY proud of the board, and the
-    clearance over the board is the lateral play, not a second figure to keep in step
-    with it."""
+    ⚠ THE LIP'S FOOT IS LIP_LIFT OVER THE BOARD'S TOP PLANE. The ramp starts on the slot
+    wall there, so over the board's EDGE -- SLOT_PLAY further in -- it stands
+    LIP_LIFT + SLOT_PLAY (0.60) proud of the board as drawn. LIP_LIFT is what the print
+    took back: the coupon's ramp started 0.30 low."""
     floor = window()[4]
     bb = floor + TROUGH
     led = bb - LED_H
     bt = bb + BOARD_T
-    return led, bb, bt, bt, bt + SLOT_PLAY + LIP_OVER + LIP_CAP
+    foot = bt + LIP_LIFT
+    return led, bb, bt, foot, foot + SLOT_PLAY + LIP_OVER + LIP_CAP
 
 
 def ceiling_needed():
@@ -142,7 +148,7 @@ def ceiling_needed():
 
 def clear_top():
     """The plane the slot has to be CUT clear to: the ramp over the board's edge."""
-    return z_stack()[2] + SLOT_PLAY
+    return z_stack()[3] + SLOT_PLAY
 
 
 def depth():
@@ -540,9 +546,9 @@ def check_optics():
         "the window's top face is %.2f, not the %.2f the Z stack is written against"
         % (window()[4], FLOOR_NOM))
     _led, _bb, bt, lip_foot, lip_top = z_stack()
-    assert lip_foot == bt, (
-        "the lips' ramp starts at %.2f, not the board's top at %.2f -- the 45° face is "
-        "what sets the clearance over the board and it has come adrift of it"
+    assert abs(lip_foot - (bt + LIP_LIFT)) < 1e-9, (
+        "the lips' ramp starts at %.2f, not LIP_LIFT over the board's top at %.2f -- the "
+        "45° face is what sets the clearance over the board and it has come adrift of it"
         % (lip_foot, bt))
     assert min(LIP_OVER, LIP_CAP) >= D.MIN_WALL - 1e-9, (
         "a %.2f lip reach and a %.2f cap against a %.2f bead" % (LIP_OVER, LIP_CAP,
@@ -735,8 +741,8 @@ def slot_cut():
         if i == 0:
             xa -= MOUTH_CUT
         yr = wy0 + ROOF_REACH
-        # each section: up the slot wall to the board's top, then the ramp -- so even the
-        # fit's 0.30 over the board is under the 45° line and no flat is left at the wall
+        # each section: up the slot wall to the lip's foot, then the ramp -- so the fit's
+        # clearance over the board is under the 45° line and no flat is left at the wall
         cut = (cq.Workplane("YZ", origin=(xa, 0, 0))
                .polyline([(sy0, floor), (sy1, floor), (sy1, top), (yr, top),
                           (yr, foot + (yr - sy0)), (sy0, foot)])
