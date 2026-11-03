@@ -28,7 +28,9 @@ RAISE_MAX = 4.0           # semitones over open, base + bend
 LOWER_MIN = -12.0
 CREEP_ST_S = 0.35         # pitch up / down: 35 cents a second
 SLOW_RPM_MIN = 1
-FAST_RPM, FAST_ACC = 3000, 0        # bronner's 11-02 step: 90 % of a whole tone in 39 ms
+# half and whole steps: half the 3000 rpm of bronner's 11-02 step (90 % of a whole tone in
+# 39 ms), user 2026-11-03
+FAST_RPM, FAST_ACC = 1500, 0
 STRINGS = tuple(range(1, 11))       # string N = CAN id N on bus A
 # Which way a motor turns to RAISE pitch. Not known until a string is on a motor: the bench
 # finds it (docs/phone-ui.md) and sets it here, or with --raise-sign.
@@ -135,31 +137,95 @@ class MockMotors:
         pass
 
 
+class PortBusy(RuntimeError):
+    pass
+
+
+def port_holders(dev: str) -> list[int]:
+    """Pids of other processes with `dev` open (Linux /proc). A tty has no lock of its own:
+    two processes can both open it, and then each reads half the other's replies."""
+    real, out = os.path.realpath(dev), []
+    for pid in os.listdir("/proc"):
+        if not pid.isdigit() or int(pid) == os.getpid():
+            continue
+        try:
+            fds = os.listdir("/proc/%s/fd" % pid)
+        except OSError:
+            continue
+        for fd in fds:
+            try:
+                if os.readlink("/proc/%s/fd/%s" % (pid, fd)) == real:
+                    out.append(int(pid))
+                    break
+            except OSError:
+                pass
+    return out
+
+
 class MotorCtrlMotors:
-    """The SERVO42Ds through motor_ctrl's USB link (bench/psgbench: link.py, servo.py)."""
+    """The SERVO42Ds through motor_ctrl's USB link (bench/psgbench: link.py, servo.py).
+
+    THE PORT IS OPENED ONLY TO MOVE (user, 2026-11-03): the bench scripts use the same USB
+    port, so it is opened on a move and closed IDLE_CLOSE after the last one (the caller
+    says when nothing is held, `idle`). It is not opened while another process has it: the
+    move fails, and the page shows NO LINK. The motors hold their place with the port shut."""
     name = "motor_ctrl"
+    IDLE_CLOSE = 3.0
 
     def __init__(self, strings=STRINGS, port=None):
         import sys
         here = os.path.dirname(os.path.abspath(__file__))
         sys.path.insert(0, os.path.normpath(os.path.join(here, "..", "..")))     # bench/
         from psgbench import servo
-        from psgbench.link import MotorCtrlLink
-        self.servo = servo
-        self.link = MotorCtrlLink(port)
+        from psgbench import link
+        self.servo, self._link_mod, self.port = servo, link, port
         self.strings = tuple(strings)
-        self.motors = {s: servo.Servo(self.link, s) for s in self.strings}
-        for m in self.motors.values():
-            m.enable(True)
+        self.link, self.motors = None, {}
+        self._used = 0.0
         self.ok = True
 
+    def _open(self):
+        if self.link is None:
+            dev = self.port or self._link_mod.find_motor_port()
+            who = port_holders(dev)
+            if who:
+                raise PortBusy("%s is open in pid %s" % (dev, ",".join(map(str, who))))
+            self.link = self._link_mod.MotorCtrlLink(dev)
+            self.motors = {s: self.servo.Servo(self.link, s) for s in self.strings}
+            for m in self.motors.values():
+                m.enable(True)
+            self.ok = True
+        self._used = time.monotonic()
+
+    def idle(self):
+        if self.link is not None and time.monotonic() - self._used > self.IDLE_CLOSE:
+            self.close()
+
     def home(self):
-        return {s: m.position() for s, m in self.motors.items()}
+        """Where each motor is. A motor that does not answer is dropped, so the bench runs
+        with however many are on the bus; none answering is an error."""
+        self._open()
+        out = {}
+        for s, m in self.motors.items():
+            try:
+                out[s] = m.position()
+            except (TimeoutError, RuntimeError):
+                pass
+        if not out:
+            raise RuntimeError("no motor answered (strings %s)" % (self.strings,))
+        if len(out) < len(self.strings):
+            print("motors answering: strings %s" % sorted(out), flush=True)
+            self.strings = tuple(sorted(out))
+            self.motors = {s: self.motors[s] for s in self.strings}
+        return out
 
     def move(self, string: int, counts: int, rpm: int, acc: int):
-        self.motors[string].move_abs(counts, rpm, acc)
+        self._open()
+        if string in self.motors:
+            self.motors[string].move_abs(counts, rpm, acc)
 
     def positions(self):
+        self._open()
         out = {}
         for s, m in self.motors.items():
             try:
@@ -169,7 +235,11 @@ class MotorCtrlMotors:
         return out
 
     def close(self):
-        self.link.close()
+        if self.link is not None:
+            self.link._run = False
+            time.sleep(0.15)                       # the reader's read times out at 0.1
+            self.link.ser.close()
+            self.link, self.motors = None, {}
 
 
 # ── the driver: Pitch -> motor targets ────────────────────────────────────────────────────
@@ -181,10 +251,21 @@ class Driver:
         self.m, self.p, self.sign = motors, pitch, raise_sign
         self.dl = dl or {s: DL_OPEN for s in motors.strings}
         self.state_path = state_path
-        self.home = self._load_home()
+        self.home = None
         self.sent = None
         self._bend_sent = 0.0
         self._saved = None
+        try:
+            self.ensure_home()
+        except Exception as e:              # the port is busy or the board is off: on a press
+            print("motors not read at start:", e, flush=True)
+
+    def ensure_home(self):
+        """Read where the motors are, once. They are at base (no bend is held on them), so
+        nothing is sent until the target leaves it."""
+        if self.home is None:
+            self.home = self._load_home()
+            self.sent = self.p.base
 
     def counts(self, s: int, semitones: float) -> int:
         return self.home[s] + int(round(self.sign * turns(semitones, self.dl[s]) * COUNTS_PER_TURN))
@@ -206,7 +287,7 @@ class Driver:
         return dict(now)          # where the strings are now is open pitch
 
     def save(self):
-        if not self.state_path:
+        if not self.state_path or self.home is None:
             return
         st = {"home": self.home, "base": round(self.p.base, 4)}
         if st != self._saved:
@@ -218,6 +299,10 @@ class Driver:
 
     def step(self, dt: float):
         """Called every tick: send new targets when the target moved."""
+        if self.home is None:
+            if not self.p.creep and self.p.bend is None:
+                return                      # no press to read them for: leave the port alone
+            self.ensure_home()
         was = self.sent
         t = self.p.target
         bend = self.p.bend[1] if self.p.bend else 0.0

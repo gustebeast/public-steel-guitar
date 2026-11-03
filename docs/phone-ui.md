@@ -1,13 +1,13 @@
 # Phone pitch page
 
-A page the Pi serves at **http://public-steel-guitar.local** with six buttons that move all
-ten strings together:
+A page the Pi serves at **https://public-steel-guitar.home** (also `.local`, and plain
+`http://`) with six buttons that move all ten strings together:
 
 | Button | Held | Let go |
 | --- | --- | --- |
 | PITCH up / down | the strings creep, 35 cents a second | they stay where they are |
-| HALF up / down | they go ±1 semitone at once | they go back |
-| WHOLE up / down | they go ±2 semitones at once | they go back |
+| HALF up / down | they go ±1 semitone at 1500 rpm | they go back |
+| WHOLE up / down | they go ±2 semitones at 1500 rpm | they go back |
 
 Each string turns its own motor by its own amount for an interval, from the string model in
 `src/dimensions.py`: nut travel = `DL_OPEN · ((f2/f0)² − (f1/f0)²)`, 2 mm of nut per motor
@@ -54,19 +54,45 @@ py -3.12 bench/pi/phone/server.py --mock --port 8765
 
 then open http://localhost:8765. Tests: `cd bench` then `python -m pytest tests/test_phone.py`.
 
-On the Pi, once, from the checkout. This names the Pi `public-steel-guitar`, installs avahi and
-pyserial, and starts `psg-phone.service` on port 80 from boot:
+On the Pi, from the checkout, as your own user with sudo. This names the Pi
+`public-steel-guitar`, installs avahi, pyserial and openssl, makes the HTTPS certificates,
+copies `bench/pi` and `bench/psgbench` to `/opt/psg/bench`, and starts `psg-phone.service`
+on ports 80 and 443 from boot, running as you. Run it again after any change to the page or
+`psgbench`: the service runs the copy, not the checkout.
 
 ```bash
 sudo bench/pi/phone/install.sh
 ```
 
-Then open http://public-steel-guitar.local on a phone on the same network, and use Share,
-Add to Home Screen (iPhone) or Install app (Android). Plain HTTP on the LAN.
+Then open https://public-steel-guitar.home on a phone on the same network, and use Share,
+Add to Home Screen (iPhone) or Install app (Android). The `.home` name is the router's
+(a DHCP reservation for the Pi); `.local` is avahi's.
 
-With fewer motors on the bench: `--strings 1`. The server talks to motor_ctrl on USB
-(`bench/psgbench/link.py`, `servo.py`) and sends each motor an absolute move (F5): 3000 rpm,
-acc 0 for steps, and a speed matched to the creep for pitch up and down. No firmware change
+**HTTPS.** install.sh makes a CA on the Pi, once, and a server certificate from it for
+`public-steel-guitar.home`, `.local`, the bare name and the Pi's IPv4 addresses at the time
+(825 days, the longest a phone accepts). Until a phone trusts the CA it warns on the https
+address. To trust it, download http://public-steel-guitar.home/ca.crt on the phone:
+- iPhone: install the profile (Settings, Profile Downloaded), then turn it on under
+  Settings, General, About, Certificate Trust Settings.
+- Android: Settings, Security, Encryption & credentials, Install a certificate, CA certificate.
+
+To remake the certificates (a new IP, a new name), delete `/var/lib/psg-phone/tls` and run
+install.sh again. The phones then need the new CA.
+
+**The motor port is shared with the bench scripts.** The service opens motor_ctrl's USB port
+only for a press. It closes it 3 s after the last move, once nothing is held. It does not
+open the port while another process has it open: the press does nothing and the page shows NO
+LINK until a press finds the port free. So a bench script works whenever no one is pressing,
+but a script started while a button is held (or in the 3 s after) shares the port with the
+page and both get confused. A tty has no lock to stop that. The first press after the port
+was closed waits about 0.2 s while the link syncs.
+
+The motors that answer at the first read are the ones it drives: one motor on the bench
+works with no flag (`--strings` still narrows it).
+
+The server talks to motor_ctrl on USB
+(`bench/psgbench/link.py`, `servo.py`) and sends each motor an absolute move (F5): 1500 rpm
+(half bronner's 3000, user 2026-11-03), acc 0 for steps, and a speed matched to the creep for pitch up and down. No firmware change
 was needed: motor_ctrl's `Q` line carries the frames as they are.
 
 ## What open pitch is

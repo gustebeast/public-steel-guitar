@@ -1,6 +1,7 @@
-"""The phone page: http://public-steel-guitar.local (docs/phone-ui.md).
+"""The phone page: https://public-steel-guitar.home (docs/phone-ui.md).
 
     python3 server.py                     the motors, through motor_ctrl on USB, port 80
+    python3 server.py --tls-dir DIR       and HTTPS on 443 (install.sh makes DIR)
     python3 server.py --mock --port 8765  pretend motors, for a computer with no instrument
 
 Standard library only (pyserial for the real motors, as the rest of bench/ uses): one static
@@ -86,16 +87,22 @@ class Hub:
                     self.p.release(w)
             self.p.tick(now - last)
             last = now
-            try:
-                self.d.step(TICK)
-                self.d.save()
-            except Exception as e:                     # a motor that stops answering
-                self.m.ok = False
-                print("motor:", e, flush=True)
+            self._step()
+            if not self.p.creep and self.p.bend is None and hasattr(self.m, "idle"):
+                self.m.idle()                          # the port goes back to the bench scripts
             s = self.snapshot()
             if s != prev:
                 prev = s
                 await self.broadcast()
+
+    def _step(self):
+        try:
+            self.d.step(TICK)
+            self.d.save()
+        except Exception as e:                         # a motor that stops answering, a busy port
+            if self.m.ok:
+                print("motor:", e, flush=True)
+            self.m.ok = False
 
     def _holds(self, w):
         return w in self.p.creep or (self.p.bend is not None and self.p.bend[0] is w)
@@ -113,7 +120,7 @@ class Hub:
             self.p.release(w, b)
         elif t == "hide":
             self.p.release(w)
-        self.d.step(TICK)                          # a press goes out now, not at the next tick
+        self._step()                               # a press goes out now, not at the next tick
         await self.broadcast()
 
 
@@ -161,7 +168,7 @@ async def _ws(hub: Hub, r: asyncio.StreamReader, w: asyncio.StreamWriter, key: s
     finally:
         hub.clients.pop(w, None)
         hub.p.release(w)                       # whatever this phone held goes with it
-        hub.d.step(TICK)
+        hub._step()
         await hub.broadcast()
         w.close()
 
@@ -187,6 +194,8 @@ async def handle(hub: Hub, r: asyncio.StreamReader, w: asyncio.StreamWriter):
         path = "/index.html"
     if path == "/icon.png":
         body, ctype = ICON, "image/png"
+    elif path == "/ca.crt" and CA_CRT and os.path.isfile(CA_CRT):
+        body, ctype = open(CA_CRT, "rb").read(), "application/x-x509-ca-cert"
     elif path == "/font.js":
         from font import js
         body, ctype = js().encode(), TYPES[".js"]
@@ -206,10 +215,11 @@ async def handle(hub: Hub, r: asyncio.StreamReader, w: asyncio.StreamWriter):
 
 
 ICON = b""
+CA_CRT = None
 
 
 async def main(argv=None):
-    global ICON
+    global ICON, CA_CRT
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--mock", action="store_true", help="pretend motors")
     ap.add_argument("--port", type=int, default=80)
@@ -220,6 +230,10 @@ async def main(argv=None):
                     help="the motor direction that raises pitch (pitchctl.RAISE_SIGN)")
     ap.add_argument("--state", default="/var/lib/psg-phone/state.json",
                     help="where each motor's open-pitch count is kept across restarts")
+    ap.add_argument("--tls-port", type=int, default=443)
+    ap.add_argument("--tls-dir", default=None,
+                    help="server.crt, server.key and ca.crt (install.sh makes them): HTTPS on "
+                         "--tls-port as well as HTTP, and the CA at /ca.crt for the phone")
     a = ap.parse_args(argv)
     strings = [int(s) for s in a.strings.split(",") if s]
     motors = MockMotors(strings) if a.mock else __import__("pitchctl").MotorCtrlMotors(strings)
@@ -230,10 +244,16 @@ async def main(argv=None):
     drv = Driver(motors, Pitch(), state, **kw)
     hub = Hub(drv, motors)
     ICON = icon_png()
-    srv = await asyncio.start_server(lambda r, w: handle(hub, r, w), a.host, a.port)
+    servers = [await asyncio.start_server(lambda r, w: handle(hub, r, w), a.host, a.port)]
     print("phone page on %s:%d, motors: %s, strings %s" % (a.host, a.port, motors.name, strings), flush=True)
-    async with srv:
-        await asyncio.gather(srv.serve_forever(), hub.run())
+    if a.tls_dir:
+        import ssl
+        ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        ctx.load_cert_chain(os.path.join(a.tls_dir, "server.crt"), os.path.join(a.tls_dir, "server.key"))
+        CA_CRT = os.path.join(a.tls_dir, "ca.crt")
+        servers.append(await asyncio.start_server(lambda r, w: handle(hub, r, w), a.host, a.tls_port, ssl=ctx))
+        print("and https on %s:%d" % (a.host, a.tls_port), flush=True)
+    await asyncio.gather(*(s.serve_forever() for s in servers), hub.run())
 
 
 if __name__ == "__main__":
