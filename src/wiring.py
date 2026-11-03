@@ -122,7 +122,9 @@ WIRE_OD = {
     "wire_lights_pwr": 1.52, "wire_lights": 1.3,
     # the optical board's 24 V feed: 24 V is 22 AWG, however little it carries
     "wire_opt": 1.52,
-    "wire_link": 1.4,
+    # R1: the jacket of a USB-A to PH-4 lead we make; R2: a bought USB-C to USB-A lead,
+    # Adafruit 4473 (DigiKey 1528-4473-ND), its jacket 4.5 on the maker's drawing
+    "wire_link": 1.4 if BG.MOTOR_CTRL_REV == 1 else 4.5,
     # THE UI'S RIBBON IS NOT A DIAMETER AT ALL, and this entry only exists because
     # the gate's colour and allow-list tables are keyed off the same names. It is drawn
     # by flat_cable from RIBBON_W x RIBBON_T; 0.9 is its thickness.
