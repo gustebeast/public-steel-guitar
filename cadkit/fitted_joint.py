@@ -12,14 +12,16 @@ for the steel guitar's sites; (3) full-length coupons -- DONE for three of its f
 coupons UNDERSTATE what a long joint needs, and several tenons entering at once need more
 again: the up/up lever went 0.275 (short) -> 0.35 right on one full-length tenon -> 0.45 on
 all eight. Where the loosest c printed won, the true optimum may be looser still. So
-clearance(..., "long") returns the full-length lock where there is one, and step 1's
-figure only where there is not -- and a step-1-only figure is a FLOOR, not a pick.
+clearance is suggested PER JOINT (suggest(): pair, both materials, fit, length, tenon count)
+from the table of every judged print (PRINTS), and a step-1-only figure is a FLOOR, not a
+pick.
 Other materials (PCTG, PLA) and nozzles are UNMEASURED: the corner minimums and clearances
 will differ -- print a bracket of coupons before relying on them, and err loose.
 
     from cadkit import fitted_joint as FJ
-    c = FJ.clearance("N", "N", "long")                    # 0.35 (measured, PETG-GF 0.8)
-    tenon, cavity, S = FJ.halves("N", "N", c, length, seat, host_w)
+    g = FJ.suggest("up", "up", length=20, tenons=4, fit="slide", tenon_material="PCTG")
+    g.c, g.bracket, g.measured, g.notes                   # the figure, and how far to trust it
+    tenon, cavity, S = FJ.halves("up", "up", g.c, length, seat, host_w)
 
 halves() returns both halves in the JOINT FRAME -- X the slide (0..length), Y across, Z the
 depth from the mating plane (the tenon host's face) toward the tenon's head. The tenon
@@ -97,40 +99,171 @@ WALL = 2 * BEAD
 MIN = {"N": (2.0, 2.0), "L": (0.8, 0.8)}      # (convex, concave) that prints as drawn
 ROOF_FLAT_MAX = 5 * BEAD                       # a socket roof may bridge this much
 
-# MEASURED CLEARANCES, per side, by (tenon mode, socket mode): (short joint, long joint).
-# Step 1: minimum size, PETG-GF 0.8 (fit plates 2-7). "long" is the pick for a long
-# engagement (which firms a slight wobble up), "short" for a short friction-held one.
-# ⚠ The "long" column is step 1's and is kept as the record; clearance() prefers
-# FULL_LENGTH below, which is what a long joint actually took.
-CLEARANCE = {
-    ("N", "down"): (0.25, 0.30),     # nozzle tenon, layer socket MOUTH UP (0.35 freest)
-    ("N", "up"): (0.25, 0.30),       # nozzle tenon, layer socket MOUTH DOWN
-    ("up", "N"): (0.30, 0.30),       # layer tenon head-up, nozzle socket
-    ("N", "N"): (0.30, 0.35),        # nozzle/nozzle (slides across the layer lines)
-    ("up", "up"): (0.15, 0.20),      # layer/layer STANDING, at STANDING_SIZE
-    ("up", "down"): (0.20, 0.25),    # layer/layer MOUTH UP, at MOUTH_UP_SIZE
-}
+# ══ CLEARANCE IS PER JOINT ══════════════════════════════════════════════════════════════
+# A joint's clearance depends on FIVE things, and a figure is only as good as the print it
+# came from on all five: the PRINT PAIR (how each half meets the layers), the two MATERIALS,
+# the FIT wanted, the ENGAGEMENT LENGTH and the NUMBER OF TENONS sharing the slide. So the
+# record is the prints themselves (PRINTS), and suggest() answers for one joint by finding
+# the print that covers it. Every other table here is derived from PRINTS.
+#
+# FITS: "slide" goes together and comes apart by hand along the whole engagement;
+# "snug" is friction-held and stays put (step 1 ran it 0.05 under slide in every pair but
+# up/N, where the two were the same).
+FITS = ("slide", "snug")
+SNUG_EASE = 0.05             # slide - snug, where a print judged only one of them
+GF = "PETG-GF"
+STEP1_L = 12.0               # the step-1 coupons' engagement (fit_finder.L), one tenon
+
+
+class Print(tuple):
+    """One judged print: (tenon, socket, tenon_material, socket_material, length, tenons,
+    slide, snug, site, how). `snug` None = not judged for that fit; `site` the joint it set."""
+    __slots__ = ()
+    _fields = ("tenon", "socket", "tenon_material", "socket_material", "length", "tenons",
+               "slide", "snug", "site", "how")
+
+    def __new__(cls, *a):
+        assert len(a) == len(cls._fields)
+        return tuple.__new__(cls, a)
+
+    def __getattr__(self, k):
+        return self[self._fields.index(k)]
+
+    def c(self, fit):
+        if fit == "snug":
+            return self.snug if self.snug is not None else round(self.slide - SNUG_EASE, 3)
+        return self.slide
+
+
+def _step1(t, s_, slide, snug, how):
+    return Print(t, s_, GF, GF, STEP1_L, 1, slide, snug, None, "step 1, minimum size: " + how)
+
+
+# Every print of THIS profile that set a figure, judged by the user by feel and calipers.
+PRINTS = [
+    # step 1: fit plates 2-7, the minimum joint in every pair, PETG-GF 0.8 / 0.4 layers
+    _step1("N", "down", 0.30, 0.25, "nozzle tenon, layer socket MOUTH UP (0.35 freest)"),
+    _step1("N", "up", 0.30, 0.25, "nozzle tenon, layer socket MOUTH DOWN"),
+    _step1("up", "N", 0.30, 0.30, "layer tenon head-up, nozzle socket"),
+    _step1("N", "N", 0.35, 0.30, "nozzle/nozzle (slides across the layer lines)"),
+    _step1("up", "up", 0.20, 0.15, "layer/layer STANDING, at STANDING_SIZE"),
+    _step1("up", "down", 0.25, 0.20, "layer/layer MOUTH UP, at MOUTH_UP_SIZE"),
+    # step 3: the steel guitar's real sites at their real length, every tenon they share
+    Print("up", "up", GF, GF, 34.9, 1, 0.35, None, None,
+          "fit_plate9 (2026-10-21), ONE lever tenon at full length: 0.275 too tight, "
+          "0.35 right, 0.45 a bit loose"),
+    Print("up", "up", GF, GF, 34.9, 8, 0.45, None, "lever_mount",
+          "round 6 (2026-10-22), all EIGHT lever tenons with the seat at c: 0.35 and 0.45, "
+          "'the looser of the two was great' -- LOCKED"),
+    Print("N", "N", GF, GF, 64.0, 8, 0.55, None, "seam",
+          "fit_plate10 (2026-10-22), the seam's full drop, 8 tenons: 0.40 / 0.45 / 0.50 / "
+          "0.55, the loosest the winner -- LOCKED (round 3 at 0.375 was 'quite tight')"),
+    Print("N", "down", GF, GF, 58.0, 4, 0.30, None, "rail_end",
+          "endplate_round (2026-10-27), all four endplate tenons, the longest 58: 0.30 / "
+          "0.40 / 0.50, 0.30 'slides great' -- LOCKED. Length and count did NOT loosen "
+          "this pair"),
+    # other projects' prints of the same profile
+    Print("N", "N", "PCTG", "PCTG", 73.6, 2, 0.375, None, None,
+          "tiramisu pan (2026-10-17), the full-height wall joint, one a wall: 'perfect' at "
+          "0.375 (its 1.6 floor joint at 0.375 was too loose)"),
+]
+_MATS = sorted({m for r in PRINTS for m in (r.tenon_material, r.socket_material)})
+
+
+class Suggestion(tuple):
+    """suggest()'s answer: (c, bracket, measured, basis, notes). `measured` is True only when
+    a print of THIS pair in THESE materials covers the joint; `bracket` is the c values to
+    print a coupon at before trusting `c` (one value when measured at its own size)."""
+    __slots__ = ()
+    _fields = ("c", "bracket", "measured", "basis", "notes")
+
+    def __new__(cls, *a):
+        return tuple.__new__(cls, a)
+
+    def __getattr__(self, k):
+        return self[self._fields.index(k)]
+
+
+def suggest(tenon, socket, length, tenons=1, fit="slide", tenon_material=GF,
+            socket_material=None):
+    """The clearance to start ONE joint at, per side, and how far to trust it.
+
+    `tenon`/`socket` are the print modes ("N", "up", "down"); `length` the engagement (mm);
+    `tenons` how many share the slide (one part going onto several at once); `fit` "slide"
+    or "snug"; the socket's material defaults to the tenon's.
+
+    LONGER AND MULTIPLIED JOINTS RUN LOOSER, but by how much is the PAIR's own: up/up went
+    0.20 -> 0.35 -> 0.45 from the minimum coupon to one full-length tenon to eight, and
+    N/down did not move at all. So no rule is applied across pairs. The answer is the
+    tightest print that COVERS the joint (at least as long, at least as many tenons) in
+    the same pair and materials -- a bigger joint's figure errs loose, which is the side
+    to err on. Past every print of the pair the largest print is used and the joint is
+    flagged EXTRAPOLATED; in an unmeasured material the PETG-GF prints are used and flagged
+    UNMEASURED. Either way the bracket widens: print it before relying on c."""
+    if fit not in FITS:
+        raise ValueError("fit is one of %s, not %r" % (FITS, fit))
+    socket_material = socket_material or tenon_material
+    pair = [r for r in PRINTS if (r.tenon, r.socket) == (tenon, socket)]
+    if not pair:
+        raise KeyError("no print of tenon %r / socket %r at all: print a bracket" % (tenon, socket))
+    notes = []
+    rows = [r for r in pair if (r.tenon_material, r.socket_material)
+            == (tenon_material, socket_material)]
+    same_mat = bool(rows)
+    if not rows:
+        rows = [r for r in pair if (r.tenon_material, r.socket_material) == (GF, GF)]
+        notes.append("UNMEASURED: no %s/%s print of this pair -- these are PETG-GF figures, "
+                     "and materials differ (prints on record: %s)"
+                     % (tenon_material, socket_material, ", ".join(_MATS)))
+        other = [r for r in pair if r not in rows]
+        for r in other:
+            notes.append("other material on record: %s/%s %.1f mm x%d -> %.3f (%s)"
+                         % (r.tenon_material, r.socket_material, r.length, r.tenons,
+                            r.c(fit), r.how))
+    cover = [r for r in rows if r.length >= length - 1e-9 and r.tenons >= tenons]
+    if cover:
+        best = min(cover, key=lambda r: (r.c(fit), r.tenons, r.length))
+        own = (best.tenons == tenons and best.length <= 1.5 * length)
+        if not own:
+            notes.append("covered by a BIGGER print (%.1f mm x%d against %.1f mm x%d): errs "
+                         "loose" % (best.length, best.tenons, length, tenons))
+        extrapolated = False
+    else:
+        best = max(rows, key=lambda r: (r.c(fit), r.tenons, r.length))
+        own = False
+        extrapolated = True
+        notes.append("EXTRAPOLATED: longer or more tenons than any print of the pair (largest "
+                     "%.1f mm x%d) -- longer and multiplied joints have so far run looser"
+                     % (best.length, best.tenons))
+    if fit == "snug" and best.snug is None:
+        notes.append("snug not judged on that print: slide - %.2f" % SNUG_EASE)
+    c = best.c(fit)
+    measured = same_mat and not extrapolated
+    if measured and own:
+        bracket = (c,)
+    elif measured:
+        bracket = (round(c - 0.05, 3), c)
+    elif extrapolated and same_mat:
+        bracket = (c, round(c + 0.05, 3), round(c + 0.10, 3))
+    else:
+        bracket = tuple(round(c + d, 3) for d in (-0.10, -0.05, 0.0, 0.05))
+    basis = "%s/%s %s/%s %.1f mm x%d: %s" % (best.tenon, best.socket, best.tenon_material,
+                                             best.socket_material, best.length, best.tenons,
+                                             best.how)
+    return Suggestion(c, bracket, measured, basis, notes)
+
+
+# ── tables derived from PRINTS, for the callers that already read them ──────────────────
+# step 1's (snug, slide) by pair -- the record, and what clearance(..., "short") returns
+CLEARANCE = {(r.tenon, r.socket): (r.snug, r.slide) for r in PRINTS if r.length == STEP1_L}
+# the full-length PETG-GF lock by pair: what clearance(..., "long") returns where there is one
+FULL_LENGTH = {(r.tenon, r.socket): r for r in PRINTS if r.site}
 STANDING_SIZE = {"neck": 3 * BEAD, "head": 6 * BEAD, "side": 2 * BEAD, "root": True,
                  "trunc": 1.2}
 MOUTH_UP_SIZE = {"neck": 3 * BEAD, "head": 6 * BEAD, "side": 3 * BEAD}
-# Step 3: FULL-LENGTH locks, by pair -- the steel guitar's real sites at their real length,
-# printed and fitted by the user (PETG-GF 0.8). (c, the site it was locked on, how). Each is
-# the figure for a joint LIKE that site: its size, its length, its tenon count.
-FULL_LENGTH = {
-    ("up", "up"): (0.45, "lever_mount",
-                   "fit_plate9, ONE tenon at 34.9: 0.275 too tight, 0.35 right, 0.45 a bit "
-                   "loose; round 6, all EIGHT tenons, seat at c: 0.45 the winner, LOCKED "
-                   "2026-10-22 -- several tenons at once want the looser one"),
-    ("N", "N"): (0.55, "seam",
-                 "fit_plate10, the full 64 drop, 8 tenons: 0.40 / 0.45 / 0.50 / 0.55, the "
-                 "loosest the winner, LOCKED 2026-10-22 (round 3 at 0.375 was 'quite tight')"),
-    ("N", "down"): (0.30, "rail_end",
-                    "endplate_corners, both corners at full length: 'Joint slides great', "
-                    "LOCKED 2026-10-27 -- step 1's long pick, confirmed"),
-}
-# Step 2: the steel guitar's real sections -- (tenon, socket, size, c in use), for a site
-# that resembles one. c is the FULL-LENGTH lock where the site has one (step 3), else
-# the short-coupon pick (deck_tongue: its full-length coupon is not yet judged).
+# The steel guitar's real sections -- (tenon, socket, size, c in use), for a site that
+# resembles one. c is the site's full-length lock where it has one (deck_tongue: its
+# full-length coupon is not yet judged, so this is the short-coupon pick).
 SITES = {
     "lever_mount": ("up", "up", {"neck": 4 * BEAD, "head": 7 * BEAD, "side": 2 * BEAD,
                                  "root": True, "trunc": 1.2}, 0.45),     # short: 0.275
@@ -138,22 +271,21 @@ SITES = {
     "rail_end": ("N", "down", None, 0.30),      # the seat 0.4 off the host
     "seam": ("N", "N", None, 0.55),             # faces flush (seat 0), seam_face_trim applied
 }                                               # short: 0.375 (tiramisu pins that one)
-for _name, (_t, _s, _size, _c) in SITES.items():
-    if (_t, _s) in FULL_LENGTH and FULL_LENGTH[(_t, _s)][1] == _name:
-        assert _c == FULL_LENGTH[(_t, _s)][0], "SITES[%r] is not its full-length lock" % _name
+for _r in PRINTS:
+    if _r.site:
+        assert SITES[_r.site][:2] == (_r.tenon, _r.socket), "%s is not that pair" % _r.site
+        assert SITES[_r.site][3] == _r.slide, "SITES[%r] is not its print" % _r.site
 
 
 def clearance(tenon, socket, length="long"):
-    """The measured per-side clearance for a print-mode pair; length "long" or "short".
-
-    "long" is the FULL-LENGTH lock where one was printed (FULL_LENGTH), else step 1's
-    minimum-size pick -- which full length has so far always loosened, so treat it as a
-    floor and print a bracket above it."""
+    """Pair-only shorthand, kept for existing callers: "long" is the full-length lock where
+    one was printed, else step 1's slide; "short" is step 1's snug. NEW WORK: use suggest(),
+    which also takes the joint's materials, length, tenon count and fit."""
     key = (tenon, socket)
     if key not in CLEARANCE:
         raise KeyError("no measured clearance for tenon %r / socket %r: print a bracket" % key)
     if length == "long" and key in FULL_LENGTH:
-        return FULL_LENGTH[key][0]
+        return FULL_LENGTH[key].slide
     return CLEARANCE[key][1 if length == "long" else 0]
 
 

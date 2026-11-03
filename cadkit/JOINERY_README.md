@@ -14,8 +14,10 @@ not). The full rule set, with the reasons, is in the module docstring.
 
 ```python
 from cadkit import fitted_joint as FJ
-c = FJ.clearance("N", "N", "long")          # measured per-side c for the print pair
-tenon, cavity, S = FJ.halves("N", "N", c, length, seat, host_w, size=None)
+# clearance is PER JOINT: print pair, both materials, fit, engagement, tenon count
+g = FJ.suggest("N", "N", length=40, tenons=2, fit="slide", tenon_material="PETG-GF")
+g.c, g.bracket, g.measured, g.basis, g.notes   # the figure, and how far to trust it
+tenon, cavity, S = FJ.halves("N", "N", g.c, length, seat, host_w, size=None)
 # joint frame: X slide 0..length, Y across, Z from the mating plane to the head.
 # union `tenon` into one host, cut `cavity` from the other, same transform for both.
 ```
@@ -23,6 +25,15 @@ tenon, cavity, S = FJ.halves("N", "N", c, length, seat, host_w, size=None)
 - **Print modes per half:** `"N"` is nozzle-made (the profile lies in the layers).
   `"up"` is layer-made with the head toward the nozzle; as a socket, its mouth is
   on the bed. `"down"` is a layer-made socket with its mouth up.
+- **Clearance is per joint** — `suggest(tenon, socket, length, tenons, fit,
+  tenon_material, socket_material)`. It answers from `PRINTS`, every judged print of
+  this profile, with the tightest print that COVERS the joint (as long or longer, as many
+  tenons or more) in the same pair and materials. Longer and multiplied joints run
+  looser, but by the PAIR's own amount (up/up 0.20 → 0.35 → 0.45 from minimum coupon to
+  one full-length tenon to eight; N/down not at all), so no cross-pair rule is applied.
+  Past every print it is flagged EXTRAPOLATED; in an unmeasured material it borrows the
+  PETG-GF prints and is flagged UNMEASURED; either way `bracket` widens — print it.
+  `fit` is `"slide"` (by hand, all the way) or `"snug"` (friction-held).
 - **Measured clearances** (per side, for a long joint). **Full length**
   (`FULL_LENGTH`, the steel guitar's real sites, 2026-10-22/27): **up/up 0.45**
   (lever mount, 8 tenons), **N/N 0.55** (seam, 64 drop, 8 tenons), **N/down 0.30**
