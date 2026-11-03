@@ -22,7 +22,7 @@ The biggest unsolved geometry problem — the one worth tackling first — is th
 
 ## 1. Project overview & goal
 
-A **pedal steel guitar (PSG)** is a 10-string lap instrument where foot pedals and knee levers change the pitch of individual strings mid-play, letting the player slide one chord into a different chord — something no other instrument does. Traditionally this is done with a purely mechanical maze of rods and bellcranks ("the changer"), and reconfiguring which pedal does what ("the copedent") requires cutting/threading rod and sometimes welding. As a result players rarely experiment.
+A **pedal steel guitar** is a 10-string lap instrument where foot pedals and knee levers change the pitch of individual strings mid-play, letting the player slide one chord into a different chord — something no other instrument does. Traditionally this is done with a purely mechanical maze of rods and bellcranks ("the changer"), and reconfiguring which pedal does what ("the copedent") requires cutting/threading rod and sometimes welding. As a result players rarely experiment.
 
 **This project replaces the mechanical changer with one electric actuator per string**, sensed electronically, so the copedent becomes **software-reconfigurable**. Press a pedal → software looks up what that pedal should do → the relevant strings' actuators move to new positions → pitch changes.
 
@@ -285,9 +285,9 @@ This design is a deliberate synthesis of two prior efforts on the Maker Forums t
 - **Self-locking screw → zero holding current/heat/noise.** Eric (@woodslanding) assembled a real motor+screw and found he *could not* back-drive it by pushing on the nut → the device needs no current to hold position. This is empirical, not theoretical. *(The keystone of §3.)*
 - **Anchor the string behind a fixed roller bridge.** Keeps motor noise out of the vibrating length and keeps string height constant as pitch changes. *(Why the changer ≠ the bridge, §4.)*
 - **Constant one-directional tension makes backlash a non-issue.** Advisor @mcdanlj: the drivetrain is always preloaded one way, so a plain nut is fine. *(Why no anti-backlash nut in the baseline.)*
-- **Latency reframed.** A PSG tracks a *continuous pedal gesture*, not a keyboard trigger. ~50 ms/semitone is fine; the string's own response masks it. *(Why "fast" is satisfiable, §1/§3.)*
+- **Latency reframed.** A pedal steel guitar tracks a *continuous pedal gesture*, not a keyboard trigger. ~50 ms/semitone is fine; the string's own response masks it. *(Why "fast" is satisfiable, §1/§3.)*
 - **String-gauge strategy.** Use thinner/higher-tension strings on strings needing bigger excursions; keep moves ≤2 semitones. *(Affects which strings travel furthest, §4.)*
-- **Avoid DIY PID — it's the failure mode.** Eric stalled permanently on hand-tuning a PID loop for a bare DC motor + encoder. Jacques (@jdebruyn) *completed* a working servo PSG precisely by using sealed closed-loop actuators (RC servos) that needed no PID. **We take Jacques's "no PID" win via the SERVO42D's integrated loop**, then use the self-locking screw to fix Jacques's *two* unsolved problems: servo acoustic noise and continuous holding heat. *(Why integrated closed-loop, §2/§10.)*
+- **Avoid DIY PID — it's the failure mode.** Eric stalled permanently on hand-tuning a PID loop for a bare DC motor + encoder. Jacques (@jdebruyn) *completed* a working servo pedal steel guitar precisely by using sealed closed-loop actuators (RC servos) that needed no PID. **We take Jacques's "no PID" win via the SERVO42D's integrated loop**, then use the self-locking screw to fix Jacques's *two* unsolved problems: servo acoustic noise and continuous holding heat. *(Why integrated closed-loop, §2/§10.)*
 - **Software-reconfigurable copedent is proven.** Jacques switches E9↔C6 in ~1 s by redefining servo neutral points in software. *(Validates the whole premise, §1.)*
 - **Real mechanical tension change preserves timbre.** A pure-DSP pitch-shifter was proposed and rejected: the bar constantly changes source pitch (hard to track) and DSP loses the timbral change that is the instrument's soul. *(Validates doing real actuation and calibrating on open strings only, §11.)*
 
@@ -304,9 +304,8 @@ This design is a deliberate synthesis of two prior efforts on the Maker Forums t
 
 ---
 
-## 15. Glossary (PSG terms for the modeler)
+## 15. Glossary (pedal steel guitar terms for the modeler)
 
-- **PSG** — pedal steel guitar.
 - **Copedent** — the mapping of which pedal/lever changes which string by how much. The thing this project makes software-defined.
 - **Changer / changer finger** — traditional mechanical part that pulls a string to change pitch. Here, replaced by the carriage+screw.
 - **Bar** — the metal slide held in the left hand that sets the key; it continuously changes every string's sounding pitch (which is why pitch-based calibration only works on open strings).

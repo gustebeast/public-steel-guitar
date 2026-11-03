@@ -1,12 +1,12 @@
 /* The optical board's USB loader, at the bottom of flash. Written once with the ST-LINK; every
- * later firmware goes in over USB (../output_panel/psgflash.py on the Pi). output_panel's
+ * later firmware goes in over USB (../output_panel/usbflash.py on the Pi). output_panel's
  * boot.c with the same line protocol, on this chip's flash and TinyUSB.
  *
  * Every power-up it enumerates and waits WINDOW_MS for a host to say H. Then it resets and
  * starts the application from a clean chip, if the record says the application is whole
  * (length and CRC-32, written last). The watchdog starts before the application does, and the
  * application has to keep feeding it: one that hangs is reset back here, and comes up again in
- * this window, until psgflash.py catches one. An application asks for the loader with
+ * this window, until usbflash.py catches one. An application asks for the loader with
  * reset_to(GO_LOADER).
  *
  * The line protocol, one reply line per command:

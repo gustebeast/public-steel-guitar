@@ -78,7 +78,7 @@ boot: $(B)/boot.bin
 	wlink flash --address 0x08000000 $<
 
 usb: $(B)/main.bin
-	python3 ../output_panel/psgflash.py --ids cafe:4008 $<
+	python3 ../output_panel/usbflash.py --ids cafe:4008 $<
 
 # the .bin, never the .elf: wchisp sizes its erase from the file
 isp: $(B)/boot.bin

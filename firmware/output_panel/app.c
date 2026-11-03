@@ -2,7 +2,7 @@
  *
  * Runs as the application under the USB loader (boot.c). The board shows up as one serial port.
  * The Pi sends stereo samples and this plays them; nothing here knows where they came from
- * (bench/psgbench/panel.py does the listening). The DAC and ADC run from the same clock, I2S2
+ * (bench/guitarbench/panel.py does the listening). The DAC and ADC run from the same clock, I2S2
  * as master into the PCM5102A, I2S3 as a slave off the same wires from the PCM1808.
  *
  * The sample rate is PLL3's nearest to 48 kHz, 48077 Hz (`?` says), not 48000: the host fits to it.
@@ -11,7 +11,7 @@
  * silence and counts it.
  *
  * Lines from the host (ASCII, '\n', decimal):
- *   ?                  -> I psg-output-bench <version> fs=<Hz> rev=<board>
+ *   ?                  -> I public-steel-guitar-output-bench <version> fs=<Hz> rev=<board>
  *   A <bytes>          then that many raw bytes: int16 little-endian, left then right. No reply
  *   S                  -> S <frames played> <frames queued> <frames short> <adc peak L> <adc peak R> <t_us>
  *   R <0|1>            relay: 0 direct (the pickup, no firmware in the path), 1 processed (the DAC)
@@ -247,11 +247,12 @@ static void status(void)
 
 static void line(char *s)
 {
-    char c = s[0], *e = s + 1, l[64], *p = l;
+    char c = s[0], *e = s + 1, l[96], *p = l;
     uint32_t a = strtoul(e, &e, 10), b = strtoul(e, &e, 10);
     switch (c) {
     case '?':
-        memcpy(p, "I psg-output-bench ", 19); p += 19;
+        static const char id[] = "I public-steel-guitar-output-bench ";
+        memcpy(p, id, sizeof id - 1); p += sizeof id - 1;
         strcpy(p, VERSION); p += strlen(VERSION);
         memcpy(p, " fs=", 4); p += 4;
         p = w_dec(p, fs);

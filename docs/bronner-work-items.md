@@ -78,7 +78,7 @@ held; no octave error on a committed frame and no note-on from a slide, in 297 t
 seeds. Misses over seeds 2-9 (264 takes): 5 re-plucks not seen (the new pluck's phase near the
 old one's) and 1 doubled note-on. **Not proven:** all of it on real strings. The captures from
 2026-11-02 went with the Pi's /tmp at a reboot. **Needs the user:** plucks, slides, re-plucks and
-damps on each string, recorded with `python3 -m psgbench.panel capture --strings 1,7,10
+damps on each string, recorded with `python3 -m guitarbench.panel capture --strings 1,7,10
 --seconds 10` (writes /tmp/take_s<N>.npz and .f32), then `bench/pi/pitch/pitchrun
 /tmp/take_s<N>.f32`. Hands off, three strings 3 s each: 0 note-ons, 0 voiced frames.
 
@@ -128,7 +128,7 @@ noise figure: those amplifiers were saturated.
 1. g1 plus local repair, or the kept output_panel board. g1 also needs firmware pin moves and
    `voltage_check --declare`.
 2. Where the optical light comes from, which holds optical R2 ordering work: run
-   `python3 -m psgbench.panel noise --duty 256` in open air, then again with a black card over an
+   `python3 -m guitarbench.panel noise --duty 256` in open air, then again with a black card over an
    emitter row.
 3. Channels 6B, 7A and 9B read 100+ counts once, near full scale; unexplained.
 4. Listening at the jack: frames reach the panel, but nobody has heard the output.
@@ -149,7 +149,7 @@ and get the whole path ready, so a string (or anything moved over a sensor) work
   DIFF is the octave-error guard (see the optical pickup notes). Measure the noise floor of one
   sensor against the pair, and report the figure rather than assume the gain.
 - **Send it out.** Pi code reads the optical stream and feeds `A` on the panel, keeping the
-  latency target. Start from `bench/psgbench/optical.py` and `panel.py`. A test tone first, so
+  latency target. Start from `bench/guitarbench/optical.py` and `panel.py`. A test tone first, so
   the jack end is proven apart from the sensors, then live sensor data.
 - **All ten strings.** A block of all five converters (38416 bytes) does not fit TinyUSB's
   32 K FIFO, so `stream_pump` has to send it in pieces or `FRAMES` has to shrink.
@@ -214,6 +214,17 @@ Lead: StarTech USB2CC1MR (left/right angle, head 11.0 deep x 6.0 thick per datas
 20.0 and shell offset 5.5 ASSUMED). Newnex U4S5C01CD6 (up/down, drawn) is 18.50 deep: no fit.
 The head sits in a notch in the cradle's -Y wall; the cable leaves -X (first try +X hit the trough
 floor, 26.5 mm3) and climbs the rail where the old drop was.
+
+**No "psg" in the repo (user via the lead, 2026-11-03).** bench/psgbench -> bench/guitarbench,
+psgflash.py -> usbflash.py, the boards' ID lines "I public-steel-guitar-{motor,optical,output}-bench",
+the optical sample header PSGO -> OPTO, the CAN sim channel guitar-sim, PSG_NO_PUBLISH ->
+PUBLIC_STEEL_GUITAR_NO_PUBLISH, the spec spells it out. All three bench boards reflashed through
+the Pi the same day and answer with the new lines; optical streams with OPTO (801 blocks, 0
+dropped); 12 bench tests pass on the Pi. The Pi's bench copy is ~/public-steel-guitar (was ~/psg).
+Kept on purpose: the loaders' flash-record magic 0x50534731 ("PSG1" read as ASCII, in boot.c).
+It is in the record each loader already wrote to flash; changing it makes every board refuse its
+own application until an ISP reflash, which the USB-only rule forbids for an installed board.
+It is a number in the source, not text, so no search for the name finds it.
 
 ## R2 BACKLOG, motor_ctrl (user via the lead, 2026-10-29) -- NOT the current rev, which stays as made
 
@@ -604,7 +615,7 @@ USB port on the panel (endplate room + user confusion). Behaves like a phone / O
      and J6 + J10 lost designator and way-1 mark. (2) lever_sensor, leg_pogo, ui_board
      NOT re-run under these rules (not ordered). silkfit's two-run bug is FIXED (cadkit
      c634d5e: candidates are scored upright, as the text is then set).
-   - **Silk face: Rennie Mackintosh PSG Bold, DONE 2026-10-07 on the five cart boards**
+   - **Silk face: Rennie Mackintosh Public Steel Guitar Bold, DONE 2026-10-07 on the five cart boards**
      (user: before checkout). elec/silk.py SILK_FACE, size 1.5 (cap 1.40 mm, thinnest bar
      0.153 mm; 1.4 is under the 0.15 minimum). PINOUT_REACH 40 (user: pinouts may sit
      further off if they carry the connector number and stay in order). Each board one
@@ -6680,9 +6691,9 @@ geometry and texture/color/material. Then use the same model for the first flash
 - 2026-10-17 viewer: HDR (cadkit 6d40bf2): "output" row -> "dynamic range" SDR/HDR; HDR = unclipped scRGB, SDR white at the desktop's, highlights rolled off to DXGI MaxLuminance; float surface on DX12 too. Proven with a 4x-exposure throwaway build (469 nits vs 499 peak); at the real lighting nothing exceeds SDR white. Test affordances: DESK_FLOOR_FPS, shot over_white. Lead asked to propagate.
 - 2026-10-17 ST-LINK/V2 ready on the Pi: V2J46S7, no-sudo access via stock udev rules; make probe/flash/rescue dry-run to "no target"; optical firmware rebuilt clean (31 kB). Waiting on PCBs.
 - 2026-10-20 wire: two-gauge rule (22 AWG 24 V on XH, 26 AWG everything else) written into BOM.md with per-run checks; 20 AWG Pi 5 V note fixed in src/wiring.py; prices.json wire note. McMaster order holds red 22, red/yellow/green 26 (25 ft, $13.57), not placed.
-- 2026-11-02 motor_ctrl resilient loader: runs on the R1 board. Shares output_panel's boot.c and psgflash.py;
+- 2026-11-02 motor_ctrl resilient loader: runs on the R1 board. Shares output_panel's boot.c and usbflash.py;
   link.c/link.h are the USBFS versions on PA11/PA12 (J4). `cafe:4008` for loader and application. The first bench image
-  never reached USB because it linked RAM at 64 K on a chip set to 32 K; the new link scripts fix that. psgflash.py now
+  never reached USB because it linked RAM at 64 K on a chip set to 32 K; the new link scripts fix that. usbflash.py now
   waits 30 s for the loader (it gave up in about 4 s, inside the 8 s watchdog of an application hung with USB up).
 - 2026-11-02 optical: start-up checks each lane for a half-buffer of exact zeros and re-runs the converter setup, up to 3 times; `?` reports what stays silent (`silent=<lanes>`). Five parts on one address give no per-part ACK or read, so the data is the only evidence. The check and the report are tested by forcing a lane silent; a real silent converter has not been caught, and its cause is still unknown. Messages said on connect can be lost (a forced one never arrived), so the state is in `?`.
-- 2026-11-02 motor, unloaded, 500 kbit/s, encoder polled (python3 -m psgbench.motorquality): 0.52 turn (a whole tone on string 1's model) at 3000 rpm, acc 0: 90 % in 39 ms, arrived in 70 ms. acc 255: 54 / 77 ms, overshoot 181 counts. The acc 240 used in the first demo takes 224 / 285 ms: acc, not the motor, set those numbers. 240 arrivals: random scatter sd 0.44 counts, worst 1.6; repeatable error against angle -41..+5, two cycles a turn; direction 10-25 counts. 38 counts is 1 cent there. All of it is the motor's own encoder, unloaded: load and true shaft angle are unmeasured. Disabling let it relax 40 counts.
+- 2026-11-02 motor, unloaded, 500 kbit/s, encoder polled (python3 -m guitarbench.motorquality): 0.52 turn (a whole tone on string 1's model) at 3000 rpm, acc 0: 90 % in 39 ms, arrived in 70 ms. acc 255: 54 / 77 ms, overshoot 181 counts. The acc 240 used in the first demo takes 224 / 285 ms: acc, not the motor, set those numbers. 240 arrivals: random scatter sd 0.44 counts, worst 1.6; repeatable error against angle -41..+5, two cycles a turn; direction 10-25 counts. 38 counts is 1 cent there. All of it is the motor's own encoder, unloaded: load and true shaft angle are unmeasured. Disabling let it relax 40 counts.

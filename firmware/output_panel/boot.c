@@ -1,12 +1,12 @@
 /* The CH32V307 boards' USB loader, at the bottom of flash (output_panel, motor_ctrl; each
  * builds this file against its own link.c and link.h). Written once with the WCH-LinkE; every
- * later firmware goes in over USB (psgflash.py on the Pi).
+ * later firmware goes in over USB (usbflash.py on the Pi).
  *
  * Every power-up it enumerates and waits WINDOW_US for a host to say H. Then it resets and
  * starts the application from a clean chip, if the record says the application is whole
  * (length and CRC-32, written last). The watchdog starts before the application does, and the
  * application has to keep feeding it: one that hangs is reset back here, and comes up again in
- * this window, until psgflash.py catches one. An application asks for the loader with
+ * this window, until usbflash.py catches one. An application asks for the loader with
  * reset_to(GO_LOADER).
  *
  * The line protocol, one reply line per command:
