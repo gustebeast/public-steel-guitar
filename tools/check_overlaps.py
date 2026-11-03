@@ -159,6 +159,7 @@ GLOBAL_OK = {
     # exactly this situation, one paragraph down.
     frozenset({"chassis", "pi4"}),
     frozenset({"pi4_pins", "pi_cap"}),      # the Pi's 40 pins, in the cap's socket
+    frozenset({"pi4_pins", "pi_riser"}),    # R2: the Pi's pins in the riser's socket (Adafruit 4079)
     # the UI ribbon's two IDC sockets on their 2x8 headers' pins (ui_panel.IDC_PIN_IN):
     # the boards draw those pins as a block out to their tips
     frozenset({"ui_ribbon_socket", "ui_pcb"}), frozenset({"ui_ribbon_socket", "pi_cap"}),

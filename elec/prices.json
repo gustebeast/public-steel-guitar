@@ -4966,6 +4966,12 @@
       "verified": "v",
       "what": "Lace Aluma Bass Bar 4.0 -- lacemusic.com, the maker, $147.00 2026-09-30"
     },
+    "pi_riser_4079": {
+      "usd": 1.95,
+      "verified": "v",
+      "per_instrument": 1,
+      "what": "Adafruit 4079, 2x20 socket riser header for Raspberry Pi HATs: between the Pi's header and the Pi cap (R2), 8.5 body, 6 mm pins -- adafruit.com/product/4079, $1.95 at 1-9 ($1.76 at 10-99), in stock 2026-11-03"
+    },
     "pi4_1gb": {
       "usd": 35.0,
       "verified": "v",
