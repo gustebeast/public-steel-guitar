@@ -215,16 +215,17 @@ Lead: StarTech USB2CC1MR (left/right angle, head 11.0 deep x 6.0 thick per datas
 The head sits in a notch in the cradle's -Y wall; the cable leaves -X (first try +X hit the trough
 floor, 26.5 mm3) and climbs the rail where the old drop was.
 
-**No "psg" in the repo (user via the lead, 2026-11-03).** bench/psgbench -> bench/guitarbench,
-psgflash.py -> usbflash.py, the boards' ID lines "I public-steel-guitar-{motor,optical,output}-bench",
-the optical sample header PSGO -> OPTO, the CAN sim channel guitar-sim, PSG_NO_PUBLISH ->
-PUBLIC_STEEL_GUITAR_NO_PUBLISH, the spec spells it out. All three bench boards reflashed through
+**The name is spelled out everywhere (user via the lead, 2026-11-03).** The old three-letter
+prefix could read as pedal or public steel guitar, so it is gone: the bench package is
+bench/guitarbench, the flasher usbflash.py, the boards' ID lines "I public-steel-guitar-{motor,
+optical,output}-bench", the optical sample header OPTO, the CAN sim channel guitar-sim, the publish
+switch PUBLIC_STEEL_GUITAR_NO_PUBLISH, the silk face "Rennie Mackintosh Public Steel Guitar" (kept
+boards' silk plots byte-identical), the spec spells it out. All three bench boards reflashed through
 the Pi the same day and answer with the new lines; optical streams with OPTO (801 blocks, 0
-dropped); 12 bench tests pass on the Pi. The Pi's bench copy is ~/public-steel-guitar (was ~/psg).
-Kept on purpose: the loaders' flash-record magic 0x50534731 ("PSG1" read as ASCII, in boot.c).
-It is in the record each loader already wrote to flash; changing it makes every board refuse its
-own application until an ISP reflash, which the USB-only rule forbids for an installed board.
-It is a number in the source, not text, so no search for the name finds it.
+dropped); 12 bench tests pass on the Pi. The Pi's bench copy is ~/public-steel-guitar.
+Kept on purpose: the loaders' flash-record magic 0x50534731 (boot.c). It is in the record each
+loader already wrote to flash; changing it makes every board refuse its own application until an
+ISP reflash, which the USB-only rule forbids for an installed board.
 
 ## R2 BACKLOG, motor_ctrl (user via the lead, 2026-10-29) -- NOT the current rev, which stays as made
 
