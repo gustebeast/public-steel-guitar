@@ -327,7 +327,7 @@ catches it (proven 2026-11-02: a hang at start-up and one with USB up, both resc
 alone). An application that keeps reading USB but ignores `B` still takes a power cycle on R1.
 
 V1 (`app.c`) is the bench firmware: enough to hear the optical pickup on the jack. Motors do
-not go through this board. They stay on `motor_ctrl` (`bench/guitarbench/bench.py`).
+not go through this board. They stay on `motor_ctrl` (`bench/publicbench/bench.py`).
 
 | Command | Does |
 |---|---|
@@ -340,12 +340,12 @@ not go through this board. They stay on `motor_ctrl` (`bench/guitarbench/bench.p
 | `B` | `OK`, then back to the loader |
 
 The rate is 48,076.9 Hz, the nearest the PLL gets to 48 kHz. On the Pi,
-`bench/guitarbench/panel.py` drives it:
+`bench/publicbench/panel.py` drives it:
 
 ```
-python3 -m guitarbench.panel tone --hz 440 --seconds 3
-python3 -m guitarbench.panel listen --string 3 --optical <control port>,<sample port> --gain 0.5
-python3 -m guitarbench.panel status
+python3 -m publicbench.panel tone --hz 440 --seconds 3
+python3 -m publicbench.panel listen --string 3 --optical <control port>,<sample port> --gain 0.5
+python3 -m publicbench.panel status
 ```
 
 Tested on the board: 48,077 Hz measured, a tone heard on headphones, and 2,401 synthetic 5 ms
@@ -371,7 +371,7 @@ returns to the loader; `B <bus> <bit/s>` still sets a bus rate. Run on the board
 (each stays in the loader and recovers), a hang before USB and a hang with USB up (each
 resets into the loader's window and is caught). The frame timing and CAN are not yet tested.
 
-**`bench/guitarbench`** is the test side, in Python, run on the Pi (`cd bench; python3 -m
+**`bench/publicbench`** is the test side, in Python, run on the Pi (`cd bench; python3 -m
 pytest`):
 - `link.py`: the CAN bus through the motor controller's USB, or through a USB-CAN adapter.
   Either way a test gets frames and send times on one clock.
@@ -429,13 +429,13 @@ reaching a photodiode directly, which would still be there in the instrument and
 before optical R2 is ordered. To tell them apart: run `noise --duty 256` with the board pointing
 at open air, then with a black card over one emitter's row, and see whether a carrier moves.
 
-`python3 -m guitarbench.panel noise --duty 32` prints carrier and noise for every string.
-`python3 -m guitarbench.panel listen --string 3 --duty 32` puts a string on the jack. `--common`
+`python3 -m publicbench.panel noise --duty 32` prints carrier and noise for every string.
+`python3 -m publicbench.panel listen --string 3 --duty 32` puts a string on the jack. `--common`
 takes all five converters and the noise they share, which only helps in saturation.
 
-**The tests** are `bench/guitarbench/scenarios.py`, run one at a time:
+**The tests** are `bench/publicbench/scenarios.py`, run one at a time:
 
-    python3 -m guitarbench.bench <scenario> --motor 1 --string 3 --counts 400 --limit 2000         --link motor --optical /dev/ttyACM1,/dev/ttyACM2 --out runs/
+    python3 -m publicbench.bench <scenario> --motor 1 --string 3 --counts 400 --limit 2000         --link motor --optical /dev/ttyACM1,/dev/ttyACM2 --out runs/
 
 | scenario | what it does | what it answers |
 |---|---|---|

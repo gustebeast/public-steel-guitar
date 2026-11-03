@@ -4,7 +4,7 @@
  * ports. The first takes one-line commands; the second carries the samples. Nothing is
  * demodulated or detected here: the five TLV320ADC3140s run at 192 kHz, the emitters are
  * gated at 48 kHz from the same clock, and whichever converters the host asks for are sent
- * as they come. Lock-in, SUM / DIFF and pitch are done on the host (bench/guitarbench), after
+ * as they come. Lock-in, SUM / DIFF and pitch are done on the host (bench/publicbench), after
  * the fact, where they can be changed without reflashing.
  *
  * THE SAMPLE COUNT IS THE CLOCK. Every block says which sample it starts at, counted from

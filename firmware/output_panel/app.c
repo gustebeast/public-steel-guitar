@@ -2,7 +2,7 @@
  *
  * Runs as the application under the USB loader (boot.c). The board shows up as one serial port.
  * The Pi sends stereo samples and this plays them; nothing here knows where they came from
- * (bench/guitarbench/panel.py does the listening). The DAC and ADC run from the same clock, I2S2
+ * (bench/publicbench/panel.py does the listening). The DAC and ADC run from the same clock, I2S2
  * as master into the PCM5102A, I2S3 as a slave off the same wires from the PCM1808.
  *
  * The sample rate is PLL3's nearest to 48 kHz, 48077 Hz (`?` says), not 48000: the host fits to it.

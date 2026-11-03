@@ -1,6 +1,6 @@
 (footprint "Alps_RKJXT1F42001"
 	(version 20240108)
-	(generator "steel-guitar")
+	(generator "public-steel-guitar")
 	(layer "F.Cu")
 	(descr "Alps Alpine RKJXT1F42001 4-direction stick switch with encoder + centre push, 17.0x17.0x10.5 THT. Land from Alps' own 'Mounting Hole Dimensions' drawing (10 x O1 +0.2 plated, one O1.1 +0.1 position lug), cross-checked pad for pad against LCSC's vendor footprint SW-TH_RKJXT1F42001 for C160841. Pin names: A/B/C/D directions, 5 PUSH, 6 COM (directions + push), 7 encoder B, 8 encoder A, 9 encoder common, 10 ground lug.")
 	(tags "switch encoder joystick Alps RKJXT1F THT")

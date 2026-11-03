@@ -1,6 +1,6 @@
 (footprint "Xinyangze_YZF0002-38080-02"
 	(version 20240108)
-	(generator "steel-guitar")
+	(generator "public-steel-guitar")
 	(layer "F.Cu")
 	(descr "Xinyangze YZF0002-38080-02 side-mount SMD pogo pin (LCSC C5203987), 8.00 free / 6.00 working / 5.70 limit, barrel 4.50 x 3.00 x 3.80 on its pad, plunger O2.00 firing -X, axis 1.90 above the board. Land = one 5.00 x 3.50 pad under the barrel, per LCSC's own EasyEDA footprint CONN-SMD_YZF0002-38080-02 (read 2026-09-30). F.Fab is the BARREL only: the plunger is modelled by src/fret_light.py, because it crosses the board edge and a comb wall")
 	(tags "pogo spring contact side-mount horizontal")

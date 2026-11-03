@@ -1,6 +1,6 @@
 (footprint "Texas_RWB0012A_X2QFN-12_1.6x1.6mm_P0.4mm"
 	(version 20240108)
-	(generator "steel-guitar")
+	(generator "public-steel-guitar")
 	(layer "F.Cu")
 	(descr "TI RWB0012A X2QFN-12, 1.6 x 1.6, 0.4 pitch, land from the sheet's example board layout (4221631/B)")
 	(attr smd)
