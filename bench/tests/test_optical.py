@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from psgbench import optical, pitch
+from publicbench import optical, pitch
 
 
 def carrier_samples(seconds=0.5, f0=220.0, depth=0.02, phase_shift=1, seed=3):

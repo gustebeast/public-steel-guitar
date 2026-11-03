@@ -18,7 +18,7 @@ from . import servo as S
 
 
 class SimServo(threading.Thread):
-    def __init__(self, can_id=1, channel="psg-sim", reply_delay=0.0005, accel_turns_s2=400.0):
+    def __init__(self, can_id=1, channel="public-sim", reply_delay=0.0005, accel_turns_s2=400.0):
         super().__init__(daemon=True)
         import can
         self._can = can

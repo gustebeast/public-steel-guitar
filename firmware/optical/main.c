@@ -4,7 +4,7 @@
  * ports. The first takes one-line commands; the second carries the samples. Nothing is
  * demodulated or detected here: the five TLV320ADC3140s run at 192 kHz, the emitters are
  * gated at 48 kHz from the same clock, and whichever converters the host asks for are sent
- * as they come. Lock-in, SUM / DIFF and pitch are done on the host (bench/psgbench), after
+ * as they come. Lock-in, SUM / DIFF and pitch are done on the host (bench/publicbench), after
  * the fact, where they can be changed without reflashing.
  *
  * THE SAMPLE COUNT IS THE CLOCK. Every block says which sample it starts at, counted from
@@ -12,8 +12,8 @@
  * count up with its own clock, and with the motor controller's.
  *
  * Control port, lines from the host (decimal unless said):
- *   B                 back to the loader (boot.c): how psgflash.py gets in
- *   ?                 -> I psg-optical-bench <version> fs=192000 block=<frames> slots=4 silent=<lanes>
+ *   B                 back to the loader (boot.c): how usbflash.py gets in
+ *   ?                 -> I public-steel-guitar-optical-bench <version> fs=192000 block=<frames> slots=4 silent=<lanes>
  *   T                 -> T <sample count now>
  *   L <mask>          which converters to send: bit k = converter k (U14 + k); 0 stops
  *   E <0|1>           emitters off / gated at 48 kHz (default 1)
@@ -311,13 +311,14 @@ static void restart(void)
 
 static void line(const char *s)
 {
-    char l[80], *p; uint32_t a, b, c;
+    char l[96], *p; uint32_t a, b, c;
     switch (*s) {
     case '?':
-        p = l; memcpy(p, "I psg-optical-bench 1 fs=192000 block=480 slots=4 silent=", 57); p += 57;
+        static const char id[] = "I public-steel-guitar-optical-bench 1 fs=192000 block=480 slots=4 silent=";
+        p = l; memcpy(p, id, sizeof id - 1); p += sizeof id - 1;
         p = w_dec(p, silent); *p++ = '\n'; *p = 0;
         say(l); return;
-    case 'B':                             /* back to the loader, for psgflash.py */
+    case 'B':                             /* back to the loader, for usbflash.py */
         say("OK\n");
         for (uint32_t t = HAL_GetTick(); HAL_GetTick() - t < 20; ) tud_task();
         reset_to(GO_LOADER);
@@ -378,7 +379,7 @@ static void stream_pump(void)
             uint32_t need = 16;
             for (int k = 0; k < LANES; k++) if (mask & (1u << k)) need += HALF * 2;
             if (tud_cdc_n_write_available(1) < need) return;        /* later; or it is dropped */
-            uint8_t hd[16] = { 'P', 'S', 'G', 'O', mask, dropped, (uint8_t)FRAMES, (uint8_t)(FRAMES >> 8) };
+            uint8_t hd[16] = { 'O', 'P', 'T', 'O', mask, dropped, (uint8_t)FRAMES, (uint8_t)(FRAMES >> 8) };
             uint64_t first = (uint64_t)h * FRAMES;
             memcpy(hd + 8, &first, 8);
             tud_cdc_n_write(1, hd, 16);
@@ -397,7 +398,7 @@ int main(void)
     int clk = clock_setup();
     pins_setup();
     dbg_setup();
-    dbg(clk ? "psg-optical-bench: CLOCK FAILED\r\n" : "psg-optical-bench: clock ok\r\n");
+    dbg(clk ? "public-steel-guitar-optical-bench: CLOCK FAILED\r\n" : "public-steel-guitar-optical-bench: clock ok\r\n");
     HAL_Delay(2000);                      /* a window for the debugger before anything else */
     int adc = adc_setup();
     dbg(adc ? "converters: NO ANSWER on I2C\r\n" : "converters: configured\r\n");

@@ -1,6 +1,6 @@
 (footprint "XINGLIGHT_XL-5050RGBW"
 	(version 20240108)
-	(generator "steel-guitar")
+	(generator "public-steel-guitar")
 	(layer "F.Cu")
 	(descr "XINGLIGHT XL-5050RGBW 5.0x5.0x1.6 RGBW LED, separate anodes 1-4 (R,G,B,W) and cathodes 5-8; land per datasheet p.9")
 	(tags "LED RGBW 5050")

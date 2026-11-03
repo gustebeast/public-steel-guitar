@@ -1,6 +1,6 @@
 import numpy as np
 
-from psgbench.panel import Fit, Lockin
+from publicbench.panel import Fit, Lockin
 
 
 def carrier(sig):

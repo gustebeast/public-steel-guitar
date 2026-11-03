@@ -1412,9 +1412,9 @@
       "what": "B6B-XH-A C144397 -- JLCPCB parts API at qty 20"
     },
     "motor_ctrl:J4": {
-      "usd": 0.0454,
+      "usd": 0.3558,
       "verified": "v",
-      "what": "B4B-PH-K-S C131334 -- JLCPCB parts API at qty 10"
+      "what": "R2: hanxia HX-TYPE-C 16P 180 LC-B H10.0 C49261584, vertical THT USB-C -- LCSC product page at qty 5+, 1,765 stock, 2026-11-03 (R1 was B4B-PH-K-S C131334, $0.0454)"
     },
     "motor_ctrl:J5": {
       "usd": 0.0722,

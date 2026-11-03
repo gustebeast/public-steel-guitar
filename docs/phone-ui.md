@@ -30,10 +30,13 @@ screen gets its own, this one should be replaced by it.
 
 The layout is always portrait, however the phone thinks it is turned (a phone lying flat on
 the instrument flips by itself):
-- On Android, the manifest asks for portrait, and the first press goes full screen and locks
-  portrait.
-- Everywhere else, iPhone Safari included, the page turns itself back by the browser's angle,
-  and touches are judged on the turned layout.
+- Installed to the home screen on Android, the manifest asks for portrait.
+- Everywhere else the page turns itself back by the browser's angle, and touches are judged
+  on the turned layout. A press does not go full screen (user, 2026-11-03), and without full
+  screen Android will not lock the orientation.
+
+A held button does not buzz the phone: the page cancels each touch at its start, which stops
+the phone's long-press timer.
 
 ## Safety: no string is left bent
 
@@ -56,9 +59,9 @@ then open http://localhost:8765. Tests: `cd bench` then `python -m pytest tests/
 
 On the Pi, from the checkout, as your own user with sudo. This names the Pi
 `public-steel-guitar`, installs avahi, pyserial and openssl, makes the HTTPS certificates,
-copies `bench/pi` and `bench/psgbench` to `/opt/psg/bench`, and starts `psg-phone.service`
-on ports 80 and 443 from boot, running as you. Run it again after any change to the page or
-`psgbench`: the service runs the copy, not the checkout.
+copies `bench/` to `/opt/public-steel-guitar/bench`, and starts
+`public-steel-guitar-phone.service` on ports 80 and 443 from boot, running as you. Run it
+again after any change in `bench/`: the service runs the copy, not the checkout.
 
 ```bash
 sudo bench/pi/phone/install.sh
@@ -76,22 +79,24 @@ address. To trust it, download http://public-steel-guitar.home/ca.crt on the pho
   Settings, General, About, Certificate Trust Settings.
 - Android: Settings, Security, Encryption & credentials, Install a certificate, CA certificate.
 
-To remake the certificates (a new IP, a new name), delete `/var/lib/psg-phone/tls` and run
+To remake the certificates (a new IP, a new name), delete `/var/lib/public-steel-guitar-phone/tls` and run
 install.sh again. The phones then need the new CA.
 
-**The motor port is shared with the bench scripts.** The service opens motor_ctrl's USB port
-only for a press. It closes it 3 s after the last move, once nothing is held. It does not
-open the port while another process has it open: the press does nothing and the page shows NO
-LINK until a press finds the port free. So a bench script works whenever no one is pressing,
-but a script started while a button is held (or in the 3 s after) shares the port with the
-page and both get confused. A tty has no lock to stop that. The first press after the port
-was closed waits about 0.2 s while the link syncs.
+**The motor port is shared with the bench scripts: the page holds it only while it is on
+screen.** When a page shows, the server opens motor_ctrl's USB port on a thread, and the page
+reads NO LINK, with dead buttons, until the motors answer (about 0.3 s). 3 s after the last
+page closes or goes to the background, the port is shut. It is not opened while another
+process has it open: the page stays at NO LINK, and the server tries again every 2 s. So run
+bench scripts with the page closed or the phone locked. A script started while a page shows
+shares the port with it, and both get confused: a tty has no lock to stop that. The link's
+clock sync asks the board twice, not 40 times: each ask waits out a 0.1 s read, which made
+the port take 4 s to open, and the page sends nothing timed on the board's clock.
 
 The motors that answer at the first read are the ones it drives: one motor on the bench
 works with no flag (`--strings` still narrows it).
 
 The server talks to motor_ctrl on USB
-(`bench/psgbench/link.py`, `servo.py`) and sends each motor an absolute move (F5): acc 0, at an even speed
+(the bench package's `link.py` and `servo.py`, found by the files, not the name) and sends each motor an absolute move (F5): acc 0, at an even speed
 that makes each half or whole step take `STEP_S` (0.25 s, about a pedal press; user
 2026-11-03: 3000 and then 1500 rpm both sounded instant), and a speed matched to the creep for pitch up and down. No firmware change
 was needed: motor_ctrl's `Q` line carries the frames as they are.
@@ -100,7 +105,7 @@ was needed: motor_ctrl's `Q` line carries the frames as they are.
 
 Each motor's encoder count at open pitch is its **home**. The first time the server starts, it
 takes the strings as they are as open, so **tune first, then start it**. It keeps the homes
-and the pitch-up/down position in `/var/lib/psg-phone/state.json`, and picks them up again on
+and the pitch-up/down position in `/var/lib/public-steel-guitar-phone/state.json`, and picks them up again on
 a restart if the motors are still where the file says. To re-home, retune, delete the file
 and restart the service.
 

@@ -1,6 +1,6 @@
 (footprint "Kangshen_DSHP01TSGER"
 	(version 20240108)
-	(generator "steel-guitar")
+	(generator "public-steel-guitar")
 	(layer "F.Cu")
 	(descr "Kangshen DSHP01TSGER 1-position slide DIP switch, 1.27 mm series, gull wing, body 5.4 x 2.88 x 2.3, land per drawing DSHP-001-S-A")
 	(tags "DIP switch SPST slide 1 position")

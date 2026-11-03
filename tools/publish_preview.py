@@ -16,7 +16,7 @@ flipped Pages keeps serving docs/ from main; this script's push just pre-stages
 the branch (harmless).
 
 Guarded: only publishes from the `main` branch, so agent worktrees on agent/*
-branches never publish. Set PSG_NO_PUBLISH=1 to skip entirely.
+branches never publish. Set PUBLIC_STEEL_GUITAR_NO_PUBLISH=1 to skip entirely.
 """
 
 from __future__ import annotations
@@ -85,8 +85,8 @@ def push_gh_pages(build_n: int | None = None, remote: str = "origin",
     commit. Returns True if pushed, None if skipped on purpose (opted out / not on
     main / nothing to send), False if it SHOULD have gone out and did not.
     Never touches the working tree, index, or HEAD (uses a throwaway index)."""
-    if os.environ.get("PSG_NO_PUBLISH"):
-        print("web preview: PSG_NO_PUBLISH set -> skip publish")
+    if os.environ.get("PUBLIC_STEEL_GUITAR_NO_PUBLISH"):
+        print("web preview: PUBLIC_STEEL_GUITAR_NO_PUBLISH set -> skip publish")
         return None
     cur = _git("rev-parse", "--abbrev-ref", "HEAD")
     if cur != "main":

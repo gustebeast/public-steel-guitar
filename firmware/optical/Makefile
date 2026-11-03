@@ -6,7 +6,7 @@
 #   make            build/app/optical.elf and .bin, linked above the loader
 #   make boot       the loader (boot.c), written once with the ST-LINK; it wipes nothing above
 #                   its own sector
-#   make usb        the application through the loader, over USB: psgflash.py
+#   make usb        the application through the loader, over USB: usbflash.py
 #   make probe      the ST-LINK and the board through it, nothing written: the probe's
 #                   firmware, the board's 3V3 as the probe reads it on TP5, the chip's ID
 #   make flash      the application with openocd through the ST-LINK. It only runs through the
@@ -59,7 +59,7 @@ boot:
 	$(OCD) -c "program build/boot/optical.elf verify reset exit"
 
 usb: $(B)/optical.bin
-	python3 ../output_panel/psgflash.py --ids cafe:4007,cafe:4006 --app 0x40000 --page 4096 $<
+	python3 ../output_panel/usbflash.py --ids cafe:4007,cafe:4006 --app 0x40000 --page 4096 $<
 
 $(B)/optical.bin: $(B)/optical.elf
 	$(CROSS)objcopy -O binary $< $@

@@ -1,7 +1,7 @@
 """First words with a motor, through motor_ctrl.
 
-    python3 -m psgbench.motorcheck                 read the motor, moves nothing
-    python3 -m psgbench.motorcheck --move          then SR_vFOC, enable, a quarter turn and back
+    python3 -m publicbench.motorcheck                 read the motor, moves nothing
+    python3 -m publicbench.motorcheck --move          then SR_vFOC, enable, a quarter turn and back
 
 Prints each raw line from the board, so a frame nobody acknowledged (D ... 0) shows as itself.
 """

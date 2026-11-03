@@ -204,7 +204,7 @@ None of it has been run against a board yet.
 firmware V2J46S7, serial 55FF6F064988825556441467; Debian's own udev rules (`49-stlinkv2.rules`,
 `60-openocd.rules`) already let `gus` use it without sudo. `openocd` drives it in direct SWD
 mode. With no board on the leads, `make probe`, `make flash` and `make rescue` in
-`~/psg/firmware/optical` each get as far as "Target voltage: 0.000000 ... unable to connect
+`~/public-steel-guitar/firmware/optical` each get as far as "Target voltage: 0.000000 ... unable to connect
 to the target", which is everything short of the five wires. The firmware was rebuilt clean
 there the same day (31 kB code). On the day: power the board, `make probe` (expect a target
 voltage near 3.3 from TP5 and the STM32H7's ID), then `make flash`; `make rescue` holds
@@ -220,7 +220,7 @@ rule lets the `gus` user reach the probe without sudo. **The LinkE ARRIVED 2026-
 (WCH-LinkE-CH32V305)" and then stops at protocol error 0x55 -- no target on the leads,
 which is what it should say with no board. Not yet tried: talking to a CH32V chip, which
 waits for the boards (`wlink status` with a board on the leads is the first step). The
-motor_ctrl bench image builds clean on the Pi the same day (`~/psg/firmware/motor_ctrl`,
+motor_ctrl bench image builds clean on the Pi the same day (`~/public-steel-guitar/firmware/motor_ctrl`,
 identical to the repo's, `make` -> 11,460-byte .bin). It now builds as a loader and an
 application: `make boot` once with the LinkE, then `make usb`. If the probe ever fails there, the CH32V boards are flashed from a Windows
 PC with the same probe and leads (`wlink` for Windows, or WCH-LinkUtility).
@@ -280,7 +280,7 @@ two boards before it arrives. No board changes.
    `1a86:55e0`). If it does not, the lead or the loader is at fault and nothing has been
    written: stop there.
 4. **Pull the link apart** (both tails stay on the board), then
-   `cd ~/psg/firmware/motor_ctrl && make isp`. It erases, writes the USB loader, verifies
+   `cd ~/public-steel-guitar/firmware/motor_ctrl && make isp`. It erases, writes the USB loader, verifies
    and resets.
 5. `lsusb` now shows `cafe:4008`, the loader's serial port. `make usb` writes the
    application; the same `cafe:4008` then answers `?`.
@@ -316,22 +316,22 @@ After one LinkE flash the board takes its firmware over J3, through the hub, fro
 |---|---|
 | 0x0000, 28 K | the loader (`firmware/output_panel/boot.c`), written once with the LinkE: `make boot` |
 | 0x7000, 4 K | the loader's record |
-| 0x8000 | the application: `make`, then `make usb` from the Pi, which runs `psgflash.py` |
+| 0x8000 | the application: `make`, then `make usb` from the Pi, which runs `usbflash.py` |
 
 The board shows up as `1a86:fe0c` at 480 Mbit. The LinkE is `1a86:8010`, so go by the id, not
-the `ttyACM` number. The loader holds a 1.5 s window at each boot; `psgflash.py` asks a running
+the `ttyACM` number. The loader holds a 1.5 s window at each boot; `usbflash.py` asks a running
 application to go back to the loader, or catches that window if the board is power-cycled
 while it waits. The loader starts an 8 s watchdog before the application, which feeds it only
-where it reads USB, so a hung application falls back into that window until `psgflash.py`
+where it reads USB, so a hung application falls back into that window until `usbflash.py`
 catches it (proven 2026-11-02: a hang at start-up and one with USB up, both rescued over USB
 alone). An application that keeps reading USB but ignores `B` still takes a power cycle on R1.
 
 V1 (`app.c`) is the bench firmware: enough to hear the optical pickup on the jack. Motors do
-not go through this board. They stay on `motor_ctrl` (`bench/psgbench/bench.py`).
+not go through this board. They stay on `motor_ctrl` (`bench/publicbench/bench.py`).
 
 | Command | Does |
 |---|---|
-| `?` | `I psg-output-bench <ver> fs=<Hz> rev=<n>` |
+| `?` | `I public-steel-guitar-output-bench <ver> fs=<Hz> rev=<n>` |
 | `A <bytes>` + raw int16 LE, L then R | queues audio |
 | `S` | `S played queued short peakL peakR t_us` |
 | `R 0` / `R 1` | the relay; 1 puts the DAC on the jack |
@@ -340,12 +340,12 @@ not go through this board. They stay on `motor_ctrl` (`bench/psgbench/bench.py`)
 | `B` | `OK`, then back to the loader |
 
 The rate is 48,076.9 Hz, the nearest the PLL gets to 48 kHz. On the Pi,
-`bench/psgbench/panel.py` drives it:
+`bench/publicbench/panel.py` drives it:
 
 ```
-python3 -m psgbench.panel tone --hz 440 --seconds 3
-python3 -m psgbench.panel listen --string 3 --optical <control port>,<sample port> --gain 0.5
-python3 -m psgbench.panel status
+python3 -m publicbench.panel tone --hz 440 --seconds 3
+python3 -m publicbench.panel listen --string 3 --optical <control port>,<sample port> --gain 0.5
+python3 -m publicbench.panel status
 ```
 
 Tested on the board: 48,077 Hz measured, a tone heard on headphones, and 2,401 synthetic 5 ms
@@ -365,13 +365,13 @@ frame with its time. It knows nothing about the motors (its line protocol is at 
 this repository: `make` in that folder, with `~/src/ch32v307` a checkout of
 `github.com/openwch/ch32v307`; `make boot` writes the loader through the WCH-LinkE, once,
 and `make usb` writes the application through it (output_panel's `boot.c` and
-`psgflash.py`, with J4 as the USB port, `cafe:4008` for both images). The bare `B` command
+`usbflash.py`, with J4 as the USB port, `cafe:4008` for both images). The bare `B` command
 returns to the loader; `B <bus> <bit/s>` still sets a bus rate. Run on the board
 2026-11-02: USB update, updates stopped after the erase, half way and before the check
 (each stays in the loader and recovers), a hang before USB and a hang with USB up (each
 resets into the loader's window and is caught). The frame timing and CAN are not yet tested.
 
-**`bench/psgbench`** is the test side, in Python, run on the Pi (`cd bench; python3 -m
+**`bench/publicbench`** is the test side, in Python, run on the Pi (`cd bench; python3 -m
 pytest`):
 - `link.py`: the CAN bus through the motor controller's USB, or through a USB-CAN adapter.
   Either way a test gets frames and send times on one clock.
@@ -393,10 +393,10 @@ converters are asked for), each block stamped with its sample count. No demodula
 pitch detection on the board: that is all done afterwards on the Pi. Built on the Pi with
 Debian's ARM GCC against TinyUSB and ST's HAL (`~/src/tinyusb`, not in this repository);
 `make boot` writes the USB loader (`boot.c`, sector 0) once through the ST-LINK and `make usb`
-sends the application through it with `psgflash.py`, in 0.2 s. If the board does not come back
+sends the application through it with `usbflash.py`, in 0.2 s. If the board does not come back
 after `make boot`, power-cycle it: an ST-LINK reset once left the PHY off the bus. The loader
 waits 2 s for a host at every start. It starts an 8 s watchdog before the application, which
-has to feed it, so a hung application falls back into that window until `psgflash.py` catches
+has to feed it, so a hung application falls back into that window until `usbflash.py` catches
 it, and halting the application in a debugger resets it. An application that keeps feeding the
 watchdog but stops listening on USB is the one case that still takes a power cycle on R1.
 Start-up reports each step on TP12 (115200 baud). **Proven on board 1, 2026-11-01:
@@ -429,13 +429,13 @@ reaching a photodiode directly, which would still be there in the instrument and
 before optical R2 is ordered. To tell them apart: run `noise --duty 256` with the board pointing
 at open air, then with a black card over one emitter's row, and see whether a carrier moves.
 
-`python3 -m psgbench.panel noise --duty 32` prints carrier and noise for every string.
-`python3 -m psgbench.panel listen --string 3 --duty 32` puts a string on the jack. `--common`
+`python3 -m publicbench.panel noise --duty 32` prints carrier and noise for every string.
+`python3 -m publicbench.panel listen --string 3 --duty 32` puts a string on the jack. `--common`
 takes all five converters and the noise they share, which only helps in saturation.
 
-**The tests** are `bench/psgbench/scenarios.py`, run one at a time:
+**The tests** are `bench/publicbench/scenarios.py`, run one at a time:
 
-    python3 -m psgbench.bench <scenario> --motor 1 --string 3 --counts 400 --limit 2000         --link motor --optical /dev/ttyACM1,/dev/ttyACM2 --out runs/
+    python3 -m publicbench.bench <scenario> --motor 1 --string 3 --counts 400 --limit 2000         --link motor --optical /dev/ttyACM1,/dev/ttyACM2 --out runs/
 
 | scenario | what it does | what it answers |
 |---|---|---|
@@ -680,7 +680,7 @@ measurement). (With the optional bench supply: the pigtail goes into the panel's
 limit 2 A with one motor; at 0.3 A the supply folds back and it looks like a fault.)
 
 **The Pi's gadget port works with VBUS absent** (2026-11-02, computer to the panel's USB-C, `output_panel` J2 to the Pi's USB-C). `dtoverlay=dwc2,dr_mode=peripheral` under `[all]` in
-`config.txt`, and `bench/pi/psg-gadget.sh` run at boot by its service: `cafe:4010`, one
+`config.txt`, and `bench/pi/public-steel-guitar-gadget.sh` run at boot by its service: `cafe:4010`, one
 serial port for now, `/dev/ttyGS0` on the Pi. It enumerated at high speed and 1 MB crossed
 it with every byte accounted for. The USB-A ports are a separate controller and are unaffected.
 

@@ -936,7 +936,7 @@ The rule (user, 2026-10-07; the tuples are in `elec/harness.py`):
 | fret light drop | XH 4 | Pi cap J3 | fret board J1 | `24V, GND, SCK, SDT` |
 | foot light drop | XH 4 | Pi cap J6 | foot board J1 | `24V, GND, SCK, SDT` |
 | Pi 5 V | PH 6 | motor board J5 | Pi cap J2 | `5V, GND, -, -, GND, 5V` |
-| USB to the Pi | PH 4 | motor board J4 | Pi USB-A | `VBUS (unused), GND, D-, D+` |
+| USB to the Pi | a stock USB-C to USB-A lead | motor board J4 (USB-C, mouth up off the board) | Pi USB-A | bought, not crimped |
 | bus B drops | PH 4 | motor board J2 / J6, leg boards | pedal and lever chains | `5V, GND, CAN_H, CAN_L` |
 | lever / pedal hop | PH 4 | sensor board J2 (out) | next sensor board J1 (in) | `5V, GND, CAN_H, CAN_L`, straight |
 
@@ -948,15 +948,16 @@ plugged in.
 **Only the optical board plugs into the output panel's USB-C (J4).** Its VBUS has no
 current limit of its own, on a 0.6 A rail.
 
-**Two pairs of sockets on the motor board take each other's plug**: J1 and J7 (both
-4-way XH), and J4 (the USB lead) against the bus-B leads on J2 / J6 (all 4-way PH). The
-table further down says what each wrong pairing does; the silk names every socket.
+**One pair of sockets on the motor board takes each other's plug**: J1 and J7 (both
+4-way XH). The table further down says what each wrong pairing does; the silk names every
+socket. (R2's J4 is a USB-C, so the USB lead no longer fits the bus-B sockets J2 / J6.)
 
 **At a motor the drop ends on screw terminals, not a housing**: 24 V to V+, ground to GND,
 and the pair to CANH / CANL by the names printed on the driver. The lead's colours (red,
 black, yellow, green) are the check; there is no way number at that end.
 
-**The USB lead is the one lead whose far end has somebody else's numbering.** A USB-A plug's
+**R1 motor board only (bench): the USB lead is crimped onto a PH 4 (ways `VBUS (unused),
+GND, D-, D+`), and its far end has somebody else's numbering.** A USB-A plug's
 own contacts are 1 VBUS, 2 D-, 3 D+, 4 GND (USB 2.0, the order the plug's maker prints);
 the PH housing's ways are VBUS, GND, D-, D+. So it is NOT contact n to way n:
 
@@ -1146,6 +1147,10 @@ The design shows the R2 boards only. Until they arrive, the R1 boards are a benc
 - **Pi cap:** the Pi sits loose at an angle.
 - **Output board:** it stays outside the instrument.
 - **Optical board:** it goes on the same two mount holes and lines up with the strings; its tail may spill over the edge.
+- **Motor board:** its J4 is a 4-way PH, so the Pi link is the crimped USB-A to PH lead (the R1
+  table under the lead colours). Its J7 sits low: lights-lead ways 3 and 4 are under the floor's top,
+  so on the bench the lead goes in before the board is stood in the chassis. Bus B's J2 / J6
+  are 14 mm nearer the -Y body adapter than R2's: pull those plugs with pliers.
 
 ## Foot lights: plug the lead in first, then slide the strip in from +X (2026-10-29)
 
@@ -1285,3 +1290,13 @@ Plug a USB device in (an audio interface such as a Shure MVX2U) and the board po
 - **Why:** each pair is one print, welded where the two filaments meet (the light window is keyed
   into the chassis brick by brick). The file already has them in place and on their bed face; split
   them and the weld is gone.
+
+## Motor board R2: USB-C for the Pi link, J7 up, bus B moved (2026-11-03)
+
+- **The Pi link is a stock USB-C to USB-A lead** into J4, a vertical USB-C whose mouth faces
+  away from the board. Plug it in before the top panel goes on; its plug stands about 20 mm
+  off the board, over the Pi cap.
+- **J7 (the lights lead) is above the floor**: all four ways clear its top, so the lead plugs
+  in with the board already standing. No floor trench.
+- **J2 / J6 (bus B) moved 14 / 15 mm +Y along the bottom edge**: a finger reaches each plug from
+  below past the -X/-Y body adapter.

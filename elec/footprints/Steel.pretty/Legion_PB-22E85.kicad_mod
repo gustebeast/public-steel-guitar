@@ -1,6 +1,6 @@
 (footprint "Legion_PB-22E85"
 	(version 20240108)
-	(generator "steel-guitar")
+	(generator "public-steel-guitar")
 	(layer "F.Cu")
 	(descr "Legion PB-22E85-S-5.7C-C-W self-locking push switch, 2P2T, 8.5x8.5x8.5 body, 3.3 sq stem standing 5.7 over it. Land from the maker's own P.C.B LAYOUT: 2 rows of 3 at 2.5, rows 5.4 apart; terminals are 0.5 x 0.4 blades. Pads 2 and 5 are the commons. LCSC C22462024.")
 	(tags "switch push latching self-lock Legion PB-22E85 THT")

@@ -21,6 +21,7 @@ import hashlib
 import json
 import os
 import struct
+import threading
 import time
 import zlib
 
@@ -36,9 +37,9 @@ TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": 
 
 
 def icon_png(size=180) -> bytes:
-    """The home-screen icon: white "PSG" on black, 1-bit, scaled by whole pixels."""
+    """The home-screen icon: white "PUBLIC" on black, 1-bit, scaled by whole pixels."""
     from font import text_bits
-    bits, w, h = text_bits("PSG")
+    bits, w, h = text_bits("PUBLIC")
     k = max(1, (size * 3 // 5) // w)
     ox, oy = (size - w * k) // 2, (size - h * k) // 2
     rows = []
@@ -58,15 +59,52 @@ def icon_png(size=180) -> bytes:
 
 
 class Hub:
+    """THE PORT IS OPEN WHILE A PAGE SHOWS (user, 2026-11-03: buttons that look live and do
+    nothing for a while are worse than NO LINK). A page on screen asks for the motors; they
+    are opened on a thread, so nothing waits on it, and the page reads NO LINK until they
+    answer. 3 s after the last page goes (closed, or hidden), the port is shut again."""
+    RETRY = 2.0
+
     def __init__(self, driver: Driver, motors):
         self.d, self.m, self.p = driver, motors, driver.p
-        self.clients = {}             # writer -> {"seen": t}
+        self.clients = {}             # writer -> {"seen": t, "shown": bool}
         self._n = 0
+        self._opening = None
+        self._retry_at = 0.0
+
+    def live(self) -> bool:
+        if not hasattr(self.m, "open"):
+            return getattr(self.m, "ok", True)          # the mock: always there
+        return self.m.link is not None and self._opening is None and self.m.ok
 
     def snapshot(self):
         s = self.p.state()
-        s["link"] = self.m.name if getattr(self.m, "ok", True) else "lost"
+        s["link"] = self.m.name if self.live() else "lost"
         return s
+
+    def _bring_up(self):
+        try:
+            self.m.open()
+            self.d.ensure_home()
+        except Exception as e:
+            print("motors:", e, flush=True)
+            self.m.ok = False
+            self.m.close()
+            self._retry_at = time.monotonic() + self.RETRY
+        finally:
+            self._opening = None
+
+    def _port(self, now):
+        if not hasattr(self.m, "open"):
+            return
+        held = self.p.creep or self.p.bend is not None
+        if any(c["shown"] for c in self.clients.values()) or held:
+            self.m.touch()
+            if self.m.link is None and self._opening is None and now >= self._retry_at:
+                self._opening = threading.Thread(target=self._bring_up, daemon=True)
+                self._opening.start()
+        elif self._opening is None:
+            self.m.idle()                              # the port goes back to the bench scripts
 
     async def broadcast(self):
         msg = _frame(json.dumps(self.snapshot()).encode())
@@ -87,22 +125,25 @@ class Hub:
                     self.p.release(w)
             self.p.tick(now - last)
             last = now
+            self._port(now)
             self._step()
-            if not self.p.creep and self.p.bend is None and hasattr(self.m, "idle"):
-                self.m.idle()                          # the port goes back to the bench scripts
             s = self.snapshot()
             if s != prev:
                 prev = s
                 await self.broadcast()
 
     def _step(self):
+        if not self.live():
+            return
         try:
             self.d.step(TICK)
             self.d.save()
         except Exception as e:                         # a motor that stops answering, a busy port
-            if self.m.ok:
-                print("motor:", e, flush=True)
+            print("motor:", e, flush=True)
             self.m.ok = False
+            if hasattr(self.m, "open"):                # shut it; a page still showing reopens it
+                self.m.close()
+                self._retry_at = time.monotonic() + self.RETRY
 
     def _holds(self, w):
         return w in self.p.creep or (self.p.bend is not None and self.p.bend[0] is w)
@@ -120,6 +161,9 @@ class Hub:
             self.p.release(w, b)
         elif t == "hide":
             self.p.release(w)
+            self.clients[w]["shown"] = False
+        elif t == "show":
+            self.clients[w]["shown"] = True
         self._step()                               # a press goes out now, not at the next tick
         await self.broadcast()
 
@@ -139,7 +183,7 @@ async def _ws(hub: Hub, r: asyncio.StreamReader, w: asyncio.StreamWriter, key: s
     acc = base64.b64encode(hashlib.sha1(key.encode() + GUID).digest()).decode()
     w.write(("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
              "Sec-WebSocket-Accept: %s\r\n\r\n" % acc).encode())
-    hub.clients[w] = {"seen": time.monotonic()}
+    hub.clients[w] = {"seen": time.monotonic(), "shown": True}   # the page says if it is hidden
     w.write(_frame(json.dumps(hub.snapshot()).encode()))
     buf = b""
     try:
@@ -228,7 +272,7 @@ async def main(argv=None):
                     help="which strings have a motor on the bus, e.g. 1 for one motor on the bench")
     ap.add_argument("--raise-sign", type=int, choices=(1, -1), default=None,
                     help="the motor direction that raises pitch (pitchctl.RAISE_SIGN)")
-    ap.add_argument("--state", default="/var/lib/psg-phone/state.json",
+    ap.add_argument("--state", default="/var/lib/public-steel-guitar-phone/state.json",
                     help="where each motor's open-pitch count is kept across restarts")
     ap.add_argument("--tls-port", type=int, default=443)
     ap.add_argument("--tls-dir", default=None,

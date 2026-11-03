@@ -52,10 +52,11 @@ import cadquery as cq
 
 from cadkit.cables import oct_cable
 
-os.environ.update(OUTPUT_PANEL_REV="1", OPTICAL_REV="1", PI_CAP_REV="1")
+os.environ.update(OUTPUT_PANEL_REV="1", OPTICAL_REV="1", PI_CAP_REV="1", MOTOR_CTRL_REV="1")
 from . import board_geom as BG  # noqa: E402
 
-assert BG.OUTPUT_PANEL_REV == 1 and BG.OPTICAL_REV == 1, "board_geom was imported at R2 first"
+assert BG.OUTPUT_PANEL_REV == 1 and BG.OPTICAL_REV == 1 and BG.MOTOR_CTRL_REV == 1, \
+    "board_geom was imported at R2 first"
 
 PITCH = 2.54                 # both probes' headers
 SOCKET_OUT = 8.0             # of a socket past the pin's tip

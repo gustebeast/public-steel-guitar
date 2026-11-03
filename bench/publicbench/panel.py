@@ -1,9 +1,9 @@
 """The output panel (firmware/output_panel): its controls, and samples to its jack.
 
-    python3 -m psgbench.panel tone --hz 440 --seconds 3
-    python3 -m psgbench.panel listen --string 3 --duty 32 --seconds 30
-    python3 -m psgbench.panel noise --duty 32
-    python3 -m psgbench.panel status
+    python3 -m publicbench.panel tone --hz 440 --seconds 3
+    python3 -m publicbench.panel listen --string 3 --duty 32 --seconds 30
+    python3 -m publicbench.panel noise --duty 32
+    python3 -m publicbench.panel status
 
 The jack hears the DAC only with the relay energised, so both commands throw it on the way
 in and let it go on the way out. The lock-in here is the running form of optical.demod(),
