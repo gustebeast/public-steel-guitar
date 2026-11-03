@@ -1,0 +1,18 @@
+[Unit]
+Description=Phone pitch page, http://public-steel-guitar.local
+After=network-online.target avahi-daemon.service
+Wants=network-online.target
+
+[Service]
+# the checkout's path on the Pi: install.sh writes this line for where it was run from
+WorkingDirectory=/opt/psg/bench/pi/phone
+ExecStart=/usr/bin/python3 server.py --port 80 --state /var/lib/psg-phone/state.json
+Restart=always
+RestartSec=2
+User=psg
+SupplementaryGroups=dialout
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+StateDirectory=psg-phone
+
+[Install]
+WantedBy=multi-user.target
