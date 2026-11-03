@@ -3,7 +3,7 @@
  * The board (CH32V307WCU6, 8 MHz crystal) shows up on its USB as a serial port. The host
  * sends CAN frames to transmit, either now or at a time on THIS board's microsecond clock,
  * and gets every received frame back with the time it arrived. Nothing here knows what a
- * SERVO42D is: the motor protocol lives on the host (bench/guitarbench/servo.py), where it is
+ * SERVO42D is: the motor protocol lives on the host (bench/publicbench/servo.py), where it is
  * a text edit to correct once a real motor answers.
  *
  *   bus 0 = bus A, CAN1 remapped to PB8 (RX) / PB9 (TX)  -- the motors

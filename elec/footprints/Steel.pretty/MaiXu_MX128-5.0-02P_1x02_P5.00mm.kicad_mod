@@ -1,6 +1,6 @@
 (footprint "MaiXu_MX128-5.0-02P_1x02_P5.00mm"
 	(version 20240108)
-	(generator "steel-guitar")
+	(generator "public-steel-guitar")
 	(layer "F.Cu")
 	(descr "MaiXu MX128-5.0-02P, 5.00 pitch, 10.20 deep, 14.00 tall, M2.5; drawing MX128-5.0-XXP 22.09.14")
 	(attr through_hole)

@@ -1,6 +1,6 @@
 (footprint "Hanxia_HX-TYPE-C-16P-180-LC-B-H10.0_Vertical"
 	(version 20240108)
-	(generator "steel-guitar")
+	(generator "public-steel-guitar")
 	(layer "F.Cu")
 	(descr "hanxia HX-TYPE-C 16P 180 LC-B H10.0, vertical (180) USB Type-C receptacle, 16 contacts, all through hole, LCSC C49261584. Land from hanxia's own 'RECOMMENDED P.C.B. LAYOUT' on drawing HX-TYPE-C 16P 180 LC-B H10.0 TYPE C VERTICAL (read 2026-11-03): two rows of eight pins at 1.00 pitch, rows 1.65 apart, drill 0.40 on a 0.70 pad; four shell tabs in 1.20 x 0.60 slots at x +-4.225, y +-2.02 (8.45 x 4.04). Origin = the land's centre; the mouth faces +Z, 10.0 tall (table 1, 'L' = 10.00 for this H10.0). Body 12.00 x 5.00 across its tabs (the drawing's bottom view). Row A (A1 at -X) is -Y, row B (B12 at -X) is +Y. Tails 2.1 below the seat: made for a 1.6 board.")
 	(tags "USB C Type-C receptacle vertical 16P THT hanxia")

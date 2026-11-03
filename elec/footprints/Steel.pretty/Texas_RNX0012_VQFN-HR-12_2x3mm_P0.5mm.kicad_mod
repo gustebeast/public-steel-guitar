@@ -1,6 +1,6 @@
 (footprint "Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm"
 	(version 20240108)
-	(generator "steel-guitar")
+	(generator "public-steel-guitar")
 	(layer "F.Cu")
 	(descr "TI RNX0012B/RNX0012C VQFN-HR-12, 2 x 3 mm (LMR33630xRNX), land per TI SNVSB08 example board layout")
 	(tags "VQFN-HR RNX LMR33630")
