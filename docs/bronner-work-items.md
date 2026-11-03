@@ -467,6 +467,24 @@ enforces this today. Lights must fail safe if the Pi hangs. Cap set from a hiccu
 under string load (one motor on a multimeter, then 2, 3, 4 movers with lights full, margin below
 the trip). 0.8 A per mover stays unmeasured until then. Confirm SERVO42D's working-current setting.
 
+**R2-2 robustness, checked against the netlist and firmware written (2026-11-03).** The seven
+constraints against `_r2_ports`: (1) no firmware = plain DRP at default current, attaches, and ID
+drives the mux and the gate; (2) Try.SNK and (5) the setting are I2C writes (U13 in I2C mode, as
+designed on 10-30); (3, 7) Q4 feeds EN only on ID low, Q5 holds EN at a few mV whenever J1's VBUS
+is up (4.5 V on its gate from R46/R47), Q6 latches Q5 off once EN is high, U15 blocks reverse,
+and U1 forcing host pulls the same ID net, so no GPIO gets past the gate; (4) FAULT#, INT_N, ID
+and I2C2 are U1 pins, no Pi wire; (6) U14 rests on the Pi path (S = ID, pulled up). One limit:
+Q5 is only sure of a foreign VBUS above about 2.75 V (2N7002 Vth 2.5 max through the divider);
+between vSafe0V and that it relies on U15's reverse comparator.
+Firmware, `firmware/output_panel` built `make REV=2` (REV=1, the default, builds byte-identical to
+before; both compiled on the Pi, -Wall clean): at start 1.5 A advertised and Try.SNK, MODE_SELECT
+left on the PORT pin so a host already attached is not dropped; `M 0|1|2` auto / host / device
+through TI's DISABLE_TERM sequence (SLLSEQ8D p.14); `H 1` forces host, host setting only; `U`
+reports attach state, setting, fault, forced, current offered; `V` the inlet's mV and mA (U16,
+R2-4). Register map read off SLLSEQ8D pp.17-19 (0x67 with ADDR high, p.3). Not run: no R2 board.
+Bring-up list for the first R2: the nine combinations of the table above, each mux position
+enumerating at 480 Mbps, a backfeeding device on a dead port (U15 off, Q5 on), the MVX2U.
+
 **R2-2 example device (user, 2026-10-30): the MVX2U.** It's an example of what the port should support, not a design target; the user may plug in something else. On the bring-up checklist: its current draw, and Linux playback through it.
 
 **Optical R2 U8 heat (found 2026-10-30, open).** Lead's order: after output_panel R2, once branner's stack lands; blocks ordering optical R2. Tab copper first, quantified from the real copper area; separate LDO only if copper can't hold the all-peripherals corner under TJ max. Correct M25 with it.  AP2114 sheet Rev 2.2 p.7: SOT-223 128 C/W with no heatsink, TJ max 150. 1.72 V across it, 45 C ambient, using that figure: 332 mA typical 0.57 W, 118 C; 402 mA 0.69 W, 133 C; 582 mA all-peripherals 1.00 W, 173 C, over the limit. The hub adds up to 120 mA of that (100 is the panel's estimate). M25 still needs this text, and its 0.79 W corner was already 146 C. Fix options: more +3V3D copper on the tab, or the hub and bridge on their own LDO.
