@@ -2,8 +2,8 @@
 contact is the instrument's own. chassis_1's +Y rail has no PETG-GF path to the body: the weld is all
 that holds it until the seams go together.
 
-Print the two STEPs as ONE OBJECT, the rail and body in PETG-GF and the window in PCTG, on the 0.8
-nozzle, exactly as chassis_1 prints. Then look at the window's ends for peeling, and bend the rail
+One STEP, two named bodies, as chassis_1's own file: Bambu loads it as one object; put
+test_window_weld on PETG-GF and test_window_weld_light on PCTG, on the 0.8 nozzle. Then look at the window's ends for peeling, and bend the rail
 over by hand until something gives. Break in the plastic: the joint holds. A clean peel along the
 window's faces: it does not.
 Both faces are bricked (chassis.BRICK_*): the clear keys into the opaque, course by course. The
@@ -18,7 +18,8 @@ import sys
 from .. import chassis as CH
 from .. import dimensions as D
 from ..helpers import box_at
-from cadkit.step_export import export_step
+from cadkit.orientation import PrintOrientation as PO
+from cadkit.step_export import export_print_parts
 
 SEG = 1                                          # the section whose rail hangs on the window
 LEN = 3 * D.LEVER_PITCH                          # 31.2: whole pitches, so the contact is the real share
@@ -47,8 +48,9 @@ def window():
 
 def main():
     out = sys.argv[1] if len(sys.argv) > 1 else "."
-    export_step(opaque(), out + "/test_window_weld.step")
-    export_step(window(), out + "/test_window_weld_light.step")
+    export_print_parts([("test_window_weld", opaque()), ("test_window_weld_light", window())],
+                       PO(None, "chassis_1's own bed face: a slice of it, standing as it prints"),
+                       out + "/test_window_weld.step")
 
 
 if __name__ == "__main__":
