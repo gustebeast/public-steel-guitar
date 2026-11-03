@@ -410,6 +410,12 @@ for _i in range(D.N_STRINGS):
 # into that material. Cut at the END of the pipeline, where nothing unions over it again.
 for _, _cutters in _WR_FUSE.tee_hold_negatives():
     for _cut in _cutters:                       # a seam can fall between a tee and its ear post
+        _cb = _cut.val().BoundingBox()
+        for _s in CH.SPLIT_X:
+            assert not _cb.xmin - D.MIN_WALL_2P < _s < _cb.xmax + D.MIN_WALL_2P, (
+                "the seam at x %.2f is within %.1f of a tee hold-down (x %.2f..%.2f): the insert "
+                "loses its wall, which nothing else reports -- move SPLIT_X one lever wall"
+                % (_s, D.MIN_WALL_2P, _cb.xmin, _cb.xmax))
         for _csi, _cs in enumerate(chassis_segments):
             if not _bb_apart(_cs.val(), _cut.val()):
                 chassis_segments[_csi] = _cs.cut(_cut)

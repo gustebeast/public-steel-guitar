@@ -220,14 +220,14 @@ _MORT_X = list(D.lever_grid_x())
 # 43.9 pitch, so it reaches 31.15 past its own motor and the segment that OWNS that motor
 # carries the whole overhang. A segment's real footprint is therefore its end motors +-31.15,
 # not the split planes -- the old targets left segment 0 at 265.5, over the bed. These put one
-# motor in segment 0 and five/four in the others (the -X plane moved with the bank,
-# 2026-10-02: it sits between strings 4 and 5 again). BED_X asserts the lengths; wiring asserts
+# motor in segment 0 and four/five in the others. The -X plane stands one wall +X of the gap
+# between strings 4 and 5, through string 5's bay: in the gap it broke into string 4's tee
+# insert bore (build.py asserts that against every hold-down). BED_X asserts the lengths; wiring asserts
 # that neither plane lands in the RAIL NOTCH at motor 9, where the trunk dips outboard -- a
 # split there puts its tenon back through the dip (5 wires were buried in it).
 SPLIT_X  = [D.lever_wall_x(_t)
-            for _t in (-205.0, -428.0)]  # 2 cuts → 3 segments < BED_X, each on the centre of one of the grid's 1.6 WALLS, so the
-                                       # plane itself misses every mortise (the seam JOINT is wider than a wall,
-                                       # so the stations it covers are dropped instead -- see _seam_blocked). Was a
+            for _t in (-205.0, -416.0)]  # 2 cuts → 3 segments < BED_X, each on the centre of one of the grid's 1.6 WALLS, so the
+                                       # plane itself misses every mortise and no station is lost. Was a
                                        # 13 mm gap BETWEEN two ribs. The cut runs through the motor bays
                                        # that straddle it (see _segments).
 
