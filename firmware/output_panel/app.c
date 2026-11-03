@@ -18,6 +18,13 @@
  *   P <tip> <ring>     output level, 0..255; the same 0x80 as power-up until first written
  *   J <0|1>            jack: 0 balanced (R37's rest state), 1 stereo
  *   B                  -> OK, then back to the loader
+ * R2 only (built REV=2):
+ *   U                  -> U <attached: 0 none, 1 we source, 2 we sink, 3 accessory> <setting>
+ *                         <fault 0|1> <host forced 0|1> <current the far end offers, 0..3>
+ *   M <0|1|2>          J1's setting: 0 auto (dual role, Try.SNK), 1 host only, 2 device only
+ *   H <0|1>            host forced: J1 hosts a device with no Rd (setting 1 only). VBUS still
+ *                      goes only through the hardware gate
+ *   V                  -> V <inlet mV> <inlet mA>
  * Lines to the host: OK, or E <what>. */
 #include <stdlib.h>
 #include <string.h>
@@ -215,6 +222,140 @@ static void pins_init(void)
     GPIO_Init(GPIOB, &g);
 }
 
+#if REV != 1
+/* ---- R2: J1, the dual-role USB-C port, and the inlet meter (work items R2-2, R2-4) ---------
+ * U13 (TUSB320LAI, ADDR high: 0x67) and U16 (INA226, 0x40) on PB10 SCL / PB11 SDA, bit-banged
+ * open drain against R50/R51. U15's FAULT# is PA3, U13's INT_N PC4, the role net PD8.
+ *
+ * THE SAFETY IS NOT HERE. The gate in hardware (elec/output_panel.py _r2_ports: Q4-Q6, U15)
+ * decides whether J1 sources VBUS: never onto a VBUS already present, never past U15's limit,
+ * never backwards. What this adds is what only a register can say -- Try.SNK, so a dual-role
+ * laptop or phone makes us the device, and the 1.5 A advertisement -- and the UI's setting.
+ * With no firmware the port is a plain DRP at default current, and works.
+ *
+ * Register map: TI SLLSEQ8D pp.17-19 (read 2026-11-03). 0x08 bits 7:6 CURRENT_MODE_ADVERTISE,
+ * 5:4 CURRENT_MODE_DETECT. 0x09 bits 7:6 ATTACHED_STATE, 4 INTERRUPT_STATUS (write 1 to clear).
+ * 0x0A bits 5:4 MODE_SELECT, 2:1 SOURCE_PREF, 0 DISABLE_TERM. A mode change takes p.14's
+ * sequence: DISABLE_TERM, the mode, 5 ms, DISABLE_TERM off. */
+#define SCL_PIN   GPIO_Pin_10       /* PB10 */
+#define SDA_PIN   GPIO_Pin_11       /* PB11 */
+#define FAULT_PIN GPIO_Pin_3        /* PA3, U15 FAULT#, R48 up */
+#define RINT_PIN  GPIO_Pin_4        /* PC4, U13 INT_N, R49 up */
+#define ID_PIN    GPIO_Pin_8        /* PD8, ROLE_ID_N, R43 up */
+#define TUSB      0x67
+#define INA       0x40
+#define TRY_SNK   0x02              /* SOURCE_PREF 01 */
+
+static void i2c_l(uint16_t pin, int v)
+{
+    GPIO_WriteBit(GPIOB, pin, v ? Bit_SET : Bit_RESET);     /* open drain: 1 lets go */
+    Delay_Us(5);
+}
+
+static void i2c_start(void) { i2c_l(SDA_PIN, 1); i2c_l(SCL_PIN, 1); i2c_l(SDA_PIN, 0); i2c_l(SCL_PIN, 0); }
+static void i2c_stop(void) { i2c_l(SDA_PIN, 0); i2c_l(SCL_PIN, 1); i2c_l(SDA_PIN, 1); }
+
+static int i2c_tx(uint8_t b)        /* 1 if the byte was acked */
+{
+    for (int i = 7; i >= 0; i--) { i2c_l(SDA_PIN, (b >> i) & 1); i2c_l(SCL_PIN, 1); i2c_l(SCL_PIN, 0); }
+    i2c_l(SDA_PIN, 1);
+    i2c_l(SCL_PIN, 1);
+    int ack = !GPIO_ReadInputDataBit(GPIOB, SDA_PIN);
+    i2c_l(SCL_PIN, 0);
+    return ack;
+}
+
+static uint8_t i2c_rx(int more)
+{
+    uint8_t b = 0;
+    i2c_l(SDA_PIN, 1);
+    for (int i = 0; i < 8; i++) {
+        i2c_l(SCL_PIN, 1);
+        b = (uint8_t)((b << 1) | GPIO_ReadInputDataBit(GPIOB, SDA_PIN));
+        i2c_l(SCL_PIN, 0);
+    }
+    i2c_l(SDA_PIN, !more);
+    i2c_l(SCL_PIN, 1);
+    i2c_l(SCL_PIN, 0);
+    i2c_l(SDA_PIN, 1);
+    return b;
+}
+
+/* n bytes to or from a register, MSB first (the INA226's are 16 bits). 0, or -1 on a nack */
+static int i2c_put(uint8_t dev, uint8_t reg, const uint8_t *d, int n)
+{
+    i2c_start();
+    int ok = i2c_tx((uint8_t)(dev << 1)) && i2c_tx(reg);
+    for (int i = 0; ok && i < n; i++) ok = i2c_tx(d[i]);
+    i2c_stop();
+    return ok ? 0 : -1;
+}
+
+static int i2c_get(uint8_t dev, uint8_t reg, uint8_t *d, int n)
+{
+    i2c_start();
+    int ok = i2c_tx((uint8_t)(dev << 1)) && i2c_tx(reg);
+    if (ok) { i2c_start(); ok = i2c_tx((uint8_t)((dev << 1) | 1)); }
+    for (int i = 0; ok && i < n; i++) d[i] = i2c_rx(i < n - 1);
+    i2c_stop();
+    return ok ? 0 : -1;
+}
+
+static uint8_t port_mode;           /* the UI's setting: 0 auto, 1 host, 2 device */
+static uint8_t id_forced;
+static const uint8_t mode_bits[3] = {0x00, 0x20, 0x10};   /* PORT pin (open: DRP), DFP, UFP */
+
+static void id_force(int on)
+{
+    GPIO_InitTypeDef g = {0};
+    g.GPIO_Pin = ID_PIN;
+    g.GPIO_Speed = GPIO_Speed_10MHz;
+    g.GPIO_Mode = on ? GPIO_Mode_Out_OD : GPIO_Mode_IN_FLOATING;
+    GPIO_ResetBits(GPIOD, ID_PIN);  /* low in the register BEFORE it drives */
+    GPIO_Init(GPIOD, &g);
+    id_forced = (uint8_t)(on != 0);
+}
+
+/* At start-up: 1.5 A (U15 limits at 1.61 to 1.80) and Try.SNK. MODE_SELECT stays on the PORT
+ * pin, so a host already attached is not dropped by a firmware start. */
+static int port_init(void)
+{
+    uint8_t d = 0x40;
+    if (i2c_put(TUSB, 0x08, &d, 1)) return -1;
+    d = TRY_SNK;
+    return i2c_put(TUSB, 0x0A, &d, 1);
+}
+
+static int port_mode_set(uint8_t m)
+{
+    uint8_t d = (uint8_t)(mode_bits[m] | TRY_SNK | 1);
+    if (m != 1 && id_forced) id_force(0);
+    if (i2c_put(TUSB, 0x0A, &d, 1)) return -1;
+    wait_us(5000);
+    d &= (uint8_t)~1;
+    if (i2c_put(TUSB, 0x0A, &d, 1)) return -1;
+    port_mode = m;
+    return 0;
+}
+
+static void port_pins_init(void)
+{
+    GPIO_InitTypeDef g = {0};
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOD, ENABLE);
+    g.GPIO_Speed = GPIO_Speed_10MHz;
+    g.GPIO_Mode = GPIO_Mode_Out_OD;
+    GPIO_SetBits(GPIOB, SCL_PIN | SDA_PIN);
+    g.GPIO_Pin = SCL_PIN | SDA_PIN;
+    GPIO_Init(GPIOB, &g);
+    g.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+    g.GPIO_Pin = FAULT_PIN;
+    GPIO_Init(GPIOA, &g);
+    g.GPIO_Pin = RINT_PIN;
+    GPIO_Init(GPIOC, &g);
+    id_force(0);
+}
+#endif
+
 /* ---- the host ---------------------------------------------------------------------- */
 static char *w_dec(char *p, uint64_t v)
 {
@@ -272,6 +413,40 @@ static void line(char *s)
         level[0] = (uint8_t)a; level[1] = (uint8_t)b;
         pot_set(level[0], level[1]);
         break;
+#if REV != 1
+    case 'U': {                     /* J1: attached state, setting, fault, forced, advert seen */
+        uint8_t r8, r9;
+        if (i2c_get(TUSB, 0x08, &r8, 1) || i2c_get(TUSB, 0x09, &r9, 1)) { link_say("E port\n"); return; }
+        if (r9 & 0x10) { uint8_t c = 0x10; i2c_put(TUSB, 0x09, &c, 1); }   /* INT_N let go */
+        *p++ = 'U'; *p++ = ' ';
+        p = w_dec(p, r9 >> 6); *p++ = ' ';
+        p = w_dec(p, port_mode); *p++ = ' ';
+        p = w_dec(p, !GPIO_ReadInputDataBit(GPIOA, FAULT_PIN)); *p++ = ' ';
+        p = w_dec(p, id_forced); *p++ = ' ';
+        p = w_dec(p, (r8 >> 4) & 3); *p++ = '\n';
+        link_send(l, (uint16_t)(p - l));
+        return;
+    }
+    case 'M':
+        if (a > 2) { link_say("E mode\n"); return; }
+        if (port_mode_set((uint8_t)a)) { link_say("E port\n"); return; }
+        break;
+    case 'H':                       /* force host: the host setting only, through the same gate */
+        if (a && port_mode != 1) { link_say("E mode\n"); return; }
+        id_force(a != 0);
+        break;
+    case 'V': {                     /* inlet: bus mV (1.25 mV a count), mA (2.5 uV over 5 mohm) */
+        uint8_t v[2], s[2];
+        if (i2c_get(INA, 0x02, v, 2) || i2c_get(INA, 0x01, s, 2)) { link_say("E meter\n"); return; }
+        int32_t mv = ((v[0] << 8) | v[1]) * 5 / 4, ma = (int16_t)((s[0] << 8) | s[1]) / 2;
+        *p++ = 'V'; *p++ = ' ';
+        p = w_dec(p, (uint32_t)mv); *p++ = ' ';
+        if (ma < 0) { *p++ = '-'; ma = -ma; }
+        p = w_dec(p, (uint32_t)ma); *p++ = '\n';
+        link_send(l, (uint16_t)(p - l));
+        return;
+    }
+#endif
     case 'B':
         relay_set(0);
         link_say("OK\n");
@@ -306,6 +481,10 @@ int main(void)
     pins_init();
     link_init();
     audio_init();
+#if REV != 1
+    port_pins_init();
+    port_init();                    /* a silent U13 shows as E port on U; J1 still works */
+#endif
     while (1) {
         track();
         if (queued + DEF_USB_HS_PACK_LEN / 2 > TX_N - 8) continue;      /* wait in USB */
