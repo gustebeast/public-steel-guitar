@@ -194,9 +194,9 @@ the picture because they are how each board TALKS to the Pi once it has firmware
 day-one check that a flash worked), and how it would take an update if its first
 firmware carries a loader of its own. Nothing here changes a revision 1 board.
 
-**Software on the Pi (set up 2026-10-13).** The bench Pi is `psg-pi` (Raspberry Pi OS
+**Software on the Pi (set up 2026-10-13).** The bench Pi is `public-steel-guitar` (Raspberry Pi OS
 Lite 64-bit, Debian 13, image of 2026-10-06; a Pi 4 Model B Rev 1.5 that reports 2 GB),
-on Wi-Fi, reached by `ssh gus@psg-pi.local` with a key: no password login. Installed from
+on Wi-Fi, reached by `ssh gus@public-steel-guitar.local` with a key: no password login. Installed from
 the distribution's own packages: `openocd` 0.12 (it has `stm32h7x.cfg`, `stlink.cfg` and
 the Pi's own `raspberrypi-swd.cfg`), `stlink-tools`, `dfu-util`, `can-utils`, `git`.
 None of it has been run against a board yet.

@@ -6660,8 +6660,8 @@ geometry and texture/color/material. Then use the same model for the first flash
 - THE BENCH Pi IS UP (user, 2026-10-13: "write to it such that ... you'll be able to access
   the pi"). Card written with Raspberry Pi OS Lite 64-bit 2026-10-06 (image, scripts and
   the original boot files in C:/Users/gus/tools/pi-image, outside Sync); cloud-init
-  user-data: host psg-pi, user gus, key-only SSH with the user's own public key; the user
-  typed the Wi-Fi themselves. Reach: `ssh gus@psg-pi.local`. Installed by apt: openocd,
+  user-data: host public-steel-guitar, user gus, key-only SSH with the user's own public key; the user
+  typed the Wi-Fi themselves. Reach: `ssh gus@public-steel-guitar.local`. Installed by apt: openocd,
   stlink-tools, dfu-util, can-utils, git. It reports 2 GB of memory (the BOM row says the
   1 GB board). A bootloader EEPROM update is offered and NOT applied. wlink: no aarch64
   release; not built.
@@ -6673,7 +6673,7 @@ geometry and texture/color/material. Then use the same model for the first flash
 
 ## 2026-10-13: flashing the CH32V307 boards without the LinkE (lead)
 
-- WCH evaluation-board reference V1.9 p13 confirms the ROM loader on PA11/PA12 or PB6/PB7 (USB) and PA9/PA10 (serial). `wchisp` 0.3.0 built and installed on psg-pi with a udev rule; `make isp` in firmware/motor_ctrl. Written up in docs/bench-order.md. Nothing tried on a chip.
+- WCH evaluation-board reference V1.9 p13 confirms the ROM loader on PA11/PA12 or PB6/PB7 (USB) and PA9/PA10 (serial). `wchisp` 0.3.0 built and installed on the Pi with a udev rule; `make isp` in firmware/motor_ctrl. Written up in docs/bench-order.md. Nothing tried on a chip.
 - `swindle` (RP2040) is real and maintained but has no released firmware: second choice, not built.
 
 - 2026-10-17 viewer: 24 fps moving floor (cadkit bdf944d): DLSS upscaling steps up automatically when a 1 spp moving frame would exceed 1/24 s; "detail while moving" row removed; upscaling off = "auto (keeps 24 fps)". DESK_FLOOR_FPS test override. Lead asked to propagate b2538a8 + bdf944d. Open: HDR decision (user).

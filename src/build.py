@@ -27,7 +27,7 @@ _T_IMPORT = time.perf_counter()         # the modules below BUILD GEOMETRY as th
 import cadquery as cq
 
 # Shared CAD utilities, vendored at <project>/cadkit (git subtree).
-from cadkit.step_export import export_print
+from cadkit.step_export import export_print, export_print_parts
 from cadkit.kept import kept
 from cadkit.orientation import (PrintOrientation as PO,
                                 require_declared, unconfirmed)
@@ -184,10 +184,21 @@ PARTS = {
     "pedal_detent_nub": (lambda: heal(_PB("nub_part")), "tpu/pedal_detent_nub.step", "TPU — detent nub ×1 (Ø4×4): presses into the bar top as the LID lock"),
     # (pedal_bar_foot merged into the shared leg_foot SKU — one look ×4)
 }
+# ONE PRINT, TWO FILAMENTS, ONE FILE (user, 2026-11-03). A part named here is a body of
+# the part it maps to: the two share a STEP, each its own named product, so Bambu loads
+# the file as one object with one part per filament (cadkit export_print_parts). Each
+# keeps its own PARTS row -- its own volume, its own material in part_volumes.json, its
+# own checks -- but its "path" is the file it is written INTO, and FILAMENT_OF says what
+# it is made of, since its folder is the bulk's. The file goes where the bulk is.
+PRINTS_WITH: dict = {}
+FILAMENT_OF: dict = {}
+
 # Deck panels: each is a (base, colour) PAIR — same origin, print as ONE object
 # with two filaments (the ha-keypad keycaps/keycaps_text pattern). The base is
 # the transparent body + embossed fret lines; the _color part is the 1.6 mm top
-# layer between the lines.
+# layer between the lines. Both are PCTG and the clear base is the bulk of every
+# panel (61 of 78 cm3 on the piece, 229 of 340 on the keyhead panel), so the one
+# file is pctg/top_plate_N.step.
 _TP = __import__("src.top_plate", fromlist=["e"])
 for _i in range(len(_TP.segments)):              # placed deck panels (piece + fillers + UI/keyhead)
     PARTS[f"top_plate_{_i}"] = (
@@ -198,11 +209,13 @@ for _i in range(len(_TP.segments)):              # placed deck panels (piece + f
         "slides out -X; piece carries the pickup, mid panel the OLED + joystick)")
     PARTS[f"top_plate_{_i}_color"] = (
         (lambda i: lambda: heal(__import__("src.top_plate", fromlist=["e"]).segments_color[i]))(_i),
-        f"pctg/top_plate_{_i}_color.step",
+        f"pctg/top_plate_{_i}.step",
         f"PCTG (colour) — deck COLOUR layer (1.6 mm top band between the fret lines; "
         f"print AS ONE OBJECT with top_plate_{_i}). PCTG, not PETG-GF: the deck is the "
         "forearm rest — no glass fiber on skin-contact surfaces, and same-resin pairs "
         "weld/purge cleanest")
+    PRINTS_WITH[f"top_plate_{_i}_color"] = f"top_plate_{_i}"
+    FILAMENT_OF[f"top_plate_{_i}_color"] = "pctg"
 # fuse each tee's drop-in PCB cradle (cadkit.pcb.pcb_cradle) into the chassis segment
 # whose X-band owns that tee, so the cradle PRINTS AS PART of that segment. Each cradle's
 # -Y wall merges into the -Y-rail inner face (a light cantilever bracket over the rib-top
@@ -425,7 +438,7 @@ for _, _cutters in _WR_FUSE.tee_hold_negatives():
 chassis_light = list(chassis_light)
 for _i, _lt in enumerate(chassis_light):        # the transparent under-rail band
     PARTS[f"chassis_{_i}_light"] = (
-        partial(heal, _lt), f"pctg/chassis_{_i}_light.step",
+        partial(heal, _lt), f"petg-gf/chassis_{_i}.step",
         "PCTG (WHITE, translucent) — DOWNWARD LIGHT WINDOW: 8 mm across Y by the bottom "
         f"prism's full XBAR, one XBAR inboard of the +Y rail (print AS ONE OBJECT with chassis_{_i}, "
         "the deck panels' base/colour pattern). The bottom is sealed now, which is what keeps the "
@@ -440,6 +453,8 @@ for _i, _lt in enumerate(chassis_light):        # the transparent under-rail ban
         "the two still weld and purge cleanly in a one-object print. If a test print shows that "
         "weld is worse than PETG's, that is a reason to revisit -- a spool is cheaper than a "
         "delamination")
+    PRINTS_WITH[f"chassis_{_i}_light"] = f"chassis_{_i}"      # in petg-gf/: it is mostly that
+    FILAMENT_OF[f"chassis_{_i}_light"] = "pctg"
 # THE TRRS ADAPTER'S STATION over the -X/+Y leg (wiring.trrs_*): the same three-step
 # dance the tees do, and for the same reason -- fuse the cradle into the segment that
 # owns its X, THEN cut the things that live inside it, because the fuse fills them in.
@@ -906,18 +921,35 @@ def _report_stages():
 
 
 def _export(name):
+    """Build `name` and write its print STEP, with every body that prints with it
+    (PRINTS_WITH) in the same file. A body that prints with another is written by that
+    one's export, so on its own it is passed over."""
+    if name in PRINTS_WITH:
+        return
     builder, path, note = PARTS[name]
     dest = OUT / path
     dest.parent.mkdir(parents=True, exist_ok=True)   # material folder (petg-gf/pctg/tpu)
-    t = time.perf_counter(); wp = builder(); build_s = time.perf_counter() - t
+    bodies = [name] + [n for n, into in PRINTS_WITH.items() if into == name]
+    built = {}
+    for n in bodies:
+        t = time.perf_counter(); wp = PARTS[n][0](); built[n] = (wp, time.perf_counter() - t)
     t = time.perf_counter()
-    export_print(wp, PRINT_ORIENTATION[name], str(dest))
+    if len(bodies) == 1:
+        export_print(built[name][0], PRINT_ORIENTATION[name], str(dest))
+    else:
+        export_print_parts([(n, built[n][0]) for n in bodies], PRINT_ORIENTATION[name], str(dest))
     export_s = time.perf_counter() - t
-    record_part(name, build_s, export_s, wp.val() if hasattr(wp, "val") else wp,
-                material=_material_of(path))          # ~free profiling + volume hook
-    _stage_add("printed parts: build", build_s)
+    for n in bodies[1:]:
+        (OUT / FILAMENT_OF[n] / f"{n}.step").unlink(missing_ok=True)   # its own file, from before
+    for n in bodies:
+        wp, build_s = built[n]
+        record_part(n, build_s, export_s if n == name else 0.0,
+                    wp.val() if hasattr(wp, "val") else wp,
+                    material=FILAMENT_OF.get(n) or _material_of(path))   # ~free profiling + volume hook
+        _stage_add("printed parts: build", build_s)
     _stage_add("printed parts: STEP export", export_s)
-    print(f"Wrote {path}" + (f"  ({note})" if note else ""))
+    print(f"Wrote {path}" + (f"  ({' + '.join(bodies)})" if len(bodies) > 1 else "")
+          + (f"  ({note})" if note else ""))
 
 
 def _bead(p, r):
@@ -3055,7 +3087,7 @@ def main() -> None:
         if args.part not in PARTS:
             print(f"unknown part: {args.part!r}. Use --list.", file=sys.stderr)
             sys.exit(2)
-        _export(args.part)
+        _export(PRINTS_WITH.get(args.part, args.part))
         return
 
     for name in PARTS:

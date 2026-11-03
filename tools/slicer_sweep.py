@@ -120,7 +120,7 @@ def jobs():
     for mat in ("petg-gf", "pctg", "tpu"):
         for p in sorted((MAIN / mat).glob("*.step")):
             n = p.stem
-            if n.startswith("test_") or n.endswith("_color") or n.endswith("_light"):
+            if n.startswith("test_"):      # a two-filament print is one file now (build.PRINTS_WITH)
                 continue
             if n in PULLEYS:
                 out.append(("%s@0.4" % n, str(p)))

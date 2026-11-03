@@ -2,6 +2,7 @@
 import asyncio
 import base64
 import json
+import math
 import os
 import socket
 import struct
@@ -66,12 +67,13 @@ def test_driver_moves_fast_for_steps_and_slow_for_creep():
     m.log.clear()
     p.press("a", "hu")
     d.step(0.05)
-    assert {r[3] for r in m.log} == {P.FAST_RPM}
+    half = math.ceil(P.turns(1.0) / P.STEP_S * 60.0)          # a half step in STEP_S
+    assert {r[3] for r in m.log} == {half}
     assert m.log[0][2] == round(P.turns(1.0) * P.COUNTS_PER_TURN)
     p.release("a", "hu")
     m.log.clear()
     d.step(0.05)
-    assert m.log[0][2] == 0 and m.log[0][3] == P.FAST_RPM
+    assert m.log[0][2] == 0 and m.log[0][3] == half
     p.press("a", "pu")
     p.tick(0.05)
     m.log.clear()
@@ -91,6 +93,29 @@ def test_home_survives_a_restart(tmp_path):
     p2 = P.Pitch()
     d2 = P.Driver(m, p2, st)
     assert p2.base == 1.0 and d2.home == d.home
+
+
+def test_a_busy_port_is_left_alone_until_a_press():
+    class Busy(P.MockMotors):
+        busy = True
+        reads = 0
+
+        def home(self):
+            self.reads += 1
+            if self.busy:
+                raise P.PortBusy("bench script has it")
+            return super().home()
+    m = Busy(strings=(1,))
+    p = P.Pitch()
+    d = P.Driver(m, p)
+    assert d.home is None and m.reads == 1
+    for _ in range(5):
+        d.step(0.05)                          # nothing held: the port is not tried
+    assert m.reads == 1
+    m.busy = False
+    p.press("a", "hu")
+    d.step(0.05)                              # the press reads the motors, then moves them
+    assert d.home == {1: 0} and m.goal[1] == round(P.turns(1.0) * P.COUNTS_PER_TURN)
 
 
 def test_font_covers_the_page():
