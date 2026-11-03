@@ -52,7 +52,19 @@ project: the default labeller writes no glyph record (A19) and J4's back-face re
 output_panel's project-dependent FAIL is likely the same. finish now ends its summary line with
 `NO PROJECT` in that case (cadkit f39f085).
 
-**Next.** optical's 6 misses of 16. Retrying close_last one blamed net at a time changed nothing on any of the 45 moves (tried twice, reverted), so optical's remaining misses are not the retry logic.
+**optical's misses are U6's decoupling caps (2026-11-03).** All six missed moves were caps 1.7 to
+2.9 mm from U6 (LQFP-176, 0.5 mm): C109 three times, C113, C128, C129 (C106, also beside U6,
+passed). `move` took up every piece of their nets within RIP, U6's own pin-to-via stubs with
+them, and close_last may not drop a via in a 0.5 mm pad field, so a GND pin then looked for a
+74 mm path to a pour fragment. cadkit 381793d keeps a fine-pitch part's escape (pin to a via or
+to copper that stays, touching no moved pad), unless a new pad clashes with any piece of it.
+Rerun of the six on that code: C113 now 0 unconnected, 0 FAIL; C128 2 open, C129 3, C109 1 and 4
+and 4. C109 lands on U6.102's GND via, so that escape has to go; the rest are +3V3D pin-to-cap
+runs close_last re-lays 20 mm long or with a violation. Left there: a decap beside a fine-pitch
+part is a move for a person, not this tool. Earlier numbers in this file (9 of 16 clean) stand
+as a description of the old code; the full 18 were not rerun.
+
+**Next.** optical's remaining misses, as above. Retrying close_last one blamed net at a time changed nothing on any of the 45 moves (tried twice, reverted), so optical's remaining misses are not the retry logic.
 
 **Pitch detector in plain C (2026-11-02), `bench/pi/pitch/`.** `pitch.c` per string at 48 kHz:
 YIN at 12 kHz with the difference sums slid sample by sample (lags 60-1000 Hz, 21.3 ms window,
