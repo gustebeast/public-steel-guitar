@@ -131,6 +131,19 @@ TO DO, R2 pi_cap (PI_CAP_REV 2; R1 builds as ordered, no riser):
   then the cap onto the riser.
 - Scoped gate.
 
+*Built 2026-11-03 (agent/bronner-riser-layout).* R2 outline x -33.0..32.2, y -9.0..17.0 in the
+placement frame, inside the Pi but for J1's 1.0. Row J2/J3/J4 on the +Y_board edge (J2 +4.02),
+J6 at the row's west end, mouth out of the row as J3's (world -Y; the foot lead comes down
+a plug length out and in), J5 mouth -X at the SD end, U1 group west. Route r4: 0
+unconnected, 0 violations, quality 0 FAIL, 4 OPEN (the order-time manual items). Declared for R2:
+J3/J4 pinouts back-only; R5.2 solid (the pour meets it at one neck, so spokes were starved);
+UI_ENC_B 16.60, UI_SCLK 5.94, UI_CS_N 5.82 across the socket's rows on the way to J5. The UI
+ribbon leaves J5 -X and takes 2 folds (INSTALL_NOTES). `_cap_place` now reads J1's pads from
+the geom, which also fixes main's cap drawn 3.5 east of the header.
+cadkit b7852dc + b2eaea3 (lead to propagate): silkfit took each designator's own ink-bleed rim
+for an obstacle and moved all of them; the moved ones left rims over pads; clipped() read an
+outline-font field's line box, not its ink; a designator is now fitted with its rim on.
+
 **First real string (R1 board on the user's MSA, 2026-11-02).** String 1 aligned, duty 32, none
 clipped. 1A and 1B both read 293.3 Hz with harmonics to 1760 Hz. Plucks about 200-650 rms over
 an 11-14 count floor, about 30 dB; the 65 dB figure is the carrier. DIFF beat SUM, 300-420 rms

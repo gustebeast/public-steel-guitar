@@ -1328,7 +1328,24 @@ PI_HDR_Y = PI_FP[2] + _P4.HDR[1]                    # between the two pin rows
 # board: it seats on the 2.5 mm plastic base of the Pi's own header. The cap was drawn
 # 2.5 mm low, which hid that its J3 stood into the Pi's display connector (pi4 below).
 PI_HDR_BASE = 2.5                                                # the Pi header's plastic
-PI_CAP_STANDOFF = BG.HEIGHT["PinSocket_2x20_P2.54mm_Vertical"] + PI_HDR_BASE
+# R2: AN ADAFRUIT 4079 RISER BETWEEN THE Pi AND THE CAP (user, 2026-11-03). A 2x20 socket on
+# 6 mm pins: it seats on the Pi's header base like the cap's own socket did, and the cap's
+# socket seats on its body, 8.5 higher. That puts the cap's 6.0 side-entry connectors at 13.5
+# over the Pi instead of 5.0: over the display / camera FFCs (5.5) and the audio jack (6.0),
+# which is what lets the cap move inside the Pi's footprint. R1 (bench) has no riser.
+PI_RISER_H = 8.5 if BG.PI_CAP_REV != 1 else 0.0      # adafruit.com/product/4079: 8.5 body
+PI_RISER_BODY = (51.5, 5.0)                           # along the header, across it (4079 page)
+PI_CAP_STANDOFF = (BG.HEIGHT["PinSocket_2x20_P2.54mm_Vertical"] + PI_HDR_BASE + PI_RISER_H)
+
+
+def pi_riser():
+    """The 4079 riser as bought: its socket body on the Pi header's base, under the cap's
+    socket. None on R1."""
+    if not PI_RISER_H:
+        return None
+    z0 = PI_Z + BD_T + PI_HDR_BASE
+    return box_at(PI_RISER_BODY[0], PI_RISER_BODY[1], PI_RISER_H,
+                  x=PI_HDR_X, y=PI_HDR_Y, z=z0 + PI_RISER_H / 2.0)
 
 
 # ⚠ NO INSTALL RELIEF IS NEEDED IN THE ENDPLATE, and the near-miss is worth recording.
@@ -1377,7 +1394,11 @@ def _cap_place(shape):
     # board is positioned BY -- the socket's y in the board's own frame -- so when the board
     # gained 8 mm on its -Y edge and every placement moved +4.00 with it, this moved too.
     # Leave it at -8.5 and the board lands 4 mm off the header it is supposed to plug into.
-    j1_y = -4.5
+    # ⚠ BY J1's PADS, READ OFF THE ROUTED BOARD, NOT A TYPED -4.5 AND THE BOARD'S CENTRE
+    # (2026-11-03). The geometry is centred on the board, so when the cap grew 7.0 at -X
+    # (CAP_EXT_X) its frame moved 3.5 and the socket was drawn 3.5 mm east of the header it
+    # plugs onto, every lead onto the cap with it. Placing by the pads cannot drift so.
+    j1_x, j1_y = BG.footprint("pi_cap", "J1")["pads_xy"]
     # ⚠ NO ROTATE AND NO stand() SINCE THE PI WENT FLAT. The -90 existed to swing the cap's
     # socket (which runs along the cap board's own X) onto the header's axis, which was the
     # TRAY's y. Flat, the header runs along WORLD X -- the cap's own axis already -- so the
@@ -1392,7 +1413,7 @@ def _cap_place(shape):
     # j1_y therefore ADDS rather than subtracts. Turned over, the laminate lies below its
     # own z 0, so it is lifted by its thickness to stand on the socket.
     return (shape.rotate((0, 0, 0), (1, 0, 0), 180.0)
-                 .translate((PI_HDR_X, PI_HDR_Y + j1_y,
+                 .translate((PI_HDR_X - j1_x, PI_HDR_Y + j1_y,
                              PI_Z + BD_T + PI_CAP_STANDOFF + _CAP_T)))
 
 

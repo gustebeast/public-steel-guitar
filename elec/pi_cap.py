@@ -124,6 +124,21 @@ J6_DX = -9.7 if REV != 1 else 0.0
 # stood in the east pins' way and 37 mm from pin 1, past A2's 25 mm for its bypass; across J1 at
 # x -14 it sat in J3's courtyard and on the declared 24 V bar).
 U1_XY = (-29.0, 1.50) if REV != 1 else (-8.00, -13.50)
+# ⚠ R2 ON THE RISER: THE WHOLE CAP INSIDE THE Pi (user, 2026-11-03: Adafruit 4079 riser). The
+# riser lifts the cap 8.5, so its 6.0 side-entry connectors stand at 13.5 over the Pi -- over
+# the display / camera FFCs (5.5) and the audio jack (6.0) -- and the band past the Pi's edge
+# that J5 and J6 lived in goes. J6 joins the row (mouth +Y with J2 / J3 / J4, the side the
+# plugs go in from), J5 turns mouth -X at the Pi's SD end beside J1, U1's group, R3 and R4
+# move into the strip between J1 and the row. The board's -Y edge comes in from -17 to -9:
+# 1.0 past the Pi's edge, all J1's 4.5 margin allows. The row ends at x 27.3, short of
+# Ethernet / USB (13.5 / 16 tall) from board x 34.1. electronics.PI_RISER_H.
+RISER = REV != 1
+if RISER:
+    U1_XY = (-24.0, 1.50)
+R2_EDGE = (-33.0, 32.2, -9.0, 17.0)     # x0 x1 y0 y1: the R2 outline on the riser
+# the row on the riser, by courtyard (read off the routed board, 2026-11-03): J6 13.48, J3 and
+# J4 16.80, J2 17.28 wide, 0.2 between, from the -X edge: J2 ends at 31.96, Ethernet at 34.1
+J2_R2_DX = 4.02 if RISER else 0.0      # J2 and everything declared beside it move with it
 CAP_EXT_X = 7.0 if REV != 1 else 0.0
 
 # ⚠ THE UI RIBBON IS A PLAIN HEADER, NOT A SHROUDED ONE, AND THAT IS A SOURCING FACT RATHER
@@ -283,7 +298,10 @@ def _way_x(ref, ways, name, pitch, nth=0):
 
 # the connector row's placement x (the dict below places them; the declared copper is
 # drawn from the same numbers so a pin order or a move cannot leave it behind)
-PLACE_X = {"J2": 19.30, "J4": 2.15, "J3": -14.85}
+PLACE_X = ({"J2": 19.30, "J4": 2.15, "J3": -14.85} if not RISER
+           else {"J2": 23.32, "J4": 6.08, "J3": -10.92})
+J6_R2_X, J6_R2_Y = -26.26, 6.483     # R2: J6 in the row, rot 180 (x = its courtyard centre)
+J6_PAD1_DX = 3.75                     # way 1 (24 V), the +X end, from that centre (routed board)
 
 
 def _xh(tag, desc, rail="V5", ways=None):
@@ -471,7 +489,8 @@ _BAR_Y = 10.5      # the lighting bus bar, in the strip above the connector land
 _X24_J4 = _way_x("J4", _H.LIGHTS_LINK, "V24", 2.5)
 _X24_J3 = _way_x("J3", _H.LED_DROP, "V24", 2.5)
 # J6 is placed by its post row, way 1 at the -X end (rot 0): x -22.50 + 2.50 per way
-_X24_J6 = -22.50 + J6_DX + 2.5 * _H.LED_DROP.index("V24")
+_X24_J6 = (-22.50 + J6_DX + 2.5 * _H.LED_DROP.index("V24") if not RISER
+           else J6_R2_X + J6_PAD1_DX - 2.5 * _H.LED_DROP.index("V24"))
 _X5 = (_way_x("J2", _H.PI_5V_LINK, "V5", 2.0, 0), _way_x("J2", _H.PI_5V_LINK, "V5", 2.0, 1))
 
 _POUR = [(-BOARD_W / 2 - CAP_EXT_X + 0.3, -BOARD_L / 2 + 0.3), (BOARD_W / 2 - 0.3, -BOARD_L / 2 + 0.3),
@@ -522,8 +541,8 @@ BOARD_NOTES = {
         "R3": (-10.50, -9.00, 180.0),
         "R4": (-10.50, -11.00, 180.0),
         # the passives drop into the band between J1's socket and the connector row
-        "C1": (20.00, 1.00, 180.0),
-        "C3": (15.00, 1.00, 180.0),
+        "C1": (20.00 + J2_R2_DX, 1.00, 180.0),
+        "C3": (15.00 + J2_R2_DX, 1.00, 180.0),
         "C2": (6.00, 1.00, 180.0),
         "C4": (1.00, 1.00, 180.0),
         "R1": (-5.00, 1.00, 180.0),
@@ -1016,6 +1035,55 @@ if REV == 1:
     BOARD_NOTES["quality"]["connector_labels"]["J4"] = {'back_only': "the labeller tries the connector's own side first and finds no free site there for its five-line block at 1.5 mm in the board's face within 40 mm of the part, flat or turned, that is not along another connector's pins (run 2026-10-07, after the lead order change); the block is on the back, behind it"}
     for _n in ("UI_ENC_B", "UI_SW_B", "UI_SDIN"):
         del BOARD_NOTES["quality"]["return_slot_ok"][_n]
+if RISER:
+    # R2 ON THE RISER (see RISER): the outline, the moved parts, and the declared copper
+    # that lived in the band past the Pi's edge.
+    _x0, _x1, _y0, _y1 = R2_EDGE
+    BOARD_NOTES["outline_mm"] = (_x1 - _x0, _y1 - _y0)
+    BOARD_NOTES["outline_poly"] = [(_x0, _y0), (_x1, _y0), (_x1, _y1), (_x0, _y1)]
+    _pr = [(_x0 + 0.3, _y0 + 0.3), (_x1 - 0.3, _y0 + 0.3), (_x1 - 0.3, _y1 - 0.3), (_x0 + 0.3, _y1 - 0.3)]
+    for _z in BOARD_NOTES["zones"]:
+        _z["poly"] = _pr
+    _pl = BOARD_NOTES["placements"]
+    # J5 mouth -X: its plastic on the board's -X edge (2.135 from the pad centroid), the pins
+    # and the IDC socket past it, off the Pi's SD end
+    _pl["J5"] = (_x0 + 2.135, -2.30, 180.0)
+    _pl["J6"] = (J6_R2_X, J6_R2_Y, 180.0)
+    _pl["R3"] = (-17.00, 2.50, 180.0)
+    _pl["R4"] = (-17.00, 0.70, 180.0)
+    # the two band vias are off the board now; the rest stand
+    BOARD_NOTES["vias"] = [v for v in BOARD_NOTES["vias"] if v[2] > _y0 + 0.5]
+    # the foot branch is the bar, carried on west under J3 to J6's 24 V way (J6 is in the row)
+    _tr = BOARD_NOTES["tracks"]
+    _i = next(i for i, t in enumerate(_tr) if t[0] == "+24V_LED" and t[2] == 0.4)
+    _tr[_i] = ("+24V_LED", "F.Cu", 0.6, [(_X24_J3, _BAR_Y), (_X24_J6, _BAR_Y), (_X24_J6, J6_R2_Y)])
+    # R5.2 here: its GND is a track to a via, and the F.Cu pour reaches it at one point
+    # between the +3V3_UI wrap and the via -- one spoke, which DRC calls starved. Solid,
+    # that one point IS a neck the width of a spoke, against R5.1's 0.25 track: balanced
+    # as M29 wants without a relief the pour cannot complete (route r2, 2026-11-03).
+    BOARD_NOTES["thermal_pads"] = [p for p in BOARD_NOTES["thermal_pads"] if p != "R5.2"]
+    _q = BOARD_NOTES["quality"]
+    _q["manual"]["M29"] += ("; on the riser (R2) R5.2 is solid: its GND is a track to a "
+                            "via, and the pour meets it at one neck")
+    # J3 and J4 are in the row between the socket and the outline: no free site on the
+    # front for a pinout block, as on R1 for J4 and J6
+    for _j in ("J3", "J4"):
+        _q["connector_labels"][_j] = {"back_only": "the labeller tries the connector's own side first and finds no free site there for its pinout block at 1.5 mm in the board's face within 40 mm of the part, flat or turned (route r2 on the riser, 2026-11-03): the cap is the Pi's 85 x 56 now and the row of connectors fills its edge; the block is on the back, behind it"}
+    # moved off the socket's row with J5, the switch line no longer crosses the cut
+    del _q["return_slot_ok"]["UI_SW_B"]
+    # J5 at the board's -X end: the encoder line runs along the socket's rows to reach it,
+    # so it crosses the same cut for longer (route r3, 2026-11-03)
+    _q["return_slot_ok"]["UI_ENC_B"] = {
+        "mm": 16.60, "why": "one channel of the UI's rotary encoder: a mechanical contact read "
+                            "at human speed. The cut is the 40-pin socket's rows of holes, "
+                            "which the line runs beside to J5 at the board's -X end"}
+    _q["return_slot_ok"]["UI_SCLK"] = {
+        "mm": 5.94, "why": "the display's SPI clock at a few MHz: 0.93 over the limit, across "
+                           "the socket's own row as UI_SDIN is, on a run that ends at the "
+                           "ribbon a few mm on (route r4 on the riser, 2026-11-03)"}
+    _q["return_slot_ok"]["UI_CS_N"] = {
+        "mm": 5.82, "why": "the display's chip select: one edge a transfer, held through it. "
+                           "0.81 over the limit, the socket's row, as UI_SCLK (route r4)"}
 
 
 # ── THE PI'S 5 V, DECLARED (2026-10-01) ──────────────────────────────────────────────────
@@ -1032,7 +1100,7 @@ BOARD_NOTES["vias"] = list(BOARD_NOTES.get("vias", [])) + [
     # 0.70 mm3 of paste, on the joint that carries the Pi's whole supply. They are now a
     # field of eight in the strip between the lands and the capacitors, joined to the
     # lands on F.Cu and to the lane on B.Cu.
-    ("+5V_PI", x, y, 0.4, 0.8) for x in (17.9, 19.0, 20.1, 21.2) for y in (3.75, 2.65)]
+    ("+5V_PI", x + J2_R2_DX, y, 0.4, 0.8) for x in (17.9, 19.0, 20.1, 21.2) for y in (3.75, 2.65)]
 BOARD_NOTES["tracks"] = list(BOARD_NOTES.get("tracks", [])) + [
     # J2's two 5 V lands are its outside ways, 10 mm apart, with the grounds and the two
     # unused ways between them: each drops onto one end of a patch that runs under all six,
@@ -1040,12 +1108,13 @@ BOARD_NOTES["tracks"] = list(BOARD_NOTES.get("tracks", [])) + [
     ("+5V_PI", "F.Cu", 1.0, [(_X5[0], 6.5), (_X5[0], 3.2)]),
     ("+5V_PI", "F.Cu", 1.0, [(_X5[1], 6.5), (_X5[1], 3.2)]),
     ("+5V_PI", "F.Cu", 2.2, [(_X5[0], 3.2), (_X5[1], 3.2)]),
-    ("+5V_PI", "B.Cu", 2.2, [(21.2, 3.2), (17.9, 3.2)]),
+    ("+5V_PI", "B.Cu", 2.2, [(21.2 + J2_R2_DX, 3.2), (17.9 + J2_R2_DX, 3.2)]),
     # the two capacitors, straight onto the F.Cu patch: left to the router they came back
     # joined through a via in C3's land and 46 mm of 0.2 mm track to C1
-    ("+5V_PI", "F.Cu", 0.6, [(20.95, 1.0), (20.95, 2.6)]),
-    ("+5V_PI", "F.Cu", 0.4, [(15.48, 1.0), (15.48, 1.9), (16.6, 3.0)]),
-    ("+5V_PI", "B.Cu", 2.0, [(19.4, 3.2), (19.4, 2.5), (-1.5, 2.5), (-4.4, -0.4),
+    ("+5V_PI", "F.Cu", 0.6, [(20.95 + J2_R2_DX, 1.0), (20.95 + J2_R2_DX, 2.6)]),
+    ("+5V_PI", "F.Cu", 0.4, [(15.48 + J2_R2_DX, 1.0), (15.48 + J2_R2_DX, 1.9),
+                             (16.6 + J2_R2_DX, 3.0)]),
+    ("+5V_PI", "B.Cu", 2.0, [(19.4 + J2_R2_DX, 3.2), (19.4 + J2_R2_DX, 2.5), (-1.5, 2.5), (-4.4, -0.4),
                              (-25.3, -0.4)]),
     ("+5V_PI", "B.Cu", 1.6, [(-25.3, -0.4), (-26.1, -1.2), (-26.1, -5.77), (-24.13, -5.77)]),
     ("+5V_PI", "B.Cu", 1.2, [(-24.13, -5.77), (-21.59, -5.77)]),
