@@ -12,6 +12,7 @@
 #define FLOOR_MS        200.0f  /* the floor follows the quiet this slowly */
 #define WARMUP_MS       50.0f   /* no note-on before the floor has been seen */
 #define OFF_FRACTION    0.04f   /* note-off under this much of the note's peak (-28 dB) */
+#define OFF_FLOOR       3.0f    /* ...or this near the floor, where YIN reads noise (2 gave octaves) */
 #define HOLD_MS         30.0f   /* no second note-on within this of the first */
 #define RESID_MS        2.0f    /* the period residual's averaging */
 #define RESID_ON        0.25f   /* residual power over the note's (env^2 / 2): a re-pluck */
@@ -159,7 +160,8 @@ int pitch_push(pitch_t *p, const float *in, int len, pitch_frame_t *out, int max
             p->pnow += kr * (v * v - p->pnow);
             p->pago += kr * (ago * ago - p->pago);
             period_break = p->resid > RESID_ON * 0.5f * p->env * p->env
-                           && p->pnow > KEEP_POWER * p->pago;
+                           && p->pnow > KEEP_POWER * p->pago
+                           && p->env > ON_FLOOR * p->floor_;   /* in the floor, noise breaks every period */
         } else {
             p->resid = p->pnow = p->pago = 0.0f;
         }
@@ -175,7 +177,7 @@ int pitch_push(pitch_t *p, const float *in, int len, pitch_frame_t *out, int max
         } else if (p->on) {
             if (p->env > p->peak)
                 p->peak = p->env;
-            if (p->env < OFF_FRACTION * p->peak || p->env < 2.0f * p->floor_) {
+            if (p->env < OFF_FRACTION * p->peak || p->env < OFF_FLOOR * p->floor_) {
                 event = PITCH_OFF;
                 p->on = 0;
             }
