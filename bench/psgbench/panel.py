@@ -274,6 +274,41 @@ def noise(a):
     o.close()
 
 
+def capture(a):
+    """Record strings for the pitch detector (bench/pi/pitch): each string's SUM and DIFF at
+    48 kHz into <out>_s<N>.npz, and the --mix one as raw float32 into <out>_s<N>.f32, which
+    `pitchrun` reads. Nothing goes to the jack. Memory: the raw stream is about 15 MB a
+    second per converter, so keep takes short."""
+    strings = sorted({int(t) for t in a.strings.split(",")})
+    convs = sorted({optical.string_inputs(n)[0] for n in strings})
+    o = optical.OpticalLink()
+    print("optical:", o.command("?"))
+    o.duty(a.duty)
+    o.select(convs)
+    time.sleep(0.3)
+    got = o.take()
+    if got and any(not any(np.any(b[2].get(k, 0)) for b in got) for k in convs):
+        print("a converter is silent; configuring them again:", o.command("R"))
+        o.duty(a.duty)
+        time.sleep(0.3)
+    o.take()
+    print("recording %.0f s of string(s) %s: play now" % (a.seconds, a.strings), flush=True)
+    blocks, t0 = [], time.monotonic()
+    while time.monotonic() - t0 < a.seconds:
+        time.sleep(0.05)
+        blocks += o.take()
+    o.select([])
+    o.close()
+    print("%d blocks, %d dropped" % (len(blocks), sum(b[1] & 1 for b in blocks)))
+    for n in strings:
+        first, sm, df = optical.string_signal(blocks, n)
+        stem = "%s_s%d" % (a.out, n)
+        np.savez(stem + ".npz", sum=sm, diff=df, fs=48000.0, first=first, duty=a.duty)
+        (df if a.mix == "diff" else sm).astype(np.float32).tofile(stem + ".f32")
+        print("string %2d: %s.npz/.f32, %.1f s, SUM rms %.1f, DIFF rms %.1f" % (
+            n, stem, len(sm) / 48000.0, np.std(sm), np.std(df)))
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -295,6 +330,13 @@ def main():
     c = sub.add_parser("noise")
     c.add_argument("--seconds", type=float, default=2.0)
     c.add_argument("--duty", type=int, default=32, help="emitters' on-time, of 4096")
+    c = sub.add_parser("capture")
+    c.add_argument("--strings", default="1", help="comma list, e.g. 1,2,7")
+    c.add_argument("--seconds", type=float, default=10.0)
+    c.add_argument("--out", default="/tmp/take")
+    c.add_argument("--duty", type=int, default=32, help="emitters' on-time, of 4096")
+    c.add_argument("--mix", choices=("sum", "diff"), default="diff",
+                   help="which of the two the .f32 file carries")
     sub.add_parser("status")
     a = ap.parse_args()
     if a.cmd == "tone":
@@ -303,6 +345,8 @@ def main():
         listen(a)
     elif a.cmd == "noise":
         noise(a)
+    elif a.cmd == "capture":
+        capture(a)
     else:
         p = Panel()
         print(p.ask("?"))

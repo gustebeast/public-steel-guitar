@@ -60,8 +60,9 @@ held; no octave error on a committed frame and no note-on from a slide, in 297 t
 seeds. Misses over seeds 2-9 (264 takes): 5 re-plucks not seen (the new pluck's phase near the
 old one's) and 1 doubled note-on. **Not proven:** all of it on real strings. The captures from
 2026-11-02 went with the Pi's /tmp at a reboot. **Needs the user:** plucks, slides, re-plucks and
-damps on each string, recorded (a `panel capture` command is the next code step), then
-`pitchrun` over them.
+damps on each string, recorded with `python3 -m psgbench.panel capture --strings 1,7,10
+--seconds 10` (writes /tmp/take_s<N>.npz and .f32), then `bench/pi/pitch/pitchrun
+/tmp/take_s<N>.f32`. Hands off, three strings 3 s each: 0 note-ons, 0 voiced frames.
 
 **LOW PRIORITY, pi_cap R2 inside the Pi's footprint (user, 2026-11-02, via the lead).** The
 user minds the cap reaching past the Pi, not the board's area. Now: cap y -62.45..-28.45 world,
