@@ -302,7 +302,14 @@ SERVICE_CORNERS = ((-1.0, 1.0), (1.0, 1.0))
 # has to stay on a tenon whose run covers the foot's full 44.8 (SERVICE_SLIDE_MAX). 7.5
 # (user, 2026-09-11; was 7.0) was what let the slide reach the bridge's need; each bead the +Y rail
 # comes in lengthens the slide, so past that the pin moves out with it.
-LOCK_PIN_DY = max(7.5, SERVICE_SLIDE - (SQ_W / 2 - (_M4.shaft_clr_d / 2 + D.MIN_WALL_2P)))
+# PIN_HOLE_REACH is what a hole needs from a tenon's end along Y. The adapter builds along Y, so
+# the hole's dulled teardrop apex points at that end and its radius is not the envelope, and a
+# tenon stops LEVER_MORT_CLR short of its mortise's closed end. The seated hole meets the same
+# number from the other side: the short tenons start at the slide's own distance from the foot
+# face, so the two walls are one wall.
+PIN_HOLE_REACH = (_M4.shaft_clr_d / 2 * 2 ** 0.5 - D.BEAD / 2 + D.MIN_WALL_2P
+                  + D.LEVER_MORT_CLR)
+LOCK_PIN_DY = max(7.5, SERVICE_SLIDE - (SQ_W / 2 - PIN_HOLE_REACH))
 # ...and the screw itself (lock_pin_joint): a stock M4 button head recessed in the end
 # face, into a heat-set insert on the kept shell's face across the endplate<->shell gap
 SHELL_GAP = 0.4                    # that gap: chassis.EP_LEG_CLR, asserted equal there
@@ -351,7 +358,7 @@ assert LOCK_PIN_DY + _M4.shaft_clr_d / 2 + D.MIN_WALL_2P <= SQ_W / 2, (
 # still has to keep a two-bead wall to the inboard END of a full-length tenon (-SQ_W/2 from the
 # centreline). Same form it had for the deleted tongue -- the full-length grid tenon runs the
 # same 44.8 the tongue did, so the bound did not move when the tongue went.
-SERVICE_SLIDE_MAX = SQ_W / 2 - (_M4.shaft_clr_d / 2 + D.MIN_WALL_2P) + LOCK_PIN_DY
+SERVICE_SLIDE_MAX = SQ_W / 2 - PIN_HOLE_REACH + LOCK_PIN_DY
 
 
 # THE SIGNAL CORNER'S MIDDLE RIDGE. src.leg_trrs brings the leg's TRRS up the octagon
@@ -479,6 +486,12 @@ def lock_pin_joint(station: float, ly: float, egx: float, syg: float, z_bot: flo
     # on most corners it runs through the outboard ones on the way. A tip parked in a mortise
     # void or in a 3.2 chassis wall would pin nothing.
     tip = LOCK_RECESS + LOCK_SCREW_L
+    if syg > 0 and not dy:             # the +Y feet's short tenons end just inboard of this hole
+        from . import chassis as _CHP
+        for st, y0, _ in _CHP.foot_tenon_runs(station, ly, syg):
+            assert entry[1] - y0 >= PIN_HOLE_REACH - 1e-9, (
+                "the leg screw at y %.2f keeps under a two-bead wall to the tenon at x %.2f, "
+                "which starts at y %.2f" % (entry[1], st, y0))
     landed = pin_tenons(station, ly, egx, syg, tip)
     assert landed, (
         "the lock pin's tip lands %.2f in from the end face at corner (%.1f, %.1f), which is "
@@ -506,9 +519,8 @@ def service_pin_joint(station: float, ly: float, egx: float, syg: float, z_bot: 
         return None
     y_hole = ly + syg * (LOCK_PIN_DY - s)
     tip = LOCK_RECESS + LOCK_SCREW_L
-    wall = _M4.shaft_clr_d / 2 + D.MIN_WALL_2P
     held = [t for t in pin_tenons(station, ly, egx, syg, tip)
-            if t[1] + wall <= y_hole <= t[2] - wall]
+            if t[1] + PIN_HOLE_REACH - 1e-9 <= y_hole <= t[2] - PIN_HOLE_REACH + 1e-9]
     assert held, (
         "the service hole at y %.2f (slide %.2f) is not a two-bead wall inside any tenon the "
         "pin's tip reaches at corner (%.1f, %.1f) -- it would hold the foot out on air. The "
