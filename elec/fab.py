@@ -62,7 +62,9 @@ LCSC = {
     "HX-TYPE-C 16P 180 LC-B H10.0": "C49261584",  # motor_ctrl R2 J4: vertical USB-C, THT; 1,765 (2026-11-03)
     "CH32V203G6U6": "C5142280",     # lever board MCU
     "CH32V307WCU6": "C5142795",     # motor controller MCU
-    "MT6701QT-STD": "C2913974",     # the angle sensor
+    "MA730GQ-Z": "C161798",         # the angle sensor since 2026-11-03: JLC listing only (LCSC
+                                    # itself does not sell it). No consignment (user): if the
+                                    # listing is gone at order time, AS5600-ASOM C79815 = a respin
     "AO3400A": "C20917",            # logic-level N-ch FET; the optical board's Q1 too
     # ── the optical board, every line checked against the manufacturer's datasheet on
     # 2026-09-17 (pinout verified pin by pin, not just the package) ──────────────────

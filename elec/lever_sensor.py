@@ -1,4 +1,4 @@
-"""Lever / pedal sensor board — MT6701 angle sensor + CAN node, x8.
+"""Lever / pedal sensor board — MA730 angle sensor + CAN node, x8.
 
     py -3.12 elec/lever_sensor.py       # -> elec/out/lever_sensor.{net,board.json}
 
@@ -25,8 +25,17 @@ unchanged. The pins come through to the back face; the cradle has no back wall t
 (History: two S4B-XH-SM4-TB needed 31.0 of height; the 8-way XH was not stocked; PHD
 2x4 was rejected on sourcing.)
 
-THE CHIP'S POSITION IS NOT NEGOTIABLE. MT6701 sensing centre = package geometric
-centre, and it must sit on the axle axis. Everything else is placed around it.
+THE CHIP'S POSITION IS NOT NEGOTIABLE. MA730 sensing point = package geometric
+centre (datasheet rev 1.1 p.10 fig. 3: 1.50 +-0.05 in from the edge of the 3.00
+package, 0.45 below its top), and it must sit on the axle axis. Everything else is
+placed around it.
+
+THE SENSOR IS AN MA730GQ-Z SINCE 2026-11-03 (user, via the lead): the MT6701 went to
+0 stock at LCSC under both codes and MagnTek has no DigiKey listing. Same QFN-16 3x3
+outline, same 14 bits, but NOT pin-compatible and read over SPI, not I2C -- so the I2C
+pair, its pull-ups and the MODE strap are gone, and SPI1 + PB5 read it. SOURCING (user):
+JLC's listing (C161798), no consignment. Order-time check: the listing still covers 11+;
+if it is gone the fallback is AS5600-ASOM (C79815), which is a board change.
 
 EVERY PIN NUMBER BELOW IS OFF THE DATASHEET, not a library symbol -- see the
 per-part notes. Getting one wrong is the failure this file exists to prevent.
@@ -64,16 +73,18 @@ I, O, PWR, PIN = Pin.types.INPUT, Pin.types.OUTPUT, Pin.types.PWRIN, Pin.types.P
 
 # ── the board ────────────────────────────────────────────────────────────────
 # ⚠ THE OUTLINE IS branner's RE-SPIN SPEC, NOT AN OUTPUT OF THIS FILE (docs/lever-sensor-
-# respin.md, 2026-09-21). In the spec's frame -- origin on the MT6701, +X toward the lever,
+# respin.md, 2026-09-21). In the spec's frame -- origin on the sensor, +X toward the lever,
 # +Z up -- the edges are +X 4.025, top 10.1, bottom -11.8, -X -29.0: 33.025 x 21.9. This file
 # works in board-local mm with the origin at the board CENTRE, so the chip sits at
 # (+12.49, +0.85): 4.025 from the +X edge and 10.1 below the top.
 # J1's plug run and the tunnel in the -X web follow the -X edge (knee_lever.PCB_X0).
-# ⚠ FOOTPRINTS: the MCU's QFN-28 pitch (0.4 vs 0.45) and both QFNs' exposed pads are still
-# the nearest stock KiCad lands, not read off the drawings -- resolve before ordering.
+# ⚠ FOOTPRINTS: the MCU's QFN-28 pitch (0.4 vs 0.45) and exposed pad are still the nearest
+# stock KiCad land, not read off the drawing -- resolve before ordering. The SENSOR'S IS READ
+# OFF ITS DRAWING: MA730 rev 1.1 p.26 "recommended land pattern", pads 0.70 x 0.25 on 0.50
+# pitch with their centres 2.90 apart, exposed pad 1.70 (elec/footprints/Steel.pretty).
 MCU_FP = "Package_DFN_QFN:QFN-28-1EP_4x4mm_P0.4mm_EP2.4x2.4mm"
-SENSOR_FP = "Package_DFN_QFN:QFN-16-1EP_3x3mm_P0.5mm_EP1.45x1.45mm"
-# THE SPEC'S FOUR EDGES, in the spec's own frame (origin on the MT6701, +X toward the
+SENSOR_FP = "Steel:MPS_QFN-16-1EP_3x3mm_P0.5mm_EP1.7x1.7mm"
+# THE SPEC'S FOUR EDGES, in the spec's own frame (origin on the sensor, +X toward the
 # lever, +Z up). Everything else about the outline is derived from them, because it was
 # not: BOARD_W and CHIP_XY were both typed, and both encode the edges, so the +X edge
 # moving on 2026-09-29 left this file describing a board that no longer existed while
@@ -151,7 +162,7 @@ def lever_sensor():
     # 1 uF ceramic on each side is the datasheet's stability requirement. Load is ~30 mA
     # (MCU + transceiver + sensor), so it drops (5 - 3.3) x 0.03 = 0.05 W -- nothing.
     # A LINEAR regulator is also the right call beside a magnetic angle sensor: the buck
-    # was the one switching node on this board, 15 mm from the MT6701.
+    # was the one switching node on this board, 15 mm from the angle sensor.
     # Pins off Diodes DS39724 rev 2-2 "Pin Descriptions", SOT25 column, read 2026-09-30:
     #   1 VIN  2 GND  3 EN (high = on)  4 NC  5 VOUT
     u1 = Part(name="AP2112K-3.3", ref_prefix="U", ref="U1", tag="U1", dest="NETLIST",
@@ -258,7 +269,10 @@ def lever_sensor():
 #     below)             2 OSC_IN  3 OSC_OUT  4 NRST  5 VDDA  16 VSS  17 VDD
     #   19 PA11 = CAN1_RX    20 PA12 = CAN1_TX
     #   21 PA13 = SWDIO      22 PA14 = SWCLK
-    #   27 PB6  = I2C1_SCL   28 PB7  = I2C1_SDA
+    #   11 PA5  = SPI1_SCK   12 PA6  = SPI1_MISO   13 PA7 = SPI1_MOSI   26 PB5 = sensor CS
+    #   (the SPI pins off datasheet V3.0 table 3-1-3, QFN28 column, default functions, read
+    #    2026-11-03; the KiCad MCU_WCH_RiscV symbol agrees. PB6 / PB7, the I2C1 pair the
+    #    MT6701 was read on, are unused GPIO since the MA730)
     # (HISTORY -- NO LONGER TRUE: pin 1 is now tied hard to GND, see "TIED HARD TO GND" below,
     #  and WCH's own table confirms the pin: 3-1-3 note 6. Kept for the reasoning. This stale
     #  heading was read as current on 2026-09-30 and BOOT0 was reported floating. It is not.)
@@ -333,7 +347,7 @@ def lever_sensor():
     # occupies. CAN_RX and CAN_TX are therefore stuck on PA11/PA12, immediately beside
     # SWDIO on PA13, which is the crowded corner described below. That corner cannot be
     # fixed by moving signals; only by moving parts.
-    sda, scl = Net("SDA"), Net("SCL")
+    sck, miso, mosi = Net("SENS_SCK"), Net("SENS_MISO"), Net("SENS_MOSI")
     swdio, swclk, nrst = Net("SWDIO"), Net("SWCLK"), Net("NRST")
     osc1, osc2 = Net("OSC_IN"), Net("OSC_OUT")
     u2 = Part(name="CH32V203G6U6", ref_prefix="U", ref="U3", tag="U2", dest="NETLIST",
@@ -345,9 +359,11 @@ def lever_sensor():
                     Pin(num=5, name="VDDA", func=PWR), Pin(num=16, name="VSS", func=PWR),
                     Pin(num=17, name="VDD", func=PWR), Pin(num=19, name="PA11", func=I),
                     Pin(num=20, name="PA12", func=O), Pin(num=21, name="PA13", func=P),
-                    Pin(num=22, name="PA14", func=P), Pin(num=27, name="PB6", func=P),
-                    Pin(num=28, name="PB7", func=P),
-                    Pin(num=26, name="PB5", func=P),   # sensor CSN -- table 3-1-3, QFN28
+                    Pin(num=22, name="PA14", func=P),
+                    Pin(num=11, name="PA5", func=O),   # SPI1_SCK  -- table 3-1-3, QFN28
+                    Pin(num=12, name="PA6", func=I),   # SPI1_MISO
+                    Pin(num=13, name="PA7", func=O),   # SPI1_MOSI
+                    Pin(num=26, name="PB5", func=O),   # sensor CS -- table 3-1-3, QFN28
                     Pin(num=1, name="PB8", func=I)])   # BOOT0 -- see the note above
     gnd += u2["VSS"], u2["VSS_PAD"]
     v33 += u2["VDD"], u2["VDDA"]
@@ -355,7 +371,7 @@ def lever_sensor():
     osc1 += u2["OSC_IN"]; osc2 += u2["OSC_OUT"]
     can_rx += u2["PA11"]; can_tx += u2["PA12"]
     swdio += u2["PA13"]; swclk += u2["PA14"]
-    scl += u2["PB6"]; sda += u2["PB7"]
+    sck += u2["PA5"]; miso += u2["PA6"]; mosi += u2["PA7"]
     # ⚠ BOOT0 RESOLVED: IT GETS THE 0402. The note above left two ways out -- confirm the
     # die's internal pull from WCH's manual, or spend a resistor -- and the resistor is
     # right even if the manual turns out to say there is a pull-down. An explicit strap is
@@ -441,48 +457,45 @@ def lever_sensor():
     c_bulk = _c("C10", "4.7uF", "MCU bulk -- 0402 since the re-spin (6.3 V X5R)")
     v33 += c_bulk[1]; gnd += c_bulk[2]
 
-    # ── the sensor, MT6701QT-STD QFN-16 (LCSC C2913974) ──────────────────────
-    # Pins off MagnTek MT6701 datasheet rev 1.9 section 1.2 (QFN-16 pin list), re-read
-    # 2026-09-30 and matching pin for pin:
-    #   5 PUSH  6 A(SDA)  7 B(SCL)  8 Z(CSN)  9 W  11 U  12 V
-    #   13 VDD  14 MODE  15 OUT  16 GND ; 1-4 and 10 are NC
-    # MODE selects ABZ against I2C/SSI: HIGH = I2C/SSI, LOW = ABZ. Read off the datasheet's
-    # reference circuits (rev 1.9, fig. 18 "QFN-16 I2C": pin 14 tied to VDD; fig. 7 "ABZ":
-    # pin 14 tied to GND) -- the pin table says only "selects", so the FIGURES are the source.
-    # ⚠ Until 2026-09-30 this strap went to GND "to confirm on the first board", which is ABZ:
-    # the sensor would never have answered on I2C. The pin has a 200k pull-up of its own, so
-    # the 0R is belt and braces, and still a jumper if SSI/ABZ is ever wanted.
-    # Z/CSN (pin 8) is left open: it carries its own 200k pull-up, and high is what I2C wants
-    # (fig. 18 ties it to VDD; SSI starts on its falling edge).
-    # ⚠ EEPROM programming needs 4.5 V < VDD < 5.5 V (section 8.2). This board runs the part
-    # at 3.3 V, so zero/direction/resolution CANNOT be burned in circuit -- offsets live in
-    # the MCU, which is the architecture anyway.
-    u4 = Part(name="MT6701QT-STD", ref_prefix="U", ref="U4", tag="U4", dest="NETLIST",
-              tool="skidl", value="MT6701QT-STD",
-              description="14-bit Hall angle encoder, sensing centre = package centre",
-              footprint=SENSOR_FP,
-              pins=[Pin(num=5, name="PUSH", func=O), Pin(num=6, name="A_SDA", func=P),
-                    Pin(num=7, name="B_SCL", func=P), Pin(num=8, name="Z_CSN", func=P),
-                    Pin(num=13, name="VDD", func=PWR), Pin(num=14, name="MODE", func=I),
-                    Pin(num=15, name="OUT", func=O), Pin(num=16, name="GND", func=PWR),
-                    Pin(num=17, name="EP", func=PWR)])
-    v33 += u4["VDD"]; gnd += u4["GND"], u4["EP"]
-    sda += u4["A_SDA"]; scl += u4["B_SCL"]
-    # Z/CSN -> PB5, so the MCU can ALSO read the sensor over SSI on the same two wires
-    # (A = DO, B = CLK, datasheet 7.8). Only the SSI frame carries Mg[3:0] -- field too
-    # strong / too weak / over-speed -- plus a CRC; the I2C registers give the angle alone.
+    # ── the sensor, MA730GQ-Z QFN-16 (JLC C161798, the listing; see the header) ──
+    # Pins off MPS MA730 datasheet rev 1.1 (8/8/2022) p.2 "package reference" and p.8 "pin
+    # functions", read 2026-11-03:
+    #   1 SSD  2 A  3 Z  4 MOSI  5 CS  6 B  7 MISO  8 GND
+    #   9 PWM  10 TEST  11 MGL  12 SCLK  13 VDD  14 NC  15 SSCK  16 MGH ; 17 the pad
+    # Only VDD (13) sits where the MT6701's did, so C11 stays at that corner.
+    # Read over SPI (p.11-14): mode 0 or 3, detected by the part; 25 MHz at most; one 16-bit
+    # frame with MOSI 0 returns the angle, MSB first, 14 bits used. A register read is the
+    # command 010 + a 5-bit address, and its value comes back in the next frame's high byte.
+    # THE FIELD DIAGNOSTIC THE MT6701 GAVE ONLY OVER SSI IS A REGISTER HERE: register 27 bit 7
+    # MGH (field over MGHT), bit 6 MGL (under MGLT), thresholds in register 6 (p.18, p.21).
     # A missing, flipped or mis-gapped magnet is the likeliest MECHANICAL fault on a lever,
-    # and this is the only way to read it without opening the housing. CSN idles high on
-    # the part's own 200k pull-up, so with PB5 left as an input the bus is plain I2C.
+    # and this reads it without opening the housing -- over the same four wires, so the
+    # MGL / MGH output pins (11, 16) are left open.
+    # Pin handling (p.8): TEST "connect to ground"; NC "leave unconnected"; CS has an internal
+    # pull-up, so the sensor stays deselected while the MCU is in reset and PB5 floats; MOSI,
+    # SCLK and SSCK have internal pull-downs. SSD, A, B, Z, PWM, MGL, MGH are outputs: open.
+    # The pad: "recommended ... connected to ground" (p.11).
+    # VDD is 3.0-3.6 V (p.4), 11.7 mA typical, so 3V3 straight off the LDO, 100 nF at the pin
+    # (p.11 asks 1 uF "close to the sensor": C10's 4.7 uF on the same rail is 3.6 mm from the
+    # package centre, C11 the 100 nF at the pin itself).
+    # Field (p.4): 40 mT minimum, 60 typical, no maximum given. MPS's reference magnet is
+    # dia 5 x 3 N35 at a 1.5 gap (p.10); ours is dia 6 x 2.5 at AIR_GAP 1.5 (knee_lever.py),
+    # the MT6701's reference. Bench check: MGL clear with MGLT raised to 001 (41 mT rising).
+    # Nothing is burned into the part: zero and direction stay in the MCU, as with the MT6701.
+    u4 = Part(name="MA730GQ-Z", ref_prefix="U", ref="U4", tag="U4", dest="NETLIST",
+              tool="skidl", value="MA730GQ-Z",
+              description="14-bit angle sensor, SPI; sensing point = package centre",
+              footprint=SENSOR_FP,
+              pins=[Pin(num=4, name="MOSI", func=I), Pin(num=5, name="CS", func=I),
+                    Pin(num=7, name="MISO", func=O), Pin(num=8, name="GND", func=PWR),
+                    Pin(num=10, name="TEST", func=I), Pin(num=12, name="SCLK", func=I),
+                    Pin(num=13, name="VDD", func=PWR), Pin(num=17, name="EP", func=PWR)])
+    v33 += u4["VDD"]; gnd += u4["GND"], u4["TEST"], u4["EP"]
+    sck += u4["SCLK"]; miso += u4["MISO"]; mosi += u4["MOSI"]
     csn = Net("SENS_CSN")
-    csn += u4["Z_CSN"], u2["PB5"]
-    r_mode = _r("R", "R5", "0R", "MODE strap, HIGH = I2C (datasheet fig. 18)")
-    u4["MODE"] += r_mode[1]; v33 += r_mode[2]
+    csn += u4["CS"], u2["PB5"]
     c_sens = _c("C11", "100nF", "sensor decoupling")
     v33 += c_sens[1]; gnd += c_sens[2]
-    for tag, net in (("R6", sda), ("R7", scl)):
-        r = _r("R", tag, "4k7", "I2C pull-up")
-        v33 += r[1]; net += r[2]
 
 
 def _sensor_qty():
@@ -534,19 +547,15 @@ _PLACE_CHIP = {
         # the bus bypass, behind the connector tails between the outgoing 5 V and GND ways
         # (6 and 5): pad 1 (+5V) toward way 6
         "C3": (-15.8400, -3.0000, 90.0),
-        # SCL pull-up: 0.6 +X and 0.9 -Y of where it was, clear of the SWD row and the
-        # name under it. (Tried beside the transceiver and between MCU and sensor: each
-        # left a net open on some runs.)
-        "R7": (0.5000, 5.4000, 0.0),
+        # (R5, R6, R7 -- the MT6701's MODE strap and I2C pull-ups -- went with it, 2026-11-03)
         # ⚠ U3 (the MCU) AT 0 ROTATION, AND IT IS A ROUTING DECISION -- measured across all
         # four rotations on the old board (see lever_sensor()). The CAN fan (pins 19-21,
         # 0.4 pitch) closes only with the 0.50/0.25 via; see via_mm.
         "U3": (-11.0000, 2.1500, 0.0),
         "C9": (-5.5000, 3.8000, 0.0),
         "C8": (-3.5000, 3.8000, 0.0),
-        "R5": (0.0000, 3.2000, 0.0),
-        # the sensor bypass sits AT the sensor supply pin (13, the north-east corner),
-        # pad 1 (+3V3) toward it and beside the MODE strap; it was 5 mm away, west of the chip
+        # the sensor bypass sits AT the sensor supply pin (13, the north-east corner, on the
+        # MA730 as on the MT6701), pad 1 (+3V3) toward it; it was 5 mm away, west of the chip
         "C11": (1.6000, 3.4000, 90.0),
         "C10": (-1.5000, -3.3000, 0.0),
         "Y1": (-12.9000, -2.4000, 0.0),
@@ -557,7 +566,6 @@ _PLACE_CHIP = {
         # it rather than 3.6, and at its old site it sat squarely in OSC_OUT's escape
         # (pin 3, the pin below NRST) -- 1 unconnected with no legal repair path.
         "C7": (-14.5500, 4.4500, 90.0),
-        "R6": (0.4000, -3.3200, 270.0),
         "U2": (-11.5000, -7.0000, 0.0),
         # the transceiver bypass is on the side VCC and GND are (pins 3 and 2, west), in
         # the 1.2 mm strip between U2 and the connector tails: pad 1 (+3V3) faces pin 3.
@@ -584,7 +592,7 @@ BOARD_NOTES = {
     # it could not be checked and could not be traced if it moved.
     #
     # It is 6 knee levers and 5 pedals (user, 2026-09-18): one sensed axis each, one
-    # MT6701 each, one of these boards each. That is D.N_SENSED, and it reproduces the
+    # angle sensor each, one of these boards each. That is D.N_SENSED, and it reproduces the
     # BOM's 11 independently -- the first time those two numbers have had a common source
     # rather than agreeing by coincidence. Derived, not typed, because a typed board count
     # is how can_tee came to ship a 9 against a ten-motor instrument (see the note there).
@@ -651,13 +659,15 @@ BOARD_NOTES = {
     # board -- the pour reaches them, but a pour is what routing can orphan, which is
     # the whole reason the plane is there. Every GND pad gets its own via down.
     "stitch_nets": ("GND",),
-    # ⚠ ONE STITCH EXCEPTION: THE SENSOR'S BELLY PAD HAS NO VIA (quality A14, 2026-10-06).
-    # It is 1.45 mm square under four 0.58 mm paste windows, 0.161 mm3 of paste, and the
-    # stitcher's 0.3 mm via in its centre is a 0.113 mm3 barrel: 70 % of the joint, on the
-    # pad that also sets how flat the chip sits over the magnet. The pad carries no heat
-    # (35 mW) and no current of its own, so it is joined to pin 16, the part's ground
-    # pin 0.3 mm away, by copper on its own layer, and pin 16 keeps the via to the plane.
-    "stitch_exceptions": ("U4.17", "U3.1"),    # U3.1: see the pin-1 link at "tracks"
+    # ⚠ STITCH EXCEPTIONS: THE SENSOR'S BELLY PAD HAS NO VIA (quality A14, 2026-10-06).
+    # The stitcher's 0.3 mm via in its centre is a barrel that drinks the paste (70 % of the
+    # MT6701's joint), on the pad that also sets how flat the chip sits over the magnet. The
+    # MA730's pad is 1.70 under four 0.69 windows, and the same reasoning holds: it carries
+    # no heat (40 mW) and no current of its own, so it is joined to pin 8, the part's ground
+    # pin 0.25 mm away, by copper on its own layer, and pin 8 keeps the via to the plane.
+    # TEST (pin 10, "connect to ground") is joined to the pad the same way, 0.25 mm across,
+    # rather than given a via of its own at the +X groove band.
+    "stitch_exceptions": ("U4.17", "U4.10", "U3.1"),   # U3.1: see the pin-1 link at "tracks"
     # ⚠ AND THE MCU'S PIN 1 (VSS, the corner pin) GOES STRAIGHT INTO ITS OWN BELLY LAND.
     # Left to the router it ran north along the package's west edge to a via, and with
     # SCL leaving pin 27 north-eastward that shut SDA -- pin 28, the corner pin between
@@ -668,9 +678,16 @@ BOARD_NOTES = {
     # 10 C rise. The two pins share a column with J1's other three between them, so the
     # track steps 1.9 toward the mouth, under J1's own body (nothing else may stand there:
     # the connector zone), runs down, and steps back. 0.725 clear of every pad's edge.
+    # The sensor's two links (stitch_exceptions), in the CHIP frame like the placements: the
+    # board frame is y-up, so KiCad's pin 8 at (+0.75, +1.45) is chip (+0.75, -1.45) and pin 10
+    # at (+1.45, +0.25) is chip (+1.45, -0.25). Each runs from inside its pad's heel (1.10 from
+    # centre) to inside the 1.70 pad's edge (0.85), 0.30 clear of the pins either side.
     "tracks": [("+5V", "F.Cu", 0.5, [(-7.2125, 8.00), (-9.1125, 8.00), (-9.1125, -2.00),
                                      (-7.2125, -2.00)]),
-               ("GND", "F.Cu", 0.2, [(11.80, 2.00), (11.80, 1.45)]),
+               ("GND", "F.Cu", 0.2, [(0.75 + CHIP_XY[0], -1.20 + CHIP_XY[1]),
+                                     (0.75 + CHIP_XY[0], -0.70 + CHIP_XY[1])]),
+               ("GND", "F.Cu", 0.15, [(1.20 + CHIP_XY[0], -0.25 + CHIP_XY[1]),
+                                      (0.70 + CHIP_XY[0], -0.25 + CHIP_XY[1])]),
                ("GND", "F.Cu", 0.15, [(-0.45, 4.20), (0.10, 4.20), (0.50, 3.80)])],
     # ⚠ NO local_nets ON THIS BOARD, AND THE MEASUREMENT SAYS SO. Pre-laying every
     # short net here took it from 4 unconnected to 7. The generator is not better than
@@ -779,9 +796,9 @@ BOARD_NOTES = {
         # note at stitch_exceptions). A8's own exception: a part that needs no heat path,
         # with the pad still on its net by copper on its own layer.
         "waive": {
-            "A8:U4": "MT6701, about 35 mW: its 1.45 mm exposed pad needs no heat path, and a "
-                     "via in it would take 70 % of its paste (A14). The pad is on GND through "
-                     "0.3 mm of F.Cu to pin 16, whose own via reaches the plane",
+            "A8:U4": "MA730, about 40 mW (11.7 mA at 3.3 V): its 1.70 mm exposed pad needs no "
+                     "heat path, and a via in it would take most of its paste (A14). The pad is "
+                     "on GND through 0.25 mm of F.Cu to pin 8, whose own via reaches the plane",
         },
         "power_paths": [
             # the bus passes through: the first board of a chain carries the rest, up to
@@ -800,12 +817,12 @@ BOARD_NOTES = {
             "U1.4": "the maker's NC pin",
             "U2.5": "SN65HVD230 Vref output: nothing here uses the reference",
             "U3": {
-                "pins": "6 7 8 9 10 11 12 13 14 15 18 23 24 25",
+                "pins": "6 7 8 9 10 14 15 18 23 24 25 27 28",
                 "why": "GPIO this board gives no function: left open, firmware leaves it an input with pull-down"
             },
             "U4": {
-                "pins": "1 2 3 4 5 9 10 11 12 15",
-                "why": "MT6701: the ABZ / UVW / analog / PWM outputs and its NC pins; the angle is read over I2C only"
+                "pins": "1 2 3 6 9 11 14 15 16",
+                "why": "MA730 (rev 1.1 p.8): SSD, A, Z, B, PWM and the MGL / MGH flag outputs, the SSI clock input (internal pull-down) and NC; the angle and the field flags are read over SPI only"
             }
         },
         "net_groups": [
@@ -832,11 +849,12 @@ BOARD_NOTES = {
                 "each": 1
             },
             {
-                "name": "one angle sensor: its three interface pins",
+                "name": "one angle sensor: its four SPI pins",
                 "pins": [
-                    "U4.[678]"
+                    "U4.[457]",
+                    "U4.12"
                 ],
-                "nets": 3,
+                "nets": 4,
                 "each": 1
             }
         ],
@@ -858,15 +876,18 @@ BOARD_NOTES = {
                             "scrambles it: 0 VSS (the exposed pad, KiCad pad 29), 1 BOOT0 / "
                             "PB8, 2 OSC_IN, 3 OSC_OUT, 4 NRST, 5 VDDA, 16 VSS, 17 VDD, "
                             "19 PA10 and PA11 on ONE pin (note 7) = CAN1_RX, 20 PA12 = "
-                            "CAN1_TX, 21 PA13 = SWDIO, 22 PA14 = SWCLK, 26 PB5, 27 PB6 = "
-                            "I2C1_SCL, 28 PB7 = I2C1_SDA. Board: the same fifteen pins, "
-                            "pin 1 to GND, pin 26 the sensor CSN. Read 2026-10-04",
-            "MT6701QT-STD": "MagnTek MT6701 datasheet rev 1.9 (2024.05) p.4, section 1.2 "
-                            "QFN-16, top view and pin table: 1-4 NC, 5 PUSH, 6 A (I2C SDA), "
-                            "7 B (I2C SCL), 8 Z (SSI CSN), 9 W, 10 NC, 11 U, 12 V, 13 VDD, "
-                            "14 MODE, 15 OUT, 16 GND, pad = GND. Board: 6 SDA, 7 SCL, "
-                            "8 SENS_CSN, 13 +3V3, 14 to +3V3 through R5 (I2C / SSI), 16 and "
-                            "the pad GND, the rest open. Read 2026-10-04",
+                            "CAN1_TX, 21 PA13 = SWDIO, 22 PA14 = SWCLK, 26 PB5. Board: "
+                            "those, pin 1 to GND, pin 26 the sensor CS. Read 2026-10-04. "
+                            "SPI1 added 2026-11-03 off datasheet V3.0 table 3-1-3 (QFN28 "
+                            "column, from the JLC parts record's copy): 11 PA5 = SPI1_SCK, "
+                            "12 PA6 = SPI1_MISO, 13 PA7 = SPI1_MOSI, their default "
+                            "functions; 27 PB6 / 28 PB7 now open",
+            "MA730GQ-Z": "MPS MA730 datasheet rev 1.1 (8/8/2022) p.2 package reference "
+                         "(top view) and p.8 pin functions: 1 SSD, 2 A, 3 Z, 4 MOSI, 5 CS, "
+                         "6 B, 7 MISO, 8 GND, 9 PWM, 10 TEST, 11 MGL, 12 SCLK, 13 VDD, 14 NC, "
+                         "15 SSCK, 16 MGH, 17 the pad. Land off p.26 (Steel.pretty). Board: "
+                         "4 SENS_MOSI, 5 SENS_CSN, 7 SENS_MISO, 12 SENS_SCK, 13 +3V3, 8 / 10 / "
+                         "the pad GND, the rest open. Read 2026-11-03",
             "TAXM8M4RFDCET2T": "Yajingxin TAXM8M4RFDCET2T sheet (LCSC C403948), 'Connection' "
                                "drawing: lands 1 and 3 are the crystal, 2 and 4 the can "
                                "(GND). Board: 1 OSC_IN, 3 OSC_OUT, 2 / 4 GND. Read "
@@ -905,17 +926,18 @@ BOARD_NOTES = {
                   "clamp ESD. R4 carries 17 mA: 34 mW, and 75 mW with the bus held dominant at 3 V, in an 0402 rated "
                   "100 mW (ERJ2RKF1200X; the house 0402 is 62 mW and was not used). R8 carries "
                   "80 mA: 14 mW",
-            "M6": "nothing fast: CAN at 1 Mbit/s with slope control, I2C at 400 kHz, an "
+            "M6": "nothing fast: CAN at 1 Mbit/s with slope control, SPI to the sensor at "
+                  "a few MHz over about 12 mm (the part takes 25), an "
                   "8 MHz crystal 3.4 and 5.5 mm from its pins",
             "M7": "U1: EN tied to IN, fixed 3.3 V part. U2 (SLOS346): RS through 10 k to "
-                  "GND = slope control; Vref left open, as the sheet allows. U4 (MT6701 "
-                  "rev 1.9 fig. 18): MODE high through R5 selects the I2C / SSI port, pad "
-                  "to GND, 100 nF at VDD. U3: 8 MHz crystal on OSC_IN / OSC_OUT (M24), "
+                  "GND = slope control; Vref left open, as the sheet allows. U4 (MA730 "
+                  "rev 1.1 p.8, p.11): TEST and the pad to GND, NC open, 100 nF at VDD, "
+                  "SPI mode detected by the part. U3: 8 MHz crystal on OSC_IN / OSC_OUT (M24), "
                   "100 nF on NRST, VDDA and VDD on the same rail with a capacitor each",
             "M8": "BOOT0 (pin 1) hard to GND: the board is programmed over SWD only. NRST: "
                   "the MCU's internal pull-up and C7. U1 EN: tied to IN. U2 RS: R3 to GND. "
-                  "U4 MODE: R5 to +3V3. SENS_CSN is an MCU output and floats until "
-                  "firmware drives it; nothing reads the sensor before then",
+                  "U4 CS: SENS_CSN is an MCU output and floats until firmware drives "
+                  "it; the sensor's own pull-up holds it high (deselected) until then",
             "M9": "SWD on bare 1 mm pads in a row on the magnet face, each with its name "
                   "beside it at 1.0 mm: DIO, CLK, GND, and RST by the connector. No 3V3 "
                   "pad: the rail is probed on C10 or C2, and the board reports itself "
@@ -944,13 +966,13 @@ BOARD_NOTES = {
                    "SN65HVD230's bus pins are high-impedance unpowered (SLOS346). An SWD "
                    "probe is the one outside driver and is connected with the board "
                    "powered",
-            "M20": "I2C: R6 / R7 4.7 k to 3.3 V, one pair, on a 15 mm bus: above the "
-                   "967 ohm floor (3 mA sink) and far under the ceiling for 400 kHz. "
+            "M20": "SPI to the sensor: push-pull both ways, no pull-ups; CS idles high on "
+                   "the part's own pull-up. "
                    "CAN: R4 120 ohm behind SW1, ON only on the board at each far end "
                    "of bus B (two in all; the controller sits mid-bus and carries "
                    "none). This board's stub from J1 to the transceiver is about 15 mm",
-            "M21": "the sensor's ground pin and pad drop into the In1 plane on their own "
-                   "vias, C11 is 0.9 mm from its supply pin, and the only regulator is "
+            "M21": "the sensor's ground pin drops into the In1 plane on its own via, its pad "
+                   "and TEST reach that pin on F.Cu, C11 is 0.9 mm from its supply pin, and the only regulator is "
                    "linear -- chosen for that, in place of the buck that stood 15 mm "
                    "from the sensor",
             "M22": "no op-amp on this board",
@@ -958,21 +980,23 @@ BOARD_NOTES = {
                    "about 4.5 pF of pin and track = 12 pF. The same crystal and capacitors "
                    "as motor_ctrl and output_panel",
             "M25": "two exposed pads, both GND. The MCU's is on a via to the plane (A8) and "
-                   "dissipates about 35 mW. The sensor's (U4, about 35 mW) has NO via, on "
-                   "purpose: a 0.3 mm barrel would take 70 % of that 1.45 mm pad's paste "
-                   "(A14), so it is joined to pin 16 on its own layer and pin 16's via "
+                   "dissipates about 35 mW. The sensor's (U4, about 40 mW) has NO via, on "
+                   "purpose: a 0.3 mm barrel would take most of that 1.70 mm pad's paste "
+                   "(A14), so it is joined to pin 8 on its own layer and pin 8's via "
                    "carries its ground. Neither needs the pad for heat",
             "M26": "CAN_TX: MCU pin 20 (PA12, CAN1_TX) to U2 pin 1, D, the driver input. "
                    "CAN_RX: U2 pin 4, R, the receiver output, to MCU pin 19 (PA11, "
-                   "CAN1_RX). SDA to the sensor's pin 6 (A / SDA), SCL to pin 7 (B / SCL)",
+                   "CAN1_RX). SPI1: MCU pin 11 (PA5, SCK) to the sensor's 12 (SCLK), 12 (PA6, MISO) "
+                   "to its 7 (MISO, the sensor's output), 13 (PA7, MOSI) to its 4 (MOSI); "
+                   "PB5 (26) to its 5 (CS)",
             "M27": "BOOT0: tied to GND, nothing else on the pin (the package shares it "
                    "with PB8, which is therefore unused). SWDIO / SWCLK: a test pad each, "
                    "nothing else. NRST: C7 and a test pad. Pin 19 is PA10 and PA11 bonded "
                    "together (datasheet note 7): it is CAN1_RX here and firmware must "
                    "leave PA10 an input",
             "M28": "CH32V203G6U6 is the QFN28 'G6' column of table 3-1-3, not the QSOP28 "
-                   "G8 one (different numbering). MT6701QT-STD is the QFN-16, not the "
-                   "SOP-8 MT6701CT. AP2112K-3.3TRG1 is the SOT-25 part and SN65HVD230DR "
+                   "G8 one (different numbering). MA730GQ-Z is the QFN-16 on tape and reel "
+                   "(-Z), the only package it comes in. AP2112K-3.3TRG1 is the SOT-25 part and SN65HVD230DR "
                    "the SOIC-8. Each read against the footprint "
                    "the board places (quality.pinouts)",
             "M31": "no polarised two-pad part to mark. Each IC's pin-1 mark is the KiCad "
@@ -990,7 +1014,7 @@ BOARD_NOTES = {
                    "peak, through a 600 mA regulator. Bus B: eleven boards idle at 25 mA "
                    "and one transmitting is about 0.33 A against U6's 0.475 A minimum "
                    "limit",
-            "M34": "CAN_TX / CAN_RX, I2C and SWD are all 3.3 V at both ends. The sensor "
+            "M34": "CAN_TX / CAN_RX, SPI and SWD are all 3.3 V at both ends. The sensor "
                    "runs from 3.3 V, so its outputs cannot exceed the MCU's rail",
             "M36": "the pass-through J1 -> J2 is the bus itself: limited upstream to "
                    "0.52 A by motor_ctrl's U6, carried here on 0.4 mm copper and 2 A "
@@ -1001,8 +1025,8 @@ BOARD_NOTES = {
                    "part is on the magnet face (single_sided); J1 / J2's pins come "
                    "through to the back, where the cradle has no wall",
             "M39": "MCU: unused GPIO are left open and set by firmware to pulled inputs; "
-                   "PB8 is grounded with BOOT0. U4: PUSH, OUT, U / V / W are outputs, left "
-                   "open; its NC pins are open. U2 Vref: an output, open. U1 pin 4: NC",
+                   "PB8 is grounded with BOOT0. U4: SSD, A, B, Z, PWM, MGL, MGH are outputs, "
+                   "left open; SSCK has its own pull-down; NC is open; TEST is grounded. U2 Vref: an output, open. U1 pin 4: NC",
             "M40": "the generator carries the record beside each value: the crystal and "
                    "its capacitors (M24), R8 (M16), the 0.50 / 0.25 via the MCU's fan "
                    "needs, the row of SWD pads, the capacitor at each supply pin, and "

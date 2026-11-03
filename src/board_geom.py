@@ -122,6 +122,9 @@ _HEIGHT: dict = {
     "Kangshen_DSHP01TSGER": 2.5,
     # the UI board's display FFC socket, Molex 52271-2079: 3.0 +-0.2 (SD-52271-036, side view)
     "Molex_52271-2079_1x20-1MP_P1.0mm_Horizontal": 3.0,
+    # the lever board's angle sensor, MA730GQ-Z on MPS's own land (Steel.pretty): the side view
+    # gives the package 0.80 .. 1.00 (MA730 rev 1.1 p.26), so the max
+    "MPS_QFN-16-1EP_3x3mm_P0.5mm_EP1.7x1.7mm": 1.00,
 }
 _TAIL: dict = {
     # READ, not estimated (2026-10-04): HX's PZ1.27-2xNP WZ drawing gives the solder leg

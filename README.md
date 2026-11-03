@@ -312,7 +312,7 @@ from the board it has to hold.
 | `optical` | per-string optical pickup + the analog front end; pitch detection for the calibration loop |
 | `output_panel` | the front panel and the whole magnetic audio path — ADC, DAC, USB hub, true-bypass relay |
 | `motor_ctrl` | CH32V307 + two CAN transceivers: the sensor→motor loop, and both buses' upstream end |
-| `lever_sensor` | one per control — an MT6701 reading a diametric magnet on the control's axle |
+| `lever_sensor` | one per control — an MA730 reading a diametric magnet on the control's axle |
 | `can_tee` | a bus junction so unplugging any device never breaks the trunk |
 | `ui_board` | the deck's display + multi-control station |
 | `fret_led_mid` / `fret_led_key` | fret-marker lighting, one board per deck panel |

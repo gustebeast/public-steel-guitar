@@ -2,7 +2,7 @@
 
 NOT a mechanical changer: the lever does nothing to the strings. It is purely a
 POSITION SENSOR — the player's left knee pushes the paddle, a diametric magnet on
-the pivot axle rotates over a fixed MT6701 14-bit Hall angle encoder, and the
+the pivot axle rotates over a fixed MA730 14-bit angle sensor, and the
 firmware maps that angle (per-control calibration + copedant) to string-pitch
 targets. See pedal-knee-lever-design.md.
 
@@ -133,6 +133,14 @@ AIR_GAP = 1.5                       # magnet face -> the IC's OWN TOP SURFACE. T
                                     # 0.5 / 1.0 / 2.0 min/typ/max; recommended magnet Ø6 x
                                     # 2.5 — EXACTLY ours, so this is the nominal
                                     # configuration the part was characterised in.
+                                    # ⚠ THE SENSOR IS AN MA730 SINCE 2026-11-03, and its window
+                                    # differs: "applied magnetic field" 40 mT min, 60 typ, no
+                                    # max (MPS MA730 rev 1.1 p.4), against the MT6701's
+                                    # 20-100. Its reference magnet is dia 5 x 3 N35 at a 1.5 gap
+                                    # (p.10) -- close to ours, but the 40 mT floor sits
+                                    # nearer than the MT6701's did. NOT MEASURED: the first
+                                    # board reads its own MGL flag (register 27) with MGLT
+                                    # raised to 41 mT; if it is set, AIR_GAP comes down, not up.
 # ── THE SENSOR BOARD AS SPECIFIED FOR ITS RE-SPIN (user, 2026-09-21; docs/lever-sensor-respin.md).
 # SINGLE-SIDED, like every board on the shared panel (elec/fab.py). The bus connector was an
 # S8B-PH-SM4-TB -- since 2026-10-19 it is J1 + J2, two S4B-PH-K-S end to end (see CONN_N) --
@@ -184,7 +192,12 @@ PCB_T = _PCB_T                      # taller than anything on it: the board ran 
                                     # chip's CHIP_DROP fixes that edge relative to the axle).
                                     # In X the outline is already tight: the chip's keepout sets
                                     # +X and the connector's groove band sets -X.
-CHIP_H = 0.80                       # MT6701QT-STD, QFN-16 (3.0 x 3.0). DATASHEET §9.2 (verified):
+CHIP_H = 1.00                       # MA730GQ-Z since 2026-11-03: QFN-16 3.0 x 3.0, 0.80 .. 1.00 tall
+                                    # (MPS MA730 rev 1.1 p.26 side view), the max for the
+                                    # reason below. Sensing point at the geometric centre,
+                                    # 0.45 below the top (p.10 fig. 3). AXLE_LAND_T stays at
+                                    # its 0.8 floor, so the board stands 0.2 further out.
+                                    # THE MT6701 IT REPLACES -- QFN-16 (3.0 x 3.0). DATASHEET §9.2 (verified):
                                     # A, the TOTAL
                                     # package height, = 0.700..0.800. CHIP_H takes the MAX,
                                     # not the typical: A is what stands between the board
@@ -2292,7 +2305,14 @@ KEEP_WEB_H  = KEEP_POST_D           # 5.6 of base on the bed, under the winding 
 # stands CR_Y1 off the axle and carries the board, and a coil tucked inside its shadow
 # put every run that left it straight along its own lever's PCB. Derived, so it tracks
 # the cradle rather than being a number that was once right.
-KEEP_CLR_Y  = CR_Y1 - HOUS_HW + D.MIN_WALL_2P   # 11.5: the coil's inner face clears
+# ⚠ PINNED WHERE THE MT6701 LEFT IT (2026-11-03). The MA730's taller package (CHIP_H 0.80 ->
+# 1.00) moved the cradle 0.2 out, and the post would have followed it -- which drops the
+# VERTICAL lever's 45 deg strut to 1.46 above its floor, under the MIN_WALL_2P it needs to
+# fuse (knee_lever_vert, cable_keeper(hung=True)). Holding the post instead keeps every coil
+# in the instrument where the harness expects it; the price is 1.4 of air between coil and
+# cradle instead of 1.6. The other way out, a 0.2 deeper vertical housing, grows a part.
+_KEEP_CHIP_H_WAS = 0.80
+KEEP_CLR_Y  = CR_Y1 - (CHIP_H - _KEEP_CHIP_H_WAS) - HOUS_HW + D.MIN_WALL_2P   # 11.5: the coil's inner face clears
                                     # the cradle's outer one. Was one wall (0.8), which left
                                     # the wound cable almost touching the lever and nowhere
                                     # for a finger or a screwdriver to get in (user: "move

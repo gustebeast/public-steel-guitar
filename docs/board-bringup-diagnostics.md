@@ -189,11 +189,11 @@ and `output_panel`'s are scattered differently again.
 | 4.1 | **One SWD pad pattern, the same on every board.** Eleven boards flashed by hand-probing four scattered pads is eleven chances to slip; a fixed footprint (say 5 pads on a 2.54 mm line: 3V3, SWDIO, SWCLK, NRST, GND) takes one pogo clip for all thirteen MCU boards in the instrument. Same pads, moved — the outline is branner's re-spin spec and does not change | 0 net (adds the +3V3 pad, item 4.2) | 0 |
 | 4.2 | **`+3V3` pad** — folded into 4.1's pattern. Separates "LDO dead" from "MCU dead" with a meter | 1 pad | 0 |
 | 4.3 | **A CAN bootloader in flash** (firmware, not ROM — WCH's ROM loader is USB/UART only). These boards sit inside knee-lever housings and pedal legs; without this, every firmware fix is a disassembly ×11. It is the highest-value item on this board and it is not hardware | 0 | 0 |
-| 4.4 | **Report the MT6701's field-strength status over CAN.** The sensor flags a magnet that is too weak or too strong. A missing magnet, a wrong gap or a flipped magnet is the likeliest *mechanical* fault on a lever, and this reads it out without opening anything | 0 | 0 |
+| 4.4 | **Report the angle sensor's field-strength status over CAN.** (MA730 since 2026-11-03: register 27, MGH bit 7 / MGL bit 6, over the same SPI as the angle -- `firmware/lever_sensor/ma730.c` `ma730_field()`; thresholds in register 6.) The sensor flags a magnet that is too weak or too strong. A missing magnet, a wrong gap or a flipped magnet is the likeliest *mechanical* fault on a lever, and this reads it out without opening anything | 0 | 0 |
 | 4.5 | **Report the MCU's unique ID and a firmware version on boot.** With eleven identical boards, "which one is misbehaving" is a diagnosis in itself; wiggle a lever, see which ID moves | 0 | 0 |
 | 4.6 | **Independent watchdog on, always.** One node whose firmware hangs with its transmit pin dominant silences the bus for all eleven, and the daisy chain means the only isolation is unplugging. ⚠ Check whether the SN65HVD230 has a dominant-timeout (I believe it does not — verify); if not, the watchdog is the only thing bounding that fault | 0 | 0 |
 
-**Checked against the datasheets 2026-09-30, and two rows above change:**
+**Checked against the datasheets 2026-09-30, and two rows above change** (the 4.4 note below is the MT6701's; the MA730 that replaced it on 2026-11-03 gives the flags as a register over SPI, so the SSI route is history)**:**
 
 * **4.4 is NOT available on the board as built.** The MT6701 reports field status (`Mg[1:0]`: too
   strong / too weak; `Mg[3]`: over-speed) only in its **SSI** frame (§7.8); the I2C registers

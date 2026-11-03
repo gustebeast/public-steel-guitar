@@ -298,7 +298,7 @@ RES_MODEL = {
         "R4": ("v", _vod, "CAN termination, switched in on the last board only: SN65HVD230 dominant VOD "
                           "max 3 V, 100 % dominant"),
         "R8": ("i", 0.08, "in series with the LDO's input: the board's whole draw, 80 mA by its own budget (CH32V203 + "
-                          "SN65HVD230 dominant + MT6701)"),
+                          "SN65HVD230 dominant + MA730)"),
     },
     "pi_cap": {r: ("i", 0.016, "series termination into a CMOS input; worst case the Pi pin's 16 mA "
                                "drive into a shorted line") for r in ("R1", "R2", "R3", "R4")},
