@@ -46,6 +46,7 @@ WHITE = (0.94, 0.94, 0.92)
 LENS = (0.96, 0.88, 0.45)        # phosphor under an LED's window
 SMOKE = (0.16, 0.17, 0.22)       # a photodiode's window
 CERAMIC = (0.80, 0.74, 0.62)
+FUSE_RED = (0.72, 0.08, 0.10)    # an ATO blade's moulding at 10 A
 
 # a model file KiCad's library does not have -> one it does, with the same body
 SAME_BODY = {
@@ -397,6 +398,54 @@ def push_latch(W, D, H, **_):
     return [(case, BLACK), (strap, STEEL), (shoulder, WHITE)]
 
 
+# Littelfuse FLR 178.6165 (datasheet drawing, LCSC C207060): 17.5 of body on 1.0 of
+# standoff. An ATO blade (Littelfuse ATO, SAE J2077): 19.1 across, 5.1 through its head.
+FLR_BODY_TOP = 18.5
+FLR_STANDOFF = 1.0
+FLR_WALL = 0.5               # REPRESENTATIVE: what a 20.1 outline leaves a 19.1 blade
+ATO_W, ATO_HEAD_T, ATO_BODY_T = 19.1, 5.1, 3.8
+ATO_HEAD_H = 4.0             # REPRESENTATIVE: the thick moulded grip at the top
+
+
+def blade_fuse_holder(W, D, H, rating="10", empty=False, **_):
+    """A board-mount ATO holder with its blade fuse seated: the open-topped black box on
+    its standoff, and the fuse standing in it to H -- which is the PROJECT's figure
+    (Boards HEIGHT), because how far a seated blade stands proud is the stack, and the
+    holder's drawing does not dimension it. The fuse's grip, its two test windows with
+    the terminals showing, and its rating on top are a likeness. The moulding is drawn
+    10 A red; another rating is another colour, and the footprint does not say which.
+    `empty` (the board's Boards(unmated=...) names it) draws the holder with no blade."""
+    turned = W < D                                   # draw along the long side
+    if turned:
+        W, D = D, W
+    body = (_box(W, D, FLR_BODY_TOP - FLR_STANDOFF, y=0.0, z=FLR_STANDOFF)
+            .cut(_box(W - 2 * FLR_WALL, D - 2 * FLR_WALL, FLR_BODY_TOP,
+                      y=FLR_WALL, z=FLR_STANDOFF + 2.0)))
+    feet = (_box(1.5, D - 1.0, FLR_STANDOFF, x=-(W / 2 - 1.0), y=0.5)
+            .union(_box(1.5, D - 1.0, FLR_STANDOFF, x=W / 2 - 1.0, y=0.5)))
+    fw = min(ATO_W, W - 2 * FLR_WALL)
+    head_t = min(ATO_HEAD_T, D - 2 * FLR_WALL)
+    cy = D / 2.0
+    z0 = FLR_STANDOFF + 2.0                          # the blade's seat, inside
+    head_z = H - ATO_HEAD_H
+    fuse = (_box(fw - 0.6, ATO_BODY_T, head_z - z0, y=cy - ATO_BODY_T / 2, z=z0)
+            .union(_box(fw, head_t, ATO_HEAD_H, y=cy - head_t / 2, z=head_z)))
+    tabs = None
+    for sx in (-1.0, 1.0):
+        x = sx * (fw / 2 - 2.0)
+        fuse = fuse.cut(_box(2.2, 1.6, 0.6, x=x, y=cy - 0.8, z=H - 0.6))
+        tab = _box(1.4, 1.0, 0.4, x=x, y=cy - 0.5, z=H - 0.6)
+        tabs = tab if tabs is None else tabs.union(tab)
+    text = (cq.Workplane("XY").text(rating, 2.4, 0.15).translate((0, cy, H)))
+    out = [(body.union(feet), BLACK)]
+    if not empty:
+        out += [(fuse, FUSE_RED), (tabs, TIN), (text, WHITE)]
+    if turned:
+        out = [(w.rotate((0, 0, 0), (0, 0, 1), 90).translate((D / 2.0, W / 2.0, 0)), c)
+               for w, c in out]
+    return out
+
+
 def ffc_socket(W, D, H, n=20, pitch=1.0, **_):
     """A right-angle ZIF socket for flat cable, slide-lock, to JUSHUO's drawing of the
     AFA07-S**F**-00 (1.0 mm pitch, 2.5 high, lower contact): the natural housing, the
@@ -442,6 +491,7 @@ _RULES = [
     (r"RKJXT1F", stick),
     (r"PB-22E", push_latch),
     (r"^JUSHUO_AFA07-S\d+[EF]CA-00_1x(\d+)-1MP_P1\.0mm", ffc_socket),
+    (r"^FuseHolder_Blade_ATO_Littelfuse_FLR", blade_fuse_holder),
 ]
 _PITCH = {"ZH": 1.5, "PH": 2.0, "XH": 2.5}
 # a spring pin fires out of its mouth: which way, in the footprint's OWN frame (KiCad's,
@@ -559,6 +609,8 @@ def build(f, h, thickness, panel=None, outline=None, tip=None):
         facts["pads"] = sorted({round(p[0], 3) for p in here.values()})
     if gen in _FIRES:
         facts["tip"] = tip
+    if f.get("empty"):
+        facts["empty"] = True
     spec = (panel or {}).get(name) or {}
     if "axis_h" in spec:
         facts["axis_h"] = spec["axis_h"]

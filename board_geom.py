@@ -314,7 +314,8 @@ class Boards:
         self.land_rgb = LAND_RGB[finish]         # the pads' colour: tin, or gold for ENIG
         self.silk_subst = dict(silk_subst or {})
         # connectors nothing is plugged into, as (board, ref): the viewer draws the
-        # header and no housing in it (cadkit.web.boards)
+        # header and no housing in it (cadkit.web.boards) -- and a holder nothing is
+        # fitted in, such as a fuse holder with its blade out, empty (cadkit.web.parts)
         self.UNMATED = {tuple(u) for u in unmated}
         self._cache = {}
 

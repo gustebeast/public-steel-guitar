@@ -91,6 +91,28 @@ def _declared(stem):
     return lambda t, r: bool(mod.declared(board, t, r))
 
 
+def _relay_bleed(board, pcbnew):
+    """Replace silk.py's ink-bleed groups with fresh ones from the texts as they stand.
+    The group's name carries the width (kicad_silk.BLEED_GROUP + " %.3f")."""
+    import importlib.util
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        "kicad_silk.py")
+    spec = importlib.util.spec_from_file_location("kicad_silk", path)
+    ks = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ks)
+    groups, old = ks.old_bleed(board)
+    if not groups:
+        return
+    ks.add_bleed(board, float(groups[0].GetName().split(" ")[1]))
+    # removed AFTER the new ones are laid, as silk.py does (see kicad_silk.old_bleed)
+    for g in groups:
+        for it in list(g.GetItems()):
+            g.RemoveItem(it)
+        board.Remove(g)
+    for it in old:
+        board.Remove(it)
+
+
 def _silkfit(stem):
     """Move every silk designator to where it will actually print.
 
@@ -151,6 +173,14 @@ def _silkfit(stem):
         moved, demoted, kept = mod.fit_refs(
             board, notes=notes.get("quality", {}) or {},
             log=lambda m: print(" " + m), pcbnew=pcbnew)
+        if moved or demoted:
+            # ⚠ THE BLEED FOLLOWS ITS TEXT. silk.py lays a rim of ink round every
+            # outline-font text, as polygons of its own; fit_refs moves the designators
+            # and not those polygons, so each moved designator left its rim where it
+            # used to stand -- over the part's own pads, which is where a designator
+            # starts. pi_cap R2 (2026-11-03) failed A18 on three of them. Re-lay the
+            # bleed from the texts as they now stand, at the width silk.py chose.
+            _relay_bleed(board, pcbnew)
         if raised or moved or demoted:
             board.Save(stem + ".kicad_pcb")
     except Exception as exc:                                # noqa: BLE001
