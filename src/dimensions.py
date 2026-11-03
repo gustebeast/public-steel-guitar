@@ -834,7 +834,7 @@ MCTRL_Y1        = (string_y(0) - MOTOR_PULLEY_STANDOFF - MOTOR_BODY_L
                    - MOTOR_CLR)   # -18.35: behind string 1's motor
 MCTRL_L         = 55.0           # routed outline, along Y
 MCTRL_Y0        = MCTRL_Y1 - MCTRL_L                                                         # -73.35
-MCTRL_X         = (-606.5, -591.7)
+MCTRL_X         = (-606.5, -591.5)   # +X: R2 J4, the vertical USB-C, 10.0 over the 1.6 board (R1 -591.7)
 MCTRL_PORT_CLR  = 0.5            # round whatever of the board enters the floor
 MCTRL_DIP       = 2.0
 # Belt-plane cascade: a Ø8.4 pulley + belt wrap is wider than the 9.5 mm string
