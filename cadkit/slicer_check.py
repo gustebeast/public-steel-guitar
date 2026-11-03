@@ -437,12 +437,16 @@ def _main():
     if a.test:
         self_test()
         return
-    import cadquery as cq
-    V, F = mesh_of(cq.importers.importStep(a.step).val())
+    from .step_export import read_print_parts
     work = pathlib.Path(tempfile.mkdtemp(prefix="slicer_check"))
     settings = presets(work / "presets", process=a.process, filament=a.filament)
-    sites, _, stats = check(V, F, tuple(float(x) for x in a.up.split(",")), work, settings)
-    report(sites, stats)
+    bodies = read_print_parts(a.step)     # a two-filament print: each body on its own
+    for name, shape in bodies:
+        if len(bodies) > 1:
+            print("== %s" % name)
+        V, F = mesh_of(shape)
+        sites, _, stats = check(V, F, tuple(float(x) for x in a.up.split(",")), work, settings)
+        report(sites, stats)
 
 
 if __name__ == "__main__":

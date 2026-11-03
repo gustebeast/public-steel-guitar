@@ -279,9 +279,9 @@ py -3.12 -m tools.export_glb       # the web viewer's model and page alone (docs
   nut, bearings, pulleys, belt, strings, dowels) used only in the assembly.
 - Printed parts, by area (`py -3.12 -m src.build --list` is the authoritative
   list — it is generated, this is a map):
-  - **body**: `chassis_0/1/2` (+ `_light` variants), `bridge_endplate`,
+  - **body**: `chassis_0/1/2` (each one file with its `_light` window body), `bridge_endplate`,
     `keyhead_endplate` (nut block fused in)
-  - **top deck**: `top_plate_*` segments and their colour inlays,
+  - **top deck**: `top_plate_*` segments, each one file with its colour inlay body,
     `pickup_zplate` (the pickup's height plate)
   - **drivetrain**: `screw_pulley_hi`/`_lo`, `motor_pulley`, `tension_fork`,
     and the belt-tension clamp (one `clamp_half` SKU fitted twice per string)
