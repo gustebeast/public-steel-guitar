@@ -105,6 +105,16 @@
    "v": 33.4,
    "why": "bootstrap: SW + 7 V, held by U1"
   },
+  "CC1": {
+   "peak": 5.5,
+   "v": 5.25,
+   "why": "R2 USB-C CC, 5k1 Rd to GND here; a host's Rp pulls it toward its VBUS at most"
+  },
+  "CC2": {
+   "peak": 5.5,
+   "v": 5.25,
+   "why": "R2 USB-C CC, 5k1 Rd to GND here; a host's Rp pulls it toward its VBUS at most"
+  },
   "EN5": {
    "peak": 2.338,
    "v": 1.796,
@@ -121,6 +131,14 @@
    "why": "divider off +5V_RAW: x 0.1994"
   },
   "GND": 0,
+  "J4_NC_A8": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "J4_NC_B8": {
+   "v": 0.0,
+   "why": "not connected"
+  },
   "N$1": {
    "v": 0.0,
    "why": "pulled to ground"
@@ -466,17 +484,53 @@
    "max": 250.0,
    "src": "rated V -- B6B-XH-A(LF)(SN) (C144397): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
   },
-  "J4.1": {
-   "max": 100.0,
-   "src": "rated V -- B4B-PH-K-S(LF)(SN) (C131334): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
+  "J4.A4": {
+   "max": 20.0,
+   "src": "rated V -- HX-TYPE-C 16P 180 LC-B H10.0 (C49261584): LCSC product page C49261584, specifications: 'Voltage Rating 20V' (read 2026-11-03; the hanxia drawing gives no rating). No current rating given: J4 carries USB 2.0 data and CC only"
   },
-  "J4.3": {
-   "max": 100.0,
-   "src": "rated V -- B4B-PH-K-S(LF)(SN) (C131334): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
+  "J4.A5": {
+   "max": 20.0,
+   "src": "rated V -- HX-TYPE-C 16P 180 LC-B H10.0 (C49261584): LCSC product page C49261584, specifications: 'Voltage Rating 20V' (read 2026-11-03; the hanxia drawing gives no rating). No current rating given: J4 carries USB 2.0 data and CC only"
   },
-  "J4.4": {
-   "max": 100.0,
-   "src": "rated V -- B4B-PH-K-S(LF)(SN) (C131334): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
+  "J4.A6": {
+   "max": 20.0,
+   "src": "rated V -- HX-TYPE-C 16P 180 LC-B H10.0 (C49261584): LCSC product page C49261584, specifications: 'Voltage Rating 20V' (read 2026-11-03; the hanxia drawing gives no rating). No current rating given: J4 carries USB 2.0 data and CC only"
+  },
+  "J4.A7": {
+   "max": 20.0,
+   "src": "rated V -- HX-TYPE-C 16P 180 LC-B H10.0 (C49261584): LCSC product page C49261584, specifications: 'Voltage Rating 20V' (read 2026-11-03; the hanxia drawing gives no rating). No current rating given: J4 carries USB 2.0 data and CC only"
+  },
+  "J4.A8": {
+   "max": 20.0,
+   "src": "rated V -- HX-TYPE-C 16P 180 LC-B H10.0 (C49261584): LCSC product page C49261584, specifications: 'Voltage Rating 20V' (read 2026-11-03; the hanxia drawing gives no rating). No current rating given: J4 carries USB 2.0 data and CC only"
+  },
+  "J4.A9": {
+   "max": 20.0,
+   "src": "rated V -- HX-TYPE-C 16P 180 LC-B H10.0 (C49261584): LCSC product page C49261584, specifications: 'Voltage Rating 20V' (read 2026-11-03; the hanxia drawing gives no rating). No current rating given: J4 carries USB 2.0 data and CC only"
+  },
+  "J4.B4": {
+   "max": 20.0,
+   "src": "rated V -- HX-TYPE-C 16P 180 LC-B H10.0 (C49261584): LCSC product page C49261584, specifications: 'Voltage Rating 20V' (read 2026-11-03; the hanxia drawing gives no rating). No current rating given: J4 carries USB 2.0 data and CC only"
+  },
+  "J4.B5": {
+   "max": 20.0,
+   "src": "rated V -- HX-TYPE-C 16P 180 LC-B H10.0 (C49261584): LCSC product page C49261584, specifications: 'Voltage Rating 20V' (read 2026-11-03; the hanxia drawing gives no rating). No current rating given: J4 carries USB 2.0 data and CC only"
+  },
+  "J4.B6": {
+   "max": 20.0,
+   "src": "rated V -- HX-TYPE-C 16P 180 LC-B H10.0 (C49261584): LCSC product page C49261584, specifications: 'Voltage Rating 20V' (read 2026-11-03; the hanxia drawing gives no rating). No current rating given: J4 carries USB 2.0 data and CC only"
+  },
+  "J4.B7": {
+   "max": 20.0,
+   "src": "rated V -- HX-TYPE-C 16P 180 LC-B H10.0 (C49261584): LCSC product page C49261584, specifications: 'Voltage Rating 20V' (read 2026-11-03; the hanxia drawing gives no rating). No current rating given: J4 carries USB 2.0 data and CC only"
+  },
+  "J4.B8": {
+   "max": 20.0,
+   "src": "rated V -- HX-TYPE-C 16P 180 LC-B H10.0 (C49261584): LCSC product page C49261584, specifications: 'Voltage Rating 20V' (read 2026-11-03; the hanxia drawing gives no rating). No current rating given: J4 carries USB 2.0 data and CC only"
+  },
+  "J4.B9": {
+   "max": 20.0,
+   "src": "rated V -- HX-TYPE-C 16P 180 LC-B H10.0 (C49261584): LCSC product page C49261584, specifications: 'Voltage Rating 20V' (read 2026-11-03; the hanxia drawing gives no rating). No current rating given: J4 carries USB 2.0 data and CC only"
   },
   "J5.1": {
    "max": 100.0,
@@ -592,7 +646,7 @@
   },
   "R22.1": {
    "max": 50.0,
-   "src": "element V -- 0402WGF4992TCE (C25897): JLCPCB parts API attributes for C25897 (0402WGF4992TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+   "src": "element V -- RC0402FR-0749K9L (C137969): YAGEO RC0402FR-07 series, the series C163455 / C138058 / C138027 / C138045 / C274897 / C327251 are read from (JLCPCB parts API, 2026-10-06: 50 V, 62.5 mW for every value); fab.py's R22 from 2026-11-01"
   },
   "R23.1": {
    "max": 200.0,
@@ -601,6 +655,14 @@
   "R23.2": {
    "max": 200.0,
    "src": "element V -- 1206W4F0000T5E (C17888): JLCPCB parts API attributes for C17888 (1206W4F0000T5E, UNI-ROYAL: 0 ohm jumper, 250 mW, 200 V), fetched 2026-10-06; 20 mohm taken as the jumper's own resistance for the power sum"
+  },
+  "R24.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF5101TCE (C25905): JLCPCB parts API attributes for C25905 (0402WGF5101TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R25.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF5101TCE (C25905): JLCPCB parts API attributes for C25905 (0402WGF5101TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
   },
   "R3.1": {
    "max": 50.0,

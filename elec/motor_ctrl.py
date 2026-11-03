@@ -1909,44 +1909,60 @@ BOARD_NOTES["quality"] = {
 # ── R2 (MOTOR_CTRL_REV=2, the default): the backlog in docs/bronner-work-items.md ─────────
 # Board frame -> world, standing: board +X is world DOWN (x 30.9 is the floor edge, z -80.85;
 # z = -49.95 - x), board Y is world Y, the parts face world +X.
-SHOULDER = (-2.0, 2.0, 2.4)     # R2-3: the notch in the -Y edge, board x from..to, depth in y
 if REV != 1:
     _pl = BOARD_NOTES["placements"]
     # R2-0: J4 the vertical USB-C (see _usb_c), centred where R1's PH was; its two Rd beside
     # it, clear of J5, on CC1 / CC2's short way to the receptacle's A5 / B5
     _pl["J4"] = (-25.90, -19.50, 90.0)
-    _pl["R24"] = (-21.00, -12.00, 90.0)
-    _pl["R25"] = (-21.00, -10.40, 90.0)
+    _pl["R24"] = (-21.00, -12.10, 90.0)     # 2.0 apart: courtyard to courtyard, and J4 below
+    _pl["R25"] = (-21.00, -10.10, 90.0)     # / J5 above each clear by 0.6 or more
     # R2-2: bus B's two side-entry PH +14 along the floor edge, toward the board's +Y edge,
-    # for finger room at the -X/-Y body adapter; the bus bulk C28 stays in the gap between
+    # for finger room at the -X/-Y body adapter
     _pl["J2"] = (24.92, 2.50, 90.0)
-    _pl["J6"] = (24.92, 18.50, 90.0)
-    _pl["C28"] = (25.60, 10.50, 0.0)
+    # J6 as far +Y as the +Y guide's +X cheek allows (its body ends 25.5, the cheek's sweep
+    # band starts 25.9): the band under J3, where mctrl_retention's -Z ledge stands, has to be
+    # clear of J2's and J6's floor ports, and of any part below J3, for 4 beads. So the
+    # column beside J2 restacks -Y of it: C28 up off the floor edge (its port sat in that
+    # band), bus B's ESD pair D4 / D5 one place down (D5 stood under J3).
+    _pl["J6"] = (24.92, 19.50, 90.0)
+    _pl["C28"] = (19.30, 0.50, 90.0)
+    _pl["D4"] = (19.60, 3.50, 90.0)
+    _pl["D5"] = (19.60, 6.50, 90.0)
     # R2-1: J7 up out of the floor. Its mated XHP-4 reaches 6.2 either side of the row's
     # centre along the row (world Z); with 0.5 over the floor's top (-71.5) the centre has to
-    # be at z -64.8 or higher, so board x 14.85 or less. 14.50: the lowest way at z -68.2.
-    # C29 (24 V bypass at the inlet J3) steps 1.5 -X out of its courtyard.
-    _pl["J7"] = (14.50, 19.83, 0.0)
-    _pl["C29"] = (6.50, 17.00, 0.0)
+    # be at z -64.8 or higher, so board x 14.85 or less. 13.90: J6's courtyard (moved +Y
+    # above) starts at x 24.46, and J7's reaches 11.0 past its centre; lowest way z -67.6.
+    # C29 (24 V bypass at the inlet J3) steps -X out of its courtyard.
+    _pl["J7"] = (13.90, 19.83, 0.0)
+    _pl["C29"] = (5.90, 17.00, 0.0)
     _tr = BOARD_NOTES["tracks"]
     _i = next(i for i, t in enumerate(_tr) if t[0] == "+24V_LED" and t[3][-1] == (17.46, 19.83))
     _tr[_i] = ("+24V_LED", "F.Cu", 0.65, [(-25.6, 19.7), (-23.41, 19.7), (-22.03, 18.32),
-                                          (-19.36, 18.32), (-12.69, 25.0), (9.9, 25.0),
-                                          (10.75, 24.15), (10.75, 19.83)])
+                                          (-19.36, 18.32), (-12.69, 25.0), (9.3, 25.0),
+                                          (10.15, 24.15), (10.15, 19.83)])
     _i = next(i for i, t in enumerate(_tr) if t[0] == "+24V" and t[3][-1] == (7.52, 17.0))
-    _tr[_i] = ("+24V", "F.Cu", 0.3, [(2.85, 14.7), (5.35, 14.7), (6.02, 15.37), (6.02, 17.0)])
-    # R2-3: a shoulder of bare laminate in the -Y edge at mid-height, so the chassis guide
-    # channel can carry a printed ledge under it: a real -Z stop that does not need the leg
-    # fitted. -Y only: the +Y edge at mid-height carries +24V_LED along y 25.0.
-    _x0, _x1, _d = SHOULDER
-    _hx, _hy = BOARD_W / 2.0, BOARD_L / 2.0
-    BOARD_NOTES["outline_poly"] = [(_hx, -_hy), (_x1, -_hy), (_x1, -_hy + _d), (_x0, -_hy + _d),
-                                   (_x0, -_hy), (-_hx, -_hy), (-_hx, _hy), (_hx, _hy)]
+    _tr[_i] = ("+24V", "F.Cu", 0.3, [(2.85, 14.7), (4.75, 14.7), (5.42, 15.37), (5.42, 17.0)])
+    # R2-3 (a shoulder in the -Y edge for a chassis ledge) is NOT built: a ledge in a notch
+    # also stops the board's lower half on the way in, and a step (the lower -Y edge cut back)
+    # needs the strip C1 / TP2 / D1 stand in. The -Z stop stays mctrl_retention's post under
+    # J3, as on R1 -- which is what fixes J6's and C28's spots above.
     _q = BOARD_NOTES["quality"]["unconnected"]
-    del _q["J4.1"]
-    _q["J4.A[49]"] = "USB-C VBUS: the board is not bus powered, VBUS lands on nothing"
-    _q["J4.B[49]"] = "USB-C VBUS: the board is not bus powered, VBUS lands on nothing"
+    del _q["J4.1"]          # VBUS is on VBUS_NC, all four of its pins together: not "unconnected"
     _q["J4.[AB]8"] = "USB-C SBU1 / SBU2: USB 2.0 uses neither"
+    # R2 moved the parts round U4's east pins and SENSE_24V no longer crosses that via row
+    del BOARD_NOTES["quality"]["return_slot_ok"]["SENSE_24V"]
+    BOARD_NOTES["quality"].setdefault("connector_labels", {})["J6"] = {"back_only":
+        "R2: J6 moved +15 to the board's +Y corner with J7 and C26 against it; the labeller "
+        "finds no free front site for its block (run 2026-11-03, r5); J2 beside it carries the "
+        "same four ways' words on the front, and J6's are on the back, behind it"}
+    BOARD_NOTES["quality"]["pinouts"]["HX-TYPE-C 16P 180 LC-B H10.0"] = (
+        "hanxia drawing HX-TYPE-C 16P 180 LC-B H10.0 TYPE C VERTICAL, 'RECOMMENDED P.C.B. "
+        "LAYOUT' (read 2026-11-03): row A A1 A4 A5 A6 A7 A8 A9 A12 and row B B12 B9 B8 B7 B6 "
+        "B5 B4 B1 at 1.00 pitch, the rows 1.65 apart, A1 opposite B12; the footprint "
+        "(Steel.pretty) draws the same rows, A at -Y, A1 at -X. Names are the USB Type-C "
+        "receptacle's own (GND A1/A12/B1/B12, VBUS A4/A9/B4/B9, CC1 A5, CC2 B5, D+ A6/B6, "
+        "D- A7/B7, SBU A8/B8), and a vertical receptacle is reversible, so the two rows "
+        "carrying the same pair is the whole of the pinout to get right")
 
 
 if __name__ == "__main__":
@@ -1956,7 +1972,7 @@ if __name__ == "__main__":
     netcheck.grounds_meet(os.path.join(OUT_DIR, "motor_ctrl.net"))
     netcheck.no_orphan_pins(os.path.join(OUT_DIR, "motor_ctrl.net"))
     import volts_decl                   # A16: generated, see volts_decl.py
-    volts_decl.into(BOARD_NOTES, "motor_ctrl")
+    volts_decl.into(BOARD_NOTES, "motor_ctrl" if REV != 1 else "motor_ctrl_r1")   # R1: as ordered
     if REV == 1:
         import r1_silk                    # ordered R1: silk as sent
         r1_silk.as_ordered(BOARD_NOTES)

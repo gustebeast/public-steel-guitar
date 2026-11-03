@@ -158,6 +158,8 @@ SEEDS = {
         "PWR_SW_UP": ("from", "output_panel", "SW_SENSE", "the power button's throw, from output_panel"),
         "PWR_SW_DN": ("from", "output_panel", "SW_SENSE", "the power button's throw, from output_panel"),
         "VBUS_NC": ("abs", dict(v=5.25, vt=5.5, why="USB VBUS on the lead from the Pi; lands on a lone pad")),
+        "CC1": ("abs", dict(v=5.25, vt=5.5, why="R2 USB-C CC, 5k1 Rd to GND here; a host's Rp pulls it toward its VBUS at most")),
+        "CC2": ("abs", dict(v=5.25, vt=5.5, why="R2 USB-C CC, 5k1 Rd to GND here; a host's Rp pulls it toward its VBUS at most")),
     },
     "lever_sensor": {
         "+5V": ("from", "motor_ctrl", "+5V_BUSB", "bus B's 5 V from motor_ctrl J2 / J6, behind its switch"),

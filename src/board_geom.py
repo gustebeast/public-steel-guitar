@@ -84,6 +84,7 @@ def mask(board: str):
 
 # Laid OVER cadkit's tables (project wins).
 _HEIGHT: dict = {
+    "Hanxia_HX-TYPE-C-16P-180-LC-B-H10.0_Vertical": 10.0,     # motor_ctrl R2 J4, drawing L
     # optical's R1, drawn from its geometry only on the first-flash bench (src/flash_bench.py);
     # the instrument's optical board is drawn by src/optical_pickup.py
     "Everlight_PD15-22B": 1.10,

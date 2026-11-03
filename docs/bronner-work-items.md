@@ -217,6 +217,25 @@ floor, 26.5 mm3) and climbs the rail where the old drop was.
 
 ## R2 BACKLOG, motor_ctrl (user via the lead, 2026-10-29) -- NOT the current rev, which stays as made
 
+**STATE 2026-11-03: ROUTED 0 / 0, quality 0 FAIL / 8 OPEN (the manual sign-offs, as R1).** Built
+behind `MOTOR_CTRL_REV` (default 2; R1 = `MOTOR_CTRL_REV=1`, its geom in elec/rev1, its A16
+declarations in elec/volts/motor_ctrl_r1.json; flash_bench forces 1). Done:
+- 0: J4 = hanxia HX-TYPE-C 16P 180 LC-B H10.0 (C49261584, 1,765 stock, $0.36, extended, THT,
+  10.0 tall, made for a 1.6 board); land from hanxia's drawing in Steel.pretty; R24 / R25 5k1 Rd
+  on CC1 / CC2; VBUS on VBUS_NC (its four pads joined to each other, nothing else), SBU J4_NC_A8 / B8. The lead is a stock
+  USB-C to USB-A, drawn in wiring.py (`wire_link_plug_c`).
+- 1: J7 at board x 13.90, lowest way z -67.6, all four over the floor's top; the trench
+  (electronics.mctrl_wire_relief) is R1 only. C29 stepped -X with it.
+- 2: J2 +14, J6 +15 along the floor edge; build.MCTRL_PLUG_FINGER 12 beads (9.6) for R2.
+- 3: NOT BUILT. A ledge in a mid-height notch also catches the board's lower half on the
+  way in; the step that would work (lower -Y edge cut back ~2) needs the strip C1 / TP2 / D1
+  occupy. The -Z stop stays the post under J3 (mctrl_retention), as R1. That post needs a
+  4-bead band under J3 free of floor ports: J6 to y 19.50 (body ends 25.5 against the +Y
+  guide's sweep band at 25.9); C28 up off the floor edge to (19.3, 0.5) and the ESD pair
+  D4 / D5 to y 3.5 / 6.5 (D5 stood under J3). Ledge 4.4 x 3.3.
+- C49261584 and C137969 (R22's new Yageo) rated in voltage_ratings.json; CC1 / CC2 seeded.
+- Route r5 (scratch mc/r5, 4.6 min): 0 / 0 after close_last; J6's pinout back-only (declared).
+
 User: "I do like the idea of moving the ports for R2. J7 is already placed poorly and requires
 cutting into the chassis. For R2 we should add an action item to move J7 +z and J2/6 +y."
 

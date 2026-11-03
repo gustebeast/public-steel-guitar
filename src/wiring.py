@@ -444,7 +444,8 @@ def lead_cuts():
     """{lead: its label's length} for the leads made once, for the bench and then the
     instrument (src/flash_bench.py), after build_wires() and optical_feed(). The USB lead is a
     bought jacket and its tail. tools/lead_cuts.py writes these to LEAD_CUTS."""
-    tail = max(conductor_cut("wire_link_%d" % k) for k in range(1, 5))
+    tail = (max(conductor_cut("wire_link_%d" % k) for k in range(1, 5))
+            if BG.MOTOR_CTRL_REV == 1 else 0.0)     # R2: a bought C to A lead, plug to plug
     return {"optical_power": lead_mm(cable_cut("optical feed")[1]),
             "power_link": lead_mm(cable_cut("PWR_LINK")[1]),
             "motor_usb": lead_mm(conductor_cut("wire_link") + tail)}
@@ -463,7 +464,8 @@ def wire_cuts(lever_parts, lever_cuts):
     from . import led_leads as LL
     out = _cable_cuts()
     usb = lead_cuts()["motor_usb"]
-    out.update({"wire_link": usb}, **{"wire_link_%d" % k: usb for k in range(1, 5)})
+    out.update({"wire_link": usb}, **{"wire_link_%d" % k: usb for k in range(1, 5)
+                                      if BG.MOTOR_CTRL_REV == 1})
     for name, _ in lever_parts:                 # wire_canb_<net or coil>_<segment>_<n>
         out[name] = lead_mm(lever_cuts[int(name.split("_")[-2])][1])
     # their cut already holds its spare, so only the lay and the round up to 5
@@ -1476,6 +1478,7 @@ def build_wires():
     # wire_usb   output panel J2 (the panel USB-C's pass-through) -> the Pi's USB-C: C to C
     # wire_hub   output panel J3 (the hub's upstream)             -> a Pi USB-A:    C to A
     # wire_link  motor controller J4 (drawn further down)         -> a Pi USB-A:    PH to A
+    #            (R2: J4 is a vertical USB-C, and the lead a stock C to A)
     # The two from the panel leave its -X edge through straight USB-C plugs, climb in the bay
     # and ride the trough to the keyhead, staggered (see LANE_USB).
     #
@@ -1651,9 +1654,6 @@ def build_wires():
     #    (the USB-C it replaced faced the -Y rail 5.5 mm away and could not be plugged in).
     # Its USB-A plug is in the Pi's other stack, beside the hub lead's.
     # (its four conductors fan in to J4's own ways from the jacket's first bend: _split_jacket)
-    _l4 = [(EL.way_pt("motor_ctrl", "J4", n), EL.way_out("motor_ctrl", "J4"), None)
-           for n in range(1, 5)]
-    _lt = tuple(sum(e[0][m] for e in _l4) / 4.0 for m in range(3))
     _pa_link, _lp = _usb_plug(EL.pi_usb_a_mouth("usb2"), 1.0, USBA_PLUG, USBA_TONGUE, USBA_GAP)
     out.append(("wire_link_plug", _pa_link))
     # ITS OWN COLUMN, 3 mm short of the bay column: J4 is on the board's -Y edge, at the very
@@ -1662,10 +1662,27 @@ def build_wires():
     # like every other bay wire -- running it across at the board's own height put
     # 62 mm3 of cable inside string 1's motor.
     _LINK_X = BAY_X - 3.0
-    _LINK_RISE_X = _lt[0] + 2.8          # -590.7: -X of bus A's first riser
-    _split_jacket(out, "wire_link", (_LINK_RISE_X, _lt[1], _lt[2]), _l4, 0.8, lead=1.2)
-    _run(out, "wire_link", [
-        (_LINK_RISE_X, _lt[1], _lt[2]), (_LINK_RISE_X, _lt[1], BAYFLY),
+    if BG.MOTOR_CTRL_REV == 1:
+        _l4 = [(EL.way_pt("motor_ctrl", "J4", n), EL.way_out("motor_ctrl", "J4"), None)
+               for n in range(1, 5)]
+        _lt = tuple(sum(e[0][m] for e in _l4) / 4.0 for m in range(3))
+        _LINK_RISE_X = _lt[0] + 2.8          # -590.7: -X of bus A's first riser
+        _split_jacket(out, "wire_link", (_LINK_RISE_X, _lt[1], _lt[2]), _l4, 0.8, lead=1.2)
+        _link0 = [(_LINK_RISE_X, _lt[1], _lt[2])]
+    else:
+        # R2: J4 is a vertical USB-C (elec/motor_ctrl.py _usb_c) and the lead is a stock
+        # USB-C to USB-A one, its straight C plug standing off the board's face (+X) into
+        # the corridor over the cap; the jacket rises from the plug's back to BAYFLY
+        o, ax = EL.board_frame("motor_ctrl")
+        _e = BG.BOARDS.lead_exit("motor_ctrl", "J4")
+        _m4 = tuple(o[k] + sum(ax[m][k] * _e[m] for m in range(3)) for k in range(3))
+        assert EL.way_out("motor_ctrl", "J4") == (1.0, 0.0, 0.0), "J4's mouth faces +X"
+        _pc_link, _lt = _usb_plug(_m4, 1.0, USBC_PLUG, USBC_TONGUE)
+        out.append(("wire_link_plug_c", _pc_link))
+        _LINK_RISE_X = _lt[0]
+        _link0 = [_lt]
+    _run(out, "wire_link", _link0 + [
+        (_LINK_RISE_X, _lt[1], BAYFLY),
         (_LINK_X, _lt[1], BAYFLY), (_LINK_X, _lp[1], BAYFLY),
         (_PORT_APR_X, _lp[1], BAYFLY), (_PORT_APR_X, _lp[1], _lp[2]), _lp],
         WIRE_OD["wire_link"], lay=STRAIGHT)
