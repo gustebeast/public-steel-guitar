@@ -1,15 +1,21 @@
 """PRINT-FITTED STRAIGHT JOINTS -- one shared profile, drawn to what each half prints.
 
-PROVISIONAL (2026-10-17). Every number here was measured on ONE printer setup -- a 0.8 mm
-nozzle, 0.4 mm layers, PETG-GF -- by printing coupons and judging them by feel and calipers
-(the steel-guitar fit plates 1-8). The user's validation sequence is: (1) minimum-size
-joints in every print-orientation pair -- DONE; (2) the real joint sections as short
-coupons -- DONE for the steel guitar's sites; (3) full-length coupons -- NOT YET; (4) fold
-into cadkit. This module is (4) ahead of (3), so another project can start from the rules
-as they stand. Expect the full-length results to move the clearances (by ~0.05) and maybe
-add a length-dependent rule. Other materials (PCTG, PLA) and nozzles are UNMEASURED: the
-corner minimums and clearances will differ -- print a bracket of coupons before relying on
-them, and err loose.
+PROVISIONAL (2026-10-17; full-length locks folded in 2026-11-03). Every number here was
+measured on ONE printer setup -- a 0.8 mm nozzle, 0.4 mm layers, PETG-GF -- by printing
+coupons and judging them by feel and calipers (the steel-guitar fit plates 1-10 and the
+endplate_corners plate). The user's validation sequence is: (1) minimum-size joints in
+every print-orientation pair -- DONE; (2) the real joint sections as short coupons -- DONE
+for the steel guitar's sites; (3) full-length coupons -- DONE for three of its four pairs
+(FULL_LENGTH), NOT for up/down; (4) fold into cadkit -- this module.
+
+⚠ FULL LENGTH MOVED THE CLEARANCES BY 0.15-0.25, NOT THE ~0.05 THIS PREDICTED. Short
+coupons UNDERSTATE what a long joint needs, and several tenons entering at once need more
+again: the up/up lever went 0.275 (short) -> 0.35 right on one full-length tenon -> 0.45 on
+all eight. Where the loosest c printed won, the true optimum may be looser still. So
+clearance(..., "long") returns the full-length lock where there is one, and step 1's
+figure only where there is not -- and a step-1-only figure is a FLOOR, not a pick.
+Other materials (PCTG, PLA) and nozzles are UNMEASURED: the corner minimums and clearances
+will differ -- print a bracket of coupons before relying on them, and err loose.
 
     from cadkit import fitted_joint as FJ
     c = FJ.clearance("N", "N", "long")                    # 0.35 (measured, PETG-GF 0.8)
@@ -94,6 +100,8 @@ ROOF_FLAT_MAX = 5 * BEAD                       # a socket roof may bridge this m
 # MEASURED CLEARANCES, per side, by (tenon mode, socket mode): (short joint, long joint).
 # Step 1: minimum size, PETG-GF 0.8 (fit plates 2-7). "long" is the pick for a long
 # engagement (which firms a slight wobble up), "short" for a short friction-held one.
+# ⚠ The "long" column is step 1's and is kept as the record; clearance() prefers
+# FULL_LENGTH below, which is what a long joint actually took.
 CLEARANCE = {
     ("N", "down"): (0.25, 0.30),     # nozzle tenon, layer socket MOUTH UP (0.35 freest)
     ("N", "up"): (0.25, 0.30),       # nozzle tenon, layer socket MOUTH DOWN
@@ -105,22 +113,47 @@ CLEARANCE = {
 STANDING_SIZE = {"neck": 3 * BEAD, "head": 6 * BEAD, "side": 2 * BEAD, "root": True,
                  "trunc": 1.2}
 MOUTH_UP_SIZE = {"neck": 3 * BEAD, "head": 6 * BEAD, "side": 3 * BEAD}
-# Step 2: the steel guitar's real sections (short coupons; full length still to print) --
-# (tenon, socket, size, c in use), for a site that resembles one
+# Step 3: FULL-LENGTH locks, by pair -- the steel guitar's real sites at their real length,
+# printed and fitted by the user (PETG-GF 0.8). (c, the site it was locked on, how). Each is
+# the figure for a joint LIKE that site: its size, its length, its tenon count.
+FULL_LENGTH = {
+    ("up", "up"): (0.45, "lever_mount",
+                   "fit_plate9, ONE tenon at 34.9: 0.275 too tight, 0.35 right, 0.45 a bit "
+                   "loose; round 6, all EIGHT tenons, seat at c: 0.45 the winner, LOCKED "
+                   "2026-10-22 -- several tenons at once want the looser one"),
+    ("N", "N"): (0.55, "seam",
+                 "fit_plate10, the full 64 drop, 8 tenons: 0.40 / 0.45 / 0.50 / 0.55, the "
+                 "loosest the winner, LOCKED 2026-10-22 (round 3 at 0.375 was 'quite tight')"),
+    ("N", "down"): (0.30, "rail_end",
+                    "endplate_corners, both corners at full length: 'Joint slides great', "
+                    "LOCKED 2026-10-27 -- step 1's long pick, confirmed"),
+}
+# Step 2: the steel guitar's real sections -- (tenon, socket, size, c in use), for a site
+# that resembles one. c is the FULL-LENGTH lock where the site has one (step 3), else
+# the short-coupon pick (deck_tongue: its full-length coupon is not yet judged).
 SITES = {
     "lever_mount": ("up", "up", {"neck": 4 * BEAD, "head": 7 * BEAD, "side": 2 * BEAD,
-                                 "root": True, "trunc": 1.2}, 0.275),
+                                 "root": True, "trunc": 1.2}, 0.45),     # short: 0.275
     "deck_tongue": ("up", "down", {"neck": 4 * BEAD, "head": 6.4, "side": 3 * BEAD}, 0.25),
     "rail_end": ("N", "down", None, 0.30),      # the seat 0.4 off the host
-    "seam": ("N", "N", None, 0.375),            # faces flush (seat 0), seam_face_trim applied
-}
+    "seam": ("N", "N", None, 0.55),             # faces flush (seat 0), seam_face_trim applied
+}                                               # short: 0.375 (tiramisu pins that one)
+for _name, (_t, _s, _size, _c) in SITES.items():
+    if (_t, _s) in FULL_LENGTH and FULL_LENGTH[(_t, _s)][1] == _name:
+        assert _c == FULL_LENGTH[(_t, _s)][0], "SITES[%r] is not its full-length lock" % _name
 
 
 def clearance(tenon, socket, length="long"):
-    """The measured per-side clearance for a print-mode pair; length "long" or "short"."""
+    """The measured per-side clearance for a print-mode pair; length "long" or "short".
+
+    "long" is the FULL-LENGTH lock where one was printed (FULL_LENGTH), else step 1's
+    minimum-size pick -- which full length has so far always loosened, so treat it as a
+    floor and print a bracket above it."""
     key = (tenon, socket)
     if key not in CLEARANCE:
         raise KeyError("no measured clearance for tenon %r / socket %r: print a bracket" % key)
+    if length == "long" and key in FULL_LENGTH:
+        return FULL_LENGTH[key][0]
     return CLEARANCE[key][1 if length == "long" else 0]
 
 
