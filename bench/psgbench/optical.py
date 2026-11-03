@@ -171,7 +171,8 @@ class OpticalLink:
         self.offset = None              # computer time of sample 0, seconds
         self._lock = threading.Lock()
         self._run = True
-        threading.Thread(target=self._reader, daemon=True).start()
+        self._thread = threading.Thread(target=self._reader, daemon=True)
+        self._thread.start()
         self.sync()
 
     def command(self, line: str) -> str:
@@ -227,5 +228,6 @@ class OpticalLink:
 
     def close(self):
         self._run = False
+        self._thread.join(1.0)      # a read in progress on a closed port raised in the thread
         self.ctl.close()
         self.dat.close()
