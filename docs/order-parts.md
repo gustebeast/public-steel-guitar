@@ -8,7 +8,7 @@ A part that is not in this file is not on a board, whatever another document say
 
 | Part | LCSC | Per instrument | Boards |
 |---|---|--:|---|
-| `0R` | C17168 | 19 | lever_sensor, fret_led_mid, fret_led_key |
+| `0R` | C17168 | 8 | fret_led_mid, fret_led_key |
 | `0R` | C17888 | 1 | motor_ctrl |
 | `0R` | C21189 | 1 | output_panel |
 | `100k` | C25741 | 23 | motor_ctrl, output_panel, optical, fret_led_key, foot_led_a, foot_led_b |
@@ -60,9 +60,10 @@ A part that is not in this file is not on a board, whatever another document say
 | `4.7uF/50V` | C98192 | 9 | pi_cap, fret_led_mid, fret_led_key |
 | `470R` | C25117 | 2 | output_panel |
 | `49k9 1%` | C137969 | 2 | motor_ctrl, pi_cap |
-| `4k7` | C25900 | 31 | lever_sensor, output_panel, optical |
+| `4k7` | C25900 | 9 | output_panel, optical |
+| `52271-2079` | C588186 | 1 | ui_board |
 | `56k` | C25796 | 2 | output_panel |
-| `5k1` | C25905 | 4 | output_panel, optical |
+| `5k1` | C25905 | 6 | motor_ctrl, output_panel, optical |
 | `5mR 1W` | C6351848 | 1 | output_panel |
 | `68R` | C163455 | 4 | pi_cap |
 | `7k68 1%` | C25919 | 1 | fret_led_key |
@@ -74,7 +75,6 @@ A part that is not in this file is not on a board, whatever another document say
 | `AP2112K-3.3TRG1` | C51118 | 12 | lever_sensor, output_panel |
 | `AP2114H-3.3TRG1` | C150716 | 1 | optical |
 | `B2B-XH-A` | C158012 | 1 | output_panel |
-| `B4B-PH-K-S` | C131334 | 1 | motor_ctrl |
 | `B4B-XH-A` | C144395 | 4 | motor_ctrl, output_panel, optical |
 | `B6B-PH-K-S` | C131342 | 1 | motor_ctrl |
 | `B6B-XH-A` | C144397 | 2 | motor_ctrl, output_panel |
@@ -90,6 +90,7 @@ A part that is not in this file is not on a board, whatever another document say
 | `ESD5B5.0ST1G` | C93623 | 26 | lever_sensor, motor_ctrl, output_panel |
 | `FRC2512F1R20TS` | C2960682 | 1 | optical |
 | `G6K-2F-Y-DC5` | C47190 | 1 | output_panel |
+| `HX-TYPE-C 16P 180 LC-B H10.0` | C49261584 | 1 | motor_ctrl |
 | `INA226AIDGSR` | C49851 | 1 | output_panel |
 | `JFC1206-1100FS` | C136343 | 2 | output_panel, foot_led_b |
 | `JFC1206-1150FS` | C136344 | 1 | motor_ctrl |
@@ -102,7 +103,7 @@ A part that is not in this file is not on a board, whatever another document say
 | `LMR33630ADDAR` | C841384 | 1 | motor_ctrl |
 | `LMR33630BRNXR` | C2071384 | 5 | output_panel, optical, fret_led_key, foot_led_a, foot_led_b |
 | `LTE-C9901` | C2683614 | 10 | optical |
-| `MT6701QT-STD` | C2913974 | 11 | lever_sensor |
+| `MA730GQ-Z` | C161798 | 11 | lever_sensor |
 | `MX128-5.0-02P-Y` | C5188463 | 1 | output_panel |
 | `NMJ6HCD2` | C368502 | 1 | output_panel |
 | `NUP2105LT1G` | C14486 | 1 | motor_ctrl |
@@ -114,12 +115,12 @@ A part that is not in this file is not on a board, whatever another document say
 | `PZ1.27-2x8P` | C22438114 | 2 | pi_cap, ui_board |
 | `RK73B3ATTE2R0J` | C5139521 | 1 | optical |
 | `RKJXT1F42001` | C160841 | 1 | ui_board |
+| `S4B-PH-K-S` | C157926 | 22 | lever_sensor |
 | `S4B-PH-SM4-TB` | C265102 | 4 | motor_ctrl, leg_pogo_male_bottom, leg_pogo_male_top |
 | `S4B-XH-A` | C157925 | 11 | can_tee, pi_cap |
 | `S4B-XH-SM4-TB` | C161861 | 4 | pi_cap, fret_led_key, foot_led_a |
 | `S4B-ZR-SM4A-TF` | C485354 | 2 | leg_pogo_female_bottom, leg_pogo_female_top |
 | `S6B-PH-SM4-TB` | C265405 | 1 | pi_cap |
-| `S8B-PH-SM4-TB` | C265121 | 11 | lever_sensor |
 | `S8B-XH-A` | C157914 | 10 | can_tee |
 | `SMBJ5.0A` | C83333 | 1 | motor_ctrl |
 | `SMCJ24A` | C310039 | 2 | motor_ctrl, output_panel |
@@ -146,7 +147,7 @@ A part that is not in this file is not on a board, whatever another document say
 | `USBLC6-2SC6` | C7519 | 1 | optical |
 | `VLS6045EX-6R8M` | C415364 | 1 | motor_ctrl |
 | `WPN4020H4R7MT` | C98363 | 1 | optical |
-| `XL-5050RGBW` | C7371891 | 164 | fret_led_mid, fret_led_key, foot_led_a, foot_led_b |
+| `XL-5050RGBW` | C7371891 | 168 | fret_led_mid, fret_led_key, foot_led_a, foot_led_b |
 | `YZ165615055F-04025-02` | C54799748 | 2 | leg_pogo_male_bottom, leg_pogo_male_top |
 | `YZ185115035T-04025-01` | C54930022 | 2 | leg_pogo_female_bottom, leg_pogo_female_top |
 | `YZF0002-38080-02` | C5203987 | 16 | fret_led_mid, fret_led_key, foot_led_a, foot_led_b |
@@ -164,7 +165,7 @@ A part that is not in this file is not on a board, whatever another document say
 
 ## `lever_sensor`
 
-11 per instrument. 26 placed part(s) in 18 line(s); 4 pad(s) and jumper(s) that are copper, not parts.
+11 per instrument. 24 placed part(s) in 16 line(s); 4 pad(s) and jumper(s) that are copper, not parts.
 
 | Qty | Designators | Part or value | Package | LCSC |
 |--:|---|---|---|---|
@@ -174,22 +175,20 @@ A part that is not in this file is not on a board, whatever another document say
 | 2 | C5, C6 | `15pF` | C_0402_1005Metric | C1548 |
 | 1 | C10 | `4.7uF` | C_0402_1005Metric | C23733 |
 | 2 | D2, D3 | `ESD5B5.0ST1G` | D_SOD-523 | C93623 |
-| 1 | J1 | `S8B-PH-SM4-TB` | JST_PH_S8B-PH-SM4-TB_1x08-1MP_P2.00mm_Horizontal | C265121 |
+| 2 | J1, J2 | `S4B-PH-K-S` | JST_PH_S4B-PH-K_1x04_P2.00mm_Horizontal | C157926 |
 | 1 | R3 | `10k` | R_0402_1005Metric | C25744 |
 | 1 | R4 | `120R 100mW` | R_0402_1005Metric | C413065 |
-| 1 | R5 | `0R` | R_0402_1005Metric | C17168 |
-| 2 | R6, R7 | `4k7` | R_0402_1005Metric | C25900 |
 | 1 | R8 | `2R2` | R_0402_1005Metric | C327251 |
 | 1 | SW1 | `DSHP01TSGER` | Kangshen_DSHP01TSGER | C3293141 |
 | 1 | U1 | `AP2112K-3.3TRG1` | SOT-23-5 | C51118 |
 | 1 | U2 | `SN65HVD230DR` | SOIC-8_3.9x4.9mm_P1.27mm | C12084 |
 | 1 | U3 | `CH32V203G6U6` | QFN-28-1EP_4x4mm_P0.4mm_EP2.4x2.4mm | C5142280 |
-| 1 | U4 | `MT6701QT-STD` | QFN-16-1EP_3x3mm_P0.5mm_EP1.45x1.45mm | C2913974 |
+| 1 | U4 | `MA730GQ-Z` | MPS_QFN-16-1EP_3x3mm_P0.5mm_EP1.7x1.7mm | C161798 |
 | 1 | Y1 | `TAXM8M4RFDCET2T` | Crystal_SMD_3225-4Pin_3.2x2.5mm | C403948 |
 
 ## `motor_ctrl`
 
-1 per instrument. 76 placed part(s) in 43 line(s); 6 pad(s) and jumper(s) that are copper, not parts.
+1 per instrument. 78 placed part(s) in 44 line(s); 6 pad(s) and jumper(s) that are copper, not parts.
 
 | Qty | Designators | Part or value | Package | LCSC |
 |--:|---|---|---|---|
@@ -216,7 +215,7 @@ A part that is not in this file is not on a board, whatever another document say
 | 2 | J1, J7 | `B4B-XH-A` | JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical | C144395 |
 | 2 | J2, J6 | `S4B-PH-SM4-TB` | JST_PH_S4B-PH-SM4-TB_1x04-1MP_P2.00mm_Horizontal | C265102 |
 | 1 | J3 | `B6B-XH-A` | JST_XH_B6B-XH-A_1x06_P2.50mm_Vertical | C144397 |
-| 1 | J4 | `B4B-PH-K-S` | JST_PH_B4B-PH-K_1x04_P2.00mm_Vertical | C131334 |
+| 1 | J4 | `HX-TYPE-C 16P 180 LC-B H10.0` | Hanxia_HX-TYPE-C-16P-180-LC-B-H10.0_Vertical | C49261584 |
 | 1 | J5 | `B6B-PH-K-S` | JST_PH_B6B-PH-K_1x06_P2.00mm_Vertical | C131342 |
 | 1 | L1 | `PNR3015-150M` | L_APV_PNR3015 | C19634062 |
 | 1 | L2 | `VLS6045EX-6R8M` | L_TDK_VLS6045EX_VLS6045AF | C415364 |
@@ -229,6 +228,7 @@ A part that is not in this file is not on a board, whatever another document say
 | 1 | R13 | `10k 1%` | R_0402_1005Metric | C25744 |
 | 1 | R22 | `49k9 1%` | R_0402_1005Metric | C137969 |
 | 1 | R23 | `0R` | R_1206_3216Metric | C17888 |
+| 2 | R24, R25 | `5k1` | R_0402_1005Metric | C25905 |
 | 1 | U1 | `LMR16006XDDCR` | SOT-23-6 | C87080 |
 | 1 | U2 | `TCAN3413DR` | SOIC-8_3.9x4.9mm_P1.27mm | C22433320 |
 | 1 | U3 | `SN65HVD230DR` | SOIC-8_3.9x4.9mm_P1.27mm | C12084 |
@@ -402,11 +402,11 @@ A part that is not in this file is not on a board, whatever another document say
 |--:|---|---|---|---|
 | 1 | C1 | `100nF` | C_0402_1005Metric | C307331 |
 | 1 | C2 | `10uF/25V` | C_0805_2012Metric | C15850 |
+| 1 | J1 | `52271-2079` | Molex_52271-2079_1x20-1MP_P1.0mm_Horizontal | C588186 |
 | 1 | J2 | `PZ1.27-2x8P` | PinHeader_2x08_P1.27mm_Horizontal | C22438114 |
 | 7 | R1-R7 | `10k` | R_0402_1005Metric | C25744 |
 | 1 | SW1 | `RKJXT1F42001` | Alps_RKJXT1F42001 | C160841 |
 | 1 | SW2 | `PB-22E85-S-5.7C-C-W` | Legion_PB-22E85 | C22462024 |
-| 1 | J1 | `KH-2.54PH180-1X20P-L11.5` | PinHeader_1x20_P2.54mm_Vertical | NO CODE |
 
 ## `fret_led_mid`
 
@@ -426,7 +426,7 @@ A part that is not in this file is not on a board, whatever another document say
 
 ## `fret_led_key`
 
-1 per instrument. 72 placed part(s) in 17 line(s); 3 pad(s) and jumper(s) that are copper, not parts.
+1 per instrument. 76 placed part(s) in 17 line(s); 3 pad(s) and jumper(s) that are copper, not parts.
 
 | Qty | Designators | Part or value | Package | LCSC |
 |--:|---|---|---|---|
@@ -434,7 +434,7 @@ A part that is not in this file is not on a board, whatever another document say
 | 7 | C11-C13, C32, C33, C35, C38 | `100nF/50V` | C_0402_1005Metric | C307331 |
 | 3 | C21-C23 | `4.7uF/50V` | C_0805_2012Metric | C98192 |
 | 4 | C30, C31, C36, C37 | `10uF/50V` | C_1206_3216Metric | C13585 |
-| 32 | D1-D32 | `XL-5050RGBW` | XINGLIGHT_XL-5050RGBW | C7371891 |
+| 36 | D1-D36 | `XL-5050RGBW` | XINGLIGHT_XL-5050RGBW | C7371891 |
 | 1 | F1 | `JFC1206-1200FS` | Fuse_1206_3216Metric | C136345 |
 | 1 | J1 | `S4B-XH-SM4-TB` | JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal | C161861 |
 | 4 | J11-J14 | `YZF0002-38080-02` | Xinyangze_YZF0002-38080-02 | C5203987 |

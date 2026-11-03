@@ -692,9 +692,9 @@
       "what": "TLV320ADC3140IRTWT C1852021 -- JLCPCB parts API at qty 50"
     },
     "lever_sensor:U4": {
-      "usd": 1.351,
+      "usd": 4.0806,
       "verified": "v",
-      "what": "MT6701QT-STD C2913974 -- JLCPCB parts API at qty 110"
+      "what": "MA730GQ-Z C161798 -- JLCPCB parts API at qty 110 (the 100 break), 888 in stock (extended, a JLC listing: LCSC itself does not sell it), 2026-11-03; replaces MT6701QT-STD, 0 at LCSC. ORDER-TIME CHECK: the JLC listing still covers 11+ per instrument. If it is gone, the fallback is AS5600-ASOM (C79815), which is a BOARD CHANGE (SOIC-8, I2C). No consignment (user, 2026-11-03). DigiKey 1589-1517-1-ND $3.34 at 100 for reference only"
     },
     "fret_led_key:U10": {
       "usd": 2.1053,
@@ -4311,16 +4311,6 @@
       "verified": "v",
       "what": "2.2pF C325452 -- JLCPCB parts API at qty 200"
     },
-    "lever_sensor:R6": {
-      "usd": 0.0027,
-      "verified": "v",
-      "what": "4k7 C25900 -- JLCPCB parts API at qty 260"
-    },
-    "lever_sensor:R7": {
-      "usd": 0.0027,
-      "verified": "v",
-      "what": "4k7 C25900 -- JLCPCB parts API at qty 260"
-    },
     "output_panel:R33": {
       "usd": 0.0027,
       "verified": "v",
@@ -4535,11 +4525,6 @@
       "usd": 0.0031,
       "verified": "v",
       "what": "120R C22787 -- JLCPCB parts API at qty 110"
-    },
-    "lever_sensor:R5": {
-      "usd": 0.0025,
-      "verified": "v",
-      "what": "0R C17168 -- JLCPCB parts API at qty 190"
     },
     "optical:R1": {
       "usd": 0.0054,

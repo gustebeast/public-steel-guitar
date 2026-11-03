@@ -1128,15 +1128,15 @@ panels (fret lines + dust cover + hand rest + UI mount) — see
 
 Every player input — **6 knee levers + 5 pedals** — is a **contactless magnetic
 angle sensor** rather than a switch or a pot: a diametrically-magnetised magnet
-rides the control's axle and an MT6701 reads its angle across an air gap. There
+rides the control's axle and an MA730 reads its angle across an air gap. There
 is no wiper to wear out and no mechanical calibration. The boards are our own
 (they panelise with the tee PCBs — see Connectors); these are the two parts that
 populate them.
 
 | Part | Qty | ~Price | Source | Notes |
 |------|-----|--------|--------|-------|
-| **Angle sensor IC** | 11 | **$1.68 ea** [v] | [LCSC C2913974](https://www.lcsc.com/product-detail/Position-Sensor_Magn-Tek-MT6701QT-STD_C2913974.html) | ⚠ **Corrected 2026-08-04: $1.6815 at the 10+ break** (4,207 in stock). The $1.1139 recorded on 08-01 came from a search snippet, which reports LCSC's *volume-floor* price (the 1,000+ break is $1.1161) — not the price at the 11 pieces we buy. See the snippet-bias note in the optical section. Note the QFN part is **C2913974**; the more commonly cited **C2856764 is the MT6701*C*T-STD**, the SOP-8, which is the variant this row explicitly rejects — do not let the wrong LCSC code onto the BOM line. MagnTek **MT6701QT-STD**, 14-bit on-axis magnetic encoder. Take the **QFN-16**, *not* the SOP-8 variant: the air gap is measured to the IC's own top surface, so the package height comes straight out of the gap budget, and the SOP-8 is ~1.5 mm tall — twice the QFN — on the axis where we have the least room. Datasheet §9.2: D = E = 2.900–3.100, **A (total height) = 0.700–0.800** (the model carries the 0.800 max). §1.2: *"Sensing Center at Geometry Center"* — so the package body centres on the axle axis with no per-package offset. Assembled by JLCPCB onto our sensor PCB alongside the tee boards — no hand soldering |
-| **Diametric magnet** | 11 | **$0.40 / $0.332 @10** [v] | [DigiKey](https://www.digikey.com/en/products/detail/radial-magnets-inc/8995/5126077) | Radial Magnets **8995** — NdFeB **N35, Ø6 × 2.5 mm, DIAMETRICALLY magnetised**, NiCuNi, 80 °C, 3873 G surface; ~9k in stock. ⚠ **Diametric, NOT axial** — axial discs are far more common and simply do not work here (DigiKey lists the direction in the specs, so it is checkable at order time). It is also the datasheet's own **recommended magnet** (§5: "Ø6mm x 2.5mm"), so this pair is the configuration the IC was characterised in. Drops into the axle's end pocket; `kl_magnet_cap` screws over it — no adhesive |
+| **Angle sensor IC** | 11 | **$4.08 ea** [v 2026-11-03] (`prices.json` lever_sensor:U4) | JLC C161798 (a JLCPCB listing: LCSC itself does not sell it) | **MPS MA730GQ-Z since 2026-11-03** (user, via the lead): 14-bit, SPI, QFN-16 3 x 3, sensing point at the package centre. JLC's parts API, qty 110: $4.0806 at the 100 break, 888 in stock (extended part). **ORDER-TIME CHECK: the JLC listing still covers 11+ per instrument. If it is gone, the fallback is AS5600-ASOM (C79815), and that is a BOARD CHANGE** (SOIC-8, I2C). **No consignment** (user). DigiKey 1589-1517-1-ND, $3.34 at 100, 4,958 in stock, for reference only. It replaced the **MT6701QT-STD** (C2913974), which went to 0 at LCSC under both codes with no DigiKey listing; the survey and the ruling are in `docs/bronner-work-items.md`. Field: 40 mT minimum (MA730 rev 1.1 p.4), read back on the bench from the part's MGL flag |
+| **Diametric magnet** | 11 | **$0.40 / $0.332 @10** [v] | [DigiKey](https://www.digikey.com/en/products/detail/radial-magnets-inc/8995/5126077) | Radial Magnets **8995** — NdFeB **N35, Ø6 × 2.5 mm, DIAMETRICALLY magnetised**, NiCuNi, 80 °C, 3873 G surface; ~9k in stock. ⚠ **Diametric, NOT axial** — axial discs are far more common and simply do not work here (DigiKey lists the direction in the specs, so it is checkable at order time). It is also the datasheet's own **recommended magnet** (§5: "Ø6mm x 2.5mm"), so this pair is the configuration the IC was characterised in. (That was the MT6701's datasheet. The MA730 that replaced it on 2026-11-03 recommends a Ø5 × 3 N35 at the same 1.5 gap and wants at least 40 mT; this magnet stays, and the first board reads its MGL flag to confirm the field.) Drops into the axle's end pocket; `kl_magnet_cap` screws over it — no adhesive |
 
 *(qty 11 = **11 controls**, no spare — corrected 2026-09-18 (user): the
 instrument has **6 knee levers + 5 foot pedals**, each with its own sensor
@@ -1215,7 +1215,7 @@ obstruction on it. At the edge the plug runs off the board entirely.
 
 | Ref | Part | LCSC | Package | Body mm | Stock | $ @10 |
 |-----|------|------|---------|---------|-------|-------|
-| U1 | MT6701QT-STD angle sensor | C2913974 | QFN-16 | 3.00 × 3.00 × 0.80 | — | 1.68 |
+| U1 | **MA730GQ-Z** angle sensor (since 2026-11-03; was MT6701QT-STD C2913974) | C161798 (JLC listing) | QFN-16 | 3.00 × 3.00 × 1.00 max | 888 (JLC) | 4.0806 @100 |
 | U2 | **CH32V203G6U6** MCU, classic CAN 2.0B | C5142280 | QFN-28 | 4.00 × 4.00 × 0.90 | 1,057 | **0.5733** |
 | U3 | **SN65HVD230DR** CAN transceiver, **3.3 V** | C12084 | SOIC-8 | 6.00 × 4.90 × 1.75 | 32,557 | **0.6185** |
 | U4 | **LMR16006XDDCR** buck, 4–60 V in | C87080 | SOT-23-6 | 2.90 × 1.60 × 1.10 | 18,666 | **0.5312** |
@@ -1497,7 +1497,7 @@ twisting + the bridge-side AFE buffer, not conductor size):
 > ✅ **The lever board's PH connector is fine, and here is the arithmetic that
 > retires the question.** Bus B feeds **eleven** sensor boards, not steppers (this
 > read "eight" until 2026-09-18 — 6 knee levers + 5 pedals, see the sensor-IC row).
-> Each is a CH32V203 (~30 mA), an MT6701 (~18 mA), a recessive SN65HVD230 (~10 mA)
+> Each is a CH32V203 (~30 mA), an MA730 (11.7 mA typ, 13.8 max; was an MT6701 at ~18 mA), a recessive SN65HVD230 (~10 mA)
 > and an LDO — about **59 mA at 3V3**, so eleven boards are **0.65 A at 3V3**.
 >
 > ⚠ **That is also the bus current, because bus B is 5 V and the regulator is an
@@ -3094,7 +3094,7 @@ several are unverified — re-verify the whole file before ordering.**
 | Wire | ~$35 | estimate, excludes 10 control drops |
 | Electronics + UI (motor controller, power + USB panel boards, Pi 4 1 GB, jacks, encoder, OLED, UI board) | ~$97 | **all verified** (2026-09-25: the display is sized to be read at 1 ft, 63.4×32.7 — white-on-black and that size are only had as a module; −$4 on the encoder for sourcing it where it is actually in stock; **+$5 for the UI board, its two 1×20 headers, the ribbon header and the ribbon**) |
 | Optical pickup board (148 parts, 4-layer, ÷10 basis) | **~$45** | parts cost **computed from the model**; all 18 lines have real MPNs |
-| Control sensors, 10 controls (MT6701 + magnet + board) | ~$50 | IC + magnet **verified**; boards not yet quoted |
+| Control sensors, 10 controls (angle sensor IC + magnet + board) | ~$50 | IC + magnet **verified**; boards not yet quoted |
 | Tee / carrier PCBs | ~$25 | estimate |
 | **Total** | **~$1,012** | |
 

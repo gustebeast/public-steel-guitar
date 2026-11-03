@@ -1,6 +1,6 @@
 # bronner — open work items (2026-09-30)
 
-## MA730 switch: user chose MA730GQ-Z; STOPPED at the stock check (2026-11-03)
+## MA730 switch: user chose MA730GQ-Z -- DONE on agent/bronner-ma730-board (2026-11-03)
 
 **Ruling (user, via the lead, 2026-11-03):** MA730GQ-Z. In the user's words: "pins and center pad
 redone and firmware are no issue, priority is cost stock and performance (accuracy, reliability).
@@ -21,7 +21,65 @@ The lead set two checks to close before the board changes. If either failed, the
   listing, with no restock behind it, at a 52-week factory lead time. DigiKey still has 4,958
   (1589-1517-1-ND).
 
-**So the switch is not started.** Nothing on lever_sensor, its firmware or the BOM has changed.
+**The switch is done.** The lead restarted it once the stock check had failed, because options 1 and 2
+are the same board.
+
+**Sourcing ruling (user, via the lead, 2026-11-03): "no consignment".**
+- The part comes from the **JLC listing, C161798** (option 1).
+- **Order-time check:** the listing still covers 11+ per instrument.
+- **If it is gone, the fallback is AS5600-ASOM (C79815), and that is a board change** (SOIC-8, I2C, the
+  MCU's PB6/PB7 again).
+- No consignment anywhere. Recorded in prices.json (lever_sensor:U4, $4.0806 at JLC's 100 break), the
+  BOM's angle-sensor row, elec/fab.py and the lever_sensor.py header.
+
+**What changed:**
+- **elec/lever_sensor.py**, changed in place, because the board was never ordered.
+  - U4 is the MA730GQ-Z (pins off rev 1.1 p.2 and p.8):
+    - MOSI 4 -> PA7 (13);
+    - CS 5 -> PB5 (26);
+    - MISO 7 -> PA6 (12);
+    - SCLK 12 -> PA5 (11);
+    - VDD 13 on +3V3;
+    - GND 8 to the plane;
+    - TEST 10 and the pad (17) to pin 8 on F.Cu.
+  - The PA5/6/7 pin numbers are off CH32V203 datasheet V3.0 table 3-1-3, QFN28 column (JLC's copy, since
+    wch-ic.com is out); KiCad's MCU_WCH_RiscV symbol agrees.
+  - Removed: the I2C pair PB6/PB7, R6/R7 (pull-ups) and R5 (MODE strap). 28 parts, down from 31.
+- **elec/footprints/Steel.pretty/MPS_QFN-16-1EP_3x3mm_P0.5mm_EP1.7x1.7mm**: MPS's recommended land
+  (rev 1.1 p.26). Pads 0.70 x 0.25 on 0.50 pitch, centres 2.90 apart, exposed pad 1.70. KiCad's stock EP1.7
+  footprint is 0.825 long at 2.925.
+- **Routed, first pass: 0 unconnected, 0 violations. Quality: 0 FAIL**, 7 OPEN (the order-time items
+  M11/12/29/30/37/42/43, as before), 1 waived (A8:U4, the via-less pad). The CAD check passes: every routed
+  part is where the CAD draws it.
+- **elec/voltage_ratings.json**: C161798 (rev 1.1 p.3 absolute maximums). elec/volts/lever_sensor.json
+  was regenerated. A16: 70 pins checked, 0 FAIL.
+- **src/knee_lever.py**: CHIP_H 0.80 -> 1.00 (the MA730's package is 0.80 .. 1.00, p.26). AXLE_LAND_T
+  stays at its 0.8 floor, so the board stands 0.2 further out. AIR_GAP has a field note:
+  - the MA730 wants >= 40 mT (p.4), against the MT6701's 20-100;
+  - our dia 6 x 2.5 at 1.5 is close to MPS's dia 5 x 3 reference, but the field is NOT MEASURED.
+- **src/board_geom.py**: the new footprint's height, 1.00.
+- **The cable keepers are pinned where they were** (knee_lever.KEEP_CLR_Y). A 0.2 cradle move would have
+  dropped the vertical lever's 45 deg strut to 1.46 above its floor, under the 1.6 it needs (the gate's
+  first run stopped on that assertion). Every coil stays where the harness expects it; the coil-to-cradle
+  air drops from 1.6 to 1.4. **For the user via the lead:** the alternative is a vertical-lever housing
+  0.2 deeper, with coil clearance kept at 1.6. Reverting is one line.
+- **firmware/lever_sensor/ma730.{h,c}**: the sensor driver. There is no lever application yet; this is its
+  sensor layer.
+  - SPI1, mode 3, 6 MHz.
+  - ma730_angle(): one 16-bit frame, 14 bits.
+  - ma730_read(): a register read, with the 750 ns idle each side.
+  - ma730_field(): MGH/MGL from register 27.
+  - ma730_thresholds(): sets register 6, and writes NVM only when the value differs, 20 ms per write.
+  - Compiled on the Pi with -Wall -Wextra, clean, against the CH32V307 SPL headers through a one-line
+    ch32v20x.h shim (the Pi has no ch32v20x checkout). The V203 build is not checked yet.
+- **docs/order-parts.md** regenerated. It was already stale from earlier merges (motor_ctrl R2's USB-C and
+  5k1s, the UI board's FFC socket, the lever's two 4-ways); those lines are corrected with it.
+
+**Open, for the first board:**
+- **Field check.** Raise MGLT to 001 (41 mT rising) with ma730_thresholds(1, 7), and read MGL with the
+  magnet in place across the lever's travel. If MGL sets, AIR_GAP comes down, not up.
+- **Zero angle.** B points toward the pin-1 edge, positive is clockwise seen from the top (p.10 fig. 3).
+  Zero and direction stay in the MCU, as before.
 
 **Options for the user (via the lead):**
 1. MA730 anyway, from the JLC listing. 11 boards x 1 is well under 888, but JLC may drop the listing
