@@ -673,12 +673,21 @@ def finish(stem, rounds=1, keep_route=False):
                  "the project has no %s (see cadkit/PCB_README.md, 'Gate it')"
                  % os.path.join(os.path.basename(project_dir(stem)), "cad_geom_check.py")))
 
-    print("%s: %d unconnected, %d violation(s)%s%s"
+    # ⚠ A RUN WITH NO PROJECT REPORTS FAILS THE BOARD DOES NOT HAVE. A copy finished
+    # outside <project>/out with PCBFLOW_PROJECT unset gets the default labeller and none
+    # of the project's declarations: pi_cap showed A17 (J4's back-face reason missing) and
+    # A19 (no glyph record), and both went into the work list as the board's own "baseline
+    # FAILs" -- with the project named, the same copy finishes 0 FAIL (2026-11-02).
+    _gen = os.path.join(project_dir(stem), _name + ".py")
+    print("%s: %d unconnected, %d violation(s)%s%s%s"
           % (os.path.basename(stem), best_n, best_v,
              (" -- AND %d verify.py FAIL(s): NOT A CLEAN BOARD" % verify_fails)
              if verify_fails else "",
              (" | quality: %d FAIL, %d OPEN" % quality) if quality else
-             " | quality: DID NOT RUN"))
+             " | quality: DID NOT RUN",
+             "" if os.path.isfile(_gen) else
+             " | NO PROJECT: %s does not exist, so the silk and quality figures are the "
+             "defaults; set PCBFLOW_PROJECT" % _gen))
     return best_n, best_v
 
 
