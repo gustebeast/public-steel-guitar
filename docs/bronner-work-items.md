@@ -48,6 +48,31 @@ two are not yet explained. So clean means no worse than the unmoved board, not 0
 
 **Next.** pi_cap's baseline FAILs. Retrying close_last one blamed net at a time changed nothing on any of the 45 moves (tried twice, reverted), so optical's remaining misses are not the retry logic.
 
+**Pitch detector in plain C (2026-11-02), `bench/pi/pitch/`.** `pitch.c` per string at 48 kHz:
+YIN at 12 kHz with the difference sums slid sample by sample (lags 60-1000 Hz, 21.3 ms window,
+a frame every 2 ms); note-on from a peak envelope doubling within 5 ms, or, once the pitch has
+held, the string failing to repeat itself a period later (a re-pluck) while its power holds (not
+a damp). Frames carry `steady`; commit a pitch at 2 or more. `make && python3 synth.py [seed]` on
+the Pi scores synthetic takes at the measured levels (plucks 300 rms, white floor 13 counts, the
+loud 2nd harmonic of 1A). Seed 1: 32 of 33 pass. Committed pitch, pluck to 5 frames within 20
+cents: 10-12 ms strings 1-3, 14-18 ms at G3-A3, 24 ms at C3, 38 ms at C2; error under 1.2 cents
+held; no octave error on a committed frame and no note-on from a slide, in 297 takes over nine
+seeds. Misses over seeds 2-9 (264 takes): 5 re-plucks not seen (the new pluck's phase near the
+old one's) and 1 doubled note-on. **Not proven:** all of it on real strings. The captures from
+2026-11-02 went with the Pi's /tmp at a reboot. **Needs the user:** plucks, slides, re-plucks and
+damps on each string, recorded (a `panel capture` command is the next code step), then
+`pitchrun` over them.
+
+**LOW PRIORITY, pi_cap R2 inside the Pi's footprint (user, 2026-11-02, via the lead).** The
+user minds the cap reaching past the Pi, not the board's area. Now: cap y -62.45..-28.45 world,
+9.0 past the Pi's +Y edge (-37.45), toward the motors. Shift it -Y the full amount J1 allows:
+J1 needs 4.5 to the edge and the Pi's header is 3.5 in, so 8.0, leaving 1.0 past the Pi's edge.
+The board may grow. The band for J5 (UI ribbon) and J6 (foot drop) is why it overhangs: it grew
+there when the Pi stood upright, and that reason is gone. Exits: J5 and J6 out the board's ends,
+ribbon out +X (option a). Then J5_DX, J6_DX and CAP_EXT_X can probably go back. Check under the
+cap against the Pi's DSI and CSI connectors (5.5 tall under 11.0), reroute, re-cut all five
+leads, quality pass, scoped gate. After optical repair and the pitch detector.
+
 **First real string (R1 board on the user's MSA, 2026-11-02).** String 1 aligned, duty 32, none
 clipped. 1A and 1B both read 293.3 Hz with harmonics to 1760 Hz. Plucks about 200-650 rms over
 an 11-14 count floor, about 30 dB; the 65 dB figure is the carrier. DIFF beat SUM, 300-420 rms
