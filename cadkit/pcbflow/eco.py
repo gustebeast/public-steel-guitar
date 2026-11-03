@@ -46,6 +46,7 @@ import pcbnew
 RIP = 3.0                   # mm, of the moved parts' own nets
 CLEAR = 0.75                # mm from a new pad centre to any track's edge
 REFUSED = 3                 # exit code: the move would disturb matched copper
+FINE = 0.6                  # mm: a part with pad centres closer than this is fine-pitch
 
 
 def _seg(p, a, c):
@@ -59,9 +60,65 @@ def _xy(v):
     return pcbnew.ToMM(v.x), pcbnew.ToMM(v.y)
 
 
+def _reach(t):
+    """((start, end), half width) of a track or via, in mm."""
+    via = t.GetClass() == "PCB_VIA"
+    return ((_xy(t.GetStart()), _xy(t.GetEnd())),
+            pcbnew.ToMM(t.GetWidth(pcbnew.F_Cu) if via else t.GetWidth()) / 2.0)
+
+
 def _matched(notes):
     """The nets a person has to re-lay: declared pairs and matched-length groups."""
     return {n for k in ("diff_pairs", "match") for g in notes.get(k, ()) for n in g.get("nets", ())}
+
+
+def _escapes(board, moved, gone, clash):
+    """The pieces of `gone` a fine-pitch part's pins escape by: from a pad of a part not moved
+    whose pads stand closer than FINE, along the same net through shared ends, to a via or
+    to copper that stays, touching no moved pad on the way and losing no piece to a clash
+    with one (a chain cut in the middle would leave a dangling stub).
+
+    ⚠ THESE WERE HALF OF OPTICAL'S MISSES (2026-11-03). A decoupling cap beside U6 (LQFP-176,
+    0.5 mm) moved a millimetre; RIP took up every GND piece near it, U6's pin-to-via stubs
+    with them, and close_last may not drop a via in a 0.5 mm pad field, so the pins went
+    looking for a 74 mm path to a pour fragment and stayed open. The stub never needed to
+    move: it does not touch the cap."""
+    ends = lambda t: (_xy(t.GetStart()), _xy(t.GetEnd()))
+    near = lambda u, v: abs(u[0] - v[0]) < 0.02 and abs(u[1] - v[1]) < 0.02
+    fine = []
+    for fp in board.GetFootprints():
+        if fp.GetReference() in moved:
+            continue
+        xy = [_xy(q.GetPosition()) for q in fp.Pads()]
+        if any(math.dist(a, c) < FINE for i, a in enumerate(xy) for c in xy[i + 1:]):
+            fine += list(fp.Pads())
+    mine = [q for fp in board.GetFootprints() if fp.GetReference() in moved for q in fp.Pads()]
+    took = {t.m_Uuid.AsString() for t in gone}          # proxies are new on every GetTracks()
+    stays = [_xy(e) for t in board.GetTracks() if t.m_Uuid.AsString() not in took
+             for e in (t.GetStart(), t.GetEnd())]
+    keep = set()
+    for q in fine:
+        for t in gone:
+            if t.GetClass() == "PCB_VIA" or t.GetNetname() != q.GetNetname()                     or not (q.HitTest(t.GetStart()) or q.HitTest(t.GetEnd())):
+                continue
+            chain, front, via = [], [t], False
+            while front and len(chain) < 8:
+                u = front.pop()
+                if id(u) in {id(c) for c in chain}:
+                    continue
+                if any(m.HitTest(u.GetStart()) or m.HitTest(u.GetEnd()) for m in mine):
+                    chain = None
+                    break
+                chain.append(u)
+                if u.GetClass() == "PCB_VIA" or any(near(e, f) for e in ends(u) for f in stays):
+                    via = True
+                    continue
+                front += [v for v in gone if id(v) not in {id(c) for c in chain}
+                          and v.GetNetname() == u.GetNetname()
+                          and any(near(e, f) for e in ends(u) for f in ends(v))]
+            if chain and via and not any(id(u) in clash for u in chain):
+                keep |= {id(u) for u in chain}
+    return keep
 
 
 def move(stem, moves):
@@ -90,6 +147,10 @@ def move(stem, moves):
         if (t.GetNetname() in nets and min(_seg(p, a, c) for p in stood + stands) < RIP) \
                 or any(_seg(p, a, c) < half + CLEAR for p in stands):
             gone.append(t)
+    clash = {id(t) for t in gone if any(_seg(p, *ends) < half + CLEAR for p in stands
+                                        for ends, half in [_reach(t)])}
+    spare = _escapes(board, moves, gone, clash)
+    gone = [t for t in gone if id(t) not in spare]
     hit = sorted({t.GetNetname() for t in gone} & matched)
     if hit:
         print("REFUSED: would take up matched copper on %s" % ", ".join(hit))
