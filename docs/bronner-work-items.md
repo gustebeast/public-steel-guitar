@@ -2,8 +2,12 @@
 
 ## MORNING SUMMARY (2026-11-04, overnight work while you were away)
 
-**Queue empty (bronner, end of night).** What is left needs your decision (below), a board on the
-bench (bring-up measurements), or the order itself (M12 / M29 / M30 / M37 / M42 at order time).
+**Queue empty (bronner, end of night) -- WRONG, corrected 11-04 morning: routing robustness is still
+open.** The layout search you asked for on 11-01 ("try new board layouts until you find one that
+produces more reliable routing") was parked on 11-03, not finished: full reroutes of output_panel R2
+still leave 1-4 open nets that move round U1's north row, and optical's local-repair misses (decaps
+beside U6) are unsolved. It needs no hands. The rest of the queue needs your decision (below), a
+board on the bench, or the order itself (M12 / M29 / M30 / M37 / M42 at order time).
 
 **Decided tonight (safe defaults, all reversible):**
 - motor_ctrl R2 lever flashing is drawn and routed: 0 unconnected, 0 violations, quality 0 FAIL.
