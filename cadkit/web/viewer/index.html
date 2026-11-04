@@ -63,6 +63,7 @@
                 text-transform: uppercase; letter-spacing: .06em; }
     .panel .name { color: #e6eaf0; font-weight: 600; word-break: break-all; }
     .panel .dim { opacity: .55; }
+    .panel .desc { color: #9aa3ae; font-size: 11px; margin: 1px 0 0; word-break: break-word; }
     #sel, #readout, #partsPanel, #secPanel, #gfxPanel { display: none; }
     .gr { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 5px 0 0; }
     .gr select { background: #121418; border: 1px solid #333842; border-radius: 6px; color: #e6eaf0;
@@ -894,8 +895,9 @@
       ? `<div class="name">${units[0]}</div>` + (selection.length > 1 ? `<div class="dim">board, lettering and components: ${selection.length} pieces</div>` : '')
       : `<div class="name">${units.length} parts</div><div class="dim">${fams.slice(0, 6).join(', ')}${fams.length > 6 ? ', …' : ''}</div>`;
     const sib = M.list.filter(p => fams.includes(p.family)).length;
-    const notes = [...new Set(selection.map(p => (M.notes || {})[p.name] || (M.notes || {})[p.unit]).filter(Boolean))];
-    const note = notes.map(n => `<div class="name">${n}</div>`).join('');
+    // a part's DESCRIPTION, under its name and smaller: what to cut it to, what it is
+    const descs = [...new Set(selection.map(p => (M.descs || {})[p.name] || (M.descs || {})[p.unit]).filter(Boolean))];
+    const note = descs.map(n => `<div class="desc">${n}</div>`).join('');
     el.innerHTML = `<h4>selected</h4>${head}${note}<div class="bar" style="margin-top:6px">
       <div class="btn" data-a="hide">hide<span class="k">a</span></div>
       <div class="btn" data-a="isolate">isolate<span class="k">s</span></div>
@@ -1979,7 +1981,7 @@
     const gltf = await new GLTFLoader().loadAsync('assembly.glb?v=' + M.key);
     // what the export says the model IS: its name, a line about it, its build number
     const about = (gltf.asset && gltf.asset.extras) || {};
-    M.notes = about.notes || {};                        // part name -> a line about it
+    M.descs = about.descriptions || about.notes || {};  // part name -> a line about it
     document.title = $('title').textContent = about.title || 'Assembly';
     if (about.tabs === false) tabsOff();                // this model is published alone
     $('subtitle').textContent = about.subtitle || '';

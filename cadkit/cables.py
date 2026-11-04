@@ -41,6 +41,51 @@ import cadquery as cq
 
 _OCT_R = 1.0 / _math.cos(_math.pi / 8)          # circumradius per unit half-across-flats
 
+# EVERY CABLE THIS PROCESS DREW, by what it is rather than what it is called: (volume,
+# centre of mass, drawn length). The project names its parts and the viewer usually meets
+# them read back from the assembly STEP, so neither a name nor the object survives the trip
+# -- but a solid's volume and centroid do, to far better than these tolerances. The viewer
+# (cadkit.web.export) looks each part up here and gives every cable it finds its length as
+# drawn, so a harness says what to cut without the project writing a line for it.
+# A cable MOVED after it was drawn has a new centroid and is not found: draw it in place.
+_DRAWN: list = []
+_VOL_TOL = 1e-3          # relative
+_POS_TOL = 0.02          # mm
+
+
+def _remember(wp, length: float):
+    """Record cable `wp` (a Workplane of one solid) as drawn `length` mm long; returns wp."""
+    try:
+        s = wp.val()
+        _DRAWN.append((s.Volume(), s.Center().toTuple(), float(length)))
+    except Exception:            # a cable with nothing in it has no length worth saying
+        pass
+    return wp
+
+
+def drawn_length(shape) -> _t.Optional[float]:
+    """The drawn length, mm, if `shape` (a cq.Shape or TopoDS_Shape) is a cable this process
+    drew with oct_cable / flat_cable / helix_cable -- else None."""
+    if not _DRAWN:
+        return None
+    try:
+        s = shape if isinstance(shape, cq.Shape) else cq.Shape.cast(shape)
+        v = s.Volume()
+        c = s.Center().toTuple()
+    except Exception:
+        return None
+    for dv, dc, length in _DRAWN:
+        if (abs(v - dv) <= _VOL_TOL * max(dv, 1e-9)
+                and all(abs(a - b) <= _POS_TOL for a, b in zip(c, dc))):
+            return length
+    return None
+
+
+def describe_length(mm: float) -> str:
+    """How the viewer words a cable's length: the path as drawn, which is not the wire to
+    cut (that wants slack, strip and any lay -- wire_length, plus the project's spare)."""
+    return "%.0f mm as drawn" % mm
+
 
 def oct_area(d: float) -> float:
     """Section area of a regular octagon, across-flats `d`."""
@@ -73,16 +118,17 @@ def oct_cable(pts, d: float) -> cq.Workplane:
         s0 = va - u * r if i > 0 else va
         s1 = vb + u * r if i < len(segs) - 1 else vb
         parts.append(oct_prism(s0, u, (s1 - s0).Length, d))
+    length = sum((vb - va).Length for va, vb in segs)
     if len(parts) == 1:
-        return cq.Workplane("XY").add(parts[0])
-    want = oct_area(d) * sum((vb - va).Length for va, vb in segs)
+        return _remember(cq.Workplane("XY").add(parts[0]), length)
+    want = oct_area(d) * length
     for tol in (None, 1e-5, 1e-4):
         try:
             fused = parts[0].fuse(*parts[1:], tol=tol) if tol else parts[0].fuse(*parts[1:])
         except Exception:
             continue
         if fused.Solids() and fused.Volume() >= 0.9 * want:
-            return cq.Workplane("XY").add(fused.clean())
+            return _remember(cq.Workplane("XY").add(fused.clean()), length)
     raise RuntimeError("oct_cable: no fuse tolerance returned a whole cable "
                        "(%d segments, wanted >= %.1f mm3)" % (len(segs), want))
 
@@ -234,16 +280,17 @@ def flat_cable(pts, w: float, t: float, across=None) -> cq.Workplane:
         plane = cq.Plane(origin=s0, xDir=b, normal=u)
         parts.append(cq.Workplane(plane).rect(w, t, centered=True)
                      .extrude((s1 - s0).Length).val())
+    length = sum((vb - va).Length for va, vb in segs)
     if len(parts) == 1:
-        return cq.Workplane("XY").add(parts[0])
-    want = w * t * sum((vb - va).Length for va, vb in segs)
+        return _remember(cq.Workplane("XY").add(parts[0]), length)
+    want = w * t * length
     for tol in (None, 1e-5, 1e-4):
         try:
             fused = parts[0].fuse(*parts[1:], tol=tol) if tol else parts[0].fuse(*parts[1:])
         except Exception:
             continue
         if fused.Solids() and fused.Volume() >= 0.9 * want:
-            return cq.Workplane("XY").add(fused.clean())
+            return _remember(cq.Workplane("XY").add(fused.clean()), length)
     raise RuntimeError("flat_cable: no fuse tolerance returned a whole ribbon "
                        "(%d segments, wanted >= %.1f mm3)" % (len(segs), want))
 
@@ -379,7 +426,8 @@ def helix_cable(cx: float, cy: float, z0: float, z1: float, turns: float,
     path = cq.Wire.makeHelix((z1 - z0) / turns, z1 - z0, r,
                              cq.Vector(cx, cy, z0), cq.Vector(0, 0, 1))
     prof = cq.Wire.makeCircle(d / 2.0, path.startPoint(), path.tangentAt(0.0))
-    return cq.Workplane("XY").add(cq.Solid.sweep(prof, [], path, isFrenet=True))
+    return _remember(cq.Workplane("XY").add(cq.Solid.sweep(prof, [], path, isFrenet=True)),
+                     path.Length())
 
 
 def helix_pts(cx: float, cy: float, z0: float, z1: float, turns: float,
