@@ -1,11 +1,11 @@
 """Motor quality, unloaded: step response at pedal travel, and repeatability against angle.
 1 cent at string 1 (E4 model, DL_OPEN 4 mm, 2 mm lead, 16384 counts per turn): 38 counts."""
-import json, serial, statistics as st, time
-from .link import find_motor_port
+import json, statistics as st, time
+from .link import open_motor
 from . import servo
 T = servo.COUNTS_PER_TURN
 CENT = 38
-s = serial.Serial(find_motor_port(), 115200, timeout=0, write_timeout=1)
+s = open_motor(timeout=0, write_timeout=1)
 s.reset_input_buffer()
 buf = b""
 def lines():

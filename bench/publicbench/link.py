@@ -1,7 +1,7 @@
 """The two ways the bench reaches a CAN bus, behind one interface.
 
     MotorCtrlLink   the instrument's own motor controller over its USB serial port, running
-                    firmware/motor_ctrl. Frames are sent at a time on the BOARD's clock and
+                    firmware/motor_ctrl (R2: in frames, see frames.py). Frames are sent at a time on the BOARD's clock and
                     received frames carry the board's time, so timing is the board's, not
                     this computer's.
     CanLink         python-can: a USB-CAN adapter (socketcan), or the in-process "virtual"
@@ -127,6 +127,7 @@ class CanLink(_Base):
 
 
 def find_motor_port() -> str:
+    """R1's port: the MCU's own USB CDC (cafe:4008). R2 is open_motor()'s other half."""
     for tty in glob.glob("/sys/class/tty/ttyACM*"):
         d = os.path.realpath(tty + "/device/..")
         try:
@@ -138,13 +139,34 @@ def find_motor_port() -> str:
     raise RuntimeError("no motor board on USB (cafe:4008)")
 
 
+def open_motor(timeout=0.1, write_timeout=None):
+    """The motor board's line stream, either revision: R1 a plain port (ttyACM, cafe:4008),
+    R2 U7's CH340C (ttyUSB) with frames under it (frames.py). Same read/write either way."""
+    import serial
+    from . import frames
+    r2 = frames.find_r2_port()
+    if r2:
+        return frames.FramedSerial(r2, timeout=timeout, write_timeout=write_timeout)
+    try:
+        return serial.Serial(find_motor_port(), 115200, timeout=timeout, write_timeout=write_timeout)
+    except RuntimeError:
+        raise RuntimeError("no motor board: R1 on USB (cafe:4008) or R2's CH340 (ttyUSB, or "
+                           "MOTOR_PORT=...)") from None
+
+
 class MotorCtrlLink(_Base):
     """firmware/motor_ctrl on a serial port (its line protocol is at the top of main.c)."""
 
     def __init__(self, port=None):
         super().__init__()
-        import serial
-        self.ser = serial.Serial(port or find_motor_port(), 115200, timeout=0.1)
+        if port and "ttyUSB" in port:          # R2, named
+            from . import frames
+            self.ser = frames.FramedSerial(port)
+        elif port:
+            import serial
+            self.ser = serial.Serial(port, 115200, timeout=0.1)
+        else:
+            self.ser = open_motor()
         self.offset = None              # computer time - board time, seconds
         self.errors: list[str] = []
         self._times: list[tuple[float, int]] = []

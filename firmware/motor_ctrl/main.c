@@ -1,6 +1,8 @@
 /* motor_ctrl BENCH firmware: a timestamped USB <-> CAN scheduler.
  *
- * The board (CH32V307WCU6, 8 MHz crystal) shows up on its USB as a serial port. The host
+ * The board (CH32V307WCU6, 8 MHz crystal) shows up on its USB as a serial port (R1: the MCU's
+ * own USB CDC; R2, make REV=2: U7's CH340C on USART1, every line inside a checked frame,
+ * link_uart.c and frame.h). The host
  * sends CAN frames to transmit, either now or at a time on THIS board's microsecond clock,
  * and gets every received frame back with the time it arrived. Nothing here knows what a
  * SERVO42D is: the motor protocol lives on the host (bench/publicbench/servo.py), where it is
@@ -20,6 +22,7 @@
  *   V <bus>                   -> V <errors, from ERRSR> <mailboxes, TSTATR> <PCLK1 Hz>
  *                                errors bits 4-6 are the last error: 3 no ACK, 4/5 bit, 7 none yet;
  *                                bits 16-23 what we sent wrong, 24-31 what we received wrong
+ *   F                         -> F <frames dropped>     R2 only: the link's own errors
  * Lines to the host:
  *   R <bus> <t_us> <id> <data>     a frame received
  *   X <seq> <bus> <t_us>           a frame handed to the controller
@@ -32,16 +35,20 @@
  */
 #include <string.h>
 #include "ch32v30x.h"
+#include "link.h"
+#if REV == 1
 #include "ch32v30x_usbfs_device.h"
 #include "UART.h"
-#include "link.h"
+#endif
 
 #define VERSION 1
 
 static uint8_t out_buf[8192];       /* us -> host */
 static volatile uint16_t out_head, out_tail;
 static uint32_t out_lost;
+#if REV == 1
 static uint8_t out_zlp;
+#endif
 
 static void out_put(const char *s, uint16_t n)
 {
@@ -55,6 +62,23 @@ static void out_put(const char *s, uint16_t n)
     __enable_irq();
 }
 
+#if REV != 1
+static void out_pump(void)
+{   /* whole lines only, so a frame lost on the way loses lines and never splices two */
+    static uint8_t pkt[FRAME_MAX];
+    if (link_tx_busy() || out_tail == out_head) return;
+    uint16_t n = 0, whole = 0, at = out_tail;
+    __disable_irq();
+    while (n < sizeof pkt && at != out_head) {
+        pkt[n++] = out_buf[at];
+        at = (uint16_t)((at + 1) % sizeof out_buf);
+        if (pkt[n - 1] == '\n') whole = n;
+    }
+    out_tail = (uint16_t)((out_tail + whole) % sizeof out_buf);
+    __enable_irq();
+    if (whole) link_send(pkt, whole);
+}
+#else
 static void out_pump(void)
 {
     static uint8_t pkt[DEF_USBD_FS_PACK_SIZE];
@@ -72,6 +96,7 @@ static void out_pump(void)
     NVIC_EnableIRQ(USBFS_IRQn);
     out_zlp = (n == sizeof pkt);    /* a full packet needs a short one after it */
 }
+#endif
 
 /* ---- writing lines ---------------------------------------------------------------------- */
 static char *w_dec(char *p, uint64_t v)
@@ -277,6 +302,11 @@ static void line(const char *s)
     }
     case 'C':
         q_tail = q_head; say("OK C\n"); return;
+#if REV != 1
+    case 'F':
+        p = l; *p++ = 'F'; *p++ = ' '; p = w_dec(p, link_bad()); *p++ = '\n';
+        out_put(l, (uint16_t)(p - l)); return;
+#endif
     case 'B': {
         uint64_t bus;
         if (!s[1]) { reset_to(GO_LOADER); }
@@ -305,8 +335,14 @@ static void line(const char *s)
 static void in_pump(void)
 {
     static char ln[96]; static uint8_t n;
+#if REV != 1
+    static uint8_t pkt[LINK_PACKET];
+    int got = link_take(pkt);
+    if (got >= 0) n = 0;            /* a line never spans frames: the host sends whole ones */
+#else
     uint8_t pkt[DEF_USBD_FS_PACK_SIZE];
     int got = link_take(pkt);
+#endif
     for (int i = 0; i < got; i++) {
         char c = (char)pkt[i];
         if (c == '\r') continue;

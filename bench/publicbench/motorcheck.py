@@ -10,15 +10,13 @@ from __future__ import annotations
 import argparse
 import time
 
-import serial
-
 from . import servo
-from .link import find_motor_port
+from .link import open_motor
 
 
 class Raw:
     def __init__(self, can_id):
-        self.s = serial.Serial(find_motor_port(), 115200, timeout=0.1)
+        self.s = open_motor(timeout=0.1)
         self.id, self.seq = can_id, 0
 
     def ask(self, name, body, wait=0.4):
