@@ -632,9 +632,9 @@
       "what": "SN65HVD230DR C12084 -- JLCPCB parts API at qty 120"
     },
     "lever_sensor:U3": {
-      "usd": 0.4487,
+      "usd": 0.6511,
       "verified": "v",
-      "what": "CH32V203G6U6 C5142280 -- JLCPCB parts API at qty 110"
+      "what": "CH32V203C8T6 C3001172 -- JLCPCB parts API at qty 110, 2026-11-04 (the C8T6 the USB-flash board carries)"
     },
     "fret_led_key:U1": {
       "usd": 1.1591,
@@ -2211,15 +2211,35 @@
       "verified": "v",
       "what": "TYPE-C-31-M-12 C165948 -- JLCPCB parts API at qty 50"
     },
-    "lever_sensor:D2": {
-      "usd": 0.0225,
+    "lever_sensor:U5": {
+      "usd": 0.1846,
       "verified": "v",
-      "what": "ESD5B5.0ST1G C93623 -- JLCPCB parts API at qty 260"
+      "what": "TS3USB221ARSER C128396 -- JLCPCB parts API at qty 140 (lever_sensor 110, motor_ctrl 30), 74,184 in stock, 2026-11-04"
+    },
+    "motor_ctrl:U8": {
+      "usd": 0.1846,
+      "verified": "v",
+      "what": "TS3USB221ARSER C128396 -- JLCPCB parts API at qty 140 (lever_sensor 110, motor_ctrl 30), 74,184 in stock, 2026-11-04"
+    },
+    "motor_ctrl:U9": {
+      "usd": 0.1846,
+      "verified": "v",
+      "what": "TS3USB221ARSER C128396 -- JLCPCB parts API at qty 140 (lever_sensor 110, motor_ctrl 30), 74,184 in stock, 2026-11-04"
+    },
+    "motor_ctrl:U10": {
+      "usd": 0.1846,
+      "verified": "v",
+      "what": "TS3USB221ARSER C128396 -- JLCPCB parts API at qty 140 (lever_sensor 110, motor_ctrl 30), 74,184 in stock, 2026-11-04"
+    },
+    "lever_sensor:D2": {
+      "usd": 0.0342,
+      "verified": "v",
+      "what": "LESD5L5.0CT1G C5274293 -- JLCPCB parts API at qty 240 (lever_sensor 220, output_panel 20), 2026-11-04"
     },
     "lever_sensor:D3": {
-      "usd": 0.0225,
+      "usd": 0.0342,
       "verified": "v",
-      "what": "ESD5B5.0ST1G C93623 -- JLCPCB parts API at qty 260"
+      "what": "LESD5L5.0CT1G C5274293 -- JLCPCB parts API at qty 240 (lever_sensor 220, output_panel 20), 2026-11-04"
     },
     "motor_ctrl:D2": {
       "usd": 0.0825,
