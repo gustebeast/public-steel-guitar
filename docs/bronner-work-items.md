@@ -1,5 +1,61 @@
 # bronner — open work items (2026-09-30)
 
+## R2 backlog sweep: output_panel, optical, motor_ctrl (lead, 2026-11-03)
+
+The lead's three items, measured rather than read off the section headers (two of which were stale).
+
+**(1) output_panel R2: nothing left out of the netlist or placement.** R2-0 (56 deep), R2-2 (dual-role J1:
+U13 / U14 / U15 and the Q4-Q6 gate), R2-3 (MX128 slotted J8), R2-4 (U16 inlet meter, D10) and M43 (U17
+CH340C) are all on the kept board; R2-1 is dropped and R2-5 closed. The usb-dual firmware's pins match the
+netlist. The kept board finishes 0 unconnected / 0 violations, quality 0 FAIL, 5 OPEN (M12, M30, M32, M37,
+M42: order time). What WAS stale: the manual text. M5, M8, M27, M28 and M39 still described R1 (the 60 V
+LMR16006 and its D1, BOOT0 on R7 alone, hub ports 3 / 4 open, J1's VBUS dead); R2 overrides added.
+
+**(2) optical R2: "route profile next" was done on 10-30 / 10-31.** The routed board (plus R54) is
+elec/kept/optical.kicad_pcb, and its other TODOs are in (cable hole, R1 stop-gap in INSTALL_NOTES, the
+deferral rule retired). Finish on the kept board: 0 / 0, 0 FAIL, 4 OPEN (M12, M30, M37, M42). Fixed: M32
+cited R1's side-entry S4B-XH-SM4-TB land; R2 is B4B-XH-A.
+
+⚠ **A KEPT BOARD NEEDS ITS .kicad_pro.** Copying elec/kept/<board>.kicad_pcb into a fresh elec/out and
+running `finish.py --keep-route` gives 604 violations (output_panel): the netclasses live in the
+.kicad_pro, which only layout.py writes. Run the module, then layout.py, THEN copy the kept board in, then
+finish --keep-route. That order gives 0 / 0 on both boards.
+
+**(3) motor_ctrl R2: M43 was the item left, and it is built.** R2-0 to R2-2 were done; R2-3 (shoulder) is
+superseded by the ledge under J3 (mctrl_retention), as the section below says. But M43 was OPEN: J4 went
+straight to the MCU's USB, so a blank or bricked board still needed a probe. Now, per the 10-15 table
+("serial chip behind its USB socket drives BOOT0/NRST"):
+- U7 CH340C (C84681) is J4's USB device; USART1 PA9 / PA10 (pins 44 / 45) behind it. PA11 / PA12 idle.
+- BOOT0 / NRST through a CROSSED pair, not output_panel's straight one: there the bridge is opened only to
+  flash; here it IS the link, and Linux raises DTR# and RTS# together on open, which would hold the MCU
+  in reset. Q1 AO3401A (source on RTS#, gate on DTR#) lifts BOOT0 only for DTR# low / RTS# high; Q2
+  MMBT3904 (C20526, basic; emitter on RTS#, base on DTR# through R26 10k) pulls NRST only for DTR# high /
+  RTS# low. Equal levels do nothing. C34 bypass. (MMBT3906 C2940 was a wrong code -- it is an IGBT --
+  hence the P-FET already on the instrument for the BOOT0 side.)
+- U7 sits -Y of J2 on the floor edge, in the one SOIC-16 hole; it hangs into the floor band (board x
+  past 21.55), so mctrl_floor_ports cuts its port. ⚠ PORTS LEAVE RIBS: the first placement put C34
+  (0.45 tall) between J2 and U7 and R26 between U7 and C15, and each left a SHALLOW port between two
+  deeper ones -- a 1.5 mm rib of floor, full height, standing in the slot. Now U7's courtyard meets
+  J2's (one port), C34 / Q1 / Q2 stay above the floor, and R26 tucks under U7 so its port steps down.
+  C34 is at pin 4 (V3, tied to VCC); U7.16 is exempted as output_panel's U17.16 is. The hand-laid
+  SENSE_24V run at y -10.8 owns the strip west of U7. Declared fan-out moved from pins 47 / 46 to 45 / 44.
+- LMR33630 pinned to ref U5: it was auto-numbered and collided with U6 once U7 existed.
+- Routed 0 / 0 (about 5 min, close_last), quality 0 FAIL, 7 OPEN (M12, M29, M30, M32, M33, M37, M42 -- M29 and
+  M33 as before). R1 rebuilds identical (board.json byte-equal, netlist equal but for line numbers and
+  random test-point tags). R2 now prints "r2" (cad_geom_check had flagged REV 2 printing r1).
+- Manual text for R2: M1, M8, M10, M19 (new: Q1), M23, M27, M28, M39, M43.
+
+**FOLLOW-UPS, not built:**
+- **Firmware.** firmware/motor_ctrl's link and its loader (output_panel/boot.c, usbflash.py) are USB CDC
+  packets. R2 needs a USART1 link with framing (COBS or SLIP), the loader on the same, and the Pi's
+  tools to match; `make REV=2`. The ROM loader path needs none of it.
+- **For the user, via the lead: link speed.** The CH340C tops out at 2 Mbaud, about 200 kB/s, where R1's
+  USB was 12 Mbit/s. Enough for the bench scheduler at one CAN bus's full load (1 Mbit/s); two buses
+  flat out would not fit. CH343P (6 Mbaud, same role) is the step up if it matters. Not ordered.
+- **output_panel R2 could take the crossed pair too.** Its bridge is flash-only, so the straight pair is
+  correct there, but a host that opens the port for anything else resets U1. Not changed: the kept board
+  would need a re-route.
+
 ## MA730 switch: user chose MA730GQ-Z -- DONE on agent/bronner-ma730-board (2026-11-03)
 
 **Ruling (user, via the lead, 2026-11-03):** MA730GQ-Z. In the user's words: "pins and center pad
@@ -491,7 +547,7 @@ ISP reflash, which the USB-only rule forbids for an installed board.
 
 ## R2 BACKLOG, motor_ctrl (user via the lead, 2026-10-29) -- NOT the current rev, which stays as made
 
-**STATE 2026-11-03: ROUTED 0 / 0, quality 0 FAIL / 8 OPEN (the manual sign-offs, as R1).** Built
+**STATE 2026-11-03 (later): M43 built -- U7 CH340C + the crossed BOOT0 / NRST pair, see the backlog sweep at the top. ROUTED 0 / 0, quality 0 FAIL / 7 OPEN.** Earlier the same day: **ROUTED 0 / 0, quality 0 FAIL / 8 OPEN (the manual sign-offs, as R1).** Built
 behind `MOTOR_CTRL_REV` (default 2; R1 = `MOTOR_CTRL_REV=1`, its geom in elec/rev1, its A16
 declarations in elec/volts/motor_ctrl_r1.json; flash_bench forces 1). Done:
 - 0: J4 = hanxia HX-TYPE-C 16P 180 LC-B H10.0 (C49261584, 1,765 stock, $0.36, extended, THT,
@@ -529,7 +585,7 @@ cutting into the chassis. For R2 we should add an action item to move J7 +z and 
    0.34 above the body's underside, so no ledge fits under it, and this rev's stop is the
    -X/-Y body adapter, which only works with the leg fitted.
 
-## R2, optical (lead, 2026-10-29) -- PLACED (741b6d9c), ROUTE PROFILE NEXT
+## R2, optical (lead, 2026-10-29) -- ROUTED AND KEPT (elec/kept/optical.kicad_pcb); the profile below is history
 
 **State, 2026-10-29 (late).** Final lead ruling: NO growth, J1 notched, J2 top entry; edge ~-100
 is inside the -105.05 rail. Built behind `OPTICAL_REV` (default 2) in src/optical_pickup.py:
@@ -598,7 +654,7 @@ Measured on the R1 board (board.json frame = world + 28.3):
 
 ## R2 BACKLOG, output_panel (user via the lead, 2026-10-20) -- NOT the current rev, which fabs as is
 
-**R2-0. 66 -> 56 deep, 98 wide, J1 centred (lead + user, 2026-10-29) -- IN PROGRESS.** The
+**R2-0. 66 -> 56 deep, 98 wide, J1 centred (lead + user, 2026-10-29) -- DONE, routed and kept (elec/kept/output_panel.kicad_pcb).** The
 -Y rail at standoff 7.5 is string 10's motor back (-103.45) + MOTOR_INSTALL_CLR = -105.05 (the
 Pi's Xilaghy plug, -96.69, stays inside it), and rail to string 10's pulley flange - 0.5
 (-48.75) is 56.0. The lost area went into the -X edge (GROW_X 24, R1 12).

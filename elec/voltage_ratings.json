@@ -2595,6 +2595,20 @@
    "itemp": 3.0,
    "mpn": "SWPA5040S4R7MT",
    "src": "elec/buck_cell.py: Sunlord table, Isat 3.50 A guaranteed; DCR 39 mohm max; Itemp taken at the cell's 3 A"
+  },
+  "C20526": {
+   "kind": "fet",
+   "ch": "N",
+   "vds": 40.0,
+   "vgs": 6.0,
+   "id": 0.2,
+   "pins": {
+    "1": "G",
+    "2": "S",
+    "3": "D"
+   },
+   "src": "CJ MMBT3904 (LCSC C20526 listing, read 2026-11-03): VCEO 40 V, VEBO 6 V, IC 200 mA, SOT-23 1 B 2 E 3 C. An NPN, entered as an N fet so voltage_check grades it: base as G (VEBO as VGS), emitter as S, collector as D (VCEO as VDS)",
+   "mpn": "MMBT3904"
   }
  }
 }
