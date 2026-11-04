@@ -2,6 +2,9 @@
 
 ## MORNING SUMMARY (2026-11-04, overnight work while you were away)
 
+**Queue empty (bronner, end of night).** What is left needs your decision (below), a board on the
+bench (bring-up measurements), or the order itself (M12 / M29 / M30 / M37 / M42 at order time).
+
 **Decided tonight (safe defaults, all reversible):**
 - motor_ctrl R2 lever flashing is drawn and routed: 0 unconnected, 0 violations, quality 0 FAIL.
   It adds the J4 link/flash-lane switch U8, the arm switches U9 / U10 and the lever arm's own 5 V
@@ -18,19 +21,21 @@
   lead, with no probe: `make rom` (the lead's ruling, tools only, proven in simulation). A
   wchisp run would have held those chips in reset; one bench timing check is owed (below).
 - The phone moves a tuned string by its measured curve.
+- motor_ctrl R2's `make REV=2 isp` writes its loader with romflash's WchIsp, not wchisp.
 - motor_ctrl M32 (connectors) signed from the documents. The 1:1 print against real housings is
   still a bench step.
 
 **Your choices, all open (detail in the entries below):**
 1. **Lever boards' first flash.** USB over the bus pair (the R2 lever board with C8T6 +
-   TS3USB221A, drawn; needs wchisp) or one SWD bench flash per board with the pogo jig (works
-   today, by hand).
+   TS3USB221A, drawn; wchisp is already on the Pi) or one SWD bench flash per board with the
+   pogo jig (works today, by hand).
 2. **CH340C or CH343P** for motor_ctrl's link: 2 Mbaud is enough for one CAN bus at full load,
    not two; CH343P is 6 Mbaud, same role, one line in link.h. Not ordered either way.
 3. **The USB-over-JST exception.** The lever boards run USB over the crimped PH harness, an
    exception to the real-connector rule (M43). docs/lever-usb-flash.md records it as your
    decision of 11-03; confirm it stands.
-4. **Install wchisp on the Pi?** Needed for a blank board's first USB flash. Not installed.
+4. ~~Install wchisp on the Pi?~~ Closed: it has been installed since 10-13 (last night's entry was
+   wrong). motor_ctrl R2's ROM path no longer needs it either.
 5. **The link drop.** Today the flash lane takes J4 from the link for ~15 s a board. The
    alternatives are a hub (CH334R, which keeps the link up, ~11 x 6 mm the board lacks) or a
    second USB socket on its own cable.
@@ -42,10 +47,12 @@
 Logged 2026-11-04 while the user was away (lead: no questions until morning). Each one has a
 safe default already taken; none blocks the work.
 
-- **wchisp on the Pi.** `publicbench.leverisp` writes a blank lever board's loader through
-  WCH's ROM with wchisp (https://github.com/ch32-rs/wchisp). It is NOT installed; installing
-  software is your call. Without it, `--walk` works and a flash stops at the first blank board
-  with that message. Everything else (the walk, the app over CAN) runs without it.
+- ~~**wchisp on the Pi.**~~ **CLOSED, and the overnight entry was wrong: wchisp 0.3.0 has been on
+  the Pi since 2026-10-13** (/usr/local/bin/wchisp, built from ~/src/wchisp, udev rule
+  99-wch-isp.rules; docs/bench-order.md). Checked 2026-11-04. Nothing to install. motor_ctrl R2's
+  ROM path no longer uses it (`make REV=2 isp` is romflash's WchIsp on U7's crossed pair, the same
+  night), and output_panel / optical R2 never did. What still uses it: leverisp, for a blank lever
+  board over USB, and `make isp` on the R1 motor board, by hand with BOOT0 at power-up.
 - **motor_ctrl R2's link drops for one flash window.** The flash lane shares J4 with the link
   through a switch (U8), because a USB hub (CH334R, which would have kept the link up) did not
   fit: every bare patch on the board is crossed by a hand-laid track. motor_ctrl times the window
@@ -313,7 +320,7 @@ straight to the MCU's USB, so a blank or bricked board still needed a probe. Now
     gives either revision's line stream, so MotorCtrlLink, motorcheck and motorquality are unchanged
     above it. motorflash.py = `make REV=2 usb` (H / I / E / W / C / G through boot.c; asks "B", else
     pulses NRST through U7 and catches the window) and `make REV=2 isp` (`--rom`: reset with BOOT0
-    held high, then `wchisp -s -p <port> flash boot.bin`, then a plain reset).
+    held high, then `wchisp -s -p <port> flash boot.bin`, then a plain reset; since 2026-11-04 romflash.py's WchIsp in place of wchisp).
   - Tests: bench/tests/test_frames.py, 9 pass on the Pi, including firmware frame.c compiled natively
     and checked against the host codec (every single-byte corruption dropped and counted).
   - ⚠ To prove on the first R2 board: the DTR# / RTS# polarity (pyserial True = asserted = pin low is
@@ -396,9 +403,9 @@ straight to the MCU's USB, so a blank or bricked board still needed a probe. Now
       named, and HUPCL off on a real tty.
     - Not redeployed; nothing on the Pi runs it until a board is on the bench. Bench check owed:
       FOR THE USER, top of this file.
-    - Follow-up worth having: motorflash's `--rom` (motor_ctrl R2) still hands the port to
-      wchisp. Its crossed pair makes that work, but WchIsp here would drop the wchisp install
-      from that path as well (lever boards' USB ROM path still needs it).
+    - DONE (2026-11-04, lead): motorflash `--rom` (motor_ctrl R2) is romflash's WchIsp on
+      CrossedLines, U7's crossed pair, the same sequence frames.FramedSerial.rom() drove. 89 bench
+      tests pass on the Pi. The lever boards' USB ROM path still uses wchisp (installed).
 
 ## MA730 switch: user chose MA730GQ-Z -- DONE on agent/bronner-ma730-board (2026-11-03)
 

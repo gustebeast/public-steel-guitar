@@ -1,10 +1,11 @@
-"""Write a board's base loader through its MCU's ROM, over its own CH340C: output_panel R2 and
-optical R2, hands-free (cadkit M43). Nothing of ours has to run on the board, so a blank chip
+"""Write a board's base loader through its MCU's ROM, over its own CH340C: output_panel R2,
+optical R2 and motor_ctrl R2, hands-free (cadkit M43). Nothing of ours has to run on the board, so a blank chip
 or a broken loader is no obstacle.
 
     python3 -m publicbench.romflash output_panel build/boot.bin
     python3 -m publicbench.romflash optical build/boot/optical.bin
     python3 -m publicbench.romflash output_panel --port /dev/ttyUSB1 --verify-only build/boot.bin
+    python3 -m publicbench.romflash motor_ctrl build/r2/boot.bin     (motorflash --rom calls this)
 
 THE STRAIGHT PAIR (both boards): the bridge's DTR# low lifts BOOT0 (Q7 / Q2), its RTS# low pulls
 NRST (D9 / D11). Linux raises DTR# and RTS# on EVERY open of a tty, so any program that opens
@@ -18,8 +19,12 @@ output_panel ROM path). It owns both lines from the moment the port opens:
           while the chip samples it, then released: the chip is in its ROM loader
   run()   NRST down for RESET_S with BOOT0 low, then up: the chip starts what was written
 
+motor_ctrl R2 is the CROSSED pair instead (Q1 / Q2, elec/motor_ctrl.py M19): DTR# low with RTS#
+high lifts BOOT0, RTS# low with DTR# high pulls NRST, and both alike do nothing -- so any open is
+harmless there. CrossedLines drives it the way frames.FramedSerial.rom() / reset() do.
+
 THE TWO ROMS:
-  output_panel  CH32V307: WCH's serial ISP, the protocol wchisp speaks (read off its source,
+  output_panel  CH32V307 (motor_ctrl's too): WCH's serial ISP, the protocol wchisp speaks (read off its source,
                 ch32-rs/wchisp, and written again here: no code of it is in this repo). 57 AB
                 cmd len16 payload sum8 out, 55 AA cmd status len16 payload sum8 back; identify,
                 read config (UID), key, erase, program and verify in 56-byte XOR-keyed chunks,
@@ -54,6 +59,7 @@ SETTLE_S = 0.02           # after the hold, before the first byte
 BOARDS = {
     "output_panel": {"rom": "wch", "hub_port": 4},     # J3 -> U4 port 4 -> U17 (M43)
     "optical": {"rom": "st", "hub_port": 2},           # J1 -> U31 DN2 -> U32 (M43)
+    "motor_ctrl": {"rom": "wch", "crossed": True},     # J4 -> U7, no hub (frames.find_r2_port)
 }
 
 
@@ -83,6 +89,24 @@ class Lines:
         self.set(False, False)               # the chip starts what is in flash
 
 
+class CrossedLines(Lines):
+    """motor_ctrl R2's pair: BOOT0 up = DTR# asserted alone, NRST down = RTS# asserted alone,
+    both alike = rest. The same sequences as frames.FramedSerial.rom() / reset()."""
+
+    def rom(self):
+        self.set(False, True)                # NRST down
+        self.sleep(RESET_S)
+        self.set(True, False)                # NRST up and BOOT0 up, in one go
+        self.sleep(BOOT_HOLD_S)
+        self.set(True, True)                 # rest; the ROM stays
+        self.sleep(SETTLE_S)
+
+    def run(self):
+        self.set(False, True)                # NRST down, BOOT0 not lifted
+        self.sleep(RESET_S)
+        self.set(True, True)
+
+
 def clear_hupcl(fd: int):
     """The close then leaves DTR# / RTS# where they are, not both raised (Linux, the Pi)."""
     import termios
@@ -109,6 +133,8 @@ def find_port(board: str) -> str | None:
     env = os.environ.get(board.upper() + "_PORT")
     if env:
         return env
+    if board == "motor_ctrl":
+        return frames.find_r2_port()                    # MOTOR_PORT overrides there
     want = BOARDS[board]["hub_port"]
     for tty in sorted(glob.glob("/sys/class/tty/ttyUSB*")):
         dev = os.path.dirname(os.path.realpath(tty + "/device/.."))
@@ -330,7 +356,8 @@ def main(argv=None):
                          "(or --port / %s_PORT)" % (a.board, a.board.upper()))
     s = open_port(path, "N" if BOARDS[a.board]["rom"] == "wch" else "E")
     try:
-        lines = Lines(lambda dtr, rts: frames.set_lines(s.fileno(), dtr, rts))
+        kind = CrossedLines if BOARDS[a.board].get("crossed") else Lines
+        lines = kind(lambda dtr, rts: frames.set_lines(s.fileno(), dtr, rts))
         flash(a.board, s, lines, img, a.verify_only)
     except RomError as e:
         raise SystemExit("%s: %s" % (a.board, e))

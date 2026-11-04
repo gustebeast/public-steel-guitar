@@ -333,3 +333,42 @@ def test_hupcl_is_cleared_on_a_real_tty():
     finally:
         os.close(m)
         os.close(s)
+
+
+class CrossedBoard(Board):
+    """motor_ctrl R2's pair: BOOT0 up only with DTR# asserted alone, NRST down only with RTS#
+    asserted alone; both alike is rest (M19)."""
+
+    def set(self, dtr, rts):
+        Board.set(self, dtr and not rts, rts and not dtr)
+
+
+def test_motor_ctrl_crossed_pair_reaches_the_rom_and_leaves_it():
+    rom = WchRom()
+    c = Clock()
+    b = CrossedBoard(rom, c)
+    lines = R.CrossedLines(b.set, sleep=c.sleep)
+    img = bytes(range(256)) * 9
+    R.flash("motor_ctrl", b, lines, img, log=lambda *a: None)
+    assert bytes(rom.flash[:len(img)]) == img and rom.ended
+    c.sleep(0.01)
+    b.write(b"")
+    assert b.mode == "app"
+
+
+def test_the_straight_sequence_on_the_crossed_pair_never_reaches_the_rom():
+    """The two pairs are not interchangeable: the straight pair's ROM entry asserts both lines
+    together, which the crossed pair ignores."""
+    b, c = CrossedBoard(WchRom(), Clock()), None
+    clk = b.clock
+    R.Lines(b.set, sleep=clk.sleep).rom()
+    b.write(b"")
+    assert b.mode != "rom"
+
+
+def test_motorflash_rom_goes_through_romflash(monkeypatch):
+    from publicbench import motorflash
+    seen = []
+    monkeypatch.setattr(R, "main", lambda argv: seen.append(argv))
+    motorflash.write_rom("/dev/ttyUSB7", "build/r2/boot.bin")
+    assert seen == [["motor_ctrl", "build/r2/boot.bin", "--port", "/dev/ttyUSB7"]]

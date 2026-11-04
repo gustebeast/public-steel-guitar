@@ -52,7 +52,7 @@ Flashing board k, where p is the slot of the board before it:
 4. Board k powers up on a pair held low, so it comes up in the ROM loader. BOOT0 comes from the
    bus, so this works whatever firmware is on k. The boards after k stay dark, because k's
    switch defaults off. The Pi writes `full.bin` (loader + application) with an ISP tool such as
-   `wchisp`. Nothing is installed yet; installing it is the user's call.
+   `wchisp` (on the Pi since 2026-10-13: 0.3.0, /usr/local/bin, docs/bench-order.md).
 5. motor_ctrl power-cycles the arm as CAN.
 
 For the first board of an arm, motor_ctrl cycles the arm itself (slot 0xFF: nobody cycles). A
@@ -96,7 +96,8 @@ lever.bin`, one arm at a time with the other dark:
 4. A place still silent after its loader went in is named and left for a hand.
 
 Tested in `bench/tests/test_leverisp.py`, which runs arms.c, lever.c and ldr.c on one simulated
-clock (`simchain.py`). wchisp is not installed on the Pi; that is the user's call.
+clock (`simchain.py`). wchisp is on the Pi (0.3.0, since 2026-10-13); the lever path has not met
+a chip yet.
 
 ## Signal integrity (`tools/fs_eye.py`)
 

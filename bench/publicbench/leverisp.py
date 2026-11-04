@@ -16,9 +16,9 @@ every place answers with an application.
 The link to motor_ctrl is down for the whole window (J4 goes with the lane), so the window is
 fixed when it is opened and the Pi waits it out.
 
-The ISP tool is wchisp (https://github.com/ch32-rs/wchisp). It is NOT installed on the Pi:
-installing it is the user's call. Without it, `--walk` still works and the flash stops at the
-first blank board with what to do.
+The ISP tool is wchisp (https://github.com/ch32-rs/wchisp) over USB: on the Pi as
+/usr/local/bin/wchisp 0.3.0 since 2026-10-13 (docs/bench-order.md), with its udev rule. Without it
+`--walk` still works and the flash stops at the first blank board with what to do.
 """
 from __future__ import annotations
 
