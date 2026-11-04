@@ -8,6 +8,11 @@ Standard library only (pyserial for the real motors, as the rest of bench/ uses)
 page and one WebSocket, /ws. The page sends {"t": "down"|"up", "b": button} and a ping while
 anything is held; the server answers every change with the state.
 
+/tune is a second page: one button per string. {"t": "tune", "s": N} tunes string N (the bench
+package's tune.py: sweep, fit, open note, verify, the curve kept in its curves.json) while the
+page shows what it wants -- PLUCK, then the result. No other button moves anything meanwhile.
+The table is written to motor_ctrl from the curves with `python3 -m publicbench.tune --table`.
+
 NO STRING IS LEFT BENT: a bend or a creep belongs to the connection that pressed it, and goes
 when that connection does, when the page says it was hidden, or when a holding page has been
 silent for HOLD_TIMEOUT (a phone that sleeps mid-press keeps its socket open for a while).
@@ -65,12 +70,46 @@ class Hub:
     answer. 3 s after the last page goes (closed, or hidden), the port is shut again."""
     RETRY = 2.0
 
-    def __init__(self, driver: Driver, motors):
+    def __init__(self, driver: Driver, motors, tuner=None):
         self.d, self.m, self.p = driver, motors, driver.p
         self.clients = {}             # writer -> {"seen": t, "shown": bool}
         self._n = 0
         self._opening = None
         self._retry_at = 0.0
+        self.tuner = tuner or (mock_tuner if not hasattr(motors, "open") else bench_tuner)
+        self.tuning = None            # {"s": N, "state": "pluck" | "busy" | "done" | "failed", "msg": ...}
+        self._tune_thread = None
+
+    def busy_tuning(self) -> bool:
+        return self._tune_thread is not None and self._tune_thread.is_alive()
+
+    def start_tune(self, s: int) -> bool:
+        """String s, on a thread; refused while one runs, a button is held, or the motors are
+        not up."""
+        if (self.busy_tuning() or s not in self.m.strings or not self.live() or self.p.creep
+                or self.p.bend is not None):
+            return False
+        self.d.ensure_home()
+        self.tuning = {"s": s, "state": "busy", "msg": ""}
+
+        def report(state, msg=""):
+            self.tuning = {"s": s, "state": state, "msg": msg}
+
+        def run():
+            try:
+                at = self.tuner(self.m, s, self.d.sign, report)
+                # the string is on its open note at `at`: that is its home now, and every string
+                # goes back to where the buttons have them
+                self.d.home[s] = at
+                self.d.sent = None
+                report("done", self.tuning["msg"])
+            except Exception as e:
+                print("tune:", e, flush=True)
+                report("failed", str(e)[:60])
+
+        self._tune_thread = threading.Thread(target=run, daemon=True)
+        self._tune_thread.start()
+        return True
 
     def live(self) -> bool:
         if not hasattr(self.m, "open"):
@@ -80,6 +119,8 @@ class Hub:
     def snapshot(self):
         s = self.p.state()
         s["link"] = self.m.name if self.live() else "lost"
+        if self.tuning:
+            s["tune"] = dict(self.tuning)
         return s
 
     def _bring_up(self):
@@ -97,7 +138,7 @@ class Hub:
     def _port(self, now):
         if not hasattr(self.m, "open"):
             return
-        held = self.p.creep or self.p.bend is not None
+        held = self.p.creep or self.p.bend is not None or self.busy_tuning()
         if any(c["shown"] for c in self.clients.values()) or held:
             self.m.touch()
             if self.m.link is None and self._opening is None and now >= self._retry_at:
@@ -133,7 +174,7 @@ class Hub:
                 await self.broadcast()
 
     def _step(self):
-        if not self.live():
+        if not self.live() or self.busy_tuning():
             return
         try:
             self.d.step(TICK)
@@ -155,7 +196,11 @@ class Hub:
         except ValueError:
             return
         t, b = m.get("t"), m.get("b")
-        if t == "down" and b in BUTTONS:
+        if t == "tune" and isinstance(m.get("s"), int):
+            self.start_tune(m["s"])
+        elif self.busy_tuning():
+            pass                                   # the tuner has the motors
+        elif t == "down" and b in BUTTONS:
             self.p.press(w, b)
         elif t == "up" and b in BUTTONS:
             self.p.release(w, b)
@@ -166,6 +211,47 @@ class Hub:
             self.clients[w]["shown"] = True
         self._step()                               # a press goes out now, not at the next tick
         await self.broadcast()
+
+
+def mock_tuner(motors, s, sign, report):
+    """--mock: asks for a pluck, takes a moment, and calls where the motor is open pitch."""
+    report("pluck", "")
+    time.sleep(0.3)
+    report("busy", "")
+    time.sleep(0.3)
+    report("busy", "worst 0.00 c")
+    return motors.home()[s]
+
+
+def bench_tuner(motors, s, sign, report):
+    """The real one: the bench package's tune.py on motor_ctrl's link (held by `motors`) and
+    the optical board, which is opened for the tune and shut after."""
+    import importlib
+    bench = os.path.normpath(os.path.join(HERE, "..", ".."))
+    pkg = next(d for d in sorted(os.listdir(bench))
+               if os.path.isfile(os.path.join(bench, d, "tune.py")))
+    tune = importlib.import_module(pkg + ".tune")
+    optical = importlib.import_module(pkg + ".optical")
+    copedent = importlib.import_module(pkg + ".copedent")
+    cop = copedent.load()
+    rig = tune.Rig(motors.link, ids={s: s}, sign=sign)
+
+    def ask(n):
+        report("pluck", "")
+        time.sleep(1.5)
+        report("busy", "")
+    opt = optical.OpticalLink()
+    try:
+        with tune.paused(rig, None):
+            rec = tune.tune_string(rig, tune.Ear(opt), s, tune.note_hz(cop["open"][s - 1]), ask,
+                                   log=lambda *a: print(*a, flush=True))
+    finally:
+        opt.close()
+    data = tune.load()
+    data["strings"][str(s)] = rec
+    tune.save(data)
+    report("busy", "worst %.2f c" % rec["verify_worst_cents"])
+    return rec["open_counts"]
 
 
 def _frame(payload: bytes, op=0x1) -> bytes:
@@ -236,6 +322,8 @@ async def handle(hub: Hub, r: asyncio.StreamReader, w: asyncio.StreamWriter):
         return
     if path == "/":
         path = "/index.html"
+    elif path == "/tune":
+        path = "/tune.html"
     if path == "/icon.png":
         body, ctype = ICON, "image/png"
     elif path == "/ca.crt" and CA_CRT and os.path.isfile(CA_CRT):

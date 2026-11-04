@@ -58,6 +58,7 @@ GUIDE_H = 10 * B                  # the +Y guide's cheeks: low posts off the flo
 SWEEP_CLR = 0.4                   # guide to any part that slides past it
 LEDGE_REF = "J3"                  # the through-hole housing the board comes to rest on
 LEDGE_IN = 0.5                    # the post stops this far inside the housing's mating face
+LEDGE_OVER = 1.5                  # a part this low off the laminate, the post stands OVER
 
 
 def _laminate():
@@ -138,19 +139,35 @@ def _ledge():
     """The post J3 comes down on: off the floor, up to the housing's underside, under the
     housing only, FIT off the laminate. Its Y run is the longest stretch under the housing
     that nothing seated BELOW J3 uses -- each such part slides down through that band on the
-    way in (J6's plug overlaps the housing's -Y end)."""
+    way in (J6's plug overlaps the housing's -Y end).
+    A part LOW on the laminate (LEDGE_OVER: SMD passives and leadless ICs, not plugs) does not
+    cut the run: the post stands off the laminate past it instead, SWEEP_CLR over the part and
+    FIT over its floor port. R2's arm switches U9 / U10 sit in the J2-J6 gap that is the post's
+    whole run (2026-11-04): J2's and J6's courtyards leave no room for them anywhere else
+    near the arms, and they stand 0.55 off the laminate against J3's 5.4."""
     hx0, hx1, hy0, hy1, hz0, _hz1 = ledge_target()
+    x0, x1 = hx0 + max(FIT, D.MCTRL_PORT_CLR), hx1 - LEDGE_IN     # past the laminate's port
     free = [(hy0 + FIT, hy1 - FIT)]
     for p in _parts(+1):
-        if p.zmax > hz0 + 1e-6:
+        if p.zmax > hz0 + 1e-6 or p.ymin > hy1 + SWEEP_CLR or p.ymax < hy0 - SWEEP_CLR:
+            continue
+        if p.xmax - hx0 <= LEDGE_OVER:
+            x0 = max(x0, p.xmax + SWEEP_CLR)
             continue
         a, b = p.ymin - SWEEP_CLR, p.ymax + SWEEP_CLR
         free = [seg for lo, hi in free
                 for seg in ((lo, min(hi, a)), (max(lo, b), hi)) if seg[1] > seg[0]]
-    x0, x1 = hx0 + max(FIT, D.MCTRL_PORT_CLR), hx1 - LEDGE_IN     # past the laminate's port
+    # the low parts' floor ports reach PORT_CLR past them: the post stands FIT past those too
+    y_lo, y_hi = hy0 + FIT, hy1 - FIT
+    reach = box_at(x1 - hx0, y_hi - y_lo, 1.0, x=(hx0 + x1) / 2, y=(y_lo + y_hi) / 2,
+                   z=MB.FLOOR_TOP - 0.5)
+    for c in EL.mctrl_floor_ports():
+        for sol in c.intersect(reach).solids().vals():
+            pb = sol.BoundingBox()
+            if hx0 + D.MCTRL_PORT_CLR + 1e-6 < pb.xmax <= hx0 + LEDGE_OVER + D.MCTRL_PORT_CLR:
+                x0 = max(x0, pb.xmax + FIT)
     # ...and it STANDS ON THE FLOOR: off every floor port (the plugs' openings run out under
     # this band), or it would hang a ledge into one
-    y_lo, y_hi = hy0 + FIT, hy1 - FIT
     foot = box_at(x1 - x0, y_hi - y_lo, 1.0, x=(x0 + x1) / 2, y=(y_lo + y_hi) / 2,
                   z=MB.FLOOR_TOP - 0.5)
     for c in EL.mctrl_floor_ports():

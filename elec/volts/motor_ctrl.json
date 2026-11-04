@@ -35,6 +35,11 @@
    "v": 5.174,
    "why": "U6.6 (OUT) can reach its supply +5V"
   },
+  "+5V_BUSB_LEV": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "U11.6 (OUT) can reach its supply +5V"
+  },
   "+5V_RAW": {
    "peak": 5.432,
    "v": 5.174,
@@ -60,15 +65,20 @@
    "v": 5.174,
    "why": "U6.5 (ILIM) can reach its supply +5V"
   },
+  "BUSB_LEV_ILIM": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "U11.5 (ILIM) can reach its supply +5V"
+  },
   "CAN1_RX": {
    "peak": 3.604,
    "v": 3.432,
-   "why": "U2.4 (RXD) can reach its supply +3V3; U4.64 (io) can reach its supply +3V3"
+   "why": "U2.4 (RXD) can reach its supply +3V3; U4.46 (io) can reach its supply +3V3"
   },
   "CAN1_TX": {
    "peak": 3.604,
    "v": 3.432,
-   "why": "U4.65 (io) can reach its supply +3V3"
+   "why": "U4.47 (io) can reach its supply +3V3"
   },
   "CAN2_RX": {
    "peak": 3.604,
@@ -120,6 +130,16 @@
    "v": 1.796,
    "why": "divider off +24V: x 0.0680"
   },
+  "EN_LEV": {
+   "peak": 3.604,
+   "v": 3.432,
+   "why": "U4.57 (io) can reach its supply +3V3; through R31"
+  },
+  "EN_PED": {
+   "peak": 3.604,
+   "v": 3.432,
+   "why": "U4.56 (io) can reach its supply +3V3; through R30"
+  },
   "FB": {
    "peak": 0.834,
    "v": 0.794,
@@ -130,6 +150,14 @@
    "v": 1.031,
    "why": "divider off +5V_RAW: x 0.1994"
   },
+  "FLASH_DM": {
+   "v": 3.6,
+   "why": "the flash lane's D-, joined to an arm only in USB mode (U9 / U10 S high); 5 V only with a harness fault"
+  },
+  "FLASH_DP": {
+   "v": 3.6,
+   "why": "the flash lane's D+, joined to an arm only in USB mode (U9 / U10 S high); 5 V only with a harness fault"
+  },
   "GND": 0,
   "J4_NC_A8": {
    "v": 0.0,
@@ -138,6 +166,26 @@
   "J4_NC_B8": {
    "v": 0.0,
    "why": "not connected"
+  },
+  "LEV_H": {
+   "peak": 7.8,
+   "v": 5.0,
+   "why": "bus B: 5 V nodes; nothing above 5 V in its cable; transient = the ESD5B5.0 clamps' maximum breakdown (motor_ctrl D4 / D5, and each lever board's own)"
+  },
+  "LEV_L": {
+   "peak": 7.8,
+   "v": 5.0,
+   "why": "bus B: 5 V nodes; nothing above 5 V in its cable; transient = the ESD5B5.0 clamps' maximum breakdown (motor_ctrl D4 / D5, and each lever board's own)"
+  },
+  "LINK_DM": {
+   "peak": 3.604,
+   "v": 3.6,
+   "why": "U7.6 (io) can reach its supply +3V3; through U8"
+  },
+  "LINK_DP": {
+   "peak": 3.604,
+   "v": 3.6,
+   "why": "U7.5 (io) can reach its supply +3V3; through U8"
   },
   "LINK_DTR_N": {
    "peak": 3.604,
@@ -158,16 +206,6 @@
    "peak": 3.604,
    "v": 3.432,
    "why": "U4.45 (io) can reach its supply +3V3; U7.2 (io) can reach its supply +3V3"
-  },
-  "MCU_NC_PA11": {
-   "peak": 3.604,
-   "v": 3.432,
-   "why": "U4.46 (io) can reach its supply +3V3"
-  },
-  "MCU_NC_PA12": {
-   "peak": 3.604,
-   "v": 3.432,
-   "why": "U4.47 (io) can reach its supply +3V3"
   },
   "N$1": {
    "v": 0.0,
@@ -192,6 +230,16 @@
    "v": 3.432,
    "why": "U4.6 (io) can reach its supply +3V3"
   },
+  "PED_H": {
+   "peak": 7.8,
+   "v": 5.0,
+   "why": "bus B: 5 V nodes; nothing above 5 V in its cable; transient = the ESD5B5.0 clamps' maximum breakdown (motor_ctrl D4 / D5, and each lever board's own)"
+  },
+  "PED_L": {
+   "peak": 7.8,
+   "v": 5.0,
+   "why": "bus B: 5 V nodes; nothing above 5 V in its cable; transient = the ESD5B5.0 clamps' maximum breakdown (motor_ctrl D4 / D5, and each lever board's own)"
+  },
   "PG_5V": {
    "peak": 3.604,
    "v": 3.432,
@@ -211,6 +259,21 @@
    "peak": 3.604,
    "v": 3.432,
    "why": "through R26"
+  },
+  "SEL_LEV": {
+   "peak": 3.604,
+   "v": 3.432,
+   "why": "U4.33 (io) can reach its supply +3V3"
+  },
+  "SEL_LINK": {
+   "peak": 3.604,
+   "v": 3.432,
+   "why": "U4.19 (io) can reach its supply +3V3"
+  },
+  "SEL_PED": {
+   "peak": 3.604,
+   "v": 3.432,
+   "why": "U4.34 (io) can reach its supply +3V3"
   },
   "SENSE_24V": {
    "peak": 3.125,
@@ -279,13 +342,13 @@
   },
   "USB_DM": {
    "peak": 3.604,
-   "v": 3.432,
-   "why": "U7.6 (io) can reach its supply +3V3"
+   "v": 3.6,
+   "why": "through U8"
   },
   "USB_DP": {
    "peak": 3.604,
-   "v": 3.432,
-   "why": "U7.5 (io) can reach its supply +3V3"
+   "v": 3.6,
+   "why": "through U8"
   },
   "VBUS_NC": {
    "peak": 5.5,
@@ -418,9 +481,33 @@
    "max": 50.0,
    "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
+  "C35.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C37.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C38.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C39.1": {
+   "max": 25.0,
+   "src": "rated V -- CL05A105KA5NQNC (C52923): JLCPCB parts API attributes for C52923 (CL05A105KA5NQNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
   "C4.1": {
    "max": 50.0,
    "src": "rated V -- 0402CG150J500NT (C1548): JLCPCB parts API attributes for C1548 (0402CG150J500NT, FH (Guangdong Fenghua Advanced Tech)), fetched 2026-10-06"
+  },
+  "C40.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C41.1": {
+   "max": 25.0,
+   "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
   "C5.1": {
    "max": 50.0,
@@ -446,6 +533,18 @@
    "max": 60.0,
    "src": "VRRM -- DSS16 (C7467023): FUXINSEMI DSS12 thru DSS120 Ver2.1 p.1, column DSS16: VRRM 60 V, VDC 60 V, I(AV) 1.0 A, IFSM 30 A, VF 0.70 V at 1 A; SOD-123, band = cathode"
   },
+  "D10.1": {
+   "max": 5.8,
+   "peak": "none",
+   "src": "ESD5B5.0ST1G (C93623): onsemi ESD5B5.0S datasheet p.2 electrical table (VRWM 5.0, VBR 5.8-7.8 @1 mA), p.1 max ratings (50 W 8x20 us, 10 W 10x1000 us, 200 mW)",
+   "why": "this part IS the clamp on LEV_H: it stands 5 V (where its leakage is specified) and starts to conduct at 5.8 V, the figure a steady level must stay under"
+  },
+  "D11.1": {
+   "max": 5.8,
+   "peak": "none",
+   "src": "ESD5B5.0ST1G (C93623): onsemi ESD5B5.0S datasheet p.2 electrical table (VRWM 5.0, VBR 5.8-7.8 @1 mA), p.1 max ratings (50 W 8x20 us, 10 W 10x1000 us, 200 mW)",
+   "why": "this part IS the clamp on LEV_L: it stands 5 V (where its leakage is specified) and starts to conduct at 5.8 V, the figure a steady level must stay under"
+  },
   "D2.1": {
    "max": 26.2,
    "peak": "none",
@@ -462,13 +561,13 @@
    "max": 5.8,
    "peak": "none",
    "src": "ESD5B5.0ST1G (C93623): onsemi ESD5B5.0S datasheet p.2 electrical table (VRWM 5.0, VBR 5.8-7.8 @1 mA), p.1 max ratings (50 W 8x20 us, 10 W 10x1000 us, 200 mW)",
-   "why": "this part IS the clamp on CANB_H: it stands 5 V (where its leakage is specified) and starts to conduct at 5.8 V, the figure a steady level must stay under"
+   "why": "this part IS the clamp on PED_H: it stands 5 V (where its leakage is specified) and starts to conduct at 5.8 V, the figure a steady level must stay under"
   },
   "D5.1": {
    "max": 5.8,
    "peak": "none",
    "src": "ESD5B5.0ST1G (C93623): onsemi ESD5B5.0S datasheet p.2 electrical table (VRWM 5.0, VBR 5.8-7.8 @1 mA), p.1 max ratings (50 W 8x20 us, 10 W 10x1000 us, 200 mW)",
-   "why": "this part IS the clamp on CANB_L: it stands 5 V (where its leakage is specified) and starts to conduct at 5.8 V, the figure a steady level must stay under"
+   "why": "this part IS the clamp on PED_L: it stands 5 V (where its leakage is specified) and starts to conduct at 5.8 V, the figure a steady level must stay under"
   },
   "D6.1": {
    "max": 5.4,
@@ -772,9 +871,41 @@
    "max": 50.0,
    "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
   },
+  "R27.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R28.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R29.1": {
+   "max": 50.0,
+   "src": "element V -- RC0402FR-0749K9L (C137969): YAGEO RC0402FR-07 series, the series C163455 / C138058 / C138027 / C138045 / C274897 / C327251 are read from (JLCPCB parts API, 2026-10-06: 50 V, 62.5 mW for every value); fab.py's R22 from 2026-11-01"
+  },
   "R3.1": {
    "max": 50.0,
    "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R30.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R30.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R31.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R31.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R32.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
   },
   "R4.1": {
    "max": 50.0,
@@ -833,6 +964,58 @@
   "U1.6": {
    "max": 65.0,
    "src": "abs max -- LMR16006XDDCR (C87080): TI LMR16006 datasheet SNVSA24 p.4 s7.1: VIN, SHDN, SW to GND -0.3..65 V; FB 7 V; CB to SW 7 V; s7.3 VIN 4-60 V; p.5 VFB 0.747/0.765/0.782 V"
+  },
+  "U10.1": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U10.10": {
+   "max": 4.6,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U10.2": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U10.3": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U10.4": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U10.7": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U10.8": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U10.9": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U11.1": {
+   "max": 7.0,
+   "src": "abs max -- TPS2553DBVR (C55266): TI TPS2552/3 datasheet p.3 absolute maximum ratings: IN, OUT, EN, ILIM, FAULT -0.3..7 V; p.4 recommended VIN 2.5-6.5 V"
+  },
+  "U11.3": {
+   "max": 7.0,
+   "src": "abs max -- TPS2553DBVR (C55266): TI TPS2552/3 datasheet p.3 absolute maximum ratings: IN, OUT, EN, ILIM, FAULT -0.3..7 V; p.4 recommended VIN 2.5-6.5 V"
+  },
+  "U11.4": {
+   "max": 7.0,
+   "src": "abs max -- TPS2553DBVR (C55266): TI TPS2552/3 datasheet p.3 absolute maximum ratings: IN, OUT, EN, ILIM, FAULT -0.3..7 V; p.4 recommended VIN 2.5-6.5 V"
+  },
+  "U11.5": {
+   "max": 7.0,
+   "src": "abs max -- TPS2553DBVR (C55266): TI TPS2552/3 datasheet p.3 absolute maximum ratings: IN, OUT, EN, ILIM, FAULT -0.3..7 V; p.4 recommended VIN 2.5-6.5 V"
+  },
+  "U11.6": {
+   "max": 7.0,
+   "src": "abs max -- TPS2553DBVR (C55266): TI TPS2552/3 datasheet p.3 absolute maximum ratings: IN, OUT, EN, ILIM, FAULT -0.3..7 V; p.4 recommended VIN 2.5-6.5 V"
   },
   "U2.1": {
    "max": 6.0,
@@ -898,6 +1081,10 @@
    "max": 4.0,
    "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
   },
+  "U4.19": {
+   "max": 3.904,
+   "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
+  },
   "U4.20": {
    "max": 3.904,
    "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
@@ -916,6 +1103,14 @@
   },
   "U4.32": {
    "max": 4.0,
+   "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
+  },
+  "U4.33": {
+   "max": 3.904,
+   "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
+  },
+  "U4.34": {
+   "max": 3.904,
    "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
   },
   "U4.35": {
@@ -966,19 +1161,19 @@
    "max": 3.904,
    "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
   },
+  "U4.56": {
+   "max": 3.904,
+   "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
+  },
+  "U4.57": {
+   "max": 3.904,
+   "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
+  },
   "U4.6": {
    "max": 3.904,
    "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
   },
   "U4.63": {
-   "max": 3.904,
-   "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
-  },
-  "U4.64": {
-   "max": 3.904,
-   "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
-  },
-  "U4.65": {
    "max": 3.904,
    "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
   },
@@ -1102,6 +1297,70 @@
   "U7.9": {
    "max": 4.104,
    "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U8.1": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U8.10": {
+   "max": 4.6,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U8.2": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U8.3": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U8.4": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U8.7": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U8.8": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U8.9": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U9.1": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U9.10": {
+   "max": 4.6,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U9.2": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U9.3": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U9.4": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U9.7": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U9.8": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U9.9": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
   },
   "Y1.1": {
    "max": "none",

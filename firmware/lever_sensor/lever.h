@@ -21,7 +21,11 @@
  *                                   board with that uid takes the slot and stores it;
  *                                   'H': HOLD THE CHAIN -- every board cuts the next board's 5 V
  *                                   and keeps it off until its own CMD 'N' (a board still in its
- *                                   NEXT_AFTER_US start window stays held too);
+ *                                   NEXT_AFTER_US start window stays held too). A next board
+ *                                   that an 'N' 1 let up STAYS up, so the Pi can say 'H' again
+ *                                   the moment each new board appears: that board was dark at
+ *                                   the first 'H', and would otherwise power the one after it
+ *                                   NEXT_AFTER_US later, before its own 'N';
  *                                   'U' ms u16 LE, slot u8: RELEASE THE PAIR for a flash over USB
  *                                   (docs/lever-usb-flash.md): every board turns its transceiver
  *                                   off, lets go of CAN_H / CAN_L and waits, silent, for the arm's
@@ -125,6 +129,7 @@ typedef struct {
     uint8_t release_cycle;                  /* ...and this board is the one that cycles */
     uint8_t want_next;                      /* 0 nothing, 1 next board on, 2 off (LC_NEXT) */
     uint8_t held;                           /* LC_HOLD heard: no automatic power-up */
+    uint8_t next_by_cmd;                    /* the next board is on by an 'N' 1, not by itself */
 } lever_t;
 
 uint32_t lever_crc32(const void *p, uint32_t n);

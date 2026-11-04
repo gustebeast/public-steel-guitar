@@ -109,6 +109,37 @@ and the pitch-up/down position in `/var/lib/public-steel-guitar-phone/state.json
 a restart if the motors are still where the file says. To re-home, retune, delete the file
 and restart the service.
 
+## Tuning: /tune (2026-11-04)
+
+`https://public-steel-guitar.home/tune` is a second page: one button per string, in the
+same 1-bit look. A tap tunes that string with `bench/publicbench/tune.py`:
+
+1. **Sweep.** The motor visits five points from 400 cents below open to 375 above, the string
+   ringing. The foot of the page says PLUCK N whenever it has rung out.
+2. **Fit.** Counts are fitted against r = (f / f_open)^2 as a + b r + c r^2.
+3. **Open.** The string goes to the fit's open note and is corrected until within 1 cent.
+4. **Verify.** Four points on the new curve are played and read. The worst error shows as
+   `N DONE / WORST x.xx C`.
+
+The curve is kept in `bench/publicbench/curves.json` and the string's home becomes its open
+note. Play is paused for the tune and restored after. Other buttons do nothing while a string
+tunes.
+
+The phone tunes and records. It does not write motor_ctrl's table. With every string on its
+open note, write the table and re-base with:
+
+    python3 -m publicbench.tune --table
+
+`python3 -m publicbench.tune` tunes every string from a terminal, then writes the table itself.
+
+Notes:
+- The open notes are `copedent.json`'s `open`, at A4 = 440.
+- The pitch is read off the optical board's SUM, so that board must be on USB.
+- The buttons still move strings by the model (`DL_OPEN`), not the measured curve.
+- Proven in simulation only (`bench/tests/test_tune.py`): takes.py's plucked string over the
+  R1 board's noise floor, on strings stiffer, softer and more curved than the model, and with a
+  motor turning either way.
+
 ## Not tested yet: needs the bench
 
 - **Which way raises pitch.** `RAISE_SIGN` in `pitchctl.py` (or `--raise-sign -1`) is a guess
