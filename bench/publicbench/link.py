@@ -169,6 +169,7 @@ class MotorCtrlLink(_Base):
             self.ser = open_motor()
         self.offset = None              # computer time - board time, seconds
         self.errors: list[str] = []
+        self.answers: list[list[str]] = []      # OK / P / E lines, split
         self._times: list[tuple[float, int]] = []
         self._run = True
         threading.Thread(target=self._reader, daemon=True).start()
@@ -226,6 +227,22 @@ class MotorCtrlLink(_Base):
                     self._left(int(p[1]), int(p[3]) / 1e6 + self.offset)
                 elif p[0] in ("E", "L"):
                     self.errors.append(" ".join(p))
+                    with self._cv:
+                        self.answers.append(p)
+                        self._cv.notify_all()
+                elif p[0] in ("OK", "P"):
+                    with self._cv:
+                        self.answers.append(p)
+                        self._cv.notify_all()
+
+    def ask(self, line: str, timeout=1.0) -> list[str]:
+        """Send a line and wait for its answer (OK, P or E): the first one after it."""
+        k = len(self.answers)
+        self._write(line)
+        got = self.wait(lambda: self.answers[k] if len(self.answers) > k else None, timeout)
+        if got is None:
+            raise TimeoutError("no answer to %r" % line)
+        return got
 
     def close(self):
         self._run = False

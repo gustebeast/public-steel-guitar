@@ -1,5 +1,18 @@
 # bronner — open work items (2026-09-30)
 
+## Control path: levers and pedals to motor targets, in sim (lead, 2026-11-03) -- BUILT
+
+Written up in docs/control-path.md. Copedent music + string curves on the Pi
+(bench/publicbench/copedent.json, copedent.py), compiled to a 1,192-byte table that motor_ctrl
+keeps in flash; play.c on motor_ctrl does the combine rule (largest raise + largest lower, in
+cents), the curve lookup to counts, power-on basing (0x31, then 0xF3) and rate-limited F5
+moves. main.c: P / P 0 / P 1 / P Z / P W / P S lines; builds R1 14.6 K, R2 13.4 K. 9 tests on the
+Pi: the real lever.c and play.c end to end with SimServo. First F5 0.9-1.9 ms after a pedal step;
+electronics ~3 ms onset and ~9 ms behind a moving pedal, inside the 15-23 ms C3 window; the motor
+is the long pole (unloaded 39 ms whole tone). export_rig now reads copedent.json.
+OPEN: loaded motor numbers (bench, hands); bus A load past 4 moving strings (replies off, or
+1 Mbit); a pedal down at power-off comes back off pitch; the tuning UI that measures curves.
+
 ## lever_sensor application firmware + the USB-only finding (lead, 2026-11-03)
 
 **Built on agent/bronner-lever-fw, unproven on a board (none ordered).**

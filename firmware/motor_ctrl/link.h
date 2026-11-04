@@ -12,12 +12,15 @@
  * here. A CH343P in U7's place is this line and nothing else (6 Mbaud: 96 MHz / 16). */
 #define LINK_BAUD  2000000u
 
-/* Flash, at the chip's 0x08000000 alias: [loader 28 K][record 4 K][application].
- * The application is linked at APP_ORG (0x8000 in the link map). */
+/* Flash, at the chip's 0x08000000 alias: [loader 28 K][record 4 K][application][play table 4 K].
+ * The application is linked at APP_ORG (0x8000 in the link map); FLASH_END is the end of what
+ * the loader may write, and the sector after it holds play.h's table (main.c 'P S'). A loader
+ * built before the table (288 K) erases only what an image needs, so it leaves the table too. */
 #define FLASH_BASE_ADDR 0x08000000u
 #define APP_ORG    0x8000u
 #define REC_ORG    0x7000u
-#define FLASH_END  (288u * 1024u)
+#define FLASH_END  (284u * 1024u)
+#define TABLE_ORG  FLASH_END
 #define PAGE       256u
 #define SECTOR     4096u
 #if REV == 1

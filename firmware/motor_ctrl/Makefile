@@ -30,7 +30,7 @@ else
 LINK := $(B)/link_uart.o $(B)/frame.o
 endif
 VOBJ := $(patsubst %.c,$(B)/v/%.o,$(notdir $(VSRC)))
-COMMON := $(LINK) $(B)/startup.o $(VOBJ)
+COMMON := $(LINK) $(B)/startup.o $(VOBJ) $(B)/play.o
 
 CFLAGS := -march=rv32imac_zicsr_zifencei -mabi=ilp32 -msmall-data-limit=8 -Os -g \
           -ffunction-sections -fdata-sections -fno-common -Wall \
@@ -56,7 +56,7 @@ $(B)/boot.o: $(B)/v/boot.c link.h frame.h
 $(B)/v/%.o: $(B)/v/%.c
 	$(CROSS)gcc $(CFLAGS) -w -c $< -o $@
 
-$(B)/%.o: %.c link.h frame.h | $(B)/v
+$(B)/%.o: %.c link.h frame.h play.h | $(B)/v
 	$(CROSS)gcc $(CFLAGS) -c $< -o $@
 
 # WCH's startup drops to user mode for main. The loader must stay in machine mode, because the
@@ -69,12 +69,12 @@ $(B)/startup.o: $(B)/v/startup.S
 	$(CROSS)gcc $(CFLAGS) -c $< -o $@
 
 # as this chip's option bytes have it (wlink: 288 K): 288 K flash, 32 K RAM, less the 16 bytes
-# at its top that carry BOOT_WORDS over a reset
+# at its top that carry BOOT_WORDS over a reset. The application stops 4 K short: link.h TABLE_ORG
 $(B)/boot.ld: $(EXAM)/SRC/Ld/Link.ld | $(B)/v
 	sed -e 's/FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 288K/FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 28K/' \
 	    -e 's/RAM (xrw) : ORIGIN = 0x20000000, LENGTH = 32K/RAM (xrw) : ORIGIN = 0x20000000, LENGTH = 32752/' $< > $@
 $(B)/main.ld: $(EXAM)/SRC/Ld/Link.ld | $(B)/v
-	sed -e 's/FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 288K/FLASH (rx) : ORIGIN = 0x00008000, LENGTH = 256K/' \
+	sed -e 's/FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 288K/FLASH (rx) : ORIGIN = 0x00008000, LENGTH = 252K/' \
 	    -e 's/RAM (xrw) : ORIGIN = 0x20000000, LENGTH = 32K/RAM (xrw) : ORIGIN = 0x20000000, LENGTH = 32752/' $< > $@
 
 $(B)/%.elf: $(B)/%.o $(COMMON) $(B)/%.ld
