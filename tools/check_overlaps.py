@@ -84,12 +84,13 @@ PER_STRING_OK = {
     # nut-block hardware (per string): break pin sets the scale, set screw clamps the
     # string, threading through its own heat-set insert
     frozenset({"break_dowel", "string"}), frozenset({"set_screw", "string"}),
-    # the SLIDING INSERT is the clamp: its flat pinches the string's tail against the wrap on
-    # the rod (nut_block.slide_insert) -- a designed contact, on its own string only
-    frozenset({"nut_slide_insert", "string"}),
-    # the height screw threads its heat-set and its tip bears on its own insert's foot
+    # the STEEL NUT PLATE: its crown is the break, its shelf pinches the one strand under the
+    # rod, and the side screw pins the tail to its -X face (nut_block.plate) -- designed contacts
+    frozenset({"nut_plate", "string"}), frozenset({"nut_side_screw", "string"}),
+    # the height screw threads its heat-set and its tip bears on its own plate's foot
     frozenset({"nut_height_screw", "nut_height_insert"}),
-    frozenset({"nut_height_screw", "nut_slide_insert"}),
+    frozenset({"nut_height_screw", "nut_plate"}),
+    frozenset({"nut_side_screw", "nut_side_insert"}),
     frozenset({"nut", "screw_pulley"}), frozenset({"screw_bearing", "screw_pulley"}),
     # the collar's bore is 4.6 and the rod is Ø5: the interference IS the design —
     # the steel FORMS its mating thread in the plastic on the way in (screw_collar.py)
@@ -129,6 +130,7 @@ GLOBAL_OK = {
     frozenset({"keyhead_endplate", "top_plate"}),
     frozenset({"keyhead_endplate", "break_dowel"}), frozenset({"keyhead_endplate", "set_screw"}),
     frozenset({"keyhead_endplate", "nut_height_insert"}),   # melted into its slab pocket
+    frozenset({"keyhead_endplate", "nut_side_insert"}),     # ...and into the bed face
     # pickup carrier: the pickup rests on the printed Z-plate, which the three LEADSCREW
     # jacks raise/tilt -- each screw head captured in a piece bearing housing at the top,
     # its thread running through a heat-set-insert NUT in the plate. (Y hold-down clamp
