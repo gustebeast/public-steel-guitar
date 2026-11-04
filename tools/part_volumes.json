@@ -27,7 +27,7 @@
   },
   "body_adapter": {
    "material": "petg-gf",
-   "volume_mm3": 83338.4
+   "volume_mm3": 83350.4
   },
   "body_adapter_mx_my": {
    "material": "petg-gf",
@@ -71,7 +71,7 @@
   },
   "chassis_2": {
    "material": "petg-gf",
-   "volume_mm3": 624106.3
+   "volume_mm3": 624072.5
   },
   "chassis_2_light": {
    "material": "pctg",
@@ -95,7 +95,7 @@
   },
   "keyhead_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 231017.2
+   "volume_mm3": 249973.6
   },
   "kl_axle": {
    "material": "pctg",
@@ -172,6 +172,14 @@
   "motor_shaft_saw_jig": {
    "material": null,
    "volume_mm3": 29854.8
+  },
+  "nut_plate": {
+   "material": null,
+   "volume_mm3": 1909.6
+  },
+  "nut_slide_insert": {
+   "material": "pctg",
+   "volume_mm3": 1796.0
   },
   "nut_slide_insert_a": {
    "material": "pctg",
