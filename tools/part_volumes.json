@@ -175,11 +175,11 @@
   },
   "nut_plate": {
    "material": null,
-   "volume_mm3": 2747.0
+   "volume_mm3": 3065.1
   },
   "nut_slide_insert": {
    "material": "pctg",
-   "volume_mm3": 2572.9
+   "volume_mm3": 2873.5
   },
   "nut_slide_insert_a": {
    "material": "pctg",
