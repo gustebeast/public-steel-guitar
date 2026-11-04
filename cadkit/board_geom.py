@@ -78,6 +78,7 @@ HEIGHT = {
     "SOIC-8_3.9x4.9mm_P1.27mm": 1.75, "SOIC-8-1EP_3.9x4.9mm_P1.27mm_EP2.29x3mm": 1.75,
     "TSSOP-14_4.4x5mm_P0.65mm": 1.20, "TSSOP-16_4.4x5mm_P0.65mm": 1.20,
     "TSSOP-20_4.4x6.5mm_P0.65mm": 1.20,
+    "QSOP-16_3.9x4.9mm_P0.635mm": 1.75,                    # JEDEC MO-137 AB, A max (WCH CH334R)
     "HTSSOP-20-1EP_4.4x6.5mm_P0.65mm_EP3.4x6.5mm_Mask2.75x3.43mm": 1.20,   # TI PWP max
     "QFN-16-1EP_3x3mm_P0.5mm_EP1.45x1.45mm": 0.80,
     "QFN-28-1EP_4x4mm_P0.4mm_EP2.4x2.4mm": 0.90,
