@@ -4851,6 +4851,11 @@
       "verified": "v",
       "what": "0R C17888 -- JLCPCB parts API at qty 10"
     },
+    "motor_ctrl:U7": {
+      "usd": 0.456,
+      "verified": "v",
+      "what": "CH340C C84681 -- the price output_panel:U17 records (JLCPCB parts API, 2026-11-03); R2's link and ROM-loader bridge, 97,566 in stock"
+    },
     "optical:Cs19": {
       "usd": 0.0083,
       "verified": "v",

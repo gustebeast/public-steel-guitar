@@ -4814,6 +4814,9 @@ if OP.OPTICAL_REV != 1:
     _r2("M28", "S4B-XH-SM4-TB, TYPE-C-31-M-12", "B4B-XH-A, TYPE-C-31-M-12, CH334F C5187527, CH340C "
         "C84681, AO3401A C15127, DSS16 C7467023, TAXM12M4RFBCCT2T C133337")
     _r2("M31", "the board's name and r1 on the front", "the board's name and rev on the front")
+    _r2("M32", "on KiCad's JST_XH_S4B-XH-SM4-TB land", "on KiCad's JST_XH_B4B-XH-A land "
+        "(R2's top-entry header, through-hole posts)")
+    _r2("M32", "AWG 22-28 for 0.26 A", "AWG 22-28 for 0.30 A")
     _r2("M33", "+3V3D: 212 typical, 462 at ST's 85 C all-peripherals maximum, of U8's 1 A; 0.79 W "
         "in the SOT-223 at that corner. 5 V: 0.46 A typical, 1.08 A worst, of U13's 3 A. 24 V: 79 "
         "mA typical, 0.26 A worst, through 3 A contacts, R44 (0.14 W of 1 W)",

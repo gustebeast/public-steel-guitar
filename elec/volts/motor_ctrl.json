@@ -139,6 +139,36 @@
    "v": 0.0,
    "why": "not connected"
   },
+  "LINK_DTR_N": {
+   "peak": 3.604,
+   "v": 3.432,
+   "why": "U7.13 (io) can reach its supply +3V3"
+  },
+  "LINK_RTS_N": {
+   "peak": 3.604,
+   "v": 3.432,
+   "why": "U7.14 (io) can reach its supply +3V3"
+  },
+  "LINK_RX": {
+   "peak": 3.604,
+   "v": 3.432,
+   "why": "U4.44 (io) can reach its supply +3V3; U7.3 (io) can reach its supply +3V3"
+  },
+  "LINK_TX": {
+   "peak": 3.604,
+   "v": 3.432,
+   "why": "U4.45 (io) can reach its supply +3V3; U7.2 (io) can reach its supply +3V3"
+  },
+  "MCU_NC_PA11": {
+   "peak": 3.604,
+   "v": 3.432,
+   "why": "U4.46 (io) can reach its supply +3V3"
+  },
+  "MCU_NC_PA12": {
+   "peak": 3.604,
+   "v": 3.432,
+   "why": "U4.47 (io) can reach its supply +3V3"
+  },
   "N$1": {
    "v": 0.0,
    "why": "pulled to ground"
@@ -177,6 +207,11 @@
    "v": 10.6,
    "why": "the power button's throw, from output_panel [output_panel.SW_SENSE: clamped by D8 (BZT52C10T, VZ max 10.6 V) behind R33+R34 = 9.4 k; +0.2 V for its 20 ohm at the transient current]"
   },
+  "Q2_B": {
+   "peak": 3.604,
+   "v": 3.432,
+   "why": "through R26"
+  },
   "SENSE_24V": {
    "peak": 3.125,
    "v": 2.4,
@@ -207,15 +242,50 @@
    "v": 3.432,
    "why": "U4.48 (io) can reach its supply +3V3"
   },
+  "U7_NC_10": {
+   "peak": 3.604,
+   "v": 3.432,
+   "why": "U7.10 (io) can reach its supply +3V3"
+  },
+  "U7_NC_11": {
+   "peak": 3.604,
+   "v": 3.432,
+   "why": "U7.11 (io) can reach its supply +3V3"
+  },
+  "U7_NC_12": {
+   "peak": 3.604,
+   "v": 3.432,
+   "why": "U7.12 (io) can reach its supply +3V3"
+  },
+  "U7_NC_15": {
+   "peak": 3.604,
+   "v": 3.432,
+   "why": "U7.15 (io) can reach its supply +3V3"
+  },
+  "U7_NC_7": {
+   "peak": 3.604,
+   "v": 3.432,
+   "why": "U7.7 (io) can reach its supply +3V3"
+  },
+  "U7_NC_8": {
+   "peak": 3.604,
+   "v": 3.432,
+   "why": "U7.8 (io) can reach its supply +3V3"
+  },
+  "U7_NC_9": {
+   "peak": 3.604,
+   "v": 3.432,
+   "why": "U7.9 (io) can reach its supply +3V3"
+  },
   "USB_DM": {
    "peak": 3.604,
    "v": 3.432,
-   "why": "U4.46 (io) can reach its supply +3V3"
+   "why": "U7.6 (io) can reach its supply +3V3"
   },
   "USB_DP": {
    "peak": 3.604,
    "v": 3.432,
-   "why": "U4.47 (io) can reach its supply +3V3"
+   "why": "U7.5 (io) can reach its supply +3V3"
   },
   "VBUS_NC": {
    "peak": 5.5,
@@ -341,6 +411,10 @@
    "src": "rated V -- CL31A226KAHNNNE (C12891): JLCPCB parts API attributes for C12891 (CL31A226KAHNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
   "C33.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C34.1": {
    "max": 50.0,
    "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
@@ -584,6 +658,32 @@
    "src": "VLS6045EX-6R8M (C415364): TDK VLS6045EX datasheet p.1 table: VLS6045EX-6R8M Isat 4.7 A, Itemp 3.6 A",
    "why": "no voltage rating applies; current checked below"
   },
+  "Q1.1": {
+   "max": 12.0,
+   "src": "VGS -- AO3401A (C15127): AOS AO3401A Rev 3.1 December 2023 p.1 absolute maximum ratings: VDS -30 V, VGS +/-12 V, ID -4 A at 25 C; SOT23 drawing G, S, D"
+  },
+  "Q1.2": {
+   "max": "none",
+   "src": "AO3401A (C15127): AOS AO3401A Rev 3.1 December 2023 p.1 absolute maximum ratings: VDS -30 V, VGS +/-12 V, ID -4 A at 25 C; SOT23 drawing G, S, D",
+   "why": "reference terminal"
+  },
+  "Q1.3": {
+   "max": 30.0,
+   "src": "VDS -- AO3401A (C15127): AOS AO3401A Rev 3.1 December 2023 p.1 absolute maximum ratings: VDS -30 V, VGS +/-12 V, ID -4 A at 25 C; SOT23 drawing G, S, D"
+  },
+  "Q2.1": {
+   "max": 6.0,
+   "src": "VGS -- MMBT3904 (C20526): CJ MMBT3904 (LCSC C20526 listing, read 2026-11-03): VCEO 40 V, VEBO 6 V, IC 200 mA, SOT-23 1 B 2 E 3 C. An NPN, entered as an N fet so voltage_check grades it: base as G (VEBO as VGS), emitter as S, collector as D (VCEO as VDS)"
+  },
+  "Q2.2": {
+   "max": "none",
+   "src": "MMBT3904 (C20526): CJ MMBT3904 (LCSC C20526 listing, read 2026-11-03): VCEO 40 V, VEBO 6 V, IC 200 mA, SOT-23 1 B 2 E 3 C. An NPN, entered as an N fet so voltage_check grades it: base as G (VEBO as VGS), emitter as S, collector as D (VCEO as VDS)",
+   "why": "reference terminal"
+  },
+  "Q2.3": {
+   "max": 40.0,
+   "src": "VDS -- MMBT3904 (C20526): CJ MMBT3904 (LCSC C20526 listing, read 2026-11-03): VCEO 40 V, VEBO 6 V, IC 200 mA, SOT-23 1 B 2 E 3 C. An NPN, entered as an N fet so voltage_check grades it: base as G (VEBO as VGS), emitter as S, collector as D (VCEO as VDS)"
+  },
   "R1.1": {
    "max": 50.0,
    "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
@@ -663,6 +763,14 @@
   "R25.1": {
    "max": 50.0,
    "src": "element V -- 0402WGF5101TCE (C25905): JLCPCB parts API attributes for C25905 (0402WGF5101TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R26.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R26.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
   },
   "R3.1": {
    "max": 50.0,
@@ -822,6 +930,14 @@
    "max": 3.904,
    "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
   },
+  "U4.44": {
+   "max": 3.904,
+   "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
+  },
+  "U4.45": {
+   "max": 3.904,
+   "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
+  },
   "U4.46": {
    "max": 3.904,
    "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
@@ -926,6 +1042,66 @@
   "U6.6": {
    "max": 7.0,
    "src": "abs max -- TPS2553DBVR (C55266): TI TPS2552/3 datasheet p.3 absolute maximum ratings: IN, OUT, EN, ILIM, FAULT -0.3..7 V; p.4 recommended VIN 2.5-6.5 V"
+  },
+  "U7.10": {
+   "max": 4.104,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U7.11": {
+   "max": 4.104,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U7.12": {
+   "max": 4.104,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U7.13": {
+   "max": 4.104,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U7.14": {
+   "max": 4.104,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U7.15": {
+   "max": 4.104,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U7.16": {
+   "max": 6.0,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U7.2": {
+   "max": 4.104,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U7.3": {
+   "max": 4.104,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U7.4": {
+   "max": 6.0,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U7.5": {
+   "max": 4.104,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U7.6": {
+   "max": 4.104,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U7.7": {
+   "max": 4.104,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U7.8": {
+   "max": 4.104,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
+  },
+  "U7.9": {
+   "max": 4.104,
+   "src": "abs max -- CH340C (C84681): WCH CH340DS1-EN V3C p.8 s6.1: VCC -0.5..6.0 V, any input or output pin -0.5..VCC+0.5 V; s6.2 VCC max 5.3 V, I/O 6 mA sink, 2 mA source (100 uA in reset); CH340C ambient -20..70 C, -40..85 C for lot-4 parts"
   },
   "Y1.1": {
    "max": "none",
