@@ -907,8 +907,7 @@ def output_panel():
                  5, 6, 7,                               # OSC_IN, OSC_OUT, NRST
                  61, 62, 35, 36, 38, 25, 48, 52, 63, 39, 1,
                  53, 58, 60,                            # I2S3: WS, CK, SD
-                 27,                # PB1 the jack mode
-                 28) + ((21, 20, 26) if REV == 1 else (19, 24, 29, 30, 33, 41, 42, 43, 44, 45))]   # 28: PB2 = BOOT1, held low on the jack-mode net
+                 28) + ((21, 20, 26, 27) if REV == 1 else (19, 24, 29, 30, 33, 40, 42, 43, 44, 45))]   # 28: PB2 = BOOT1, held low on the jack-mode net
     u1 = Part(name="CH32V307WCU6", ref_prefix="U", ref="U1", tag="U1", dest="NETLIST", tool="skidl",
               value="CH32V307WCU6",
               description="RISC-V MCU, USB2.0 HS with INTERNAL PHY (LCSC C5142795)",
@@ -946,16 +945,19 @@ def output_panel():
     pot_cs, pot_sck, pot_sdi = Net("POT_CS"), Net("POT_SCK"), Net("POT_SDI")
     jack_mode = Net("JACK_MODE")   # 0 = balanced (inverted tip), 1 = stereo
     # R2: bit-banged, so on the north row facing U10. The east row was over capacity.
-    pot_cs += u1[21 if REV == 1 else 42]            # PC9 on R2
+    # In the order they leave: SCK west to U10.9, SDI to U10.8, CS east of both to R39 / R40,
+    # and pin 42 open between SCK and SDI: three in a row walled the middle one in.
+    pot_cs += u1[21 if REV == 1 else 40]            # PC7 on R2
     pot_sck += u1[20 if REV == 1 else 43]           # PA8 on R2
-    pot_sdi += u1[26 if REV == 1 else 41]           # PC8 on R2
+    pot_sdi += u1[26 if REV == 1 else 42]           # PC9 on R2
     # ✅ ALL FOUR READ OFF THE TABLE, NOT INFERRED: 20 PA4, 21 PA5, 26 PB0, 27 PB1,
     # checked against .ins/ch32v307_qfn68.json -- the same QFN-68 column the other
     # twenty-four pins on this part were taken from. 27 was briefly written down as an
     # inference from "26 is PB0 and they are adjacent", which is reasoning about a table
     # rather than reading one; the note above is explicit that nothing downstream can
     # catch a wrong pin number, so it was read.
-    jack_mode += u1[27]
+    if REV == 1:
+        jack_mode += u1[27]
     # ⚠ PB2 IS BOOT1, AND IT WAS FLOATING (bring-up review, 2026-10-07). The part samples
     # BOOT0 and BOOT1 together at reset: BOOT0 high with BOOT1 high is "run from SRAM",
     # not the ROM loader, so the one recovery path this board has (BOOT0 by tweezers,
@@ -964,6 +966,8 @@ def output_panel():
     # 1 mm of surface copper (repair_tracks) and no part.
     # FIRMWARE: PB2 STAYS AN INPUT FOR EVER. Driven as an output it fights PB1 and moves
     # the jack mode; pulled up it lifts JACK_MODE against R37.
+    # R2: PB2 IS THE DRIVER AND PB1 IS FREE (2026-11-01): one pin less in the east row. R37
+    # still reads BOOT1 low at reset, and PB2 is an output only once the part is running.
     jack_mode += u1[28]
     mclk = Net("I2S_MCK")
     mclk += u1[39]
@@ -3215,7 +3219,9 @@ if REV != 1:
                                _f(44.53, 1.75)[:2]]),
         ("GND", "F.Cu", 0.25, [_f(25.6, -19.7)[:2], _f(25.6, -18.95)[:2], _f(25.2, -18.45)[:2]]),
     ]
-    BOARD_NOTES["net_widths"].update({"V5_PRE": 0.6, "J1_VBUS": 1.0, "+24V_JACK": 0.5})
+    # (+24V_JACK's current is all in the declared copper above: what the router lays is U16's
+    #  sense branch, and at 0.5 it had no way through)
+    BOARD_NOTES["net_widths"].update({"V5_PRE": 0.6, "J1_VBUS": 1.0, "+24V_JACK": 0.25})
     _pl.update({
         "R60": _f(-12.0, -16.2, 90.0),
         "R3": _f(-8.9, -12.05), "R4": _f(-6.9, -12.2),     # J3's CC pull-downs: off the input slab
@@ -3346,7 +3352,7 @@ BOARD_NOTES["quality"] = {
         "U1": {
             "pins": ("2 3 4 8 9 10 11 14 15 16 19 22 23 24 29 30 33 34 37 40 41 42 43 44 45 46 47 54 55 56 57 59 64 65 66"
                      if REV == 1 else
-                     "2 3 4 8 9 10 11 14 15 16 20 21 22 23 26 34 37 40 46 47 54 55 56 57 59 64 65 66"),
+                     "2 3 4 8 9 10 11 14 15 16 20 21 22 23 26 27 34 37 41 46 47 54 55 56 57 59 64 65 66"),
             "why": "GPIO this board gives no function: left open, firmware leaves it an input with pull-down"
         },
         "U4": {
@@ -3535,7 +3541,6 @@ BOARD_NOTES["quality"] = {
     # and why. Way 1 is marked on the connector's own side in every case.
     "connector_labels": {
         "J6": {"back_only": "the labeller tries the connector's own side first and finds no free site there for its five-line block at 1.5 mm in the board's face within 40 mm of the part, flat or turned (run 2026-10-07, after the font change); the block is on the back, behind it"},
-        "J10": {"back_only": "the labeller tries the connector's own side first and finds no free site there for its seven-line block at 1.5 mm in the board's face within 40 mm of the part, flat or turned (run 2026-10-07, after the font change); the block is on the back, behind it"},
     },
     "waive": {
         # A1 reports one barrel and does not add parallel vias up. The tab has eight.
@@ -3943,6 +3948,53 @@ if REV != 1:
     _r2("M39", "U5 SHDN open (= on). J1 / J2 / J3 VBUS pins dead-ended on purpose",
         "U5 EN on VIN. U5 PG, U13 PORT, U16 Alert and U17's modem pins open (quality."
         "unconnected says why). J2 / J3 VBUS pins dead-ended on purpose; J1's is U15's output")
+
+
+if REV != 1:
+    # PARTS BESIDE WHAT THEY CONNECT TO (2026-11-01). Each CC pull-down stood 40 to 50 mm from
+    # its USB-C pin, across the busy half of the board, with room right beside the connector.
+    BOARD_NOTES["placements"].update({"R3": (-38.5, 9.25, 0.0), "R4": (-38.5, 6.25, 0.0),
+                                      "R29": (-38.5, -4.75, 0.0), "R30": (-38.5, -7.75, 0.0)})
+
+
+if REV != 1:
+    # SHORT HOPS AND USB PAIRS THE ROUTER LAYS BADLY, LAID BEFORE IT RUNS, as THRU and HUB_DN2 are.
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "output_panel.held.r2.json"), encoding="utf-8") as _fh:
+        _held = _json.load(_fh)
+    BOARD_NOTES["tracks"] += [(_n, _l, _w, [tuple(_p) for _p in _ps])
+                              for _n, _l, _w, _ps in _held["tracks"]]
+    BOARD_NOTES["vias"] += [tuple(_v) for _v in _held["vias"]]
+
+
+if REV != 1:
+    # J10 ON THE -Y EDGE (2026-11-01). It stood in the middle of the busy half, 125 mm2 of pads
+    # no signal can cross, and its 24 V bars and return ran round U3 to reach it. Its two
+    # rails now extend the lanes that already run along the -Y edge to the buck, and its
+    # switch throws land beside JP1. Way 5 sits on R60's PWR_GND stub.
+    BOARD_NOTES["placements"].update({"J10": (-20.5, -23.0, 0.0), "C56": (-9.8, -23.0, 90.0)})
+
+    def _j10_old(_t):
+        _n, _l, _w, _ps = _t
+        return (_n == "+24V" and _l == "B.Cu" and (_ps[0][0] > 29.0 or _w == 1.2)) or                (_n == "PWR_GND" and _ps[0][0] > 19.0 and (_ps[0][1] > -15.0 or _l == "F.Cu")) or                (_n == "+24V" and _l == "F.Cu" and _w == 2.0) or                (_n == "+24V" and _l == "B.Cu" and _w == 0.8) or                (_n == "PWR_GND" and _l == "B.Cu" and _w == 1.5) or                (_n == "PWR_GND" and _l == "F.Cu" and _w == 0.8)
+    _kept_tracks = [_t for _t in BOARD_NOTES["tracks"] if not _j10_old(_t)]
+    BOARD_NOTES["tracks"] = _kept_tracks + [
+        ("+24V", "F.Cu", 2.4, [(23.5, -26.2), (8.25, -26.2)]),
+        ("+24V", "B.Cu", 2.0, [(8.25, -26.0), (-14.25, -26.0)]),
+        ("+24V", "B.Cu", 1.2, [(-14.25, -26.0), (-26.75, -26.0), (-26.75, -23.0)]),
+        ("+24V", "B.Cu", 1.2, [(-14.25, -26.0), (-14.25, -23.0)]),
+        ("+24V", "B.Cu", 0.8, [(-10.15, -26.0), (-10.15, -16.75)]),
+        ("PWR_GND", "B.Cu", 2.0, [(18.0, -26.0), (18.0, -20.6), (10.75, -20.6)]),
+        ("PWR_GND", "B.Cu", 1.6, [(10.75, -20.6), (10.0, -20.9), (-3.1, -20.9), (-3.1, -23.8)]),
+        ("PWR_GND", "B.Cu", 2.0, [(10.75, -20.6), (10.75, -23.0)]),
+        ("PWR_GND", "B.Cu", 1.5, [(-3.1, -23.8), (-8.1, -23.8)]),
+        ("PWR_GND", "F.Cu", 1.5, [(-5.5, -23.8), (-8.1, -23.8)]),
+        ("PWR_GND", "F.Cu", 1.2, [(-6.8, -23.8), (-6.8, -26.0)]),
+        ("PWR_GND", "F.Cu", 2.0, [(-3.1, -26.0), (-16.75, -26.0)]),
+        ("PWR_GND", "F.Cu", 1.5, [(-16.75, -26.0), (-24.25, -26.0), (-24.25, -23.0)]),
+        ("PWR_GND", "F.Cu", 0.8, [(-16.75, -26.0), (-16.75, -17.0)]),
+    ]
+    BOARD_NOTES["vias"] += [("PWR_GND", _x, -23.8) for _x in (-5.5, -6.8, -8.1)]
 
 
 if __name__ == "__main__":
