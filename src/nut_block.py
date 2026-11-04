@@ -326,7 +326,7 @@ HS_ROD_OVERLAP = 2 * D.BEAD
 #   HS_FLOOR              the slot's printed floor, over the heat-set
 #   HS_TIP_LOW            where a DROPPED plate's foot rests: the tip, screw fully undone
 # TIGHTENED ALL THE WAY the shelf stands HS_ROD_OVERLAP up INTO the rod, so you always tighten against
-# the string, never against the endplate; FULLY UNDONE the head still clears the bed.
+# the string, never against the endplate; clamping any string the head stays over the bed.
 # THE RAMP PAYS FOR THE LONG PLATE (user, 2026-11-03): threading only needs the plate down the threading
 # gap now, not the crown under the rod, so the screw's travel is just what the room under the mouth gives
 # -- and with the heat-sets down on the rib, the same M4 x 40 reaches 10.4 lower, which the plate's body
@@ -335,10 +335,12 @@ from . import motor_bank as _MB                  # motor_bank imports only dimen
 HS_HEAD_CLR    = 0.4                             # radial air round a head in its chassis cavity (and over the bed)
 HS_HEAD_CAV_D  = M4_BUTTON_HEAD_D + 2 * HS_HEAD_CLR
 HS_PRISM_BOT = _MB.FLOOR_TOP + D.BEAD - D.STRING_Z
-_HS_HANG     = HS_PRISM_BOT - (_MB.BED_Z - D.STRING_Z) - HS_HEAD_CLR   # all the room a head has under the mouth
-HS_REACH_MAX = _HS_HANG - M4_BUTTON_HEAD_H         # the tip's whole travel, undone to tightened
-INS_DROP     = HS_REACH_MAX - (G_ENVELOPE + HS_ROD_OVERLAP)              # under the heaviest string's clamp
-assert INS_DROP >= _DROP_NEED, f"a {INS_DROP:.2f} drop will not thread a {G_ENVELOPE:.2f} string"
+# ONLY PLAYING HAS TO STAY INSIDE (user, 2026-11-04): clamping the heaviest string, a head hangs no lower
+# than HS_HEAD_CLR over the bed; dropped to thread, it may hang out under the instrument.
+_HS_HANG     = HS_PRISM_BOT - (_MB.BED_Z - D.STRING_Z) - HS_HEAD_CLR   # a head's room, heaviest string clamped
+INS_DROP     = _DROP_NEED                          # under the heaviest string's clamp: just enough to thread
+HS_REACH_MAX = _HS_HANG - M4_BUTTON_HEAD_H + INS_DROP   # the tip's whole travel, undone to tightened
+assert _HS_HANG - M4_BUTTON_HEAD_H >= G_ENVELOPE + HS_ROD_OVERLAP, "tightened, the shelf never reaches the rod"
 HS_TIP_RISE  = HS_SCREW_L - (M4.insert_depth + HS_CAP) - HS_REACH_MAX    # the tip over the floor, undone
 _FZ_LOW      = ROD_Z - ROD_D / 2.0 - G_ENVELOPE - INS_DROP
 _FZ_TIGHT    = ROD_Z - ROD_D / 2.0 + HS_ROD_OVERLAP
@@ -346,12 +348,9 @@ HS_FLOOR     = HS_PRISM_BOT + HS_SCREW_L - HS_TIP_RISE - HS_REACH_MAX
 HS_TIP_LOW   = HS_FLOOR + HS_TIP_RISE              # the tip, screw fully undone: a dropped foot rests here
 assert abs(HS_FLOOR - (HS_PRISM_BOT + M4.insert_depth + HS_CAP)) < 1e-9, (
     f"the floor over the heat-set is {HS_FLOOR - HS_PRISM_BOT - M4.insert_depth:.2f}, not {HS_CAP}")
-HS_HEAD_LOW = HS_PRISM_BOT - _HS_HANG             # a head's bottom, fully undone
-assert HS_HEAD_LOW >= _MB.BED_Z - D.STRING_Z - 1e-9, (
-    f"fully undone, a height-screw head drops to z {HS_HEAD_LOW + D.STRING_Z:.2f}, below the bed "
-    f"({_MB.BED_Z:.2f}) where the leg's body adapter is")
+HS_HEAD_LOW = HS_PRISM_BOT - _HS_HANG - INS_DROP  # a head's bottom, fully undone (service: under the bed)
 # THE PLATE'S BODY reaches from the shelf down to where a DROPPED plate's foot meets the undone tip.
-PLATE_BODY_H = _FZ_LOW - HS_TIP_LOW               # 33.75 (23.35 before the ramp)
+PLATE_BODY_H = _FZ_LOW - HS_TIP_LOW               # 38.16 (33.75 with the head kept in when undone)
 
 
 def plate_profile(cradle: bool = False) -> cq.Workplane:
@@ -659,6 +658,8 @@ def height_insert(i: int) -> cq.Workplane:
 
 for _i in range(D.N_STRINGS):
     assert 0.0 <= screw_reach(_i) <= HS_REACH_MAX + 1e-9, f"string {_i + 1}'s screw reach is out of range"
+    assert HS_HEAD_LOW + screw_reach(_i) >= _MB.BED_Z - D.STRING_Z + HS_HEAD_CLR - 1e-9, (
+        f"playing, string {_i + 1}'s height-screw head hangs below the bed")
 
 
 # ── THE CUTS ───────────────────────────────────────────────────────────────────
