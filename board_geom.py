@@ -81,6 +81,8 @@ HEIGHT = {
     "HTSSOP-20-1EP_4.4x6.5mm_P0.65mm_EP3.4x6.5mm_Mask2.75x3.43mm": 1.20,   # TI PWP max
     "QFN-16-1EP_3x3mm_P0.5mm_EP1.45x1.45mm": 0.80,
     "QFN-28-1EP_4x4mm_P0.4mm_EP2.4x2.4mm": 0.90,
+    "LQFP-48_7x7mm_P0.5mm": 1.60,                         # JEDEC MS-026 BBC, A max (WCH LQFP48)
+    "Texas_UQFN-10_1.5x2mm_P0.5mm": 0.55,                  # TI RSE0010A, A max
     "QFN-68-1EP_8x8mm_P0.4mm_EP5.2x5.2mm": 0.90,
     "HVQFN-24-1EP_4x4mm_P0.5mm_EP2.5x2.5mm": 0.80,
     "Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm": 0.90,          # TI RNX0012B, 0.8 +0.1
