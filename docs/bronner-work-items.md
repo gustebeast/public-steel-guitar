@@ -46,9 +46,29 @@ straight to the MCU's USB, so a blank or bricked board still needed a probe. Now
 - Manual text for R2: M1, M8, M10, M19 (new: Q1), M23, M27, M28, M39, M43.
 
 **FOLLOW-UPS, not built:**
-- **Firmware.** firmware/motor_ctrl's link and its loader (output_panel/boot.c, usbflash.py) are USB CDC
-  packets. R2 needs a USART1 link with framing (COBS or SLIP), the loader on the same, and the Pi's
-  tools to match; `make REV=2`. The ROM loader path needs none of it.
+- ~~Firmware~~ **BUILT on agent/bronner-mc-uart (2026-11-03), unproven on a board (there is no R2
+  board).** `make REV=2` in firmware/motor_ctrl builds to build/r2/; `make` (REV=1) builds where it
+  always did and is BYTE-IDENTICAL to main (boot.bin and main.bin compared on the Pi).
+  - Wire: `00 COBS(payload, CRC-16/CCITT-FALSE) 00`, frame.h / frame.c, payload up to 300 (a loader "W"
+    line and its 256-byte page fit in one). Frames carry whole lines only, both ways, so a bad frame
+    loses lines and never splices two halves. Bad frames are dropped and counted; `F` -> `F <count>`
+    (R2 only). link_uart.c: USART1 with DMA1 ch5 RX into a 1024-byte circular ring (5 ms at 2 Mbaud)
+    and ch4 TX, no interrupts. boot.c is unchanged: it was byte-wise already.
+  - **One rate constant:** `LINK_BAUD` in firmware/motor_ctrl/link.h (2000000). The Pi reads it from
+    that file, so a CH343P is that one line (6 Mbaud = 96 MHz / 16, exact; 2 Mbaud is BRR 48, exact).
+  - Sizes, REV=2: boot 7232 text + 4892 bss; main 10452 text + 29312 bss (REV=1 main: 28128 bss).
+  - Pi: bench/publicbench/frames.py (codec, FramedSerial, U7 search = a 1a86:7523 ttyUSB NOT behind a
+    1a86:8091 CH334 hub, `MOTOR_PORT=` overrides, DTR# / RTS# in one TIOCMSET). `link.open_motor()`
+    gives either revision's line stream, so MotorCtrlLink, motorcheck and motorquality are unchanged
+    above it. motorflash.py = `make REV=2 usb` (H / I / E / W / C / G through boot.c; asks "B", else
+    pulses NRST through U7 and catches the window) and `make REV=2 isp` (`--rom`: reset with BOOT0
+    held high, then `wchisp -s -p <port> flash boot.bin`, then a plain reset).
+  - Tests: bench/tests/test_frames.py, 9 pass on the Pi, including firmware frame.c compiled natively
+    and checked against the host codec (every single-byte corruption dropped and counted).
+  - ⚠ To prove on the first R2 board: the DTR# / RTS# polarity (pyserial True = asserted = pin low is
+    assumed throughout: reset = dtr False / rts True, BOOT0 = dtr True / rts False); that WCH's ROM
+    samples BOOT0 within the 50 ms hold; that wchisp's serial transport opens a CH340 without
+    toggling the lines apart; and the ring holding through the bench scheduler's bursts (`F` shows it).
 - **For the user, via the lead: link speed.** The CH340C tops out at 2 Mbaud, about 200 kB/s, where R1's
   USB was 12 Mbit/s. Enough for the bench scheduler at one CAN bus's full load (1 Mbit/s); two buses
   flat out would not fit. CH343P (6 Mbaud, same role) is the step up if it matters. Not ordered.

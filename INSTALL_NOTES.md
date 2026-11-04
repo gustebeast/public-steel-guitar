@@ -1307,7 +1307,9 @@ Plug a USB device in (an audio interface such as a Shure MVX2U) and the board po
 - **Nothing to do by hand to flash it.** The same J4 lead is how the Pi programs the board, first
   flash included: J4 is a USB-serial chip (U7), and the Pi works BOOT0 and reset through it. The
   board shows up on the Pi as a serial port (ttyUSB), not as the R1 board's ttyACM. The pads TP1-TP6
-  are only for a board that is dead.
+  are only for a board that is dead. On the Pi, in firmware/motor_ctrl: `make REV=2 isp` writes the
+  loader (a new board, or a lost loader), then `make REV=2 usb` the application. If the Pi finds the
+  wrong ttyUSB, name it: `MOTOR_PORT=/dev/ttyUSB1 make REV=2 usb`.
 
 
 ## Pi cap R2: riser first, then the cap; plug the ribbon before the cap goes on (2026-11-03)
