@@ -75,6 +75,29 @@ straight to the MCU's USB, so a blank or bricked board still needed a probe. Now
 - **output_panel R2 could take the crossed pair too.** Its bridge is flash-only, so the straight pair is
   correct there, but a host that opens the port for anything else resets U1. Not changed: the kept board
   would need a re-route.
+  **COST RECORDED, NOT DONE (lead, 2026-11-03).** Measured on elec/kept/output_panel.kicad_pcb:
+  - What the straight pair does on an open: Linux drives DTR# and RTS# low together, so Q7 lifts BOOT0 AND
+    D9 holds NRST for as long as the port is open. On close both rise together, so NRST lets go while
+    BOOT0 is still falling, a race that can leave U1 in the ROM loader until the next reset.
+  - Netlist change (same as motor_ctrl's): Q7.2 (source) +3V3 -> FLASH_RTS_N; R52 deleted or re-tied
+    gate-to-source; D9 (DSS16, SOD-123) out, an MMBT3904 (C20526, basic) and a 10k base resistor in:
+    emitter RTS#, base DTR#, collector NRST. One part more, about $0.01; the manual's M8 / M27 / M43
+    text changes.
+  - Copper to redo: FLASH_DTR_N 18.7 mm / 4 vias (F, In2, B), FLASH_RTS_N 9.7 mm / 2 vias, Q7's
+    source tie, and D9's NRST stub (NRST is 50.4 mm / 3 vias in all). The box round Q7 / D9 / U17
+    (x 76-92, y 97-108) holds 78 segments on 20 nets, among them the hub pair HUB_DN4_DP / DM and the
+    jack switch nets. D9's neighbours are 4.3 mm away centre to centre (R29, R28), so a SOT-23 plus a
+    resistor in D9's place is unverified: they may need Q7 / C68 to move too.
+  - Two ways in: (a) rip those four nets on the kept board, place the two parts, and run a local repair
+    (maze.py + verify_path, about 2 min a try) -- likely an afternoon with the finish and quality runs;
+    (b) a full re-route, which is what the kept board exists to avoid (layout search history: routes
+    were not reliable, and the hour-per-route limit holds). (a) is the way if it is ever done.
+  - Cheaper alternative, software only: nothing on the Pi opens that port but our own flash tool (no
+    brltty, ModemManager not installed, checked 11-03). The tool can clear HUPCL and end with a clean
+    reset (BOOT0 low, then an RTS# pulse) before it closes. Add a udev rule (ID_MM_DEVICE_IGNORE on the
+    panel's CH340) if ModemManager ever arrives. Recommendation: keep the straight pair; write the tool
+    that way when output_panel's ROM path gets one. optical R2's M43 bridge is the same straight pair,
+    and the same reasoning covers it.
 
 ## MA730 switch: user chose MA730GQ-Z -- DONE on agent/bronner-ma730-board (2026-11-03)
 
