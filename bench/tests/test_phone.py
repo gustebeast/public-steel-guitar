@@ -311,3 +311,38 @@ def test_the_mock_server_tunes_too():
     assert hub.start_tune(1)
     hub._tune_thread.join(3.0)
     assert hub.tuning["state"] == "done" and hub.tuning["msg"] == "worst 0.00 c"
+
+
+def test_a_measured_curve_goes_where_the_play_table_would():
+    """Curve.at matches copedent.counts (play.c's arithmetic) at whole cents, ends included."""
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+    from publicbench import copedent
+    raw = [round(1.3 * v) - 17 * i for i, v in enumerate(copedent.model_curve())]
+    raw = [v - raw[copedent.KNOT_CENTS.index(0)] for v in raw]
+    c = P.Curve(raw, copedent.K["KNOT_LO"], copedent.K["KNOT_CENTS"])
+    for cents in range(copedent.KNOT_CENTS[0] - 50, copedent.KNOT_CENTS[-1] + 50, 7):
+        assert abs(c.at(cents) - copedent.counts(raw, cents)) <= 1.0, cents
+
+
+def test_a_tuned_string_plays_its_curve_and_the_rest_the_model():
+    m = P.MockMotors(strings=(1, 2))
+    p = P.Pitch()
+    curve = P.Curve([-9000, -3000, 0, 4000, 9000], -200, 100)   # its own direction: no sign
+    d = P.Driver(m, p, raise_sign=-1, curves={1: curve})
+    d.step(0.05)
+    m.log.clear()
+    p.press("a", "hu")
+    d.step(0.05)
+    goal = {r[1]: r[2] for r in m.log}
+    assert goal[1] == 4000
+    assert goal[2] == -round(P.turns(1.0) * P.COUNTS_PER_TURN)
+
+
+def test_a_tune_hands_the_driver_its_new_curve():
+    motors = P.MockMotors((1,))
+    new = {1: P.Curve([0, 0, 0, 1234, 2468], -200, 100)}
+    hub = S.Hub(P.Driver(motors, P.Pitch()), motors, curves=lambda: new)
+    assert hub.start_tune(1)
+    hub._tune_thread.join(3.0)
+    assert hub.tuning["state"] == "done" and hub.d.curves is new
+    assert hub.d.counts(1, 1.0) == hub.d.home[1] + 1234
