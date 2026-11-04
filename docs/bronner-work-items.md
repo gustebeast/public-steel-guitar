@@ -30,7 +30,8 @@
 5. **The link drop.** Today the flash lane takes J4 from the link for ~15 s a board. The
    alternatives are a hub (CH334R, which keeps the link up, ~11 x 6 mm the board lacks) or a
    second USB socket on its own cable.
-6. **NEW: motor_ctrl's 5 V rail has no margin on paper (M33 left OPEN).** See the entry below.
+6. **NEW: motor_ctrl's 5 V margin (M33 left OPEN).** One bring-up reading of the Pi's 5 V current
+   decides between no change, lower RILIMs, and a second buck (which needs a re-placement). Costed below.
 
 ## FOR THE USER (overnight)
 
@@ -56,18 +57,62 @@ safe default already taken; none blocks the work.
   written by `python3 -m publicbench.tune --table` from a terminal. Re-basing from the phone
   while the buttons hold a pitch-up offset would base every string wrong. A table button on
   /tune, greyed while any offset is held, is the follow-up if you want it.
-- **motor_ctrl's 5 V budget (M33, left OPEN, a finding).** U5 (LMR33630) is 3 A. On paper it
-  carries the Pi (BOM's 3 A, or 1.8 A for a bare Pi 4B: the Raspberry Pi 3 A supply less its
-  1.2 A USB allowance, and nothing of ours draws the Pi's USB VBUS) plus both bus B arms. The
-  arms are limited at 0.52 A each, 0.565 A max (TPS2553 at 49.9 k); eleven boards draw 0.88 A
-  at peak. That makes 2.7 to 2.9 A against 3 A: inside the rating, short of the 50 % margin a
-  first board wants, and over it if the Pi really draws 3 A. R1 already had the pedal arm's
-  0.57 A on the same rail. The other rails pass: +3V3 is 120 mA normal and 190 mA with a +-25 V
-  bus fault (MCU 22.4 mA typ, DS V3.9 table 4-6; TCAN3413 60 max, SLLSFS8A 5.6; SN65HVD230 17
-  max; CH340C 20; switches 0.1) against U1's 0.6 A, and 24 V is BOM.md's trunk figure. Default
-  taken: no change. Measure the Pi's 5 V draw on the bench (one meter reading at
-  bring-up), and if it is over ~1.2 A, drop each arm's limit (RILIM) toward its 0.4 / 0.48 A
-  load, or move one arm's 5 V to its own buck.
+- **motor_ctrl's 5 V budget (M33, left OPEN): a morning decision, one measurement decides it.**
+  U5 (LMR33630, 3 A) feeds the Pi on J5 and both bus B arms (U6 pedals, U11 levers). The other
+  rails pass: +3V3 is 120 mA normal and 190 mA with a +-25 V bus-A fault (MCU 22.4 mA typ, DS V3.9
+  table 4-6; TCAN3413 60 max, SLLSFS8A 5.6; SN65HVD230 17 max; CH340C 20; switches 0.1) against
+  U1's 0.6 A.
+  - **The arms' real load is 0.55 A, not their limits' 1.13 A.** Only one board transmits on a CAN
+    bus at a time. Per lever_sensor's M33, a board draws 44 mA (MCU 15 + sensor 12 + transceiver
+    17 max), and the transmitter adds 35 mA into the bus. So the lever arm is 6 x 44 + 35 = 299 mA,
+    the pedal arm 5 x 44 + 35 = 255 mA, 0.55 A together. (The 0.88 A written here last night took
+    every board as transmitting at once.) The limits matter only when an arm is shorted: the
+    TPS2553 then holds it at up to 0.565 A (SLVS841G table: 475 / 520 / 565 mA at 49.9 k)
+    continuously, which makes the fault case 0.565 + the other arm.
+  - **So the Pi decides it.** Normal load = Pi + 0.55 A; a shorted arm = Pi + 0.86 A. The 50 %
+    margin a first board wants is 2.0 A of U5's 3 A.
+  - **(a) A second buck for the arms: LMR33630ADDAR again.** C841384, 29,749 in stock, $0.74;
+    it is U5's own line, so no new part line or extended fee. It also takes U5's 6.8 uH
+    VLS6045EX (already a line), one 10 uF/50 V in + 220 nF, two 22 uF/25 V out, BOOT 100 nF,
+    VCC 1 uF and a feedback pair. EN joins U5's EN5 divider, so it starts at the same 18.1 V.
+    Its feed is +24V_BUCK behind F1: the arms add ~0.13 A at 24 V to F1's 1.5 A, which holds.
+    U5 then carries the Pi alone, and the arms get a 3 A part at 18 %.
+    - Cost about $1.35 a board in parts (U 0.74, L 0.14, 10 uF 0.20, 22 uF x2 0.35, small parts
+      under 0.05); with JLC placement and the 30.5 % tariff, about $1.85 an instrument.
+    - Area: about 130 mm2 of courtyard (U 41, L 44, caps 45), about 11 x 12 mm as a block. U5's
+      own block is 169 mm2.
+    - **It does NOT fit R2 without re-placing.** A courtyard-free scan of the routed board
+      (0.5 mm off the edge) finds no free rectangle larger than 5.0 x 31.5 or 17.8 x 5.8 mm, both
+      strips along the top edge, and nothing near 11 x 12; the inductor alone needs 6.6 x 6.7.
+      So (a) is a re-placement plus a re-route of a board that took about 18 routes to close
+      tonight. A smaller inductor (4 x 4 mm, 1.5 A) does not change that: the largest square
+      free spot is 6.5 x 9.25.
+  - **(b) Lower the RILIMs to fit each arm's real load.** Two resistor values, no layout change.
+    - Lever arm (U11, R29): 68.1k (C11537), limit 346 min / 387 typ / 434 max mA.
+    - Pedal arm (U6, R22): 82.5k (C11717), limit 285 / 330 / 363 mA.
+    - The fault case drops from Pi + 0.86 to Pi + 0.69 A. The normal load does NOT change: (b)
+      only narrows the gap between the limit and the load.
+    - What it gives up:
+      - Growth. The lever arm's floor of 346 mA is 16 % over its 299 mA (a seventh board, 343 mA,
+        would brown it out); the pedal arm's floor of 285 is 12 % over 255 (no sixth pedal).
+      - Any board drawing above lever_sensor's estimate browns its arm out. The 44 mA per board
+        is a sheet sum, unmeasured.
+      - Power-on into the boards' capacitance is slower, at 0.35 A instead of 0.5. That is
+        harmless: about 1 ms.
+      - One more extended part line per order (two values replace 49k9): about $3 an order.
+  - **THE MEASUREMENT (bring-up, one lead).** Put a meter in J5's +5V lead, or feed J5 alone from
+    a bench supply at 5.1 V. Read the Pi's peak current: boot, then the instrument playing (Dexed,
+    audio out, the phone on its USB gadget, the motor link busy), with the CPU loaded. Also read
+    each arm's current with all its boards on the bus and the scheduler running. That checks the
+    0.30 / 0.26 A sums above.
+    - **Pi peak <= 1.45 A:** U5 is at <= 2.0 A normal. No change. (b) is optional hardening for
+      the fault case, at no layout cost.
+    - **1.45 < Pi <= 1.75 A:** normal load 67-77 % of U5, with (b) a shorted arm at most 2.44 A (81 %).
+      Take (b) for the fault case, and accept the margin, or do (a).
+    - **Pi > 1.75 A:** do (a). U5 then carries the Pi alone and passes 50 % at Pi <= 2.0 A.
+    - **Pi > 2.0 A:** neither fix gives margin. The Pi needs a bigger converter than U5.
+  - Default taken: no change until the measurement. R1 boards (ordered) carry the pedal arm only,
+    at the same 49.9 k.
 
 ## Lever first flash from the bus: option 2 (a CAN ROM loader) checked (user, 2026-11-03)
 
