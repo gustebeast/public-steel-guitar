@@ -1546,7 +1546,10 @@ PCB_X1  =  4.025                                # +X edge: as close to the CHIP 
                                                 # no longer binds because the +X groove carrier
                                                 # is now confined BELOW the bore (see CR_X1_MAX
                                                 # and _cradle) instead of running full height.
-PCB_X0  = -29.0                                 # -X edge: the routed board's (chip 29.0 in).
+PCB_X0  = -41.0                                 # -X edge: the routed board's (chip 41.0 in).
+                                                # GREW 12.0 on 2026-11-03 for the USB-over-the-bus
+                                                # flash circuit (elec/lever_sensor.py; user: "a
+                                                # decent amount of room there to grow longer").
                                                 # History: was -14.0, CONNECTOR-limited. It is now
                                                 # CIRCUIT-limited, and the board had to grow.
                                                 #

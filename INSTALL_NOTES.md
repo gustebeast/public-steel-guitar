@@ -1377,3 +1377,15 @@ Plug a USB device in (an audio interface such as a Shure MVX2U) and the board po
   off with a pedal down comes back off pitch until it is retuned.
 - A bench run that wants the motors to itself sends `P 0` to motor_ctrl first (`P 1` gives them
   back; a power cycle does too).
+
+## Lever boards from 2026-11-03 on: IN and OUT differ, and the first flash is over the bus
+
+- **J1 is IN (toward motor_ctrl), J2 is OUT (toward the next board).** Silk says so. J2's 5 V
+  way is switched by the board, so a board plugged in backwards still runs, but it no longer
+  holds the next board dark. That breaks the in-order power-up the bus flash relies on
+  (docs/lever-usb-flash.md).
+- **No jig is needed for the first flash** on these boards. Fit them blank, plug the chain, and
+  the Pi loads each board in chain order over the bus wires. The bench section above applies to
+  the rev 1 boards (CH32V203G6U6), which have no USB.
+- **Termination switch:** still ON only on the last board of each arm. It now acts through the
+  pair switch, so a terminated board can be flashed too.

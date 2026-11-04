@@ -2609,6 +2609,132 @@
    },
    "src": "CJ MMBT3904 (LCSC C20526 listing, read 2026-11-03): VCEO 40 V, VEBO 6 V, IC 200 mA, SOT-23 1 B 2 E 3 C. An NPN, entered as an N fet so voltage_check grades it: base as G (VEBO as VGS), emitter as S, collector as D (VCEO as VDS)",
    "mpn": "MMBT3904"
+  },
+  "C3001172": {
+   "kind": "ic",
+   "supply": {
+    "VDD": "24"
+   },
+   "supply_max": 4.0,
+   "supply_rec": 3.6,
+   "default": {
+    "n": "io",
+    "max": "VDD+0.3",
+    "drv": "VDD",
+    "weak": true
+   },
+   "pins": {},
+   "mpn": "CH32V203C8T6",
+   "src": "WCH CH32V203 datasheet V3.0 s4.2 table 4-1 (the same family table as the G6U6 entry): VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT). LQFP48 pins from table 3-1-1, read 2026-11-03"
+  },
+  "C128396": {
+   "mpn": "TS3USB221ARSER",
+   "kind": "ic",
+   "supply": {
+    "VCC": "10"
+   },
+   "supply_max": 4.6,
+   "supply_rec": 3.6,
+   "pins": {
+    "1": {
+     "n": "IO",
+     "max": 7.0
+    },
+    "2": {
+     "n": "IO",
+     "max": 7.0
+    },
+    "3": {
+     "n": "IO",
+     "max": 7.0
+    },
+    "4": {
+     "n": "IO",
+     "max": 7.0
+    },
+    "7": {
+     "n": "IO",
+     "max": 7.0
+    },
+    "8": {
+     "n": "IO",
+     "max": 7.0
+    },
+    "5": {
+     "n": "GND",
+     "gnd": true
+    },
+    "6": {
+     "n": "OE",
+     "max": 7.0
+    },
+    "9": {
+     "n": "S",
+     "max": 7.0
+    },
+    "10": {
+     "n": "VCC",
+     "max": 4.6,
+     "rec": 3.6
+    }
+   },
+   "src": "TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)",
+   "pass": [
+    [
+     "8",
+     "1",
+     "3"
+    ],
+    [
+     "7",
+     "2",
+     "4"
+    ]
+   ]
+  },
+  "C34731": {
+   "kind": "ic",
+   "supply": {
+    "VCC": "5"
+   },
+   "supply_max": 5.5,
+   "supply_rec": 5.5,
+   "pins": {
+    "1": {
+     "n": "IN+",
+     "max": "VCC+0.0",
+     "min": 0.0
+    },
+    "2": {
+     "n": "GND",
+     "gnd": true
+    },
+    "3": {
+     "n": "IN-",
+     "max": "VCC+0.0",
+     "min": 0.0
+    },
+    "4": {
+     "n": "OUT",
+     "max": 5.5
+    },
+    "5": {
+     "n": "VCC",
+     "max": 5.5,
+     "rec": 5.5
+    }
+   },
+   "mpn": "LMV331IDBVR",
+   "src": "TI LMV331 datasheet SLCS136V (2025) s5.1 absolute maximum: VCC 5.5 V, either input 0..VCC+ (rev O changed it from 5.5 V), differential +-5.5 V; open-drain output, taken as 5.5 V"
+  },
+  "C25790": {
+   "mpn": "0402WGF4703TCE",
+   "kind": "res",
+   "p": 0.0625,
+   "v": 50.0,
+   "ohm": 470000.0,
+   "case": "0402",
+   "src": "JLCPCB parts API for C25790 (0402WGF4703TCE, UNI-ROYAL), the house 0402 series (as C26083), read 2026-11-03"
   }
  }
 }

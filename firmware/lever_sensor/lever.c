@@ -168,6 +168,12 @@ void lever_rx(lever_t *l, const lever_frame_t *in)
     const uint8_t *d = in->d;
     if (in->id == ID_ALL) {
         if (d[0] == LC_HELLO) l->hello_now = 1;
+        if (d[0] == LC_RELEASE && in->len >= 4) {
+            uint16_t ms = (uint16_t)(d[1] | d[2] << 8);
+            l->want_release = ms ? ms : 1;
+            l->release_cycle = d[3] == l->cfg.slot && d[3] != SLOT_NONE;
+        }
+        if (d[0] == LC_HOLD) { l->held = 1; l->want_next = 2; }
         uint32_t uid = d[1] | (uint32_t)d[2] << 8 | (uint32_t)d[3] << 16 | (uint32_t)d[4] << 24;
         if (d[0] == LC_SLOT && in->len >= 6 && uid == l->uid && (d[5] < SLOTS || d[5] == SLOT_NONE)) {
             l->cfg.slot = d[5]; changed(l);
@@ -200,6 +206,10 @@ void lever_rx(lever_t *l, const lever_frame_t *in)
         break;
     case LC_HELLO: l->hello_now = 1; break;
     case LC_LOADER: l->want_loader = 1; break;
+    case LC_NEXT:
+        ok = in->len >= 2;
+        if (ok) { l->want_next = d[1] ? 1 : 2; l->held = 1; }
+        break;
     default: ok = 0;
     }
     l->reply.ext = 0; l->reply.len = 2; l->reply.d[0] = d[0]; l->reply.d[1] = ok;

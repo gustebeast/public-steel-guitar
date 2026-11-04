@@ -18,7 +18,25 @@
  *   0x300+slot  CMD    Pi -> board  op u8 then arguments (LC_*)
  *   0x380+slot  REPLY  board -> Pi  op u8, ok u8
  *   0x7F1       ALL    Pi -> every  'I': every board sends HELLO; 'S' uid u32 LE, slot u8: the
- *                                   board with that uid takes the slot and stores it
+ *                                   board with that uid takes the slot and stores it;
+ *                                   'H': HOLD THE CHAIN -- every board cuts the next board's 5 V
+ *                                   and keeps it off until its own CMD 'N' (a board still in its
+ *                                   NEXT_AFTER_US start window stays held too);
+ *                                   'U' ms u16 LE, slot u8: RELEASE THE PAIR for a flash over USB
+ *                                   (docs/lever-usb-flash.md): every board turns its transceiver
+ *                                   off, lets go of CAN_H / CAN_L and waits, silent, for the arm's
+ *                                   power cycle; the board in `slot` also cuts the next board's
+ *                                   5 V and gives it back ms later, so THAT board -- and only it,
+ *                                   the ones after it staying dark -- starts on a pair the Pi holds
+ *                                   as USB and comes up in WCH's ROM loader (BOOT0 is set by the
+ *                                   bus, whatever firmware it has). slot 0xFF: nobody cycles
+ *                                   (the first board, which motor_ctrl powers itself).
+ *
+ * FINDING A BOARD IN THE CHAIN. Each board powers the next (J2's 5 V), NEXT_AFTER_US after it
+ * starts. So the chain's order is learned by holding it ('H') and letting it up one board at a
+ * time ('N' 1 to each in turn): the HELLO that follows a board's 'N' is the board after it. A
+ * board that sends nothing after its predecessor's 'N' is the broken one, and its predecessor's
+ * slot is the 'U' that reflashes it. The Pi keeps the order it learned (levers chain).
  *   29-bit 0x1E000000 | uid & 0xFFFFFF  HELLO  board -> Pi
  *                                   uid u32 LE, slot u8 (0xFF none), version u8, mode u8
  *                                   (0 application, 1 loader), status u8. At start, on 'I', and
@@ -69,6 +87,10 @@
 #define LC_THRESH  'T'                      /* mglt u8, mght u8: MA730 register 6 (non-volatile) */
 #define LC_HELLO   'I'
 #define LC_LOADER  'B'                      /* restart in the CAN loader, if there is one */
+#define LC_RELEASE 'U'                      /* ALL only: ms u16, slot u8 (see above) */
+#define LC_HOLD    'H'                      /* ALL only: next boards' power off until 'N' */
+#define LC_NEXT    'N'                      /* on u8: the next board's 5 V on (1) / off (0) */
+#define NEXT_AFTER_US 100000u               /* a board powers the next this long after start */
 
 typedef struct {
     uint32_t magic;                         /* CFG_MAGIC */
@@ -99,6 +121,10 @@ typedef struct {
     lever_frame_t reply;
     /* for main.c to act on, then clear */
     uint8_t want_save, want_loader, want_thresh;
+    uint16_t want_release;                  /* ms (1 or more): LC_RELEASE heard */
+    uint8_t release_cycle;                  /* ...and this board is the one that cycles */
+    uint8_t want_next;                      /* 0 nothing, 1 next board on, 2 off (LC_NEXT) */
+    uint8_t held;                           /* LC_HOLD heard: no automatic power-up */
 } lever_t;
 
 uint32_t lever_crc32(const void *p, uint32_t n);

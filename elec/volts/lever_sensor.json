@@ -5,6 +5,11 @@
    "v": 3.349,
    "why": "AP2112K-3.3: 3.3 V +1.5 %; +3 % transient"
   },
+  "+3V3_CAN": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "the transceiver's 3V3: +3V3 through Q3 [= +3V3+0]"
+  },
   "+5V": {
    "peak": 5.432,
    "v": 5.174,
@@ -14,6 +19,26 @@
    "peak": 5.432,
    "v": 5.174,
    "why": "through R8"
+  },
+  "+5V_OUT": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "the next board's 5 V: +5V through Q1 [= +5V+0]"
+  },
+  "BOOT0": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U3.44 (io) can reach its supply +3V3; through R17"
+  },
+  "BUS_SENSE": {
+   "peak": 2.494,
+   "v": 1.599,
+   "why": "divider off CAN_H: x 0.3197"
+  },
+  "BUS_VTH": {
+   "peak": 0.314,
+   "v": 0.304,
+   "why": "divider off +3V3: x 0.0909"
   },
   "CAN_H": {
    "peak": 7.8,
@@ -28,12 +53,22 @@
   "CAN_RX": {
    "peak": 3.45,
    "v": 3.349,
-   "why": "U2.4 (R) can reach its supply +3V3; U3.19 (io) can reach its supply +3V3"
+   "why": "U2.4 (R) can reach its supply +3V3_CAN; U3.45 (io) can reach its supply +3V3"
   },
   "CAN_TX": {
    "peak": 3.45,
    "v": 3.349,
-   "why": "U3.20 (io) can reach its supply +3V3"
+   "why": "U3.46 (io) can reach its supply +3V3"
+  },
+  "DS_EN": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U3.41 (io) can reach its supply +3V3"
+  },
+  "DS_GATE": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "through R9"
   },
   "GND": 0,
   "N$1": {
@@ -43,47 +78,57 @@
   "NRST": {
    "peak": 3.45,
    "v": 3.349,
-   "why": "U3.4 (io) can reach its supply +3V3"
+   "why": "U3.7 (io) can reach its supply +3V3"
   },
   "OSC_IN": {
    "peak": 3.45,
    "v": 3.349,
-   "why": "U3.2 (io) can reach its supply +3V3"
+   "why": "U3.5 (io) can reach its supply +3V3"
   },
   "OSC_OUT": {
    "peak": 3.45,
    "v": 3.349,
-   "why": "U3.3 (io) can reach its supply +3V3"
+   "why": "U3.6 (io) can reach its supply +3V3"
   },
   "SENS_CSN": {
    "peak": 3.45,
    "v": 3.349,
-   "why": "U3.26 (io) can reach its supply +3V3"
+   "why": "U3.14 (io) can reach its supply +3V3"
   },
   "SENS_MISO": {
    "peak": 3.45,
    "v": 3.349,
-   "why": "U3.12 (io) can reach its supply +3V3; U4.7 (out) can reach its supply +3V3"
+   "why": "U3.16 (io) can reach its supply +3V3; U4.7 (out) can reach its supply +3V3"
   },
   "SENS_MOSI": {
    "peak": 3.45,
    "v": 3.349,
-   "why": "U3.13 (io) can reach its supply +3V3"
+   "why": "U3.17 (io) can reach its supply +3V3"
   },
   "SENS_SCK": {
    "peak": 3.45,
    "v": 3.349,
-   "why": "U3.11 (io) can reach its supply +3V3"
+   "why": "U3.15 (io) can reach its supply +3V3"
   },
   "SWCLK": {
    "peak": 3.45,
    "v": 3.349,
-   "why": "U3.22 (io) can reach its supply +3V3"
+   "why": "U3.37 (io) can reach its supply +3V3"
   },
   "SWDIO": {
    "peak": 3.45,
    "v": 3.349,
-   "why": "U3.21 (io) can reach its supply +3V3"
+   "why": "U3.34 (io) can reach its supply +3V3"
+  },
+  "TERM_H": {
+   "peak": 7.8,
+   "v": 5.0,
+   "why": "through U5"
+  },
+  "TERM_L": {
+   "peak": 7.8,
+   "v": 5.0,
+   "why": "through U5"
   },
   "TERM_MID": {
    "peak": 7.8,
@@ -93,6 +138,24 @@
   "U1_NC": {
    "v": 0.0,
    "why": "not connected"
+  },
+  "USB_DM": {
+   "v": 3.6,
+   "why": "USBFS D- through U5, joined only in USB mode; 5 V only with a harness fault"
+  },
+  "USB_DP": {
+   "v": 3.6,
+   "why": "USBFS D+ through U5 (VOH 3.6 V max, USB 2.0 7.1.1), joined only in USB mode; 5 V only with a harness fault"
+  },
+  "USB_SEL": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U3.39 (io) can reach its supply +3V3"
+  },
+  "XCVR_EN_N": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U3.40 (io) can reach its supply +3V3; through R11"
   }
  },
  "pin_volts": {
@@ -105,6 +168,26 @@
    "src": "rated V -- CL05A475MP5NRNC (C23733): JLCPCB parts API attributes for C23733 (CL05A475MP5NRNC, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
   "C11.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C12.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C13.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C14.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C15.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C16.1": {
    "max": 50.0,
    "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
@@ -141,16 +224,16 @@
    "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
   "D2.1": {
-   "max": 5.8,
+   "max": 5.4,
    "peak": "none",
-   "src": "ESD5B5.0ST1G (C93623): onsemi ESD5B5.0S datasheet p.2 electrical table (VRWM 5.0, VBR 5.8-7.8 @1 mA), p.1 max ratings (50 W 8x20 us, 10 W 10x1000 us, 200 mW)",
-   "why": "this part IS the clamp on CAN_H: it stands 5 V (where its leakage is specified) and starts to conduct at 5.8 V, the figure a steady level must stay under"
+   "src": "LESD5L5.0CT1G (C5274293): LRC LESD5L5.0CT1G datasheet p.2 electrical table (VRWM 5.0, VBR min 5.4 @1 mA); VC 12.9 V from JLCPCB parts API attributes for C5274293",
+   "why": "this part IS the clamp on CAN_H: it stands 5 V (where its leakage is specified) and starts to conduct at 5.4 V, the figure a steady level must stay under"
   },
   "D3.1": {
-   "max": 5.8,
+   "max": 5.4,
    "peak": "none",
-   "src": "ESD5B5.0ST1G (C93623): onsemi ESD5B5.0S datasheet p.2 electrical table (VRWM 5.0, VBR 5.8-7.8 @1 mA), p.1 max ratings (50 W 8x20 us, 10 W 10x1000 us, 200 mW)",
-   "why": "this part IS the clamp on CAN_L: it stands 5 V (where its leakage is specified) and starts to conduct at 5.8 V, the figure a steady level must stay under"
+   "src": "LESD5L5.0CT1G (C5274293): LRC LESD5L5.0CT1G datasheet p.2 electrical table (VRWM 5.0, VBR min 5.4 @1 mA); VC 12.9 V from JLCPCB parts API attributes for C5274293",
+   "why": "this part IS the clamp on CAN_L: it stands 5 V (where its leakage is specified) and starts to conduct at 5.4 V, the figure a steady level must stay under"
   },
   "J1.1": {
    "max": 100.0,
@@ -176,6 +259,88 @@
    "max": 100.0,
    "src": "rated V -- S4B-PH-K-S(LF)(SN) (C157926): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V' (the series rating, as every PH here)"
   },
+  "Q1.1": {
+   "max": 12.0,
+   "src": "VGS -- AO3401A (C15127): AOS AO3401A Rev 3.1 December 2023 p.1 absolute maximum ratings: VDS -30 V, VGS +/-12 V, ID -4 A at 25 C; SOT23 drawing G, S, D"
+  },
+  "Q1.2": {
+   "max": "none",
+   "src": "AO3401A (C15127): AOS AO3401A Rev 3.1 December 2023 p.1 absolute maximum ratings: VDS -30 V, VGS +/-12 V, ID -4 A at 25 C; SOT23 drawing G, S, D",
+   "why": "reference terminal"
+  },
+  "Q1.3": {
+   "max": 30.0,
+   "src": "VDS -- AO3401A (C15127): AOS AO3401A Rev 3.1 December 2023 p.1 absolute maximum ratings: VDS -30 V, VGS +/-12 V, ID -4 A at 25 C; SOT23 drawing G, S, D"
+  },
+  "Q2.1": {
+   "max": 20.0,
+   "src": "VGS -- 2N7002 (C8545): CJ 2N7002 datasheet p.1 maximum ratings: VDS 60 V, VGS +/-20 V, ID 0.115 A"
+  },
+  "Q2.3": {
+   "max": 60.0,
+   "src": "VDS -- 2N7002 (C8545): CJ 2N7002 datasheet p.1 maximum ratings: VDS 60 V, VGS +/-20 V, ID 0.115 A"
+  },
+  "Q3.1": {
+   "max": 12.0,
+   "src": "VGS -- AO3401A (C15127): AOS AO3401A Rev 3.1 December 2023 p.1 absolute maximum ratings: VDS -30 V, VGS +/-12 V, ID -4 A at 25 C; SOT23 drawing G, S, D"
+  },
+  "Q3.2": {
+   "max": "none",
+   "src": "AO3401A (C15127): AOS AO3401A Rev 3.1 December 2023 p.1 absolute maximum ratings: VDS -30 V, VGS +/-12 V, ID -4 A at 25 C; SOT23 drawing G, S, D",
+   "why": "reference terminal"
+  },
+  "Q3.3": {
+   "max": 30.0,
+   "src": "VDS -- AO3401A (C15127): AOS AO3401A Rev 3.1 December 2023 p.1 absolute maximum ratings: VDS -30 V, VGS +/-12 V, ID -4 A at 25 C; SOT23 drawing G, S, D"
+  },
+  "R10.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R11.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R11.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R12.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R13.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1004TCE (C26083): JLCPCB parts API attributes for C26083 (0402WGF1004TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R13.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1004TCE (C26083): JLCPCB parts API attributes for C26083 (0402WGF1004TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R14.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF4703TCE (C25790): JLCPCB parts API for C25790 (0402WGF4703TCE, UNI-ROYAL), the house 0402 series (as C26083), read 2026-11-03"
+  },
+  "R15.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R15.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R16.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R17.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R17.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
   "R3.1": {
    "max": 50.0,
    "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
@@ -195,6 +360,14 @@
   "R8.2": {
    "max": 50.0,
    "src": "element V -- RC0402FR-072R2L (C327251): JLCPCB parts API attributes for C327251 (RC0402FR-072R2L: 50 V, 62.5 mW), fetched 2026-10-06"
+  },
+  "R9.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R9.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
   },
   "SW1.1": {
    "max": 24.0,
@@ -262,57 +435,93 @@
    "max": 3.95,
    "src": "abs max -- SN65HVD230DR (C12084): TI SN65HVD230 datasheet SLOS346K p.6 absolute maximum ratings: VCC -0.3..6 V; CANH/CANL -4..16 V (transient -25..25 V through 100 ohm); D, R -0.5..VCC+0.5 V; dominant VOD max 3 V (electrical characteristics)"
   },
-  "U3.11": {
-   "max": 3.75,
-   "src": "abs max -- CH32V203G6U6 (C5142280): WCH CH32V203 datasheet V2.8 s4.2 table 4-1: VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT)"
+  "U3.1": {
+   "max": 4.0,
+   "src": "abs max -- CH32V203C8T6 (C3001172): WCH CH32V203 datasheet V3.0 s4.2 table 4-1 (the same family table as the G6U6 entry): VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT). LQFP48 pins from table 3-1-1, read 2026-11-03"
   },
-  "U3.12": {
+  "U3.14": {
    "max": 3.75,
-   "src": "abs max -- CH32V203G6U6 (C5142280): WCH CH32V203 datasheet V2.8 s4.2 table 4-1: VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT)"
+   "src": "abs max -- CH32V203C8T6 (C3001172): WCH CH32V203 datasheet V3.0 s4.2 table 4-1 (the same family table as the G6U6 entry): VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT). LQFP48 pins from table 3-1-1, read 2026-11-03"
   },
-  "U3.13": {
+  "U3.15": {
    "max": 3.75,
-   "src": "abs max -- CH32V203G6U6 (C5142280): WCH CH32V203 datasheet V2.8 s4.2 table 4-1: VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT)"
+   "src": "abs max -- CH32V203C8T6 (C3001172): WCH CH32V203 datasheet V3.0 s4.2 table 4-1 (the same family table as the G6U6 entry): VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT). LQFP48 pins from table 3-1-1, read 2026-11-03"
+  },
+  "U3.16": {
+   "max": 3.75,
+   "src": "abs max -- CH32V203C8T6 (C3001172): WCH CH32V203 datasheet V3.0 s4.2 table 4-1 (the same family table as the G6U6 entry): VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT). LQFP48 pins from table 3-1-1, read 2026-11-03"
   },
   "U3.17": {
+   "max": 3.75,
+   "src": "abs max -- CH32V203C8T6 (C3001172): WCH CH32V203 datasheet V3.0 s4.2 table 4-1 (the same family table as the G6U6 entry): VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT). LQFP48 pins from table 3-1-1, read 2026-11-03"
+  },
+  "U3.24": {
    "max": 4.0,
-   "src": "abs max -- CH32V203G6U6 (C5142280): WCH CH32V203 datasheet V2.8 s4.2 table 4-1: VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT)"
+   "src": "abs max -- CH32V203C8T6 (C3001172): WCH CH32V203 datasheet V3.0 s4.2 table 4-1 (the same family table as the G6U6 entry): VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT). LQFP48 pins from table 3-1-1, read 2026-11-03"
   },
-  "U3.19": {
+  "U3.34": {
    "max": 3.75,
-   "src": "abs max -- CH32V203G6U6 (C5142280): WCH CH32V203 datasheet V2.8 s4.2 table 4-1: VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT)"
+   "src": "abs max -- CH32V203C8T6 (C3001172): WCH CH32V203 datasheet V3.0 s4.2 table 4-1 (the same family table as the G6U6 entry): VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT). LQFP48 pins from table 3-1-1, read 2026-11-03"
   },
-  "U3.2": {
-   "max": 3.75,
-   "src": "abs max -- CH32V203G6U6 (C5142280): WCH CH32V203 datasheet V2.8 s4.2 table 4-1: VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT)"
+  "U3.36": {
+   "max": 4.0,
+   "src": "abs max -- CH32V203C8T6 (C3001172): WCH CH32V203 datasheet V3.0 s4.2 table 4-1 (the same family table as the G6U6 entry): VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT). LQFP48 pins from table 3-1-1, read 2026-11-03"
   },
-  "U3.20": {
+  "U3.37": {
    "max": 3.75,
-   "src": "abs max -- CH32V203G6U6 (C5142280): WCH CH32V203 datasheet V2.8 s4.2 table 4-1: VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT)"
+   "src": "abs max -- CH32V203C8T6 (C3001172): WCH CH32V203 datasheet V3.0 s4.2 table 4-1 (the same family table as the G6U6 entry): VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT). LQFP48 pins from table 3-1-1, read 2026-11-03"
   },
-  "U3.21": {
+  "U3.39": {
    "max": 3.75,
-   "src": "abs max -- CH32V203G6U6 (C5142280): WCH CH32V203 datasheet V2.8 s4.2 table 4-1: VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT)"
+   "src": "abs max -- CH32V203C8T6 (C3001172): WCH CH32V203 datasheet V3.0 s4.2 table 4-1 (the same family table as the G6U6 entry): VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT). LQFP48 pins from table 3-1-1, read 2026-11-03"
   },
-  "U3.22": {
+  "U3.40": {
    "max": 3.75,
-   "src": "abs max -- CH32V203G6U6 (C5142280): WCH CH32V203 datasheet V2.8 s4.2 table 4-1: VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT)"
+   "src": "abs max -- CH32V203C8T6 (C3001172): WCH CH32V203 datasheet V3.0 s4.2 table 4-1 (the same family table as the G6U6 entry): VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT). LQFP48 pins from table 3-1-1, read 2026-11-03"
   },
-  "U3.26": {
+  "U3.41": {
    "max": 3.75,
-   "src": "abs max -- CH32V203G6U6 (C5142280): WCH CH32V203 datasheet V2.8 s4.2 table 4-1: VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT)"
+   "src": "abs max -- CH32V203C8T6 (C3001172): WCH CH32V203 datasheet V3.0 s4.2 table 4-1 (the same family table as the G6U6 entry): VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT). LQFP48 pins from table 3-1-1, read 2026-11-03"
   },
-  "U3.3": {
+  "U3.42": {
    "max": 3.75,
-   "src": "abs max -- CH32V203G6U6 (C5142280): WCH CH32V203 datasheet V2.8 s4.2 table 4-1: VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT)"
+   "src": "abs max -- CH32V203C8T6 (C3001172): WCH CH32V203 datasheet V3.0 s4.2 table 4-1 (the same family table as the G6U6 entry): VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT). LQFP48 pins from table 3-1-1, read 2026-11-03"
   },
-  "U3.4": {
+  "U3.43": {
    "max": 3.75,
-   "src": "abs max -- CH32V203G6U6 (C5142280): WCH CH32V203 datasheet V2.8 s4.2 table 4-1: VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT)"
+   "src": "abs max -- CH32V203C8T6 (C3001172): WCH CH32V203 datasheet V3.0 s4.2 table 4-1 (the same family table as the G6U6 entry): VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT). LQFP48 pins from table 3-1-1, read 2026-11-03"
+  },
+  "U3.44": {
+   "max": 3.75,
+   "src": "abs max -- CH32V203C8T6 (C3001172): WCH CH32V203 datasheet V3.0 s4.2 table 4-1 (the same family table as the G6U6 entry): VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT). LQFP48 pins from table 3-1-1, read 2026-11-03"
+  },
+  "U3.45": {
+   "max": 3.75,
+   "src": "abs max -- CH32V203C8T6 (C3001172): WCH CH32V203 datasheet V3.0 s4.2 table 4-1 (the same family table as the G6U6 entry): VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT). LQFP48 pins from table 3-1-1, read 2026-11-03"
+  },
+  "U3.46": {
+   "max": 3.75,
+   "src": "abs max -- CH32V203C8T6 (C3001172): WCH CH32V203 datasheet V3.0 s4.2 table 4-1 (the same family table as the G6U6 entry): VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT). LQFP48 pins from table 3-1-1, read 2026-11-03"
+  },
+  "U3.48": {
+   "max": 4.0,
+   "src": "abs max -- CH32V203C8T6 (C3001172): WCH CH32V203 datasheet V3.0 s4.2 table 4-1 (the same family table as the G6U6 entry): VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT). LQFP48 pins from table 3-1-1, read 2026-11-03"
   },
   "U3.5": {
+   "max": 3.75,
+   "src": "abs max -- CH32V203C8T6 (C3001172): WCH CH32V203 datasheet V3.0 s4.2 table 4-1 (the same family table as the G6U6 entry): VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT). LQFP48 pins from table 3-1-1, read 2026-11-03"
+  },
+  "U3.6": {
+   "max": 3.75,
+   "src": "abs max -- CH32V203C8T6 (C3001172): WCH CH32V203 datasheet V3.0 s4.2 table 4-1 (the same family table as the G6U6 entry): VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT). LQFP48 pins from table 3-1-1, read 2026-11-03"
+  },
+  "U3.7": {
+   "max": 3.75,
+   "src": "abs max -- CH32V203C8T6 (C3001172): WCH CH32V203 datasheet V3.0 s4.2 table 4-1 (the same family table as the G6U6 entry): VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT). LQFP48 pins from table 3-1-1, read 2026-11-03"
+  },
+  "U3.9": {
    "max": 4.0,
-   "src": "abs max -- CH32V203G6U6 (C5142280): WCH CH32V203 datasheet V2.8 s4.2 table 4-1: VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT)"
+   "src": "abs max -- CH32V203C8T6 (C3001172): WCH CH32V203 datasheet V3.0 s4.2 table 4-1 (the same family table as the G6U6 entry): VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT). LQFP48 pins from table 3-1-1, read 2026-11-03"
   },
   "U4.12": {
    "max": 6.0,
@@ -333,6 +542,54 @@
   "U4.7": {
    "max": 4.6,
    "src": "abs max -- MA730GQ-Z (C161798): MPS MA730 datasheet rev 1.1 (8/8/2022) p.3 absolute maximum ratings: supply -0.5..+4.6 V, input pin voltage -0.5..+6.0 V, output pin voltage -0.5..+4.6 V; p.4 recommended VDD 3.0..3.6 V. Inputs per p.8: MOSI, CS, TEST, SCLK, SSCK; every other pin an output (rated at the output limit). Read 2026-11-03"
+  },
+  "U5.1": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U5.10": {
+   "max": 4.6,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U5.2": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U5.3": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U5.4": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U5.7": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U5.8": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U5.9": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221ARSER (C128396): TI TS3USB221A datasheet SCDS277C (2024) s5.1 absolute maximum: VCC -0.5..4.6 V, control inputs -0.5..7 V, switch I/O -0.5..7 V (recommended 0..5.5 V), on-state current 120 mA. D+ (8) passes to 1D+ (1) / 2D+ (3), D- (7) to 1D- (2) / 2D- (4)"
+  },
+  "U6.1": {
+   "max": 3.45,
+   "src": "abs max -- LMV331IDBVR (C34731): TI LMV331 datasheet SLCS136V (2025) s5.1 absolute maximum: VCC 5.5 V, either input 0..VCC+ (rev O changed it from 5.5 V), differential +-5.5 V; open-drain output, taken as 5.5 V"
+  },
+  "U6.3": {
+   "max": 3.45,
+   "src": "abs max -- LMV331IDBVR (C34731): TI LMV331 datasheet SLCS136V (2025) s5.1 absolute maximum: VCC 5.5 V, either input 0..VCC+ (rev O changed it from 5.5 V), differential +-5.5 V; open-drain output, taken as 5.5 V"
+  },
+  "U6.4": {
+   "max": 5.5,
+   "src": "abs max -- LMV331IDBVR (C34731): TI LMV331 datasheet SLCS136V (2025) s5.1 absolute maximum: VCC 5.5 V, either input 0..VCC+ (rev O changed it from 5.5 V), differential +-5.5 V; open-drain output, taken as 5.5 V"
+  },
+  "U6.5": {
+   "max": 5.5,
+   "src": "abs max -- LMV331IDBVR (C34731): TI LMV331 datasheet SLCS136V (2025) s5.1 absolute maximum: VCC 5.5 V, either input 0..VCC+ (rev O changed it from 5.5 V), differential +-5.5 V; open-drain output, taken as 5.5 V"
   },
   "Y1.1": {
    "max": "none",

@@ -1,5 +1,34 @@
 # bronner — open work items (2026-09-30)
 
+## Lever first flash from the bus: option 2 (a CAN ROM loader) checked (user, 2026-11-03)
+
+User's goal: final-form instrument from factory parts, only the Pi flashed by hand. The lever
+board's two-firmware split (base loader + application over CAN) is built; the gap is the base
+loader's FIRST install on a blank CH32V203 (ROM loader USB/UART only). Option 2 read from ST
+AN2606 Rev 71 (pages 76-80, 270-274; pattern table page 35):
+- **A blank chip does start its ROM loader by itself** (Pattern 11: main flash empty, default
+  option bytes), on both STM32G0B1/G0C1 and STM32C091/C092. Erratum on both: the loader clears
+  the empty flag, so a RESET (not a power cycle) of a still-blank chip crashes it until the next
+  power-on. Bus power gating cycles power anyway.
+- **The loader speaks CAN FD only:** 250 kbit/s arbitration, 1 Mbit/s data, FD frames with bit
+  rate switch. motor_ctrl's CH32V307 has classic CAN controllers and cannot send an FD frame; a
+  classic controller powered on the same bus also flags every FD frame as an error. So the host
+  side needs an FD controller on bus B (an MCP2518FD on SPI, or a different MCU), and every
+  powered node on bus B must be FD-tolerant while a blank board is loaded. The SN65HVD230 is
+  rated to 1 Mbit/s, so the data phase is at its limit (an FD-rated transceiver is the safe
+  choice).
+- **Pins:** G0B1/G0C1: FDCAN1 on PD0/PD1, which exist only on the 48-pin and larger packages.
+  C091/C092: PB0/PB1 on the 28/32-pin packages, BUT "only when enabled by engineering bytes",
+  which are set by ST, not by us, and not on TSSOP20. AN2606 does not say which parts ship with
+  them set, so the C092 cannot be counted on.
+- **So option 2 is:** the lever MCU becomes a G0B1 in a 48-pin package, motor_ctrl bus B gains a
+  CAN FD controller, there is a load switch per lever board plus switched bus power on motor_ctrl,
+  and probably FD-rated transceivers. The firmware ports (lever.c and ldr.c are hardware-free; hw.c
+  is rewritten). The blank-chip load uses ST's protocol (AN5405), not ldr.h. That is a large
+  respin of two boards; it rides the MA730 respin only for the lever board.
+- Not checked yet: G0B1 48-pin price/stock, the lever board's room for a 7x7 package plus a load
+  switch, and AN5405's command set.
+
 ## Control path: levers and pedals to motor targets, in sim (lead, 2026-11-03) -- BUILT
 
 Written up in docs/control-path.md. Copedent music + string curves on the Pi

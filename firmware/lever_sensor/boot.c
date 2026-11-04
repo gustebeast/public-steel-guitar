@@ -50,10 +50,11 @@ int main(void)
     l.mode = 1;
     ldr_init(&b, flash, hw_erase, hw_write, l.cfg.slot);
     uint8_t slot = l.cfg.slot;
+    hw_bus_init();
     filter_ids(slot, ids);
     hw_can_init(ids);
 
-    uint32_t t0 = now_us();
+    uint32_t t0 = now_us(), t_start = t0;
     for (;;) {
         IWDG_ReloadCounter();                       /* running only if the application started it */
         while (hw_can_take(&f)) { lever_rx(&l, &f); ldr_rx(&b, &f); }
@@ -63,6 +64,9 @@ int main(void)
             else if (l.reply_n) l.reply.d[1] = 0;
         }
         l.want_loader = l.want_thresh = 0;          /* here already; no sensor to set */
+        if (l.want_release) hw_release(l.want_release, l.release_cycle);
+        if (l.want_next) { hw_next(l.want_next == 1); l.want_next = 0; }
+        else if (!l.held && now_us() - t_start >= NEXT_AFTER_US) { hw_next(1); l.held = 1; }
         if (l.cfg.slot != slot) {
             slot = b.slot = l.cfg.slot;
             filter_ids(slot, ids); hw_can_filter(ids);

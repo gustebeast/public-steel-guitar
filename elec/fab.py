@@ -60,7 +60,8 @@ LCSC = {
     "LMR16006XDDCR": "C87080",      # 60 V 0.6 A buck, lever + motor controller
     "TYPE-C-31-M-12": "C165948",    # USB-C receptacle, motor controller + panel
     "HX-TYPE-C 16P 180 LC-B H10.0": "C49261584",  # motor_ctrl R2 J4: vertical USB-C, THT; 1,765 (2026-11-03)
-    "CH32V203G6U6": "C5142280",     # lever board MCU
+    "CH32V203G6U6": "C5142280",     # lever board MCU until 2026-11-03 (rev 1)
+    "CH32V203C8T6": "C3001172",     # lever board MCU since 2026-11-03: USBFS on PB6/PB7; 9,420 on 2026-11-03
     "CH32V307WCU6": "C5142795",     # motor controller MCU
     "MA730GQ-Z": "C161798",         # the angle sensor since 2026-11-03: JLC listing only (LCSC
                                     # itself does not sell it). No consignment (user): if the
@@ -190,6 +191,8 @@ LCSC = {
     "MMBT3904": "C20526",           # CJ NPN SOT-23 (1 B 2 E 3 C), JLC basic; 2,847,066 on 2026-11-03 -- motor_ctrl R2 Q2
     "G6K-2F-Y-DC5": "C47190",       # Omron DPDT, 5 V coil (terminal arrangement p.6): the TAPE-AND-REEL listing (G6K-2F-Y-TR DC5), 64,883 on 2026-10-08; the tube listing C326376 was down to 44
     "ESD5B5.0ST1G": "C93623",       # onsemi bidirectional 5 V TVS, SOD-523, ~166k
+    "TS3USB221ARSER": "C128396",    # TI USB 2:1 switch, 5.5 V tolerant I/O, UQFN-10 -- lever pair select; 74,249 on 2026-11-03
+    "LMV331IDBVR": "C34731",        # TI comparator, open drain, SOT-23-5 -- lever BOOT0 detector; 194,411 on 2026-11-03
     # -- the UI board, 2026-09-25, every line read off the LCSC listing itself ------
     "RKJXT1F42001": "C160841",      # Alps 4-way stick + encoder + push, 7,354 in stock.
                                     # DigiKey's listing for the same part is 0 in stock
@@ -267,6 +270,7 @@ PASSIVES = {
     ("180R 100mW", "R_0402_1005Metric"):     "C413069",   # Panasonic ERJ2RKF1800X, 1 %, 100 mW (the UniOhm / Yageo 0402 is 62.5); 29,615 in stock
     ("18k2 1%", "R_0402_1005Metric"):        "C2076827",   # Panasonic ERJ2RKF1822X, 1 %; 37,043 in stock
     ("1M", "R_0402_1005Metric"):             "C26083",   # UniOhm 0402WGF1004TCE, 1 %; basic
+    ("470k", "R_0402_1005Metric"):           "C25790",   # UniOhm 0402WGF4703TCE, 1 %; 161,129 on 2026-11-03 -- lever BOOT0 detector divider
     ("1R", "R_0402_1005Metric"):             "C25086",   # UniOhm 0402WGF100KTCE, 1 %; preferred extended
     ("1k 1%", "R_0402_1005Metric"):          "C11702",   # UniOhm 0402WGF1001TCE, 1 %; basic
     ("200k 1%", "R_0402_1005Metric"):        "C25764",   # UniOhm 0402WGF2003TCE, 1 %; basic
