@@ -2093,7 +2093,26 @@ def tee_pcb(x: float, y: float, drop: int = 1) -> cq.Workplane:
                     .translate((xl + dx, cy + TEE_CONN_CY - TEE_MOUTH_DY, top)))
     for px, py, sx, sy, h in (D.TEE_TERM_R, D.TEE_TERM_SW):       # 120 R and its switch
         b = b.union(box_at(sx, sy, h, x=xl + px, y=cy + py, z=top + h / 2))
+    # THE THT TAILS AND THEIR SOLDER, under the board (user, 2026-11-03: they stood on the
+    # motor's metal faceplate and shorted every pin -- and the overlap gate could not see it,
+    # because they were not drawn). Each pin XH_POST_TAIL long; each joint a lump TEE_SOLDER_H
+    # deep, grown TEE_SOLDER_GROW past its land all round, because real solder sits proud of
+    # the pad. Read off the routed board's pads (outline-centre frame, as tee_conn_dx).
+    from cadkit.pcb import XH_POST_TAIL
+    under = top - 1.6
+    for ref in ("J1", "J2"):
+        f = BG.BOARDS.footprint("can_tee", ref)
+        for px, py in f["pads"].values():
+            b = b.union(box_at(TEE_PAD[0] + 2 * TEE_SOLDER_GROW, TEE_PAD[1] + 2 * TEE_SOLDER_GROW,
+                               TEE_SOLDER_H, x=x + px, y=cy + py, z=under - TEE_SOLDER_H / 2))
+            b = b.union(box_at(0.64, 0.64, XH_POST_TAIL, x=x + px, y=cy + py,
+                               z=under - XH_POST_TAIL / 2))
     return b
+
+
+TEE_PAD = (1.7, 1.95)          # XH THT land, X by Y (elec/geom/can_tee.geom.json)
+TEE_SOLDER_GROW = 0.3
+TEE_SOLDER_H = 1.0
 
 
 # (THE TRRS <-> JST-XH ADAPTER PCB IS DELETED, 2026-09-16, user. It existed to put the
