@@ -32,6 +32,7 @@ import cadquery as cq
 from . import dimensions as D
 from .helpers import box_at, cyl_y
 from .components import MOTOR_PULLEY_STANDOFF
+from cadkit.fasteners import M4 as _M4
 
 PLATE_T      = 8 * D.BEAD        # 6.4 faceplate wall (its belt's lane is relieved out of it: build.py)
 
@@ -114,6 +115,20 @@ SEAT_TOP = Z_HI + D.TEE_BOARD_T + D.TEE_WALL_OVER  # ...and the bay runs this fa
                                                    # seat's walls are just the bay, cut for the board
 
 
+# THE TAIL ROW CLEARS THE MOTOR'S FACEPLATE (user, 2026-11-03: the soldered XH tails stood ON the
+# metal front plate and shorted every pin; the model showed them touching too). With the board's
+# +Y edge flush with the wall's face, the pads' -Y edge was 0.575 INSIDE the faceplate's +Y face
+# and the tails hang D.TEE_TAIL_DROP below the can's top. The board moves +Y until the pad edge,
+# with the board pushed its whole seat fit -Y, still stands TEE_SOLDER_CLR off the faceplate:
+# real solder sits proud of the modelled pad. The faceplate cannot come further +Y than this --
+# it abuts the wall. Whole beads, rounded up: 2.4, pad edge 1.825 clear (1.525 at worst fit).
+TEE_PAD_HALF_Y = 1.95 / 2          # XH THT land, 1.7 x 1.95 (elec/geom/can_tee.geom.json)
+TEE_SOLDER_CLR = 1.0
+TEE_FACE_SHIFT = D.BEAD * math.ceil(
+    ((D.TEE_BOARD_Y / 2 - D.TEE_TAIL_CY + TEE_PAD_HALF_Y + TEE_SOLDER_CLR + D.TEE_FIT) - PLATE_T)
+    / D.BEAD - 1e-9)
+
+
 def tee_board_box(i):
     """The tee board's own box on motor i: (x0, x1, y0, y1, z_underside).
 
@@ -124,7 +139,7 @@ def tee_board_box(i):
     bare EAR the retaining M4 goes through, which lands on the +X post."""
     _, bx1, _, by1, _, _ = body_box(i)
     x1 = bx1 + MOTOR_CLR + D.TEE_EAR_X              # the layout region's +X edge is the fit line
-    y1 = by1 + PLATE_T                              # +Y edge flush with the faceplate wall's face
+    y1 = by1 + PLATE_T + TEE_FACE_SHIFT             # +Y edge past the faceplate wall's face
     return x1 - D.TEE_OUTLINE_X, x1, y1 - D.TEE_BOARD_Y, y1, Z_HI
 
 
@@ -194,10 +209,14 @@ def _tee_pocket(i):
     pocket = pocket.union(box_at(D.TEE_EAR_X + 2 * D.TEE_FIT, (ey1 - ey0) + 2 * D.TEE_FIT, _h,
                                  x=(ex0 + ex1) / 2, y=(ey0 + ey1) / 2, z=sz + _h / 2))
     # the tail relief runs under the LAYOUT REGION only -- the ear has no tails, and leaving it
-    # solid is what the hole's boss is bored from
-    return pocket.union(box_at(D.TEE_BOARD_X - 2.0, 5.0, D.TEE_TAIL_DROP + 2.0,
+    # solid is what the hole's boss is bored from. In Y: from 1.0 inside the faceplate's face (the
+    # motor's own lift path, so no sliver of wall stands against the faceplate) to the solder's
+    # reach past the pads, which leaves the wall's +Y strip under the board 1.6 thick
+    tail = (sy0 + sy1) / 2 + D.TEE_TAIL_CY
+    ry0, ry1 = body_box(i)[3] - 1.0, tail + TEE_PAD_HALF_Y + TEE_SOLDER_CLR
+    return pocket.union(box_at(D.TEE_BOARD_X - 2.0, ry1 - ry0, D.TEE_TAIL_DROP + 2.0,
                                x=(sx0 + sx1) / 2 - D.TEE_EAR_X / 2,
-                               y=(sy0 + sy1) / 2 + D.TEE_TAIL_CY,
+                               y=(ry0 + ry1) / 2,
                                z=sz - (D.TEE_TAIL_DROP + 2.0) / 2 + 0.01))
 
 
@@ -401,6 +420,15 @@ def pocket(i) -> cq.Workplane:
                              x=bx1 + MOTOR_CLR + POST_T / 2,      # face, like the bay itself
                              y=by1 + PLATE_T - _pl / 2,
                              z=(FLOOR_TOP + SEAT_TOP) / 2))
+    # ...and its HEAD goes TEE_FACE_SHIFT further +Y with the board, so the ear's M4 insert keeps
+    # the wall it had. Only the head: from under the insert's anchor up, on a 45 deg underside.
+    # Down at belt height the clamp's relief would cut a full-height extension to a one-bead
+    # skin under a ceiling (strings 1 and 2, print_check), so the post's foot stays where it was
+    _y0, _y1 = by1 + PLATE_T, by1 + PLATE_T + TEE_FACE_SHIFT
+    _zb = Z_HI - _M4.anchor_min_wall - D.MIN_WALL_2P
+    body = body.union(cq.Workplane("YZ").polyline(
+        [(_y0, _zb - TEE_FACE_SHIFT), (_y1, _zb), (_y1, SEAT_TOP), (_y0, SEAT_TOP)]).close()
+        .extrude(POST_T).translate((bx1 + MOTOR_CLR, 0, 0)))
 
     # THE SEAT is this same prism, cut for the board (user, 2026-09-14): the bay runs up past it
     # and the board's own profile comes out, so what stands around the pocket IS the cradle. No
@@ -509,18 +537,19 @@ def _coupon_world():
     sx1 = bx1 + MOTOR_CLR + POST_T                      # the post's +X face
     sy0 = by1 + PLATE_T - ((STAGGER - NEIGH_CLR) + PLATE_T) - 1.0   # past the post's -Y end
     sy1 = by1 + PLATE_T                                 # the faceplate wall's +Y face
+    py1 = sy1 + TEE_FACE_SHIFT                          # ...and the post's, past it with the board
     zb = Z_HI - M4.anchor_min_wall - COUPON_WALL
-    keep = keep.union(box_at(sx1 - (fx0 - w), sy1 - sy0, z_top - zb,
-                             x=(sx1 + fx0 - w) / 2, y=(sy0 + sy1) / 2, z=(zb + z_top) / 2))
+    keep = keep.union(box_at(sx1 - (fx0 - w), py1 - sy0, z_top - zb,
+                             x=(sx1 + fx0 - w) / 2, y=(sy0 + py1) / 2, z=(zb + z_top) / 2))
     # ...and its corbel down to the ring. Its +X and +Y faces step back by different amounts,
     # so the CORNER edge between them is the steepest line: its height is that diagonal's
     # run, which would hold the corner at exactly 45 deg; 1.2 of it keeps it under, margin.
     # It starts from the ring's INNER face, so the corner edge leaves through the ring wall's
     # solid rather than from its bare outside corner (the cavity is cut by the bay anyway)
     import math
-    step = 1.2 * math.hypot(sx1 - fx1, sy1 - fy1)
+    step = 1.2 * math.hypot(sx1 - fx1, py1 - fy1)
     corbel = cq.Solid.makeLoft([_rect_wire(fx0 - w, fx1, sy0, fy1, zb - step),
-                                _rect_wire(fx0 - w, sx1, sy0, sy1, zb)], True)
+                                _rect_wire(fx0 - w, sx1, sy0, py1, zb)], True)
     keep = keep.union(cq.Workplane(obj=corbel))
     # THE -X NEIGHBOUR'S EAR, in front of this board's FAR end (user, 2026-10-20: "the
     # neighboring pcb serves as retention here ... the one on the far end"). String i-1's tee

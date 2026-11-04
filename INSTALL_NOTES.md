@@ -257,6 +257,13 @@ on the instrument the 2.5 mm key does not do (see BOM, Tools).
   ear). Tilt the board, slide that edge under the lip, lay the ear down onto the post and run
   the M4 x 10 in through the ear. Dropped in flat it will not go; out, it comes ear-first.
   The lip is what stops the board's far end lifting off the motor (coupon, user 2026-10-20).
+* **The tee's soldered tails must never touch the motor's metal faceplate** (user, 2026-11-03:
+  they shorted every pin on a bench seat). The seat now holds the board 2.4 mm further +Y, so
+  the tail row stands about 1.8 mm off the faceplate. Before the M4 goes in, look along the
+  board's underside at the faceplate: you should see air between the solder and the metal. If
+  a joint has a big blob, trim or reflow it smaller rather than forcing the board down. On a
+  seat printed before this change, a strip of Kapton tape over the faceplate's top edge is the
+  stop-gap.
 
 ## Motors: cut each shaft to length BEFORE its pulley goes on (2026-10-29)
 
