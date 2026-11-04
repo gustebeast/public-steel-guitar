@@ -2339,6 +2339,24 @@ if REV != 1:
         "all labelled, on the front (R2: TP4 marked G, its full name has no room beside U8), "
         "and TP6 BOOT0 (1.0 mm, marked B0)")
     assert "TP4 marked G" in _q["manual"]["M9"]
+    # M32 off the documents (2026-11-04): pitch measured pad to pad on the routed board,
+    # current per contact from power_paths against JST's ratings, pin 1 from the audit page
+    _q["manual"]["M32"] = (
+        "pitch measured pad to pad on the routed board: J1 / J3 / J7 (B4B / B6B-XH-A) 2.50, "
+        "J2 / J6 (S4B-PH-SM4-TB) and J5 (B6B-PH-K-S) 2.00 -- the harness's series, 24 V on XH "
+        "and 5 V on PH (harness.py; 22 AWG on XH, 26 AWG on PH). Per contact, from power_paths "
+        "against JST's 3 A (XH) and 2 A (PH): J1 2.9 A on its one 24 V way (97 %; bus A's west "
+        "feed after the dual-feed split -- the staggered slew peak is the bring-up measurement "
+        "BOM.md names), J3 5.5 A in on ways 1 and 6 (2.9 + 0.8 + 1.7 + 0.1, about 2.75 A each, "
+        "92 %), J7 1.70 A (57 %), J5 3 A on ways 1 and 6 (1.5 A each, 75 %), J2 / J6 0.52 A "
+        "each, their own limiter's (26 %). J4 is USB-C numbered as the standard numbers it: "
+        "D+ A6 / B6, D- A7 / B7, CC1 / CC2 each 5k1 to GND (R24 / R25, a sink), VBUS open. "
+        "Pin 1: docs/connector-and-polarity-audit.md (2026-10-06): top-entry XH / PH No. 1 by "
+        "the posts' wall (eXH p.5, ePH p.2), side-entry PH from ePH p.4, each seen in the "
+        "fab's previewer; every way order is harness.py's, asserted at both ends. Every "
+        "connector with a single-ended line has a GND: J3 / J7 (the button's throws) on way 2, "
+        "J5 on 2 and 5, the bus connectors on 2. Not done: the 1:1 print offered to real "
+        "housings, a bench step before the order")
     _g = next(g for g in _q["net_groups"] if g["name"] == "bus B leaves by two connectors, way for way")
     _g.update({"name": "bus B's two arms: each connector its own 5 V and pair, ground shared",
                "nets": 7})
