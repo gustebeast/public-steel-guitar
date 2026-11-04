@@ -36,15 +36,18 @@ $(B)/v/system_ch32v20x.c: $(EXAM)/GPIO/GPIO_Toggle/User/system_ch32v20x.c | $(B)
 	    -e 's|^//#define SYSCLK_FREQ_48MHz_HSE|#define SYSCLK_FREQ_48MHz_HSE|' $< > $@
 	grep -q '^#define SYSCLK_FREQ_48MHz_HSE' $@
 	test $$(grep -c '^#define SYSCLK_FREQ' $@) = 1
-$(B)/v/system_ch32v20x.h: $(EXAM)/GPIO/GPIO_Toggle/User/system_ch32v20x.h | $(B)/v
+# ...with the two headers ch32v20x.h pulls in from an example's User folder
+USER := $(EXAM)/GPIO/GPIO_Toggle/User
+HDRS := $(B)/v/system_ch32v20x.h $(B)/v/ch32v20x_conf.h $(B)/v/ch32v20x_it.h
+$(B)/v/%.h: $(USER)/%.h | $(B)/v
 	cp $< $@
 
 # WCH's code against picolibc: debug.c (not built here) and others use ptrdiff_t / size_t with
 # no <stddef.h>; glibc's headers happened to bring it in, picolibc's do not. Their files only.
-$(B)/v/%.o: $(B)/v/%.c $(B)/v/system_ch32v20x.h
+$(B)/v/%.o: $(B)/v/%.c $(HDRS)
 	$(CROSS)gcc $(CFLAGS) -include stddef.h -w -c $< -o $@
 
-$(B)/%.o: %.c lever.h ma730.h $(B)/v/system_ch32v20x.h | $(B)/v
+$(B)/%.o: %.c lever.h ma730.h $(HDRS) | $(B)/v
 	$(CROSS)gcc $(CFLAGS) -c $< -o $@
 
 $(B)/startup.o: $(EXAM)/SRC/Startup/startup_ch32v20x_D6.S | $(B)/v

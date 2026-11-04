@@ -1325,3 +1325,18 @@ Plug a USB device in (an audio interface such as a Shure MVX2U) and the board po
   motors, so it reaches J5's line: crease it flat, the conductors keeping their order, then
   bend it down over the cap's end onto the socket.
 - **R1 (bench) has no riser:** its cap sits directly on the header and hangs past the Pi's edge.
+
+
+## Lever boards: first flash on the bench, then a slot and a calibration each (2026-11-03)
+
+- **Flash each board on the bench before it goes into its housing** (`make swd` in
+  firmware/lever_sensor, the lever jig and the WCH-LinkE). It is the only time a lever board needs
+  a probe; it has no USB, and nothing on it listens until it has firmware.
+- **Give each its lever while it is still alone in the jig.** The jig is powered from `motor_ctrl`'s
+  bus B drop, so the freshly flashed board is on the bus by itself: `python3 -m publicbench.levers
+  list` shows one uid and "slot -", and `python3 -m publicbench.levers assign <uid> <slot>` gives
+  it the lever it is going into (stored on the board at once). Write the slot on the board's
+  housing label. A board already installed can be moved later with the same command.
+- **Calibrate each lever in place:** `python3 -m publicbench.levers cal <slot>` asks for the lever
+  at rest, then at full travel, and stores both on the board. Re-run it after anything that moves
+  the magnet or the board.
