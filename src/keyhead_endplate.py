@@ -5,8 +5,9 @@ prism (rail outer to rail outer) that TAKES OVER the rail -X ends, so its edge s
 the front like the bridge endplate. It INSTALLS LAST, dropping straight down (+Z→-Z)
 with the deck panels already in place. It:
   - closes the -X end of the box (its solid +X face stops the deck panels sliding -X);
-  - terminates the strings: break dowels on sliding inserts that clamp each string
-    against the wrap rod, each insert pushed up by its own M4 height screw;
+  - terminates the strings: a steel nut plate per string (nut_block.py) whose crown is the
+    break and whose shelf pinches the one wrap against the rod, pushed up by its own M4 height
+    screw, with an M4 side screw in the bed face pinning the tail to the plate;
   - sockets a dovetail tongue on each rail end (mirrors the bridge joint) -> X+Y lock
     + grip against the +X string tension; held down by the legs' lock screws
     (legs.lock_pin_joint), which pass through its end face.
@@ -88,10 +89,9 @@ def _height_prism():
 
 def _height_negatives():
     """Everything the prism needs cut, fused and subtracted once, in the nut block's local frame:
-    the main pockets again (they run through it), the extension pockets under their roofs (which run
-    the prism's whole height), and every screw's heat-set pocket and bore."""
-    z_top = (HS_Z1 - D.STRING_Z) + 1.0
-    out = NB.all_pockets().union(NB.lower_pockets(z_top))
+    the pockets again (they run down through it to the screws' floor) and every height screw's
+    heat-set pocket and bore."""
+    out = NB.all_pockets()
     for i in range(D.N_STRINGS):
         for k in NB.height_screw_negatives(i):
             out = out.union(k)
@@ -153,10 +153,9 @@ def _build():
             w = w.cut(_n)
         for _n in _esn(CH.LEG_STATIONS_X[1], _ly, -1.0, CH.Z_BOT, PRINT_UP, _s):
             w = w.cut(_n)
-    # STRING-END STOWAGE (one per string): a straight teardrop bore per string, from the lane floor
-    # down and out through the bed, leaning -Y as it descends (nut_block.STOW_TILT).
-    w = w.cut(NB.all_stow_channels(CH.Z_BOT - 1.0 - D.STRING_Z)
-              .translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))
+    # THE SIDE SCREWS (one per string): heat-set in the bed face, clearance on into the tail channel,
+    # where the tip pins the tail to its plate (nut_block.side_screw_negatives).
+    w = w.cut(NB.all_side_screw_negatives().translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))
     w = w.cut(NB.lanes().translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))
     w = w.cut(NB.rod_bore().translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))
     # THE KEY'S WAY OUT TO THE +Y FACE: the rod's in the plate now, so its push hole runs on to the skin.
@@ -196,8 +195,8 @@ def assembly():
     """The keyhead as the SCRATCH VIEW should draw it: the printed piece plus the
     hardware it is designed around, all rebuilt LIVE.
 
-    The rod, the gauged break dowels and the strings are every one of them positioned
-    from constants in the module under work (nut_block.DOWEL_X, .rod(), .wrap_y()). A
+    The rod, the nut plates, their screws and the strings are every one of them positioned
+    from constants in the module under work (nut_block.plate(), .rod(), .wrap_y()). A
     CACHED copy of them would be drawn wherever those constants stood when the cache was
     made -- precisely the lie the cache exists not to tell -- so the scope excludes them
     from the context (see `replaced`) and they are rebuilt here instead.
@@ -206,21 +205,12 @@ def assembly():
     machinery keyed off the scope registry; per-part knowledge belongs with the part.
     src.build is imported INSIDE the call to dodge the import cycle (build imports this
     module), which is safe because build is always imported by then."""
-    from . import components as C
     from . import build as B
     out = [("keyhead_endplate", keyhead_endplate),
            ("nut_wrap_rod", NB.rod().translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))]
     for i in range(D.N_STRINGS):
-        pin_z = -D.STRING_GAUGE[i] - NB.PIN_D / 2
-        out.append((f"break_dowel_{i}", C.dowel().translate(
-            (D.NUT_BLOCK_X + NB.DOWEL_X, D.nut_y(i), D.STRING_Z + pin_z))))
         out.append((f"string_{i}", B._string_path(i, D.string_y(i))))
-        out.append((f"nut_slide_insert_{i}",
-                    NB.slide_insert(i).translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))))
-        out.append((f"nut_height_screw_{i}",
-                    NB.height_screw(i).translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))))
-        out.append((f"nut_height_insert_{i}",
-                    NB.height_insert(i).translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))))
+        out += [(n, s) for n, s in B.nut_hardware(i)]
     # THE CHASSIS SEGMENT UNDER THIS END IS LIVE TOO (user). chassis.py cuts a head cavity per
     # height screw, placed from nut_block's own positions, so a CACHED copy of it goes stale the
     # moment those move -- exactly the drift the scratch view exists to prevent. The -X-most

@@ -1365,9 +1365,9 @@ BRIDGE_BASE_X1 = BRIDGE_X + BRIDGE_HALF_PX          # +23.43  (+X face)
 # String gauges — the DEMO SET the model is drawn strung with. The keyhead does NOT take
 # its shape from it: each sliding insert rises until its own string stops it, so the string
 # sets its own height, and every insert SKU is sized for the heaviest gauge its slots take
-# (nut_block.sku_gauge_max; string 10 up to STRING_GAUGE_MAX below). Clearances to the
+# (nut_block.G_ENVELOPE: the pockets and channels take up to STRING_GAUGE_MAX below). Clearances to the
 # lowest string read STRING_GAUGE_MAX too. Two things still read THIS table: the SKU A/B
-# zone maxima (nut_block.sku_gauge_max) and the rod height (nut_block._G_MAX).
+# plate's Y placement asserts (nut_block.PLATE_YC) and the rod height (nut_block._G_MAX).
 # Index i = string (i+1), low to high: index 0 = string 1 (lightest, +Y); index 9 =
 # string 10 (heaviest, −Y player side).
 # ─────────────────────────────────────────────────────────────────────────

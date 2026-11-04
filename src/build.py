@@ -114,11 +114,11 @@ PARTS = {
     "kl_pcb_shim":     (lambda: (lambda KL: KL.pcb_shim(KL.HOUS_Z0, KL.HOUS_Z1))(__import__("src.knee_lever", fromlist=["e"])), "pctg/kl_pcb_shim.step", "PCTG — sensor-board shim, LEFT-HAND knee levers (x2: LKL, RKL): a 33.0 x 1.55 strip one board thick that drops down the cradle grooves on top of the board, so the chassis underside presses the board through it. The right-hand housings need none. Prints FLAT, on a big face"),
     "kv_pcb_shim":     (lambda: __import__("src.knee_lever_vert", fromlist=["e"]).kv_pcb_shim, "pctg/kv_pcb_shim.step", "PCTG — sensor-board shim, VERTICAL knee lever (x1): the same plate 20.95 tall, filling the taller housing's cradle above the one board. Prints FLAT, on a big face"),
     "pedal_pcb_shim":  (lambda: (lambda KL, FP: KL.pcb_shim(FP.CRADLE_Z0, FP.SHIM_TOP, FP.BOARD_FLIP))(__import__("src.knee_lever", fromlist=["e"]), __import__("src.foot_pedal", fromlist=["e"])), "pctg/pedal_pcb_shim.step", "PCTG — sensor-board shim, FOOT PEDALS (x5): the same plate 24.70 tall, standing from the board's edge to the bar's lid groove; the LID presses it. Prints FLAT, on a big face"),
-    # THE NUT'S SLIDING INSERTS: ten in the instrument, THREE parts (nut_block.sku_gauge_max:
-    # every insert of a SKU is one part). Each row builds its SKU's first string.
-    "nut_slide_insert_a": (lambda: (lambda NB: NB.slide_insert(0))(__import__("src.nut_block", fromlist=["e"])), "pctg/nut_slide_insert_a.step", "PCTG — nut slide insert, SKU A (x7: strings 1-7): the string's clamp flat and dowel cradle on a tall foot that the height screw pushes up its slot in the keyhead. Prints LYING ON ITS FLAT +X FACE, growing -X"),
-    "nut_slide_insert_b": (lambda: (lambda NB: NB.slide_insert(NB.N_FINGERED))(__import__("src.nut_block", fromlist=["e"])), "pctg/nut_slide_insert_b.step", "PCTG — nut slide insert, SKU B (x2: strings 8-9): the wider insert of the bass stack, abutting its neighbours. Prints LYING ON ITS FLAT +X FACE, growing -X"),
-    "nut_slide_insert_c": (lambda: (lambda NB: NB.slide_insert(NB.SKU_C))(__import__("src.nut_block", fromlist=["e"])), "pctg/nut_slide_insert_c.step", "PCTG — nut slide insert, SKU C (x1: string 10): the widest, its clamp lobe run out to cover the heaviest coil. Prints LYING ON ITS FLAT +X FACE, growing -X"),
+    # THE NUT PLATE: ten in the instrument, ONE part (nut_block.plate). The STEEL one is laser cut
+    # (JLCCNC, 4 mm 304) and its STEP is the file to order from; the PRINTED stand-in carries a Ø4
+    # dowel in place of the crown and fits the same pocket, for the bench until the steel arrives.
+    "nut_plate": (lambda: __import__("src.nut_block", fromlist=["e"]).plate(0), "steel/nut_plate.step", "LASER-CUT 304 STAINLESS, 4 mm, x10 (JLCCNC sheet metal, no finish; stone any burr off the crown): the string's break crown, the shelf that pinches the one wrap under the rod, and the -X face the side screw pins the tail to. Not printed"),
+    "nut_slide_insert": (lambda: __import__("src.nut_block", fromlist=["e"]).standin(0), "pctg/nut_slide_insert.step", "PCTG — nut plate STAND-IN, x10 (bench, until the steel plates arrive): the plate's outline with a cradle for a Ø4 x 4 dowel where the crown is (no glue: the string holds it down). Prints FLAT on a Y face"),
     # THE BELT CLAMP'S TWO HALVES, ten of each. (test_belt_tensioner is the same pair on one plate.)
     "belt_tensioner_half_a": (lambda: __import__("src.belt_tensioner", fromlist=["e"]).half_a(), "pctg/belt_tensioner_half_a.step", "PCTG at a 0.4 NOZZLE (the ribs) — belt-tension clamp, HEAD half (x10): belt slot, M3 head window and the key channel. Prints LYING ON ITS CLOSED +Y SIDE FACE, the slot opening upward"),
     "belt_tensioner_half_b": (lambda: __import__("src.belt_tensioner", fromlist=["e"]).half_b(), "pctg/belt_tensioner_half_b.step", "PCTG at a 0.4 NOZZLE (the ribs) — belt-tension clamp, INSERT half (x10): belt slot and the side-entry M3 insert pocket. Prints LYING ON ITS CLOSED -Y SIDE FACE, slot and pocket opening upward"),
@@ -716,10 +716,10 @@ def _declared():
         (["kl_pcb_shim", "pedal_pcb_shim"], _KLX.SHIM_UP,
          "knee_lever.SHIM_UP — flat on a big face, building through its "
          "own 1.6 thickness: a plain plate, nothing overhangs"),
-        (["nut_slide_insert_a", "nut_slide_insert_b", "nut_slide_insert_c"],
+        (["nut_slide_insert", "nut_plate"],
          __import__("src.nut_block", fromlist=["e"]).INSERT_UP,
-         "nut_block.INSERT_UP — lying on the flat +X face and growing -X "
-         "(user): the reliable way to make a 67 mm part, not a tower"),
+         "nut_block.INSERT_UP — flat on a Y face: the outline is the printer's XY, its most "
+         "accurate axes, and the dowel's cradle prints round (the steel plate is laid the same way)"),
         (["belt_tensioner_half_a"], _BT.HALF_A_UP,
          "belt_tensioner.HALF_A_UP — on its closed +y side face, every slot "
          "a through-profile opening upward"),
@@ -1370,27 +1370,21 @@ def _string_components(i):
     # string: rises from the anchor tangent to the bearing's +X extent, wraps 90°
     # over the top, then runs the speaking length to the nut block.
     out.append((f"string_{i}", _string_path(i, sy)))
-    # nut-block hardware (DEMO): gauged break pin, then the WRAP's clamp -- which sits
-    # at the far end of the coil, not on the string's own lane (see nut_block.wrap_y)
-    g = D.STRING_GAUGE[i]
-    ny, wy = NB.wrap_y(i)
-    out.append((f"break_dowel_{i}", C.dowel().translate(               # gauged: pin top at Z-g, so
-        (D.NUT_BLOCK_X + NB.DOWEL_X, ny,                               # every string top lands on
-         D.STRING_Z - g - D.NUT_PIN_D / 2))))                          # one plane. DOWEL_X, not 0:
-                                                                       # the dowels sit 1.6 back from
-                                                                       # the block's front face now
-    # THE SLIDING INSERT IS THE CLAMP (no set screw, no heat-set insert): the tail is pinched
-    # against the wrap on the rod rather than against the floor. It was only ever drawn by
-    # keyhead_endplate.assembly() -- the scratch view -- so the full assembly, and everyone
-    # viewing it, never saw one. Same placement as there, from the same module.
-    out.append((f"nut_slide_insert_{i}",
-                NB.slide_insert(i).translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))))
-    # ...and the M4 x 40 that pushes it up, threading its heat-set in the endplate slab
-    out.append((f"nut_height_screw_{i}",
-                NB.height_screw(i).translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))))
-    out.append((f"nut_height_insert_{i}",
-                NB.height_insert(i).translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))))
+    out += nut_hardware(i)
     return out
+
+
+def nut_hardware(i):
+    """String i's termination at the keyhead, placed: the STEEL nut plate (the design; the bench's
+    printed stand-in is the same outline), the M4 x 40 that pushes it up through its heat-set in the
+    endplate slab, and the M4 x 10 side screw pinning the tail, in its heat-set in the bed face.
+    keyhead_endplate.assembly() draws the same list, from here."""
+    at = (D.NUT_BLOCK_X, 0.0, D.STRING_Z)
+    return [(f"nut_plate_{i}", NB.plate(i).translate(at)),
+            (f"nut_height_screw_{i}", NB.height_screw(i).translate(at)),
+            (f"nut_height_insert_{i}", NB.height_insert(i).translate(at)),
+            (f"nut_side_screw_{i}", NB.side_screw(i).translate(at)),
+            (f"nut_side_insert_{i}", NB.side_insert(i).translate(at))]
 
 
 def _wrap_rod_component():
@@ -1491,10 +1485,10 @@ def _string_path(i, sy, rise_only=False):
     t_in = cq.Vector(-math.sin(phi), 0.0, math.cos(phi))   # the coil's heading at the touch
     out = out.union(_rod(brk, tang + t_in.multiply(_LAP), rad))
     coil = _wrap_coil(i, rad, hr)
-    # THE TAIL runs level off the top of the rod, over the lane, then down its stow bore, which
-    # leans -Y as it descends (nut_block.tail_route, .stow_y_at).
+    # THE TAIL drops straight off the rod's -X side, down the plate's -X face to its channel's floor
+    # (nut_block.tail_route), where the side screw pins it.
     pts = NB.tail_route(i)
-    ys = [wy, wy] + [NB.stow_y_at(i, z) for _x, z in pts[2:]]
+    ys = [wy] * len(pts)
     x0, z0 = pts[0]
     prev = cq.Vector(D.NUT_BLOCK_X + x0, wy, D.STRING_Z + z0)
     tail = _bead(prev, rad * 1.05)                          # see _bead: the tail leaves
@@ -2519,8 +2513,10 @@ _COLORS = {
     "break_dowel":     (0.75, 0.75, 0.78),
     "nut_height_screw": (0.72, 0.74, 0.78),   # M4 x 40 button, pushes the insert up
     "nut_height_insert": (0.72, 0.60, 0.30),  # M4 heat-set in the keyhead slab
-    "nut_slide_insert": (0.86, 0.72, 0.30),   # the sliding insert -- brass-ish, so it
-                                              # reads apart from the steel it presses on
+    "nut_plate":       (0.80, 0.81, 0.83),   # laser-cut 304: lighter than the rod it pinches against
+    "nut_side_screw":  (0.72, 0.74, 0.78),   # M4 x 10 button, pins the tail
+    "nut_side_insert": (0.72, 0.60, 0.30),   # M4 heat-set in the bed face
+    "nut_slide_insert": (0.86, 0.72, 0.30),   # the printed stand-in, if ever drawn
    # steel dowel (gauged break pin)
     "nut_wrap_rod":    (0.62, 0.66, 0.72),   # THE CAPSTAN -- one rod, and it is the bridge
                                              # axle's own O5 g6 shaft

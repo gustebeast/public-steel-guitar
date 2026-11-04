@@ -106,10 +106,12 @@ choice between a clever part and an obtainable one, the obtainable one won.
   per-string bridge bearing and runs down to a short vertical screw, motors
   lying flat under the speaking length in a staircase, driven by twisted
   belts — yielding a thin instrument (~100 mm).
-- String termination is a **wrap capstan**: over a Ø2 break dowel, around a
-  shared Ø8 rod for ~3 turns, then into one clamp screw. The capstan is the
-  point — Euler-Eytelwein takes 147 N at the bridge down to ~5-9 N at the
-  clamp, so the clamp holds a tail rather than a string.
+- String termination is a **laser-cut steel nut plate** per string: its
+  crown is the break, the string takes ONE wrap round a shared Ø8 rod, the
+  plate's shelf pinches the one strand under the rod, and a side screw pins
+  the tail to the plate. Both pinches are steel on steel, and the plate's
+  crown-to-shelf height is a cut edge, so the strings level to the laser's
+  accuracy rather than the printer's.
 - **There is no printed carriage.** The leadscrew's own H-nut does both jobs:
   its +X ear anchors the string (ball end underneath, tension pulling it up
   against the ear, exactly a guitar bridge plate) and its -X ear rides the
@@ -124,12 +126,13 @@ choice between a clever part and an obtainable one, the obtainable one won.
 ## How the mechanism works
 
 **The string's path** (from the player's left): each string's plain end runs
-over a Ø2 steel **break dowel** in the **nut block** — a removable, reprintable
-PETG-GF block — then takes about three turns around a shared **Ø8 wrap rod**
-before one cup-point set screw clamps the tail. The capstan is the whole point:
-Euler-Eytelwein takes 147 N at the bridge down to **~5-9 N at the clamp**, so
-the screw holds a tail rather than a string, and the clamp is no longer asked
-for 490 N. The speaking length (615 mm, ≈24.2″ scale) runs to the bridge, turns
+over the crown of its own **steel nut plate** (laser-cut 304, 4 mm) in the
+**nut block** fused into the keyhead endplate, then takes **one** wrap round a
+shared **Ø8 wrap rod**. An M4 height screw pushes the plate up until its shelf
+pinches the one strand under the rod, which sets the string's height off the
+string itself, and an M4 side screw in the keyhead's -X face pins the tail to
+the plate. Until the plates arrive a printed stand-in with a Ø4 dowel for a
+crown fits the same pocket. The speaking length (615 mm, ≈24.2″ scale) runs to the bridge, turns
 90° over a **per-string 688ZZ bearing** on a Ø8 ground shaft (so the bend is
 near-frictionless and tension equalizes across it), and drops vertically to the
 **leadscrew's own nut**. The ball end sits under that nut's +X ear with the
@@ -280,7 +283,8 @@ py -3.12 -m tools.export_glb       # the web viewer's model and page alone (docs
 - Printed parts, by area (`py -3.12 -m src.build --list` is the authoritative
   list — it is generated, this is a map):
   - **body**: `chassis_0/1/2` (each one file with its `_light` window body), `bridge_endplate`,
-    `keyhead_endplate` (nut block fused in)
+    `keyhead_endplate` (nut block fused in), `nut_slide_insert` (the nut plate's printed
+    stand-in; the steel `nut_plate` is laser cut, `steel/nut_plate.step`)
   - **top deck**: `top_plate_*` segments, each one file with its colour inlay body,
     `pickup_zplate` (the pickup's height plate)
   - **drivetrain**: `screw_pulley_hi`/`_lo`, `motor_pulley`, `tension_fork`,

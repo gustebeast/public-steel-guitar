@@ -117,7 +117,7 @@ PARTS = {}
 #                              window's two end walls. The coupon print judges it. The M3
 #                              bores and the key's bore are cadkit teardrops now (2026-10-22),
 #                              two beads all round; what is left of them is their 0.8 tips.
-#     nut_slide_insert_a/b/c   the dowel cradle's lip, 0.78 of span (3.7 mm2): under a bead.
+#     (nut_slide_insert: the old cradle lip is gone with the stepped insert -- the stand-in prints flat)
 #     knee_housing(_r)         three slivers at 53.6 deg, under one bead of span.
 #     kl_magnet_cap            a 0.23-tall lead-in cone at 58.6 deg, 6.3 mm2.
 #     top_plate_0              two jack-head seat cones whose worst facet reads 48-50 deg:
@@ -197,9 +197,7 @@ DECLARED_UP = {
     "kl_spacer_sprung":  ("src.knee_lever", "SPACER_UP"),
     "kl_spacer_sprung_n": ("src.knee_lever", "SPACER_UP"),
     "kl_axle_sprung":    ("src.knee_lever", "AXLE_UP"),
-    "nut_slide_insert_a": ("src.nut_block", "INSERT_UP"),
-    "nut_slide_insert_b": ("src.nut_block", "INSERT_UP"),
-    "nut_slide_insert_c": ("src.nut_block", "INSERT_UP"),
+    "nut_slide_insert": ("src.nut_block", "INSERT_UP"),
     "belt_tensioner_half_a": ("src.belt_tensioner", "HALF_A_UP"),
     "belt_tensioner_half_b": ("src.belt_tensioner", "HALF_B_UP"),
     "kl_pcb_shim":       ("src.knee_lever", "SHIM_UP"),
