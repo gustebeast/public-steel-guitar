@@ -3915,6 +3915,34 @@ if REV != 1:
                  "loader answers, as on optical R2. No firmware of ours is involved, so a bad image "
                  "is no obstacle; a dead bridge leaves the board booting normally. TP1-TP5 stay as "
                  "clip-on pads for bring-up. Sources: CH340DS1-EN V3C, CH32V307 RM, optical M43")
+    # R1's words for these four named the LMR16006, its catch diode D1 and BOOT0 on R7 alone
+    def _r2(item, old, new):
+        assert old in _m[item], (item, old)
+        _m[item] = _m[item].replace(old, new)
+    _r2("M5", "Q2 60 V, U5 60 V operating", "Q2 60 V, U5 (LMR33630) 36 V operating, 38 V "
+        "absolute, U16 40 V behind D10 (M16)")
+    _r2("M5", "under D1's 60 V and, on the optical board this rail feeds, under U13's 36 V "
+        "operating limit, which is reached at 26.7 A",
+        "under U5's 36 V operating limit here and the optical board's U13 alike, which is "
+        "reached at 26.7 A")
+    _r2("M8", "BOOT0: R7, 10 k to GND. NRST: R6 10 k to 3V3 and C54.",
+        "BOOT0: R7, 10 k to GND; Q7 lifts it only while U17 holds DTR# low, R52 keeps Q7 off "
+        "otherwise. NRST: R6 10 k to 3V3 and C54; D9 pulls it down only while U17 holds RTS# "
+        "low. J1's role: ROLE_ID_N up on R43 (U14 rests on the Pi path), U15's EN down on R44 "
+        "(J1's VBUS off), U13 PORT open (DRP), ADDR high on R42 (I2C at 0x67).")
+    _r2("M8", "U5 SHDN: open = on.", "U5 EN on VIN: always on.")
+    _r2("M27", "BOOT0: R7 only.", "BOOT0: R7 and Q7's drain, off at rest.")
+    _r2("M27", "NRST: R6, C54, a test pad.", "NRST: R6, C54, a test pad and D9's anode, off "
+        "at rest. PA9 / PA10 carry U17 and nothing else.")
+    _r2("M28", "AP2112K is the SOT-25.", "AP2112K is the SOT-25. R2: LMR33630BRNXR the RNX "
+        "VQFN, TUSB320LAIRWBR the RWB X2QFN-12, TS3USB221RSER the RSE UQFN-10, TPS2553DBVR the "
+        "DBV (EN active high), INA226AIDGSR the DGS VSSOP-10, CH340C the SOP16, AO3401A / "
+        "2N7002 SOT-23 1 G 2 S 3 D, MX128-5.0-02P-Y pin 1 at the lip end.")
+    _r2("M39", "Hub: ports 3 / 4 and the LED / strap pins open", "Hub: port 3 is J1's host side "
+        "through U14 and port 4 the flash bridge U17 on R2; the LED / strap pins open")
+    _r2("M39", "U5 SHDN open (= on). J1 / J2 / J3 VBUS pins dead-ended on purpose",
+        "U5 EN on VIN. U5 PG, U13 PORT, U16 Alert and U17's modem pins open (quality."
+        "unconnected says why). J2 / J3 VBUS pins dead-ended on purpose; J1's is U15's output")
 
 
 if __name__ == "__main__":

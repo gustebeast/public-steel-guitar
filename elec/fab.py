@@ -187,6 +187,7 @@ LCSC = {
     "CH334F": "C5187527",           # WCH HS hub, QFN-24 4x4 (DS V2.5 Table 1-3, "4F")
     "CH340C": "C84681",             # WCH USB-serial, SOP-16, DTR# + RTS#, no crystal; 106,932 on 2026-10-30
     "AO3401A": "C15127",            # P-FET SOT-23, JLC basic; 1,019,825 on 2026-10-30
+    "MMBT3904": "C20526",           # CJ NPN SOT-23 (1 B 2 E 3 C), JLC basic; 2,847,066 on 2026-11-03 -- motor_ctrl R2 Q2
     "G6K-2F-Y-DC5": "C47190",       # Omron DPDT, 5 V coil (terminal arrangement p.6): the TAPE-AND-REEL listing (G6K-2F-Y-TR DC5), 64,883 on 2026-10-08; the tube listing C326376 was down to 44
     "ESD5B5.0ST1G": "C93623",       # onsemi bidirectional 5 V TVS, SOD-523, ~166k
     # -- the UI board, 2026-09-25, every line read off the LCSC listing itself ------
