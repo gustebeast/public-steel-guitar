@@ -1,7 +1,8 @@
 """What the six buttons do to the ten strings, and the two motor backends.
 
 All ten strings move together. A position is a number of SEMITONES above each string's own
-open tuning, and each string turns its motor by its own amount for it, from the string model
+open tuning, and each string turns its motor by its own amount for it: from its MEASURED curve
+when /tune (publicbench.tune, curves.json) has one for it, else from the string model
 in src/dimensions.py (the carriage travel between two pitches is DL_OPEN * ((f2/f0)^2 -
 (f1/f0)^2); the screw lead is 2 mm and the belt is 14:14, so one motor turn is 2 mm of nut).
 0.52 turn is a whole tone up from open, which is what bronner measured the motor doing.
@@ -42,6 +43,26 @@ RAISE_SIGN = +1
 def turns(semitones: float, dl_open: float = DL_OPEN) -> float:
     """Motor turns from open pitch to `semitones` above it (negative: below)."""
     return dl_open * (2.0 ** (semitones / 6.0) - 1.0) / LEAD
+
+
+class Curve:
+    """A string's measured motor counts from open pitch at each knot (copedent.py: `lo`, then
+    every `step` cents), as publicbench.tune keeps them in curves.json. Straight lines between
+    knots and the end value past either end: what motor_ctrl's play table does (play.c), so a
+    string goes where the table would take it. The counts carry their own direction (the fit
+    takes whichever way the string went), so RAISE_SIGN does not apply to them."""
+
+    def __init__(self, counts, lo: int, step: int):
+        self.c, self.lo, self.step = [float(v) for v in counts], lo, step
+
+    def at(self, cents: float) -> float:
+        x = (cents - self.lo) / self.step
+        if x <= 0:
+            return self.c[0]
+        k = int(x)
+        if k >= len(self.c) - 1:
+            return self.c[-1]
+        return self.c[k] + (self.c[k + 1] - self.c[k]) * (x - k)
 
 
 class Pitch:
@@ -284,9 +305,11 @@ class Driver:
     """Turns a Pitch into absolute motor targets. `home` is each motor's count at OPEN pitch,
     kept in `state_path` so a restart mid-creep does not take the creep as open."""
 
-    def __init__(self, motors, pitch: Pitch, state_path=None, raise_sign=RAISE_SIGN, dl=None):
+    def __init__(self, motors, pitch: Pitch, state_path=None, raise_sign=RAISE_SIGN, dl=None,
+                 curves=None):
         self.m, self.p, self.sign = motors, pitch, raise_sign
         self.dl = dl or {s: DL_OPEN for s in motors.strings}
+        self.curves = dict(curves or {})            # string -> Curve; the rest play the model
         self.state_path = state_path
         self.home = None
         self.sent = None
@@ -304,8 +327,14 @@ class Driver:
             self.home = self._load_home()
             self.sent = self.p.base
 
+    def offset(self, s: int, semitones: float) -> float:
+        """Motor counts from string s's open pitch to `semitones` above it."""
+        if s in self.curves:
+            return self.curves[s].at(100.0 * semitones)
+        return self.sign * turns(semitones, self.dl[s]) * COUNTS_PER_TURN
+
     def counts(self, s: int, semitones: float) -> int:
-        return self.home[s] + int(round(self.sign * turns(semitones, self.dl[s]) * COUNTS_PER_TURN))
+        return self.home[s] + int(round(self.offset(s, semitones)))
 
     def _load_home(self):
         now = self.m.home()
@@ -314,7 +343,7 @@ class Driver:
                 st = json.load(open(self.state_path))
                 home = {int(k): v for k, v in st["home"].items()}
                 base = float(st["base"])
-                ok = all(s in home and abs(now[s] - (home[s] + self.sign * turns(base, self.dl[s]) * COUNTS_PER_TURN))
+                ok = all(s in home and abs(now[s] - (home[s] + self.offset(s, base)))
                          < 0.02 * COUNTS_PER_TURN for s in self.m.strings)
                 if ok:
                     self.p.base = base

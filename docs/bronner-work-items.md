@@ -338,6 +338,27 @@ straight to the MCU's USB, so a blank or bricked board still needed a probe. Now
     panel's CH340) if ModemManager ever arrives. Recommendation: keep the straight pair; write the tool
     that way when output_panel's ROM path gets one. optical R2's M43 bridge is the same straight pair,
     and the same reasoning covers it.
+  - **2026-11-04, while writing that tool: the software route does not cover wchisp.** Linux raises
+    DTR# and RTS# on EVERY open of a tty, a second open of a port already open included
+    (`tty_port_block_til_ready`, whenever the baud is not 0). Clearing HUPCL only stops the drop on
+    close. So the moment wchisp opens the panel's CH340, RTS# goes low and D9 holds NRST down. U1
+    sits in reset for as long as wchisp has the port, and the ROM never answers. Our own tool can
+    open with both lines released (pyserial sets DTR, then RTS, right after the kernel's raise:
+    BOOT0 is already falling when NRST lets go, so a plain open is a clean boot), clear HUPCL,
+    pulse U1 into the ROM and leave it there. But it cannot then hand the port to wchisp. motor_ctrl
+    R2 does not have this problem: its crossed pair (Q1) does nothing with both lines low.
+    The three ways, none taken tonight:
+    - (i) The panel tool speaks WCH's serial ISP itself, as wchisp does (identify, key, erase,
+      program, verify, end), on the port it already holds with the lines where it wants them. No
+      hardware change and no wchisp, but it is new code that is unproven until it meets a chip.
+    - (ii) Race wchisp: hold our port open, start wchisp, and release RTS# the moment its open is
+      seen (/proc/<pid>/fd). U1 reboots into the ROM with BOOT0 still held, IF wchisp retries its
+      first identify. Not known; fragile at best.
+    - (iii) The crossed pair on the kept board, costed above: (a), an afternoon's local repair.
+    Recommendation: (i) if the panel's ROM path is ever needed often; otherwise the panel's own
+    USB loader (usbflash.py, boot.c) covers every update, and the ROM is for a blank or broken
+    loader only. Until one of them is built, that is a bench job: the Link, or tweezers on BOOT0
+    (board-bringup-diagnostics.md). The same holds for optical R2's straight pair.
 
 ## MA730 switch: user chose MA730GQ-Z -- DONE on agent/bronner-ma730-board (2026-11-03)
 

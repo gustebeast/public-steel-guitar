@@ -26,11 +26,12 @@ import hashlib
 import json
 import os
 import struct
+import sys
 import threading
 import time
 import zlib
 
-from pitchctl import BUTTONS, Driver, MockMotors, Pitch, STRINGS
+from pitchctl import BUTTONS, Curve, Driver, MockMotors, Pitch, STRINGS
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(HERE, "static")
@@ -70,8 +71,9 @@ class Hub:
     answer. 3 s after the last page goes (closed, or hidden), the port is shut again."""
     RETRY = 2.0
 
-    def __init__(self, driver: Driver, motors, tuner=None):
+    def __init__(self, driver: Driver, motors, tuner=None, curves=None):
         self.d, self.m, self.p = driver, motors, driver.p
+        self.curves = curves          # () -> {string: Curve}: read again after each tune
         self.clients = {}             # writer -> {"seen": t, "shown": bool}
         self._n = 0
         self._opening = None
@@ -101,6 +103,8 @@ class Hub:
                 # the string is on its open note at `at`: that is its home now, and every string
                 # goes back to where the buttons have them
                 self.d.home[s] = at
+                if self.curves:
+                    self.d.curves = self.curves()      # the string plays its new curve now
                 self.d.sent = None
                 report("done", self.tuning["msg"])
             except Exception as e:
@@ -223,16 +227,31 @@ def mock_tuner(motors, s, sign, report):
     return motors.home()[s]
 
 
+def _bench(*names):
+    """Modules of the bench package: the directory in bench/ with a tune.py, found rather than
+    named (as pitchctl finds servo and link)."""
+    import importlib
+    bench = os.path.normpath(os.path.join(HERE, "..", ".."))
+    if bench not in sys.path:
+        sys.path.insert(0, bench)
+    pkg = next(d for d in sorted(os.listdir(bench))
+               if os.path.isfile(os.path.join(bench, d, "tune.py")))
+    return [importlib.import_module(pkg + "." + n) for n in names]
+
+
+def bench_curves():
+    """Every tuned string's measured curve from the tuner's curves.json; an untuned string is
+    not in it and plays the model."""
+    tune, copedent = _bench("tune", "copedent")
+    lo, step = copedent.K["KNOT_LO"], copedent.K["KNOT_CENTS"]
+    return {int(n): Curve(r["curve"], lo, step) for n, r in tune.load()["strings"].items()
+            if r.get("curve")}
+
+
 def bench_tuner(motors, s, sign, report):
     """The real one: the bench package's tune.py on motor_ctrl's link (held by `motors`) and
     the optical board, which is opened for the tune and shut after."""
-    import importlib
-    bench = os.path.normpath(os.path.join(HERE, "..", ".."))
-    pkg = next(d for d in sorted(os.listdir(bench))
-               if os.path.isfile(os.path.join(bench, d, "tune.py")))
-    tune = importlib.import_module(pkg + ".tune")
-    optical = importlib.import_module(pkg + ".optical")
-    copedent = importlib.import_module(pkg + ".copedent")
+    tune, optical, copedent = _bench("tune", "optical", "copedent")
     cop = copedent.load()
     rig = tune.Rig(motors.link, ids={s: s}, sign=sign)
 
@@ -373,8 +392,16 @@ async def main(argv=None):
     if state:
         os.makedirs(os.path.dirname(state), exist_ok=True)
     kw = {} if a.raise_sign is None else {"raise_sign": a.raise_sign}
+    curves = None if a.mock else bench_curves
+    if curves:
+        try:
+            kw["curves"] = curves()
+        except Exception as e:                  # no numpy, no bench package: the model, all ten
+            print("curves not read:", e, flush=True)
+            curves = None
     drv = Driver(motors, Pitch(), state, **kw)
-    hub = Hub(drv, motors)
+    hub = Hub(drv, motors, curves=curves)
+    print("measured curves for strings", sorted(drv.curves) or "none", flush=True)
     ICON = icon_png()
     servers = [await asyncio.start_server(lambda r, w: handle(hub, r, w), a.host, a.port)]
     print("phone page on %s:%d, motors: %s, strings %s" % (a.host, a.port, motors.name, strings), flush=True)

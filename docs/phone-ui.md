@@ -12,8 +12,11 @@ A page the Pi serves at **https://public-steel-guitar.home** (also `.local`, and
 Each string turns its own motor by its own amount for an interval, from the string model in
 `src/dimensions.py`: nut travel = `DL_OPEN · ((f2/f0)² − (f1/f0)²)`, 2 mm of nut per motor
 turn. That gives 0.52 turn for a whole tone up from open, the move bronner measured on 11-02.
-The model has one `DL_OPEN` (4.0 mm) for every string, so today every string turns the same.
-Measured values per string go in `Driver(dl=...)` once a strung instrument gives them.
+The model has one `DL_OPEN` (4.0 mm) for every string, so an untuned string turns the same as
+the others. A string tuned on /tune plays its MEASURED curve instead (`curves.json`, below):
+straight lines between knots, held at the end knot past either end, the same arithmetic as
+motor_ctrl's play table. The server reads the curves at start and again after each tune, and
+prints which strings have one.
 
 The total raise is capped at **+4 semitones** over open: the pitch-range budget, set by wire
 strength (`dimensions.PITCH_UP_ST`). A button that would pass it, or pass **−12**, greys
@@ -135,7 +138,7 @@ open note, write the table and re-base with:
 Notes:
 - The open notes are `copedent.json`'s `open`, at A4 = 440.
 - The pitch is read off the optical board's SUM, so that board must be on USB.
-- The buttons still move strings by the model (`DL_OPEN`), not the measured curve.
+- The buttons move a tuned string by its measured curve and the others by the model.
 - Proven in simulation only (`bench/tests/test_tune.py`): takes.py's plucked string over the
   R1 board's noise floor, on strings stiffer, softer and more curved than the model, and with a
   motor turning either way.
