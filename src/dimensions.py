@@ -55,6 +55,9 @@ MIN_WALL        = min_wall(NOZZLE_D)          # 0.8 — one-bead HARD floor (web
                                               # drop to MIN_WALL only in a genuinely tight room.
 MIN_WALL_2P     = min_wall(NOZZLE_D, beads=2) # 1.6 — two-bead QUALITY target (crisp perimeters).
                                               # No buffer: Arachne fills exact nozzle multiples cleanly.
+# THE M4 BUTTON HEADS WE BUY (user: no cut screws): the lengths elec/prices.json prices
+# (m4_button_*). A screw length the model needs is one of these, or a new priced row.
+M4_BUTTON_STOCK_L = (8.0, 10.0, 20.0, 40.0)
 
 # ─────────────────────────────────────────────────────────────────────────
 # MR85 (Ø5×8×2.5) — the ONE bearing, used at BOTH ends of every leadscrew.

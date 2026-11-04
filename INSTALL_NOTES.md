@@ -1283,11 +1283,11 @@ Plug a USB device in (an audio interface such as a Shure MVX2U) and the board po
      shelf meets the strand under the rod: the screw goes from free to stopped). Stop there, at LIGHT
      force (fingertips on the key's short arm). This screw only SETS THE HEIGHT; cranking it can flatten
      a wound string's wrap and read it as a thinner string. The side screw does the holding.
-  5. Slide the tail down its slot, past the plier window (the wide slot across the -X face, below the
-     side screws), until it stops on the slot's floor.
-  6. Mark the tail level with the window's TOP edge. Pull it back out and cut it **20 mm below the mark**.
-  7. Put it back. It now ends about 8 mm under the window, with about 17 mm of slot below it to be pulled
-     down into.
+  5. Slide the tail down its slot into the plier window (the 20 mm tall slot across the bottom of the
+     -X face) until it stops on the window's floor.
+  6. Mark the tail level with the window's TOP edge. Pull it back out and cut it **10 mm below the mark**.
+  7. Put it back. It now ends half way down the window: 10 mm of tail to grip, 10 mm of window below it
+     to be pulled down into.
   8. Grip the tail in the window with pliers and pull it down firmly. Holding it there, tighten the side
      screw (2.5 key, -X face) until it pins the tail against the plate. Use the key's ball end: it is
      enough, and it cannot overload the heat-set.
