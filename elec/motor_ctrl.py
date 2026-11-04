@@ -660,10 +660,17 @@ def motor_ctrl():
             (28, "PB2", I)]
     if REV != 1:            # R2: USART1, the link and WCH's ROM loader (_flash_path)
         pins += [(44, "PA9", O), (45, "PA10", I)]
-        # R2, lever flashing: 37 PB14 / 38 PB15 the arms' switches (high = USB), 40 PC7 /
-        # 41 PC8 the arms' 5 V (high = on), 42 PC9 J4's pair (high = the flash lane). Numbers
-        # off the QFN68 column (.ins/ch32v307_qfn68.json)
-        pins += [(37, "PB14", O), (38, "PB15", O), (40, "PC7", O), (41, "PC8", O), (42, "PC9", O)]
+        # R2, lever flashing: 34 PD9 / 33 PD8 the arms' switches (high = USB), 56 PC12 /
+        # 57 PD2 the arms' 5 V (high = on), 16 PA2 J4's pair (high = the flash lane). Numbers
+        # off the QFN68 column (.ins/ch32v307_qfn68.json). Not the free north pins 37-42:
+        # those face U2 / U3 and the B.Cu 24 V that rings them, and five lines more could not
+        # get out through that gap (route of 2026-11-04: 11 unconnected). The two selects take
+        # the EAST row's +Y corner, which faces U9 / U10 between J2 and J6 (from the west row
+        # SEL_LEV crossed the whole board and failed twice); the 5 V enables and the lane
+        # leave by the west row, between C13 and C11, toward U6 / U11; the lane's select by the
+        # south row's +X corner, toward U8 below U7 (from the west row it crossed under the
+        # part's CAN1 pins and failed, run of 2026-11-04).
+        pins += [(34, "PD9", O), (33, "PD8", O), (56, "PC12", O), (57, "PD2", O), (16, "PA2", O)]
     u1 = Part(name="CH32V307WCU6", ref_prefix="U", tag="U1", dest="NETLIST", tool="skidl",
               value="CH32V307WCU6", description="RISC-V MCU, 2x hardware CAN",
               footprint=MCU_FP,
@@ -771,11 +778,11 @@ def motor_ctrl():
     else:
         _usb_c(gnd, vbus, dm, dp)
         sel_link = Net("SEL_LINK")
-        sel_link += u1["PC9"]
+        sel_link += u1["PA2"]
         (l_dm, l_dp), (f_dm, f_dp) = _link_select(gnd, v33, dm, dp, sel_link)
         _flash_path(gnd, v33, l_dm, l_dp, u1, nrst, boot0)
         sel_ped, sel_lev = Net("SEL_PED"), Net("SEL_LEV")
-        sel_ped += u1["PB14"]; sel_lev += u1["PB15"]
+        sel_ped += u1["PD9"]; sel_lev += u1["PD8"]
         _arm_switches(gnd, v33, b_h, b_l, f_dm, f_dp,
                       ((("U9"), (ped_h, ped_l), sel_ped, "C37", "R27", "pedal"),
                        (("U10"), (lev_h, lev_l), sel_lev, "C38", "R28", "lever")))
@@ -1003,8 +1010,8 @@ def motor_ctrl():
                          Pin(num=5, name="ILIM", func=P), Pin(num=6, name="OUT", func=P)])
         v5 += u11["IN"]; gnd += u11["GND"]; v5_lev += u11["OUT"]
         en_ped, en_lev = Net("EN_PED"), Net("EN_LEV")
-        en_ped += u6["EN"], u1["PC7"]
-        en_lev += u11["EN"], u1["PC8"]
+        en_ped += u6["EN"], u1["PC12"]
+        en_lev += u11["EN"], u1["PD2"]
         for tag, net, what in (("R30", en_ped, "U6"), ("R31", en_lev, "U11")):
             r = _r(tag, "100k", "%s EN pull-up: the arm is powered unless firmware says off" % what)
             v33 += r[1]; net += r[2]
@@ -1015,6 +1022,9 @@ def motor_ctrl():
         v5_lev += c39[1]; gnd += c39[2]
         c40 = _c("C40", "100nF", "TPS2553 IN bypass (U11), at the pin (p.5)")
         v5 += c40[1]; gnd += c40[2]
+        c41 = _c("C41", "10uF/16V", "lever arm 5 V bulk at J6, after the limit (as C28 at J2)",
+                 "Capacitor_SMD:C_0805_2012Metric")
+        v5_lev += c41[1]; gnd += c41[2]
     ilim = Net("BUSB_ILIM")
     r22 = _r("R22", "49k9 1%", "bus B current limit: 520 mA typ (TPS2553 p.7)")
     ilim += u6["ILIM"], r22[1]; gnd += r22[2]
@@ -2144,22 +2154,33 @@ if REV != 1:
         ("LINK_RX", "F.Cu", 0.2, [(12.20, -3.56), (12.20, -2.95), (12.65, -2.50), (12.65, -2.30)])]
     BOARD_NOTES["silk_rev"] = "r%d" % REV  # the printed rev IS the switch (cad_geom_check)
     _pl["C29"] = (5.90, 17.00, 0.0)
-    # Lever flashing (docs/lever-usb-flash.md): U8 the hub in the bare -X/+Y block above J5,
-    # on J4's side of the board (its upstream is the one high-speed run); U11 the lever arm's
-    # limiter beside U6; U9 / U10 the arm switches on the +Y strip, between the arms' runs
-    # from J2 / J6 and CANB; the lever arm's clamps D10 / D11 above J7, toward J6.
-    # Every bare patch is crossed by a declared track, so these go in the three that are not:
-    # -X above J5 under the 24 V run (U8), right of the lights' diagonal over the 5 V feed
-    # (U11 beside U6, both EN pull-ups), and between U6's column and J7 (U9 / U10)
+    # Lever flashing (docs/lever-usb-flash.md): U8 the link / flash-lane switch below U7, at
+    # the end of J4's pair's old run to U7 (the link stays a few mm, the lane goes up the +X
+    # side); U9 / U10 the arm switches in the gap between J2's and J6's bodies, at both arms'
+    # pins and U3's CANB; U11 the lever arm's limiter beside U6, right of the lights' diagonal
+    # over the 5 V feed (both EN pull-ups with it); the lever arm's clamps D10 / D11 above J7.
+    # (Top-centre switches and a -X U8 left 11 nets unrouted, run 2026-11-04: every pair and
+    # select line crossed the board.)
     _pl.update({
-        "U8": (-26.00, 12.00, 90.0), "C35": (-28.20, 12.00, 90.0), "R32": (-23.80, 12.00, 90.0),
-        "U11": (-9.00, 21.50, 0.0), "R29": (-10.00, 24.00, 0.0),
+        # U8 turned so S (9) is the corner on the open +X side, beside its pull-down, and VCC
+        # (10) faces its cap there too (at 90 deg S was boxed in by pin 10's and pin 8's escapes)
+        "U8": (26.00, -24.50, 270.0), "C35": (28.60, -23.60, 0.0), "R32": (28.60, -25.40, 0.0),
+        # U11 turned half round: EN (3) under its pull-up R31, IN (1) toward the +5V feed at
+        # y 18.94 and C40, OUT (6) beside its cap C39 (EN_LEV did not route the other way round)
+        "U11": (-9.00, 21.50, 180.0), "R29": (-10.00, 24.00, 0.0),
         "C39": (-11.80, 21.20, 90.0), "C40": (-5.90, 22.00, 90.0),
-        "R30": (-7.60, 24.00, 0.0), "R31": (-5.40, 24.00, 0.0),
-        "U9": (3.30, 23.00, 90.0), "U10": (3.30, 19.60, 90.0),
-        "C37": (1.15, 23.00, 90.0), "C38": (1.15, 19.60, 90.0),
-        "R27": (6.10, 23.00, 90.0), "R28": (6.10, 19.60, 90.0),
-        "D10": (15.40, 24.60, 0.0), "D11": (18.20, 24.60, 0.0),
+        # R31 (U11's EN) flipped, R30 (U6's) beside it: the two +3V3 ends meet in the middle and
+        # each EN end faces its own switch
+        "R31": (-7.60, 24.00, 180.0), "R30": (-5.40, 24.00, 0.0),
+        # U9 turned so its D pins (PED) face J2 below and its 1D / 2D (CANB, the lane) the
+        # strip above; U10's D pins (LEV) already face J6. Each one's VCC cap on its VCC side
+        "R27": (18.85, 11.00, 90.0), "U9": (20.90, 11.00, 270.0), "C37": (22.95, 11.00, 90.0),
+        # a channel between the two groups (C37 to C38), two tracks wide: SEL_LEV and the
+        # shared pairs reach U10's pins through it, and the pairs cross there (they leave U9
+        # by its top and meet U10 at its bottom). Closed up, SEL_LEV stopped at R28; one track
+        # wide, FLASH_DM could not cross (routes of 2026-11-04)
+        "C38": (25.00, 11.00, 90.0), "U10": (27.00, 11.00, 90.0), "R28": (29.00, 11.00, 90.0),
+        "D10": (17.10, 24.60, 90.0), "D11": (18.90, 24.60, 90.0),
     })
     _tr = BOARD_NOTES["tracks"]
     _i = next(i for i, t in enumerate(_tr) if t[0] == "+24V_LED" and t[3][-1] == (17.46, 19.83))
@@ -2257,6 +2278,53 @@ if REV != 1:
         "receptacle's own (GND A1/A12/B1/B12, VBUS A4/A9/B4/B9, CC1 A5, CC2 B5, D+ A6/B6, "
         "D- A7/B7, SBU A8/B8), and a vertical receptacle is reversible, so the two rows "
         "carrying the same pair is the whole of the pinout to get right")
+
+
+# ── R2, lever flashing (docs/lever-usb-flash.md): U8 / U9 / U10 / U11, the notes they need ─────
+if REV != 1:
+    _q = BOARD_NOTES["quality"]
+    _pp = _q["power_paths"]
+    _i = next(i for i, x in enumerate(_pp) if x["net"] == "+5V" and x["to"] == ["U6.1"])
+    # U6 the pedals' 5 V, U11 the levers': each limited at 0.52 A, so 1.04 A off +5V at most
+    # (both arms shorted); the boards draw 80 mA each at peak, eleven of them, 0.88 A. The
+    # shared stretch off F2 is +5V's own width; each switch's branch carries its own 0.52 A
+    _pp[_i] = {"net": "+5V", "from": "F2.2", "to": ["U6.1"], "amps": 0.52}
+    _pp.insert(_i + 1, {"net": "+5V", "from": "F2.2", "to": ["U11.1"], "amps": 0.52})
+    _i = next(i for i, x in enumerate(_pp) if x["net"] == "+5V_BUSB")
+    _pp[_i] = {"net": "+5V_BUSB", "from": "U6.6", "to": ["J2.1"], "amps": 0.52}
+    _pp.append({"net": "+5V_BUSB_LEV", "from": "U11.6", "to": ["J6.1"], "amps": 0.52})
+    BOARD_NOTES["net_widths"]["+5V_BUSB_LEV"] = 0.4
+    _fs = ("full speed, 12 Mbit/s: a bit is 83 ns, and a few mm of skew is picoseconds -- the "
+           "arm's own metre of unmatched PH lead is the pair that matters (tools/fs_eye.py)")
+    _q["unmatched_ok"].update({"LINK_DP": _fs, "FLASH_DP": _fs})
+    _q["unconnected"]["U4"]["pins"] = " ".join(
+        p for p in _q["unconnected"]["U4"]["pins"].split() if p not in ("33", "34", "56", "57", "16"))
+    _g = next(g for g in _q["net_groups"] if g["name"] == "bus B leaves by two connectors, way for way")
+    _g.update({"name": "bus B's two arms: each connector its own 5 V and pair, ground shared",
+               "nets": 7})
+    del _g["each"]
+    _q["net_groups"].append({"name": "three USB pairs: J4, the link, the flash lane",
+                             "nets_like": "(USB|LINK|FLASH)_D[PM]", "count": 6})
+    _q["pinouts"]["TS3USB221ARSER"] = (
+        "TI SCDS277C table 4-1, RSE: 1 1D+, 2 1D-, 3 2D+, 4 2D-, 5 GND, 6 OE, 7 D-, 8 D+, 9 S, "
+        "10 VCC; table 7-1: S low D = 1D, S high D = 2D, OE low on. KiCad "
+        "Texas_UQFN-10_1.5x2mm_P0.5mm (RSE0010A) numbers the same. U8: D = USB (J4), 1D = LINK "
+        "(U7), 2D = FLASH; U9 / U10: D = PED / LEV (J2 / J6), 1D = CANB (U3), 2D = FLASH. "
+        "Read 2026-11-03 (lever board) and 2026-11-04")
+    _src = ("TI TS3USB221A SCDS277C (2024) s5.1: switch I/O and control inputs -0.5..7 V, VCC "
+            "-0.5..4.6 V; s5.2: 12 kV HBM on the I/O")
+    _why = ("bus B's transient figure (7.8 V) is its ESD5B5.0 clamps' breakdown during an ESD "
+            "discharge, nanoseconds long, the event s5.2 rates this I/O for (12 kV HBM); 7 V is a "
+            "DC figure. Bus B's nodes are 3.3 V transceivers: nothing holds a wire above 5 V")
+    _pv = _q.setdefault("pin_volts", {})
+    for _u in ("U9", "U10"):
+        for _n in (1, 2, 7, 8):
+            _pv["%s.%d" % (_u, _n)] = {"max": 7.0, "peak": "none", "src": _src, "why": _why}
+    _q.setdefault("connector_labels", {})["J2"] = {"back_only":
+        "R2: the lever-flash parts took the strip in front of J2 / J6 (run 2026-11-04); the "
+        "labeller finds no free front site for either block, and both are printed on the back, "
+        "behind the connector"}
+    BOARD_NOTES["placements"]["C41"] = (14.50, 24.60, 0.0)
 
 
 if __name__ == "__main__":

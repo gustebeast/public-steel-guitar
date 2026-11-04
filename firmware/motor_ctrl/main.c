@@ -277,31 +277,32 @@ static const char *r_num(const char *s, uint64_t *v, int base);
 #if REV != 1
 /* ---- bus B's arms and J4's pair (arms.h; elec/motor_ctrl.py R2) ------------------------- */
 static arms_t arms;
-#define PIN_SEL0  GPIO_Pin_14               /* PB14: U9 S, the pedal arm's pair, high = USB */
-#define PIN_SEL1  GPIO_Pin_15               /* PB15: U10 S, the lever arm's pair */
-#define PIN_EN0   GPIO_Pin_7                /* PC7: U6 EN, the pedal arm's 5 V, high = on */
-#define PIN_EN1   GPIO_Pin_8                /* PC8: U11 EN, the lever arm's 5 V */
-#define PIN_LANE  GPIO_Pin_9                /* PC9: U8 S, J4's pair, high = the flash lane */
+#define PIN_SEL0  GPIO_Pin_9                /* PD9: U9 S, the pedal arm's pair, high = USB */
+#define PIN_SEL1  GPIO_Pin_8                /* PD8: U10 S, the lever arm's pair */
+#define PIN_EN0   GPIO_Pin_12               /* PC12: U6 EN, the pedal arm's 5 V, high = on */
+#define PIN_EN1   GPIO_Pin_2                /* PD2: U11 EN, the lever arm's 5 V */
+#define PIN_LANE  GPIO_Pin_2                /* PA2: U8 S, J4's pair, high = the flash lane */
 
 static void arms_pins(void)
 {
-    GPIO_WriteBit(GPIOB, PIN_SEL0, arms.usb[0] ? Bit_SET : Bit_RESET);
-    GPIO_WriteBit(GPIOB, PIN_SEL1, arms.usb[1] ? Bit_SET : Bit_RESET);
+    GPIO_WriteBit(GPIOD, PIN_SEL0, arms.usb[0] ? Bit_SET : Bit_RESET);
+    GPIO_WriteBit(GPIOD, PIN_SEL1, arms.usb[1] ? Bit_SET : Bit_RESET);
     GPIO_WriteBit(GPIOC, PIN_EN0, arms.power[0] ? Bit_SET : Bit_RESET);
-    GPIO_WriteBit(GPIOC, PIN_EN1, arms.power[1] ? Bit_SET : Bit_RESET);
-    GPIO_WriteBit(GPIOC, PIN_LANE, arms.lane ? Bit_SET : Bit_RESET);
+    GPIO_WriteBit(GPIOD, PIN_EN1, arms.power[1] ? Bit_SET : Bit_RESET);
+    GPIO_WriteBit(GPIOA, PIN_LANE, arms.lane ? Bit_SET : Bit_RESET);
 }
 
 static void arms_setup(void)
 {   /* the pins take arms_init's state (on, CAN, the link) before they become outputs: what the
        board's pull-ups and pull-downs already hold, so nothing moves at start */
     arms_init(&arms);
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOD, ENABLE);
     arms_pins();
     GPIO_InitTypeDef g = {0};
     g.GPIO_Speed = GPIO_Speed_2MHz; g.GPIO_Mode = GPIO_Mode_Out_PP;
-    g.GPIO_Pin = PIN_SEL0 | PIN_SEL1; GPIO_Init(GPIOB, &g);
-    g.GPIO_Pin = PIN_EN0 | PIN_EN1 | PIN_LANE; GPIO_Init(GPIOC, &g);
+    g.GPIO_Pin = PIN_EN0; GPIO_Init(GPIOC, &g);
+    g.GPIO_Pin = PIN_SEL0 | PIN_SEL1 | PIN_EN1; GPIO_Init(GPIOD, &g);
+    g.GPIO_Pin = PIN_LANE; GPIO_Init(GPIOA, &g);
 }
 
 static void arms_line(char op, const char *s)

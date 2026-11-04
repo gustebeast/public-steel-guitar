@@ -1,9 +1,9 @@
 /* Bus B's two arms on motor_ctrl R2, and J4's pair: what lever flashing switches
  * (docs/lever-usb-flash.md, elec/motor_ctrl.py _arm_switches / _link_select).
  *
- *   arm 0  the pedals, J2: U6 its 5 V (EN on PC7), U9 its pair (S on PB14)
- *   arm 1  the levers, J6: U11 its 5 V (EN on PC8), U10 its pair (S on PB15)
- *   lane   J4's pair: U7, the link (PC9 low), or the arms' flash lane (PC9 high)
+ *   arm 0  the pedals, J2: U6 its 5 V (EN on PC12), U9 its pair (S on PD9)
+ *   arm 1  the levers, J6: U11 its 5 V (EN on PD2), U10 its pair (S on PD8)
+ *   lane   J4's pair: U7, the link (PA2 low), or the arms' flash lane (PA2 high)
  *
  * Pure logic: main.c applies the state to the pins, and the simulator runs this file as it is
  * (bench/publicbench/simarms.py).

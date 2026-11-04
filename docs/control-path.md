@@ -160,7 +160,7 @@ yet been tried on a motor.
 
 - No string has been driven by this. The bench test needs the motor_ctrl board, a motor with a
   string, and a lever board: it needs the user's hands.
-- The tuning UI that measures curves and writes them down (`copedent.write` is the call it will
-  make).
+- The tuning tool is built and proven only in simulation (`bench/publicbench/tune.py`, 2026-11-04;
+  see "Tuning" in `docs/phone-ui.md`). No string has been tuned by it.
 - The viewer still sums raises (export_rig's rig.json), where the board takes the largest. This
   is cosmetic and only shows where two raises meet on one string.

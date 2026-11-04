@@ -62,6 +62,42 @@ holds the chain before the jammer gets power and then walks it only up to its pr
 Updates still go over CAN through each board's own loader (`make can`). The SWD pads stay as the
 last resort (M9).
 
+## The host side: motor_ctrl R2 and the Pi (2026-11-04)
+
+motor_ctrl R2 (`elec/motor_ctrl.py`, `_arm_switches` and `_link_select`) splits bus B into its
+two arms and adds a lane from the Pi's USB:
+
+| part | job | default (MCU blank, in reset or in WCH's ROM) |
+|---|---|---|
+| U9 TS3USB221A | the pedal arm (J2): U3's CANB (1D) or the flash lane (2D); S on PD9 | **CAN** (R27) |
+| U10 TS3USB221A | the lever arm (J6): the same; S on PD8 | **CAN** (R28) |
+| U8 TS3USB221A | J4's pair: U7, the link (1D), or the flash lane (2D); S on PA2 | **the link** (R32) |
+| U6 / U11 TPS2553 | each arm's 5 V, limited to 0.52 A; EN on PC12 / PD2 | **on** (R30 / R31) |
+| D4 / D5, D10 / D11 | ESD clamps, now on each arm at its connector, outside the switches | — |
+
+**The link drops for the window.** J4 is the link or the lane, never both: a hub (CH334R) would
+have kept both, and was drawn first, but no bare patch of this board is big enough for it and
+its crystal. So motor_ctrl owns the window (`firmware/motor_ctrl/arms.c`):
+- `A <arm> <0|1|2>` turns an arm's 5 V off, on, or cycles it (off for 200 ms).
+- `U <arm> <ms> [1]` answers OK, then 20 ms later puts the arm and J4 on the lane for ms. When
+  the window ends it hands J4 back to the link, puts both arms on CAN and power-cycles both. Both
+  arms are cycled because an ALL 'U' parks every board on bus B, not only the flashed arm's.
+  With the `1`, the arm is also cycled at the start, so its first board comes up on the lane
+  (lever.h slot 0xFF).
+
+**The Pi:** `python3 -m publicbench.leverisp <levers|pedals> --slots ... --loader boot.bin --app
+lever.bin`, one arm at a time with the other dark:
+1. Walk the arm. Send ALL 'H', then CMD 'N' to each board in turn. A new board is held the
+   moment its HELLO arrives (lever.c: an 'H' leaves a next board that an 'N' let up). Boards
+   without a slot get the next one from `--slots`, in chain order.
+2. A board in its CAN loader gets the application over CAN (`leverflash.write`).
+3. At the first silent place, ALL 'U' with the slot before it, then `U` to motor_ctrl. wchisp
+   writes the loader into the ROM, and the window closes. Then walk again.
+4. A place still silent after its loader went in is named and left for a hand.
+
+Tested in `bench/tests/test_leverisp.py`, which runs arms.c, lever.c and ldr.c on one simulated
+clock (`simchain.py`). wchisp is not installed on the Pi; that is the user's call.
+
 ## Signal integrity (`tools/fs_eye.py`)
 
 The model is a lossless 110 ohm differential line with a 90 ohm FS driver. Every board on the
@@ -112,8 +148,8 @@ carries the flag at `bus_paths`. The fixes, to be chosen then:
 
 ## Follow-ups
 
-- **motor_ctrl R2:** switched 5 V on each arm, a host switch on each arm (Pi USB or the CAN
-  transceiver), and a Pi USB lane to it.
+- **motor_ctrl R2:** built 2026-11-04, above. Not yet ordered.
 - **Bench:** a C8T6 board's ROM loader on PB6/PB7 through a TS3USB221A, and then through a
   loaded chain.
-- **Pi:** an ISP tool, plus a `levers flash` command that drives steps 1–5.
+- **Pi:** `publicbench.leverisp` drives steps 1–5 (in the simulator). wchisp is still to be
+  installed (the user's call).

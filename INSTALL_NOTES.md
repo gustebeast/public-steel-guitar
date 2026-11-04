@@ -1389,3 +1389,12 @@ Plug a USB device in (an audio interface such as a Shure MVX2U) and the board po
   the rev 1 boards (CH32V203G6U6), which have no USB.
 - **Termination switch:** still ON only on the last board of each arm. It now acts through the
   pair switch, so a terminated board can be flashed too.
+
+## motor_ctrl R2 from 2026-11-04 on: J2 is the pedals, J6 the levers
+
+- **J2 takes the pedal arm and J6 the lever arm, never the other way round.** On R2 each arm has
+  its own switch and its own 5 V (docs/lever-usb-flash.md), and the firmware and
+  `publicbench.leverisp` name them: arm 0 = pedals = J2, arm 1 = levers = J6. Swapped, the
+  instrument still plays, but flashing then powers and switches the wrong arm.
+- **Flashing a blank board takes motor_ctrl's link down for ~15 s** (the flash window). The
+  board brings the link back by itself; the Pi waits it out.

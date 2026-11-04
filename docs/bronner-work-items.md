@@ -1,5 +1,26 @@
 # bronner — open work items (2026-09-30)
 
+## FOR THE USER (overnight)
+
+Logged 2026-11-04 while the user was away (lead: no questions until morning). Each one has a
+safe default already taken; none blocks the work.
+
+- **wchisp on the Pi.** `publicbench.leverisp` writes a blank lever board's loader through
+  WCH's ROM with wchisp (https://github.com/ch32-rs/wchisp). It is NOT installed; installing
+  software is your call. Without it, `--walk` works and a flash stops at the first blank board
+  with that message. Everything else (the walk, the app over CAN) runs without it.
+- **motor_ctrl R2's link drops for one flash window.** The flash lane shares J4 with the link
+  through a switch (U8), because a USB hub (CH334R, which would have kept the link up) did not
+  fit: every bare patch on the board is crossed by a hand-laid track. motor_ctrl times the window
+  itself ('U' arm ms) and hands J4 back, so nothing is lost but the link for ~15 s per blank
+  board. If you'd rather keep the link up, the price is board area for the hub (QSOP-16 + a
+  12 MHz crystal, ~11 x 6 mm).
+- **Tuning from the phone records; it does not write the table.** A /tune tap leaves that
+  string on its open note and keeps its curve, but motor_ctrl's table and base ('P Z') are
+  written by `python3 -m publicbench.tune --table` from a terminal. Re-basing from the phone
+  while the buttons hold a pitch-up offset would base every string wrong. A table button on
+  /tune, greyed while any offset is held, is the follow-up if you want it.
+
 ## Lever first flash from the bus: option 2 (a CAN ROM loader) checked (user, 2026-11-03)
 
 User's goal: final-form instrument from factory parts, only the Pi flashed by hand. The lever
@@ -40,7 +61,8 @@ Pi: the real lever.c and play.c end to end with SimServo. First F5 0.9-1.9 ms af
 electronics ~3 ms onset and ~9 ms behind a moving pedal, inside the 15-23 ms C3 window; the motor
 is the long pole (unloaded 39 ms whole tone). export_rig now reads copedent.json.
 OPEN: loaded motor numbers (bench, hands); bus A load past 4 moving strings (replies off, or
-1 Mbit); a pedal down at power-off comes back off pitch; the tuning UI that measures curves.
+1 Mbit); a pedal down at power-off comes back off pitch. The tuning tool is BUILT (2026-11-04,
+sim only): `publicbench.tune` + the phone's /tune page (docs/phone-ui.md "Tuning").
 
 ## lever_sensor application firmware + the USB-only finding (lead, 2026-11-03)
 
