@@ -2190,7 +2190,10 @@ if REV != 1:
         # the bottom of both, one straight run; D on top, LEV down from J6, PED up the channel
         # between the groups. (With U9 turned the other way the shared four had to cross
         # between the parts and CANB_L never made it, routes of 2026-11-04.) VCC caps on the
-        # VCC side
+        # VCC side. This row is IN the band under J3 where mctrl_retention's -Z ledge stands:
+        # the ledge stands off the laminate over it (LEDGE_OVER), which a part this low allows
+        # and a plug or a port of one does not. J2's and J6's courtyards reach x 20.71, so
+        # there is no other room by the arms (the build went red on it, 2026-11-04)
         "C37": (18.85, 11.00, 90.0), "U9": (20.90, 11.00, 90.0), "R27": (22.95, 11.00, 90.0),
         # a channel between the two groups (C37 to C38), two tracks wide: SEL_LEV and the
         # shared pairs reach U10's pins through it, and the pairs cross there (they leave U9
