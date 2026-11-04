@@ -50,6 +50,18 @@
   full: its own note counts six free 2.0 sites, four spent on SWD pads), or chips programmed
   before assembly (a JLC programming service: not checked). For the user via the lead: accept the
   one bench flash per board as this board's exception, with every later write over the bus.
+- **(2) Pre-programming, checked 2026-11-03 (lead's question). Not ordered.**
+  - JLCPCB: "Pre-assembly programming is not supported" (jlcpcb.com/help/article/pcba-programming-service).
+    It programs AFTER assembly, as a function test on Standard PCBA orders only (not Economic),
+    through an interface the board brings out. Fee: about $8 engineering plus about $8 per hour
+    of operator time; no per-board price, minimum or added lead time is published. They want the
+    part number, the interface definition, a board photo and the HEX / BIN, and their engineers
+    decide case by case whether they can program that chip. WCH parts are not mentioned, and
+    our interface is bare SWD pads speaking WCH's 2-wire SDI (a WCH-LinkE), not ST's SWD, so it
+    is unconfirmed until they say yes. One image is all we would need: the slot goes over CAN.
+  - LCSC: no chip programming service found for the CH32V203.
+  - So (2) is a JLC post-assembly function test on the jig's pads, Standard PCBA, a few dollars
+    per order if their engineers accept WCH SDI. Not a pre-programmed chip.
 
 ## R2 backlog sweep: output_panel, optical, motor_ctrl (lead, 2026-11-03)
 
