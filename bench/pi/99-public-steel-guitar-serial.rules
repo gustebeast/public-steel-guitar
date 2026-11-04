@@ -1,0 +1,20 @@
+# The instrument's USB-serial bridges: only our own tools may open them.
+#   1a86:7523  CH340  motor_ctrl R2's U7 (the link), output_panel R2's U17, optical R2's flash bridge
+#   1a86:55d3  CH343P the step up from the CH340C, if U7 ever changes
+#   1a86:8091  CH334  the hubs on output_panel / optical (the bridges sit behind them)
+# Their DTR# / RTS# reach BOOT0 and NRST. ModemManager probes serial ports it does not know,
+# and brltty claims CH340s as braille displays; either one opening a port toggles those lines
+# and resets a board, or leaves it in the ROM loader. Neither is installed today; this keeps a
+# future package from starting. Installed by bench/pi/phone/install.sh.
+ACTION=="remove", GOTO="public_serial_end"
+SUBSYSTEM=="usb", ATTR{idVendor}=="1a86", ATTR{idProduct}=="7523|55d3|8091", GOTO="public_serial"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523|55d3", GOTO="public_serial"
+GOTO="public_serial_end"
+LABEL="public_serial"
+ENV{ID_MM_DEVICE_IGNORE}="1"
+ENV{ID_MM_PORT_IGNORE}="1"
+ENV{ID_MM_CANDIDATE}="0"
+# brltty starts from its own rule (85-brltty.rules) through SYSTEMD_WANTS: this runs after it
+ENV{SYSTEMD_WANTS}=""
+ENV{BRLTTY_BRAILLE_DRIVER}=""
+LABEL="public_serial_end"
