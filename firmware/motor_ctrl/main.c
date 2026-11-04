@@ -23,7 +23,7 @@
  *                                errors bits 4-6 are the last error: 3 no ACK, 4/5 bit, 7 none yet;
  *                                bits 16-23 what we sent wrong, 24-31 what we received wrong
  *   F                         -> F <frames dropped>     R2 only: the link's own errors
- *   P                         -> P <table ok> <on> <F5 frames sent> <string states 0-2 x10> <table crc>
+ *   P                         -> P <table ok> <on> <F5 frames sent> <string states 0-3 x10> <table crc>
  *   P 0 / P 1                 -> OK P          stop / start driving the motors (not kept)
  *   P Z                       -> OK P          every motor's position is open pitch again
  *   P W <offset> <data>       -> OK P          into the table being loaded (play.h, 32 bytes a line)

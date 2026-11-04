@@ -34,6 +34,9 @@ ENABLE = 0xF3               # 1 byte: 1 on, 0 off
 CALIBRATE = 0x80            # 1 byte 0: answers 0 when it starts, 1 when it is done, about 11 s
 SET_ID = 0x8B               # u16: the reply comes from the new id; kept over a restart? not yet tried
 SET_MODE = 0x82             # 1 byte: 0..2 pulse-input modes, 3 SR_OPEN, 4 SR_CLOSE, 5 SR_vFOC
+SET_BITRATE = 0x8A          # 1 byte: 0 125K, 1 250K, 2 500K (default), 3 1M   (manual V1.0.9 5.2.10)
+SET_RESPOND = 0x8C          # respond u8, active u8: 1 0 answers a move when it starts and not when it
+                            # arrives; 0 x answers nothing (V1.0.9 5.2.12; the "active" byte is V1.0.4 on)
 SR_VFOC = 5
 MOVE_REL = 0xF4             # speed u16, acc u8, int24 counts, relative
 MOVE_ABS = 0xF5             # speed u16, acc u8, int24 counts, absolute
