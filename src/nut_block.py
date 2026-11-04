@@ -317,35 +317,31 @@ THREAD_CLR = D.MIN_WALL                         # room to work the string round,
 _DROP_NEED = G_ENVELOPE + THREAD_CLR            # 2.832 for a .080
 assert _ramp_gap(math.radians(45), G_ENVELOPE) >= THREAD_CLR, "the ramp crowds the wind"
 HS_SCREW_L     = 40.0                           # M4 x 40 button, the longest in the shop
-HS_TIP_RISE    = 15.0                           # what the 40 has over the 25 the stack needs: the foot stops
-                                                # this far above the floor and the tip stands up in the empty slot
 HS_CAP         = D.MIN_WALL_2P                  # printed floor over the heat-set
 HS_ROD_OVERLAP = 2 * D.BEAD
-INS_DROP  = HS_SCREW_L - HS_TIP_RISE - (M4.insert_depth + HS_CAP) - (G_ENVELOPE + HS_ROD_OVERLAP)     # 14.77
-assert INS_DROP >= _DROP_NEED, f"a {INS_DROP:.2f} drop will not thread a {G_ENVELOPE:.2f} string"
-# FULLY DROPPED, THE CROWN IS UNDER THE ROD BY MORE THAN THE STRING (user), so a string can be led
-# straight over the crown and under the rod.
-_DROPPED_CROWN_TOP = ROD_Z - ROD_D / 2 - G_ENVELOPE - INS_DROP + CROWN_OFF + CROWN_R
-DOWEL_DROP_AIR = (ROD_Z - ROD_D / 2) - _DROPPED_CROWN_TOP - G_ENVELOPE
-assert DOWEL_DROP_AIR > 0.0, f"a dropped crown leaves {DOWEL_DROP_AIR:.2f} for a {G_ENVELOPE:.2f} string under the rod"
 
 # THE STACK, from the chassis up (local frame -- Z relative to STRING_Z):
 #   motor_bank.FLOOR_TOP  top of the wide corner rib the keyhead sits over (chassis)
-#   HS_PRISM_BOT          the heat-sets' mouths, flush in it, as low as the screw lets them be: the
-#                         fully undone head just stays above the bed.
+#   HS_PRISM_BOT          the heat-sets' mouths, flush in it: a bead over the rib (user: no air gap)
 #   HS_FLOOR              the slot's printed floor, over the heat-set
 #   HS_TIP_LOW            where a DROPPED plate's foot rests: the tip, screw fully undone
 # TIGHTENED ALL THE WAY the shelf stands HS_ROD_OVERLAP up INTO the rod, so you always tighten against
 # the string, never against the endplate; FULLY UNDONE the head still clears the bed.
+# THE RAMP PAYS FOR THE LONG PLATE (user, 2026-11-03): threading only needs the plate down the threading
+# gap now, not the crown under the rod, so the screw's travel is just what the room under the mouth gives
+# -- and with the heat-sets down on the rib, the same M4 x 40 reaches 10.4 lower, which the plate's body
+# takes: more of it held in its pocket.
 from . import motor_bank as _MB                  # motor_bank imports only dimensions/helpers/components
-HS_HEAD_CLR    = 0.4                             # radial air round a head in its chassis cavity
+HS_HEAD_CLR    = 0.4                             # radial air round a head in its chassis cavity (and over the bed)
 HS_HEAD_CAV_D  = M4_BUTTON_HEAD_D + 2 * HS_HEAD_CLR
+HS_PRISM_BOT = _MB.FLOOR_TOP + D.BEAD - D.STRING_Z
+_HS_HANG     = HS_PRISM_BOT - (_MB.BED_Z - D.STRING_Z) - HS_HEAD_CLR   # all the room a head has under the mouth
+HS_REACH_MAX = _HS_HANG - M4_BUTTON_HEAD_H         # the tip's whole travel, undone to tightened
+INS_DROP     = HS_REACH_MAX - (G_ENVELOPE + HS_ROD_OVERLAP)              # under the heaviest string's clamp
+assert INS_DROP >= _DROP_NEED, f"a {INS_DROP:.2f} drop will not thread a {G_ENVELOPE:.2f} string"
+HS_TIP_RISE  = HS_SCREW_L - (M4.insert_depth + HS_CAP) - HS_REACH_MAX    # the tip over the floor, undone
 _FZ_LOW      = ROD_Z - ROD_D / 2.0 - G_ENVELOPE - INS_DROP
 _FZ_TIGHT    = ROD_Z - ROD_D / 2.0 + HS_ROD_OVERLAP
-HS_REACH_MAX = _FZ_TIGHT - _FZ_LOW                 # the tip's whole travel, undone to tightened
-_HS_HANG     = HS_REACH_MAX + M4_BUTTON_HEAD_H     # how far a fully undone head stands under the mouth
-HS_PRISM_BOT = (_MB.FLOOR_TOP + math.ceil((_MB.BED_Z + _HS_HANG - _MB.FLOOR_TOP) / D.BEAD - 1e-9) * D.BEAD
-                - D.STRING_Z)                      # the least whole beads over the rib that clear the bed
 HS_FLOOR     = HS_PRISM_BOT + HS_SCREW_L - HS_TIP_RISE - HS_REACH_MAX
 HS_TIP_LOW   = HS_FLOOR + HS_TIP_RISE              # the tip, screw fully undone: a dropped foot rests here
 assert abs(HS_FLOOR - (HS_PRISM_BOT + M4.insert_depth + HS_CAP)) < 1e-9, (
@@ -355,7 +351,7 @@ assert HS_HEAD_LOW >= _MB.BED_Z - D.STRING_Z - 1e-9, (
     f"fully undone, a height-screw head drops to z {HS_HEAD_LOW + D.STRING_Z:.2f}, below the bed "
     f"({_MB.BED_Z:.2f}) where the leg's body adapter is")
 # THE PLATE'S BODY reaches from the shelf down to where a DROPPED plate's foot meets the undone tip.
-PLATE_BODY_H = _FZ_LOW - HS_TIP_LOW               # 23.35
+PLATE_BODY_H = _FZ_LOW - HS_TIP_LOW               # 33.75 (23.35 before the ramp)
 
 
 def plate_profile(cradle: bool = False) -> cq.Workplane:
@@ -527,7 +523,8 @@ assert all(abs(-_adv_g(g) - SS_YC[i]) <= D.MIN_WALL_2P
 # its screw goes in. Its roof is a plain bridge in the -X -> +X build (user: its depth does not matter).
 # IT SITS AT THE BOTTOM (user): its floor is the tail channels' blind floor, two beads over the height
 # prism's bottom, so everything from its roof up to the plates and side screws stays solid.
-TAIL_Z_END = HS_PRISM_BOT + D.MIN_WALL_2P       # the channels' floor, and the window's
+TAIL_Z_END = HS_PRISM_BOT + D.MIN_WALL_2P       # the channels' floor, and the window's: as deep as the
+                                                # endplate goes (user) -- the rib is the chassis's floor
 WIN_H = 25 * D.BEAD                             # 20.0 (user)
 WIN_LO = TAIL_Z_END
 WIN_HI = WIN_LO + WIN_H

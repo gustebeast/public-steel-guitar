@@ -1276,8 +1276,8 @@ Plug a USB device in (an audio interface such as a Shure MVX2U) and the board po
      side and on under the rod: the plate's curved RAMP turns it and it comes up the +X side by itself.
      Take it over the top again. That is **one** wrap: the second pass lies on the **-Y** side of the first
      and never on top of it. (The printed stand-in has the same ramp, but plastic does not let a string
-     slide well: if the end jams, back the screw right off, which drops the plate 14.8 mm and clears the
-     rod by a long way.)
+     slide well: if the end jams, back the screw right off -- about 6 turns, 4.4 mm, all the travel the
+     long plate leaves -- and lead the end round with a pick.)
   3. Let the tail drop straight down the -X side of the rod, into the slot behind the plate.
   4. Hold the string tight with pliers and run the height screw up until the plate stops rising (the
      shelf meets the strand under the rod: the screw goes from free to stopped). Stop there, at LIGHT
