@@ -972,8 +972,8 @@ LEVER_PITCH  = LEVER_MORT_W + 2 * MIN_WALL_2P    # 10.4
 # them that still slides at full length is the strongest mount; A2 (0.25) is the fallback the
 # full-length coupon decides on. One joint SIZE, two LENGTHS: short TENONS on the housing (its
 # own Y span) and a long RIB MORTISE (the whole knee-depth range). The body adapter's ridges
-# ride the same mortises, so they are this joint too. Built by src/test/fit_plate2.halves
-# until step 4 moves it into cadkit.
+# ride the same mortises, so they are this joint too. Built by cadkit.fitted_joint.halves
+# (step 4, 2026-11-03).
 LEVER_MORT_CLR = 0.45                    # plate 8 A2 (A1 0.20: two tenons in one mortise piece were
                                     # already too tight on the mini seam plate, user 2026-10-16);
                                     # MINI ROUND 2: 0.25 "still a touch tight" -> half a step;
@@ -990,7 +990,7 @@ LEVER_FIT = {"neck": 4 * BEAD, "head": 7 * BEAD, "side": 2 * BEAD, "root": True,
 # cavity's top, end relief and all), so a joint change moves the floor with it. Not rounded to
 # a grid: it is a depth the joint dictates, not a wall (check_beads exempts it), and any
 # rounding up is cap the user just asked to lose. A module __getattr__,
-# because fit_plate2 imports this module: computed on first use, after both are loaded.
+# so it is computed on first use, after the joint module is loaded.
 # chassis asserts the cap against the real solids.
 _DERIVED = {}
 
@@ -998,7 +998,7 @@ _DERIVED = {}
 def __getattr__(name):
     if name == "BOTTOM_T":
         if name not in _DERIVED:
-            from src.test import fit_plate2 as _FIT
+            from cadkit import fitted_joint as _FIT
             _ten, _cav, _S = _FIT.halves("up", "up", LEVER_MORT_CLR, 12.0, 0.0, LEVER_MORT_W,
                                          size=LEVER_FIT)
             _DERIVED[name] = _cav.val().BoundingBox().zmax + MIN_WALL_2P

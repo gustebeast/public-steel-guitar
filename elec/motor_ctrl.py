@@ -131,6 +131,64 @@ def _usb_c(gnd, vbus, dm, dp):
         gnd += r[2]
 
 
+def _flash_path(gnd, v33, dm, dp, u1, nrst, boot0):
+    """R2: J4's USB is U7, a CH340C, and the MCU talks over USART1 behind it (cadkit M43; work
+    items "REV 2 RULE": first flash, updates and recovery from the Pi, hands-free, no
+    firmware of ours involved). WCH's ROM loader answers on USART1 PA9 / PA10 with BOOT0 high
+    through reset and BOOT1 (PB2) low, as on output_panel R2.
+
+    ⚠ NOT output_panel's two parts. There the bridge is a second device, opened only to
+    flash; here it IS the link, open all the time, and Linux raises DTR# and RTS# together
+    the moment a port opens. Wired as on the panel (DTR# -> BOOT0, RTS# -> NRST each on its
+    own) the MCU would sit in reset whenever the Pi has the link open. So the two lines are
+    CROSSED, the auto-reset every ESP32 board carries, turned over for a BOOT0 that is
+    active high: something happens only when DTR# and RTS# DIFFER.
+      DTR# high, RTS# low:  Q2 on, NRST low (reset).
+      DTR# low,  RTS# high: Q1 on, BOOT0 high from RTS#.
+      both low / both high: nothing (a port opening, closing, or at rest).
+    The flash sequence: reset (DTR# 1 / RTS# 0), then BOOT0 (0 / 1): BOOT0 is up at once
+    while NRST climbs on C6 and the internal pull-up, so the ROM loader starts. Then 1 / 1."""
+    u7 = Part(name="CH340C", ref_prefix="U", ref="U7", tag="U7", dest="NETLIST", tool="skidl",
+              value="CH340C", description="USB-serial: the Pi link and the ROM loader's way in "
+                                          "(LCSC C84681)",
+              footprint="Package_SO:SOIC-16_3.9x9.9mm_P1.27mm",
+              pins=[Pin(num=i, func=P) for i in range(1, 17)])
+    tx, rx = Net("LINK_TX"), Net("LINK_RX")
+    dtr, rts = Net("LINK_DTR_N"), Net("LINK_RTS_N")
+    gnd += u7[1]
+    tx += u7[2], u1["PA10"]                     # bridge TXD -> USART1 RX
+    rx += u7[3], u1["PA9"]                      # USART1 TX -> bridge RXD
+    v33 += u7[4], u7[16]                        # V3 tied to VCC at 3.3 V (WCH V3C p.3)
+    dp += u7[5]
+    dm += u7[6]
+    dtr += u7[13]
+    rts += u7[14]
+    for k in (7, 8, 9, 10, 11, 12, 15):
+        Net("U7_NC_%d" % k).connect(u7[k])
+    c = _c("C34", "100nF", "U7 VCC bypass")
+    v33 += c[1]
+    gnd += c[2]
+    # BOOT0 side: a P-FET whose source is RTS#, gate DTR#. On only for DTR# low, RTS# high;
+    # then it sources R7's 0.33 mA from RTS#, inside the CH340C's 2 mA (DS V3C s6.2)
+    q1 = Part(name="AO3401A", ref_prefix="Q", ref="Q1", tag="Q1", dest="NETLIST", tool="skidl",
+              value="AO3401A", description="BOOT0 from DTR# and RTS# (LCSC C15127)",
+              footprint="Package_TO_SOT_SMD:SOT-23", pins=[Pin(num=i, func=P) for i in (1, 2, 3)])
+    dtr += q1[1]
+    rts += q1[2]
+    boot0 += q1[3]
+    # NRST side: an NPN whose emitter is RTS#, base DTR# through R26. On only for DTR# high,
+    # RTS# low: 0.26 mA of base, and C6 discharged through it
+    q2 = Part(name="MMBT3904", ref_prefix="Q", ref="Q2", tag="Q2", dest="NETLIST", tool="skidl",
+              value="MMBT3904", description="NRST from DTR# and RTS# (LCSC C20526)",
+              footprint="Package_TO_SOT_SMD:SOT-23", pins=[Pin(num=i, func=P) for i in (1, 2, 3)])
+    qb = Net("Q2_B")
+    r = _r("R26", "10k", "Q2 base from DTR#")
+    dtr += r[1]
+    qb += r[2], q2[1]
+    rts += q2[2]
+    nrst += q2[3]
+
+
 def _bind(part, ways, nets):
     """Join each of `part`'s ways to the net its harness NAME maps to, and hold the order
     to the standard (harness.py). By name, never by way number."""
@@ -527,6 +585,8 @@ def motor_ctrl():
             # BOOT1. With BOOT0 high the part boots its ROM loader only if this reads low;
             # floating, it could as well boot from RAM. Tied to the belly land beside it.
             (28, "PB2", I)]
+    if REV != 1:            # R2: USART1, the link and WCH's ROM loader (_flash_path)
+        pins += [(44, "PA9", O), (45, "PA10", I)]
     u1 = Part(name="CH32V307WCU6", ref_prefix="U", tag="U1", dest="NETLIST", tool="skidl",
               value="CH32V307WCU6", description="RISC-V MCU, 2x hardware CAN",
               footprint=MCU_FP,
@@ -539,7 +599,10 @@ def motor_ctrl():
     osc1 += u1["OSC_IN"]; osc2 += u1["OSC_OUT"]
     a_rx += u1["PB8"]; a_tx += u1["PB9"]         # CAN1 REMAPPED -- see the header
     b_rx += u1["PB12"]; b_tx += u1["PB13"]
-    dm += u1["PA11"]; dp += u1["PA12"]
+    if REV == 1:
+        dm += u1["PA11"]; dp += u1["PA12"]
+    else:                                       # R2: J4's pair is U7's, see _flash_path
+        Net("MCU_NC_PA11").connect(u1["PA11"]); Net("MCU_NC_PA12").connect(u1["PA12"])
     swdio += u1["PA13"]; swclk += u1["PA14"]
 
     y1 = Part(name="Crystal", ref_prefix="Y", tag="Y1", dest="NETLIST", tool="skidl",
@@ -630,6 +693,7 @@ def motor_ctrl():
         _bind(usb, USB_WAYS, {"GND": gnd, "VBUS": vbus, "D-": dm, "D+": dp})
     else:
         _usb_c(gnd, vbus, dm, dp)
+        _flash_path(gnd, v33, dm, dp, u1, nrst, boot0)
     # ── 24 V -> 5 V FOR THE Pi, AND THE CROWBAR THAT MATTERS MORE ────────────
     # THE POWER BOARD IS GONE AND THIS IS IT (user, 2026-09-15). It was its own
     # PCB in the tray; merging it here deletes a board, a connector and a cable --
@@ -708,7 +772,7 @@ def motor_ctrl():
     # thermal pad. 36 V of absolute maximum against a 24 V rail shared with ten
     # stepper drivers is the headroom that matters; the 24 V-max parts in this
     # class have none at all.
-    u5 = Part(name="LMR33630ADDAR", ref_prefix="U", tag="U5", dest="NETLIST",
+    u5 = Part(name="LMR33630ADDAR", ref_prefix="U", tag="U5", ref="U5", dest="NETLIST",
               tool="skidl", value="LMR33630ADDAR",
               description="36 V 3 A synchronous buck, 24 V -> 5 V for the Pi",
               footprint="Package_SO:SOIC-8-1EP_3.9x4.9mm_P1.27mm_EP2.29x3mm",
@@ -1934,6 +1998,29 @@ if REV != 1:
     # above) starts at x 24.46, and J7's reaches 11.0 past its centre; lowest way z -67.6.
     # C29 (24 V bypass at the inlet J3) steps -X out of its courtyard.
     _pl["J7"] = (13.90, 19.83, 0.0)
+    # M43: U7 (the link's USB-serial) in the one SOIC-16-sized hole on the board, -Y of J2 on
+    # the floor edge, pins 1-8 facing U4's north row (PA9 / PA10 at pins 44 / 45). It hangs
+    # into the floor band (board x past 21.55, the floor's top), so mctrl_floor_ports cuts its
+    # port -- and it stands courtyard to courtyard with J2 so the two ports are ONE: a part
+    # between them, or a gap, leaves a 1.5 mm tongue of floor standing in the slot (C34 and
+    # R26 did, first placed). Everything else here stays above the floor, and off the
+    # hand-laid SENSE_24V run at y -10.8: C34 on the west side by U7's pin 4 (V3, tied to
+    # VCC), Q1 / Q2 west of it toward BOOT0 / NRST. R26 is the one other part in the band,
+    # tucked under U7 so its port runs on from U7's and steps down toward the laminate's:
+    # a rib is only left by a SHALLOW port between two deeper ones.
+    _pl["U7"] = (25.70, -9.50, 0.0)
+    _pl["C34"] = (21.20, -7.00, 90.0)
+    _pl["Q1"] = (18.75, -16.80, 0.0)
+    _pl["Q2"] = (18.75, -13.30, 0.0)
+    _pl["R26"] = (25.00, -15.60, 0.0)
+    # The north-row fan-out (see the vias above): USB_DP / USB_DM left pins 47 / 46; on R2 those
+    # pins are idle and the link leaves 45 / 44 the same way, two vias 0.85 apart
+    BOARD_NOTES["vias"] = [v for v in BOARD_NOTES["vias"] if v[0] not in ("USB_DP", "USB_DM")] + [
+        ("LINK_TX", 11.80, -2.30), ("LINK_RX", 12.65, -2.30)]
+    BOARD_NOTES["tracks"] = [t for t in BOARD_NOTES["tracks"] if t[0] not in ("USB_DP", "USB_DM")] + [
+        ("LINK_TX", "F.Cu", 0.2, [(11.80, -3.56), (11.80, -2.30)]),
+        ("LINK_RX", "F.Cu", 0.2, [(12.20, -3.56), (12.20, -2.95), (12.65, -2.50), (12.65, -2.30)])]
+    BOARD_NOTES["silk_rev"] = "r%d" % REV  # the printed rev IS the switch (cad_geom_check)
     _pl["C29"] = (5.90, 17.00, 0.0)
     _tr = BOARD_NOTES["tracks"]
     _i = next(i for i, t in enumerate(_tr) if t[0] == "+24V_LED" and t[3][-1] == (17.46, 19.83))
@@ -1949,6 +2036,74 @@ if REV != 1:
     _q = BOARD_NOTES["quality"]["unconnected"]
     del _q["J4.1"]          # VBUS is on VBUS_NC, all four of its pins together: not "unconnected"
     _q["J4.[AB]8"] = "USB-C SBU1 / SBU2: USB 2.0 uses neither"
+    # M43: USART1 (44 PA9, 45 PA10) carries the link now, and USBFS (46 PA11, 47 PA12) is idle
+    _q["U4"]["pins"] = " ".join([p for p in _q["U4"]["pins"].split() if p not in ("44", "45")]
+                                + ["46", "47"])
+    _q["U7"] = {"pins": "7 8 9 10 11 12 15",
+                "why": "CH340C: no modem inputs, no R232; WCH V3C p.4, unused I/O may dangle "
+                       "(own pull-ups, R232 own pull-down)"}
+    BOARD_NOTES["quality"].setdefault("decoupling", {}).setdefault("exempt", {})["U7.16"] = (
+        "CH340C VCC: tied to V3 (pin 4) at 3.3 V (WCH V3C p.3), and C34 sits at pin 4; pin 16 "
+        "faces J2, whose port U7's must merge with (placement note). 20 mA at 12 Mbit/s, as "
+        "output_panel's U17.16")
+    BOARD_NOTES["quality"]["pinouts"].update({
+        "CH340C": "WCH CH340DS1-EN V3C pp.3-4, SOP16: 1 GND 2 TXD 3 RXD 4 V3 5 UD+ 6 UD- 13 DTR# "
+                  "14 RTS# 15 R232 16 VCC",
+        "AO3401A": "AOS AO3401A Rev 3.1 p.1 SOT23: 1 G, 2 S, 3 D",
+        "MMBT3904": "CJ MMBT3904 SOT-23: 1 B, 2 E, 3 C (LCSC C20526)",
+    })
+    # R1's words named the PH USB lead, the MCU's own USB and SWD as the only way in
+    _m = BOARD_NOTES["quality"]["manual"]
+
+    def _r2(item, old, new):
+        assert old in _m[item], (item, old)
+        _m[item] = _m[item].replace(old, new)
+    _r2("M1", "J4 is the USB-A lead on a 4-way PH: 1 VBUS (open here), 2 GND, 3 D-, 4 D+.",
+        "J4 is a vertical USB-C receptacle and the lead a stock USB-C to USB-A cable, numbered as "
+        "the Type-C standard numbers it (pinouts).")
+    _r2("M1", "and the three 4-way PH (J2 / J6 bus B, J4 USB)", "and the two 4-way PH (J2 / J6 bus B)")
+    _r2("M8", "BOOT0: R7, 10k to GND. NRST: the MCU's own 40k pull-up + C6 100 nF.",
+        "BOOT0: R7, 10k to GND; Q1 lifts it only while U7 holds DTR# low with RTS# high. NRST: "
+        "the MCU's own 40k pull-up + C6 100 nF; Q2 pulls it only while U7 holds RTS# low with "
+        "DTR# high. Both lines rest high (inactive) from U7's reset, so neither acts.")
+    _m["M19"] = ("Q1 (AO3401A) is the only MOSFET. On: DTR# low (0 V) with its source on RTS# at 3.3 V, "
+                 "VGS -3.3 V against VGS(th) -0.5 to -1.3 V (AOS AO3401A sheet), into R7's 0.33 mA, so fully "
+                 "on at any rated RDS(on). Off in reset: U7's DTR# and RTS# rest high, VGS 0. Q2 is an "
+                 "NPN, 0.26 mA of base through R26 for C6 and the 40k pull-up")
+    _r2("M23", "read off the routed board and WCH's reference manual V2.2, chapter 23, 2026-10-05. "
+        "D6 / D7 are 4.8 mm from J4's pins, ahead of everything else. USB_DP 49.4 mm with 3 vias, "
+        "USB_DM 52.6 mm with 1: unequal, and left so -- 3.2 mm is about 20 ps on a full-speed link "
+        "whose edges are 4 ns or slower. The D+ pull-up is INSIDE the MCU (R8_USB_CTRL, "
+        "RB_UC_DEV_PU_EN; table 23-2 '1.5K pull-up'), and WCH's own connection drawing (figure "
+        "23-1) takes PA11 / PA12 straight to the socket with no series parts, as here. 48 MHz from "
+        "the 8 MHz crystal through the PLL.",
+        "R2, read off the routed board 2026-11-03: the USB device is U7 (CH340C), as output_panel's "
+        "U17 and optical's U32; the MCU's USBFS (PA11 / PA12) is idle. D6 / D7 are 7.0 / 5.6 mm "
+        "from J4's pins, ahead of U7. USB_DP 61.7 mm with 2 vias, USB_DM 61.6 mm with 1: 0.1 mm "
+        "apart. U7 to U4 is USART1, 14.4 and 17.4 mm.")
+    _r2("M10", "D4 / D5, bidirectional 5 V clamps 1.3 mm from J6 (J2 shares J6's node, 15 mm of "
+        "track away)", "D4 / D5, bidirectional 5 V clamps 3.5 mm from J2's pins (R2: J6 moved +Y to "
+        "the corner and shares J2's node, 18 mm away)")
+    _r2("M10", "on the pair 5 mm from J4", "on the pair 5.6 / 7.0 mm from J4")
+    _r2("M27", "BOOT0: R7, the pad TP6 and the MCU pin, nothing else. NRST: C6, TP3.",
+        "BOOT0: R7, the pad TP6, Q1's drain (off at rest) and the MCU pin. NRST: C6, TP3, Q2's "
+        "collector (off at rest). PA9 / PA10 carry U7 and nothing else.")
+    _r2("M28", "WCH CH32V307WCU6 C5142795.", "WCH CH32V307WCU6 C5142795, CH340C C84681 (SOP16). AOS "
+        "AO3401A C15127, CJ MMBT3904 C20526 (SOT-23, 1 B 2 E 3 C). hanxia HX-TYPE-C 16P 180 LC-B "
+        "H10.0 C49261584.")
+    _r2("M39", "J4 way 1 (VBUS) is open on purpose.", "J4's VBUS pins are joined to each other "
+        "and nothing else, on purpose; SBU open. U7's modem inputs and R232 open (quality."
+        "unconnected says why). U4 pins 46 / 47 (USBFS) idle on R2.")
+    _r2("M39", "the board talks over USB and both CAN buses already",
+        "the board talks over U7 and both CAN buses already")
+    _m["M43"] = ("R2. J4 -> U7 CH340C -> U4 USART1, PA9 TX / PA10 RX: the link and the way in are "
+                 "one path. WCH's ROM loader answers on USART1 with BOOT0 high through reset and PB2 "
+                 "low (as output_panel M43). The host drives the crossed pair: DTR# high / RTS# low "
+                 "resets (Q2), DTR# low / RTS# high raises BOOT0 (Q1) while NRST climbs on C6; equal "
+                 "levels do nothing, so opening or closing the port never resets the board. First "
+                 "flash, update and recovery alike, no firmware of ours and no hand on the board. "
+                 "NOT YET PROVEN ON A BOARD. Firmware: the R2 link is a UART, not USB CDC "
+                 "(work items). TP1-TP6 stay for dead hardware")
     # R2 moved the parts round U4's east pins and SENSE_24V no longer crosses that via row
     del BOARD_NOTES["quality"]["return_slot_ok"]["SENSE_24V"]
     BOARD_NOTES["quality"].setdefault("connector_labels", {})["J6"] = {"back_only":

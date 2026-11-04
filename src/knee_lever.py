@@ -551,7 +551,7 @@ BODY_Z    = HUB_TOP + 3 * D.BEAD    # body underside in local Z: the hub top (5.
                                     #   is equivalent to lowering BODY_Z here; MOUNT_Z tracks it (= -82.55)
 # ── THE MOUNT JOINT: the fit-tested standing pair -- DEFINED in dimensions (LEVER_FIT,
 # LEVER_MORT_CLR), because the chassis floor's thickness is read off it (D.BOTTOM_T) and the
-# floor sets the bed this module poses the lever from. Built by src/test/fit_plate2.halves.
+# floor sets the bed this module poses the lever from. Built by cadkit.fitted_joint.halves.
 MORT_CLR  = D.LEVER_MORT_CLR
 # THE SEAT IS AT c TOO (user's round 6: "even c all round, seat included"). A lever housing's top
 # hangs MORT_SEAT under the chassis underside, and the rib mortise is cut from MORT_SEAT up its
@@ -582,7 +582,7 @@ class _FitJoint(object):
 
 @functools.lru_cache(maxsize=None)
 def _lever_halves(length, drop=0.0, seat=0.0):
-    from .test import fit_plate2 as FIT
+    from cadkit import fitted_joint as FIT
     ten, cav, _S = FIT.halves("up", "up", MORT_CLR, length, seat, _J_HOST_W, size=LEVER_FIT,
                               drop=drop)
     # the WEB between two mortises is one printed wall, both halves of it: XBAR - the cavity's
