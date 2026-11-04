@@ -95,7 +95,7 @@
   },
   "keyhead_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 302453.8
+   "volume_mm3": 313550.9
   },
   "kl_axle": {
    "material": "pctg",
@@ -175,11 +175,11 @@
   },
   "nut_plate": {
    "material": null,
-   "volume_mm3": 1996.1
+   "volume_mm3": 2747.0
   },
   "nut_slide_insert": {
    "material": "pctg",
-   "volume_mm3": 1863.5
+   "volume_mm3": 2572.9
   },
   "nut_slide_insert_a": {
    "material": "pctg",
