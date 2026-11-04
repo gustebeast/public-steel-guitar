@@ -98,6 +98,18 @@ The worst case keeps 69 % of a bit open. The PH leads are untwisted, so 110 ohm 
 - **The transceiver stays on plain copper.** It is isolated by cutting its supply, so CAN never
   passes through U5's 6 ohm. U5 switches only the MCU's USB pins and the terminator.
 
+## Known issue: the foot pedals (deferred by the user, 2026-11-03)
+
+"Don't worry about foot pedals, we can add a comment flagging it as a known issue and to
+revisit when we get to designing them." Each pedal hangs its board connector-down into the
+pedal bar. The 45.0 board reaches 41.6 below the axle datum, against the bar's 32.05 to its
+trough floor, so the board pokes about 9.6 mm out of the bar's bottom. `src/foot_pedal.py`
+carries the flag at `bus_paths`. The fixes, to be chosen then:
+- a bar about 10 mm taller;
+- the board mounted connector-up into the pedal housing;
+- a shorter board (QFN-48 MCU and SC-70 parts, about +6 instead of +12), plus a little bar
+  height.
+
 ## Follow-ups
 
 - **motor_ctrl R2:** switched 5 V on each arm, a host switch on each arm (Pi USB or the CAN
