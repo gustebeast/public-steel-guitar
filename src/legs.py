@@ -476,9 +476,14 @@ def lock_pin_dy(egx: float) -> float:
     ly = _CHP.LEG_Y[0]
     start = max(ly - SQ_W / 2.0, field[1] if field else -1e9)
     need = start + PIN_HOLE_REACH - ly + SERVICE_SLIDE
-    dy = max(LOCK_PIN_DY, math.ceil(need / D.BEAD - 1e-9) * D.BEAD)
+    # not rounded to a bead: a whole bead out (17.6) leaves the head's recess 0.6 from the endplate's
+    # +Y face; at the bare need it keeps 1.3 (two beads would need it under 16.6)
+    dy = max(LOCK_PIN_DY, need)
     assert dy + _M4.shaft_clr_d / 2 + D.MIN_WALL_2P <= SQ_W / 2, (
         "the keyhead's lock pin at %.2f out leaves under two beads to the foot's face" % dy)
+    wall = _CHP.Y_HI + _CHP.T / 2 - (ly + dy + (LOCK_HEAD_D + D.BEAD) / 2)
+    assert wall >= D.MIN_WALL - 1e-9, (
+        "the keyhead's lock pin head recess leaves %.2f to the endplate's +Y face" % wall)
     return dy
 
 
