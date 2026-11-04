@@ -1276,8 +1276,11 @@ Plug a USB device in (an audio interface such as a Shure MVX2U) and the board po
      side and on under the rod: the plate's curved RAMP turns it and it comes up the +X side by itself.
      Take it over the top again. That is **one** wrap: the second pass lies on the **-Y** side of the first
      and never on top of it. (The printed stand-in has the same ramp, but plastic does not let a string
-     slide well: if the end jams, back the screw right off -- about 6 turns, 4.4 mm, all the travel the
-     long plate leaves -- and lead the end round with a pick.)
+     slide well: if the end jams, back the screw a few more turns and lead the end round with a pick.)
+     Backed off this far the screw head hangs out under the keyhead. That is fine while stringing: once
+     the string is clamped (step 4) every head is back inside the chassis. Strings 1 and 2's heads sit over
+     the -X/+Y leg's body adapter: slide that leg out to its service hole first (you need it out to reach
+     those two screws with the key anyway), or the heads cannot drop.
   3. Let the tail drop straight down the -X side of the rod, into the slot behind the plate.
   4. Hold the string tight with pliers and run the height screw up until the plate stops rising (the
      shelf meets the strand under the rod: the screw goes from free to stopped). Stop there, at LIGHT
