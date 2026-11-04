@@ -1,7 +1,7 @@
-"""A pretend lever board running the REAL lever logic: firmware/lever_sensor/lever.c, compiled
-for this computer and driven through ctypes, on a python-can bus. Only main.c's hardware is
-pretend (the MA730, the flash page, the controller); every frame it sends was made by the code
-that goes on the board. Needs a native C compiler (gcc / cc).
+"""A pretend lever board running the REAL lever logic: firmware/lever_sensor/lever.c and its CAN
+loader's ldr.c, compiled for this computer and driven through ctypes, on a python-can bus. Only
+main.c's and boot.c's hardware is pretend (the MA730, a 32 K flash, the controller); every frame
+it sends was made by the code that goes on the board. Needs a native C compiler (gcc / cc).
 """
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ import subprocess
 import tempfile
 import threading
 import time
+import zlib
 
 FW = os.path.join(os.path.dirname(__file__), "..", "..", "firmware", "lever_sensor")
 
@@ -20,13 +21,18 @@ FW = os.path.join(os.path.dirname(__file__), "..", "..", "firmware", "lever_sens
 SHIM = r'''
 #include <stddef.h>
 #include "lever.h"
+#include "ldr.h"
 size_t sim_size(void) { return sizeof(lever_t); }
+size_t sim_ldr_size(void) { return sizeof(ldr_t); }
+void sim_mode(lever_t *l, unsigned m) { l->mode = (uint8_t)m; }
+void sim_ldr_slot(ldr_t *b, unsigned s) { b->slot = (uint8_t)s; }
+int sim_ldr_go(ldr_t *b) { int g = b->go; b->go = 0; return g; }
 int sim_take_save(lever_t *l, lever_cfg_t *out)
 {
     if (!l->want_save) return 0;
     l->want_save = 0; *out = l->cfg; l->unsaved = 0; return 1;
 }
-int sim_take_loader(lever_t *l) { int w = l->want_loader; l->want_loader = 0; if (w && l->reply_n) l->reply.d[1] = 0; return w; }
+int sim_take_loader(lever_t *l) { int w = l->want_loader; l->want_loader = 0; return w; }
 int sim_take_thresh(lever_t *l) { int w = l->want_thresh; l->want_thresh = 0; return w; }
 unsigned sim_slot(const lever_t *l) { return l->cfg.slot; }
 '''
@@ -48,6 +54,8 @@ def compiler() -> str | None:
 
 
 _LIB = None
+ERASE = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_uint32, ctypes.c_uint32)
+WRITE = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_uint32, ctypes.POINTER(ctypes.c_uint32))
 
 
 def lib():
@@ -58,7 +66,7 @@ def lib():
     cc = compiler()
     if not cc:
         raise RuntimeError("no native C compiler for the lever simulator")
-    srcs = [os.path.join(FW, "lever.c"), os.path.join(FW, "lever.h")]
+    srcs = [os.path.join(FW, n) for n in ("lever.c", "ldr.c", "lever.h", "ldr.h")]
     h = hashlib.sha1(SHIM.encode() + b"".join(open(p, "rb").read() for p in srcs)).hexdigest()[:12]
     d = os.path.join(tempfile.gettempdir(), "public-simlever-" + h)
     so = os.path.join(d, "liblever.so")
@@ -67,10 +75,11 @@ def lib():
         shim = os.path.join(d, "shim.c")
         open(shim, "w").write(SHIM)
         subprocess.run([cc, "-O2", "-Wall", "-Wextra", "-Werror", "-shared", "-fPIC", "-I", FW,
-                        srcs[0], shim, "-o", so + ".tmp"], check=True)
+                        srcs[0], srcs[1], shim, "-o", so + ".tmp"], check=True)
         os.replace(so + ".tmp", so)
     L = ctypes.CDLL(so)
     P, F, C = ctypes.c_void_p, ctypes.POINTER(Frame), ctypes.POINTER(Cfg)
+    U = ctypes.c_uint
     for name, args, res in (
             ("sim_size", [], ctypes.c_size_t),
             ("lever_init", [P, C, ctypes.c_uint32, ctypes.c_uint32], None),
@@ -86,7 +95,15 @@ def lib():
             ("sim_take_save", [P, C], ctypes.c_int),
             ("sim_take_loader", [P], ctypes.c_int),
             ("sim_take_thresh", [P], ctypes.c_int),
-            ("sim_slot", [P], ctypes.c_uint)):
+            ("sim_slot", [P], ctypes.c_uint),
+            ("sim_ldr_size", [], ctypes.c_size_t),
+            ("sim_mode", [P, U], None),
+            ("sim_ldr_slot", [P, U], None),
+            ("sim_ldr_go", [P], ctypes.c_int),
+            ("ldr_init", [P, P, ERASE, WRITE, ctypes.c_uint8], None),
+            ("ldr_app_ok", [P], ctypes.c_int),
+            ("ldr_rx", [P, F], None),
+            ("ldr_poll", [P, F], ctypes.c_int)):
         f = getattr(L, name)
         f.argtypes, f.restype = args, res
     _LIB = L
@@ -117,6 +134,7 @@ class Lever:
         return None
 
     def rx(self, can_id, data: bytes, ext=False):
+        assert len(data) <= 8, "a CAN frame carries 8 bytes, not %d" % len(data)
         f = Frame(can_id, int(ext), len(data))
         for i, b in enumerate(data[:8]):
             f.d[i] = b
@@ -124,11 +142,98 @@ class Lever:
         c = Cfg()
         if self.L.sim_take_save(self.buf, ctypes.byref(c)):
             self.flash = c                              # main.c's cfg_save, which works
-        self.L.sim_take_loader(self.buf)
+        self.want_loader = bool(self.L.sim_take_loader(self.buf)) or getattr(self, "want_loader", False)
         self.L.sim_take_thresh(self.buf)
 
     def reboot(self, now_us=0):
         self.L.lever_init(self.buf, ctypes.byref(self.flash) if self.flash else None, self.uid, now_us)
+
+
+class Board:
+    """A whole board, stepped by hand: the application (a Lever) or, after CMD 'B' or with no
+    good image, the loader (ldr.c on a pretend 32 K flash), as boot.c decides at a reset."""
+
+    def __init__(self, uid=0x12345678, flash: bytearray | None = None, app_image: bytes | None = None):
+        self.L = lib()
+        self.mem = flash if flash is not None else bytearray(b"\xff" * 0x8000)
+        self._fl = (ctypes.c_uint8 * len(self.mem)).from_buffer(self.mem)
+        self._erase, self._write = ERASE(self._do_erase), WRITE(self._do_write)
+        if app_image is not None:                       # what `make swd` puts there (image.py)
+            K = _k()
+            c = zlib.crc32(app_image)
+            self.mem[K["APP_AT"]:K["APP_AT"] + len(app_image)] = app_image
+            self.mem[K["REC_AT"]:K["REC_AT"] + 16] = b"".join(
+                v.to_bytes(4, "little") for v in (K["REC_MAGIC"], len(app_image), c, c ^ 0xFFFFFFFF))
+        self.lv = Lever(uid)
+        self.ldr = ctypes.create_string_buffer(self.L.sim_ldr_size())
+        self.stay = False
+        self.reset()
+
+    def _do_erase(self, off, n):
+        self.mem[off:off + n] = b"\xff" * n
+        return 1
+
+    def _do_write(self, off, page):
+        data = ctypes.string_at(page, 256)
+        old = self.mem[off:off + 256]
+        self.mem[off:off + 256] = bytes(a & b for a, b in zip(old, data))   # flash only clears bits
+        return 1
+
+    def app_ok(self):
+        return bool(self.L.ldr_app_ok(self._fl))
+
+    def reset(self, now_us=0):
+        self.lv.reboot(now_us)
+        self.lv.want_loader = False
+        self.in_loader = self.stay or not self.app_ok()
+        self.stay = False
+        if self.in_loader:
+            self.L.sim_mode(self.lv.buf, 1)
+            self.L.ldr_init(self.ldr, self._fl, self._erase, self._write, self.lv.slot())
+
+    def accepts(self, can_id, ext):
+        """boot.c's / main.c's hardware filter."""
+        K = _k()
+        slot = self.lv.slot()
+        ids = {K["ID_ALL"]}
+        if slot < K["SLOTS"]:
+            ids.add(K["ID_CMD"] + slot)
+            if self.in_loader:
+                ids |= {K["ID_LDR"] + slot, K["ID_LDR_D"] + slot}
+        return not ext and can_id in ids
+
+    def rx(self, can_id, data: bytes, ext=False):
+        self.lv.rx(can_id, data, ext)
+        if self.in_loader:
+            self.L.sim_ldr_slot(self.ldr, self.lv.slot())
+            f = Frame(can_id, int(ext), len(data))
+            for i, b in enumerate(data[:8]):
+                f.d[i] = b
+            self.L.ldr_rx(self.ldr, ctypes.byref(f))
+
+    def poll(self, now_us):
+        """Frames due, and any restart they lead to (after the reply has gone)."""
+        out = []
+        if self.in_loader:
+            f = Frame()
+            while self.L.ldr_poll(self.ldr, ctypes.byref(f)):
+                out.append((f.id, bool(f.ext), bytes(f.d[:f.len])))
+        while True:
+            f = self.lv.poll(now_us)
+            if f is None:
+                break
+            out.append(f)
+        if self.in_loader and self.L.sim_ldr_go(self.ldr):
+            self.reset(now_us)
+        elif not self.in_loader and self.lv.want_loader:
+            self.stay = True
+            self.reset(now_us)
+        return out
+
+
+def _k():
+    from .levers import K
+    return K
 
 
 class SimLever(threading.Thread):
@@ -142,7 +247,8 @@ class SimLever(threading.Thread):
         self.bus = can.Bus(channel=channel, interface=interface)
         self.angle = angle
         self.t0 = time.monotonic()
-        self.lv = Lever(uid, now_us=0)
+        self.board = Board(uid, app_image=b"\x13" * 64)      # a stand-in application
+        self.lv = self.board.lv
         self.lock = threading.Lock()
         self._run = True
 
@@ -151,7 +257,7 @@ class SimLever(threading.Thread):
 
     def reboot(self):
         with self.lock:
-            self.lv.reboot(self.now_us())
+            self.board.reset(self.now_us())
 
     def run(self):
         from .levers import K
@@ -159,19 +265,14 @@ class SimLever(threading.Thread):
         nxt = time.monotonic()
         while self._run:
             with self.lock:
-                self.lv.sample(int(self.angle()) & 0x3FFF)
+                if not self.board.in_loader:                # the loader has no sensor to read
+                    self.lv.sample(int(self.angle()) & 0x3FFF)
                 m = self.bus.recv(0)
                 while m is not None:
-                    slot = self.lv.slot()
-                    if not m.is_extended_id and (m.arbitration_id == K["ID_ALL"] or
-                                                 (slot < K["SLOTS"] and m.arbitration_id == K["ID_CMD"] + slot)):
-                        self.lv.rx(m.arbitration_id, bytes(m.data))
+                    if self.board.accepts(m.arbitration_id, m.is_extended_id):
+                        self.board.rx(m.arbitration_id, bytes(m.data))
                     m = self.bus.recv(0)
-                while True:
-                    f = self.lv.poll(self.now_us())
-                    if f is None:
-                        break
-                    can_id, ext, d = f
+                for can_id, ext, d in self.board.poll(self.now_us()):
                     self.bus.send(self._can.Message(arbitration_id=can_id, data=d, is_extended_id=ext))
             nxt += sample
             time.sleep(max(0.0, nxt - time.monotonic()))

@@ -20,7 +20,9 @@ import sys
 import time
 from dataclasses import dataclass
 
-LEVER_H = os.path.join(os.path.dirname(__file__), "..", "..", "firmware", "lever_sensor", "lever.h")
+FW = os.path.join(os.path.dirname(__file__), "..", "..", "firmware", "lever_sensor")
+LEVER_H = os.path.join(FW, "lever.h")
+LDR_H = os.path.join(FW, "ldr.h")
 
 
 def constants(path: str = LEVER_H) -> dict[str, int]:
@@ -31,7 +33,7 @@ def constants(path: str = LEVER_H) -> dict[str, int]:
     return out
 
 
-K = constants()
+K = {**constants(), **constants(LDR_H)}
 
 
 @dataclass(frozen=True)
@@ -72,6 +74,15 @@ class Reply:
     ok: bool
 
 
+@dataclass(frozen=True)
+class LdrReply:
+    t: float
+    slot: int
+    op: str
+    ok: bool
+    more: bytes
+
+
 def decode(t: float, can_id: int, d: bytes):
     """One received frame as a Pos / Diag / Hello / Reply, or None if it is not a lever's."""
     if can_id & ~0xFFFFFF == K["ID_HELLO"] and len(d) >= 8:
@@ -87,6 +98,8 @@ def decode(t: float, can_id: int, d: bytes):
         return Diag(t, slot, u(0), u(2), u(4), d[6], d[7])
     if base == K["ID_REPLY"] and len(d) >= 2:
         return Reply(t, slot, chr(d[0]), bool(d[1]))
+    if base == K["ID_LDR_R"] and len(d) >= 2:
+        return LdrReply(t, slot, chr(d[0]), bool(d[1]), bytes(d[2:]))
     return None
 
 
@@ -123,7 +136,7 @@ class Levers:
                 self.diag[m.slot] = m
             elif isinstance(m, Hello):
                 self.hello[m.uid] = m
-            elif isinstance(m, Reply):
+            elif isinstance(m, (Reply, LdrReply)):
                 self.replies.append(m)
 
     def position(self, slot: int) -> float | None:
@@ -132,6 +145,7 @@ class Levers:
         return p.pos if p else None
 
     def _send(self, can_id: int, data: bytes):
+        assert len(data) <= 8, "a CAN frame carries 8 bytes, not %d" % len(data)
         self.link.send(can_id, data, bus=self.bus)
 
     def command(self, slot: int, op: str, args: bytes = b"", timeout: float = 0.5) -> bool:
@@ -143,12 +157,30 @@ class Levers:
         def got():
             self.update()
             for r in self.replies[n:]:
-                if r.slot == slot and r.op == op:
+                if isinstance(r, Reply) and r.slot == slot and r.op == op:
                     return r
         r = self.link.wait(got, timeout)
         if r is None:
             raise TimeoutError("lever slot %d did not answer %r" % (slot, op))
         return r.ok
+
+    def ldr(self, slot: int, op: str, args: bytes = b"", timeout: float = 0.5) -> LdrReply:
+        """One loader command (ldr.h) and its reply."""
+        self.update()
+        n = len(self.replies)
+        self._send(K["ID_LDR"] + slot, bytes([ord(op)]) + args)
+        return self.ldr_wait(slot, op, n, timeout)
+
+    def ldr_wait(self, slot: int, op: str, n: int, timeout: float) -> LdrReply:
+        def got():
+            self.update()
+            for r in self.replies[n:]:
+                if isinstance(r, LdrReply) and r.slot == slot and r.op == op:
+                    return r
+        r = self.link.wait(got, timeout)
+        if r is None:
+            raise TimeoutError("lever slot %d's loader did not answer %r" % (slot, op))
+        return r
 
     def identify(self, wait: float = 0.3) -> dict[int, Hello]:
         """Every board says HELLO; returns them by uid."""

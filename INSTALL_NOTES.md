@@ -1330,8 +1330,10 @@ Plug a USB device in (an audio interface such as a Shure MVX2U) and the board po
 ## Lever boards: first flash on the bench, then a slot and a calibration each (2026-11-03)
 
 - **Flash each board on the bench before it goes into its housing** (`make swd` in
-  firmware/lever_sensor, the lever jig and the WCH-LinkE). It is the only time a lever board needs
-  a probe; it has no USB, and nothing on it listens until it has firmware.
+  firmware/lever_sensor, the lever jig and the WCH-LinkE). It writes the CAN loader and the
+  application together. It is the only time a lever board needs a probe; it has no USB, and
+  nothing on it listens until it has firmware. Every later update goes over the bus, with the
+  board in place: `make can SLOT=n`.
 - **Give each its lever while it is still alone in the jig.** The jig is powered from `motor_ctrl`'s
   bus B drop, so the freshly flashed board is on the bus by itself: `python3 -m publicbench.levers
   list` shows one uid and "slot -", and `python3 -m publicbench.levers assign <uid> <slot>` gives

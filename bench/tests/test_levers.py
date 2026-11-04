@@ -149,3 +149,94 @@ def test_end_to_end_assign_calibrate_save_reboot(bus):
     assert abs(lv.position(0) - 0.75) < 0.01
     d = lv.diag[0]
     assert (d.rest, d.full, d.version) == (5000, 7000, LV.K["LEVER_VERSION"])
+
+
+# ---- the CAN loader (ldr.c) -------------------------------------------------------------------
+import zlib
+
+
+def drain(b, t=0):
+    out = []
+    for _ in range(50):
+        got = b.poll(t)
+        if not got:
+            break
+        out += got
+    return out
+
+
+def ldr_send(b, slot, op, args=b""):
+    b.rx(K["ID_LDR"] + slot, op.encode() + args)
+    return [LV.decode(0, i, d) for i, _e, d in drain(b) if i == K["ID_LDR_R"] + slot]
+
+
+def write_image(b, slot, img, bad_page=None, stop_after=None):
+    assert ldr_send(b, slot, "E", len(img).to_bytes(4, "little"))[0].ok
+    padded = img + b"\xff" * (-len(img) % 256)
+    for no in range(len(padded) // 256):
+        if stop_after is not None and no == stop_after:
+            return
+        p = padded[no * 256:(no + 1) * 256]
+        crc = zlib.crc32(p) ^ (1 if no == bad_page else 0)
+        b.rx(K["ID_LDR"] + slot, b"W" + no.to_bytes(2, "little") + crc.to_bytes(4, "little"))
+        for k in range(0, 256, 8):
+            b.rx(K["ID_LDR_D"] + slot, p[k:k + 8])
+        r = [LV.decode(0, i, d) for i, _e, d in drain(b) if i == K["ID_LDR_R"] + slot]
+        assert r and r[0].op == "W" and r[0].ok == (no != bad_page)
+    return ldr_send(b, slot, "C", len(img).to_bytes(3, "little") + zlib.crc32(img).to_bytes(4, "little"))[0]
+
+
+def slotted(b, slot=2):
+    b.rx(K["ID_ALL"], bytes([K["LC_SLOT"]]) + b.lv.uid.to_bytes(4, "little") + bytes([slot]))
+    drain(b)
+    return slot
+
+
+def test_blank_board_waits_in_its_loader_and_takes_an_image():
+    b = SL.Board(0x77)
+    assert b.in_loader
+    h = [LV.decode(0, i, d) for i, e, d in drain(b) if e][0]
+    assert h.mode == 1 and h.slot is None
+    s = slotted(b)
+    r = ldr_send(b, s, "I")[0]
+    assert r.ok and r.more == bytes([K["LDR_VERSION"], 0])
+    img = bytes(range(256)) * 9 + b"tail"
+    assert write_image(b, s, img).ok
+    assert ldr_send(b, s, "G")[0].ok and not b.in_loader     # restarted into the application
+    assert b.mem[K["APP_AT"]:K["APP_AT"] + len(img)] == img
+    assert b.lv.slot() == s                                     # the slot lived through it
+
+
+def test_a_bad_page_is_refused_and_a_half_update_stays_in_the_loader():
+    b = SL.Board(0x78, app_image=b"\x55" * 300)
+    assert not b.in_loader
+    s = slotted(b)
+    b.rx(K["ID_CMD"] + s, b"B")                                 # the application: to the loader
+    drain(b)
+    assert b.in_loader
+    write_image(b, s, b"\x66" * 2000, bad_page=1, stop_after=3)  # page 1 refused, then it stops
+    b.reset()
+    assert b.in_loader                                          # the record was erased: no app
+    assert not ldr_send(b, s, "C", (2000).to_bytes(3, "little") + zlib.crc32(b"\x66" * 2000).to_bytes(4, "little"))[0].ok
+    assert write_image(b, s, b"\x66" * 2000).ok
+    b.reset()
+    assert not b.in_loader
+
+
+def test_loader_ignores_other_slots():
+    b = SL.Board(0x79)
+    s = slotted(b, 5)
+    b.rx(K["ID_LDR"] + 6, b"I")
+    assert not [1 for i, _e, _d in drain(b) if i == K["ID_LDR_R"] + 6]
+    assert ldr_send(b, s, "Z")[0] == LV.LdrReply(0, s, "Z", False, b"")
+
+
+def test_end_to_end_update_over_the_bus(bus):
+    from publicbench import leverflash
+    lv, sims, _angles = bus
+    assert lv.assign(0xA1, 4)
+    img = bytes((i * 7) & 0xFF for i in range(3000))
+    leverflash.write(lv, 4, img, log=lambda *_: None)
+    m = sims[0].board.mem
+    assert m[K["APP_AT"]:K["APP_AT"] + len(img)] == img and sims[0].board.app_ok()
+    assert not sims[0].board.in_loader

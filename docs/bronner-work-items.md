@@ -40,12 +40,32 @@
   the same pin as PA11 (CAN RX), so even USART1's RX is not available for a respin to bring out.
 - So a blank chip has nothing listening on bus B: the FIRST flash needs SWD (TP1-TP4, the pogo jig
   src/lever_jig.py, a WCH-LinkE), once per board, on the bench, before it goes in its housing.
-- UPDATES and RECOVERY can be hands-free, by firmware alone: a CAN loader in flash (diagnostics
-  4.3). Planned map: loader 0x0000-0x17FF, application 0x1800-0x7EFF, config 0x7F00. The loader
-  checks the application's CRC and stays put if it is bad, so a failed update is recovered over
-  the bus too; only a broken LOADER needs the jig, and the loader is never rewritten over CAN.
-  The Pi reaches it through motor_ctrl (USB -> bus B). The application already takes LC_LOADER
-  ('B') and answers "not ok" until a loader exists (HAVE_LOADER). NEXT, firmware only.
+- UPDATES and RECOVERY are hands-free: the CAN loader is BUILT (agent/bronner-lever-boot,
+  diagnostics 4.3), firmware only, unproven on a board.
+  - Map (ldr.h): loader 0x0000-0x27FF (8,156 of 10 K; 6 K did not fit), application
+    0x2800-0x7DFF (7,968 of 21.5 K), the loader's record of the application 0x7E00, config 0x7F00.
+  - The loader starts the application only if the record's length and CRC match the image, so
+    an update that stops halfway leaves the board in its loader, on the bus. It also waits 1 s
+    after a watchdog reset, so an application that hangs over and over can be caught. Only a
+    broken LOADER needs the jig, and it is never written over CAN.
+  - In the loader the board still answers the broadcast and its slot (HELLO mode 1), so it is
+    found and given a slot there too. CMD 'B' from the application sends it there (BOOT_STAY in
+    the top 16 bytes of RAM, which both link scripts leave out).
+  - Protocol (ldr.h): 'I', 'E' len, 'W' page + crc then 32 DATA frames, 'C' len u24 + crc, 'G'.
+    ⚠ caught in test: 'C' first carried a 4-byte length, 9 bytes in an 8-byte frame. Both the
+    simulator and Levers now refuse a frame over 8 bytes.
+  - hw.c holds the hardware both programs share; boot.c's startup is patched to stay in machine
+    mode (0x88 -> 0x1888, checked in the recipe), as motor_ctrl's loader is.
+  - `make` builds boot.bin, lever.bin and full.bin (image.py: both plus the record, for `make
+    swd`); `make can SLOT=n` writes lever.bin over the bus (publicbench/leverflash.py, through
+    motor_ctrl).
+  - Tests: ldr.c runs natively against a pretend flash that only clears bits. Blank board ->
+    loader -> image -> application; a bad page refused; a half update stays in the loader;
+    other slots ignored; and leverflash end to end on the simulated bus. 12 lever tests, 33 in
+    the whole bench suite, pass on the Pi.
+  - ⚠ To prove on the first board: the jump into the application (its startup from machine
+    mode), FLASH_ROM_* at 48 MHz, and that the IWDG survives a software reset (the loader feeds
+    it either way).
 - To meet the first-flash rule literally needs hardware: a respin with a USB device (the board is
   full: its own note counts six free 2.0 sites, four spent on SWD pads), or chips programmed
   before assembly (a JLC programming service: not checked). For the user via the lead: accept the
