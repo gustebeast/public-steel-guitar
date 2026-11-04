@@ -1,8 +1,15 @@
 # -*- coding: utf-8 -*-
-"""A PRINTED POGO NEST for flashing the lever sensor boards.
+"""A PRINTED POGO NEST for flashing the lever sensor boards -- REV 1 BOARDS ONLY.
+
+⚠ REV 1 ONLY. From 2026-11-03 the lever board (CH32V203C8T6, elec/lever_sensor.py) takes its
+first flash and every recovery over its own bus wires: the Pi hands its pair to WCH's ROM
+loader over USB through motor_ctrl R2 (docs/lever-usb-flash.md, bench/publicbench/leverisp.py),
+and its SWD pads (M9) are the last resort, reached by hand. This nest is for the rev 1 boards
+(CH32V203G6U6, no USB), which have no other way in. It still builds -- it reads the pads from
+whatever board the geom holds -- but a rev 2 board never needs it.
 
 SHOP TOOL, not a part of the instrument. The instrument has eleven lever/pedal sensor
-boards (elec/lever_sensor.py) and SWD is their ONLY way in: no USB, no UART, BOOT0
+boards (elec/lever_sensor.py) and on rev 1 SWD is their ONLY way in: no USB, no UART, BOOT0
 grounded. Their four SWD pads are scattered -- TP1-TP3 on a 2.3 x 2.4 mm L and TP4
 9.65 mm away -- because the board is full and a standard debug header does not fit
 (docs/board-bringup-diagnostics.md 4.1). Hand-probing four scattered 1.0 mm pads eleven
