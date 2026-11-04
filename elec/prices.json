@@ -107,11 +107,11 @@
     "m4_button_10": {
       "usd": 0.0958,
       "verified": "v",
-      "per_instrument": 70,
+      "per_instrument": 80,
       "vendor": "McMaster-Carr",
       "sku": "92095A190",
-      "order": "7 x $9.44 (pack of 100) = $66.08 for 700 needed",
-      "what": "M4x10 -- 10 CAN tees, 2 bay boards, 2 fret boards, 1 UI clamp (was M4x12), and per sensed control x 11: 2 position + 2 spring-tension (the feel cartridges) + 1 in the axle's -Y end"
+      "order": "8 x $9.44 (pack of 100) = $75.52 for 800 needed",
+      "what": "M4x10 -- 10 keyhead nut side screws (nut_block.SS_SCREW_L: pin each tail to its nut plate), 10 CAN tees, 2 bay boards, 2 fret boards, 1 UI clamp (was M4x12), and per sensed control x 11: 2 position + 2 spring-tension (the feel cartridges) + 1 in the axle's -Y end"
     },
     "m4_button_20": {
       "usd": 0.2368,
@@ -151,11 +151,11 @@
     "m4_insert": {
       "usd": 0.219,
       "verified": "v",
-      "per_instrument": 84,
+      "per_instrument": 94,
       "vendor": "McMaster-Carr",
       "sku": "94459A150",
-      "order": "17 x $10.82 (pack of 50) = $183.94 for 840 needed",
-      "what": "M4 brass heat-set, 4.7 installed. 78 drawn + 4 for the eleventh control + 2 fret boards (the 10 belt clamps take an M3 insert now). AT 840 AN ORDER THIS IS THE DEAREST FASTENER LINE ($183.94) -- $0.22 each at McMaster against a few cents from an import seller; the obvious place to save if a second vendor is acceptable."
+      "order": "19 x $10.82 (pack of 50) = $205.58 for 940 needed",
+      "what": "M4 brass heat-set, 4.7 installed. 10 in the keyhead's -X face for the nut side screws + 78 drawn + 4 for the eleventh control + 2 fret boards (the 10 belt clamps take an M3 insert now). AT 940 AN ORDER THIS IS THE DEAREST FASTENER LINE ($205.58) -- $0.22 each at McMaster against a few cents from an import seller; the obvious place to save if a second vendor is acceptable."
     },
     "washer_m3_9021": {
       "usd": 0.0338,
@@ -182,7 +182,17 @@
       "vendor": "McMaster-Carr",
       "sku": "91595A119",
       "order": "20 x $6.95 (pack of 5) = $139.00 for 100 needed",
-      "what": "O4 x 4 dowel pin, 4140, round/chamfer ends -- the nut break pins (was O2 x 4 91595A018)"
+      "what": "O4 x 4 dowel pin, 4140, round/chamfer ends -- the crowns of the printed nut-plate STAND-INS (nut_block.standin), for the bench until the steel plates arrive; the steel plate's own crown replaces it (was O2 x 4 91595A018)"
+    },
+    "nut_plate": {
+      "usd": 0.8015,
+      "verified": "v",
+      "per_instrument": 10,
+      "qty": 100,
+      "vendor": "JLCCNC (sheet metal)",
+      "sku": "steel/nut_plate.step",
+      "order": "100 x laser-cut 304 stainless, 4 mm, no finish: parts $34.00 (material $16 + cutting $18) + UPS Express Saver DDP $46.15 = $80.15, instant quote read 2026-11-03 (final price subject to their review)",
+      "what": "The keyhead nut plate (nut_block.plate), one per string: its crown is the break, its shelf pinches the one wrap under the rod, the side screw pins the tail to its -X face. 37.75 x 18.05 x 4 mm (quoted at 21.25 wide; the part shrank 3.2 when the rod moved +X, so the quote is high if anything)."
     },
     "guide_rod_o3_5": {
       "usd": 1.13,

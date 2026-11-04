@@ -1207,16 +1207,19 @@ the other nine. That shelf covers the board's +X 23 mm, so the board cannot go s
 Out is the reverse: nut off, screw out, then pull it -X until it is clear of the panel, lift
 it 4 mm, slide it out from under the shelf and lift it out of the bay.
 
-## The break dowel goes into its insert from the -X side, tilted over the lip (2026-10-30)
+## Nut plate stand-ins: seat the dowel in the cradle first (2026-11-03)
 
-The cradle on each nut slide insert is a 180 degree seat tilted 45 degrees, so it has a lip on
-the +X (bridge) side and is open toward -X and up.
+Until the steel nut plates arrive, each string gets a printed stand-in (`pctg/nut_slide_insert.step`,
+x10): the same outline, with a cradle for a Ø4 x 4 dowel where the steel plate's crown is.
 
-1. Lay the Ø4 dowel in from the -X side, against the lip, and let it roll down into the seat.
-2. Nothing holds it there until the string does: keep the insert level, or a finger on the
-   dowel, until the string is over it. The string pulls it down into the seat.
-3. The lip stops about 0.3 under the string. A string that touches it means the dowel is not
-   seated.
+1. Drop the dowel into the cradle from above and push it to the bottom. Its top is then where the
+   steel crown's top will be.
+2. Keep a finger on it until the string is over it; the string then holds it down in the seat.
+   No glue (the instrument has none), so the stand-in comes apart again.
+3. The stand-in fits the same pocket and takes the same height and side screws, so swapping in a
+   steel plate later is: string off, stand-in out, plate in, string on. Nothing is reprinted.
+- **Why:** a printed crown-to-shelf height cannot hold the 0.025 mm steps between the thin strings,
+  and a glued dowel adds its own error. The stand-in is for the bench, not for levelling.
 
 ## Optical leads: 24 V through the cable hole first, then the USB lead (2026-10-30)
 
@@ -1255,29 +1258,30 @@ Plug a USB device in (an audio interface such as a Shure MVX2U) and the board po
   finger takes more at first, then creeps a little and hands the excess to its neighbours and the end
   blocks. Expect the rod to settle 0.1-0.2 mm in the first weeks at tension; retune.
 
-## Stringing: the string goes OVER the rod and round
+## Stringing: ONE wrap over the rod, then the side screw (2026-11-03)
 
-- **Where:** every string, `nut_wrap_rod`, `nut_slide_insert_*`, the M4 x 40 height screws.
+- **Where:** every string, `nut_wrap_rod`, `nut_plate_*` (or the printed stand-in), the M4 x 40 height
+  screws under the keyhead and the M4 x 10 side screws in its -X face.
 - **Do, for each string:**
-  1. Back the string's height screw right off with the 2.5 key, from under the keyhead, so the insert
-     drops 14.8 mm. The dowel goes with it, 2.4 mm below the rod, and the head stops just inside the bed.
-  2. Bring the string in over the dowel and over the **top** of the rod, then down the -X side.
-  3. Take the tip under the rod, in the room the insert left, up the +X side and back over the top. Each
-     turn lies on the **-Y** side of the last. Three full turns, the same on every string, none crossing.
-  4. The tail leaves over the top of the rod, heading -X out along the lane. Cut it about 60 mm past the
-     stow hole in the lane floor, bend it down and push it into the hole with your fingers.
-  5. Pull the string snug and tighten the height screw until the insert clamps the coil against the
-     rod. Bring it to pitch.
-- **Why:** the string was wound the other way for a while so a tip could be fed under a high rod, but
-  the bar's cutaway left too little plastic over that rod. So the rod came down into the plate and the
-  winding went back. Clamping is what the coil's last turn relies on: about 9 N is left there (assuming
-  friction 0.15).
-- **Tails:** each goes down its own hole in the lane floor, -X of the insert, so nothing stands past
-  the -X face. The bend at the mouth and the clamped coil hold it; no tool needed. ⚠ Tail length and
-  hold are not bench-tested.
-- ⚠ **Not tried yet** on the real part. `test_wrap_s1` is a slice of the real keyhead at string 1. It tests
-  the drop, the wind, a light clamp and the slide down the stow hole. It has no deck panel, so it does
-  not test reaching in past the panel, and threading a stiff .080 is still unproven.
+  1. Back the string's height screw right off with the 2.5 key, from under the keyhead, so the plate drops
+     14.8 mm. Back its side screw off a few turns too.
+  2. Bring the string in over the crown and over the **top** of the rod, then down the -X side, under the
+     rod, up the +X side and over the top again. That is **one** wrap: the second pass lies on the **-Y**
+     side of the first and never on top of it.
+  3. Let the tail drop straight down the -X side of the rod, into the slot behind the plate.
+  4. Hold the string tight with pliers and tighten the height screw until the plate's shelf pinches the
+     strand under the rod. Snug, not cranked: this sets the string's height.
+  5. Cut the tail about 20 mm below the rod and push it down to the bottom of its slot.
+  6. Push the tail down tight with pliers and tighten the side screw (2.5 key, -X face) until it pins the
+     tail against the plate. Use the key's ball end: it is enough, and it cannot overload the heat-set.
+  7. Bring the string to pitch. After the strings settle (a day or two), re-snug both screws once.
+- **Why:** with one wrap only one strand ever crosses under the rod, so the plate can only stop on one
+  string diameter and the height comes out right. The wrap leaves about 97 N at the shelf (friction 0.15);
+  the shelf pinch and the side screw share it, both steel on steel.
+- **Side-screw heat-sets:** press each M4 insert in from the -X face only until it is FLUSH. There is no
+  floor behind it: it opens straight into the tail slot, so pushing past flush drops it into the slot.
+- **Screw heads:** the side screws' heads stand 1-3 mm proud of the keyhead's -X face, by gauge.
+- ⚠ **Not tried yet.** Threading under the rod with a stiff .080 in a 4.4 mm slot is still unproven.
 
 ## Two-filament prints: one file, a filament per part (2026-11-03)
 

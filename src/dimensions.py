@@ -972,8 +972,8 @@ LEVER_PITCH  = LEVER_MORT_W + 2 * MIN_WALL_2P    # 10.4
 # them that still slides at full length is the strongest mount; A2 (0.25) is the fallback the
 # full-length coupon decides on. One joint SIZE, two LENGTHS: short TENONS on the housing (its
 # own Y span) and a long RIB MORTISE (the whole knee-depth range). The body adapter's ridges
-# ride the same mortises, so they are this joint too. Built by src/test/fit_plate2.halves
-# until step 4 moves it into cadkit.
+# ride the same mortises, so they are this joint too. Built by cadkit.fitted_joint.halves
+# (step 4, 2026-11-03).
 LEVER_MORT_CLR = 0.45                    # plate 8 A2 (A1 0.20: two tenons in one mortise piece were
                                     # already too tight on the mini seam plate, user 2026-10-16);
                                     # MINI ROUND 2: 0.25 "still a touch tight" -> half a step;
@@ -990,7 +990,7 @@ LEVER_FIT = {"neck": 4 * BEAD, "head": 7 * BEAD, "side": 2 * BEAD, "root": True,
 # cavity's top, end relief and all), so a joint change moves the floor with it. Not rounded to
 # a grid: it is a depth the joint dictates, not a wall (check_beads exempts it), and any
 # rounding up is cap the user just asked to lose. A module __getattr__,
-# because fit_plate2 imports this module: computed on first use, after both are loaded.
+# so it is computed on first use, after the joint module is loaded.
 # chassis asserts the cap against the real solids.
 _DERIVED = {}
 
@@ -998,7 +998,7 @@ _DERIVED = {}
 def __getattr__(name):
     if name == "BOTTOM_T":
         if name not in _DERIVED:
-            from src.test import fit_plate2 as _FIT
+            from cadkit import fitted_joint as _FIT
             _ten, _cav, _S = _FIT.halves("up", "up", LEVER_MORT_CLR, 12.0, 0.0, LEVER_MORT_W,
                                          size=LEVER_FIT)
             _DERIVED[name] = _cav.val().BoundingBox().zmax + MIN_WALL_2P
@@ -1365,9 +1365,9 @@ BRIDGE_BASE_X1 = BRIDGE_X + BRIDGE_HALF_PX          # +23.43  (+X face)
 # String gauges — the DEMO SET the model is drawn strung with. The keyhead does NOT take
 # its shape from it: each sliding insert rises until its own string stops it, so the string
 # sets its own height, and every insert SKU is sized for the heaviest gauge its slots take
-# (nut_block.sku_gauge_max; string 10 up to STRING_GAUGE_MAX below). Clearances to the
+# (nut_block.G_ENVELOPE: the pockets and channels take up to STRING_GAUGE_MAX below). Clearances to the
 # lowest string read STRING_GAUGE_MAX too. Two things still read THIS table: the SKU A/B
-# zone maxima (nut_block.sku_gauge_max) and the rod height (nut_block._G_MAX).
+# plate's Y placement asserts (nut_block.PLATE_YC) and the rod height (nut_block._G_MAX).
 # Index i = string (i+1), low to high: index 0 = string 1 (lightest, +Y); index 9 =
 # string 10 (heaviest, −Y player side).
 # ─────────────────────────────────────────────────────────────────────────

@@ -35,7 +35,7 @@ from elec.harness import ph_trunk_pins as _ph_trunk_pins
 from . import motor_bank as MB
 from .components import MOTOR_PULLEY_STANDOFF
 from .helpers import box_at
-from .test import fit_plate2 as FIT
+from cadkit import fitted_joint as FIT
 
 T        = D.WALL_THICKNESS            # rail thickness (solid; slicer infills)
 X_BRIDGE = D.BRIDGE_BASE_X1 - 3 * D.BEAD   # 6.1: +X (bridge) end — the rails end here; the
@@ -94,7 +94,7 @@ TP_TG_YC       = {1: Y_HI, -1: Y_LO}   # groove centre = each rail centre-line
 # groove's opening: joinery step 1's LAYER/LAYER MOUTH-UP pair, sized up to this site (plate 8
 # B: neck 3.2, head 6.4, straight sides 2.4, a flat groove floor, end relief in the groove
 # only). Plate 8 B1, 0.25: "ideal, low friction and wobble". The panel's underside rests on
-# the rail top, so the seat is 0. Built by src/test/fit_plate2.halves until step 4.
+# the rail top, so the seat is 0. Built by cadkit.fitted_joint.halves (step 4, 2026-11-03).
 TP_TG_W    = 8 * D.BEAD                # 6.4 across the head
 TP_TG_CLR  = 0.25                      # plate 8 B1
 DECK_FIT   = {"neck": 4 * D.BEAD, "head": TP_TG_W, "side": 3 * D.BEAD}
@@ -172,14 +172,14 @@ KH_DT_CLR      = 0.30                   # socket clearance: the step-1 LONG-join
 # their outer face, so the face the rail drops into is the print's top). Smallest such joint:
 # neck 1.6, head 4.8, 2.0 corners, a flat cavity end, 8.0 deep -- which is why KH_DT_DEPTH
 # grew from 8.0. The endplate's 0.4 of assembly air (EP_TOP_CLR) is the socket's seat.
-# Until the profile moves into cadkit (step 4) it is built by src/test/fit_plate2.halves.
+# Built by cadkit.fitted_joint.halves (step 4, 2026-11-03).
 EP_J_HOST_W = 10 * D.BEAD               # 8.0: the tenon's host slab across Y, inside the rail
 
 
 @functools.lru_cache(maxsize=None)
 def _ep_halves(length):
     """(tenon, cavity) of the endplate joint, `length` along the install axis, in the joint
-    frame (X install, Y across, Z depth from the nominal face) -- see fit_plate2.halves."""
+    frame (X install, Y across, Z depth from the nominal face) -- see cadkit.fitted_joint.halves."""
     ten, cav, S = FIT.halves("N", "down", KH_DT_CLR, length, EP_TOP_CLR, EP_J_HOST_W)
     reach = cav.val().BoundingBox().zmax
     assert reach <= KH_DT_DEPTH + 1e-6, (
@@ -257,7 +257,10 @@ _SEG_CLR  = 0.55                       # plate 8 D3 (user, 2026-10-16): 0.35 and
                                        # FULL DROP (fit_plate10, user 2026-10-22): 0.40 / 0.45 /
                                        # 0.50 / 0.55 -- the loosest, 0.55, the winner -- LOCKED
                                        # (user, 2026-10-22: "we can lock that in as well")
-_SEG_HOST_W = 10 * D.BEAD              # 8.0: the tenon's host slab across Y, inside the rail
+_SEG_HOST_W = 9 * D.BEAD               # 7.2: the tenon's host slab across Y, inside the rail. Was
+                                       # 8.0; cadkit's seat ease (2026-11-03) runs the mouth out to
+                                       # host_w - 0.05, which at 8.0 left 1.25 of rail wall; at 7.2 it
+                                       # stops at 3.55, leaving 1.65. The slab is buried in the segment
 _SEG_OVER = 0.01                       # _seg_box runs each segment this far past its split, so
                                        # the cavity starts further back than that or it leaves
                                        # a film this thick across its own mouth (slicer sweep)
@@ -285,14 +288,14 @@ _SEG_JZ0  = MB.FLOOR_TOP               # tenon base = the bottom prism's top fac
 # its -X end, so the chain is consistent). The endplates socket the rail ends and the deck rides
 # both crowns, both of which come after, so nothing else cared which way this went.
 # THE PROFILE IS THE FIT-TESTED ONE (user, 2026-10-16): both segments build +Z, along the
-# install axis, so it is joinery step 1's nozzle/nozzle pair -- until step 4 moves it into
-# cadkit, built by src/test/fit_plate2.halves. The two segments' faces MEET at the seam (the
-# rail is one face, no reveal), so the socket's seat is 0: the plate-5 pocket keeps c over the
-# tenon's root fillet only.
+# install axis, so it is joinery step 1's nozzle/nozzle pair, built by
+# cadkit.fitted_joint.halves (step 4, 2026-11-03). The two segments' faces MEET at the seam (the
+# rail is one face, no reveal), so the socket's seat is 0: the mouth keeps c over the
+# tenon's root fillet only, then eases down to the seat (cadkit's _seat_ease).
 @functools.lru_cache(maxsize=None)
 def _seg_halves(length):
     """(tenon, cavity) of the seam joint, `length` along Z, in the joint frame (X install,
-    Y across, Z depth past the seam plane) -- see fit_plate2.halves."""
+    Y across, Z depth past the seam plane) -- see cadkit.fitted_joint.halves."""
     ten, cav, _S = FIT.halves("N", "N", _SEG_CLR, length, 0.0, _SEG_HOST_W, drop=2 * _SEG_OVER)
     bb = cav.val().BoundingBox()
     assert bb.zmax <= _SEG_JD + 1e-6, "seam cavity reaches %.2f, over _SEG_JD" % bb.zmax
