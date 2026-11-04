@@ -32,6 +32,7 @@ class SimServo(threading.Thread):
         self.vlim = 0.0
         self.code = 0
         self.enabled = False
+        self.active = True                              # 0x8C's second byte: report arrival
         self.history: list[tuple[float, float]] = []    # (time.monotonic(), counts)
         self._run = True
 
@@ -45,6 +46,9 @@ class SimServo(threading.Thread):
         code = d[0]
         if code == S.ENABLE:
             self.enabled = bool(d[1])
+            self._reply(bytes([code, 1]))
+        elif code == S.SET_RESPOND:
+            self.active = bool(d[2])
             self._reply(bytes([code, 1]))
         elif code == S.READ_ENCODER:
             self._reply(bytes([code]) + int(round(self.pos)).to_bytes(6, "big", signed=True))
@@ -78,7 +82,8 @@ class SimServo(threading.Thread):
                 crossed = (self.target - self.pos) * dist <= 0      # a real loop does not overshoot by a tick
                 if crossed or (abs(self.target - self.pos) < 2.0 and abs(self.vel) <= 2 * self.accel * dt):
                     self.pos, self.vel, self.target = float(self.target), 0.0, None
-                    self._reply(bytes([self.code, S.ARRIVED]))
+                    if self.active:
+                        self._reply(bytes([self.code, S.ARRIVED]))
             self.history.append((time.monotonic(), self.pos))
             nxt += dt
             time.sleep(max(0.0, nxt - time.monotonic()))

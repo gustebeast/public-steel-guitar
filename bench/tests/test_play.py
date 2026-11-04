@@ -13,6 +13,7 @@ from publicbench import simlever as SL
 pytestmark = pytest.mark.skipif(not SL.compiler(), reason="no native C compiler")
 K = CP.K
 FULL = K["PLAY_POS_FULL"]
+DRIVE = 3                                                   # play.h PS_DRIVE
 
 
 @pytest.fixture(scope="module")
@@ -89,9 +90,11 @@ def boot(p, bases, now=0):
         mid, d = f
         if d[0] == S.READ_ENCODER:
             p.rx(0, mid, S.pack(mid, bytes([S.READ_ENCODER]) + bases[mid].to_bytes(6, "big", signed=True)), now)
-        elif d[0] == S.ENABLE:
-            p.rx(0, mid, S.pack(mid, bytes([S.ENABLE, 1])), now)
-    assert all(p.state(s) == 2 for s in range(CP.STRINGS))
+        elif d[0] in (S.SET_RESPOND, S.ENABLE):
+            if d[0] == S.SET_RESPOND:
+                assert d[1:3] == bytes([1, 0])              # start reply on, arrival reply off
+            p.rx(0, mid, S.pack(mid, bytes([d[0], 1])), now)
+    assert all(p.state(s) == DRIVE for s in range(CP.STRINGS))
 
 
 def move_of(f):
@@ -209,9 +212,10 @@ def rig(cop, table):
     mc = SimMotorCtrl(table, a_channel="public-play-a", b_channel="public-play-b")
     mc.start()
     end = time.monotonic() + 3
-    while time.monotonic() < end and not all(mc.play.state(s) == 2 for s in range(10)):
+    while time.monotonic() < end and not all(mc.play.state(s) == DRIVE for s in range(10)):
         time.sleep(0.01)
-    assert all(mc.play.state(s) == 2 for s in range(10)), "every motor based and enabled"
+    assert all(mc.play.state(s) == DRIVE for s in range(10)), "every motor based and enabled"
+    assert not any(sv.active for sv in servos), "arrival replies off"
     yield angle, servos, bases, mc
     mc.stop()
     pi.close()

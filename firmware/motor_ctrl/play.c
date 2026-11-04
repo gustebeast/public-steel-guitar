@@ -80,18 +80,20 @@ void play_rx(play_t *p, uint8_t bus, const play_frame_t *f, uint32_t now)
     if (sum != f->d[f->len - 1]) return;
     for (uint32_t s = 0; s < PLAY_STRINGS; s++) {
         if (!p->t.motor[s] || p->t.motor[s] != f->id) continue;
-        if (f->d[0] == SV_READ_ENC && f->len == 8 && p->state[s] == 0) {
+        if (f->d[0] == SV_READ_ENC && f->len == 8 && p->state[s] == PS_UNBASED) {
             p->base[s] = i48_to_32(f->d + 1);
-            p->state[s] = 1; p->told[s] = 0;
-        } else if (f->d[0] == SV_ENABLE && f->d[1] == 1 && p->state[s] == 1) {
-            p->state[s] = 2; p->sent[s] = 0; p->told[s] = 1; p->dirty = 1;
+            p->state[s] = PS_QUIET; p->told[s] = 0;
+        } else if (f->d[0] == SV_RESPOND && f->d[1] == 1 && p->state[s] == PS_QUIET) {
+            p->state[s] = PS_ENABLE; p->told[s] = 0;
+        } else if (f->d[0] == SV_ENABLE && f->d[1] == 1 && p->state[s] == PS_ENABLE) {
+            p->state[s] = PS_DRIVE; p->sent[s] = 0; p->told[s] = 1; p->dirty = 1;
         }
     }
 }
 
 void play_rebase(play_t *p)
 {
-    for (uint32_t s = 0; s < PLAY_STRINGS; s++) { p->state[s] = 0; p->told[s] = 0; }
+    for (uint32_t s = 0; s < PLAY_STRINGS; s++) { p->state[s] = PS_UNBASED; p->told[s] = 0; }
 }
 
 static int frame(play_t *p, uint8_t s, uint32_t now, play_frame_t *o, uint8_t n, const uint8_t *body)
@@ -117,17 +119,22 @@ int play_poll(play_t *p, uint32_t now, play_frame_t *o)
         uint8_t s = (uint8_t)((p->rr + k) % PLAY_STRINGS);
         if (!p->t.motor[s]) continue;
         int due = !p->told[s] || now - p->last[s] >= PLAY_ASK_US;
-        if (p->state[s] == 0 && due) {
+        if (p->state[s] == PS_UNBASED && due) {
             uint8_t b[1] = { SV_READ_ENC };
             p->told[s] = 1; p->rr = (uint8_t)(s + 1);
             return frame(p, s, now, o, 1, b);
         }
-        if (p->state[s] == 1 && due) {
+        if (p->state[s] == PS_QUIET && due) {
+            uint8_t b[3] = { SV_RESPOND, 1, 0 };
+            p->told[s] = 1; p->rr = (uint8_t)(s + 1);
+            return frame(p, s, now, o, 3, b);
+        }
+        if (p->state[s] == PS_ENABLE && due) {
             uint8_t b[2] = { SV_ENABLE, 1 };
             p->told[s] = 1; p->rr = (uint8_t)(s + 1);
             return frame(p, s, now, o, 2, b);
         }
-        if (p->state[s] != 2) continue;
+        if (p->state[s] != PS_DRIVE) continue;
         int32_t d = p->target[s] - p->sent[s];
         if ((d > PLAY_DEADBAND || d < -PLAY_DEADBAND || (d && !p->target[s]))
                 && now - p->last[s] >= p->t.min_us) {

@@ -84,8 +84,8 @@ measured curve replaces it string by string.
 
 A SERVO42D loses its turn count when the power goes, but the lead screw holds the carriage where
 it was. If every control was at rest at power-off, that position is open pitch. So at power-on
-`play.c` asks each motor for its encoder (0x31), takes the answer as that string's base, and then
-enables it (0xF3). A string is not driven until it is based, and an unanswered motor is asked
+`play.c` asks each motor for its encoder (0x31), takes the answer as that string's base, turns
+off its arrival reply (0x8C 01 00, see bus A load below), and enables it (0xF3). A string is not driven until it is based, and an unanswered motor is asked
 again every 100 ms. The Pi re-bases (`P Z`) after it tunes.
 
 **Open item:** if the power goes with a pedal down, that string comes back off pitch until it
@@ -143,12 +143,18 @@ If the lag ever matters, these are the knobs, cheapest first:
    2 ms.
 3. A faster motor ramp, which is the dominant term and only the bench can tell us about.
 
-**Bus A load:** a move update is one F5 frame plus the SERVO42D's two replies, about 0.58 ms of
-wire time. At `min_us` 4 ms, each moving string uses about 14.5 % of a 500 k bus, so four
-strings moving at once is about 58 %, and seven or more saturate it. A big pedal plus two levers
-moves 6–7 strings. **Open item:** either turn the motors' move replies off (the manual's
-slave-response setting; not yet tried on a motor) or run bus A at 1 Mbit/s. Both are set-up
-choices, not new hardware.
+**Bus A load:** while basing, play.c sets each motor to answer a move once, when it starts, and not
+again when it arrives (0x8C 01 00, from section 5.2.12 of the MKS CAN manual V1.0.9; the "active"
+byte arrived in V1.0.4). A move update is then one F5 frame plus one 3-byte reply, about 0.42 ms
+of wire time where it was 0.58. At `min_us` 4 ms, each moving string uses about 10.5 % of a 500 k
+bus. Six strings moving at once is about 63 %, and nine or more saturate it. A big pedal plus
+two levers moves 6–7 strings.
+
+**Open item:** run bus A at 1 Mbit/s (motor 0x8A 03, and `B 0 1000000` on motor_ctrl), which
+halves every figure above. Both ends have to change together, so it is a set-up step on the
+bench, not something play.c does by itself. Turning replies off entirely (0x8C 00) would also
+silence the encoder reads that basing depends on, so it is not used. The 0x8C setting has not
+yet been tried on a motor.
 
 ## Not done
 

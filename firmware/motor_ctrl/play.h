@@ -23,8 +23,10 @@
  *
  * BASE. After a power cycle a motor's turn count is gone, but the screw holds the carriage where
  * it was: at open pitch, if every control was at rest when the power went. So at start each
- * motor is asked where it is (0x31) and that reading is its open pitch; then it is enabled
- * (0xF3). The Pi re-bases (play_rebase) after it tunes. A string is not driven until based.
+ * motor is asked where it is (0x31) and that reading is its open pitch; then it is told to answer
+ * a move once, when it starts, and not again when it arrives (0x8C 01 00: manual V1.0.9 5.2.12,
+ * a third less wire time on bus A per move); then it is enabled (0xF3). The Pi re-bases
+ * (play_rebase) after it tunes. A string is not driven until based.
  *
  * Frames to the motors are SERVO42D frames (bench/publicbench/servo.py): F5 absolute moves, at
  * most one per motor every min_us; the newest target wins, so a move's first frame goes at once
@@ -47,6 +49,7 @@
 
 #define SV_READ_ENC     0x31u
 #define SV_ENABLE       0xF3u
+#define SV_RESPOND      0x8Cu               /* respond u8, active u8 */
 #define SV_MOVE_ABS     0xF5u
 
 /* The table, as it sits in flash and on the wire from the Pi: little-endian, no padding
@@ -65,6 +68,8 @@ typedef struct {
     uint32_t crc;
 } play_table_t;
 
+enum { PS_UNBASED, PS_QUIET, PS_ENABLE, PS_DRIVE };  /* a string's state */
+
 typedef struct { uint32_t id; uint8_t ext, len, d[8]; } play_frame_t;   /* = lever_frame_t */
 
 typedef struct {
@@ -73,7 +78,7 @@ typedef struct {
     uint8_t  on;                            /* drive the motors */
     uint16_t pos[PLAY_SLOTS];               /* 0..POS_FULL */
     uint32_t heard[PLAY_SLOTS];             /* now_us of the last POS */
-    uint8_t  state[PLAY_STRINGS];           /* 0 unbased, 1 enabling, 2 driving */
+    uint8_t  state[PLAY_STRINGS];           /* PS_* */
     int32_t  base[PLAY_STRINGS];
     int32_t  target[PLAY_STRINGS];          /* from base: what it should be */
     int32_t  sent[PLAY_STRINGS];            /* ...and what the motor was last told */
