@@ -149,12 +149,12 @@ carries the flag at `bus_paths`. The fixes, to be chosen then:
 ## Follow-ups
 
 - **motor_ctrl R2:** built 2026-11-04, above. Not yet ordered.
-- **Before ordering R2, re-read WCH's AFIO remap table for CAN1.** To make room for the lever-flash
-  lines, R2 moves bus A's CAN1 off its remap (PB8 RX / PB9 TX) onto its home pins, PA11 = RX and
-  PA12 = TX. The directions come from ST's register-identical map (RM0008 table 29). WCH's
-  `GPIO_Remap1_CAN1` constant and its examples' remap pins agree with ST, but WCH's own home-pin
-  table was not in hand. If it reads the other way, swap the two nets in `elec/motor_ctrl.py`
-  and `can_setup()`.
+- **R2's CAN1 home pins, CONFIRMED 2026-11-04.** To make room for the lever-flash lines, R2 moves
+  bus A's CAN1 off its remap (PB8 RX / PB9 TX) onto its home pins: PA11 = CAN1_RX (pin 46) and
+  PA12 = CAN1_TX (pin 47). Source: WCH's CH32V303/305/307/317 datasheet V3.4, p.35, table 3-1,
+  QFN68 column. Each name was read by its position on the page, not by the extracted text order
+  (the misread that once swapped PB8): CAN1_RX lies inside PA11's row with OTG_FS_DM, and
+  CAN1_TX inside PA12's with OTG_FS_DP.
 - **Bench:** a C8T6 board's ROM loader on PB6/PB7 through a TS3USB221A, and then through a
   loaded chain.
 - **Pi:** `publicbench.leverisp` drives steps 1–5 (in the simulator). wchisp is still to be

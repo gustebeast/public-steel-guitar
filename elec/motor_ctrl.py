@@ -2323,9 +2323,10 @@ if REV != 1:
         "the receiver OUTPUT -> PB8 = CAN1_RX.",
         "bus A (R2: CAN1 on its home pins, no remap): PA12 = CAN1_TX -> U2 pin 1 D, the "
         "driver INPUT; U2 pin 4 R, the receiver OUTPUT -> PA11 = CAN1_RX. The home pins' "
-        "directions are taken from ST's register-identical map (RM0008 table 29: CAN_REMAP "
-        "00 = RX PA11, TX PA12; WCH's GPIO_Remap1_CAN1 is ST's value and its examples' remap "
-        "pins agree, PB8 RX / PB9 TX) -- RE-READ WCH's own AFIO remap table before ordering.")
+        "directions read 2026-11-04 off WCH's CH32V303/305/307/317 datasheet V3.4 p.35, "
+        "table 3-1, QFN68 column, by each name's position, not the extracted text order: "
+        "pin 46 PA11's default-function cell (USART1_CTS, CAN1_RX, OTG_FS_DM) and pin 47 "
+        "PA12's (USART1_RTS, CAN1_TX, OTG_FS_DP) each sit centred on their own row.")
     assert "PA12 = CAN1_TX" in _q["manual"]["M26"]
     # TP4 (GND) is marked G: U8 and R32 took the board its full name used, between TP4 and TP5
     # (the labeller found no site for "GND" or "TP4" within 5 mm, run of 2026-11-04)
