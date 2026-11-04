@@ -5,8 +5,9 @@
 #   make              build/boot.bin and build/main.bin
 #   make boot         write the loader with wlink through the WCH-LinkE. Once, or to recover
 #   make usb          write the application over USB, through the loader
-#   make isp          write the loader with wchisp through WCH's ROM loader on J4 (BOOT0 high
-#                     at power-up): the way back with no probe
+#   make isp          write the loader through WCH's ROM loader on J4: the way back with no
+#                     probe. REV=1 with wchisp over the MCU's USB (BOOT0 high at power-up, by
+#                     hand); REV=2 with no hand and no wchisp (bench/publicbench/romflash.py)
 #
 # REV=1 (the default) is the board in hand: the MCU's own USB on J4. REV=2 is the board with U7, a
 # CH340C on USART1: every line goes in a checked frame (frame.h, link_uart.c), `make REV=2 usb`

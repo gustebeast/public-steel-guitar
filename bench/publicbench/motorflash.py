@@ -9,15 +9,14 @@ application ("B"), and if nothing answers, pulse reset through U7 and catch the 
 window -- a hung application needs no hand on the board.
 
 --rom is the way back with nothing working: U7 holds BOOT0 high across a reset, so the chip
-starts in WCH's ROM loader on USART1, and wchisp writes over the same port (-s). Then a reset
-with BOOT0 low starts the new loader.
+starts in WCH's ROM loader on USART1, and romflash.py's WchIsp writes over the same port (no
+wchisp: 2026-11-04). Then a reset with BOOT0 low starts the new loader.
 
 MOTOR_PORT=/dev/ttyUSBn picks the port when the search finds the wrong one."""
 from __future__ import annotations
 
 import argparse
 import binascii
-import subprocess
 import sys
 import time
 
@@ -86,16 +85,10 @@ def write_app(s, img: bytes):
 
 
 def write_rom(port: str, image: str):
-    s = frames.FramedSerial(port)
-    s.rom()
-    s.close()                           # the close raises both lines together: nothing happens
-    # the .bin, never the .elf: wchisp sizes its erase from the file
-    r = subprocess.run(["wchisp", "-s", "-p", port, "flash", image])
-    s = frames.FramedSerial(port)
-    s.reset()                           # BOOT0 low: the new loader
-    s.close()
-    if r.returncode:
-        raise SystemExit("wchisp failed (%d)" % r.returncode)
+    """romflash, on U7's crossed pair: into the ROM, erase / write / verify the .bin (never the
+    .elf), out with BOOT0 low -- the new loader runs."""
+    from . import romflash
+    romflash.main(["motor_ctrl", image, "--port", port])
 
 
 def main(argv=None):
