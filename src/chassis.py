@@ -371,7 +371,11 @@ def mort_segments(station):
     from . import knee_lever as _KLY
     near = _KLY.MOUNT_Y + _KLY.MORT_Y0                   # -Y mouth, outboard of the -Y rail
     if abs(D.mortise_y_end(station) - D.LIGHT_WIN_Y0) < 1e-9:
-        return [(near, D.LIGHT_WIN_Y0)]
+        # a full-length station keeps off the floor blocks too (the motor board's guides), as two runs
+        field = D.floor_block_y(station)
+        if field is None:
+            return [(near, D.LIGHT_WIN_Y0)]
+        return [r for r in ((near, field[0]), (field[1], D.LIGHT_WIN_Y0)) if r[1] - r[0] > LEG_TEN_W]
     lo, hi = LEG_Y[1] + LEG_W / 2.0, LEG_Y[0] - LEG_W / 2.0
     # ...and both runs KEEP OFF WHATEVER ELSE DROPS THROUGH THE FLOOR in this station's X band
     # (D.floor_block_y): the bridge end's string access channels, the keyhead end's height-screw
@@ -995,7 +999,10 @@ def _light_band():
     # bottom's whole span, and the -X +Y leg stub stood in that band -- 284 mm3 of transparent
     # material inside the adapter. The legs were there first, so the window gives way, and it
     # gives way exactly as far as the foot reaches and no further.
-    x0 = min(LEG_STATIONS_X) + LEG_W / 2
+    # ...BUT NOT PAST WHERE THE -X FOOT WAS (2026-11-03): the keyhead grew -X and took its legs with
+    # it, and the foot LED boards are laid out from this band, so its -X end stays where they were
+    # and the band now stops short of that foot.
+    x0 = min(LEG_STATIONS_X) + LEG_W / 2 + (_NB.KEYHEAD_W - _NB._KH_W_HELD)
     x1 = max(LEG_STATIONS_X) - LEG_W / 2
     x0, x1 = max(x0, _SHELL_NX), min(x1, _SHELL_PX)
     return box_at(x1 - x0, LIGHT_BAND_W, D.BOTTOM_T,

@@ -16,6 +16,8 @@ around it cut from or mate with:
 from __future__ import annotations
 
 
+import math
+
 import cadquery as cq
 
 from . import dimensions as D
@@ -459,6 +461,32 @@ def pin_tenons(station: float, ly: float, egx: float, syg: float, tip: float) ->
     return out
 
 
+def lock_pin_dy(egx: float) -> float:
+    """How far OUTBOARD of the leg's centreline this end's lock pin sits.
+
+    LOCK_PIN_DY at the bridge. THE KEYHEAD END MOVES OUT (2026-11-03): the keyhead grew -X and took
+    its legs with it, but the height screws stayed under the nut, so every foot station there now
+    crosses their head cavities and even the third station's +Y run starts late. The pin goes out
+    until its service hole -- SERVICE_SLIDE inboard -- lands PIN_HOLE_REACH inside that run."""
+    if egx > 0:
+        return LOCK_PIN_DY
+    from . import chassis as _CHP
+    st = D.lever_grid_x()[2]                              # the third station in from -X
+    field = D.floor_block_y(st)
+    ly = _CHP.LEG_Y[0]
+    start = max(ly - SQ_W / 2.0, field[1] if field else -1e9)
+    need = start + PIN_HOLE_REACH - ly + SERVICE_SLIDE
+    # not rounded to a bead: a whole bead out (17.6) leaves the head's recess 0.6 from the endplate's
+    # +Y face; at the bare need it keeps 1.3 (two beads would need it under 16.6)
+    dy = max(LOCK_PIN_DY, need)
+    assert dy + _M4.shaft_clr_d / 2 + D.MIN_WALL_2P <= SQ_W / 2, (
+        "the keyhead's lock pin at %.2f out leaves under two beads to the foot's face" % dy)
+    wall = _CHP.Y_HI + _CHP.T / 2 - (ly + dy + (LOCK_HEAD_D + D.BEAD) / 2)
+    assert wall >= D.MIN_WALL - 1e-9, (
+        "the keyhead's lock pin head recess leaves %.2f to the endplate's +Y face" % wall)
+    return dy
+
+
 def lock_pin_joint(station: float, ly: float, egx: float, syg: float, z_bot: float,
                    dy: float = 0.0) -> _ScrewJoint:
     """THE LEG'S ONE SCREW (user), defined once for every part it crosses: an M4 button
@@ -473,10 +501,10 @@ def lock_pin_joint(station: float, ly: float, egx: float, syg: float, z_bot: flo
     material the straight tongue used to occupy -- the chassis only ever sees a Ø4.4 clearance
     hole, which is what the user asked for: a smaller hole disrupts the joinery less.
 
-    On the axis LOCK_PIN_DY outboard of the leg's centreline, LOCK_Z up; `dy` moves it along Y,
+    On the axis lock_pin_dy(egx) outboard of the leg's centreline, LOCK_Z up; `dy` moves it along Y,
     which is how the SERVICE hole is drilled (service_pin_joint)."""
     zc = z_bot + LOCK_Z
-    entry = (station + egx * SQ_W / 2, ly + syg * LOCK_PIN_DY + dy, zc)
+    entry = (station + egx * SQ_W / 2, ly + syg * lock_pin_dy(egx) + dy, zc)
     end_at = LOCK_RECESS + LOCK_SCREW_L + 0.4
     j = _ScrewJoint(_M4, entry, (-egx, 0.0, 0.0), LOCK_SCREW_L,
                     insert_at=LOCK_INSERT_AT, end_at=end_at,
@@ -517,7 +545,7 @@ def service_pin_joint(station: float, ly: float, egx: float, syg: float, z_bot: 
     s = service_slide(egx, syg)
     if not s:
         return None
-    y_hole = ly + syg * (LOCK_PIN_DY - s)
+    y_hole = ly + syg * (lock_pin_dy(egx) - s)
     tip = LOCK_RECESS + LOCK_SCREW_L
     held = [t for t in pin_tenons(station, ly, egx, syg, tip)
             if t[1] + PIN_HOLE_REACH - 1e-9 <= y_hole <= t[2] - PIN_HOLE_REACH + 1e-9]
