@@ -1,5 +1,37 @@
 # bronner — open work items (2026-09-30)
 
+## MORNING SUMMARY (2026-11-04, overnight work while you were away)
+
+**Decided tonight (safe defaults, all reversible):**
+- motor_ctrl R2 lever flashing is drawn and routed: 0 unconnected, 0 violations, quality 0 FAIL.
+  It adds the J4 link/flash-lane switch U8, the arm switches U9 / U10 and the lever arm's own 5 V
+  limiter U11. CAN1 moved to its home pins PA11 RX / PA12 TX (checked against WCH's datasheet
+  V3.4 p.35). Firmware for the switches ('U' arm ms, 'A' power) builds for both REV 1 and REV 2;
+  the sim tests pass.
+- The motor controller's -Z ledge under J3 now stands over low parts (1.5 mm or under) instead
+  of beside them. R2's switch row sits in the only gap the ledge can use, and there was no other
+  room near the arms (the build went red on it; fixed, not moved).
+- Every placed part now has a price. The four TS3USB221A were the gap. Total $1432.38 per instrument.
+- Tuning tool built: `publicbench.tune` plus the phone's /tune page. The phone records; the
+  table is written from a terminal (see below).
+- motor_ctrl M32 (connectors) signed from the documents. The 1:1 print against real housings is
+  still a bench step.
+
+**Your choices, all open (detail in the entries below):**
+1. **Lever boards' first flash.** USB over the bus pair (the R2 lever board with C8T6 +
+   TS3USB221A, drawn; needs wchisp) or one SWD bench flash per board with the pogo jig (works
+   today, by hand).
+2. **CH340C or CH343P** for motor_ctrl's link: 2 Mbaud is enough for one CAN bus at full load,
+   not two; CH343P is 6 Mbaud, same role, one line in link.h. Not ordered either way.
+3. **The USB-over-JST exception.** The lever boards run USB over the crimped PH harness, an
+   exception to the real-connector rule (M43). docs/lever-usb-flash.md records it as your
+   decision of 11-03; confirm it stands.
+4. **Install wchisp on the Pi?** Needed for a blank board's first USB flash. Not installed.
+5. **The link drop.** Today the flash lane takes J4 from the link for ~15 s a board. The
+   alternatives are a hub (CH334R, which keeps the link up, ~11 x 6 mm the board lacks) or a
+   second USB socket on its own cable.
+6. **NEW: motor_ctrl's 5 V rail has no margin on paper (M33 left OPEN).** See the entry below.
+
 ## FOR THE USER (overnight)
 
 Logged 2026-11-04 while the user was away (lead: no questions until morning). Each one has a
@@ -24,6 +56,18 @@ safe default already taken; none blocks the work.
   written by `python3 -m publicbench.tune --table` from a terminal. Re-basing from the phone
   while the buttons hold a pitch-up offset would base every string wrong. A table button on
   /tune, greyed while any offset is held, is the follow-up if you want it.
+- **motor_ctrl's 5 V budget (M33, left OPEN, a finding).** U5 (LMR33630) is 3 A. On paper it
+  carries the Pi (BOM's 3 A, or 1.8 A for a bare Pi 4B: the Raspberry Pi 3 A supply less its
+  1.2 A USB allowance, and nothing of ours draws the Pi's USB VBUS) plus both bus B arms. The
+  arms are limited at 0.52 A each, 0.565 A max (TPS2553 at 49.9 k); eleven boards draw 0.88 A
+  at peak. That makes 2.7 to 2.9 A against 3 A: inside the rating, short of the 50 % margin a
+  first board wants, and over it if the Pi really draws 3 A. R1 already had the pedal arm's
+  0.57 A on the same rail. The other rails pass: +3V3 is 120 mA normal and 190 mA with a +-25 V
+  bus fault (MCU 22.4 mA typ, DS V3.9 table 4-6; TCAN3413 60 max, SLLSFS8A 5.6; SN65HVD230 17
+  max; CH340C 20; switches 0.1) against U1's 0.6 A, and 24 V is BOM.md's trunk figure. Default
+  taken: no change. Measure the Pi's 5 V draw on the bench (one meter reading at
+  bring-up), and if it is over ~1.2 A, drop each arm's limit (RILIM) toward its 0.4 / 0.48 A
+  load, or move one arm's 5 V to its own buck.
 
 ## Lever first flash from the bus: option 2 (a CAN ROM loader) checked (user, 2026-11-03)
 
