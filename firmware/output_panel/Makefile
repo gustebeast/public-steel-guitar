@@ -5,6 +5,8 @@
 #   make              build/boot.bin and build/app.bin
 #   make boot         write the loader with wlink through the WCH-LinkE. Once, or to recover
 #   make usb          write the application over USB, through the loader
+#   make rom          R2: write the loader through WCH's ROM over J3's CH340 (U17), no probe:
+#                     bench/publicbench/romflash.py holds BOOT0 and pulses reset itself
 WCH   ?= $(HOME)/src/ch32v307
 EXAM  := $(WCH)/EVT/EXAM
 CDC   := $(EXAM)/USB/USBHS/DEVICE/SimulateCDC/User
@@ -74,8 +76,11 @@ boot: $(B)/boot.bin
 usb: $(B)/app.bin
 	python3 usbflash.py $<
 
+rom: $(B)/boot.bin
+	PYTHONPATH=$(CURDIR)/../../bench python3 -m publicbench.romflash output_panel $<
+
 clean:
 	rm -rf $(B)
 
-.PHONY: all boot usb clean
+.PHONY: all boot usb rom clean
 .SECONDARY:

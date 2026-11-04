@@ -14,6 +14,10 @@
 - Every placed part now has a price. The four TS3USB221A were the gap. Total $1432.38 per instrument.
 - Tuning tool built: `publicbench.tune` plus the phone's /tune page. The phone records; the
   table is written from a terminal (see below).
+- output_panel R2 and optical R2 get their base loader through the MCU's ROM over their own USB
+  lead, with no probe: `make rom` (the lead's ruling, tools only, proven in simulation). A
+  wchisp run would have held those chips in reset; one bench timing check is owed (below).
+- The phone moves a tuned string by its measured curve.
 - motor_ctrl M32 (connectors) signed from the documents. The 1:1 print against real housings is
   still a bench step.
 
@@ -52,6 +56,13 @@ safe default already taken; none blocks the work.
   the drop-out together, for a receptacle on the board edge (~9 x 7 mm for USB-C) and a second
   opening in the chassis. The board is full enough that U8's 2 mm of select line took six
   routes to place (2026-11-04).
+- **Bench check owed: the ROM flash's real reset timing (output_panel R2, optical R2).**
+  `make rom` (bench/publicbench/romflash.py) is proven in simulation only. On the first R2 board
+  of each, run it once with a scope on NRST and BOOT0, or simply see the ROM answer. Check:
+  - NRST (R6 10k into C54 on output_panel; optical's own pair) is back up well inside the 50 ms
+    BOOT0 hold;
+  - a plain open of the port (any terminal) leaves the board running, not in its ROM.
+  If either fails, lengthen RESET_S / BOOT_HOLD_S in romflash.py; no board change.
 - **Tuning from the phone records; it does not write the table.** A /tune tap leaves that
   string on its open note and keeps its curve, but motor_ctrl's table and base ('P Z') are
   written by `python3 -m publicbench.tune --table` from a terminal. Re-basing from the phone
@@ -359,6 +370,35 @@ straight to the MCU's USB, so a blank or bricked board still needed a probe. Now
     USB loader (usbflash.py, boot.c) covers every update, and the ROM is for a blank or broken
     loader only. Until one of them is built, that is a bench job: the Link, or tweezers on BOOT0
     (board-bringup-diagnostics.md). The same holds for optical R2's straight pair.
+  - **RULED (lead, 2026-11-04): (i). BUILT the same night, tools only, no board change:
+    `bench/publicbench/romflash.py`**, `make rom` in firmware/output_panel and firmware/optical.
+    - It owns both lines from the open: both are released right after the kernel's raise, so the
+      open's glitch is a plain reset (BOOT0 is down before NRST's RC lets go), and HUPCL is
+      cleared.
+    - The ROM is entered with BOOT0 up, NRST down 20 ms, NRST up with BOOT0 held 50 ms, then both
+      released.
+    - Afterwards, even after a failure, NRST is pulsed with BOOT0 low, so the board runs what was
+      written.
+    - output_panel (CH32V307): WCH's serial ISP, as wchisp speaks it, read off its source and
+      written again: identify, config UID, key, erase (8 K minimum, which never reaches the app
+      at 0x8000), 56-byte keyed program, the empty commit write, verify, end.
+    - optical (STM32H743): ST's USART bootloader (AN3155, 8E1): 0x7F, GET ID 0x450, extended erase
+      of the sectors the image covers, 256-byte writes padded to the 32-byte flash word, read-back
+      verify.
+    - The port is found by the bridge's hub port (panel U4 port 4, optical U31 DN2), because a
+      blank MCU has no USB device of its own; OUTPUT_PANEL_PORT / OPTICAL_PORT or --port
+      override.
+    - Tests: bench/tests/test_romflash.py, 11 pass on the Pi (10 + 1 skipped here). It is a
+      pretend board whose NRST rises through an RC and samples BOOT0 then, with a WCH ROM and an
+      ST ROM written from the protocols. It covers the open's glitch booting the application,
+      BOOT0 held past the rise, both ROMs writing and verifying odd-sized images, verify-only
+      catching a difference, the wrong chip refused, lines released after a failure, a quiet ROM
+      named, and HUPCL off on a real tty.
+    - Not redeployed; nothing on the Pi runs it until a board is on the bench. Bench check owed:
+      FOR THE USER, top of this file.
+    - Follow-up worth having: motorflash's `--rom` (motor_ctrl R2) still hands the port to
+      wchisp. Its crossed pair makes that work, but WchIsp here would drop the wchisp install
+      from that path as well (lever boards' USB ROM path still needs it).
 
 ## MA730 switch: user chose MA730GQ-Z -- DONE on agent/bronner-ma730-board (2026-11-03)
 
