@@ -14,8 +14,9 @@
 
 void clock_init(void);
 uint32_t now_us(void);
-void hw_bus_init(void);                     /* transceiver on, pair to CAN, next board on */
-void hw_release(uint16_t ms);               /* LC_RELEASE: never returns */
+void hw_bus_init(void);                     /* transceiver on, pair to CAN; next board still off */
+void hw_next(int on);                       /* the next board's 5 V */
+void hw_release(uint16_t ms, int cycle);    /* LC_RELEASE: never returns */
 void hw_can_init(const uint16_t ids[4]);    /* the 4 standard ids the filter lets in */
 void hw_can_filter(const uint16_t ids[4]);
 int hw_mailbox_free(void);

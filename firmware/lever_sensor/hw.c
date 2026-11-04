@@ -48,22 +48,28 @@ void hw_bus_init(void)
     g.GPIO_Speed = GPIO_Speed_2MHz; g.GPIO_Mode = GPIO_Mode_Out_PP;
     g.GPIO_Pin = PIN_SEL | PIN_XCVR | PIN_DS;
     GPIO_Init(GPIOB, &g);
-    GPIO_ResetBits(GPIOB, PIN_XCVR);                 /* transceiver on */
-    Delay_Us(100);
-    GPIO_SetBits(GPIOB, PIN_DS);                     /* then the next board */
+    GPIO_ResetBits(GPIOB, PIN_XCVR);                 /* transceiver on; the next board waits */
 }
 
-void hw_release(uint16_t ms)
+void hw_next(int on)
+{
+    if (on) GPIO_SetBits(GPIOB, PIN_DS);
+    else GPIO_ResetBits(GPIOB, PIN_DS);
+}
+
+void hw_release(uint16_t ms, int cycle)
 {
     GPIO_InitTypeDef g = {0};
     g.GPIO_Speed = GPIO_Speed_2MHz; g.GPIO_Mode = GPIO_Mode_IN_FLOATING;
     g.GPIO_Pin = GPIO_Pin_8 | GPIO_Pin_9;            /* CAN pins off the dead transceiver */
     GPIO_Init(GPIOB, &g);
     GPIO_SetBits(GPIOB, PIN_XCVR);                   /* transceiver off; PB3 stays high */
-    GPIO_ResetBits(GPIOB, PIN_DS);                   /* next board dark ... */
-    uint32_t t = now_us();
-    while (now_us() - t < (uint32_t)ms * 1000u) IWDG_ReloadCounter();
-    GPIO_SetBits(GPIOB, PIN_DS);                     /* ... and back, onto a USB pair */
+    if (cycle) {
+        GPIO_ResetBits(GPIOB, PIN_DS);               /* next board dark ... */
+        uint32_t t = now_us();
+        while (now_us() - t < (uint32_t)ms * 1000u) IWDG_ReloadCounter();
+        GPIO_SetBits(GPIOB, PIN_DS);                 /* ... and back, onto a USB pair */
+    }
     for (;;) IWDG_ReloadCounter();                   /* until the arm is power-cycled */
 }
 

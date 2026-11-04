@@ -30,24 +30,37 @@ own D+ pull-up changes nothing afterwards.
 **One ROM loader on the pair at a time.** Every board holds the next one dark until its own
 firmware switches Q1 on, so the chain powers up in order.
 
-## Flashing board k (boards 1..k-1 already flashed)
+## Finding a board, and flashing it (first flash and recovery alike)
 
-1. motor_ctrl powers the arm with the pair as CAN. Boards 1..k-1 start their applications and
-   power the next board. Board k is blank or broken, so board k+1 onwards stay dark.
-2. The Pi sends ALL `U` ms (`LC_RELEASE`, lever.h). Every running board then:
-   - turns its transceiver off;
-   - lets go of PB8 / PB9;
-   - cuts the next board's 5 V;
-   - restores that 5 V ms later;
-   - waits silently.
+Each board powers the next 100 ms after it starts (`NEXT_AFTER_US`), unless the Pi holds the
+chain. So the Pi can walk the chain and learn its order:
+- ALL `H` holds every board's next board dark.
+- CMD `N` 1, sent to one slot at a time, lets one more board up.
+- The HELLO that follows a board's `N` comes from the board after it.
+
+A board that stays silent after its predecessor's `N` is the blank or broken one. The Pi knows
+which lever that is from the slot it expected there (`levers chain` keeps the order learned
+while the chain was healthy).
+
+Flashing board k, where p is the slot of the board before it:
+
+1. motor_ctrl powers the arm with the pair as CAN. The Pi holds the chain and walks it up to p.
+2. The Pi sends ALL `U` ms, p (`LC_RELEASE`, lever.h).
+   - Every running board turns its transceiver off, lets go of PB8 / PB9 and waits silently.
+   - Board p also cuts its next board's 5 V and restores it ms later.
 3. Within that window motor_ctrl hands the arm's pair to the Pi's USB.
-4. Board k powers up on a pair held low, so it comes up in the ROM loader and enumerates. The
-   Pi writes `full.bin` (the CAN loader and the application) with an ISP tool such as `wchisp`.
-   Nothing is installed yet; installing it is the user's call.
-5. motor_ctrl power-cycles the arm as CAN, and the process moves on to k+1.
+4. Board k powers up on a pair held low, so it comes up in the ROM loader. BOOT0 comes from the
+   bus, so this works whatever firmware is on k. The boards after k stay dark, because k's
+   switch defaults off. The Pi writes `full.bin` (loader + application) with an ISP tool such as
+   `wchisp`. Nothing is installed yet; installing it is the user's call.
+5. motor_ctrl power-cycles the arm as CAN.
 
-Updates still go over CAN through the board's own loader (`make can`). Recovery is the same as
-a first flash. The SWD pads stay as the last resort (M9).
+For the first board of an arm, motor_ctrl cycles the arm itself (slot 0xFF: nobody cycles). A
+board whose firmware jams the bus can't be told anything, but it never needs to be. The Pi
+holds the chain before the jammer gets power and then walks it only up to its predecessor.
+
+Updates still go over CAN through each board's own loader (`make can`). The SWD pads stay as the
+last resort (M9).
 
 ## Signal integrity (`tools/fs_eye.py`)
 

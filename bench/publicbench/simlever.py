@@ -34,7 +34,13 @@ int sim_take_save(lever_t *l, lever_cfg_t *out)
 }
 int sim_take_loader(lever_t *l) { int w = l->want_loader; l->want_loader = 0; return w; }
 int sim_take_thresh(lever_t *l) { int w = l->want_thresh; l->want_thresh = 0; return w; }
-unsigned sim_take_release(lever_t *l) { unsigned w = l->want_release; l->want_release = 0; return w; }
+unsigned sim_take_release(lever_t *l)
+{   /* ms in the low 16 bits, bit 16: this board cycles the next */
+    unsigned w = l->want_release | (unsigned)l->release_cycle << 16;
+    l->want_release = 0; l->release_cycle = 0; return w;
+}
+unsigned sim_take_next(lever_t *l) { unsigned w = l->want_next; l->want_next = 0; return w; }
+unsigned sim_held(const lever_t *l) { return l->held; }
 unsigned sim_slot(const lever_t *l) { return l->cfg.slot; }
 '''
 
@@ -97,6 +103,8 @@ def lib():
             ("sim_take_loader", [P], ctypes.c_int),
             ("sim_take_thresh", [P], ctypes.c_int),
             ("sim_take_release", [P], ctypes.c_uint),
+            ("sim_take_next", [P], ctypes.c_uint),
+            ("sim_held", [P], ctypes.c_uint),
             ("sim_slot", [P], ctypes.c_uint),
             ("sim_ldr_size", [], ctypes.c_size_t),
             ("sim_mode", [P, U], None),
@@ -128,7 +136,12 @@ class Lever:
     def pos(self): return self.L.lever_pos(self.buf)
     def status(self): return self.L.lever_status(self.buf)
     def slot(self): return self.L.sim_slot(self.buf)
-    def take_release(self): return self.L.sim_take_release(self.buf)   # ms, 0 none
+    def take_release(self):
+        """(ms, cycles the next board) or None"""
+        w = self.L.sim_take_release(self.buf)
+        return (w & 0xFFFF, bool(w >> 16)) if w else None
+    def take_next(self): return self.L.sim_take_next(self.buf)        # 0 none, 1 on, 2 off
+    def held(self): return bool(self.L.sim_held(self.buf))
 
     def poll(self, now_us):
         f = Frame()

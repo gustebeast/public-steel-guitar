@@ -110,18 +110,37 @@ def test_commands_to_another_slot_are_ignored_and_unknown_ops_refused():
 
 
 
-def test_release_is_broadcast_only_and_carries_its_delay():
-    """ALL 'U' ms: every board lets go of the pair for a first flash over USB
-    (docs/lever-usb-flash.md); on a board's own CMD id it is just an unknown op."""
+def test_release_frees_the_pair_everywhere_and_cycles_one_board():
+    """ALL 'U' ms, slot: every board lets go of the pair; only the named slot (the board BEFORE
+    the one to flash) cycles its next board (docs/lever-usb-flash.md)."""
+    lv = calibrated()                                       # slot 3
+    lv.rx(K["ID_CMD"] + 3, bytes([K["LC_RELEASE"]]) + (500).to_bytes(2, "little") + bytes([3]))
+    assert lv.take_release() is None                        # a broadcast op only
+    lv.rx(K["ID_ALL"], bytes([K["LC_RELEASE"]]) + (500).to_bytes(2, "little") + bytes([3]))
+    assert lv.take_release() == (500, True)
+    lv.rx(K["ID_ALL"], bytes([K["LC_RELEASE"]]) + (500).to_bytes(2, "little") + bytes([5]))
+    assert lv.take_release() == (500, False)                # another board's turn: release only
+    lv.rx(K["ID_ALL"], bytes([K["LC_RELEASE"], 0, 0, K["SLOT_NONE"]]))
+    assert lv.take_release() == (1, False)                  # 0 ms still means release
+    lv.rx(K["ID_ALL"], bytes([K["LC_RELEASE"], 0x10, 0]))   # no slot given: ignored
+    assert lv.take_release() is None
+
+
+def test_hold_and_next_walk_the_chain_one_board_at_a_time():
+    """ALL 'H' holds every board's next board dark (and stops the automatic power-up);
+    CMD 'N' 1 / 0 lets one board's next board up or down, and is acknowledged."""
     lv = calibrated()
-    lv.rx(K["ID_CMD"] + 3, bytes([K["LC_RELEASE"]]) + (500).to_bytes(2, "little"))
-    assert lv.take_release() == 0
-    lv.rx(K["ID_ALL"], bytes([K["LC_RELEASE"]]) + (500).to_bytes(2, "little"))
-    assert lv.take_release() == 500
-    lv.rx(K["ID_ALL"], bytes([K["LC_RELEASE"], 0, 0]))
-    assert lv.take_release() == 1                       # 0 ms still means release
-    lv.rx(K["ID_ALL"], bytes([K["LC_RELEASE"]]))           # no delay given: ignored
-    assert lv.take_release() == 0
+    while lv.poll(0):
+        pass
+    assert not lv.held()
+    lv.rx(K["ID_ALL"], bytes([K["LC_HOLD"]]))
+    assert lv.held() and lv.take_next() == 2
+    lv.rx(K["ID_CMD"] + 3, bytes([K["LC_NEXT"], 1]))
+    assert lv.take_next() == 1
+    r = LV.decode(0, *[x for i, x in enumerate(lv.poll(0)) if i != 1])
+    assert r == LV.Reply(0, 3, "N", True)
+    lv.rx(K["ID_CMD"] + 3, bytes([K["LC_NEXT"], 0]))
+    assert lv.take_next() == 2
 
 
 @pytest.fixture
