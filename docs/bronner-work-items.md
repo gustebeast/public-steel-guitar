@@ -1,5 +1,88 @@
 # bronner — open work items (2026-09-30)
 
+## lever_sensor application firmware + the USB-only finding (lead, 2026-11-03)
+
+**Built on agent/bronner-lever-fw, unproven on a board (none ordered).**
+- firmware/lever_sensor: `make` on the Pi builds build/lever.bin against WCH's ch32v20x library
+  (~/src/ch32v20x), -Wall -Wextra clean: 7,488 text, 2,412 data + bss (32 K / 10 K part).
+  `make swd` writes it through the WCH-LinkE and the lever jig.
+  - The picolibc snag is sorted in the Makefile: WCH's files are compiled with `-include stddef.h`
+    (theirs only), and we supply Delay_Us / Delay_Ms, so debug.c is not built at all. Also needed:
+    ch32v20x_conf.h / _it.h / system_ch32v20x.h copied from an example's User folder, and the
+    system file patched to 48 MHz HSE (checked in the recipe, so an upstream change stops the build).
+  - lever.c is ALL the logic, with no hardware: 1 kHz samples, a median of three (one bad SPI read
+    is dropped), a first-order filter (a quarter per sample, ~4 ms), unwrapped so travel may
+    cross the sensor's zero, calibration as rest / full 14-bit angles in either direction,
+    POS = 0..32767 clamped plus an "outside the end stops" flag at 1/32 of travel.
+  - main.c: MA730 on SPI1 (the existing driver), CAN1 on PA11 / PA12 at 500 kbit/s (motor_ctrl's
+    bus B default), a 16-bit list filter (this slot's CMD + the broadcast), no interrupts, a
+    400 ms IWDG, calibration and slot in the last 256-byte flash page (CRC'd, so a blank or torn
+    page reads as "no calibration"). Field flags (MGH / MGL) read at 100 Hz into every frame.
+- **The ids are PROPOSED, not agreed** -- I found no agreed lever ids anywhere (docs, bench,
+  motor_ctrl). They are in lever.h with the reasoning; the Pi reads them from there. 0x100+slot
+  POS, 0x200+slot DIAG, 0x300+slot CMD, 0x380+slot REPLY, 0x7F1 broadcast, 29-bit HELLO carrying
+  the uid. A board has a SLOT (0-15) stored with its calibration; a board with no slot sends only
+  HELLO (with its uid in the id), so eleven identical fresh boards never share an id.
+  Load at 500 kbit/s: one lever moving flat out is 9 %, four at once 36 %; idle ~7 %.
+  ⚠ The lead's note said "bus A"; the boards are on bus B (motor_ctrl CAN2), and that is what
+  this uses. Nothing in the design puts levers on the motors' bus.
+- Pi: bench/publicbench/levers.py: decode, a Levers state class over any link, and a CLI
+  (`list`, `watch`, `assign <uid> <slot>`, `cal <slot>`, `thresh`). simlever.py runs the REAL
+  lever.c (compiled natively, ctypes) on a python-can bus. tests/test_levers.py: 8 pass on the Pi
+  (wrap, both directions, glitch, deadband / rate / heartbeat, save-then-reboot, foreign slot,
+  end to end: identify, assign, calibrate, save, reboot). Whole bench suite 29 pass.
+- ⚠ To prove on the first board: the UID address (0x1FFFF7E8, as the V307), CAN at 48 MHz /
+  PCLK1, the MA730's direction against the lever's, and the field flags with the real magnet.
+
+**USB-only rule: the lever board CANNOT be first-flashed hands-free. Finding, no board change.**
+- It has no USB and no UART, and BOOT0 (pin 1, shared with PB8) is tied hard to GND. WCH's ROM
+  loader speaks USB and UART only, so there is no ROM path at all. On this 28-pin package PA10 is
+  the same pin as PA11 (CAN RX), so even USART1's RX is not available for a respin to bring out.
+- So a blank chip has nothing listening on bus B: the FIRST flash needs SWD (TP1-TP4, the pogo jig
+  src/lever_jig.py, a WCH-LinkE), once per board, on the bench, before it goes in its housing.
+- UPDATES and RECOVERY are hands-free: the CAN loader is BUILT (agent/bronner-lever-boot,
+  diagnostics 4.3), firmware only, unproven on a board.
+  - Map (ldr.h): loader 0x0000-0x27FF (8,156 of 10 K; 6 K did not fit), application
+    0x2800-0x7DFF (7,968 of 21.5 K), the loader's record of the application 0x7E00, config 0x7F00.
+  - The loader starts the application only if the record's length and CRC match the image, so
+    an update that stops halfway leaves the board in its loader, on the bus. It also waits 1 s
+    after a watchdog reset, so an application that hangs over and over can be caught. Only a
+    broken LOADER needs the jig, and it is never written over CAN.
+  - In the loader the board still answers the broadcast and its slot (HELLO mode 1), so it is
+    found and given a slot there too. CMD 'B' from the application sends it there (BOOT_STAY in
+    the top 16 bytes of RAM, which both link scripts leave out).
+  - Protocol (ldr.h): 'I', 'E' len, 'W' page + crc then 32 DATA frames, 'C' len u24 + crc, 'G'.
+    ⚠ caught in test: 'C' first carried a 4-byte length, 9 bytes in an 8-byte frame. Both the
+    simulator and Levers now refuse a frame over 8 bytes.
+  - hw.c holds the hardware both programs share; boot.c's startup is patched to stay in machine
+    mode (0x88 -> 0x1888, checked in the recipe), as motor_ctrl's loader is.
+  - `make` builds boot.bin, lever.bin and full.bin (image.py: both plus the record, for `make
+    swd`); `make can SLOT=n` writes lever.bin over the bus (publicbench/leverflash.py, through
+    motor_ctrl).
+  - Tests: ldr.c runs natively against a pretend flash that only clears bits. Blank board ->
+    loader -> image -> application; a bad page refused; a half update stays in the loader;
+    other slots ignored; and leverflash end to end on the simulated bus. 12 lever tests, 33 in
+    the whole bench suite, pass on the Pi.
+  - ⚠ To prove on the first board: the jump into the application (its startup from machine
+    mode), FLASH_ROM_* at 48 MHz, and that the IWDG survives a software reset (the loader feeds
+    it either way).
+- To meet the first-flash rule literally needs hardware: a respin with a USB device (the board is
+  full: its own note counts six free 2.0 sites, four spent on SWD pads), or chips programmed
+  before assembly (a JLC programming service: not checked). For the user via the lead: accept the
+  one bench flash per board as this board's exception, with every later write over the bus.
+- **(2) Pre-programming, checked 2026-11-03 (lead's question). Not ordered.**
+  - JLCPCB: "Pre-assembly programming is not supported" (jlcpcb.com/help/article/pcba-programming-service).
+    It programs AFTER assembly, as a function test on Standard PCBA orders only (not Economic),
+    through an interface the board brings out. Fee: about $8 engineering plus about $8 per hour
+    of operator time; no per-board price, minimum or added lead time is published. They want the
+    part number, the interface definition, a board photo and the HEX / BIN, and their engineers
+    decide case by case whether they can program that chip. WCH parts are not mentioned, and
+    our interface is bare SWD pads speaking WCH's 2-wire SDI (a WCH-LinkE), not ST's SWD, so it
+    is unconfirmed until they say yes. One image is all we would need: the slot goes over CAN.
+  - LCSC: no chip programming service found for the CH32V203.
+  - So (2) is a JLC post-assembly function test on the jig's pads, Standard PCBA, a few dollars
+    per order if their engineers accept WCH SDI. Not a pre-programmed chip.
+
 ## R2 backlog sweep: output_panel, optical, motor_ctrl (lead, 2026-11-03)
 
 The lead's three items, measured rather than read off the section headers (two of which were stale).

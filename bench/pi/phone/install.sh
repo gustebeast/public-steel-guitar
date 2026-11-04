@@ -11,6 +11,11 @@ sed -i "s/127.0.1.1.*/127.0.1.1\tpublic-steel-guitar/" /etc/hosts
 # process holds the motor port before it opens it, and Linux hides other users' open files.
 U="${SUDO_USER:?run it with sudo from your own account}"
 usermod -aG dialout "$U"
+# Nothing but our tools opens the instrument's USB-serial bridges: their DTR# / RTS# are BOOT0
+# and reset (99-public-steel-guitar-serial.rules). brltty is masked too, in case a package brings it.
+install -m 644 "$HERE/../99-public-steel-guitar-serial.rules" /etc/udev/rules.d/
+systemctl mask brltty.service brltty-udev.service 2>/dev/null || true
+udevadm control --reload-rules
 # HTTPS: a CA made here, once, and a server certificate from it for every name the Pi
 # answers to. Install the CA on the phone (http://public-steel-guitar.home/ca.crt) and the
 # page loads with no warning. docs/phone-ui.md.
