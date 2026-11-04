@@ -14,6 +14,10 @@
 - Every placed part now has a price. The four TS3USB221A were the gap. Total $1432.38 per instrument.
 - Tuning tool built: `publicbench.tune` plus the phone's /tune page. The phone records; the
   table is written from a terminal (see below).
+- output_panel R2 and optical R2 get their base loader through the MCU's ROM over their own USB
+  lead, with no probe: `make rom` (the lead's ruling, tools only, proven in simulation). A
+  wchisp run would have held those chips in reset; one bench timing check is owed (below).
+- The phone moves a tuned string by its measured curve.
 - motor_ctrl M32 (connectors) signed from the documents. The 1:1 print against real housings is
   still a bench step.
 
