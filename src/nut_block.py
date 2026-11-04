@@ -478,6 +478,7 @@ assert FINGER_W >= D.MIN_WALL_2P - 1e-9, f"{FINGER_W:.2f} fingers between the po
 # From the plate's -X face outward: the tail channel; a clearance bore; the heat-set, its mouth on the
 # recess floor; the recess, open in the bed face.
 SS_SCREW_L = 10.0
+assert SS_SCREW_L in D.M4_BUTTON_STOCK_L and HS_SCREW_L in D.M4_BUTTON_STOCK_L, "a screw we cannot buy"
 SS_HEAD_D = M4_BUTTON_HEAD_D + D.BEAD            # 8.4: the head's recess
 SS_HEAD_GAP = 0.5                                # the lightest string's head stands this clear of the floor
 
@@ -524,17 +525,19 @@ assert all(abs(-_adv_g(g) - SS_YC[i]) <= D.MIN_WALL_2P
 # THE PLIER WINDOW (user): one slot across every string, below the side screws and open in the bed
 # face, with no fingers in it -- the tails hang across it, and pliers pull each one down tight before
 # its screw goes in. Its roof is a plain bridge in the -X -> +X build (user: its depth does not matter).
-# The tail channels run on below it to a blind floor just above the height prism's bottom.
-WIN_HI = math.floor((SS_ROWS[1] - SS_HEAD_D / 2.0 - D.MIN_WALL_2P) / D.BEAD) * D.BEAD
-WIN_H = 15 * D.BEAD                             # 12.0: room for a plier's jaws
-WIN_LO = WIN_HI - WIN_H
-TAIL_Z_END = HS_PRISM_BOT + D.MIN_WALL_2P       # the channels' floor
+# IT SITS AT THE BOTTOM (user): its floor is the tail channels' blind floor, two beads over the height
+# prism's bottom, so everything from its roof up to the plates and side screws stays solid.
+TAIL_Z_END = HS_PRISM_BOT + D.MIN_WALL_2P       # the channels' floor, and the window's
+WIN_H = 25 * D.BEAD                             # 20.0 (user)
+WIN_LO = TAIL_Z_END
+WIN_HI = WIN_LO + WIN_H
+assert WIN_HI <= SS_ROWS[1] - SS_HEAD_D / 2.0 - D.MIN_WALL_2P, "the window runs up into the side screws"
 # TRIMMING: the tail is pushed to the floor, marked level with the window's top edge, and cut
-# TAIL_CUT below the mark. Put back, it ends that far under the window's top, with room under it to be
-# pulled down.
-TAIL_CUT = 20.0
+# TAIL_CUT below the mark. Put back, it ends half way down the window: the top half to grip, the bottom
+# half to pull it down into.
+TAIL_CUT = WIN_H / 2.0
 TAIL_END = WIN_HI - TAIL_CUT                    # where a tail ends, trimmed
-assert WIN_LO > TAIL_END > TAIL_Z_END + 10.0, "a trimmed tail has no room to be pulled down"
+assert TAIL_END - WIN_LO >= 8.0, "a trimmed tail has no room to be pulled down"
 # the plate's -X face has to stand behind both rows wherever a string clamps it
 for _g in (D.STRING_GAUGE[0], G_ENVELOPE):
     _bot = ROD_Z - ROD_D / 2 - _g - PLATE_BODY_H

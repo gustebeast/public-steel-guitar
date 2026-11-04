@@ -344,6 +344,7 @@ LOCK_INSERT_AT = 4.0               # the insert's mouth, measured in from the en
                                    # the chassis to keep a mortise-free zone for it.
 LOCK_HEAD_D, LOCK_HEAD_H = 7.6, 2.2   # cadkit.fasteners.m4_button_screw's head
 LOCK_RECESS = 3 * D.BEAD           # 2.4: the head sits just under the end face
+assert LOCK_SCREW_L in D.M4_BUTTON_STOCK_L, "a lock screw we cannot buy"
 # the screw's axis above the mating plane: its head recess (head + 0.4 of air) keeps a
 # 2-bead floor over the endplate's underside, which also keeps it off the adapter's top
 LOCK_Z = LOCK_HEAD_D / 2 + 0.4 + D.MIN_WALL_2P
