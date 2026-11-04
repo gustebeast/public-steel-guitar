@@ -8,7 +8,7 @@
  * SERVO42D is: the motor protocol lives on the host (bench/publicbench/servo.py), where it is
  * a text edit to correct once a real motor answers.
  *
- *   bus 0 = bus A, CAN1 remapped to PB8 (RX) / PB9 (TX)  -- the motors
+ *   bus 0 = bus A, CAN1 remapped to PB8 (RX) / PB9 (TX) on R1, home PA11 / PA12 on R2  -- the motors
  *   bus 1 = bus B, CAN2 on PB12 (RX) / PB13 (TX)         -- the lever sensors
  *
  * Lines from the host (ASCII, '\n'; ids and data in hex, the rest decimal):
@@ -181,15 +181,22 @@ static int can_rate(int bus, uint32_t bps)
 
 static void can_setup(void)
 {
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOB, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB, ENABLE);
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_CAN1 | RCC_APB1Periph_CAN2, ENABLE);
-    GPIO_PinRemapConfig(GPIO_Remap1_CAN1, ENABLE);          /* CAN1 on PB8 / PB9 */
     GPIO_InitTypeDef g = {0};
     g.GPIO_Speed = GPIO_Speed_50MHz;
+#if REV == 1
+    GPIO_PinRemapConfig(GPIO_Remap1_CAN1, ENABLE);          /* CAN1 on PB8 / PB9: USB has PA11 / PA12 */
     g.GPIO_Pin = GPIO_Pin_9 | GPIO_Pin_13; g.GPIO_Mode = GPIO_Mode_AF_PP;
     GPIO_Init(GPIOB, &g);
     g.GPIO_Pin = GPIO_Pin_8 | GPIO_Pin_12; g.GPIO_Mode = GPIO_Mode_IPU;
     GPIO_Init(GPIOB, &g);
+#else                                                       /* R2: CAN1 home, TX PA12 / RX PA11 */
+    g.GPIO_Pin = GPIO_Pin_12; g.GPIO_Mode = GPIO_Mode_AF_PP; GPIO_Init(GPIOA, &g);
+    g.GPIO_Pin = GPIO_Pin_11; g.GPIO_Mode = GPIO_Mode_IPU;   GPIO_Init(GPIOA, &g);
+    g.GPIO_Pin = GPIO_Pin_13; g.GPIO_Mode = GPIO_Mode_AF_PP; GPIO_Init(GPIOB, &g);
+    g.GPIO_Pin = GPIO_Pin_12; g.GPIO_Mode = GPIO_Mode_IPU;   GPIO_Init(GPIOB, &g);
+#endif
     can_rate(0, 500000);
     can_rate(1, 500000);
     NVIC_EnableIRQ(USB_LP_CAN1_RX0_IRQn); NVIC_EnableIRQ(USB_HP_CAN1_TX_IRQn);
@@ -281,7 +288,7 @@ static arms_t arms;
 #define PIN_SEL1  GPIO_Pin_8                /* PD8: U10 S, the lever arm's pair */
 #define PIN_EN0   GPIO_Pin_12               /* PC12: U6 EN, the pedal arm's 5 V, high = on */
 #define PIN_EN1   GPIO_Pin_2                /* PD2: U11 EN, the lever arm's 5 V */
-#define PIN_LANE  GPIO_Pin_2                /* PA2: U8 S, J4's pair, high = the flash lane */
+#define PIN_LANE  GPIO_Pin_3                /* PA3: U8 S, J4's pair, high = the flash lane */
 
 static void arms_pins(void)
 {

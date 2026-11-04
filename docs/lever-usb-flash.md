@@ -71,7 +71,7 @@ two arms and adds a lane from the Pi's USB:
 |---|---|---|
 | U9 TS3USB221A | the pedal arm (J2): U3's CANB (1D) or the flash lane (2D); S on PD9 | **CAN** (R27) |
 | U10 TS3USB221A | the lever arm (J6): the same; S on PD8 | **CAN** (R28) |
-| U8 TS3USB221A | J4's pair: U7, the link (1D), or the flash lane (2D); S on PA2 | **the link** (R32) |
+| U8 TS3USB221A | J4's pair: U7, the link (1D), or the flash lane (2D); S on PA3 | **the link** (R32) |
 | U6 / U11 TPS2553 | each arm's 5 V, limited to 0.52 A; EN on PC12 / PD2 | **on** (R30 / R31) |
 | D4 / D5, D10 / D11 | ESD clamps, now on each arm at its connector, outside the switches | — |
 
@@ -149,6 +149,12 @@ carries the flag at `bus_paths`. The fixes, to be chosen then:
 ## Follow-ups
 
 - **motor_ctrl R2:** built 2026-11-04, above. Not yet ordered.
+- **Before ordering R2, re-read WCH's AFIO remap table for CAN1.** To make room for the lever-flash
+  lines, R2 moves bus A's CAN1 off its remap (PB8 RX / PB9 TX) onto its home pins, PA11 = RX and
+  PA12 = TX. The directions come from ST's register-identical map (RM0008 table 29). WCH's
+  `GPIO_Remap1_CAN1` constant and its examples' remap pins agree with ST, but WCH's own home-pin
+  table was not in hand. If it reads the other way, swap the two nets in `elec/motor_ctrl.py`
+  and `can_setup()`.
 - **Bench:** a C8T6 board's ROM loader on PB6/PB7 through a TS3USB221A, and then through a
   loaded chain.
 - **Pi:** `publicbench.leverisp` drives steps 1–5 (in the simulator). wchisp is still to be

@@ -14,7 +14,11 @@ safe default already taken; none blocks the work.
   fit: every bare patch on the board is crossed by a hand-laid track. motor_ctrl times the window
   itself ('U' arm ms) and hands J4 back, so nothing is lost but the link for ~15 s per blank
   board. If you'd rather keep the link up, the price is board area for the hub (QSOP-16 + a
-  12 MHz crystal, ~11 x 6 mm).
+  12 MHz crystal, ~11 x 6 mm). A second way, not drawn: give the flash lane its OWN USB socket
+  and a stock cable to a spare Pi port (the Pi 4 has four). That drops U8, its select line and
+  the drop-out together, for a receptacle on the board edge (~9 x 7 mm for USB-C) and a second
+  opening in the chassis. The board is full enough that U8's 2 mm of select line took six
+  routes to place (2026-11-04).
 - **Tuning from the phone records; it does not write the table.** A /tune tap leaves that
   string on its open note and keeps its curve, but motor_ctrl's table and base ('P Z') are
   written by `python3 -m publicbench.tune --table` from a terminal. Re-basing from the phone

@@ -3,7 +3,7 @@
  *
  *   arm 0  the pedals, J2: U6 its 5 V (EN on PC12), U9 its pair (S on PD9)
  *   arm 1  the levers, J6: U11 its 5 V (EN on PD2), U10 its pair (S on PD8)
- *   lane   J4's pair: U7, the link (PA2 low), or the arms' flash lane (PA2 high)
+ *   lane   J4's pair: U7, the link (PA3 low), or the arms' flash lane (PA3 high)
  *
  * Pure logic: main.c applies the state to the pins, and the simulator runs this file as it is
  * (bench/publicbench/simarms.py).
