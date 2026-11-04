@@ -30,6 +30,43 @@ void clock_init(void)
     SysTick->CTLR = 0x5;                    /* count HCLK, upward, no reload */
 }
 
+/* The pair and the power switches (elec/lever_sensor.py). Each one's resistor holds the safe
+ * state while the pin floats -- in reset, and in WCH's ROM loader:
+ *   PB3 USB_SEL    high: the pair goes to the terminator (CAN); pulled low: to PB6 / PB7 (USB)
+ *   PB4 XCVR_EN_N  low: the transceiver is powered; pulled high: off, its bus pins high-Z
+ *   PB5 DS_EN      high: the next board has 5 V; pulled low: it is dark */
+#define PIN_SEL  GPIO_Pin_3
+#define PIN_XCVR GPIO_Pin_4
+#define PIN_DS   GPIO_Pin_5
+
+void hw_bus_init(void)
+{
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+    GPIO_SetBits(GPIOB, PIN_SEL | PIN_XCVR);         /* levels first, then drive them */
+    GPIO_ResetBits(GPIOB, PIN_DS);
+    GPIO_InitTypeDef g = {0};
+    g.GPIO_Speed = GPIO_Speed_2MHz; g.GPIO_Mode = GPIO_Mode_Out_PP;
+    g.GPIO_Pin = PIN_SEL | PIN_XCVR | PIN_DS;
+    GPIO_Init(GPIOB, &g);
+    GPIO_ResetBits(GPIOB, PIN_XCVR);                 /* transceiver on */
+    Delay_Us(100);
+    GPIO_SetBits(GPIOB, PIN_DS);                     /* then the next board */
+}
+
+void hw_release(uint16_t ms)
+{
+    GPIO_InitTypeDef g = {0};
+    g.GPIO_Speed = GPIO_Speed_2MHz; g.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+    g.GPIO_Pin = GPIO_Pin_8 | GPIO_Pin_9;            /* CAN pins off the dead transceiver */
+    GPIO_Init(GPIOB, &g);
+    GPIO_SetBits(GPIOB, PIN_XCVR);                   /* transceiver off; PB3 stays high */
+    GPIO_ResetBits(GPIOB, PIN_DS);                   /* next board dark ... */
+    uint32_t t = now_us();
+    while (now_us() - t < (uint32_t)ms * 1000u) IWDG_ReloadCounter();
+    GPIO_SetBits(GPIOB, PIN_DS);                     /* ... and back, onto a USB pair */
+    for (;;) IWDG_ReloadCounter();                   /* until the arm is power-cycled */
+}
+
 void hw_can_filter(const uint16_t ids[4])
 {   /* 16-bit list mode: these four standard ids, nothing else */
     CAN_FilterInitTypeDef f = {0};
@@ -47,14 +84,15 @@ void hw_can_filter(const uint16_t ids[4])
 
 void hw_can_init(const uint16_t ids[4])
 {
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_AFIO, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_CAN1, ENABLE);
+    GPIO_PinRemapConfig(GPIO_Remap1_CAN1, ENABLE);   /* RX PB8, TX PB9 */
     GPIO_InitTypeDef g = {0};
-    g.GPIO_Speed = GPIO_Speed_50MHz;
-    g.GPIO_Pin = GPIO_Pin_12; g.GPIO_Mode = GPIO_Mode_AF_PP;
-    GPIO_Init(GPIOA, &g);
-    g.GPIO_Pin = GPIO_Pin_11; g.GPIO_Mode = GPIO_Mode_IPU;
-    GPIO_Init(GPIOA, &g);
+    g.GPIO_Speed = GPIO_Speed_2MHz;                 /* slow edges: 500 kbit/s needs no more */
+    g.GPIO_Pin = GPIO_Pin_9; g.GPIO_Mode = GPIO_Mode_AF_PP;
+    GPIO_Init(GPIOB, &g);
+    g.GPIO_Pin = GPIO_Pin_8; g.GPIO_Mode = GPIO_Mode_IPU;
+    GPIO_Init(GPIOB, &g);
 
     RCC_ClocksTypeDef ck;
     RCC_GetClocksFreq(&ck);

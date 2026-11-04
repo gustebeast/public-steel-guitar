@@ -82,17 +82,17 @@ I, O, PWR, PIN = Pin.types.INPUT, Pin.types.OUTPUT, Pin.types.PWRIN, Pin.types.P
 # stock KiCad land, not read off the drawing -- resolve before ordering. The SENSOR'S IS READ
 # OFF ITS DRAWING: MA730 rev 1.1 p.26 "recommended land pattern", pads 0.70 x 0.25 on 0.50
 # pitch with their centres 2.90 apart, exposed pad 1.70 (elec/footprints/Steel.pretty).
-MCU_FP = "Package_DFN_QFN:QFN-28-1EP_4x4mm_P0.4mm_EP2.4x2.4mm"
+MCU_FP = "Package_QFP:LQFP-48_7x7mm_P0.5mm"
 SENSOR_FP = "Steel:MPS_QFN-16-1EP_3x3mm_P0.5mm_EP1.7x1.7mm"
 # THE SPEC'S FOUR EDGES, in the spec's own frame (origin on the sensor, +X toward the
 # lever, +Z up). Everything else about the outline is derived from them, because it was
 # not: BOARD_W and CHIP_XY were both typed, and both encode the edges, so the +X edge
 # moving on 2026-09-29 left this file describing a board that no longer existed while
 # every number in it stayed self-consistent (tools/check_board_match.py now says so).
-# -X: the terminator switch needs 8.89 mm over its lands between the transceiver and
-# the +X groove band, so the transceiver, MCU, crystal, regulator and J1 stand 1.0
-# further from the chip than they otherwise would.
-SPEC_X0, SPEC_X1 = -29.0, 4.025
+# -X: GROWN 12.0 ON 2026-11-03 for the USB-over-the-bus circuit (LQFP-48 MCU, the pair
+# switch, the BOOT0 detector and two supply switches; user: "we have a decent amount of
+# room there to grow longer"). Everything connector-side moved with the edge (_X0).
+SPEC_X0, SPEC_X1 = -41.0, 4.025
 SPEC_Z0, SPEC_Z1 = -11.8, 10.1
 BOARD_W, BOARD_L = SPEC_X1 - SPEC_X0, SPEC_Z1 - SPEC_Z0
 # the axle axis in board-local mm -- half the board, less the chip's distance to the far
@@ -143,8 +143,12 @@ def lever_sensor():
     # the power way is the 5 V LEVER bus, which is why the family differs from the 24 V
     # tees -- a lever harness physically cannot mate a motor tee.
     _trunk = harness.ph_trunk_pins()
-    _rail = {"GND": gnd, "V5": v5, "CAN_H": can_h, "CAN_L": can_l}
+    # J2's 5 V way is the SWITCHED downstream supply (+5V_OUT, Q1 below), so IN and OUT are
+    # no longer interchangeable: the other three ways still pass straight through.
+    v5_out = Net("+5V_OUT")
+    v5_out.drive = Pin.drives.POWER
     for j, (ref, side) in enumerate((("J1", "in"), ("J2", "out"))):
+        _rail = {"GND": gnd, "V5": (v5, v5_out)[j], "CAN_H": can_h, "CAN_L": can_l}
         names = _trunk[4 * j:4 * j + 4]
         jx = Part(name="S4B-PH-K-S", ref_prefix="J", ref=ref, tag=ref, dest="NETLIST",
                   tool="skidl", value="S4B-PH-K-S",
@@ -210,7 +214,8 @@ def lever_sensor():
                     Pin(num=5, name="Vref", func=O), Pin(num=6, name="CANL", func=P),
                     Pin(num=7, name="CANH", func=P), Pin(num=8, name="Rs", func=I)])
     can_tx += u3["D"]; can_rx += u3["R"]
-    gnd += u3["GND"]; v33 += u3["VCC"]
+    v33_can = Net("+3V3_CAN")
+    gnd += u3["GND"]; v33_can += u3["VCC"]
     can_l += u3["CANL"]; can_h += u3["CANH"]
     # Rs to GND through a resistor sets slope control; 0 R would be full speed.
     # 10 k slews the edges, which is the right default on a metre of cable in a
@@ -218,7 +223,7 @@ def lever_sensor():
     rs = _r("R", "R3", "10k", "transceiver slope control")
     u3["Rs"] += rs[1]; gnd += rs[2]
     c_xcvr = _c("C4", "100nF", "transceiver decoupling")
-    v33 += c_xcvr[1]; gnd += c_xcvr[2]
+    v33_can += c_xcvr[1]; gnd += c_xcvr[2]
 
     # BUS-B FAR-END TERMINATION, behind a slide switch placed by the fab: fitted on all
     # eleven, ON on the ONE board at each far end of the bus. A switch, not a solder
@@ -241,8 +246,10 @@ def lever_sensor():
                description="bus B terminator: ON on the LAST board only (LCSC C3293141)",
                footprint="Steel:Kangshen_DSHP01TSGER",
                pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
-    term = Net("TERM_MID")
-    can_h += rt[1]; term += rt[2], sw1[2]; can_l += sw1[1]
+    # R4 + SW1 hang off the switch's 2D port (U5 below), not off the pair: in USB mode the
+    # switch lets go of them, so a terminated end board can still be flashed.
+    term, term_h, term_l = Net("TERM_MID"), Net("TERM_H"), Net("TERM_L")
+    term_h += rt[1]; term += rt[2], sw1[2]; term_l += sw1[1]
 
     # BUS-PIN CLAMPS. Two SEPARATE bidirectional TVS rather than one three-pin
     # CAN array, on purpose: a 2-pin bidirectional part is symmetric, so there is
@@ -254,8 +261,9 @@ def lever_sensor():
     # player-handled lever mostly sees.)
     for tag, net in (("D2", can_h), ("D3", can_l)):
         d = Part(name="TVS", ref_prefix="D", ref=tag, tag=tag, dest="NETLIST", tool="skidl",
-                 value="ESD5B5.0ST1G", description="bidirectional 5 V TVS, bus pin to GND "
-                 "(LCSC C93623, the part motor_ctrl clamps the same bus with)",
+                 value="LESD5L5.0CT1G", description="bidirectional 5 V TVS, bus pin to GND, "
+                 "0.5 pF (LCSC C5274293, the USB clamp motor_ctrl and output_panel use) -- the "
+                 "pair carries full-speed USB too",
                  # SOD-523, not SOD-123: these are signal-line ESD clamps, not power
                  # TVS, and the big package cost 18 mm2 the board no longer has once
                  # the foot pedal's Y budget capped its height at 22.55.
@@ -263,152 +271,152 @@ def lever_sensor():
                  pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
         net += d[1]; gnd += d[2]
 
-    # ── MCU, CH32V203G6U6 QFN-28 (LCSC C5142280) ─────────────────────────────
-    # Pins off WCH CH32V203 datasheet V2.8 table 3-1-3, the QFN28 (G6) column:
-    #   0 VSS (exposed pad -- KiCad numbers that land 29, which is what is used
-#     below)             2 OSC_IN  3 OSC_OUT  4 NRST  5 VDDA  16 VSS  17 VDD
-    #   19 PA11 = CAN1_RX    20 PA12 = CAN1_TX
-    #   21 PA13 = SWDIO      22 PA14 = SWCLK
-    #   11 PA5  = SPI1_SCK   12 PA6  = SPI1_MISO   13 PA7 = SPI1_MOSI   26 PB5 = sensor CS
-    #   (the SPI pins off datasheet V3.0 table 3-1-3, QFN28 column, default functions, read
-    #    2026-11-03; the KiCad MCU_WCH_RiscV symbol agrees. PB6 / PB7, the I2C1 pair the
-    #    MT6701 was read on, are unused GPIO since the MA730)
-    # (HISTORY -- NO LONGER TRUE: pin 1 is now tied hard to GND, see "TIED HARD TO GND" below,
-    #  and WCH's own table confirms the pin: 3-1-3 note 6. Kept for the reasoning. This stale
-    #  heading was read as current on 2026-09-30 and BOOT0 was reported floating. It is not.)
-    # ⚠ PIN 1 IS BOOT0/PB8, AND NOTHING ON THIS BOARD CONNECTS TO IT. This note used to
-    # say pin 1 was unidentified and had to be resolved against the package drawing
-    # before fabrication. A second source now answers it: KiCad's own MCU_WCH_RiscV
-    # library gives CH32V203GxUx pin 1 as BOOT0/PB8, and its pin list agrees with this
-    # board's other twelve declarations exactly. That is a library rather than WCH's
-    # drawing, so it is corroboration and not proof -- but the question is no longer open,
-    # it is answerable, and the answer has a consequence.
-    #
-    # ⚠ A FLOATING BOOT STRAP IS NOT A NEUTRAL STATE. BOOT0 selects where the part starts;
-    # left unconnected it is whatever the die's internal pull does, which is a thing to
-    # confirm rather than assume -- and if there is no internal pull-down, an assembled
-    # board's boot mode is set by leakage. motor_ctrl ties its BOOT0 to a pull-down and a
-    # test pad for exactly this reason. Resolve it before fabrication: either confirm the
-    # internal pull from WCH's manual, or spend one 0402 on a pull-down.
-    #
-    # ⚠ AND ALL FOUR MCU ROTATIONS ARE NOW MEASURED, not inferred. The rotation note
-    # in BOARD_NOTES picked 0 by total pin-to-net distance, which is a PROXY -- and this
-    # project has a long record of proxies being inverted (see the optical board, where
-    # three of them were). Routed on the 34 x 28 board, one run each:
-    #       rot   0   1 unconnected, 0 violations   <- kept
-    #       rot  90   3 unconnected
-    #       rot 180   3 unconnected
-    #       rot 270   2 unconnected
-    # The proxy was right this time. Recorded because "we chose it by a proxy" and "we
-    # measured it" are different claims, and only one of them survives someone asking.
-    #
-    # ⚠ THOSE FOUR NUMBERS WERE TAKEN AT THE 0.6/0.3 VIA, when the best any rotation
-    # could do was 1 unconnected. At 0.50/0.25 rotation 0 reaches ZERO, so the absolute
-    # figures no longer describe this board -- only the RANKING is still being relied on,
-    # and the ranking has not been re-measured at the smaller via. If a rotation is ever
-    # in question again, re-run it rather than reading this table as current.
-
-    # ⚠ AND THE BIGGER BOARD DID NOT FIX IT -- MEASURED AGAIN 2026-09-19, after the
-    # board went to 34 x 28 for the XH. The open net swapped from CAN_RX to CAN_TX,
-    # exactly the clean swap predicted below, and the shape is identical: the
-    # TRANSCEIVER end has 14 of 24 clear bearings and 566 reachable via sites, the MCU
-    # end (U3 pad 20) has ZERO and ZERO.
-    #
-    # That locates the constraint precisely, and it is not board area: the blockage is
-    # inside the QFN's own escape fan, where the neighbouring pins' escapes take the
-    # lane, so adding 6 mm of board in another direction cannot reach it. Two nets need
-    # to leave adjacent pins of a 0.4 mm-pitch package through the same gap and only one
-    # can. Re-assigning the pins is not available either -- see the remap note below;
-    # this package brings out no PB9.
-    #
-    # What is left is moving the MCU or the transceiver relative to each other, which is
-    # a placement question for the next revision rather than a routing one.
-
-    # ⚠ CAN_RX MEASURED, 2026-09-18: THE MCU PIN CANNOT ESCAPE AT ALL. Probed at 24
-    # directions and five distances from 0.3 to 1.5 mm, U3 pad 19 has ZERO clear exits --
-    # not one bearing, not at any length. Reachable via sites: 885 from the transceiver's
-    # pad, NONE from this one. No 2-segment or 3-segment F.Cu path exists between the two
-    # pads, and no In2.Cu link between any of the 60 nearest reachable via sites.
-    #
-    # The blockers name the cause: CAN_TX's own track and pads take four of the eight
-    # bearings, +3V3 one, GND pads the rest. CAN_TX and CAN_RX are adjacent MCU pins, and
-    # whichever routes first takes the other's escape -- which is exactly what the note
-    # below already predicted ("pre-lay CAN_RX and it connects, and CAN_TX becomes the
-    # unconnected net instead, a clean swap"). The measurement corroborates it rather
-    # than adding anything new.
-    #
-    # So this is NOT repairable the way optical's MID was. That pin had one clear bearing
-    # and needed only a detour around two pads; this one has none, so there is no
-    # geometry to find and no post-route track can help. The recorded conclusion stands
-    # and is now measured rather than argued: only MOVING PARTS fixes this corner.
-    # ⚠ AND THE SAME PIN LIST CLOSES OFF THE CAN REMAP. This package brings out PB8 (on
-    # pin 1) but NO PB9 at all, so CAN1's PB8/PB9 remap -- the one motor_ctrl uses to get
-    # CAN off PA11/PA12 -- does not exist here, and remap 3 is PD0/PD1, which the crystal
-    # occupies. CAN_RX and CAN_TX are therefore stuck on PA11/PA12, immediately beside
-    # SWDIO on PA13, which is the crowded corner described below. That corner cannot be
-    # fixed by moving signals; only by moving parts.
+    # ── MCU, CH32V203C8T6 LQFP-48 (LCSC C3001172) ────────────────────────────
+    # CHANGED 2026-11-03 FROM THE G6U6 QFN-28 (user: flash every lever over its own bus
+    # wires). The ROM loader serves USB on PA11/PA12 OR PB6/PB7 (WCH CH32V203 EVT doc,
+    # "WCHISPTool"), and the QFN-28 has CAN on PA11/PA12 with no remap -- so it cannot
+    # put USB on the pair. The C8 brings out USBFS on PB6/PB7 AND CAN1's remap 2 on
+    # PB8/PB9, so USB and CAN get their own pins and PA11/PA12 stay unconnected (the
+    # ROM may enable USBD there; with nothing attached that is harmless). The C8T6 has
+    # 9,420 at JLC against the K8T6's 573 (2026-11-03); the C8U6 QFN-48 is the same
+    # silicon in a 7x7 body (1,079) if the board ever needs the room.
+    # Pins off WCH CH32V203 datasheet V3.0 table 3-1-1, the LQFP48 column, read 2026-11-03:
+    #   1 VBAT  5 OSC_IN  6 OSC_OUT  7 NRST  8 VSSA  9 VDDA  23 VSS_1  24 VDD_IO_1
+    #   35 VSS_2  36 VDD_2  47 VSS_3  48 VDD_IO_3  20 PB2 = BOOT1  44 BOOT0
+    #   14 PA4 (sensor CS)  15 PA5 SPI1_SCK  16 PA6 SPI1_MISO  17 PA7 SPI1_MOSI
+    #   34 PA13 SWDIO  37 PA14 SWCLK  39 PB3  40 PB4  41 PB5
+    #   42 PB6 USBFS_DM  43 PB7 USBFS_DP  45 PB8 CAN1_RX_2  46 PB9 CAN1_TX_2
+    # ⚠ FIRMWARE: CAN1 on remap 2 (PB8/PB9), not the default pins. PB2 is BOOT1 and is
+    # tied to GND here (the ISP wants BOOT1 low): never drive it as an output.
+    # (The QFN-28's escape history, BOOT0 tie and rotation table are in git.)
     sck, miso, mosi = Net("SENS_SCK"), Net("SENS_MISO"), Net("SENS_MOSI")
     swdio, swclk, nrst = Net("SWDIO"), Net("SWCLK"), Net("NRST")
     osc1, osc2 = Net("OSC_IN"), Net("OSC_OUT")
-    u2 = Part(name="CH32V203G6U6", ref_prefix="U", ref="U3", tag="U2", dest="NETLIST",
-              tool="skidl", value="CH32V203G6U6",
-              description="RISC-V MCU, 2x CAN; same toolchain as the controller board",
+    usb_dp, usb_dm = Net("USB_DP"), Net("USB_DM")
+    usb_sel, xcvr_en_n, ds_en, boot0 = Net("USB_SEL"), Net("XCVR_EN_N"), Net("DS_EN"), Net("BOOT0")
+    _mcu_pins = (
+        (1, "VBAT", PWR), (5, "OSC_IN", I), (6, "OSC_OUT", O), (7, "NRST", I),
+        (8, "VSSA", PWR), (9, "VDDA", PWR), (23, "VSS_1", PWR), (24, "VDD_1", PWR),
+        (35, "VSS_2", PWR), (36, "VDD_2", PWR), (47, "VSS_3", PWR), (48, "VDD_3", PWR),
+        (20, "PB2", I), (44, "BOOT0", I),
+        (14, "PA4", O), (15, "PA5", O), (16, "PA6", I), (17, "PA7", O),
+        (34, "PA13", P), (37, "PA14", P), (39, "PB3", O), (40, "PB4", O), (41, "PB5", O),
+        (42, "PB6", P), (43, "PB7", P), (45, "PB8", I), (46, "PB9", O))
+    u2 = Part(name="CH32V203C8T6", ref_prefix="U", ref="U3", tag="U2", dest="NETLIST",
+              tool="skidl", value="CH32V203C8T6",
+              description="RISC-V MCU, CAN + USBFS; same toolchain as the controller board",
               footprint=MCU_FP,
-              pins=[Pin(num=29, name="VSS_PAD", func=PWR), Pin(num=2, name="OSC_IN", func=I),
-                    Pin(num=3, name="OSC_OUT", func=O), Pin(num=4, name="NRST", func=I),
-                    Pin(num=5, name="VDDA", func=PWR), Pin(num=16, name="VSS", func=PWR),
-                    Pin(num=17, name="VDD", func=PWR), Pin(num=19, name="PA11", func=I),
-                    Pin(num=20, name="PA12", func=O), Pin(num=21, name="PA13", func=P),
-                    Pin(num=22, name="PA14", func=P),
-                    Pin(num=11, name="PA5", func=O),   # SPI1_SCK  -- table 3-1-3, QFN28
-                    Pin(num=12, name="PA6", func=I),   # SPI1_MISO
-                    Pin(num=13, name="PA7", func=O),   # SPI1_MOSI
-                    Pin(num=26, name="PB5", func=O),   # sensor CS -- table 3-1-3, QFN28
-                    Pin(num=1, name="PB8", func=I)])   # BOOT0 -- see the note above
-    gnd += u2["VSS"], u2["VSS_PAD"]
-    v33 += u2["VDD"], u2["VDDA"]
+              pins=[Pin(num=n, name=nm, func=f) for n, nm, f in _mcu_pins])
+    gnd += u2["VSSA"], u2["VSS_1"], u2["VSS_2"], u2["VSS_3"], u2["PB2"]
+    v33 += u2["VBAT"], u2["VDDA"], u2["VDD_1"], u2["VDD_2"], u2["VDD_3"]
     nrst += u2["NRST"]
     osc1 += u2["OSC_IN"]; osc2 += u2["OSC_OUT"]
-    can_rx += u2["PA11"]; can_tx += u2["PA12"]
+    can_rx += u2["PB8"]; can_tx += u2["PB9"]
     swdio += u2["PA13"]; swclk += u2["PA14"]
     sck += u2["PA5"]; miso += u2["PA6"]; mosi += u2["PA7"]
-    # ⚠ BOOT0 RESOLVED: IT GETS THE 0402. The note above left two ways out -- confirm the
-    # die's internal pull from WCH's manual, or spend a resistor -- and the resistor is
-    # right even if the manual turns out to say there is a pull-down. An explicit strap is
-    # immune to a datasheet revision and to a part substitution, motor_ctrl already does
-    # exactly this on the same vendor's silicon (its R7, "BOOT0 pull-down"), and the cost
-    # is one 0402 of a value this board already stocks -- no new SKU and no new feeder,
-    # across all eleven boards. Confirming the internal pull would have cost more reading
-    # than the part costs and still left the board leaning on an undocumented default.
-    #
-    # NO TEST PAD BESIDE IT, unlike motor_ctrl. A BOOT0 pad exists to force the ROM
-    # bootloader, and that only helps if the bootloader can be REACHED -- this board has
-    # no USB and brings out no USART, so the entry path does not exist. That absence is
-    # the whole reason the SWD pads were added; SWD is the recovery route here.
-    # ⚠ TIED HARD TO GND, NOT PULLED DOWN -- AND THE BOARD DECIDED THAT, NOT ME. The
-    # 0402 pull-down went in first, matching motor_ctrl. It could not be placed: this
-    # board is FULL (its own note: six free 2.0 mm sites, four already spent on the SWD
-    # pads), and three sitings gave three different failures -- inside two courtyards
-    # (3 unconnected, 3 violations), clearing pads but not courtyards (2 and 2), and
-    # clearing both but displacing the router badly (4 and 1). The part was costing more
-    # than it bought every time.
-    #
-    # A pull-down exists so BOOT0 can be forced HIGH externally to reach the ROM
-    # bootloader. THIS BOARD HAS NO BOOTLOADER PATH -- no USB, no USART brought out --
-    # which is the whole reason the SWD pads were added. So the resistor buys an entry
-    # to a door that does not exist here, and a hard tie is the honest wiring of "this
-    # part always boots from flash". motor_ctrl keeps ITS pull-down because it has USB
-    # on a connector and the door is real.
-    #
-    # What a hard tie costs: forcing the bootloader later would mean cutting copper
-    # rather than lifting a resistor. Against a board with no way to use the bootloader
-    # and a working SWD route, that is not a cost worth one 0402 and three re-routes.
-    # ⚠ FIRMWARE, from WCH CH32V203 datasheet table 3-1-3 (read 2026-09-30):
-    #   note 6 -- pin 1 is BOOT0 AND PB8 on one pin. It is grounded here, so PB8 must NEVER
-    #             be driven as an output: that is a dead short through the pin driver.
-    #   note 7 -- on the 28-pin package PA10 and PA11 are ONE pin (19). This board uses it
-    #             as PA11 = CAN1_RX, so PA10 must stay an input.
-    gnd += u2["PB8"]
+    usb_dm += u2["PB6"]; usb_dp += u2["PB7"]
+    usb_sel += u2["PB3"]; xcvr_en_n += u2["PB4"]; ds_en += u2["PB5"]
+    boot0 += u2["BOOT0"]
+
+    # ── THE PAIR IS USB OR CAN: TS3USB221ARSER (LCSC C128396) ──────────────────
+    # TI SCDS277C table 4-1 (RSE): 1 1D+  2 1D-  3 2D+  4 2D-  5 GND  6 OE  7 D-  8 D+
+    # 9 S  10 VCC; table 7-1: OE low enables, S low D = 1D, S high D = 2D. I/O 5.5 V
+    # tolerant, Coff 3.5 pF, Ioff +-2 uA unpowered (sections 5.3, 5.5).
+    # D = the bus pair (CAN_H = D+, CAN_L = D-), 1D = the MCU's USBFS pins, 2D = the
+    # terminator. S IS PULLED LOW, so a board whose MCU is blank or in its ROM loader
+    # presents USB; the application drives PB3 high to take the pair as CAN. The
+    # transceiver is NOT behind the switch: it stays on plain copper and is isolated by
+    # having its supply cut (Q3), so CAN never passes through 6 ohm of switch.
+    u5 = Part(name="TS3USB221A", ref_prefix="U", ref="U5", tag="U5", dest="NETLIST",
+              tool="skidl", value="TS3USB221ARSER",
+              description="USB / CAN-termination select on the bus pair (LCSC C128396)",
+              footprint="Package_DFN_QFN:Texas_UQFN-10_1.5x2mm_P0.5mm",
+              pins=[Pin(num=1, name="1D+", func=P), Pin(num=2, name="1D-", func=P),
+                    Pin(num=3, name="2D+", func=P), Pin(num=4, name="2D-", func=P),
+                    Pin(num=5, name="GND", func=PWR), Pin(num=6, name="OE", func=I),
+                    Pin(num=7, name="D-", func=P), Pin(num=8, name="D+", func=P),
+                    Pin(num=9, name="S", func=I), Pin(num=10, name="VCC", func=PWR)])
+    usb_dp += u5["1D+"]; usb_dm += u5["1D-"]
+    term_h += u5["2D+"]; term_l += u5["2D-"]
+    can_h += u5["D+"]; can_l += u5["D-"]
+    gnd += u5["GND"], u5["OE"]
+    v33 += u5["VCC"]; usb_sel += u5["S"]
+    c = _c("C13", "100nF", "switch decoupling")
+    v33 += c[1]; gnd += c[2]
+    r = _r("R", "R12", "100k", "S pull-down: USB until firmware says CAN")
+    usb_sel += r[1]; gnd += r[2]
+
+    # ── WHICH ONE IS ON THE PAIR DECIDES BOOT0: LMV331IDBVR (LCSC C34731) ───────
+    # TI SLCS136V table 4-1, DBV: 1 IN+  2 GND  3 IN-  4 OUT (open drain)  5 VCC.
+    # IN- = 0.32 x CAN_H (R13 1M over R14 470k), IN+ = 0.30 V (R15 100k over R16 10k): the
+    # pair reads CAN above about 0.94 V. A biased CAN bus holds CAN_H at 2.0-3.0 V recessive
+    # (ISO 11898) and higher dominant: IN- >= 0.64 V, twice the threshold,
+    # OUT low, BOOT0 low, the application runs. A USB host's 15k pull-downs (or a dead,
+    # floating pair -- R14) hold it near 0: OUT lets go, R17 pulls BOOT0 high, and the
+    # chip starts its ROM loader on PB6/PB7. BOOT0 is sampled only at reset, so the
+    # device's own D+ pull-up appearing afterwards changes nothing.
+    # ⚠ IN- is never above VCC+ (rev O absolute maximum): bus B's 7.8 V transient (its
+    # clamps' breakdown) is 2.5 V there, and unpowered the 1M limits the clamp current to 8 uA.
+    # That is why the divider is 1M / 470k and not 1M / 1M (3.9 V).
+    u6 = Part(name="LMV331", ref_prefix="U", ref="U6", tag="U6", dest="NETLIST",
+              tool="skidl", value="LMV331IDBVR",
+              description="bus-is-USB detector -> BOOT0 (LCSC C34731)",
+              footprint="Package_TO_SOT_SMD:SOT-23-5",
+              pins=[Pin(num=1, name="IN+", func=I), Pin(num=2, name="GND", func=PWR),
+                    Pin(num=3, name="IN-", func=I), Pin(num=4, name="OUT", func=O),
+                    Pin(num=5, name="VCC", func=PWR)])
+    sense, vth = Net("BUS_SENSE"), Net("BUS_VTH")
+    vth += u6["IN+"]; sense += u6["IN-"]; boot0 += u6["OUT"]
+    gnd += u6["GND"]; v33 += u6["VCC"]
+    c = _c("C14", "100nF", "comparator decoupling")
+    v33 += c[1]; gnd += c[2]
+    for tag, val, a, b, what in (
+            ("R13", "1M", can_h, sense, "CAN_H into the detector"),
+            ("R14", "470k", sense, gnd, "divides CAN_H; reads a floating pair as USB"),
+            ("R15", "100k", v33, vth, "threshold, 0.30 V"),
+            ("R16", "10k", vth, gnd, "threshold, 0.30 V"),
+            ("R17", "10k", v33, boot0, "BOOT0 pull-up: high unless the bus is CAN")):
+        r = _r("R", tag, val, what)
+        a += r[1]; b += r[2]
+
+    # ── THE TRANSCEIVER'S SUPPLY, default off: AO3401A (LCSC C15127) ──────────
+    # Unpowered, the SN65HVD230's bus pins are high impedance (SLOS346); powered, its
+    # receiver bias would hold both lines near 2.3 V and wreck USB's single-ended states.
+    # So it is off until the application turns it on (PB4 low). AO3401A SOT-23: 1 G, 2 S,
+    # 3 D (AOS datasheet); Vgs -3.3 V gives about 60 mohm against 50 mA.
+    def _pfet(tag, what):
+        return Part(name="AO3401A", ref_prefix="Q", ref=tag, tag=tag, dest="NETLIST",
+                    tool="skidl", value="AO3401A", description=what + " (LCSC C15127)",
+                    footprint="Package_TO_SOT_SMD:SOT-23",
+                    pins=[Pin(num=1, name="G", func=I), Pin(num=2, name="S", func=P),
+                          Pin(num=3, name="D", func=P)])
+    q3 = _pfet("Q3", "transceiver supply switch, off by default")
+    v33 += q3["S"]; v33_can += q3["D"]; xcvr_en_n += q3["G"]
+    r = _r("R", "R11", "100k", "holds the transceiver off until firmware")
+    v33 += r[1]; xcvr_en_n += r[2]
+
+    # ── THE NEXT BOARD'S POWER, default off: AO3401A + 2N7002 ───────────────────
+    # Every board downstream is dark until this one's firmware (PB5 high) lets it up, so
+    # the chain powers in order and a blank board is the ONLY ROM loader on the pair: the
+    # boards upstream of it are running and have let go of the pair (PB3 high, PB4 high);
+    # the ones downstream are unpowered. Q1's body diode points J2 -> J1, so it blocks
+    # when off; a board plugged in backwards still powers, but no longer gates the next.
+    # 2N7002 SOT-23: 1 G, 2 S, 3 D (LCSC C8545).
+    q1 = _pfet("Q1", "downstream 5 V switch, off by default")
+    ds_gate = Net("DS_GATE")
+    v5 += q1["S"]; v5_out += q1["D"]; ds_gate += q1["G"]
+    c = _c("C16", "100nF/16V", "the downstream supply's own bypass -- rated for the hot-plug ring")
+    v5_out += c[1]; gnd += c[2]
+    q2 = Part(name="2N7002", ref_prefix="Q", ref="Q2", tag="Q2", dest="NETLIST",
+              tool="skidl", value="2N7002", description="level shift for Q1 (LCSC C8545)",
+              footprint="Package_TO_SOT_SMD:SOT-23",
+              pins=[Pin(num=1, name="G", func=I), Pin(num=2, name="S", func=P),
+                    Pin(num=3, name="D", func=P)])
+    ds_gate += q2["D"]; gnd += q2["S"]; ds_en += q2["G"]
+    for tag, a, b, what in (("R9", v5, ds_gate, "holds Q1 off"),
+                            ("R10", ds_en, gnd, "holds Q2 off while the MCU is in reset")):
+        r = _r("R", tag, "100k", what)
+        a += r[1]; b += r[2]
 
 
     y1 = Part(name="Crystal", ref_prefix="Y", ref="Y1", tag="Y1", dest="NETLIST", tool="skidl",
@@ -451,8 +459,8 @@ def lever_sensor():
                    footprint="TestPoint:TestPoint_Pad_D1.0mm",
                    pins=[Pin(num=1, func=P)])
         _net += _tp[1]
-    for tag in ("C8", "C9"):
-        c = _c(tag, "100nF", "MCU decoupling")
+    for tag in ("C8", "C9", "C12", "C15"):
+        c = _c(tag, "100nF", "MCU decoupling, one per VDD pair and VDDA")
         v33 += c[1]; gnd += c[2]
     c_bulk = _c("C10", "4.7uF", "MCU bulk -- 0402 since the re-spin (6.3 V X5R)")
     v33 += c_bulk[1]; gnd += c_bulk[2]
@@ -493,7 +501,7 @@ def lever_sensor():
     v33 += u4["VDD"]; gnd += u4["GND"], u4["TEST"], u4["EP"]
     sck += u4["SCLK"]; miso += u4["MISO"]; mosi += u4["MOSI"]
     csn = Net("SENS_CSN")
-    csn += u4["CS"], u2["PB5"]
+    csn += u4["CS"], u2["PA4"]
     c_sens = _c("C11", "100nF", "sensor decoupling")
     v33 += c_sens[1]; gnd += c_sens[2]
 
@@ -514,70 +522,66 @@ _SENSOR_QTY = _sensor_qty()
 # the outline changes, so widening the +X edge by 1.025 would have shifted all 28 of
 # them 0.5125 mm sideways relative to the chip, silently, while every number here
 # stayed the same.)
+_X0 = SPEC_X0 + 29.0          # what the connector-side parts move by when the -X edge does
 _PLACE_CHIP = {
         "U4": (0.0000, 0.0000, 0.0),
-        # SWD: SWDIO / SWCLK / GND in a row for a clip, NRST stranded (recovery only)
-        # one row on a 2.4 mm pitch, 3 mm in from the +Y edge so a name fits on either side
-        # of a pad: the names are 3 mm wide at 1.0 mm, wider than the pitch, so they
-        # alternate above and below. As a 2 x 2 block they had nowhere to go: DIO landed
-        # beside the CLK pad, GND 5 mm from its own, and CLK only fitted at 0.8
+        # SWD: SWDIO / SWCLK / GND in a row for a clip (lever_jig reads them off the routed
+        # board), NRST beside the crystal (recovery only)
         "TP1": (-4.8000, 7.1000, 0.0),     # SWDIO
         "TP2": (-2.4000, 7.1000, 0.0),     # SWCLK
         "TP3": (0.0000, 7.1000, 0.0),      # GND
-        "TP4": (-15.1100, 8.0500, 0.0),    # NRST
-        # J1 (in) and J2 (out) on end, END TO END, mouths -X, 3.05 in from the -X edge
-        # (the spec's figure, unchanged from the 8-way they replace). Placements anchor on
-        # the PAD CENTROID: S4B-PH-K's pins are its local y 0, its mouth local +y 6.25, and
-        # rot 270 turns +y to -X -- so the pin row sits 6.25 +X of the mouth. Along Z each
-        # body is 9.9 (pins 1.95 from either end), the two 0.1 apart (knee_lever.CONN_SPLIT:
-        # all the 19.9 window leaves), the pair centred on the board's height, -0.85: J1's
-        # pins 7.15..1.15, J2's -2.85..-8.85, way 1 of each at its top.
-        "J1": (-19.7000, 4.1500, 270.0),
-        "J2": (-19.7000, -5.8500, 270.0),
-        "U1": (-9.5000, 7.1500, 0.0),
-        # 0.55 toward the regulator (courtyards 0.03 apart), which leaves 3.10 mm between
-        # J1 and these two for the reset pad's name at 1.0 mm: RST is 3.07 wide and only
-        # went down at 0.8. TP4 sits 0.04 off its old x so the placer's 0.25 grid lands in
-        # the 0.03 mm of slack
-        "C1": (-12.3500, 7.7500, 0.0),
-        "C2": (-12.3500, 6.4500, 0.0),
-        # the input damper, above C1 against the +Y edge: pad 2 (the regulator side) over
-        # C1's input pad, pad 1 toward the regulator where the bus comes round to it
-        "R8": (-12.3500, 8.8500, 180.0),
-        # the bus bypass, behind the connector tails between the outgoing 5 V and GND ways
-        # (6 and 5): pad 1 (+5V) toward way 6
-        "C3": (-15.8400, -3.0000, 90.0),
-        # (R5, R6, R7 -- the MT6701's MODE strap and I2C pull-ups -- went with it, 2026-11-03)
-        # ⚠ U3 (the MCU) AT 0 ROTATION, AND IT IS A ROUTING DECISION -- measured across all
-        # four rotations on the old board (see lever_sensor()). The CAN fan (pins 19-21,
-        # 0.4 pitch) closes only with the 0.50/0.25 via; see via_mm.
-        "U3": (-11.0000, 2.1500, 0.0),
-        "C9": (-5.5000, 3.8000, 0.0),
-        "C8": (-3.5000, 3.8000, 0.0),
-        # the sensor bypass sits AT the sensor supply pin (13, the north-east corner, on the
-        # MA730 as on the MT6701), pad 1 (+3V3) toward it; it was 5 mm away, west of the chip
+        "TP4": (-7.3000, 5.6000, 0.0),     # NRST
+        # J1 (in) and J2 (out) on end, END TO END, mouths -X, 3.05 in from the -X edge.
+        # Placements anchor on the PAD CENTROID: S4B-PH-K's pins are its local y 0, its
+        # mouth local +y 6.25, and rot 270 turns +y to -X. Way 1 of each at its top.
+        "J1": (-19.7000 + _X0, 4.1500, 270.0),
+        "J2": (-19.7000 + _X0, -5.8500, 270.0),
+        # ── the connector column (J1 / J2's courtyards end at x -27.4): the LDO, the
+        # downstream switch, the bus bypass and the transceiver ──
+        "U1": (-24.8500, 8.0000, 0.0),
+        "R8": (-26.1500, 5.4000, 0.0),
+        "C1": (-24.0000, 5.4000, 0.0),
+        "Q1": (-25.0000, 2.6000, 0.0),
+        "R9": (-22.1000, 2.6000, 90.0),
+        "Q2": (-25.0000, -1.2000, 0.0),
+        "R10": (-22.1000, -1.2000, 90.0),
+        "C3": (-20.0000, 7.0000, 0.0),
+        "C16": (-20.0000, 8.5000, 0.0),
+        "C12": (-21.5000, -3.4000, 90.0),
+        "U2": (-23.4000, -7.5000, 180.0),
+        "R3": (-23.4000, -11.0000, 0.0),
+        # ── the MCU, turned so PB3..PB9 and BOOT0 face the bus parts below it, the
+        # oscillator pins face the crystal east of it and SPI1 leaves its top toward the
+        # sensor ──
+        "U3": (-15.5000, 1.0000, 180.0),
+        "C2": (-21.9000, 8.0000, 90.0),
+        "C9": (-17.4000, 7.0000, 0.0),
+        "C4": (-18.9000, -5.9000, 90.0),
+        "R11": (-18.9000, -8.6000, 90.0),
+        "Q3": (-15.8000, -9.7000, 0.0),
+        "U5": (-16.0000, -6.2000, 270.0),
+        "R12": (-11.6000, -8.6000, 90.0),
+        "C13": (-13.0000, -6.4000, 90.0),
+        "C8": (-10.2000, -5.6000, 0.0),
+        "Y1": (-8.1000, 0.8000, 90.0),
+        "C5": (-8.1000, 3.7000, 0.0),
+        "C6": (-8.1000, -2.1000, 0.0),
+        "C7": (-5.6000, 3.7500, 0.0),
+        "C15": (-9.5000, 5.4000, 90.0),
+        # ── the BOOT0 detector ──
+        "U6": (-4.5000, -3.4000, 0.0),
+        "R15": (-4.4500, 0.0000, 90.0),
+        "R16": (-3.1500, 0.0000, 90.0),
+        "R13": (-7.5000, -3.9000, 90.0),
+        "R14": (-8.8000, -3.9000, 90.0),
+        "R17": (-10.6000, -10.6000, 0.0),
+        "C14": (-8.6000, -7.8000, 90.0),
+        # the sensor's 100 nF at its supply pin, the 4.7 uF on the same rail
         "C11": (1.6000, 3.4000, 90.0),
-        "C10": (-1.5000, -3.3000, 0.0),
-        "Y1": (-12.9000, -2.4000, 0.0),
-        # C5/C6 stay east of the crystal: moving them west measured 1 -> 5 unconnected
-        "C5": (-8.4000, -1.9000, 0.0),
-        "C6": (-8.4000, -3.7000, 0.0),
-        # C7 (NRST) steps 2.8 +Y off the MCU's west edge: J1's pads now stand 1.9 from
-        # it rather than 3.6, and at its old site it sat squarely in OSC_OUT's escape
-        # (pin 3, the pin below NRST) -- 1 unconnected with no legal repair path.
-        "C7": (-14.5500, 4.4500, 90.0),
-        "U2": (-11.5000, -7.0000, 0.0),
-        # the transceiver bypass is on the side VCC and GND are (pins 3 and 2, west), in
-        # the 1.2 mm strip between U2 and the connector tails: pad 1 (+3V3) faces pin 3.
-        # It was on the far side of the package, 7.7 mm from the pin
-        "C4": (-15.8400, -7.1000, 90.0),
-        # THE TERMINATOR CORNER. SW1 lies along X between the transceiver and the +X
-        # groove band, its lands 8.89 apart; it is 2.3 tall, so its body keeps outside the
-        # magnet cap's sweep (CAP_SWEEP_R about the chip). R3 and R4 sit above it,
-        # and the two bus clamps lie in a row in the strip between the switch and the
-        # bottom edge.
-        "R3": (-5.0200, -5.1700, 0.0),
-        "R4": (-1.5000, -5.1500, 0.0),
+        "C10": (-1.2000, -3.6000, 90.0),
+        # THE TERMINATOR CORNER: SW1 along X, its lands 8.89 apart, 2.3 tall so its body keeps
+        # outside the magnet cap's sweep; R4 above it; the two low-C clamps below it.
+        "R4": (-8.3000, -10.6000, 0.0),
         "SW1": SW1_XY + (0.0,),
         "D2": (-1.6500, -10.2000, 180.0),
         "D3": (0.9500, -10.2000, 180.0),
@@ -618,7 +622,7 @@ BOARD_NOTES = {
     # pocket beside the pin, laid BEFORE routing so the crystal tracks go round it, and the
     # same netlist closes first pass. CHIP frame like the placements (it was board-local
     # (-0.90, 2.30) on the 31.0 board); 0.50/0.25 like the rest of the board.
-    "vias": [("NRST", -14.40 + CHIP_XY[0], 1.45 + CHIP_XY[1], 0.25, 0.50)],
+    "vias": [],
     "placements": {_r: (_x + CHIP_XY[0], _y + CHIP_XY[1], _rot)
                     for _r, (_x, _y, _rot) in _PLACE_CHIP.items()},
     "cap_keepout": {"xy": list(CHIP_XY), "r": CAP_SWEEP_R, "tall": list(TALL_PARTS)},
@@ -667,7 +671,7 @@ BOARD_NOTES = {
     # pin 0.25 mm away, by copper on its own layer, and pin 8 keeps the via to the plane.
     # TEST (pin 10, "connect to ground") is joined to the pad the same way, 0.25 mm across,
     # rather than given a via of its own at the +X groove band.
-    "stitch_exceptions": ("U4.17", "U4.10", "U3.1"),   # U3.1: see the pin-1 link at "tracks"
+    "stitch_exceptions": ("U4.17", "U4.10"),
     # ⚠ AND THE MCU'S PIN 1 (VSS, the corner pin) GOES STRAIGHT INTO ITS OWN BELLY LAND.
     # Left to the router it ran north along the package's west edge to a via, and with
     # SCL leaving pin 27 north-eastward that shut SDA -- pin 28, the corner pin between
@@ -682,13 +686,10 @@ BOARD_NOTES = {
     # board frame is y-up, so KiCad's pin 8 at (+0.75, +1.45) is chip (+0.75, -1.45) and pin 10
     # at (+1.45, +0.25) is chip (+1.45, -0.25). Each runs from inside its pad's heel (1.10 from
     # centre) to inside the 1.70 pad's edge (0.85), 0.30 clear of the pins either side.
-    "tracks": [("+5V", "F.Cu", 0.5, [(-7.2125, 8.00), (-9.1125, 8.00), (-9.1125, -2.00),
-                                     (-7.2125, -2.00)]),
-               ("GND", "F.Cu", 0.2, [(0.75 + CHIP_XY[0], -1.20 + CHIP_XY[1]),
+    "tracks": [("GND", "F.Cu", 0.2, [(0.75 + CHIP_XY[0], -1.20 + CHIP_XY[1]),
                                      (0.75 + CHIP_XY[0], -0.70 + CHIP_XY[1])]),
                ("GND", "F.Cu", 0.15, [(1.20 + CHIP_XY[0], -0.25 + CHIP_XY[1]),
-                                      (0.70 + CHIP_XY[0], -0.25 + CHIP_XY[1])]),
-               ("GND", "F.Cu", 0.15, [(-0.45, 4.20), (0.10, 4.20), (0.50, 3.80)])],
+                                      (0.70 + CHIP_XY[0], -0.25 + CHIP_XY[1])])],
     # ⚠ NO local_nets ON THIS BOARD, AND THE MEASUREMENT SAYS SO. Pre-laying every
     # short net here took it from 4 unconnected to 7. The generator is not better than
     # the router in general -- it wins on the optical board because twenty identical
@@ -743,7 +744,8 @@ BOARD_NOTES = {
     "via_mm": (0.50, 0.25),
     # the lever bus passes THROUGH this board (J1 in, J2 out), so the first board of
     # a chain carries every later board supply: up to bus B limit, 0.57 A
-    "net_widths": {"+5V": 0.4},
+    # +5V_OUT carries the rest of its arm: at most five boards at 80 mA peak (M33)
+    "net_widths": {"+5V": 0.4, "+5V_OUT": 0.5},
     # the words the silkscreen uses. A legend is as wide as its longest line and this
     # board is 32 x 22: at the full net names the J1 legend and one SWD label only went
     # down at 0.8 mm, under the fab minimum of 1.0
@@ -783,14 +785,30 @@ BOARD_NOTES = {
     "groove_exempt": ["U4", "J1", "J2"],
     # J1 + J2's zone (spec rule 4): their bodies (7.6 deep) and the mated plugs' run past
     # the mouths, over the pair's 19.8 -- x ..-5.86 here, clipped to the board as before.
-    "conn_keepout": {"box": [-15.5, -9.9, -5.86, 9.9], "exempt": ["J1", "J2", "U4"]},
+    "conn_keepout": {"box": [SPEC_X0 + 1.01 + CHIP_XY[0], -9.9, SPEC_X0 + 10.65 + CHIP_XY[0], 9.9],
+                     "exempt": ["J1", "J2", "U4"]},
     # ── the quality pass (cadkit/PCB_QUALITY.md) ─────────────────────────────
     "quality": {
         # A17 (cadkit/PCB_QUALITY.md): a connector whose pinout block is on the OTHER face,
         # and why. Way 1 is marked on the connector's own side in every case.
-        "connector_labels": {
-            "J1": {"back_only": "the labeller finds no free site on the front for a word at each way (run 2026-10-19): -X of the pins is the connector's own body and its plug's run, +X of them the parts that sit against it. The pins come through, so each gets its word on the back, in line with it"},
-            "J2": {"back_only": "as J1, the connector below it: no front site for its words (run 2026-10-19), a word at each pin on the back where the pins come through"},
+        # A16, PCB_QUALITY.md 'Steady and transient': U5's pins declared here (so the generated
+        # U5 entries step aside), the bus side with its transient judged on the part's ESD rating
+        "pin_volts": {
+            **{"U5.%d" % n: {"max": 7.0, "peak": "none", "src": 'TI TS3USB221A SCDS277C (2024) s5.1: switch I/O and control inputs -0.5..7 V, VCC -0.5..4.6 V; s5.2: 12 kV HBM on the I/O', "why": "bus B's transient figure (7.8 V) is its clamps' breakdown during an ESD discharge, nanoseconds long, the event s5.2 rates this I/O for (12 kV HBM); 7 V is a DC figure. Nothing holds the pair above 5 V, under the 5.5 V operating rating"}
+               for n in (3, 4, 7, 8)},
+            **{"U5.%d" % n: {"max": 7.0, "src": 'TI TS3USB221A SCDS277C (2024) s5.1: switch I/O and control inputs -0.5..7 V, VCC -0.5..4.6 V; s5.2: 12 kV HBM on the I/O'} for n in (1, 2, 6, 9)},
+            "U5.10": {"max": 4.6, "src": 'TI TS3USB221A SCDS277C (2024) s5.1: switch I/O and control inputs -0.5..7 V, VCC -0.5..4.6 V; s5.2: 12 kV HBM on the I/O'},
+        },
+        "return_slot_ok": {
+            "CAN_TX": {"mm": 6.5,
+                       "why": "a 500 kbit/s logic line into the transceiver's D pin, driven at the "
+                              "MCU's slowest pad speed (2 MHz, hw.c) so its edges are tens of "
+                              "ns: a 6 mm detour in its return costs nothing at that rate"},
+        },
+        "unmatched_ok": {
+            "USB_DP": "full speed, 12 Mbit/s, and only for WCH's ROM loader: a bit is 83 ns and "
+                      "U5 -> MCU is under 15 mm, 0.1 ns end to end, so no skew it could have is "
+                      "1 % of a bit. The pair's long run is the harness (fs_eye, docs)",
         },
         # A8 asks for a via in every exposed pad; the sensor's has none, deliberately (the
         # note at stitch_exceptions). A8's own exception: a part that needs no heat path,
@@ -803,13 +821,17 @@ BOARD_NOTES = {
         "power_paths": [
             # the bus passes through: the first board of a chain carries the rest, up to
             # the 565 mA maximum of motor_ctrl's TPS2553 at 49.9 k
-            {"net": "+5V", "from": "J1.1", "to": ["J2.1"], "amps": 0.57},
+            {"net": "+5V", "from": "J1.1", "to": ["Q1.2"], "amps": 0.57},
+            # the rest of its arm, five boards at most (the lever arm is six) at 80 mA peak
+            {"net": "+5V_OUT", "from": "Q1.3", "to": ["J2.1"], "amps": 0.40},
             # this board: MCU ~10 mA at 48 MHz, sensor 10 mA, transceiver 17 mA dominant
             # plus ~35 mA into the bus while it drives -- 80 mA with margin
             {"net": "+5V", "from": "J1.1", "to": ["R8.1"], "amps": 0.08},
             {"net": "+5V_LDO", "from": "R8.2", "to": ["U1.1"], "amps": 0.08},
-            {"net": "+3V3", "from": "U1.5", "to": ["U3.17", "U3.5", "U2.3", "U4.13"],
+            {"net": "+3V3", "from": "U1.5", "to": ["U3.24", "U3.36", "U3.48", "U3.9", "Q3.2",
+                                                  "U4.13", "U5.10", "U6.5"],
              "amps": 0.08},
+            {"net": "+3V3_CAN", "from": "Q3.3", "to": ["U2.3"], "amps": 0.06},
         ],
         # A13 (cadkit/PCB_QUALITY.md): what the DESIGN leaves open, and how many nets each
         # repeated structure is on. The pass fails on any difference from the routed board.
@@ -817,7 +839,7 @@ BOARD_NOTES = {
             "U1.4": "the maker's NC pin",
             "U2.5": "SN65HVD230 Vref output: nothing here uses the reference",
             "U3": {
-                "pins": "6 7 8 9 10 14 15 18 23 24 25 27 28",
+                "pins": "2 3 4 10 11 12 13 18 19 21 22 25 26 27 28 29 30 31 32 33 38",
                 "why": "GPIO this board gives no function: left open, firmware leaves it an input with pull-down"
             },
             "U4": {
@@ -827,11 +849,11 @@ BOARD_NOTES = {
         },
         "net_groups": [
             {
-                "name": "bus B in and out are the same four ways",
+                "name": "bus B in and out share GND, CAN_H and CAN_L; 5 V is switched (Q1)",
                 "pins": [
-                    "J[12].[1-4]"
+                    "J[12].[2-4]"
                 ],
-                "nets": 4,
+                "nets": 3,
                 "each": 2
             },
             {
@@ -871,17 +893,25 @@ BOARD_NOTES = {
                             "5 Vref, 6 CANL, 7 CANH, 8 RS. Board: 1 CAN_TX, 2 GND, 3 +3V3, "
                             "4 CAN_RX, 5 open, 6 CAN_L, 7 CAN_H, 8 slope resistor. Re-read "
                             "2026-10-04",
-            "CH32V203G6U6": "WCH CH32V203 datasheet V2.8 table 3-1-3 (pp. 8-10), the QFN28 "
-                            "(G6) column, read off the page image because the text layer "
-                            "scrambles it: 0 VSS (the exposed pad, KiCad pad 29), 1 BOOT0 / "
-                            "PB8, 2 OSC_IN, 3 OSC_OUT, 4 NRST, 5 VDDA, 16 VSS, 17 VDD, "
-                            "19 PA10 and PA11 on ONE pin (note 7) = CAN1_RX, 20 PA12 = "
-                            "CAN1_TX, 21 PA13 = SWDIO, 22 PA14 = SWCLK, 26 PB5. Board: "
-                            "those, pin 1 to GND, pin 26 the sensor CS. Read 2026-10-04. "
-                            "SPI1 added 2026-11-03 off datasheet V3.0 table 3-1-3 (QFN28 "
-                            "column, from the JLC parts record's copy): 11 PA5 = SPI1_SCK, "
-                            "12 PA6 = SPI1_MISO, 13 PA7 = SPI1_MOSI, their default "
-                            "functions; 27 PB6 / 28 PB7 now open",
+            "CH32V203C8T6": "WCH CH32V203 datasheet V3.0 table 3-1-1, the LQFP48 column, read "
+                            "2026-11-03: 1 VBAT, 5 OSC_IN, 6 OSC_OUT, 7 NRST, 8 VSSA, 9 VDDA, "
+                            "23 / 35 / 47 VSS, 24 / 36 / 48 VDD, 14 PA4, 15-17 PA5-PA7 = "
+                            "SPI1 SCK / MISO / MOSI, 20 PB2 = BOOT1, 34 PA13 = SWDIO, 37 PA14 = "
+                            "SWCLK, 39-41 PB3-PB5, 42 PB6 = USBFS_DM, 43 PB7 = USBFS_DP, 44 "
+                            "BOOT0, 45 PB8 = CAN1_RX_2, 46 PB9 = CAN1_TX_2. Board: those; "
+                            "PB2 and the VSS pins to GND, VBAT / VDDA / VDD to +3V3, PA4 the "
+                            "sensor CS, PB3 the pair select, PB4 the transceiver supply, PB5 "
+                            "the downstream supply",
+            "TS3USB221ARSER": "TI SCDS277C table 4-1, RSE: 1 1D+, 2 1D-, 3 2D+, 4 2D-, 5 GND, "
+                              "6 OE, 7 D-, 8 D+, 9 S, 10 VCC; table 7-1 truth table. KiCad "
+                              "Texas_UQFN-10_1.5x2mm_P0.5mm (RSE0010A) numbers the same. "
+                              "Board: 1 USB_DP, 2 USB_DM, 3 TERM_H, 4 TERM_L, 5 / 6 GND, "
+                              "7 CAN_L, 8 CAN_H, 9 USB_SEL, 10 +3V3. Read 2026-11-03",
+            "LMV331IDBVR": "TI SLCS136V table 4-1, DBV: 1 IN+, 2 GND, 3 IN-, 4 OUT, 5 VCC+. "
+                           "Board: 1 BUS_VTH, 2 GND, 3 BUS_SENSE, 4 BOOT0, 5 +3V3. Read 2026-11-03",
+            "AO3401A": "AOS AO3401A, SOT-23: 1 G, 2 S, 3 D. Q1: S +5V, D +5V_OUT, G DS_GATE; "
+                       "Q3: S +3V3, D +3V3_CAN, G XCVR_EN_N",
+            "2N7002": "SOT-23: 1 G, 2 S, 3 D. Q2: G DS_EN, S GND, D DS_GATE",
             "MA730GQ-Z": "MPS MA730 datasheet rev 1.1 (8/8/2022) p.2 package reference "
                          "(top view) and p.8 pin functions: 1 SSD, 2 A, 3 Z, 4 MOSI, 5 CS, "
                          "6 B, 7 MISO, 8 GND, 9 PWM, 10 TEST, 11 MGL, 12 SCLK, 13 VDD, 14 NC, "
@@ -902,10 +932,42 @@ BOARD_NOTES = {
             "M1": "each hop is a straight PHR-4 jumper (INSTALL_NOTES, KL-6): J1 the bus "
                   "in and J2 the bus out, both in harness.PH_PINOUT order (5 V, GND, CAN_H, "
                   "CAN_L), the list motor_ctrl J2 / J6 and the leg boards are built from. "
-                  "J1 and J2 are the same four nets on this board, so in and out may be "
-                  "swapped without effect. "
+                  "Ways 2-4 are the same nets on both; way 1 of J2 is the SWITCHED 5 V for the "
+                  "next board (Q1), so IN and OUT are no longer interchangeable: J1 faces "
+                  "motor_ctrl, silk says IN / OUT. Plugged reversed, Q1's body diode still "
+                  "powers this board but the next one is no longer held dark. "
                   "The housing is polarised and a PH cannot enter an XH, so a lever lead "
                   "cannot reach a 24 V motor tee",
+            "M19": "Q1 AO3401A (P, 5 V switch): on with Vgs -5 V (Q2 pulls its gate to GND), "
+                   "Rds(on) 52 mohm max at -4.5 V (AOS Rev 3.1 p.2): 0.52 A drops 27 mV, 14 mW. "
+                   "Off in reset: R9 100k holds the gate at its source. Q3 AO3401A (P, the "
+                   "transceiver's 3V3): on with Vgs -3.3 V (PB4 low), 75 mohm max at -2.5 V: "
+                   "60 mA drops 5 mV. Off in reset: R11 holds the gate at +3V3. Q2 2N7002 (N, "
+                   "level shift): Vgs 3.3 V against Vgs(th) 2.5 V max, sinking 50 uA; R10 holds "
+                   "it off in reset. No gate sees more than 5.5 V (ratings 12 / 20 V). No "
+                   "series gate resistors: each gate is a DC level, switched once at start",
+            "M23": "the bus pair is the USB pair (user, 2026-11-03: flash every lever over its "
+                   "own bus wires). Clamps: D2 / D3 at 0.5 pF; they sit beyond SW1 rather than "
+                   "at J1 (M10). Path: J1 -> U5 (D -> 1D, S low) -> PB7 (D+) / PB6 (D-), two "
+                   "vias a line or fewer. D+ pull-up: internal to the CH32V203's USBFS, which "
+                   "WCH's ROM loader enables. No series resistors: the USBFS cell drives at "
+                   "full speed's impedance without them (WCH EVT boards fit none). Clock: the "
+                   "8 MHz crystal, 50 ppm, inside the 0.25 % FS needs. VBUS: none -- the board "
+                   "is powered from the bus's own 5 V way and presents no VBUS to the host",
+            "M43": "EXCEPTION, the user's (2026-11-03): no USB receptacle -- the board is "
+                   "loaded over its own bus wires, eleven boards inside levers and pedals. "
+                   "(a) J1's CAN_H / CAN_L ARE the USB pair: J1 -> U5 (default D = 1D) -> "
+                   "PB6 / PB7, USBFS. motor_ctrl hands an arm's pair to the Pi's USB (R2). (b) "
+                   "WCH's ROM loader, which serves USB on PA11 / PA12 or PB6 / PB7 with BOOT0 "
+                   "high (CH32V203 EVT board manual, 'WCHISPTool'). (c) BOOT0 is set by the "
+                   "bus, not by a hand: U6 reads the pair, high whenever it is not a biased CAN "
+                   "bus. A blank or broken board therefore comes up in the ROM loader as soon "
+                   "as it is powered on a pair the Pi holds as USB, and the boards before it "
+                   "power it in order (Q1, ALL 'U'): first flash, updates (also over CAN "
+                   "through the board's own loader) and recovery all from the Pi, with no "
+                   "hand on the board. The real-receptacle line is the part excepted: the "
+                   "lead is the crimped PH harness (user, as above). OPEN until a bench "
+                   "board proves the ROM loader enumerates over the pair",
             "M2": "no polarised two-pad part: D2 / D3 are bidirectional, every capacitor "
                   "is ceramic",
             "M3": "In1 is an unbroken GND plane under the whole board and B.Cu carries a "
@@ -914,44 +976,54 @@ BOARD_NOTES = {
                   "split; the regulator and every IC ground drop into the plane on their "
                   "own vias",
             "M4": "U1 (AP2112K, DS39724): asks 1 uF ceramic at IN and at OUT. C1 1 uF at "
-                  "IN behind R8; C2 1 uF at OUT plus C10 4.7 uF and four 100 nF on the same "
+                  "IN behind R8; C2 1 uF at OUT plus C10 4.7 uF and seven 100 nF on the same "
                   "rail. Nothing on this board steps current. No rating is written on a "
                   "value here because the highest rail is 5 V and the fab's 0402 parts at "
-                  "these values are 6.3 V or more; C3, the one capacitor that can see a "
-                  "hot-plug ring (about 10 V), is called out as a 16 V part",
-            "M5": "+5V bus: C3 (16 V), R8 and the connector only. +5V_LDO: U1, absolute "
-                  "maximum 6.5 V, behind R8 (M16). +3V3: MCU 3.6 V max operating, sensor "
-                  "3.3-5 V, transceiver 3.6 V. CAN pins: the SN65HVD230 stands -4..16 V "
-                  "and the bus supply is 5 V, so no fault on this bus exceeds it; D2 / D3 "
-                  "clamp ESD. R4 carries 17 mA: 34 mW, and 75 mW with the bus held dominant at 3 V, in an 0402 rated "
-                  "100 mW (ERJ2RKF1200X; the house 0402 is 62 mW and was not used). R8 carries "
-                  "80 mA: 14 mW",
-            "M6": "nothing fast: CAN at 1 Mbit/s with slope control, SPI to the sensor at "
-                  "a few MHz over about 12 mm (the part takes 25), an "
-                  "8 MHz crystal 3.4 and 5.5 mm from its pins",
+                  "these values are 6.3 V or more; C3 and C16, the capacitors that can see a "
+                  "hot-plug ring (about 10 V), are called out as 16 V parts",
+            "M5": "+5V bus: C3 (16 V), R8, Q1 (VDS 30 V) and R9 only; +5V_OUT: Q1, C16 (16 V) "
+                  "and J2. +5V_LDO: U1, absolute maximum 6.5 V, behind R8 (M16). +3V3: MCU "
+                  "3.6 V max operating, sensor 3.3-5 V, transceiver 3.6 V, U5 4.6 V, U6 5.5 V. "
+                  "CAN pins: the SN65HVD230 stands -4..16 V and the bus supply is 5 V, so no "
+                  "fault on this bus exceeds it; U5's I/O 7 V (5.5 V operating); U6's input "
+                  "sees 0.32 of CAN_H through 1M (2.5 V for bus B's 7.8 V transient, against "
+                  "its 3.3 V); PB6 / PB7 see the pair only in USB mode (elec/voltage_check.py); "
+                  "D2 / D3 clamp ESD. R4 carries 17 mA: 34 mW, and 75 mW with the bus held "
+                  "dominant at 3 V, in an 0402 rated 100 mW (ERJ2RKF1200X; the house 0402 is "
+                  "62 mW and was not used). R8 carries 80 mA: 14 mW",
+            "M6": "full-speed USB (12 Mbit/s) on the bus pair, in USB mode only: the harness "
+                  "eye is simulated (docs/lever-usb-flash.md), on the board the pair is under "
+                  "15 mm. CAN at 1 Mbit/s with slope control, SPI to the sensor at a few MHz "
+                  "over about 20 mm (the part takes 25), an 8 MHz crystal beside its pins",
             "M7": "U1: EN tied to IN, fixed 3.3 V part. U2 (SLOS346): RS through 10 k to "
                   "GND = slope control; Vref left open, as the sheet allows. U4 (MA730 "
                   "rev 1.1 p.8, p.11): TEST and the pad to GND, NC open, 100 nF at VDD, "
                   "SPI mode detected by the part. U3: 8 MHz crystal on OSC_IN / OSC_OUT (M24), "
-                  "100 nF on NRST, VDDA and VDD on the same rail with a capacitor each",
-            "M8": "BOOT0 (pin 1) hard to GND: the board is programmed over SWD only. NRST: "
-                  "the MCU's internal pull-up and C7. U1 EN: tied to IN. U2 RS: R3 to GND. "
-                  "U4 CS: SENS_CSN is an MCU output and floats until firmware drives "
-                  "it; the sensor's own pull-up holds it high (deselected) until then",
+                  "100 nF on NRST, VDDA and each VDD pair with a capacitor, VBAT on +3V3, "
+                  "BOOT1 to GND. U5 (SCDS277C): 100 nF at VCC, OE low, S pulled to its "
+                  "default. U6 (SLCS136V): open-drain output with its pull-up (R17), 100 nF at "
+                  "VCC, both inputs inside 0..VCC",
+            "M8": "BOOT0 (pin 44): R17 10k up, U6's open drain down -- low (the application) "
+                  "whenever the pair is a biased CAN bus, high (WCH's ROM loader) when it is "
+                  "held low by a USB host or floats (R14). BOOT1 / PB2: tied to GND. NRST: the "
+                  "MCU's internal pull-up and C7. U1 EN: tied to IN. U2 RS: R3 to GND. U5 S: "
+                  "R12 down (USB) until PB3; OE tied low. Q1 off (R9 up, Q2 held off by R10), "
+                  "Q3 off (R11 up) until firmware. U4 CS: the sensor's own pull-up holds it "
+                  "high (deselected) until PA4 drives it",
             "M9": "SWD on bare 1 mm pads in a row on the magnet face, each with its name "
-                  "beside it at 1.0 mm: DIO, CLK, GND, and RST by the connector. No 3V3 "
+                  "beside it at 1.0 mm: DIO, CLK, GND, and RST beside the crystal. No 3V3 "
                   "pad: the rail is probed on C10 or C2, and the board reports itself "
-                  "over CAN once it runs",
-            "M10": "CAN_H / CAN_L: D2 / D3 (ESD5B5.0ST1G, bidirectional) from each line to "
-                   "GND. They sit about 8 mm PAST the transceiver's bus pins, beyond the terminator switch, not at J1: the "
-                   "only strip beside the connector tails is 1.16 mm wide and holds the two "
-                   "bypass capacitors. Accepted because the transceiver's bus pins are "
-                   "themselves rated 16 kV HBM and the fault this pair was first fitted "
-                   "for (24 V swept onto the bus by a plug) cannot happen on a 5 V bus. "
-                   "Reverse polarity: one polarised housing. Over-current: the bus is "
-                   "limited to 0.52 A by motor_ctrl's U6",
+                  "over CAN once it runs. The pads are the last resort (M43): firmware goes in "
+                  "over the bus pair as USB",
+            "M10": "CAN_H / CAN_L: D2 / D3 (LESD5L5.0CT1G, bidirectional, 0.5 pF so the pair "
+                   "still carries full-speed USB) from each line to GND, beyond the terminator "
+                   "switch, not at J1: the strip beside the connector tails holds the "
+                   "connector-side parts. Accepted because the transceiver's bus pins are "
+                   "themselves rated 16 kV HBM, U5's I/O 12 kV HBM, and no fault on this 5 V bus "
+                   "reaches 24 V. Reverse polarity: one polarised housing. Over-current: the "
+                   "bus is limited to 0.52 A by motor_ctrl's U6",
             "M15": "AP2112K is ceramic-stable from 1 uF. Effective output capacitance at "
-                   "3.3 V of bias is about 0.6 uF (C2) + 2.5 uF (C10) + 0.3 uF (the four "
+                   "3.3 V of bias is about 0.6 uF (C2) + 2.5 uF (C10) + 0.7 uF (the seven "
                    "100 nF): over 3 uF. Headroom: 5 V less 0.3 V of harness less 0.18 V "
                    "in R8 is 4.5 V at the pin, against 3.3 V + 0.25 V of dropout. It "
                    "dissipates 1.2 V x 80 mA = 0.1 W at most",
@@ -961,16 +1033,20 @@ BOARD_NOTES = {
                    "into 1 uF has a damping ratio near 0.2 without it (a ring to about "
                    "7.6 V against 6.5 V absolute maximum) and about 0.9 with it. C3 on the "
                    "bus side rings freely and is a 16 V part with nothing else on its net",
-            "M18": "every board on bus B takes its 5 V from the same switch, so they rise "
-                   "and fall together; a board left unplugged presents no supply and the "
-                   "SN65HVD230's bus pins are high-impedance unpowered (SLOS346). An SWD "
-                   "probe is the one outside driver and is connected with the board "
-                   "powered",
+            "M18": "the first board takes its 5 V from motor_ctrl's switch and each one after "
+                   "from the board before it (Q1), so a board is never powered while its "
+                   "neighbour drives its pins: an unpowered board's SN65HVD230 bus pins are "
+                   "high-impedance (SLOS346), U5's I/O leak 2 uA (Ioff), U6's input arrives "
+                   "through 1M. On a powered board the transceiver itself is unpowered until "
+                   "firmware (Q3), and PB8 / PB9 are inputs while it is. An SWD probe is the one "
+                   "outside driver and is connected with the board powered",
             "M20": "SPI to the sensor: push-pull both ways, no pull-ups; CS idles high on "
                    "the part's own pull-up. "
-                   "CAN: R4 120 ohm behind SW1, ON only on the board at each far end "
-                   "of bus B (two in all; the controller sits mid-bus and carries "
-                   "none). This board's stub from J1 to the transceiver is about 15 mm",
+                   "CAN: R4 120 ohm behind SW1, reached through U5's 2D port (6 ohm), ON only "
+                   "on the board at each far end of bus B (two in all; the controller sits "
+                   "mid-bus and carries none). In USB mode U5 lets go of it, so an end board "
+                   "can be flashed. USB: unterminated at full speed, as the standard has it; "
+                   "the FS eye over the harness is simulated in docs/lever-usb-flash.md",
             "M21": "the sensor's ground pin drops into the In1 plane on its own via, its pad "
                    "and TEST reach that pin on F.Cu, C11 is 0.9 mm from its supply pin, and the only regulator is "
                    "linear -- chosen for that, in place of the buck that stood 15 mm "
@@ -984,21 +1060,23 @@ BOARD_NOTES = {
                    "purpose: a 0.3 mm barrel would take most of that 1.70 mm pad's paste "
                    "(A14), so it is joined to pin 8 on its own layer and pin 8's via "
                    "carries its ground. Neither needs the pad for heat",
-            "M26": "CAN_TX: MCU pin 20 (PA12, CAN1_TX) to U2 pin 1, D, the driver input. "
-                   "CAN_RX: U2 pin 4, R, the receiver output, to MCU pin 19 (PA11, "
-                   "CAN1_RX). SPI1: MCU pin 11 (PA5, SCK) to the sensor's 12 (SCLK), 12 (PA6, MISO) "
-                   "to its 7 (MISO, the sensor's output), 13 (PA7, MOSI) to its 4 (MOSI); "
-                   "PB5 (26) to its 5 (CS)",
-            "M27": "BOOT0: tied to GND, nothing else on the pin (the package shares it "
-                   "with PB8, which is therefore unused). SWDIO / SWCLK: a test pad each, "
-                   "nothing else. NRST: C7 and a test pad. Pin 19 is PA10 and PA11 bonded "
-                   "together (datasheet note 7): it is CAN1_RX here and firmware must "
-                   "leave PA10 an input",
-            "M28": "CH32V203G6U6 is the QFN28 'G6' column of table 3-1-3, not the QSOP28 "
-                   "G8 one (different numbering). MA730GQ-Z is the QFN-16 on tape and reel "
-                   "(-Z), the only package it comes in. AP2112K-3.3TRG1 is the SOT-25 part and SN65HVD230DR "
-                   "the SOIC-8. Each read against the footprint "
-                   "the board places (quality.pinouts)",
+            "M26": "CAN_TX: MCU pin 46 (PB9, CAN1_TX remap 1) to U2 pin 1, D, the driver "
+                   "input. CAN_RX: U2 pin 4, R, the receiver output, to MCU pin 45 (PB8, "
+                   "CAN1_RX remap 1). SPI1: MCU pin 15 (PA5, SCK) to the sensor's 12 (SCLK), "
+                   "16 (PA6, MISO) to its 7 (MISO, the sensor's output), 17 (PA7, MOSI) to its "
+                   "4 (MOSI); PA4 (14) to its 5 (CS). USB: U5 1D+ to PB7 (USBFS_DP, 43), 1D- "
+                   "to PB6 (USBFS_DM, 42); CAN_H is D+, CAN_L is D-",
+            "M27": "BOOT0 (44): U6's output and R17, nothing else. BOOT1 (PB2, 20): GND only, "
+                   "so firmware never drives PB2. SWDIO / SWCLK: a test pad each, nothing else. "
+                   "NRST: C7 and a test pad. PA11 / PA12 (the USBD pins the ROM loader may also "
+                   "open) are left unconnected, so it can enable them harmlessly",
+            "M28": "CH32V203C8T6 is the LQFP48 column of table 3-1-1 (shared with QFN48X7), "
+                   "not the LQFP32 or QFN32 ones beside it. TS3USB221ARSER is the RSE UQFN-10 "
+                   "(table 4-1) and the A part (5.5 V tolerant I/O), not the TS3USB221. "
+                   "LMV331IDBVR is the DBV SOT-23-5 column. MA730GQ-Z is the QFN-16 on tape "
+                   "and reel (-Z), the only package it comes in. AP2112K-3.3TRG1 is the SOT-25 "
+                   "part and SN65HVD230DR the SOIC-8. Each read against the footprint the "
+                   "board places (quality.pinouts)",
             "M31": "no polarised two-pad part to mark. Each IC's pin-1 mark is the KiCad "
                    "footprint's own silk, outside the body; J1, J2 and the four SWD pads are "
                    "named in silk at 1.0 mm; the terminator switch says TERM; the pinout "
@@ -1009,16 +1087,16 @@ BOARD_NOTES = {
             "M32": "J1 and J2 are JST PH, 2.0 mm, the family the lever harness is crimped in "
                    "(harness.PH_PINOUT). PH contacts are rated 2 A; the most this bus can "
                    "deliver is 0.57 A",
-            "M33": "5 V in: MCU about 10 mA, sensor 10 mA, transceiver 17 mA dominant "
-                   "plus about 35 mA into the bus while it transmits: 25 mA idle, 75 mA "
-                   "peak, through a 600 mA regulator. Bus B: eleven boards idle at 25 mA "
-                   "and one transmitting is about 0.33 A against U6's 0.475 A minimum "
-                   "limit",
+            "M33": "5 V in: MCU about 15 mA, sensor 12 mA, transceiver 17 mA dominant "
+                   "plus about 35 mA into the bus while it transmits, switch and comparator "
+                   "under 0.1 mA: 30 mA idle, 80 mA peak, through a 600 mA regulator. Bus B: "
+                   "eleven boards idle at 30 mA and one transmitting is about 0.38 A against "
+                   "motor_ctrl U6's 0.475 A minimum limit",
             "M34": "CAN_TX / CAN_RX, SPI and SWD are all 3.3 V at both ends. The sensor "
                    "runs from 3.3 V, so its outputs cannot exceed the MCU's rail",
-            "M36": "the pass-through J1 -> J2 is the bus itself: limited upstream to "
-                   "0.52 A by motor_ctrl's U6, carried here on 0.4 mm copper and 2 A "
-                   "contacts. This board adds no source",
+            "M36": "the downstream 5 V (J2.1) is the bus itself through Q1: limited "
+                   "upstream to 0.52 A by motor_ctrl's U6, carried on 0.4 mm copper, 2 A "
+                   "contacts and a 4 A FET. This board adds no source",
             "M38": "the board is held by printed grooves on its two long edges; every "
                    "part stands at least 1.85 mm in from them (groove_keepout_x). J1 "
                    "and J2 take plug force on their four through-hole joints each. Every "
@@ -1028,9 +1106,10 @@ BOARD_NOTES = {
                    "PB8 is grounded with BOOT0. U4: SSD, A, B, Z, PWM, MGL, MGH are outputs, "
                    "left open; SSCK has its own pull-down; NC is open; TEST is grounded. U2 Vref: an output, open. U1 pin 4: NC",
             "M40": "the generator carries the record beside each value: the crystal and "
-                   "its capacitors (M24), R8 (M16), the 0.50 / 0.25 via the MCU's fan "
-                   "needs, the row of SWD pads, the capacitor at each supply pin, and "
-                   "the MCU rotation (measured, not chosen)",
+                   "its capacitors (M24), R8 (M16), the BOOT0 detector's divider and why "
+                   "it is 1M / 470k (U6), the pair switch's default (USB), the 0.50 / 0.25 "
+                   "via, the row of SWD pads, the capacitor at each supply pin, and the "
+                   "MCU's turn (so its bus pins face the bus parts)",
         },
     },
 }

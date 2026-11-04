@@ -50,6 +50,7 @@ int main(void)
     l.mode = 1;
     ldr_init(&b, flash, hw_erase, hw_write, l.cfg.slot);
     uint8_t slot = l.cfg.slot;
+    hw_bus_init();
     filter_ids(slot, ids);
     hw_can_init(ids);
 
@@ -63,6 +64,7 @@ int main(void)
             else if (l.reply_n) l.reply.d[1] = 0;
         }
         l.want_loader = l.want_thresh = 0;          /* here already; no sensor to set */
+        if (l.want_release) hw_release(l.want_release);
         if (l.cfg.slot != slot) {
             slot = b.slot = l.cfg.slot;
             filter_ids(slot, ids); hw_can_filter(ids);

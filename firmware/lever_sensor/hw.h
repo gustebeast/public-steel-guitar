@@ -1,7 +1,8 @@
 #ifndef HW_H
 #define HW_H
 /* The lever board's hardware, shared by the application (main.c) and the loader (boot.c):
- * the clock, CAN1 on PA11 / PA12, the flash, the unique id. Board facts in main.c's header. */
+ * the clock, the bus pair and the next board's power, CAN1 on PB8 / PB9 (remap 1), the flash,
+ * the unique id. Board facts in main.c's header. */
 #include "ch32v20x.h"
 #include "lever.h"
 
@@ -13,6 +14,8 @@
 
 void clock_init(void);
 uint32_t now_us(void);
+void hw_bus_init(void);                     /* transceiver on, pair to CAN, next board on */
+void hw_release(uint16_t ms);               /* LC_RELEASE: never returns */
 void hw_can_init(const uint16_t ids[4]);    /* the 4 standard ids the filter lets in */
 void hw_can_filter(const uint16_t ids[4]);
 int hw_mailbox_free(void);

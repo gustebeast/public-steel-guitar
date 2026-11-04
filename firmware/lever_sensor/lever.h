@@ -18,7 +18,14 @@
  *   0x300+slot  CMD    Pi -> board  op u8 then arguments (LC_*)
  *   0x380+slot  REPLY  board -> Pi  op u8, ok u8
  *   0x7F1       ALL    Pi -> every  'I': every board sends HELLO; 'S' uid u32 LE, slot u8: the
- *                                   board with that uid takes the slot and stores it
+ *                                   board with that uid takes the slot and stores it;
+ *                                   'U' ms u16 LE: RELEASE THE PAIR for a first flash over USB
+ *                                   (elec/lever_sensor.py): every board turns its transceiver
+ *                                   off and lets go of CAN_H / CAN_L, cuts the next board's 5 V
+ *                                   at once and gives it back ms later, then waits, silent, for
+ *                                   the power cycle. No reply: its transceiver is off. The next
+ *                                   board then starts on a pair the Pi holds as USB, so it comes
+ *                                   up in WCH's ROM loader (BOOT0 is set by the bus).
  *   29-bit 0x1E000000 | uid & 0xFFFFFF  HELLO  board -> Pi
  *                                   uid u32 LE, slot u8 (0xFF none), version u8, mode u8
  *                                   (0 application, 1 loader), status u8. At start, on 'I', and
@@ -69,6 +76,7 @@
 #define LC_THRESH  'T'                      /* mglt u8, mght u8: MA730 register 6 (non-volatile) */
 #define LC_HELLO   'I'
 #define LC_LOADER  'B'                      /* restart in the CAN loader, if there is one */
+#define LC_RELEASE 'U'                      /* ALL only: ms u16, see the table above */
 
 typedef struct {
     uint32_t magic;                         /* CFG_MAGIC */
@@ -99,6 +107,7 @@ typedef struct {
     lever_frame_t reply;
     /* for main.c to act on, then clear */
     uint8_t want_save, want_loader, want_thresh;
+    uint16_t want_release;                  /* ms (1 or more): LC_RELEASE heard */
 } lever_t;
 
 uint32_t lever_crc32(const void *p, uint32_t n);

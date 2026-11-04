@@ -2,10 +2,11 @@
  * out on bus B as CAN frames (the ids are in lever.h). It runs at APP_AT, under the CAN loader
  * (boot.c, ldr.h), which is how it is updated: CMD 'B' sends the board there.
  *
- * Board (elec/lever_sensor.py): CH32V203G6U6 (32 K flash, 10 K RAM), 8 MHz crystal, run at
- * 48 MHz. CAN1 on PA11 (RX) / PA12 (TX), the only pins this package gives it. Two rules from WCH's
- * datasheet table 3-1-3: PB8 is BOOT0's pin, tied to GND, so it is never an output; PA10 is the
- * same pin as PA11, so it is never an output either.
+ * Board (elec/lever_sensor.py): CH32V203C8T6 (64 K flash, 20 K RAM; the link scripts still
+ * use the G6's 32 K / 10 K), 8 MHz crystal, run at 48 MHz. CAN1 on remap 1, PB8 (RX) / PB9
+ * (TX); USBFS (PB6 / PB7) is wired to the bus pair for WCH's ROM loader and unused here. PB2 is
+ * BOOT1, tied to GND: never an output. hw_bus_init takes the pair for CAN and powers the next
+ * board; ALL 'U' (LC_RELEASE) gives the pair back for a first flash over USB.
  *
  * No interrupts: one loop reads the sensor, takes frames from the controller's FIFO and gives
  * it frames, and feeds the watchdog. Calibration and slot live in the last 256-byte page of
@@ -54,6 +55,7 @@ int main(void)
     ma730_init();
     lever_init(&l, (const lever_cfg_t *)(FLASH_BASE + CFG_AT_OFF), hw_uid(), now_us());
     if (l.cfg.mglt != 0xFF) ma730_thresholds(l.cfg.mglt, l.cfg.mght);
+    hw_bus_init();
     filter_ids(l.cfg.slot, ids);
     hw_can_init(ids);
 
@@ -82,6 +84,7 @@ int main(void)
             else if (l.reply_n) l.reply.d[1] = 0;
         }
         if (l.want_loader) to_loader(&l);
+        if (l.want_release) hw_release(l.want_release);
         if (l.cfg.slot != slot) { slot = l.cfg.slot; filter_ids(slot, ids); hw_can_filter(ids); }
         while (hw_mailbox_free() && lever_poll(&l, now_us(), &f)) hw_can_send(&f);
     }

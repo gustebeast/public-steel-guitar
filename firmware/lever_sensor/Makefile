@@ -67,7 +67,7 @@ $(B)/v/startup_m.S: $(EXAM)/SRC/Startup/startup_ch32v20x_D6.S | $(B)/v
 $(B)/startup_m.o: $(B)/v/startup_m.S
 	$(CROSS)gcc $(CFLAGS) -c $< -o $@
 
-# CH32V203G6: 32 K flash, 10 K RAM. The loader below APP_AT, the application from it to the
+# CH32V203G6: 32 K flash, 10 K RAM (the C8T6 since 2026-11-03 has 64 K / 20 K; the map stays). The loader below APP_AT, the application from it to the
 # loader's record page (ldr.h); both programs' RAM stops 16 short of the top, where BOOT_WORDS
 # live through a reset. WCH's file is written for the 64 K parts.
 RAM := -e 's/RAM (xrw) : ORIGIN = 0x20000000, LENGTH = 20K/RAM (xrw) : ORIGIN = 0x20000000, LENGTH = 10224/'

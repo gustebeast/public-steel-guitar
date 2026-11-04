@@ -165,6 +165,15 @@ SEEDS = {
         "+5V": ("from", "motor_ctrl", "+5V_BUSB", "bus B's 5 V from motor_ctrl J2 / J6, behind its switch"),
         "+3V3": ("ldo", "U1", "AP2112K-3.3: 3.3 V +1.5 %; +3 % transient"),
         "CAN_H": ("abs", CAN_B), "CAN_L": ("abs", CAN_B),
+        "+5V_OUT": ("like", "+5V", 0.0, "the next board's 5 V: +5V through Q1"),
+        "+3V3_CAN": ("like", "+3V3", 0.0, "the transceiver's 3V3: +3V3 through Q3"),
+        # U5 joins the pair to PB6 / PB7 only with S low, which is USB mode: the pair is then a
+        # USB pair (3.6 V at most) and the transceiver is unpowered. In CAN mode 1D is open.
+        # A wire shorted to the 5 V way while it is USB is the fault case (PB6 / PB7 are FT).
+        "USB_DP": ("abs", dict(v=3.6, vt=3.6, vf=5.0, why="USBFS D+ through U5 (VOH 3.6 V max, USB 2.0 7.1.1), joined only in USB "
+                                                        "mode; 5 V only with a harness fault")),
+        "USB_DM": ("abs", dict(v=3.6, vt=3.6, vf=5.0, why="USBFS D- through U5, joined only in USB "
+                                                        "mode; 5 V only with a harness fault")),
     },
     **{leg: {
         "+5V": ("from", "motor_ctrl", "+5V_BUSB", "bus B's 5 V from motor_ctrl J2 / J6, behind its switch"),

@@ -168,6 +168,10 @@ void lever_rx(lever_t *l, const lever_frame_t *in)
     const uint8_t *d = in->d;
     if (in->id == ID_ALL) {
         if (d[0] == LC_HELLO) l->hello_now = 1;
+        if (d[0] == LC_RELEASE && in->len >= 3) {
+            uint16_t ms = (uint16_t)(d[1] | d[2] << 8);
+            l->want_release = ms ? ms : 1;
+        }
         uint32_t uid = d[1] | (uint32_t)d[2] << 8 | (uint32_t)d[3] << 16 | (uint32_t)d[4] << 24;
         if (d[0] == LC_SLOT && in->len >= 6 && uid == l->uid && (d[5] < SLOTS || d[5] == SLOT_NONE)) {
             l->cfg.slot = d[5]; changed(l);
