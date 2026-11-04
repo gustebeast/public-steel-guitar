@@ -155,6 +155,17 @@ SEEDS = {
                     {"vf": PARTS["C83333"]["vc"]}),
         "CANA_H": ("abs", CAN_A), "CANA_L": ("abs", CAN_A),
         "CANB_H": ("abs", CAN_B), "CANB_L": ("abs", CAN_B),
+        # R2: each bus B arm on its own pair, behind U9 / U10 (lever flashing)
+        "PED_H": ("abs", CAN_B), "PED_L": ("abs", CAN_B),
+        "LEV_H": ("abs", CAN_B), "LEV_L": ("abs", CAN_B),
+        # ...and the flash lane. U9 / U10 join an arm to it only with S high, which is USB mode:
+        # every node on that arm has released the pair (lever.h LC_RELEASE: transceiver supply
+        # off, PB8 / PB9 floating) and U3 is on the open 1D side, so the lane carries USB
+        # levels. 5 V only with a harness fault (the 5 V way onto a data way) during a flash.
+        "FLASH_DP": ("abs", dict(v=3.6, vt=3.6, vf=5.0, why="the flash lane's D+, joined to an arm only in USB mode "
+                                                          "(U9 / U10 S high); 5 V only with a harness fault")),
+        "FLASH_DM": ("abs", dict(v=3.6, vt=3.6, vf=5.0, why="the flash lane's D-, joined to an arm only in USB mode "
+                                                          "(U9 / U10 S high); 5 V only with a harness fault")),
         "PWR_SW_UP": ("from", "output_panel", "SW_SENSE", "the power button's throw, from output_panel"),
         "PWR_SW_DN": ("from", "output_panel", "SW_SENSE", "the power button's throw, from output_panel"),
         "VBUS_NC": ("abs", dict(v=5.25, vt=5.5, why="USB VBUS on the lead from the Pi; lands on a lone pad")),
@@ -280,6 +291,14 @@ REVIEW_NOTES = {
         ("U6", "FAULT"): "Single fault, by design: U5 shorted, D9 holds the 5 V rail at up to 9.2 V while F1 clears. "
                          "That is above this switch's 7 V and above whatever the Pi accepts on its 5 V pins.",
         ("U4", "FAULT"): "Same event as U6, seen through R18/R19: microamps into the pin.",
+        ("U11", "FAULT"): "The same event as U6: U11 is U6's twin on the lever arm (R2).",
+        ("U7", "FAULT"): "Not a path: the 5 V is the flash lane's harness fault (an arm's 5 V way onto a data way "
+                         "during a flash), and U8 never joins its 1D (U7) to its 2D (the lane). The checker passes "
+                         "a voltage through every side of a switch at once.",
+        ("U9", "SUSPECT"): "The 7.8 V is the ESD5B5.0 clamps' breakdown during an ESD discharge, nanoseconds long, "
+                           "the event SCDS277C s5.2 rates this I/O for (12 kV HBM); 7 V is a DC figure. Bus B's "
+                           "nodes are 3.3 V transceivers; the 5 V steady is CAN_B's conservative figure.",
+        ("U10", "SUSPECT"): "As U9: the clamps' ESD breakdown against a DC rating; bus B is 3.3 V transceivers.",
     },
     "output_panel": {
         ("D5", "SUSPECT"): "Only with the 5 V rail at the top of its tolerance AND the buffer clipped to the rail. Ignore.",
