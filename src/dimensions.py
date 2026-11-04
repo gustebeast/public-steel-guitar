@@ -1129,9 +1129,13 @@ def floor_block_y(station_x: float) -> tuple:
     if hys:
         lo.append(min(hys) - hs_half)
         hi.append(max(hys) + hs_half)
-    # (The standing motor board's floor port was a third family while a 70 mm motor pushed
-    # the board out over the -Y foot. The measured 53.4 one put it 15 clear of the feet, and
-    # the mortises only run over the feet there: the family stopped changing any run, 2026-10-20.)
+    # THE STANDING MOTOR BOARD'S GUIDES are the third family: they stand on the floor at the keyhead
+    # end, and since the keyhead grew -X (2026-11-03) the -X feet no longer run under them, so a
+    # full-length mortise would take their floor away.
+    mc_half = MIN_WALL_2P + LEVER_MORT_W / 2
+    if MCTRL_X[0] - mc_half < station_x < MCTRL_X[1] + mc_half:
+        lo.append(MCTRL_Y0 - MCTRL_FIT - 3 * BEAD - MIN_WALL_2P)    # the -Y channel's back wall
+        hi.append(MCTRL_Y1 + MIN_WALL_2P)
     return (min(lo), max(hi)) if lo else None
 MORT_FULL_Y1 = RAIL_HI_INNER_Y + WALL_THICKNESS + 1.0     # out past the +Y rail's outer face
 

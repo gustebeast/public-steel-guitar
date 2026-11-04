@@ -1263,25 +1263,39 @@ Plug a USB device in (an audio interface such as a Shure MVX2U) and the board po
 - **Where:** every string, `nut_wrap_rod`, `nut_plate_*` (or the printed stand-in), the M4 x 40 height
   screws under the keyhead and the M4 x 10 side screws in its -X face.
 - **Do, for each string:**
-  1. Back the string's height screw right off with the 2.5 key, from under the keyhead, so the plate drops
-     14.8 mm. Back its side screw off a few turns too.
-  2. Bring the string in over the crown and over the **top** of the rod, then down the -X side, under the
-     rod, up the +X side and over the top again. That is **one** wrap: the second pass lies on the **-Y**
-     side of the first and never on top of it.
+  1. Back the string's height screw off **5 turns** with the 2.5 key, from under the keyhead (the plate
+     drops about 3.5 mm). Back its side screw off a few turns too.
+  2. Bring the string in over the crown and over the **top** of the rod, then push the end down the -X
+     side and on under the rod: the plate's curved RAMP turns it and it comes up the +X side by itself.
+     Take it over the top again. That is **one** wrap: the second pass lies on the **-Y** side of the first
+     and never on top of it. (The printed stand-in has the same ramp, but plastic does not let a string
+     slide well: if the end jams, back the screw right off, which drops the plate 14.8 mm and clears the
+     rod by a long way.)
   3. Let the tail drop straight down the -X side of the rod, into the slot behind the plate.
-  4. Hold the string tight with pliers and tighten the height screw until the plate's shelf pinches the
-     strand under the rod. Snug, not cranked: this sets the string's height.
-  5. Cut the tail about 20 mm below the rod and push it down to the bottom of its slot.
-  6. Push the tail down tight with pliers and tighten the side screw (2.5 key, -X face) until it pins the
-     tail against the plate. Use the key's ball end: it is enough, and it cannot overload the heat-set.
-  7. Bring the string to pitch. After the strings settle (a day or two), re-snug both screws once.
+  4. Hold the string tight with pliers and run the height screw up until the plate stops rising (the
+     shelf meets the strand under the rod: the screw goes from free to stopped). Stop there, at LIGHT
+     force (fingertips on the key's short arm). This screw only SETS THE HEIGHT; cranking it can flatten
+     a wound string's wrap and read it as a thinner string. The side screw does the holding.
+  5. Slide the tail down its slot, past the plier window (the wide slot across the -X face, below the
+     side screws), until it stops on the slot's floor.
+  6. Mark the tail level with the window's TOP edge. Pull it back out and cut it **20 mm below the mark**.
+  7. Put it back. It now ends about 8 mm under the window, with about 17 mm of slot below it to be pulled
+     down into.
+  8. Grip the tail in the window with pliers and pull it down firmly. Holding it there, tighten the side
+     screw (2.5 key, -X face) until it pins the tail against the plate. Use the key's ball end: it is
+     enough, and it cannot overload the heat-set.
+  9. Bring the string to pitch. After the strings settle (a day or two), re-snug both screws once.
 - **Why:** with one wrap only one strand ever crosses under the rod, so the plate can only stop on one
   string diameter and the height comes out right. The wrap leaves about 97 N at the shelf (friction 0.15);
   the shelf pinch and the side screw share it, both steel on steel.
-- **Side-screw heat-sets:** press each M4 insert in from the -X face only until it is FLUSH. There is no
-  floor behind it: it opens straight into the tail slot, so pushing past flush drops it into the slot.
-- **Screw heads:** the side screws' heads stand 1-3 mm proud of the keyhead's -X face, by gauge.
-- ⚠ **Not tried yet.** Threading under the rod with a stiff .080 in a 4.4 mm slot is still unproven.
+- **Side-screw heat-sets:** each sits at the floor of an Ø8.4 recess in the -X face. Press the M4 insert
+  in through the recess until it is flush with the recess floor; a printed bore runs on behind it to the
+  tail slot.
+- **Screw heads:** each side screw's head sits inside its recess, below the -X face, for every gauge
+  through a .080. Tightened on the lightest string it stands 0.5 clear of the recess floor.
+- **Gauges:** every pocket is the same 4.4 mm (no wider slot for string 10). String 10's single wrap of a
+  .070 fills it with about 0.2 either side; a .080 does not fit there now.
+- ⚠ **Not tried yet.** Threading under the rod in a 4.4 mm slot is still unproven for the heavy strings.
 
 ## Two-filament prints: one file, a filament per part (2026-11-03)
 

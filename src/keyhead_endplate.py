@@ -157,6 +157,7 @@ def _build():
     # where the tip pins the tail to its plate (nut_block.side_screw_negatives).
     w = w.cut(NB.all_side_screw_negatives().translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))
     w = w.cut(NB.lanes().translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))
+    w = w.cut(NB.plier_window().translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))
     w = w.cut(NB.rod_bore().translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))
     # THE KEY'S WAY OUT TO THE +Y FACE: the rod's in the plate now, so its push hole runs on to the skin.
     w = w.cut(teardrop_hole(NB.ROD_PUSH_D, YFH - NB.ROD_Y1 + 1.0,

@@ -248,13 +248,27 @@ PLATE_X0 = ROD_X - ROD_D / 2.0                  # -15.2: the -X face, on the rod
                                                 # so the tail drops off the rod straight onto it
 PLATE_X1 = DOWEL_X + CROWN_R                    # the arm's +X face, tangent to the crown
 ARM_X0 = DOWEL_X - CROWN_R                      # the arm's -X face
-PLATE_FILLET = 0.5                              # the arm/shelf inside corner: a laser does not cut sharp
-# WHERE THE PLATE SITS IN Y, about the string's own Y. The crown has to be under the string (y 0),
-# the shelf under the strand it pinches (_bottom_y_g, -1.04 on the .070) and the -X face behind the
-# tail (-_adv_g, -2.43 on the .070, -2.77 on a .080); and the coil's +Y edge, where the string
-# arrives, has to clear the finger. -1.0 meets all four (asserted below).
-PLATE_YC = -1.0
+# THE RAMP (user): the shelf/arm inside corner is a quarter circle, tangent to the shelf right under the
+# rod and to the arm's -X face. Threading, a string pushed under the rod slides round it and comes up the
+# +X side on its own -- so restringing only drops the plate the threading gap, not the whole way. Its
+# centre is straight over the rod's, so it meets the wound strand only where the shelf pinches it, and
+# opens away from it from there (asserted below, for the heaviest gauge).
+RAMP_R = ARM_X0 - ROD_X                         # 10.05
+
+
+def _ramp_gap(phi: float, g: float, arm_x0: float = ARM_X0) -> float:
+    """Clearance from a clamped strand of gauge g (round the rod) to the ramp, phi from its bottom."""
+    r = arm_x0 - ROD_X
+    rs = ROD_D / 2.0 + g                        # the strand's outside, about the rod's centre
+    d = r - rs                                  # ramp centre above the rod's
+    return math.sqrt(r * r + d * d - 2 * r * d * math.cos(phi)) - rs
+
+
+assert RAMP_R < CROWN_OFF, "the ramp runs past the arm into the crown"
+assert all(_ramp_gap(math.radians(a), G_ENVELOPE) > 0.0 for a in range(5, 91, 5)), "the ramp meets the wind"
 PLATE_CLR = 0.2                                 # Y slip fit, each side, in the pocket
+COIL_AIR = 0.2                                  # the coil to the pocket wall, either side: the aim
+COIL_AIR_MIN = 0.15                             # ... and the least accepted
 PLATE_CLR_X = 0.15                              # +X: the wall in front of the arm is what is left
                                                 # of X_FRONT, and it has to stay a bead (asserted)
 POCKET_X1 = PLATE_X1 + PLATE_CLR_X
@@ -268,9 +282,31 @@ def shelf_z(i: int) -> float:
     return ROD_Z - ROD_D / 2 - D.STRING_GAUGE[i]
 
 
+# WHERE THE PLATE SITS IN Y, about the string's own Y (user: the string on the plate's middle, every
+# pocket and finger the same). The crown is under the string's centre only if the wrap allows: it walks
+# -Y, so the -X face has to stand behind the tail (-_adv_g), the side screw (on the plate's middle) has
+# to reach it, and the coil's -Y edge has to clear the pocket wall by COIL_AIR. Strings 1-9 share the
+# one offset their heaviest needs. String 10's coil is as wide as the pocket allows, so it is centred
+# in it (the pocket matches the others, user: no cut-out; a .080 does NOT fit there now).
+def _yc_bound(g: float) -> float:
+    return min(0.0,
+               -_adv_g(g) + PLATE_T / 2.0,                                  # the tail on the -X face
+               -_adv_g(g) + D.MIN_WALL_2P,                                  # the screw's tip on the tail
+               -_adv_g(g) - g / 2.0 + PLATE_T / 2.0 + PLATE_CLR - COIL_AIR)  # the coil clear of the wall
+
+
+def _gauges_of(i: int):
+    """The gauges string i's slot takes."""
+    return (D.STRING_GAUGE[i],)
+
+
+_YC_SHARED = min(_yc_bound(g) for i in range(D.N_STRINGS - 1) for g in _gauges_of(i))
+PLATE_YC = (_YC_SHARED,) * (D.N_STRINGS - 1) + (-_adv_g(D.STRING_GAUGE[-1]) / 2.0,)
+
+
 def plate_y(i: int) -> float:
     """Y centre of string i's plate (and of its pocket and screws)."""
-    return D.nut_y(i) + PLATE_YC
+    return D.nut_y(i) + PLATE_YC[i]
 
 
 # ── HOW FAR THE PLATE HAS TO DROP TO THREAD, AND THE HEIGHT SCREW UNDER IT ──────────
@@ -279,6 +315,7 @@ def plate_y(i: int) -> float:
 from cadkit.fasteners import M4, M4_BUTTON_HEAD_D, M4_BUTTON_HEAD_H
 THREAD_CLR = D.MIN_WALL                         # room to work the string round, not force it
 _DROP_NEED = G_ENVELOPE + THREAD_CLR            # 2.832 for a .080
+assert _ramp_gap(math.radians(45), G_ENVELOPE) >= THREAD_CLR, "the ramp crowds the wind"
 HS_SCREW_L     = 40.0                           # M4 x 40 button, the longest in the shop
 HS_TIP_RISE    = 15.0                           # what the 40 has over the 25 the stack needs: the foot stops
                                                 # this far above the floor and the tip stands up in the empty slot
@@ -328,20 +365,20 @@ def plate_profile(cradle: bool = False) -> cq.Workplane:
     whose seated dowel puts its top exactly where the crown's is, and the arm grows a bead of
     wall -X of the cradle to hold it. The +X face is the plate's, so it fits the same pocket."""
     zc = CROWN_OFF
-    f = PLATE_FILLET
     zb = -PLATE_BODY_H
+
+    def ramp(w, ax0):
+        r = ax0 - ROD_X
+        return (w.lineTo(ax0, r).threePointArc((ax0 - r + r / math.sqrt(2), r - r / math.sqrt(2)), (ROD_X, 0.0))
+                .lineTo(PLATE_X0, 0.0).close())
     if not cradle:
         w = (cq.Workplane("XY").moveTo(PLATE_X0, zb).lineTo(PLATE_X1, zb).lineTo(PLATE_X1, zc)
-             .threePointArc((DOWEL_X, zc + CROWN_R), (ARM_X0, zc))
-             .lineTo(ARM_X0, f)
-             .threePointArc((ARM_X0 - f + f / math.sqrt(2), f - f / math.sqrt(2)), (ARM_X0 - f, 0.0))
-             .lineTo(PLATE_X0, 0.0).close())
-        solid = w.extrude(PLATE_T)
+             .threePointArc((DOWEL_X, zc + CROWN_R), (ARM_X0, zc)))
+        solid = ramp(w, ARM_X0).extrude(PLATE_T)
     else:
         ax0 = STANDIN_ARM_X0
-        solid = (cq.Workplane("XY").moveTo(PLATE_X0, zb).lineTo(PLATE_X1, zb)
-                 .lineTo(PLATE_X1, STANDIN_TOP).lineTo(ax0, STANDIN_TOP).lineTo(ax0, 0.0)
-                 .lineTo(PLATE_X0, 0.0).close().extrude(PLATE_T))
+        solid = ramp(cq.Workplane("XY").moveTo(PLATE_X0, zb).lineTo(PLATE_X1, zb)
+                     .lineTo(PLATE_X1, STANDIN_TOP).lineTo(ax0, STANDIN_TOP), ax0).extrude(PLATE_T)
         solid = solid.cut(cq.Workplane("XY").center(DOWEL_X, STANDIN_CRADLE_Z)
                           .circle(STANDIN_CRADLE_D / 2.0).extrude(PLATE_T))
         # NO FIN (print_check): the cradle breaks out through the +X face, leaving a wedge between the
@@ -398,81 +435,106 @@ assert _NECK_AIR > 0.0, f"the string runs {-_NECK_AIR:.2f} into its stand-in's a
 
 
 # ── THE PLATE MEETS EVERY STRAND IT HAS TO (asserted, every gauge the endplate takes) ──────
-def _plate_lo() -> float:
-    return PLATE_YC - PLATE_T / 2.0
+def _plate_lo(i: int) -> float:
+    return PLATE_YC[i] - PLATE_T / 2.0
 
 
-def _plate_hi() -> float:
-    return PLATE_YC + PLATE_T / 2.0
+def _plate_hi(i: int) -> float:
+    return PLATE_YC[i] + PLATE_T / 2.0
 
 
-for _g in list(D.STRING_GAUGE) + [G_ENVELOPE]:
-    assert _plate_lo() + _g / 2 <= _bottom_y_g(_g) <= _plate_hi() - _g / 2, (
-        f"a {_g / 25.4:.3f} in string's strand under the rod is not wholly over the shelf")
-    assert _plate_lo() <= -_adv_g(_g) <= _plate_hi(), (
-        f"a {_g / 25.4:.3f} in string's tail drops off the rod past the plate's -X face")
+for _i in range(D.N_STRINGS):
+    for _g in _gauges_of(_i):
+        assert _plate_lo(_i) + _g / 2 <= _bottom_y_g(_g) <= _plate_hi(_i) - _g / 2, (
+            f"a {_g / 25.4:.3f} in string's strand under the rod is not wholly over the shelf")
+        assert _plate_lo(_i) <= -_adv_g(_g) <= _plate_hi(_i), (
+            f"a {_g / 25.4:.3f} in string's tail drops off the rod past the plate's -X face")
 
 # ── THE POCKET: one per string, a rectangle, open to the sky ─────────────────────────
 # Its Y span is the plate plus its fit. The coil has to fit it too -- the string arrives on its own Y,
 # its +Y edge g/2 over -- with COIL_AIR to the finger for the demo set; the tail channel below it is the
 # same width, except string 10's, which has no neighbour -Y and opens out for the heaviest tail.
-COIL_AIR = 0.2
-POCKET_HI = _plate_hi() + PLATE_CLR
-POCKET_LO = _plate_lo() - PLATE_CLR
-for _g in D.STRING_GAUGE:
-    assert POCKET_HI - _g / 2 >= COIL_AIR - 1e-9, (
-        f"a {_g / 25.4:.3f} in string arrives {POCKET_HI - _g / 2:.2f} off its finger")
-    _lo = -_adv_g(_g) - _g / 2
-    assert _lo >= POCKET_LO + COIL_AIR - 1e-9 or _g == D.STRING_GAUGE[-1], (
-        f"a {_g / 25.4:.3f} in string's last strand reaches {POCKET_LO - _lo:.2f} into the finger")
-assert POCKET_HI - G_ENVELOPE / 2 >= 0.0, "the heaviest string arrives inside the finger"
-FINGER_W = D.NUT_PITCH - (POCKET_HI - POCKET_LO)
+POCKET_HI = tuple(_plate_hi(i) + PLATE_CLR for i in range(D.N_STRINGS))
+POCKET_LO = tuple(_plate_lo(i) - PLATE_CLR for i in range(D.N_STRINGS))
+for _i in range(D.N_STRINGS):
+    for _g in _gauges_of(_i):
+        assert POCKET_HI[_i] - _g / 2 >= COIL_AIR_MIN - 1e-9, (
+            f"a {_g / 25.4:.3f} in string arrives {POCKET_HI[_i] - _g / 2:.2f} off its finger")
+        _lo = -_adv_g(_g) - _g / 2
+        assert _lo >= POCKET_LO[_i] + COIL_AIR_MIN - 1e-9, (
+            f"a {_g / 25.4:.3f} in string's last strand reaches {POCKET_LO[_i] - _lo:.2f} into the finger")
+# the finger between string i and string i + 1 (-Y of it)
+FINGER_W = min(D.NUT_PITCH + POCKET_LO[i] - POCKET_HI[i + 1] for i in range(D.N_STRINGS - 1))
 assert FINGER_W >= D.MIN_WALL_2P - 1e-9, f"{FINGER_W:.2f} fingers between the pockets"
-# STRING 10'S TAIL CHANNEL opens -Y as far as the heaviest tail needs, with COIL_AIR.
-TAIL_LO_10 = min(POCKET_LO, -_adv_g(G_ENVELOPE) - G_ENVELOPE / 2 - COIL_AIR)
 
 # THE TAIL CHANNEL: the string drops off the rod's -X side, so the channel is the strip -X of the
 # plate's face, wide enough for the heaviest tail and the screw to back off past it.
 
 # ── THE SIDE SCREWS (user): one per string, from the -X face, pinning the tail to the plate ──────
-# An M4 x 10 button head on the one 2.5 mm key, in an M4 heat-set whose mouth is flush in the bed face
-# (a set screw would want a 2.0 key). It prints round: its axis is the build direction.
-# THE BED FACE IS HELD where the stow-bore keyhead had it (2026-11-03): KEYHEAD_W sets the -X legs'
-# stations, the bottom's mortise grid and the motor bank, so the side screws are fitted INSIDE it rather
-# than growing it (which is why the rod moved +X, above). Behind the plate's -X face: the tail channel,
-# then the heat-set, its mouth flush in the bed face and NO PRINTED FLOOR behind it -- it opens straight
-# into the channel, and the insert is pressed in flush with the face, which is its stop.
+# An M4 x 10 button head on the one 2.5 mm key, in an M4 heat-set. It prints round: its axis is the
+# build direction. THE HEADS SIT INSIDE THE PLASTIC (user, 2026-11-03): each in its own recess, and the
+# whole endplate grows -X, legs and all (user), until the heaviest string's head -- the one that stands
+# furthest out -- is in.
+# From the plate's -X face outward: the tail channel; a clearance bore; the heat-set, its mouth on the
+# recess floor; the recess, open in the bed face.
 SS_SCREW_L = 10.0
-X_BACK = -22.862741699796957                     # the stow-bore design's bed face, held
-POCKET_X0 = X_BACK + M4.insert_depth             # the tail channel's -X wall
-TAIL_W = PLATE_X0 - POCKET_X0
-assert TAIL_W >= G_ENVELOPE + 0.3, f"a {TAIL_W:.2f} channel is too tight for a {G_ENVELOPE:.2f} tail"
-KEYHEAD_W = X_FRONT - X_BACK                     # the keyhead endplate's thickness in X
+SS_HEAD_D = M4_BUTTON_HEAD_D + D.BEAD            # 8.4: the head's recess
+SS_HEAD_GAP = 0.5                                # the lightest string's head stands this clear of the floor
+
+
+def _ss_tip_x(g: float) -> float:
+    """X of the screw's tip, clamped on a tail of gauge g."""
+    return PLATE_X0 - WRAP_EPS - g
+
+
+TAIL_W = math.ceil((G_ENVELOPE + THREAD_CLR) / D.BEAD) * D.BEAD
+POCKET_X0 = PLATE_X0 - TAIL_W                    # the tail channel's -X wall
+SS_MOUTH_X = _ss_tip_x(min(D.STRING_GAUGE)) - SS_SCREW_L + SS_HEAD_GAP    # the recess floor
+assert SS_MOUTH_X + M4.insert_depth <= POCKET_X0 - D.MIN_WALL, "the side heat-set runs into the channel"
+_SS_HEAD_BACK = _ss_tip_x(G_ENVELOPE) - SS_SCREW_L - M4_BUTTON_HEAD_H
+# IT GROWS BY WHOLE LEVER PITCHES. The floor's mortise grid is centred end to end, so a keyhead grown
+# by anything else shifts every station (and the legs' lock pins miss their tenons); grown by a pitch,
+# the grid gains one station at -X and the +X chassis segments stay exactly as they were. The motor
+# board and the height screws stay put (user); the -X legs move out with the face.
+_KH_W_HELD = X_FRONT + 22.862741699796957        # the stow-bore keyhead's thickness, the grid's phase
+KEYHEAD_W = _KH_W_HELD + math.ceil((X_FRONT - _SS_HEAD_BACK - _KH_W_HELD) / D.LEVER_PITCH - 1e-9) * D.LEVER_PITCH
+X_BACK = X_FRONT - KEYHEAD_W                     # the bed face
 # THE LANES (user: hand threading): the pocket carried out through the -X face, above LANE_FLOOR, so a
-# finger can reach under the rod either side. The heat-sets sit below them with a two-bead wall.
+# finger can reach under the rod either side. The recesses sit below them with a two-bead wall.
 LANE_FLOOR = ROD_Z - ROD_D / 2.0 - _DROP_NEED
-SS_Z_A = math.floor((LANE_FLOOR - D.MIN_WALL_2P - M4.insert_pilot_d / 2.0) / D.BEAD) * D.BEAD
+SS_Z_A = math.floor((LANE_FLOOR - D.MIN_WALL_2P - SS_HEAD_D / 2.0) / D.BEAD) * D.BEAD
 
 
 def _solve_ss_dz() -> float:
     """The least whole-bead Z between the two screw rows that leaves two beads of web between
-    neighbouring heat-sets (they alternate rows, string to string)."""
+    neighbouring head recesses (they alternate rows, string to string)."""
     for n in range(1, 41):
         dz = n * D.BEAD
-        if math.hypot(D.NUT_PITCH, dz) - M4.insert_pilot_d >= D.MIN_WALL_2P - 1e-9:
+        if math.hypot(D.NUT_PITCH, dz) - SS_HEAD_D >= D.MIN_WALL_2P - 1e-9:
             return dz
     raise AssertionError("no row spread leaves a two-bead web between the side screws")
 
 
 SS_DZ = _solve_ss_dz()
 SS_ROWS = (SS_Z_A, SS_Z_A - SS_DZ)
-# THE SCREW'S Y: the middle of where the demo tails fall, so the Ø4 tip covers all of them
-# as far -Y as its clearance bore stays inside the channel
-_TAILS = [-_adv_g(g) for g in D.STRING_GAUGE]
-SS_YC = POCKET_LO + M4.shaft_clr_d / 2.0
-assert all(abs(t - SS_YC) <= D.MIN_WALL_2P for t in _TAILS), "the side screw's tip misses a tail"
-TAIL_Z_END = SS_ROWS[1] - M4.screw_d / 2.0 - D.MIN_WALL_2P   # the channel's floor, past the low row
-TAIL_END = TAIL_Z_END + 0.5                     # where a tail stops, cut to length
+# THE SCREW'S Y: the plate's middle -- its clearance bore is the channel's width
+SS_YC = PLATE_YC
+assert all(abs(-_adv_g(g) - SS_YC[i]) <= D.MIN_WALL_2P
+           for i in range(D.N_STRINGS) for g in _gauges_of(i)), "the side screw's tip misses a tail"
+# THE PLIER WINDOW (user): one slot across every string, below the side screws and open in the bed
+# face, with no fingers in it -- the tails hang across it, and pliers pull each one down tight before
+# its screw goes in. Its roof is a plain bridge in the -X -> +X build (user: its depth does not matter).
+# The tail channels run on below it to a blind floor just above the height prism's bottom.
+WIN_HI = math.floor((SS_ROWS[1] - SS_HEAD_D / 2.0 - D.MIN_WALL_2P) / D.BEAD) * D.BEAD
+WIN_H = 15 * D.BEAD                             # 12.0: room for a plier's jaws
+WIN_LO = WIN_HI - WIN_H
+TAIL_Z_END = HS_PRISM_BOT + D.MIN_WALL_2P       # the channels' floor
+# TRIMMING: the tail is pushed to the floor, marked level with the window's top edge, and cut
+# TAIL_CUT below the mark. Put back, it ends that far under the window's top, with room under it to be
+# pulled down.
+TAIL_CUT = 20.0
+TAIL_END = WIN_HI - TAIL_CUT                    # where a tail ends, trimmed
+assert WIN_LO > TAIL_END > TAIL_Z_END + 10.0, "a trimmed tail has no room to be pulled down"
 # the plate's -X face has to stand behind both rows wherever a string clamps it
 for _g in (D.STRING_GAUGE[0], G_ENVELOPE):
     _bot = ROD_Z - ROD_D / 2 - _g - PLATE_BODY_H
@@ -484,25 +546,28 @@ def ss_row(i: int) -> int:
 
 
 def side_screw_yz(i: int):
-    return D.nut_y(i) + SS_YC, SS_ROWS[ss_row(i)]
+    return D.nut_y(i) + SS_YC[i], SS_ROWS[ss_row(i)]
 
 
 def side_screw_negatives(i: int):
-    """Heat-set pocket (mouth in the bed face) and clearance on into the tail channel. Along the
-    build direction, so plain round bores."""
+    """Head recess (open in the bed face), heat-set pocket (mouth on its floor) and clearance on
+    into the tail channel. Along the build direction, so plain round bores."""
     y, z = side_screw_yz(i)
     pilot = M4.pilot_d((1.0, 0.0, 0.0), PRINT_UP)
-    hs = cq.Workplane("YZ", origin=(X_BACK - 1.0, y, z)).circle(pilot / 2.0).extrude(M4.insert_depth + 1.0)
-    bore = (cq.Workplane("YZ", origin=(X_BACK + M4.insert_depth - 0.01, y, z))
-            .circle(M4.shaft_clr_d / 2.0).extrude(POCKET_X0 + 0.5 - (X_BACK + M4.insert_depth - 0.01)))
-    return [hs, bore]
+    head = (cq.Workplane("YZ", origin=(X_BACK - 1.0, y, z)).circle(SS_HEAD_D / 2.0)
+            .extrude(SS_MOUTH_X - X_BACK + 1.0))
+    hs = (cq.Workplane("YZ", origin=(SS_MOUTH_X - 0.01, y, z)).circle(pilot / 2.0)
+          .extrude(M4.insert_depth + 0.01))
+    bore = (cq.Workplane("YZ", origin=(SS_MOUTH_X + M4.insert_depth - 0.01, y, z))
+            .circle(M4.shaft_clr_d / 2.0).extrude(POCKET_X0 + 0.5 - (SS_MOUTH_X + M4.insert_depth - 0.01)))
+    return [head, hs, bore]
 
 
 def side_screw(i: int) -> cq.Workplane:
     """Dummy M4 x 10 button head, tip on string i's tail (local frame)."""
     from cadkit.fasteners import m4_button_screw
     y, z = side_screw_yz(i)
-    tip = PLATE_X0 - WRAP_EPS - D.STRING_GAUGE[i]
+    tip = _ss_tip_x(D.STRING_GAUGE[i])
     s = m4_button_screw(SS_SCREW_L).rotate((0, 0, 0), (0, 1, 0), -90)   # head x 0..h, shank on to h + L
     return s.translate((tip - (M4_BUTTON_HEAD_H + SS_SCREW_L), y, z))
 
@@ -510,7 +575,7 @@ def side_screw(i: int) -> cq.Workplane:
 def side_insert(i: int) -> cq.Workplane:
     from cadkit.fasteners import seated_insert
     y, z = side_screw_yz(i)
-    return seated_insert(M4, (X_BACK, y, z), (1.0, 0.0, 0.0))
+    return seated_insert(M4, (SS_MOUTH_X, y, z), (1.0, 0.0, 0.0))
 
 
 def tail_route(i: int):
@@ -600,9 +665,8 @@ for _i in range(D.N_STRINGS):
 Z_SKY = NUT_TOP + 1.0
 
 
-def _y_span(i: int, tail: bool = False):
-    lo = POCKET_LO if not (tail and i == SKU_C) else TAIL_LO_10
-    return D.nut_y(i) + lo, D.nut_y(i) + POCKET_HI
+def _y_span(i: int):
+    return D.nut_y(i) + POCKET_LO[i], D.nut_y(i) + POCKET_HI[i]
 
 
 def insert_pocket(i: int) -> cq.Workplane:
@@ -611,9 +675,8 @@ def insert_pocket(i: int) -> cq.Workplane:
     y0, y1 = _y_span(i)
     slot = box_at(POCKET_X1 - (PLATE_X0 - PLATE_CLR), y1 - y0, Z_SKY - HS_FLOOR,
                   x=(POCKET_X1 + PLATE_X0 - PLATE_CLR) / 2, y=(y0 + y1) / 2, z=(Z_SKY + HS_FLOOR) / 2)
-    t0, t1 = _y_span(i, tail=True)
-    chan = box_at(PLATE_X0 + 0.5 - POCKET_X0, t1 - t0, Z_SKY - TAIL_Z_END,
-                  x=(PLATE_X0 + 0.5 + POCKET_X0) / 2, y=(t0 + t1) / 2, z=(Z_SKY + TAIL_Z_END) / 2)
+    chan = box_at(PLATE_X0 + 0.5 - POCKET_X0, y1 - y0, Z_SKY - TAIL_Z_END,
+                  x=(PLATE_X0 + 0.5 + POCKET_X0) / 2, y=(y0 + y1) / 2, z=(Z_SKY + TAIL_Z_END) / 2)
     return slot.union(chan)
 
 
@@ -630,11 +693,18 @@ def lanes() -> cq.Workplane:
     """Every lane's way out -X, LANE_FLOOR to sky: the pocket carried past the bed face."""
     out = None
     for i in range(D.N_STRINGS):
-        y0, y1 = _y_span(i, tail=True)
+        y0, y1 = _y_span(i)
         k = box_at(POCKET_X0 + 0.5 - (X_BACK - 1.0), y1 - y0, Z_SKY - LANE_FLOOR,
                    x=(POCKET_X0 + 0.5 + X_BACK - 1.0) / 2, y=(y0 + y1) / 2, z=(Z_SKY + LANE_FLOOR) / 2)
         out = k if out is None else out.union(k)
     return out
+
+
+def plier_window() -> cq.Workplane:
+    """The window across every string's tail, from past the bed face in to the plates' slots."""
+    y0, y1 = D.nut_y(SKU_C) + POCKET_LO[SKU_C], D.nut_y(0) + POCKET_HI[0]
+    x0, x1 = X_BACK - 1.0, PLATE_X0 - PLATE_CLR
+    return box_at(x1 - x0, y1 - y0, WIN_H, x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(WIN_LO + WIN_HI) / 2)
 
 
 def all_side_screw_negatives() -> cq.Workplane:
@@ -653,9 +723,9 @@ ROD_END_W = D.MIN_WALL_2P
 ROD_PUSH_D = 4 * D.BEAD
 # THE END BLOCKS MATCH on the +X face (keyhead_endplate checks it on the finished solid), so they are
 # sized off the POCKETS there; string 10's wider tail channel is -X of the plate and eats into its own.
-_INS_HI = D.nut_y(0) + POCKET_HI                 # string 1's pocket, +Y
-_FACE_LO = D.nut_y(SKU_C) + POCKET_LO            # string 10's pocket, -Y
-_INS_LO = D.nut_y(SKU_C) + TAIL_LO_10            # string 10's tail channel, -Y: the cuts' -Y extreme
+_INS_HI = D.nut_y(0) + POCKET_HI[0]              # string 1's pocket, +Y
+_FACE_LO = D.nut_y(SKU_C) + POCKET_LO[SKU_C]     # string 10's pocket, -Y
+_INS_LO = _FACE_LO                               # the cuts' -Y extreme
 END_BLOCK_W = (ROD_L + ROD_END_W - (_INS_HI - _FACE_LO)) / 2.0
 HW   = _INS_HI + END_BLOCK_W                     # the +Y face
 Y_LO = _FACE_LO - END_BLOCK_W                    # the -Y face
@@ -668,7 +738,7 @@ HS_POCKET_X1 = D.KEYHEAD_INBOARD_X - D.NUT_BLOCK_X - D.MIN_WALL_2P
 assert HS_POCKET_X1 >= POCKET_X1 + D.MIN_WALL_2P, "the height prism stops short of walling the pockets"
 # Bending in the rod over its worst span: every finger holds it now, so a span is one pocket.
 _I = math.pi * ROD_D ** 4 / 64.0
-_SPAN = POCKET_HI - POCKET_LO
+_SPAN = PLATE_T + 2 * PLATE_CLR
 _SPAN_MPA = ((STRING_T / _SPAN) * _SPAN ** 2 / 8.0) / (_I / (ROD_D / 2))
 assert _SPAN_MPA <= 250.0, f"the rod carries {_SPAN_MPA:.0f} MPa over a {_SPAN:.1f} mm pocket"
 
