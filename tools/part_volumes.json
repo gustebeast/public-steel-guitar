@@ -111,7 +111,7 @@
   },
   "kl_pcb_shim": {
    "material": "pctg",
-   "volume_mm3": 81.9
+   "volume_mm3": 111.7
   },
   "kl_spacer": {
    "material": "pctg",
@@ -127,11 +127,11 @@
   },
   "knee_housing": {
    "material": "petg-gf",
-   "volume_mm3": 65895.7
+   "volume_mm3": 67895.1
   },
   "knee_housing_r": {
    "material": "petg-gf",
-   "volume_mm3": 66332.4
+   "volume_mm3": 68463.5
   },
   "knee_lever": {
    "material": "pctg",
@@ -139,7 +139,7 @@
   },
   "kv_housing": {
    "material": "petg-gf",
-   "volume_mm3": 114709.9
+   "volume_mm3": 115308.0
   },
   "kv_lever": {
    "material": "pctg",
@@ -147,7 +147,7 @@
   },
   "kv_pcb_shim": {
    "material": "pctg",
-   "volume_mm3": 1107.0
+   "volume_mm3": 1509.2
   },
   "leg_foot": {
    "material": "tpu",
@@ -159,11 +159,11 @@
   },
   "lever_prog_jig": {
    "material": null,
-   "volume_mm3": 14324.7
+   "volume_mm3": 17523.6
   },
   "lever_prog_jig_base": {
    "material": null,
-   "volume_mm3": 5121.7
+   "volume_mm3": 6422.5
   },
   "motor_pulley": {
    "material": "pctg",
@@ -199,11 +199,11 @@
   },
   "pedal_bar_a": {
    "material": "petg-gf",
-   "volume_mm3": 419476.3
+   "volume_mm3": 417667.3
   },
   "pedal_bar_b": {
    "material": "petg-gf",
-   "volume_mm3": 486323.4
+   "volume_mm3": 483610.0
   },
   "pedal_bar_c": {
    "material": "petg-gf",
@@ -227,7 +227,7 @@
   },
   "pedal_pcb_shim": {
    "material": "pctg",
-   "volume_mm3": 1305.1
+   "volume_mm3": 1779.4
   },
   "pi_spacer": {
    "material": "petg-gf",
