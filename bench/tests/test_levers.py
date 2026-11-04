@@ -109,6 +109,21 @@ def test_commands_to_another_slot_are_ignored_and_unknown_ops_refused():
     assert r == LV.Reply(0, 3, "Z", False)
 
 
+
+def test_release_is_broadcast_only_and_carries_its_delay():
+    """ALL 'U' ms: every board lets go of the pair for a first flash over USB
+    (docs/lever-usb-flash.md); on a board's own CMD id it is just an unknown op."""
+    lv = calibrated()
+    lv.rx(K["ID_CMD"] + 3, bytes([K["LC_RELEASE"]]) + (500).to_bytes(2, "little"))
+    assert lv.take_release() == 0
+    lv.rx(K["ID_ALL"], bytes([K["LC_RELEASE"]]) + (500).to_bytes(2, "little"))
+    assert lv.take_release() == 500
+    lv.rx(K["ID_ALL"], bytes([K["LC_RELEASE"], 0, 0]))
+    assert lv.take_release() == 1                       # 0 ms still means release
+    lv.rx(K["ID_ALL"], bytes([K["LC_RELEASE"]]))           # no delay given: ignored
+    assert lv.take_release() == 0
+
+
 @pytest.fixture
 def bus():
     pytest.importorskip("can")

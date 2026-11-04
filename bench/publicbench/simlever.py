@@ -34,6 +34,7 @@ int sim_take_save(lever_t *l, lever_cfg_t *out)
 }
 int sim_take_loader(lever_t *l) { int w = l->want_loader; l->want_loader = 0; return w; }
 int sim_take_thresh(lever_t *l) { int w = l->want_thresh; l->want_thresh = 0; return w; }
+unsigned sim_take_release(lever_t *l) { unsigned w = l->want_release; l->want_release = 0; return w; }
 unsigned sim_slot(const lever_t *l) { return l->cfg.slot; }
 '''
 
@@ -95,6 +96,7 @@ def lib():
             ("sim_take_save", [P, C], ctypes.c_int),
             ("sim_take_loader", [P], ctypes.c_int),
             ("sim_take_thresh", [P], ctypes.c_int),
+            ("sim_take_release", [P], ctypes.c_uint),
             ("sim_slot", [P], ctypes.c_uint),
             ("sim_ldr_size", [], ctypes.c_size_t),
             ("sim_mode", [P, U], None),
@@ -126,6 +128,7 @@ class Lever:
     def pos(self): return self.L.lever_pos(self.buf)
     def status(self): return self.L.lever_status(self.buf)
     def slot(self): return self.L.sim_slot(self.buf)
+    def take_release(self): return self.L.sim_take_release(self.buf)   # ms, 0 none
 
     def poll(self, now_us):
         f = Frame()
