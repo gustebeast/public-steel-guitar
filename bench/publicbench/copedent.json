@@ -1,0 +1,18 @@
+{
+  "name": "C6, the user's chart",
+  "note": "The user's own C6 copedent, read cell by cell from their chart (chart = the sheet's column and its notes; the sheet numbers these pedals 4-8). tools/export_rig.py draws from this file and motor_ctrl's table is compiled from it. moves: string number (1 = highest, string N = index + 1) -> semitones at full travel, signed. slot: the lever board's slot on bus B (lever.h); 0-4 pedals left to right, 5-10 knee levers left to right from the seat. Slot 10 is the sixth knee lever, which this copedent does not use yet.",
+  "open": ["D4", "E4", "C4", "A3", "G3", "E3", "C3", "A2", "F2", "C2"],
+  "controls": [
+    {"name": "P1",  "slot": 0,  "key": "1", "moves": {"2": 1, "6": 1, "10": 2}, "chart": "chart 4: E->F  E->F  C->D"},
+    {"name": "P2",  "slot": 1,  "key": "2", "moves": {"5": -1, "9": 1, "10": 2}, "chart": "chart 5: G->F# F->F# C->D"},
+    {"name": "P3",  "slot": 2,  "key": "3", "moves": {"2": -1, "6": -1}, "chart": "chart 6: E->D# E->D#"},
+    {"name": "P4",  "slot": 3,  "key": "4", "moves": {"3": 2, "4": 2}, "chart": "chart 7: C->D* A->B*  (both split)"},
+    {"name": "P5",  "slot": 4,  "key": "5", "moves": {"7": 1, "9": -1, "10": -3}, "chart": "chart 8: C->C# F->E  C->A"},
+    {"name": "LKL", "slot": 5,  "key": "6", "moves": {"4": 1}, "chart": "A->A#"},
+    {"name": "VKL", "slot": 6,  "key": "7", "moves": {"1": 1}, "chart": "D->D#"},
+    {"name": "LKR", "slot": 7,  "key": "8", "moves": {"4": -1, "8": -1}, "chart": "A->G#  A->G#"},
+    {"name": "RKL", "slot": 8,  "key": "9", "moves": {"3": -1}, "chart": "C->B"},
+    {"name": "RKR", "slot": 9,  "key": "0", "moves": {"3": 1, "7": 1}, "chart": "C->C#  C->C#"},
+    {"name": "K6",  "slot": 10, "key": "",  "moves": {}}
+  ]
+}

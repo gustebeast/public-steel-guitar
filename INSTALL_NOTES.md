@@ -1349,3 +1349,17 @@ Plug a USB device in (an audio interface such as a Shure MVX2U) and the board po
 - **Calibrate each lever in place:** `python3 -m publicbench.levers cal <slot>` asks for the lever
   at rest, then at full travel, and stores both on the board. Re-run it after anything that moves
   the magnet or the board.
+
+## Copedent: write the table once, and power off with every control at rest (2026-11-03)
+
+- **Slots follow `bench/publicbench/copedent.json`:** pedals 0-4 left to right, knee levers 5-10
+  left to right from the seat. Assign each lever board the slot of the control it sits in (see
+  above); the copedent finds a control by its slot.
+- **Write the table once the motors are in** and every lever is calibrated:
+  `python3 -m publicbench.copedent --write`. motor_ctrl keeps it in flash and plays from it at
+  every power-on, with or without the Pi.
+- **Power off with every pedal and lever at rest.** At power-on each motor's position is taken as
+  its string's open pitch (the screw holds the carriage while the power is off). A string powered
+  off with a pedal down comes back off pitch until it is retuned.
+- A bench run that wants the motors to itself sends `P 0` to motor_ctrl first (`P 1` gives them
+  back; a power cycle does too).
