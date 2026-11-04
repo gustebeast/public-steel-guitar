@@ -628,15 +628,22 @@ class MeshCache:
 
 def export(parts, out_dir, stem="assembly", extras=None, meshed=None, quiet=False,
            boards=None, cache_dir=None, materials=None, whole=None, page=False,
-           units=None, parents=None, mesh_cache=None, layers=None):
+           units=None, parents=None, mesh_cache=None, layers=None, descriptions=None):
     """Write <stem>.glb and <stem>.geo.json into out_dir.
 
     parts     = [(name, solid, colour)]; solid is a cq.Workplane / cq.Shape /
                 TopoDS_Shape (or, with `meshed`, a function returning one: it is called
                 only if the part has to be re-cut), colour a cq.Color or an
                 (r, g, b[, a]) tuple. THE SOLIDS ARE NOT TOUCHED: every mesh is of a copy.
-    extras    = facts for the page, written into the file: "title", "subtitle", "build",
-                "notes" ({part name: a line the page shows while it is selected}).
+    extras    = facts for the page, written into the file: "title", "subtitle", "build".
+                ("notes", {part name: a line}, is the older spelling of `descriptions`
+                and is still read.)
+    descriptions = optional {part name: a line about it} -- what to cut it to, what it
+                is bought as -- which the page shows UNDER the part's name while it is
+                selected, smaller and grey: a description, not a second name. Every
+                cable drawn by cadkit.cables in this process gets its drawn length here
+                without being given one (cables.drawn_length); a description the project
+                gives outranks it.
     meshed    = optional {name: mesh_shape() result} to reuse (the local view's cache).
     mesh_cache = optional folder (outside version control) where each part's mesh is
                 kept between builds, by a hash of the part itself (MeshCache): a full
@@ -778,6 +785,21 @@ def export(parts, out_dir, stem="assembly", extras=None, meshed=None, quiet=Fals
         up, h = (l, DEFAULT_LAYER) if len(l) == 3 else l
         u = np.asarray(up, float) / np.linalg.norm(up)
         lays[n] = [round(float(c), 5) for c in u] + [round(float((m["pos"] @ u).min()), 4), h]
+    # WHAT EACH PART IS, in a line: every cadkit cable its length as drawn, then whatever
+    # the project says (its own line wins -- it knows the spare and the lay)
+    from ..cables import drawn_length, describe_length
+    desc = {}
+    for n in done:
+        if "__" in n or callable(solids[n]):
+            continue
+        mm = drawn_length(_topods(solids[n]))
+        if mm is not None:
+            desc[n] = describe_length(mm)
+    extras = dict(extras or {})
+    desc.update(extras.pop("notes", None) or {})
+    desc.update(descriptions or {})
+    if desc:
+        extras["descriptions"] = desc
     write_glb(glb_parts, glb, extras=extras, units=one, mats=mats, lays=lays)
     side.write_text(json.dumps({"format": FORMAT, "units": "mm", "parts": geo, "models": models},
                                separators=(",", ":")))

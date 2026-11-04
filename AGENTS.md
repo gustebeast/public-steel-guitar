@@ -116,7 +116,11 @@ show([(name, solid, colour), ...], root=OUT, title="My Project")
 It meshes the parts into `<project>/.webview/` (git-ignored by its own ignore file),
 starts a small local server if none is running, and opens the page the first time. **An
 open page reloads the model by itself** on every later `show()`, keeping the camera and
-whatever is hidden — so the loop is: build, look. `show()` never raises — viewer trouble
+whatever is hidden — so the loop is: build, look. **A part can carry a description**
+(`show(..., descriptions={name: "cut 250 mm"})`), drawn smaller and grey under its name
+when selected; every cable drawn with `cadkit.cables` gets its length as drawn there
+automatically (a project's own line outranks it — it knows the spare and the lay).
+`show()` never raises — viewer trouble
 can't break a build. Each project (and each worktree) is served on its own port, counting
 up from 8137; the run prints the URL. To reopen the last model without building:
 `py -3.12 -m cadkit.web.view` from the project folder -- which is all a project's root
