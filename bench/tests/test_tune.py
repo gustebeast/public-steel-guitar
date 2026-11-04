@@ -43,6 +43,7 @@ class SimRig:
         self.played, self.based = [], 0
 
     def play(self, on): self.played.append(on)
+    def playing(self): return True
     def position(self, n): return self.s[n].pos
     def goto(self, n, counts): self.s[n].pos = int(counts)
     def rebase(self): self.based += 1

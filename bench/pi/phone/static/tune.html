@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="icon.png">
+<title>Public Steel Guitar: tune</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden;
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; touch-action: none; display: block;
+    position: fixed; left: 0; top: 0; }
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="Tune a string"></canvas>
+<script src="font.js"></script>
+<script>
+"use strict";
+// The tuning page (server.py /tune): the main page's 1-bit panel and font, one button per
+// string. A tap tunes that string (tune.py: sweep, fit, open note, verify); the line at the
+// foot says what it wants -- PLUCK N -- and then how it went. Portrait only, no rotation
+// handling: this is a bench page, held in the hand.
+const PIXEL_CSS = 3, GAP = 2, BORDER = 2;
+let GW = 1, GH = 1, HEAD = 12, LS = 2;
+const KEYS = [];
+for (let n = 1; n <= 10; n++) KEYS.push({s: n, label: String(n)});
+
+function textW(s, k = 1) { return (s.length * 6 - 1) * k; }
+function layout() {
+  const cols = 2, rows = 5;
+  HEAD = 7 * 2 + 6;
+  const foot = 2 * (7 + 4);
+  const bw = Math.floor((GW - GAP * (cols + 1)) / cols);
+  const bh = Math.floor((GH - HEAD - foot - GAP * (rows + 1)) / rows);
+  KEYS.forEach((k, i) => {
+    k.x = GAP + (i % cols) * (bw + GAP); k.y = HEAD + GAP + Math.floor(i / cols) * (bh + GAP);
+    k.w = bw; k.h = bh;
+  });
+  LS = Math.max(1, Math.min(4, Math.floor((bh - 4 * BORDER) / 7), Math.floor((bw - 4 * BORDER) / textW("10"))));
+}
+
+const cv = document.getElementById("c"), g = cv.getContext("2d");
+let img = null, px = null, CW = 0, CH = 0;
+let state = {link: "...", can: {}}, online = false;
+
+function set(x, y, on) { if (x >= 0 && y >= 0 && x < GW && y < GH) px[y * GW + x] = on ? 1 : 0; }
+function rect(x, y, w, h, on) { for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) set(i, j, on); }
+function frame(x, y, w, h, t, on, dashed) {
+  for (let i = 0; i < w; i++) for (let k = 0; k < t; k++) {
+    const d = !dashed || ((i >> 1) & 1) === 0;
+    set(x + i, y + k, on && d); set(x + i, y + h - 1 - k, on && d);
+  }
+  for (let j = 0; j < h; j++) for (let k = 0; k < t; k++) {
+    const d = !dashed || ((j >> 1) & 1) === 0;
+    set(x + k, y + j, on && d); set(x + w - 1 - k, y + j, on && d);
+  }
+}
+function text(s, x, y, on, k = 1) {
+  for (const ch of s) {
+    const gl = FONT[ch] || FONT[" "];
+    for (let r = 0; r < 7; r++) for (let c = 0; c < 5; c++)
+      if (gl[r][c] === "1") rect(x + c * k, y + r * k, k, k, on);
+    x += 6 * k;
+  }
+}
+function live() { return online && state.link !== "lost" && state.link !== "..."; }
+function tuning() { return state.tune && (state.tune.state === "pluck" || state.tune.state === "busy"); }
+// [what it wants or how it went, and the tuner's word on it]
+function line() {
+  const t = state.tune;
+  if (!live()) return ["NO LINK", ""];
+  if (!t) return ["TAP A STRING", ""];
+  const m = (t.msg || "").toUpperCase();
+  if (t.state === "pluck") return ["PLUCK " + t.s, ""];
+  if (t.state === "busy") return ["TUNING " + t.s, m];
+  if (t.state === "done") return [t.s + " DONE", m];
+  return [t.s + " FAILED", m];
+}
+
+function draw() {
+  px.fill(0);
+  const lost = !live();
+  if (lost) rect(0, 0, GW, HEAD - GAP, 1);
+  text(lost ? "NO LINK" : "TUNE", GAP + 2, 3, !lost, 2);
+  const busy = tuning();
+  for (const k of KEYS) {
+    const on = state.tune && state.tune.s === k.s && busy;
+    if (on) rect(k.x, k.y, k.w, k.h, 1);                        // the string being tuned: inverted
+    frame(k.x, k.y, k.w, k.h, BORDER, true, (busy || lost) && !on);
+    text(k.label, k.x + ((k.w - textW(k.label, LS)) >> 1), k.y + ((k.h - 7 * LS) >> 1), !on, LS);
+  }
+  // the foot: one line at double size where it fits alone, else two at single size (the second
+  // cut to the width)
+  const [a, b] = line(), room = GW - 2 * GAP - 2;
+  if (!b && textW(a, 2) <= room) text(a, GAP + 2, GH - 7 * 2 - 3, true, 2);
+  else {
+    text(a, GAP + 2, GH - 2 * 7 - 4 - 3, true, 1);
+    text(b.slice(0, Math.floor((room + 1) / 6)), GAP + 2, GH - 7 - 3, true, 1);
+  }
+  for (let i = 0; i < px.length; i++) {
+    const c = px[i] ? 255 : 0, o = i * 4;
+    img.data[o] = img.data[o + 1] = img.data[o + 2] = c; img.data[o + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+}
+
+function fit() {
+  const dpr = window.devicePixelRatio || 1;
+  const k = Math.max(1, Math.round(PIXEL_CSS * dpr));
+  GW = Math.floor(window.innerWidth * dpr / k); GH = Math.floor(window.innerHeight * dpr / k);
+  cv.width = GW; cv.height = GH;
+  CW = GW * k / dpr; CH = GH * k / dpr;
+  cv.style.width = CW + "px"; cv.style.height = CH + "px";
+  img = g.createImageData(GW, GH); px = new Uint8Array(GW * GH);
+  layout(); draw();
+}
+window.addEventListener("resize", fit);
+
+let ws = null;
+function send(m) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); }
+function shown() { send({t: document.hidden ? "hide" : "show"}); }
+function connect() {
+  ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws");
+  ws.onopen = () => { online = true; shown(); draw(); };
+  ws.onmessage = e => { state = JSON.parse(e.data); draw(); };
+  ws.onclose = () => { online = false; draw(); setTimeout(connect, 1000); };
+  ws.onerror = () => ws.close();
+}
+connect();
+document.addEventListener("visibilitychange", shown);
+
+cv.addEventListener("pointerdown", e => {
+  e.preventDefault();
+  const x = e.clientX * GW / CW, y = e.clientY * GH / CH;
+  const k = KEYS.find(k => x >= k.x && x < k.x + k.w && y >= k.y && y < k.y + k.h);
+  if (!k || !live() || tuning()) return;
+  send({t: "tune", s: k.s});
+});
+for (const ev of ["contextmenu", "selectstart", "dblclick", "gesturestart"])
+  document.addEventListener(ev, e => e.preventDefault());
+cv.addEventListener("touchstart", e => e.preventDefault(), {passive: false});
+fit();
+</script>
+</body>
+</html>

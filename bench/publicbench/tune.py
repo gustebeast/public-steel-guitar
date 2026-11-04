@@ -31,6 +31,7 @@ replace (bench/tests/test_tune.py).
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import math
 import os
@@ -84,6 +85,10 @@ class Rig:
         r = self.link.ask("P %d" % (1 if on else 0))
         if r[:1] != ["OK"]:
             raise RuntimeError("motor_ctrl: P %d refused: %s" % (on, " ".join(r)))
+
+    def playing(self) -> bool:
+        r = self.link.ask("P")
+        return len(r) > 2 and r[0] == "P" and r[2] == "1"
 
     def position(self, n: int) -> int:
         return self.servos[n].position()
@@ -260,23 +265,37 @@ def save(data: dict, path: str = CURVES):
     os.replace(tmp, path)
 
 
+@contextlib.contextmanager
+def paused(rig, on_after: bool | None = True):
+    """Play off for the block (the tuner has the motors to itself), then on again -- or, with
+    on_after None, as it was before."""
+    was = rig.playing() if on_after is None else on_after
+    rig.play(False)
+    try:
+        yield
+    finally:
+        rig.play(was)
+
+
+def write_table(rig, data: dict, cop: dict, log=print):
+    """The table from CURVES into motor_ctrl, and every motor's place now made open pitch
+    ('P Z'): only right with every string sitting on its open note."""
+    st = copedent.write(rig.link, copedent.compile_table(cop, curves=curves_for(data)))
+    log("motor_ctrl: table %s" % st[5])
+    rig.rebase()
+
+
 def tune(rig, ear, strings, cop, ask, path=CURVES, write=True, log=print):
     """Tune `strings`; then (write) the table to motor_ctrl, the base, play back on. Every
     string asked for is left at its open note, also when write is off."""
     data = load(path)
-    rig.play(False)
-    try:
+    with paused(rig):
         for n in strings:
             data["strings"][str(n)] = tune_string(rig, ear, n, note_hz(cop["open"][n - 1]), ask, log)
             if write:
                 save(data, path)
         if write:
-            table = copedent.compile_table(cop, curves=curves_for(data))
-            st = copedent.write(rig.link, table)
-            log("motor_ctrl: table %s" % st[5])
-            rig.rebase()
-    finally:
-        rig.play(True)
+            write_table(rig, data, cop, log)
     return data
 
 
@@ -287,8 +306,20 @@ def main(argv=None):
     a.add_argument("--curves", default=CURVES)
     a.add_argument("--dry", action="store_true", help="tune, but write neither CURVES nor the table")
     a.add_argument("--raise-sign", type=int, choices=(-1, 1), default=1)
+    a.add_argument("--table", action="store_true",
+                   help="tune nothing: write the table from CURVES and make every motor's place "
+                        "open pitch (after strings were tuned one at a time, e.g. from the phone)")
     o = a.parse_args(argv)
     from .link import MotorCtrlLink
+    if o.table:
+        link = MotorCtrlLink()
+        try:
+            rig = Rig(link)
+            with paused(rig, None):
+                write_table(rig, load(o.curves), copedent.load(o.copedent))
+        finally:
+            link.close()
+        return 0
     from .optical import OpticalLink
     link, opt = MotorCtrlLink(), OpticalLink()
     try:

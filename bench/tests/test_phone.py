@@ -156,7 +156,8 @@ def test_no_link_until_the_port_is_open_and_shut_when_no_page_shows():
 
 def test_font_covers_the_page():
     import font
-    for s in ("PITCH", "HALF", "WHOLE", "MOCK", "NO LINK", "PUBLIC", "+0.123456789-.", "^v"):
+    for s in ("PITCH", "HALF", "WHOLE", "MOCK", "NO LINK", "PUBLIC", "+0.123456789-.", "^v",
+              "TUNE", "TAP A STRING", "PLUCK", "TUNING", "DONE", "FAILED", "WORST 0.40 C"):
         assert all(ch in font.GLYPHS for ch in s)
     assert all(len(g) == 7 and all(len(r) == 5 for r in g) for g in font.GLYPHS.values())
 
@@ -239,3 +240,74 @@ def test_server_page_icon_and_a_dropped_phone_lets_go(port):
             task.cancel()
             srv.close()
     asyncio.run(go())
+
+
+def test_tune_a_string_from_the_tune_page(port):
+    """/tune serves; {"t": "tune", "s": N} runs the tuner on a thread, the state says PLUCK then
+    the result, no button moves anything meanwhile, and the string's home is where the tuner
+    left it (its open note), so the buttons play from there."""
+    async def go():
+        motors = P.MockMotors((1, 2))
+        drv = P.Driver(motors, P.Pitch())
+        seen = []
+
+        def tuner(m, s, sign, report):
+            report("pluck")
+            seen.append(("plucked", s))
+            report("busy", "worst 0.40 c")
+            return 1234
+        hub = S.Hub(drv, motors, tuner=tuner)
+        srv = await asyncio.start_server(lambda r, w: S.handle(hub, r, w), "127.0.0.1", port)
+        task = asyncio.ensure_future(hub.run())
+        try:
+            r, w = await asyncio.open_connection("127.0.0.1", port)
+            w.write(b"GET /tune HTTP/1.1\r\nHost: x\r\n\r\n")
+            page = await r.read()
+            assert b"200 OK" in page and b"Tune a string" in page
+            key = base64.b64encode(os.urandom(16)).decode()
+            r, w = await asyncio.open_connection("127.0.0.1", port)
+            w.write(("GET /ws HTTP/1.1\r\nHost: x\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+                     "Sec-WebSocket-Key: %s\r\n\r\n" % key).encode())
+            await r.readuntil(b"\r\n\r\n")
+            w.write(_ws_frame({"t": "tune", "s": 2}))
+            await asyncio.sleep(0.3)
+            st = await _latest(r)
+            assert st["tune"] == {"s": 2, "state": "done", "msg": "worst 0.40 c"}
+            assert seen == [("plucked", 2)] and drv.home[2] == 1234
+            assert motors.goal[2] == 1234                 # back where the buttons have it: open
+            w.write(_ws_frame({"t": "tune", "s": 7}))     # no motor on string 7: refused
+            await asyncio.sleep(0.2)
+            assert (await _latest(r))["tune"]["s"] == 2
+            w.close()
+        finally:
+            task.cancel()
+            srv.close()
+
+    asyncio.run(go())
+
+
+def test_buttons_do_nothing_while_a_string_tunes():
+    import threading
+    motors = P.MockMotors((1,))
+    drv = P.Driver(motors, P.Pitch())
+    go = threading.Event()
+
+    def tuner(m, s, sign, report):
+        go.wait(2.0)
+        return 0
+    hub = S.Hub(drv, motors, tuner=tuner)
+    assert hub.start_tune(1) and not hub.start_tune(1)      # one at a time
+    hub.clients["w"] = {"seen": 0.0, "shown": True}
+    asyncio.run(hub.message("w", json.dumps({"t": "down", "b": "wu"}).encode()))
+    assert hub.p.bend is None and motors.goal[1] == 0
+    go.set()
+    hub._tune_thread.join(2.0)
+    assert hub.tuning["state"] == "done"
+
+
+def test_the_mock_server_tunes_too():
+    motors = P.MockMotors((1,))
+    hub = S.Hub(P.Driver(motors, P.Pitch()), motors)
+    assert hub.start_tune(1)
+    hub._tune_thread.join(3.0)
+    assert hub.tuning["state"] == "done" and hub.tuning["msg"] == "worst 0.00 c"
