@@ -27,7 +27,7 @@ ifeq ($(REV),1)
 VSRC += $(CDC)/USB_Device/ch32v30x_usbfs_device.c $(CDC)/USB_Device/usb_desc.c
 LINK := $(B)/link.o
 else
-LINK := $(B)/link_uart.o $(B)/frame.o
+LINK := $(B)/link_uart.o $(B)/frame.o $(B)/arms.o
 endif
 VOBJ := $(patsubst %.c,$(B)/v/%.o,$(notdir $(VSRC)))
 COMMON := $(LINK) $(B)/startup.o $(VOBJ) $(B)/play.o
@@ -56,7 +56,7 @@ $(B)/boot.o: $(B)/v/boot.c link.h frame.h
 $(B)/v/%.o: $(B)/v/%.c
 	$(CROSS)gcc $(CFLAGS) -w -c $< -o $@
 
-$(B)/%.o: %.c link.h frame.h play.h | $(B)/v
+$(B)/%.o: %.c link.h frame.h play.h arms.h | $(B)/v
 	$(CROSS)gcc $(CFLAGS) -c $< -o $@
 
 # WCH's startup drops to user mode for main. The loader must stay in machine mode, because the

@@ -173,7 +173,10 @@ void lever_rx(lever_t *l, const lever_frame_t *in)
             l->want_release = ms ? ms : 1;
             l->release_cycle = d[3] == l->cfg.slot && d[3] != SLOT_NONE;
         }
-        if (d[0] == LC_HOLD) { l->held = 1; l->want_next = 2; }
+        if (d[0] == LC_HOLD) {      /* a next board this one's own 'N' let up stays up */
+            l->held = 1;
+            if (!l->next_by_cmd) l->want_next = 2;
+        }
         uint32_t uid = d[1] | (uint32_t)d[2] << 8 | (uint32_t)d[3] << 16 | (uint32_t)d[4] << 24;
         if (d[0] == LC_SLOT && in->len >= 6 && uid == l->uid && (d[5] < SLOTS || d[5] == SLOT_NONE)) {
             l->cfg.slot = d[5]; changed(l);
@@ -208,7 +211,7 @@ void lever_rx(lever_t *l, const lever_frame_t *in)
     case LC_LOADER: l->want_loader = 1; break;
     case LC_NEXT:
         ok = in->len >= 2;
-        if (ok) { l->want_next = d[1] ? 1 : 2; l->held = 1; }
+        if (ok) { l->want_next = d[1] ? 1 : 2; l->held = 1; l->next_by_cmd = d[1] != 0; }
         break;
     default: ok = 0;
     }

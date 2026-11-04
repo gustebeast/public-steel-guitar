@@ -28,6 +28,11 @@
  *   P Z                       -> OK P          every motor's position is open pitch again
  *   P W <offset> <data>       -> OK P          into the table being loaded (play.h, 32 bytes a line)
  *   P S                       -> OK P S        check it, keep it in flash, play from it
+ *   A                         -> A <power 0/1, arm 0 1> <usb, arm 0 1> <lane>     R2 only (arms.h)
+ *   A <arm> <0|1|2>           -> OK A          an arm's 5 V off / on / cycled (arm 0 pedals, 1 levers)
+ *   U <arm> <ms> [<cycle>]    -> OK U          a flash window: the arm's pair and J4 on the flash
+ *                                              lane for ms, then both arms CAN and power-cycled.
+ *                                              The link is DOWN for the window (arms.h)
  * Lines to the host:
  *   R <bus> <t_us> <id> <data>     a frame received
  *   X <seq> <bus> <t_us>           a frame handed to the controller
@@ -47,6 +52,9 @@
 #include "ch32v30x.h"
 #include "link.h"
 #include "play.h"
+#if REV != 1
+#include "arms.h"
+#endif
 #if REV == 1
 #include "ch32v30x_usbfs_device.h"
 #include "UART.h"
@@ -266,6 +274,61 @@ static void q_run(void)
 
 static const char *r_num(const char *s, uint64_t *v, int base);
 
+#if REV != 1
+/* ---- bus B's arms and J4's pair (arms.h; elec/motor_ctrl.py R2) ------------------------- */
+static arms_t arms;
+#define PIN_SEL0  GPIO_Pin_14               /* PB14: U9 S, the pedal arm's pair, high = USB */
+#define PIN_SEL1  GPIO_Pin_15               /* PB15: U10 S, the lever arm's pair */
+#define PIN_EN0   GPIO_Pin_7                /* PC7: U6 EN, the pedal arm's 5 V, high = on */
+#define PIN_EN1   GPIO_Pin_8                /* PC8: U11 EN, the lever arm's 5 V */
+#define PIN_LANE  GPIO_Pin_9                /* PC9: U8 S, J4's pair, high = the flash lane */
+
+static void arms_pins(void)
+{
+    GPIO_WriteBit(GPIOB, PIN_SEL0, arms.usb[0] ? Bit_SET : Bit_RESET);
+    GPIO_WriteBit(GPIOB, PIN_SEL1, arms.usb[1] ? Bit_SET : Bit_RESET);
+    GPIO_WriteBit(GPIOC, PIN_EN0, arms.power[0] ? Bit_SET : Bit_RESET);
+    GPIO_WriteBit(GPIOC, PIN_EN1, arms.power[1] ? Bit_SET : Bit_RESET);
+    GPIO_WriteBit(GPIOC, PIN_LANE, arms.lane ? Bit_SET : Bit_RESET);
+}
+
+static void arms_setup(void)
+{   /* the pins take arms_init's state (on, CAN, the link) before they become outputs: what the
+       board's pull-ups and pull-downs already hold, so nothing moves at start */
+    arms_init(&arms);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC, ENABLE);
+    arms_pins();
+    GPIO_InitTypeDef g = {0};
+    g.GPIO_Speed = GPIO_Speed_2MHz; g.GPIO_Mode = GPIO_Mode_Out_PP;
+    g.GPIO_Pin = PIN_SEL0 | PIN_SEL1; GPIO_Init(GPIOB, &g);
+    g.GPIO_Pin = PIN_EN0 | PIN_EN1 | PIN_LANE; GPIO_Init(GPIOC, &g);
+}
+
+static void arms_line(char op, const char *s)
+{
+    uint64_t arm, v, cyc = 0;
+    if (op == 'A' && !*s) {
+        char l[24], *p = l;
+        *p++ = 'A'; *p++ = ' '; *p++ = (char)('0' + arms.power[0]); *p++ = (char)('0' + arms.power[1]);
+        *p++ = ' '; *p++ = (char)('0' + arms.usb[0]); *p++ = (char)('0' + arms.usb[1]);
+        *p++ = ' '; *p++ = (char)('0' + arms.lane); *p++ = '\n';
+        out_put(l, (uint16_t)(p - l));
+        return;
+    }
+    if (!(s = r_num(s, &arm, 10)) || !(s = r_num(s, &v, 10))) { say("E line\n"); return; }
+    if (op == 'U') {
+        const char *t = r_num(s, &cyc, 10);
+        if (t) s = t;
+    }
+    while (*s == ' ') s++;
+    if (*s) { say("E line\n"); return; }
+    uint32_t now = (uint32_t)now_us();
+    int ok = op == 'A' ? arms_power(&arms, (unsigned)arm, (unsigned)v, now)
+                       : arms_flash(&arms, (unsigned)arm, (uint32_t)v, (unsigned)cyc, now);
+    say(!ok ? "E arm\n" : op == 'A' ? "OK A\n" : "OK U\n");
+}
+#endif
+
 /* ---- play: the levers drive the motors -------------------------------------------------- */
 static play_table_t stage;                  /* a table on its way in from the host */
 static play_frame_t play_out;
@@ -408,6 +471,10 @@ static void line(const char *s)
         break; }
     case 'P':
         play_line(s + 1); return;
+#if REV != 1
+    case 'A': case 'U':
+        arms_line(*s, s + 1); return;
+#endif
     case 'S':
         j.seq = 0; j.t = 0;
         if (r_frame(s + 1, &j)) { if (can_send(&j) < 0) say("E busy\n"); return; }
@@ -456,9 +523,16 @@ int main(void)
     play_init(&play, (const play_table_t *)(FLASH_BASE_ADDR + TABLE_ORG));
     link_init();
     can_setup();
+#if REV != 1
+    arms_setup();
+#endif
     uint32_t lost_said = 0;
     while (1) {
         IWDG_ReloadCounter();           /* boot.c started it */
+#if REV != 1
+        arms_poll(&arms, (uint32_t)now_us());
+        arms_pins();
+#endif
         q_run();
         play_run();
         in_pump();

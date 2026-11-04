@@ -139,8 +139,12 @@ def test_hold_and_next_walk_the_chain_one_board_at_a_time():
     assert lv.take_next() == 1
     r = LV.decode(0, *[x for i, x in enumerate(lv.poll(0)) if i != 1])
     assert r == LV.Reply(0, 3, "N", True)
+    lv.rx(K["ID_ALL"], bytes([K["LC_HOLD"]]))
+    assert lv.take_next() == 0                  # an 'N' 1's next board stays up through 'H'
     lv.rx(K["ID_CMD"] + 3, bytes([K["LC_NEXT"], 0]))
     assert lv.take_next() == 2
+    lv.rx(K["ID_ALL"], bytes([K["LC_HOLD"]]))
+    assert lv.take_next() == 2                  # ...and one 'N' 0 put down stays down
 
 
 @pytest.fixture
