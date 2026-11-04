@@ -7,6 +7,8 @@
 #   make boot       the loader (boot.c), written once with the ST-LINK; it wipes nothing above
 #                   its own sector
 #   make usb        the application through the loader, over USB: usbflash.py
+#   make rom        R2: the loader through ST's ROM over J1's CH340 (U32), no probe:
+#                   bench/publicbench/romflash.py holds BOOT0 and pulses reset itself
 #   make probe      the ST-LINK and the board through it, nothing written: the probe's
 #                   firmware, the board's 3V3 as the probe reads it on TP5, the chip's ID
 #   make flash      the application with openocd through the ST-LINK. It only runs through the
@@ -58,6 +60,10 @@ boot:
 	$(MAKE) IMG=boot all
 	$(OCD) -c "program build/boot/optical.elf verify reset exit"
 
+rom:
+	$(MAKE) IMG=boot build/boot/optical.bin
+	PYTHONPATH=$(CURDIR)/../../bench python3 -m publicbench.romflash optical build/boot/optical.bin
+
 usb: $(B)/optical.bin
 	python3 ../output_panel/usbflash.py --ids cafe:4007,cafe:4006 --app 0x40000 --page 4096 $<
 
@@ -107,4 +113,4 @@ rescue: $(B)/optical.elf
 clean:
 	rm -rf $(B)
 
-.PHONY: all boot usb probe flash rescue clean
+.PHONY: all boot usb rom probe flash rescue clean
