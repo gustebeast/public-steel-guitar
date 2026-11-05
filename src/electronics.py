@@ -1576,7 +1576,7 @@ def _check_panel():
             "output_panel %s's mouth faces %r, not +X out through the panel -- check its "
             "rotation on the routed board" % (ref, m["dir"]))
         if m["spec"]["mount"] == "through":
-            assert JACK_TIP - 0.45 - 1e-9 <= fronts[ref] <= JACK_TIP + 0.05 + 1e-9, (
+            assert JACK_TIP - 0.45 <= fronts[ref] <= JACK_TIP + 0.05, (
                 "output_panel %s's front is at x %.2f; the panel face is %.2f -- a "
                 "through-mount connector has to reach it" % (ref, fronts[ref], JACK_TIP))
         else:
