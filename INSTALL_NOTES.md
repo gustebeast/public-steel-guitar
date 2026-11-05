@@ -1284,6 +1284,16 @@ Plug a USB device in (an audio interface such as a Shure MVX2U) and the board po
   finger takes more at first, then creeps a little and hands the excess to its neighbours and the end
   blocks. Expect the rod to settle 0.1-0.2 mm in the first weeks at tension; retune.
 
+## Keyhead inserts: start each one square with the iron, they do not drop in (2026-11-05)
+
+- **Where:** `keyhead_endplate`, the M4 heat-set pockets for the height screws (bottom face, ten) and
+  the side screws (-X face, ten).
+- **Do:** set the insert on its pocket's mouth, check it stands square to the face, and press it in with
+  the iron the whole way. It will not drop into the pocket on its own first.
+- **Why:** these pockets are 0.1 under the usual size (cadkit extra-strong pocket), so the melt grips
+  harder. An overtightened height screw pulled its insert out of the normal pocket. Still tighten the
+  height screws at light force only (see Stringing, step 4).
+
 ## Stringing: ONE wrap over the rod, then the side screw (2026-11-03)
 
 - **Where:** every string, `nut_wrap_rod`, `nut_plate_*` (or the printed stand-in), the M4 x 40 height
