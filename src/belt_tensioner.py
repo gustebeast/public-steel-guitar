@@ -98,10 +98,12 @@ M3 = FastenerSpec(
 SCR_CLR  = M3.shaft_clr_d                    # 3.4
 
 # ── the section ───────────────────────────────────────────────────────────────────────────
-SLOT_CLR = 0.1                               # belt to slot, each face
-SLOT_H   = BT + 2 * SLOT_CLR                 # 1.6
-SKIN     = 6 * B                             # 2.4 over and under the belt
-BODY_T   = SLOT_H + 2 * SKIN                 # 6.4 (z)
+SLOT_CLR = 0.05                              # belt to slot, each face. Was 0.1: the belt slid in
+                                             # with no resistance and a half slipped under tension
+                                             # (user, 2026-11-05), so it now takes a push to seat
+SLOT_H   = BT + 2 * SLOT_CLR                 # 1.5
+BODY_T   = 16 * B                            # 6.4 (z): HELD, the clamp's bounds are designed around
+SKIN     = (BODY_T - SLOT_H) / 2             # 2.45 over and under the belt: it takes what the slot gave
 SIDE     = 4 * B                             # 1.6 closed side wall
 BODY_W   = BW + 2 * SIDE                     # 8.2 (y); the belt sits centred, 1.6 in from the mouth
 EDGE_CLR = 0.2                               # belt edge to the slot's closed end
@@ -157,7 +159,8 @@ LIP_HT   = HT - FLANGE_T - LIP_CLR           # 2.35 half-thickness of a lip unde
 # the halves come apart only by sliding back out along x. DOVE is as deep as the lip can take
 # with two beads left over the belt's slot, and the slope it makes is printable both ways
 # (the flange's face and the lip's are each an overhang of DOVE_DEG in their own half's print).
-DOVE     = LIP_HT - SLOT_H / 2 - 2 * B       # 0.75 the flange's tip over its root, in z
+DOVE     = LIP_HT - (BT / 2 + 0.1) - 2 * B   # 0.75 the flange's tip over its root, in z: the r6
+                                             # dovetail, sized off the old 0.1 slot and kept as proven
 DOVE_DEG = math.degrees(math.atan2(DOVE, FLANGE))   # 43.2 off the build direction
 RAIL_STEP = RAIL_T + RAIL_CLR                # 0.95 B's rail stood off A's −y face
 MOUTH_B  = IN_HW - RAIL_STEP                 # 2.55 B's slot mouth, under A's rail
