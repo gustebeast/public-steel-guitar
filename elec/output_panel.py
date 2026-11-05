@@ -3959,7 +3959,7 @@ if REV != 1:
 
 if REV != 1:
     # SHORT HOPS AND USB PAIRS THE ROUTER LAYS BADLY, LAID BEFORE IT RUNS, as THRU and HUB_DN2 are.
-    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+    with open(os.environ.get("OP_HELD") or os.path.join(os.path.dirname(os.path.abspath(__file__)),
                            "output_panel.held.r2.json"), encoding="utf-8") as _fh:
         _held = _json.load(_fh)
     BOARD_NOTES["tracks"] += [(_n, _l, _w, [tuple(_p) for _p in _ps])
@@ -3967,7 +3967,11 @@ if REV != 1:
     BOARD_NOTES["vias"] += [tuple(_v) for _v in _held["vias"]]
 
 
-if REV != 1:
+if os.environ.get("OP_STITCH_EX"):
+    BOARD_NOTES["stitch_exceptions"] = tuple(BOARD_NOTES["stitch_exceptions"]) + tuple(os.environ["OP_STITCH_EX"].split(","))
+
+
+if REV != 1 and os.environ.get("OP_J10"):
     # J10 ON THE -Y EDGE (2026-11-01). It stood in the middle of the busy half, 125 mm2 of pads
     # no signal can cross, and its 24 V bars and return ran round U3 to reach it. Its two
     # rails now extend the lanes that already run along the -Y edge to the buck, and its
@@ -3995,6 +3999,74 @@ if REV != 1:
         ("PWR_GND", "F.Cu", 0.8, [(-16.75, -26.0), (-16.75, -17.0)]),
     ]
     BOARD_NOTES["vias"] += [("PWR_GND", _x, -23.8) for _x in (-5.5, -6.8, -8.1)]
+
+
+if REV != 1:
+    # ── R2: U1'S ESCAPE, LAID BEFORE THE ROUTER (2026-11-05) ───────────────────────────
+    # Freerouting is deterministic, so a full route that closes once proves nothing: the bar is
+    # 0 open across small placement changes. Ten single-part nudges (a 0.5-1.5 mm move of one
+    # small R or C) left 1-5 nets open in most runs, every one a close_last "no path" from a U1
+    # pad: the QFN-68's 0.4 mm pitch has no room for a via in the pad field, so a pin the router
+    # did not escape early stayed shut in. Three changes, measured together on those ten:
+    # 1. THE DAC GROUP WEST, beside K1. U3's analog outputs go to K1 and its I2S lines run
+    #    diagonally across the board's busy half to U1's north row; west, the diagonal is gone.
+    # 2. A STUB AND A VIA PER U1 SIGNAL PIN (output_panel.escape.r2.json, 18 vias, two to four
+    #    staggered rows a side). Every east pin needs its own: leaving the two I2C pins to the
+    #    router failed them in 9 of 9 nudges.
+    # 3. C53 OFF PIN 33's LINE. Its +3V3 land stood 0.7 mm out from ROLE_ID_N; at (13.4, 1.6) it
+    #    is 3.0/3.3 mm from pins 32/31 (quality A2 allows 5) and pin 33 escapes.
+    # Before: 4 of 10 nudges routed 0 open. After: 7 of 10 at 0 open (6 also 0 FAIL), and the
+    # unmoved board 0 open, 0 violations, 0 FAIL.
+    # Board frame (U1 at (7.0, -3.0)), on top of everything above, as OP_TRIAL is.
+    BOARD_NOTES["placements"].update({
+        "U3": (-33.5, -1.0, 0.0), "C33": (-38.5, 0.6, 90.0), "C26": (-38.5, -2.4, 90.0),
+        "C32": (-33.4, 3.7, 0.0), "C14": (-30.6, 3.3, 0.0), "C30": (-30.6, 4.8, 0.0),
+        "C31": (-30.6, 6.3, 0.0), "C25": (-33.4, 5.9, 0.0), "C27": (-33.4, 8.1, 0.0),
+        "C29": (-33.4, 10.3, 0.0),
+        # the output filter column: R13 turned so its DAC_FILT land stands over C34's and R14's
+        "R13": (-36.4, 5.0, 180.0), "C34": (-36.4, 6.3, 0.0), "R14": (-36.4, 7.6, 0.0),
+        "R23": (-36.4, 8.9, 0.0), "C45": (-36.4, 10.2, 0.0), "R24": (-36.4, 11.5, 0.0),
+        "R25": (-36.4, 12.8, 0.0),
+        "TP2": (2.0, 7.6, 0.0), "TP1": (5.0, 7.6, 0.0),        # off U1's north fan
+        "C53": (13.4, 1.6, 0.0),
+    })
+    # ⚠ THE HAND COPPER OF THE PARTS THAT MOVED HAS TO GO WITH THEM. DAC_FILT's hop and R1's
+    # DAC_LDOO run stayed where the DAC stood; the router joined the moved pads to them 60 mm
+    # away (74 and 94 mm of track for 3 and 6 mm of span). The escape file lays both afresh.
+    BOARD_NOTES["tracks"] = [_t for _t in BOARD_NOTES["tracks"] if _t[0] not in ("DAC_FILT", "DAC_LDOO")]
+    if not os.environ.get("OP_FAN"):
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                               "output_panel.escape.r2.json"), encoding="utf-8") as _fh:
+            _esc = _json.load(_fh)
+        BOARD_NOTES["tracks"] += [(_n, _l, _w, [tuple(_p) for _p in _ps]) for _n, _l, _w, _ps in _esc["tracks"]]
+        BOARD_NOTES["vias"] += [tuple(_v) for _v in _esc["vias"]]
+
+
+if REV != 1 and os.environ.get("OP_TRIAL"):
+    # A placement trial: {ref: [x, y, rot]} in the board frame, on top of everything above.
+    with open(os.environ["OP_TRIAL"], encoding="utf-8") as _fh:
+        BOARD_NOTES["placements"].update({_r: tuple(_v) for _r, _v in _json.load(_fh).items()})
+
+
+if REV != 1 and (os.environ.get("OP_J10") or os.environ.get("OP_DROP_J10_LABEL")):
+    BOARD_NOTES["quality"]["connector_labels"].pop("J10", None)
+if REV != 1 and os.environ.get("OP_DROP_NETS"):
+    # a trial that moves parts strands their hand copper: drop it, the trial lays its own
+    _drop = set(os.environ["OP_DROP_NETS"].split(","))
+    BOARD_NOTES["tracks"] = [_t for _t in BOARD_NOTES["tracks"] if _t[0] not in _drop]
+    BOARD_NOTES["vias"] = [_v for _v in BOARD_NOTES["vias"] if _v[0] not in _drop]
+if REV != 1 and os.environ.get("OP_FAN"):
+    # U1's escape, laid before the router: a stub and a via per signal pin.
+    with open(os.environ["OP_FAN"], encoding="utf-8") as _fh:
+        _fan = _json.load(_fh)
+    BOARD_NOTES["tracks"] += [(_n, _l, _w, [tuple(_p) for _p in _ps]) for _n, _l, _w, _ps in _fan["tracks"]]
+    BOARD_NOTES["vias"] += [tuple(_v) for _v in _fan["vias"]]
+if REV != 1 and os.environ.get("OP_TRACK"):
+    BOARD_NOTES["track_mm"] = float(os.environ["OP_TRACK"])
+if REV != 1 and os.environ.get("OP_VIA"):
+    BOARD_NOTES["via_mm"] = tuple(float(_v) for _v in os.environ["OP_VIA"].split(","))
+if REV != 1 and os.environ.get("OP_LAYERS"):
+    BOARD_NOTES["layers"] = int(os.environ["OP_LAYERS"])
 
 
 if __name__ == "__main__":
