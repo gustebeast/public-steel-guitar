@@ -35,9 +35,9 @@ FAST_RPM, FAST_ACC = 3000, 0       # the top speed: bronner's 11-02 step, a whol
 # quarter turn, 5 ms against 10). 0.25 s is about a pedal press.
 STEP_S = 0.25
 STRINGS = tuple(range(1, 11))       # string N = CAN id N on bus A
-# Which way a motor turns to RAISE pitch. Not known until a string is on a motor: the bench
-# finds it (docs/phone-ui.md) and sets it here, or with --raise-sign.
-RAISE_SIGN = +1
+# Which way a motor turns to RAISE pitch. Bench 2026-11-05, string 1: +1 lowered it, so -1.
+# Only string 1 is proven; --raise-sign still overrides it.
+RAISE_SIGN = -1
 
 
 def turns(semitones: float, dl_open: float = DL_OPEN) -> float:

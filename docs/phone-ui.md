@@ -145,8 +145,8 @@ Notes:
 
 ## Not tested yet: needs the bench
 
-- **Which way raises pitch.** `RAISE_SIGN` in `pitchctl.py` (or `--raise-sign -1`) is a guess
-  until a string is on a motor. Try HALF up with one string and listen.
+- **Which way raises pitch.** `RAISE_SIGN` in `pitchctl.py` is -1 since the 2026-11-05 bench run
+  on string 1 (+1 lowered it). Only string 1 has been tried; check an even string (far row) too.
 - **The motors' setup**: CAN id N on string N, SR_vFOC mode, enabled. The server enables
   them; it does not set ids or modes (`docs/bench-order.md` does that).
 - **The creep's speed** on a real motor: F5 at 1 to 10 rpm, renewed every 50 ms.
