@@ -50,6 +50,9 @@ from .helpers import box_at
 B = D.BEAD
 FIT = D.MCTRL_FIT                 # 0.3: board to printed guide, every guide face
 CHEEK_T = 2 * B                   # each cheek across the board (X)
+CHEEK_T_PX = 6 * B                # ...but the -Y channel's +X cheek is 6: it stands floor to the
+                                  # board's top edge, and at 2 beads it wobbled (user, 2026-11-05).
+                                  # It grows away from the board, so the fit does not change
 BACK_T = 3 * B                    # the channel's back wall (Y), the -Y stop
 EDGE_E = 2 * B                    # how far the -Y cheeks lap the laminate's face
 GUIDE_E_NEG = 7 * B               # the +Y guide's -X cheek: that face is bare 6.3 in
@@ -99,9 +102,10 @@ def _boxes():
     out = []
     # ── the -Y EDGE CHANNEL: back wall + two cheeks, floor to the board's top edge ──
     cy0, cy1 = y0 - FIT, y0 + EDGE_E
-    out.append((nx0, px1, cy0 - BACK_T, cy0, zf, zt))                       # back wall
+    cx1 = px0 + CHEEK_T_PX                           # the -Y channel's +X cheek, the thick one
+    out.append((nx0, cx1, cy0 - BACK_T, cy0, zf, zt))                       # back wall
     out.append((nx0, nx1, cy0, cy1, zf, _top_under_parts(-1, cy0, cy1, zt)))
-    out.append((px0, px1, cy0, cy1, zf, _top_under_parts(+1, cy0, cy1, zt)))
+    out.append((px0, cx1, cy0, cy1, zf, _top_under_parts(+1, cy0, cy1, zt)))
     # ── the +Y GUIDE: two low cheeks off the floor, inside the board's +Y edge ──
     # Not past it: string 1's motor is MOTOR_CLR beyond that edge, the whole bottom of it.
     out.append((nx0, nx1, y1 - GUIDE_E_NEG, y1, zf,
