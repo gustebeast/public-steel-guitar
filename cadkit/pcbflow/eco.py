@@ -74,9 +74,9 @@ def _matched(notes):
 
 def _escapes(board, moved, gone, clash):
     """The pieces of `gone` a fine-pitch part's pins escape by: from a pad of a part not moved
-    whose pads stand closer than FINE, along the same net through shared ends, to a via or
-    to copper that stays, touching no moved pad on the way and losing no piece to a clash
-    with one (a chain cut in the middle would leave a dangling stub).
+    whose pads stand closer than FINE, along the same net through shared ends, to a via, to
+    copper that stays or to another fine pin of the net, touching no moved pad on the way
+    and losing no piece to a clash with one: the shortest such path, nothing off it.
 
     ⚠ THESE WERE HALF OF OPTICAL'S MISSES (2026-11-03). A decoupling cap beside U6 (LQFP-176,
     0.5 mm) moved a millimetre; RIP took up every GND piece near it, U6's pin-to-via stubs
@@ -97,27 +97,37 @@ def _escapes(board, moved, gone, clash):
     stays = [_xy(e) for t in board.GetTracks() if t.m_Uuid.AsString() not in took
              for e in (t.GetStart(), t.GetEnd())]
     keep = set()
+    # THE PATH, NOT THE PIECE. Breadth first from the pin, through pieces that touch no moved
+    # pad and do not clash, to the nearest anchor -- a via, copper that stays, or ANOTHER fine
+    # pin of the net -- and only that path is kept. Taking the whole connected piece lost
+    # every escape that had a branch to the moved part on it (optical C129, 2026-11-05: U6's
+    # 171-172 bridge meets the cap's old feed at a T between the pins; the feed clashed, the
+    # bridge went with it, and the closure only overlapped pad 172 -- DRC read it joined,
+    # quality's A1 did not). The walk does not pass through a pin: a pad is not a joint.
+    at = lambda e: pcbnew.VECTOR2I(pcbnew.FromMM(e[0]), pcbnew.FromMM(e[1]))
+    pinned = lambda e, net: any(p.GetNetname() == net and p.HitTest(at(e)) for p in fine)
+    usable = [u for u in gone if id(u) not in clash and not any(
+        m.HitTest(u.GetStart()) or m.HitTest(u.GetEnd()) for m in mine)]
     for q in fine:
-        for t in gone:
+        for t in usable:
             if t.GetClass() == "PCB_VIA" or t.GetNetname() != q.GetNetname()                     or not (q.HitTest(t.GetStart()) or q.HitTest(t.GetEnd())):
                 continue
-            chain, front, via = [], [t], False
-            while front and len(chain) < 8:
-                u = front.pop()
-                if id(u) in {id(c) for c in chain}:
+            net, back, front = t.GetNetname(), {id(t): None}, [t]
+            while front:
+                u = front.pop(0)
+                path = [u]
+                while back[id(path[-1])] is not None:
+                    path.append(back[id(path[-1])])
+                if len(path) > 8:
                     continue
-                if any(m.HitTest(u.GetStart()) or m.HitTest(u.GetEnd()) for m in mine):
-                    chain = None
+                if u.GetClass() == "PCB_VIA" or any(near(e, f) for e in ends(u) for f in stays)                         or any(pinned(e, net) and not q.HitTest(at(e)) for e in ends(u)):
+                    keep |= {id(c) for c in path}
                     break
-                chain.append(u)
-                if u.GetClass() == "PCB_VIA" or any(near(e, f) for e in ends(u) for f in stays):
-                    via = True
-                    continue
-                front += [v for v in gone if id(v) not in {id(c) for c in chain}
-                          and v.GetNetname() == u.GetNetname()
-                          and any(near(e, f) for e in ends(u) for f in ends(v))]
-            if chain and via and not any(id(u) in clash for u in chain):
-                keep |= {id(u) for u in chain}
+                for v in usable:
+                    if id(v) not in back and v.GetNetname() == net and any(
+                            near(e, f) for e in ends(u) if not pinned(e, net) for f in ends(v)):
+                        back[id(v)] = u
+                        front.append(v)
     return keep
 
 
