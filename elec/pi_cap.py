@@ -1093,8 +1093,30 @@ if RISER:
     # 45 degrees, 9.26. So 9.3: a line that crosses the row once passes, one that runs along
     # it still fails. UI_ENC_B keeps its exact length (it runs along the rows to J5 by
     # design), and +5V_PI is another cut.
-    for _n in ("UI_RES_N", "UI_SW_A", "UI_SDIN", "UI_SCLK", "UI_CS_N", "PWR_SW_UP"):
+    for _n in ("UI_RES_N", "UI_SW_A", "UI_SDIN", "UI_CS_N"):
         _q["return_slot_ok"][_n]["mm"] = 9.3
+    # ...and with them at 0.15 (below), UI_SCLK and PWR_SW_UP no longer cross the row on any of
+    # eleven reroutes: their exemptions would be licences nobody uses (quality reads that as a
+    # FAIL), so they go. UI_ENC_B's run beside the rows to J5 came back 16.83-17.09 mm on all
+    # eleven, against the 16.60 one route measured: signed to 17.5, still short of a second
+    # pass along the row.
+    # UI_ENC_A now crosses the row once, as the others do (5.43 mm on the unmoved route): the
+    # same ceiling.
+    for _n in ("UI_SCLK", "PWR_SW_UP"):
+        del _q["return_slot_ok"][_n]
+    _q["return_slot_ok"]["UI_ENC_B"]["mm"] = 17.5
+    _q["return_slot_ok"]["UI_ENC_A"] = {
+        "mm": 9.3, "why": "the encoder's other channel, a mechanical contact read at human "
+                          "speed, crossing the 40-pin socket's rows once on its way to J5"}
+    # ⚠ THE SLOW LINES ARE DRAWN AT 0.15, TO MAKE ROOM UNDER THE SOCKET (2026-11-05). In1 at y
+    # -7..-8 under J1 is the lane UI_RES_N, UI_SW_C, UI_SW_PUSH and UI_ENC_B all want, and at
+    # 0.25 mm (0.39 a lane with clearance) it holds three: two nudged reroutes in eleven left
+    # UI_RES_N open, and drawing it there, or moving a part, only took the lane from another
+    # (work items 2026-11-05). These are switch contacts, an encoder and a reset line: micro-
+    # amps at human speed, so width buys them nothing. 0.15 is 0.29 a lane, over the fab's
+    # 0.127 floor.
+    for _n in ("UI_SW_*", "UI_ENC_*", "PWR_SW_*", "UI_RES_N"):
+        BOARD_NOTES["net_widths"][_n] = 0.15
     # J3 STAYS back_only (2026-11-05, measured). Over 33 full reroutes (unmoved + ten single
     # nudges, three series) its way words found a front site only when R2 itself was nudged
     # to (-8.53, 0.03): at (-8.00, 1.00) R2's courtyard takes the site. R2 placed there for
