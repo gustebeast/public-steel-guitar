@@ -1,5 +1,35 @@
 # bronner — open work items (2026-09-30)
 
+## 2026-11-05 END OF DAY
+
+**pi_cap (f6c7a1c1, merged): 8 of 11 clean, was 7.** The unmoved reroute is 0/0/0 FAIL. The
+slow UI lines (UI_SW_*, UI_ENC_*, PWR_SW_*, UI_RES_N) are drawn at 0.15 mm, which frees room in
+the In1 lane under the 40-pin socket. The socket-row ceilings are re-signed to what is really used:
+- UI_RES_N, UI_SW_A, UI_SDIN, UI_CS_N at 9.3; UI_ENC_B at 17.5; UI_ENC_A at 9.3 (new);
+- UI_SCLK and PWR_SW_UP dropped (stale).
+- Tried and lost: UI_DC at 0.15 too. Still 8/11 (one nudge gained, one lost to UI_ENC_A at 9.39).
+- Left, on one nudge each: U1, a 4.5 mm² GND B.Cu island at the -X edge (bbox KiCad 67.3-73.4 x
+  107.0-108.7). The island stitcher (020b9c5) ran but found no legal via site in a 1.7 mm sliver.
+  Fix idea, not built: a sliver joined by nothing could be cut out of the fill instead of stitched.
+- Seen, not a finding: on that nudge close_last joined UI_ENC_A and UI_RES_N with 40-43 mm
+  detours. Quality passes them, so "clean" can hide a long closure. A closure-length check
+  (closure vs. pad-to-pad straight line) would catch it.
+
+**output_panel C53 on +3V3's own lane east of pins 31/32: tried, lost, dropped.**
+The geometry, so it can be picked up again:
+- U1's east escapes restaggered. ROLE_ID_N went from pin 33 at y -0.2 to a via at (12.2, 0.5).
+  I2C2_SDA's via moved to (13.6, -1.7) and I2C2_SCL's to (12.85, -2.3).
+- That freed a +3V3 lane at y -0.6 from pins 31 (y -1.0) and 32 (y -0.6) east to x 13.2:
+  0.2 mm stubs off the pins, 0.3 mm on the run. C53 sat at (13.68, -0.6, 0°) on the lane end.
+- C53's copper path to the pins (cupath.py, pad to pad, track only): **2.26 mm on all 11
+  boards**, against 29.3 mm (and 48.5 on one nudge) today.
+- Robustness: **3 of 10 nudges clean** (the rule is 7). The unmoved board soft-FAILs: I2C2_SCL's
+  new via straddles a 5.21 mm plane cut, limit 5.0. Five nudges leave an open, one of them +3V3
+  itself (U6 to pins 31/32). One nudge has I2S_CK on a 6.76 mm cut.
+- Read: the east row cannot hold a +3V3 lane and three escapes inside the room the router needs.
+  The lever is room, not order: C53 on the back side under the pins, or a 0201, would free the
+  lane without moving the I2C vias. Neither is tried.
+
 ## 2026-11-05 DAY: ROUTING ROBUSTNESS, SECOND HALF
 
 **cadkit pcbflow, three fixes (all on main by 41601be8):**
