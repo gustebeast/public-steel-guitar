@@ -44,6 +44,15 @@ APP=/opt/public-steel-guitar/bench
 mkdir -p "$(dirname "$APP")"
 rm -rf "$APP"
 cp -r "$HERE/../.." "$APP"
+# copedent.py reads the table motor_ctrl plays (bench/../firmware/motor_ctrl/play.h): copy it beside.
+PLAY="$HERE/../../../firmware/motor_ctrl/play.h"
+rm -rf "$(dirname "$APP")/firmware"
+if [ -f "$PLAY" ]; then
+  mkdir -p "$(dirname "$APP")/firmware/motor_ctrl"
+  cp "$PLAY" "$(dirname "$APP")/firmware/motor_ctrl/"
+else
+  echo "warning: $PLAY missing -- copy firmware/motor_ctrl/play.h beside bench/ for measured curves"
+fi
 sed "s/^User=.*/User=$U/" "$HERE/../public-steel-guitar-phone.service" > /etc/systemd/system/public-steel-guitar-phone.service
 systemctl daemon-reload
 systemctl enable avahi-daemon public-steel-guitar-phone
