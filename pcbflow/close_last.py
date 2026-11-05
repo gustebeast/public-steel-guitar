@@ -129,6 +129,40 @@ def _via_starts(board, net, pos, layers):
     return out
 
 
+def _zone_point(board, net, layer, toward, inset=0.35):
+    """The point of the net's poured copper on `layer` nearest `toward`, pulled `inset` mm into
+    the copper (None if the net has no pour there).
+
+    ⚠ DRC NAMES A ZONE BY ITS OUTLINE'S FIRST CORNER (optical, 2026-11-05). A decap moved
+    beside U6 and left "Pad 158 [GND] of U6" unconnected to "Zone [GND] on F.Cu", the zone at
+    (71.69, 189.53): the board's own bottom-left corner, 60 mm from the pad. The search went
+    looking for a path to that corner and found none, with GND pour all round the pad.
+    So a zone end is the zone's copper nearest the other end, not the point DRC printed."""
+    lid = board.GetLayerID(layer)
+    tx, ty = pcbnew.FromMM(toward[0]), pcbnew.FromMM(toward[1])
+    d = pcbnew.FromMM(inset)
+    best = None
+    for z in board.Zones():
+        if z.GetNetname() != net or not z.IsOnLayer(lid):
+            continue
+        fill = z.GetFilledPolysList(lid)
+        for k in range(fill.OutlineCount()):
+            o = fill.Outline(k)
+            for i in range(o.PointCount()):
+                v = o.CPoint(i)
+                r = (v.x - tx) ** 2 + (v.y - ty) ** 2
+                if best is not None and r >= best[0]:
+                    continue
+                # a vertex is ON the copper's edge, where the clearance shuts the start cell
+                for dx, dy in ((d, 0), (-d, 0), (0, d), (0, -d), (d, d), (-d, -d), (d, -d), (-d, d)):
+                    q = pcbnew.VECTOR2I(v.x + dx, v.y + dy)
+                    if all(fill.Contains(pcbnew.VECTOR2I(q.x + ex, q.y + ey))
+                           for ex, ey in ((0, 0), (d // 2, 0), (-d // 2, 0), (0, d // 2), (0, -d // 2))):
+                        best = (r, (pcbnew.ToMM(q.x), pcbnew.ToMM(q.y)))
+                        break
+    return best[1] if best else None
+
+
 def _pad_layer(board, net, layer, pos):
     """The layer an SMD pad at `pos` is really on (a through-hole pad keeps `layer`).
 
@@ -152,7 +186,8 @@ def main(stem):
             continue
         (na, la, pa, ta), (nb, lb, pb, tb) = _ends(u["items"][0]), _ends(u["items"][1])
         if na and na == nb:
-            todo.append((na, la, pa, ta, lb, pb, tb))
+            za, zb = (i["description"].startswith("Zone") for i in u["items"][:2])
+            todo.append((na, la, pa, ta, lb, pb, tb, za, zb))
     # nets finish.py asks to leave alone on this attempt: a closure of theirs broke a rule
     # last time, and one bad closure must not cost the board the good ones (see finish.py)
     skip = {s for s in os.environ.get("CLOSE_LAST_SKIP", "").split(",") if s}
@@ -185,11 +220,16 @@ def main(stem):
     import time as _time
     _t0 = _time.time()
     _budget = float(os.environ.get("CLOSE_LAST_BUDGET_S", "1200"))
-    for _i, (net, la, pa, ta, lb, pb, tb) in enumerate(todo):
+    for _i, (net, la, pa, ta, lb, pb, tb, za, zb) in enumerate(todo):
         if _time.time() - _t0 > _budget:
             print("close_last: out of time after %.0f s -- left open: %s"
                   % (_time.time() - _t0, ", ".join(t[0] for t in todo[_i:])))
             break
+        # a zone end goes to its copper nearest the other end (zone to zone: as DRC printed)
+        if za and not zb:
+            pa = _zone_point(board, net, la, pb) or pa
+        if zb and not za:
+            pb = _zone_point(board, net, lb, pa) or pb
         if ta:
             la, pa = _free_end(board, net, la, pa, pb)
         else:
