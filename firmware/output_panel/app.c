@@ -43,15 +43,21 @@
 #define SDI_PORT GPIOB
 #define SDI_PIN  GPIO_Pin_0
 #else
+/* R2 (2026-11-05 layout): CS on PC7 and SDI on PC9, in the order they leave U1's north row
+ * (SCK, then SDI, then CS), so pin 42 is not walled in between two of them. */
 #define CS_PORT  GPIOC
-#define CS_PIN   GPIO_Pin_9
+#define CS_PIN   GPIO_Pin_7
 #define SCK_PORT GPIOA
 #define SCK_PIN  GPIO_Pin_8
 #define SDI_PORT GPIOC
-#define SDI_PIN  GPIO_Pin_8
+#define SDI_PIN  GPIO_Pin_9
 #endif
 #define RELAY_PIN GPIO_Pin_5        /* PC5 */
+#if REV == 1
 #define JACK_PIN  GPIO_Pin_1        /* PB1. PB2 is on the same net and stays an input for ever */
+#else
+#define JACK_PIN  GPIO_Pin_2        /* PB2 alone; PB1 is free. R37 still holds BOOT1 low at reset */
+#endif
 
 void NMI_Handler(void) __attribute__((interrupt));
 void HardFault_Handler(void) __attribute__((interrupt));
