@@ -1,5 +1,45 @@
 # bronner — open work items (2026-09-30)
 
+## 2026-11-05 DAY: ROUTING ROBUSTNESS, SECOND HALF
+
+**cadkit pcbflow, three fixes (all on main by 41601be8):**
+- 6a26c12 prune_closures: after a failed close_last attempt, take up the closures DRC names, then
+  trim new pieces with a dangling end and new vias fewer than two pieces reach, until stable.
+- 020b9c5 close_last: a zone-to-zone gap is a pour island nothing goes through. One via joins it
+  to the plane (or, on a board without one, to a joined fill on another layer).
+- 6fb6635 eco: when a part moves, keep the shortest escape path from a fine pin to an anchor
+  (a via, staying copper, or the next fine pin of the net), not the whole connected piece.
+
+**optical R2, the same 18 random small-part moves on the kept board (eco local repair, no route):**
+- before the three fixes: 2 refused (matched USB copper), 13 of 16 connected, 11 clean of every check.
+- after: 2 refused, **16 of 16 connected, 13 clean**. C129 (was 3 open, 5 FAIL) and C128 are clean.
+- Left: C109 on two moves (1 and 2 FAIL, connected; the repro shows a soft width finding, +3V3D
+  at 0.25 mm on In2 where 0.37 is wanted) and R30 (1 FAIL, the same as before the fixes).
+  Not chased: both are soft and the board itself is unchanged by any of this.
+
+**pi_cap (submitted e873d94d, merged).** The socket-row crossings are signed to a 9.3 mm ceiling.
+J3's pinout stays on the back. The unmoved reroute is 0/0/0 FAIL; the nudges are about 7/11 clean.
+- Tried and lost: UI_RES_N's In1 run drawn (0/11 clean: UI_SDIN lost the lane and ran along the
+  socket row); R2 moved so J3's front words fit (0/11, UI_RES_N open on 6); a via keepout on
+  J3's word site (no effect -- R2's courtyard is what blocks it).
+- Left: UI_RES_N open on two nudges; PWR_SW_UP's exemption unused on one; J3 on the R2 nudge.
+
+**Per-net routing order: tried, does not pay. Stopped here (lead's rule).**
+The idea: an optional `route_first` list routed before everything else, so UI_RES_N gets the In1
+lane under the socket before UI_SW_C / UI_SW_PUSH / UI_ENC_B fill it.
+- Freerouting 2.4.1 has no option for it: `--help` lists no net or class filter.
+- A first pass on a DSN cut to the listed nets does not work. Taking a net out of (network) makes
+  its pre-laid wires netless, and every netless wire on a netless pad is a violation (98-112 on
+  pi_cap M1). UI_RES_N stayed unrouted even with GND kept. Dropping those wires instead would let
+  the first pass use ground the frozen pre-lay needs in the second.
+- And it was already measured. "UI_RES_N first" is the P series: its copper fixed in the lane
+  before the router, 0/11 clean, because UI_SDIN then had nowhere to go. Whichever net goes
+  first, one of the four loses the lane on some nudges.
+- Also tried: close_last searching In1 too (planes still excluded). M1 and M3 still "no path";
+  the lane is really full. Not committed.
+If this is ever reopened, the lever is lane capacity under the socket (a fifth net's worth of
+room at y 107-108 on In1), not the order the nets are laid in.
+
 ## MORNING SUMMARY (2026-11-05, overnight work while you were away)
 
 **output_panel R2 routes reliably now, and it is on main.** The 11-01 layout search is done.
