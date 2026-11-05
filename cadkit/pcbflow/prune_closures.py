@@ -4,10 +4,13 @@
 
 Reads <stem>.preclose.kicad_pcb (the board before close_last ran), <stem>.kicad_pcb (after
 it) and <stem>.finish.drc.json (DRC of the after board). Every track or via that is new
-since the before board and is named in a violation is taken up, together with the new
-copper joined to it end to end on the same net: that whole run is one closure, and half
-of one is a dangling stub. Everything else close_last laid stays. Prints how many pieces
-it took up; finish.py runs DRC again and keeps the result only if it reads better.
+since the before board and is named in a violation is taken up. Then the leftovers are
+trimmed: a new piece goes if one of its ends touches nothing of its net (no pad, no other
+piece), and a new via goes if fewer than two pieces reach it; repeat until nothing moves.
+Growing the take along "joined" copper instead took too much (closures meet at pads and at
+each other), so the rule is take the bad, then trim what dangles. Everything else close_last
+laid stays. Prints how many pieces it took up; finish.py runs DRC again and keeps the
+result only if it reads better.
 
 WHY (optical, 2026-11-05). A decoupling cap beside U6 moved a millimetre and left three
 +3V3D gaps. close_last closed all three, one of them with a 12 mm detour that broke
@@ -16,17 +19,16 @@ stayed at three open. finish's retry then left the blamed NET alone, but the thr
 were all on +3V3D, so the retry closed nothing either. The unit that broke the rule is the
 closure, not the net.
 
-Measured on the kept optical R2 board, the three decap moves that missed: C109 4 open -> 2
-(25 of 32 new pieces kept); C129 still 3; C128 unchanged at 2 (no violation to prune: its
-misses were GND finding no path, fixed in close_last since). It can only help: finish keeps
-the pruned board only if DRC reads strictly better.
+Measured on the kept optical R2 board, the three decap moves that missed (with close_last's
+zone-point fix): C109 4 open -> 0 open, 0 violations (took up 1 of 34 new pieces; quality
+1 soft A1 width FAIL); C129 3 -> 0 open, 0 violations (took up 2 of 17); C128 0/0/0 FAIL. It
+can only help: finish keeps the pruned board only if DRC reads strictly better.
 
-⚠ C129 IS NOT A SHARED VIA (corrected 2026-11-05; an earlier note here and commit 64fd20a's
-message said it was). Its violating closures are the SHORT ones, into U6.171 (0.5 mm pitch):
-DRC finds them too close to pads 170 and 173, which have no net. Those pads are in the
-search's obstacle list, so the gap is in how close_last's closure meets a fine-pitch pin
-(margin, end snapping or the final approach); not yet found. Taking those closures up is
-right, and leaves the pin open.
+⚠ C129 still reads 5 hard A1 FAILs ("no copper joins U8.2 to U6.6/15/23/36/172"). Not this
+step: eco.py rips U6's own 171-172 pin-to-pin bridge (it meets C129's feed at a junction),
+and the replacement's only joint to pad 172 is a 0.5 mm track overlapping the pad, which DRC
+counts as connected and A1 does not. Fix belongs in eco's escape keep (a fine-pitch part's
+pin-to-pin bridge stays), not here.
 """
 from __future__ import annotations
 
@@ -79,28 +81,51 @@ def main(stem):
     if not bad:
         print("prune_closures: no violation is on new copper")
         return 0
-    # grow each bad piece into its whole closure: new copper, same net, sharing an end that
-    # is not on a pad. A closure ends at a pad, and the closures of one supply often start
-    # at the same one (the moved cap's): joined through it, all three went as one.
+    # ⚠ TAKE UP THE BAD PIECES, THEN WHAT THEY LEAVE DANGLING -- not the whole closure
+    # (optical C129, 2026-11-05). The three +3V3D closures there met track to track, not at
+    # a pad, so a closure grown end to end was all three: 16 of 17 new pieces went for two
+    # short ones that broke clearance. Now a new piece goes if DRC names it, or if one of its
+    # ends then touches nothing of its net (no pad, no other piece); a new via goes if fewer
+    # than two pieces still reach it. Repeated until nothing more comes loose.
     pads = [p for fp in board.GetFootprints() for p in fp.Pads()]
+    tracks = list(board.GetTracks())
+    tol = pcbnew.FromMM(0.01)
     def ends(t):
         if t.GetClass() == "PCB_VIA":
             return [t.GetPosition()]
         return [t.GetStart(), t.GetEnd()]
-    def free(q, net):
-        return not any(p.GetNetname() == net and p.HitTest(q) for p in pads)
-    gone, front = {id(t): t for t in bad}, list(bad)
-    while front:
-        u = front.pop()
-        joints = [q for q in ends(u) if free(q, u.GetNetname())]
-        for v in new:
-            if id(v) in gone or v.GetNetname() != u.GetNetname():
+    def held(q, t, gone):
+        net = t.GetNetname()
+        if any(p.GetNetname() == net and p.HitTest(q) for p in pads):
+            return True
+        for v in tracks:
+            if v is t or id(v) in gone or v.GetNetname() != net:
                 continue
-            if any((q - e).EuclideanNorm() < pcbnew.FromMM(0.01) or
-                   (v.GetClass() != "PCB_VIA" and v.HitTest(q))
-                   for q in joints for e in ends(v)):
-                gone[id(v)] = v
-                front.append(v)
+            if v.GetClass() == "PCB_VIA":
+                if (v.GetPosition() - q).EuclideanNorm() < tol:
+                    return True
+            elif any((e - q).EuclideanNorm() < tol for e in ends(v)) or v.HitTest(q):
+                return True
+        return False
+    gone = {id(t): t for t in bad}
+    loose = True
+    while loose:
+        loose = False
+        for t in new:
+            if id(t) in gone:
+                continue
+            if t.GetClass() == "PCB_VIA":
+                q = t.GetPosition()
+                n = sum(1 for v in tracks if id(v) not in gone and v is not t
+                        and v.GetClass() != "PCB_VIA" and v.GetNetname() == t.GetNetname()
+                        and any((e - q).EuclideanNorm() < tol for e in ends(v)))
+                drop = n < 2 and not any(p.GetNetname() == t.GetNetname() and p.HitTest(q)
+                                         for p in pads)
+            else:
+                drop = not all(held(q, t, gone) for q in ends(t))
+            if drop:
+                gone[id(t)] = t
+                loose = True
     nets = sorted({t.GetNetname() for t in gone.values()})
     for t in gone.values():
         board.Remove(t)
