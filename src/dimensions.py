@@ -1319,10 +1319,15 @@ BRIDGE_BASE_X0 = BRIDGE_X - BRIDGE_BASE_HALF        # -25.06  (-X face)
 # 1.6mm beyond the holes we cut for the guide rods"). The part builds -X up, so every teardrop
 # APEX points -X: it is the near row's seat apex that sets the -X face above. On the +X side
 # every bore is a plain circle, and the furthest one out is the far row's guide-rod bore at
-# SCREW_ROW_DX + NUT_HOLE_DX + its radius (21.88; the far seat stops at 20.10). Two beads past it.
-_RIM_PX = max(SCREW_ROW_DX + NUT_HOLE_DX + (GUIDE_ROD_D + GUIDE_ROD_FIT_PX) / 2,
+# SCREW_ROW_DX + NUT_HOLE_DX + its radius (21.83; the far seat stops at 20.10). Two beads past it.
+# The face is sized off the NOMINAL fit, not GUIDE_ROD_FIT_PX: that row's extra 0.10 is a print
+# correction, and letting it push the face out 0.05 moved every part placed off this face (chassis
+# rails, screw rail, the output panel and its board). It costs 0.05 of the wall: 1.55, not 1.6.
+_RIM_PX = max(SCREW_ROW_DX + NUT_HOLE_DX + (GUIDE_ROD_D + GUIDE_ROD_FIT) / 2,
               SCREW_ROW_DX + (SUPPORT_BRG_OD + 0.2) / 2)
-BRIDGE_HALF_PX = _RIM_PX + MIN_WALL_2P                         # 23.48
+BRIDGE_HALF_PX = _RIM_PX + MIN_WALL_2P                         # 23.43
+assert BRIDGE_HALF_PX - (SCREW_ROW_DX + NUT_HOLE_DX + (GUIDE_ROD_D + GUIDE_ROD_FIT_PX) / 2)     >= MIN_WALL_2P - 0.05 - 1e-9, "the +X face's wall past the wider far-row guide-rod bore"
+
 
 
 # THE BOTTOM'S OWN SPAN: the chassis floor runs END TO END of the chassis -- the two KEPT-SHELL
