@@ -534,6 +534,11 @@ assert WIN_HI <= SS_ROWS[1] - SS_HEAD_D / 2.0 - D.MIN_WALL_2P, "the window runs 
 TAIL_CUT = WIN_H / 2.0
 TAIL_END = WIN_HI - TAIL_CUT                    # where a tail ends, trimmed
 assert TAIL_END - WIN_LO >= 8.0, "a trimmed tail has no room to be pulled down"
+# THE RAMP (user, 2026-11-04): a 45 degree fill in the window's floor/+X corner, so the +X face -- a
+# ceiling in the -X -> +X build -- bridges WIN_H - WIN_RAMP instead of the whole window. It stays under
+# a trimmed tail's end, and the tail channels are cut through it, so a tail still drops to the floor.
+WIN_RAMP = 12 * D.BEAD                          # 9.6
+assert WIN_RAMP <= TAIL_CUT, "the ramp climbs past a trimmed tail's end"
 # the plate's -X face has to stand behind both rows wherever a string clamps it
 for _g in (D.STRING_GAUGE[0], G_ENVELOPE):
     _bot = ROD_Z - ROD_D / 2 - _g - PLATE_BODY_H
@@ -550,16 +555,17 @@ def side_screw_yz(i: int):
 
 def side_screw_negatives(i: int):
     """Head recess (open in the bed face), heat-set pocket (mouth on its floor) and clearance on
-    into the tail channel. Along the build direction, so plain round bores."""
+    into the tail channel. Along the build direction, so plain round bores -- and each step down
+    in diameter is a ceiling over the wider bore, so counterbore_cutter cones it at 45 degrees."""
+    from cadkit.fasteners import counterbore_cutter
     y, z = side_screw_yz(i)
     pilot = M4.pilot_d((1.0, 0.0, 0.0), PRINT_UP)
-    head = (cq.Workplane("YZ", origin=(X_BACK - 1.0, y, z)).circle(SS_HEAD_D / 2.0)
-            .extrude(SS_MOUTH_X - X_BACK + 1.0))
-    hs = (cq.Workplane("YZ", origin=(SS_MOUTH_X - 0.01, y, z)).circle(pilot / 2.0)
-          .extrude(M4.insert_depth + 0.01))
-    bore = (cq.Workplane("YZ", origin=(SS_MOUTH_X + M4.insert_depth - 0.01, y, z))
-            .circle(M4.shaft_clr_d / 2.0).extrude(POCKET_X0 + 0.5 - (SS_MOUTH_X + M4.insert_depth - 0.01)))
-    return [head, hs, bore]
+    head_h = SS_MOUTH_X - X_BACK + 1.0
+    head = counterbore_cutter(SS_HEAD_D, head_h, pilot, head_h + M4.insert_depth,
+                              (X_BACK - 1.0, y, z), (1.0, 0.0, 0.0), print_up=PRINT_UP)
+    bore = counterbore_cutter(pilot, M4.insert_depth, M4.shaft_clr_d, POCKET_X0 + 0.5 - SS_MOUTH_X,
+                              (SS_MOUTH_X, y, z), (1.0, 0.0, 0.0), print_up=PRINT_UP)
+    return [head, bore]
 
 
 def side_screw(i: int) -> cq.Workplane:
@@ -705,7 +711,11 @@ def plier_window() -> cq.Workplane:
     """The window across every string's tail, from past the bed face in to the plates' slots."""
     y0, y1 = D.nut_y(SKU_C) + POCKET_LO[SKU_C], D.nut_y(0) + POCKET_HI[0]
     x0, x1 = X_BACK - 1.0, PLATE_X0 - PLATE_CLR
-    return box_at(x1 - x0, y1 - y0, WIN_H, x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(WIN_LO + WIN_HI) / 2)
+    win = box_at(x1 - x0, y1 - y0, WIN_H, x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(WIN_LO + WIN_HI) / 2)
+    ramp = (cq.Workplane("XZ").polyline([(x1 + 0.01, WIN_LO - 0.01), (x1 - WIN_RAMP - 0.01, WIN_LO - 0.01),
+                                         (x1 + 0.01, WIN_LO + WIN_RAMP + 0.01)]).close()
+            .extrude(y1 - y0 + 2.0, both=True).translate((0.0, (y0 + y1) / 2, 0.0)))
+    return win.cut(ramp)
 
 
 def all_side_screw_negatives() -> cq.Workplane:
