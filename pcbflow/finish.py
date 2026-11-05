@@ -574,7 +574,18 @@ def finish(stem, rounds=1, keep_route=False):
                 _n3, _v3 = best_n, best_v + 1
             if (_v3, _n3) < (best_v, best_n):
                 best_n, best_v, nets = _n3, _v3, _nets3
-                break
+                if not best_n or best_v:
+                    break
+                # ⚠ AND AGAIN FROM THE BETTER BOARD (optical, 2026-11-05). A decap's GND pad
+                # was fed by the pour; the +3V3D closures cut the pour round it, the refill
+                # left the pad an island, and the first attempt that improved the board was
+                # the last: one net open that a second pass closes. The board that won is
+                # the new starting point, and every attempt is still judged against it.
+                shutil.copy(stem + ".kicad_pcb", stem + ".preclose.kicad_pcb")
+                shutil.copy(stem + ".finish.drc.json", stem + ".preclose.drc.json")
+                _skip = set()
+                print("  close_last: %d still open, again from this board" % best_n)
+                continue
             # ⚠ FIRST TAKE UP ONLY THE CLOSURES THAT BROKE A RULE (optical, 2026-11-05).
             # Leaving the blamed NET alone loses its good closures with the bad one, and a
             # supply with three gaps is one net: prune_closures.py says why.
@@ -587,7 +598,13 @@ def finish(stem, rounds=1, keep_route=False):
                           % (_n4, _v4))
                     if (_v4, _n4) < (best_v, best_n):
                         best_n, best_v, nets = _n4, _v4, _nets4
-                        break
+                        if not best_n:
+                            break
+                        shutil.copy(stem + ".kicad_pcb", stem + ".preclose.kicad_pcb")
+                        shutil.copy(stem + ".finish.drc.json", stem + ".preclose.drc.json")
+                        _skip = set()
+                        print("  close_last: %d still open, again from this board" % best_n)
+                        continue
                 except SystemExit as exc:
                     print("  prune_closures did not run (%s)" % (exc,))
             _blame = _violation_nets(stem) & set(nets) - _skip
