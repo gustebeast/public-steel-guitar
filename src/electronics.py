@@ -1460,11 +1460,16 @@ _OP_T = _OP["thickness_mm"]
 #   the pins) -- gives the board's underside; the TS jack's axis above that is the row height.
 from cadkit.pcb import XH_POST_TAIL as _OP_TAIL                        # noqa: E402
 from cadkit.fasteners import M4 as _OP_M4                              # noqa: E402
-OP_FLOOR_Z = _MB_FLOOR.FLOOR_TOP          # what the cradle's plate lies on (-71.35)
+OP_CHASSIS_FLOOR = _MB_FLOOR.FLOOR_TOP    # the chassis floor under the board (-71.35)
+# THE PLATE STANDS OFF THE FLOOR (user, 2026-11-04): touching, it was a second stop fighting the
+# endplate's own joinery for its install height. The gap is the endplate's clearance to the
+# chassis everywhere else (chassis.EP_TOP_CLR, not imported: chassis imports this module).
+OP_FLOOR_GAP = D.BEAD / 2.0               # 0.4
+OP_FLOOR_Z = OP_CHASSIS_FLOOR + OP_FLOOR_GAP   # the cradle plate's underside (-70.95)
 OP_PLATE_T = 3 * D.BEAD                   # the cradle's plate (bridge_endplate.op_cradle)
 OP_TAIL_CLR = 0.3                         # air under the pins' cut ends, at least
 OP_STANDOFF = math.ceil((_OP_TAIL + OP_TAIL_CLR) / D.BEAD - 1e-9) * D.BEAD   # 4.0
-OP_UNDER_Z = OP_FLOOR_Z + max(OP_PLATE_T + OP_STANDOFF, _OP_M4.anchor_min_wall)   # -62.85
+OP_UNDER_Z = OP_FLOOR_Z + max(OP_PLATE_T + OP_STANDOFF, _OP_M4.anchor_min_wall)   # -62.45
 # ⚠ R1 RIDES HIGHER: ITS J8 FACES STRING 10'S CLAMP (lead, 2026-10-29: R2 drops, R1 is the
 # stop-gap). The board in hand takes the pickup's cores into J8 from +Y, and on the floor that
 # entry is inside string 10's clamp sweep (it rolls 1.4 past the board's edge at the bottom of

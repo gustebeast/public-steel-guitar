@@ -1074,13 +1074,16 @@ def _build() -> cq.Workplane:
     # the +Y. That only surfaced once JACK_TIP was fixed and the board arrived at the
     # panel at all; before that it was 20 mm inboard and never reached the wall to clash
     # with it. Read the board's own span and add a clearance each side.
-    from .electronics import (JACK_WALL_X, JACK_TIP, OP_BOARD_Y, OP_FLOOR_Z,
+    from .electronics import (JACK_WALL_X, JACK_TIP, OP_BOARD_Y, OP_FLOOR_Z, OP_FLOOR_GAP,
                               OP_PANEL_CLR, op_origin, op_panel_openings, op_rear_mounts)
+    assert abs(OP_FLOOR_GAP - CH.EP_TOP_CLR) < 1e-9, "the output plate's floor gap is not EP_TOP_CLR"
     _rc_y = op_origin()[1]                           # the board's Y centre
     _rc_w = OP_BOARD_Y + 2 * OP_PANEL_CLR            # its span plus a fit clearance
     # ⚠ THE FLOOR IS THE CHASSIS FLOOR, not "14 under the jack row": the board sits as low as
-    # its pins allow (electronics.OP_UNDER_Z) and its plate lies on that floor, so the recess
-    # opens the end wall down to it and op_cradle refills the plate.
+    # its pins allow (electronics.OP_UNDER_Z) and its plate stands OP_FLOOR_GAP over that floor,
+    # so the recess opens the end wall down to the plate's underside and op_cradle refills the
+    # plate. (Over the endplate's own floor the plate stays fused to it: the gap is only where it
+    # overhangs the chassis bay.)
     # ⚠ AND ITS ROOF IS THE SCREW RAIL'S UNDERSIDE OVER STRING 10'S SEAT (user, 2026-10-29: "copy
     # the same shelf height we changed on the +Y side over to the -Y side, which would give full
     # support to that string 10 bearing"). Up to FOOT_Z, the recess took the rail away over the
@@ -1228,7 +1231,7 @@ def op_cradle():
     one screw, one 2.5 mm key, locking that.
 
     standoff is measured, not chosen: the board's underside above the plate's top, the plate
-    lying on the chassis floor (electronics.OP_UNDER_Z / OP_FLOOR_Z).
+    a gap over the chassis floor (electronics.OP_UNDER_Z / OP_FLOOR_Z).
     """
     from cadkit.pcb import pcb_cradle
     from .electronics import op_origin, OP_BOARD_Y, OP_PANEL_CLR, OP_FLOOR_Z, OP_PLATE_T, _OP_T
@@ -1264,8 +1267,12 @@ def op_cradle():
     # whole 66 mm board for the sake of one screw. Only the BOSS needs that depth now: it
     # hangs below the plate as a column, the plate is 2.4.
     _plate_t = OP_PLATE_T
+    # THE WALL'S LIP OVER THE BOARD stays under string 10's screw-pulley flange: pcb_cradle's 0.8,
+    # or half a bead where that would reach the flange (the board rose OP_FLOOR_GAP, 2026-11-04)
+    _flange_lo = D.screw_pulley_z(D.N_STRINGS - 1) - D.PULLEY_FLANGE_OD / 2.0
+    _wall_over = 0.8 if cz + _OP_T + 0.8 <= _flange_lo else D.BEAD / 2.0
     cr = pcb_cradle(rw, OP_BOARD_Y, screw_xy=(hx, hy), spec=M4, open_edge="-x",
-                    standoff=standoff, clr=OP_PANEL_CLR, base_t=_plate_t)
+                    standoff=standoff, clr=OP_PANEL_CLR, base_t=_plate_t, wall_over=_wall_over)
     _base_t = max(_plate_t, M4.anchor_min_wall - standoff)    # the boss column's depth
     assert cz - standoff - _base_t >= OP_FLOOR_Z - 1e-6, (
         "the output board's cradle hangs below the chassis floor it lies on: "
@@ -1342,6 +1349,23 @@ def op_cradle():
         cr = cr.union(cq.Workplane("XZ").polyline([(_xb, 0.0), (_xb + standoff, 0.0),
                                                    (_xb, standoff)]).close()
                       .extrude(_pad / 2.0, both=True).translate((0.0, _y, 0.0)))
+    # THE -Y RIB (user, 2026-11-04). In this print the plate is a tall free-standing sheet with the
+    # +Y wall along one edge and nothing along the other, so it can wobble as it goes up. A pad-wide
+    # beam under the board's -Y edge, plate to board, from the M4 boss on toward the panel, stiffens
+    # it and carries that edge of the board the way the pads do. It stops a fit short of the first
+    # THT legs in its strip (J6's), and its +X end is cut back at 45 deg (that end looks at the bed).
+    _ry0, _ry1 = -_hl, -_hl + _pad
+    _legs = [(f.get("tht") or f["fab"])[0] - rcx for f in _BG.load("output_panel")["footprints"]
+             if (f.get("tht") or f["side"] == "B")
+             and (f.get("tht") or f["fab"])[2] < _ry1 + 0.34 and (f.get("tht") or f["fab"])[3] > _ry0]
+    _rx1 = min(_legs, default=_hw) - 0.34
+    cr = cr.union(box_at(_rx1 - hx, _pad, standoff, x=(hx + _rx1) / 2.0, y=(_ry0 + _ry1) / 2.0,
+                         z=standoff / 2.0))
+    cr = cr.cut(cq.Workplane("XZ").polyline([(_rx1 + 0.01, 0.0), (_rx1 + 0.01, standoff + 0.01),
+                                             (_rx1 - standoff, standoff + 0.01)]).close()
+                .extrude(_pad, both=True).translate((0.0, (_ry0 + _ry1) / 2.0, 0.0)))
+    cr = cut_anchor(M4, cr, (hx, hy, standoff), (0, 0, -1), M4.anchor_min_wall,   # the rib refilled it
+                    print_up=PRINT_UP)
     # (The 24 V lane cut that used to take the -Y wall away is gone with the lane: the 24 V
     #  runs cross ABOVE the board now, in the recess, and nothing rides y -120.75 at z -52.)
     # +Y WALL CLEARS STRING 10'S SCREW PULLEY. The board's +Y edge is held D.OP_PULLEY_CLR
@@ -1352,8 +1376,8 @@ def op_cradle():
     # flange's underside, so there is nothing to clear, and the round cut only left a flat
     # 8.5 mm ridge in the print (print_check, 2026-10-30).
     _i = D.N_STRINGS - 1
-    _wall_top = cz + _OP_T + 0.8                     # pcb_cradle's wall_over default
-    if _wall_top > D.screw_pulley_z(_i) - D.PULLEY_FLANGE_OD / 2.0:
+    _wall_top = cz + _OP_T + _wall_over
+    if _wall_top > _flange_lo:
         cr = cr.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
             D.PULLEY_FLANGE_OD / 2.0 + D.OP_PULLEY_CLR, 100.0,
             cq.Vector(D.screw_x(_i) - (cx + rcx), D.string_y(_i) - cy, -50.0))))
