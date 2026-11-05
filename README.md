@@ -140,7 +140,7 @@ string up through a Ø3 hole — tension pulls the ball against the ear, exactly
 guitar bridge plate — so restringing needs no tools at the moving end.
 
 **The drive** (per string): `MKS SERVO42D closed-loop stepper (CAN) → GT2 belt
-(twisted 90°, 1:1) → screw pulley → Tr8×2 vertical leadscrew (37.7 mm) → its
+(twisted 90°, 1:1) → screw pulley → Tr8×2 vertical leadscrew (36.28 mm) → its
 own H-nut → string`. **There is no printed carriage**: the nut's two mounting
 ears do both jobs one did — the +X ear anchors the string, the -X ear rides a
 **Ø2.5 hardened dowel pin** for anti-rotation. An axial thrust path (support

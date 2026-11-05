@@ -832,8 +832,10 @@ underside crossing. It passes J6 on the endplate side of it (5 mm toward the key
 the lever chain's plug can come out without moving it.
 
 **Cut it long enough for restringing: 171 mm, ZR to PH, twist included**
-(`wiring.pedal_cable_cut`, 2026-11-01). Strings change with **no JST unplugged**: the leg's adapter slides 25.6 mm
-outboard (legs.SERVICE_SLIDE) with this cable still in both plugs. Pulled taut, the
+(`wiring.pedal_cable_cut`, 2026-11-01). Strings change with **no JST unplugged**: the leg's adapter slides 14.45 mm
+outboard (legs.KEYHEAD_SLIDE; it was 25.6 until 2026-11-05) with this cable still in both plugs. The
+figures below are for the old 25.6 slide, so a 171 mm cable now has MORE slack than they say -- it
+still reaches. Pulled taut, the
 underside run is 83.3 mm with the leg home and 108.2 mm with it slid out
 (`tools/route_cables.py`). The cable is cut for the slid-out pose, plus its run inside
 the adapter, the drop into J2 and 15 mm for the crimps. So **with the leg home it
@@ -1401,3 +1403,14 @@ Plug a USB device in (an audio interface such as a Shure MVX2U) and the board po
   instrument still plays, but flashing then powers and switches the wrong arm.
 - **Flashing a blank board takes motor_ctrl's link down for ~15 s** (the flash window). The
   board brings the link back by itself; the Pi waits it out.
+
+## +Y legs' service position: two distances from 2026-11-05 on
+To get at what sits over a +Y foot, back its one leg screw out, slide the foot outboard until
+its SECOND hole lines up with the screw, and drive the screw back in.
+- **Bridge (+X) end: 26.55 mm** (`legs.SERVICE_SLIDE`), which clears string 1's access channel.
+- **Keyhead (-X) end: 14.45 mm** (`legs.KEYHEAD_SLIDE`), which clears the nut height screws' key paths.
+  It used to slide the bridge's 26.55 too. That pushed the keyhead's leg screws out onto the
+  lower endplate dovetail, and their insert pockets cut the -X chassis section's lower tenons off.
+- **The leg screws sit in the same place at both ends now** (`legs.LOCK_PIN_DY`, 8.91 out from
+  the leg's centreline). Reprint the -X chassis section, the keyhead endplate and the -X body
+  adapters together: a keyhead endplate drilled for the old 16.86 position won't line up.

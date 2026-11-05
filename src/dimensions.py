@@ -400,6 +400,9 @@ GUIDE_ROD_FIT   = 0.15      # PRESS. 0.05 printed "a touch small" on the +X endp
                             # teardrop. Not zero: at zero the socket is drawn the
                             # rod's own Ø, which is not a hole you can install into,
                             # and coincident cylinders make the boolean unreliable.
+GUIDE_ROD_FIT_PX = GUIDE_ROD_FIT + 0.10  # the FAR row (+X, x +20) only: the printed bridge
+                            # endplate held the -X row's rods just right but the +X
+                            # row's "a bit too tight" (user, 2026-11-05) -> Ø3.75
 
 # The bridge / string anchor sits at X=0; the screw can't occupy that spot, so
 # it is offset −X by ANCHOR_DX and the carriage reaches over to the anchor.
@@ -451,6 +454,11 @@ def string_anchor_x(i: int) -> float:
 def guide_rod_x(i: int) -> float:
     """The anti-rotation ear — always the ear the string does NOT take."""
     return screw_x(i) + NUT_HOLE_DX if screw_far(i) else screw_x(i) - NUT_HOLE_DX
+
+
+def guide_rod_bore_d(i: int) -> float:
+    """The endplate's press bore for string i's guide rod: the far (+X) row prints tighter."""
+    return GUIDE_ROD_D + (GUIDE_ROD_FIT_PX if screw_far(i) else GUIDE_ROD_FIT)
 
 
 # String-end nut: a cylinder swaged on the string's bridge end (axis Y), slotted
@@ -926,7 +934,7 @@ PULLEY_TOP_MAX  = SUPPORT_BRG_BOT                   # BOTH SKUs' top (same Z)
 # what grips the screw against the whole string load. The HIGH SKU's column is the short one
 # and it sets the socket for both (one screw length, rod ends at the same Z everywhere). It
 # was 3 beads -- a 4.1 socket, barely two turns of a 2 mm lead. It is 9.83 now and the
-# socket 11.53: nearly six turns, at ~0.7 MPa on the formed thread instead of ~2.0.
+# socket 9.73 (PULLEY_SOCKET_FLOOR_CLR): ~5 turns, ~0.8 MPa on the formed thread, not ~2.0.
 PULLEY_END_A    = PULLEY_TOP_MAX - (SCREW_PULLEY_Z + BELT_PLANE_DZ)     # 14.63, HIGH band→top
 PULLEY_END_B    = PULLEY_END_A + BELT_PLANE_DZ                          # 23.43, LOW band→top
 PULLEY_COL_HI   = PULLEY_END_A - PULLEY_GAP / 2 - PULLEY_CONE - PULLEY_BOSS_H   # 9.83, HIGH
@@ -940,14 +948,20 @@ assert PULLEY_COL_HI >= 3 * BEAD - 1e-9, (
 # the socket's bottom corner only: 1.5 traces of the 0.4 nozzle the pulleys print with now
 # (2026-10-28), and a bead by 0.2 higher. Left as it is ON PURPOSE: a thicker floor
 # shortens SCREW_LEN, which the saw jig's stop is set from. Identical on both SKUs.
-PULLEY_SOCKET_FLOOR_CLR = 2 * 0.2                                       # 0.4, 0.2-nozzle part
-PULLEY_SOCKET_L = PULLEY_END_A - PULLEY_GAP / 2 - PULLEY_SOCKET_FLOOR_CLR  # 11.53
+# THE FLOOR CLEARS THE GROOVE ROOFS (user, 2026-11-05: the high SKU showed holes into the
+# socket under its top flange). Each GT2 groove ends in a 45 deg cone (components._groove)
+# that climbs PULLEY_GROOVE_ROOF_H past the band, and at 0.4 the floor sat under those cones'
+# tips, so they broke into the socket. The floor now clears them by a bead; the rod is cut
+# that much shorter (SCREW_LEN) and the pulley does not move. Still ~5 turns in the socket.
+PULLEY_GROOVE_ROOF_H = 1.02                     # components asserts the real cone fits under it
+PULLEY_SOCKET_FLOOR_CLR = PULLEY_GROOVE_ROOF_H + 1 * BEAD                 # 1.82
+PULLEY_SOCKET_L = PULLEY_END_A - PULLEY_GAP / 2 - PULLEY_SOCKET_FLOOR_CLR  # 9.73
 # BOTTOM of the rod: it ends in the socket a hair short of the floor, so it never bottoms and
 # preloads the formed thread. The socket's FLOOR hangs off the band, not the top, so a deeper
 # socket takes more of the same screw and SCREW_LEN does not change.
 SCREW_SOCKET_GAP = 0.2
-SCREW_BOT_Z     = PULLEY_TOP_MAX - PULLEY_SOCKET_L + SCREW_SOCKET_GAP   # -42.5
-SCREW_LEN       = SCREW_TOP_Z - SCREW_BOT_Z         # 37.7 — the CUT length (see BOM).
+SCREW_BOT_Z     = PULLEY_TOP_MAX - PULLEY_SOCKET_L + SCREW_SOCKET_GAP   # -41.08
+SCREW_LEN       = SCREW_TOP_Z - SCREW_BOT_Z         # 36.28 — the CUT length (see BOM).
 
 
 
@@ -1306,9 +1320,14 @@ BRIDGE_BASE_X0 = BRIDGE_X - BRIDGE_BASE_HALF        # -25.06  (-X face)
 # APEX points -X: it is the near row's seat apex that sets the -X face above. On the +X side
 # every bore is a plain circle, and the furthest one out is the far row's guide-rod bore at
 # SCREW_ROW_DX + NUT_HOLE_DX + its radius (21.83; the far seat stops at 20.10). Two beads past it.
+# The face is sized off the NOMINAL fit, not GUIDE_ROD_FIT_PX: that row's extra 0.10 is a print
+# correction, and letting it push the face out 0.05 moved every part placed off this face (chassis
+# rails, screw rail, the output panel and its board). It costs 0.05 of the wall: 1.55, not 1.6.
 _RIM_PX = max(SCREW_ROW_DX + NUT_HOLE_DX + (GUIDE_ROD_D + GUIDE_ROD_FIT) / 2,
               SCREW_ROW_DX + (SUPPORT_BRG_OD + 0.2) / 2)
 BRIDGE_HALF_PX = _RIM_PX + MIN_WALL_2P                         # 23.43
+assert BRIDGE_HALF_PX - (SCREW_ROW_DX + NUT_HOLE_DX + (GUIDE_ROD_D + GUIDE_ROD_FIT_PX) / 2)     >= MIN_WALL_2P - 0.05 - 1e-9, "the +X face's wall past the wider far-row guide-rod bore"
+
 
 
 # THE BOTTOM'S OWN SPAN: the chassis floor runs END TO END of the chassis -- the two KEPT-SHELL
