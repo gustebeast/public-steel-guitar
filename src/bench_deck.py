@@ -80,3 +80,6 @@ def section(k: int) -> cq.Workplane:
 
 
 sections = [section(k) for k in range(len(SECTIONS))]
+
+# what the scratch view draws: the three sections where the deck goes
+demo = [(f"bench_deck_{k}", s) for k, s in enumerate(sections)]
