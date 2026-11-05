@@ -1084,6 +1084,23 @@ if RISER:
     _q["return_slot_ok"]["UI_CS_N"] = {
         "mm": 5.82, "why": "the display's chip select: one edge a transfer, held through it. "
                            "0.81 over the limit, the socket's row, as UI_SCLK (route r4)"}
+    # ⚠ THE SOCKET ROW IS SIGNED TO ITS CEILING, NOT TO ONE ROUTE'S LENGTH (lead, overnight
+    # 2026-11-05, reversible). Ten full reroutes, each with one small part nudged, came back
+    # with these crossings at 5.85-8.17 mm: an exact signature only proved that a reroute
+    # drew identical copper, and failed 7 of 10. The cut is the 40-pin socket's two rows of
+    # holes and cannot move. Measured on route r4's pours: the widest void across the rows is
+    # 6.55 mm (F.Cu; In2 6.05, B.Cu 5.95), and the router's longest single crossing of it, at
+    # 45 degrees, 9.26. So 9.3: a line that crosses the row once passes, one that runs along
+    # it still fails. UI_ENC_B keeps its exact length (it runs along the rows to J5 by
+    # design), and +5V_PI is another cut.
+    for _n in ("UI_RES_N", "UI_SW_A", "UI_SDIN", "UI_SCLK", "UI_CS_N", "PWR_SW_UP"):
+        _q["return_slot_ok"][_n]["mm"] = 9.3
+    # J3 STAYS back_only (2026-11-05, measured). Over 33 full reroutes (unmoved + ten single
+    # nudges, three series) its way words found a front site only when R2 itself was nudged
+    # to (-8.53, 0.03): at (-8.00, 1.00) R2's courtyard takes the site. R2 placed there for
+    # good cost the board its routing (0 of 11 reroutes clean, UI_RES_N open on 6), and a
+    # router via keepout over the site changed nothing. So the declaration stands; it goes
+    # stale only on a route with R2 moved.
 
 
 # ── THE PI'S 5 V, DECLARED (2026-10-01) ──────────────────────────────────────────────────
@@ -1139,6 +1156,14 @@ BOARD_NOTES["tracks"] += [("GND", "B.Cu", 0.25, [(11.43, -5.77), (12.70, -4.50),
 # cross on. The band had been at its limit since the ribbon arrived -- the six hand-placed
 # GND bridge vias above are what that looked like. So In2 is a ground plane (which makes
 # those bridges redundant rather than load-bearing) and In1 is a second signal layer.
+
+
+if os.environ.get("PI_CAP_TRIAL"):
+    # A placement trial: {ref: [x, y, rot]} in this file's frame (KiCad x - 100, 100 - KiCad
+    # y), on top of everything above. For robustness runs: a full reroute is deterministic,
+    # so the measure is the same board with one small part nudged, not the same board again.
+    with open(os.environ["PI_CAP_TRIAL"], encoding="utf-8") as _fh:
+        BOARD_NOTES["placements"].update({_r: tuple(_v) for _r, _v in json.load(_fh).items()})
 
 
 if __name__ == "__main__":
