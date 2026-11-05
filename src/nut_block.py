@@ -521,6 +521,9 @@ assert all(abs(-_adv_g(g) - SS_YC[i]) <= D.MIN_WALL_2P
 # screw's side). Below the lanes the channel is TAIL_W wide on the screw's axis, so even the thinnest
 # string's centre stays inside the tip's flat face (the thread's minor diameter, ~3.14), and the
 # heaviest still drops through. The plate's 0.2 of -X clearance is too thin to hide a string in.
+# The screw's own clearance bore runs on across the channel to the plate's face (the M4 is wider than
+# the channel), so at the screw the channel is a 4.4 round hole only 4.4 tall, and the narrow channel
+# above and below it holds the string in line under the tip.
 _SS_TIP_R = (M4.screw_d - 1.227 * 0.7) / 2.0    # the M4 coarse thread's minor radius, the flat tip
 assert TAIL_W / 2.0 - min(D.STRING_GAUGE) / 2.0 <= _SS_TIP_R, "a thin tail can sit off the screw's tip"
 assert TAIL_W >= G_ENVELOPE + D.BEAD / 2.0, "the narrowed tail channel pinches the heaviest string"
@@ -563,14 +566,14 @@ def side_screw_yz(i: int):
 
 def side_screw_negatives(i: int):
     """Head recess (open in the bed face), heat-set pocket (mouth on its floor) and clearance on
-    into the tail channel. Along the build direction, so plain round bores -- and each step down
+    across the tail channel to the plate's face. Along the build direction, so plain round bores -- and each step down
     in diameter is a ceiling over the wider bore, so stepped_bore_cutter cones it at 45 degrees."""
     from cadkit.fasteners import stepped_bore_cutter
     y, z = side_screw_yz(i)
     pilot = M4.pilot_d((1.0, 0.0, 0.0), PRINT_UP)
     return [stepped_bore_cutter([(SS_HEAD_D, SS_MOUTH_X - X_BACK + 1.0),
                                  (pilot, M4.insert_depth),
-                                 (M4.shaft_clr_d, POCKET_X0 + 0.5 - SS_MOUTH_X - M4.insert_depth)],
+                                 (M4.shaft_clr_d, PLATE_X0 - SS_MOUTH_X - M4.insert_depth)],
                                 (X_BACK - 1.0, y, z), (1.0, 0.0, 0.0), print_up=PRINT_UP)]
 
 
