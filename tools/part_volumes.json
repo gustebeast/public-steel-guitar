@@ -25,6 +25,18 @@
    "material": "pctg",
    "volume_mm3": 1008.5
   },
+  "bench_deck_0": {
+   "material": "petg-gf",
+   "volume_mm3": 58289.2
+  },
+  "bench_deck_1": {
+   "material": "petg-gf",
+   "volume_mm3": 89808.9
+  },
+  "bench_deck_2": {
+   "material": "petg-gf",
+   "volume_mm3": 108938.9
+  },
   "body_adapter": {
    "material": "petg-gf",
    "volume_mm3": 82787.0
@@ -95,7 +107,7 @@
   },
   "keyhead_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 314889.3
+   "volume_mm3": 316854.8
   },
   "kl_axle": {
    "material": "pctg",
