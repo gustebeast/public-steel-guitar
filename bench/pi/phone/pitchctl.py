@@ -11,9 +11,9 @@ in src/dimensions.py (the carriage travel between two pitches is DL_OPEN * ((f2/
             stays where it is let go
     bend    0, +-1 or +-2 on top of base while half / whole step is held; 0 again on release
 
-Limits: base + bend never goes over RAISE_MAX (the pitch-range budget: wire strength holds the
-raise to about 4 semitones, docs and src/dimensions.PITCH_UP_ST) nor under LOWER_MIN (lowering
-is nearly free; an octave down still leaves a quarter of the open stretch on the string).
+Limits: base + bend stays within LOWER_MIN..RAISE_MAX, set wide (user, 2026-11-05: the bench
+wants no stop). The pitch-range budget is still about 4 semitones up by wire strength
+(src/dimensions.PITCH_UP_ST): past that the player, not the software, is the limit.
 """
 from __future__ import annotations
 
@@ -25,8 +25,8 @@ import time
 DL_OPEN = 4.0             # mm, src/dimensions.DL_OPEN: the same for every string in the model
 LEAD = 2.0                # mm of nut per motor turn: Tr8x2 lead, 14:14 belt
 COUNTS_PER_TURN = 0x4000
-RAISE_MAX = 4.0           # semitones over open, base + bend
-LOWER_MIN = -12.0
+RAISE_MAX = 48.0          # semitones over open, base + bend: effectively no limit (user 11-05)
+LOWER_MIN = -48.0
 CREEP_ST_S = 0.35         # pitch up / down: 35 cents a second
 SLOW_RPM_MIN = 1
 FAST_RPM, FAST_ACC = 3000, 0       # the top speed: bronner's 11-02 step, a whole tone in 39 ms
