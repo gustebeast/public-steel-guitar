@@ -1005,8 +1005,8 @@ def geometry_report() -> str:
              f"screw len={D.SCREW_LEN:.0f} mm (vertical, no whip)",
              f"  toothed GT2 ({D.BELT_W:.0f} mm); twisted 90° (motor pulley axis Y -> "
              "screw pulley axis Z), run along X.",
-             "  cut = open-belt length to cut per string: a whole number of teeth, each end",
-             f"  cut {BTn.BELT_TOOTH_IN} past a tooth's centre; gap = the clamp's, at that length:",
+             "  cut = open-belt length to cut per string: COUNT the whole teeth and cut each end",
+             "  flush beside its last tooth; gap = the clamp's, at that length:",
              f"    {'str':>4} {'run':>7} {'twist':>9} {'teeth':>6} {'cut len':>9} {'gap':>6}"]
     total = 0.0
     for i in range(D.N_STRINGS):
@@ -1017,7 +1017,7 @@ def geometry_report() -> str:
         teeth, gap = belt_cut(i)
         cut = teeth * D.BELT_PITCH + 2 * BTn.BELT_TOOTH_IN
         total += cut
-        lines.append(f"    {i:>4} {span:>6.0f} {90.0 / span:>6.2f}°/mm {teeth:>6} {cut:>8.1f} "
+        lines.append(f"    {i:>4} {span:>6.0f} {90.0 / span:>6.2f}°/mm {teeth + 1:>6} {cut:>8.1f} "
                      f"{gap:>6.2f}")
     lines.append(f"  total open GT2 to buy: ~{total/1000:.2f} m "
                  f"(+ {D.N_STRINGS} printed half A + {D.N_STRINGS} half B, "
