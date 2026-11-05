@@ -33,10 +33,14 @@
  *   U <arm> <ms> [<cycle>]    -> OK U          a flash window: the arm's pair and J4 on the flash
  *                                              lane for ms, then both arms CAN and power-cycled.
  *                                              The link is DOWN for the window (arms.h)
+ *   M                         -> M <us>        the monitor's gap (0: off, the default at power-up)
+ *   M <us>                    -> OK M          ...set it: see MONITOR below. Not kept
  * Lines to the host:
  *   R <bus> <t_us> <id> <data>     a frame received
  *   X <seq> <bus> <t_us>           a frame handed to the controller
  *   D <seq> <bus> <t_us> <ok>      ...and when it had left the pin (ok 1) or failed (0)
+ *   W <bus> <t_us> <src> <id> <data>   a frame that left for the bus, whoever sent it: src h the
+ *                                  host (its X line names the sequence), p play, m the monitor
  *   E <what>                       a line refused, or the queue full
  *   L <count>                      output lost because the host was not reading
  *
@@ -44,6 +48,19 @@
  * from the levers by itself, from power-on, host or no host. Every frame is still reported as
  * an R line. Its F5 frames share bus A with the host's, one frame in flight at a time; a bench
  * run that wants the motors to itself sends 'P 0' first.
+ *
+ * TRACE (user, 2026-11-05: "it shouldn't matter where the command comes from be it a phone or the
+ * pi or a lever. The motor board should send back debug information to the pi showing what was
+ * commanded and what the motor reports"). Every frame this board puts on a bus is reported as a
+ * W line with what it carried, and every frame it hears as an R line, so the host's log of the
+ * two is the whole conversation with the motors, play's moves included.
+ *
+ * MONITOR. A move's replies do not say how it went: play turns the "arrived" reply off (play.h,
+ * BASE) and "started" says nothing of torque. With 'M <us>' set, any motor sent a move (F4 or
+ * F5, by anyone) in the last MON_HOLD_US is asked, in turn, for its encoder (0x31) and then its
+ * angle error (0x39), one query on bus A every <us>: with n motors moving each is read every
+ * 2 n <us>. The queries go only when the bus is free of the host's and play's frames, and their
+ * answers come back as R lines like any other. Off by default: it costs bus A time.
  *
  * Runs as the application under the USB loader. It feeds the loader's watchdog from the main
  * loop, host or no host: this board has to run with the Pi absent.
@@ -60,7 +77,7 @@
 #include "UART.h"
 #endif
 
-#define VERSION 1
+#define VERSION 2                   /* 2: W lines and the monitor */
 
 static uint8_t out_buf[8192];       /* us -> host */
 static volatile uint16_t out_head, out_tail;
@@ -149,7 +166,33 @@ static CAN_TypeDef *const BUS[2] = { CAN1, CAN2 };
 static volatile uint8_t  flying[2];         /* a frame is in the controller */
 static volatile uint32_t flying_seq[2];
 static volatile uint8_t  play_flying;       /* ...one of play's, on bus A */
+static volatile uint8_t  mon_flying;        /* ...or one of the monitor's */
 static play_t play;
+
+/* ---- the trace -------------------------------------------------------------------------- */
+#define MON_HOLD_US   500000u               /* a motor is watched this long after a move */
+#define MON_MIN_US    200u                  /* the shortest gap 'M' takes */
+#define MON_IDS       15u                   /* motor ids 1..15 */
+#define SV_READ_ERR   0x39u                 /* angle error, int32, 51200 a turn (servo.py) */
+static uint32_t mon_us;                     /* the gap between two queries; 0 off */
+static uint32_t mon_moved[MON_IDS + 1];     /* now_us | 1 of the last move frame to each id */
+static uint8_t  mon_ask_err[MON_IDS + 1];   /* the next query to it is 0x39, not 0x31 */
+static uint8_t  mon_rr = 1;
+static uint32_t mon_next;
+
+static void say_tx(int bus, uint64_t t, char src, uint32_t id, int ext, const uint8_t *d, int n)
+{   /* "W <bus> <t_us> <src> <id> <data>", and a move to a motor noted for the monitor */
+    char l[64], *p = l;
+    *p++ = 'W'; *p++ = ' '; *p++ = (char)('0' + bus); *p++ = ' '; p = w_dec(p, t); *p++ = ' ';
+    *p++ = src; *p++ = ' ';
+    p = ext ? w_hex(p, id, 8) : w_hex(p, id, 3);
+    *p++ = ' ';
+    for (int i = 0; i < n && i < 8; i++) p = w_hex(p, d[i], 2);
+    *p++ = '\n';
+    out_put(l, (uint16_t)(p - l));
+    if (bus == 0 && !ext && n > 0 && (d[0] == 0xF4u || d[0] == 0xF5u) && id >= 1 && id <= MON_IDS)
+        mon_moved[id] = (uint32_t)t | 1u;
+}
 
 static int can_rate(int bus, uint32_t bps)
 {
@@ -231,6 +274,7 @@ static void tx_irq(int bus)
         int ok = (st & (CAN_TSTATR_TXOK0 | CAN_TSTATR_TXOK1 | CAN_TSTATR_TXOK2)) != 0;
         BUS[bus]->TSTATR = CAN_TSTATR_RQCP0 | CAN_TSTATR_RQCP1 | CAN_TSTATR_RQCP2;
         if (bus == 0 && play_flying) play_flying = 0;
+        else if (bus == 0 && mon_flying) mon_flying = 0;
         else if (flying[bus]) { say_ev('D', flying_seq[bus], bus, t, ok); flying[bus] = 0; }
     }
 }
@@ -252,7 +296,7 @@ static uint16_t q_head, q_tail;
 
 static int can_send(const job_t *j)
 {
-    if (j->bus == 0 && play_flying) return -1;
+    if (j->bus == 0 && (play_flying || mon_flying)) return -1;
     CanTxMsg m = {0};
     if (j->id > 0x7FF) { m.ExtId = j->id; m.IDE = CAN_Id_Extended; }
     else               { m.StdId = j->id; m.IDE = CAN_Id_Standard; }
@@ -266,6 +310,7 @@ static int can_send(const job_t *j)
     __enable_irq();
     if (box == CAN_TxStatus_NoMailBox) return -1;
     say_ev('X', j->seq, j->bus, t, -1);
+    say_tx(j->bus, t, 'h', j->id, j->id > 0x7FF, j->data, j->len);
     return 0;
 }
 
@@ -273,7 +318,7 @@ static void q_run(void)
 {   /* one frame in flight on a bus at a time, so they leave in order and D names its X */
     while (q_tail != q_head) {
         job_t *j = &q[q_tail];
-        if (flying[j->bus] || (j->bus == 0 && play_flying) || now_us() < j->t) return;
+        if (flying[j->bus] || (j->bus == 0 && (play_flying || mon_flying)) || now_us() < j->t) return;
         if (can_send(j) < 0) return;
         q_tail = (q_tail + 1) % NQ;
     }
@@ -349,15 +394,46 @@ static void play_run(void)
         play_have = (uint8_t)play_poll(&play, (uint32_t)now_us(), &play_out);
         __enable_irq();
     }
-    if (!play_have || flying[0] || play_flying) return;
+    if (!play_have || flying[0] || play_flying || mon_flying) return;
     CanTxMsg m = {0};
     m.StdId = play_out.id; m.IDE = CAN_Id_Standard; m.RTR = CAN_RTR_Data; m.DLC = play_out.len;
     memcpy(m.Data, play_out.d, play_out.len);
     __disable_irq();
+    uint64_t t = now_us();
     play_flying = 1;
-    if (CAN_Transmit(CAN1, &m) == CAN_TxStatus_NoMailBox) play_flying = 0;
+    int sent = CAN_Transmit(CAN1, &m) != CAN_TxStatus_NoMailBox;
+    if (!sent) play_flying = 0;
     else play_have = 0;
     __enable_irq();
+    if (sent) say_tx(0, t, 'p', play_out.id, 0, play_out.d, play_out.len);
+}
+
+/* ---- the monitor: how the moves went (MONITOR at the top) ------------------------------- */
+static void mon_run(void)
+{
+    if (!mon_us || flying[0] || play_flying || mon_flying) return;
+    uint32_t now = (uint32_t)now_us();
+    if ((int32_t)(now - mon_next) < 0) return;
+    for (uint8_t k = 0; k < MON_IDS; k++) {
+        uint8_t id = (uint8_t)(1 + (mon_rr - 1 + k) % MON_IDS);
+        if (!mon_moved[id] || now - mon_moved[id] > MON_HOLD_US) continue;
+        uint8_t code = mon_ask_err[id] ? SV_READ_ERR : SV_READ_ENC;
+        CanTxMsg m = {0};
+        m.StdId = id; m.IDE = CAN_Id_Standard; m.RTR = CAN_RTR_Data; m.DLC = 2;
+        m.Data[0] = code; m.Data[1] = (uint8_t)(id + code);     /* servo.py: the checksum */
+        __disable_irq();
+        uint64_t t = now_us();
+        mon_flying = 1;
+        int sent = CAN_Transmit(CAN1, &m) != CAN_TxStatus_NoMailBox;
+        if (!sent) mon_flying = 0;
+        __enable_irq();
+        if (!sent) return;
+        say_tx(0, t, 'm', id, 0, m.Data, 2);
+        mon_ask_err[id] ^= 1u;
+        if (!mon_ask_err[id]) mon_rr = (uint8_t)(id % MON_IDS + 1);   /* both asked: next motor */
+        mon_next = now + mon_us;
+        return;
+    }
 }
 
 static int table_save(void)
@@ -479,6 +555,16 @@ static void line(const char *s)
         break; }
     case 'P':
         play_line(s + 1); return;
+    case 'M':
+        if (!s[1]) {
+            p = l; *p++ = 'M'; *p++ = ' '; p = w_dec(p, mon_us); *p++ = '\n';
+            out_put(l, (uint16_t)(p - l)); return;
+        }
+        if (r_num(s + 1, &v, 10) && v <= 1000000u) {
+            mon_us = (v && v < MON_MIN_US) ? MON_MIN_US : (uint32_t)v;
+            say("OK M\n"); return;
+        }
+        break;
 #if REV != 1
     case 'A': case 'U':
         arms_line(*s, s + 1); return;
@@ -546,6 +632,7 @@ int main(void)
         in_pump();
         q_run();
         play_run();
+        mon_run();
         if (out_lost != lost_said && out_head == out_tail) {
             char l[24], *p = l; lost_said = out_lost;
             *p++ = 'L'; *p++ = ' '; p = w_dec(p, lost_said); *p++ = '\n';

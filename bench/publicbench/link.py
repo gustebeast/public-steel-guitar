@@ -37,6 +37,8 @@ SPIN = 0.0003
 class _Base:
     def __init__(self):
         self.rx: list[Frame] = []           # every frame received, in order
+        self.tx: list[tuple[Frame, str]] = []   # motor_ctrl v2: every frame it sent, and who
+                                                # sent it (h host, p play, m monitor)
         self.sent: dict[int, float] = {}    # sequence number -> when the frame left
         self._seq = 0
         self._cv = threading.Condition()
@@ -223,6 +225,12 @@ class MotorCtrlLink(_Base):
                 elif p[0] == "R" and self.offset is not None:
                     self._got(Frame(int(p[2]) / 1e6 + self.offset, int(p[1]), int(p[3], 16),
                                     bytes.fromhex(p[4]) if len(p) > 4 else b""))
+                elif p[0] == "W" and self.offset is not None:
+                    with self._cv:
+                        self.tx.append((Frame(int(p[2]) / 1e6 + self.offset, int(p[1]),
+                                              int(p[4], 16),
+                                              bytes.fromhex(p[5]) if len(p) > 5 else b""), p[3]))
+                        self._cv.notify_all()
                 elif p[0] == "D" and self.offset is not None and p[4] == "1":
                     self._left(int(p[1]), int(p[3]) / 1e6 + self.offset)
                 elif p[0] in ("E", "L"):
@@ -230,7 +238,7 @@ class MotorCtrlLink(_Base):
                     with self._cv:
                         self.answers.append(p)
                         self._cv.notify_all()
-                elif p[0] in ("OK", "P"):
+                elif p[0] in ("OK", "P", "M"):
                     with self._cv:
                         self.answers.append(p)
                         self._cv.notify_all()
