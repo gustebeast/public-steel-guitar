@@ -17,9 +17,16 @@ were all on +3V3D, so the retry closed nothing either. The unit that broke the r
 closure, not the net.
 
 Measured on the kept optical R2 board, the three decap moves that missed: C109 4 open -> 2
-(25 of 32 new pieces kept); C129 still 3 (its bad closure shares a via with the others);
-C128 unchanged at 2 (no violation to prune: its misses are GND finding no path). It can
-only help: finish keeps the pruned board only if DRC reads strictly better.
+(25 of 32 new pieces kept); C129 still 3; C128 unchanged at 2 (no violation to prune: its
+misses were GND finding no path, fixed in close_last since). It can only help: finish keeps
+the pruned board only if DRC reads strictly better.
+
+⚠ C129 IS NOT A SHARED VIA (corrected 2026-11-05; an earlier note here and commit 64fd20a's
+message said it was). Its violating closures are the SHORT ones, into U6.171 (0.5 mm pitch):
+DRC finds them too close to pads 170 and 173, which have no net. Those pads are in the
+search's obstacle list, so the gap is in how close_last's closure meets a fine-pitch pin
+(margin, end snapping or the final approach); not yet found. Taking those closures up is
+right, and leaves the pin open.
 """
 from __future__ import annotations
 
