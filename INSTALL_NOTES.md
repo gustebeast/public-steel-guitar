@@ -189,11 +189,12 @@ turns on the 2.5 mm hex key. See `BOM.md` and
   laid down the channel in the back of half A at about 25° to the belt. The halves start
   4 mm apart and each turn closes them 0.5 mm. If they meet before the belt is tight,
   move one end of the belt one tooth (2 mm) further into its slot and start again.
-- **Cut length:** each belt is cut to a TOOTH COUNT, and the build prints the ten counts
-  (`src.build.geometry_report`, from `belt_tensioner.belt_fit`): 573, 553, 484, 463, 395,
-  374, 305, 285, 216, 195 teeth for strings 1 to 10 (390.4 mm for string 10). Both ends are cut 0.2 mm past a
-  tooth's centre, so the cut is that many pitches plus 0.4 mm, and each end goes through a
-  tooth. At that count the halves stand 2 to 4 mm apart with the belt tight, which leaves
+- **Cut length:** each belt is cut to a count of WHOLE TEETH, and the build prints the ten counts
+  (`src.build.geometry_report`, from `belt_tensioner.belt_fit`): 574, 553, 485, 464, 395,
+  374, 306, 285, 216, 196 teeth for strings 1 to 10 (391.4 mm for string 10). Cut each end
+  FLUSH BESIDE its last tooth, in the land, not through the tooth (2026-11-05: a whole end
+  tooth grips better, and it is the easier cut). Clamps printed before 2026-11-05 were drawn
+  for a cut through the end tooth; reprint them with the belts. At that count the halves stand 2 to 4 mm apart with the belt tight, which leaves
   the screw at least 2 mm more to close. ⚠ The counts are the model's: neither the pitch
   line under tension nor the choice of the longer of the two counts that fit has been
   tried on a bench.
