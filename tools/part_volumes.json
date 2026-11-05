@@ -19,23 +19,23 @@
   },
   "belt_tensioner_half_a": {
    "material": "pctg",
-   "volume_mm3": 895.8
+   "volume_mm3": 903.3
   },
   "belt_tensioner_half_b": {
    "material": "pctg",
-   "volume_mm3": 1008.5
+   "volume_mm3": 1014.2
   },
   "bench_deck_0": {
    "material": "petg-gf",
-   "volume_mm3": 58289.2
+   "volume_mm3": 67264.8
   },
   "bench_deck_1": {
    "material": "petg-gf",
-   "volume_mm3": 89808.9
+   "volume_mm3": 65953.8
   },
   "bench_deck_2": {
    "material": "petg-gf",
-   "volume_mm3": 108938.9
+   "volume_mm3": 55438.3
   },
   "body_adapter": {
    "material": "petg-gf",
@@ -55,7 +55,7 @@
   },
   "bridge_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 313666.5
+   "volume_mm3": 313666.3
   },
   "cart_base": {
    "material": "pctg",
@@ -67,7 +67,7 @@
   },
   "chassis_0": {
    "material": "petg-gf",
-   "volume_mm3": 584652.7
+   "volume_mm3": 584647.1
   },
   "chassis_0_light": {
    "material": "pctg",
@@ -75,7 +75,7 @@
   },
   "chassis_1": {
    "material": "petg-gf",
-   "volume_mm3": 613501.1
+   "volume_mm3": 613506.5
   },
   "chassis_1_light": {
    "material": "pctg",
@@ -283,7 +283,7 @@
   },
   "test_belt_tensioner": {
    "material": null,
-   "volume_mm3": 1904.3
+   "volume_mm3": 1917.4
   },
   "test_cover_plate": {
    "material": null,
