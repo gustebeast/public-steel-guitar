@@ -163,6 +163,106 @@ def _zone_point(board, net, layer, toward, inset=0.35):
     return best[1] if best else None
 
 
+def _stitch_islands(board, net, plane, clr=0.2, step=0.25):
+    """A via in every island of the net's pour that nothing goes through, where the plane's
+    pour is too (or, with no plane, a joined piece of the net's pour on another layer):
+    [(x, y), ...] laid.
+
+    ⚠ ZONE TO ZONE IS AN ISLAND, NOT A PATH (pi_cap, 2026-11-05). Two of ten nudged reroutes
+    came back with "Zone [GND] on B.Cu" open to "Zone [GND] on In2.Cu" -- both named by the
+    board's corner, which says nothing. The real fault was a 33 mm2 strip of the B.Cu pour
+    along the south edge, cut off from the rest of it by a track, with no via or through-hole
+    pad in it; the In2 plane lay under the whole strip. A maze search has nothing to aim at
+    there, and needs nothing: one via down to the plane joins it. An island that has a via
+    or a through-hole pad of the net in it is already joined through that and is left alone.
+    Clear of every other net's copper on every layer by `clr` past the via's ring, of every
+    pad, and hole to hole."""
+    r = RS.VIA_D / 2.0
+    code = board.GetNetcodeFromNetname(net)
+    cu = [L for L in board.GetEnabledLayers().CuStack()]
+    at = lambda x, y: pcbnew.VECTOR2I(pcbnew.FromMM(x), pcbnew.FromMM(y))
+    thru = [t.GetPosition() for t in board.GetTracks()
+            if t.GetClass() == "PCB_VIA" and t.GetNetname() == net]
+    thru += [q.GetPosition() for f in board.GetFootprints() for q in f.Pads()
+             if q.GetNetname() == net and q.GetDrillSize().x > 0]
+    holes = [(t.GetPosition(), pcbnew.ToMM(t.GetDrillValue()) / 2.0) for t in board.GetTracks()
+             if t.GetClass() == "PCB_VIA"]
+    holes += [(q.GetPosition(), pcbnew.ToMM(max(q.GetDrillSize().x, q.GetDrillSize().y)) / 2.0)
+              for f in board.GetFootprints() for q in f.Pads() if q.GetDrillSize().x > 0]
+    pads = [q for f in board.GetFootprints() for q in f.Pads()]
+    others = [t for t in board.GetTracks() if t.GetNetname() != net]
+    ozones = [z for z in board.Zones() if z.GetNetname() != net and not z.GetIsRuleArea()]
+    # what an island may be stitched to: the plane's pour, or on a board without one, a piece
+    # of the net's pour on another layer that something already goes through
+    targets = []
+    for z in board.Zones():
+        if z.GetNetname() == net:
+            for L in z.GetLayerSet().Seq():
+                fill = z.GetFilledPolysList(L)
+                for k in range(fill.OutlineCount()):
+                    o = fill.Outline(k)
+                    if board.GetLayerName(L) in plane or any(o.PointInside(t) for t in thru):
+                        ps = pcbnew.SHAPE_POLY_SET()
+                        ps.AddOutline(o)
+                        targets.append((L, ps))
+
+    def ring(ps, x, y, rr):
+        return all(ps.Contains(at(x + dx * rr, y + dy * rr)) for dx, dy in
+                   ((0, 0), (1, 0), (-1, 0), (0, 1), (0, -1), (.7, .7), (-.7, -.7), (.7, -.7), (-.7, .7)))
+
+    def legal(x, y):
+        p = at(x, y)
+        reach = pcbnew.FromMM(r + clr)
+        for h, hr in holes:
+            if (pcbnew.ToMM(h.x) - x) ** 2 + (pcbnew.ToMM(h.y) - y) ** 2 < (hr + RS.VIA_DRILL / 2 + 0.3) ** 2:
+                return False
+        for L in cu:
+            if any(t.IsOnLayer(L) and t.GetEffectiveShape(L).Collide(p, reach) for t in others):
+                return False
+            if any(q.IsOnLayer(L) and q.GetEffectiveShape(L).Collide(p, reach) for q in pads):
+                return False
+            if any(z.IsOnLayer(L) and z.GetFilledPolysList(L).Collide(p, reach) for z in ozones):
+                return False
+        return True
+
+    laid = []
+    for z in board.Zones():
+        if z.GetNetname() != net:
+            continue
+        for L in z.GetLayerSet().Seq():
+            if board.GetLayerName(L) in plane:
+                continue
+            fill = z.GetFilledPolysList(L)
+            for k in range(fill.OutlineCount()):
+                o = fill.Outline(k)
+                if any(o.PointInside(t) for t in thru):
+                    continue
+                isl = pcbnew.SHAPE_POLY_SET()
+                isl.AddOutline(o)
+                bb = o.BBox()
+                x0, y0 = pcbnew.ToMM(bb.GetX()), pcbnew.ToMM(bb.GetY())
+                x1, y1 = pcbnew.ToMM(bb.GetRight()), pcbnew.ToMM(bb.GetBottom())
+                cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+                pts = [(x0 + i * step, y0 + j * step) for i in range(int((x1 - x0) / step) + 1)
+                       for j in range(int((y1 - y0) / step) + 1)]
+                pts.sort(key=lambda q: (q[0] - cx) ** 2 + (q[1] - cy) ** 2)
+                for x, y in pts:
+                    if ring(isl, x, y, r + 0.05) and any(TL != L and ring(ps, x, y, r + 0.05)
+                                                          for TL, ps in targets) \
+                            and legal(x, y):
+                        v = pcbnew.PCB_VIA(board)
+                        v.SetPosition(at(x, y))
+                        v.SetWidth(pcbnew.F_Cu, pcbnew.FromMM(RS.VIA_D))
+                        v.SetDrill(pcbnew.FromMM(RS.VIA_DRILL))
+                        v.SetNetCode(code)
+                        board.Add(v)
+                        thru.append(at(x, y))
+                        holes.append((at(x, y), RS.VIA_DRILL / 2.0))
+                        laid.append((round(x, 2), round(y, 2)))
+                        break
+    return laid
+
+
 def _pad_layer(board, net, layer, pos):
     """The layer an SMD pad at `pos` is really on (a through-hole pad keeps `layer`).
 
@@ -210,7 +310,7 @@ def main(stem):
     # and SAYS SO, because an open net is still worse than a thin one.
     close_w = _notes.get("close_widths", {}) or {}
     layers = [L for L in LAYERS if L in have and L not in plane]
-    made = 0
+    made, stitched = 0, set()
     # ⚠ THE SEARCH HAS A CLOCK (optical, 2026-10-05). Ten open nets on a 188 mm board took
     # this file past an hour, silently, on a route whose real fault was a placement that
     # left four of them open in the first place. A closing step that runs longer than the
@@ -225,7 +325,18 @@ def main(stem):
             print("close_last: out of time after %.0f s -- left open: %s"
                   % (_time.time() - _t0, ", ".join(t[0] for t in todo[_i:])))
             break
-        # a zone end goes to its copper nearest the other end (zone to zone: as DRC printed)
+        # zone to zone: an island nothing goes through, joined to the plane by a via
+        if za and zb:
+            if net in stitched:
+                continue
+            stitched.add(net)
+            laid = _stitch_islands(board, net, plane)
+            if laid:
+                made += 1
+                print("close_last: %s -- %d pour island(s) stitched to the plane at %s"
+                      % (net, len(laid), laid))
+                continue
+        # a zone end goes to its copper nearest the other end
         if za and not zb:
             pa = _zone_point(board, net, la, pb) or pa
         if zb and not za:
