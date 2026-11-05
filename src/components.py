@@ -83,17 +83,22 @@ def screw(length: float = D.SCREW_LEN) -> cq.Workplane:
                              (ro, _tr_groove_w(ro) / 2), (rr, _tr_groove_w(rr) / 2)]).close()
                   .sweep(cq.Workplane("XY").add(cq.Wire.makeHelix(
                       pitch=p, height=turns * p, radius=rr,
-                      lefthand=D.SCREW_HAND == "LH")), isFrenet=True)
-                  .translate((0, 0, -(turns * p - length) / 2)))
-        out = blank.cut(groove, clean=False)
+                      lefthand=D.SCREW_HAND == "LH")), isFrenet=True))
         # OCCT can hand back a smooth rod, or half of one, without a word
         # (cadkit/THREADS_README.md): hold the result to the thread's own arithmetic.
         _fill = 1 - ((rc ** 2 - rr ** 2) * (_tr_groove_w(rr) + _tr_groove_w(rc)) / 2 / p
                      - (rc - rr) ** 2 * (_tr_groove_w(rc) - _tr_groove_w(rr)) / (3 * p)) / rc ** 2
-        _vol = out.val().Volume() / (math.pi * rc ** 2 * length)
-        assert out.val().isValid() and len(out.val().Solids()) == 1             and abs(_vol - _fill) < 0.03, (
-                f"the leadscrew's thread did not cut: {_vol:.3f} of its cylinder, "
-                f"want {_fill:.3f}")
+        # WHERE THE HELIX STARTS is a phase, nothing physical, but it decides whether that boolean
+        # holds: at 36.28 the centred sweep cut 0.37 of the rod and a quarter-turn on cut it right.
+        # So try phases until one passes the check.
+        for _ph in (0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75):
+            out = blank.cut(groove.translate((0, 0, -(turns * p - length) / 2 + _ph)), clean=False)
+            _vol = out.val().Volume() / (math.pi * rc ** 2 * length)
+            if out.val().isValid() and len(out.val().Solids()) == 1 and abs(_vol - _fill) < 0.03:
+                break
+        else:
+            raise AssertionError(f"the leadscrew's thread did not cut at any phase: {_vol:.3f} "
+                                 f"of its cylinder, want {_fill:.3f}")
         _SCREWS[length] = out
     return _SCREWS[length]
 
