@@ -544,10 +544,17 @@ def pi_hold_bore():
     """The Pi hold-down's anchor as a CUTTER, for build.py to take out of the chassis AFTER
     the cradle is fused in: cut before union is silently refilled (43.9 mm3 of screw inside
     chassis_2 the first time). An M3 insert pocket from the board's underside, the bore
-    PI_BORE_D deep -- the M3 x 12's reach -- in the boss, which stands on the floor."""
+    PI_BORE_D deep -- the M3 x 12's reach -- in the boss, which stands on the floor.
+
+    ⚠ ...AND ON, AT THE BORE'S OWN Ø, DOWN THE WHOLE BOSS TO THE CHASSIS'S INSIDE FLOOR (user,
+    2026-11-05: "the hole for the screw doesn't extend all the way to the chassis floor ...
+    cut the hole all the way through", then "to the chassis floor (the inside floor)"). Below
+    the screw's reach the column was solid for no reason; the floor itself stays whole."""
     from cadkit.fasteners import anchor_cutter
     hx, hy = pi_hold_pt()
-    return anchor_cutter(PI_M3, (hx, hy, PI_Z), (0, 0, -1), PI_BORE_D)
+    return (anchor_cutter(PI_M3, (hx, hy, PI_Z), (0, 0, -1), PI_BORE_D)
+            .union(cyl(PI_M3.selftap_d, PI_Z - _MB_FLOOR.FLOOR_TOP + 0.01,
+                       _MB_FLOOR.FLOOR_TOP).translate((hx, hy, 0.0))))
 
 
 def pi_cradle() -> cq.Workplane:
