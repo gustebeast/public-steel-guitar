@@ -400,6 +400,9 @@ GUIDE_ROD_FIT   = 0.15      # PRESS. 0.05 printed "a touch small" on the +X endp
                             # teardrop. Not zero: at zero the socket is drawn the
                             # rod's own Ø, which is not a hole you can install into,
                             # and coincident cylinders make the boolean unreliable.
+GUIDE_ROD_FIT_PX = GUIDE_ROD_FIT + 0.10  # the FAR row (+X, x +20) only: the printed bridge
+                            # endplate held the -X row's rods just right but the +X
+                            # row's "a bit too tight" (user, 2026-11-05) -> Ø3.75
 
 # The bridge / string anchor sits at X=0; the screw can't occupy that spot, so
 # it is offset −X by ANCHOR_DX and the carriage reaches over to the anchor.
@@ -451,6 +454,11 @@ def string_anchor_x(i: int) -> float:
 def guide_rod_x(i: int) -> float:
     """The anti-rotation ear — always the ear the string does NOT take."""
     return screw_x(i) + NUT_HOLE_DX if screw_far(i) else screw_x(i) - NUT_HOLE_DX
+
+
+def guide_rod_bore_d(i: int) -> float:
+    """The endplate's press bore for string i's guide rod: the far (+X) row prints tighter."""
+    return GUIDE_ROD_D + (GUIDE_ROD_FIT_PX if screw_far(i) else GUIDE_ROD_FIT)
 
 
 # String-end nut: a cylinder swaged on the string's bridge end (axis Y), slotted
@@ -1305,10 +1313,10 @@ BRIDGE_BASE_X0 = BRIDGE_X - BRIDGE_BASE_HALF        # -25.06  (-X face)
 # 1.6mm beyond the holes we cut for the guide rods"). The part builds -X up, so every teardrop
 # APEX points -X: it is the near row's seat apex that sets the -X face above. On the +X side
 # every bore is a plain circle, and the furthest one out is the far row's guide-rod bore at
-# SCREW_ROW_DX + NUT_HOLE_DX + its radius (21.83; the far seat stops at 20.10). Two beads past it.
-_RIM_PX = max(SCREW_ROW_DX + NUT_HOLE_DX + (GUIDE_ROD_D + GUIDE_ROD_FIT) / 2,
+# SCREW_ROW_DX + NUT_HOLE_DX + its radius (21.88; the far seat stops at 20.10). Two beads past it.
+_RIM_PX = max(SCREW_ROW_DX + NUT_HOLE_DX + (GUIDE_ROD_D + GUIDE_ROD_FIT_PX) / 2,
               SCREW_ROW_DX + (SUPPORT_BRG_OD + 0.2) / 2)
-BRIDGE_HALF_PX = _RIM_PX + MIN_WALL_2P                         # 23.43
+BRIDGE_HALF_PX = _RIM_PX + MIN_WALL_2P                         # 23.48
 
 
 # THE BOTTOM'S OWN SPAN: the chassis floor runs END TO END of the chassis -- the two KEPT-SHELL

@@ -933,7 +933,7 @@ def _build() -> cq.Workplane:
         # the rail. Everything it crosses on the way — slab, changer room, rail — is
         # either open or wants the hole, so it is a single cut rather than three.
         body = body.cut(printable_bore(
-            D.GUIDE_ROD_D + D.GUIDE_ROD_FIT, GUIDE_DROP_Z1 - GUIDE_SOCKET_Z,
+            D.guide_rod_bore_d(i), GUIDE_DROP_Z1 - GUIDE_SOCKET_Z,
             axis_point=(D.guide_rod_x(i), sy, GUIDE_SOCKET_Z),
             axis_dir=(0.0, 0.0, 1.0), print_up=PRINT_UP))
     # NO TOP RADIAL BEARING SEATS — the bearing is gone (see build._string_components).
