@@ -517,6 +517,14 @@ SS_ROWS = (SS_Z_A, SS_Z_A - SS_DZ)
 SS_YC = PLATE_YC
 assert all(abs(-_adv_g(g) - SS_YC[i]) <= D.MIN_WALL_2P
            for i in range(D.N_STRINGS) for g in _gauges_of(i)), "the side screw's tip misses a tail"
+# THE TAIL CANNOT SNEAK PAST THE SCREW (user, 2026-11-05: the 4.4 channel let a string run by the
+# screw's side). Below the lanes the channel is TAIL_W wide on the screw's axis, so even the thinnest
+# string's centre stays inside the tip's flat face (the thread's minor diameter, ~3.14), and the
+# heaviest still drops through. The plate's 0.2 of -X clearance is too thin to hide a string in.
+_SS_TIP_R = (M4.screw_d - 1.227 * 0.7) / 2.0    # the M4 coarse thread's minor radius, the flat tip
+assert TAIL_W / 2.0 - min(D.STRING_GAUGE) / 2.0 <= _SS_TIP_R, "a thin tail can sit off the screw's tip"
+assert TAIL_W >= G_ENVELOPE + D.BEAD / 2.0, "the narrowed tail channel pinches the heaviest string"
+assert PLATE_CLR < min(D.STRING_GAUGE), "a thin string fits in the plate's clearance beside the channel"
 # THE PLIER WINDOW (user): one slot across every string, below the side screws and open in the bed
 # face, with no fingers in it -- the tails hang across it, and pliers pull each one down tight before
 # its screw goes in. Its roof is a plain bridge in the -X -> +X build (user: its depth does not matter).
@@ -676,13 +684,23 @@ def _y_span(i: int):
 
 def insert_pocket(i: int) -> cq.Workplane:
     """String i's pocket: the plate's slot from the height screws' floor to the sky, and the tail
-    channel -X of it down to its floor. A PRISM IN Z -- the plate does not sit in it, it TRAVELS."""
+    channel -X of it down to its floor. A PRISM IN Z -- the plate does not sit in it, it TRAVELS.
+    Below the lanes the channel narrows to TAIL_W on the side screw's axis, through a 45 degree funnel."""
     y0, y1 = _y_span(i)
     slot = box_at(POCKET_X1 - (PLATE_X0 - PLATE_CLR), y1 - y0, Z_SKY - HS_FLOOR,
                   x=(POCKET_X1 + PLATE_X0 - PLATE_CLR) / 2, y=(y0 + y1) / 2, z=(Z_SKY + HS_FLOOR) / 2)
-    chan = box_at(PLATE_X0 + 0.5 - POCKET_X0, y1 - y0, Z_SKY - TAIL_Z_END,
-                  x=(PLATE_X0 + 0.5 + POCKET_X0) / 2, y=(y0 + y1) / 2, z=(Z_SKY + TAIL_Z_END) / 2)
-    return slot.union(chan)
+    xc, xl = (PLATE_X0 + 0.5 + POCKET_X0) / 2, PLATE_X0 + 0.5 - POCKET_X0
+    chan = box_at(xl, y1 - y0, Z_SKY - LANE_FLOOR, x=xc, y=(y0 + y1) / 2, z=(Z_SKY + LANE_FLOOR) / 2)
+    ys = D.nut_y(i) + SS_YC[i]
+    narrow = box_at(xl, TAIL_W, LANE_FLOOR - TAIL_Z_END + 0.01, x=xc, y=ys,
+                    z=(LANE_FLOOR + TAIL_Z_END) / 2)
+    # the funnel: each side wall leans in at 45 degrees from the full width down to TAIL_W
+    fz = max(y1 - ys, ys - y0) - TAIL_W / 2
+    funnel = (cq.Workplane("YZ").polyline([(y0, LANE_FLOOR + 0.01), (y1, LANE_FLOOR + 0.01),
+                                           (ys + TAIL_W / 2, LANE_FLOOR - fz),
+                                           (ys - TAIL_W / 2, LANE_FLOOR - fz)]).close()
+              .extrude(xl).translate((POCKET_X0, 0.0, 0.0)))
+    return slot.union(chan).union(narrow).union(funnel)
 
 
 def all_pockets() -> cq.Workplane:
