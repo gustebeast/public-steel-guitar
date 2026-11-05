@@ -794,7 +794,7 @@ from . import leg_pogo as _PG
 from . import legs as _LG
 from . import cable_routes as _CR
 # THE PARTS THAT SLIDE WITH THE -X/+Y LEG when it moves out to its service position
-# (legs.SERVICE_SLIDE): its body adapter, the leg stack hung from it, and the top pogo
+# (legs.KEYHEAD_SLIDE): its body adapter, the leg stack hung from it, and the top pogo
 # joint's two boards. The lock pin's screw and insert stay in the endplate.
 LEG_SLIDES = (r"^(body_adapter_0|fixed_(sleeve|tenon)|adjust_(sleeve|tenon)|leg_latch_\w+"
               r"|bar_latch_\w+)$|^pogo_(male|female)_\w+_top$")
@@ -2359,7 +2359,7 @@ def ctrl_bus_b(lkl):
     # 2026-10-22: strings change with no JST unplugged). That pose is never drawn; its
     # route is what the cable's cut length has to reach (pedal_cable_cut).
     _syg = 1.0 if _stub_c[1] > 0.0 else -1.0
-    _slid = (0.0, _syg * _LG.SERVICE_SLIDE, 0.0)
+    _slid = (0.0, _syg * _LG.service_slide(-1.0, _syg), 0.0)      # the -X/+Y leg: the keyhead's slide
     _stub_s = tuple(_stub_c[m] + _slid[m] for m in range(3))
     PEDAL_ROUTES["home"] = centre[:-1]
     PEDAL_ROUTES["service"] = _CR.taut(

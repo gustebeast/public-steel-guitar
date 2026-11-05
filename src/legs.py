@@ -260,8 +260,8 @@ def _groove(length: float) -> cq.Workplane:
 # +Y foot -- the bridge's string access channels, the keyhead's nut-block height screws -- back
 # the leg's one screw out, slide the FOOT SERVICE_SLIDE outboard along Y until its SECOND hole
 # lines up with that same screw's axis, and drive the screw back in, which locks it there. Work,
-# slide it home, screw back in. ONE DISTANCE FOR BOTH ENDS (see SERVICE_SLIDE): the player
-# memorizes a position, not a pair of them.
+# slide it home, screw back in. Each end slides its OWN distance (SERVICE_SLIDE at the bridge,
+# KEYHEAD_SLIDE at the keyhead): see KEYHEAD_SLIDE for why one shared distance had to go.
 # Only SERVICE_CORNERS get it, keyed (egx, syg) by outboard x and y sign: the strings span
 # Y +-42.8, so only the +Y feet sit under them. Nothing is cut back to make room -- the foot
 # simply travels along the grid joint it already slides in on, and the assert in
@@ -288,16 +288,16 @@ KEYHEAD_CLEAR_Y = (max(_NB.height_screw_xy(i)[1] for i in range(D.N_STRINGS))
 CROSS_GROOVE_IN = 0.5          # crossing grooves' inboard overshoot past the leg face (corner_groove_negatives)
 BRIDGE_CLEAR_Y = (max(D.string_y(i) for i in range(D.N_STRINGS))
                   + D.STRING_ACCESS_D / 2.0 + D.MIN_WALL_2P)
-# THE +X END SETS THE DISTANCE AND THE -X END REUSES IT (user, 2026-09-17), so there is ONE
-# position to memorize: pull the foot out until the second hole lines up, screw in, work, slide
-# back. Hence the bridge's number ALONE and not the max of the two ends' -- the assert says what
-# that costs, which is nothing: the keyhead's own need is less than half of it, so the one
-# position clears both. NOT rounded to whole beads: it is a travel, not a wall.
-SERVICE_SLIDE = round(BRIDGE_CLEAR_Y - LEG_NY_FACE, 6)              # 25.6
-assert SERVICE_SLIDE >= KEYHEAD_CLEAR_Y - LEG_NY_FACE - 1e-9, (
-    "the shared service slide (%.2f, the bridge's need) is short of the keyhead's own (%.2f) -- "
-    "one memorized position cannot serve both ends any more"
-    % (SERVICE_SLIDE, KEYHEAD_CLEAR_Y - LEG_NY_FACE))
+# EACH END SLIDES ITS OWN NEED (user, 2026-11-05). It used to be one distance for both, the
+# bridge's, so there was one position to memorize. But the slide sets where the lock pin can sit:
+# the service hole, the slide inboard of the pin, has to land in the third station's tenon, and at
+# the keyhead that tenon only starts past the height screws' heads. Sliding the bridge's 26.55
+# there pushed the keyhead pin out to 16.86, onto the lower endplate dovetail, and its insert
+# pocket chopped the -X chassis section's dovetail tenons. So both ends keep the bridge's pin
+# spacing (LOCK_PIN_DY) and the keyhead slides only what its height screws need.
+# NOT rounded to whole beads: it is a travel, not a wall.
+SERVICE_SLIDE = round(BRIDGE_CLEAR_Y - LEG_NY_FACE, 6)              # 26.55, the bridge's
+KEYHEAD_SLIDE = round(KEYHEAD_CLEAR_Y - LEG_NY_FACE, 6)             # 14.45, the keyhead's
 SERVICE_CORNERS = ((-1.0, 1.0), (1.0, 1.0))
 # The LOCK PIN sits LOCK_PIN_DY OUTBOARD of the leg's centreline (user), which is what
 # leaves room for a long service slide: the second hole goes SERVICE_SLIDE inboard of it and
@@ -391,11 +391,12 @@ def mid_ridge_cut(egx: float, syg: float) -> float:
 
 
 def service_slide(egx: float, syg: float) -> float:
-    """This corner's service slide: 0 unless it is one of SERVICE_CORNERS."""
-    assert 0.0 <= SERVICE_SLIDE <= SERVICE_SLIDE_MAX + 1e-9, (
-        "SERVICE_SLIDE %.1f is outside 0..%.1f: the second lock-pin hole would fall off "
-        "the tongue" % (SERVICE_SLIDE, SERVICE_SLIDE_MAX))
-    return SERVICE_SLIDE if (float(egx), float(syg)) in SERVICE_CORNERS else 0.0
+    """This corner's service slide: 0 unless it is one of SERVICE_CORNERS, then its end's own."""
+    s = SERVICE_SLIDE if egx > 0 else KEYHEAD_SLIDE
+    assert 0.0 <= s <= SERVICE_SLIDE_MAX + 1e-9, (
+        "the service slide %.1f is outside 0..%.1f: the second lock-pin hole would fall off "
+        "the tongue" % (s, SERVICE_SLIDE_MAX))
+    return s if (float(egx), float(syg)) in SERVICE_CORNERS else 0.0
 
 
 def corner_groove_negatives(station: float, ly: float, syg: float,
@@ -462,32 +463,6 @@ def pin_tenons(station: float, ly: float, egx: float, syg: float, tip: float) ->
     return out
 
 
-def lock_pin_dy(egx: float) -> float:
-    """How far OUTBOARD of the leg's centreline this end's lock pin sits.
-
-    LOCK_PIN_DY at the bridge. THE KEYHEAD END MOVES OUT (2026-11-03): the keyhead grew -X and took
-    its legs with it, but the height screws stayed under the nut, so every foot station there now
-    crosses their head cavities and even the third station's +Y run starts late. The pin goes out
-    until its service hole -- SERVICE_SLIDE inboard -- lands PIN_HOLE_REACH inside that run."""
-    if egx > 0:
-        return LOCK_PIN_DY
-    from . import chassis as _CHP
-    st = D.lever_grid_x()[2]                              # the third station in from -X
-    field = D.floor_block_y(st)
-    ly = _CHP.LEG_Y[0]
-    start = max(ly - SQ_W / 2.0, field[1] if field else -1e9)
-    need = start + PIN_HOLE_REACH - ly + SERVICE_SLIDE
-    # not rounded to a bead: a whole bead out (17.6) leaves the head's recess 0.6 from the endplate's
-    # +Y face; at the bare need it keeps 1.3 (two beads would need it under 16.6)
-    dy = max(LOCK_PIN_DY, need)
-    assert dy + _M4.shaft_clr_d / 2 + D.MIN_WALL_2P <= SQ_W / 2, (
-        "the keyhead's lock pin at %.2f out leaves under two beads to the foot's face" % dy)
-    wall = _CHP.Y_HI + _CHP.T / 2 - (ly + dy + (LOCK_HEAD_D + D.BEAD) / 2)
-    assert wall >= D.MIN_WALL - 1e-9, (
-        "the keyhead's lock pin head recess leaves %.2f to the endplate's +Y face" % wall)
-    return dy
-
-
 def lock_pin_joint(station: float, ly: float, egx: float, syg: float, z_bot: float,
                    dy: float = 0.0) -> _ScrewJoint:
     """THE LEG'S ONE SCREW (user), defined once for every part it crosses: an M4 button
@@ -502,10 +477,10 @@ def lock_pin_joint(station: float, ly: float, egx: float, syg: float, z_bot: flo
     material the straight tongue used to occupy -- the chassis only ever sees a Ø4.4 clearance
     hole, which is what the user asked for: a smaller hole disrupts the joinery less.
 
-    On the axis lock_pin_dy(egx) outboard of the leg's centreline, LOCK_Z up; `dy` moves it along Y,
+    On the axis LOCK_PIN_DY outboard of the leg's centreline, LOCK_Z up; `dy` moves it along Y,
     which is how the SERVICE hole is drilled (service_pin_joint)."""
     zc = z_bot + LOCK_Z
-    entry = (station + egx * SQ_W / 2, ly + syg * lock_pin_dy(egx) + dy, zc)
+    entry = (station + egx * SQ_W / 2, ly + syg * LOCK_PIN_DY + dy, zc)
     end_at = LOCK_RECESS + LOCK_SCREW_L + 0.4
     j = _ScrewJoint(_M4, entry, (-egx, 0.0, 0.0), LOCK_SCREW_L,
                     insert_at=LOCK_INSERT_AT, end_at=end_at,
@@ -546,7 +521,7 @@ def service_pin_joint(station: float, ly: float, egx: float, syg: float, z_bot: 
     s = service_slide(egx, syg)
     if not s:
         return None
-    y_hole = ly + syg * (lock_pin_dy(egx) - s)
+    y_hole = ly + syg * (LOCK_PIN_DY - s)
     tip = LOCK_RECESS + LOCK_SCREW_L
     held = [t for t in pin_tenons(station, ly, egx, syg, tip)
             if t[1] + PIN_HOLE_REACH - 1e-9 <= y_hole <= t[2] - PIN_HOLE_REACH + 1e-9]
