@@ -216,6 +216,15 @@ for _i in range(len(_TP.segments)):              # placed deck panels (piece + f
         "weld/purge cleanest")
     PRINTS_WITH[f"top_plate_{_i}_color"] = f"top_plate_{_i}"
     FILAMENT_OF[f"top_plate_{_i}_color"] = "pctg"
+# BENCH DECK (src/bench_deck.py): an open, X-braced stand-in for the deck in three sections, for
+# testing with the inside reachable. Exported only, never placed: it takes the real deck's place.
+for _i in range(3):
+    PARTS[f"bench_deck_{_i}"] = (
+        (lambda i: lambda: heal(__import__("src.bench_deck", fromlist=["e"]).sections[i]))(_i),
+        f"petg-gf/bench_deck_{_i}.step",
+        "PETG-GF — BENCH DECK section (0 bridge end, 1 mid, 2 keyhead): rail caps + dovetail "
+        "tongues + an X-braced frame and nothing else, so it holds the rails together while the "
+        "inside stays open for testing. Slides in like the real deck; prints deck-down")
 # fuse each tee's drop-in PCB cradle (cadkit.pcb.pcb_cradle) into the chassis segment
 # whose X-band owns that tee, so the cradle PRINTS AS PART of that segment. Each cradle's
 # -Y wall merges into the -Y-rail inner face (a light cantilever bracket over the rib-top
@@ -672,7 +681,7 @@ def _declared():
     from . import ream_jig as _RJG
     from . import electronics as _ELX
 
-    _plate = [n for n in PARTS if n.startswith("top_plate_")]
+    _plate = [n for n in PARTS if n.startswith(("top_plate_", "bench_deck_"))]
     for _names, _up, _why in (
         (["screw_pulley_hi", "screw_pulley_lo"], _C.SCREW_PULLEY_UP,
          "components.SCREW_PULLEY_UP — FLANGE DOWN: the full O11 -Z disc is "
