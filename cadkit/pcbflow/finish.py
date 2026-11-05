@@ -575,6 +575,21 @@ def finish(stem, rounds=1, keep_route=False):
             if (_v3, _n3) < (best_v, best_n):
                 best_n, best_v, nets = _n3, _v3, _nets3
                 break
+            # ⚠ FIRST TAKE UP ONLY THE CLOSURES THAT BROKE A RULE (optical, 2026-11-05).
+            # Leaving the blamed NET alone loses its good closures with the bad one, and a
+            # supply with three gaps is one net: prune_closures.py says why.
+            if _v3:
+                try:
+                    _run("prune_closures.py", stem)
+                    _run("repair_planes.py", stem)
+                    _n4, _nets4, _v4 = _drc(stem)
+                    print("  close_last, bad closures taken up: %d unconnected, %d violation(s)"
+                          % (_n4, _v4))
+                    if (_v4, _n4) < (best_v, best_n):
+                        best_n, best_v, nets = _n4, _v4, _nets4
+                        break
+                except SystemExit as exc:
+                    print("  prune_closures did not run (%s)" % (exc,))
             _blame = _violation_nets(stem) & set(nets) - _skip
             print("  close_last did not improve the board -- putting it back")
             shutil.copy(stem + ".preclose.kicad_pcb", stem + ".kicad_pcb")
