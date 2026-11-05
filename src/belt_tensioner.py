@@ -202,22 +202,28 @@ assert _KEY_WALL >= 2 * B - 1e-6, (
 # ── where the belt's two cut ends are ─────────────────────────────────────────────────────
 BELT_END_A = LEN_A - GRIP                    # 9.6 half A's inner face to its end wall
 BELT_END_B = INNER_B + END_WALL              # 10.8 half B's, likewise
-BELT_TOOTH_IN = B / 2                        # 0.2 an end wall to the nearest tooth's centre:
-                                             # _ribs stands its first rib BP/2 past that
+# EACH END IS CUT FLUSH BESIDE A TOOTH (user, 2026-11-05): a whole tooth grips better than the half
+# one a cut through the tooth left, and a cut in the land next to a tooth is the easy one to make.
+# So the end wall stands half a tooth's base from the nearest tooth's centre (it was 0.2: the
+# cut went through the tooth), and _ribs stands its first rib BP/2 past that.
+BELT_TOOTH_BASE = 1.40                       # a GT2 tooth across its root, fillets and all
+BELT_TOOTH_IN = BELT_TOOTH_BASE / 2          # 0.7 an end wall to the nearest tooth's centre
+assert BELT_TOOTH_IN + BP * (N_TEETH - 0.5) + BP / 4 <= GRIP + 1e-9, "a rib runs out of the grip"
 SHOULDER_Z = SLOT_H / 2 - BTH + SLOT_CLR     # 0.15 where r5's ribs ended (its trapezoid)
 RIB_TIP  = -SLOT_H / 2 + (BT - BTH)          # -0.15 the valley floor, belt back on the far face
 
 
-def _ribs(x0: float, y0: float, y1: float) -> cq.Workplane:
-    """N_TEETH ribs hanging from the slot's +z face into the belt's valleys, the first
-    centred BP/2 past x0. Trapezoid: BP/2 wide at the root, one bead at SHOULDER_Z (the shape
+def _ribs(x_wall: float, sense: int, y0: float, y1: float) -> cq.Workplane:
+    """N_TEETH ribs hanging from the slot's +z face into the belt's valleys, counted from the
+    belt's END WALL at x_wall into the grip (`sense` +-1 along x): the first centred BP/2 past
+    the nearest tooth, which is BELT_TOOTH_IN off the wall. Trapezoid: BP/2 wide at the root, one bead at SHOULDER_Z (the shape
     the r5 belt's teeth filled exactly, user), then a one-bead NUB on down to the valley floor
     with the belt lying on the slot's far face (RIB_TIP): the r5 ribs stopped SLOT_CLR short of
     it by the model and further in print at 0.4, and the belt crept on them under tension."""
     top = SLOT_H / 2
     out = None
     for k in range(N_TEETH):
-        xc = x0 + B / 2 + BP * (k + 0.5)
+        xc = x_wall + sense * (BELT_TOOTH_IN + BP * (k + 0.5))
         pts = [(xc - BP / 4, top), (xc + BP / 4, top), (xc + B / 2, SHOULDER_Z),
                (xc + B / 2, RIB_TIP), (xc - B / 2, RIB_TIP), (xc - B / 2, SHOULDER_Z)]
         r = (cq.Workplane("XZ").polyline(pts).close().extrude(-(y1 - y0))
@@ -308,7 +314,7 @@ def half_a() -> cq.Workplane:
                       .translate((0.0, -HW, 0.0)))
     gx0, gx1 = -LEN_A, -LEN_A + GRIP                              # grip: outer end .. end wall
     cut, (ya, yb) = _belt_slot(gx0 - 1.0, gx1, -1)
-    body = body.cut(cut).union(_ribs(gx0, -HW, yb))
+    body = body.cut(cut).union(_ribs(gx1, -1, -HW, yb))
     body = body.cut(box_at(HEAD_ZONE, IN_HW + HW + 2.0, 2 * WIN_HZ, x=(wx0 + wx1) / 2,
                            y=(IN_HW - HW) / 2))                    # through, bed face to top
     # the screw's way through the seat is a SLOT open to A's top face (-y): the screw is 15
@@ -353,7 +359,7 @@ def half_b() -> cq.Workplane:
     body = body.cut(box_at(il, 6.0, INS_POCKET, x=ix0 + il / 2, y=SCREW_Y + 3.0))
     gx0, gx1 = INNER_B + END_WALL, LEN_B
     cut, (ya, yb) = _belt_slot(gx0, gx1 + 1.0, +1)
-    body = body.cut(cut).union(_ribs(gx0, ya, MOUTH_B))
+    body = body.cut(cut).union(_ribs(gx0, +1, ya, MOUTH_B))
     lip0 = MOUTH_B - FLANGE
     body = body.cut(_lips(-1.0, LEN_B + 1.0, lip0, +1))
     body = body.cut(box_at(il, 3.0, BODY_T + 2.0, x=ix0 + il / 2, y=lip0 + 1.5))   # no skin left there
@@ -415,7 +421,8 @@ def belt_fit(loop: float) -> tuple:
     line. The belt is CUT TO A TOOTH COUNT, and both grips hold it by its teeth, so the
     gap between the halves is not free: it is whatever the loop leaves once `teeth`
     pitches are in it. The cut is `teeth` * BP + 2 * BELT_TOOTH_IN long -- each end wall
-    is BELT_TOOTH_IN past the last tooth's centre, so the cut goes through a tooth there.
+    is BELT_TOOTH_IN past the last tooth's centre, so the cut runs flush beside that tooth and
+    the piece carries `teeth` + 1 whole teeth.
 
     Of the two counts whose gap is inside the screw's travel, this is the LONGER belt,
     gap in [GAP - BP, GAP): tensioned, the screw still has that much left to close, which

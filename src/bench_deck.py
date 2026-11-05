@@ -11,10 +11,11 @@ are the rail-to-rail tie -- and opens everything between the rails, leaving a fr
              racks, so neither has to carry compression (a 250 long 8 x 6.4 strut buckles under
              ~80 N; in tension it takes kN)
 
-THREE SECTIONS, on the real deck's own seams so each fits the bed and the stack installs the same way
-(+X first, -X out): the bridge-end REGION (where the pickup piece and fillers go), the MID span and
-the KEYHEAD span. The keyhead section keeps the motor board's capture rib (top_plate._mctrl_capture):
-without it the board has nothing holding it down.
+THREE EQUAL SECTIONS, GAP apart like the real deck's panels, so the stack installs the same way (+X
+first, -X out). Each is short enough to print with a 5 mm ear on every corner inside the bed (user,
+2026-11-05: the first print's corners lifted off the plate; the bed's edges run cooler). The -X section
+keeps the motor board's capture rib (top_plate._mctrl_capture): without it the board has nothing
+holding it down.
 
 PETG-GF: it is structure and nobody rests a forearm on it. Prints deck-DOWN like the real panels
 (top_plate.PIECE_UP).
@@ -35,12 +36,17 @@ END_W = 6 * D.BEAD              # 4.8: each end bar
 DIAG_W = 10 * D.BEAD            # 8.0: each diagonal, across its own length
 PRINT_UP = TP.PIECE_UP
 
-# the three sections, +X to -X: (xa, xb). The region section ends a GAP short of the mid panel,
-# exactly where the last filler did.
-SECTIONS = ((TP.PX0, TP.REGION_X1 + TP.GAP), (TP.MID_X0, TP.MID_X1), (TP.KEY_X0, TP.KEY_X1))
-BED_MAX = 250.0
+# the sections, +X to -X: (xa, xb), equal, the deck's whole span less a GAP at each seam
+N_SECTIONS = 3
+_SEC_L = (TP.PX0 - TP.PX1 - (N_SECTIONS - 1) * TP.GAP) / N_SECTIONS
+SECTIONS = tuple((TP.PX0 - k * (_SEC_L + TP.GAP), TP.PX0 - k * (_SEC_L + TP.GAP) - _SEC_L)
+                 for k in range(N_SECTIONS))
+BED_MAX = 250.0                 # the bed's usable length (top_plate.KEY_L)
+BED_W = 235.0                   # ...and width (the left nozzle's strip)
+EAR = 5.0                       # the brim ear the slicer adds at each corner
 for _xa, _xb in SECTIONS:
-    assert _xa - _xb <= BED_MAX, f"a bench deck section is {_xa - _xb:.2f} long, over the bed"
+    assert _xa - _xb + 2 * EAR <= BED_MAX, f"a bench deck section is {_xa - _xb:.2f} long: no room for ears"
+assert TP.BY1 - TP.BY0 + 2 * EAR <= BED_W, "a bench deck section is too wide for ears"
 
 WY0, WY1 = TP.YL + CHORD_LIP, TP.YH - CHORD_LIP     # the opening's Y span, every section
 
