@@ -221,6 +221,9 @@ def _groove(lo: float, length: float) -> cq.Workplane:
             .threePointArc((_GROOVE_RC - _GROOVE_R, 0.0), (tx, ty))
             .lineTo(qx, qy).lineTo(qx, -qy).close())
     cap = math.hypot(qx - _GROOVE_RC, qy)                            # the cone's base radius
+    assert cap <= D.PULLEY_GROOVE_ROOF_H, (
+        f"the groove's roof cone climbs {cap:.3f} past the band, over the "
+        f"{D.PULLEY_GROOVE_ROOF_H} the screw pulley's socket floor is set above")
     g = prof.extrude(length + cap + 0.1).translate((0, 0, lo))
     roof = _cone(cap, 0.0, cap, cq.Vector(_GROOVE_RC, 0, lo + length), cq.Vector(0, 0, 1))
     keep = box_at(qx + 1.0, 4 * cap, length, x=(qx + 1.0) / 2, y=0.0, z=lo + length / 2)

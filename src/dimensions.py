@@ -934,7 +934,7 @@ PULLEY_TOP_MAX  = SUPPORT_BRG_BOT                   # BOTH SKUs' top (same Z)
 # what grips the screw against the whole string load. The HIGH SKU's column is the short one
 # and it sets the socket for both (one screw length, rod ends at the same Z everywhere). It
 # was 3 beads -- a 4.1 socket, barely two turns of a 2 mm lead. It is 9.83 now and the
-# socket 11.53: nearly six turns, at ~0.7 MPa on the formed thread instead of ~2.0.
+# socket 9.73 (PULLEY_SOCKET_FLOOR_CLR): ~5 turns, ~0.8 MPa on the formed thread, not ~2.0.
 PULLEY_END_A    = PULLEY_TOP_MAX - (SCREW_PULLEY_Z + BELT_PLANE_DZ)     # 14.63, HIGH band→top
 PULLEY_END_B    = PULLEY_END_A + BELT_PLANE_DZ                          # 23.43, LOW band→top
 PULLEY_COL_HI   = PULLEY_END_A - PULLEY_GAP / 2 - PULLEY_CONE - PULLEY_BOSS_H   # 9.83, HIGH
@@ -948,14 +948,20 @@ assert PULLEY_COL_HI >= 3 * BEAD - 1e-9, (
 # the socket's bottom corner only: 1.5 traces of the 0.4 nozzle the pulleys print with now
 # (2026-10-28), and a bead by 0.2 higher. Left as it is ON PURPOSE: a thicker floor
 # shortens SCREW_LEN, which the saw jig's stop is set from. Identical on both SKUs.
-PULLEY_SOCKET_FLOOR_CLR = 2 * 0.2                                       # 0.4, 0.2-nozzle part
-PULLEY_SOCKET_L = PULLEY_END_A - PULLEY_GAP / 2 - PULLEY_SOCKET_FLOOR_CLR  # 11.53
+# THE FLOOR CLEARS THE GROOVE ROOFS (user, 2026-11-05: the high SKU showed holes into the
+# socket under its top flange). Each GT2 groove ends in a 45 deg cone (components._groove)
+# that climbs PULLEY_GROOVE_ROOF_H past the band, and at 0.4 the floor sat under those cones'
+# tips, so they broke into the socket. The floor now clears them by a bead; the rod is cut
+# that much shorter (SCREW_LEN) and the pulley does not move. Still ~5 turns in the socket.
+PULLEY_GROOVE_ROOF_H = 1.02                     # components asserts the real cone fits under it
+PULLEY_SOCKET_FLOOR_CLR = PULLEY_GROOVE_ROOF_H + 1 * BEAD                 # 1.82
+PULLEY_SOCKET_L = PULLEY_END_A - PULLEY_GAP / 2 - PULLEY_SOCKET_FLOOR_CLR  # 9.73
 # BOTTOM of the rod: it ends in the socket a hair short of the floor, so it never bottoms and
 # preloads the formed thread. The socket's FLOOR hangs off the band, not the top, so a deeper
 # socket takes more of the same screw and SCREW_LEN does not change.
 SCREW_SOCKET_GAP = 0.2
-SCREW_BOT_Z     = PULLEY_TOP_MAX - PULLEY_SOCKET_L + SCREW_SOCKET_GAP   # -42.5
-SCREW_LEN       = SCREW_TOP_Z - SCREW_BOT_Z         # 37.7 — the CUT length (see BOM).
+SCREW_BOT_Z     = PULLEY_TOP_MAX - PULLEY_SOCKET_L + SCREW_SOCKET_GAP   # -41.08
+SCREW_LEN       = SCREW_TOP_Z - SCREW_BOT_Z         # 36.28 — the CUT length (see BOM).
 
 
 
