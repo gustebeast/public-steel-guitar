@@ -43,7 +43,9 @@ SECTIONS = tuple((TP.PX0 - k * (_SEC_L + TP.GAP), TP.PX0 - k * (_SEC_L + TP.GAP)
                  for k in range(N_SECTIONS))
 BED_MAX = 250.0                 # the bed's usable length (top_plate.KEY_L)
 BED_W = 235.0                   # ...and width (the left nozzle's strip)
-EAR = 5.0                       # the brim ear the slicer adds at each corner
+EAR = 5.0                       # the ear on each corner: a disc this radius on the corner, 3/4 of it
+                                # outside the part (user, 2026-11-05)
+EAR_T = 0.4                     # one layer at the 0.8 nozzle: it lies on the bed (the deck face, TZ)
 for _xa, _xb in SECTIONS:
     assert _xa - _xb + 2 * EAR <= BED_MAX, f"a bench deck section is {_xa - _xb:.2f} long: no room for ears"
 assert TP.BY1 - TP.BY0 + 2 * EAR <= BED_W, "a bench deck section is too wide for ears"
@@ -80,6 +82,11 @@ def section(k: int) -> cq.Workplane:
     out = body.cut(win).union(brace)
     if rib is not None:
         out = out.union(rib)
+    # THE EARS: on the bed face, one layer thick, snipped off after the print
+    for x in (xa, xb):
+        for y in (TP.BY0, TP.BY1):
+            out = out.union(cq.Workplane("XY").circle(EAR).extrude(EAR_T)
+                            .translate((x, y, TP.TZ - EAR_T)))
     out = heal(out)
     assert len(out.val().Solids()) == 1, f"bench deck section {k} is not one solid"
     return out
