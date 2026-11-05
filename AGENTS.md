@@ -452,6 +452,14 @@ the bare solid, for fusing into a larger cut. They take a direction **vector**
 mouth face; `overshoot=` extends the cutter backwards out of the material to dodge
 coincident-face booleans without moving any real feature.
 
+**Never hand-chain a hole's diameters.** Every cutter above cones its own steps: drilled
+into the build, a step DOWN in diameter is a flat ring ceiling over air, and `_step` turns
+it into a 45° cone the head or insert still seats on. A hole none of them covers (a head
+recess over an insert pocket over a clearance, say) goes through
+`stepped_bore_cutter([(d, length), ...], mouth, direction, print_up=...)` — never a run
+of `.circle().extrude()` bores, which skip the cones (2026-11-05: an endplate's set-screw
+recesses and pockets printed both rings as ceilings that way). Always pass `print_up`.
+
 ## Minimum material — count it in whole beads
 Design printed material as an **integer number of nozzle beads.** The projects
 slice with a variable-width wall generator (**Arachne**), which fills exact nozzle

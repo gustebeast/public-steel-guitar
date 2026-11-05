@@ -314,11 +314,32 @@ def counterbore_cutter(big_d, big_h, small_d, small_len, pnt, direction,
     Diameters are the CALLER's, not a spec's: button heads, shoulder screws and dowels all
     land here, and FastenerSpec only carries a cap-head recess (head_bore_cutter is the
     spec-driven version of this for the fasteners that have one)."""
-    mouth = _back(pnt, direction, overshoot)
-    wide = _bore(big_d, big_h + overshoot, mouth, direction, print_up)
-    narrow = _bore(small_d, small_len + overshoot, mouth, direction, print_up)
-    cut = _with_step(wide.fuse(narrow), big_d, small_d,
-                     _fwd(pnt, direction, big_h), direction, print_up)
+    steps = [(big_d, big_h)] + ([(small_d, small_len - big_h)] if small_len > big_h else [])
+    return stepped_bore_cutter(steps, pnt, direction, print_up, overshoot)
+
+
+def stepped_bore_cutter(steps, pnt, direction, print_up=None, overshoot=0.0):
+    """ANY HOLE THAT CHANGES DIAMETER: `steps` is [(d, length), ...] from the mouth `pnt`
+    inward along `direction` -- a head recess, an insert pocket, a clearance, as many as
+    the hole has. Every step DOWN in diameter is coned at 45 degrees (`_step`) where it
+    would print as a flat ring ceiling; a step up prints as a floor and is left square.
+
+    WHY (2026-11-05): an endplate's side screws were drawn as three hand-chained
+    `.circle().extrude()` bores -- recess, heat-set pocket, clearance -- along the build
+    direction, and both rings printed as ceilings over air. Every cutter in this module
+    cones its own step; a hole they do not cover goes through here, never hand-chained.
+    Pass `print_up`: without it nothing can be coned (and a sideways hole is not
+    teardropped)."""
+    if not steps or any(d <= 0 or h <= 0 for d, h in steps):
+        raise ValueError("stepped_bore_cutter: every step needs a positive (d, length)")
+    cut, at = None, 0.0
+    for k, (d, h) in enumerate(steps):
+        back = overshoot if k == 0 else 0.01        # each bore laps the last: no coincident faces
+        b = _bore(d, h + back, _back(_fwd(pnt, direction, at), direction, back), direction, print_up)
+        cut = b if cut is None else cut.fuse(b)
+        at += h
+        if k + 1 < len(steps):
+            cut = _with_step(cut, d, steps[k + 1][0], _fwd(pnt, direction, at), direction, print_up)
     return cq.Workplane(obj=cut)
 
 
