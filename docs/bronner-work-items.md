@@ -1,5 +1,52 @@
 # bronner — open work items (2026-09-30)
 
+## MORNING SUMMARY (2026-11-05, overnight work while you were away)
+
+**output_panel R2 routes reliably now, and it is on main.** The 11-01 layout search is done.
+Freerouting gives the same board for the same input, so a second route proves nothing. The test
+is ten small nudges (one small R or C moved 0.5-1.5 mm) and a full reroute of each.
+- The unmoved board routes 0 open, 0 violations, 0 FAIL.
+- 7 of 10 nudges route 0 open, and 6 of those are also 0 FAIL. It was 4 of 10.
+- The three misses lose one thing each: the +3V3 regulator link, GND, or I2C2_SCL.
+
+What changed, and why each was needed:
+- **Every U1 signal pin escapes before the router runs.** A stub and a via per pin, 18 vias, in
+  `elec/output_panel.escape.r2.json`. Every open in every failed route was a U1 pin the router
+  had shut in: the QFN-68's 0.4 mm pitch leaves no room for a via later. Leaving out even the
+  two I2C pins failed them in 9 of 9 nudges.
+- **The DAC group moved west, beside K1.** That removed the I2S lines' diagonal across the busy
+  half to U1's north row.
+- **C53 moved to (13.4, 1.6).** Its +3V3 land sat on ROLE_ID_N's way out of pin 33; it is still
+  3 mm from its pins.
+- **Two stale hand-laid tracks removed.** DAC_FILT's and DAC_LDOO's stayed where the DAC used to
+  be, and the router chased them 60 mm (74 and 94 mm of track for 3 and 6 mm of span).
+
+Two things came with it, both accepted by the lead:
+- agent/bronner-u1's pin moves: POT_CS on PC7, POT_SDI on PC9, JACK_MODE on PB2 alone.
+  `firmware/output_panel/app.c` follows, but **it has not been compiled yet: compile it on the Pi**.
+- The routed board replaced `elec/kept/output_panel.kicad_pcb`, so the kept board matches the
+  netlist again. The full build passed every gate.
+
+**J10 stays where it is.** u1's "J10 on the -Y edge" is now behind `OP_J10`. With it, 8 of 10
+nudges route 0 open but only 4-5 of 10 are FAIL-free (V5_PRE L1-FB1 gap, I2S over plane cuts).
+
+**Local repair (pcbflow, all on main).**
+- close_last used to be judged as one lot. A failed attempt now takes up only the closures DRC
+  names and keeps the rest (`prune_closures.py`).
+- A zone end is now aimed at the zone's nearest copper. DRC reports a zone by its first corner,
+  60 mm away on optical.
+- finish keeps closing from a board that improved.
+
+On the optical decap moves that missed, 9 open became 4. C128 is now 0 open, 0 FAIL; C109 4 -> 1;
+C129 is unchanged at 3. C129's short closures into U6.171 (0.5 mm pitch) come too close to U6's
+no-net pads 170 and 173; the cause is not found yet.
+
+**pi_cap R2 (riser layout, on main)** routes 0 open, 0 violations, 0 FAIL in 2 minutes. 12 of 12
+local-repair moves came back connected and clean.
+
+**Needs you:** compile the output_panel firmware on the Pi (`make REV=2`). Nothing else from
+tonight.
+
 ## MORNING SUMMARY (2026-11-04, overnight work while you were away)
 
 **Queue empty (bronner, end of night) -- WRONG, corrected 11-04 morning: routing robustness is still
