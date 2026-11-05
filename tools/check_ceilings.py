@@ -170,6 +170,7 @@ def _register_chassis():
 DECLARED_UP = {
     "bridge_endplate":   ("src.bridge_endplate", "PRINT_UP"),
     "keyhead_endplate":  ("src.keyhead_endplate", "PRINT_UP"),
+    "seam_bridge":       ("src.seam_bridge", "PRINT_UP"),
     "adjust_sleeve":     ("src.leg_stack", "SLEEVE_UP"),
     "fixed_sleeve":      ("src.leg_stack", "SLEEVE_UP"),
     "body_adapter":      ("src.leg_stack", "ADAPTER_UP"),

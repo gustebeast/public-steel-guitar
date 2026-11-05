@@ -444,6 +444,12 @@ for _, _cutters in _WR_FUSE.tee_hold_negatives():
         for _csi, _cs in enumerate(chassis_segments):
             if not _bb_apart(_cs.val(), _cut.val()):
                 chassis_segments[_csi] = _cs.cut(_cut)
+from . import seam_bridge as SB
+PARTS["seam_bridge"] = (
+    partial(SB.bridge, 0), "petg-gf/seam_bridge.step",
+    "PETG-GF -- seam bridge (user, 2026-11-05), optional: a 4.8 plate under a chassis seam that no "
+    "lever covers, two lever pitches wide, the mortises' length, a lever mount tenon in the "
+    "mortise either side of the seam; slides in from -Y. One part fits every seam")
 chassis_light = list(chassis_light)
 for _i, _lt in enumerate(chassis_light):        # the transparent under-rail band
     PARTS[f"chassis_{_i}_light"] = (
@@ -489,7 +495,7 @@ _trrs_x = _WR_FUSE.TRRS_X
 #         break
 for _i, _seg in enumerate(chassis_segments):     # chassis split into dovetailed segments
     PARTS[f"chassis_{_i}"] = (partial(heal, _seg), f"petg-gf/chassis_{_i}.step",
-                              "PETG-GF — chassis segment (cadkit slide-down T joint per rail; NO glue "
+                              "PETG-GF — chassis segment (cadkit slide-down T joint per rail, plus an optional seam bridge under; NO glue "
                               "and NO seam fastener — the deck, endplates and finally the 4 leg screws "
                               "close the seam's Z axis. + tee cradles)")
 # Section-joint coupon (the LEG stack's octagon at the real 28 mm width — legs.SEC_W)
@@ -848,6 +854,9 @@ def _declared():
         "3.6 mm roof is a bridge and the face the thumb meets is the last "
         "layer, not the bed's. Chosen, not yet confirmed",
         confirmed=False)
+    out["seam_bridge"] = PO.from_build_dir(
+        (0, 0, 1), "seam_bridge.PRINT_UP -- the plate on the bed, the lever tenons standing "
+                   "up off it, as the knee levers' housings print theirs")
     out["pedal_detent_nub"] = PO(
         ((1, 0, 0), -90),
         "NOTHING IN THE PROJECT DECLARES THIS ONE and no note describes its "
@@ -1932,6 +1941,15 @@ LEVER_STATIONS = (
 )
 
 
+# THE SEAM BRIDGES IN THIS LAYOUT: the seams (chassis.SPLIT_X indices) that carry one. A seam
+# bridge (seam_bridge.py) is an OPTION, like the levers' stations (user, 2026-11-05: "the lever
+# positions are supposed to be configurable"): it goes under a seam only when the levers placed
+# leave that floor free, since both hang in the same space. It is one part for any seam. In this
+# layout seam 0's is free (RKL's housing ends beside it) and VKL's covers seam 1's. The overlap
+# gate is what catches a bridge set under a lever.
+SEAM_BRIDGES = (0,)
+
+
 def _knee_vert_components():
     """LKV, drawn in the instrument's own axes about its axle (see knee_lever_vert). Drawn
     at REST; the throw would lift the arm. The rib mortises chassis.py already cuts take
@@ -2410,6 +2428,7 @@ def width_work_components():
                                              fromlist=["e"]).keyhead_endplate)]
     comps += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
     comps += [(f"chassis_light_{i}", lt) for i, lt in enumerate(chassis_light)]
+    comps += SB.components(SEAM_BRIDGES)
     comps += _pickup_mount_components()
     comps += _electronics_components()
     comps += _ctrl_bus_components()
@@ -2472,6 +2491,7 @@ def collect_components():
     # ...and each section's light window, the clear half of the same print (the viewer
     # shows the two as one object: tools.web_materials.unit_of)
     comps += [(f"chassis_light_{i}", lt) for i, lt in enumerate(chassis_light)]
+    comps += SB.components(SEAM_BRIDGES)
     comps += _pickup_mount_components()
     comps += _leg_components()
     comps += _pedal_bar_components()

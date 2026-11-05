@@ -602,6 +602,22 @@ after. ⚠ The extension's head and female dimensions are off the seller's drawi
 (`electronics.PI_USB_*`, ASSUMED): check the joint drops into the saddle before relying on
 it, and the straight lead's overmould is 20 mm or less along the cable.
 
+## Seam bridges: optional, under a seam no lever covers, after the sections are joined (2026-11-05)
+
+`seam_bridge` (src/seam_bridge.py) ties two chassis sections together from below: a flat plate
+the length of the floor's mortises, with two knee-lever tenons standing on it. One part fits
+either seam. Use one under a seam only where no knee lever hangs over it: a lever there fills
+the same space.
+
+1. **Join the sections**, then slide the bridge in **from the -Y side**, tenons up, into the two
+   mortises either side of the seam, until it stops at the light window. It goes in the way a
+   knee lever does, and the tenons have the levers' fit (0.45).
+
+Why: the seam joint locates the sections but nothing in it holds them together under tension,
+and the bottom of each seam is where string load opens it. Nothing but the tenons' fit keeps it
+from sliding back out -Y, the same as the knee levers until their depth lock exists. The two
+mortises it uses are taken: no knee lever can mount on those stations.
+
 ## Leg blind-mate boards (src/leg_pogo.py) — ORDER MATTERS
 
 The male board goes into the tenon's end **as a unit, from the mating face, and it
