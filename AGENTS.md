@@ -416,6 +416,14 @@ hole stops) and hand it to every part: each cuts `joint.cutter(its own print_up)
 the assembly draws `joint.dummies(screw_name, insert_name)`. It refuses a screw that
 would bottom before seating or bite under `min_bite`.
 
+**An insert that takes real torque: extra strong.** `ScrewJoint(…, extra_strong=True)`, or
+any cutter given `spec.strong()` (e.g. `cut_anchor(M4.strong(), …)`), cuts the insert pocket
+`EXTRA_STRONG_SHRINK` (0.1) under its usual Ø, round and teardropped alike, and draws the
+insert dummy to match. The insert no longer drops into its pilot on its own -- it is started
+square with the iron -- but the melt grips more (user, 2026-11-05: an overtightened screw
+stripped its insert out of the plastic). Use it where a screw is tightened hard against
+something; leave set screws that are only snugged on the normal pocket.
+
 **Size the wall to `spec.anchor_min_wall`** (= `insert_depth + min_bite`; 5.5 mm
 for M2, 8.5 for M4). Thinner and you must give up one end — so when you place a
 screw that threads into plastic, budget that much wall from the start.
