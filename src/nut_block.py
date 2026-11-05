@@ -556,16 +556,14 @@ def side_screw_yz(i: int):
 def side_screw_negatives(i: int):
     """Head recess (open in the bed face), heat-set pocket (mouth on its floor) and clearance on
     into the tail channel. Along the build direction, so plain round bores -- and each step down
-    in diameter is a ceiling over the wider bore, so counterbore_cutter cones it at 45 degrees."""
-    from cadkit.fasteners import counterbore_cutter
+    in diameter is a ceiling over the wider bore, so stepped_bore_cutter cones it at 45 degrees."""
+    from cadkit.fasteners import stepped_bore_cutter
     y, z = side_screw_yz(i)
     pilot = M4.pilot_d((1.0, 0.0, 0.0), PRINT_UP)
-    head_h = SS_MOUTH_X - X_BACK + 1.0
-    head = counterbore_cutter(SS_HEAD_D, head_h, pilot, head_h + M4.insert_depth,
-                              (X_BACK - 1.0, y, z), (1.0, 0.0, 0.0), print_up=PRINT_UP)
-    bore = counterbore_cutter(pilot, M4.insert_depth, M4.shaft_clr_d, POCKET_X0 + 0.5 - SS_MOUTH_X,
-                              (SS_MOUTH_X, y, z), (1.0, 0.0, 0.0), print_up=PRINT_UP)
-    return [head, bore]
+    return [stepped_bore_cutter([(SS_HEAD_D, SS_MOUTH_X - X_BACK + 1.0),
+                                 (pilot, M4.insert_depth),
+                                 (M4.shaft_clr_d, POCKET_X0 + 0.5 - SS_MOUTH_X - M4.insert_depth)],
+                                (X_BACK - 1.0, y, z), (1.0, 0.0, 0.0), print_up=PRINT_UP)]
 
 
 def side_screw(i: int) -> cq.Workplane:
