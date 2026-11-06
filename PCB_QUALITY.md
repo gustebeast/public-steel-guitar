@@ -674,6 +674,11 @@ all three and this rule reads them back off the routed board. Two declarations, 
 - `{"J10": {"back_only": "<why>"}}` — the pinout block exists but only on the other face.
   The reason is required and has to be about THIS board (what occupies the connector's own
   side). The way-1 mark is still required on the connector's own side.
+- `{"J3": {"back_if_full": "<why>"}}` — the same, for a connector whose own side is full on
+  some routes and not on others: the block on the other face passes with the reason
+  printed, and on its own side it passes plainly. It is never stale, so use it only where
+  routes have been seen to land both ways (pi_cap R2 J3: the front on 1 route of 11), and
+  `back_only` everywhere else.
 - `{"J1": {"standard": "<which standard, and what mates with it>"}}` — a moulded, keyed,
   standard connector that nobody crimps and nobody can plug wrongly (a USB receptacle, a
   Raspberry Pi header, a barrel jack). Its ways are not graded.
@@ -694,7 +699,7 @@ is not counted as a mark: the rule cannot tell a pin-1 chamfer from a body corne
 neither can someone who has not seen the part before.
 
 **How strict.** **Hard:** no way-1 mark on the connector's own side; a `back_only` with no
-reason; a declaration that is stale (the labels are on the connector's side after all, or
+reason (or a `back_if_full` with none); a declaration that is stale (the labels are on the connector's side after all, or
 the connector is gone). A waiver written for any of them is ignored. **Soft:** the
 designator, and the ways. *Break the ways when:* (a) the block is on the other face and
 the connector's own side has no room — that is the `back_only` declaration, not a waiver;
