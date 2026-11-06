@@ -196,7 +196,7 @@ HOUS_S0 = -566.1
 # joints a touch loose" -> half a step each: seam 0.375 (opens 0..0.530), lever 0.275.
 # Round 3 (seam 0.375, lever 0.275, 8 tenons full length): BOTH "quite tight" (user,
 # 2026-10-21) -> round 4: seam back to 0.40, and the lever's seat at c (see LEVER_SEAT_TRY).
-SEAM_C = 0.55                               # = chassis._SEG_CLR, asserted in components()
+SEAM_C = 0.50                               # = chassis._SEG_CLR, asserted in components()
 SEAM_OPEN = round(SEAM_C * 2 ** 0.5, 3)     # 0.566: c x sqrt 2 (the catch is a 45 deg flank)
 SEAM_COMP = round(SEAM_OPEN / 4.0, 2)       # 0.14 a face
 COMP_SPLIT_Z = -72.5    # under the seam cavity (0.4 under the floor top), over the lever mortises (-73.86)

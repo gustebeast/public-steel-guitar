@@ -246,7 +246,7 @@ for _s in SPLIT_X:
 # the hand-rolled sliding dovetail, which cadkit retired: at a 0.8 nozzle the
 # dovetail's acute plan corners round DOWN on the tenon and UP in the mortise, so
 # the halves collide at the corners before the faces seat.
-_SEG_CLR  = 0.55                       # plate 8 D3 (user, 2026-10-16): 0.35 and 0.40 fit but the
+_SEG_CLR  = 0.50                       # plate 8 D3 (user, 2026-10-16): 0.35 and 0.40 fit but the
                                        # layer lines across the slide made them drag; 0.45 the first
                                        # to slide easily (some wobble -- the full-length test decides)
                                        # MINI SEAM PLATE (user, 2026-10-16): 0.45 "slides easily but it
@@ -257,6 +257,9 @@ _SEG_CLR  = 0.55                       # plate 8 D3 (user, 2026-10-16): 0.35 and
                                        # FULL DROP (fit_plate10, user 2026-10-22): 0.40 / 0.45 /
                                        # 0.50 / 0.55 -- the loosest, 0.55, the winner -- LOCKED
                                        # (user, 2026-10-22: "we can lock that in as well")
+                                       # BUILT, IT BOWS (user, 2026-11-05): 0.55 slides on easily
+                                       # and lets the instrument bow -- stability over ease, so one
+                                       # plate step tighter, 0.50, even if it has to be tapped home
 _SEG_HOST_W = 9 * D.BEAD               # 7.2: the tenon's host slab across Y, inside the rail. Was
                                        # 8.0; cadkit's seat ease (2026-11-03) runs the mouth out to
                                        # host_w - 0.05, which at 8.0 left 1.25 of rail wall; at 7.2 it
