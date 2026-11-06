@@ -4575,6 +4575,16 @@ def build(stem):
     comps, nets = read_netlist(stem + ".net")
     notes = json.load(open(stem + ".board.json", encoding="utf-8"))
     placements = notes["placements"]
+    # A NUDGE, for robustness runs on any board: PCBFLOW_NUDGE names a json {ref: [dx, dy]}
+    # in this file's frame (mm; y up, as the placements). A full reroute is deterministic, so
+    # the measure is the same board with one small part moved, not the same board again
+    # (eco.legal_moves gives courtyard-clear moves; flip their dy).
+    if os.environ.get("PCBFLOW_NUDGE"):
+        with open(os.environ["PCBFLOW_NUDGE"], encoding="utf-8") as fh:
+            for ref, (dx, dy) in json.load(fh).items():
+                x, y, rot = placements[ref]
+                placements[ref] = (x + dx, y + dy, rot)
+                print("  nudge: %s by (%+.2f, %+.2f)" % (ref, dx, dy))
 
     missing = set(comps) - set(placements)
     if missing:
