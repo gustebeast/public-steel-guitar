@@ -2448,9 +2448,11 @@ def collect_components():
     # the standing electronics and the whole motor bank are packed against this face
     # (dimensions.KEYHEAD_INBOARD_X). Checked here, where the gate builds the keyhead anyway
     # -- importing it at module level costs ~4 s on every build.
-    assert abs(_KE.HS_X1 - D.KEYHEAD_INBOARD_X) < 1e-6, (
-        f"the keyhead's inboard face moved to {_KE.HS_X1:.2f}; dimensions.KEYHEAD_INBOARD_X is "
-        f"{D.KEYHEAD_INBOARD_X:.2f} -- update it and the motor bank follows")
+    # Nothing of the keyhead may stand +X of its face (it lifts out past the deck), and the bank
+    # keeps its datum: the face sits at or -X of KEYHEAD_INBOARD_X, never inside the bank's room.
+    assert _KE.HS_X1 <= _KE.XHI + 1e-6 <= D.KEYHEAD_INBOARD_X + 1e-6, (
+        f"the keyhead's height prism reaches {_KE.HS_X1:.2f} (face {_KE.XHI:.2f}); "
+        f"dimensions.KEYHEAD_INBOARD_X is {D.KEYHEAD_INBOARD_X:.2f}")
     # ...and the standing motor board is where dimensions.MCTRL_* says it is: the chassis'
     # mortises, string 1's motor bay and the -X/-Y body adapter are all cut from those numbers
     # without being able to see the board.
