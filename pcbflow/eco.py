@@ -52,6 +52,7 @@ import pcbnew
 
 RIP = 3.0                   # mm, of the moved parts' own nets
 CLEAR = 0.75                # mm from a new pad centre to any track's edge
+EDGE = 0.2                  # mm from a new pad's OUTLINE to another net's track edge
 REFUSED = 3                 # exit code: the move would disturb matched copper, or re-closed a detour
 FINE = 0.6                  # mm: a part with pad centres closer than this is fine-pitch
 
@@ -61,6 +62,28 @@ def _seg(p, a, c):
     n = dx * dx + dy * dy
     t = max(0.0, min(1.0, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / n)) if n else 0.0
     return math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy)
+
+
+def _seg_box(a, c, box):
+    """Distance from segment a-c to the axis-aligned box (x0, y0, x1, y1); 0 if they meet."""
+    x0, y0, x1, y1 = box
+    t0, t1, dx, dy = 0.0, 1.0, c[0] - a[0], c[1] - a[1]
+    for p, q in ((-dx, a[0] - x0), (dx, x1 - a[0]), (-dy, a[1] - y0), (dy, y1 - a[1])):
+        if p == 0:
+            if q < 0:
+                break
+        else:
+            r = q / p
+            if p < 0:
+                t0 = max(t0, r)
+            else:
+                t1 = min(t1, r)
+    else:
+        if t0 <= t1:
+            return 0.0                      # the segment crosses the box (Liang-Barsky)
+    def pt(p):
+        return math.hypot(max(x0 - p[0], 0.0, p[0] - x1), max(y0 - p[1], 0.0, p[1] - y1))
+    return min(pt(a), pt(c), *(_seg(k, a, c) for k in ((x0, y0), (x0, y1), (x1, y0), (x1, y1))))
 
 
 def _xy(v):
@@ -145,7 +168,7 @@ def move(stem, moves):
         notes = json.load(fh)
     matched = _matched(notes)
     board = pcbnew.LoadBoard(path)
-    stood, stands, nets = [], [], set()
+    stood, stands, nets, boxes = [], [], set(), []
     for fp in board.GetFootprints():
         ref = fp.GetReference()
         if ref not in moves:
@@ -154,19 +177,38 @@ def move(stem, moves):
         nets |= {p.GetNetname() for p in fp.Pads()}
         fp.SetPosition(pcbnew.VECTOR2I(pcbnew.FromMM(moves[ref][0]), pcbnew.FromMM(moves[ref][1])))
         stands += [_xy(p.GetPosition()) for p in fp.Pads()]
+        for p in fp.Pads():
+            bb = p.GetBoundingBox()
+            boxes.append(((pcbnew.ToMM(bb.GetLeft()), pcbnew.ToMM(bb.GetTop()),
+                           pcbnew.ToMM(bb.GetRight()), pcbnew.ToMM(bb.GetBottom())),
+                          p.GetNetname()))
     if not stands:
         raise SystemExit("none of %s on %s" % (sorted(moves), path))
+
+    def _in_way(t, a, c, half):
+        # near a new pad's centre, or near its OUTLINE for another net: a centre-only test
+        # missed a +5V via 1.08 from a 1.0 x 1.45 pad's centre, over its edge (seed 29 C130)
+        return (any(_seg(p, a, c) < half + CLEAR for p in stands)
+                or any(_seg_box(a, c, b) < half + EDGE for b, n in boxes
+                       if n != t.GetNetname()))
     gone = []
     for t in board.GetTracks():
         via = t.GetClass() == "PCB_VIA"
         a, c = _xy(t.GetStart()), _xy(t.GetEnd())
         half = pcbnew.ToMM(t.GetWidth(pcbnew.F_Cu) if via else t.GetWidth()) / 2.0
         if (t.GetNetname() in nets and min(_seg(p, a, c) for p in stood + stands) < RIP) \
-                or any(_seg(p, a, c) < half + CLEAR for p in stands):
+                or _in_way(t, a, c, half):
             gone.append(t)
-    clash = {id(t) for t in gone if any(_seg(p, *ends) < half + CLEAR for p in stands
-                                        for ends, half in [_reach(t)])}
+    clash = {id(t) for t in gone if _in_way(t, *_reach(t)[0], _reach(t)[1])}
     spare = _escapes(board, moves, gone, clash)
+    # a spared escape of ANOTHER net that a moved pad now sits on is a clash nothing will
+    # fix: close_last refuses a board that starts with a violation (optical seed 29, C130's
+    # VBUS pad on a +5V via: 5 unconnected, 25 FAIL). Refused, like matched copper.
+    sat = sorted({t.GetNetname() for t in gone
+                  if id(t) in spare and id(t) in clash and t.GetNetname() not in nets})
+    if sat:
+        print("REFUSED: a moved pad would sit on spared copper of %s" % ", ".join(sat))
+        raise SystemExit(REFUSED)
     gone = [t for t in gone if id(t) not in spare]
     hit = sorted({t.GetNetname() for t in gone} & matched)
     if hit:
