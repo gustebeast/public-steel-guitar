@@ -512,12 +512,6 @@ PARTS["coil_mandrel_sleeve"] = (
     lambda: heal(__import__("src.coil_mandrel", fromlist=["e"]).sleeve()),
     "tools/coil_mandrel_sleeve.step",
     "TOOL — the mandrel's outer sleeve, bore Ø23.0. It caps the coil's diameter so the mean lands on arithmetic rather than on spring-back, and holds both axial tails against the barrel while they set. PA6-GF, printed SOLID")
-# THE Pi's CLAMP: a printed part of the instrument (in the assembly since it was drawn),
-# registered here so it is exported, weighed and checked like every other print.
-PARTS["pi_spacer"] = (
-    lambda: heal(__import__("src.electronics", fromlist=["e"]).pi_spacer()),
-    "petg-gf/pi_spacer.step",
-    "PETG-GF — the ring under the Raspberry Pi's hold-down screw: Ø6.0 x 3.2, so the belt clamps' M3 x 12 socket head through the Pi's own mounting hole reaches exactly the bottom of its insert's bore. Prints flat, either face down")
 # LEVER PROGRAMMING JIG -- a SHOP TOOL like the mandrel: exported, never in the assembly.
 PARTS["lever_prog_jig"] = (
     lambda: heal(__import__("src.lever_jig", fromlist=["e"]).jig()),
@@ -788,8 +782,6 @@ def _declared():
          "real sleeve they stand in for: bed on the +Y face so the rail "
          "slots open at the bed and their 0.8 roofs bridge. That is "
          "SLEEVE_UP, which is what a print-fit coupon is required to match"),
-        (["pi_spacer"], _ELX.PI_SPACER_UP,
-         "electronics.PI_SPACER_UP — a flat ring, either face on the bed"),
         (["saw_jig"], _SJG.BODY_UP,
          "saw_jig.BODY_UP — as drawn, table face on the bed: the V and roof "
          "of the rod tunnel and the fork's arch are all 45 deg"),
@@ -1686,9 +1678,9 @@ def _electronics_components():
     # The endplate has to come off with the boards left in place (user), which is the whole
     # reason they moved. One less printed part, and the boards gained retention they never
     # had on the tray's bare posts.
-    # pi_spacer is the ring under the Pi's M3 (electronics.pi_hold_pt) -- a printed piece,
-    # not a dummy: it is what lets the belt clamps' M3 x 12 serve there too.
-    out = [*EL.pi4_parts(), ("pi_cap", EL.pi_cap()), ("pi_spacer", EL.pi_spacer()),
+    # (pi_spacer, the ring under the Pi's M3, went 2026-11-05: the screw's tip hangs in a
+    # clearance bore under the insert instead -- electronics.pi_hold_bore)
+    out = [*EL.pi4_parts(), ("pi_cap", EL.pi_cap()),
            *([("pi_riser", EL.pi_riser())] if EL.pi_riser() is not None else []),
            ("motor_ctrl", EL.motor_ctrl()),
            ("output_panel", EL.output_panel()),
@@ -2130,7 +2122,7 @@ BODY_WORK_PARTS = SCREW_ROW_PARTS + (
     # parts while this branch deleted teensy_/adc_stack/buck/analog_frontend and the
     # three free-standing panel jacks (they are PCB parts on the output+panel board
     # now). Keep main's additions, keep the deletions.
-        "pi4", "pi_cap", "pi_spacer", "pi_riser", "motor_ctrl", "tee_", "wire_",
+        "pi4", "pi_cap", "pi_riser", "motor_ctrl", "tee_", "wire_",
         "output_panel", "ui_",
     "body_adapter", "lock_pin_", "adjust_", "fixed_", "bar_latch_", "leg_latch_",
     "top_plate", "pickup", "optical")   # the deck piece too: its skirt sets the bay's headroom
@@ -2173,7 +2165,7 @@ def optical_work_components():
            ("bridge_endplate", PARTS["bridge_endplate"][0]()),
            ("motor_ctrl", EL.motor_ctrl()),
            ("motor_ctrl_silk", EL.motor_ctrl_silk()),
-           *EL.pi4_parts(), ("pi_spacer", EL.pi_spacer()),
+           *EL.pi4_parts(),
            ("keyhead_endplate", _KE.keyhead_endplate)]
     # ⚠ AND THE FASTENERS, BECAUSE THEY MOVE WITH THE RETENTION AND THE CACHE DOES NOT KNOW.
     # Left to the cache, board_screw_2/board_insert_2 stay at the hold position they had when
@@ -2671,7 +2663,6 @@ _COLORS = {
     **{"pi4" + _k: __import__("src.pi4b", fromlist=["RGB"]).RGB[_c]
        for _k, (_c, _f) in __import__("src.pi4b", fromlist=["GROUPS"]).GROUPS.items()},
     "pi_cap":          _BG.mask("pi_cap"),   # PCB green
-    "pi_spacer":       (0.85, 0.55, 0.20),   # PRINTED: the Pi's retention, not a board
     "pi_riser":        (0.05, 0.05, 0.05),   # BOUGHT: Adafruit 4079 socket riser, black
     "output_panel":    _BG.mask("output_panel"),   # output + panel board (VBUS broken,
                                              # DAC + true-bypass relay + the TS jack)
