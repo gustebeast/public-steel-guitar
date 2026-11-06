@@ -1048,6 +1048,16 @@ if RISER:
     # J5 mouth -X: its plastic on the board's -X edge (2.135 from the pad centroid), the pins
     # and the IDC socket past it, off the Pi's SD end
     _pl["J5"] = (_x0 + 2.135, -2.30, 180.0)
+    # ⚠ J5.8 (the ribbon's GND way) IS WALLED IN by its neighbour pins and the edge, and its
+    # edge escape (layout._edge_row_escape, k=0, B.Cu along the edge to x0 + 5.27) reached the
+    # plane through a strip of B.Cu pour between UI_SW_B and the edge. close_last can cut
+    # pour, not track: on route A1 (2026-11-05) its UI_ENC_A closure ran down that strip, the
+    # escape was joined to nothing, and close_last put the closure back with UI_ENC_A open.
+    # So the escape carries on as drawn GND track, along the same y in the strip no signal
+    # uses on any of 11 routes, to x0 + 25 where the B.Cu pour is wide (lead, 2026-11-05: try
+    # this before a J5 pinout change).
+    BOARD_NOTES["tracks"].append(("GND", "B.Cu", 0.25, [(_x0 + 5.27, _y0 + 0.93),
+                                                        (_x0 + 25.0, _y0 + 0.93)]))
     _pl["J6"] = (J6_R2_X, J6_R2_Y, 180.0)
     _pl["R3"] = (-17.00, 2.50, 180.0)
     _pl["R4"] = (-17.00, 0.70, 180.0)
