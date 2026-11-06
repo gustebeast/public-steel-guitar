@@ -835,6 +835,18 @@ limits are unchanged by it. First use: output_panel R2 ROLE_INT_N, the TUSB320's
 open-drain interrupt, a long net the router skips and close_last joins at 1.6-1.8x
 (2026-11-05).
 
+### A24 — No short in the final DRC
+
+**Rule.** The board's last DRC (`<stem>.finish.drc.json`, written by finish.py) reports no
+`shorting_items`. Each short is a hard FAIL naming the two nets.
+
+**Why.** finish.py scores DRC errors and exits 0; until 2026-11-06 this pass did not read
+DRC, so pi_cap seed 53 G2 printed "quality: 0 FAIL" beside +5V_PI shorted to GND on C1.2
+(a nudged pad under declared copper -- layout now refuses that case at source). "0 FAIL"
+must never sit next to a short, whatever stage made it.
+
+**Declaration.** None. A short is fixed, never waived.
+
 ### A18 — The silkscreen that is drawn is the silkscreen that prints
 
 **Rule.** No object on `F.Silkscreen` or `B.Silkscreen` overlaps a solder-mask opening on
