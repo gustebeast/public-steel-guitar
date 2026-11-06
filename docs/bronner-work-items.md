@@ -1,5 +1,26 @@
 # bronner — open work items (2026-09-30)
 
+## 2026-11-06 SEED 53: HOW FRAGILE A FULL REROUTE IS
+
+The committed / kept layouts ship. These numbers only measure how fragile a full reroute is;
+seed 53 changes nothing we ship. "Clean" as below (0 unconnected, 0 violations, 0 FAIL, A23 on).
+Invalid = layout refused the nudge (no stitch-via room), not scored.
+
+| set | clean | notes |
+|---|---|---|
+| pi_cap G0-G10 | 6 / 10 | unmoved clean; G1 G4 G6 G7 G9 clean; G3 invalid (C3.2). G2 / G5: UI_RES_N open at J1.22 AND a +5V_PI short. G8 / G10: soft A23 UI_DC (24.7 mm over a 12.1 mm gap at J1.7), the parked USER-HANDS lane. |
+| output_panel F0-F5 | 2 / 5 | unmoved F0: soft A23 PORT_EN (15.6 over 3.6 at R54.2). F1 F2 clean. F3 hard A1 (+3V3 U6.5 to U1 cut). F4 invalid (C66.2). F5: 5 open, ROLE_ID_N short, via in C53.1 pad. Committed layout (9 / 11) stays. |
+| optical eco on the kept board | 8 / 17 | t0 clean. t10 (C112) refused: matched ULPI copper. 6 soft A23 only, mostly +3V3D (C105-C135; t2 / t15 close it with 23.7 mm over 0.4 at C105.1; t14 LED_ROW 157 mm). t1 / t15 / t18 leave nets open. |
+| fret_led_mid | 4 / 4 scored | n3 (22 min) / n4 (38 min) solo clean, closing the row above. n1 invalid. |
+
+- **WORTH A LOOK before the next pi_cap reroute (lead): the +5V_PI short on G2 / G5.**
+  The router left a power short after a nudge (G2: a 10.0 mm F.Cu +5V_PI track and a via
+  shorting; G5: a 0.9 mm stub), with UI_RES_N open on the same two routes. A route that
+  finishes with a short on a supply should be understood, not just re-seeded. Boards are in
+  the bronner scratch pc/G2 and pc/G5 (finish.drc.json).
+- **male leg_pogo J1: waived** (pogowaive, merged). The spring pins: nothing plugs into them
+  by hand. The OPEN item below is closed.
+
 ## 2026-11-06 LATE NIGHT: SMALL-BOARD NUDGES, leg_pogo LABELS, motor_ctrl PRE-LAY DROPPED
 
 Each count includes the unmoved route. "Clean" = 0 unconnected, 0 violations, 0 FAIL, with A23 on.
@@ -9,7 +30,7 @@ Each count includes the unmoved route. "Clean" = 0 unconnected, 0 violations, 0 
 | foot_led_a | 7 / 7 | no change |
 | foot_led_b | 7 / 7 | no change |
 | lever_sensor | 6 / 7 | N6 opens TERM_H; the nudged part (R15) is about 10 mm from that net, so this is route order, not a blocked lane. No placement fix. |
-| fret_led_mid | 2 / 2 scored | n1 invalid (no stitch-via room for C12.2). n2-n4 timed out at 58 min run 4 at once; n2 solo is clean in 26 min. n3 / n4 solo were still routing at submit. |
+| fret_led_mid | 4 / 4 scored | n1 invalid (no stitch-via room for C12.2). n2-n4 timed out at 58 min run 4 at once; solo n2 / n3 / n4 are clean (26 / 22 / 38 min). |
 | motor_ctrl | 7 / 9 (N series) | the R20 +24V pre-lay came OUT: its P series was 3 / 9, and the unmoved P0 opened PED_L. The opens move between nets (SEL_LEV, FLASH_DP), the same pattern as every output_panel pre-lay. |
 | can_tee | unmoved only | R1, ordered: nudges skipped |
 | leg_pogo x4 | merged (legpogo) | females 0 FAIL; males 1 soft FAIL each, below |
