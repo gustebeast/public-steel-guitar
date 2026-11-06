@@ -3785,6 +3785,23 @@ if REV != 1:
     # ── R2's notes. Each replaces R1's text outright; R1's stays above, for the board in hand.
     BOARD_NOTES["silk_legend"] = True
     _q = BOARD_NOTES["quality"]
+    # A CEILING, not one route's number: 10 of 11 nudged routes keep I2C2_SDA under 5.0 (4.42
+    # the widest), and e10 ran it over a 5.75 cut beside U1's pins 31 / 32 (2026-11-05)
+    _q["return_slot_ok"] = {
+        "I2C2_SDA": {"mm": 6.5,
+                     "why": "U13's (TUSB320) configuration bus: written once after power-up "
+                            "(Try.SNK, 1.5 A) at 400 kHz at most, open drain on a pull-up -- "
+                            "edges of a hundred ns or more, so a few mm round a cut in the "
+                            "plane is nothing to it; the clock beside it stays under 5.0"}}
+    # ROLE_INT_N's closure is held to its OWN bounds, not waived (lead, 2026-11-05): the router
+    # skips this long net on e8 and e10 and close_last joins U1.23 to U13 at 1.6x / 1.8x of a
+    # 24.7 mm straight line (39.9, 44.3 mm). Past 2.0x or 50 mm it fails like any other net.
+    _q["closure_limits"] = {
+        "ROLE_INT_N": {"ratio": 2.0, "max_mm": 50.0,
+                       "why": "U13's (TUSB320) INT_N: open drain on a pull-up, read when a "
+                              "cable's role changes -- a slow line, and a long net the "
+                              "router skipped and close_last joined pin to pin, not a short "
+                              "gap closed the long way round"}}
     _q["power_paths"] = [_e for _e in _q["power_paths"]
                          if _e["net"] != "V5_PRE" and _e.get("to") != ["U5.5"]
                          and not (_e["net"] == "+24V_IN" and _e["from"] in ("J6.2", "J6.4"))]
