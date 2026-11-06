@@ -1,5 +1,48 @@
 # bronner — open work items (2026-09-30)
 
+## 2026-11-05 EVENING: HONEST CLEAN COUNTS (A23), MOTOR TRACE
+
+**Closures are measured now (cadkit 1079f3b).** close_last writes each closure to
+`<stem>.closures.json` (the ends it joined, the gap, the length, the track). The new soft rule
+A23 fails one over 1.5x its gap and 10 mm over it. Re-scored on fresh runs of all three sets:
+
+| board | set | clean before | clean with A23 |
+|---|---|---|---|
+| optical | 18 legal eco moves on the kept board, 2 refused | 13 of 16 | 8 of 16 |
+| output_panel | unmoved + e1-e10, main's config | 8 of 11 | 7 of 11 |
+| pi_cap | unmoved + n1-n10 | 8 of 11 | 7 of 11 |
+
+- The real detours are optical's decap moves: +3V3D closed with 38.2 mm across a 2.4 mm gap,
+  22.5 across 3.2, 17.5 across 4.8; FLASH_RX 33.2 across 7.8; I2C2_SDA 18.3 across 4.2. The
+  rail closures are the ones to fix first: a supply 16x as long as its gap.
+- Not a detour: a net the router skipped and close_last laid pin to pin runs 1.0-1.35x
+  (pi_cap UI_RES_N 37.8 mm across 30.1 on 6 of 11 boards). That the router skips UI_RES_N
+  that often is its own item (the In1 lane under the socket, below).
+- Correction: "40 mm detours" on pi_cap, reported this morning, were those skipped nets.
+
+**pi_cap J5 GND: a via at the end of J5.8's edge escape (not built).** On nudge n1, close_last's
+UI_ENC_A closure ran along the B.Cu edge to x 86 and cut the strip of pour that J5.8's
+pre-laid B.Cu escape (layout._edge_row_escape, k=0) reaches the plane through. J5.8 is walled
+in by its neighbour pins and the edge on every layer, so pin, escape and strip were joined to
+nothing. Cutting the strip ("sliver") does not help, and a maze from the cut-off pad to the
+main copper found no path to any of 8 targets. The fix: the escape of a pour net (GND) ends at
+a via into In2. Today there is no legal site at the end, (72.27, 108.07): the F.Cu UI_ENC_A
+escape (k=2) runs over it. Needs the edge-fan plan to give the ground way a column whose end
+is clear on F.Cu.
+
+**output_panel C53: the back side and an 0201 both fail on geometry (no routes run).** The
+I2C2_SDA escape via at (12.1, -0.96) sits directly east of pins 31/32 (x 10.94, y -1.0/-0.6).
+C53 on the back still needs a +3V3 via beside the pins, and it overlaps that via. An 0201 on
+the front has ~0.6 mm between the SDA and ROLE_ID_N stubs and no room for its GND via. Both
+need the SDA via moved, which is the restagger that lost (3 of 10).
+
+**motor_ctrl firmware v2 (merged, flashed on the R1 board, user-direct).** A W line for every
+frame put on a bus, from the host, play or the monitor, beside the R lines already sent for
+every frame heard. 'M <us>' turns on a monitor that reads the encoder and angle error of every
+motor moved in the last 0.5 s. `python3 -m publicbench.trace --monitor 1000` prints the
+conversation per string. Flashing zeroed string 1's encoder; the phone service's state.json
+home was re-anchored by hand (-22536 -> -15447).
+
 ## 2026-11-05 END OF DAY
 
 **pi_cap (f6c7a1c1, merged): 8 of 11 clean, was 7.** The unmoved reroute is 0/0/0 FAIL. The
