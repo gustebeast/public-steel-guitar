@@ -4339,6 +4339,51 @@ def _add_track(board, net, layer, width, pts):
         board.Add(t)
 
 
+def _declared_copper_clear(board, items, clr=0.127):
+    """Refuse the board if declared copper touches or crowds a pad of another net.
+
+    ⚠ A SHORT LAID BEFORE THE ROUTER IS A SHORT THE ROUTER CANNOT REMOVE (2026-11-06).
+    notes["tracks"] / notes["vias"] are fixed coordinates; the parts are not, and a
+    PCBFLOW_NUDGE (or any placement edit) can move a pad under them. pi_cap seed 53 G2 /
+    G5: C1 nudged (+0.34, +0.42) put its GND pad on the 10 mm +5V_PI F.Cu spine and its via
+    patch. Nothing said so. The router took the spine as fixed copper, finish ran 66 s of
+    routing round a short that was on the board before it started, and the run came back
+    rc 0 as "1 unconnected, 3 violation(s) | quality: 0 FAIL" -- a scored board with a
+    power-to-ground short in it. DRC on the .unrouted.kicad_pcb shows it. Stop here, the
+    same way a pad with no stitch-via room stops the board: the fix is moving the part or
+    the declared copper, never routing round it.
+    """
+    pads = [p for fp in board.GetFootprints() for p in fp.Pads()]
+    others = [t for t in board.GetTracks() if t not in items]
+    lim = pcbnew.FromMM(clr) - 1000         # 1 um of rounding
+    bad = []
+    for it in items:
+        net = it.GetNetCode()
+        for o in pads + others:
+            if o.GetNetCode() == net:
+                continue
+            for lay in _LAYERS.values():
+                if not (it.IsOnLayer(lay) and o.IsOnLayer(lay)):
+                    continue
+                if it.GetEffectiveShape(lay).Collide(o.GetEffectiveShape(lay), lim):
+                    what = ("%s.%s" % (o.GetParentFootprint().GetReference(), o.GetNumber())
+                            if isinstance(o, pcbnew.PAD) else o.GetClass())
+                    pos = it.GetPosition()
+                    bad.append("%s [%s] at (%.2f, %.2f) on %s within %.3f mm of %s [%s]"
+                               % (it.GetClass(), it.GetNetname(),
+                                  pcbnew.ToMM(pos.x) - SHEET_ORIGIN[0],
+                                  SHEET_ORIGIN[1] - pcbnew.ToMM(pos.y),
+                                  board.GetLayerName(lay), clr, what, o.GetNetname()))
+                    break
+    if bad:
+        raise SystemExit(
+            "declared copper crowds another net (%d place(s)):\n      %s\n"
+            "    notes['tracks'] / notes['vias'] are fixed coordinates; a part moved under "
+            "them (a nudge, or a placement edit). Move the part or the declared copper -- "
+            "the router cannot remove a short laid before it."
+            % (len(bad), "\n      ".join(sorted(set(bad)))))
+
+
 def _edge_row_escape(board, ref, outline, width=0.15, clr=0.15, back=1.5):
     """Fan the EDGE-SIDE row of a two-row through-hole header out round its ends.
 
@@ -4809,6 +4854,7 @@ def build(stem):
     # and _comb_lanes hands its run to the router. So: stitching, then declared copper,
     # then the searches, which now see it.
     nets_by_name = {n.GetNetname(): n for n in board.GetNetInfo().NetsByName().values()}
+    _before = {t.m_Uuid.AsString() for t in board.GetTracks()}
     for net_name, layer, width, pts in notes.get("tracks", []):
         _add_track(board, nets_by_name[net_name], layer, width, pts)
     for _ref in notes.get("edge_escape", ()):
@@ -4823,6 +4869,8 @@ def build(stem):
         _add_via(board, nets_by_name[_net], _vx, _vy, _drill, _dia)
     if notes.get("vias"):
         print("      placed %d explicit via(s)" % len(notes["vias"]))
+    _declared_copper_clear(board, [t for t in board.GetTracks()
+                                   if t.m_Uuid.AsString() not in _before])
 
     if notes.get("local_nets"):
         # NOT `skipped` -- that name already holds the single-pad net count this
