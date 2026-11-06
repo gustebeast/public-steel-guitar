@@ -7,7 +7,7 @@
   },
   "adjust_tenon": {
    "material": "petg-gf",
-   "volume_mm3": 124977.5
+   "volume_mm3": 124982.3
   },
   "bar_latch_collar": {
    "material": "petg-gf",
@@ -39,7 +39,7 @@
   },
   "body_adapter": {
    "material": "petg-gf",
-   "volume_mm3": 82787.0
+   "volume_mm3": 82791.8
   },
   "body_adapter_mx_my": {
    "material": "petg-gf",
@@ -55,11 +55,11 @@
   },
   "bridge_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 313666.3
+   "volume_mm3": 313680.8
   },
   "cart_base": {
    "material": "pctg",
-   "volume_mm3": 5526.0
+   "volume_mm3": 5535.7
   },
   "cart_piston": {
    "material": "pctg",
@@ -67,7 +67,7 @@
   },
   "chassis_0": {
    "material": "petg-gf",
-   "volume_mm3": 584647.1
+   "volume_mm3": 584816.0
   },
   "chassis_0_light": {
    "material": "pctg",
@@ -75,7 +75,7 @@
   },
   "chassis_1": {
    "material": "petg-gf",
-   "volume_mm3": 613506.5
+   "volume_mm3": 613660.6
   },
   "chassis_1_light": {
    "material": "pctg",
@@ -83,7 +83,7 @@
   },
   "chassis_2": {
    "material": "petg-gf",
-   "volume_mm3": 649296.3
+   "volume_mm3": 649281.5
   },
   "chassis_2_light": {
    "material": "pctg",
@@ -103,11 +103,11 @@
   },
   "fixed_tenon": {
    "material": "petg-gf",
-   "volume_mm3": 131893.9
+   "volume_mm3": 131898.7
   },
   "keyhead_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 316946.2
+   "volume_mm3": 316903.1
   },
   "kl_axle": {
    "material": "pctg",
@@ -139,11 +139,11 @@
   },
   "knee_housing": {
    "material": "petg-gf",
-   "volume_mm3": 67895.1
+   "volume_mm3": 67900.0
   },
   "knee_housing_r": {
    "material": "petg-gf",
-   "volume_mm3": 68463.5
+   "volume_mm3": 68468.3
   },
   "knee_lever": {
    "material": "pctg",
@@ -211,7 +211,7 @@
   },
   "pedal_bar_a": {
    "material": "petg-gf",
-   "volume_mm3": 417667.3
+   "volume_mm3": 417676.9
   },
   "pedal_bar_b": {
    "material": "petg-gf",
