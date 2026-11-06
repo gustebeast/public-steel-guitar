@@ -1,5 +1,36 @@
 # bronner — open work items (2026-09-30)
 
+## 2026-11-06 LATE NIGHT: SMALL-BOARD NUDGES, leg_pogo LABELS, motor_ctrl PRE-LAY DROPPED
+
+Each count includes the unmoved route. "Clean" = 0 unconnected, 0 violations, 0 FAIL, with A23 on.
+
+| board | clean | notes |
+|---|---|---|
+| foot_led_a | 7 / 7 | no change |
+| foot_led_b | 7 / 7 | no change |
+| lever_sensor | 6 / 7 | N6 opens TERM_H; the nudged part (R15) is about 10 mm from that net, so this is route order, not a blocked lane. No placement fix. |
+| fret_led_mid | 2 / 2 scored | n1 invalid (no stitch-via room for C12.2). n2-n4 timed out at 58 min run 4 at once; n2 solo is clean in 26 min. n3 / n4 solo were still routing at submit. |
+| motor_ctrl | 7 / 9 (N series) | the R20 +24V pre-lay came OUT: its P series was 3 / 9, and the unmoved P0 opened PED_L. The opens move between nets (SEL_LEV, FLASH_DP), the same pattern as every output_panel pre-lay. |
+| can_tee | unmoved only | R1, ordered: nudges skipped |
+| leg_pogo x4 | merged (legpogo) | females 0 FAIL; males 1 soft FAIL each, below |
+
+- **leg_pogo J2 way-1 dot (lead's option 3, cadkit 600e8e2).** `silk_mark_in_body` {ref: why}
+  lets that part's OWN way-1 dot sit inside its courtyard where its fab body is not. Every
+  other label, a neighbour's dot included, keeps off the whole courtyard (the first cut let
+  J1's dot in, and A17 then credited it to J2). close_widths cleared the male bottom's A1.
+- **OPEN, male leg_pogo J1 ways (soft A17).** No site on either face even for a one-letter
+  identifier: `silk_legend` is on and places nothing. It is the same case as the female J1
+  waiver (the spring-pin row; nothing plugs into it by hand). The lead decides: a waiver
+  with that text, or a wider male board.
+- **cadkit e44995b.** silk_legend used to leave the legend line printed when its identifier
+  found no site at the part ("A TP2 5V" on the back, with no A by TP2). It now takes it back off.
+- **output_panel placement: DROPPED.** The one trial allowed: U13 + C66 east 0.75 was refused
+  at layout (no stitch-via room for C66.2). U13 alone east 0.6 gave 11 unconnected and
+  18 violations, because the USB-C side crowds (J1_VBUS only fits at 0.20 mm where it asks
+  for 1.00). The committed layout stays at 9 / 11.
+- **cadkit 672a168 PCBFLOW_NUDGE** (propagated). layout.build shifts the placements listed in
+  {ref: [dx, dy]}: the robustness series' hook.
+
 ## 2026-11-06 NIGHT: output_panel 9/11, OPTICAL SECOND SEED, PI SPACER GONE
 
 - **output_panel R2 9 of 11** (merged, opanel2). Re-scored at the committed A23 limits
