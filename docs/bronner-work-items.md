@@ -1,5 +1,34 @@
 # bronner — open work items (2026-09-30)
 
+## 2026-11-05 LATE: R2 ROBUSTNESS WITH A23 ON
+
+| board | set | clean with A23, before | now | what did it |
+|---|---|---|---|---|
+| optical | 18 legal eco moves, seed 11 | 8 of 16 kept | 8 of 9 kept, 9 refused | eco refuses a move whose re-closure fails A23 (cadkit c9bdd90) |
+| pi_cap | unmoved + n1-n10 | 7 of 11 | 9 of 11 | J5.8 GND drawn track; J3 `back_if_full` (cadkit 3024bec) |
+| motor_ctrl | full reroute x2 | SEL_LEV open, 4 of 4 | 0/0/0 FAIL, 2 of 2 | C8 beside +3V3 pins 31/32 |
+
+- **optical.** The decaps feed +3V3D in series through the pad (lead: good decoupling,
+  keep). A move takes up that link, and close_last finds the same long way round at every
+  width down its ladder: the moved part blocks the straight path, the width does not. So
+  eco refuses such moves (7 of 18: +3V3D x5, FLASH_RX, V5_PRE) with the net and the lengths
+  logged, and `eco.py check <stem>` does the same after a hand move + finish. LOST: laying
+  the narrower width with the fewest squares (no change: same path at 0.50 and 0.35).
+- **pi_cap J5.8.** A via at the end of the edge fan (74.47, 108.07) walled UI_ENC_A's F.Cu
+  end: 0 of 11, LOST. Drawn GND B.Cu continuing the escape along y 108.07 to kx 92, in a
+  strip no signal used on any route: close_last has to route round it instead of cutting
+  the pour. Nudge n1 closes. No J5 pinout change needed.
+- **pi_cap J3.** On n6 the labeller fits a word at each way on the front (1 24 / G / SCK /
+  SDT, front-reading, way 1 marked, no silk DRC), and `back_only` failed hard as stale.
+  A17 now has `back_if_full`: either face passes, never stale. J4 stays `back_only`.
+- **motor_ctrl SEL_LEV.** Open on every route on main, including one with the 11-04 tools,
+  so the 11-04 0/0 was luck. U4 pin 33 was walled in by SEL_PED's via and by C8's +3V3 track
+  back across the east row. C8 moved beside the pins it decouples (R2 only).
+- **pi_cap UI_DC, still open (n2 A15, n5 A23).** LOST: pre-laying the clean routes' F.Cu leg
+  and In1 via, (73.47,96.53) -> via (77.76,95.88). Still 9 of 11: n2 is fixed, but n5 leaves
+  UI_RES_N open and n9 cuts a 9.5 mm slot under UI_ENC_A. The via sits in UI_RES_N's lane.
+  UI_DC and UI_RES_N share that lane, so this is the same In1-capacity item as UI_RES_N.
+
 ## 2026-11-05 EVENING: HONEST CLEAN COUNTS (A23), MOTOR TRACE
 
 **Closures are measured now (cadkit 1079f3b).** close_last writes each closure to
