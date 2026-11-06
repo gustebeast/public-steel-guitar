@@ -1838,24 +1838,26 @@ def return_path_slots(ctx):
             continue                   # forgiven, and only up to the figure signed for
         kept.append(g)
     gaps = kept
-    if stale:
-        return [("return slot", False,
-                 "quality.return_slot_ok names %s, which straddles nothing on this "
-                 "board: a stale exemption is a licence nobody is using and the next "
-                 "re-route might" % ", ".join(stale))]
+    # A WARN, not a FAIL (lead, 2026-11-06): a nudged reroute moves which lines cross a fixed
+    # cut, so the same signed list is stale on one route and used on the next. The copper is
+    # what is graded; the board that ships prunes its own stale entries so the list does not rot.
+    warn = ([("return slot", "warn",
+              "quality.return_slot_ok names %s, which straddles nothing on this board: a "
+              "stale exemption -- prune it from the board that ships" % ", ".join(stale))]
+            if stale else [])
     bad = sorted((g for g in gaps if g[0] > limit + 1e-6), reverse=True)
     if bad:
         g = bad[0]
-        return [("return slot", False,
+        return warn + [("return slot", False,
                  "%s straddles a %.2f mm cut in the ground plane at (%.2f, %.2f), and the "
                  "longest a signal may straddle is %.2f mm (%d crossing(s) over it, of %d "
                  "found on %d track(s))"
                  % (g[1], g[0], g[2], g[3], limit, len(bad), len(gaps), checked))]
     if not gaps:
-        return [("return slot", True, "%d signal track(s) checked, and not one crosses a "
-                 "cut in the ground plane" % checked)]
+        return warn + [("return slot", True, "%d signal track(s) checked, and not one "
+                        "crosses a cut in the ground plane" % checked)]
     g = max(gaps)
-    return [("return slot", True,
+    return warn + [("return slot", True,
              "widest cut a signal straddles: %.2f mm, by %s at (%.2f, %.2f); %d crossing(s) "
              "on %d track(s), limit %.2f mm" % (g[0], g[1], g[2], g[3], len(gaps), checked,
                                                 limit))]
@@ -2946,7 +2948,9 @@ def run(stem, verbose=True, brief=False):
             rows = [("-", False, "the check itself failed: %r" % (exc,))]
         bad = []
         for subject, ok, text in rows:
-            status = "ok" if ok else ("note" if ok is None else "FAIL")
+            # ok="warn" is bookkeeping, not copper: printed, counted in neither fails nor opens
+            status = ("WARN" if ok == "warn" else "ok" if ok
+                      else ("note" if ok is None else "FAIL"))
             hard = ok is False and is_hard(rid, text)
             if ok is False:
                 why = ctx.waived(rid, subject)
