@@ -313,11 +313,6 @@ def plate_y(i: int) -> float:
 # Unchanged from the printed insert (user): an M4 x 40 button head, heat-set in the endplate slab
 # mouth DOWN, pushes the plate's foot up from below on the instrument's one 2.5 mm key.
 from cadkit.fasteners import M4, M4_BUTTON_HEAD_D, M4_BUTTON_HEAD_H
-# BOTH SCREWS HERE TAKE THE EXTRA-STRONG POCKET (user, 2026-11-05: overtightened, a height screw
-# pulled its insert out of the plastic): each is driven hard against something -- the height screw
-# the plate up onto the rod, the side screw the string onto its plate -- so the insert grips 0.1 tighter
-# and is started square with the iron rather than dropped in.
-M4S = M4.strong()
 THREAD_CLR = D.MIN_WALL                         # room to work the string round, not force it
 _DROP_NEED = G_ENVELOPE + THREAD_CLR            # 2.832 for a .080
 assert _ramp_gap(math.radians(45), G_ENVELOPE) >= THREAD_CLR, "the ramp crowds the wind"
@@ -575,7 +570,7 @@ def side_screw_negatives(i: int):
     in diameter is a ceiling over the wider bore, so stepped_bore_cutter cones it at 45 degrees."""
     from cadkit.fasteners import stepped_bore_cutter
     y, z = side_screw_yz(i)
-    pilot = M4S.pilot_d((1.0, 0.0, 0.0), PRINT_UP)
+    pilot = M4.pilot_d((1.0, 0.0, 0.0), PRINT_UP)
     return [stepped_bore_cutter([(SS_HEAD_D, SS_MOUTH_X - X_BACK + 1.0),
                                  (pilot, M4.insert_depth),
                                  (M4.shaft_clr_d, PLATE_X0 - SS_MOUTH_X - M4.insert_depth)],
@@ -594,7 +589,7 @@ def side_screw(i: int) -> cq.Workplane:
 def side_insert(i: int) -> cq.Workplane:
     from cadkit.fasteners import seated_insert
     y, z = side_screw_yz(i)
-    return seated_insert(M4S, (SS_MOUTH_X, y, z), (1.0, 0.0, 0.0))
+    return seated_insert(M4, (SS_MOUTH_X, y, z), (1.0, 0.0, 0.0))
 
 
 def tail_route(i: int):
@@ -655,7 +650,7 @@ def height_screw_negatives(i: int):
     def bore(d, z0, z1):
         return teardrop_hole(d, z1 - z0, axis_point=(x, y, z0), axis_dir=(0.0, 0.0, 1.0),
                              print_up=PRINT_UP)
-    return [bore(M4S.pilot_d((0.0, 0.0, 1.0), PRINT_UP), HS_PRISM_BOT - 1.0,
+    return [bore(M4.pilot_d((0.0, 0.0, 1.0), PRINT_UP), HS_PRISM_BOT - 1.0,
                  HS_PRISM_BOT + M4.insert_depth),
             bore(M4.shaft_clr_d, HS_PRISM_BOT + M4.insert_depth - 0.01, HS_FLOOR + 1.0)]
 
@@ -673,7 +668,7 @@ def height_insert(i: int) -> cq.Workplane:
     """Dummy M4 heat-set under string i, mouth flush in the prism's bottom face (local frame)."""
     from cadkit.fasteners import seated_insert
     x, y = height_screw_xy(i)
-    return seated_insert(M4S, (x, y, HS_PRISM_BOT), (0.0, 0.0, 1.0))
+    return seated_insert(M4, (x, y, HS_PRISM_BOT), (0.0, 0.0, 1.0))
 
 
 for _i in range(D.N_STRINGS):
