@@ -16,11 +16,13 @@ ONE PART FOR EVERY SEAM. Every seam plane runs down the middle of a 3.2 wall of 
 lever grid (chassis.SPLIT_X, D.lever_wall_x), so a grid station stands 5.2 either side of it,
 and every such station is one mortise run from past the -Y rail to the light window. The plate
 carries the knee levers' own mount tenon (knee_lever._lever_joint, grown to a tighter fit: see
-below) in those two mortises, and it is NO WIDER THAN THOSE TWO TENONS (user, 2026-11-05): their
-root material's outer faces, measured off the built tenons, centred on the seam. A lever's
-housing reaches past its own
-outermost tenon, so a plate out to the next walls' centres (20.8) could not go in beside one.
-It slides in from -Y the way a lever does.
+below) in those two mortises, and it is NO WIDER THAN THOSE TWO TENONS (user, 2026-11-05): it
+ends at their necks' outer faces, the rule a lever housing's flush end keeps
+(knee_lever.TEN_X_END), so a lever in the next slot has the clearance two levers have with each
+other. The flares overhang the plate there, 45 deg off the neck, up inside the mortise. Out to
+the flares' clip at the mortise edge, the plate stood 0.08 off a lever's axle end in the next
+slot: too close to go in beside it (user: "not enough clearance"). It slides in from -Y the
+way a lever does.
 
 THE MORTISES' LENGTH IN Y (user: "it just needs to extend the full mortise length"): from the
 -Y rail's outer face to where the tenons end, c short of the mortises' closed end at the light
@@ -84,12 +86,11 @@ def stations(i):
 
 
 def x_span(i):
-    """The plate's X: exactly the outer faces of its two tenons, measured off the built tenons
-    (user: "stops right at the tenon material on either end"), and nothing past them. Measured
-    on the levers' tenon, not the grown one: a lever beside the plate is placed by its own
-    tenon's width, and the grow is for the fit inside the mortise, not for the root."""
+    """The plate's X: the outer neck faces of its two tenons, as a lever housing ends at its
+    last tenon's neck. The levers' neck, not the grown one: the grow is for the fit inside the
+    mortise, and a lever beside the plate is clear of it by the levers' own spacing."""
     a, b = stations(i)
-    return _tenon(a, 0.0).val().BoundingBox().xmin, _tenon(b, 0.0).val().BoundingBox().xmax
+    return a - KL._J_STEM / 2.0, b + KL._J_STEM / 2.0
 
 
 @functools.lru_cache(maxsize=None)
@@ -117,6 +118,19 @@ def _tenon(st, grow=GROW):
         box_at(D.LEVER_PITCH, y1 - y0 + 2.0, 40.0, x=st, y=y0 + (y1 - y0 + 2.0) / 2.0, z=Z_MATE))
 
 
+def _undercut(x, out, y0, y1):
+    """Everything past the plate edge x (on the side `out`, -1 or +1) under a 45 deg plane
+    rising outward from the edge at the mating plane. The tenon's root foot is the mortise's
+    width at the mating plane, 2.0 past a neck-wide plate on each side: flat over air. This
+    makes its underside a 45 deg overhang off the plate edge. The plane meets the (grown)
+    root's chamfer at the height of the mortise's mouth (c, 0.45 over the mating plane), so
+    what the joint locates on, inside the mortise, is untouched. Below the plane is the next slot's lever."""
+    d = 4 * D.LEVER_PITCH
+    pts = [(x, Z_MATE), (x + out * d, Z_MATE + d), (x + out * d, Z0 - 1.0), (x, Z0 - 1.0)]
+    w = cq.Workplane("XZ").polyline(pts).close().extrude(-(y1 - y0))   # XZ extrudes -Y: flip
+    return w.translate((0, y0 - w.val().BoundingBox().ymin, 0))
+
+
 @functools.lru_cache(maxsize=None)
 def bridge(i):
     """Seam i's bridge, in its world pose (it prints as it sits: plate down, tenons up)."""
@@ -125,8 +139,8 @@ def bridge(i):
     b = box_at(x1 - x0, y1 - Y0, T, x=(x0 + x1) / 2.0, y=(Y0 + y1) / 2.0, z=Z0 + T / 2.0)
     for st in stations(i):
         b = b.union(_tenon(st))
-    b = b.intersect(box_at(x1 - x0, y1 - Y0 + 2.0, 40.0, x=(x0 + x1) / 2.0,  # grown roots
-                           y=(Y0 + y1) / 2.0, z=Z_MATE))
+    for x, out in ((x0, -1.0), (x1, 1.0)):
+        b = b.cut(_undercut(x, out, Y0 - 1.0, y1 + 1.0))
     assert len(b.val().Solids()) == 1, "seam bridge %d is not one solid" % i
     return b
 
