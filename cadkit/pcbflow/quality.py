@@ -2561,6 +2561,10 @@ def closure_detours(ctx):
         return [("-", None, "no closures.json: close_last laid nothing on this board")]
     ratio = float(ctx.q.get("closure_ratio", 1.5))
     excess = float(ctx.q.get("closure_excess", 10.0))
+    # per-net BOUNDED limits: {"NET": {"ratio": 2.0, "max_mm": 50, "why": "..."}} -- a net
+    # whose closure passes inside them passes with the reason printed; past either bound it
+    # fails as any other net. Unlike a waiver, it cannot pass an unbounded detour.
+    per_net = ctx.q.get("closure_limits", {}) or {}
     have = collections.defaultdict(set)
     for t in ctx.board.GetTracks():
         if t.GetClass() == "PCB_VIA":
@@ -2582,6 +2586,26 @@ def closure_detours(ctx):
         gap, length = float(r["gap"]), float(r["length"])
         subject = r["net"]
         where = _where(ctx, r["a"])
+        lim = per_net.get(r["net"])
+        if lim is not None:
+            if not str(lim.get("why", "")).strip():
+                out.append((subject, False, "%s has closure_limits but no reason" % r["net"]))
+                continue
+            if (length <= float(lim["ratio"]) * gap + 1e-9
+                  and length <= float(lim["max_mm"]) + 1e-9):
+                out.append((subject, None, "%s: %.1f mm across %.1f mm (%.1fx), inside its own "
+                            "limits (%.1fx, %.0f mm) -- %s" % (r["net"], length, gap,
+                                                              length / max(gap, 0.01),
+                                                              float(lim["ratio"]),
+                                                              float(lim["max_mm"]), lim["why"])))
+                continue
+            else:
+                out.append((subject, False,
+                            "%s is closed by %.1f mm of track across a %.1f mm gap %s (%.1fx), "
+                            "past its own closure_limits (%.1fx, %.0f mm)"
+                            % (r["net"], length, gap, where, length / max(gap, 0.01),
+                               float(lim["ratio"]), float(lim["max_mm"]))))
+                continue
         if length > ratio * gap and length - gap > excess:
             out.append((subject, False,
                         "%s is closed by %.1f mm of track across a %.1f mm gap %s (%.1fx; the "

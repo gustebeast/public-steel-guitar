@@ -819,7 +819,13 @@ not the board the placement should give, and the fix is in the placement (room f
 short way), not in the closure.
 
 **Declaration.** A waiver (`quality.waive["A23:<net>"]`) says why the length does not
-matter for that net: a static strap, a line that settles once at power-up.
+matter for that net: a static strap, a line that settles once at power-up. Prefer the
+bounded form, `quality.closure_limits = {"<net>": {"ratio": 2.0, "max_mm": 50, "why":
+"..."}}`: inside both bounds the closure passes with the reason printed, and past either it
+fails like any other net, so a later route cannot hide a real detour behind it. The global
+limits are unchanged by it. First use: output_panel R2 ROLE_INT_N, the TUSB320's
+open-drain interrupt, a long net the router skips and close_last joins at 1.6-1.8x
+(2026-11-05).
 
 ### A18 — The silkscreen that is drawn is the silkscreen that prints
 
