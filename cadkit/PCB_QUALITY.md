@@ -683,6 +683,14 @@ all three and this rule reads them back off the routed board. Two declarations, 
   standard connector that nobody crimps and nobody can plug wrongly (a USB receptacle, a
   Raspberry Pi header, a barrel jack). Its ways are not graded.
 
+Where the way-1 mark itself has no site, because the part's courtyard covers every spot
+beside way 1 (a housing on a board barely wider than it), the board's notes may name the
+part in `silk_mark_in_body`: `{"J2": "<why>"}`. `cadkit/kicad_silk.py` then lets THAT part's
+own way-1 dot inside its courtyard wherever the housing body is not, measured off the
+part's fab outline (the band between pad 1 and the body line, where a pin-1 mark usually
+goes), with the normal clearance to pads. Every other label, a neighbour's dot included,
+keeps off the whole courtyard. Opt-in per part; an empty reason stops the labeller.
+
 **How it is checked.** Every printed text and every small filled circle on each silk layer
 is read from the board. Ink belongs to a connector when it is within 6 mm of that
 connector's courtyard, on the connector's own face. A text is **a way's word** when the

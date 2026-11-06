@@ -456,14 +456,20 @@ def _hit(a, b):
 class Side:
     """Everything a label on one side of the board has to stay off."""
 
-    def __init__(self, board, back, dark=(), read=0.0):
+    def __init__(self, board, back, dark=(), read=0.0, body_marks=()):
         self.small = []          # labels that only fitted under the legible size
+        self.last = None         # (text, rect) of the last place(), for take_back()
         self.read = read % 360.0 # the board's reading direction (`silk_read`)
         self.turned = []         # (label, why) for each one laid a quarter turn off it
         self.board, self.back = board, back
         self.layer = pcbnew.B_SilkS if back else pcbnew.F_SilkS
         cu = pcbnew.B_Cu if back else pcbnew.F_Cu
         self.rects, self.dark = [], []
+        # parts in `body_marks` (silk_mark_in_body): only the part's OWN way-1 dot may go
+        # inside its courtyard, where the housing's body (its F.Fab outline) is not -- the
+        # band between pad 1 and the body line, the usual pin-1 mark. Every other label,
+        # a neighbour's dot included, keeps off the whole courtyard, as for any part.
+        self.yards = {}
         for fp in board.GetFootprints():
             same = fp.IsFlipped() == back
             # NO INK NEAR THE OPTICS. A board that strips its sensors' own outlines
@@ -486,7 +492,16 @@ class Side:
                 cy = fp.GetCourtyard(pcbnew.B_CrtYd if back else pcbnew.F_CrtYd)
                 if cy.OutlineCount() and not fp.GetReference().startswith("TP"):
                     b = cy.BBox()
-                    self.rects.append([b.GetLeft(), b.GetTop(), b.GetRight(), b.GetBottom()])
+                    yard = [b.GetLeft(), b.GetTop(), b.GetRight(), b.GetBottom()]
+                    fab = [g for g in fp.GraphicalItems()
+                           if g.GetLayer() == (pcbnew.B_Fab if back else pcbnew.F_Fab)]
+                    if fp.GetReference() in body_marks and fab:
+                        bx = [_box(g) for g in fab]
+                        self.rects.append([min(q[0] for q in bx), min(q[1] for q in bx),
+                                           max(q[2] for q in bx), max(q[3] for q in bx)])
+                        self.yards[fp.GetReference()] = yard
+                    else:
+                        self.rects.append(yard)
                 for g in fp.GraphicalItems():
                     if g.GetLayer() == self.layer:
                         self.rects.append(_box(g))
@@ -534,10 +549,11 @@ class Side:
         cx, cy = (g[0] + g[2]) // 2, (g[1] + g[3]) // 2
         return self.outline.Contains(pcbnew.VECTOR2I(int(cx), int(cy)))
 
-    def free(self, r, optics=None):
+    def free(self, r, optics=None, mark=None):
         g = _grow(r, MM(OPTICS_CLR if optics is None else optics))
         return (not any(_hit(g, o) for o in self.dark)
-                and not any(_hit(r, o) for o in self.rects) and self.inside(r))
+                and not any(_hit(r, o) for o in self.rects) and self.inside(r)
+                and not any(_hit(r, o) for k, o in self.yards.items() if k != mark))
 
     def text(self, s, size, angle=0.0):
         t = pcbnew.PCB_TEXT(self.board)
@@ -554,7 +570,7 @@ class Side:
         t.SetPosition(pcbnew.VECTOR2I(0, 0))
         return t
 
-    def dot(self, near, reach, rivals):
+    def dot(self, near, reach, rivals, ref=None):
         """A filled dot MARK_D across at the free site nearest `near` and nearer it than
         any of `rivals`. Returns True if it went down. Recognised (and cleared) on the
         next run by being a filled board-level silkscreen circle of exactly this size."""
@@ -571,7 +587,7 @@ class Side:
                        < (x - near.x) ** 2 + (y - near.y) ** 2 for q in rivals):
                     continue
                 r = [x - h, y - h, x + h, y + h]
-                if self.free(r):
+                if self.free(r, mark=ref):
                     best = (d2, x, y, r)
         if best is None:
             return False
@@ -660,7 +676,17 @@ class Side:
         r[k] -= MM(LINE_GAP)
         r[k + 2] += MM(LINE_GAP)
         self.rects.append(r)
+        self.last = (t, r)
         return True
+
+    def take_back(self):
+        """Lift the last label place() laid, and free its site."""
+        t, r = self.last
+        self.board.Remove(t)
+        self.rects.remove(r)
+        if t.GetText().split(chr(10))[0] in self.small:
+            self.small.remove(t.GetText().split(chr(10))[0])
+        self.last = None
 
 
 # A net's short word for a per-way label, where the board's notes give none. Matched in
@@ -952,6 +978,14 @@ def silk(stem, rev=None, dark=(), labels=None, short=None, refs=None, way_words=
         bleed = _notes.get("silk_ink_bleed") if bleed is None else bleed
         # `silk_legend`: step 7. Opt-in, so a frozen board's silk stays as ordered.
         id_legend = _notes.get("silk_legend") if id_legend is None else id_legend
+        # `silk_mark_in_body`: {ref: why} -- that part's way-1 dot may go inside its own
+        # courtyard where its fab body is not (Side.yards; PCB_QUALITY.md A17)
+        body_marks = _notes.get("silk_mark_in_body", {}) or {}
+    else:
+        body_marks = {}
+    for _r, _why in body_marks.items():
+        if not str(_why).strip():
+            raise SystemExit("silk_mark_in_body names %s with no reason" % _r)
     bleed = INK_BLEED if bleed is None else float(bleed)
     way_words = dict(way_words or {})
     pinout, ends = set(pinout or ()), set(ends or ())
@@ -976,7 +1010,8 @@ def silk(stem, rev=None, dark=(), labels=None, short=None, refs=None, way_words=
         PINOUT_REACH = float(reach)
     _face_refs(board)                            # BEFORE they are turned and read
     ref_turned = _flatten_refs(board, read)      # BEFORE the sides read where they are
-    sides = {False: Side(board, False, dark, read), True: Side(board, True, dark, read)}
+    sides = {False: Side(board, False, dark, read, body_marks),
+             True: Side(board, True, dark, read, body_marks)}
     fps = sorted(board.GetFootprints(), key=lambda f: f.GetReference())
     done, missed = [], []
     spelt = {}                              # label -> its full text, for step 7
@@ -1137,7 +1172,7 @@ def silk(stem, rev=None, dark=(), labels=None, short=None, refs=None, way_words=
                        wider=False, own=True, ok=own_side,
                        turn="way %d's mark against its own pin (%s)" % (k, ref)):
                 done.append("%s %s mark" % (ref, what))
-            elif k == 1 and s.dot(ways[k].GetPosition(), far, others):
+            elif k == 1 and s.dot(ways[k].GetPosition(), far, others, ref):
                 # not even a "1": a dot beside way 1, the smallest mark that prints
                 done.append("%s way-1 dot" % ref)
             else:
@@ -1304,7 +1339,7 @@ def silk(stem, rev=None, dark=(), labels=None, short=None, refs=None, way_words=
                                  wider=False, own=True, ok=own_row,
                                  turn="way 1's mark against its own tail (%s)" % ref):
                 done.append("%s way-1 mark (%s)" % (ref, face_))
-            elif sides[back].dot(tails[1].GetPosition(), 4.0, others):
+            elif sides[back].dot(tails[1].GetPosition(), 4.0, others, ref):
                 done.append("%s way-1 dot (%s)" % (ref, face_))
             else:
                 missed.append("%s way-1 mark (%s)" % (ref, face_))
@@ -1351,23 +1386,30 @@ def silk(stem, rev=None, dark=(), labels=None, short=None, refs=None, way_words=
     if id_legend:
         box = board.GetBoardEdgesBoundingBox()
         span = max(box.GetWidth(), box.GetHeight()) / 1e6
-        spare = iter([c for c in ID_CHARS if c not in set(wanted.values())])
+        spare = [c for c in ID_CHARS if c not in set(wanted.values())]
         for label in list(missed):
             fp = next((f for f in fps if f.GetReference() == label.split()[0]), None)
             if fp is None or label.endswith("mark") or "way-1" in label:
                 continue
-            ident = next(spare, None)
-            if ident is None:
+            if not spare:
                 break
+            ident = spare[0]
             text = spelt.get(label, label)
             key = "%s %s" % (ident, text)
             here = sides[fp.IsFlipped()]
-            if not any(q.place_legible(key, SIZE_J, box.GetCenter(), span, step=1.0, wider=False)
-                       for q in (sides[not fp.IsFlipped()], here)):
+            keyed = next((q for q in (sides[not fp.IsFlipped()], here)
+                          if q.place_legible(key, SIZE_J, box.GetCenter(), span, step=1.0,
+                                             wider=False)), None)
+            if keyed is None:
                 continue
             if here.place_legible(ident, SIZE_J, fp.GetPosition(), PINOUT_REACH, wider=False):
+                spare.pop(0)
                 missed.remove(label)
                 done.append("%s as identifier %s" % (label, ident))
+            else:
+                # no room for the identifier at the part: a legend line naming a letter
+                # printed nowhere else is worse than none, so it comes back off
+                keyed.take_back()
 
     for d in old:                           # after every read; the save is next
         board.Remove(d)
