@@ -293,10 +293,10 @@ def _quality(kind, parts):
         },
         # A12 "Break it when" (b): no site at the legible size, and the text is not
         # needed to assemble or wire the board.
-        # A17 (cadkit/PCB_QUALITY.md): a connector whose pinout block is on the OTHER face,
-        # and why. Way 1 is marked on the connector's own side in every case.
-        "connector_labels": ({"J1": {"back_only": "the labeller tries the connector's own side first and finds no free site there for its five-line block at 1.0 mm within 14 mm of the part, flat or turned (run 2026-10-07); the block is on the back, behind it"}}
-                             if male else {}),
+        # A17 (cadkit/PCB_QUALITY.md): no connector here has its pinout block on the other
+        # face. The male J1's back_only went 2026-11-06: since the back took the board's
+        # name and the vias, the block fits on neither face (waived below, as the female's).
+        "connector_labels": {},
         # A17 "Break the ways when" (c): a board 10-13 mm wide, no site for a word at the
         # legible size on either face beyond what is printed. The way order is the
         # harness's one order (GND, 5V, CAN_H, CAN_L) and is in INSTALL_NOTES.md.
@@ -305,10 +305,14 @@ def _quality(kind, parts):
                   "1.0 mm on either face. The lead is the leg harness's own 4-way, crimped "
                   "1:1 in the one order every lead uses (INSTALL_NOTES.md, 'Every JST "
                   "lead')",
-                  **({} if male else {
-                      "A17:J1 ways": "the pad row for the spring pins: nothing plugs into "
-                                     "it by hand, it meets the male board when the leg is "
-                                     "seated. No site for four words at 1.0 mm"}),
+                  "A17:J1 ways": ("the spring pins: nothing plugs into them by hand, they "
+                                  "meet the female board's pad row when the leg is seated, "
+                                  "the joinery engaged first. No site for four words, a "
+                                  "block or a one-letter identifier at 1.0 mm on either "
+                                  "face (silk_legend places nothing, 2026-11-06)" if male else
+                                  "the pad row for the spring pins: nothing plugs into "
+                                  "it by hand, it meets the male board when the leg is "
+                                  "seated. No site for four words at 1.0 mm"),
                   "A12:silk text height":
                   "the front face is all courtyard and the back is 10-13 mm wide with vias "
                   "across it: the ground test pad's letter (and a pin legend, on the one "
