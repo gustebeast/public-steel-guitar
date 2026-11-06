@@ -6,8 +6,8 @@ A page the Pi serves at **https://public-steel-guitar.home** (also `.local`, and
 | Button | Held | Let go |
 | --- | --- | --- |
 | PITCH up / down | the strings creep, 35 cents a second | they stay where they are |
-| HALF up / down | they go ±½ semitone over 0.25 s | they go back |
-| WHOLE up / down | they go ±1 semitone over 0.25 s (user 11-06: was 2, HALF was 1) | they go back |
+| HALF up / down | they go ±½ semitone over 0.5 s | they go back |
+| WHOLE up / down | they go ±1 semitone over 0.5 s (user 11-06: was 2, HALF was 1) | they go back |
 
 Each string turns its own motor by its own amount for an interval, from the string model in
 `src/dimensions.py`: nut travel = `DL_OPEN · ((f2/f0)² − (f1/f0)²)`, 2 mm of nut per motor
@@ -100,7 +100,7 @@ works with no flag (`--strings` still narrows it).
 
 The server talks to motor_ctrl on USB
 (the bench package's `link.py` and `servo.py`, found by the files, not the name) and sends each motor an absolute move (F5): acc 0, at an even speed
-that makes each half or whole step take `STEP_S` (0.25 s, about a pedal press; user
+that makes each half or whole step take `STEP_S` (0.5 s since 11-06, half the old 0.25 s speed; user
 2026-11-03: 3000 and then 1500 rpm both sounded instant), and a speed matched to the creep for pitch up and down. No firmware change
 was needed: motor_ctrl's `Q` line carries the frames as they are.
 

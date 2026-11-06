@@ -32,8 +32,8 @@ SLOW_RPM_MIN = 1
 FAST_RPM, FAST_ACC = 3000, 0       # the top speed: bronner's 11-02 step, a whole tone in 39 ms
 # HALF AND WHOLE STEPS TAKE STEP_S, at the even speed that covers each string's own distance
 # in it (user, 2026-11-03: the 3000 rpm step was instant, and so was 1500 -- a half step is a
-# quarter turn, 5 ms against 10). 0.25 s is about a pedal press.
-STEP_S = 0.25
+# quarter turn, 5 ms against 10). 0.25 s was about a pedal press; 0.5 s halves the step speed (user 2026-11-06).
+STEP_S = 0.5
 STRINGS = tuple(range(1, 11))       # string N = CAN id N on bus A
 # Which way a motor turns to RAISE pitch. Bench 2026-11-05, string 1: +1 lowered it, so -1.
 # Only string 1 is proven; --raise-sign still overrides it.
