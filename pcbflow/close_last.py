@@ -263,6 +263,27 @@ def _stitch_islands(board, net, plane, clr=0.2, step=0.25):
     return laid
 
 
+def _record(stem, closure):
+    """Append one laid closure to <stem>.closures.json, for quality A23 to judge.
+
+    ⚠ A CLOSURE IS NOT CLEAN BECAUSE IT CONNECTS (optical, 2026-11-05). After a decap moved,
+    the board came back 0 open, 0 FAIL with +3V3D joined by 38.2 mm of track across a 2.4 mm
+    gap, and FLASH_RX by 33.2 mm across 7.8 on another move: DRC and every check passed, so the
+    robustness count read both as good boards.
+    Each closure is written down with the straight distance between the two ends it joins,
+    and A23 sets the length against it. A record whose copper is no longer on the board (a
+    put-back attempt, prune_closures, an eco move) is ignored there, so this only appends."""
+    path = stem + ".closures.json"
+    try:
+        with open(path, encoding="utf-8") as fh:
+            got = json.load(fh)
+    except (OSError, ValueError):
+        got = []
+    got.append(closure)
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(got, fh, indent=1)
+
+
 def _pad_layer(board, net, layer, pos):
     """The layer an SMD pad at `pos` is really on (a through-hole pad keeps `layer`).
 
@@ -386,6 +407,7 @@ def main(stem):
         via_a = sorted(_via_starts(board, net, pa, layers), key=lambda c: pref.get(c[0], 9))
         via_b = sorted(_via_starts(board, net, pb, layers), key=lambda c: pref.get(c[0], 9))
         named = ((la, pa), (lb, pb))
+        gap = ((pa[0] - pb[0]) ** 2 + (pa[1] - pb[1]) ** 2) ** 0.5
         # ⚠ NEAREST PAIRING FIRST, AND NOT EVERY PAIRING (optical +3V3D, 2026-10-05). The
         # first path found is the one laid, and a rail's copper reaches dozens of vias: in
         # arbitrary order the first success joined two islands 18 mm apart with 134 mm of
@@ -487,12 +509,13 @@ def main(stem):
         def _pt(q):
             return snap.get((round(q[0], 6), round(q[1], 6)), q)
 
-        length = 0.0
+        length, laid = 0.0, []
         for L, pts in runs:
             pts = [_pt(q) for q in pts]
             for q0, q1 in zip(pts, pts[1:]):
                 if q0 == q1:
                     continue
+                laid.append((L, round(q0[0], 4), round(q0[1], 4), round(q1[0], 4), round(q1[1], 4)))
                 t = pcbnew.PCB_TRACK(board)
                 t.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(q0[0]), pcbnew.FromMM(q0[1])))
                 t.SetEnd(pcbnew.VECTOR2I(pcbnew.FromMM(q1[0]), pcbnew.FromMM(q1[1])))
@@ -577,6 +600,9 @@ def main(stem):
         made += 1
         print("close_last: %s closed with %.2f mm over %s and %d via(s)"
               % (net, length, "/".join(L for L, _p in runs), len(vias)))
+        _record(stem, {"net": net, "a": [round(c, 3) for c in named[0][1]],
+                       "b": [round(c, 3) for c in named[1][1]], "gap": round(gap, 3),
+                       "length": round(length, 3), "tracks": laid})
     board.Save(stem + ".kicad_pcb")
     return made
 

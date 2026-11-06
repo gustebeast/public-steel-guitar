@@ -87,6 +87,9 @@ HINT = {
            "room beside it, or order the board with the vias filled and capped and say so "
            "in quality.via_in_land_ok -- tenting the via does not help, because the pad's "
            "own mask aperture is already open over it",
+    "A23": "the router left this net open and close_last could only join it the long way: "
+           "move what walls in the short way (usually a part beside the pin), or give the "
+           "net room in the placement, then route again",
     "A9": "move the crystal and its load capacitors up against the oscillator pins",
     "A13": "if the board is wrong, fix the generator (look for an index left over from "
            "another loop); if the declaration is, correct quality.unconnected / "
@@ -2537,6 +2540,58 @@ def no_data_way_beside_power(ctx):
         elif any(w in ctx.power for w in ways.values()):
             out.append((ref, True, "%s: %d ways, every way beside a supply is ground, a "
                                    "supply or empty" % (ref, len(ways))))
+    return out
+
+
+@rule("A23")
+def closure_detours(ctx):
+    """No net is joined by a closure much longer than the gap it closes.
+
+    close_last.py writes each closure it lays to <stem>.closures.json: the two ends it
+    joined, the straight distance between them and the track it laid. A record whose copper
+    is not on this board any more (an attempt put back, prune_closures, an eco move) is
+    skipped. A closure fails when it is longer than `closure_ratio` (default 1.5) times its
+    gap AND more than `closure_excess` mm (default 10) longer than it: a 3 mm hop round a
+    0.5 mm pad is not a detour, 38 mm of supply across a 2.4 mm gap is.
+    """
+    try:
+        with open(ctx.stem + ".closures.json", encoding="utf-8") as fh:
+            recs = json.load(fh)
+    except (OSError, ValueError):
+        return [("-", None, "no closures.json: close_last laid nothing on this board")]
+    ratio = float(ctx.q.get("closure_ratio", 1.5))
+    excess = float(ctx.q.get("closure_excess", 10.0))
+    have = collections.defaultdict(set)
+    for t in ctx.board.GetTracks():
+        if t.GetClass() == "PCB_VIA":
+            continue
+        a, b = t.GetStart(), t.GetEnd()
+        k = [(round(pcbnew.ToMM(a.x), 3), round(pcbnew.ToMM(a.y), 3)),
+             (round(pcbnew.ToMM(b.x), 3), round(pcbnew.ToMM(b.y), 3))]
+        have[(t.GetNetname(), t.GetLayerName())].add(tuple(sorted(k)))
+    out = []
+    for r in recs:
+        segs = r.get("tracks") or []
+        if not segs:
+            continue
+        found = sum(1 for L, x0, y0, x1, y1 in segs
+                    if tuple(sorted([(round(x0, 3), round(y0, 3)), (round(x1, 3), round(y1, 3))]))
+                    in have[(r["net"], L)])
+        if found * 2 < len(segs):
+            continue
+        gap, length = float(r["gap"]), float(r["length"])
+        subject = r["net"]
+        where = _where(ctx, r["a"])
+        if length > ratio * gap and length - gap > excess:
+            out.append((subject, False,
+                        "%s is closed by %.1f mm of track across a %.1f mm gap %s (%.1fx; the "
+                        "limit is %.1fx or %.0f mm over)" % (r["net"], length, gap, where,
+                                                             length / max(gap, 0.01), ratio,
+                                                             excess)))
+        else:
+            out.append((subject, True, "%s: %.1f mm across %.1f mm" % (r["net"], length, gap)))
+    if not out:
+        out.append(("-", None, "no closure laid by close_last is on this board"))
     return out
 
 
