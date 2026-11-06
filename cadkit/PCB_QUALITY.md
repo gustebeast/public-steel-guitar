@@ -782,6 +782,40 @@ the wrong plug in the right header finds power on power and ground on ground.
 **Declaration.** A waiver states the signal's own tolerance of that rail (a switch line
 that IS the rail when closed), never "the crimps are good".
 
+### A23 — No net is closed the long way round
+
+**Rule.** A track that close_last laid after the route is no longer than `closure_ratio`
+(default 1.5) times the straight distance between the two ends it joins, or no more than
+`closure_excess` (default 10 mm) longer than that distance.
+
+**Why.** close_last finishes what the router left open, by maze search on the routed board,
+and the board it hands back is judged by DRC: connected or not. A closure that has to go
+round a connector or a pad field to get there is connected, and passes every other check,
+and is a 40 mm signal where the schematic drew a 5 mm one: more coupling, a longer return
+loop, a slower edge on a slow line, more drop on a rail. Worse, it makes a board that only
+just closed read as clean, and every robustness count taken from finished routes ("7 of 10
+nudges route clean") counts it as a success.
+
+**How it is checked.** close_last writes each closure to `<stem>.closures.json` with its
+two ends, their straight distance and the track it laid. The check reads that file, skips
+any closure whose copper is no longer on the board, and sets the rest against the limit.
+A board on which close_last laid nothing gets a note.
+
+**Where the limits come from (2026-11-05).** Every closure on 38 finished boards (pi_cap 11
+reroutes, output_panel 11, optical 16 eco moves), length against gap. A net the router left
+whole and close_last laid pin to pin runs 1.0-1.35x its gap: UI_RES_N 37.8 mm across 30.1,
+the output panel's 10-12 mm supply links. The detours stand apart: ROLE_INT_N 39.9 across
+24.7 (1.6x), UI_DC 24.7 across 12.1, FLASH_RX 33.2 across 7.8, +3V3D 38.2 across 2.4. The
+10 mm floor keeps a 6 mm hop across a 2 mm gap a pass. Clean counts with the limits on:
+optical 13 -> 8 of 16 moves, output_panel 8 -> 7 of 11, pi_cap 8 -> 7 of 11.
+
+**How strict.** **Soft.** A long closure on a slow line is a working board; it is still
+not the board the placement should give, and the fix is in the placement (room for the
+short way), not in the closure.
+
+**Declaration.** A waiver (`quality.waive["A23:<net>"]`) says why the length does not
+matter for that net: a static strap, a line that settles once at power-up.
+
 ### A18 — The silkscreen that is drawn is the silkscreen that prints
 
 **Rule.** No object on `F.Silkscreen` or `B.Silkscreen` overlaps a solder-mask opening on
