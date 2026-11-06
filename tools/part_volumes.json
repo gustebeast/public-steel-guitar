@@ -83,7 +83,7 @@
   },
   "chassis_2": {
    "material": "petg-gf",
-   "volume_mm3": 649271.9
+   "volume_mm3": 651381.6
   },
   "chassis_2_light": {
    "material": "pctg",
@@ -107,7 +107,7 @@
   },
   "keyhead_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 316903.1
+   "volume_mm3": 301058.0
   },
   "kl_axle": {
    "material": "pctg",
