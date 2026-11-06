@@ -74,7 +74,7 @@ project root, so `cadkit` is already importable):
 """
 
 import math
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from typing import Optional
 
 import cadquery as cq
@@ -90,9 +90,6 @@ except ImportError:                    # run directly as a script
 # ════════════════════════════════════════════════════════════════════════════
 # SPECS — the only thing that differs between sizes.
 # ════════════════════════════════════════════════════════════════════════════
-EXTRA_STRONG_SHRINK = 0.1       # an extra_strong insert pocket, under its usual Ø
-
-
 @dataclass(frozen=True)
 class FastenerSpec:
     """Everything the geometry below needs to draw one screw size."""
@@ -121,15 +118,6 @@ class FastenerSpec:
     head_recess_d:  Optional[float] = None   # cap-head counterbore (None = headless)
     head_recess_h:  Optional[float] = None
     screw_l:        Optional[float] = None   # dummy screw length, if modelled
-    # EXTRA STRONG: the insert pocket EXTRA_STRONG_SHRINK under its usual Ø, both ways (user,
-    # 2026-11-05: an overtightened screw pulled its insert out of the plastic). The insert no
-    # longer drops in on its own -- start it square with the iron -- but the melt grips more.
-    # Take one with spec.strong() or ScrewJoint(extra_strong=True), never a hand-shrunk Ø.
-    extra_strong:   bool = False
-
-    def strong(self) -> "FastenerSpec":
-        """This size with the extra-strong insert pocket (see extra_strong)."""
-        return replace(self, extra_strong=True)
 
     @property
     def min_bite(self) -> float:
@@ -148,14 +136,11 @@ class FastenerSpec:
     def pilot_d(self, direction=None, print_up=None) -> float:
         """The insert pocket's Ø for a hole along `direction` in a part printing along
         `print_up`: insert_pilot_d when it prints round (along the build, or print_up None),
-        insert_pilot_td_d when it is teardropped (see that field); EXTRA_STRONG_SHRINK less
-        for an extra_strong spec."""
-        less = EXTRA_STRONG_SHRINK if self.extra_strong else 0.0
+        insert_pilot_td_d when it is teardropped (see that field)."""
         if self.insert_pilot_td_d is None or print_up is None or direction is None:
-            return self.insert_pilot_d - less
+            return self.insert_pilot_d
         a, u = _unit(direction), _unit(print_up)
-        d = self.insert_pilot_d if abs(a.dot(u)) > 1.0 - 1e-9 else self.insert_pilot_td_d
-        return d - less
+        return self.insert_pilot_d if abs(a.dot(u)) > 1.0 - 1e-9 else self.insert_pilot_td_d
 
 
 # M2 cap screw + McMaster 94459A110 heat-set insert.
@@ -174,13 +159,15 @@ M2 = FastenerSpec(
 # THE POCKET IS 6.1, NOT 6.0 (user, 2026-10-20: "the fitted insert just doesn't slide
 # into its pilot hole"). 6.0 was the insert's own size, no margin, and a printed hole
 # comes out under its drawn size; the insert has to drop in before it is melted home.
-# ...BUT ONLY ROUND: TEARDROPPED IT IS 5.8 (user, 2026-10-28: the keyhead's height-screw inserts,
-# pockets sideways to the build, "go in too loose" at 6.1; 2026-10-30: still too loose at 6.0; 2026-11-02: still too loose at 5.9).
+# ...BUT ONLY ROUND: TEARDROPPED IT IS 5.7 (user, 2026-10-28: the keyhead's height-screw inserts,
+# pockets sideways to the build, "go in too loose" at 6.1; 2026-10-30: still too loose at 6.0; 2026-11-02: still too loose at 5.9;
+# 2026-11-05: an overtightened keyhead height screw pulled its 5.8 insert out of the plastic -- 5.7, the
+# default for every teardropped pocket. It no longer drops in: start it square with the iron).
 M4 = FastenerSpec(
     name="M4", screw_d=4.0, pitch=0.7,
     selftap_d=4.2, shaft_clr_d=4.4,
     insert_pilot_d=6.1, insert_depth=5.0, insert_l=5.0, insert_bore_d=4.4,
-    boss_prot=6.0, insert_pilot_td_d=5.8,
+    boss_prot=6.0, insert_pilot_td_d=5.7,
     head_recess_d=None, head_recess_h=None, screw_l=10.0,
 )
 
@@ -526,8 +513,7 @@ def insert(spec):
     The dummy does not know its pocket's print direction, and needs not: it is the
     insert's envelope, which the smaller pocket is sized to."""
     od = min(spec.insert_pilot_d, spec.insert_pilot_td_d or spec.insert_pilot_d)
-    od -= EXTRA_STRONG_SHRINK if spec.extra_strong else 0.0
-    body =cq.Workplane(obj=_cyl(od, spec.insert_l,
+    body = cq.Workplane(obj=_cyl(od, spec.insert_l,
                                  (0, 0, -spec.insert_l), (0, 0, 1)))
     bore = cq.Workplane(obj=_cyl(spec.insert_bore_d, spec.insert_l + 2,
                                  (0, 0, -spec.insert_l - 1), (0, 0, 1)))
@@ -836,11 +822,8 @@ class ScrewJoint:
     recess: float = 0.0
     head_clr: float = 0.4          # radial air round the head in its recess
     socket_af: float = 2.5
-    extra_strong: bool = False     # the insert pocket EXTRA_STRONG_SHRINK tighter (FastenerSpec)
 
     def __post_init__(self):
-        if self.extra_strong and not self.spec.extra_strong:
-            object.__setattr__(self, "spec", self.spec.strong())
         tip = self.recess + self.length
         if self.insert_at + self.spec.insert_depth > self.end_at + 1e-9:
             raise ValueError("ScrewJoint(%s): the insert pocket runs past the hole's end"
