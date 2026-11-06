@@ -556,7 +556,9 @@ tail 2 does not.
 The Pi is held by **one M3 × 12 socket head through its own mounting hole** (the +X, −Y one:
 the hole nearest the USB/Ethernet end on the HDMI side), into a heat-set M3 insert in the
 chassis boss under it. It is the belt clamps' screw, insert and key (2.5 mm hex): no new
-SKU. The printed spacer bar that used to bridge out to an M4 beside the board is gone.
+SKU. The printed spacer bar that used to bridge out to an M4 beside the board is gone, and
+so is the printed ring that used to sit under the screw's head (2026-11-05): the head sits
+on the Pi itself and the screw's tip hangs in a clearance hole under the insert.
 
 1. **Heat-set the M3 insert into the boss first**, from the top, before anything else is in
    the bay (McMaster 94459A130; its pocket is 4.8, so it drops in before it is melted home).
@@ -565,12 +567,13 @@ SKU. The printed spacer bar that used to bridge out to an M4 beside the board is
    end stands over motor 3's bay back wall and 0.5 off that motor's driver, so it goes in
    **before string 3's motor** if that motor is in the way of your hands, or with it in
    place if not — nothing of the Pi touches it.
-4. **Put the printed ring (`pi_spacer`, Ø6 × 3.2) on the hole and drive the M3 × 12
-   through it and the Pi's hole into the insert.** The Pi's hole is 2.7 mm and the screw is
-   M3: **it is a forced thread and tight by design — do not ream the hole.** The crests cut
-   about 0.15 mm into the hole's plated barrel (user, on the bench, 2026-10-29). The ring is
-   what makes the 12 mm screw the right length: without it the screw bottoms out.
-5. Do not overtighten: the ring bears on the Pi's own Ø6 keep-out pad round the hole.
+4. **Drive the M3 × 12 through the Pi's hole into the insert, head straight on the board.**
+   The Pi's hole is 2.7 mm and the screw is M3: **it is a forced thread and tight by
+   design — do not ream the hole.** The crests cut about 0.15 mm into the hole's plated
+   barrel (user, on the bench, 2026-10-29). There is no ring under the head any more: the
+   screw goes 6.1 mm past the insert into a 3.4 mm clearance hole that runs to the floor,
+   so it cannot bottom out, and only the insert holds it.
+5. Do not overtighten: the head bears on the Pi's own Ø6 keep-out pad round the hole.
 6. **Then plug the USB-C lead in** (below). It goes in with the Pi seated: its head is a
    2 mm plate, and with its tongue it needs 8.65 mm in front of the socket, which the gap to
    the rail leaves.

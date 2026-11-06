@@ -30,7 +30,7 @@ import re
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 MATERIALS = ("petg-gf", "pctg", "tpu")
 _PRINTED = ("nut_slide_insert", "belt_tensioner_half_a", "belt_tensioner_half_b",
-            "pcb_shim", "pi_spacer")
+            "pcb_shim")
 _STATION = re.compile(r"^(?:lkl|lkr|rkl|rkr|vkl|pedal\d+)_")
 _LANE = re.compile(r"^(?:main|half_stop)_")
 

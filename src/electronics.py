@@ -517,7 +517,7 @@ RIB_LZ    = -87.5        # local z -> world x -631.3: just inside the endplate's
 # scored the boss, the head and the driver column, all of them ABOVE the floor. None asked what
 # the ANCHOR runs into BELOW it, and that is where "+y" @ +30 fails: the levers' mortise/tenon
 # joinery leaves under D.MIN_WALL_2P around the bore. See PI_SPACER_XY for the search that
-# asked the right question and for the user's spacer, which is what makes the answer reachable.
+# asked the right question (the spacer bar it led to is gone too).
 # The value PI_HOLD is DELETED rather than left at ("+y", 30.0): nothing reads it any more, and
 # a dead datum that still looks live is the `_mcu_x1` trap -- a placement that turned out to be
 # measured off a screw position long after the screw moved.
@@ -543,18 +543,21 @@ def pi_hold_pt():
 def pi_hold_bore():
     """The Pi hold-down's anchor as a CUTTER, for build.py to take out of the chassis AFTER
     the cradle is fused in: cut before union is silently refilled (43.9 mm3 of screw inside
-    chassis_2 the first time). An M3 insert pocket from the board's underside, the bore
-    PI_BORE_D deep -- the M3 x 12's reach -- in the boss, which stands on the floor.
+    chassis_2 the first time). The heat-set insert's pocket from the boss's top, then a
+    CLEARANCE bore (shaft_clr_d, 3.4) down the whole boss to the chassis's inside floor.
 
-    ⚠ ...AND ON, AT THE BORE'S OWN Ø, DOWN THE WHOLE BOSS TO THE CHASSIS'S INSIDE FLOOR (user,
-    2026-11-05: "the hole for the screw doesn't extend all the way to the chassis floor ...
-    cut the hole all the way through", then "to the chassis floor (the inside floor)"). Below
-    the screw's reach the column was solid for no reason; the floor itself stays whole."""
-    from cadkit.fasteners import anchor_cutter
+    ⚠ THE INSERT HOLDS THE SCREW AND NOTHING BELOW IT DOES (user, 2026-11-05: "Drop the
+    spacer, let the screw hang with clearance below the fitted insert"). Without the ring the
+    M3 x 12 reaches PI_SCREW_REACH under the board's top, 6.1 past the insert, and the old
+    self-tap bore there would have had it cutting its own thread in the boss. The bore runs
+    on to the floor (user, the same day: "cut the hole all the way through ... to the chassis
+    floor (the inside floor)"); the floor itself stays whole."""
     hx, hy = pi_hold_pt()
-    return (anchor_cutter(PI_M3, (hx, hy, PI_Z), (0, 0, -1), PI_BORE_D)
-            .union(cyl(PI_M3.selftap_d, PI_Z - _MB_FLOOR.FLOOR_TOP + 0.01,
-                       _MB_FLOOR.FLOOR_TOP).translate((hx, hy, 0.0))))
+    ins = PI_M3.insert_depth
+    return (cyl(PI_M3.insert_pilot_d, ins + 0.01, PI_Z - ins)
+            .union(cyl(PI_M3.shaft_clr_d, PI_Z - _MB_FLOOR.FLOOR_TOP + 0.01,
+                       _MB_FLOOR.FLOOR_TOP))
+            .translate((hx, hy, 0.0)))
 
 
 def pi_cradle() -> cq.Workplane:
@@ -568,8 +571,8 @@ def pi_cradle() -> cq.Workplane:
     end, and here the helper's native frame already IS the Pi's.
 
     Retention is ONE M3 through the board's own hole (pi_hold_pt) into an insert in the
-    boss under it, with a printed ring (pi_spacer) under the head so the belt clamps' M3 x 12
-    serves.
+    boss under it: the belt clamps' M3 x 12, its tip hanging in a clearance bore below the
+    insert (pi_hold_bore).
 
     The four corner pads ARE the standoff, which is why PI_Z reads PI_STANDOFF: a Pi's
     underside carries SMD parts and solder tails, so the laminate must not rest on the slab.
@@ -652,29 +655,14 @@ from dataclasses import replace as _dc_replace                     # noqa: E402
 from . import belt_tensioner as _BT                                # noqa: E402
 PI_M3 = _dc_replace(_BT.M3, insert_pilot_d=_BT.INS_D + 0.1)        # 4.8 pocket, boss 8.0
 PI_SCREW_L = _BT.SCREW_L                                           # 12.0
-# ...and the ring under its head is what lets that one length serve: through the ring and
-# the laminate the M3 x 12 reaches PI_BORE_D under the board, the insert plus its bite.
-PI_SPACER_T = 4 * D.BEAD                                           # 3.20
-PI_BORE_D = PI_SCREW_L - BD_T - PI_SPACER_T                        # 7.20
-PI_SPACER_OD = 6.0                 # the Pi's own keep-out pad round the hole; the 5.5 head
-                                   # bears on it all round. 1.30 wall, over MIN_WALL
-PI_SPACER_UP = (0.0, 0.0, 1.0)     # a flat ring: either face down
-assert PI_M3.anchor_min_wall - 1e-9 <= PI_BORE_D <= PI_STANDOFF, (PI_BORE_D, PI_STANDOFF)
+# The head sits on the Pi itself (the printed ring under it went 2026-11-05, user): through
+# the laminate the M3 x 12 reaches PI_SCREW_REACH under the board, 4.3 of it in the insert
+# and the rest hanging in clearance -- its tip has to stop short of the floor.
+PI_SCREW_REACH = PI_SCREW_L - BD_T                                 # 10.40
+assert PI_M3.insert_depth < PI_SCREW_REACH < PI_STANDOFF, (PI_SCREW_REACH, PI_STANDOFF)
 
 
 PI_SD_FIT = 2 * D.BEAD             # each side of the card, in the cradle wall's opening
-PI_SPACER_UP = (0.0, 0.0, -1.0)    # prints TOP FACE DOWN (see pi_spacer)
-
-
-def pi_spacer() -> cq.Workplane:
-    """The ring under the Pi screw's head: PI_SPACER_T thick, so the belt clamps' M3 x 12
-    is the right length here too (user, 2026-10-29: "print a spacer so we can use the same
-    screw as the belt instead of getting another shorter screw in the BOM")."""
-    hx, hy = pi_hold_pt()
-    z = PI_Z + BD_T
-    return (cyl(PI_SPACER_OD, PI_SPACER_T, z)
-            .cut(cyl(PI_M3.shaft_clr_d, PI_SPACER_T + 2.0, z - 1.0))
-            .translate((hx, hy, 0.0)))
 
 
 def keyhead_cradles(standing: bool = True) -> cq.Workplane:
@@ -1052,11 +1040,11 @@ def board_screws():
         (ox + hx, oy + hy, oz + _PCB_T + M4_BUTTON_HEAD_H))))
 
     # THE Pi's M3, through its own hole (pi_hold_pt): the insert seated in the boss under
-    # the board, the belt clamps' M3 x 12 socket head on PI_SPACER_T of ring.
+    # the board, the belt clamps' M3 x 12 socket head on the laminate.
     from cadkit.fasteners import headed_screw
     _px, _py = pi_hold_pt()
     out.append(("board_insert_2", seated_insert(PI_M3, (_px, _py, PI_Z), (0, 0, -1))))
-    _z_head = PI_Z + BD_T + PI_SPACER_T
+    _z_head = PI_Z + BD_T
     out.append(("board_screw_2", headed_screw(PI_M3, PI_SCREW_L, head_d=_BT.HEAD_D,
                                               head_h=_BT.HEAD_H, socket_af=2.5)
                 .translate((_px, _py, _z_head + _BT.HEAD_H))))
