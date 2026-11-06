@@ -818,8 +818,9 @@ MOTOR_X_STEP    = MOTOR_SQ + MOTOR_GAP              # 44.7 along-X step between 
 # is -- that run is what the belt clamp's travel is cut from. The standing motor board
 # used to sit between the endplate and string 1's motor and cost every belt 21.8 of run;
 # it now stands -Y of that motor instead, behind its back face (MCTRL_Y1 below).
-KEYHEAD_INBOARD_X = -607.8       # keyhead endplate inboard bearing face (its height-screw prism, keyhead_endplate.HS_X1);
-                                 # asserted against keyhead_endplate in build.py
+KEYHEAD_INBOARD_X = -607.8       # the motor bank's -X datum. It WAS the keyhead's height-prism face, which now
+                                 # stops at the keyhead's own face (-611.2) so the keyhead lifts out past the
+                                 # deck (2026-11-06); the bank keeps its place. build.py asserts the order
 # Sized like MOTOR_GAP: string 1's -X bay wall is a full 1.6 like every other motor's, with
 # the motor's fit on one side of it and the same fit to the endplate on the other.
 MOTOR_END_CLR   = MIN_WALL_2P + 2 * MOTOR_CLR   # 2.4 from the endplate's face to string 1's motor

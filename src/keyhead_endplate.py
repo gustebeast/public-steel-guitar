@@ -70,7 +70,12 @@ LEG_SHELL_X0 = CH.LEG_SHELL_NX[0]                # -X end of the kept leg shell 
 # extension pockets' roofs plus a two-bead wall -- which runs past XHI, so it is added AFTER the
 # thickness trim. Z: a bead over the chassis's wide corner rib (nut_block.HS_PRISM_BOT) up to 0.8 under the top
 # plate.
-HS_X1 = D.NUT_BLOCK_X + NB.HS_POCKET_X1 + D.MIN_WALL_2P
+# ...BUT NO FURTHER THAN THIS PART'S OWN +X FACE (user, 2026-11-06: "the -x endplate needs to be able
+# to slide up with the top panel in position"). Run on to dimensions.KEYHEAD_INBOARD_X it stood 3.4
+# past XHI, under the keyhead deck panel, and the keyhead could not lift out. Trimmed, the wall in
+# front of the plate pockets is XHI - the pockets' +X end, 0.8 -- kept so the string termination
+# stays at the zero fret (user: "leave it at 0.8 for now and see if it holds").
+HS_X1 = min(D.NUT_BLOCK_X + NB.HS_POCKET_X1 + D.MIN_WALL_2P, XHI)
 HS_Y0, HS_Y1 = NB._INS_LO - D.MIN_WALL_2P, NB._INS_HI + D.MIN_WALL_2P
 HS_Z0 = D.STRING_Z + NB.HS_PRISM_BOT
 HS_Z1 = CH.TP_GZ0 - D.MIN_WALL

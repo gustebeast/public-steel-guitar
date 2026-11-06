@@ -1114,6 +1114,12 @@ def _bottom(a, b):
                   x=(x0 + x1) / 2, y=(Y_HI + Y_LO) / 2, z=(MB.FLOOR_TOP + Z_BOT) / 2)
 
 
+# THE -X-MOST SEGMENT BOUND clears the LOWER keyhead tongue's tip the way the +X one clears the
+# bridge's (user, 2026-11-06: the -X section's lower tenons came out "chopped off"): X_NUT (-639)
+# cut the tongue, which runs to _SHELL_NX - KH_DT_DEPTH, and kept 1466 of its 2521 mm3.
+_SEG_X_LO = min(X_NUT, _SHELL_NX - KH_DT_DEPTH - 2.0)
+
+
 def _seg_box(a, b):
     h = (Z_TOP + 18.0) - (Z_BOT - 6.0)
     return box_at(abs(a - b) + 2 * _SEG_OVER, (Y_HI - Y_LO) + 40.0, h,
@@ -1157,7 +1163,7 @@ def _segments():
     # +X-most bound must clear the +X-most chassis feature -- the LOWER bridge dovetail
     # tongue tip (_SHELL_PX + KH_DT_DEPTH = 13.6); a smaller bound (the old X_BRIDGE+2 = 8)
     # sliced the tongue off at the segment boundary.
-    edges = [_SHELL_PX + KH_DT_DEPTH + 2.0] + sorted(SPLIT_X, reverse=True) + [X_NUT]
+    edges = [_SHELL_PX + KH_DT_DEPTH + 2.0] + sorted(SPLIT_X, reverse=True) + [_SEG_X_LO]
     # THE BAYS GO IN FIRST AND THE SPLIT CUTS THROUGH THEM (user, 2026-11-02). A plate straddling
     # a split used to go whole to its motor's segment, so it hung past the plane over the
     # neighbour's floor with nothing under it. Now every segment takes every plate, and the
@@ -1367,7 +1373,7 @@ def _split_light(segs):
     Each band is clipped to its OWN segment's X span. _seg_box deliberately overshoots its
     neighbour by 0.02 so the halves of a seam joint meet; inherited by the band that reads as
     two transparent parts interpenetrating (1.1 mm3 a seam, which the gate duly reported)."""
-    edges = [_SHELL_PX + KH_DT_DEPTH + 2.0] + sorted(SPLIT_X, reverse=True) + [X_NUT]
+    edges = [_SHELL_PX + KH_DT_DEPTH + 2.0] + sorted(SPLIT_X, reverse=True) + [_SEG_X_LO]
     out = []
     for i, s in enumerate(segs):
         a, b = edges[i], edges[i + 1]
