@@ -5,11 +5,11 @@ open tuning, and each string turns its motor by its own amount for it: from its 
 when /tune (publicbench.tune, curves.json) has one for it, else from the string model
 in src/dimensions.py (the carriage travel between two pitches is DL_OPEN * ((f2/f0)^2 -
 (f1/f0)^2); the screw lead is 2 mm and the belt is 14:14, so one motor turn is 2 mm of nut).
-0.52 turn is a whole tone up from open, which is what bronner measured the motor doing.
+0.26 turn is a whole tone up from open on the bench string (DL_OPEN below).
 
     base    where pitch up / pitch down leave the strings: it creeps while one is held and
             stays where it is let go
-    bend    0, +-0.5 or +-1 on top of base while half / whole step is held (BENDS); 0 again on release
+    bend    0, +-1 or +-2 on top of base while half / whole step is held (BENDS); 0 again on release
 
 Limits: base + bend stays within LOWER_MIN..RAISE_MAX, set wide (user, 2026-11-05: the bench
 wants no stop). The pitch-range budget is still about 4 semitones up by wire strength
@@ -22,7 +22,11 @@ import math
 import os
 import time
 
-DL_OPEN = 4.0             # mm, src/dimensions.DL_OPEN: the same for every string in the model
+# mm of string stretch from slack to open pitch, the same for every untuned string. The design
+# model (src/dimensions.DL_OPEN) says 4.0; on the bench (user, 2026-11-06, string 1) a 4.0 HALF
+# step played a whole tone, so the real stretch is half that. A string tuned on /tune plays its
+# measured curve and ignores this.
+DL_OPEN = 2.0
 LEAD = 2.0                # mm of nut per motor turn: Tr8x2 lead, 14:14 belt
 COUNTS_PER_TURN = 0x4000
 RAISE_MAX = 48.0          # semitones over open, base + bend: effectively no limit (user 11-05)
@@ -118,8 +122,7 @@ class Pitch:
                 "can": {b: self.can(b) for b in BUTTONS}, "max": RAISE_MAX, "min": LOWER_MIN}
 
 
-# semitones; user 2026-11-06: WHOLE now goes the distance HALF used to (1), HALF half that
-BENDS = {"hu": 0.5, "hd": -0.5, "wu": 1.0, "wd": -1.0}
+BENDS = {"hu": 1.0, "hd": -1.0, "wu": 2.0, "wd": -2.0}
 BUTTONS = ("pu", "pd", "hu", "hd", "wu", "wd")
 
 

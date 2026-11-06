@@ -6,13 +6,14 @@ A page the Pi serves at **https://public-steel-guitar.home** (also `.local`, and
 | Button | Held | Let go |
 | --- | --- | --- |
 | PITCH up / down | the strings creep, 35 cents a second | they stay where they are |
-| HALF up / down | they go ±½ semitone over 0.5 s | they go back |
-| WHOLE up / down | they go ±1 semitone over 0.5 s (user 11-06: was 2, HALF was 1) | they go back |
+| HALF up / down | they go ±1 semitone over 0.5 s | they go back |
+| WHOLE up / down | they go ±2 semitones over 0.5 s | they go back |
 
 Each string turns its own motor by its own amount for an interval, from the string model in
 `src/dimensions.py`: nut travel = `DL_OPEN · ((f2/f0)² − (f1/f0)²)`, 2 mm of nut per motor
-turn. That gives 0.52 turn for a whole tone up from open, the move bronner measured on 11-02.
-The model has one `DL_OPEN` (4.0 mm) for every string, so an untuned string turns the same as
+turn. The phone uses `DL_OPEN` 2.0 mm, not the model's 4.0: on the bench (11-06, string 1) 4.0
+played twice the interval. That gives 0.26 turn for a whole tone up from open.
+The phone has one `DL_OPEN` (2.0 mm) for every string, so an untuned string turns the same as
 the others. A string tuned on /tune plays its MEASURED curve instead (`curves.json`, below):
 straight lines between knots, held at the end knot past either end, the same arithmetic as
 motor_ctrl's play table. The server reads the curves at start and again after each tune, and

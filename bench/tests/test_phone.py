@@ -16,8 +16,8 @@ import server as S              # noqa: E402
 
 
 def test_whole_tone_is_052_turn_on_the_model():
-    """The number bronner's step test used for string 1: 0.52 turn = a whole tone from open."""
-    assert abs(P.turns(2.0) - 0.52) < 0.005
+    """String 1 on the bench (11-06): 0.26 turn = a whole tone from open (DL_OPEN 2.0)."""
+    assert abs(P.turns(2.0) - 0.26) < 0.005
     assert P.turns(0.0) == 0.0
     assert P.turns(-12.0) < 0 and P.turns(4.0) > P.turns(2.0)
 
@@ -331,7 +331,7 @@ def test_a_tuned_string_plays_its_curve_and_the_rest_the_model():
     d = P.Driver(m, p, raise_sign=-1, curves={1: curve})
     d.step(0.05)
     m.log.clear()
-    p.press("a", "wu")              # one semitone: the 100-cent knot
+    p.press("a", "hu")              # one semitone: the 100-cent knot
     d.step(0.05)
     goal = {r[1]: r[2] for r in m.log}
     assert goal[1] == 4000
