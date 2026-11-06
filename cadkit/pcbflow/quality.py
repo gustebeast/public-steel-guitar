@@ -2758,7 +2758,11 @@ def connector_labels(ctx):
         ctx.connector_ink[ref] = {"back": back, "words": dict(worded), "marks": marks,
                                   "own_block": own_block, "far_block": far_block,
                                   "way1": way1}
-        why = d.get("back_only")
+        # back_if_full: the block goes on the back when the labeller finds no room on the
+        # front, and the front is just as good when it does -- for a connector whose own side
+        # is full on some routes and not on others (pi_cap R2 J3: front on 1 of 11 routes,
+        # so back_only failed as stale there). Never stale, so the reason carries the weight.
+        why = d.get("back_only") or d.get("back_if_full")
         if not unnamed:
             tally["a word at every way"] += 1
             out.append((ref + " ways", True, "%s: a word in line with each of its %d ways"
@@ -2780,10 +2784,11 @@ def connector_labels(ctx):
             out.append((ref + " ways", False,
                         "%s: way(s) %s have no name on the %s and there is no pinout block "
                         "for it on either face" % (ref, ", ".join(map(str, unnamed)), face)))
-        if why is not None and not str(why).strip():
-            out.append((ref + " ways", False, "%s is declared back_only but gives no reason"
-                        % ref))
-        if why and (not unnamed or own_block):
+        for _k in ("back_only", "back_if_full"):
+            if d.get(_k) is not None and not str(d[_k]).strip():
+                out.append((ref + " ways", False, "%s is declared %s but gives no reason"
+                            % (ref, _k)))
+        if d.get("back_only") and (not unnamed or own_block):
             out.append((ref + " ways", False,
                         "%s: stale declaration -- back_only is declared and its ways ARE "
                         "named on its own side; delete the declaration" % ref))

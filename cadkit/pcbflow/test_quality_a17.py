@@ -18,6 +18,9 @@ mark on its own side (the script says which it found, or which it is missing). T
                                                 ignored and the report says so
   5  back_only declared where the labels     -> FAIL, hard: a stale declaration
      ARE on the connector's side
+  6  back_if_full declared for both          -> passes either way: words on its own side,
+                                                or the block moved to the other face (the
+                                                reason printed); never stale
 
 Each case works on a COPY of the board in a temporary directory. Exit code 0 = every case
 answered as it should.
@@ -244,6 +247,19 @@ def main(stem):
         {W: {"back_only": "left over from an older layout"}})))
     hit = [t for s, t in fails if "stale declaration" in t]
     check("FAILs, hard", bool(hit) and quality.is_hard("A17", hit[0]), "%r" % (fails,))
+
+    # ── 6. back_if_full: either face, never stale ────────────────────────────────
+    print("case 6  back_if_full declared for %s (own side) and %s (moved to the other face)"
+          % (W, B))
+    why = "the harness: own side full on some routes"
+    fails = _fails(_case(stem, lambda q: q.setdefault("connector_labels", {}).update(
+        {W: {"back_if_full": why}})))
+    check("on its own side: passes, not stale", not fails, "%r" % (fails,))
+    rows = _case(stem, lambda q: q.setdefault("connector_labels", {}).update(
+        {B: {"back_if_full": why}}), flip)
+    said = [t for st, s, t in rows if st == "note" and s == B + " ways"]
+    check("on the other face: passes", not _fails(rows), "%r" % (_fails(rows),))
+    check("and prints the reason", bool(said) and why in said[0], "%r" % (said,))
 
     print("\n%s" % ("every case answered as it should" if ok else "A17 HARNESS FAILED"))
     return 0 if ok else 1
