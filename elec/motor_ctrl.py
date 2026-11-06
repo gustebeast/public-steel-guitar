@@ -2201,6 +2201,11 @@ if REV != 1:
         # wide, FLASH_DM could not cross (routes of 2026-11-04)
         "C38": (25.00, 11.00, 90.0), "U10": (27.00, 11.00, 90.0), "R28": (29.00, 11.00, 90.0),
         "D10": (17.10, 24.60, 90.0), "D11": (18.90, 24.60, 90.0),
+        # C8 beside the two +3V3 pins it decouples (31 / 32), its GND toward pin 28's. Where
+        # R1 has it, north of them, its +3V3 track ran back across the east row and walled in
+        # pin 33 (SEL_LEV) under SEL_PED's via: open on all four routes of 2026-11-05 (one with
+        # the tools of the 11-04 0/0 route, so that route was the router's luck)
+        "C8": (17.80, -5.78, 270.0),
     })
     _tr = BOARD_NOTES["tracks"]
     _i = next(i for i, t in enumerate(_tr) if t[0] == "+24V_LED" and t[3][-1] == (17.46, 19.83))
