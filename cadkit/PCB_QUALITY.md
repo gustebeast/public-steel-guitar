@@ -436,7 +436,12 @@ a pour further away, with a whole plane between it and the track, is not a cut i
 signal's return.
 Only straddled gaps count. `quality.return_slot` sets the limit; `quality.return_slot_ok`
 lists nets exempted, and an entry is expected to say what carries that signal's return
-instead. A board with no ground pour gets a note saying so, and no claim.
+instead. An exempted net that straddles nothing is a **WARN** (a stale exemption), not a
+FAIL: a nudged reroute moves which lines cross a fixed cut, so one signed list is stale on
+one route and used on the next, and that is bookkeeping, not copper. A WARN counts in
+neither fails nor opens. The board that ships prunes its own stale entries. A crossing that
+no entry covers is still a FAIL. A board with no ground pour gets a note saying so, and no
+claim.
 
 **How strict.** **Soft.** A long cut is usually a routing accident and reroutes cheaply,
 but there are honest reasons for one — a deliberately split plane between domains, a
