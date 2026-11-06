@@ -1077,8 +1077,13 @@ if RISER:
                             "via, and the pour meets it at one neck")
     # J3 and J4 are in the row between the socket and the outline: no free site on the
     # front for a pinout block, as on R1 for J4 and J6
-    for _j in ("J3", "J4"):
-        _q["connector_labels"][_j] = {"back_only": "the labeller tries the connector's own side first and finds no free site there for its pinout block at 1.5 mm in the board's face within 40 mm of the part, flat or turned (route r2 on the riser, 2026-11-03): the cap is the Pi's 85 x 56 now and the row of connectors fills its edge; the block is on the back, behind it"}
+    # ⚠ J3 IS back_if_full, NOT back_only: on 1 route of 11 (nudge n6, 2026-11-05) the
+    # labeller found room for a word at each of J3's ways on the front -- "1 24", "G", "SCK",
+    # "SDT", front-reading, way 1 marked, no silk DRC -- and back_only then failed hard as
+    # stale. Either face is right for it; J4 has never landed on the front.
+    _why = "the labeller tries the connector's own side first and finds no free site there for its pinout block at 1.5 mm in the board's face within 40 mm of the part, flat or turned (route r2 on the riser, 2026-11-03): the cap is the Pi's 85 x 56 now and the row of connectors fills its edge; the block is on the back, behind it"
+    _q["connector_labels"]["J3"] = {"back_if_full": _why}
+    _q["connector_labels"]["J4"] = {"back_only": _why}
     # moved off the socket's row with J5, the switch line no longer crosses the cut
     del _q["return_slot_ok"]["UI_SW_B"]
     # J5 at the board's -X end: the encoder line runs along the socket's rows to reach it,
