@@ -615,7 +615,7 @@ the same space.
 
 1. **Join the sections**, then slide the bridge in **from the -Y side**, tenons up, into the two
    mortises either side of the seam, until it stops at the light window. It goes in the way a
-   knee lever does, but it is a step tighter: 0.35 in the levers' 0.45 mortises, so it needs a
+   knee lever does, but it is tighter: 0.25 in the levers' 0.45 mortises, so it needs a
    firmer push. If it binds, file the tenon (a round file along the slide), never the floor's
    mortises: the levers share them.
 

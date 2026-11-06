@@ -37,8 +37,10 @@ A STEP TIGHTER THAN THE LEVERS: 0.35, not their 0.45 (user, 2026-11-05: "a bit l
 good for the levers since they have a lot of tenons but for a support bracket it means it doesn't
 do its job well"). 0.35 is the step under 0.45 on the levers' own full-length ladder (fit_plate9:
 0.275 too tight, 0.35 right, 0.45 a bit loose). The mortises are the levers' and stay at 0.45, so
-the bridge's tenon is the levers' tenon offset out by the difference (GROW, 0.10) on every face,
-its rounded corners included.
+the bridge's tenon is the levers' tenon offset out by the difference (GROW) on every face,
+its rounded corners included. THEN 0.25 (user, 2026-11-06, the 0.35 printed: "grip a bit better
+but they could go one tick tighter", and the tick is the same 0.10 again). Under the 0.275 that
+was too tight on ONE lever tenon a fifth this length: the print is the judge, not the ladder.
 
 NO RETAINER. Only the tenons' fit holds it in Y, as it holds the knee levers, whose depth lock
 is still undesigned (knee_lever: an M4 does not fit beside a tenon). Every bit of floor over
@@ -61,8 +63,8 @@ Z0 = Z_MATE - T                         # the plate's underside (its bed face)
 Y0 = CH.Y_LO - CH.T / 2.0               # the -Y rail's outer face
 Y1 = D.LIGHT_WIN_Y0 - KL.MORT_CLR       # the tenons' end: c short of the mortises' closed end
 PRINT_UP = (0.0, 0.0, 1.0)              # plate on the bed, tenons up: the levers' own print
-FIT_CLR = 0.35                          # the bridge's clearance in the levers' mortises
-GROW = KL.MORT_CLR - FIT_CLR            # 0.10: what the levers' tenon grows by, every face
+FIT_CLR = 0.25                          # the bridge's clearance in the levers' mortises
+GROW = KL.MORT_CLR - FIT_CLR            # 0.20: what the levers' tenon grows by, every face
 
 
 def _grown(solid, d):
@@ -123,8 +125,8 @@ def _undercut(x, out, y0, y1):
     rising outward from the edge at the mating plane. The tenon's root foot is the mortise's
     width at the mating plane, 2.0 past a neck-wide plate on each side: flat over air. This
     makes its underside a 45 deg overhang off the plate edge. The plane meets the (grown)
-    root's chamfer at the height of the mortise's mouth (c, 0.45 over the mating plane), so
-    what the joint locates on, inside the mortise, is untouched. Below the plane is the next slot's lever."""
+    root's chamfer within GROW/2 of the mortise mouth's height (c, 0.45 over the mating plane),
+    so what the joint locates on, inside the mortise, is all but untouched. Below the plane is the next slot's lever."""
     d = 4 * D.LEVER_PITCH
     pts = [(x, Z_MATE), (x + out * d, Z_MATE + d), (x + out * d, Z0 - 1.0), (x, Z0 - 1.0)]
     w = cq.Workplane("XZ").polyline(pts).close().extrude(-(y1 - y0))   # XZ extrudes -Y: flip
