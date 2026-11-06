@@ -1,5 +1,35 @@
 # bronner — open work items (2026-09-30)
 
+## 2026-11-06 NIGHT: output_panel 9/11, OPTICAL SECOND SEED, PI SPACER GONE
+
+- **output_panel R2 9 of 11** (merged, opanel2). Re-scored at the committed A23 limits
+  (1.5x / 10 mm) the E series was 7 of 11, not 8: an earlier table read boards scored at
+  2.0x. Then I2C2_SDA got `return_slot_ok` 6.5 mm (TUSB320 config bus), and ROLE_INT_N got
+  bounded `closure_limits` 2.0x / 50 mm (cadkit 8976301, lead's conditions). The masking
+  check, old vs new fail sets per board: only those two go, and every board still has 7
+  waived. Left: e1 (+3V3 split, hard A1) and e4 (I2C2_SCL open).
+- **LOST on output_panel:**
+  - Pre-laid C53 +3V3 via north: 5 of 11 (opens e5 / e6 / e9).
+  - Pre-laid I2C2_SCL escape off U13 pin 8 to a via at (137.79, 96.00): 7 of 11. It fixes
+    e1 AND e4, but e0 / e2 leave V5_PRE open and e3 / e9 cut slots.
+  - Every pre-lay tried on this board so far trades one route's open for another's.
+- **optical, second seed.** Seed 29: 11 of 18 refused (1 matched copper, 10 A23), 7 kept, 4
+  clean. Seed 11: 9 refused, 9 kept, 8 clean. Seed 29's refusals reach past the decap rails
+  (V5_PRE, FLASH_TX/RX, I2C2_SCL 92 mm, LED_ROW 157 mm): a move near the dense core
+  re-closes the long way. Lead's ruling: the kept board unmoved is the shipping layout; eco
+  is a repair tool, not a rate to chase.
+- **eco move fixed (cadkit 4e12980).** Copper of another net within 0.2 mm of a moved pad's
+  OUTLINE is now taken up too, not only copper near its centre. Seed 29's C130 left a +5V via
+  over its VBUS pad's edge, 1.08 from the centre. A spared escape under a moved pad is now
+  refused.
+- **pi_cap parked at 9 of 11 (lead).** USER-HANDS: the last two (UI_DC on n2 / n5) share the
+  In1 lane under the socket with UI_RES_N. Freeing it means moving the ribbon's slow lines,
+  a J5 pinout change that touches ui_board: brenner's or the user's call. No 4-layer
+  reassignment.
+- **Pi spacer dropped (user, merged).** The insert pocket now has a 3.4 clearance hole under
+  it to the inside floor. The M3 x 12's head sits on the Pi and its tip hangs 6.1 past the
+  insert, 3.2 off the floor.
+
 ## 2026-11-05 LATE: R2 ROBUSTNESS WITH A23 ON
 
 | board | set | clean with A23, before | now | what did it |
