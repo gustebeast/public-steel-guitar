@@ -1,16 +1,20 @@
 """Move parts on a finished board without routing it again, and measure how well that works.
 
     KiCad-python cadkit/pcbflow/eco.py move elec/out/board moves.json
+    KiCad-python cadkit/pcbflow/eco.py check elec/out/board
     KiCad-python cadkit/pcbflow/eco.py trials elec/out/board 18
 
 `move` edits the board in place. moves.json is {"R12": [x_mm, y_mm], ...} in KiCad's frame. It
 takes up the moved parts' own copper within RIP mm of where they stood or now stand, and any
 copper in the way of where they now stand; `finish.py --keep-route` then closes what is open
-and runs every check. About a minute, against half an hour for a route.
+and runs every check. About a minute, against half an hour for a route. Then `check`: it exits
+REFUSED if close_last could only re-close a net the long way (quality A23), and that move is put
+back -- restore the board from before `move`.
 
 `trials` does that to scratch copies, one random legal move of a small part each (0.5 to 1.5 mm,
 courtyards clear), and counts how many come back clean, meaning no quality FAIL beyond what the
-unmoved board shows. The board named is not touched. It is the number to read for "does this
+unmoved board shows. A move whose re-closure fails A23 is refused like one on matched copper,
+and logged with the net and the lengths. The board named is not touched. It is the number to read for "does this
 board survive a small change".
 
 WHY IT EXISTS (output_panel R2, 2026-11-02). A full route of that board left 1 to 4 nets open,
@@ -21,7 +25,10 @@ repair closed 11 of 18 random moves with no route at all, 7 of them clean.
 ⚠ WHAT IT WILL NOT DO. close_last knows nothing of pairs, so a move that takes up matched copper
 fails skew or the via budget, whether the part is on that net or only landed on its track
 (R47, C52 and C36 on output_panel were bystanders). `move` refuses those and exits REFUSED; they
-need a person. A supply keeps the widest width taken up from it, through close_widths, down
+need a person. So does a move whose re-closure is a detour (A23, `check`): optical's decaps
+feed their supply through the pad in series (lead, 2026-11-05: that is good decoupling, keep it),
+so moving one takes up the rail's link, and close_last found 38 mm round a 2.4 mm gap at every
+width down its ladder -- the straight way is blocked by the moved part, not by the width. A supply keeps the widest width taken up from it, through close_widths, down
 close_last's own ladder, so read the checks and not just the unconnected count. The moved position is on the board only: copy it into the generator's
 placements, or the next regenerate puts the part back.
 
@@ -45,7 +52,7 @@ import pcbnew
 
 RIP = 3.0                   # mm, of the moved parts' own nets
 CLEAR = 0.75                # mm from a new pad centre to any track's edge
-REFUSED = 3                 # exit code: the move would disturb matched copper
+REFUSED = 3                 # exit code: the move would disturb matched copper, or re-closed a detour
 FINE = 0.6                  # mm: a part with pad centres closer than this is fine-pitch
 
 
@@ -180,6 +187,17 @@ def move(stem, moves):
     return len(gone)
 
 
+def detours(stem, floor=()):
+    """A23's failures on the finished board at stem, as texts, less any net in `floor`."""
+    try:
+        with open(stem + ".quality.json", encoding="utf-8") as fh:
+            res = json.load(fh).get("results", ())
+    except (OSError, ValueError):
+        return ["no %s.quality.json: run finish first" % os.path.basename(stem)]
+    return [r["text"] for r in res
+            if r.get("rule") == "A23" and r.get("status") == "FAIL" and r.get("subject") not in floor]
+
+
 def legal_moves(stem, count, seed=11):
     """`count` random single moves of small parts that keep courtyards and the edge clear."""
     board = pcbnew.LoadBoard(stem + ".kicad_pcb")
@@ -236,6 +254,7 @@ def trials(stem, count):
     shutil.rmtree(dst, ignore_errors=True)
     shutil.copytree(src, dst)
     line, floor = _finish(os.path.join(dst, name), name, env)
+    long_way = {t.split()[1] for t in detours(os.path.join(dst, name))}
     shutil.rmtree(dst, ignore_errors=True)
     print(" 0 unmoved: %s" % line, flush=True)
     if floor is None:
@@ -257,6 +276,13 @@ def trials(stem, count):
             continue
         taken = next((ln for ln in t.stdout.splitlines() if ln.startswith("took up")), "?")
         last, fails = _finish(copy, name, env)
+        bad = detours(copy, long_way)
+        if bad:
+            refused += 1
+            print("%2d %-6s %.2f mm, REFUSED: re-closed the long way: %s"
+                  % (n, ref, far, "; ".join(bad)), flush=True)
+            shutil.rmtree(dst, ignore_errors=True)
+            continue
         link = " 0 unconnected, 0 violation" in " " + last
         ok = link and "verify" not in last and fails is not None and fails <= floor
         connected += link
@@ -268,6 +294,11 @@ def trials(stem, count):
 
 
 def main():
+    if sys.argv[1:2] == ["check"] and len(sys.argv) == 3:
+        bad = detours(sys.argv[2])
+        for t in bad:
+            print("REFUSED: re-closed the long way: %s" % t)
+        raise SystemExit(REFUSED if bad else 0)
     if len(sys.argv) != 4 or sys.argv[1] not in ("move", "trials"):
         raise SystemExit(__doc__)
     if sys.argv[1] == "move":
