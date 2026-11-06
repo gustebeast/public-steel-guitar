@@ -151,6 +151,7 @@ HARD = {
     "A19": ("",),
     "A20": ("",),
     "A21": ("",),
+    "A24": ("",),
     "A16": ("steady-state worst case", "can make NO CLAIM",
             "no worst-case voltage is declared", "NO voltage rating is declared",
             "states no `max`", "with no `src`", "gives no `why`"),
@@ -2617,6 +2618,32 @@ def closure_detours(ctx):
     if not out:
         out.append(("-", None, "no closure laid by close_last is on this board"))
     return out
+
+
+@rule("A24")
+def no_short_in_final_drc(ctx):
+    """The board's last DRC (<stem>.finish.drc.json) reports no shorting_items.
+
+    ⚠ "0 FAIL" PRINTED NEXT TO A POWER-TO-GROUND SHORT (2026-11-06). finish.py counts DRC
+    errors as the route's score and this pass did not read DRC at all, so pi_cap seed 53
+    G2 finished "1 unconnected, 3 violation(s) | quality: 0 FAIL" with +5V_PI on C1's GND
+    pad. layout now refuses declared copper over a moved pad (cadkit 8698c5d); this is
+    the backstop for a short from anywhere else -- the router, a repair, a fill.
+    """
+    try:
+        with open(ctx.stem + ".finish.drc.json", encoding="utf-8") as fh:
+            d = json.load(fh)
+    except (OSError, ValueError):
+        return [("final DRC", None, "no .finish.drc.json beside the board: not checked")]
+    rows = []
+    for v in d.get("violations", []):
+        if v.get("type") != "shorting_items" or v.get("severity") == "warning":
+            continue
+        descs = [i.get("description", "") for i in v.get("items", [])]
+        nets = sorted({n for t in descs for n in re.findall(r"\[([^\]]+)\]", t)})
+        rows.append((" / ".join(nets) or "short", False,
+                     "%s shorted: %s" % (" and ".join(nets) or "two nets", " + ".join(descs))))
+    return rows or [("final DRC", True, "no shorting_items in the final DRC")]
 
 
 @rule("A17")
