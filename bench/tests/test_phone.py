@@ -36,23 +36,23 @@ def test_creep_moves_base_and_stays():
 def test_bend_returns_on_release_and_only_its_owner_can_release():
     p = P.Pitch(base=0.5)
     p.press("a", "wu")
-    assert p.target == 2.5
+    assert p.target == 0.5 + P.BENDS["wu"]
     p.release("b")                  # another phone letting go does nothing
-    assert p.target == 2.5
+    assert p.target == 0.5 + P.BENDS["wu"]
     p.release("a", "wu")
     assert p.target == 0.5
 
 
 def test_raise_is_clamped_and_buttons_say_so():
-    p = P.Pitch(base=P.RAISE_MAX - 1.0)
+    p = P.Pitch(base=P.RAISE_MAX - (P.BENDS["hu"] + P.BENDS["wu"]) / 2)
     assert p.can("hu") and not p.can("wu")
     assert not p.press("a", "wu")
     p.press("a", "pu")
     for _ in range(100):
         p.tick(0.05)
     assert p.base == P.RAISE_MAX and not p.can("pu") and not p.can("hu")
-    p = P.Pitch(base=P.RAISE_MAX - 2.5)
-    p.press("a", "wu")              # bent to max - 0.5: a creep under it stops at max - 2
+    p = P.Pitch(base=P.RAISE_MAX - P.BENDS["wu"] - 0.5)
+    p.press("a", "wu")              # bent to max - 0.5: a creep under it stops at max - wu
     p.press("a", "pu")
     for _ in range(100):
         p.tick(0.05)
@@ -67,9 +67,9 @@ def test_driver_moves_fast_for_steps_and_slow_for_creep():
     m.log.clear()
     p.press("a", "hu")
     d.step(0.05)
-    half = math.ceil(P.turns(1.0) / P.STEP_S * 60.0)          # a half step in STEP_S
+    half = math.ceil(P.turns(P.BENDS["hu"]) / P.STEP_S * 60.0)          # a half step in STEP_S
     assert {r[3] for r in m.log} == {half}
-    assert m.log[0][2] == P.RAISE_SIGN * round(P.turns(1.0) * P.COUNTS_PER_TURN)
+    assert m.log[0][2] == P.RAISE_SIGN * round(P.turns(P.BENDS["hu"]) * P.COUNTS_PER_TURN)
     p.release("a", "hu")
     m.log.clear()
     d.step(0.05)
@@ -115,7 +115,7 @@ def test_a_busy_port_is_left_alone_until_a_press():
     m.busy = False
     p.press("a", "hu")
     d.step(0.05)                              # the press reads the motors, then moves them
-    assert d.home == {1: 0} and m.goal[1] == P.RAISE_SIGN * round(P.turns(1.0) * P.COUNTS_PER_TURN)
+    assert d.home == {1: 0} and m.goal[1] == P.RAISE_SIGN * round(P.turns(P.BENDS["hu"]) * P.COUNTS_PER_TURN)
 
 
 def test_no_link_until_the_port_is_open_and_shut_when_no_page_shows():
@@ -220,8 +220,8 @@ def test_server_page_icon_and_a_dropped_phone_lets_go(port):
             assert b"101" in await r.readuntil(b"\r\n\r\n")
             assert (await _read_msg(r))["link"] == "mock"
             w.write(_ws_frame({"t": "down", "b": "wu"}))
-            assert (await _latest(r))["bend"] == 2.0
-            assert motors.goal[1] == P.RAISE_SIGN * round(P.turns(2.0) * P.COUNTS_PER_TURN)
+            assert (await _latest(r))["bend"] == P.BENDS["wu"]
+            assert motors.goal[1] == P.RAISE_SIGN * round(P.turns(P.BENDS["wu"]) * P.COUNTS_PER_TURN)
             w.close()                                  # the phone vanishes mid-bend
             await asyncio.sleep(0.3)
             assert hub.p.bend is None and motors.goal[1] == 0
@@ -331,7 +331,7 @@ def test_a_tuned_string_plays_its_curve_and_the_rest_the_model():
     d = P.Driver(m, p, raise_sign=-1, curves={1: curve})
     d.step(0.05)
     m.log.clear()
-    p.press("a", "hu")
+    p.press("a", "wu")              # one semitone: the 100-cent knot
     d.step(0.05)
     goal = {r[1]: r[2] for r in m.log}
     assert goal[1] == 4000

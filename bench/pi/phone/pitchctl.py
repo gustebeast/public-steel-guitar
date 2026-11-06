@@ -9,7 +9,7 @@ in src/dimensions.py (the carriage travel between two pitches is DL_OPEN * ((f2/
 
     base    where pitch up / pitch down leave the strings: it creeps while one is held and
             stays where it is let go
-    bend    0, +-1 or +-2 on top of base while half / whole step is held; 0 again on release
+    bend    0, +-0.5 or +-1 on top of base while half / whole step is held (BENDS); 0 again on release
 
 Limits: base + bend stays within LOWER_MIN..RAISE_MAX, set wide (user, 2026-11-05: the bench
 wants no stop). The pitch-range budget is still about 4 semitones up by wire strength
@@ -118,7 +118,8 @@ class Pitch:
                 "can": {b: self.can(b) for b in BUTTONS}, "max": RAISE_MAX, "min": LOWER_MIN}
 
 
-BENDS = {"hu": 1.0, "hd": -1.0, "wu": 2.0, "wd": -2.0}
+# semitones; user 2026-11-06: WHOLE now goes the distance HALF used to (1), HALF half that
+BENDS = {"hu": 0.5, "hd": -0.5, "wu": 1.0, "wd": -1.0}
 BUTTONS = ("pu", "pd", "hu", "hd", "wu", "wd")
 
 

@@ -6,8 +6,8 @@ A page the Pi serves at **https://public-steel-guitar.home** (also `.local`, and
 | Button | Held | Let go |
 | --- | --- | --- |
 | PITCH up / down | the strings creep, 35 cents a second | they stay where they are |
-| HALF up / down | they go ±1 semitone over 0.25 s | they go back |
-| WHOLE up / down | they go ±2 semitones over 0.25 s | they go back |
+| HALF up / down | they go ±½ semitone over 0.25 s | they go back |
+| WHOLE up / down | they go ±1 semitone over 0.25 s (user 11-06: was 2, HALF was 1) | they go back |
 
 Each string turns its own motor by its own amount for an interval, from the string model in
 `src/dimensions.py`: nut travel = `DL_OPEN · ((f2/f0)² − (f1/f0)²)`, 2 mm of nut per motor
