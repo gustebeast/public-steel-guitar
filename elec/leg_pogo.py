@@ -204,6 +204,9 @@ def design(kind, joint):
         # 0.35, not 0.3: the quality pass measured 0.30 as a hair under what 1 A needs at a
         # 10 C rise (IPC-2221, 1 oz outer), and 1 A is what the contacts may be asked for.
         "net_widths": {"+5V": 0.5, "GND": 0.5} if kind == "male" else {"+5V": 0.35, "GND": 0.35},
+        # ...and close_last starts its ladder there too: with no close_widths it joined an open
+        # +5V at its default 0.2 mm (male bottom, 2026-11-06: A1, 1 A on a 0.20 neck)
+        "close_widths": {"+5V": 0.5, "GND": 0.5} if kind == "male" else {"+5V": 0.35, "GND": 0.35},
         "mounting_hole_xy": hole,
         "single_sided": True,
         "qty_per_instrument": 1,
@@ -227,6 +230,15 @@ def design(kind, joint):
     # The stem is 22 characters and the back is 10-13 mm wide with vias across it.
     notes["silk_name"] = "POGO %s %s" % ("MALE" if kind == "male" else "FEM",
                                          "BOT" if joint == "bottom" else "TOP")
+    # J2's way-1 mark: its courtyard covers the whole strip beside pad 1 (the board is 10-13 mm
+    # wide), so no site outside it exists; the housing BODY stops short of pad 1's tail, and
+    # the dot goes in that band, as a pin-1 mark on a connector usually does (A17, 2026-11-06).
+    # The silk rule: a label with no site gets a one-letter identifier at the part and its
+    # full text where there is room. On these boards neither fits today (2026-11-06: the
+    # male J1's ways, TP2-TP4) -- docs/bronner-work-items.md; opted in so it lands if room appears.
+    notes["silk_legend"] = True
+    notes["silk_mark_in_body"] = {"J2": "no way-1 site outside J2's courtyard on a 10-13 mm "
+                                        "board; the band between pad 1 and the housing body is bare"}
     notes["quality"] = _quality(kind, parts)
     return stem, parts, notes
 
