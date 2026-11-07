@@ -182,10 +182,19 @@ UI_FP = "Connector_PinHeader_1.27mm:PinHeader_2x08_P1.27mm_Horizontal"
 # no way back east to pin 37 (or to pin 36, tried next), and it came back open both
 # times. Pin 7 is on the side the escape already faces. GPIO4 is a plain GPIO unless
 # the 1-wire overlay is loaded, which this instrument does not use.
+# ⚠ ON THE RISER (R2) THEY ARE BACK EAST: UI_DC PIN 37 (GPIO26), UI_RES_N PIN 36 (GPIO16)
+# (2026-11-06). J5 now stands at the board's -X end with its mouth -X, and both lines leave
+# it from the north end of the edge row; pin 7 and pin 22 put each one's run through the
+# In1 lane under the socket that the switch and encoder lines also need. Scored over 29
+# reroutes (unmoved + 28 single-part nudges, two sets old and one fresh): 28 clean against
+# 9 of 11 at 7 / 22 -- the one miss is C6 nudged 0.7 mm into UI_RES_N's lane past J5.
+# GPIO16 is SPI1 CE2, claimed only by spi1-3cs, which INSTALL_NOTES already bans; GPIO26 is
+# a plain GPIO.
 UI_WAYS = (("UI_SW_A", 11), ("UI_SW_B", 13), ("UI_SW_C", 15), ("UI_SW_D", 16),
            ("UI_SW_PUSH", 18), ("UI_ENC_A", 29), ("UI_ENC_B", 31), ("GND", 6),
-           ("UI_SCLK", 40), ("+3V3_PI", 1), ("UI_SDIN", 38), ("UI_DC", 7),
-           ("UI_CS_N", 12), ("UI_RES_N", 22),
+           ("UI_SCLK", 40), ("+3V3_PI", 1), ("UI_SDIN", 38),
+           ("UI_DC", 7 if REV == 1 else 37),
+           ("UI_CS_N", 12), ("UI_RES_N", 22 if REV == 1 else 36),
            # ⚠ NOT THE PI'S. The power button's two throws pass straight through this board
            # to J4 and on to the output panel, which is where the supply comes in and the
            # only place it can be cut. No header pin: the Pi must not be able to hold its
@@ -764,7 +773,10 @@ BOARD_NOTES = {
         },
         "unconnected": {
             "J1": {
-                "pins": "3 5 14 17 20 21 24 26 27 28 32 33 35 36 37",
+                # from the same sets the netlist uses, so moving a GPIO cannot leave this stale
+                "pins": " ".join(str(_n) for _n in range(1, 41) if _n not in (
+                    set(PI_5V) | set(PI_GND) | {PI_SCLK, PI_MOSI, PI_SCLK_FOOT, PI_MOSI_FOOT}
+                    | {h for _s, h in UI_WAYS if h})),
                 "why": "Pi header pins this cap gives no function (the GPIO map is in pi_cap.py)"
             },
             "J2.[34]": "the 6-way's two middle ways: no conductor (harness.PI_5V_LINK)",
@@ -1110,15 +1122,18 @@ if RISER:
     # design), and +5V_PI is another cut.
     for _n in ("UI_RES_N", "UI_SW_A", "UI_SDIN", "UI_CS_N"):
         _q["return_slot_ok"][_n]["mm"] = 9.3
-    # ...and with them at 0.15 (below), UI_SCLK and PWR_SW_UP no longer cross the row on any of
-    # eleven reroutes: their exemptions would be licences nobody uses (quality reads that as a
-    # FAIL), so they go. UI_ENC_B's run beside the rows to J5 came back 16.83-17.09 mm on all
-    # eleven, against the 16.60 one route measured: signed to 17.5, still short of a second
-    # pass along the row.
+    # UI_SCLK and PWR_SW_UP stay signed to the same ceiling. With the slow lines at 0.15
+    # (below) neither crossed the row on eleven reroutes and both were deleted, as quality then
+    # failed an entry no route used. Since cadkit 6783ee1 such an entry is a WARN, and over 29
+    # reroutes with UI_DC / UI_RES_N on pins 37 / 36 (2026-11-06) PWR_SW_UP crosses on the
+    # unmoved route and UI_SCLK on three nudged ones: whether a line crosses is the router's
+    # pick on the day, so the row's lines are signed to the row, used or not. UI_ENC_B's run
+    # beside the rows to J5 came back 16.83-17.09 mm on all eleven, against the 16.60 one route
+    # measured: signed to 17.5, still short of a second pass along the row.
     # UI_ENC_A now crosses the row once, as the others do (5.43 mm on the unmoved route): the
     # same ceiling.
     for _n in ("UI_SCLK", "PWR_SW_UP"):
-        del _q["return_slot_ok"][_n]
+        _q["return_slot_ok"][_n]["mm"] = 9.3
     _q["return_slot_ok"]["UI_ENC_B"]["mm"] = 17.5
     _q["return_slot_ok"]["UI_ENC_A"] = {
         "mm": 9.3, "why": "the encoder's other channel, a mechanical contact read at human "

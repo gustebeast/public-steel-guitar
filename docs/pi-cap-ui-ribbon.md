@@ -53,11 +53,19 @@ switch lines — which are static on a human timescale and make quiet neighbours
 | 9 | SCLK | 40 | GPIO21 | **SPI1 SCLK** |
 | 10 | +3V3 | 1 | — | see the caveat below |
 | 11 | SDIN | 38 | GPIO20 | **SPI1 MOSI** |
-| 12 | DC | 7 | GPIO4 | plain GPIO. **GPIO4 is the default 1-Wire pin: do not enable `w1-gpio` on its default pin** |
+| 12 | DC | 37 (R1: 7) | GPIO26 (R1: GPIO4) | plain GPIO. R2 moved it back east (2026-11-06, below). On R1, **GPIO4 is the default 1-Wire pin: do not enable `w1-gpio` on its default pin** |
 | 13 | CS_N | 12 | GPIO18 | **SPI1 CE0** |
-| 14 | RES_N | 22 | GPIO25 | plain GPIO. Moved from pin 33 / GPIO13 on 2026-10-06: the `spi5-1cs` overlay muxes GPIO13 to SPI5 MISO |
+| 14 | RES_N | 36 (R1: 22) | GPIO16 (R1: GPIO25) | plain GPIO under `spi1-1cs` (GPIO16 is SPI1 CE2, claimed only by `spi1-3cs`, which INSTALL_NOTES bans). R1: moved from pin 33 / GPIO13 on 2026-10-06, as the `spi5-1cs` overlay muxes GPIO13 to SPI5 MISO |
 | 15 | PWR_SW_UP | — | — | the power button's throw: passes through the cap to J4, NOT on a Pi pin |
 | 16 | PWR_SW_DN | — | — | the other throw, likewise |
+
+**R2 (the riser cap) moved DC and RES_N, 2026-11-06.** The ribbon order is unchanged; only
+the two Pi pins moved, so the UI board is untouched. On the riser J5 stands at the board's -X
+end, and pins 7 / 22 sent both lines through the In1 lane under the socket that the switch and
+encoder lines need. Over 29 reroutes (the unmoved board plus 28 single-part nudges), pins 37 /
+36 came back clean on 28, against 9 of 11 on 7 / 22. Swapping RES_N or DC onto a south-end way
+of the ribbon was tried as well (six variants) and did worse. The Pi software takes DC and
+RES_N from this table, so a display driver needs `dc=GPIO26, reset=GPIO16` on R2.
 
 This is `harness.UI_RIBBON`, the order both boards are built from (`elec/pi_cap.py` asserts it). It replaced the
 first order on 2026-10-02, when the UI board could not route that one; each signal kept its Pi pin.
