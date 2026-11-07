@@ -8,7 +8,8 @@ and the 688 bridge bearing the string turns over. ALL OF IT IS DRAWN AT THE INST
 COORDINATES, so nothing here re-derives a position: the two printed parts below are only what
 holds those parts up off a plank.
 
-    HEAD      motor cradle + the crown tower. The crown is a Ø4 x 4 steel dowel (the stand-ins'
+    HEAD      the instrument's own motor bay (motor_bank's coupon, on string 1's motor) + the crown
+              tower. The motor is held down by its tee board's M4, as in the body. The crown is a Ø4 x 4 steel dowel (the stand-ins'
               91595A119) at the keyhead's break edge, NUT_BLOCK_X, string top at STRING_Z.
               The string goes over it and down to a bought guitar tuner, mounted in the plank
               itself well -X of the head (user) -- so the head fixes the crown-to-motor spacing,
@@ -27,7 +28,9 @@ its speaking length by 0.15 mm (607.15 -> 607.00), well under how well a plank i
 THE PLANK: its top is Z_PLANK (the motor's floor less the bases' thickness), and the +Y faces of
 both bases are one plane, Y_EDGE -- lay them flush with the plank's +Y edge and they are in line.
 Crown dowel to bridge-bearing axle is SCALE_SPAN along X: that is the only measurement to make.
-Both print BASE DOWN; the cap prints flat. PETG-GF.
+PRINT POSES: the head and the station BASE DOWN (+Z up) -- the station's rail and room are
+bridges between its two full-height side walls, the bay's own overhangs are the coupon's -- the cap
+and the tee dummy flat. PETG-GF.
 
     py -3.12 -m src.plank_bench      -> coupons/plank_head.step, plank_station.step, plank_cap.step
 """
@@ -44,7 +47,7 @@ from . import components as C
 from . import screw_rail as SR
 from . import belt_tensioner as BTn
 from .helpers import box_at, cyl, cyl_y
-from cadkit.fasteners import M4, m4_button_screw, seated_insert, headed_screw, FastenerSpec
+from cadkit.fasteners import M4, m4_button_screw, seated_insert
 from cadkit.supports import printable_bore
 
 I = 0                                            # string 1
@@ -69,19 +72,20 @@ assert WOOD_CSK_DEPTH < BASE_T - D.MIN_WALL_2P, "the countersink eats the base"
 # ── THE STATION ──────────────────────────────────────────────────────────────────────────
 WALL = 6 * D.BEAD                                # 4.8: the room's side walls
 LANE = 8 * D.BEAD                                # 6.4: the room's half-width, the nut's 10.5 AF + 1.0 a side
-LANE_LO = 9 * D.BEAD                             # 7.2: ...and the bay's, round the pulley and its belt
-Y0, Y1 = SY - LANE - WALL, SY + LANE + WALL      # 31.55 .. 53.95, the station's Y faces
+# THE BAY, under the rail: one lane the whole length, open -X for the belt, its walls standing full
+# height either side -- so the rail and the room over it are BRIDGES between two walls, base down,
+# and nothing hangs off -X (user, 2026-11-07: a bay cut wide below z -40 left them cantilevered).
+# Its +Y side is the clamp's: near the top of travel the clamp's half A reaches y 50.12 inside the
+# station's X span (and z -40.1); the belt itself spans y 37.9..47.6 there.
+LANE_HI = 11 * D.BEAD                            # 8.8: the bay's +Y half-width (1.43 past the clamp)
+WALL_HI = 4 * D.BEAD                             # 3.2: the +Y wall outside it
+Y0, Y1 = SY - LANE - WALL, SY + LANE_HI + WALL_HI   # 31.55 .. 54.75, the station's Y faces
 Y_EDGE = Y1                                      # every base's +Y face: the plank's edge
 X0 = RX - 7.2                                    # -27.2: the head's -X face, past the rod's socket
 X1 = D.BRIDGE_X + 4.0                            # 4.0: the back wall's inner face
 X1B = X1 + WALL                                  # 8.8
 SLAB_TOP = 12.2                                  # the optical board's underside (OP.PCB_BOT): the cap is the board
 CAP_T = 3 * D.BEAD                               # 2.4
-BAY_X0 = SX - 2.4                                # -14.4: the bay's side walls stop here, -X of it is the belt's
-BAY_Z1 = -40.0                                   # ...below this; above it they run the room's full length
-# THE BELT LEAVES -X: its clamp comes to 5 mm off the pulley's flange on the near row's upper run,
-# a 6.4 x 8.2 block on the belt -- so nothing below BAY_Z1 stands -X of BAY_X0.
-assert BAY_Z1 > D.screw_pulley_z(I) + 8.2 / 2 + D.BEAD, "the bay's walls come down onto the clamp"
 
 # the screw rail, at screw_rail's own numbers -- round bores, since this one builds +Z
 RAIL_BOT, RAIL_TOP = SR.BOT, SR.TOP              # -31.85 .. -22.55
@@ -109,23 +113,14 @@ FIN_X = 60.0
 MX, MY, _MZ = D.motor_pos(I)
 MZ = Z_PLANK + BASE_T + 42.3 / 2                 # the motor pulley's centre: the can stands on the head's floor.
 MOTOR_RISE = MZ - _MZ                            # ~15 over the instrument's: the belt runs ~1.5 deg off level
-FACE_Y = 35.25                                   # the motor's faceplate (motor_bank: the pocket's +Y wall)
-MOTOR_X0, MOTOR_X1 = MX - 21.15, MX + 21.15      # the can, 42.3 square
-MOTOR_Y0 = FACE_Y - D.MOTOR_BODY_L               # its back
-MOTOR_Z0, MOTOR_Z1 = Z_PLANK + BASE_T, Z_PLANK + BASE_T + 42.3
-SIDE_CLR = 0.3                                   # motor_bank's side fit
-FACE_T = 5 * D.BEAD                              # 4.0: M3 x 8 takes 4.0 of the motor's 4.5 tapped depth.
-                                                 # Its +Y face stops 1.0 short of the belt's edge at the motor.
-assert FACE_Y + FACE_T <= MY - 2.5 - 1.0 + 1e-9, "the face wall reaches the belt"
-PILOT_SLOT_D = 22.8                              # the Ø22 pilot boss, as the pocket has it -- open to the top
-NEMA_HALF = 15.5                                 # the bolt square, 31
-M3_CLR_D = 3.4
-CRADLE_W = 3 * D.BEAD                            # 2.4: the side walls
-DRIVER_L, DRIVER_RELIEF = 13.2, 2 * 0.2                  # the driver housing behind the can, and its relief
+# THE MOTOR BAY IS THE INSTRUMENT'S (user, 2026-11-07): motor_bank's own coupon bay, built for
+# string 1's motor, lifted MOTOR_RISE onto the plank. The motor drops in and its CAN tee board (or the
+# coupon's printed dummy) holds it down with the one M4 into the bay's post, exactly as in the body.
 # the crown: the keyhead's break edge, the string's TOP on STRING_Z
 CROWN_X = D.NUT_BLOCK_X                          # -615
 CROWN_Z = D.STRING_Z - D.STRING_GAUGE[I] - D.NUT_PIN_D / 2.0
-TOWER_X0, TOWER_X1 = CROWN_X - 5.0, MOTOR_X0 - SIDE_CLR   # -620 .. the cradle's -X wall
+MX_Y0 = 35.25 - D.MOTOR_BODY_L                  # the motor's back (faceplate y 35.25)
+TOWER_X0 = CROWN_X - 5.0                         # -620; it runs +X to the bay's -X wall
 TOWER_Y0, TOWER_Y1 = SY - 7.2, SY + 7.2
 SCALE_SPAN = BX - CROWN_X                        # 607.0, crown dowel to bearing axle
 
@@ -154,16 +149,14 @@ def _wood_screw(x, y):
 def station() -> cq.Workplane:
     zb = Z_PLANK + BASE_T
     s = _box(X0 - 12.8, FIN_X + 2.0, Y0 - 11.6, Y_EDGE, Z_PLANK, zb)               # base
-    s = s.union(_box(X0, X1B, Y0, Y1, BAY_Z1, SLAB_TOP))                              # head block
-    s = s.union(_box(BAY_X0, X1B, Y0, Y1, zb - 0.01, BAY_Z1 + 0.01))                 # bay walls' block
+    s = s.union(_box(X0, X1B, Y0, Y1, zb - 0.01, SLAB_TOP))                          # the block
     for y0, y1 in ((Y0, Y0 + WALL), (Y1 - WALL, Y1)):                                 # buttress fins
         fin = (cq.Workplane("XZ").polyline([(X1B - 0.01, zb - 0.01), (FIN_X, zb - 0.01),
                                             (X1B - 0.01, BZ)]).close()
                .extrude(-(y1 - y0)).translate((0, y0, 0)))
         s = s.union(fin)
-    # the bay: open -X, under the rail (the pulley's column rises -X of BAY_X0 to its bearing)
-    s = s.cut(_box(X0 - 1.0, X1, SY - LANE_LO, SY + LANE_LO, zb, RAIL_BOT))
-    s = s.cut(_box(X0 - 1.0, BAY_X0, Y0 - 1.0, Y1 + 1.0, zb, BAY_Z1))
+    # the bay: the lane under the rail, open -X for the belt
+    s = s.cut(_box(X0 - 1.0, X1, SY - LANE, SY + LANE_HI, zb, RAIL_BOT))
     # the changer room: over the rail, under the slab, open -X for the hand that spins the nut on
     s = s.cut(_box(X0 - 1.0, X1, SY - LANE, SY + LANE, RAIL_TOP, D.CHANGER_CEIL_Z))
     # ...and open +X through the back wall, between the fins: the ear the string is threaded up
@@ -209,39 +202,58 @@ def cap() -> cq.Workplane:
     return c
 
 
+def _bay():
+    """(bay, dummy board) from motor_bank's coupon, built on string 1's motor, at the plank's height."""
+    from . import motor_bank as MB
+    keep = MB.COUPON_MOTOR
+    MB.COUPON_MOTOR = I
+    try:
+        bay, dummy = MB._coupon_world()
+    finally:
+        MB.COUPON_MOTOR = keep
+    return bay.translate((0, 0, MOTOR_RISE)), dummy.translate((0, 0, MOTOR_RISE))
+
+
+_BAY = None
+
+
+def bay():
+    global _BAY
+    if _BAY is None:
+        _BAY = _bay()
+    return _BAY
+
+
 def head() -> cq.Workplane:
     zb = Z_PLANK + BASE_T
-    cx0, cx1 = MOTOR_X0 - SIDE_CLR, MOTOR_X1 + SIDE_CLR
-    h = _box(TOWER_X0 - 13.0, cx1 + CRADLE_W + 13.0, MOTOR_Y0 - 5.6, Y_EDGE, Z_PLANK, zb)
-    # the cradle: two side walls the can slides between, +Y along to the face wall
-    for x0, x1 in ((cx0 - CRADLE_W, cx0), (cx1, cx1 + CRADLE_W)):
-        h = h.union(_box(x0, x1, MOTOR_Y0, FACE_Y + FACE_T, zb - 0.01, MZ))
-    # the face wall: the motor's own four M3s pull it onto it; the pilot drops into a slot
-    h = h.union(_box(cx0 - CRADLE_W, cx1 + CRADLE_W, FACE_Y, FACE_Y + FACE_T, zb - 0.01, MOTOR_Z1))
-    h = h.cut(cyl_y(PILOT_SLOT_D, FACE_T + 2.0, FACE_Y - 1.0, x=MX, z=MZ))
-    # the driver's housing sits 0.1 under the can's floor line (servo42d, measured): a relief
-    h = h.cut(_box(cx0, cx1, MOTOR_Y0 - 1.0, MOTOR_Y0 + DRIVER_L + 0.3, zb - DRIVER_RELIEF, zb + 0.01))
-    h = h.cut(_box(MX - PILOT_SLOT_D / 2, MX + PILOT_SLOT_D / 2, FACE_Y - 1.0, FACE_Y + FACE_T + 1.0,
-                   MZ, MOTOR_Z1 + 1.0))
-    for dx in (-NEMA_HALF, NEMA_HALF):
-        for dz in (-NEMA_HALF, NEMA_HALF):
-            h = h.cut(printable_bore(M3_CLR_D, FACE_T + 2.0, axis_point=(MX + dx, FACE_Y - 1.0, MZ + dz),
-                                     axis_dir=(0.0, 1.0, 0.0), print_up=UP))
-    # the crown tower, against the cradle's -X wall, the Ø4 x 4 dowel in a cradle on top
+    b, _dummy = bay()
+    bb = b.val().BoundingBox()
+    x0, x1, y0 = TOWER_X0 - 13.0, bb.xmax + 13.0, bb.ymin - 13.0
+    h = _box(x0, x1, y0, Y_EDGE, Z_PLANK, zb).union(b)
+    # the coupon's floor is a rim: the base fills its middle, so relieve it under the driver housing,
+    # which hangs 0.1 under the can's floor line (servo42d, measured)
+    h = h.cut(_box(MX - 21.3, MX + 21.3, MX_Y0, MX_Y0 + 13.5, zb - 0.4, zb + 0.01))
+    # the belt's upper run leaves the motor pulley 1.5 deg off level here, and grazes the bay's
+    # post by 0.16 where the instrument's level belt clears it: a relief, not a change to the bay
+    h = h.cut(_box(MX + 9.0, MX + 20.0, MY - 2.7, MY - 1.2, MZ + 3.0, MZ + 5.5))
+    # the crown tower, against the bay's -X wall, the Ø4 x 4 dowel in a cradle on top
     tz1 = CROWN_Z
-    h = h.union(_box(TOWER_X0, TOWER_X1, TOWER_Y0, TOWER_Y1, zb - 0.01, tz1))
-    h = h.union(_box(TOWER_X0, TOWER_X1, MOTOR_Y0, TOWER_Y1, zb - 0.01, MZ))      # web down the cradle
+    h = h.union(_box(TOWER_X0, bb.xmin + 0.8, TOWER_Y0, TOWER_Y1, zb - 0.01, tz1))
     h = h.cut(cyl_y(D.NUT_PIN_D + 0.2, D.NUT_PIN_L + 0.4, SY - (D.NUT_PIN_L + 0.4) / 2,
                     x=CROWN_X, z=CROWN_Z))
-    # the tail's side: 45 deg off the -X top corner, under the line to a tuner in the plank
-    h = h.cut(cq.Workplane("XZ").polyline([(TOWER_X0 - 1.0, tz1 + 1.0), (CROWN_X - 3.3, tz1 + 1.0),
-                                           (CROWN_X - 3.3, tz1), (TOWER_X0, tz1 - (CROWN_X - 3.3 - TOWER_X0)),
-                                           (TOWER_X0 - 1.0, tz1 - (CROWN_X - 3.3 - TOWER_X0))]).close()
+    # the tail's side: 45 deg off the -X top corner, under the line to the tuner
+    c = CROWN_X - 3.3
+    h = h.cut(cq.Workplane("XZ").polyline([(TOWER_X0 - 1.0, tz1 + 1.0), (c, tz1 + 1.0), (c, tz1),
+                                           (TOWER_X0, tz1 - (c - TOWER_X0)),
+                                           (TOWER_X0 - 1.0, tz1 - (c - TOWER_X0))]).close()
               .extrude(-(TOWER_Y1 - TOWER_Y0 + 2.0)).translate((0, TOWER_Y0 - 1.0, 0)))
-    for x, y in ((TOWER_X0 - 6.5, MOTOR_Y0 + 2.0), (TOWER_X0 - 6.5, Y_EDGE - 6.0),
-                 (cx1 + CRADLE_W + 6.5, MOTOR_Y0 + 2.0), (cx1 + CRADLE_W + 6.5, FACE_Y - 6.0)):
+    for x, y in ((x0 + 6.5, y0 + 6.5), (x0 + 6.5, Y_EDGE - 6.5), (x1 - 6.5, y0 + 6.5), (x1 - 6.5, Y_EDGE - 6.5)):
         h = h.cut(_wood_screw(x, y))
     return h
+
+
+def tee_dummy() -> cq.Workplane:
+    return bay()[1]
 
 
 # ── HARDWARE, AT THE INSTRUMENT'S OWN POSITIONS ──────────────────────────────────────────────
@@ -307,15 +319,10 @@ def assembly():
     out.append(("belt_0", C.belt(*args)))
     for nm, shp in BTn.clamp_components(gap):
         out.append((f"{nm}_0", cq.Workplane("XY").add(shp.val().moved(cloc))))
-    m3 = FastenerSpec(name="M3", screw_d=3.0, pitch=0.5, selftap_d=2.8, shaft_clr_d=3.4,
-                      insert_pilot_d=4.0, insert_depth=4.0, insert_l=4.0, insert_bore_d=3.4,
-                      boss_prot=4.0, boss_wall=1.6, insert_pilot_td_d=3.8, head_recess_d=None,
-                      head_recess_h=None, screw_l=8.0)
-    for dx in (-NEMA_HALF, NEMA_HALF):
-        for dz in (-NEMA_HALF, NEMA_HALF):
-            sc = headed_screw(m3, 8.0, 5.5, 3.0, socket_af=2.5).rotate((0, 0, 0), (1, 0, 0), 90)
-            out.append((f"face_screw_{len([n for n, _ in out if n.startswith('face_screw')])}",
-                        sc.translate((MX + dx, FACE_Y + FACE_T + 3.0, MZ + dz))))
+    from . import wiring as W
+    for nm, shp in W.tee_components():
+        if nm.endswith("_0") and nm.startswith(("tee_pcb", "tee_silk", "tee_insert", "tee_screw")):
+            out.append((nm, shp.translate((0, 0, MOTOR_RISE))))
     for k, (x, y) in enumerate(CAP_SCREWS):
         out.append((f"cap_insert_{k}", seated_insert(M4, (x, y, SLAB_TOP), (0.0, 0.0, -1.0))))
         out.append((f"cap_screw_{k}", m4_button_screw(10.0).rotate((0, 0, 0), (1, 0, 0), 180)
@@ -327,7 +334,8 @@ def assembly():
 def print_parts():
     """{name: solid in its print pose}: the two bases down on z 0, the cap flat."""
     out = {}
-    for nm, w in (("plank_station", station()), ("plank_head", head()), ("plank_cap", cap())):
+    for nm, w in (("plank_station", station()), ("plank_head", head()), ("plank_cap", cap()),
+                  ("plank_tee_dummy", tee_dummy())):
         bb = w.val().BoundingBox()
         out[nm] = w.translate((-bb.xmin, -bb.ymin, -bb.zmin))
     return out

@@ -1451,14 +1451,15 @@ its SECOND hole lines up with the screw, and drive the screw back in.
 ## Plank bench: string 1's whole drive on a wooden plank (2026-11-07)
 
 - **Where:** `src/plank_bench.py`. Print `coupons/plank_head.step` and `coupons/plank_station.step`
-  standing on their bases, as the STEPs are posed, and `coupons/plank_cap.step` flat (PETG-GF). No
-  supports: the only overhangs are bridges of 8.3 mm or less (the rail's and the room's ceilings). The bought and printed hardware is the
+  standing on their bases, as the STEPs are posed, and `coupons/plank_cap.step` and
+  `coupons/plank_tee_dummy.step` flat (PETG-GF). No supports: the station's rail and room are bridges
+  between its two full-height side walls, and the head's motor bay is the instrument's own coupon bay. The bought and printed hardware is the
   instrument's own: string 1's 573-tooth GT2 belt and its clamp, `screw_pulley_hi`, `motor_pulley`,
   the Tr8x2 screw (36.28), the H-nut, an NRB 3.5 x 29.8 guide rod and its `rod_plug`, two 688ZZ (thrust
   and bridge), a Ø8 shaft (the 100 mm one fits: its slot runs out through both faces), a Ø4 x 4 dowel
   for the crown, and the SERVO42D.
-- **Extra hardware:** 4 x M3 x 8 socket head (motor face, 2.5 key), 2 x M4 x 10 button + 2 M4 heat-sets
-  (cap), 8 x #8 flat-head wood screws (the watering-backpack ones, Ø9.3 head), long enough for the
+- **Extra hardware:** the bay's M4 x 10 button + heat-set (the tee board's hold-down, as in the body),
+  2 x M4 x 10 button + 2 M4 heat-sets (cap), 8 x #8 flat-head wood screws (the watering-backpack ones, Ø9.3 head), long enough for the
   plank less 1-2 mm (a 38 mm 2x4 takes 1-1/4"), and a guitar tuner.
 - **The plank:** a 2x4 (or anything as stiff) at least 900 mm long, with a **1/2 in hole drilled
   through it** under the screw: screw the station down first and drill through the hole in its floor. Both bases' +Y faces sit flush with
@@ -1483,9 +1484,10 @@ its SECOND hole lines up with the screw, and drive the screw back in.
   6. String: the ball end goes under the nut's +X ear. Through the window in the station's +X back
      wall (between the fins), push the free end up through the ear's hole, up the slot past the bridge
      bearing's +X side, and over its top.
-- **Head order:** slide the motor in from the open -Y end, pushing it +Y with its pulley already on, until the pilot sits in the
-  face wall's slot, and fit the four M3 x 8 through the face wall into the motor's own holes. Seat the
-  crown dowel in its cradle. Screw the head down (four wood screws).
+- **Head order:** the motor bay is the instrument's, so the motor goes in as it does in the body: drop
+  it in (pulley on), pilot into the faceplate wall's slot, and hold it down with string 1's CAN tee
+  board -- or the printed `plank_tee_dummy` -- and its M4 x 10 into the post's heat-set. Seat the crown
+  dowel in its cradle. Screw the head down (four wood screws, before the belt goes on).
 - **Then** the belt and its clamp, exactly as on the instrument (nut at the top of travel, clamp 5 mm
   off the screw pulley), and the string over the crown to the tuner.
 - **Why:** to run one string's drive at full tension without the instrument: every part is drawn at
