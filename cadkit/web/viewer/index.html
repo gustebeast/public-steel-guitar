@@ -1449,6 +1449,14 @@
   $('secSlide').oninput = e => setSection(true, undefined, +e.target.value);
   $('secSlide').onchange = e => e.target.blur();       // hand the keys back to the page
   $('secVal').onchange = e => { if (isFinite(+e.target.value)) setSection(true, undefined, +e.target.value); };
+  // the mouse wheel over the slider or the number moves the cut 0.1 a notch, up is +
+  for (const id of ['secSlide', 'secVal'])
+    $(id).addEventListener('wheel', e => {
+      e.preventDefault();
+      if (!e.deltaY) return;
+      const s = $('secSlide'), v = Math.round(sec.v * 10) / 10 + (e.deltaY < 0 ? 0.1 : -0.1);
+      setSection(true, undefined, Math.round(Math.min(+s.max, Math.max(+s.min, v)) * 10) / 10);
+    }, { passive: false });
 
   // ── lighting that follows what is shown ──────────────────────────────────────────
   // Three levels. Shadows come from one map fitted round whatever is VISIBLE, so hiding
