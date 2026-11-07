@@ -322,7 +322,7 @@ first boards and writes their first firmware.
   (`docs/optical-bringup-diagnostics.md`, item 3). Have the probe and the pads working
   before anything else is tried.
 * **`motor_ctrl`: two inputs read "fault" until firmware turns their pull-ups on.**
-  `PG_5V` (PA6, from the 5 V buck) and `BUSB_FAULT_N` (PC6, from bus B's switch) are
+  `PG_5V` (PA6 on R1, PE0 on R2, from the 5 V buck) and `BUSB_FAULT_N` (PC6, from bus B's switch) are
   open-drain outputs with no resistor on the board. Both pins must be inputs WITH the
   internal pull-up; as plain inputs they float low and say the Pi's 5 V is bad and bus B
   is shorted on a healthy board.
@@ -345,7 +345,9 @@ first boards and writes their first firmware.
 
 **motor_ctrl**
 * `PG_5V` (PA6) and `BUSB_FAULT_N` (PC6) are both on EXTI line 6: one of them can have
-  the edge interrupt, the other is polled. Both need the internal pull-up.
+  the edge interrupt, the other is polled. Both need the internal pull-up. **R2:** PG_5V
+  is on PE0 (pin 66, EXTI line 0), so both can have an edge interrupt; the firmware's
+  PG_5V pin define follows the board rev.
 * PB2 (BOOT1) is tied hard to ground. Never drive it as an output.
 * CAN2 only works with CAN1's clock on (CAN1 owns the shared filters), even where CAN1
   itself is idle.
@@ -429,14 +431,15 @@ CH32V307 (`motor_ctrl`, `output_panel`):
 * **printf over the two debug wires.** The WCH-LinkE's "SDI virtual serial port" (manual
   5.2.11; CH32V30x is listed; WCH's `SDI_Printf` example). No pin, and it does not depend
   on the clock tree being right. This is the console on both CH32V307 boards.
-* **`motor_ctrl`: PA6 is also UART7_TX (remap 1) and USART1_TX (remap 3).** PA6 is PG_5V,
+* **`motor_ctrl`: PA6 is also UART7_TX (remap 1) and USART1_TX (remap 3).** PA6 is PG_5V (R1;
+  on R2 PG_5V is PE0, alternates TIM4_ETR / UART4_TX by remap, and PA6 is unconnected),
   and its only other node is U5 pin 4, an SOIC lead a grabber holds. Open-drain only: U5
   pulls the same line low when the 5 V rail is bad.
 * **`motor_ctrl`, scope points firmware can wiggle:** PA5 on the pad R18 and R19 share
   and PA4 on the pad R20 and R21 share (the two rail-sense dividers, 5k and 9k1 of source
   impedance behind them), besides PA6 at U5 pin 4.
 * **`output_panel`: toggle PC5.** The relay clicks.
-* **`motor_ctrl`, with no firmware at all:** a 10k from TP5 to PA6 (at U5 pin 4) or to PC6
+* **`motor_ctrl`, with no firmware at all:** a 10k from TP5 to PG_5V (at U5 pin 4) or to PC6
   (at U6 pin 4) is the pull-up the firmware would have supplied, and a meter then reads
   PG and FAULT directly.
 * **`output_panel`: PB2 reads back what PB1 drives.** The two pins are one net now, so the
@@ -449,7 +452,7 @@ CH32V307 (`motor_ctrl`, `output_panel`):
 * **Never drive PB2**, on either board. On `output_panel` it is tied to PB1 (JACK_MODE):
   an output there fights PB1 and moves the jack mode. It stays an input for ever, with
   no pull-up.
-* **`motor_ctrl`: PA6 and PC6 are never push-pull** (U5's PG and U6's FAULT are open-drain
+* **`motor_ctrl`: PG_5V (PA6 on R1, PE0 on R2) and PC6 are never push-pull** (U5's PG and U6's FAULT are open-drain
   outputs on those lines; inputs with the internal pull-up). **PB13 held low stops bus B
   and nothing times it out**: the SN65HVD230 has no dominant time-out.
 * **`motor_ctrl`: PB8 and PB12 (the two CAN RX lines) stay inputs.** Each is driven by
