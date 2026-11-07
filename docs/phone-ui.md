@@ -42,16 +42,25 @@ the instrument flips by itself):
 A held button does not buzz the phone: the page cancels each touch at its start, which stops
 the phone's long-press timer.
 
-## Live pitch line (2026-11-06)
+## Output jack and live pitch line (2026-11-06)
 
-Under the header, one string's pitch, live, off the optical board: note and cents on the left,
+**The output jack always carries string 1** (user: no more arming it for a while with
+`panel listen`; it has to survive reboots). The phone service starts at boot and restarts on
+any failure, and from its start it holds the optical board and the output panel and plays the
+string's SUM to the jack, the same chain as `python3 -m publicbench.panel listen` (`panel.Stream`:
+running lock-in, DC block, resampler held at about 10 ms in the panel's queue). With no panel
+plugged in it keeps trying every 5 s. The jack goes quiet during a /tune, which takes the optical
+board, and comes back when it is done. `--listen N` puts string N on the jack instead; `--listen 0`
+leaves the optical board and the jack alone, for running `panel listen` or other bench scripts by
+hand (they cannot share the ports with the service: stop it first,
+`sudo systemctl stop public-steel-guitar-phone`).
+
+**The pitch line**, under the header, is that string's pitch, live: note and cents on the left,
 Hz on the right while the string rings, `S1 -` while it is quiet, `NO EAR` with no optical
-board. The server (`Listen` in `server.py`) reads the string's SUM signal: the last 0.25 s,
-every 0.1 s, through the bench package's `pitch.track`, as /tune measures. Ringing means 3x
-over a quiet floor that it follows (about 75 rms at duty 32 on the bench). The string is the
-first of `--strings`; `--listen N` picks another, `--listen 0` turns the line off. The board
-is held only while a page shows and is handed to the tuner during a tune. Opening it sends
-`R` first: its converters read exactly zero after a power cut until reconfigured.
+board. It reads the last 0.25 s of the same signal every 0.1 s, while a page shows, through the
+bench package's `pitch.track`, as /tune measures. Ringing means 3x over a quiet floor that it
+follows (about 75 rms at duty 32 on the bench). Opening the optical board sends `R` first: its
+converters read exactly zero after a power cut until reconfigured.
 
 ## Safety: no string is left bent
 

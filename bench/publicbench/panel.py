@@ -121,6 +121,56 @@ class Lockin:
         return (z * np.exp(-1j * np.angle(self.carrier))).real / 2.0
 
 
+class Stream:
+    """One string's two sensor inputs, block by block, to its 48 kHz signal (the running
+    lock-in, SUM or DIFF) and that to the jack: a DC block, then the resampler trimmed to hold
+    QUEUE frames on the way to the DAC. With no panel it only returns the signal. listen()
+    runs one for a while; the phone server runs one all the time (string 1 on the jack)."""
+
+    def __init__(self, p: Panel | None, gain=1.0, level=128, mix="sum"):
+        from scipy.signal import butter
+        self.p, self.gain, self.mix = p, gain, mix
+        self.A, self.B = Lockin(), Lockin()
+        self.dc = butter(2, 20.0, btype="high", fs=48000.0, output="sos")
+        self.zi = None
+        self.fit = Fit(48000.0, p.fs) if p else None
+        self.next_check = None            # None: not started, nothing goes to the jack
+        self.depth = []
+        if p:
+            p.jack(True)
+            p.level(level)
+            p.relay(True)
+
+    def start(self):
+        """Everything up to here was settling the lock-in: from now on the jack plays."""
+        if self.p:
+            self.p.play(np.zeros(QUEUE))
+        self.next_check = time.monotonic()
+
+    def __call__(self, xa: np.ndarray, xb: np.ndarray) -> np.ndarray:
+        from scipy.signal import sosfilt, sosfilt_zi
+        ya, yb = self.A(xa), self.B(xb)
+        x = ya - yb if self.mix == "diff" else ya + yb
+        if not self.p or self.next_check is None:
+            return x
+        if self.zi is None:     # from the first sample, or the carrier is a step at the jack
+            self.zi = sosfilt_zi(self.dc) * x[0]
+        y, self.zi = sosfilt(self.dc, x, zi=self.zi)
+        self.p.play(self.fit(y / 32768.0 * self.gain))
+        if time.monotonic() >= self.next_check:
+            self.next_check = time.monotonic() + 0.25
+            t = time.monotonic()
+            q = self.p.status()["queued"]
+            ahead = (time.monotonic() - t) * self.p.fs + q
+            self.depth.append(ahead)
+            self.fit.trim(np.clip((ahead - QUEUE) / self.p.fs * 0.5, -0.002, 0.002))
+        return x
+
+    def stop(self):
+        if self.p:
+            self.p.relay(False)
+
+
 def tone(a):
     p = Panel()
     print("panel:", p.ask("?"))
@@ -142,7 +192,6 @@ def tone(a):
 
 
 def listen(a):
-    from scipy.signal import butter, sosfilt, sosfilt_zi
     p = Panel()
     o = optical.OpticalLink()
     conv, sa, sb = optical.string_inputs(a.string)
@@ -162,7 +211,6 @@ def listen(a):
         print("a converter is silent; configuring them again:", o.command("R"))
         o.duty(a.duty)
 
-    A, B = Lockin(), Lockin()
     common = optical.CommonNoise(a.string)
     ia, ib = 2 * a.string - 2, 2 * a.string - 1
 
@@ -174,12 +222,7 @@ def listen(a):
         m = common(np.concatenate([optical.inputs(b[2]) for b in blocks]))
         return m[:, ia], m[:, ib]
 
-    fit = Fit(48000.0, p.fs)
-    dc = butter(2, 20.0, btype="high", fs=48000.0, output="sos")
-    zi = None
-    p.jack(True)
-    p.level(a.level)
-    p.relay(True)
+    st = Stream(p, a.gain, a.level, a.mix)
     print("string %d on the jack; ctrl-C stops" % a.string)
     # Everything the set-up above took is backlog, and at the trim's pace it would stay for
     # minutes as latency: run the lock-in on it, throw it away, then start at the right depth.
@@ -187,14 +230,13 @@ def listen(a):
     while time.monotonic() < settle:
         blocks = fresh()
         if blocks:
-            xa, xb = pair(blocks)
-            A(xa), B(xb)
+            st(*pair(blocks))
         time.sleep(0.001)
     s0 = p.status()
-    p.play(np.zeros(QUEUE))
+    st.start()
     o.take()
-    t0 = next_check = time.monotonic()
-    depth, drops, most = [], 0, 0
+    t0 = time.monotonic()
+    drops, most = 0, 0
     try:
         while not a.seconds or time.monotonic() - t0 < a.seconds:
             blocks = fresh()
@@ -203,24 +245,12 @@ def listen(a):
                 continue
             drops += sum(b[1] & 1 for b in blocks)
             most = max(most, len(blocks))
-            xa, xb = pair(blocks)
-            ya, yb = A(xa), B(xb)
-            x = ya - yb if a.mix == "diff" else ya + yb
-            if zi is None:      # from the first sample, or the carrier is a step at the jack
-                zi = sosfilt_zi(dc) * x[0]
-            y, zi = sosfilt(dc, x, zi=zi)
-            p.play(fit(y / 32768.0 * a.gain))
-            if time.monotonic() >= next_check:
-                next_check = time.monotonic() + 0.25
-                t = time.monotonic()
-                q = p.status()["queued"]
-                ahead = (time.monotonic() - t) * p.fs + q
-                depth.append(ahead)
-                fit.trim(np.clip((ahead - QUEUE) / p.fs * 0.5, -0.002, 0.002))
+            st(*pair(blocks))
     except KeyboardInterrupt:
         pass
     s1 = p.status()
-    p.relay(False)
+    st.stop()
+    depth = st.depth
     print("frames %d, short %d, optical blocks dropped %d, most blocks at once %d" % (
         s1["played"] - s0["played"], s1["short"] - s0["short"], drops, most))
     if depth:

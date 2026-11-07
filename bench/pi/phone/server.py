@@ -13,9 +13,10 @@ package's tune.py: sweep, fit, open note, verify, the curve kept in its curves.j
 page shows what it wants -- PLUCK, then the result. No other button moves anything meanwhile.
 The table is written to motor_ctrl from the curves with `python3 -m publicbench.tune --table`.
 
-THE PITCH LINE under the header is one string's pitch, live, off the optical board (Listen):
-its note, cents off it and Hz while the string rings, nothing while it does not. The board is
-held only while a page shows and handed to the tuner during a tune.
+THE OUTPUT JACK always carries one string (string 1 unless --listen says otherwise), from
+the moment this service starts at boot, and THE PITCH LINE under the page's header is that
+string's pitch, live: its note, cents off it and Hz while it rings (Listen). Both stop for a
+tune, which takes the optical board.
 
 NO STRING IS LEFT BENT: a bend or a creep belongs to the connection that pressed it, and goes
 when that connection does, when the page says it was hidden, or when a holding page has been
@@ -132,7 +133,7 @@ class Hub:
         if self.tuning:
             s["tune"] = dict(self.tuning)
         if self.ear is not None:
-            s["ear"] = dict(self.ear.reading or {}, s=self.ear.s, ok=self.ear.ok)
+            s["ear"] = dict(self.ear.reading or {}, s=self.ear.s, ok=self.ear.ok, jack=self.ear.jack)
         return s
 
     def _bring_up(self):
@@ -180,8 +181,8 @@ class Hub:
             last = now
             self._port(now)
             if self.ear is not None:
-                self.ear.want = (any(c["shown"] for c in self.clients.values())
-                                 and not self.busy_tuning())
+                self.ear.want = not self.busy_tuning()
+                self.ear.shown = any(c["shown"] for c in self.clients.values())
             self._step()
             s = self.snapshot()
             if s != prev:
@@ -232,64 +233,122 @@ NAMES = "C C# D D# E F F# G G# A A# B".split()
 
 
 class Listen:
-    """One string's pitch, live, on a thread: the optical board's SUM for the string, the last
-    WIN_S of it read every EVERY_S by the bench package's pitch.track (as tune.measure does).
-    `reading` is {"hz", "note", "cents"} while the string rings over its quiet, else None.
+    """One string, all the time, off the optical board: ON THE OUTPUT JACK (user, 2026-11-06:
+    the jack always carries string 1, across reboots; this service starts at boot) and, while
+    a page shows, its pitch for the page's pitch line.
 
-    The board is opened while `want` (a page shows, no tune) and shut otherwise: the tuner
-    opens it itself. Opening sends R, which reconfigures the converters (they read exactly
-    zero after a power cut, bench 2026-11-02 and 2026-11-06), then the emitters' duty."""
+    The audio thread holds the optical board and the output panel and runs the bench
+    package's panel.Stream on every block, as `panel listen` does, keeping the last WIN_S of
+    the signal. The pitch thread reads that every EVERY_S with pitch.track (as tune.measure
+    does): `reading` is {"hz", "note", "cents"} while the string rings over its quiet, else
+    None. With no panel the pitch still works; with no optical board neither does, and both
+    are tried again every RETRY_S.
+
+    `want` goes False during a tune: the tuner opens the optical board itself, so the jack is
+    quiet until it is done. Opening sends R, which reconfigures the converters (they read
+    exactly zero after a power cut, bench 2026-11-02 and 2026-11-06), then the emitters' duty."""
     WIN_S, EVERY_S, RETRY_S = 0.25, 0.1, 5.0
     DUTY = 32                     # of 4096: panel.py's default, out of saturation
     RING = 3.0                    # rms over the quiet floor that counts as ringing
 
-    def __init__(self, string: int, opener=None):
+    def __init__(self, string: int, opener=None, start=True):
         self.s = string
-        self.want = False
+        self.want = True
+        self.shown = False        # a page shows: worth reading the pitch
         self.reading = None
         self.ok = True            # False: no optical board answered
+        self.jack = False         # the string is on the output jack
         self.floor = None
+        self.buf = None
         self._open = opener or self._bench_open
-        threading.Thread(target=self._run, daemon=True).start()
+        if start:
+            threading.Thread(target=self._audio, daemon=True).start()
+            threading.Thread(target=self._pitch, daemon=True).start()
 
     def _bench_open(self):
-        optical, pitch = _bench("optical", "pitch")
+        """(close, take): take() is the string's new signal since the last call, or None."""
+        import numpy as np
+        optical, panel = _bench("optical", "panel")
         o = optical.OpticalLink()
         o.command("R")
         o.duty(self.DUTY)
-        o.select([optical.string_inputs(self.s)[0]])
-        return o, lambda blocks: optical.string_signal(blocks, self.s)[1], pitch
+        conv, sa, sb = optical.string_inputs(self.s)
+        o.select([conv])
+        try:
+            p = panel.Panel()
+        except Exception as e:
+            print("jack:", e, flush=True)
+            p = None
+        st = panel.Stream(p)
 
-    def _run(self):
+        def take():
+            blocks = [b for b in o.take() if conv in b[2]]
+            if not blocks:
+                return None
+            x = np.concatenate([b[2][conv] for b in blocks])
+            return st(x[:, sa], x[:, sb])
+
+        # the set-up is backlog: settle the lock-in on it, throw it away, then play
+        settle = time.monotonic() + 0.3
+        while time.monotonic() < settle:
+            take()
+            time.sleep(0.001)
+        st.start()
+        o.take()
+        self.jack = p is not None
+
+        def close():
+            self.jack = False
+            for f in (st.stop, p.close if p else None, o.close):
+                try:
+                    if f:
+                        f()
+                except Exception:
+                    pass
+        return close, take
+
+    def _audio(self):
         import numpy as np
-        link, buf = None, None
+        link = None
         while True:
-            time.sleep(self.EVERY_S)
             if not self.want:
                 if link is not None:
-                    link[0].close()
+                    link[0]()
                     link = None
-                self.reading = None
+                self.buf = None
+                time.sleep(self.EVERY_S)
                 continue
             if link is None:
                 try:
                     link = self._open()
-                    buf, self.ok = np.zeros(0), True
+                    self.buf, self.ok = np.zeros(0), True
                 except Exception as e:
                     print("ear:", e, flush=True)
-                    self.ok, self.reading = False, None
+                    self.ok = False
                     time.sleep(self.RETRY_S)
                     continue
-            o, signal, pitch = link
             try:
-                blocks = o.take()
-                if blocks:
-                    buf = np.concatenate([buf, np.asarray(signal(blocks), float)])[-int(48000 * self.WIN_S):]
-                self.reading = self.read(buf, pitch)
+                x = link[1]()
+                if x is None:
+                    time.sleep(0.0005)
+                    continue
+                self.buf = np.concatenate([self.buf, x])[-int(48000 * self.WIN_S):]
             except Exception as e:
                 print("ear:", e, flush=True)
-                o.close()
-                link, self.reading = None, None
+                link[0]()
+                link = None
+                time.sleep(self.RETRY_S)
+
+    def _pitch(self):
+        pitch, = _bench("pitch")
+        while True:
+            time.sleep(self.EVERY_S)
+            buf = self.buf
+            try:
+                self.reading = self.read(buf, pitch) if self.shown and buf is not None else None
+            except Exception as e:
+                print("pitch:", e, flush=True)
+                self.reading = None
 
     def read(self, buf, pitch):
         import numpy as np
@@ -479,8 +538,8 @@ async def main(argv=None):
     ap.add_argument("--state", default="/var/lib/public-steel-guitar-phone/state.json",
                     help="where each motor's open-pitch count is kept across restarts")
     ap.add_argument("--listen", type=int, default=None,
-                    help="the string whose live pitch the page shows (default: the first of "
-                         "--strings; 0 for no pitch line)")
+                    help="the string always on the output jack, whose live pitch the page shows "
+                         "(default: the first of --strings; 0 for neither)")
     ap.add_argument("--tls-port", type=int, default=443)
     ap.add_argument("--tls-dir", default=None,
                     help="server.crt, server.key and ca.crt (install.sh makes them): HTTPS on "

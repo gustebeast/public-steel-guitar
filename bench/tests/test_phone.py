@@ -351,8 +351,7 @@ def test_a_tune_hands_the_driver_its_new_curve():
 def test_the_pitch_line_reads_a_ringing_string_and_nothing_when_quiet():
     import numpy as np
     pitch, = S._bench("pitch")
-    ear = S.Listen.__new__(S.Listen)
-    ear.floor, ear.WIN_S = None, 0.25
+    ear = S.Listen(1, start=False)
     t = np.arange(12000) / 48000.0
     rng = np.random.default_rng(1)
     quiet = rng.normal(0, 70, len(t))
@@ -363,7 +362,8 @@ def test_the_pitch_line_reads_a_ringing_string_and_nothing_when_quiet():
 
 def test_the_snapshot_carries_the_pitch_line():
     m = P.MockMotors(strings=(1,))
-    ear = S.Listen.__new__(S.Listen)
-    ear.s, ear.ok, ear.reading = 1, True, {"hz": 329.6, "note": "E4", "cents": 0}
+    ear = S.Listen(1, start=False)
+    ear.reading, ear.jack = {"hz": 329.6, "note": "E4", "cents": 0}, True
     hub = S.Hub(P.Driver(m, P.Pitch()), m, ear=ear)
-    assert hub.snapshot()["ear"] == {"hz": 329.6, "note": "E4", "cents": 0, "s": 1, "ok": True}
+    assert hub.snapshot()["ear"] == {"hz": 329.6, "note": "E4", "cents": 0, "s": 1, "ok": True,
+                                     "jack": True}
