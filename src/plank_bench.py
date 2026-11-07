@@ -54,7 +54,12 @@ UP = (0.0, 0.0, 1.0)                             # every printed part here build
 
 # ── THE PLANK AND THE BASES ──────────────────────────────────────────────────────────────
 BASE_T = 6 * D.BEAD                              # 4.8 under everything, and over the countersinks
-Z_PLANK = -71.35 - BASE_T                        # the motor's floor (motor_bank.FLOOR_TOP) less a base
+# AS LOW ON THE WOOD AS IT GOES (user, 2026-11-07): the screw pulley's bed flange FLOOR_GAP over
+# the station's floor. The motor stands on the plank too, so it sits higher against the screw pulley
+# than the instrument's motor bank holds it -- see MZ.
+FLOOR_GAP = 1.0
+_PULLEY_BOT = D.screw_pulley_z(0) - (D.PULLEY_GAP / 2 + D.PULLEY_FLANGE_T + (D.PULLEY_FLANGE_OD - D.PULLEY_OD) / 2)
+Z_PLANK = _PULLEY_BOT - FLOOR_GAP - BASE_T
 # The wood screw is the watering-backpack's (user): #8 flat head, Ø4.0 shank, Ø9.3 MEASURED head,
 # 82 deg. A 45 deg countersink is steeper than the head, so it lands at the mouth and sits flush.
 WOOD_CLR_D, WOOD_CSK_D = 4.5, 9.3 + 0.3
@@ -91,6 +96,7 @@ BRG_POCKET = (BX - D.BRIDGE_BEARING_OD / 2 - 0.5, D.BRIDGE_X + 1.6, 2.9, -0.5)  
 AXLE_SLOT_D = D.BRIDGE_AXLE_D + 0.4              # 8.4, open on top and through both Y faces: any Ø8
                                                  # shaft over the station's width, the bought 100 too
 assert BZ + D.BRIDGE_AXLE_D / 2 <= SLAB_TOP - 0.2 + 1e-9, "the axle stands proud of the slab under the cap"
+SCREW_HOLE_D = 12.7                              # 1/2 in: the pulley's Ø11 flange and the drill
 SCREW_IN_D = D.SCREW_OD + 0.4                    # through the bearing pocket's floor: the screw goes in from +Z
 assert D.CHANGER_CEIL_Z < BRG_POCKET[3], "no floor between the room and the bearing"
 # the cap's two heat-sets, clear of the axle slot, the bearing pocket and the rod
@@ -100,7 +106,9 @@ CAP_SCREWS = ((RX - 2.4, Y0 + 4.8), (X1 + 0.4, Y1 - 4.8))   # 1.75 of wall to th
 FIN_X = 60.0
 
 # ── THE HEAD ─────────────────────────────────────────────────────────────────────────────
-MX, MY, MZ = D.motor_pos(I)                      # the motor pulley's centre
+MX, MY, _MZ = D.motor_pos(I)
+MZ = Z_PLANK + BASE_T + 42.3 / 2                 # the motor pulley's centre: the can stands on the head's floor.
+MOTOR_RISE = MZ - _MZ                            # ~15 over the instrument's: the belt runs ~1.5 deg off level
 FACE_Y = 35.25                                   # the motor's faceplate (motor_bank: the pocket's +Y wall)
 MOTOR_X0, MOTOR_X1 = MX - 21.15, MX + 21.15      # the can, 42.3 square
 MOTOR_Y0 = FACE_Y - D.MOTOR_BODY_L               # its back
@@ -158,6 +166,12 @@ def station() -> cq.Workplane:
     s = s.cut(_box(X0 - 1.0, BAY_X0, Y0 - 1.0, Y1 + 1.0, zb, BAY_Z1))
     # the changer room: over the rail, under the slab, open -X for the hand that spins the nut on
     s = s.cut(_box(X0 - 1.0, X1, SY - LANE, SY + LANE, RAIL_TOP, D.CHANGER_CEIL_Z))
+    # ...and open +X through the back wall, between the fins: the ear the string is threaded up
+    # through is 8 mm in from there (user, 2026-11-07)
+    s = s.cut(_box(X1 - 1.0, X1B + 1.0, SY - LANE, SY + LANE, RAIL_TOP, D.CHANGER_CEIL_Z))
+    # THE SCREW GOES IN FROM BELOW with its pulley on, as in the instrument: a 1/2 in hole through
+    # the floor, which is also the guide to drill the plank through
+    s = s.cut(_zbore(SCREW_HOLE_D, SX, SY, Z_PLANK - 1.0, zb + 1.0))
     # the rail's seat, lip and boss passage (screw_rail.seat_cutter's diameters, round)
     s = s.cut(_zbore(D.SUPPORT_BRG_OD + 0.2, SX, SY, RAIL_BOT - 1.0, D.SUPPORT_BRG_Z + 1e-3))
     s = s.cut(_zbore(SR.SEAT_LEDGE_D, SX, SY, RAIL_BOT - 1.0, SR.LEDGE_TOP))
@@ -220,9 +234,9 @@ def head() -> cq.Workplane:
     h = h.cut(cyl_y(D.NUT_PIN_D + 0.2, D.NUT_PIN_L + 0.4, SY - (D.NUT_PIN_L + 0.4) / 2,
                     x=CROWN_X, z=CROWN_Z))
     # the tail's side: 45 deg off the -X top corner, under the line to a tuner in the plank
-    h = h.cut(cq.Workplane("XZ").polyline([(TOWER_X0 - 1.0, tz1 + 1.0), (CROWN_X - 2.5, tz1 + 1.0),
-                                           (CROWN_X - 2.5, tz1), (TOWER_X0, tz1 - (CROWN_X - 2.5 - TOWER_X0)),
-                                           (TOWER_X0 - 1.0, tz1 - (CROWN_X - 2.5 - TOWER_X0))]).close()
+    h = h.cut(cq.Workplane("XZ").polyline([(TOWER_X0 - 1.0, tz1 + 1.0), (CROWN_X - 3.3, tz1 + 1.0),
+                                           (CROWN_X - 3.3, tz1), (TOWER_X0, tz1 - (CROWN_X - 3.3 - TOWER_X0)),
+                                           (TOWER_X0 - 1.0, tz1 - (CROWN_X - 3.3 - TOWER_X0))]).close()
               .extrude(-(TOWER_Y1 - TOWER_Y0 + 2.0)).translate((0, TOWER_Y0 - 1.0, 0)))
     for x, y in ((TOWER_X0 - 6.5, MOTOR_Y0 + 2.0), (TOWER_X0 - 6.5, Y_EDGE - 6.0),
                  (cx1 + CRADLE_W + 6.5, MOTOR_Y0 + 2.0), (cx1 + CRADLE_W + 6.5, FACE_Y - 6.0)):
@@ -235,7 +249,7 @@ def _belt_bits():
     clamp = BTn.clamp_components()
     xs = [v for _n, _s in clamp for v in (_s.val().BoundingBox().xmin, _s.val().BoundingBox().xmax)]
     x0, x1 = min(xs), max(xs)
-    m, s = D.motor_pos(I), (SX, SY, D.screw_pulley_z(I))
+    m, s = (MX, MY, MZ), (SX, SY, D.screw_pulley_z(I))
     upper = not D.screw_far(I)
     gap = BTn.belt_fit(C.belt_loop(m, s))[1]
     p = C.clamp_p(m, s, upper, x0, x1, 0.0)

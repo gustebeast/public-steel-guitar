@@ -1451,7 +1451,8 @@ its SECOND hole lines up with the screw, and drive the screw back in.
 ## Plank bench: string 1's whole drive on a wooden plank (2026-11-07)
 
 - **Where:** `src/plank_bench.py`. Print `coupons/plank_head.step` and `coupons/plank_station.step`
-  base down, and `coupons/plank_cap.step` flat (PETG-GF). The bought and printed hardware is the
+  standing on their bases, as the STEPs are posed, and `coupons/plank_cap.step` flat (PETG-GF). No
+  supports: the only overhangs are bridges of 8.3 mm or less (the rail's and the room's ceilings). The bought and printed hardware is the
   instrument's own: string 1's 573-tooth GT2 belt and its clamp, `screw_pulley_hi`, `motor_pulley`,
   the Tr8x2 screw (36.28), the H-nut, an NRB 3.5 x 29.8 guide rod and its `rod_plug`, two 688ZZ (thrust
   and bridge), a Ø8 shaft (the 100 mm one fits: its slot runs out through both faces), a Ø4 x 4 dowel
@@ -1459,7 +1460,8 @@ its SECOND hole lines up with the screw, and drive the screw back in.
 - **Extra hardware:** 4 x M3 x 8 socket head (motor face, 2.5 key), 2 x M4 x 10 button + 2 M4 heat-sets
   (cap), 8 x #8 flat-head wood screws (the watering-backpack ones, Ø9.3 head), long enough for the
   plank less 1-2 mm (a 38 mm 2x4 takes 1-1/4"), and a guitar tuner.
-- **The plank:** a 2x4 (or anything as stiff) at least 900 mm long. Both bases' +Y faces sit flush with
+- **The plank:** a 2x4 (or anything as stiff) at least 900 mm long, with a **1/2 in hole drilled
+  through it** under the screw: screw the station down first and drill through the hole in its floor. Both bases' +Y faces sit flush with
   the plank's +Y edge. The crown dowel's centre to the bridge-bearing axle's centre is **607.0 mm**
   along the plank: that is the scale length, and the only measurement to make.
 - **Tuner:** in the plank, on the string's line, 150-300 mm -X of the crown. Nearer than 150 the tail
@@ -1467,20 +1469,28 @@ its SECOND hole lines up with the screw, and drive the screw back in.
 - **Station order:**
   1. Press the two M4 heat-sets into the slab top. Push a 688 up into the rail's seat from the bay
      (the open side under the rail) until it stops on the lip.
-  2. Screw the station down (four wood screws: two -X of the head, two between the buttress fins).
-  3. Stand the H-nut in the changer room (flange up, the -X ear over the rod bore), drop the guide rod
-     down the slab bore through the ear into its socket, then the rod plug on top of it.
-  4. With the bridge bearing out, feed the screw down through the hole in the bearing pocket's floor,
-     spin it down through the nut and the 688, and thread `screw_pulley_hi` onto its foot in the bay
-     until it jams up against the bearing's inner ring.
-  5. Bearing on the shaft, shaft into its slot, cap on (two M4 x 10).
+  2. Screw the station down (four wood screws: two -X of the head, two between the buttress fins) and
+     drill the plank 1/2 in through the hole in the station's floor.
+  3. Slide the H-nut into the changer room from -X (flange up, long way along X) until its -X ear is
+     under the rod bore. Cap off: drop the guide rod down the slab bore, through the ear, into its socket,
+     then the rod plug on top of it.
+  4. Thread `screw_pulley_hi` onto the screw's foot (a few turns). From under the plank, push the screw
+     up through the hole and the 688 until it meets the nut, then turn the pulley (in the bay) to run the
+     screw up through the nut. Keep going until the pulley jams up against the bearing's inner ring.
+     (With the bridge bearing out, the screw can also go in from the top, through the hole in the
+     bearing pocket's floor, and the pulley be threaded on its foot from the bay.)
+  5. Bridge bearing on the shaft, shaft into its slot, cap on (two M4 x 10).
+  6. String: the ball end goes under the nut's +X ear. Through the window in the station's +X back
+     wall (between the fins), push the free end up through the ear's hole, up the slot past the bridge
+     bearing's +X side, and over its top.
 - **Head order:** slide the motor in from the open -Y end, pushing it +Y with its pulley already on, until the pilot sits in the
   face wall's slot, and fit the four M3 x 8 through the face wall into the motor's own holes. Seat the
   crown dowel in its cradle. Screw the head down (four wood screws).
 - **Then** the belt and its clamp, exactly as on the instrument (nut at the top of travel, clamp 5 mm
-  off the screw pulley), the string's ball end under the nut's +X ear, up over the bridge bearing,
-  over the crown, and to the tuner.
+  off the screw pulley), and the string over the crown to the tuner.
 - **Why:** to run one string's drive at full tension without the instrument: every part is drawn at
   the instrument's own coordinates (string 1), so belt length, twist, carriage travel and break are the
-  real ones. One difference: the string runs straight down the plank instead of fanning 13.5 in Y,
-  which shortens its speaking length by 0.15 mm.
+  real ones. Two differences: the string runs straight down the plank instead of fanning 13.5 in Y,
+  which shortens its speaking length by 0.15 mm; and the motor stands on the plank about 15 mm higher
+  against the screw pulley than the motor bank holds it (user: the station as low on the wood as it
+  goes), so the belt runs about 1.5 degrees off level. It is still 573 teeth.
