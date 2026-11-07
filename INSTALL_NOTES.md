@@ -638,7 +638,7 @@ instead of dropping on. Once the endplates are on, the steel is fully enclosed.
 4. **Measure how far each bar stands past its rail's +X end.** Nominal is 42.66
    (`chassis.BAR_X1 - TP_EP_GX`). The bridge pocket is 46.06 deep from the rail end, so the shim
    stack is 46.06 minus that measurement, **rounded down to the next 0.4**. Nominal is 3.4, so a
-   stack of 1.6 + 1.6. Stack shims from `bar_shims` (0.4, 0.8, 1.6, 1.6 per bar) on the bar's end,
+   stack of 1.6 + 1.6. Stack shims from `bar_shim` (0.4, 0.8, 1.6, 1.6 per bar) on the bar's end,
    with a dab of grease to hold them.
 5. **Slide the bridge endplate on from +X**, over the bars' ends and shims and onto its two X
    dovetails, until its pads meet the rail ends. It must go on by hand. If it stops short, the

@@ -445,8 +445,8 @@ for _, _cutters in _WR_FUSE.tee_hold_negatives():
             if not _bb_apart(_cs.val(), _cut.val()):
                 chassis_segments[_csi] = _cs.cut(_cut)
 from . import wall_bar as WB
-PARTS["bar_shims"] = (
-    WB.shim_print_set, "petg-gf/bar_shims.step",
+PARTS["bar_shim"] = (
+    WB.shim_print_set, "petg-gf/bar_shim.step",
     "PETG-GF -- the steel wall bars' length shims, one bar's set (0.4, 0.8, 1.6, 1.6): print two. "
     "Stack what the measured bar leaves at the bridge pocket's floor (INSTALL_NOTES)")
 from . import seam_bridge as SB
@@ -851,7 +851,7 @@ def _declared():
         "3.6 mm roof is a bridge and the face the thumb meets is the last "
         "layer, not the bed's. Chosen, not yet confirmed",
         confirmed=False)
-    out["bar_shims"] = PO.from_build_dir(
+    out["bar_shim"] = PO.from_build_dir(
         (0, 0, 1), "wall_bar.shim_print_set -- each shim flat on the bed, its thickness up")
     out["seam_bridge"] = PO.from_build_dir(
         (0, 0, 1), "seam_bridge.PRINT_UP -- the plate on the bed, the lever tenons standing "
