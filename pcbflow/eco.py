@@ -53,6 +53,7 @@ import pcbnew
 RIP = 3.0                   # mm, of the moved parts' own nets
 CLEAR = 0.75                # mm from a new pad centre to any track's edge
 EDGE = 0.2                  # mm from a new pad's OUTLINE to another net's track edge
+HOLE = 0.25                 # mm hole to hole, a carried via against the net's own (JLC 0.2 + margin)
 REFUSED = 3                 # exit code: the move would disturb matched copper, or re-closed a detour
 FINE = 0.6                  # mm: a part with pad centres closer than this is fine-pitch
 
@@ -161,6 +162,33 @@ def _escapes(board, moved, gone, clash):
     return keep
 
 
+def _own_escapes(fp, tracks):
+    """(stub, via) pairs that are one pad's private way down: a single track from a pad of
+    `fp` to a via of the same net that no other track touches (the via's other side is a
+    pour). Other copper may meet the pad; it is the part's ordinary routing and goes the
+    ordinary way."""
+    near = lambda u, v: abs(u[0] - v[0]) < 0.005 and abs(u[1] - v[1]) < 0.005
+    vias = [t for t in tracks if t.GetClass() == "PCB_VIA"]
+    segs = [t for t in tracks if t.GetClass() != "PCB_VIA"]
+    out = []
+    for p in fp.Pads():
+        net = p.GetNetname()
+        for t in segs:
+            if t.GetNetname() != net:
+                continue
+            for e, o in ((t.GetStart(), t.GetEnd()), (t.GetEnd(), t.GetStart())):
+                if not p.HitTest(e) or p.HitTest(o):
+                    continue
+                v = [u for u in vias if u.GetNetname() == net and near(_xy(u.GetPosition()), _xy(o))]
+                if len(v) != 1:
+                    continue
+                others = [u for u in segs if u is not t and u.GetNetname() == net and any(
+                    near(_xy(x), _xy(o)) for x in (u.GetStart(), u.GetEnd()))]
+                if not others:
+                    out.append((t, v[0]))
+    return out
+
+
 def move(stem, moves):
     """Apply {ref: (x, y)} to stem.kicad_pcb; returns how many track pieces were taken up."""
     path = stem + ".kicad_pcb"
@@ -169,12 +197,17 @@ def move(stem, moves):
     matched = _matched(notes)
     board = pcbnew.LoadBoard(path)
     stood, stands, nets, boxes = [], [], set(), []
+    tracks = list(board.GetTracks())
+    drags = []                   # (stub, via, dx, dy): a pad's own escape, carried with it
     for fp in board.GetFootprints():
         ref = fp.GetReference()
         if ref not in moves:
             continue
         stood += [_xy(p.GetPosition()) for p in fp.Pads()]
         nets |= {p.GetNetname() for p in fp.Pads()}
+        was = _xy(fp.GetPosition())
+        drags += [(t, v, moves[ref][0] - was[0], moves[ref][1] - was[1])
+                  for t, v in _own_escapes(fp, tracks)]
         fp.SetPosition(pcbnew.VECTOR2I(pcbnew.FromMM(moves[ref][0]), pcbnew.FromMM(moves[ref][1])))
         stands += [_xy(p.GetPosition()) for p in fp.Pads()]
         for p in fp.Pads():
@@ -185,6 +218,48 @@ def move(stem, moves):
     if not stands:
         raise SystemExit("none of %s on %s" % (sorted(moves), path))
 
+    # ⚠ A PART'S OWN VIA GOES WITH IT (optical +3V3D, 2026-11-06). Every decap on the rail
+    # has a stub to a via of its own into the rail's pour; ripped with the part's other copper,
+    # close_last had to invent the via again and instead joined the pad 19 mm round by track
+    # (quality A23). A stub and via that serve that one pad and nothing else are moved by the
+    # part's own offset instead -- unless they would land on another net's pad or via, which
+    # nothing could clear, and then they are taken up like the rest.
+    carried = set()
+    fixed = [(p, p.GetBoundingBox()) for f in board.GetFootprints() for p in f.Pads()]
+    # the vias that travel are tested where they will stand, not where they stood: a part's two
+    # escapes (its rail and its ground) move together and never come closer than they were
+    going = {id(v): (dx, dy) for _t, v, dx, dy in drags}
+    at = lambda u: (_xy(u.GetPosition())[0] + going.get(id(u), (0.0, 0.0))[0],
+                    _xy(u.GetPosition())[1] + going.get(id(u), (0.0, 0.0))[1])
+    for t, v, dx, dy in drags:
+        net, (a, c) = t.GetNetname(), [_xy(e) for e in (t.GetStart(), t.GetEnd())]
+        a, c = (a[0] + dx, a[1] + dy), (c[0] + dx, c[1] + dy)
+        vx, vy = _xy(v.GetPosition())
+        vx, vy, vr = vx + dx, vy + dy, pcbnew.ToMM(v.GetWidth(pcbnew.F_Cu)) / 2.0
+        box = lambda bb: (pcbnew.ToMM(bb.GetLeft()), pcbnew.ToMM(bb.GetTop()),
+                          pcbnew.ToMM(bb.GetRight()), pcbnew.ToMM(bb.GetBottom()))
+        if any(p.GetNetname() != net and (_seg_box((vx, vy), (vx, vy), box(bb)) < vr + EDGE
+                                          or _seg_box(a, c, box(bb)) < pcbnew.ToMM(t.GetWidth()) / 2.0 + EDGE)
+               for p, bb in fixed):
+            continue
+        # another net's via at copper clearance; the net's own at the drill's hole-to-hole rule
+        # (quality A12), since two holes too close is a drill fault whatever the nets. Holding
+        # the net's own to the copper rule refused a cap's ground via 0.7 mm from its rail via
+        # and left the ground land an island (optical C106, 2026-11-07)
+        def _near(u):
+            d = math.dist(at(u), (vx, vy))
+            if u.GetNetname() == net:
+                return d < (pcbnew.ToMM(u.GetDrillValue()) + pcbnew.ToMM(v.GetDrillValue())) / 2.0 + HOLE
+            return d < vr + pcbnew.ToMM(u.GetWidth(pcbnew.F_Cu)) / 2.0 + EDGE
+        if any(u.GetClass() == "PCB_VIA" and u is not v and _near(u) for u in tracks):
+            continue
+        d = pcbnew.VECTOR2I(pcbnew.FromMM(dx), pcbnew.FromMM(dy))
+        t.Move(d)
+        v.Move(d)
+        carried |= {t.m_Uuid.AsString(), v.m_Uuid.AsString()}
+        boxes.append(((vx - vr, vy - vr, vx + vr, vy + vr), net))
+        boxes.append(((min(a[0], c[0]), min(a[1], c[1]), max(a[0], c[0]), max(a[1], c[1])), net))
+
     def _in_way(t, a, c, half):
         # near a new pad's centre, or near its OUTLINE for another net: a centre-only test
         # missed a +5V via 1.08 from a 1.0 x 1.45 pad's centre, over its edge (seed 29 C130)
@@ -193,6 +268,8 @@ def move(stem, moves):
                        if n != t.GetNetname()))
     gone = []
     for t in board.GetTracks():
+        if t.m_Uuid.AsString() in carried:
+            continue
         via = t.GetClass() == "PCB_VIA"
         a, c = _xy(t.GetStart()), _xy(t.GetEnd())
         half = pcbnew.ToMM(t.GetWidth(pcbnew.F_Cu) if via else t.GetWidth()) / 2.0
