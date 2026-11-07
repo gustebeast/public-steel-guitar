@@ -1487,13 +1487,13 @@ Plug a USB device in (an audio interface such as a Shure MVX2U) and the board po
 - **Flashing a blank board takes motor_ctrl's link down for ~15 s** (the flash window). The
   board brings the link back by itself; the Pi waits it out.
 
-## +Y legs' service position: two distances from 2026-11-05 on
+## +Y legs' service position: two distances (2026-11-06: shorter, the walls are wider)
 To get at what sits over a +Y foot, back its one leg screw out, slide the foot outboard until
 its SECOND hole lines up with the screw, and drive the screw back in.
-- **Bridge (+X) end: 26.55 mm** (`legs.SERVICE_SLIDE`), which clears string 1's access channel.
-- **Keyhead (-X) end: 14.45 mm** (`legs.KEYHEAD_SLIDE`), which clears the nut height screws' key paths.
-  It used to slide the bridge's 26.55 too. That pushed the keyhead's leg screws out onto the
-  lower endplate dovetail, and their insert pockets cut the -X chassis section's lower tenons off.
-- **The leg screws sit in the same place at both ends now** (`legs.LOCK_PIN_DY`, 8.91 out from
-  the leg's centreline). Reprint the -X chassis section, the keyhead endplate and the -X body
-  adapters together: a keyhead endplate drilled for the old 16.86 position won't line up.
+- **Bridge (+X) end: 16.95 mm** (`legs.SERVICE_SLIDE`), which clears string 1's access channel.
+- **Keyhead (-X) end: 4.85 mm** (`legs.KEYHEAD_SLIDE`), which clears the nut height screws' key paths.
+- Both were 9.6 longer (26.55 and 14.45) until the side walls grew 9.6 outward around the steel
+  bars (2026-11-06): the legs stand flush with the wider walls, so they start that much further out.
+- **The leg screws sit in the same place at both ends** (`legs.LOCK_PIN_DY`, now 7.5 out from the
+  leg's centreline, was 8.91). Reprint the end chassis sections, both endplates and the body
+  adapters together: parts drilled for the old position won't line up.
