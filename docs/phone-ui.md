@@ -42,6 +42,17 @@ the instrument flips by itself):
 A held button does not buzz the phone: the page cancels each touch at its start, which stops
 the phone's long-press timer.
 
+## Live pitch line (2026-11-06)
+
+Under the header, one string's pitch, live, off the optical board: note and cents on the left,
+Hz on the right while the string rings, `S1 -` while it is quiet, `NO EAR` with no optical
+board. The server (`Listen` in `server.py`) reads the string's SUM signal: the last 0.25 s,
+every 0.1 s, through the bench package's `pitch.track`, as /tune measures. Ringing means 3x
+over a quiet floor that it follows (about 75 rms at duty 32 on the bench). The string is the
+first of `--strings`; `--listen N` picks another, `--listen 0` turns the line off. The board
+is held only while a page shows and is handed to the tuner during a tune. Opening it sends
+`R` first: its converters read exactly zero after a power cut until reconfigured.
+
 ## Safety: no string is left bent
 
 A bend or a creep belongs to the phone that pressed it. It is released when:

@@ -13,6 +13,10 @@ package's tune.py: sweep, fit, open note, verify, the curve kept in its curves.j
 page shows what it wants -- PLUCK, then the result. No other button moves anything meanwhile.
 The table is written to motor_ctrl from the curves with `python3 -m publicbench.tune --table`.
 
+THE PITCH LINE under the header is one string's pitch, live, off the optical board (Listen):
+its note, cents off it and Hz while the string rings, nothing while it does not. The board is
+held only while a page shows and handed to the tuner during a tune.
+
 NO STRING IS LEFT BENT: a bend or a creep belongs to the connection that pressed it, and goes
 when that connection does, when the page says it was hidden, or when a holding page has been
 silent for HOLD_TIMEOUT (a phone that sleeps mid-press keeps its socket open for a while).
@@ -24,6 +28,7 @@ import asyncio
 import base64
 import hashlib
 import json
+import math
 import os
 import struct
 import sys
@@ -71,8 +76,9 @@ class Hub:
     answer. 3 s after the last page goes (closed, or hidden), the port is shut again."""
     RETRY = 2.0
 
-    def __init__(self, driver: Driver, motors, tuner=None, curves=None):
+    def __init__(self, driver: Driver, motors, tuner=None, curves=None, ear=None):
         self.d, self.m, self.p = driver, motors, driver.p
+        self.ear = ear                # Listen, or None: no pitch line
         self.curves = curves          # () -> {string: Curve}: read again after each tune
         self.clients = {}             # writer -> {"seen": t, "shown": bool}
         self._n = 0
@@ -125,6 +131,8 @@ class Hub:
         s["link"] = self.m.name if self.live() else "lost"
         if self.tuning:
             s["tune"] = dict(self.tuning)
+        if self.ear is not None:
+            s["ear"] = dict(self.ear.reading or {}, s=self.ear.s, ok=self.ear.ok)
         return s
 
     def _bring_up(self):
@@ -171,6 +179,9 @@ class Hub:
             self.p.tick(now - last)
             last = now
             self._port(now)
+            if self.ear is not None:
+                self.ear.want = (any(c["shown"] for c in self.clients.values())
+                                 and not self.busy_tuning())
             self._step()
             s = self.snapshot()
             if s != prev:
@@ -215,6 +226,92 @@ class Hub:
             self.clients[w]["shown"] = True
         self._step()                               # a press goes out now, not at the next tick
         await self.broadcast()
+
+
+NAMES = "C C# D D# E F F# G G# A A# B".split()
+
+
+class Listen:
+    """One string's pitch, live, on a thread: the optical board's SUM for the string, the last
+    WIN_S of it read every EVERY_S by the bench package's pitch.track (as tune.measure does).
+    `reading` is {"hz", "note", "cents"} while the string rings over its quiet, else None.
+
+    The board is opened while `want` (a page shows, no tune) and shut otherwise: the tuner
+    opens it itself. Opening sends R, which reconfigures the converters (they read exactly
+    zero after a power cut, bench 2026-11-02 and 2026-11-06), then the emitters' duty."""
+    WIN_S, EVERY_S, RETRY_S = 0.25, 0.1, 5.0
+    DUTY = 32                     # of 4096: panel.py's default, out of saturation
+    RING = 3.0                    # rms over the quiet floor that counts as ringing
+
+    def __init__(self, string: int, opener=None):
+        self.s = string
+        self.want = False
+        self.reading = None
+        self.ok = True            # False: no optical board answered
+        self.floor = None
+        self._open = opener or self._bench_open
+        threading.Thread(target=self._run, daemon=True).start()
+
+    def _bench_open(self):
+        optical, pitch = _bench("optical", "pitch")
+        o = optical.OpticalLink()
+        o.command("R")
+        o.duty(self.DUTY)
+        o.select([optical.string_inputs(self.s)[0]])
+        return o, lambda blocks: optical.string_signal(blocks, self.s)[1], pitch
+
+    def _run(self):
+        import numpy as np
+        link, buf = None, None
+        while True:
+            time.sleep(self.EVERY_S)
+            if not self.want:
+                if link is not None:
+                    link[0].close()
+                    link = None
+                self.reading = None
+                continue
+            if link is None:
+                try:
+                    link = self._open()
+                    buf, self.ok = np.zeros(0), True
+                except Exception as e:
+                    print("ear:", e, flush=True)
+                    self.ok, self.reading = False, None
+                    time.sleep(self.RETRY_S)
+                    continue
+            o, signal, pitch = link
+            try:
+                blocks = o.take()
+                if blocks:
+                    buf = np.concatenate([buf, np.asarray(signal(blocks), float)])[-int(48000 * self.WIN_S):]
+                self.reading = self.read(buf, pitch)
+            except Exception as e:
+                print("ear:", e, flush=True)
+                o.close()
+                link, self.reading = None, None
+
+    def read(self, buf, pitch):
+        import numpy as np
+        if len(buf) < 48000 * self.WIN_S / 2:
+            return None
+        x = buf - buf.mean()
+        rms = float(np.sqrt(np.mean(x ** 2)))
+        # the quiet floor: follows a falling rms at once and a rising one slowly
+        self.floor = rms if self.floor is None else min(rms, self.floor * 1.005)
+        if rms < self.RING * self.floor:
+            return None
+        f, env = pitch.track(x, 48000.0, pitch.guess(x, 48000.0, 60.0, 1200.0), span_semitones=4.0)
+        k = len(f) // 5
+        mid, e = f[k:-k], env[k:-k]
+        loud = mid[e > 0.5 * np.median(e)]
+        hz = float(np.median(loud if len(loud) else mid))
+        if not 30.0 < hz < 2000.0:
+            return None
+        m = 69 + 12 * math.log2(hz / 440.0)
+        n = round(m)
+        return {"hz": round(hz, 1), "note": "%s%d" % (NAMES[n % 12], n // 12 - 1),
+                "cents": int(round(100 * (m - n)))}
 
 
 def mock_tuner(motors, s, sign, report):
@@ -381,6 +478,9 @@ async def main(argv=None):
                     help="the motor direction that raises pitch (pitchctl.RAISE_SIGN)")
     ap.add_argument("--state", default="/var/lib/public-steel-guitar-phone/state.json",
                     help="where each motor's open-pitch count is kept across restarts")
+    ap.add_argument("--listen", type=int, default=None,
+                    help="the string whose live pitch the page shows (default: the first of "
+                         "--strings; 0 for no pitch line)")
     ap.add_argument("--tls-port", type=int, default=443)
     ap.add_argument("--tls-dir", default=None,
                     help="server.crt, server.key and ca.crt (install.sh makes them): HTTPS on "
@@ -400,7 +500,9 @@ async def main(argv=None):
             print("curves not read:", e, flush=True)
             curves = None
     drv = Driver(motors, Pitch(), state, **kw)
-    hub = Hub(drv, motors, curves=curves)
+    s_ear = strings[0] if a.listen is None else a.listen
+    ear = Listen(s_ear) if s_ear and not a.mock else None
+    hub = Hub(drv, motors, curves=curves, ear=ear)
     print("measured curves for strings", sorted(drv.curves) or "none", flush=True)
     ICON = icon_png()
     servers = [await asyncio.start_server(lambda r, w: handle(hub, r, w), a.host, a.port)]

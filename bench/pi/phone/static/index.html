@@ -34,7 +34,7 @@
 // screen.orientation.lock on the first press); everywhere else, iPhone Safari included, the
 // canvas is turned back by the browser's own rotation, so the buttons stay put on the glass.
 const PIXEL_CSS = 3, GAP = 2, BORDER = 2;
-let GW = 1, GH = 1, HEAD = 12, HS = 2, LS = 1, AS = 2;
+let GW = 1, GH = 1, HEAD = 12, HS = 2, LS = 1, AS = 2, EAR_Y = 0, ES = 1;
 const BUTTONS = [
   {b: "pu", label: "PITCH", up: true, col: 0}, {b: "pd", label: "PITCH", up: false, col: 0},
   {b: "hu", label: "HALF", up: true, col: 1},  {b: "hd", label: "HALF", up: false, col: 1},
@@ -48,6 +48,13 @@ function layout() {
   // (user: on a narrow phone PUBLIC ran into +0.00). Sized for the widest so it never jumps.
   HS = textW("NO LINK", 2) + textW("-12.00", 2) + 2 * (GAP + 2) + 6 <= GW ? 2 : 1;
   HEAD = 7 * HS + 6;
+  // the pitch line, under the header, when the server listens to a string
+  // at the largest scale its widest reading fits, which can be bigger than the header's
+  EAR_Y = HEAD;
+  ES = 1;
+  for (let k = 3; k > 1; k--)
+    if (textW("G#4 -50c", k) + textW("1046.5HZ", k) + 2 * (GAP + 2) + 6 <= GW) { ES = k; break; }
+  if (state.ear) HEAD += 7 * ES + 6;
   const bw = Math.floor((GW - GAP * (cols + 1)) / cols), bh = Math.floor((GH - HEAD - GAP * rows) / rows);
   const ox = Math.floor((GW - (bw * cols + GAP * (cols - 1))) / 2);
   BUTTONS.forEach(k => {
@@ -64,7 +71,7 @@ function layout() {
 
 const cv = document.getElementById("c"), g = cv.getContext("2d");
 let img = null, px = null;
-let state = {base: 0, bend: 0, can: {}, link: "..."}, online = false;
+let state = {base: 0, bend: 0, can: {}, link: "..."}, online = false, hadEar = false;
 const held = new Map();                       // pointerId -> button
 
 function set(x, y, on) { if (x >= 0 && y >= 0 && x < GW && y < GH) px[y * GW + x] = on ? 1 : 0; }
@@ -97,6 +104,21 @@ function draw() {
   text(lost ? "NO LINK" : state.link === "mock" ? "MOCK" : "PUBLIC", GAP + 2, 3, !lost, HS);
   const v = fmt(state.base + state.bend);
   text(v, GW - GAP - 2 - textW(v, HS), 3, !lost, HS);
+  const ear = state.ear;
+  if (ear) {
+    // STRING N's live pitch: note and cents on the left, Hz on the right; a dash when quiet
+    const y = EAR_Y + 3;
+    if (!ear.ok) text("NO EAR", GAP + 2, y, true, ES);
+    else if (ear.hz) {
+      const c = (ear.cents >= 0 ? "+" : "-") + Math.abs(ear.cents) + "c";
+      text(ear.note + " " + c, GAP + 2, y, true, ES);
+      const h = ear.hz.toFixed(1) + "HZ";
+      text(h, GW - GAP - 2 - textW(h, ES), y, true, ES);
+    } else {
+      text("S" + ear.s, GAP + 2, y, true, ES);
+      text("-", GW - GAP - 2 - textW("-", ES), y, true, ES);
+    }
+  }
   for (const k of BUTTONS) {
     const down = [...held.values()].includes(k.b), ok = state.can[k.b] !== false && live();
     if (down) rect(k.x, k.y, k.w, k.h, 1);                    // pressed: inverted
@@ -152,7 +174,11 @@ function send(m) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); }
 function connect() {
   ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws");
   ws.onopen = () => { online = true; shown(); draw(); };
-  ws.onmessage = e => { state = JSON.parse(e.data); draw(); };
+  ws.onmessage = e => {
+    state = JSON.parse(e.data);
+    if (!!state.ear !== hadEar) { hadEar = !!state.ear; layout(); }
+    draw();
+  };
   ws.onclose = () => { online = false; held.clear(); draw(); setTimeout(connect, 1000); };
   ws.onerror = () => ws.close();
 }

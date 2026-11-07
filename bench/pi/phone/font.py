@@ -3,7 +3,7 @@
 The instrument's screen is a 128 x 64 white-on-black OLED (NHD-2.7-12864WDW3, elec/ui_board.py)
 and nothing in the repo draws on it yet, so there was no glyph set to reuse. When the screen's
 own UI gets one, this table should become that one, so the phone and the screen match.
-'^' and 'v' are arrows up and down (lower case, so 'V' stays a letter).
+'^' and 'v' are arrows up and down (lower case, so 'V' stays a letter); 'c' is cents.
 """
 GLYPHS = {
     " ": ["00000"] * 7,
@@ -30,6 +30,9 @@ GLYPHS = {
     "W": ["10001", "10001", "10001", "10101", "10101", "10101", "01010"],
     "X": ["10001", "10001", "01010", "00100", "01010", "10001", "10001"],
     "Y": ["10001", "10001", "01010", "00100", "00100", "00100", "00100"],
+    "Z": ["11111", "00001", "00010", "00100", "01000", "10000", "11111"],
+    "c": ["00000", "00000", "01110", "10000", "10000", "10001", "01110"],
+    "#": ["01010", "01010", "11111", "01010", "11111", "01010", "01010"],
     "0": ["01110", "10001", "10011", "10101", "11001", "10001", "01110"],
     "1": ["00100", "01100", "00100", "00100", "00100", "00100", "01110"],
     "2": ["01110", "10001", "00001", "00010", "00100", "01000", "11111"],
