@@ -4057,6 +4057,13 @@ if REV != 1:
             _esc = _json.load(_fh)
         BOARD_NOTES["tracks"] += [(_n, _l, _w, [tuple(_p) for _p in _ps]) for _n, _l, _w, _ps in _esc["tracks"]]
         BOARD_NOTES["vias"] += [tuple(_v) for _v in _esc["vias"]]
+    # ⚠ THE GND POURS KEEP 0.2 mm, NOT KICAD'S 0.5 mm DEFAULT. Nobody chose the 0.5: round a
+    # 0.6 mm via it voids 1.6 mm of In1, and the seven vias of U1's south-east escape merged
+    # into a 5.2 mm slot that VMID, INV_OUT and +3V3 were each failed for straddling (quality
+    # A15, 3 of 11 nudges). 0.2 is over the 0.127 track rule and over what IPC-2221 asks
+    # between ground and a 24 V net. Fill only: the router never sees the pours. Re-filled at
+    # 0.2, those three boards came back 0 FAIL with DRC unchanged.
+    BOARD_NOTES["zone_clearance"] = 0.2
 
 
 if REV != 1 and os.environ.get("OP_TRIAL"):
