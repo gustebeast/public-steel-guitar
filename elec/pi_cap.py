@@ -1210,6 +1210,19 @@ BOARD_NOTES["tracks"] += [("GND", "B.Cu", 0.25, [(11.43, -5.77), (12.70, -4.50),
 # those bridges redundant rather than load-bearing) and In1 is a second signal layer.
 
 
+# ⚠ UI_RES_N GOES DOWN BEFORE C6, NOT ROUND IT (R2, 2026-11-06). On R2 the reset line is
+# J5 way 14, which escapes round the north end of the edge row and arrives at (-27.53, 2.87)
+# with C6 (U1's decap) and its ground land straight ahead. Left to the router it either ran
+# past C6 on F.Cu or took B.Cu under U1, and the B.Cu run split U1's ground pour: 28 of 29
+# reroutes clean, the 29th (one nudge of C6) left UI_RES_N open; a pre-laid B.Cu run past
+# U1 was 13 of 30. So the escape ends in a short F.Cu jog to a via short of C6 and the
+# router takes it from there on In1. 29 of 29 clean (unmoved, 10 fresh nudges, 18 earlier).
+if REV != 1:
+    BOARD_NOTES["tracks"] += [
+        ("UI_RES_N", "F.Cu", 0.15, [(-27.53, 2.87), (-28.43, 2.12), (-28.73, 2.12)])]
+    BOARD_NOTES["vias"] = list(BOARD_NOTES.get("vias", [])) + [("UI_RES_N", -28.73, 2.12)]
+
+
 if os.environ.get("PI_CAP_TRIAL"):
     # A placement trial: {ref: [x, y, rot]} in this file's frame (KiCad x - 100, 100 - KiCad
     # y), on top of everything above. For robustness runs: a full reroute is deterministic,
