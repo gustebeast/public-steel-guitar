@@ -2,18 +2,19 @@
 
 The nut block (string termination, nut_block.py) is fused into a simple FULL-WIDTH solid
 prism (rail outer to rail outer) that TAKES OVER the rail -X ends, so its edge shows from
-the front like the bridge endplate. It INSTALLS LAST, dropping straight down (+Z→-Z)
-with the deck panels already in place. It:
+the front like the bridge endplate. It SLIDES ON ALONG +X (user, 2026-11-06), over the steel wall
+bars' -X ends and onto an X dovetail in each kept leg shell (chassis' X-SLIDE ENDPLATE JOINT). It:
   - closes the -X end of the box (its solid +X face stops the deck panels sliding -X);
   - terminates the strings: a steel nut plate per string (nut_block.py) whose crown is the
     break and whose shelf pinches the one wrap against the rod, pushed up by its own M4 height
     screw, with an M4 side screw in the bed face pinning the tail to the plate;
-  - sockets a dovetail tongue on each rail end (mirrors the bridge joint) -> X+Y lock
-    + grip against the +X string tension; held down by the legs' lock screws
-    (legs.lock_pin_joint), which pass through its end face.
+  - holds each wall bar's end in a pocket (the bars bear on its floors), seats on the rail ends
+    by its bearing pads, and is held on by the legs' lock screws (legs.lock_pin_joint), which
+    pass through its end face.
 
-Service: send motors slack, remove the leg lock screws,
-lift this piece out, slide the deck panels off -X.
+Service: strings off at the nut, remove the leg lock screws and slide the legs out, slide this
+piece off -X (it travels chassis.KH_BAR_D + the pad before it clears the bars), then the deck
+panels off -X.
 """
 
 from __future__ import annotations
@@ -50,8 +51,15 @@ assert NB.ROD_Y0 - NB.ROD_L < YFL, (
     f"the rod's insertion run ends at y {NB.ROD_Y0 - NB.ROD_L:.2f}, inside the keyhead's -Y face "
     f"({YFL:.2f}) -- the {NB.ROD_L:g} mm rod could not be slid into position")
 # The stowed key pushes it back out from the +Y face, far enough to grip at the -Y one.
+# THE ROD'S FACES STAY WHERE THEY WERE (2026-11-06). The side walls grew 9.6 outward around the
+# steel bars, which took 19.2 off what the key leaves standing; each face gets a SLOT at the rod,
+# back to the 10.4 wall's old face and open to the top: the key's short arm stands up out of the
+# +Y one, and fingers or pliers reach into the -Y one to draw the rod.
+ROD_FACE_YL = CH.RAIL_INNER_Y - D.WALL_THICKNESS          # -Y: the old outer face
+ROD_FACE_YH = D.RAIL_HI_INNER_Y + D.WALL_THICKNESS        # +Y
+ROD_SLOT_W = {1: 10 * D.BEAD, -1: 20 * D.BEAD}           # 8.0 for the key, 16.0 to grip the rod
 KEY_LONG_ARM = 88.0                         # Bondhus 10954
-ROD_GRIP = KEY_LONG_ARM - (YFH - NB.ROD_Y1) - (NB.ROD_Y0 - YFL)
+ROD_GRIP = KEY_LONG_ARM - (ROD_FACE_YH - NB.ROD_Y1) - (NB.ROD_Y0 - ROD_FACE_YL)
 assert ROD_GRIP >= 5.0, f"the key leaves only {ROD_GRIP:.2f} of rod standing out of the -Y face to grip"
 FOOT_Z = CH.KH_DT_Z0                       # foot line (-23.15): fill band bottom / wall-box top
 # FOOT POCKET: the chassis now KEEPS a ~10 mm rail shell hugging each -X leg socket
@@ -134,9 +142,13 @@ def _build():
                          top - (CH.Z_BOT - 1.0),          # stop AT the shell top (= band floor):
                          x=((LEG_SHELL_X0 - LEG_CLR) + (XHI + 1.0)) / 2,   # no +0.1 step into the band
                          y=(yf + yi) / 2, z=((CH.Z_BOT - 1.0) + top) / 2))
-    # rail-end dovetail sockets (grip the rail tongues; X+Y lock vs the string tension)
+    # THE X-SLIDE JOINT (user, 2026-11-06), per rail -- see chassis' X-SLIDE ENDPLATE JOINT block:
+    # the steel bar's pocket, the bearing pad on the rail's end, and the X dovetail's tenon hanging
+    # from the shelf into the kept shell. The keyhead slides on +X, onto the bars' ends first.
     for ycc in (CH.Y_HI, CH.Y_LO):
-        w = w.cut(CH._kh_tongue(ycc, socket=True))
+        w = w.union(CH.ep_pad("kh", ycc))
+        w = w.union(CH.ep_dovetail("kh", ycc))
+        w = w.cut(CH.bar_pocket("kh", ycc))
     # LEG-STUB grooves (Y-INSTALL round — user: the stubs print on their
     # side and SLIDE IN ALONG Y): cut this end's corner negatives from the
     # SAME shared source the chassis uses (legs.corner_groove_negatives).
@@ -168,6 +180,13 @@ def _build():
     w = w.cut(teardrop_hole(NB.ROD_PUSH_D, YFH - NB.ROD_Y1 + 1.0,
                             axis_point=(D.NUT_BLOCK_X + NB.ROD_X, NB.ROD_Y1, D.STRING_Z + NB.ROD_Z),
                             axis_dir=(0.0, 1.0, 0.0), print_up=PRINT_UP))
+    # THE ROD SLOTS (ROD_FACE_*): from a bead under the push hole up through the top.
+    _rx, _rz = D.NUT_BLOCK_X + NB.ROD_X, D.STRING_Z + NB.ROD_Z
+    _sz0 = _rz - NB.ROD_PUSH_D / 2.0 - D.BEAD
+    for _s, _yo, _yn in ((1, ROD_FACE_YH, YFH), (-1, ROD_FACE_YL, YFL)):
+        _y0, _y1 = sorted((_yo, _yn + _s * 1.0))
+        w = w.cut(box_at(ROD_SLOT_W[_s], _y1 - _y0, 60.0, x=_rx, y=(_y0 + _y1) / 2,
+                         z=_sz0 + 30.0))
     # ONE SOLID, CHECKED. The overlap gate reports interpenetration, not disconnection: a
     # fused feature that never touches the plate would leave the part quietly in TWO pieces.
     _n = len(w.val().Solids())

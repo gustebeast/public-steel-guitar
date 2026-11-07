@@ -275,7 +275,7 @@ def _groove(length: float) -> cq.Workplane:
 # LEG_NY_FACE is chassis.LEG_Y[0] - LEG_W/2 spelled out from dimensions (legs cannot import
 # chassis); keyhead_endplate asserts the two agree.
 from . import nut_block as _NB                # nut_block imports dimensions + motor_bank only: no cycle
-LEG_NY_FACE = D.RAIL_HI_INNER_Y + D.WALL_THICKNESS - SQ_W     # a +Y leg's -Y face
+LEG_NY_FACE = D.RAIL_HI_INNER_Y + D.RAIL_T - SQ_W             # a +Y leg's -Y face
 KEYHEAD_CLEAR_Y = (max(_NB.height_screw_xy(i)[1] for i in range(D.N_STRINGS))
                    + _NB.HS_HEAD_CAV_D / 2.0 + D.MIN_WALL_2P)   # +Y edge of the room the heads need
 # ...and the BRIDGE's string access channels (user, 2026-09-11). The +Y bridge-end leg stands under

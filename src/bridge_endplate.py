@@ -1,4 +1,10 @@
-"""Bridge endplate (§8) — PETG-GF, printed FLAT, dovetailed onto the rail ends.
+"""Bridge endplate (§8) — PETG-GF, printed FLAT, slid on along -X over the rail ends.
+
+X-SLIDE (user, 2026-11-06): it no longer drops onto rail-end dovetails. It slides on -X over the
+steel wall bars' +X ends (their pockets, with the length shims at the floor), seats on the rail
+ends by its bearing pads and rides an X dovetail in each kept leg shell -- chassis' X-SLIDE
+ENDPLATE JOINT block. Where the text below still says "drops on" or "the rail tongues", read
+that; the rest of the piece is as it was.
 
 ONE solid piece that closes the box at the +X end AND carries the bridge-bearing
 axle (the 90° string turn — the highest-load point in the instrument). Because it
@@ -1025,13 +1031,13 @@ def _build() -> cq.Workplane:
                                x=((LEG_SHELL_X0 - 1.0) + (LEG_SHELL_X1 + LEG_CLR)) / 2,
                                y=(yf + yi) / 2,
                                z=((CH.Z_BOT - 1.0) + top) / 2))
-    # SOCKET the rail-end dovetail tongue on each rail (keyhead-style, low band z
-    # -23.15..-6): the endplate drops straight down onto the rail tongues. No glue —
-    # the deck panels trap the +Z retention lip (see the module docstring).
-    # The dovetail (wide +X / narrow -X) locks it in X+Y and grips the bearing-wrap
-    # pull (-X); the low band leaves the cap free to drop to z6.
+    # THE X-SLIDE JOINT (user, 2026-11-06), per rail -- see chassis' X-SLIDE ENDPLATE JOINT block:
+    # the steel bar's pocket, the bearing pad on the rail's end, and the X dovetail's tenon hanging
+    # from the shelf into the kept shell. The endplate slides on -X, onto the bars' ends first.
     for yr in CH.ENDPLATE_JOINT_Y:
-        body = body.cut(CH._br_tongue(yr, socket=True))
+        body = body.union(CH.ep_pad("br", yr))
+        body = body.union(CH.ep_dovetail("br", yr))
+        body = body.cut(CH.bar_pocket("br", yr))
     # LEG-STUB grooves (Y-INSTALL round — user: the stubs print on their
     # side and SLIDE IN ALONG Y): cut this end's corner negatives from the
     # SAME shared source the chassis uses (legs.corner_groove_negatives),
@@ -1057,7 +1063,7 @@ def _build() -> cq.Workplane:
     # its hollow foot is over that spot: a fin rooted on the end wall and hung from the screw
     # rail, its -X face on the window's end (src/foot_light.end_stop).
     from . import foot_light as _FL
-    body = body.union(_FL.end_stop(XHI - CH.T + D.BEAD, CH.Y_HI - CH.T / 2 - LEG_CLR,
+    body = body.union(_FL.end_stop(XHI - CH.T_END + D.BEAD, CH.Y_HI - CH.T / 2 - LEG_CLR,
                                    _SR_BOT + D.BEAD))
     # PANEL I/O (the instrument's right face): the base's +X end wall is CH.T (10)
     # thick -- too deep for the jacks (their bodies span x -16..6) -- so RECESS its

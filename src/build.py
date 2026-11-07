@@ -444,6 +444,11 @@ for _, _cutters in _WR_FUSE.tee_hold_negatives():
         for _csi, _cs in enumerate(chassis_segments):
             if not _bb_apart(_cs.val(), _cut.val()):
                 chassis_segments[_csi] = _cs.cut(_cut)
+from . import wall_bar as WB
+PARTS["bar_shims"] = (
+    WB.shim_print_set, "petg-gf/bar_shims.step",
+    "PETG-GF -- the steel wall bars' length shims, one bar's set (0.4, 0.8, 1.6, 1.6): print two. "
+    "Stack what the measured bar leaves at the bridge pocket's floor (INSTALL_NOTES)")
 from . import seam_bridge as SB
 PARTS["seam_bridge"] = (
     partial(SB.bridge, 0), "petg-gf/seam_bridge.step",
@@ -846,6 +851,8 @@ def _declared():
         "3.6 mm roof is a bridge and the face the thumb meets is the last "
         "layer, not the bed's. Chosen, not yet confirmed",
         confirmed=False)
+    out["bar_shims"] = PO.from_build_dir(
+        (0, 0, 1), "wall_bar.shim_print_set -- each shim flat on the bed, its thickness up")
     out["seam_bridge"] = PO.from_build_dir(
         (0, 0, 1), "seam_bridge.PRINT_UP -- the plate on the bed, the lever tenons standing "
                    "up off it, as the knee levers' housings print theirs")
@@ -2421,6 +2428,7 @@ def width_work_components():
     comps += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
     comps += [(f"chassis_light_{i}", lt) for i, lt in enumerate(chassis_light)]
     comps += SB.components(SEAM_BRIDGES)
+    comps += WB.components()                   # the steel wall bars + their shims
     comps += _pickup_mount_components()
     comps += _electronics_components()
     comps += _ctrl_bus_components()
@@ -2486,6 +2494,7 @@ def collect_components():
     # shows the two as one object: tools.web_materials.unit_of)
     comps += [(f"chassis_light_{i}", lt) for i, lt in enumerate(chassis_light)]
     comps += SB.components(SEAM_BRIDGES)
+    comps += WB.components()                   # the steel wall bars + their shims
     comps += _pickup_mount_components()
     comps += _leg_components()
     comps += _pedal_bar_components()
