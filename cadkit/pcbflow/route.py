@@ -372,6 +372,43 @@ def _resite_post_pads(board, refs, notes):
 
 
 
+def _net_layers(txt, spec):
+    """Each net in spec {net: [layer, ...]} taken out of its DSN class into a class of its
+    own, a copy of that one with (use_layer ...) in its circuit, so the router lays it on
+    those layers only.
+
+    ⚠ FOR A SIGNAL THAT MUST KEEP A SOLID REFERENCE (output_panel INV_OUT, 2026-11-07). The
+    audio inverter's output went down to In2, whose other neighbour is the B.Cu pour, and
+    crossed a 5.03 mm gap a +3V3 track cut in it (quality A15, limit 5.00). On F.Cu it lies on
+    In1, the whole plane. A wrong layer name or a net in no class is an error, not a no-op:
+    a restriction that silently does nothing is the failure this exists to prevent."""
+    for net, layers in sorted(spec.items()):
+        for layer in layers:
+            if "(layer %s" % layer not in txt:
+                raise SystemExit("net_layers: %s has no layer %s in the DSN" % (net, layer))
+        for m in re.finditer(r"\(class ", txt):
+            head = txt.index("(circuit", m.start())
+            names = txt[m.end():head].split()
+            if net not in names[1:]:
+                continue
+            depth, end = 0, m.start()
+            for end in range(m.start(), len(txt)):
+                depth += {"(": 1, ")": -1}.get(txt[end], 0)
+                if depth == 0:
+                    break
+            block = txt[head:end + 1]
+            own = "(class L_%s %s\n      %s" % (re.sub(r"\W", "_", net), net, block.replace(
+                "(circuit", "(circuit\n        (use_layer %s)" % " ".join(layers), 1))
+            rest = [n for n in names[1:] if n != net]
+            txt = (txt[:m.end()] + " ".join([names[0]] + rest) + "\n      " + txt[head:end + 1]
+                   + "\n    " + own + txt[end + 1:])
+            print("  net_layers: %s kept to %s" % (net, ", ".join(layers)))
+            break
+        else:
+            raise SystemExit("net_layers: %s is in no class of the DSN" % net)
+    return txt
+
+
 def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
     """Route the board at `stem`.
 
@@ -644,6 +681,7 @@ def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
     # wants to try again, the channel is a .rules file via -dr, and the control to beat is
     # the default. The corridor still needs a placement answer.
 
+    txt = _net_layers(txt, (notes or {}).get("net_layers") or {})
     open(dsn, "w", encoding="utf-8").write(txt)
     if _fix.n:
         print("  froze %d pre-laid wire(s) as (type fix)%s" % (
@@ -1053,6 +1091,12 @@ def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
         # the Specctra round trip rounds, and rounding leaves sub-micron fragments
         print("  dropped %d degenerate track fragment(s) from the import" % n_junk)
         n -= n_junk
+    # ⚠ AND ANY SHORT THE ROUTER WROTE ITSELF: taken up here, closed by close_last on a
+    # clean board (layout.rip_router_shorts; motor_ctrl seed 59, 2026-11-07)
+    n_short = layout.rip_router_shorts(board)
+    if n_short:
+        print("  took up %d router track(s) that shorted or crowded another net" % n_short)
+        n -= n_short
 
     # ⚠ POUR AGAIN, BECAUSE THE REPAIRS ABOVE ADDED COPPER AFTER THE LAST POUR. The
     # zones were last filled before the repair block; snap/add_missing_vias/link then

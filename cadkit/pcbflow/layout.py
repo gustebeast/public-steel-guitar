@@ -1659,6 +1659,73 @@ def drop_degenerate(board, floor_mm=0.005, width_frac=0.1):
     return len(doomed)
 
 
+def rip_router_shorts(board):
+    """Take up router copper that shorts or crowds another net, and report what went.
+
+    ⚠ FREEROUTING CAN WRITE A SHORT INTO ITS OWN SESSION (motor_ctrl R2, seed 59 nudge C40,
+    2026-11-07): CANA_L and BUSB_FAULT_N crossed on In2.Cu in the .ses itself, before any
+    step here touched the board. finish.py then saw 7 violations and close_last, which will
+    not start on a board with any, left three nets open behind them. A short is worse than
+    an open: so of each offending pair the shorter TRACK is taken up (a via is never taken,
+    it is the costlier thing to find again), and the gap it leaves is close_last's to
+    close, which it does on a clean board. Offending = closer than the board's minimum clearance,
+    a hair's rounding allowed: router copper normally keeps 10 um more than that (route.py).
+    """
+    clr = pcbnew.ToMM(board.GetDesignSettings().m_MinClearance) - 0.002
+    items = []
+    for t in board.GetTracks():
+        if not t.GetNetname():
+            continue
+        if t.GetClass() == "PCB_VIA":
+            p = (pcbnew.ToMM(t.GetPosition().x), pcbnew.ToMM(t.GetPosition().y))
+            items.append((t, None, p, p, pcbnew.ToMM(t.GetWidth(pcbnew.F_Cu)) / 2.0))
+        else:
+            items.append((t, t.GetLayer(), (pcbnew.ToMM(t.GetStart().x), pcbnew.ToMM(t.GetStart().y)),
+                          (pcbnew.ToMM(t.GetEnd().x), pcbnew.ToMM(t.GetEnd().y)),
+                          pcbnew.ToMM(t.GetWidth()) / 2.0))
+
+    def ps(p, a, c):
+        dx, dy = c[0] - a[0], c[1] - a[1]
+        n = dx * dx + dy * dy
+        f = max(0.0, min(1.0, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / n)) if n else 0.0
+        return math.hypot(p[0] - a[0] - f * dx, p[1] - a[1] - f * dy)
+
+    def ss(a, c, p, q):
+        def side(u, v, w):
+            return (v[0] - u[0]) * (w[1] - u[1]) - (v[1] - u[1]) * (w[0] - u[0])
+        if side(a, c, p) * side(a, c, q) < 0 and side(p, q, a) * side(p, q, c) < 0:
+            return 0.0
+        return min(ps(p, a, c), ps(q, a, c), ps(a, p, q), ps(c, p, q))
+
+    reach = max((it[4] for it in items), default=0.0) * 2 + clr
+    items.sort(key=lambda it: min(it[2][0], it[3][0]))
+    doomed, seen = [], set()
+    for i, (t, la, a, c, h) in enumerate(items):
+        x1 = max(a[0], c[0])
+        for u, lb, p, q, k in items[i + 1:]:
+            if min(p[0], q[0]) > x1 + reach:
+                break
+            if t.GetNetname() == u.GetNetname() or (la is not None and lb is not None and la != lb):
+                continue
+            if la is None and lb is None:
+                continue                       # via against via: not this routine's to settle
+            if ss(a, c, p, q) >= h + k + clr:
+                continue
+            key = lambda w: (w.GetClass() == "PCB_VIA", w.GetLength() if w.GetClass() != "PCB_VIA" else 0)
+            victim = min((t, u), key=key)
+            uid = victim.m_Uuid.AsString()
+            if uid in seen or {t.m_Uuid.AsString(), u.m_Uuid.AsString()} & seen:
+                continue
+            seen.add(uid)
+            doomed.append(victim)
+    for t in doomed:
+        print("    took up %s on %s, %.2f mm: it shorted or crowded another net"
+              % (t.GetNetname(), t.GetLayerName(), pcbnew.ToMM(t.GetLength())))
+        board.Remove(t)
+        _REMOVED.append(t)
+    return len(doomed)
+
+
 def _plane_orphans(board, net):
     """Tracks on `net` that the connectivity graph does NOT place in the plane's component.
 
