@@ -532,8 +532,8 @@ dtoverlay=dwc2,dr_mode=peripheral   # the USB-C port is the gadget port
 
 **Must NOT appear:** `enable_uart=1`, `dtoverlay=disable-bt`, `dtoverlay=miniuart-bt`
 (all three put a UART on GPIO14 / 15, the foot lights' pins), `dtoverlay=spi1-2cs` or
-`-3cs` (a second chip select lands on a UI switch), `dtoverlay=w1-gpio` (GPIO4 is the
-display's DC line). Take `console=serial0,115200` out of `cmdline.txt`.
+`-3cs` (a second chip select lands on a UI switch, a third on the display's reset on an R2 cap),
+`dtoverlay=w1-gpio` (GPIO4 is the display's DC line on an R1 cap). Take `console=serial0,115200` out of `cmdline.txt`.
 
 **If a console is ever needed with the cap on**, it borrows the foot lights' pins, so
 for as long as it is wanted: the foot-light lead off J6, `dtoverlay=spi5-1cs` out,
