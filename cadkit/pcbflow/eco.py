@@ -215,7 +215,7 @@ def move(stem, moves):
         print("REFUSED: would take up matched copper on %s" % ", ".join(hit))
         raise SystemExit(REFUSED)
     # a pour's width is the pour's: a 2.6 mm GND strap closed wide only clashes with its neighbours
-    poured = {z[0] for z in notes.get("zones", ())}
+    poured = {(z["net"] if isinstance(z, dict) else z[0]) for z in notes.get("zones", ())}
     widths = notes.setdefault("close_widths", {})
     for t in gone:
         if t.GetClass() != "PCB_VIA" and t.GetNetname() not in poured:
