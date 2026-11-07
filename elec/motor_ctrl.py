@@ -675,6 +675,14 @@ def motor_ctrl():
         # it crossed under the part's CAN1 pins, and from the south row it met Q1 / Q2: both
         # failed, routes of 2026-11-04).
         pins += [(34, "PD9", O), (33, "PD8", O), (56, "PC12", O), (57, "PD2", O), (19, "PA3", O)]
+        # R2, PG_5V: 66 PE0 on the west row's -Y end, which faces U5, in place of 22 PA6 on the
+        # east row (2026-11-07). From pin 22 the buck's power-good crossed the whole board,
+        # 33 mm between two declared vias, and a nudge of C15 left it to close_last at 1.52x
+        # (quality A23). PE0 is FT; its alternates are TIM4_ETR, FSMC_NBL0 and UART4_TX by
+        # remap (CH32V20x_30x datasheet, pin table), none of which this board uses -- not SWD,
+        # USB, CAN, the flash lane or a BOOT strap. It has its own EXTI line (PA6 shared
+        # line 6 with BUSB_FAULT_N's PC6). Number off the QFN68 column.
+        pins = [_p for _p in pins if _p[0] != 22] + [(66, "PE0", I)]
     u1 = Part(name="CH32V307WCU6", ref_prefix="U", tag="U1", dest="NETLIST", tool="skidl",
               value="CH32V307WCU6", description="RISC-V MCU, 2x hardware CAN",
               footprint=MCU_FP,
@@ -1157,9 +1165,9 @@ def motor_ctrl():
     # so over USB, which works with the board shut inside the keyhead.
     # PG is OPEN-DRAIN and each line uses the MCU's INTERNAL pull-up, so power-good costs
     # two tracks and no parts. (Until the pinout fix both PG pins were listed "NC".)
-    # ⚠ FIRMWARE: PA6 must be an input WITH PULL-UP, or it reads low for ever.
+    # ⚠ FIRMWARE: PA6 (R1) / PE0 (R2) must be an input WITH PULL-UP, or it reads low for ever.
     pg5 = Net("PG_5V")
-    pg5 += u5["PG"], u1["PA6"]
+    pg5 += u5["PG"], u1["PA6" if REV == 1 else "PE0"]
     # Rail sense into two ADC pins, side by side. PA4 = ADC4 (24 V), PA5 = ADC5 (5 V) --
     # in the order their dividers stand east of the row: the 24 V one is the further and
     # its lane goes round the south of the 5 V one, so it takes the southern pin --
@@ -1261,8 +1269,9 @@ BOARD_NOTES = {
     # a rectangle is better said by its absence than by four points restating it. No
     # mounting_hole_xy either -- there is no hole in this board to mount through.)
         # J4 going XH moved the router's first pass and OSC_OUT (Y1 -> U4) came back open at the
-    # default ten; more passes let it rip up and re-lay (route.py PASSES note)
-    "router_passes": 20,
+    # default ten; more passes let it rip up and re-lay (route.py PASSES note). R2: 40 --
+    # at 20, two seeds' nudges left nets open that 40 closes (2026-11-07)
+    "router_passes": 20 if REV == 1 else 40,
     "layers": 4,
     "thickness_mm": 1.6,
     # SKiDL numbers refs by INSTANTIATION order, not by tag: U1 is the buck,
@@ -1692,6 +1701,28 @@ BOARD_NOTES["tracks"] += [
     ("GND", "F.Cu", 0.8, [(-17.60, -18.90), (-13.20, -18.90)]),
 ]
 BOARD_NOTES["tracks"] += [("PG_5V", "F.Cu", 0.25, [(-13.50, -21.98), (-12.52, -21.98)])]
+if REV != 1:
+    # R2: PG_5V leaves by U4's west row (PE0, pin 66), so pin 22's east-row fan and via go
+    BOARD_NOTES["vias"] = [_v for _v in BOARD_NOTES["vias"]
+                           if not (_v[0] == "PG_5V" and tuple(_v[1:3]) == (17.60, -8.30))]
+    BOARD_NOTES["tracks"] = [_t for _t in BOARD_NOTES["tracks"]
+                             if not (_t[0] == "PG_5V" and tuple(_t[3][0]) == (16.54, -9.10))]
+    # ...and pin 66 gets the same kind of fan: west then north-west to a via clear of the
+    # row, down to In2 (left to the router, 7 of 10 seeds left PG_5V open at the pin,
+    # 2026-11-07; this is the escape the seeds that closed it took)
+    BOARD_NOTES["vias"] += [("PG_5V", 6.90, -8.52)]
+    BOARD_NOTES["tracks"] += [
+        ("PG_5V", "F.Cu", 0.2, [(8.53, -9.90), (8.14, -9.90), (6.90, -8.66), (6.90, -8.52)])]
+    # U9's PED_H gets the escape every clean seed took, for the same reason: one nudge in
+    # seven left it open at the pin (seed 47, C38). U8's USB pins: see the north-row fan-out.
+    BOARD_NOTES["vias"] += [("PED_H", 20.43, 12.39)]
+    BOARD_NOTES["tracks"] += [("PED_H", "F.Cu", 0.2, [(20.65, 11.67), (20.65, 12.17), (20.43, 12.39)])]
+    # ...and U10's CANB_L, which the same seed-31 nudge (C15) left open at the pin once the
+    # USB pair had its escape
+    BOARD_NOTES["vias"] += [("CANB_L", 24.85, 9.77)]
+    BOARD_NOTES["tracks"] += [("CANB_L", "F.Cu", 0.2, [(26.75, 10.33), (26.75, 10.15), (26.65, 10.05),
+                                                      (26.65, 9.73), (26.09, 9.17), (25.45, 9.17),
+                                                      (24.85, 9.77)])]
 
 # THE NORTH STRIP'S THREE SUPPLY PATHS, DECLARED (quality A1 / A12, 2026-10-04). Left to the
 # router: the lighting bus (1.63 A then) ran on 0.5 mm (0.59 wanted) and squeezed between two of
@@ -2163,6 +2194,12 @@ if REV != 1:
         ("LINK_TX", "F.Cu", 0.2, [(11.80, -3.56), (11.80, -2.60), (12.05, -2.35), (12.05, -2.00)]),
         ("LINK_RX", "F.Cu", 0.2, [(12.20, -3.56), (12.20, -3.00), (12.60, -2.60), (12.85, -2.60),
                                   (12.85, -2.40)])]
+    # ...and at the pair's other end, U8's pins 7 / 8, the escapes every clean seed took: one
+    # nudge in seven left USB_DP open at the pin (seed 31, C15, 2026-11-07)
+    BOARD_NOTES["vias"] += [("USB_DM", 20.14, -17.56), ("USB_DP", 20.77, -18.15)]
+    BOARD_NOTES["tracks"] += [
+        ("USB_DM", "F.Cu", 0.2, [(21.92, -17.05), (21.11, -17.05), (20.60, -17.56), (20.14, -17.56)]),
+        ("USB_DP", "F.Cu", 0.2, [(21.92, -17.55), (21.37, -17.55), (20.77, -18.15)])]
     BOARD_NOTES["silk_rev"] = "r%d" % REV  # the printed rev IS the switch (cad_geom_check)
     _pl["C29"] = (5.90, 17.00, 0.0)
     # Lever flashing (docs/lever-usb-flash.md): U8 the link / flash-lane switch under U7
@@ -2224,6 +2261,11 @@ if REV != 1:
     # M43: USART1 (44 PA9, 45 PA10) carries the link now; USBFS's pins (46 PA11, 47 PA12) are
     # CAN1's home pins, bus A's (see the header)
     _q["U4"]["pins"] = " ".join([p for p in _q["U4"]["pins"].split() if p not in ("44", "45")])
+    # PG_5V moved from 22 PA6 to 66 PE0 (see the pin list): 22 is the open one now
+    _q["U4"]["pins"] = " ".join(sorted([p for p in _q["U4"]["pins"].split() if p != "66"] + ["22"],
+                                       key=int))
+    BOARD_NOTES["quality"]["pinouts"]["CH32V307WCU6"] += (
+        " R2: PG_5V on 66 PE0 instead of 22 PA6 (2026-11-07), off the same QFN68 column.")
     _q["U7"] = {"pins": "7 8 9 10 11 12 15",
                 "why": "CH340C: no modem inputs, no R232; WCH V3C p.4, unused I/O may dangle "
                        "(own pull-ups, R232 own pull-down)"}
