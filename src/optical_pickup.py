@@ -791,7 +791,9 @@ PLINTH_X0 = BAND_X0                                           # -16.60
 # +Y end sits FLUSH with the endplate's existing +Y extent (user): the head no longer sets
 # how far the endplate reaches. Affordable because the M4 grip moved inboard -- it needs
 # MIN_WALL_2P + pilot/2 = 4.60 to this edge and has 5.15.
-PCB_YP     = CH.Y_HI + CH.T / 2                               # 65.0, the rail outer face
+# (the 10.4 rail's outer face, NOT the rail's: the wall grew 9.6 outward around the steel bar, and
+#  the board stays the board it was -- the endplate under it is wider than it now)
+PCB_YP     = D.RAIL_HI_INNER_Y + D.WALL_THICKNESS                # 65.0
 if OPTICAL_REV == 1:
     PCB_YP = 65.95                        # the board as ordered, before the rail came in 0.95
 HEAD_LEN   = PCB_YP - HEAD_Y0                                 # 14.40, mirrored at -Y

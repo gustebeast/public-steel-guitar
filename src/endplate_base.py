@@ -31,7 +31,7 @@ from .helpers import box_at
 def endplate_base(xlo: float, xhi: float, end: str) -> cq.Workplane:
     """The two shared prisms for an endplate spanning x xlo..xhi (both
     endplates: 25.2). end='lo' -> solid -X end wall (keyhead); end='hi'
-    -> solid +X end wall (bridge). Exterior side walls always CH.T."""
+    -> solid +X end wall (bridge). Side walls CH.T (the rail's), end wall CH.T_END."""
     yfl = CH.Y_LO - CH.T / 2                    # -Y rail outer face
     yfh = CH.Y_HI + CH.T / 2                    # +Y rail outer face
     yc, yw = (yfl + yfh) / 2, yfh - yfl
@@ -44,8 +44,8 @@ def endplate_base(xlo: float, xhi: float, end: str) -> cq.Workplane:
     # opens through the interior X face
     foot = box_at(xw, yw, foot_z - CH.Z_BOT, x=xc, y=yc,
                   z=(foot_z + CH.Z_BOT) / 2)
-    hx0 = xlo + CH.T if end == "lo" else xlo - 1.0
-    hx1 = xhi + 1.0 if end == "lo" else xhi - CH.T
+    hx0 = xlo + CH.T_END if end == "lo" else xlo - 1.0      # the END wall is 10.4 (X)...
+    hx1 = xhi + 1.0 if end == "lo" else xhi - CH.T_END      # ...the side walls the rail's (Y)
     foot = foot.cut(box_at(hx1 - hx0, (yfh - CH.T) - (yfl + CH.T),
                            (foot_z + 0.1) - (CH.Z_BOT - 1.0),
                            x=(hx0 + hx1) / 2, y=yc,

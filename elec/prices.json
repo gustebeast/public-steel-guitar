@@ -95,6 +95,17 @@
       "order": "2 x $17.97 (pack of 25) = $35.94 for 40 needed",
       "what": "Wave disc spring, high-carbon steel, 0.459 in ID x 0.608 in OD x 0.008 in, 0.037 in free, 4 lb at 0.025 in -- the axle stack's PRELOAD spring, one per lever between the -Y outer race and its shoulder (knee_lever.SPRING_ID). Fixes the lever in Y at ~9 N preload whatever the screw torque. The horizontal knee levers only for now (4 in the model); 11 once the vertical lever and the pedals take the same stack. Read off the product page 2026-10-19, delivers next day. The purpose-made part (Hubbard WSW-608, the same envelope) is quote-only with an 8-10 week lead."
     },
+    "wall_bar_a36_58x2": {
+      "usd": 18.01,
+      "verified": "v",
+      "per_instrument": 2,
+      "vendor": "Speedy Metals",
+      "sku": "hf.625x2 (by the inch)",
+      "url": "https://www.speedymetals.com/pc-4102-8214-58-x-2-a-36-1020-hot-rolled-steel.aspx",
+      "date": "2026-11-06",
+      "order": "2 x 26 in pre-cut, $36.02 in the cart 2026-11-06 (18.42 lb; UPS ground to 94702 was $49.06 for 2 x 26-1/2 in, shown at checkout); the user places the order",
+      "what": "5/8 x 2 in A-36 hot-rolled steel flat bar, one per chassis wall, used at 26 in (660.4 mm, dimensions.BAR_L; +1/8 in / -0) -- the walls' stiffening bars (user 2026-11-06: the plastic body flexes enough to detune; mild steel over stainless for price and its thermal match to the strings). In a channel down each rail, fully enclosed: the endplates slide on along X over its ends (src/wall_bar.py). A 26-1/2 in pre-cut is hacksawed 12.7 short (the offcut is the fit coupon's test piece); ordering 2 x 26 in instead saves the cut. Zinc (cold-galvanizing spray) before it goes in. Cheapest of the options priced 2026-11-06: one 60 in bar to cut ourselves ships oversize ($173.69), OnlineMetals pre-cut $107.41, McMaster 2 x 3 ft $150.77."
+    },
     "m4_button_8": {
       "usd": 0.5555,
       "verified": "v",
