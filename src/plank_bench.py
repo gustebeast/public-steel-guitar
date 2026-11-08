@@ -173,7 +173,11 @@ def station() -> cq.Workplane:
     s = s.cut(_zbore(ROD_BORE, RX, SY, D.CHANGER_CEIL_Z - 1.0, SLAB_TOP + 1.0, ST_UP))
     # the bridge bearing's pocket, open on top, and the string's slot down to the ear
     bx0, bx1, bh, bz0 = BRG_POCKET
-    s = s.cut(_box(bx0, bx1, SY - bh, SY + bh, bz0, SLAB_TOP + 1.0))
+    # its -X end is the ROOF in the print (ST_UP): gabled to a ridge like the instrument's slot
+    # (bridge_endplate's house pentagon), not a flat 5.8 bridge whose sag drags on the race
+    s = s.cut(cq.Workplane("XY", origin=(0.0, 0.0, bz0))
+              .polyline([(bx1, SY - bh), (bx1, SY + bh), (bx0, SY + bh), (bx0 - bh, SY), (bx0, SY - bh)])
+              .close().extrude(SLAB_TOP + 1.0 - bz0))
     s = s.cut(_box(D.string_anchor_x(I) - 1.6, D.BRIDGE_X + 1.6, SY - 1.6, SY + 1.6,
                    D.CHANGER_CEIL_Z - 1.0, bz0 + 0.5))
     # the axle's bore, out through both faces, cut last
