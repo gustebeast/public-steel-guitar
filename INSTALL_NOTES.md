@@ -1453,7 +1453,7 @@ its SECOND hole lines up with the screw, and drive the screw back in.
 - **Where:** `src/plank_bench.py`. Print every STEP as it is posed (PETG-GF, no supports):
   `coupons/plank_head.step` on its base; `coupons/plank_station.step` on its **+X face** (the face
   toward the bridge end), building -X like the instrument's bridge endplate, so the room, lane and rail
-  run along the build and every vertical hole is a teardrop; `coupons/plank_tee_dummy.step` flat.
+  run along the build and every vertical hole is a teardrop.
   There is no cap and no rod plug any more (`plank_cap.step`, `plank_rod_plug.step` are obsolete).
   The head is the instrument's own coupon motor bay on a pad its own size, a wood-screw tab out each
   side at each end, and the crown tower. The bought and printed hardware is the
@@ -1488,7 +1488,7 @@ its SECOND hole lines up with the screw, and drive the screw back in.
      bearing's +X side, and over its top.
 - **Head order:** the motor bay is the instrument's, so the motor goes in as it does in the body: drop
   it in (pulley on), pilot into the faceplate wall's slot, and hold it down with string 1's CAN tee
-  board -- or the printed `plank_tee_dummy` -- and its M4 x 10 into the post's heat-set. Seat the crown
+  board and its M4 x 10 into the post's heat-set. Seat the crown
   dowel in its cradle. Screw the head down (four wood screws, one per tab, before the belt goes on).
 - **Rebuilding:** `py -3.12 -m src.plank_bench` writes the STEPs in seconds. The bay and the tee
   board come from `src/plank_bench_frozen/` (BREPs taken once from the instrument); after a change

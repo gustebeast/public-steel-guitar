@@ -33,7 +33,7 @@ PRINT POSES: the head BASE DOWN (+Z up), the bay's own overhangs being the coupo
 builds -X off its +X face, as the instrument's bridge endplate does (user, 2026-11-07): base down
 left its room ceiling cantilevered round the holes through it, which print_check's inscribed-circle
 span read as a 7.4 bridge. Built -X the room, the lane and the rail run along the build and every
-Z bore is a teardrop, exactly screw_rail's. The tee dummy flat. PETG-GF.
+Z bore is a teardrop, exactly screw_rail's. PETG-GF. No tee dummy: the real tee board holds the motor down.
 
     py -3.12 -m src.plank_bench      -> coupons/plank_head.step, plank_station.step, ...
 """
@@ -283,10 +283,6 @@ def head() -> cq.Workplane:
     return h
 
 
-def tee_dummy() -> cq.Workplane:
-    return bay()[1]
-
-
 # ── HARDWARE, AT THE INSTRUMENT'S OWN POSITIONS ──────────────────────────────────────────────
 def _belt_bits():
     clamp = BTn.clamp_components()
@@ -359,8 +355,7 @@ def print_parts():
     """{name: solid in its print pose, +Z up, on z 0}: the station turned so its +X face is the bed."""
     out = {}
     st = station().rotate((0, 0, 0), (0, 1, 0), 90)             # -X -> +Z
-    for nm, w in (("plank_station", st), ("plank_head", head()),
-                  ("plank_tee_dummy", tee_dummy())):
+    for nm, w in (("plank_station", st), ("plank_head", head())):   # the real tee board holds the motor (user)
         bb = w.val().BoundingBox()
         out[nm] = w.translate((-bb.xmin, -bb.ymin, -bb.zmin))
     return out
