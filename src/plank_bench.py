@@ -251,11 +251,15 @@ def head() -> cq.Workplane:
     # footprint under it -- the coupon's floor is a rim, and the can stands on this -- and a tab
     # out each side at each end for a wood screw, the +Y pair running out to Y_EDGE so the head
     # still lies flush with the plank's edge like the station
-    h = _box(bb.xmin, bb.xmax, bb.ymin, bb.ymax, Z_PLANK, zb).union(b)
-    tx = (bb.xmin + TAB / 2, bb.xmax - TAB / 2)
+    # The bay's FLOOR footprint, not its bounding box: the hold-down post's corbel reaches 8 past
+    # the floor in +X and 6.8 in +Y up top, over air (user, 2026-11-08: "move this strip over")
+    fl = b.val().intersect(cq.Solid.makeBox(bb.xlen + 2, bb.ylen + 2, 0.1,
+                                            cq.Vector(bb.xmin - 1, bb.ymin - 1, zb + 0.1))).BoundingBox()
+    h = _box(fl.xmin, fl.xmax, fl.ymin, fl.ymax, Z_PLANK, zb).union(b)
+    tx = (fl.xmin + TAB / 2, fl.xmax - TAB / 2)
     for x in tx:
-        h = h.union(_box(x - TAB / 2, x + TAB / 2, bb.ymin - TAB, bb.ymin + 0.01, Z_PLANK, zb))
-        h = h.union(_box(x - TAB / 2, x + TAB / 2, bb.ymax - 0.01, max(Y_EDGE, bb.ymax + TAB), Z_PLANK, zb))
+        h = h.union(_box(x - TAB / 2, x + TAB / 2, fl.ymin - TAB, fl.ymin + 0.01, Z_PLANK, zb))
+        h = h.union(_box(x - TAB / 2, x + TAB / 2, fl.ymax - 0.01, max(Y_EDGE, fl.ymax + TAB), Z_PLANK, zb))
     # the can's floor relieved under the driver housing,
     # which hangs 0.1 under the can's floor line (servo42d, measured)
     h = h.cut(_box(MX - 21.3, MX + 21.3, MX_Y0, MX_Y0 + 13.5, zb - 0.4, zb + 0.01))
@@ -274,7 +278,7 @@ def head() -> cq.Workplane:
                                            (TOWER_X0 - 1.0, tz1 - (c - TOWER_X0))]).close()
               .extrude(-(TOWER_Y1 - TOWER_Y0 + 2.0)).translate((0, TOWER_Y0 - 1.0, 0)))
     for x in tx:
-        for y in (bb.ymin - TAB / 2, max(Y_EDGE, bb.ymax + TAB) - TAB / 2):
+        for y in (fl.ymin - TAB / 2, max(Y_EDGE, fl.ymax + TAB) - TAB / 2):
             h = h.cut(_wood_screw(x, y))
     return h
 
