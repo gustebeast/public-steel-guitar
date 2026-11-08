@@ -17,6 +17,10 @@
    "material": "pctg",
    "volume_mm3": 5262.7
   },
+  "bar_shim": {
+   "material": "petg-gf",
+   "volume_mm3": 3548.4
+  },
   "belt_tensioner_half_a": {
    "material": "pctg",
    "volume_mm3": 903.3
@@ -27,23 +31,23 @@
   },
   "bench_deck_0": {
    "material": "petg-gf",
-   "volume_mm3": 67264.8
+   "volume_mm3": 93487.4
   },
   "bench_deck_1": {
    "material": "petg-gf",
-   "volume_mm3": 65953.8
+   "volume_mm3": 91512.8
   },
   "bench_deck_2": {
    "material": "petg-gf",
-   "volume_mm3": 55438.3
+   "volume_mm3": 75620.7
   },
   "body_adapter": {
    "material": "petg-gf",
-   "volume_mm3": 82791.8
+   "volume_mm3": 83571.9
   },
   "body_adapter_mx_my": {
    "material": "petg-gf",
-   "volume_mm3": 84702.1
+   "volume_mm3": 84995.5
   },
   "body_adapter_px_my": {
    "material": "petg-gf",
@@ -51,11 +55,11 @@
   },
   "body_adapter_px_py": {
    "material": "petg-gf",
-   "volume_mm3": 83392.2
+   "volume_mm3": 83950.5
   },
   "bridge_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 313680.8
+   "volume_mm3": 341999.8
   },
   "cart_base": {
    "material": "pctg",
@@ -67,7 +71,7 @@
   },
   "chassis_0": {
    "material": "petg-gf",
-   "volume_mm3": 584816.0
+   "volume_mm3": 542397.4
   },
   "chassis_0_light": {
    "material": "pctg",
@@ -75,7 +79,7 @@
   },
   "chassis_1": {
    "material": "petg-gf",
-   "volume_mm3": 613660.6
+   "volume_mm3": 585478.6
   },
   "chassis_1_light": {
    "material": "pctg",
@@ -83,7 +87,7 @@
   },
   "chassis_2": {
    "material": "petg-gf",
-   "volume_mm3": 651381.6
+   "volume_mm3": 605210.5
   },
   "chassis_2_light": {
    "material": "pctg",
@@ -107,7 +111,7 @@
   },
   "keyhead_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 301058.0
+   "volume_mm3": 324258.2
   },
   "kl_axle": {
    "material": "pctg",
@@ -275,7 +279,7 @@
   },
   "seam_bridge": {
    "material": "petg-gf",
-   "volume_mm3": 20945.0
+   "volume_mm3": 22197.0
   },
   "tension_fork": {
    "material": "pctg",
@@ -307,43 +311,43 @@
   },
   "top_plate_0": {
    "material": "pctg",
-   "volume_mm3": 61021.4
+   "volume_mm3": 68408.0
   },
   "top_plate_0_color": {
    "material": "pctg",
-   "volume_mm3": 17320.7
+   "volume_mm3": 19782.9
   },
   "top_plate_1": {
    "material": "pctg",
-   "volume_mm3": 18407.1
+   "volume_mm3": 20250.3
   },
   "top_plate_1_color": {
    "material": "pctg",
-   "volume_mm3": 5928.0
+   "volume_mm3": 6542.4
   },
   "top_plate_2": {
    "material": "pctg",
-   "volume_mm3": 18407.1
+   "volume_mm3": 20250.3
   },
   "top_plate_2_color": {
    "material": "pctg",
-   "volume_mm3": 5928.0
+   "volume_mm3": 6542.4
   },
   "top_plate_3": {
    "material": "pctg",
-   "volume_mm3": 174989.2
+   "volume_mm3": 194876.8
   },
   "top_plate_3_color": {
    "material": "pctg",
-   "volume_mm3": 105678.2
+   "volume_mm3": 112307.4
   },
   "top_plate_4": {
    "material": "pctg",
-   "volume_mm3": 228719.5
+   "volume_mm3": 251670.6
   },
   "top_plate_4_color": {
    "material": "pctg",
-   "volume_mm3": 110814.2
+   "volume_mm3": 118481.9
   },
   "ui_clamp": {
    "material": "petg-gf",
