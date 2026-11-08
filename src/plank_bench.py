@@ -19,8 +19,8 @@ holds those parts up off a plank.
               the open pulley bay the belt leaves by. Base flanges both sides in Y take the
               string's pull (147 N at STRING_Z, 72 mm over the plank) down to four wood screws.
               NO CAP (user, 2026-11-07): the 688 drops into its pocket from +Z and the Ø8 axle
-              slides through it along Y; the guide rod's plug is held by an M4 fender washer
-              under one M4 button into a heat-set beside it.
+              slides through it along Y. Nothing over the guide rod: its press fit in the slab
+              bore holds it, as it does the instrument's (whose plug is only a backstop).
 
 ONE STRING, STRAIGHT. The instrument's string 1 fans 13.5 in Y over its length; here the crown
 is on the string's bridge Y instead, so the string runs straight down the plank. That changes
@@ -33,7 +33,7 @@ PRINT POSES: the head BASE DOWN (+Z up), the bay's own overhangs being the coupo
 builds -X off its +X face, as the instrument's bridge endplate does (user, 2026-11-07): base down
 left its room ceiling cantilevered round the holes through it, which print_check's inscribed-circle
 span read as a 7.4 bridge. Built -X the room, the lane and the rail run along the build and every
-Z bore is a teardrop, exactly screw_rail's. The tee dummy flat, the rod plug on its end. PETG-GF.
+Z bore is a teardrop, exactly screw_rail's. The tee dummy flat. PETG-GF.
 
     py -3.12 -m src.plank_bench      -> coupons/plank_head.step, plank_station.step, ...
 """
@@ -49,8 +49,7 @@ from . import dimensions as D
 from . import components as C
 from . import screw_rail as SR
 from . import belt_tensioner as BTn
-from .helpers import box_at, cyl, cyl_y
-from cadkit.fasteners import M4, cut_anchor, m4_button_screw
+from .helpers import box_at, cyl_y
 from cadkit.supports import printable_bore
 
 I = 0                                            # string 1
@@ -81,9 +80,13 @@ LANE = 8 * D.BEAD                                # 6.4: the room's half-width, t
 # and nothing hangs off -X (user, 2026-11-07: a bay cut wide below z -40 left them cantilevered).
 # Its +Y side is the clamp's: near the top of travel the clamp's half A reaches y 50.12 inside the
 # station's X span (and z -40.1); the belt itself spans y 37.9..47.6 there.
+# Its -Y side is the thrust 688's: the bearing slides in along the bay from -X and up into the
+# rail's seat, so the bay is a bearing wide (user, 2026-11-08).
 LANE_HI = 11 * D.BEAD                            # 8.8: the bay's +Y half-width (1.43 past the clamp)
-WALL_HI = 4 * D.BEAD                             # 3.2: the +Y wall outside it
-Y0, Y1 = SY - LANE - WALL, SY + LANE_HI + WALL_HI   # 31.55 .. 54.75, the station's Y faces
+LANE_LO = 21 * D.BEAD / 2                        # 8.4: the bay's -Y half-width, the 688's 8.0 + 0.4
+assert min(LANE_LO, LANE_HI) >= D.BRG688_OD / 2 + 0.4 - 1e-9, "the thrust 688 cannot slide in along the bay"
+WALL_HI = 4 * D.BEAD                             # 3.2: the bay's walls outside it
+Y0, Y1 = SY - LANE_LO - WALL_HI, SY + LANE_HI + WALL_HI   # 31.15 .. 54.75, the station's Y faces
 FLANGE = 11.6                                    # the station's base past its walls, both sides in Y
 Y_EDGE = Y1 + FLANGE                             # every base's +Y face: the plank's edge
 X0 = RX - 7.2                                    # -27.2: the station's -X face, past the rod's socket
@@ -96,7 +99,6 @@ RAIL_BOT, RAIL_TOP = SR.BOT, SR.TOP              # -31.85 .. -22.55
 SOCKET_Z = SR.LEDGE_TOP + 2 * D.BEAD             # -23.35: the rod's bottom, 1.6 over the lip band
 ROD_TOP = SOCKET_Z + D.GUIDE_ROD_L               # 6.45
 ROD_BORE = D.GUIDE_ROD_D + D.GUIDE_ROD_FIT       # 3.65, round
-ROD_PLUG_D, ROD_PLUG_L = 4 * D.BEAD, (SLAB_TOP - 0.15) - ROD_TOP   # the instrument's rod_plug: 3.2 x 5.6
 
 # the bridge bearing: a 688 on an Ø8 shaft, as in the instrument, dropped into a pocket open on
 # top, the shaft then slid through it along Y (user, 2026-11-07)
@@ -107,12 +109,6 @@ AXLE_BORE = D.BRIDGE_AXLE_D + 0.4                # 8.4, a teardrop through both 
 assert BZ + AXLE_BORE / 2 <= SLAB_TOP - 2 * D.BEAD + 1e-9, "under two beads over the axle bore"
 SCREW_HOLE_D = 12.7                              # 1/2 in: the pulley's Ø11 flange and the drill
 assert D.CHANGER_CEIL_Z < BRG_POCKET[3], "no floor between the room and the bearing"
-# THE ROD'S LID: an M4 fender washer (DIN 9021, Ø12 x 1) under an M4 x 10 button, into an anchor
-# off the rod's -X-Y side, its rim 0.36 past the rod's axis -- over the plug, clear of the
-# pocket, the -X face and the string line (only the washer's 1.0 passes under the string)
-LID_X, LID_Y = RX - 2.4, SY - 5.1
-LID_WASHER_D, LID_WASHER_T = 12.0, 1.0
-assert math.hypot(LID_X - RX, LID_Y - SY) < LID_WASHER_D / 2, "the washer misses the rod's axis"
 
 # ── THE HEAD ─────────────────────────────────────────────────────────────────────────────
 MX, MY, _MZ = D.motor_pos(I)
@@ -127,6 +123,7 @@ CROWN_Z = D.STRING_Z - D.STRING_GAUGE[I] - D.NUT_PIN_D / 2.0
 MX_Y0 = 35.25 - D.MOTOR_BODY_L                  # the motor's back (faceplate y 35.25)
 TOWER_X0 = CROWN_X - 5.0                         # -620; it runs +X to the bay's -X wall
 TOWER_Y0, TOWER_Y1 = SY - 7.2, SY + 7.2
+TAB = 16 * D.BEAD                                # 12.8: a wood-screw tab, the screw in its middle
 SCALE_SPAN = BX - CROWN_X                        # 607.0, crown dowel to bearing axle
 
 OUT = pathlib.Path(__file__).resolve().parents[1] / "coupons"
@@ -158,7 +155,7 @@ def station() -> cq.Workplane:
     s = _box(X0, X1B, Y0 - FLANGE, Y_EDGE, Z_PLANK, zb)                                  # base
     s = s.union(_box(X0, X1B, Y0, Y1, zb - 0.01, SLAB_TOP))                          # the block
     # the bay: the lane under the rail, open -X for the belt
-    s = s.cut(_box(X0 - 1.0, X1, SY - LANE, SY + LANE_HI, zb, RAIL_BOT))
+    s = s.cut(_box(X0 - 1.0, X1, SY - LANE_LO, SY + LANE_HI, zb, RAIL_BOT))
     # the changer room: over the rail, under the slab, open -X for the hand that spins the nut on
     s = s.cut(_box(X0 - 1.0, X1, SY - LANE, SY + LANE, RAIL_TOP, D.CHANGER_CEIL_Z))
     # ...and open +X through the back wall: the ear the string is threaded up through is 8 mm in
@@ -182,8 +179,6 @@ def station() -> cq.Workplane:
     # the axle's bore, out through both faces, cut last
     s = s.cut(printable_bore(AXLE_BORE, Y1 - Y0 + 2.0, axis_point=(BX, Y0 - 1.0, BZ),
                              axis_dir=(0.0, 1.0, 0.0), print_up=ST_UP))
-    # the rod's lid: one anchor (self-taps now, a heat-set later)
-    s = cut_anchor(M4, s, (LID_X, LID_Y, SLAB_TOP), (0.0, 0.0, -1.0), 10.0, print_up=ST_UP)
     # wood screws, two down each flange, clear of the belt
     for x in (X0 + 6.4, X1B - 6.4):
         for y in (Y0 - FLANGE / 2, Y1 + FLANGE / 2):
@@ -191,25 +186,60 @@ def station() -> cq.Workplane:
     return s
 
 
-def _bay():
-    """(bay, dummy board) from motor_bank's coupon, built on string 1's motor, at the plank's height."""
-    from . import motor_bank as MB
+# ── THE INSTRUMENT'S PIECES, FROZEN ──────────────────────────────────────────────────────────
+# The bay and the tee board are carved from the instrument's motor bank and wiring, and importing
+# those builds half the instrument (src.wiring alone is over 90 s) for a few parts that never move
+# here. So they are BUILT ONCE into FROZEN (BREPs, committed, at the instrument's own world pose)
+# and read back in well under a second (user, 2026-11-08: "grab the geometry once"). Nothing
+# re-freezes them behind your back: after a change to the motor bay or the tee board, run
+#     py -3.12 -m src.plank_bench --freeze
+FROZEN = pathlib.Path(__file__).resolve().parent / "plank_bench_frozen"
+_TEE_KEEP = ("tee_pcb", "tee_silk", "tee_insert", "tee_screw")
+
+
+def freeze():
+    """Build the bay, its dummy board and string 1's tee board from the instrument and write them."""
+    import subprocess
+    from . import motor_bank as MB, wiring as W
     keep = MB.COUPON_MOTOR
     MB.COUPON_MOTOR = I
     try:
-        bay, dummy = MB._coupon_world()
+        bay_, dummy = MB._coupon_world()
     finally:
         MB.COUPON_MOTOR = keep
-    return bay.translate((0, 0, MOTOR_RISE)), dummy.translate((0, 0, MOTOR_RISE))
+    parts = [("bay", bay_), ("tee_dummy", dummy)]
+    parts += [(nm, shp) for nm, shp in W.tee_components() if nm.endswith("_0") and nm.startswith(_TEE_KEEP)]
+    FROZEN.mkdir(exist_ok=True)
+    for nm, w in parts:
+        (w.val() if hasattr(w, "val") else w).exportBrep(str(FROZEN / f"{nm}.brep"))
+    head_ = subprocess.run(["git", "log", "-1", "--format=%h %cs"], cwd=FROZEN, capture_output=True,
+                           text=True).stdout.strip()
+    (FROZEN / "FROZEN.txt").write_text(
+        "Built by `py -3.12 -m src.plank_bench --freeze` from the instrument at %s.\n%s\n"
+        % (head_, "\n".join(nm for nm, _ in parts)), encoding="utf-8")
+    return [nm for nm, _ in parts]
+
+
+def _frozen(nm):
+    f = FROZEN / f"{nm}.brep"
+    if not f.exists():
+        raise FileNotFoundError(f"{f} is missing: run `py -3.12 -m src.plank_bench --freeze`")
+    return cq.Workplane("XY").add(cq.Shape.importBrep(str(f)))
+
+
+def _frozen_tee():
+    names = (FROZEN / "FROZEN.txt").read_text(encoding="utf-8").splitlines()[1:]
+    return [(nm, _frozen(nm)) for nm in names if nm.startswith(_TEE_KEEP)]
 
 
 _BAY = None
 
 
 def bay():
+    """(bay, dummy board): motor_bank's coupon on string 1's motor, lifted to the plank's height."""
     global _BAY
     if _BAY is None:
-        _BAY = _bay()
+        _BAY = tuple(_frozen(nm).translate((0, 0, MOTOR_RISE)) for nm in ("bay", "tee_dummy"))
     return _BAY
 
 
@@ -217,9 +247,16 @@ def head() -> cq.Workplane:
     zb = Z_PLANK + BASE_T
     b, _dummy = bay()
     bb = b.val().BoundingBox()
-    x0, x1, y0 = TOWER_X0 - 13.0, bb.xmax + 13.0, bb.ymin - 13.0
-    h = _box(x0, x1, y0, Y_EDGE, Z_PLANK, zb).union(b)
-    # the coupon's floor is a rim: the base fills its middle, so relieve it under the driver housing,
+    # THE BAY AND FOUR SCREW TABS, no plate round them (user, 2026-11-08): a pad the bay's own
+    # footprint under it -- the coupon's floor is a rim, and the can stands on this -- and a tab
+    # out each side at each end for a wood screw, the +Y pair running out to Y_EDGE so the head
+    # still lies flush with the plank's edge like the station
+    h = _box(bb.xmin, bb.xmax, bb.ymin, bb.ymax, Z_PLANK, zb).union(b)
+    tx = (bb.xmin + TAB / 2, bb.xmax - TAB / 2)
+    for x in tx:
+        h = h.union(_box(x - TAB / 2, x + TAB / 2, bb.ymin - TAB, bb.ymin + 0.01, Z_PLANK, zb))
+        h = h.union(_box(x - TAB / 2, x + TAB / 2, bb.ymax - 0.01, max(Y_EDGE, bb.ymax + TAB), Z_PLANK, zb))
+    # the can's floor relieved under the driver housing,
     # which hangs 0.1 under the can's floor line (servo42d, measured)
     h = h.cut(_box(MX - 21.3, MX + 21.3, MX_Y0, MX_Y0 + 13.5, zb - 0.4, zb + 0.01))
     # the belt's upper run leaves the motor pulley 1.5 deg off level here, and grazes the bay's
@@ -227,7 +264,7 @@ def head() -> cq.Workplane:
     h = h.cut(_box(MX + 9.0, MX + 20.0, MY - 2.7, MY - 1.2, MZ + 3.0, MZ + 5.5))
     # the crown tower, against the bay's -X wall, the Ø4 x 4 dowel in a cradle on top
     tz1 = CROWN_Z
-    h = h.union(_box(TOWER_X0, bb.xmin + 0.8, TOWER_Y0, TOWER_Y1, zb - 0.01, tz1))
+    h = h.union(_box(TOWER_X0, bb.xmin + 0.8, TOWER_Y0, TOWER_Y1, Z_PLANK, tz1))
     h = h.cut(cyl_y(D.NUT_PIN_D + 0.2, D.NUT_PIN_L + 0.4, SY - (D.NUT_PIN_L + 0.4) / 2,
                     x=CROWN_X, z=CROWN_Z))
     # the tail's side: 45 deg off the -X top corner, under the line to the tuner
@@ -236,8 +273,9 @@ def head() -> cq.Workplane:
                                            (TOWER_X0, tz1 - (c - TOWER_X0)),
                                            (TOWER_X0 - 1.0, tz1 - (c - TOWER_X0))]).close()
               .extrude(-(TOWER_Y1 - TOWER_Y0 + 2.0)).translate((0, TOWER_Y0 - 1.0, 0)))
-    for x, y in ((x0 + 6.5, y0 + 6.5), (x0 + 6.5, Y_EDGE - 6.5), (x1 - 6.5, y0 + 6.5), (x1 - 6.5, Y_EDGE - 6.5)):
-        h = h.cut(_wood_screw(x, y))
+    for x in tx:
+        for y in (bb.ymin - TAB / 2, max(Y_EDGE, bb.ymax + TAB) - TAB / 2):
+            h = h.cut(_wood_screw(x, y))
     return h
 
 
@@ -292,7 +330,6 @@ def assembly():
     out.append(("string_nut_0", C.string_nut().translate(
         (D.string_anchor_x(I), SY, D.NUT_TOP_Z - D.NUT_FLANGE_T - D.STRING_NUT_D / 2))))
     out.append(("guide_rod_0", C.guide_rod(D.GUIDE_ROD_L).translate((RX, SY, SOCKET_Z))))
-    out.append(("rod_plug_0", cyl(ROD_PLUG_D, ROD_PLUG_L, ROD_TOP).translate((RX, SY, 0))))
     out.append(("screw_pulley_0", C.screw_pulley(high=D.screw_pulley_z(I) > D.SCREW_PULLEY_Z)
                 .rotate((0, 0, 0), (0, 0, 1), sp_deg).translate((SX, SY, D.screw_pulley_z(I)))))
     out.append(("screw_bearing_0_0", C.support_bearing().translate(
@@ -308,14 +345,8 @@ def assembly():
     out.append(("belt_0", C.belt(*args)))
     for nm, shp in BTn.clamp_components(gap):
         out.append((f"{nm}_0", cq.Workplane("XY").add(shp.val().moved(cloc))))
-    from . import wiring as W
-    for nm, shp in W.tee_components():
-        if nm.endswith("_0") and nm.startswith(("tee_pcb", "tee_silk", "tee_insert", "tee_screw")):
-            out.append((nm, shp.translate((0, 0, MOTOR_RISE))))
-    out.append(("lid_washer", cyl(LID_WASHER_D, LID_WASHER_T, SLAB_TOP).translate((LID_X, LID_Y, 0))
-                .cut(cyl(M4.shaft_clr_d, LID_WASHER_T + 1.0, SLAB_TOP - 0.5).translate((LID_X, LID_Y, 0)))))
-    out.append(("lid_screw", m4_button_screw(10.0).rotate((0, 0, 0), (1, 0, 0), 180)
-                .translate((LID_X, LID_Y, SLAB_TOP + LID_WASHER_T))))
+    for nm, shp in _frozen_tee():
+        out.append((nm, shp.translate((0, 0, MOTOR_RISE))))
     out.append(("string_0", _string()))
     return out
 
@@ -325,14 +356,17 @@ def print_parts():
     out = {}
     st = station().rotate((0, 0, 0), (0, 1, 0), 90)             # -X -> +Z
     for nm, w in (("plank_station", st), ("plank_head", head()),
-                  ("plank_tee_dummy", tee_dummy()), ("plank_rod_plug", cyl(ROD_PLUG_D, ROD_PLUG_L))):
+                  ("plank_tee_dummy", tee_dummy())):
         bb = w.val().BoundingBox()
         out[nm] = w.translate((-bb.xmin, -bb.ymin, -bb.zmin))
     return out
 
 
 if __name__ == "__main__":
+    import sys
     from cadkit.step_export import export_step
+    if "--freeze" in sys.argv:
+        print("froze", ", ".join(freeze()), "into", FROZEN)
     print(f"scale span {SCALE_SPAN:.2f}  plank top z {Z_PLANK:.2f}  edge y {Y_EDGE:.2f}")
     for nm, w in print_parts().items():
         bb = w.val().BoundingBox()

@@ -1,0 +1,7 @@
+Built by `py -3.12 -m src.plank_bench --freeze` from the instrument at 8863a5a93 2026-11-07.
+bay
+tee_dummy
+tee_pcb_0
+tee_silk_0
+tee_insert_0
+tee_screw_0

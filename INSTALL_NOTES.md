@@ -1453,16 +1453,16 @@ its SECOND hole lines up with the screw, and drive the screw back in.
 - **Where:** `src/plank_bench.py`. Print every STEP as it is posed (PETG-GF, no supports):
   `coupons/plank_head.step` on its base; `coupons/plank_station.step` on its **+X face** (the face
   toward the bridge end), building -X like the instrument's bridge endplate, so the room, lane and rail
-  run along the build and every vertical hole is a teardrop; `coupons/plank_tee_dummy.step` flat;
-  `coupons/plank_rod_plug.step` on its end. There is no cap any more (`plank_cap.step` is obsolete).
-  The head's motor bay is the instrument's own coupon bay. The bought and printed hardware is the
+  run along the build and every vertical hole is a teardrop; `coupons/plank_tee_dummy.step` flat.
+  There is no cap and no rod plug any more (`plank_cap.step`, `plank_rod_plug.step` are obsolete).
+  The head is the instrument's own coupon motor bay on a pad its own size, a wood-screw tab out each
+  side at each end, and the crown tower. The bought and printed hardware is the
   instrument's own: string 1's 573-tooth GT2 belt and its clamp, `screw_pulley_hi`, `motor_pulley`,
   the Tr8x2 screw (36.28), the H-nut, an NRB 3.5 x 29.8 guide rod, two 688ZZ (thrust
   and bridge), a Ø8 shaft (the 100 mm one fits: its bore runs out through both faces), a Ø4 x 4 dowel
   for the crown, and the SERVO42D.
 - **Extra hardware:** the bay's M4 x 10 button + heat-set (the tee board's hold-down, as in the body),
-  1 x M4 x 10 button + 1 M4 fender washer (DIN 9021, Ø12 x 1) over the guide rod (it self-taps; a
-  heat-set fits the same hole later), 8 x #8 flat-head wood screws (the watering-backpack ones, Ø9.3 head), long enough for the
+  8 x #8 flat-head wood screws (the watering-backpack ones, Ø9.3 head), long enough for the
   plank less 1-2 mm (a 38 mm 2x4 takes 1-1/4"), and a guitar tuner.
 - **The plank:** a 2x4 (or anything as stiff) at least 900 mm long, with a **1/2 in hole drilled
   through it** under the screw: screw the station down first and drill through the hole in its floor. Both bases' +Y faces sit flush with
@@ -1471,14 +1471,13 @@ its SECOND hole lines up with the screw, and drive the screw back in.
 - **Tuner:** in the plank, on the string's line, 150-300 mm -X of the crown. Nearer than 150 the tail
   breaks over the crown steeper than it needs; further than about 340 it breaks under 15 degrees.
 - **Station order:**
-  1. Push a 688 up into the rail's seat from the bay (the open side under the rail) until it stops on
-     the lip.
+  1. Slide a 688 flat into the bay (the open side under the rail, a bearing wide) and push it up into
+     the rail's seat until it stops on the lip.
   2. Screw the station down (four wood screws, two down each side flange) and drill the plank 1/2 in
      through the hole in the station's floor.
   3. Slide the H-nut into the changer room from -X (flange up, long way along X) until its -X ear is
-     under the rod bore. Drop the guide rod down the slab bore, through the ear, into its socket, then
-     the printed rod plug on top of it, then the fender washer and M4 x 10 button beside it: the
-     washer's rim lies over the plug.
+     under the rod bore. Press the guide rod down the slab bore, through the ear, into its socket:
+     its fit in the bore holds it (nothing goes over it).
   4. Thread `screw_pulley_hi` onto the screw's foot (a few turns). From under the plank, push the screw
      up through the hole and the 688 until it meets the nut, then turn the pulley (in the bay) to run the
      screw up through the nut. Keep going until the pulley jams up against the bearing's inner ring.
@@ -1490,7 +1489,11 @@ its SECOND hole lines up with the screw, and drive the screw back in.
 - **Head order:** the motor bay is the instrument's, so the motor goes in as it does in the body: drop
   it in (pulley on), pilot into the faceplate wall's slot, and hold it down with string 1's CAN tee
   board -- or the printed `plank_tee_dummy` -- and its M4 x 10 into the post's heat-set. Seat the crown
-  dowel in its cradle. Screw the head down (four wood screws, before the belt goes on).
+  dowel in its cradle. Screw the head down (four wood screws, one per tab, before the belt goes on).
+- **Rebuilding:** `py -3.12 -m src.plank_bench` writes the STEPs in seconds. The bay and the tee
+  board come from `src/plank_bench_frozen/` (BREPs taken once from the instrument); after a change
+  to the instrument's motor bay or tee board, re-take them with `py -3.12 -m src.plank_bench --freeze`
+  (minutes: it imports the motor bank and the wiring).
 - **Then** the belt and its clamp, exactly as on the instrument (nut at the top of travel, clamp 5 mm
   off the screw pulley), and the string over the crown to the tuner.
 - **Why:** to run one string's drive at full tension without the instrument: every part is drawn at
