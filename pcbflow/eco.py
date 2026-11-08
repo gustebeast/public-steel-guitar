@@ -325,6 +325,7 @@ def move(stem, moves):
     board = pcbnew.LoadBoard(path)
     stood, stands, nets, boxes = [], [], set(), []
     onl = []                     # the copper layers of each pad in `stands`
+    stn = []                     # ...and its net
     local = set()                # uuids of the moved parts' local copper (see _tree)
     pairs = []                   # (net, old centre, new centre) of every moved pad
     tracks = list(board.GetTracks())
@@ -346,6 +347,7 @@ def move(stem, moves):
             cu = {board.GetLayerName(l) for l in p.GetLayerSet().CuStack()}
             stands.append(_xy(p.GetPosition()))
             onl.append(cu)
+            stn.append(p.GetNetname())
             bb = p.GetBoundingBox()
             boxes.append(((pcbnew.ToMM(bb.GetLeft()), pcbnew.ToMM(bb.GetTop()),
                            pcbnew.ToMM(bb.GetRight()), pcbnew.ToMM(bb.GetBottom())),
@@ -383,6 +385,10 @@ def move(stem, moves):
             if any(p.GetNetname() != net and not (rigid and p.GetParentFootprint().GetReference() == ref)
                    and (_seg_box((vx, vy), (vx, vy), box(bb)) < vr + EDGE
                         or _seg_box(a, c, box(bb)) < pcbnew.ToMM(t.GetWidth()) / 2.0 + EDGE)
+                   for p, bb in fixed):
+                return False
+            # never into an SMD land, its own net's included: solder wicks down the barrel (A14)
+            if any(p.GetDrillSize().x == 0 and _seg_box((vx, vy), (vx, vy), box(bb)) < vr
                    for p, bb in fixed):
                 return False
             # another net's via at copper clearance; the net's own at the drill's hole-to-hole
@@ -441,7 +447,11 @@ def move(stem, moves):
         # A via is on every layer; so is a dragged via (None).
         on = None if t.GetClass() == "PCB_VIA" else {t.GetLayerName()}
         meet = lambda cu: on is None or cu is None or bool(on & cu)
-        return (any(_seg(p, a, c) < half + CLEAR for p, cu in zip(stands, onl) if meet(cu))
+        # A track of the pad's own net is a connection, not in the way (seed 71 C108: the +3V3D
+        # trunk beside its new +3V3D pad went, and close_last re-laid it 19.3 mm round 1.6);
+        # a via of its own net still is, since under the land it would be a via in the pad.
+        return (any(_seg(p, a, c) < half + CLEAR for p, cu, n in zip(stands, onl, stn)
+                    if meet(cu) and (on is None or n != t.GetNetname()))
                 or any(_seg_box(a, c, b) < half + EDGE for b, n, cu in boxes
                        if n != t.GetNetname() and meet(cu)))
     cut = {}
@@ -623,16 +633,18 @@ def move(stem, moves):
     # run beyond it was left an island, and close_last re-joined both pieces 16.7 and 20.3 mm
     # round. A via in the way with copper that stays on its other layers is moved to the
     # nearest clear spot within 1.6 mm, and the ends of that copper are moved to meet it.
-    taken = {id(t) for t in gone}
+    # ⚠ BY UUID: GetTracks() hands back new proxies every call, so id() of a piece in `gone`
+    # never matched one from `allt` and every taken-up piece counted as held (seed 71 R33)
+    taken = {t.m_Uuid.AsString() for t in gone}
     near = lambda u, w: abs(u[0] - w[0]) < 0.005 and abs(u[1] - w[1]) < 0.005
     allt = list(board.GetTracks())
     for v in [t for t in gone if t.GetClass() == "PCB_VIA" and id(t) in clash]:
         o, vr, net = _xy(v.GetPosition()), pcbnew.ToMM(v.GetWidth(pcbnew.F_Cu)) / 2.0, v.GetNetname()
-        held = [t for t in allt if t.GetClass() != "PCB_VIA" and id(t) not in taken
+        held = [t for t in allt if t.GetClass() != "PCB_VIA" and t.m_Uuid.AsString() not in taken
                 and t.GetNetname() == net and (near(_xy(t.GetStart()), o) or near(_xy(t.GetEnd()), o))]
         if not held:
             continue
-        others = [t for t in allt if id(t) not in taken and t is not v and t.GetNetname() != net]
+        others = [t for t in allt if t.m_Uuid.AsString() not in taken and t.GetNetname() != net]
 
         def _clear(p):
             if _in_way(v, p, p, vr):
@@ -643,14 +655,24 @@ def move(stem, moves):
                         return False
                 elif _seg(p, _xy(u.GetStart()), _xy(u.GetEnd())) < vr + pcbnew.ToMM(u.GetWidth()) / 2.0 + EDGE:
                     return False
-            if any(u.GetClass() == "PCB_VIA" and u is not v and id(u) not in taken and u.GetNetname() == net
+            if any(u.GetClass() == "PCB_VIA" and u.m_Uuid.AsString() != v.m_Uuid.AsString()
+                   and u.m_Uuid.AsString() not in taken and u.GetNetname() == net
                    and math.dist(_xy(u.GetPosition()), p) < pcbnew.ToMM(u.GetDrillValue()) + HOLE
                    for u in allt):
                 return False
             if any(q.GetNetname() != net and _seg_box(p, p, box(bb)) < vr + EDGE for q, bb in fixed):
                 return False
+            # nor into an SMD land of its own net (optical seed 71 C124: C110's and C111's GND
+            # vias slid onto their own GND pads, quality A14 -- solder wicks down the barrel)
+            if any(q.GetDrillSize().x == 0 and _seg_box(p, p, box(bb)) < vr for q, bb in fixed):
+                return False
             for t in held:
                 far = _xy(t.GetEnd()) if near(_xy(t.GetStart()), o) else _xy(t.GetStart())
+                if t.m_Uuid.AsString() in stretch:
+                    # it follows its pad: judged from where it will start, not the old centre
+                    # (seed 71 R33: USB_CC2's stub, from the old centre, met the new GND land)
+                    _, new_, p_ = stretch[t.m_Uuid.AsString()]
+                    far = new_ if near(p_, o) else p_
                 hw = pcbnew.ToMM(t.GetWidth()) / 2.0
                 for u in others:
                     if u.GetClass() == "PCB_VIA":
@@ -673,6 +695,13 @@ def move(stem, moves):
         stub = next((t for t in gone if t.GetClass() != "PCB_VIA" and t.GetNetname() == net
                      and (near(_xy(t.GetStart()), o) or near(_xy(t.GetEnd()), o))), None)
         tos = [new for n, old, new in pairs if n == net] if stub is not None else []
+        if stub is not None:
+            # ...or back to the pad its stub came from, when that pad stayed put (seed 71 C124:
+            # C111's GND via slid clear and its stub to C111.2 had gone with the rip)
+            far = _xy(stub.GetEnd()) if near(_xy(stub.GetStart()), o) else _xy(stub.GetStart())
+            fv = pcbnew.VECTOR2I(pcbnew.FromMM(far[0]), pcbnew.FromMM(far[1]))
+            if any(q.GetNetname() == net and q.HitTest(fv) for q, bb in fixed):
+                tos.append(far)
         spot, leg_to = None, None
         for p in ring:
             if not _clear(p):
@@ -710,7 +739,7 @@ def move(stem, moves):
     # its two free ends still meet copper of its own that stays; laid round below.
     chain_gaps = []
     eq = lambda u, w: abs(u[0] - w[0]) < 0.005 and abs(u[1] - w[1]) < 0.005
-    went = {id(t) for t in gone}
+    went = {t.m_Uuid.AsString() for t in gone}
     pool = [t for t in gone if id(t) in blocked and t.GetClass() != "PCB_VIA"
             and t.GetNetname() not in nets and not t.GetNetname().upper().endswith("GND")]
     while pool:
@@ -728,12 +757,12 @@ def move(stem, moves):
             continue
         ends = [e for t in comp for e in (_xy(t.GetStart()), _xy(t.GetEnd()))]
         free = [e for e in ends if sum(eq(e, f) for f in ends) == 1]
-        if any(v.GetClass() == "PCB_VIA" and id(v) in went and v.GetNetname() == net
+        if any(v.GetClass() == "PCB_VIA" and v.GetNetname() == net
                and any(eq(_xy(v.GetPosition()), e) for e in ends) for v in gone):
             continue
         def held(e):
             pe = pcbnew.VECTOR2I(pcbnew.FromMM(e[0]), pcbnew.FromMM(e[1]))
-            return (any(u.GetNetname() == net and id(u) not in went and all(u is not t for t in comp)
+            return (any(u.GetNetname() == net and u.m_Uuid.AsString() not in went
                         and (eq(_xy(u.GetStart()), e) or eq(_xy(u.GetEnd()), e)
                              or (u.GetClass() == "PCB_VIA" and eq(_xy(u.GetPosition()), e)))
                         for u in allt)
