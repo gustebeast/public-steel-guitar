@@ -444,6 +444,12 @@ BOARD_NOTES = {
     # the length of this board was 0.13 V there and back on its own
     "net_widths": {"+3V3": 0.40, "GND": 0.40},   # 0.50 left PWR_SW_DN no way past SW2
     "edge_escape": ("J2",),       # the ribbon header's edge-side row: layout._edge_row_escape
+    # TWO ROUNDS (2026-11-07): the seven switch lines run J2 -> pull-up row in one bundle past
+    # J1, and the router's first pass leaves the last of them (SW_D, once ENC_A) open on about
+    # half the routes. The retry, then close_last, finish it: 21 of 21 full reroutes clean with
+    # A23 and A24 on (the unmoved board, which needs the retry, plus 10 nudges at seed 31 and
+    # 10 at seed 53), each closure 1.04-1.23x its gap. One round leaves the unmoved board 1 open.
+    "finish_rounds": 2,
     # no via among the power switch's six lands: the first route put one 0.26 from a
     # terminal's hole, against the fab's 0.45 hole-to-hole
     "via_keepouts": [[round(_PWR_X - 4.0, 3), round(_PWR_Y - 4.2, 3),
