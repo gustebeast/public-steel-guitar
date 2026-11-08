@@ -1450,16 +1450,19 @@ its SECOND hole lines up with the screw, and drive the screw back in.
 
 ## Plank bench: string 1's whole drive on a wooden plank (2026-11-07)
 
-- **Where:** `src/plank_bench.py`. Print `coupons/plank_head.step` and `coupons/plank_station.step`
-  standing on their bases, as the STEPs are posed, and `coupons/plank_cap.step` and
-  `coupons/plank_tee_dummy.step` flat (PETG-GF). No supports: the station's rail and room are bridges
-  between its two full-height side walls, and the head's motor bay is the instrument's own coupon bay. The bought and printed hardware is the
+- **Where:** `src/plank_bench.py`. Print every STEP as it is posed (PETG-GF, no supports):
+  `coupons/plank_head.step` on its base; `coupons/plank_station.step` on its **+X face** (the face
+  toward the bridge end), building -X like the instrument's bridge endplate, so the room, lane and rail
+  run along the build and every vertical hole is a teardrop; `coupons/plank_tee_dummy.step` flat;
+  `coupons/plank_rod_plug.step` on its end. There is no cap any more (`plank_cap.step` is obsolete).
+  The head's motor bay is the instrument's own coupon bay. The bought and printed hardware is the
   instrument's own: string 1's 573-tooth GT2 belt and its clamp, `screw_pulley_hi`, `motor_pulley`,
-  the Tr8x2 screw (36.28), the H-nut, an NRB 3.5 x 29.8 guide rod and its `rod_plug`, two 688ZZ (thrust
-  and bridge), a Ø8 shaft (the 100 mm one fits: its slot runs out through both faces), a Ø4 x 4 dowel
+  the Tr8x2 screw (36.28), the H-nut, an NRB 3.5 x 29.8 guide rod, two 688ZZ (thrust
+  and bridge), a Ø8 shaft (the 100 mm one fits: its bore runs out through both faces), a Ø4 x 4 dowel
   for the crown, and the SERVO42D.
 - **Extra hardware:** the bay's M4 x 10 button + heat-set (the tee board's hold-down, as in the body),
-  2 x M4 x 10 button + 2 M4 heat-sets (cap), 8 x #8 flat-head wood screws (the watering-backpack ones, Ø9.3 head), long enough for the
+  1 x M4 x 10 button + 1 M4 fender washer (DIN 9021, Ø12 x 1) over the guide rod (it self-taps; a
+  heat-set fits the same hole later), 8 x #8 flat-head wood screws (the watering-backpack ones, Ø9.3 head), long enough for the
   plank less 1-2 mm (a 38 mm 2x4 takes 1-1/4"), and a guitar tuner.
 - **The plank:** a 2x4 (or anything as stiff) at least 900 mm long, with a **1/2 in hole drilled
   through it** under the screw: screw the station down first and drill through the hole in its floor. Both bases' +Y faces sit flush with
@@ -1468,21 +1471,21 @@ its SECOND hole lines up with the screw, and drive the screw back in.
 - **Tuner:** in the plank, on the string's line, 150-300 mm -X of the crown. Nearer than 150 the tail
   breaks over the crown steeper than it needs; further than about 340 it breaks under 15 degrees.
 - **Station order:**
-  1. Press the two M4 heat-sets into the slab top. Push a 688 up into the rail's seat from the bay
-     (the open side under the rail) until it stops on the lip.
-  2. Screw the station down (four wood screws: two -X of the head, two between the buttress fins) and
-     drill the plank 1/2 in through the hole in the station's floor.
+  1. Push a 688 up into the rail's seat from the bay (the open side under the rail) until it stops on
+     the lip.
+  2. Screw the station down (four wood screws, two down each side flange) and drill the plank 1/2 in
+     through the hole in the station's floor.
   3. Slide the H-nut into the changer room from -X (flange up, long way along X) until its -X ear is
-     under the rod bore. Cap off: drop the guide rod down the slab bore, through the ear, into its socket,
-     then the rod plug on top of it.
+     under the rod bore. Drop the guide rod down the slab bore, through the ear, into its socket, then
+     the printed rod plug on top of it, then the fender washer and M4 x 10 button beside it: the
+     washer's rim lies over the plug.
   4. Thread `screw_pulley_hi` onto the screw's foot (a few turns). From under the plank, push the screw
      up through the hole and the 688 until it meets the nut, then turn the pulley (in the bay) to run the
      screw up through the nut. Keep going until the pulley jams up against the bearing's inner ring.
-     (With the bridge bearing out, the screw can also go in from the top, through the hole in the
-     bearing pocket's floor, and the pulley be threaded on its foot from the bay.)
-  5. Bridge bearing on the shaft, shaft into its slot, cap on (two M4 x 10).
+  5. Drop the bridge 688 into its pocket from the top and slide the Ø8 shaft through the station
+     along Y, through the bearing. Nothing else holds it: the string load pins it.
   6. String: the ball end goes under the nut's +X ear. Through the window in the station's +X back
-     wall (between the fins), push the free end up through the ear's hole, up the slot past the bridge
+     wall, push the free end up through the ear's hole, up the slot past the bridge
      bearing's +X side, and over its top.
 - **Head order:** the motor bay is the instrument's, so the motor goes in as it does in the body: drop
   it in (pulley on), pilot into the faceplate wall's slot, and hold it down with string 1's CAN tee
