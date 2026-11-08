@@ -357,26 +357,6 @@ _SEG_OVER = 0.01                       # _seg_box runs each segment this far pas
 _SEG_JD   = 13 * D.BEAD                # 10.4 room into the +X segment for the fit-tested
                                        # nozzle/nozzle joint (4.8 head, 2.0 corners): it
                                        # stands 8.8 and its cavity ends c past that
-_SEG_JZ1  = TP_GZ0 - TP_TG_DEPTH       # tenon top = the deck-groove FLOOR (−6), so the
-                                       # seam joint never reaches into the deck groove
-# IT STARTS AT THE BOTTOM'S TOP FACE, NOT AT THE BED (user, 2026-09-15). The tenon is the only
-# MATERIAL half of this joint, and run from Z_BOT it stood in the same 10.4 band as the lever
-# mortises -- so the two stations flanking every seam had to be dropped and mortises went
-# missing exactly where two sections meet. Started at FLOOR_TOP it is clear of that band
-# altogether and the grid runs through the seam unbroken. The cavity stays a THROUGH slot: it
-# is a void, so where it meets a lever mortise the two simply merge.
-_SEG_JZ0  = MB.FLOOR_TOP               # tenon base = the bottom prism's top face
-# WHICH SEGMENT GOES DOWN LAST IS A DESIGN DECISION, and this is it (user, 2026-09-17: the
-# joinery mortise must stop cutting -Z into the lever mortises). Lower the +X segment onto a
-# standing tenon and its whole bottom prism has to sweep DOWN PAST that tenon -- the prism comes
-# from high above, so the tenon's entire height is inside its swept column and the cavity has to
-# run clean through the floor. That through-channel is what was eating the 3.2 walls between
-# lever mortises at every seam. Lower the TENON'S OWN segment last instead and the tenon simply
-# descends into the cavity from above: nothing sweeps the floor, so the cavity can stop at the
-# floor's top face. ASSEMBLY ORDER, then: the +X-MOST segment is placed first and each neighbour
-# comes down on it working -X (every segment carries its tenon at its +X end and its mortise at
-# its -X end, so the chain is consistent). The endplates socket the rail ends and the deck rides
-# both crowns, both of which come after, so nothing else cared which way this went.
 # THE PROFILE IS THE FIT-TESTED ONE (user, 2026-10-16): both segments build +Z, along the
 # install axis, so it is joinery step 1's nozzle/nozzle pair, built by
 # cadkit.fitted_joint.halves (step 4, 2026-11-03). The two segments' faces MEET at the seam (the
@@ -404,28 +384,6 @@ def _to_world(half, into):
     return half
 
 
-# ...and the cavity's own floor: 0.4 below the bottom prism's top face, which is a SKIM off that
-# face rather than a channel through it. The 0.4 is clearance, not a seat -- the segments' Z is
-# set by the rail crowns and the endplates, and the tenon must not bottom out before the rail
-# faces meet (if it ever does sag, this floor is a hard stop, which is a bonus, not the design).
-_SEG_RELIEF_CLR = 0.4                   # the gap under the tenon: the cavity's floor sits this
-                                        # far below the bottom prism's top face AND its 45 deg
-                                        # ramp this far below the tenon's, so the tenon lands on
-                                        # neither -- one number, both faces
-_SEG_MZ0  = MB.FLOOR_TOP - _SEG_RELIEF_CLR
-# THE RELIEF RISES sqrt(2) PER 1 IN X, NOT 1 (round 7, 2026-10-22). A 45 deg ramp is printable
-# as a face, but it crosses the head's flanks, which run 45 deg in plan, and where a plane at
-# angle a meets them the edge left in the solid climbs at atan(tan(a) / sqrt2): 35.3 deg off flat
-# for a 45 deg ramp -- the "support at 55 deg" check_floating reported on every seam tenon.
-# At tan(a) = sqrt2 (54.7 deg) that edge is 45. It costs the head 3.6 more of engagement at its
-# foot, out of 64.
-_SEG_RELIEF_RISE = math.sqrt(2.0)
-_SEG_JX1  = _seg_halves(1.0)[0].val().BoundingBox().zmax   # the tenon's +X reach past the seam
-# guard: the seam JOINT (X-footprint s−ROOT .. s+reach, at the RAILS) must not overlap
-# a rib -- the rib runs to the rails there, so an overlap would slice it.
-# The seam and the grid no longer argue in X: the split PLANE runs down the middle of a 3.2
-# wall, and the joint's material half starts above the mortise band in Z (_SEG_JZ0). So no
-# station is dropped for a seam -- asserted against the real solids in _build_full.
 # Z — the install axis — carries NO seam hardware (user). It does not need any. The
 # body is not three loose pieces bolted together; it is one assembly whose pieces are
 # closed over by everything that follows: the deck panels ride a +Z-retaining dovetail
@@ -954,36 +912,6 @@ def _leg_shell(sx, x0, x1):
     return out
 
 
-def _seg_relief(s, yr, dz=0.0):
-    """The 45 deg wedge under the seam joint, at split X=s and rail Y=yr -- ONE definition, cut
-    from BOTH halves so they cannot drift apart (user, 2026-09-17: the tenon had the 45 and the
-    mortise did not).
-
-    The TENON needs it: it stands on the bottom prism's top face, so everything it projects past
-    the seam plane hangs over the NEIGHBOUR's floor, and flat that underside was an 8.8-deep
-    bridge over air. The MORTISE takes the same wedge lowered by _SEG_RELIEF_CLR -- which gives
-    the cavity's ramp a clearance gap under the tenon's instead of a coincident face to bottom
-    out on, and hands the +X segment back the material its cavity was taking below a tenon that
-    is no longer there. Same `reach`, same angle, same line of code: change one and both move."""
-    reach = _SEG_JX1
-    return (cq.Workplane("XZ")
-            .polyline([(s, _SEG_JZ0), (s + reach, _SEG_JZ0),
-                       (s + reach, _SEG_JZ0 + reach * _SEG_RELIEF_RISE)])
-            .close().extrude(T + 4.0)
-            .translate((0.0, yr + (T + 4.0) / 2.0, dz)))
-
-
-def _relieved(solid, s, yr, dz, what):
-    """`solid` minus the seam relief, with proof it bit. A wedge that misses is a SILENT no-op:
-    the overhang (or the surplus cavity) would still be there and nothing downstream would
-    notice, so make the cut prove it took the corner it was aimed at."""
-    out = solid.cut(_seg_relief(s, yr, dz))
-    assert out.val().Volume() < solid.val().Volume() - 1.0, (
-        "the seam relief took %.2f mm3 off the seam %s at x %.2f -- it is missing the corner"
-        % (solid.val().Volume() - out.val().Volume(), what, s))
-    return out
-
-
 # ── THE SEAM TIE (2026-11-06, stage 3 of the steel bars) ──────────────────────────────────────
 # The bars took the rail seam joint's band, and they tie each seam in Y, in Z and against bowing --
 # but not in X: a bar slides in its channel. With strings on, the body is in compression and X
@@ -1009,34 +937,6 @@ def _seam_tie(s, cavity=False):
         z0 = Z_BOT
         h = _seg_halves(SEAM_TIE_Z1 - z0)[0]
     return _to_world(h, +1).translate((s, Y_HI, z0))
-
-
-def _seg_tenon(s, yr):
-    """The −X segment's half of the seam joint at split X=s, rail Y=yr: a plan-plane
-    profile prism standing from the BOTTOM PRISM'S TOP FACE up to the deck-groove floor (see
-    _SEG_JZ0 -- below that is the lever-mortise grid, and this may not stand in it). (The bridge/keyhead END
-    joints are a different site — they use the low _br_tongue/_kh_tongue dovetails.)"""
-    # the underside is _seg_relief (54.7 deg, _SEG_RELIEF_RISE) -- self-supporting back to this segment's own floor,
-    # at a cost to the head of its bottom 12.4 (_SEG_JX1 * _SEG_RELIEF_RISE) of engagement
-    ten = _to_world(_seg_halves(_SEG_JZ1 - _SEG_JZ0)[0], +1)
-    return _relieved(ten.translate((s, yr, _SEG_JZ0)), s, yr, 0.0, "tenon")
-
-
-def _seg_mortise(s, yr):
-    """The +X segment's cavity: open at the TOP through the rail crown, where the tenon comes
-    in, and closed 0.4 into the bottom prism's top face (_SEG_MZ0). No ceiling to bridge; its
-    only horizontal face is a floor.
-
-    IT USED TO RUN CLEAN THROUGH THE BOTTOM PRISM as a second, narrower cavity (drop=0, the
-    tenon's bare footprint) -- the path the +X segment's own floor needed to pass the standing
-    tenon while being lowered on. That band IS the lever-mortise grid, so every mm of it came
-    out of a 3.2 wall between two slots, and the user caught it collided with them. Reversing
-    which segment goes down last deleted the need for it outright (see the SEGMENT JOINT block):
-    nothing sweeps the floor any more, so the cavity stops at the floor."""
-    cav = _to_world(_seg_halves((TP_GZ0 + 2.0) - _SEG_MZ0)[1], +1).translate((s, yr, _SEG_MZ0))
-    # lowered so the ramp stands _SEG_RELIEF_CLR off the tenon's SQUARE to it, not just in Z
-    dz = _SEG_RELIEF_CLR * math.sqrt(1.0 + _SEG_RELIEF_RISE ** 2)
-    return _relieved(cav, s, yr, -dz, "cavity")
 
 
 def _end_dt(x_face, into, yc, z0, z1, socket=False, top_clr=KH_DT_SEAT):
