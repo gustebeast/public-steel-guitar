@@ -4881,6 +4881,21 @@ def _assert_matches_cad(net_path):
     return len(want)
 
 
+if OP.OPTICAL_REV != 1:
+    # ⚠ R2: A +3V3D POUR ON B.Cu UNDER U6's RING, AND EACH DECAP ITS OWN VIA INTO IT. U6's
+    # 3V3 decaps were fed in series along one F.Cu run, so moving any one of them cut the
+    # feed to the rest, and close_last re-joined it the long way (+3V3D 38.2 mm round a
+    # 2.4 mm gap, 2026-11-05; quality A23). With the pour, every cap that has room drops a 0.3 mm stub and
+    # a via into it (13 of them, laid on the kept board, elec/kept/optical.kicad_pcb), and the
+    # rail no longer depends on any one cap's pads. The series run stays as well: series-fed
+    # decaps are good decoupling (lead, 11-05). Measured with cadkit cb1b047's eco.move on the
+    # kept board: 19 of 19 single-part moves (seed 53) re-closed 0 open, 0 violations, 0 FAIL.
+    # Board frame, mm: x -10.5 .. 22.5, y -56.8 .. -24.8. Priority 1 over the GND pour there.
+    BOARD_NOTES["zones"] = list(BOARD_NOTES["zones"]) + [
+        {"net": "+3V3D", "layer": "B.Cu", "priority": 1,
+         "poly": [(-10.5, -56.8), (22.5, -56.8), (22.5, -24.8), (-10.5, -24.8)]}]
+
+
 if __name__ == "__main__":
     optical(tag="optical")
     ERC()
