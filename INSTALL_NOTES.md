@@ -628,9 +628,12 @@ instead of dropping on. Once the endplates are on, the steel is fully enclosed.
    cut ends. Cure it as the can says before it goes in, and handle it with gloves after that.
 
 **Order in:**
-1. Join the chassis sections. There is no rail seam joint any more: the bars are what tie the
-   rails across the seams, so the sections are held only by the floor (and any seam bridges)
-   until the bars go in.
+1. **Join the chassis sections, -X (keyhead end) first.** Stand the keyhead-end section on the
+   bench, then lower the middle section straight down onto it, then the bridge-end section onto
+   the middle one. Each section's -X face has a pocket open at the bottom, in the +Y wall, that
+   comes down over a tenon standing up off the bed at its neighbour's +X face. That tenon is the
+   seam's only tie along X. The bars, once they're in, are what hold the sections in Y and Z and
+   keep the seams from bowing open.
 2. **Slide the keyhead on from -X** (`keyhead_endplate`). It rides an X dovetail in the top of each
    kept leg shell, under the bar line, until its two bearing pads meet the rail ends.
 3. **Slide each bar in from the +X end** of its rail, crown up, until it stops on the keyhead's
@@ -1197,7 +1200,7 @@ The motor board slides straight down (+Z to -Z) into its guides behind string 1'
 - two short posts on the floor take its +Y edge;
 - its face sits flush on string 1's motor.
 
-Nothing is screwed. The keyhead deck panel's rib, 0.3 above the board's top edge, stops it
+Nothing is screwed. The keyhead deck panel's rib, 0.8 above the board's top edge, stops it
 lifting, so **seat the board before that panel goes on**. Sight down both faces as it drops:
 nothing on the board should touch a guide on the way in.
 

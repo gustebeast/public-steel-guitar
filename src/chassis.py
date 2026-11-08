@@ -10,8 +10,10 @@ patterns) are fused in; the motors rest on the ribs (no floor plate). The rail
 webs carry self-supporting diamond lightening; everything else is modelled
 SOLID — the slicer's walls + infill set the strength-to-weight.
 
-Too long for one print (~645 mm > 255 mm bed), so it's cut into 3 segments joined
-by a fit-tested install-z JOINT on each side rail: the profile lies in the plan plane,
+Too long for one print (~645 mm > 255 mm bed), so it's cut into 3 segments. (2026-11-06: the
+steel wall bars now tie the seams in Y and Z, and ONE seam tie in the +Y rail under the bar ties
+X -- see _seam_tie and the STEEL WALL BARS block; what follows is the joint as it was.) They were
+joined by a fit-tested install-z JOINT on each side rail: the profile lies in the plan plane,
 so every working face is a printed VERTICAL wall, and you drop the next segment
 straight DOWN onto it. The joint locks ±X (so string pull can never draw the seam
 open) and ±Y by shape; Z — the install axis — needs no seam hardware at all, because
@@ -982,6 +984,33 @@ def _relieved(solid, s, yr, dz, what):
     return out
 
 
+# ── THE SEAM TIE (2026-11-06, stage 3 of the steel bars) ──────────────────────────────────────
+# The bars took the rail seam joint's band, and they tie each seam in Y, in Z and against bowing --
+# but not in X: a bar slides in its channel. With strings on, the body is in compression and X
+# does not matter; unstrung, lifting it by an end could pull a section off. So each seam keeps
+# ONE X tie, in the +Y rail under the bar's channel, the fit-tested seam joint (_seg_halves) at
+# its usual _SEG_CLR, standing STRAIGHT OFF THE BED: below the channel the +Y rail is solid to
+# the bed (the lever mortises stop at the light window, inboard of it), so the tenon's head stands
+# on the bed like the rest of its segment and needs no overhang relief. One is enough: the -Y
+# bar, straight steel in both sections' channels, will not let a section yaw about this tie.
+# ASSEMBLY ORDER, then: the -X-MOST section goes down first, and each section +X of it comes down
+# onto the tenon standing at its -X face -- its cavity is a pocket open at the bed, its ceiling
+# two beads under the bar's channel.
+SEAM_TIE_Z1 = BAR_Z0 - D.MIN_WALL_2P - _SEG_CLR    # the tenon's top: c under the cavity's ceiling
+
+
+def _seam_tie(s, cavity=False):
+    """The seam tie at split X = s in the +Y rail: the -X section's tenon, or (cavity=True) the
+    +X section's pocket, open at the bed."""
+    if cavity:
+        z0 = Z_BOT - 1.0
+        h = _seg_halves((SEAM_TIE_Z1 + _SEG_CLR) - z0)[1]
+    else:
+        z0 = Z_BOT
+        h = _seg_halves(SEAM_TIE_Z1 - z0)[0]
+    return _to_world(h, +1).translate((s, Y_HI, z0))
+
+
 def _seg_tenon(s, yr):
     """The −X segment's half of the seam joint at split X=s, rail Y=yr: a plan-plane
     profile prism standing from the BOTTOM PRISM'S TOP FACE up to the deck-groove floor (see
@@ -1358,10 +1387,13 @@ def _segments():
                 _fx = b + D.MIN_WALL
                 seg = seg.cut(box_at(_fx - b + 1.0, _lp.ylen, _lp.zlen, x=(_fx + b - 1.0) / 2,
                                      y=(_lp.ymin + _lp.ymax) / 2, z=(_lp.zmin + _lp.zmax) / 2))
-        # (NO RAIL SEAM JOINT any more: the steel bar runs through the seam in its channel and is
-        #  the seam's tie -- Y, Z and the bowing that opened it. The joint's material half stood in
-        #  exactly the band the bar now fills. The rail skins simply butt at the plane. The
-        #  helpers stay for the seam fit coupons cut from them.)
+        # (NO FULL-HEIGHT RAIL SEAM JOINT any more: the steel bar runs through the seam in its
+        #  channel and ties it in Y, in Z and against the bowing that opened it. What is left to tie
+        #  is X, and the SEAM TIE does that from the bed (see _seam_tie).)
+        if _is_split(b):                              # −X boundary split → +X side → the pocket
+            seg = seg.cut(_seam_tie(b, cavity=True))
+        if _is_split(a):                              # +X boundary split → −X side → the tenon
+            seg = seg.union(_seam_tie(a))
         # LAST: the steel bars' channels, and the endplates' X dovetail sockets in the kept shells
         # (after the floor, which is laid over half of each rail band and would refill them)
         for yr in (Y_HI, Y_LO):
