@@ -67,6 +67,11 @@ _DEFAULT_STEP = {"silk.py": os.path.join(CADKIT, "kicad_silk.py"),
                  "export_geom.py": os.path.join(CADKIT, "kicad_geom.py")}
 
 
+# PCBFLOW_ROUTER=own routes with pcbflow's own router (ownroute.py, see ROUTER.md) in
+# freerouting's place; the rest of the chain is the same either way.
+ROUTER = "ownroute.py" if os.environ.get("PCBFLOW_ROUTER") == "own" else "route.py"
+
+
 def _step(script, stem):
     """Path of a pipeline step: the project's own copy of a HOOK step if it has one, the
     shared default otherwise; core steps always come from here."""
@@ -441,6 +446,10 @@ def finish(stem, rounds=1, keep_route=False):
     end of a failed net, and left the long run to the router, has not been tried.
     """
     _check_fresh(stem)
+    # the retry rounds re-run freerouting on its failures; the own router is deterministic,
+    # so a second round of it on the same placement would only repeat the first
+    if ROUTER == "ownroute.py":
+        rounds = 1
     retry = stem + ".retry.json"
     if os.path.isfile(retry):
         os.remove(retry)          # always start from the board as designed
@@ -455,7 +464,7 @@ def finish(stem, rounds=1, keep_route=False):
         _legible_refs(stem)
     else:
         _run("layout.py", stem)
-        _run("route.py", stem)
+        _run(ROUTER, stem)
         _run("unwick.py", stem)
         _run("repair_planes.py", stem)
     best_n, nets, best_v = _drc(stem)
@@ -491,7 +500,7 @@ def finish(stem, rounds=1, keep_route=False):
         # happen. Failing is 'does not happen', not 'lose the board'.
         try:
             _run("layout.py", stem)
-            _run("route.py", stem)
+            _run(ROUTER, stem)
             _run("unwick.py", stem)
             _run("repair_planes.py", stem)
         except SystemExit as exc:

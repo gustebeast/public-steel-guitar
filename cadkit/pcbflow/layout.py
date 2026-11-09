@@ -950,8 +950,15 @@ def _diff_pairs(board, specs, outline=None, inner=None, clr=0.14, declared=(),
                 break
             pending += hop
         if why:
+            # ⚠ THE PAIR'S RUN FAILING IS NOT A REASON TO SKIP ITS PAD MERGES (optical
+            # USB_HS, 2026-11-08). The pass-through links below and the USB-C flip merge
+            # depend on nothing but the parts' own pads, and they are the copper a router
+            # cannot draw well -- the interleaved crossing at the socket. Skipping them
+            # with the run left the router to improvise the crossing, which it spread 6 mm
+            # along B.Cu and the pair failed verify. So the run's hops are dropped (the
+            # router routes the pair) and the rest is laid as usual.
             done.append((na, why))
-            continue
+            pending = []
 
         # ⚠ A PASS-THROUGH PART IS ONE NODE INSIDE AND TWO PADS OUTSIDE, and the board
         # file only knows about the pads. The USBLC6 puts D+ on pins 1 AND 6 and D- on 3
@@ -1015,8 +1022,12 @@ def _diff_pairs(board, specs, outline=None, inner=None, clr=0.14, declared=(),
             t.SetNet(pad.GetNet())
             board.Add(t)
             laid += 1
-        done.append((na, "laid %d segment(s) as a coupled pair over %d hop(s)"
-                     % (laid, len(stops) - 1)))
+        if why:
+            done.append((na, "the run is left to the router; laid %d segment(s) of "
+                             "pass-through links and pad merges" % laid))
+        else:
+            done.append((na, "laid %d segment(s) as a coupled pair over %d hop(s)"
+                         % (laid, len(stops) - 1)))
     return done
 
 
@@ -1138,10 +1149,12 @@ def add_missing_vias(board, eps_mm=0.05, via_d=0.6, via_drill=0.3, clr=0.14):
     eps = pcbnew.FromMM(eps_mm)
     margin = pcbnew.FromMM(via_d / 2.0 + clr)
 
-    pads, segs, vias = [], [], []
+    pads, segs, vias, barrels = [], [], [], []
     for fp in board.GetFootprints():
         for q in fp.Pads():
             pads.append((q.GetBoundingBox(), q.GetNetname()))
+            if q.GetDrillSizeX() > 0:
+                barrels.append(q)
     for t in board.GetTracks():
         if t.GetClass() == "PCB_VIA":
             vias.append((t.GetPosition().x, t.GetPosition().y, _via_r(t), t.GetNetname()))
@@ -1197,6 +1210,13 @@ def add_missing_vias(board, eps_mm=0.05, via_d=0.6, via_drill=0.3, clr=0.14):
                 _reach = min(ti.GetWidth(), tj.GetWidth()) / 2.0
                 if any(onet == net and math.hypot(xi - vx2, yi - vy2) <= vr + _reach
                        for vx2, vy2, vr, onet in vias):
+                    continue
+                # ⚠ AND A PLATED THROUGH-HOLE LAND OF THE NET CARRIES IT TOO: the own
+                # router changes layer at a connector pin, as an engineer does, and this
+                # dropped a via into the pin that the tidy then removed as redundant
+                # (output_panel J6/J7/J10, 2026-11-08) -- churn, and a hole near a hole.
+                _pt = pcbnew.VECTOR2I(int(xi), int(yi))
+                if any(q.GetNetname() == net and q.HitTest(_pt) for q in barrels):
                     continue
                 if not clear(xi, yi, net):
                     refused.append((net, pcbnew.ToMM(xi), pcbnew.ToMM(yi)))
@@ -4717,10 +4737,43 @@ def build(stem):
     # (eco.legal_moves gives courtyard-clear moves; flip their dy).
     if os.environ.get("PCBFLOW_NUDGE"):
         with open(os.environ["PCBFLOW_NUDGE"], encoding="utf-8") as fh:
-            for ref, (dx, dy) in json.load(fh).items():
+            # [dx, dy] or [dx, dy, drot]: a turn tests a placement twist the router reports
+            # (congestion.pair_dives -- a pass-through part the wrong way round for its pair)
+            for ref, d in json.load(fh).items():
+                dx, dy = d[0], d[1]
+                drot = d[2] if len(d) > 2 else 0.0
                 x, y, rot = placements[ref]
-                placements[ref] = (x + dx, y + dy, rot)
-                print("  nudge: %s by (%+.2f, %+.2f)" % (ref, dx, dy))
+                placements[ref] = (x + dx, y + dy, (rot + drot) % 360)
+                print("  nudge: %s by (%+.2f, %+.2f)%s" % (ref, dx, dy,
+                      " turned %+g deg" % drot if drot else ""))
+
+    # ⚠ DECLARED COPPER IS LAID ONCE (output_panel, 2026-11-08). A held snapshot lifted from a
+    # routed board carries the declared copper that board already had: HUB_DN4_DM's escape
+    # came in from output_panel.py AND again, split into single segments, from
+    # output_panel.held.r2.json -- two vias drilled on one spot, a hole inside a hole, and
+    # copper the router had to dedupe. A via repeated on its net at the same point, and a
+    # track whose every segment is already declared on its net / layer, are dropped and said.
+    _seen_v, _vias, _dv = set(), [], 0
+    for _v in notes.get("vias", ()):
+        _k = (_v[0], round(float(_v[1]), 3), round(float(_v[2]), 3))
+        if _k in _seen_v:
+            _dv += 1
+            continue
+        _seen_v.add(_k)
+        _vias.append(_v)
+    _seen_s, _tracks, _dt = set(), [], 0
+    for _t in notes.get("tracks", ()):
+        _n, _l, _ps = _t[0], _t[1], [tuple(round(float(c), 3) for c in p[:2]) for p in _t[3]]
+        _segs = [(_n, _l) + tuple(sorted((a, b))) for a, b in zip(_ps, _ps[1:])]
+        if _segs and all(s in _seen_s for s in _segs):
+            _dt += 1
+            continue
+        _seen_s.update(_segs)
+        _tracks.append(_t)
+    if _dv or _dt:
+        notes["vias"], notes["tracks"] = _vias, _tracks
+        print("  declared copper laid twice in the notes: dropped %d repeated via(s) and %d "
+              "track(s) whose every segment was already declared" % (_dv, _dt))
 
     missing = set(comps) - set(placements)
     if missing:

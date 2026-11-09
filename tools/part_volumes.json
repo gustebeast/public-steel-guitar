@@ -59,7 +59,7 @@
   },
   "bridge_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 341999.8
+   "volume_mm3": 340023.2
   },
   "cart_base": {
    "material": "pctg",
@@ -259,7 +259,7 @@
   },
   "rod_plug": {
    "material": "pctg",
-   "volume_mm3": 45.0
+   "volume_mm3": 33.0
   },
   "saw_jig": {
    "material": null,
@@ -271,11 +271,11 @@
   },
   "screw_pulley_hi": {
    "material": "pctg",
-   "volume_mm3": 796.9
+   "volume_mm3": 838.1
   },
   "screw_pulley_lo": {
    "material": "pctg",
-   "volume_mm3": 1433.9
+   "volume_mm3": 1475.1
   },
   "seam_bridge": {
    "material": "petg-gf",

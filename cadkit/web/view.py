@@ -583,37 +583,138 @@ def show_exported(folder, root=None, open_browser=True, port=PORT):
 
 
 # ── the scratch loop: one part fresh, the rest from the cache ─────────────────────
-def _colors(out, names, resolver, src=None):
-    """{name: (r, g, b, a)}, remembered between runs: a project's colour resolver can
-    cost its whole build module's import, so only an unknown name pays for it.
-    `resolver` is name -> colour, or a zero-argument function returning one. `src`: the
-    file the colours are written in; newer than what was remembered, it is all forgotten.
+_GREY = (0.8, 0.8, 0.8, 1.0)
+_PENDING = "colors.pending"                      # a background resolve is running (its pid, time)
+_PENDING_MAX_S = 20 * 60                         # a lock older than this is a dead resolver's
+
+
+def _read_colors(path):
+    try:
+        return json.loads(path.read_text()) if path.exists() else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _sibling(name, known):
+    """A remembered colour for a name that differs only in its trailing indices
+    (`yoke_0` for `yoke_1`), or None."""
+    import re
+    base = re.sub(r"(_\d+)+$", "", name)
+    for k, c in known.items():
+        if re.sub(r"(_\d+)+$", "", k) == base:
+            return c
+    return None
+
+
+def _colors(out, names, resolver, src=None, background=None):
+    """{name: (r, g, b, a)}, remembered in <out>/colors.json.
+
+    A project's colour resolver can cost ITS WHOLE BUILD MODULE'S IMPORT (the steel guitar:
+    src.build imports src.chassis, which builds its solids at import -- 2+ min). So with
+    `background` -- argv that runs this view's `--resolve-colors` -- a view NEVER waits for
+    it: a part with no remembered colour borrows a sibling's (same name but its indices) or
+    shows grey, a stale table (`src` newer than the file) is shown as it was, and a
+    detached process resolves them into colors.json for the NEXT view. Without
+    `background` the resolver runs here, as it always did.
+    `resolver` is name -> colour, or a zero-argument function returning one.
 
     ⚠ IT USED TO BE REMEMBERED FOR GOOD. A name once resolved kept that colour whatever the
     project's table said later: the lever springs stayed the purple of an old table in a
-    worktree's view long after build.py had them painted blue (user, 2026-10-21)."""
+    worktree's view long after build.py had them painted blue (user, 2026-10-21). Hence
+    `src`; it now refreshes in the background rather than being forgotten on the spot.
+    ⚠ AND THEN EVERY NEW PART NAME, AND EVERY MERGE THAT TOUCHED build.py, COST A 2-MIN
+    IMPORT IN THE VIEW (user, 2026-11-08: "small changes taking a long time")."""
     path = out / "colors.json"
-    known = json.loads(path.read_text()) if path.exists() else {}
-    if known and src is not None and src.exists() and src.stat().st_mtime > path.stat().st_mtime:
-        known = {}
+    known = _read_colors(path)
+    stale = bool(known) and src is not None and src.exists() and src.stat().st_mtime > path.stat().st_mtime
     missing = [n for n in names if n not in known]
-    if missing and resolver is not None:
+    if (missing or stale) and resolver is not None:
+        if background is not None:
+            todo = sorted(set(names) | (set(known) if stale else set()))
+            why = ("%d new part(s)" % len(missing) if missing else "") + \
+                  (" and " if missing and stale else "") + ("a changed colour table" if stale else "")
+            if _spawn_colors(out, todo, background):
+                print("web view: colours for %s resolving in the background -- the next view "
+                      "shows them (log: %s)" % (why, out / "colors.log"))
+            else:
+                print("web view: colours for %s: a background resolve is already running" % why)
+        else:
+            known = _resolve_into(path, names if not stale else sorted(set(names) | set(known)),
+                                  resolver, fresh=stale)
+    return {n: tuple(known.get(n) or _sibling(n, known) or _GREY) for n in names}
+
+
+def _resolve_into(path, names, resolver, fresh=False):
+    """Resolve `names` and merge them into colors.json (re-read first: another view may
+    have written it). fresh: the old entries are dropped. Returns the merged table."""
+    import inspect
+    try:
+        if not inspect.signature(resolver).parameters:
+            resolver = resolver()
+    except (TypeError, ValueError):
+        pass
+    got = {}
+    for n in names:
         try:
-            import inspect
-            if not inspect.signature(resolver).parameters:
-                print("web view: %d part(s) with no remembered colour -- loading the "
-                      "project's colours for them (once)" % len(missing))
-                resolver = resolver()
-        except (TypeError, ValueError):
+            c = resolver(n)
+            got[n] = list(c.toTuple() if hasattr(c, "toTuple") else c)
+        except Exception:
+            got[n] = list(_GREY)
+    known = {} if fresh else _read_colors(path)
+    known.update(got)
+    tmp = path.with_name("%s.%d.tmp" % (path.name, os.getpid()))
+    tmp.write_text(json.dumps(known))
+    os.replace(tmp, path)
+    return known
+
+
+def _spawn_colors(out, names, argv):
+    """Start `argv + [names file]` detached, unless one is already running. True if started."""
+    lock = out / _PENDING
+    try:
+        if lock.exists() and time.time() - lock.stat().st_mtime < _PENDING_MAX_S:
+            return False
+        req = out / "colors.request.json"
+        req.write_text(json.dumps(names))
+        lock.write_text(json.dumps({"t": time.time()}))
+        kw = {}
+        if os.name == "nt":
+            kw["creationflags"] = (subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+                                   | subprocess.CREATE_NO_WINDOW)
+        else:
+            kw["start_new_session"] = True
+        log = open(out / "colors.log", "w")
+        subprocess.Popen(list(argv) + [str(req)], stdout=log, stderr=subprocess.STDOUT,
+                         stdin=subprocess.DEVNULL, close_fds=True, **kw)
+        return True
+    except OSError as exc:
+        print("web view: could not start the colour resolve (%s)" % exc)
+        try:
+            lock.unlink()
+        except OSError:
             pass
-        for n in missing:
+        return False
+
+
+def resolve_colors(view, request):
+    """The background half (`--resolve-colors <file>`): resolve the names in `request`
+    with the view's own resolver into its colors.json, then drop the lock."""
+    out = _model_dir(view.root)
+    path = out / "colors.json"
+    names = json.loads(pathlib.Path(request).read_text())
+    t0 = time.time()
+    try:
+        # MERGE, never start over: a stale view already asked for every name it remembers, and
+        # names outside this view's scope (another scope's parts) keep their colours
+        _resolve_into(path, names, view.colors)
+        print("resolved %d colour(s) in %.0f s" % (len(names), time.time() - t0))
+    finally:
+        for f in (out / _PENDING, pathlib.Path(request)):
             try:
-                c = resolver(n)
-                known[n] = list(c.toTuple() if hasattr(c, "toTuple") else c)
-            except Exception:
-                known[n] = [0.8, 0.8, 0.8, 1.0]
-        path.write_text(json.dumps(known))
-    return {n: tuple(known.get(n, (0.8, 0.8, 0.8, 1.0))) for n in names}
+                f.unlink()
+            except OSError:
+                pass
+    return 0
 
 
 def _color_src(root):
@@ -687,7 +788,8 @@ def scratch_export(view, describe=None, colors=None, rig=None, refresh_rig=False
             meshed[n], base[n] = m, part
             solids[n] = (lambda p=f, k=n: _piece(p, k, taken, whole))
     cols = _colors(out, sorted(set(base.values())), colors if colors is not None else view.colors,
-                   src=_color_src(pathlib.Path(view.root)) if view.root else None)
+                   src=_color_src(pathlib.Path(view.root)) if view.root else None,
+                   background=getattr(view, "respawn", None))
     export_kw.setdefault("cache_dir", out / "boards")
     export([(n, solids[n], cols[base[n]]) for n in meshed], out, meshed=meshed, whole=whole,
            parents={n: p for n, p in base.items() if n != p}, **export_kw)
