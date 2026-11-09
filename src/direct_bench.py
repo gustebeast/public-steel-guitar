@@ -121,10 +121,20 @@ WIN_Z = (-(KEY_DROP + KEY_D / 2 + 1.2), 3.2)        # ...and its reach under / o
 SPRING_OD, SPRING_WIRE = 19.05, 2.0
 SPRING_ID = SPRING_OD - 2 * SPRING_WIRE             # 15.05: the seats' diameter
 ACTIVE_PITCH = 2.5                                  # the open coils between the grips, about
-GRIP_TURNS, GRIP_PITCH = 4, 2.05                    # the end coils, CLOSE-WOUND onto each seat
-SEAT_GRIP = GRIP_TURNS * GRIP_PITCH                 # 8.2 of seat under them
-SEAT_L = SEAT_GRIP + 2.0                            # ...and a lip showing past the last one
+# HOW AN END HOLDS (user, 2026-11-09: "wrap the wire at the end around something"). Each seat is a
+# THREADED POST: a helical groove the spring's last GRIP_TURNS coils are screwed into (the wire
+# wraps the post, the load spread round the whole thread; its crests show between the coils).
+# Then the wire's END is a TANG: bent straight back along the axis through a hole in the stop
+# flange, and hooked over behind it -- so the spring cannot unscrew itself off the post.
+GRIP_TURNS, GRIP_PITCH = 4, 3.0                     # the end coils in the post's thread
+SEAT_GRIP = GRIP_TURNS * GRIP_PITCH                 # 12 of post under them
+SEAT_L = SEAT_GRIP                                   # no more: the open coils cross past it
 STOP_D, STOP_T = SPRING_OD + 2.0, 2.0               # the STOP FLANGE each spring end butts against
+R_COIL = (SPRING_OD - SPRING_WIRE) / 2              # 8.525: the wire's centre
+SEAT_D = 2 * R_COIL                                 # the post: its thread's crests at the wire's centre
+GROOVE_D = SPRING_WIRE + 0.2
+TANG_BACK, TANG_HOOK = SPRING_WIRE / 2 + STOP_T + 1.2, 2.6   # the tang: through, then over
+PLUG_GAP = 3.0                                      # the plug's flange off the wall: the hook's room
 SLEEVE_OD, SLEEVE_ID = 11.0, 9.0                    # over the screw, part of the anchor plug
 ANCHOR = (-194.8, -190.0)                           # the anchor wall, x
 LUG = (3.0, 22.0, 6.0)                              # the plug's lug bar: thick, long, wide
@@ -157,12 +167,13 @@ def x_collar(t: float):
 def x_plug():
     """The anchor plug along x: the neck in the wall, the stop flange, the seat."""
     a0, a1 = ANCHOR
-    return (a0, a1), (a1, a1 + STOP_T), (a1 + STOP_T, a1 + STOP_T + SEAT_L)
+    f0 = a1 + PLUG_GAP
+    return (a0, f0), (f0, f0 + STOP_T), (f0 + STOP_T, f0 + STOP_T + SEAT_L)
 
 
 def spring_span(t: float):
-    """The spring, x from..to: flange face to flange face."""
-    return x_plug()[1][1], x_collar(t)[2][0]
+    """The spring, x from..to: its end coils' centres a wire's radius off each flange face."""
+    return x_plug()[1][1] + SPRING_WIRE / 2, x_collar(t)[2][0] - SPRING_WIRE / 2
 
 
 SLEEVE_END = x_collar(1.0)[3][0] - 1.0              # short of the collar's seat at full travel
@@ -364,8 +375,10 @@ def _collar(i: int, t: float) -> cq.Workplane:
         dy, dz = at_ang(a)
         out = out.union(cyl_x(PILLAR_D, p0 - f1 + 0.5, f1 - 0.5, y=y + dy, z=z + dz))
     out = out.union(cyl_x(STOP_D, f1 - f0, f0, y=y, z=z))                          # stop flange
-    out = out.union(cyl_x(SPRING_ID, s1 - s0, s0, y=y, z=z))                        # the seat
+    x0, x1 = spring_span(t)                                                         # the post:
+    out = out.union(_post(i, x0, x1 - x0 - SEAT_GRIP, D.NUT_BOSS_D + 0.4))          # threaded
     out = out.cut(cyl_x(D.NUT_BOSS_D + 0.4, 60, s0 - 1, y=y, z=z))                  # boss, screw
+    out = out.cut(_tang_hole(i, f0))
     for a in HOLE_ANG["m3"]:                         # the M3s, and the key's way to them (before
         dy, dz = at_ang(a)                           # the spring goes on)
         out = out.cut(cyl_x(3.4, 30, f0 - 1, y=y + dy, z=z + dz))
@@ -388,34 +401,71 @@ def _m3s(i: int, t: float) -> cq.Workplane:
 COILS = True                                        # False: the spring as its tube (the gate)
 
 
+def _helix(z0: float, pitch: float, h: float, d: float) -> cq.Workplane:
+    """A wire of diameter d round R_COIL from local z0 for h, starting at angle 0 (local +x), in
+    the SPRING'S FRAME: local z along the screw (-> world +X), placed by _in_spring."""
+    hx = cq.Wire.makeHelix(pitch=pitch, height=h, radius=R_COIL)
+    return (cq.Workplane("XZ").center(R_COIL, 0).circle(d / 2)
+            .sweep(cq.Workplane("XY").add(hx), isFrenet=True).translate((0, 0, z0)))
+
+
+def _in_spring(wp: cq.Workplane, i: int, x0: float) -> cq.Workplane:
+    """Local spring frame -> the string's (local +x, angle 0, lands on world -Z)."""
+    return wp.rotate((0, 0, 0), (0, 1, 0), 90).translate((x0, y_of(i), za(i)))
+
+
 def _spring(i: int, t: float) -> cq.Workplane:
     x0, x1 = spring_span(t)
     if not COILS:
         return _tube_x(SPRING_OD, SPRING_ID, x0, x1, y_of(i), za(i))
-    r = (SPRING_OD - SPRING_WIRE) / 2
-    act = x1 - x0 - 2 * SEAT_GRIP
+    L = x1 - x0
+    act = L - 2 * SEAT_GRIP
     k = max(1, round(act / ACTIVE_PITCH))           # whole turns: every piece starts at angle 0
-    out = cq.Workplane("XY")
-    for z0, pitch, h in ((0.0, GRIP_PITCH, SEAT_GRIP), (SEAT_GRIP, act / k, act),
-                         (SEAT_GRIP + act, GRIP_PITCH, SEAT_GRIP)):
-        hx = cq.Wire.makeHelix(pitch=pitch, height=h, radius=r)
-        piece = (cq.Workplane("XZ").center(r, 0).circle(SPRING_WIRE / 2)
-                 .sweep(cq.Workplane("XY").add(hx), isFrenet=True))
-        out = out.add(piece.translate((0, 0, z0)).vals())
-    # ONE compound, not three solids: the view and the export take a part's first solid only,
-    # which showed just the first grip's four turns
-    one = cq.Workplane("XY").add(cq.Compound.makeCompound(out.vals()))
-    return one.rotate((0, 0, 0), (0, 1, 0), 90).translate((x0, y_of(i), za(i)))
+    pieces = [_helix(0.0, GRIP_PITCH, SEAT_GRIP, SPRING_WIRE),
+              _helix(SEAT_GRIP, act / k, act, SPRING_WIRE),
+              _helix(SEAT_GRIP + act, GRIP_PITCH, SEAT_GRIP, SPRING_WIRE)]
+    # the tangs: from each end coil (angle 0) straight back through its flange, then hooked out
+    w = SPRING_WIRE
+    for zc, sgn in ((0.0, -1), (L, 1)):
+        zb = zc + sgn * TANG_BACK
+        pieces.append(_seg((R_COIL, 0, zc), (R_COIL, 0, zb), w)
+                      .union(_seg((R_COIL, 0, zb), (R_COIL + TANG_HOOK, 0, zb), w))
+                      .union(cq.Workplane("XY").add(cq.Solid.makeSphere(w / 2))
+                             .translate((R_COIL, 0, zb))))
+    # ONE compound: the view and the export take a part's first solid only
+    one = cq.Workplane("XY").add(cq.Compound.makeCompound([v for p_ in pieces for v in p_.vals()]))
+    return _in_spring(one, i, x0)
+
+
+def _post(i: int, x0: float, z0: float, bore: float) -> cq.Workplane:
+    """A threaded post SEAT_L long from local z0 (spring frame at x0), its groove matching the
+    grip coils (angle 0 at z0, whole turns), bored for what passes through it."""
+    # the post reaches its flange at one end, and stops half a pitch short of the open coils at
+    # the other (where the pitch changes, the next turn would ride over its last crest)
+    lo = -SPRING_WIRE / 2 if z0 <= 0 else GRIP_PITCH / 2
+    hi = SPRING_WIRE / 2 if z0 > 0 else -GRIP_PITCH / 2
+    post = cq.Workplane("XY").add(cq.Solid.makeCylinder(SEAT_D / 2, SEAT_L - lo + hi,
+                                                        cq.Vector(0, 0, z0 + lo)))
+    post = post.cut(_helix(z0, GRIP_PITCH, SEAT_L, GROOVE_D))
+    post = post.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(bore / 2, SEAT_L + 2,
+                                                                 cq.Vector(0, 0, z0 - 1))))
+    return _in_spring(post, i, x0)
+
+
+def _tang_hole(i: int, x_from: float) -> cq.Workplane:
+    return cyl_x(SPRING_WIRE + 0.4, STOP_T + 2, x_from - 1, y=y_of(i), z=za(i) - R_COIL)
 
 
 def _anchor_plug(i: int) -> cq.Workplane:
     y, z = y_of(i), za(i)
     (a0, a1), (f0, f1), (s0, s1) = x_plug()
-    out = cyl_x(SPRING_ID, s1 - a0, a0, y=y, z=z)                                   # neck + seat
+    out = cyl_x(SPRING_ID, f0 - a0, a0, y=y, z=z)                                   # neck
     out = out.union(cyl_x(STOP_D, f1 - f0, f0, y=y, z=z))                           # stop flange
     out = out.union(box_at(LUG[0], LUG[2], LUG[1], x=a0 - LUG[0] / 2, y=y, z=z))      # locked: lugs in Z
     out = out.union(cyl_x(SLEEVE_OD, SLEEVE_END - s1, s1, y=y, z=z))
-    return out.cut(cyl_x(SLEEVE_ID, SLEEVE_END - a0 + 2 * LUG[0], a0 - LUG[0] - 1, y=y, z=z))
+    out = out.cut(cyl_x(SLEEVE_ID, SLEEVE_END - a0 + 2 * LUG[0], a0 - LUG[0] - 1, y=y, z=z))
+    out = out.union(_post(i, spring_span(0.0)[0], 0.0, SLEEVE_ID))                  # threaded post
+    return out.cut(_tang_hole(i, f0))
 
 
 def _nut(i: int, t: float) -> cq.Workplane:
