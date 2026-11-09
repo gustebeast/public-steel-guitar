@@ -438,7 +438,7 @@ def assembly(axial=False):
     out.append(("nut_0", C.nut().translate((SX, SY, D.NUT_TOP_Z))))
     if axial:
         from cadkit.fasteners import headed_screw
-        out.append(("plank_yoke", yoke().translate((SX, SY, D.NUT_TOP_Z))))
+        out.append(("yoke_0", yoke().translate((SX, SY, D.NUT_TOP_Z))))
         out.append(("string_nut_0", C.string_nut().rotate((0, 0, 0), (0, 0, 1), 90).translate(
             (SX, SY, D.NUT_TOP_Z + YK_R0 - D.STRING_NUT_D / 2))))
         out.append(("guide_rod_0", C.guide_rod(D.GUIDE_ROD_L).translate((SX, SY + ROD_DY, ROD_BOT))))
@@ -446,9 +446,9 @@ def assembly(axial=False):
         z0 = D.NUT_TOP_Z + YK_SHOULDER
         for tag, sx in (("lo", -1), ("hi", 1)):
             x = SX + sx * D.NUT_HOLE_DX
-            out.append((f"yoke_m3_{tag}", headed_screw(BTn.M3, YK_SCREW_L, BTn.HEAD_D, BTn.HEAD_H, 2.5)
+            out.append((f"yoke_m3_{tag}_0", headed_screw(BTn.M3, YK_SCREW_L, BTn.HEAD_D, BTn.HEAD_H, 2.5)
                         .rotate((0, 0, 0), (1, 0, 0), 180).translate((x, SY, zf - BTn.HEAD_H))))
-            out.append((f"yoke_insert_{tag}", cyl(BTn.INS_D, BTn.INS_L, z=z0)
+            out.append((f"yoke_insert_{tag}_0", cyl(BTn.INS_D, BTn.INS_L, z=z0)
                         .cut(cyl(BTn.M3.insert_bore_d, BTn.INS_L + 1, z=z0 - 0.5)).translate((x, SY, 0))))
     else:
         out.append(("string_nut_0", C.string_nut().translate(

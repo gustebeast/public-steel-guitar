@@ -1509,7 +1509,7 @@ On the first station the string pulls the nut's +X ear, 8 mm off the screw's axi
 tips the nut on its thread and it grabs: the drive skipped and struggled both ways, and a loose nut
 on a screw grabs the same way under a twisting load (user). This station puts the pull on the axis.
 Same head, same screw, pulley, belt and motor positions; print `coupons/plank_station_axial.step`
-(on its +X face, like the first) and `coupons/plank_yoke.step` (roof down, as exported).
+(builds +X → -X, its +X face on the bed, like the first) and `coupons/plank_yoke.step` (builds +Z → -Z, its roof on the bed, as exported).
 
 - **The yoke** sits on the nut's flange (flange up, long way along X) and is held by both ears: two
   M3 x 12 socket heads (the belt clamp's) up through the ears into two of the belt clamp's M3
