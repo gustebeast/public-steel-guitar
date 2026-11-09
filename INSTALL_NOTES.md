@@ -1695,3 +1695,11 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
 - The halves meet 1 mm apart at full travel. At slack, the bare screw between them is the travel plus 1 mm, with the gap at mid-span.
 - Assembly order is unchanged. The collar's half goes inside the spring along with the collar, before the spring is screwed onto the anchor plug's post.
 - The view now models the screws as the instrument's threaded Tr8x2 rod (`components.screw`).
+
+### Direct bench: stainless anchor plate (2026-11-09)
+- The spring anchor is now laser-cut 304 stainless, 4 mm, from the same JLCCNC sheet-metal order as the nut plates. It is bent into a tray: top, bottom and both ends folded 16 mm toward +X. It spans rail to rail with 0.5 mm clearance each side.
+- Why: it carries about 730 N from the springs, all the time. A printed wall would sag about 7 mm and then creep.
+- Mount: four M4 x 10 button heads, two per end fold, at z -16 and z -45.4. Each goes through the rail's inner skin into an M4 tapped hole in the A-36 wall bar. Drill and tap the bar to match before sliding it into the rail. The rail's inner skin gets a matching Ø4.5 hole.
+- Order of assembly:
+  1. Bolt the plate in before the drives go in. The 2.5 mm key reaches each bolt along Y, between the spring rows.
+  2. Then put each anchor plug through from +X with its lugs along Y, and turn it a quarter to Z.

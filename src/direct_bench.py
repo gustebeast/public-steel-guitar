@@ -136,7 +136,21 @@ GROOVE_D = SPRING_WIRE + 0.2
 TANG_BACK, TANG_HOOK = SPRING_WIRE / 2 + STOP_T + 1.2, 2.6   # the tang: through, then over
 PLUG_GAP = 3.0                                      # the plug's flange off the wall: the hook's room
 SLEEVE_OD, SLEEVE_ID = 11.0, 9.0                    # over the screw, part of the anchor plug
-ANCHOR = (-194.8, -190.0)                           # the anchor wall, x
+# THE ANCHOR PLATE (user, 2026-11-09): every spring's pull, about 73 N each and ~730 N in all,
+# held ALL THE TIME. A printed wall fails under it (4.8 PETG-GF across 97 between the cheeks,
+# holed to ~30 of section: ~77 MPa, ~7 mm of sag, then creep). It is LASER-CUT 304 STAINLESS,
+# 4 mm, the nut plates' stock and order (JLCCNC sheet metal), BENT INTO A TRAY: its top, bottom
+# and both ends folded ANCHOR_FL toward +X. The top and bottom folds make it a channel ~16 deep
+# (I ~5800 mm^4 through the worst hole row: ~50 MPa at the middle of the rail-to-rail span,
+# yield 205), and the end folds bolt it to both side rails -- two M4 x 10 button heads a side
+# through the rail's inner skin into M4 tapped in the A-36 wall bar, so the pull goes straight
+# into the steel. Those bolts sit at z between the spring rows: a 2.5 key reaches each along Y.
+ANCHOR_T = 4.0
+ANCHOR = (-190.0 - ANCHOR_T, -190.0)                # the plate's web, x
+ANCHOR_Z = (-104.0, -8.0)                           # its top and bottom edges (DECK_UNDER -3.2)
+ANCHOR_FL = 16.0                                    # each fold's depth, toward +X
+ANCHOR_CLR = 0.5                                    # off each rail's inner face
+M4_HEAD, M4_L = (7.6, 2.2), 10.0                    # ISO 7380 button head; 10: 3.9 into the bar
 LUG = (3.0, 22.0, 6.0)                              # the plug's lug bar: thick, long, wide
 COLLAR_T = 3.0                                      # the collar's plate
 PILLAR_D = 5.2                                      # the collar's two pillars past the M3 heads
@@ -554,14 +568,45 @@ def _rod_plate() -> cq.Workplane:
     return w
 
 
+def _anchor_y():
+    return Y_LO + ANCHOR_CLR, RAIL_HI - ANCHOR_CLR
+
+
+def _anchor_bolt_z():
+    """Between the top row's springs and the deck, and between rows 0 and 1: the key's way."""
+    gap = ((za(0) - SPRING_OD / 2) + (za(1) + SPRING_OD / 2)) / 2
+    return (-16.0, round(gap, 1))
+
+
 def _anchor() -> cq.Workplane:
     x0, x1 = ANCHOR
-    w = _plate_yz(x0, x1, CHEEK_Z[0], -20.5)
+    (y0, y1), (z0, z1), T, F = _anchor_y(), ANCHOR_Z, ANCHOR_T, ANCHOR_FL
+    w = box_at(T, y1 - y0, z1 - z0, x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(z0 + z1) / 2)
+    xf = x1 + F / 2                                  # the folds' middle, x
+    for zc in (z1 - T / 2, z0 + T / 2):              # top and bottom: the channel
+        w = w.union(box_at(F, y1 - y0, T, x=xf, y=(y0 + y1) / 2, z=zc))
+    for yc in (y1 - T / 2, y0 + T / 2):              # both ends: bolted to the rails
+        w = w.union(box_at(F, T, z1 - z0, x=xf, y=yc, z=(z0 + z1) / 2))
+        for zb in _anchor_bolt_z():
+            w = w.cut(cyl_y(4.5, T + 2, yc - T / 2 - 1, x=xf, z=zb))
     for i in range(N):                               # the plug's way through: round, and the
         y, z = y_of(i), za(i)                        # lugs' slot along Y (turned to Z, they lock)
         w = w.cut(yaw(cyl_x(SPRING_ID + 0.4, 20, x0 - 10, y=y, z=z), i))
         w = w.cut(yaw(box_at(20, LUG[1] + 0.8, LUG[2] + 0.8, x=(x0 + x1) / 2, y=y, z=z), i))
     return w
+
+
+def _anchor_bolts() -> cq.Workplane:
+    """Four M4 x 10 button heads: heads inside the end folds, shanks out through the rails."""
+    (y0, y1), xf = _anchor_y(), ANCHOR[1] + ANCHOR_FL / 2
+    out = None
+    for yf, sg in ((y1 - ANCHOR_T, 1), (y0 + ANCHOR_T, -1)):   # each fold's inner face, outward
+        for zb in _anchor_bolt_z():
+            h0 = yf - M4_HEAD[1] if sg > 0 else yf
+            b = cyl_y(M4_HEAD[0], M4_HEAD[1], h0, x=xf, z=zb)
+            b = b.union(cyl_y(4.0, M4_L, yf if sg > 0 else yf - M4_L, x=xf, z=zb))
+            out = b if out is None else out.union(b)
+    return out
 
 
 def _string(i: int, t: float) -> cq.Workplane:
@@ -625,7 +670,8 @@ def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
     for i in range(N):
         out += string_parts(i, t)
     out += _bend_parts()
-    out += [("db_cheeks", _cheeks()), ("db_rod_plate", _rod_plate()), ("db_anchor", _anchor())]
+    out += [("db_cheeks", _cheeks()), ("db_rod_plate", _rod_plate()), ("db_anchor", _anchor()),
+            ("db_anchor_m4", _anchor_bolts())]
     out = [(nm, _made(nm, w)) for nm, w in out]
     show = ("ghost_pickup", "ghost_bottom_now")
     out += [g for g in ghosts() if all_ghosts or g[0] in show]
@@ -636,7 +682,7 @@ def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
 # frames in the instrument's PETG-GF, the bought parts as they are.
 MATERIAL = {
     "yoke": "petg-gf", "collar": "petg-gf", "block": "petg-gf", "mplate": "petg-gf",
-    "cheeks": "petg-gf", "rod_plate": "petg-gf", "anchor": "petg-gf",
+    "cheeks": "petg-gf", "rod_plate": "petg-gf", "anchor": "stainless", "anchor_m4": "steel",
     "nut": "brass", "ball": "brass", "screw": "steel", "rod": "steel", "string": "polished",
     "brg": "polished", "bend_brg": "polished", "bridge_bearings": "polished",
     "bend_axle_ra": "steel", "bend_axle_rb": "steel", "bend_axle_rc": "steel",
@@ -671,7 +717,7 @@ COLORS = {
     "yoke": (0.39, 0.58, 0.93), "collar": (0.85, 0.45, 0.15),
     "spring": "leg_latch_spring", "plug": (0.85, 0.45, 0.15), "m3": "set_screw",
     "coupler": (0.70, 0.72, 0.76), "block": (0.30, 0.36, 0.42), "mplate": (0.30, 0.33, 0.38),
-    "cheeks": (0.42, 0.50, 0.62), "rod_plate": (0.42, 0.50, 0.62), "anchor": (0.36, 0.30, 0.42),
+    "cheeks": (0.42, 0.50, 0.62), "rod_plate": (0.42, 0.50, 0.62), "anchor": "nut_plate", "anchor_m4": "set_screw",
 }
 
 
@@ -717,6 +763,8 @@ def is_intended(a: str, b: str) -> bool:
     if "db_bend_brg" in pair and pair & bends - {"db_bend_brg"}:      # each 688 on its axle
         return True
     if "db_rod" in pair and "db_rod_plate" in pair:
+        return True
+    if "db_anchor_m4" in pair and pair & {"db_anchor", "ghost_wall_hi", "ghost_wall_lo"}:
         return True
     if "db_anchor" in pair and "db_plug" in pair:
         return True
