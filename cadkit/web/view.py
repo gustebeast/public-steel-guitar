@@ -669,13 +669,30 @@ def _resolve_into(path, names, resolver, fresh=False):
 
 
 def _spawn_colors(out, names, argv):
-    """Start `argv + [names file]` detached, unless one is already running. True if started."""
-    lock = out / _PENDING
+    """Resolve `names` in a detached `argv + [names file]`, unless one is already running."""
+    if _pending(out, "colors"):
+        return False
+    req = out / "colors.request.json"
+    req.write_text(json.dumps(names))
+    return spawn_job(out, "colors", list(argv) + [str(req)])
+
+
+def _pending(where, job):
+    """Is a background `job` already running (its lock younger than _PENDING_MAX_S)?"""
+    lock = where / (job + ".pending")
+    return lock.exists() and time.time() - lock.stat().st_mtime < _PENDING_MAX_S
+
+
+def spawn_job(where, job, argv):
+    """Run `argv` DETACHED, unless a `job` is already running: its lock is
+    <where>/<job>.pending (the job drops it, see done_job), its output <where>/<job>.log.
+    True if started. What a view hands to this is anything that costs a project's build
+    import -- colours, the page's `shown` parts, the rig -- so the view itself never does."""
+    lock = where / (job + ".pending")
     try:
-        if lock.exists() and time.time() - lock.stat().st_mtime < _PENDING_MAX_S:
+        if _pending(where, job):
             return False
-        req = out / "colors.request.json"
-        req.write_text(json.dumps(names))
+        where.mkdir(parents=True, exist_ok=True)
         lock.write_text(json.dumps({"t": time.time()}))
         kw = {}
         if os.name == "nt":
@@ -683,12 +700,12 @@ def _spawn_colors(out, names, argv):
                                    | subprocess.CREATE_NO_WINDOW)
         else:
             kw["start_new_session"] = True
-        log = open(out / "colors.log", "w")
-        subprocess.Popen(list(argv) + [str(req)], stdout=log, stderr=subprocess.STDOUT,
+        log = open(where / (job + ".log"), "w")
+        subprocess.Popen(list(argv), stdout=log, stderr=subprocess.STDOUT,
                          stdin=subprocess.DEVNULL, close_fds=True, **kw)
         return True
     except OSError as exc:
-        print("web view: could not start the colour resolve (%s)" % exc)
+        print("web view: could not start the background %s (%s)" % (job, exc))
         try:
             lock.unlink()
         except OSError:
@@ -709,11 +726,33 @@ def resolve_colors(view, request):
         _resolve_into(path, names, view.colors)
         print("resolved %d colour(s) in %.0f s" % (len(names), time.time() - t0))
     finally:
-        for f in (out / _PENDING, pathlib.Path(request)):
-            try:
-                f.unlink()
-            except OSError:
-                pass
+        done_job(out, "colors")
+        try:
+            pathlib.Path(request).unlink()
+        except OSError:
+            pass
+    return 0
+
+
+def done_job(where, job):
+    try:
+        (where / (job + ".pending")).unlink()
+    except OSError:
+        pass
+
+
+def refresh_rig(view):
+    """The background half of the rig (`--refresh rig`): write it, and the source key it
+    was written from."""
+    out = _model_dir(view.root)
+    key = view.source_key()
+    t0 = time.time()
+    try:
+        view.web["rig"](out / "rig.json")
+        (out / "rig.key").write_text(key)
+        print("rig written in %.0f s" % (time.time() - t0))
+    finally:
+        done_job(out, "rig")
     return 0
 
 
@@ -775,11 +814,30 @@ def scratch_export(view, describe=None, colors=None, rig=None, refresh_rig=False
     files.update((n, f) for n, f in shown.items() if n in files)
     # THE RIG FIRST: it names the parts that move, and a part that moves must stay one
     # part however many solids it is drawn as (export.pieces).
-    if rig is not None and (refresh_rig or not (out / "rig.json").exists()):
+    # IN THE BACKGROUND unless asked for (`--rig`): a project's rig can import its whole build
+    # (the steel guitar's reads DEMO_POSE_DZ off src.build: 5.6 min). It is written from the
+    # SOURCE, so it is redone when the source changes (view.source_key), not on every view;
+    # until then the page animates with the rig it has.
+    respawn = getattr(view, "respawn", None)
+    if rig is not None:
+        rp = out / "rig.json"
+        key = view.source_key() if hasattr(view, "source_key") else None
         try:
-            rig(out / "rig.json")
-        except Exception as exc:
-            print("web view: no animation rig (%s) -- the page shows the model still" % exc)
+            kept_key = (out / "rig.key").read_text()
+        except OSError:
+            kept_key = None
+        stale = not rp.exists() or key is None or kept_key != key
+        if refresh_rig or (stale and respawn is None):
+            try:
+                rig(rp)
+                if key is not None:
+                    (out / "rig.key").write_text(key)
+            except Exception as exc:
+                print("web view: no animation rig (%s) -- the page shows the model still" % exc)
+        elif stale:
+            if spawn_job(out, "rig", list(respawn) + ["--refresh", "rig"]):
+                print("web view: the animation rig is being rewritten in the background "
+                      "(the source changed) -- the next view animates with it")
     meshed, solids, base = {}, {}, {}             # base: a piece's part, for its colour
     taken = set(files)
     whole = rig_names(out / "rig.json")
@@ -789,7 +847,7 @@ def scratch_export(view, describe=None, colors=None, rig=None, refresh_rig=False
             solids[n] = (lambda p=f, k=n: _piece(p, k, taken, whole))
     cols = _colors(out, sorted(set(base.values())), colors if colors is not None else view.colors,
                    src=_color_src(pathlib.Path(view.root)) if view.root else None,
-                   background=getattr(view, "respawn", None))
+                   background=list(respawn) + ["--resolve-colors"] if respawn else None)
     export_kw.setdefault("cache_dir", out / "boards")
     export([(n, solids[n], cols[base[n]]) for n in meshed], out, meshed=meshed, whole=whole,
            parents={n: p for n, p in base.items() if n != p}, **export_kw)

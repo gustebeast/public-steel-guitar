@@ -267,6 +267,11 @@ class ScratchView:
         # has them (a belt as it lies where the rig poses its clamp). The gates never see
         # these: they read the model.
         self.shown = shown
+        # what the page's hooks (`shown`, the rig) are computed FROM: they are redone when any
+        # .py file under these changes, and otherwise kept (see source_key)
+        self.sources = ("src", "tools", "elec", "cadkit")
+        self.respawn = None             # main(): argv that runs this view again (background jobs)
+        self._key_memo = None
         self._live_memo = None          # the live set is built ONCE per run
         self._solo = None               # render(solo=True): the only names files() returns
 
@@ -343,19 +348,65 @@ class ScratchView:
             out = {n: f for n, f in out.items() if n in self._solo}
         return out
 
+    def source_key(self) -> str:
+        """A fingerprint of the project's source: every .py under `sources`, by path, size
+        and time. Cheap (stat only), once per run."""
+        if self._key_memo is None:
+            h = hashlib.sha1()
+            for d in self.sources:
+                base = self.root / d
+                if not base.is_dir():
+                    continue
+                for f in sorted(base.rglob("*.py")):
+                    if "__pycache__" in f.parts:
+                        continue
+                    try:
+                        st = f.stat()
+                    except OSError:
+                        continue
+                    h.update(("%s|%d|%d\n" % (f.relative_to(self.root).as_posix(), st.st_size,
+                                               st.st_mtime_ns)).encode())
+            self._key_memo = h.hexdigest()
+        return self._key_memo
+
     def shown_files(self) -> dict:
         """{part name: BREP file} of what `shown` draws for the page, kept in a folder of
         its own beside your cache (a file whose solid has not changed is left alone, so
-        its mesh stays good)."""
+        its mesh stays good).
+
+        KEPT WHILE THE SOURCE IS THE SAME, AND REDONE IN THE BACKGROUND WHEN IT IS NOT: a
+        project's `shown` can import its whole build (the steel guitar's belts: 5.6 min), on
+        every view. The page shows the last ones meanwhile."""
         if self.shown is None or self._solo is not None:      # solo draws the live set only
             return {}
         out = self.cache / "shown"
         try:
-            known = json.loads((out / "SHOWN.json").read_text())
+            meta = json.loads((out / "SHOWN.json").read_text())
         except Exception:
-            known = {}
+            meta = {}
+        parts, key = (meta["parts"], meta.get("key")) if "parts" in meta else (meta, None)
+        files = {n: out / (n + ".brep") for n in parts if (out / (n + ".brep")).exists()}
+        if parts and key == self.source_key() and len(files) == len(parts):
+            return files
+        if self.respawn is None:
+            return self.refresh_shown()
+        from .web.view import spawn_job
+        if spawn_job(self.cache, "shown", list(self.respawn) + ["--refresh", "shown"]):
+            print("web view: the page's own parts (`shown`) are being redone in the background "
+                  "(%s) -- the next view draws them" % ("the source changed" if parts else "none yet"))
+        return files
+
+    def refresh_shown(self) -> dict:
+        """Compute `shown` and keep it, with the source key it was computed from."""
+        out = self.cache / "shown"
+        key = self.source_key()
+        try:
+            meta = json.loads((out / "SHOWN.json").read_text())
+        except Exception:
+            meta = {}
+        known = meta["parts"] if "parts" in meta else meta
         parts, _wrote = _write_parts(list(self.shown().items()), out, known)
-        _put(out / "SHOWN.json", json.dumps(parts).encode())
+        _put(out / "SHOWN.json", json.dumps({"key": key, "parts": parts}).encode())
         return {n: out / (n + ".brep") for n in parts}
 
     def describe(self, live_names=()) -> dict:
@@ -476,7 +527,8 @@ class ScratchView:
             return 1
         d = self.describe(mine)
         self._banner("SCRATCH VIEW", d)
-        scratch_show(self, describe=d, refresh_rig=rig or (bool(live) and not solo), **self.web)
+        # the rig is rewritten when the source changes (in the background), or on --rig
+        scratch_show(self, describe=d, refresh_rig=rig, **self.web)
         return 0
 
 
@@ -496,6 +548,8 @@ def main(view: ScratchView, argv=None) -> int:
                     help="forget your own cache: the lead's build for all but the live part")
     ap.add_argument("--resolve-colors", metavar="FILE",
                     help=argparse.SUPPRESS)          # the view's own background colour resolve
+    ap.add_argument("--refresh", choices=("shown", "rig"),
+                    help=argparse.SUPPRESS)          # ...and its `shown` parts and rig
     ap.add_argument("--solo", action="store_true",
                     help="draw ONLY the live set (seconds on a big model, where the page "
                          "export of every cached part is most of a view's time)")
@@ -508,7 +562,19 @@ def main(view: ScratchView, argv=None) -> int:
     # itself (cadkit.web.view._colors)
     spec = getattr(sys.modules.get("__main__"), "__spec__", None)
     view.respawn = ([sys.executable, "-m", spec.name] if spec is not None and spec.name
-                    else [sys.executable, os.path.abspath(sys.argv[0])]) + ["--resolve-colors"]
+                    else [sys.executable, os.path.abspath(sys.argv[0])])
+    if a.refresh == "shown":
+        from cadkit.web.view import done_job
+        t0 = time.time()
+        try:
+            n = len(view.refresh_shown())
+            print("shown: %d part(s) in %.0f s" % (n, time.time() - t0))
+        finally:
+            done_job(view.cache, "shown")
+        return 0
+    if a.refresh == "rig":
+        from cadkit.web.view import refresh_rig
+        return refresh_rig(view)
 
     if a.lead:
         view.forget_own()
