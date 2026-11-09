@@ -473,9 +473,8 @@ def yoke() -> cq.Workplane:
 #     their pull is on the axis in Z and cancels in Y, so the yoke is not tipped (the reason for the
 #     X rig), and nothing has to reach round or through the station. Two in parallel also halve the
 #     travel that 50 -> 100 % takes (26.6 mm), which is what lets a 40 mm screw set it.
-#   SPREADER   a bar across Y on the yoke's roof, a pin each end for a spring's loop. Nothing
-#              fastens it: the springs press it onto the roof. A slot down its middle takes the
-#              string, which comes out of the roof on the axis, so it drops on from +Z.
+#   YOKE       the COUNTER YOKE (counter_yoke): the yoke on the nut with a bar across Y on its
+#              roof, a pin each end for a spring's loop; the string out of its roof on the axis.
 #   SLIDER     the same bar at the post end; an M4 heat-set in its +X face on the axis.
 #   POST       a wall with the M4 x 40 through it, head in a counterbore on its +X face (the board's
 #              end: a 2.5 key from +X). Turning it in draws the slider +X. A deck under the slider
@@ -535,7 +534,7 @@ XP_IN = XS1_IN - PIN_PAD                         # the slider's pins, fully in
 CS_ROOF0 = _xr_x(D.NUT_TOP_Z - D.CARRIAGE_TRAVEL / 2.0 + YK_H)   # -8.0: the yoke's roof, mid travel, unmoved
 CS_DX = round(XP_IN - PITCH_FULL + PIN_PAD - CS_ROOF0, 1)        # the station's move, -X
 CS_ROOF = CS_ROOF0 + CS_DX
-XP_SPREAD = CS_ROOF - PIN_PAD                    # the spreader's pins
+XP_SPREAD = CS_ROOF - PIN_PAD                    # the counter yoke's pins
 S_OUT = (XS1_OUT - PIN_PAD) - XP_SPREAD + PIN_D - SPR_L0         # the stretch, screw backed out
 assert spring_pull(S_OUT) <= 0.5 * T_FULL, "the screw cannot back the springs off to 50 %"
 CS_SCALE = CS_ROOF - CROWN_X                     # crown to the yoke's roof
@@ -575,12 +574,36 @@ def _bar(x1, hub_top):
     return b
 
 
-def spreader() -> cq.Workplane:
-    """On the moved yoke's roof at mid travel (world). Its +X face covers the roof's 24 in Z; the
-    string's slot runs down its middle from the top to under the axis. Base down."""
-    yk_top = XR_ZA + YK_HX                       # the yoke's roof spans the axis +-12 in Z
-    s = _bar(CS_ROOF, yk_top)
-    return s.cut(_box(CS_ROOF - BAR_L - 1.0, CS_ROOF + 1.0, SY - 1.5, SY + 1.5, XR_ZA - 1.5, yk_top + 1.0))
+def _xflat(d, x0, x1, z=XR_ZA):
+    """A bore along X, x0..x1 on (SY, z), its ceiling FLAT at the crown: a d-wide bridge in the +Z
+    print. A teardrop's peak would run into the M3 holes beside it."""
+    r = d / 2.0
+    return cyl_x(d, x1 - x0, x0, y=SY, z=z).union(_box(x0, x1, SY - r, SY + r, z, z + r))
+
+
+CY_FT = CS_ROOF + YK_H                           # the nut flange's top face, mid travel (world x)
+CY_Z0, CY_Z1 = BAR_Z0, XR_ZA + YK_HX             # 2.2 .. 27.8: the yoke's underside and top
+assert D.NUT_HOLE_DX - YK_TAP_D / 2 - YK_LIP_D / 2 >= D.MIN_WALL - 1e-9, "tap hole into the lip's recess"
+
+
+def counter_yoke() -> cq.Workplane:
+    """THE COUNTER YOKE (user, 2026-11-09): the yoke and the spreader in one, its only jobs the nut,
+    the string and the springs -- no guide rod, no arm. In place (world) at mid travel, base down.
+      the BODY on the nut's flange: the axial yoke's 24 x 12 x 16, two M3 x 12 up through the nut's
+        ears self-tapping into its +X face, the screw tip's cavity, the lip's recess;
+      the ROOF: the ball end seats under it on the axis, the string out a 2.1 hole down the axis;
+      the BAR across Y on the roof's -X face, the springs' pins at its ends (the spreader's, so the
+        station stays where it is), its middle up the roof's full height."""
+    x1, xr = CY_FT, CS_ROOF
+    y = _box(xr, x1, SY - YK_HY, SY + YK_HY, CY_Z0, CY_Z1)
+    y = y.union(_bar(xr + 0.01, CY_Z1).translate((-0.01, 0.0, 0.0)))
+    y = y.cut(_xflat(YK_CAV, x1 - YK_R0, x1 + 1.0))                             # the screw's tip
+    y = y.cut(_xflat(YK_LIP_D, x1 - YK_LIP_L, x1 + 1.0))                        # the nut's lip
+    y = y.cut(_xb(STR_HOLE_D + 0.1, xr - BAR_L - 1.0, x1 - YK_R0 + 1.0))        # the string
+    for sz in (-1, 1):
+        y = y.cut(printable_bore(YK_TAP_D, YK_TIP + 1.0, axis_point=(x1 - YK_TIP, SY, XR_ZA + sz * D.NUT_HOLE_DX),
+                                 axis_dir=(1.0, 0.0, 0.0), print_up=UP))
+    return y
 
 
 def slider(xs1=XS1_IN) -> cq.Workplane:
@@ -639,6 +662,8 @@ def assembly_counter(level=1.0):
     moved = ("plank_station_x",) + tuple("x" + n for n in XR_PARTS)
     out = []
     for nm, w in assembly_x():
+        if nm == "xyoke_0":                      # the counter yoke takes its place
+            continue
         if nm in moved:
             w = w.translate((CS_DX, 0.0, 0.0))
         elif nm == "string_0":
@@ -648,7 +673,7 @@ def assembly_counter(level=1.0):
             w = _seg(a, crown, g / 2).union(_seg(crown, (-770.0, SY, Z_PLANK + 15.0), g / 2))
         out.append((nm, w))
     xs1 = slider_for(level)
-    out.append(("plank_counter_spreader", spreader()))
+    out.append(("plank_counter_yoke", counter_yoke()))
     out.append(("plank_counter_slider", slider(xs1)))
     out.append(("plank_counter_post", counter_post()))
     for k, s in enumerate((-1, 1)):
@@ -855,7 +880,7 @@ def print_parts():
     sa = station_axial().rotate((0, 0, 0), (0, 1, 0), 90)
     yk = yoke().rotate((0, 0, 0), (1, 0, 0), 180)               # roof on the bed: no bridge over the cavity
     out_x = station_x()                                          # base down, as drawn
-    spring = (("plank_counter_post", counter_post()), ("plank_counter_spreader", spreader()),
+    spring = (("plank_counter_post", counter_post()), ("plank_counter_yoke", counter_yoke()),
               ("plank_counter_slider", slider()))                         # all base down
     for nm, w in (("plank_station", st), ("plank_head", head()),   # the real tee board holds the motor (user)
                   ("plank_station_axial", sa), ("plank_yoke", yk), ("plank_station_x", out_x)) + spring:
