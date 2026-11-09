@@ -402,7 +402,10 @@ def _spring(i: int, t: float) -> cq.Workplane:
         piece = (cq.Workplane("XZ").center(r, 0).circle(SPRING_WIRE / 2)
                  .sweep(cq.Workplane("XY").add(hx), isFrenet=True))
         out = out.add(piece.translate((0, 0, z0)).vals())
-    return out.rotate((0, 0, 0), (0, 1, 0), 90).translate((x0, y_of(i), za(i)))
+    # ONE compound, not three solids: the view and the export take a part's first solid only,
+    # which showed just the first grip's four turns
+    one = cq.Workplane("XY").add(cq.Compound.makeCompound(out.vals()))
+    return one.rotate((0, 0, 0), (0, 1, 0), 90).translate((x0, y_of(i), za(i)))
 
 
 def _anchor_plug(i: int) -> cq.Workplane:
