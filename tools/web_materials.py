@@ -80,6 +80,7 @@ _FINISH = [(re.compile(rx), finish) for rx, finish in _motor_rules() + (
     (r"^nut_plate$", "steel"),                    # laser-cut 304 (its PARTS row is steel/, not a filament)
     (r"^wall_bar$", "steel"),                     # the side walls' A-36 flat bars (zinc-sprayed)
     (r"^output_panel_term$", "nylon"),            # J8's PA66 housing (src/screw_terminal.py)
+    (r"^pi_riser$", "nylon"),                     # Adafruit 4079 socket riser: black moulded
     (r"^belt$", "rubber"),
     (r"^pickup$", "aluminium"),
     (r"^motor$", "painted"),
@@ -127,11 +128,24 @@ def unit_of(name: str):
     return None
 
 
+# THE BENCHES keep their own tables (their parts are named cb_ / db_ and are in no PARTS
+# row), and the instrument's limits they draw (ghost_) are no material at all: see-through.
+_BENCHES = (("cb_", "src.changer_bench"), ("db_", "src.direct_bench"))
+
+
 def material_of(name: str):
     """What `name` (an instance in the assembly) is made of: "petg-gf" | "pctg" |
-    "pctg-clear" | "pctg-black" | "tpu" for a printed part, a finish for a bought one, else None."""
+    "pctg-clear" | "pctg-black" | "tpu" for a printed part, a finish for a bought one, else None.
+    None is an ERROR in the viewer (cadkit.web.export): there is no plastic default."""
     name = name.split("__")[0]
-    return _filament_of(name) or finish_of(re.sub(r"(_\d+)+$", "", name))
+    base = re.sub(r"(_\d+)+$", "", name)
+    if base.startswith("ghost_"):
+        return "pctg-clear"
+    for pre, mod in _BENCHES:
+        if base.startswith(pre):
+            import importlib
+            return importlib.import_module(mod).material_of(base)
+    return _filament_of(name) or finish_of(base)
 
 
 def _filament_of(name: str):

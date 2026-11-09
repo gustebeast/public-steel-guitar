@@ -776,6 +776,31 @@ COLORS = {
 }
 
 
+# What each part is made of, for the viewer (tools.web_materials asks here for cb_ names; a part
+# with none is an error there, not plastic).
+_MOTOR_FINISH = {}
+MATERIAL = {
+    "nut": "brass", "ball": "brass", "screw": "steel", "rod": "steel", "adjuster": "steel",
+    "brg": "polished", "bridge_bearings": "polished", "idler": "polished", "sheave": "polished",
+    "string": "polished", "pulley": "aluminium", "mpulley": "aluminium", "belt": "rubber",
+    "leg": "stainless", "run": "stainless", "thimble": "stainless", "spring": "stainless",
+    "clampzone": "pctg", "yoke": "petg-gf", "plug_a": "petg-gf", "plug_b": "petg-gf",
+    "plate_n": "petg-gf", "plate_f": "petg-gf", "cheeks": "petg-gf", "floor": "petg-gf",
+    "rank_nA": "petg-gf", "rank_nB": "petg-gf", "rank_fA": "petg-gf", "rank_fB": "petg-gf",
+    "anchor_n": "petg-gf", "anchor_f": "petg-gf",
+}
+
+
+def material_of(base: str):
+    inner = base[3:]
+    if inner.startswith("motor"):
+        if not _MOTOR_FINISH:
+            from . import components as C
+            _MOTOR_FINISH.update({k: fin for k, _, _, fin in C.motor_parts()})
+        return _MOTOR_FINISH.get(inner[6:] if inner != "motor" else "")
+    return MATERIAL.get(inner)
+
+
 def color_of(base: str, table: dict):
     """RGB for a changer-bench part (its name with the trailing indices off), or None."""
     inner = base[3:] if base.startswith("cb_") else base

@@ -36,6 +36,7 @@ THE LAYOUT
 from __future__ import annotations
 
 import math
+import re as _re
 
 import cadquery as cq
 
@@ -277,10 +278,14 @@ def _ball_x(t: float) -> float:
     return x_yt(t) - YK_ROOF - D.STRING_NUT_L / 2
 
 
+MOTOR_FINISH = {}                                   # motor part -> its finish (motor_parts)
+
+
 def _motor(i: int) -> list:
     from . import components as C
     out = []
-    for k, wp, _, _ in C.motor_parts():
+    for k, wp, _, fin in C.motor_parts():
+        MOTOR_FINISH[k] = fin
         w = (wp.rotate((0, 0, 0), (0, 1, 0), PLUG_DIR[i]).rotate((0, 0, 0), (0, 0, 1), -90)
              .translate((x_ref(i), y_of(i), za(i))))
         out.append((f"db_motor_{k}_{i}" if k else f"db_motor_{i}", w))
@@ -293,13 +298,12 @@ def _bend_parts() -> list:
     out = [("db_bridge_bearings", C.bridge_bearings())]
     for k in range(LEVELS):
         zc = z_level(k) + R
-        ax = cyl_y(D.BRIDGE_AXLE_D, 2 * CHEEK_Y[1], -CHEEK_Y[1], x=X_BEND, z=zc)
-        for i in range(N):
-            if level(i) == k:
-                ax = ax.union(ball_bearing(D.BRG688_OD, D.BRG688_ID + 0.3, D.BRG688_W)
-                              .rotate((0, 0, 0), (1, 0, 0), -90)
-                              .translate((X_BEND, y_of(i) - D.BRG688_W / 2, zc)))
-        out.append((f"db_bend_r{'abc'[k]}", ax))
+        out.append((f"db_bend_axle_r{'abc'[k]}",
+                    cyl_y(D.BRIDGE_AXLE_D, 2 * CHEEK_Y[1], -CHEEK_Y[1], x=X_BEND, z=zc)))
+    for i in range(N):
+        out.append((f"db_bend_brg_{i}", ball_bearing(D.BRG688_OD, D.BRG688_ID, D.BRG688_W)
+                    .rotate((0, 0, 0), (1, 0, 0), -90)
+                    .translate((X_BEND, y_of(i) - D.BRG688_W / 2, z_level(level(i)) + R))))
     return out
 
 
@@ -399,9 +403,39 @@ def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
         out += string_parts(i, t)
     out += _bend_parts()
     out += [("db_cheeks", _cheeks()), ("db_rod_plate", _rod_plate()), ("db_anchor", _anchor())]
+    out = [(nm, _made(nm, w)) for nm, w in out]
     show = ("ghost_pickup", "ghost_bottom_now")
     out += [g for g in ghosts() if all_ghosts or g[0] in show]
     return out
+
+
+# What each part is made of, for the viewer's shine (cadkit.web.finishes.made_of): printed
+# frames in the instrument's PETG-GF, the bought parts as they are.
+MATERIAL = {
+    "yoke": "petg-gf", "collar": "petg-gf", "block": "petg-gf", "mplate": "petg-gf",
+    "cheeks": "petg-gf", "rod_plate": "petg-gf", "anchor": "petg-gf",
+    "nut": "brass", "ball": "brass", "screw": "steel", "rod": "steel", "string": "polished",
+    "brg": "polished", "bend_brg": "polished", "bridge_bearings": "polished",
+    "bend_axle_ra": "steel", "bend_axle_rb": "steel", "bend_axle_rc": "steel",
+    "spring": "stainless", "sleeve": "nylon", "coupler": "aluminium",
+}
+
+
+def material_of(base: str):
+    """The material of a direct-bench part (its name, indices off), or None."""
+    inner = base[3:]
+    if inner.startswith("motor"):
+        if not MOTOR_FINISH:
+            from . import components as C
+            MOTOR_FINISH.update({k: fin for k, _, _, fin in C.motor_parts()})
+        return MOTOR_FINISH.get(inner[6:] if inner != "motor" else "")
+    return MATERIAL.get(inner)
+
+
+def _made(nm: str, w):
+    from cadkit.web.finishes import made_of
+    m = material_of(_re.sub(r"(_\d+)+$", "", nm))
+    return made_of(w, m) if m else w
 
 
 # ── colours (src.build._color_for asks here for db_ names) ──────────────────────────────────
@@ -409,7 +443,8 @@ def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
 COLORS = {
     "nut": "nut", "ball": "string_nut", "screw": "leadscrew", "brg": "screw_bearing",
     "string": "string", "bridge_bearings": "bridge_bearings", "rod": "guide_rod",
-    "bend_ra": "bridge_bearings", "bend_rb": "bridge_bearings", "bend_rc": "bridge_bearings",
+    "bend_brg": "bridge_bearings", "bend_axle_ra": "leadscrew", "bend_axle_rb": "leadscrew",
+    "bend_axle_rc": "leadscrew",
     "yoke": (0.39, 0.58, 0.93), "collar": (0.85, 0.45, 0.15),
     "spring": "leg_latch_spring", "sleeve": (0.88, 0.91, 0.94),
     "coupler": (0.70, 0.72, 0.76), "block": (0.30, 0.36, 0.42), "mplate": (0.30, 0.33, 0.38),
@@ -450,10 +485,12 @@ def is_intended(a: str, b: str) -> bool:
     pair = {ba, bb_}
     if all(n.startswith("ghost_") for n in pair):
         return True
-    bends = {"db_bend_ra", "db_bend_rb", "db_bend_rc"}
+    bends = {"db_bend_axle_ra", "db_bend_axle_rb", "db_bend_axle_rc", "db_bend_brg"}
     if "db_string" in pair and pair & (bends | {"db_bridge_bearings", "ghost_keyhead"}):
         return True
     if "db_cheeks" in pair and pair & (bends | {"db_rod_plate", "db_anchor"}):
+        return True
+    if "db_bend_brg" in pair and pair & bends - {"db_bend_brg"}:      # each 688 on its axle
         return True
     if "db_rod" in pair and "db_rod_plate" in pair:
         return True
