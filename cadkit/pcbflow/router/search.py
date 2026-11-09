@@ -260,3 +260,208 @@ def astar_turn(cell, via_cell, src, tgt, L, h, w, via_cost, tb, dir_cost, t45, t
         out.append(q // 9)
         q = par[q]
     return np.array(out, np.int64)
+
+# ----------------------------------------------------------------------------------------
+# ⚠ A SEARCH MUST NOT PAY FOR THE WINDOW IT DOES NOT VISIT (optical, 2026-11-09): a plane
+# net's pieces are joined in a whole-board window (10 M cells), and each 10-cell join spent
+# 0.14 s allocating and clearing g/par/done over all of it -- 130 MB a call, a third of a
+# round's searches. These kernels take persistent buffers and a generation stamp instead:
+# st[q] < base means not seen this call, base = seen (g valid), base + 1 = closed.
+# Same expansion order, same ties, same paths as astar()/astar_turn() at eps = 1.
+@njit(cache=True)
+def astar_s(cell, via_cell, src_idx, tgt, L, h, w, via_cost, tb, dir_cost, eps,
+            g, par, st, base):
+    heap = [(np.float32(0.0), np.int64(0))]
+    heap.pop()
+    ti0, ti1, tj0, tj1 = tb[0], tb[1], tb[2], tb[3]
+    for a in range(src_idx.size):
+        s = src_idx[a]
+        if cell[s] < np.inf and st[s] < base:
+            g[s] = 0.0
+            par[s] = -1
+            st[s] = base
+            heapq.heappush(heap, (np.float32(0.0), np.int64(s)))
+    hit = -1
+    while len(heap) > 0:
+        f, s = heapq.heappop(heap)
+        if st[s] == base + 1:
+            continue
+        st[s] = base + 1
+        if tgt[s]:
+            hit = s
+            break
+        k = s // (h * w)
+        r = s - k * h * w
+        i = r // w
+        j = r - i * w
+        gs = g[s]
+        for d in range(8):
+            ii = i + DI[d]
+            jj = j + DJ[d]
+            if ii < 0 or ii >= h or jj < 0 or jj >= w:
+                continue
+            t = (k * h + ii) * w + jj
+            if st[t] == base + 1:
+                continue
+            c = cell[t]
+            if c == np.inf:
+                continue
+            step = DL[d] * c
+            if DI[d] == 0:
+                step += DL[d] * dir_cost[k, 0]
+            elif DJ[d] == 0:
+                step += DL[d] * dir_cost[k, 1]
+            else:
+                step += DL[d] * 0.5 * (dir_cost[k, 0] + dir_cost[k, 1])
+            ng = gs + step
+            if st[t] < base or ng < g[t]:
+                g[t] = ng
+                par[t] = s
+                st[t] = base
+                di = 0 if ti0 <= ii <= ti1 else (ti0 - ii if ii < ti0 else ii - ti1)
+                dj = 0 if tj0 <= jj <= tj1 else (tj0 - jj if jj < tj0 else jj - tj1)
+                hh = (max(di, dj) - min(di, dj)) + SQ2 * min(di, dj)
+                heapq.heappush(heap, (np.float32(ng + eps * hh), np.int64(t)))
+        vc = via_cell[r]
+        if vc < np.inf:
+            for k2 in range(L):
+                if k2 == k:
+                    continue
+                t = (k2 * h + i) * w + j
+                if st[t] == base + 1 or cell[t] == np.inf:
+                    continue
+                ng = gs + via_cost * vc
+                if st[t] < base or ng < g[t]:
+                    g[t] = ng
+                    par[t] = s
+                    st[t] = base
+                    di = 0 if ti0 <= i <= ti1 else (ti0 - i if i < ti0 else i - ti1)
+                    dj = 0 if tj0 <= j <= tj1 else (tj0 - j if j < tj0 else j - tj1)
+                    hh = (max(di, dj) - min(di, dj)) + SQ2 * min(di, dj)
+                    heapq.heappush(heap, (np.float32(ng + eps * hh), np.int64(t)))
+    if hit < 0:
+        return np.empty(0, np.int64)
+    out = []
+    s = hit
+    while s >= 0:
+        out.append(s)
+        s = par[s]
+    return np.array(out, np.int64)
+
+
+@njit(cache=True)
+def astar_turn_s(cell, via_cell, src_idx, tgt, L, h, w, via_cost, tb, dir_cost, t45, t90, eps,
+                 g, par, st, base):
+    heap = [(np.float32(0.0), np.int64(0))]
+    heap.pop()
+    ti0, ti1, tj0, tj1 = tb[0], tb[1], tb[2], tb[3]
+    for a in range(src_idx.size):
+        s = src_idx[a]
+        q0 = s * 9 + 8
+        if cell[s] < np.inf and st[q0] < base:
+            g[q0] = 0.0
+            par[q0] = -1
+            st[q0] = base
+            heapq.heappush(heap, (np.float32(0.0), np.int64(q0)))
+    hit = -1
+    while len(heap) > 0:
+        f, q = heapq.heappop(heap)
+        if st[q] == base + 1:
+            continue
+        st[q] = base + 1
+        s = q // 9
+        hd = q - s * 9
+        if tgt[s]:
+            hit = q
+            break
+        k = s // (h * w)
+        r = s - k * h * w
+        i = r // w
+        j = r - i * w
+        gs = g[q]
+        for d in range(8):
+            tc = _turn(hd, d)
+            if tc == 3:
+                continue
+            ii = i + DI[d]
+            jj = j + DJ[d]
+            if ii < 0 or ii >= h or jj < 0 or jj >= w:
+                continue
+            t = (k * h + ii) * w + jj
+            c = cell[t]
+            if c == np.inf:
+                continue
+            qt = t * 9 + d
+            if st[qt] == base + 1:
+                continue
+            step = DL[d] * c
+            if DI[d] == 0:
+                step += DL[d] * dir_cost[k, 0]
+            elif DJ[d] == 0:
+                step += DL[d] * dir_cost[k, 1]
+            else:
+                step += DL[d] * 0.5 * (dir_cost[k, 0] + dir_cost[k, 1])
+            if tc == 1:
+                step += t45
+            elif tc == 2:
+                step += t90
+            ng = gs + step
+            if st[qt] < base or ng < g[qt]:
+                g[qt] = ng
+                par[qt] = q
+                st[qt] = base
+                di = 0 if ti0 <= ii <= ti1 else (ti0 - ii if ii < ti0 else ii - ti1)
+                dj = 0 if tj0 <= jj <= tj1 else (tj0 - jj if jj < tj0 else jj - tj1)
+                hh = (max(di, dj) - min(di, dj)) + SQ2 * min(di, dj)
+                heapq.heappush(heap, (np.float32(ng + eps * hh), np.int64(qt)))
+        vc = via_cell[r]
+        if vc < np.inf:
+            for k2 in range(L):
+                if k2 == k:
+                    continue
+                t = (k2 * h + i) * w + j
+                if cell[t] == np.inf:
+                    continue
+                qt = t * 9 + 8
+                if st[qt] == base + 1:
+                    continue
+                ng = gs + via_cost * vc
+                if st[qt] < base or ng < g[qt]:
+                    g[qt] = ng
+                    par[qt] = q
+                    st[qt] = base
+                    di = 0 if ti0 <= i <= ti1 else (ti0 - i if i < ti0 else i - ti1)
+                    dj = 0 if tj0 <= j <= tj1 else (tj0 - j if j < tj0 else j - tj1)
+                    hh = (max(di, dj) - min(di, dj)) + SQ2 * min(di, dj)
+                    heapq.heappush(heap, (np.float32(ng + eps * hh), np.int64(qt)))
+    if hit < 0:
+        return np.empty(0, np.int64)
+    out = []
+    q = hit
+    while q >= 0:
+        out.append(q // 9)
+        q = par[q]
+    return np.array(out, np.int64)
+
+
+class Buffers:
+    """The search's g / parent / stamp arrays, kept between calls and grown on demand.
+    A call stamps base = 2 * generation; before the int32 stamp would overflow, wipe."""
+
+    def __init__(self):
+        self.n = 0
+        self.gen = 0
+        self.g = self.par = self.st = None
+
+    def take(self, n):
+        if n > self.n:
+            self.n = n
+            self.g = np.empty(n, np.float32)
+            self.par = np.empty(n, np.int64)
+            self.st = np.zeros(n, np.int32)
+            self.gen = 0
+        self.gen += 1
+        if 2 * self.gen + 2 >= 2 ** 31 - 1:
+            self.st[:] = 0
+            self.gen = 1
+        return self.g, self.par, self.st, np.int32(2 * self.gen)

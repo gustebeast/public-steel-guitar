@@ -537,7 +537,17 @@ def finish(stem, rounds=1, keep_route=False):
     # connection with a violation is put back.
     # (--keep-route takes this step too: a kept board with a net still open is exactly the
     # board this was written for, and it lays nothing unless DRC then reads better.)
-    if best_n and not best_v:
+    # ⚠ ...BUT A VIOLATION ON SOME OTHER NET DOES NOT STOP IT (optical, 2026-11-09): of an
+    # 18-placement series, eight boards kept 17-20 nets open because one courtyard
+    # overlap or one starved thermal elsewhere gated the step off (OWN8 the same, R32's
+    # GND spoke). The baseline does not move under a violation that no closure touches,
+    # so the step runs whenever every violation is on nets other than the open ones, and
+    # is still judged "fewer violations, else as many and fewer open".
+    _v0 = best_v
+    _unrelated = bool(best_v) and nets and not (_violation_nets(stem) & set(nets))
+    if best_n and (not best_v or _unrelated):
+        if _unrelated:
+            print("  close_last: %d violation(s) on other nets -- closing anyway" % best_v)
         shutil.copy(stem + ".kicad_pcb", stem + ".preclose.kicad_pcb")
         shutil.copy(stem + ".finish.drc.json", stem + ".preclose.drc.json")
         # ⚠ ONE BAD CLOSURE DOES NOT COST THE GOOD ONES (optical, 2026-10-05). The search
@@ -583,7 +593,7 @@ def finish(stem, rounds=1, keep_route=False):
                 _n3, _v3 = best_n, best_v + 1
             if (_v3, _n3) < (best_v, best_n):
                 best_n, best_v, nets = _n3, _v3, _nets3
-                if not best_n or best_v:
+                if not best_n or best_v > _v0:
                     break
                 # ⚠ AND AGAIN FROM THE BETTER BOARD (optical, 2026-11-05). A decap's GND pad
                 # was fed by the pour; the +3V3D closures cut the pour round it, the refill
@@ -749,7 +759,12 @@ def finish(stem, rounds=1, keep_route=False):
     # of the project's declarations: pi_cap showed A17 (J4's back-face reason missing) and
     # A19 (no glyph record), and both went into the work list as the board's own "baseline
     # FAILs" -- with the project named, the same copy finishes 0 FAIL (2026-11-02).
-    _gen = os.path.join(project_dir(stem), _name + ".py")
+    # one generator may write several stems (foot_led.py -> foot_led_a / _b, leg_pogo.py ->
+    # four): the stem's own name or any "_"-prefix of it names the generator
+    _parts = _name.split("_")
+    _gens = [os.path.join(project_dir(stem), "_".join(_parts[:k]) + ".py")
+             for k in range(len(_parts), 0, -1)]
+    _gen = next((g for g in _gens if os.path.isfile(g)), _gens[0])
     print("%s: %d unconnected, %d violation(s)%s%s%s"
           % (os.path.basename(stem), best_n, best_v,
              (" -- AND %d verify.py FAIL(s): NOT A CLEAN BOARD" % verify_fails)
