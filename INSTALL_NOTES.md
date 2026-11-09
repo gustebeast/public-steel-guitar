@@ -1681,3 +1681,8 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
   2. Feed the ball end through the rod plate's window in front of its yoke (7.6 x 11.8).
   3. Push the ball through the keyhole's Ø4.8 hole, 5 mm under the string's line.
   4. Pull the string so the ball slides up the 2.2 slit until it sits on the axis behind the roof. The string's tension keeps it there.
+- **Direct bench spring ends:** each spring is 3/4 in OD stainless stock, cut to length (SKU still open). Each end screws onto a seat of the spring's inside diameter, 8 mm of coils over it.
+  - **Nut end:** the yoke goes on the nut's +X face. Two M3 x 12 SHCS come from behind, through the collar's plate and both flange ears, into the yoke. That one pair of screws holds the yoke and clamps the collar. Screw the spring onto the collar's seat.
+  - **Wall end:** screw the anchor plug's seat into the spring's other end. Pass the plug through the anchor wall with its lug bar along Y (the slot), then turn it a quarter so the lugs lie along Z behind the wall. The spring's pull holds it there.
+  - The plug's tube is the sleeve that keeps the coils off the turning screw.
+  - The anti-rotation rod now rides an arm on the yoke's -Y side (stock 29.8 rod), not a flange ear.

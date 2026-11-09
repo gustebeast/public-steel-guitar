@@ -82,7 +82,16 @@ YK_W = 14 * D.BEAD                                  # 11.2 across Y (the nut's 1
 YK_TALL = D.NUT_FLANGE_L                            # 22 in Z, as the flange
 X_YT0 = -26.0                                       # yoke roof at the slack end of travel
 ROD_PLATE = (-24.0, -20.0)                          # the rods' plate (and the strings' holes)
-ROD_DZ = D.NUT_HOLE_DX                              # the rod rides the ear at +Z (-Z is the keyhole's)
+# THE YOKE IS SCREWED TO THE NUT: the string pulls it +X, OFF the flange, so two M3 x 12 SHCS come
+# up from behind through both ears into it (the plank bench's yoke, BTn.SCREW_L) -- and their heads
+# clamp the spring's COLLAR to the flange's back on the way. The ears taken, the anti-rotation rod
+# rides an ARM off the yoke instead, toward the middle of the instrument.
+ROD_DY = 12.0                                       # the rod off the axis, -Y for every string: a
+                                                    # row's yokes are 28.5 apart, so arms all one
+                                                    # way clear (16.4 + 5.6), facing ones do not
+ROD_ARM_R = 4.4                                     # the arm's boss round it
+M3_HEAD = (5.5, 3.0)                                # SHCS head diameter, height
+M3_L = 12.0
 # RESTRINGING (user, 2026-11-09): a KEYHOLE in the yoke's roof. The ball end goes in through a
 # hole KEY_DROP under the axis, then slides UP a slit only the string fits through, to sit on the
 # axis behind the roof; the string's pull holds it there. The rod plate has a WINDOW in front of
@@ -92,10 +101,24 @@ KEY_DROP = 5.0                                      # its centre under the axis:
 SLIT_W = 2.2                                        # string 10's 1.78 and room
 WIN_HY = KEY_D / 2 + 1.4                            # 3.8: the plate window's half-width in Y
 WIN_Z = (-(KEY_DROP + KEY_D / 2 + 1.2), 3.2)        # ...and its reach under / over the axis
-COLLAR_L = 2.0                                      # the spring's collar, on the boss's end
-SPRING_OD, SPRING_ID = 15.9, 12.7                   # 5/8 in stainless extension spring (SKU TBD)
-SLEEVE_OD, SLEEVE_ID = 11.0, 9.0                    # fixed sleeve over the screw
+# THE SPRING: 3/4 in OD stainless extension spring stock, cut to length (SKU TBD). Each end SCREWS
+# ONTO A SEAT, its last coils wound over a plug of the spring's own inside diameter -- the way
+# cut-to-length springs are meant to be ended -- so nothing is hooked off the axis.
+#   NUT END: the COLLAR -- a plate clamped under the two M3 heads on the flange's back, two webs at
+#            +-Y past the heads, and the seat on the far side of them, round the screw.
+#   WALL END: the ANCHOR PLUG -- a seat on the wall's +X face, a neck through it, and a lug bar
+#            behind it: put through with the lugs along Y (the wall's slot), turned a quarter to Z,
+#            and the spring's own pull holds it there. The plug carries the SLEEVE over the screw.
+SPRING_OD, SPRING_WIRE = 19.05, 2.0
+SPRING_ID = SPRING_OD - 2 * SPRING_WIRE             # 15.05: the seats' diameter
+SPRING_TURNS = 50                                   # 2.5 pitch at the slack end, 2.35 at full
+SEAT_L, SEAT_GRIP = 10.0, 8.0                       # each seat, and the coils wound over it
+SLEEVE_OD, SLEEVE_ID = 11.0, 9.0                    # over the screw, part of the anchor plug
 ANCHOR = (-194.8, -190.0)                           # the anchor wall, x
+LUG = (3.0, 22.0, 6.0)                              # the plug's lug bar: thick, long, wide
+COLLAR_T = 3.0                                      # the collar's plate
+COLLAR_HY = 7.5                                     # ...its half-width in Y (the webs' outer face)
+WEB = (5.4, 7.4, 3.0)                               # the webs: from..to off the axis in Y, half-height
 
 
 def x_yt(t: float) -> float:
@@ -108,8 +131,23 @@ def x_ft(t: float) -> float:
 
 
 SCREW_TIP = x_ft(0.0) - D.SCREW_END_GAP             # under the flange face at the slack end
-ROD_END = x_ft(1.0) - D.NUT_FLANGE_T                # the ear's back face at full travel
-SLEEVE_END = x_ft(1.0) - D.NUT_H - COLLAR_L - 1.0   # clear of the collar at full travel
+ROD_END = ROD_PLATE[1] - 1.0 - D.GUIDE_ROD_L        # the stock 29.8 rod, from the plate
+
+
+def x_collar(t: float):
+    """The collar along x: plate (from, to), the heads' far face, the seat (from, to)."""
+    pb = x_ft(t) - D.NUT_FLANGE_T                   # the flange's back face
+    heads = pb - COLLAR_T - M3_HEAD[1]
+    seat1 = heads - 0.5
+    return (pb - COLLAR_T, pb), heads, (seat1 - SEAT_L, seat1)
+
+
+def spring_span(t: float):
+    """The spring, x from..to: its coils over SEAT_GRIP of each seat."""
+    return ANCHOR[1] + SEAT_L - SEAT_GRIP, x_collar(t)[2][0] + SEAT_GRIP
+
+
+SLEEVE_END = x_collar(1.0)[2][0] - 1.0              # short of the collar's seat at full travel
 
 # ── motors and stations ─────────────────────────────────────────────────────────────────────
 M_HALF = D.MOTOR_SQ / 2                             # 21.15
@@ -122,7 +160,7 @@ BLOCK = (24.0, 22.0, 36.0)                          # square, x from..to: two 68
 PLATE_T = 4.0
 STATION_GAP = 1.3
 STATION_P = M_BACK + BLOCK[2] + STATION_GAP         # 98.0
-X_REF0 = ANCHOR[0] - 1.0 - BLOCK[2]                 # the nearest station's pulley plane
+X_REF0 = ANCHOR[0] - LUG[0] - 1.0 - BLOCK[2]        # the nearest station: past the plug's lugs
 
 # station of each string (nearest 0): rows 0 and 2 share; 57 apart on a row share. The ORDER is
 # the one (of the 24) where every motor's coil plug finds a side no passing screw, station-mate,
@@ -244,8 +282,8 @@ def report() -> str:
     for i in range(N):
         m = yaw_pt((x_ref(i), y_of(i), za(i)), i)
         sl = SCREW_TIP - (x_ref(i) + 11.0)
-        s0 = (x_ft(0) - D.NUT_H - COLLAR_L) - ANCHOR[1]
-        s1 = (x_ft(1) - D.NUT_H - COLLAR_L) - ANCHOR[1]
+        s0 = spring_span(0)[1] - spring_span(0)[0]
+        s1 = spring_span(1)[1] - spring_span(1)[0]
         dirn = {0: "+Z", 90: "-Y", 180: "-Z", 270: "+Y"}[PLUG_DIR[i]]
         out.append(f"  {i + 1:2d}   {level(i)}     {STATION[i]}     ({m[0]:7.1f}, {m[1]:6.1f}, {m[2]:6.1f})"
                    f"   {dirn}   {sl:6.1f}        {s0:5.1f} / {s1:5.1f}")
@@ -271,9 +309,14 @@ def _yoke(i: int, t: float) -> cq.Workplane:
     y, z = y_of(i), za(i)
     ft, yt = x_ft(t), x_yt(t)
     out = box_at(YK_H, YK_W, YK_TALL, x=(ft + yt) / 2, y=y, z=z)
+    ry = rod_y(i)
+    out = out.union(box_at(YK_H, abs(ry - y), 2 * ROD_ARM_R, x=(ft + yt) / 2, y=(y + ry) / 2, z=z))
+    out = out.union(cyl_x(2 * ROD_ARM_R, YK_H, ft, y=ry, z=z))
     out = out.cut(cyl_x(D.SCREW_OD + 0.8, yt - YK_ROOF - ft + 1, ft - 1, y=y, z=z))   # tip + ball
     out = out.cut(cyl_x(D.NUT_LIP_D + 0.4, D.NUT_LIP_L + 1.3, ft - 1, y=y, z=z))      # lip register
-    out = out.cut(cyl_x(D.GUIDE_ROD_D + 0.4, YK_H + 2, ft - 1, y=y, z=z + ROD_DZ))    # the rod
+    out = out.cut(cyl_x(D.GUIDE_ROD_D + 0.4, YK_H + 2, ft - 1, y=ry, z=z))             # the rod
+    for dz in (-D.NUT_HOLE_DX, D.NUT_HOLE_DX):                                        # the M3s bite
+        out = out.cut(cyl_x(2.5, M3_L - COLLAR_T - D.NUT_FLANGE_T + 1.0, ft - 1, y=y, z=z + dz))
     # the keyhole: the ball's hole KEY_DROP down, the slit up to the axis, and behind the roof
     # a pocket the ball slides up in (its 3 along the axis, Ø4 across)
     rx0 = yt - YK_ROOF
@@ -284,6 +327,58 @@ def _yoke(i: int, t: float) -> cq.Workplane:
     out = out.cut(box_at(pk, KEY_D, KEY_DROP + KEY_D / 2, x=rx0 - pk / 2, y=y,
                          z=z - (KEY_DROP + KEY_D / 2) / 2))
     return out
+
+
+def rod_y(i: int) -> float:
+    return y_of(i) - ROD_DY
+
+
+def _collar(i: int, t: float) -> cq.Workplane:
+    y, z = y_of(i), za(i)
+    (p0, p1), heads, (s0, s1) = x_collar(t)
+    out = box_at(p1 - p0, 2 * COLLAR_HY, YK_TALL, x=(p0 + p1) / 2, y=y, z=z)
+    for sy in (1, -1):
+        out = out.union(box_at(p0 - s1 + 0.5, WEB[1] - WEB[0], 2 * WEB[2], x=(s1 - 0.5 + p0) / 2,
+                               y=y + sy * (WEB[0] + WEB[1]) / 2, z=z))
+    out = out.union(cyl_x(SPRING_ID, s1 - s0, s0, y=y, z=z))
+    out = out.cut(cyl_x(D.NUT_BOSS_D + 0.4, 60, s0 - 1, y=y, z=z))                  # boss, screw
+    for dz in (-D.NUT_HOLE_DX, D.NUT_HOLE_DX):
+        out = out.cut(cyl_x(3.4, 10, p0 - 1, y=y, z=z + dz))
+    return out
+
+
+def _m3s(i: int, t: float) -> cq.Workplane:
+    y, z = y_of(i), za(i)
+    (p0, _), heads, _ = x_collar(t)
+    out = None
+    for dz in (-D.NUT_HOLE_DX, D.NUT_HOLE_DX):
+        sc = (cyl_x(M3_HEAD[0], M3_HEAD[1], heads, y=y, z=z + dz)
+              .union(cyl_x(3.0, M3_L, p0, y=y, z=z + dz)))
+        out = sc if out is None else out.union(sc)
+    return out
+
+
+COILS = True                                        # False: the spring as its tube (the gate)
+
+
+def _spring(i: int, t: float) -> cq.Workplane:
+    x0, x1 = spring_span(t)
+    if not COILS:
+        return _tube_x(SPRING_OD, SPRING_ID, x0, x1, y_of(i), za(i))
+    r = (SPRING_OD - SPRING_WIRE) / 2
+    h = cq.Wire.makeHelix(pitch=(x1 - x0) / SPRING_TURNS, height=x1 - x0, radius=r)
+    coil = (cq.Workplane("XZ").center(r, 0).circle(SPRING_WIRE / 2)
+            .sweep(cq.Workplane("XY").add(h), isFrenet=True))
+    return coil.rotate((0, 0, 0), (0, 1, 0), 90).translate((x0, y_of(i), za(i)))
+
+
+def _anchor_plug(i: int) -> cq.Workplane:
+    y, z = y_of(i), za(i)
+    a0, a1 = ANCHOR
+    out = cyl_x(SPRING_ID, a1 + SEAT_L - a0, a0, y=y, z=z)                          # neck + seat
+    out = out.union(box_at(LUG[0], LUG[2], LUG[1], x=a0 - LUG[0] / 2, y=y, z=z))      # locked: lugs in Z
+    out = out.union(cyl_x(SLEEVE_OD, SLEEVE_END - (a1 + SEAT_L), a1 + SEAT_L, y=y, z=z))
+    return out.cut(cyl_x(SLEEVE_ID, SLEEVE_END - a0 + 2 * LUG[0], a0 - LUG[0] - 1, y=y, z=z))
 
 
 def _nut(i: int, t: float) -> cq.Workplane:
@@ -347,19 +442,24 @@ def _plate_yz(x0, x1, z0, z1) -> cq.Workplane:
 def _rod_plate() -> cq.Workplane:
     x0, x1 = ROD_PLATE
     w = _plate_yz(x0, x1, CHEEK_Z[0], -20.5)
+    lo = min(rod_y(i) for i in range(N)) - 7.0       # past the -Y cheek: string 10's rod is there
+    w = w.union(box_at(x1 - x0, -CHEEK_Y[0] - lo, CHEEK_Z[1] - 8.5 - CHEEK_Z[0], x=(x0 + x1) / 2,
+                       y=(lo - CHEEK_Y[0]) / 2, z=(CHEEK_Z[0] + CHEEK_Z[1] - 8.5) / 2))
     for i in range(N):
         lo, hi = WIN_Z                               # the window the ball passes through
         w = w.cut(yaw(box_at(10, 2 * WIN_HY, hi - lo, x=(x0 + x1) / 2, y=y_of(i),
                              z=za(i) + (lo + hi) / 2), i))
-        w = w.cut(yaw(cyl_x(D.GUIDE_ROD_D, 10, x0 - 3, y=y_of(i), z=za(i) + ROD_DZ), i))
+        w = w.cut(yaw(cyl_x(D.GUIDE_ROD_D, 10, x0 - 3, y=rod_y(i), z=za(i)), i))
     return w
 
 
 def _anchor() -> cq.Workplane:
     x0, x1 = ANCHOR
     w = _plate_yz(x0, x1, CHEEK_Z[0], -20.5)
-    for i in range(N):
-        w = w.cut(yaw(cyl_x(SLEEVE_OD, 20, x0 - 10, y=y_of(i), z=za(i)), i))
+    for i in range(N):                               # the plug's way through: round, and the
+        y, z = y_of(i), za(i)                        # lugs' slot along Y (turned to Z, they lock)
+        w = w.cut(yaw(cyl_x(SPRING_ID + 0.4, 20, x0 - 10, y=y, z=z), i))
+        w = w.cut(yaw(box_at(20, LUG[1] + 0.8, LUG[2] + 0.8, x=(x0 + x1) / 2, y=y, z=z), i))
     return w
 
 
@@ -394,11 +494,11 @@ def string_parts(i: int, t: float) -> list:
         ("db_yoke", _yoke(i, t)),
         ("db_ball", cyl_x(D.STRING_NUT_D, D.STRING_NUT_L, _ball_x(t) - D.STRING_NUT_L / 2, y=y, z=z)),
         ("db_nut", _nut(i, t)),
-        ("db_collar", _tube_x(SPRING_OD, D.NUT_BOSS_D,
-                              ft - D.NUT_H - COLLAR_L, ft - D.NUT_H + 0.0, y, z)),
-        ("db_spring", _tube_x(SPRING_OD, SPRING_ID, ANCHOR[1], ft - D.NUT_H - COLLAR_L, y, z)),
-        ("db_sleeve", _tube_x(SLEEVE_OD, SLEEVE_ID, ANCHOR[0], SLEEVE_END, y, z)),
-        ("db_rod", cyl_x(D.GUIDE_ROD_D, ROD_PLATE[1] - 1.0 - ROD_END, ROD_END, y=y, z=z + ROD_DZ)),
+        ("db_collar", _collar(i, t)),
+        ("db_m3", _m3s(i, t)),
+        ("db_spring", _spring(i, t)),
+        ("db_plug", _anchor_plug(i)),
+        ("db_rod", cyl_x(D.GUIDE_ROD_D, D.GUIDE_ROD_L, ROD_END, y=rod_y(i), z=z)),
         ("db_screw", cyl_x(D.SCREW_OD, SCREW_TIP - (xr + 11.0), xr + 11.0, y=y, z=z)),
         ("db_coupler", cyl_x(COUPLER[0], COUPLER[2] - COUPLER[1], xr + COUPLER[1], y=y, z=z)),
         ("db_block", box_at(BLOCK[2] - BLOCK[1], BLOCK[0], BLOCK[0], x=xr + (BLOCK[1] + BLOCK[2]) / 2,
@@ -436,7 +536,7 @@ MATERIAL = {
     "nut": "brass", "ball": "brass", "screw": "steel", "rod": "steel", "string": "polished",
     "brg": "polished", "bend_brg": "polished", "bridge_bearings": "polished",
     "bend_axle_ra": "steel", "bend_axle_rb": "steel", "bend_axle_rc": "steel",
-    "spring": "stainless", "sleeve": "nylon", "coupler": "aluminium",
+    "spring": "stainless", "plug": "petg-gf", "m3": "steel", "coupler": "aluminium",
 }
 
 
@@ -465,7 +565,7 @@ COLORS = {
     "bend_brg": "bridge_bearings", "bend_axle_ra": "leadscrew", "bend_axle_rb": "leadscrew",
     "bend_axle_rc": "leadscrew",
     "yoke": (0.39, 0.58, 0.93), "collar": (0.85, 0.45, 0.15),
-    "spring": "leg_latch_spring", "sleeve": (0.88, 0.91, 0.94),
+    "spring": "leg_latch_spring", "plug": (0.85, 0.45, 0.15), "m3": "set_screw",
     "coupler": (0.70, 0.72, 0.76), "block": (0.30, 0.36, 0.42), "mplate": (0.30, 0.33, 0.38),
     "cheeks": (0.42, 0.50, 0.62), "rod_plate": (0.42, 0.50, 0.62), "anchor": (0.36, 0.30, 0.42),
 }
@@ -491,7 +591,8 @@ def _base(nm: str):
 
 _SAME = {frozenset(p) for p in (
     ("db_screw", "db_nut"), ("db_screw", "db_brg"), ("db_screw", "db_coupler"),
-    ("db_nut", "db_yoke"), ("db_nut", "db_rod"), ("db_nut", "db_collar"), ("db_yoke", "db_rod"),
+    ("db_nut", "db_yoke"), ("db_nut", "db_collar"), ("db_yoke", "db_rod"),
+    ("db_m3", "db_collar"), ("db_m3", "db_nut"), ("db_m3", "db_yoke"), ("db_spring", "db_plug"),
     ("db_yoke", "db_ball"), ("db_string", "db_ball"), ("db_string", "db_yoke"),
     ("db_collar", "db_spring"), ("db_brg", "db_block"), ("db_coupler", "db_motor"),
     ("db_motor", "db_mplate"), ("db_motor",), ("db_coupler", "db_block"))}
@@ -513,13 +614,17 @@ def is_intended(a: str, b: str) -> bool:
         return True
     if "db_rod" in pair and "db_rod_plate" in pair:
         return True
-    if "db_anchor" in pair and pair & {"db_spring", "db_sleeve"}:
+    if "db_anchor" in pair and "db_plug" in pair:
         return True
     return False
 
 
 def gate(ts=(0.0, T_OPEN, 1.0)) -> int:
+    """Each spring checked as its whole tube, OD to ID (stricter than the coils, and a helix
+    against its neighbours costs minutes)."""
+    global COILS
     from cadkit import overlap_check as OC
+    COILS = False
     bad = 0
     for t in ts:
         comps = [(nm, cq.Compound.makeCompound(w.vals()) if len(w.vals()) > 1 else w.val())
