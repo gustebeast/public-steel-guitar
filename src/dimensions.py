@@ -930,7 +930,7 @@ CARRIAGE_TRAVEL = min(TRAVEL_WANT, (BELT_RUN_MIN - BELT_CLAMP_L - PULLEY_FLANGE_
 # not move (SCREW_PULLEY_Z is absolute): the pulley column under the bearing grew 1.5 instead.
 # Leaving the bearing down and letting the nut fall 1.5 further was NOT harmless: travel is
 # belt-limited (CARRIAGE_TRAVEL), and 1.5 of nut is 21 of belt, past CLAMP_END_CLR's 5 a side.
-NUT_BOT_MIN     = NUT_TOP_Z - CARRIAGE_TRAVEL - NUT_H          # -24.67, the FLOOR: the
+NUT_BOT_MIN     = NUT_TOP_Z - CARRIAGE_TRAVEL - NUT_H          # -25.05, the FLOOR: the
                                                                # boss's underside at the
                                                                # bottom of travel
 # THE THRUST BEARING IS THAT FLOOR (user, 2026-10-01). The nut's boss comes down through
@@ -944,7 +944,7 @@ NUT_BOT_MIN     = NUT_TOP_Z - CARRIAGE_TRAVEL - NUT_H          # -24.67, the FLO
 # it rises is a millimetre of pulley column underneath it -- see PULLEY_COL_HI.
 # ⚠ The boss is Ø10.2 off the seller's drawing and the 688's inner ring is ~Ø10.2 by the
 # usual rule: a boss that measures wider reaches the SHIELD. Measure both.
-SUPPORT_BRG_Z   = NUT_BOT_MIN                       # -26.17, the bearing's top = thrust ledge
+SUPPORT_BRG_Z   = NUT_BOT_MIN                       # -25.05, the bearing's top = thrust ledge
                                                     # underside = the nut's floor
 SUPPORT_BRG_BOT = SUPPORT_BRG_Z - SUPPORT_BRG_W     # -31.17
 # THE STACK SITS ON THE PULLEYS. The screw is pulled +Z, so whatever grips it has to bottom
