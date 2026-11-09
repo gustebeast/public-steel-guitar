@@ -679,7 +679,9 @@ PICKUP_GHOST = ((-74.0, -21.0), (-51.9, 50.1), (-20.0, 7.97))   # top_plate OPEN
                                                                 # the Z-plate's foot..PK_TOP
 
 
-def ghosts() -> list:
+def ghosts(y_hi: float = None) -> list:
+    """The instrument's limits; y_hi moves the +Y rail (the direct bench widens it)."""
+    Y_HI = globals()["Y_HI"] if y_hi is None else y_hi
     (x0, x1), (y0, y1), (z0, z1) = PICKUP_GHOST
     g = [("ghost_pickup", box_at(x1 - x0, y1 - y0, z1 - z0, x=(x0 + x1) / 2, y=(y0 + y1) / 2,
                                  z=(z0 + z1) / 2))]

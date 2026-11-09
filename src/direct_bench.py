@@ -25,9 +25,9 @@ THE LAYOUT
  5. MOTORS COAXIAL, staggered along X in STATIONS. Two motors need different stations if their
     bodies overlap in YZ (closer than 44.7 in both Y and Z): rows 0 and 2 are 2 DZ apart, so they
     share; strings 57 apart on a row share. Four stations.
- 6. THE DRIVE YAWS THETA in plan (every screw the same angle, -Y going -X). String 1's motor at
-    its own Y would sit through the +Y rail (42.75 + 21.15 > 54.75); a common angle keeps every
-    relative position, so the rules above still hold, and the bend bearings take a ~1 deg fleet.
+ 6. EVERYTHING ON AXIS (user, 2026-11-09): every screw and motor runs straight along X under its
+    own string, no yaw. String 1's motor then stands past today's +Y rail (42.75 + 21.15 > 54.75),
+    and the rail MOVES OUT to clear it (RAIL_HI, "I don't mind the width change at the +y side").
 
     py -3.12 -m src.direct_bench          -> the layout report;   --gate -> the overlap gate
     view: scope src.direct_bench --attr assembly, `agent_sync.py view --solo`
@@ -206,29 +206,20 @@ def x_ref(i: int) -> float:
     return X_REF0 - STATION[i] * STATION_P
 
 
-# ── the yaw ─────────────────────────────────────────────────────────────────────────────────
-Y_LO, Y_HI = -116.35, 54.75
+# ── the rails ───────────────────────────────────────────────────────────────────────────────
+Y_LO, Y_HI = -116.35, 54.75                         # today's rails' inner faces
 KEYHEAD_X = D.KEYHEAD_INBOARD_X                     # -607.8
 DECK_UNDER = -3.2
 WALL_CLR = 0.4
 
 
-def _theta() -> float:
-    """The least common yaw that keeps every motor's +Y face inside the rail."""
-    need = 0.0
-    for i in range(N):
-        near = X_BEND - (x_ref(i) - M_FACE)          # the motor's nearest end, distance from the bend
-        over = y_of(i) + M_HALF + WALL_CLR - Y_HI
-        if over > 0:
-            need = max(need, over / near)
-    return math.atan(need) + math.radians(0.15)
-
-
-THETA = _theta()                                    # raised below until every plug fits
+THETA = 0.0                                         # no yaw: everything on its string's axis
 
 
 def yaw(wp: cq.Workplane, i: int) -> cq.Workplane:
-    """Swing a string's drive part (drawn along -X at y_of(i)) by THETA about its exit point."""
+    """Swing a string's drive part by THETA about its exit point (0: as drawn)."""
+    if THETA == 0.0:
+        return wp
     return wp.rotate((X_BEND, y_of(i), 0), (X_BEND, y_of(i), 1), math.degrees(THETA))
 
 
@@ -266,12 +257,13 @@ def _plug_dirs() -> dict:
     floor = min(za(i) for i in range(N)) - M_HALF
     out = {}
     for i in sorted(range(N), key=lambda k: STATION[k]):
-        for phi in (90, 270, 0, 180):
+        # a +Y plug past today's rail would widen it further: try it last there
+        order = (90, 0, 180, 270) if y_of(i) + PLUG[1] > Y_HI else (90, 270, 0, 180)
+        for phi in order:
             b = _plug_box(i, phi)
             if b[3] > DECK_UNDER - 0.5 or b[2] < floor:
                 continue
-            dy = math.tan(THETA) * (X_BEND - (x_ref(i) - PLUG[4]))     # the yaw's shift there
-            if b[1] - dy > Y_HI - WALL_CLR or b[0] - dy < Y_LO + WALL_CLR:
+            if b[0] < Y_LO + WALL_CLR:               # the -Y rail stays; the +Y one moves out
                 continue
             bad = False
             for j in range(N):
@@ -292,24 +284,23 @@ def _plug_dirs() -> dict:
     return out
 
 
-def _settle():
-    global THETA
-    for _ in range(40):
-        try:
-            return _plug_dirs()
-        except ValueError:
-            THETA += math.radians(0.25)
-    raise ValueError("no yaw up to 10 deg places every coil plug")
+PLUG_DIR = _plug_dirs()
 
 
-PLUG_DIR = _settle()
+def _rail_hi() -> float:
+    """Where the +Y rail's inner face has to be: past every motor and plug, and never in."""
+    far = max(max(y_of(i) + M_HALF, _plug_box(i, PLUG_DIR[i])[1]) for i in range(N))
+    return max(Y_HI, far + WALL_CLR)
+
+
+RAIL_HI = _rail_hi()
 
 
 # ── report ──────────────────────────────────────────────────────────────────────────────────
 def report() -> str:
     out = [f"rows z (axis): " + "  ".join(f"{k}: {z_level(k):.1f}" for k in range(LEVELS)) +
            f"   DZ {DZ}",
-           f"yaw THETA {math.degrees(THETA):.2f} deg (string 1's motor inside the +Y rail)",
+           f"+Y rail inner face {RAIL_HI:.2f} (today {Y_HI}): {RAIL_HI - Y_HI:+.2f} wider, all on axis",
            f"stations x (pulley plane): " + "  ".join(f"{X_REF0 - s * STATION_P:.1f}"
                                                       for s in range(4)) + f"  pitch {STATION_P}",
            "string row station  motor (x, y, z)            plug  screw length  spring at slack/full"]
@@ -609,7 +600,10 @@ def string_parts(i: int, t: float) -> list:
 
 
 def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
-    from .changer_bench import ghosts
+    from .changer_bench import ghosts as _ghosts
+
+    def ghosts():
+        return _ghosts(y_hi=RAIL_HI)
     out = []
     for i in range(N):
         out += string_parts(i, t)
