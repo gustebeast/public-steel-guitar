@@ -43,6 +43,12 @@ import cadquery as cq
 from . import dimensions as D
 from .helpers import box_at, cyl_x, cyl_y, ball_bearing
 
+
+def cyl_z(d: float, length: float, z0: float, *, x: float = 0.0, y: float = 0.0) -> cq.Workplane:
+    """Solid cylinder along +Z from z0, centred on (x, y) (helpers has X and Y only)."""
+    return cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        d / 2, length, pnt=cq.Vector(x, y, z0), dir=cq.Vector(0, 0, 1)))
+
 N = D.N_STRINGS
 T_TRAVEL = D.CARRIAGE_TRAVEL                        # 8.35
 T_OPEN = D.DL_OPEN / T_TRAVEL                       # open pitch, from the slack end
@@ -115,9 +121,9 @@ WIN_Z = (-(KEY_DROP + KEY_D / 2 + 1.2), 3.2)        # ...and its reach under / o
 # cut-to-length springs are meant to be ended -- so nothing is hooked off the axis.
 #   NUT END: the COLLAR -- a plate clamped under the two M3 heads on the flange's back, two webs at
 #            +-Y past the heads, and the seat on the far side of them, round the screw.
-#   WALL END: the ANCHOR PLUG -- a seat on the wall's +X face, a neck through it, and a lug bar
-#            behind it: put through with the lugs along Y (the wall's slot), turned a quarter to Z,
-#            and the spring's own pull holds it there. The plug carries the SLEEVE over the screw.
+#   WALL END: the ANCHOR PLUG -- a seat on the plate's +X face, bolted through the plate to the
+#            thrust HOUSING behind it (THE THRUST HOUSING). The plug carries the SLEEVE over the
+#            screw.
 SPRING_OD, SPRING_WIRE = 19.05, 2.0
 SPRING_ID = SPRING_OD - 2 * SPRING_WIRE             # 15.05: the seats' diameter
 ACTIVE_PITCH = 2.5                                  # the open coils between the grips, about
@@ -134,7 +140,9 @@ R_COIL = (SPRING_OD - SPRING_WIRE) / 2              # 8.525: the wire's centre
 SEAT_D = 2 * R_COIL                                 # the post: its thread's crests at the wire's centre
 GROOVE_D = SPRING_WIRE + 0.2
 TANG_BACK, TANG_HOOK = SPRING_WIRE / 2 + STOP_T + 1.2, 2.6   # the tang: through, then over
-PLUG_GAP = 3.0                                      # the plug's flange off the wall: the hook's room
+PLUG_GAP = 4.5                                      # the plug's flange off the plate: the hook's
+                                                    # room, and with the flange the ears' 6.5 (an
+                                                    # M4 insert's 5 and the bolt's tip past it)
 SLEEVE_OD, SLEEVE_ID = 11.0, 9.0                    # over the screw, part of the anchor plug
 # THE ANCHOR PLATE (user, 2026-11-09): every spring's pull, about 73 N each and ~730 N in all,
 # held ALL THE TIME. A printed wall fails under it (4.8 PETG-GF across 97 between the cheeks,
@@ -151,7 +159,6 @@ ANCHOR_Z = (-104.0, -8.0)                           # its top and bottom edges (
 ANCHOR_FL = 16.0                                    # each fold's depth, toward +X
 ANCHOR_CLR = 0.5                                    # off each rail's inner face
 M4_HEAD, M4_L = (7.6, 2.2), 10.0                    # ISO 7380 button head; 10: 3.9 into the bar
-LUG = (3.0, 22.0, 6.0)                              # the plug's lug bar: thick, long, wide
 COLLAR_T = 3.0                                      # the collar's plate
 PILLAR_D = 5.2                                      # the collar's two pillars past the M3 heads
 
@@ -179,10 +186,10 @@ def x_collar(t: float):
 
 
 def x_plug():
-    """The anchor plug along x: the neck in the wall, the stop flange, the seat."""
-    a0, a1 = ANCHOR
+    """The anchor plug along x: the neck off the plate's +X face, the stop flange, the seat."""
+    a1 = ANCHOR[1]
     f0 = a1 + PLUG_GAP
-    return (a0, f0), (f0, f0 + STOP_T), (f0 + STOP_T, f0 + STOP_T + SEAT_L)
+    return (a1, f0), (f0, f0 + STOP_T), (f0 + STOP_T, f0 + STOP_T + SEAT_L)
 
 
 def spring_span(t: float):
@@ -215,25 +222,61 @@ PLUG = (21.15, 29.9, 6.2, 44.5, 38.5)               # coil plug + leads: off the
 #              the shaft.
 #   SCREW END  a plain Ø8.4 socket the screw slides into (no thread), 0.5 past the shaft's end,
 #              and ONE M3 x 12 SHCS sideways through the coupler and a Ø3.2 hole DRILLED through
-#              the screw, self-tapping the far wall (as the yoke's M3s): a shear pin, it carries
-#              the screw's pull into the coupler.
-#   THRUST     the coupler's +X face -- a Ø10.4 boss on the 688s' INNER race only -- presses the
-#              screw's pull into the two 688s, in a block right behind it, shouldered at +X.
-# 9.0 shorter per station in X than the bought coupler and its block (to 28.0 from 36.0).
+#              the screw, self-tapping the far wall (as the yoke's M3s): a pin for the torque.
+#   THRUST     none: the coupler only TURNS the screw (~0.09 N m). The thrust bearings are on the
+#              anchor plate (THE THRUST HOUSING below), so the motor carries no axial load.
 CPL_D, CPL_X = 18.0, (-4.0, 15.0)                   # Ø, x from..to past the pulley plane
 CPL_GRIP = 4.0                                      # the D bore's +X end: the shaft's cut
 SCREW_X0 = CPL_GRIP + 0.5                           # the screw's -X end
 SOCKET_D = D.SCREW_OD + 0.4
 PIN_X = SCREW_X0 + 6.0                              # the M3: 2 d from the screw's end
-CPL_BOSS = (10.4, 0.5)                              # Ø (inside the 688's shield), length
 M3_PILOT = 2.5
-BRG_X0 = CPL_X[1] + CPL_BOSS[1]                     # 15.5: the two 688s from here
-BLOCK = (24.0, BRG_X0, BRG_X0 + 2 * D.BRG688_W + 2.5)   # square, x from..to: 2.5 of shoulder
-BLOCK_SHOULDER_D = 12.0                             # the shoulder's hole: on the outer race
+
+# THE THRUST HOUSING (user, 2026-11-09: "put the thrust bearings on the anchor ... it would
+# ideally hit that metal plate"). Each screw's two 688s sit in a printed HOUSING on the anchor
+# plate's -X face, and the anchor plug on its +X face; two M4 x 20 button heads through the
+# housing's ears and the plate into heat-set inserts in the plug's ears clamp the three together
+# (the plug's quarter-turn lugs are gone). The screw is held in the pair by two printed collars
+# threaded on its Tr8: COLLAR B (+X, in the plate's hole) run down first, COLLAR A (-X) run up
+# against the pair to take the play out, then pinched by an M3 x 12.
+#   strings on:  the screw pulls +X: collar A -> both inner races -> outer races -> THE PLATE's
+#                face round its hole. Metal, straight. The plug's spring pull reaches the plate
+#                through the bolts and the housing. The plate carries the string tension.
+#   strings off: the spring pulls the plug +X and pushes the screw -X (collar B -> the pair ->
+#                the housing's -X shoulder): the two meet in the bolts, the plate sees nothing.
+# Either way the motor only turns the screw. Ears at 35 / 215 deg: clear of the neighbours
+# (same row 28.5 along Y, next row at +-70 deg, 28.1) and of the tang's hook (at -Z).
+HOUSE_D = D.BRG688_OD + 3.2                         # 19.2: the pocket's 1.6 wall
+HOUSE_POCKET = 2 * D.BRG688_W                       # the pair, pressed in from +X
+HOUSE_SHOULDER = 2.5
+RACE_OUT_D = 13.6                                   # shoulder holes: on the outer race only
+RACE_IN_D = 10.4                                    # collar bosses: on the inner race only
+EAR_ANG, EAR_R = (35.0, 215.0), 12.0
+PLATE_HOLE_D = 14.4                                 # the plate's hole: collar B inside, the outer
+                                                    # race's face (to Ø16) bears on the rim
+HB_L = 20.0                                         # the M4 button heads: housing, plate, insert
+COLLAR_A = (20.0, 8.0)                              # Ø, body length
+COLLAR_B_D = 13.0
+NEMA17_HOLES = 31.0                                 # the faceplate's M3 square
+SLOT_STATIONS = (0,)                                # the +X-most motors: oversized (slotted) holes
+
+
+def x_house():
+    """The housing, x from..to: shoulder at -X, the pocket to the plate's -X face."""
+    a0 = ANCHOR[0]
+    return a0 - HOUSE_POCKET - HOUSE_SHOULDER, a0
+
+
+def x_collar_a():
+    """Collar A: (body from, body to), and its boss's end (the -X bearing's face)."""
+    h0 = x_house()[0]
+    b1 = ANCHOR[0] - HOUSE_POCKET
+    body1 = h0 - 0.5
+    return (body1 - COLLAR_A[1], body1), b1
 PLATE_T = 4.0
 STATION_GAP = 1.3
-STATION_P = M_BACK + BLOCK[2] + STATION_GAP         # 98.0
-X_REF0 = ANCHOR[0] - LUG[0] - 1.0 - BLOCK[2]        # the nearest station: past the plug's lugs
+STATION_P = M_BACK + CPL_X[1] + STATION_GAP         # 77.0: no bearing block any more
+X_REF0 = x_collar_a()[0][0] - 1.0 - CPL_X[1]        # the nearest station: past collar A
 
 # station of each string (nearest 0): rows 0 and 2 share; 57 apart on a row share. The ORDER is
 # the one (of the 24) where every motor's coil plug finds a side no passing screw, station-mate,
@@ -516,11 +559,97 @@ def _anchor_plug(i: int) -> cq.Workplane:
     (a0, a1), (f0, f1), (s0, s1) = x_plug()
     out = cyl_x(SPRING_ID, f0 - a0, a0, y=y, z=z)                                   # neck
     out = out.union(cyl_x(STOP_D, f1 - f0, f0, y=y, z=z))                           # stop flange
-    out = out.union(box_at(LUG[0], LUG[2], LUG[1], x=a0 - LUG[0] / 2, y=y, z=z))      # locked: lugs in Z
-    out = out.union(cyl_x(SLEEVE_OD, SLEEVE_END - s1, s1, y=y, z=z))
-    out = out.cut(cyl_x(SLEEVE_ID, SLEEVE_END - a0 + 2 * LUG[0], a0 - LUG[0] - 1, y=y, z=z))
+    out = out.union(_ears(i, a0, f1, 4.5))                                          # the inserts'
+    out = out.union(cyl_x(SLEEVE_OD, SLEEVE_END - s1 + 1.0, s1 - 1.0, y=y, z=z))  # into the post:
+    # the post stops GRIP_PITCH/2 short of s1, and a sleeve from s1 was a second solid the view
+    # dropped
+    out = out.cut(cyl_x(SLEEVE_ID, SLEEVE_END - a0 + 2, a0 - 1, y=y, z=z))
+    for a in EAR_ANG:
+        dy, dz = at_ang(a, EAR_R)
+        out = out.cut(cyl_x(6.1, 5.0, a0 - 1, y=y + dy, z=z + dz).translate((1, 0, 0)))  # insert
+        out = out.cut(cyl_x(4.4, f1 - a0 + 2, a0 - 1, y=y + dy, z=z + dz))              # tip's way
     out = out.union(_post(i, spring_span(0.0)[0], 0.0, SLEEVE_ID))                  # threaded post
     return out.cut(_tang_hole(i, f0))
+
+
+def _ears(i: int, x0: float, x1: float, hw: float) -> cq.Workplane:
+    """The two ears at EAR_ANG: a web from the axis out to a boss round EAR_R, x0..x1."""
+    y, z = y_of(i), za(i)
+    out = None
+    for a in EAR_ANG:
+        e = box_at(x1 - x0, 2 * hw, EAR_R, x=(x0 + x1) / 2, y=0, z=EAR_R / 2)   # along +Z ...
+        e = e.union(cyl_x(2 * hw, x1 - x0, x0, y=0, z=EAR_R))
+        e = e.rotate((0, 0, 0), (1, 0, 0), a - 90).translate((0, y, z))        # ... turned to a
+        out = e if out is None else out.union(e)
+    return out
+
+
+def _housing(i: int) -> cq.Workplane:
+    y, z = y_of(i), za(i)
+    h0, h1 = x_house()
+    out = cyl_x(HOUSE_D, h1 - h0, h0, y=y, z=z).union(_ears(i, h0, h1, 4.5))
+    out = out.cut(cyl_x(D.BRG688_OD, HOUSE_POCKET + 1, h1 - HOUSE_POCKET, y=y, z=z))   # open +X
+    out = out.cut(cyl_x(RACE_OUT_D, 10, h0 - 1, y=y, z=z))
+    for a in EAR_ANG:
+        dy, dz = at_ang(a, EAR_R)
+        out = out.cut(cyl_x(4.4, h1 - h0 + 2, h0 - 1, y=y + dy, z=z + dz))
+        out = out.cut(cyl_x(M4_HEAD[0] + 0.6, M4_HEAD[1] + 0.3 + 1, h0 - 1, y=y + dy, z=z + dz))
+    return out
+
+
+def _housing_bolts(i: int) -> cq.Workplane:
+    """Two M4 x 20 button heads, heads sunk in the housing's -X face, into the plug's inserts."""
+    y, z = y_of(i), za(i)
+    hu = x_house()[0] + M4_HEAD[1] + 0.3            # the heads' underside
+    out = None
+    for a in EAR_ANG:
+        dy, dz = at_ang(a, EAR_R)
+        b = cyl_x(M4_HEAD[0], M4_HEAD[1], hu - M4_HEAD[1], y=y + dy, z=z + dz).union(
+            cyl_x(4.0, HB_L, hu, y=y + dy, z=z + dz))
+        out = b if out is None else out.union(b)
+    return out
+
+
+def _inserts(i: int) -> cq.Workplane:
+    y, z = y_of(i), za(i)
+    out = None
+    for a in EAR_ANG:
+        dy, dz = at_ang(a, EAR_R)
+        b = _tube_x(5.6, 4.0, ANCHOR[1], ANCHOR[1] + 5.0, y + dy, z + dz)
+        out = b if out is None else out.union(b)
+    return out
+
+
+def _collar_a(i: int) -> cq.Workplane:
+    """Threaded on the Tr8, its boss through the housing's shoulder onto the -X inner race;
+    split on +Y and pinched across the split by an M3 x 12 (a 2.5 key from +Z)."""
+    y, z = y_of(i), za(i)
+    (c0, c1), b1 = x_collar_a()
+    out = cyl_x(COLLAR_A[0], c1 - c0, c0, y=y, z=z).union(cyl_x(RACE_IN_D, b1 - c1, c1, y=y, z=z))
+    out = out.cut(cyl_x(D.SCREW_OD, b1 - c0 + 2, c0 - 1, y=y, z=z))      # the thread (drawn Ø8)
+    out = out.cut(box_at(c1 - c0 + 2, COLLAR_A[0] / 2, 1.0, x=(c0 + c1) / 2,
+                         y=y + COLLAR_A[0] / 4 + 2, z=z))                 # the split, +Y
+    xm = (c0 + c1) / 2
+    out = out.cut(cyl_z(M3_PILOT, 20, z - 10, x=xm, y=y + 6.5))
+    out = out.cut(cyl_z(3.4, 10, z, x=xm, y=y + 6.5))
+    return out.cut(cyl_z(M3_HEAD[0] + 0.5, 10, z + 4.6, x=xm, y=y + 6.5))
+
+
+def _collar_a_m3(i: int) -> cq.Workplane:
+    y, z = y_of(i), za(i)
+    (c0, c1), _ = x_collar_a()
+    xm = (c0 + c1) / 2
+    return cyl_z(M3_HEAD[0], M3_HEAD[1], z + 4.6, x=xm, y=y + 6.5).union(
+        cyl_z(3.0, M3_L, z + 4.6 - M3_L, x=xm, y=y + 6.5))
+
+
+def _collar_b(i: int) -> cq.Workplane:
+    """Threaded on the Tr8 inside the plate's hole, its boss on the +X inner race."""
+    y, z = y_of(i), za(i)
+    a0, a1 = ANCHOR
+    out = cyl_x(RACE_IN_D, 0.5, a0, y=y, z=z).union(
+        cyl_x(COLLAR_B_D, a1 - 0.2 - (a0 + 0.5), a0 + 0.5, y=y, z=z))
+    return out.cut(cyl_x(D.SCREW_OD, 10, a0 - 1, y=y, z=z))
 
 
 def _nut(i: int, t: float) -> cq.Workplane:
@@ -552,14 +681,14 @@ def _motor_frame(wp: cq.Workplane, i: int) -> cq.Workplane:
 def _coupler(i: int) -> cq.Workplane:
     """Drawn in the motor's frame, so its D bore lands on the shaft's flat whatever PLUG_DIR."""
     from . import components as C
-    (c0, c1), (bd, bl) = CPL_X, CPL_BOSS
-    out = cyl_y(CPL_D, c1 - c0, y0=c0).union(cyl_y(bd, bl, y0=c1))
+    c0, c1 = CPL_X
+    out = cyl_y(CPL_D, c1 - c0, y0=c0)
     r = D.MOTOR_SHAFT_D / 2.0 + C.MOTOR_BORE_CLR                    # the pulley's D bore
     zf = D.MOTOR_SHAFT_FLAT - D.MOTOR_SHAFT_D / 2.0 + C.MOTOR_BORE_CLR
     bore = cyl_y(2 * r, CPL_GRIP - c0 + 1.0, y0=c0 - 1.0).cut(
         box_at(2 * r + 1.0, 20.0, r + 1.0 - zf, y=0.0, z=(zf + r + 1.0) / 2.0))
     out = out.cut(bore)
-    out = out.cut(cyl_y(SOCKET_D, c1 + bl - CPL_GRIP + 1.0, y0=CPL_GRIP))   # the screw's socket
+    out = out.cut(cyl_y(SOCKET_D, c1 - CPL_GRIP + 1.0, y0=CPL_GRIP))        # the screw's socket
     rs = SOCKET_D / 2
     out = out.cut(cyl_x(M3_PILOT, 2 * CPL_D, -CPL_D, y=PIN_X, z=0))       # far wall: self-taps
     out = out.cut(cyl_x(3.4, CPL_D, 0.0, y=PIN_X, z=0))                  # near wall: clear
@@ -712,10 +841,12 @@ def _anchor() -> cq.Workplane:
         w = w.union(box_at(F, T, z1 - z0, x=xf, y=yc, z=(z0 + z1) / 2))
         for zb in _anchor_bolt_z():
             w = w.cut(cyl_y(4.5, T + 2, yc - T / 2 - 1, x=xf, z=zb))
-    for i in range(N):                               # the plug's way through: round, and the
-        y, z = y_of(i), za(i)                        # lugs' slot along Y (turned to Z, they lock)
-        w = w.cut(yaw(cyl_x(SPRING_ID + 0.4, 20, x0 - 10, y=y, z=z), i))
-        w = w.cut(yaw(box_at(20, LUG[1] + 0.8, LUG[2] + 0.8, x=(x0 + x1) / 2, y=y, z=z), i))
+    for i in range(N):                               # collar B's hole (the bearing's rim round
+        y, z = y_of(i), za(i)                        # it), and the two bolts
+        w = w.cut(cyl_x(PLATE_HOLE_D, 20, x0 - 10, y=y, z=z))
+        for a in EAR_ANG:
+            dy, dz = at_ang(a, EAR_R)
+            w = w.cut(cyl_x(4.5, 20, x0 - 10, y=y + dy, z=z + dz))
     return w
 
 
@@ -754,6 +885,22 @@ def _string(i: int, t: float) -> cq.Workplane:
     return out
 
 
+def _mplate(i: int) -> cq.Workplane:
+    """The motor's plate: pilot and the four M3s. At the +X-most station (SLOT_STATIONS) every
+    hole is 1.2 oversize -- slotted every way, +-0.6 -- so the motor lines up on its short screw
+    (held at both ends: the anchor's 688s and the motor's own bearings) before it is tightened."""
+    y, z, xr = y_of(i), za(i), x_ref(i)
+    extra = 1.2 if STATION[i] in SLOT_STATIONS else 0.0
+    x0 = xr - M_FACE
+    out = box_at(PLATE_T, D.MOTOR_SQ, D.MOTOR_SQ, x=x0 + PLATE_T / 2, y=y, z=z)
+    out = out.cut(cyl_x(D.NEMA17_PILOT_D + 0.6 + extra, 10, x0 - 1, y=y, z=z))
+    for sy in (1, -1):
+        for sz in (1, -1):
+            out = out.cut(cyl_x(3.4 + extra, 10, x0 - 1, y=y + sy * NEMA17_HOLES / 2,
+                                z=z + sz * NEMA17_HOLES / 2))
+    return out
+
+
 def string_parts(i: int, t: float) -> list:
     """String i's drive, drawn along -X at (y_of(i), za(i)), yawed into place."""
     y, z = y_of(i), za(i)
@@ -771,14 +918,15 @@ def string_parts(i: int, t: float) -> list:
         ("db_screw", _screw(i, xr + SCREW_X0, SCREW_TIP)),
         ("db_coupler", _coupler(i)),
         ("db_cpl_m3", _coupler_m3(i)),
-        ("db_block", box_at(BLOCK[2] - BLOCK[1], BLOCK[0], BLOCK[0], x=xr + (BLOCK[1] + BLOCK[2]) / 2,
-                            y=y, z=z)
-         .cut(cyl_x(D.BRG688_OD, 2 * D.BRG688_W + 1.0, xr + BLOCK[1] - 1.0, y=y, z=z))   # open -X
-         .cut(cyl_x(BLOCK_SHOULDER_D, 10, xr + BLOCK[2] - 5, y=y, z=z))),
+        ("db_housing", _housing(i)),
+        ("db_hb", _housing_bolts(i)),
+        ("db_insert", _inserts(i)),
+        ("db_collar_a", _collar_a(i)),
+        ("db_ca_m3", _collar_a_m3(i)),
+        ("db_collar_b", _collar_b(i)),
         ("db_brg", ball_bearing(D.BRG688_OD, D.BRG688_ID, 2 * D.BRG688_W)
-         .rotate((0, 0, 0), (0, 1, 0), 90).translate((xr + BRG_X0, y, z))),
-        ("db_mplate", box_at(PLATE_T, D.MOTOR_SQ, D.MOTOR_SQ, x=xr - M_FACE + PLATE_T / 2, y=y, z=z)
-         .cut(cyl_x(D.NEMA17_PILOT_D + 0.6, 10, xr - M_FACE - 1, y=y, z=z))),
+         .rotate((0, 0, 0), (0, 1, 0), 90).translate((ANCHOR[0] - HOUSE_POCKET, y, z))),
+        ("db_mplate", _mplate(i)),
     ]
     out = [(f"{nm}_{i}", yaw(w, i)) for nm, w in parts]
     out += [(nm, yaw(w, i)) for nm, w in _motor(i)]
@@ -797,6 +945,10 @@ def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
     out += _bend_parts()
     out += [("db_cheeks", _cheeks()), ("db_rod_plate", _rod_plate()), ("db_anchor", _anchor()),
             ("db_anchor_m4", _anchor_bolts()), ("db_comb", _comb())]
+    # a part of several solids (a pair of bolts) goes as ONE compound: the view and the export
+    # take a part's first solid only
+    out = [(nm, cq.Workplane("XY").add(cq.Compound.makeCompound(w.solids().vals()))
+            if len(w.solids().vals()) > 1 else w) for nm, w in out]
     out = [(nm, _made(nm, w)) for nm, w in out]
     show = ("ghost_pickup", "ghost_bottom_now")
     out += [g for g in ghosts() if all_ghosts or g[0] in show]
@@ -813,7 +965,8 @@ MATERIAL = {
     "brg": "polished", "bend_brg": "polished", "bridge_bearings": "polished",
     "bend_axle_ra": "steel", "bend_axle_rb": "steel", "bend_axle_rc": "steel",
     "spring": "stainless", "plug": "petg-gf", "m3": "steel", "coupler": "petg-gf",
-    "cpl_m3": "steel",
+    "cpl_m3": "steel", "housing": "petg-gf", "hb": "steel", "insert": "brass",
+    "collar_a": "petg-gf", "collar_b": "petg-gf", "ca_m3": "steel",
 }
 
 
@@ -843,7 +996,9 @@ COLORS = {
     "bend_axle_rc": "leadscrew",
     "yoke": (0.39, 0.58, 0.93), "collar": (0.85, 0.45, 0.15),
     "spring": "leg_latch_spring", "plug": (0.85, 0.45, 0.15), "m3": "set_screw",
-    "coupler": (0.85, 0.45, 0.15), "cpl_m3": "set_screw", "block": (0.30, 0.36, 0.42), "mplate": (0.30, 0.33, 0.38),
+    "coupler": (0.85, 0.45, 0.15), "cpl_m3": "set_screw",
+    "housing": (0.30, 0.36, 0.42), "hb": "set_screw", "insert": "nut",
+    "collar_a": (0.85, 0.45, 0.15), "collar_b": (0.85, 0.45, 0.15), "ca_m3": "set_screw", "block": (0.30, 0.36, 0.42), "mplate": (0.30, 0.33, 0.38),
     "cheeks": (0.42, 0.50, 0.62), "rod_plate": (0.42, 0.50, 0.62), "anchor": "nut_plate", "anchor_m4": "set_screw",
     "comb": (0.36, 0.30, 0.42),
 }
@@ -874,7 +1029,11 @@ _SAME = {frozenset(p) for p in (
     ("db_yoke", "db_ball"), ("db_string", "db_ball"), ("db_string", "db_yoke"),
     ("db_collar", "db_spring"), ("db_brg", "db_block"), ("db_coupler", "db_motor"),
     ("db_motor", "db_mplate"), ("db_motor",), ("db_coupler", "db_block"),
-    ("db_cpl_m3", "db_coupler"), ("db_cpl_m3", "db_screw"), ("db_coupler", "db_brg"))}
+    ("db_cpl_m3", "db_coupler"), ("db_cpl_m3", "db_screw"),
+    ("db_housing", "db_brg"), ("db_collar_a", "db_brg"), ("db_collar_b", "db_brg"),
+    ("db_collar_a", "db_screw"), ("db_collar_b", "db_screw"), ("db_ca_m3", "db_collar_a"),
+    ("db_hb", "db_housing"), ("db_hb", "db_plug"), ("db_hb", "db_insert"), ("db_insert", "db_plug"),
+    ("db_housing", "db_plug"))}
 
 
 def is_intended(a: str, b: str) -> bool:
@@ -895,7 +1054,7 @@ def is_intended(a: str, b: str) -> bool:
         return True
     if "db_anchor_m4" in pair and pair & {"db_anchor", "ghost_wall_hi", "ghost_wall_lo"}:
         return True
-    if "db_anchor" in pair and "db_plug" in pair:
+    if "db_anchor" in pair and pair & {"db_plug", "db_brg", "db_housing", "db_hb", "db_collar_b"}:
         return True
     return False
 

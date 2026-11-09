@@ -1726,3 +1726,23 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
 - The coupler's +X boss (Ø10.4) bears only on the 688s' inner race. It passes the screw's pull into the two 688s in the block behind it. No thrust reaches the motor shaft.
 - The block is now 12.5 mm long, with a 2.5 mm shoulder at +X that has a Ø12 hole bearing on the outer race.
 - Station pitch is 90 mm (was 98). The farthest motor moves 32 mm toward the bridge.
+
+### Direct bench: thrust bearings on the anchor plate (2026-11-09)
+- This supersedes the coupler note's thrust path. The motor-end bearing blocks are gone; each motor only turns its screw.
+- Each screw's two 688s sit in a printed housing on the anchor plate's -X face. The anchor plug sits on the +X face.
+- Two M4 x 20 button heads clamp all three together. They go through the housing's ears (at 35 and 215 degrees) and the plate into M4 heat-set inserts in the plug's ears. This replaces the plug's quarter-turn lugs.
+- Plate holes per string: Ø14.4 for the screw and collar B, and two Ø4.5 for the bolts.
+- Load paths:
+  - Strings on: collar A -> inner races -> outer races -> the plate's rim round the Ø14.4 hole. The plate carries the full string tension, about 1100 N.
+  - Strings off: the spring's pull on the plug and the screw's push on the housing meet in the M4s, so the plate carries nothing.
+- Assembly, per screw:
+  1. Press both 688s into the housing from +X.
+  2. Slide the screw's +X end through the housing from -X.
+  3. Thread collar B (printed Tr8) onto the +X end and run it down onto the +X inner race.
+  4. Thread collar A from the -X end up against the -X inner race until the play is gone (the screw turns freely and does not knock end to end). Pinch it with its M3 x 12.
+  5. Fit the plug on the plate's +X face and the housing on the -X face, and bolt them together with the two M4 x 20.
+  6. Slide the coupler on, then pin the screw with its M3.
+- The +X-most station (strings 2 and 8) has all four motor-plate M3 holes and the pilot hole 1.2 mm oversize (+-0.6 every way).
+  - Its screw is short and stiff between the anchor bearings and the motor.
+  - Let the motor find its axis on the turning screw, then tighten.
+- Station pitch is 77 mm (was 90). The farthest motor is at x -522.7 (was -556.7).
