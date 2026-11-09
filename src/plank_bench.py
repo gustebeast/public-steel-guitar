@@ -284,15 +284,16 @@ def station_axial() -> cq.Workplane:
 def yoke() -> cq.Workplane:
     """On the nut's flange, its axis at the origin, z 0 = the flange's top (the nut's own origin).
     Two M3 x 12 come up through the ears into inserts heat-set into its -Z face; the ball end
-    goes in from +Y and seats under the roof ON THE AXIS; the guide rod runs through the -Y boss."""
+    comes up the cavity and seats under the roof ON THE AXIS; the guide rod runs through the -Y boss."""
     y = _box(-YK_HX, YK_HX, -YK_HY, YK_HY, 0.0, YK_H)
     y = y.union(_box(-ARM_R, ARM_R, ROD_DY, -YK_HY + 0.01, 0.0, ARM_H))
     y = y.union(cyl(2 * ARM_R, ARM_H).translate((0.0, ROD_DY, 0.0)))
     y = y.cut(cyl(YK_ROD_D, ARM_H + 2.0, z=-1.0).translate((0.0, ROD_DY, 0.0)))
     y = y.cut(cyl(YK_CAV, YK_R0 + 1.0, z=-1.0))                                     # the screw's tip
-    w = D.STRING_NUT_L / 2 + 0.5                                                      # the ball end, axis X
-    y = y.cut(_box(-w, w, 0.0, YK_HY + 1.0, YK_R0 - D.STRING_NUT_D - 0.4, YK_R0))   # its window, +Y
-    y = y.cut(_box(-1.0, 1.0, -1.0, YK_HY + 1.0, YK_R0 - 0.01, YK_H + 1.0))           # the string's slot
+    # NO WINDOW, NO SLIT (user, 2026-11-08): the string goes in -Z to +Z, free end up through the
+    # cavity from the -Z face (before the yoke goes on the nut) and out this hole on the axis,
+    # until the ball end seats under the roof
+    y = y.cut(cyl(STR_HOLE_D, YK_H - YK_R0 + 2.0, z=YK_R0 - 1.0))
     for sx in (-1, 1):
         x = sx * D.NUT_HOLE_DX
         y = y.cut(cyl(YK_INS_D, BTn.INS_L + 1.0, z=-1.0).translate((x, 0.0, 0.0)))

@@ -1513,8 +1513,9 @@ Same head, same screw, pulley, belt and motor positions; print `coupons/plank_st
 
 - **The yoke** sits on the nut's flange (flange up, long way along X) and is held by both ears: two
   M3 x 12 socket heads (the belt clamp's) up through the ears into two of the belt clamp's M3
-  inserts, heat-set flush into the yoke's -Z face (the face on the flange). The ball end goes in through the window on the yoke's +Y side, axis along X, and
-  seats under its roof ON the screw's axis; the string leaves up through the roof's slot. The
+  inserts, heat-set flush into the yoke's -Z face (the face on the flange). The string goes in -Z to +Z: free end up the yoke's cavity from its -Z face and
+  out the Ø2 hole in its roof, ON the screw's axis, until the ball end seats under the roof. No
+  window, no slit. The
   screw's tip rises into the cavity under it (6.75 at the bottom of travel, 1.25 short of the ball
   end). The guide rod runs through the boss on the yoke's -Y arm, 12 off the axis.
 - **The bridge bearing** sits 12.2 further -X (its +X tangent over the screw's axis) and 15.7 higher,
@@ -1522,12 +1523,14 @@ Same head, same screw, pulley, belt and motor positions; print `coupons/plank_st
   dowel to bearing axle is now **594.8** (the screw stays where the belt has it); the bearing's top
   stands ~16 over the crown's, a 1.5 degree slope over the length. Neither matters to a friction test.
 - **Order:** 1. Thrust 688 into the rail's seat from the bay, as before. 2. Screw the station down,
-  drill the plank 1/2 in through its floor hole. 3. Heat-set the inserts into the yoke's -Z face, set it on the
-  nut and run the two M3s up through the ears. 4. Slide nut and yoke into the room from +X, arm to
-  -Y. 5. Screw up from below with its pulley and turn it up through the nut, as before (the room's
-  walls stop the yoke turning). 6. Drop the guide rod down the hole in the station's top, through
-  the yoke's boss, and push it home: its top is a press fit in the slab over the room, its foot
-  sits in a 2.4 pocket in the channel floor. 7. Bridge 688 into its pocket, Ø8 shaft along Y. 8. String: ball end into the yoke's
-  window, string through the roof's slot, then push the free end straight up (-Z to +Z) through
-  the Ø2 hole in the slab over the room: it comes out in the bearing's pocket beside the bearing's
-  +X side. Pull it on up and over the top.
+  drill the plank 1/2 in through its floor hole. Bridge 688 into its pocket, Ø8 shaft along Y.
+  3. Heat-set the inserts into the yoke's -Z face. Feed the string's free end up the yoke's cavity
+  from that face and out the hole in its roof, and pull it through until the ball end seats under
+  the roof. Set the yoke on the nut and run the two M3s up through the ears. 4. Slide nut and yoke
+  into the room from +X, arm to -Y, feeding the string's free end up (-Z to +Z) the Ø2 hole in the
+  slab over the room as it goes: it comes out in the bearing's pocket beside the bearing's +X
+  side. 5. Screw up from below with its pulley and turn it up through the nut, as before (the
+  room's walls stop the yoke turning; keep the string taut so the ball end stays seated over the
+  screw's tip). 6. Drop the guide rod down the hole in the station's top, through the yoke's boss,
+  and push it home: its top is a press fit in the slab over the room, its foot sits in a 2.4
+  pocket in the channel floor. 7. Pull the string on up out of the pocket and over the bearing.
