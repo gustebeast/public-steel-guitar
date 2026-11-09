@@ -433,7 +433,19 @@ def _screw(i: int, x0: float, x1: float) -> cq.Workplane:
     if not COILS:
         return cyl_x(D.SCREW_OD, x1 - x0, x0, y=y, z=z)
     from . import components as C
-    return C.screw(round(x1 - x0, 3)).rotate((0, 0, 0), (0, 1, 0), 90).translate((x0, y, z))
+    # OCCT's helix cut holds at some lengths and not others (components.screw checks it and
+    # raises): cut the rod a little shorter at the free tip until it holds -- whole mm first,
+    # it is sawn from stock anyway, and SCREW_END_GAP keeps the tip clear by more than this.
+    L = math.floor(x1 - x0)
+    for dl in (0.0, 0.5, 1.0, 1.5, 2.0):
+        try:
+            rod = C.screw(L - dl)
+            break
+        except AssertionError:
+            continue
+    else:
+        raise AssertionError(f"no leadscrew of {L} to {L - 2.0} mm cut cleanly")
+    return rod.rotate((0, 0, 0), (0, 1, 0), 90).translate((x0, y, z))
 
 
 def _spring(i: int, t: float) -> cq.Workplane:
