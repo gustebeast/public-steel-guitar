@@ -583,19 +583,21 @@ def _xflat(d, x0, x1, z=XR_ZA):
 
 CY_FT = CS_ROOF + YK_H                           # the nut flange's top face, mid travel (world x)
 CY_Z0, CY_Z1 = BAR_Z0, XR_ZA + YK_HX             # 2.2 .. 27.8: the yoke's underside and top
+CY_HY = YK_LIP_D / 2 + D.MIN_WALL                # 6.1: one bead outside the lip's recess (the axial yoke had 0.7)
+assert CY_HY <= XR_HW - XR_WALL - 0.4 + 1e-9, "the yoke rubs the station's buttresses"
 assert D.NUT_HOLE_DX - YK_TAP_D / 2 - YK_LIP_D / 2 >= D.MIN_WALL - 1e-9, "tap hole into the lip's recess"
 
 
 def counter_yoke() -> cq.Workplane:
     """THE COUNTER YOKE (user, 2026-11-09): the yoke and the spreader in one, its only jobs the nut,
     the string and the springs -- no guide rod, no arm. In place (world) at mid travel, base down.
-      the BODY on the nut's flange: the axial yoke's 24 x 12 x 16, two M3 x 12 up through the nut's
+      the BODY on the nut's flange: 24 x 12.2 x 16 (one bead round the lip's recess), two M3 x 12 up through the nut's
         ears self-tapping into its +X face, the screw tip's cavity, the lip's recess;
       the ROOF: the ball end seats under it on the axis, the string out a 2.1 hole down the axis;
       the BAR across Y on the roof's -X face, the springs' pins at its ends (the spreader's, so the
         station stays where it is), its middle up the roof's full height."""
     x1, xr = CY_FT, CS_ROOF
-    y = _box(xr, x1, SY - YK_HY, SY + YK_HY, CY_Z0, CY_Z1)
+    y = _box(xr, x1, SY - CY_HY, SY + CY_HY, CY_Z0, CY_Z1)
     y = y.union(_bar(xr + 0.01, CY_Z1).translate((-0.01, 0.0, 0.0)))
     y = y.cut(_xflat(YK_CAV, x1 - YK_R0, x1 + 1.0))                             # the screw's tip
     y = y.cut(_xflat(YK_LIP_D, x1 - YK_LIP_L, x1 + 1.0))                        # the nut's lip
