@@ -606,6 +606,59 @@ after. ⚠ The extension's head and female dimensions are off the seller's drawi
 (`electronics.PI_USB_*`, ASSUMED): check the joint drops into the saddle before relying on
 it, and the straight lead's overmould is 20 mm or less along the cable.
 
+## Steel wall bars, and the endplates slide on along X (2026-11-06)
+
+Each side rail carries a 5/8 x 2 in mild steel flat bar (`wall_bar`, src/wall_bar.py) in a channel
+down its middle. The bars run on into pockets in both endplates, which now **slide on along X**
+instead of dropping on. Once the endplates are on, the steel is fully enclosed.
+
+**Before anything is printed: the bar decides the channel.**
+1. **Cut each bar to 26 in (660.4 mm)** if it came as the 26-1/2 in pre-cut: hacksaw 12.7 off one
+   end, square, and deburr both ends. Keep one offcut: it is the fit coupon's test piece.
+2. **Measure each bar's thickness and width** at both ends and the middle. The channel is
+   `dimensions.BAR_T` x `BAR_W` (15.875 x 50.8) plus `BAR_CLR` (0.2) a side. If a bar is more than
+   0.1 over in either direction, change BAR_T or BAR_W to the measured value before printing the
+   chassis and endplates.
+3. **Print `coupons/bar_fit.step` and try the offcut in it** (src/test/bar_fit_coupon.py: steps 1-3
+   from the top are 0.15 / 0.20 / 0.25 a side, a rail slice and an endplate pocket per step).
+   Zinc the offcut first so the coating is part of the fit.
+4. **Sight each bar along its edge.** If it bows, the crown goes UP (+Z) when it is installed:
+   string load bows the body the other way.
+5. **Zinc:** degrease with acetone, then spray cold-galvanizing compound on every face and both
+   cut ends. Cure it as the can says before it goes in, and handle it with gloves after that.
+
+**Order in:**
+1. **Join the chassis sections, -X (keyhead end) first.** Stand the keyhead-end section on the
+   bench, then lower the middle section straight down onto it, then the bridge-end section onto
+   the middle one. Each section's -X face has a pocket open at the bottom, in the +Y wall, that
+   comes down over a tenon standing up off the bed at its neighbour's +X face. That tenon is the
+   seam's only tie along X. The bars, once they're in, are what hold the sections in Y and Z and
+   keep the seams from bowing open.
+2. **Slide the keyhead on from -X** (`keyhead_endplate`). It rides an X dovetail in the top of each
+   kept leg shell, under the bar line, until its two bearing pads meet the rail ends.
+3. **Slide each bar in from the +X end** of its rail, crown up, until it stops on the keyhead's
+   pocket floor.
+4. **Measure how far each bar stands past its rail's +X end.** Nominal is 42.66
+   (`chassis.BAR_X1 - TP_EP_GX`). The bridge pocket is 46.06 deep from the rail end, so the shim
+   stack is 46.06 minus that measurement, **rounded down to the next 0.4**. Nominal is 3.4, so a
+   stack of 1.6 + 1.6. Stack shims from `bar_shim` (0.4, 0.8, 1.6, 1.6 per bar) on the bar's end,
+   with a dab of grease to hold them.
+5. **Slide the bridge endplate on from +X**, over the bars' ends and shims and onto its two X
+   dovetails, until its pads meet the rail ends. It must go on by hand. If it stops short, the
+   shim stack is too thick: take 0.4 off.
+6. Then the legs (their lock screws are what hold both endplates on in X), the deck panels and
+   the strings, as before.
+
+**The keyhead comes off on its own:** strings off at the nut, leg lock screws out and the -X legs
+slid out, then slide the keyhead **33 mm** -X before it clears the bars (`chassis.KH_BAR_D` +
+the pad). The bars and the bridge stay put.
+
+**Why:** the plastic walls alone flex enough to detune a string under a hand's weight. A steel
+bar in each wall takes most of that bending (roughly 4 cents with 30 kg on the centre, from about
+5-6 cents per kg before). The endplates seat on the rail ends, never on the bar ends, so the
+scale length does not depend on where the bar was cut. The shims are only there so the bar
+cannot rattle.
+
 ## Seam bridges: optional, under a seam no lever covers, after the sections are joined (2026-11-05)
 
 `seam_bridge` (src/seam_bridge.py) ties two chassis sections together from below: a flat plate
@@ -1147,7 +1200,7 @@ The motor board slides straight down (+Z to -Z) into its guides behind string 1'
 - two short posts on the floor take its +Y edge;
 - its face sits flush on string 1's motor.
 
-Nothing is screwed. The keyhead deck panel's rib, 0.3 above the board's top edge, stops it
+Nothing is screwed. The keyhead deck panel's rib, 0.8 above the board's top edge, stops it
 lifting, so **seat the board before that panel goes on**. Sight down both faces as it drops:
 nothing on the board should touch a guide on the way in.
 
@@ -1207,12 +1260,12 @@ keyhead can stay on.
    end. The plug and the lead leave between them.
 4. **Slide board B in from +X, its pogo end first, and push it home against A.** The four
    seam pogos compress tip to tip, and they push B back +X when you let go, so hold it there.
-5. **Drop the bridge endplate on while still holding B home.** Its fin stands across the
-   slot's +X end and becomes B's stop. Its 45° lead-in pushes B the last ~2 mm home as the
-   endplate comes down, so a B left a little proud is not landed on.
+5. **Slide the bridge endplate on (-X) while still holding B home.** Its fin stands across the
+   slot's +X end and becomes B's stop. It meets B end-on as the endplate slides home and
+   pushes a B left a little proud the last few millimetres home.
 6. Take the lead's free end up to the Pi cap's J6 (foot light drop, XH 4: `24V, GND, SCK, SDT`).
 
-**Removal is the reverse:** lift the bridge endplate (the pogos push B out a little), slide B
+**Removal is the reverse:** slide the bridge endplate off +X (the pogos push B out a little), slide B
 out at +X, then A, letting the lead follow it back through the channel.
 
 ## The output board goes in low, short of home, and slides +X under string 10's seat (2026-10-29)
@@ -1437,16 +1490,16 @@ Plug a USB device in (an audio interface such as a Shure MVX2U) and the board po
 - **Flashing a blank board takes motor_ctrl's link down for ~15 s** (the flash window). The
   board brings the link back by itself; the Pi waits it out.
 
-## +Y legs' service position: two distances from 2026-11-05 on
+## +Y legs' service position: two distances (2026-11-06: shorter, the walls are wider)
 To get at what sits over a +Y foot, back its one leg screw out, slide the foot outboard until
 its SECOND hole lines up with the screw, and drive the screw back in.
-- **Bridge (+X) end: 26.55 mm** (`legs.SERVICE_SLIDE`), which clears string 1's access channel.
-- **Keyhead (-X) end: 14.45 mm** (`legs.KEYHEAD_SLIDE`), which clears the nut height screws' key paths.
-  It used to slide the bridge's 26.55 too. That pushed the keyhead's leg screws out onto the
-  lower endplate dovetail, and their insert pockets cut the -X chassis section's lower tenons off.
-- **The leg screws sit in the same place at both ends now** (`legs.LOCK_PIN_DY`, 8.91 out from
-  the leg's centreline). Reprint the -X chassis section, the keyhead endplate and the -X body
-  adapters together: a keyhead endplate drilled for the old 16.86 position won't line up.
+- **Bridge (+X) end: 16.95 mm** (`legs.SERVICE_SLIDE`), which clears string 1's access channel.
+- **Keyhead (-X) end: 4.85 mm** (`legs.KEYHEAD_SLIDE`), which clears the nut height screws' key paths.
+- Both were 9.6 longer (26.55 and 14.45) until the side walls grew 9.6 outward around the steel
+  bars (2026-11-06): the legs stand flush with the wider walls, so they start that much further out.
+- **The leg screws sit in the same place at both ends** (`legs.LOCK_PIN_DY`, now 7.5 out from the
+  leg's centreline, was 8.91). Reprint the end chassis sections, both endplates and the body
+  adapters together: parts drilled for the old position won't line up.
 
 ## Plank bench: string 1's whole drive on a wooden plank (2026-11-07)
 

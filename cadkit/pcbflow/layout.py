@@ -1659,6 +1659,90 @@ def drop_degenerate(board, floor_mm=0.005, width_frac=0.1):
     return len(doomed)
 
 
+def rip_router_shorts(board):
+    """Take up router copper that shorts or crowds another net, and report what went.
+
+    ⚠ FREEROUTING CAN WRITE A SHORT INTO ITS OWN SESSION (motor_ctrl R2, seed 59 nudge C40,
+    2026-11-07): CANA_L and BUSB_FAULT_N crossed on In2.Cu in the .ses itself, before any
+    step here touched the board. finish.py then saw 7 violations and close_last, which will
+    not start on a board with any, left three nets open behind them. A short is worse than
+    an open: so of each offending pair one piece is taken up (see the note on which), and
+    the gap it leaves is close_last's to close, which it does on a clean board. Offending = closer than the board's minimum clearance,
+    a hair's rounding allowed: router copper normally keeps 10 um more than that (route.py).
+    """
+    clr = pcbnew.ToMM(board.GetDesignSettings().m_MinClearance) - 0.002
+    items = []
+    for t in board.GetTracks():
+        if not t.GetNetname():
+            continue
+        if t.GetClass() == "PCB_VIA":
+            p = (pcbnew.ToMM(t.GetPosition().x), pcbnew.ToMM(t.GetPosition().y))
+            items.append((t, None, p, p, pcbnew.ToMM(t.GetWidth(pcbnew.F_Cu)) / 2.0))
+        else:
+            items.append((t, t.GetLayer(), (pcbnew.ToMM(t.GetStart().x), pcbnew.ToMM(t.GetStart().y)),
+                          (pcbnew.ToMM(t.GetEnd().x), pcbnew.ToMM(t.GetEnd().y)),
+                          pcbnew.ToMM(t.GetWidth()) / 2.0))
+
+    def ps(p, a, c):
+        dx, dy = c[0] - a[0], c[1] - a[1]
+        n = dx * dx + dy * dy
+        f = max(0.0, min(1.0, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / n)) if n else 0.0
+        return math.hypot(p[0] - a[0] - f * dx, p[1] - a[1] - f * dy)
+
+    def ss(a, c, p, q):
+        def side(u, v, w):
+            return (v[0] - u[0]) * (w[1] - u[1]) - (v[1] - u[1]) * (w[0] - u[0])
+        if side(a, c, p) * side(a, c, q) < 0 and side(p, q, a) * side(p, q, c) < 0:
+            return 0.0
+        return min(ps(p, a, c), ps(q, a, c), ps(a, p, q), ps(c, p, q))
+
+    reach = max((it[4] for it in items), default=0.0) * 2 + clr
+    items.sort(key=lambda it: min(it[2][0], it[3][0]))
+    pairs = []
+    for i, (t, la, a, c, h) in enumerate(items):
+        x1 = max(a[0], c[0])
+        for u, lb, p, q, k in items[i + 1:]:
+            if min(p[0], q[0]) > x1 + reach:
+                break
+            if t.GetNetname() == u.GetNetname() or (la is not None and lb is not None and la != lb):
+                continue
+            if la is None and lb is None:
+                continue                       # via against via: not this routine's to settle
+            if ss(a, c, p, q) >= h + k + clr:
+                continue
+            pairs.append((t, u))
+    # ⚠ ONE NET GIVES WAY, NOT BOTH (seed 59, 2026-11-07): taking the shorter piece of each
+    # pair took three of BUSB_FAULT_N's and five of CANA_L's, so close_last had two nets to
+    # re-lay through one knot and closed CANA_L 14.9 mm round a 1.5 mm gap. Of each pair the
+    # piece taken is the one whose net has less offending copper over the whole board, so
+    # the other net is left whole.
+    # ⚠ BUT A NET WHOSE OFFENDING COPPER HAS A VIA IN IT STAYS (same board, same day). By
+    # length CANA_L gave way, its layer-change via with it; close_last had no room for a
+    # via there and went 14.9 mm round. Re-imported with BUSB_FAULT_N giving way instead
+    # (4 In2 pieces, no via), close_last closed it short and the board came out 0 FAIL.
+    bad, held = {}, set()
+    for t, u in pairs:
+        for w in (t, u):
+            bad[w.GetNetname()] = bad.get(w.GetNetname(), 0.0) + (
+                0.0 if w.GetClass() == "PCB_VIA" else pcbnew.ToMM(w.GetLength()))
+            if w.GetClass() == "PCB_VIA":
+                held.add(w.GetNetname())
+    doomed, seen = [], set()
+    for t, u in pairs:
+        victim = min((t, u), key=lambda w: (w.GetNetname() in held, bad[w.GetNetname()], w.GetNetname()))
+        uid = victim.m_Uuid.AsString()
+        if uid in seen or ({t.m_Uuid.AsString(), u.m_Uuid.AsString()} - {uid}) & seen:
+            continue
+        seen.add(uid)
+        doomed.append(victim)
+    for t in doomed:
+        print("    took up %s on %s, %.2f mm: it shorted or crowded another net"
+              % (t.GetNetname(), t.GetLayerName(), pcbnew.ToMM(t.GetLength())))
+        board.Remove(t)
+        _REMOVED.append(t)
+    return len(doomed)
+
+
 def _plane_orphans(board, net):
     """Tracks on `net` that the connectivity graph does NOT place in the plane's component.
 
@@ -4493,7 +4577,7 @@ def _add_via(board, net, x, y, drill=0.3, diameter=0.6):
     board.Add(v)
 
 
-def _add_zone(board, net, layer, inset, w, h, poly=None, priority=0):
+def _add_zone(board, net, layer, inset, w, h, poly=None, priority=0, clearance=None):
     """A copper pour over the whole board less `inset`. Not decoration: it is
     how the THT pads reach GND at all, since no GND track is drawn.
 
@@ -4538,6 +4622,13 @@ def _add_zone(board, net, layer, inset, w, h, poly=None, priority=0):
     # matter are the ones touching a pad, and those are connected by definition.
     zone.SetIslandRemovalMode(pcbnew.ISLAND_REMOVAL_MODE_ALWAYS)
     zone.SetAssignedPriority(priority)
+    # ⚠ THE POUR'S CLEARANCE IS KICAD'S 0.5 mm PROJECT DEFAULT UNLESS A BOARD SAYS
+    # (output_panel, 2026-11-07). Nobody chose it: against a 0.127 mm track rule it cuts a
+    # 1.6 mm hole round every 0.6 mm via, and seven vias by the MCU merged into a 5.2 mm
+    # slot in the In1 plane that A15 failed signals for straddling. notes["zone_clearance"]
+    # (mm) sets it for every pour on the board; left out, the old 0.5 stays.
+    if clearance is not None:
+        zone.SetLocalClearance(pcbnew.FromMM(float(clearance)))
     if poly:
         # ⚠ AT LEAST THREE DISTINCT CORNERS, checked here rather than left to the
         # filler. A degenerate outline does not raise: it fills to zero area, and
@@ -5022,7 +5113,8 @@ def build(stem):
             raise SystemExit("zone asks for a pour on %r, which is not a net on this "
                              "board" % net_name)
         _add_zone(board, nets_by_name[net_name], layer, inset,
-                  *notes["outline_mm"], poly=poly, priority=prio)
+                  *notes["outline_mm"], poly=poly, priority=prio,
+                  clearance=notes.get("zone_clearance"))
     if notes.get("zones"):
         # ⚠ BUILD THE CONNECTIVITY GRAPH FIRST. A board assembled by script has none --
         # it is built by the editor as you work, and nothing here was ever "worked on".

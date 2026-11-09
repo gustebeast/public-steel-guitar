@@ -556,8 +556,15 @@ def fret_border_y():
 
 def screen_y():
     """World Y of the LIT AREA's centre: halfway from the fret border to the deck's -Y edge
-    (user, 2026-10-30). The window, the bezel and the active area all share it."""
-    return (fret_border_y() + _tp().BY0) / 2.0
+    (user, 2026-10-30). The window, the bezel and the active area all share it.
+
+    THE DECK'S EDGE AS IT WAS BEFORE THE STEEL BARS (2026-11-06): the -Y rail grew 9.6 outward
+    around its bar, and centring on the new edge walked the whole station 4.8 toward the rail --
+    its clamp's near bar into the rail's inner face. Held on the 10.4 wall's old outer face, the
+    station stays exactly where it was; the screen now sits 4.8 inboard of the deck's centre line
+    between the border and the edge."""
+    from . import chassis as CH
+    return (fret_border_y() + (CH.RAIL_INNER_Y - D.WALL_THICKNESS)) / 2.0
 
 
 def input_y():

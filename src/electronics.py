@@ -1848,7 +1848,11 @@ def way_out(board, ref):
 MCTRL_PORT_CLR = D.MCTRL_PORT_CLR    # around whatever of the board enters the floor
 
 
-MCTRL_CAP_GAP = CRADLE_CLR                  # 0.3, how far the board may lift before the rib
+# ONE BEAD, NOT THE CRADLE'S 0.3 (lead, 2026-11-06: 0.30 under top_plate_4's underside is too tight
+# for printed parts -- the keyhead panel's rib slides along X over this edge as the panel goes on,
+# and a rib a layer low drags on the laminate). The guides hold X and Y over the whole drop
+# stroke, so 0.8 of lift before the rib stops it costs nothing.
+MCTRL_CAP_GAP = D.BEAD                      # 0.8, how far the board may lift before the rib
 MCTRL_CAP_T   = 4.0                         # rib thickness across the board (x)
 # 26 from the board's -Y end, not 30 on its middle: the fret board's bay and J1's lead take
 # the rest (user, 2026-11-01). Its +Y end has to stay clear of led_leads' turn, last lane y -45.55

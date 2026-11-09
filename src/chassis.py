@@ -10,8 +10,10 @@ patterns) are fused in; the motors rest on the ribs (no floor plate). The rail
 webs carry self-supporting diamond lightening; everything else is modelled
 SOLID — the slicer's walls + infill set the strength-to-weight.
 
-Too long for one print (~645 mm > 255 mm bed), so it's cut into 3 segments joined
-by a fit-tested install-z JOINT on each side rail: the profile lies in the plan plane,
+Too long for one print (~645 mm > 255 mm bed), so it's cut into 3 segments. (2026-11-06: the
+steel wall bars now tie the seams in Y and Z, and ONE seam tie in the +Y rail under the bar ties
+X -- see _seam_tie and the STEEL WALL BARS block; what follows is the joint as it was.) They were
+joined by a fit-tested install-z JOINT on each side rail: the profile lies in the plan plane,
 so every working face is a printed VERTICAL wall, and you drop the next segment
 straight DOWN onto it. The joint locks ±X (so string pull can never draw the seam
 open) and ±Y by shape; Z — the install axis — needs no seam hardware at all, because
@@ -37,7 +39,9 @@ from .components import MOTOR_PULLEY_STANDOFF
 from .helpers import box_at
 from cadkit import fitted_joint as FIT
 
-T        = D.WALL_THICKNESS            # rail thickness (solid; slicer infills)
+T        = D.RAIL_T                    # rail thickness across Y (20.0: the steel bar's channel
+                                       #   plus a skin each side; was 10.4 before the bars)
+T_END    = D.WALL_THICKNESS            # the endplates' END wall (X), 10.4 -- not the rail
 X_BRIDGE = D.BRIDGE_BASE_X1 - 3 * D.BEAD   # 6.1: +X (bridge) end — the rails end here; the
                                        #   bridge endplate caps them (a separate flat-printed
                                        #   part). Anchored to the endplate's hardware-chained
@@ -140,6 +144,23 @@ TP_EP_GX       = D.BRIDGE_BASE_X0 - EP_TOP_CLR   # rail +X end / deck +X face (-
 # -X end (KH_RAIL_X) stops EP_TOP_CLR +X of it.
 KH_X           = -764 * D.BEAD                   # keyhead inboard face (-611.2)
 KH_RAIL_X      = KH_X + EP_TOP_CLR               # rail -X end / keyhead dovetail face (-610.6)
+# ── THE STEEL WALL BARS (user, 2026-11-06; sizes in dimensions BAR_*) ─────────────────────────
+# One bar per rail, in a CHANNEL down the rail's middle that runs out through both rail ends and
+# on into both endplates, so the bar is fully enclosed once they are on (user: the endplates
+# install along X, "then we could avoid the cutouts and have the steel fully enclosed"). It sits
+# as HIGH as the rail allows -- the channel's roof two beads under the deck groove's floor --
+# because the further it stands from the body's neutral axis the more of the bowing it takes.
+# The rail's -X end is the bar's datum: the bar bears on the KEYHEAD's pocket floor, and the
+# BRIDGE's pocket runs BAR_L_TOL past the bar's +X end, where printed shims (src/wall_bar) take up
+# the pre-cut's length. The endplates still locate on the RAIL ENDS (bearing pads, below), never on
+# the bar, so the scale length does not depend on how long a piece of steel was cut.
+BAR_Z1      = TP_GZ0 - TP_TG_DEPTH - D.MIN_WALL_2P   # -8.8 the channel's roof
+BAR_Z0      = BAR_Z1 - D.BAR_CHAN_W                   # -60.0 its floor
+KH_BAR_D    = 40 * D.BEAD                             # 32.0 the bar's reach into the keyhead
+BAR_X0      = KH_X - KH_BAR_D                         # -643.2 the bar's -X end
+BAR_X1      = BAR_X0 + D.BAR_L                        # +17.2 its +X end (nominal length)
+BAR_POCKET_X0 = BAR_X0 - D.BAR_CLR                    # the keyhead pocket's floor
+BAR_POCKET_X1 = BAR_X1 + D.BAR_L_TOL + D.BAR_CLR      # the bridge pocket's floor
 # Endplate JOINERY (both ends, shared — see _end_dt / _kh_tongue / _br_tongue): each
 # endplate is held by Y-flaring vertical dovetails that follow the L-shaped body<->
 # endplate contact. Per rail there are TWO stacked dovetails: a LOWER one on the
@@ -192,6 +213,72 @@ def _ep_halves(length):
     return ten, cav
 
 
+# ── THE X-SLIDE ENDPLATE JOINT (user, 2026-11-06: "Redesign the endplate joinery so it slides along
+# x instead of z") ─────────────────────────────────────────────────────────────────────────────────
+# Each endplate slides on along X, and per rail it holds by three things, top to bottom:
+#   * THE BAR'S END, a steel tenon in a close pocket (bar_pocket): Y and Z at the top, where the
+#     strings pull. Nothing printed could be as stiff.
+#   * A BEARING PAD (ep_pad): EP_TOP_CLR proud of the endplate's inboard face over the rail's end,
+#     so the endplate seats on the RAIL -- the strings push it on, and that face is the scale.
+#   * AN X DOVETAIL (ep_dovetail) under the bar: the endplate's tenon hangs from the shelf into a
+#     socket in the kept shell's top, so the endplate's foot cannot lift or walk in Y. The joint
+#     is the fit-tested nozzle tenon (the endplate builds along X, so the profile is in its layer)
+#     in a mouth-up layer socket (the chassis builds +Z), at the long-joint pick KH_DT_CLR.
+# X itself is the legs' lock pins (legs.lock_pin_joint), across the shell gap into the foot's
+# tenon, as before; and the strings, which push every endplate onto its rails.
+EP_SHELF_Z  = -80 * D.BEAD              # -64.0 the shelf: kept shell below, endplate above
+EP_XDT_HOST_W = 10 * D.BEAD             # 8.0 the X dovetail's socket host across Y, in the shell
+EP_XDT_DROP = 1.0                       # the socket runs this far up past the shell's top (a clean cut)
+
+
+@functools.lru_cache(maxsize=None)
+def _xdt_halves(length):
+    """(tenon, cavity) of the X-slide endplate joint, `length` along X, in the joint frame."""
+    ten, cav, _S = FIT.halves("N", "up", KH_DT_CLR, length, 0.0, EP_XDT_HOST_W, drop=EP_XDT_DROP)
+    return ten, cav
+
+
+def ep_dovetail(end, yc, socket=False):
+    """The X dovetail at one endplate's rail `yc`: end 'kh' (keyhead, -X) or 'br' (bridge, +X).
+    The tenon runs from the endplate's end wall to its inboard face, hanging from the shelf; the
+    socket is the shell's, open at the shell's outboard end (where the tenon comes in) and blind
+    KH_DT_CLR past the tenon's inboard tip."""
+    if end == "kh":
+        x0, x1 = ((_SHELL_NX - 1.0, KH_X + KH_DT_CLR) if socket else (_PKT_NX, KH_X))
+    else:
+        x0, x1 = ((D.BRIDGE_BASE_X0 - KH_DT_CLR, _SHELL_PX + 1.0) if socket
+                  else (D.BRIDGE_BASE_X0, _PKT_PX))
+    h = _xdt_halves(x1 - x0)[1 if socket else 0]
+    # joint frame -> world: X stays the slide, depth +Z -> world -Z (down into the shell)
+    return h.rotate((0, 0, 0), (1, 0, 0), 180.0).translate((x0, yc, EP_SHELF_Z))
+
+
+def ep_pad(end, yc):
+    """The bearing pad: the rail's section over the shelf (bar pocket aside), EP_TOP_CLR deep, from
+    the endplate's inboard face to the rail's end face -- the one face the endplate seats on in X."""
+    xa, xb = (KH_X, KH_RAIL_X) if end == "kh" else (TP_EP_GX, D.BRIDGE_BASE_X0)
+    z1 = TP_GZ0 - TP_TG_DEPTH
+    return box_at(xb - xa, T, z1 - EP_SHELF_Z, x=(xa + xb) / 2, y=yc,
+                  z=(EP_SHELF_Z + z1) / 2).cut(bar_pocket(end, yc))
+
+
+def bar_pocket(end, yc):
+    """The bar's pocket in one endplate at rail `yc`: the channel's section, from the rail's end
+    (through the pad) to the pocket's floor."""
+    xa, xb = (BAR_POCKET_X0, KH_RAIL_X + 1.0) if end == "kh" else (TP_EP_GX - 1.0, BAR_POCKET_X1)
+    return box_at(xb - xa, D.BAR_CHAN_T, D.BAR_CHAN_W, x=(xa + xb) / 2, y=yc,
+                  z=(BAR_Z0 + BAR_Z1) / 2)
+
+
+def bar_channel(yc):
+    """The bar's channel down rail `yc`: open through both rail ends."""
+    xa, xb = KH_RAIL_X - 1.0, TP_EP_GX + 1.0
+    return box_at(xb - xa, D.BAR_CHAN_T, D.BAR_CHAN_W, x=(xa + xb) / 2, y=yc,
+                  z=(BAR_Z0 + BAR_Z1) / 2)
+
+
+# (THE Z-DROP JOINT BELOW IS RETIRED: the rail-end dovetails the endplates dropped onto. Its
+#  helpers stay for the fit coupons that were cut from them -- src/test/endplate_round.)
 KH_DT_SEAT     = 0.1                    # lower-dovetail seating clearance: the mortise face stays
                                        # ON the foot line (KH_DT_Z0 = -23.15) and the TENON is
                                        # shortened by this (top -23.25) so the tenon seats on the
@@ -270,26 +357,6 @@ _SEG_OVER = 0.01                       # _seg_box runs each segment this far pas
 _SEG_JD   = 13 * D.BEAD                # 10.4 room into the +X segment for the fit-tested
                                        # nozzle/nozzle joint (4.8 head, 2.0 corners): it
                                        # stands 8.8 and its cavity ends c past that
-_SEG_JZ1  = TP_GZ0 - TP_TG_DEPTH       # tenon top = the deck-groove FLOOR (−6), so the
-                                       # seam joint never reaches into the deck groove
-# IT STARTS AT THE BOTTOM'S TOP FACE, NOT AT THE BED (user, 2026-09-15). The tenon is the only
-# MATERIAL half of this joint, and run from Z_BOT it stood in the same 10.4 band as the lever
-# mortises -- so the two stations flanking every seam had to be dropped and mortises went
-# missing exactly where two sections meet. Started at FLOOR_TOP it is clear of that band
-# altogether and the grid runs through the seam unbroken. The cavity stays a THROUGH slot: it
-# is a void, so where it meets a lever mortise the two simply merge.
-_SEG_JZ0  = MB.FLOOR_TOP               # tenon base = the bottom prism's top face
-# WHICH SEGMENT GOES DOWN LAST IS A DESIGN DECISION, and this is it (user, 2026-09-17: the
-# joinery mortise must stop cutting -Z into the lever mortises). Lower the +X segment onto a
-# standing tenon and its whole bottom prism has to sweep DOWN PAST that tenon -- the prism comes
-# from high above, so the tenon's entire height is inside its swept column and the cavity has to
-# run clean through the floor. That through-channel is what was eating the 3.2 walls between
-# lever mortises at every seam. Lower the TENON'S OWN segment last instead and the tenon simply
-# descends into the cavity from above: nothing sweeps the floor, so the cavity can stop at the
-# floor's top face. ASSEMBLY ORDER, then: the +X-MOST segment is placed first and each neighbour
-# comes down on it working -X (every segment carries its tenon at its +X end and its mortise at
-# its -X end, so the chain is consistent). The endplates socket the rail ends and the deck rides
-# both crowns, both of which come after, so nothing else cared which way this went.
 # THE PROFILE IS THE FIT-TESTED ONE (user, 2026-10-16): both segments build +Z, along the
 # install axis, so it is joinery step 1's nozzle/nozzle pair, built by
 # cadkit.fitted_joint.halves (step 4, 2026-11-03). The two segments' faces MEET at the seam (the
@@ -317,28 +384,6 @@ def _to_world(half, into):
     return half
 
 
-# ...and the cavity's own floor: 0.4 below the bottom prism's top face, which is a SKIM off that
-# face rather than a channel through it. The 0.4 is clearance, not a seat -- the segments' Z is
-# set by the rail crowns and the endplates, and the tenon must not bottom out before the rail
-# faces meet (if it ever does sag, this floor is a hard stop, which is a bonus, not the design).
-_SEG_RELIEF_CLR = 0.4                   # the gap under the tenon: the cavity's floor sits this
-                                        # far below the bottom prism's top face AND its 45 deg
-                                        # ramp this far below the tenon's, so the tenon lands on
-                                        # neither -- one number, both faces
-_SEG_MZ0  = MB.FLOOR_TOP - _SEG_RELIEF_CLR
-# THE RELIEF RISES sqrt(2) PER 1 IN X, NOT 1 (round 7, 2026-10-22). A 45 deg ramp is printable
-# as a face, but it crosses the head's flanks, which run 45 deg in plan, and where a plane at
-# angle a meets them the edge left in the solid climbs at atan(tan(a) / sqrt2): 35.3 deg off flat
-# for a 45 deg ramp -- the "support at 55 deg" check_floating reported on every seam tenon.
-# At tan(a) = sqrt2 (54.7 deg) that edge is 45. It costs the head 3.6 more of engagement at its
-# foot, out of 64.
-_SEG_RELIEF_RISE = math.sqrt(2.0)
-_SEG_JX1  = _seg_halves(1.0)[0].val().BoundingBox().zmax   # the tenon's +X reach past the seam
-# guard: the seam JOINT (X-footprint s−ROOT .. s+reach, at the RAILS) must not overlap
-# a rib -- the rib runs to the rails there, so an overlap would slice it.
-# The seam and the grid no longer argue in X: the split PLANE runs down the middle of a 3.2
-# wall, and the joint's material half starts above the mortise band in Z (_SEG_JZ0). So no
-# station is dropped for a seam -- asserted against the real solids in _build_full.
 # Z — the install axis — carries NO seam hardware (user). It does not need any. The
 # body is not three loose pieces bolted together; it is one assembly whose pieces are
 # closed over by everything that follows: the deck panels ride a +Z-retaining dovetail
@@ -582,11 +627,6 @@ def _build_full() -> cq.Workplane:
         "only %.2f of cap over the lever mortises -- the bottom prism (D.BOTTOM_T %.1f) has to "
         "carry two beads over the joint, and the joint is already at its own floor"
         % (_cap, D.BOTTOM_T))
-    _tz = _seg_tenon(SPLIT_X[0], Y_LO).val().BoundingBox().zmin
-    _mz = _KL.rib_mortise(_MORT_X[0]).val().BoundingBox().zmax
-    assert _tz >= _mz - 1e-6, (
-        "the seam tenon starts at z %.2f, inside the lever mortises' band (they reach %.2f) -- "
-        "it would be notched by every station it crosses" % (_tz, _mz))
     _mc = _mort_cutters()
     if _mc is not None:
         body = body.cut(_mc)
@@ -652,8 +692,6 @@ def _build_full() -> cq.Workplane:
     # KEEP a ~10 mm rail shell hugging the +X leg socket (the removal above stripped
     # the rail off the leg's +X reach); the bridge endplate nests over this shell.
     body = body.union(_leg_shell(LEG_STATIONS_X[0], *LEG_SHELL_PX))
-    for _yc in (Y_HI, Y_LO):
-        body = body.union(_br_tongue(_yc))
     # keyhead TAKES OVER the -X end as a solid block (its edge shows from the front like
     # the bridge end): remove the rail ENTIRELY at x < KH_RAIL_X (z full) so the keyhead
     # fills it and IS the -X cross-tie (no separate crossbar); it's held by the rail-end
@@ -664,8 +702,9 @@ def _build_full() -> cq.Workplane:
                            z=((Z_BOT - 1.0) + (Z_TOP + 1.0)) / 2))
     # KEEP a ~10 mm rail shell hugging the -X leg station (mirror of the +X end).
     body = body.union(_leg_shell(LEG_STATIONS_X[1], *LEG_SHELL_NX))
-    for _yc in (Y_HI, Y_LO):
-        body = body.union(_kh_tongue(_yc))
+    # (NO RAIL-END TONGUES any more: the endplates slide on along X (user, 2026-11-06), onto the
+    #  steel bars' ends and an X dovetail in each kept shell's top -- see ep_dovetail. Both are cut
+    #  per segment, last, in _segments.)
     # ── WIDE CORNER RIBS (user): one per end, tying both leg corners to
     # the rails and hosting the crossing grooves CONTINUOUSLY, so all
     # three stub ridges run full length. x: from the endplate end wall's
@@ -677,9 +716,9 @@ def _build_full() -> cq.Workplane:
     _WR_Y0, _WR_Y1 = Y_LO + T / 2 + 0.4, Y_HI - T / 2 - 0.4
     for _c0, _c1, _h0, _h1 in (
             (KH_RAIL_X, LEG_STATIONS_X[1] + LEG_W / 2,
-             EP_TIP_NX + T + 0.4, KH_RAIL_X),
+             EP_TIP_NX + T_END + 0.4, KH_RAIL_X),
             (LEG_STATIONS_X[0] - LEG_W / 2, TP_EP_GX,
-             TP_EP_GX, EP_TIP_PX - T - 0.4)):
+             TP_EP_GX, EP_TIP_PX - T_END - 0.4)):
         body = body.union(box_at(abs(_c1 - _c0), Y_HI - Y_LO,
                                  MB.FLOOR_TOP - Z_BOT, x=(_c0 + _c1) / 2,
                                  y=(Y_HI + Y_LO) / 2,
@@ -799,7 +838,7 @@ def _leg_geom(tip, sign):
     FLUSH-X round (user): the station sits LEG_W/2 inboard of the tip, so the
     leg's outer X face lies ON the endplate's outer face (the old formula kept
     a dovetail-era buffer that inset the legs 12.4)."""
-    pocket = tip + sign * T
+    pocket = tip + sign * T_END
     shell = pocket + sign * EP_LEG_CLR
     station = tip + sign * LEG_W / 2
     return pocket, shell, station
@@ -815,6 +854,13 @@ assert (abs(_SHELL_NX - D.bottom_span()[0]) < 1e-9
     % (D.bottom_span()[0], D.bottom_span()[1], _SHELL_NX, _SHELL_PX))
 LEG_SHELL_NX = (_SHELL_NX, KH_RAIL_X)       # -X leg: -625.6 .. -610.6 (reaches the rail end)
 LEG_SHELL_PX = (TP_EP_GX, _SHELL_PX)        # +X leg: -17.5 .. 5.6
+# the bar's pockets stop two beads short of both endplates' outer faces
+assert BAR_POCKET_X0 - EP_TIP_NX >= D.MIN_WALL_2P - 1e-9 and EP_TIP_PX - BAR_POCKET_X1 >= D.MIN_WALL_2P - 1e-9, (
+    "the bar's pockets run to x %.2f .. %.2f, past two beads in from the endplates' faces (%.2f, %.2f)"
+    % (BAR_POCKET_X0, BAR_POCKET_X1, EP_TIP_NX, EP_TIP_PX))
+# ...and the endplate under the bar keeps two beads over the X dovetail's tenon slab
+assert BAR_Z0 - EP_SHELF_Z >= 2 * D.MIN_WALL_2P - 1e-9, (
+    "the shelf %.2f leaves %.2f under the bar's pocket" % (EP_SHELF_Z, BAR_Z0 - EP_SHELF_Z))
 # leg stations: (+X leg, -X leg) — outer faces ON the endplate tips (flush X):
 LEG_STATIONS_X = (_STN_PX, _STN_NX)         # (-13.4, -614.2)
 # Trim the rib comb against the leg BODY STUBS (SQ_W-sq at each station): a comb rib
@@ -832,13 +878,16 @@ LEG_Y = (Y_HI + T / 2 - LEG_W / 2,          # +Y legs: 42.75 (outer face 64.75)
 
 
 def leg_shell_top(sx, yr):
-    """Where the kept leg shell stops (and the endplate pocket over it): the screw rail's underside
-    (-31.85), at all four corners (user, 2026-10-31), with the endplate's solid above it. It started at
-    the bridge's +Y corner, where string 1's 688 seat sits beside the shell: stopping it under the
-    seat mouth puts the whole seat in endplate. At the bridge's -Y corner the output board's recess
-    stands inboard of the rail (y -105.05 on), so the shelf and the recess do not meet."""
-    from .screw_rail import BOT
-    return BOT
+    """Where the kept leg shell stops (and the endplate pocket over it): EP_SHELF_Z at all four
+    corners, with the endplate's solid above it.
+
+    LOWERED UNDER THE BAR (user, 2026-11-06: "Lower the transition height where it switches from
+    endplate to chassis such that the endplate can solidly hold the steel"). It was the screw rail's
+    underside (-31.85), which left the bar's end standing in chassis shell below that. Now the whole
+    bar end is in endplate, two beads of it under the pocket, and the X dovetail the endplate slides
+    on stands in the shell's top below that -- just above the leg's joinery (the user: "the shelf
+    could go all the way down to just above the joinery")."""
+    return EP_SHELF_Z
 
 
 def _leg_shell(sx, x0, x1):
@@ -863,62 +912,31 @@ def _leg_shell(sx, x0, x1):
     return out
 
 
-def _seg_relief(s, yr, dz=0.0):
-    """The 45 deg wedge under the seam joint, at split X=s and rail Y=yr -- ONE definition, cut
-    from BOTH halves so they cannot drift apart (user, 2026-09-17: the tenon had the 45 and the
-    mortise did not).
-
-    The TENON needs it: it stands on the bottom prism's top face, so everything it projects past
-    the seam plane hangs over the NEIGHBOUR's floor, and flat that underside was an 8.8-deep
-    bridge over air. The MORTISE takes the same wedge lowered by _SEG_RELIEF_CLR -- which gives
-    the cavity's ramp a clearance gap under the tenon's instead of a coincident face to bottom
-    out on, and hands the +X segment back the material its cavity was taking below a tenon that
-    is no longer there. Same `reach`, same angle, same line of code: change one and both move."""
-    reach = _SEG_JX1
-    return (cq.Workplane("XZ")
-            .polyline([(s, _SEG_JZ0), (s + reach, _SEG_JZ0),
-                       (s + reach, _SEG_JZ0 + reach * _SEG_RELIEF_RISE)])
-            .close().extrude(T + 4.0)
-            .translate((0.0, yr + (T + 4.0) / 2.0, dz)))
+# ── THE SEAM TIE (2026-11-06, stage 3 of the steel bars) ──────────────────────────────────────
+# The bars took the rail seam joint's band, and they tie each seam in Y, in Z and against bowing --
+# but not in X: a bar slides in its channel. With strings on, the body is in compression and X
+# does not matter; unstrung, lifting it by an end could pull a section off. So each seam keeps
+# ONE X tie, in the +Y rail under the bar's channel, the fit-tested seam joint (_seg_halves) at
+# its usual _SEG_CLR, standing STRAIGHT OFF THE BED: below the channel the +Y rail is solid to
+# the bed (the lever mortises stop at the light window, inboard of it), so the tenon's head stands
+# on the bed like the rest of its segment and needs no overhang relief. One is enough: the -Y
+# bar, straight steel in both sections' channels, will not let a section yaw about this tie.
+# ASSEMBLY ORDER, then: the -X-MOST section goes down first, and each section +X of it comes down
+# onto the tenon standing at its -X face -- its cavity is a pocket open at the bed, its ceiling
+# two beads under the bar's channel.
+SEAM_TIE_Z1 = BAR_Z0 - D.MIN_WALL_2P - _SEG_CLR    # the tenon's top: c under the cavity's ceiling
 
 
-def _relieved(solid, s, yr, dz, what):
-    """`solid` minus the seam relief, with proof it bit. A wedge that misses is a SILENT no-op:
-    the overhang (or the surplus cavity) would still be there and nothing downstream would
-    notice, so make the cut prove it took the corner it was aimed at."""
-    out = solid.cut(_seg_relief(s, yr, dz))
-    assert out.val().Volume() < solid.val().Volume() - 1.0, (
-        "the seam relief took %.2f mm3 off the seam %s at x %.2f -- it is missing the corner"
-        % (solid.val().Volume() - out.val().Volume(), what, s))
-    return out
-
-
-def _seg_tenon(s, yr):
-    """The −X segment's half of the seam joint at split X=s, rail Y=yr: a plan-plane
-    profile prism standing from the BOTTOM PRISM'S TOP FACE up to the deck-groove floor (see
-    _SEG_JZ0 -- below that is the lever-mortise grid, and this may not stand in it). (The bridge/keyhead END
-    joints are a different site — they use the low _br_tongue/_kh_tongue dovetails.)"""
-    # the underside is _seg_relief (54.7 deg, _SEG_RELIEF_RISE) -- self-supporting back to this segment's own floor,
-    # at a cost to the head of its bottom 12.4 (_SEG_JX1 * _SEG_RELIEF_RISE) of engagement
-    ten = _to_world(_seg_halves(_SEG_JZ1 - _SEG_JZ0)[0], +1)
-    return _relieved(ten.translate((s, yr, _SEG_JZ0)), s, yr, 0.0, "tenon")
-
-
-def _seg_mortise(s, yr):
-    """The +X segment's cavity: open at the TOP through the rail crown, where the tenon comes
-    in, and closed 0.4 into the bottom prism's top face (_SEG_MZ0). No ceiling to bridge; its
-    only horizontal face is a floor.
-
-    IT USED TO RUN CLEAN THROUGH THE BOTTOM PRISM as a second, narrower cavity (drop=0, the
-    tenon's bare footprint) -- the path the +X segment's own floor needed to pass the standing
-    tenon while being lowered on. That band IS the lever-mortise grid, so every mm of it came
-    out of a 3.2 wall between two slots, and the user caught it collided with them. Reversing
-    which segment goes down last deleted the need for it outright (see the SEGMENT JOINT block):
-    nothing sweeps the floor any more, so the cavity stops at the floor."""
-    cav = _to_world(_seg_halves((TP_GZ0 + 2.0) - _SEG_MZ0)[1], +1).translate((s, yr, _SEG_MZ0))
-    # lowered so the ramp stands _SEG_RELIEF_CLR off the tenon's SQUARE to it, not just in Z
-    dz = _SEG_RELIEF_CLR * math.sqrt(1.0 + _SEG_RELIEF_RISE ** 2)
-    return _relieved(cav, s, yr, -dz, "cavity")
+def _seam_tie(s, cavity=False):
+    """The seam tie at split X = s in the +Y rail: the -X section's tenon, or (cavity=True) the
+    +X section's pocket, open at the bed."""
+    if cavity:
+        z0 = Z_BOT - 1.0
+        h = _seg_halves((SEAM_TIE_Z1 + _SEG_CLR) - z0)[1]
+    else:
+        z0 = Z_BOT
+        h = _seg_halves(SEAM_TIE_Z1 - z0)[0]
+    return _to_world(h, +1).translate((s, Y_HI, z0))
 
 
 def _end_dt(x_face, into, yc, z0, z1, socket=False, top_clr=KH_DT_SEAT):
@@ -1269,12 +1287,21 @@ def _segments():
                 _fx = b + D.MIN_WALL
                 seg = seg.cut(box_at(_fx - b + 1.0, _lp.ylen, _lp.zlen, x=(_fx + b - 1.0) / 2,
                                      y=(_lp.ymin + _lp.ymax) / 2, z=(_lp.zmin + _lp.zmax) / 2))
-        if _is_split(b):                              # −X boundary split → +X side → mortise
-            for yr in (Y_HI, Y_LO):
-                seg = seg.cut(_seg_mortise(b, yr))
-        if _is_split(a):                              # +X boundary split → −X side → tenon
-            for yr in (Y_HI, Y_LO):
-                seg = seg.union(_seg_tenon(a, yr))
+        # (NO FULL-HEIGHT RAIL SEAM JOINT any more: the steel bar runs through the seam in its
+        #  channel and ties it in Y, in Z and against the bowing that opened it. What is left to tie
+        #  is X, and the SEAM TIE does that from the bed (see _seam_tie).)
+        if _is_split(b):                              # −X boundary split → +X side → the pocket
+            seg = seg.cut(_seam_tie(b, cavity=True))
+        if _is_split(a):                              # +X boundary split → −X side → the tenon
+            seg = seg.union(_seam_tie(a))
+        # LAST: the steel bars' channels, and the endplates' X dovetail sockets in the kept shells
+        # (after the floor, which is laid over half of each rail band and would refill them)
+        for yr in (Y_HI, Y_LO):
+            seg = seg.cut(bar_channel(yr))
+            if b < KH_RAIL_X:
+                seg = seg.cut(ep_dovetail("kh", yr, socket=True))
+            if a > TP_EP_GX:
+                seg = seg.cut(ep_dovetail("br", yr, socket=True))
         segs.append(_largest(seg))
     return segs
 

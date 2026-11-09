@@ -114,8 +114,23 @@ STRING_FIELD_W  = (N_STRINGS - 1) * STRING_PITCH   # 85.5 mm
 MOUNTING_SPAN   = 615.0     # between a string's two mounting ends (~24.2" scale)
 XBAR            = 13 * BEAD  # 10.4 - the one square-module cross-section: square cross-rib section (10×10),
                             # end-crossbar width, and the leg/endplate border + L offset
-WALL_THICKNESS  = 13 * BEAD  # 10.4 structural wall: I-beam rail thickness, the keyhead/bridge
-                            # endplate faces, and the deck inner/outer face references
+WALL_THICKNESS  = 13 * BEAD  # 10.4 structural wall: the keyhead/bridge endplates' END walls (X),
+                            # and the side rails' thickness before the steel bars (RAIL_T)
+# THE STEEL WALL BARS (user, 2026-11-06). The bench build detunes when the body is bowed by hand:
+# two plastic side walls cannot hold pitch. Each side wall now carries a 5/8 x 2 in hot-rolled
+# A-36 flat bar (prices.json wall_bar_a36_58x2), its 2 in standing up, the whole length of the
+# rails and on into both endplates. The wall grows OUTWARD around it (the inner faces stay where
+# they are: everything mounted inside is unmoved), 9.6 a side, 19.2 in all (user: "Let's go with
+# the 19mm widening").
+BAR_T           = 15.875     # 5/8 in, across Y (measure the real bar; hot-rolled is +-0.25)
+BAR_W           = 50.8       # 2 in, standing in Z (hot-rolled is about +-0.8: measure it)
+BAR_L           = 660.4      # 26 in. Speedy's 26-1/2 in pre-cut is 12.7 too long: hacksaw it
+BAR_L_TOL       = 3.2        # pre-cut length is +1/8 in -0: the bridge pocket's shims take it up
+BAR_CLR         = 0.2        # per side, steel in a printed channel (the coupon decides)
+BAR_CHAN_T      = BAR_T + 2 * BAR_CLR       # 16.275 the channel across Y
+BAR_CHAN_W      = BAR_W + 2 * BAR_CLR       # 51.2 the channel in Z
+RAIL_T          = 25 * BEAD  # 20.0 the side rail across Y: the channel plus 1.86 of skin a side
+assert (RAIL_T - BAR_CHAN_T) / 2 >= min_wall(NOZZLE_D, beads=2), "the bar channel's skins are under two beads"
 
 # The pedal bar's Z height. Lives HERE, not in pedal_bar, because legs.py needs it
 # too (the -Y legs' wide block must equal foot + bar + tower + block on all four
@@ -1113,8 +1128,10 @@ LIGHT_WIN_W  = 8.0                                   # across Y
 # the shelf follow it, so a smaller connector takes only this number, down to 0 beads (string 1's
 # clamp).
 RAIL_HI_INNER_Y = BRIDGE_AXLE_Y + 2.25                 # +Y rail inner face (chassis.Y_HI - T/2)
-LIGHT_WIN_DY = XBAR                                  # inboard of the +Y rail's centre-line
-LIGHT_WIN_YC = (RAIL_HI_INNER_Y + WALL_THICKNESS / 2) - LIGHT_WIN_DY
+# (the window was set XBAR inboard of the 10.4 rail's centre-line, and it STAYS there when the rail
+#  grows outward around the steel bar: it is placed off the inner face, which does not move)
+LIGHT_WIN_YC = (RAIL_HI_INNER_Y + WALL_THICKNESS / 2) - XBAR
+LIGHT_WIN_DY = (RAIL_HI_INNER_Y + RAIL_T / 2) - LIGHT_WIN_YC   # inboard of the +Y rail's centre-line
 LIGHT_WIN_Y0 = LIGHT_WIN_YC - LIGHT_WIN_W / 2        # -Y edge: where the mortises stop
 LIGHT_WIN_Y1 = LIGHT_WIN_YC + LIGHT_WIN_W / 2
 
@@ -1162,7 +1179,7 @@ def floor_block_y(station_x: float) -> tuple:
         lo.append(MCTRL_Y0 - MCTRL_FIT - 3 * BEAD - MIN_WALL_2P)    # the -Y channel's back wall
         hi.append(MCTRL_Y1 + MIN_WALL_2P)
     return (min(lo), max(hi)) if lo else None
-MORT_FULL_Y1 = RAIL_HI_INNER_Y + WALL_THICKNESS + 1.0     # out past the +Y rail's outer face
+MORT_FULL_Y1 = RAIL_HI_INNER_Y + RAIL_T + 1.0             # out past the +Y rail's outer face
 
 
 def mortise_y_end(station: float) -> float:

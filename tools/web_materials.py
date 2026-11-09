@@ -78,6 +78,7 @@ _FINISH = [(re.compile(rx), finish) for rx, finish in _motor_rules() + (
      r"|^ui_shaft$|^ui_display$", "steel"),
     (r"^output_panel_term_metal$", "steel"),      # J8's screws and pins
     (r"^nut_plate$", "steel"),                    # laser-cut 304 (its PARTS row is steel/, not a filament)
+    (r"^wall_bar$", "steel"),                     # the side walls' A-36 flat bars (zinc-sprayed)
     (r"^output_panel_term$", "nylon"),            # J8's PA66 housing (src/screw_terminal.py)
     (r"^belt$", "rubber"),
     (r"^pickup$", "aluminium"),
