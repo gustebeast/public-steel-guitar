@@ -505,8 +505,8 @@ def _screw(i: int, x0: float, x1: float) -> cq.Workplane:
         try:
             rod = C.screw(L - dl)
             break
-        except AssertionError:
-            continue
+        except Exception:                           # the check's AssertionError, or the
+            continue                                # groove's sweep failing outright (StdFail)
     else:
         raise AssertionError(f"no leadscrew of {L} to {L - 2.0} mm cut cleanly")
     return rod.rotate((0, 0, 0), (0, 1, 0), 90).translate((x0, y, z))

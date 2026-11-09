@@ -94,14 +94,25 @@ def screw(length: float = D.SCREW_LEN) -> cq.Workplane:
                  .polyline([(0, 0), (rc - ch, 0), (rc, ch), (rc, length - ch),
                             (rc - ch, length), (0, length)]).close()
                  .revolve(360, (0, 0, 0), (0, 1, 0)))
-        turns = math.ceil(length / p) + 2
         ro = rc + 0.3                                               # cutter past the crest
-        groove = (cq.Workplane("XZ")
-                  .polyline([(rr, -_tr_groove_w(rr) / 2), (ro, -_tr_groove_w(ro) / 2),
-                             (ro, _tr_groove_w(ro) / 2), (rr, _tr_groove_w(rr) / 2)]).close()
-                  .sweep(cq.Workplane("XY").add(cq.Wire.makeHelix(
-                      pitch=p, height=turns * p, radius=rr,
-                      lefthand=D.SCREW_HAND == "LH")), isFrenet=True))
+        # OCCT CANNOT SWEEP SOME HELIX HEIGHTS: MakePipeShell fails outright from about 312 to
+        # 352 of Tr8x2 (the direct bench's 336 mm screw, 2026-11-09), and is fine either side.
+        # The groove overshoots both ends anyway, so on a failure overshoot by more turns.
+        for _extra in (2, 12, 22, 32):
+            turns = math.ceil(length / p) + _extra
+            try:
+                groove = (cq.Workplane("XZ")
+                          .polyline([(rr, -_tr_groove_w(rr) / 2), (ro, -_tr_groove_w(ro) / 2),
+                                     (ro, _tr_groove_w(ro) / 2), (rr, _tr_groove_w(rr) / 2)])
+                          .close()
+                          .sweep(cq.Workplane("XY").add(cq.Wire.makeHelix(
+                              pitch=p, height=turns * p, radius=rr,
+                              lefthand=D.SCREW_HAND == "LH")), isFrenet=True))
+                break
+            except Exception:
+                continue
+        else:
+            raise AssertionError(f"the leadscrew's groove would not sweep at {length} mm")
         # OCCT can hand back a smooth rod, or half of one, without a word
         # (cadkit/THREADS_README.md): hold the result to the thread's own arithmetic.
         _fill = 1 - ((rc ** 2 - rr ** 2) * (_tr_groove_w(rr) + _tr_groove_w(rc)) / 2 / p
