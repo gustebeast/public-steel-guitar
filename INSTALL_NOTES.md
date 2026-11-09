@@ -1676,3 +1676,8 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
 - **Motors:**
   - The motors are coaxial with their screws, on four stations along X, and each motor's coil plug faces a fixed side (set in `PLUG_DIR`).
   - The whole drive yaws 2.06° in plan so string 1's motor stays inside the +Y rail.
+- **Restringing (direct bench):**
+  1. Set the nut at the slack end of travel.
+  2. Feed the ball end through the rod plate's window in front of its yoke (7.6 x 11.8).
+  3. Push the ball through the keyhole's Ø4.8 hole, 5 mm under the string's line.
+  4. Pull the string so the ball slides up the 2.2 slit until it sits on the axis behind the roof. The string's tension keeps it there.

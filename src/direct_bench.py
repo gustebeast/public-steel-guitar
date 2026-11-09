@@ -82,7 +82,16 @@ YK_W = 14 * D.BEAD                                  # 11.2 across Y (the nut's 1
 YK_TALL = D.NUT_FLANGE_L                            # 22 in Z, as the flange
 X_YT0 = -26.0                                       # yoke roof at the slack end of travel
 ROD_PLATE = (-24.0, -20.0)                          # the rods' plate (and the strings' holes)
-ROD_DZ = -D.NUT_HOLE_DX                             # the rod rides the ear at -Z
+ROD_DZ = D.NUT_HOLE_DX                              # the rod rides the ear at +Z (-Z is the keyhole's)
+# RESTRINGING (user, 2026-11-09): a KEYHOLE in the yoke's roof. The ball end goes in through a
+# hole KEY_DROP under the axis, then slides UP a slit only the string fits through, to sit on the
+# axis behind the roof; the string's pull holds it there. The rod plate has a WINDOW in front of
+# each keyhole the ball passes through (it was a Ø2 hole: the ball could never get past it).
+KEY_D = D.STRING_NUT_D + 0.8                        # 4.8: the ball's way in
+KEY_DROP = 5.0                                      # its centre under the axis: the slit's length
+SLIT_W = 2.2                                        # string 10's 1.78 and room
+WIN_HY = KEY_D / 2 + 1.4                            # 3.8: the plate window's half-width in Y
+WIN_Z = (-(KEY_DROP + KEY_D / 2 + 1.2), 3.2)        # ...and its reach under / over the axis
 COLLAR_L = 2.0                                      # the spring's collar, on the boss's end
 SPRING_OD, SPRING_ID = 15.9, 12.7                   # 5/8 in stainless extension spring (SKU TBD)
 SLEEVE_OD, SLEEVE_ID = 11.0, 9.0                    # fixed sleeve over the screw
@@ -265,7 +274,15 @@ def _yoke(i: int, t: float) -> cq.Workplane:
     out = out.cut(cyl_x(D.SCREW_OD + 0.8, yt - YK_ROOF - ft + 1, ft - 1, y=y, z=z))   # tip + ball
     out = out.cut(cyl_x(D.NUT_LIP_D + 0.4, D.NUT_LIP_L + 1.3, ft - 1, y=y, z=z))      # lip register
     out = out.cut(cyl_x(D.GUIDE_ROD_D + 0.4, YK_H + 2, ft - 1, y=y, z=z + ROD_DZ))    # the rod
-    out = out.cut(cyl_x(2.0, YK_ROOF + 2, yt - YK_ROOF - 1, y=y, z=z))                # the string
+    # the keyhole: the ball's hole KEY_DROP down, the slit up to the axis, and behind the roof
+    # a pocket the ball slides up in (its 3 along the axis, Ø4 across)
+    rx0 = yt - YK_ROOF
+    out = out.cut(cyl_x(KEY_D, YK_ROOF + 2, rx0 - 1, y=y, z=z - KEY_DROP))
+    out = out.cut(box_at(YK_ROOF + 2, SLIT_W, KEY_DROP, x=rx0 + YK_ROOF / 2, y=y, z=z - KEY_DROP / 2))
+    out = out.cut(cyl_x(SLIT_W, YK_ROOF + 2, rx0 - 1, y=y, z=z))
+    pk = D.STRING_NUT_L + 0.6
+    out = out.cut(box_at(pk, KEY_D, KEY_DROP + KEY_D / 2, x=rx0 - pk / 2, y=y,
+                         z=z - (KEY_DROP + KEY_D / 2) / 2))
     return out
 
 
@@ -331,7 +348,9 @@ def _rod_plate() -> cq.Workplane:
     x0, x1 = ROD_PLATE
     w = _plate_yz(x0, x1, CHEEK_Z[0], -20.5)
     for i in range(N):
-        w = w.cut(yaw(cyl_x(2.0, 10, x0 - 3, y=y_of(i), z=za(i)), i))
+        lo, hi = WIN_Z                               # the window the ball passes through
+        w = w.cut(yaw(box_at(10, 2 * WIN_HY, hi - lo, x=(x0 + x1) / 2, y=y_of(i),
+                             z=za(i) + (lo + hi) / 2), i))
         w = w.cut(yaw(cyl_x(D.GUIDE_ROD_D, 10, x0 - 3, y=y_of(i), z=za(i) + ROD_DZ), i))
     return w
 
