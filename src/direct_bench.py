@@ -467,10 +467,23 @@ def _m3s(i: int, t: float) -> cq.Workplane:
     out = None
     for a in HOLE_ANG["m3"]:
         dy, dz = at_ang(a)
-        sc = (cyl_x(M3_HEAD[0], M3_HEAD[1], heads, y=y + dy, z=z + dz)
-              .union(cyl_x(3.0, M3_L, p0, y=y + dy, z=z + dz)))
+        sc = _cap("m3", M3_L, (heads, y + dy, z + dz), (1, 0, 0))
         out = sc if out is None else out.union(sc)
     return out
+
+
+def _cap(kind: str, length: float, top, shank_dir) -> cq.Workplane:
+    """cadkit's headed screw (head and its hex socket drawn), head TOP at `top`, the shank
+    running `shank_dir` from it. "m3": the M3 SHCS the benches use (belt_tensioner's spec,
+    as plank_bench's yoke screws); "m4": the M4 button head. Both turn with the 2.5 key."""
+    from cadkit.fasteners import M4, headed_screw, _rot_z_onto
+    if kind == "m3":
+        from . import belt_tensioner as BTn
+        s = headed_screw(BTn.M3, length, BTn.HEAD_D, BTn.HEAD_H, 2.5)
+    else:
+        s = headed_screw(M4, length, M4_HEAD[0], M4_HEAD[1], 2.5)
+    d = tuple(-c for c in shank_dir)                # headed_screw's shank runs -Z
+    return _rot_z_onto(s, d).translate(tuple(top))
 
 
 COILS = True                                        # False: the spring as its tube (the gate)
@@ -604,18 +617,18 @@ def _housing_bolts(i: int) -> cq.Workplane:
     out = None
     for a in EAR_ANG:
         dy, dz = at_ang(a, EAR_R)
-        b = cyl_x(M4_HEAD[0], M4_HEAD[1], hu - M4_HEAD[1], y=y + dy, z=z + dz).union(
-            cyl_x(4.0, HB_L, hu, y=y + dy, z=z + dz))
+        b = _cap("m4", HB_L, (hu - M4_HEAD[1], y + dy, z + dz), (1, 0, 0))
         out = b if out is None else out.union(b)
     return out
 
 
 def _inserts(i: int) -> cq.Workplane:
+    from cadkit.fasteners import M4, seated_insert
     y, z = y_of(i), za(i)
     out = None
     for a in EAR_ANG:
         dy, dz = at_ang(a, EAR_R)
-        b = _tube_x(5.6, 4.0, ANCHOR[1], ANCHOR[1] + 5.0, y + dy, z + dz)
+        b = seated_insert(M4, (ANCHOR[1], y + dy, z + dz), (1, 0, 0))   # cadkit's dummy
         out = b if out is None else out.union(b)
     return out
 
@@ -639,8 +652,7 @@ def _collar_a_m3(i: int) -> cq.Workplane:
     y, z = y_of(i), za(i)
     (c0, c1), _ = x_collar_a()
     xm = (c0 + c1) / 2
-    return cyl_z(M3_HEAD[0], M3_HEAD[1], z + 4.6, x=xm, y=y + 6.5).union(
-        cyl_z(3.0, M3_L, z + 4.6 - M3_L, x=xm, y=y + 6.5))
+    return _cap("m3", M3_L, (xm, y + 6.5, z + 4.6 + M3_HEAD[1]), (0, 0, -1))
 
 
 def _collar_b(i: int) -> cq.Workplane:
@@ -698,9 +710,7 @@ def _coupler(i: int) -> cq.Workplane:
 
 def _coupler_m3(i: int) -> cq.Workplane:
     h0 = SOCKET_D / 2 + 1.0                         # the head's underside: 1.0 of wall
-    sc = cyl_x(M3_HEAD[0], M3_HEAD[1], h0, y=PIN_X, z=0).union(
-        cyl_x(3.0, M3_L, h0 - M3_L, y=PIN_X, z=0))
-    return _motor_frame(sc, i)
+    return _motor_frame(_cap("m3", M3_L, (h0 + M3_HEAD[1], PIN_X, 0), (-1, 0, 0)), i)
 
 
 def _motor(i: int) -> list:
@@ -856,9 +866,8 @@ def _anchor_bolts() -> cq.Workplane:
     out = None
     for yf, sg in ((y1 - ANCHOR_T, 1), (y0 + ANCHOR_T, -1)):   # each fold's inner face, outward
         for zb in _anchor_bolt_z():
-            h0 = yf - M4_HEAD[1] if sg > 0 else yf
-            b = cyl_y(M4_HEAD[0], M4_HEAD[1], h0, x=xf, z=zb)
-            b = b.union(cyl_y(4.0, M4_L, yf if sg > 0 else yf - M4_L, x=xf, z=zb))
+            top = yf - sg * M4_HEAD[1]               # the head on the fold's inner face
+            b = _cap("m4", M4_L, (xf, top, zb), (0, sg, 0))
             out = b if out is None else out.union(b)
     return out
 
