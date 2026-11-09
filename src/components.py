@@ -56,6 +56,24 @@ def _tr_groove_w(r: float) -> float:
     return D.SCREW_PITCH / 2 + 2 * (r - _TR_PITCH_D / 2) * _TR_FLANK
 
 
+def _meshes_whole(shape) -> bool:
+    """Every face of `shape` triangulates (on a COPY: a mesh left on the shape changes what
+    its bounding box reads). A cut can pass the volume check and still hand back a thread
+    flank the mesher drops -- the viewer then draws only the crests, a plain rod (the direct
+    bench's 179 / 276 / 473 mm screws, 2026-11-09: 92 faces, one helical flank untriangulated)."""
+    from OCP.BRep import BRep_Tool
+    from OCP.BRepBuilderAPI import BRepBuilderAPI_Copy
+    from OCP.BRepMesh import BRepMesh_IncrementalMesh
+    from OCP.TopLoc import TopLoc_Location
+    cp = cq.Shape.cast(BRepBuilderAPI_Copy(shape.wrapped, True, False).Shape())
+    BRepMesh_IncrementalMesh(cp.wrapped, 0.1, False, 0.3, True)
+    for f in cp.Faces():
+        t = BRep_Tool.Triangulation_s(f.wrapped, TopLoc_Location())
+        if t is None or t.NbTriangles() == 0:
+            return False
+    return True
+
+
 def screw(length: float = D.SCREW_LEN) -> cq.Workplane:
     """Leadscrew, axis +Z, base face at z=0: a cut length of Tr8x2 rod, threaded end to
     end (it is sawn from threaded stock, so there are no journals -- the bearing, the nut
@@ -91,10 +109,13 @@ def screw(length: float = D.SCREW_LEN) -> cq.Workplane:
         # WHERE THE HELIX STARTS is a phase, nothing physical, but it decides whether that boolean
         # holds: at 36.28 the centred sweep cut 0.37 of the rod and a quarter-turn on cut it right.
         # So try phases until one passes the check.
-        for _ph in (0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75):
+        # quarter turns first, then the eighths between them (the mesh check rejects more)
+        for _ph in (0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75,
+                    0.125, 0.375, 0.625, 0.875, 1.125, 1.375, 1.625, 1.875):
             out = blank.cut(groove.translate((0, 0, -(turns * p - length) / 2 + _ph)), clean=False)
             _vol = out.val().Volume() / (math.pi * rc ** 2 * length)
-            if out.val().isValid() and len(out.val().Solids()) == 1 and abs(_vol - _fill) < 0.03:
+            if (out.val().isValid() and len(out.val().Solids()) == 1 and abs(_vol - _fill) < 0.03
+                    and _meshes_whole(out.val())):
                 break
         else:
             raise AssertionError(f"the leadscrew's thread did not cut at any phase: {_vol:.3f} "

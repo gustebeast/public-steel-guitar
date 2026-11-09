@@ -1703,3 +1703,26 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
 - Order of assembly:
   1. Bolt the plate in before the drives go in. The 2.5 mm key reaches each bolt along Y, between the spring rows.
   2. Then put each anchor plug through from +X with its lugs along Y, and turn it a quarter to Z.
+
+### Direct bench: bend-row comb (2026-11-09)
+- One printed PETG-GF comb sits between the cheeks.
+  - Its spine is under the bottom row, at z -106 to -90.8.
+  - Five tines stand up from it, each round all three bend axles: three in the string gaps at y +28.5, 0 and -28.5, and one against each cheek.
+- Each tine stands 0.1 off its neighbouring 688's inner race. A 0.5 relief from Ø10.6 to Ø17 keeps it off the turning outer race and shield. So the comb locates every bend bearing along its axle.
+- Print: builds -Z to +Z, spine on the bed. The axle holes are teardrops peaked toward +Z.
+- Assembly:
+  1. Drop the comb in between the cheeks.
+  2. Hold each row's 688s in their gaps and slide the axle through cheek, tines and bearings.
+- Stiffness: the comb shortens each axle span to 28.5 mm or less. The middle tines are only as stiff as the spine, though, which is grounded at the cheeks through the axles. In the instrument, bolting the spine to the chassis bed would ground it.
+
+### Direct bench: printed motor coupler (2026-11-09)
+- Each screw is driven by one printed PETG-GF coupler, 19 mm long plus a 0.5 mm boss.
+  - Motor end: the motor pulley's open D bore, a friction fit on the shaft's flat. The shaft is cut flush at 11.5 mm from the faceplate, as for the pulleys.
+  - Screw end: a plain Ø8.4 socket.
+- Drill a Ø3.2 hole through each leadscrew, 6 mm from its -X end, square to the axis.
+- Fit:
+  1. Slide the screw into the socket.
+  2. Fit one M3 x 12 SHCS through the coupler and the screw. It self-taps the far wall.
+- The coupler's +X boss (Ø10.4) bears only on the 688s' inner race. It passes the screw's pull into the two 688s in the block behind it. No thrust reaches the motor shaft.
+- The block is now 12.5 mm long, with a 2.5 mm shoulder at +X that has a Ø12 hole bearing on the outer race.
+- Station pitch is 90 mm (was 98). The farthest motor moves 32 mm toward the bridge.

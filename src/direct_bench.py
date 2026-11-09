@@ -207,8 +207,29 @@ M_BACK = 60.7                                       # pulley plane -> the driver
 M_FACE = 7.5                                        # pulley plane -> the faceplate
 PLUG = (21.15, 29.9, 6.2, 44.5, 38.5)               # coil plug + leads: off the axis from..to,
                                                     # half-width, and its x range (back of ref)
-COUPLER = (19.0, -2.0, 21.0)                        # Ø, x from..to past the pulley plane
-BLOCK = (24.0, 22.0, 36.0)                          # square, x from..to: two 688s
+# THE COUPLER IS ONE PRINTED PIECE (user, 2026-11-09), x from the pulley plane:
+#   MOTOR END  the motor pulley's own open D bore (components.MOTOR_BORE_CLR) over the shaft's
+#              flat, -4 .. +4: its -X face on the D key's stop, the shaft cut flush at +4 as
+#              for the pulley (MOTOR_SHAFT_CUT_L). A friction fit: it TURNS the screw, nothing
+#              more -- the string pulls the screw +X, away from the motor, so no thrust reaches
+#              the shaft.
+#   SCREW END  a plain Ø8.4 socket the screw slides into (no thread), 0.5 past the shaft's end,
+#              and ONE M3 x 12 SHCS sideways through the coupler and a Ø3.2 hole DRILLED through
+#              the screw, self-tapping the far wall (as the yoke's M3s): a shear pin, it carries
+#              the screw's pull into the coupler.
+#   THRUST     the coupler's +X face -- a Ø10.4 boss on the 688s' INNER race only -- presses the
+#              screw's pull into the two 688s, in a block right behind it, shouldered at +X.
+# 9.0 shorter per station in X than the bought coupler and its block (to 28.0 from 36.0).
+CPL_D, CPL_X = 18.0, (-4.0, 15.0)                   # Ø, x from..to past the pulley plane
+CPL_GRIP = 4.0                                      # the D bore's +X end: the shaft's cut
+SCREW_X0 = CPL_GRIP + 0.5                           # the screw's -X end
+SOCKET_D = D.SCREW_OD + 0.4
+PIN_X = SCREW_X0 + 6.0                              # the M3: 2 d from the screw's end
+CPL_BOSS = (10.4, 0.5)                              # Ø (inside the 688's shield), length
+M3_PILOT = 2.5
+BRG_X0 = CPL_X[1] + CPL_BOSS[1]                     # 15.5: the two 688s from here
+BLOCK = (24.0, BRG_X0, BRG_X0 + 2 * D.BRG688_W + 2.5)   # square, x from..to: 2.5 of shoulder
+BLOCK_SHOULDER_D = 12.0                             # the shoulder's hole: on the outer race
 PLATE_T = 4.0
 STATION_GAP = 1.3
 STATION_P = M_BACK + BLOCK[2] + STATION_GAP         # 98.0
@@ -522,6 +543,37 @@ def _ball_x(t: float) -> float:
 MOTOR_FINISH = {}                                   # motor part -> its finish (motor_parts)
 
 
+def _motor_frame(wp: cq.Workplane, i: int) -> cq.Workplane:
+    """The motor's own frame (shaft +Y from the pulley plane, the D's flat +Z) -> string i's."""
+    return (wp.rotate((0, 0, 0), (0, 1, 0), PLUG_DIR[i]).rotate((0, 0, 0), (0, 0, 1), -90)
+            .translate((x_ref(i), y_of(i), za(i))))
+
+
+def _coupler(i: int) -> cq.Workplane:
+    """Drawn in the motor's frame, so its D bore lands on the shaft's flat whatever PLUG_DIR."""
+    from . import components as C
+    (c0, c1), (bd, bl) = CPL_X, CPL_BOSS
+    out = cyl_y(CPL_D, c1 - c0, y0=c0).union(cyl_y(bd, bl, y0=c1))
+    r = D.MOTOR_SHAFT_D / 2.0 + C.MOTOR_BORE_CLR                    # the pulley's D bore
+    zf = D.MOTOR_SHAFT_FLAT - D.MOTOR_SHAFT_D / 2.0 + C.MOTOR_BORE_CLR
+    bore = cyl_y(2 * r, CPL_GRIP - c0 + 1.0, y0=c0 - 1.0).cut(
+        box_at(2 * r + 1.0, 20.0, r + 1.0 - zf, y=0.0, z=(zf + r + 1.0) / 2.0))
+    out = out.cut(bore)
+    out = out.cut(cyl_y(SOCKET_D, c1 + bl - CPL_GRIP + 1.0, y0=CPL_GRIP))   # the screw's socket
+    rs = SOCKET_D / 2
+    out = out.cut(cyl_x(M3_PILOT, 2 * CPL_D, -CPL_D, y=PIN_X, z=0))       # far wall: self-taps
+    out = out.cut(cyl_x(3.4, CPL_D, 0.0, y=PIN_X, z=0))                  # near wall: clear
+    out = out.cut(cyl_x(M3_HEAD[0] + 0.5, CPL_D, rs + 1.0, y=PIN_X, z=0))  # the head's pocket
+    return _motor_frame(out, i)
+
+
+def _coupler_m3(i: int) -> cq.Workplane:
+    h0 = SOCKET_D / 2 + 1.0                         # the head's underside: 1.0 of wall
+    sc = cyl_x(M3_HEAD[0], M3_HEAD[1], h0, y=PIN_X, z=0).union(
+        cyl_x(3.0, M3_L, h0 - M3_L, y=PIN_X, z=0))
+    return _motor_frame(sc, i)
+
+
 def _motor(i: int) -> list:
     from . import components as C
     out = []
@@ -562,6 +614,65 @@ def _cheeks() -> cq.Workplane:
     for k in range(LEVELS):
         out = out.cut(cyl_y(D.BRIDGE_AXLE_D + 0.2, 200, -100, x=X_BEND, z=z_level(k) + R))
     return out
+
+
+# THE COMB (user, 2026-11-09): one printed PETG-GF part between the cheeks, its SPINE under the
+# bottom row (z COMB_SPINE_Z, nothing passes there: the bottom row's strings leave -X at -84.8),
+# its TINES standing up from it in the gaps between strings, each round all three axles.
+#   - A tine fits a gap only between two strings of DIFFERENT rows -- every gap is one -- and has
+#     9.5 - 5 (a 688 on one side, on some row) to fill: 4.3 thick, 0.1 off each bearing face.
+#   - It LOCATES the bearings along the axle: the face stands 0.1 off the bearing's INNER race
+#     (Ø10.6 round the bore), and a 0.5 RELIEF from Ø10.6 to Ø17 keeps it off the turning outer
+#     race and shield. Two END TINES against the cheeks do the same for strings 1 and 10.
+#   - Three middle tines, at the gaps y = +28.5, 0, -28.5: the even split (spans <= 28.5 of 97).
+#   - The spine is grounded only through the axles at the cheeks, so the middle tines are as
+#     stiff as the spine is; it is made as deep as the motors allow (z down to -106.0).
+# PRINTS -Z -> +Z: the spine on the bed, the tines walls up from it, the axle holes teardrops
+# peaked +Z. The axle's load (toward the bridge and the nut, (-X, +Z)) runs down the tine into
+# the spine ACROSS the layers: ~155 N on 4.3 x 17, about 2 MPa.
+COMB_TINE_Y = (28.5, 0.0, -28.5)                    # the middle tines' centres (string gaps)
+COMB_X = (-15.0, 2.0)                               # round the axles at X_BEND -8, to the cheeks' face
+COMB_SPINE_Z = (-106.0, -90.8)
+COMB_TOP = z_level(0) + R + 8.0                     # -16: 4 of ring over the top axle
+COMB_CLR, COMB_RELIEF = 0.1, 0.5
+RACE_D, SHIELD_D = 10.6, 17.0                       # 688 inner race OD (tine contact), relief to
+
+
+def _comb_tines():
+    """(y0, y1) of every tine: the three middle ones, then one against each cheek."""
+    half = (9.5 - D.BRG688_W) / 2 - COMB_CLR         # 2.15
+    out = [(yc - half, yc + half) for yc in COMB_TINE_Y]
+    face = y_of(0) + D.BRG688_W / 2 + COMB_CLR      # string 1's bearing face, +0.1
+    out += [(face, CHEEK_Y[0]), (-CHEEK_Y[0], -face)]
+    return out
+
+
+def _comb() -> cq.Workplane:
+    from cadkit.holes import teardrop_hole
+    (x0, x1), (s0, s1) = COMB_X, COMB_SPINE_Z
+    out = box_at(x1 - x0, 2 * CHEEK_Y[0], s1 - s0, x=(x0 + x1) / 2, y=0, z=(s0 + s1) / 2)
+    for y0, y1 in _comb_tines():
+        out = out.union(box_at(x1 - x0, y1 - y0, COMB_TOP - s0, x=(x0 + x1) / 2,
+                               y=(y0 + y1) / 2, z=(s0 + COMB_TOP) / 2))
+    for k in range(LEVELS):
+        zc = z_level(k) + R
+        out = out.cut(teardrop_hole(D.BRIDGE_AXLE_D + 0.2, 2 * CHEEK_Y[0] + 2,
+                                    axis_point=(X_BEND, -CHEEK_Y[0] - 1, zc), axis_dir=(0, 1, 0)))
+        for i in range(N):                           # each bearing beside a tine: its relief
+            if level(i) != k:
+                continue
+            yb = y_of(i)
+            for y0, y1 in _comb_tines():
+                if 0 < y0 - (yb + D.BRG688_W / 2) < 1.0:       # bearing on the tine's -Y side
+                    out = out.cut(_tube_y(SHIELD_D, RACE_D, y0 - 1, y0 + COMB_RELIEF, zc))
+                elif 0 < (yb - D.BRG688_W / 2) - y1 < 1.0:     # ...on its +Y side
+                    out = out.cut(_tube_y(SHIELD_D, RACE_D, y1 - COMB_RELIEF, y1 + 1, zc))
+    return out
+
+
+def _tube_y(od, idd, y0, y1, zc):
+    return (cyl_y(od, y1 - y0, y0, x=X_BEND, z=zc)
+            .cut(cyl_y(idd, y1 - y0 + 2, y0 - 1, x=X_BEND, z=zc)))
 
 
 def _plate_yz(x0, x1, z0, z1) -> cq.Workplane:
@@ -657,13 +768,15 @@ def string_parts(i: int, t: float) -> list:
         ("db_spring", _spring(i, t)),
         ("db_plug", _anchor_plug(i)),
         ("db_rod", cyl_x(D.GUIDE_ROD_D, ROD_L, ROD_END, y=rod_yz(i)[0], z=rod_yz(i)[1])),
-        ("db_screw", _screw(i, xr + 11.0, SCREW_TIP)),
-        ("db_coupler", cyl_x(COUPLER[0], COUPLER[2] - COUPLER[1], xr + COUPLER[1], y=y, z=z)),
+        ("db_screw", _screw(i, xr + SCREW_X0, SCREW_TIP)),
+        ("db_coupler", _coupler(i)),
+        ("db_cpl_m3", _coupler_m3(i)),
         ("db_block", box_at(BLOCK[2] - BLOCK[1], BLOCK[0], BLOCK[0], x=xr + (BLOCK[1] + BLOCK[2]) / 2,
-                            y=y, z=z).cut(cyl_x(D.BRG688_OD, 20, xr + BLOCK[1] + 2, y=y, z=z))
-         .cut(cyl_x(D.SCREW_OD + 1.0, 30, xr + BLOCK[1] - 1, y=y, z=z))),
+                            y=y, z=z)
+         .cut(cyl_x(D.BRG688_OD, 2 * D.BRG688_W + 1.0, xr + BLOCK[1] - 1.0, y=y, z=z))   # open -X
+         .cut(cyl_x(BLOCK_SHOULDER_D, 10, xr + BLOCK[2] - 5, y=y, z=z))),
         ("db_brg", ball_bearing(D.BRG688_OD, D.BRG688_ID, 2 * D.BRG688_W)
-         .rotate((0, 0, 0), (0, 1, 0), 90).translate((xr + BLOCK[1] + 3, y, z))),
+         .rotate((0, 0, 0), (0, 1, 0), 90).translate((xr + BRG_X0, y, z))),
         ("db_mplate", box_at(PLATE_T, D.MOTOR_SQ, D.MOTOR_SQ, x=xr - M_FACE + PLATE_T / 2, y=y, z=z)
          .cut(cyl_x(D.NEMA17_PILOT_D + 0.6, 10, xr - M_FACE - 1, y=y, z=z))),
     ]
@@ -683,7 +796,7 @@ def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
         out += string_parts(i, t)
     out += _bend_parts()
     out += [("db_cheeks", _cheeks()), ("db_rod_plate", _rod_plate()), ("db_anchor", _anchor()),
-            ("db_anchor_m4", _anchor_bolts())]
+            ("db_anchor_m4", _anchor_bolts()), ("db_comb", _comb())]
     out = [(nm, _made(nm, w)) for nm, w in out]
     show = ("ghost_pickup", "ghost_bottom_now")
     out += [g for g in ghosts() if all_ghosts or g[0] in show]
@@ -695,10 +808,12 @@ def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
 MATERIAL = {
     "yoke": "petg-gf", "collar": "petg-gf", "block": "petg-gf", "mplate": "petg-gf",
     "cheeks": "petg-gf", "rod_plate": "petg-gf", "anchor": "stainless", "anchor_m4": "steel",
+    "comb": "petg-gf",
     "nut": "brass", "ball": "brass", "screw": "steel", "rod": "steel", "string": "polished",
     "brg": "polished", "bend_brg": "polished", "bridge_bearings": "polished",
     "bend_axle_ra": "steel", "bend_axle_rb": "steel", "bend_axle_rc": "steel",
-    "spring": "stainless", "plug": "petg-gf", "m3": "steel", "coupler": "aluminium",
+    "spring": "stainless", "plug": "petg-gf", "m3": "steel", "coupler": "petg-gf",
+    "cpl_m3": "steel",
 }
 
 
@@ -728,8 +843,9 @@ COLORS = {
     "bend_axle_rc": "leadscrew",
     "yoke": (0.39, 0.58, 0.93), "collar": (0.85, 0.45, 0.15),
     "spring": "leg_latch_spring", "plug": (0.85, 0.45, 0.15), "m3": "set_screw",
-    "coupler": (0.70, 0.72, 0.76), "block": (0.30, 0.36, 0.42), "mplate": (0.30, 0.33, 0.38),
+    "coupler": (0.85, 0.45, 0.15), "cpl_m3": "set_screw", "block": (0.30, 0.36, 0.42), "mplate": (0.30, 0.33, 0.38),
     "cheeks": (0.42, 0.50, 0.62), "rod_plate": (0.42, 0.50, 0.62), "anchor": "nut_plate", "anchor_m4": "set_screw",
+    "comb": (0.36, 0.30, 0.42),
 }
 
 
@@ -757,7 +873,8 @@ _SAME = {frozenset(p) for p in (
     ("db_m3", "db_collar"), ("db_m3", "db_nut"), ("db_m3", "db_yoke"), ("db_spring", "db_plug"),
     ("db_yoke", "db_ball"), ("db_string", "db_ball"), ("db_string", "db_yoke"),
     ("db_collar", "db_spring"), ("db_brg", "db_block"), ("db_coupler", "db_motor"),
-    ("db_motor", "db_mplate"), ("db_motor",), ("db_coupler", "db_block"))}
+    ("db_motor", "db_mplate"), ("db_motor",), ("db_coupler", "db_block"),
+    ("db_cpl_m3", "db_coupler"), ("db_cpl_m3", "db_screw"), ("db_coupler", "db_brg"))}
 
 
 def is_intended(a: str, b: str) -> bool:
@@ -770,7 +887,7 @@ def is_intended(a: str, b: str) -> bool:
     bends = {"db_bend_axle_ra", "db_bend_axle_rb", "db_bend_axle_rc", "db_bend_brg"}
     if "db_string" in pair and pair & (bends | {"db_bridge_bearings", "ghost_keyhead"}):
         return True
-    if "db_cheeks" in pair and pair & (bends | {"db_rod_plate", "db_anchor"}):
+    if "db_cheeks" in pair and pair & (bends | {"db_rod_plate", "db_anchor", "db_comb"}):
         return True
     if "db_bend_brg" in pair and pair & bends - {"db_bend_brg"}:      # each 688 on its axle
         return True
