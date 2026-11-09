@@ -103,6 +103,15 @@ which is placement feedback rather than a coin flip.
 - **A pair attempt whose rails overlap is no attempt** (`_pair_try`): "fewest shared
   cells" counted the rails sharing with each other, which `_displace` (pair held, rest
   moved) can never undo; USB_DP and USB_DM were written 0.33 mm into each other.
+- **A net still sharing when negotiation stops is routed first** (`_priority_repair`,
+  before `_rip`): it is lifted with its pair partner and the nets it shares with, then
+  routed in each order (it first, its partner first, the others first) and the best kept
+  if the board has fewer nets sharing or open; else put back. Optical with ten resistors
+  moved 20 mm from J1 (2026-11-09) ended with D+ and D- each wanting the one via site
+  beside J1's lands; D- first closes it. Fires only when nets are stuck, so a board that
+  closes is unchanged (15/15 router-alone identical). Not fixed by it: two nets of one
+  part moved where both its pads cannot escape (R40, FB/V5_PRE) -- a placement fault, which
+  the 1-round placement proxy flags. Tried and dropped: a whole-board window pass (no gain).
 - **Exact clearance of what is written** (`geomcheck.check`, ROUTER.md M2): every emitted
   segment and via against other nets' pads (exact shape), tracks, vias and new copper,
   each shortfall named with what drew it (run, stub, via). 0 on every board, 2026-11-09;

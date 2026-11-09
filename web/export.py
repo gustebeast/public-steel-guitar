@@ -35,6 +35,7 @@ to the part nodes unchanged.
 
 from __future__ import annotations
 
+import re
 import json
 import os
 import pathlib
@@ -657,7 +658,12 @@ def export(parts, out_dir, stem="assembly", extras=None, meshed=None, quiet=Fals
                 is printed in (cadkit.web.finishes.FILAMENTS: "petg-gf" | "pctg" | ...),
                 whose colour and surface it is then shown in, or a bought part's
                 finish (FINISHES: "steel", "brass", "rubber", ...), which gives it that
-                surface in its own colour. None: the part is shown as the build has it.
+                surface in its own colour. A PROJECT THAT GIVES THIS MUST ANSWER FOR
+                EVERY PART: a part it (and finishes.made_of, and a stated material)
+                leaves without one is an error naming them all, never plain plastic,
+                and so is the function raising (user, 2026-11-09: "require that a
+                material be provided rather than having plastic as a default"). Leave
+                it out and nothing is checked: the parts are shown as the build has them.
     units     = optional name -> the part it is ONE THING with, or None: a print in two
                 filaments is two parts here (deck base and deck colour) and one object
                 on the printer, so the page selects, hides and lists them as one. The
@@ -738,10 +744,9 @@ def export(parts, out_dir, stem="assembly", extras=None, meshed=None, quiet=Fals
     side = out_dir / (stem + ".geo.json")
     mats = None
     if materials is not None:
-        try:
-            mats = {n: materials(n) for n in done if "__" not in n}
-        except Exception as exc:             # the model is still worth showing
-            print("web export: no materials (%s)" % exc)
+        # NOT caught: a resolver that breaks used to drop EVERY material and show the
+        # whole model as plastic with one printed line, which is the default this refuses
+        mats = {n: materials(n) for n in done if "__" not in n}
     if plugs:
         mats = dict(mats or {}, **{n: "nylon" for n in plugs if n in done})
     # ...and what the part itself says outranks what its name suggests: the material
@@ -757,6 +762,16 @@ def export(parts, out_dir, stem="assembly", extras=None, meshed=None, quiet=Fals
     if said:
         mats = dict(mats or {}, **said)
     bare = sorted(n for n in done if "__" not in n and not (mats or {}).get(n))
+    if bare and materials is not None:
+        kinds = sorted({re.sub(r"(_\d+)+$", "", n) for n in bare})
+        raise ValueError(
+            "web export: %d part(s) have no material, and a project that gives materials= "
+            "answers for every part (there is no plastic default): %s. Say what each is "
+            "made of in the project's materials function, or with cadkit.web.finishes."
+            "made_of where it is drawn." % (len(bare), ", ".join(kinds)))
+    bad = sorted({m for m in (mats or {}).values() if m and not known(m)})
+    if bad:
+        raise ValueError("web export: no material cadkit knows: %s" % ", ".join(bad))
     if bare and not quiet:
         print("web export: %d part(s) have no material and are shown as plain plastic: %s%s"
               % (len(bare), ", ".join(bare[:8]), ", ..." if len(bare) > 8 else ""))

@@ -1562,6 +1562,7 @@ class Router:
             self._gr.report()
         todo, pf = self._rounds(list(self.nets), pf0, iters, budget_s)
         self._pf_last = pf
+        todo = self._priority_repair(todo, pf)
         self._rip(todo)
         if os.environ.get("OWNROUTE_SNAPSHOT"):        # pair-finish development: replay from here
             import pickle
@@ -1571,6 +1572,84 @@ class Router:
         self._finish_pairs()
         self._pour_islands()
         return [n for n in self.nets if n.failed]
+
+    PRIORITY_REPAIR = True
+    PRIO_MAX = 8                     # stuck nets a repair takes on; more is a placement problem
+
+    def _sharers(self, grp):
+        """The other nets whose keep-out covers a cell of grp's paths."""
+        bad = [c for n in grp for c in self._conflicts(n)]
+        if not bad:
+            return []
+        bad = np.unique(np.concatenate(bad))
+        out = []
+        for o in self.nets:
+            if o in grp or not o.n_t:
+                continue
+            if np.isin(bad, o.rec_t[:o.n_t], assume_unique=False).any():
+                out.append(o)
+        return out
+
+    def _nbad(self):
+        return sum(1 for n in self.nets if n.failed or any(c.size for c in self._conflicts(n)))
+
+    def _priority_repair(self, todo, pf):
+        """⚠ A STUCK NET IS ROUTED FIRST, THEN WHAT IT SHARED WITH (optical USB_DP/DM,
+        2026-11-09). Ten resistors moved 20 mm away from the USB pair and the negotiation
+        ended with D+/D- sharing space with ULPI_D0 and VBUS for good: ripped out, the pair
+        open on a placement every neighbour of which routes. PathFinder prices everyone at
+        once; an engineer routes the critical net first and pushes the rest aside. So: for
+        each net still sharing when negotiation stops, lift it (with its pair partner) and
+        the nets it shares with, route it first, then route them round it. Kept only if the
+        board has fewer nets sharing or open than before; otherwise put back."""
+        stuck = [n for n in todo if not n.failed]
+        if not self.PRIORITY_REPAIR or not stuck or len(stuck) > self.PRIO_MAX:
+            return todo
+        seen = set()
+        for net in stuck:
+            if net in seen or net.failed or not any(c.size for c in self._conflicts(net)):
+                continue
+            grp = [net] + [o for o in (net.partner,) + tuple(x for x in self.nets if x.partner is net)
+                           if o is not None and o is not net]
+            seen.update(grp)
+            nb = [o for o in self._sharers(grp) if o not in grp]
+            lift = grp + nb
+            before = self._nbad()
+            save = {n: (n.paths, n.necks, n.failed) for n in lift}
+            # ⚠ ORDER IS THE DECISION (v109: D+ and D- each wanted the one via site beside
+            # J1's lands; whichever went first got it, the other had nowhere to go). Each
+            # order is tried -- the stuck net first, its partner first, the others first --
+            # and the best kept.
+            orders = [grp + nb, grp[::-1] + nb, nb + grp, nb + grp[::-1]]
+            best, best_state = before, None
+            for order in orders:
+                if len(set(map(id, order))) != len(order):
+                    continue
+                for n in lift:
+                    self._unmark(n)
+                for n in order:
+                    paths = self._route_net(n, pf)
+                    n.failed = paths is None
+                    n.paths = paths or []
+                    if not paths:
+                        n.necks = []
+                    self._mark(n)
+                after = self._nbad()
+                if after < best:
+                    best, best_state = after, ([n.name for n in order],
+                                               {n: (n.paths, n.necks, n.failed) for n in lift})
+                if after == 0:
+                    break
+            for n in lift:
+                self._unmark(n)
+            keep = best_state[1] if best_state else save
+            for n, (p, k, f) in keep.items():
+                n.paths, n.necks, n.failed = p, k, f
+                self._mark(n)
+            if best_state:
+                self.log("  priority repair, order %s: %d net(s) sharing or open, was %d"
+                         % (" > ".join(best_state[0]), best, before))
+        return [n for n in self.nets if n.failed or any(c.size for c in self._conflicts(n))]
 
     def _rip(self, todo):
         """anything still sharing comes out: a legal board with a net open beats a short"""
