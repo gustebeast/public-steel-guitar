@@ -25,6 +25,7 @@ from . import nut_block as NB
 from .endplate_base import endplate_base
 from .helpers import box_at, heal
 from cadkit.holes import teardrop_hole
+from cadkit.kept import kept
 
 
 # ONE part (PETG-GF), FULL-WIDTH (rail outer to rail outer) so it TAKES OVER the whole −X
@@ -213,7 +214,7 @@ def _build():
     return heal(w)
 
 
-keyhead_endplate = _build()
+keyhead_endplate = kept(_build)               # cadkit.kept: built once per change, by whoever meets it first
 
 
 def assembly():

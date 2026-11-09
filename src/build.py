@@ -329,14 +329,22 @@ def _bb_apart(a, b):
             or p.zmax < q.zmin or q.zmax < p.zmin)
 
 
-for _mp in _EL_ports.mctrl_floor_ports():
-    for _csi in range(len(chassis_segments)):
-        if not _bb_apart(_mp.val(), chassis_segments[_csi].val()):
-            chassis_segments[_csi] = chassis_segments[_csi].cut(_mp)
+# KEPT (cadkit.kept), like every slow stage of this pipeline: computed once per change to what
+# it reads, by whichever build or view meets it first; read by every other one.
+def _cut_floor_ports(segs):
+    segs = list(segs)
+    for mp in _EL_ports.mctrl_floor_ports():
+        for i in range(len(segs)):
+            if not _bb_apart(mp.val(), segs[i].val()):
+                segs[i] = segs[i].cut(mp)
+    return segs
+
+
+chassis_segments = kept(_cut_floor_ports, chassis_segments)
 # THE MOTOR CONTROLLER'S GUIDES (src/mctrl_retention.py), fused AFTER the floor ports: their
 # cheeks stand MCTRL_FIT off the laminate and the ports clear it by MCTRL_PORT_CLR, so cutting
 # afterwards would notch each cheek's foot -- a 0.2 step that prints as a ledge.
-_mcr = _MCR.retention()
+_mcr = kept(_MCR.retention)
 _mcr_bb = _mcr.val().BoundingBox()
 # ...through the lever/leg mortises too, as the cradles above are: the guides root on the bed,
 # and the -Y channel's foot stands over the -X/-Y adapter's tenon run (4.0 mm3 refilled).
@@ -360,13 +368,13 @@ assert len(chassis_segments[_mcr_seg[0]].val().Solids()) == 1, (
     "a motor-controller guide is not touching the chassis floor -- it prints as a loose post")
 # ...and the board clears them over its WHOLE DROP, not only where it seats (user: "the
 # hardware needs to clear the support material along that range of motion").
-_mcr_hit = _MCR.swept_clear()
+_mcr_hit = kept(_MCR.swept_clear)
 assert _mcr_hit < 1e-3, (
     "%.3f mm3 of the motor controller passes through its own guides on the way in" % _mcr_hit)
 # ITS -Z STOP IS THE LEDGE UNDER J3 (see mctrl_retention). Probe the BUILT segment just under
 # the housing, not the ledge's box: the floor port or a later cut could take the post away.
 _mch = _MCR.ledge_target()
-_mcl0 = _MCR._ledge()
+_mcl0 = kept(_MCR._ledge)
 _mc_probe = box_at(_mcl0[1] - _mcl0[0], _mcl0[3] - _mcl0[2], 0.2,
                    x=(_mcl0[0] + _mcl0[1]) / 2.0, y=(_mcl0[2] + _mcl0[3]) / 2.0, z=_mch[4] - 0.1)
 _mc_stop = chassis_segments[_mcr_seg[0]].intersect(_mc_probe)
@@ -433,17 +441,23 @@ for _i in range(D.N_STRINGS):
 # gate found it the moment the screws had dummies: a uniform 27.0 mm3 of screw and 23.3 of
 # insert buried in chassis on nearly every tee. The M4's 8.5 anchor puts the cradle base 5.3
 # into that material. Cut at the END of the pipeline, where nothing unions over it again.
-for _, _cutters in _WR_FUSE.tee_hold_negatives():
-    for _cut in _cutters:                       # a seam can fall between a tee and its ear post
-        _cb = _cut.val().BoundingBox()
-        for _s in CH.SPLIT_X:
-            assert not _cb.xmin - D.MIN_WALL_2P < _s < _cb.xmax + D.MIN_WALL_2P, (
-                "the seam at x %.2f is within %.1f of a tee hold-down (x %.2f..%.2f): the insert "
-                "loses its wall, which nothing else reports -- move SPLIT_X one lever wall"
-                % (_s, D.MIN_WALL_2P, _cb.xmin, _cb.xmax))
-        for _csi, _cs in enumerate(chassis_segments):
-            if not _bb_apart(_cs.val(), _cut.val()):
-                chassis_segments[_csi] = _cs.cut(_cut)
+def _cut_tee_holds(segs):
+    segs = list(segs)
+    for _, cutters in _WR_FUSE.tee_hold_negatives():
+        for cut in cutters:                     # a seam can fall between a tee and its ear post
+            cb = cut.val().BoundingBox()
+            for s in CH.SPLIT_X:
+                assert not cb.xmin - D.MIN_WALL_2P < s < cb.xmax + D.MIN_WALL_2P, (
+                    "the seam at x %.2f is within %.1f of a tee hold-down (x %.2f..%.2f): the "
+                    "insert loses its wall, which nothing else reports -- move SPLIT_X one lever "
+                    "wall" % (s, D.MIN_WALL_2P, cb.xmin, cb.xmax))
+            for i, cs in enumerate(segs):
+                if not _bb_apart(cs.val(), cut.val()):
+                    segs[i] = cs.cut(cut)
+    return segs
+
+
+chassis_segments = kept(_cut_tee_holds, chassis_segments)
 from . import wall_bar as WB
 PARTS["bar_shim"] = (
     WB.shim_print_set, "petg-gf/bar_shim.step",
@@ -1231,20 +1245,24 @@ assert _j8_v < 1e-3, (
 # 6.4 wall it sits against reached 2.2 into the clamp at every odd string (~115 mm3 each, and
 # the screws and inserts over the travel). The wall keeps its motor side -- what the faceplate
 # bears on -- and gives the clamp's lane up, roofed at 45 deg so what stands over it prints.
-for _csi, _seg in enumerate(chassis_segments):
-    _cr = _clamp_relief(_seg, roofed=True)
-    if _cr is None:
-        continue
-    _crb = _cr.val().BoundingBox()
-    assert CH.RAIL_INNER_Y < _crb.ymin and _crb.ymax < CH.Y_HI - CH.T / 2, (
-        "a belt clamp's relief reaches a side rail (y %.2f..%.2f): the rails are never cut"
-        % (_crb.ymin, _crb.ymax))
-    _n0 = len(_seg.val().Solids())
-    chassis_segments[_csi] = _seg.cut(_cr)
-    assert len(chassis_segments[_csi].val().Solids()) == _n0, (
-        "the belt clamps' travel relief cut chassis_%d apart" % _csi)
-    PARTS[f"chassis_{_csi}"] = (partial(heal, chassis_segments[_csi]),
-                                *PARTS[f"chassis_{_csi}"][1:])
+def _relieve_clamps(segs):
+    segs = list(segs)
+    for i, seg in enumerate(segs):
+        cr = _clamp_relief(seg, roofed=True)
+        if cr is None:
+            continue
+        crb = cr.val().BoundingBox()
+        assert CH.RAIL_INNER_Y < crb.ymin and crb.ymax < CH.Y_HI - CH.T / 2, (
+            "a belt clamp's relief reaches a side rail (y %.2f..%.2f): the rails are never cut"
+            % (crb.ymin, crb.ymax))
+        n0 = len(seg.val().Solids())
+        segs[i] = seg.cut(cr)
+        assert len(segs[i].val().Solids()) == n0, (
+            "the belt clamps' travel relief cut chassis_%d apart" % i)
+    return segs
+
+
+chassis_segments = kept(_relieve_clamps, chassis_segments)
 
 
 def belts_as_played():
@@ -1279,28 +1297,34 @@ def _belt_posed(i):
     return [C.belt(*_belt_args(i, D.CARRIAGE_TRAVEL * k / 2.0)).val() for k in range(3)]
 
 
-for _csi, _seg in enumerate(chassis_segments):
-    _br = _swept_relief(_seg, _belt_posed, roofed=True)
-    if _br is None:
-        continue
-    _brb = _br.val().BoundingBox()
-    assert CH.RAIL_INNER_Y < _brb.ymin and _brb.ymax < CH.Y_HI - CH.T / 2, (
-        "a belt's relief reaches a side rail (y %.2f..%.2f): the rails are never cut"
-        % (_brb.ymin, _brb.ymax))
-    _n0 = len(_seg.val().Solids())
-    chassis_segments[_csi] = _seg.cut(_br)
-    assert len(chassis_segments[_csi].val().Solids()) == _n0, (
-        "the belts' relief cut chassis_%d apart" % _csi)
-    PARTS[f"chassis_{_csi}"] = (partial(heal, chassis_segments[_csi]),
-                                *PARTS[f"chassis_{_csi}"][1:])
-for _i in range(D.N_STRINGS):              # ...and the belt now clears every segment
-    for _bp in _belt_posed(_i):
-        for _csi, _seg in enumerate(chassis_segments):
-            if _bb_apart(_bp, _seg.val()):
-                continue
-            _bx = _bp.intersect(_seg.val())
-            assert _bx.Volume() < 1e-3, (
-                "belt_%d is %.3f mm3 into chassis_%d after the belt relief" % (_i, _bx.Volume(), _csi))
+def _relieve_belts(segs):
+    segs = list(segs)
+    for i, seg in enumerate(segs):
+        br = _swept_relief(seg, _belt_posed, roofed=True)
+        if br is None:
+            continue
+        brb = br.val().BoundingBox()
+        assert CH.RAIL_INNER_Y < brb.ymin and brb.ymax < CH.Y_HI - CH.T / 2, (
+            "a belt's relief reaches a side rail (y %.2f..%.2f): the rails are never cut"
+            % (brb.ymin, brb.ymax))
+        n0 = len(seg.val().Solids())
+        segs[i] = seg.cut(br)
+        assert len(segs[i].val().Solids()) == n0, (
+            "the belts' relief cut chassis_%d apart" % i)
+    for s in range(D.N_STRINGS):              # ...and the belt now clears every segment
+        for bp in _belt_posed(s):
+            for i, seg in enumerate(segs):
+                if _bb_apart(bp, seg.val()):
+                    continue
+                bx = bp.intersect(seg.val())
+                assert bx.Volume() < 1e-3, (
+                    "belt_%d is %.3f mm3 into chassis_%d after the belt relief" % (s, bx.Volume(), i))
+    return segs
+
+
+chassis_segments = kept(_relieve_belts, chassis_segments)
+for _csi, _seg in enumerate(chassis_segments):   # the clamp and belt reliefs above
+    PARTS[f"chassis_{_csi}"] = (partial(heal, _seg), *PARTS[f"chassis_{_csi}"][1:])
 
 
 def _string_components(i):

@@ -49,8 +49,10 @@ from . import dimensions as D
 from . import components as C
 from . import screw_rail as SR
 from . import belt_tensioner as BTn
-from .helpers import box_at, cyl, cyl_y
+from .helpers import box_at, cyl, cyl_x, cyl_y
 from cadkit.supports import printable_bore
+from cadkit.fasteners import M4
+from cadkit.threads import threaded_rod
 
 I = 0                                            # string 1
 SX, SY = D.screw_x(I), D.string_y(I)             # -12.0, 42.75: the screw's axis
@@ -306,7 +308,132 @@ def station_axial() -> cq.Workplane:
     return s
 
 
-def yoke() -> cq.Workplane:
+# ═════════════════════════════════════════════════════════════════════════════════════════
+# THE X RIG (user, 2026-11-08): the screw LYING ALONG X, pointing at the head, the string straight
+# off the yoke's roof to the crown. Nothing but the screw, the nut and the thrust 688 -- no bridge
+# bearing, no guide rod -- so whatever friction is left is the nut on the screw.
+#
+# The stack is the axial rig's, AS PRINTED (PRINTED_DROP: the user's pulley is the printed one),
+# turned local +Z -> world -X: world x = XR_OFF - z_local, the axis at y SY, z XR_ZA.
+#   XR_ZA   the string's centre on the crown, so the string runs DEAD LEVEL from the yoke's roof to
+#           the crown: any slope is a side load on the roof, a tilt on the nut, what this rig removes.
+#   XR_OFF  crown to the yoke's roof at MID-travel = the scale span, so the string tunes to pitch at
+#           the instrument's tension.
+# The frame is an open-topped box on the axial station's four plank holes: the RAIL WALL (the 688's
+# seat, screw_rail's bores turned along X), the END WALL (-X; the yoke's top stop, the string's slot
+# open on top), and two side walls. The +Y wall is what stops the yoke turning (its corner, 12 off
+# the axis, meets it after ~3 deg); the yoke's arm runs in a slot in the -Y wall, rod-less.
+XR_ZA = D.STRING_Z - D.STRING_GAUGE[I] / 2.0     # 15.81
+XR_ROOF_MID = D.NUT_TOP_Z + YK_H - D.CARRIAGE_TRAVEL / 2.0   # the yoke's roof, local z, mid-travel
+XR_OFF = CROWN_X + SCALE_SPAN + XR_ROOF_MID      # world x of local z 0
+XR_WALL = 6 * D.BEAD                             # 4.8: each buttress
+XR_TOP = XR_ZA + YK_HX + 2 * D.BEAD              # 29.41: the walls' top, past the yoke's corners
+
+
+def _xr_x(z):
+    """World x of a local (axial-rig) z."""
+    return XR_OFF - z
+
+
+def _xbore(d, z0, z1):
+    """A local Z bore z0..z1 about the screw's axis, turned along X: a teardrop for the +Z build."""
+    return printable_bore(d, z1 - z0, axis_point=(_xr_x(z1), SY, XR_ZA), axis_dir=(1.0, 0.0, 0.0),
+                          print_up=UP)
+
+
+# SLIMMED (user, 2026-11-08: "save plastic ... make the support angled"). What is left:
+#   the RAIL WALL, the main plate: 9.3 (screw_rail's) round the 688's seat, 4.8 under it, a 45 deg
+#     step between them.
+#   two BUTTRESSES, the side walls cut to a triangle from the rail wall's top down to the base at
+#     XR_X0: the string pulls the wall -X, and they take that in compression. Their slope faces up
+#     in the +Z print.
+#   NOTHING STOPS THE YOKE TURNING (user, 2026-11-08: "I will hold it in place"): no rod, no band.
+#   the BASE, a U under the walls and the four wood screws; nothing under the room.
+# NO TOP STOP any more: at the old stop the nut still has ~12 of thread on the screw, so a hand
+# raising past it can wind the nut off the screw's end.
+XR_X1 = _xr_x(RAIL_BOT)                          # the rail wall's +X face: the 688's seat mouth
+XR_XR = _xr_x(RAIL_TOP)                          # the rail wall's -X face
+XR_RAIL_T2 = 6 * D.BEAD                          # 4.8: the rail wall under the seat
+XR_SEAT_Z0 = XR_ZA - (D.SUPPORT_BRG_OD + 0.2) / 2 - 2 * D.BEAD   # the thick part's underside
+XR_X0 = XR_XR - 37.8                             # the buttresses' foot
+# CENTRED ON THE SCREW (user, 2026-11-08): the rail wall and both buttresses symmetric about SY, so
+# the 688's seat is in the middle of the plate. The base too, its +Y face still the plank's edge.
+XR_HW = ROOM_HY + XR_WALL                        # 11.4: the frame's half-width
+XR_Y0, XR_Y1 = SY - XR_HW, SY + XR_HW            # 31.35 .. 54.15
+# THE PLANK'S HOLES ARE THE SECOND PRINT'S (user, 2026-11-08: reuse the drill points): x -7.9 and
+# 26.07, y 16.75 and 60.55. The base reaches them with a tab each off the strips under the walls.
+XR_SCREWS_X = (X1_AX - 6.4, XR_X1 - 6.4)         # -7.9, 26.07
+XR_SCREWS_Y = (Y0_AX - FLANGE / 2, Y1 + FLANGE / 2)   # 16.75, 60.55
+XR_TAB = 6.4                                     # a tab's half-length in X round its screw
+assert XR_SCREWS_Y[0] + WOOD_CSK_D / 2 <= XR_Y0 - 1e-9, "a -Y screw head under the buttress"
+assert XR_SCREWS_Y[1] - WOOD_CSK_D / 2 >= XR_Y1 + 1e-9, "a +Y screw head under the buttress"
+assert XR_X0 <= XR_SCREWS_X[0] - WOOD_CSK_D / 2 - 1.6 + 1e-9, "under 1.6 of base past the -X screws' countersinks"
+
+
+def _xz_prism(pts, y0, y1):
+    """A polygon in XZ, extruded y0..y1."""
+    return (cq.Workplane("XZ", origin=(0.0, y1, 0.0)).polyline(pts).close().extrude(y1 - y0))
+
+
+def station_x() -> cq.Workplane:
+    """The X rig's frame, built +Z (base down): every bore along X is a teardrop."""
+    zb = Z_PLANK + BASE_T
+    # base: the U -- the full footprint less the room's floor
+    # base: strips under the walls, a pad under the rail wall, and a tab out to each screw
+    s = _box(XR_X0, XR_X1, XR_Y0, XR_Y0 + XR_WALL, Z_PLANK, zb)
+    s = s.union(_box(XR_X0, XR_X1, XR_Y1 - XR_WALL, XR_Y1, Z_PLANK, zb))
+    s = s.union(_box(XR_XR, XR_X1, XR_Y0, XR_Y1, Z_PLANK, zb))
+    for x in XR_SCREWS_X:
+        s = s.union(_box(x - XR_TAB, x + XR_TAB, Y0_AX - FLANGE, XR_Y0 + 0.01, Z_PLANK, zb))
+        s = s.union(_box(x - XR_TAB, x + XR_TAB, XR_Y1 - 0.01, Y_EDGE, Z_PLANK, zb))
+    # the rail wall: thick round the seat, thin under it, a 45 deg step
+    s = s.union(_box(XR_X1 - XR_RAIL_T2, XR_X1, XR_Y0, XR_Y1, zb - 0.01, XR_TOP))
+    dx = XR_X1 - XR_RAIL_T2 - XR_XR
+    s = s.union(_xz_prism([(XR_XR, XR_TOP), (XR_X1 - XR_RAIL_T2 + 0.01, XR_TOP),
+                           (XR_X1 - XR_RAIL_T2 + 0.01, XR_SEAT_Z0 - dx), (XR_XR, XR_SEAT_Z0)], XR_Y0, XR_Y1))
+    # the -Y buttress
+    tri = [(XR_X1 - XR_RAIL_T2 + 0.01, zb - 0.01), (XR_X1 - XR_RAIL_T2 + 0.01, XR_TOP), (XR_XR, XR_TOP),
+           (XR_X0, zb - 0.01)]
+    s = s.union(_xz_prism(tri, XR_Y0, XR_Y0 + XR_WALL))
+    # the +Y buttress, the same triangle
+    s = s.union(_xz_prism(tri, XR_Y1 - XR_WALL, XR_Y1))
+    # the rail wall's bores: screw_rail's seat, lip and boss passage, as printed
+    s = s.cut(_xbore(D.SUPPORT_BRG_OD + 0.2, RAIL_BOT - 1.0, BRG_TOP_Z + 1e-3))
+    s = s.cut(_xbore(SR.SEAT_LEDGE_D, RAIL_BOT - 1.0, LEDGE_TOP))
+    s = s.cut(_xbore(SR.NUT_PASS_D, LEDGE_TOP - 0.01, RAIL_TOP + 1.0))
+    for x in XR_SCREWS_X:
+        for y in XR_SCREWS_Y:
+            s = s.cut(_wood_screw(x, y, UP))
+    return s
+
+
+XR_PARTS = ("leadscrew_0", "nut_0", "yoke_0", "string_nut_0", "yoke_m3_lo_0", "yoke_m3_hi_0",
+            "screw_pulley_0", "screw_bearing_0_0")
+
+
+def assembly_x():
+    """The X rig (scratch view scope): the axial stack turned along X, the nut mid-travel."""
+    def turn(w):
+        return w.rotate((0, 0, 0), (0, 1, 0), -90).translate((XR_OFF, 0.0, XR_ZA - SX))
+    ax = dict(assembly(axial=True))
+    dz = -D.CARRIAGE_TRAVEL / 2.0
+    out = [("plank_station_x", station_x()), ("plank_head", ax["plank_head"]),
+           ("crown_dowel", ax["crown_dowel"])]
+    for nm in XR_PARTS:
+        w = ax[nm]
+        if nm in ("nut_0", "yoke_0", "string_nut_0", "yoke_m3_lo_0", "yoke_m3_hi_0"):
+            w = w.translate((0, 0, dz))
+        out.append(("x" + nm, turn(w)))
+    out += [(nm, w) for nm, w in ax.items() if nm.startswith("motor_")]
+    g = D.STRING_GAUGE[I]
+    a = (_xr_x(D.NUT_TOP_Z + dz + YK_R0 - D.STRING_NUT_D / 2), SY, XR_ZA)
+    crown = (CROWN_X, SY, XR_ZA)
+    st = _seg(a, crown, g / 2).union(_seg(crown, (-770.0, SY, Z_PLANK + 15.0), g / 2))
+    out.append(("string_0", st))
+    return out
+
+
+def yoke(roof_d=STR_HOLE_D + 0.1) -> cq.Workplane:
     """On the nut's flange, its axis at the origin, z 0 = the flange's top (the nut's own origin).
     Two M3 x 12 come up through the ears self-tapping into its -Z face; the ball end
     comes up the cavity and seats under the roof ON THE AXIS; the guide rod runs through the -Y boss."""
@@ -325,11 +452,248 @@ def yoke() -> cq.Workplane:
     # NO WINDOW, NO SLIT (user, 2026-11-08): the string goes in -Z to +Z, free end up through the
     # cavity from the -Z face (before the yoke goes on the nut) and out this hole on the axis,
     # until the ball end seats under the roof
-    y = y.cut(cyl(STR_HOLE_D + 0.1, YK_H - YK_R0 + 2.0, z=YK_R0 - 1.0))   # 2.1 (user, 2026-11-08); the station's stays 2.0
+    y = y.cut(cyl(roof_d, YK_H - YK_R0 + 2.0, z=YK_R0 - 1.0))   # 2.1 (user, 2026-11-08); the station's stays 2.0
     for sx in (-1, 1):
         x = sx * D.NUT_HOLE_DX
         y = y.cut(cyl(YK_TAP_D, YK_TIP + 1.0, z=-1.0).translate((x, 0.0, 0.0)))
     return y
+
+
+# ═════════════════════════════════════════════════════════════════════════════════════════
+# THE SPRING RIG (user, 2026-11-08): the X rig with the STRING REPLACED BY A SPRING, McMaster
+# 9654K634, set anywhere from 50 to 100 % of string 1's 147 N by a purchased screw.
+#
+# THE SPRING GOES WHERE THE STRING WAS, -X OF THE X STATION, which stays exactly where it is. The
+# load has to pull the yoke AWAY from the 688 (-X), as the string does: the 688 is a one-way
+# thrust bearing, and the pulley only jams into it from that side. A spring off the plank's +X end
+# would pull the yoke toward the bearing, and the station would have to be reprinted mirrored.
+#
+#   test end   the X station's yoke reprinted with an M4 clearance roof (yoke_spring). An M4 x 20
+#              button head sits under the roof where the ball end sat; its 16 of thread out of the
+#              roof carries the TEST EYE on a heat-set insert. A pin standing on the eye takes the
+#              spring's loop with the wire on the screw's axis, so the pull runs down the axis.
+#   adjuster   a Tr8x2 cut 150 long from the 600 stock (the saw jig), through a spare H-nut held
+#              FIXED in the POST's wall by its two M3 x 12. The KNOB grips its -X end (the screw
+#              pulley's pilot thread): turning the knob walks the screw through the nut. Its +X end
+#              is the SWIVEL: a printed collar on the screw (pilot thread) bears on a 688's inner
+#              race, the 688 sits in the swivel's open-topped trough, and the spring's other loop is
+#              on the swivel's pin -- so the screw turns and the spring does not.
+#   range      the post is set so the knob runs from the spring hanging slack (hooked on by hand,
+#              no stretch) to 100 % and SW_OVER past: 2 mm a turn, 2.8 N a turn.
+SPR_L0 = 127.0                                   # 9654K634: 5" inside loop to inside loop, unloaded
+SPR_OD = 25.4
+SPR_WIRE = 0.105 * 25.4                          # 2.67
+SPR_K = 7.9 * 4.448222 / 25.4                    # 1.383 N/mm
+SPR_F0 = 4.0 * 4.448222                          # 17.8 N: the initial tension (its 4 lbf minimum load)
+T_FULL = 147.0                                   # string 1 at pitch
+
+
+def spring_stretch(f):
+    """mm of stretch past free length for a pull of f N."""
+    return (f - SPR_F0) / SPR_K
+
+
+PIN_D = 10.0                                     # the loop's pin: 2.4 MPa in bending at 147 N
+PIN_GAP = 3.2                                    # the loop's wire (2.67) sits in this, under the head
+PIN_HEAD_D = 15.0
+PIN_Z0 = XR_ZA - PIN_GAP / 2                     # the pin's root: the wire's centre on the axis
+SE_ROOF_X = _xr_x(D.NUT_TOP_Z - D.CARRIAGE_TRAVEL / 2.0 + YK_H)   # -8.0: the yoke's roof, mid travel
+SE_SCREW_L = 20.0                                # M4 x 20 button head (stock)
+SE_SHANK = SE_SCREW_L - (YK_H - YK_R0)           # 16 out of the roof
+SE_ATT = SE_SHANK + 2.0                          # the eye's attachment block along X
+SE_HW, SE_HZ = 6.0, 7.0                          # its half-sizes round the axis
+PIN_PAD = PIN_HEAD_D / 2 + 1.0                   # the pin's platform: half-length and half-width
+SE_PIN_X = SE_ROOF_X - SE_ATT - PIN_PAD          # the test eye's pin
+# the loops wrap the pins' far sides: inside-loop length = pin-to-pin + PIN_D
+SW_PIN_X_SLACK = SE_PIN_X + PIN_D - SPR_L0 + 2.0          # hung on by hand, 2 mm slack
+SW_PIN_X_FULL = SE_PIN_X + PIN_D - SPR_L0 - spring_stretch(T_FULL)
+SW_OVER = 2.0                                    # past 100 % before anything touches
+# the swivel, from its pin end (+X) to its wall (-X)
+SW_TROUGH_D = D.BRG688_OD + 0.2                  # 16.2: the 688 drops in
+SW_COLLAR_D, SW_COLLAR_L, SW_SOCKET = 14.0, 12.0, 11.0
+SW_TROUGH_L = SW_COLLAR_L + D.BRG688_W + 1.0     # 18
+SW_WALL = 3.5
+SW_SLOT = D.SCREW_OD + 0.8                       # 8.8: the screw drops into the wall's slot
+SW_HW = SW_TROUGH_D / 2 + 3 * D.BEAD             # 10.5
+SW_Z0 = XR_ZA - SW_TROUGH_D / 2 - 3 * D.BEAD     # its underside
+SW_L = 2 * PIN_PAD + SW_TROUGH_L + SW_WALL
+# the post: its wall's +X face clears the swivel at 100 % + SW_OVER
+PO_X1 = SW_PIN_X_FULL - SW_OVER + PIN_PAD - SW_L - 1.5
+PO_T = 12 * D.BEAD                               # 9.6: the M3s' 8.5 of bite, through
+PO_X0 = PO_X1 - PO_T
+PO_HOLE = D.NUT_BOSS_D + 0.6                     # the nut's boss through the wall
+PO_TOP = XR_ZA + 12 * D.BEAD
+PO_IN = SPR_OD / 2 + 0.7                         # 13.4: the buttresses' inner faces, round the spring
+PO_HW = PO_IN + 6 * D.BEAD                       # 18.2
+PO_BL = 45.0                                     # the buttresses' run along the base (+X)
+PO_SCREWS_X = (PO_X0 - 7.0, PO_X1 + PO_BL + 7.0)
+PO_SCREWS_Y = XR_SCREWS_Y                        # the plank's two rows, as the stations'
+SCREW_CUT_L = 150.0                              # the Tr8x2, cut from the 600 stock
+KNOB_D, KNOB_T, KNOB_SOCKET = 40.0, 14.0, 12.0
+assert PO_HW <= Y_EDGE - SY + 1e-9, "the post overhangs the plank's +Y edge"
+assert PO_SCREWS_Y[1] + WOOD_CSK_D / 2 <= Y_EDGE + 1e-9
+
+
+def _pilot_socket(depth, x_mouth, sense):
+    """The screw pulley's blind pilot-thread socket, axis along X on the rig's axis, mouth at
+    x_mouth, running `sense` (+1 / -1) into the part."""
+    turns = math.ceil((depth + 2.0) / D.SCREW_PITCH)
+    s = threaded_rod(D.FORM_MINOR, D.FORM_MAJOR, D.SCREW_PITCH, turns * D.SCREW_PITCH, z=0.0,
+                     overshoot=0.05, bevel_ends=False)
+    # local z 0 = the floor, the cutter running +z out past the mouth: +z -> -sense X
+    s = s.rotate((0, 0, 0), (0, 1, 0), 90 if sense < 0 else -90)
+    return s.translate((x_mouth + sense * depth, SY, XR_ZA))
+
+
+def _pin(x):
+    """The loop's pin, standing on PIN_Z0 at x, a 45 deg head over it."""
+    p = cyl(PIN_D, PIN_GAP + 0.01, z=PIN_Z0 - 0.01).translate((x, SY, 0.0))
+    rise = (PIN_HEAD_D - PIN_D) / 2
+    cone = cq.Workplane("XY").add(cq.Solid.makeCone(PIN_D / 2, PIN_HEAD_D / 2, rise,
+                                                    pnt=cq.Vector(x, SY, PIN_Z0 + PIN_GAP)))
+    top = PIN_Z0 + PIN_GAP + rise
+    return p.union(cone).union(cyl(PIN_HEAD_D, 2 * D.BEAD, z=top - 0.01).translate((x, SY, 0.0)))
+
+
+def _xb(d, x0, x1):
+    return printable_bore(d, x1 - x0, axis_point=(x0, SY, XR_ZA), axis_dir=(1.0, 0.0, 0.0),
+                          print_up=UP)
+
+
+def yoke_spring() -> cq.Workplane:
+    """The yoke, its roof bored for the M4 x 20 that holds the test eye."""
+    return yoke(roof_d=M4.shaft_clr_d)
+
+
+def spring_eye() -> cq.Workplane:
+    """The test eye in place (world), against the yoke's roof at mid travel: an M4 insert at its
+    +X face, the shank's clearance on, and the loop's pin. Base down."""
+    x1 = SE_ROOF_X
+    e = _box(x1 - SE_ATT, x1, SY - SE_HW, SY + SE_HW, XR_ZA - SE_HZ, XR_ZA + SE_HZ)
+    e = e.union(_box(SE_PIN_X - PIN_PAD, x1 - SE_ATT + 0.01, SY - PIN_PAD, SY + PIN_PAD,
+                     XR_ZA - SE_HZ, PIN_Z0))
+    e = e.union(_pin(SE_PIN_X))
+    e = e.cut(_xb(M4.shaft_clr_d, x1 - SE_SHANK - 1.0, x1 + 1.0))
+    e = e.cut(_xb(M4.insert_pilot_td_d, x1 - M4.insert_depth, x1 + 1.0))
+    return e
+
+
+def _swivel_frame(pin_x):
+    """(the trough's +X end, the collar's -X face, the screw's +X end) for the swivel at pin_x."""
+    xt = pin_x - PIN_PAD
+    xc0 = xt - SW_TROUGH_L + D.BRG688_W          # the collar's boss face, on the 688's inner race
+    return xt, xc0, xc0 + SW_SOCKET
+
+
+def swivel(pin_x=None) -> cq.Workplane:
+    """The swivel at pin_x (world; default: hung slack). Base down: the trough and the wall's
+    slot are open on top, so the 688 and the collar (on the screw) drop in from +Z."""
+    px = SW_PIN_X_SLACK if pin_x is None else pin_x
+    xt, _, _ = _swivel_frame(px)
+    x0 = xt - SW_TROUGH_L - SW_WALL
+    s = _box(xt - 0.01, px + PIN_PAD, SY - SW_HW, SY + SW_HW, SW_Z0, PIN_Z0)
+    s = s.union(_pin(px))
+    top = XR_ZA + 2 * D.BEAD                     # walls past the equator: no knife edge on top
+    s = s.union(_box(x0, xt, SY - SW_HW, SY + SW_HW, SW_Z0, top))
+    s = s.cut(cyl_x(SW_TROUGH_D, SW_TROUGH_L, xt - SW_TROUGH_L, y=SY, z=XR_ZA))
+    s = s.cut(_box(xt - SW_TROUGH_L, xt, SY - SW_TROUGH_D / 2, SY + SW_TROUGH_D / 2, XR_ZA - 0.01, top + 1.0))
+    s = s.cut(cyl_x(SW_SLOT, SW_WALL + 2.0, x0 - 1.0, y=SY, z=XR_ZA))
+    s = s.cut(_box(x0 - 1.0, xt, SY - SW_SLOT / 2, SY + SW_SLOT / 2, XR_ZA - 0.01, top + 1.0))
+    return s
+
+
+def collar(pin_x=None) -> cq.Workplane:
+    """On the screw's +X end inside the swivel: the 688's inner race takes its -X face."""
+    px = SW_PIN_X_SLACK if pin_x is None else pin_x
+    _, xc0, _ = _swivel_frame(px)
+    c = cyl_x(10.0, 0.61, xc0, y=SY, z=XR_ZA)
+    c = c.union(cyl_x(SW_COLLAR_D, SW_COLLAR_L - 0.6, xc0 + 0.6, y=SY, z=XR_ZA))
+    return c.cut(_pilot_socket(SW_SOCKET, xc0, +1))
+
+
+def knob(pin_x=None) -> cq.Workplane:
+    """On the screw's -X end: a Ø40 grip, scalloped."""
+    px = SW_PIN_X_SLACK if pin_x is None else pin_x
+    tail = _swivel_frame(px)[2] - SCREW_CUT_L
+    xm = tail + KNOB_SOCKET                      # the socket's mouth, the knob's +X face
+    k = cyl_x(KNOB_D, KNOB_T, xm - KNOB_T, y=SY, z=XR_ZA)
+    for i in range(8):
+        a = 2 * math.pi * i / 8
+        k = k.cut(cyl_x(9.0, KNOB_T + 2.0, xm - KNOB_T - 1.0, y=SY + (KNOB_D / 2 + 2.0) * math.cos(a),
+                        z=XR_ZA + (KNOB_D / 2 + 2.0) * math.sin(a)))
+    return k.cut(_pilot_socket(KNOB_SOCKET, xm, -1))
+
+
+def post() -> cq.Workplane:
+    """The adjuster's post: a wall holding the H-nut (flange on its -X face, boss through), two
+    buttresses +X, the base on four wood screws. Base down."""
+    zb = Z_PLANK + BASE_T
+    # the wall: PO_T round the nut, 4.8 under it (+X face flat for the buttresses), a 45 deg step
+    t2 = 6 * D.BEAD
+    z_s = XR_ZA - D.NUT_AF / 2 - 4 * D.BEAD      # under the flange and its M3s
+    s = _box(PO_X1 - t2, PO_X1, SY - PO_HW, SY + PO_HW, zb - 0.01, PO_TOP)
+    s = s.union(_xz_prism([(PO_X0, PO_TOP), (PO_X1 - t2 + 0.01, PO_TOP),
+                           (PO_X1 - t2 + 0.01, z_s - (PO_T - t2)), (PO_X0, z_s)],
+                          SY - PO_HW, SY + PO_HW))
+    tri =[(PO_X1 - 0.01, zb - 0.01), (PO_X1 - 0.01, PO_TOP), (PO_X1 + PO_BL, zb - 0.01)]
+    for y0 in (SY - PO_HW, SY + PO_IN):
+        s = s.union(_xz_prism(tri, y0, y0 + PO_HW - PO_IN))
+    # base: the strips under the buttresses, the wall's pad, and a crossbar out to each screw pair
+    s = s.union(_box(PO_X0, PO_X1 + PO_BL, SY - PO_HW, SY - PO_IN, Z_PLANK, zb))
+    s = s.union(_box(PO_X0, PO_X1 + PO_BL, SY + PO_IN, SY + PO_HW, Z_PLANK, zb))
+    s = s.union(_box(PO_X0, PO_X1, SY - PO_HW, SY + PO_HW, Z_PLANK, zb))
+    yb0, yb1 = PO_SCREWS_Y[0] - XR_TAB, Y_EDGE
+    s = s.union(_box(PO_SCREWS_X[0] - XR_TAB, PO_X0 + 0.01, yb0, yb1, Z_PLANK, zb))
+    s = s.union(_box(PO_X1 + PO_BL - 2 * XR_TAB, PO_SCREWS_X[1] + XR_TAB, yb0, yb1, Z_PLANK, zb))
+    s = s.cut(_xb(PO_HOLE, PO_X0 - 1.0, PO_X1 + 1.0))
+    for sy in (-1, 1):                           # the nut's ears along Y: M3 x 12 self-tap, through
+        s = s.cut(printable_bore(YK_TAP_D, PO_T + 2.0,
+                                 axis_point=(PO_X0 - 1.0, SY + sy * D.NUT_HOLE_DX, XR_ZA),
+                                 axis_dir=(1.0, 0.0, 0.0), print_up=UP))
+    for x in PO_SCREWS_X:
+        for y in PO_SCREWS_Y:
+            s = s.cut(_wood_screw(x, y, UP))
+    return s
+
+
+def _spring(pin_x):
+    """The spring as a tube between its loops, and the two loops round the pins."""
+    a, b = SE_PIN_X + PIN_D / 2, pin_x - PIN_D / 2           # the loops' insides
+    loop_r = SPR_OD / 2 - SPR_WIRE                            # a loop's inside radius
+    body0, body1 = b + 2 * loop_r + SPR_WIRE, a - 2 * loop_r - SPR_WIRE
+    t = cyl_x(SPR_OD, body1 - body0, body0, y=SY, z=XR_ZA).cut(
+        cyl_x(SPR_OD - 2 * SPR_WIRE, body1 - body0 + 2, body0 - 1, y=SY, z=XR_ZA))
+    for cx in (a - loop_r, b + loop_r):
+        t = t.union(cq.Workplane("XY").add(cq.Solid.makeTorus(
+            loop_r + SPR_WIRE / 2, SPR_WIRE / 2, pnt=cq.Vector(cx, SY, XR_ZA))))
+    return t
+
+
+def assembly_spring(level=1.0):
+    """The spring rig (scratch view scope) at `level` of 147 N (0 = hung slack)."""
+    if level <= 0:
+        px = SW_PIN_X_SLACK
+    else:
+        px = SE_PIN_X + PIN_D - SPR_L0 - spring_stretch(level * T_FULL)
+    out = [(nm, w) for nm, w in assembly_x() if nm not in ("string_0", "xyoke_0", "crown_dowel")]
+    dz = -D.CARRIAGE_TRAVEL / 2.0
+    out.append(("xyoke_spring_0", yoke_spring().translate((SX, SY, D.NUT_TOP_Z + dz))
+                .rotate((0, 0, 0), (0, 1, 0), -90).translate((XR_OFF, 0.0, XR_ZA - SX))))
+    out.append(("spring_m4_0", cyl_x(M4.screw_d, SE_SHANK, SE_ROOF_X - SE_SHANK, y=SY, z=XR_ZA)))
+    out.append(("plank_spring_eye", spring_eye()))
+    out.append(("spring_0", _spring(px)))
+    out.append(("plank_spring_swivel", swivel(px)))
+    _, xc0, xend = _swivel_frame(px)
+    out.append(("spring_688_0", cyl_x(D.BRG688_OD, D.BRG688_W, xc0 - D.BRG688_W, y=SY, z=XR_ZA)
+                .cut(cyl_x(D.BRG688_ID, D.BRG688_W + 2, xc0 - D.BRG688_W - 1, y=SY, z=XR_ZA))))
+    out.append(("plank_spring_collar", collar(px)))
+    out.append(("spring_screw_0", cyl_x(D.SCREW_OD, SCREW_CUT_L, xend - SCREW_CUT_L, y=SY, z=XR_ZA)))
+    nut = (C.nut().rotate((0, 0, 0), (0, 0, 1), 90).rotate((0, 0, 0), (0, 1, 0), -90)
+           .translate((PO_X0 - D.NUT_FLANGE_T, SY, XR_ZA)))
+    out.append(("spring_nut_0", nut))
+    out.append(("plank_spring_post", post()))
+    out.append(("plank_spring_knob", knob(px)))
+    return out
 
 
 # ── THE INSTRUMENT'S PIECES, FROZEN ──────────────────────────────────────────────────────────
@@ -528,8 +892,14 @@ def print_parts():
     st = station().rotate((0, 0, 0), (0, 1, 0), 90)             # -X -> +Z
     sa = station_axial().rotate((0, 0, 0), (0, 1, 0), 90)
     yk = yoke().rotate((0, 0, 0), (1, 0, 0), 180)               # roof on the bed: no bridge over the cavity
+    out_x = station_x()                                          # base down, as drawn
+    spring = (("plank_spring_post", post()), ("plank_spring_swivel", swivel()),      # base down
+              ("plank_spring_eye", spring_eye()),
+              ("plank_spring_collar", collar().rotate((0, 0, 0), (0, 1, 0), 90)),    # socket up
+              ("plank_spring_knob", knob().rotate((0, 0, 0), (0, 1, 0), -90)),      # socket up
+              ("plank_yoke_spring", yoke_spring().rotate((0, 0, 0), (1, 0, 0), 180)))
     for nm, w in (("plank_station", st), ("plank_head", head()),   # the real tee board holds the motor (user)
-                  ("plank_station_axial", sa), ("plank_yoke", yk)):
+                  ("plank_station_axial", sa), ("plank_yoke", yk), ("plank_station_x", out_x)) + spring:
         bb = w.val().BoundingBox()
         out[nm] = w.translate((-bb.xmin, -bb.ymin, -bb.zmin))
     return out
