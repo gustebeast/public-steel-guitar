@@ -176,7 +176,11 @@ def spring_span(t: float):
     return x_plug()[1][1] + SPRING_WIRE / 2, x_collar(t)[2][0] - SPRING_WIRE / 2
 
 
-SLEEVE_END = x_collar(1.0)[3][0] - 1.0              # short of the collar's seat at full travel
+# THE SLEEVE IS SPLIT 50/50 (user, 2026-11-09): half fixed on the anchor plug, half riding the
+# collar, meeting 1.0 apart at full travel. The bare screw between them is the travel either way;
+# this just keeps both 1-wall tubes stubby (no ~98 long one) and the gap mid-span.
+SLEEVE_HALF = (x_collar(1.0)[3][0] - 1.0 - x_plug()[2][1]) / 2
+SLEEVE_END = x_plug()[2][1] + SLEEVE_HALF            # the plug's half, from its post
 # the rod's -X end: 0.5 short of the stop flange's back at the slack end (the spring starts
 # there), so at full travel it is still 3.15 into the 3.5 flange
 ROD_END = x_collar(0.0)[2][0] + 0.5
@@ -369,6 +373,8 @@ def _collar(i: int, t: float) -> cq.Workplane:
     x0, x1 = spring_span(t)                                                         # the post:
     out = out.union(_post(i, x0, x1 - x0 - SEAT_GRIP, D.NUT_BOSS_D + 0.4))          # threaded
     out = out.cut(cyl_x(D.NUT_BOSS_D + 0.4, 60, s0 - 1, y=y, z=z))                  # boss, screw
+    out = out.union(_tube_x(13.0, SLEEVE_ID, s0, s0 + 3.0, y, z))                   # post's floor,
+    out = out.union(_tube_x(SLEEVE_OD, SLEEVE_ID, s0 - SLEEVE_HALF, s0 + 1.0, y, z))  # sleeve half
     out = out.cut(_tang_hole(i, f0))
     for a in HOLE_ANG["m3"]:                         # the M3s, and the key's way to them (before
         dy, dz = at_ang(a)                           # the spring goes on)
@@ -403,6 +409,17 @@ def _helix(z0: float, pitch: float, h: float, d: float) -> cq.Workplane:
 def _in_spring(wp: cq.Workplane, i: int, x0: float) -> cq.Workplane:
     """Local spring frame -> the string's (local +x, angle 0, lands on world -Z)."""
     return wp.rotate((0, 0, 0), (0, 1, 0), 90).translate((x0, y_of(i), za(i)))
+
+
+def _screw(i: int, x0: float, x1: float) -> cq.Workplane:
+    """The leadscrew from x0 to x1 along +X: the instrument's own threaded Tr8x2 rod
+    (components.screw, cached per length). Its crests are the plain cylinder's surface, so the
+    gate (COILS False) checks that cylinder instead of cutting the helix."""
+    y, z = y_of(i), za(i)
+    if not COILS:
+        return cyl_x(D.SCREW_OD, x1 - x0, x0, y=y, z=z)
+    from . import components as C
+    return C.screw(round(x1 - x0, 3)).rotate((0, 0, 0), (0, 1, 0), 90).translate((x0, y, z))
 
 
 def _spring(i: int, t: float) -> cq.Workplane:
@@ -583,7 +600,7 @@ def string_parts(i: int, t: float) -> list:
         ("db_spring", _spring(i, t)),
         ("db_plug", _anchor_plug(i)),
         ("db_rod", cyl_x(D.GUIDE_ROD_D, ROD_L, ROD_END, y=rod_yz(i)[0], z=rod_yz(i)[1])),
-        ("db_screw", cyl_x(D.SCREW_OD, SCREW_TIP - (xr + 11.0), xr + 11.0, y=y, z=z)),
+        ("db_screw", _screw(i, xr + 11.0, SCREW_TIP)),
         ("db_coupler", cyl_x(COUPLER[0], COUPLER[2] - COUPLER[1], xr + COUPLER[1], y=y, z=z)),
         ("db_block", box_at(BLOCK[2] - BLOCK[1], BLOCK[0], BLOCK[0], x=xr + (BLOCK[1] + BLOCK[2]) / 2,
                             y=y, z=z).cut(cyl_x(D.BRG688_OD, 20, xr + BLOCK[1] + 2, y=y, z=z))

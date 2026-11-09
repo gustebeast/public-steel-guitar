@@ -1689,3 +1689,9 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
 - **Direct bench nut (round, 2026-11-09):** the common round Tr8x2 flange nut, no flats. Its four holes:
   - **45° and 225°:** the two M3 x 12 that hold the yoke on and clamp the collar. Drive them through the collar's stop-flange holes **before** screwing the spring on.
   - **135°:** the Ø3.5 guide rod (about 33 long, still to source). It runs from the rod plate through the yoke, the flange and the collar. There is no yoke arm.
+
+### Direct bench: split sleeve (2026-11-09)
+- The guard sleeve over each leadscrew is now two halves of about 48.8 mm. One is fixed on the anchor plug and the other rides on the collar.
+- The halves meet 1 mm apart at full travel. At slack, the bare screw between them is the travel plus 1 mm, with the gap at mid-span.
+- Assembly order is unchanged. The collar's half goes inside the spring along with the collar, before the spring is screwed onto the anchor plug's post.
+- The view now models the screws as the instrument's threaded Tr8x2 rod (`components.screw`).
