@@ -2893,6 +2893,13 @@ def _color_for(name):
                 return cq.Color(*_COLORS[k])
     if base == "pedal_lever":
         return cq.Color(*_COLORS["knee_lever"])   # it IS the knee lever, posed
+    # the changer bench (src.changer_bench) keeps its own small table, mostly aliases into
+    # this one, so its 380 parts are not white
+    if base.startswith(("cb_", "ghost_")):
+        from . import changer_bench as _CB
+        _c = _CB.color_of(base, _COLORS)
+        if _c is not None:
+            return cq.Color(*_c)
     return cq.Color(*_DEFAULT_COLOR)
 
 

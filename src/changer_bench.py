@@ -50,6 +50,7 @@ screws (+ toward the bridge). Everything in the drive is drawn in that frame and
 from __future__ import annotations
 
 import math
+import re
 
 import cadquery as cq
 
@@ -612,9 +613,13 @@ def _rank_plate(p: str) -> cq.Workplane:
     return w
 
 
-def _motor(i: int) -> cq.Workplane:
+def _motor(i: int) -> list:
+    """The SERVO42D one solid per material, named as the build names them (cb_motor_<i> the can,
+    cb_motor_<part>_<i> the rest) so each takes its motor_<part> colour."""
     from . import components as C
-    return C.motor().rotate((0, 0, 0), (1, 0, 0), 90.0).translate(motor_d(i))
+    return [(f"cb_motor_{k}_{i}" if k else f"cb_motor_{i}",
+             wp.rotate((0, 0, 0), (1, 0, 0), 90.0).translate(motor_d(i)))
+            for k, wp, _, _ in C.motor_parts()]
 
 
 def _motor_pulley(i: int) -> cq.Workplane:
@@ -713,7 +718,7 @@ def static() -> list:
         st = stack(i)
         x, y = x_of(i), D.string_y(i)
         out.append((f"cb_screw_{i}", _zc(D.SCREW_OD, st["screw_bot"], st["screw_top"], x=x, y=y)))
-        out.append((f"cb_688_{i}", ball_bearing(D.BRG688_OD, D.BRG688_ID, BRG_W)
+        out.append((f"cb_brg_{i}", ball_bearing(D.BRG688_OD, D.BRG688_ID, BRG_W)
                     .translate((x, y, st["bb"]))))
         out.append((f"cb_pulley_{i}", _pulley(i)))
         rx, ry = _rod_xy(i)
@@ -721,7 +726,7 @@ def static() -> list:
         out.append((f"cb_rod_{i}", _zc(D.GUIDE_ROD_D, z1 - 2.4, z1 - 2.4 + D.GUIDE_ROD_L, x=rx, y=ry)))
         out.append((f"cb_belt_{i}", _belt(i)))
         out.append((f"cb_clampzone_{i}", clamp_envelope(i)))
-        out.append((f"cb_motor_{i}", _motor(i)))
+        out += _motor(i)
         out.append((f"cb_mpulley_{i}", _motor_pulley(i)))
     for r in ("n", "f"):
         out.append((f"cb_plate_{r}", _plate(r)))
@@ -744,6 +749,40 @@ def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
     return out
 
 
+# ── colours (src.build._color_for asks here for every cb_ / ghost_ name) ───────────────────
+# inner name (cb_ and EVERY trailing index group off, as _color_for strips them: cb_leg_0_3 ->
+# leg; hence no part base may end in digits) -> a key of build._COLORS, or an RGB of its own.
+# Motor parts (motor_<part>) and anything named as the instrument names it fall through to
+# the table by their inner name.
+_PRINTED = (0.39, 0.58, 0.93)                       # PETG-GF, as the bridge endplate
+COLORS = {
+    "nut": "nut", "ball": "string_nut", "screw": "leadscrew", "brg": "screw_bearing",
+    "pulley": "screw_pulley", "mpulley": "motor_pulley", "rod": "guide_rod", "belt": "belt",
+    "string": "string", "bridge_bearings": "bridge_bearings", "idler": "bridge_bearings",
+    "yoke": _PRINTED,
+    "clampzone": "belt_tensioner_half_a",            # where the clamp goes, not the clamp
+    "plate_n": (0.30, 0.36, 0.42), "plate_f": (0.30, 0.36, 0.42),
+    "cheeks": (0.42, 0.50, 0.62), "floor": (0.42, 0.50, 0.62),
+    "rank_nA": (0.30, 0.33, 0.38), "rank_nB": (0.30, 0.33, 0.38),
+    "rank_fA": (0.30, 0.33, 0.38), "rank_fB": (0.30, 0.33, 0.38),
+    "anchor_n": (0.36, 0.30, 0.42), "anchor_f": (0.36, 0.30, 0.42),
+    "leg": (0.45, 0.45, 0.48), "run": (0.45, 0.45, 0.48),   # 7x7 stainless rope
+    "sheave": "screw_bearing",                       # 623VV
+    "thimble": (0.75, 0.75, 0.78),
+    "spring": "leg_latch_spring",                    # 9665K61 stainless
+    "plug_a": (0.85, 0.45, 0.15), "plug_b": (0.85, 0.45, 0.15),
+    "adjuster": "set_screw",                         # M4 x 40
+    "ghost_pickup": "pickup", "ghost_bottom_now": (0.85, 0.20, 0.20),   # today's bottom: red
+}
+
+
+def color_of(base: str, table: dict):
+    """RGB for a changer-bench part (its name with the trailing indices off), or None."""
+    inner = base[3:] if base.startswith("cb_") else base
+    v = COLORS.get(inner, inner)
+    return v if isinstance(v, tuple) else table.get(v)
+
+
 # ── the gate ────────────────────────────────────────────────────────────────────────────────
 import re as _re
 
@@ -757,19 +796,24 @@ def _base(nm: str):
 
 # Designed contacts. Same-string pairs among these bases touch by design:
 _SAME = {frozenset(p) for p in (
-    ("cb_screw", "cb_nut"), ("cb_screw", "cb_pulley"), ("cb_screw", "cb_688"), ("cb_screw", "cb_yoke"),
-    ("cb_nut", "cb_yoke"), ("cb_nut", "cb_rod"), ("cb_nut", "cb_688"), ("cb_ball", "cb_yoke"),
-    ("cb_688", "cb_pulley"), ("cb_pulley", "cb_belt"), ("cb_mpulley", "cb_belt"), ("cb_mpulley", "cb_motor"),
+    ("cb_screw", "cb_nut"), ("cb_screw", "cb_pulley"), ("cb_screw", "cb_brg"), ("cb_screw", "cb_yoke"),
+    ("cb_nut", "cb_yoke"), ("cb_nut", "cb_rod"), ("cb_nut", "cb_brg"), ("cb_ball", "cb_yoke"),
+    ("cb_brg", "cb_pulley"), ("cb_pulley", "cb_belt"), ("cb_mpulley", "cb_belt"), ("cb_mpulley", "cb_motor"),
     ("cb_belt", "cb_clampzone"), ("cb_string", "cb_ball"), ("cb_string", "cb_yoke"),
     ("cb_leg_0", "cb_yoke"), ("cb_leg_1", "cb_yoke"), ("cb_leg_0", "cb_sheave_0"),
     ("cb_leg_1", "cb_sheave_1"), ("cb_run_0", "cb_sheave_0"), ("cb_run_1", "cb_sheave_1"),
     ("cb_run_0", "cb_thimble"), ("cb_run_1", "cb_thimble"), ("cb_thimble", "cb_plug_a"),
     ("cb_spring", "cb_plug_a"), ("cb_spring", "cb_plug_b"), ("cb_plug_b", "cb_adjuster"),
-    ("cb_rod", "cb_yoke"))}
+    ("cb_rod", "cb_yoke"), ("cb_motor",))}
+
+
+def _gate_base(nm: str):
+    b, i = _base(nm)
+    return ("cb_motor" if b.startswith("cb_motor_") else b), i      # one motor, all its parts
 
 
 def is_intended(a: str, b: str) -> bool:
-    (ba, ia), (bb_, ib) = _base(a), _base(b)
+    (ba, ia), (bb_, ib) = _gate_base(a), _gate_base(b)
     if ia is not None and ia == ib and frozenset((ba, bb_)) in _SAME:
         return True
     pair = {ba, bb_}
@@ -781,7 +825,7 @@ def is_intended(a: str, b: str) -> bool:
     if "cb_cheeks" in pair and pair & (plates | {"cb_floor", "cb_bridge_bearings", "cb_idler",
                                                  "ghost_wall_hi"}):
         return True
-    if pair & {"cb_688", "cb_rod"} and pair & plates:
+    if pair & {"cb_brg", "cb_rod"} and pair & plates:
         return True
     if "cb_motor" in pair and pair & {f"cb_rank_{p}" for p in PLANES}:
         return True
