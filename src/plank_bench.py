@@ -140,11 +140,15 @@ YK_HX, YK_HY = 15 * D.BEAD, 15 * D.BEAD / 2      # 12.0 x 6.0 half-sizes: the fl
 YK_CAV = D.SCREW_OD + 0.8                        # 8.8: the screw's tip rises into it
 YK_PROTRUDE = D.SCREW_TOP_Z - (D.NUT_TOP_Z - D.CARRIAGE_TRAVEL)   # 6.75: tip over the flange, bottom of travel
 assert YK_R0 - D.STRING_NUT_D >= YK_PROTRUDE + 1.0 - 1e-9, "the screw's tip reaches the ball end"
-YK_SHOULDER = 3 * D.BEAD                         # 2.4 under each M3 insert: the screw pulls the insert onto it
-YK_INS_D = BTn.INS_D + BTn.INS_SLIP              # 4.8: the belt clamp's drop-in M3 insert, from the top
-YK_CLR_D = BTn.SCR_CLR                           # 3.4
+# THE M3 INSERTS ARE HEAT-SET FROM THE -Z FACE, the one on the flange (user, 2026-11-08): dropped in
+# from the top onto a shoulder, that shoulder was a ring hanging over the clearance hole in the
+# +Z -> -Z print. Mouth at the flange, the hole only narrows going +Z, i.e. DOWN the print. The
+# screw clamps the ear to the mouth: the string pulls the insert toward its mouth, as an insert should.
+YK_INS_D = BTn.INS_D + 0.1                       # 4.8: the Pi's heat-set pocket for the same insert (PI_M3)
+YK_CLR_D = BTn.SCR_CLR                           # 3.4: the screw's tip, past the insert
 YK_SCREW_L = BTn.SCREW_L                         # M3 x 12 socket head (the belt clamp's): ear 4 + 2.4 + 5.6 in the insert
-assert YK_SCREW_L - D.NUT_FLANGE_T - YK_SHOULDER >= BTn.INS_L, "the M3 does not reach through its insert"
+assert YK_SCREW_L - D.NUT_FLANGE_T >= BTn.INS_L, "the M3 does not reach through its insert"
+YK_TIP = YK_SCREW_L - D.NUT_FLANGE_T + 0.6       # 8.6: the hole's depth, the tip's 8.0 and air
 assert D.NUT_HOLE_DX - YK_INS_D / 2 - YK_CAV / 2 >= 1.2 - 1e-9, "insert pocket into the screw's cavity"
 ROD_DY = -15 * D.BEAD                            # -12.0: the guide rod, out -Y past the flange and the rail's seat
 YK_ROD_D = D.GUIDE_ROD_D + 0.5                   # 4.0: printed, sliding; it only takes the screw's torque
@@ -272,7 +276,7 @@ def station_axial() -> cq.Workplane:
 
 def yoke() -> cq.Workplane:
     """On the nut's flange, its axis at the origin, z 0 = the flange's top (the nut's own origin).
-    Two M3 x 12 come up through the ears into drop-in inserts sitting on YK_SHOULDER; the ball end
+    Two M3 x 12 come up through the ears into inserts heat-set into its -Z face; the ball end
     goes in from +Y and seats under the roof ON THE AXIS; the guide rod runs through the -Y boss."""
     y = _box(-YK_HX, YK_HX, -YK_HY, YK_HY, 0.0, YK_H)
     y = y.union(_box(-ARM_R, ARM_R, ROD_DY, -YK_HY + 0.01, 0.0, ARM_H))
@@ -284,8 +288,8 @@ def yoke() -> cq.Workplane:
     y = y.cut(_box(-1.0, 1.0, -1.0, YK_HY + 1.0, YK_R0 - 0.01, YK_H + 1.0))           # the string's slot
     for sx in (-1, 1):
         x = sx * D.NUT_HOLE_DX
-        y = y.cut(cyl(YK_CLR_D, YK_SHOULDER + 1.01, z=-1.0).translate((x, 0.0, 0.0)))
-        y = y.cut(cyl(YK_INS_D, YK_H - YK_SHOULDER + 1.0, z=YK_SHOULDER).translate((x, 0.0, 0.0)))
+        y = y.cut(cyl(YK_INS_D, BTn.INS_L + 1.0, z=-1.0).translate((x, 0.0, 0.0)))
+        y = y.cut(cyl(YK_CLR_D, YK_TIP + 1.0, z=-1.0).translate((x, 0.0, 0.0)))
     return y
 
 
@@ -443,7 +447,7 @@ def assembly(axial=False):
             (SX, SY, D.NUT_TOP_Z + YK_R0 - D.STRING_NUT_D / 2))))
         out.append(("guide_rod_0", C.guide_rod(D.GUIDE_ROD_L).translate((SX, SY + ROD_DY, ROD_BOT))))
         zf = D.NUT_TOP_Z - D.NUT_FLANGE_T                  # the ears' underside
-        z0 = D.NUT_TOP_Z + YK_SHOULDER
+        z0 = D.NUT_TOP_Z                                   # flush in the mouth
         for tag, sx in (("lo", -1), ("hi", 1)):
             x = SX + sx * D.NUT_HOLE_DX
             out.append((f"yoke_m3_{tag}_0", headed_screw(BTn.M3, YK_SCREW_L, BTn.HEAD_D, BTn.HEAD_H, 2.5)

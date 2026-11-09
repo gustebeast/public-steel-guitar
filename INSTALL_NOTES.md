@@ -1513,8 +1513,7 @@ Same head, same screw, pulley, belt and motor positions; print `coupons/plank_st
 
 - **The yoke** sits on the nut's flange (flange up, long way along X) and is held by both ears: two
   M3 x 12 socket heads (the belt clamp's) up through the ears into two of the belt clamp's M3
-  inserts, dropped into the yoke from its top onto a 2.4 shoulder (not heat-set: the screw pulls
-  them onto it). The ball end goes in through the window on the yoke's +Y side, axis along X, and
+  inserts, heat-set flush into the yoke's -Z face (the face on the flange). The ball end goes in through the window on the yoke's +Y side, axis along X, and
   seats under its roof ON the screw's axis; the string leaves up through the roof's slot. The
   screw's tip rises into the cavity under it (6.75 at the bottom of travel, 1.25 short of the ball
   end). The guide rod runs through the boss on the yoke's -Y arm, 12 off the axis.
@@ -1523,7 +1522,7 @@ Same head, same screw, pulley, belt and motor positions; print `coupons/plank_st
   dowel to bearing axle is now **594.8** (the screw stays where the belt has it); the bearing's top
   stands ~16 over the crown's, a 1.5 degree slope over the length. Neither matters to a friction test.
 - **Order:** 1. Thrust 688 into the rail's seat from the bay, as before. 2. Screw the station down,
-  drill the plank 1/2 in through its floor hole. 3. Drop the inserts into the yoke, set it on the
+  drill the plank 1/2 in through its floor hole. 3. Heat-set the inserts into the yoke's -Z face, set it on the
   nut and run the two M3s up through the ears. 4. Slide nut and yoke into the room from +X, arm to
   -Y. 5. Screw up from below with its pulley and turn it up through the nut, as before (the room's
   walls stop the yoke turning). 6. Drop the guide rod down the hole in the station's top, through
