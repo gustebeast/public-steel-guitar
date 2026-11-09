@@ -49,7 +49,7 @@ from . import dimensions as D
 from . import components as C
 from . import screw_rail as SR
 from . import belt_tensioner as BTn
-from .helpers import box_at, cyl_y
+from .helpers import box_at, cyl, cyl_y
 from cadkit.supports import printable_bore
 
 I = 0                                            # string 1
@@ -126,6 +126,51 @@ TOWER_Y0, TOWER_Y1 = SY - 7.2, SY + 7.2
 TAB = 16 * D.BEAD                                # 12.8: a wood-screw tab, the screw in its middle
 SCALE_SPAN = BX - CROWN_X                        # 607.0, crown dowel to bearing axle
 
+# ── THE AXIAL RIG (user, 2026-11-08) ─────────────────────────────────────────────────────
+# On the rig above the string pulls the nut's +X ear, 8 off the screw's axis: 147 N x 8 mm tips
+# the nut on its thread, and a tipped Tr8 nut grabs (the user, by hand, on a loose nut). So a
+# SECOND STATION with the string's pull ON THE SCREW'S AXIS: a printed YOKE bolted to the nut
+# through BOTH its ears, carrying the ball end over the screw's tip and its own guide-rod hole,
+# and the bridge bearing moved -X so the string drops off its tangent straight down the axis.
+# The screw, its pulley, the belt and the motor stay exactly where they are; only the crown-
+# to-bearing span changes (SCALE_SPAN_AX). Not for the instrument: it spends Y and Z freely.
+YK_H = 20 * D.BEAD                               # 16.0: the yoke over the nut's flange top
+YK_R0 = 15 * D.BEAD                              # 12.0: the underside of its roof, the ball end's seat
+YK_HX, YK_HY = 15 * D.BEAD, 15 * D.BEAD / 2      # 12.0 x 6.0 half-sizes: the flange's 22 x 10.5 and a wall
+YK_CAV = D.SCREW_OD + 0.8                        # 8.8: the screw's tip rises into it
+YK_PROTRUDE = D.SCREW_TOP_Z - (D.NUT_TOP_Z - D.CARRIAGE_TRAVEL)   # 6.75: tip over the flange, bottom of travel
+assert YK_R0 - D.STRING_NUT_D >= YK_PROTRUDE + 1.0 - 1e-9, "the screw's tip reaches the ball end"
+YK_SHOULDER = 3 * D.BEAD                         # 2.4 under each M3 insert: the screw pulls the insert onto it
+YK_INS_D = BTn.INS_D + BTn.INS_SLIP              # 4.8: the belt clamp's drop-in M3 insert, from the top
+YK_CLR_D = BTn.SCR_CLR                           # 3.4
+YK_SCREW_L = BTn.SCREW_L                         # M3 x 12 socket head (the belt clamp's): ear 4 + 2.4 + 5.6 in the insert
+assert YK_SCREW_L - D.NUT_FLANGE_T - YK_SHOULDER >= BTn.INS_L, "the M3 does not reach through its insert"
+assert D.NUT_HOLE_DX - YK_INS_D / 2 - YK_CAV / 2 >= 1.2 - 1e-9, "insert pocket into the screw's cavity"
+ROD_DY = -15 * D.BEAD                            # -12.0: the guide rod, out -Y past the flange and the rail's seat
+YK_ROD_D = D.GUIDE_ROD_D + 0.5                   # 4.0: printed, sliding; it only takes the screw's torque
+ARM_R = YK_ROD_D / 2 + 3 * D.BEAD                # 4.4: the rod's boss
+# The boss runs the yoke's full height: the yoke prints roof-down, and a short arm would hang
+# off the body in that print (print_check, 2026-11-08). So the rod cannot also reach a bore over
+# the channel; it stands in a deep socket instead, a cantilever -- it only takes the screw's torque.
+ARM_H = YK_H
+CLR = 0.6                                        # the room round the yoke
+ROOM_HY = YK_HY + CLR                            # 6.6
+ARM_Z0 = D.NUT_TOP_Z - D.CARRIAGE_TRAVEL - CLR  # -12.15: the arm's channel floor
+ARM_Y0 = SY + ROD_DY - ARM_R - CLR              # the channel's -Y side
+ROD_SOCK = 12.0                                  # the rod's press socket in the channel floor
+ROD_BOT = ARM_Z0 - ROD_SOCK                      # -24.15
+ROD_TOP2 = ROD_BOT + D.GUIDE_ROD_L               # 5.65: 8.85 up the boss at the top of travel
+CEIL_AX = D.NUT_TOP_Z + YK_H                     # 12.8: the room's ceiling = the yoke's top stop
+G0 = D.STRING_GAUGE[I]
+BX_AX = SX - D.BRIDGE_BEARING_OD / 2 - G0 / 2    # the bearing's +X tangent drops the string ON the axis
+POCKET_Z0 = CEIL_AX + 3 * D.BEAD                 # 15.2: a slab between the room and the bearing
+BZ_AX = POCKET_Z0 + 0.5 + D.BRIDGE_BEARING_OD / 2   # 23.7
+SLAB_TOP_AX = BZ_AX + AXLE_BORE / 2 + 2 * D.BEAD    # 29.5
+BRG_HY = D.BRIDGE_BEARING_W / 2 + 0.4            # 2.9
+X0_AX = BX_AX - D.BRIDGE_BEARING_OD / 2 - 0.5 - BRG_HY - 3 * D.BEAD   # the gable's ridge, then 2.4
+Y0_AX = ARM_Y0 - WALL_HI
+SCALE_SPAN_AX = BX_AX - CROWN_X                  # 594.8
+
 OUT = pathlib.Path(__file__).resolve().parents[1] / "coupons"
 _MAIN_COUPONS = pathlib.Path(__file__).resolve().parents[2] / "public-steel-guitar" / "coupons"
 
@@ -188,6 +233,60 @@ def station() -> cq.Workplane:
         for y in (Y0 - FLANGE / 2, Y1 + FLANGE / 2):
             s = s.cut(_wood_screw(x, y, ST_UP))
     return s
+
+
+def station_axial() -> cq.Workplane:
+    """The axial rig's station. Built -X (ST_UP) like station(): the room and the rod's
+    channel run straight through in X, so in the print they are shafts, not roofs."""
+    zb = Z_PLANK + BASE_T
+    s = _box(X0_AX, X1B, Y0_AX - FLANGE, Y_EDGE, Z_PLANK, zb)
+    s = s.union(_box(X0_AX, X1B, Y0_AX, Y1, zb - 0.01, SLAB_TOP_AX))
+    s = s.cut(_box(X0_AX - 1.0, X1, SY - LANE_LO, SY + LANE_HI, zb, RAIL_BOT))          # the bay
+    # the room: the nut and yoke slide in from +X; it runs out -X too
+    s = s.cut(_box(X0_AX - 1.0, X1B + 1.0, SY - ROOM_HY, SY + ROOM_HY, RAIL_TOP, CEIL_AX))
+    # the rod arm's channel, -Y of the room: its floor is the arm's bottom of travel
+    s = s.cut(_box(X0_AX - 1.0, X1B + 1.0, ARM_Y0, SY - ROOM_HY + 0.01, ARM_Z0, CEIL_AX))
+    s = s.cut(_zbore(SCREW_HOLE_D, SX, SY, Z_PLANK - 1.0, zb + 1.0, ST_UP))
+    s = s.cut(_zbore(D.SUPPORT_BRG_OD + 0.2, SX, SY, RAIL_BOT - 1.0, D.SUPPORT_BRG_Z + 1e-3, ST_UP))
+    s = s.cut(_zbore(SR.SEAT_LEDGE_D, SX, SY, RAIL_BOT - 1.0, SR.LEDGE_TOP, ST_UP))
+    s = s.cut(_zbore(SR.NUT_PASS_D, SX, SY, SR.LEDGE_TOP - 0.01, RAIL_TOP + 1.0, ST_UP))
+    # the guide rod: a press socket in the channel floor, and a clear passage down from the
+    # top to drop it in through the yoke's boss and punch it home
+    ry = SY + ROD_DY
+    s = s.cut(_zbore(ROD_BORE, SX, ry, ROD_BOT, ARM_Z0 + 0.01, ST_UP))
+    s = s.cut(_zbore(ROD_BORE + 0.6, SX, ry, CEIL_AX - 0.01, SLAB_TOP_AX + 1.0, ST_UP))
+    # the bridge bearing's pocket, gabled at -X (the print's roof), open on top
+    bx0, bx1 = BX_AX - D.BRIDGE_BEARING_OD / 2 - 0.5, SX + 1.0
+    s = s.cut(cq.Workplane("XY", origin=(0.0, 0.0, POCKET_Z0))
+              .polyline([(bx1, SY - BRG_HY), (bx1, SY + BRG_HY), (bx0, SY + BRG_HY), (bx0 - BRG_HY, SY),
+                         (bx0, SY - BRG_HY)]).close().extrude(SLAB_TOP_AX + 1.0 - POCKET_Z0))
+    # the string's slot: down the axis from the bearing's tangent to the room, open +X to thread it
+    s = s.cut(_box(SX - 1.0, X1B + 1.0, SY - 1.0, SY + 1.0, CEIL_AX - 1.0, SLAB_TOP_AX + 1.0))
+    s = s.cut(printable_bore(AXLE_BORE, Y1 - Y0_AX + 2.0, axis_point=(BX_AX, Y0_AX - 1.0, BZ_AX),
+                             axis_dir=(0.0, 1.0, 0.0), print_up=ST_UP))
+    for x in (X0_AX + 6.4, X1B - 6.4):
+        for y in (Y0_AX - FLANGE / 2, Y1 + FLANGE / 2):
+            s = s.cut(_wood_screw(x, y, ST_UP))
+    return s
+
+
+def yoke() -> cq.Workplane:
+    """On the nut's flange, its axis at the origin, z 0 = the flange's top (the nut's own origin).
+    Two M3 x 12 come up through the ears into drop-in inserts sitting on YK_SHOULDER; the ball end
+    goes in from +Y and seats under the roof ON THE AXIS; the guide rod runs through the -Y boss."""
+    y = _box(-YK_HX, YK_HX, -YK_HY, YK_HY, 0.0, YK_H)
+    y = y.union(_box(-ARM_R, ARM_R, ROD_DY, -YK_HY + 0.01, 0.0, ARM_H))
+    y = y.union(cyl(2 * ARM_R, ARM_H).translate((0.0, ROD_DY, 0.0)))
+    y = y.cut(cyl(YK_ROD_D, ARM_H + 2.0, z=-1.0).translate((0.0, ROD_DY, 0.0)))
+    y = y.cut(cyl(YK_CAV, YK_R0 + 1.0, z=-1.0))                                     # the screw's tip
+    w = D.STRING_NUT_L / 2 + 0.5                                                      # the ball end, axis X
+    y = y.cut(_box(-w, w, 0.0, YK_HY + 1.0, YK_R0 - D.STRING_NUT_D - 0.4, YK_R0))   # its window, +Y
+    y = y.cut(_box(-1.0, 1.0, -1.0, YK_HY + 1.0, YK_R0 - 0.01, YK_H + 1.0))           # the string's slot
+    for sx in (-1, 1):
+        x = sx * D.NUT_HOLE_DX
+        y = y.cut(cyl(YK_CLR_D, YK_SHOULDER + 1.01, z=-1.0).translate((x, 0.0, 0.0)))
+        y = y.cut(cyl(YK_INS_D, YK_H - YK_SHOULDER + 1.0, z=YK_SHOULDER).translate((x, 0.0, 0.0)))
+    return y
 
 
 # ── THE INSTRUMENT'S PIECES, FROZEN ──────────────────────────────────────────────────────────
@@ -307,16 +406,20 @@ def _seg(a, b, r):
     return cq.Workplane("XY").add(cq.Solid.makeCylinder(r, (b - a).Length, pnt=a, dir=b - a))
 
 
-def _string(tail_x=-770.0):
-    """Ball end -> up past the ear -> over the bearing -> crown -> down to a tuner at tail_x."""
+def _string(tail_x=-770.0, axial=False):
+    """Ball end -> up past the ear (or the yoke's roof) -> over the bearing -> crown -> tuner."""
     g = D.STRING_GAUGE[I]
     r, R = g / 2.0, D.BRIDGE_BEARING_OD / 2 + g / 2.0
-    az = D.NUT_TOP_Z - D.NUT_FLANGE_T - D.STRING_NUT_D / 2
-    a0 = math.radians(5.0)                                 # the rise touches just +X of the top's right
-    pts = [(BX + R * math.cos(a0 + (math.pi / 2 - a0) * k / 8), SY, BZ + R * math.sin(a0 + (math.pi / 2 - a0) * k / 8))
+    if axial:
+        bx, bz, a0 = BX_AX, BZ_AX, 0.0                     # straight down the axis off the tangent
+        anchor = (SX, SY, D.NUT_TOP_Z + YK_R0 - D.STRING_NUT_D / 2)
+    else:
+        bx, bz, a0 = BX, BZ, math.radians(5.0)             # the rise touches just +X of the top's right
+        anchor = (D.string_anchor_x(I), SY, D.NUT_TOP_Z - D.NUT_FLANGE_T - D.STRING_NUT_D / 2)
+    pts = [(bx + R * math.cos(a0 + (math.pi / 2 - a0) * k / 8), SY, bz + R * math.sin(a0 + (math.pi / 2 - a0) * k / 8))
            for k in range(9)]
     crown = (CROWN_X, SY, D.STRING_Z - r)
-    path = [(D.string_anchor_x(I), SY, az)] + pts + [crown, (tail_x, SY, Z_PLANK + 15.0)]
+    path = [anchor] + pts + [crown, (tail_x, SY, Z_PLANK + 15.0)]
     out = None
     for a, b in zip(path, path[1:]):
         sgm = _seg(a, b, r)
@@ -324,23 +427,41 @@ def _string(tail_x=-770.0):
     return out
 
 
-def assembly():
-    """Everything, placed: the two printed parts and every bought part on them."""
+def assembly(axial=False):
+    """Everything, placed: the printed parts and every bought part on them. axial: the axial
+    rig's station and yoke, the nut at the top of its travel."""
     args, gap, cloc = _belt_bits()
     mp_deg, sp_deg = C.belt_mesh(*args, BTn.BELT_TOOTH_IN)
-    out = [("plank_station", station()), ("plank_head", head())]
+    out = [("plank_station_axial" if axial else "plank_station", station_axial() if axial else station()),
+           ("plank_head", head())]
     out.append(("leadscrew_0", C.screw().translate((SX, SY, D.SCREW_BOT_Z))))
     out.append(("nut_0", C.nut().translate((SX, SY, D.NUT_TOP_Z))))
-    out.append(("string_nut_0", C.string_nut().translate(
-        (D.string_anchor_x(I), SY, D.NUT_TOP_Z - D.NUT_FLANGE_T - D.STRING_NUT_D / 2))))
-    out.append(("guide_rod_0", C.guide_rod(D.GUIDE_ROD_L).translate((RX, SY, SOCKET_Z))))
+    if axial:
+        from cadkit.fasteners import headed_screw
+        out.append(("plank_yoke", yoke().translate((SX, SY, D.NUT_TOP_Z))))
+        out.append(("string_nut_0", C.string_nut().rotate((0, 0, 0), (0, 0, 1), 90).translate(
+            (SX, SY, D.NUT_TOP_Z + YK_R0 - D.STRING_NUT_D / 2))))
+        out.append(("guide_rod_0", C.guide_rod(D.GUIDE_ROD_L).translate((SX, SY + ROD_DY, ROD_BOT))))
+        zf = D.NUT_TOP_Z - D.NUT_FLANGE_T                  # the ears' underside
+        z0 = D.NUT_TOP_Z + YK_SHOULDER
+        for tag, sx in (("lo", -1), ("hi", 1)):
+            x = SX + sx * D.NUT_HOLE_DX
+            out.append((f"yoke_m3_{tag}", headed_screw(BTn.M3, YK_SCREW_L, BTn.HEAD_D, BTn.HEAD_H, 2.5)
+                        .rotate((0, 0, 0), (1, 0, 0), 180).translate((x, SY, zf - BTn.HEAD_H))))
+            out.append((f"yoke_insert_{tag}", cyl(BTn.INS_D, BTn.INS_L, z=z0)
+                        .cut(cyl(BTn.M3.insert_bore_d, BTn.INS_L + 1, z=z0 - 0.5)).translate((x, SY, 0))))
+    else:
+        out.append(("string_nut_0", C.string_nut().translate(
+            (D.string_anchor_x(I), SY, D.NUT_TOP_Z - D.NUT_FLANGE_T - D.STRING_NUT_D / 2))))
+        out.append(("guide_rod_0", C.guide_rod(D.GUIDE_ROD_L).translate((RX, SY, SOCKET_Z))))
     out.append(("screw_pulley_0", C.screw_pulley(high=D.screw_pulley_z(I) > D.SCREW_PULLEY_Z)
                 .rotate((0, 0, 0), (0, 0, 1), sp_deg).translate((SX, SY, D.screw_pulley_z(I)))))
     out.append(("screw_bearing_0_0", C.support_bearing().translate(
         (SX, SY, D.SUPPORT_BRG_BOT + 0.5 * D.BRG688_W))))
+    bx, bz = (BX_AX, BZ_AX) if axial else (BX, BZ)
     out.append(("bridge_bearing_0", C.support_bearing().rotate((0, 0, 0), (1, 0, 0), 90)
-                .translate((BX, SY, BZ))))
-    out.append(("bridge_axle_rod", cyl_y(D.BRIDGE_AXLE_D, D.BRIDGE_AXLE_L, SY - D.BRIDGE_AXLE_L / 2, x=BX, z=BZ)))
+                .translate((bx, SY, bz))))
+    out.append(("bridge_axle_rod", cyl_y(D.BRIDGE_AXLE_D, D.BRIDGE_AXLE_L, SY - D.BRIDGE_AXLE_L / 2, x=bx, z=bz)))
     out.append(("crown_dowel", C.dowel().translate((CROWN_X, SY, CROWN_Z))))
     for k, wp, _rgb, _fin in C.motor_parts():
         out.append((f"motor_{k}_0" if k else "motor_0", wp.translate((MX, MY, MZ))))
@@ -351,15 +472,24 @@ def assembly():
         out.append((f"{nm}_0", cq.Workplane("XY").add(shp.val().moved(cloc))))
     for nm, shp in _frozen_tee():
         out.append((nm, shp.translate((0, 0, MOTOR_RISE))))
-    out.append(("string_0", _string()))
+    out.append(("string_0", _string(axial=axial)))
     return out
+
+
+
+def assembly_axial():
+    """The axial rig (scratch view scope)."""
+    return assembly(axial=True)
 
 
 def print_parts():
     """{name: solid in its print pose, +Z up, on z 0}: the station turned so its +X face is the bed."""
     out = {}
     st = station().rotate((0, 0, 0), (0, 1, 0), 90)             # -X -> +Z
-    for nm, w in (("plank_station", st), ("plank_head", head())):   # the real tee board holds the motor (user)
+    sa = station_axial().rotate((0, 0, 0), (0, 1, 0), 90)
+    yk = yoke().rotate((0, 0, 0), (1, 0, 0), 180)               # roof on the bed: no bridge over the cavity
+    for nm, w in (("plank_station", st), ("plank_head", head()),   # the real tee board holds the motor (user)
+                  ("plank_station_axial", sa), ("plank_yoke", yk)):
         bb = w.val().BoundingBox()
         out[nm] = w.translate((-bb.xmin, -bb.ymin, -bb.zmin))
     return out
@@ -370,7 +500,7 @@ if __name__ == "__main__":
     from cadkit.step_export import export_step
     if "--freeze" in sys.argv:
         print("froze", ", ".join(freeze()), "into", FROZEN)
-    print(f"scale span {SCALE_SPAN:.2f}  plank top z {Z_PLANK:.2f}  edge y {Y_EDGE:.2f}")
+    print(f"scale span {SCALE_SPAN:.2f} (axial rig {SCALE_SPAN_AX:.2f})  plank top z {Z_PLANK:.2f}  edge y {Y_EDGE:.2f}")
     for nm, w in print_parts().items():
         bb = w.val().BoundingBox()
         print(f"{nm:14s} {bb.xlen:6.1f} x {bb.ylen:5.1f} x {bb.zlen:5.1f}  vol {w.val().Volume():8.0f} mm3"

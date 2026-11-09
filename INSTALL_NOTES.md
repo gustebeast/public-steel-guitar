@@ -1502,3 +1502,32 @@ its SECOND hole lines up with the screw, and drive the screw back in.
   which shortens its speaking length by 0.15 mm; and the motor stands on the plank about 15 mm higher
   against the screw pulley than the motor bank holds it (user: the station as low on the wood as it
   goes), so the belt runs about 1.5 degrees off level. It is still 573 teeth.
+
+### The axial rig: the string's pull on the screw's axis (2026-11-08)
+
+On the first station the string pulls the nut's +X ear, 8 mm off the screw's axis. At 147 N that
+tips the nut on its thread and it grabs: the drive skipped and struggled both ways, and a loose nut
+on a screw grabs the same way under a twisting load (user). This station puts the pull on the axis.
+Same head, same screw, pulley, belt and motor positions; print `coupons/plank_station_axial.step`
+(on its +X face, like the first) and `coupons/plank_yoke.step` (roof down, as exported).
+
+- **The yoke** sits on the nut's flange (flange up, long way along X) and is held by both ears: two
+  M3 x 12 socket heads (the belt clamp's) up through the ears into two of the belt clamp's M3
+  inserts, dropped into the yoke from its top onto a 2.4 shoulder (not heat-set: the screw pulls
+  them onto it). The ball end goes in through the window on the yoke's +Y side, axis along X, and
+  seats under its roof ON the screw's axis; the string leaves up through the roof's slot. The
+  screw's tip rises into the cavity under it (6.75 at the bottom of travel, 1.25 short of the ball
+  end). The guide rod runs through the boss on the yoke's -Y arm, 12 off the axis.
+- **The bridge bearing** sits 12.2 further -X (its +X tangent over the screw's axis) and 15.7 higher,
+  over a room tall enough for the yoke, so the string drops off it straight down the axis. Crown
+  dowel to bearing axle is now **594.8** (the screw stays where the belt has it); the bearing's top
+  stands ~16 over the crown's, a 1.5 degree slope over the length. Neither matters to a friction test.
+- **Order:** 1. Thrust 688 into the rail's seat from the bay, as before. 2. Screw the station down,
+  drill the plank 1/2 in through its floor hole. 3. Drop the inserts into the yoke, set it on the
+  nut and run the two M3s up through the ears. 4. Slide nut and yoke into the room from +X, arm to
+  -Y. 5. Screw up from below with its pulley and turn it up through the nut, as before (the room's
+  walls stop the yoke turning). 6. Drop the guide rod down the hole in the station's top, through
+  the yoke's boss, and punch it into its socket in the channel floor (12 deep: it stands on that
+  fit alone). 7. Bridge 688 into its pocket, Ø8 shaft along Y. 8. String: ball end into the yoke's
+  window, string through the roof's slot, then up the slot in the station's +X side past the
+  bearing's +X tangent and over the top.
