@@ -4747,6 +4747,34 @@ def build(stem):
                 print("  nudge: %s by (%+.2f, %+.2f)%s" % (ref, dx, dy,
                       " turned %+g deg" % drot if drot else ""))
 
+    # ⚠ DECLARED COPPER IS LAID ONCE (output_panel, 2026-11-08). A held snapshot lifted from a
+    # routed board carries the declared copper that board already had: HUB_DN4_DM's escape
+    # came in from output_panel.py AND again, split into single segments, from
+    # output_panel.held.r2.json -- two vias drilled on one spot, a hole inside a hole, and
+    # copper the router had to dedupe. A via repeated on its net at the same point, and a
+    # track whose every segment is already declared on its net / layer, are dropped and said.
+    _seen_v, _vias, _dv = set(), [], 0
+    for _v in notes.get("vias", ()):
+        _k = (_v[0], round(float(_v[1]), 3), round(float(_v[2]), 3))
+        if _k in _seen_v:
+            _dv += 1
+            continue
+        _seen_v.add(_k)
+        _vias.append(_v)
+    _seen_s, _tracks, _dt = set(), [], 0
+    for _t in notes.get("tracks", ()):
+        _n, _l, _ps = _t[0], _t[1], [tuple(round(float(c), 3) for c in p[:2]) for p in _t[3]]
+        _segs = [(_n, _l) + tuple(sorted((a, b))) for a, b in zip(_ps, _ps[1:])]
+        if _segs and all(s in _seen_s for s in _segs):
+            _dt += 1
+            continue
+        _seen_s.update(_segs)
+        _tracks.append(_t)
+    if _dv or _dt:
+        notes["vias"], notes["tracks"] = _vias, _tracks
+        print("  declared copper laid twice in the notes: dropped %d repeated via(s) and %d "
+              "track(s) whose every segment was already declared" % (_dv, _dt))
+
     missing = set(comps) - set(placements)
     if missing:
         # A part with no place is a part someone has to find a home for by hand,
