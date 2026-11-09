@@ -38,6 +38,7 @@ from . import motor_bank as MB
 from .components import MOTOR_PULLEY_STANDOFF
 from .helpers import box_at
 from cadkit import fitted_joint as FIT
+from cadkit.kept import kept
 
 T        = D.RAIL_T                    # rail thickness across Y (20.0: the steel bar's channel
                                        #   plus a skin each side; was 10.4 before the bars)
@@ -1414,18 +1415,26 @@ def _split_light(segs):
     return out
 
 
-_seg_pairs = _split_light(_segments())
+def _segment_pairs():
+    pairs = _split_light(_segments())
+    # CONNECTIVITY IS TESTED ON THE PRINTED OBJECT, not on the opaque half. The two filaments
+    # fuse into one solid part, so the opaque half may legitimately come out in pieces wherever
+    # the window runs between them -- what must never come apart is the union. (Reading the
+    # opaque half as the part is what had me tying the window every few stations to keep the +Y
+    # rail attached.)
+    for i, (op, lt) in enumerate(pairs):
+        n = op.union(lt).solids().size()
+        assert n == 1, (
+            "chassis segment %d prints as %d separate solids -- something has come loose "
+            "(the opaque half alone may be in pieces; the fused part may not)" % (i, n))
+    return pairs
+
+
+# KEPT (cadkit.kept): built once per change to what it reads, by whichever build or view meets
+# it first, and read by every other one -- ~140 s of every import that touches the chassis.
+_seg_pairs = kept(_segment_pairs)
 segments       = [s for s, _ in _seg_pairs]
 segments_light = [c for _, c in _seg_pairs]
-# CONNECTIVITY IS TESTED ON THE PRINTED OBJECT, not on the opaque half. The two filaments fuse
-# into one solid part, so the opaque half may legitimately come out in pieces wherever the
-# window runs between them -- what must never come apart is the union. (Reading the opaque half
-# as the part is what had me tying the window every few stations to keep the +Y rail attached.)
-for _i, (_op, _lt) in enumerate(_seg_pairs):
-    _n = _op.union(_lt).solids().size()
-    assert _n == 1, (
-        "chassis segment %d prints as %d separate solids -- something has come loose "
-        "(the opaque half alone may be in pieces; the fused part may not)" % (_i, _n))
 
 BED_X = 255.0                          # the printer's X, the reason the chassis is in pieces
 for _si, _seg in enumerate(segments):

@@ -77,6 +77,7 @@ from .helpers import box_at, cyl
 from cadkit.fasteners import M4, cut_anchor
 from cadkit.supports import printable_bore
 from cadkit.holes import house_hole
+from cadkit.kept import kept
 
 # Build direction. The endplate prints FLAT on its +X face, so "up" out of the bed is -X.
 # Any round hole whose axis runs SIDEWAYS to that -- the Y-axis axle bores -- has a
@@ -1410,7 +1411,7 @@ def op_cradle():
     return cr.translate((cx + rcx, cy, cz - standoff))
 
 
-bridge_endplate = _build()
+bridge_endplate = kept(_build)               # cadkit.kept: built once per change, by whoever meets it first
 
 
 def assembly():
