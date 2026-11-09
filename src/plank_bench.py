@@ -138,6 +138,15 @@ YK_H = 20 * D.BEAD                               # 16.0: the yoke over the nut's
 YK_R0 = 15 * D.BEAD                              # 12.0: the underside of its roof, the ball end's seat
 YK_HX, YK_HY = 15 * D.BEAD, 15 * D.BEAD / 2      # 12.0 x 6.0 half-sizes: the flange's 22 x 10.5 and a wall
 YK_CAV = D.SCREW_OD + 0.8                        # 8.8: the screw's tip rises into it
+# THE NUT'S LIP (user, 2026-11-08): a Ø10.2 x 1.5 lip stands on the flange's top face, so the
+# yoke's -Z face takes a recess for it: a CHANNEL straight across in Y, out to the ears' axes
+# (x ±NUT_HOLE_DX). A round counterbore left 0.2-0.3 slivers against the insert pockets and the
+# Y faces; the channel leaves none, and the flange seats on the yoke outboard of the ears. The
+# yoke keeps its 12 x 6 so it is the ONLY part to reprint: the axial station is unchanged.
+YK_LIP_HY = 5.4                                  # the lip's 5.1 radius and 0.3 (the plain station's relief)
+YK_LIP_L = D.NUT_LIP_L + 0.5                     # 2.0
+STN_LIP_D = 2 * YK_LIP_HY                        # the plain station's ceiling relief over the lip
+STN_LIP_L = D.NUT_LIP_L + 0.3                    # 1.8: leaves 0.9 under the bearing's pocket
 YK_PROTRUDE = D.SCREW_TOP_Z - (D.NUT_TOP_Z - D.CARRIAGE_TRAVEL)   # 6.75: tip over the flange, bottom of travel
 assert YK_R0 - D.STRING_NUT_D >= YK_PROTRUDE + 1.0 - 1e-9, "the screw's tip reaches the ball end"
 # THE M3 INSERTS ARE HEAT-SET FROM THE -Z FACE, the one on the flange (user, 2026-11-08): dropped in
@@ -146,9 +155,9 @@ assert YK_R0 - D.STRING_NUT_D >= YK_PROTRUDE + 1.0 - 1e-9, "the screw's tip reac
 # screw clamps the ear to the mouth: the string pulls the insert toward its mouth, as an insert should.
 YK_INS_D = BTn.INS_D + 0.1                       # 4.8: the Pi's heat-set pocket for the same insert (PI_M3)
 YK_CLR_D = BTn.SCR_CLR                           # 3.4: the screw's tip, past the insert
-YK_SCREW_L = BTn.SCREW_L                         # M3 x 12 socket head (the belt clamp's): ear 4 + 2.4 + 5.6 in the insert
+YK_SCREW_L = BTn.SCREW_L                         # M3 x 12 socket head (the belt clamp's): ear 3.5, the rest in the insert
 assert YK_SCREW_L - D.NUT_FLANGE_T >= BTn.INS_L, "the M3 does not reach through its insert"
-YK_TIP = YK_SCREW_L - D.NUT_FLANGE_T + 0.6       # 8.6: the hole's depth, the tip's 8.0 and air
+YK_TIP = YK_SCREW_L - D.NUT_FLANGE_T + 0.6       # 9.1: the hole's depth, the tip's 8.5 and air
 assert D.NUT_HOLE_DX - YK_INS_D / 2 - YK_CAV / 2 >= 1.2 - 1e-9, "insert pocket into the screw's cavity"
 ROD_DY = -15 * D.BEAD                            # -12.0: the guide rod, out -Y past the flange and the rail's seat
 YK_ROD_D = D.GUIDE_ROD_D + 0.5                   # 4.0: printed, sliding; it only takes the screw's torque
@@ -215,6 +224,9 @@ def station() -> cq.Workplane:
     # ...and open +X through the back wall: the ear the string is threaded up through is 8 mm in
     # from there (user, 2026-11-07)
     s = s.cut(_box(X1 - 1.0, X1B + 1.0, SY - LANE, SY + LANE, RAIL_TOP, D.CHANGER_CEIL_Z))
+    # the nut's Ø10.2 x 1.5 LIP (user, 2026-11-08) rises past the flange top into the ceiling at
+    # the top of travel: a relief over it, so the flange still stops on the ceiling as before
+    s = s.cut(_zbore(STN_LIP_D, SX, SY, D.CHANGER_CEIL_Z - 0.01, D.CHANGER_CEIL_Z + STN_LIP_L, ST_UP))
     # THE SCREW GOES IN FROM BELOW with its pulley on, as in the instrument: a 1/2 in hole through
     # the floor, which is also the guide to drill the plank through
     s = s.cut(_zbore(SCREW_HOLE_D, SX, SY, Z_PLANK - 1.0, zb + 1.0, ST_UP))
@@ -290,6 +302,7 @@ def yoke() -> cq.Workplane:
     y = y.union(cyl(2 * ARM_R, ARM_H).translate((0.0, ROD_DY, 0.0)))
     y = y.cut(cyl(YK_ROD_D, ARM_H + 2.0, z=-1.0).translate((0.0, ROD_DY, 0.0)))
     y = y.cut(cyl(YK_CAV, YK_R0 + 1.0, z=-1.0))                                     # the screw's tip
+    y = y.cut(_box(-D.NUT_HOLE_DX, D.NUT_HOLE_DX, -YK_HY - 1.0, YK_HY + 1.0, -1.0, YK_LIP_L))   # the nut's lip
     # NO WINDOW, NO SLIT (user, 2026-11-08): the string goes in -Z to +Z, free end up through the
     # cavity from the -Z face (before the yoke goes on the nut) and out this hole on the axis,
     # until the ball end seats under the roof

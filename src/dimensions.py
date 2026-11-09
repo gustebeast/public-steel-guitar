@@ -251,10 +251,12 @@ NUT_AF          = 10.5      # across flats (Y) — was THE lane-critical dimensi
                             # is why the screws are now in TWO ROWS: 10.5 cannot live
                             # in a 9.5 lane at any screw size.
 NUT_FLANGE_L    = 22.0      # long axis (X), tip to tip (R11 ears)
-NUT_FLANGE_T    = 4.0
+NUT_FLANGE_T    = 3.5       # MEASURED (user, 2026-11-08): the drawing's 4.0 is 3.5
 NUT_BOSS_D      = 10.2
-NUT_BOSS_L      = 11.0      # 15 overall - 4 flange
-NUT_H           = NUT_FLANGE_T + NUT_BOSS_L                            # 15.0
+NUT_BOSS_L      = 10.0      # MEASURED (user, 2026-11-08): the long boss is 10, not the drawing's 11
+NUT_LIP_D       = NUT_BOSS_D  # and a short LIP on the flange's +Z face, the boss's diameter
+NUT_LIP_L       = 1.5         # (user, 2026-11-08): the flange top is NOT the nut's top face
+NUT_H           = NUT_FLANGE_T + NUT_BOSS_L                            # 13.5, flange top -> boss foot
 NUT_HOLE_D      = 3.5       # the ears' through-holes, MEASURED (user, 2026-10-16, calipers,
                             # every nut of the order: "It does say 2.5 but unfortunately they
                             # all measure 3.5"). The listing's 2.5 (trusted 2026-10-07) was
@@ -908,7 +910,13 @@ BELT_RUN_MIN    = min(math.hypot(motor_pos(i)[0] - screw_x(i),
 # 194.0 and this sum allows 8.70; the nut does not get travel it has no use for.
 CARRIAGE_TRAVEL = min(TRAVEL_WANT, (BELT_RUN_MIN - BELT_CLAMP_L - PULLEY_FLANGE_OD
                                     - 2 * CLAMP_END_CLR) / BELT_PER_MM)   # 8.35
-NUT_BOT_MIN     = NUT_TOP_Z - CARRIAGE_TRAVEL - NUT_H          # -26.17, the FLOOR: the
+# ⚠ PROVISIONAL (2026-11-08): the floor is still placed by the DRAWING's 15.0 nut. Measured, the
+# nut is 13.5 from flange top to boss foot (NUT_H), so its foot now stops 1.5 ABOVE this floor at
+# the bottom of travel: the thrust bearing is no longer the bottom stop, and the nut has 1.5 more
+# fall than the belt budget allows (CLAMP_END_CLR has the room). Kept so no printed part moves
+# until the lead decides whether the stack comes up 1.5. NUT_LIP_L also meets the room ceiling.
+NUT_STACK_H     = 15.0                                         # the drawing's nut, see above
+NUT_BOT_MIN     = NUT_TOP_Z - CARRIAGE_TRAVEL - NUT_STACK_H    # -26.17, the FLOOR: the
                                                                # boss's underside at the
                                                                # bottom of travel
 # THE THRUST BEARING IS THAT FLOOR (user, 2026-10-01). The nut's boss comes down through

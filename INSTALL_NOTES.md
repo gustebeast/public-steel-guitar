@@ -1513,7 +1513,7 @@ Same head, same screw, pulley, belt and motor positions; print `coupons/plank_st
 
 - **The yoke** sits on the nut's flange (flange up, long way along X) and is held by both ears: two
   M3 x 12 socket heads (the belt clamp's) up through the ears into two of the belt clamp's M3
-  inserts, heat-set flush into the yoke's -Z face (the face on the flange). The string goes in -Z to +Z: free end up the yoke's cavity from its -Z face and
+  inserts, heat-set flush into the yoke's -Z face (the face on the flange). A 2.0 deep channel across that face, x ±8, takes the nut's measured Ø10.2 x 1.5 lip (2026-11-08: flange 3.5, boss 10, lip 1.5); only the yoke was reprinted for it. The string goes in -Z to +Z: free end up the yoke's cavity from its -Z face and
   out the Ø2 hole in its roof, ON the screw's axis, until the ball end seats under the roof. No
   window, no slit. The
   screw's tip rises into the cavity under it (6.75 at the bottom of travel, 1.25 short of the ball
