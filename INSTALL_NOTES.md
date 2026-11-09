@@ -1598,8 +1598,8 @@ straight off the yoke's roof and runs dead level to the crown.
 - **The frame:** the rail wall (the 688's seat) and two triangular buttresses down to the base at
   -X. Nothing stops the yoke turning: hold it by hand while driving. The base is a U under the walls
   and four wood screws.
-- **Where:** centred on the screw in Y. Plank holes at x -7.9 and x 26.1 (under the rail wall), each
-  at y 24.95 and 60.55: only (x -7.9, y 60.55) is an axial-station hole, the other three are NEW. The string's pull tips the frame -X, so the screws at the +X end are
+- **Where:** centred on the screw in Y, on the SECOND X-rig print's plank holes: x -7.9 and 26.1,
+  each at y 16.75 and 60.55. A tab off the base reaches each one. The string's pull tips the frame -X, so the screws at the +X end are
   the ones in tension; put them in. The screw's axis is at the crown's string height. Crown to
   yoke roof at mid-travel is the 607 scale, so the string tunes to pitch at the instrument's
   tension. The pulley overhangs +X in the air.

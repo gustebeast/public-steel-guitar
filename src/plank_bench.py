@@ -358,10 +358,13 @@ XR_X0 = XR_XR - 37.8                             # the buttresses' foot
 # the 688's seat is in the middle of the plate. The base too, its +Y face still the plank's edge.
 XR_HW = ROOM_HY + XR_WALL                        # 11.4: the frame's half-width
 XR_Y0, XR_Y1 = SY - XR_HW, SY + XR_HW            # 31.35 .. 54.15
-XR_BASE_HW = Y_EDGE - SY                         # 23.6
-XR_SCREWS_X = (X1_AX - 6.4, XR_X1 - 6.4)         # x -7.9 (the axial station's), and a new pair under the rail
-XR_SCREWS_Y = (SY - (Y1 + FLANGE / 2 - SY), Y1 + FLANGE / 2)   # 24.95 (new), 60.55 (the axial station's)
+# THE PLANK'S HOLES ARE THE SECOND PRINT'S (user, 2026-11-08: reuse the drill points): x -7.9 and
+# 26.07, y 16.75 and 60.55. The base reaches them with a tab each off the strips under the walls.
+XR_SCREWS_X = (X1_AX - 6.4, XR_X1 - 6.4)         # -7.9, 26.07
+XR_SCREWS_Y = (Y0_AX - FLANGE / 2, Y1 + FLANGE / 2)   # 16.75, 60.55
+XR_TAB = 6.4                                     # a tab's half-length in X round its screw
 assert XR_SCREWS_Y[0] + WOOD_CSK_D / 2 <= XR_Y0 - 1e-9, "a -Y screw head under the buttress"
+assert XR_SCREWS_Y[1] - WOOD_CSK_D / 2 >= XR_Y1 + 1e-9, "a +Y screw head under the buttress"
 assert XR_X0 <= XR_SCREWS_X[0] - WOOD_CSK_D / 2 - 1.6 + 1e-9, "under 1.6 of base past the -X screws' countersinks"
 
 
@@ -374,8 +377,13 @@ def station_x() -> cq.Workplane:
     """The X rig's frame, built +Z (base down): every bore along X is a teardrop."""
     zb = Z_PLANK + BASE_T
     # base: the U -- the full footprint less the room's floor
-    s = _box(XR_X0, XR_X1, SY - XR_BASE_HW, SY + XR_BASE_HW, Z_PLANK, zb)
-    s = s.cut(_box(XR_X0 - 1.0, XR_XR, XR_Y0 + XR_WALL, XR_Y1 - XR_WALL, Z_PLANK - 1.0, zb + 1.0))
+    # base: strips under the walls, a pad under the rail wall, and a tab out to each screw
+    s = _box(XR_X0, XR_X1, XR_Y0, XR_Y0 + XR_WALL, Z_PLANK, zb)
+    s = s.union(_box(XR_X0, XR_X1, XR_Y1 - XR_WALL, XR_Y1, Z_PLANK, zb))
+    s = s.union(_box(XR_XR, XR_X1, XR_Y0, XR_Y1, Z_PLANK, zb))
+    for x in XR_SCREWS_X:
+        s = s.union(_box(x - XR_TAB, x + XR_TAB, Y0_AX - FLANGE, XR_Y0 + 0.01, Z_PLANK, zb))
+        s = s.union(_box(x - XR_TAB, x + XR_TAB, XR_Y1 - 0.01, Y_EDGE, Z_PLANK, zb))
     # the rail wall: thick round the seat, thin under it, a 45 deg step
     s = s.union(_box(XR_X1 - XR_RAIL_T2, XR_X1, XR_Y0, XR_Y1, zb - 0.01, XR_TOP))
     dx = XR_X1 - XR_RAIL_T2 - XR_XR
