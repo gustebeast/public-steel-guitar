@@ -1366,11 +1366,20 @@ def drop_redundant_pad_vias(board, notes):
     # the pass that was wrong. Two complete routing runs were thrown away on the symptom.
     #
     # Ask the board for its connectivity EVERY time, immediately before use.
+    #
+    # ⚠ AND ASK IT AGAINST A FRESH FILL (motor_ctrl U2.2 / R2.2 GND, 2026-11-09): with the
+    # pours as they stood, the land still touched GND copper once its via was off the net,
+    # so the via read redundant -- and the refill after it pulled the pour back from the
+    # land, leaving two GND lands joined to nothing. close_last closed one 18.4 mm round
+    # (quality A23). Each test refills the pours first, as the board will be refilled.
+    fill = lambda: pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+    fill()
     board.BuildConnectivity()
     base = board.GetConnectivity().GetUnconnectedCount(False)
     doomed = {}
     for t, nc, why in cand:
         t.SetNetCode(0)
+        fill()
         board.BuildConnectivity()
         if board.GetConnectivity().GetUnconnectedCount(False) > base:
             t.SetNetCode(nc)                   # it was carrying the net: keep it
@@ -1384,6 +1393,7 @@ def drop_redundant_pad_vias(board, notes):
               if isinstance(t, pcbnew.PCB_VIA) and t.m_Uuid.AsString() in doomed]:
         board.Remove(t)
         _REMOVED.append(t)
+    fill()
     board.BuildConnectivity()
     if doomed:
         print("  removed %d redundant via(s) drilled into a small soldered land: %s"
@@ -1801,18 +1811,25 @@ def _path_clear(board, a, z, net, layer, w, step_mm=0.1):
     took led_strip to 0 unconnected AND tracks_crossing 0 -> 1 -- two nets crossing, which
     is strictly worse than the floating stub it removed. A stub that floats is a missing
     connection; a crossing is a short, and only one of those is caught downstream.
+
+    ⚠ AND A CENTRELINE CHECK IS NOT A CLEARANCE CHECK (foot_led_a, 2026-11-09): a pad was
+    refused only if a sample fell INSIDE it, so a 0.2 mm stub laid with its centreline
+    0.1 mm off U1's unconnected pin 17 shorted it -- DRC shorting_items, quality A FAIL,
+    on a board that routed clean. Every sample now keeps half the stub's width plus the
+    board's clearance from other copper, pads and tracks alike.
     """
     n = max(2, int(math.hypot(z.x - a.x, z.y - a.y) / pcbnew.FromMM(step_mm)))
+    acc = int(w / 2 + board.GetDesignSettings().m_MinClearance)
     others = [o for o in board.GetTracks()
-              if o.GetNetname() != net and o.GetLayer() == layer]
+              if o.GetNetname() != net and (o.GetClass() == "PCB_VIA" or o.GetLayer() == layer)]
     pads = [pd for m in board.GetFootprints() for pd in m.Pads()
-            if pd.GetNetname() != net]
+            if pd.GetNetname() != net and pd.IsOnLayer(layer)]
     for i in range(n + 1):
         p = pcbnew.VECTOR2I(int(a.x + (z.x - a.x) * i / n),
                             int(a.y + (z.y - a.y) * i / n))
-        if any(o.HitTest(p, int(w)) for o in others):
+        if any(o.HitTest(p, acc) for o in others):
             return False
-        if any(pd.HitTest(p) for pd in pads):
+        if any(pd.HitTest(p, acc) for pd in pads):
             return False
     return True
 
@@ -2352,7 +2369,7 @@ def rescue_stray_stitches(board, notes, via_d=0.6, clr=0.2):
         return any(z.GetFilledPolysList(z.GetLayer()).Collide(pt)
                    for z in planes.get(net, ()))
 
-    pads = [(q.GetBoundingBox(), q.GetNetname())
+    pads = [(q.GetBoundingBox(), q.GetNetname(), q.GetAttribute() == pcbnew.PAD_ATTRIB_SMD)
             for fp in board.GetFootprints() for q in fp.Pads()]
     segs, vias = [], []
     for t in board.GetTracks():
@@ -2362,10 +2379,21 @@ def rescue_stray_stitches(board, notes, via_d=0.6, clr=0.2):
             segs.append(((t.GetStart().x, t.GetStart().y),
                          (t.GetEnd().x, t.GetEnd().y), t.GetWidth() / 2.0,
                          t.GetNetname()))
+    # ⚠ NOT IN ITS OWN LAND EITHER (motor_ctrl R2.2 / U2.2 GND, 2026-11-09): the walk starts
+    # 0.5 mm from the pad's centre and the test skipped the via's own net, so a stitch
+    # landed inside the very land it serves -- an open hole in a soldered pad, quality's
+    # hard via-in-pad FAIL (and the redundant-via pass removing it orphaned the land). A
+    # stitch's drill keeps off every soldered land, its own net's included.
+    hole_off = pcbnew.FromMM(0.3 / 2.0 + 0.05)
 
-    def clear(x, y, net, margin):
-        for bb, onet in pads:
+    def clear(x, y, net, margin, via=False):
+        for bb, onet, smd in pads:
             if onet == net:
+                if smd and via:
+                    dx = max(bb.GetLeft() - x, 0, x - bb.GetRight())
+                    dy = max(bb.GetTop() - y, 0, y - bb.GetBottom())
+                    if math.hypot(dx, dy) < hole_off:
+                        return False
                 continue
             dx = max(bb.GetLeft() - x, 0, x - bb.GetRight())
             dy = max(bb.GetTop() - y, 0, y - bb.GetBottom())
@@ -2436,7 +2464,7 @@ def rescue_stray_stitches(board, notes, via_d=0.6, clr=0.2):
                 y = int(anchor.y + r * math.sin(ang))
                 if not in_plane(net, x, y):
                     continue
-                if not clear(x, y, net, v_margin):
+                if not clear(x, y, net, v_margin, via=True):
                     continue
                 n = max(4, int(pcbnew.ToMM(r) / 0.15) + 1)
                 if not all(clear(anchor.x + (x - anchor.x) * i / n,

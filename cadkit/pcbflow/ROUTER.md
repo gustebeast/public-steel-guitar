@@ -1,8 +1,8 @@
 # pcbflow's own router
 
 Started 2026-11-08. Replaces freerouting in `finish.py` (layout -> **route** -> unwick ->
-repair_planes -> DRC -> close_last) with `PCBFLOW_ROUTER=own`; it becomes the default once
-the full chain signs it off (router-alone it routes every board, 2026-11-09).
+repair_planes -> DRC -> close_last); the default since 2026-11-09, when all 15 boards reached
+0 / 0 / 0 FAIL through the full chain on it (`PCBFLOW_ROUTER=freerouting` brings back route.py).
 
 ## Why
 
@@ -89,6 +89,24 @@ which is placement feedback rather than a coin flip.
   body is re-joined to the main body only, the others re-negotiating round it, and the
   result is kept only if no more nets end open. Optical +3V3D, 2026-11-09: an islanded
   join on 16 of 19 nudges became close_last's 13.5 mm closure across a 1.7 mm gap (A23).
+- **A slot in the return plane is crossed square** (`model._ref_voids`, `VOID_COST`): each
+  routing layer's reference plane is the nearest ground copper in the stack, as quality
+  A15 reads it; where that plane is void for `VOID_MIN_MM` or more (a socket's row of
+  antipads, the cut under a photodiode) a signal pays 3x a cell, so it crosses short and
+  never runs along. pi_cap UI_ENC_A ran 11.77 mm along the 40-pin row against 9.3 signed.
+- **A net stuck in a stalled negotiation looks wider** (`WIDEN_AFTER`, `STALL_ROUNDS`):
+  the window grew only when it held NO path, and a shared one always exists, so two
+  pi_cap nets fought over one gap at pf 576 and were ripped out. Once the negotiation is
+  `STALL_ROUNDS` without gain, a net sharing `WIDEN_AFTER` rounds starts at 12 mm, then
+  the whole board. Only when stalled, never a matched pair: widening while it still
+  improved moved optical's nets round its USB pair and left the pair unfinishable.
+- **A pair attempt whose rails overlap is no attempt** (`_pair_try`): "fewest shared
+  cells" counted the rails sharing with each other, which `_displace` (pair held, rest
+  moved) can never undo; USB_DP and USB_DM were written 0.33 mm into each other.
+- **Exact clearance of what is written** (`geomcheck.check`, ROUTER.md M2): every emitted
+  segment and via against other nets' pads (exact shape), tracks, vias and new copper,
+  each shortfall named with what drew it (run, stub, via). 0 on every board, 2026-11-09;
+  run it after any change to emit or the pair finish.
 
 ## Placement feedback
 
@@ -119,7 +137,8 @@ block was U1 west / C52, the spot that ate the freerouting nudge series.
    layout.py, so placement is judged before a detailed route is spent on it.
 5. **M5 parity**: all four boards (optical, motor_ctrl, pi_cap, output_panel) at their
    targets on it, then every finish-chain board. Router-alone: all 15 boards, 0 nets
-   open, 0 pair faults (2026-11-09). Default switch pending the full-chain sign-off.
+   open, 0 pair faults; full chain: all 15 at 0 unconnected / 0 violations / 0 quality
+   FAIL, unmoved (2026-11-09, cadkit 1d4fbee). DONE: it is the default.
 
 Each milestone is measured against the freerouting baseline on the same placed board
 (`<stem>.unrouted.kicad_pcb`): unconnected, DRC errors, quality FAILs, wall time.

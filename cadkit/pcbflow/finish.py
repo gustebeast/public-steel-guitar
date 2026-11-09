@@ -67,9 +67,11 @@ _DEFAULT_STEP = {"silk.py": os.path.join(CADKIT, "kicad_silk.py"),
                  "export_geom.py": os.path.join(CADKIT, "kicad_geom.py")}
 
 
-# PCBFLOW_ROUTER=own routes with pcbflow's own router (ownroute.py, see ROUTER.md) in
-# freerouting's place; the rest of the chain is the same either way.
-ROUTER = "ownroute.py" if os.environ.get("PCBFLOW_ROUTER") == "own" else "route.py"
+# pcbflow's own router (ownroute.py, see ROUTER.md) is the default since 2026-11-09: all 15
+# finish-chain boards reached 0 unconnected / 0 violations / 0 quality FAIL on it, unmoved,
+# through this whole chain (freerouting could not full-route optical at all in 58 min).
+# PCBFLOW_ROUTER=freerouting brings back route.py; the rest of the chain is the same.
+ROUTER = "route.py" if os.environ.get("PCBFLOW_ROUTER") == "freerouting" else "ownroute.py"
 
 
 def _step(script, stem):

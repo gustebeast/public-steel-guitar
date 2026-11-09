@@ -1,6 +1,6 @@
 """ownroute.py <stem>: route <stem>.kicad_pcb with pcbflow's own router (see ROUTER.md).
 
-Drop-in for route.py in finish.py's chain (PCBFLOW_ROUTER=own): reads the placed board
+Drop-in for route.py in finish.py's chain (the default; PCBFLOW_ROUTER=freerouting for route.py): reads the placed board
 layout.py wrote, routes it, and finishes it with route.post_route -- the same post-route
 work freerouting's boards get (post-route parts, repairs, thermal spokes, refill, tidy,
 canonical UUIDs), so the two routers are compared on equal terms.
