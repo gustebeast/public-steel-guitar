@@ -1595,13 +1595,18 @@ This rig strips everything else away: no bridge bearing and no guide rod. The st
 straight off the yoke's roof and runs dead level to the crown.
 - **Print:** `coupons/plank_station_x.step`, builds -Z → +Z (base on the bed), as exported.
   It reuses the axial rig's yoke, nut, screw, pulley and thrust 688 as printed.
-- **Where:** the same four plank holes as the axial station. The screw's axis is at the crown's string
-  height (15.8 over the instrument datum, ~72 over the plank). It sits so crown to yoke roof at
-  mid-travel is the 607 scale, so the string tunes to pitch at the instrument's tension. The
-  pulley overhangs +X; it is in the air, so the plank may end under it.
+- **The frame:** the rail wall (the 688's seat) and two triangular buttresses down to the base at
+  -X. A full-height band on the +Y buttress, where the yoke always sits, stops it turning (~3 deg of
+  play). The base is a U under the walls and four wood screws.
+- **Where:** the axial station's x -7.9 pair of plank holes, plus a NEW pair under the rail wall
+  (x 26.1, the same two Y). The string's pull tips the frame -X, so the screws at the +X end are
+  the ones in tension; put them in. The screw's axis is at the crown's string height. Crown to
+  yoke roof at mid-travel is the 607 scale, so the string tunes to pitch at the instrument's
+  tension. The pulley overhangs +X in the air.
+- **No top stop.** At the old stop the nut still has ~12 of thread on the screw: raising further by
+  hand can wind it off the screw's end, so stay near pitch.
 - **Order:** 1. 688 into the rail wall's seat from +X. 2. String's free end through the yoke's
   cavity and out its roof, the ball end seated; bolt the yoke to the nut (M3s self-tapping).
-  3. Drop nut and yoke into the room from the top, arm to -Y and roof to -X, with the string
-  dropped into the end wall's open slot. 4. Screw in from +X with its pulley, through the 688,
-  and turn it into the nut. The +Y wall stops the yoke turning. 5. String over the crown to the tuner.
-- Drive it by hand with the belt ends as before. The yoke's end wall is the top stop.
+  3. Set nut and yoke in the frame, roof to -X and arm to -Y. 4. Screw in from +X with its pulley,
+  through the 688, and turn it into the nut. The band on the +Y wall stops the yoke turning.
+  5. String over the crown to the tuner. Drive it by hand with the belt ends as before.

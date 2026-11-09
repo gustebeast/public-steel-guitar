@@ -324,10 +324,8 @@ def station_axial() -> cq.Workplane:
 XR_ZA = D.STRING_Z - D.STRING_GAUGE[I] / 2.0     # 15.81
 XR_ROOF_MID = D.NUT_TOP_Z + YK_H - D.CARRIAGE_TRAVEL / 2.0   # the yoke's roof, local z, mid-travel
 XR_OFF = CROWN_X + SCALE_SPAN + XR_ROOF_MID      # world x of local z 0
-XR_END_T = 3 * D.BEAD                            # 2.4: the end wall
-XR_WALL = 6 * D.BEAD                             # 4.8: the +Y wall, the anti-rotation one
+XR_WALL = 6 * D.BEAD                             # 4.8: the +Y wall
 XR_TOP = XR_ZA + YK_HX + 2 * D.BEAD              # 29.41: the walls' top, past the yoke's corners
-XR_SLOT = 2.4                                    # the string's slot in the end wall
 
 
 def _xr_x(z):
@@ -341,32 +339,64 @@ def _xbore(d, z0, z1):
                           print_up=UP)
 
 
-XR_X0 = _xr_x(CEIL_AX + XR_END_T)                # the end wall's -X face
+# SLIMMED (user, 2026-11-08: "save plastic ... make the support angled"). What is left:
+#   the RAIL WALL, the main plate: 9.3 (screw_rail's) round the 688's seat, 4.8 under it, a 45 deg
+#     step between them.
+#   two BUTTRESSES, the side walls cut to a triangle from the rail wall's top down to the base at
+#     XR_X0: the string pulls the wall -X, and they take that in compression. Their slope faces up
+#     in the +Z print.
+#   a BAND on the +Y wall, full height from the rail wall back to XR_BAND_X0: the yoke turns until a
+#     +Y corner meets it (~3 deg), and the yoke covers x XR_BAND_X0..+3.8 at every point of its
+#     travel, so the band always has it. Its underside comes back down to the buttress at 45 deg.
+#   the BASE, a U under the walls and the four wood screws; nothing under the room.
+# NO TOP STOP any more: at the old stop the nut still has ~12 of thread on the screw, so a hand
+# raising past it can wind the nut off the screw's end.
 XR_X1 = _xr_x(RAIL_BOT)                          # the rail wall's +X face: the 688's seat mouth
-XR_BX0 = min(XR_X0, X0_AX)                       # the base reaches back over the axial station's holes
-XR_Y0 = ARM_Y0 - WALL_HI                         # the -Y wall's outer face
+XR_XR = _xr_x(RAIL_TOP)                          # the rail wall's -X face
+XR_RAIL_T2 = 6 * D.BEAD                          # 4.8: the rail wall under the seat
+XR_SEAT_Z0 = XR_ZA - (D.SUPPORT_BRG_OD + 0.2) / 2 - 2 * D.BEAD   # the thick part's underside
+XR_X0 = XR_XR - 37.8                             # the buttresses' foot
+XR_BAND_X0 = _xr_x(D.NUT_TOP_Z + YK_H - D.CARRIAGE_TRAVEL) - 1.0   # the yoke's roof, bottom of travel
+XR_BAND_Z0 = XR_ZA - YK_HX - CLR                 # the band's underside at its -X end
+XR_Y0 = ARM_Y0 - WALL_HI                         # the -Y wall's outer face (3.2: clear of the plank screws' heads)
 XR_Y1 = SY + ROOM_HY + XR_WALL                   # the +Y wall's outer face
-assert XR_X1 - 6.4 >= X1_AX - 6.4 - 1e-9, "the base does not reach the axial station's +X holes"
+XR_SCREWS_X = (X1_AX - 6.4, XR_X1 - 6.4)         # the axial station's -X... its +X pair, and a new pair
+assert XR_X0 <= XR_SCREWS_X[0] - WOOD_CSK_D / 2 - 1.6 + 1e-9, "under 1.6 of base past the -X screws' countersinks"
+
+
+def _xz_prism(pts, y0, y1):
+    """A polygon in XZ, extruded y0..y1."""
+    return (cq.Workplane("XZ", origin=(0.0, y1, 0.0)).polyline(pts).close().extrude(y1 - y0))
 
 
 def station_x() -> cq.Workplane:
     """The X rig's frame, built +Z (base down): every bore along X is a teardrop."""
     zb = Z_PLANK + BASE_T
-    s = _box(XR_BX0, XR_X1, Y0_AX - FLANGE, Y_EDGE, Z_PLANK, zb)                      # base
-    s = s.union(_box(XR_X0, XR_X1, XR_Y0, XR_Y1, zb - 0.01, XR_TOP))                  # the box
-    # the room: from the end wall to the rail wall, open on top, down to the base
-    s = s.cut(_box(_xr_x(CEIL_AX), _xr_x(RAIL_TOP), SY - ROOM_HY, SY + ROOM_HY, zb, XR_TOP + 1.0))
-    # ...out -Y past the yoke's arm, down to the base too: the +Y wall alone stops the yoke turning
-    # either way (one of its +Y corners meets it whichever way it turns), so the -Y side is a wall
-    s = s.cut(_box(_xr_x(CEIL_AX), _xr_x(RAIL_TOP), ARM_Y0, SY - ROOM_HY + 0.01, zb, XR_TOP + 1.0))
+    m = (XR_TOP - zb) / (XR_XR - XR_X0)               # the buttresses' slope
+    # base: the U -- the full footprint less the room's floor
+    s = _box(XR_X0, XR_X1, Y0_AX - FLANGE, Y_EDGE, Z_PLANK, zb)
+    s = s.cut(_box(XR_X0 - 1.0, XR_XR, XR_Y0 + WALL_HI, XR_Y1 - XR_WALL, Z_PLANK - 1.0, zb + 1.0))
+    # the rail wall: thick round the seat, thin under it, a 45 deg step
+    s = s.union(_box(XR_X1 - XR_RAIL_T2, XR_X1, XR_Y0, XR_Y1, zb - 0.01, XR_TOP))
+    dx = XR_X1 - XR_RAIL_T2 - XR_XR
+    s = s.union(_xz_prism([(XR_XR, XR_TOP), (XR_X1 - XR_RAIL_T2 + 0.01, XR_TOP),
+                           (XR_X1 - XR_RAIL_T2 + 0.01, XR_SEAT_Z0 - dx), (XR_XR, XR_SEAT_Z0)], XR_Y0, XR_Y1))
+    # the -Y buttress
+    tri = [(XR_X1 - XR_RAIL_T2 + 0.01, zb - 0.01), (XR_X1 - XR_RAIL_T2 + 0.01, XR_TOP), (XR_XR, XR_TOP),
+           (XR_X0, zb - 0.01)]
+    s = s.union(_xz_prism(tri, XR_Y0, XR_Y0 + WALL_HI))
+    # the +Y buttress with the band: back to XR_BAND_X0 at full height, its underside 45 deg down
+    # to the slope
+    xi = (XR_BAND_Z0 + XR_BAND_X0 - zb + m * XR_X0) / (m + 1.0)    # 45 deg line meets the slope
+    zi = zb + m * (xi - XR_X0)
+    band = [(XR_X1 - XR_RAIL_T2 + 0.01, zb - 0.01), (XR_X1 - XR_RAIL_T2 + 0.01, XR_TOP),
+            (XR_BAND_X0, XR_TOP), (XR_BAND_X0, XR_BAND_Z0), (xi, zi), (XR_X0, zb - 0.01)]
+    s = s.union(_xz_prism(band, XR_Y1 - XR_WALL, XR_Y1))
     # the rail wall's bores: screw_rail's seat, lip and boss passage, as printed
     s = s.cut(_xbore(D.SUPPORT_BRG_OD + 0.2, RAIL_BOT - 1.0, BRG_TOP_Z + 1e-3))
     s = s.cut(_xbore(SR.SEAT_LEDGE_D, RAIL_BOT - 1.0, LEDGE_TOP))
     s = s.cut(_xbore(SR.NUT_PASS_D, LEDGE_TOP - 0.01, RAIL_TOP + 1.0))
-    # the string's slot through the end wall, open on top: the string drops in
-    s = s.cut(_box(XR_X0 - 1.0, _xr_x(CEIL_AX) + 0.01, SY - XR_SLOT / 2, SY + XR_SLOT / 2,
-                   XR_ZA - XR_SLOT / 2, XR_TOP + 1.0))
-    for x in (X0_AX + 6.4, X1_AX - 6.4):
+    for x in XR_SCREWS_X:
         for y in (Y0_AX - FLANGE / 2, Y1 + FLANGE / 2):
             s = s.cut(_wood_screw(x, y, UP))
     return s
