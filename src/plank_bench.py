@@ -154,16 +154,16 @@ ROD_DY = -15 * D.BEAD                            # -12.0: the guide rod, out -Y 
 YK_ROD_D = D.GUIDE_ROD_D + 0.5                   # 4.0: printed, sliding; it only takes the screw's torque
 ARM_R = YK_ROD_D / 2 + 3 * D.BEAD                # 4.4: the rod's boss
 # The boss runs the yoke's full height: the yoke prints roof-down, and a short arm would hang
-# off the body in that print (print_check, 2026-11-08). So the rod cannot also reach a bore over
-# the channel; it stands in a deep socket instead, a cantilever -- it only takes the screw's torque.
+# off the body in that print (print_check, 2026-11-08). The rod spans the whole channel and is
+# held at both ends: a shallow socket in the floor and the bore into the slab over the room.
 ARM_H = YK_H
 CLR = 0.6                                        # the room round the yoke
 ROOM_HY = YK_HY + CLR                            # 6.6
 ARM_Z0 = D.NUT_TOP_Z - D.CARRIAGE_TRAVEL - CLR  # -12.15: the arm's channel floor
 ARM_Y0 = SY + ROD_DY - ARM_R - CLR              # the channel's -Y side
-ROD_SOCK = 12.0                                  # the rod's press socket in the channel floor
-ROD_BOT = ARM_Z0 - ROD_SOCK                      # -24.15
-ROD_TOP2 = ROD_BOT + D.GUIDE_ROD_L               # 5.65: 8.85 up the boss at the top of travel
+ROD_SOCK = 3 * D.BEAD                            # 2.4: just a pocket to locate its -Z end (user, 2026-11-08)
+ROD_BOT = ARM_Z0 - ROD_SOCK                      # -14.55
+ROD_TOP2 = ROD_BOT + D.GUIDE_ROD_L               # 15.25: 2.45 into the slab over the room
 CEIL_AX = D.NUT_TOP_Z + YK_H                     # 12.8: the room's ceiling = the yoke's top stop
 G0 = D.STRING_GAUGE[I]
 BX_AX = SX - D.BRIDGE_BEARING_OD / 2 - G0 / 2    # the bearing's +X tangent drops the string ON the axis
@@ -254,11 +254,12 @@ def station_axial() -> cq.Workplane:
     s = s.cut(_zbore(D.SUPPORT_BRG_OD + 0.2, SX, SY, RAIL_BOT - 1.0, D.SUPPORT_BRG_Z + 1e-3, ST_UP))
     s = s.cut(_zbore(SR.SEAT_LEDGE_D, SX, SY, RAIL_BOT - 1.0, SR.LEDGE_TOP, ST_UP))
     s = s.cut(_zbore(SR.NUT_PASS_D, SX, SY, SR.LEDGE_TOP - 0.01, RAIL_TOP + 1.0, ST_UP))
-    # the guide rod: a press socket in the channel floor, and a clear passage down from the
-    # top to drop it in through the yoke's boss and punch it home
+    # the guide rod: a shallow pocket in the channel floor, its press bore into the slab over
+    # the room, and a clear passage on up to the top to drop it in and push it home
     ry = SY + ROD_DY
     s = s.cut(_zbore(ROD_BORE, SX, ry, ROD_BOT, ARM_Z0 + 0.01, ST_UP))
-    s = s.cut(_zbore(ROD_BORE + 0.6, SX, ry, CEIL_AX - 0.01, SLAB_TOP_AX + 1.0, ST_UP))
+    s = s.cut(_zbore(ROD_BORE, SX, ry, CEIL_AX - 0.01, ROD_TOP2 + 0.5, ST_UP))
+    s = s.cut(_zbore(ROD_BORE + 0.6, SX, ry, ROD_TOP2 + 0.4, SLAB_TOP_AX + 1.0, ST_UP))
     # the bridge bearing's pocket, gabled at -X (the print's roof), open on top
     bx0, bx1 = BX_AX - D.BRIDGE_BEARING_OD / 2 - 0.5, SX + 1.0
     s = s.cut(cq.Workplane("XY", origin=(0.0, 0.0, POCKET_Z0))

@@ -1526,7 +1526,7 @@ Same head, same screw, pulley, belt and motor positions; print `coupons/plank_st
   nut and run the two M3s up through the ears. 4. Slide nut and yoke into the room from +X, arm to
   -Y. 5. Screw up from below with its pulley and turn it up through the nut, as before (the room's
   walls stop the yoke turning). 6. Drop the guide rod down the hole in the station's top, through
-  the yoke's boss, and punch it into its socket in the channel floor (12 deep: it stands on that
-  fit alone). 7. Bridge 688 into its pocket, Ø8 shaft along Y. 8. String: ball end into the yoke's
+  the yoke's boss, and push it home: its top is a press fit in the slab over the room, its foot
+  sits in a 2.4 pocket in the channel floor. 7. Bridge 688 into its pocket, Ø8 shaft along Y. 8. String: ball end into the yoke's
   window, string through the roof's slot, then up the slot in the station's +X side past the
   bearing's +X tangent and over the top.
