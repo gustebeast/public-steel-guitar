@@ -25,6 +25,7 @@ RING_PADS = 3            # parts with this many pads or fewer get a thermal ring
 RING_MM = 0.9            # a poured land's thermal room, from its copper edge
 HOLE_PAD = 0.45          # a pad's hole to any other hole, edge to edge (quality.FAB hole_hole_pad)
 SUPPLY = ("+", "GND", "VCC", "VDD")
+GROUND_RE = re.compile(r"^(GND|VSS|[A-Z0-9]+_GND|[AD]GND|GND[A-Z0-9_]*)$")   # as quality.GROUND
 
 
 def _copper_layers(txt):
@@ -109,6 +110,7 @@ class Model:
 
         self._fields()
         self._edge_field()
+        self._ref_voids()
 
     # ------------------------------------------------------------------ geometry helpers
     def xy(self, i, j):
@@ -312,6 +314,68 @@ class Model:
             i0, i1, j0, j1 = win
             self.via_ban[i0:i1, j0:j1] |= (np.hypot(X - v["x"], Y - v["y"])
                                            < self.via_drill + self.hole_to_hole + self.margin)
+
+    VOID_MIN_MM = 2.0      # a reference-plane void this wide or more is priced (a via's antipad is not)
+
+    def _ref_voids(self):
+        """ref_void[k, i, j]: on routing layer k, the ground plane a track there returns in
+        is MISSING at (i, j) -- inside that plane's outline, outside its fill.
+
+        ⚠ A SIGNAL OVER A SLOT RETURNS ROUND IT (pi_cap UI_ENC_A, 2026-11-09): the 40-pin
+        socket's two rows of holes cut the In2 ground plane, and the router, knowing nothing
+        of it, ran UI_ENC_A ALONG the cut for 11.77 mm where one crossing is 6; quality A15
+        failed it against the 9.3 the row is signed for. The reference plane is read as A15
+        reads it -- the nearest ground copper in the stack-up, other than the track's own
+        layer -- from the fill layout left, and only voids VOID_MIN_MM across or wider
+        count: an antipad never fails a 5 mm rule, and pricing every one would push
+        tracks off every pin."""
+        L, ny, nx = self.L, self.ny, self.nx
+        self.ref_void = np.zeros((L, ny, nx), bool)
+        order = {n: k for k, n in enumerate(self.layers)}
+        gfill, gout = {}, {}
+        for net, pl in self.fills.items():
+            if GROUND_RE.match(net):
+                for L_, pts in pl:
+                    gfill.setdefault(L_, []).append(pts)
+        for net, pl in self.pours.items():
+            if GROUND_RE.match(net):
+                for L_, pts in pl:
+                    gout.setdefault(L_, []).append(pts)
+
+        def raster(polys):
+            m = np.zeros((ny, nx), bool)
+            for pts in polys:
+                P = np.asarray(pts, np.float64)
+                win = self._window(P[:, 0].min(), P[:, 1].min(), P[:, 0].max(), P[:, 1].max(), 0.0)
+                i0, i1, j0, j1 = win
+                if i1 <= i0 or j1 <= j0:
+                    continue
+                X, Y = np.meshgrid(self.cx[j0:j1], self.cy[i0:i1])
+                m[i0:i1, j0:j1] ^= _in_poly(X, Y, pts)
+            return m
+
+        cov = {l: raster(p) for l, p in gfill.items() if l in order}
+        out = {l: raster(p) for l, p in gout.items() if l in order}
+        from scipy.ndimage import label, find_objects
+        mn = int(round(self.VOID_MIN_MM / self.pitch))
+        for k, name in enumerate(self.route_layers):
+            dist = {l: abs(order[l] - order[name]) for l in cov if l != name}
+            if not dist:
+                continue
+            near = min(dist.values())
+            refs = [l for l in dist if dist[l] == near]
+            covered = np.zeros((ny, nx), bool)
+            within = np.zeros((ny, nx), bool)
+            for l in refs:
+                covered |= cov[l]
+                within |= out.get(l, cov[l])
+            void = within & ~covered
+            lab, n = label(void)
+            keep = np.zeros(n + 1, bool)
+            for q, sl in enumerate(find_objects(lab), start=1):
+                if sl is not None and max(sl[0].stop - sl[0].start, sl[1].stop - sl[1].start) >= mn:
+                    keep[q] = True
+            self.ref_void[k] = keep[lab]
 
     def _edge_field(self):
         """Distance to the outline, signed so that outside the board is negative."""

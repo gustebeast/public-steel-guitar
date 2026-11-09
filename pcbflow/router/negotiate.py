@@ -14,6 +14,7 @@ import time
 import numpy as np
 
 from . import search as S
+from .model import GROUND_RE
 
 W_REF = 0.2          # the narrowest track: a wide net's necked width at its lands
 
@@ -303,10 +304,13 @@ class Router:
     DEBUG_MERGE = False
     DIVE_STUB = 1.0                  # a diving rail keeps to the surface this near its lands
     OFFRUN_COST = 4.0                # a relaxed pair's cell price off its home layers
+    WIDEN_AFTER = 3                  # rounds a net may share before its search window widens...
+    STALL_ROUNDS = 2                 # ...once the whole negotiation is this many rounds without gain
     RELAX_AFTER = 10                 # rounds a layer-held pair may share before it is relaxed (4 relaxed USB mid-negotiation, 11-08)
     FILL_MARGIN = 0.15               # a plane-join via's pad this far inside the fill's edge
     PLANE_JOIN_MM = (2.0, 6.0)       # a plane join looks this near its piece first (then everywhere)
     RING_COST = 4.0                  # inside another net's poured land's thermal room (model.ring_net)
+    VOID_COST = 3.0                  # over a void in the track's return plane (model.ref_void)
     NECK_W = W_REF                   # a net's width where it necks down at its own lands
     NECK_MM = 1.2                    # ...within this distance of its own copper
     TURN_STATES_MAX = 40_000_000     # heading-aware search up to this many states (x9 cells)
@@ -372,7 +376,24 @@ class Router:
         corr = self._corridor(net)
         for strict in ((True, False) if net.run_layers and not net.relaxed else (False,)):
             self._strict = strict
-            for margin in ((("corr", corr),) if corr is not None else ()) + (4.0, 12.0, 1e4):
+            # ⚠ A NET THAT KEEPS SHARING LOOKS WIDER (pi_cap, 2026-11-09): the window grew
+            # only when it held NO path, and a shared one always exists, so SCK_FOOT_PI and
+            # UI_SW_C fought over one gap in the socket row for eight rounds at pf 576 while
+            # room lay just outside both windows, and both were ripped out. An engineer
+            # stuck like that steps back: once the negotiation has STALLED (no better for
+            # STALL_ROUNDS rounds), a net that has shared WIDEN_AFTER rounds starts at
+            # 12 mm, after twice that over the whole board. Only when stalled: widening
+            # while the negotiation still improved moved optical's nets round its USB pair
+            # and left the pair unfinishable; and never a matched pair, which has its own
+            # way out (RELAX_AFTER, then its finish).
+            margins = (4.0, 12.0, 1e4)
+            if net.mate is not None or not getattr(self, "_stalled", False):
+                pass
+            elif net.stuck >= 2 * self.WIDEN_AFTER:
+                margins = (1e4,)
+            elif net.stuck >= self.WIDEN_AFTER:
+                margins = (12.0, 1e4)
+            for margin in ((("corr", corr),) if corr is not None else ()) + margins:
                 if isinstance(margin, tuple):
                     self._corr = margin[1]
                     win = self._window(net, 4.0)
@@ -452,6 +473,10 @@ class Router:
         cell = np.where((rn != 0) & (rn != nid), cell * self.REGION_COST, cell)
         rg = m.ring_net[sl]
         cell = np.where((rg != 0) & (rg != nid), cell * self.RING_COST, cell)
+        # over a slot in its return plane a signal pays VOID_COST a cell, so it crosses
+        # square and short, never along (model._ref_voids)
+        if not GROUND_RE.match(net.name):
+            cell = np.where(m.ref_void[sl], cell * self.VOID_COST, cell)
         # ⚠ A WIDE NET NECKS DOWN AT ITS OWN LANDS, as an engineer necks it: J1_VBUS at
         # 1.0 mm could not reach a USB-C pin between its neighbours and was left open. Within
         # NECK_MM of the net's own copper it may run at NECK_W where full width will not fit
@@ -1132,6 +1157,18 @@ class Router:
             for x in (first, second):
                 x.via_mult = vold[x]
         sh = sum(int(c.size) for x in (first, second) for c in self._conflicts(x))
+        # ⚠ THE RAILS' OWN OVERLAP IS COUNTED APART (optical, 2026-11-09): "fewest shared
+        # cells" lumped the rails sharing with EACH OTHER in with sharing other nets', and
+        # _displace -- which holds the pair and moves the rest -- can never undo the first:
+        # USB_DP and USB_DM were written 0.33 mm into each other, a post-route pass took
+        # DP up, close_last closed it the long way and the skew failed. An attempt whose
+        # rails overlap is no attempt at all.
+        self._unmark(second)
+        alone = sum(int(c.size) for c in self._conflicts(first))
+        self._mark(second)
+        mutual = sum(int(c.size) for c in self._conflicts(first)) - alone
+        if mutual > 0:
+            return None
         return sh, self.pair_faults(first)
 
     def _where(self, x):
@@ -1551,6 +1588,7 @@ class Router:
         pf_mul, hf = getattr(self, "_neg", (1.6, 0.4))
         t0 = time.time()
         best, since = None, 0
+        self._stalled = False
         for it in range(1, iters + 1):
             for net in todo:
                 if net in locked:
@@ -1620,8 +1658,10 @@ class Router:
                 if since >= 8:
                     self.log("  no better in 8 rounds: stopping")
                     break
+            self._stalled = since >= self.STALL_ROUNDS
             if time.time() - t0 > budget_s:
                 self.log("  out of time")
                 break
             pf *= pf_mul
+        self._stalled = False
         return todo, pf
