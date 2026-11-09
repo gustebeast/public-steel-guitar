@@ -91,6 +91,7 @@ import json
 import os
 import pathlib
 import shutil
+import sys
 import time
 
 __all__ = ["ScratchView", "main", "publish_cache", "shared_cache", "read_brep"]
@@ -493,10 +494,21 @@ def main(view: ScratchView, argv=None) -> int:
                     help="build EVERYTHING here into your own cache (minutes), then render")
     ap.add_argument("--lead", action="store_true",
                     help="forget your own cache: the lead's build for all but the live part")
+    ap.add_argument("--resolve-colors", metavar="FILE",
+                    help=argparse.SUPPRESS)          # the view's own background colour resolve
     ap.add_argument("--solo", action="store_true",
                     help="draw ONLY the live set (seconds on a big model, where the page "
                          "export of every cached part is most of a view's time)")
     a = ap.parse_args(argv)
+
+    if a.resolve_colors:
+        from cadkit.web.view import resolve_colors
+        return resolve_colors(view, a.resolve_colors)
+    # how to run THIS view again: colours resolve in a detached copy of it, never in the view
+    # itself (cadkit.web.view._colors)
+    spec = getattr(sys.modules.get("__main__"), "__spec__", None)
+    view.respawn = ([sys.executable, "-m", spec.name] if spec is not None and spec.name
+                    else [sys.executable, os.path.abspath(sys.argv[0])]) + ["--resolve-colors"]
 
     if a.lead:
         view.forget_own()
