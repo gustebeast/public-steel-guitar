@@ -39,6 +39,8 @@ class Net:
         self.fixed = []         # copper drawn before negotiation (the merge crossing)
         self.stuck = 0          # consecutive rounds this net has shared space
         self.necks = []         # per path: bool per cell, True where it runs necked down
+        self.legs = []          # diff-pair chain hops, in order: (from cells, to cells, label)
+        self.mate = None        # the other net of a matched pair (both directions)
 
 
 class Router:
@@ -66,6 +68,7 @@ class Router:
         # horizontal/vertical preference on inner layers, outer layers free
         self.dir_cost = np.zeros((self.L, 2), np.float32)
         self.nets = []
+        self.wp_used = set()      # nets that took a symmetric-swap dive
 
     # ----------------------------------------------------------------- pieces
     def build_nets(self, skip=(), pours=None):
@@ -210,9 +213,49 @@ class Router:
             if len(names) == 2:
                 a_, b_ = by[names[0]], by[names[1]]
                 b_.partner = a_
+                a_.mate, b_.mate = b_, a_
                 self.nets.remove(b_)
                 self.nets.insert(self.nets.index(a_) + 1, b_)
+        self._chain_legs(by, lid)
         return self.nets
+
+    def _chain_legs(self, by, lid):
+        """⚠ A diff pair's CHAIN IS AN ORDER, NOT A SET (optical USB_HS, 2026-11-08). The
+        pair runs U31 -> U10 (ESD clamp: D+ on pins 1 and 6, linked under its body) -> J1.
+        Routed as a tree, U31's leg joined whatever copper of the net was cheapest -- even
+        J1's merge, straight past the clamp. Each hop is now drawn part to part, in order,
+        and every hop must end on the next part.
+
+        A PART IS ONE NODE: a hop may land on any of its pads of the net, and the next hop
+        may leave from any of them (or the copper already joining them). Requiring the
+        clamp's far pin for the outgoing hop -- true flow-through -- was tried first: on
+        optical R2 that pin faces a wall (VCAP1, the PHY's 1V8 cap, the oscillator), the
+        hop wrapped round the package and fenced in the other pin, and the pair came out
+        13 mm skewed. Landing on the near pin keeps the clamp ON the line, its own link a
+        2 mm stub, which at 480 Mbps is nothing. spec["pads"] limits a part's candidates
+        as layout does."""
+        m = self.m
+        by_name = {}
+        for p in m.pads:
+            if p.get("name") and p["net"]:
+                by_name.setdefault(p["name"].split(".")[0], []).append(p)
+        for spec in self.m.notes.get("diff_pairs", ()) or ():
+            chain = spec.get("chain") or []
+            keep = spec.get("pads", {}) or {}
+            for name in spec.get("nets", ()):
+                net = by.get(name)
+                if net is None or net.plane or len(chain) < 2:
+                    continue
+                cand = []
+                for ref in chain:
+                    ps = [p for p in by_name.get(ref, ()) if p["net"] == name
+                          and (ref not in keep or p["name"].split(".", 1)[1] in keep[ref])]
+                    cand.append(ps)
+                if not all(cand):
+                    continue
+                cells = [np.unique(np.concatenate([self._cells("p", q, lid) for q in ps])) for ps in cand]
+                net.legs = [(cells[k], cells[k + 1], "%s->%s" % (chain[k], chain[k + 1]))
+                            for k in range(len(chain) - 1)]
 
     def _cells(self, kind, it, lid):
         """Flat indices of the grid cells inside an item's copper, on its layers."""
@@ -275,6 +318,9 @@ class Router:
     def _route_net(self, net, pf):
         m = self.m
         L, H, W = self.L, self.H, self.W
+        self._wp_off = self._mate_dive(net)
+        if self._wp_off is not None:
+            net.relaxed = True             # its mate dived: it must be free to follow
         for strict in ((True, False) if net.run_layers and not net.relaxed else (False,)):
             self._strict = strict
             for margin in (4.0, 12.0, 1e4):
@@ -453,6 +499,109 @@ class Router:
                 joined = [q for q in at if q not in todo]
                 merged = np.nonzero(msrc)[0]
                 pieces = [merged] + [p for q, p in enumerate(pieces) if q not in joined]
+        if net.legs:
+            # the chain's hops, pad to pad and in order (_chain_legs); every piece a hop
+            # touches is then one piece, and the open search joins whatever is left
+            # ⚠ A HOP KEEPS CLEAR OF ITS OWN NET'S OTHER COPPER (optical USB_DM, 2026-11-08):
+            # own copper is legal ground, so U31 -> U10.3 walked in through U10.4 and the
+            # link under the clamp -- the stub again, by another door. Every other piece of
+            # the net, and every hop already drawn, is out of bounds to a hop (grown by a
+            # track and a clearance), except the two lands it joins.
+            from scipy.ndimage import binary_dilation
+            rr = int(math.ceil((net.width + m.clear) / m.pitch))
+            yy, xx = np.mgrid[-rr:rr + 1, -rr:rr + 1]
+            disk = (yy * yy + xx * xx) <= rr * rr
+            done = np.zeros(n, np.bool_)
+            np0, nk0, legs_ok = len(paths), len(self._necks), True
+            wp = self._wp_mask(net, win, legal) if getattr(self, "_wp_off", None) is not None else None
+            wleg = None
+            if wp is not None:
+                # the hop nearest the mate's dive carries this net's matching dive
+                wk = np.nonzero(wp)[0] % (h * w)
+                wy, wx = (wk // w).mean(), (wk % w).mean()
+
+                def _cen(c):
+                    q = local(c) % (h * w)
+                    return ((q // w).mean(), (q % w).mean()) if q.size else (1e9, 1e9)
+
+                def _dseg(a, b):
+                    (ay, ax), (by_, bx) = a, b
+                    vy, vx = by_ - ay, bx - ax
+                    vv = vy * vy + vx * vx
+                    t = 0.0 if vv == 0 else max(0.0, min(1.0, ((wy - ay) * vy + (wx - ax) * vx) / vv))
+                    return math.hypot(wy - ay - t * vy, wx - ax - t * vx)
+                wleg = min(range(len(net.legs)),
+                           key=lambda q: _dseg(_cen(net.legs[q][0]), _cen(net.legs[q][1])))
+            for li, (a_c, b_c, _lbl) in enumerate(net.legs):
+                a_l, b_l = local(a_c), local(b_c)
+                if a_l.size == 0 or b_l.size == 0:
+                    legs_ok = False
+                    break
+                amask = np.zeros(n, np.bool_)
+                amask[a_l] = True
+                bmask = np.zeros(n, np.bool_)
+                bmask[b_l] = True
+                ends = amask | bmask
+                # a part is one node: the whole piece its pads sit in is an end
+                for p_ in pieces:
+                    if amask[p_].any():
+                        ends[p_] = True
+                        a_l = np.union1d(a_l, p_)
+                    elif bmask[p_].any():
+                        ends[p_] = True
+                        b_l = np.union1d(b_l, p_)
+                other = np.zeros(n, np.bool_)
+                for p_ in pieces:
+                    other[p_] = True
+                other |= done
+                other &= ~ends
+                o3 = other.reshape(L, h, w)
+                ban = np.stack([binary_dilation(o3[k], disk) if o3[k].any() else o3[k]
+                                for k in range(L)]).ravel() & ~ends
+                cl = np.where(ban, np.inf, cellf).astype(np.float32)
+                vl = np.where(ban.reshape(L, h, w).any(axis=0), np.inf, vcell).astype(np.float32)
+                for p_ in (a_l, b_l):
+                    if not np.isfinite(cl[p_]).any():
+                        cl[p_[fdf[p_] >= fdf[p_].max() - 1e-6]] = 1.0
+                s_ = np.zeros(n, np.bool_)
+                s_[a_l] = True
+                t_ = np.zeros(n, np.bool_)
+                t_[b_l] = True
+                tk = b_l % (h * w)
+                tb = np.array([(tk // w).min(), (tk // w).max(), (tk % w).min(), (tk % w).max()], np.int64)
+                legp = None
+                if li == wleg:
+                    legp = self._through(cl, vl, s_, t_, wp & np.isfinite(cl), L, h, w, tb, net.via_mult)
+                    if legp is not None:
+                        self.wp_used.add(net.name)
+                if legp is None:
+                    path = self._astar(cl, vl.ravel(), s_, t_, L, h, w, tb, self.dir_cost, net.via_mult)
+                    if path.size == 0:
+                        legs_ok = False
+                        break
+                    legp = [path]
+                for path in legp:
+                    self._claim_vias(path, vcell, h, w)
+                    done[path] = True
+                    self._necks.append(self._neck_win[0].ravel()[path])
+                    k_ = path // (h * w)
+                    r_ = path % (h * w)
+                    paths.append((k_ * H + (r_ // w + i0)) * W + (r_ % w + j0))
+                done[a_l] = True
+                done[b_l] = True
+            if not legs_ok:
+                # no ordered hop fits in this window: the plain tree, rather than nothing
+                # (a wider window retries the hops first; the last one falls through here)
+                if win != (0, H, 0, W):
+                    return None
+                del paths[np0:]
+                del self._necks[nk0:]
+            else:
+                hit = [q for q, p in enumerate(pieces) if done[p].any()]
+                pieces = ([np.unique(np.concatenate([np.nonzero(done)[0]] + [pieces[q] for q in hit]))]
+                          + [p for q, p in enumerate(pieces) if q not in hit])
+                if len(pieces) == 1:
+                    return paths
         src = np.zeros(n, np.bool_)
         src[pieces[0]] = True
         rest = list(range(1, len(pieces)))
@@ -481,6 +630,78 @@ class Router:
             r = path % (h * w)
             paths.append((k * H + (r // w + i0)) * W + (r % w + j0))
         return paths
+
+    # A FORCED PAIR SWAP IS DONE SYMMETRICALLY (optical USB_HS, 2026-11-08). When a
+    # same_layer pair's rails must cross -- the clamp, the socket and the hub pin out in
+    # opposite senses and the board has no room to turn a part -- one rail dives under the
+    # other. Alone, that splits the pair's layer set (quality A3) and gives one rail
+    # discontinuities the other lacks. An engineer swaps P and N with vias on BOTH: so the
+    # mate of a rail that dives passes through the same layer within WP_MM of the dive,
+    # inside a through hop (never a stub).
+    WP_MM = 1.5
+
+    def _mate_dive(self, net):
+        """Full-board cells where this net's pair mate runs off its home layers outside
+        the merge circle (its last laid paths), or None."""
+        mate = getattr(net, "mate", None)
+        home = net.run_layers or net.layers_only
+        if mate is None or not mate.paths or not home or not net.legs:
+            return None
+        H, W = self.H, self.W
+        cells = np.concatenate(mate.paths)
+        k = cells // (H * W)
+        off = cells[~np.isin(k, list(home))]
+        if off.size and net.merge is not None:
+            r_ = off % (H * W)
+            d = np.hypot(self.m.cx[r_ % W] - net.merge[0], self.m.cy[r_ // W] - net.merge[1])
+            off = off[d >= net.merge[2]]
+        return off if off.size else None
+
+    def _wp_mask(self, net, win, legal):
+        """Window-local cells on the mate's dive layers within WP_MM of its dive."""
+        from scipy.ndimage import distance_transform_edt
+        H, W, L = self.H, self.W, self.L
+        i0, i1, j0, j1 = win
+        h, w = i1 - i0, j1 - j0
+        off = self._wp_off
+        k = off // (H * W)
+        r_ = off % (H * W)
+        ii, jj = r_ // W - i0, r_ % W - j0
+        ok = (ii >= 0) & (ii < h) & (jj >= 0) & (jj < w)
+        if not ok.any():
+            return None
+        out = np.zeros((L, h, w), bool)
+        for lay in np.unique(k[ok]).tolist():
+            src = np.ones((h, w), bool)
+            sel = ok & (k == lay)
+            src[ii[sel], jj[sel]] = False
+            near = distance_transform_edt(src) * self.m.pitch <= self.WP_MM
+            out[lay] = near & legal[lay]
+        return out.ravel() if out.any() else None
+
+    def _through(self, cl, vl, s_, t_, wp, L, h, w, tb, vmult):
+        """A hop s_ -> t_ through a waypoint cell (wp): two searches joined at the cell, the
+        second barred from the first's via spot and cells, so the dive has length. None if
+        either half fails."""
+        if not wp.any():
+            return None
+        wk = np.nonzero(wp)[0] % (h * w)
+        tbw = np.array([(wk // w).min(), (wk // w).max(), (wk % w).min(), (wk % w).max()], np.int64)
+        p1 = self._astar(cl, vl.ravel(), s_, wp, L, h, w, tbw, self.dir_cost, vmult)
+        if p1.size == 0:
+            return None
+        at = int(p1[0])
+        v2 = vl.copy()
+        self._claim_vias(p1, v2, h, w)
+        v2[(at % (h * w)) // w, (at % (h * w)) % w] = np.inf
+        c2 = cl.copy()
+        c2[p1[1:]] = np.inf
+        s2 = np.zeros_like(s_)
+        s2[at] = True
+        p2 = self._astar(c2, v2.ravel(), s2, t_, L, h, w, tb, self.dir_cost, vmult)
+        if p2.size == 0:
+            return None
+        return [p1, p2]
 
     def _where(self, x):
         """ " (first at x,y on layer, beside nets)" for a net's first shared cell."""

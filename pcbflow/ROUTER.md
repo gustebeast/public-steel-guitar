@@ -59,6 +59,17 @@ which is placement feedback rather than a coin flip.
   poured land of a small part (`RING_PADS` or fewer pads) gets a thermal room of
   `RING_MM` priced `RING_COST`, so its spokes are not starved (ringing IC pins too
   priced every escape and left a net open).
+- **Pad holes**: no via within the fab's pad-hole rule (`HOLE_PAD` 0.45, quality.FAB
+  hole_hole_pad) of a drilled pad -- the rules file's hole-to-hole is the via figure.
+- **Diff-pair chains are an order**: `diff_pairs[].chain` (U31 -> U10 -> J1) is routed
+  hop by hop, each hop clear of the net's other copper, so a series part (the ESD
+  clamp) can never be bypassed. A part is one node: a hop lands on whichever of its
+  pads it reaches, so a clamp whose far pin faces a wall is tapped on the near pin
+  (its own link a 2 mm stub) instead of the pair wrapping round it.
+- **Forced pair swaps are symmetric**: when one rail of a same_layer pair has to dive
+  to cross the other (outside the merge circle), its mate's nearest hop must pass
+  through the same layer within `WP_MM` of the dive -- vias on both, one layer set,
+  as an engineer swaps P and N. `congestion.pair_dives` still names the spot.
 
 ## Placement feedback
 
@@ -72,6 +83,10 @@ block was U1 west / C52, the spot that ate the freerouting nudge series.
   whole finish chain (freerouting managed 9-10 of 11), router 220-300 s each. The 11th
   was a via clipping a keep-out corner -- fixed (edge-based ban).
 - motor_ctrl and pi_cap at their targets; optical routes standalone at 0 unconnected.
+- optical at target through the whole chain (0 / 0, 0 FAIL) on its committed
+  placement once chains were ordered and the USB swap made symmetric: the pair's
+  crossing was the clamp, socket and hub pinning out in opposite senses with no room
+  to turn U10 (plug cutout south, MCU north, PHY decoupling east).
 
 ## Stages and milestones
 
