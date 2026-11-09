@@ -1686,3 +1686,6 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
   - **Wall end:** screw the anchor plug's seat into the spring's other end. Pass the plug through the anchor wall with its lug bar along Y (the slot), then turn it a quarter so the lugs lie along Z behind the wall. The spring's pull holds it there.
   - The plug's tube is the sleeve that keeps the coils off the turning screw.
   - The anti-rotation rod now rides an arm on the yoke's -Y side (stock 29.8 rod), not a flange ear.
+- **Direct bench nut (round, 2026-11-09):** the common round Tr8x2 flange nut, no flats. Its four holes:
+  - **45° and 225°:** the two M3 x 12 that hold the yoke on and clamp the collar. Drive them through the collar's stop-flange holes **before** screwing the spring on.
+  - **135°:** the Ø3.5 guide rod (about 33 long, still to source). It runs from the rod plate through the yoke, the flange and the collar. There is no yoke arm.

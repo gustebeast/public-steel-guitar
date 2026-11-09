@@ -78,18 +78,27 @@ def y_of(i: int) -> float:
 # ── along the screw (x, before the yaw) ─────────────────────────────────────────────────────
 YK_H = 20 * D.BEAD                                  # 16: yoke, flange face -> roof
 YK_ROOF = 3 * D.BEAD                                # 2.4
-YK_W = 14 * D.BEAD                                  # 11.2 across Y (the nut's 10.5 flats)
-YK_TALL = D.NUT_FLANGE_L                            # 22 in Z, as the flange
+YK_D = D.NUT_FLANGE_L                               # 22: round, as the nut's flange
 X_YT0 = -26.0                                       # yoke roof at the slack end of travel
 ROD_PLATE = (-24.0, -20.0)                          # the rods' plate (and the strings' holes)
-# THE YOKE IS SCREWED TO THE NUT: the string pulls it +X, OFF the flange, so two M3 x 12 SHCS come
-# up from behind through both ears into it (the plank bench's yoke, BTn.SCREW_L) -- and their heads
-# clamp the spring's COLLAR to the flange's back on the way. The ears taken, the anti-rotation rod
-# rides an ARM off the yoke instead, toward the middle of the instrument.
-ROD_DY = 12.0                                       # the rod off the axis, -Y for every string: a
-                                                    # row's yokes are 28.5 apart, so arms all one
-                                                    # way clear (16.4 + 5.6), facing ones do not
-ROD_ARM_R = 4.4                                     # the arm's boss round it
+# THE ROUND NUT (user, 2026-11-09): the common Tr8x2 brass flange nut, Ø22 x 3.5 flange with FOUR
+# Ø3.5 holes on a Ø16 circle at 45 deg -- no flats needed here (a row's nuts are 28.5 apart, the
+# next row's 28.1). Its holes do everything:
+#   45 / 225 deg  two M3 x 12 SHCS from behind, through the collar's plate and the flange, into the
+#                 yoke: they hold the yoke ON (the string pulls it +X, off the flange) and clamp the
+#                 spring's collar, and a diagonal pair pulls on the axis.
+#   135 deg       THE GUIDE ROD, through the yoke, the flange and the collar: the nut itself is the
+#                 anti-rotation bearing, no arm. (135, not 315: the rod plate keeps 1.3 of web
+#                 between the rod and the ball's window.)
+NUT_PCD = 16.0
+HOLE_ANG = {"m3": (45.0, 225.0), "rod": 135.0, "web": (0.0, 180.0)}
+
+
+def at_ang(a: float, r: float = NUT_PCD / 2):
+    """(dy, dz) of angle a (deg, from +Y toward +Z) at radius r."""
+    return r * math.cos(math.radians(a)), r * math.sin(math.radians(a))
+
+
 M3_HEAD = (5.5, 3.0)                                # SHCS head diameter, height
 M3_L = 12.0
 # RESTRINGING (user, 2026-11-09): a KEYHOLE in the yoke's roof. The ball end goes in through a
@@ -120,8 +129,7 @@ SLEEVE_OD, SLEEVE_ID = 11.0, 9.0                    # over the screw, part of th
 ANCHOR = (-194.8, -190.0)                           # the anchor wall, x
 LUG = (3.0, 22.0, 6.0)                              # the plug's lug bar: thick, long, wide
 COLLAR_T = 3.0                                      # the collar's plate
-COLLAR_HY = 7.5                                     # ...its half-width in Y (the webs' outer face)
-WEB = (5.4, 7.4, 3.0)                               # the webs: from..to off the axis in Y, half-height
+PILLAR_D = 5.2                                      # the collar's two pillars past the M3 heads
 
 
 def x_yt(t: float) -> float:
@@ -134,7 +142,6 @@ def x_ft(t: float) -> float:
 
 
 SCREW_TIP = x_ft(0.0) - D.SCREW_END_GAP             # under the flange face at the slack end
-ROD_END = ROD_PLATE[1] - 1.0 - D.GUIDE_ROD_L        # the stock 29.8 rod, from the plate
 
 
 def x_collar(t: float):
@@ -159,6 +166,11 @@ def spring_span(t: float):
 
 
 SLEEVE_END = x_collar(1.0)[3][0] - 1.0              # short of the collar's seat at full travel
+# the rod's -X end: 0.5 short of the stop flange's back at the slack end (the spring starts
+# there), so at full travel it is still 3.15 into the 3.5 flange
+ROD_END = x_collar(0.0)[2][0] + 0.5
+ROD_L = round(ROD_PLATE[1] - 0.3 - ROD_END, 1)     # ...and 0.3 inside the plate's +X face: a Ø3.5
+                                                    # ground rod, ~33 long (length still to source)
 
 # ── motors and stations ─────────────────────────────────────────────────────────────────────
 M_HALF = D.MOTOR_SQ / 2                             # 21.15
@@ -319,15 +331,14 @@ def _tube_x(od, idd, x0, x1, y, z):
 def _yoke(i: int, t: float) -> cq.Workplane:
     y, z = y_of(i), za(i)
     ft, yt = x_ft(t), x_yt(t)
-    out = box_at(YK_H, YK_W, YK_TALL, x=(ft + yt) / 2, y=y, z=z)
-    ry = rod_y(i)
-    out = out.union(box_at(YK_H, abs(ry - y), 2 * ROD_ARM_R, x=(ft + yt) / 2, y=(y + ry) / 2, z=z))
-    out = out.union(cyl_x(2 * ROD_ARM_R, YK_H, ft, y=ry, z=z))
+    out = cyl_x(YK_D, YK_H, ft, y=y, z=z)
     out = out.cut(cyl_x(D.SCREW_OD + 0.8, yt - YK_ROOF - ft + 1, ft - 1, y=y, z=z))   # tip + ball
     out = out.cut(cyl_x(D.NUT_LIP_D + 0.4, D.NUT_LIP_L + 1.3, ft - 1, y=y, z=z))      # lip register
-    out = out.cut(cyl_x(D.GUIDE_ROD_D + 0.4, YK_H + 2, ft - 1, y=ry, z=z))             # the rod
-    for dz in (-D.NUT_HOLE_DX, D.NUT_HOLE_DX):                                        # the M3s bite
-        out = out.cut(cyl_x(2.5, M3_L - COLLAR_T - D.NUT_FLANGE_T + 1.0, ft - 1, y=y, z=z + dz))
+    ry, rz = rod_yz(i)
+    out = out.cut(cyl_x(D.GUIDE_ROD_D + 0.4, YK_H + 2, ft - 1, y=ry, z=rz))           # the rod
+    for a in HOLE_ANG["m3"]:                                                          # the M3s bite
+        dy, dz = at_ang(a)
+        out = out.cut(cyl_x(2.5, M3_L - COLLAR_T - D.NUT_FLANGE_T + 1.0, ft - 1, y=y + dy, z=z + dz))
     # the keyhole: the ball's hole KEY_DROP down, the slit up to the axis, and behind the roof
     # a pocket the ball slides up in (its 3 along the axis, Ø4 across)
     rx0 = yt - YK_ROOF
@@ -340,32 +351,36 @@ def _yoke(i: int, t: float) -> cq.Workplane:
     return out
 
 
-def rod_y(i: int) -> float:
-    return y_of(i) - ROD_DY
+def rod_yz(i: int):
+    dy, dz = at_ang(HOLE_ANG["rod"])
+    return y_of(i) + dy, za(i) + dz
 
 
 def _collar(i: int, t: float) -> cq.Workplane:
     y, z = y_of(i), za(i)
     (p0, p1), heads, (f0, f1), (s0, s1) = x_collar(t)
-    out = box_at(p1 - p0, 2 * COLLAR_HY, YK_TALL, x=(p0 + p1) / 2, y=y, z=z)
-    for sy in (1, -1):                               # webs past the M3 heads to the flange
-        out = out.union(box_at(p0 - f1 + 0.5, WEB[1] - WEB[0], 2 * WEB[2], x=(f1 - 0.5 + p0) / 2,
-                               y=y + sy * (WEB[0] + WEB[1]) / 2, z=z))
+    out = cyl_x(D.NUT_FLANGE_L, p1 - p0, p0, y=y, z=z)                             # the plate
+    for a in HOLE_ANG["web"]:                        # pillars past the M3 heads to the flange
+        dy, dz = at_ang(a)
+        out = out.union(cyl_x(PILLAR_D, p0 - f1 + 0.5, f1 - 0.5, y=y + dy, z=z + dz))
     out = out.union(cyl_x(STOP_D, f1 - f0, f0, y=y, z=z))                          # stop flange
     out = out.union(cyl_x(SPRING_ID, s1 - s0, s0, y=y, z=z))                        # the seat
     out = out.cut(cyl_x(D.NUT_BOSS_D + 0.4, 60, s0 - 1, y=y, z=z))                  # boss, screw
-    for dz in (-D.NUT_HOLE_DX, D.NUT_HOLE_DX):
-        out = out.cut(cyl_x(3.4, 10, p0 - 1, y=y, z=z + dz))
-    return out
+    for a in HOLE_ANG["m3"]:                         # the M3s, and the key's way to them (before
+        dy, dz = at_ang(a)                           # the spring goes on)
+        out = out.cut(cyl_x(3.4, 30, f0 - 1, y=y + dy, z=z + dz))
+    ry, rz = rod_yz(i)
+    return out.cut(cyl_x(D.GUIDE_ROD_D + 0.4, 30, f0 - 1, y=ry, z=rz))             # the rod
 
 
 def _m3s(i: int, t: float) -> cq.Workplane:
     y, z = y_of(i), za(i)
     (p0, _), heads, _, _ = x_collar(t)
     out = None
-    for dz in (-D.NUT_HOLE_DX, D.NUT_HOLE_DX):
-        sc = (cyl_x(M3_HEAD[0], M3_HEAD[1], heads, y=y, z=z + dz)
-              .union(cyl_x(3.0, M3_L, p0, y=y, z=z + dz)))
+    for a in HOLE_ANG["m3"]:
+        dy, dz = at_ang(a)
+        sc = (cyl_x(M3_HEAD[0], M3_HEAD[1], heads, y=y + dy, z=z + dz)
+              .union(cyl_x(3.0, M3_L, p0, y=y + dy, z=z + dz)))
         out = sc if out is None else out.union(sc)
     return out
 
@@ -401,8 +416,16 @@ def _anchor_plug(i: int) -> cq.Workplane:
 
 
 def _nut(i: int, t: float) -> cq.Workplane:
-    from . import components as C
-    return C.nut().rotate((0, 0, 0), (0, 1, 0), 90).translate((x_ft(t), y_of(i), za(i)))
+    """The round Tr8x2 flange nut, axis along -X: lip on the flange's +X face, boss behind."""
+    y, z, ft = y_of(i), za(i), x_ft(t)
+    out = cyl_x(D.NUT_FLANGE_L, D.NUT_FLANGE_T, ft - D.NUT_FLANGE_T, y=y, z=z)
+    out = out.union(cyl_x(D.NUT_LIP_D, D.NUT_LIP_L, ft, y=y, z=z))
+    out = out.union(cyl_x(D.NUT_BOSS_D, D.NUT_H - D.NUT_FLANGE_T, ft - D.NUT_H, y=y, z=z))
+    out = out.cut(cyl_x(D.SCREW_OD, 30, ft - 20, y=y, z=z))
+    for a in (45.0, 135.0, 225.0, 315.0):
+        dy, dz = at_ang(a)
+        out = out.cut(cyl_x(3.5, 10, ft - 5, y=y + dy, z=z + dz))
+    return out
 
 
 def _ball_x(t: float) -> float:
@@ -461,14 +484,12 @@ def _plate_yz(x0, x1, z0, z1) -> cq.Workplane:
 def _rod_plate() -> cq.Workplane:
     x0, x1 = ROD_PLATE
     w = _plate_yz(x0, x1, CHEEK_Z[0], -20.5)
-    lo = min(rod_y(i) for i in range(N)) - 7.0       # past the -Y cheek: string 10's rod is there
-    w = w.union(box_at(x1 - x0, -CHEEK_Y[0] - lo, CHEEK_Z[1] - 8.5 - CHEEK_Z[0], x=(x0 + x1) / 2,
-                       y=(lo - CHEEK_Y[0]) / 2, z=(CHEEK_Z[0] + CHEEK_Z[1] - 8.5) / 2))
     for i in range(N):
         lo, hi = WIN_Z                               # the window the ball passes through
         w = w.cut(yaw(box_at(10, 2 * WIN_HY, hi - lo, x=(x0 + x1) / 2, y=y_of(i),
                              z=za(i) + (lo + hi) / 2), i))
-        w = w.cut(yaw(cyl_x(D.GUIDE_ROD_D, 10, x0 - 3, y=rod_y(i), z=za(i)), i))
+        ry, rz = rod_yz(i)
+        w = w.cut(yaw(cyl_x(D.GUIDE_ROD_D, 10, x0 - 3, y=ry, z=rz), i))
     return w
 
 
@@ -517,7 +538,7 @@ def string_parts(i: int, t: float) -> list:
         ("db_m3", _m3s(i, t)),
         ("db_spring", _spring(i, t)),
         ("db_plug", _anchor_plug(i)),
-        ("db_rod", cyl_x(D.GUIDE_ROD_D, D.GUIDE_ROD_L, ROD_END, y=rod_y(i), z=z)),
+        ("db_rod", cyl_x(D.GUIDE_ROD_D, ROD_L, ROD_END, y=rod_yz(i)[0], z=rod_yz(i)[1])),
         ("db_screw", cyl_x(D.SCREW_OD, SCREW_TIP - (xr + 11.0), xr + 11.0, y=y, z=z)),
         ("db_coupler", cyl_x(COUPLER[0], COUPLER[2] - COUPLER[1], xr + COUPLER[1], y=y, z=z)),
         ("db_block", box_at(BLOCK[2] - BLOCK[1], BLOCK[0], BLOCK[0], x=xr + (BLOCK[1] + BLOCK[2]) / 2,
@@ -610,7 +631,7 @@ def _base(nm: str):
 
 _SAME = {frozenset(p) for p in (
     ("db_screw", "db_nut"), ("db_screw", "db_brg"), ("db_screw", "db_coupler"),
-    ("db_nut", "db_yoke"), ("db_nut", "db_collar"), ("db_yoke", "db_rod"),
+    ("db_nut", "db_yoke"), ("db_nut", "db_collar"), ("db_yoke", "db_rod"), ("db_nut", "db_rod"),
     ("db_m3", "db_collar"), ("db_m3", "db_nut"), ("db_m3", "db_yoke"), ("db_spring", "db_plug"),
     ("db_yoke", "db_ball"), ("db_string", "db_ball"), ("db_string", "db_yoke"),
     ("db_collar", "db_spring"), ("db_brg", "db_block"), ("db_coupler", "db_motor"),
