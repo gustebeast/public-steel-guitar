@@ -1649,3 +1649,17 @@ against the string. The nut's thread then carries string minus spring. Set anywh
   - Yoke travel changes the pull ±11.5 N end to end.
 - **Keep the spring under the string.** At or over 100 % the screw is no longer pulled into its
   688 and can slide out +X. Take the springs off before slackening the string.
+
+## Changer bench: all ten drives in the instrument's real space (2026-11-09, FIT STUDY)
+
+`src/changer_bench.py` is a fit study, not a build yet: the bought parts are modelled as they are,
+and the printed frames are plain blocks. Nothing here gets printed until the layout is accepted.
+- **What it shows:**
+  - The real scale length and string spacing, all ten strings.
+  - Each yoke holds its ball end on the screw axis.
+  - Pulleys are 34 to 47 T against the motor's 14 T.
+  - Motors point +Z', in four ranks that step down toward the changer.
+  - Each string has one 9665K61 counter-spring on a floor cable.
+- **Clamp windows:** each belt clamp has a fixed stretch of its run, parked at the motor end. Strings 1, 5 and 9 are slid toward the changer (`CLAMP_SHIFT`). The clamp's thin side faces the next plane, and some clamps ride the +Y run (`CLAMP_SIDE`). **Set each clamp inside its window at assembly**, or it meets another string's clamp.
+- **Motors abreast are 52 mm apart.** The coil plug and its leads stand 29.9 mm off the axis on the -Y side.
+- **String 9's spring arm is mirrored** (`ARM_FLIP`), so its +X' leg stays inside string 10's belt.
