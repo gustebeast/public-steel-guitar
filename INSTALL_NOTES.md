@@ -1587,3 +1587,21 @@ Same head, same screw, pulley, belt and motor positions; print `coupons/plank_st
   screw's tip). 6. Drop the guide rod down the hole in the station's top, through the yoke's boss,
   and push it home: its top is a press fit in the slab over the room, its foot sits in a 2.4
   pocket in the channel floor. 7. Pull the string on up out of the pocket and over the bearing.
+
+### The X rig: the screw lying along X, nothing but the nut on the screw (2026-11-08)
+Why: with the yoke and oil, lowering still takes too much force to break free and high raises skip.
+Turning the yoke by hand turns the pulley, which points at the nut on the screw, not the bearings.
+This rig strips everything else away: no bridge bearing and no guide rod. The string comes
+straight off the yoke's roof and runs dead level to the crown.
+- **Print:** `coupons/plank_station_x.step`, builds -Z → +Z (base on the bed), as exported.
+  It reuses the axial rig's yoke, nut, screw, pulley and thrust 688 as printed.
+- **Where:** the same four plank holes as the axial station. The screw's axis is at the crown's string
+  height (15.8 over the instrument datum, ~72 over the plank). It sits so crown to yoke roof at
+  mid-travel is the 607 scale, so the string tunes to pitch at the instrument's tension. The
+  pulley overhangs +X; it is in the air, so the plank may end under it.
+- **Order:** 1. 688 into the rail wall's seat from +X. 2. String's free end through the yoke's
+  cavity and out its roof, the ball end seated; bolt the yoke to the nut (M3s self-tapping).
+  3. Drop nut and yoke into the room from the top, arm to -Y and roof to -X, with the string
+  dropped into the end wall's open slot. 4. Screw in from +X with its pulley, through the 688,
+  and turn it into the nut. The +Y wall stops the yoke turning. 5. String over the crown to the tuner.
+- Drive it by hand with the belt ends as before. The yoke's end wall is the top stop.

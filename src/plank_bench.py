@@ -306,6 +306,98 @@ def station_axial() -> cq.Workplane:
     return s
 
 
+# ═════════════════════════════════════════════════════════════════════════════════════════
+# THE X RIG (user, 2026-11-08): the screw LYING ALONG X, pointing at the head, the string straight
+# off the yoke's roof to the crown. Nothing but the screw, the nut and the thrust 688 -- no bridge
+# bearing, no guide rod -- so whatever friction is left is the nut on the screw.
+#
+# The stack is the axial rig's, AS PRINTED (PRINTED_DROP: the user's pulley is the printed one),
+# turned local +Z -> world -X: world x = XR_OFF - z_local, the axis at y SY, z XR_ZA.
+#   XR_ZA   the string's centre on the crown, so the string runs DEAD LEVEL from the yoke's roof to
+#           the crown: any slope is a side load on the roof, a tilt on the nut, what this rig removes.
+#   XR_OFF  crown to the yoke's roof at MID-travel = the scale span, so the string tunes to pitch at
+#           the instrument's tension.
+# The frame is an open-topped box on the axial station's four plank holes: the RAIL WALL (the 688's
+# seat, screw_rail's bores turned along X), the END WALL (-X; the yoke's top stop, the string's slot
+# open on top), and two side walls. The +Y wall is what stops the yoke turning (its corner, 12 off
+# the axis, meets it after ~3 deg); the yoke's arm runs in a slot in the -Y wall, rod-less.
+XR_ZA = D.STRING_Z - D.STRING_GAUGE[I] / 2.0     # 15.81
+XR_ROOF_MID = D.NUT_TOP_Z + YK_H - D.CARRIAGE_TRAVEL / 2.0   # the yoke's roof, local z, mid-travel
+XR_OFF = CROWN_X + SCALE_SPAN + XR_ROOF_MID      # world x of local z 0
+XR_END_T = 3 * D.BEAD                            # 2.4: the end wall
+XR_WALL = 6 * D.BEAD                             # 4.8: the +Y wall, the anti-rotation one
+XR_TOP = XR_ZA + YK_HX + 2 * D.BEAD              # 29.41: the walls' top, past the yoke's corners
+XR_SLOT = 2.4                                    # the string's slot in the end wall
+
+
+def _xr_x(z):
+    """World x of a local (axial-rig) z."""
+    return XR_OFF - z
+
+
+def _xbore(d, z0, z1):
+    """A local Z bore z0..z1 about the screw's axis, turned along X: a teardrop for the +Z build."""
+    return printable_bore(d, z1 - z0, axis_point=(_xr_x(z1), SY, XR_ZA), axis_dir=(1.0, 0.0, 0.0),
+                          print_up=UP)
+
+
+XR_X0 = _xr_x(CEIL_AX + XR_END_T)                # the end wall's -X face
+XR_X1 = _xr_x(RAIL_BOT)                          # the rail wall's +X face: the 688's seat mouth
+XR_BX0 = min(XR_X0, X0_AX)                       # the base reaches back over the axial station's holes
+XR_Y0 = ARM_Y0 - WALL_HI                         # the -Y wall's outer face
+XR_Y1 = SY + ROOM_HY + XR_WALL                   # the +Y wall's outer face
+assert XR_X1 - 6.4 >= X1_AX - 6.4 - 1e-9, "the base does not reach the axial station's +X holes"
+
+
+def station_x() -> cq.Workplane:
+    """The X rig's frame, built +Z (base down): every bore along X is a teardrop."""
+    zb = Z_PLANK + BASE_T
+    s = _box(XR_BX0, XR_X1, Y0_AX - FLANGE, Y_EDGE, Z_PLANK, zb)                      # base
+    s = s.union(_box(XR_X0, XR_X1, XR_Y0, XR_Y1, zb - 0.01, XR_TOP))                  # the box
+    # the room: from the end wall to the rail wall, open on top, down to the base
+    s = s.cut(_box(_xr_x(CEIL_AX), _xr_x(RAIL_TOP), SY - ROOM_HY, SY + ROOM_HY, zb, XR_TOP + 1.0))
+    # ...out -Y past the yoke's arm, down to the base too: the +Y wall alone stops the yoke turning
+    # either way (one of its +Y corners meets it whichever way it turns), so the -Y side is a wall
+    s = s.cut(_box(_xr_x(CEIL_AX), _xr_x(RAIL_TOP), ARM_Y0, SY - ROOM_HY + 0.01, zb, XR_TOP + 1.0))
+    # the rail wall's bores: screw_rail's seat, lip and boss passage, as printed
+    s = s.cut(_xbore(D.SUPPORT_BRG_OD + 0.2, RAIL_BOT - 1.0, BRG_TOP_Z + 1e-3))
+    s = s.cut(_xbore(SR.SEAT_LEDGE_D, RAIL_BOT - 1.0, LEDGE_TOP))
+    s = s.cut(_xbore(SR.NUT_PASS_D, LEDGE_TOP - 0.01, RAIL_TOP + 1.0))
+    # the string's slot through the end wall, open on top: the string drops in
+    s = s.cut(_box(XR_X0 - 1.0, _xr_x(CEIL_AX) + 0.01, SY - XR_SLOT / 2, SY + XR_SLOT / 2,
+                   XR_ZA - XR_SLOT / 2, XR_TOP + 1.0))
+    for x in (X0_AX + 6.4, X1_AX - 6.4):
+        for y in (Y0_AX - FLANGE / 2, Y1 + FLANGE / 2):
+            s = s.cut(_wood_screw(x, y, UP))
+    return s
+
+
+XR_PARTS = ("leadscrew_0", "nut_0", "yoke_0", "string_nut_0", "yoke_m3_lo_0", "yoke_m3_hi_0",
+            "screw_pulley_0", "screw_bearing_0_0")
+
+
+def assembly_x():
+    """The X rig (scratch view scope): the axial stack turned along X, the nut mid-travel."""
+    def turn(w):
+        return w.rotate((0, 0, 0), (0, 1, 0), -90).translate((XR_OFF, 0.0, XR_ZA - SX))
+    ax = dict(assembly(axial=True))
+    dz = -D.CARRIAGE_TRAVEL / 2.0
+    out = [("plank_station_x", station_x()), ("plank_head", ax["plank_head"]),
+           ("crown_dowel", ax["crown_dowel"])]
+    for nm in XR_PARTS:
+        w = ax[nm]
+        if nm in ("nut_0", "yoke_0", "string_nut_0", "yoke_m3_lo_0", "yoke_m3_hi_0"):
+            w = w.translate((0, 0, dz))
+        out.append(("x" + nm, turn(w)))
+    out += [(nm, w) for nm, w in ax.items() if nm.startswith("motor_")]
+    g = D.STRING_GAUGE[I]
+    a = (_xr_x(D.NUT_TOP_Z + dz + YK_R0 - D.STRING_NUT_D / 2), SY, XR_ZA)
+    crown = (CROWN_X, SY, XR_ZA)
+    st = _seg(a, crown, g / 2).union(_seg(crown, (-770.0, SY, Z_PLANK + 15.0), g / 2))
+    out.append(("string_0", st))
+    return out
+
+
 def yoke() -> cq.Workplane:
     """On the nut's flange, its axis at the origin, z 0 = the flange's top (the nut's own origin).
     Two M3 x 12 come up through the ears self-tapping into its -Z face; the ball end
@@ -528,8 +620,9 @@ def print_parts():
     st = station().rotate((0, 0, 0), (0, 1, 0), 90)             # -X -> +Z
     sa = station_axial().rotate((0, 0, 0), (0, 1, 0), 90)
     yk = yoke().rotate((0, 0, 0), (1, 0, 0), 180)               # roof on the bed: no bridge over the cavity
+    out_x = station_x()                                          # base down, as drawn
     for nm, w in (("plank_station", st), ("plank_head", head()),   # the real tee board holds the motor (user)
-                  ("plank_station_axial", sa), ("plank_yoke", yk)):
+                  ("plank_station_axial", sa), ("plank_yoke", yk), ("plank_station_x", out_x)):
         bb = w.val().BoundingBox()
         out[nm] = w.translate((-bb.xmin, -bb.ymin, -bb.zmin))
     return out
