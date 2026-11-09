@@ -576,6 +576,76 @@ def _d_pts_seg(X, Y, x1, y1, x2, y2):
 
 
 def _in_poly(X, Y, pts):
+    """Even-odd point-in-polygon over arrays X, Y (same shape).
+
+    ⚠ THIS WAS 57 % OF A ROUTE (optical, 2026-11-09): a pour's fill is a fractured polygon
+    of thousands of points, and the edge loop below ran in Python over the whole window --
+    35 s per call, every round, for +3V3D's plane joins alone. A grid (X constant down
+    columns, Y along rows -- every meshgrid caller) is now one compiled scanline pass:
+    per row the edge crossings, sorted, and each column's count of crossings to its right.
+    Same rule exactly: an edge counts where (y1 > y) != (y2 > y) and x < its crossing."""
+    X = np.asarray(X, np.float64)
+    Y = np.asarray(Y, np.float64)
+    P = np.asarray(pts, np.float64)
+    if _nb is not None and len(P) >= 3 and X.size:
+        if X.ndim == 2 and X.shape == Y.shape and (X == X[0:1]).all() and (Y == Y[:, 0:1]).all():
+            return _grid_in(np.ascontiguousarray(X[0]), np.ascontiguousarray(Y[:, 0]), P)
+        return _pts_in(X.ravel(), Y.ravel(), P).reshape(X.shape)
+    return _in_poly_np(X, Y, pts)
+
+
+try:
+    import numba as _nb
+except ImportError:          # KiCad's Python has no numba: the plain loop below serves
+    _nb = None
+
+if _nb is not None:
+    @_nb.njit(cache=True)
+    def _grid_in(xs, ys, P):
+        n = P.shape[0]
+        out = np.zeros((ys.size, xs.size), np.bool_)
+        xc = np.empty(n, np.float64)
+        for i in range(ys.size):
+            y = ys[i]
+            m = 0
+            for e in range(n):
+                x1, y1 = P[e, 0], P[e, 1]
+                x2, y2 = P[(e + 1) % n, 0], P[(e + 1) % n, 1]
+                if y1 == y2:
+                    continue
+                if (y1 > y) != (y2 > y):
+                    xc[m] = x1 + (y - y1) * (x2 - x1) / (y2 - y1)
+                    m += 1
+            if m == 0:
+                continue
+            row = np.sort(xc[:m])
+            for j in range(xs.size):
+                # crossings strictly right of x: x < xc
+                k = np.searchsorted(row, xs[j], side="right")
+                if (m - k) % 2 == 1:
+                    out[i, j] = True
+        return out
+
+    @_nb.njit(cache=True)
+    def _pts_in(xs, ys, P):
+        n = P.shape[0]
+        out = np.zeros(xs.size, np.bool_)
+        for q in range(xs.size):
+            x, y = xs[q], ys[q]
+            c = False
+            for e in range(n):
+                x1, y1 = P[e, 0], P[e, 1]
+                x2, y2 = P[(e + 1) % n, 0], P[(e + 1) % n, 1]
+                if y1 == y2:
+                    continue
+                if (y1 > y) != (y2 > y):
+                    if x < x1 + (y - y1) * (x2 - x1) / (y2 - y1):
+                        c = not c
+            out[q] = c
+        return out
+
+
+def _in_poly_np(X, Y, pts):
     inside = np.zeros(X.shape, bool)
     n = len(pts)
     for i in range(n):

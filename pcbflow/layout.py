@@ -1747,7 +1747,7 @@ def rip_router_shorts(board):
                 0.0 if w.GetClass() == "PCB_VIA" else pcbnew.ToMM(w.GetLength()))
             if w.GetClass() == "PCB_VIA":
                 held.add(w.GetNetname())
-    doomed, seen = [], set()
+    doomed, seen, why = [], set(), {}
     for t, u in pairs:
         victim = min((t, u), key=lambda w: (w.GetNetname() in held, bad[w.GetNetname()], w.GetNetname()))
         uid = victim.m_Uuid.AsString()
@@ -1755,9 +1755,15 @@ def rip_router_shorts(board):
             continue
         seen.add(uid)
         doomed.append(victim)
+        other = u if victim is t else t
+        op = other.GetPosition() if other.GetClass() == "PCB_VIA" else other.GetStart()
+        why[uid] = "%s %s at %.2f,%.2f" % (other.GetNetname(),
+                                         "via" if other.GetClass() == "PCB_VIA" else "track",
+                                         pcbnew.ToMM(op.x), pcbnew.ToMM(op.y))
     for t in doomed:
-        print("    took up %s on %s, %.2f mm: it shorted or crowded another net"
-              % (t.GetNetname(), t.GetLayerName(), pcbnew.ToMM(t.GetLength())))
+        print("    took up %s on %s, %.2f mm: it shorted or crowded %s"
+              % (t.GetNetname(), t.GetLayerName(), pcbnew.ToMM(t.GetLength()),
+                 why.get(t.m_Uuid.AsString(), "another net")))
         board.Remove(t)
         _REMOVED.append(t)
     return len(doomed)

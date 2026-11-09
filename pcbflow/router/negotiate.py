@@ -8,6 +8,7 @@ learns to leave it to the net that has no other way."""
 from __future__ import annotations
 
 import math
+import os
 import time
 
 import numpy as np
@@ -41,6 +42,9 @@ class Net:
         self.necks = []         # per path: bool per cell, True where it runs necked down
         self.legs = []          # diff-pair chain hops, in order: (from cells, to cells, label)
         self.mate = None        # the other net of a matched pair (both directions)
+        self.group = None       # its match group (board.json "match" entry), if any
+        self.force_layers = None  # the pair finish's layer set for this attempt (outside the merge circle)
+        self.main_xy = None     # a pour net's island re-join: the fill its main body reaches (bool[H, W])
 
 
 class Router:
@@ -163,6 +167,8 @@ class Router:
         by = {n.name: n for n in self.nets}
         for g in m.notes.get('match', ()) or ():
             names = [x for x in g.get('nets', ()) if x in by]
+            for x in names:
+                by[x].group = g
             # ⚠ ONLY A GROUP WITH A VIA BUDGET PRICES ITS VIAS UP (optical ULPI, 2026-11-08):
             # ULPI declares max_vias null -- 60 MHz, the budget is skew -- yet its twelve
             # nets paid x20 a via, could not escape U7's pin row, and ULPI_D3 / D4 were
@@ -254,7 +260,8 @@ class Router:
                 if not all(cand):
                     continue
                 cells = [np.unique(np.concatenate([self._cells("p", q, lid) for q in ps])) for ps in cand]
-                net.legs = [(cells[k], cells[k + 1], "%s->%s" % (chain[k], chain[k + 1]))
+                net.legs = [(cells[k], cells[k + 1], "%s->%s" % (chain[k], chain[k + 1]),
+                             chain[k] in keep, chain[k + 1] in keep)
                             for k in range(len(chain) - 1)]
 
     def _cells(self, kind, it, lid):
@@ -298,17 +305,57 @@ class Router:
     OFFRUN_COST = 4.0                # a relaxed pair's cell price off its home layers
     RELAX_AFTER = 10                 # rounds a layer-held pair may share before it is relaxed (4 relaxed USB mid-negotiation, 11-08)
     FILL_MARGIN = 0.15               # a plane-join via's pad this far inside the fill's edge
+    PLANE_JOIN_MM = (2.0, 6.0)       # a plane join looks this near its piece first (then everywhere)
     RING_COST = 4.0                  # inside another net's poured land's thermal room (model.ring_net)
     NECK_W = W_REF                   # a net's width where it necks down at its own lands
     NECK_MM = 1.2                    # ...within this distance of its own copper
     TURN_STATES_MAX = 40_000_000     # heading-aware search up to this many states (x9 cells)
 
+    # ⚠ HEURISTIC WEIGHT 1.2 (optical S53o0, 2026-11-09): negotiation 123 -> 90 s, same
+    # nets, same pair faults (none), +0.4 % track, vias 192 -> 191. Congestion pricing
+    # leaves the straight-line heuristic weak; a small weight buys most of the speed back.
+    ASTAR_EPS = 1.2
+
     def _astar(self, cellf, vcellf, src, tgt, L, h, w, tb, dir_cost, vmult=1.0):
         vc = np.float32(self.via_cost * vmult)
+        bufs = self.__dict__.setdefault("_bufs", S.Buffers())
+        src_idx = np.flatnonzero(src).astype(np.int64)
+        eps = np.float32(self.ASTAR_EPS)
         if L * h * w * 9 <= self.TURN_STATES_MAX and self.turn45 + self.turn90 > 0:
-            return S.astar_turn(cellf, vcellf, src, tgt, L, h, w, vc, tb, dir_cost,
-                                self.turn45, self.turn90)
-        return S.astar(cellf, vcellf, src, tgt, L, h, w, vc, tb, dir_cost)
+            g, par, st, base = bufs.take(L * h * w * 9)
+            return S.astar_turn_s(cellf, vcellf, src_idx, tgt, L, h, w, vc, tb, dir_cost,
+                                  self.turn45, self.turn90, eps, g, par, st, base)
+        g, par, st, base = bufs.take(L * h * w)
+        return S.astar_s(cellf, vcellf, src_idx, tgt, L, h, w, vc, tb, dir_cost, eps,
+                         g, par, st, base)
+
+    USE_GLOBAL = True                # plan every net on a coarse grid first (globalroute.py): placement feedback
+    # ⚠ CORRIDORS DID NOT PAY (optical S53o0, 2026-11-09): holding the detailed search to
+    # the plan halved round 1 but nets shared longer, 123 s either way (131 s releasing a
+    # net at its first share). Kept, off, for a better plan to try again.
+    CORRIDORS = False
+    CORR_WIDEN = 2                   # corridor = the plan's squares widened this many squares
+    CORR_RELAX = 3                   # rounds a net may share space inside its corridor before it leaves it
+
+    def _corridor(self, net):
+        """⚠ PLAN FIRST, THEN DRAW (2026-11-09): with congestion priced in, a long net's
+        true cost runs far over the straight-line heuristic and A* explored millions of
+        states (optical BOOT0, 3.4 s a search). The global plan gives each net a corridor;
+        the detailed search keeps to it, and leaves it only if no path fits there or the
+        net keeps sharing space (CORR_RELAX rounds): a plan is a guide, not a cage."""
+        gr = getattr(self, "_gr", None)
+        if (not self.CORRIDORS or gr is None or net.plane or net.stuck >= self.CORR_RELAX
+                or net.fixed):
+            return None
+        c = gr.corridor(net.name, widen=self.CORR_WIDEN)
+        if not c.any():
+            return None
+        # every land of the net must sit in it, or the search cannot even start there
+        for p in net.pieces:
+            r = p % (self.H * self.W)
+            if not c[(r // self.W) // gr.b, (r % self.W) // gr.b].any():
+                return None
+        return c
 
     def _window(self, net, margin_mm):
         mc = int(math.ceil(margin_mm / self.m.pitch))
@@ -321,12 +368,20 @@ class Router:
         self._wp_off = self._mate_dive(net)
         if self._wp_off is not None:
             net.relaxed = True             # its mate dived: it must be free to follow
+        # the global plan's corridor first (globalroute.py), then the net's own windows
+        corr = self._corridor(net)
         for strict in ((True, False) if net.run_layers and not net.relaxed else (False,)):
             self._strict = strict
-            for margin in (4.0, 12.0, 1e4):
-                win = self._window(net, margin)
+            for margin in ((("corr", corr),) if corr is not None else ()) + (4.0, 12.0, 1e4):
+                if isinstance(margin, tuple):
+                    self._corr = margin[1]
+                    win = self._window(net, 4.0)
+                else:
+                    self._corr = None
+                    win = self._window(net, margin)
                 self._necks = []
                 paths = self._route_in(net, pf, win)
+                self._corr = None
                 if paths is not None:
                     net.necks = [np.zeros(p.size, bool) for p in net.fixed] + self._necks
                     return list(net.fixed) + paths
@@ -364,6 +419,14 @@ class Router:
                 for k in range(L):
                     if k not in net.run_layers:
                         legal[k] &= circle
+        if net.force_layers is not None:
+            for k in range(L):
+                if k not in net.force_layers:
+                    legal[k] = (legal[k] & circle) if circle is not None else False
+        corr = getattr(self, "_corr", None)
+        if corr is not None:
+            gb = self._gr.b
+            legal &= corr[np.ix_(np.arange(i0, i1) // gb, np.arange(j0, j1) // gb)][None]
         vlegal = np.all(fd >= m.via_d / 2.0 + m.clear + m.margin, axis=0)
         vlegal &= m.edge[i0:i1, j0:j1] >= m.via_d / 2.0 + m.edge_clear + m.margin
         vlegal &= ~m.via_ban[i0:i1, j0:j1]
@@ -532,7 +595,7 @@ class Router:
                     return math.hypot(wy - ay - t * vy, wx - ax - t * vx)
                 wleg = min(range(len(net.legs)),
                            key=lambda q: _dseg(_cen(net.legs[q][0]), _cen(net.legs[q][1])))
-            for li, (a_c, b_c, _lbl) in enumerate(net.legs):
+            for li, (a_c, b_c, _lbl, a_dec, b_dec) in enumerate(net.legs):
                 a_l, b_l = local(a_c), local(b_c)
                 if a_l.size == 0 or b_l.size == 0:
                     legs_ok = False
@@ -542,12 +605,18 @@ class Router:
                 bmask = np.zeros(n, np.bool_)
                 bmask[b_l] = True
                 ends = amask | bmask
-                # a part is one node: the whole piece its pads sit in is an end
+                # a part is one node: the whole piece its pads sit in is an end...
+                # ⚠ ...UNLESS ITS LANDING PADS ARE DECLARED (optical USB_HS, 2026-11-09).
+                # diff_pairs pads {J1: [A6, A7]} is the pair's chirality at the socket, and
+                # the merge piece joins A6 to B6: grown to the piece, USB_DP landed on B6
+                # (nearest U10), the pair arrived DM-west-of-DP, crossed again outside the
+                # merge circle, and broke the 2-via budget on 4 of 11 placements. A declared
+                # end is its pads; the rest of its piece is out of bounds like other copper.
                 for p_ in pieces:
-                    if amask[p_].any():
+                    if amask[p_].any() and not a_dec:
                         ends[p_] = True
                         a_l = np.union1d(a_l, p_)
-                    elif bmask[p_].any():
+                    elif bmask[p_].any() and not b_dec:
                         ends[p_] = True
                         b_l = np.union1d(b_l, p_)
                 other = np.zeros(n, np.bool_)
@@ -702,6 +771,368 @@ class Router:
         if p2.size == 0:
             return None
         return [p1, p2]
+
+    def pair_measure(self, net):
+        """{name: (length mm, {layer index: mm}, vias)} for a pair net and its mate, as
+        verify.py measures them: copper whose midpoint is within the group's merge_r of
+        the merge connector is not counted. None if the net is not in a pair."""
+        mate = getattr(net, "mate", None)
+        if mate is None or net.group is None:
+            return None
+        H, W = self.H, self.W
+        cx, cy, p = self.m.cx, self.m.cy, self.m.pitch
+        ctr = None
+        if net.merge is not None:
+            ctr = (net.merge[0], net.merge[1], float(net.group.get("merge_r", 4.0)))
+        out = {}
+        for x in (net, mate):
+            tot, per, nv = 0.0, {}, 0
+            for pth in x.paths:
+                if pth.size < 2:
+                    continue
+                k = pth // (H * W)
+                r_ = pth % (H * W)
+                X, Y = cx[r_ % W], cy[r_ // W]
+                mx, my = (X[1:] + X[:-1]) / 2.0, (Y[1:] + Y[:-1]) / 2.0
+                keep = np.ones(mx.size, bool) if ctr is None else                     np.hypot(mx - ctr[0], my - ctr[1]) >= ctr[2]
+                via = (k[1:] != k[:-1]) & keep
+                nv += int(via.sum())
+                st = np.hypot(X[1:] - X[:-1], Y[1:] - Y[:-1]) * ~via * keep
+                for lay in np.unique(k[:-1][st > 0]).tolist():
+                    mm = float(st[k[:-1] == lay].sum())
+                    per[lay] = per.get(lay, 0.0) + mm
+                    tot += mm
+            out[x.name] = (tot, per, nv)
+        return out
+
+    def pair_faults(self, net):
+        """verify.py's pair rules on the pair as laid: a list of (fault, net names)."""
+        ms = self.pair_measure(net)
+        if not ms or net.failed or net.mate.failed:
+            return []
+        g = net.group
+        bad = []
+        if g.get("same_layer") and len({frozenset(v[1]) for v in ms.values()}) != 1:
+            bad.append(("layers", tuple(ms)))
+        mv = g.get("max_vias")
+        if mv is not None:
+            over = tuple(n for n, v in ms.items() if v[2] > mv)
+            if over:
+                bad.append(("vias", over))
+        sk = g.get("max_skew_mm")
+        ls = [v[0] for v in ms.values()]
+        if sk is not None and max(ls) - min(ls) > sk:
+            bad.append(("skew", tuple(ms)))
+        return bad
+
+    # ⚠ A PAIR IS FINISHED AS A PAIR, AFTER THE NEGOTIATION (optical USB_HS, 2026-11-09):
+    # the negotiation relaxed USB_DP / USB_DM to any layer on every placement of an
+    # 18-nudge series, and whether the relaxed pair came out legal was luck -- 4 of 11
+    # valid placements split the layer set, 4 broke the via budget, 1 the skew. The
+    # negotiation's test is "nobody shares a cell", which a split pair passes. So once the
+    # board has settled, each pair that breaks verify's rules is ripped up and laid again
+    # the way an engineer lays it, everything else held: both on the home layers; else one
+    # rail dives on ONE named layer and the other follows through the same spot (each
+    # order, plain and with dives priced harder). The first attempt that meets the rules
+    # and shares nothing is kept; if none does, the fewest faults win, the original first.
+    def _finish_pairs(self):
+        pf = getattr(self, "_pf_last", 1.0)
+        for a in list(self.nets):
+            b = a.mate
+            if b is None or a.partner is not None or a.group is None or a.failed or b.failed:
+                continue
+            f0 = self.pair_faults(a)
+            if not f0:
+                continue
+            home = set(a.run_layers or a.layers_only or range(self.L))
+            others = sorted((k for k in range(self.L) if k not in home),
+                            key=lambda k: (float(self.layer_cost[k]), k))
+            keep = {x: (x.paths, x.necks, x.failed, x.relaxed, x.force_layers) for x in (a, b)}
+            cands = [(a, b, False, None, 1.0, False, 1.0), (b, a, False, None, 1.0, False, 1.0)]
+            # a second dive is what breaks a via budget: the last attempts price vias x5
+            for vm in (1.0, 5.0):
+                for d in others:
+                    for f_, s_ in ((a, b), (b, a)):
+                        for om in (1.0, 4.0):
+                            cands.append((f_, s_, True, home | {d}, om, True, vm))
+            ms0 = self.pair_measure(a)
+            l0 = [v[0] for v in ms0.values()]
+            best, best_key = None, (0, len(f0), max(l0) - min(l0))
+            ruled = None                   # (shared cells, skew, state): to the rules, but in others' space
+            for c in cands:
+                got = self._pair_try(pf, *c)
+                if os.environ.get("PAIR_DEBUG"):
+                    self.log("    try %s first relax=%s layers=%s off x%g via x%g: %s" % (
+                        c[0].name, c[2], c[3], c[4], c[6],
+                        "no path" if got is None else (got, round(max(
+                            v[0] for v in self.pair_measure(a).values()) - min(
+                            v[0] for v in self.pair_measure(a).values()), 2))))
+                if got is None:
+                    continue
+                sh, fl = got
+                ms = self.pair_measure(a)
+                ls = [v[0] for v in ms.values()]
+                key = (sh, len(fl), max(ls) - min(ls))
+                if sh == 0 and not fl:
+                    best = None
+                    self.log("  pair %s/%s: %s -- refinished (%s first, %s)" % (
+                        a.name, b.name, ", ".join(x[0] for x in f0), c[0].name,
+                        "home layers" if c[3] is None else "+" + "/".join(
+                            self.m.route_layers[k] for k in sorted(c[3] - home))))
+                    break
+                if not fl and (ruled is None or (sh, key[2]) < ruled[:2]):
+                    ruled = (sh, key[2], {x: (x.paths, x.necks, x.failed, x.relaxed, x.force_layers)
+                                          for x in (a, b)})
+                if key < best_key:
+                    best_key = key
+                    best = {x: (x.paths, x.necks, x.failed, x.relaxed, x.force_layers) for x in (a, b)}
+            else:
+                if ruled is not None and self._displace(a, b, ruled[2], pf):
+                    self.log("  pair %s/%s: %s -- laid to the rules through %d cell(s) of other "
+                             "nets' space, which re-negotiated round it" % (
+                                 a.name, b.name, ", ".join(x[0] for x in f0), ruled[0]))
+                    for x in (a, b):
+                        x.force_layers = None
+                    continue
+                st = best or keep
+                for x in (a, b):
+                    self._unmark(x)
+                for x in (a, b):
+                    x.paths, x.necks, x.failed, x.relaxed, x.force_layers = st[x]
+                    self._mark(x)
+                self.log("  pair %s/%s: %s -- no attempt met the rules%s" % (
+                    a.name, b.name, ", ".join(x[0] for x in f0),
+                    "; kept the one with fewest faults %s" % (best_key,) if best else "; kept as negotiated"))
+            for x in (a, b):
+                x.force_layers = None
+
+    # ⚠ THE PAIR FIRST, THEN WHAT IT DISPLACED (optical ONX3, 2026-11-09): eight of eighteen
+    # attempts laid USB_HS to every rule, each through 14-90 cells the board had settled
+    # round the old pair, so all were refused and the FAIL stayed. An engineer lays the
+    # pair and moves the traces in its way. The best such attempt is held and the nets it
+    # crosses negotiate round it; kept only if no more nets end open than before.
+    def _displace(self, a, b, state, pf):
+        saved = {n: (n.paths, n.necks, n.failed) for n in self.nets}
+        fail0 = sum(n.failed for n in self.nets)
+        for x in (a, b):
+            self._unmark(x)
+        for x in (a, b):
+            x.paths, x.necks, x.failed, x.relaxed, x.force_layers = state[x]
+            self._mark(x)
+        lock = {a, b}
+        todo = [n for n in self.nets if n not in lock and not n.failed and self._conflicts(n)]
+        left, _ = self._rounds(todo, pf, 12, 600, locked=lock)
+        fail1 = sum(n.failed for n in self.nets) + sum(not n.failed for n in left)
+        if fail1 <= fail0 and not self.pair_faults(a):
+            self._rip(left)
+            return True
+        self.log("  pair %s/%s: re-negotiating round it left %d net(s) open (was %d) -- put back"
+                 % (a.name, b.name, fail1, fail0))
+        for n in self.nets:
+            self._unmark(n)
+        for n in self.nets:
+            n.paths, n.necks, n.failed = saved[n]
+            self._mark(n)
+        return False
+
+    # ----------------------------------------------------------------- pour islands
+    FILL_MIN_W = 0.2                 # the refill's thinnest copper: narrower necks are cut
+
+    def _islands(self, net):
+        """Where a regional-pour net's pieces stand after the negotiation, judged as the
+        refill will lay the pour: its region minus every other net's keep-out, opened by
+        the fill's minimum width, then joined to the net's own pads and tracks.
+
+        Returns (pieces that do not reach the main body, main body's fill as bool[H, W]),
+        or None when the net has no regional pour on a routed layer to judge."""
+        m = self.m
+        L, H, W = self.L, self.H, self.W
+        lid = {n_: k for k, n_ in enumerate(m.route_layers)}
+        pl = m.pours.get(net.name) or []
+        if not pl or any(L_ not in lid for L_, _ in pl):
+            return None                 # a plane layer the router does not route: not judged
+        reg = m.region_net == net.id     # [L, H, W]
+        if not reg.any():
+            return None
+        ks, ii, jj = np.nonzero(reg)
+        i0, i1 = max(int(ii.min()) - 2, 0), min(int(ii.max()) + 3, H)
+        j0, j1 = max(int(jj.min()) - 2, 0), min(int(jj.max()) + 3, W)
+        sl = (slice(None), slice(i0, i1), slice(j0, j1))
+        from scipy.ndimage import binary_opening, label
+        fd = np.where(m.n1[sl] == net.id, m.d2[sl], m.d1[sl])
+        self._unmark(net)
+        other = self.occ_t.reshape(L, H, W)[sl] > 0
+        self._mark(net)
+        fill = reg[sl] & (fd >= m.clear) & ~other
+        fill &= (m.edge[i0:i1, j0:j1] >= m.edge_clear)[None]
+        rr = max(1, int(round(self.FILL_MIN_W / 2.0 / m.pitch)))
+        yy, xx = np.mgrid[-rr:rr + 1, -rr:rr + 1]
+        disk = (yy * yy + xx * xx) <= rr * rr
+        h, w = i1 - i0, j1 - j0
+        labs, base = np.zeros((L, h, w), np.int64), 0
+        for k in range(L):
+            if fill[k].any():
+                f_ = binary_opening(fill[k], structure=disk)
+                lk, nk = label(f_, structure=np.ones((3, 3), bool))
+                labs[k] = np.where(lk > 0, lk + base, 0)
+                base += nk
+        # union-find over: fill components 1..base, pieces, paths
+        items = [p for p in net.pieces] + [p for p in net.paths]
+        npc = len(net.pieces)
+        up = list(range(base + 1 + len(items)))
+
+        def find(a):
+            while up[a] != a:
+                up[a] = up[up[a]]
+                a = up[a]
+            return a
+
+        def union(a, b):
+            up[find(a)] = find(b)
+
+        def comps(cells, via_all):
+            k = cells // (H * W)
+            r = cells % (H * W)
+            ci, cj = r // W - i0, r % W - j0
+            ok = (ci >= 0) & (ci < h) & (cj >= 0) & (cj < w)
+            k, ci, cj = k[ok], ci[ok], cj[ok]
+            got = set(labs[k, ci, cj].tolist())
+            if via_all is not None:              # a via pierces every pour layer
+                vi = via_all[ok]
+                if vi.any():
+                    for kk in range(L):
+                        got |= set(labs[kk, ci[vi], cj[vi]].tolist())
+            got.discard(0)
+            return got
+
+        for q, cells in enumerate(items):
+            node = base + 1 + q
+            if q < npc:
+                # a land touches the fill only where it is copper on that layer; pieces[0]
+                # is everything the planes reach, so it is judged per fill component only
+                if q == 0:
+                    continue
+                for c in comps(cells, None):
+                    union(node, c)
+            else:
+                k = cells // (H * W)
+                via = np.zeros(cells.size, bool)
+                ch = np.nonzero(k[1:] != k[:-1])[0]
+                via[ch] = True
+                via[ch + 1] = True
+                for c in comps(cells, via):
+                    union(node, c)
+        # tracks join the pieces and each other where they share cells
+        cs = [set(c.tolist()) for c in items]
+        # a track ending in pieces[0] (a via or land the planes reach) is joined to the
+        # fill there, on whatever layer that copper meets it
+        if npc and net.pieces[0].size:
+            for q in range(npc, len(items)):
+                sh = np.array(sorted(cs[q] & cs[0]), np.int64)
+                if sh.size:
+                    for c in comps(sh, np.ones(sh.size, bool)):
+                        union(base + 1 + q, c)
+        for a in range(1, len(items)):
+            for b in range(a + 1, len(items)):
+                if a < npc and b < npc:
+                    continue
+                if not cs[a].isdisjoint(cs[b]):
+                    union(base + 1 + a, base + 1 + b)
+        # pieces[0]: each fill component it stands on is planed (that is what it is)
+        p0c = comps(net.pieces[0], None) if npc and net.pieces[0].size else set()
+        roots = {}
+        for q in range(1, npc):
+            roots.setdefault(find(base + 1 + q), []).append(q)
+        for c in p0c:
+            roots.setdefault(find(c), [])
+        if not roots:
+            return [], None
+        score = {r_: len(qs) + 10 * sum(find(c) == r_ for c in p0c) for r_, qs in roots.items()}
+        main = max(score, key=score.get)
+        bad = [q for r_, qs in roots.items() if r_ != main for q in qs]
+        mlab = [c for c in range(1, base + 1) if find(c) == main]
+        mx = np.zeros((H, W), bool)
+        if mlab:
+            mx[i0:i1, j0:j1] = np.isin(labs, mlab).any(axis=0)
+        return bad, mx
+
+    def _pour_islands(self):
+        """⚠ A VIA INTO A REGIONAL POUR IS ONLY A JOIN IF THE REFILL REACHES IT (optical
+        +3V3D under U6, 2026-11-09: other nets may cross the region -- priced, not banned --
+        and on 16 of 19 nudged placements one piece's join via landed on a fill island the
+        crossings had cut off, so close_last closed it the long way round, 13.5 mm across
+        a 1.7 mm gap, quality A23). After the negotiation each such net is judged as the
+        refill will lay it; a piece off the main body is re-joined to the main body only,
+        everything else re-negotiating round it, and kept only if no more nets end open."""
+        lock = {n for n in self.nets if n.group is not None}
+        for net in self.nets:
+            if not net.plane or net.failed:
+                continue
+            for attempt in range(3):
+                got = self._islands(net)
+                if got is None:
+                    break
+                bad, mx = got
+                if not bad or mx is None or not mx.any():
+                    break
+                at = []
+                for q in bad[:4]:
+                    r_ = net.pieces[q] % (self.H * self.W)
+                    at.append("(%.1f, %.1f)" % (float(self.m.cx[int(np.median(r_ % self.W))]),
+                                                float(self.m.cy[int(np.median(r_ // self.W))])))
+                self.log("  %s: %d piece(s) join the pour on an island the crossings cut off,"
+                         " at %s -- re-joining to the main body"
+                         % (net.name, len(bad), ", ".join(at)))
+                saved = {n: (n.paths, n.necks, n.failed) for n in self.nets}
+                fail0 = sum(n.failed for n in self.nets)
+                net.main_xy = mx
+                try:
+                    left, _ = self._rounds([net], getattr(self, "_pf_last", 1.0), 12, 600, locked=lock)
+                finally:
+                    net.main_xy = None
+                fail1 = sum(n.failed for n in self.nets) + sum(not n.failed for n in left)
+                again = self._islands(net) if not net.failed else None
+                nbad = len(again[0]) if again else len(bad) + 1
+                if fail1 <= fail0 and not net.failed and nbad < len(bad):
+                    self._rip(left)
+                    continue
+                self.log("  %s: re-joining left %d net(s) open (was %d), %d island piece(s)"
+                         " -- put back" % (net.name, fail1, fail0, nbad))
+                for n in self.nets:
+                    self._unmark(n)
+                for n in self.nets:
+                    n.paths, n.necks, n.failed = saved[n]
+                    self._mark(n)
+                break
+
+    def _pair_try(self, pf, first, second, relax, layers, offrun_mult, refine, via_mult=1.0):
+        """Lay a pair afresh (everything else held): first, then second, then (refine)
+        first again against second. (shared cells, pair faults), or None if a rail fails."""
+        for x in (first, second):
+            self._unmark(x)
+            x.paths, x.necks, x.failed = [], [], False
+            x.relaxed, x.force_layers = relax, layers
+        old = self.OFFRUN_COST
+        self.OFFRUN_COST = old * offrun_mult
+        vold = {x: x.via_mult for x in (first, second)}
+        for x in (first, second):
+            x.via_mult = vold[x] * via_mult
+        try:
+            for x in (first, second) + ((first,) if refine else ()):
+                self._unmark(x)
+                x.relaxed = relax
+                p = self._route_net(x, pf)
+                if p is None:
+                    x.paths, x.necks, x.failed = [], [], True
+                    return None
+                x.paths, x.failed = p, False
+                self._mark(x)
+        finally:
+            self.OFFRUN_COST = old
+            for x in (first, second):
+                x.via_mult = vold[x]
+        sh = sum(int(c.size) for x in (first, second) for c in self._conflicts(x))
+        return sh, self.pair_faults(first)
 
     def _where(self, x):
         """ " (first at x,y on layer, beside nets)" for a net's first shared cell."""
@@ -932,32 +1363,78 @@ class Router:
         # optical's +3V3D under U6, covers a corner of the board, not all of it)
         from .model import _in_poly
         X, Y = np.meshgrid(self.m.cx[j0:j1], self.m.cy[i0:i1])
-        under = np.zeros(site.shape, bool)
-        for pts in getattr(net, "pour_polys", ()):
-            under |= _in_poly(X, Y, pts)
-        # ...and only where the WHOLE via pad sits in that copper: a site at a fill's
-        # edge or across one of its slivers is no join at all
-        from scipy.ndimage import distance_transform_edt
-        under &= distance_transform_edt(under) * self.m.pitch >= self.m.via_d / 2.0 + self.FILL_MARGIN
+        # (the fill does not move between rounds: computed once per net and window)
+        ck = (net.name, win)
+        cache = self.__dict__.setdefault("_under_cache", {})
+        if ck not in cache:
+            under = np.zeros(site.shape, bool)
+            for pts in getattr(net, "pour_polys", ()):
+                under |= _in_poly(X, Y, pts)
+            # ...and only where the WHOLE via pad sits in that copper: a site at a fill's
+            # edge or across one of its slivers is no join at all
+            from scipy.ndimage import distance_transform_edt
+            under &= distance_transform_edt(under) * self.m.pitch >= self.m.via_d / 2.0 + self.FILL_MARGIN
+            cache[ck] = under
+        under = cache[ck].copy()
+        # after an island check (_pour_islands): only the fill the net's other copper
+        # really reaches is a join; an island is a via into nothing
+        mx = getattr(net, "main_xy", None)
+        if mx is not None:
+            under &= mx[i0:i1, j0:j1]
         site = (site & under).ravel()
         tgt0 = np.zeros(n, np.bool_)
-        tgt0[pieces[0]] = True
+        p0 = pieces[0]
+        if mx is not None and p0.size:
+            r0_ = p0 % (h * w)
+            p0 = p0[mx[i0:i1, j0:j1].ravel()[r0_]]
+        tgt0[p0] = True
         vs = np.tile(site, L) & np.isfinite(cellf)
         paths = []
+        cell3 = cellf.reshape(L, h, w)
+        vs3 = vs.reshape(L, h, w)
+        tg3 = tgt0.reshape(L, h, w)
+        pitch = self.m.pitch
         for q in range(1, len(pieces)):
-            src = np.zeros(n, np.bool_)
-            src[pieces[q]] = True
-            tgt = tgt0 | vs
-            tgt[pieces[q]] = False
-            tk = np.nonzero(tgt)[0] % (h * w)
-            if tk.size == 0:
-                return None
-            # heuristic box: the piece itself, since a via site is usually right beside it
             pk = pieces[q] % (h * w)
-            tb = np.array([(pk // w).min(), (pk // w).max(), (pk % w).min(), (pk % w).max()], np.int64)
-            path = self._astar(cellf, vcell.ravel(), src, tgt, L, h, w,
-                           tb, self.dir_cost)
-            if path.size == 0:
+            pkk = pieces[q] // (h * w)
+            pi_, pj_ = pk // w, pk % w
+            # ⚠ LOOK BESIDE THE PAD FIRST, as an engineer drops a plane via (optical
+            # +3V3D, 2026-11-09): the heuristic aims at the piece itself, so a join searched
+            # in the whole-board window with no site near flooded it like Dijkstra -- 5-6 M
+            # states for a 6 mm join, the dearest searches of a round. Small boxes round the
+            # piece first, the whole window only if they hold no way in.
+            path = None
+            for marg in self.PLANE_JOIN_MM + (None,):
+                if marg is None:
+                    a0, a1, b0, b1 = 0, h, 0, w
+                else:
+                    mc = int(math.ceil(marg / pitch))
+                    a0, a1 = max(0, int(pi_.min()) - mc), min(h, int(pi_.max()) + mc + 1)
+                    b0, b1 = max(0, int(pj_.min()) - mc), min(w, int(pj_.max()) + mc + 1)
+                    if (a0, a1, b0, b1) == (0, h, 0, w):
+                        continue
+                hs, ws = a1 - a0, b1 - b0
+                tg = np.ascontiguousarray(tg3[:, a0:a1, b0:b1] | vs3[:, a0:a1, b0:b1])
+                sidx = (pkk * hs + (pi_ - a0)) * ws + (pj_ - b0)
+                tg = tg.ravel()
+                tg[sidx] = False
+                if not tg.any():
+                    if marg is None:
+                        return None
+                    continue
+                src = np.zeros(L * hs * ws, np.bool_)
+                src[sidx] = True
+                cs = np.ascontiguousarray(cell3[:, a0:a1, b0:b1]).ravel()
+                vcs = np.ascontiguousarray(vcell.reshape(h, w)[a0:a1, b0:b1]).ravel()
+                tb = np.array([int(pi_.min()) - a0, int(pi_.max()) - a0,
+                               int(pj_.min()) - b0, int(pj_.max()) - b0], np.int64)
+                p = self._astar(cs, vcs, src, tg, L, hs, ws, tb, self.dir_cost)
+                if p.size:
+                    kk = p // (hs * ws)
+                    rr = p % (hs * ws)
+                    path = (kk * h + (rr // ws + a0)) * w + (rr % ws + b0)
+                    break
+            if path is None:
                 return None
             if not tgt0[path[0]]:
                 # ended on a via site: the via is a layer change at the same cell
@@ -1040,13 +1517,44 @@ class Router:
 
     # ----------------------------------------------------------------- the loop
     def run(self, iters=40, pf0=0.5, pf_mul=1.6, hf=0.4, budget_s=1800):
-        t0 = time.time()
-        pf = pf0
         self._premerge()
-        todo = list(self.nets)
+        self._neg = (pf_mul, hf)
+        if self.USE_GLOBAL and os.environ.get("OWNROUTE_GLOBAL", "1") != "0":
+            from .globalroute import GlobalRouter
+            self._gr = GlobalRouter(self, log=self.log).run()
+            self._gr.report()
+        todo, pf = self._rounds(list(self.nets), pf0, iters, budget_s)
+        self._pf_last = pf
+        self._rip(todo)
+        if os.environ.get("OWNROUTE_SNAPSHOT"):        # pair-finish development: replay from here
+            import pickle
+            with open(os.environ["OWNROUTE_SNAPSHOT"], "wb") as fh:
+                pickle.dump({"pf": pf, "nets": {n.name: (n.paths, n.necks, n.failed, n.relaxed)
+                                                for n in self.nets}}, fh)
+        self._finish_pairs()
+        self._pour_islands()
+        return [n for n in self.nets if n.failed]
+
+    def _rip(self, todo):
+        """anything still sharing comes out: a legal board with a net open beats a short"""
+        for net in todo:
+            if not net.failed:
+                self.log("  %s still shares space%s: ripped out" % (net.name, self._where(net)))
+            self._unmark(net)
+            net.paths = []
+            net.necks = []
+            net.failed = True
+
+    def _rounds(self, todo, pf, iters, budget_s, locked=()):
+        """PathFinder rounds over `todo` until nobody shares; `locked` nets hold their copper
+        (never re-routed). Returns (nets still sharing or failed, final pf)."""
+        pf_mul, hf = getattr(self, "_neg", (1.6, 0.4))
+        t0 = time.time()
         best, since = None, 0
         for it in range(1, iters + 1):
             for net in todo:
+                if net in locked:
+                    continue
                 self._unmark(net)
                 paths = self._route_net(net, pf)
                 net.failed = paths is None
@@ -1059,6 +1567,8 @@ class Router:
             todo = []
             nbad = 0
             for net in self.nets:
+                if net in locked:
+                    continue
                 if net.failed:
                     todo.append(net)
                     continue
@@ -1114,12 +1624,4 @@ class Router:
                 self.log("  out of time")
                 break
             pf *= pf_mul
-        # anything still sharing comes out: a legal board with a net open beats a short
-        for net in todo:
-            if not net.failed:
-                self.log("  %s still shares space%s: ripped out" % (net.name, self._where(net)))
-            self._unmark(net)
-            net.paths = []
-            net.necks = []
-            net.failed = True
-        return [n for n in self.nets if n.failed]
+        return todo, pf

@@ -1,7 +1,8 @@
 # pcbflow's own router
 
 Started 2026-11-08. Replaces freerouting in `finish.py` (layout -> **route** -> unwick ->
-repair_planes -> DRC -> close_last), behind `PCBFLOW_ROUTER=own` until it wins on every board.
+repair_planes -> DRC -> close_last) with `PCBFLOW_ROUTER=own`; it becomes the default once
+the full chain signs it off (router-alone it routes every board, 2026-11-09).
 
 ## Why
 
@@ -70,6 +71,24 @@ which is placement feedback rather than a coin flip.
   to cross the other (outside the merge circle), its mate's nearest hop must pass
   through the same layer within `WP_MM` of the dive -- vias on both, one layer set,
   as an engineer swaps P and N. `congestion.pair_dives` still names the spot.
+- **Declared landing pads hold**: a part with `diff_pairs[].pads` (J1: A6, A7) is not
+  widened to its whole piece, so the merge stub cannot hand the hop B6 and reverse the
+  pair's sense at the socket (a second crossing, 4 vias, on 4 of 11 placements).
+- **Pairs are finished as pairs** (`_finish_pairs`): the negotiation only asks that no
+  cell is shared, which a split pair passes. After it, a pair that breaks verify's rules
+  (`pair_faults`: layer set, via budget, skew, measured exactly as verify.py does) is
+  laid again, everything else held: home layers; else one dive on one named layer, the
+  mate following, each order, plain / dives x4 / vias x5. The first attempt that meets
+  the rules and shares nothing is kept; failing that, the best rule-meeting attempt is
+  held and the nets it crosses re-negotiate round it (`_displace`), kept only if no more
+  nets end open. `OWNROUTE_SNAPSHOT` pickles the negotiated board to replay this stage.
+- **A pour join must reach the main fill** (`_pour_islands`): a regional pour's join
+  via counts only if the refill reaches it. After the pair finish each such net is judged
+  as the refill will lay it: its region minus every other net's keep-out, opened by
+  `FILL_MIN_W`, joined through the net's own lands, tracks and vias. A piece off the main
+  body is re-joined to the main body only, the others re-negotiating round it, and the
+  result is kept only if no more nets end open. Optical +3V3D, 2026-11-09: an islanded
+  join on 16 of 19 nudges became close_last's 13.5 mm closure across a 1.7 mm gap (A23).
 
 ## Placement feedback
 
@@ -99,10 +118,48 @@ block was U1 west / C52, the spot that ate the freerouting nudge series.
 4. **M4 congestion map** from a coarse global route; a `routability` score for
    layout.py, so placement is judged before a detailed route is spent on it.
 5. **M5 parity**: all four boards (optical, motor_ctrl, pi_cap, output_panel) at their
-   targets through `PCBFLOW_ROUTER=own`; then it becomes the default.
+   targets on it, then every finish-chain board. Router-alone: all 15 boards, 0 nets
+   open, 0 pair faults (2026-11-09). Default switch pending the full-chain sign-off.
 
 Each milestone is measured against the freerouting baseline on the same placed board
 (`<stem>.unrouted.kicad_pcb`): unconnected, DRC errors, quality FAILs, wall time.
+
+## Speed (2026-11-09)
+
+Optical router-alone 800 s -> about 100 s (1440 s -> about 2 min inside finish under load),
+same nets, same pair verdicts. Profile first: the cost was never where it looked.
+
+- **Point-in-polygon was 57 % of a route.** A pour fill is a fractured polygon of
+  thousands of points; `model._in_poly` looped its edges in Python over the whole window,
+  35 s a call, every round, for +3V3D's plane joins (and 37 s more building the nets).
+  Now a compiled scanline for grids (identical answers, checked polygon by polygon), and
+  the join mask is cached per net and window.
+- **A search must not pay for the window it does not visit.** A whole-board plane join
+  allocated and cleared 130 MB for a 10-cell path. `search.astar_s/astar_turn_s` keep
+  persistent buffers with a generation stamp: identical paths on 50 captured calls.
+- **Plane joins look beside the pad first** (`PLANE_JOIN_MM` 2, 6, then everywhere).
+- **Heuristic weight 1.2** (`ASTAR_EPS`): negotiation 123 -> 90 s, +0.4 % track, vias
+  unchanged. Congestion pricing makes the straight-line heuristic weak; 1.3 halves work
+  for about 5 % dearer paths.
+
+Tried and dropped, measured:
+
+- **Corridors from the global plan** (`CORRIDORS`, off): round 1 halved, but nets shared
+  longer: 123 s either way, 131 s releasing a net at its first share.
+- **Parallel rounds with the serial answer**: nets in level 1 + the highest earlier
+  overlapping net's level. Exactly the serial paths, and no faster -- on optical 64 nets
+  fall in 45 levels, the dense MCU/USB area overlaps itself. Parallelism belongs one level
+  up: several placements scored at once, a process each.
+
+## Global plan (`globalroute.py`)
+
+Every net planned on a 1 mm grid (capacity = free fine rows or columns over the track
+pitch), PathFinder at that scale, in under 2 s on every board; the run prints the plan's
+overflow and the parts beside it. **Not yet a placement score**: against the detailed
+router's contention map (optical S53o0, 2 mm blocks) its overflow correlates 0.13-0.46
+(Spearman) and finds at most 2 of the top 10 hot spots, whatever the capacity derate. The
+detailed contention sits in pin escapes (U7's ULPI fan, U10/U31, the crystals), which
+1 mm squares cannot see; a score needs escape modelling at pad scale.
 
 ## Runtime
 
