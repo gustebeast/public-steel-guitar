@@ -1528,5 +1528,6 @@ Same head, same screw, pulley, belt and motor positions; print `coupons/plank_st
   walls stop the yoke turning). 6. Drop the guide rod down the hole in the station's top, through
   the yoke's boss, and push it home: its top is a press fit in the slab over the room, its foot
   sits in a 2.4 pocket in the channel floor. 7. Bridge 688 into its pocket, Ø8 shaft along Y. 8. String: ball end into the yoke's
-  window, string through the roof's slot, then up the slot in the station's +X side past the
-  bearing's +X tangent and over the top.
+  window, string through the roof's slot, then push the free end straight up (-Z to +Z) through
+  the Ø2 hole in the slab over the room: it comes out in the bearing's pocket beside the bearing's
+  +X side. Pull it on up and over the top.

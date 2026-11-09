@@ -171,6 +171,7 @@ POCKET_Z0 = CEIL_AX + 3 * D.BEAD                 # 15.2: a slab between the room
 BZ_AX = POCKET_Z0 + 0.5 + D.BRIDGE_BEARING_OD / 2   # 23.7
 SLAB_TOP_AX = BZ_AX + AXLE_BORE / 2 + 2 * D.BEAD    # 29.5
 BRG_HY = D.BRIDGE_BEARING_W / 2 + 0.4            # 2.9
+STR_HOLE_D = 2.0                                 # the string's hole up the slab: room for a .070 and a fumble
 X0_AX = BX_AX - D.BRIDGE_BEARING_OD / 2 - 0.5 - BRG_HY - 3 * D.BEAD   # the gable's ridge, then 2.4
 Y0_AX = ARM_Y0 - WALL_HI
 SCALE_SPAN_AX = BX_AX - CROWN_X                  # 594.8
@@ -265,8 +266,9 @@ def station_axial() -> cq.Workplane:
     s = s.cut(cq.Workplane("XY", origin=(0.0, 0.0, POCKET_Z0))
               .polyline([(bx1, SY - BRG_HY), (bx1, SY + BRG_HY), (bx0, SY + BRG_HY), (bx0 - BRG_HY, SY),
                          (bx0, SY - BRG_HY)]).close().extrude(SLAB_TOP_AX + 1.0 - POCKET_Z0))
-    # the string's slot: down the axis from the bearing's tangent to the room, open +X to thread it
-    s = s.cut(_box(SX - 1.0, X1B + 1.0, SY - 1.0, SY + 1.0, CEIL_AX - 1.0, SLAB_TOP_AX + 1.0))
+    # the string's hole, ON the axis from the room up into the bearing's pocket: no slit out +X
+    # (user, 2026-11-08) -- the string is threaded up it, -Z to +Z, from the yoke
+    s = s.cut(_zbore(STR_HOLE_D, SX, SY, CEIL_AX - 1.0, POCKET_Z0 + 0.5, ST_UP))
     s = s.cut(printable_bore(AXLE_BORE, Y1 - Y0_AX + 2.0, axis_point=(BX_AX, Y0_AX - 1.0, BZ_AX),
                              axis_dir=(0.0, 1.0, 0.0), print_up=ST_UP))
     for x in (X0_AX + 6.4, X1B - 6.4):
