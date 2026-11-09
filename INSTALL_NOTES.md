@@ -1611,43 +1611,38 @@ straight off the yoke's roof and runs dead level to the crown.
   through the 688, and turn it into the nut, holding the yoke.
   5. String over the crown to the tuner. Drive it by hand with the belt ends as before.
 
-### The spring rig: the X rig's string replaced by a spring, 50-100 % (2026-11-08)
-The X station stays exactly where it is. The spring goes where the string was, -X of the
-station. The pull must take the yoke AWAY from the 688, as the string does: the 688 is a one-way
-thrust bearing. So the spring cannot hang off the plank's +X end.
+### The counter-spring rig: the X rig with the string, a spring pulling back on the pulley side (2026-11-09)
+The X rig exactly as before (head, motor, string to the crown), plus springs pulling the yoke +X,
+against the string. The nut's thread then carries string minus spring. Set anywhere from 50 % to
+100 % of string 1's 147 N with one stock **M4x40** button head (2.5 key).
 - **Print** (all `coupons/`, each builds -Z → +Z as exported):
-  - `plank_spring_post`: the adjuster's post.
-  - `plank_spring_swivel`, `plank_spring_eye`.
-  - `plank_spring_collar` and `plank_spring_knob`: both socket up, the screw pulley's pilot thread.
-  - `plank_yoke_spring`: the yoke with an M4 clearance roof in place of the string hole.
-- **Buy / take:**
-  - Spring: McMaster 9654K634.
-  - Tr8x2 cut 150 long from the 600 stock (saw jig), and a spare H-nut.
-  - 2x M3x12 for the nut, M4x20 button head, M4 heat-set insert, 688ZZ.
-- **Where:** the post's four plank holes are at x -295.0 and -226.4, each at y 16.75 and 60.55
-  (the stations' rows; base flush with the plank's +Y edge). Nothing else moves.
-- **How it works:**
-  - The test yoke carries the EYE on the M4: head under the roof where the ball end sat, insert in
-    the eye.
-  - The post holds the H-nut fixed: flange on its -X face, boss through, M3s through the ears.
-  - The screw runs through it. The KNOB on its -X end turns it.
-  - Its +X end carries the COLLAR inside the SWIVEL, on the 688's inner race, so the screw turns
-    and the spring does not.
-  - Both spring loops drop over the pins from above, the wire on the screw's axis.
+  - `plank_counter_post`: the wall the M4 goes through, the deck the slider rides on, base on four holes.
+  - `plank_counter_spreader`: sits on the yoke's roof.
+  - `plank_counter_slider`: M4 heat-set in its +X face.
+  - The X station, yoke, nut, screw, pulley and 688 are the ones already printed.
+- **Buy / take:** 2 x McMaster 9654K634 (one each side of the station), 1 x M4x40 button head,
+  1 x M4 heat-set insert.
+- **Where:**
+  - MOVE THE X STATION 130.4 mm -X (toward the motor): its plank holes go to x -138.3 and -104.3,
+    each at y 16.75 and 60.55. Nothing else of the X rig moves; the head stays.
+  - The post takes the X station's OLD four holes: x -7.9 and 26.1, each at y 16.75 and 60.55.
+  - Crown to yoke roof is now 476.6 (was 607). At the same 147 N the string sounds ~4.2 semitones
+    (x1.27) higher than at full scale: tune by pull, not by note.
+  - The two springs run 30.5 mm either side of the screw's axis, beside the station's walls. The
+    +Y one overhangs the plank's +Y edge by ~20 mm in the air; nothing touches it.
 - **Order:**
-  1. Insert into the eye; M4 up through the yoke's cavity and the roof into it, snug.
-  2. Yoke onto the nut (M3s) as before.
-  3. Nut into the post, M3s in.
-  4. Screw through it from -X; knob onto the -X end, collar onto the +X end, each threaded on
-     until the screw bottoms in the socket.
-  5. 688 into the swivel's trough, the collar behind it, the screw in the wall's slot.
-  6. Back the knob off until the pins are 2 mm short of the free spring. Drop the loops over the
-     pins by hand: no stretch.
-- **Setting the tension:**
-  - Seen from behind the knob, COUNTER-clockwise tightens (right-hand thread, the nut fixed:
-    clockwise drives the screw +X).
-  - 2 mm a turn = 2.8 N a turn. From slack: 50 % (73.5 N) at ~21 turns, 75 % at ~34, 100 % (147 N)
-    at ~48; 2 mm more before the swivel meets the post.
-  - Better than counting turns: measure the loops' inside length L. Pull = 17.8 + 1.38 x (L - 127) N.
-    That is 167 mm at 50 % and 220 mm at 100 %, if the spring's free length is the 127 McMaster
-    quotes; measure it first.
+  1. Insert into the slider's +X face. Station in its new place, the X rig built and the string
+     brought up to pitch first: the string's pull is what keeps the screw seated in its 688.
+  2. M4x40 through the post's wall from +X, into the slider's insert by ~3 threads only.
+  3. Spreader onto the yoke's roof from above, the string dropping into its slot.
+  4. Each spring: loop over a slider pin, then stretch it ~9 mm (about 30 N; a screwdriver through
+     the loop as a lever) and drop the other loop over the spreader's pin on that side.
+- **Setting the pull:**
+  - Clockwise on the M4 (from +X) draws the slider in and adds pull. 0.7 mm a turn = 1.9 N a turn.
+  - Backed out (3 threads in): ~60 N (41 %). 50 % (73.5 N) is 5.0 mm in (~7 turns),
+    100 % (147 N) is 31.6 mm in (~45 turns); 1.0 mm more and the slider meets the wall.
+  - Better than counting: measure each spring's inside-loop length L. Pull = 2 x (17.8 + 1.38 x
+    (L - 127)) N for the pair: 140.7 mm at 50 %, 167.3 at 100%. Measure the free length first.
+  - Yoke travel changes the pull ±11.5 N end to end.
+- **Keep the spring under the string.** At or over 100 % the screw is no longer pulled into its
+  688 and can slide out +X. Take the springs off before slackening the string.
