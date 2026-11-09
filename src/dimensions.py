@@ -910,13 +910,12 @@ BELT_RUN_MIN    = min(math.hypot(motor_pos(i)[0] - screw_x(i),
 # 194.0 and this sum allows 8.70; the nut does not get travel it has no use for.
 CARRIAGE_TRAVEL = min(TRAVEL_WANT, (BELT_RUN_MIN - BELT_CLAMP_L - PULLEY_FLANGE_OD
                                     - 2 * CLAMP_END_CLR) / BELT_PER_MM)   # 8.35
-# ⚠ PROVISIONAL (2026-11-08): the floor is still placed by the DRAWING's 15.0 nut. Measured, the
-# nut is 13.5 from flange top to boss foot (NUT_H), so its foot now stops 1.5 ABOVE this floor at
-# the bottom of travel: the thrust bearing is no longer the bottom stop, and the nut has 1.5 more
-# fall than the belt budget allows (CLAMP_END_CLR has the room). Kept so no printed part moves
-# until the lead decides whether the stack comes up 1.5. NUT_LIP_L also meets the room ceiling.
-NUT_STACK_H     = 15.0                                         # the drawing's nut, see above
-NUT_BOT_MIN     = NUT_TOP_Z - CARRIAGE_TRAVEL - NUT_STACK_H    # -26.17, the FLOOR: the
+# THE MEASURED NUT (2026-11-08) is 13.5 flange top to boss foot, not the drawing's 15.0, so this
+# floor -- and the thrust bearing, the rail and its seat with it -- came UP 1.5. The pulleys did
+# not move (SCREW_PULLEY_Z is absolute): the pulley column under the bearing grew 1.5 instead.
+# Leaving the bearing down and letting the nut fall 1.5 further was NOT harmless: travel is
+# belt-limited (CARRIAGE_TRAVEL), and 1.5 of nut is 21 of belt, past CLAMP_END_CLR's 5 a side.
+NUT_BOT_MIN     = NUT_TOP_Z - CARRIAGE_TRAVEL - NUT_H          # -24.67, the FLOOR: the
                                                                # boss's underside at the
                                                                # bottom of travel
 # THE THRUST BEARING IS THAT FLOOR (user, 2026-10-01). The nut's boss comes down through

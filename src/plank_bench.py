@@ -95,8 +95,16 @@ X1B = X1 + WALL                                  # 8.8
 SLAB_TOP = 12.2 + 2 * D.BEAD                     # 13.8: two beads over the axle bore's crown
 
 # the screw rail, at screw_rail's own numbers -- round bores, since this one builds +Z
-RAIL_BOT, RAIL_TOP = SR.BOT, SR.TOP              # -31.85 .. -22.55
-SOCKET_Z = SR.LEDGE_TOP + 2 * D.BEAD             # -23.35: the rod's bottom, 1.6 over the lip band
+# THE BENCH STAYS AS PRINTED (user, 2026-11-08: reprint the yoke only). Both stations were
+# printed with the drawing's 15.0 nut, before the measured 13.5 brought the instrument's thrust
+# stack up 1.5 (dimensions.NUT_BOT_MIN). Their stack features sit PRINTED_DROP under the
+# instrument's: the bench nut just has 1.5 more fall onto its 688, which tuning never uses.
+PRINTED_DROP = 15.0 - D.NUT_H                    # 1.5
+RAIL_BOT, RAIL_TOP = SR.BOT - PRINTED_DROP, SR.TOP - PRINTED_DROP   # -31.85 .. -22.55
+LEDGE_TOP = SR.LEDGE_TOP - PRINTED_DROP
+BRG_TOP_Z = D.SUPPORT_BRG_Z - PRINTED_DROP       # the 688's top face
+BRG_BOT_Z = D.SUPPORT_BRG_BOT - PRINTED_DROP
+SOCKET_Z = LEDGE_TOP + 2 * D.BEAD                # -23.35: the rod's bottom, 1.6 over the lip band
 ROD_TOP = SOCKET_Z + D.GUIDE_ROD_L               # 6.45
 ROD_BORE = D.GUIDE_ROD_D + D.GUIDE_ROD_FIT       # 3.65, round
 
@@ -139,29 +147,34 @@ YK_R0 = 15 * D.BEAD                              # 12.0: the underside of its ro
 YK_HX, YK_HY = 15 * D.BEAD, 15 * D.BEAD / 2      # 12.0 x 6.0 half-sizes: the flange's 22 x 10.5 and a wall
 YK_CAV = D.SCREW_OD + 0.8                        # 8.8: the screw's tip rises into it
 # THE NUT'S LIP (user, 2026-11-08): a Ø10.2 x 1.5 lip stands on the flange's top face, so the
-# yoke's -Z face takes a recess for it: a CHANNEL straight across in Y, out to the ears' axes
-# (x ±NUT_HOLE_DX). A round counterbore left 0.2-0.3 slivers against the insert pockets and the
-# Y faces; the channel leaves none, and the flange seats on the yoke outboard of the ears. The
-# yoke keeps its 12 x 6 so it is the ONLY part to reprint: the axial station is unchanged.
-YK_LIP_HY = 5.4                                  # the lip's 5.1 radius and 0.3 (the plain station's relief)
-YK_LIP_L = D.NUT_LIP_L + 0.5                     # 2.0
+# yoke's -Z face takes a ROUND recess for just the lip (user, 2026-11-08), which also registers the
+# yoke concentric with the screw. It leaves 1.1 to each M3 tap hole
+# and 0.7 to the Y faces, over its 1.8 depth only. The yoke keeps its
+# 12 x 6 so it is the ONLY part to reprint: the axial station is unchanged.
+YK_LIP_D = D.NUT_LIP_D + 0.4                     # 10.6: a sliding register on the Ø10.2 lip
+YK_LIP_HY = 5.4                                  # the plain station's relief half-width
+YK_LIP_L = D.NUT_LIP_L + 0.3                     # 1.8
 STN_LIP_D = 2 * YK_LIP_HY                        # the plain station's ceiling relief over the lip
 STN_LIP_L = D.NUT_LIP_L + 0.3                    # 1.8: leaves 0.9 under the bearing's pocket
 YK_PROTRUDE = D.SCREW_TOP_Z - (D.NUT_TOP_Z - D.CARRIAGE_TRAVEL)   # 6.75: tip over the flange, bottom of travel
 assert YK_R0 - D.STRING_NUT_D >= YK_PROTRUDE + 1.0 - 1e-9, "the screw's tip reaches the ball end"
-# THE M3 INSERTS ARE HEAT-SET FROM THE -Z FACE, the one on the flange (user, 2026-11-08): dropped in
-# from the top onto a shoulder, that shoulder was a ring hanging over the clearance hole in the
-# +Z -> -Z print. Mouth at the flange, the hole only narrows going +Z, i.e. DOWN the print. The
-# screw clamps the ear to the mouth: the string pulls the insert toward its mouth, as an insert should.
-YK_INS_D = BTn.INS_D + 0.1                       # 4.8: the Pi's heat-set pocket for the same insert (PI_M3)
-YK_CLR_D = BTn.SCR_CLR                           # 3.4: the screw's tip, past the insert
-YK_SCREW_L = BTn.SCREW_L                         # M3 x 12 socket head (the belt clamp's): ear 3.5, the rest in the insert
-assert YK_SCREW_L - D.NUT_FLANGE_T >= BTn.INS_L, "the M3 does not reach through its insert"
+# THE M3s SELF-TAP (user, 2026-11-08: a prototype is not worth inserts). Straight Ø3.2 holes
+# (cadkit's M3 self-tap) up from the -Z face; the thinner wall to the lip's recess is then 1.1,
+# so it needs no relief slot either.
+YK_TAP_D = BTn.M3.selftap_d                      # 3.2
+YK_SCREW_L = BTn.SCREW_L                         # M3 x 12 socket head (the belt clamp's): ear 3.5, 8.5 bites
 YK_TIP = YK_SCREW_L - D.NUT_FLANGE_T + 0.6       # 9.1: the hole's depth, the tip's 8.5 and air
-assert D.NUT_HOLE_DX - YK_INS_D / 2 - YK_CAV / 2 >= 1.2 - 1e-9, "insert pocket into the screw's cavity"
+assert D.NUT_HOLE_DX - YK_TAP_D / 2 - YK_LIP_D / 2 >= D.MIN_WALL - 1e-9, "tap hole into the lip's recess"
+assert D.NUT_HOLE_DX - YK_TAP_D / 2 - YK_CAV / 2 >= 1.2 - 1e-9, "tap hole into the screw's cavity"
 ROD_DY = -15 * D.BEAD                            # -12.0: the guide rod, out -Y past the flange and the rail's seat
-YK_ROD_D = D.GUIDE_ROD_D + 0.5                   # 4.0: printed, sliding; it only takes the screw's torque
-ARM_R = YK_ROD_D / 2 + 3 * D.BEAD                # 4.4: the rod's boss
+# THE ROD'S HOLE: 4.0 printed needing "a fair bit of force" (user, 2026-11-08) -- a small hole
+# along the build prints under, and 16 of it binds on any tilt. Now 4.3, bearing only on a LAND
+# at each end; between them a Ø5.0 relief, entered and left by 45 deg cones (the -Z one is a
+# ceiling in the +Z -> -Z print). 0.8 of diametral play over the arm's 12 is ±1 deg of yaw.
+YK_ROD_D = D.GUIDE_ROD_D + 0.8                   # 4.3: a sliding fit; it only takes the screw's torque
+YK_ROD_RELIEF_D = 5.0
+YK_ROD_LAND = 4.0                                # each end's bearing length
+ARM_R = (D.GUIDE_ROD_D + 0.5) / 2 + 3 * D.BEAD   # 4.4: the rod's boss, unchanged (station room)
 # The boss runs the yoke's full height: the yoke prints roof-down, and a short arm would hang
 # off the body in that print (print_check, 2026-11-08). The rod spans the whole channel and is
 # held at both ends: a shallow socket in the floor and the bore into the slab over the room.
@@ -231,9 +244,9 @@ def station() -> cq.Workplane:
     # the floor, which is also the guide to drill the plank through
     s = s.cut(_zbore(SCREW_HOLE_D, SX, SY, Z_PLANK - 1.0, zb + 1.0, ST_UP))
     # the rail's seat, lip and boss passage: screw_rail.seat_cutter's diameters and its teardrops
-    s = s.cut(_zbore(D.SUPPORT_BRG_OD + 0.2, SX, SY, RAIL_BOT - 1.0, D.SUPPORT_BRG_Z + 1e-3, ST_UP))
-    s = s.cut(_zbore(SR.SEAT_LEDGE_D, SX, SY, RAIL_BOT - 1.0, SR.LEDGE_TOP, ST_UP))
-    s = s.cut(_zbore(SR.NUT_PASS_D, SX, SY, SR.LEDGE_TOP - 0.01, RAIL_TOP + 1.0, ST_UP))
+    s = s.cut(_zbore(D.SUPPORT_BRG_OD + 0.2, SX, SY, RAIL_BOT - 1.0, BRG_TOP_Z + 1e-3, ST_UP))
+    s = s.cut(_zbore(SR.SEAT_LEDGE_D, SX, SY, RAIL_BOT - 1.0, LEDGE_TOP, ST_UP))
+    s = s.cut(_zbore(SR.NUT_PASS_D, SX, SY, LEDGE_TOP - 0.01, RAIL_TOP + 1.0, ST_UP))
     # the guide rod: blind socket in the rail, bore up through the slab
     s = s.cut(_zbore(ROD_BORE, RX, SY, SOCKET_Z, RAIL_TOP + 1.0, ST_UP))
     s = s.cut(_zbore(ROD_BORE, RX, SY, D.CHANGER_CEIL_Z - 1.0, SLAB_TOP + 1.0, ST_UP))
@@ -268,9 +281,9 @@ def station_axial() -> cq.Workplane:
     # the rod arm's channel, -Y of the room: its floor is the arm's bottom of travel
     s = s.cut(_box(X0_AX - 1.0, X1_AX + 1.0, ARM_Y0, SY - ROOM_HY + 0.01, ARM_Z0, CEIL_AX))
     s = s.cut(_zbore(SCREW_HOLE_D, SX, SY, Z_PLANK - 1.0, zb + 1.0, ST_UP))
-    s = s.cut(_zbore(D.SUPPORT_BRG_OD + 0.2, SX, SY, RAIL_BOT - 1.0, D.SUPPORT_BRG_Z + 1e-3, ST_UP))
-    s = s.cut(_zbore(SR.SEAT_LEDGE_D, SX, SY, RAIL_BOT - 1.0, SR.LEDGE_TOP, ST_UP))
-    s = s.cut(_zbore(SR.NUT_PASS_D, SX, SY, SR.LEDGE_TOP - 0.01, RAIL_TOP + 1.0, ST_UP))
+    s = s.cut(_zbore(D.SUPPORT_BRG_OD + 0.2, SX, SY, RAIL_BOT - 1.0, BRG_TOP_Z + 1e-3, ST_UP))
+    s = s.cut(_zbore(SR.SEAT_LEDGE_D, SX, SY, RAIL_BOT - 1.0, LEDGE_TOP, ST_UP))
+    s = s.cut(_zbore(SR.NUT_PASS_D, SX, SY, LEDGE_TOP - 0.01, RAIL_TOP + 1.0, ST_UP))
     # the guide rod: a shallow pocket in the channel floor, its press bore into the slab over
     # the room, and a clear passage on up to the top to drop it in and push it home
     ry = SY + ROD_DY
@@ -295,22 +308,27 @@ def station_axial() -> cq.Workplane:
 
 def yoke() -> cq.Workplane:
     """On the nut's flange, its axis at the origin, z 0 = the flange's top (the nut's own origin).
-    Two M3 x 12 come up through the ears into inserts heat-set into its -Z face; the ball end
+    Two M3 x 12 come up through the ears self-tapping into its -Z face; the ball end
     comes up the cavity and seats under the roof ON THE AXIS; the guide rod runs through the -Y boss."""
     y = _box(-YK_HX, YK_HX, -YK_HY, YK_HY, 0.0, YK_H)
     y = y.union(_box(-ARM_R, ARM_R, ROD_DY, -YK_HY + 0.01, 0.0, ARM_H))
     y = y.union(cyl(2 * ARM_R, ARM_H).translate((0.0, ROD_DY, 0.0)))
     y = y.cut(cyl(YK_ROD_D, ARM_H + 2.0, z=-1.0).translate((0.0, ROD_DY, 0.0)))
+    dr = (YK_ROD_RELIEF_D - YK_ROD_D) / 2.0                                         # the cones' rise
+    z0, z1 = YK_ROD_LAND, ARM_H - YK_ROD_LAND
+    prof = [(0, z0), (YK_ROD_D / 2, z0), (YK_ROD_RELIEF_D / 2, z0 + dr),
+            (YK_ROD_RELIEF_D / 2, z1 - dr), (YK_ROD_D / 2, z1), (0, z1)]
+    y = y.cut(cq.Workplane("XZ").polyline(prof).close().revolve(360, (0, 0, 0), (0, 1, 0))
+              .translate((0.0, ROD_DY, 0.0)))
     y = y.cut(cyl(YK_CAV, YK_R0 + 1.0, z=-1.0))                                     # the screw's tip
-    y = y.cut(_box(-D.NUT_HOLE_DX, D.NUT_HOLE_DX, -YK_HY - 1.0, YK_HY + 1.0, -1.0, YK_LIP_L))   # the nut's lip
+    y = y.cut(cyl(YK_LIP_D, YK_LIP_L + 1.0, z=-1.0))                                # the nut's lip
     # NO WINDOW, NO SLIT (user, 2026-11-08): the string goes in -Z to +Z, free end up through the
     # cavity from the -Z face (before the yoke goes on the nut) and out this hole on the axis,
     # until the ball end seats under the roof
-    y = y.cut(cyl(STR_HOLE_D, YK_H - YK_R0 + 2.0, z=YK_R0 - 1.0))
+    y = y.cut(cyl(STR_HOLE_D + 0.1, YK_H - YK_R0 + 2.0, z=YK_R0 - 1.0))   # 2.1 (user, 2026-11-08); the station's stays 2.0
     for sx in (-1, 1):
         x = sx * D.NUT_HOLE_DX
-        y = y.cut(cyl(YK_INS_D, BTn.INS_L + 1.0, z=-1.0).translate((x, 0.0, 0.0)))
-        y = y.cut(cyl(YK_CLR_D, YK_TIP + 1.0, z=-1.0).translate((x, 0.0, 0.0)))
+        y = y.cut(cyl(YK_TAP_D, YK_TIP + 1.0, z=-1.0).translate((x, 0.0, 0.0)))
     return y
 
 
@@ -468,13 +486,10 @@ def assembly(axial=False):
             (SX, SY, D.NUT_TOP_Z + YK_R0 - D.STRING_NUT_D / 2))))
         out.append(("guide_rod_0", C.guide_rod(D.GUIDE_ROD_L).translate((SX, SY + ROD_DY, ROD_BOT))))
         zf = D.NUT_TOP_Z - D.NUT_FLANGE_T                  # the ears' underside
-        z0 = D.NUT_TOP_Z                                   # flush in the mouth
         for tag, sx in (("lo", -1), ("hi", 1)):
             x = SX + sx * D.NUT_HOLE_DX
             out.append((f"yoke_m3_{tag}_0", headed_screw(BTn.M3, YK_SCREW_L, BTn.HEAD_D, BTn.HEAD_H, 2.5)
                         .rotate((0, 0, 0), (1, 0, 0), 180).translate((x, SY, zf - BTn.HEAD_H))))
-            out.append((f"yoke_insert_{tag}_0", cyl(BTn.INS_D, BTn.INS_L, z=z0)
-                        .cut(cyl(BTn.M3.insert_bore_d, BTn.INS_L + 1, z=z0 - 0.5)).translate((x, SY, 0))))
     else:
         out.append(("string_nut_0", C.string_nut().translate(
             (D.string_anchor_x(I), SY, D.NUT_TOP_Z - D.NUT_FLANGE_T - D.STRING_NUT_D / 2))))
@@ -482,7 +497,7 @@ def assembly(axial=False):
     out.append(("screw_pulley_0", C.screw_pulley(high=D.screw_pulley_z(I) > D.SCREW_PULLEY_Z)
                 .rotate((0, 0, 0), (0, 0, 1), sp_deg).translate((SX, SY, D.screw_pulley_z(I)))))
     out.append(("screw_bearing_0_0", C.support_bearing().translate(
-        (SX, SY, D.SUPPORT_BRG_BOT + 0.5 * D.BRG688_W))))
+        (SX, SY, BRG_BOT_Z + 0.5 * D.BRG688_W))))
     bx, bz = (BX_AX, BZ_AX) if axial else (BX, BZ)
     out.append(("bridge_bearing_0", C.support_bearing().rotate((0, 0, 0), (1, 0, 0), 90)
                 .translate((bx, SY, bz))))

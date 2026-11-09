@@ -302,7 +302,7 @@ def _clamp_motion(i):
 
 # Parts the plank bench's axial rig bolts to the nut (src/plank_bench.py). The instrument has no
 # nodes by these names, and the viewer skips a name it cannot find.
-BENCH_CARRIAGE = ("yoke_{}", "yoke_m3_lo_{}", "yoke_m3_hi_{}", "yoke_insert_lo_{}", "yoke_insert_hi_{}")
+BENCH_CARRIAGE = ("yoke_{}", "yoke_m3_lo_{}", "yoke_m3_hi_{}")
 
 
 def build_rig(build_n=None, out=RIG) -> pathlib.Path:

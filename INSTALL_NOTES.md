@@ -1512,8 +1512,8 @@ Same head, same screw, pulley, belt and motor positions; print `coupons/plank_st
 (builds +X → -X, its +X face on the bed, like the first) and `coupons/plank_yoke.step` (builds +Z → -Z, its roof on the bed, as exported).
 
 - **The yoke** sits on the nut's flange (flange up, long way along X) and is held by both ears: two
-  M3 x 12 socket heads (the belt clamp's) up through the ears into two of the belt clamp's M3
-  inserts, heat-set flush into the yoke's -Z face (the face on the flange). A 2.0 deep channel across that face, x ±8, takes the nut's measured Ø10.2 x 1.5 lip (2026-11-08: flange 3.5, boss 10, lip 1.5); only the yoke was reprinted for it. The string goes in -Z to +Z: free end up the yoke's cavity from its -Z face and
+  M3 x 12 socket heads (the belt clamp's) up through the ears, SELF-TAPPING into Ø3.2 holes in
+  the yoke's -Z face (the face on the flange; no inserts on this prototype). A Ø10.6 x 1.8 round recess in that face takes the nut's measured Ø10.2 x 1.5 lip and centres the yoke on it (2026-11-08: flange 3.5, boss 10, lip 1.5); only the yoke was reprinted for it. The string goes in -Z to +Z: free end up the yoke's cavity from its -Z face and
   out the Ø2 hole in its roof, ON the screw's axis, until the ball end seats under the roof. No
   window, no slit. The
   screw's tip rises into the cavity under it (6.75 at the bottom of travel, 1.25 short of the ball
@@ -1524,7 +1524,7 @@ Same head, same screw, pulley, belt and motor positions; print `coupons/plank_st
   stands ~16 over the crown's, a 1.5 degree slope over the length. Neither matters to a friction test.
 - **Order:** 1. Thrust 688 into the rail's seat from the bay, as before. 2. Screw the station down,
   drill the plank 1/2 in through its floor hole. Bridge 688 into its pocket, Ø8 shaft along Y.
-  3. Heat-set the inserts into the yoke's -Z face. Feed the string's free end up the yoke's cavity
+  3. Feed the string's free end up the yoke's cavity
   from that face and out the hole in its roof, and pull it through until the ball end seats under
   the roof. Set the yoke on the nut and run the two M3s up through the ears. 4. Slide nut and yoke
   into the room from +X, arm to -Y, feeding the string's free end up (-Z to +Z) the Ø2 hole in the
