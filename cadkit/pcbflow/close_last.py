@@ -23,6 +23,7 @@ It reuses repair_search's obstacle model and maze3d rather than growing a fourth
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import sys
@@ -299,6 +300,432 @@ def _pad_layer(board, net, layer, pos):
     return layer
 
 
+def _lay(board, stem, net, res, width, layer_id, named, gap):
+    """Lay one search result `res` = (runs, vias) for `net` at `width`, and record it as a
+    closure of `gap` between the two ends `named`. Returns the track length laid."""
+    runs, vias = res
+    code = board.GetNetcodeFromNetname(net)
+    # ⚠ TWO VIAS A TENTH OF A MILLIMETRE APART ARE ONE VIA. The maze can
+    # return a layer change that immediately reverses -- F.Cu down to B.Cu
+    # and back up, with a B.Cu run between them shorter than the drill. On
+    # the watering-backpack board that put two LEVEL vias 0.067 mm apart and
+    # two GATE_A vias 0.242 mm apart, against a 0.25 mm hole-to-hole
+    # minimum. DRC reports it as hole_to_hole at "actual 0.0000 mm" -- the
+    # holes do not merely crowd, they OVERLAP -- and grades it a WARNING, so
+    # the error count stays at zero and nobody looks. A fab either rejects
+    # the drill file or drills one ragged hole.
+    #
+    # So the via list is merged first and the track ends are snapped onto
+    # whatever they merged into: one via still joins F.Cu to B.Cu at that
+    # point, which is all the pair ever did, and the short run between them
+    # collapses to nothing and is dropped. Snapping can only move a point by
+    # less than the merge radius, and finish.py keeps this whole pass only
+    # if DRC comes out strictly better, so a snap that hurt would be thrown
+    # away rather than shipped.
+    merge_r = RS.VIA_DRILL + 0.25
+    # Seeded with the vias ALREADY on this net, because the hole the new one
+    # crowds need not be another new one. The first version of this merged
+    # only within close_last's own list and left a LEVEL via 0.0673 mm from
+    # one the ROUTER had put down -- same violation, different neighbour.
+    # Snapping onto an existing via is better than merging two new ones: the
+    # layer transition is already there and already in the zones' pour.
+    keep_v, snap = [], {}
+    for _t in board.GetTracks():
+        if isinstance(_t, pcbnew.PCB_VIA) and _t.GetNetname() == net:
+            _p = _t.GetPosition()
+            keep_v.append((pcbnew.ToMM(_p.x), pcbnew.ToMM(_p.y)))
+    n_existing = len(keep_v)
+
+    def _snap(q):
+        for k in keep_v:
+            if (q[0] - k[0]) ** 2 + (q[1] - k[1]) ** 2 < merge_r ** 2:
+                return k
+        return None
+
+    for q in vias:
+        k = _snap(q)
+        if k is None:
+            keep_v.append(q)
+        else:
+            snap[(round(q[0], 6), round(q[1], 6))] = k
+    vias = keep_v[n_existing:]
+    if len(vias) != len(res[1]):
+        print("close_last: %s -- merged %d via(s) that would have overlapped "
+              "a neighbouring hole (min %.2f mm)"
+              % (net, len(res[1]) - len(vias), merge_r))
+
+    def _pt(q):
+        return snap.get((round(q[0], 6), round(q[1], 6)), q)
+
+    length, laid = 0.0, []
+    for L, pts in runs:
+        pts = [_pt(q) for q in pts]
+        for q0, q1 in zip(pts, pts[1:]):
+            if q0 == q1:
+                continue
+            laid.append((L, round(q0[0], 4), round(q0[1], 4), round(q1[0], 4), round(q1[1], 4)))
+            t = pcbnew.PCB_TRACK(board)
+            t.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(q0[0]), pcbnew.FromMM(q0[1])))
+            t.SetEnd(pcbnew.VECTOR2I(pcbnew.FromMM(q1[0]), pcbnew.FromMM(q1[1])))
+            t.SetWidth(pcbnew.FromMM(width))
+            t.SetLayer(layer_id[L])
+            t.SetNetCode(code)
+            board.Add(t)
+            length += ((q1[0] - q0[0]) ** 2 + (q1[1] - q0[1]) ** 2) ** 0.5
+    # ⚠ FINISH AT THE VIA'S CENTRE, NOT AT ITS RIM (optical +3V3A, 2026-10-04). Own-net
+    # copper is free ground to the search, so a path aimed at a via stops at the first
+    # cell that touches its ring: the track ended 0.30 mm from the centre of a 0.60 mm
+    # via, joined by the 0.1 mm its round end overlaps the ring. DRC calls that
+    # connected; it is a sliver, and the quality pass's own walk (which joins a track
+    # to a via at the via's centre) read the rail as cut in two.
+    _own_vias = [(pcbnew.ToMM(t.GetPosition().x), pcbnew.ToMM(t.GetPosition().y),
+                  pcbnew.ToMM(t.GetWidth(pcbnew.F_Cu)) / 2.0)
+                 for t in board.GetTracks()
+                 if t.GetClass() == "PCB_VIA" and t.GetNetname() == net]
+    _flat = [(L, q) for L, pts in runs for q in pts]
+    for L, q in (_flat[0], _flat[-1]) if _flat else ():
+        for vx, vy, vr in _own_vias:
+            d = ((q[0] - vx) ** 2 + (q[1] - vy) ** 2) ** 0.5
+            if 0.005 < d <= vr + width / 2.0:
+                t = pcbnew.PCB_TRACK(board)
+                t.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(q[0]), pcbnew.FromMM(q[1])))
+                t.SetEnd(pcbnew.VECTOR2I(pcbnew.FromMM(vx), pcbnew.FromMM(vy)))
+                t.SetWidth(pcbnew.FromMM(width))
+                t.SetLayer(layer_id[L])
+                t.SetNetCode(code)
+                board.Add(t)
+                break
+    # ⚠ NO VIA IN A THROUGH-HOLE PAD OF THE SAME NET (pi_cap, 2026-10-04). The search
+    # is told which layer each end is on, and a DRC "PTH pad" item names F.Cu whatever
+    # layer the route arrives on -- so a path that came in on B.Cu changed layer AT the
+    # pin, and the via it dropped there was a second hole drilled through the pin's own
+    # (quality A12: hole to hole -0.65 mm). The plated barrel is already the layer
+    # change; the two runs meet at its centre without one.
+    barrels = [(pcbnew.ToMM(q.GetPosition().x), pcbnew.ToMM(q.GetPosition().y),
+                pcbnew.ToMM(min(q.GetSize().x, q.GetSize().y)) / 2.0)
+               for f in board.GetFootprints() for q in f.Pads()
+               if q.GetNetname() == net and q.GetDrillSize().x > 0]
+    # ...and the same for a via the net already has (motor_ctrl PG_5V, 2026-10-04): a
+    # search started FROM an escape via on one layer and changing to another beside it
+    # dropped its own via 0.02 mm from the first -- two holes 0.28 mm into each other.
+    barrels += [(pcbnew.ToMM(t.GetPosition().x), pcbnew.ToMM(t.GetPosition().y),
+                 RS.VIA_D) for t in board.GetTracks()
+                if t.GetClass() == "PCB_VIA" and t.GetNetname() == net]
+    # ⚠ ...AND A LAYER CHANGE THAT BORROWS A BARREL HAS TO REACH IT ON BOTH LAYERS
+    # (optical +3V3A, 2026-10-04). The path left an escape via on In2, stepped 0.30 mm
+    # and changed to B.Cu; its own via was dropped as above, which left the B.Cu run
+    # starting 0.30 mm from the barrel that was now carrying it -- joined by overlap
+    # with the ring, a sliver DRC accepts. Each run that turned at a dropped via gets
+    # a stub to the centre of the barrel that replaced it.
+    kept = []
+    for vx, vy in vias:
+        hit = [(bx, by) for bx, by, br in barrels
+               if (vx - bx) ** 2 + (vy - by) ** 2 <= br * br]
+        if not hit:
+            kept.append((vx, vy))
+            continue
+        bx, by = min(hit, key=lambda c: (vx - c[0]) ** 2 + (vy - c[1]) ** 2)
+        for L, pts in runs:
+            near = lambda q, x, y: abs(q[0] - x) < 0.003 and abs(q[1] - y) < 0.003
+            if (any(near(q, vx, vy) for q in pts)
+                    and not any(near(q, bx, by) for q in pts)
+                    and (vx - bx) ** 2 + (vy - by) ** 2 > 1e-6):
+                t = pcbnew.PCB_TRACK(board)
+                t.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(vx), pcbnew.FromMM(vy)))
+                t.SetEnd(pcbnew.VECTOR2I(pcbnew.FromMM(bx), pcbnew.FromMM(by)))
+                t.SetWidth(pcbnew.FromMM(width))
+                t.SetLayer(layer_id[L])
+                t.SetNetCode(code)
+                board.Add(t)
+    vias = kept
+    for vx, vy in vias:
+        v = pcbnew.PCB_VIA(board)
+        v.SetPosition(pcbnew.VECTOR2I(pcbnew.FromMM(vx), pcbnew.FromMM(vy)))
+        v.SetWidth(pcbnew.F_Cu, pcbnew.FromMM(RS.VIA_D))
+        v.SetDrill(pcbnew.FromMM(RS.VIA_DRILL))
+        v.SetNetCode(code)
+        board.Add(v)
+    print("close_last: %s closed with %.2f mm over %s and %d via(s)"
+          % (net, length, "/".join(L for L, _p in runs), len(vias)))
+    _record(stem, {"net": net, "a": [round(c, 3) for c in named[0][1]],
+                   "b": [round(c, 3) for c in named[1][1]], "gap": round(gap, 3),
+                   "length": round(length, 3), "tracks": laid})
+    return length
+
+
+RIP_MAX = 6                   # nets close_last may take up for one closure
+RIP_TOTAL = 9                 # ...and in all, counting those that must move to rejoin them
+
+
+def _pieces(board, B, rip, layers, layer_id):
+    """What taking up the copper `rip` (uuids) leaves of net B: (anchors, stubs).
+
+    anchors = [(piece, layer, point)]: where ripped copper met a piece of B that keeps a pad;
+    stubs = uuids of kept copper left in a piece with no pad, which goes with the ripped."""
+    mm = lambda p: (pcbnew.ToMM(p.x), pcbnew.ToMM(p.y))
+    eps = 0.005
+    same = lambda p, q: abs(p[0] - q[0]) < eps and abs(p[1] - q[1]) < eps
+    items = [t for t in board.GetTracks() if t.GetNetname() == B]
+    pads = [q for f in board.GetFootprints() for q in f.Pads() if q.GetNetname() == B]
+    kept = [t for t in items if t.m_Uuid.AsString() not in rip]
+    nodes = [("t", t) for t in kept] + [("p", q) for q in pads]
+    up = list(range(len(nodes)))
+
+    def find(i):
+        while up[i] != i:
+            up[i] = up[up[i]]
+            i = up[i]
+        return i
+
+    def ends(nd):
+        k, o = nd
+        if k == "p":
+            return []
+        if o.GetClass() == "PCB_VIA":
+            return [(None, mm(o.GetPosition()))]
+        return [(o.GetLayerName(), mm(o.GetStart())), (o.GetLayerName(), mm(o.GetEnd()))]
+
+    def on(nd, L, p):
+        """Does node `nd` take copper at point p on layer L (None = any layer)?"""
+        k, o = nd
+        if k == "p":
+            return o.HitTest(pcbnew.VECTOR2I(pcbnew.FromMM(p[0]), pcbnew.FromMM(p[1]))) and (
+                L is None or o.GetDrillSize().x > 0 or o.IsOnLayer(layer_id.get(L, -1)))
+        return any((L is None or L2 is None or L == L2) and same(p, q) for L2, q in ends(nd))
+    for i, nd in enumerate(nodes):
+        for L, p in ends(nd):
+            for j in range(len(nodes)):
+                if j != i and on(nodes[j], L, p):
+                    up[find(i)] = find(j)
+    padded = {find(i) for i, nd in enumerate(nodes) if nd[0] == "p"}
+    stubs = {nd[1].m_Uuid.AsString() for i, nd in enumerate(nodes)
+             if nd[0] == "t" and find(i) not in padded}
+    anchors = []
+    for t in items:
+        if t.m_Uuid.AsString() not in rip:
+            continue
+        pts = ([(None, mm(t.GetPosition()))] if t.GetClass() == "PCB_VIA"
+               else [(t.GetLayerName(), mm(t.GetStart())), (t.GetLayerName(), mm(t.GetEnd()))])
+        for L, p in pts:
+            for i, nd in enumerate(nodes):
+                if find(i) in padded and on(nd, L, p):
+                    if L is None:               # a ripped via: its kept neighbour's layer
+                        if nd[0] == "p":
+                            L = "F.Cu" if nd[1].IsOnLayer(pcbnew.F_Cu) else "B.Cu"
+                        else:
+                            Ls = [L2 for L2, q in ends(nd) if L2 and same(p, q)]
+                            L = Ls[0] if Ls else None
+                    if L in layers:
+                        anchors.append((find(i), L, p))
+                    break
+    return anchors, stubs
+
+
+def _rip_one(board, stem, net, model, layers, layer_id, named, gap, tries, close_w, deadline,
+             stay=frozenset(), first=(), sc=1.0):
+    """No path for `net`: find the path that crosses the fewest other nets' copper, take up
+    what it runs into, lay `net`, and join each net taken up again round it. Returns
+    (board, 1) on success, or the board as it was and 0.
+
+    ⚠ THE LAST OPEN NET IS WALLED IN, NOT UNROUTABLE (output_panel, 2026-11-08). Pin 34 for
+    ROLE_INT_N took the board to 9 of 11 nudged reroutes, and the two failures were one net
+    each -- POT_CS on one route, I2S_WS on another -- with "no path" round the MCU's north
+    pins, where the router had already laid its neighbours. Every per-net cure tried (declared
+    escapes) moved the failure to another net. What a router does about that is rip-up and
+    reroute, and close_last had none. Taking up ONE net was tried first and opened nothing:
+    POT_CS's shortest way through crossed seven. So the search is told the other signal nets'
+    track is soft -- crossable at a cost -- and finds the way through the fewest; only the
+    segments and vias that path runs into are taken up; each net they belonged to is joined
+    again by the same maze (each joint a closure A23 judges, like any other); and if any will
+    not join, or more than RIP_MAX nets would have to move, the board is put back as it was.
+    Only narrow signal nets are soft: no pour net, no net with a width of its own
+    (close_widths), no net with track over 0.3 mm anywhere."""
+    import copy
+    import shutil
+    import time as _time
+    mm = lambda p: (pcbnew.ToMM(p.x), pcbnew.ToMM(p.y))
+    pour = {z.GetNetname() for z in board.Zones()}
+    wide = {s["net"] for s in model.segs if s["half"] * 2.0 > 0.3 + 1e-6}
+    # a matched or frozen net (a USB pair, a length group) is laid as a set: never taken up
+    notes = json.load(open(stem + ".board.json", encoding="utf-8"))
+    fixed = set(notes.get("frozen_nets", ())) | set(notes.get("net_widths", {}) or {})
+    # A supply on narrow track with no pour MAY move (output_panel RR_8, 2026-11-08: +3V3 at
+    # 0.25 mm through the corridor inside U1's pin ring was the whole wall round I2S_WS). It is
+    # joined again at the width it had, and every joint is held to the A23 detour limits below,
+    # so it comes back no thinner and no longer than the closure rule allows any net.
+    q = notes.get("quality", {}) or {}
+    ratio, excess = float(q.get("closure_ratio", 1.5)), float(q.get("closure_excess", 10.0))
+    per_net = q.get("closure_limits", {}) or {}
+
+    def too_long(n, length, g):
+        """Would A23 fail this joint? Then it is not a closure worth the move."""
+        lim = per_net.get(n)
+        if lim is not None:
+            return length > float(lim["ratio"]) * g + 1e-9 or length > float(lim["max_mm"]) + 1e-9
+        return length > ratio * g and length - g > excess
+    for g in notes.get("match", ()) + notes.get("diff_pairs", ()):
+        fixed |= set(g.get("nets", ()) if isinstance(g, dict) else g)
+    moved = set()           # nets taken up so far: laid again, never taken up twice
+    softnet = lambda n: (n and n != net and n not in pour and n not in close_w and n not in wide
+                         and n not in fixed and n not in stay and n not in moved)
+
+    def search(m, ends, w):
+        """The way from one end to the other through the fewest soft nets' copper."""
+        hard = copy.copy(m)
+        hard.segs = [s for s in m.segs if not softnet(s["net"])]
+        hard.vias = [v for v in m.vias if not softnet(v["net"])]
+        hard._vn_key = None
+        soft = copy.copy(m)
+        soft.segs = [s for s in m.segs if softnet(s["net"])]
+        soft.vias = [v for v in m.vias if softnet(v["net"])]
+        soft.pads, soft.edges, soft.keepouts = [], [], []
+        for (l1, p1), (l2, p2), step in ends:
+            if _time.time() > deadline:
+                return None
+            r = RS.maze3d(hard, layers, p1, l1, p2, l2, w=w, step=step, reach=REACH,
+                          soft=soft, soft_cost=sc)
+            if r is not None:
+                return r
+        return None
+
+    def hits(res, w):
+        """uuids and nets of the soft copper the path `res` (laid at width w) runs into."""
+        runs, pvias = res
+        path = [(L, q0, q1) for L, pts in runs for q0, q1 in zip(pts, pts[1:])]
+        clr = RS.RULE_CLEAR + 0.02
+        hw, vr = w / 2.0, RS.VIA_D / 2.0
+
+        def hit(t):
+            if t.GetClass() == "PCB_VIA":
+                c, r = mm(t.GetPosition()), pcbnew.ToMM(t.GetWidth(pcbnew.F_Cu)) / 2.0
+                return (any(RS._d_pt_seg(c[0], c[1], q0[0], q0[1], q1[0], q1[1]) < r + hw + clr
+                            for _L, q0, q1 in path)
+                        or any(math.hypot(c[0] - v[0], c[1] - v[1]) < r + vr + clr for v in pvias))
+            a, b = mm(t.GetStart()), mm(t.GetEnd())
+            h, L = pcbnew.ToMM(t.GetWidth()) / 2.0, t.GetLayerName()
+            return (any(L == L2 and RS._d_seg_seg(a[0], a[1], b[0], b[1], q0[0], q0[1], q1[0], q1[1])
+                        < h + hw + clr for L2, q0, q1 in path)
+                    or any(RS._d_pt_seg(v[0], v[1], a[0], a[1], b[0], b[1]) < h + vr + clr
+                           for v in pvias))
+        rip, nets = set(), {}
+        for t in board.GetTracks():
+            if softnet(t.GetNetname()) and hit(t):
+                rip.add(t.m_Uuid.AsString())
+                nets.setdefault(t.GetNetname(), []).append(t)
+        return rip, nets
+
+    def take_up(rip, nets):
+        """Plan each net's rejoin, then cut `rip` (and the stubs it strands) from the file."""
+        nonlocal board
+        plan = []
+        for B in sorted(nets):
+            anchors, stubs = _pieces(board, B, rip, layers, layer_id)
+            rip |= stubs
+            widths = [pcbnew.ToMM(t.GetWidth()) for t in nets[B] if t.GetClass() != "PCB_VIA"]
+            plan.append((B, anchors, max(WIDTH, min(widths)) if widths else WIDTH))
+        moved.update(nets)
+        # ⚠ TAKEN UP IN THE FILE, NOT THROUGH board.Remove: after removing seven items through
+        # SWIG the board handed back raw proxies ('SwigPyObject' has no GetNetcodeFromNetname)
+        # and the script died with the copper gone. The blocks are cut from the saved text by
+        # uuid and the board is read back fresh.
+        board.Save(stem + ".kicad_pcb")
+        txt = open(stem + ".kicad_pcb", encoding="utf-8", newline="").read()
+        txt = re.sub(r"\n\t\((?:segment|via|arc)\b.*?\n\t\)",
+                     lambda m_: "" if any(u in m_.group(0) for u in rip) else m_.group(0), txt,
+                     flags=re.S)
+        open(stem + ".kicad_pcb", "w", encoding="utf-8", newline="").write(txt)
+        board = pcbnew.LoadBoard(stem + ".kicad_pcb")
+        return plan
+
+    res = search(model, tries, WIDTH)
+    if res is None:
+        print("close_last: %s -- no path even through other nets' track" % net)
+        return board, 0
+    rip, nets = hits(res, WIDTH)
+    if len(nets) > RIP_MAX:
+        print("close_last: %s -- the way through crosses %d nets (%s), more than %d"
+              % (net, len(nets), ", ".join(sorted(nets)), RIP_MAX))
+        return board, 0
+    print("close_last: %s -- taking up %s to get through" % (net, ", ".join(sorted(nets)) or "nothing"))
+    shutil.copy(stem + ".kicad_pcb", stem + ".rip.kicad_pcb")
+    rec = stem + ".closures.json"
+    had_rec = os.path.isfile(rec)
+    if had_rec:
+        shutil.copy(rec, rec + ".rip")
+    todo = take_up(rip, nets)
+    ok, stuck = True, None
+    if too_long(net, _lay(board, stem, net, res, WIDTH, layer_id, named, gap), gap):
+        print("close_last: %s -- the way through is longer than A23 allows" % net)
+        ok = False
+    # ⚠ A NET TAKEN UP MAY ITSELF BE WALLED IN BY THE NEW ONE (output_panel RR_8, 2026-11-08):
+    # I2S_WS went through, and I2S_SDI, then SWCLK, then RELAY found no way back round it on
+    # three tries. Each net that will not join gets the same treatment as the first -- the
+    # way through the fewest others, what it runs into taken up and queued -- until
+    # RIP_TOTAL nets have moved; past that the board is put back.
+    todo.sort(key=lambda p: (first.index(p[0]) if p[0] in first else len(first), len(p[1])))
+    while todo and ok:
+        B, anchors, wb = todo.pop(0)
+        joined = {anchors[0][0]} if anchors else set()
+        while any(a[0] not in joined for a in anchors):
+            board.Save(stem + ".kicad_pcb")
+            mb = RS.Board(stem, B)
+            a, b = min(((a, b) for a in anchors if a[0] in joined for b in anchors
+                        if b[0] not in joined),
+                       key=lambda ab: math.hypot(ab[0][2][0] - ab[1][2][0], ab[0][2][1] - ab[1][2][1]))
+            r2 = None
+            for step in (RS.MAZE_STEP, 0.05):
+                if _time.time() > deadline:
+                    break
+                r2 = RS.maze3d(mb, layers, a[2], a[1], b[2], b[1], w=wb, step=step, reach=REACH)
+                if r2 is not None:
+                    break
+            if r2 is None:
+                r2 = search(mb, [((a[1], a[2]), (b[1], b[2]), RS.MAZE_STEP),
+                                 ((a[1], a[2]), (b[1], b[2]), 0.05)], wb)
+                more = hits(r2, wb) if r2 is not None else None
+                if more is None or len(moved) + len(more[1]) > RIP_TOTAL:
+                    print("close_last: %s would not join again round %s%s" % (B, net, "" if more is None
+                          else " (would move %s too)" % ", ".join(sorted(more[1]))))
+                    stuck, ok = B, False
+                    break
+                print("close_last: %s -- taking up %s to join again"
+                      % (B, ", ".join(sorted(more[1])) or "nothing"))
+                todo += take_up(*more)
+            g = math.hypot(a[2][0] - b[2][0], a[2][1] - b[2][1])
+            if too_long(B, _lay(board, stem, B, r2, wb, layer_id, ((a[1], a[2]), (b[1], b[2])), g), g):
+                print("close_last: %s joins again only longer than A23 allows" % B)
+                stuck, ok = B, False
+                break
+            joined.add(b[0])
+    if ok:
+        board.Save(stem + ".kicad_pcb")
+        os.remove(stem + ".rip.kicad_pcb")
+        if had_rec:
+            os.remove(rec + ".rip")
+        print("close_last: %s closed by taking up %s and joining it again"
+              % (net, ", ".join(sorted(moved)) or "nothing"))
+        return board, 1
+    print("close_last: %s -- putting the board back as it was" % net)
+    shutil.copy(stem + ".rip.kicad_pcb", stem + ".kicad_pcb")
+    os.remove(stem + ".rip.kicad_pcb")
+    if had_rec:
+        shutil.copy(rec + ".rip", rec)
+        os.remove(rec + ".rip")
+    elif os.path.isfile(rec):
+        os.remove(rec)
+    board = pcbnew.LoadBoard(stem + ".kicad_pcb")
+    # the net that would not join goes first next time, before the others take its room
+    # (RR_8: SWCLK, joined last, found every way out filled by the three joined before it);
+    # if it is already first it stays where it is and the way through is looked for again
+    if stuck and stuck not in first and len(first) < 3 and _time.time() < deadline:
+        return _rip_one(board, stem, net, model, layers, layer_id, named, gap, tries, close_w,
+                        deadline, stay, first + (stuck,), sc)
+    if stuck and len(stay) < 4 and _time.time() < deadline:
+        return _rip_one(board, stem, net, model, layers, layer_id, named, gap, tries, close_w,
+                        deadline, stay | {stuck}, first, sc)
+    return board, 0
+
+
 def main(stem):
     d = json.load(open(stem + ".finish.drc.json", encoding="utf-8"))
     todo = []
@@ -454,155 +881,18 @@ def main(stem):
         if res is None:
             print("close_last: %s -- no path between (%.2f, %.2f) and (%.2f, %.2f)"
                   % (net, pa[0], pa[1], pb[0], pb[1]))
+            if _time.time() - _t0 < _budget:
+                # then a way that keeps clear of other nets' track wherever it can: a longer
+                # one that takes up less leaves the nets taken up more room to join again
+                for sc in (1.0, 4.0):
+                    board, ok = _rip_one(board, stem, net, model, layers, layer_id, named, gap,
+                                         tries[:4] + tries[-2:], close_w, _t0 + _budget, sc=sc)
+                    if ok or _time.time() - _t0 > _budget:
+                        break
+                made += ok
             continue
-        runs, vias = res
-        code = board.GetNetcodeFromNetname(net)
-        # ⚠ TWO VIAS A TENTH OF A MILLIMETRE APART ARE ONE VIA. The maze can
-        # return a layer change that immediately reverses -- F.Cu down to B.Cu
-        # and back up, with a B.Cu run between them shorter than the drill. On
-        # the watering-backpack board that put two LEVEL vias 0.067 mm apart and
-        # two GATE_A vias 0.242 mm apart, against a 0.25 mm hole-to-hole
-        # minimum. DRC reports it as hole_to_hole at "actual 0.0000 mm" -- the
-        # holes do not merely crowd, they OVERLAP -- and grades it a WARNING, so
-        # the error count stays at zero and nobody looks. A fab either rejects
-        # the drill file or drills one ragged hole.
-        #
-        # So the via list is merged first and the track ends are snapped onto
-        # whatever they merged into: one via still joins F.Cu to B.Cu at that
-        # point, which is all the pair ever did, and the short run between them
-        # collapses to nothing and is dropped. Snapping can only move a point by
-        # less than the merge radius, and finish.py keeps this whole pass only
-        # if DRC comes out strictly better, so a snap that hurt would be thrown
-        # away rather than shipped.
-        merge_r = RS.VIA_DRILL + 0.25
-        # Seeded with the vias ALREADY on this net, because the hole the new one
-        # crowds need not be another new one. The first version of this merged
-        # only within close_last's own list and left a LEVEL via 0.0673 mm from
-        # one the ROUTER had put down -- same violation, different neighbour.
-        # Snapping onto an existing via is better than merging two new ones: the
-        # layer transition is already there and already in the zones' pour.
-        keep_v, snap = [], {}
-        for _t in board.GetTracks():
-            if isinstance(_t, pcbnew.PCB_VIA) and _t.GetNetname() == net:
-                _p = _t.GetPosition()
-                keep_v.append((pcbnew.ToMM(_p.x), pcbnew.ToMM(_p.y)))
-        n_existing = len(keep_v)
-
-        def _snap(q):
-            for k in keep_v:
-                if (q[0] - k[0]) ** 2 + (q[1] - k[1]) ** 2 < merge_r ** 2:
-                    return k
-            return None
-
-        for q in vias:
-            k = _snap(q)
-            if k is None:
-                keep_v.append(q)
-            else:
-                snap[(round(q[0], 6), round(q[1], 6))] = k
-        vias = keep_v[n_existing:]
-        if len(vias) != len(res[1]):
-            print("close_last: %s -- merged %d via(s) that would have overlapped "
-                  "a neighbouring hole (min %.2f mm)"
-                  % (net, len(res[1]) - len(vias), merge_r))
-
-        def _pt(q):
-            return snap.get((round(q[0], 6), round(q[1], 6)), q)
-
-        length, laid = 0.0, []
-        for L, pts in runs:
-            pts = [_pt(q) for q in pts]
-            for q0, q1 in zip(pts, pts[1:]):
-                if q0 == q1:
-                    continue
-                laid.append((L, round(q0[0], 4), round(q0[1], 4), round(q1[0], 4), round(q1[1], 4)))
-                t = pcbnew.PCB_TRACK(board)
-                t.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(q0[0]), pcbnew.FromMM(q0[1])))
-                t.SetEnd(pcbnew.VECTOR2I(pcbnew.FromMM(q1[0]), pcbnew.FromMM(q1[1])))
-                t.SetWidth(pcbnew.FromMM(width))
-                t.SetLayer(layer_id[L])
-                t.SetNetCode(code)
-                board.Add(t)
-                length += ((q1[0] - q0[0]) ** 2 + (q1[1] - q0[1]) ** 2) ** 0.5
-        # ⚠ FINISH AT THE VIA'S CENTRE, NOT AT ITS RIM (optical +3V3A, 2026-10-04). Own-net
-        # copper is free ground to the search, so a path aimed at a via stops at the first
-        # cell that touches its ring: the track ended 0.30 mm from the centre of a 0.60 mm
-        # via, joined by the 0.1 mm its round end overlaps the ring. DRC calls that
-        # connected; it is a sliver, and the quality pass's own walk (which joins a track
-        # to a via at the via's centre) read the rail as cut in two.
-        _own_vias = [(pcbnew.ToMM(t.GetPosition().x), pcbnew.ToMM(t.GetPosition().y),
-                      pcbnew.ToMM(t.GetWidth(pcbnew.F_Cu)) / 2.0)
-                     for t in board.GetTracks()
-                     if t.GetClass() == "PCB_VIA" and t.GetNetname() == net]
-        _flat = [(L, q) for L, pts in runs for q in pts]
-        for L, q in (_flat[0], _flat[-1]) if _flat else ():
-            for vx, vy, vr in _own_vias:
-                d = ((q[0] - vx) ** 2 + (q[1] - vy) ** 2) ** 0.5
-                if 0.005 < d <= vr + width / 2.0:
-                    t = pcbnew.PCB_TRACK(board)
-                    t.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(q[0]), pcbnew.FromMM(q[1])))
-                    t.SetEnd(pcbnew.VECTOR2I(pcbnew.FromMM(vx), pcbnew.FromMM(vy)))
-                    t.SetWidth(pcbnew.FromMM(width))
-                    t.SetLayer(layer_id[L])
-                    t.SetNetCode(code)
-                    board.Add(t)
-                    break
-        # ⚠ NO VIA IN A THROUGH-HOLE PAD OF THE SAME NET (pi_cap, 2026-10-04). The search
-        # is told which layer each end is on, and a DRC "PTH pad" item names F.Cu whatever
-        # layer the route arrives on -- so a path that came in on B.Cu changed layer AT the
-        # pin, and the via it dropped there was a second hole drilled through the pin's own
-        # (quality A12: hole to hole -0.65 mm). The plated barrel is already the layer
-        # change; the two runs meet at its centre without one.
-        barrels = [(pcbnew.ToMM(q.GetPosition().x), pcbnew.ToMM(q.GetPosition().y),
-                    pcbnew.ToMM(min(q.GetSize().x, q.GetSize().y)) / 2.0)
-                   for f in board.GetFootprints() for q in f.Pads()
-                   if q.GetNetname() == net and q.GetDrillSize().x > 0]
-        # ...and the same for a via the net already has (motor_ctrl PG_5V, 2026-10-04): a
-        # search started FROM an escape via on one layer and changing to another beside it
-        # dropped its own via 0.02 mm from the first -- two holes 0.28 mm into each other.
-        barrels += [(pcbnew.ToMM(t.GetPosition().x), pcbnew.ToMM(t.GetPosition().y),
-                     RS.VIA_D) for t in board.GetTracks()
-                    if t.GetClass() == "PCB_VIA" and t.GetNetname() == net]
-        # ⚠ ...AND A LAYER CHANGE THAT BORROWS A BARREL HAS TO REACH IT ON BOTH LAYERS
-        # (optical +3V3A, 2026-10-04). The path left an escape via on In2, stepped 0.30 mm
-        # and changed to B.Cu; its own via was dropped as above, which left the B.Cu run
-        # starting 0.30 mm from the barrel that was now carrying it -- joined by overlap
-        # with the ring, a sliver DRC accepts. Each run that turned at a dropped via gets
-        # a stub to the centre of the barrel that replaced it.
-        kept = []
-        for vx, vy in vias:
-            hit = [(bx, by) for bx, by, br in barrels
-                   if (vx - bx) ** 2 + (vy - by) ** 2 <= br * br]
-            if not hit:
-                kept.append((vx, vy))
-                continue
-            bx, by = min(hit, key=lambda c: (vx - c[0]) ** 2 + (vy - c[1]) ** 2)
-            for L, pts in runs:
-                near = lambda q, x, y: abs(q[0] - x) < 0.003 and abs(q[1] - y) < 0.003
-                if (any(near(q, vx, vy) for q in pts)
-                        and not any(near(q, bx, by) for q in pts)
-                        and (vx - bx) ** 2 + (vy - by) ** 2 > 1e-6):
-                    t = pcbnew.PCB_TRACK(board)
-                    t.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(vx), pcbnew.FromMM(vy)))
-                    t.SetEnd(pcbnew.VECTOR2I(pcbnew.FromMM(bx), pcbnew.FromMM(by)))
-                    t.SetWidth(pcbnew.FromMM(width))
-                    t.SetLayer(layer_id[L])
-                    t.SetNetCode(code)
-                    board.Add(t)
-        vias = kept
-        for vx, vy in vias:
-            v = pcbnew.PCB_VIA(board)
-            v.SetPosition(pcbnew.VECTOR2I(pcbnew.FromMM(vx), pcbnew.FromMM(vy)))
-            v.SetWidth(pcbnew.F_Cu, pcbnew.FromMM(RS.VIA_D))
-            v.SetDrill(pcbnew.FromMM(RS.VIA_DRILL))
-            v.SetNetCode(code)
-            board.Add(v)
+        _lay(board, stem, net, res, width, layer_id, named, gap)
         made += 1
-        print("close_last: %s closed with %.2f mm over %s and %d via(s)"
-              % (net, length, "/".join(L for L, _p in runs), len(vias)))
-        _record(stem, {"net": net, "a": [round(c, 3) for c in named[0][1]],
-                       "b": [round(c, 3) for c in named[1][1]], "gap": round(gap, 3),
-                       "length": round(length, 3), "tracks": laid})
     board.Save(stem + ".kicad_pcb")
     return made
 

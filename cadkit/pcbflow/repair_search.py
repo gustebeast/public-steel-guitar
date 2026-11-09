@@ -92,11 +92,13 @@ def _pads(board_txt):
     Each pad is now its centreline segment along the long axis plus a half-width of the
     short one, rotated by the footprint's angle and its own."""
     out = []
-    for f in re.findall(r"\(footprint\b(.*?)\n\t\)", board_txt, re.S):
+    for fpi, f in enumerate(re.findall(r"\(footprint\b(.*?)\n\t\)", board_txt, re.S)):
         at = re.search(r"\(at ([-\d.]+) ([-\d.]+)(?: ([-\d.]+))?\)", f)
         if not at:
             continue
         fx, fy = float(at.group(1)), float(at.group(2))
+        _ref = re.search(r'\(property "Reference" "([^"]*)"', f)
+        _ref = _ref.group(1) if _ref else ""
         # ⚠ THE SIGN OF THIS ROTATION WAS WRONG, AND IT MOVED 456 OF 982 PADS -- by up to
         # 10.65 mm. KiCad's angles are counter-clockwise on screen while its y axis points
         # DOWN, so a footprint's local (px, py) lands at
@@ -201,7 +203,9 @@ def _pads(board_txt):
                             x2=gx + ux * half_len, y2=gy + uy * half_len,
                             r=half_w, net=nt.group(1) if nt else "",
                             gx=gx, gy=gy, ca=_ca, sa=_sa, ihx=_ihx, ihy=_ihy, cr=_cr,
-                            cu=None if (not cu or "*.Cu" in cu) else cu))
+                            cu=None if (not cu or "*.Cu" in cu) else cu, fp=fpi,
+                            fpx=fx, fpy=fy,
+                            name="%s.%s" % (_ref, p.group(1))))
     return out
 
 
@@ -278,7 +282,11 @@ def _keepouts(board_txt):
         one = re.search(r'\(layer "([^"]+)"\)', z)
         layers = set(re.findall(r'"([^"]+)"', ly.group(1))) if ly else (
             {one.group(1)} if one else set())
-        pg = re.search(r"\(polygon\s*\(pts(.*?)\)\s*\)", z, re.S)
+        # ⚠ THE LAZY "(pts(.*?)\)\s*\)" STOPPED INSIDE THE LAST POINT: its closing paren was
+        # taken as the end of pts, so the last (xy ...) lost its ")" and was never read, and
+        # every 4-point keep-out came back a TRIANGLE (U1's slug fence, 2026-11-08: half of
+        # each fence bar missing, and a via landed in it). Match the run of points itself.
+        pg = re.search(r"\(polygon\s*\(pts((?:\s*\(xy [-\d.]+ [-\d.]+\))+)", z, re.S)
         if not pg:
             continue
         pts = [(float(a), float(b))
@@ -922,7 +930,7 @@ def maze_via(board, layer_a, layer_b, start, goal, w=TRACK_W, step=MAZE_STEP,
 
 
 def maze3d(board, layers, start, start_layer, goal, goal_layer, w=TRACK_W, step=MAZE_STEP,
-           clearance=None, reach=None, via_d=VIA_D, via_cost=2.0):
+           clearance=None, reach=None, via_d=VIA_D, via_cost=2.0, soft=None, soft_cost=1.0):
     """The general repair: route over (x, y, LAYER), where a via is an EDGE between layers.
 
     Returns (runs, vias) with runs = [(layer, [pts...]), ...] and vias = [(x, y), ...], or None.
@@ -935,6 +943,10 @@ def maze3d(board, layers, start, start_layer, goal, goal_layer, w=TRACK_W, step=
     ⚠ VIA COST IS NOT ZERO. At zero the search hops layers whenever a cell is momentarily
     cheaper and returns a staircase of dozens of vias that is legal and absurd. `via_cost` is in
     millimetres of equivalent track, so 2.0 says "a layer change is worth 2 mm of detour".
+
+    `soft`: a board-like object whose segments may be crossed at `soft_cost` mm a cell instead
+    of walling the path (close_last's rip-up: what a path runs into there is taken up and laid
+    again). `board` should then hold everything else.
     """
     import heapq
 
@@ -949,6 +961,7 @@ def maze3d(board, layers, start, start_layer, goal, goal_layer, w=TRACK_W, step=
     nx = int((x1 - x0) / step) + 1
     ny = int((y1 - y0) / step) + 1
     idx = {L: _Index(board, L) for L in layers}
+    sidx = {L: _Index(soft, L) for L in layers} if soft is not None else None
     li = {L: i for i, L in enumerate(layers)}
     vr = via_d / 2.0 + clr
 
@@ -987,6 +1000,10 @@ def maze3d(board, layers, start, start_layer, goal, goal_layer, w=TRACK_W, step=
                 q = pos(nk)
                 if nk != G and not idx[layers[L]].clear(q[0], q[1], r):
                     continue
+                if sidx is not None and nk != G and not sidx[layers[L]].clear(q[0], q[1], r):
+                    ng += soft_cost
+                    if ng >= cost.get(nk, 1e18):
+                        continue
                 cost[nk] = ng
                 parent[nk] = n
                 heapq.heappush(pq, (ng, nk))
@@ -995,6 +1012,9 @@ def maze3d(board, layers, start, start_layer, goal, goal_layer, w=TRACK_W, step=
         if c is None:
             q = pos((kx, ky))
             c = board.via_ok(q[0], q[1], r=vr)
+            if c and sidx is not None:
+                # a via through soft copper takes it up on every layer it crosses
+                c = 1.0 + sum(not sidx[Lx].clear(q[0], q[1], vr) for Lx in layers) * 4.0 * soft_cost
             via_ok_cache[(kx, ky)] = c
         if not c:
             continue
@@ -1002,7 +1022,7 @@ def maze3d(board, layers, start, start_layer, goal, goal_layer, w=TRACK_W, step=
             if L2 == L:
                 continue
             nk = (kx, ky, L2)
-            ng = g + via_cost
+            ng = g + via_cost + (c - 1.0 if c is not True else 0.0)
             if ng >= cost.get(nk, 1e18):
                 continue
             cost[nk] = ng

@@ -845,6 +845,17 @@ def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
                 board.Add(k)
             back += 1
         print("  re-laid %d frozen wire(s) the session file does not carry" % back)
+    post_route(board, stem, notes, pcb)
+    return pcb
+
+
+def post_route(board, stem, notes, pcb):
+    """Everything after the router itself, whichever router it was: floor widths, thermal
+    spokes, pour refill and stitch rescue, gap and via repairs, the post-route parts and
+    deliberate copper, the router's leavings, a last pour, save and canonical UUIDs.
+    Shared by route.py (freerouting) and ownroute.py (pcbflow's own router, ROUTER.md):
+    the board that comes out is finished the same way, so the two are compared fairly."""
+    notes = notes or {}
     # CLAMP ANY TRACK THE ROUTER NECKED BELOW THE FAB FLOOR. Freerouting works in
     # its own units and rounds, so it lands a couple of segments at 0.125 against
     # JLCPCB's 0.127 minimum -- 2 microns under, but under. Widening a track can
