@@ -1617,9 +1617,11 @@ against the string. The nut's thread then carries string minus spring. Set anywh
 100 % of string 1's 147 N with one stock **M4x40** button head (2.5 key).
 - **Print** (all `coupons/`, each builds -Z → +Z as exported):
   - `plank_counter_post`: the wall the M4 goes through, the deck the slider rides on, base on four holes.
-  - `plank_counter_spreader`: sits on the yoke's roof.
+  - `plank_counter_yoke`: the yoke for this rig, replacing `plank_yoke` here. It bolts to the nut
+    (2x M3x12 up through the ears), seats the string's ball end under its roof, and carries
+    both springs' pins. No guide rod, no arm.
   - `plank_counter_slider`: M4 heat-set in its +X face.
-  - The X station, yoke, nut, screw, pulley and 688 are the ones already printed.
+  - The X station, nut, screw, pulley and 688 are the ones already printed.
 - **Buy / take:** 2 x McMaster 9654K634 (one each side of the station), 1 x M4x40 button head,
   1 x M4 heat-set insert.
 - **Where:**
@@ -1634,9 +1636,10 @@ against the string. The nut's thread then carries string minus spring. Set anywh
   1. Insert into the slider's +X face. Station in its new place, the X rig built and the string
      brought up to pitch first: the string's pull is what keeps the screw seated in its 688.
   2. M4x40 through the post's wall from +X, into the slider's insert by ~3 threads only.
-  3. Spreader onto the yoke's roof from above, the string dropping into its slot.
+  3. (Done with the X rig's build: string's free end up the counter yoke's cavity and out its
+     roof, ball end seated; yoke onto the nut with the M3s.)
   4. Each spring: loop over a slider pin, then stretch it ~9 mm (about 30 N; a screwdriver through
-     the loop as a lever) and drop the other loop over the spreader's pin on that side.
+     the loop as a lever) and drop the other loop over the yoke's pin on that side.
 - **Setting the pull:**
   - Clockwise on the M4 (from +X) draws the slider in and adds pull. 0.7 mm a turn = 1.9 N a turn.
   - Backed out (3 threads in): ~60 N (41 %). 50 % (73.5 N) is 5.0 mm in (~7 turns),
