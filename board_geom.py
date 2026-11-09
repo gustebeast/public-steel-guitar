@@ -322,6 +322,25 @@ class Boards:
         self.UNMATED = {tuple(u) for u in unmated}
         self._cache = {}
 
+    def __kept_key__(self) -> str:
+        """What cadkit.kept names this by: the settings and every board file in geom_dir by
+        content -- not the read cache, whose contents depend on what asked first."""
+        import hashlib
+        h = hashlib.sha1()
+        for k, v in sorted(vars(self).items()):
+            if k != "_cache":
+                h.update(("%s=%r;" % (k, sorted(v) if isinstance(v, set) else v)).encode())
+        try:
+            names = sorted(os.listdir(self.geom_dir))
+        except OSError:
+            names = []
+        for n in names:
+            f = os.path.join(self.geom_dir, n)
+            if n.endswith(".json") and os.path.isfile(f):
+                with open(f, "rb") as fh:
+                    h.update(n.encode() + hashlib.sha1(fh.read()).digest())
+        return "Boards:" + h.hexdigest()
+
     # ── reading ──────────────────────────────────────────────────────────────────
     def load(self, board: str) -> dict:
         """The routed board's exported geometry (see cadkit/kicad_geom.py). Cached: the

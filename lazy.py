@@ -83,8 +83,14 @@ _METHODS = frozenset(n for n, v in vars(cq.Workplane).items()
 
 
 def lazy(builder, *args, **kwargs):
-    """A stand-in for `builder(*args, **kwargs)` that calls it on first use."""
-    return _Lazy(lambda: builder(*args, **kwargs))
+    """A stand-in for `builder(*args, **kwargs)` that calls it on first use -- through
+    cadkit.kept, so a solid built from the same inputs before, by any build or view on
+    this machine, is read rather than built (a builder's checks ran when it was built
+    from those inputs). CADKIT_KEPT=0 builds everything."""
+    def build():
+        from .kept import kept
+        return kept(builder, *args, **kwargs)
+    return _Lazy(build)
 
 
 def real(obj):

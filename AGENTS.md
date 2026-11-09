@@ -649,15 +649,30 @@ printed part, brass / steel / gold / rubber for a bought one. The names are the 
   `assembly.add(part, name=..., metadata={"material": "pctg"})`.
 - The export lists every part that ends up with no material. That list should be empty.
 
-## Bought parts — draw once, then read (`cadkit.kept`)
+## Slow geometry — computed once per change, shared by every worktree (`cadkit.kept`)
 
-A solid that costs seconds to draw and is the same in every build (a toothed belt, a
-threaded rod) goes through `kept(make, *args)`: drawn the first time, read from `.kept/`
-(git-ignored) after that. Its file is named by a hash of the arguments and of the source of
-the drawing module and everything it imports in the project, so a changed dimension is a
-miss, never a stale part. Arguments must be plain numbers/strings/tuples; a function that
-reads the environment or a file must not be kept. Worth it only where the drawing is slow:
-time it first. `CADKIT_KEPT=0` draws everything.
+`kept(make, *args)` (or `@keep` on the function) is `make(*args)`, read from a store
+shared by EVERY build, view and gate on the machine (`~/.cadkit/kept`, `CADKIT_KEPT_DIR`)
+when it has been computed from the same inputs before. Nobody publishes a cache: the
+lead's build, your scratch view and another agent's gate all fill and read the same store
+as they work, so a part nobody changed is never computed twice and a change costs once,
+whoever meets it first.
+
+The name is made from what the function actually READS, by value: its code, the globals
+and `module.attr` values it uses, the functions it calls (followed the same way), env
+vars it names in a string, its arguments, and the project files it opened while it ran.
+Geometry passed in is named by the kept call it came from (free) or by its BREP. So a
+changed dimension invalidates exactly the results that read it, and nothing else.
+
+- **Every `cadkit.lazy` solid goes through it automatically.** For a module-level solid
+  write `part = kept(_build)` (or `lazy(_build)`), never `part = _build()`.
+- **A slow stage of a pipeline**: put it in a function that takes the geometry and returns
+  the result (`segs = kept(_cut_ports, segs)`), its asserts INSIDE: they ran when the
+  result was computed from these inputs, so a read result needs no re-check.
+- Results: Workplanes, Shapes, plain data, and tuples/lists/dicts of them.
+- Not for functions that read the clock, randomness, or a global some OTHER call changes
+  in place. `tally()` says what was read, computed and not kept. `CADKIT_KEPT=0` computes
+  everything.
 
 ## Don't
 - Don't re-add Onshape (push scripts, credentials, `_push_onshape`) — removed on
