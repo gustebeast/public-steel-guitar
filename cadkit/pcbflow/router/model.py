@@ -23,6 +23,7 @@ DROP_SHARE = 0.6         # of a path's drop budget the track may spend (detours,
 DETOUR = 1.6             # routed length over Manhattan, for the drop estimate (optical V24_IN ran 2.0x)
 RING_PADS = 3            # parts with this many pads or fewer get a thermal ring
 RING_MM = 0.9            # a poured land's thermal room, from its copper edge
+HOLE_PAD = 0.45          # a pad's hole to any other hole, edge to edge (quality.FAB hole_hole_pad)
 SUPPLY = ("+", "GND", "VCC", "VDD")
 
 
@@ -290,6 +291,21 @@ class Model:
         # beside a declared via of the SAME net drilled a second hole 0.0 mm from it
         # (HUB_DN4_DM at R52, 2026-11-08). At the net's own via the router changes layer
         # THROUGH that via instead (negotiate._route_in), and emit writes no new one.
+        # ⚠ ...AND NONE NEAR A PAD'S HOLE, at the fab's pad-hole rule (quality.FAB
+        # hole_hole_pad 0.45, a pad hole to ANY other hole): a via 0.183 mm from J1's shield
+        # hole failed quality A12 (optical, 2026-11-08) -- the rules file's hole-to-hole
+        # (0.25) is the via-to-via figure and the pad drills were never in this ban at all.
+        for p in self.pads:
+            if not p.get("drill"):
+                continue
+            hx, hy, hr = p["drill"]
+            reach_h = hr + self.via_drill / 2.0 + HOLE_PAD + self.margin
+            win = self._window(p["gx"] - abs(hx), p["gy"] - abs(hy),
+                               p["gx"] + abs(hx), p["gy"] + abs(hy), reach_h + 0.1)
+            X, Y = grid(win)
+            i0, i1, j0, j1 = win
+            self.via_ban[i0:i1, j0:j1] |= (_d_pts_seg(X, Y, p["gx"] - hx, p["gy"] - hy,
+                                                      p["gx"] + hx, p["gy"] + hy) < reach_h)
         for v in self.vias:
             win = self._window(v["x"], v["y"], v["x"], v["y"], self.via_drill + self.hole_to_hole + 0.1)
             X, Y = grid(win)
