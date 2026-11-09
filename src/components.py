@@ -115,7 +115,7 @@ def nut() -> cq.Workplane:
     dimensions.string_anchor_x() / guide_rod_x() picking opposite ears.
 
     Origin = the flange's TOP face, so the flange hangs the first NUT_FLANGE_T
-    below it and the boss the rest — see dimensions' MOUNTING note for why
+    below it and the boss the rest; a Ø NUT_LIP_D x NUT_LIP_L lip stands ABOVE it — see dimensions' MOUNTING note for why
     flange-up. The flange is the round Ø22 disc with two flats cut to NUT_AF (that
     IS the "H"), modelled as disc ∩ slab, which is what puts the long ends'
     ROUNDED profile in the assembly and decides how far the ears sweep.
@@ -132,7 +132,8 @@ def nut() -> cq.Workplane:
     out = disc.intersect(slab)
     out = out.union(cyl(D.NUT_BOSS_D, D.NUT_BOSS_L,               # boss hangs -Z
                         z=z0 - D.NUT_BOSS_L))
-    out = out.cut(cyl(D.SCREW_OD, D.NUT_H + 2, z=z0 - D.NUT_BOSS_L - 1))   # thread bore
+    out = out.union(cyl(D.NUT_LIP_D, D.NUT_LIP_L, z=0.0))          # the lip, +Z of the flange
+    out = out.cut(cyl(D.SCREW_OD, D.NUT_H + D.NUT_LIP_L + 2, z=z0 - D.NUT_BOSS_L - 1))   # thread bore
     for sx in (-1, 1):                                           # the two ears
         out = out.cut(cyl(D.NUT_HOLE_D, D.NUT_FLANGE_T + 2, z=z0 - 1)
                       .translate((sx * D.NUT_HOLE_DX, 0, 0)))

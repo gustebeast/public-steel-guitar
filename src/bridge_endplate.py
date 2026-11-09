@@ -562,6 +562,20 @@ def _axle_negative() -> cq.Workplane:
         axis_dir=(0, 1, 0), print_up=PRINT_UP)
 
 
+LIP_RELIEF_D = D.NUT_LIP_D + 0.6                 # 10.8
+LIP_RELIEF_L = D.NUT_LIP_L + 0.3                 # 1.8 over the ceiling
+
+
+def _lip_reliefs() -> cq.Workplane:
+    out = None
+    for i in range(D.N_STRINGS):
+        c = printable_bore(LIP_RELIEF_D, LIP_RELIEF_L + 0.01,
+                           axis_point=(D.screw_x(i), D.string_y(i), ROOM_Z1 - 0.01),
+                           axis_dir=(0, 0, 1), print_up=PRINT_UP)
+        out = c if out is None else out.union(c)
+    return out
+
+
 def _comb_brace(yc: float, cb_w: float) -> cq.Workplane:
     """One finger's back-brace: constant width out to BRACE_X0, then a 45 deg flare in
     plan. Neighbouring flares merge into a solid bar; the outermost ones run on toward the
@@ -1211,6 +1225,12 @@ def _build() -> cq.Workplane:
     _rel = _o_band_relief()
     if _rel is not None:
         body = body.cut(_rel)
+    # ── THE NUT'S LIP, LAST FOR THE SAME REASON ──────────────────────────────────
+    # The measured nut (2026-11-08) has a Ø10.2 x 1.5 lip on its flange's top face: at the top of
+    # travel it would meet the room ceiling 1.5 before the flange does and give up 1.5 of RAISE,
+    # the limited direction. A relief over each nut keeps the FLANGE the stop. Cut on the
+    # finished solid: the fingers and braces put their undersides on this ceiling.
+    body = body.cut(_lip_reliefs())
     if OP.OPTICAL_REV == 1:               # R1's J2 is surface mount: nothing comes through
         return body
     return body.cut(_tht_pockets())       # after the same unions, the same reason

@@ -266,10 +266,12 @@ NUT_AF          = 10.5      # across flats (Y) — was THE lane-critical dimensi
                             # is why the screws are now in TWO ROWS: 10.5 cannot live
                             # in a 9.5 lane at any screw size.
 NUT_FLANGE_L    = 22.0      # long axis (X), tip to tip (R11 ears)
-NUT_FLANGE_T    = 4.0
+NUT_FLANGE_T    = 3.5       # MEASURED (user, 2026-11-08): the drawing's 4.0 is 3.5
 NUT_BOSS_D      = 10.2
-NUT_BOSS_L      = 11.0      # 15 overall - 4 flange
-NUT_H           = NUT_FLANGE_T + NUT_BOSS_L                            # 15.0
+NUT_BOSS_L      = 10.0      # MEASURED (user, 2026-11-08): the long boss is 10, not the drawing's 11
+NUT_LIP_D       = NUT_BOSS_D  # and a short LIP on the flange's +Z face, the boss's diameter
+NUT_LIP_L       = 1.5         # (user, 2026-11-08): the flange top is NOT the nut's top face
+NUT_H           = NUT_FLANGE_T + NUT_BOSS_L                            # 13.5, flange top -> boss foot
 NUT_HOLE_D      = 3.5       # the ears' through-holes, MEASURED (user, 2026-10-16, calipers,
                             # every nut of the order: "It does say 2.5 but unfortunately they
                             # all measure 3.5"). The listing's 2.5 (trusted 2026-10-07) was
@@ -923,7 +925,12 @@ BELT_RUN_MIN    = min(math.hypot(motor_pos(i)[0] - screw_x(i),
 # 194.0 and this sum allows 8.70; the nut does not get travel it has no use for.
 CARRIAGE_TRAVEL = min(TRAVEL_WANT, (BELT_RUN_MIN - BELT_CLAMP_L - PULLEY_FLANGE_OD
                                     - 2 * CLAMP_END_CLR) / BELT_PER_MM)   # 8.35
-NUT_BOT_MIN     = NUT_TOP_Z - CARRIAGE_TRAVEL - NUT_H          # -26.17, the FLOOR: the
+# THE MEASURED NUT (2026-11-08) is 13.5 flange top to boss foot, not the drawing's 15.0, so this
+# floor -- and the thrust bearing, the rail and its seat with it -- came UP 1.5. The pulleys did
+# not move (SCREW_PULLEY_Z is absolute): the pulley column under the bearing grew 1.5 instead.
+# Leaving the bearing down and letting the nut fall 1.5 further was NOT harmless: travel is
+# belt-limited (CARRIAGE_TRAVEL), and 1.5 of nut is 21 of belt, past CLAMP_END_CLR's 5 a side.
+NUT_BOT_MIN     = NUT_TOP_Z - CARRIAGE_TRAVEL - NUT_H          # -25.05, the FLOOR: the
                                                                # boss's underside at the
                                                                # bottom of travel
 # THE THRUST BEARING IS THAT FLOOR (user, 2026-10-01). The nut's boss comes down through
@@ -937,7 +944,7 @@ NUT_BOT_MIN     = NUT_TOP_Z - CARRIAGE_TRAVEL - NUT_H          # -26.17, the FLO
 # it rises is a millimetre of pulley column underneath it -- see PULLEY_COL_HI.
 # ⚠ The boss is Ø10.2 off the seller's drawing and the 688's inner ring is ~Ø10.2 by the
 # usual rule: a boss that measures wider reaches the SHIELD. Measure both.
-SUPPORT_BRG_Z   = NUT_BOT_MIN                       # -26.17, the bearing's top = thrust ledge
+SUPPORT_BRG_Z   = NUT_BOT_MIN                       # -25.05, the bearing's top = thrust ledge
                                                     # underside = the nut's floor
 SUPPORT_BRG_BOT = SUPPORT_BRG_Z - SUPPORT_BRG_W     # -31.17
 # THE STACK SITS ON THE PULLEYS. The screw is pulled +Z, so whatever grips it has to bottom

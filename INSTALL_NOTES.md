@@ -1500,3 +1500,90 @@ its SECOND hole lines up with the screw, and drive the screw back in.
 - **The leg screws sit in the same place at both ends** (`legs.LOCK_PIN_DY`, now 7.5 out from the
   leg's centreline, was 8.91). Reprint the end chassis sections, both endplates and the body
   adapters together: parts drilled for the old position won't line up.
+
+## Plank bench: string 1's whole drive on a wooden plank (2026-11-07)
+
+- **Where:** `src/plank_bench.py`. Print every STEP as it is posed (PETG-GF, no supports):
+  `coupons/plank_head.step` on its base; `coupons/plank_station.step` on its **+X face** (the face
+  toward the bridge end), building -X like the instrument's bridge endplate, so the room, lane and rail
+  run along the build and every vertical hole is a teardrop.
+  There is no cap and no rod plug any more (`plank_cap.step`, `plank_rod_plug.step` are obsolete).
+  The head is the instrument's own coupon motor bay on a pad its own size, a wood-screw tab out each
+  side at each end, and the crown tower. The bought and printed hardware is the
+  instrument's own: string 1's 573-tooth GT2 belt and its clamp, `screw_pulley_hi`, `motor_pulley`,
+  the Tr8x2 screw (36.28), the H-nut, an NRB 3.5 x 29.8 guide rod, two 688ZZ (thrust
+  and bridge), a Ø8 shaft (the 100 mm one fits: its bore runs out through both faces), a Ø4 x 4 dowel
+  for the crown, and the SERVO42D.
+- **Extra hardware:** the bay's M4 x 10 button + heat-set (the tee board's hold-down, as in the body),
+  8 x #8 flat-head wood screws (the watering-backpack ones, Ø9.3 head), long enough for the
+  plank less 1-2 mm (a 38 mm 2x4 takes 1-1/4"), and a guitar tuner.
+- **The plank:** a 2x4 (or anything as stiff) at least 900 mm long, with a **1/2 in hole drilled
+  through it** under the screw: screw the station down first and drill through the hole in its floor. Both bases' +Y faces sit flush with
+  the plank's +Y edge. The crown dowel's centre to the bridge-bearing axle's centre is **607.0 mm**
+  along the plank: that is the scale length, and the only measurement to make.
+- **Tuner:** in the plank, on the string's line, 150-300 mm -X of the crown. Nearer than 150 the tail
+  breaks over the crown steeper than it needs; further than about 340 it breaks under 15 degrees.
+- **Station order:**
+  1. Slide a 688 flat into the bay (the open side under the rail, a bearing wide) and push it up into
+     the rail's seat until it stops on the lip.
+  2. Screw the station down (four wood screws, two down each side flange) and drill the plank 1/2 in
+     through the hole in the station's floor.
+  3. Slide the H-nut into the changer room from -X (flange up, long way along X) until its -X ear is
+     under the rod bore. Press the guide rod down the slab bore, through the ear, into its socket:
+     its fit in the bore holds it (nothing goes over it).
+  4. Thread `screw_pulley_hi` onto the screw's foot (a few turns). From under the plank, push the screw
+     up through the hole and the 688 until it meets the nut, then turn the pulley (in the bay) to run the
+     screw up through the nut. Keep going until the pulley jams up against the bearing's inner ring.
+  5. Drop the bridge 688 into its pocket from the top and slide the Ø8 shaft through the station
+     along Y, through the bearing. Nothing else holds it: the string load pins it.
+  6. String: the ball end goes under the nut's +X ear. Through the window in the station's +X back
+     wall, push the free end up through the ear's hole, up the slot past the bridge
+     bearing's +X side, and over its top.
+- **Head order:** the motor bay is the instrument's, so the motor goes in as it does in the body: drop
+  it in (pulley on), pilot into the faceplate wall's slot, and hold it down with string 1's CAN tee
+  board and its M4 x 10 into the post's heat-set. Seat the crown
+  dowel in its cradle. Screw the head down (four wood screws, one per tab, before the belt goes on).
+- **Rebuilding:** `py -3.12 -m src.plank_bench` writes the STEPs in seconds. The bay and the tee
+  board come from `src/plank_bench_frozen/` (BREPs taken once from the instrument); after a change
+  to the instrument's motor bay or tee board, re-take them with `py -3.12 -m src.plank_bench --freeze`
+  (minutes: it imports the motor bank and the wiring).
+- **Then** the belt and its clamp, exactly as on the instrument (nut at the top of travel, clamp 5 mm
+  off the screw pulley), and the string over the crown to the tuner.
+- **Why:** to run one string's drive at full tension without the instrument: every part is drawn at
+  the instrument's own coordinates (string 1), so belt length, twist, carriage travel and break are the
+  real ones. Two differences: the string runs straight down the plank instead of fanning 13.5 in Y,
+  which shortens its speaking length by 0.15 mm; and the motor stands on the plank about 15 mm higher
+  against the screw pulley than the motor bank holds it (user: the station as low on the wood as it
+  goes), so the belt runs about 1.5 degrees off level. It is still 573 teeth.
+
+### The axial rig: the string's pull on the screw's axis (2026-11-08)
+
+On the first station the string pulls the nut's +X ear, 8 mm off the screw's axis. At 147 N that
+tips the nut on its thread and it grabs: the drive skipped and struggled both ways, and a loose nut
+on a screw grabs the same way under a twisting load (user). This station puts the pull on the axis.
+Same head, same screw, pulley, belt and motor positions; print `coupons/plank_station_axial.step`
+(builds +X → -X, its +X face on the bed, like the first) and `coupons/plank_yoke.step` (builds +Z → -Z, its roof on the bed, as exported).
+
+- **The yoke** sits on the nut's flange (flange up, long way along X) and is held by both ears: two
+  M3 x 12 socket heads (the belt clamp's) up through the ears, SELF-TAPPING into Ø3.2 holes in
+  the yoke's -Z face (the face on the flange; no inserts on this prototype). A Ø10.6 x 1.8 round recess in that face takes the nut's measured Ø10.2 x 1.5 lip and centres the yoke on it (2026-11-08: flange 3.5, boss 10, lip 1.5); only the yoke was reprinted for it. The string goes in -Z to +Z: free end up the yoke's cavity from its -Z face and
+  out the Ø2 hole in its roof, ON the screw's axis, until the ball end seats under the roof. No
+  window, no slit. The
+  screw's tip rises into the cavity under it (6.75 at the bottom of travel, 1.25 short of the ball
+  end). The guide rod runs through the boss on the yoke's -Y arm, 12 off the axis.
+- **The bridge bearing** sits 12.2 further -X (its +X tangent over the screw's axis) and 15.7 higher,
+  over a room tall enough for the yoke, so the string drops off it straight down the axis. Crown
+  dowel to bearing axle is now **594.8** (the screw stays where the belt has it); the bearing's top
+  stands ~16 over the crown's, a 1.5 degree slope over the length. Neither matters to a friction test.
+- **Order:** 1. Thrust 688 into the rail's seat from the bay, as before. 2. Screw the station down,
+  drill the plank 1/2 in through its floor hole. Bridge 688 into its pocket, Ø8 shaft along Y.
+  3. Feed the string's free end up the yoke's cavity
+  from that face and out the hole in its roof, and pull it through until the ball end seats under
+  the roof. Set the yoke on the nut and run the two M3s up through the ears. 4. Slide nut and yoke
+  into the room from +X, arm to -Y, feeding the string's free end up (-Z to +Z) the Ø2 hole in the
+  slab over the room as it goes: it comes out in the bearing's pocket beside the bearing's +X
+  side. 5. Screw up from below with its pulley and turn it up through the nut, as before (the
+  room's walls stop the yoke turning; keep the string taut so the ball end stays seated over the
+  screw's tip). 6. Drop the guide rod down the hole in the station's top, through the yoke's boss,
+  and push it home: its top is a press fit in the slab over the room, its foot sits in a 2.4
+  pocket in the channel floor. 7. Pull the string on up out of the pocket and over the bearing.

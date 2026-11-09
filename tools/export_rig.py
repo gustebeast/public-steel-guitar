@@ -300,6 +300,11 @@ def _clamp_motion(i):
             "origin": o0, "dir": d, "mm_per_mm": D.BELT_PER_MM, "rad_per_mm": ang / belt}
 
 
+# Parts the plank bench's axial rig bolts to the nut (src/plank_bench.py). The instrument has no
+# nodes by these names, and the viewer skips a name it cannot find.
+BENCH_CARRIAGE = ("yoke_{}", "yoke_m3_lo_{}", "yoke_m3_hi_{}")
+
+
 def build_rig(build_n=None, out=RIG) -> pathlib.Path:
     if build_n is None:
         from tools.export_glb import _current_build_n
@@ -321,7 +326,7 @@ def build_rig(build_n=None, out=RIG) -> pathlib.Path:
             "rest_dz": DEMO_POSE_DZ.get(i, 0.0),      # baked demo offset (viewer cancels it)
             # carriage assembly: pure Z translation (raise = -Z, toward more tension)
             # the H-nut IS the carriage now: it, its ball end and nothing else
-            "carriage_nodes": [f"nut_{i}", f"string_nut_{i}"],
+            "carriage_nodes": [f"nut_{i}", f"string_nut_{i}"] + [n.format(i) for n in BENCH_CARRIAGE],
             # pulleys: spin about their own axis, centre in CAD space
             # `sign` is the turn per mm the NUT GOES DOWN, about `axis`: a right-hand screw
             # lowers its nut turning counter-clockwise seen from above (+Z), and the belt
