@@ -2900,6 +2900,11 @@ def _color_for(name):
         _c = _CB.color_of(base, _COLORS)
         if _c is not None:
             return cq.Color(*_c)
+    if base.startswith("db_"):                   # ...and the direct-drive bench (src.direct_bench)
+        from . import direct_bench as _DB
+        _c = _DB.color_of(base, _COLORS)
+        if _c is not None:
+            return cq.Color(*_c)
     return cq.Color(*_DEFAULT_COLOR)
 
 

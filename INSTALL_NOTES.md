@@ -1663,3 +1663,16 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
 - **Clamp windows:** each belt clamp has a fixed stretch of its run, parked at the motor end. Strings 1, 5 and 9 are slid toward the changer (`CLAMP_SHIFT`). The clamp's thin side faces the next plane, and some clamps ride the +Y run (`CLAMP_SIDE`). **Set each clamp inside its window at assembly**, or it meets another string's clamp.
 - **Motors abreast are 52 mm apart.** The coil plug and its leads stand 29.9 mm off the axis on the -Y side.
 - **String 9's spring arm is mirrored** (`ARM_FLIP`), so its +X' leg stays inside string 10's belt.
+
+## Direct bench: NEMA17 straight on each screw, no belts (2026-11-09, FIT STUDY)
+
+`src/direct_bench.py` is a fit study like the changer bench: the bought parts are modelled, the frames are plain blocks, and nothing gets printed yet.
+- **Bends:** every string drops off the bridge on one line and turns -X under a second 688. The bend rows' axles all stack on x = -8.
+- **Rows:** string i sits on row i % 3, rows 26.4 apart.
+- **Screws:** each screw lies along -X, in tension into two 688s at the motor end. A yoke holds the ball end on the screw axis, and a Ø3.5 rod stops the nut turning. The rod is about 32 long, longer than the stock 29.8.
+- **Springs:**
+  - A 5/8 in OD extension spring (SKU still to choose) runs over a fixed sleeve, from a collar on the nut's boss to a common anchor wall at x -190. That is about 130 mm, the same length for every string.
+  - The collar and the rod's end are 0.15 apart at the slack end of travel. **Check this first on any real part.**
+- **Motors:**
+  - The motors are coaxial with their screws, on four stations along X, and each motor's coil plug faces a fixed side (set in `PLUG_DIR`).
+  - The whole drive yaws 2.06° in plan so string 1's motor stays inside the +Y rail.
