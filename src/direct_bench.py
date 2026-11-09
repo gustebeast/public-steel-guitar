@@ -111,8 +111,11 @@ WIN_Z = (-(KEY_DROP + KEY_D / 2 + 1.2), 3.2)        # ...and its reach under / o
 #            and the spring's own pull holds it there. The plug carries the SLEEVE over the screw.
 SPRING_OD, SPRING_WIRE = 19.05, 2.0
 SPRING_ID = SPRING_OD - 2 * SPRING_WIRE             # 15.05: the seats' diameter
-SPRING_TURNS = 50                                   # 2.5 pitch at the slack end, 2.35 at full
-SEAT_L, SEAT_GRIP = 10.0, 8.0                       # each seat, and the coils wound over it
+ACTIVE_PITCH = 2.5                                  # the open coils between the grips, about
+GRIP_TURNS, GRIP_PITCH = 4, 2.05                    # the end coils, CLOSE-WOUND onto each seat
+SEAT_GRIP = GRIP_TURNS * GRIP_PITCH                 # 8.2 of seat under them
+SEAT_L = SEAT_GRIP + 2.0                            # ...and a lip showing past the last one
+STOP_D, STOP_T = SPRING_OD + 2.0, 2.0               # the STOP FLANGE each spring end butts against
 SLEEVE_OD, SLEEVE_ID = 11.0, 9.0                    # over the screw, part of the anchor plug
 ANCHOR = (-194.8, -190.0)                           # the anchor wall, x
 LUG = (3.0, 22.0, 6.0)                              # the plug's lug bar: thick, long, wide
@@ -135,19 +138,27 @@ ROD_END = ROD_PLATE[1] - 1.0 - D.GUIDE_ROD_L        # the stock 29.8 rod, from t
 
 
 def x_collar(t: float):
-    """The collar along x: plate (from, to), the heads' far face, the seat (from, to)."""
-    pb = x_ft(t) - D.NUT_FLANGE_T                   # the flange's back face
+    """The collar along x: plate (from, to), the heads' far face, the stop flange (from, to),
+    the seat (from, to) -- the seat runs -X from the flange, the spring's end on the flange."""
+    pb = x_ft(t) - D.NUT_FLANGE_T                   # the nut flange's back face
     heads = pb - COLLAR_T - M3_HEAD[1]
-    seat1 = heads - 0.5
-    return (pb - COLLAR_T, pb), heads, (seat1 - SEAT_L, seat1)
+    f1 = heads - 0.5
+    f0 = f1 - STOP_T
+    return (pb - COLLAR_T, pb), heads, (f0, f1), (f0 - SEAT_L, f0)
+
+
+def x_plug():
+    """The anchor plug along x: the neck in the wall, the stop flange, the seat."""
+    a0, a1 = ANCHOR
+    return (a0, a1), (a1, a1 + STOP_T), (a1 + STOP_T, a1 + STOP_T + SEAT_L)
 
 
 def spring_span(t: float):
-    """The spring, x from..to: its coils over SEAT_GRIP of each seat."""
-    return ANCHOR[1] + SEAT_L - SEAT_GRIP, x_collar(t)[2][0] + SEAT_GRIP
+    """The spring, x from..to: flange face to flange face."""
+    return x_plug()[1][1], x_collar(t)[2][0]
 
 
-SLEEVE_END = x_collar(1.0)[2][0] - 1.0              # short of the collar's seat at full travel
+SLEEVE_END = x_collar(1.0)[3][0] - 1.0              # short of the collar's seat at full travel
 
 # ── motors and stations ─────────────────────────────────────────────────────────────────────
 M_HALF = D.MOTOR_SQ / 2                             # 21.15
@@ -335,12 +346,13 @@ def rod_y(i: int) -> float:
 
 def _collar(i: int, t: float) -> cq.Workplane:
     y, z = y_of(i), za(i)
-    (p0, p1), heads, (s0, s1) = x_collar(t)
+    (p0, p1), heads, (f0, f1), (s0, s1) = x_collar(t)
     out = box_at(p1 - p0, 2 * COLLAR_HY, YK_TALL, x=(p0 + p1) / 2, y=y, z=z)
-    for sy in (1, -1):
-        out = out.union(box_at(p0 - s1 + 0.5, WEB[1] - WEB[0], 2 * WEB[2], x=(s1 - 0.5 + p0) / 2,
+    for sy in (1, -1):                               # webs past the M3 heads to the flange
+        out = out.union(box_at(p0 - f1 + 0.5, WEB[1] - WEB[0], 2 * WEB[2], x=(f1 - 0.5 + p0) / 2,
                                y=y + sy * (WEB[0] + WEB[1]) / 2, z=z))
-    out = out.union(cyl_x(SPRING_ID, s1 - s0, s0, y=y, z=z))
+    out = out.union(cyl_x(STOP_D, f1 - f0, f0, y=y, z=z))                          # stop flange
+    out = out.union(cyl_x(SPRING_ID, s1 - s0, s0, y=y, z=z))                        # the seat
     out = out.cut(cyl_x(D.NUT_BOSS_D + 0.4, 60, s0 - 1, y=y, z=z))                  # boss, screw
     for dz in (-D.NUT_HOLE_DX, D.NUT_HOLE_DX):
         out = out.cut(cyl_x(3.4, 10, p0 - 1, y=y, z=z + dz))
@@ -349,7 +361,7 @@ def _collar(i: int, t: float) -> cq.Workplane:
 
 def _m3s(i: int, t: float) -> cq.Workplane:
     y, z = y_of(i), za(i)
-    (p0, _), heads, _ = x_collar(t)
+    (p0, _), heads, _, _ = x_collar(t)
     out = None
     for dz in (-D.NUT_HOLE_DX, D.NUT_HOLE_DX):
         sc = (cyl_x(M3_HEAD[0], M3_HEAD[1], heads, y=y, z=z + dz)
@@ -366,18 +378,25 @@ def _spring(i: int, t: float) -> cq.Workplane:
     if not COILS:
         return _tube_x(SPRING_OD, SPRING_ID, x0, x1, y_of(i), za(i))
     r = (SPRING_OD - SPRING_WIRE) / 2
-    h = cq.Wire.makeHelix(pitch=(x1 - x0) / SPRING_TURNS, height=x1 - x0, radius=r)
-    coil = (cq.Workplane("XZ").center(r, 0).circle(SPRING_WIRE / 2)
-            .sweep(cq.Workplane("XY").add(h), isFrenet=True))
-    return coil.rotate((0, 0, 0), (0, 1, 0), 90).translate((x0, y_of(i), za(i)))
+    act = x1 - x0 - 2 * SEAT_GRIP
+    k = max(1, round(act / ACTIVE_PITCH))           # whole turns: every piece starts at angle 0
+    out = cq.Workplane("XY")
+    for z0, pitch, h in ((0.0, GRIP_PITCH, SEAT_GRIP), (SEAT_GRIP, act / k, act),
+                         (SEAT_GRIP + act, GRIP_PITCH, SEAT_GRIP)):
+        hx = cq.Wire.makeHelix(pitch=pitch, height=h, radius=r)
+        piece = (cq.Workplane("XZ").center(r, 0).circle(SPRING_WIRE / 2)
+                 .sweep(cq.Workplane("XY").add(hx), isFrenet=True))
+        out = out.add(piece.translate((0, 0, z0)).vals())
+    return out.rotate((0, 0, 0), (0, 1, 0), 90).translate((x0, y_of(i), za(i)))
 
 
 def _anchor_plug(i: int) -> cq.Workplane:
     y, z = y_of(i), za(i)
-    a0, a1 = ANCHOR
-    out = cyl_x(SPRING_ID, a1 + SEAT_L - a0, a0, y=y, z=z)                          # neck + seat
+    (a0, a1), (f0, f1), (s0, s1) = x_plug()
+    out = cyl_x(SPRING_ID, s1 - a0, a0, y=y, z=z)                                   # neck + seat
+    out = out.union(cyl_x(STOP_D, f1 - f0, f0, y=y, z=z))                           # stop flange
     out = out.union(box_at(LUG[0], LUG[2], LUG[1], x=a0 - LUG[0] / 2, y=y, z=z))      # locked: lugs in Z
-    out = out.union(cyl_x(SLEEVE_OD, SLEEVE_END - (a1 + SEAT_L), a1 + SEAT_L, y=y, z=z))
+    out = out.union(cyl_x(SLEEVE_OD, SLEEVE_END - s1, s1, y=y, z=z))
     return out.cut(cyl_x(SLEEVE_ID, SLEEVE_END - a0 + 2 * LUG[0], a0 - LUG[0] - 1, y=y, z=z))
 
 
