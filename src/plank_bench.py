@@ -174,6 +174,10 @@ BRG_HY = D.BRIDGE_BEARING_W / 2 + 0.4            # 2.9
 STR_HOLE_D = 2.0                                 # the string's hole up the slab: room for a .070 and a fumble
 X0_AX = BX_AX - D.BRIDGE_BEARING_OD / 2 - 0.5 - BRG_HY - 3 * D.BEAD   # the gable's ridge, then 2.4
 Y0_AX = ARM_Y0 - WALL_HI
+# ITS +X FACE IS THE SCREW'S SEAT AND THREE BEADS (user, 2026-11-08: "rigidity isn't too big a deal
+# now"): nothing +X of the axis needs it -- the yoke slides in from +X and may stand 1.5 proud of it,
+# the bay and the room run out through it, and the string goes up the axis, not out a slit.
+X1_AX = SX + (D.SUPPORT_BRG_OD + 0.2) / 2 + 3 * D.BEAD   # -1.5
 SCALE_SPAN_AX = BX_AX - CROWN_X                  # 594.8
 
 OUT = pathlib.Path(__file__).resolve().parents[1] / "coupons"
@@ -244,13 +248,13 @@ def station_axial() -> cq.Workplane:
     """The axial rig's station. Built -X (ST_UP) like station(): the room and the rod's
     channel run straight through in X, so in the print they are shafts, not roofs."""
     zb = Z_PLANK + BASE_T
-    s = _box(X0_AX, X1B, Y0_AX - FLANGE, Y_EDGE, Z_PLANK, zb)
-    s = s.union(_box(X0_AX, X1B, Y0_AX, Y1, zb - 0.01, SLAB_TOP_AX))
-    s = s.cut(_box(X0_AX - 1.0, X1, SY - LANE_LO, SY + LANE_HI, zb, RAIL_BOT))          # the bay
+    s = _box(X0_AX, X1_AX, Y0_AX - FLANGE, Y_EDGE, Z_PLANK, zb)
+    s = s.union(_box(X0_AX, X1_AX, Y0_AX, Y1, zb - 0.01, SLAB_TOP_AX))
+    s = s.cut(_box(X0_AX - 1.0, X1_AX + 1.0, SY - LANE_LO, SY + LANE_HI, zb, RAIL_BOT))          # the bay
     # the room: the nut and yoke slide in from +X; it runs out -X too
-    s = s.cut(_box(X0_AX - 1.0, X1B + 1.0, SY - ROOM_HY, SY + ROOM_HY, RAIL_TOP, CEIL_AX))
+    s = s.cut(_box(X0_AX - 1.0, X1_AX + 1.0, SY - ROOM_HY, SY + ROOM_HY, RAIL_TOP, CEIL_AX))
     # the rod arm's channel, -Y of the room: its floor is the arm's bottom of travel
-    s = s.cut(_box(X0_AX - 1.0, X1B + 1.0, ARM_Y0, SY - ROOM_HY + 0.01, ARM_Z0, CEIL_AX))
+    s = s.cut(_box(X0_AX - 1.0, X1_AX + 1.0, ARM_Y0, SY - ROOM_HY + 0.01, ARM_Z0, CEIL_AX))
     s = s.cut(_zbore(SCREW_HOLE_D, SX, SY, Z_PLANK - 1.0, zb + 1.0, ST_UP))
     s = s.cut(_zbore(D.SUPPORT_BRG_OD + 0.2, SX, SY, RAIL_BOT - 1.0, D.SUPPORT_BRG_Z + 1e-3, ST_UP))
     s = s.cut(_zbore(SR.SEAT_LEDGE_D, SX, SY, RAIL_BOT - 1.0, SR.LEDGE_TOP, ST_UP))
@@ -271,7 +275,7 @@ def station_axial() -> cq.Workplane:
     s = s.cut(_zbore(STR_HOLE_D, SX, SY, CEIL_AX - 1.0, POCKET_Z0 + 0.5, ST_UP))
     s = s.cut(printable_bore(AXLE_BORE, Y1 - Y0_AX + 2.0, axis_point=(BX_AX, Y0_AX - 1.0, BZ_AX),
                              axis_dir=(0.0, 1.0, 0.0), print_up=ST_UP))
-    for x in (X0_AX + 6.4, X1B - 6.4):
+    for x in (X0_AX + 6.4, X1_AX - 6.4):
         for y in (Y0_AX - FLANGE / 2, Y1 + FLANGE / 2):
             s = s.cut(_wood_screw(x, y, ST_UP))
     return s
