@@ -86,7 +86,12 @@ class CoupledMixin:
     def _uncoupled(self, a):
         """mm of a pair's rails NOT beside each other -- same layer, centre spacing within
         [sp - 0.1, sp + 0.15] -- leaving out each rail's fan-out (COUPLE_END_MM of its own
-        lands) and the merge circle."""
+        lands, or of either rail's vias) and the merge circle.
+
+        ⚠ A VIA PAIR FANS OUT LIKE A LAND (optical u0 USB, 2026-11-10): two vias side by
+        side stand 0.75 mm apart centre to centre against the pair's 0.4 mm pitch, so
+        each layer change read as 1-2 mm "apart" that no lay can close. Round the pair's
+        own layer changes the rails are not judged, as round its lands."""
         b = a.mate
         m = self.m
         L, H, W = self.L, self.H, self.W
@@ -97,9 +102,16 @@ class CoupledMixin:
         box = self._box(paths + [p for x in (a, b) for p in x.pieces], self.COUPLE_END_MM + 1.0)
         i0, i1, j0, j1 = box
         tot = 0.0
+        vias = np.zeros((i1 - i0, j1 - j0), bool)
+        for p in paths:
+            k = p // (H * W)
+            r = p[np.nonzero(k[1:] != k[:-1])[0]] % (H * W)
+            vi, vj = r // W - i0, r % W - j0
+            ok = (vi >= 0) & (vi < i1 - i0) & (vj >= 0) & (vj < j1 - j0)
+            vias[vi[ok], vj[ok]] = True
         for x, y in ((a, b), (b, a)):
             mate = self._grid(y.paths, box)
-            own = self._grid(x.pieces, box).any(axis=0)
+            own = self._grid(x.pieces, box).any(axis=0) | vias
             dend = (distance_transform_edt(~own) * m.pitch if own.any()
                     else np.full(own.shape, 1e9))
             dm = [distance_transform_edt(~mate[k]) * m.pitch if mate[k].any() else None

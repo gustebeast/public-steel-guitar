@@ -378,12 +378,29 @@ class Model:
                     keep[q] = True
             self.ref_void[k] = keep[lab]
 
+    EDGE_REACH = 10.0                # mm: the edge field is exact this far in, FAR beyond
+
     def _edge_field(self):
         """Distance to the outline, signed so that outside the board is negative."""
         X, Y = np.meshgrid(self.cx, self.cy)
         d = np.full((self.ny, self.nx), FAR, np.float64)
+        # ⚠ EACH SEGMENT OVER ITS OWN WINDOW (optical, 2026-11-10): 2294 outline segments
+        # (the slots and round cut-outs are drawn as many) each measured over the whole
+        # grid was 9.5 s of an 82 s route. Every reader compares the field with a track's
+        # or via's half width plus edge clearance -- a millimetre or two -- so beyond
+        # EDGE_REACH it stays FAR (signed below), and within it each cell is exact: the
+        # segment nearest it is within reach, so its window holds the cell.
+        R = self.EDGE_REACH
         for e in self.edges:
-            np.minimum(d, _d_pts_seg(X, Y, *e), out=d)
+            x1, y1, x2, y2 = e
+            j0 = max(0, int(np.floor((min(x1, x2) - R - self.x0) / self.pitch)))
+            j1 = min(self.nx, int(np.ceil((max(x1, x2) + R - self.x0) / self.pitch)) + 1)
+            i0 = max(0, int(np.floor((min(y1, y2) - R - self.y0) / self.pitch)))
+            i1 = min(self.ny, int(np.ceil((max(y1, y2) + R - self.y0) / self.pitch)) + 1)
+            if i1 <= i0 or j1 <= j0:
+                continue
+            sub = d[i0:i1, j0:j1]
+            np.minimum(sub, _d_pts_seg(X[i0:i1, j0:j1], Y[i0:i1, j0:j1], *e), out=sub)
         loops = _loops(self.edges)
         inside = _in_poly(X, Y, loops[0]) if loops else np.ones_like(d, bool)
         # every other closed loop (a round cut-out drawn on Edge.Cuts) is a hole in the board
