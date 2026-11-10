@@ -343,11 +343,61 @@ class Router:
     # for one 46 mm net). See search.astar_s_h.
     HMAP = True
 
-    def _astar(self, cellf, vcellf, src, tgt, L, h, w, tb, dir_cost, vmult=1.0):
+    # ⚠ "NO PATH" IS PROVEN BY LABELLING, NOT BY FLOODING (optical USB_DM, 2026-11-09): a
+    # hop with no way through a 12 mm window popped 8.1 M states to say so, and the pair
+    # finish asked that question twice an attempt -- 71 of its 85 s. Connected components
+    # of the passable cells, joined across layers wherever a via may stand, are a superset
+    # of what the search can reach (it moves 8-way, changes layer only at a via cell), so
+    # "not connected" is exactly "no path" and the search is skipped. Asked only where
+    # "no path" is common (a pair's hops, tried in small windows first): before every
+    # search it cost output_panel 48 -> 81 s.
+    REACH_MIN = 300_000              # cells (L x h x w) from which a search is checked first
+
+    def _reachable(self, cellf, vcellf, src_idx, tgt, L, h, w):
+        from scipy.ndimage import label
+        fin = np.isfinite(cellf).reshape(L, h, w)
+        s_ok = src_idx[fin.ravel()[src_idx]]
+        if s_ok.size == 0:
+            return False
+        if tgt[s_ok].any():
+            return True
+        labs = np.zeros((L, h, w), np.int32)
+        base = 0
+        st8 = np.ones((3, 3), bool)
+        for k in range(L):
+            if fin[k].any():
+                lk, nk = label(fin[k], structure=st8)
+                labs[k] = np.where(lk > 0, lk + base, 0)
+                base += nk
+        up = np.arange(base + 1)
+
+        def find(a):
+            while up[a] != a:
+                up[a] = up[up[a]]
+                a = up[a]
+            return a
+        vf = np.isfinite(vcellf).reshape(h, w)
+        for k1 in range(L):
+            for k2 in range(k1 + 1, L):
+                mm = vf & fin[k1] & fin[k2]
+                if mm.any():
+                    key = np.unique(labs[k1][mm].astype(np.int64) * (base + 1) + labs[k2][mm])
+                    for a_, b_ in zip((key // (base + 1)).tolist(), (key % (base + 1)).tolist()):
+                        ra, rb = find(a_), find(b_)
+                        if ra != rb:
+                            up[ra] = rb
+        lf = labs.ravel()
+        sr = {find(int(x)) for x in np.unique(lf[s_ok])}
+        tl = np.unique(lf[np.flatnonzero(tgt)])
+        return any(find(int(x)) in sr for x in tl if x > 0)
+
+    def _astar(self, cellf, vcellf, src, tgt, L, h, w, tb, dir_cost, vmult=1.0, check=False):
         vc = np.float32(self.via_cost * vmult)
         bufs = self.__dict__.setdefault("_bufs", S.Buffers())
         src_idx = np.flatnonzero(src).astype(np.int64)
         eps = np.float32(self.ASTAR_EPS)
+        if check and L * h * w >= self.REACH_MIN and not self._reachable(cellf, vcellf, src_idx, tgt, L, h, w):
+            return np.empty(0, np.int64)
         turn = L * h * w * 9 <= self.TURN_STATES_MAX and self.turn45 + self.turn90 > 0
         if self.HMAP:
             # straight-line distance to the nearest target cell, in cells (search.py)
@@ -553,11 +603,16 @@ class Router:
                 ok = (ii >= 0) & (ii < h) & (jj >= 0) & (jj < w)
                 mine[kk[ok], ii[ok], jj[ok]] = True
             sp = net.width / 2.0 + net.partner.width / 2.0 + m.clear + m.margin + self.wref / 2.0
+            bc_ = int(math.ceil(sp / m.pitch + 2.5)) + 1
             for k in range(L):
                 if mine[k].any():
-                    dd = distance_transform_edt(~mine[k]) * m.pitch
+                    # only round the partner's copper (the band is within sp of it)
+                    ti, tj = np.nonzero(mine[k])
+                    a0, a1 = max(0, ti.min() - bc_), min(h, ti.max() + bc_ + 1)
+                    b0, b1 = max(0, tj.min() - bc_), min(w, tj.max() + bc_ + 1)
+                    dd = distance_transform_edt(~mine[k][a0:a1, b0:b1]) * m.pitch
                     band = (dd >= sp - 1e-6) & (dd <= sp + 2.5 * m.pitch)
-                    cell[k][band] *= 0.6
+                    cell[k][a0:a1, b0:b1][band] *= 0.6
         occv = self.occ_v.reshape(H, W)[i0:i1, j0:j1].astype(np.float32)
         hv = self.hist_v.reshape(H, W)[i0:i1, j0:j1]
         vcell = np.where(vlegal, (1.0 + hv) * (1.0 + pf * occv), np.inf).astype(np.float32)
@@ -581,11 +636,18 @@ class Router:
                     ok = (ii >= 0) & (ii < h) & (jj >= 0) & (jj < w)
                     dst_[kk[ok], ii[ok], jj[ok]] = True
             gap = (net.width + mt.width) / 2.0 + m.clear + m.margin
+            gc_ = int(math.ceil(gap / m.pitch)) + 1
             for k in range(L):
                 if theirs[k].any():
-                    wall = (distance_transform_edt(~theirs[k]) * m.pitch < gap - 1e-6) & ~mine_[k]
-                    cell[k][wall] = np.inf
-                    vcell[wall] = np.inf
+                    # only round the mate's own copper: the transform of the whole window
+                    # cost more than the searches it shapes
+                    ti, tj = np.nonzero(theirs[k])
+                    a0, a1 = max(0, ti.min() - gc_), min(h, ti.max() + gc_ + 1)
+                    b0, b1 = max(0, tj.min() - gc_), min(w, tj.max() + gc_ + 1)
+                    wall = ((distance_transform_edt(~theirs[k][a0:a1, b0:b1]) * m.pitch < gap - 1e-6)
+                            & ~mine_[k][a0:a1, b0:b1])
+                    cell[k][a0:a1, b0:b1][wall] = np.inf
+                    vcell[a0:a1, b0:b1][wall] = np.inf
         # the net's own fixed vias: a layer change there is free, through the via itself
         for v in m.vias:
             if v["net"] == net.name:
@@ -734,7 +796,8 @@ class Router:
                     if legp is not None:
                         self.wp_used.add(net.name)
                 if legp is None:
-                    path = self._astar(cl, vl.ravel(), s_, t_, L, h, w, tb, self.dir_cost, net.via_mult)
+                    path = self._astar(cl, vl.ravel(), s_, t_, L, h, w, tb, self.dir_cost, net.via_mult,
+                                       check=True)
                     if path.size == 0:
                         legs_ok = False
                         break
