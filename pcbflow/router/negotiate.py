@@ -1214,7 +1214,7 @@ class Router(CoupledMixin):
                     break
                 if not fl and all(r_[0] != sh for r_ in ruled):
                     ruled.append((sh, key[2], {x: (x.paths, x.necks, x.failed, x.relaxed, x.force_layers)
-                                          for x in (a, b)}))
+                                          for x in (a, b)}, self._uncoupled(a) if couple else 0.0))
                 if key < best_key:
                     best_key = key
                     best = {x: (x.paths, x.necks, x.failed, x.relaxed, x.force_layers) for x in (a, b)}
@@ -1222,7 +1222,12 @@ class Router(CoupledMixin):
                 # ⚠ MORE THAN THE CHEAPEST (optical C119 -0.07/-0.55, 2026-11-10): USB's
                 # fewest-cells attempt (45, on In1) left two nets open round it; the
                 # home-layer one (76 cells) was never tried. Each distinct one, cheapest first.
-                ruled.sort(key=lambda r_: r_[:2])
+                # ⚠ A COUPLED PAIR TRIES ITS MOST COUPLED LAY FIRST (optical USB_HS unmoved,
+                # 2026-11-10): fewest shared cells first kept a 0.05 mm-slack lay 10 mm
+                # uncoupled over a 0.1 mm one at 5.5 mm that displaced just as cleanly.
+                # _displace refuses any lay that leaves a net open, so the cells it crosses
+                # are only the tie-break.
+                ruled.sort(key=lambda r_: (r_[3], r_[0], r_[1]))
                 done = next((r_ for r_ in ruled[:self.PAIR_DISPLACE]
                              if self._displace(a, b, r_[2], pf)), None)
                 if done is not None:
