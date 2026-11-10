@@ -197,6 +197,12 @@ same_layer pair without a merge connector now runs on the layer its lands share
 (`run_layers`, strict then relaxed, as the merge case) -- HUB_PHY's leading rail had dived
 to B.Cu wherever its lane was busy and the negotiation ended with the pair split.
 
+Partial rip (2026-11-10, `PLANE_PARTIAL`): a plane net whose last few joins still share is no
+longer ripped whole -- only the sharing joins come out (`n_open` counts them) and the pour
+re-joins the pieces. Open work is weighed per connection (`_open_w`), and the pair finish locks
+every pair already to the rules, so `_displace` can no longer trade a pair for +3V3D's 55 joins
+or the other way round. Optical C102 +0.12/+0.48: HUB_PHY pair fault + island -> 0 open.
+
 Tried and dropped, measured:
 
 - **Corridors from the global plan** (`CORRIDORS`, off): round 1 halved, but nets shared
