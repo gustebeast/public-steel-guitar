@@ -89,6 +89,9 @@ which is placement feedback rather than a coin flip.
   body is re-joined to the main body only, the others re-negotiating round it, and the
   result is kept only if no more nets end open. Optical +3V3D, 2026-11-09: an islanded
   join on 16 of 19 nudges became close_last's 13.5 mm closure across a 1.7 mm gap (A23).
+  Only the cut-off pieces are re-joined (`keep_paths`): re-routing the whole net moved a
+  good join under U6 onto ULPI_D5/D6 (a locked match group), so on every optical run the
+  re-join was put back. Now it holds, and the step takes 1 s instead of 35.
 - **A slot in the return plane is crossed square** (`model._ref_voids`, `VOID_COST`): each
   routing layer's reference plane is the nearest ground copper in the stack, as quality
   A15 reads it; where that plane is void for `VOID_MIN_MM` or more (a socket's row of

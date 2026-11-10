@@ -46,6 +46,7 @@ class Net:
         self.group = None       # its match group (board.json "match" entry), if any
         self.force_layers = None  # the pair finish's layer set for this attempt (outside the merge circle)
         self.main_xy = None     # a pour net's island re-join: the fill its main body reaches (bool[H, W])
+        self.keep_paths = None  # ...and the joins of its good pieces, kept as laid {piece: (path, necks)}
 
 
 class Router:
@@ -1111,10 +1112,18 @@ class Router:
                 saved = {n: (n.paths, n.necks, n.failed) for n in self.nets}
                 fail0 = sum(n.failed for n in self.nets)
                 net.main_xy = mx
+                # ⚠ ONLY THE CUT-OFF PIECES ARE RE-JOINED (optical +3V3D, 2026-11-09: the
+                # piece at 77.5,163.9 re-joined cleanly, but re-routing the whole net moved a
+                # good join under U6 onto ULPI_D5/D6 -- a locked matched group -- and the
+                # re-join was put back on every run). The good pieces keep their joins.
+                if len(net.paths) == len(net.pieces) - 1:
+                    net.keep_paths = {q: (net.paths[q - 1], net.necks[q - 1] if q - 1 < len(net.necks) else None)
+                                      for q in range(1, len(net.pieces)) if q not in bad}
                 try:
                     left, _ = self._rounds([net], getattr(self, "_pf_last", 1.0), 12, 600, locked=lock)
                 finally:
                     net.main_xy = None
+                    net.keep_paths = None
                 fail1 = sum(n.failed for n in self.nets) + sum(not n.failed for n in left)
                 again = self._islands(net) if not net.failed else None
                 nbad = len(again[0]) if again else len(bad) + 1
@@ -1431,7 +1440,17 @@ class Router:
         vs3 = vs.reshape(L, h, w)
         tg3 = tgt0.reshape(L, h, w)
         pitch = self.m.pitch
+        kp = getattr(net, "keep_paths", None) or {}
         for q in range(1, len(pieces)):
+            if q in kp:                                 # a good piece's join, kept (_pour_islands)
+                fp_, nk_ = kp[q]
+                k_, r_ = fp_ // (H * W), fp_ % (H * W)
+                ii_, jj_ = r_ // W - i0, r_ % W - j0
+                if ((ii_ >= 0) & (ii_ < h) & (jj_ >= 0) & (jj_ < w)).all():
+                    tgt0[(k_ * h + ii_) * w + jj_] = True
+                    self._necks.append(nk_ if nk_ is not None else np.zeros(fp_.size, bool))
+                    paths.append(fp_)
+                    continue
             pk = pieces[q] % (h * w)
             pkk = pieces[q] // (h * w)
             pi_, pj_ = pk // w, pk % w
