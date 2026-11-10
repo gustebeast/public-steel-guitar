@@ -1139,6 +1139,8 @@ if __name__ == "__main__":
         % sorted(_placed - _refs))
     import volts_decl                   # A16: generated, see volts_decl.py
     volts_decl.into(BOARD_NOTES, "lever_sensor")
+    import part_alternates
+    part_alternates.stamp(BOARD_NOTES)    # cadkit M42: alternates + waivers, one table
     with open(os.path.join(OUT_DIR, "lever_sensor.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.1f x %.1f mm, %d placements, chip on the axle at (%.1f, %.1f)"
