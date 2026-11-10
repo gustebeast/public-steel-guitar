@@ -216,6 +216,25 @@ router's contention map (optical S53o0, 2 mm blocks) its overflow correlates 0.1
 detailed contention sits in pin escapes (U7's ULPI fan, U10/U31, the crystals), which
 1 mm squares cannot see; a score needs escape modelling at pad scale.
 
+**Pad-scale escape and RUDY, measured (2026-11-09) -- neither is the score either.**
+Against the detailed router's contention (`hist`) on optical, output_panel and motor_ctrl:
+
+- *Per-part escape* (max-flow from a part's lands to a ring 1 mm out, track-pitch blocks,
+  vias where one fits; demand = nets with a terminal outside the ring and no layout copper
+  already leaving it): every part has 3-20x the lanes it needs, and demand / capacity
+  correlates 0.24 with the part's contention (n 45). A part's own fan-out is not where
+  these boards fight.
+- *RUDY* (each MST edge's wire spread over its box) over pad-scale supply: Spearman
+  0.18-0.52 by board and block size, the supply term adding nothing, and none of the
+  router's top-10 blocks among the score's top 20 on optical or output_panel.
+- Where the router does fight: spread out (the top 8 blocks hold 17-35 %), among dense
+  clusters of small passives round an IC (U10's caps; Q1/Q2's resistors; motor_ctrl
+  U8/U9) -- short nets of neighbouring parts competing for the same gaps.
+
+With the router at 15-75 s a board (HMAP), the route itself is the affordable score:
+open nets, pair faults, contention, length and vias, several placements at once, a
+process each (the "parallelism one level up" above).
+
 ## Runtime
 
 Python 3.12 + numpy + numba (installed 2026-11-08). The finish chain runs steps under
