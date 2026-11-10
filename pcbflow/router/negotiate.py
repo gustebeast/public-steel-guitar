@@ -447,6 +447,71 @@ class Router:
                 return None
         return c
 
+    # ⚠ A FINE-PITCH PIN LEAVES STRAIGHT OUT (optical U7, C112 moved 0.6 mm, 2026-11-09):
+    # eight ULPI pins at 0.5 mm pitch all leave north on F.Cu; straight-out escapes fit (a
+    # track and its clearance is 0.357), but the router laid them as it pleased, a neighbour
+    # jogged into the next pin's exit, and whichever of D3 / D4 went second could not get
+    # out -- both ripped out, on a placement whose neighbours route. An engineer plans the
+    # fan-out first: each pin's first ESC_MM is its own. Other nets crossing that stub pay
+    # ESC_COST (a price, not a wall: a board that needs it can still cross).
+    ESC_COST = 4.0
+    ESC_MM = 0.8
+    ESC_PITCH = 0.8                  # a part is fine-pitch below this pad pitch...
+    ESC_PINS = 8                     # ...with at least this many pads
+
+    def _escape_map(self):
+        es = getattr(self, "_esc", None)
+        if es is not None:
+            return es
+        m = self.m
+        L, H, W = self.L, self.H, self.W
+        es = np.zeros((L, H, W), np.int32)
+        lid = {n_: k for k, n_ in enumerate(m.route_layers)}
+        plane = set(m.pours)
+        by = {}
+        for p in m.pads:
+            ref = (p.get("name") or "").rsplit(".", 1)[0]
+            if ref:
+                by.setdefault(ref, []).append(p)
+        need = self.wref / 2.0 + m.clear + m.margin - m.pitch
+        for ref, pads in by.items():
+            if len(pads) < self.ESC_PINS:
+                continue
+            xy = np.array([(p["gx"], p["gy"]) for p in pads])
+            d = np.hypot(xy[:, None, 0] - xy[None, :, 0], xy[:, None, 1] - xy[None, :, 1])
+            np.fill_diagonal(d, np.inf)
+            if np.median(d.min(axis=1)) >= self.ESC_PITCH:
+                continue
+            cx, cy = xy.mean(axis=0)
+            for p in pads:
+                if not p["net"] or p["net"] in plane or p["net"] not in m.net_id or not p.get("cu"):
+                    continue
+                ks = [lid[c] for c in p["cu"] if c in lid]
+                if len(ks) != 1:
+                    continue                # a through land escapes by any layer
+                ax, ay = p["x2"] - p["x1"], p["y2"] - p["y1"]
+                la = math.hypot(ax, ay)
+                if la < 1e-6:
+                    continue
+                ux, uy = ax / la, ay / la
+                if (p["gx"] - cx) * ux + (p["gy"] - cy) * uy < 0:
+                    ux, uy = -ux, -uy
+                tx, ty = p["gx"] + ux * (la / 2.0 + p["r"]), p["gy"] + uy * (la / 2.0 + p["r"])
+                ex, ey = tx + ux * self.ESC_MM, ty + uy * self.ESC_MM
+                x0, x1 = min(tx, ex) - need, max(tx, ex) + need
+                y0, y1 = min(ty, ey) - need, max(ty, ey) + need
+                j0, j1 = max(0, int((x0 - m.x0) / m.pitch)), min(W, int((x1 - m.x0) / m.pitch) + 2)
+                i0, i1 = max(0, int((y0 - m.y0) / m.pitch)), min(H, int((y1 - m.y0) / m.pitch) + 2)
+                if i0 >= i1 or j0 >= j1:
+                    continue
+                X, Y = np.meshgrid(m.cx[j0:j1], m.cy[i0:i1])
+                t = np.clip((X - tx) * ux + (Y - ty) * uy, 0.0, self.ESC_MM)
+                dd = np.hypot(X - (tx + t * ux), Y - (ty + t * uy))
+                sub = es[ks[0], i0:i1, j0:j1]
+                sub[(dd < need) & (sub == 0)] = m.net_id[p["net"]]
+        self._esc = es
+        return es
+
     def _window(self, net, margin_mm):
         mc = int(math.ceil(margin_mm / self.m.pitch))
         i0, i1, j0, j1 = net.bbox
@@ -561,6 +626,9 @@ class Router:
                     cell[k] = cell[k] * self.OFFRUN_COST
         rn = m.region_net[sl]
         cell = np.where((rn != 0) & (rn != nid), cell * self.REGION_COST, cell)
+        if self.ESC_COST > 1.0:
+            es = self._escape_map()[sl]
+            cell = np.where((es != 0) & (es != nid), cell * self.ESC_COST, cell)
         rg = m.ring_net[sl]
         cell = np.where((rg != 0) & (rg != nid), cell * self.RING_COST, cell)
         # over a slot in its return plane a signal pays VOID_COST a cell, so it crosses

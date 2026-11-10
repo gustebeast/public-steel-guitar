@@ -184,18 +184,65 @@ def _one(args):
     return dict(i=i, moves=moves, score=json.loads(line[-1]), sec=round(time.time() - t0, 1))
 
 
-def run(gen_dir, board, out, cands, jobs=3, log=print):
-    """Lay out and score [{}] + cands, `jobs` at once; returns the results, best first."""
+def jitters(stem, k, seed=7, x=None, y=None, rad=None):
+    """`k` tiny single-part moves (0.05-0.15 mm), the same set for every candidate: the
+    neighbourhood a candidate is judged over (see the ⚠ above)."""
+    if k <= 0:
+        return []
+    if x is None:
+        box = _parts(stem)
+        xs = [(b[0] + b[1]) / 2 for b in box.values()]
+        ys = [(b[2] + b[3]) / 2 for b in box.values()]
+        x, y, rad = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2, 1e4
+    return near_moves(stem, x, y, rad, k, seed=seed, step=(0.05, 0.15), turn_p=0.0, gap=0.1)
+
+
+def _agg(rows):
+    ok = [g["score"] for g in rows if g.get("score")]
+    if not ok:
+        return None
+    mean = lambda k: sum(s[k] for s in ok) / len(ok)
+    return dict(open=round(mean("open"), 2), pairs=round(mean("pairs"), 2),
+                islands=round(mean("islands"), 2), contest=round(mean("contest"), 1),
+                len_mm=round(mean("len_mm"), 1), vias=round(mean("vias"), 1),
+                worst_open=max(s["open"] for s in ok),
+                worst_bad=max(s["open"] + s["pairs"] + s["islands"] for s in ok),
+                open_nets=sorted({n for s in ok for n in s["open_nets"]}), n=len(ok))
+
+
+def run(gen_dir, board, out, cands, jobs=3, log=print, jit=()):
+    """Lay out and score [{}] + cands, `jobs` at once, each also under every jitter in
+    `jit` (then a candidate's score is the mean over its runs); returns results, best first."""
     os.makedirs(out, exist_ok=True)
     env = dict(os.environ, PYTHONIOENCODING="utf-8")
-    todo = [(i, gen_dir, board, out, mv, env) for i, mv in enumerate([{}] + list(cands))]
-    res = []
+    base = [{}] + list(cands)
+    todo, owner = [], []
+    for ci, mv in enumerate(base):
+        for ji, jm in enumerate([{}] + list(jit)):
+            if any(r in mv for r in jm):
+                continue                  # the jitter would undo the candidate's own move
+            todo.append((len(todo), gen_dir, board, out, dict(mv, **jm), env))
+            owner.append(ci)
+    rows = {}
     with ThreadPoolExecutor(max_workers=jobs) as ex:
-        for got in ex.map(_one, todo):
-            res.append(got)
+        for t, got in zip(todo, ex.map(_one, todo)):
+            ci = owner[t[0]]
+            got["cand"] = ci
+            rows.setdefault(ci, []).append(got)
             log(_row(got))
             with open(os.path.join(out, "scores.jsonl"), "a", encoding="utf-8") as fh:
                 fh.write(json.dumps(got) + "\n")
+    res = []
+    for ci, mv in enumerate(base):
+        rs = rows.get(ci, [])
+        if not jit:
+            g = rs[0] if rs else dict(moves=mv, refused="not run")
+            g["i"] = ci
+        else:
+            g = dict(i=ci, moves=mv, score=_agg(rs), sec=round(sum(r.get("sec", 0) for r in rs), 1))
+            if g["score"] is None:
+                g["refused"] = "; ".join(r.get("refused", "") for r in rs)[:160]
+        res.append(g)
     res.sort(key=lambda g: rank_key(g.get("score")))
     return res
 
@@ -206,9 +253,11 @@ def _row(g):
     s = g.get("score")
     if s is None:
         return "c%02d %-34s refused: %s" % (g["i"], mv, g.get("refused"))
-    return ("c%02d %-34s open %d pairs %d islands %d contest %9.1f len %7.1f vias %3d  %4.0f s%s"
+    spread = (" worst %d/%d over %d" % (s["worst_open"], s["worst_bad"], s["n"])) if "n" in s else ""
+    return ("c%02d %-34s open %4g pairs %4g islands %4g contest %9.1f len %7.1f vias %5g  %4.0f s%s%s"
             % (g["i"], mv, s["open"], s["pairs"], s["islands"], s["contest"], s["len_mm"],
-               s["vias"], g["sec"], "  " + ",".join(s["open_nets"]) if s["open_nets"] else ""))
+               s["vias"], g["sec"], spread,
+               "  " + ",".join(s["open_nets"]) if s["open_nets"] else ""))
 
 
 def main():
@@ -221,23 +270,29 @@ def main():
     ap.add_argument("--n", type=int, default=8)
     ap.add_argument("--jobs", type=int, default=3)
     ap.add_argument("--seed", type=int, default=1)
+    ap.add_argument("--spread", type=int, default=0,
+                    help="also score each candidate under this many tiny jitters; rank on the mean")
     ap.add_argument("--out")
     a = ap.parse_args()
     if a.score:
         print(json.dumps(score(a.score)))
         return
     out = a.out or os.path.join(a.gen_dir, "placescore")
-    if a.moves:
-        cands = json.load(open(a.moves))
-    else:
-        # candidates are drawn on the unmoved board: lay it out once first
+    need_base = not a.moves or a.spread
+    if need_base:
+        # candidates and jitters are drawn on the unmoved board: lay it out once first
         ok, why = _layout(a.gen_dir, a.board, os.path.join(out, "base"), {},
                           dict(os.environ, PYTHONIOENCODING="utf-8"))
         if not ok:
             sys.exit("layout refused the unmoved board: " + why)
-        cands = near_moves(os.path.join(out, "base", a.board), *a.near, n=a.n, seed=a.seed)
-    print("%d candidate(s) + unmoved, %d at once" % (len(cands), a.jobs))
-    res = run(a.gen_dir, a.board, out, cands, jobs=a.jobs)
+    bstem = os.path.join(out, "base", a.board)
+    if a.moves:
+        cands = json.load(open(a.moves))
+    else:
+        cands = near_moves(bstem, *a.near, n=a.n, seed=a.seed)
+    jit = jitters(bstem, a.spread, *(a.near or ())) if a.spread else []
+    print("%d candidate(s) + unmoved, x%d run(s) each, %d at once" % (len(cands), len(jit) + 1, a.jobs))
+    res = run(a.gen_dir, a.board, out, cands, jobs=a.jobs, jit=jit)
     print("\nbest first:")
     for g in res:
         print("  " + _row(g))
