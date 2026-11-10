@@ -330,7 +330,7 @@ class Router:
     NECK_W = W_REF                   # a net's width where it necks down at its own lands
     NECK_MM = 1.2                    # ...within this distance of its own copper
     TURN_STATES_MAX = 40_000_000     # heading-aware search up to this many states (x9 cells)
-    PAIR_PUSH = 0.01                 # the finish's last attempts price others' copper this low (_finish_pairs)
+    PAIR_PUSH = 0.5                  # the finish's push attempts: others' copper at this price, no history (_finish_pairs)
     PAIR_WALL = True                 # in a pair attempt the mate's copper is a wall (_pair_try)
     PLANE_MAIN = True                # plane joins aim at the main body's fill as it stands (_rounds)
     PLANE_KEEP = True                # a sharing plane net re-joins only its sharing pieces (_rounds)
@@ -1090,8 +1090,10 @@ class Router:
             # at the finish's congestion price every home-layer attempt went the long way
             # round other nets (skew 52-77 mm) or dived to cross them (via budget), and
             # neither is "to the rules", so _displace never saw one. These last attempts
-            # price other nets' copper at PAIR_PUSH x the finish's price -- the short way, on
-            # the pair's own layers -- and an attempt to the rules goes to _displace.
+            # price other nets' copper at PAIR_PUSH outright, with the negotiation's history
+            # set aside -- the short way, on the pair's own layers -- and an attempt to the
+            # rules goes to _displace. (PAIR_PUSH x the finish's price, which runs to the
+            # hundreds, still went the long way on optical C112 +0.05/-0.72.)
             for f_, s_ in ((a, b), (b, a)):
                 cands.append((f_, s_, False, None, 1.0, True, 1.0, self.PAIR_PUSH))
             ms0 = self.pair_measure(a)
@@ -1099,7 +1101,17 @@ class Router:
             best, best_key = None, (0, len(f0), max(l0) - min(l0))
             ruled = None                   # (shared cells, skew, state): to the rules, but in others' space
             for c in cands:
-                got = self._pair_try(pf * (c[7] if len(c) > 7 else 1.0), *c[:7])
+                if len(c) > 7:
+                    # a push: other nets at a low price outright, and none of the history
+                    # the negotiation built up round them (both steer it the long way)
+                    h0, hv0 = self.hist, self.hist_v
+                    self.hist, self.hist_v = np.zeros_like(h0), np.zeros_like(hv0)
+                    try:
+                        got = self._pair_try(c[7], *c[:7])
+                    finally:
+                        self.hist, self.hist_v = h0, hv0
+                else:
+                    got = self._pair_try(pf, *c)
                 if os.environ.get("PAIR_DEBUG"):
                     self.log("    try %s first relax=%s layers=%s off x%g via x%g: %s" % (
                         c[0].name, c[2], c[3], c[4], c[6],
