@@ -705,16 +705,17 @@ def assembly_counter(level=1.0):
 #   COUPLER   src.motor_coupler's printed one, with its inner-race BOSS: it takes the pulley's
 #             place as the screw's THRUST SHOULDER on the rail wall's 688 (the string pulls the
 #             screw -X; the springs keep that so, under the string). The screw sticks 9.5 past the
-#             688; its end sits in the socket, pinned 6.0 from the end by the belt clamp's M3 x 12
-#             through a 1/8 in hole (src.pin_drill_jig). No thrust reaches the motor.
+#             688, threaded into the coupler's formed-thread socket (the screw pulley's own grip)
+#             and squeezed by its C clamp's M4 x 10 into a fitted insert (user, 2026-11-10: the
+#             screw was too tough to drill for the old cross pin). No thrust reaches the motor.
 #   BLOCK     on a new set of four plank holes, the station's pattern (XR_SCREWS' 33.97 x 43.80):
 #             the FACE WALL the motor's faceplate is screwed to (its four M3 x 12, heads on the -X
 #             face -- they stand outside the X station's walls in Y, so a 2.5 key reaches each along
 #             X past it), two 45 deg RIBS bracing it, the base.
 #   SPRINGS   CS_DY moved out to clear the can: reprint the counter yoke and the slider.
 #   RANGE     the slider backs out only to the motor's back (INLINE_XS1_MIN): ~53 % to 100 %.
-# ORDER: block to the plank (all four wood screws open); coupler on the screw, turn it so the
-# pin's hole is up, drill-jigged hole through, pin it; motor in from +Z between the block and the
+# ORDER: block to the plank (all four wood screws open); coupler threaded onto the screw to its
+# end, the clamp's M4 snug; motor in from +Z between the block and the
 # slider (slider fully in), slid -X onto the coupler's D, its four M3s; springs last.
 from . import motor_coupler as MC
 
@@ -799,7 +800,8 @@ def assembly_inline(level=1.0):
                 .translate((XR_OFF + CS_DX, 0.0, XR_ZA - SX))))
     out.append(("plank_motor_block", motor_block()))
     out.append(("inline_coupler", inline_coupler()))
-    out.append(("inline_coupler_m3", _inline_frame(MC.coupler_m3())))
+    for k, w in MC.clamp_parts(INLINE_C1):
+        out.append((f"inline_coupler_{k}", _inline_frame(w)))
     for k, wp, _, _fin in C.motor_parts():
         out.append((f"inline_motor_{k}" if k else "inline_motor", _inline_frame(wp)))
     w0 = INLINE_FACE - INLINE_WALL_T

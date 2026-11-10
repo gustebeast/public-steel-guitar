@@ -225,7 +225,7 @@ PLUG = (21.15, 29.9, 6.2, 44.5, 38.5)               # coil plug + leads: off the
 #              the screw, self-tapping the far wall (as the yoke's M3s): a pin for the torque.
 #   THRUST     none: the coupler only TURNS the screw (~0.09 N m). The thrust bearings are on the
 #              anchor plate (THE THRUST HOUSING below), so the motor carries no axial load.
-from .motor_coupler import CPL_D, CPL_X, CPL_GRIP, SCREW_X0, SOCKET_D, PIN_X   # src.motor_coupler
+from .motor_coupler import CPL_D, CPL_X, CPL_GRIP, SCREW_X0   # src.motor_coupler
 M3_PILOT = 2.5
 
 # THE THRUST HOUSING (user, 2026-11-09: "put the thrust bearings on the anchor ... it would
@@ -683,9 +683,10 @@ def _coupler(i: int) -> cq.Workplane:
     return _motor_frame(MC.coupler(), i)
 
 
-def _coupler_m3(i: int) -> cq.Workplane:
+def _coupler_clamp(i: int, k: str) -> cq.Workplane:
+    """The coupler's clamp part `k` ("m4" or "insert"), in string i's motor frame."""
     from . import motor_coupler as MC
-    return _motor_frame(MC.coupler_m3(), i)
+    return _motor_frame(dict(MC.clamp_parts())[k], i)
 
 
 def _motor(i: int) -> list:
@@ -901,7 +902,8 @@ def string_parts(i: int, t: float) -> list:
         ("db_rod", cyl_x(D.GUIDE_ROD_D, ROD_L, ROD_END, y=rod_yz(i)[0], z=rod_yz(i)[1])),
         ("db_screw", _screw(i, xr + SCREW_X0, SCREW_TIP)),
         ("db_coupler", _coupler(i)),
-        ("db_cpl_m3", _coupler_m3(i)),
+        ("db_cpl_m4", _coupler_clamp(i, "m4")),
+        ("db_cpl_insert", _coupler_clamp(i, "insert")),
         ("db_housing", _housing(i)),
         ("db_hb", _housing_bolts(i)),
         ("db_insert", _inserts(i)),
@@ -1013,7 +1015,7 @@ _SAME = {frozenset(p) for p in (
     ("db_yoke", "db_ball"), ("db_string", "db_ball"), ("db_string", "db_yoke"),
     ("db_collar", "db_spring"), ("db_brg", "db_block"), ("db_coupler", "db_motor"),
     ("db_motor", "db_mplate"), ("db_motor",), ("db_coupler", "db_block"),
-    ("db_cpl_m3", "db_coupler"), ("db_cpl_m3", "db_screw"),
+    ("db_cpl_m4", "db_cpl_insert"),
     ("db_housing", "db_brg"), ("db_collar_a", "db_brg"), ("db_collar_b", "db_brg"),
     ("db_collar_a", "db_screw"), ("db_collar_b", "db_screw"), ("db_ca_m3", "db_collar_a"),
     ("db_hb", "db_housing"), ("db_hb", "db_plug"), ("db_hb", "db_insert"), ("db_insert", "db_plug"),

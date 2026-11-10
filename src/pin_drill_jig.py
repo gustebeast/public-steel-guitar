@@ -44,7 +44,7 @@ B = SJ.B
 IN = 25.4
 
 # ── the hole ────────────────────────────────────────────────────────────────
-PIN_FROM_END = MC.PIN_FROM_END             # hole axis to the screw's end: the coupler's own
+PIN_FROM_END = 5.0                         # hole axis to the screw's end (the old pinned coupler's)
 BUSHINGS = {"pilot": IN / 16, "pin": IN / 8}
 BIT_CLR = 0.3                              # each side: the bushing SOCKET's slide (bores: BORE_EXTRA)
 
