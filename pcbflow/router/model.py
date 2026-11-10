@@ -66,6 +66,7 @@ class Model:
         self.edges = RS._edges(txt)
         self.keepouts = _keepouts(txt)
         self.pours = _pours(txt)
+        self.zone_rule = _zone_rules(txt)
         # where each pour's copper actually IS (its fill), net by net; the outline where
         # a pour has no fill yet. Plane joins aim here (negotiate build_nets/_to_plane).
         fills = _fills(txt)
@@ -578,6 +579,29 @@ def _pours(txt):
             out.setdefault(nt.group(1), []).append((ly.group(1), pts))
     return out
 
+
+
+def _zone_rules(txt):
+    """{net: (clearance, min_thickness)}: the zone's OWN rules, the largest over its zones.
+
+    ⚠ A POUR KEEPS ITS OWN DISTANCE, NOT THE NETCLASS'S (optical +3V3D, 2026-11-09): the
+    zone under U6 holds 0.5 mm off other copper and is at least 0.25 mm wide; the island
+    judge assumed 0.127 and 0.2, saw fill where KiCad lays none, and called four join vias
+    joined that the refill left on islands -- the tidy pass removed them as dangling and
+    close_last closed six pads 5.7 mm round."""
+    out = {}
+    for z in re.findall(r"\(zone\b(.*?)\n\t\)", txt, re.S):
+        if "(keepout" in z:
+            continue
+        nt = re.search(r'\(net "([^"]*)"', z)
+        if not (nt and nt.group(1)):
+            continue
+        cl = re.search(r"\(connect_pads[^()]*\(clearance ([\d.]+)\)", z)
+        mt = re.search(r"\(min_thickness ([\d.]+)\)", z)
+        c0, t0 = out.get(nt.group(1), (0.0, 0.0))
+        out[nt.group(1)] = (max(c0, float(cl.group(1)) if cl else 0.0),
+                            max(t0, float(mt.group(1)) if mt else 0.0))
+    return out
 
 
 def _fills(txt):

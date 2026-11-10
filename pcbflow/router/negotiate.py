@@ -989,9 +989,19 @@ class Router:
         self._unmark(net)
         other = self.occ_t.reshape(L, H, W)[sl] > 0
         self._mark(net)
-        fill = reg[sl] & (fd >= m.clear) & ~other
+        # the zone's own clearance and width (model._zone_rules), never less than the rules
+        zc, zt = getattr(m, "zone_rule", {}).get(net.name, (0.0, 0.0))
+        zc, zt = max(zc, m.clear), max(zt, self.FILL_MIN_W)
+        # other nets' keep-out was stamped for a track beside them; the fill stands off
+        # further, by the difference
+        extra = zc - (self.wref / 2.0 + m.clear + m.margin)
+        if extra > m.pitch / 2.0:
+            from scipy.ndimage import distance_transform_edt
+            other = np.stack([distance_transform_edt(~other[k]) * m.pitch < extra
+                              if other[k].any() else other[k] for k in range(L)])
+        fill = reg[sl] & (fd >= zc) & ~other
         fill &= (m.edge[i0:i1, j0:j1] >= m.edge_clear)[None]
-        rr = max(1, int(round(self.FILL_MIN_W / 2.0 / m.pitch)))
+        rr = max(1, int(round(zt / 2.0 / m.pitch)))
         yy, xx = np.mgrid[-rr:rr + 1, -rr:rr + 1]
         disk = (yy * yy + xx * xx) <= rr * rr
         h, w = i1 - i0, j1 - j0
