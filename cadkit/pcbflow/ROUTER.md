@@ -92,6 +92,10 @@ which is placement feedback rather than a coin flip.
   Only the cut-off pieces are re-joined (`keep_paths`): re-routing the whole net moved a
   good join under U6 onto ULPI_D5/D6 (a locked match group), so on every optical run the
   re-join was put back. Now it holds, and the step takes 1 s instead of 35.
+  The fill is judged by the ZONE's own rules (`model._zone_rules`: optical's pours keep
+  0.5 mm off other copper, 0.25 mm minimum width), not the netclass's 0.127/0.2: the judge
+  saw fill under U6 that KiCad never lays, so four join vias stood on islands, the tidy
+  removed them as dangling and close_last closed six stranded pads. Now 0 stranded.
 - **A slot in the return plane is crossed square** (`model._ref_voids`, `VOID_COST`): each
   routing layer's reference plane is the nearest ground copper in the stack, as quality
   A15 reads it; where that plane is void for `VOID_MIN_MM` or more (a socket's row of
