@@ -331,6 +331,7 @@ class Router:
     NECK_MM = 1.2                    # ...within this distance of its own copper
     TURN_STATES_MAX = 40_000_000     # heading-aware search up to this many states (x9 cells)
     PAIR_WALL = True                 # in a pair attempt the mate's copper is a wall (_pair_try)
+    PLANE_MAIN = True                # plane joins aim at the main body's fill as it stands (_rounds)
     PLANE_KEEP = True                # a sharing plane net re-joins only its sharing pieces (_rounds)
 
     # ⚠ HEURISTIC WEIGHT 1.2 (optical S53o0, 2026-11-09): negotiation 123 -> 90 s, same
@@ -1805,8 +1806,20 @@ class Router:
             for net in todo:
                 if net in locked:
                     continue
+                # ⚠ A PLANE JOIN AIMS WHERE THE POUR WILL BE, EVERY ROUND (optical +3V3D by
+                # U6, 2026-11-09): join targets were the pour's polygon, so a join ended in the
+                # region's corner where a B.Cu track along its edge had cut the fill off; the
+                # refill drops that sliver, and the island pass could not re-join the piece
+                # past the locked ULPI group (close_last closed it the long way). The main
+                # body's fill is judged against the copper as it stands, and joins aim at it.
+                mx0 = getattr(net, "main_xy", None)
+                if self.PLANE_MAIN and net.plane and mx0 is None:
+                    got = self._islands(net)
+                    if got is not None and got[1] is not None and got[1].any():
+                        net.main_xy = got[1]
                 self._unmark(net)
                 paths = self._route_net(net, pf)
+                net.main_xy = mx0
                 net.failed = paths is None
                 net.paths = paths or []
                 if not paths:
