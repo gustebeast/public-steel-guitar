@@ -791,6 +791,7 @@ class Router(CoupledMixin):
                 cellf[best] = 1.0
         n = L * h * w
         if net.plane:
+            self._occv_win = occv
             return self._to_plane(net, pieces, cellf, vcell, L, h, w, win)
         paths = []
         if circle is not None and not net.fixed:
@@ -1828,7 +1829,18 @@ class Router(CoupledMixin):
             # states for a 6 mm join, the dearest searches of a round. Small boxes round the
             # piece first, the whole window only if they hold no way in.
             path = None
-            for marg in self.PLANE_JOIN_MM + (None,):
+            # ⚠ THE JOIN'S LAST VIA IS NEVER PRICED (optical +3V3D, coupled USB_HS,
+            # 2026-11-10): a join ends ON a via site and the via is added after the search,
+            # so a site inside another net's keep-out cost nothing -- the join sat on
+            # USB_DP's track through 12 rounds of negotiation and the coupled pair went
+            # back. Sites another net already claims are targets only when no clean one
+            # is reachable at all.
+            occv_ = getattr(self, "_occv_win", None)
+            clean = (occv_ <= 0)[None] if occv_ is not None and occv_.shape == (h, w) else None
+            passes = [(mg, True) for mg in self.PLANE_JOIN_MM] + [(None, True)]
+            if clean is not None:
+                passes.append((None, False))
+            for marg, use_clean in passes:
                 if marg is None:
                     a0, a1, b0, b1 = 0, h, 0, w
                 else:
@@ -1843,13 +1855,13 @@ class Router(CoupledMixin):
                 # closed them in vcell only, and two joins dropped vias 0.25 mm apart --
                 # drills overlapping by 0.05 mm)
                 free = np.isfinite(vcell.reshape(h, w)[a0:a1, b0:b1])[None]
+                if use_clean and clean is not None:
+                    free = free & clean[:, a0:a1, b0:b1]
                 tg = np.ascontiguousarray(tg3[:, a0:a1, b0:b1] | (vs3[:, a0:a1, b0:b1] & free))
                 sidx = (pkk * hs + (pi_ - a0)) * ws + (pj_ - b0)
                 tg = tg.ravel()
                 tg[sidx] = False
                 if not tg.any():
-                    if marg is None:
-                        return None
                     continue
                 src = np.zeros(L * hs * ws, np.bool_)
                 src[sidx] = True
@@ -2080,9 +2092,39 @@ class Router(CoupledMixin):
         nets in `left` -- still sharing, about to be ripped."""
         return (sum(self._w_open(n) for n in self.nets if n not in lock and n.failed)
                 + sum(getattr(n, "n_open", 0) for n in self.nets if n not in lock and not n.failed)
-                + sum((len(b) if b is not None else self._w_open(n))
+                + sum((self._poured_open(n, b) if b is not None else self._w_open(n))
                       for n in left if n not in lock and not n.failed
                       for b in (self._bad_joins(n),)))
+
+    def _poured_open(self, net, qs):
+        """Of a plane net's joins qs, about to be ripped, how many leave a piece the pour
+        does not reach either.
+
+        ⚠ A JOIN THE POUR COVERS IS NOT OPEN (optical USB_HS, unmoved, 2026-11-10): the
+        coupled pair laid to the rules, the board re-negotiated round it, and one +3V3D
+        join was left sharing -- counted as an open connection, so the pair was put back,
+        though that piece sat inside the +3V3D pour, which the island stage joins anyway."""
+        if not qs:
+            return 0
+        before = self._islands(net)
+        self._unmark(net)
+        keep = [net.paths[q] for q in qs]
+        for q in qs:
+            net.paths[q] = np.empty(0, np.int64)
+        self._mark(net)
+        try:
+            got = self._islands(net)
+        finally:
+            self._unmark(net)
+            for q, pth in zip(qs, keep):
+                net.paths[q] = pth
+            self._mark(net)
+        if got is None or before is None:
+            return len(qs)
+        new_off = set(got[0]) - set(before[0])
+        if os.environ.get("PAIR_DEBUG"):
+            self.log("      %s joins %s ripped: pieces newly cut off %s" % (net.name, qs, sorted(new_off)))
+        return min(len(qs), len(new_off))
 
     def _rip(self, todo):
         """anything still sharing comes out: a legal board with a net open beats a short"""
