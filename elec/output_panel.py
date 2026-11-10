@@ -4093,6 +4093,56 @@ if REV != 1 and os.environ.get("OP_LAYERS"):
     BOARD_NOTES["layers"] = int(os.environ["OP_LAYERS"])
 
 
+
+# ── HIGH-SPEED PAIRS ON THE COUPLED ROUTER (2026-11-10) ───────────────────────────────────
+# The hub's pairs were frozen copper because no router here could lay a pair: freerouting
+# has no notion of one, and layout._diff_pairs stops at a USB-C's A/B rows ("ESCAPE"). The
+# own router (cadkit 2b89bc1 on) routes a declared pair off one centreline, coupled. Measured
+# on the frozen copper of the kept board (uncoupled mm, DP / DM): HUB_UP 2.4 / 5.6, HUB_DN2
+# 12.4 / 14.9, HUB_DN3 22.1 / 22.5, THRU 22.6 / 26.5, PI 7.3 / 6.6. Each pair named in
+# _COUPLED is un-frozen and declared; one the router cannot lay goes back to its frozen
+# copper by leaving this list. HUB_DN1 (hand-drawn, 9 mm) and HUB_DN4 (full speed, to the
+# CH340C) stay as they are.
+# ⚠ ONLY HUB_DN3 IS THE ROUTER'S (router alone, cadkit d4e889d): HUB_DN3 alone came out
+# 1.3 / 2.0 mm uncoupled, 0 faults. Each of THRU, PI, HUB_UP and HUB_DN2 added to it failed
+# its coupled lay ("no way in its lane") and came out worse than its frozen copper (THRU
+# 26 / 29 with a layer fault, PI 12.7 / 12.2, HUB_UP 23 / 26, HUB_DN2 54 / 93 with skew),
+# and three of the four undid HUB_DN3's coupling too. The four end on a USB-C at 90 / 270
+# deg: the pad merge below leaves each rail's exit on a fixed side, and the router does
+# not yet read a rail's side from where its fixed copper leaves the socket -- with no
+# outward line there, the lane split put DP across DM's exit. Router work, then this list.
+_COUPLED_CHAIN = {"HUB_UP": ["U4", "J3"], "HUB_DN2": ["U4", "J4"], "HUB_DN3": ["U4", "U14"],
+                  "THRU": ["U14", "J1"], "PI": ["U14", "J2"]}
+_COUPLED = [_c for _c in (os.environ.get("OP_COUPLED", "HUB_DN3").split(","))
+            if _c] if REV != 1 else []
+if _COUPLED:
+    _cn = {_c + _s for _c in _COUPLED for _s in ("_DP", "_DM")}
+
+    # ⚠ THE USB-C PAD MERGE STAYS (2026-11-10). Each socket carries D+ on A6 and B6 and D- on
+    # A7 and B7, interleaved at 0.5 mm; layout._flip_merge joins them only for a pad row
+    # along X, and these sockets stand at 90 / 270 deg, so the frozen copper carried the
+    # merge loops. Un-frozen with the rest, the router had to make the joins itself and
+    # the first rail's join walled its mate out of the socket (every pair, "no way in its
+    # lane"). The loops -- every frozen track wholly within 1.9 mm across / 0.8 mm along
+    # the socket's pad row -- are kept; only the run is the router's.
+    def _in_merge(_t):
+        for _r in _COUPLED_CHAIN[_t[0].rsplit("_", 1)[0]]:
+            if not _r.startswith("J"):
+                continue
+            _jx, _jy, _jr = BOARD_NOTES["placements"][_r]
+            _ax, _ay = (1.9, 0.8) if round(_jr) % 180 == 90 else (0.8, 1.9)
+            if all(abs(_x - _jx) <= _ax and abs(_y - _jy) <= _ay for _x, _y in _t[3]):
+                return True
+        return False
+    BOARD_NOTES["tracks"] = [_t for _t in BOARD_NOTES["tracks"] if _t[0] not in _cn or _in_merge(_t)]
+    BOARD_NOTES["vias"] = [_v for _v in BOARD_NOTES["vias"] if _v[0] not in _cn]
+    BOARD_NOTES["frozen_nets"] = [_n for _n in BOARD_NOTES["frozen_nets"] if _n not in _cn]
+    BOARD_NOTES["diff_pairs"] = list(BOARD_NOTES.get("diff_pairs", [])) + [
+        dict(nets=[_c + "_DP", _c + "_DM"], chain=_COUPLED_CHAIN[_c], gap=0.2, width=0.2,
+             **({"pads": {_r: ["A6", "A7"] for _r in _COUPLED_CHAIN[_c] if _r.startswith("J")}}))
+        for _c in _COUPLED]
+
+
 if __name__ == "__main__":
     output_panel(tag="panel")
     ERC()
