@@ -82,6 +82,8 @@ def net_items(m, net):
     items, ends = [], []
     wn = min(net.width, NECK_W)
     for q, path in enumerate(net.paths):
+        if not len(path):  # a join ripped out and left open: nothing to emit
+            continue
         nk = net.necks[q] if q < len(getattr(net, "necks", ())) else None
         it, en = _grid_items(m, path, nk, net.width, wn)
         items += it
