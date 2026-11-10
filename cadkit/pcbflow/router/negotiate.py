@@ -729,6 +729,16 @@ class Router(CoupledMixin):
             np.multiply(cell, self.BAND_COST, out=cell, where=lane[1])
         cell[~(legal | neck_ok)] = np.inf
         cell = cell.astype(np.float32, copy=False)
+        walls = getattr(self, "_walls", None)
+        if walls:
+            for o in walls:
+                if o is net or not o.n_t:
+                    continue
+                f = o.rec_t[:o.n_t]
+                kk, rr_ = f // (H * W), f % (H * W)
+                ii, jj = rr_ // W - i0, rr_ % W - j0
+                ok = (ii >= 0) & (ii < h) & (jj >= 0) & (jj < w)
+                cell[kk[ok], ii[ok], jj[ok]] = np.inf
         self._neck_win = (neck_ok, h, w, i0, j0)
         # ⚠ A PAIR RUNS TOGETHER: the second net of a matched pair is drawn to the band one
         # pitch off its partner's centreline -- what an engineer does by routing the two as
@@ -758,6 +768,14 @@ class Router(CoupledMixin):
         if lane is not None:
             vlegal = vlegal & lane[2]
         vcell = np.where(vlegal, (1.0 + hv) * (1.0 + pf * occv), np.inf).astype(np.float32)
+        if walls:
+            for o in walls:
+                if o is net or not o.n_v:
+                    continue
+                f = o.rec_v[:o.n_v]
+                ii, jj = f // W - i0, f % W - j0
+                ok = (ii >= 0) & (ii < h) & (jj >= 0) & (jj < w)
+                vcell[ii[ok], jj[ok]] = np.inf
         # ⚠ IN A PAIR ATTEMPT THE MATE IS A WALL, NOT A PRICE (optical HUB_PHY, 2026-11-09):
         # _pair_try refuses any attempt whose rails overlap, and at the finish's price the
         # cheapest way past other nets' copper was straight over the mate -- every attempt
@@ -1626,6 +1644,25 @@ class Router(CoupledMixin):
                 self._unmark(x)
                 x.relaxed = relax
                 p = self._route_net(x, pf)
+                # ⚠ A LANE CUT BY FIXED COPPER IS WIDENED, ONCE (optical ONX03, USB_DM at
+                # U10, 2026-11-10): the DM strip ran west from its clamp pad straight into a
+                # GND stitch beside it, and the room south of the pad -- the way an engineer
+                # leaves it -- lay outside the lane: every coupled try "found no way in its
+                # lane" and the pair was kept as negotiated, 20 mm apart. The rail tries
+                # again with its lane grown by LANE_GROW; the mate is still a wall.
+                if (p is None and coupled and self.LANE_GROW > 0 and getattr(self, "_lanes", None)
+                        and x.name in self._lanes):
+                    from scipy.ndimage import distance_transform_edt
+                    li0, lj0, ln_, bd_, vl_ = self._lanes[x.name]
+                    g = self.LANE_GROW / self.m.pitch
+                    ln2 = np.stack([distance_transform_edt(~ln_[k]) <= g if ln_[k].any() else ln_[k]
+                                    for k in range(ln_.shape[0])])
+                    vl2 = distance_transform_edt(~vl_) <= g if vl_.any() else vl_
+                    self._lanes[x.name] = (li0, lj0, ln2, bd_, vl2)
+                    p = self._route_net(x, pf)
+                    if p is not None and os.environ.get("PAIR_DEBUG"):
+                        self.log("      coupled: %s laid in its lane widened by %.1f mm"
+                                 % (x.name, self.LANE_GROW))
                 if p is None:
                     if coupled and os.environ.get("PAIR_DEBUG"):
                         self.log("      coupled: %s found no way in its lane (sides %s)" % (
@@ -2169,7 +2206,84 @@ class Router(CoupledMixin):
             if best_state:
                 self.log("  priority repair, order %s: %d net(s) sharing or open, was %d"
                          % (" > ".join(best_state[0]), best, before))
+            if self.PRIO_WALL and any(n.failed or any(c.size for c in self._conflicts(n)) for n in lift):
+                self._wall_repair(lift, pf)
         return [n for n in self.nets if n.failed or any(c.size for c in self._conflicts(n))]
+
+    PRIO_WALL = True
+    LANE_GROW = 1.0                  # a coupled rail with no way in its lane tries once more in it grown by this
+
+    def _wall_repair(self, lift, pf):
+        """⚠ NETS STUCK ON EACH OTHER ARE WALLS TO EACH OTHER, AND THE REST MOVE (optical
+        ONX12, ULPI_D1/D2 at U7, 2026-11-10): D2's via sat one grid cell inside D1's track
+        keep-out, for eight rounds to pf 2361, and every order of the priority repair left it
+        there -- at any price every other way out crossed some third net's keep-out, which
+        cost the same, so the search could not tell D1 from the rest. Both were ripped out:
+        two signals open on a valid placement. An engineer lays one, then routes the other
+        AROUND it -- through whatever else is in the way -- and moves those. So: each net of
+        the stuck group is routed with the group's copper already laid as a wall, the group
+        is locked, and everyone it now crosses is re-negotiated round it. Kept only if the
+        board ends with fewer connections open than ripping the group now would leave."""
+        saved = {n: (n.paths, n.necks, n.failed) for n in self.nets}
+        lock0 = set(lift)
+        for x in self.nets:
+            if (x.mate is not None and x.partner is None and x.group is not None and x not in lock0
+                    and not x.failed and not x.mate.failed and not self.pair_faults(x)):
+                lock0 |= {x, x.mate}
+
+        def sharing():
+            return [n for n in self.nets if not n.failed and any(c.size for c in self._conflicts(n))]
+
+        def restore():
+            for n in self.nets:
+                self._unmark(n)
+            for n in self.nets:
+                n.paths, n.necks, n.failed = saved[n]
+                self._mark(n)
+
+        before = self._open_w((), sharing())
+        best, best_state = before, None
+        for order in (list(lift), list(lift)[::-1]):
+            for n in lift:
+                self._unmark(n)
+            laid = []
+            for n in order:
+                self._walls = laid
+                try:
+                    paths = self._route_net(n, pf)
+                finally:
+                    self._walls = None
+                n.failed = paths is None
+                n.paths = paths or []
+                if not paths:
+                    n.necks = []
+                self._mark(n)
+                laid.append(n)
+            if any(n.failed for n in lift):
+                restore()
+                continue
+            todo = [n for n in self.nets if n not in lock0 and not n.failed and self._conflicts(n)]
+            left, _ = self._rounds(todo, pf, 12, 600, locked=lock0)
+            left = left + [n for n in lift if any(c.size for c in self._conflicts(n))]
+            after = self._open_w((), left)
+            if after < best:
+                best, best_state = after, ([n.name for n in order],
+                                           {n: (n.paths, n.necks, n.failed) for n in self.nets})
+            restore()
+            if best == 0:
+                break
+        if best_state is None:
+            self.log("  wall repair of %s: no order left fewer connections open than %d -- put back"
+                     % (", ".join(n.name for n in lift), before))
+            return False
+        for n in self.nets:
+            self._unmark(n)
+        for n, (p, k, f) in best_state[1].items():
+            n.paths, n.necks, n.failed = p, k, f
+            self._mark(n)
+        self.log("  wall repair, order %s: %d connection(s) open if ripped, was %d"
+                 % (" > ".join(best_state[0]), best, before))
+        return True
 
     # ⚠ OPEN IS COUNTED IN CONNECTIONS, NOT NETS (optical, C102 +0.12/+0.48, 2026-11-10): a
     # displacement re-routed the ripped USB pair and left +3V3D sharing, so it was ripped --
