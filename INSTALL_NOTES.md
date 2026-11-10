@@ -1769,8 +1769,8 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
 - With the motor in, the slider backs out only to the motor's back, so the spring range is about 53 % to 100 % of 147 N.
 - Order:
   1. Screw the block to the plank. All four wood screws are reachable before the motor goes in.
-  2. Fit the M4 insert into the coupler's -x jaw, by hand with no heat, until it sits on the lip.
-  3. Thread the coupler onto the screw's +X end until the boss meets the 688. Snug the clamp's M4 x 10.
+  2. Fit the M3 insert (the belt clamp's) into the coupler's -x jaw, by hand with no heat, until it sits on the lip.
+  3. Thread the coupler onto the screw's +X end until the boss meets the 688. Snug the clamp's M3 x 12.
   4. Run the slider fully in.
   5. Bring the motor in over the ribs and slide it -X onto the coupler's D, turning the shaft to match.
   6. Fit the four face M3 x 12 from -X. The key reaches past the X station's walls.
@@ -1786,9 +1786,16 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
 - Clamp coupler (2026-11-10):
   - The screw was too tough to drill with the user's bits, so the coupler no longer has a cross pin.
   - It grips the screw like the screw pulley does: a formed-thread socket, the pulley's own cutter.
-  - A C clamp squeezes the socket: the body is slit along its length, and one M4 x 10 button head (2.5 key) crosses the slit into an M4 insert used as a nut.
+  - A C clamp squeezes the socket: the body is slit along its length, and one M3 x 12 crosses the slit into an M3 insert used as a nut (the belt clamp's screw, insert and 4.8 mm pocket).
     - The insert is pushed in from the -x face with no heat and sits on a 2.4 mm lip.
     - Tightening pulls it harder onto the lip.
-  - PRINT IT IN PCTG ON THE 0.4 NOZZLE, like the pulleys. Its D bore and formed thread are the pulleys' own fits, which were tuned on that setup.
-    - The PETG-GF / 0.8 print's D bore came out too small.
+  - PRINT IT IN PETG-GF ON THE 0.8 NOZZLE, standing on its motor end (2026-11-10). It is drawn the way that setup prints:
+    - Every corner made within a layer (the slit's, the ear's, the D bore's) is drawn at the measured 2.0 mm nozzle radius.
+    - Bores are drawn 0.3 mm a side over size, since holes print 0.3 small on this setup:
+      - the 1/8 in bushing drawn that way is tight but the bit runs through;
+      - the D bore at the pulley's 0.05 was too small.
+    - The thread socket's groove is drawn Ø8.6, so it prints at the screw's Ø8 crest.
+    - Its ridge is 0.6 deep with 45° flanks, as deep as fits the screw's groove (the pulley's is 0.45).
+    - If it prints tight, the slit lets it open; if loose, the clamp takes it up.
+  - The slit and the clamp ear are on the side away from the D's flat, so the key keeps its whole flat.
   - The pin drill jig is not needed for this.

@@ -684,7 +684,7 @@ def _coupler(i: int) -> cq.Workplane:
 
 
 def _coupler_clamp(i: int, k: str) -> cq.Workplane:
-    """The coupler's clamp part `k` ("m4" or "insert"), in string i's motor frame."""
+    """The coupler's clamp part `k` ("m3" or "insert"), in string i's motor frame."""
     from . import motor_coupler as MC
     return _motor_frame(dict(MC.clamp_parts())[k], i)
 
@@ -902,7 +902,7 @@ def string_parts(i: int, t: float) -> list:
         ("db_rod", cyl_x(D.GUIDE_ROD_D, ROD_L, ROD_END, y=rod_yz(i)[0], z=rod_yz(i)[1])),
         ("db_screw", _screw(i, xr + SCREW_X0, SCREW_TIP)),
         ("db_coupler", _coupler(i)),
-        ("db_cpl_m4", _coupler_clamp(i, "m4")),
+        ("db_cpl_m3", _coupler_clamp(i, "m3")),
         ("db_cpl_insert", _coupler_clamp(i, "insert")),
         ("db_housing", _housing(i)),
         ("db_hb", _housing_bolts(i)),
@@ -1015,7 +1015,7 @@ _SAME = {frozenset(p) for p in (
     ("db_yoke", "db_ball"), ("db_string", "db_ball"), ("db_string", "db_yoke"),
     ("db_collar", "db_spring"), ("db_brg", "db_block"), ("db_coupler", "db_motor"),
     ("db_motor", "db_mplate"), ("db_motor",), ("db_coupler", "db_block"),
-    ("db_cpl_m4", "db_cpl_insert"),
+    ("db_cpl_m3", "db_cpl_insert"),
     ("db_housing", "db_brg"), ("db_collar_a", "db_brg"), ("db_collar_b", "db_brg"),
     ("db_collar_a", "db_screw"), ("db_collar_b", "db_screw"), ("db_ca_m3", "db_collar_a"),
     ("db_hb", "db_housing"), ("db_hb", "db_plug"), ("db_hb", "db_insert"), ("db_insert", "db_plug"),

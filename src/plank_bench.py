@@ -706,7 +706,7 @@ def assembly_counter(level=1.0):
 #             place as the screw's THRUST SHOULDER on the rail wall's 688 (the string pulls the
 #             screw -X; the springs keep that so, under the string). The screw sticks 9.5 past the
 #             688, threaded into the coupler's formed-thread socket (the screw pulley's own grip)
-#             and squeezed by its C clamp's M4 x 10 into a fitted insert (user, 2026-11-10: the
+#             and squeezed by its C clamp's M3 x 12 into a fitted insert (user, 2026-11-10: the
 #             screw was too tough to drill for the old cross pin). No thrust reaches the motor.
 #   BLOCK     on a new set of four plank holes, the station's pattern (XR_SCREWS' 33.97 x 43.80):
 #             the FACE WALL the motor's faceplate is screwed to (its four M3 x 12, heads on the -X
@@ -715,7 +715,7 @@ def assembly_counter(level=1.0):
 #   SPRINGS   CS_DY moved out to clear the can: reprint the counter yoke and the slider.
 #   RANGE     the slider backs out only to the motor's back (INLINE_XS1_MIN): ~53 % to 100 %.
 # ORDER: block to the plank (all four wood screws open); coupler threaded onto the screw to its
-# end, the clamp's M4 snug; motor in from +Z between the block and the
+# end, the clamp's M3 snug; motor in from +Z between the block and the
 # slider (slider fully in), slid -X onto the coupler's D, its four M3s; springs last.
 from . import motor_coupler as MC
 
