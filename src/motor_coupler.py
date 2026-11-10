@@ -107,14 +107,20 @@ assert EAR_X[1] - SLIT_W / 2 >= 2 * CORNER_R, "the +x jaw is too thin for its ro
 assert CLAMP_Z - INSERT_POCKET_D / 2 >= SOCKET_D / 2 + 0.8 - 1e-9, "the pocket breaks into the socket"
 
 
+CUT_Z = math.sqrt(_GROW_R ** 2 - EAR_X[0] ** 2)    # 7.41: the ear cut flat at z -CUT_Z inside the
+                                                    # wall, so its corners stay inside r _GROW_R
+
+
+def _roof_y(z: float) -> float:
+    """Where the 45 deg roof over the wall cut reaches depth |z| (motor frame y)."""
+    return EAR_Y0 + max(0.0, abs(z) - CUT_Z)
+
+
 def clamp_y(c1: float = CPL_X[1]) -> float:
-    """The clamp's y: AS LOW AS IT GOES toward the motor, over the shaft/screw joint -- its head's
-    seat face and the insert's pocket wall inside the ear's 45 deg growth, and the screw's head
-    clear of the block wall."""
-    rho_h = math.hypot(EAR_X[1], CLAMP_Z + CLAMP_HEAD[0] / 2)       # the seat face's far corner
-    rho_p = math.hypot(EAR_X[0], CLAMP_Z) + D.BEAD                  # the pocket's wall, outer, low
-    y = max(_APEX + rho_h + CLAMP_HEAD[0] / 2,
-            _APEX + rho_p + INSERT_POCKET_D / 2,
+    """The clamp's y: AS LOW AS IT GOES toward the motor -- its head's seat face and the insert's
+    pocket wall above the 45 deg roof, and the screw's head clear of the block wall."""
+    y = max(_roof_y(CLAMP_Z + CLAMP_HEAD[0] / 2) + CLAMP_HEAD[0] / 2,
+            _roof_y(CLAMP_Z + INSERT_POCKET_D / 2 + D.BEAD) + INSERT_POCKET_D / 2,
             WALL_Y + 0.5 + CLAMP_HEAD[0] / 2)
     assert y + CLAMP_HEAD[0] / 2 + 0.2 <= c1 + 1e-9, f"the clamp's head runs past the body's end at y {y:.2f}"
     return y
@@ -179,23 +185,33 @@ def _eared_prism(y0: float, y1: float) -> cq.Workplane:
 
 def coupler(c1: float = CPL_X[1], boss_l: float = 0.0) -> cq.Workplane:
     """The coupler in the motor's frame, to y = c1 (+ a boss_l long inner-race boss).
-    ONE STRAIGHT PRISM (user, 2026-11-10: "a simpler/cleaner way"; no oversized round under it:
-    "wasted material") cut by ONE envelope: r _GROW_R inside the block wall, then a 45 deg cone.
-    A prism trimmed by that prints with no overhang. Where the envelope trims it (the ear's ends,
-    the slit's outer edges low down) its corners are left sharp: obtuse, or the slit's, which the
-    nozzle rounds."""
+    BUILT SIMPLY (user, 2026-11-10), no rounding for now:
+      1. a plain Ø18 cylinder;
+      2. the clamp's prism (the ear) on -Z;
+      3. a cut along x clearing the block wall: flat at z -CUT_Z up to the wall, then a 45 deg
+         roof (it also leaves a small flat on the cylinder's -Z side down there);
+      4. the D bore, the clamp's holes and the thread;
+      5. the slit."""
     from cadkit.holes import teardrop_hole
     c0 = CPL_X[0]
     end = c1 + boss_l
-    cone = cq.Workplane("XY").add(cq.Solid.makeCone(0.0, 40.0, 40.0, cq.Vector(0, _APEX, 0),
-                                                    cq.Vector(0, 1, 0)))
-    env = cone.union(cyl_y(2 * _GROW_R, EAR_Y0 - c0 + 1.0, y0=c0 - 1.0))
-    out = _eared_prism(c0, c1).intersect(env)
+    out = cyl_y(CPL_D, c1 - c0, y0=c0)                                           # 1
+    out = out.union(box_at(EAR_X[1] - EAR_X[0], c1 - c0, EAR_TOP, x=sum(EAR_X) / 2,
+                           y=(c0 + c1) / 2, z=-EAR_TOP / 2))                     # 2
+    zb = EAR_TOP + 1.0
+    cut = (cq.Workplane("YZ").polyline([(c0 - 1.0, -CUT_Z), (EAR_Y0, -CUT_Z),
+                                        (EAR_Y0 + zb - CUT_Z, -zb), (c0 - 1.0, -zb)]).close()
+           .extrude(2 * zb).translate((-zb, 0, 0)))
+    out = out.cut(cut)                                                           # 3
+    rb = D_BORE_R
+    out = out.cut(cyl_y(2 * rb, CPL_GRIP - c0 + 1.0, y0=c0 - 1.0).cut(
+        box_at(2 * rb + 2, CPL_GRIP - c0 + 3.0, rb, y=(c0 + CPL_GRIP) / 2, z=D_FLAT_Z + rb / 2)))
+    out = out.cut(cyl_y(FORM_MINOR_C - 0.6, end - CPL_GRIP + 1.0, y0=CPL_GRIP))  # 4: inside the ridges
     if boss_l:
         boss = cyl_y(RACE_IN_D, boss_l + 0.01, y0=c1 - 0.01).cut(
             cyl_y(FORM_MINOR_C - 0.6, boss_l + 2.0, y0=c1 - 1.0))
-        out = out.union(boss.cut(box_at(SLIT_W, boss_l + 2, RACE_IN_D, y=c1 + boss_l / 2,
-                                        z=-RACE_IN_D / 2)))
+        out = out.union(boss)
+    out = out.cut(box_at(SLIT_W, end - c0 + 2.0, zb, y=(c0 + end) / 2, z=-zb / 2))    # 5
     # the clamp: the M3's clearance through the +x jaw and the lip, the insert's pocket in from -x
     yc = clamp_y(c1)
     up = (0.0, 1.0, 0.0)
