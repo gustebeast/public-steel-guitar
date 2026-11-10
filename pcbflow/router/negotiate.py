@@ -330,6 +330,7 @@ class Router:
     NECK_W = W_REF                   # a net's width where it necks down at its own lands
     NECK_MM = 1.2                    # ...within this distance of its own copper
     TURN_STATES_MAX = 40_000_000     # heading-aware search up to this many states (x9 cells)
+    PAIR_PUSH = 0.01                 # the finish's last attempts price others' copper this low (_finish_pairs)
     PAIR_WALL = True                 # in a pair attempt the mate's copper is a wall (_pair_try)
     PLANE_MAIN = True                # plane joins aim at the main body's fill as it stands (_rounds)
     PLANE_KEEP = True                # a sharing plane net re-joins only its sharing pieces (_rounds)
@@ -1085,12 +1086,20 @@ class Router:
                     for f_, s_ in ((a, b), (b, a)):
                         for om in (1.0, 4.0):
                             cands.append((f_, s_, True, home | {d}, om, True, vm))
+            # ⚠ LAY IT WHERE IT SHOULD GO, THEN MOVE THE REST (optical USB_HS, 2026-11-09):
+            # at the finish's congestion price every home-layer attempt went the long way
+            # round other nets (skew 52-77 mm) or dived to cross them (via budget), and
+            # neither is "to the rules", so _displace never saw one. These last attempts
+            # price other nets' copper at PAIR_PUSH x the finish's price -- the short way, on
+            # the pair's own layers -- and an attempt to the rules goes to _displace.
+            for f_, s_ in ((a, b), (b, a)):
+                cands.append((f_, s_, False, None, 1.0, True, 1.0, self.PAIR_PUSH))
             ms0 = self.pair_measure(a)
             l0 = [v[0] for v in ms0.values()]
             best, best_key = None, (0, len(f0), max(l0) - min(l0))
             ruled = None                   # (shared cells, skew, state): to the rules, but in others' space
             for c in cands:
-                got = self._pair_try(pf, *c)
+                got = self._pair_try(pf * (c[7] if len(c) > 7 else 1.0), *c[:7])
                 if os.environ.get("PAIR_DEBUG"):
                     self.log("    try %s first relax=%s layers=%s off x%g via x%g: %s" % (
                         c[0].name, c[2], c[3], c[4], c[6],
@@ -1983,6 +1992,17 @@ class Router:
                             self.hist_v[rv] += hf
                             shared = True
                             bad_q.add(q)
+                # ⚠ A PIECE CUT OFF THE POUR IS AS UNFINISHED AS ONE SHARING SPACE (optical
+                # +3V3D by U6, 2026-11-09): PLANE_MAIN aims a join at the main body when the net
+                # is routed, but a net routed later in the round can still cut its target off;
+                # the plane net was not sharing, so never re-routed, and the island showed only
+                # at the end, where the island pass could not undo it past the locked ULPI
+                # group. Cut-off pieces count as shared and are re-joined next round.
+                if self.PLANE_MAIN and net.plane and not net.fixed and len(net.paths) == len(net.pieces) - 1:
+                    got = self._islands(net)
+                    if got is not None and got[0]:
+                        shared = True
+                        bad_q.update(q - 1 for q in got[0])
                 # ⚠ A PLANE NET RE-JOINS ONLY THE PIECES THAT SHARE (optical +3V3D,
                 # 2026-11-09: ~55 pieces, each its own join to the pour, and one or two
                 # sharing space re-searched all of them every round -- 220 searches, a third
