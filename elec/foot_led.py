@@ -998,6 +998,8 @@ def build(board, passes=20):
         notes["quality"]["pinouts"]["S4B-XH-SM4-TB"] = (
             "JST XH S4B-XH-SM4-TB drawing for pin 1; the way order is J_PINS above, "
             "harness.XH_PINOUT's supply ways first")
+    import part_alternates
+    part_alternates.stamp(notes)    # cadkit M42: alternates + waivers, one table
     with open(os.path.join(OUT_DIR, "%s.board.json" % name), "w") as f:
         json.dump(notes, f, indent=2)
     print("%-9s %6.1f x %.2f mm, %2d LEDs, %d zones, %d drivers, x%d per instrument"

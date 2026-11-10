@@ -2443,6 +2443,8 @@ if __name__ == "__main__":
     if REV == 1:
         import r1_silk                    # ordered R1: silk as sent
         r1_silk.as_ordered(BOARD_NOTES)
+    import part_alternates
+    part_alternates.stamp(BOARD_NOTES)    # cadkit M42: alternates + waivers, one table
     with open(os.path.join(OUT_DIR, "motor_ctrl.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.1f x %.1f mm, %d placements"
