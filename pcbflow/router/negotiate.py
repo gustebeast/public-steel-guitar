@@ -1139,7 +1139,8 @@ class Router(CoupledMixin):
             keep = {x: (x.paths, x.necks, x.failed, x.relaxed, x.force_layers) for x in (a, b)}
             cands = [(a, b, False, None, 1.0, False, 1.0), (b, a, False, None, 1.0, False, 1.0)]
             if couple:
-                cpl = [(f_, s_, True, None, 1.0, False, 1.0, None, True) for f_, s_ in ((a, b), (b, a))]
+                cpl = [(f_, s_, True, None, 1.0, False, 1.0, None, True, sl)
+                       for sl in self.MID_SLACKS for f_, s_ in ((a, b), (b, a))]
                 cands = list(cpl) if only else cpl + cands
             # ⚠ A SAME-LAYER PAIR WITH NO HOME LAYERS IS ALSO TRIED ONE LAYER AT A TIME
             # (optical HUB_PHY, 2026-11-09): free to use every layer, the second rail dived
@@ -1183,10 +1184,14 @@ class Router(CoupledMixin):
                     finally:
                         self.hist, self.hist_v = h0, hv0
                 else:
-                    got = self._pair_try(pf, *c[:7], coupled=len(c) > 8 and c[8])
+                    self._mid_slack = c[9] if len(c) > 9 else None
+                    try:
+                        got = self._pair_try(pf, *c[:7], coupled=len(c) > 8 and c[8])
+                    finally:
+                        self._mid_slack = None
                 if os.environ.get("PAIR_DEBUG"):
                     self.log("    try %s first%s relax=%s layers=%s off x%g via x%g: %s apart %.1f" % (
-                        c[0].name, " coupled" if len(c) > 8 and c[8] else "", c[2], c[3], c[4], c[6],
+                        c[0].name, (" coupled slack %g" % c[9]) if len(c) > 9 else "", c[2], c[3], c[4], c[6],
                         "no path" if got is None else (got, round(max(
                             v[0] for v in self.pair_measure(a).values()) - min(
                             v[0] for v in self.pair_measure(a).values()), 2)),
