@@ -96,9 +96,9 @@ SPOT_Z = CLAMP_Z - CLAMP_HEAD[0] / 2 - CORNER_R    # the head's SPOT FACE (x = E
                                                     # to z -SPOT_Z, flat past the head's rim
 # UNDER THE EAR (user, 2026-11-10: "move the clamp +x up to a reasonable clearance from the wall",
 # so it grips the shaft AND the screw): from the motor end to EAR_Y0 the coupler turns inside the
-# plank motor block's pilot hole (r 11.3), so there it is a plain ROUND r EAR_CLIP_R (0.8 clear of
-# the hole, swept) -- printed from the bed, it holds the ear up. Past the wall the ear grows out of
-# it at 45 deg (the cone), full within ~4 mm, so the clamp sits over the shaft/screw joint.
+# plank motor block's pilot hole (r 11.3), so there the ear is trimmed to r EAR_CLIP_R (0.8 clear of
+# the hole, swept) -- printed from the bed, it holds the rest of the ear up. Past the wall the ear
+# grows out at 45 deg (the cone), full within ~4 mm, so the clamp sits over the shaft/screw joint.
 EAR_CLIP_R = (D.NEMA17_PILOT_D + 0.6) / 2 - 0.8    # 10.5
 WALL_Y = EAR_Y0 - 0.8                               # the block wall's back face
 _GROW_R = EAR_CLIP_R - 0.1                          # the cone's radius at EAR_Y0
@@ -154,14 +154,6 @@ def _d_bore(wp, L: float, y0: float, y1: float):
     return hole, [(-xf, D_FLAT_Z), (xf, D_FLAT_Z)]
 
 
-def _round_prism(y0: float, y1: float) -> cq.Workplane:
-    """The length inside the block wall: a plain round r EAR_CLIP_R and the D bore. No slit."""
-    wp = cq.Workplane("XZ", origin=(0, y1, 0))     # local (x, z); extrudes -Y, y1 -> y0
-    L = y1 - y0
-    hole, pts = _d_bore(wp, L, y0, y1)
-    return _round_y_edges(wp.circle(EAR_CLIP_R).extrude(L).cut(hole), pts)
-
-
 def _eared_prism(y0: float, y1: float) -> cq.Workplane:
     """Everything past the wall, ONE profile all the way: the Ø18, the ear on -Z with its spot
     face, the slit, the D bore (the thread's core, Ø FORM_MINOR_C, is bigger: the thread cut clears
@@ -187,15 +179,18 @@ def _eared_prism(y0: float, y1: float) -> cq.Workplane:
 
 def coupler(c1: float = CPL_X[1], boss_l: float = 0.0) -> cq.Workplane:
     """The coupler in the motor's frame, to y = c1 (+ a boss_l long inner-race boss).
-    TWO STRAIGHT PRISMS (user, 2026-11-10: "a simpler/cleaner way"): the round inside the block
-    wall, then the eared profile, cut where it overhangs the round by a 45 deg cone. Inside the
-    round the eared profile only ever has LESS (the slit starts at EAR_Y0), so nothing overhangs."""
+    ONE STRAIGHT PRISM (user, 2026-11-10: "a simpler/cleaner way"; no oversized round under it:
+    "wasted material") cut by ONE envelope: r _GROW_R inside the block wall, then a 45 deg cone.
+    A prism trimmed by that prints with no overhang. Where the envelope trims it (the ear's ends,
+    the slit's outer edges low down) its corners are left sharp: obtuse, or the slit's, which the
+    nozzle rounds."""
     from cadkit.holes import teardrop_hole
     c0 = CPL_X[0]
     end = c1 + boss_l
     cone = cq.Workplane("XY").add(cq.Solid.makeCone(0.0, 40.0, 40.0, cq.Vector(0, _APEX, 0),
                                                     cq.Vector(0, 1, 0)))
-    out = _round_prism(c0, EAR_Y0).union(_eared_prism(EAR_Y0, c1).intersect(cone))
+    env = cone.union(cyl_y(2 * _GROW_R, EAR_Y0 - c0 + 1.0, y0=c0 - 1.0))
+    out = _eared_prism(c0, c1).intersect(env)
     if boss_l:
         boss = cyl_y(RACE_IN_D, boss_l + 0.01, y0=c1 - 0.01).cut(
             cyl_y(FORM_MINOR_C - 0.6, boss_l + 2.0, y0=c1 - 1.0))
