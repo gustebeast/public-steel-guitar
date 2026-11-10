@@ -476,7 +476,7 @@ def yoke() -> cq.Workplane:
 #     travel that 50 -> 100 % takes (26.6 mm), which is what lets a 40 mm screw set it.
 #   YOKE       the COUNTER YOKE (counter_yoke): the yoke on the nut with a bar across Y on its
 #              roof, a pin each end for a spring's loop; the string out of its roof on the axis.
-#   SLIDER     the same bar at the post end; an M4 heat-set in its +X face on the axis.
+#   SLIDER     the same bar at the post end; an M4 insert on the axis, as a CAPTIVE NUT (SL_LIP).
 #   POST       a wall with the M4 x 40 through it, head in a counterbore on its +X face (the board's
 #              end: a 2.5 key from +X). Turning it in draws the slider +X. A deck under the slider
 #              stops it turning with the screw.
@@ -527,7 +527,14 @@ X_HEAD = PW1 - PW_CB                             # the head's seat
 X_TIP = X_HEAD - CS_SCREW_L                      # -14.8
 BITE_MIN = 3 * M4.pitch                          # 2.1: three threads in the insert, the slider's farthest out
 GAP_MIN = 0.5                                    # the slider's +X face at the wall, fully in
-XS1_OUT, XS1_IN = X_TIP + BITE_MIN, PW0 - GAP_MIN   # the slider's +X face, out .. in
+# THE SLIDER'S INSERT IS A NUT (user, 2026-11-09): it slides into a pocket from the slider's -X
+# face and seats on a LIP at the +X face, the M4 through the lip. The springs pull the slider -X
+# and the screw holds it +X, so the string's whole pull presses the insert ONTO the lip -- it
+# cannot be torn out of its melt. The pocket is a snug teardrop: if the insert turns with the
+# screw, touch it home with the iron.
+SL_LIP = 4 * D.BEAD                              # 3.2: ~60 mm^2 in shear round the insert, 2.4 MPa at 147 N
+SL_POCKET_D = 5.9                                # teardrop: between cadkit's heat-set 5.7 and drop-in 6.1
+XS1_OUT, XS1_IN = X_TIP + BITE_MIN + SL_LIP, PW0 - GAP_MIN   # the slider's +X face, out .. in
 CS_STROKE = XS1_IN - XS1_OUT                     # 32.6
 
 # where the station goes: fully in = 100 % + CS_OVER with the yoke at mid travel
@@ -613,11 +620,11 @@ def counter_yoke() -> cq.Workplane:
 
 
 def slider(xs1=XS1_IN) -> cq.Workplane:
-    """The post end's bar, its +X face at xs1 (world): the M4's insert in that face on the axis, its
-    clearance through. Base down."""
+    """The post end's bar, its +X face at xs1 (world): the M4 through the LIP, the insert's pocket
+    from the -X face up to it (SL_LIP). Base down."""
     s = _bar(xs1, XR_ZA + 7.0)
-    s = s.cut(_xb(M4.shaft_clr_d, xs1 - BAR_L - 1.0, xs1 + 1.0))
-    return s.cut(_xb(M4.insert_pilot_td_d, xs1 - M4.insert_depth, xs1 + 1.0))
+    s = s.cut(_xb(M4.shaft_clr_d, xs1 - SL_LIP - 1.0, xs1 + 1.0))           # through the lip
+    return s.cut(_xb(SL_POCKET_D, xs1 - BAR_L - 1.0, xs1 - SL_LIP))           # the insert's way in
 
 
 def counter_post() -> cq.Workplane:
@@ -686,6 +693,8 @@ def assembly_counter(level=1.0):
         out.append((f"counter_spring_{k}", _spring(XP_SPREAD, xs1 - PIN_PAD, SY + s * CS_DY)))
     from .motor_coupler import cap_screw
     out.append(("counter_m4_0", cap_screw("m4", CS_SCREW_L, (X_HEAD + 2.2, SY, XR_ZA), (-1, 0, 0))))
+    from cadkit.fasteners import seated_insert
+    out.append(("counter_insert_0", seated_insert(M4, (xs1 - SL_LIP, SY, XR_ZA), (-1.0, 0.0, 0.0))))
     return out
 
 
