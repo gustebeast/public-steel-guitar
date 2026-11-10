@@ -152,7 +152,8 @@ YK_CAV = D.SCREW_OD + 0.8                        # 8.8: the screw's tip rises in
 # yoke concentric with the screw. It leaves 1.1 to each M3 tap hole
 # and 0.7 to the Y faces, over its 1.8 depth only. The yoke keeps its
 # 12 x 6 so it is the ONLY part to reprint: the axial station is unchanged.
-YK_LIP_D = D.NUT_LIP_D + 0.4                     # 10.6: a sliding register on the Ø10.2 lip
+YK_LIP_D = D.NUT_LIP_D + 0.5                     # 10.7: a sliding register on the Ø10.2 lip (10.6
+                                                 # printed a bit too tight: user, 2026-11-09)
 YK_LIP_HY = 5.4                                  # the plain station's relief half-width
 YK_LIP_L = D.NUT_LIP_L + 0.3                     # 1.8
 STN_LIP_D = 2 * YK_LIP_HY                        # the plain station's ceiling relief over the lip
