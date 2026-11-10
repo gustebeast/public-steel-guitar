@@ -18,6 +18,7 @@ layer (where the two rails take their vias side by side). The second rail keeps 
 first as a wall (PAIR_WALL), so they cannot cross inside a lane.
 """
 import copy
+import itertools
 import math
 
 import numpy as np
@@ -33,8 +34,10 @@ class CoupledMixin:
     COUPLE_END_MM = 1.2        # within this of its own lands a rail fans out: not judged
     LANE_TOL = 0.15            # a rail's lane: its offset of the centreline, +- this
     LANE_FAN = 0.8             # free room round each land beyond the centreline's start
-    LANE_VIA = 0.9             # free room round each centreline layer change, every layer
+    LANE_VIA = 0.9             # free room round each centreline layer change
     BAND_COST = 0.5            # price of a cell on the exact offset
+    COUPLE_ENDS = 3            # pin-pair choices a coupled lay tries, best first
+    VIA_OFF = 0.42             # a rail's via at a layer change: this far off the line, its side
 
     # ----------------------------------------------------------------- measures
     def _pair_spec(self, a):
@@ -212,7 +215,7 @@ class CoupledMixin:
                     return (kk * H + ii + i0) * W + jj + j0, rad
         return None
 
-    def _midline(self, a, b, pf):
+    def _midline(self, a, b, pf, choice=0):
         """The pair's centreline, hop by hop: [(paths, (a from, b from), (a to, b to),
         radius from, radius to)] with full-board paths, or None if a hop finds no room
         for the pair."""
@@ -222,8 +225,14 @@ class CoupledMixin:
             return None
         sp = self._pair_sp(a)
         wf = sp + (a.width + b.width) / 2.0
+        combos = self._choose_ends(a, b, ea, eb)
+        if choice >= len(combos):
+            self._ends_left = False
+            return None
+        self._ends_left = choice + 1 < len(combos)
+        ends = combos[choice]
         hops = []
-        for (sa, ta), (sb, tb) in zip(ea, eb):
+        for (sa, sb), (ta, tb) in ends:
             s_ = self._mid_end(sa, sb, wf, a, b)
             t_ = self._mid_end(ta, tb, wf, a, b)
             if s_ is None or t_ is None:
@@ -259,6 +268,86 @@ class CoupledMixin:
                   else p[::-1].copy() for p in got if p.size]
             hops.append((hp, (sa, sb), (ta, tb), s_[1], t_[1]))
         return hops
+
+    def _pin_pairs(self, ca, cb, a, b):
+        """The pin pairs a pair may use at one part: [(a cells, b cells)]. Lands of one pad
+        each are one pair; a part offering a rail several pads (a flow-through clamp) gives
+        each a-pad with the b-pad of the same footprint facing the same way, nearest it."""
+        H, W = self.H, self.W
+        m = self.m
+
+        def pads_in(cells, x):
+            rc = set((cells % (H * W)).tolist())
+            return [p for p in m.pads if p["net"] == x.name and
+                    (lambda ij: ij[0] * W + ij[1])(m.ij(p["gx"], p["gy"])) in rc]
+
+        def cells_of(cells, p):
+            r = cells % (H * W)
+            X, Y = m.cx[r % W], m.cy[r // W]
+            vx, vy = p["x2"] - p["x1"], p["y2"] - p["y1"]
+            vv = vx * vx + vy * vy
+            t = np.clip(((X - p["x1"]) * vx + (Y - p["y1"]) * vy) / vv, 0, 1) if vv > 0 else 0.0
+            d = np.hypot(X - p["x1"] - t * vx, Y - p["y1"] - t * vy)
+            return cells[d <= p["r"] + 1.5 * m.pitch]
+
+        def out(p):
+            ax, ay = p["x2"] - p["x1"], p["y2"] - p["y1"]
+            ox, oy = p["gx"] - p.get("fpx", p["gx"]), p["gy"] - p.get("fpy", p["gy"])
+            n = math.hypot(ax, ay)
+            if n < 1e-6:
+                ax, ay, n = ox, oy, math.hypot(ox, oy) or 1.0
+            elif ax * ox + ay * oy < 0:
+                ax, ay = -ax, -ay
+            return ax / n, ay / n
+
+        pa, pb = pads_in(ca, a), pads_in(cb, b)
+        if len(pa) <= 1 and len(pb) <= 1:
+            return [(ca, cb)]
+        got = []
+        for p in pa:
+            ua = out(p)
+            same = [q for q in pb if q.get("fp") == p.get("fp") and
+                    ua[0] * out(q)[0] + ua[1] * out(q)[1] > 0.7]
+            if same:
+                q = min(same, key=lambda q: math.hypot(q["gx"] - p["gx"], q["gy"] - p["gy"]))
+                if math.hypot(q["gx"] - p["gx"], q["gy"] - p["gy"]) < 3.0:
+                    ca_, cb_ = cells_of(ca, p), cells_of(cb, q)
+                    if ca_.size and cb_.size:
+                        got.append((ca_, cb_))
+        return got or [(ca, cb)]
+
+    def _choose_ends(self, a, b, ea, eb):
+        """Each hop's (from, to) pin pairs, chosen where a part offers several: fewest
+        hops whose two ends put the rails on opposite sides (a twist), then shortest.
+
+        ⚠ A CLAMP'S PINS HAVE SIDES TOO (optical U10, 2026-11-10): DP is the top row of
+        both pin pairs, west (1/3) and east (6/4). Judged as one land the clamp said
+        nothing, and with J1 on A7/B6 the twist it put in the hop to J1 went unseen. The
+        pair may use either pin pair arriving and either leaving -- through the clamp, or
+        in and back out as a stub -- and the choice is the one that needs no swap."""
+        opts = []
+        for (sa, ta), (sb, tb) in zip(ea, eb):
+            opts.append((self._pin_pairs(sa, sb, a, b), self._pin_pairs(ta, tb, a, b)))
+        # ⚠ IN AND STRAIGHT BACK OUT IS NO WAY THROUGH (optical U10, 2026-11-10): with
+        # no twist to pay, the pair came in to the clamp's west pins and was to leave by
+        # them again -- but a hop keeps clear of its own net's other copper, so the second
+        # hop had nowhere to run. Reusing a pin pair costs more than a twist (which a
+        # layer change takes for free).
+        ranked = []
+        for combo in itertools.product(*[itertools.product(o[0], o[1]) for o in opts]):
+            tw, ln = 0.0, 0.0
+            for (s_, t_) in combo:
+                s1 = self._end_side(s_[0], s_[1], a, b, 1.0) or 0
+                s2 = self._end_side(t_[0], t_[1], a, b, -1.0) or 0
+                tw += float(bool(s1 and s2 and s1 != s2))
+                (x1, y1), (x2, y2) = self._xy(np.concatenate(s_)), self._xy(np.concatenate(t_))
+                ln += math.hypot(x2 - x1, y2 - y1)
+            for (_, t_), (s_, _) in zip(combo, combo[1:]):
+                if np.intersect1d(t_[0], s_[0]).size:
+                    tw += 1.5
+            ranked.append(((tw, ln), list(combo)))
+        ranked.sort(key=lambda r_: r_[0])
+        return [c for _, c in ranked]
 
     def _dcell(self, c, cells):
         """Grid distance from one cell to the nearest of a set (cells, any layer)."""
@@ -312,40 +401,33 @@ class CoupledMixin:
         return (k * H + ii) * W + jj
 
     def _run_sides(self, runs, obs):
-        """Side of rail a on each run of the chain's centreline. obs: [(run, side)] in
-        chain order, from the pin pairs that have a way out.
+        """Side of rail a on each run of the centreline, hop by hop. obs: [(run, side,
+        hop)] from the pin pairs at each hop's ends. Between hops (at a part both touch)
+        the side may change: the pair can turn round there.
 
         ⚠ A TWIST GOES WHERE THE PAIR CHANGES LAYER (optical USB_HS, unmoved, 2026-11-10):
         DP leaves U31 on the pair's left and must reach J1's A6 on its right -- the pair
         has to cross itself somewhere, and the old router did it with a 13 mm dive. Where
         the centreline changes layer anyway the swap is free: one rail goes down, the other
         crosses over it on the layer above, then follows it down. The swap is put at the
-        first layer change between the two pins that disagree; with none there, those runs
-        are left unsided."""
+        hop's first layer change; with none, the hop is left unsided."""
         side = [0] * len(runs)
-        if not obs:
-            return side
-        cuts = []                        # (run index where the new side starts)
-        bad = []
-        for (r1, s1), (r2, s2) in zip(obs, obs[1:]):
-            if s1 == s2:
+        for hop in sorted({r_[1] for r_ in runs}):
+            idx = [j for j, r_ in enumerate(runs) if r_[1] == hop]
+            ob = [(r_, s_) for r_, s_, h_ in obs if h_ == hop]
+            if not ob:
                 continue
-            j = next((j for j in range(r1 + 1, r2 + 1)
-                      if runs[j][0] == runs[j - 1][0] and runs[j][4] != runs[j - 1][4]), None)
-            if j is None:
-                bad.append((r1, r2))
-            else:
-                cuts.append((j, s2))
-        cur, ci = obs[0][1], 0
-        cuts.sort()
-        for j in range(len(runs)):
-            while ci < len(cuts) and cuts[ci][0] <= j:
-                cur = cuts[ci][1]
-                ci += 1
-            side[j] = cur
-        for r1, r2 in bad:
-            for j in range(r1, r2 + 1):
-                side[j] = 0
+            s1, s2 = ob[0][1], ob[-1][1]
+            if s1 == s2:
+                for j in idx:
+                    side[j] = s1
+                continue
+            cut = next((j for j in idx[1:] if runs[j][0] == runs[j - 1][0]
+                        and runs[j][4] != runs[j - 1][4]), None)
+            if cut is None:
+                continue
+            for j in idx:
+                side[j] = s1 if j < cut else s2
         return side
 
     def _set_lanes(self, a, b, hops):
@@ -359,6 +441,7 @@ class CoupledMixin:
         i0, i1, j0, j1 = box
         h, w = i1 - i0, j1 - j0
         lane = {a.name: np.zeros((L, h, w), bool), b.name: np.zeros((L, h, w), bool)}
+        vlane = {a.name: np.zeros((h, w), bool), b.name: np.zeros((h, w), bool)}
         band = np.zeros((L, h, w), bool)
         yy, xx = np.mgrid[0:h, 0:w]
         # ⚠ TWO STRIPS, NOT ONE BAND (optical, 2026-11-10): with the centreline itself in
@@ -401,9 +484,9 @@ class CoupledMixin:
             s1 = self._end_side(sa, sb, a, b, 1.0) or 0
             s2 = self._end_side(ta, tb, a, b, -1.0) or 0
             if s1:
-                obs.append((first, s1))
+                obs.append((first, s1, hi))
             if s2:
-                obs.append((len(runs) - 1, s2))
+                obs.append((len(runs) - 1, s2, hi))
             lines.append((first, len(runs) - 1, ls, lt))
         rside = self._run_sides(runs, obs)
         self._lane_sides = rside
@@ -443,7 +526,7 @@ class CoupledMixin:
                 band[k] |= np.abs(d - sp / 2.0) <= 0.75 * m.pitch
                 cr = tang[0][k][ni, nj] * (xx - nj) - tang[1][k][ni, nj] * (yy - ni)
                 near_run = rid[k][ni, nj]
-                sk[k] = (np.sign(cr), d >= core, near_run)
+                sk[k] = (np.sign(cr), d >= core, near_run, d)
                 # ⚠ A SIDE IS A REGION, NOT A CELL'S SIGN (optical USB, 2026-11-10): at a
                 # turn the nearest centreline cell's direction flips on the inside, and the
                 # strip broke there. Cut the strips apart at each run's ends, then each
@@ -484,6 +567,20 @@ class CoupledMixin:
                     swap = r1 < 0 or r2 < 0 or rside[r1] != rside[r2] or rside[r1] == 0
                     for xi, x in enumerate((a, b)):
                         sgn = 1 if xi == 0 else -1
+                        if swap or k1 not in sk or not inb:
+                            vlane[x.name] |= dk
+                        else:
+                            # ⚠ A PAIR'S VIAS STAND SIDE BY SIDE (optical USB_HS, 2026-11-10):
+                            # left to choose, the first rail put its via where the mate's
+                            # strip met the disk, and its keep-out cut the mate off. An
+                            # engineer sets the two at the pair's layer change, one each
+                            # side, a via's spacing apart: each rail drops only at its own.
+                            ti, tj = float(tang[0][k1][ci, cj]), float(tang[1][k1][ci, cj])
+                            tn = math.hypot(ti, tj) or 1.0
+                            sd = rside[r1] * sgn
+                            off = self.VIA_OFF / m.pitch
+                            si, sj = ci + sd * (-tj / tn) * off, cj + sd * (ti / tn) * off
+                            vlane[x.name] |= disk(si, sj, 2.5 * m.pitch)
                         for kk in (k1, k2):
                             if swap or kk not in sk:
                                 lane[x.name][kk] |= dk
@@ -538,21 +635,24 @@ class CoupledMixin:
                     elif vor is not None:
                         z = fz & vor
                     lane[x.name][k] |= z
-            self._lanes[x.name] = (i0, j0, lane[x.name], band)
+                vlane[x.name] |= fz
+            self._lanes[x.name] = (i0, j0, lane[x.name], band, vlane[x.name])
 
     def _lane_win(self, net, win):
-        """(legal, band) of a net's lane in a route window, or None if it has none."""
+        """(legal, band, via-legal) of a net's lane in a route window, or None."""
         lanes = getattr(self, "_lanes", None)
         if not lanes or net.name not in lanes:
             return None
-        li0, lj0, lane, band = lanes[net.name]
+        li0, lj0, lane, band, vlane = lanes[net.name]
         L = self.L
         i0, i1, j0, j1 = win
         lg = np.zeros((L, i1 - i0, j1 - j0), bool)
         bd = np.zeros_like(lg)
+        vl = np.zeros((i1 - i0, j1 - j0), bool)
         a0, a1 = max(i0, li0), min(i1, li0 + lane.shape[1])
         b0, b1 = max(j0, lj0), min(j1, lj0 + lane.shape[2])
         if a1 > a0 and b1 > b0:
             lg[:, a0 - i0:a1 - i0, b0 - j0:b1 - j0] = lane[:, a0 - li0:a1 - li0, b0 - lj0:b1 - lj0]
             bd[:, a0 - i0:a1 - i0, b0 - j0:b1 - j0] = band[:, a0 - li0:a1 - li0, b0 - lj0:b1 - lj0]
-        return lg, bd
+            vl[a0 - i0:a1 - i0, b0 - j0:b1 - j0] = vlane[a0 - li0:a1 - li0, b0 - lj0:b1 - lj0]
+        return lg, bd, vl
