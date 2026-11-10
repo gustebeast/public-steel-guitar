@@ -1274,6 +1274,14 @@ class Router(CoupledMixin):
                 if got is None:
                     continue
                 sh, fl = got
+                # a lay out of the rules only by skew is tuned now if it is clear of others;
+                # in others' space it is held for _displace, which tunes it after (TUNE)
+                tuned_late = False
+                if self.TUNE and self._skew_only(fl):
+                    if sh == 0 and self._tune(a):
+                        fl = self.pair_faults(a)
+                    elif sh:
+                        tuned_late = True
                 if only and (fl or self._uncoupled(a) > u0 - self.COUPLE_GAIN_MM):
                     continue                   # to the rules already: only a closer pair is kept
                 ms = self.pair_measure(a)
@@ -1315,7 +1323,7 @@ class Router(CoupledMixin):
                         "home layers" if c[3] is None else "+" + "/".join(
                             self.m.route_layers[k] for k in sorted(c[3] - home))))
                     break
-                if not fl and all(r_[0] != sh for r_ in ruled):
+                if (not fl or tuned_late) and all(r_[0] != sh for r_ in ruled):
                     ruled.append((sh, key[2], {x: (x.paths, x.necks, x.failed, x.relaxed, x.force_layers)
                                           for x in (a, b)}, self._uncoupled(a) if couple else 0.0))
                 if key < best_key:
@@ -1353,6 +1361,24 @@ class Router(CoupledMixin):
                         a.name, b.name, ", ".join(x[0] for x in f0),
                         "; kept the one with fewest faults %s" % (best_key,) if best else "; kept as negotiated"))
             if cl_best is not None:
+                # ⚠ A CLEAN COUPLED LAY DOES NOT BEAT A CLOSER ONE THAT NEEDS ROOM (optical
+                # u10g c05, 2026-11-10): once skew tuning made a 10.5 mm-apart coupled lay
+                # clean, it won outright, and the held lay that displaced cleanly at ~4 mm --
+                # the one kept before tuning existed -- was never tried. As for a clean
+                # uncoupled lay: the held lays COUPLE_GAIN_MM closer get their displacement
+                # first, most coupled first.
+                held = sorted((r_ for r_ in ruled if r_[3] < cl_best[0] - self.COUPLE_GAIN_MM),
+                              key=lambda r_: (r_[3], r_[0], r_[1]))
+                done = next((r_ for r_ in held[:self.PAIR_DISPLACE]
+                             if self._displace(a, b, r_[2], pf)), None)
+                if done is not None:
+                    self.log("  pair %s/%s: %s -- laid coupled to the rules through %d cell(s) of "
+                             "other nets' space, which re-negotiated round it (the closest clean "
+                             "coupled lay was %.1f mm apart, this one %.1f)" % (
+                                 a.name, b.name, ", ".join(x[0] for x in f0), done[0], cl_best[0], done[3]))
+                    for x in (a, b):
+                        x.force_layers = None
+                    continue
                 for x in (a, b):
                     self._unmark(x)
                 for x in (a, b):
@@ -1372,6 +1398,187 @@ class Router(CoupledMixin):
     # round the old pair, so all were refused and the FAIL stayed. An engineer lays the
     # pair and moves the traces in its way. The best such attempt is held and the nets it
     # crosses negotiate round it; kept only if no more nets end open than before.
+    # ⚠ SKEW IS TUNED, NOT ROUTED AWAY (optical ONX03, USB at U10, 2026-11-10): with the
+    # clamp's rows across the pair's way the rails must twist round it, and every coupled lay
+    # came out ~10 mm long on one rail against an 8.3 mm budget -- no attempt met the rules,
+    # the pair was kept as negotiated with layer and via faults. An engineer lays the pair
+    # and meanders the short rail. A lay whose only fault is skew is tuned: accordion bumps
+    # on a straight stretch of the short rail, on the side clear of everything (its mate
+    # included), sized to bring the skew under the budget.
+    TUNE = True
+    TUNE_GAP = 3.0                   # meander leg spacing, in track widths
+    TUNE_AMAX = 2.5                  # bump height limit, mm
+    TUNE_AIM = 0.5                   # aim the skew this far under the budget, mm
+
+    def _where_cell(self, c):
+        H, W = self.H, self.W
+        r = c % (H * W)
+        return (round(float(self.m.cx[r % W]), 2), round(float(self.m.cy[r // W]), 2), c // (H * W))
+
+    def _covering(self, grp):
+        """Other nets whose track or via keep-out covers a cell grp's copper shares."""
+        HW = self.H * self.W
+        cells = [c for n in grp for c in self._conflicts(n) if c.size]
+        if not cells:
+            return []
+        cells = np.unique(np.concatenate(cells))
+        r2 = np.unique(cells % HW)
+        out = []
+        for o in self.nets:
+            if o in grp:
+                continue
+            if (o.n_t and np.isin(cells, o.rec_t[:o.n_t]).any()) or (o.n_v and np.isin(r2, o.rec_v[:o.n_v]).any()):
+                out.append(o)
+        return out
+
+    def _skew_only(self, fl):
+        return bool(fl) and all(f[0] == "skew" for f in fl)
+
+    def _tune(self, a):
+        """Meander the short rail of a's pair until its skew meets max_skew_mm. Lays only on
+        cells free of every other net's keep-out and fixed copper; True if the pair then
+        meets every rule (else the rail is put back)."""
+        ms = self.pair_measure(a)
+        sk = a.group.get("max_skew_mm") if a.group else None
+        if not ms or sk is None:
+            return False
+        by = {a.name: a, a.mate.name: a.mate}
+        (n_lo, v_lo), (n_hi, v_hi) = sorted(ms.items(), key=lambda kv: kv[1][0])
+        skew = v_hi[0] - v_lo[0]
+        if skew <= sk:
+            return True
+        x = by[n_lo]
+        m = self.m
+        L, H, W = self.L, self.H, self.W
+        HW = H * W
+        need_min = skew - sk + 1e-6
+        need = skew - max(sk - self.TUNE_AIM, 0.0)
+        w = x.width
+        lim = w / 2.0 + m.clear + m.margin
+        saved = (x.paths, x.necks)
+        c_before = sum(c.size for c in self._conflicts(x))
+        self._unmark(x)
+        own = set(int(c) for p in x.paths for c in p)
+
+        def free(k, i, j):
+            if not (0 <= i < H and 0 <= j < W):
+                return False
+            if m.edge[i, j] < w / 2.0 + m.edge_clear + m.margin:
+                return False
+            fd = m.d2[k, i, j] if m.n1[k, i, j] == x.id else m.d1[k, i, j]
+            if fd < lim:
+                return False
+            c = k * HW + i * W + j
+            return self.occ_t[c] == 0 and c not in own
+
+        added = 0.0
+        paths = [p.copy() for p in x.paths]
+        necks = [(x.necks[q].copy() if q < len(x.necks) else np.zeros(p.size, bool)) for q, p in enumerate(x.paths)]
+        for _ in range(4):                       # up to four meanders, longest stretches first
+            if added >= need_min:
+                break
+            stretches = []
+            for q, p in enumerate(paths):
+                if p.size < 3:
+                    continue
+                k = p // HW
+                r = p % HW
+                ii, jj = r // W, r % W
+                di, dj = np.diff(ii), np.diff(jj)
+                same = (k[1:] == k[:-1])
+                t = 0
+                while t < di.size:
+                    u = t
+                    while (u + 1 < di.size and same[u + 1] and same[t] and di[u + 1] == di[t]
+                           and dj[u + 1] == dj[t]):
+                        u += 1
+                    if same[t] and (abs(int(di[t])) + abs(int(dj[t]))) > 0:
+                        stretches.append((u - t + 1, q, t, int(di[t]), int(dj[t])))
+                    t = u + 1
+            stretches.sort(reverse=True)
+            if os.environ.get("PAIR_DEBUG"):
+                self.log("      tune %s: skew %.2f need %.2f (min %.2f), added %.2f, stretches %s" % (
+                    x.name, skew, need, need_min, added, [(s_[0], s_[1], s_[3], s_[4], int(paths[s_[1]][s_[2]] // HW)) for s_ in stretches[:8]]))
+            done = False
+            for n_st, q, t0, d_i, d_j in stretches[:12]:
+                p = paths[q]
+                step = m.pitch * math.hypot(d_i, d_j)
+                S = max(int(math.ceil(self.TUNE_GAP * w / step)),
+                        int(math.ceil((w + m.clear + m.margin) / step)) + 1)
+                nb_max = (n_st - 2 * S) // (2 * S)
+                if nb_max < 1:
+                    continue
+                k0 = int(p[t0] // HW)
+                go = need - added
+                for nb in range(1, nb_max + 1):
+                    A = int(math.ceil(go / (2.0 * nb * step)))
+                    if A * step > self.TUNE_AMAX:
+                        continue
+                    A = max(A, S)
+                    hit = None
+                    for off in range(S, n_st - 2 * S * nb - S + 1, S):
+                        s0 = t0 + off              # meander starts at path index s0
+                        r0 = int(p[s0] % HW)
+                        ci, cj = r0 // W, r0 % W
+                        rep = set(int(c) for c in p[s0:s0 + 2 * S * nb + 1])   # the stretch replaced
+                        for side in (1, -1):
+                            ni, nj = -d_j * side, d_i * side
+                            cells = []
+                            i, j = ci, cj
+                            ok = True
+                            for b in range(nb):
+                                for (si, sj, cnt) in ((ni, nj, A), (d_i, d_j, S), (-ni, -nj, A), (d_i, d_j, S)):
+                                    for _s in range(cnt):
+                                        i += si
+                                        j += sj
+                                        if (k0 * HW + i * W + j) not in rep and not free(k0, i, j):
+                                            ok = False
+                                            break
+                                        cells.append(k0 * HW + i * W + j)
+                                    if not ok:
+                                        break
+                                if not ok:
+                                    break
+                            if ok:
+                                e = s0 + 2 * S * nb      # the path cell the meander lands back on
+                                if cells and cells[-1] == int(p[e]):
+                                    hit = (s0, e, cells)
+                                    break
+                        if hit:
+                            break
+                    if hit is None:
+                        continue
+                    s0, e, cells = hit
+                    nc = np.asarray(cells[:-1], np.int64)
+                    paths[q] = np.concatenate([p[:s0 + 1], nc, p[e:]])
+                    nk = necks[q]
+                    necks[q] = np.concatenate([nk[:s0 + 1], np.zeros(nc.size, bool), nk[e:]])
+                    own.update(int(c) for c in nc)
+                    added += 2.0 * A * nb * step
+                    done = True
+                    break
+                if done:
+                    break
+            if not done:
+                break
+        x.paths, x.necks = paths, necks
+        self._mark(x)
+        fl = self.pair_faults(a)
+        clean = not fl and not any(c.size for c in self._conflicts(x))
+        if os.environ.get("PAIR_DEBUG"):
+            cf = [c for c in self._conflicts(x) if c.size]
+            self.log("      tune %s: added %.2f mm, faults %s, conflicts %d (before %d) at %s" % (
+                x.name, added, fl, sum(c.size for c in cf), c_before,
+                [self._where_cell(int(c[0])) for c in cf][:3]))
+        if not clean:
+            self._unmark(x)
+            x.paths, x.necks = saved
+            self._mark(x)
+            return False
+        self.log("  pair %s/%s: skew %.1f mm over %.1f -- %s meandered %.1f mm" % (
+            a.name, a.mate.name, skew, sk, x.name, added))
+        return True
+
     def _displace(self, a, b, state, pf):
         saved = {n: (n.paths, n.necks, n.failed) for n in self.nets}
         # ⚠ EVERY PAIR ALREADY TO THE RULES IS HELD TOO (optical C102 +0.12/+0.48,
@@ -1392,9 +1599,21 @@ class Router(CoupledMixin):
             x.paths, x.necks, x.failed, x.relaxed, x.force_layers = state[x]
             self._mark(x)
         todo = [n for n in self.nets if n not in lock and not n.failed and self._conflicts(n)]
+        # ⚠ A WIDE NET DOES NOT SEE A VIA IN ITS KEEP-OUT (optical ONX03, V24_IN by U10,
+        # 2026-11-10): the pair's via sat in V24_IN's via keep-out, but a via stamps the
+        # track grid at the reference width, so V24_IN's own cells showed no conflict and
+        # it was never re-routed -- the pair kept one shared cell and was put back. Every
+        # net whose keep-out covers a cell the pair shares is moved too.
+        todo += [o for o in self._covering([a, b]) if o not in lock and o not in todo and not o.failed]
         left, _ = self._rounds(todo, pf, 12, 600, locked=lock)
         fail1 = self._open_w(lock, left)
-        if fail1 <= fail0 and not self.pair_faults(a):
+        if self.TUNE and fail1 <= fail0 and self._skew_only(self.pair_faults(a)):
+            self._tune(a)                  # the rest moved: meander the short rail in the room left
+        # ⚠ AND THE PAIR ITSELF SHARES NOTHING (optical ONX03, 2026-11-10): the check was
+        # opens and pair rules only, so a pair still in a locked or wide net's keep-out
+        # passed with a short in it.
+        clear = not any(c.size for x in (a, b) for c in self._conflicts(x))
+        if fail1 <= fail0 and not self.pair_faults(a) and clear:
             self._rip(left)
             return True
         self.log("  pair %s/%s: re-negotiating round it left %d net(s) open (was %d) -- put back; open: %s"
