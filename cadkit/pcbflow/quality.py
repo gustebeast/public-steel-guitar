@@ -2913,6 +2913,225 @@ NOT_APPLICABLE = {      # rule -> (census key that must be true for it to apply,
 }
 
 
+# ── MANUAL RULES WITH EVIDENCE A SCRIPT CAN READ (2026-11-10) ───────────────────────────
+# ⚠ AN OPEN ITEM SHOULD BE A QUESTION ONLY A PERSON CAN ANSWER. On optical and
+# output_panel M12, M30, M37 and M42 stood OPEN on every run, and output_panel M32 too,
+# each asking for a paragraph of checks -- most of which a script already did (fab_package
+# refuses an uncoded row, measures every part's rotation, checks drill hits) or could do
+# (stock, pitch, a ground on every connector). A paragraph that is mostly done reads as
+# mostly undone, and "5 OPEN" on every board teaches everyone to read OPEN as normal.
+# Each rule below is split: the part a script can answer is answered here, every run --
+# a broken part is a FAIL like any automatic rule -- and what is left over is the OPEN
+# text, naming the exact thing a person still has to look at. With nothing left over and
+# nothing broken the rule signs itself, with its evidence.
+ORDER_MAX_AGE_DAYS = 7          # an order snapshot (order_check.py) older than this says nothing
+
+
+def _order(ctx):
+    """(order_check.py's snapshot, its age in days) or (None, None)."""
+    import datetime
+    try:
+        d = json.load(open(ctx.stem + ".order.json", encoding="utf-8"))
+        age = (datetime.date.today() - datetime.date.fromisoformat(d["checked"])).days
+        return d, age
+    except (OSError, ValueError, KeyError):
+        return None, None
+
+
+def _manifest(ctx):
+    """fab_package's manifest for this board, and whether it describes THIS board file."""
+    import hashlib
+    path = os.path.join(os.path.dirname(os.path.abspath(ctx.stem)), "fab", ctx.name + ".fab.json")
+    try:
+        man = json.load(open(path, encoding="utf-8"))
+    except (OSError, ValueError):
+        return None, False
+    sha = hashlib.sha256(open(ctx.stem + ".kicad_pcb", "rb").read()).hexdigest()
+    return man, man.get("board_sha256") == sha
+
+
+def _tokens(s):
+    return set(re.findall(r"[A-Z0-9]+", (s or "").upper()))
+
+
+def _ev_m37(ctx):
+    man, same = _manifest(ctx)
+    if man is None:
+        return [], None, "package the board (fab_package): M37 is answered by the package's own manifest"
+    if not same:
+        return [], None, ("the package in fab/ was built from a different board file -- package "
+                          "this one again")
+    bad = [k for k in ("refilled", "drc_clean", "drill_check", "gerber_check", "independent",
+                       "stackup_stated") if not man.get(k)]
+    if bad:
+        return ["package %s: %s" % (man.get("zip", "?"), ", ".join(
+            "%s failed" % k for k in bad) + ("; " + man["independent_why"] if man.get("independent_why") else ""))], None, None
+    return [], ("%s, built %s from this board file: zones refilled and DRC clean on that copy; "
+                "gerbers and drill exported together from it; drill hits = the board's holes; "
+                "an independent reader (gerbonara) finds every copper layer's pads and the outline "
+                "where the board has them; stack-up and finish in ORDER.txt"
+                % (man.get("zip"), man.get("built"))), None
+
+
+# series -> (pitch mm, amps per contact). Recognised from the footprint name.
+CONN_SERIES = [
+    (r"JST_XH|_XH_", "JST XH", 2.50, 3.0), (r"JST_EH", "JST EH", 2.50, 3.0),
+    (r"JST_PH|_PH_", "JST PH", 2.00, 2.0), (r"JST_ZH", "JST ZH", 1.50, 1.0),
+    (r"JST_GH", "JST GH", 1.25, 1.0), (r"JST_SH|_SH_", "JST SH", 1.00, 1.0),
+    (r"PicoBlade|53047|53048|53261", "Molex PicoBlade", 1.25, 1.0),
+    (r"PinHeader|PinSocket", None, None, 3.0),
+]
+
+
+def _conn_pitch(fp):
+    """Centre spacing of a connector's signal pads along its row (mm), or None."""
+    pts = [(MM(p.GetPosition().x), MM(p.GetPosition().y)) for p in fp.Pads()
+           if p.GetNumber() and re.match(r"^\d+$", p.GetNumber())]
+    if len(pts) < 2:
+        return None
+    ds = sorted(math.hypot(a[0] - b[0], a[1] - b[1]) for i, a in enumerate(pts) for b in pts[i + 1:])
+    return ds[0]
+
+
+def _ev_m32(ctx):
+    finds, ok, conns = [], [], []
+    diff = set()
+    for pr in (ctx.notes.get("diff_pairs") or []):
+        for x in (pr if isinstance(pr, (list, tuple)) else pr.get("nets", ())):
+            if isinstance(x, str):
+                diff.add(x)
+    # a path's current is shared by the contacts it names on one connector (J10.1 + J10.6
+    # carry 3.8 A between them, 1.9 A each); the most any path asks of a contact is kept
+    amps = collections.defaultdict(float)
+    for pp in (ctx.q.get("power_paths") or []):
+        for ends in ([pp.get("from")], list(pp.get("to") or [])):
+            ends = [e for e in ends if e]
+            by_ref = collections.Counter(e.split(".")[0] for e in ends)
+            for end in ends:
+                a = float(pp.get("amps", 0.0)) / by_ref[end.split(".")[0]]
+                amps[end] = max(amps[end], a)
+    for ref, fp in sorted(ctx.fps.items()):
+        if _prefix(ref) != "J":                    # JP is a solder jumper, not a connector
+            continue
+        name = fp.GetFPIDAsString().split(":")[-1]
+        nets = {p.GetNetname() for p in fp.Pads() if p.GetNetname() and not NOT_CONNECTED.search(p.GetNetname())}
+        if not nets:
+            continue
+        conns.append(ref)
+        ser = next(((n, pt, a) for rx, n, pt, a in CONN_SERIES if re.search(rx, name)), None)
+        m = re.search(r"_P(\d+(?:\.\d+)?)mm", name)
+        want = ser[1] if ser and ser[1] else (float(m.group(1)) if m else None)
+        got = _conn_pitch(fp)
+        if want and got and abs(got - want) > 0.03 and not re.search(r"USB|Audio|Jack|TerminalBlock", name):
+            finds.append("%s (%s): pads %.2f mm apart, the series is %.2f" % (ref, name, got, want))
+        elif want and got:
+            ok.append("%s %s %.2f" % (ref, ser[0] if ser and ser[0] else "pitch", got))
+        # every connector that carries a single-ended signal also carries a ground
+        se = [n for n in nets if n not in ctx.grounds and n not in ctx.power and n not in diff]
+        if se and not (nets & ctx.grounds):
+            finds.append("%s carries %s and no ground" % (ref, ", ".join(sorted(se)[:4])))
+        # contact rating against the declared current
+        rating = ser[2] if ser else None
+        if rating:
+            for p in fp.Pads():
+                a = amps.get("%s.%s" % (ref, p.GetNumber()))
+                if a and a > rating:
+                    finds.append("%s.%s carries %.2f A, the series is rated %.1f A a contact"
+                                 % (ref, p.GetNumber(), a, rating))
+    if not conns:
+        return [], "no connector", None
+    auto = "pitch measured on %s; a ground on every connector with a single-ended signal; " \
+           "declared currents inside the contact ratings" % (", ".join(ok) or "-")
+    return finds, auto, ("for %s: pad 1 against the maker's drawing from the mating face, and a "
+                         "1:1 print offered to the real connector" % ", ".join(conns))
+
+
+def _ev_order(ctx, mid):
+    d, age = _order(ctx)
+    if d is None:
+        return None, "run order_check.py on this board (the fab's catalogue, read on order day)"
+    if age > ORDER_MAX_AGE_DAYS:
+        return None, ("order_check.py's snapshot is %d days old (more than %d): run it again on "
+                      "order day" % (age, ORDER_MAX_AGE_DAYS))
+    return d, None
+
+
+def _ev_m12(ctx):
+    d, why = _ev_order(ctx, "M12")
+    if d is None:
+        return [], None, why
+    finds = []
+    for r in d["rows"]:
+        if not r.get("code"):
+            continue                    # an uncoded row is fab_package's refusal, not this one's
+        if r.get("missing"):
+            finds.append("%s (%s): code not in the fab's catalogue" % (r["code"], r["value"]))
+            continue
+        if not r.get("generic") and not (_tokens(r["value"]) <= _tokens(r.get("model"))):
+            finds.append("%s is ordered as %s, which the catalogue lists as %s"
+                         % (",".join(r["refs"][:3]), r["code"], r.get("model")))
+        if (r.get("stock") or 0) < r["need"]:
+            finds.append("%s (%s): %s in stock, %d needed for %d build(s)"
+                         % (r["code"], r["value"], r.get("stock"), r["need"], d["builds"]))
+    man, same = _manifest(ctx)
+    residual = None
+    if man is None or not same:
+        residual = "package this board (fab_package) so its rotation list and ORDER.txt exist"
+    elif man.get("rotation_unchecked"):
+        residual = ("in the fab's placement preview: %s (ROTATION-CHECK.txt 'not corrected')"
+                    % ", ".join(man["rotation_unchecked"]))
+    auto = ("%d rows read on %s: every code is the part named, in stock for %d build(s); "
+            "every placement's rotation measured against the fab's footprint; order-form "
+            "settings in ORDER.txt" % (len(d["rows"]), d["checked"], d["builds"]))
+    return finds, auto, residual
+
+
+def _ev_m30(ctx):
+    d, why = _ev_order(ctx, "M30")
+    if d is None:
+        return [], None, why
+    back = sorted(r for r, fp in ctx.fps.items() if fp.IsFlipped() and any(True for _ in fp.Pads()))
+    ext = [r["code"] for r in d["rows"] if r.get("library") == "expand"]
+    _oo = ctx.notes.get("order_options") or {}
+    mask = str(_oo.get("soldermask") or _oo.get("mask") or "green").split()[0].lower()
+    tier = "standard" if back or "green" not in mask else "economic"
+    finds = []
+    want = ctx.q.get("assembly_tier")
+    if want and want != tier:
+        finds.append("costed at the %s tier; this board needs %s (%s)" % (
+            want, tier, "parts on the back: " + ", ".join(back[:6]) if back else "mask " + mask))
+    auto = ("every row coded (fab_package refuses otherwise); %s tier (%s); %d extended part "
+            "line(s) at the fab's extra fee" % (tier, "parts on the back" if back else
+                                                 "all parts on top, %s mask" % mask, len(ext)))
+    return finds, auto, ("on the order page: every row shows a selected part and none quantity 0, "
+                         "no option carried over from the previous board, and the %s tier quoted"
+                         % tier)
+
+
+def _ev_m42(ctx):
+    d, why = _ev_order(ctx, "M42")
+    if d is None:
+        return [], None, why
+    finds = []
+    for r in d["rows"]:
+        if r.get("code") and r.get("buyable") is False:
+            finds.append("%s %s: the fab no longer sells it (%s)"
+                         % (r["code"], r["value"], r.get("no_buy") or "not buyable"))
+    alts = ctx.q.get("alternates") or {}
+    named = [r for r in d["rows"] if r.get("code") and not r.get("generic")]
+    missing = [r["value"] for r in named if r["value"] not in alts and r["code"] not in alts]
+    auto = "%d distinct codes; every one sold by the fab today" % len({r["code"] for r in d["rows"] if r.get("code")})
+    residual = None
+    if missing:
+        residual = ("the maker's lifecycle status, and a named alternate or 'none' in "
+                    "quality.alternates, for: %s" % ", ".join(sorted(set(missing))[:12])
+                    + (" (+%d more)" % (len(set(missing)) - 12) if len(set(missing)) > 12 else ""))
+    return finds, auto, residual
+
+
+EVIDENCE = {"M12": _ev_m12, "M30": _ev_m30, "M32": _ev_m32, "M37": _ev_m37, "M42": _ev_m42}
+
+
 def doc_rules():
     """({A id: title}, [(M id, title, text)]) parsed from PCB_QUALITY.md."""
     auto, manual = {}, []
@@ -2985,6 +3204,44 @@ def run(stem, verbose=True, brief=False):
             results.append({"rule": mid, "subject": title, "status": "n/a", "text": why})
             if not brief:
                 say("  n/a  %-4s %s -- %s" % (mid, title, why))
+            continue
+        if mid in EVIDENCE:
+            try:
+                finds, auto_txt, residual = EVIDENCE[mid](ctx)
+            except Exception as exc:                 # a check that breaks is a finding
+                finds, auto_txt, residual = ["the check itself failed: %r" % (exc,)], None, text
+            nf = 0
+            for f in finds:
+                why = ctx.waived(mid, f.split(" ")[0])
+                st = "WAIVED" if why else "FAIL"
+                results.append({"rule": mid, "subject": title, "status": st,
+                                "text": f + ("  [waived: %s]" % why if why else "")})
+                if why:
+                    waived += 1
+                else:
+                    nf += 1
+                say("        %-6s %s %s" % (st, mid, f))
+            fails += nf
+            if nf:
+                say("  FAIL %-4s %s -- %d finding(s)" % (mid, title, nf))
+            if residual is None and not nf:
+                results.append({"rule": mid, "subject": title, "status": "signed",
+                                "text": (note + " | " if note else "") + "auto: " + (auto_txt or "")})
+                say("  ok   %-4s %s -- auto: %s" % (mid, title, auto_txt))
+                continue
+            if note:
+                results.append({"rule": mid, "subject": title, "status": "signed",
+                                "text": note + (" | auto: " + auto_txt if auto_txt else "")})
+                say("  ok   %-4s %s -- %s" % (mid, title, note))
+                continue
+            if residual is None:                     # broken: the FAIL says it; no OPEN as well
+                continue
+            opens += 1
+            results.append({"rule": mid, "subject": title, "status": "OPEN", "text": residual})
+            say("  OPEN %-4s %s" % (mid, title))
+            say("        left for a person: %s" % residual)
+            if auto_txt and not brief:
+                say("        done by the pass: %s" % auto_txt)
             continue
         results.append({"rule": mid, "subject": title, "status": "signed" if note else "OPEN",
                         "text": note or text})
