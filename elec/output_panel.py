@@ -4103,17 +4103,21 @@ if REV != 1 and os.environ.get("OP_LAYERS"):
 # _COUPLED is un-frozen and declared; one the router cannot lay goes back to its frozen
 # copper by leaving this list. HUB_DN1 (hand-drawn, 9 mm) and HUB_DN4 (full speed, to the
 # CH340C) stay as they are.
-# ⚠ ONLY HUB_DN3 IS THE ROUTER'S (router alone, cadkit d4e889d): HUB_DN3 alone came out
-# 1.3 / 2.0 mm uncoupled, 0 faults. Each of THRU, PI, HUB_UP and HUB_DN2 added to it failed
-# its coupled lay ("no way in its lane") and came out worse than its frozen copper (THRU
-# 26 / 29 with a layer fault, PI 12.7 / 12.2, HUB_UP 23 / 26, HUB_DN2 54 / 93 with skew),
-# and three of the four undid HUB_DN3's coupling too. The four end on a USB-C at 90 / 270
-# deg: the pad merge below leaves each rail's exit on a fixed side, and the router does
-# not yet read a rail's side from where its fixed copper leaves the socket -- with no
-# outward line there, the lane split put DP across DM's exit. Router work, then this list.
+# ⚠ HUB_DN3 AND PI ONLY (2026-11-10, measured uncoupled DP / DM against the frozen copper).
+#   HUB_DN3: the coupled router, 4.4 / 0.2 mm (frozen 22.1 / 22.5).
+#   PI: layout._diff_pairs lays it as a pair once the A6 / A7 pin-down is gone -- a coupled
+#     In2 run at the inner layer's 0.74 mm pitch, 2.6 / 1.3 mm (frozen 7.3 / 6.6). With
+#     A6 / A7 named, DM's merge loop boxed A6 in and no pair could reach it; B6 can be.
+#   Left frozen, each worse when un-frozen (router alone):
+#   - HUB_UP: no coupled lay found (32 / 33 against 2.4 / 5.6).
+#   - THRU: placement. D2 and D3 (ESD, one per line) stand 2 mm apart along the pair, so
+#     the outer rail must pass the inner rail's diode to reach its own; the chain names
+#     them "D2|D3" for when they stand across the pair.
+#   - HUB_DN2: no pair-wide corridor out of U4 on two layers (the line changed layer five
+#     times against a budget of two vias).
 _COUPLED_CHAIN = {"HUB_UP": ["U4", "J3"], "HUB_DN2": ["U4", "J4"], "HUB_DN3": ["U4", "U14"],
-                  "THRU": ["U14", "J1"], "PI": ["U14", "J2"]}
-_COUPLED = [_c for _c in (os.environ.get("OP_COUPLED", "HUB_DN3").split(","))
+                  "THRU": ["U14", "D2|D3", "J1"], "PI": ["U14", "J2"]}
+_COUPLED = [_c for _c in (os.environ.get("OP_COUPLED", "HUB_DN3,PI").split(","))
             if _c] if REV != 1 else []
 if _COUPLED:
     _cn = {_c + _s for _c in _COUPLED for _s in ("_DP", "_DM")}
@@ -4138,8 +4142,7 @@ if _COUPLED:
     BOARD_NOTES["vias"] = [_v for _v in BOARD_NOTES["vias"] if _v[0] not in _cn]
     BOARD_NOTES["frozen_nets"] = [_n for _n in BOARD_NOTES["frozen_nets"] if _n not in _cn]
     BOARD_NOTES["diff_pairs"] = list(BOARD_NOTES.get("diff_pairs", [])) + [
-        dict(nets=[_c + "_DP", _c + "_DM"], chain=_COUPLED_CHAIN[_c], gap=0.2, width=0.2,
-             **({"pads": {_r: ["A6", "A7"] for _r in _COUPLED_CHAIN[_c] if _r.startswith("J")}}))
+        dict(nets=[_c + "_DP", _c + "_DM"], chain=_COUPLED_CHAIN[_c], gap=0.2, width=0.2)
         for _c in _COUPLED]
 
 
