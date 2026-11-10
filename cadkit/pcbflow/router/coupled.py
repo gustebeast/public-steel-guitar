@@ -399,9 +399,16 @@ class CoupledMixin:
         return None if abs(cr) < 1e-6 else (1 if cr > 0 else -1)
 
     def _multi(self, cells, x):
-        """True when a land holds more than one pad of its net (a USB-C's merged rows)."""
+        """True when a land holds more than one pad of its net (a USB-C's merged rows).
+
+        ⚠ THE LAND IS THE WHOLE PIECE, MERGE COPPER INCLUDED (output_panel THRU at J1,
+        2026-11-10): the end cells are one pad's -- A6 -- and A6 alone is one pad, so the
+        exit rule never ran; read by A6 / A7, DP sat south of DM, though DM's loop boxes
+        A6 in and DP leaves from B6, north. The run to J1 went unsided and DP's lane led
+        to the side it cannot leave by."""
         H, W = self.H, self.W
-        rc = set((cells % (H * W)).tolist())
+        pc = [q for q in x.pieces if np.isin(q, cells).any()]
+        rc = set((np.concatenate([cells] + pc) % (H * W)).tolist())
         n = 0
         for p in self.m.pads:
             if p["net"] == x.name:
@@ -431,6 +438,12 @@ class CoupledMixin:
         wall = (distance_transform_edt(~mate) * m.pitch < gap) if mate.any() else np.zeros_like(mate)
         wall &= ~own
         si, sj = ei - i0, ej - j0
+        # ⚠ THE LINE ENDS INSIDE THE MATE'S WALL (output_panel THRU at J1, 2026-11-10): the
+        # centreline stops beside DM's merge loop, and DP's search, walled at its first
+        # step, found no way out. A rail may leave the end through the wall -- never over
+        # the mate's land -- within a clearance of it.
+        yy, xx = np.mgrid[0:h, 0:w]
+        wall &= ~((np.hypot(yy - si, xx - sj) * m.pitch <= gap + 2 * m.pitch) & ~mate)
         seen = np.zeros((h, w), bool)
         seen[si, sj] = True
         front = [(si, sj)]
@@ -469,8 +482,10 @@ class CoupledMixin:
         def whole(cells, x):
             pc = [q for q in x.pieces if np.isin(q, cells).any()]
             return np.concatenate([cells] + pc) if pc else cells
-        xa = self._exit(ca, whole(cb, b), a, b, end)
-        xb = self._exit(cb, whole(ca, a), b, a, end)
+        # ...and a rail's own land is whole too: A6 boxed in, DP leaves by B6 (output_panel
+        # THRU at J1, 2026-11-10)
+        xa = self._exit(whole(ca, a), whole(cb, b), a, b, end)
+        xb = self._exit(whole(cb, b), whole(ca, a), b, a, end)
         if xa is None or xb is None:
             return None
         dx, dy = (xa[0] - xb[0]) / 2.0, (xa[1] - xb[1]) / 2.0
