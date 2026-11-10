@@ -31,6 +31,7 @@ class CoupledMixin:
     COUPLE = True              # the pair finish lays declared diff pairs coupled
     COUPLE_MIN_MM = 2.0        # a pair to the rules but this far apart is re-laid coupled
     COUPLE_GAIN_MM = 1.0       # ...and the coupled lay is kept only this much closer
+    COUPLE_BEST = True         # every coupled attempt is laid; the clean one least apart wins
     COUPLE_END_MM = 1.2        # within this of its own lands a rail fans out: not judged
     LANE_TOL = 0.15            # a rail's lane: its offset of the centreline, +- this
     LANE_FAN = 0.8             # free room round each land beyond the centreline's start
