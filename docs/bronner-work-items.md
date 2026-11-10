@@ -1,5 +1,45 @@
 # bronner — open work items (2026-09-30)
 
+## 2026-11-09: OWN ROUTER IS THE DEFAULT; R2 KEPT BOARDS RE-ROUTED; PLACEMENT TOOLING
+
+- **Own router default** (cadkit d5d8697). 15 of 15 boards signed off on the full chain
+  before the flip. `PCBFLOW_ROUTER=freerouting` still selects route.py.
+- **R2 kept boards re-routed on the own router**, merged, full build green: optical
+  (2673b14c) and output_panel (6fc2d523). Each was a fresh finish (0 unconnected, 0
+  violations, 0 FAIL), then a `--keep-route` re-finish, and that board is the one kept.
+  Boards outside elec/kept commit no copper (geom.json is outline, parts and silk), so
+  pi_cap and motor_ctrl had nothing to submit. fret_led_key is R1 and stays locked.
+- **Router fixes since** (each checked router-alone on 15/15 boards, 0 failed, 0 geomcheck
+  shortfalls, and on a full optical finish):
+
+| cadkit | fix |
+|---|---|
+| c451272 | priority repair: a net still sharing when negotiation stops is re-routed first, in each order, before rip-out (a USB_DP/DM via-site deadlock beside J1) |
+| 1f90fab | pour-island re-join re-routes only the cut-off piece (the whole-net re-route moved a good +3V3D join onto locked ULPI_D5/D6) |
+| 7fc5a3b | islands judged by the zone's own clearance and width (optical 0.5 / 0.25, not 0.127 / 0.2) |
+| 5c9a084 | no via when a join arrives on the pour's own layer; claimed via sites closed to later joins (drills overlapped 0.05 mm); islands re-joined one piece at a time |
+
+- **OPEN, optical +3V3D at U6 (124.5, 162.3).** The cut-off piece's only way back crosses
+  ULPI_CK/STP, a locked match group, so close_last closes it (6 closures, A23 ok). The
+  levers are placement round U6 or letting the pour re-join from the other side.
+- **OPEN, USB pair via pocket near J1.** One bare-board placement variant (10 resistors
+  moved) still deadlocks D+ against D- on the one via site. The same placement routed clean
+  through the real chain (layout.py + nudge), so it does not block anything shipped.
+- **Placement tooling (scratch, not committed).** Findings:
+  - Cheap global scores (rat crossings, wirelength, pin crowding) do not predict which
+    placements fail.
+  - A 1-round router proxy (about 25 s) does flag the breaking moves: 0 false alarms on
+    23 placements.
+  - k-round proxies do NOT rank improvements on a board that closes. A 3-round "gain"
+    (58.6 to 51.5) was not a faster full route.
+  - Every placement failure seen came from an illegal move. The real chain's own gates
+    (layout's stitch / pour checks) catch them before routing.
+  - The optimiser runs through layout.py with `PCBFLOW_NUDGE`, so declared copper is
+    redrawn and illegal moves are refused, and it has a full-route repair mode. It is
+    worth using when a board does not close, not for polishing boards that do.
+  - Gotcha: pcbnew's `board.Save` writes a default .kicad_pro beside the board (clearance
+    0.2, edge 0.5). Copy the real one back.
+
 ## 2026-11-06 SEED 53: HOW FRAGILE A FULL REROUTE IS
 
 The committed / kept layouts ship. These numbers only measure how fragile a full reroute is;
