@@ -630,6 +630,94 @@ def astar_turn_s_h(cell, via_cell, src_idx, tgt, L, h, w, via_cost, tb, hmap, di
     return np.array(out, np.int64)
 
 
+
+# ⚠ THE HEURISTIC MAP'S DISTANCE TRANSFORM, COMPILED (2026-11-10): scipy's
+# distance_transform_edt for each search's hmap was 18.6 s of a 45 s output_panel route --
+# half of what the searches cost. This is the exact squared transform (a row sweep, then
+# Felzenszwalb-Huttenlocher's lower envelope down each column) with the same sqrt and the
+# same float32 cast: bit-identical to scipy on 600 masks, 3x faster.
+@njit(cache=True)
+def _dt1(f, n, d, v, z):
+    """Felzenszwalb & Huttenlocher's 1-D squared distance transform of f (f[q] >= 1e20 is
+    no sample): d[q] = min over samples p of (q - p)^2 + f[p]. The envelope is built from
+    the finite samples only, so no intersection is ever taken between two infinities."""
+    k = -1
+    for q in range(n):
+        if f[q] >= 1e20:
+            continue
+        if k < 0:
+            k = 0
+            v[0] = q
+            z[0] = -1e30
+            z[1] = 1e30
+            continue
+        while True:
+            p = v[k]
+            s = ((f[q] + q * q) - (f[p] + p * p)) / (2.0 * q - 2.0 * p)
+            if s <= z[k]:
+                k -= 1
+                if k < 0:
+                    break
+            else:
+                break
+        if k < 0:
+            k = 0
+            v[0] = q
+            z[0] = -1e30
+            z[1] = 1e30
+            continue
+        k += 1
+        v[k] = q
+        z[k] = s
+        z[k + 1] = 1e30
+    if k < 0:
+        for q in range(n):
+            d[q] = 1e20
+        return
+    k = 0
+    for q in range(n):
+        while z[k + 1] < q:
+            k += 1
+        p = v[k]
+        d[q] = (q - p) * (q - p) + f[p]
+
+
+@njit(cache=True)
+def edt_to(t2):
+    """float32 distance from each cell to the nearest True of t2 (cells), as scipy's
+    distance_transform_edt(~t2).astype(float32)."""
+    h, w = t2.shape
+    INF = 1e20
+    g = np.empty((h, w), np.float64)
+    BIG = h + w + 1
+    for i in range(h):                       # rows: distance to the nearest target, squared
+        last = -BIG
+        for j in range(w):
+            if t2[i, j]:
+                last = j
+            g[i, j] = j - last
+        last = w + BIG
+        for j in range(w - 1, -1, -1):
+            if t2[i, j]:
+                last = j
+            dj = last - j
+            if dj < g[i, j]:
+                g[i, j] = dj
+        for j in range(w):
+            x = g[i, j]
+            g[i, j] = INF if x > w else x * x
+    n = h
+    f = np.empty(n, np.float64); d = np.empty(n, np.float64)
+    v = np.empty(n, np.int64); z = np.empty(n + 1, np.float64)
+    out = np.empty((h, w), np.float32)
+    for j in range(w):                       # columns: the lower envelope of parabolas
+        for i in range(h):
+            f[i] = g[i, j]
+        _dt1(f, h, d, v, z)
+        for i in range(h):
+            out[i, j] = np.float32(np.sqrt(d[i]))
+    return out
+
 class Buffers:
     """The search's g / parent / stamp arrays, kept between calls and grown on demand.
     A call stamps base = 2 * generation; before the int32 stamp would overflow, wipe."""

@@ -20,6 +20,25 @@ from .coupled import CoupledMixin
 W_REF = 0.2          # the narrowest track: a wide net's necked width at its lands
 
 
+def _dilate_disk(a, rr):
+    """binary_dilation(a, disk of radius rr cells), exactly: a cell is set iff a set cell
+    lies within rr of it -- one distance transform over the set cells' box grown by rr.
+
+    ⚠ scipy's binary_dilation by the disk was 12.5 s of a 72 s optical route (2026-11-10):
+    each hop of a multi-leg net bans the net's other copper, grown by a track and a
+    clearance, over the whole window, layer by layer. Same cells (checked on 300 masks),
+    a fifth of the time."""
+    out = np.zeros_like(a)
+    if not a.any():
+        return out
+    from scipy.ndimage import distance_transform_edt
+    ti, tj = np.nonzero(a)
+    a0, a1 = max(0, ti.min() - rr), min(a.shape[0], ti.max() + rr + 1)
+    b0, b1 = max(0, tj.min() - rr), min(a.shape[1], tj.max() + rr + 1)
+    out[a0:a1, b0:b1] = distance_transform_edt(~a[a0:a1, b0:b1]) <= rr
+    return out
+
+
 class Net:
     def __init__(self, name, nid, width):
         self.name, self.id, self.width = name, nid, width
@@ -411,7 +430,7 @@ class Router(CoupledMixin):
             # straight-line distance to the nearest target cell, in cells (search.py)
             from scipy.ndimage import distance_transform_edt
             t2 = tgt.reshape(L, h * w).any(axis=0).reshape(h, w)
-            hmap = distance_transform_edt(~t2).astype(np.float32).ravel()
+            hmap = (S.edt_to(t2) if t2.any() else distance_transform_edt(~t2).astype(np.float32)).ravel()
             if turn:
                 g, par, st, base = bufs.take(L * h * w * 9)
                 return S.astar_turn_s_h(cellf, vcellf, src_idx, tgt, L, h, w, vc, tb, hmap,
@@ -620,10 +639,23 @@ class Router(CoupledMixin):
         vlegal &= ~m.via_ban[i0:i1, j0:j1]
         ve = getattr(net, "via_erode", 0.0)     # a pair's centreline: room for both vias
         if ve > 0 and vlegal.any():
-            from scipy.ndimage import binary_erosion
+            # ⚠ ERODED ONCE PER WINDOW, BY DISTANCE (optical, 2026-11-10): scipy's
+            # binary_erosion by the disk was 12.7 s of an 82 s route, the same centreline
+            # window eroded again for every slack, order and via price the finish tries.
+            # The mask comes from fixed copper, the edge and the via bans only -- none
+            # change during a route -- so it is kept per (owner, window, radius). A cell
+            # survives a disk erosion iff the nearest blocked cell (outside the window
+            # counts as blocked, scipy's border) is further than the radius: one distance
+            # transform, identical to the erosion (checked on 450 masks).
+            from scipy.ndimage import distance_transform_edt
             rr_ = int(math.ceil(ve / m.pitch))
-            yy_, xx_ = np.mgrid[-rr_:rr_ + 1, -rr_:rr_ + 1]
-            vlegal = binary_erosion(vlegal, structure=(yy_ * yy_ + xx_ * xx_) <= rr_ * rr_)
+            key = (tuple(sorted(own_ids)) if own_ids else nid, i0, i1, j0, j1, rr_)
+            cache = self.__dict__.setdefault("_erode_cache", {})
+            if key not in cache:
+                pad = np.zeros((h + 2, w + 2), bool)
+                pad[1:-1, 1:-1] = vlegal
+                cache[key] = distance_transform_edt(pad)[1:-1, 1:-1] > rr_
+            vlegal = cache[key]
         occ =self.occ_t.reshape(L, H, W)[sl].astype(np.float32)
         if net.width > self.wref + 1e-6:
             from scipy.ndimage import maximum_filter
@@ -894,8 +926,7 @@ class Router(CoupledMixin):
                 other |= done
                 other &= ~ends
                 o3 = other.reshape(L, h, w)
-                ban = np.stack([binary_dilation(o3[k], disk) if o3[k].any() else o3[k]
-                                for k in range(L)]).ravel() & ~ends
+                ban = np.stack([_dilate_disk(o3[k], rr) for k in range(L)]).ravel() & ~ends
                 cl = np.where(ban, np.inf, cellf).astype(np.float32)
                 vl = np.where(ban.reshape(L, h, w).any(axis=0), np.inf, vcell).astype(np.float32)
                 for p_ in (a_l, b_l):
