@@ -92,6 +92,7 @@ _FINISH = [(re.compile(rx), finish) for rx, finish in _motor_rules() + (
     (r"^pi4_(shells|lids|sd)$", "steel"),            # the Pi's parts (src/pi4b.py GROUPS)
     (r"^pi4_pins$", "gold"),
     (r"^pi4_(black|ffc|usb3|card)$", "nylon"),
+    (r"^pi_riser$", "nylon"),                     # Adafruit 4079 socket riser: black housing
     (r"^pi4_passives$", "painted"),
     (r"(^|_)pcb(_[a-z]+)?$|_board_(top|bottom)$|^(motor_ctrl|output_panel|pi_cap|pi4)$", "board"),
 )]
