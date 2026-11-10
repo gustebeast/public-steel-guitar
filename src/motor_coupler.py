@@ -153,7 +153,9 @@ def _section(y0: float, y1: float, ear: bool, bore: str) -> cq.Workplane:
         pts += [(EAR_X[1], -SPOT_Z), (math.sqrt(R * R - SPOT_Z ** 2), -SPOT_Z)]  # the spot face's
         s = _round_y_edges(s, pts)
         pts = []
-    rb = D_BORE_R if bore == "d" else SOCKET_D / 2
+    rb = D_BORE_R if bore == "d" else FORM_MINOR_C / 2 - 0.3   # the socket: inside its ridges (on
+                                                            # them, the thread cut silently fails) -- the
+                                                            # thread cutter opens the grooves
     hole = wp.circle(rb).extrude(L)
     if bore == "d":
         hole = hole.cut(box_at(2 * rb + 2, L + 2, rb, y=(y0 + y1) / 2, z=D_FLAT_Z + rb / 2))
@@ -186,10 +188,10 @@ def coupler(c1: float = CPL_X[1], boss_l: float = 0.0) -> cq.Workplane:
     eared = _section(EAR_Y0, CPL_GRIP, True, "d").union(_section(CPL_GRIP, c1, True, "socket"))
     out = out.union(eared.intersect(cone.union(held)))
     if boss_l:
-        boss = cyl_y(RACE_IN_D, boss_l + 0.01, y0=c1 - 0.01)
+        boss = cyl_y(RACE_IN_D, boss_l + 0.01, y0=c1 - 0.01).cut(
+            cyl_y(FORM_MINOR_C - 0.6, boss_l + 2.0, y0=c1 - 1.0))
         out = out.union(boss.cut(box_at(SLIT_W, boss_l + 2, RACE_IN_D, y=c1 + boss_l / 2,
                                         z=-RACE_IN_D / 2)))
-    out = out.cut(_thread_socket(CPL_GRIP, end))                      # the formed thread
     # the clamp: the M3's clearance through the +x jaw and the lip, the insert's pocket in from -x
     yc = clamp_y(c1)
     up = (0.0, 1.0, 0.0)
@@ -198,9 +200,26 @@ def coupler(c1: float = CPL_X[1], boss_l: float = 0.0) -> cq.Workplane:
                                 axis_dir=(1, 0, 0), print_up=up))
     out = out.cut(teardrop_hole(CLAMP_HEAD[0] + 0.8, 10.0, axis_point=(EAR_X[1], yc, -CLAMP_Z),
                                 axis_dir=(1, 0, 0), print_up=up))       # the head's seat
-    return out.cut(teardrop_hole(INSERT_POCKET_D, INS_X0 - EAR_X[0] + 1.0,
-                                 axis_point=(EAR_X[0] - 1.0, yc, -CLAMP_Z),
-                                 axis_dir=(1, 0, 0), print_up=up))
+    out = out.cut(teardrop_hole(INSERT_POCKET_D, INS_X0 - EAR_X[0] + 1.0,
+                                axis_point=(EAR_X[0] - 1.0, yc, -CLAMP_Z),
+                                axis_dir=(1, 0, 0), print_up=up))
+    # THE FORMED THREAD, last and UNCLEANED (as components.screw_pulley): a cleaned cut leaves an
+    # invalid solid that drops the ridges (2026-11-10: it printed a smooth bore)
+    out = out.cut(_thread_socket(CPL_GRIP, end), clean=False)
+    ridge = _ridge_check(out.val(), CPL_GRIP + 0.5, end)
+    assert out.val().isValid() and 0.05 < ridge < 0.6, (
+        f"the formed thread failed: valid {out.val().isValid()}, ridge fill {ridge:.0%}")
+    return out
+
+
+def _ridge_check(solid, y0: float, y1: float) -> float:
+    """How much of the ring between the ridges' tips and the screw's crest (Ø FORM_MINOR_C .. Ø8)
+    holds material over y0..y1: the ridges' share, ~0.2 for these 45 deg ridges. ~0 = a smooth bore
+    at the groove Ø, ~1 = a smooth bore at the ridges' Ø (both seen 2026-11-10: the cut no-ops)."""
+    crest = cq.Solid.makeCylinder(D.SCREW_OD / 2, y1 - y0, cq.Vector(0, y0, 0), cq.Vector(0, 1, 0))
+    core = cq.Solid.makeCylinder(FORM_MINOR_C / 2, y1 - y0, cq.Vector(0, y0, 0), cq.Vector(0, 1, 0))
+    ring = crest.cut(core)
+    return solid.intersect(ring).Volume() / ring.Volume()
 
 
 def clamp_parts(c1: float = CPL_X[1]):
