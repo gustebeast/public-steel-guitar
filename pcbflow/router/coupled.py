@@ -123,6 +123,87 @@ class CoupledMixin:
                 tot += float(st[judge & ~ok].sum())
         return tot
 
+    # ----------------------------------------------------------------- the fallback
+    # ⚠ A WORSE LAY DOES NOT REPLACE COPPER THAT WORKED (output_panel THRU, 2026-11-10):
+    # THRU was declared coupled and its frozen R1 copper lifted; every coupled try broke
+    # the via budget round U14, and the pair was "kept as negotiated" -- 61 / 43 mm apart
+    # against the frozen copper's 22.6 / 26.5. A pair spec may carry the copper it had
+    # (spec["fallback"] = {"tracks": [[net, layer, width, [[x, y], ...]], ...],
+    # "vias": [[net, x, y, drill, dia], ...]}, board millimetres as notes["tracks"]). After
+    # the finish each such pair is judged against it -- open, then rule faults, then mm
+    # uncoupled -- and a pair its fallback beats is listed in self.fallback_wins.
+    #
+    # ⚠ JUDGED HERE, LAID BY A SECOND ROUTE (ownroute.py). Laid into the finished board
+    # and re-negotiated round, THRU's copper met GND stitch vias layout had put where it
+    # used to run (fixed copper: nothing moves it) and 57 nets ended open. The board the
+    # fallback belongs to is the one laid out with it: ownroute freezes the pair, runs
+    # layout again, and routes the rest round it.
+    FALLBACK = True
+    SHEET_ORIGIN = (100.0, 100.0)    # layout.py: board mm (centre origin, +Y up) -> sheet mm
+
+    def _fallback_paths(self, a, b, spec):
+        """{net name: [grid paths]} tracing spec["fallback"], or None when it names a layer
+        the router does not route or leaves a rail without copper."""
+        m = self.m
+        H, W = self.H, self.W
+        fb = spec.get("fallback") or {}
+        ox, oy = self.SHEET_ORIGIN
+        lid = {n_: k for k, n_ in enumerate(m.route_layers)}
+        paths = {a.name: [], b.name: []}
+        for net, layer, width, pts in fb.get("tracks", ()):
+            if net not in paths:
+                continue
+            if layer not in lid:
+                return None
+            k = lid[layer]
+            for (x1, y1), (x2, y2) in zip(pts, pts[1:]):
+                (i1, j1), (i2, j2) = m.ij(ox + x1, oy - y1), m.ij(ox + x2, oy - y2)
+                n = max(abs(i2 - i1), abs(j2 - j1)) + 1
+                ii = np.clip(np.rint(np.linspace(i1, i2, n)).astype(np.int64), 0, H - 1)
+                jj = np.clip(np.rint(np.linspace(j1, j2, n)).astype(np.int64), 0, W - 1)
+                paths[net].append((k * H + ii) * W + jj)
+        for v in fb.get("vias", ()):
+            if v[0] in paths:
+                i, j = m.ij(ox + v[1], oy - v[2])
+                paths[v[0]].append(np.array([i * W + j, ((self.L - 1) * H + i) * W + j], np.int64))
+        if not paths[a.name] or not paths[b.name]:
+            return None
+        return paths
+
+    def _pair_key(self, a):
+        """How good a pair is as laid: (open, rule faults, mm uncoupled), less is better."""
+        if a.failed or a.mate.failed:
+            return (1, 0, 0.0)
+        return (0, len(self.pair_faults(a)), round(self._uncoupled(a), 1))
+
+    def _fallback_pairs(self):
+        self.fallback_wins = []
+        if not self.FALLBACK:
+            return
+        for a in list(self.nets):
+            b = a.mate
+            if b is None or a.partner is not None or a.group is None:
+                continue
+            spec = self._pair_spec(a)
+            if not spec or not spec.get("fallback"):
+                continue
+            fp = self._fallback_paths(a, b, spec)
+            if fp is None:
+                self.log("  pair %s/%s: fallback copper not on a routed layer -- not judged" % (a.name, b.name))
+                continue
+            k0 = self._pair_key(a)
+            keep = {x: (x.paths, x.failed) for x in (a, b)}
+            for x in (a, b):
+                x.paths, x.failed = fp[x.name], False
+            k1 = self._pair_key(a)
+            for x in (a, b):
+                x.paths, x.failed = keep[x]
+            win = k1 < k0
+            if win:
+                self.fallback_wins.append(list(spec["nets"]))
+            self.log("  pair %s/%s: as laid %s, its fallback copper %s -- %s" % (
+                a.name, b.name, k0, k1, "FALLBACK WINS" if win else "kept as laid"))
+
     # ----------------------------------------------------------------- the centreline
     def _pair_ends(self, x):
         if x.legs:

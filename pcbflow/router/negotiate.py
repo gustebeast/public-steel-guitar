@@ -2012,6 +2012,7 @@ class Router(CoupledMixin):
                 pickle.dump({"pf": pf, "nets": {n.name: (n.paths, n.necks, n.failed, n.relaxed)
                                                 for n in self.nets}}, fh)
         self._finish_pairs()
+        self._fallback_pairs()
         self._pour_islands()
         return [n for n in self.nets if n.failed]
 
