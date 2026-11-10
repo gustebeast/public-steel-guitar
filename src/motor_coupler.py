@@ -157,12 +157,12 @@ def _round_y_edges(w: cq.Workplane, pts, r: float = CORNER_R) -> cq.Workplane:
     return cq.Workplane("XY").add(w.val().fillet(r, sel))
 
 
-D_CLR_TIGHT = 0.15                                  # the TIGHT trial (user, 2026-11-10: "with this
-                                                    # slit ... we can get away with a tighter fit"):
-                                                    # half HOLE_SHRINK a side; the clamp opens it
+D_CLR = 0.15                                        # the D over the shaft, a side: the TIGHT trial
+                                                    # WON against HOLE_SHRINK's 0.30 (user,
+                                                    # 2026-11-10) -- the slit lets it open to go on
 
 
-def _d_bore(wp, L: float, y0: float, y1: float, clr: float = HOLE_SHRINK):
+def _d_bore(wp, L: float, y0: float, y1: float, clr: float = D_CLR):
     """The motor's D bore in a prism's sketch plane `wp`, `clr` over the shaft a side, and its two
     corners (to round)."""
     rb = D.MOTOR_SHAFT_D / 2 + clr
@@ -196,7 +196,7 @@ def _eared_prism(y0: float, y1: float) -> cq.Workplane:
     return _round_y_edges(s, pts)
 
 
-def coupler(c1: float = CPL_X[1], boss_l: float = 0.0, d_clr: float = HOLE_SHRINK) -> cq.Workplane:
+def coupler(c1: float = CPL_X[1], boss_l: float = 0.0, d_clr: float = D_CLR) -> cq.Workplane:
     """The coupler in the motor's frame, to y = c1 (+ a boss_l long inner-race boss).
     BUILT SIMPLY (user, 2026-11-10), no rounding for now:
       1. a plain Ø18 cylinder;
