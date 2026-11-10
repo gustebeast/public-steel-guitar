@@ -208,6 +208,12 @@ def coupler(c1: float = CPL_X[1], boss_l: float = 0.0) -> cq.Workplane:
     relief = zone.cut(_section(CPL_GRIP - 1.0, c1 + 1.0, True, "d"))
     eared = _section(EAR_Y0, CPL_GRIP, True, "d").union(
         _section(CPL_GRIP, c1, True, "socket").cut(relief))
+    # ...and inside the cone's reach, never over the round's rounded slit corners at its rim
+    # (that printed as ledges where the ear starts, user 2026-11-10): carry that relief up too
+    zr = _GROW_R
+    zone2 = box_at(2 * (SLIT_W / 2 + CORNER_R + 1.0), c1 - EAR_Y0 + 2.0, zr, y=(EAR_Y0 + c1) / 2,
+                   z=-zr / 2).intersect(cyl_y(2 * zr, c1 - EAR_Y0 + 2.0, y0=EAR_Y0 - 1.0))
+    eared = eared.cut(zone2.cut(held))
     out = out.union(eared.intersect(cone.union(held)))
     if boss_l:
         boss = cyl_y(RACE_IN_D, boss_l + 0.01, y0=c1 - 0.01).cut(
