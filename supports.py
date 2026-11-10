@@ -160,8 +160,11 @@ def _axis_case(axis_dir, print_up):
 
 def printable_bore(diameter, length, axis_point=(0.0, 0.0, 0.0),
                    axis_dir=(0.0, 1.0, 0.0), print_up=(0.0, 0.0, 1.0),
-                   overshoot=0.0, nozzle=0.8):
-    """CUTTER for a round hole, shaped for the part's PRINT DIRECTION. Cut it;
+                   overshoot=0.0, nozzle=0.8, fit=False):
+    """CUTTER for a round hole, shaped for the part's PRINT DIRECTION.
+    `fit`: `diameter` is a ROUND hole's fit size; sideways it is drawn TEARDROP_OVERSIZE
+    smaller, since a teardrop prints bigger (cadkit.holes.as_printed_d). Use it for any hole
+    whose fit matters: inserts, self-taps, pins, press fits. Cut it;
     do not rotate the result (the teardrop peak is direction-sensitive).
 
     THE POINT: a hole whose axis runs SIDEWAYS in the print has a circular
@@ -193,6 +196,12 @@ def printable_bore(diameter, length, axis_point=(0.0, 0.0, 0.0),
     if o < 0.0:
         raise ValueError("overshoot must be >= 0")
     case = _axis_case(axis_dir, print_up)
+    if fit and case != "along":
+        try:
+            from .holes import TEARDROP_OVERSIZE
+        except ImportError:
+            from holes import TEARDROP_OVERSIZE
+        r -= TEARDROP_OVERSIZE / 2.0
     ax, ay, az = _unit(axis_dir)
     px, py, pz = (float(c) for c in axis_point)
     start = cq.Vector(px - ax * o, py - ay * o, pz - az * o)

@@ -26,6 +26,17 @@ Derived, not invented:
   * selftap_d  = screw_d + 0.2  — modelled 0.1 mm/side over the major Ø because
                  FDM holes print UNDERSIZE; the as-printed hole lands near the
                  major Ø, which is what lets the screw cut its own thread.
+                 BUT ONLY A ROUND HOLE (along the build) prints undersize. A hole
+                 SIDEWAYS to the build is a teardrop: its height is made by layers
+                 and its peak is open, so it prints about as drawn -- at selftap_d a
+                 CLEARANCE hole the screw slides through (public-steel-guitar's
+                 counter yoke, 2026-11-10). So a sideways self-tap takes
+                 selftap_td_d (default: holes.as_printed_d, selftap_d less
+                 holes.TEARDROP_OVERSIZE -- the same 0.4 the M4 pocket measured).
+                 tap_d(direction, print_up) picks; selftap_cutter / anchor_cutter
+                 use it whenever they are given print_up. Size a sideways self-tap
+                 by hand (printable_bore, teardrop_hole) from spec.tap_d(...) too,
+                 never from selftap_d.
   * shaft_clr_d= screw_d + 0.4  — 0.2 mm/side, screw spins free.
   * min_bite    = 5 × pitch     — five engaged threads is the least worth
                  relying on. M2: 5×0.4 = 2.0. M4: 5×0.7 = 3.5.
@@ -90,6 +101,18 @@ except ImportError:                    # run directly as a script
 # ════════════════════════════════════════════════════════════════════════════
 # SPECS — the only thing that differs between sizes.
 # ════════════════════════════════════════════════════════════════════════════
+def _fit_d(round_d, td_d, direction, print_up):
+    """A fit-sensitive hole's drawn Ø: `round_d` when it prints round, else `td_d` (measured), or
+    holes.as_printed_d(round_d) when there is no measurement."""
+    try:
+        from .holes import as_printed_d, is_teardrop
+    except ImportError:
+        from holes import as_printed_d, is_teardrop
+    if direction is None or print_up is None or not is_teardrop(direction, print_up):
+        return round_d
+    return td_d if td_d is not None else as_printed_d(round_d, direction, print_up)
+
+
 @dataclass(frozen=True)
 class FastenerSpec:
     """Everything the geometry below needs to draw one screw size."""
@@ -115,6 +138,11 @@ class FastenerSpec:
     # sides come out OVER, and at 6.1 the keyhead's height-screw inserts dropped in loose. None:
     # the same Ø both ways. Use pilot_d() to pick.
     insert_pilot_td_d: Optional[float] = None
+    # THE SELF-TAP HOLE TOO (user, 2026-11-10: "teardrops print with larger clearance than perfect
+    # holes"): selftap_d relies on a round hole printing under; a teardrop does not, and at
+    # selftap_d an M3 slid straight through one. None: holes.as_printed_d(selftap_d), as for
+    # every fit-sensitive hole. Use tap_d() to pick.
+    selftap_td_d: Optional[float] = None
     head_recess_d:  Optional[float] = None   # cap-head counterbore (None = headless)
     head_recess_h:  Optional[float] = None
     screw_l:        Optional[float] = None   # dummy screw length, if modelled
@@ -133,14 +161,17 @@ class FastenerSpec:
     def boss_od(self) -> float:
         return self.insert_pilot_d + 2.0 * self.boss_wall
 
+    def tap_d(self, direction=None, print_up=None) -> float:
+        """The self-tap hole's Ø for a hole along `direction` in a part printing along
+        `print_up`: selftap_d when it prints round (along the build, or either None), the
+        teardrop's selftap_td_d (default holes.as_printed_d) when it is sideways."""
+        return _fit_d(self.selftap_d, self.selftap_td_d, direction, print_up)
+
     def pilot_d(self, direction=None, print_up=None) -> float:
         """The insert pocket's Ø for a hole along `direction` in a part printing along
         `print_up`: insert_pilot_d when it prints round (along the build, or print_up None),
         insert_pilot_td_d when it is teardropped (see that field)."""
-        if self.insert_pilot_td_d is None or print_up is None or direction is None:
-            return self.insert_pilot_d
-        a, u = _unit(direction), _unit(print_up)
-        return self.insert_pilot_d if abs(a.dot(u)) > 1.0 - 1e-9 else self.insert_pilot_td_d
+        return _fit_d(self.insert_pilot_d, self.insert_pilot_td_d, direction, print_up)
 
 
 # M2 cap screw + McMaster 94459A110 heat-set insert.
@@ -274,10 +305,11 @@ def pocket_cutter(spec, pnt, direction, overshoot=0.0, print_up=None):
 
 
 def selftap_cutter(spec, pnt, direction, length, overshoot=0.0, print_up=None):
-    """Ø selftap_d bore — the screw cuts its own thread in this."""
+    """The self-tap bore — the screw cuts its own thread in this. Ø spec.tap_d(): selftap_d
+    round, the smaller teardrop size when sideways to print_up."""
     mouth = _back(pnt, direction, overshoot)
-    return cq.Workplane(obj=_bore(spec.selftap_d, length + overshoot, mouth, direction,
-                                  print_up))
+    return cq.Workplane(obj=_bore(spec.tap_d(direction, print_up), length + overshoot, mouth,
+                                  direction, print_up))
 
 
 def clearance_cutter(spec, pnt, direction, length, overshoot=0.0, print_up=None):
@@ -390,10 +422,11 @@ def anchor_cutter(spec, pnt, direction, depth, pocket=True, overshoot=0.0,
             % (spec.name, bite, spec.min_bite, spec.anchor_min_wall))
 
     mouth = _back(pnt, direction, overshoot)
-    bore = _bore(spec.selftap_d, depth + overshoot, mouth, direction, print_up)
+    td = spec.tap_d(direction, print_up)
+    bore = _bore(td, depth + overshoot, mouth, direction, print_up)
     pd = spec.pilot_d(direction, print_up)
     bore = bore.fuse(_bore(pd, spec.insert_depth + overshoot, mouth, direction, print_up))
-    bore = _with_step(bore, pd, spec.selftap_d,
+    bore = _with_step(bore, pd, td,
                       _fwd(pnt, direction, spec.insert_depth), direction, print_up)
     return cq.Workplane(obj=bore)
 

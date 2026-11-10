@@ -78,6 +78,16 @@ __all__ = ["teardrop_hole", "house_hole", "SELF_SUPPORT_DEG"]
 
 SELF_SUPPORT_DEG = 45.0     # steepest ceiling that prints without support
 
+# A TEARDROP PRINTS BIGGER THAN A ROUND HOLE OF THE SAME DRAWN Ø (user, 2026-11-10: "teardrops print
+# with larger clearance than perfect holes ... generalize it to all holes"). A round hole (along the
+# build) is drawn by the nozzle all round and comes out UNDER its Ø; a teardrop's height is made by
+# layers and its peak is open, so it does not. Measured, PETG-GF / 0.8 nozzle: the M4 heat-set
+# pocket drops in round at 6.1 and holds teardropped only at 5.7 (fasteners.M4, 2026-10-28..11-05);
+# an M3 self-tap at the round 3.2 slid straight through a teardrop (2026-11-10). So for any hole
+# whose FIT matters, size it as if round, then draw it as_printed_d() -- or pass fit=True to
+# teardrop_hole / supports.printable_bore. Clearance holes that only need to pass a screw can skip it.
+TEARDROP_OVERSIZE = 0.4
+
 
 def _unit(v):
     n = math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2])
@@ -106,10 +116,27 @@ def _hole_plane(axis_point, axis_dir, print_up, who):
     return _section_plane(axis_point, a, u)
 
 
+def is_teardrop(axis_dir, print_up, limit_deg=SELF_SUPPORT_DEG) -> bool:
+    """True when teardrop_hole would add a peak: the bore tilted past `limit_deg` from the build."""
+    if print_up is None:
+        return False
+    a, u = _unit(axis_dir), _unit(print_up)
+    c = abs(a[0] * u[0] + a[1] * u[1] + a[2] * u[2])
+    sin_t = math.sqrt(max(0.0, 1.0 - c * c))
+    return sin_t > math.cos(math.radians(limit_deg)) + 1e-9
+
+
+def as_printed_d(round_d, axis_dir, print_up, limit_deg=SELF_SUPPORT_DEG) -> float:
+    """The Ø to DRAW a fit-sensitive hole whose size `round_d` was worked out for a ROUND hole:
+    round_d itself when it prints round, round_d - TEARDROP_OVERSIZE when it is a teardrop."""
+    return round_d - TEARDROP_OVERSIZE if is_teardrop(axis_dir, print_up, limit_deg) else round_d
+
+
 def teardrop_hole(d, length, axis_point=(0.0, 0.0, 0.0),
                   axis_dir=(1.0, 0.0, 0.0), print_up=(0.0, 0.0, 1.0),
-                  limit_deg=SELF_SUPPORT_DEG, nozzle=0.8):
-    """CUTTER for a round hole: a Ø`d` cylinder from `axis_point` along
+                  limit_deg=SELF_SUPPORT_DEG, nozzle=0.8, fit=False):
+    """`fit`: `d` is a ROUND hole's fit size -- drawn as_printed_d() (TEARDROP_OVERSIZE smaller).
+    CUTTER for a round hole: a Ø`d` cylinder from `axis_point` along
     `axis_dir` for `length`, its ceiling peaked toward `print_up` only as far
     as the hole's tilt requires (see OBLIQUE HOLES above), the peak DULLED to
     a `nozzle`-wide flat (never below the bore's crown). Square to print_up
@@ -119,6 +146,8 @@ def teardrop_hole(d, length, axis_point=(0.0, 0.0, 0.0),
     a longer length / earlier axis_point."""
     if d <= 0.0 or length <= 0.0 or nozzle < 0.0:
         raise ValueError("d and length must be > 0, nozzle >= 0")
+    if fit:
+        d = as_printed_d(d, axis_dir, print_up, limit_deg)
     a = _unit(axis_dir)
     u = _unit(print_up)
     c = a[0] * u[0] + a[1] * u[1] + a[2] * u[2]
