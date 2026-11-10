@@ -4103,13 +4103,14 @@ if REV != 1 and os.environ.get("OP_LAYERS"):
 # _COUPLED is un-frozen and declared; one the router cannot lay goes back to its frozen
 # copper by leaving this list. HUB_DN1 (hand-drawn, 9 mm) and HUB_DN4 (full speed, to the
 # CH340C) stay as they are.
-# ⚠ HUB_DN3 AND PI ONLY (2026-11-10, measured uncoupled DP / DM against the frozen copper).
-#   HUB_DN3: the coupled router, 4.4 / 0.2 mm (frozen 22.1 / 22.5).
+# ⚠ HUB_DN3, PI AND HUB_UP (2026-11-10, measured uncoupled DP / DM against the frozen copper).
+#   HUB_DN3: the coupled router, 3.0 / 0.3 mm (frozen 22.1 / 22.5).
 #   PI: layout._diff_pairs lays it as a pair once the A6 / A7 pin-down is gone -- a coupled
 #     In2 run at the inner layer's 0.74 mm pitch, 2.6 / 1.3 mm (frozen 7.3 / 6.6). With
 #     A6 / A7 named, DM's merge loop boxed A6 in and no pair could reach it; B6 can be.
+#   HUB_UP: the coupled router (cadkit: centreline kept to the via budget, and a held
+#     coupled lay displaced before a clean uncoupled one wins), 1.3 / 3.6 (frozen 2.4 / 5.6).
 #   Left frozen, each worse when un-frozen (router alone):
-#   - HUB_UP: no coupled lay found (32 / 33 against 2.4 / 5.6).
 #   - THRU: placement. D2 and D3 (ESD, one per line) stand 2 mm apart along the pair, so
 #     the outer rail must pass the inner rail's diode to reach its own; the chain names
 #     them "D2|D3" for when they stand across the pair.
@@ -4117,10 +4118,17 @@ if REV != 1 and os.environ.get("OP_LAYERS"):
 #     times against a budget of two vias).
 _COUPLED_CHAIN = {"HUB_UP": ["U4", "J3"], "HUB_DN2": ["U4", "J4"], "HUB_DN3": ["U4", "U14"],
                   "THRU": ["U14", "D2|D3", "J1"], "PI": ["U14", "J2"]}
-_COUPLED = [_c for _c in (os.environ.get("OP_COUPLED", "HUB_DN3,PI").split(","))
+_COUPLED = [_c for _c in (os.environ.get("OP_COUPLED", "HUB_DN3,PI,HUB_UP").split(","))
             if _c] if REV != 1 else []
 if _COUPLED:
     _cn = {_c + _s for _c in _COUPLED for _s in ("_DP", "_DM")}
+    # ⚠ C51.2's GND STITCH VIA STOOD IN HUB_DN3's WAY OUT OF U4 (2026-11-10). The via at
+    # (99.93, 104.55) sat on DP's outer side where the pair turns south from pins 7 / 8;
+    # with HUB_UP un-frozen too, no coupled lay of HUB_DN3 found a way (10.3 / 10.1 mm
+    # uncoupled), and when it did, only one candidate in twelve. Unstitched, the pad joins
+    # GND through the router and both pairs couple (finished: HUB_DN3 3.0 / 0.3, HUB_UP 1.3 / 3.6).
+    if "HUB_DN3" in _COUPLED:
+        BOARD_NOTES["stitch_exceptions"] = tuple(BOARD_NOTES["stitch_exceptions"]) + ("C51.2",)
 
     # ⚠ THE USB-C PAD MERGE STAYS (2026-11-10). Each socket carries D+ on A6 and B6 and D- on
     # A7 and B7, interleaved at 0.5 mm; layout._flip_merge joins them only for a pad row
