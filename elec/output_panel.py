@@ -4146,11 +4146,20 @@ if _COUPLED:
             if all(abs(_x - _jx) <= _ax and abs(_y - _jy) <= _ay for _x, _y in _t[3]):
                 return True
         return False
+    # ⚠ THE LIFTED COPPER GOES WITH THE PAIR AS ITS FALLBACK (2026-11-10): a pair the
+    # router cannot lay to the rules coupled (THRU round U14: every try broke the via
+    # budget) was kept as negotiated, worse than the frozen copper it replaced. The router
+    # lays this copper instead when it beats the pair as laid (router/coupled.py,
+    # _fallback_pairs), so declaring a pair coupled can no longer make it worse.
+    _lift_t = [_t for _t in BOARD_NOTES["tracks"] if _t[0] in _cn and not _in_merge(_t)]
+    _lift_v = [_v for _v in BOARD_NOTES["vias"] if _v[0] in _cn]
     BOARD_NOTES["tracks"] = [_t for _t in BOARD_NOTES["tracks"] if _t[0] not in _cn or _in_merge(_t)]
     BOARD_NOTES["vias"] = [_v for _v in BOARD_NOTES["vias"] if _v[0] not in _cn]
     BOARD_NOTES["frozen_nets"] = [_n for _n in BOARD_NOTES["frozen_nets"] if _n not in _cn]
     BOARD_NOTES["diff_pairs"] = list(BOARD_NOTES.get("diff_pairs", [])) + [
-        dict(nets=[_c + "_DP", _c + "_DM"], chain=_COUPLED_CHAIN[_c], gap=0.2, width=0.2)
+        dict(nets=[_c + "_DP", _c + "_DM"], chain=_COUPLED_CHAIN[_c], gap=0.2, width=0.2,
+             fallback=dict(tracks=[_t for _t in _lift_t if _t[0].rsplit("_", 1)[0] == _c],
+                           vias=[_v for _v in _lift_v if _v[0].rsplit("_", 1)[0] == _c]))
         for _c in _COUPLED]
 
 
