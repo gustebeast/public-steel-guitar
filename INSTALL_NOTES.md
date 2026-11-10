@@ -1761,7 +1761,7 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
 ### Plank bench: in-line motor (2026-11-09)
 - A SERVO42D sits on the counter-spring rig's screw axis, in place of the screw pulley.
 - The printed coupler (plank_inline_coupler) is the screw's thrust shoulder. Its Ø10.4 boss bears on the rail wall 688's inner race.
-- The motor block (plank_motor_block) goes on four new plank holes, in the station's 33.97 x 43.80 pattern, at x -89.57 and -55.60 and the usual y 16.75 / 60.55 (with the 38 mm screw).
+- The motor block (plank_motor_block) goes on four new plank holes, in the station's 33.97 x 43.80 pattern, at x -91.29 and -57.32 and the usual y 16.75 / 60.55.
 - CS_DY is now 34.4 (was 30.5), so the springs clear the can. Reprint plank_counter_yoke and plank_counter_slider; their bars are 3.9 mm longer each side.
 - With the motor in, the slider backs out only to the motor's back, so the spring range is about 53 % to 100 % of 147 N.
 - Order:
@@ -1775,6 +1775,8 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
 - The counter slider's M4 insert is a captive nut (2026-11-09). Push it into its pocket from the slider's -X face until it seats on the 3.2 mm lip at the +X face. If it turns with the screw, touch it home with the iron. The springs' pull presses it onto the lip, so it can't pull out.
 - Plank motor block gauge arms (2026-11-09): two 0.8 mm strips on the plank run from the block's rib bases to the counter post's -X base edge. Butt the post against both arm ends and it is at its spacing and square to the block.
 - In-line test screw (2026-11-09): the user's 38 mm Tr8x2 piece, not a 36.28 one.
-  - Its -X tip sits where the instrument's does, so the extra 1.72 mm goes into the coupler. The coupler, motor block and motor sit 1.72 mm further +X.
-  - Spring range with the motor in: about 56 % to 100 %.
+  - Its +X end (in the coupler) sits where a 36.28 one would, so the coupler, motor block and motor don't move.
+  - The extra 1.72 mm is on the -X tip, which gives MORE TRAVEL: the nut can run 1.72 mm further toward the string on the same ~12 mm of thread (8.35 -> 10.07 mm).
+  - At the rail end of travel the tip reaches 8.5 mm into the yoke's 12 mm cavity.
+  - Spring range with the motor in: about 53 % to 100 %.
   - Drill it in the pin drill jig as usual (hole 5.0 mm from the +X end).

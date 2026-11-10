@@ -718,12 +718,18 @@ def assembly_counter(level=1.0):
 # slider (slider fully in), slid -X onto the coupler's D, its four M3s; springs last.
 from . import motor_coupler as MC
 
-# THE USER'S 38 mm SCREW (user, 2026-11-09: a piece cut earlier), not the instrument's 36.28. Its -X
-# tip stays where the instrument's is (it rises into the yoke's cavity at the end of travel), so
-# the extra goes on the +X end, into the coupler: coupler, block and motor all sit INLINE_EXTRA +X.
+# THE USER'S 38 mm SCREW (user, 2026-11-09: a piece cut earlier), not the instrument's 36.28. Its +X
+# end stays where the instrument's is (the coupler, block and motor unmoved) and the extra goes on
+# the -X TIP: MORE TRAVEL (user: "can we get more travel"). The nut's far end is the rail wall's
+# ledge and cannot move; its string end is only how much thread it keeps, so the nut now runs
+# INLINE_EXTRA further toward the string on the same ~12 of thread: 8.35 -> 10.07. At the ledge
+# end the tip then reaches INLINE_TIP_IN into the yoke's YK_R0 cavity, short of the ball's seat.
 INLINE_SCREW_LEN = 38.0
 INLINE_EXTRA = INLINE_SCREW_LEN - D.SCREW_LEN     # 1.72
-INLINE_SCREW_END = _xr_x(D.SCREW_BOT_Z - INLINE_EXTRA) + CS_DX   # the screw's +X end
+INLINE_TRAVEL = D.CARRIAGE_TRAVEL + INLINE_EXTRA
+INLINE_TIP_IN = YK_PROTRUDE + INLINE_EXTRA        # 8.47 of the cavity's 12
+assert INLINE_TIP_IN <= YK_R0 - 2.0, "the 38 mm screw's tip reaches the ball end's seat"
+INLINE_SCREW_END = _xr_x(D.SCREW_BOT_Z) + CS_DX   # the screw's +X end
 INLINE_BRG_FACE = _xr_x(BRG_BOT_Z) + CS_DX        # the 688's +X face (the pulley's shoulder)
 INLINE_XP = INLINE_SCREW_END + MC.SCREW_X0        # the motor's pulley plane (world x)
 INLINE_BOSS = 0.8                                 # the coupler's boss onto the 688's inner race
@@ -788,7 +794,7 @@ def assembly_inline(level=1.0):
     xs1 = slider_for(level)
     assert xs1 >= INLINE_XS1_MIN - 1e-6, f"the slider at {level:.0%} runs into the motor"
     out = [(nm, w) for nm, w in assembly_counter(level) if nm not in ("xscrew_pulley_0", "xleadscrew_0")]
-    scr = C.screw(INLINE_SCREW_LEN).translate((SX, SY, D.SCREW_BOT_Z - INLINE_EXTRA))
+    scr = C.screw(INLINE_SCREW_LEN).translate((SX, SY, D.SCREW_BOT_Z))
     out.append(("xleadscrew_0", scr.rotate((0, 0, 0), (0, 1, 0), -90)
                 .translate((XR_OFF + CS_DX, 0.0, XR_ZA - SX))))
     out.append(("plank_motor_block", motor_block()))
