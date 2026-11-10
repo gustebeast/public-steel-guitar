@@ -1179,8 +1179,8 @@ class Router(CoupledMixin):
             cl_best = None                 # (mm uncoupled, state, cand): the closest clean coupled lay
             for c in cands:
                 is_cpl = len(c) > 8 and c[8]
-                if cl_best is not None and not is_cpl:
-                    break                      # the coupled attempts are done: the closest is laid below
+                if cl_best is not None and (not is_cpl or cl_best[0] <= 0.0):
+                    break                      # coupled attempts done (or one not apart at all): laid below
                 if len(c) > 7 and c[7] is not None:
                     # a push: other nets at a low price outright, and none of the history
                     # the negotiation built up round them (both steer it the long way)
