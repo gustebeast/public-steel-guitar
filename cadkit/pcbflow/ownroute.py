@@ -44,6 +44,45 @@ def core(stem):
     n = emit.write(m, [x for x in nets if not x.failed], stem + ".kicad_pcb")
     print("ownroute: wrote %d item(s); %d net(s) left open: %s (%.0f s)"
           % (n, len(failed), ", ".join(x.name for x in failed) or "none", time.time() - t0))
+    wins = getattr(r, "fallback_wins", [])
+    with open(stem + ".fallback.json", "w", encoding="utf-8") as fh:
+        json.dump(wins, fh)
+
+
+def freeze_fallbacks(stem):
+    """The pairs whose fallback copper beat their lay (router/coupled.py, _fallback_pairs)
+    go back to that copper: its tracks and vias into notes, the nets frozen, the pair's
+    spec out of diff_pairs -- the board.json the pair had before it was declared coupled.
+    Returns the pairs frozen.
+
+    ⚠ A SECOND LAYOUT AND ROUTE, NOT A SPLICE (output_panel THRU, 2026-11-10): laid into
+    the finished board, the fallback met GND stitch vias layout had placed where the
+    lifted copper used to run, and re-negotiating round it left 57 nets open. Laid out
+    with the copper in place, the board is the one the copper was drawn for."""
+    path = stem + ".fallback.json"
+    if not os.path.isfile(path):
+        return []
+    wins = json.load(open(path, encoding="utf-8"))
+    os.remove(path)
+    if not wins:
+        return []
+    bj = stem + ".board.json"
+    notes = json.load(open(bj, encoding="utf-8"))
+    keep, done = [], []
+    for spec in notes.get("diff_pairs", ()):
+        if list(spec.get("nets", ())) in wins and spec.get("fallback"):
+            fb = spec["fallback"]
+            notes["tracks"] = list(notes.get("tracks", ())) + list(fb.get("tracks", ()))
+            notes["vias"] = list(notes.get("vias", ())) + list(fb.get("vias", ()))
+            notes["frozen_nets"] = list(notes.get("frozen_nets", ())) + list(spec["nets"])
+            done.append(spec["nets"])
+        else:
+            keep.append(spec)
+    notes["diff_pairs"] = keep
+    notes["fallback_frozen"] = list(notes.get("fallback_frozen", ())) + done
+    with open(bj, "w", encoding="utf-8") as fh:
+        json.dump(notes, fh, indent=2)
+    return done
 
 
 def post(stem):
@@ -81,11 +120,20 @@ if __name__ == "__main__":
     elif "--post" in sys.argv:
         post(stem)
     else:
-        if _has("numba"):
-            core(stem)
-        elif subprocess.call(["py", "-3.12", me, stem, "--core"], env=_clean_env()):
-            sys.exit("ownroute: routing failed")
-        sys.stdout.flush()
+        for attempt in (1, 2):
+            if _has("numba"):
+                core(stem)
+            elif subprocess.call(["py", "-3.12", me, stem, "--core"], env=_clean_env()):
+                sys.exit("ownroute: routing failed")
+            sys.stdout.flush()
+            frozen = freeze_fallbacks(stem) if attempt == 1 else []
+            if not frozen:
+                break
+            print("ownroute: %s laid worse than the copper they had -- frozen to it; layout and "
+                  "route again" % ", ".join("/".join(f) for f in frozen))
+            sys.stdout.flush()
+            if subprocess.call([KICAD_PY, os.path.join(HERE, "layout.py"), stem], env=_clean_env()):
+                sys.exit("ownroute: layout (fallback pass) failed")
         if _has("pcbnew"):
             post(stem)
         elif subprocess.call([KICAD_PY, me, stem, "--post"], env=_clean_env()):
