@@ -39,6 +39,23 @@ def _dilate_disk(a, rr):
     return out
 
 
+def _max_disk(a, rr):
+    """maximum_filter(a, disk footprint of radius rr), exactly, for a of non-negative
+    whole numbers (occupancy counts): the sum over levels t of the disk dilation of
+    a >= t. scipy's reflect border adds nothing a disk does not already reach (a mirrored
+    cell lies inside the same disk). 4x faster on 200 masks, same values; past 8 levels
+    scipy is used."""
+    top = int(a.max()) if a.size else 0
+    if top > 8:
+        from scipy.ndimage import maximum_filter
+        yy, xx = np.mgrid[-rr:rr + 1, -rr:rr + 1]
+        return maximum_filter(a, footprint=(yy * yy + xx * xx) <= rr * rr)
+    out = np.zeros(a.shape, a.dtype)
+    for t in range(1, top + 1):
+        out += _dilate_disk(a >= t, rr)
+    return out
+
+
 class Net:
     def __init__(self, name, nid, width):
         self.name, self.id, self.width = name, nid, width
@@ -658,11 +675,8 @@ class Router(CoupledMixin):
             vlegal = cache[key]
         occ =self.occ_t.reshape(L, H, W)[sl].astype(np.float32)
         if net.width > self.wref + 1e-6:
-            from scipy.ndimage import maximum_filter
             rr = int(math.ceil((net.width - self.wref) / 2.0 / m.pitch))
-            yy, xx = np.mgrid[-rr:rr + 1, -rr:rr + 1]
-            fp = (yy * yy + xx * xx) <= rr * rr
-            occ = np.stack([maximum_filter(occ[k], footprint=fp) for k in range(L)])
+            occ = np.stack([_max_disk(occ[k], rr) for k in range(L)])
         hist = self.hist.reshape(L, H, W)[sl]
         cell = (1.0 + hist) * (1.0 + pf * occ) * self.layer_cost[:, None, None]
         # ⚠ A RELAXED PAIR DIVES TO CROSS, THEN COMES BACK UP (optical USB_DP, 2026-11-08:
@@ -674,17 +688,21 @@ class Router(CoupledMixin):
             for k in range(L):
                 if k not in home:
                     cell[k] = cell[k] * self.OFFRUN_COST
+        # ⚠ PRICES APPLIED IN PLACE (2026-11-10): np.where(mask, cell * X, cell) built two
+        # full (L, h, w) arrays per price, ~6 s of an optical route. Multiplied in place
+        # where the mask holds -- the same product in the same dtype (X is a Python float,
+        # so it keeps cell's), cell for cell.
         rn = m.region_net[sl]
-        cell = np.where((rn != 0) & (rn != nid), cell * self.REGION_COST, cell)
+        np.multiply(cell, self.REGION_COST, out=cell, where=(rn != 0) & (rn != nid))
         if self.ESC_COST > 1.0:
             es = self._escape_map()[sl]
-            cell = np.where((es != 0) & (es != nid), cell * self.ESC_COST, cell)
+            np.multiply(cell, self.ESC_COST, out=cell, where=(es != 0) & (es != nid))
         rg = m.ring_net[sl]
-        cell = np.where((rg != 0) & (rg != nid), cell * self.RING_COST, cell)
+        np.multiply(cell, self.RING_COST, out=cell, where=(rg != 0) & (rg != nid))
         # over a slot in its return plane a signal pays VOID_COST a cell, so it crosses
         # square and short, never along (model._ref_voids)
         if not GROUND_RE.match(net.name):
-            cell = np.where(m.ref_void[sl], cell * self.VOID_COST, cell)
+            np.multiply(cell, self.VOID_COST, out=cell, where=m.ref_void[sl])
         # ⚠ A WIDE NET NECKS DOWN AT ITS OWN LANDS, as an engineer necks it: J1_VBUS at
         # 1.0 mm could not reach a USB-C pin between its neighbours and was left open. Within
         # NECK_MM of the net's own copper it may run at NECK_W where full width will not fit
@@ -703,13 +721,14 @@ class Router(CoupledMixin):
             narrow &= (m.edge[i0:i1, j0:j1] >= self.NECK_W / 2.0 + m.edge_clear + m.margin)[None]
             for k in range(L):
                 if own[k].any():
-                    near = distance_transform_edt(~own[k]) * m.pitch <= self.NECK_MM
+                    near = np.sqrt(S.edt_sq(own[k])) * m.pitch <= self.NECK_MM
                     neck_ok[k] = near & narrow[k] & ~legal[k]
-            cell = np.where(neck_ok, cell * 2.0, cell)
+            np.multiply(cell, 2.0, out=cell, where=neck_ok)
         if lane is not None:
             neck_ok &= lane[0]
-            cell = np.where(lane[1], cell * self.BAND_COST, cell)
-        cell = np.where(legal | neck_ok, cell, np.inf).astype(np.float32)
+            np.multiply(cell, self.BAND_COST, out=cell, where=lane[1])
+        cell[~(legal | neck_ok)] = np.inf
+        cell = cell.astype(np.float32, copy=False)
         self._neck_win = (neck_ok, h, w, i0, j0)
         # ⚠ A PAIR RUNS TOGETHER: the second net of a matched pair is drawn to the band one
         # pitch off its partner's centreline -- what an engineer does by routing the two as
