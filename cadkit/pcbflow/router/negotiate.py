@@ -331,6 +331,7 @@ class Router:
     NECK_MM = 1.2                    # ...within this distance of its own copper
     TURN_STATES_MAX = 40_000_000     # heading-aware search up to this many states (x9 cells)
     PAIR_PUSH = 0.5                  # the finish's push attempts: others' copper at this price, no history (_finish_pairs)
+    PLANE_PARTIAL = True             # a plane net still sharing loses only its sharing joins (_rip)
     PAIR_REOPEN = True               # the pair finish also takes on a pair the negotiation ripped out
     PAIR_WALL = True                 # in a pair attempt the mate's copper is a wall (_pair_try)
     PLANE_MAIN = True                # plane joins aim at the main body's fill as it stands (_rounds)
@@ -1179,11 +1180,18 @@ class Router:
     # crosses negotiate round it; kept only if no more nets end open than before.
     def _displace(self, a, b, state, pf):
         saved = {n: (n.paths, n.necks, n.failed) for n in self.nets}
+        # ⚠ EVERY PAIR ALREADY TO THE RULES IS HELD TOO (optical C102 +0.12/+0.48,
+        # 2026-11-10): HUB_PHY was laid to the rules and then USB_HS's displacement
+        # re-negotiated it with everything else and faulted it again.
         lock = {a, b}
+        for x in self.nets:
+            if (x.mate is not None and x.partner is None and x.group is not None and x not in lock
+                    and not x.failed and not x.mate.failed and not self.pair_faults(x)):
+                lock |= {x, x.mate}
         # ⚠ THE PAIR'S OWN FLAGS ARE NOT COUNTED (optical, 2026-11-09): the last attempt
         # tried may have found no path and left a rail marked failed, so "open before"
         # counted 1, and a displacement that left LED_ROW open passed as no worse.
-        fail0 = sum(self._w_open(n) for n in self.nets if n not in lock and n.failed)
+        fail0 = self._open_w(lock)
         for x in (a, b):
             self._unmark(x)
         for x in (a, b):
@@ -1191,8 +1199,7 @@ class Router:
             self._mark(x)
         todo = [n for n in self.nets if n not in lock and not n.failed and self._conflicts(n)]
         left, _ = self._rounds(todo, pf, 12, 600, locked=lock)
-        fail1 = (sum(self._w_open(n) for n in self.nets if n not in lock and n.failed)
-                 + sum(self._w_open(n) for n in left if n not in lock and not n.failed))
+        fail1 = self._open_w(lock, left)
         if fail1 <= fail0 and not self.pair_faults(a):
             self._rip(left)
             return True
@@ -1375,7 +1382,7 @@ class Router:
                 q1 = todo_q[0]
                 tried.add(q1)
                 saved = {n: (n.paths, n.necks, n.failed) for n in self.nets}
-                fail0 = sum(self._w_open(n) for n in self.nets if n.failed)
+                fail0 = self._open_w()
                 net.main_xy = mx
                 # ⚠ ONLY THE CUT-OFF PIECES ARE RE-JOINED (optical +3V3D, 2026-11-09: the
                 # piece at 77.5,163.9 re-joined cleanly, but re-routing the whole net moved a
@@ -1383,14 +1390,13 @@ class Router:
                 # re-join was put back on every run). The good pieces keep their joins.
                 if len(net.paths) == len(net.pieces) - 1:
                     net.keep_paths = {q: (net.paths[q - 1], net.necks[q - 1] if q - 1 < len(net.necks) else None)
-                                      for q in range(1, len(net.pieces)) if q != q1}
+                                      for q in range(1, len(net.pieces)) if q != q1 and net.paths[q - 1].size}
                 try:
                     left, _ = self._rounds([net], getattr(self, "_pf_last", 1.0), 12, 600, locked=lock)
                 finally:
                     net.main_xy = None
                     net.keep_paths = None
-                fail1 = (sum(self._w_open(n) for n in self.nets if n.failed)
-                         + sum(self._w_open(n) for n in left if not n.failed))
+                fail1 = self._open_w(left=left)
                 again = self._islands(net) if not net.failed else None
                 nbad = len(again[0]) if again else len(bad) + 1
                 if fail1 <= fail0 and not net.failed and nbad < len(bad):
@@ -1959,9 +1965,53 @@ class Router:
     def _w_open(self, n):
         return max(1, len(n.pieces) - 1)
 
+    def _bad_joins(self, net):
+        """A plane net's sharing joins, if _rip would take only those (else None)."""
+        if not (self.PLANE_PARTIAL and net.plane and not net.failed and not net.fixed
+                and len(net.paths) == len(net.pieces) - 1):
+            return None
+        H, W = self.H, self.W
+        bad = []
+        for q, path in enumerate(net.paths):
+            if not path.size:
+                continue
+            c = path[self.occ_t[path] >= 2]
+            k = path // (H * W)
+            via = np.nonzero(k[1:] != k[:-1])[0]
+            rv = (path[via] % (H * W)) if via.size else np.empty(0, np.int64)
+            if c.size or (rv.size and (self.occ_v[rv] >= 2).any()):
+                bad.append(q)
+        return bad if bad and len(bad) < len(net.paths) else None
+
+    def _open_w(self, lock=(), left=()):
+        """Open connections on the board: nets ripped out, plane joins ripped (n_open), and
+        nets in `left` -- still sharing, about to be ripped."""
+        return (sum(self._w_open(n) for n in self.nets if n not in lock and n.failed)
+                + sum(getattr(n, "n_open", 0) for n in self.nets if n not in lock and not n.failed)
+                + sum((len(b) if b is not None else self._w_open(n))
+                      for n in left if n not in lock and not n.failed
+                      for b in (self._bad_joins(n),)))
+
     def _rip(self, todo):
         """anything still sharing comes out: a legal board with a net open beats a short"""
         for net in todo:
+            # ⚠ A PLANE NET LOSES ONLY THE JOINS THAT SHARE (optical C102 +0.12/+0.48,
+            # 2026-11-10): one +3V3D join crossing a locked pair ripped the whole rail, ~55
+            # joins, and made every trade that touched it look ruinous. An engineer moves the
+            # one via in the way; the rest of the rail stands. Each ripped join is one open
+            # connection (n_open), the path kept as an empty one so pieces and paths still line up.
+            bad = self._bad_joins(net)
+            if bad is not None:
+                    self._unmark(net)
+                    for q in bad:
+                        net.paths[q] = np.empty(0, np.int64)
+                        if q < len(net.necks):
+                            net.necks[q] = np.zeros(0, bool)
+                    net.n_open = getattr(net, "n_open", 0) + len(bad)
+                    self._mark(net)
+                    self.log("  %s: %d of its %d joins still share space%s: those ripped out, the rest kept"
+                             % (net.name, len(bad), len(net.paths), self._where(net) or ""))
+                    continue
             if not net.failed:
                 self.log("  %s still shares space%s: ripped out" % (net.name, self._where(net)))
             self._unmark(net)
@@ -1995,6 +2045,7 @@ class Router:
                 self._unmark(net)
                 paths = self._route_net(net, pf)
                 net.main_xy = mx0
+                net.n_open = 0
                 net.failed = paths is None
                 net.paths = paths or []
                 if not paths:
@@ -2046,7 +2097,7 @@ class Router:
                 if (shared and self.PLANE_KEEP and net.plane and not net.fixed
                         and len(net.paths) == len(net.pieces) - 1):
                     net.keep_paths = {q + 1: (net.paths[q], net.necks[q] if q < len(net.necks) else None)
-                                      for q in range(len(net.paths)) if q not in bad_q}
+                                      for q in range(len(net.paths)) if q not in bad_q and net.paths[q].size}
                 if shared:
                     todo.append(net)
                     nbad += 1

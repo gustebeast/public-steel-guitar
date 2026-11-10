@@ -79,9 +79,12 @@ def score(stem, budget_s=900):
     for n in nets:
         if n.plane and not n.failed:
             got = r._islands(n)
-            if got is not None:
-                isl += len(got[0])
-    return dict(open=len(failed), open_nets=[n.name for n in failed], pairs=pair, islands=isl,
+            if got is not None:     # a piece whose join was ripped is counted as open, not here
+                isl += sum(1 for q in got[0] if q - 1 < len(n.paths) and n.paths[q - 1].size)
+    part = {n.name: n.n_open for n in nets if not n.failed and getattr(n, "n_open", 0)}
+    return dict(open=len(failed) + sum(part.values()),
+                open_nets=[n.name for n in failed] + ["%s(%d joins)" % kv for kv in part.items()],
+                pairs=pair, islands=isl,
                 contest=round(float(r.hist.sum()) + float(r.hist_v.sum()), 1),
                 len_mm=round(length, 1), vias=vias, sec=round(time.time() - t0, 1))
 
