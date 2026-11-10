@@ -2587,28 +2587,38 @@ def _hop_via_inner(board, pa, pb, netname, inner, clear, seg_clear, emit,
         # could not place a via had 2.35 mm of clear column under them the whole time.
         # 0.15 rad is 0.3 mm at 2 mm out, under the 0.45 a via needs, so a lane that exists
         # is now hit rather than stepped over.
-        for step in range(40):
-            r = half + need + pcbnew.FromMM(0.1 * step)
-            for dth in _RING_ANGLES:
-                x = int(pc.x + r * math.cos(base + dth))
-                y = int(pc.y + r * math.sin(base + dth))
-                # ⚠ A VIA IS NOT A TRACK, and checking it as one is what made this
-                # routine lay DRC-violating copper the first time it was let loose on a
-                # small board: 0.6 mm of pad needs via/2 + clearance, not width/2, and a
-                # drilled hole needs room from every OTHER hole and from the board edge,
-                # neither of which a track cares about. Three separate rules, and the
-                # track margin satisfies none of them.
-                if not clear(x, y, netname, margin=pcbnew.FromMM(via_d / 2.0 + clr)):
-                    continue
-                if not _inside(outline, x, y, pcbnew.FromMM(via_d / 2.0 + 0.3)):
-                    continue
-                lim = pcbnew.FromMM(via_d + clr)
-                if any(math.hypot(x - hx, y - hy) < lim for hx, hy in drills):
-                    continue
-                if not seg_clear((pc.x, pc.y), (x, y), netname):
-                    continue
-                drills.append((x, y))
-                return (x, y)
+        # ⚠ A VIA IS NOT A TRACK, and checking it as one is what made this routine lay
+        # DRC-violating copper the first time it was let loose on a small board: 0.6 mm
+        # of pad needs via/2 + clearance, not width/2, and a drilled hole needs room from
+        # every OTHER hole and from the board edge, neither of which a track cares about.
+        # Three separate rules, and the track margin satisfies none of them.
+        # ⚠ THE CHEAP RULES GO FIRST, ALL CANDIDATES AT ONCE (optical, 2026-11-09: this
+        # search was 100 s of a 10-minute finish -- 1720 candidates a pad, each running
+        # clear() and then a scan of every drill, 224 M distance tests). The four tests are
+        # ANDed, so their order changes nothing but the time: drill spacing and the edge
+        # margin are screened for every candidate in one numpy pass, and clear() and
+        # seg_clear only see the survivors, in the same nearest-first order.
+        import numpy as _np
+        cand = [(int(pc.x + r * math.cos(base + dth)), int(pc.y + r * math.sin(base + dth)))
+                for r in (half + need + pcbnew.FromMM(0.1 * step) for step in range(40))
+                for dth in _RING_ANGLES]
+        C = _np.array(cand, dtype=_np.float64)
+        ok = _np.ones(len(cand), bool)
+        if drills:
+            D = _np.array(drills, dtype=_np.float64)
+            lim = pcbnew.FromMM(via_d + clr)
+            for s in range(0, len(D), 512):
+                d = _np.hypot(C[:, 0, None] - D[None, s:s + 512, 0], C[:, 1, None] - D[None, s:s + 512, 1])
+                ok &= ~(d < lim).any(axis=1)
+        ok &= _inside_many(outline, C[:, 0], C[:, 1], pcbnew.FromMM(via_d / 2.0 + 0.3))
+        for q in _np.flatnonzero(ok).tolist():
+            x, y = cand[q]
+            if not clear(x, y, netname, margin=pcbnew.FromMM(via_d / 2.0 + clr)):
+                continue
+            if not seg_clear((pc.x, pc.y), (x, y), netname):
+                continue
+            drills.append((x, y))
+            return (x, y)
         return None
 
     va = spot(pa, (pb.GetPosition().x, pb.GetPosition().y))
@@ -3690,13 +3700,30 @@ def _clear_of_holes(holes, x, y, margin):
     return True
 
 
+_OUTLINE_CACHE = {}
+
+
+def _outline_board(outline):
+    """The outline in board units, converted once per outline object. clear() asks
+    _inside millions of times on one board (optical link_close_gaps, 2026-11-09: 9.7 M
+    _to_board calls, a quarter of the pass), always with the same list. Keyed on the
+    object and its contents' length, holding the object so its id is never reused."""
+    key = id(outline)
+    hit = _OUTLINE_CACHE.get(key)
+    if hit is not None and hit[0] is outline and hit[1] == len(outline):
+        return hit[2]
+    pts = [_to_board(px, py) for px, py in outline]
+    _OUTLINE_CACHE[key] = (outline, len(outline), pts)
+    return pts
+
+
 def _inside(outline, x, y, margin):
     """Is board-coordinate (x, y) inside `outline` by at least `margin` (all internal
     units)? Ray cast for the inside test, then point-to-segment for the margin -- a
     point can be well inside a polygon and still be 0.05 mm from one of its edges,
     which is what a via on a board edge looks like to the fab."""
     import math as _m
-    pts = [(_to_board(px, py)) for px, py in outline]
+    pts = _outline_board(outline)
     n = len(pts)
     inside = False
     for i in range(n):
@@ -3715,6 +3742,27 @@ def _inside(outline, x, y, margin):
         if _m.hypot(x - (ax + t * dx), y - (ay + t * dy)) < margin:
             return False
     return True
+
+
+def _inside_many(outline, X, Y, margin):
+    """_inside for arrays of points (numpy float arrays, internal units): the same ray
+    cast and the same edge margin, the outline converted once instead of per point."""
+    import numpy as _np
+    P = [_to_board(px, py) for px, py in outline]
+    A = _np.array([(p.x, p.y) for p in P], dtype=_np.float64)
+    Bp = _np.roll(A, -1, axis=0)
+    inside = _np.zeros(X.shape, bool)
+    out = _np.ones(X.shape, bool)
+    for (ax, ay), (bx, by) in zip(A, Bp):
+        cross = (ay > Y) != (by > Y)
+        den = (by - ay) if by != ay else 1.0
+        xi = (bx - ax) * (Y - ay) / den + ax
+        inside ^= cross & (X < xi)
+        dx, dy = bx - ax, by - ay
+        L2 = dx * dx + dy * dy
+        t = _np.zeros(X.shape) if L2 == 0 else _np.clip(((X - ax) * dx + (Y - ay) * dy) / L2, 0.0, 1.0)
+        out &= _np.hypot(X - (ax + t * dx), Y - (ay + t * dy)) >= margin
+    return inside & out
 
 
 def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
