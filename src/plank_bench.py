@@ -732,6 +732,7 @@ INLINE_X_SCREWS = (INLINE_FACE - INLINE_WALL_T - 6.6, INLINE_FACE - INLINE_WALL_
 assert INLINE_X_SCREWS[0] - XR_TAB >= XR_X1 + CS_DX + 0.2 - 1e-9, "the block's tab on the station's"
 assert INLINE_XS1_MIN <= XS1_IN, "the motor leaves the slider no room"
 CRADLE_HW = 12.0                                  # the ribs' outer faces: inside the wood screws' heads
+GAUGE_T = D.BEAD                                  # 0.8: the gauge arms to the counter post
 M_HALF = D.MOTOR_SQ / 2
 
 
@@ -749,6 +750,9 @@ def motor_block() -> cq.Workplane:
     for y0 in (SY - CRADLE_HW, SY + CRADLE_HW - RIB_T):
         s = s.union(_xz_prism(tri, y0, y0 + RIB_T))
         s = s.union(_box(w0, w1 + run, y0, y0 + RIB_T, Z_PLANK, zb))           # its strip of base
+        # a GAUGE ARM on from it (user, 2026-11-09): 0.8 tall on the plank, ending exactly at the
+        # counter post's -X base edge. Butt the post against both and it is at its spacing, square
+        s = s.union(_box(w1 + run - 0.01, POST_X0, y0, y0 + RIB_T, Z_PLANK, Z_PLANK + GAUGE_T))
     for x in INLINE_X_SCREWS:
         s = s.union(_box(x - XR_TAB, x + XR_TAB, XR_SCREWS_Y[0] - XR_TAB, Y_EDGE, Z_PLANK, zb))
     s = s.union(_box(INLINE_X_SCREWS[0], w1, XR_SCREWS_Y[0] - XR_TAB, Y_EDGE, Z_PLANK, zb))

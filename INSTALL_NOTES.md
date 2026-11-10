@@ -1773,3 +1773,4 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
   6. Fit the four face M3 x 12 from -X. The key reaches past the X station's walls.
   7. Hook the springs on last.
 - The counter slider's M4 insert is a captive nut (2026-11-09). Push it into its pocket from the slider's -X face until it seats on the 3.2 mm lip at the +X face. If it turns with the screw, touch it home with the iron. The springs' pull presses it onto the lip, so it can't pull out.
+- Plank motor block gauge arms (2026-11-09): two 0.8 mm strips on the plank run from the block's rib bases to the counter post's -X base edge. Butt the post against both arm ends and it is at its spacing and square to the block.
