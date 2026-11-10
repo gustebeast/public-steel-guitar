@@ -701,6 +701,8 @@ class Router(CoupledMixin):
                     cell[k][a0:a1, b0:b1][band] *= 0.6
         occv = self.occ_v.reshape(H, W)[i0:i1, j0:j1].astype(np.float32)
         hv = self.hist_v.reshape(H, W)[i0:i1, j0:j1]
+        if lane is not None:
+            vlegal = vlegal & lane[2]
         vcell = np.where(vlegal, (1.0 + hv) * (1.0 + pf * occv), np.inf).astype(np.float32)
         # ⚠ IN A PAIR ATTEMPT THE MATE IS A WALL, NOT A PRICE (optical HUB_PHY, 2026-11-09):
         # _pair_try refuses any attempt whose rails overlap, and at the finish's price the
@@ -1482,15 +1484,26 @@ class Router(CoupledMixin):
         """Lay a pair afresh (everything else held): first, then second, then (refine)
         first again against second -- coupled: in lanes round the pair's centreline
         (coupled.py). (shared cells, pair faults), or None if a rail fails."""
+        if coupled is True:
+            # the pin pairs the pair may use, best first (coupled._choose_ends): the
+            # first that lays wins
+            got = None
+            self._ends_left = True
+            for k in range(self.COUPLE_ENDS):
+                got = self._pair_try(pf, first, second, relax, layers, offrun_mult, refine,
+                                     via_mult, coupled=k + 1)
+                if got is not None or not self._ends_left:
+                    break
+            return got
         for x in (first, second):
             self._unmark(x)
             x.paths, x.necks, x.failed = [], [], False
             x.relaxed, x.force_layers = relax, layers
         if coupled:
-            mid = self._midline(first, second, pf)
+            mid = self._midline(first, second, pf, int(coupled) - 1)
             if mid is None:
                 if os.environ.get("PAIR_DEBUG"):
-                    self.log("      coupled: no centreline")
+                    self.log("      coupled: no centreline (ends choice %d)" % coupled)
                 return None
             self._set_lanes(first, second, mid)
         old = self.OFFRUN_COST
