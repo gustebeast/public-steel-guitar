@@ -271,9 +271,12 @@ class Router(CoupledMixin):
                 if net is None or net.plane or len(chain) < 2:
                     continue
                 cand = []
+                # ⚠ A STEP MAY NAME ONE PART PER RAIL, "D2|D3" (output_panel THRU, 2026-11-10):
+                # J1's ESD is a diode on each line. Left off the chain they were branches
+                # the pair's lanes never reached, and neither rail could join its diode.
                 for ref in chain:
-                    ps = [p for p in by_name.get(ref, ()) if p["net"] == name
-                          and (ref not in keep or p["name"].split(".", 1)[1] in keep[ref])]
+                    ps = [p for r_ in ref.split("|") for p in by_name.get(r_, ()) if p["net"] == name
+                          and (r_ not in keep or p["name"].split(".", 1)[1] in keep[r_])]
                     cand.append(ps)
                 if not all(cand):
                     continue

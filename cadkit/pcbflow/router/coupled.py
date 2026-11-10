@@ -37,6 +37,7 @@ class CoupledMixin:
     LANE_VIA = 0.9             # free room round each centreline layer change
     BAND_COST = 0.5            # price of a cell on the exact offset
     COUPLE_ENDS = 3            # pin-pair choices a coupled lay tries, best first
+    EXIT_SIDE = True                 # a land with no outward line is sided by where each rail leaves it
     MID_SLACKS = (0.1, 0.05, 0.0)   # mm each side of the centreline's pair width, tried in turn
     VIA_OFF = 0.42             # a rail's via at a layer change: this far off the line, its side
 
@@ -383,6 +384,88 @@ class CoupledMixin:
         cr = ty * dx - tx * dy
         return None if abs(cr) < 1e-6 else (1 if cr > 0 else -1)
 
+    def _multi(self, cells, x):
+        """True when a land holds more than one pad of its net (a USB-C's merged rows)."""
+        H, W = self.H, self.W
+        rc = set((cells % (H * W)).tolist())
+        n = 0
+        for p in self.m.pads:
+            if p["net"] == x.name:
+                i, j = self.m.ij(p["gx"], p["gy"])
+                n += (i * W + j) in rc
+        return n > 1
+
+    def _exit(self, mine, theirs, x, y, end):
+        """Where rail x's land is first reached from a line end, going round the mate's
+        land (never within a track's clearance of it): (x mm, y mm), or None."""
+        m = self.m
+        H, W = self.H, self.W
+        ei, ej = divmod(int(end % (H * W)), W)
+        R = int(math.ceil(3.0 / m.pitch))
+        i0, i1, j0, j1 = max(0, ei - R), min(H, ei + R + 1), max(0, ej - R), min(W, ej + R + 1)
+        h, w = i1 - i0, j1 - j0
+        own = np.zeros((h, w), bool)
+        mate = np.zeros((h, w), bool)
+        for cells, g in ((mine, own), (theirs, mate)):
+            r = cells % (H * W)
+            ii, jj = r // W - i0, r % W - j0
+            ok = (ii >= 0) & (ii < h) & (jj >= 0) & (jj < w)
+            g[ii[ok], jj[ok]] = True
+        if not own.any():
+            return None
+        gap = (x.width + y.width) / 2.0 + m.clear
+        wall = (distance_transform_edt(~mate) * m.pitch < gap) if mate.any() else np.zeros_like(mate)
+        wall &= ~own
+        si, sj = ei - i0, ej - j0
+        seen = np.zeros((h, w), bool)
+        seen[si, sj] = True
+        front = [(si, sj)]
+        while front:
+            nxt = []
+            for ci, cj in front:
+                if own[ci, cj]:
+                    return float(m.cx[cj + j0]), float(m.cy[ci + i0])
+                for di in (-1, 0, 1):
+                    for dj in (-1, 0, 1):
+                        ni, nj = ci + di, cj + dj
+                        if 0 <= ni < h and 0 <= nj < w and not seen[ni, nj] and not wall[ni, nj]:
+                            seen[ni, nj] = True
+                            nxt.append((ni, nj))
+            front = nxt
+        return None
+
+    def _exit_side(self, ca, cb, a, b, p, at):
+        """Side of rail a at a line end, from where each rail's land is first reached going
+        round its mate's (p: the run at that end, at: 0 start, -1 end), against the line's
+        travel there. +1 / -1, or None when the exits are not beside the line."""
+        n = p.size
+        if n < 3:
+            return None
+        k = min(8, n - 1)
+        e0, e1 = (p[0], p[k]) if at == 0 else (p[n - 1 - k], p[n - 1])
+        end = p[0] if at == 0 else p[n - 1]
+        (x0, y0), (x1, y1) = self._xy(np.array([e0])), self._xy(np.array([e1]))
+        tx, ty = x1 - x0, y1 - y0
+        tn = math.hypot(tx, ty)
+        if tn == 0:
+            return None
+        tx, ty = tx / tn, ty / tn
+        # the mate's whole land walls the way, its fixed merge copper included; a rail
+        # exits only onto the cells its hop may land on
+        def whole(cells, x):
+            pc = [q for q in x.pieces if np.isin(q, cells).any()]
+            return np.concatenate([cells] + pc) if pc else cells
+        xa = self._exit(ca, whole(cb, b), a, b, end)
+        xb = self._exit(cb, whole(ca, a), b, a, end)
+        if xa is None or xb is None:
+            return None
+        dx, dy = (xa[0] - xb[0]) / 2.0, (xa[1] - xb[1]) / 2.0
+        cr = ty * dx - tx * dy
+        dn = math.hypot(dx, dy)
+        if dn == 0 or abs(cr) / dn < 0.3:
+            return None
+        return 1 if cr > 0 else -1
+
     def _side(self, cells, hp, tang, box):
         """Which side of a hop's centreline a land lies: +1 / -1, or 0 when it lies
         ahead of or behind the line's end rather than beside it."""
@@ -496,8 +579,22 @@ class CoupledMixin:
             # SAYS NOTHING (optical U10, 2026-11-10): the clamp's DP is its top row and DM
             # its bottom row, either side of the line's end; judged against the line it read
             # as a twist. Its side is its neighbours'.
-            s1 = self._end_side(sa, sb, a, b, 1.0) or 0
-            s2 = self._end_side(ta, tb, a, b, -1.0) or 0
+            s1 = self._end_side(sa, sb, a, b, 1.0)
+            s2 = self._end_side(ta, tb, a, b, -1.0)
+            # ⚠ A MERGED LAND IS SIDED BY WHERE EACH RAIL CAN LEAVE IT (output_panel PI at
+            # J2, 2026-11-10). A USB-C at 90 / 270 deg carries D+ / D- on both rows, joined
+            # by fixed merge loops. By its A6 / A7 pads DP sat above DM -- but DM's loop
+            # boxes A6 in, and DP can only leave from B6, below DM. Read by the pads, the
+            # two ends disagreed with no layer change between, and the run went unsided.
+            # On a land of several pads (or none with an outward line) each rail's exit is
+            # where its land is first reached from the line's end going round its mate's.
+            if self.EXIT_SIDE and (s1 is None or self._multi(sa, a) or self._multi(sb, b)):
+                s1 = self._exit_side(sa, sb, a, b, hp[0], 0) or s1
+                ls = ls or bool(s1)
+            if self.EXIT_SIDE and (s2 is None or self._multi(ta, a) or self._multi(tb, b)):
+                s2 = self._exit_side(ta, tb, a, b, hp[-1], -1) or s2
+                lt = lt or bool(s2)
+            s1, s2 = s1 or 0, s2 or 0
             if s1:
                 obs.append((first, s1, hi))
             if s2:
