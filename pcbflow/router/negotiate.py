@@ -1176,7 +1176,11 @@ class Router(CoupledMixin):
             l0 = [v[0] for v in ms0.values()]
             best, best_key = None, ((1e9, 1e9, 1e9) if opened else (0, len(f0), max(l0) - min(l0)))
             ruled = []                     # [(shared cells, skew, state)]: to the rules, but in others' space
+            cl_best = None                 # (mm uncoupled, state, cand): the closest clean coupled lay
             for c in cands:
+                is_cpl = len(c) > 8 and c[8]
+                if cl_best is not None and not is_cpl:
+                    break                      # the coupled attempts are done: the closest is laid below
                 if len(c) > 7 and c[7] is not None:
                     # a push: other nets at a low price outright, and none of the history
                     # the negotiation built up round them (both steer it the long way)
@@ -1207,6 +1211,16 @@ class Router(CoupledMixin):
                 ms = self.pair_measure(a)
                 ls = [v[0] for v in ms.values()]
                 key = (sh, len(fl), max(ls) - min(ls))
+                # ⚠ THE CLOSEST CLEAN COUPLED LAY, NOT THE FIRST (optical u0 USB, 2026-11-10):
+                # the first coupled attempt to come out clean was kept at once -- DP first at
+                # 0.05 mm slack, 10.5 mm apart -- and the three after it were never tried.
+                # Every coupled attempt is laid; the clean one least apart wins.
+                if sh == 0 and not fl and is_cpl and self.COUPLE_BEST:
+                    u_ = self._uncoupled(a) if couple else 0.0
+                    if cl_best is None or u_ < cl_best[0]:
+                        cl_best = (u_, {x: (x.paths, x.necks, x.failed, x.relaxed, x.force_layers)
+                                        for x in (a, b)}, c)
+                    continue
                 if sh == 0 and not fl:
                     best = None
                     # ⚠ A CLEAN LAY DOES NOT BEAT A COUPLED ONE THAT NEEDS ROOM (output_panel
@@ -1240,35 +1254,48 @@ class Router(CoupledMixin):
                     best_key = key
                     best = {x: (x.paths, x.necks, x.failed, x.relaxed, x.force_layers) for x in (a, b)}
             else:
-                # ⚠ MORE THAN THE CHEAPEST (optical C119 -0.07/-0.55, 2026-11-10): USB's
-                # fewest-cells attempt (45, on In1) left two nets open round it; the
-                # home-layer one (76 cells) was never tried. Each distinct one, cheapest first.
-                # ⚠ A COUPLED PAIR TRIES ITS MOST COUPLED LAY FIRST (optical USB_HS unmoved,
-                # 2026-11-10): fewest shared cells first kept a 0.05 mm-slack lay 10 mm
-                # uncoupled over a 0.1 mm one at 5.5 mm that displaced just as cleanly.
-                # _displace refuses any lay that leaves a net open, so the cells it crosses
-                # are only the tie-break.
-                ruled.sort(key=lambda r_: (r_[3], r_[0], r_[1]))
-                done = next((r_ for r_ in ruled[:self.PAIR_DISPLACE]
-                             if self._displace(a, b, r_[2], pf)), None)
-                if done is not None:
-                    self.log("  pair %s/%s: %s -- laid to the rules through %d cell(s) of other "
-                             "nets' space, which re-negotiated round it" % (
-                                 a.name, b.name, ", ".join(x[0] for x in f0), done[0]))
+                if cl_best is None:
+                    # ⚠ MORE THAN THE CHEAPEST (optical C119 -0.07/-0.55, 2026-11-10): USB's
+                    # fewest-cells attempt (45, on In1) left two nets open round it; the
+                    # home-layer one (76 cells) was never tried. Each distinct one, cheapest first.
+                    # ⚠ A COUPLED PAIR TRIES ITS MOST COUPLED LAY FIRST (optical USB_HS unmoved,
+                    # 2026-11-10): fewest shared cells first kept a 0.05 mm-slack lay 10 mm
+                    # uncoupled over a 0.1 mm one at 5.5 mm that displaced just as cleanly.
+                    # _displace refuses any lay that leaves a net open, so the cells it crosses
+                    # are only the tie-break.
+                    ruled.sort(key=lambda r_: (r_[3], r_[0], r_[1]))
+                    done = next((r_ for r_ in ruled[:self.PAIR_DISPLACE]
+                                 if self._displace(a, b, r_[2], pf)), None)
+                    if done is not None:
+                        self.log("  pair %s/%s: %s -- laid to the rules through %d cell(s) of other "
+                                 "nets' space, which re-negotiated round it" % (
+                                     a.name, b.name, ", ".join(x[0] for x in f0), done[0]))
+                        for x in (a, b):
+                            x.force_layers = None
+                        continue
+                    st = best or keep
+                    if opened and not (best and best_key[0] == 0):
+                        st = keep                  # nothing laid clear of other nets: stays open
                     for x in (a, b):
-                        x.force_layers = None
-                    continue
-                st = best or keep
-                if opened and not (best and best_key[0] == 0):
-                    st = keep                  # nothing laid clear of other nets: stays open
+                        self._unmark(x)
+                    for x in (a, b):
+                        x.paths, x.necks, x.failed, x.relaxed, x.force_layers = st[x]
+                        self._mark(x)
+                    self.log("  pair %s/%s: %s -- no attempt met the rules%s" % (
+                        a.name, b.name, ", ".join(x[0] for x in f0),
+                        "; kept the one with fewest faults %s" % (best_key,) if best else "; kept as negotiated"))
+            if cl_best is not None:
                 for x in (a, b):
                     self._unmark(x)
                 for x in (a, b):
-                    x.paths, x.necks, x.failed, x.relaxed, x.force_layers = st[x]
+                    x.paths, x.necks, x.failed, x.relaxed, x.force_layers = cl_best[1][x]
                     self._mark(x)
-                self.log("  pair %s/%s: %s -- no attempt met the rules%s" % (
-                    a.name, b.name, ", ".join(x[0] for x in f0),
-                    "; kept the one with fewest faults %s" % (best_key,) if best else "; kept as negotiated"))
+                self.log("  pair %s/%s: %s -- refinished (%s first, coupled, closest of the clean "
+                         "coupled lays: %.1f mm apart)" % (a.name, b.name, ", ".join(x[0] for x in f0),
+                                                          cl_best[2][0].name, cl_best[0]))
+                for x in (a, b):
+                    x.force_layers = None
+                continue
             for x in (a, b):
                 x.force_layers = None
 
