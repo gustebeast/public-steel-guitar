@@ -331,6 +331,7 @@ class Router:
     NECK_MM = 1.2                    # ...within this distance of its own copper
     TURN_STATES_MAX = 40_000_000     # heading-aware search up to this many states (x9 cells)
     PAIR_PUSH = 0.5                  # the finish's push attempts: others' copper at this price, no history (_finish_pairs)
+    PAIR_REOPEN = True               # the pair finish also takes on a pair the negotiation ripped out
     PAIR_WALL = True                 # in a pair attempt the mate's copper is a wall (_pair_try)
     PLANE_MAIN = True                # plane joins aim at the main body's fill as it stands (_rounds)
     PLANE_KEEP = True                # a sharing plane net re-joins only its sharing pieces (_rounds)
@@ -1061,9 +1062,21 @@ class Router:
         pf = getattr(self, "_pf_last", 1.0)
         for a in list(self.nets):
             b = a.mate
-            if b is None or a.partner is not None or a.group is None or a.failed or b.failed:
+            if b is None or a.partner is not None or a.group is None:
                 continue
-            f0 = self.pair_faults(a)
+            # ⚠ A PAIR RIPPED OUT IS FINISHED TOO (optical, C102 +0.12/+0.48, 2026-11-10): the
+            # negotiation ended with USB_DP/DM sharing space with LED_ROW, both were ripped,
+            # and the finish skipped them -- the board's most important pair left open while
+            # every attempt below (the push included) was never tried. An engineer lays the
+            # pair and moves the rest; a pair laid with a fault but in nobody's space beats
+            # an open one.
+            opened = a.failed or b.failed
+            if opened:
+                if not self.PAIR_REOPEN:
+                    continue
+                f0 = [("open", (a.name, b.name))]
+            else:
+                f0 = self.pair_faults(a)
             if not f0:
                 continue
             home = set(a.run_layers or a.layers_only or range(self.L))
@@ -1098,7 +1111,7 @@ class Router:
                 cands.append((f_, s_, False, None, 1.0, True, 1.0, self.PAIR_PUSH))
             ms0 = self.pair_measure(a)
             l0 = [v[0] for v in ms0.values()]
-            best, best_key = None, (0, len(f0), max(l0) - min(l0))
+            best, best_key = None, ((1e9, 1e9, 1e9) if opened else (0, len(f0), max(l0) - min(l0)))
             ruled = None                   # (shared cells, skew, state): to the rules, but in others' space
             for c in cands:
                 if len(c) > 7:
@@ -1146,6 +1159,8 @@ class Router:
                         x.force_layers = None
                     continue
                 st = best or keep
+                if opened and not (best and best_key[0] == 0):
+                    st = keep                  # nothing laid clear of other nets: stays open
                 for x in (a, b):
                     self._unmark(x)
                 for x in (a, b):
@@ -1168,7 +1183,7 @@ class Router:
         # ⚠ THE PAIR'S OWN FLAGS ARE NOT COUNTED (optical, 2026-11-09): the last attempt
         # tried may have found no path and left a rail marked failed, so "open before"
         # counted 1, and a displacement that left LED_ROW open passed as no worse.
-        fail0 = sum(n.failed for n in self.nets if n not in lock)
+        fail0 = sum(self._w_open(n) for n in self.nets if n not in lock and n.failed)
         for x in (a, b):
             self._unmark(x)
         for x in (a, b):
@@ -1176,8 +1191,8 @@ class Router:
             self._mark(x)
         todo = [n for n in self.nets if n not in lock and not n.failed and self._conflicts(n)]
         left, _ = self._rounds(todo, pf, 12, 600, locked=lock)
-        fail1 = (sum(n.failed for n in self.nets if n not in lock)
-                 + sum(not n.failed for n in left if n not in lock))
+        fail1 = (sum(self._w_open(n) for n in self.nets if n not in lock and n.failed)
+                 + sum(self._w_open(n) for n in left if n not in lock and not n.failed))
         if fail1 <= fail0 and not self.pair_faults(a):
             self._rip(left)
             return True
@@ -1360,7 +1375,7 @@ class Router:
                 q1 = todo_q[0]
                 tried.add(q1)
                 saved = {n: (n.paths, n.necks, n.failed) for n in self.nets}
-                fail0 = sum(n.failed for n in self.nets)
+                fail0 = sum(self._w_open(n) for n in self.nets if n.failed)
                 net.main_xy = mx
                 # ⚠ ONLY THE CUT-OFF PIECES ARE RE-JOINED (optical +3V3D, 2026-11-09: the
                 # piece at 77.5,163.9 re-joined cleanly, but re-routing the whole net moved a
@@ -1374,7 +1389,8 @@ class Router:
                 finally:
                     net.main_xy = None
                     net.keep_paths = None
-                fail1 = sum(n.failed for n in self.nets) + sum(not n.failed for n in left)
+                fail1 = (sum(self._w_open(n) for n in self.nets if n.failed)
+                         + sum(self._w_open(n) for n in left if not n.failed))
                 again = self._islands(net) if not net.failed else None
                 nbad = len(again[0]) if again else len(bad) + 1
                 if fail1 <= fail0 and not net.failed and nbad < len(bad):
@@ -1935,6 +1951,13 @@ class Router:
                 self.log("  priority repair, order %s: %d net(s) sharing or open, was %d"
                          % (" > ".join(best_state[0]), best, before))
         return [n for n in self.nets if n.failed or any(c.size for c in self._conflicts(n))]
+
+    # ⚠ OPEN IS COUNTED IN CONNECTIONS, NOT NETS (optical, C102 +0.12/+0.48, 2026-11-10): a
+    # displacement re-routed the ripped USB pair and left +3V3D sharing, so it was ripped --
+    # "3 nets open -> 1" read as better, and a rail of ~55 joins went open for two signals.
+    # A net ripped out leaves len(pieces) - 1 connections open, as KiCad would count them.
+    def _w_open(self, n):
+        return max(1, len(n.pieces) - 1)
 
     def _rip(self, todo):
         """anything still sharing comes out: a legal board with a net open beats a short"""
