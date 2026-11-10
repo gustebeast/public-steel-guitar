@@ -203,6 +203,19 @@ re-joins the pieces. Open work is weighed per connection (`_open_w`), and the pa
 every pair already to the rules, so `_displace` can no longer trade a pair for +3V3D's 55 joins
 or the other way round. Optical C102 +0.12/+0.48: HUB_PHY pair fault + island -> 0 open.
 
+Coupled pairs (2026-11-10, `router/coupled.py`, milestone 3): a declared diff pair is laid as one
+trace twice. Its centreline is searched first as a temporary net as wide as the pair (w + spacing,
+both rails' copper its own, vias only where two fit), from straight out of each pin pair to the
+next; each rail then runs in a lane round its offset of that line -- a strip on ITS side (the side
+its pins are on, the line extended back to between them by a straight stem), free room round its
+lands and where the line changes layer, priced cheapest on the exact offset. A chirality twist
+(USB on the unmoved board: DP leaves U31 on the left, lands on J1 A6 on the right) is swapped at a
+layer change of the line. The pair wall is via-aware. The finish tries the coupled lay first, and
+re-lays a pair already to the rules if it runs more than `COUPLE_MIN_MM` apart, keeping it only
+`COUPLE_GAIN_MM` closer. HUB_PHY apart (mm of rail not beside its mate): unmoved 13.5 -> 3.7,
+C102 +0.27/+0.18 14.7 -> 2.6, 2 vias each, 0 faults. USB not yet: a coupled lay to the rules
+opens a +3V3D join on displacement (unmoved), or finds no way (C102).
+
 Tried and dropped, measured:
 
 - **Corridors from the global plan** (`CORRIDORS`, off): round 1 halved, but nets shared
