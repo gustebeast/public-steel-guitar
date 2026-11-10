@@ -1160,10 +1160,31 @@
     const para = (u, v) => u.clone().cross(v).length() < 1e-5;
     const arcA = (flip ? eb : ea).kind === 'circle' ? (flip ? eb : ea) : null;
     if (A.t === 'P' && B.t === 'P') {
-      const d = B.p.clone().sub(A.p);
-      out.big = `${f3(d.length())} mm`; out.a = A.p; out.b = B.p;
+      // A CIRCLE OR SPHERE MEASURES FROM ITS NEAREST POINT, NOT ITS CENTRE (user, 2026-11-10): the
+      // gap is what anyone measuring to a hole or a boss wants. Each side's nearest point to the
+      // other is found in turn; for a circle against a point that settles on the first pass, and
+      // two circles settle in a few.
+      const round = e => e.kind === 'circle' || e.kind === 'sphere';
+      const nearOn = (e, R, t) => e.kind === 'circle' ? nearestOnArc(e, p => p.distanceTo(t))
+        : e.kind === 'sphere' && t.distanceTo(e.c) > 1e-9
+          ? e.c.clone().add(t.clone().sub(e.c).normalize().multiplyScalar(e.r)) : R.p;
+      let pa = A.p, pb = B.p;
+      if (round(ea) || round(eb)) {
+        for (let i = 0; i < 24; i++) {
+          const nb = nearOn(eb, B, pa), na = nearOn(ea, A, nb);
+          const done = nb.distanceTo(pb) < 1e-7 && na.distanceTo(pa) < 1e-7;
+          pa = na; pb = nb;
+          if (done) break;
+        }
+      }
+      const d = pb.clone().sub(pa);
+      out.big = `${f3(d.length())} mm`; out.a = pa; out.b = pb;
       out.lines.push(`ΔX ${f3(Math.abs(d.x))}  ΔY ${f3(Math.abs(d.y))}  ΔZ ${f3(Math.abs(d.z))}`);
-      if (A.what || B.what) out.lines.push(`from ${A.what || 'point'} to ${B.what || 'point'}`);
+      if (round(ea) || round(eb)) {
+        const edge = e => e.kind === 'circle' ? 'nearest edge of the circle'
+          : e.kind === 'sphere' ? 'nearest point of the sphere' : (refOf0(e).what || 'point');
+        out.lines.push(`from ${edge(ea)} to ${edge(eb)}`);
+      } else if (A.what || B.what) out.lines.push(`from ${A.what || 'point'} to ${B.what || 'point'}`);
     } else if (A.t === 'P' && B.t === 'L') {
       const foot = B.p.clone().add(B.d.clone().multiplyScalar(A.p.clone().sub(B.p).dot(B.d)));
       const d = foot.distanceTo(A.p);
@@ -1173,7 +1194,6 @@
       if (arcA) {
         const dist = p => p.distanceTo(onLine(B.p, B.d, p)), near = nearestOnArc(arcA, dist);
         out.lines[0] = `nearest edge of the circle to ${B.what || 'line'}, square to it`;
-        out.lines.push(`from the circle's centre ${f3(d)}`);
         out.big = `${f3(dist(near))} mm`; out.a = near; out.b = onLine(B.p, B.d, near);
       }
     } else if (A.t === 'P' && B.t === 'PL') {
@@ -1183,7 +1203,6 @@
       if (arcA) {
         const dist = p => Math.abs(p.clone().sub(B.p).dot(B.n)), near = nearestOnArc(arcA, dist);
         out.lines[0] = 'nearest edge of the circle to the plane, square to it';
-        out.lines.push(`from the circle's centre ${f3(Math.abs(s))}`);
         out.big = `${f3(dist(near))} mm`; out.a = near;
         out.b = near.clone().sub(B.n.clone().multiplyScalar(near.clone().sub(B.p).dot(B.n)));
       } else if (A.r) out.lines.push(`edge of it to the plane ${f3(Math.abs(Math.abs(s) - A.r))} (if it stands square)`);
