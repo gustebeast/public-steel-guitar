@@ -203,9 +203,11 @@ def coupler(c1: float = CPL_X[1], boss_l: float = 0.0) -> cq.Workplane:
                                         (EAR_Y0 + zb - CUT_Z, -zb), (c0 - 1.0, -zb)]).close()
            .extrude(2 * zb).translate((-zb, 0, 0)))
     out = out.cut(cut)                                                           # 3
-    rb = D_BORE_R
-    out = out.cut(cyl_y(2 * rb, CPL_GRIP - c0 + 1.0, y0=c0 - 1.0).cut(
-        box_at(2 * rb + 2, CPL_GRIP - c0 + 3.0, rb, y=(c0 + CPL_GRIP) / 2, z=D_FLAT_Z + rb / 2)))
+    # the D bore, its two corners (flat to round) drawn at the nozzle's turning radius: the one
+    # fit-sensitive in-layer corner (user, 2026-11-10: round only the D for now)
+    wp = cq.Workplane("XZ", origin=(0, CPL_GRIP, 0))
+    dh, pts = _d_bore(wp, CPL_GRIP - c0 + 1.0, c0 - 1.0, CPL_GRIP)
+    out = out.cut(_round_y_edges(dh, pts))
     out = out.cut(cyl_y(FORM_MINOR_C - 0.6, end - CPL_GRIP + 1.0, y0=CPL_GRIP))  # 4: inside the ridges
     if boss_l:
         boss = cyl_y(RACE_IN_D, boss_l + 0.01, y0=c1 - 0.01).cut(
