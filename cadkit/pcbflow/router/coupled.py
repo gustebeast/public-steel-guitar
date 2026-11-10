@@ -38,6 +38,7 @@ class CoupledMixin:
     BAND_COST = 0.5            # price of a cell on the exact offset
     COUPLE_ENDS = 3            # pin-pair choices a coupled lay tries, best first
     EXIT_SIDE = True                 # a land with no outward line is sided by where each rail leaves it
+    MID_VIA_MULTS = (1.0, 5.0, 25.0)   # centreline via price steps until its layer changes fit max_vias
     MID_SLACKS = (0.1, 0.05, 0.0)   # mm each side of the centreline's pair width, tried in turn
     VIA_OFF = 0.42             # a rail's via at a layer change: this far off the line, its side
 
@@ -233,56 +234,69 @@ class CoupledMixin:
             return None
         self._ends_left = choice + 1 < len(combos)
         ends = combos[choice]
-        hops = []
-        for (sa, sb), (ta, tb) in ends:
-            s_ = self._mid_end(sa, sb, wf, a, b)
-            t_ = self._mid_end(ta, tb, wf, a, b)
-            if s_ is None or t_ is None:
-                return None
-            f = copy.copy(a)
-            f.name = a.name + "~pair"
-            f.width = wf
-            f.ids = (a.id, b.id)
-            f.via_erode = (self.m.via_d + self.m.clear) / 2.0 + self.m.margin + 0.05
-            f.pieces = [s_[0], t_[0]]
-            f.paths, f.necks, f.legs, f.fixed = [], [], [], []
-            f.mate = f.partner = f.merge = None
-            f.plane = f.same_layer = False
-            f.keep_paths = f.main_xy = None
-            f.stuck = 10 ** 6             # no global-plan corridor: it has no plan
-            f.relaxed = True              # home layers preferred (OFFRUN_COST), not forced
-            f.force_layers = None
-            f.via_mult = a.via_mult
-            allc = np.concatenate(f.pieces)
-            r = allc % (H * W)
-            f.bbox = (int((r // W).min()), int((r // W).max()), int((r % W).min()), int((r % W).max()))
-            # ⚠ A CENTRELINE WITH NO SLACK SEATS NO SECOND RAIL (optical USB_HS, C102
-            # +0.27/+0.18, 2026-11-10): between C102's via and two GND stitching vias the
-            # line took the gap at exactly the pair's width; on the grid the first rail
-            # fitted and the second, walled by its mate, had no legal cell left. The line is
-            # sought with slack each side first, at the bare width only if that fails; each
-            # slack in MID_SLACKS is its own attempt (_finish_pairs), widest first -- 0.1 mm
-            # laid c02's USB with its vias too close, 0.05 laid it to the rules.
-            got = None
-            slack = getattr(self, "_mid_slack", None)
-            slack = self.MID_SLACKS[0] if slack is None else slack
-            for wx in ((wf + 2 * slack, wf) if slack > 0 else (wf,)):
-                f.width = wx
-                saved = (self._necks if hasattr(self, "_necks") else None, getattr(self, "_neck_win", None))
-                try:
-                    got = self._route_net(f, pf)
-                finally:
-                    self._necks, self._neck_win = saved
-                if got:
-                    break
-            if not got:
-                return None
-            # A* hands a path back from its target: each runs start -> end here, so the
-            # centreline's direction is the pair's travel
-            st = set(s_[0].tolist())
-            hp = [p if p[0] in st or p[-1] not in st and self._dcell(p[0], s_[0]) <= self._dcell(p[-1], s_[0])
-                  else p[::-1].copy() for p in got if p.size]
-            hops.append((hp, (sa, sb), (ta, tb), s_[1], t_[1]))
+        # ⚠ THE LINE KEEPS TO THE PAIR'S VIA BUDGET (output_panel HUB_UP, 2026-11-10): each
+        # rail changes layer where the centreline does, and at the pair's own via price the
+        # line went F -> B -> F -> B -> F -- four vias a rail against a budget of two, so
+        # every coupled lay faulted though both rails laid in their lanes. At 5x the price
+        # it goes F -> B -> F. A line over budget is sought again dearer (MID_VIA_MULTS);
+        # if none fits, the last one found stands.
+        budget = (a.group or {}).get("max_vias")
+        for vm in (self.MID_VIA_MULTS if budget is not None else (1.0,)):
+            hops = []
+            for (sa, sb), (ta, tb) in ends:
+                s_ = self._mid_end(sa, sb, wf, a, b)
+                t_ = self._mid_end(ta, tb, wf, a, b)
+                if s_ is None or t_ is None:
+                    return None
+                f = copy.copy(a)
+                f.name = a.name + "~pair"
+                f.width = wf
+                f.ids = (a.id, b.id)
+                f.via_erode = (self.m.via_d + self.m.clear) / 2.0 + self.m.margin + 0.05
+                f.pieces = [s_[0], t_[0]]
+                f.paths, f.necks, f.legs, f.fixed = [], [], [], []
+                f.mate = f.partner = f.merge = None
+                f.plane = f.same_layer = False
+                f.keep_paths = f.main_xy = None
+                f.stuck = 10 ** 6             # no global-plan corridor: it has no plan
+                f.relaxed = True              # home layers preferred (OFFRUN_COST), not forced
+                f.force_layers = None
+                f.via_mult = a.via_mult * vm
+                allc = np.concatenate(f.pieces)
+                r = allc % (H * W)
+                f.bbox = (int((r // W).min()), int((r // W).max()), int((r % W).min()), int((r % W).max()))
+                # ⚠ A CENTRELINE WITH NO SLACK SEATS NO SECOND RAIL (optical USB_HS, C102
+                # +0.27/+0.18, 2026-11-10): between C102's via and two GND stitching vias the
+                # line took the gap at exactly the pair's width; on the grid the first rail
+                # fitted and the second, walled by its mate, had no legal cell left. The line is
+                # sought with slack each side first, at the bare width only if that fails; each
+                # slack in MID_SLACKS is its own attempt (_finish_pairs), widest first -- 0.1 mm
+                # laid c02's USB with its vias too close, 0.05 laid it to the rules.
+                got = None
+                slack = getattr(self, "_mid_slack", None)
+                slack = self.MID_SLACKS[0] if slack is None else slack
+                for wx in ((wf + 2 * slack, wf) if slack > 0 else (wf,)):
+                    f.width = wx
+                    saved = (self._necks if hasattr(self, "_necks") else None, getattr(self, "_neck_win", None))
+                    try:
+                        got = self._route_net(f, pf)
+                    finally:
+                        self._necks, self._neck_win = saved
+                    if got:
+                        break
+                if not got:
+                    return None
+                # A* hands a path back from its target: each runs start -> end here, so the
+                # centreline's direction is the pair's travel
+                st = set(s_[0].tolist())
+                hp = [p if p[0] in st or p[-1] not in st and self._dcell(p[0], s_[0]) <= self._dcell(p[-1], s_[0])
+                      else p[::-1].copy() for p in got if p.size]
+                hops.append((hp, (sa, sb), (ta, tb), s_[1], t_[1]))
+            nv = sum(int(((p // (H * W))[1:] != (p // (H * W))[:-1]).sum())
+                     for hop in hops for p in hop[0])
+            if budget is None or nv <= budget:
+                break
+
         return hops
 
     def _pin_pairs(self, ca, cb, a, b):
