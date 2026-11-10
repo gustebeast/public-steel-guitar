@@ -555,6 +555,20 @@ PARTS["saw_jig_cap"] = (
     "tools/saw_jig_cap.step",
     "TOOL — the saw jig's cap: a plunger down the clamp channel whose 45 deg notch seats on the rod's upper crests, with a rimmed pocket on top for the Quick-Grip pad. The clamp squeezes cap, rod, jig and table in one stack. PETG, printed as drawn (notch on the bed)")
 
+# LEADSCREW PIN DRILL JIG -- a SHOP TOOL (user, 2026-11-09): exported, never in the assembly.
+PARTS["pin_drill_jig"] = (
+    lambda: heal(__import__("src.pin_drill_jig", fromlist=["e"]).body()),
+    "tools/pin_drill_jig.step",
+    "TOOL — drill jig for the cross hole that pins a Tr8x2 leadscrew into the printed motor coupler: the saw jig's diamond tunnel and Quick-Grip cap (print a second saw_jig_cap), an end stop that puts the hole 6.0 from the screw's end, and a tower over the rod taking drop-in bushings (1/16 pilot, then 1/8 through for the belt clamp's M3 x 12), an exit hole under. PETG-GF, printed as drawn (table face on the bed)")
+PARTS["pin_drill_bushing_pilot"] = (
+    lambda: heal(__import__("src.pin_drill_jig", fromlist=["e"]).bushing("pilot")),
+    "tools/pin_drill_bushing_pilot.step",
+    "TOOL — the pin drill jig's 1/16 in pilot bushing: Ø10 tube, 28 of guide, a Ø14 flange on the tower's top. PETG-GF, printed flange down")
+PARTS["pin_drill_bushing_pin"] = (
+    lambda: heal(__import__("src.pin_drill_jig", fromlist=["e"]).bushing("pin")),
+    "tools/pin_drill_bushing_pin.step",
+    "TOOL — the pin drill jig's 1/8 in bushing: Ø10 tube, 28 of guide, a Ø14 flange on the tower's top. PETG-GF, printed flange down")
+
 # NUT REAMING JIG -- a SHOP TOOL (user, 2026-10-27): exported, never in the assembly.
 PARTS["ream_jig"] = (
     lambda: heal(__import__("src.ream_jig", fromlist=["e"]).jig()),

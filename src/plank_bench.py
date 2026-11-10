@@ -503,7 +503,10 @@ PIN_HEAD_D = 15.0
 PIN_Z0 = XR_ZA - PIN_GAP / 2                     # the pin's root: the wire's centre at the axis' height
 PIN_PAD = PIN_HEAD_D / 2 + 1.0                   # 8.5: the pin's platform, half-length and half-width
 # the springs' Y offset: clear of the station's walls (11.4) and the yoke's guide-rod arm (16.35 out -Y)
-CS_DY = 30.5
+# 34.4, was 30.5 (user, 2026-11-09: the IN-LINE MOTOR): the springs clear the motor's 42.3 can,
+# which now stands on the screw's axis past the rail wall (assembly_inline).
+CS_DY = 34.4
+assert CS_DY - SPR_OD / 2 >= D.MOTOR_SQ / 2 + 0.5 - 1e-9, "a spring rubs the in-line motor"
 assert CS_DY - SPR_OD / 2 >= XR_HW + 1.0 - 1e-9, "a spring rubs the station"
 assert CS_DY - SPR_OD / 2 >= -ROD_DY + ARM_R + 0.5 - 1e-9, "the -Y spring rubs the yoke's arm"
 BAR_L = 2 * PIN_PAD                              # 17: both bars' run along X
@@ -680,8 +683,98 @@ def assembly_counter(level=1.0):
     out.append(("plank_counter_post", counter_post()))
     for k, s in enumerate((-1, 1)):
         out.append((f"counter_spring_{k}", _spring(XP_SPREAD, xs1 - PIN_PAD, SY + s * CS_DY)))
-    out.append(("counter_m4_0", cyl_x(M4.screw_d, CS_SCREW_L, X_TIP, y=SY, z=XR_ZA)
-                .union(cyl_x(7.6, 2.2, X_HEAD, y=SY, z=XR_ZA))))
+    from .motor_coupler import cap_screw
+    out.append(("counter_m4_0", cap_screw("m4", CS_SCREW_L, (X_HEAD + 2.2, SY, XR_ZA), (-1, 0, 0))))
+    return out
+
+
+# ═════════════════════════════════════════════════════════════════════════════════════════
+# THE IN-LINE MOTOR (user, 2026-11-09): a SERVO42D on the screw's own axis, past the rail wall, in
+# place of the screw pulley -- to find how much counter-spring pull the motor needs before it can
+# tighten and loosen the string reliably with no reduction at all.
+#   COUPLER   src.motor_coupler's printed one, with its inner-race BOSS: it takes the pulley's
+#             place as the screw's THRUST SHOULDER on the rail wall's 688 (the string pulls the
+#             screw -X; the springs keep that so, under the string). The screw sticks 9.5 past the
+#             688; its end sits in the socket, pinned 6.0 from the end by the belt clamp's M3 x 12
+#             through a 1/8 in hole (src.pin_drill_jig). No thrust reaches the motor.
+#   BLOCK     on a new set of four plank holes, the station's pattern (XR_SCREWS' 33.97 x 43.80):
+#             the FACE WALL the motor's faceplate is screwed to (its four M3 x 12, heads on the -X
+#             face -- they stand outside the X station's walls in Y, so a 2.5 key reaches each along
+#             X past it), a CRADLE under the can, the base.
+#   SPRINGS   CS_DY moved out to clear the can: reprint the counter yoke and the slider.
+#   RANGE     the slider backs out only to the motor's back (INLINE_XS1_MIN): ~53 % to 100 %.
+# ORDER: block to the plank (all four wood screws open); coupler on the screw, turn it so the
+# pin's hole is up, drill-jigged hole through, pin it; motor in from +Z between the block and the
+# slider (slider fully in), slid -X onto the coupler's D, its four M3s; springs last.
+from . import motor_coupler as MC
+
+INLINE_SCREW_END = _xr_x(D.SCREW_BOT_Z) + CS_DX   # the screw's +X end
+INLINE_BRG_FACE = _xr_x(BRG_BOT_Z) + CS_DX        # the 688's +X face (the pulley's shoulder)
+INLINE_XP = INLINE_SCREW_END + MC.SCREW_X0        # the motor's pulley plane (world x)
+INLINE_BOSS = 0.8                                 # the coupler's boss onto the 688's inner race
+INLINE_C1 = INLINE_XP - INLINE_BRG_FACE - INLINE_BOSS   # the coupler's body end (motor frame y)
+INLINE_FACE = INLINE_XP + 7.5                     # the motor's faceplate (components.MOTOR_PULLEY_STANDOFF)
+INLINE_BACK = INLINE_XP + 60.7                    # its driver's back (direct_bench.M_BACK)
+INLINE_WALL_T = 10 * D.BEAD                       # 8.0: the M3 x 12 has 4 into the faceplate
+INLINE_HOLES = 31.0                               # NEMA17's M3 square
+INLINE_XS1_MIN = INLINE_BACK + 0.5 + BAR_L        # the slider's +X face, backed out to the motor
+INLINE_X_SCREWS = (INLINE_FACE - INLINE_WALL_T - 6.6, INLINE_FACE - INLINE_WALL_T - 6.6 + 33.97)
+assert INLINE_X_SCREWS[0] - XR_TAB >= XR_X1 + CS_DX + 0.2 - 1e-9, "the block's tab on the station's"
+assert INLINE_XS1_MIN <= XS1_IN, "the motor leaves the slider no room"
+CRADLE_X1 = INLINE_FACE + 32.0                    # under the can, short of the driver housing
+CRADLE_HW = 12.0                                  # clear of the wood screws' heads at 16.75 / 60.55
+M_HALF = D.MOTOR_SQ / 2
+
+
+def motor_block() -> cq.Workplane:
+    """The face wall, the cradle and the base on four new plank holes. Base down."""
+    zb = Z_PLANK + BASE_T
+    w0, w1 = INLINE_FACE - INLINE_WALL_T, INLINE_FACE
+    s = _box(w0, w1, SY - M_HALF, SY + M_HALF, zb - 0.01, XR_ZA + M_HALF)       # the face wall
+    s = s.union(_box(w1 - 0.01, CRADLE_X1, SY - CRADLE_HW, SY + CRADLE_HW, zb - 0.01,
+                     XR_ZA - M_HALF - 0.2))                                      # the cradle
+    s = s.union(_box(w0, CRADLE_X1, SY - CRADLE_HW, SY + CRADLE_HW, Z_PLANK, zb))
+    for x in INLINE_X_SCREWS:
+        s = s.union(_box(x - XR_TAB, x + XR_TAB, XR_SCREWS_Y[0] - XR_TAB, Y_EDGE, Z_PLANK, zb))
+    s = s.union(_box(INLINE_X_SCREWS[0], w1, XR_SCREWS_Y[0] - XR_TAB, Y_EDGE, Z_PLANK, zb))
+    s = s.cut(_xb(D.NEMA17_PILOT_D + 0.6, w0 - 1.0, w1 + 1.0))                  # the pilot
+    for sy in (1, -1):
+        for sz in (1, -1):
+            s = s.cut(printable_bore(3.4, INLINE_WALL_T + 2.0,
+                                     axis_point=(w0 - 1.0, SY + sy * INLINE_HOLES / 2,
+                                                 XR_ZA + sz * INLINE_HOLES / 2),
+                                     axis_dir=(1.0, 0.0, 0.0), print_up=UP))
+    for x in INLINE_X_SCREWS:
+        for y in XR_SCREWS_Y:
+            s = s.cut(_wood_screw(x, y, UP))
+    return s
+
+
+def _inline_frame(w):
+    """The motor's own frame (shaft +Y, flat +Z) -> its place: shaft -X on the screw's axis."""
+    return w.rotate((0, 0, 0), (0, 0, 1), 90).translate((INLINE_XP, SY, XR_ZA))
+
+
+def inline_coupler() -> cq.Workplane:
+    return _inline_frame(MC.coupler(INLINE_C1, INLINE_BOSS))
+
+
+def assembly_inline(level=1.0):
+    """The counter-spring rig with the in-line motor (scratch view scope), springs at `level`."""
+    xs1 = slider_for(level)
+    assert xs1 >= INLINE_XS1_MIN - 1e-6, f"the slider at {level:.0%} runs into the motor"
+    out = [(nm, w) for nm, w in assembly_counter(level) if nm != "xscrew_pulley_0"]
+    out.append(("plank_motor_block", motor_block()))
+    out.append(("inline_coupler", inline_coupler()))
+    out.append(("inline_coupler_m3", _inline_frame(MC.coupler_m3())))
+    for k, wp, _, _fin in C.motor_parts():
+        out.append((f"inline_motor_{k}" if k else "inline_motor", _inline_frame(wp)))
+    w0 = INLINE_FACE - INLINE_WALL_T
+    for sy in (1, -1):
+        for sz in (1, -1):
+            out.append((f"inline_face_m3_{(sy + 1) // 2}{(sz + 1) // 2}",
+                        MC.cap_screw("m3", MC.M3_L, (w0 - 3.0, SY + sy * INLINE_HOLES / 2,
+                                                     XR_ZA + sz * INLINE_HOLES / 2), (1, 0, 0))))
     return out
 
 
@@ -883,7 +976,9 @@ def print_parts():
     yk = yoke().rotate((0, 0, 0), (1, 0, 0), 180)               # roof on the bed: no bridge over the cavity
     out_x = station_x()                                          # base down, as drawn
     spring = (("plank_counter_post", counter_post()), ("plank_counter_yoke", counter_yoke()),
-              ("plank_counter_slider", slider()))                         # all base down
+              ("plank_counter_slider", slider()), ("plank_motor_block", motor_block()),   # all base down
+              # the coupler stands on its motor end (+Y -> +Z): the D bore round, boss up
+              ("plank_inline_coupler", MC.coupler(INLINE_C1, INLINE_BOSS).rotate((0, 0, 0), (1, 0, 0), 90)))
     for nm, w in (("plank_station", st), ("plank_head", head()),   # the real tee board holds the motor (user)
                   ("plank_station_axial", sa), ("plank_yoke", yk), ("plank_station_x", out_x)) + spring:
         bb = w.val().BoundingBox()

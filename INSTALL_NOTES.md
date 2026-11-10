@@ -1746,3 +1746,29 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
   - Its screw is short and stiff between the anchor bearings and the motor.
   - Let the motor find its axis on the turning screw, then tighten.
 - Station pitch is 77 mm (was 90). The farthest motor is at x -522.7 (was -556.7).
+
+### Leadscrew pin hole (pin drill jig, 2026-11-09)
+- Every printed motor coupler pins its screw with one belt-clamp M3 x 12. It passes through a 1/8 in hole drilled through the screw 5.0 mm from its end, and threads into the coupler's far wall.
+- Jig parts (coupons/): `pin_drill_jig`, a second saw-jig cap (`pin_drill_jig_cap`), and two drop-in bushings (`pin_drill_bushing_pilot` 1/16 in, `pin_drill_bushing_pin` 1/8 in).
+- Steps:
+  1. Push the screw in from -X until it meets the end stop.
+  2. Drop the cap in and Quick-Grip it to the table.
+  3. Fit the pilot bushing and drill 1/16 in through, with oil and a slow speed (the rod may be stainless).
+  4. Swap to the 1/8 in bushing and drill through.
+  5. Deburr both sides.
+- For a tapped pin later, you need a 2.5 mm bit and an M3x0.5 hand tap, plus a bushing for each.
+
+### Plank bench: in-line motor (2026-11-09)
+- A SERVO42D sits on the counter-spring rig's screw axis, in place of the screw pulley.
+- The printed coupler (plank_inline_coupler) is the screw's thrust shoulder. Its Ø10.4 boss bears on the rail wall 688's inner race.
+- The motor block (plank_motor_block) goes on four new plank holes, in the station's 33.97 x 43.80 pattern, at x -91.29 and -57.32 and the usual y 16.75 / 60.55.
+- CS_DY is now 34.4 (was 30.5), so the springs clear the can. Reprint plank_counter_yoke and plank_counter_slider; their bars are 3.9 mm longer each side.
+- With the motor in, the slider backs out only to the motor's back, so the spring range is about 53 % to 100 % of 147 N.
+- Order:
+  1. Screw the block to the plank. All four wood screws are reachable before the motor goes in.
+  2. Drill the screw (pin drill jig).
+  3. Coupler on the screw: turn it so the pin's slot faces up, then fit the M3.
+  4. Run the slider fully in.
+  5. Lower the motor onto the cradle and slide it -X onto the coupler's D, turning the shaft to match.
+  6. Fit the four face M3 x 12 from -X. The key reaches past the X station's walls.
+  7. Hook the springs on last.

@@ -225,11 +225,7 @@ PLUG = (21.15, 29.9, 6.2, 44.5, 38.5)               # coil plug + leads: off the
 #              the screw, self-tapping the far wall (as the yoke's M3s): a pin for the torque.
 #   THRUST     none: the coupler only TURNS the screw (~0.09 N m). The thrust bearings are on the
 #              anchor plate (THE THRUST HOUSING below), so the motor carries no axial load.
-CPL_D, CPL_X = 18.0, (-4.0, 15.0)                   # Ø, x from..to past the pulley plane
-CPL_GRIP = 4.0                                      # the D bore's +X end: the shaft's cut
-SCREW_X0 = CPL_GRIP + 0.5                           # the screw's -X end
-SOCKET_D = D.SCREW_OD + 0.4
-PIN_X = SCREW_X0 + 6.0                              # the M3: 2 d from the screw's end
+from .motor_coupler import CPL_D, CPL_X, CPL_GRIP, SCREW_X0, SOCKET_D, PIN_X   # src.motor_coupler
 M3_PILOT = 2.5
 
 # THE THRUST HOUSING (user, 2026-11-09: "put the thrust bearings on the anchor ... it would
@@ -473,17 +469,8 @@ def _m3s(i: int, t: float) -> cq.Workplane:
 
 
 def _cap(kind: str, length: float, top, shank_dir) -> cq.Workplane:
-    """cadkit's headed screw (head and its hex socket drawn), head TOP at `top`, the shank
-    running `shank_dir` from it. "m3": the M3 SHCS the benches use (belt_tensioner's spec,
-    as plank_bench's yoke screws); "m4": the M4 button head. Both turn with the 2.5 key."""
-    from cadkit.fasteners import M4, headed_screw, _rot_z_onto
-    if kind == "m3":
-        from . import belt_tensioner as BTn
-        s = headed_screw(BTn.M3, length, BTn.HEAD_D, BTn.HEAD_H, 2.5)
-    else:
-        s = headed_screw(M4, length, M4_HEAD[0], M4_HEAD[1], 2.5)
-    d = tuple(-c for c in shank_dir)                # headed_screw's shank runs -Z
-    return _rot_z_onto(s, d).translate(tuple(top))
+    from .motor_coupler import cap_screw
+    return cap_screw(kind, length, top, shank_dir)
 
 
 COILS = True                                        # False: the spring as its tube (the gate)
@@ -691,26 +678,14 @@ def _motor_frame(wp: cq.Workplane, i: int) -> cq.Workplane:
 
 
 def _coupler(i: int) -> cq.Workplane:
-    """Drawn in the motor's frame, so its D bore lands on the shaft's flat whatever PLUG_DIR."""
-    from . import components as C
-    c0, c1 = CPL_X
-    out = cyl_y(CPL_D, c1 - c0, y0=c0)
-    r = D.MOTOR_SHAFT_D / 2.0 + C.MOTOR_BORE_CLR                    # the pulley's D bore
-    zf = D.MOTOR_SHAFT_FLAT - D.MOTOR_SHAFT_D / 2.0 + C.MOTOR_BORE_CLR
-    bore = cyl_y(2 * r, CPL_GRIP - c0 + 1.0, y0=c0 - 1.0).cut(
-        box_at(2 * r + 1.0, 20.0, r + 1.0 - zf, y=0.0, z=(zf + r + 1.0) / 2.0))
-    out = out.cut(bore)
-    out = out.cut(cyl_y(SOCKET_D, c1 - CPL_GRIP + 1.0, y0=CPL_GRIP))        # the screw's socket
-    rs = SOCKET_D / 2
-    out = out.cut(cyl_x(M3_PILOT, 2 * CPL_D, -CPL_D, y=PIN_X, z=0))       # far wall: self-taps
-    out = out.cut(cyl_x(3.4, CPL_D, 0.0, y=PIN_X, z=0))                  # near wall: clear
-    out = out.cut(cyl_x(M3_HEAD[0] + 0.5, CPL_D, rs + 1.0, y=PIN_X, z=0))  # the head's pocket
-    return _motor_frame(out, i)
+    """src.motor_coupler's, in string i's motor frame (its D bore on the shaft's flat)."""
+    from . import motor_coupler as MC
+    return _motor_frame(MC.coupler(), i)
 
 
 def _coupler_m3(i: int) -> cq.Workplane:
-    h0 = SOCKET_D / 2 + 1.0                         # the head's underside: 1.0 of wall
-    return _motor_frame(_cap("m3", M3_L, (h0 + M3_HEAD[1], PIN_X, 0), (-1, 0, 0)), i)
+    from . import motor_coupler as MC
+    return _motor_frame(MC.coupler_m3(), i)
 
 
 def _motor(i: int) -> list:
