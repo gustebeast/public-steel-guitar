@@ -1757,6 +1757,9 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
   4. Swap to the 1/8 in bushing and drill through.
   5. Deburr both sides.
 - For a tapped pin later, you need a 2.5 mm bit and an M3x0.5 hand tap, plus a bushing for each.
+- Bushing bores (2026-11-10): the 1/8 in bushing, drawn bit + 0.6, is tight but the bit runs through it. Keep it.
+  The 1/16 in one at + 0.6 was too tight: a small hole loses more.
+  Print the three trial pilots (`pin_drill_bushing_pilot_1/2/3`, bit + 0.9 / 1.1 / 1.3, marked by 1-3 scallops on the flange). Use the one that is tight but runs through.
 
 ### Plank bench: in-line motor (2026-11-09)
 - A SERVO42D sits on the counter-spring rig's screw axis, in place of the screw pulley.

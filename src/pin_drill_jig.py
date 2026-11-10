@@ -46,7 +46,7 @@ IN = 25.4
 # ── the hole ────────────────────────────────────────────────────────────────
 PIN_FROM_END = MC.PIN_FROM_END             # hole axis to the screw's end: the coupler's own
 BUSHINGS = {"pilot": IN / 16, "pin": IN / 8}
-BIT_CLR = 0.3                              # each side: ream_jig's CH_CLR (0.15 printed too tight)
+BIT_CLR = 0.3                              # each side: the bushing SOCKET's slide (bores: BORE_EXTRA)
 
 # ── the rod, as saw_jig holds it ───────────────────────────────────────────
 ROD_R, ROD_Z = SJ.ROD_R, SJ.ROD_Z
@@ -92,14 +92,37 @@ def body() -> cq.Workplane:
     return out
 
 
-def bushing(kind: str = "pin") -> cq.Workplane:
-    """Drawn in place, in the tower: its foot BUSH_GAP over the crest, the flange on the top."""
-    d = BUSHINGS[kind] + 2 * BIT_CLR
+# THE BORES, MEASURED (user, 2026-11-10, PETG-GF 0.8 nozzle, printed flange down):
+#   1/8  drawn bit + 0.6 (Ø3.78): GOOD -- tight, the bit runs through it to a clean fit. Kept.
+#   1/16 drawn bit + 0.6 (Ø2.19): TOO TIGHT. A small hole loses more of itself (the nozzle's
+#        ~1 mm concave corner), so the 1/8's +0.6 does not carry down. Not yet known how much
+#        more: PILOT_TRY prints three, marked by 1/2/3 notches on the flange's rim; keep the one
+#        that is tight but runs through, like the 1/8's, and put its extra in BORE_EXTRA.
+BORE_EXTRA = {"pin": 0.6, "pilot": 0.6}    # drawn bore - bit, on the diameter
+PILOT_TRY = (0.9, 1.1, 1.3)                # the pilot's trial bores: notches 1, 2, 3
+
+
+def bushing(kind: str = "pin", extra: float | None = None, notches: int = 0) -> cq.Workplane:
+    """Drawn in place, in the tower: its foot BUSH_GAP over the crest, the flange on the top.
+    `extra` overrides BORE_EXTRA[kind]; `notches` cuts that many marks in the flange's rim."""
+    d = BUSHINGS[kind] + (BORE_EXTRA[kind] if extra is None else extra)
     z0 = CREST_Z + BUSH_GAP
     fd, ft = BUSH_FLANGE
     b = cq.Workplane("XY").circle(BUSH_OD / 2).extrude(BUSH_L).translate((0, 0, z0))
     b = b.union(cq.Workplane("XY").circle(fd / 2).extrude(ft).translate((0, 0, TOWER_TOP)))
+    for i in range(notches):                       # round SCALLOPS 1.0 into the rim, 90 deg apart:
+        # centred outside the rim, so they meet it at obtuse corners (square notches left tips)
+        b = b.cut(cq.Workplane("XY").circle(1.6).extrude(ft + 2)
+                  .translate((fd / 2 + 0.6, 0, TOWER_TOP - 1))
+                  .rotate((0, 0, 0), (0, 0, 1), 90.0 * i))
     return b.cut(cq.Workplane("XY").circle(d / 2).extrude(BUSH_L + ft + 2).translate((0, 0, z0 - 1)))
+
+
+def pilot_trials():
+    """The three trial pilot bushings, side by side for one plate, flange down."""
+    return [(f"pin_drill_bushing_pilot_{n + 1}",
+             bushing("pilot", e, n + 1).rotate((0, 0, 0), (1, 0, 0), 180)
+             .translate((18.0 * n, 0, 0))) for n, e in enumerate(PILOT_TRY)]
 
 
 def cap() -> cq.Workplane:

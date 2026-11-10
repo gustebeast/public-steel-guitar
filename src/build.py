@@ -569,6 +569,18 @@ PARTS["pin_drill_bushing_pin"] = (
     "tools/pin_drill_bushing_pin.step",
     "TOOL — the pin drill jig's 1/8 in bushing: Ø10 tube, 28 of guide, a Ø14 flange on the tower's top. PETG-GF, printed flange down")
 
+PARTS["pin_drill_bushing_pilot_1"] = (
+    lambda: heal(dict(__import__("src.pin_drill_jig", fromlist=["e"]).pilot_trials())["pin_drill_bushing_pilot_1"]),
+    "tools/pin_drill_bushing_pilot_1.step",
+    "TOOL -- trial 1/16 in pilot bushing 1 of 3 (bore = bit + PILOT_TRY[0], 1 scallop(s) on the flange): keep the one that is tight but runs the bit through. PETG-GF, printed flange down")
+PARTS["pin_drill_bushing_pilot_2"] = (
+    lambda: heal(dict(__import__("src.pin_drill_jig", fromlist=["e"]).pilot_trials())["pin_drill_bushing_pilot_2"]),
+    "tools/pin_drill_bushing_pilot_2.step",
+    "TOOL -- trial 1/16 in pilot bushing 2 of 3 (bore = bit + PILOT_TRY[1], 2 scallop(s) on the flange): keep the one that is tight but runs the bit through. PETG-GF, printed flange down")
+PARTS["pin_drill_bushing_pilot_3"] = (
+    lambda: heal(dict(__import__("src.pin_drill_jig", fromlist=["e"]).pilot_trials())["pin_drill_bushing_pilot_3"]),
+    "tools/pin_drill_bushing_pilot_3.step",
+    "TOOL -- trial 1/16 in pilot bushing 3 of 3 (bore = bit + PILOT_TRY[2], 3 scallop(s) on the flange): keep the one that is tight but runs the bit through. PETG-GF, printed flange down")
 # NUT REAMING JIG -- a SHOP TOOL (user, 2026-10-27): exported, never in the assembly.
 PARTS["ream_jig"] = (
     lambda: heal(__import__("src.ream_jig", fromlist=["e"]).jig()),
