@@ -1013,7 +1013,9 @@ def print_parts():
     spring = (("plank_counter_post", counter_post()), ("plank_counter_yoke", counter_yoke()),
               ("plank_counter_slider", slider()), ("plank_motor_block", motor_block()),   # all base down
               # the coupler stands on its motor end (+Y -> +Z): the D bore round, boss up
-              ("plank_inline_coupler", MC.coupler(INLINE_C1, INLINE_BOSS).rotate((0, 0, 0), (1, 0, 0), 90)))
+              ("plank_inline_coupler", MC.coupler(INLINE_C1, INLINE_BOSS).rotate((0, 0, 0), (1, 0, 0), 90)),
+              ("plank_inline_coupler_tight",                              # the D at D_CLR_TIGHT
+               MC.coupler(INLINE_C1, INLINE_BOSS, MC.D_CLR_TIGHT).rotate((0, 0, 0), (1, 0, 0), 90)))
     for nm, w in (("plank_station", st), ("plank_head", head()),   # the real tee board holds the motor (user)
                   ("plank_station_axial", sa), ("plank_yoke", yk), ("plank_station_x", out_x)) + spring:
         bb = w.val().BoundingBox()

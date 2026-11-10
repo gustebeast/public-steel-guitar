@@ -1802,4 +1802,5 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
   - Inside the block wall the ear and the cylinder are cut flat 9.28 below the axis, as deep as the wall's pilot hole allows: the deepest flat gives the lowest clamp, so the coupler turns clear in the wall's pilot hole. Past the wall it steps out on a 45° roof.
   - The two jaws are the same width. The insert stands about 2.6 mm proud of its jaw and bears on the 2.4 mm lip by the slit.
   - Hold the insert while you snug the M3 if it starts to turn.
+  - TWO D-bore fits to try (2026-11-10): `plank_inline_coupler`, the D 0.30 mm a side over the shaft, and `plank_inline_coupler_tight`, 0.15 a side. The slit may let the tighter one go on. Keep whichever pushes on and doesn't rock.
   - The pin drill jig is not needed for this.

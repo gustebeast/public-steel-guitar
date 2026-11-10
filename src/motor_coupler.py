@@ -157,13 +157,20 @@ def _round_y_edges(w: cq.Workplane, pts, r: float = CORNER_R) -> cq.Workplane:
     return cq.Workplane("XY").add(w.val().fillet(r, sel))
 
 
-def _d_bore(wp, L: float, y0: float, y1: float):
-    """The motor's D bore in a prism's sketch plane `wp`, and its two corners (to round)."""
-    rb = D_BORE_R
+D_CLR_TIGHT = 0.15                                  # the TIGHT trial (user, 2026-11-10: "with this
+                                                    # slit ... we can get away with a tighter fit"):
+                                                    # half HOLE_SHRINK a side; the clamp opens it
+
+
+def _d_bore(wp, L: float, y0: float, y1: float, clr: float = HOLE_SHRINK):
+    """The motor's D bore in a prism's sketch plane `wp`, `clr` over the shaft a side, and its two
+    corners (to round)."""
+    rb = D.MOTOR_SHAFT_D / 2 + clr
+    zf = D.MOTOR_SHAFT_FLAT - D.MOTOR_SHAFT_D / 2 + clr
     hole = wp.circle(rb).extrude(L).cut(
-        box_at(2 * rb + 2, L + 2, rb, y=(y0 + y1) / 2, z=D_FLAT_Z + rb / 2))
-    xf = math.sqrt(rb * rb - D_FLAT_Z ** 2)
-    return hole, [(-xf, D_FLAT_Z), (xf, D_FLAT_Z)]
+        box_at(2 * rb + 2, L + 2, rb, y=(y0 + y1) / 2, z=zf + rb / 2))
+    xf = math.sqrt(rb * rb - zf ** 2)
+    return hole, [(-xf, zf), (xf, zf)]
 
 
 def _eared_prism(y0: float, y1: float) -> cq.Workplane:
@@ -189,7 +196,7 @@ def _eared_prism(y0: float, y1: float) -> cq.Workplane:
     return _round_y_edges(s, pts)
 
 
-def coupler(c1: float = CPL_X[1], boss_l: float = 0.0) -> cq.Workplane:
+def coupler(c1: float = CPL_X[1], boss_l: float = 0.0, d_clr: float = HOLE_SHRINK) -> cq.Workplane:
     """The coupler in the motor's frame, to y = c1 (+ a boss_l long inner-race boss).
     BUILT SIMPLY (user, 2026-11-10), no rounding for now:
       1. a plain Ø18 cylinder;
@@ -212,7 +219,7 @@ def coupler(c1: float = CPL_X[1], boss_l: float = 0.0) -> cq.Workplane:
     # the D bore, its two corners (flat to round) drawn at the nozzle's turning radius: the one
     # fit-sensitive in-layer corner (user, 2026-11-10: round only the D for now)
     wp = cq.Workplane("XZ", origin=(0, CPL_GRIP, 0))
-    dh, pts = _d_bore(wp, CPL_GRIP - c0 + 1.0, c0 - 1.0, CPL_GRIP)
+    dh, pts = _d_bore(wp, CPL_GRIP - c0 + 1.0, c0 - 1.0, CPL_GRIP, d_clr)
     out = out.cut(_round_y_edges(dh, pts))
     out = out.cut(cyl_y(FORM_MINOR_C - 0.6, end - CPL_GRIP + 1.0, y0=CPL_GRIP))  # 4: inside the ridges
     if boss_l:
