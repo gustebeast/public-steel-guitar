@@ -14,8 +14,46 @@ import time
 import numpy as np
 
 from . import search as S
+from .model import GROUND_RE
+from .coupled import CoupledMixin
 
 W_REF = 0.2          # the narrowest track: a wide net's necked width at its lands
+
+
+def _dilate_disk(a, rr):
+    """binary_dilation(a, disk of radius rr cells), exactly: a cell is set iff a set cell
+    lies within rr of it -- one distance transform over the set cells' box grown by rr.
+
+    ⚠ scipy's binary_dilation by the disk was 12.5 s of a 72 s optical route (2026-11-10):
+    each hop of a multi-leg net bans the net's other copper, grown by a track and a
+    clearance, over the whole window, layer by layer. Same cells (checked on 300 masks),
+    a fifth of the time."""
+    out = np.zeros_like(a)
+    if not a.any():
+        return out
+    from scipy.ndimage import distance_transform_edt
+    ti, tj = np.nonzero(a)
+    a0, a1 = max(0, ti.min() - rr), min(a.shape[0], ti.max() + rr + 1)
+    b0, b1 = max(0, tj.min() - rr), min(a.shape[1], tj.max() + rr + 1)
+    out[a0:a1, b0:b1] = distance_transform_edt(~a[a0:a1, b0:b1]) <= rr
+    return out
+
+
+def _max_disk(a, rr):
+    """maximum_filter(a, disk footprint of radius rr), exactly, for a of non-negative
+    whole numbers (occupancy counts): the sum over levels t of the disk dilation of
+    a >= t. scipy's reflect border adds nothing a disk does not already reach (a mirrored
+    cell lies inside the same disk). 4x faster on 200 masks, same values; past 8 levels
+    scipy is used."""
+    top = int(a.max()) if a.size else 0
+    if top > 8:
+        from scipy.ndimage import maximum_filter
+        yy, xx = np.mgrid[-rr:rr + 1, -rr:rr + 1]
+        return maximum_filter(a, footprint=(yy * yy + xx * xx) <= rr * rr)
+    out = np.zeros(a.shape, a.dtype)
+    for t in range(1, top + 1):
+        out += _dilate_disk(a >= t, rr)
+    return out
 
 
 class Net:
@@ -45,9 +83,10 @@ class Net:
         self.group = None       # its match group (board.json "match" entry), if any
         self.force_layers = None  # the pair finish's layer set for this attempt (outside the merge circle)
         self.main_xy = None     # a pour net's island re-join: the fill its main body reaches (bool[H, W])
+        self.keep_paths = None  # ...and the joins of its good pieces, kept as laid {piece: (path, necks)}
 
 
-class Router:
+class Router(CoupledMixin):
     def __init__(self, model, via_cost=15.0, layer_cost=None, log=print, turn45=4.0, turn90=12.0):
         self.m = model
         self.turn45, self.turn90 = np.float32(turn45), np.float32(turn90)
@@ -216,6 +255,21 @@ class Router:
                 if keep:
                     for x in names:
                         by[x].layers_only = keep
+            # ⚠ A same_layer PAIR WITHOUT A MERGE CONNECTOR RUNS ON ITS LANDS' LAYER TOO
+            # (optical HUB_PHY, 2026-11-09): nothing held it, the leading rail dived to B.Cu
+            # wherever its lane was busy, its mate followed the layers it was handed, and the
+            # negotiation ended with the pair split -- which no finish attempt could undo on
+            # a board settled round it. An engineer lays a hub-to-PHY pair on the layer both
+            # chips sit on. Same strict-then-relaxed rule as the merge case.
+            if g.get("same_layer") and not g.get("merge_at") and names:
+                lid_ = {n_: k for k, n_ in enumerate(m.route_layers)}
+                run = set(range(len(m.route_layers)))
+                for p in m.pads:
+                    if p["net"] in names and p["cu"] is not None:
+                        run &= {lid_[c] for c in p["cu"] if c in lid_}
+                if run and len(run) < len(m.route_layers):
+                    for x in names:
+                        by[x].run_layers = run
             if len(names) == 2:
                 a_, b_ = by[names[0]], by[names[1]]
                 b_.partner = a_
@@ -253,9 +307,12 @@ class Router:
                 if net is None or net.plane or len(chain) < 2:
                     continue
                 cand = []
+                # ⚠ A STEP MAY NAME ONE PART PER RAIL, "D2|D3" (output_panel THRU, 2026-11-10):
+                # J1's ESD is a diode on each line. Left off the chain they were branches
+                # the pair's lanes never reached, and neither rail could join its diode.
                 for ref in chain:
-                    ps = [p for p in by_name.get(ref, ()) if p["net"] == name
-                          and (ref not in keep or p["name"].split(".", 1)[1] in keep[ref])]
+                    ps = [p for r_ in ref.split("|") for p in by_name.get(r_, ()) if p["net"] == name
+                          and (r_ not in keep or p["name"].split(".", 1)[1] in keep[r_])]
                     cand.append(ps)
                 if not all(cand):
                     continue
@@ -303,25 +360,102 @@ class Router:
     DEBUG_MERGE = False
     DIVE_STUB = 1.0                  # a diving rail keeps to the surface this near its lands
     OFFRUN_COST = 4.0                # a relaxed pair's cell price off its home layers
+    WIDEN_AFTER = 3                  # rounds a net may share before its search window widens...
+    STALL_ROUNDS = 2                 # ...once the whole negotiation is this many rounds without gain
     RELAX_AFTER = 10                 # rounds a layer-held pair may share before it is relaxed (4 relaxed USB mid-negotiation, 11-08)
     FILL_MARGIN = 0.15               # a plane-join via's pad this far inside the fill's edge
     PLANE_JOIN_MM = (2.0, 6.0)       # a plane join looks this near its piece first (then everywhere)
     RING_COST = 4.0                  # inside another net's poured land's thermal room (model.ring_net)
+    VOID_COST = 3.0                  # over a void in the track's return plane (model.ref_void)
     NECK_W = W_REF                   # a net's width where it necks down at its own lands
     NECK_MM = 1.2                    # ...within this distance of its own copper
     TURN_STATES_MAX = 40_000_000     # heading-aware search up to this many states (x9 cells)
+    PAIR_PUSH = 0.5                  # the finish's push attempts: others' copper at this price, no history (_finish_pairs)
+    PLANE_PARTIAL = True             # a plane net still sharing loses only its sharing joins (_rip)
+    PAIR_DISPLACE = 3                # rule-meeting attempts _displace may try per pair
+    PAIR_REOPEN = True               # the pair finish also takes on a pair the negotiation ripped out
+    PAIR_WALL = True                 # in a pair attempt the mate's copper is a wall (_pair_try)
+    PLANE_MAIN = True                # plane joins aim at the main body's fill as it stands (_rounds)
+    PLANE_KEEP = True                # a sharing plane net re-joins only its sharing pieces (_rounds)
 
     # ⚠ HEURISTIC WEIGHT 1.2 (optical S53o0, 2026-11-09): negotiation 123 -> 90 s, same
     # nets, same pair faults (none), +0.4 % track, vias 192 -> 191. Congestion pricing
     # leaves the straight-line heuristic weak; a small weight buys most of the speed back.
     ASTAR_EPS = 1.2
+    # ⚠ HEURISTIC TO THE NEAREST TARGET CELL, NOT ITS BOX (optical BOOT0, 2026-11-09: lands
+    # spread over a 9 x 15 mm box left the search unguided inside it -- 7.7 M states, 5.6 s,
+    # for one 46 mm net). See search.astar_s_h.
+    HMAP = True
 
-    def _astar(self, cellf, vcellf, src, tgt, L, h, w, tb, dir_cost, vmult=1.0):
+    # ⚠ "NO PATH" IS PROVEN BY LABELLING, NOT BY FLOODING (optical USB_DM, 2026-11-09): a
+    # hop with no way through a 12 mm window popped 8.1 M states to say so, and the pair
+    # finish asked that question twice an attempt -- 71 of its 85 s. Connected components
+    # of the passable cells, joined across layers wherever a via may stand, are a superset
+    # of what the search can reach (it moves 8-way, changes layer only at a via cell), so
+    # "not connected" is exactly "no path" and the search is skipped. Asked only where
+    # "no path" is common (a pair's hops, tried in small windows first): before every
+    # search it cost output_panel 48 -> 81 s.
+    REACH_MIN = 300_000              # cells (L x h x w) from which a search is checked first
+
+    def _reachable(self, cellf, vcellf, src_idx, tgt, L, h, w):
+        from scipy.ndimage import label
+        fin = np.isfinite(cellf).reshape(L, h, w)
+        s_ok = src_idx[fin.ravel()[src_idx]]
+        if s_ok.size == 0:
+            return False
+        if tgt[s_ok].any():
+            return True
+        labs = np.zeros((L, h, w), np.int32)
+        base = 0
+        st8 = np.ones((3, 3), bool)
+        for k in range(L):
+            if fin[k].any():
+                lk, nk = label(fin[k], structure=st8)
+                labs[k] = np.where(lk > 0, lk + base, 0)
+                base += nk
+        up = np.arange(base + 1)
+
+        def find(a):
+            while up[a] != a:
+                up[a] = up[up[a]]
+                a = up[a]
+            return a
+        vf = np.isfinite(vcellf).reshape(h, w)
+        for k1 in range(L):
+            for k2 in range(k1 + 1, L):
+                mm = vf & fin[k1] & fin[k2]
+                if mm.any():
+                    key = np.unique(labs[k1][mm].astype(np.int64) * (base + 1) + labs[k2][mm])
+                    for a_, b_ in zip((key // (base + 1)).tolist(), (key % (base + 1)).tolist()):
+                        ra, rb = find(a_), find(b_)
+                        if ra != rb:
+                            up[ra] = rb
+        lf = labs.ravel()
+        sr = {find(int(x)) for x in np.unique(lf[s_ok])}
+        tl = np.unique(lf[np.flatnonzero(tgt)])
+        return any(find(int(x)) in sr for x in tl if x > 0)
+
+    def _astar(self, cellf, vcellf, src, tgt, L, h, w, tb, dir_cost, vmult=1.0, check=False):
         vc = np.float32(self.via_cost * vmult)
         bufs = self.__dict__.setdefault("_bufs", S.Buffers())
         src_idx = np.flatnonzero(src).astype(np.int64)
         eps = np.float32(self.ASTAR_EPS)
-        if L * h * w * 9 <= self.TURN_STATES_MAX and self.turn45 + self.turn90 > 0:
+        if check and L * h * w >= self.REACH_MIN and not self._reachable(cellf, vcellf, src_idx, tgt, L, h, w):
+            return np.empty(0, np.int64)
+        turn = L * h * w * 9 <= self.TURN_STATES_MAX and self.turn45 + self.turn90 > 0
+        if self.HMAP:
+            # straight-line distance to the nearest target cell, in cells (search.py)
+            from scipy.ndimage import distance_transform_edt
+            t2 = tgt.reshape(L, h * w).any(axis=0).reshape(h, w)
+            hmap = (S.edt_to(t2) if t2.any() else distance_transform_edt(~t2).astype(np.float32)).ravel()
+            if turn:
+                g, par, st, base = bufs.take(L * h * w * 9)
+                return S.astar_turn_s_h(cellf, vcellf, src_idx, tgt, L, h, w, vc, tb, hmap,
+                                        dir_cost, self.turn45, self.turn90, eps, g, par, st, base)
+            g, par, st, base = bufs.take(L * h * w)
+            return S.astar_s_h(cellf, vcellf, src_idx, tgt, L, h, w, vc, tb, hmap, dir_cost, eps,
+                               g, par, st, base)
+        if turn:
             g, par, st, base = bufs.take(L * h * w * 9)
             return S.astar_turn_s(cellf, vcellf, src_idx, tgt, L, h, w, vc, tb, dir_cost,
                                   self.turn45, self.turn90, eps, g, par, st, base)
@@ -357,6 +491,71 @@ class Router:
                 return None
         return c
 
+    # ⚠ A FINE-PITCH PIN LEAVES STRAIGHT OUT (optical U7, C112 moved 0.6 mm, 2026-11-09):
+    # eight ULPI pins at 0.5 mm pitch all leave north on F.Cu; straight-out escapes fit (a
+    # track and its clearance is 0.357), but the router laid them as it pleased, a neighbour
+    # jogged into the next pin's exit, and whichever of D3 / D4 went second could not get
+    # out -- both ripped out, on a placement whose neighbours route. An engineer plans the
+    # fan-out first: each pin's first ESC_MM is its own. Other nets crossing that stub pay
+    # ESC_COST (a price, not a wall: a board that needs it can still cross).
+    ESC_COST = 4.0
+    ESC_MM = 0.8
+    ESC_PITCH = 0.8                  # a part is fine-pitch below this pad pitch...
+    ESC_PINS = 8                     # ...with at least this many pads
+
+    def _escape_map(self):
+        es = getattr(self, "_esc", None)
+        if es is not None:
+            return es
+        m = self.m
+        L, H, W = self.L, self.H, self.W
+        es = np.zeros((L, H, W), np.int32)
+        lid = {n_: k for k, n_ in enumerate(m.route_layers)}
+        plane = set(m.pours)
+        by = {}
+        for p in m.pads:
+            ref = (p.get("name") or "").rsplit(".", 1)[0]
+            if ref:
+                by.setdefault(ref, []).append(p)
+        need = self.wref / 2.0 + m.clear + m.margin - m.pitch
+        for ref, pads in by.items():
+            if len(pads) < self.ESC_PINS:
+                continue
+            xy = np.array([(p["gx"], p["gy"]) for p in pads])
+            d = np.hypot(xy[:, None, 0] - xy[None, :, 0], xy[:, None, 1] - xy[None, :, 1])
+            np.fill_diagonal(d, np.inf)
+            if np.median(d.min(axis=1)) >= self.ESC_PITCH:
+                continue
+            cx, cy = xy.mean(axis=0)
+            for p in pads:
+                if not p["net"] or p["net"] in plane or p["net"] not in m.net_id or not p.get("cu"):
+                    continue
+                ks = [lid[c] for c in p["cu"] if c in lid]
+                if len(ks) != 1:
+                    continue                # a through land escapes by any layer
+                ax, ay = p["x2"] - p["x1"], p["y2"] - p["y1"]
+                la = math.hypot(ax, ay)
+                if la < 1e-6:
+                    continue
+                ux, uy = ax / la, ay / la
+                if (p["gx"] - cx) * ux + (p["gy"] - cy) * uy < 0:
+                    ux, uy = -ux, -uy
+                tx, ty = p["gx"] + ux * (la / 2.0 + p["r"]), p["gy"] + uy * (la / 2.0 + p["r"])
+                ex, ey = tx + ux * self.ESC_MM, ty + uy * self.ESC_MM
+                x0, x1 = min(tx, ex) - need, max(tx, ex) + need
+                y0, y1 = min(ty, ey) - need, max(ty, ey) + need
+                j0, j1 = max(0, int((x0 - m.x0) / m.pitch)), min(W, int((x1 - m.x0) / m.pitch) + 2)
+                i0, i1 = max(0, int((y0 - m.y0) / m.pitch)), min(H, int((y1 - m.y0) / m.pitch) + 2)
+                if i0 >= i1 or j0 >= j1:
+                    continue
+                X, Y = np.meshgrid(m.cx[j0:j1], m.cy[i0:i1])
+                t = np.clip((X - tx) * ux + (Y - ty) * uy, 0.0, self.ESC_MM)
+                dd = np.hypot(X - (tx + t * ux), Y - (ty + t * uy))
+                sub = es[ks[0], i0:i1, j0:j1]
+                sub[(dd < need) & (sub == 0)] = m.net_id[p["net"]]
+        self._esc = es
+        return es
+
     def _window(self, net, margin_mm):
         mc = int(math.ceil(margin_mm / self.m.pitch))
         i0, i1, j0, j1 = net.bbox
@@ -372,7 +571,24 @@ class Router:
         corr = self._corridor(net)
         for strict in ((True, False) if net.run_layers and not net.relaxed else (False,)):
             self._strict = strict
-            for margin in ((("corr", corr),) if corr is not None else ()) + (4.0, 12.0, 1e4):
+            # ⚠ A NET THAT KEEPS SHARING LOOKS WIDER (pi_cap, 2026-11-09): the window grew
+            # only when it held NO path, and a shared one always exists, so SCK_FOOT_PI and
+            # UI_SW_C fought over one gap in the socket row for eight rounds at pf 576 while
+            # room lay just outside both windows, and both were ripped out. An engineer
+            # stuck like that steps back: once the negotiation has STALLED (no better for
+            # STALL_ROUNDS rounds), a net that has shared WIDEN_AFTER rounds starts at
+            # 12 mm, after twice that over the whole board. Only when stalled: widening
+            # while the negotiation still improved moved optical's nets round its USB pair
+            # and left the pair unfinishable; and never a matched pair, which has its own
+            # way out (RELAX_AFTER, then its finish).
+            margins = (4.0, 12.0, 1e4)
+            if net.mate is not None or not getattr(self, "_stalled", False):
+                pass
+            elif net.stuck >= 2 * self.WIDEN_AFTER:
+                margins = (1e4,)
+            elif net.stuck >= self.WIDEN_AFTER:
+                margins = (12.0, 1e4)
+            for margin in ((("corr", corr),) if corr is not None else ()) + margins:
                 if isinstance(margin, tuple):
                     self._corr = margin[1]
                     win = self._window(net, 4.0)
@@ -397,7 +613,8 @@ class Router:
         # fixed-copper legality for this net in the window
         nid = net.id
         sl = (slice(None), slice(i0, i1), slice(j0, j1))
-        fd = np.where(m.n1[sl] == nid, m.d2[sl], m.d1[sl])
+        own_ids = getattr(net, "ids", None)    # a pair's centreline owns both rails' copper
+        fd = np.where(np.isin(m.n1[sl], own_ids) if own_ids else m.n1[sl] == nid, m.d2[sl], m.d1[sl])
         legal = fd >= net.width / 2.0 + m.clear + m.margin
         legal &= (m.edge[i0:i1, j0:j1] >= net.width / 2.0 + m.edge_clear + m.margin)[None]
         allowed = None if net.relaxed else net.layers_only
@@ -419,6 +636,10 @@ class Router:
                 for k in range(L):
                     if k not in net.run_layers:
                         legal[k] &= circle
+        if net.run_layers and net.merge is None and getattr(self, "_strict", False):
+            for k in range(L):
+                if k not in net.run_layers:
+                    legal[k] = False
         if net.force_layers is not None:
             for k in range(L):
                 if k not in net.force_layers:
@@ -427,16 +648,35 @@ class Router:
         if corr is not None:
             gb = self._gr.b
             legal &= corr[np.ix_(np.arange(i0, i1) // gb, np.arange(j0, j1) // gb)][None]
+        lane = self._lane_win(net, win)        # a coupled pair's rail keeps to its lane
+        if lane is not None:
+            legal &= lane[0]
         vlegal = np.all(fd >= m.via_d / 2.0 + m.clear + m.margin, axis=0)
         vlegal &= m.edge[i0:i1, j0:j1] >= m.via_d / 2.0 + m.edge_clear + m.margin
         vlegal &= ~m.via_ban[i0:i1, j0:j1]
+        ve = getattr(net, "via_erode", 0.0)     # a pair's centreline: room for both vias
+        if ve > 0 and vlegal.any():
+            # ⚠ ERODED ONCE PER WINDOW, BY DISTANCE (optical, 2026-11-10): scipy's
+            # binary_erosion by the disk was 12.7 s of an 82 s route, the same centreline
+            # window eroded again for every slack, order and via price the finish tries.
+            # The mask comes from fixed copper, the edge and the via bans only -- none
+            # change during a route -- so it is kept per (owner, window, radius). A cell
+            # survives a disk erosion iff the nearest blocked cell (outside the window
+            # counts as blocked, scipy's border) is further than the radius: one distance
+            # transform, identical to the erosion (checked on 450 masks).
+            from scipy.ndimage import distance_transform_edt
+            rr_ = int(math.ceil(ve / m.pitch))
+            key = (tuple(sorted(own_ids)) if own_ids else nid, i0, i1, j0, j1, rr_)
+            cache = self.__dict__.setdefault("_erode_cache", {})
+            if key not in cache:
+                pad = np.zeros((h + 2, w + 2), bool)
+                pad[1:-1, 1:-1] = vlegal
+                cache[key] = distance_transform_edt(pad)[1:-1, 1:-1] > rr_
+            vlegal = cache[key]
         occ =self.occ_t.reshape(L, H, W)[sl].astype(np.float32)
         if net.width > self.wref + 1e-6:
-            from scipy.ndimage import maximum_filter
             rr = int(math.ceil((net.width - self.wref) / 2.0 / m.pitch))
-            yy, xx = np.mgrid[-rr:rr + 1, -rr:rr + 1]
-            fp = (yy * yy + xx * xx) <= rr * rr
-            occ = np.stack([maximum_filter(occ[k], footprint=fp) for k in range(L)])
+            occ = np.stack([_max_disk(occ[k], rr) for k in range(L)])
         hist = self.hist.reshape(L, H, W)[sl]
         cell = (1.0 + hist) * (1.0 + pf * occ) * self.layer_cost[:, None, None]
         # ⚠ A RELAXED PAIR DIVES TO CROSS, THEN COMES BACK UP (optical USB_DP, 2026-11-08:
@@ -448,10 +688,21 @@ class Router:
             for k in range(L):
                 if k not in home:
                     cell[k] = cell[k] * self.OFFRUN_COST
+        # ⚠ PRICES APPLIED IN PLACE (2026-11-10): np.where(mask, cell * X, cell) built two
+        # full (L, h, w) arrays per price, ~6 s of an optical route. Multiplied in place
+        # where the mask holds -- the same product in the same dtype (X is a Python float,
+        # so it keeps cell's), cell for cell.
         rn = m.region_net[sl]
-        cell = np.where((rn != 0) & (rn != nid), cell * self.REGION_COST, cell)
+        np.multiply(cell, self.REGION_COST, out=cell, where=(rn != 0) & (rn != nid))
+        if self.ESC_COST > 1.0:
+            es = self._escape_map()[sl]
+            np.multiply(cell, self.ESC_COST, out=cell, where=(es != 0) & (es != nid))
         rg = m.ring_net[sl]
-        cell = np.where((rg != 0) & (rg != nid), cell * self.RING_COST, cell)
+        np.multiply(cell, self.RING_COST, out=cell, where=(rg != 0) & (rg != nid))
+        # over a slot in its return plane a signal pays VOID_COST a cell, so it crosses
+        # square and short, never along (model._ref_voids)
+        if not GROUND_RE.match(net.name):
+            np.multiply(cell, self.VOID_COST, out=cell, where=m.ref_void[sl])
         # ⚠ A WIDE NET NECKS DOWN AT ITS OWN LANDS, as an engineer necks it: J1_VBUS at
         # 1.0 mm could not reach a USB-C pin between its neighbours and was left open. Within
         # NECK_MM of the net's own copper it may run at NECK_W where full width will not fit
@@ -470,10 +721,24 @@ class Router:
             narrow &= (m.edge[i0:i1, j0:j1] >= self.NECK_W / 2.0 + m.edge_clear + m.margin)[None]
             for k in range(L):
                 if own[k].any():
-                    near = distance_transform_edt(~own[k]) * m.pitch <= self.NECK_MM
+                    near = np.sqrt(S.edt_sq(own[k])) * m.pitch <= self.NECK_MM
                     neck_ok[k] = near & narrow[k] & ~legal[k]
-            cell = np.where(neck_ok, cell * 2.0, cell)
-        cell = np.where(legal | neck_ok, cell, np.inf).astype(np.float32)
+            np.multiply(cell, 2.0, out=cell, where=neck_ok)
+        if lane is not None:
+            neck_ok &= lane[0]
+            np.multiply(cell, self.BAND_COST, out=cell, where=lane[1])
+        cell[~(legal | neck_ok)] = np.inf
+        cell = cell.astype(np.float32, copy=False)
+        walls = getattr(self, "_walls", None)
+        if walls:
+            for o in walls:
+                if o is net or not o.n_t:
+                    continue
+                f = o.rec_t[:o.n_t]
+                kk, rr_ = f // (H * W), f % (H * W)
+                ii, jj = rr_ // W - i0, rr_ % W - j0
+                ok = (ii >= 0) & (ii < h) & (jj >= 0) & (jj < w)
+                cell[kk[ok], ii[ok], jj[ok]] = np.inf
         self._neck_win = (neck_ok, h, w, i0, j0)
         # ⚠ A PAIR RUNS TOGETHER: the second net of a matched pair is drawn to the band one
         # pitch off its partner's centreline -- what an engineer does by routing the two as
@@ -488,14 +753,86 @@ class Router:
                 ok = (ii >= 0) & (ii < h) & (jj >= 0) & (jj < w)
                 mine[kk[ok], ii[ok], jj[ok]] = True
             sp = net.width / 2.0 + net.partner.width / 2.0 + m.clear + m.margin + self.wref / 2.0
+            bc_ = int(math.ceil(sp / m.pitch + 2.5)) + 1
             for k in range(L):
                 if mine[k].any():
-                    dd = distance_transform_edt(~mine[k]) * m.pitch
+                    # only round the partner's copper (the band is within sp of it)
+                    ti, tj = np.nonzero(mine[k])
+                    a0, a1 = max(0, ti.min() - bc_), min(h, ti.max() + bc_ + 1)
+                    b0, b1 = max(0, tj.min() - bc_), min(w, tj.max() + bc_ + 1)
+                    dd = distance_transform_edt(~mine[k][a0:a1, b0:b1]) * m.pitch
                     band = (dd >= sp - 1e-6) & (dd <= sp + 2.5 * m.pitch)
-                    cell[k][band] *= 0.6
+                    cell[k][a0:a1, b0:b1][band] *= 0.6
         occv = self.occ_v.reshape(H, W)[i0:i1, j0:j1].astype(np.float32)
         hv = self.hist_v.reshape(H, W)[i0:i1, j0:j1]
+        if lane is not None:
+            vlegal = vlegal & lane[2]
         vcell = np.where(vlegal, (1.0 + hv) * (1.0 + pf * occv), np.inf).astype(np.float32)
+        if walls:
+            for o in walls:
+                if o is net or not o.n_v:
+                    continue
+                f = o.rec_v[:o.n_v]
+                ii, jj = f // W - i0, f % W - j0
+                ok = (ii >= 0) & (ii < h) & (jj >= 0) & (jj < w)
+                vcell[ii[ok], jj[ok]] = np.inf
+        # ⚠ IN A PAIR ATTEMPT THE MATE IS A WALL, NOT A PRICE (optical HUB_PHY, 2026-11-09):
+        # _pair_try refuses any attempt whose rails overlap, and at the finish's price the
+        # cheapest way past other nets' copper was straight over the mate -- every attempt
+        # refused, none ever offered to _displace, the pair left split across layers. An
+        # engineer lays the second rail beside the first and moves what is in the way: here
+        # it may not touch the mate, so it takes the lane through others' space, and that
+        # attempt goes to _displace like any other laid to the rules.
+        mt = net.mate if net.mate is not None else net.partner
+        if getattr(self, "_pair_wall", False) and mt is not None and mt.paths:
+            from scipy.ndimage import distance_transform_edt
+            theirs = np.zeros((L, h, w), bool)
+            mine_ = np.zeros((L, h, w), bool)
+            for src_, dst_ in ((mt.paths, theirs), (net.pieces, mine_)):
+                for pth in src_:
+                    kk = pth // (H * W)
+                    rr_ = pth % (H * W)
+                    ii, jj = rr_ // W - i0, rr_ % W - j0
+                    ok = (ii >= 0) & (ii < h) & (jj >= 0) & (jj < w)
+                    dst_[kk[ok], ii[ok], jj[ok]] = True
+            gap = (net.width + mt.width) / 2.0 + m.clear + m.margin
+            # ⚠ A VIA IS WIDER THAN A TRACK (coupled pairs, optical HUB_PHY, 2026-11-10): the
+            # wall kept a track's gap from the mate's centreline, and in the via disks one
+            # rail ran inside the other's via keep-out -- the rails overlapped and the
+            # attempt was refused. Round the mate's vias a track keeps a via's gap; this
+            # rail's own vias keep a via's gap from the mate's tracks and vias.
+            vgap = m.via_d / 2.0 + net.width / 2.0 + m.clear + m.margin
+            vtgap = m.via_d / 2.0 + mt.width / 2.0 + m.clear + m.margin
+            vvgap = m.via_d + m.clear + m.margin
+            tvia = np.zeros((h, w), bool)
+            for pth in mt.paths:
+                kk = pth // (H * W)
+                for t_ in np.nonzero(kk[1:] != kk[:-1])[0]:
+                    rr_ = int(pth[t_] % (H * W))
+                    ii, jj = rr_ // W - i0, rr_ % W - j0
+                    if 0 <= ii < h and 0 <= jj < w:
+                        tvia[ii, jj] = True
+            gc_ = int(math.ceil(max(gap, vtgap) / m.pitch)) + 1
+            for k in range(L):
+                if theirs[k].any():
+                    # only round the mate's own copper: the transform of the whole window
+                    # cost more than the searches it shapes
+                    ti, tj = np.nonzero(theirs[k])
+                    a0, a1 = max(0, ti.min() - gc_), min(h, ti.max() + gc_ + 1)
+                    b0, b1 = max(0, tj.min() - gc_), min(w, tj.max() + gc_ + 1)
+                    dt_ = distance_transform_edt(~theirs[k][a0:a1, b0:b1]) * m.pitch
+                    wall = (dt_ < gap - 1e-6) & ~mine_[k][a0:a1, b0:b1]
+                    cell[k][a0:a1, b0:b1][wall] = np.inf
+                    vcell[a0:a1, b0:b1][(dt_ < vtgap - 1e-6) & ~mine_[k][a0:a1, b0:b1]] = np.inf
+            if tvia.any():
+                gv_ = int(math.ceil(max(vgap, vvgap) / m.pitch)) + 1
+                ti, tj = np.nonzero(tvia)
+                a0, a1 = max(0, ti.min() - gv_), min(h, ti.max() + gv_ + 1)
+                b0, b1 = max(0, tj.min() - gv_), min(w, tj.max() + gv_ + 1)
+                dv_ = distance_transform_edt(~tvia[a0:a1, b0:b1]) * m.pitch
+                for k in range(L):
+                    cell[k][a0:a1, b0:b1][(dv_ < vgap - 1e-6) & ~mine_[k][a0:a1, b0:b1]] = np.inf
+                vcell[a0:a1, b0:b1][dv_ < vvgap - 1e-6] = np.inf
         # the net's own fixed vias: a layer change there is free, through the via itself
         for v in m.vias:
             if v["net"] == net.name:
@@ -526,6 +863,7 @@ class Router:
                 cellf[best] = 1.0
         n = L * h * w
         if net.plane:
+            self._occv_win = occv
             return self._to_plane(net, pieces, cellf, vcell, L, h, w, win)
         paths = []
         if circle is not None and not net.fixed:
@@ -625,8 +963,7 @@ class Router:
                 other |= done
                 other &= ~ends
                 o3 = other.reshape(L, h, w)
-                ban = np.stack([binary_dilation(o3[k], disk) if o3[k].any() else o3[k]
-                                for k in range(L)]).ravel() & ~ends
+                ban = np.stack([_dilate_disk(o3[k], rr) for k in range(L)]).ravel() & ~ends
                 cl = np.where(ban, np.inf, cellf).astype(np.float32)
                 vl = np.where(ban.reshape(L, h, w).any(axis=0), np.inf, vcell).astype(np.float32)
                 for p_ in (a_l, b_l):
@@ -644,7 +981,8 @@ class Router:
                     if legp is not None:
                         self.wp_used.add(net.name)
                 if legp is None:
-                    path = self._astar(cl, vl.ravel(), s_, t_, L, h, w, tb, self.dir_cost, net.via_mult)
+                    path = self._astar(cl, vl.ravel(), s_, t_, L, h, w, tb, self.dir_cost, net.via_mult,
+                                       check=True)
                     if path.size == 0:
                         legs_ok = False
                         break
@@ -716,6 +1054,8 @@ class Router:
         home = net.run_layers or net.layers_only
         if mate is None or not mate.paths or not home or not net.legs:
             return None
+        if net.name in (getattr(self, "_lanes", None) or {}):
+            return None                 # a coupled rail follows in its lane, not by waypoint
         H, W = self.H, self.W
         cells = np.concatenate(mate.paths)
         k = cells // (H * W)
@@ -839,70 +1179,217 @@ class Router:
         pf = getattr(self, "_pf_last", 1.0)
         for a in list(self.nets):
             b = a.mate
-            if b is None or a.partner is not None or a.group is None or a.failed or b.failed:
+            if b is None or a.partner is not None or a.group is None:
                 continue
-            f0 = self.pair_faults(a)
+            # ⚠ A PAIR RIPPED OUT IS FINISHED TOO (optical, C102 +0.12/+0.48, 2026-11-10): the
+            # negotiation ended with USB_DP/DM sharing space with LED_ROW, both were ripped,
+            # and the finish skipped them -- the board's most important pair left open while
+            # every attempt below (the push included) was never tried. An engineer lays the
+            # pair and moves the rest; a pair laid with a fault but in nobody's space beats
+            # an open one.
+            opened = a.failed or b.failed
+            if opened:
+                if not self.PAIR_REOPEN:
+                    continue
+                f0 = [("open", (a.name, b.name))]
+            else:
+                f0 = self.pair_faults(a)
+            # ⚠ TO THE RULES IS NOT A PAIR (coupled.py): a declared diff pair whose rails run
+            # apart is re-laid coupled, and kept only if it comes out closer
+            couple = self.COUPLE and not opened and self._pair_spec(a) is not None
+            u0 = self._uncoupled(a) if couple else 0.0
+            only = False
             if not f0:
-                continue
+                if not couple or u0 < self.COUPLE_MIN_MM:
+                    continue
+                only = True
+                f0 = [("apart %.1f mm" % u0, (a.name, b.name))]
             home = set(a.run_layers or a.layers_only or range(self.L))
             others = sorted((k for k in range(self.L) if k not in home),
                             key=lambda k: (float(self.layer_cost[k]), k))
             keep = {x: (x.paths, x.necks, x.failed, x.relaxed, x.force_layers) for x in (a, b)}
             cands = [(a, b, False, None, 1.0, False, 1.0), (b, a, False, None, 1.0, False, 1.0)]
+            if couple:
+                cpl = [(f_, s_, True, None, 1.0, False, 1.0, None, True, sl)
+                       for sl in self.MID_SLACKS for f_, s_ in ((a, b), (b, a))]
+                cands = list(cpl) if only else cpl + cands
+            # ⚠ A SAME-LAYER PAIR WITH NO HOME LAYERS IS ALSO TRIED ONE LAYER AT A TIME
+            # (optical HUB_PHY, 2026-11-09): free to use every layer, the second rail dived
+            # wherever the first had taken its lane, and the only attempts were the two
+            # orders -- both broke same_layer. An engineer picks the layer for the pair and
+            # lays both on it; each layer is offered, cheapest first, both orders.
+            if a.same_layer and not (a.run_layers or a.layers_only):
+                for k in sorted(range(self.L), key=lambda k: (float(self.layer_cost[k]), k)):
+                    for f_, s_ in ((a, b), (b, a)):
+                        cands.append((f_, s_, True, {k}, 1.0, True, 1.0))
             # a second dive is what breaks a via budget: the last attempts price vias x5
             for vm in (1.0, 5.0):
                 for d in others:
                     for f_, s_ in ((a, b), (b, a)):
                         for om in (1.0, 4.0):
                             cands.append((f_, s_, True, home | {d}, om, True, vm))
+            # ⚠ LAY IT WHERE IT SHOULD GO, THEN MOVE THE REST (optical USB_HS, 2026-11-09):
+            # at the finish's congestion price every home-layer attempt went the long way
+            # round other nets (skew 52-77 mm) or dived to cross them (via budget), and
+            # neither is "to the rules", so _displace never saw one. These last attempts
+            # price other nets' copper at PAIR_PUSH outright, with the negotiation's history
+            # set aside -- the short way, on the pair's own layers -- and an attempt to the
+            # rules goes to _displace. (PAIR_PUSH x the finish's price, which runs to the
+            # hundreds, still went the long way on optical C112 +0.05/-0.72.)
+            for f_, s_ in ((a, b), (b, a)):
+                cands.append((f_, s_, False, None, 1.0, True, 1.0, self.PAIR_PUSH))
+            if only:
+                cands = cpl
             ms0 = self.pair_measure(a)
             l0 = [v[0] for v in ms0.values()]
-            best, best_key = None, (0, len(f0), max(l0) - min(l0))
-            ruled = None                   # (shared cells, skew, state): to the rules, but in others' space
+            best, best_key = None, ((1e9, 1e9, 1e9) if opened else (0, len(f0), max(l0) - min(l0)))
+            ruled = []                     # [(shared cells, skew, state)]: to the rules, but in others' space
+            cl_best = None                 # (mm uncoupled, state, cand): the closest clean coupled lay
             for c in cands:
-                got = self._pair_try(pf, *c)
+                is_cpl = len(c) > 8 and c[8]
+                if cl_best is not None and (not is_cpl or cl_best[0] <= 0.0):
+                    break                      # coupled attempts done (or one not apart at all): laid below
+                if len(c) > 7 and c[7] is not None:
+                    # a push: other nets at a low price outright, and none of the history
+                    # the negotiation built up round them (both steer it the long way)
+                    h0, hv0 = self.hist, self.hist_v
+                    self.hist, self.hist_v = np.zeros_like(h0), np.zeros_like(hv0)
+                    try:
+                        got = self._pair_try(c[7], *c[:7])
+                    finally:
+                        self.hist, self.hist_v = h0, hv0
+                else:
+                    self._mid_slack = c[9] if len(c) > 9 else None
+                    try:
+                        got = self._pair_try(pf, *c[:7], coupled=len(c) > 8 and c[8])
+                    finally:
+                        self._mid_slack = None
                 if os.environ.get("PAIR_DEBUG"):
-                    self.log("    try %s first relax=%s layers=%s off x%g via x%g: %s" % (
-                        c[0].name, c[2], c[3], c[4], c[6],
+                    self.log("    try %s first%s relax=%s layers=%s off x%g via x%g: %s apart %.1f" % (
+                        c[0].name, (" coupled slack %g" % c[9]) if len(c) > 9 else "", c[2], c[3], c[4], c[6],
                         "no path" if got is None else (got, round(max(
                             v[0] for v in self.pair_measure(a).values()) - min(
-                            v[0] for v in self.pair_measure(a).values()), 2))))
+                            v[0] for v in self.pair_measure(a).values()), 2)),
+                        self._uncoupled(a) if couple and got is not None else -1))
                 if got is None:
                     continue
                 sh, fl = got
+                # a lay out of the rules only by skew is tuned now if it is clear of others;
+                # in others' space it is held for _displace, which tunes it after (TUNE)
+                tuned_late = False
+                if self.TUNE and self._skew_only(fl):
+                    if sh == 0 and self._tune(a):
+                        fl = self.pair_faults(a)
+                    elif sh:
+                        tuned_late = True
+                if only and (fl or self._uncoupled(a) > u0 - self.COUPLE_GAIN_MM):
+                    continue                   # to the rules already: only a closer pair is kept
                 ms = self.pair_measure(a)
                 ls = [v[0] for v in ms.values()]
                 key = (sh, len(fl), max(ls) - min(ls))
+                # ⚠ THE CLOSEST CLEAN COUPLED LAY, NOT THE FIRST (optical u0 USB, 2026-11-10):
+                # the first coupled attempt to come out clean was kept at once -- DP first at
+                # 0.05 mm slack, 10.5 mm apart -- and the three after it were never tried.
+                # Every coupled attempt is laid; the clean one least apart wins.
+                if sh == 0 and not fl and is_cpl and self.COUPLE_BEST:
+                    u_ = self._uncoupled(a) if couple else 0.0
+                    if cl_best is None or u_ < cl_best[0]:
+                        cl_best = (u_, {x: (x.paths, x.necks, x.failed, x.relaxed, x.force_layers)
+                                        for x in (a, b)}, c)
+                    continue
                 if sh == 0 and not fl:
                     best = None
+                    # ⚠ A CLEAN LAY DOES NOT BEAT A COUPLED ONE THAT NEEDS ROOM (output_panel
+                    # HUB_UP, 2026-11-10): the coupled lays met every rule at 3.0 mm uncoupled
+                    # through 16-23 cells of other nets, and were held for _displace -- then a
+                    # home-layer lay came out clean, 65 mm apart, and won outright. Before an
+                    # uncoupled clean lay is kept, the held coupled ones (COUPLE_GAIN_MM
+                    # closer) get their displacement, most coupled first.
+                    if couple and not (len(c) > 8 and c[8]):
+                        u_c = self._uncoupled(a)
+                        held = sorted((r_ for r_ in ruled if r_[3] < u_c - self.COUPLE_GAIN_MM),
+                                      key=lambda r_: (r_[3], r_[0], r_[1]))
+                        done = next((r_ for r_ in held[:self.PAIR_DISPLACE]
+                                     if self._displace(a, b, r_[2], pf)), None)
+                        if done is not None:
+                            self.log("  pair %s/%s: %s -- laid coupled to the rules through %d cell(s) of "
+                                     "other nets' space, which re-negotiated round it (a clean lay was "
+                                     "%.1f mm uncoupled, this one %.1f)" % (
+                                         a.name, b.name, ", ".join(x[0] for x in f0), done[0], u_c, done[3]))
+                            break
                     self.log("  pair %s/%s: %s -- refinished (%s first, %s)" % (
                         a.name, b.name, ", ".join(x[0] for x in f0), c[0].name,
+                        "coupled" if len(c) > 8 and c[8] else
                         "home layers" if c[3] is None else "+" + "/".join(
                             self.m.route_layers[k] for k in sorted(c[3] - home))))
                     break
-                if not fl and (ruled is None or (sh, key[2]) < ruled[:2]):
-                    ruled = (sh, key[2], {x: (x.paths, x.necks, x.failed, x.relaxed, x.force_layers)
-                                          for x in (a, b)})
+                if (not fl or tuned_late) and all(r_[0] != sh for r_ in ruled):
+                    ruled.append((sh, key[2], {x: (x.paths, x.necks, x.failed, x.relaxed, x.force_layers)
+                                          for x in (a, b)}, self._uncoupled(a) if couple else 0.0))
                 if key < best_key:
                     best_key = key
                     best = {x: (x.paths, x.necks, x.failed, x.relaxed, x.force_layers) for x in (a, b)}
             else:
-                if ruled is not None and self._displace(a, b, ruled[2], pf):
-                    self.log("  pair %s/%s: %s -- laid to the rules through %d cell(s) of other "
-                             "nets' space, which re-negotiated round it" % (
-                                 a.name, b.name, ", ".join(x[0] for x in f0), ruled[0]))
+                if cl_best is None:
+                    # ⚠ MORE THAN THE CHEAPEST (optical C119 -0.07/-0.55, 2026-11-10): USB's
+                    # fewest-cells attempt (45, on In1) left two nets open round it; the
+                    # home-layer one (76 cells) was never tried. Each distinct one, cheapest first.
+                    # ⚠ A COUPLED PAIR TRIES ITS MOST COUPLED LAY FIRST (optical USB_HS unmoved,
+                    # 2026-11-10): fewest shared cells first kept a 0.05 mm-slack lay 10 mm
+                    # uncoupled over a 0.1 mm one at 5.5 mm that displaced just as cleanly.
+                    # _displace refuses any lay that leaves a net open, so the cells it crosses
+                    # are only the tie-break.
+                    ruled.sort(key=lambda r_: (r_[3], r_[0], r_[1]))
+                    done = next((r_ for r_ in ruled[:self.PAIR_DISPLACE]
+                                 if self._displace(a, b, r_[2], pf)), None)
+                    if done is not None:
+                        self.log("  pair %s/%s: %s -- laid to the rules through %d cell(s) of other "
+                                 "nets' space, which re-negotiated round it" % (
+                                     a.name, b.name, ", ".join(x[0] for x in f0), done[0]))
+                        for x in (a, b):
+                            x.force_layers = None
+                        continue
+                    st = best or keep
+                    if opened and not (best and best_key[0] == 0):
+                        st = keep                  # nothing laid clear of other nets: stays open
+                    for x in (a, b):
+                        self._unmark(x)
+                    for x in (a, b):
+                        x.paths, x.necks, x.failed, x.relaxed, x.force_layers = st[x]
+                        self._mark(x)
+                    self.log("  pair %s/%s: %s -- no attempt met the rules%s" % (
+                        a.name, b.name, ", ".join(x[0] for x in f0),
+                        "; kept the one with fewest faults %s" % (best_key,) if best else "; kept as negotiated"))
+            if cl_best is not None:
+                # ⚠ A CLEAN COUPLED LAY DOES NOT BEAT A CLOSER ONE THAT NEEDS ROOM (optical
+                # u10g c05, 2026-11-10): once skew tuning made a 10.5 mm-apart coupled lay
+                # clean, it won outright, and the held lay that displaced cleanly at ~4 mm --
+                # the one kept before tuning existed -- was never tried. As for a clean
+                # uncoupled lay: the held lays COUPLE_GAIN_MM closer get their displacement
+                # first, most coupled first.
+                held = sorted((r_ for r_ in ruled if r_[3] < cl_best[0] - self.COUPLE_GAIN_MM),
+                              key=lambda r_: (r_[3], r_[0], r_[1]))
+                done = next((r_ for r_ in held[:self.PAIR_DISPLACE]
+                             if self._displace(a, b, r_[2], pf)), None)
+                if done is not None:
+                    self.log("  pair %s/%s: %s -- laid coupled to the rules through %d cell(s) of "
+                             "other nets' space, which re-negotiated round it (the closest clean "
+                             "coupled lay was %.1f mm apart, this one %.1f)" % (
+                                 a.name, b.name, ", ".join(x[0] for x in f0), done[0], cl_best[0], done[3]))
                     for x in (a, b):
                         x.force_layers = None
                     continue
-                st = best or keep
                 for x in (a, b):
                     self._unmark(x)
                 for x in (a, b):
-                    x.paths, x.necks, x.failed, x.relaxed, x.force_layers = st[x]
+                    x.paths, x.necks, x.failed, x.relaxed, x.force_layers = cl_best[1][x]
                     self._mark(x)
-                self.log("  pair %s/%s: %s -- no attempt met the rules%s" % (
-                    a.name, b.name, ", ".join(x[0] for x in f0),
-                    "; kept the one with fewest faults %s" % (best_key,) if best else "; kept as negotiated"))
+                self.log("  pair %s/%s: %s -- refinished (%s first, coupled, closest of the clean "
+                         "coupled lays: %.1f mm apart)" % (a.name, b.name, ", ".join(x[0] for x in f0),
+                                                          cl_best[2][0].name, cl_best[0]))
+                for x in (a, b):
+                    x.force_layers = None
+                continue
             for x in (a, b):
                 x.force_layers = None
 
@@ -911,23 +1398,227 @@ class Router:
     # round the old pair, so all were refused and the FAIL stayed. An engineer lays the
     # pair and moves the traces in its way. The best such attempt is held and the nets it
     # crosses negotiate round it; kept only if no more nets end open than before.
+    # ⚠ SKEW IS TUNED, NOT ROUTED AWAY (optical ONX03, USB at U10, 2026-11-10): with the
+    # clamp's rows across the pair's way the rails must twist round it, and every coupled lay
+    # came out ~10 mm long on one rail against an 8.3 mm budget -- no attempt met the rules,
+    # the pair was kept as negotiated with layer and via faults. An engineer lays the pair
+    # and meanders the short rail. A lay whose only fault is skew is tuned: accordion bumps
+    # on a straight stretch of the short rail, on the side clear of everything (its mate
+    # included), sized to bring the skew under the budget.
+    TUNE = True
+    TUNE_GAP = 3.0                   # meander leg spacing, in track widths
+    TUNE_AMAX = 2.5                  # bump height limit, mm
+    TUNE_AIM = 0.5                   # aim the skew this far under the budget, mm
+
+    def _where_cell(self, c):
+        H, W = self.H, self.W
+        r = c % (H * W)
+        return (round(float(self.m.cx[r % W]), 2), round(float(self.m.cy[r // W]), 2), c // (H * W))
+
+    def _covering(self, grp):
+        """Other nets whose track or via keep-out covers a cell grp's copper shares."""
+        HW = self.H * self.W
+        cells = [c for n in grp for c in self._conflicts(n) if c.size]
+        if not cells:
+            return []
+        cells = np.unique(np.concatenate(cells))
+        r2 = np.unique(cells % HW)
+        out = []
+        for o in self.nets:
+            if o in grp:
+                continue
+            if (o.n_t and np.isin(cells, o.rec_t[:o.n_t]).any()) or (o.n_v and np.isin(r2, o.rec_v[:o.n_v]).any()):
+                out.append(o)
+        return out
+
+    def _skew_only(self, fl):
+        return bool(fl) and all(f[0] == "skew" for f in fl)
+
+    def _tune(self, a):
+        """Meander the short rail of a's pair until its skew meets max_skew_mm. Lays only on
+        cells free of every other net's keep-out and fixed copper; True if the pair then
+        meets every rule (else the rail is put back)."""
+        ms = self.pair_measure(a)
+        sk = a.group.get("max_skew_mm") if a.group else None
+        if not ms or sk is None:
+            return False
+        by = {a.name: a, a.mate.name: a.mate}
+        (n_lo, v_lo), (n_hi, v_hi) = sorted(ms.items(), key=lambda kv: kv[1][0])
+        skew = v_hi[0] - v_lo[0]
+        if skew <= sk:
+            return True
+        x = by[n_lo]
+        m = self.m
+        L, H, W = self.L, self.H, self.W
+        HW = H * W
+        need_min = skew - sk + 1e-6
+        need = skew - max(sk - self.TUNE_AIM, 0.0)
+        w = x.width
+        lim = w / 2.0 + m.clear + m.margin
+        saved = (x.paths, x.necks)
+        c_before = sum(c.size for c in self._conflicts(x))
+        self._unmark(x)
+        own = set(int(c) for p in x.paths for c in p)
+
+        def free(k, i, j):
+            if not (0 <= i < H and 0 <= j < W):
+                return False
+            if m.edge[i, j] < w / 2.0 + m.edge_clear + m.margin:
+                return False
+            fd = m.d2[k, i, j] if m.n1[k, i, j] == x.id else m.d1[k, i, j]
+            if fd < lim:
+                return False
+            c = k * HW + i * W + j
+            return self.occ_t[c] == 0 and c not in own
+
+        added = 0.0
+        paths = [p.copy() for p in x.paths]
+        necks = [(x.necks[q].copy() if q < len(x.necks) else np.zeros(p.size, bool)) for q, p in enumerate(x.paths)]
+        for _ in range(4):                       # up to four meanders, longest stretches first
+            if added >= need_min:
+                break
+            stretches = []
+            for q, p in enumerate(paths):
+                if p.size < 3:
+                    continue
+                k = p // HW
+                r = p % HW
+                ii, jj = r // W, r % W
+                di, dj = np.diff(ii), np.diff(jj)
+                same = (k[1:] == k[:-1])
+                t = 0
+                while t < di.size:
+                    u = t
+                    while (u + 1 < di.size and same[u + 1] and same[t] and di[u + 1] == di[t]
+                           and dj[u + 1] == dj[t]):
+                        u += 1
+                    if same[t] and (abs(int(di[t])) + abs(int(dj[t]))) > 0:
+                        stretches.append((u - t + 1, q, t, int(di[t]), int(dj[t])))
+                    t = u + 1
+            stretches.sort(reverse=True)
+            if os.environ.get("PAIR_DEBUG"):
+                self.log("      tune %s: skew %.2f need %.2f (min %.2f), added %.2f, stretches %s" % (
+                    x.name, skew, need, need_min, added, [(s_[0], s_[1], s_[3], s_[4], int(paths[s_[1]][s_[2]] // HW)) for s_ in stretches[:8]]))
+            done = False
+            for n_st, q, t0, d_i, d_j in stretches[:12]:
+                p = paths[q]
+                step = m.pitch * math.hypot(d_i, d_j)
+                S = max(int(math.ceil(self.TUNE_GAP * w / step)),
+                        int(math.ceil((w + m.clear + m.margin) / step)) + 1)
+                nb_max = (n_st - 2 * S) // (2 * S)
+                if nb_max < 1:
+                    continue
+                k0 = int(p[t0] // HW)
+                go = need - added
+                for nb in range(1, nb_max + 1):
+                    A = int(math.ceil(go / (2.0 * nb * step)))
+                    if A * step > self.TUNE_AMAX:
+                        continue
+                    A = max(A, S)
+                    hit = None
+                    for off in range(S, n_st - 2 * S * nb - S + 1, S):
+                        s0 = t0 + off              # meander starts at path index s0
+                        r0 = int(p[s0] % HW)
+                        ci, cj = r0 // W, r0 % W
+                        rep = set(int(c) for c in p[s0:s0 + 2 * S * nb + 1])   # the stretch replaced
+                        for side in (1, -1):
+                            ni, nj = -d_j * side, d_i * side
+                            cells = []
+                            i, j = ci, cj
+                            ok = True
+                            for b in range(nb):
+                                for (si, sj, cnt) in ((ni, nj, A), (d_i, d_j, S), (-ni, -nj, A), (d_i, d_j, S)):
+                                    for _s in range(cnt):
+                                        i += si
+                                        j += sj
+                                        if (k0 * HW + i * W + j) not in rep and not free(k0, i, j):
+                                            ok = False
+                                            break
+                                        cells.append(k0 * HW + i * W + j)
+                                    if not ok:
+                                        break
+                                if not ok:
+                                    break
+                            if ok:
+                                e = s0 + 2 * S * nb      # the path cell the meander lands back on
+                                if cells and cells[-1] == int(p[e]):
+                                    hit = (s0, e, cells)
+                                    break
+                        if hit:
+                            break
+                    if hit is None:
+                        continue
+                    s0, e, cells = hit
+                    nc = np.asarray(cells[:-1], np.int64)
+                    paths[q] = np.concatenate([p[:s0 + 1], nc, p[e:]])
+                    nk = necks[q]
+                    necks[q] = np.concatenate([nk[:s0 + 1], np.zeros(nc.size, bool), nk[e:]])
+                    own.update(int(c) for c in nc)
+                    added += 2.0 * A * nb * step
+                    done = True
+                    break
+                if done:
+                    break
+            if not done:
+                break
+        x.paths, x.necks = paths, necks
+        self._mark(x)
+        fl = self.pair_faults(a)
+        clean = not fl and not any(c.size for c in self._conflicts(x))
+        if os.environ.get("PAIR_DEBUG"):
+            cf = [c for c in self._conflicts(x) if c.size]
+            self.log("      tune %s: added %.2f mm, faults %s, conflicts %d (before %d) at %s" % (
+                x.name, added, fl, sum(c.size for c in cf), c_before,
+                [self._where_cell(int(c[0])) for c in cf][:3]))
+        if not clean:
+            self._unmark(x)
+            x.paths, x.necks = saved
+            self._mark(x)
+            return False
+        self.log("  pair %s/%s: skew %.1f mm over %.1f -- %s meandered %.1f mm" % (
+            a.name, a.mate.name, skew, sk, x.name, added))
+        return True
+
     def _displace(self, a, b, state, pf):
         saved = {n: (n.paths, n.necks, n.failed) for n in self.nets}
-        fail0 = sum(n.failed for n in self.nets)
+        # ⚠ EVERY PAIR ALREADY TO THE RULES IS HELD TOO (optical C102 +0.12/+0.48,
+        # 2026-11-10): HUB_PHY was laid to the rules and then USB_HS's displacement
+        # re-negotiated it with everything else and faulted it again.
+        lock = {a, b}
+        for x in self.nets:
+            if (x.mate is not None and x.partner is None and x.group is not None and x not in lock
+                    and not x.failed and not x.mate.failed and not self.pair_faults(x)):
+                lock |= {x, x.mate}
+        # ⚠ THE PAIR'S OWN FLAGS ARE NOT COUNTED (optical, 2026-11-09): the last attempt
+        # tried may have found no path and left a rail marked failed, so "open before"
+        # counted 1, and a displacement that left LED_ROW open passed as no worse.
+        fail0 = self._open_w(lock)
         for x in (a, b):
             self._unmark(x)
         for x in (a, b):
             x.paths, x.necks, x.failed, x.relaxed, x.force_layers = state[x]
             self._mark(x)
-        lock = {a, b}
         todo = [n for n in self.nets if n not in lock and not n.failed and self._conflicts(n)]
+        # ⚠ A WIDE NET DOES NOT SEE A VIA IN ITS KEEP-OUT (optical ONX03, V24_IN by U10,
+        # 2026-11-10): the pair's via sat in V24_IN's via keep-out, but a via stamps the
+        # track grid at the reference width, so V24_IN's own cells showed no conflict and
+        # it was never re-routed -- the pair kept one shared cell and was put back. Every
+        # net whose keep-out covers a cell the pair shares is moved too.
+        todo += [o for o in self._covering([a, b]) if o not in lock and o not in todo and not o.failed]
         left, _ = self._rounds(todo, pf, 12, 600, locked=lock)
-        fail1 = sum(n.failed for n in self.nets) + sum(not n.failed for n in left)
-        if fail1 <= fail0 and not self.pair_faults(a):
+        fail1 = self._open_w(lock, left)
+        if self.TUNE and fail1 <= fail0 and self._skew_only(self.pair_faults(a)):
+            self._tune(a)                  # the rest moved: meander the short rail in the room left
+        # ⚠ AND THE PAIR ITSELF SHARES NOTHING (optical ONX03, 2026-11-10): the check was
+        # opens and pair rules only, so a pair still in a locked or wide net's keep-out
+        # passed with a short in it.
+        clear = not any(c.size for x in (a, b) for c in self._conflicts(x))
+        if fail1 <= fail0 and not self.pair_faults(a) and clear:
             self._rip(left)
             return True
-        self.log("  pair %s/%s: re-negotiating round it left %d net(s) open (was %d) -- put back"
-                 % (a.name, b.name, fail1, fail0))
+        self.log("  pair %s/%s: re-negotiating round it left %d net(s) open (was %d) -- put back; open: %s"
+                 % (a.name, b.name, fail1, fail0, ", ".join(sorted(
+                     {n.name for n in left} | {n.name for n in self.nets if n.failed and n not in lock}))))
         for n in self.nets:
             self._unmark(n)
         for n in self.nets:
@@ -963,9 +1654,19 @@ class Router:
         self._unmark(net)
         other = self.occ_t.reshape(L, H, W)[sl] > 0
         self._mark(net)
-        fill = reg[sl] & (fd >= m.clear) & ~other
+        # the zone's own clearance and width (model._zone_rules), never less than the rules
+        zc, zt = getattr(m, "zone_rule", {}).get(net.name, (0.0, 0.0))
+        zc, zt = max(zc, m.clear), max(zt, self.FILL_MIN_W)
+        # other nets' keep-out was stamped for a track beside them; the fill stands off
+        # further, by the difference
+        extra = zc - (self.wref / 2.0 + m.clear + m.margin)
+        if extra > m.pitch / 2.0:
+            from scipy.ndimage import distance_transform_edt
+            other = np.stack([distance_transform_edt(~other[k]) * m.pitch < extra
+                              if other[k].any() else other[k] for k in range(L)])
+        fill = reg[sl] & (fd >= zc) & ~other
         fill &= (m.edge[i0:i1, j0:j1] >= m.edge_clear)[None]
-        rr = max(1, int(round(self.FILL_MIN_W / 2.0 / m.pitch)))
+        rr = max(1, int(round(zt / 2.0 / m.pitch)))
         yy, xx = np.mgrid[-rr:rr + 1, -rr:rr + 1]
         disk = (yy * yy + xx * xx) <= rr * rr
         h, w = i1 - i0, j1 - j0
@@ -1068,70 +1769,146 @@ class Router:
         for net in self.nets:
             if not net.plane or net.failed:
                 continue
-            for attempt in range(3):
+            # ⚠ ONE PIECE AT A TIME (optical +3V3D, 2026-11-09: three pieces were cut off;
+            # the one at 118.8,150.3 could only re-join through ULPI_CK/STP, a locked group,
+            # and re-joining all three together put all three back). Each cut-off piece is
+            # re-joined on its own, the others held, and each success kept.
+            tried = set()
+
+            def _at(q):
+                r_ = net.pieces[q] % (self.H * self.W)
+                return "(%.1f, %.1f)" % (float(self.m.cx[int(np.median(r_ % self.W))]),
+                                         float(self.m.cy[int(np.median(r_ // self.W))]))
+            for attempt in range(12):
                 got = self._islands(net)
                 if got is None:
                     break
                 bad, mx = got
                 if not bad or mx is None or not mx.any():
                     break
-                at = []
-                for q in bad[:4]:
-                    r_ = net.pieces[q] % (self.H * self.W)
-                    at.append("(%.1f, %.1f)" % (float(self.m.cx[int(np.median(r_ % self.W))]),
-                                                float(self.m.cy[int(np.median(r_ // self.W))])))
-                self.log("  %s: %d piece(s) join the pour on an island the crossings cut off,"
-                         " at %s -- re-joining to the main body"
-                         % (net.name, len(bad), ", ".join(at)))
+                if not tried:
+                    self.log("  %s: %d piece(s) join the pour on an island the crossings cut off,"
+                             " at %s -- re-joining each to the main body"
+                             % (net.name, len(bad), ", ".join(_at(q) for q in bad[:4])))
+                todo_q = [q for q in bad if q not in tried]
+                if not todo_q:
+                    break
+                q1 = todo_q[0]
+                tried.add(q1)
                 saved = {n: (n.paths, n.necks, n.failed) for n in self.nets}
-                fail0 = sum(n.failed for n in self.nets)
+                fail0 = self._open_w()
                 net.main_xy = mx
+                # ⚠ ONLY THE CUT-OFF PIECES ARE RE-JOINED (optical +3V3D, 2026-11-09: the
+                # piece at 77.5,163.9 re-joined cleanly, but re-routing the whole net moved a
+                # good join under U6 onto ULPI_D5/D6 -- a locked matched group -- and the
+                # re-join was put back on every run). The good pieces keep their joins.
+                if len(net.paths) == len(net.pieces) - 1:
+                    net.keep_paths = {q: (net.paths[q - 1], net.necks[q - 1] if q - 1 < len(net.necks) else None)
+                                      for q in range(1, len(net.pieces)) if q != q1 and net.paths[q - 1].size}
                 try:
                     left, _ = self._rounds([net], getattr(self, "_pf_last", 1.0), 12, 600, locked=lock)
                 finally:
                     net.main_xy = None
-                fail1 = sum(n.failed for n in self.nets) + sum(not n.failed for n in left)
+                    net.keep_paths = None
+                fail1 = self._open_w(left=left)
                 again = self._islands(net) if not net.failed else None
                 nbad = len(again[0]) if again else len(bad) + 1
                 if fail1 <= fail0 and not net.failed and nbad < len(bad):
                     self._rip(left)
+                    self.log("  %s: piece at %s re-joined" % (net.name, _at(q1)))
                     continue
-                self.log("  %s: re-joining left %d net(s) open (was %d), %d island piece(s)"
-                         " -- put back" % (net.name, fail1, fail0, nbad))
+                self.log("  %s: re-joining the piece at %s left %d net(s) open (was %d), %d island"
+                         " piece(s) -- put back" % (net.name, _at(q1), fail1, fail0, nbad))
                 for n in self.nets:
                     self._unmark(n)
                 for n in self.nets:
                     n.paths, n.necks, n.failed = saved[n]
                     self._mark(n)
-                break
 
-    def _pair_try(self, pf, first, second, relax, layers, offrun_mult, refine, via_mult=1.0):
+    def _pair_try(self, pf, first, second, relax, layers, offrun_mult, refine, via_mult=1.0,
+                  coupled=False):
         """Lay a pair afresh (everything else held): first, then second, then (refine)
-        first again against second. (shared cells, pair faults), or None if a rail fails."""
+        first again against second -- coupled: in lanes round the pair's centreline
+        (coupled.py). (shared cells, pair faults), or None if a rail fails."""
+        if coupled is True:
+            # the pin pairs the pair may use, best first (coupled._choose_ends): the
+            # first that lays wins
+            got = None
+            self._ends_left = True
+            for k in range(self.COUPLE_ENDS):
+                got = self._pair_try(pf, first, second, relax, layers, offrun_mult, refine,
+                                     via_mult, coupled=k + 1)
+                if got is not None or not self._ends_left:
+                    break
+            return got
         for x in (first, second):
             self._unmark(x)
             x.paths, x.necks, x.failed = [], [], False
             x.relaxed, x.force_layers = relax, layers
+        if coupled:
+            mid = self._midline(first, second, pf, int(coupled) - 1)
+            if mid is None:
+                if os.environ.get("PAIR_DEBUG"):
+                    self.log("      coupled: no centreline (ends choice %d)" % coupled)
+                return None
+            self._set_lanes(first, second, mid)
         old = self.OFFRUN_COST
         self.OFFRUN_COST = old * offrun_mult
         vold = {x: x.via_mult for x in (first, second)}
         for x in (first, second):
             x.via_mult = vold[x] * via_mult
+        self._pair_wall = self.PAIR_WALL
         try:
             for x in (first, second) + ((first,) if refine else ()):
                 self._unmark(x)
                 x.relaxed = relax
                 p = self._route_net(x, pf)
+                # ⚠ A LANE CUT BY FIXED COPPER IS WIDENED, ONCE (optical ONX03, USB_DM at
+                # U10, 2026-11-10): the DM strip ran west from its clamp pad straight into a
+                # GND stitch beside it, and the room south of the pad -- the way an engineer
+                # leaves it -- lay outside the lane: every coupled try "found no way in its
+                # lane" and the pair was kept as negotiated, 20 mm apart. The rail tries
+                # again with its lane grown by LANE_GROW; the mate is still a wall.
+                if (p is None and coupled and self.LANE_GROW > 0 and getattr(self, "_lanes", None)
+                        and x.name in self._lanes):
+                    from scipy.ndimage import distance_transform_edt
+                    li0, lj0, ln_, bd_, vl_ = self._lanes[x.name]
+                    g = self.LANE_GROW / self.m.pitch
+                    ln2 = np.stack([distance_transform_edt(~ln_[k]) <= g if ln_[k].any() else ln_[k]
+                                    for k in range(ln_.shape[0])])
+                    vl2 = distance_transform_edt(~vl_) <= g if vl_.any() else vl_
+                    self._lanes[x.name] = (li0, lj0, ln2, bd_, vl2)
+                    p = self._route_net(x, pf)
+                    if p is not None and os.environ.get("PAIR_DEBUG"):
+                        self.log("      coupled: %s laid in its lane widened by %.1f mm"
+                                 % (x.name, self.LANE_GROW))
                 if p is None:
+                    if coupled and os.environ.get("PAIR_DEBUG"):
+                        self.log("      coupled: %s found no way in its lane (sides %s)" % (
+                            x.name, getattr(self, "_lane_sides", None)))
                     x.paths, x.necks, x.failed = [], [], True
                     return None
                 x.paths, x.failed = p, False
                 self._mark(x)
         finally:
+            self._pair_wall = False
+            self._lanes = None
             self.OFFRUN_COST = old
             for x in (first, second):
                 x.via_mult = vold[x]
         sh = sum(int(c.size) for x in (first, second) for c in self._conflicts(x))
+        # ⚠ THE RAILS' OWN OVERLAP IS COUNTED APART (optical, 2026-11-09): "fewest shared
+        # cells" lumped the rails sharing with EACH OTHER in with sharing other nets', and
+        # _displace -- which holds the pair and moves the rest -- can never undo the first:
+        # USB_DP and USB_DM were written 0.33 mm into each other, a post-route pass took
+        # DP up, close_last closed it the long way and the skew failed. An attempt whose
+        # rails overlap is no attempt at all.
+        self._unmark(second)
+        alone = sum(int(c.size) for c in self._conflicts(first))
+        self._mark(second)
+        mutual = sum(int(c.size) for c in self._conflicts(first)) - alone
+        if mutual > 0:
+            return None
         return sh, self.pair_faults(first)
 
     def _where(self, x):
@@ -1394,7 +2171,19 @@ class Router:
         vs3 = vs.reshape(L, h, w)
         tg3 = tgt0.reshape(L, h, w)
         pitch = self.m.pitch
+        kp = getattr(net, "keep_paths", None) or {}
         for q in range(1, len(pieces)):
+            if q in kp:                                 # a good piece's join, kept (_pour_islands)
+                fp_, nk_ = kp[q]
+                k_, r_ = fp_ // (H * W), fp_ % (H * W)
+                ii_, jj_ = r_ // W - i0, r_ % W - j0
+                if ((ii_ >= 0) & (ii_ < h) & (jj_ >= 0) & (jj_ < w)).all():
+                    lp_ = (k_ * h + ii_) * w + jj_
+                    self._claim_vias(lp_, vcell, h, w)   # its vias keep the re-join's off
+                    tgt0[lp_] = True
+                    self._necks.append(nk_ if nk_ is not None else np.zeros(fp_.size, bool))
+                    paths.append(fp_)
+                    continue
             pk = pieces[q] % (h * w)
             pkk = pieces[q] // (h * w)
             pi_, pj_ = pk // w, pk % w
@@ -1404,7 +2193,18 @@ class Router:
             # states for a 6 mm join, the dearest searches of a round. Small boxes round the
             # piece first, the whole window only if they hold no way in.
             path = None
-            for marg in self.PLANE_JOIN_MM + (None,):
+            # ⚠ THE JOIN'S LAST VIA IS NEVER PRICED (optical +3V3D, coupled USB_HS,
+            # 2026-11-10): a join ends ON a via site and the via is added after the search,
+            # so a site inside another net's keep-out cost nothing -- the join sat on
+            # USB_DP's track through 12 rounds of negotiation and the coupled pair went
+            # back. Sites another net already claims are targets only when no clean one
+            # is reachable at all.
+            occv_ = getattr(self, "_occv_win", None)
+            clean = (occv_ <= 0)[None] if occv_ is not None and occv_.shape == (h, w) else None
+            passes = [(mg, True) for mg in self.PLANE_JOIN_MM] + [(None, True)]
+            if clean is not None:
+                passes.append((None, False))
+            for marg, use_clean in passes:
                 if marg is None:
                     a0, a1, b0, b1 = 0, h, 0, w
                 else:
@@ -1414,13 +2214,18 @@ class Router:
                     if (a0, a1, b0, b1) == (0, h, 0, w):
                         continue
                 hs, ws = a1 - a0, b1 - b0
-                tg = np.ascontiguousarray(tg3[:, a0:a1, b0:b1] | vs3[:, a0:a1, b0:b1])
+                # ⚠ a via site an earlier piece's via has claimed is no target (optical
+                # +3V3D, 2026-11-09: the sites were fixed before the loop, _claim_vias
+                # closed them in vcell only, and two joins dropped vias 0.25 mm apart --
+                # drills overlapping by 0.05 mm)
+                free = np.isfinite(vcell.reshape(h, w)[a0:a1, b0:b1])[None]
+                if use_clean and clean is not None:
+                    free = free & clean[:, a0:a1, b0:b1]
+                tg = np.ascontiguousarray(tg3[:, a0:a1, b0:b1] | (vs3[:, a0:a1, b0:b1] & free))
                 sidx = (pkk * hs + (pi_ - a0)) * ws + (pj_ - b0)
                 tg = tg.ravel()
                 tg[sidx] = False
                 if not tg.any():
-                    if marg is None:
-                        return None
                     continue
                 src = np.zeros(L * hs * ws, np.bool_)
                 src[sidx] = True
@@ -1436,7 +2241,14 @@ class Router:
                     break
             if path is None:
                 return None
-            if not tgt0[path[0]]:
+            # ⚠ A JOIN THAT ARRIVES ON THE POUR'S OWN LAYER NEEDS NO VIA (optical +3V3D,
+            # 2026-11-09: the regional pour is on B.Cu, a join's track came in on B.Cu, and
+            # the layer change always added here dropped a via touching B.Cu only -- the
+            # tidy pass removed two such "dangling" vias every run). The track ends in the
+            # pour and the refill takes it; only a join on another layer changes layer.
+            pour_k = {k_ for k_, n_ in enumerate(self.m.route_layers)
+                      if any(L_ == n_ for L_, _ in self.m.pours.get(net.name, ()))}
+            if not tgt0[path[0]] and (path[0] // (h * w)) not in pour_k:
                 # ended on a via site: the via is a layer change at the same cell
                 k0 = path[0] // (h * w)
                 r0 = path[0] % (h * w)
@@ -1525,6 +2337,7 @@ class Router:
             self._gr.report()
         todo, pf = self._rounds(list(self.nets), pf0, iters, budget_s)
         self._pf_last = pf
+        todo = self._priority_repair(todo, pf)
         self._rip(todo)
         if os.environ.get("OWNROUTE_SNAPSHOT"):        # pair-finish development: replay from here
             import pickle
@@ -1532,12 +2345,249 @@ class Router:
                 pickle.dump({"pf": pf, "nets": {n.name: (n.paths, n.necks, n.failed, n.relaxed)
                                                 for n in self.nets}}, fh)
         self._finish_pairs()
+        self._fallback_pairs()
         self._pour_islands()
         return [n for n in self.nets if n.failed]
+
+    PRIORITY_REPAIR = True
+    PRIO_MAX = 8                     # stuck nets a repair takes on; more is a placement problem
+
+    def _sharers(self, grp):
+        """The other nets whose keep-out covers a cell of grp's paths."""
+        bad = [c for n in grp for c in self._conflicts(n)]
+        if not bad:
+            return []
+        bad = np.unique(np.concatenate(bad))
+        out = []
+        for o in self.nets:
+            if o in grp or not o.n_t:
+                continue
+            if np.isin(bad, o.rec_t[:o.n_t], assume_unique=False).any():
+                out.append(o)
+        return out
+
+    def _nbad(self):
+        return sum(1 for n in self.nets if n.failed or any(c.size for c in self._conflicts(n)))
+
+    def _priority_repair(self, todo, pf):
+        """⚠ A STUCK NET IS ROUTED FIRST, THEN WHAT IT SHARED WITH (optical USB_DP/DM,
+        2026-11-09). Ten resistors moved 20 mm away from the USB pair and the negotiation
+        ended with D+/D- sharing space with ULPI_D0 and VBUS for good: ripped out, the pair
+        open on a placement every neighbour of which routes. PathFinder prices everyone at
+        once; an engineer routes the critical net first and pushes the rest aside. So: for
+        each net still sharing when negotiation stops, lift it (with its pair partner) and
+        the nets it shares with, route it first, then route them round it. Kept only if the
+        board has fewer nets sharing or open than before; otherwise put back."""
+        stuck = [n for n in todo if not n.failed]
+        if not self.PRIORITY_REPAIR or not stuck or len(stuck) > self.PRIO_MAX:
+            return todo
+        seen = set()
+        for net in stuck:
+            if net in seen or net.failed or not any(c.size for c in self._conflicts(net)):
+                continue
+            grp = [net] + [o for o in (net.partner,) + tuple(x for x in self.nets if x.partner is net)
+                           if o is not None and o is not net]
+            seen.update(grp)
+            nb = [o for o in self._sharers(grp) if o not in grp]
+            lift = grp + nb
+            before = self._nbad()
+            save = {n: (n.paths, n.necks, n.failed) for n in lift}
+            # ⚠ ORDER IS THE DECISION (v109: D+ and D- each wanted the one via site beside
+            # J1's lands; whichever went first got it, the other had nowhere to go). Each
+            # order is tried -- the stuck net first, its partner first, the others first --
+            # and the best kept.
+            orders = [grp + nb, grp[::-1] + nb, nb + grp, nb + grp[::-1]]
+            best, best_state = before, None
+            for order in orders:
+                if len(set(map(id, order))) != len(order):
+                    continue
+                for n in lift:
+                    self._unmark(n)
+                for n in order:
+                    paths = self._route_net(n, pf)
+                    n.failed = paths is None
+                    n.paths = paths or []
+                    if not paths:
+                        n.necks = []
+                    self._mark(n)
+                after = self._nbad()
+                if after < best:
+                    best, best_state = after, ([n.name for n in order],
+                                               {n: (n.paths, n.necks, n.failed) for n in lift})
+                if after == 0:
+                    break
+            for n in lift:
+                self._unmark(n)
+            keep = best_state[1] if best_state else save
+            for n, (p, k, f) in keep.items():
+                n.paths, n.necks, n.failed = p, k, f
+                self._mark(n)
+            if best_state:
+                self.log("  priority repair, order %s: %d net(s) sharing or open, was %d"
+                         % (" > ".join(best_state[0]), best, before))
+            if self.PRIO_WALL and any(n.failed or any(c.size for c in self._conflicts(n)) for n in lift):
+                self._wall_repair(lift, pf)
+        return [n for n in self.nets if n.failed or any(c.size for c in self._conflicts(n))]
+
+    PRIO_WALL = True
+    LANE_GROW = 1.0                  # a coupled rail with no way in its lane tries once more in it grown by this
+
+    def _wall_repair(self, lift, pf):
+        """⚠ NETS STUCK ON EACH OTHER ARE WALLS TO EACH OTHER, AND THE REST MOVE (optical
+        ONX12, ULPI_D1/D2 at U7, 2026-11-10): D2's via sat one grid cell inside D1's track
+        keep-out, for eight rounds to pf 2361, and every order of the priority repair left it
+        there -- at any price every other way out crossed some third net's keep-out, which
+        cost the same, so the search could not tell D1 from the rest. Both were ripped out:
+        two signals open on a valid placement. An engineer lays one, then routes the other
+        AROUND it -- through whatever else is in the way -- and moves those. So: each net of
+        the stuck group is routed with the group's copper already laid as a wall, the group
+        is locked, and everyone it now crosses is re-negotiated round it. Kept only if the
+        board ends with fewer connections open than ripping the group now would leave."""
+        saved = {n: (n.paths, n.necks, n.failed) for n in self.nets}
+        lock0 = set(lift)
+        for x in self.nets:
+            if (x.mate is not None and x.partner is None and x.group is not None and x not in lock0
+                    and not x.failed and not x.mate.failed and not self.pair_faults(x)):
+                lock0 |= {x, x.mate}
+
+        def sharing():
+            return [n for n in self.nets if not n.failed and any(c.size for c in self._conflicts(n))]
+
+        def restore():
+            for n in self.nets:
+                self._unmark(n)
+            for n in self.nets:
+                n.paths, n.necks, n.failed = saved[n]
+                self._mark(n)
+
+        before = self._open_w((), sharing())
+        best, best_state = before, None
+        for order in (list(lift), list(lift)[::-1]):
+            for n in lift:
+                self._unmark(n)
+            laid = []
+            for n in order:
+                self._walls = laid
+                try:
+                    paths = self._route_net(n, pf)
+                finally:
+                    self._walls = None
+                n.failed = paths is None
+                n.paths = paths or []
+                if not paths:
+                    n.necks = []
+                self._mark(n)
+                laid.append(n)
+            if any(n.failed for n in lift):
+                restore()
+                continue
+            todo = [n for n in self.nets if n not in lock0 and not n.failed and self._conflicts(n)]
+            left, _ = self._rounds(todo, pf, 12, 600, locked=lock0)
+            left = left + [n for n in lift if any(c.size for c in self._conflicts(n))]
+            after = self._open_w((), left)
+            if after < best:
+                best, best_state = after, ([n.name for n in order],
+                                           {n: (n.paths, n.necks, n.failed) for n in self.nets})
+            restore()
+            if best == 0:
+                break
+        if best_state is None:
+            self.log("  wall repair of %s: no order left fewer connections open than %d -- put back"
+                     % (", ".join(n.name for n in lift), before))
+            return False
+        for n in self.nets:
+            self._unmark(n)
+        for n, (p, k, f) in best_state[1].items():
+            n.paths, n.necks, n.failed = p, k, f
+            self._mark(n)
+        self.log("  wall repair, order %s: %d connection(s) open if ripped, was %d"
+                 % (" > ".join(best_state[0]), best, before))
+        return True
+
+    # ⚠ OPEN IS COUNTED IN CONNECTIONS, NOT NETS (optical, C102 +0.12/+0.48, 2026-11-10): a
+    # displacement re-routed the ripped USB pair and left +3V3D sharing, so it was ripped --
+    # "3 nets open -> 1" read as better, and a rail of ~55 joins went open for two signals.
+    # A net ripped out leaves len(pieces) - 1 connections open, as KiCad would count them.
+    def _w_open(self, n):
+        return max(1, len(n.pieces) - 1)
+
+    def _bad_joins(self, net):
+        """A plane net's sharing joins, if _rip would take only those (else None)."""
+        if not (self.PLANE_PARTIAL and net.plane and not net.failed and not net.fixed
+                and len(net.paths) == len(net.pieces) - 1):
+            return None
+        H, W = self.H, self.W
+        bad = []
+        for q, path in enumerate(net.paths):
+            if not path.size:
+                continue
+            c = path[self.occ_t[path] >= 2]
+            k = path // (H * W)
+            via = np.nonzero(k[1:] != k[:-1])[0]
+            rv = (path[via] % (H * W)) if via.size else np.empty(0, np.int64)
+            if c.size or (rv.size and (self.occ_v[rv] >= 2).any()):
+                bad.append(q)
+        return bad if bad and len(bad) < len(net.paths) else None
+
+    def _open_w(self, lock=(), left=()):
+        """Open connections on the board: nets ripped out, plane joins ripped (n_open), and
+        nets in `left` -- still sharing, about to be ripped."""
+        return (sum(self._w_open(n) for n in self.nets if n not in lock and n.failed)
+                + sum(getattr(n, "n_open", 0) for n in self.nets if n not in lock and not n.failed)
+                + sum((self._poured_open(n, b) if b is not None else self._w_open(n))
+                      for n in left if n not in lock and not n.failed
+                      for b in (self._bad_joins(n),)))
+
+    def _poured_open(self, net, qs):
+        """Of a plane net's joins qs, about to be ripped, how many leave a piece the pour
+        does not reach either.
+
+        ⚠ A JOIN THE POUR COVERS IS NOT OPEN (optical USB_HS, unmoved, 2026-11-10): the
+        coupled pair laid to the rules, the board re-negotiated round it, and one +3V3D
+        join was left sharing -- counted as an open connection, so the pair was put back,
+        though that piece sat inside the +3V3D pour, which the island stage joins anyway."""
+        if not qs:
+            return 0
+        before = self._islands(net)
+        self._unmark(net)
+        keep = [net.paths[q] for q in qs]
+        for q in qs:
+            net.paths[q] = np.empty(0, np.int64)
+        self._mark(net)
+        try:
+            got = self._islands(net)
+        finally:
+            self._unmark(net)
+            for q, pth in zip(qs, keep):
+                net.paths[q] = pth
+            self._mark(net)
+        if got is None or before is None:
+            return len(qs)
+        new_off = set(got[0]) - set(before[0])
+        if os.environ.get("PAIR_DEBUG"):
+            self.log("      %s joins %s ripped: pieces newly cut off %s" % (net.name, qs, sorted(new_off)))
+        return min(len(qs), len(new_off))
 
     def _rip(self, todo):
         """anything still sharing comes out: a legal board with a net open beats a short"""
         for net in todo:
+            # ⚠ A PLANE NET LOSES ONLY THE JOINS THAT SHARE (optical C102 +0.12/+0.48,
+            # 2026-11-10): one +3V3D join crossing a locked pair ripped the whole rail, ~55
+            # joins, and made every trade that touched it look ruinous. An engineer moves the
+            # one via in the way; the rest of the rail stands. Each ripped join is one open
+            # connection (n_open), the path kept as an empty one so pieces and paths still line up.
+            bad = self._bad_joins(net)
+            if bad is not None:
+                    self._unmark(net)
+                    for q in bad:
+                        net.paths[q] = np.empty(0, np.int64)
+                        if q < len(net.necks):
+                            net.necks[q] = np.zeros(0, bool)
+                    net.n_open = getattr(net, "n_open", 0) + len(bad)
+                    self._mark(net)
+                    self.log("  %s: %d of its %d joins still share space%s: those ripped out, the rest kept"
+                             % (net.name, len(bad), len(net.paths), self._where(net) or ""))
+                    continue
             if not net.failed:
                 self.log("  %s still shares space%s: ripped out" % (net.name, self._where(net)))
             self._unmark(net)
@@ -1551,12 +2601,27 @@ class Router:
         pf_mul, hf = getattr(self, "_neg", (1.6, 0.4))
         t0 = time.time()
         best, since = None, 0
+        self._stalled = False
+        kept0 = {n: n.keep_paths for n in self.nets if n.plane}
         for it in range(1, iters + 1):
             for net in todo:
                 if net in locked:
                     continue
+                # ⚠ A PLANE JOIN AIMS WHERE THE POUR WILL BE, EVERY ROUND (optical +3V3D by
+                # U6, 2026-11-09): join targets were the pour's polygon, so a join ended in the
+                # region's corner where a B.Cu track along its edge had cut the fill off; the
+                # refill drops that sliver, and the island pass could not re-join the piece
+                # past the locked ULPI group (close_last closed it the long way). The main
+                # body's fill is judged against the copper as it stands, and joins aim at it.
+                mx0 = getattr(net, "main_xy", None)
+                if self.PLANE_MAIN and net.plane and mx0 is None:
+                    got = self._islands(net)
+                    if got is not None and got[1] is not None and got[1].any():
+                        net.main_xy = got[1]
                 self._unmark(net)
                 paths = self._route_net(net, pf)
+                net.main_xy = mx0
+                net.n_open = 0
                 net.failed = paths is None
                 net.paths = paths or []
                 if not paths:
@@ -1573,11 +2638,13 @@ class Router:
                     todo.append(net)
                     continue
                 shared = False
-                for path in net.paths:
+                bad_q = set()
+                for q, path in enumerate(net.paths):
                     c = path[self.occ_t[path] >= 2]
                     if c.size:
                         self.hist[c] += hf
                         shared = True
+                        bad_q.add(q)
                     k = path // (H * W)
                     via = np.nonzero(k[1:] != k[:-1])[0]
                     if via.size:
@@ -1586,6 +2653,27 @@ class Router:
                         if rv.size:
                             self.hist_v[rv] += hf
                             shared = True
+                            bad_q.add(q)
+                # ⚠ A PIECE CUT OFF THE POUR IS AS UNFINISHED AS ONE SHARING SPACE (optical
+                # +3V3D by U6, 2026-11-09): PLANE_MAIN aims a join at the main body when the net
+                # is routed, but a net routed later in the round can still cut its target off;
+                # the plane net was not sharing, so never re-routed, and the island showed only
+                # at the end, where the island pass could not undo it past the locked ULPI
+                # group. Cut-off pieces count as shared and are re-joined next round.
+                if self.PLANE_MAIN and net.plane and not net.fixed and len(net.paths) == len(net.pieces) - 1:
+                    got = self._islands(net)
+                    if got is not None and got[0]:
+                        shared = True
+                        bad_q.update(q - 1 for q in got[0])
+                # ⚠ A PLANE NET RE-JOINS ONLY THE PIECES THAT SHARE (optical +3V3D,
+                # 2026-11-09: ~55 pieces, each its own join to the pour, and one or two
+                # sharing space re-searched all of them every round -- 220 searches, a third
+                # of the negotiation). An engineer moves the via that is in the way, not
+                # every via on the rail; the others keep their joins as laid.
+                if (shared and self.PLANE_KEEP and net.plane and not net.fixed
+                        and len(net.paths) == len(net.pieces) - 1):
+                    net.keep_paths = {q + 1: (net.paths[q], net.necks[q] if q < len(net.necks) else None)
+                                      for q in range(len(net.paths)) if q not in bad_q and net.paths[q].size}
                 if shared:
                     todo.append(net)
                     nbad += 1
@@ -1620,8 +2708,12 @@ class Router:
                 if since >= 8:
                     self.log("  no better in 8 rounds: stopping")
                     break
+            self._stalled = since >= self.STALL_ROUNDS
             if time.time() - t0 > budget_s:
                 self.log("  out of time")
                 break
             pf *= pf_mul
+        self._stalled = False
+        for n, kp in kept0.items():
+            n.keep_paths = kp
         return todo, pf

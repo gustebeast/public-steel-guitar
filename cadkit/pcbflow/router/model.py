@@ -25,6 +25,7 @@ RING_PADS = 3            # parts with this many pads or fewer get a thermal ring
 RING_MM = 0.9            # a poured land's thermal room, from its copper edge
 HOLE_PAD = 0.45          # a pad's hole to any other hole, edge to edge (quality.FAB hole_hole_pad)
 SUPPLY = ("+", "GND", "VCC", "VDD")
+GROUND_RE = re.compile(r"^(GND|VSS|[A-Z0-9]+_GND|[AD]GND|GND[A-Z0-9_]*)$")   # as quality.GROUND
 
 
 def _copper_layers(txt):
@@ -65,6 +66,7 @@ class Model:
         self.edges = RS._edges(txt)
         self.keepouts = _keepouts(txt)
         self.pours = _pours(txt)
+        self.zone_rule = _zone_rules(txt)
         # where each pour's copper actually IS (its fill), net by net; the outline where
         # a pour has no fill yet. Plane joins aim here (negotiate build_nets/_to_plane).
         fills = _fills(txt)
@@ -109,6 +111,7 @@ class Model:
 
         self._fields()
         self._edge_field()
+        self._ref_voids()
 
     # ------------------------------------------------------------------ geometry helpers
     def xy(self, i, j):
@@ -313,12 +316,91 @@ class Model:
             self.via_ban[i0:i1, j0:j1] |= (np.hypot(X - v["x"], Y - v["y"])
                                            < self.via_drill + self.hole_to_hole + self.margin)
 
+    VOID_MIN_MM = 2.0      # a reference-plane void this wide or more is priced (a via's antipad is not)
+
+    def _ref_voids(self):
+        """ref_void[k, i, j]: on routing layer k, the ground plane a track there returns in
+        is MISSING at (i, j) -- inside that plane's outline, outside its fill.
+
+        ⚠ A SIGNAL OVER A SLOT RETURNS ROUND IT (pi_cap UI_ENC_A, 2026-11-09): the 40-pin
+        socket's two rows of holes cut the In2 ground plane, and the router, knowing nothing
+        of it, ran UI_ENC_A ALONG the cut for 11.77 mm where one crossing is 6; quality A15
+        failed it against the 9.3 the row is signed for. The reference plane is read as A15
+        reads it -- the nearest ground copper in the stack-up, other than the track's own
+        layer -- from the fill layout left, and only voids VOID_MIN_MM across or wider
+        count: an antipad never fails a 5 mm rule, and pricing every one would push
+        tracks off every pin."""
+        L, ny, nx = self.L, self.ny, self.nx
+        self.ref_void = np.zeros((L, ny, nx), bool)
+        order = {n: k for k, n in enumerate(self.layers)}
+        gfill, gout = {}, {}
+        for net, pl in self.fills.items():
+            if GROUND_RE.match(net):
+                for L_, pts in pl:
+                    gfill.setdefault(L_, []).append(pts)
+        for net, pl in self.pours.items():
+            if GROUND_RE.match(net):
+                for L_, pts in pl:
+                    gout.setdefault(L_, []).append(pts)
+
+        def raster(polys):
+            m = np.zeros((ny, nx), bool)
+            for pts in polys:
+                P = np.asarray(pts, np.float64)
+                win = self._window(P[:, 0].min(), P[:, 1].min(), P[:, 0].max(), P[:, 1].max(), 0.0)
+                i0, i1, j0, j1 = win
+                if i1 <= i0 or j1 <= j0:
+                    continue
+                X, Y = np.meshgrid(self.cx[j0:j1], self.cy[i0:i1])
+                m[i0:i1, j0:j1] ^= _in_poly(X, Y, pts)
+            return m
+
+        cov = {l: raster(p) for l, p in gfill.items() if l in order}
+        out = {l: raster(p) for l, p in gout.items() if l in order}
+        from scipy.ndimage import label, find_objects
+        mn = int(round(self.VOID_MIN_MM / self.pitch))
+        for k, name in enumerate(self.route_layers):
+            dist = {l: abs(order[l] - order[name]) for l in cov if l != name}
+            if not dist:
+                continue
+            near = min(dist.values())
+            refs = [l for l in dist if dist[l] == near]
+            covered = np.zeros((ny, nx), bool)
+            within = np.zeros((ny, nx), bool)
+            for l in refs:
+                covered |= cov[l]
+                within |= out.get(l, cov[l])
+            void = within & ~covered
+            lab, n = label(void)
+            keep = np.zeros(n + 1, bool)
+            for q, sl in enumerate(find_objects(lab), start=1):
+                if sl is not None and max(sl[0].stop - sl[0].start, sl[1].stop - sl[1].start) >= mn:
+                    keep[q] = True
+            self.ref_void[k] = keep[lab]
+
+    EDGE_REACH = 10.0                # mm: the edge field is exact this far in, FAR beyond
+
     def _edge_field(self):
         """Distance to the outline, signed so that outside the board is negative."""
         X, Y = np.meshgrid(self.cx, self.cy)
         d = np.full((self.ny, self.nx), FAR, np.float64)
+        # ⚠ EACH SEGMENT OVER ITS OWN WINDOW (optical, 2026-11-10): 2294 outline segments
+        # (the slots and round cut-outs are drawn as many) each measured over the whole
+        # grid was 9.5 s of an 82 s route. Every reader compares the field with a track's
+        # or via's half width plus edge clearance -- a millimetre or two -- so beyond
+        # EDGE_REACH it stays FAR (signed below), and within it each cell is exact: the
+        # segment nearest it is within reach, so its window holds the cell.
+        R = self.EDGE_REACH
         for e in self.edges:
-            np.minimum(d, _d_pts_seg(X, Y, *e), out=d)
+            x1, y1, x2, y2 = e
+            j0 = max(0, int(np.floor((min(x1, x2) - R - self.x0) / self.pitch)))
+            j1 = min(self.nx, int(np.ceil((max(x1, x2) + R - self.x0) / self.pitch)) + 1)
+            i0 = max(0, int(np.floor((min(y1, y2) - R - self.y0) / self.pitch)))
+            i1 = min(self.ny, int(np.ceil((max(y1, y2) + R - self.y0) / self.pitch)) + 1)
+            if i1 <= i0 or j1 <= j0:
+                continue
+            sub = d[i0:i1, j0:j1]
+            np.minimum(sub, _d_pts_seg(X[i0:i1, j0:j1], Y[i0:i1, j0:j1], *e), out=sub)
         loops = _loops(self.edges)
         inside = _in_poly(X, Y, loops[0]) if loops else np.ones_like(d, bool)
         # every other closed loop (a round cut-out drawn on Edge.Cuts) is a hole in the board
@@ -514,6 +596,29 @@ def _pours(txt):
             out.setdefault(nt.group(1), []).append((ly.group(1), pts))
     return out
 
+
+
+def _zone_rules(txt):
+    """{net: (clearance, min_thickness)}: the zone's OWN rules, the largest over its zones.
+
+    ⚠ A POUR KEEPS ITS OWN DISTANCE, NOT THE NETCLASS'S (optical +3V3D, 2026-11-09): the
+    zone under U6 holds 0.5 mm off other copper and is at least 0.25 mm wide; the island
+    judge assumed 0.127 and 0.2, saw fill where KiCad lays none, and called four join vias
+    joined that the refill left on islands -- the tidy pass removed them as dangling and
+    close_last closed six pads 5.7 mm round."""
+    out = {}
+    for z in re.findall(r"\(zone\b(.*?)\n\t\)", txt, re.S):
+        if "(keepout" in z:
+            continue
+        nt = re.search(r'\(net "([^"]*)"', z)
+        if not (nt and nt.group(1)):
+            continue
+        cl = re.search(r"\(connect_pads[^()]*\(clearance ([\d.]+)\)", z)
+        mt = re.search(r"\(min_thickness ([\d.]+)\)", z)
+        c0, t0 = out.get(nt.group(1), (0.0, 0.0))
+        out[nt.group(1)] = (max(c0, float(cl.group(1)) if cl else 0.0),
+                            max(t0, float(mt.group(1)) if mt else 0.0))
+    return out
 
 
 def _fills(txt):

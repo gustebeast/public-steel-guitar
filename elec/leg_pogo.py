@@ -505,6 +505,8 @@ if __name__ == "__main__":
         netcheck.no_orphan_pins(os.path.join(OUT_DIR, stem + ".net"))
         import volts_decl                   # A16: generated, see volts_decl.py
         volts_decl.into(notes, stem)
+        import part_alternates
+        part_alternates.stamp(notes)    # cadkit M42: alternates + waivers, one table
         with open(os.path.join(OUT_DIR, stem + ".board.json"), "w") as f:
             json.dump(notes, f, indent=2)
         print("%s: board %.2f x %.2f mm, hole at (%.2f, %.2f)"

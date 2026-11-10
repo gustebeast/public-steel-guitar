@@ -72,8 +72,10 @@ import csv
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
+import time
 import zipfile
 
 FLOW = os.path.dirname(os.path.abspath(__file__))
@@ -231,6 +233,65 @@ def _run(args):
     return r.stdout
 
 
+def _sha256(path):
+    import hashlib
+    return hashlib.sha256(open(path, "rb").read()).hexdigest()
+
+
+def _declared(board):
+    """The project's pcb_declared.declared bound to `board` (the file finish.py reads)."""
+    path = os.path.join(HERE or "", "pcb_declared.py")
+    if not os.path.isfile(path):
+        return lambda t, r: False
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("pcb_declared", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return lambda t, r: bool(mod.declared(board, t, r))
+
+
+# An ordinary Python with gerbonara (KiCad's has none): PCBFLOW_PYTHON, else the launcher.
+EXT_PY = (os.environ.get("PCBFLOW_PYTHON", "").split() or
+          (["py", "-3.12"] if shutil.which("py") else ["python3"]))
+
+
+def _independent(pcb, gdir):
+    """(True, "") if a reader that is not KiCad (gerbonara, gerber_read.py) finds on every
+    copper layer exactly the board's flashed pads plus vias, and the outline at the board
+    edge's extent; else (False, what differs)."""
+    import pcbnew as _pcb
+    try:
+        r = subprocess.run(EXT_PY + [os.path.join(FLOW, "gerber_read.py"), gdir],
+                           capture_output=True, text=True, timeout=600)
+        got = json.loads(r.stdout)
+    except Exception as exc:                       # no reader is no evidence, not a pass
+        return False, "the independent reader did not run: %r" % (exc,)
+    b = _pcb.LoadBoard(pcb)
+    vias = [t for t in b.GetTracks() if t.GetClass() == "PCB_VIA"]
+    why = []
+    for fn, c in got.items():
+        m = re.search(r"-(F_Cu|In\d+_Cu|B_Cu)\.", fn)
+        if m:
+            L = b.GetLayerID(m.group(1).replace("_", "."))
+            want = (sum(1 for fp in b.GetFootprints() for p in fp.Pads()
+                        if p.IsOnLayer(L) and p.FlashLayer(L))
+                    + sum(1 for v in vias if v.IsOnLayer(L) and v.FlashLayer(L)))
+            if c["flash"] != want:
+                why.append("%s: %d flashes, the board has %d pads + vias there" % (fn, c["flash"], want))
+        elif "Edge_Cuts" in fn and c.get("bbox"):
+            bb = b.GetBoardEdgesBoundingBox()
+            mm = _pcb.ToMM
+            ex = (mm(bb.GetLeft()), mm(bb.GetTop()), mm(bb.GetRight()), mm(bb.GetBottom()))
+            x0, y0, x1, y1 = c["bbox"]
+            gx = (x0, -y1, x1, -y0)                # gerber y is up, the board's is down
+            if max(abs(a - e) for a, e in zip(gx, ex)) > 0.02:
+                why.append("%s: outline %s, the board edge %s" % (
+                    fn, tuple(round(v, 2) for v in gx), tuple(round(v, 2) for v in ex)))
+    if not any(re.search(r"-(F_Cu|B_Cu)\.", fn) for fn in got):
+        why.append("no copper layer was read")
+    return not why, "; ".join(why)
+
+
 def _parts(stem):
     """[(ref, value, footprint)] from the netlist -- the same file the board was
     laid out from, so the BOM cannot describe a different build than the gerbers."""
@@ -315,6 +376,38 @@ def fab(board):
 
     d = os.path.join(FAB_DIR, board)
     os.makedirs(d, exist_ok=True)
+    for _fn in os.listdir(d):                     # nothing of an earlier export survives
+        if not os.path.isdir(os.path.join(d, _fn)):
+            os.remove(os.path.join(d, _fn))
+
+    # ⚠ THE FILES COME FROM A BOARD REFILLED AND CHECKED THE MOMENT BEFORE (M37, 2026-11-10).
+    # Exported straight from the board file they carried whatever zone fill was last
+    # saved, and the DRC above ran on that file without refilling -- "zones were refilled
+    # and DRC re-run immediately before export" was a sentence for a person to remember.
+    # A copy is refilled and checked by kicad-cli (--refill-zones --save-board), every
+    # file is exported from THAT copy, and the manifest below records the source board's
+    # hash: quality's M37 is answered by the package, not by somebody's memory.
+    sha0 = _sha256(pcb)
+    rdir = os.path.join(FAB_DIR, "_refill")
+    os.makedirs(rdir, exist_ok=True)
+    src_pcb, pcb = pcb, os.path.join(rdir, board + ".kicad_pcb")
+    shutil.copyfile(src_pcb, pcb)
+    for _ext in (".kicad_pro", ".kicad_dru"):
+        if os.path.isfile(stem + _ext):
+            shutil.copyfile(stem + _ext, os.path.join(rdir, board + _ext))
+    _rj = os.path.join(rdir, board + ".drc.json")
+    subprocess.run([KICAD_CLI, "pcb", "drc", "--refill-zones", "--save-board", "--format",
+                    "json", "-o", _rj, pcb], capture_output=True, text=True)
+    _drc = json.load(open(_rj, encoding="utf-8"))
+    _errs = dict(_drc, violations=[v for v in _drc.get("violations", [])
+                                   if v.get("severity") != "warning"])
+    from . import netcheck as _nc
+    _ok_v, _bad_v = _nc.classify_violations(_errs, _declared(board))
+    manifest = {"board": board, "board_sha256": sha0, "built": time.strftime("%Y-%m-%d %H:%M"),
+                "zip": "%s.zip" % board, "refilled": True,
+                "drc_clean": not _drc.get("unconnected_items") and not _bad_v,
+                "drc_unconnected": len(_drc.get("unconnected_items", [])),
+                "drc_undeclared": ["%s %s" % (t, "/".join(r)) for t, r in _bad_v][:20]}
 
     _run([KICAD_CLI, "pcb", "export", "gerbers", "-o", d + os.sep,
           "--layers", _layers(stem), "--no-x2", "--subtract-soldermask", pcb])
@@ -328,8 +421,11 @@ def fab(board):
     #  Omitting them is what gives one merged drill file and no map.)
 
     _check_drill(pcb, d, board)
+    manifest["drill_check"] = True                # _check_drill refuses, so reaching here is the pass
     _check_gerbers(d, json.load(open(stem + ".board.json", encoding="utf-8")),
                    board, pcb)
+    manifest["gerber_check"] = True
+    manifest["independent"], manifest["independent_why"] = _independent(pcb, d)
 
     # ---- CPL, converted to JLCPCB's column names ----
     raw = os.path.join(d, "_pos.csv")
@@ -509,6 +605,12 @@ def fab(board):
                 "%d of %d placements\nare two-pad chip passives, which every library "
                 "lays along the pad axis about its\ncentre: a half turn cannot change "
                 "them.\n" % (max(_same, 0), _total - len(crit), _total))
+    manifest["rotation_unchecked"] = sorted(r[0] for r in unchecked)
+    manifest["stackup_stated"] = os.path.isfile(os.path.join(d, "ORDER.txt"))
+    with open(os.path.join(d, "MANIFEST.json"), "w", encoding="utf-8") as fh:
+        json.dump(manifest, fh, indent=1)
+    with open(os.path.join(FAB_DIR, "%s.fab.json" % board), "w", encoding="utf-8") as fh:
+        json.dump(manifest, fh, indent=1)
     z = os.path.join(FAB_DIR, "%s.zip" % board)
     with zipfile.ZipFile(z, "w", zipfile.ZIP_DEFLATED) as zf:
         for fn in sorted(os.listdir(d)):

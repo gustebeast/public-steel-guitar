@@ -999,6 +999,12 @@ access the bring-up will need.
   today, with what it mates to (lifecycle and alternates are **M42**); rotations checked in the fab's previewer for every
   polarised and multi-pin part; board name and revision in silk; order-form settings
   (mask colour, mark removal, rail edges) written down.
+  *The pass answers* (`order_check.py` on order day, then `quality.py`): every code is the
+  part it names (tokens of the part number in the catalogue's model) and in stock for the
+  builds ordered; every rotation was measured by `fab_frames`; ORDER.txt carries the
+  order-form settings. A wrong code or short stock is a FAIL. *Left for a person:* the
+  parts in ROTATION-CHECK.txt's "not corrected" list, looked at in the fab's preview --
+  with that list empty the rule signs itself.
 - **M13 — Switching regulators are laid out as the datasheet draws them.** The input
   capacitor sits at VIN/PGND on the part's own layer with no via in that loop (the "hot
   loop"); the switch node is short and no bigger than it must be, never a heatsink; the
@@ -1110,6 +1116,11 @@ access the bring-up will need.
   back, a solder mask that is not green, or a single part marked "Standard only" each
   move the whole board from the economic tier to the standard one (a larger setup fee,
   a stencil charge, a fee per part type), and the page says so only when the BOM is in.
+  *The pass answers* (`order_check.py`, the board): every row coded, the tier the board
+  needs (parts on the back or a mask that is not green force standard), the count of
+  extended lines; a tier other than `quality.assembly_tier` is a FAIL. *Left for a
+  person:* the order page itself -- every row selected, none at quantity 0, no option
+  carried over, the tier quoted.
 - **M31 — Markings survive assembly.** Pin-1 and polarity marks are visible with the part
   fitted (outside the body, not under it); text is at least the fab's minimum height and
   stroke and not over pads, holes or the board edge; the board's name and revision are
@@ -1123,6 +1134,11 @@ access the bring-up will need.
   1:1 and offer the real connector to it before ordering. A standard connector (USB,
   audio jack) is numbered as its standard numbers it, and every connector that carries a
   single-ended signal also carries a ground.
+  *The pass answers:* pad pitch measured against the series named by the footprint (JST
+  XH / PH / ZH / GH / SH, PicoBlade, `_P<pitch>mm`); a ground on every connector with a
+  single-ended signal; each `power_paths` current, shared by the contacts it names, inside
+  the series' contact rating. Any of those broken is a FAIL. *Left for a person:* pad 1
+  against the maker's drawing from the mating face, and the 1:1 print offered to the part.
 - **M33 — Every rail has a power budget.** Worst-case current of every load on each
   rail, added up, is inside the regulator's rating with margin (50 % on a first board),
   and those are the amps declared in `power_paths`. Connectors and cables on the rail are
@@ -1144,6 +1160,12 @@ access the bring-up will need.
   state (`fab_package.py` does both and checks the drill file against the board); the package was opened in an independent gerber viewer and looked at, layer by
   layer, with the drills over the copper. Stack-up, finish and any controlled impedance
   are stated on the order.
+  *The pass answers all of it* from the package's manifest (`fab_package` writes
+  fab/<board>.fab.json): the files were exported from a copy refilled and DRC-checked by
+  kicad-cli the moment before, drill and gerbers from that one copy, drill hits = holes,
+  an independent reader (gerbonara, `gerber_read.py`) finds every copper layer's pads +
+  vias and the outline where the board has them, ORDER.txt states the stack-up -- and the
+  manifest's hash is this board file's. Signs itself; a failed check is a FAIL.
 - **M38 — Nothing is stressed, and everything can be reached.** Ceramic capacitors are
   clear of break-off tabs, V-scores and screw heads, and lie parallel to the nearest edge
   that will flex. Every pluggable connector has room for its plug AND the fingers or tool
@@ -1171,6 +1193,11 @@ access the bring-up will need.
   been looked at: same value and package at different ratings or tolerances collapse to
   the stricter one, and an odd value next to a common one (120 nF beside 100 nF) is
   questioned.
+  *The pass answers* (`order_check.py`): every code is still sold by the fab (a part the
+  fab marks no longer manufactured is a FAIL -- waive it with the reason it is kept);
+  the count of distinct codes. *Left for a person:* the maker's lifecycle status, and a
+  named alternate (or "none") in `quality.alternates` for each part chosen by number; with
+  every such part named there, the rule signs itself.
 - **M43 — A host computer and a USB cable are all it takes.** (owner's rule, 2026-10-12;
   sharpened 2026-10-15) This is a rule about ONE BOARD. Every board either needs no
   firmware and works as it arrives, or, over its OWN USB connection from an ordinary host

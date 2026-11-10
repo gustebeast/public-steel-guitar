@@ -782,6 +782,8 @@ if __name__ == "__main__":
     generate_netlist(file_=os.path.join(OUT_DIR, "ui_board.net"))
     netcheck.grounds_meet(os.path.join(OUT_DIR, "ui_board.net"))
     netcheck.no_orphan_pins(os.path.join(OUT_DIR, "ui_board.net"))
+    import part_alternates
+    part_alternates.stamp(BOARD_NOTES)    # cadkit M42: alternates + waivers, one table
     with open(os.path.join(OUT_DIR, "ui_board.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.1f x %.1f at world (%.2f, %.2f), display socket mouth y %.2f"

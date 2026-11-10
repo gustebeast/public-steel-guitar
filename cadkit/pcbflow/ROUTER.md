@@ -1,8 +1,8 @@
 # pcbflow's own router
 
 Started 2026-11-08. Replaces freerouting in `finish.py` (layout -> **route** -> unwick ->
-repair_planes -> DRC -> close_last) with `PCBFLOW_ROUTER=own`; it becomes the default once
-the full chain signs it off (router-alone it routes every board, 2026-11-09).
+repair_planes -> DRC -> close_last); the default since 2026-11-09, when all 15 boards reached
+0 / 0 / 0 FAIL through the full chain on it (`PCBFLOW_ROUTER=freerouting` brings back route.py).
 
 ## Why
 
@@ -89,6 +89,40 @@ which is placement feedback rather than a coin flip.
   body is re-joined to the main body only, the others re-negotiating round it, and the
   result is kept only if no more nets end open. Optical +3V3D, 2026-11-09: an islanded
   join on 16 of 19 nudges became close_last's 13.5 mm closure across a 1.7 mm gap (A23).
+  Only the cut-off pieces are re-joined (`keep_paths`): re-routing the whole net moved a
+  good join under U6 onto ULPI_D5/D6 (a locked match group), so on every optical run the
+  re-join was put back. Now it holds, and the step takes 1 s instead of 35.
+  The fill is judged by the ZONE's own rules (`model._zone_rules`: optical's pours keep
+  0.5 mm off other copper, 0.25 mm minimum width), not the netclass's 0.127/0.2: the judge
+  saw fill under U6 that KiCad never lays, so four join vias stood on islands, the tidy
+  removed them as dangling and close_last closed six stranded pads. Now 0 stranded.
+- **A slot in the return plane is crossed square** (`model._ref_voids`, `VOID_COST`): each
+  routing layer's reference plane is the nearest ground copper in the stack, as quality
+  A15 reads it; where that plane is void for `VOID_MIN_MM` or more (a socket's row of
+  antipads, the cut under a photodiode) a signal pays 3x a cell, so it crosses short and
+  never runs along. pi_cap UI_ENC_A ran 11.77 mm along the 40-pin row against 9.3 signed.
+- **A net stuck in a stalled negotiation looks wider** (`WIDEN_AFTER`, `STALL_ROUNDS`):
+  the window grew only when it held NO path, and a shared one always exists, so two
+  pi_cap nets fought over one gap at pf 576 and were ripped out. Once the negotiation is
+  `STALL_ROUNDS` without gain, a net sharing `WIDEN_AFTER` rounds starts at 12 mm, then
+  the whole board. Only when stalled, never a matched pair: widening while it still
+  improved moved optical's nets round its USB pair and left the pair unfinishable.
+- **A pair attempt whose rails overlap is no attempt** (`_pair_try`): "fewest shared
+  cells" counted the rails sharing with each other, which `_displace` (pair held, rest
+  moved) can never undo; USB_DP and USB_DM were written 0.33 mm into each other.
+- **A net still sharing when negotiation stops is routed first** (`_priority_repair`,
+  before `_rip`): it is lifted with its pair partner and the nets it shares with, then
+  routed in each order (it first, its partner first, the others first) and the best kept
+  if the board has fewer nets sharing or open; else put back. Optical with ten resistors
+  moved 20 mm from J1 (2026-11-09) ended with D+ and D- each wanting the one via site
+  beside J1's lands; D- first closes it. Fires only when nets are stuck, so a board that
+  closes is unchanged (15/15 router-alone identical). Not fixed by it: two nets of one
+  part moved where both its pads cannot escape (R40, FB/V5_PRE) -- a placement fault, which
+  the 1-round placement proxy flags. Tried and dropped: a whole-board window pass (no gain).
+- **Exact clearance of what is written** (`geomcheck.check`, ROUTER.md M2): every emitted
+  segment and via against other nets' pads (exact shape), tracks, vias and new copper,
+  each shortfall named with what drew it (run, stub, via). 0 on every board, 2026-11-09;
+  run it after any change to emit or the pair finish.
 
 ## Placement feedback
 
@@ -119,7 +153,8 @@ block was U1 west / C52, the spot that ate the freerouting nudge series.
    layout.py, so placement is judged before a detailed route is spent on it.
 5. **M5 parity**: all four boards (optical, motor_ctrl, pi_cap, output_panel) at their
    targets on it, then every finish-chain board. Router-alone: all 15 boards, 0 nets
-   open, 0 pair faults (2026-11-09). Default switch pending the full-chain sign-off.
+   open, 0 pair faults; full chain: all 15 at 0 unconnected / 0 violations / 0 quality
+   FAIL, unmoved (2026-11-09, cadkit 1d4fbee). DONE: it is the default.
 
 Each milestone is measured against the freerouting baseline on the same placed board
 (`<stem>.unrouted.kicad_pcb`): unconnected, DRC errors, quality FAILs, wall time.
@@ -142,6 +177,45 @@ same nets, same pair verdicts. Profile first: the cost was never where it looked
   unchanged. Congestion pricing makes the straight-line heuristic weak; 1.3 halves work
   for about 5 % dearer paths.
 
+- **Heuristic to the nearest target cell** (`HMAP`, search.astar_s_h / astar_turn_s_h):
+  the box heuristic measured to the targets' bounding box, so a net whose lands are spread
+  had no guidance inside it (optical BOOT0: 7.7 M states, 5.6 s, for one 46 mm net; 0.4 s
+  after). A Euclidean distance transform of the target cells, max'd with the box octile:
+  still admissible. 15-board router-alone: motor_ctrl 96 -> 15 s, output_panel 151 -> 48 s,
+  ui_board 68 -> 17 s, optical 134 -> 75 s; 0 open, 0 pair faults, 0 shortfalls. eps 1.0 with it was
+  worse on optical (two nets open): kept at 1.2.
+- **A plane net re-joins only its sharing pieces** (`PLANE_KEEP`): +3V3D's ~55 joins were
+  all re-searched every round it shared, 220 searches, a third of optical's negotiation.
+
+Pair finish (same day): in a pair attempt the mate is a wall, not a price (`PAIR_WALL`) --
+at the finish's congestion price the second rail went over its mate rather than through
+others' space, so every attempt was refused for overlap and none reached `_displace`. A
+same-layer pair with no home layers is also tried one layer at a time. `_displace` counted
+the pair's own failed-attempt flag as an open net, so a displacement that left LED_ROW open
+passed as "no worse": now only the other nets are counted. And the root of it: a
+same_layer pair without a merge connector now runs on the layer its lands share
+(`run_layers`, strict then relaxed, as the merge case) -- HUB_PHY's leading rail had dived
+to B.Cu wherever its lane was busy and the negotiation ended with the pair split.
+
+Partial rip (2026-11-10, `PLANE_PARTIAL`): a plane net whose last few joins still share is no
+longer ripped whole -- only the sharing joins come out (`n_open` counts them) and the pour
+re-joins the pieces. Open work is weighed per connection (`_open_w`), and the pair finish locks
+every pair already to the rules, so `_displace` can no longer trade a pair for +3V3D's 55 joins
+or the other way round. Optical C102 +0.12/+0.48: HUB_PHY pair fault + island -> 0 open.
+
+Coupled pairs (2026-11-10, `router/coupled.py`, milestone 3): a declared diff pair is laid as one
+trace twice. Its centreline is searched first as a temporary net as wide as the pair (w + spacing,
+both rails' copper its own, vias only where two fit), from straight out of each pin pair to the
+next; each rail then runs in a lane round its offset of that line -- a strip on ITS side (the side
+its pins are on, the line extended back to between them by a straight stem), free room round its
+lands and where the line changes layer, priced cheapest on the exact offset. A chirality twist
+(USB on the unmoved board: DP leaves U31 on the left, lands on J1 A6 on the right) is swapped at a
+layer change of the line. The pair wall is via-aware. The finish tries the coupled lay first, and
+re-lays a pair already to the rules if it runs more than `COUPLE_MIN_MM` apart, keeping it only
+`COUPLE_GAIN_MM` closer. HUB_PHY apart (mm of rail not beside its mate): unmoved 13.5 -> 3.7,
+C102 +0.27/+0.18 14.7 -> 2.6, 2 vias each, 0 faults. USB not yet: a coupled lay to the rules
+opens a +3V3D join on displacement (unmoved), or finds no way (C102).
+
 Tried and dropped, measured:
 
 - **Corridors from the global plan** (`CORRIDORS`, off): round 1 halved, but nets shared
@@ -160,6 +234,36 @@ router's contention map (optical S53o0, 2 mm blocks) its overflow correlates 0.1
 (Spearman) and finds at most 2 of the top 10 hot spots, whatever the capacity derate. The
 detailed contention sits in pin escapes (U7's ULPI fan, U10/U31, the crystals), which
 1 mm squares cannot see; a score needs escape modelling at pad scale.
+
+**Pad-scale escape and RUDY, measured (2026-11-09) -- neither is the score either.**
+Against the detailed router's contention (`hist`) on optical, output_panel and motor_ctrl:
+
+- *Per-part escape* (max-flow from a part's lands to a ring 1 mm out, track-pitch blocks,
+  vias where one fits; demand = nets with a terminal outside the ring and no layout copper
+  already leaving it): every part has 3-20x the lanes it needs, and demand / capacity
+  correlates 0.24 with the part's contention (n 45). A part's own fan-out is not where
+  these boards fight.
+- *RUDY* (each MST edge's wire spread over its box) over pad-scale supply: Spearman
+  0.18-0.52 by board and block size, the supply term adding nothing, and none of the
+  router's top-10 blocks among the score's top 20 on optical or output_panel.
+- Where the router does fight: spread out (the top 8 blocks hold 17-35 %), among dense
+  clusters of small passives round an IC (U10's caps; Q1/Q2's resistors; motor_ctrl
+  U8/U9) -- short nets of neighbouring parts competing for the same gaps.
+
+With the router at 15-75 s a board (HMAP), the route itself is the affordable score:
+open nets, pair faults, contention, length and vias, several placements at once, a
+process each (the "parallelism one level up" above).
+
+**`router/score.py` is that score (2026-11-10).** `py -3.12 router/score.py <stem>... [--jobs N]`
+routes each placed board router-alone, a process each, and prints one JSON line a board sorted by
+`key` = (open, pair faults, islands, uncoupled mm, contention, vias, length). For a small fixed
+candidate set inside a placement search -- a few boards, minutes -- not a sweep. Checked:
+- it reproduces the series gate's open / pairs / islands / uncoupled exactly (u10a c00-c02);
+- on output_panel (op1) it ranks three deliberately bad placements -- 0402/0805 caps swapped
+  between parts 30-55 mm apart, 1 / 2 / 3 swaps, all legal by courtyard and declared copper --
+  below both good ones: contention 3142 and 3185 good, 3302 / 3859 / 3689 bad (+5 to +23 %),
+  length 1988 good, 2032 to 2185 bad. All five still route closed, so `open` alone cannot
+  rank them and contention is the term that does. ~45 s a board, three at once.
 
 ## Runtime
 

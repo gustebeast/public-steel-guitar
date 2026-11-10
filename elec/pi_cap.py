@@ -1242,6 +1242,8 @@ if __name__ == "__main__":
     import r1_silk                        # ordered R1: silk as sent
     if REV == 1:
         r1_silk.as_ordered(BOARD_NOTES)
+    import part_alternates
+    part_alternates.stamp(BOARD_NOTES)    # cadkit M42: alternates + waivers, one table
     with open(os.path.join(OUT_DIR, "pi_cap.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     # ⚠ THE UI WAYS COUNT TOO. This line kept its own copy of the used-pin set and did not

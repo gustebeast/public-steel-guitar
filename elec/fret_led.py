@@ -1497,6 +1497,8 @@ def build(panel):
     }
     notes["world_x"] = [round(x0, 3), round(x1, 3)]
     notes["board_frame"] = {"cx": round(cx, 4), "z_bot": FL.BOARD_BOT}
+    import part_alternates
+    part_alternates.stamp(notes)    # cadkit M42: alternates + waivers, one table
     with open(os.path.join(OUT_DIR, "%s.board.json" % name), "w") as f:
         json.dump(notes, f, indent=2)
     print("%-13s %6.1f x %.1f mm, frets %d..%d, %d zones, %d LEDs, %d drivers"

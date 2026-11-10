@@ -4093,6 +4093,76 @@ if REV != 1 and os.environ.get("OP_LAYERS"):
     BOARD_NOTES["layers"] = int(os.environ["OP_LAYERS"])
 
 
+
+# ── HIGH-SPEED PAIRS ON THE COUPLED ROUTER (2026-11-10) ───────────────────────────────────
+# The hub's pairs were frozen copper because no router here could lay a pair: freerouting
+# has no notion of one, and layout._diff_pairs stops at a USB-C's A/B rows ("ESCAPE"). The
+# own router (cadkit 2b89bc1 on) routes a declared pair off one centreline, coupled. Measured
+# on the frozen copper of the kept board (uncoupled mm, DP / DM): HUB_UP 2.4 / 5.6, HUB_DN2
+# 12.4 / 14.9, HUB_DN3 22.1 / 22.5, THRU 22.6 / 26.5, PI 7.3 / 6.6. Each pair named in
+# _COUPLED is un-frozen and declared; one the router cannot lay goes back to its frozen
+# copper by leaving this list. HUB_DN1 (hand-drawn, 9 mm) and HUB_DN4 (full speed, to the
+# CH340C) stay as they are.
+# ⚠ HUB_DN3, PI AND HUB_UP (2026-11-10, measured uncoupled DP / DM against the frozen copper).
+#   HUB_DN3: the coupled router, 3.0 / 0.3 mm (frozen 22.1 / 22.5).
+#   PI: layout._diff_pairs lays it as a pair once the A6 / A7 pin-down is gone -- a coupled
+#     In2 run at the inner layer's 0.74 mm pitch, 2.6 / 1.3 mm (frozen 7.3 / 6.6). With
+#     A6 / A7 named, DM's merge loop boxed A6 in and no pair could reach it; B6 can be.
+#   HUB_UP: the coupled router (cadkit: centreline kept to the via budget, and a held
+#     coupled lay displaced before a clean uncoupled one wins), 1.3 / 3.6 (frozen 2.4 / 5.6).
+#   Left frozen, each worse when un-frozen (router alone):
+#   - THRU: placement. D2 and D3 (ESD, one per line) stand 2 mm apart along the pair, so
+#     the outer rail must pass the inner rail's diode to reach its own; the chain names
+#     them "D2|D3" for when they stand across the pair.
+#   - HUB_DN2: no pair-wide corridor out of U4 on two layers (the line changed layer five
+#     times against a budget of two vias).
+_COUPLED_CHAIN = {"HUB_UP": ["U4", "J3"], "HUB_DN2": ["U4", "J4"], "HUB_DN3": ["U4", "U14"],
+                  "THRU": ["U14", "D2|D3", "J1"], "PI": ["U14", "J2"]}
+_COUPLED = [_c for _c in (os.environ.get("OP_COUPLED", "HUB_DN3,PI,HUB_UP").split(","))
+            if _c] if REV != 1 else []
+if _COUPLED:
+    _cn = {_c + _s for _c in _COUPLED for _s in ("_DP", "_DM")}
+    # ⚠ C51.2's GND STITCH VIA STOOD IN HUB_DN3's WAY OUT OF U4 (2026-11-10). The via at
+    # (99.93, 104.55) sat on DP's outer side where the pair turns south from pins 7 / 8;
+    # with HUB_UP un-frozen too, no coupled lay of HUB_DN3 found a way (10.3 / 10.1 mm
+    # uncoupled), and when it did, only one candidate in twelve. Unstitched, the pad joins
+    # GND through the router and both pairs couple (finished: HUB_DN3 3.0 / 0.3, HUB_UP 1.3 / 3.6).
+    if "HUB_DN3" in _COUPLED:
+        BOARD_NOTES["stitch_exceptions"] = tuple(BOARD_NOTES["stitch_exceptions"]) + ("C51.2",)
+
+    # ⚠ THE USB-C PAD MERGE STAYS (2026-11-10). Each socket carries D+ on A6 and B6 and D- on
+    # A7 and B7, interleaved at 0.5 mm; layout._flip_merge joins them only for a pad row
+    # along X, and these sockets stand at 90 / 270 deg, so the frozen copper carried the
+    # merge loops. Un-frozen with the rest, the router had to make the joins itself and
+    # the first rail's join walled its mate out of the socket (every pair, "no way in its
+    # lane"). The loops -- every frozen track wholly within 1.9 mm across / 0.8 mm along
+    # the socket's pad row -- are kept; only the run is the router's.
+    def _in_merge(_t):
+        for _r in _COUPLED_CHAIN[_t[0].rsplit("_", 1)[0]]:
+            if not _r.startswith("J"):
+                continue
+            _jx, _jy, _jr = BOARD_NOTES["placements"][_r]
+            _ax, _ay = (1.9, 0.8) if round(_jr) % 180 == 90 else (0.8, 1.9)
+            if all(abs(_x - _jx) <= _ax and abs(_y - _jy) <= _ay for _x, _y in _t[3]):
+                return True
+        return False
+    # ⚠ THE LIFTED COPPER GOES WITH THE PAIR AS ITS FALLBACK (2026-11-10): a pair the
+    # router cannot lay to the rules coupled (THRU round U14: every try broke the via
+    # budget) was kept as negotiated, worse than the frozen copper it replaced. The router
+    # lays this copper instead when it beats the pair as laid (router/coupled.py,
+    # _fallback_pairs), so declaring a pair coupled can no longer make it worse.
+    _lift_t = [_t for _t in BOARD_NOTES["tracks"] if _t[0] in _cn and not _in_merge(_t)]
+    _lift_v = [_v for _v in BOARD_NOTES["vias"] if _v[0] in _cn]
+    BOARD_NOTES["tracks"] = [_t for _t in BOARD_NOTES["tracks"] if _t[0] not in _cn or _in_merge(_t)]
+    BOARD_NOTES["vias"] = [_v for _v in BOARD_NOTES["vias"] if _v[0] not in _cn]
+    BOARD_NOTES["frozen_nets"] = [_n for _n in BOARD_NOTES["frozen_nets"] if _n not in _cn]
+    BOARD_NOTES["diff_pairs"] = list(BOARD_NOTES.get("diff_pairs", [])) + [
+        dict(nets=[_c + "_DP", _c + "_DM"], chain=_COUPLED_CHAIN[_c], gap=0.2, width=0.2,
+             fallback=dict(tracks=[_t for _t in _lift_t if _t[0].rsplit("_", 1)[0] == _c],
+                           vias=[_v for _v in _lift_v if _v[0].rsplit("_", 1)[0] == _c]))
+        for _c in _COUPLED]
+
+
 if __name__ == "__main__":
     output_panel(tag="panel")
     ERC()
@@ -4106,6 +4176,8 @@ if __name__ == "__main__":
     import r1_silk                        # ordered R1: silk as sent
     if REV == 1:
         r1_silk.as_ordered(BOARD_NOTES)
+    import part_alternates
+    part_alternates.stamp(BOARD_NOTES)    # cadkit M42: alternates + waivers, one table
     with open(os.path.join(OUT_DIR, "output_panel.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.1f x %.1f mm, %d placements, x%d per instrument"

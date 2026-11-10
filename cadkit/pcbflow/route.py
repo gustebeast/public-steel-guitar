@@ -237,25 +237,49 @@ def _resite_post_pads(board, refs, notes):
     # list: these are circles, because that is what the ring search produces and
     # what the keepout radius already measures.
     taken = []
+    import numpy as np
+    _arr = {}
+
+    def _arrays():
+        """segs / vias as arrays, built once (they do not change during the search)."""
+        if not _arr:
+            _arr["s"] = np.array([s[:5] for s in segs], np.float64) if segs else None
+            _arr["sn"] = np.array([s[5] for s in segs], dtype=object) if segs else None
+            _arr["v"] = np.array([v[:3] for v in vias], np.float64) if vias else None
+            _arr["vn"] = np.array([v[3] for v in vias], dtype=object) if vias else None
+        return _arr
 
     def _ok(px, py, r, net, r_keep=None, need_own=True):
         r_keep = r if r_keep is None else r_keep
         for tx, ty, tr in taken:
             if math.hypot(px - tx, py - ty) < r_keep + tr:
                 return None
+        # ⚠ ALL SEGMENTS AT ONCE (optical, 2026-11-09: the ring search asked this 59 k
+        # times against 2700 segments, 79 M _seg_d calls, 50 s of a finish). The same
+        # test, one numpy pass: own = nearest own-net copper, any foreign copper inside
+        # r + POST_PAD_CLR_MM rejects the site.
+        A = _arrays()
         own = 1e9
-        for x1, y1, x2, y2, hw, n in segs:
-            d = _seg_d(px, py, x1, y1, x2, y2) - hw
-            if n == net:
-                own = min(own, d)
-            elif d < r + POST_PAD_CLR_MM:
+        if A["s"] is not None:
+            S_, SN = A["s"], A["sn"]
+            dx, dy = S_[:, 2] - S_[:, 0], S_[:, 3] - S_[:, 1]
+            l2 = dx * dx + dy * dy
+            t = np.where(l2 == 0, 0.0, np.clip(((px - S_[:, 0]) * dx + (py - S_[:, 1]) * dy)
+                                               / np.where(l2 == 0, 1.0, l2), 0.0, 1.0))
+            d = np.hypot(px - (S_[:, 0] + t * dx), py - (S_[:, 1] + t * dy)) - S_[:, 4]
+            mine = SN == net
+            if (d[~mine] < r + POST_PAD_CLR_MM).any():
                 return None
-        for vx, vy, vr, n in vias:
-            d = math.hypot(px - vx, py - vy) - vr
-            if n == net:
-                own = min(own, d)
-            elif d < r + POST_PAD_CLR_MM:
+            if mine.any():
+                own = min(own, float(d[mine].min()))
+        if A["v"] is not None:
+            V_, VN = A["v"], A["vn"]
+            d = np.hypot(px - V_[:, 0], py - V_[:, 1]) - V_[:, 2]
+            mine = VN == net
+            if (d[~mine] < r + POST_PAD_CLR_MM).any():
                 return None
+            if mine.any():
+                own = min(own, float(d[mine].min()))
         if need_own and own > r:
             return None            # not on its own copper: the pad would need a track
         # ⚠ THE PAD'S OWN COURTYARD, NOT ITS COPPER, IS WHAT MEETS A NEIGHBOUR'S COURTYARD.
