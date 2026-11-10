@@ -640,6 +640,27 @@ def finish(stem, rounds=1, keep_route=False):
         os.remove(stem + ".preclose.kicad_pcb")
         os.remove(stem + ".preclose.drc.json")
 
+    # THE VIAS THE ROUTE DID NOT USE COME OUT, on the board that won and after close_last,
+    # which needed them as starting copper (spent_vias.py says which, and why it cannot
+    # open a net). "Cannot" is checked anyway: worse on either count and the board goes back.
+    try:
+        shutil.copy(stem + ".kicad_pcb", stem + ".prespent.kicad_pcb")
+        if "spent vias:" in _run("spent_vias.py", stem):
+            _n5, _nets5, _v5 = _drc(stem)
+            if _n5 > best_n or _v5 > best_v:
+                print("  !! spent_vias made it worse (%d unconnected, %d violation(s) against "
+                      "%d and %d) -- putting it back" % (_n5, _v5, best_n, best_v))
+                shutil.copy(stem + ".prespent.kicad_pcb", stem + ".kicad_pcb")
+                _drc(stem)
+            else:
+                best_n, best_v, nets = _n5, _v5, _nets5
+        os.remove(stem + ".prespent.kicad_pcb")
+    except SystemExit as exc:
+        print("  spent_vias.py did not run (%s)" % (exc,))
+        if os.path.exists(stem + ".prespent.kicad_pcb"):
+            shutil.copy(stem + ".prespent.kicad_pcb", stem + ".kicad_pcb")
+            os.remove(stem + ".prespent.kicad_pcb")
+
     # THE SILKSCREEN GOES ON THE BOARD THAT WON, and only there: name and revision, the
     # test pads' nets, the connectors' pinouts (silk.py). It moves no copper, and every
     # label is dropped rather than squeezed -- but "cannot add a finding" is a claim, so
