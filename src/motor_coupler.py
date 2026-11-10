@@ -94,20 +94,30 @@ EAR_Y0 = 1.3                                        # the ear's foot: 0.8 clear 
                                                     # block's face wall (its pilot hole, r 11.3)
 SPOT_Z = CLAMP_Z - CLAMP_HEAD[0] / 2 - CORNER_R    # the head's SPOT FACE (x = EAR_X[1]) runs up
                                                     # to z -SPOT_Z, flat past the head's rim
-_GROW_R = CPL_D / 2 - CORNER_R - 0.1                # 6.9: the eared section GROWS at 45 deg from this
-                                                    # radius over what the plain one under it holds
+# UNDER THE EAR (user, 2026-11-10: "move the clamp +x up to a reasonable clearance from the wall",
+# so it grips the shaft AND the screw): from the motor end to EAR_Y0 the coupler turns inside the
+# plank motor block's pilot hole (r 11.3), so there it is a plain ROUND r EAR_CLIP_R (0.8 clear of
+# the hole, swept) -- printed from the bed, it holds the ear up. Past the wall the ear grows out of
+# it at 45 deg (the cone), full within ~4 mm, so the clamp sits over the shaft/screw joint.
+EAR_CLIP_R = (D.NEMA17_PILOT_D + 0.6) / 2 - 0.8    # 10.5
+WALL_Y = EAR_Y0 - 0.8                               # the block wall's back face
+_GROW_R = EAR_CLIP_R - 0.1                          # the cone's radius at EAR_Y0: over the round's
+                                                    # rounded slit corners it leaves a ledge under a bead
 _APEX = EAR_Y0 - _GROW_R
 assert EAR_X[1] - SLIT_W / 2 >= 2 * CORNER_R, "the +x jaw is too thin for its rounded corners"
 assert CLAMP_Z - INSERT_POCKET_D / 2 >= SOCKET_D / 2 + 0.8 - 1e-9, "the pocket breaks into the socket"
 
 
 def clamp_y(c1: float = CPL_X[1]) -> float:
-    """The clamp's y: as high as the head allows under the body's end, so the insert's pocket
-    clears the ear's 45 deg underside by a bead."""
-    y = c1 - CLAMP_HEAD[0] / 2 - 0.2
-    rho = math.hypot(EAR_X[0], CLAMP_Z)            # the pocket's outer, lowest corner
-    assert y - INSERT_POCKET_D / 2 >= _APEX + rho + D.BEAD - 1e-9, (
-        f"the insert's pocket at y {y:.2f} breaks out of the ear's underside: lengthen the coupler")
+    """The clamp's y: AS LOW AS IT GOES toward the motor, over the shaft/screw joint -- its head's
+    seat face and the insert's pocket wall inside the ear's 45 deg growth, and the screw's head
+    clear of the block wall."""
+    rho_h = math.hypot(EAR_X[1], CLAMP_Z + CLAMP_HEAD[0] / 2)       # the seat face's far corner
+    rho_p = math.hypot(EAR_X[0], CLAMP_Z) + D.BEAD                  # the pocket's wall, outer, low
+    y = max(_APEX + rho_h + CLAMP_HEAD[0] / 2,
+            _APEX + rho_p + INSERT_POCKET_D / 2,
+            WALL_Y + 0.5 + CLAMP_HEAD[0] / 2)
+    assert y + CLAMP_HEAD[0] / 2 + 0.2 <= c1 + 1e-9, f"the clamp's head runs past the body's end at y {y:.2f}"
     return y
 
 
@@ -136,15 +146,20 @@ def _round_y_edges(w: cq.Workplane, pts, r: float = CORNER_R) -> cq.Workplane:
     return cq.Workplane("XY").add(w.val().fillet(r, sel))
 
 
-def _section(y0: float, y1: float, ear: bool, bore: str) -> cq.Workplane:
+def _section(y0: float, y1: float, ear: bool, bore: str, clip: float = 0.0) -> cq.Workplane:
     """The body from y0 to y1, its in-layer corners rounded: the Ø18 (+ the ear on -Z), the slit,
-    and the bore ("d": the motor's D, "socket": the thread's envelope)."""
+    and the bore ("d": the motor's D, "socket": the thread's envelope). `clip`: instead a plain
+    ROUND of that radius with the ear's spot face (the length inside the block wall)."""
     wp = cq.Workplane("XZ", origin=(0, y1, 0))     # local (x, z); extrudes -Y, y1 -> y0
     L = y1 - y0
-    R = CPL_D / 2
+    R = clip or CPL_D / 2
     s = wp.circle(R).extrude(L)
     pts = []
-    if ear:
+    if clip:
+        s = s.cut(box_at(R, L + 2, 2 * R, x=EAR_X[1] + R / 2, y=(y0 + y1) / 2, z=-SPOT_Z - R))
+        s = _round_y_edges(s, [(EAR_X[1], -SPOT_Z), (math.sqrt(R * R - SPOT_Z ** 2), -SPOT_Z),
+                               (EAR_X[1], -math.sqrt(R * R - EAR_X[1] ** 2))])
+    elif ear:
         s = s.union(wp.center(sum(EAR_X) / 2, -EAR_TOP / 2).rect(EAR_X[1] - EAR_X[0], EAR_TOP).extrude(L))
         s = s.cut(box_at(R, L + 2, EAR_TOP + 1.0, x=EAR_X[1] + R / 2, y=(y0 + y1) / 2,
                          z=-SPOT_Z - (EAR_TOP + 1.0) / 2))                       # the spot face
@@ -162,11 +177,11 @@ def _section(y0: float, y1: float, ear: bool, bore: str) -> cq.Workplane:
         xf = math.sqrt(rb * rb - D_FLAT_Z ** 2)
         pts += [(-xf, D_FLAT_Z), (xf, D_FLAT_Z)]                                # the D's corners
     s = s.cut(hole)
-    zo = EAR_TOP if ear else R
+    zo = EAR_TOP if (ear and not clip) else R
     s = s.cut(box_at(SLIT_W, L + 2, zo + 1.0, y=(y0 + y1) / 2, z=-(zo + 1.0) / 2))
     zi = math.sqrt(rb * rb - (SLIT_W / 2) ** 2)
     pts += [(-SLIT_W / 2, -zi), (SLIT_W / 2, -zi)]                              # slit at the bore
-    if ear:
+    if ear and not clip:
         pts += [(-SLIT_W / 2, -EAR_TOP), (SLIT_W / 2, -EAR_TOP)]                # ...at the ear's face
     else:
         zs = math.sqrt(R * R - (SLIT_W / 2) ** 2)
@@ -179,13 +194,20 @@ def coupler(c1: float = CPL_X[1], boss_l: float = 0.0) -> cq.Workplane:
     from cadkit.holes import teardrop_hole
     c0 = CPL_X[0]
     end = c1 + boss_l
-    out = _section(c0, EAR_Y0, False, "d")
-    # the eared sections keep what stands on the plain one (its profile carried up) and grow out
-    # of it at 45 deg (the cone): no ceiling over the plain one's rounded slit corners or the ear
-    held = _section(EAR_Y0 - 0.01, c1, False, "d")
+    out = _section(c0, EAR_Y0, True, "d", clip=EAR_CLIP_R)
+    # the eared sections keep what stands on the round (its profile carried up) and grow out of
+    # it at 45 deg (the cone): no ceiling under the ear
+    held = _section(EAR_Y0 - 0.01, c1, True, "d", clip=EAR_CLIP_R)
     cone = cq.Workplane("XY").add(cq.Solid.makeCone(0.0, 40.0, 40.0, cq.Vector(0, _APEX, 0),
                                                     cq.Vector(0, 1, 0)))
-    eared = _section(EAR_Y0, CPL_GRIP, True, "d").union(_section(CPL_GRIP, c1, True, "socket"))
+    # the socket section stands on the D section: where the D's slit corners are rounded away
+    # (round the smaller bore), the socket section must not put material back -- that printed
+    # as ledges in the slit at y CPL_GRIP (user, 2026-11-10). Carry the D's relief up through it.
+    zone = box_at(2 * (SLIT_W / 2 + CORNER_R + 1.0), c1 - CPL_GRIP + 2.0, SOCKET_D / 2 + CORNER_R + 1.0,
+                  y=(CPL_GRIP + c1) / 2, z=-(SOCKET_D / 2 + CORNER_R + 1.0) / 2)
+    relief = zone.cut(_section(CPL_GRIP - 1.0, c1 + 1.0, True, "d"))
+    eared = _section(EAR_Y0, CPL_GRIP, True, "d").union(
+        _section(CPL_GRIP, c1, True, "socket").cut(relief))
     out = out.union(eared.intersect(cone.union(held)))
     if boss_l:
         boss = cyl_y(RACE_IN_D, boss_l + 0.01, y0=c1 - 0.01).cut(
