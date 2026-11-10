@@ -1769,6 +1769,6 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
   2. Drill the screw (pin drill jig).
   3. Coupler on the screw: turn it so the pin's slot faces up, then fit the M3.
   4. Run the slider fully in.
-  5. Lower the motor onto the cradle and slide it -X onto the coupler's D, turning the shaft to match.
+  5. Bring the motor in over the ribs and slide it -X onto the coupler's D, turning the shaft to match.
   6. Fit the four face M3 x 12 from -X. The key reaches past the X station's walls.
   7. Hook the springs on last.

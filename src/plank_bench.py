@@ -700,7 +700,7 @@ def assembly_counter(level=1.0):
 #   BLOCK     on a new set of four plank holes, the station's pattern (XR_SCREWS' 33.97 x 43.80):
 #             the FACE WALL the motor's faceplate is screwed to (its four M3 x 12, heads on the -X
 #             face -- they stand outside the X station's walls in Y, so a 2.5 key reaches each along
-#             X past it), a CRADLE under the can, the base.
+#             X past it), two 45 deg RIBS bracing it, the base.
 #   SPRINGS   CS_DY moved out to clear the can: reprint the counter yoke and the slider.
 #   RANGE     the slider backs out only to the motor's back (INLINE_XS1_MIN): ~53 % to 100 %.
 # ORDER: block to the plank (all four wood screws open); coupler on the screw, turn it so the
@@ -721,19 +721,24 @@ INLINE_XS1_MIN = INLINE_BACK + 0.5 + BAR_L        # the slider's +X face, backed
 INLINE_X_SCREWS = (INLINE_FACE - INLINE_WALL_T - 6.6, INLINE_FACE - INLINE_WALL_T - 6.6 + 33.97)
 assert INLINE_X_SCREWS[0] - XR_TAB >= XR_X1 + CS_DX + 0.2 - 1e-9, "the block's tab on the station's"
 assert INLINE_XS1_MIN <= XS1_IN, "the motor leaves the slider no room"
-CRADLE_X1 = INLINE_FACE + 32.0                    # under the can, short of the driver housing
-CRADLE_HW = 12.0                                  # clear of the wood screws' heads at 16.75 / 60.55
+CRADLE_HW = 12.0                                  # the ribs' outer faces: inside the wood screws' heads
 M_HALF = D.MOTOR_SQ / 2
 
 
 def motor_block() -> cq.Workplane:
-    """The face wall, the cradle and the base on four new plank holes. Base down."""
+    """The face wall, two ribs and the base on four new plank holes. Base down."""
     zb = Z_PLANK + BASE_T
     w0, w1 = INLINE_FACE - INLINE_WALL_T, INLINE_FACE
     s = _box(w0, w1, SY - M_HALF, SY + M_HALF, zb - 0.01, XR_ZA + M_HALF)       # the face wall
-    s = s.union(_box(w1 - 0.01, CRADLE_X1, SY - CRADLE_HW, SY + CRADLE_HW, zb - 0.01,
-                     XR_ZA - M_HALF - 0.2))                                      # the cradle
-    s = s.union(_box(w0, CRADLE_X1, SY - CRADLE_HW, SY + CRADLE_HW, Z_PLANK, zb))
+    # TWO RIBS brace the wall (user, 2026-11-09: the solid cradle was material for nothing -- the
+    # four face M3s carry the motor). 45 deg triangles, their top edge just under the can, the
+    # slope facing up in the base-down print; inside the wood screws' heads in Y.
+    top = XR_ZA - M_HALF - 0.4
+    run = top - zb                                   # 45 deg: as long as it is tall
+    tri = [(w1 - 0.01, zb - 0.01), (w1 - 0.01, top), (w1 + run, zb - 0.01)]
+    for y0 in (SY - CRADLE_HW, SY + CRADLE_HW - RIB_T):
+        s = s.union(_xz_prism(tri, y0, y0 + RIB_T))
+        s = s.union(_box(w0, w1 + run, y0, y0 + RIB_T, Z_PLANK, zb))           # its strip of base
     for x in INLINE_X_SCREWS:
         s = s.union(_box(x - XR_TAB, x + XR_TAB, XR_SCREWS_Y[0] - XR_TAB, Y_EDGE, Z_PLANK, zb))
     s = s.union(_box(INLINE_X_SCREWS[0], w1, XR_SCREWS_Y[0] - XR_TAB, Y_EDGE, Z_PLANK, zb))
