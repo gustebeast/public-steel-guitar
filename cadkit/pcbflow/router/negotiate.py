@@ -332,6 +332,7 @@ class Router:
     TURN_STATES_MAX = 40_000_000     # heading-aware search up to this many states (x9 cells)
     PAIR_PUSH = 0.5                  # the finish's push attempts: others' copper at this price, no history (_finish_pairs)
     PLANE_PARTIAL = True             # a plane net still sharing loses only its sharing joins (_rip)
+    PAIR_DISPLACE = 3                # rule-meeting attempts _displace may try per pair
     PAIR_REOPEN = True               # the pair finish also takes on a pair the negotiation ripped out
     PAIR_WALL = True                 # in a pair attempt the mate's copper is a wall (_pair_try)
     PLANE_MAIN = True                # plane joins aim at the main body's fill as it stands (_rounds)
@@ -1113,7 +1114,7 @@ class Router:
             ms0 = self.pair_measure(a)
             l0 = [v[0] for v in ms0.values()]
             best, best_key = None, ((1e9, 1e9, 1e9) if opened else (0, len(f0), max(l0) - min(l0)))
-            ruled = None                   # (shared cells, skew, state): to the rules, but in others' space
+            ruled = []                     # [(shared cells, skew, state)]: to the rules, but in others' space
             for c in cands:
                 if len(c) > 7:
                     # a push: other nets at a low price outright, and none of the history
@@ -1145,17 +1146,23 @@ class Router:
                         "home layers" if c[3] is None else "+" + "/".join(
                             self.m.route_layers[k] for k in sorted(c[3] - home))))
                     break
-                if not fl and (ruled is None or (sh, key[2]) < ruled[:2]):
-                    ruled = (sh, key[2], {x: (x.paths, x.necks, x.failed, x.relaxed, x.force_layers)
-                                          for x in (a, b)})
+                if not fl and all(r_[0] != sh for r_ in ruled):
+                    ruled.append((sh, key[2], {x: (x.paths, x.necks, x.failed, x.relaxed, x.force_layers)
+                                          for x in (a, b)}))
                 if key < best_key:
                     best_key = key
                     best = {x: (x.paths, x.necks, x.failed, x.relaxed, x.force_layers) for x in (a, b)}
             else:
-                if ruled is not None and self._displace(a, b, ruled[2], pf):
+                # ⚠ MORE THAN THE CHEAPEST (optical C119 -0.07/-0.55, 2026-11-10): USB's
+                # fewest-cells attempt (45, on In1) left two nets open round it; the
+                # home-layer one (76 cells) was never tried. Each distinct one, cheapest first.
+                ruled.sort(key=lambda r_: r_[:2])
+                done = next((r_ for r_ in ruled[:self.PAIR_DISPLACE]
+                             if self._displace(a, b, r_[2], pf)), None)
+                if done is not None:
                     self.log("  pair %s/%s: %s -- laid to the rules through %d cell(s) of other "
                              "nets' space, which re-negotiated round it" % (
-                                 a.name, b.name, ", ".join(x[0] for x in f0), ruled[0]))
+                                 a.name, b.name, ", ".join(x[0] for x in f0), done[0]))
                     for x in (a, b):
                         x.force_layers = None
                     continue
@@ -1203,8 +1210,9 @@ class Router:
         if fail1 <= fail0 and not self.pair_faults(a):
             self._rip(left)
             return True
-        self.log("  pair %s/%s: re-negotiating round it left %d net(s) open (was %d) -- put back"
-                 % (a.name, b.name, fail1, fail0))
+        self.log("  pair %s/%s: re-negotiating round it left %d net(s) open (was %d) -- put back; open: %s"
+                 % (a.name, b.name, fail1, fail0, ", ".join(sorted(
+                     {n.name for n in left} | {n.name for n in self.nets if n.failed and n not in lock}))))
         for n in self.nets:
             self._unmark(n)
         for n in self.nets:
