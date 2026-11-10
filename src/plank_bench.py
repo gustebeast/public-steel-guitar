@@ -602,19 +602,31 @@ CY_FT = CS_ROOF + YK_H                           # the nut flange's top face, mi
 CY_Z0, CY_Z1 = BAR_Z0, XR_ZA + YK_HX             # 2.2 .. 27.8: the yoke's underside and top
 CY_HY = YK_LIP_D / 2 + D.MIN_WALL                # 6.1: one bead outside the lip's recess (the axial yoke had 0.7)
 assert CY_HY <= XR_HW - XR_WALL - 0.4 + 1e-9, "the yoke rubs the station's buttresses"
+# TWO BEADS ROUND THE LIP'S RECESS (user, 2026-11-10: the 0.8 side walls broke the 1.6 quality
+# rule). The yoke can't be 2 x CY_HY_LIP wide all the way down: at the top of travel its +X end runs
+# ~1.7 between the buttresses, whose tops are z <= 6.9 there. So only from CY_WIDE_Z up, under it a
+# 45 deg step out from CY_HY (it faces down in the +Z print).
+CY_HY_LIP = YK_LIP_D / 2 + D.MIN_WALL_2P         # 6.95
+CY_WIDE_Z = XR_ZA - CY_HY_LIP                    # 8.86: full width from the recess's 1.6 wall down
+assert CY_WIDE_Z - (CY_HY_LIP - CY_HY) >= 6.9 + 0.4, "the yoke's wide part reaches the buttresses' tops"
 assert D.NUT_HOLE_DX - YK_TAP_D / 2 - YK_LIP_D / 2 >= D.MIN_WALL - 1e-9, "tap hole into the lip's recess"
 
 
 def counter_yoke() -> cq.Workplane:
     """THE COUNTER YOKE (user, 2026-11-09): the yoke and the spreader in one, its only jobs the nut,
     the string and the springs -- no guide rod, no arm. In place (world) at mid travel, base down.
-      the BODY on the nut's flange: 24 x 12.2 x 16 (one bead round the lip's recess), two M3 x 12 up through the nut's
+      the BODY on the nut's flange: 24 x 12.2 x 16, 13.9 wide from CY_WIDE_Z up (two beads round the lip's recess), two M3 x 12 up through the nut's
         ears self-tapping into its +X face, the screw tip's cavity, the lip's recess;
       the ROOF: the ball end seats under it on the axis, the string out a 2.1 hole down the axis;
       the BAR across Y on the roof's -X face, the springs' pins at its ends (the spreader's, so the
         station stays where it is), its middle up the roof's full height."""
     x1, xr = CY_FT, CS_ROOF
     y = _box(xr, x1, SY - CY_HY, SY + CY_HY, CY_Z0, CY_Z1)
+    w, z0 = CY_HY_LIP - CY_HY, CY_WIDE_Z
+    for sy in (-1, 1):                                                          # the 1.6 round the lip
+        pts = [(SY + sy * CY_HY, z0 - w - 0.01), (SY + sy * CY_HY_LIP, z0), (SY + sy * CY_HY_LIP, CY_Z1),
+               (SY + sy * (CY_HY - 0.01), CY_Z1), (SY + sy * (CY_HY - 0.01), z0 - w - 0.01)]
+        y = y.union(cq.Workplane("YZ", origin=(xr, 0, 0)).polyline(pts).close().extrude(x1 - xr))
     y = y.union(_bar(xr + 0.01, CY_Z1).translate((-0.01, 0.0, 0.0)))
     y = y.cut(_xflat(YK_CAV, x1 - YK_R0, x1 + 1.0))                             # the screw's tip
     y = y.cut(_xflat(YK_LIP_D, x1 - YK_LIP_L, x1 + 1.0))                        # the nut's lip
