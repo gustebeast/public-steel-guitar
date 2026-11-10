@@ -620,24 +620,57 @@ class Side:
         b = _box(t)                                   # about the origin
         n = int(reach / step)
         lo = (inner / step) ** 2
-        best = None
+        # ⚠ THE BOX TESTS RUN FOR EVERY CANDIDATE AT ONCE (optical, 2026-11-09: this grid
+        # search called free() a million times, 768 M rect tests, 88 s of a finish). The
+        # site chosen is the same: the nearest free candidate, ties to the first in the
+        # i-then-j order the loop used. The overlap tests and the rival test are numpy;
+        # ok / okang / the edge test run only on the survivors, nearest first.
+        import numpy as _np
+        cand = []
         for i in range(-n, n + 1):
             for j in range(-n, n + 1):
                 d2 = i * i + j * j
-                if d2 > n * n or d2 <= lo or (best is not None and d2 >= best[0]):
+                if d2 > n * n or d2 <= lo:
                     continue
-                x, y = near.x + MM(i * step), near.y + MM(j * step)
-                if rivals and any((x - q.x) ** 2 + (y - q.y) ** 2
-                                  < (x - near.x) ** 2 + (y - near.y) ** 2 for q in rivals):
-                    continue
-                r = [b[0] + x, b[1] + y, b[2] + x, b[3] + y]
-                if ok is not None and not ok(r):
-                    continue
-                if okang is not None and not okang(r, ang):
-                    continue
-                if self.free(r, optics):
-                    best = (d2, x, y, r)
-        return best
+                cand.append((d2, len(cand), near.x + MM(i * step), near.y + MM(j * step)))
+        if not cand:
+            return None
+        cand.sort()
+        X = _np.array([c[2] for c in cand], _np.float64)
+        Y = _np.array([c[3] for c in cand], _np.float64)
+        keep = _np.ones(len(cand), bool)
+        if rivals:
+            own = (X - near.x) ** 2 + (Y - near.y) ** 2
+            for q in rivals:
+                keep &= ~(((X - q.x) ** 2 + (Y - q.y) ** 2) < own)
+        R = _np.stack([b[0] + X, b[1] + Y, b[2] + X, b[3] + Y], axis=1)
+        gd = MM(OPTICS_CLR if optics is None else optics)
+        G = R + _np.array([-gd, -gd, gd, gd], _np.float64)
+
+        def _hits(Q, lst):
+            if not lst:
+                return _np.zeros(len(Q), bool)
+            A = _np.array(lst, _np.float64)
+            out = _np.zeros(len(Q), bool)
+            for s0 in range(0, len(Q), 1024):
+                q = Q[s0:s0 + 1024]
+                out[s0:s0 + 1024] = ((q[:, None, 0] < A[None, :, 2]) & (A[None, :, 0] < q[:, None, 2])
+                                     & (q[:, None, 1] < A[None, :, 3])
+                                     & (A[None, :, 1] < q[:, None, 3])).any(axis=1)
+            return out
+        keep &= ~_hits(G, list(self.dark))
+        keep &= ~_hits(R, list(self.rects))
+        keep &= ~_hits(R, list(self.yards.values()))
+        for q in _np.flatnonzero(keep).tolist():
+            d2, _k, x, y = cand[q]
+            r = [b[0] + x, b[1] + y, b[2] + x, b[3] + y]
+            if ok is not None and not ok(r):
+                continue
+            if okang is not None and not okang(r, ang):
+                continue
+            if self.inside(r):
+                return (d2, x, y, r)
+        return None
 
     def place(self, s, size, near, reach, step=0.25, optics=None, turn=None,
               rivals=None, wider=True, own=False, ok=None, okang=None):
