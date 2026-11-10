@@ -1104,21 +1104,32 @@ class Router:
         for net in self.nets:
             if not net.plane or net.failed:
                 continue
-            for attempt in range(3):
+            # ⚠ ONE PIECE AT A TIME (optical +3V3D, 2026-11-09: three pieces were cut off;
+            # the one at 118.8,150.3 could only re-join through ULPI_CK/STP, a locked group,
+            # and re-joining all three together put all three back). Each cut-off piece is
+            # re-joined on its own, the others held, and each success kept.
+            tried = set()
+
+            def _at(q):
+                r_ = net.pieces[q] % (self.H * self.W)
+                return "(%.1f, %.1f)" % (float(self.m.cx[int(np.median(r_ % self.W))]),
+                                         float(self.m.cy[int(np.median(r_ // self.W))]))
+            for attempt in range(12):
                 got = self._islands(net)
                 if got is None:
                     break
                 bad, mx = got
                 if not bad or mx is None or not mx.any():
                     break
-                at = []
-                for q in bad[:4]:
-                    r_ = net.pieces[q] % (self.H * self.W)
-                    at.append("(%.1f, %.1f)" % (float(self.m.cx[int(np.median(r_ % self.W))]),
-                                                float(self.m.cy[int(np.median(r_ // self.W))])))
-                self.log("  %s: %d piece(s) join the pour on an island the crossings cut off,"
-                         " at %s -- re-joining to the main body"
-                         % (net.name, len(bad), ", ".join(at)))
+                if not tried:
+                    self.log("  %s: %d piece(s) join the pour on an island the crossings cut off,"
+                             " at %s -- re-joining each to the main body"
+                             % (net.name, len(bad), ", ".join(_at(q) for q in bad[:4])))
+                todo_q = [q for q in bad if q not in tried]
+                if not todo_q:
+                    break
+                q1 = todo_q[0]
+                tried.add(q1)
                 saved = {n: (n.paths, n.necks, n.failed) for n in self.nets}
                 fail0 = sum(n.failed for n in self.nets)
                 net.main_xy = mx
@@ -1128,7 +1139,7 @@ class Router:
                 # re-join was put back on every run). The good pieces keep their joins.
                 if len(net.paths) == len(net.pieces) - 1:
                     net.keep_paths = {q: (net.paths[q - 1], net.necks[q - 1] if q - 1 < len(net.necks) else None)
-                                      for q in range(1, len(net.pieces)) if q not in bad}
+                                      for q in range(1, len(net.pieces)) if q != q1}
                 try:
                     left, _ = self._rounds([net], getattr(self, "_pf_last", 1.0), 12, 600, locked=lock)
                 finally:
@@ -1139,15 +1150,15 @@ class Router:
                 nbad = len(again[0]) if again else len(bad) + 1
                 if fail1 <= fail0 and not net.failed and nbad < len(bad):
                     self._rip(left)
+                    self.log("  %s: piece at %s re-joined" % (net.name, _at(q1)))
                     continue
-                self.log("  %s: re-joining left %d net(s) open (was %d), %d island piece(s)"
-                         " -- put back" % (net.name, fail1, fail0, nbad))
+                self.log("  %s: re-joining the piece at %s left %d net(s) open (was %d), %d island"
+                         " piece(s) -- put back" % (net.name, _at(q1), fail1, fail0, nbad))
                 for n in self.nets:
                     self._unmark(n)
                 for n in self.nets:
                     n.paths, n.necks, n.failed = saved[n]
                     self._mark(n)
-                break
 
     def _pair_try(self, pf, first, second, relax, layers, offrun_mult, refine, via_mult=1.0):
         """Lay a pair afresh (everything else held): first, then second, then (refine)
@@ -1457,7 +1468,9 @@ class Router:
                 k_, r_ = fp_ // (H * W), fp_ % (H * W)
                 ii_, jj_ = r_ // W - i0, r_ % W - j0
                 if ((ii_ >= 0) & (ii_ < h) & (jj_ >= 0) & (jj_ < w)).all():
-                    tgt0[(k_ * h + ii_) * w + jj_] = True
+                    lp_ = (k_ * h + ii_) * w + jj_
+                    self._claim_vias(lp_, vcell, h, w)   # its vias keep the re-join's off
+                    tgt0[lp_] = True
                     self._necks.append(nk_ if nk_ is not None else np.zeros(fp_.size, bool))
                     paths.append(fp_)
                     continue
@@ -1480,7 +1493,12 @@ class Router:
                     if (a0, a1, b0, b1) == (0, h, 0, w):
                         continue
                 hs, ws = a1 - a0, b1 - b0
-                tg = np.ascontiguousarray(tg3[:, a0:a1, b0:b1] | vs3[:, a0:a1, b0:b1])
+                # ⚠ a via site an earlier piece's via has claimed is no target (optical
+                # +3V3D, 2026-11-09: the sites were fixed before the loop, _claim_vias
+                # closed them in vcell only, and two joins dropped vias 0.25 mm apart --
+                # drills overlapping by 0.05 mm)
+                free = np.isfinite(vcell.reshape(h, w)[a0:a1, b0:b1])[None]
+                tg = np.ascontiguousarray(tg3[:, a0:a1, b0:b1] | (vs3[:, a0:a1, b0:b1] & free))
                 sidx = (pkk * hs + (pi_ - a0)) * ws + (pj_ - b0)
                 tg = tg.ravel()
                 tg[sidx] = False
@@ -1502,7 +1520,14 @@ class Router:
                     break
             if path is None:
                 return None
-            if not tgt0[path[0]]:
+            # ⚠ A JOIN THAT ARRIVES ON THE POUR'S OWN LAYER NEEDS NO VIA (optical +3V3D,
+            # 2026-11-09: the regional pour is on B.Cu, a join's track came in on B.Cu, and
+            # the layer change always added here dropped a via touching B.Cu only -- the
+            # tidy pass removed two such "dangling" vias every run). The track ends in the
+            # pour and the refill takes it; only a join on another layer changes layer.
+            pour_k = {k_ for k_, n_ in enumerate(self.m.route_layers)
+                      if any(L_ == n_ for L_, _ in self.m.pours.get(net.name, ()))}
+            if not tgt0[path[0]] and (path[0] // (h * w)) not in pour_k:
                 # ended on a via site: the via is a layer change at the same cell
                 k0 = path[0] // (h * w)
                 r0 = path[0] % (h * w)
