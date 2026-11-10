@@ -163,7 +163,13 @@ assert YK_R0 - D.STRING_NUT_D >= YK_PROTRUDE + 1.0 - 1e-9, "the screw's tip reac
 # THE M3s SELF-TAP (user, 2026-11-08: a prototype is not worth inserts). Straight Ø3.2 holes
 # (cadkit's M3 self-tap) up from the -Z face; the thinner wall to the lip's recess is then 1.1,
 # so it needs no relief slot either.
-YK_TAP_D = BTn.M3.selftap_d                      # 3.2
+YK_TAP_D = BTn.M3.selftap_d                      # 3.2: drawn for an UPRIGHT hole (round, nozzle-made: it
+                                                 # prints ~0.6 under, ~2.6, and the M3 taps it)
+YK_TAP_SIDE_D = YK_TAP_D - 0.4                   # 2.8: a SIDEWAYS one (a teardrop) prints BIGGER than a
+                                                 # round one: 3.2 printed a clearance hole in the counter
+                                                 # yoke (user, 2026-11-10). cadkit f862c04's rule,
+                                                 # holes.as_printed_d (TEARDROP_OVERSIZE 0.4) -- use it
+                                                 # once that is propagated
 YK_SCREW_L = BTn.SCREW_L                         # M3 x 12 socket head (the belt clamp's): ear 3.5, 8.5 bites
 YK_TIP = YK_SCREW_L - D.NUT_FLANGE_T + 0.6       # 9.1: the hole's depth, the tip's 8.5 and air
 assert D.NUT_HOLE_DX - YK_TAP_D / 2 - YK_LIP_D / 2 >= D.MIN_WALL - 1e-9, "tap hole into the lip's recess"
@@ -614,7 +620,7 @@ def counter_yoke() -> cq.Workplane:
     y = y.cut(_xflat(YK_LIP_D, x1 - YK_LIP_L, x1 + 1.0))                        # the nut's lip
     y = y.cut(_xb(STR_HOLE_D + 0.1, xr - BAR_L - 1.0, x1 - YK_R0 + 1.0))        # the string
     for sz in (-1, 1):
-        y = y.cut(printable_bore(YK_TAP_D, YK_TIP + 1.0, axis_point=(x1 - YK_TIP, SY, XR_ZA + sz * D.NUT_HOLE_DX),
+        y = y.cut(printable_bore(YK_TAP_SIDE_D, YK_TIP + 1.0, axis_point=(x1 - YK_TIP, SY, XR_ZA + sz * D.NUT_HOLE_DX),
                                  axis_dir=(1.0, 0.0, 0.0), print_up=UP))
     return y
 
