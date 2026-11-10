@@ -4855,6 +4855,68 @@ def _slug_rings(board, slug_max, via_d=0.6):
     return rects
 
 
+CRTYD_MIN_MM2 = 1e-4                  # an intersection smaller than this is a rounding sliver
+
+
+def _declared_fn(stem):
+    """The project's `declared(board, vtype, refs)` (pcb_declared.py beside the generator),
+    bound to this board; else nothing is declared. finish.py reads the same file."""
+    pd = project_dir(stem)
+    path = os.path.join(pd, "pcb_declared.py") if pd else ""
+    if not path or not os.path.isfile(path):
+        return lambda t, r: False
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("pcb_declared", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    name = os.path.basename(stem)
+    return lambda t, r: bool(mod.declared(name, t, r))
+
+
+def courtyard_overlaps(board):
+    """[(ref a, ref b, mm2)] for every pair of footprints whose courtyards on the same side
+    intersect, as KiCad's courtyards_overlap test sees them."""
+    fps = list(board.GetFootprints())
+    hits = []
+    for side in (pcbnew.F_CrtYd, pcbnew.B_CrtYd):
+        cy = []
+        for f in fps:
+            c = f.GetCourtyard(side)
+            if c.OutlineCount():
+                bb = c.BBox()
+                cy.append((f.GetReference(), c, bb.GetLeft(), bb.GetRight(), bb.GetTop(), bb.GetBottom()))
+        for i in range(len(cy)):
+            ra, ca, l1, r1, t1, b1 = cy[i]
+            for j in range(i + 1, len(cy)):
+                rb, cb, l2, r2, t2, b2 = cy[j]
+                if l2 > r1 or l1 > r2 or t2 > b1 or t1 > b2:
+                    continue
+                x = ca.CloneDropTriangulation()
+                x.BooleanIntersection(cb)
+                if x.OutlineCount():
+                    mm2 = x.Area() / 1e12
+                    if mm2 > CRTYD_MIN_MM2:
+                        hits.append((ra, rb, mm2))
+    return hits
+
+
+def _courtyards_clear(board, stem):
+    """⚠ A PLACEMENT WITH OVERLAPPING COURTYARDS IS REFUSED HERE (optical ONX series,
+    2026-11-10): four of eighteen nudges laid out with U10 on J1, C181 or Y3 on U31 --
+    parts that cannot both be fitted -- and went on to be routed, scored and compared as
+    if they were boards. DRC said so only at the end of the finish, as one UNEXPECTED line
+    among the rest. An unbuildable placement is not a board: layout stops, naming the
+    pairs. Overlaps the project declares on purpose (pcb_declared.py, the same file
+    finish.py reads: optical's D/PD sensing cells, the lever's J1/J2) stand."""
+    declared = _declared_fn(stem)
+    bad = [h for h in courtyard_overlaps(board)
+           if not declared("courtyards_overlap", [h[0], h[1]])]
+    if bad:
+        raise SystemExit("layout: %d courtyard overlap(s) not declared in pcb_declared.py -- an "
+                         "unbuildable placement, refused:\n%s" % (len(bad), "\n".join(
+                             "  %s / %s  %.3f mm2" % h for h in bad)))
+
+
 def build(stem):
     """stem = the path prefix shared by <stem>.net and <stem>.board.json."""
     comps, nets = read_netlist(stem + ".net")
@@ -5020,6 +5082,7 @@ def build(stem):
             _place_ref(fp, _to_board(*ref_pos))
 
     by_ref = {fp.GetReference(): fp for fp in board.GetFootprints()}
+    _courtyards_clear(board, stem)
     # ⚠ SINGLE-PAD NETS ARE NOT GIVEN TO THE BOARD AT ALL. The netlist names every
     # deliberately-unconnected pin -- U6_NC_57, K1_UNUSED_7, DAC_OUT_R_NC -- because a
     # NAMED no-connect is a decision on the record and a silently floating pin is not.
