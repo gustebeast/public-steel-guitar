@@ -101,8 +101,7 @@ SPOT_Z = CLAMP_Z - CLAMP_HEAD[0] / 2 - CORNER_R    # the head's SPOT FACE (x = E
 # it at 45 deg (the cone), full within ~4 mm, so the clamp sits over the shaft/screw joint.
 EAR_CLIP_R = (D.NEMA17_PILOT_D + 0.6) / 2 - 0.8    # 10.5
 WALL_Y = EAR_Y0 - 0.8                               # the block wall's back face
-_GROW_R = EAR_CLIP_R - 0.1                          # the cone's radius at EAR_Y0: over the round's
-                                                    # rounded slit corners it leaves a ledge under a bead
+_GROW_R = EAR_CLIP_R - 0.1                          # the cone's radius at EAR_Y0
 _APEX = EAR_Y0 - _GROW_R
 assert EAR_X[1] - SLIT_W / 2 >= 2 * CORNER_R, "the +x jaw is too thin for its rounded corners"
 assert CLAMP_Z - INSERT_POCKET_D / 2 >= SOCKET_D / 2 + 0.8 - 1e-9, "the pocket breaks into the socket"
@@ -146,75 +145,57 @@ def _round_y_edges(w: cq.Workplane, pts, r: float = CORNER_R) -> cq.Workplane:
     return cq.Workplane("XY").add(w.val().fillet(r, sel))
 
 
-def _section(y0: float, y1: float, ear: bool, bore: str, clip: float = 0.0) -> cq.Workplane:
-    """The body from y0 to y1, its in-layer corners rounded: the Ø18 (+ the ear on -Z), the slit,
-    and the bore ("d": the motor's D, "socket": the thread's envelope). `clip`: instead a plain
-    ROUND of that radius with the ear's spot face (the length inside the block wall)."""
+def _d_bore(wp, L: float, y0: float, y1: float):
+    """The motor's D bore in a prism's sketch plane `wp`, and its two corners (to round)."""
+    rb = D_BORE_R
+    hole = wp.circle(rb).extrude(L).cut(
+        box_at(2 * rb + 2, L + 2, rb, y=(y0 + y1) / 2, z=D_FLAT_Z + rb / 2))
+    xf = math.sqrt(rb * rb - D_FLAT_Z ** 2)
+    return hole, [(-xf, D_FLAT_Z), (xf, D_FLAT_Z)]
+
+
+def _round_prism(y0: float, y1: float) -> cq.Workplane:
+    """The length inside the block wall: a plain round r EAR_CLIP_R and the D bore. No slit."""
     wp = cq.Workplane("XZ", origin=(0, y1, 0))     # local (x, z); extrudes -Y, y1 -> y0
     L = y1 - y0
-    R = clip or CPL_D / 2
+    hole, pts = _d_bore(wp, L, y0, y1)
+    return _round_y_edges(wp.circle(EAR_CLIP_R).extrude(L).cut(hole), pts)
+
+
+def _eared_prism(y0: float, y1: float) -> cq.Workplane:
+    """Everything past the wall, ONE profile all the way: the Ø18, the ear on -Z with its spot
+    face, the slit, the D bore (the thread's core, Ø FORM_MINOR_C, is bigger: the thread cut clears
+    the D out of the socket's length and leaves the slit's rounded corners the same all the way)."""
+    wp = cq.Workplane("XZ", origin=(0, y1, 0))
+    L = y1 - y0
+    R = CPL_D / 2
     s = wp.circle(R).extrude(L)
-    pts = []
-    if clip:
-        s = s.cut(box_at(R, L + 2, 2 * R, x=EAR_X[1] + R / 2, y=(y0 + y1) / 2, z=-SPOT_Z - R))
-        s = _round_y_edges(s, [(EAR_X[1], -SPOT_Z), (math.sqrt(R * R - SPOT_Z ** 2), -SPOT_Z),
-                               (EAR_X[1], -math.sqrt(R * R - EAR_X[1] ** 2))])
-    elif ear:
-        s = s.union(wp.center(sum(EAR_X) / 2, -EAR_TOP / 2).rect(EAR_X[1] - EAR_X[0], EAR_TOP).extrude(L))
-        s = s.cut(box_at(R, L + 2, EAR_TOP + 1.0, x=EAR_X[1] + R / 2, y=(y0 + y1) / 2,
-                         z=-SPOT_Z - (EAR_TOP + 1.0) / 2))                       # the spot face
-        pts += [(EAR_X[0], -EAR_TOP), (EAR_X[1], -EAR_TOP)]                      # convex
-        pts += [(EAR_X[0], -math.sqrt(R * R - EAR_X[0] ** 2))]                   # concave join
-        pts += [(EAR_X[1], -SPOT_Z), (math.sqrt(R * R - SPOT_Z ** 2), -SPOT_Z)]  # the spot face's
-        s = _round_y_edges(s, pts)
-        pts = []
-    rb = D_BORE_R if bore == "d" else FORM_MINOR_C / 2 - 0.3   # the socket: inside its ridges (on
-                                                            # them, the thread cut silently fails) -- the
-                                                            # thread cutter opens the grooves
-    hole = wp.circle(rb).extrude(L)
-    if bore == "d":
-        hole = hole.cut(box_at(2 * rb + 2, L + 2, rb, y=(y0 + y1) / 2, z=D_FLAT_Z + rb / 2))
-        xf = math.sqrt(rb * rb - D_FLAT_Z ** 2)
-        pts += [(-xf, D_FLAT_Z), (xf, D_FLAT_Z)]                                # the D's corners
+    s = s.union(wp.center(sum(EAR_X) / 2, -EAR_TOP / 2).rect(EAR_X[1] - EAR_X[0], EAR_TOP).extrude(L))
+    s = s.cut(box_at(R, L + 2, EAR_TOP + 1.0, x=EAR_X[1] + R / 2, y=(y0 + y1) / 2,
+                     z=-SPOT_Z - (EAR_TOP + 1.0) / 2))                           # the spot face
+    s = _round_y_edges(s, [(EAR_X[0], -EAR_TOP), (EAR_X[1], -EAR_TOP),           # convex
+                           (EAR_X[0], -math.sqrt(R * R - EAR_X[0] ** 2)),        # concave join
+                           (EAR_X[1], -SPOT_Z), (math.sqrt(R * R - SPOT_Z ** 2), -SPOT_Z)])
+    hole, pts = _d_bore(wp, L, y0, y1)
     s = s.cut(hole)
-    zo = EAR_TOP if (ear and not clip) else R
-    s = s.cut(box_at(SLIT_W, L + 2, zo + 1.0, y=(y0 + y1) / 2, z=-(zo + 1.0) / 2))
-    zi = math.sqrt(rb * rb - (SLIT_W / 2) ** 2)
-    pts += [(-SLIT_W / 2, -zi), (SLIT_W / 2, -zi)]                              # slit at the bore
-    if ear and not clip:
-        pts += [(-SLIT_W / 2, -EAR_TOP), (SLIT_W / 2, -EAR_TOP)]                # ...at the ear's face
-    else:
-        zs = math.sqrt(R * R - (SLIT_W / 2) ** 2)
-        pts += [(-SLIT_W / 2, -zs), (SLIT_W / 2, -zs)]                          # ...at the skin
+    s = s.cut(box_at(SLIT_W, L + 2, EAR_TOP + 1.0, y=(y0 + y1) / 2, z=-(EAR_TOP + 1.0) / 2))
+    zi = math.sqrt(D_BORE_R ** 2 - (SLIT_W / 2) ** 2)
+    pts += [(-SLIT_W / 2, -zi), (SLIT_W / 2, -zi),                              # slit at the bore
+            (-SLIT_W / 2, -EAR_TOP), (SLIT_W / 2, -EAR_TOP)]                    # ...at the ear's face
     return _round_y_edges(s, pts)
 
 
 def coupler(c1: float = CPL_X[1], boss_l: float = 0.0) -> cq.Workplane:
-    """The coupler in the motor's frame, to y = c1 (+ a boss_l long inner-race boss)."""
+    """The coupler in the motor's frame, to y = c1 (+ a boss_l long inner-race boss).
+    TWO STRAIGHT PRISMS (user, 2026-11-10: "a simpler/cleaner way"): the round inside the block
+    wall, then the eared profile, cut where it overhangs the round by a 45 deg cone. Inside the
+    round the eared profile only ever has LESS (the slit starts at EAR_Y0), so nothing overhangs."""
     from cadkit.holes import teardrop_hole
     c0 = CPL_X[0]
     end = c1 + boss_l
-    out = _section(c0, EAR_Y0, True, "d", clip=EAR_CLIP_R)
-    # the eared sections keep what stands on the round (its profile carried up) and grow out of
-    # it at 45 deg (the cone): no ceiling under the ear
-    held = _section(EAR_Y0 - 0.01, c1, True, "d", clip=EAR_CLIP_R)
     cone = cq.Workplane("XY").add(cq.Solid.makeCone(0.0, 40.0, 40.0, cq.Vector(0, _APEX, 0),
                                                     cq.Vector(0, 1, 0)))
-    # the socket section stands on the D section: where the D's slit corners are rounded away
-    # (round the smaller bore), the socket section must not put material back -- that printed
-    # as ledges in the slit at y CPL_GRIP (user, 2026-11-10). Carry the D's relief up through it.
-    zone = box_at(2 * (SLIT_W / 2 + CORNER_R + 1.0), c1 - CPL_GRIP + 2.0, SOCKET_D / 2 + CORNER_R + 1.0,
-                  y=(CPL_GRIP + c1) / 2, z=-(SOCKET_D / 2 + CORNER_R + 1.0) / 2)
-    relief = zone.cut(_section(CPL_GRIP - 1.0, c1 + 1.0, True, "d"))
-    eared = _section(EAR_Y0, CPL_GRIP, True, "d").union(
-        _section(CPL_GRIP, c1, True, "socket").cut(relief))
-    # ...and inside the cone's reach, never over the round's rounded slit corners at its rim
-    # (that printed as ledges where the ear starts, user 2026-11-10): carry that relief up too
-    zr = _GROW_R
-    zone2 = box_at(2 * (SLIT_W / 2 + CORNER_R + 1.0), c1 - EAR_Y0 + 2.0, zr, y=(EAR_Y0 + c1) / 2,
-                   z=-zr / 2).intersect(cyl_y(2 * zr, c1 - EAR_Y0 + 2.0, y0=EAR_Y0 - 1.0))
-    eared = eared.cut(zone2.cut(held))
-    out = out.union(eared.intersect(cone.union(held)))
+    out = _round_prism(c0, EAR_Y0).union(_eared_prism(EAR_Y0, c1).intersect(cone))
     if boss_l:
         boss = cyl_y(RACE_IN_D, boss_l + 0.01, y0=c1 - 0.01).cut(
             cyl_y(FORM_MINOR_C - 0.6, boss_l + 2.0, y0=c1 - 1.0))
