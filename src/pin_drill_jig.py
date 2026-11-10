@@ -56,7 +56,10 @@ STOP_T = 4 * B
 
 # ── the tower and its bushings ─────────────────────────────────────────────
 BUSH_OD = 10.0
-SOCKET_D = BUSH_OD + 0.3                   # a nozzle-drawn round hole prints a touch small
+SOCKET_D = BUSH_OD + 2 * BIT_CLR           # 10.6: a drop-in slide, 0.3 a side as the bits' bores.
+                                           # Round holes print ~0.15-0.25 small on the diameter
+                                           # (guide rod: +0.15 and +0.25 drawn both PRESS), so the
+                                           # first draw's 10.3 would have been a press, not a drop-in
 BUSH_GAP = 0.6                             # the bushing's foot over the rod's crest
 BUSH_FLANGE = (14.0, 2 * B)                # Ø, thickness: sits on the tower's top
 TOWER_WALL = 4 * B
@@ -72,7 +75,7 @@ CH_X0, CH_X1 = CAP_X0 - SJ.CAP_CLR, CAP_X1 + SJ.CAP_CLR
 HW = SJ.HW
 X_MIN = CH_X0 - SJ.WALL
 Z_TOP = SJ.Z_TOP                           # the cap's channel walls: the cap fits as for the saw
-X_MAX = STOP_X + STOP_T
+X_MAX = max(STOP_X + STOP_T, TOWER_R)      # the tower stands on the block, no ledge past its +X face
 
 _box = SJ._box
 
