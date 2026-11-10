@@ -84,9 +84,13 @@ CLAMP_HEAD = (_BT.HEAD_D, _BT.HEAD_H)               # 5.5 x 3
 INSERT_POCKET_D = _BT.INS_POCKET                    # 4.8: takes the knurled insert by hand
 CLAMP_LIP = 3 * D.BEAD                              # 2.4: the -x jaw from the slit to the insert
 INS_X0 = -(SLIT_W / 2 + CLAMP_LIP)                  # -3.0: the insert's +x end, on the lip
-EAR_X = (INS_X0 - CLAMP_SPEC.insert_l, INS_X0 - CLAMP_SPEC.insert_l + CLAMP_L)   # -7.3 .. 4.7:
-                                                    # the insert flush with -x, the 12's tip at its
-                                                    # far end (all 4.3 of it bitten), the head on +x
+_HEAD_X = INS_X0 - CLAMP_SPEC.insert_l + CLAMP_L   # 4.7: the head's seat, the 12's tip at the
+                                                    # insert's far end (all 4.3 of it bitten)
+EAR_X = (-_HEAD_X, _HEAD_X)                         # the jaws EQUAL (user, 2026-11-10): the insert
+                                                    # stands 2.6 out of its jaw -- what matters is
+                                                    # the lip it bears on -- and the narrower ear
+                                                    # lets the wall cut sit deeper (CUT_Z), so the
+                                                    # clamp comes down over the shaft/screw joint
 CLAMP_Z = SOCKET_D / 2 + 1.0 + INSERT_POCKET_D / 2  # 7.7 under the axis: 1.0 of wall to the socket
 EAR_TOP = max(CLAMP_Z + INSERT_POCKET_D / 2 + 2 * D.BEAD,       # two beads past the pocket, and
               CLAMP_Z + CLAMP_HEAD[0] / 2 + CORNER_R)           # the head's face flat to its rim
@@ -222,8 +226,8 @@ def coupler(c1: float = CPL_X[1], boss_l: float = 0.0) -> cq.Workplane:
                                 axis_dir=(1, 0, 0), print_up=up))
     out = out.cut(teardrop_hole(CLAMP_HEAD[0] + 0.8, 10.0, axis_point=(EAR_X[1], yc, -CLAMP_Z),
                                 axis_dir=(1, 0, 0), print_up=up))       # the head's seat
-    out = out.cut(teardrop_hole(INSERT_POCKET_D, INS_X0 - EAR_X[0] + 1.0,
-                                axis_point=(EAR_X[0] - 1.0, yc, -CLAMP_Z),
+    out = out.cut(teardrop_hole(INSERT_POCKET_D, INS_X0 + CPL_D,           # out past the body: the
+                                axis_point=(-CPL_D, yc, -CLAMP_Z),     # insert stands proud
                                 axis_dir=(1, 0, 0), print_up=up))
     # THE FORMED THREAD, last and UNCLEANED (as components.screw_pulley): a cleaned cut leaves an
     # invalid solid that drops the ridges (2026-11-10: it printed a smooth bore)

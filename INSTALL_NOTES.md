@@ -1798,5 +1798,8 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
     - Its ridge is 0.6 deep with 45° flanks, as deep as fits the screw's groove (the pulley's is 0.45).
     - If it prints tight, the slit lets it open; if loose, the clamp takes it up.
   - The slit and the clamp ear are on the side away from the D's flat, so the key keeps its whole flat.
-  - The clamp sits over the joint between the shaft and the screw (y 5.1), so one M3 pinches both. Up to the block wall the coupler is a plain r 10.5 round, which turns 0.8 mm clear inside the wall's pilot hole; the ear grows out of it at 45° past the wall.
+  - The clamp sits over the joint between the shaft and the screw (y 5.3), so one M3 pinches both.
+  - Inside the block wall the ear is cut flat, so the coupler turns 0.8 mm clear in the wall's pilot hole. Past the wall it steps out on a 45° roof.
+  - The two jaws are the same width. The insert stands about 2.6 mm proud of its jaw and bears on the 2.4 mm lip by the slit.
+  - Hold the insert while you snug the M3 if it starts to turn.
   - The pin drill jig is not needed for this.
