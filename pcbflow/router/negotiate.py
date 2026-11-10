@@ -1209,6 +1209,24 @@ class Router(CoupledMixin):
                 key = (sh, len(fl), max(ls) - min(ls))
                 if sh == 0 and not fl:
                     best = None
+                    # ⚠ A CLEAN LAY DOES NOT BEAT A COUPLED ONE THAT NEEDS ROOM (output_panel
+                    # HUB_UP, 2026-11-10): the coupled lays met every rule at 3.0 mm uncoupled
+                    # through 16-23 cells of other nets, and were held for _displace -- then a
+                    # home-layer lay came out clean, 65 mm apart, and won outright. Before an
+                    # uncoupled clean lay is kept, the held coupled ones (COUPLE_GAIN_MM
+                    # closer) get their displacement, most coupled first.
+                    if couple and not (len(c) > 8 and c[8]):
+                        u_c = self._uncoupled(a)
+                        held = sorted((r_ for r_ in ruled if r_[3] < u_c - self.COUPLE_GAIN_MM),
+                                      key=lambda r_: (r_[3], r_[0], r_[1]))
+                        done = next((r_ for r_ in held[:self.PAIR_DISPLACE]
+                                     if self._displace(a, b, r_[2], pf)), None)
+                        if done is not None:
+                            self.log("  pair %s/%s: %s -- laid coupled to the rules through %d cell(s) of "
+                                     "other nets' space, which re-negotiated round it (a clean lay was "
+                                     "%.1f mm uncoupled, this one %.1f)" % (
+                                         a.name, b.name, ", ".join(x[0] for x in f0), done[0], u_c, done[3]))
+                            break
                     self.log("  pair %s/%s: %s -- refinished (%s first, %s)" % (
                         a.name, b.name, ", ".join(x[0] for x in f0), c[0].name,
                         "coupled" if len(c) > 8 and c[8] else
