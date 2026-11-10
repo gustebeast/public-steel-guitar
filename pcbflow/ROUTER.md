@@ -177,6 +177,26 @@ same nets, same pair verdicts. Profile first: the cost was never where it looked
   unchanged. Congestion pricing makes the straight-line heuristic weak; 1.3 halves work
   for about 5 % dearer paths.
 
+- **Heuristic to the nearest target cell** (`HMAP`, search.astar_s_h / astar_turn_s_h):
+  the box heuristic measured to the targets' bounding box, so a net whose lands are spread
+  had no guidance inside it (optical BOOT0: 7.7 M states, 5.6 s, for one 46 mm net; 0.4 s
+  after). A Euclidean distance transform of the target cells, max'd with the box octile:
+  still admissible. 15-board router-alone: motor_ctrl 96 -> 15 s, output_panel 151 -> 48 s,
+  ui_board 68 -> 17 s, optical 134 -> 75 s; 0 open, 0 pair faults, 0 shortfalls. eps 1.0 with it was
+  worse on optical (two nets open): kept at 1.2.
+- **A plane net re-joins only its sharing pieces** (`PLANE_KEEP`): +3V3D's ~55 joins were
+  all re-searched every round it shared, 220 searches, a third of optical's negotiation.
+
+Pair finish (same day): in a pair attempt the mate is a wall, not a price (`PAIR_WALL`) --
+at the finish's congestion price the second rail went over its mate rather than through
+others' space, so every attempt was refused for overlap and none reached `_displace`. A
+same-layer pair with no home layers is also tried one layer at a time. `_displace` counted
+the pair's own failed-attempt flag as an open net, so a displacement that left LED_ROW open
+passed as "no worse": now only the other nets are counted. And the root of it: a
+same_layer pair without a merge connector now runs on the layer its lands share
+(`run_layers`, strict then relaxed, as the merge case) -- HUB_PHY's leading rail had dived
+to B.Cu wherever its lane was busy and the negotiation ended with the pair split.
+
 Tried and dropped, measured:
 
 - **Corridors from the global plan** (`CORRIDORS`, off): round 1 halved, but nets shared

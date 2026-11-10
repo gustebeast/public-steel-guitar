@@ -218,6 +218,21 @@ class Router:
                 if keep:
                     for x in names:
                         by[x].layers_only = keep
+            # ⚠ A same_layer PAIR WITHOUT A MERGE CONNECTOR RUNS ON ITS LANDS' LAYER TOO
+            # (optical HUB_PHY, 2026-11-09): nothing held it, the leading rail dived to B.Cu
+            # wherever its lane was busy, its mate followed the layers it was handed, and the
+            # negotiation ended with the pair split -- which no finish attempt could undo on
+            # a board settled round it. An engineer lays a hub-to-PHY pair on the layer both
+            # chips sit on. Same strict-then-relaxed rule as the merge case.
+            if g.get("same_layer") and not g.get("merge_at") and names:
+                lid_ = {n_: k for k, n_ in enumerate(m.route_layers)}
+                run = set(range(len(m.route_layers)))
+                for p in m.pads:
+                    if p["net"] in names and p["cu"] is not None:
+                        run &= {lid_[c] for c in p["cu"] if c in lid_}
+                if run and len(run) < len(m.route_layers):
+                    for x in names:
+                        by[x].run_layers = run
             if len(names) == 2:
                 a_, b_ = by[names[0]], by[names[1]]
                 b_.partner = a_
@@ -315,18 +330,37 @@ class Router:
     NECK_W = W_REF                   # a net's width where it necks down at its own lands
     NECK_MM = 1.2                    # ...within this distance of its own copper
     TURN_STATES_MAX = 40_000_000     # heading-aware search up to this many states (x9 cells)
+    PAIR_WALL = True                 # in a pair attempt the mate's copper is a wall (_pair_try)
+    PLANE_KEEP = True                # a sharing plane net re-joins only its sharing pieces (_rounds)
 
     # ⚠ HEURISTIC WEIGHT 1.2 (optical S53o0, 2026-11-09): negotiation 123 -> 90 s, same
     # nets, same pair faults (none), +0.4 % track, vias 192 -> 191. Congestion pricing
     # leaves the straight-line heuristic weak; a small weight buys most of the speed back.
     ASTAR_EPS = 1.2
+    # ⚠ HEURISTIC TO THE NEAREST TARGET CELL, NOT ITS BOX (optical BOOT0, 2026-11-09: lands
+    # spread over a 9 x 15 mm box left the search unguided inside it -- 7.7 M states, 5.6 s,
+    # for one 46 mm net). See search.astar_s_h.
+    HMAP = True
 
     def _astar(self, cellf, vcellf, src, tgt, L, h, w, tb, dir_cost, vmult=1.0):
         vc = np.float32(self.via_cost * vmult)
         bufs = self.__dict__.setdefault("_bufs", S.Buffers())
         src_idx = np.flatnonzero(src).astype(np.int64)
         eps = np.float32(self.ASTAR_EPS)
-        if L * h * w * 9 <= self.TURN_STATES_MAX and self.turn45 + self.turn90 > 0:
+        turn = L * h * w * 9 <= self.TURN_STATES_MAX and self.turn45 + self.turn90 > 0
+        if self.HMAP:
+            # straight-line distance to the nearest target cell, in cells (search.py)
+            from scipy.ndimage import distance_transform_edt
+            t2 = tgt.reshape(L, h * w).any(axis=0).reshape(h, w)
+            hmap = distance_transform_edt(~t2).astype(np.float32).ravel()
+            if turn:
+                g, par, st, base = bufs.take(L * h * w * 9)
+                return S.astar_turn_s_h(cellf, vcellf, src_idx, tgt, L, h, w, vc, tb, hmap,
+                                        dir_cost, self.turn45, self.turn90, eps, g, par, st, base)
+            g, par, st, base = bufs.take(L * h * w)
+            return S.astar_s_h(cellf, vcellf, src_idx, tgt, L, h, w, vc, tb, hmap, dir_cost, eps,
+                               g, par, st, base)
+        if turn:
             g, par, st, base = bufs.take(L * h * w * 9)
             return S.astar_turn_s(cellf, vcellf, src_idx, tgt, L, h, w, vc, tb, dir_cost,
                                   self.turn45, self.turn90, eps, g, par, st, base)
@@ -441,6 +475,10 @@ class Router:
                 for k in range(L):
                     if k not in net.run_layers:
                         legal[k] &= circle
+        if net.run_layers and net.merge is None and getattr(self, "_strict", False):
+            for k in range(L):
+                if k not in net.run_layers:
+                    legal[k] = False
         if net.force_layers is not None:
             for k in range(L):
                 if k not in net.force_layers:
@@ -522,6 +560,31 @@ class Router:
         occv = self.occ_v.reshape(H, W)[i0:i1, j0:j1].astype(np.float32)
         hv = self.hist_v.reshape(H, W)[i0:i1, j0:j1]
         vcell = np.where(vlegal, (1.0 + hv) * (1.0 + pf * occv), np.inf).astype(np.float32)
+        # ⚠ IN A PAIR ATTEMPT THE MATE IS A WALL, NOT A PRICE (optical HUB_PHY, 2026-11-09):
+        # _pair_try refuses any attempt whose rails overlap, and at the finish's price the
+        # cheapest way past other nets' copper was straight over the mate -- every attempt
+        # refused, none ever offered to _displace, the pair left split across layers. An
+        # engineer lays the second rail beside the first and moves what is in the way: here
+        # it may not touch the mate, so it takes the lane through others' space, and that
+        # attempt goes to _displace like any other laid to the rules.
+        mt = net.mate if net.mate is not None else net.partner
+        if getattr(self, "_pair_wall", False) and mt is not None and mt.paths:
+            from scipy.ndimage import distance_transform_edt
+            theirs = np.zeros((L, h, w), bool)
+            mine_ = np.zeros((L, h, w), bool)
+            for src_, dst_ in ((mt.paths, theirs), (net.pieces, mine_)):
+                for pth in src_:
+                    kk = pth // (H * W)
+                    rr_ = pth % (H * W)
+                    ii, jj = rr_ // W - i0, rr_ % W - j0
+                    ok = (ii >= 0) & (ii < h) & (jj >= 0) & (jj < w)
+                    dst_[kk[ok], ii[ok], jj[ok]] = True
+            gap = (net.width + mt.width) / 2.0 + m.clear + m.margin
+            for k in range(L):
+                if theirs[k].any():
+                    wall = (distance_transform_edt(~theirs[k]) * m.pitch < gap - 1e-6) & ~mine_[k]
+                    cell[k][wall] = np.inf
+                    vcell[wall] = np.inf
         # the net's own fixed vias: a layer change there is free, through the via itself
         for v in m.vias:
             if v["net"] == net.name:
@@ -875,6 +938,15 @@ class Router:
                             key=lambda k: (float(self.layer_cost[k]), k))
             keep = {x: (x.paths, x.necks, x.failed, x.relaxed, x.force_layers) for x in (a, b)}
             cands = [(a, b, False, None, 1.0, False, 1.0), (b, a, False, None, 1.0, False, 1.0)]
+            # ⚠ A SAME-LAYER PAIR WITH NO HOME LAYERS IS ALSO TRIED ONE LAYER AT A TIME
+            # (optical HUB_PHY, 2026-11-09): free to use every layer, the second rail dived
+            # wherever the first had taken its lane, and the only attempts were the two
+            # orders -- both broke same_layer. An engineer picks the layer for the pair and
+            # lays both on it; each layer is offered, cheapest first, both orders.
+            if a.same_layer and not (a.run_layers or a.layers_only):
+                for k in sorted(range(self.L), key=lambda k: (float(self.layer_cost[k]), k)):
+                    for f_, s_ in ((a, b), (b, a)):
+                        cands.append((f_, s_, True, {k}, 1.0, True, 1.0))
             # a second dive is what breaks a via budget: the last attempts price vias x5
             for vm in (1.0, 5.0):
                 for d in others:
@@ -939,16 +1011,20 @@ class Router:
     # crosses negotiate round it; kept only if no more nets end open than before.
     def _displace(self, a, b, state, pf):
         saved = {n: (n.paths, n.necks, n.failed) for n in self.nets}
-        fail0 = sum(n.failed for n in self.nets)
+        lock = {a, b}
+        # ⚠ THE PAIR'S OWN FLAGS ARE NOT COUNTED (optical, 2026-11-09): the last attempt
+        # tried may have found no path and left a rail marked failed, so "open before"
+        # counted 1, and a displacement that left LED_ROW open passed as no worse.
+        fail0 = sum(n.failed for n in self.nets if n not in lock)
         for x in (a, b):
             self._unmark(x)
         for x in (a, b):
             x.paths, x.necks, x.failed, x.relaxed, x.force_layers = state[x]
             self._mark(x)
-        lock = {a, b}
         todo = [n for n in self.nets if n not in lock and not n.failed and self._conflicts(n)]
         left, _ = self._rounds(todo, pf, 12, 600, locked=lock)
-        fail1 = sum(n.failed for n in self.nets) + sum(not n.failed for n in left)
+        fail1 = (sum(n.failed for n in self.nets if n not in lock)
+                 + sum(not n.failed for n in left if n not in lock))
         if fail1 <= fail0 and not self.pair_faults(a):
             self._rip(left)
             return True
@@ -1172,6 +1248,7 @@ class Router:
         vold = {x: x.via_mult for x in (first, second)}
         for x in (first, second):
             x.via_mult = vold[x] * via_mult
+        self._pair_wall = self.PAIR_WALL
         try:
             for x in (first, second) + ((first,) if refine else ()):
                 self._unmark(x)
@@ -1183,6 +1260,7 @@ class Router:
                 x.paths, x.failed = p, False
                 self._mark(x)
         finally:
+            self._pair_wall = False
             self.OFFRUN_COST = old
             for x in (first, second):
                 x.via_mult = vold[x]
@@ -1722,6 +1800,7 @@ class Router:
         t0 = time.time()
         best, since = None, 0
         self._stalled = False
+        kept0 = {n: n.keep_paths for n in self.nets if n.plane}
         for it in range(1, iters + 1):
             for net in todo:
                 if net in locked:
@@ -1744,11 +1823,13 @@ class Router:
                     todo.append(net)
                     continue
                 shared = False
-                for path in net.paths:
+                bad_q = set()
+                for q, path in enumerate(net.paths):
                     c = path[self.occ_t[path] >= 2]
                     if c.size:
                         self.hist[c] += hf
                         shared = True
+                        bad_q.add(q)
                     k = path // (H * W)
                     via = np.nonzero(k[1:] != k[:-1])[0]
                     if via.size:
@@ -1757,6 +1838,16 @@ class Router:
                         if rv.size:
                             self.hist_v[rv] += hf
                             shared = True
+                            bad_q.add(q)
+                # ⚠ A PLANE NET RE-JOINS ONLY THE PIECES THAT SHARE (optical +3V3D,
+                # 2026-11-09: ~55 pieces, each its own join to the pour, and one or two
+                # sharing space re-searched all of them every round -- 220 searches, a third
+                # of the negotiation). An engineer moves the via that is in the way, not
+                # every via on the rail; the others keep their joins as laid.
+                if (shared and self.PLANE_KEEP and net.plane and not net.fixed
+                        and len(net.paths) == len(net.pieces) - 1):
+                    net.keep_paths = {q + 1: (net.paths[q], net.necks[q] if q < len(net.necks) else None)
+                                      for q in range(len(net.paths)) if q not in bad_q}
                 if shared:
                     todo.append(net)
                     nbad += 1
@@ -1797,4 +1888,6 @@ class Router:
                 break
             pf *= pf_mul
         self._stalled = False
+        for n, kp in kept0.items():
+            n.keep_paths = kp
         return todo, pf
