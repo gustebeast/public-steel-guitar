@@ -15,6 +15,7 @@ import numpy as np
 
 from . import search as S
 from .model import GROUND_RE
+from .coupled import CoupledMixin
 
 W_REF = 0.2          # the narrowest track: a wide net's necked width at its lands
 
@@ -49,7 +50,7 @@ class Net:
         self.keep_paths = None  # ...and the joins of its good pieces, kept as laid {piece: (path, necks)}
 
 
-class Router:
+class Router(CoupledMixin):
     def __init__(self, model, via_cost=15.0, layer_cost=None, log=print, turn45=4.0, turn90=12.0):
         self.m = model
         self.turn45, self.turn90 = np.float32(turn45), np.float32(turn90)
@@ -573,7 +574,8 @@ class Router:
         # fixed-copper legality for this net in the window
         nid = net.id
         sl = (slice(None), slice(i0, i1), slice(j0, j1))
-        fd = np.where(m.n1[sl] == nid, m.d2[sl], m.d1[sl])
+        own_ids = getattr(net, "ids", None)    # a pair's centreline owns both rails' copper
+        fd = np.where(np.isin(m.n1[sl], own_ids) if own_ids else m.n1[sl] == nid, m.d2[sl], m.d1[sl])
         legal = fd >= net.width / 2.0 + m.clear + m.margin
         legal &= (m.edge[i0:i1, j0:j1] >= net.width / 2.0 + m.edge_clear + m.margin)[None]
         allowed = None if net.relaxed else net.layers_only
@@ -607,9 +609,18 @@ class Router:
         if corr is not None:
             gb = self._gr.b
             legal &= corr[np.ix_(np.arange(i0, i1) // gb, np.arange(j0, j1) // gb)][None]
+        lane = self._lane_win(net, win)        # a coupled pair's rail keeps to its lane
+        if lane is not None:
+            legal &= lane[0]
         vlegal = np.all(fd >= m.via_d / 2.0 + m.clear + m.margin, axis=0)
         vlegal &= m.edge[i0:i1, j0:j1] >= m.via_d / 2.0 + m.edge_clear + m.margin
         vlegal &= ~m.via_ban[i0:i1, j0:j1]
+        ve = getattr(net, "via_erode", 0.0)     # a pair's centreline: room for both vias
+        if ve > 0 and vlegal.any():
+            from scipy.ndimage import binary_erosion
+            rr_ = int(math.ceil(ve / m.pitch))
+            yy_, xx_ = np.mgrid[-rr_:rr_ + 1, -rr_:rr_ + 1]
+            vlegal = binary_erosion(vlegal, structure=(yy_ * yy_ + xx_ * xx_) <= rr_ * rr_)
         occ =self.occ_t.reshape(L, H, W)[sl].astype(np.float32)
         if net.width > self.wref + 1e-6:
             from scipy.ndimage import maximum_filter
@@ -660,6 +671,9 @@ class Router:
                     near = distance_transform_edt(~own[k]) * m.pitch <= self.NECK_MM
                     neck_ok[k] = near & narrow[k] & ~legal[k]
             cell = np.where(neck_ok, cell * 2.0, cell)
+        if lane is not None:
+            neck_ok &= lane[0]
+            cell = np.where(lane[1], cell * self.BAND_COST, cell)
         cell = np.where(legal | neck_ok, cell, np.inf).astype(np.float32)
         self._neck_win = (neck_ok, h, w, i0, j0)
         # ⚠ A PAIR RUNS TOGETHER: the second net of a matched pair is drawn to the band one
@@ -708,7 +722,23 @@ class Router:
                     ok = (ii >= 0) & (ii < h) & (jj >= 0) & (jj < w)
                     dst_[kk[ok], ii[ok], jj[ok]] = True
             gap = (net.width + mt.width) / 2.0 + m.clear + m.margin
-            gc_ = int(math.ceil(gap / m.pitch)) + 1
+            # ⚠ A VIA IS WIDER THAN A TRACK (coupled pairs, optical HUB_PHY, 2026-11-10): the
+            # wall kept a track's gap from the mate's centreline, and in the via disks one
+            # rail ran inside the other's via keep-out -- the rails overlapped and the
+            # attempt was refused. Round the mate's vias a track keeps a via's gap; this
+            # rail's own vias keep a via's gap from the mate's tracks and vias.
+            vgap = m.via_d / 2.0 + net.width / 2.0 + m.clear + m.margin
+            vtgap = m.via_d / 2.0 + mt.width / 2.0 + m.clear + m.margin
+            vvgap = m.via_d + m.clear + m.margin
+            tvia = np.zeros((h, w), bool)
+            for pth in mt.paths:
+                kk = pth // (H * W)
+                for t_ in np.nonzero(kk[1:] != kk[:-1])[0]:
+                    rr_ = int(pth[t_] % (H * W))
+                    ii, jj = rr_ // W - i0, rr_ % W - j0
+                    if 0 <= ii < h and 0 <= jj < w:
+                        tvia[ii, jj] = True
+            gc_ = int(math.ceil(max(gap, vtgap) / m.pitch)) + 1
             for k in range(L):
                 if theirs[k].any():
                     # only round the mate's own copper: the transform of the whole window
@@ -716,10 +746,19 @@ class Router:
                     ti, tj = np.nonzero(theirs[k])
                     a0, a1 = max(0, ti.min() - gc_), min(h, ti.max() + gc_ + 1)
                     b0, b1 = max(0, tj.min() - gc_), min(w, tj.max() + gc_ + 1)
-                    wall = ((distance_transform_edt(~theirs[k][a0:a1, b0:b1]) * m.pitch < gap - 1e-6)
-                            & ~mine_[k][a0:a1, b0:b1])
+                    dt_ = distance_transform_edt(~theirs[k][a0:a1, b0:b1]) * m.pitch
+                    wall = (dt_ < gap - 1e-6) & ~mine_[k][a0:a1, b0:b1]
                     cell[k][a0:a1, b0:b1][wall] = np.inf
-                    vcell[a0:a1, b0:b1][wall] = np.inf
+                    vcell[a0:a1, b0:b1][(dt_ < vtgap - 1e-6) & ~mine_[k][a0:a1, b0:b1]] = np.inf
+            if tvia.any():
+                gv_ = int(math.ceil(max(vgap, vvgap) / m.pitch)) + 1
+                ti, tj = np.nonzero(tvia)
+                a0, a1 = max(0, ti.min() - gv_), min(h, ti.max() + gv_ + 1)
+                b0, b1 = max(0, tj.min() - gv_), min(w, tj.max() + gv_ + 1)
+                dv_ = distance_transform_edt(~tvia[a0:a1, b0:b1]) * m.pitch
+                for k in range(L):
+                    cell[k][a0:a1, b0:b1][(dv_ < vgap - 1e-6) & ~mine_[k][a0:a1, b0:b1]] = np.inf
+                vcell[a0:a1, b0:b1][dv_ < vvgap - 1e-6] = np.inf
         # the net's own fixed vias: a layer change there is free, through the via itself
         for v in m.vias:
             if v["net"] == net.name:
@@ -941,6 +980,8 @@ class Router:
         home = net.run_layers or net.layers_only
         if mate is None or not mate.paths or not home or not net.legs:
             return None
+        if net.name in (getattr(self, "_lanes", None) or {}):
+            return None                 # a coupled rail follows in its lane, not by waypoint
         H, W = self.H, self.W
         cells = np.concatenate(mate.paths)
         k = cells // (H * W)
@@ -1079,13 +1120,24 @@ class Router:
                 f0 = [("open", (a.name, b.name))]
             else:
                 f0 = self.pair_faults(a)
+            # ⚠ TO THE RULES IS NOT A PAIR (coupled.py): a declared diff pair whose rails run
+            # apart is re-laid coupled, and kept only if it comes out closer
+            couple = self.COUPLE and not opened and self._pair_spec(a) is not None
+            u0 = self._uncoupled(a) if couple else 0.0
+            only = False
             if not f0:
-                continue
+                if not couple or u0 < self.COUPLE_MIN_MM:
+                    continue
+                only = True
+                f0 = [("apart %.1f mm" % u0, (a.name, b.name))]
             home = set(a.run_layers or a.layers_only or range(self.L))
             others = sorted((k for k in range(self.L) if k not in home),
                             key=lambda k: (float(self.layer_cost[k]), k))
             keep = {x: (x.paths, x.necks, x.failed, x.relaxed, x.force_layers) for x in (a, b)}
             cands = [(a, b, False, None, 1.0, False, 1.0), (b, a, False, None, 1.0, False, 1.0)]
+            if couple:
+                cpl = [(f_, s_, True, None, 1.0, False, 1.0, None, True) for f_, s_ in ((a, b), (b, a))]
+                cands = list(cpl) if only else cpl + cands
             # ⚠ A SAME-LAYER PAIR WITH NO HOME LAYERS IS ALSO TRIED ONE LAYER AT A TIME
             # (optical HUB_PHY, 2026-11-09): free to use every layer, the second rail dived
             # wherever the first had taken its lane, and the only attempts were the two
@@ -1111,12 +1163,14 @@ class Router:
             # hundreds, still went the long way on optical C112 +0.05/-0.72.)
             for f_, s_ in ((a, b), (b, a)):
                 cands.append((f_, s_, False, None, 1.0, True, 1.0, self.PAIR_PUSH))
+            if only:
+                cands = cpl
             ms0 = self.pair_measure(a)
             l0 = [v[0] for v in ms0.values()]
             best, best_key = None, ((1e9, 1e9, 1e9) if opened else (0, len(f0), max(l0) - min(l0)))
             ruled = []                     # [(shared cells, skew, state)]: to the rules, but in others' space
             for c in cands:
-                if len(c) > 7:
+                if len(c) > 7 and c[7] is not None:
                     # a push: other nets at a low price outright, and none of the history
                     # the negotiation built up round them (both steer it the long way)
                     h0, hv0 = self.hist, self.hist_v
@@ -1126,16 +1180,19 @@ class Router:
                     finally:
                         self.hist, self.hist_v = h0, hv0
                 else:
-                    got = self._pair_try(pf, *c)
+                    got = self._pair_try(pf, *c[:7], coupled=len(c) > 8 and c[8])
                 if os.environ.get("PAIR_DEBUG"):
-                    self.log("    try %s first relax=%s layers=%s off x%g via x%g: %s" % (
-                        c[0].name, c[2], c[3], c[4], c[6],
+                    self.log("    try %s first%s relax=%s layers=%s off x%g via x%g: %s apart %.1f" % (
+                        c[0].name, " coupled" if len(c) > 8 and c[8] else "", c[2], c[3], c[4], c[6],
                         "no path" if got is None else (got, round(max(
                             v[0] for v in self.pair_measure(a).values()) - min(
-                            v[0] for v in self.pair_measure(a).values()), 2))))
+                            v[0] for v in self.pair_measure(a).values()), 2)),
+                        self._uncoupled(a) if couple and got is not None else -1))
                 if got is None:
                     continue
                 sh, fl = got
+                if only and (fl or self._uncoupled(a) > u0 - self.COUPLE_GAIN_MM):
+                    continue                   # to the rules already: only a closer pair is kept
                 ms = self.pair_measure(a)
                 ls = [v[0] for v in ms.values()]
                 key = (sh, len(fl), max(ls) - min(ls))
@@ -1143,6 +1200,7 @@ class Router:
                     best = None
                     self.log("  pair %s/%s: %s -- refinished (%s first, %s)" % (
                         a.name, b.name, ", ".join(x[0] for x in f0), c[0].name,
+                        "coupled" if len(c) > 8 and c[8] else
                         "home layers" if c[3] is None else "+" + "/".join(
                             self.m.route_layers[k] for k in sorted(c[3] - home))))
                     break
@@ -1419,13 +1477,22 @@ class Router:
                     n.paths, n.necks, n.failed = saved[n]
                     self._mark(n)
 
-    def _pair_try(self, pf, first, second, relax, layers, offrun_mult, refine, via_mult=1.0):
+    def _pair_try(self, pf, first, second, relax, layers, offrun_mult, refine, via_mult=1.0,
+                  coupled=False):
         """Lay a pair afresh (everything else held): first, then second, then (refine)
-        first again against second. (shared cells, pair faults), or None if a rail fails."""
+        first again against second -- coupled: in lanes round the pair's centreline
+        (coupled.py). (shared cells, pair faults), or None if a rail fails."""
         for x in (first, second):
             self._unmark(x)
             x.paths, x.necks, x.failed = [], [], False
             x.relaxed, x.force_layers = relax, layers
+        if coupled:
+            mid = self._midline(first, second, pf)
+            if mid is None:
+                if os.environ.get("PAIR_DEBUG"):
+                    self.log("      coupled: no centreline")
+                return None
+            self._set_lanes(first, second, mid)
         old = self.OFFRUN_COST
         self.OFFRUN_COST = old * offrun_mult
         vold = {x: x.via_mult for x in (first, second)}
@@ -1438,12 +1505,16 @@ class Router:
                 x.relaxed = relax
                 p = self._route_net(x, pf)
                 if p is None:
+                    if coupled and os.environ.get("PAIR_DEBUG"):
+                        self.log("      coupled: %s found no way in its lane (sides %s)" % (
+                            x.name, getattr(self, "_lane_sides", None)))
                     x.paths, x.necks, x.failed = [], [], True
                     return None
                 x.paths, x.failed = p, False
                 self._mark(x)
         finally:
             self._pair_wall = False
+            self._lanes = None
             self.OFFRUN_COST = old
             for x in (first, second):
                 x.via_mult = vold[x]
