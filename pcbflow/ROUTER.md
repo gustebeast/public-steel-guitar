@@ -254,6 +254,17 @@ With the router at 15-75 s a board (HMAP), the route itself is the affordable sc
 open nets, pair faults, contention, length and vias, several placements at once, a
 process each (the "parallelism one level up" above).
 
+**`router/score.py` is that score (2026-11-10).** `py -3.12 router/score.py <stem>... [--jobs N]`
+routes each placed board router-alone, a process each, and prints one JSON line a board sorted by
+`key` = (open, pair faults, islands, uncoupled mm, contention, vias, length). For a small fixed
+candidate set inside a placement search -- a few boards, minutes -- not a sweep. Checked:
+- it reproduces the series gate's open / pairs / islands / uncoupled exactly (u10a c00-c02);
+- on output_panel (op1) it ranks three deliberately bad placements -- 0402/0805 caps swapped
+  between parts 30-55 mm apart, 1 / 2 / 3 swaps, all legal by courtyard and declared copper --
+  below both good ones: contention 3142 and 3185 good, 3302 / 3859 / 3689 bad (+5 to +23 %),
+  length 1988 good, 2032 to 2185 bad. All five still route closed, so `open` alone cannot
+  rank them and contention is the term that does. ~45 s a board, three at once.
+
 ## Runtime
 
 Python 3.12 + numpy + numba (installed 2026-11-08). The finish chain runs steps under
