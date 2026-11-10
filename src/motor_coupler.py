@@ -111,10 +111,10 @@ assert EAR_X[1] - SLIT_W / 2 >= 2 * CORNER_R, "the +x jaw is too thin for its ro
 assert CLAMP_Z - INSERT_POCKET_D / 2 >= SOCKET_D / 2 + 0.8 - 1e-9, "the pocket breaks into the socket"
 
 
-CUT_Z = math.sqrt((CPL_D / 2) ** 2 - EAR_X[1] ** 2)  # 7.68: where the ear's sides meet the cylinder
-                                                    # (user, 2026-11-10): the cut removes the ear and
-                                                    # a flat off the cylinder, nothing proud of it
-assert math.hypot(EAR_X[1], CUT_Z) <= _GROW_R + 1e-9, "the cut ear turns into the block wall"
+CUT_Z = math.sqrt(_GROW_R ** 2 - EAR_X[1] ** 2)    # 9.28: AS DEEP AS THE WALL ALLOWS (the ear's
+                                                    # corners on r _GROW_R): the 45 deg roof starts
+                                                    # there, so the deepest flat gives the LOWEST
+                                                    # clamp (user, 2026-11-10: set it for that)
 
 
 def _roof_y(z: float) -> float:
