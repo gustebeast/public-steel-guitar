@@ -2108,7 +2108,7 @@ def link_close_gaps(board, outline, max_mm=5.0, width=0.25, clr=0.2,
     segs += [((t.GetPosition().x, t.GetPosition().y),
               (t.GetPosition().x, t.GetPosition().y), _via_r(t), t.GetNetname(), None)
              for t in board.GetTracks() if t.GetClass() == "PCB_VIA"]
-    margin = pcbnew.FromMM(width / 2.0 + clr)
+    margin = margin0 = pcbnew.FromMM(width / 2.0 + clr)
     drills = [(t.GetPosition().x, t.GetPosition().y) for t in board.GetTracks()
               if t.GetClass() == "PCB_VIA"]
     # ⚠ A GRID OVER THE OBSTACLES, BECAUSE `clear` IS ASKED A MILLION TIMES. It used to
@@ -2138,7 +2138,12 @@ def link_close_gaps(board, outline, max_mm=5.0, width=0.25, clr=0.2,
     for _s in segs:
         _file_seg(_s)
 
-    def clear(x, y, net, layer=None):
+    def clear(x, y, net, layer=None, margin=margin):
+        # ⚠ `margin` IS AN ARGUMENT SO A VIA CAN ASK FOR ITS OWN (2026-11-09). The hop
+        # below tests a 0.6 mm via, which needs via/2 + clr = 0.5 mm, and its callback
+        # used to drop that and ask with the track's 0.325 -- a via site 0.17 mm too
+        # close to foreign copper could pass. The grid is filed at the track margin, so
+        # a wider ask also reads the neighbouring cells its extra reach can touch.
         # ⚠ THE BOARD EDGE, AGAIN. This is the THIRD copper-laying routine in this file
         # to be written without it and caught by DRC afterwards -- the stitcher, then
         # _local_nets, now this. The edge is not in any obstacle list because it is not
@@ -2150,15 +2155,24 @@ def link_close_gaps(board, outline, max_mm=5.0, width=0.25, clr=0.2,
         if not _inside(outline, int(x), int(y),
                        margin - pcbnew.FromMM(clr) + pcbnew.FromMM(0.3)):
             return False
-        cell = (int(x // _CELL), int(y // _CELL))
-        for left, top, right, bottom, onet in grid_p.get(cell, ()):
+        extra = margin - margin0
+        if extra > 0:
+            cells = [(ci, cj)
+                     for ci in range(int((x - extra) // _CELL), int((x + extra) // _CELL) + 1)
+                     for cj in range(int((y - extra) // _CELL), int((y + extra) // _CELL) + 1)]
+            near_p = [o for c in cells for o in grid_p.get(c, ())]
+            near_s = [o for c in cells for o in grid_s.get(c, ())]
+        else:
+            cell = (int(x // _CELL), int(y // _CELL))
+            near_p, near_s = grid_p.get(cell, ()), grid_s.get(cell, ())
+        for left, top, right, bottom, onet in near_p:
             if onet == net:
                 continue
             dx = max(left - x, 0, x - right)
             dy = max(top - y, 0, y - bottom)
             if math.hypot(dx, dy) < margin:
                 return False
-        for (ax, ay), (bx, by), hw, onet, olay in grid_s.get(cell, ()):
+        for (ax, ay), (bx, by), hw, onet, olay in near_s:
             if onet == net:
                 continue
             # ⚠ ONLY WHEN A LAYER IS ASKED FOR. Passing None keeps the old, layer-BLIND
@@ -2204,6 +2218,8 @@ def link_close_gaps(board, outline, max_mm=5.0, width=0.25, clr=0.2,
                 groups.setdefault(t.GetNetname(), []).append(_Terminal(end, t))
 
     made = 0
+    dead = {}                 # failed pair -> the `made` count it failed at
+    island = {}               # id(item) -> (made, item, its connected items)
     if True:
         by_net = {k: v for k, v in groups.items()}
         for net_key, group in by_net.items():
@@ -2219,12 +2235,29 @@ def link_close_gaps(board, outline, max_mm=5.0, width=0.25, clr=0.2,
                     if ra is rb:
                         continue          # the two ends of one track
                     joined = False
-                    for it in cc.GetConnectedItems(ra):
+                    # asked once per terminal, not once per pair: the answer only changes
+                    # when this routine lays copper, which bumps `made`
+                    hit = island.get(id(ra))
+                    if hit is None or hit[0] != made:
+                        hit = island[id(ra)] = (made, ra, list(cc.GetConnectedItems(ra)))
+                    for it in hit[2]:
                         if it == rb or it.GetPosition() == b.GetPosition():
                             joined = True
                             break
                     if joined:
                         continue          # already one island, by copper or by the plane
+                    # ⚠ A PAIR THAT FAILED ON THIS BOARD FAILS AGAIN (optical, 2026-11-09):
+                    # a stranded +3V3D piece has dozens of track ends, many at one junction,
+                    # and every one of them was paired with every terminal of the main net
+                    # within reach -- 830 hops, ~90 s, the same refusal each time. Both
+                    # searches read only the board's copper and the two terminals' position
+                    # and size, so a failure is remembered by exactly that, and forgotten
+                    # the moment this routine lays copper and the board is a different one.
+                    key = (net, a.GetPosition().x, a.GetPosition().y, a.GetSize().x,
+                           a.GetSize().y, b.GetPosition().x, b.GetPosition().y,
+                           b.GetSize().x, b.GetSize().y)
+                    if dead.get(key) == made:
+                        continue
                     p0 = (a.GetPosition().x, a.GetPosition().y)
                     p1 = (b.GetPosition().x, b.GetPosition().y)
                     # ⚠ NOT JUST A STRAIGHT LINE. The pads that need joining are often
@@ -2287,15 +2320,19 @@ def link_close_gaps(board, outline, max_mm=5.0, width=0.25, clr=0.2,
                             segs.append((q0, q1, pcbnew.FromMM(width) / 2.0, _net, layer))
                             _file_seg(segs[-1])
                         hop = _hop_via_inner(board, a, b, net, inner,
-                                             lambda x, y, nn, **kw: clear(x, y, nn),
+                                             lambda x, y, nn, **kw: clear(
+                                                 x, y, nn, margin=kw.get("margin", margin0)),
                                              _seg_ok, _emit,
                                              0.6, 0.3, clr, width, math, outline, drills)
                         if hop:
                             made += hop
                             board.BuildConnectivity()
                             cc = board.GetConnectivity()
+                        else:
+                            dead[key] = made
                         continue
                     if way is None:
+                        dead[key] = made
                         continue
                     # ⚠ THE LAYER THE TWO TERMINALS SHARE, NOT `a`'s. A through-hole pad
                     # answers F.Cu to GetLayer(), so a join from one to a B.Cu track end
@@ -2621,9 +2658,18 @@ def _hop_via_inner(board, pa, pb, netname, inner, clear, seg_clear, emit,
             return (x, y)
         return None
 
+    # ⚠ A FAILED HOP RESERVES NOTHING (optical, 2026-11-09). spot() files its via in
+    # `drills` the moment it finds a site, so that the second via keeps clear of the
+    # first -- and when the hop then failed, those two holes stayed filed for a via that
+    # was never placed. Every later hop on the board had to keep clear of drills that did
+    # not exist, and the outcome of a pair depended on how many pairs had failed before
+    # it. Taken back on every failing return, which also makes a hop a pure function of
+    # the board and its two terminals -- what lets link_close_gaps remember a failure.
+    n_drill = len(drills)
     va = spot(pa, (pb.GetPosition().x, pb.GetPosition().y))
     vb = spot(pb, (pa.GetPosition().x, pa.GetPosition().y))
     if va is None or vb is None:
+        del drills[n_drill:]
         if os.environ.get("HOP_DEBUG"):
             _f = pa if va is None else pb
             print("      HOP %s: no via site beside %s.%s"
@@ -2650,6 +2696,7 @@ def _hop_via_inner(board, pa, pb, netname, inner, clear, seg_clear, emit,
     if way is None:
         if os.environ.get("HOP_DEBUG"):
             print("      HOP %s: vias placed, no run between them" % netname)
+        del drills[n_drill:]
         return 0
     n = 0
     emit((pa.GetPosition().x, pa.GetPosition().y), va, pa, netname, pa.GetLayer())
