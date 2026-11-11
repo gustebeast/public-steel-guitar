@@ -11,6 +11,117 @@ Nothing here replaces the existing chain. The output of every step below is the 
 layout's gates, the router, close_last and verify exactly as a hand-placed one does, and
 any part can still be pinned by hand.
 
+## Writing intent for a new board (start here)
+
+One command runs a board end to end:
+
+    py -3.12 place_flow.py <dir> <intent.json> [--no-auto] [--soft-forbid] [--skip-finish]
+
+`<dir>` holds `<stem>.net`, `<stem>.board.json` (the notes: outline, cutouts, slots, pairs,
+layers, `post_route_refs`) and `<stem>.parts.json` (`place_geom.py` on any laid-out copy of
+the board). Set PCBFLOW_FOOTPRINT_DIRS / PCBFLOW_PROJECT as for layout.py.
+
+The stages:
+1. The intent. Unless `--no-auto`, auto_decaps, auto_singles and auto_floorplan are added
+   for any set the file does not already carry.
+2. place_init, then place_cells.
+3. layout.py, as the legality gate. A refusal stops the run.
+4. score.py --intent, then finish.py (router + finish chain), then quality.py --brief.
+5. `flow/report.md` and `report.json`: the route score; FLOOR and FORBID lines; finish
+   unconnected / violations; quality FAIL / OPEN; and provenance, i.e. for every ref the
+   rule or stage that set it (`flow/provenance.json`).
+
+`--skip-finish` stops after the score.
+
+**The intent file** is a JSON list of rules (vocabulary in place_intent.py's docstring), each
+with a `why` and a `src`. Write it from a small generator script, so it can derive positions
+from the CAD. Two worked examples are in `examples/`: `intent_output_panel.py` and
+`intent_optical.py`. Each reads `<stem>.parts.json` and `<stem>.board.json` beside itself
+and writes the intent JSON there. The optical one takes `AUTO_FLOOR=1` (auto_floorplan
+instead of hand regions) and `CELLS=1` (buck and PHY as free cells), which is the
+combination the proofs ran. Write it in this order:
+
+1. **What the instrument fixes: `fixed` / `panel` / `hole` / `keepout` / `mate` /
+   `access`.** Optical fixes its emitters, photodiodes and ballast resistors to the string
+   fan, J1 and J2 to the -Y face, and the converter anchors to the comb geometry (op ~578,
+   ~2387, ~2100). output_panel's connectors are `panel` rules: the mouth is at the
+   endplate face, `at` sets the position along the edge. A fresh board is mostly these.
+2. **The designed cells: `group`.** A cell laid out around its pins (a TIA, a converter, a
+   buck, a PHY) is the design; one rule per instance, members as offsets in the anchor's
+   frame.
+   * On a fixed anchor (optical's string and converter cells) the cell is pinned.
+   * On a free anchor (optical's buck U13 and PHY U7) place_init places it whole and
+     place_cells picks its turn by routing.
+   * Do not dissolve a cell into free parts: the legaliser scatters them.
+3. **The floorplan: `region` + `in_region`, BEFORE anything electrical.**
+   * Every free part in the board's section (optical: `compute`, south of the sensing
+     strip).
+   * **Reserve the power corner by the inlet as its own region, holding the buck cell or
+     buck parts.**
+   * ⚠ LESSON (optical, 2026-11-11): with only auto_floorplan's zones, the buck lost its
+     inlet corner to the MID divider and analog LDO. Each was placed for its own nets
+     first, and when the PHY turn forced a zone repair, the only spot clear of every zone
+     was beside the USB chain: 3 soft breaches, rules met, a worse board. Zones say what
+     to keep APART; only a region says where something GOES. On output_panel, the
+     `power24` region holding U5, L1, D6, Q2, J7, U16 and D10 is the same rule.
+4. **The electrical rules the defaults do not know:**
+   * `tight` for loops a datasheet wants small (the buck's SW/BOOT 10 mm and FB 6 mm, a
+     crystal's legs 6 mm, a reference divider).
+   * `near` for parts that belong at a part or pin (an ESD clamp at its connector, CC
+     resistors at their CC pins, a PHY near its socket). On an IC, `near` is a spring that
+     stiffens until it holds.
+   * `decap` where auto_decaps' pin choice is wrong (optical's C130 at U10's VBUS pin).
+   * `current` for power nets, which sets the widths.
+   * Declared `diff_pairs` with a `chain` in the notes: a pass-through part in a chain is
+     turned to face it.
+5. **The defaults, through place_flow:**
+   * auto_decaps: a decap at each IC supply pin.
+   * auto_singles: test pads at their driver pin.
+   * auto_floorplan: switch nodes 10 mm off sensitive parts (hard, `forbid`); USB/relay
+     edges off analog parts (soft).
+   * Review what they propose (`place_intent.py <stem> <intent>` prints every rule's slack
+     on any placement). Pass `skip`, or your own regexes, where a default is wrong.
+6. **No `rot` rules, unless a rotation is a mechanical fact** (a panel connector). Turns
+   are pin-facing decisions that place_init, `_pair_turns` and place_cells make better than
+   a typed angle. The hand board's angles went stale every time a neighbour moved.
+
+**Proof (2026-11-11).** Both boards were run through `place_flow.py` with the inputs of
+the step-by-step runs. The route scores match exactly:
+* output_panel (`--no-auto`, op_intent_floor): 0 open, 0 pairs, 0.0 mm, 278 vias,
+  2205.2 mm, floor 5. Same as vF3.
+* optical (cells intent): 0 open, 0 pairs, 0.0 mm, 197 vias, 2354.9 mm, floor 3. Same as
+  the hard-forbid place_cells run.
+
+finish.py and quality.py had not been run on these placements before. The stripped hand
+boards went through the same finish chain for the baseline:
+
+| finish + quality | unconnected | violations | quality FAIL / OPEN |
+|---|---|---|---|
+| optical hand, stripped | 20 | 78 | 22 / 6 |
+| optical auto (flow) | 22 | 61 | 9 / 6 |
+| output_panel hand, stripped | 1 | 7 | 11 / 5 |
+| output_panel auto (flow) | 1 | 6 | 6 / 5 |
+
+Neither stripped board finishes clean, hand or auto:
+* Optical's DRC is mostly its post-route machinery. The Rs*/Cs* SHDNZ parts and TP6-12 are
+  placed after routing at sites searched against one hand route (PLACEMENT.md (p)
+  survey), plus the 5 SHDNZ post_route_nets.
+* 20 of the "violations" are the declared emitter/photodiode courtyard overlaps.
+* The shipped boards close with hand repair copper, which equal terms strips.
+
+So a fresh board's post-route parts need the same treatment as its placement: sites chosen
+against the route that exists, not carried from another one. That is the next gap before
+the re-layout.
+
+**Reading the report:**
+* `open` / `pairs` first.
+* `floor` and `FORBID` next. A FORBID NOT MET means the floorplan does not fit as written:
+  move a fixed part, shrink the zone, or give the cell room. `--strict` on place_init and
+  the default in place_cells refuse it.
+* Then finish and quality.
+* The provenance count says how much of the board the rules decided (`fixed by rule`,
+  `group (cell)`, `decap at pin`, `near its target`) and how much the net graph did.
+
 ## What exists, and what it taught
 
 * **Generators** (`elec/<board>.py`) write `BOARD_NOTES["placements"] = {ref: (x, y, rot)}`
