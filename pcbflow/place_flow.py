@@ -1,0 +1,230 @@
+"""place_flow.py: a fresh board, end to end, from its intent (PLACEMENT.md, "Writing intent").
+
+    py -3.12 place_flow.py <dir> <intent.json> [--no-auto] [--soft-forbid] [--skip-finish]
+
+<dir> holds ONE board: <stem>.net, <stem>.board.json (the notes -- outline, cutouts, pairs,
+layers; any placements in it are kept only for parts nothing else places, i.e. the
+post_route_refs) and <stem>.parts.json (place_geom.py). The project's footprints come from
+PCBFLOW_FOOTPRINT_DIRS / PCBFLOW_PROJECT, as for layout.py.
+
+  1. intent    the rules JSON, plus place_intent's defaults -- auto_decaps, auto_singles,
+               auto_floorplan -- for any the file does not already carry (by their `src`);
+               --no-auto takes the file as it is. Written to flow/intent.json.
+  2. place     place_init (stages 1-6, forbid repair), then place_cells (each free cell's
+               turn chosen by routing it; forbid zones hard unless --soft-forbid).
+  3. gates     layout.py on the placed board -- courtyards, stitching, the legality gate.
+               A refusal stops the flow here.
+  4. route     the router's score of the placed board (score.py --intent: open, pairs,
+               uncoupled, vias, length, floor), then finish.py (route + the finish chain:
+               DRC-driven retry, close_last) and quality.py --brief.
+               --skip-finish stops after the score (minutes instead of tens of minutes).
+  5. report    flow/report.md and flow/report.json: score, floor and FORBID lines, finish
+               DRC, quality FAIL / OPEN, and where every coordinate came from
+               (flow/provenance.json: ref -> the rule or stage that set it).
+
+The board.json in <dir> is rewritten with the flow's placements (the input is kept as
+flow/input.board.json). Every stage's output is in <dir>/flow/.
+"""
+from __future__ import annotations
+
+import argparse
+import collections
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import time
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import place_intent as pi  # noqa: E402
+from place_refine import KICAD_PY, _stem  # noqa: E402
+
+AUTO = {"auto_decaps (netlist)": "decaps", "auto_singles (netlist)": "singles",
+        "auto_floorplan (netlist)": "floorplan"}
+
+
+def _run(cmd, log, cwd=HERE):
+    t = time.time()
+    p = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd, env=dict(os.environ, PYTHONIOENCODING="utf-8"))
+    out = (p.stdout or "") + (p.stderr or "")
+    log.write("$ %s\n%s\n[rc %d, %.0f s]\n\n" % (" ".join(cmd), out, p.returncode, time.time() - t))
+    log.flush()
+    return p.returncode, out, time.time() - t
+
+
+def _intent(rules, parts, notes, net_path, auto):
+    have = {r.get("src") for r in rules}
+    added = []
+    if auto:
+        if "auto_decaps (netlist)" not in have:
+            new = pi.auto_decaps(parts, notes, pi.read_values(net_path))
+            for c in new:
+                c.pop("_now", None)
+            rules = rules + new
+            added.append("auto_decaps %d" % len(new))
+        if "auto_singles (netlist)" not in have:
+            new = pi.auto_singles(parts)
+            rules = rules + new
+            added.append("auto_singles %d" % len(new))
+        if "auto_floorplan (netlist)" not in have:
+            new = pi.auto_floorplan(parts)
+            rules = rules + new
+            added.append("auto_floorplan %d" % len(new))
+    return rules, added
+
+
+def _klass(why):
+    w = why or ""
+    for k, pat in (("place_cells", r"^place_cells"), ("group (cell)", r"group"), ("fixed by rule", r"rule \d+ (fixed|pin)"),
+                   ("panel", r"rule \d+ panel"), ("decap at pin", r"^decap"), ("near its target", r"^near"),
+                   ("net graph", r"net graph"), ("carried from input", r"^carried"), ("keep", r"^keep")):
+        if re.search(pat, w):
+            return k
+    return "other"
+
+
+def flow(d, intent_path, auto=True, soft=False, skip_finish=False):
+    d = os.path.abspath(d)
+    stem = _stem(d)
+    base = os.path.basename(stem)
+    fd = os.path.join(d, "flow")
+    os.makedirs(fd, exist_ok=True)
+    log = open(os.path.join(fd, "flow.log"), "w", encoding="utf-8")
+    T = {}
+    notes = json.load(open(stem + ".board.json", encoding="utf-8"))
+    if not os.path.exists(os.path.join(fd, "input.board.json")):
+        shutil.copy(stem + ".board.json", os.path.join(fd, "input.board.json"))
+    notes = json.load(open(os.path.join(fd, "input.board.json"), encoding="utf-8"))
+    parts_path = stem + ".parts.json"
+    parts = json.load(open(parts_path, encoding="utf-8"))["parts"]
+
+    # 1. intent
+    rules, added = _intent(json.load(open(intent_path, encoding="utf-8")), parts, notes, stem + ".net", auto)
+    ip = os.path.join(fd, "intent.json")
+    json.dump(rules, open(ip, "w"), indent=1)
+    say = lambda s: (print("place_flow: " + s), log.write("## " + s + "\n"), log.flush())
+    say("intent: %d rules%s" % (len(rules), (" (+ " + ", ".join(added) + ")") if added else ""))
+
+    # 2. place_init, place_cells
+    init = os.path.join(fd, "init.json")
+    rc, out, T["place_init"] = _run([sys.executable, "place_init.py", stem, ip, "--out", init], log)
+    if rc not in (0, 3):
+        raise SystemExit("place_flow: place_init failed (see flow/flow.log)\n" + out[-800:])
+    init_log = [line for line in out.splitlines() if line.startswith("place_init:")]
+    pl = json.load(open(init))
+    why = json.load(open(init[:-5] + ".why.json"))
+    for r_, v in notes.get("placements", {}).items():         # what nothing places (post-route parts)
+        if r_ not in pl:
+            pl[r_] = v
+            why[r_] = "carried from input (not in parts.json: %s)" % (
+                "post_route_refs" if r_ in notes.get("post_route_refs", ()) else "no geometry")
+    json.dump(dict(notes, placements=pl), open(stem + ".board.json", "w"), indent=0)
+    cmd = [sys.executable, "place_cells.py", d, ip, "--parts", parts_path] + (["--soft-forbid"] if soft else [])
+    # place_cells keeps its own work in <dir>/cells; a stale parent route there would be a
+    # different placement's
+    shutil.rmtree(os.path.join(d, "cells"), ignore_errors=True)
+    rc, out, T["place_cells"] = _run(cmd, log)
+    if rc != 0:
+        raise SystemExit("place_flow: place_cells failed (see flow/flow.log)\n" + out[-800:])
+    cells_log = [line for line in out.splitlines() if line.startswith("place_cells:")]
+    pc = json.load(open(stem + ".cells.json"))
+    for r_ in pc:
+        if pl.get(r_) != pc[r_]:
+            why[r_] = "place_cells: cell turned / repaired by route (%s)" % why.get(r_, "")
+    pl = pc
+    json.dump(dict(notes, placements=pl), open(stem + ".board.json", "w"), indent=0)
+    json.dump(why, open(os.path.join(fd, "provenance.json"), "w"), indent=0)
+
+    # 3. layout's gates
+    rc, out, T["layout"] = _run([KICAD_PY, os.path.join(HERE, "layout.py"), stem], log)
+    gates = [line.strip() for line in out.splitlines()
+             if re.search(r"refused|overlap|no room|stitch:|could only", line)][:12]
+    if rc != 0:
+        say("layout REFUSED the placement -- the flow stops at the gates")
+        _report(fd, base, rules, init_log, cells_log, gates, None, None, None, why, T, refused=out[-1500:])
+        return 2
+
+    # 4. score, finish, quality
+    rc, out, T["score"] = _run([sys.executable, "-m", "router.score", stem, "--save", "auto", "--intent", ip,
+                                "--parts", parts_path], log)
+    score = None
+    for line in reversed(out.splitlines()):
+        try:
+            score = json.loads(line)
+            break
+        except ValueError:
+            continue
+    fin = qual = None
+    if not skip_finish:
+        rc, out, T["finish"] = _run([KICAD_PY, os.path.join(HERE, "finish.py"), stem], log)
+        try:
+            dr = json.load(open(stem + ".finish.drc.json", encoding="utf-8"))
+            fin = {"unconnected": len(dr.get("unconnected_items", [])), "violations": len(dr.get("violations", [])),
+                   "rc": rc}
+        except (OSError, ValueError):
+            fin = {"error": out[-600:], "rc": rc}
+        rc, out, T["quality"] = _run([KICAD_PY, os.path.join(HERE, "quality.py"), "--brief", stem], log)
+        try:
+            q = json.load(open(stem + ".quality.json", encoding="utf-8"))
+            qual = {"fail": q.get("fail"), "open": q.get("open"), "waived": q.get("waived"),
+                    "failed": [r.get("id") or r.get("rule") for r in q.get("results", [])
+                               if str(r.get("status", "")).upper() == "FAIL"][:20]}
+        except (OSError, ValueError):
+            qual = {"error": out[-600:]}
+    _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T)
+    return 0
+
+
+def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T, refused=None):
+    forbid = [l_ for l_ in init_log + cells_log if "FORBID" in l_]
+    prov = collections.Counter(_klass(w) for w in why.values())
+    S = {k: (score or {}).get(k) for k in ("open", "pairs", "islands", "uncoupled", "vias", "length_mm", "floor",
+                                            "failed", "faulted", "floor_breaches", "error")}
+    rep = {"board": base, "rules": len(rules), "score": S, "forbid": forbid, "gates": gates, "finish": fin,
+           "quality": qual, "provenance": dict(prov), "seconds": {k: round(v) for k, v in T.items()},
+           "refused": refused}
+    json.dump(rep, open(os.path.join(fd, "report.json"), "w"), indent=1)
+    L = ["# place_flow: %s" % base, ""]
+    if refused:
+        L += ["**layout REFUSED the placement.**", "", "```", refused.strip()[-1200:], "```", ""]
+    if score:
+        L += ["| route score | open | pairs | islands | uncoupled | vias | length | floor |",
+              "|---|---|---|---|---|---|---|---|",
+              "| | %s | %s | %s | %s | %s | %s | %s |" % tuple(S[k] for k in ("open", "pairs", "islands", "uncoupled",
+                                                                             "vias", "length_mm", "floor")), ""]
+        if S.get("failed"):
+            L.append("failed nets: " + " ".join(S["failed"]))
+        for b in S.get("floor_breaches") or ():
+            L.append("FLOOR %s %s" % (b[1], b[2]))
+    L += ["FORBID: " + (" / ".join(forbid) if forbid else "none")]
+    if fin:
+        L += ["", "finish: %s" % (fin.get("error") or "%d unconnected, %d violation(s)" % (fin["unconnected"],
+                                                                                         fin["violations"]))]
+    if qual:
+        L += ["quality: %s" % (qual.get("error") or "%s FAIL, %s OPEN%s" % (
+            qual["fail"], qual["open"], (" (" + " ".join(map(str, qual["failed"])) + ")") if qual.get("failed") else ""))]
+    if gates:
+        L += ["", "layout notes:"] + ["  " + g for g in gates]
+    L += ["", "placement log:"] + ["  " + l_ for l_ in init_log + cells_log if "fixed " not in l_]
+    L += ["", "provenance (flow/provenance.json, per ref): " + ", ".join("%s %d" % kv for kv in prov.most_common()),
+          "", "seconds: " + ", ".join("%s %d" % (k, v) for k, v in T.items())]
+    open(os.path.join(fd, "report.md"), "w", encoding="utf-8").write("\n".join(L) + "\n")
+    print("\n".join(L))
+
+
+def main(argv):
+    ap = argparse.ArgumentParser()
+    ap.add_argument("dir")
+    ap.add_argument("intent")
+    ap.add_argument("--no-auto", action="store_true")
+    ap.add_argument("--soft-forbid", action="store_true")
+    ap.add_argument("--skip-finish", action="store_true")
+    a = ap.parse_args(argv)
+    return flow(a.dir, os.path.abspath(a.intent), not a.no_auto, a.soft_forbid, a.skip_finish)
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
