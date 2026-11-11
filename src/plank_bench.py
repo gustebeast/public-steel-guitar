@@ -411,11 +411,10 @@ def _xz_prism(pts, y0, y1):
 def station_x() -> cq.Workplane:
     """The X rig's frame, built +Z (base down): every bore along X is a teardrop."""
     zb = Z_PLANK_X + BASE_T
-    # base: the U -- the full footprint less the room's floor
-    # base: strips under the walls, a pad under the rail wall, and a tab out to each screw
-    s = _box(XR_X0, XR_X1, XR_Y0, XR_Y0 + XR_WALL, Z_PLANK_X, zb)
-    s = s.union(_box(XR_X0, XR_X1, XR_Y1 - XR_WALL, XR_Y1, Z_PLANK_X, zb))
-    s = s.union(_box(XR_XR, XR_X1, XR_Y0, XR_Y1, Z_PLANK_X, zb))
+    # base: a SOLID FLOOR the whole footprint (user, 2026-11-10: "like the other blocks"; with the
+    # plank up 51 the room's floor is 21.45 under the axis, clear of the nut and yoke turning),
+    # and a tab out to each screw
+    s = _box(XR_X0, XR_X1, XR_Y0, XR_Y1, Z_PLANK_X, zb)
     for x in XR_SCREWS_X:
         s = s.union(_box(x - XR_TAB, x + XR_TAB, Y0_AX - FLANGE, XR_Y0 + 0.01, Z_PLANK_X, zb))
     fx, fy = XR_SCREWS_X[0], XR_SCREWS_Y[1]                                     # the foot's +Y hole's pad

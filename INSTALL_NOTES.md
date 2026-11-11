@@ -1633,6 +1633,8 @@ X rig still sat at the vertical-screw rig's height. Now:
   the yoke. Screw it down (four wood screws, +Y face on the plank's edge) with the axle's centre
   607.0 -X of the yoke's roof at mid travel (the scale span, as before). Slide the shaft through
   both cheeks; the string runs over it between them and on down -X to the tuner.
+- **Station X floor:** its base is now solid under the whole room, 21.45 under the axis, clear
+  of the nut and its M3s at any angle (they sweep 11.0).
 - **Spring check:** McMaster 9654K634 reads 4 lbf initial tension, 7.9 lbf/in, 46 lbf max at
   10.3 in, which is what the model uses. Two springs pull 69 N backed off fully (78 N with the
   in-line motor's limit) and 150 N fully in.
