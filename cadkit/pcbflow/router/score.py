@@ -14,6 +14,13 @@ One JSON line per board, keys in order of how much they matter:
 `key` is the tuple to sort placements by: smaller is better.
 
     --save auto            keep each board's route as <stem>.route.pkl (a parent)
+    --intent <rules.json>  also check the placement's FLOORPLAN rules (apart, thermal,
+                           in_region -- place_intent.auto_floorplan's noise rules among them):
+                           `floor` = how many are broken, `floor_breaches` the worst ten,
+                           and a FLOOR line on stderr. The router cannot see noise: a board
+                           with the buck beside the PHY routes fine (optical, 2026-11-11), so
+                           the breach is printed beside the route, never folded into `key`.
+    --parts <parts.json>   place_geom's geometry for --intent (default <stem>.parts.json)
     --parent <route.pkl>   route each board as a CHANGE of that parent (rescore.py): nets
                            whose pads did not move and whose copper is still legal are kept;
                            `delta` says how many. contention is not comparable to a full route.
@@ -123,9 +130,30 @@ def _one_proc(stem, budget_s, parent=None, save=None):
     return dict(res or {"error": "no output"}, stem=stem)
 
 
+def _floor(r, stem, intent, parts_path):
+    """r with the floorplan rules' breaches beside the route (see --intent)."""
+    if not intent:
+        return r
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    import place_intent as pi
+    rules = json.load(open(intent, encoding="utf-8"))
+    br = sorted(pi.floor_breaches(stem, rules, parts_path=parts_path))
+    out = {}
+    for k, v in r.items():
+        out[k] = v
+        if k == "islands":
+            out["floor"] = len(br)
+    out.setdefault("floor", len(br))
+    out["floor_breaches"] = [[round(s, 2), subj, det] for s, subj, det, _ in br[:10]]
+    if br:
+        print("FLOOR %s: %d floorplan rule(s) broken, worst %s %s (%s)"
+              % (os.path.basename(stem), len(br), br[0][1], br[0][2], br[0][3][:60]), file=sys.stderr)
+    return out
+
+
 def main(argv):
     jobs, budget, stems, one = max(1, (os.cpu_count() or 4) // 4), 900.0, [], False
-    parent = save = None
+    parent = save = intent = parts_path = None
     i = 0
     while i < len(argv):
         a = argv[i]
@@ -137,6 +165,10 @@ def main(argv):
             parent = os.path.abspath(argv[i + 1]); i += 2; continue
         if a == "--save":
             save = argv[i + 1]; i += 2; continue
+        if a == "--intent":
+            intent = os.path.abspath(argv[i + 1]); i += 2; continue
+        if a == "--parts":
+            parts_path = os.path.abspath(argv[i + 1]); i += 2; continue
         if a == "--one":
             one = True; i += 1; continue
         stems.append(os.path.abspath(a[:-len(".kicad_pcb")] if a.endswith(".kicad_pcb") else a))
@@ -144,12 +176,13 @@ def main(argv):
     if not stems:
         raise SystemExit(__doc__)
     if one:
-        print(json.dumps(score(stems[0], budget, parent, save)))
+        print(json.dumps(_floor(score(stems[0], budget, parent, save), stems[0], intent, parts_path)))
         return 0
     with ThreadPoolExecutor(jobs) as ex:
         # --save names a file per board: <stem>.route.pkl when given as "auto"
         res = list(ex.map(lambda s: _one_proc(s, budget, parent,
                                               (s + ".route.pkl") if save == "auto" else save), stems))
+    res = [_floor(r, s, intent, parts_path) for r, s in zip(res, stems)]
     for r in sorted(res, key=lambda r: r.get("key") or [math.inf]):
         print(json.dumps(r))
     return 0

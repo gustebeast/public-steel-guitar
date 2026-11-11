@@ -28,7 +28,7 @@ import os
 import sys
 
 import numpy as np
-from scipy.ndimage import binary_dilation
+from scipy.ndimage import binary_dilation, distance_transform_edt
 from scipy.signal import fftconvolve
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -140,6 +140,19 @@ def place(parts, notes, rules, keep=()):
             a = r.get("at", 0.0) - mid
             pl[ref] = [ux * s + along[0] * a, uy * s + along[1] * a, rot]
             why[ref] = "rule %d panel %s [%s]" % (i_r, r["edge"], r.get("src", ""))
+    # a rigid cell follows its anchor (the anchor fixed above; a free-anchor cell -- moved
+    # whole by the legaliser -- is not built yet: say so rather than scatter the cell)
+    for i_r, r in enumerate(rules):
+        if r["kind"] != "group":
+            continue
+        if r["anchor"] not in pl:
+            raise SystemExit("place_init: group rule %d: anchor %s is not fixed (free-anchor cells "
+                             "are not supported yet)" % (i_r, r["anchor"]))
+        ax, ay, ar = pl[r["anchor"]]
+        for ref, (dx, dy, dr) in r["members"].items():
+            o = pi._rot([[dx, dy]], ar)[0]
+            pl[ref] = [ax + float(o[0]), ay + float(o[1]), (ar + dr) % 360.0]
+            why[ref] = "rule %d group: %s's cell [%s]" % (i_r, r["anchor"], r.get("src", ""))
     fixed = set(pl)
     log.append("fixed %d: %s" % (len(fixed), " ".join(sorted(fixed))))
 
@@ -202,6 +215,7 @@ def place(parts, notes, rules, keep=()):
                 if pins[u][0] != pins[v][0]:
                     spring(pins[u][0], pins[u][1], pins[v][0], pins[v][1], w)
     regions = {r["name"]: np.asarray(r["poly"], float) for r in rules if r["kind"] == "region"}
+    near_springs = []
     for r in rules:
         if r["kind"] == "in_region":
             c = regions[r["region"]].mean(axis=0)
@@ -215,12 +229,46 @@ def place(parts, notes, rules, keep=()):
             rs = r["refs"]
             for a_, b_ in zip(rs, rs[1:]):
                 spring(a_, np.zeros(2), b_, np.zeros(2), 2.0)
+        elif r["kind"] == "near" and r.get("ref") in idx and len(parts[r["ref"]]["pads"]) > IC_PADS:
+            # an IC near a part (optical's PHY near the socket): a spring here, not a
+            # satellite drop -- see the satellite note below
+            t = r["target"]
+            if "." in t:
+                tr, num = t.split(".", 1)
+                k = [q["num"] for q in parts[tr]["pads"]].index(num)
+                ot = _pad_off(parts[tr], pl[tr][2] if tr in pl else rot0(tr))[k]
+            else:
+                tr, ot = t, np.zeros(2)
+            near_springs.append([r["ref"], tr, ot, 2.0 * float(r.get("weight", 1.0)), float(r["max_mm"])])
     poly = np.asarray(notes.get("outline_poly") or pi._rect(notes["outline_mm"]), float)
     cen = poly.mean(axis=0)
     A[np.diag_indices(n)] += 1e-3                    # an unconnected part drifts to the middle
     bx += 1e-3 * cen[0]
     by += 1e-3 * cen[1]
-    gx, gy = np.linalg.solve(A, bx), np.linalg.solve(A, by)
+    # ⚠ A BROKEN `near` SPRING IS STIFFENED AND THE SYSTEM RE-SOLVED (optical, 2026-11-11):
+    # the PHY's spring to the USB socket (weight 2) lost to twelve ULPI springs to the MCU
+    # and U7 landed 20 mm from J1 against a 15 mm rule, the USB pair 4.4 mm uncoupled. A
+    # fixed weight is a guess per board; tripling only the springs whose rule is still
+    # broken (centre distance less both half-sizes, up to 3 rounds) asks the rule itself.
+    A0, bx0, by0 = A.copy(), bx.copy(), by.copy()
+    half = lambda r_: 0.5 * float(np.ptp(np.asarray(parts[r_]["crtyd"] or [[0, 0], [0, 0]]), axis=0).min())
+    for _round in range(4):
+        A[:], bx[:], by[:] = A0, bx0, by0
+        for ref_, tr, ot, w, _m in near_springs:
+            spring(ref_, np.zeros(2), tr, ot, w)
+        gx, gy = np.linalg.solve(A, bx), np.linalg.solve(A, by)
+        hard = False
+        for sp in near_springs:
+            ref_, tr, ot, w, m_ = sp
+            pa = np.array([gx[idx[ref_]], gy[idx[ref_]]])
+            pb = (np.array([gx[idx[tr]], gy[idx[tr]]]) if tr in idx else np.asarray(pl[tr][:2])) + ot
+            if np.hypot(*(pa - pb)) - half(ref_) - (0.0 if np.any(ot) else half(tr)) > m_:
+                sp[3] = w * 3.0
+                hard = True
+        if not hard:
+            break
+    if near_springs:
+        log.append("near springs: %s" % " ".join("%s->%s x%g" % (a_, b_, w_) for a_, b_, _, w_, _ in near_springs))
     target = {r: np.array([gx[idx[r]], gy[idx[r]]]) for r in free}
 
     # ---- 3. turn
@@ -263,19 +311,20 @@ def place(parts, notes, rules, keep=()):
     for r in rules:
         if r["kind"] == "decap":
             decaps.setdefault(r["pin"].split(".")[0], []).append(r)
-        elif r["kind"] == "near" and r.get("ref") in idx:
+        elif r["kind"] == "near" and r.get("ref") in idx and len(parts[r["ref"]]["pads"]) <= IC_PADS:
+            # ⚠ ONLY SMALL PARTS ARE SATELLITES (optical, 2026-11-11). U7 (the PHY, `near`
+            # J1) was a satellite: dropped at J1's centre after J1, and -- not being in the
+            # drop order -- its own ten decaps were never seated at its pins (C121 26 mm off
+            # U7.6). An IC's `near` is a spring in the quadratic stage instead, and seating
+            # below recurses, so a satellite's own satellites follow it.
             decaps.setdefault(r["target"].split(".")[0], []).append(r)
     area = {ref: float(np.prod(np.ptp(np.asarray(parts[ref]["crtyd"] or [[0, 0], [1, 1]]), axis=0))) for ref in free}
     sat = {r_.get("cap") or r_.get("ref") for v in decaps.values() for r_ in v}
     order = sorted((r for r in free if r not in sat), key=lambda r: -area[r])
     placed_sat = set()
     miss = []
-    for ref in sorted(fixed) + order:
-        if ref not in fixed:
-            if not _drop(G, parts, ref, target[ref], rots(ref, rot[ref]), pl, inreg.get(ref)):
-                miss.append(ref)
-                continue
-            why[ref] = "net graph (quadratic), nearest free spot" + (" in its region" if ref in inreg else "")
+    def seat(ref):
+        """Seat ref's satellites at their pins; then each satellite's own (recursive)."""
         for r in sorted(decaps.get(ref, ()), key=lambda r: r.get("max_mm", 9)):
             c = r.get("cap") or r.get("ref")
             if c in placed_sat or c in fixed or c not in idx:
@@ -290,9 +339,30 @@ def place(parts, notes, rules, keep=()):
                 t = P.pad(*r["target"].split(".", 1))
             else:
                 t = np.asarray(pl[ref][:2])
-            if _drop(G, parts, c, t, rots(c, rot[c]), pl, inreg.get(c)):
+            # a satellite keeps clear of its noise zones too, when there is room (output_panel
+            # 2026-11-11: Y1, the MCU crystal, seated 0.67 mm from the buck inductor)
+            fb, f0 = _apart_forbid(G, parts, pl, c, rules), inreg.get(c)
+            if (fb is not None and _drop_sat(G, parts, c, t, rots(c, rot[c]), pl,
+                                             fb if f0 is None else (fb | f0), ref, r, near_mm=r.get("max_mm")))                     or _drop_sat(G, parts, c, t, rots(c, rot[c]), pl, f0, ref, r):
                 placed_sat.add(c)
                 why[c] = "%s at %s [%s]" % (r["kind"], r.get("pin") or r.get("target"), r.get("src", ""))
+                seat(c)
+
+    for ref in sorted(fixed) + order:
+        if ref not in fixed:
+            fb = _apart_forbid(G, parts, pl, ref, rules)
+            f0 = inreg.get(ref)
+            tail = ""
+            if fb is not None and _drop(G, parts, ref, target[ref], rots(ref, rot[ref]), pl,
+                                        fb if f0 is None else (fb | f0)):
+                tail = ", clear of its apart/thermal rules"
+            elif not _drop(G, parts, ref, target[ref], rots(ref, rot[ref]), pl, f0):
+                miss.append(ref)
+                continue
+            elif fb is not None:
+                tail = ", NO room clear of its apart/thermal rules"
+            why[ref] = "net graph (quadratic), nearest free spot" + (" in its region" if ref in inreg else "") + tail
+        seat(ref)
     for c in sorted(sat - placed_sat - fixed):
         if c in idx:
             if _drop(G, parts, c, target[c], rots(c, rot[c]), pl, inreg.get(c)):
@@ -312,6 +382,10 @@ def place(parts, notes, rules, keep=()):
     log.append("local pass: %d parts moved, small-net wirelength %.0f -> %.0f mm" % (moved, gain[0], gain[1]))
     log.append("placed %d free parts (%d satellites at their pins), %d with no room: %s"
                % (len(free) - len(miss), len(placed_sat), len(miss), " ".join(miss)))
+    # the grid is counts: a part lifted twice leaves a negative cell that reads as free
+    if G.occ.min() < 0 or G.occ_p.min() < 0:
+        raise SystemExit("place_init: occupancy grid went negative (a part was unstamped twice) -- "
+                         "the placement may overlap; this is a place_init bug")
     return pl, log, why
 
 
@@ -430,7 +504,11 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
             # SW node stayed 42 mm because U5 and L1 each carry caps whose rules a lone move
             # would break; lifted as a group -- the part, then each cap re-seated at its pin
             # -- the move is judged on the whole group's nets and rules.
-            group = [ref] + [c for c, _ in (sats or {}).get(ref, ()) if c in pl and c not in fixed_local]
+            # ⚠ ONCE EACH (optical, 2026-11-11): C130 had two rules on U10 (auto_decaps' and the
+            # intent's own), the group listed it twice, it was unstamped twice, and the grid's
+            # negative count left a hole R33 was dropped into -- inside U10's courtyard.
+            group = list(dict.fromkeys([ref] + [c for c, _ in (sats or {}).get(ref, ())
+                                                if c in pl and c not in fixed_local]))
             gnets = set()
             for g in group:
                 gnets |= {nm for nm, _ in pads[g]} & scope
@@ -444,15 +522,22 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
             # first turn that fitted was taken, and two-pin nets the hand board routes with
             # no via (BOOT, FB, DAC_FILT, SW_GATE) took two -- a part facing the wrong way.
             best_t = None
+            # ⚠ A ZONE IS NOT FOR TRADING (output_panel, 2026-11-11): the pass moved L1 28 mm
+            # and paid a 9.3 mm breach of the crystal's zone (93 in the penalty) for 2100 of
+            # other soft-rule gains -- L1 ended 0.67 mm from Y1. Moves keep forbid zones.
+            fz = _apart_forbid(G, parts, pl, ref, rules)
+            fr = inreg.get(ref) if fz is None else (fz if inreg.get(ref) is None else fz | inreg.get(ref))
             for rr in rots(ref, a):
-                ok = _drop(G, parts, ref, t, [rr], pl, inreg.get(ref))
+                ok = _drop(G, parts, ref, t, [rr], pl, fr)
                 placed_g = [ref] if ok else []
                 if ok:
                     for c, r in (sats or {}).get(ref, ()):
-                        if c not in group:
+                        if c not in group or c in placed_g:
                             continue
                         P = pi.Placed(parts, pl)
-                        if _drop(G, parts, c, _seat(r, P, pl, ref), rots(c, olds[c][2]), pl, inreg.get(c)):
+                        fc = _apart_forbid(G, parts, pl, c, rules)
+                        fc = inreg.get(c) if fc is None else (fc if inreg.get(c) is None else fc | inreg.get(c))
+                        if _drop_sat(G, parts, c, _seat(r, P, pl, ref), rots(c, olds[c][2]), pl, fc, ref, r):
                             placed_g.append(c)
                         else:
                             ok = False
@@ -536,10 +621,70 @@ def _collide(sub, m, ai, aj):
     return np.where(okr, hit[uu, vv], 1.0)
 
 
-def _drop(G, parts, ref, t, rots, pl, forbid=None):
-    """Put ref at the free grid spot nearest t (first rot that fits, nearer wins)."""
+def _apart_forbid(G, parts, pl, ref, rules):
+    """Cells where ref's courtyard would come within an `apart` / `thermal` rule's distance
+    of the other side's PLACED parts (bool grid), or None if no such rule names ref. The
+    quadratic stage has no repulsion, so a noise rule acts here: the drop looks for the
+    nearest spot clear of it, and falls back to the plain nearest spot when there is none.
+
+    ⚠ WHY (optical, 2026-11-11): as a local-pass penalty alone, the buck stayed beside the
+    PHY -- the pass moves one part at a time and every single move out of the clump made the
+    nets longer. The rule has to hold when the part is first dropped."""
+    out = None
+    for r in rules:
+        # a hand-written apart/thermal rule is a zone by default; auto_floorplan's edge
+        # rules opt out ("forbid": false) -- see its note
+        if r["kind"] not in ("apart", "thermal") or not r.get("forbid", True):
+            continue
+        a = set(pi._refs(r.get("a") or [r["ref"]], parts))
+        b = set(pi._refs(r.get("b") or r["others"], parts))
+        if ref in a:
+            other = b - {ref}
+        elif ref in b:
+            other = a - {ref}
+        else:
+            continue
+        occ = np.zeros((G.H, G.W), np.int16)
+        for o in other:
+            if o in pl:
+                mk, ai, aj = mask(parts[o], pl[o][2])
+                _put(occ, mk, ai, aj, *G.ij(*pl[o][:2]))
+        if not occ.any():
+            continue
+        f = distance_transform_edt(occ == 0) * G.g < float(r.get("min_mm", r.get("apart_mm", 0.0)))
+        out = f if out is None else (out | f)
+    return out
+
+
+def _drop_sat(G, parts, c, t, rots, pl, forbid, anchor, rule, near_mm=None):
+    """_drop for a satellite. A DECAP may stand inside its own anchor's escape halo (down to
+    HALO_SMALL off the courtyard): the halo is room for the IC's signal pins to get out, and
+    a supply pin's cap is what the hand board puts against the courtyard at that very pin.
+
+    ⚠ WHY (optical, 2026-11-11): U6 (LQFP-176, halo 2.5) kept its whole ring out --
+    C117 seated 24 mm from U6.136 because the 2.5 mm ring plus the cap did not fit between
+    U6 and the compute region's edge, where the hand board has the cap 1 mm off the body."""
+    big = rule is not None and rule["kind"] == "decap" and anchor in pl and halo(parts[anchor]) > HALO_SMALL
+    if big:
+        m, ai, aj = mask(parts[anchor], pl[anchor][2])
+        ij = G.ij(*pl[anchor][:2])
+        _put(G.occ, *_grow(m, ai, aj, halo(parts[anchor]), G.g), *ij, -1)
+        _put(G.occ, *_grow(m, ai, aj, HALO_SMALL, G.g), *ij)
+    try:
+        return _drop(G, parts, c, t, rots, pl, forbid, near_mm)
+    finally:
+        if big:
+            _put(G.occ, *_grow(m, ai, aj, HALO_SMALL, G.g), *ij, -1)
+            _put(G.occ, *_grow(m, ai, aj, halo(parts[anchor]), G.g), *ij)
+
+
+def _drop(G, parts, ref, t, rots, pl, forbid=None, near_mm=None):
+    """Put ref at the free grid spot nearest t (first rot that fits, nearer wins). near_mm:
+    give up (False) rather than go further than that -- a satellite that cannot keep its
+    noise zone AND its rule takes its rule (the caller retries without the zone)."""
     best = None
-    for rad in (WINDOW, WINDOW * 3, 1e9):
+    rads = (WINDOW, WINDOW * 3, 1e9) if near_mm is None else (min(WINDOW, near_mm + 1.0), near_mm + 1.0)
+    for rad in rads:
         for a in rots:
             m, ai, aj = mask(parts[ref], a)
             ti, tj = G.ij(*t)

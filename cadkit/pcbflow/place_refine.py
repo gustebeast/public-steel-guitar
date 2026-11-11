@@ -106,11 +106,34 @@ def _subjects(score, parts, notes, fixed):
                 names.add(nm[:-3] + "_DP")
         return names
 
-    for bad in (set(score.get("failed") or ()), pair_mates(score.get("faulted") or ())):
+    failed = set(score.get("failed") or ())
+    for ref in sorted(parts):
+        if ref in fixed or ref in out or ref not in pl or len(parts[ref]["pads"]) > SMALL:
+            continue
+        if any(q["net"] in failed for q in parts[ref]["pads"]):
+            out.append(ref)
+    # ⚠ THE PARTS IN THE WAY OF A FAILED NET, BEFORE A FAULTED PAIR'S (output_panel, 2026-11-11):
+    # FLASH_RX and POT_SCK run U1 -> another IC with no small part on either net, so the eight
+    # candidates went to D2/D3 -- THRU's ESD clamps, ~300 s each to re-score (the pair is
+    # re-finished) and unable to touch either open. The small parts nearest a failed net's
+    # pins are what stand in its way.
+    P = pi.Placed(parts, pl)
+    pins = [P.pad(r, q["num"]) for r, p in parts.items() if r in pl for q in p["pads"] if q["net"] in failed]
+    if pins:
+        near = []
+        for ref in pl:
+            if ref in fixed or ref in out or ref not in parts or len(parts[ref]["pads"]) > SMALL:
+                continue
+            c = np.asarray(pl[ref][:2], float)
+            d = min(float(np.hypot(*(c - q))) for q in pins)
+            if d < 4.0:
+                near.append((d, ref))
+        out += [r for _, r in sorted(near)]
+    if not failed:
         for ref in sorted(parts):
             if ref in fixed or ref in out or ref not in pl or len(parts[ref]["pads"]) > SMALL:
                 continue
-            if any(q["net"] in bad for q in parts[ref]["pads"]):
+            if any(q["net"] in pair_mates(score.get("faulted") or ()) for q in parts[ref]["pads"]):
                 out.append(ref)
     hot = [ref for h in score.get("hot") or () for ref in h.get("near") or ()]
     for big in (False, True):
@@ -139,7 +162,12 @@ def _pull(ref, parts, pl, notes, rules, bad):
         return None
     # the anchor goes where the pad lands on the far end, offset by the pad's own offset
     off = pi._rot([mine[0]["xy"]], pl[ref][2])[0]
-    t = np.mean(far, axis=0) - off
+    return _relocate(ref, np.mean(far, axis=0) - off, parts, pl, notes, rules)
+
+
+def _relocate(ref, t, parts, pl, notes, rules):
+    """ref dropped at the free spot nearest t (place_init's legaliser and halos)."""
+    import place_init as pin
     poly = np.asarray(notes.get("outline_poly") or pi._rect(notes["outline_mm"]), float)
     G = pin.Grid(poly, [dict(c) for c in notes.get("cutouts", ())] +
                  [{"xy": r["xy"], "d": r["d"], "keepout": r.get("keepout", 0.0)} for r in rules if r["kind"] == "hole"],
@@ -244,6 +272,36 @@ def refine(d, intent, rounds=4, cands=8, jobs=4, log=print):
                         near = [o for o in pl if o != ref and math.hypot(pl[o][0] - pl[ref][0], pl[o][1] - pl[ref][1]) < 15.0]
                         if _legal(P, ref, rules, notes, H, near):
                             props.append((ref, round(dx, 2), round(dy, 2), 0.0, pl, "pull"))
+        # ⚠ PUSH A BLOCKER CLEAR (output_panel, 2026-11-11): two rounds of 0.5 mm steps on the
+        # small parts round U1 left POT_SCK / FLASH_RX open every time -- escape congestion is
+        # not undone by half a millimetre. A part near a failed net's pin is pushed straight
+        # away from that pin, 1.5 and 3 mm, through place_init's legaliser (free spot nearest).
+        if bad:
+            import place_init as pin
+            P0 = pi.Placed(parts, notes["placements"])
+            fpins = [P0.pad(r, q["num"]) for r, p in parts.items() if r in notes["placements"]
+                     for q in p["pads"] if q["net"] in bad]
+            for ref in subj:
+                if not fpins or any(q["net"] in bad for q in parts[ref]["pads"]):
+                    continue
+                c = np.asarray(notes["placements"][ref][:2], float)
+                q = min(fpins, key=lambda q: float(np.hypot(*(c - q))))
+                v = c - q
+                n_ = float(np.hypot(*v))
+                if n_ < 1e-6 or n_ > 4.0:
+                    continue
+                for dist in (1.5, 3.0):
+                    t_ = c + v / n_ * dist
+                    plp = _relocate(ref, t_, parts, notes["placements"], notes, rules)
+                    if plp is None:
+                        continue
+                    dx, dy = plp[ref][0] - c[0], plp[ref][1] - c[1]
+                    if math.hypot(dx, dy) < 0.6:
+                        continue
+                    Pp = pi.Placed(parts, plp)
+                    near = [o for o in plp if o != ref and math.hypot(plp[o][0] - plp[ref][0], plp[o][1] - plp[ref][1]) < 15.0]
+                    if _legal(Pp, ref, rules, notes, H, near):
+                        props.append((ref, round(dx, 2), round(dy, 2), 0.0, plp, "push"))
         for ref in subj:
             mv, allowed = _moves(ref, parts, rules, rot_of)
             x, y, a = notes["placements"][ref]
@@ -258,8 +316,9 @@ def refine(d, intent, rounds=4, cands=8, jobs=4, log=print):
                 near = [o for o in pl if o != ref and math.hypot(pl[o][0] - cx, pl[o][1] - cy) < 15.0]
                 if _legal(P, ref, rules, notes, H, near):
                     props.append((ref, dx, dy, t, pl, "step"))
-        # worst trouble first; per part a pull, then the smallest steps
-        props.sort(key=lambda p: (subj.index(p[0]), p[5] != "pull", abs(p[1]) + abs(p[2]) + (0.75 if p[3] else 0)))
+        # worst trouble first; per part a pull or a push, then the smallest steps
+        props.sort(key=lambda p: (subj.index(p[0]), p[5] not in ("pull", "push"),
+                                  abs(p[1]) + abs(p[2]) + (0.75 if p[3] else 0)))
         seen, pick = {}, []
         for p in props:
             if seen.get(p[0], 0) < 2:

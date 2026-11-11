@@ -907,7 +907,8 @@ class Router(CoupledMixin):
         # the edge facing the other land (JP1, 0.077 mm against 0.127).
         fdf = fd.ravel()
         for p in pieces:
-            if not np.isfinite(cellf[p]).any():
+            # a plane net's piece 0 (its pour) may have no cell in this window: nothing to open
+            if p.size and not np.isfinite(cellf[p]).any():
                 best = p[fdf[p] >= fdf[p].max() - 1e-6]
                 cellf[best] = 1.0
         n = L * h * w
