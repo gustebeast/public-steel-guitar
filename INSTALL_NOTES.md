@@ -1611,6 +1611,29 @@ straight off the yoke's roof and runs dead level to the crown.
   through the 688, and turn it into the nut, holding the yoke.
   5. String over the crown to the tuner. Drive it by hand with the belt ends as before.
 
+#### Lowered X rig, no head (2026-11-10)
+
+The counter post tore on a layer line at its base with the springs set as loose as they go
+(~70 N, only two of its four wood screws in). Their pull was 67 mm over that base, because the
+X rig still sat at the vertical-screw rig's height. Now:
+
+- **Axis 26.25 over the wood (was 72.2).** The in-line motor rests on its block's base pad
+  (0.3 under the can), so the post's lever is 21.5 instead of 67: about a third of the bending
+  at the same pull.
+- **Reprint all four:** station_x, motor_block, counter_post, and nothing else changes shape
+  except their height. Every plank hole stays where it is.
+- **Motor block:** the 45 deg ribs are gone; a base pad runs under the whole can, and the gauge
+  arms now start at its +X end.
+- **Counter post:** the space under the slider's deck is solid, full width, so the wall's root
+  is the whole footprint. **Drive all four wood screws before the springs go on.**
+- **No head or crown tower.** Lay an axle bar across the plank 607.0 -X of the yoke's roof at
+  mid travel (the scale span, as before). Its top should hold the string's centre about 26 over
+  the wood, level with the yoke. Each 10 mm low tips the string about 1 deg, about 2.5 N of
+  side load on the yoke's roof.
+- **Spring check:** McMaster 9654K634 reads 4 lbf initial tension, 7.9 lbf/in, 46 lbf max at
+  10.3 in, which is what the model uses. Two springs pull 69 N backed off fully (78 N with the
+  in-line motor's limit) and 150 N fully in.
+
 #### Widened X station (2026-11-10)
 The buttresses stopped the nut, its M3s and the yoke short of full travel when they are held with
 the ears horizontal. The frame is now 41.4 wide (half-width 20.7), the same as the motor wall less
