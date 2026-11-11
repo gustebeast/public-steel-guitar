@@ -74,7 +74,7 @@ def _meshes_whole(shape) -> bool:
     return True
 
 
-def screw(length: float = D.SCREW_LEN) -> cq.Workplane:
+def screw(length: float = D.SCREW_LEN, whole_mesh: bool = False) -> cq.Workplane:
     """Leadscrew, axis +Z, base face at z=0: a cut length of Tr8x2 rod, threaded end to
     end (it is sawn from threaded stock, so there are no journals -- the bearing, the nut
     and the pulley's socket all ride the crests), single start, D.SCREW_HAND.
@@ -86,9 +86,15 @@ def screw(length: float = D.SCREW_LEN) -> cq.Workplane:
     runs whole turns and overshoots both ends; the section rides the helix's own frame,
     which leans it by the lead angle (6.6 deg at the root, 0.7% on the groove's width).
 
+    `whole_mesh` (the benches' long screws) also holds the phase to every face meshing, so the
+    viewer draws the thread. NOT the instrument's: at SCREW_LEN the only phases that mesh whole
+    hand check_sweep's slicer a stray vertex 13 off the axis (a swept Ø26.5 through every screw
+    bearing, the lead's gate 2026-11-10), and the phase main always took (0.25) is clean there.
+
     Built ONCE per length and handed out as the same solid: place it with .moved(), which
     shares the geometry, not .translate(), which copies it."""
-    if length not in _SCREWS:
+    key = (length, whole_mesh)
+    if key not in _SCREWS:
         p, rc, rr, ch = D.SCREW_PITCH, D.SCREW_OD / 2, _TR_ROOT_D / 2, _TR_CHAMFER
         blank = (cq.Workplane("XZ")
                  .polyline([(0, 0), (rc - ch, 0), (rc, ch), (rc, length - ch),
@@ -126,13 +132,13 @@ def screw(length: float = D.SCREW_LEN) -> cq.Workplane:
             out = blank.cut(groove.translate((0, 0, -(turns * p - length) / 2 + _ph)), clean=False)
             _vol = out.val().Volume() / (math.pi * rc ** 2 * length)
             if (out.val().isValid() and len(out.val().Solids()) == 1 and abs(_vol - _fill) < 0.03
-                    and _meshes_whole(out.val())):
+                    and (not whole_mesh or _meshes_whole(out.val()))):
                 break
         else:
             raise AssertionError(f"the leadscrew's thread did not cut at any phase: {_vol:.3f} "
                                  f"of its cylinder, want {_fill:.3f}")
-        _SCREWS[length] = out
-    return _SCREWS[length]
+        _SCREWS[key] = out
+    return _SCREWS[key]
 
 
 # ── Leadscrew nut (H-type brass flange nut, axis Z) ──────────────────────

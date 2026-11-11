@@ -503,7 +503,7 @@ def _screw(i: int, x0: float, x1: float) -> cq.Workplane:
     L = math.floor(x1 - x0)
     for dl in (0.0, 0.5, 1.0, 1.5, 2.0):
         try:
-            rod = C.screw(L - dl)
+            rod = C.screw(L - dl, whole_mesh=True)
             break
         except Exception:                           # the check's AssertionError, or the
             continue                                # groove's sweep failing outright (StdFail)
