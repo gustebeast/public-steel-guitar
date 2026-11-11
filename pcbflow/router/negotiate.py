@@ -1896,6 +1896,11 @@ class Router(CoupledMixin):
             # never tried, and the pair finished 30-40 mm apart. Every choice is laid; the
             # fewest faults win, then the fewest shared cells; a clean one stops the search.
             # Series gate: uncoupled 554.7 -> 386.6 mm, 28 boards closer, 9 a little further.
+            # ⚠ AND THE MOST COUPLED, NOT THE LEAST IN OTHERS' WAY (the 9, 2026-11-10): ranked
+            # by shared cells second, the choice through 19 cells beat a more coupled one
+            # through 41 -- but _displace moves the rest for either, and the finish holds
+            # lays most coupled first. Faults, then mm uncoupled, then shared cells: 386.6 ->
+            # 346.9 mm, no board further than before the choices were all laid.
             best = None
             self._ends_left = True
             for k in range(self.COUPLE_ENDS):
@@ -1903,10 +1908,11 @@ class Router(CoupledMixin):
                                      via_mult, coupled=k + 1)
                 left = self._ends_left
                 if got is not None:
-                    key = (len(got[1]), got[0])
+                    unc = round(self._uncoupled(first), 1) if self._pair_spec(first) is not None else 0.0
+                    key = (len(got[1]), unc, got[0])
                     if best is None or key < best[0]:
                         best = (key, got, {x: (x.paths, x.necks, x.failed) for x in (first, second)})
-                    if key == (0, 0) or not self.COUPLE_ENDS_ALL:
+                    if (key[0], key[2]) == (0, 0) or not self.COUPLE_ENDS_ALL:
                         break
                 if not left:
                     break
