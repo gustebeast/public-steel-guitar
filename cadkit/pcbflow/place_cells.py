@@ -19,12 +19,16 @@ intent order:
      only if the full route beats the parent too -- the confirm rule place_refine earned
      (a re-score is one sample of "what this change does"). It is the next cell's parent.
 
-Floor breaches are reported per candidate. With --strict, a turn that breaks more `forbid`
-zones than its parent is not eligible (optical's PHY: the only turn that routed 0 open put
-the buck's switch node 9.2 mm from the PHY crystal against a 10 mm zone -- the author's
-call, so it is a flag, not a default).
+A FORBID ZONE IS HARD (lead ruling, 2026-11-11). A turn that breaks more `forbid` zones
+than its parent gets ONE repair: the unit breaking it -- a free-anchor cell or a free part,
+never the cell being turned -- is re-dropped at its turn, at the free spot nearest where it
+is, clear of every zone it breaks; laid out and re-scored like any candidate. A turn the
+repair cannot clear is not eligible, said loudly (FORBID: ...). --soft-forbid keeps the
+best route and only reports the breach, for an author who wants that trade. (Optical's
+PHY: the only turn that routed 0 open put the buck's switch node 9.2 mm from the PHY
+crystal, zone 10.)
 
-Bounded: at most 3 candidates + 1 confirm per cell. Writes <dir>/cells/<anchor>_<rot>/,
+Bounded: at most 3 candidates + 3 repairs + 1 confirm per cell. Writes <dir>/cells/<anchor>_<rot>/,
 <dir>/cells/cells.json (every candidate's score) and <dir>/<stem>.cells.json (the
 placements kept).
 
@@ -79,9 +83,10 @@ def _write(d, src, stem, pl):
     return os.path.join(d, base)
 
 
-def _turned(parts, notes, rules, pl, anchor, members, turn):
+def _turned(parts, notes, rules, pl, anchor, members, turn, zone=(), at=None):
     """pl with the cell turned by `turn` about its anchor and dropped whole at the free spot
-    nearest the anchor; None if it has no room."""
+    nearest the anchor; None if it has no room. zone: [(refs, mm)] -- the cell's courtyards
+    must stay mm clear of those parts' (a forbid zone being repaired)."""
     ax, ay, ar = pl[anchor]
     cell = [anchor] + list(members)
     comp = pin._composite(parts, anchor, members)
@@ -102,9 +107,20 @@ def _turned(parts, notes, rules, pl, anchor, members, turn):
         if r["kind"] == "in_region" and set(pi._refs(r["refs"], parts)) & set(cell):
             out = ~pi._inside(regions[r["region"]], np.stack([G.X.ravel(), G.Y.ravel()], axis=1)).reshape(G.H, G.W)
             forbid = out if forbid is None else (forbid | out)
+    from scipy.ndimage import distance_transform_edt
+    for refs, mm in zone:
+        occ = np.zeros((G.H, G.W), np.int16)
+        for o in refs:
+            if o in pl and o in parts and o not in cell:
+                m, ai, aj = pin.mask(parts[o], pl[o][2])
+                pin._put(occ, m, ai, aj, *G.ij(*pl[o][:2]))
+        if occ.any():
+            f = distance_transform_edt(occ == 0) * G.g < mm
+            forbid = f if forbid is None else (forbid | f)
     out = {k: list(v) for k, v in pl.items() if k not in members}
     del out[anchor]
-    if not pin._drop(G, P2, anchor, np.array([ax, ay]), [(ar + turn) % 360.0], out, forbid):
+    if not pin._drop(G, P2, anchor, np.array([ax, ay]) if at is None else np.asarray(at, float),
+                     [(ar + turn) % 360.0], out, forbid):
         return None
     nx, ny, nr = out[anchor]
     for m, (dx, dy, dr) in members.items():
@@ -120,7 +136,64 @@ def _forbid_breaks(stem, rules, pl, parts_path):
                                  placements=pl, parts_path=parts_path))
 
 
-def cells(d, intent, parts_path=None, jobs=4, strict=False, log=print):
+def _forbid_list(stem, rules, pl, parts_path):
+    """[(subject, offender, rule)] for each broken `forbid` zone in pl."""
+    fz = [r for r in rules if r["kind"] in ("apart", "thermal") and r.get("forbid", True)]
+    fx = [r for r in rules if r["kind"] in ("fixed", "pin", "panel", "group")]
+    out = []
+    for r in fz:
+        for sl, subj, det, _ in pi.floor_breaches(stem, [r] + fx, placements=pl, parts_path=parts_path):
+            oth = det.split(" from ")[-1].split(",")[0].strip() if " from " in det else None
+            out.append((subj, oth, r))
+    return out
+
+
+def _repair(stem, parts, notes, rules, pl, turning, cellmap, fixed, parts_path):
+    """One forbid repair for a candidate: the first movable unit on a broken zone that is not
+    the cell being turned -- a free-anchor cell or a free part -- re-dropped (same turn)
+    at the free spot nearest where it is, clear of every zone it breaks. Returns
+    (placements, unit) or (None, why)."""
+    br = _forbid_list(stem, rules, pl, parts_path)
+    owner = {m: a for a, ms in cellmap.items() for m in ms}
+    for subj, oth, r in br:
+        for x in (subj, oth):
+            if x is None:
+                continue
+            unit = owner.get(x, x)
+            if unit == turning or unit in fixed:
+                continue
+            members = cellmap.get(unit, {})
+            mine = {unit} | set(members)
+            # every zone the unit is in, not only the broken ones: the move that fixed the
+            # buck's crystal zone first broke its 45 mm photodiode one (optical U7_90). Soft
+            # apart rules are tried as zones too, and dropped only if there is no room with
+            # them: with forbid zones alone the buck was re-dropped beside the USB socket.
+            def zones(soft_too):
+                z = []
+                for r_ in rules:
+                    if r_["kind"] not in ("apart", "thermal") or not (r_.get("forbid", True) or soft_too):
+                        continue
+                    a_ = set(pi._refs(r_.get("a") or [r_["ref"]], parts))
+                    b_ = set(pi._refs(r_.get("b") or r_["others"], parts))
+                    if (a_ | b_) & mine:
+                        other = (b_ if a_ & mine else a_) - mine
+                        z.append((sorted(other), float(r_.get("min_mm", r_.get("apart_mm", 0.0)))))
+                return z
+            # aimed where the unit WANTS to be -- its own `near` targets -- not where it was
+            tg = []
+            for r_ in rules:
+                if r_["kind"] == "near" and r_.get("ref") in mine and r_["target"].split(".")[0] in pl:
+                    tg.append(pl[r_["target"].split(".")[0]][:2])
+            at = np.mean(tg, axis=0) if tg else None
+            q = (_turned(parts, notes, rules, pl, unit, members, 0.0, zones(True), at=at)
+                 or _turned(parts, notes, rules, pl, unit, members, 0.0, zones(False), at=at))
+            if q is None:
+                return None, "%s has no room clear of its zone" % unit
+            return q, unit
+    return None, "no movable unit on the broken zone (both sides fixed, or only the turned cell)"
+
+
+def cells(d, intent, parts_path=None, jobs=4, soft=False, log=print):
     stem = _stem(d)
     src = json.load(open(stem + ".board.json", encoding="utf-8"))
     parts_path = parts_path or stem + ".parts.json"
@@ -176,16 +249,45 @@ def cells(d, intent, parts_path=None, jobs=4, strict=False, log=print):
                                                                     ("open", "pairs", "uncoupled", "vias", "length_mm",
                                                                      "floor", "failed")}))
         good = [(tag, q, s) for tag, q, s in res if "error" not in s]
-        # --strict: a turn that breaks more forbid zones than its parent is not eligible
+        # A FORBID ZONE IS HARD (lead ruling 2026-11-11): a turn that breaks more zones than
+        # its parent gets ONE repair -- the unit breaking it (not this cell) re-dropped clear
+        # of the zone, re-scored -- and is otherwise not eligible. --soft-forbid: reported only.
         fb0 = _forbid_breaks(stem, rules, pl, parts_path)
+        cellmap = {r["anchor"]: r["members"] for r in todo}
+        fixed_units = fixed | {m for r in rules if r["kind"] == "group" and r["anchor"] in fixed for m in r["members"]}
+        keep, rep_ = [], []
         for tag, q, s in good:
             s["forbid"] = _forbid_breaks(stem, rules, q, parts_path)
-        if strict:
-            out_ = [t for t, q, s in good if s["forbid"] > fb0]
-            if out_:
-                log("place_cells: --strict: %s break more forbid zones than the parent (%d) -- not eligible"
-                    % (" ".join(out_), fb0))
-            good = [(t, q, s) for t, q, s in good if s["forbid"] <= fb0]
+            if s["forbid"] <= fb0 or soft:
+                keep.append((tag, q, s))
+                continue
+            q2, unit = _repair(stem, parts, src, rules, q, a, cellmap, fixed_units, parts_path)
+            if q2 is None or _forbid_breaks(stem, rules, q2, parts_path) > fb0:
+                log("place_cells: FORBID: %s breaks %d zone(s) (parent %d) and the repair failed: %s -- not eligible"
+                    % (tag, s["forbid"], fb0, unit if q2 is None else "%s moved, zones still broken" % unit))
+                rec.append({"cell": a, "cand": tag, "ineligible": "forbid", "repair": str(unit)})
+                continue
+            rep_.append((tag + "r", q2, unit))
+
+        def run2(c):
+            tag, q, unit = c
+            cs = _write(os.path.join(work, tag), src, stem, q)
+            ok, msg = _layout(cs)
+            if not ok:
+                return tag, q, {"error": "layout: " + msg[-300:]}, unit
+            return tag, q, _score(cs, intent, parts_path, parent=pstem + ".route.pkl"), unit
+
+        with ThreadPoolExecutor(jobs) as ex:
+            res2 = list(ex.map(run2, rep_))
+        for tag, q, s, unit in res2:
+            rec.append({"cell": a, "cand": tag, "repaired": unit, "score": s})
+            log("place_cells:   %-10s (repaired: %s moved clear of its zone) %s" % (
+                tag, unit, s.get("error") or {k: s.get(k) for k in ("open", "pairs", "uncoupled", "vias", "length_mm",
+                                                                    "floor", "failed")}))
+            if "error" not in s:
+                s["forbid"] = _forbid_breaks(stem, rules, q, parts_path)
+                keep.append((tag, q, s))
+        good = keep
         best = min(good, key=lambda t: _key(t[2])) if good else None
         if best is None or not _better(best[2], parent):
             log("place_cells: %s stays at %g" % (a, pl[a][2]))
@@ -216,11 +318,11 @@ def main(argv):
     ap.add_argument("intent")
     ap.add_argument("--parts")
     ap.add_argument("--jobs", type=int, default=4)
-    ap.add_argument("--strict", action="store_true",
-                    help="a turn that breaks more forbid zones than its parent is not eligible")
+    ap.add_argument("--soft-forbid", action="store_true",
+                    help="keep the best route even where it breaks a forbid zone (reported, not repaired)")
     a = ap.parse_args(argv)
     cells(os.path.abspath(a.dir), os.path.abspath(a.intent),
-          os.path.abspath(a.parts) if a.parts else None, a.jobs, a.strict)
+          os.path.abspath(a.parts) if a.parts else None, a.jobs, a.soft_forbid)
     return 0
 
 
