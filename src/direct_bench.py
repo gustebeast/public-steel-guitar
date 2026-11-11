@@ -39,6 +39,8 @@ import math
 import re as _re
 from functools import lru_cache as _lru_cache
 
+from cadkit.kept import kept
+
 import cadquery as cq
 
 from . import dimensions as D
@@ -693,8 +695,9 @@ def _coupler_clamp(i: int, k: str) -> cq.Workplane:
 def _motor(i: int) -> list:
     from . import components as C
     out = []
-    for k, wp, _, fin in C.motor_parts():
-        MOTOR_FINISH[k] = fin
+    # NO WRITE TO MOTOR_FINISH here (material_of fills it): a global this changed in place made
+    # its own kept key move mid-build, so every motor rebuilt on every run
+    for k, wp, _, _fin in C.motor_parts():
         w = (wp.rotate((0, 0, 0), (0, 1, 0), PLUG_DIR[i]).rotate((0, 0, 0), (0, 0, 1), -90)
              .translate((x_ref(i), y_of(i), za(i))))
         out.append((f"db_motor_{k}_{i}" if k else f"db_motor_{i}", w))
@@ -937,13 +940,18 @@ def string_parts(i: int, t: float) -> list:
 # the joystick and the power button either side as close as they go -- but moved +Y until the
 # display module's +Y edge TOUCHES THE FRET BORDER (as far toward the centre as it can go), so
 # the body grows -Y for it as little as possible. The whole station moves together, by ui_parts()[1].
-@_lru_cache(maxsize=None)
-def ui_parts() -> tuple:
+def _ui_moved():
     from . import ui_panel as U
     parts = U.parts()
     ymax = dict(parts)["ui_display"].val().BoundingBox().ymax
     dy = U.fret_border_y() - ymax
-    return tuple((nm, w.translate((0.0, dy, 0.0))) for nm, w in parts), dy
+    return [(nm, w.translate((0.0, dy, 0.0))) for nm, w in parts], dy
+
+
+@_lru_cache(maxsize=None)
+def ui_parts() -> tuple:
+    parts, dy = kept(_ui_moved)
+    return tuple((nm, w) for nm, w in parts), dy
 
 
 # -- THE BODY (user, 2026-11-11): a hollow box, no roof, opaque PETG-GF like the lead's ----------------------------------------
@@ -966,34 +974,46 @@ def _compound(nm, w):
 
 
 def _drive(t: float) -> list:
-    """Every part but the anchor plate and its bolts, the UI, the ghosts and the body."""
+    """Every part but the anchor plate and its bolts, the UI, the ghosts and the body.
+    KEPT (user, 2026-11-11: "changing the chassis shouldn't rebuild the items inside it"): each
+    builder's result is read back from cadkit's store until something IT reads changes, so an
+    edit to the body, the anchor or the UI's placement rebuilds none of this."""
     out = []
     for i in range(N):
-        out += string_parts(i, t)
-    out += _bend_parts()
-    out += [("db_cheeks", _cheeks()), ("db_rod_plate", _rod_plate()), ("db_comb", _comb())]
+        out += kept(string_parts, i, t)
+    out += kept(_bend_parts)
+    out += [("db_cheeks", kept(_cheeks)), ("db_rod_plate", kept(_rod_plate)), ("db_comb", kept(_comb))]
     return [_compound(nm, w) for nm, w in out]
+
+
+def _extents(drive, ui, pick):
+    """(lo, hi, ui_bottom_at_anchor): the drive's, the pickup's and the UI's extents, plain
+    numbers -- KEPT, so a body change costs no re-measuring (406 optimal boxes, ~11 s). The
+    parts come in as ARGUMENTS, kept results named by where they came from: the key is cheap."""
+    lo, hi = [1e9] * 3, [-1e9] * 3
+    for w in drive + pick + ui:
+        bb = w.val().BoundingBox()
+        for k, (a, b) in enumerate(((bb.xmin, bb.xmax), (bb.ymin, bb.ymax), (bb.zmin, bb.zmax))):
+            lo[k], hi[k] = min(lo[k], a), max(hi[k], b)
+    ax0, ax1 = ANCHOR[0], ANCHOR[1] + ANCHOR_FL
+    zs = [bb.zmin for bb in (w.val().BoundingBox() for w in ui) if bb.xmax > ax0 and bb.xmin < ax1]
+    return lo, hi, min(zs, default=ANCHOR_Z[1] + 1.0)
 
 
 @_lru_cache(maxsize=None)
 def body_box() -> dict:
     """{"inner"/"outer": ((x0, x1), (y0, y1), (z0, z1)), "ui_bottom_at_anchor": z}."""
-    from .changer_bench import ghosts as _ghosts, DECK_UNDER
+    from .changer_bench import DECK_UNDER
+    from .changer_bench import ghosts as _ghosts
     pick = [w for nm, w in _ghosts(y_hi=RAIL_HI) if nm == "ghost_pickup"]
-    ui = [w for _, w in ui_parts()[0]]
-    lo, hi = [1e9] * 3, [-1e9] * 3
-    for w in [w for nm, w in _drive(T_OPEN) if not nm.startswith("db_string")] + pick + ui:
-        bb = w.val().BoundingBox()
-        for k, (a, b) in enumerate(((bb.xmin, bb.xmax), (bb.ymin, bb.ymax), (bb.zmin, bb.zmax))):
-            lo[k], hi[k] = min(lo[k], a), max(hi[k], b)
+    drive = [w for nm, w in _drive(T_OPEN) if not nm.startswith("db_string")]
+    lo, hi, ui_bottom = kept(_extents, drive, [w for _, w in ui_parts()[0]], pick)
     top = DECK_UNDER + 9.6                          # the deck's top: the walls' top
     inner = ((NUT_BLOCK_X0 + BODY_WALL, hi[0] + BODY_CLR), (lo[1] - BODY_CLR, hi[1] + BODY_CLR),
              (lo[2] - BODY_CLR, top))
     outer = ((NUT_BLOCK_X0, inner[0][1] + BODY_WALL),
              (inner[1][0] - BODY_WALL, inner[1][1] + BODY_WALL), (inner[2][0] - BODY_FLOOR, top))
-    ax0, ax1 = ANCHOR[0], ANCHOR[1] + ANCHOR_FL
-    zs = [bb.zmin for bb in (w.val().BoundingBox() for w in ui) if bb.xmax > ax0 and bb.xmin < ax1]
-    return dict(inner=inner, outer=outer, ui_bottom_at_anchor=min(zs, default=ANCHOR_Z[1] + 1.0))
+    return dict(inner=inner, outer=outer, ui_bottom_at_anchor=ui_bottom)
 
 
 def _body() -> cq.Workplane:
