@@ -50,7 +50,7 @@ HALO_PER_PIN = float(os.environ.get("PLACE_HALO_K", "0.15"))
 
 
 def halo(part):
-    n = len(part["pads"])
+    n = part.get("n_own", len(part["pads"]))
     if n <= IC_PADS:
         return HALO_SMALL
     return min(HALO_MAX, max(HALO_IC, HALO_PER_PIN * n / 4.0))
@@ -87,7 +87,18 @@ class Grid:
 
 
 def mask(part, rot, g=GRID):
-    """Rasterised courtyard of a part at rot about its anchor: (bool array, anchor i, anchor j)."""
+    """Rasterised courtyard of a part at rot about its anchor: (bool array, anchor i, anchor j).
+    A free-anchor cell (composite) is the union of its members' courtyards."""
+    if part.get("crtyd_multi"):
+        ms = [mask(dict(part, crtyd=c, crtyd_multi=None), rot, g) for c in part["crtyd_multi"]]
+        i0 = min(-ai for _, ai, _ in ms)
+        j0 = min(-aj for _, _, aj in ms)
+        i1 = max(-ai + m.shape[0] for m, ai, _ in ms)
+        j1 = max(-aj + m.shape[1] for m, _, aj in ms)
+        out = np.zeros((i1 - i0, j1 - j0), bool)
+        for m, ai, aj in ms:
+            out[-ai - i0:-ai - i0 + m.shape[0], -aj - j0:-aj - j0 + m.shape[1]] |= m
+        return out, -i0, -j0
     loc = part["crtyd"]
     if not loc:
         f = part["fab"] or [-0.5, 0.5, -0.5, 0.5]
@@ -106,7 +117,78 @@ def _pad_off(part, rot):
     return pi._rot([q["xy"] for q in part["pads"]], rot) if part["pads"] else np.zeros((0, 2))
 
 
+def _composite(parts, anchor, members):
+    """A free-anchor cell as one part in the anchor's frame (rot 0): the anchor's pads and
+    each member's (num "M/num"), every courtyard kept (crtyd_multi), halo from the anchor."""
+    a = parts[anchor]
+    pads = [dict(q) for q in a["pads"]]
+    cy = [a["crtyd"]] if a["crtyd"] else []
+    for m, (dx, dy, dr) in members.items():
+        pm = parts[m]
+        off = np.array([dx, dy])
+        for q in pm["pads"]:
+            xy = off + pi._rot([q["xy"]], dr)[0]
+            pads.append(dict(q, num="%s/%s" % (m, q["num"]), xy=[float(xy[0]), float(xy[1])],
+                             rot=(q.get("rot", 0.0) + dr) % 360.0))
+        loc = pm["crtyd"] or [[pm["fab"][0], pm["fab"][2]], [pm["fab"][1], pm["fab"][2]],
+                              [pm["fab"][1], pm["fab"][3]], [pm["fab"][0], pm["fab"][3]]]
+        cy.append((off + pi._rot(loc, dr)).tolist())
+    return dict(a, pads=pads, crtyd=a["crtyd"], crtyd_multi=cy, n_own=len(a["pads"]))
+
+
 def place(parts, notes, rules, keep=()):
+    """Free-anchor `group` cells are placed whole: each becomes one composite part (its
+    anchor's ref) for every stage, its members expanded from the anchor's pose at the end.
+
+    ⚠ WHY (lead, 2026-11-11, for the re-layout): a designed cell -- a buck laid out round
+    its pins, a PHY with its decap column -- is the design; only WHERE it goes is a
+    placement choice. A group needed a fixed anchor before, so a cell had to be pinned or
+    dissolved into free parts that the legaliser then scattered."""
+    fixed0 = {r["ref"] for r in rules if r["kind"] in ("fixed", "pin", "panel")} | set(keep)
+    cells = {r["anchor"]: r["members"] for r in rules if r["kind"] == "group" and r["anchor"] not in fixed0}
+    if not cells:
+        return _place(parts, notes, rules, keep)
+    owner = {m: a for a, ms in cells.items() for m in ms}
+    P2 = {r: p for r, p in parts.items() if r not in owner}
+    for a, ms in cells.items():
+        P2[a] = _composite(parts, a, ms)
+
+    def pin(t):
+        ref, _, num = t.partition(".")
+        if ref in owner:
+            return "%s.%s/%s" % (owner[ref], ref, num) if num else owner[ref]
+        return t
+
+    R2 = []
+    for r in rules:
+        if r["kind"] == "group" and r["anchor"] in cells:
+            continue
+        r = dict(r)
+        for f in ("pin", "target"):
+            if isinstance(r.get(f), str):
+                r[f] = pin(r[f])
+        for f in ("ref", "cap"):
+            if r.get(f) in owner:
+                r = None
+                break
+        if r is None:
+            continue
+        for f in ("refs", "others", "a", "b"):
+            if isinstance(r.get(f), list):
+                r[f] = list(dict.fromkeys(owner.get(x, x) for x in r[f]))
+        R2.append(r)
+    pl, log, why = _place(P2, notes, R2, keep)
+    for a, ms in cells.items():
+        ax, ay, ar = pl[a]
+        for m, (dx, dy, dr) in ms.items():
+            o = pi._rot([[dx, dy]], ar)[0]
+            pl[m] = [round(ax + float(o[0]), 4), round(ay + float(o[1]), 4), (ar + dr) % 360.0]
+            why[m] = "group: %s's cell, placed whole (free anchor)" % a
+    log.append("free-anchor cells placed whole: %s" % " ".join("%s(+%d)" % (a, len(ms)) for a, ms in cells.items()))
+    return pl, log, why
+
+
+def _place(parts, notes, rules, keep=()):
     pl = {}
     log = []
     why = {}                     # provenance: which rule (or stage) set each coordinate
@@ -146,8 +228,8 @@ def place(parts, notes, rules, keep=()):
         if r["kind"] != "group":
             continue
         if r["anchor"] not in pl:
-            raise SystemExit("place_init: group rule %d: anchor %s is not fixed (free-anchor cells "
-                             "are not supported yet)" % (i_r, r["anchor"]))
+            raise SystemExit("place_init: group rule %d: anchor %s unplaced (place() makes a free "
+                             "anchor's cell a composite before this stage -- internal error)" % (i_r, r["anchor"]))
         ax, ay, ar = pl[r["anchor"]]
         for ref, (dx, dy, dr) in r["members"].items():
             o = pi._rot([[dx, dy]], ar)[0]
