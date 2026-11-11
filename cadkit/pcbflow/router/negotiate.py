@@ -1230,6 +1230,8 @@ class Router(CoupledMixin):
             b = a.mate
             if b is None or a.partner is not None or a.group is None:
                 continue
+            if self._only is not None and a not in self._only:
+                continue                 # rescore: a pair kept whole from the parent is finished
             # ⚠ A PAIR RIPPED OUT IS FINISHED TOO (optical, C102 +0.12/+0.48, 2026-11-10): the
             # negotiation ended with USB_DP/DM sharing space with LED_ROW, both were ripped,
             # and the finish skipped them -- the board's most important pair left open while
@@ -1823,6 +1825,8 @@ class Router(CoupledMixin):
         lock = {n for n in self.nets if n.group is not None}
         for net in self.nets:
             if not net.plane or net.failed:
+                continue
+            if self._only is not None and net not in self._only:
                 continue
             # ⚠ ONE PIECE AT A TIME (optical +3V3D, 2026-11-09: three pieces were cut off;
             # the one at 118.8,150.3 could only re-join through ULPI_CK/STP, a locked group,
@@ -2434,6 +2438,7 @@ class Router(CoupledMixin):
         return [n for n in self.nets if n.failed]
 
     PRIORITY_REPAIR = True
+    _only = None                     # rescore.delta_run: the finish looks only at these nets
     PRIO_MAX = 8                     # stuck nets a repair takes on; more is a placement problem
 
     def _sharers(self, grp):

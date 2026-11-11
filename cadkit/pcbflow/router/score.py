@@ -13,6 +13,11 @@ One JSON line per board, keys in order of how much they matter:
   failed      the nets behind `open`, faulted  the pairs behind `pairs` (what a placement fix aims at)
 `key` is the tuple to sort placements by: smaller is better.
 
+    --save auto            keep each board's route as <stem>.route.pkl (a parent)
+    --parent <route.pkl>   route each board as a CHANGE of that parent (rescore.py): nets
+                           whose pads did not move and whose copper is still legal are kept;
+                           `delta` says how many. contention is not comparable to a full route.
+
 ⚠ WHY THE ROUTE AND NOT A CHEAPER PROXY (ROUTER.md, "Pad-scale escape and RUDY", 2026-11-09).
 Every cheap score tried failed to rank placements: per-part escape max-flow (every part
 had 3-20x the lanes it needs; 0.24 correlation with its contention), RUDY over pad-scale
@@ -36,7 +41,7 @@ from concurrent.futures import ThreadPoolExecutor
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def score(stem, budget_s=900.0):
+def score(stem, budget_s=900.0, parent=None, save=None):
     sys.path.insert(0, HERE)
     import numpy as np
     from router.model import Model
@@ -47,7 +52,18 @@ def score(stem, budget_s=900.0):
     r = Router(m)
     r.log = lambda s: None
     nets = r.build_nets(pours=m.fills)
-    failed = r.run(budget_s=budget_s)
+    delta = None
+    if parent:
+        # PLACEMENT.md (c): only what the placement change touched is routed
+        import pickle
+        from router import rescore
+        with open(parent, "rb") as fh:
+            failed, delta = rescore.delta_run(r, pickle.load(fh), budget_s=budget_s)
+    else:
+        failed = r.run(budget_s=budget_s)
+    if save:
+        from router import rescore
+        rescore.save(r, save)
     pairs = sum(len(r.pair_faults(n) or ()) for n in nets
                 if n.mate is not None and n.partner is None)
     isl = 0
@@ -86,15 +102,18 @@ def score(stem, budget_s=900.0):
                              | {n.name for n in nets if not n.failed and (getattr(n, "n_open", 0) or 0)}),
                faulted=sorted(n.name for n in nets if n.mate is not None and n.partner is None
                               and (r.pair_faults(n) or ())))
+    if delta:
+        out["delta"] = delta
     out["key"] = [out["open"], out["pairs"], out["islands"], out["uncoupled"],
                   out["contention"], out["vias"], out["length_mm"]]
     return out
 
 
-def _one_proc(stem, budget_s):
+def _one_proc(stem, budget_s, parent=None, save=None):
     """Score in its own process: numba state, and a crash, stay per board."""
     p = subprocess.run([sys.executable, os.path.abspath(__file__), "--one", stem,
-                        "--budget", str(budget_s)], capture_output=True, text=True,
+                        "--budget", str(budget_s)] + (["--parent", parent] if parent else [])
+                       + (["--save", save] if save else []), capture_output=True, text=True,
                        env=dict(os.environ, PYTHONIOENCODING="utf-8"), cwd=HERE)
     line = (p.stdout.strip().splitlines() or ["null"])[-1]
     try:
@@ -106,6 +125,7 @@ def _one_proc(stem, budget_s):
 
 def main(argv):
     jobs, budget, stems, one = max(1, (os.cpu_count() or 4) // 4), 900.0, [], False
+    parent = save = None
     i = 0
     while i < len(argv):
         a = argv[i]
@@ -113,6 +133,10 @@ def main(argv):
             jobs = int(argv[i + 1]); i += 2; continue
         if a == "--budget":
             budget = float(argv[i + 1]); i += 2; continue
+        if a == "--parent":
+            parent = os.path.abspath(argv[i + 1]); i += 2; continue
+        if a == "--save":
+            save = argv[i + 1]; i += 2; continue
         if a == "--one":
             one = True; i += 1; continue
         stems.append(os.path.abspath(a[:-len(".kicad_pcb")] if a.endswith(".kicad_pcb") else a))
@@ -120,10 +144,12 @@ def main(argv):
     if not stems:
         raise SystemExit(__doc__)
     if one:
-        print(json.dumps(score(stems[0], budget)))
+        print(json.dumps(score(stems[0], budget, parent, save)))
         return 0
     with ThreadPoolExecutor(jobs) as ex:
-        res = list(ex.map(lambda s: _one_proc(s, budget), stems))
+        # --save names a file per board: <stem>.route.pkl when given as "auto"
+        res = list(ex.map(lambda s: _one_proc(s, budget, parent,
+                                              (s + ".route.pkl") if save == "auto" else save), stems))
     for r in sorted(res, key=lambda r: r.get("key") or [math.inf]):
         print(json.dumps(r))
     return 0
