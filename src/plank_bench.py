@@ -364,7 +364,12 @@ XR_SEAT_Z0 = XR_ZA - (D.SUPPORT_BRG_OD + 0.2) / 2 - 2 * D.BEAD   # the thick par
 XR_X0 = XR_XR - 37.8                             # the buttresses' foot
 # CENTRED ON THE SCREW (user, 2026-11-08): the rail wall and both buttresses symmetric about SY, so
 # the 688's seat is in the middle of the plate. The base too, its +Y face still the plank's edge.
-XR_HW = ROOM_HY + XR_WALL                        # 11.4: the frame's half-width
+# WIDENED (user, 2026-11-10): at 11.4 the buttresses stopped the nut, its M3s and the yoke held
+# with the ears HORIZONTAL (Y) short of the screw's full travel. "As far as we can fit, the same
+# width as the motor wall": the motor's 21.15 would leave the counter springs 0.55, so their 1.0
+# (asserted at CS_DY) sets it.
+XR_HW = 20.7                                     # the frame's half-width
+assert XR_HW - XR_WALL >= D.NUT_FLANGE_L / 2 + CLR - 1e-9, "the nut's ears, horizontal, hit the buttresses"
 XR_Y0, XR_Y1 = SY - XR_HW, SY + XR_HW            # 31.35 .. 54.15
 # THE PLANK'S HOLES ARE THE SECOND PRINT'S (user, 2026-11-08: reuse the drill points): x -7.9 and
 # 26.07, y 16.75 and 60.55. The base reaches them with a tab each off the strips under the walls.
@@ -372,7 +377,18 @@ XR_SCREWS_X = (X1_AX - 6.4, XR_X1 - 6.4)         # -7.9, 26.07
 XR_SCREWS_Y = (Y0_AX - FLANGE / 2, Y1 + FLANGE / 2)   # 16.75, 60.55
 XR_TAB = 6.4                                     # a tab's half-length in X round its screw
 assert XR_SCREWS_Y[0] + WOOD_CSK_D / 2 <= XR_Y0 - 1e-9, "a -Y screw head under the buttress"
-assert XR_SCREWS_Y[1] - WOOD_CSK_D / 2 >= XR_Y1 + 1e-9, "a +Y screw head under the buttress"
+# THE +Y SIDE no longer has room outside the walls (a head there would be past the plank's edge):
+#   foot end   the old hole (-7.9, 60.55), the +Y buttress's foot trimmed back off it so the key
+#              goes straight down (_wood_screw's access bore).
+#   rail end   a NEW hole (user, 2026-11-10: "widen + new hole") INSIDE the open room, just -X of
+#              the rail wall, on a pad off the +Y wall's strip -- reached down through the open top.
+XR_IN_HOLE = (XR_XR - WOOD_CSK_D / 2 - 1.0, SY + XR_HW - XR_WALL - WOOD_CSK_D / 2 - 1.6)
+XR_HOLES = [(XR_SCREWS_X[0], XR_SCREWS_Y[0]), (XR_SCREWS_X[1], XR_SCREWS_Y[0]),
+            (XR_SCREWS_X[0], XR_SCREWS_Y[1]), XR_IN_HOLE]
+XR_FOOT_X = XR_SCREWS_X[0] + WOOD_CSK_D / 2       # the +Y buttress starts here, past the old hole
+# the key goes down past the nut with its ears VERTICAL (its 10.5 flat across Y): a 2.5 key's
+# ~3.5 of shank clear of that
+assert XR_IN_HOLE[1] - 3.5 / 2 >= SY + 10.5 / 2 + 0.5 - 1e-9, "the key can't pass the nut to the room's screw"
 assert XR_X0 <= XR_SCREWS_X[0] - WOOD_CSK_D / 2 - 1.6 + 1e-9, "under 1.6 of base past the -X screws' countersinks"
 
 
@@ -391,7 +407,10 @@ def station_x() -> cq.Workplane:
     s = s.union(_box(XR_XR, XR_X1, XR_Y0, XR_Y1, Z_PLANK, zb))
     for x in XR_SCREWS_X:
         s = s.union(_box(x - XR_TAB, x + XR_TAB, Y0_AX - FLANGE, XR_Y0 + 0.01, Z_PLANK, zb))
-        s = s.union(_box(x - XR_TAB, x + XR_TAB, XR_Y1 - 0.01, Y_EDGE, Z_PLANK, zb))
+    fx, fy = XR_SCREWS_X[0], XR_SCREWS_Y[1]                                     # the foot's +Y hole's pad
+    s = s.union(_box(fx - XR_TAB, fx + XR_TAB, fy - XR_TAB, Y_EDGE, Z_PLANK, zb))
+    hx, hy = XR_IN_HOLE                                                         # the room's pad
+    s = s.union(_box(hx - XR_TAB, XR_XR + 0.01, hy - XR_TAB, XR_Y1 - XR_WALL + 0.01, Z_PLANK, zb))
     # the rail wall: thick round the seat, thin under it, a 45 deg step
     s = s.union(_box(XR_X1 - XR_RAIL_T2, XR_X1, XR_Y0, XR_Y1, zb - 0.01, XR_TOP))
     dx = XR_X1 - XR_RAIL_T2 - XR_XR
@@ -402,14 +421,14 @@ def station_x() -> cq.Workplane:
            (XR_X0, zb - 0.01)]
     s = s.union(_xz_prism(tri, XR_Y0, XR_Y0 + XR_WALL))
     # the +Y buttress, the same triangle
-    s = s.union(_xz_prism(tri, XR_Y1 - XR_WALL, XR_Y1))
+    s = s.union(_xz_prism(tri, XR_Y1 - XR_WALL, XR_Y1).cut(
+        _box(XR_X0 - 1.0, XR_FOOT_X, XR_Y1 - XR_WALL - 1.0, XR_Y1 + 1.0, zb, XR_TOP + 1.0)))
     # the rail wall's bores: screw_rail's seat, lip and boss passage, as printed
     s = s.cut(_xbore(D.SUPPORT_BRG_OD + 0.2, RAIL_BOT - 1.0, BRG_TOP_Z + 1e-3))
     s = s.cut(_xbore(SR.SEAT_LEDGE_D, RAIL_BOT - 1.0, LEDGE_TOP))
     s = s.cut(_xbore(SR.NUT_PASS_D, LEDGE_TOP - 0.01, RAIL_TOP + 1.0))
-    for x in XR_SCREWS_X:
-        for y in XR_SCREWS_Y:
-            s = s.cut(_wood_screw(x, y, UP))
+    for x, y in XR_HOLES:
+        s = s.cut(_wood_screw(x, y, UP))
     return s
 
 

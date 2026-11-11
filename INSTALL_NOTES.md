@@ -1611,6 +1611,21 @@ straight off the yoke's roof and runs dead level to the crown.
   through the 688, and turn it into the nut, holding the yoke.
   5. String over the crown to the tuner. Drive it by hand with the belt ends as before.
 
+#### Widened X station (2026-11-10)
+The buttresses stopped the nut, its M3s and the yoke short of full travel when they are held with
+the ears horizontal. The frame is now 41.4 wide (half-width 20.7), the same as the motor wall less
+what the counter springs need. It clears the nut at any angle over the whole travel.
+- **Reprint** `coupons/plank_station_x.step`, base on the bed.
+- **One NEW plank hole:** the +Y screw at the rail end has no room outside the wider wall (its
+  head would be past the plank's edge). It moves INSIDE the open room, just -X of the rail wall:
+  at the counter/inline rig's place that is x -113.0, y 52.25. Drill it. Set the new station on
+  its other three holes first and mark through.
+- The other three are the old holes. The +Y one at the foot end has its own pad, and the buttress
+  is trimmed back off it so the key goes straight down. Drive the room's screw down through the
+  open top past the nut, with the nut's ears vertical.
+- Edge rims: each countersink stands 1.0-1.2 from its tab's edge (the +Y one against the plank's
+  edge), so that rim prints as one bead.
+
 ### The counter-spring rig: the X rig with the string, a spring pulling back on the pulley side (2026-11-09)
 The X rig exactly as before (head, motor, string to the crown), plus springs pulling the yoke +X,
 against the string. The nut's thread then carries string minus spring. Set anywhere from 50 % to
