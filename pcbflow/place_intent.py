@@ -36,6 +36,13 @@ MECHANICAL (from the CAD -- a fresh board is mostly these)
   access    ref|xy side tool_d     something reached after assembly (test pad, button, the
                                    hex key to a screw): no other courtyard within tool_d/2
   fixed     ref xy rot [tol]       pinned by the CAD or by hand ("pin" = fixed at the hand xy)
+  group     anchor members [tol]   a rigid CELL: members {ref: [dx, dy, drot]} in the anchor's
+                                   own frame (offset turns with the anchor, rot = anchor rot +
+                                   drot). One rule per instance of a repeated cell (optical's
+                                   ten string cells, five converter cells): the cell is designed
+                                   once, around its pins, and placed whole -- its hand-laid
+                                   geometry (a TIA's summing nodes, a converter's input fan)
+                                   is the design, not a placement choice
 
 ELECTRICAL / FLOORPLAN
   region    name poly              a floorplan band; in_region refs region keeps parts in it
@@ -47,6 +54,10 @@ ELECTRICAL / FLOORPLAN
   rot       ref allowed            rotation in the allowed set
   side      ref F|B
   array     refs axis pitch [tol]  one rule for a repeat: same off-axis, equal pitch along
+  current   net amps [dT]          the current a net carries: widths() turns it into the track
+                                   width (IPC-2221), so power is drawn as power
+  (auto_floorplan(parts) proposes the noise `apart` rules: switch nodes and USB / relay
+   edges off references, ADC / amplifier inputs, photodiodes and crystals)
   tight     nets max_mm [weight]   a loop the datasheet wants small (a buck's SW node, its FB,
                                    a crystal's legs): each net's pads within max_mm (half
                                    perimeter); place_init pulls these nets x weight
@@ -275,6 +286,15 @@ def check(rule, P, notes, H=None):
         dr = abs((r - rule.get("rot", r) + 180.0) % 360.0 - 180.0)
         out.append((rule.get("tol", 0.01) - math.hypot(x - wx, y - wy) - (1e3 if dr > 0.5 else 0.0),
                     ref, "at %.3f,%.3f r%g, fixed %.3f,%.3f r%g" % (x, y, r, wx, wy, rule.get("rot", r))))
+    elif k == "group":
+        ax, ay, ar = P.at(rule["anchor"])
+        for ref, (dx, dy, dr) in rule["members"].items():
+            wx, wy = np.asarray([ax, ay]) + _rot([[dx, dy]], ar)[0]
+            x, y, r = P.at(ref)
+            bad = abs((r - (ar + dr) + 180.0) % 360.0 - 180.0) > 0.5
+            out.append((rule.get("tol", 0.01) - math.hypot(x - wx, y - wy) - (1e3 if bad else 0.0),
+                        ref, "in %s's cell: off by %.3f%s" % (rule["anchor"], math.hypot(x - wx, y - wy),
+                                                            ", turned" if bad else "")))
     elif k == "in_region":
         poly = notes["_regions"][rule["region"]]
         for ref in _refs(rule["refs"], parts):
@@ -284,8 +304,12 @@ def check(rule, P, notes, H=None):
         a = _refs(rule.get("a") or [rule["ref"]], parts)
         b = _refs(rule.get("b") or rule["others"], parts)
         m = rule.get("min_mm", rule.get("apart_mm"))
+        fx = set(rule.get("fixed", ()))          # a pair of fixed parts is the CAD's, not a breach
         for x in a:
-            best = min((_poly_dist(P.crtyd(x), P.crtyd(y)), y) for y in b if y != x)
+            ds = [(_poly_dist(P.crtyd(x), P.crtyd(y)), y) for y in b if y != x and not (x in fx and y in fx)]
+            if not ds:
+                continue
+            best = min(ds)
             out.append((best[0] - m, x, "%.2f from %s, wants %.2f" % (best[0], best[1], m)))
     elif k == "decap":
         cap, pin = rule["cap"], rule["pin"]
@@ -328,6 +352,8 @@ def check(rule, P, notes, H=None):
                 a = np.asarray(pts)
                 hp = float(np.ptp(a[:, 0]) + np.ptp(a[:, 1]))
                 out.append((rule["max_mm"] - hp, nm, "%.1f mm across, wants %.1f" % (hp, rule["max_mm"])))
+    elif k == "current":
+        pass                                # a width, not a placement: see widths()
     elif k == "array":
         refs = _refs(rule["refs"], parts)
         ax = 0 if rule["axis"] in ("x", "X") else 1
@@ -491,14 +517,156 @@ def auto_singles(parts, ground=("GND",), max_mm=8.0, skip=(), weight=0.5, two_pa
     return rules
 
 
+SENSITIVE = re.compile(r"(^|_)(V?REF\w*|VMID|MID(_RAW|_BUF)?|AREG|AVDD|AIN\w*|ADC\w*_IN\w*|ADC_IN|\w*_IN_\d\w*|"
+                       r"TIA\w*|PICKUP\w*|SENSE\w*)$", re.I)
+XTAL_NET = re.compile(r"(^|_)(OSC_(IN|OUT)|\w*_X[IO]|X[IO]|XTAL\w*)$", re.I)
+NOISY_EDGE = re.compile(r"(^|_)(USB\w*|VBUS|\w*_D[PM]|RELAY\w*)$", re.I)
+
+
+def auto_floorplan(parts, sensitive=SENSITIVE, noisy=NOISY_EDGE, xtal=XTAL_NET, switch_mm=10.0, edge_mm=6.0, skip=(),
+                   ground=("GND",)):
+    """Default noise floorplan from the netlist: `apart` rules between what radiates and
+    what listens. A fresh board gets them for free, like auto_decaps.
+
+      switchers   an inductor on a small non-supply net shared with an IC pin (a buck's SW
+                  node): the inductor, the IC and every part on that node. Apart from
+                  EVERY sensitive part by switch_mm, weight 1.
+      noisy edges relays (K*) and the parts carrying USB (an IC or connector with a pin on
+                  a net matching `noisy`). Apart from the ANALOG sensitive parts (not the
+                  crystals -- a PHY's crystal belongs at the PHY) by edge_mm, weight 0.5.
+                  Switch nodes also stay 1.5 x edge_mm off the USB parts: a high-speed
+                  pair's path is not where a switcher goes.
+      sensitive   crystals (Y*), photodiodes (PD*), every IC with a pin on a net matching
+                  `sensitive` (references, MID, ADC/amplifier inputs, the pickup, oscillator
+                  legs), and every two-pin part whose non-ground nets are all sensitive (a
+                  reference divider's resistors).
+
+    Only the switch-node-to-sensitive rule carries "forbid": true (place_init keeps the
+    zone clear when it first drops a part); the edge rules are checked and penalised in the
+    local pass, never forbidden.
+
+    ⚠ WHY (output_panel, 2026-11-11): with every rule a forbid zone, the 98 x 56 board
+    routed 8 open (vN 0): the USB-edge zones round the hub pushed its own connectors' parts
+    away. A dense board cannot honour every 6 mm edge rule; the hand board breaks 10.
+
+    Overridable: pass your own regexes, distances or `skip` refs; a part in both a noisy
+    group and the sensitive set is dropped from that rule's sensitive side (a USB codec's
+    ADC). Soft rules: the router never sees them, so score.py --intent prints their
+    breaches beside the route.
+
+    ⚠ WHY (optical, 2026-11-11): place_init, with the floorplan unsaid, put the buck (U13,
+    L1) beside the PHY and 6 mm from the MID divider that feeds all twenty TIAs -- and the
+    board routed BETTER than the hand one (210 vias vs 223). A score that only routes
+    passes a placement that is electrically wrong; this is the rule that says so."""
+    nets = {}
+    for r, v in parts.items():
+        for q in v["pads"]:
+            if q["net"]:
+                nets.setdefault(q["net"], set()).add(r)
+    rnets = {r: {q["net"] for q in v["pads"] if q["net"]} for r, v in parts.items()}
+    ic = lambda r: re.match(r"^U\d", r) is not None
+    sens, crystals = set(), set()
+    for r in parts:
+        if r in skip:
+            continue
+        sig = rnets[r] - set(ground)
+        # a crystal and its load caps listen; the MCU / hub / PHY driving it does not
+        # (output_panel's U1 and U4 had read as sensitive through OSC_IN / HUB_XI)
+        if re.match(r"^Y\d", r) or (len(parts[r]["pads"]) == 2 and any(xtal.search(n) for n in sig)):
+            crystals.add(r)
+        elif re.match(r"^PD\d", r):
+            sens.add(r)
+        elif ic(r) and any(sensitive.search(n) for n in sig):
+            sens.add(r)
+        elif len(parts[r]["pads"]) == 2 and sig and all(sensitive.search(n) for n in sig):
+            sens.add(r)
+    rules = []
+    for L in sorted(r for r in parts if re.match(r"^L\d", r) and r not in skip):
+        for n in sorted(rnets[L]):
+            members = nets.get(n, set())
+            if SUPPLY.search(n) or n in ground or len(members) > 4 or not any(ic(m) for m in members if m != L):
+                continue
+            grp = sorted(members - set(skip))
+            b = sorted((sens | crystals) - set(grp))
+            if b:
+                rules.append({"kind": "apart", "a": grp, "b": b, "min_mm": switch_mm, "hard": False, "weight": 1.0,
+                              "forbid": True,
+                              "why": "switch node %s (%s): off every sensitive part" % (n, " ".join(grp)),
+                              "src": "auto_floorplan (netlist)"})
+    loud = sorted(r for r in parts if r not in skip and (re.match(r"^K\d", r) or
+                  (re.match(r"^[UJ]\d", r) and any(noisy.search(n) for n in rnets[r]))))
+    usb = [r for r in loud if not re.match(r"^K\d", r)]
+    for r0 in [x for x in rules if x["src"] == "auto_floorplan (netlist)"]:
+        b = sorted(set(usb) - set(r0["a"]))
+        if b:
+            rules.append({"kind": "apart", "a": r0["a"], "b": b, "min_mm": edge_mm * 1.5, "hard": False, "weight": 0.5, "forbid": False,
+                          "why": "switch node %s off the USB path (%s)" % (r0["a"], " ".join(b)),
+                          "src": "auto_floorplan (netlist)"})
+    if loud:
+        b = sorted(sens - set(loud))
+        if b:
+            rules.append({"kind": "apart", "a": loud, "b": b, "min_mm": edge_mm, "hard": False, "weight": 0.5, "forbid": False,
+                          "why": "USB / relay edges (%s) off the analog parts" % " ".join(loud),
+                          "src": "auto_floorplan (netlist)"})
+    return rules
+
+
+FLOOR_KINDS = ("apart", "thermal", "in_region", "region")
+
+
+def fixed_refs(rules):
+    """Refs the intent pins (fixed, pin, panel, and the members of a group on a fixed anchor)."""
+    fx = {r["ref"] for r in rules if r["kind"] in ("fixed", "pin", "panel")}
+    for r in rules:
+        if r["kind"] == "group" and r["anchor"] in fx:
+            fx |= set(r["members"])
+    return fx
+
+
+def floor_breaches(stem, rules, placements=None, parts_path=None):
+    """[(slack, subject, detail, why)] for the broken floorplan rules (apart, thermal,
+    in_region): what score.py --intent prints beside the route."""
+    fx = fixed_refs(rules)
+    fl = [dict(r, fixed=sorted(fx)) if r["kind"] in ("apart", "thermal") else r
+          for r in rules if r["kind"] in FLOOR_KINDS]
+    return [(s, subj, det, r.get("why", "")) for s, _, r, subj, det in report(stem, fl, H={}, placements=placements, parts_path=parts_path)
+            if s < 0 and r["kind"] != "region"]
+
+
+def width_for(amps, dT=10.0, oz=1.0, inner=False, min_mm=0.2):
+    """IPC-2221 track width (mm) for a current: I = k dT^0.44 A^0.725, A in mil^2, k 0.048
+    outer / 0.024 inner, 1 oz = 1.378 mil. Rounded up to 0.05 mm, never under min_mm."""
+    k = 0.024 if inner else 0.048
+    area = (amps / (k * dT ** 0.44)) ** (1.0 / 0.725)          # mil^2
+    w = area / (1.378 * oz) * 0.0254                            # mm
+    return round(max(min_mm, math.ceil(w / 0.05 - 1e-9) * 0.05), 2)
+
+
+def widths(rules, inner=False, **kw):
+    """{net: width mm} from the intent's `current` rules -- what a generator writes into
+    notes["net_widths"]. The OUTER curve by default: IPC-2221's inner k (half the outer)
+    is the chart IPC-2152 found far too conservative -- an inner track in a board with
+    planes runs about as cool as an outer one -- and at 3 A it asks 3.6 mm against 1.4.
+
+    ⚠ WHY (output_panel, 2026-11-11): +3V3 as a signal tree took 27 vias and 189 mm; as a
+    pour on In2 (the only inner signal layer) 51 vias, one per pin, and it pushed 450 mm of
+    escapes off In2 (pair faults 1 -> 3); as a 0.4 mm tree 30 vias and 0 faults. Power is a
+    width, from the current it carries; a pour only where a region has a layer to spare."""
+    out = {}
+    for r in rules:
+        if r["kind"] == "current":
+            out[r["net"]] = width_for(float(r["amps"]), r.get("dT", 10.0), inner=inner, **kw)
+    return out
+
+
 def read_values(net_path):
     """{ref: value} from a KiCad .net (the components' (value ...))."""
     txt = open(net_path, encoding="utf-8").read()
     return {m.group(1): m.group(2) for m in re.finditer(r'\(comp\s*\(ref "?([^")\s]+)"?\)\s*\(value "?([^")]*)"?\)', txt)}
 
 
-def report(stem, rules, H=None, placements=None):
-    parts = json.load(open(stem + ".parts.json", encoding="utf-8"))["parts"]
+def report(stem, rules, H=None, placements=None, parts_path=None):
+    parts = json.load(open(parts_path or stem + ".parts.json", encoding="utf-8"))["parts"]
     notes = json.load(open(stem + ".board.json", encoding="utf-8"))
     if placements is not None:
         notes["placements"] = placements

@@ -241,8 +241,27 @@ Results on the same router (single routes):
 | hand R2, stripped (+3V3 open) | 3 | 253 | 2484 | 603 s |
 
 On equal terms the 280 is level with the hand board's 253. The hand board leaves +3V3
-open, and +3V3 alone takes 27 vias and 189 mm on the intent board. +3V3 is a supply routed
-as a signal tree, so it is the case for **pours from intent**, the next piece of (p).
+open, and +3V3 alone takes 27 vias and 189 mm on the intent board.
+
+**Power is a width; a pour only where a layer is spare (measured 2026-11-11, lead
+ruling).** +3V3 on the same 0-open placement, one route each:
+
+| +3V3 as | open | pair faults | vias (+3V3's) | signal mm on In2 |
+|---|---|---|---|---|
+| signal tree | 0 | 1 | 280 (27) | 668 |
+| pour on In2 over the digital band | 0 | 3 | 318 (51) | 216 |
+| 0.4 mm tree | 0 | 0 | 271 (30) | 648 |
+
+On a 4-layer board whose In2 is the only inner signal layer, the pour costs a via per pin
+and pushes the escapes off In2. The rules:
+* A power net gets a width, from a `current(net, amps)` rule in the intent:
+  `place_intent.widths(rules)` gives {net: mm} (IPC-2221 outer curve, 10 C rise, 1 oz,
+  rounded up to 0.05, at least 0.2), which the generator writes into `net_widths`.
+  Examples: 1 A is 0.35 mm, 1.5 A 0.55, 3 A 1.4.
+* A pour (a zone with net, layer and poly) is for a region whose layer has nothing else to
+  carry there, like optical's +3V3D on B.Cu under U6.
+
+Against the hand board's 253: the 0.4 mm tree is 271 with +3V3 routed, and 241 without it.
 
 **Held copper on paste-window lands, every board (survey 2026-11-10, main 622e87e).** These
 are lands with F.Paste-only windows, which the router could not start a path from before
@@ -313,7 +332,7 @@ rounds x candidates fixed up front, never an open-ended sweep.
 **Proof:** from (b)'s output_panel, refinement closes the gap to (or passes) the hand
 placement's score, in minutes.
 
-**IN PROGRESS (2026-11-11): `place_refine.py`**, a working driver, not yet proved.
+**EXPERIMENTAL (2026-11-11, lead ruling): `place_refine.py`**: it works as a driver but gained nothing in four runs. No more investment unless a board shows a use for it.
 * Each round reads the parent's failed nets, faulted pairs and hotspots, and names parts
   in that order: small parts on failed nets, then on faulted pairs, then beside hotspots.
 * Moves: a "pull" (place_init's legaliser drops the part at the free spot nearest the far
@@ -326,6 +345,99 @@ placement's score, in minutes.
   full-route confirm (3 faults, 12.8 mm uncoupled). The confirm rule earned its keep.
 * Moves that touch the THRU pair's parts (D2/D3) re-score at ~220 s, because the pair is
   re-finished. Next: re-run from the 0-open board, aiming at THRU_DP once it is unparked.
+
+* Fourth run (vT3: 2 open, FLASH_RX and POT_SCK; 262 vias), with push moves added (the
+  legaliser drops a part 1.5 / 3 mm away from the nearest failed pin): 11 parts named,
+  98 legal moves, 8 re-scored, none beat the parent. The failed set shifted (POT_SDI in,
+  FLASH_RX out), so that corner is at capacity, and moving single passives cannot relieve
+  it. What did close it was place_init (vN below: 0 open). **Lesson: fix the placer, not
+  the placement.**
+
+### Generality: optical, the whole pipeline (2026-11-11)
+
+The lead's test: if the system only works on output_panel, we need to know before the
+re-layout. Optical R1 has noise bands, the photodiode array and the U10 clamp.
+
+**Equal terms.** The hand placement and the auto placement were stripped the same way:
+tracks, vias, repair tracks/vias, escape_runs, pin_escapes and via_keepouts all removed. Two
+things were kept on BOTH, because they belong to the design, not to one route: the ADC and
+PHY stitch_exceptions (layout refuses either board without them), and `local_nets`. The
+post_route_refs sit at their hand sites on both (layout skips them). The R1 netlist
+(elec/out/optical.net) matches R1's board.json; the kept .kicad_pcb is R2 and has 12 more
+parts.
+
+**Intent** (scratchpad `op2/opt_intent.py`, 147 rules):
+* Fixed: what the instrument fixes (the D/PD/R sensing column, J1, J2, and the converter
+  anchors, whose positions come from the comb geometry).
+* Rigid groups (new kind `group`): the 10 string cells and the 5 converter cells, each on
+  its anchor.
+* Free: all **86 compute-section parts**, with no hand xy and no rot rules.
+
+| optical R1, stripped | open | pairs | uncoupled | vias | length | soft rules broken | floor |
+|---|---|---|---|---|---|---|---|
+| hand | 0 | 0 | 0 | 223 | 2745 | 17 | 0 |
+| vI: first auto | 0 | 0 | 9.6 | 222 | 2379 | 15 | - |
+| vI2: decaps inside the halo | **10** | 0 | 5.9 | 176 | 1816 | 8 | 6 |
+| vI3: + hand-written floorplan regions | 0 | 0 | 4.4 | 210 | 2347 | 8 | 4 |
+| **vI8: auto_floorplan + stiffened near + zones kept** | **0** | **0** | 3.2 | **208** | **2339** | 4 | **0** |
+
+The same code on output_panel (op_intent_free + auto_floorplan), both stripped:
+
+| output_panel R2, stripped | open | pairs | uncoupled | vias | length | floor |
+|---|---|---|---|---|---|---|
+| hand (shipped) | 3 | - | - | 253 | - | 10 |
+| vT3 (before today's fixes) | 2 | 1 | 3.0 | 262 | 2131 | - |
+| vN: fixes, no auto_floorplan | 0 | 0 | 1.8 | 265 | 2157 | 7 (L1 0.67 mm from Y1) |
+| vF: every auto rule a forbid zone | **8** | 0 | 4.7 | 205 | 1778 | - |
+| **vF3: switch zones forbid, edges soft** | **0** | **0** | **0** | 278 | 2205 | 5 (edge rules) |
+
+5. **A zone is not for trading.** The local pass moved L1 28 mm and accepted a 9.3 mm
+   breach of the crystal's zone, because it cost 93 in the penalty against 2100 of other
+   soft-rule gains. Local moves and satellite re-seats now keep forbid zones (`fz` in
+   `_local`).
+6. **A part listed twice in a group was unstamped twice** (C130 had two decap rules). That
+   left a negative grid count, and R33 was dropped into U10's courtyard; layout refused the
+   board. Groups are now deduplicated, and place() raises if the grid ever goes negative.
+
+Bugs it found in place_init, all fixed:
+1. **An IC with a `near` rule was a satellite** (U7 near J1). Its own decaps were never
+   seated, because seating ran only for parts in the drop order (C121 ended up 26 mm from
+   U7.6). Now `near` on a part with more than IC_PADS pads is a quadratic spring, and
+   seating recurses (a satellite's satellites follow it).
+2. **The escape halo kept the decap ring out.** U6 (LQFP-176) has a 2.5 mm halo, which
+   pushed C117 24 mm from its pin. A decap may now stand inside its own anchor's halo, down
+   to HALO_SMALL (`_drop_sat`).
+3. **Quadratic clumping.** The buck landed beside the PHY and 1.2 mm from the MID divider
+   that feeds all twenty TIAs. That board routed BETTER than the hand one, and a clumped
+   PHY was also what failed vI2. Fixed with `auto_floorplan` (below), which `_drop` now
+   honours as a forbid zone (`_apart_forbid`, falling back if there is no room).
+4. **A fixed `near` weight is a guess.** U7's spring to J1 (weight 2) lost to twelve ULPI
+   springs, leaving U7 20 mm from J1 and the USB pair 4.4 mm uncoupled. A `near` spring
+   whose rule is still broken after the solve is now tripled and re-solved, up to 3
+   rounds. U7 and U13 needed x18.
+
+**auto_floorplan(parts)** (place_intent, alongside auto_decaps; lead request). These are
+default noise `apart` rules derived from the netlist:
+* Switch nodes are found from an inductor on a small non-supply net shared with an IC pin.
+  They stay 10 mm from every sensitive part and 9 mm from the USB parts.
+* USB and relay edges stay 6 mm from the analog sensitive parts.
+* Sensitive parts are: photodiodes; ICs on reference, MID, ADC/amplifier-input or pickup
+  nets; two-pin parts whose nets are all of those; crystals and their load caps. An MCU
+  that drives a crystal is not sensitive.
+* The regexes, distances and `skip` are all arguments.
+* Only switch node vs sensitive carries `"forbid": true` (the legaliser keeps that zone
+  clear). The edge rules are soft. With every rule a zone, output_panel routed 8 open (vF).
+* Check: the hand optical breaks 0 of them, so the defaults agree with a known-good noise
+  floorplan.
+* The shipped output_panel breaks 10. After dropping pairs where both parts are fixed by
+  the CAD: L1 is 2.5 mm from the MCU crystal Y1, the buck U5 is 5 mm from the hub crystal
+  Y2, and K1 is 2 mm from J8 (the pickup header). Reported only; the shipped board is left
+  alone.
+
+**`score.py --intent <rules.json> [--parts]`** prints the floorplan breaches beside the
+route: `floor` (a count) and `floor_breaches` (the worst ten) in the JSON, plus a FLOOR
+line on stderr. They are never folded into `key`. A placement that routes well but is
+electrically wrong can no longer pass quietly.
 
 ## Rules carried over
 
