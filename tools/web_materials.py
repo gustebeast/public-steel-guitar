@@ -116,7 +116,9 @@ _ONE_PRINT = ((re.compile(r"^top_plate_color_(\d+)$"), r"top_plate_\1"),
                           r"|screws|term_screws|buttons|lead_[a-z]+)_(\d+)$"), r"motor_\1"),
               (re.compile(r"^pi4_[a-z0-9]+$"), "pi4"),            # one bought board
               (re.compile(r"^chassis_light_(\d+)$"), r"chassis_\1"),
-              (re.compile(r"^ui_screen_lit$"), "ui_screen"),     # what the screen shows
+              # one bought display module: its bezel, its glass and what the glass shows
+              # (user, 2026-11-11: hide, show and select them as one part)
+              (re.compile(r"^ui_screen(?:_lit)?$"), "ui_display"),
               (re.compile(r"^ui_ffc_(contacts|stiffener)$"), "ui_ffc"))   # one cable
 
 
