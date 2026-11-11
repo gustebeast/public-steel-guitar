@@ -481,6 +481,34 @@ OPEN: on the cells board the pre-laid pair costs two ULPI nets. The PHY cell lan
 from the turn stage, which made the layout pair possible, and the ULPI fan then had no way
 out past it.
 
+**`place_cells.py`: a cell's turn is chosen by routing it (2026-11-11, lead ruling).**
+* For each free-anchor cell, the other three quarter turns are tried. Each turned cell is
+  dropped whole at the free spot nearest the anchor, laid out, and re-scored against the
+  parent route with `--intent`.
+* The best by place_refine's key must also beat the parent in a full route before it is
+  kept. It then becomes the next cell's parent.
+* Bounded at 3 candidates + 1 confirm per cell.
+* Without free cells it writes the placements unchanged: output_panel is byte-identical to
+  vF3.
+
+Optical cells board (vI16: 2 open, ULPI_D5/D6; USB pair 0.0 mm):
+
+| step | open | uncoupled | vias | length | forbid breaks |
+|---|---|---|---|---|---|
+| parent (U13 0, U7 270) | 2 | 0.0 | 202 | 2341 | 0 |
+| U13 -> 90 (confirmed) | 2 | 0.0 | 196 | 2319 | 0 |
+| **U7 -> 90 (confirmed)** | **0** | **0.0** | **194** | **2299** | **2**: the buck's switch node 9.2 / 9.4 mm from the PHY crystal Y2, zone 10 |
+| `--strict` (U7_90 not eligible) | 2 | 0.0 | 196 | 2319 | 0 |
+
+The other PHY turns lost ULPI lines (0: DIR/STP open and 11 mm uncoupled; 180: D2/D3
+open). On this board, closing the ULPI fan and keeping the zone are not both possible with
+the buck where it is. The default reports the breach; `--strict` refuses it. Which one
+applies is the intent author's call.
+
+Note: rescore said **0 open for all three buck turns**, and the full route of U13_90 said 2
+(the same ULPI pair). A re-score near the parent's failed nets is optimistic; the
+full-route confirm is what caught it.
+
 **auto_floorplan(parts)** (place_intent, alongside auto_decaps; lead request). These are
 default noise `apart` rules derived from the netlist:
 * Switch nodes are found from an inductor on a small non-supply net shared with an IC pin.
