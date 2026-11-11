@@ -39,6 +39,7 @@ orders of magnitude below what matters.
 from __future__ import annotations
 
 import json
+import re
 import os
 import sys
 
@@ -64,8 +65,8 @@ def net_lengths(board, merge_ref=None, merge_r=4.0):
     # The exclusion is by NAMED REF, not by guessing which stubs look like merges: a
     # group says where its merge is, or nothing is excluded.
     skip = []
-    if merge_ref:
-        fp = board.FindFootprintByReference(merge_ref)
+    for ref in ([merge_ref] if isinstance(merge_ref, str) else (merge_ref or ())):
+        fp = board.FindFootprintByReference(ref)
         if fp is not None:
             c = fp.GetPosition()
             skip.append((c.x, c.y, pcbnew.FromMM(merge_r)))
@@ -98,6 +99,26 @@ def net_lengths(board, merge_ref=None, merge_r=4.0):
     return out
 
 
+def merge_refs(board, nets):
+    """The footprints that carry EVERY net of a pair on exactly two pads -- a USB-C
+    receptacle, whose duplicated D+/D- pads layout._flip_merge joins. Read off the
+    netlist, so the exclusion stays by named ref: a group that declares no merge_at gets
+    these. (output_panel, 2026-11-11: a placement-chosen turn of J3 let the merge be laid
+    where it never had been, and HUB_UP read 4 vias and a split layer set off the
+    merge's own stub.) CONNECTORS ONLY: a pass-through part (a USBLC6's IO1 in and out)
+    also carries each net on two pads, but its die joins them and its copper IS the line."""
+    out = []
+    for fp in board.GetFootprints():
+        if not re.match(r"J\d", fp.GetReference()):
+            continue
+        n = {}
+        for q in fp.Pads():
+            n[q.GetNetname()] = n.get(q.GetNetname(), 0) + 1
+        if all(n.get(x) == 2 for x in nets):
+            out.append(fp.GetReference())
+    return out
+
+
 def check(stem):
     board = pcbnew.LoadBoard(stem + ".kicad_pcb")
     notes = json.load(open(stem + ".board.json", encoding="utf-8"))
@@ -126,10 +147,8 @@ def check(stem):
     bad = 0
     for g in groups:
         # a group measured through a pad-merge connector says so; see net_lengths
-        if g.get("merge_at"):
-            lens = net_lengths(board, g["merge_at"], g.get("merge_r", 4.0))
-        else:
-            lens = net_lengths(board)
+        mr = g.get("merge_at") or merge_refs(board, g["nets"])
+        lens = net_lengths(board, mr, g.get("merge_r", 4.0)) if mr else net_lengths(board)
         nets = g["nets"]
         missing = [n for n in nets if n not in lens]
         if missing:
