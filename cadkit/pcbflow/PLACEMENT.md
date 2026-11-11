@@ -136,6 +136,30 @@ wider, so more nets change layer. Two fixes came out of this proof:
 * auto_decaps targets: only an IC's first, smallest cap gets 3 mm (weight 1); further caps
   get 5 mm (weight 0.5). The hand board went from 14 soft breaks to 9.
 
+**SWDIO, the last open (2026-11-11): two bugs, neither in the router.** SWDIO (U1.48 to
+TP1) could not route even alone on an empty board.
+* layout's GND stitch for U1.49 had taken an L across the outer ends of pins 48 and 47.
+  On a 0.4 mm QFN that is a signal pin's only exit.
+* It took the L because K1's pad sat 1.5 mm from U1's courtyard, inside U1's 2.5 mm
+  escape halo. The legaliser placed K1 (bigger) first, and a halo only kept out parts
+  placed after its owner.
+
+Fixes:
+* place_init: the gap between two parts is now the larger of their halos, whichever goes
+  first (two occupancy grids: grown courtyards checked against plain masks, plain
+  courtyards against grown masks).
+* layout: a fine-pitch part's GND stitch tries every hop that stays off its neighbours'
+  exit lanes before one that crosses, and names any pad that had to cross.
+
+Result on the same router, held copper stripped: **0 open, 0.0 mm uncoupled**, 328 vias,
+303 s. The one fault left is THRU_DP, which is parked. The stripped hand placement on the
+same router: 3 open.
+
+`auto_singles` (a `near` rule at its driver pin for a test pad, or for a two-pad part
+whose other end is ground) exists, but is not used by default. On output_panel it put 26
+more satellites against U1's pins and routed 4 open against 1. A pull-up's place is a
+judgement about escapes that a flat 5 mm rule does not make.
+
 **Proof:** re-place output_panel from intent alone (mechanical + floorplan; no hand
 coordinates except the panel), route it, and compare `score.py` with the hand placement.
 The target is not "beats the engineer" on the first try -- it is a legal board the router
@@ -246,6 +270,20 @@ rounds x candidates fixed up front, never an open-ended sweep.
 
 **Proof:** from (b)'s output_panel, refinement closes the gap to (or passes) the hand
 placement's score, in minutes.
+
+**IN PROGRESS (2026-11-11): `place_refine.py`**, a working driver, not yet proved.
+* Each round reads the parent's failed nets, faulted pairs and hotspots, and names parts
+  in that order: small parts on failed nets, then on faulted pairs, then beside hotspots.
+* Moves: a "pull" (place_init's legaliser drops the part at the free spot nearest the far
+  end of its failed net), 0.5 / 1.0 mm steps, and turns within `rot`.
+* Moves that break a hard rule or meet a courtyard are dropped. The rest are laid out and
+  re-scored (c) 4 at a time. The best is confirmed by a full route before it becomes the
+  next parent.
+* First runs, on the board before the SWDIO fix: no move fixed SWDIO, because its blocker
+  was in layout. The one move that won on re-score (R17 -0.5: pair faults 0) lost its
+  full-route confirm (3 faults, 12.8 mm uncoupled). The confirm rule earned its keep.
+* Moves that touch the THRU pair's parts (D2/D3) re-score at ~220 s, because the pair is
+  re-finished. Next: re-run from the 0-open board, aiming at THRU_DP once it is unparked.
 
 ## Rules carried over
 

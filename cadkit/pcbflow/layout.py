@@ -4004,7 +4004,7 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
             if math.hypot(x - (ax + t * vx), y - (ay + t * vy)) - half_w < margin:
                 return False
         return True
-    made, failed, done_vias = 0, [], []
+    made, failed, done_vias, lane_crossed = 0, [], [], []
     for pad, fp in pads:
         # ⚠ SIGNAL PINS CAN ASK FOR THE SAME THING, BY NAME. A fine-pitch pin whose
         # neighbours took the escape positions first is left on F.Cu with no way off the
@@ -4058,6 +4058,35 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
             # and can afford the extra millimetre while a signal cannot. An escape pin IS
             # the signal, so pushing it out of its own fan defeats the request.
             need += pcbnew.FromMM(1.1)
+        # ⚠ ...AND THE STITCH TRACK STAYS OFF ITS NEIGHBOURS' EXIT LANES (output_panel intent
+        # board, 2026-11-11). The 1.1 mm above moved the VIA out of the fan, but when no
+        # straight hop fitted, the L try ran U1.49's GND from its pad corner diagonally
+        # across the outer ends of pins 48 and 47 to a via 1.4 mm along the row. On a 0.4 mm
+        # QFN a signal pin can only leave off its pad's outer end (0.2 mm gaps between pads),
+        # so SWDIO (pin 48) had no exit at all: open on an empty board, with no placement
+        # move able to free it. Every other signal pad of the part owns a lane straight out
+        # from its end, 1.1 mm long; a stitch's track and via keep a signal track's
+        # clearance from it.
+        _lanes, _lane_on = [], [True]
+        if pitch is not None and pitch < pcbnew.FromMM(0.65) and not _is_escape:
+            _fc = fp.GetCourtyard(pcbnew.F_CrtYd).BBox().GetCenter()
+            for _p2 in fp.Pads():
+                if _p2 is pad or not _p2.GetNetname() or _p2.GetNetname() == pad.GetNetname():
+                    continue
+                if _p2.GetAttribute() in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH):
+                    continue
+                _c2 = _p2.GetPosition()
+                _dx, _dy = _c2.x - _fc.x, _c2.y - _fc.y
+                if abs(_dx) >= abs(_dy):
+                    _u = (1.0 if _dx > 0 else -1.0, 0.0)
+                else:
+                    _u = (0.0, 1.0 if _dy > 0 else -1.0)
+                _h2 = max(_p2.GetSize().x, _p2.GetSize().y) / 2.0
+                # a belly pad (the part's centre) has no lane
+                if math.hypot(_dx, _dy) < _h2:
+                    continue
+                _L = _h2 + pcbnew.FromMM(1.1)
+                _lanes.append((_c2.x + _u[0] * _h2, _c2.y + _u[1] * _h2, _c2.x + _u[0] * _L, _c2.y + _u[1] * _L))
         # ⚠ A BIG PAD TAKES THE VIA INSIDE ITSELF, and that is the right answer rather
         # than a concession. An exposed thermal pad -- a QFN's belly, a SOT-223's tab --
         # is enclosed by its own part's pins, so there is no "beside" to search; the
@@ -4124,7 +4153,19 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
         # Pointing "outward" away from a corner sends half the pins sideways along their
         # own pad row instead of off the package, and the search then fails on exactly
         # the fine-pitch pins it was added for.
+        _dbg_on = os.environ.get("STITCH_DEBUG") == "%s.%s" % (fp.GetReference(), pad.GetNumber())
+
         def _lay(pad_, net_, pts_):
+            ok_ = _lay0(pad_, net_, pts_)
+            if _dbg_on and len(pts_) == 2:
+                print("  STITCH_DEBUG %s lanes=%s -> (%.2f, %.2f): %s" % (
+                    pad_.GetNumber(), _lane_on[0], pcbnew.ToMM(pts_[-1][0]) - 100, 100 - pcbnew.ToMM(pts_[-1][1]),
+                    "ok" if ok_ else _why[0]))
+            return ok_
+
+        _why = [""]
+
+        def _lay0(pad_, net_, pts_):
             """Check a stitch path -- pad -> corners -> via at pts_[-1] -- and lay it.
 
             Returns False and emits nothing if anything along it is too close to
@@ -4161,7 +4202,7 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
             if any(kx0 <= pcbnew.ToMM(x_ - _to_board(0, 0).x) <= kx1
                    and ky0 <= -pcbnew.ToMM(y_ - _to_board(0, 0).y) <= ky1
                    for kx0, ky0, kx1, ky1 in keepouts):
-                return False
+                _why[0] = "if any(kx0 <= pcbnew.ToMM(x_ - _to_board(0, 0).x) <= kx1"; return False
             # ⚠ TWO DIFFERENT MARGINS, because two different things are being placed.
             # The VIA is 0.6 across and needs via/2 + clearance; the TRACK reaching it is
             # 0.25 and needs only track/2 + clearance, about half as much. Holding the
@@ -4181,19 +4222,30 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
             via_lim = pcbnew.FromMM(via_d / 2.0 + clr)
             trk_lim = pcbnew.FromMM(_sw / 2.0 + 0.127)
             if not _clear_of(x_, y_, pad_.GetNetname(), via_lim):
-                return False
+                _why[0] = "if not _clear_of(x_, y_, pad_.GetNetname(), via_lim):"; return False
             if not _hole_off_lands(x_, y_):
-                return False
+                _why[0] = "if not _hole_off_lands(x_, y_):"; return False
             if strict[0] and not _hole_off_holes(x_, y_, pad_):
-                return False
+                _why[0] = "if strict[0] and not _hole_off_holes(x_, y_, pad_):"; return False
             if not all(_clear_of(px, py, pad_.GetNetname(), trk_lim, pad_.GetLayer())
                        for px, py in samples[1:]):
-                return False
+                _why[0] = "if not all(_clear_of(px, py, pad_.GetNetname(), trk_lim, pad"; return False
+            if _lanes and _lane_on[0]:
+                def _dseg(px, py, ax, ay, bx, by):
+                    vx, vy = bx - ax, by - ay
+                    vv = float(vx * vx + vy * vy) or 1.0
+                    t = max(0.0, min(1.0, ((px - ax) * vx + (py - ay) * vy) / vv))
+                    return math.hypot(px - ax - t * vx, py - ay - t * vy)
+                _sig = pcbnew.FromMM(0.1)          # half a signal track
+                if any(_dseg(px, py, *ln) < trk_lim + _sig for px, py in samples[1:] for ln in _lanes):
+                    _why[0] = "if any(_dseg(px, py, *ln) < trk_lim + _sig for px, py in sam"; return False
+                if any(_dseg(x_, y_, *ln) < via_lim + _sig for ln in _lanes):
+                    _why[0] = "if any(_dseg(x_, y_, *ln) < via_lim + _sig for ln in _lanes)"; return False
             # ...and against the vias already placed, or two neighbouring pads choose
             # the same gap and drill the same hole twice.
             lim = pcbnew.FromMM(via_d + clr)
             if any(math.hypot(x_ - vx, y_ - vy) < lim for vx, vy in done_vias):
-                return False
+                _why[0] = "if any(math.hypot(x_ - vx, y_ - vy) < lim for vx, vy in done"; return False
             v_ = pcbnew.PCB_VIA(board)
             v_.SetPosition(pcbnew.VECTOR2I(int(x_), int(y_)))
             v_.SetWidth(pcbnew.FromMM(via_d))
@@ -4244,7 +4296,12 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
         dirs = sorted((math.pi * k / 4.0 for k in range(8)),
                       key=lambda a: abs(((a - out_a + math.pi) % (2 * math.pi)) - math.pi))
         placed = False
-        for strict[0] in (True, False):
+        for _lane_on[0] in ((True, False) if _lanes else (False,)):
+          if placed:
+              break
+          if _lanes and not _lane_on[0]:
+              lane_crossed.append("%s.%s" % (fp.GetReference(), pad.GetNumber()))
+          for strict[0] in (True, False):
             # ⚠ A FINE RADIAL STEP, because the spot that works is sometimes a slot rather
             # than a field. The ESD array's centre pin is its GROUND -- where the clamp
             # diodes dump what they catch -- and it is boxed in: the pair's two rails leave
@@ -4325,6 +4382,10 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
         if not placed:
             failed.append("%s.%s" % (fp.GetReference(), pad.GetNumber()))
     failed = [f for f in failed if f not in allow]
+    if lane_crossed:
+        print("  stitch: %d fine-pitch pad(s) could only reach a via across a neighbour's exit lane: %s"
+              " -- the signal pins there may have no way out (widen the part's neighbourhood)"
+              % (len(lane_crossed), ", ".join(lane_crossed)))
     if failed:
         raise SystemExit(
             "no room for a stitching via beside %d pad(s): %s\n"
