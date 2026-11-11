@@ -34,6 +34,7 @@ LOG = os.path.expanduser("~/springload.jsonl")
 # ONLY WHAT A PEDAL PRESS NEEDS (user, 2026-11-11): a whole tone is ~0.5 turn, a quick press
 # 50..150 ms, so 200..600 rpm on average and ~1200 at its peak. No ramp (acc 0), as play.c moves.
 RPMS = (1200, 600, 300)
+RELAY_LEAD = 1.0                        # s from the relay's click to the move (--no-relay: none)
 
 
 def err_counts(v):
@@ -88,6 +89,15 @@ class Probe:
 def run(o):
     link = MotorCtrlLink()
     p = Probe(link, o.id)
+    # THE RELAY CLICKS 1 s BEFORE EVERY MOVE (user, 2026-11-11), this test only: the output
+    # panel's relay toggled, then RELAY_LEAD, then the move. No panel: said, and run without.
+    panel, relay_on = None, False
+    if not o.no_relay:
+        try:
+            from .panel import Panel
+            panel = Panel()
+        except Exception as e:
+            print("no relay clicks: output panel not reached (%s)" % e)
     was = None
     try:
         r = link.ask("P")
@@ -113,6 +123,10 @@ def run(o):
                 for d in (o.raise_sign, -o.raise_sign):      # out raising, back; out lowering, back
                     for tgt, kind in ((home + d * step, "out"), (home, "back")):
                         assert abs(tgt - home) <= lim, "a target past start +- step"
+                        if panel:
+                            relay_on = not relay_on
+                            panel.relay(relay_on)
+                            time.sleep(RELAY_LEAD)
                         r = p.move(tgt, rpm, acc)
                         sgn = (tgt - (home if kind == "out" else home + d * step))
                         r.update(rpm=rpm, dir="up" if sgn * o.raise_sign > 0 else "down")
@@ -120,6 +134,12 @@ def run(o):
         end = p.ask(servo.READ_ENCODER)
         hold1 = p.hold()
     finally:
+        if panel:
+            try:
+                panel.relay(False)
+                panel.s.close()
+            except Exception:
+                pass
         if was:
             try:
                 link.ask("P 1")
@@ -166,5 +186,6 @@ if __name__ == "__main__":
     a.add_argument("--id", type=int, default=1)
     a.add_argument("--raise-sign", type=int, choices=(1, -1), default=RAISE_SIGN)
     a.add_argument("--report", action="store_true")
+    a.add_argument("--no-relay", action="store_true", help="no relay click before each move")
     o = a.parse_args()
     report() if o.report else run(o)
