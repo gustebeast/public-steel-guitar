@@ -54,6 +54,8 @@ SOFT ones carry a weight and are what placement optimises.
 | `height(poly, max_mm, side)` | max part height under a lid, a deck, a string |
 | `panel(ref, edge, at, face_x, anchor="body_front", overhang)` | a connector whose MOUTH is fixed by the panel or enclosure: position along the edge, how far the body front stands past it. Replaces the hand `_FRONT` arithmetic: the front is measured off the footprint, as board_geom does |
 | `fixed(ref, xy, rot, anchor)` | anything the CAD pins (pads / courtyard / body anchor) |
+| `mate(ref, dir, length, clear)` | the plug / cable INSERTION STROKE as a swept keep-out (THT and JST plugs collide along the stroke, not where they sit); `dir` in board axes or the part's own (`L+X`), or `up` for a top-entry plug |
+| `access(ref or xy, side, tool_d)` | reached after assembly: test pads, buttons, a USB mouth, the 2.5 mm hex key to a mounting screw |
 
 The `mech` block is plain data (polygons in the board frame), so a CAD module can export
 it -- `src/<part>.py` already knows the panel face, the walls and the hole -- and the board
@@ -66,15 +68,27 @@ direction: one source, read, never copied.
 |---|---|
 | `region(name, poly)` + `in_region(refs, name)` | floorplan bands (analog / digital / 24 V) |
 | `apart(group_a, group_b, min_mm)` | noise separation (switch node vs preamp) |
+| `thermal(ref, others, apart_mm)` | regulators and drivers off the sensors (MA730, photodiodes) and off each other |
 | `decap(cap, ic.pin, max_mm=1.5)` | a capacitor at its pin, on the pin's side, smallest first |
 | `near(ref, ref_or_pin, max_mm)` | pull-ups, crystals, ESD at the connector |
 | `chain(refs)` | a pair's path order (U31 -> U10 -> J1): the parts are placed to lay it straight |
 | `rot(ref, allowed)` / `side(ref, F|B)` | orientation freedom and face |
-| `row(refs, axis, pitch)` | LED rows, header banks |
+| `array(refs, axis, pitch)` | one rule for a repeat: optical's photodiodes, per-string cells, LED rows (refs may be a regex) |
 | `pin(ref)` | the hand placement is kept as is |
 
-Parts named nowhere are free. Every constraint keeps a `why` string, so the reasoning that
-lives in comments today lives next to the rule it explains.
+Parts named nowhere are free. Every constraint keeps a `why` and a `src` -- the datasheet
+section, user ruling or memory, or CAD part it comes from ("hand" when it has none) -- so a
+re-layout can tell which rules still hold when the thing they came from changes.
+
+**LANDED (2026-11-10):** `place_geom.py` (KiCad Python: each part's local pads with
+number and net, courtyard, F.Fab box, in the placements' own frame and anchor -- every pad
+round-trips to 0.00003 mm on output_panel) and `place_intent.py` (plain Python: the rules
+above, a checker reporting each rule's slack in mm, `auto_decaps` proposing a decap /
+bulk-near rule for every capacitor across a supply, `--selftest`). Proof: output_panel R2's
+hand placement as 261 rules (mechanical, bands, thermal, auto decaps, pair chains):
+**0 hard rules broken**; 14 soft ones report the hand board's real decap distances
+(3-7 mm where the rule asks 3; C57 and C28 sit by a connector, not an IC -- the auto rule
+is a proposal a board overrides). Checked in 0.7 s.
 
 **Proof:** output_panel R2's hand placement expressed as intent; a checker reports every
 hand coordinate's slack against its constraints (all hard ones satisfied, which proves the
