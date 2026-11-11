@@ -443,6 +443,39 @@ def station_x() -> cq.Workplane:
     return s
 
 
+# THE CROWN STAND (user, 2026-11-10: "a small lifter that screws into the wood and raises the
+# axle"): the X rig's string break, CROWN_X. Two cheeks either side of the string hold the bought
+# Ø8 x 100 shaft (the bridge axle's, BRIDGE_AXLE_D/L) across Y, its top on the string's underside,
+# so the string leaves it dead level with the yoke's roof; the tail goes on down -X to the tuner
+# between them. A tab each side at each end for a wood screw, the +Y pair's base out to Y_EDGE
+# like every other base. Base down; the axle's bores are teardrops, AXLE_BORE as the station's.
+CR_ZC = XR_ZA - D.STRING_GAUGE[I] / 2 - D.BRIDGE_AXLE_D / 2   # the axle's centre
+CR_GAP = 8 * D.BEAD                              # 6.4: half the gap the string runs in
+CR_CHEEK = 8 * D.BEAD                            # 6.4: each cheek, in Y
+CR_HX = 10.0                                     # the cheeks' half-length in X
+CR_TOP = CR_ZC + AXLE_BORE / 2 + 3 * D.BEAD      # 2.4 over the bore's crown
+CR_SX = CR_HX + XR_TAB                           # the screws, off CROWN_X in X: past the cheeks
+CR_SY = CR_GAP + CR_CHEEK / 2                    # ...and off the axis in Y, on the cheeks' lines
+assert CR_ZC - AXLE_BORE / 2 >= Z_PLANK_X + BASE_T + D.MIN_WALL_2P - 1e-9, "the axle's bore into the base"
+
+
+def crown_stand() -> cq.Workplane:
+    """The axle's two cheeks on a base, four wood-screw tabs. In place (world), base down."""
+    zb = Z_PLANK_X + BASE_T
+    x0, x1 = CROWN_X - CR_SX - XR_TAB, CROWN_X + CR_SX + XR_TAB
+    s = _box(x0, x1, SY - CR_SY - XR_TAB, Y_EDGE, Z_PLANK_X, zb)
+    for sy in (-1, 1):
+        y0, y1 = sorted((SY + sy * CR_GAP, SY + sy * (CR_GAP + CR_CHEEK)))
+        s = s.union(_box(CROWN_X - CR_HX, CROWN_X + CR_HX, y0, y1, zb - 0.01, CR_TOP))
+    s = s.cut(printable_bore(AXLE_BORE, 2 * (CR_GAP + CR_CHEEK) + 2.0,
+                             axis_point=(CROWN_X, SY - CR_GAP - CR_CHEEK - 1.0, CR_ZC),
+                             axis_dir=(0.0, 1.0, 0.0), print_up=UP))
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            s = s.cut(_wood_screw(CROWN_X + sx * CR_SX, SY + sy * CR_SY, UP, Z_PLANK_X))
+    return s
+
+
 XR_PARTS = ("leadscrew_0", "nut_0", "yoke_0", "string_nut_0", "yoke_m3_lo_0", "yoke_m3_hi_0",
             "screw_pulley_0", "screw_bearing_0_0")
 
@@ -454,10 +487,10 @@ def assembly_x():
     ax = dict(assembly(axial=True))
     dz = -D.CARRIAGE_TRAVEL / 2.0
     g = D.STRING_GAUGE[I]
-    # NO HEAD (user, 2026-11-10): an Ø8 axle bar across the plank breaks the string, its top on the
-    # string's underside -- the stand-in here; what holds it up is the user's
+    # NO HEAD (user, 2026-11-10): the Ø8 axle on the crown stand breaks the string
     out = [("plank_station_x", station_x()),
-           ("crown_axle", cyl_y(8.0, 60.0, SY - 30.0, x=CROWN_X, z=XR_ZA - g / 2 - 4.0))]
+           ("plank_crown_stand", crown_stand()),
+           ("crown_axle", cyl_y(D.BRIDGE_AXLE_D, D.BRIDGE_AXLE_L, SY - D.BRIDGE_AXLE_L / 2, x=CROWN_X, z=CR_ZC))]
     for nm in XR_PARTS:
         w = ax[nm]
         if nm in ("nut_0", "yoke_0", "string_nut_0", "yoke_m3_lo_0", "yoke_m3_hi_0"):
@@ -1067,6 +1100,7 @@ def print_parts():
     spring = (("plank_counter_post", counter_post()), ("plank_counter_yoke", counter_yoke()),
               ("plank_counter_slider", slider()), ("plank_motor_block", motor_block()),   # all base down
               # the coupler stands on its motor end (+Y -> +Z): the D bore round, boss up
+              ("plank_crown_stand", crown_stand()),
               ("plank_inline_coupler", MC.coupler(INLINE_C1, INLINE_BOSS).rotate((0, 0, 0), (1, 0, 0), 90)))
     for nm, w in (("plank_station", st), ("plank_head", head()),   # the real tee board holds the motor (user)
                   ("plank_station_axial", sa), ("plank_yoke", yk), ("plank_station_x", out_x)) + spring:

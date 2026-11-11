@@ -1628,10 +1628,11 @@ X rig still sat at the vertical-screw rig's height. Now:
   is the whole footprint. **Drive all four wood screws before the springs go on.**
   Its +X face is flush with the screw tabs' edge (2.5 thicker there); the screw head's
   counterbore is just 2.5 deeper, so the key goes in the same way.
-- **No head or crown tower.** Lay an axle bar across the plank 607.0 -X of the yoke's roof at
-  mid travel (the scale span, as before). Its top should hold the string's centre about 26 over
-  the wood, level with the yoke. Each 10 mm low tips the string about 1 deg, about 2.5 N of
-  side load on the yoke's roof.
+- **No head or crown tower: the crown stand** (plank_crown_stand) holds the bought Ø8 x 100
+  shaft across the plank, its top on the string's underside, so the string leaves it level with
+  the yoke. Screw it down (four wood screws, +Y face on the plank's edge) with the axle's centre
+  607.0 -X of the yoke's roof at mid travel (the scale span, as before). Slide the shaft through
+  both cheeks; the string runs over it between them and on down -X to the tuner.
 - **Spring check:** McMaster 9654K634 reads 4 lbf initial tension, 7.9 lbf/in, 46 lbf max at
   10.3 in, which is what the model uses. Two springs pull 69 N backed off fully (78 N with the
   in-line motor's limit) and 150 N fully in.
