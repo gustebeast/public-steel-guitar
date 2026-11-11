@@ -946,7 +946,7 @@ def ui_parts() -> tuple:
     return tuple((nm, w.translate((0.0, dy, 0.0))) for nm, w in parts), dy
 
 
-# -- THE BODY (user, 2026-11-11): a hollow box, no roof ----------------------------------------
+# -- THE BODY (user, 2026-11-11): a hollow box, no roof, opaque PETG-GF like the lead's ----------------------------------------
 # Its +X, +-Y and floor are the drive's and the UI's extents (the strings and the anchor plate
 # left out: the plate is SIZED TO the body) plus BODY_CLR; its -X end is the nut block's, so the
 # body holds the scale length and the current nut block. Its walls stand to the deck's top.
@@ -1008,7 +1008,7 @@ def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
     from .changer_bench import ghosts as _ghosts
     out = _drive(t) + [_compound("db_anchor", _anchor()), _compound("db_anchor_m4", _anchor_bolts())]
     out = [(nm, _made(nm, w)) for nm, w in out] + list(ui_parts()[0])
-    out.append(("ghost_body", _body()))
+    out.append(("db_body", _made("db_body", _body())))   # opaque PETG-GF, as the lead's chassis
     out += [g for g in _ghosts(y_hi=RAIL_HI)
             if g[0] != "ghost_bottom_now" and (all_ghosts or g[0] == "ghost_pickup")]
     return out
@@ -1019,7 +1019,7 @@ def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
 MATERIAL = {
     "yoke": "petg-gf", "collar": "petg-gf", "block": "petg-gf", "mplate": "petg-gf",
     "cheeks": "petg-gf", "rod_plate": "petg-gf", "anchor": "stainless", "anchor_m4": "steel",
-    "comb": "petg-gf",
+    "comb": "petg-gf", "body": "petg-gf",
     "nut": "brass", "ball": "brass", "screw": "steel", "rod": "steel", "string": "polished",
     "brg": "polished", "bend_brg": "polished", "bridge_bearings": "polished",
     "bend_axle_ra": "steel", "bend_axle_rb": "steel", "bend_axle_rc": "steel",
@@ -1059,7 +1059,7 @@ COLORS = {
     "housing": (0.30, 0.36, 0.42), "hb": "set_screw", "insert": "nut",
     "collar_a": (0.85, 0.45, 0.15), "collar_b": (0.85, 0.45, 0.15), "ca_m3": "set_screw", "block": (0.30, 0.36, 0.42), "mplate": (0.30, 0.33, 0.38),
     "cheeks": (0.42, 0.50, 0.62), "rod_plate": (0.42, 0.50, 0.62), "anchor": "nut_plate", "anchor_m4": "set_screw",
-    "comb": (0.36, 0.30, 0.42),
+    "comb": (0.36, 0.30, 0.42), "body": "chassis",
 }
 
 
@@ -1111,7 +1111,7 @@ def is_intended(a: str, b: str) -> bool:
         return True
     if "db_rod" in pair and "db_rod_plate" in pair:
         return True
-    if "db_anchor_m4" in pair and pair & {"db_anchor", "ghost_wall_hi", "ghost_wall_lo", "ghost_body"}:
+    if "db_anchor_m4" in pair and pair & {"db_anchor", "ghost_wall_hi", "ghost_wall_lo", "db_body"}:
         return True
     if "db_anchor" in pair and pair & {"db_plug", "db_brg", "db_housing", "db_hb", "db_collar_b"}:
         return True
