@@ -35,9 +35,12 @@ WHAT THE NAME IS MADE FROM -- what the function can actually read, BY VALUE:
   * the arguments, by the same rule;
   * an object of a project class by its attributes (not a `*cache*`/`*memo*` one), or by its
     own `__kept_key__()` when it has one;
-  * GEOMETRY by where it came from: a result of another kept call carries that call's
-    name, so a kept chassis passed into a kept cut costs nothing to name; any other
-    solid is named by a hash of its BREP;
+  * GEOMETRY by WHAT IT IS: a result of another kept call carries the hash of its stored
+    BREP (computed once, when it is written), so a kept chassis passed into a kept cut costs
+    nothing to name -- and an upstream result that is RECOMPUTED BUT COMES OUT IDENTICAL keeps
+    its name, so nothing made from it is computed again (EARLY CUTOFF: a chassis change that
+    leaves the anchor as it was stops at the anchor). Any other solid is named by a hash of
+    its BREP the same way. (Results written before this carry their call's key instead.);
   * an environment variable it names in a string ("PI_NO_CRADLE"), by its value;
   * project data files the function OPENED while it was computed (a board's JSON...):
     recorded with the result, and a result whose files have changed since is computed
@@ -627,8 +630,11 @@ def _write(key, result, deps, seconds):
         t = brep.with_suffix(tmp)
         t.write_bytes(_brep_bytes(comp))
         os.replace(t, brep)
+    # THE RESULT'S CONTENT NAME (early cutoff): its stored BREP, reals rounded as _shape_token
+    # rounds them, so a recompute that comes out the same solid gets the same name
+    content = hashlib.sha1(_quantised(_brep_bytes(comp))).hexdigest() if shapes else key
     meta = {"skel": skel, "n": len(shapes), "deps": deps, "s": round(seconds, 2),
-            "t": time.time()}
+            "t": time.time(), "c": content}
     t = (d / (key + ".json")).with_suffix(tmp)
     t.write_text(json.dumps(meta))
     os.replace(t, d / (key + ".json"))                 # the json last: it says "complete"
@@ -662,7 +668,7 @@ def _read(key):
         os.utime(d / (key + ".json"))                  # recently used: pruned last
     except OSError:
         pass
-    return (_unpack(meta["skel"], shapes, key),)
+    return (_unpack(meta["skel"], shapes, "c" + meta.get("c", key)),)
 
 
 def _prune():
