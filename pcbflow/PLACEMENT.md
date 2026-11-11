@@ -155,6 +155,44 @@ What is left, and where it belongs:
   * The 6 silk_edge_clearance on J2/J3/J4 are the panel connectors' silk at the edge, the
     same on the hand board.
 
+**Second round (2026-11-11, lead: A2 reach, `current` -> widths, A3).**
+* **auto_decaps: every IC on a rail gets a cap.** Nearest-pin assignment gave all 16 of
+  U6's +3V3D caps to U6 and none to U8, the LDO whose output is +3V3D (A2: U8.2 at 5.4 mm).
+  An IC left without a cap on a supply rail now takes one from the IC holding the most on
+  that rail. The donor gives up the cap whose pin has another capped pin nearest it in the
+  package. That neighbour's rule gains `also` (decap rule: a cap serving several pins,
+  seated at their mean, judged by the farthest) at A2's 5 mm.
+  * ICs in a designed cell (`group`, the `cells=` argument) are never given one: their
+    caps are the cell's.
+  * Result: optical A2 0 FAIL.
+* **`current` -> widths in the flow.**
+  * place_flow writes `place_intent.widths(rules)` into net_widths, never narrowing what
+    the notes state.
+  * A net with no `current` rule is still sized by the router from quality.power_paths.
+  * A stated net_width under a declared, unwaived path's need is printed as a WIDTH line:
+    output_panel's +24V, 0.5 mm stated against 1.3 mm for 2.9 A. That is the notes' to fix.
+* **route.post_route widens necks.** The router necks a wide net to 0.2 mm wherever full
+  width will not fit at its lands, and drew the whole neck at 0.2. Each narrower track is
+  now widened to the widest 0.05 mm step that clears every other net's pad, track and via,
+  and the board edge.
+  * output_panel J1_VBUS: narrowest 0.2 -> 0.5 mm (0.53 needed), drop 59 -> 53 mV.
+  * Land-limited from there: the next step would hit J1's CC2 pad.
+  * DRC: 0 errors.
+* **A3 was measurement, then a real twist.**
+  * **output_panel PI:** the In2 stub was J2's own flip merge, now laid since the socket
+    is turned. verify centres the merge exclusion on the pair's pads on the connector, not
+    the footprint origin. All 7 groups pass; the shipped boards still verify 0.
+  * **optical USB_HS:** both rails dived to B.Cu beside U10 in every route. The router's
+    `_pin_pairs` paired each D+ pad with its single nearest D- pad. On a USB-C row
+    (B7 A6 A7 B6), A6 ties at 0.5 mm with A7 and B7, so B6/B7, the one combination
+    uncrossed against U10, was never offered. Every same-facing partner within reach is
+    now offered and `_choose_ends` ranks them. A3 USB_HS passes.
+
+| optical auto, folded | unconnected | violations | quality FAIL |
+|---|---|---|---|
+| first round | 0 | 20 declared + 2 silk_edge | 3 (A2, A17 x2) |
+| this round | 0 | 20 declared + 2 silk_edge | 4: A1 V5_PRE drop 51 mV vs 50 (x2, placement-marginal), A17 x2 |
+
 The report's **NO ROOM** line lists every part the placer or the silk labeller found no
 room for, with the region it was held to.
 

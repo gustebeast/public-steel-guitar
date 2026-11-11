@@ -10,6 +10,11 @@ PCBFLOW_FOOTPRINT_DIRS / PCBFLOW_PROJECT, as for layout.py.
   1. intent    the rules JSON, plus place_intent's defaults -- auto_decaps, auto_singles,
                auto_floorplan -- for any the file does not already carry (by their `src`);
                --no-auto takes the file as it is. Written to flow/intent.json.
+               Every `current` rule sets its net's width (place_intent.widths, IPC-2221
+               outer), never below the notes' own net_widths. Nets with no `current` rule
+               are sized by the router from quality.power_paths (router.model.power_width)
+               -- unless net_widths states a width, which wins; where that stated width is
+               under a declared, unwaived path's need the report says so (WIDTH lines).
   2. place     place_init (stages 1-6, forbid repair), then place_cells (each free cell's
                turn chosen by routing it; forbid zones hard unless --soft-forbid).
   3. gates     layout.py on the placed board -- courtyards, stitching, the legality gate.
@@ -72,7 +77,7 @@ def _intent(rules, parts, notes, net_path, auto):
     added = []
     if auto:
         if "auto_decaps (netlist)" not in have:
-            new = pi.auto_decaps(parts, notes, pi.read_values(net_path))
+            new = pi.auto_decaps(parts, notes, pi.read_values(net_path), cells=rules)
             for c in new:
                 c.pop("_now", None)
             rules = rules + new
@@ -129,10 +134,38 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False):
 
     # 1. intent
     rules, added = _intent(json.load(open(intent_path, encoding="utf-8")), parts, notes, stem + ".net", auto)
+    # power is a width, from the current it carries (place_intent.widths): never narrower
+    # than the notes already declare
+    nw = dict(notes.get("net_widths", {}) or {})
+    widened = []
+    for n, w in pi.widths(rules).items():
+        if w > nw.get(n, 0.0) + 1e-9:
+            widened.append("%s %.2f->%.2f" % (n, nw.get(n, 0.0), w))
+            nw[n] = w
+    notes["net_widths"] = nw
+    # a stated width under what a declared power path needs: the router obeys the statement,
+    # quality A1 then fails the path. Said here, by net, so it is fixed in the notes or intent.
+    wlines = []
+    q_ = notes.get("quality", {}) or {}
+    waived = set((q_.get("waive") or {}))
+    from router.model import power_width
+    for pp in q_.get("power_paths", ()) or ():
+        n = pp["net"]
+        dsts = pp["to"] if isinstance(pp["to"], (list, tuple)) else [pp["to"]]
+        if n not in nw or all("A1:%s %s>%s" % (n, pp["from"], d_) in waived for d_ in dsts):
+            continue
+        need = power_width(dict(pp, to=[]), q_, {})            # heating width only: no positions yet
+        if nw[n] + 1e-6 < need:
+            wlines.append("%s: net_widths %.2f mm, %s -> %s at %.2f A needs %.2f mm (IPC-2221) -- give it a "
+                          "`current` rule or widen it" % (n, nw[n], pp["from"], ",".join(dsts), float(pp["amps"]), need))
     ip = os.path.join(fd, "intent.json")
     json.dump(rules, open(ip, "w"), indent=1)
     say = lambda s: (print("place_flow: " + s), log.write("## " + s + "\n"), log.flush())
     say("intent: %d rules%s" % (len(rules), (" (+ " + ", ".join(added) + ")") if added else ""))
+    if widened:
+        say("net widths from `current`: " + ", ".join(widened))
+    for w_ in wlines:
+        say("WIDTH " + w_)
 
     # 2. place_init, place_cells
     init = os.path.join(fd, "init.json")
@@ -215,18 +248,18 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False):
                                if str(r.get("status", "")).upper() == "FAIL"][:20]}
         except (OSError, ValueError):
             qual = {"error": out[-600:]}
-    _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T, room=room)
+    _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T, room=room, width=wlines)
     return 0
 
 
-def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T, refused=None, room=()):
+def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T, refused=None, room=(), width=()):
     forbid = [l_ for l_ in init_log + cells_log if "FORBID" in l_]
     prov = collections.Counter(_klass(w) for w in why.values())
     S = {k: (score or {}).get(k) for k in ("open", "pairs", "islands", "uncoupled", "vias", "length_mm", "floor",
                                             "failed", "faulted", "floor_breaches", "error")}
     rep = {"board": base, "rules": len(rules), "score": S, "forbid": forbid, "gates": gates, "finish": fin,
            "quality": qual, "provenance": dict(prov), "seconds": {k: round(v) for k, v in T.items()},
-           "refused": refused, "no_room": list(room)}
+           "refused": refused, "no_room": list(room), "width": list(width)}
     json.dump(rep, open(os.path.join(fd, "report.json"), "w"), indent=1)
     L = ["# place_flow: %s" % base, ""]
     if refused:
@@ -242,6 +275,7 @@ def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, 
             L.append("FLOOR %s %s" % (b[1], b[2]))
     L += ["FORBID: " + (" / ".join(forbid) if forbid else "none")]
     L += ["NO ROOM: " + ("; ".join(room) if room else "none")]
+    L += ["WIDTH " + w_ for w_ in width]
     if fin:
         L += ["", "finish: %s" % (fin.get("error") or "%d unconnected%s, %d violation(s)%s" % (
             fin["unconnected"], (" (" + " ".join(fin.get("unconnected_nets", ())) + ")") if fin["unconnected"] else "",

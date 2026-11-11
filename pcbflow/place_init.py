@@ -421,7 +421,7 @@ def _place(parts, notes, rules, keep=()):
                 continue
             P = pi.Placed(parts, pl)
             if r["kind"] == "decap":
-                pin = P.pad(*r["pin"].split(".", 1))
+                pin = _pin_at(P, r)
                 ctr = np.asarray(pl[ref][:2])
                 v = pin - ctr
                 t = pin + v / (np.hypot(*v) or 1.0) * 1.0          # just outside the pin
@@ -516,10 +516,16 @@ RULE_W = 10.0       # mm of wirelength a millimetre of broken soft rule is worth
 SOFT_KINDS = ("decap", "near", "thermal", "apart", "chain", "tight")
 
 
+def _pin_at(P, r):
+    """A decap's pin -- or, when it serves several (`also`), the mean of them."""
+    ps = [P.pad(*x.split(".", 1)) for x in [r["pin"]] + list(r.get("also", ()))]
+    return np.mean(ps, axis=0)
+
+
 def _seat(r, P, pl, anc):
     """Where a satellite goes for its rule: just outside its pin, or at its target."""
     if r["kind"] == "decap":
-        pin = P.pad(*r["pin"].split(".", 1))
+        pin = _pin_at(P, r)
         v = pin - np.asarray(pl[anc][:2])
         return pin + v / (np.hypot(*v) or 1.0) * 1.0
     if "." in r.get("target", ""):

@@ -59,7 +59,7 @@ r("thermal", "the switcher and its inductor off the pickup preamp and ADC", "%s 
 r("thermal", "", "%s noise bands" % OP, ref="L1", others=["U8", "U2", "U7", "J8"], apart_mm=30.0, hard=False)
 
 # ---------------------------------------------------------------- electrical
-for c in pi.auto_decaps(parts, notes, pi.read_values(stem + ".net")):
+for c in pi.auto_decaps(parts, notes, pi.read_values(stem + ".net"), cells=R):
     c.pop("_now", None)
     R.append(c)
 for spec in notes.get("diff_pairs", ()):

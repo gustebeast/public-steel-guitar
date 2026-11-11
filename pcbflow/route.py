@@ -873,6 +873,85 @@ def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
     return pcb
 
 
+def widen_necks(board, notes, step_mm=0.05):
+    """WIDEN EVERY NECK AS FAR AS ITS ROOM ALLOWS, back toward its net's width.
+
+    The router necks a wide net down at its own lands to ONE width, W_REF 0.2 mm, wherever
+    full width will not fit (negotiate.Router.NECK_W) -- right for a USB-C pin between
+    neighbours at 0.5 mm pitch, and needlessly thin everywhere else. output_panel
+    (2026-11-11): J1_VBUS stated 1.0 mm, and 0.7-0.9 mm runs at 0.2 into J1's VBUS pads and
+    U15's pins were its narrowest point: quality A1 failed it (0.53 mm needed for 1.5 A) and
+    the path dropped 59 mV against 50.
+
+    Each track narrower than its net's width -- notes["net_widths"], else the heating width
+    of the net's largest quality.power_paths entry -- is tried from that width down in
+    step_mm steps, and takes the first that clears every other net's pad, track and via on
+    its layer by the larger of the two items' clearances, and the board edge by the copper
+    edge clearance. Widening never opens a connection; zones refill afterwards, around it."""
+    from router.model import power_width
+    q = (notes or {}).get("quality", {}) or {}
+    want = {}
+    for pp in q.get("power_paths", ()) or ():
+        want[pp["net"]] = max(want.get(pp["net"], 0.0), power_width(dict(pp, to=[]), q, {}))
+    want.update((notes or {}).get("net_widths", {}) or {})
+    if not want:
+        return
+    ds = board.GetDesignSettings()
+    edge_clr = ds.m_CopperEdgeClearance
+    outline = pcbnew.SHAPE_POLY_SET()
+    chains = []
+    try:
+        got = board.GetBoardPolygonOutlines(outline, False)
+    except TypeError:
+        got = board.GetBoardPolygonOutlines(outline)
+    if got:
+        for i in range(outline.OutlineCount()):
+            chains.append(outline.Outline(i))
+            for h in range(outline.HoleCount(i)):
+                chains.append(outline.Hole(i, h))
+    # the outline as bare segments: a closed SHAPE_LINE_CHAIN's Collide counts its INSIDE as a
+    # hit, so every track on the board read as touching the edge
+    edges = [c.CSegment(i) for c in chains for i in range(c.SegmentCount())]
+    others = [x for x in list(board.GetPads()) + list(board.GetTracks())]
+    done, gained = 0, 0.0
+    for t in list(board.GetTracks()):
+        if t.GetClass() != "PCB_TRACK":
+            continue
+        n = t.GetNetname()
+        tw = pcbnew.FromMM(float(want.get(n, 0.0)))
+        if tw <= t.GetWidth():
+            continue
+        L = t.GetLayer()
+        w0 = t.GetWidth()
+        box = t.GetBoundingBox()
+        box.Inflate(tw)
+        cand = [o for o in others if o.GetNetname() != n and o.IsOnLayer(L) and box.Intersects(o.GetBoundingBox())]
+        k = int(round((tw - w0) / pcbnew.FromMM(step_mm)))
+        best = w0
+        for i in range(k, 0, -1):
+            w = w0 + i * pcbnew.FromMM(step_mm) if i < k else tw
+            seg = pcbnew.SHAPE_SEGMENT(t.GetStart(), t.GetEnd(), w)
+            me = pcbnew.SEG(t.GetStart(), t.GetEnd())
+            ok = True
+            for o in cand:
+                clr = max(t.GetOwnClearance(L), o.GetOwnClearance(L))
+                if seg.Collide(o.GetEffectiveShape(L), clr):
+                    ok = False
+                    break
+            if ok and any(e.Distance(me) < edge_clr + w // 2 for e in edges):
+                ok = False
+            if ok:
+                best = w
+                break
+        if best > w0:
+            t.SetWidth(best)
+            done += 1
+            gained += pcbnew.ToMM(best - w0)
+    if done:
+        print("  necks: widened %d track(s) toward their nets' widths (by %.2f mm on average)"
+              % (done, gained / done))
+
+
 def post_route(board, stem, notes, pcb):
     """Everything after the router itself, whichever router it was: floor widths, thermal
     spokes, pour refill and stitch rescue, gap and via repairs, the post-route parts and
@@ -894,6 +973,7 @@ def post_route(board, stem, notes, pcb):
     if necked:
         print("  widened %d track(s) back up to the %.3f mm floor"
               % (necked, pcbnew.ToMM(floor)))
+    widen_necks(board, notes)
 
     # PADS THAT TAKE SPOKES (notes["thermal_pads"], "R35.2"). A pour is solid to its pads
     # (layout.py), but a small two-pad part with one pad solid in a pour and the other on a
