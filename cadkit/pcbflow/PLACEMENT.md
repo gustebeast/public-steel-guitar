@@ -437,6 +437,50 @@ is not fixed becomes one COMPOSITE part for every stage of place_init (`place()`
   The PHY cell came out identical to the hand cell. The buck cell turned 90 degrees into a
   column beside the inlet, as one unit.
 
+**An unmet forbid zone is not a soft breach (lead, 2026-11-11).** After the local pass,
+place_init re-checks every `forbid` rule and repairs what breaks:
+* It lifts the breaking part (either side, free parts only) with its satellites and drops
+  it inside its zone near its target.
+* If that fails, it lifts the six nearest free parts too, retries, then re-drops them.
+* Anything that does not land reverts.
+* What is left is logged as `FORBID NOT MET: <part> <distance> -- <why>` and summarised on
+  stderr. `--strict` exits 3.
+* Composite cells are now judged by their hull in the checker. That alone cleared optical
+  vI9's buck-to-PHY-crystal breach: the local pass now sees the whole cell, and init10 has
+  0 floor breaches.
+* Tested with an impossible zone (U13 60 mm from J2, which its region keeps it beside):
+  NOT MET, exit 3. Optical (auto) and output_panel place byte-identically.
+* The lift-the-neighbours path has not yet fired on a real board.
+
+**A pair's pass-through parts face the chain (2026-11-11).** The USB pair's uncoupled length
+on the auto optical boards (3-5 mm, against 0 on the hand board) was not the router's
+fault.
+* On the hand placement, layout's coupled-pair layer lays U7 -> U10 -> J1 before routing.
+  On the auto placements it said "no clear path U7->U10" and left the run to the router.
+* The cause: U10, a pass-through clamp carrying DP and DM on both ends, was turned across
+  the chain. The turn stage scores pads against their nets' centroids, and a pass-through
+  scores the same in every rotation.
+* Probe (scratchpad `op2/probe_unc.py`): 2.4 of vI8's 3.2 mm were at U10's J1 end, where the
+  rails leave pads stacked along the hop.
+* Fix, `_pair_turns`: the mid-chain parts with two pads on each pair net are turned to
+  minimise each hop's facing-pad distance, plus 20 mm for crossed rails, plus 3 mm x |cos|
+  per end whose DP-DM baseline is not square to the hop. The in-hop and out-hop use
+  different pads. All declared pairs are decided together.
+* The turn is decided again after the drop, on the real positions (stage 4b). A satellite
+  does not land at its quadratic target: U10 cost 70 at its first turn there and 21 at 90.
+* Chain ENDS are not turned. Turning output_panel's hub U4 and U14 by this cost took its
+  uncoupled from 0 to 15.2 mm.
+
+| optical, stripped | open | uncoupled | vias | length | note |
+|---|---|---|---|---|---|
+| auto intent (vI8 -> vI13) | 0 -> 0 | 3.2 -> **1.15** | 208 -> 199 | 2339 -> 2319 | U10 turned 90, as on the hand board |
+| cells intent (vI10 -> vI16) | 0 -> **2** | 4.0 -> **0.0** | 198 -> 202 | 2302 -> 2341 | layout lays the pair coupled; ULPI_D5/D6 open |
+
+output_panel places byte-identically: it has no pass-through parts.
+OPEN: on the cells board the pre-laid pair costs two ULPI nets. The PHY cell landed at 270
+from the turn stage, which made the layout pair possible, and the ULPI fan then had no way
+out past it.
+
 **auto_floorplan(parts)** (place_intent, alongside auto_decaps; lead request). These are
 default noise `apart` rules derived from the netlist:
 * Switch nodes are found from an inductor on a small non-supply net shared with an IC pin.

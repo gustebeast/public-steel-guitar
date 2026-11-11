@@ -164,6 +164,8 @@ class Placed:
         if ref not in self._c:
             p = self.parts[ref]
             loc = p["crtyd"]
+            if p.get("crtyd_multi"):              # a placed-whole cell (place_init): its hull
+                loc = _hull([q for c in p["crtyd_multi"] for q in c]).tolist()
             if not loc:
                 fx = p["fab"] or [-0.5, 0.5, -0.5, 0.5]
                 loc = [[fx[0], fx[2]], [fx[1], fx[2]], [fx[1], fx[3]], [fx[0], fx[3]]]
