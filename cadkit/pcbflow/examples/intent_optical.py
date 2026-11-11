@@ -152,7 +152,7 @@ r("near", "PHY near the socket: 480 Mb/s does not tolerate length, ULPI does", "
 for t in sorted((x for x in parts if re.fullmatch(r"TP\d+", x)), key=lambda x: int(x[2:])):
     r("access", "SWD/bring-up pad: a probe tip lands on it", "op ~1821-1844", ref=t, tool_d=1.6, side="top")
 
-for c in pi.auto_decaps(parts, notes, pi.read_values(stem + ".net")):
+for c in pi.auto_decaps(parts, notes, pi.read_values(stem + ".net"), cells=R):
     c.pop("_now", None)
     if c.get("cap") in fixedset or c.get("ref") in fixedset:
         continue

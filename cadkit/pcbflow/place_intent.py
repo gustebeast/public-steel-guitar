@@ -48,7 +48,8 @@ ELECTRICAL / FLOORPLAN
   region    name poly              a floorplan band; in_region refs region keeps parts in it
   apart     a b min_mm             two groups' courtyards at least min_mm apart (noise)
   thermal   ref others apart_mm    a heat source off the sensors and off each other
-  decap     cap pin max_mm         the capacitor's land on the pin's net within max_mm of it
+  decap     cap pin max_mm [also]  the capacitor's land on the pin's net within max_mm of it (and of every pin
+                                   in `also`: one cap serving neighbouring supply pins, seated between them)
   near      ref target max_mm      target = a part (courtyard) or a pin "U4.8"
   chain     refs [max_ratio]       a pair's path order: sum of hops <= max_ratio x straight
   rot       ref allowed            rotation in the allowed set
@@ -322,8 +323,11 @@ def check(rule, P, notes, H=None):
         if not cp:
             out.append((-99.0, cap, "has no land on %s (%s's net)" % (net, pin)))
         else:
-            d = min(math.hypot(*(c - pp)) for c in cp)
-            out.append((rule.get("max_mm", 1.5) - d, cap, "%.2f from %s (%s)" % (d, pin, net)))
+            # `also`: further pins of the same IC and net this one cap serves -- judged by the
+            # farthest (auto_decaps, when an IC has fewer caps than supply pins)
+            d, at = max((min(math.hypot(*(c - P.pad(ic, n_))) for c in cp), "%s.%s" % (ic, n_))
+                        for n_ in [num] + [x.split(".", 1)[1] for x in rule.get("also", ())])
+            out.append((rule.get("max_mm", 1.5) - d, cap, "%.2f from %s (%s)" % (d, at, net)))
     elif k == "near":
         ref, t, m = rule["ref"], rule["target"], rule["max_mm"]
         d = _poly_dist(P.crtyd(ref), P.target(t)) if "." not in t else \
@@ -417,7 +421,8 @@ def _farads(v):
     return float(m.group(1)) * {"p": 1e-12, "n": 1e-9, "u": 1e-6, "µ": 1e-6, "m": 1e-3, "": 1.0}[m.group(2)]
 
 
-def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-6, ground=("GND",), more_mm=2.0):
+def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-6, ground=("GND",), more_mm=2.0,
+                cells=()):
     """Rules for every capacitor across a SUPPLY net (SUPPLY: '+...', VCC, VDD, VBUS, VREF, ...)
     and ground: a small one (< bulk_f) gets `decap` at the nearest IC pin on that net, a bulk
     one `near` that part. The sources considered are ICs, ferrites and inductors (a buck's
@@ -462,17 +467,70 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
             rules.append({"kind": "decap", "cap": c, "pin": pin, "max_mm": max_mm, "hard": False, "weight": 1.0,
                           "why": "%s across %s and ground: at its supply pin" % (c, sup), "src": "auto_decaps (netlist)",
                           "_f": f if f is not None else 0.0})
+    # ⚠ EVERY IC ON A RAIL GETS ONE (optical fold, 2026-11-11). Nearest-pin assignment let
+    # U6's eight +3V3D pins take every +3V3D cap, and the LDO U8 whose OUTPUT is +3V3D got
+    # none: quality A2 failed U8.2 (nearest cap 5.4 mm). And on a fresh board, with no
+    # placements, every distance is 0 and the nearest pin is just the first in sort order.
+    # So: an IC with a pin on a supply rail and no cap of its own there takes a cap from the
+    # IC holding the most on that rail -- that IC's largest, last-sorted -- never its last one.
+    # cells: the intent's `group` rules -- an IC in a designed cell has its caps in the cell
+    # (optical's converters U14-U18: their Cs/Ci/Cm), so it is never given one here.
     by = {}
     for r in rules:
         if r["kind"] == "decap":
             by.setdefault(r["pin"].split(".")[0], []).append(r)
+    rail = lambda r: (set(q["net"] for q in parts[r["cap"]]["pads"]) - set(ground)).pop()
+    have = {(r.get("target") or r["pin"].split(".")[0], rail(r) if r["kind"] == "decap" else
+             (set(q["net"] for q in parts[r["ref"]]["pads"]) - set(ground)).pop()) for r in rules}
+    incell = {r["anchor"] for r in cells if r.get("kind") == "group"} | {
+        m for r in cells if r.get("kind") == "group" for m in r["members"]}
+    for u in sorted(x for x in ics if re.match(r"^U\d", x) and x not in incell):
+        for net in sorted({q["net"] for q in parts[u]["pads"] if q["net"] and SUPPLY.search(q["net"])}):
+            if (u, net) in have:
+                continue
+            donors = sorted(((len([r for r in rs if rail(r) == net]), d) for d, rs in by.items() if d != u),
+                            reverse=True)
+            if not donors or donors[0][0] < 2:
+                continue
+            d = donors[0][1]
+            # the cap whose pin has ANOTHER capped pin nearest it in the IC's own frame
+            # (placement-independent): that neighbour's cap is tightened to max_mm and serves
+            # both. (Taking the largest instead left U6.171/172 at 5.7/6.1 mm: A2 judges pins.)
+            xy = {q["num"]: q["xy"] for q in parts[d]["pads"]}
+            mine = [r for r in by[d] if rail(r) == net]
+
+            def gap(r):
+                a_ = xy.get(r["pin"].split(".", 1)[1])
+                o_ = [math.hypot(a_[0] - xy[x["pin"].split(".", 1)[1]][0], a_[1] - xy[x["pin"].split(".", 1)[1]][1])
+                      for x in mine if x is not r and a_ is not None and x["pin"].split(".", 1)[1] in xy]
+                return (min(o_) if o_ else 1e9, -r.get("_f", 0.0), r["cap"])
+            give = min(mine, key=gap)
+            g_ = gap(give)[0]
+            if g_ < 1e9:
+                a_ = xy[give["pin"].split(".", 1)[1]]
+                keep_ = min((x for x in mine if x is not give),
+                            key=lambda x: math.hypot(a_[0] - xy[x["pin"].split(".", 1)[1]][0],
+                                                     a_[1] - xy[x["pin"].split(".", 1)[1]][1]))
+                keep_["_tight"] = True
+                keep_["also"] = keep_.get("also", []) + [give["pin"]]
+                keep_["why"] += " (also serves %s, %.1f mm along the package: its cap went to %s)" % (
+                    give["pin"], g_, u)
+            by[d].remove(give)
+            num = next(q["num"] for q in parts[u]["pads"] if q["net"] == net and q["num"])
+            give["pin"] = "%s.%s" % (u, num)
+            give["why"] = "%s across %s and ground: %s's own (it had none; given by %s)" % (give["cap"], net, u, d)
+            by.setdefault(u, []).append(give)
+            have.add((u, net))
     for rs in by.values():
         for k, r in enumerate(sorted(rs, key=lambda r: (r["_f"], r["cap"]))):
-            if k:
+            if r.get("also"):
+                r["max_mm"], r["weight"] = max_mm + more_mm, 1.0     # between its pins, at the reach A2 judges
+            elif k:
                 r["max_mm"], r["weight"] = max_mm + more_mm, 0.5
                 r["why"] += " (a further cap on this IC: within reach, not packed)"
     for r in rules:
         r.pop("_f", None)
+        r.pop("_tight", None)
     return rules
 
 
