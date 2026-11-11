@@ -33,8 +33,9 @@ Derived, not invented:
                  counter yoke, 2026-11-10). So a sideways self-tap takes
                  selftap_td_d (default: holes.as_printed_d, selftap_d less
                  holes.TEARDROP_OVERSIZE -- the same 0.4 the M4 pocket measured).
-                 tap_d(direction, print_up) picks; selftap_cutter / anchor_cutter
-                 use it whenever they are given print_up. Size a sideways self-tap
+                 tap_d(direction, print_up) picks; selftap_cutter uses it whenever
+                 it is given print_up (anchor_cutter does NOT: its tail runs on past
+                 an insert and stays selftap_d -- see there). Size a sideways self-tap
                  by hand (printable_bore, teardrop_hole) from spec.tap_d(...) too,
                  never from selftap_d.
   * shaft_clr_d= screw_d + 0.4  — 0.2 mm/side, screw spins free.
@@ -422,7 +423,13 @@ def anchor_cutter(spec, pnt, direction, depth, pocket=True, overshoot=0.0,
             % (spec.name, bite, spec.min_bite, spec.anchor_min_wall))
 
     mouth = _back(pnt, direction, overshoot)
-    td = spec.tap_d(direction, print_up)
+    # THE TAIL PAST THE POCKET STAYS selftap_d, even sideways (unlike selftap_cutter's tap_d):
+    # an anchor is drawn for its INSERT, the state the assemblies model, and past the insert
+    # the screw only runs on -- tap_d's teardrop size is under the screw's major and buried
+    # the output board's M4 3.4 mm3 in public-steel-guitar's bridge endplate (lead's gate,
+    # 2026-11-10). So a SIDEWAYS anchor self-taps loosely before its insert goes in: fit the
+    # insert, or use selftap_cutter where the screw must cut its own thread.
+    td = spec.selftap_d
     bore = _bore(td, depth + overshoot, mouth, direction, print_up)
     pd = spec.pilot_d(direction, print_up)
     bore = bore.fuse(_bore(pd, spec.insert_depth + overshoot, mouth, direction, print_up))

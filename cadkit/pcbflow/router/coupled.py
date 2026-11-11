@@ -335,7 +335,20 @@ class CoupledMixin:
         # it goes F -> B -> F. A line over budget is sought again dearer (MID_VIA_MULTS);
         # if none fits, the last one found stands.
         budget = (a.group or {}).get("max_vias")
-        for vm in (self.MID_VIA_MULTS if budget is not None else (1.0,)):
+        # ⚠ AND WHEN NO PRICE FITS IT, ONE DIVE LAYER (output_panel HUB_DN2, 2026-11-10): free
+        # to use every layer, the line crossed HUB_UP's In2 run by dropping again to B.Cu --
+        # F -> In2 -> B -> In2 -> F, four vias a rail at every price -- and every coupled lay
+        # (0.0-0.6 mm apart) faulted on the budget alone. An engineer picks the layer the
+        # pair dives to and keeps it there: the line is sought again on home + each other
+        # layer, cheapest first, at the dearest via price.
+        tries = [(vm, None) for vm in (self.MID_VIA_MULTS if budget is not None else (1.0,))]
+        if budget is not None:
+            home = set(a.run_layers or a.layers_only or (0,))
+            for d in sorted((k for k in range(self.L) if k not in home),
+                            key=lambda k: (float(self.layer_cost[k]), k)):
+                tries.append((self.MID_VIA_MULTS[-1], home | {d}))
+        fallback = None
+        for vm, fl_ in tries:
             hops = []
             for (sa, sb), (ta, tb) in ends:
                 s_ = self._mid_end(sa, sb, wf, a, b)
@@ -354,7 +367,7 @@ class CoupledMixin:
                 f.keep_paths = f.main_xy = None
                 f.stuck = 10 ** 6             # no global-plan corridor: it has no plan
                 f.relaxed = True              # home layers preferred (OFFRUN_COST), not forced
-                f.force_layers = None
+                f.force_layers = fl_
                 f.via_mult = a.via_mult * vm
                 allc = np.concatenate(f.pieces)
                 r = allc % (H * W)
@@ -379,19 +392,26 @@ class CoupledMixin:
                     if got:
                         break
                 if not got:
-                    return None
+                    if fl_ is None:
+                        return None
+                    hops = None                 # no room on this layer pair: the next one
+                    break
                 # A* hands a path back from its target: each runs start -> end here, so the
                 # centreline's direction is the pair's travel
                 st = set(s_[0].tolist())
                 hp = [p if p[0] in st or p[-1] not in st and self._dcell(p[0], s_[0]) <= self._dcell(p[-1], s_[0])
                       else p[::-1].copy() for p in got if p.size]
                 hops.append((hp, (sa, sb), (ta, tb), s_[1], t_[1]))
+            if hops is None:
+                continue
             nv = sum(int(((p // (H * W))[1:] != (p // (H * W))[:-1]).sum())
                      for hop in hops for p in hop[0])
             if budget is None or nv <= budget:
-                break
+                return hops
+            if fl_ is None:
+                fallback = hops               # over budget: the open line stands if nothing fits
 
-        return hops
+        return fallback
 
     def _pin_pairs(self, ca, cb, a, b):
         """The pin pairs a pair may use at one part: [(a cells, b cells)]. Lands of one pad

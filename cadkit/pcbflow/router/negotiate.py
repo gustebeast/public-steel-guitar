@@ -374,6 +374,7 @@ class Router(CoupledMixin):
     PLANE_PARTIAL = True             # a plane net still sharing loses only its sharing joins (_rip)
     PAIR_DISPLACE = 3                # rule-meeting attempts _displace may try per pair
     PAIR_REOPEN = True               # the pair finish also takes on a pair the negotiation ripped out
+    COUPLE_WALLS = True              # a coupled centreline goes round pairs already to the rules
     PAIR_WALL = True                 # in a pair attempt the mate's copper is a wall (_pair_try)
     PLANE_MAIN = True                # plane joins aim at the main body's fill as it stands (_rounds)
     PLANE_KEEP = True                # a sharing plane net re-joins only its sharing pieces (_rounds)
@@ -648,6 +649,27 @@ class Router(CoupledMixin):
         if corr is not None:
             gb = self._gr.b
             legal &= corr[np.ix_(np.arange(i0, i1) // gb, np.arange(j0, j1) // gb)][None]
+        # ⚠ A COUPLED PAIR'S CENTRELINE GOES ROUND THE PAIRS ALREADY TO THE RULES (output_panel
+        # HUB_DN2 / HUB_UP / HUB_DN3, 2026-11-10): the line ran straight over a pair the
+        # finish had already passed, the coupled lay met every rule through its copper, and
+        # _displace -- which holds every pair to the rules still -- could not move it: put
+        # back, every time, and the pair kept as negotiated 20 mm apart. Those pairs are a
+        # wall to the line: a track's gap from their copper, layer by layer.
+        walls = getattr(self, "_mid_walls", None)
+        if walls and net.name.endswith("~pair"):
+            from scipy.ndimage import distance_transform_edt
+            for o in walls:
+                hit = np.zeros((L, h, w), bool)
+                for pth in o.paths:
+                    kk = pth // (H * W)
+                    rr_ = pth % (H * W)
+                    ii, jj = rr_ // W - i0, rr_ % W - j0
+                    ok = (ii >= 0) & (ii < h) & (jj >= 0) & (jj < w)
+                    hit[kk[ok], ii[ok], jj[ok]] = True
+                gap = (net.width + o.width) / 2.0 + m.clear + m.margin
+                for k in range(L):
+                    if hit[k].any():
+                        legal[k] &= distance_transform_edt(~hit[k]) * m.pitch >= gap
         lane = self._lane_win(net, win)        # a coupled pair's rail keeps to its lane
         if lane is not None:
             legal &= lane[0]
@@ -1260,10 +1282,16 @@ class Router(CoupledMixin):
                         self.hist, self.hist_v = h0, hv0
                 else:
                     self._mid_slack = c[9] if len(c) > 9 else None
+                    if len(c) > 8 and c[8] and self.COUPLE_WALLS:
+                        self._mid_walls = [x for x in self.nets
+                                           if x not in (a, b) and x.mate is not None and x.group is not None
+                                           and not x.failed and not x.mate.failed and x.paths
+                                           and not self.pair_faults(x if x.partner is None else x.mate)]
                     try:
                         got = self._pair_try(pf, *c[:7], coupled=len(c) > 8 and c[8])
                     finally:
                         self._mid_slack = None
+                        self._mid_walls = None
                 if os.environ.get("PAIR_DEBUG"):
                     self.log("    try %s first%s relax=%s layers=%s off x%g via x%g: %s apart %.1f" % (
                         c[0].name, (" coupled slack %g" % c[9]) if len(c) > 9 else "", c[2], c[3], c[4], c[6],
