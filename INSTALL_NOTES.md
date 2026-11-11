@@ -1611,6 +1611,16 @@ straight off the yoke's roof and runs dead level to the crown.
   through the 688, and turn it into the nut, holding the yoke.
   5. String over the crown to the tuner. Drive it by hand with the belt ends as before.
 
+#### Motor wall ramp, slider insert pocket (2026-11-11)
+
+- **Motor block:** the string's pull sheared the face wall off its base along a layer line. Its
+  -X face now has a 45 deg ramp at the root, 12.2 tall (its foot 1.0 short of the station). It is
+  cut back round the coupler's swept circle and round the two lower face M3s' heads, so a key
+  still reaches them along X. There's no ramp +Y of the +Y lower M3, where the wood screw is.
+- **Counter slider:** the insert's pocket is 6.6, was 5.9. The insert slides 13.8 in, so it is a
+  sliding fit. If it turns with the screw, touch it home against the lip with the iron.
+- Reprint plank_motor_block and plank_counter_slider.
+
 #### Lowered X rig, no head (2026-11-10)
 
 The counter post tore on a layer line at its base with the springs set as loose as they go

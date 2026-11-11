@@ -603,7 +603,10 @@ GAP_MIN = 0.5                                    # the slider's +X face at the w
 # cannot be torn out of its melt. The pocket is a snug teardrop: if the insert turns with the
 # screw, touch it home with the iron.
 SL_LIP = 4 * D.BEAD                              # 3.2: ~60 mm^2 in shear round the insert, 2.4 MPa at 147 N
-SL_POCKET_D = 5.9                                # teardrop: between cadkit's heat-set 5.7 and drop-in 6.1
+# 6.6, was 5.9 (user, 2026-11-11: "quite a bit undersized so the insert can't slide in"). It is not
+# a short drop-in pocket but a 13.8 SLIDE along a sideways teardrop: a sliding fit over the insert's
+# ~6.0 knurl (cadkit's round drop-in pocket is 6.1), not a press. The lip, not the pocket, holds it.
+SL_POCKET_D = 6.6
 XS1_OUT, XS1_IN = X_TIP + BITE_MIN + SL_LIP, PW0 - GAP_MIN   # the slider's +X face, out .. in
 CS_STROKE = XS1_IN - XS1_OUT                     # 32.6
 
@@ -831,6 +834,10 @@ INLINE_XS1_MIN = INLINE_BACK + 0.5 + BAR_L        # the slider's +X face, backed
 INLINE_X_SCREWS = (INLINE_FACE - INLINE_WALL_T - 6.6, INLINE_FACE - INLINE_WALL_T - 6.6 + 33.97)
 assert INLINE_X_SCREWS[0] - XR_TAB >= XR_X1 + CS_DX + 0.2 - 1e-9, "the block's tab on the station's"
 assert INLINE_XS1_MIN <= XS1_IN, "the motor leaves the slider no room"
+# the face wall's ramp: its foot 1.0 short of the station's +X face; the coupler (its clamp's M3
+# the farthest out) sweeps INLINE_SWEEP_R round the axis
+INLINE_RAMP = INLINE_FACE - INLINE_WALL_T - (XR_X1 + CS_DX) - 1.0
+INLINE_SWEEP_R = 13.31 + 0.5
 CRADLE_HW = 12.0                                  # the ribs' outer faces: inside the wood screws' heads
 GAUGE_T = D.BEAD                                  # 0.8: the gauge arms to the counter post
 M_HALF = D.MOTOR_SQ / 2
@@ -854,6 +861,21 @@ def motor_block() -> cq.Workplane:
     for x in INLINE_X_SCREWS:
         s = s.union(_box(x - XR_TAB, x + XR_TAB, XR_SCREWS_Y[0] - XR_TAB, Y_EDGE, Z_PLANK_X, zb))
     s = s.union(_box(INLINE_X_SCREWS[0], w1, XR_SCREWS_Y[0] - XR_TAB, Y_EDGE, Z_PLANK_X, zb))
+    # THE WALL'S ROOT, RAMPED (user, 2026-11-11: the string's pull sheared the wall off its base
+    # along a layer line): a 45 deg ramp the wall's full width on its -X face, as tall as the
+    # station leaves room for (INLINE_RAMP), then cut back for what has to pass -- the coupler's
+    # swept circle and the lower face M3s' heads and their key along X.
+    h = INLINE_RAMP
+    s = s.union(_xz_prism([(w0 + 0.01, zb - 0.01), (w0 + 0.01, zb + h), (w0 - h, zb - 0.01)],
+                          SY - M_HALF, SY + M_HALF))
+    s = s.cut(cyl_x(2 * INLINE_SWEEP_R, h + 2.0, w0 - h - 1.0, y=SY, z=XR_ZA))
+    hr = MC.CLAMP_HEAD[0] / 2 + 0.5
+    for sy in (1, -1):
+        yc = SY + sy * INLINE_HOLES / 2
+        s = s.cut(_box(w0 - h - 1.0, w0, yc - hr, yc + hr, XR_ZA - INLINE_HOLES / 2 - hr, zb + h + 1.0))
+    # ...and none at all +Y of the +Y key's channel: the +Y -X wood screw's access bore is there,
+    # and the two together left only slivers
+    s = s.cut(_box(w0 - h - 1.0, w0, SY + INLINE_HOLES / 2 - hr, SY + M_HALF + 1.0, zb, zb + h + 1.0))
     s = s.cut(_xb(D.NEMA17_PILOT_D + 0.6, w0 - 1.0, w1 + 1.0))                  # the pilot
     for sy in (1, -1):
         for sz in (1, -1):
