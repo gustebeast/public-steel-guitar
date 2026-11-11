@@ -1101,8 +1101,14 @@ def output_panel():
     ovcur += u4[1]
     hub_xo += u4[3]
     hub_xi += u4[4]
-    hub_dn2_dm += u4[9]
-    hub_dn2_dp += u4[10]
+    # ⚠ J4 IS ON PORT 3 AND U14 ON PORT 2 IN R2 (2026-11-10): with J4 on port 2 the two pairs
+    # left U4 at the same corner and crossed -- neither the frozen copper nor the coupled
+    # router could lay both (HUB_DN3 went 3.0 / 0.3 -> 22 mm uncoupled the moment HUB_DN2 was
+    # the router's). Hub ports are interchangeable to the host, and nothing finds these two by
+    # port number (romflash finds U17 on port 4, which does not move). R1 keeps its wiring.
+    if REV == 1:
+        hub_dn2_dm += u4[9]
+        hub_dn2_dp += u4[10]
     hub_dn1_dm += u4[11]
     hub_dn1_dp += u4[12]
     hub_up_dm += u4[14]
@@ -1114,8 +1120,10 @@ def output_panel():
     if REV != 1:
         hub_dn4_dm += u4[5]         # 4F column: 5 DM4, 6 DP4, 7 DM3, 8 DP3
         hub_dn4_dp += u4[6]
-        hub_dn3_dm += u4[7]
-        hub_dn3_dp += u4[8]
+        hub_dn2_dm += u4[7]         # J4, port 3
+        hub_dn2_dp += u4[8]
+        hub_dn3_dm += u4[9]         # U14, port 2
+        hub_dn3_dp += u4[10]
     for n in (2, 13, 16, 17, 18, 21, 22, 23, 24) + ((5, 6, 7, 8) if REV == 1 else ()):
         Net("U4_NC_%d" % n).connect(u4[n])
 
@@ -3273,7 +3281,7 @@ if REV != 1:
             # oppositely (U14's channels are crossed for the THRU and PI pairs), so one
             # conductor has to pass the other on another layer.
             ("HUB_DN3", False, ["HUB_DN3_DP", "HUB_DN3_DM"],
-             "USB 2.0 high speed, hub port 3 to U14: J1 as a host port. 480 Mbps is 2,080 ps a bit; "
+             "USB 2.0 high speed, hub port 2 to U14: J1 as a host port. 480 Mbps is 2,080 ps a bit; "
              "the pin order forces the one layer change"),
             # CH340C is a 12 Mbps device, 83 ns a bit, on a pair about 15 mm long: layers do not matter
             ("HUB_DN4", False, ["HUB_DN4_DP", "HUB_DN4_DM"],
@@ -3521,7 +3529,7 @@ BOARD_NOTES["quality"] = {
                        "13 BCK, 14 DIN, 15 LRCK, 16 FMT, 17 XSMT, 18 LDOO, 19 DGND, "
                        "20 DVDD. Read 2026-09-21, re-read 2026-09-30, all 20",
         "CH334F": "WCH CH334 datasheet V2.5 Table 1-3, the 4F column, re-read against "
-                  "V2.91 2026-09-30: 1 OVCUR#, 3 XO, 4 XI, 9 DM2, 10 DP2, 11 DM1, 12 DP1, "
+                  "V2.91 2026-09-30: 1 OVCUR#, 3 XO, 4 XI, 5 DM4, 6 DP4, 7 DM3, 8 DP3, 9 DM2, 10 DP2, 11 DM1, 12 DP1, "
                   "14 DMU, 15 DPU, 16 RESET#, 19 V5, 20 VDD33, EP GND (the figure's "
                   "package labels are offset by one block: the table is the source)",
         "LMR16006XDDCR": "TI SNVSA24 section 6, Pin Functions (SOT-23-6): 1 CB, 2 GND, "
@@ -4110,15 +4118,16 @@ if REV != 1 and os.environ.get("OP_LAYERS"):
 #     A6 / A7 named, DM's merge loop boxed A6 in and no pair could reach it; B6 can be.
 #   HUB_UP: the coupled router (cadkit: centreline kept to the via budget, and a held
 #     coupled lay displaced before a clean uncoupled one wins), 1.3 / 3.6 (frozen 2.4 / 5.6).
+#   HUB_DN2 and HUB_DN3 (2026-11-10): the router's, both, since J4 moved to hub port 3 and U14
+#     to port 2 (see U4). Their old copper -- HUB_DN2's frozen run, HUB_DN3's held one -- ends
+#     on the other pair's pins now, so neither keeps a fallback; J4's pad-merge loops stay.
 #   Left frozen, each worse when un-frozen (router alone):
 #   - THRU: placement. D2 and D3 (ESD, one per line) stand 2 mm apart along the pair, so
 #     the outer rail must pass the inner rail's diode to reach its own; the chain names
 #     them "D2|D3" for when they stand across the pair.
-#   - HUB_DN2: no pair-wide corridor out of U4 on two layers (the line changed layer five
-#     times against a budget of two vias).
 _COUPLED_CHAIN = {"HUB_UP": ["U4", "J3"], "HUB_DN2": ["U4", "J4"], "HUB_DN3": ["U4", "U14"],
                   "THRU": ["U14", "D2|D3", "J1"], "PI": ["U14", "J2"]}
-_COUPLED = [_c for _c in (os.environ.get("OP_COUPLED", "HUB_DN3,PI,HUB_UP").split(","))
+_COUPLED = [_c for _c in (os.environ.get("OP_COUPLED", "HUB_DN3,PI,HUB_UP,HUB_DN2").split(","))
             if _c] if REV != 1 else []
 if _COUPLED:
     _cn = {_c + _s for _c in _COUPLED for _s in ("_DP", "_DM")}
@@ -4161,6 +4170,9 @@ if _COUPLED:
              fallback=dict(tracks=[_t for _t in _lift_t if _t[0].rsplit("_", 1)[0] == _c],
                            vias=[_v for _v in _lift_v if _v[0].rsplit("_", 1)[0] == _c]))
         for _c in _COUPLED]
+    for _dp in BOARD_NOTES["diff_pairs"]:
+        if _dp["nets"][0] in ("HUB_DN2_DP", "HUB_DN3_DP") and "fallback" in _dp:
+            _dp["fallback"] = dict(tracks=[], vias=[])   # their copper ends on the swapped pins
 
 
 if __name__ == "__main__":
