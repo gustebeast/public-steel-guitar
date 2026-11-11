@@ -24,7 +24,9 @@ def main():
     a.add_argument("--port", type=int, default=5005)
     a.add_argument("--input", default="LEHLE DUAL EXPRESSION")
     a.add_argument("--cc", type=int, default=11)
-    a.add_argument("--invert", action="store_true", help="toe = 0")
+    # THIS PEDAL READS BACKWARDS for the Pi's mapping (user, 2026-11-11), so it is inverted by
+    # default; --no-invert sends it as it comes
+    a.add_argument("--no-invert", dest="invert", action="store_false", help="send the CC as it comes")
     o = a.parse_args()
     addr = (socket.gethostbyname(o.host), o.port)
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
