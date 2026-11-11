@@ -596,6 +596,10 @@ RIB_T = 6 * D.BEAD
 DECK_X0 = XS1_OUT - BAR_L + 8.0                  # the deck still under the slider, backed out
 POST_X0 = XR_SCREWS_X[0] - XR_TAB                # the base's -X end
 POST_TOP = XR_ZA + 12 * D.BEAD
+# FLUSH WITH THE SCREW TABS (user, 2026-11-10: the wall's +X root is where it split): its +X face
+# out to the tabs' +X edge, the head's seat unmoved -- the counterbore just deeper
+POST_XF = XR_SCREWS_X[1] + XR_TAB                # 32.47, was PW1 (30.0)
+assert POST_XF >= PW1
 
 
 def _pin(x, y):
@@ -681,7 +685,7 @@ def counter_post() -> cq.Workplane:
     """The wall with the M4 x 40, the deck the slider rides on, two ribs under it, and a base on the
     X station's old four plank holes. Base down."""
     zb = Z_PLANK_X + BASE_T
-    s = _box(PW0, PW1, SY - POST_HW, SY + POST_HW, zb - 0.01, POST_TOP)
+    s = _box(PW0, POST_XF, SY - POST_HW, SY + POST_HW, zb - 0.01, POST_TOP)
     s = s.union(_box(DECK_X0, PW0 + 0.01, SY - POST_HW, SY + POST_HW, DECK_TOP - 3 * D.BEAD, DECK_TOP))
     # the ribs: full height over the base, their -X ends a 45 deg underside out to the deck's end
     d45 = POST_X0 - DECK_X0
@@ -692,11 +696,11 @@ def counter_post() -> cq.Workplane:
     # deck, and the wall's root is the whole post's footprint
     s = s.union(_xz_prism(rib, SY - POST_HW, SY + POST_HW))
     # base: a strip under the ribs and wall, a crossbar out to each pair of holes
-    s = s.union(_box(POST_X0, PW1, SY - POST_HW, SY + POST_HW, Z_PLANK_X, zb))
+    s = s.union(_box(POST_X0, POST_XF, SY - POST_HW, SY + POST_HW, Z_PLANK_X, zb))
     for x in XR_SCREWS_X:
         s = s.union(_box(x - XR_TAB, x + XR_TAB, XR_SCREWS_Y[0] - XR_TAB, Y_EDGE, Z_PLANK_X, zb))
-    s = s.cut(_xb(M4.shaft_clr_d, PW0 - 1.0, PW1 + 1.0))
-    s = s.cut(_xb(HEAD_D, X_HEAD, PW1 + 1.0))
+    s = s.cut(_xb(M4.shaft_clr_d, PW0 - 1.0, POST_XF + 1.0))
+    s = s.cut(_xb(HEAD_D, X_HEAD, POST_XF + 1.0))
     for x in XR_SCREWS_X:
         for y in XR_SCREWS_Y:
             s = s.cut(_wood_screw(x, y, UP, Z_PLANK_X))

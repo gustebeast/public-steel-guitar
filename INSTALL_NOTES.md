@@ -1626,6 +1626,8 @@ X rig still sat at the vertical-screw rig's height. Now:
   arms now start at its +X end.
 - **Counter post:** the space under the slider's deck is solid, full width, so the wall's root
   is the whole footprint. **Drive all four wood screws before the springs go on.**
+  Its +X face is flush with the screw tabs' edge (2.5 thicker there); the screw head's
+  counterbore is just 2.5 deeper, so the key goes in the same way.
 - **No head or crown tower.** Lay an axle bar across the plank 607.0 -X of the yoke's roof at
   mid travel (the scale span, as before). Its top should hold the string's centre about 26 over
   the wood, level with the yoke. Each 10 mm low tips the string about 1 deg, about 2.5 N of
