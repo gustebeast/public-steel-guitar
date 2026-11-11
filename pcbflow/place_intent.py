@@ -47,6 +47,9 @@ ELECTRICAL / FLOORPLAN
   rot       ref allowed            rotation in the allowed set
   side      ref F|B
   array     refs axis pitch [tol]  one rule for a repeat: same off-axis, equal pitch along
+  tight     nets max_mm [weight]   a loop the datasheet wants small (a buck's SW node, its FB,
+                                   a crystal's legs): each net's pads within max_mm (half
+                                   perimeter); place_init pulls these nets x weight
 
 `auto_decaps(parts, notes)` proposes a decap rule for every capacitor that sits across an
 IC's supply and ground, at its nearest supply pin -- the rule a fresh board gets for free.
@@ -317,6 +320,14 @@ def check(rule, P, notes, H=None):
     elif k == "side":
         ref = rule["ref"]
         out.append((0.0 if parts[ref]["side"] == rule["side"] else -1.0, ref, "on %s" % parts[ref]["side"]))
+    elif k == "tight":
+        for nm in rule["nets"]:
+            pts = [P.pad(ref, q["num"]) for ref, p in P.parts.items() if ref in P.pl
+                   for q in p["pads"] if q["net"] == nm]
+            if len(pts) >= 2:
+                a = np.asarray(pts)
+                hp = float(np.ptp(a[:, 0]) + np.ptp(a[:, 1]))
+                out.append((rule["max_mm"] - hp, nm, "%.1f mm across, wants %.1f" % (hp, rule["max_mm"])))
     elif k == "array":
         refs = _refs(rule["refs"], parts)
         ax = 0 if rule["axis"] in ("x", "X") else 1
@@ -437,7 +448,7 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
     return rules
 
 
-def auto_singles(parts, ground=("GND",), max_mm=5.0, skip=()):
+def auto_singles(parts, ground=("GND",), max_mm=8.0, skip=(), weight=0.5, two_pad=False):
     """A `near` rule for every part with ONE signal net (test pads, a lone jumper or probe
     point): at that net's driver pin -- an IC's pin on the net (most pads first), else the
     pin of the part with most pads. Placement-independent, so a fresh board gets it too.
@@ -445,7 +456,12 @@ def auto_singles(parts, ground=("GND",), max_mm=5.0, skip=()):
     ⚠ WHY (output_panel intent board, 2026-11-11): TP1 (SWDIO's probe pad) was free, landed
     12 mm from U1.48 on the net graph's average, and SWDIO stayed open through a round of
     refinement that never got to it. A single-net part belongs at its pin; said once here,
-    place_init puts it there as a satellite."""
+    place_init puts it there as a satellite.
+
+    ⚠ TEST PADS ONLY BY DEFAULT, LOOSE (lead ruling 2026-11-11). Applied to every two-pad
+    part whose other end is ground as well (pull-downs, filter caps), a 5 mm rule put 26
+    satellites against U1's pins and routed 4 open against 1: where a pull-up goes is a
+    judgement about escapes. two_pad=True opts those in."""
     rules = []
     for ref in sorted(parts):
         if ref in skip:
@@ -456,7 +472,7 @@ def auto_singles(parts, ground=("GND",), max_mm=5.0, skip=()):
             continue
         # a test pad, or a two-pad part whose other end is ground (pull-down, filter cap,
         # clamp); never a connector, whose place is the mechanical design's
-        if not (re.match(r"^TP\d", ref) or (len(pads) == 2 and re.match(r"^[RCD]\d", ref))):
+        if not (re.match(r"^TP\d", ref) or (two_pad and len(pads) == 2 and re.match(r"^[RCD]\d", ref))):
             continue
         net = nets.pop()
         cands = []
@@ -470,6 +486,7 @@ def auto_singles(parts, ground=("GND",), max_mm=5.0, skip=()):
             continue
         _, _, o, num = min(cands)
         rules.append({"kind": "near", "ref": ref, "target": "%s.%s" % (o, num), "max_mm": max_mm, "hard": False,
+                      "weight": weight,
                       "why": "%s carries only %s: at its driver pin" % (ref, net), "src": "auto_singles (netlist)"})
     return rules
 

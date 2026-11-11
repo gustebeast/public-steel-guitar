@@ -74,6 +74,8 @@ class Grid:
             self.occ |= (np.hypot(X - c["xy"][0], Y - c["xy"][1]) <= r)
         for k in keepouts:
             self.occ |= pi._inside(k, pts).reshape(self.H, self.W)
+        # counts, so a part can be lifted again (the local pass): mechanical blockage is 1
+        self.occ = self.occ.astype(np.int16)
         self.occ_p = np.zeros_like(self.occ)        # placed courtyards alone, no halo
         self.X, self.Y = X, Y
 
@@ -155,6 +157,13 @@ def place(parts, notes, rules, keep=()):
     for spec in notes.get("diff_pairs", ()):
         for nm in spec.get("nets", ()):
             wnet[nm] = 4.0
+    # a loop the datasheet wants small: pulled x its weight in both stages (a plain
+    # half-perimeter scores the buck's SW node like its DC output, and the output's far
+    # loads won: L1 sat 33 mm from U5)
+    for r in rules:
+        if r["kind"] == "tight":
+            for nm in r["nets"]:
+                wnet[nm] = max(wnet.get(nm, 1.0), float(r.get("weight", 10.0)))
     A = np.zeros((n, n))
     bx, by = np.zeros(n), np.zeros(n)
 
@@ -290,9 +299,198 @@ def place(parts, notes, rules, keep=()):
                 why[c] = "net graph (its anchor part had no room near it)"
             else:
                 miss.append(c)
+    # ---- 5. local: lift each part and put it back nearer its nets, if that is shorter
+    notes_c = dict(notes, _regions={r["name"]: r["poly"] for r in rules if r["kind"] == "region"},
+                   _panel=[r for r in rules if r["kind"] == "panel"])
+    sats = {}
+    for anc, rs in decaps.items():
+        for r in rs:
+            c = r.get("cap") or r.get("ref")
+            if c in placed_sat and c != anc:
+                sats.setdefault(anc, []).append((c, r))
+    moved, gain = _local(G, parts, pl, [r for r in free if r not in miss], rots, inreg, wnet, rules, notes_c, sats)
+    log.append("local pass: %d parts moved, small-net wirelength %.0f -> %.0f mm" % (moved, gain[0], gain[1]))
     log.append("placed %d free parts (%d satellites at their pins), %d with no room: %s"
                % (len(free) - len(miss), len(placed_sat), len(miss), " ".join(miss)))
     return pl, log, why
+
+
+RULE_W = 10.0       # mm of wirelength a millimetre of broken soft rule is worth (local pass)
+SOFT_KINDS = ("decap", "near", "thermal", "apart", "chain", "tight")
+
+
+def _seat(r, P, pl, anc):
+    """Where a satellite goes for its rule: just outside its pin, or at its target."""
+    if r["kind"] == "decap":
+        pin = P.pad(*r["pin"].split(".", 1))
+        v = pin - np.asarray(pl[anc][:2])
+        return pin + v / (np.hypot(*v) or 1.0) * 1.0
+    if "." in r.get("target", ""):
+        return P.pad(*r["target"].split(".", 1))
+    return np.asarray(pl[anc][:2])
+
+
+def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=None, passes=3):
+    """Detailed placement: a part the legaliser dropped far from its nets (the greedy
+    biggest-first drop puts it at the nearest FREE spot, which can be across the board) is
+    lifted and dropped again at the free spot nearest its nets' optimum, kept there only if
+    its nets get shorter. Nets of 2..WIDE pins, half-perimeter, pair nets x4.
+
+    ⚠ WHY (output_panel intent board, 2026-11-11): the board closed, but small nets the hand
+    board keeps within millimetres ran across it -- the buck's SW node 44 mm (hand 9), its
+    FB 34 (hand 3.4), DAC_R_FILT 52 (hand 3.6) -- and cost ~90 vias over the hand board's
+    count. Same total wirelength; a few parts in the wrong place."""
+    pads = {}
+    for ref in parts:
+        pads[ref] = [(q["net"], q["xy"]) for q in parts[ref]["pads"] if q["net"]]
+    members = {}
+    for ref, ps in pads.items():
+        for nm, _ in ps:
+            members.setdefault(nm, set()).add(ref)
+    scope = {nm for nm, m in members.items() if 2 <= sum(1 for r in m for n2, _ in pads[r] if n2 == nm) <= WIDE}
+
+    def world(ref):
+        x, y, a = pl[ref]
+        off = pi._rot([xy for _, xy in pads[ref]], a) if pads[ref] else np.zeros((0, 2))
+        return [(nm, np.array([x, y]) + o) for (nm, _), o in zip(pads[ref], off)]
+
+    def cost(nets):
+        c = 0.0
+        for nm in nets:
+            pts = [p for r in members[nm] if r in pl for n2, p in world(r) if n2 == nm]
+            if len(pts) >= 2:
+                a = np.array(pts)
+                c += wnet.get(nm, 1.0) * float(np.ptp(a[:, 0]) + np.ptp(a[:, 1]))
+        return c
+
+    # the soft rules each part takes part in: a move that strands a cap off its pin, or a
+    # pull-up off its part, costs RULE_W x the millimetres it breaks the rule by
+    # (first version without this: caps dragged 30 mm after their nets, 7 -> 19 rules broken)
+    rel = {}
+    for r in rules:
+        if r["kind"] not in SOFT_KINDS:
+            continue
+        names = {r.get(f) for f in ("ref", "cap") if r.get(f)}
+        for f in ("pin", "target"):
+            if r.get(f):
+                names.add(r[f].split(".")[0])
+        for f in ("others", "refs", "a", "b"):
+            if isinstance(r.get(f), list):
+                names |= set(r[f])
+        for nm in r.get("nets") or ():                 # tight: every part on those nets
+            names |= members.get(nm, set())
+        for n in names:
+            rel.setdefault(n, []).append(r)
+
+    def penalty(ref):
+        if not rel.get(ref):
+            return 0.0
+        P = pi.Placed(parts, pl)
+        v = 0.0
+        for r in rel[ref]:
+            try:
+                for sl, _, _ in pi.check(r, P, notes or {}):
+                    v += r.get("weight", 1.0) * max(0.0, -sl)
+            except (KeyError, ValueError):
+                pass
+        return RULE_W * v
+
+    def total():
+        return cost(scope)
+
+    t0 = total()
+    moved = set()
+    fixed_local = set(pl) - set(refs)
+    for _ in range(passes):
+        order = sorted(refs, key=lambda r: -cost({nm for nm, _ in pads[r]} & scope))
+        changed = False
+        for ref in order:
+            mine = {nm for nm, _ in pads[ref]} & scope
+            if not mine:
+                continue
+            x, y, a = pl[ref]
+            # the anchor that puts each pad nearest the rest of its net
+            tg = []
+            for nm, p in world(ref):
+                if nm not in mine:
+                    continue
+                # an anchor's own satellites move with it: they are not where it should go
+                # (L1's V5_PRE target was its own caps, so it never left them for U5)
+                own = {c for c, _ in (sats or {}).get(ref, ())}
+                oth = [q for r in members[nm] if r != ref and r not in own and r in pl
+                       for n2, q in world(r) if n2 == nm]
+                if oth:
+                    tg.append(np.mean(oth, axis=0) - (p - np.array([x, y])))
+            if not tg:
+                continue
+            t = np.mean(tg, axis=0)
+            if np.hypot(t[0] - x, t[1] - y) < 0.5 and len(pads[ref]) > 2:
+                continue
+            # ⚠ AN ANCHOR MOVES WITH ITS SATELLITES (output_panel, 2026-11-11): the buck's
+            # SW node stayed 42 mm because U5 and L1 each carry caps whose rules a lone move
+            # would break; lifted as a group -- the part, then each cap re-seated at its pin
+            # -- the move is judged on the whole group's nets and rules.
+            group = [ref] + [c for c, _ in (sats or {}).get(ref, ()) if c in pl and c not in fixed_local]
+            gnets = set()
+            for g in group:
+                gnets |= {nm for nm, _ in pads[g]} & scope
+            c0 = cost(gnets) + sum(penalty(g) for g in group)
+            olds = {g: list(pl[g]) for g in group}
+            old_xy = pl[ref][:2]
+            for g in group:
+                mg_, gi_, gj_ = mask(parts[g], pl[g][2])
+                _unstamp(G, mg_, gi_, gj_, *G.ij(*pl[g][:2]), grow=halo(parts[g]))
+            # ⚠ EACH TURN TRIED ON ITS OWN, THE CHEAPEST KEPT (output_panel, 2026-11-11): the
+            # first turn that fitted was taken, and two-pin nets the hand board routes with
+            # no via (BOOT, FB, DAC_FILT, SW_GATE) took two -- a part facing the wrong way.
+            best_t = None
+            for rr in rots(ref, a):
+                ok = _drop(G, parts, ref, t, [rr], pl, inreg.get(ref))
+                placed_g = [ref] if ok else []
+                if ok:
+                    for c, r in (sats or {}).get(ref, ()):
+                        if c not in group:
+                            continue
+                        P = pi.Placed(parts, pl)
+                        if _drop(G, parts, c, _seat(r, P, pl, ref), rots(c, olds[c][2]), pl, inreg.get(c)):
+                            placed_g.append(c)
+                        else:
+                            ok = False
+                            break
+                cc = cost(gnets) + sum(penalty(g) for g in group) if ok else None
+                if ok and (best_t is None or cc < best_t[0]):
+                    best_t = (cc, {g: list(pl[g]) for g in group})
+                for g in placed_g:
+                    mg_, gi_, gj_ = mask(parts[g], pl[g][2])
+                    _unstamp(G, mg_, gi_, gj_, *G.ij(*pl[g][:2]), grow=halo(parts[g]))
+                for g in group:
+                    pl[g] = list(olds[g])
+            ok = best_t is not None
+            placed_g = []
+            if ok:
+                for g in group:
+                    pl[g] = best_t[1][g]
+                    mg_, gi_, gj_ = mask(parts[g], pl[g][2])
+                    _stamp(G, mg_, gi_, gj_, *G.ij(*pl[g][:2]), grow=halo(parts[g]))
+                    placed_g.append(g)
+            if os.environ.get("PLACE_DEBUG") == ref:
+                print("  PLACE_DEBUG %s at %s target %s group %s ok=%s cost %.1f -> %.1f (nets %.1f pen %.1f)" % (
+                    ref, old_xy, np.round(t, 1), group, ok, c0, cost(gnets) + sum(penalty(g) for g in group),
+                    cost(gnets), sum(penalty(g) for g in group)))
+            if ok and cost(gnets) + sum(penalty(g) for g in group) < c0 - 0.5:
+                moved.update(group)
+                changed = True
+                continue
+            for g in placed_g:                       # undo: lift what was dropped, put all back
+                mg_, gi_, gj_ = mask(parts[g], pl[g][2])
+                _unstamp(G, mg_, gi_, gj_, *G.ij(*pl[g][:2]), grow=halo(parts[g]))
+            for g in group:
+                pl[g] = olds[g]
+                mg_, gi_, gj_ = mask(parts[g], pl[g][2])
+                _stamp(G, mg_, gi_, gj_, *G.ij(*pl[g][:2]), grow=halo(parts[g]))
+        if not changed:
+            break
+    return len(moved), (t0, total())
 
 
 def _grow(m, ai, aj, grow, g=GRID):
@@ -302,13 +500,13 @@ def _grow(m, ai, aj, grow, g=GRID):
     return binary_dilation(np.pad(m, k), iterations=k), ai + k, aj + k
 
 
-def _put(arr, m, ai, aj, i, j):
+def _put(arr, m, ai, aj, i, j, sign=1):
     i0, j0 = i - ai, j - aj
     h, w = m.shape
     a0, b0 = max(0, i0), max(0, j0)
     a1, b1 = min(arr.shape[0], i0 + h), min(arr.shape[1], j0 + w)
     if a1 > a0 and b1 > b0:
-        arr[a0:a1, b0:b1] |= m[a0 - i0:a1 - i0, b0 - j0:b1 - j0]
+        arr[a0:a1, b0:b1] += sign * m[a0 - i0:a1 - i0, b0 - j0:b1 - j0].astype(arr.dtype)
 
 
 def _stamp(G, m, ai, aj, i, j, force=False, grow=0.0):
@@ -317,6 +515,11 @@ def _stamp(G, m, ai, aj, i, j, force=False, grow=0.0):
     must miss)."""
     _put(G.occ_p, m, ai, aj, i, j)
     _put(G.occ, *_grow(m, ai, aj, grow, G.g), i, j)
+
+
+def _unstamp(G, m, ai, aj, i, j, grow=0.0):
+    _put(G.occ_p, m, ai, aj, i, j, -1)
+    _put(G.occ, *_grow(m, ai, aj, grow, G.g), i, j, -1)
 
 
 def _collide(sub, m, ai, aj):
@@ -343,7 +546,7 @@ def _drop(G, parts, ref, t, rots, pl, forbid=None):
             R = int(rad / G.g)
             i0, i1 = max(0, ti - R), min(G.H, ti + R + 1)
             j0, j1 = max(0, tj - R), min(G.W, tj + R + 1)
-            sub = G.occ[i0:i1, j0:j1]
+            sub = G.occ[i0:i1, j0:j1] > 0
             if forbid is not None:
                 sub = sub | forbid[i0:i1, j0:j1]
             # ⚠ A HALO HOLDS BOTH WAYS (output_panel, 2026-11-11). Placed biggest first,
@@ -356,7 +559,7 @@ def _drop(G, parts, ref, t, rots, pl, forbid=None):
             # everyone's plain courtyard.
             col = _collide(sub.astype(np.float32), m, ai, aj)
             mg, gi, gj = _grow(m, ai, aj, halo(parts[ref]), G.g)
-            col2 = _collide(G.occ_p[i0:i1, j0:j1].astype(np.float32), mg, gi, gj)
+            col2 = _collide((G.occ_p[i0:i1, j0:j1] > 0).astype(np.float32), mg, gi, gj)
             free = (col < 0.5) & (col2 < 0.5)
             if not free.any():
                 continue

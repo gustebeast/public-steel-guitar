@@ -155,10 +155,19 @@ Result on the same router, held copper stripped: **0 open, 0.0 mm uncoupled**, 3
 303 s. The one fault left is THRU_DP, which is parked. The stripped hand placement on the
 same router: 3 open.
 
-`auto_singles` (a `near` rule at its driver pin for a test pad, or for a two-pad part
-whose other end is ground) exists, but is not used by default. On output_panel it put 26
-more satellites against U1's pins and routed 4 open against 1. A pull-up's place is a
-judgement about escapes that a flat 5 mm rule does not make.
+`auto_singles`: a `near` rule tying a single-net part to its driver pin. By default it
+covers test pads only, at 8 mm and weight 0.5 (lead ruling 2026-11-11). Two-pad parts
+whose other end is ground are opt-in (`two_pad=True`). Applied flat to those at 5 mm, it
+put 26 more satellites against U1's pins and routed 4 open against 1. A pull-up's place is
+a judgement about escapes that a flat rule does not make.
+
+**Check at re-layout: stitches that cross an exit lane.** On the 0-open intent board, three
+fine-pitch GND pads could reach a via only by crossing a neighbouring signal pin's exit
+lane: **U5.6** (LMR33630 VQFN-HR 0.5 mm), **U13.10** and **U13.11** (X2QFN-12, 0.4 mm). The
+board routes, so the crossings stranded nobody here. On a re-layout, layout names them
+again ("stitch: N fine-pitch pad(s) could only reach a via across a neighbour's exit
+lane"). Either widen those parts' neighbourhoods, or check that the signal pins beside
+them still route.
 
 **Proof:** re-place output_panel from intent alone (mechanical + floorplan; no hand
 coordinates except the panel), route it, and compare `score.py` with the hand placement.
@@ -201,6 +210,39 @@ features.**
 
 Lesson for fresh boards: stitch exceptions belong to the copper that made them needed, so
 they go wherever that copper goes.
+
+**Where the intent board's extra vias came from (2026-11-11).** The 0-open intent board had
+328 vias against the hand board's 253; both had their held copper stripped. Counted net by
+net, the excess was not on the power nets.
+* It was on short local nets that the hand board routes with no via at all. The worst
+  were the buck's SW node at 44 mm (hand 9), FB at 34 mm (3.4) and DAC_R_FILT at 52 mm
+  (3.6).
+* Total wirelength was the same as the hand board's. A few parts had simply been dropped
+  across the board: the legaliser places greedily, and nothing pulled them back.
+
+Fixes, in place_init:
+* **Local pass.** Each part is lifted and dropped at the free spot nearest its nets'
+  optimum, each allowed turn tried on its own. It is kept only if its nets plus RULE_W x
+  its soft-rule breaches get cheaper.
+* **Group moves.** An anchor moves with its decap/near satellites, which are re-seated at
+  their pins.
+* **No circular pull.** An anchor's target ignores its own satellites. L1's V5_PRE target
+  had been its own caps, so it never moved toward U5.
+* **New rule kind `tight(nets, max_mm, weight)`** for a loop the datasheet wants small: a
+  buck's SW/BOOT, its FB, a crystal's legs. It is weighted in both stages and checked.
+
+Results on the same router (single routes):
+
+| intent placement | open | vias | routed mm | route |
+|---|---|---|---|---|
+| before the local pass | 0 | 328 | 2594 | 303 s |
+| local pass, first turn that fits | 0 | 280 | 2258 | 122 s |
+| local pass, cheapest turn | 2 (FLASH_RX, POT_SCK at U1) | 262 | 2131 | 340 s |
+| hand R2, stripped (+3V3 open) | 3 | 253 | 2484 | 603 s |
+
+On equal terms the 280 is level with the hand board's 253. The hand board leaves +3V3
+open, and +3V3 alone takes 27 vias and 189 mm on the intent board. +3V3 is a supply routed
+as a signal tree, so it is the case for **pours from intent**, the next piece of (p).
 
 **Held copper on paste-window lands, every board (survey 2026-11-10, main 622e87e).** These
 are lands with F.Paste-only windows, which the router could not start a path from before
