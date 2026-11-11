@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import math
 import re as _re
+from functools import lru_cache as _lru_cache
 
 import cadquery as cq
 
@@ -155,9 +156,9 @@ SLEEVE_OD, SLEEVE_ID = 11.0, 9.0                    # over the screw, part of th
 # into the steel. Those bolts sit at z between the spring rows: a 2.5 key reaches each along Y.
 ANCHOR_T = 4.0
 ANCHOR = (-190.0 - ANCHOR_T, -190.0)                # the plate's web, x
-ANCHOR_Z = (-104.0, -8.0)                           # its top and bottom edges (DECK_UNDER -3.2)
+ANCHOR_Z = (None, -8.0)                             # its top at most (DECK_UNDER -3.2); _anchor_z
 ANCHOR_FL = 16.0                                    # each fold's depth, toward +X
-ANCHOR_CLR = 0.5                                    # off each rail's inner face
+ANCHOR_CLR = 0.5                                    # off the body's walls and floor, and under the UI
 M4_HEAD, M4_L = (7.6, 2.2), 10.0                    # ISO 7380 button head; 10: 3.9 into the bar
 COLLAR_T = 3.0                                      # the collar's plate
 PILLAR_D = 5.2                                      # the collar's two pillars past the M3 heads
@@ -807,18 +808,29 @@ def _rod_plate() -> cq.Workplane:
 
 
 def _anchor_y():
-    return Y_LO + ANCHOR_CLR, RAIL_HI - ANCHOR_CLR
+    """SIZED TO THE BODY (user, 2026-11-11): ANCHOR_CLR off its walls' inner faces."""
+    y0, y1 = body_box()["inner"][1]
+    return y0 + ANCHOR_CLR, y1 - ANCHOR_CLR
+
+
+def _anchor_z():
+    """Its bottom ANCHOR_CLR over the body's floor; its top ANCHOR_Z[1] (under the deck), or
+    ANCHOR_CLR under the UI station where that hangs over the channel (its clamp, z -15.9)."""
+    z0 = body_box()["inner"][2][0]
+    top = min(ANCHOR_Z[1], body_box()["ui_bottom_at_anchor"] - ANCHOR_CLR)
+    assert top - ANCHOR_T >= za(0) + SPRING_OD / 2 + 1.0, "the anchor's top fold onto row 0's springs"
+    return z0 + ANCHOR_CLR, top
 
 
 def _anchor_bolt_z():
-    """Between the top row's springs and the deck, and between rows 0 and 1: the key's way."""
+    """Under the top fold, and between rows 0 and 1: the key's way."""
     gap = ((za(0) - SPRING_OD / 2) + (za(1) + SPRING_OD / 2)) / 2
-    return (-16.0, round(gap, 1))
+    return (round(_anchor_z()[1] - ANCHOR_T - 4.0, 1), round(gap, 1))
 
 
 def _anchor() -> cq.Workplane:
     x0, x1 = ANCHOR
-    (y0, y1), (z0, z1), T, F = _anchor_y(), ANCHOR_Z, ANCHOR_T, ANCHOR_FL
+    (y0, y1), (z0, z1), T, F = _anchor_y(), _anchor_z(), ANCHOR_T, ANCHOR_FL
     w = box_at(T, y1 - y0, z1 - z0, x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(z0 + z1) / 2)
     xf = x1 + F / 2                                  # the folds' middle, x
     for zc in (z1 - T / 2, z0 + T / 2):              # top and bottom: the channel
@@ -920,24 +932,85 @@ def string_parts(i: int, t: float) -> list:
     return out
 
 
-def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
-    from .changer_bench import ghosts as _ghosts
+# -- THE UI STATION (user, 2026-11-11) ---------------------------------------------------------
+# The lead's station (src.ui_panel) as it is -- the display at the same X off the bridge bearings,
+# the joystick and the power button either side as close as they go -- but moved +Y until the
+# display module's +Y edge TOUCHES THE FRET BORDER (as far toward the centre as it can go), so
+# the body grows -Y for it as little as possible. The whole station moves together, by ui_parts()[1].
+@_lru_cache(maxsize=None)
+def ui_parts() -> tuple:
+    from . import ui_panel as U
+    parts = U.parts()
+    ymax = dict(parts)["ui_display"].val().BoundingBox().ymax
+    dy = U.fret_border_y() - ymax
+    return tuple((nm, w.translate((0.0, dy, 0.0))) for nm, w in parts), dy
 
-    def ghosts():
-        return _ghosts(y_hi=RAIL_HI)
+
+# -- THE BODY (user, 2026-11-11): a hollow box, no roof ----------------------------------------
+# Its +X, +-Y and floor are the drive's and the UI's extents (the strings and the anchor plate
+# left out: the plate is SIZED TO the body) plus BODY_CLR; its -X end is the nut block's, so the
+# body holds the scale length and the current nut block. Its walls stand to the deck's top.
+# TODO: the nut block's -X face is MEASURED ONCE (src.keyhead_endplate.assembly(), its
+# keyhead_endplate part, 2026-11-11), not read live: re-measure it when the nut block changes.
+NUT_BLOCK_X0 = -648.3
+BODY_CLR = 2.0
+BODY_WALL = D.WALL_THICKNESS                        # 10.4, every wall
+BODY_FLOOR = 6 * D.BEAD                             # 4.8
+
+
+def _compound(nm, w):
+    # a part of several solids (a pair of bolts) goes as ONE compound: the view and the export
+    # take a part's first solid only
+    return (nm, cq.Workplane("XY").add(cq.Compound.makeCompound(w.solids().vals()))
+            if len(w.solids().vals()) > 1 else w)
+
+
+def _drive(t: float) -> list:
+    """Every part but the anchor plate and its bolts, the UI, the ghosts and the body."""
     out = []
     for i in range(N):
         out += string_parts(i, t)
     out += _bend_parts()
-    out += [("db_cheeks", _cheeks()), ("db_rod_plate", _rod_plate()), ("db_anchor", _anchor()),
-            ("db_anchor_m4", _anchor_bolts()), ("db_comb", _comb())]
-    # a part of several solids (a pair of bolts) goes as ONE compound: the view and the export
-    # take a part's first solid only
-    out = [(nm, cq.Workplane("XY").add(cq.Compound.makeCompound(w.solids().vals()))
-            if len(w.solids().vals()) > 1 else w) for nm, w in out]
-    out = [(nm, _made(nm, w)) for nm, w in out]
-    show = ("ghost_pickup", "ghost_bottom_now")
-    out += [g for g in ghosts() if all_ghosts or g[0] in show]
+    out += [("db_cheeks", _cheeks()), ("db_rod_plate", _rod_plate()), ("db_comb", _comb())]
+    return [_compound(nm, w) for nm, w in out]
+
+
+@_lru_cache(maxsize=None)
+def body_box() -> dict:
+    """{"inner"/"outer": ((x0, x1), (y0, y1), (z0, z1)), "ui_bottom_at_anchor": z}."""
+    from .changer_bench import ghosts as _ghosts, DECK_UNDER
+    pick = [w for nm, w in _ghosts(y_hi=RAIL_HI) if nm == "ghost_pickup"]
+    ui = [w for _, w in ui_parts()[0]]
+    lo, hi = [1e9] * 3, [-1e9] * 3
+    for w in [w for nm, w in _drive(T_OPEN) if not nm.startswith("db_string")] + pick + ui:
+        bb = w.val().BoundingBox()
+        for k, (a, b) in enumerate(((bb.xmin, bb.xmax), (bb.ymin, bb.ymax), (bb.zmin, bb.zmax))):
+            lo[k], hi[k] = min(lo[k], a), max(hi[k], b)
+    top = DECK_UNDER + 9.6                          # the deck's top: the walls' top
+    inner = ((NUT_BLOCK_X0 + BODY_WALL, hi[0] + BODY_CLR), (lo[1] - BODY_CLR, hi[1] + BODY_CLR),
+             (lo[2] - BODY_CLR, top))
+    outer = ((NUT_BLOCK_X0, inner[0][1] + BODY_WALL),
+             (inner[1][0] - BODY_WALL, inner[1][1] + BODY_WALL), (inner[2][0] - BODY_FLOOR, top))
+    ax0, ax1 = ANCHOR[0], ANCHOR[1] + ANCHOR_FL
+    zs = [bb.zmin for bb in (w.val().BoundingBox() for w in ui) if bb.xmax > ax0 and bb.xmin < ax1]
+    return dict(inner=inner, outer=outer, ui_bottom_at_anchor=min(zs, default=ANCHOR_Z[1] + 1.0))
+
+
+def _body() -> cq.Workplane:
+    (x0, x1), (y0, y1), (z0, z1) = body_box()["outer"]
+    (a0, a1), (b0, b1), (c0, _) = body_box()["inner"]
+    w = box_at(x1 - x0, y1 - y0, z1 - z0, x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(z0 + z1) / 2)
+    return w.cut(box_at(a1 - a0, b1 - b0, z1 - c0 + 2.0, x=(a0 + a1) / 2, y=(b0 + b1) / 2,
+                        z=(c0 + z1 + 2.0) / 2))
+
+
+def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
+    from .changer_bench import ghosts as _ghosts
+    out = _drive(t) + [_compound("db_anchor", _anchor()), _compound("db_anchor_m4", _anchor_bolts())]
+    out = [(nm, _made(nm, w)) for nm, w in out] + list(ui_parts()[0])
+    out.append(("ghost_body", _body()))
+    out += [g for g in _ghosts(y_hi=RAIL_HI)
+            if g[0] != "ghost_bottom_now" and (all_ghosts or g[0] == "ghost_pickup")]
     return out
 
 
@@ -1038,7 +1111,7 @@ def is_intended(a: str, b: str) -> bool:
         return True
     if "db_rod" in pair and "db_rod_plate" in pair:
         return True
-    if "db_anchor_m4" in pair and pair & {"db_anchor", "ghost_wall_hi", "ghost_wall_lo"}:
+    if "db_anchor_m4" in pair and pair & {"db_anchor", "ghost_wall_hi", "ghost_wall_lo", "ghost_body"}:
         return True
     if "db_anchor" in pair and pair & {"db_plug", "db_brg", "db_housing", "db_hb", "db_collar_b"}:
         return True
@@ -1054,7 +1127,7 @@ def gate(ts=(0.0, T_OPEN, 1.0)) -> int:
     bad = 0
     for t in ts:
         comps = [(nm, cq.Compound.makeCompound(w.vals()) if len(w.vals()) > 1 else w.val())
-                 for nm, w in assembly(t, all_ghosts=True) if nm != "ghost_bottom_now"]
+                 for nm, w in assembly(t, all_ghosts=True)]
         print(f"\n#### travel t = {t:.2f}")
         bad += OC.run(comps, is_intended)
     return bad
