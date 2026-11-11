@@ -164,6 +164,21 @@ def _zone_point(board, net, layer, toward, inset=0.35):
     return best[1] if best else None
 
 
+def _open_count(board, net):
+    """The board's unconnected count, after refilling `net`'s zones (a stitch via joins an
+    island only through the fill). KiCad's python exposes no per-net ratsnest, so the
+    caller compares counts before and after."""
+    try:
+        pcbnew.ZONE_FILLER(board).Fill([z for z in board.Zones() if z.GetNetname() == net])
+        board.BuildConnectivity()
+        try:
+            return board.GetConnectivity().GetUnconnectedCount(False)
+        except TypeError:
+            return board.GetConnectivity().GetUnconnectedCount()
+    except Exception:
+        return None
+
+
 def _stitch_islands(board, net, plane, clr=0.2, step=0.25):
     """A via in every island of the net's pour that nothing goes through, where the plane's
     pour is too (or, with no plane, a joined piece of the net's pour on another layer):
@@ -774,16 +789,22 @@ def main(stem):
                   % (_time.time() - _t0, ", ".join(t[0] for t in todo[_i:])))
             break
         # zone to zone: an island nothing goes through, joined to the plane by a via
-        if za and zb:
-            if net in stitched:
-                continue
+        # ⚠ ONCE PER NET, THEN ROUTED (optical fold, 2026-11-11): every later zone-to-zone
+        # item on a net already stitched was skipped outright, so a pour sliver round U7.1/2
+        # that the stitcher had no room to drill stayed open beside a GND via 1.1 mm away.
+        # After the one stitching pass, what is still open is closed like any other pair.
+        if za and zb and net not in stitched:
             stitched.add(net)
+            n0 = _open_count(board, net)
             laid = _stitch_islands(board, net, plane)
             if laid:
                 made += 1
                 print("close_last: %s -- %d pour island(s) stitched to the plane at %s"
                       % (net, len(laid), laid))
-                continue
+                n1 = _open_count(board, net)
+                if n0 is None or n1 is None or n1 < n0:
+                    continue
+                print("close_last: %s -- still open after stitching: routing it" % net)
         # a zone end goes to its copper nearest the other end
         if za and not zb:
             pa = _zone_point(board, net, la, pb) or pa

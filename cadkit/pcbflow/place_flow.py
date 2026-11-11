@@ -13,8 +13,11 @@ PCBFLOW_FOOTPRINT_DIRS / PCBFLOW_PROJECT, as for layout.py.
                Every `current` rule sets its net's width (place_intent.widths, IPC-2221
                outer), never below the notes' own net_widths. Nets with no `current` rule
                are sized by the router from quality.power_paths (router.model.power_width)
-               -- unless net_widths states a width, which wins; where that stated width is
-               under a declared, unwaived path's need the report says so (WIDTH lines).
+               -- unless net_widths states a width, which wins; once placed, a stated
+               width under an unwaived path's need (heating + drop over the placed
+               distance, a `split` path as a tapped trunk) is RAISED to it, capped at
+               POWER_W_MAX (WIDTH lines;
+               --keep-widths only reports).
   2. place     place_init (stages 1-6, forbid repair), then place_cells (each free cell's
                turn chosen by routing it; forbid zones hard unless --soft-forbid).
   3. gates     layout.py on the placed board -- courtyards, stitching, the legality gate.
@@ -108,7 +111,57 @@ def _regions_of(rules, parts):
     return {x: r["region"] for r in rules if r["kind"] == "in_region" for x in pi._refs(r["refs"], parts)}
 
 
-def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False):
+def _raise_widths(notes, parts, pl, keep=False):
+    """A STATED WIDTH UNDER WHAT A DECLARED POWER PATH NEEDS IS RAISED, once the parts have
+    positions. net_widths wins over the router's own sizing (router.model.power_width), and
+    on a fresh board the statement is usually the hand board's, sized for its routes: optical
+    V5_PRE stated 0.35 mm, half its 183 mm on In2, dropped 51 mV against 50 (lead,
+    2026-11-11: widen the trunk rather than rework the placement). The need is the router's
+    own -- IPC-2221 heating and the drop over the placed distance, a `split` path as a
+    tapped trunk -- capped at POWER_W_MAX; waived paths (quality.waive "A1:...") are left
+    alone. keep=True (--keep-widths) only reports. Returns the WIDTH lines; edits notes."""
+    from router.model import power_width, POWER_W_MAX
+    q_ = notes.get("quality", {}) or {}
+    waived = set(q_.get("waive") or {})
+    nw = notes.setdefault("net_widths", {})
+    P = pi.Placed(parts, pl)
+    at = {}
+    for r_ in parts:
+        if r_ in pl:
+            for q in parts[r_]["pads"]:
+                if q["num"]:
+                    try:
+                        at["%s.%s" % (r_, q["num"])] = tuple(float(v) for v in P.pad(r_, q["num"]))
+                    except (KeyError, ValueError, IndexError):
+                        pass
+    need = {}
+    for pp in q_.get("power_paths", ()) or ():
+        n = pp["net"]
+        dsts = pp["to"] if isinstance(pp["to"], (list, tuple)) else [pp["to"]]
+        live = [d_ for d_ in dsts if "A1:%s %s>%s" % (n, pp["from"], d_) not in waived]
+        if n not in nw or not live:
+            continue
+        # a "split" path feeds taps along its run (optical V5_PRE: ten emitter resistors):
+        # a uniformly tapped trunk drops what HALF its current would over the whole length,
+        # where power_width charges all of it to the far end (0.92 mm asked for 0.21 A).
+        # Modelled here, not in the router's own sizing: changing that cost the series gate
+        # a pair on ONX03 (2026-11-11).
+        pp_ = dict(pp, to=live, amps=float(pp["amps"]) / 2.0) if pp.get("split") else dict(pp, to=live)
+        w = min(POWER_W_MAX, power_width(pp_, q_, at))
+        if w > need.get(n, (0.0,))[0]:
+            need[n] = (w, pp["from"], live, float(pp["amps"]))
+    out = []
+    for n, (w, src, live, amps) in sorted(need.items()):
+        if nw[n] + 1e-6 < w:
+            out.append("%s: net_widths %.2f mm, %s -> %s at %.2f A needs %.2f mm (heating + drop, router.model."
+                       "power_width)%s" % (n, nw[n], src, ",".join(live[:3]) + ("..." if len(live) > 3 else ""), amps, w,
+                                           " -- kept (--keep-widths)" if keep else " -- raised"))
+            if not keep:
+                nw[n] = w
+    return out
+
+
+def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, keep_widths=False):
     d = os.path.abspath(d)
     stem = _stem(d)
     base = os.path.basename(stem)
@@ -143,29 +196,13 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False):
             widened.append("%s %.2f->%.2f" % (n, nw.get(n, 0.0), w))
             nw[n] = w
     notes["net_widths"] = nw
-    # a stated width under what a declared power path needs: the router obeys the statement,
-    # quality A1 then fails the path. Said here, by net, so it is fixed in the notes or intent.
     wlines = []
-    q_ = notes.get("quality", {}) or {}
-    waived = set((q_.get("waive") or {}))
-    from router.model import power_width
-    for pp in q_.get("power_paths", ()) or ():
-        n = pp["net"]
-        dsts = pp["to"] if isinstance(pp["to"], (list, tuple)) else [pp["to"]]
-        if n not in nw or all("A1:%s %s>%s" % (n, pp["from"], d_) in waived for d_ in dsts):
-            continue
-        need = power_width(dict(pp, to=[]), q_, {})            # heating width only: no positions yet
-        if nw[n] + 1e-6 < need:
-            wlines.append("%s: net_widths %.2f mm, %s -> %s at %.2f A needs %.2f mm (IPC-2221) -- give it a "
-                          "`current` rule or widen it" % (n, nw[n], pp["from"], ",".join(dsts), float(pp["amps"]), need))
     ip = os.path.join(fd, "intent.json")
     json.dump(rules, open(ip, "w"), indent=1)
     say = lambda s: (print("place_flow: " + s), log.write("## " + s + "\n"), log.flush())
     say("intent: %d rules%s" % (len(rules), (" (+ " + ", ".join(added) + ")") if added else ""))
     if widened:
         say("net widths from `current`: " + ", ".join(widened))
-    for w_ in wlines:
-        say("WIDTH " + w_)
 
     # 2. place_init, place_cells
     init = os.path.join(fd, "init.json")
@@ -187,6 +224,9 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False):
             pl[r_] = v
             why[r_] = "carried from input (not in parts.json: %s)" % (
                 "post_route_refs" if r_ in notes.get("post_route_refs", ()) else "no geometry")
+    wlines = _raise_widths(notes, parts, pl, keep_widths)
+    for w_ in wlines:
+        say("WIDTH " + w_)
     json.dump(dict(notes, placements=pl), open(stem + ".board.json", "w"), indent=0)
     cmd = [sys.executable, "place_cells.py", d, ip, "--parts", parts_path] + (["--soft-forbid"] if soft else [])
     # place_cells keeps its own work in <dir>/cells; a stale parent route there would be a
@@ -201,6 +241,11 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False):
         if pl.get(r_) != pc[r_]:
             why[r_] = "place_cells: cell turned / repaired by route (%s)" % why.get(r_, "")
     pl = pc
+    w2 = _raise_widths(notes, parts, pl, keep_widths)
+    for w_ in w2:
+        if w_ not in wlines:
+            say("WIDTH " + w_)
+            wlines.append(w_)
     json.dump(dict(notes, placements=pl), open(stem + ".board.json", "w"), indent=0)
     json.dump(why, open(os.path.join(fd, "provenance.json"), "w"), indent=0)
 
@@ -301,8 +346,11 @@ def main(argv):
     ap.add_argument("--soft-forbid", action="store_true")
     ap.add_argument("--skip-finish", action="store_true")
     ap.add_argument("--fold-post", action="store_true", help="place post_route_refs with the rest (see the doc)")
+    ap.add_argument("--keep-widths", action="store_true",
+                    help="report a stated net width under its power path's need instead of raising it")
     a = ap.parse_args(argv)
-    return flow(a.dir, os.path.abspath(a.intent), not a.no_auto, a.soft_forbid, a.skip_finish, a.fold_post)
+    return flow(a.dir, os.path.abspath(a.intent), not a.no_auto, a.soft_forbid, a.skip_finish, a.fold_post,
+                a.keep_widths)
 
 
 if __name__ == "__main__":

@@ -193,6 +193,32 @@ What is left, and where it belongs:
 | first round | 0 | 20 declared + 2 silk_edge | 3 (A2, A17 x2) |
 | this round | 0 | 20 declared + 2 silk_edge | 4: A1 V5_PRE drop 51 mV vs 50 (x2, placement-marginal), A17 x2 |
 
+**Third round (2026-11-11, lead: V5_PRE, widen the trunk rather than rework placement).**
+* **place_flow raises a stated width that is under its power path's need**, once the
+  parts have positions.
+  * The need is the router's own power_width: IPC-2221 heating plus the drop over the
+    placed distance, capped at POWER_W_MAX.
+  * Waived A1 paths are left alone.
+  * `--keep-widths` only reports.
+  * Optical V5_PRE: 0.35 -> 0.46 mm, and its A1 drop FAILs are gone.
+  * output_panel +24V: 0.5 -> 1.0 mm, the cap. J7's path still needs 1.3 mm, which is a
+    pour, not a track.
+* **A `split` path is modelled as a tapped trunk in the flow's raise.** Its taps sit along
+  the run, so it drops about what half its current would over the full length. Charging the
+  whole current to the far end asked 0.92 mm for 0.21 A. This is NOT in the router's own
+  sizing (router.model.power_width): putting it there failed the series gate, with a pair
+  on ONX03 and uncoupled 254.7 -> 291.8 mm.
+* **close_last stitched a net's pour islands once, then skipped every other zone-to-zone
+  item on that net.** A pour sliver round U7.1/2 that the stitcher could not drill stayed
+  open, 1.1 mm from a GND via. Stitching is still done once, but if the board's
+  unconnected count does not drop, the item is routed like any other: GND closed with
+  8.6 mm and one via, 0 unconnected.
+
+| this round | unconnected | violations | quality FAIL |
+|---|---|---|---|
+| optical auto, folded | 0 (after the close_last fix) | 20 declared + 2 silk_edge | 2: A17 x2 (J2 labels) |
+| output_panel auto | 0 | 6 silk_edge (hand's 6) | 5: A1 x4 (+24V J7 1.0 vs 1.3; J1_VBUS land-limited 0.5 vs 0.53, 53 mV), A17 J6 stale |
+
 The report's **NO ROOM** line lists every part the placer or the silk labeller found no
 room for, with the region it was held to.
 
