@@ -498,12 +498,24 @@ Optical cells board (vI16: 2 open, ULPI_D5/D6; USB pair 0.0 mm):
 | parent (U13 0, U7 270) | 2 | 0.0 | 202 | 2341 | 0 |
 | U13 -> 90 (confirmed) | 2 | 0.0 | 196 | 2319 | 0 |
 | **U7 -> 90 (confirmed)** | **0** | **0.0** | **194** | **2299** | **2**: the buck's switch node 9.2 / 9.4 mm from the PHY crystal Y2, zone 10 |
-| `--strict` (U7_90 not eligible) | 2 | 0.0 | 196 | 2319 | 0 |
+| U7 -> 90 + forbid repair (**default**, confirmed) | **0** | **0.0** | 197 | 2355 | **0** (3 soft: the buck 5.5-7.5 mm from the USB chain, rule 9) |
 
-The other PHY turns lost ULPI lines (0: DIR/STP open and 11 mm uncoupled; 180: D2/D3
-open). On this board, closing the ULPI fan and keeping the zone are not both possible with
-the buck where it is. The default reports the breach; `--strict` refuses it. Which one
-applies is the intent author's call.
+**A forbid zone is hard (lead ruling, 2026-11-11).** A turn that breaks more zones than its
+parent gets ONE repair:
+* The unit breaking the zone (a free cell or free part, never the cell being turned) is
+  re-dropped, aimed at its own `near` targets.
+* It must clear EVERY zone it is in, not only the broken one: the first try fixed the
+  crystal zone and broke the buck's 45 mm photodiode zone.
+* The soft `apart` rules are tried as zones first. They are dropped only if that leaves no
+  room.
+* The repaired candidate is re-scored and confirmed by a full route like any other.
+* A turn the repair cannot clear is not eligible, logged as FORBID.
+* `--soft-forbid` keeps the best route as-is (the row above with 2 forbid breaks).
+
+On this board the repair found no room by the inlet: the MID divider and analog LDO hold
+the -X side. With the soft zones it found no room at all, so it fell back to the forbid
+zones alone. The buck now sits clear of every hard zone but 5.5-7.5 mm from the USB chain.
+The rules are met; a better floorplan would give the buck its inlet corner.
 
 Note: rescore said **0 open for all three buck turns**, and the full route of U13_90 said 2
 (the same ULPI pair). A re-score near the parent's failed nets is optimistic; the
