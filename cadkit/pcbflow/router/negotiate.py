@@ -362,6 +362,7 @@ class Router(CoupledMixin):
     OFFRUN_COST = 4.0                # a relaxed pair's cell price off its home layers
     WIDEN_AFTER = 3                  # rounds a net may share before its search window widens...
     STALL_ROUNDS = 2                 # ...once the whole negotiation is this many rounds without gain
+    SUB_STALL_STOP = 3               # a re-negotiation round locked copper stops this many rounds without gain
     RELAX_AFTER = 10                 # rounds a layer-held pair may share before it is relaxed (4 relaxed USB mid-negotiation, 11-08)
     FILL_MARGIN = 0.15               # a plane-join via's pad this far inside the fill's edge
     PLANE_JOIN_MM = (2.0, 6.0)       # a plane join looks this near its piece first (then everywhere)
@@ -2733,8 +2734,16 @@ class Router(CoupledMixin):
                 best, since = score, 0
             else:
                 since += 1
-                if since >= 8:
-                    self.log("  no better in 8 rounds: stopping")
+                # ⚠ A RE-NEGOTIATION ROUND LOCKED COPPER GIVES UP SOONER (output_panel with
+                # J1's CC/VBUS re-drawn, 2026-11-10: 28 min against 5). With CC1/CC2 boxed in,
+                # every wall repair and pair displacement ran to the 8-round stop at ~12 s a
+                # round -- fourteen of them, none ever better than its first round. Pricing
+                # harder at pf in the tens of thousands moves nothing; three rounds without
+                # gain end a sub-negotiation (the main one keeps eight). Series gate: no board
+                # changed, J1 board 1698 -> 833 s.
+                lim = self.SUB_STALL_STOP if locked else 8
+                if since >= lim:
+                    self.log("  no better in %d rounds: stopping" % lim)
                     break
             self._stalled = since >= self.STALL_ROUNDS
             if time.time() - t0 > budget_s:
