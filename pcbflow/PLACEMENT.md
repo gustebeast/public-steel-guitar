@@ -207,6 +207,34 @@ vias), and pours from intent.
   placescore already does. Scored in parallel, a process each.
 Budget: one candidate under a minute, one refinement round under ten.
 
+**LANDED (2026-11-11): `router/rescore.py`, `score.py --save auto` / `--parent <route.pkl>`.**
+A full route saves itself by net: paths, necks, piece keys, pair faults, the negotiation's
+history and its closing price. A candidate keeps every net whose pieces are cell-for-cell
+the parent's and whose parent copper still clears the candidate's fixed copper. A plane net
+keeps the joins of its unchanged pieces (keep_paths). The rest is routed, starting from the
+parent's history at its closing price (capped at 50), and the finish stages look only at
+nets that changed. Two rules came from measurement:
+* **Warm start.** Started cold (no history, pf 0.5), one resistor moved 0.6 mm on
+  output_panel dragged 42 nets back in and ended 9 open against the full route's 1. Warm,
+  2-6 nets move and the result matches the parent.
+* **Lock only pairs the parent could not finish.** Leaving THRU free cost 140 s of a 210 s
+  re-score, re-finishing the same fault. Locking every kept pair left optical u10e/c05 2
+  open where the full route closes, because its clean ULPI pairs could not make way.
+
+**Proof, the placement series (10 families, 99 nudged candidates against each family's
+first):**
+* Clean-or-not agrees with the full route on **99/99**.
+* Total time **x4.4** less: median 7 s, p90 49 s, max 65 s, against 40-140 s full.
+* output_panel's intent board (a 430-520 s full route): three nudges re-scored in 20-65 s.
+
+What it does NOT do: it does not reproduce the full route's spread in uncoupled mm. A kept
+pair keeps its parent copper, so a nudge away from the pair leaves the figure exactly as it
+was. The full-route spread there (1.4-3.2 mm on u10a for nudges nowhere near the pair) is
+route-to-route noise, which placescore already warned about. A move that does touch a pair
+changes its pieces, or makes its copper illegal, and is re-routed and re-finished. So (d)
+reads the re-score as "what this change does", and confirms its accepted moves with a full
+route.
+
 ### (d) Refinement from the router's own reports -- `place_refine.py`
 
 The router says where nets fought and which parts stand there. Each round proposes moves

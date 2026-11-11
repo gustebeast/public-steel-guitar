@@ -198,6 +198,8 @@ class CoupledMixin:
             b = a.mate
             if b is None or a.partner is not None or a.group is None:
                 continue
+            if getattr(self, "_only", None) is not None and a not in self._only:
+                continue
             spec = self._pair_spec(a)
             if not spec or not spec.get("fallback"):
                 continue
