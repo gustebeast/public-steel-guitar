@@ -1,6 +1,6 @@
 """place_flow.py: a fresh board, end to end, from its intent (PLACEMENT.md, "Writing intent").
 
-    py -3.12 place_flow.py <dir> <intent.json> [--no-auto] [--soft-forbid] [--skip-finish]
+    py -3.12 place_flow.py <dir> <intent.json> [--no-auto] [--soft-forbid] [--skip-finish] [--fold-post]
 
 <dir> holds ONE board: <stem>.net, <stem>.board.json (the notes -- outline, cutouts, pairs,
 layers; any placements in it are kept only for parts nothing else places, i.e. the
@@ -21,6 +21,18 @@ PCBFLOW_FOOTPRINT_DIRS / PCBFLOW_PROJECT, as for layout.py.
   5. report    flow/report.md and flow/report.json: score, floor and FORBID lines, finish
                DRC, quality FAIL / OPEN, and where every coordinate came from
                (flow/provenance.json: ref -> the rule or stage that set it).
+
+--fold-post PLACES THE POST-ROUTE PARTS WITH EVERYTHING ELSE. A board whose notes list
+post_route_refs (strap resistors, test points) and post_route_nets has them dropped onto the
+FINISHED route by layout's post-route pass, at the free spot the copper left -- measured
+against one route, so on a fresh placement they land on tracks (optical: solder-mask bridges
+of Rs/Cs pads against I2C2_SCL) or nowhere. Folded, the lists are emptied, the parts are
+placed by the intent (or auto_singles) and their nets routed with the rest. parts.json must
+carry their geometry (place_geom on the full netlist); a missing one stops the flow, named.
+
+Where a part finds no room the report says so -- the part and the region it was held to
+(place_init's "no room", the silk labeller's "no free site") -- rather than leaving it to a
+DRC count.
 
 The board.json in <dir> is rewritten with the flow's placements (the input is kept as
 flow/input.board.json). Every stage's output is in <dir>/flow/.
@@ -86,7 +98,12 @@ def _klass(why):
     return "other"
 
 
-def flow(d, intent_path, auto=True, soft=False, skip_finish=False):
+def _regions_of(rules, parts):
+    """{ref: region name} from the in_region rules."""
+    return {x: r["region"] for r in rules if r["kind"] == "in_region" for x in pi._refs(r["refs"], parts)}
+
+
+def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False):
     d = os.path.abspath(d)
     stem = _stem(d)
     base = os.path.basename(stem)
@@ -100,6 +117,15 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False):
     notes = json.load(open(os.path.join(fd, "input.board.json"), encoding="utf-8"))
     parts_path = stem + ".parts.json"
     parts = json.load(open(parts_path, encoding="utf-8"))["parts"]
+    if fold:
+        post = list(notes.get("post_route_refs", ()))
+        miss = [r_ for r_ in post if r_ not in parts]
+        if miss:
+            raise SystemExit("place_flow: --fold-post but parts.json has no geometry for %s -- re-run place_geom "
+                             "on the full netlist" % " ".join(miss))
+        notes["post_route_refs"], notes["post_route_nets"] = [], []
+        for r_ in post:
+            notes.get("placements", {}).pop(r_, None)
 
     # 1. intent
     rules, added = _intent(json.load(open(intent_path, encoding="utf-8")), parts, notes, stem + ".net", auto)
@@ -114,6 +140,13 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False):
     if rc not in (0, 3):
         raise SystemExit("place_flow: place_init failed (see flow/flow.log)\n" + out[-800:])
     init_log = [line for line in out.splitlines() if line.startswith("place_init:")]
+    room = []
+    reg = _regions_of(rules, parts)
+    for line in init_log:
+        m = re.search(r"\d+ with no room: (.*)$", line)
+        if m:
+            room += ["%s (place_init, %s)" % (x, "region " + reg[x] if x in reg else "board")
+                     for x in m.group(1).split()]
     pl = json.load(open(init))
     why = json.load(open(init[:-5] + ".why.json"))
     for r_, v in notes.get("placements", {}).items():         # what nothing places (post-route parts)
@@ -160,10 +193,18 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False):
     fin = qual = None
     if not skip_finish:
         rc, out, T["finish"] = _run([KICAD_PY, os.path.join(HERE, "finish.py"), stem], log)
+        for line in out.splitlines():
+            m = re.search(r"no free site for: (.*)$", line)
+            if m:
+                room += ["%s (silk label: no free site)" % x.strip() for x in m.group(1).split(",")]
         try:
             dr = json.load(open(stem + ".finish.drc.json", encoding="utf-8"))
             fin = {"unconnected": len(dr.get("unconnected_items", [])), "violations": len(dr.get("violations", [])),
                    "rc": rc}
+            fin["by_type"] = dict(collections.Counter(v.get("type") for v in dr.get("violations", [])))
+            fin["unconnected_nets"] = sorted({i.get("description", "").split("[")[-1].split("]")[0]
+                                              for x in dr.get("unconnected_items", []) for i in x.get("items", [])
+                                              if "[" in i.get("description", "")})
         except (OSError, ValueError):
             fin = {"error": out[-600:], "rc": rc}
         rc, out, T["quality"] = _run([KICAD_PY, os.path.join(HERE, "quality.py"), "--brief", stem], log)
@@ -174,18 +215,18 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False):
                                if str(r.get("status", "")).upper() == "FAIL"][:20]}
         except (OSError, ValueError):
             qual = {"error": out[-600:]}
-    _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T)
+    _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T, room=room)
     return 0
 
 
-def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T, refused=None):
+def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T, refused=None, room=()):
     forbid = [l_ for l_ in init_log + cells_log if "FORBID" in l_]
     prov = collections.Counter(_klass(w) for w in why.values())
     S = {k: (score or {}).get(k) for k in ("open", "pairs", "islands", "uncoupled", "vias", "length_mm", "floor",
                                             "failed", "faulted", "floor_breaches", "error")}
     rep = {"board": base, "rules": len(rules), "score": S, "forbid": forbid, "gates": gates, "finish": fin,
            "quality": qual, "provenance": dict(prov), "seconds": {k: round(v) for k, v in T.items()},
-           "refused": refused}
+           "refused": refused, "no_room": list(room)}
     json.dump(rep, open(os.path.join(fd, "report.json"), "w"), indent=1)
     L = ["# place_flow: %s" % base, ""]
     if refused:
@@ -200,9 +241,12 @@ def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, 
         for b in S.get("floor_breaches") or ():
             L.append("FLOOR %s %s" % (b[1], b[2]))
     L += ["FORBID: " + (" / ".join(forbid) if forbid else "none")]
+    L += ["NO ROOM: " + ("; ".join(room) if room else "none")]
     if fin:
-        L += ["", "finish: %s" % (fin.get("error") or "%d unconnected, %d violation(s)" % (fin["unconnected"],
-                                                                                         fin["violations"]))]
+        L += ["", "finish: %s" % (fin.get("error") or "%d unconnected%s, %d violation(s)%s" % (
+            fin["unconnected"], (" (" + " ".join(fin.get("unconnected_nets", ())) + ")") if fin["unconnected"] else "",
+            fin["violations"], (" (" + ", ".join("%s %d" % kv for kv in sorted(fin.get("by_type", {}).items())) + ")")
+            if fin["violations"] else ""))]
     if qual:
         L += ["quality: %s" % (qual.get("error") or "%s FAIL, %s OPEN%s" % (
             qual["fail"], qual["open"], (" (" + " ".join(map(str, qual["failed"])) + ")") if qual.get("failed") else ""))]
@@ -222,8 +266,9 @@ def main(argv):
     ap.add_argument("--no-auto", action="store_true")
     ap.add_argument("--soft-forbid", action="store_true")
     ap.add_argument("--skip-finish", action="store_true")
+    ap.add_argument("--fold-post", action="store_true", help="place post_route_refs with the rest (see the doc)")
     a = ap.parse_args(argv)
-    return flow(a.dir, os.path.abspath(a.intent), not a.no_auto, a.soft_forbid, a.skip_finish)
+    return flow(a.dir, os.path.abspath(a.intent), not a.no_auto, a.soft_forbid, a.skip_finish, a.fold_post)
 
 
 if __name__ == "__main__":

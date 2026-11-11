@@ -15,7 +15,7 @@ any part can still be pinned by hand.
 
 One command runs a board end to end:
 
-    py -3.12 place_flow.py <dir> <intent.json> [--no-auto] [--soft-forbid] [--skip-finish]
+    py -3.12 place_flow.py <dir> <intent.json> [--no-auto] [--soft-forbid] [--skip-finish] [--fold-post]
 
 `<dir>` holds `<stem>.net`, `<stem>.board.json` (the notes: outline, cutouts, slots, pairs,
 layers, `post_route_refs`) and `<stem>.parts.json` (`place_geom.py` on any laid-out copy of
@@ -109,9 +109,54 @@ Neither stripped board finishes clean, hand or auto:
 * 20 of the "violations" are the declared emitter/photodiode courtyard overlaps.
 * The shipped boards close with hand repair copper, which equal terms strips.
 
-So a fresh board's post-route parts need the same treatment as its placement: sites chosen
-against the route that exists, not carried from another one. That is the next gap before
-the re-layout.
+**Post-route parts are placed with the rest: `--fold-post` (2026-11-11).** A
+post_route_ref is dropped onto the FINISHED route at the free spot the copper left. That
+spot was searched against one hand route, so on any other placement it lands on tracks.
+Optical's auto board had 39 unexpected DRC items of this kind: Rs/Cs pads bridged by
+I2C2_SCL, and SHDNZ left open.
+
+`--fold-post` empties post_route_refs and post_route_nets, places those parts by the
+intent, and routes their nets with everything else. For optical:
+* The converter `group`s take Rsk1 (the SHDNZ pull-up) beside Csk9.
+* Every TP gets an `access` rule.
+
+parts.json must carry their geometry: place_geom on a layout of the full netlist. If any is
+missing, the flow stops and names it. **For a fresh board, write no post_route_refs at
+all.**
+
+Two finish-chain gaps were found the same way:
+* **layout `_flip_merge` handled only a USB-C pad row along X.** output_panel's placement
+  turned J3, so HUB_UP_DM's duplicated pads were never joined (1 unconnected). The merge
+  now works in the row's own frame.
+* **verify measured the merge's own stub as the transmission line** (A3: HUB_UP 4 vias, a
+  split layer set) wherever a group declared no `merge_at`. A group now takes its merge
+  refs from the netlist: a connector (J*) carrying each of its nets on exactly two pads.
+  Pass-through parts are excluded, since their copper is the line.
+
+| finish + quality | unconnected | violations | quality FAIL / OPEN |
+|---|---|---|---|
+| optical hand, stripped | 20 | 78 (20 declared) | 22 / 6 |
+| **optical auto, folded** | **0** | **22: 20 declared D/PD + 2 silk_edge warnings, 0 unexpected** | **3 / 6** |
+| output_panel hand, stripped | 1 | 7 | 11 / 5 |
+| **output_panel auto, flip fix** | **0** | **6 silk_edge (the hand board's 6)** | **6 / 5** |
+
+What is left, and where it belongs:
+* **optical**
+  * A2: U8.2 is 5.4 mm from C100 (the limit is 5.0).
+  * A17: J2's pinout fits on the back face only.
+  * The silk labeller found no free site for the TP1, TP2 and TP8 words, which the report
+    prints on its NO ROOM line.
+* **output_panel**
+  * A1 (+24V 0.5 mm, J1_VBUS 0.2 mm) fails on the hand board too. The notes' net_widths are
+    below their declared currents, so give the intent `current` rules
+    (`place_intent.widths`).
+  * The PI pair splits F.Cu/In2.Cu. This is a real routing result.
+  * A17: J6's back_only declaration is stale on this placement.
+  * The 6 silk_edge_clearance on J2/J3/J4 are the panel connectors' silk at the edge, the
+    same on the hand board.
+
+The report's **NO ROOM** line lists every part the placer or the silk labeller found no
+room for, with the region it was held to.
 
 **Reading the report:**
 * `open` / `pairs` first.

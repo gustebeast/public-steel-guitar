@@ -84,7 +84,9 @@ for n in range(1, 11):
           "op ~936-961, 1385-1416")
 for k in range(1, 6):
     u = "U%d" % (13 + k)
-    group(u, sorted(x for x in parts if re.fullmatch(r"C[ims]%d\d" % k, x)),
+    # Csk9 and Rsk1 (the SHDNZ filter cap and pull-up) belong to the cell too, when the board
+    # carries them as ordinary parts (fresh flow: no post_route_refs) -- PLACEMENT.md
+    group(u, sorted(x for x in parts if re.fullmatch(r"C[ims]%d\d" % k, x) or x == "Rs%d1" % k),
           "converter cell: each cap at its own pin, input fan only widens, SAI corridor under the bottom row",
           "op ~1968-1993, 2123-2153")
 
@@ -147,7 +149,7 @@ for cc, net in (("R32", "USB_CC1"), ("R33", "USB_CC2")):
     r("near", "CC 5k1 at its CC pin", "op ~2413-2427", hard=False, ref=cc, target=pin_of("J1", net), max_mm=6.0)
 r("near", "PHY near the socket: 480 Mb/s does not tolerate length, ULPI does", "op ~1845-1851", hard=False,
   ref="U7", target="J1", max_mm=15.0)
-for t in ("TP1", "TP2", "TP3", "TP4", "TP5"):
+for t in sorted((x for x in parts if re.fullmatch(r"TP\d+", x)), key=lambda x: int(x[2:])):
     r("access", "SWD/bring-up pad: a probe tip lands on it", "op ~1821-1844", ref=t, tool_d=1.6, side="top")
 
 for c in pi.auto_decaps(parts, notes, pi.read_values(stem + ".net")):

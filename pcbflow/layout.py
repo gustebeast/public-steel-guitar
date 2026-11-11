@@ -437,16 +437,26 @@ def _flip_merge(fp, na, nb, inner, width, clr, margin, via_margin,
     quads = rows[na] + rows[nb]
     xs = [q.GetPosition().x for q in quads]
     ys = [q.GetPosition().y for q in quads]
-    if max(ys) - min(ys) > max(xs) - min(xs):
-        return [], ("%s: the duplicated %s / %s pads are not in one row along X, which "
-                    "is the only arrangement this handles"
+    # The geometry is worked in the ROW's frame -- u along the pad row, v across it -- so a
+    # socket turned 90/270 (row along Y) is the same problem as one at 0/180. P maps a
+    # (u, v) point back to board coordinates. (A placement-chosen turn of J3 on
+    # output_panel left HUB_UP_DM open when only rows along X were handled.)
+    along_x = max(ys) - min(ys) <= max(xs) - min(xs)
+    U = (lambda q: q.GetPosition().x) if along_x else (lambda q: q.GetPosition().y)
+    V = (lambda q: q.GetPosition().y) if along_x else (lambda q: q.GetPosition().x)
+    P = (lambda u, v: (int(u), int(v))) if along_x else (lambda u, v: (int(v), int(u)))
+    if max(abs(V(q) - V(quads[0])) for q in quads) > pcbnew.FromMM(0.5):
+        return [], ("%s: the duplicated %s / %s pads are not in one straight row"
                     % (fp.GetReference(), na, nb))
-    row_y = sum(ys) / 4.0
-    half = max(abs(q.GetBoundingBox().GetTop() - q.GetBoundingBox().GetBottom())
-               for q in quads) / 2.0
+    row_v = sum(V(q) for q in quads) / 4.0
+
+    def across(q):
+        bb = q.GetBoundingBox()
+        return (bb.GetBottom() - bb.GetTop()) if along_x else (bb.GetRight() - bb.GetLeft())
+    half = max(abs(across(q)) for q in quads) / 2.0
     nets = {na, nb}
-    order = sorted(quads, key=lambda q: q.GetPosition().x)
-    centre = sum(q.GetPosition().x for q in order) / 4.0
+    order = sorted(quads, key=U)
+    centre = sum(U(q) for q in order) / 4.0
     step = pcbnew.FromMM(pitch_mm)
     fx = {id(q): int(centre + (k - 1.5) * step) for k, q in enumerate(order)}
 
@@ -455,18 +465,18 @@ def _flip_merge(fp, na, nb, inner, width, clr, margin, via_margin,
         return abs(fx[id(a)] - fx[id(b)])
 
     for sign in (+1, -1):                  # +1 first: under the connector body
-        neck = row_y + sign * (half + pcbnew.FromMM(neck_mm))
-        fan = row_y + sign * (half + pcbnew.FromMM(fan_mm))
-        link = row_y + sign * (half + pcbnew.FromMM(link_mm))
+        neck = row_v + sign * (half + pcbnew.FromMM(neck_mm))
+        fan = row_v + sign * (half + pcbnew.FromMM(fan_mm))
+        link = row_v + sign * (half + pcbnew.FromMM(link_mm))
         # which net dives is decided by which inner link is shorter, and if that one
         # will not clear the other is tried -- nothing in the geometry says it must be D+
         for dive in sorted((na, nb), key=span):
             flat = nb if dive == na else na
             pend, ok = [], True
             for q in quads:
-                px, py = q.GetPosition().x, q.GetPosition().y
-                for p0, p1 in (((px, py), (px, neck)),
-                               ((px, neck), (fx[id(q)], fan))):
+                pu, pv = U(q), V(q)
+                for p0, p1 in ((P(pu, pv), P(pu, neck)),
+                               (P(pu, neck), P(fx[id(q)], fan))):
                     if not seg_clear(p0, p1, nets, margin, g_all):
                         ok = False
                         break
@@ -477,7 +487,7 @@ def _flip_merge(fp, na, nb, inner, width, clr, margin, via_margin,
                 continue
 
             va, vb = rows[dive]
-            pa, pb = (fx[id(va)], fan), (fx[id(vb)], fan)
+            pa, pb = P(fx[id(va)], fan), P(fx[id(vb)], fan)
             for v in (pa, pb):
                 if not (clear(v[0], v[1], nets, via_margin, g_all)
                         and on_board(v[0], v[1], 0.3 + clr)):
@@ -492,8 +502,8 @@ def _flip_merge(fp, na, nb, inner, width, clr, margin, via_margin,
             # AROUND the two vias rather than between them, which is the whole reason
             # the link depth is deeper than the fan depth
             fa, fb = rows[flat]
-            qa, qb = (fx[id(fa)], fan), (fx[id(fb)], fan)
-            la, lb = (qa[0], link), (qb[0], link)
+            qa, qb = P(fx[id(fa)], fan), P(fx[id(fb)], fan)
+            la, lb = P(fx[id(fa)], link), P(fx[id(fb)], link)
             for p0, p1 in ((qa, la), (la, lb), (lb, qb)):
                 if not seg_clear(p0, p1, nets, margin, g_all):
                     ok = False
