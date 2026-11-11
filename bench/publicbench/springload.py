@@ -9,7 +9,7 @@ Reads the motor's own effort through motor_ctrl, changing NO motor setting:
           lower (user, 2026-11-11: the nut's travel is short -- it must never walk), so the nut
           never leaves start +- step, and only at RPMS: what a quick pedal press needs. Each
           move is timed (command left -> 90 % of the way, from the encoder) and its angle error sampled the whole way: peak, and where it settles.
-          A move is UP when it raises pitch (phone/pitchctl.py RAISE_SIGN), i.e. AGAINST the
+          A move is UP when it raises pitch (RAISE_SIGN, this rig's), i.e. AGAINST the
           string; the springs should shrink the up/down difference.
 Prints a summary and appends every number to ~/springload.jsonl; `--report` compares runs.
 Stop the phone service first (it shares the serial port): sudo systemctl stop public-steel-guitar-phone
@@ -27,7 +27,9 @@ from .link import MotorCtrlLink
 
 T = servo.COUNTS_PER_TURN
 ERR_PER_TURN = 51200                    # 0x39's units
-RAISE_SIGN = -1                         # phone/pitchctl.py: the motor turns -1 to raise pitch
+# which way the motor turns to RAISE pitch: +1 on the plank's in-line rig (user, 2026-11-11: the
+# phone's -1, found on the belt rig 11-05, is backwards here). --raise-sign overrides it.
+RAISE_SIGN = +1
 LOG = os.path.expanduser("~/springload.jsonl")
 # ONLY WHAT A PEDAL PRESS NEEDS (user, 2026-11-11): a whole tone is ~0.5 turn, a quick press
 # 50..150 ms, so 200..600 rpm on average and ~1200 at its peak. No ramp (acc 0), as play.c moves.
@@ -108,12 +110,12 @@ def run(o):
         rows = []
         for rpm, acc in ((rpm, 0) for rpm in RPMS):
             for rep in range(o.reps):
-                for d in (RAISE_SIGN, -RAISE_SIGN):          # out raising, back; out lowering, back
+                for d in (o.raise_sign, -o.raise_sign):      # out raising, back; out lowering, back
                     for tgt, kind in ((home + d * step, "out"), (home, "back")):
                         assert abs(tgt - home) <= lim, "a target past start +- step"
                         r = p.move(tgt, rpm, acc)
                         sgn = (tgt - (home if kind == "out" else home + d * step))
-                        r.update(rpm=rpm, dir="up" if sgn * RAISE_SIGN > 0 else "down")
+                        r.update(rpm=rpm, dir="up" if sgn * o.raise_sign > 0 else "down")
                         rows.append(r)
         end = p.ask(servo.READ_ENCODER)
         hold1 = p.hold()
@@ -123,7 +125,7 @@ def run(o):
                 link.ask("P 1")
             except Exception:
                 pass
-    rec = dict(label=o.label, turns=o.turns, when=time.strftime("%Y-%m-%d %H:%M:%S"), step=o.step,
+    rec = dict(label=o.label, turns=o.turns, raise_sign=o.raise_sign, when=time.strftime("%Y-%m-%d %H:%M:%S"), step=o.step,
                home=home, end=end, hold0=hold0, hold1=hold1, moves=rows)
     with open(LOG, "a") as f:
         f.write(json.dumps(rec) + "\n")
@@ -162,6 +164,7 @@ if __name__ == "__main__":
     a.add_argument("--step", type=float, default=0.25, help="turns out and back (default 0.25 = 0.5 mm)")
     a.add_argument("--reps", type=int, default=4)
     a.add_argument("--id", type=int, default=1)
+    a.add_argument("--raise-sign", type=int, choices=(1, -1), default=RAISE_SIGN)
     a.add_argument("--report", action="store_true")
     o = a.parse_args()
     report() if o.report else run(o)
