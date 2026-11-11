@@ -1886,16 +1886,39 @@ class Router(CoupledMixin):
         first again against second -- coupled: in lanes round the pair's centreline
         (coupled.py). (shared cells, pair faults), or None if a rail fails."""
         if coupled is True:
-            # the pin pairs the pair may use, best first (coupled._choose_ends): the
-            # first that lays wins
-            got = None
+            # the pin pairs the pair may use, best first (coupled._choose_ends).
+            # ⚠ THE FIRST THAT LAYS IS NOT THE ONE THAT LAYS TO THE RULES (optical USB at
+            # U10, 2026-11-10): on 11 of the series' 109 placements C112 stood 1 mm east of
+            # the clamp's east pins (6 / 4), and the first choice -- in by the east pins, out
+            # by the west -- had no room for the centreline to leave them: it started on
+            # DM's pad, DP's lane could not reach pin 6, and DP dived under DM to pin 1
+            # (layers, vias). That lay was kept because it laid; the other pin pairs were
+            # never tried, and the pair finished 30-40 mm apart. Every choice is laid; the
+            # fewest faults win, then the fewest shared cells; a clean one stops the search.
+            # Series gate: uncoupled 554.7 -> 386.6 mm, 28 boards closer, 9 a little further.
+            best = None
             self._ends_left = True
             for k in range(self.COUPLE_ENDS):
                 got = self._pair_try(pf, first, second, relax, layers, offrun_mult, refine,
                                      via_mult, coupled=k + 1)
-                if got is not None or not self._ends_left:
+                left = self._ends_left
+                if got is not None:
+                    key = (len(got[1]), got[0])
+                    if best is None or key < best[0]:
+                        best = (key, got, {x: (x.paths, x.necks, x.failed) for x in (first, second)})
+                    if key == (0, 0) or not self.COUPLE_ENDS_ALL:
+                        break
+                if not left:
                     break
-            return got
+            if best is None:
+                return None
+            for x in (first, second):
+                self._unmark(x)
+            for x in (first, second):
+                x.paths, x.necks, x.failed = best[2][x]
+                if x.paths and not x.failed:
+                    self._mark(x)
+            return best[1]
         for x in (first, second):
             self._unmark(x)
             x.paths, x.necks, x.failed = [], [], False

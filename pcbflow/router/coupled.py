@@ -38,6 +38,7 @@ class CoupledMixin:
     LANE_VIA = 0.9             # free room round each centreline layer change
     BAND_COST = 0.5            # price of a cell on the exact offset
     COUPLE_ENDS = 3            # pin-pair choices a coupled lay tries, best first
+    COUPLE_ENDS_ALL = True     # ...each of them laid, the fewest faults kept (not the first that lays)
     EXIT_SIDE = True                 # a land with no outward line is sided by where each rail leaves it
     MID_VIA_MULTS = (1.0, 5.0, 25.0)   # centreline via price steps until its layer changes fit max_vias
     MID_SLACKS = (0.1, 0.05, 0.0)   # mm each side of the centreline's pair width, tried in turn
