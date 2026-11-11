@@ -10,6 +10,7 @@ One JSON line per board, keys in order of how much they matter:
   contention  the negotiation's history cost summed over the board (where nets fought)
   hot         the three most contested 2 mm squares and the parts beside them
   length_mm   routed track length, vias  routed via count, sec  wall time
+  failed      the nets behind `open`, faulted  the pairs behind `pairs` (what a placement fix aims at)
 `key` is the tuple to sort placements by: smaller is better.
 
 ⚠ WHY THE ROUTE AND NOT A CHEAPER PROXY (ROUTER.md, "Pad-scale escape and RUDY", 2026-11-09).
@@ -80,7 +81,11 @@ def score(stem, budget_s=900.0):
            for _s, x, y, _l, refs in congestion.hotspots(r, top=3)]
     out = dict(open=len(failed) + part, pairs=pairs, islands=isl, uncoupled=round(unc, 2),
                contention=round(float(r.hist.sum()), 1), length_mm=round(length, 1),
-               vias=vias, hot=hot, sec=round(time.time() - t0, 1))
+               vias=vias, hot=hot, sec=round(time.time() - t0, 1),
+               failed=sorted({getattr(n, "name", str(n)) for n in failed}
+                             | {n.name for n in nets if not n.failed and (getattr(n, "n_open", 0) or 0)}),
+               faulted=sorted(n.name for n in nets if n.mate is not None and n.partner is None
+                              and (r.pair_faults(n) or ())))
     out["key"] = [out["open"], out["pairs"], out["islands"], out["uncoupled"],
                   out["contention"], out["vias"], out["length_mm"]]
     return out

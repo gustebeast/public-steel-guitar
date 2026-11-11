@@ -109,10 +109,75 @@ From intent + netlist to a legal placement, constructively, in seconds:
 5. layout.py's own gates run on the result; anything refused is reported against the
    constraint that put it there.
 
+**LANDED (2026-11-10):** `place_init.py <stem> <intent.json>` -> `<stem>.init.json`
+(placements) + `.init.why.json` (which rule or stage set each coordinate). Quadratic
+placement on the net graph (nets over 12 pins left to the planes, diff pairs x4, chain hops
+sprung), rotation by pad pull within `rot`, then an FFT occupancy-grid legaliser (0.1 mm,
+biggest first, region-confined, satellites straight after their IC). Every placed part
+keeps an ESCAPE HALO later parts may not enter: 0.25 mm for passives, 0.15 mm per pin on a
+side for an IC (1.0-2.5 mm). Without it, U1's pull-ups walled its pins and SWDIO /
+JACK_MODE / I2C2_SCL failed. 1.6 s on output_panel; panel parts land on the hand
+coordinates to 0.05 mm.
+
+Proof, output_panel, same router, held copper (hand tracks, vias, frozen nets, and the
+stitch exceptions that existed for them) stripped from both:
+
+| placement | open | pair faults | uncoupled | contention | vias | route |
+|---|---|---|---|---|---|---|
+| hand R2 WITH its held copper | 0 | 0 | 6.2 | 4525 | 234 | 165 s |
+| hand R2, stripped | 3 (+3V3, CC1, ROLE_VDET) | 1 (THRU_DP) | 60.8 | 9176 | 253 | 929 s |
+| intent only (88 rules), stripped | 1 (SWDIO) | 1 (THRU_DP) | 2.5 | 8265 | 345 | 680 s |
+
+These are single routes, so each figure is one sample. The intent placement is level with
+the hand placement once the held copper is gone; the remaining gap to the shipped board is
+that copper, which (p) is for. More vias (345 vs 253): the intent board spreads parts
+wider, so more nets change layer. Two fixes came out of this proof:
+* the paste-window bug in `repair_search._pads` (see (p));
+* auto_decaps targets: only an IC's first, smallest cap gets 3 mm (weight 1); further caps
+  get 5 mm (weight 0.5). The hand board went from 14 soft breaks to 9.
+
 **Proof:** re-place output_panel from intent alone (mechanical + floorplan; no hand
 coordinates except the panel), route it, and compare `score.py` with the hand placement.
 The target is not "beats the engineer" on the first try -- it is a legal board the router
 closes, within reach of the hand score, from a description a fraction of the length.
+
+### (p) Power and ground without hand copper -- router-native distribution
+
+**Why it is its own step (2026-11-10, (b)'s first proof).** output_panel's hand placement
+routes 0 open WITH its held copper (67 vias, 212 tracks) and 2 open WITHOUT it: +24V and
+GND -- exactly the two the intent placement also fails. The held copper is power
+distribution typed by hand (17 +24V tracks, 10 vias; GND, PWR_GND and V5_PRE stubs), and a
+fresh board has none. Without this step, every re-laid board needs hand copper again,
+however good the placement, so it ranks with (c)/(d).
+
+What the router must do itself, from intent:
+* **Power nets as power:** route nets with a `net_widths` entry first, wide, short and
+  low-via (no snaking through signal channels), before the negotiation fills the board --
+  and say which pads a rail could not reach and what stood in the way.
+* **Pours from intent:** a `pour(net, layer, region)` rule (the 24 V island, a local
+  3V3 pour under an IC) the router treats as copper to join, not a hand zone.
+* **Ground reach:** every GND pad reaches the plane by a stitch via or the pour, checked as
+  a connection and reported against the part that blocks it (layout's stitch gate already
+  says which pads lack a via spot; the router has to close the ones it can).
+
+**Proof:** output_panel's hand placement with the held copper stripped routes +24V and
+GND closed; then the intent placement does too.
+
+**First finding (2026-11-10): both opens were bugs and stale hand data, not missing
+features.**
+* **+24V:** paste windows were read as copper. A footprint's net-less F.Paste-only pads (on
+  the TO-252 tab and the QFN belly) were parsed with "no .Cu layer = every layer", which put
+  foreign copper inside the land. No cell of Q2's tab was legal for a 0.5 track, so the
+  rail could not leave it on an empty board. Fixed in `repair_search._pads`: a pad with no
+  copper layer and no drill is dropped.
+* **GND:** U4.25 (the hub's belly) was a hand `stitch_exception`, made because the held
+  DN2 pair ran under it. With the held copper gone, the exception left the belly with no
+  via, and it is walled in by its own 0.5-pitch pins. Without the stale exceptions, layout
+  stitches all 15 pads, and GND closes on the stripped hand board and on the intent board.
+
+Lesson for fresh boards: stitch exceptions belong to the copper that made them needed, so
+they go wherever that copper goes. Still open: power routed as power (widths first, few
+vias), and pours from intent.
 
 ### (c) A score fast enough to iterate -- router-alone, region-limited
 

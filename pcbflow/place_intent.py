@@ -378,13 +378,21 @@ def _farads(v):
     return float(m.group(1)) * {"p": 1e-12, "n": 1e-9, "u": 1e-6, "µ": 1e-6, "m": 1e-3, "": 1.0}[m.group(2)]
 
 
-def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-6, ground=("GND",)):
+def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-6, ground=("GND",), more_mm=2.0):
     """Rules for every capacitor across a SUPPLY net (SUPPLY: '+...', VCC, VDD, VBUS, VREF, ...)
     and ground: a small one (< bulk_f) gets `decap` at the nearest IC pin on that net, a bulk
     one `near` that part. The sources considered are ICs, ferrites and inductors (a buck's
     output caps belong to its inductor, a filtered rail's to its bead). values = {ref: '100n'} (read_values); without it every cap is small.
     Signal-net capacitors (crystal loads, RC filters, resets) get no rule: they are the
-    circuit's, not the supply's."""
+    circuit's, not the supply's.
+
+    ⚠ ONLY THE FIRST CAP AN IC GETS IS A 3 mm RULE (output_panel R2, 2026-11-10). The routed,
+    known-good hand board broke a flat 3 mm on 14 caps at 3-7 mm, and with no trend in the
+    package (U1's QFN68 caps at 2.6-3.5, U11's SOT-23 at 4.5): what it kept was ONE cap per
+    IC close -- the smallest, the high-frequency loop -- and the rest within ~5. So per IC,
+    smallest value first, the first cap gets max_mm at weight 1, every further one
+    max_mm + more_mm at weight 0.5: a rule refinement can trade, never one that packs caps
+    round a fine-pitch part at the cost of its escapes."""
     P = Placed(parts, notes.get("placements", {}))
     rules = []
     ics = [r for r in parts if re.match(r"^(U|FB|L)\d", r)]
@@ -412,8 +420,20 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
             rules.append({"kind": "near", "ref": c, "target": pin.split(".")[0], "max_mm": bulk_mm, "hard": False,
                           "why": "%s, bulk on %s: beside the IC it feeds" % (c, sup), "src": "auto_decaps (netlist)"})
         else:
-            rules.append({"kind": "decap", "cap": c, "pin": pin, "max_mm": max_mm, "hard": False,
-                          "why": "%s across %s and ground: at its supply pin" % (c, sup), "src": "auto_decaps (netlist)"})
+            rules.append({"kind": "decap", "cap": c, "pin": pin, "max_mm": max_mm, "hard": False, "weight": 1.0,
+                          "why": "%s across %s and ground: at its supply pin" % (c, sup), "src": "auto_decaps (netlist)",
+                          "_f": f if f is not None else 0.0})
+    by = {}
+    for r in rules:
+        if r["kind"] == "decap":
+            by.setdefault(r["pin"].split(".")[0], []).append(r)
+    for rs in by.values():
+        for k, r in enumerate(sorted(rs, key=lambda r: (r["_f"], r["cap"]))):
+            if k:
+                r["max_mm"], r["weight"] = max_mm + more_mm, 0.5
+                r["why"] += " (a further cap on this IC: within reach, not packed)"
+    for r in rules:
+        r.pop("_f", None)
     return rules
 
 
@@ -423,9 +443,11 @@ def read_values(net_path):
     return {m.group(1): m.group(2) for m in re.finditer(r'\(comp\s*\(ref "?([^")\s]+)"?\)\s*\(value "?([^")]*)"?\)', txt)}
 
 
-def report(stem, rules, H=None):
+def report(stem, rules, H=None, placements=None):
     parts = json.load(open(stem + ".parts.json", encoding="utf-8"))["parts"]
     notes = json.load(open(stem + ".board.json", encoding="utf-8"))
+    if placements is not None:
+        notes["placements"] = placements
     notes["_regions"] = {r["name"]: r["poly"] for r in rules if r["kind"] == "region"}
     notes["_panel"] = [r for r in rules if r["kind"] == "panel"]
     P = Placed(parts, notes["placements"])
@@ -469,7 +491,8 @@ def main(argv):
         return 0
     stem = os.path.abspath(argv[0][:-len(".kicad_pcb")] if argv[0].endswith(".kicad_pcb") else argv[0])
     rules = json.load(open(argv[1], encoding="utf-8"))
-    rows = report(stem, rules)
+    pl = json.load(open(argv[2], encoding="utf-8")) if len(argv) > 2 else None
+    rows = report(stem, rules, placements=pl)
     worst = {}
     for s, i, r, subj, det in rows:
         if i not in worst or s < worst[i][0]:
