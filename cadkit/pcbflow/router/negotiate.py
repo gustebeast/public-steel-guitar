@@ -504,6 +504,7 @@ class Router(CoupledMixin):
     ESC_MM = 0.8
     ESC_PITCH = 0.8                  # a part is fine-pitch below this pad pitch...
     ESC_PINS = 8                     # ...with at least this many pads
+    ESC_VIA_BAN = True               # a coupled lay's vias keep off other nets' fine-pitch escape stubs
 
     def _escape_map(self):
         es = getattr(self, "_esc", None)
@@ -696,6 +697,31 @@ class Router(CoupledMixin):
                 pad[1:-1, 1:-1] = vlegal
                 cache[key] = distance_transform_edt(pad)[1:-1, 1:-1] > rr_
             vlegal = cache[key]
+        # ⚠ A COUPLED LAY'S VIAS STAND CLEAR OF OTHER PINS' EXITS (output_panel HUB_DN3 after
+        # the U4 port swap, 2026-11-10): HUB_DN3 has one pocket to change layer in, east of
+        # U4 pins 9/10 between HUB_DN1 (crossing to U1) and pin 8. The coupled rails, free to
+        # place their vias round the centreline's layer change, stacked them across the line
+        # -- DM's 1.3 mm in front of pin 8, HUB_DN2_DP's only way out. The lay met every rule
+        # 0.8 mm apart, every re-negotiation round it left pin 8 boxed in, and it was put
+        # back: the pair ran 6 mm apart. A track crossing an escape stub pays ESC_COST and can
+        # be moved off it; a via there leaves the pin nowhere to go. Inside a coupled lay
+        # (the centreline and its laned rails) no via stands in another net's fine-pitch
+        # escape stub; the rails then stagger theirs inside the pocket. Router-alone: HUB_DN3
+        # 6.1 -> 0.0 mm, the board's pairs 8.8 -> 0.6. NOT for every via (every net: optical's
+        # ULPI fan-out reshuffled both ways, 554.7 -> 557.5) nor every pair rail (optical USB,
+        # laid uncoupled, lost the vias it needs by U7: 9.1 -> 41.6).
+        if (self.ESC_VIA_BAN and self.ESC_COST > 1.0 and (own_ids or lane is not None)
+                and vlegal.any()):
+            from scipy.ndimage import distance_transform_edt
+            ids = tuple(sorted(own_ids)) if own_ids else (nid,)
+            cache = self.__dict__.setdefault("_erode_cache", {})
+            vkey = ("escv", ids, i0, i1, j0, j1)
+            if vkey not in cache:
+                es = self._escape_map()[sl]
+                oth = ((es != 0) & ~np.isin(es, ids)).any(axis=0)
+                cache[vkey] = (distance_transform_edt(~oth) * m.pitch >= m.via_d / 2.0) if oth.any() else None
+            if cache[vkey] is not None:
+                vlegal = vlegal & cache[vkey]
         occ =self.occ_t.reshape(L, H, W)[sl].astype(np.float32)
         if net.width > self.wref + 1e-6:
             rr = int(math.ceil((net.width - self.wref) / 2.0 / m.pitch))
