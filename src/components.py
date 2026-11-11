@@ -56,7 +56,25 @@ def _tr_groove_w(r: float) -> float:
     return D.SCREW_PITCH / 2 + 2 * (r - _TR_PITCH_D / 2) * _TR_FLANK
 
 
-def screw(length: float = D.SCREW_LEN) -> cq.Workplane:
+def _meshes_whole(shape) -> bool:
+    """Every face of `shape` triangulates (on a COPY: a mesh left on the shape changes what
+    its bounding box reads). A cut can pass the volume check and still hand back a thread
+    flank the mesher drops -- the viewer then draws only the crests, a plain rod (the direct
+    bench's 179 / 276 / 473 mm screws, 2026-11-09: 92 faces, one helical flank untriangulated)."""
+    from OCP.BRep import BRep_Tool
+    from OCP.BRepBuilderAPI import BRepBuilderAPI_Copy
+    from OCP.BRepMesh import BRepMesh_IncrementalMesh
+    from OCP.TopLoc import TopLoc_Location
+    cp = cq.Shape.cast(BRepBuilderAPI_Copy(shape.wrapped, True, False).Shape())
+    BRepMesh_IncrementalMesh(cp.wrapped, 0.1, False, 0.3, True)
+    for f in cp.Faces():
+        t = BRep_Tool.Triangulation_s(f.wrapped, TopLoc_Location())
+        if t is None or t.NbTriangles() == 0:
+            return False
+    return True
+
+
+def screw(length: float = D.SCREW_LEN, whole_mesh: bool = False) -> cq.Workplane:
     """Leadscrew, axis +Z, base face at z=0: a cut length of Tr8x2 rod, threaded end to
     end (it is sawn from threaded stock, so there are no journals -- the bearing, the nut
     and the pulley's socket all ride the crests), single start, D.SCREW_HAND.
@@ -68,22 +86,39 @@ def screw(length: float = D.SCREW_LEN) -> cq.Workplane:
     runs whole turns and overshoots both ends; the section rides the helix's own frame,
     which leans it by the lead angle (6.6 deg at the root, 0.7% on the groove's width).
 
+    `whole_mesh` (the benches' long screws) also holds the phase to every face meshing, so the
+    viewer draws the thread. NOT the instrument's: at SCREW_LEN the only phases that mesh whole
+    hand check_sweep's slicer a stray vertex 13 off the axis (a swept Ø26.5 through every screw
+    bearing, the lead's gate 2026-11-10), and the phase main always took (0.25) is clean there.
+
     Built ONCE per length and handed out as the same solid: place it with .moved(), which
     shares the geometry, not .translate(), which copies it."""
-    if length not in _SCREWS:
+    key = (length, whole_mesh)
+    if key not in _SCREWS:
         p, rc, rr, ch = D.SCREW_PITCH, D.SCREW_OD / 2, _TR_ROOT_D / 2, _TR_CHAMFER
         blank = (cq.Workplane("XZ")
                  .polyline([(0, 0), (rc - ch, 0), (rc, ch), (rc, length - ch),
                             (rc - ch, length), (0, length)]).close()
                  .revolve(360, (0, 0, 0), (0, 1, 0)))
-        turns = math.ceil(length / p) + 2
         ro = rc + 0.3                                               # cutter past the crest
-        groove = (cq.Workplane("XZ")
-                  .polyline([(rr, -_tr_groove_w(rr) / 2), (ro, -_tr_groove_w(ro) / 2),
-                             (ro, _tr_groove_w(ro) / 2), (rr, _tr_groove_w(rr) / 2)]).close()
-                  .sweep(cq.Workplane("XY").add(cq.Wire.makeHelix(
-                      pitch=p, height=turns * p, radius=rr,
-                      lefthand=D.SCREW_HAND == "LH")), isFrenet=True))
+        # OCCT CANNOT SWEEP SOME HELIX HEIGHTS: MakePipeShell fails outright from about 312 to
+        # 352 of Tr8x2 (the direct bench's 336 mm screw, 2026-11-09), and is fine either side.
+        # The groove overshoots both ends anyway, so on a failure overshoot by more turns.
+        for _extra in (2, 12, 22, 32):
+            turns = math.ceil(length / p) + _extra
+            try:
+                groove = (cq.Workplane("XZ")
+                          .polyline([(rr, -_tr_groove_w(rr) / 2), (ro, -_tr_groove_w(ro) / 2),
+                                     (ro, _tr_groove_w(ro) / 2), (rr, _tr_groove_w(rr) / 2)])
+                          .close()
+                          .sweep(cq.Workplane("XY").add(cq.Wire.makeHelix(
+                              pitch=p, height=turns * p, radius=rr,
+                              lefthand=D.SCREW_HAND == "LH")), isFrenet=True))
+                break
+            except Exception:
+                continue
+        else:
+            raise AssertionError(f"the leadscrew's groove would not sweep at {length} mm")
         # OCCT can hand back a smooth rod, or half of one, without a word
         # (cadkit/THREADS_README.md): hold the result to the thread's own arithmetic.
         _fill = 1 - ((rc ** 2 - rr ** 2) * (_tr_groove_w(rr) + _tr_groove_w(rc)) / 2 / p
@@ -91,16 +126,19 @@ def screw(length: float = D.SCREW_LEN) -> cq.Workplane:
         # WHERE THE HELIX STARTS is a phase, nothing physical, but it decides whether that boolean
         # holds: at 36.28 the centred sweep cut 0.37 of the rod and a quarter-turn on cut it right.
         # So try phases until one passes the check.
-        for _ph in (0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75):
+        # quarter turns first, then the eighths between them (the mesh check rejects more)
+        for _ph in (0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75,
+                    0.125, 0.375, 0.625, 0.875, 1.125, 1.375, 1.625, 1.875):
             out = blank.cut(groove.translate((0, 0, -(turns * p - length) / 2 + _ph)), clean=False)
             _vol = out.val().Volume() / (math.pi * rc ** 2 * length)
-            if out.val().isValid() and len(out.val().Solids()) == 1 and abs(_vol - _fill) < 0.03:
+            if (out.val().isValid() and len(out.val().Solids()) == 1 and abs(_vol - _fill) < 0.03
+                    and (not whole_mesh or _meshes_whole(out.val()))):
                 break
         else:
             raise AssertionError(f"the leadscrew's thread did not cut at any phase: {_vol:.3f} "
                                  f"of its cylinder, want {_fill:.3f}")
-        _SCREWS[length] = out
-    return _SCREWS[length]
+        _SCREWS[key] = out
+    return _SCREWS[key]
 
 
 # ── Leadscrew nut (H-type brass flange nut, axis Z) ──────────────────────

@@ -152,7 +152,8 @@ YK_CAV = D.SCREW_OD + 0.8                        # 8.8: the screw's tip rises in
 # yoke concentric with the screw. It leaves 1.1 to each M3 tap hole
 # and 0.7 to the Y faces, over its 1.8 depth only. The yoke keeps its
 # 12 x 6 so it is the ONLY part to reprint: the axial station is unchanged.
-YK_LIP_D = D.NUT_LIP_D + 0.4                     # 10.6: a sliding register on the Ø10.2 lip
+YK_LIP_D = D.NUT_LIP_D + 0.5                     # 10.7: a sliding register on the Ø10.2 lip (10.6
+                                                 # printed a bit too tight: user, 2026-11-09)
 YK_LIP_HY = 5.4                                  # the plain station's relief half-width
 YK_LIP_L = D.NUT_LIP_L + 0.3                     # 1.8
 STN_LIP_D = 2 * YK_LIP_HY                        # the plain station's ceiling relief over the lip
@@ -162,7 +163,13 @@ assert YK_R0 - D.STRING_NUT_D >= YK_PROTRUDE + 1.0 - 1e-9, "the screw's tip reac
 # THE M3s SELF-TAP (user, 2026-11-08: a prototype is not worth inserts). Straight Ø3.2 holes
 # (cadkit's M3 self-tap) up from the -Z face; the thinner wall to the lip's recess is then 1.1,
 # so it needs no relief slot either.
-YK_TAP_D = BTn.M3.selftap_d                      # 3.2
+YK_TAP_D = BTn.M3.selftap_d                      # 3.2: drawn for an UPRIGHT hole (round, nozzle-made: it
+                                                 # prints ~0.6 under, ~2.6, and the M3 taps it)
+YK_TAP_SIDE_D = YK_TAP_D - 0.4                   # 2.8: a SIDEWAYS one (a teardrop) prints BIGGER than a
+                                                 # round one: 3.2 printed a clearance hole in the counter
+                                                 # yoke (user, 2026-11-10). cadkit f862c04's rule,
+                                                 # holes.as_printed_d (TEARDROP_OVERSIZE 0.4) -- use it
+                                                 # once that is propagated
 YK_SCREW_L = BTn.SCREW_L                         # M3 x 12 socket head (the belt clamp's): ear 3.5, 8.5 bites
 YK_TIP = YK_SCREW_L - D.NUT_FLANGE_T + 0.6       # 9.1: the hole's depth, the tip's 8.5 and air
 assert D.NUT_HOLE_DX - YK_TAP_D / 2 - YK_LIP_D / 2 >= D.MIN_WALL - 1e-9, "tap hole into the lip's recess"
@@ -475,7 +482,7 @@ def yoke() -> cq.Workplane:
 #     travel that 50 -> 100 % takes (26.6 mm), which is what lets a 40 mm screw set it.
 #   YOKE       the COUNTER YOKE (counter_yoke): the yoke on the nut with a bar across Y on its
 #              roof, a pin each end for a spring's loop; the string out of its roof on the axis.
-#   SLIDER     the same bar at the post end; an M4 heat-set in its +X face on the axis.
+#   SLIDER     the same bar at the post end; an M4 insert on the axis, as a CAPTIVE NUT (SL_LIP).
 #   POST       a wall with the M4 x 40 through it, head in a counterbore on its +X face (the board's
 #              end: a 2.5 key from +X). Turning it in draws the slider +X. A deck under the slider
 #              stops it turning with the screw.
@@ -503,7 +510,10 @@ PIN_HEAD_D = 15.0
 PIN_Z0 = XR_ZA - PIN_GAP / 2                     # the pin's root: the wire's centre at the axis' height
 PIN_PAD = PIN_HEAD_D / 2 + 1.0                   # 8.5: the pin's platform, half-length and half-width
 # the springs' Y offset: clear of the station's walls (11.4) and the yoke's guide-rod arm (16.35 out -Y)
-CS_DY = 30.5
+# 34.4, was 30.5 (user, 2026-11-09: the IN-LINE MOTOR): the springs clear the motor's 42.3 can,
+# which now stands on the screw's axis past the rail wall (assembly_inline).
+CS_DY = 34.4
+assert CS_DY - SPR_OD / 2 >= D.MOTOR_SQ / 2 + 0.5 - 1e-9, "a spring rubs the in-line motor"
 assert CS_DY - SPR_OD / 2 >= XR_HW + 1.0 - 1e-9, "a spring rubs the station"
 assert CS_DY - SPR_OD / 2 >= -ROD_DY + ARM_R + 0.5 - 1e-9, "the -Y spring rubs the yoke's arm"
 BAR_L = 2 * PIN_PAD                              # 17: both bars' run along X
@@ -523,7 +533,14 @@ X_HEAD = PW1 - PW_CB                             # the head's seat
 X_TIP = X_HEAD - CS_SCREW_L                      # -14.8
 BITE_MIN = 3 * M4.pitch                          # 2.1: three threads in the insert, the slider's farthest out
 GAP_MIN = 0.5                                    # the slider's +X face at the wall, fully in
-XS1_OUT, XS1_IN = X_TIP + BITE_MIN, PW0 - GAP_MIN   # the slider's +X face, out .. in
+# THE SLIDER'S INSERT IS A NUT (user, 2026-11-09): it slides into a pocket from the slider's -X
+# face and seats on a LIP at the +X face, the M4 through the lip. The springs pull the slider -X
+# and the screw holds it +X, so the string's whole pull presses the insert ONTO the lip -- it
+# cannot be torn out of its melt. The pocket is a snug teardrop: if the insert turns with the
+# screw, touch it home with the iron.
+SL_LIP = 4 * D.BEAD                              # 3.2: ~60 mm^2 in shear round the insert, 2.4 MPa at 147 N
+SL_POCKET_D = 5.9                                # teardrop: between cadkit's heat-set 5.7 and drop-in 6.1
+XS1_OUT, XS1_IN = X_TIP + BITE_MIN + SL_LIP, PW0 - GAP_MIN   # the slider's +X face, out .. in
 CS_STROKE = XS1_IN - XS1_OUT                     # 32.6
 
 # where the station goes: fully in = 100 % + CS_OVER with the yoke at mid travel
@@ -585,35 +602,47 @@ CY_FT = CS_ROOF + YK_H                           # the nut flange's top face, mi
 CY_Z0, CY_Z1 = BAR_Z0, XR_ZA + YK_HX             # 2.2 .. 27.8: the yoke's underside and top
 CY_HY = YK_LIP_D / 2 + D.MIN_WALL                # 6.1: one bead outside the lip's recess (the axial yoke had 0.7)
 assert CY_HY <= XR_HW - XR_WALL - 0.4 + 1e-9, "the yoke rubs the station's buttresses"
+# TWO BEADS ROUND THE LIP'S RECESS (user, 2026-11-10: the 0.8 side walls broke the 1.6 quality
+# rule). The yoke can't be 2 x CY_HY_LIP wide all the way down: at the top of travel its +X end runs
+# ~1.7 between the buttresses, whose tops are z <= 6.9 there. So only from CY_WIDE_Z up, under it a
+# 45 deg step out from CY_HY (it faces down in the +Z print).
+CY_HY_LIP = YK_LIP_D / 2 + D.MIN_WALL_2P         # 6.95
+CY_WIDE_Z = XR_ZA - CY_HY_LIP                    # 8.86: full width from the recess's 1.6 wall down
+assert CY_WIDE_Z - (CY_HY_LIP - CY_HY) >= 6.9 + 0.4, "the yoke's wide part reaches the buttresses' tops"
 assert D.NUT_HOLE_DX - YK_TAP_D / 2 - YK_LIP_D / 2 >= D.MIN_WALL - 1e-9, "tap hole into the lip's recess"
 
 
 def counter_yoke() -> cq.Workplane:
     """THE COUNTER YOKE (user, 2026-11-09): the yoke and the spreader in one, its only jobs the nut,
     the string and the springs -- no guide rod, no arm. In place (world) at mid travel, base down.
-      the BODY on the nut's flange: 24 x 12.2 x 16 (one bead round the lip's recess), two M3 x 12 up through the nut's
+      the BODY on the nut's flange: 24 x 12.2 x 16, 13.9 wide from CY_WIDE_Z up (two beads round the lip's recess), two M3 x 12 up through the nut's
         ears self-tapping into its +X face, the screw tip's cavity, the lip's recess;
       the ROOF: the ball end seats under it on the axis, the string out a 2.1 hole down the axis;
       the BAR across Y on the roof's -X face, the springs' pins at its ends (the spreader's, so the
         station stays where it is), its middle up the roof's full height."""
     x1, xr = CY_FT, CS_ROOF
     y = _box(xr, x1, SY - CY_HY, SY + CY_HY, CY_Z0, CY_Z1)
+    w, z0 = CY_HY_LIP - CY_HY, CY_WIDE_Z
+    for sy in (-1, 1):                                                          # the 1.6 round the lip
+        pts = [(SY + sy * CY_HY, z0 - w - 0.01), (SY + sy * CY_HY_LIP, z0), (SY + sy * CY_HY_LIP, CY_Z1),
+               (SY + sy * (CY_HY - 0.01), CY_Z1), (SY + sy * (CY_HY - 0.01), z0 - w - 0.01)]
+        y = y.union(cq.Workplane("YZ", origin=(xr, 0, 0)).polyline(pts).close().extrude(x1 - xr))
     y = y.union(_bar(xr + 0.01, CY_Z1).translate((-0.01, 0.0, 0.0)))
     y = y.cut(_xflat(YK_CAV, x1 - YK_R0, x1 + 1.0))                             # the screw's tip
     y = y.cut(_xflat(YK_LIP_D, x1 - YK_LIP_L, x1 + 1.0))                        # the nut's lip
     y = y.cut(_xb(STR_HOLE_D + 0.1, xr - BAR_L - 1.0, x1 - YK_R0 + 1.0))        # the string
     for sz in (-1, 1):
-        y = y.cut(printable_bore(YK_TAP_D, YK_TIP + 1.0, axis_point=(x1 - YK_TIP, SY, XR_ZA + sz * D.NUT_HOLE_DX),
+        y = y.cut(printable_bore(YK_TAP_SIDE_D, YK_TIP + 1.0, axis_point=(x1 - YK_TIP, SY, XR_ZA + sz * D.NUT_HOLE_DX),
                                  axis_dir=(1.0, 0.0, 0.0), print_up=UP))
     return y
 
 
 def slider(xs1=XS1_IN) -> cq.Workplane:
-    """The post end's bar, its +X face at xs1 (world): the M4's insert in that face on the axis, its
-    clearance through. Base down."""
+    """The post end's bar, its +X face at xs1 (world): the M4 through the LIP, the insert's pocket
+    from the -X face up to it (SL_LIP). Base down."""
     s = _bar(xs1, XR_ZA + 7.0)
-    s = s.cut(_xb(M4.shaft_clr_d, xs1 - BAR_L - 1.0, xs1 + 1.0))
-    return s.cut(_xb(M4.insert_pilot_td_d, xs1 - M4.insert_depth, xs1 + 1.0))
+    s = s.cut(_xb(M4.shaft_clr_d, xs1 - SL_LIP - 1.0, xs1 + 1.0))           # through the lip
+    return s.cut(_xb(SL_POCKET_D, xs1 - BAR_L - 1.0, xs1 - SL_LIP))           # the insert's way in
 
 
 def counter_post() -> cq.Workplane:
@@ -680,8 +709,125 @@ def assembly_counter(level=1.0):
     out.append(("plank_counter_post", counter_post()))
     for k, s in enumerate((-1, 1)):
         out.append((f"counter_spring_{k}", _spring(XP_SPREAD, xs1 - PIN_PAD, SY + s * CS_DY)))
-    out.append(("counter_m4_0", cyl_x(M4.screw_d, CS_SCREW_L, X_TIP, y=SY, z=XR_ZA)
-                .union(cyl_x(7.6, 2.2, X_HEAD, y=SY, z=XR_ZA))))
+    from .motor_coupler import cap_screw
+    out.append(("counter_m4_0", cap_screw("m4", CS_SCREW_L, (X_HEAD + 2.2, SY, XR_ZA), (-1, 0, 0))))
+    from cadkit.fasteners import seated_insert
+    out.append(("counter_insert_0", seated_insert(M4, (xs1 - SL_LIP, SY, XR_ZA), (-1.0, 0.0, 0.0))))
+    return out
+
+
+# ═════════════════════════════════════════════════════════════════════════════════════════
+# THE IN-LINE MOTOR (user, 2026-11-09): a SERVO42D on the screw's own axis, past the rail wall, in
+# place of the screw pulley -- to find how much counter-spring pull the motor needs before it can
+# tighten and loosen the string reliably with no reduction at all.
+#   COUPLER   src.motor_coupler's printed one, with its inner-race BOSS: it takes the pulley's
+#             place as the screw's THRUST SHOULDER on the rail wall's 688 (the string pulls the
+#             screw -X; the springs keep that so, under the string). The screw sticks 9.5 past the
+#             688, threaded into the coupler's formed-thread socket (the screw pulley's own grip)
+#             and squeezed by its C clamp's M3 x 12 into a fitted insert (user, 2026-11-10: the
+#             screw was too tough to drill for the old cross pin). No thrust reaches the motor.
+#   BLOCK     on a new set of four plank holes, the station's pattern (XR_SCREWS' 33.97 x 43.80):
+#             the FACE WALL the motor's faceplate is screwed to (its four M3 x 12, heads on the -X
+#             face -- they stand outside the X station's walls in Y, so a 2.5 key reaches each along
+#             X past it), two 45 deg RIBS bracing it, the base.
+#   SPRINGS   CS_DY moved out to clear the can: reprint the counter yoke and the slider.
+#   RANGE     the slider backs out only to the motor's back (INLINE_XS1_MIN): ~53 % to 100 %.
+# ORDER: block to the plank (all four wood screws open); coupler threaded onto the screw to its
+# end, the clamp's M3 snug; motor in from +Z between the block and the
+# slider (slider fully in), slid -X onto the coupler's D, its four M3s; springs last.
+from . import motor_coupler as MC
+
+# THE USER'S 38 mm SCREW (user, 2026-11-09: a piece cut earlier), not the instrument's 36.28. Its +X
+# end stays where the instrument's is (the coupler, block and motor unmoved) and the extra goes on
+# the -X TIP: MORE TRAVEL (user: "can we get more travel"). The nut's far end is the rail wall's
+# ledge and cannot move; its string end is only how much thread it keeps, so the nut now runs
+# INLINE_EXTRA further toward the string on the same ~12 of thread: 8.35 -> 10.07. At the ledge
+# end the tip then reaches INLINE_TIP_IN into the yoke's YK_R0 cavity, short of the ball's seat.
+INLINE_SCREW_LEN = 38.0
+INLINE_EXTRA = INLINE_SCREW_LEN - D.SCREW_LEN     # 1.72
+INLINE_TRAVEL = D.CARRIAGE_TRAVEL + INLINE_EXTRA
+INLINE_TIP_IN = YK_PROTRUDE + INLINE_EXTRA        # 8.47 of the cavity's 12
+assert INLINE_TIP_IN <= YK_R0 - 2.0, "the 38 mm screw's tip reaches the ball end's seat"
+INLINE_SCREW_END = _xr_x(D.SCREW_BOT_Z) + CS_DX   # the screw's +X end
+INLINE_BRG_FACE = _xr_x(BRG_BOT_Z) + CS_DX        # the 688's +X face (the pulley's shoulder)
+INLINE_XP = INLINE_SCREW_END + MC.SCREW_X0        # the motor's pulley plane (world x)
+INLINE_BOSS = 0.8                                 # the coupler's boss onto the 688's inner race
+INLINE_C1 = INLINE_XP - INLINE_BRG_FACE - INLINE_BOSS   # the coupler's body end (motor frame y)
+INLINE_FACE = INLINE_XP + 7.5                     # the motor's faceplate (components.MOTOR_PULLEY_STANDOFF)
+INLINE_BACK = INLINE_XP + 60.7                    # its driver's back (direct_bench.M_BACK)
+INLINE_WALL_T = 10 * D.BEAD                       # 8.0: the M3 x 12 has 4 into the faceplate
+INLINE_HOLES = 31.0                               # NEMA17's M3 square
+INLINE_XS1_MIN = INLINE_BACK + 0.5 + BAR_L        # the slider's +X face, backed out to the motor
+INLINE_X_SCREWS = (INLINE_FACE - INLINE_WALL_T - 6.6, INLINE_FACE - INLINE_WALL_T - 6.6 + 33.97)
+assert INLINE_X_SCREWS[0] - XR_TAB >= XR_X1 + CS_DX + 0.2 - 1e-9, "the block's tab on the station's"
+assert INLINE_XS1_MIN <= XS1_IN, "the motor leaves the slider no room"
+CRADLE_HW = 12.0                                  # the ribs' outer faces: inside the wood screws' heads
+GAUGE_T = D.BEAD                                  # 0.8: the gauge arms to the counter post
+M_HALF = D.MOTOR_SQ / 2
+
+
+def motor_block() -> cq.Workplane:
+    """The face wall, two ribs and the base on four new plank holes. Base down."""
+    zb = Z_PLANK + BASE_T
+    w0, w1 = INLINE_FACE - INLINE_WALL_T, INLINE_FACE
+    s = _box(w0, w1, SY - M_HALF, SY + M_HALF, zb - 0.01, XR_ZA + M_HALF)       # the face wall
+    # TWO RIBS brace the wall (user, 2026-11-09: the solid cradle was material for nothing -- the
+    # four face M3s carry the motor). 45 deg triangles, their top edge just under the can, the
+    # slope facing up in the base-down print; inside the wood screws' heads in Y.
+    top = XR_ZA - M_HALF - 0.4
+    run = top - zb                                   # 45 deg: as long as it is tall
+    tri = [(w1 - 0.01, zb - 0.01), (w1 - 0.01, top), (w1 + run, zb - 0.01)]
+    for y0 in (SY - CRADLE_HW, SY + CRADLE_HW - RIB_T):
+        s = s.union(_xz_prism(tri, y0, y0 + RIB_T))
+        s = s.union(_box(w0, w1 + run, y0, y0 + RIB_T, Z_PLANK, zb))           # its strip of base
+        # a GAUGE ARM on from it (user, 2026-11-09): 0.8 tall on the plank, ending exactly at the
+        # counter post's -X base edge. Butt the post against both and it is at its spacing, square
+        s = s.union(_box(w1 + run - 0.01, POST_X0, y0, y0 + RIB_T, Z_PLANK, Z_PLANK + GAUGE_T))
+    for x in INLINE_X_SCREWS:
+        s = s.union(_box(x - XR_TAB, x + XR_TAB, XR_SCREWS_Y[0] - XR_TAB, Y_EDGE, Z_PLANK, zb))
+    s = s.union(_box(INLINE_X_SCREWS[0], w1, XR_SCREWS_Y[0] - XR_TAB, Y_EDGE, Z_PLANK, zb))
+    s = s.cut(_xb(D.NEMA17_PILOT_D + 0.6, w0 - 1.0, w1 + 1.0))                  # the pilot
+    for sy in (1, -1):
+        for sz in (1, -1):
+            s = s.cut(printable_bore(3.4, INLINE_WALL_T + 2.0,
+                                     axis_point=(w0 - 1.0, SY + sy * INLINE_HOLES / 2,
+                                                 XR_ZA + sz * INLINE_HOLES / 2),
+                                     axis_dir=(1.0, 0.0, 0.0), print_up=UP))
+    for x in INLINE_X_SCREWS:
+        for y in XR_SCREWS_Y:
+            s = s.cut(_wood_screw(x, y, UP))
+    return s
+
+
+def _inline_frame(w):
+    """The motor's own frame (shaft +Y, flat +Z) -> its place: shaft -X on the screw's axis."""
+    return w.rotate((0, 0, 0), (0, 0, 1), 90).translate((INLINE_XP, SY, XR_ZA))
+
+
+def inline_coupler() -> cq.Workplane:
+    return _inline_frame(MC.coupler(INLINE_C1, INLINE_BOSS))
+
+
+def assembly_inline(level=1.0):
+    """The counter-spring rig with the in-line motor (scratch view scope), springs at `level`."""
+    xs1 = slider_for(level)
+    assert xs1 >= INLINE_XS1_MIN - 1e-6, f"the slider at {level:.0%} runs into the motor"
+    out = [(nm, w) for nm, w in assembly_counter(level) if nm not in ("xscrew_pulley_0", "xleadscrew_0")]
+    scr = C.screw(INLINE_SCREW_LEN).translate((SX, SY, D.SCREW_BOT_Z))
+    out.append(("xleadscrew_0", scr.rotate((0, 0, 0), (0, 1, 0), -90)
+                .translate((XR_OFF + CS_DX, 0.0, XR_ZA - SX))))
+    out.append(("plank_motor_block", motor_block()))
+    out.append(("inline_coupler", inline_coupler()))
+    for k, w in MC.clamp_parts(INLINE_C1):
+        out.append((f"inline_coupler_{k}", _inline_frame(w)))
+    for k, wp, _, _fin in C.motor_parts():
+        out.append((f"inline_motor_{k}" if k else "inline_motor", _inline_frame(wp)))
+    w0 = INLINE_FACE - INLINE_WALL_T
+    for sy in (1, -1):
+        for sz in (1, -1):
+            out.append((f"inline_face_m3_{(sy + 1) // 2}{(sz + 1) // 2}",
+                        MC.cap_screw("m3", MC.M3_L, (w0 - 3.0, SY + sy * INLINE_HOLES / 2,
+                                                     XR_ZA + sz * INLINE_HOLES / 2), (1, 0, 0))))
     return out
 
 
@@ -883,7 +1029,9 @@ def print_parts():
     yk = yoke().rotate((0, 0, 0), (1, 0, 0), 180)               # roof on the bed: no bridge over the cavity
     out_x = station_x()                                          # base down, as drawn
     spring = (("plank_counter_post", counter_post()), ("plank_counter_yoke", counter_yoke()),
-              ("plank_counter_slider", slider()))                         # all base down
+              ("plank_counter_slider", slider()), ("plank_motor_block", motor_block()),   # all base down
+              # the coupler stands on its motor end (+Y -> +Z): the D bore round, boss up
+              ("plank_inline_coupler", MC.coupler(INLINE_C1, INLINE_BOSS).rotate((0, 0, 0), (1, 0, 0), 90)))
     for nm, w in (("plank_station", st), ("plank_head", head()),   # the real tee board holds the motor (user)
                   ("plank_station_axial", sa), ("plank_yoke", yk), ("plank_station_x", out_x)) + spring:
         bb = w.val().BoundingBox()

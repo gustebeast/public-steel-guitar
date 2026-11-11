@@ -1649,3 +1649,158 @@ against the string. The nut's thread then carries string minus spring. Set anywh
   - Yoke travel changes the pull ±11.5 N end to end.
 - **Keep the spring under the string.** At or over 100 % the screw is no longer pulled into its
   688 and can slide out +X. Take the springs off before slackening the string.
+
+## Changer bench: all ten drives in the instrument's real space (2026-11-09, FIT STUDY)
+
+`src/changer_bench.py` is a fit study, not a build yet: the bought parts are modelled as they are,
+and the printed frames are plain blocks. Nothing here gets printed until the layout is accepted.
+- **What it shows:**
+  - The real scale length and string spacing, all ten strings.
+  - Each yoke holds its ball end on the screw axis.
+  - Pulleys are 34 to 47 T against the motor's 14 T.
+  - Motors point +Z', in four ranks that step down toward the changer.
+  - Each string has one 9665K61 counter-spring on a floor cable.
+- **Clamp windows:** each belt clamp has a fixed stretch of its run, parked at the motor end. Strings 1, 5 and 9 are slid toward the changer (`CLAMP_SHIFT`). The clamp's thin side faces the next plane, and some clamps ride the +Y run (`CLAMP_SIDE`). **Set each clamp inside its window at assembly**, or it meets another string's clamp.
+- **Motors abreast are 52 mm apart.** The coil plug and its leads stand 29.9 mm off the axis on the -Y side.
+- **String 9's spring arm is mirrored** (`ARM_FLIP`), so its +X' leg stays inside string 10's belt.
+
+## Direct bench: NEMA17 straight on each screw, no belts (2026-11-09, FIT STUDY)
+
+`src/direct_bench.py` is a fit study like the changer bench: the bought parts are modelled, the frames are plain blocks, and nothing gets printed yet.
+- **Bends:** every string drops off the bridge on one line and turns -X under a second 688. The bend rows' axles all stack on x = -8.
+- **Rows:** string i sits on row i % 3, rows 26.4 apart.
+- **Screws:** each screw lies along -X, in tension into two 688s at the motor end. A yoke holds the ball end on the screw axis, and a Ø3.5 rod stops the nut turning. The rod is about 32 long, longer than the stock 29.8.
+- **Springs:**
+  - A 5/8 in OD extension spring (SKU still to choose) runs over a fixed sleeve, from a collar on the nut's boss to a common anchor wall at x -190. That is about 130 mm, the same length for every string.
+  - The collar and the rod's end are 0.15 apart at the slack end of travel. **Check this first on any real part.**
+- **Motors:**
+  - The motors are coaxial with their screws, on four stations along X, and each motor's coil plug faces a fixed side (set in `PLUG_DIR`).
+  - The whole drive yaws 2.06° in plan so string 1's motor stays inside the +Y rail.
+- **Restringing (direct bench):**
+  1. Set the nut at the slack end of travel.
+  2. Feed the ball end through the rod plate's window in front of its yoke (7.6 x 11.8).
+  3. Push the ball through the keyhole's Ø4.8 hole, 5 mm under the string's line.
+  4. Pull the string so the ball slides up the 2.2 slit until it sits on the axis behind the roof. The string's tension keeps it there.
+- **Direct bench spring ends:** each spring is 3/4 in OD stainless stock, cut to length (SKU still open). Each end screws onto a seat of the spring's inside diameter, 8 mm of coils over it.
+  - **Nut end:** the yoke goes on the nut's +X face. Two M3 x 12 SHCS come from behind, through the collar's plate and both flange ears, into the yoke. That one pair of screws holds the yoke and clamps the collar. Screw the spring onto the collar's seat.
+  - **Wall end:** screw the anchor plug's seat into the spring's other end. Pass the plug through the anchor wall with its lug bar along Y (the slot), then turn it a quarter so the lugs lie along Z behind the wall. The spring's pull holds it there.
+  - The plug's tube is the sleeve that keeps the coils off the turning screw.
+  - The anti-rotation rod now rides an arm on the yoke's -Y side (stock 29.8 rod), not a flange ear.
+- **Direct bench nut (round, 2026-11-09):** the common round Tr8x2 flange nut, no flats. Its four holes:
+  - **45° and 225°:** the two M3 x 12 that hold the yoke on and clamp the collar. Drive them through the collar's stop-flange holes **before** screwing the spring on.
+  - **135°:** the Ø3.5 guide rod (about 33 long, still to source). It runs from the rod plate through the yoke, the flange and the collar. There is no yoke arm.
+
+### Direct bench: split sleeve (2026-11-09)
+- The guard sleeve over each leadscrew is now two halves of about 48.8 mm. One is fixed on the anchor plug and the other rides on the collar.
+- The halves meet 1 mm apart at full travel. At slack, the bare screw between them is the travel plus 1 mm, with the gap at mid-span.
+- Assembly order is unchanged. The collar's half goes inside the spring along with the collar, before the spring is screwed onto the anchor plug's post.
+- The view now models the screws as the instrument's threaded Tr8x2 rod (`components.screw`).
+
+### Direct bench: stainless anchor plate (2026-11-09)
+- The spring anchor is now laser-cut 304 stainless, 4 mm, from the same JLCCNC sheet-metal order as the nut plates. It is bent into a tray: top, bottom and both ends folded 16 mm toward +X. It spans rail to rail with 0.5 mm clearance each side.
+- Why: it carries about 730 N from the springs, all the time. A printed wall would sag about 7 mm and then creep.
+- Mount: four M4 x 10 button heads, two per end fold, at z -16 and z -45.4. Each goes through the rail's inner skin into an M4 tapped hole in the A-36 wall bar. Drill and tap the bar to match before sliding it into the rail. The rail's inner skin gets a matching Ø4.5 hole.
+- Order of assembly:
+  1. Bolt the plate in before the drives go in. The 2.5 mm key reaches each bolt along Y, between the spring rows.
+  2. Then put each anchor plug through from +X with its lugs along Y, and turn it a quarter to Z.
+
+### Direct bench: bend-row comb (2026-11-09)
+- One printed PETG-GF comb sits between the cheeks.
+  - Its spine is under the bottom row, at z -106 to -90.8.
+  - Five tines stand up from it, each round all three bend axles: three in the string gaps at y +28.5, 0 and -28.5, and one against each cheek.
+- Each tine stands 0.1 off its neighbouring 688's inner race. A 0.5 relief from Ø10.6 to Ø17 keeps it off the turning outer race and shield. So the comb locates every bend bearing along its axle.
+- Print: builds -Z to +Z, spine on the bed. The axle holes are teardrops peaked toward +Z.
+- Assembly:
+  1. Drop the comb in between the cheeks.
+  2. Hold each row's 688s in their gaps and slide the axle through cheek, tines and bearings.
+- Stiffness: the comb shortens each axle span to 28.5 mm or less. The middle tines are only as stiff as the spine, though, which is grounded at the cheeks through the axles. In the instrument, bolting the spine to the chassis bed would ground it.
+
+### Direct bench: printed motor coupler (2026-11-09)
+- Each screw is driven by one printed PETG-GF coupler, 19 mm long plus a 0.5 mm boss.
+  - Motor end: the motor pulley's open D bore, a friction fit on the shaft's flat. The shaft is cut flush at 11.5 mm from the faceplate, as for the pulleys.
+  - Screw end: a plain Ø8.4 socket.
+- Drill a Ø3.2 hole through each leadscrew, 6 mm from its -X end, square to the axis.
+- Fit:
+  1. Slide the screw into the socket.
+  2. Fit one M3 x 12 SHCS through the coupler and the screw. It self-taps the far wall.
+- The coupler's +X boss (Ø10.4) bears only on the 688s' inner race. It passes the screw's pull into the two 688s in the block behind it. No thrust reaches the motor shaft.
+- The block is now 12.5 mm long, with a 2.5 mm shoulder at +X that has a Ø12 hole bearing on the outer race.
+- Station pitch is 90 mm (was 98). The farthest motor moves 32 mm toward the bridge.
+
+### Direct bench: thrust bearings on the anchor plate (2026-11-09)
+- This supersedes the coupler note's thrust path. The motor-end bearing blocks are gone; each motor only turns its screw.
+- Each screw's two 688s sit in a printed housing on the anchor plate's -X face. The anchor plug sits on the +X face.
+- Two M4 x 20 button heads clamp all three together. They go through the housing's ears (at 35 and 215 degrees) and the plate into M4 heat-set inserts in the plug's ears. This replaces the plug's quarter-turn lugs.
+- Plate holes per string: Ø14.4 for the screw and collar B, and two Ø4.5 for the bolts.
+- Load paths:
+  - Strings on: collar A -> inner races -> outer races -> the plate's rim round the Ø14.4 hole. The plate carries the full string tension, about 1100 N.
+  - Strings off: the spring's pull on the plug and the screw's push on the housing meet in the M4s, so the plate carries nothing.
+- Assembly, per screw:
+  1. Press both 688s into the housing from +X.
+  2. Slide the screw's +X end through the housing from -X.
+  3. Thread collar B (printed Tr8) onto the +X end and run it down onto the +X inner race.
+  4. Thread collar A from the -X end up against the -X inner race until the play is gone (the screw turns freely and does not knock end to end). Pinch it with its M3 x 12.
+  5. Fit the plug on the plate's +X face and the housing on the -X face, and bolt them together with the two M4 x 20.
+  6. Slide the coupler on, then pin the screw with its M3.
+- The +X-most station (strings 2 and 8) has all four motor-plate M3 holes and the pilot hole 1.2 mm oversize (+-0.6 every way).
+  - Its screw is short and stiff between the anchor bearings and the motor.
+  - Let the motor find its axis on the turning screw, then tighten.
+- Station pitch is 77 mm (was 90). The farthest motor is at x -522.7 (was -556.7).
+
+### Leadscrew pin hole (pin drill jig, 2026-11-09)
+- Every printed motor coupler pins its screw with one belt-clamp M3 x 12. It passes through a 1/8 in hole drilled through the screw 5.0 mm from its end, and threads into the coupler's far wall.
+- Jig parts (coupons/): `pin_drill_jig`, a second saw-jig cap (`pin_drill_jig_cap`), and two drop-in bushings (`pin_drill_bushing_pilot` 1/16 in, `pin_drill_bushing_pin` 1/8 in).
+- Steps:
+  1. Push the screw in from -X until it meets the end stop.
+  2. Drop the cap in and Quick-Grip it to the table.
+  3. Fit the pilot bushing and drill 1/16 in through, with oil and a slow speed (the rod may be stainless).
+  4. Swap to the 1/8 in bushing and drill through.
+  5. Deburr both sides.
+- For a tapped pin later, you need a 2.5 mm bit and an M3x0.5 hand tap, plus a bushing for each.
+- Bushing bores (2026-11-10): the 1/8 in bushing, drawn bit + 0.6, is tight but the bit runs through it. Keep it.
+  The 1/16 in one at + 0.6 was too tight: a small hole loses more.
+  Print the three trial pilots (`pin_drill_bushing_pilot_1/2/3`, bit + 0.9 / 1.1 / 1.3, marked by 1-3 scallops on the flange). Use the one that is tight but runs through.
+
+### Plank bench: in-line motor (2026-11-09)
+- A SERVO42D sits on the counter-spring rig's screw axis, in place of the screw pulley.
+- The printed coupler (plank_inline_coupler) is the screw's thrust shoulder. Its Ø10.4 boss bears on the rail wall 688's inner race.
+- The motor block (plank_motor_block) goes on four new plank holes, in the station's 33.97 x 43.80 pattern, at x -91.29 and -57.32 and the usual y 16.75 / 60.55.
+- CS_DY is now 34.4 (was 30.5), so the springs clear the can. Reprint plank_counter_yoke and plank_counter_slider; their bars are 3.9 mm longer each side.
+- With the motor in, the slider backs out only to the motor's back, so the spring range is about 53 % to 100 % of 147 N.
+- Order:
+  1. Screw the block to the plank. All four wood screws are reachable before the motor goes in.
+  2. Fit the M3 insert (the belt clamp's) into the coupler's -x jaw, by hand with no heat, until it sits on the lip.
+  3. Thread the coupler onto the screw's +X end until the boss meets the 688. Snug the clamp's M3 x 12.
+  4. Run the slider fully in.
+  5. Bring the motor in over the ribs and slide it -X onto the coupler's D, turning the shaft to match.
+  6. Fit the four face M3 x 12 from -X. The key reaches past the X station's walls.
+  7. Hook the springs on last.
+- The counter slider's M4 insert is a captive nut (2026-11-09). Push it into its pocket from the slider's -X face until it seats on the 3.2 mm lip at the +X face. If it turns with the screw, touch it home with the iron. The springs' pull presses it onto the lip, so it can't pull out.
+- Plank motor block gauge arms (2026-11-09): two 0.8 mm strips on the plank run from the block's rib bases to the counter post's -X base edge. Butt the post against both arm ends and it is at its spacing and square to the block.
+- In-line test screw (2026-11-09): the user's 38 mm Tr8x2 piece, not a 36.28 one.
+  - Its +X end (in the coupler) sits where a 36.28 one would, so the coupler, motor block and motor don't move.
+  - The extra 1.72 mm is on the -X tip, which gives MORE TRAVEL: the nut can run 1.72 mm further toward the string on the same ~12 mm of thread (8.35 -> 10.07 mm).
+  - At the rail end of travel the tip reaches 8.5 mm into the yoke's 12 mm cavity.
+  - Spring range with the motor in: about 53 % to 100 %.
+  - No drilling now (see the clamp coupler below).
+- Clamp coupler (2026-11-10):
+  - The screw was too tough to drill with the user's bits, so the coupler no longer has a cross pin.
+  - It grips the screw like the screw pulley does: a formed-thread socket, the pulley's own cutter.
+  - A C clamp squeezes the socket: the body is slit along its length, and one M3 x 12 crosses the slit into an M3 insert used as a nut (the belt clamp's screw, insert and 4.8 mm pocket).
+    - The insert is pushed in from the -x face with no heat and sits on a 2.4 mm lip.
+    - Tightening pulls it harder onto the lip.
+  - PRINT IT IN PETG-GF ON THE 0.8 NOZZLE, standing on its motor end (2026-11-10). It is drawn the way that setup prints:
+    - Every corner made within a layer (the slit's, the ear's, the D bore's) is drawn at the measured 2.0 mm nozzle radius.
+    - Bores are drawn 0.3 mm a side over size, since holes print 0.3 small on this setup:
+      - the 1/8 in bushing drawn that way is tight but the bit runs through;
+      - the D bore at the pulley's 0.05 was too small.
+    - The thread socket's groove is drawn Ø8.6, so it prints at the screw's Ø8 crest.
+    - Its ridge is 0.6 deep with 45° flanks, as deep as fits the screw's groove (the pulley's is 0.45).
+    - If it prints tight, the slit lets it open; if loose, the clamp takes it up.
+  - The slit and the clamp ear are on the side away from the D's flat, so the key keeps its whole flat.
+  - The clamp sits over the joint between the shaft and the screw (y 5.3), so one M3 pinches both.
+  - Inside the block wall the ear and the cylinder are cut flat 9.28 below the axis, as deep as the wall's pilot hole allows: the deepest flat gives the lowest clamp, so the coupler turns clear in the wall's pilot hole. Past the wall it steps out on a 45° roof.
+  - The two jaws are the same width. The insert stands about 2.6 mm proud of its jaw and bears on the 2.4 mm lip by the slit.
+  - Hold the insert while you snug the M3 if it starts to turn.
+  - D bore fit: 0.15 mm a side over the shaft. It beat 0.30 in a side-by-side print (2026-11-10); the slit lets it open to go on.
+  - The pin drill jig is not needed for this.

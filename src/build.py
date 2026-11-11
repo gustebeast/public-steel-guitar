@@ -555,6 +555,32 @@ PARTS["saw_jig_cap"] = (
     "tools/saw_jig_cap.step",
     "TOOL — the saw jig's cap: a plunger down the clamp channel whose 45 deg notch seats on the rod's upper crests, with a rimmed pocket on top for the Quick-Grip pad. The clamp squeezes cap, rod, jig and table in one stack. PETG, printed as drawn (notch on the bed)")
 
+# LEADSCREW PIN DRILL JIG -- a SHOP TOOL (user, 2026-11-09): exported, never in the assembly.
+PARTS["pin_drill_jig"] = (
+    lambda: heal(__import__("src.pin_drill_jig", fromlist=["e"]).body()),
+    "tools/pin_drill_jig.step",
+    "TOOL — drill jig for the cross hole that pins a Tr8x2 leadscrew into the printed motor coupler: the saw jig's diamond tunnel and Quick-Grip cap (print a second saw_jig_cap), an end stop that puts the hole 6.0 from the screw's end, and a tower over the rod taking drop-in bushings (1/16 pilot, then 1/8 through for the belt clamp's M3 x 12), an exit hole under. PETG-GF, printed as drawn (table face on the bed)")
+PARTS["pin_drill_bushing_pilot"] = (
+    lambda: heal(__import__("src.pin_drill_jig", fromlist=["e"]).bushing("pilot")),
+    "tools/pin_drill_bushing_pilot.step",
+    "TOOL — the pin drill jig's 1/16 in pilot bushing: Ø10 tube, 28 of guide, a Ø14 flange on the tower's top. PETG-GF, printed flange down")
+PARTS["pin_drill_bushing_pin"] = (
+    lambda: heal(__import__("src.pin_drill_jig", fromlist=["e"]).bushing("pin")),
+    "tools/pin_drill_bushing_pin.step",
+    "TOOL — the pin drill jig's 1/8 in bushing: Ø10 tube, 28 of guide, a Ø14 flange on the tower's top. PETG-GF, printed flange down")
+
+PARTS["pin_drill_bushing_pilot_1"] = (
+    lambda: heal(dict(__import__("src.pin_drill_jig", fromlist=["e"]).pilot_trials())["pin_drill_bushing_pilot_1"]),
+    "tools/pin_drill_bushing_pilot_1.step",
+    "TOOL -- trial 1/16 in pilot bushing 1 of 3 (bore = bit + PILOT_TRY[0], 1 scallop(s) on the flange): keep the one that is tight but runs the bit through. PETG-GF, printed flange down")
+PARTS["pin_drill_bushing_pilot_2"] = (
+    lambda: heal(dict(__import__("src.pin_drill_jig", fromlist=["e"]).pilot_trials())["pin_drill_bushing_pilot_2"]),
+    "tools/pin_drill_bushing_pilot_2.step",
+    "TOOL -- trial 1/16 in pilot bushing 2 of 3 (bore = bit + PILOT_TRY[1], 2 scallop(s) on the flange): keep the one that is tight but runs the bit through. PETG-GF, printed flange down")
+PARTS["pin_drill_bushing_pilot_3"] = (
+    lambda: heal(dict(__import__("src.pin_drill_jig", fromlist=["e"]).pilot_trials())["pin_drill_bushing_pilot_3"]),
+    "tools/pin_drill_bushing_pilot_3.step",
+    "TOOL -- trial 1/16 in pilot bushing 3 of 3 (bore = bit + PILOT_TRY[2], 3 scallop(s) on the flange): keep the one that is tight but runs the bit through. PETG-GF, printed flange down")
 # NUT REAMING JIG -- a SHOP TOOL (user, 2026-10-27): exported, never in the assembly.
 PARTS["ream_jig"] = (
     lambda: heal(__import__("src.ream_jig", fromlist=["e"]).jig()),
@@ -2893,6 +2919,18 @@ def _color_for(name):
                 return cq.Color(*_COLORS[k])
     if base == "pedal_lever":
         return cq.Color(*_COLORS["knee_lever"])   # it IS the knee lever, posed
+    # the changer bench (src.changer_bench) keeps its own small table, mostly aliases into
+    # this one, so its 380 parts are not white
+    if base.startswith(("cb_", "ghost_")):
+        from . import changer_bench as _CB
+        _c = _CB.color_of(base, _COLORS)
+        if _c is not None:
+            return cq.Color(*_c)
+    if base.startswith("db_"):                   # ...and the direct-drive bench (src.direct_bench)
+        from . import direct_bench as _DB
+        _c = _DB.color_of(base, _COLORS)
+        if _c is not None:
+            return cq.Color(*_c)
     return cq.Color(*_DEFAULT_COLOR)
 
 
