@@ -951,7 +951,7 @@ MATERIAL = {
     "brg": "polished", "bend_brg": "polished", "bridge_bearings": "polished",
     "bend_axle_ra": "steel", "bend_axle_rb": "steel", "bend_axle_rc": "steel",
     "spring": "stainless", "plug": "petg-gf", "m3": "steel", "coupler": "petg-gf",
-    "cpl_m3": "steel", "housing": "petg-gf", "hb": "steel", "insert": "brass",
+    "cpl_m3": "steel", "cpl_insert": "brass", "housing": "petg-gf", "hb": "steel", "insert": "brass",
     "collar_a": "petg-gf", "collar_b": "petg-gf", "ca_m3": "steel",
 }
 
