@@ -176,7 +176,24 @@ features.**
   stitches all 15 pads, and GND closes on the stripped hand board and on the intent board.
 
 Lesson for fresh boards: stitch exceptions belong to the copper that made them needed, so
-they go wherever that copper goes. Still open: power routed as power (widths first, few
+they go wherever that copper goes.
+
+**Held copper on paste-window lands, every board (survey 2026-11-10, main 622e87e).** These
+are lands with F.Paste-only windows, which the router could not start a path from before
+e8f7d95, that also carry held copper or an exception. No board is edited: each one is held
+as it is until it is re-laid, and the re-layout tests whether (p) makes its copper
+unnecessary.
+
+| board | land | held copper | reason the generator gives | (p) should make it unnecessary? |
+|---|---|---|---|---|
+| output_panel | Q2.2 (TO-252 tab, +24V) | 8 vias, 2 tracks (+24V; 11 tracks / 9 vias on the net) | none specific | **yes** -- proved: +24V closes on the stripped board |
+| output_panel | U4.25 (hub belly) | 1 GND via + `stitch_exception` | held DN2 pair under the hub | **yes** -- goes with the held DN2 copper |
+| optical | U14-U18.25, U7.33 (QFN bellies) | 3 GND tracks each (AVSS pin 4, ADDR pins 15/16 into the EP) | TI: AVSS straight to the pad; "the F.Cu pour cannot enter" | **test** -- the router could not start in these EPs either; the short pin-to-EP join is still the design intent, so the question is only whether it can be laid by the router |
+| led_strip | U1-U3.21 (HTSSOP EP) | GND and +5V tracks at the land | -- | **test** |
+| motor_ctrl | U4.69 (QFN68 belly) | 2 GND tracks | -- | **test** |
+| lever_sensor | U3.29 (MCU belly) | 1 GND track, pin 1 VSS into the land | an escape-pocket fix for SDA | **test** |
+| lever_sensor | U4.17 (MA730 belly) | `stitch_exception` + a GND track to pin 8 | quality A14: a via would drink the paste on the pad that sets the magnet gap | **no** -- deliberate, keep |
+| foot_led_a/_b, fret_led_key/_mid | every VQFN-24 belly (13 parts) | 4 GND vias each | (thermal array) | **no** -- thermal design, not routing | Still open: power routed as power (widths first, few
 vias), and pours from intent.
 
 ### (c) A score fast enough to iterate -- router-alone, region-limited
