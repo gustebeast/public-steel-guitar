@@ -253,6 +253,30 @@
    "material": "petg-gf",
    "volume_mm3": 14901.6
   },
+  "pin_drill_bushing_pilot": {
+   "material": null,
+   "volume_mm3": 2334.2
+  },
+  "pin_drill_bushing_pilot_1": {
+   "material": null,
+   "volume_mm3": 2298.4
+  },
+  "pin_drill_bushing_pilot_2": {
+   "material": null,
+   "volume_mm3": 2271.1
+  },
+  "pin_drill_bushing_pilot_3": {
+   "material": null,
+   "volume_mm3": 2242.0
+  },
+  "pin_drill_bushing_pin": {
+   "material": null,
+   "volume_mm3": 2114.1
+  },
+  "pin_drill_jig": {
+   "material": null,
+   "volume_mm3": 44774.3
+  },
   "ream_jig": {
    "material": null,
    "volume_mm3": 11720.5
