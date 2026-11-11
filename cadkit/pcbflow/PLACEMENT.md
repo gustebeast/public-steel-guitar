@@ -416,6 +416,27 @@ Bugs it found in place_init, all fixed:
    whose rule is still broken after the solve is now tripled and re-solved, up to 3
    rounds. U7 and U13 needed x18.
 
+**Free-anchor cells (2026-11-11, lead request for the re-layout).** A `group` whose anchor
+is not fixed becomes one COMPOSITE part for every stage of place_init (`place()` wraps
+`_place()`):
+* Its pads are the anchor's plus each member's, numbered "M/num" and carried in the
+  anchor's frame. Its courtyard is the union of the members' (`crtyd_multi`). Its halo is
+  the anchor's own (`n_own`).
+* Rules that name a member are rewritten: a member pin target becomes "A.M/num", a member
+  in a list becomes A, and a member's own decap/near rule is dropped (the cell already
+  seats it).
+* The quadratic stage, the turn stage, the legaliser and the local pass all move the cell
+  as one rigid part. Members are expanded from the anchor's pose at the end.
+* A board with no free cells places byte-identically (output_panel checked).
+* Optical, with the buck cell (U13 + 10) and the PHY cell (U7 + 13) free (vI9):
+
+| | open | pairs | uncoupled | vias | length | floor |
+|---|---|---|---|---|---|---|
+| vI9 | 0 | 0 | 4.9 | 202 | 2342 | 2 (buck 7.3 mm from the PHY crystal; rule 10) |
+
+  The PHY cell came out identical to the hand cell. The buck cell turned 90 degrees into a
+  column beside the inlet, as one unit.
+
 **auto_floorplan(parts)** (place_intent, alongside auto_decaps; lead request). These are
 default noise `apart` rules derived from the netlist:
 * Switch nodes are found from an inductor on a small non-supply net shared with an IC pin.
