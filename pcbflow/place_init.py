@@ -74,6 +74,7 @@ class Grid:
             self.occ |= (np.hypot(X - c["xy"][0], Y - c["xy"][1]) <= r)
         for k in keepouts:
             self.occ |= pi._inside(k, pts).reshape(self.H, self.W)
+        self.occ_p = np.zeros_like(self.occ)        # placed courtyards alone, no halo
         self.X, self.Y = X, Y
 
     def ij(self, x, y):
@@ -294,19 +295,42 @@ def place(parts, notes, rules, keep=()):
     return pl, log, why
 
 
-def _stamp(G, m, ai, aj, i, j, force=False, grow=0.0):
-    k = int(round(grow / G.g))
-    if k:
-        m = np.pad(m, k)
-        m = binary_dilation(m, iterations=k)
-        ai, aj = ai + k, aj + k
+def _grow(m, ai, aj, grow, g=GRID):
+    k = int(round(grow / g))
+    if not k:
+        return m, ai, aj
+    return binary_dilation(np.pad(m, k), iterations=k), ai + k, aj + k
+
+
+def _put(arr, m, ai, aj, i, j):
     i0, j0 = i - ai, j - aj
     h, w = m.shape
     a0, b0 = max(0, i0), max(0, j0)
-    a1, b1 = min(G.H, i0 + h), min(G.W, j0 + w)
-    if a1 <= a0 or b1 <= b0:
-        return
-    G.occ[a0:a1, b0:b1] |= m[a0 - i0:a1 - i0, b0 - j0:b1 - j0]
+    a1, b1 = min(arr.shape[0], i0 + h), min(arr.shape[1], j0 + w)
+    if a1 > a0 and b1 > b0:
+        arr[a0:a1, b0:b1] |= m[a0 - i0:a1 - i0, b0 - j0:b1 - j0]
+
+
+def _stamp(G, m, ai, aj, i, j, force=False, grow=0.0):
+    """A placed part: its courtyard grown by its halo into G.occ (what later parts' plain
+    courtyards must miss), its plain courtyard into G.occ_p (what a later part's own halo
+    must miss)."""
+    _put(G.occ_p, m, ai, aj, i, j)
+    _put(G.occ, *_grow(m, ai, aj, grow, G.g), i, j)
+
+
+def _collide(sub, m, ai, aj):
+    """1.0 where a mask anchored at that cell meets an occupied cell (or leaves the window)."""
+    hit = fftconvolve(sub, m[::-1, ::-1].astype(np.float32), mode="full")
+    h, w = m.shape
+    # full-conv index (u, v) <-> mask top-left at (u - h + 1, v - w + 1) in sub
+    ii = np.arange(sub.shape[0])[:, None]
+    jj = np.arange(sub.shape[1])[None, :]
+    u = ii - ai + h - 1
+    v = jj - aj + w - 1
+    okr = (ii - ai >= 0) & (ii - ai + h <= sub.shape[0]) & (jj - aj >= 0) & (jj - aj + w <= sub.shape[1])
+    uu, vv = np.clip(u, 0, hit.shape[0] - 1), np.clip(v, 0, hit.shape[1] - 1)
+    return np.where(okr, hit[uu, vv], 1.0)
 
 
 def _drop(G, parts, ref, t, rots, pl, forbid=None):
@@ -322,20 +346,18 @@ def _drop(G, parts, ref, t, rots, pl, forbid=None):
             sub = G.occ[i0:i1, j0:j1]
             if forbid is not None:
                 sub = sub | forbid[i0:i1, j0:j1]
-            sub = sub.astype(np.float32)
-            # anchor at (i, j) collides iff any occupied cell under the mask
-            hit = fftconvolve(sub, m[::-1, ::-1].astype(np.float32), mode="full")
-            h, w = m.shape
-            # full-conv index (u, v) <-> mask top-left at (u - h + 1, v - w + 1) in sub
-            ii = np.arange(sub.shape[0])[:, None]
-            jj = np.arange(sub.shape[1])[None, :]
-            u = ii - ai + h - 1
-            v = jj - aj + w - 1
-            okr = (ii - ai >= 0) & (ii - ai + h <= sub.shape[0]) & (jj - aj >= 0) & (jj - aj + w <= sub.shape[1])
-            col = np.full(sub.shape, 1.0, np.float32)
-            uu, vv = np.clip(u, 0, hit.shape[0] - 1), np.clip(v, 0, hit.shape[1] - 1)
-            col = np.where(okr, hit[uu, vv], 1.0)
-            free = col < 0.5
+            # ⚠ A HALO HOLDS BOTH WAYS (output_panel, 2026-11-11). Placed biggest first,
+            # K1 (the relay, 0.25 mm halo) went in before U1, and U1 was dropped against
+            # K1's own small halo: K1.4 sat 1.5 mm off U1's courtyard, inside U1's 2.5 mm
+            # escape ring, where U1.49's GND stitch had to go -- the stitch then crossed
+            # SWDIO's exit and SWDIO could not route on an empty board. The gap between two
+            # parts is the larger of their halos whichever is placed first: the plain mask
+            # misses everyone's grown courtyard, and the mask grown by its own halo misses
+            # everyone's plain courtyard.
+            col = _collide(sub.astype(np.float32), m, ai, aj)
+            mg, gi, gj = _grow(m, ai, aj, halo(parts[ref]), G.g)
+            col2 = _collide(G.occ_p[i0:i1, j0:j1].astype(np.float32), mg, gi, gj)
+            free = (col < 0.5) & (col2 < 0.5)
             if not free.any():
                 continue
             fi, fj = np.nonzero(free)

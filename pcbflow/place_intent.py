@@ -437,6 +437,43 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
     return rules
 
 
+def auto_singles(parts, ground=("GND",), max_mm=5.0, skip=()):
+    """A `near` rule for every part with ONE signal net (test pads, a lone jumper or probe
+    point): at that net's driver pin -- an IC's pin on the net (most pads first), else the
+    pin of the part with most pads. Placement-independent, so a fresh board gets it too.
+
+    ⚠ WHY (output_panel intent board, 2026-11-11): TP1 (SWDIO's probe pad) was free, landed
+    12 mm from U1.48 on the net graph's average, and SWDIO stayed open through a round of
+    refinement that never got to it. A single-net part belongs at its pin; said once here,
+    place_init puts it there as a satellite."""
+    rules = []
+    for ref in sorted(parts):
+        if ref in skip:
+            continue
+        pads = parts[ref]["pads"]
+        nets = {q["net"] for q in pads if q["net"]} - set(ground)
+        if len(nets) != 1 or SUPPLY.search(next(iter(nets))) or "GND" in next(iter(nets)):
+            continue
+        # a test pad, or a two-pad part whose other end is ground (pull-down, filter cap,
+        # clamp); never a connector, whose place is the mechanical design's
+        if not (re.match(r"^TP\d", ref) or (len(pads) == 2 and re.match(r"^[RCD]\d", ref))):
+            continue
+        net = nets.pop()
+        cands = []
+        for o, p in parts.items():
+            if o == ref:
+                continue
+            for q in p["pads"]:
+                if q["net"] == net and q["num"]:
+                    cands.append((0 if re.match(r"^U\d", o) else 1, -len(p["pads"]), o, q["num"]))
+        if not cands:
+            continue
+        _, _, o, num = min(cands)
+        rules.append({"kind": "near", "ref": ref, "target": "%s.%s" % (o, num), "max_mm": max_mm, "hard": False,
+                      "why": "%s carries only %s: at its driver pin" % (ref, net), "src": "auto_singles (netlist)"})
+    return rules
+
+
 def read_values(net_path):
     """{ref: value} from a KiCad .net (the components' (value ...))."""
     txt = open(net_path, encoding="utf-8").read()
