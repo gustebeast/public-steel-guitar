@@ -8,8 +8,9 @@ post_route_refs) and <stem>.parts.json (place_geom.py; when it is missing the fl
 with place_geom --from-net, from the footprints alone -- no layout needed). The project's footprints come from
 PCBFLOW_FOOTPRINT_DIRS / PCBFLOW_PROJECT, as for layout.py.
 
-  1. intent    the rules JSON, plus place_intent's defaults -- auto_decaps, auto_singles,
-               auto_floorplan -- for any the file does not already carry (by their `src`);
+  1. intent    the rules JSON, plus place_intent's defaults -- auto_decaps and
+               auto_floorplan (auto_singles only with --auto-singles) -- for any the file
+               does not already carry (by their `src`);
                --no-auto takes the file as it is. Written to flow/intent.json.
                Every `current` rule sets its net's width (place_intent.widths, IPC-2221
                outer), never below the notes' own net_widths. Nets with no `current` rule
@@ -76,7 +77,7 @@ def _run(cmd, log, cwd=HERE):
     return p.returncode, out, time.time() - t
 
 
-def _intent(rules, parts, notes, net_path, auto):
+def _intent(rules, parts, notes, net_path, auto, singles=False):
     have = {r.get("src") for r in rules}
     added = []
     if auto:
@@ -87,7 +88,11 @@ def _intent(rules, parts, notes, net_path, auto):
                 c.pop("_now", None)
             rules = rules + new
             added.append("auto_decaps %d" % len(new))
-        if "auto_singles (netlist)" not in have:
+        # ⚠ auto_singles IS OPT-IN (lead ruling, 2026-11-12): two boards where the test pads'
+        # 8 mm `near` cost routing -- output_panel op12, 3 rules: a pair fault and 20.9 mm
+        # uncoupled against op14's 0 / 0.52. A test pad's `access` rule is what matters;
+        # where it sits along its net is a nice-to-have. --auto-singles turns it on.
+        if singles and "auto_singles (netlist)" not in have:
             new = pi.auto_singles(parts)
             rules = rules + new
             added.append("auto_singles %d" % len(new))
@@ -232,7 +237,7 @@ def _project_guard(stem):
         d_ = up
 
 
-def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, keep_widths=False):
+def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, keep_widths=False, singles=False):
     d = os.path.abspath(d)
     stem = _stem(d)
     _project_guard(stem)
@@ -264,7 +269,7 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
             notes.get("placements", {}).pop(r_, None)
 
     # 1. intent
-    rules, added = _intent(json.load(open(intent_path, encoding="utf-8")), parts, notes, stem + ".net", auto)
+    rules, added = _intent(json.load(open(intent_path, encoding="utf-8")), parts, notes, stem + ".net", auto, singles)
     # power is a width, from the current it carries (place_intent.widths): never narrower
     # than the notes already declare
     nw = dict(notes.get("net_widths", {}) or {})
@@ -439,9 +444,11 @@ def main(argv):
     ap.add_argument("--fold-post", action="store_true", help="place post_route_refs with the rest (see the doc)")
     ap.add_argument("--keep-widths", action="store_true",
                     help="report a stated net width under its power path's need instead of raising it")
+    ap.add_argument("--auto-singles", action="store_true",
+                    help="also add auto_singles (a test pad `near` its driver pin) -- off by default")
     a = ap.parse_args(argv)
     return flow(a.dir, os.path.abspath(a.intent), not a.no_auto, a.soft_forbid, a.skip_finish, a.fold_post,
-                a.keep_widths)
+                a.keep_widths, a.auto_singles)
 
 
 if __name__ == "__main__":

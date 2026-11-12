@@ -652,6 +652,15 @@ def _rip_one(board, stem, net, model, layers, layer_id, named, gap, tries, close
         board = pcbnew.LoadBoard(stem + ".kicad_pcb")
         return plan
 
+    # ⚠ THE DEADLINE HOLDS INSIDE A RIP TOO (motor_ctrl from footprints, f10, 2026-11-12):
+    # the budget was checked between tries, the maze inside one respected it, but the
+    # through-other-nets `search` it falls back to did not -- once past the deadline every
+    # join skipped the maze and went straight to an unbounded search. Twelve take-up / put-back
+    # rounds on CAN1_TX ran finish to 40186 s (11 h) for the same 1 unconnected. Past the
+    # deadline nothing new is searched: the rip is given up and the board put back.
+    if _time.time() > deadline:
+        print("close_last: %s -- out of time before the way through was looked for" % net)
+        return board, 0
     res = search(model, tries, WIDTH)
     if res is None:
         print("close_last: %s -- no path even through other nets' track" % net)
@@ -694,6 +703,10 @@ def _rip_one(board, stem, net, model, layers, layer_id, named, gap, tries, close
                 r2 = RS.maze3d(mb, layers, a[2], a[1], b[2], b[1], w=wb, step=step, reach=REACH)
                 if r2 is not None:
                     break
+            if r2 is None and _time.time() > deadline:
+                print("close_last: %s -- out of time joining it again round %s" % (B, net))
+                stuck, ok = B, False
+                break
             if r2 is None:
                 r2 = search(mb, [((a[1], a[2]), (b[1], b[2]), RS.MAZE_STEP),
                                  ((a[1], a[2]), (b[1], b[2]), 0.05)], wb)
