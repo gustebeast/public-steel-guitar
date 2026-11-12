@@ -96,11 +96,32 @@ ROD_PLATE = (-24.0, -20.0)                          # the rods' plate (and the s
 #   45 / 225 deg  two M3 x 12 SHCS from behind, through the collar's plate and the flange, into the
 #                 yoke: they hold the yoke ON (the string pulls it +X, off the flange) and clamp the
 #                 spring's collar, and a diagonal pair pulls on the axis.
-#   135 deg       THE GUIDE ROD, through the yoke, the flange and the collar: the nut itself is the
-#                 anti-rotation bearing, no arm. (135, not 315: the rod plate keeps 1.3 of web
-#                 between the rod and the ball's window.)
+#   135 deg       (was the guide rod's, through the nut; now empty -- see THE GUIDE ROD)
 NUT_PCD = 16.0
 HOLE_ANG = {"m3": (45.0, 225.0), "rod": 135.0, "web": (0.0, 180.0)}
+
+
+# THE GUIDE ROD (user, 2026-11-11/12: one held at one end is no reliable rotation lock; hold it at
+# BOTH ends). A 3/16 in 304 stainless rod (McMaster 89535K84, $7.45 a 6 ft length = 10 rods),
+# outside the nut at GUIDE_R, GUIDE_ANG (the one direction free on all ten strings in the space
+# scan; 30/210 sit on the plug's insert ears). One length for every string: its -X end in a blind
+# seat in a boss on the ANCHOR PLUG (the plug's neck length varies, the seat's depth takes it),
+# its +X end in the ROD PLATE. The NUT never touches it: the COLLAR (clamped to the nut by the
+# M3s) carries a TAB with a RADIAL SLOT -- a close fit across (the rotation lock), GUIDE_FLOAT free
+# along the radius, so the nut is never pushed off the screw's axis by a rod a little out of line.
+GUIDE_D = 25.4 * 3 / 16                             # 4.76
+GUIDE_R, GUIDE_ANG = 15.0, 300.0                    # off the screw axis; deg from +Y toward +Z
+GUIDE_ANG_1 = 300.0                                 # string 1: as the rest (270 met string 2's plug)
+                                                    # +Y edge (the cheek is there); 270 is free too
+
+
+def guide_ang(i: int) -> float:
+    return GUIDE_ANG_1 if i == 0 else GUIDE_ANG
+GUIDE_SEAT = GUIDE_D + 0.2                          # its two seats, a slip fit (it is trapped)
+GUIDE_SLOT = GUIDE_D + 0.2                          # the slot across, the rotation lock
+GUIDE_FLOAT = 1.0                                   # the slot's play along the radius, each way
+GUIDE_WALL = 3 * 0.8                                # round the slot and the seat: three beads
+TAB_L = 8.0                                         # the tab along x: the slot's bearing length
 
 
 def at_ang(a: float, r: float = NUT_PCD / 2):
@@ -129,8 +150,11 @@ WIN_Z = (-(KEY_DROP + KEY_D / 2 + 1.2), 3.2)        # ...and its reach under / o
 #   NUT END: the COLLAR -- a plate clamped under the two M3 heads on the flange's back, two webs at
 #            +-Y past the heads, and the seat on the far side of them, round the screw.
 #   WALL END: the ANCHOR PLUG -- a seat on the plate's +X face, bolted through the plate to the
-#            thrust HOUSING behind it (THE THRUST HOUSING). The plug carries the SLEEVE over the
-#            screw.
+#            thrust HOUSING behind it (THE THRUST HOUSING).
+#   NO SLEEVE (user, 2026-11-12): the plug and the collar never turn and the screw does, so a sleeve
+#   round it rubbed wherever a bent screw whipped. The spring cannot reach the screw anyway: it is
+#   always in tension (31 N before it stretches), so it stays straight post to post, Ø14.4 inside
+#   round a Ø8 screw. Both parts are just SCREW_CLR round the screw.
 SPRING_OD, SPRING_WIRE = 19.05, 2.31             # 0.75 / 0.091 in
 SPRING_ID = SPRING_OD - 2 * SPRING_WIRE             # 14.43: the seats' diameter
 SPRING_ACTIVE = 35                                  # working coils between the grips (whole turns)
@@ -161,7 +185,7 @@ TANG_BACK, TANG_HOOK = SPRING_WIRE / 2 + STOP_T + 1.2, 2.6   # the tang: through
 PLUG_GAP = 4.5                                      # the plug's flange off the plate: the hook's
                                                     # room, and with the flange the ears' 6.5 (an
                                                     # M4 insert's 5 and the bolt's tip past it)
-SLEEVE_OD, SLEEVE_ID = 11.0, 9.0                    # over the screw, part of the anchor plug
+SCREW_CLR = 10.0                                    # the plug's and collar's holes round the Ø8 screw
 # THE ANCHOR PLATE (user, 2026-11-09): every spring's pull, about 73 N each and ~730 N in all,
 # held ALL THE TIME. A printed wall fails under it (4.8 PETG-GF across 97 between the cheeks,
 # holed to ~30 of section: ~77 MPa, ~7 mm of sag, then creep). It is LASER-CUT 304 STAINLESS,
@@ -238,16 +262,11 @@ def spring_force(t: float, i: int) -> float:
     return SPRING_IT + SPRING_K * (span[1] - span[0] - 2 * SEAT_GRIP - SPRING_ACTIVE * SPRING_WIRE)
 
 
-# THE SLEEVE IS SPLIT 50/50 (user, 2026-11-09): half fixed on the anchor plug, half riding the
-# collar, meeting 1.0 apart at full travel. The bare screw between them is the travel either way;
-# this just keeps both 1-wall tubes stubby (no ~98 long one) and the gap mid-span.
-SLEEVE_HALF = (x_collar(1.0)[3][0] - 1.0 - x_plug()[2][1]) / 2
-SLEEVE_END = x_plug()[2][1] + SLEEVE_HALF            # the plug's half, from its post
 # the rod's -X end: 0.5 short of the stop flange's back at the slack end (the spring starts
 # there), so at full travel it is still 3.15 into the 3.5 flange
-ROD_END = x_collar(0.0)[2][0] + 0.5
-ROD_L = round(ROD_PLATE[1] - 0.3 - ROD_END, 1)     # ...and 0.3 inside the plate's +X face: a Ø3.5
-                                                    # ground rod, ~33 long (length still to source)
+ROD_END = ANCHOR[1] + 1.0                           # the rod's -X end: 1 off the anchor plate
+ROD_L = round(ROD_PLATE[1] - 0.3 - ROD_END, 1)     # ...and 0.3 inside the plate's +X face: ~169,
+                                                    # every string the same
 
 # ── motors and stations ─────────────────────────────────────────────────────────────────────
 M_HALF = D.MOTOR_SQ / 2                             # 21.15
@@ -458,7 +477,7 @@ def _yoke(i: int, t: float) -> cq.Workplane:
     out = out.cut(cyl_x(D.SCREW_OD + 0.8, yt - YK_ROOF - ft + 1, ft - 1, y=y, z=z))   # tip + ball
     out = out.cut(cyl_x(D.NUT_LIP_D + 0.4, D.NUT_LIP_L + 1.3, ft - 1, y=y, z=z))      # lip register
     ry, rz = rod_yz(i)
-    out = out.cut(cyl_x(D.GUIDE_ROD_D + 0.4, YK_H + 2, ft - 1, y=ry, z=rz))           # the rod
+    out = out.cut(cyl_x(GUIDE_D + 2.0, YK_H + 2, ft - 1, y=ry, z=rz))                 # rod: clear
     for a in HOLE_ANG["m3"]:                                                          # the M3s bite
         dy, dz = at_ang(a)
         out = out.cut(cyl_x(2.5, M3_L - COLLAR_T - D.NUT_FLANGE_T + 1.0, ft - 1, y=y + dy, z=z + dz))
@@ -475,8 +494,14 @@ def _yoke(i: int, t: float) -> cq.Workplane:
 
 
 def rod_yz(i: int):
-    dy, dz = at_ang(HOLE_ANG["rod"])
+    dy, dz = at_ang(guide_ang(i), GUIDE_R)
     return y_of(i) + dy, za(i) + dz
+
+
+def _radial_box(i: int, x0: float, x1: float, r0: float, r1: float, w: float) -> cq.Workplane:
+    """A box x0..x1, from radius r0 to r1 off string i's axis toward its guide rod, w wide."""
+    b = box_at(x1 - x0, w, r1 - r0, x=(x0 + x1) / 2, y=0, z=(r0 + r1) / 2)        # along +Z ...
+    return b.rotate((0, 0, 0), (1, 0, 0), guide_ang(i) - 90).translate((0, y_of(i), za(i)))
 
 
 def _collar(i: int, t: float) -> cq.Workplane:
@@ -490,14 +515,22 @@ def _collar(i: int, t: float) -> cq.Workplane:
     x0, x1 = spring_span(t, i)                                                      # the post:
     out = out.union(_post(i, x0, x1 - x0 - SEAT_GRIP, D.NUT_BOSS_D + 0.4))          # threaded
     out = out.cut(cyl_x(D.NUT_BOSS_D + 0.4, 60, s0 - 1, y=y, z=z))                  # boss, screw
-    out = out.union(_tube_x(13.0, SLEEVE_ID, s0, s0 + 3.0, y, z))                   # post's floor,
-    out = out.union(_tube_x(SLEEVE_OD, SLEEVE_ID, s0 - SLEEVE_HALF, s0 + 1.0, y, z))  # sleeve half
+    out = out.union(_tube_x(13.0, SCREW_CLR, s0, s0 + 3.0, y, z))                   # post's floor
     out = out.cut(_tang_hole(i, f0))
     for a in HOLE_ANG["m3"]:                         # the M3s, and the key's way to them (before
         dy, dz = at_ang(a)                           # the spring goes on)
         out = out.cut(cyl_x(3.4, 30, f0 - 1, y=y + dy, z=z + dz))
-    ry, rz = rod_yz(i)
-    return out.cut(cyl_x(D.GUIDE_ROD_D + 0.4, 30, f0 - 1, y=ry, z=rz))             # the rod
+    # the TAB: from the plate out past the rod, TAB_L along x from the plate's +X face back,
+    # and its RADIAL SLOT
+    w = GUIDE_SLOT + 2 * GUIDE_WALL
+    r1 = GUIDE_R + GUIDE_D / 2 + GUIDE_FLOAT + GUIDE_WALL
+    out = out.union(_radial_box(i, p1 - TAB_L, p1, D.NUT_FLANGE_L / 2 - 2.0, r1, w))
+    lo, hi = GUIDE_R - GUIDE_FLOAT, GUIDE_R + GUIDE_FLOAT
+    out = out.cut(_radial_box(i, p1 - TAB_L - 1, p1 + 1, lo, hi, GUIDE_SLOT))
+    for r in (lo, hi):                                                              # round ends
+        dy, dz = at_ang(guide_ang(i), r)
+        out = out.cut(cyl_x(GUIDE_SLOT, TAB_L + 2, p1 - TAB_L - 1, y=y + dy, z=z + dz))
+    return out
 
 
 def _m3s(i: int, t: float) -> cq.Workplane:
@@ -604,15 +637,18 @@ def _anchor_plug(i: int) -> cq.Workplane:
     out = cyl_x(SPRING_ID, f0 - a0, a0, y=y, z=z)                                   # neck
     out = out.union(cyl_x(STOP_D, f1 - f0, f0, y=y, z=z))                           # stop flange
     out = out.union(_ears(i, a0, f1, 4.5))                                          # the inserts'
-    out = out.union(cyl_x(SLEEVE_OD, SLEEVE_END - s1 + 1.0, s1 - 1.0, y=y, z=z))  # into the post:
-    # the post stops GRIP_PITCH/2 short of s1, and a sleeve from s1 was a second solid the view
-    # dropped
-    out = out.cut(cyl_x(SLEEVE_ID, SLEEVE_END - a0 + 2, a0 - 1, y=y, z=z))
+    out = out.cut(cyl_x(SCREW_CLR, s1 - a0 + 2, a0 - 1, y=y, z=z))                 # the screw's way
     for a in EAR_ANG:
         dy, dz = at_ang(a, EAR_R)
         out = out.cut(cyl_x(6.1, 5.0, a0 - 1, y=y + dy, z=z + dz).translate((1, 0, 0)))  # insert
         out = out.cut(cyl_x(4.4, f1 - a0 + 2, a0 - 1, y=y + dy, z=z + dz))              # tip's way
-    out = out.union(_post(i, spring_span(0.0, i)[0], 0.0, SLEEVE_ID))               # threaded post
+    out = out.union(_post(i, spring_span(0.0, i)[0], 0.0, SCREW_CLR))               # threaded post
+    # the guide rod's -X SEAT: a boss at GUIDE_R on the plate, its web back to the neck, and a
+    # blind hole from the rod's end (ROD_END, the same x on every string) out through its +X face
+    dy, dz = at_ang(guide_ang(i), GUIDE_R)
+    out = out.union(cyl_x(GUIDE_SEAT + 2 * GUIDE_WALL, f1 - a0, a0, y=y + dy, z=z + dz))
+    out = out.union(_radial_box(i, a0, f1, SPRING_ID / 2 - 1.0, GUIDE_R, GUIDE_SEAT + 2 * GUIDE_WALL))
+    out = out.cut(cyl_x(GUIDE_SEAT, f1 - ROD_END + 1, ROD_END - 0.2, y=y + dy, z=z + dz))
     return out.cut(_tang_hole(i, f0))
 
 
@@ -841,13 +877,19 @@ def _plate_yz(x0, x1, z0, z1) -> cq.Workplane:
 
 def _rod_plate() -> cq.Workplane:
     x0, x1 = ROD_PLATE
-    w = _plate_yz(x0, x1, CHEEK_Z[0], -20.5)
+    # down past the bottom row's guide rods (their seats are blind in it), not just to the cheeks
+    z0 = min([CHEEK_Z[0]] + [rod_yz(i)[1] - GUIDE_SEAT / 2 - GUIDE_WALL for i in range(N)])
+    w = _plate_yz(x0, x1, z0, -20.5)
     for i in range(N):
         lo, hi = WIN_Z                               # the window the ball passes through
         w = w.cut(yaw(box_at(10, 2 * WIN_HY, hi - lo, x=(x0 + x1) / 2, y=y_of(i),
                              z=za(i) + (lo + hi) / 2), i))
+    for i in range(N):                               # each guide rod's seat: a boss (string 1's
+        ry, rz = rod_yz(i)                           # stands past the plate's +Y edge), blind
+        w = w.union(yaw(cyl_x(GUIDE_SEAT + 2 * GUIDE_WALL, x1 - x0, x0, y=ry, z=rz), i))
+    for i in range(N):
         ry, rz = rod_yz(i)
-        w = w.cut(yaw(cyl_x(D.GUIDE_ROD_D, 10, x0 - 3, y=ry, z=rz), i))
+        w = w.cut(yaw(cyl_x(GUIDE_SEAT, x1 - 0.3 - (x0 - 3), x0 - 3, y=ry, z=rz), i))
     return w
 
 
@@ -955,7 +997,7 @@ def string_parts(i: int, t: float) -> list:
         ("db_m3", _m3s(i, t)),
         ("db_spring", _spring(i, t)),
         ("db_plug", _anchor_plug(i)),
-        ("db_rod", cyl_x(D.GUIDE_ROD_D, ROD_L, ROD_END, y=rod_yz(i)[0], z=rod_yz(i)[1])),
+        ("db_rod", cyl_x(GUIDE_D, ROD_L, ROD_END, y=rod_yz(i)[0], z=rod_yz(i)[1])),
         ("db_screw", _screw(i, xr + SCREW_X0, SCREW_TIP)),
         ("db_coupler", _coupler(i)),
         ("db_cpl_m3", _coupler_clamp(i, "m3")),
@@ -1078,7 +1120,7 @@ def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
 # What each part is made of, for the viewer's shine (cadkit.web.finishes.made_of): printed
 # frames in the instrument's PETG-GF, the bought parts as they are.
 MATERIAL = {
-    "yoke": "petg-gf", "collar": "petg-gf", "block": "petg-gf", "mplate": "petg-gf",
+    "yoke": "petg-gf", "collar": "pctg", "block": "petg-gf", "mplate": "petg-gf",
     "cheeks": "petg-gf", "rod_plate": "petg-gf", "anchor": "stainless", "anchor_m4": "steel",
     "comb": "petg-gf", "body": "petg-gf",
     "nut": "brass", "ball": "brass", "screw": "steel", "rod": "steel", "string": "polished",
@@ -1144,7 +1186,7 @@ def _base(nm: str):
 
 _SAME = {frozenset(p) for p in (
     ("db_screw", "db_nut"), ("db_screw", "db_brg"), ("db_screw", "db_coupler"),
-    ("db_nut", "db_yoke"), ("db_nut", "db_collar"), ("db_yoke", "db_rod"), ("db_nut", "db_rod"),
+    ("db_nut", "db_yoke"), ("db_nut", "db_collar"),
     ("db_m3", "db_collar"), ("db_m3", "db_nut"), ("db_m3", "db_yoke"), ("db_spring", "db_plug"),
     ("db_yoke", "db_ball"), ("db_string", "db_ball"), ("db_string", "db_yoke"),
     ("db_collar", "db_spring"), ("db_brg", "db_block"), ("db_coupler", "db_motor"),

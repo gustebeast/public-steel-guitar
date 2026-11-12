@@ -1867,3 +1867,12 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
 - **Assembly:** no adjusting and no measuring. The printed neck sets the spring's length.
 - **Restringing (slack end):** about 7 N more than at open pitch. At full raise travel, about 7.5 N less.
 - **Production:** order springs wound to a force-at-length drawing (±5%) instead of cut stock.
+
+## Direct drive: guide rod held at both ends, no screw sleeves (2026-11-12)
+
+- **Guide rod:** McMaster 89535K84, 3/16" 304 stainless. One 6 ft length ($7.45) cuts 10 rods at **168.7 mm**, all the same length. Saw it and deburr the ends.
+  - It sits 15 mm off the screw axis at 300°, the same on every string. String 1's +X seat is an ear past the rod plate's +Y edge.
+  - Its −X end goes in a blind seat in a boss on the anchor plug, the +X end in a blind seat in the rod plate. It is trapped between the two seats, with no press fit.
+- **Nothing on the nut touches the rod.** The collar (now **PCTG**, unfilled, so glass fibres don't scour the stainless) has a tab with a radial slot. The slot is a close fit across to stop rotation, with ±1 mm free along the radius, so a rod a little out of line never pushes the nut off the screw axis.
+- **Lubrication:** PTFE dry-film spray on the rod at assembly. No grease or oil.
+- **Sleeves removed.** The plug and collar never turn; the screw turns through Ø10 clearance holes in both. The spring is always in tension, so it stays straight and clear of the screw.
