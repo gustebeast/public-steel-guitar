@@ -448,9 +448,41 @@ def _place(parts, notes, rules, keep=()):
     order = sorted((r for r in free if r not in sat), key=lambda r: -area[r])
     placed_sat = set()
     miss = []
+    # ⚠ A TIGHT LOOP'S PATH IS RESERVED BEFORE THE DECAPS TAKE IT (motor_ctrl from
+    # footprints, 2026-11-11): satellites seated by radius, so U4's decaps (1.5 mm) went
+    # first and C8 took the spot on the line from U4.5/6 to where Y1 then seated -- OSC_IN /
+    # OSC_OUT did not route. A satellite sharing a `tight` net with its anchor seats FIRST,
+    # and the strip (CHANNEL_W) from each anchor pin to its pin on that net is stamped into
+    # the grid, so no later drop -- seat or local pass -- lands on it. (Charging crossings in
+    # the local pass was tried first: a satellite is placed by its seat, not by that cost,
+    # so C8 never moved, and the members' charge cascaded into 8 broken rules.)
+    tight_nets = {nm for r in rules if r["kind"] == "tight" for nm in r["nets"]}
+    pnets = {r_: {q["net"] for q in parts[r_]["pads"] if q["net"]} for r_ in parts}
+
+    def strips(ref, c):
+        """The strips (CHANNEL_W) from each of ref's pins on a tight net shared with c to c's
+        nearest pin on it, from just outside one pad to just short of the other."""
+        P = pi.Placed(parts, pl)
+        out_ = []
+        for nm in sorted(tight_nets & pnets[ref] & pnets[c]):
+            A_ = [P.pad(ref, q["num"]) for q in parts[ref]["pads"] if q["net"] == nm]
+            B_ = [P.pad(c, q["num"]) for q in parts[c]["pads"] if q["net"] == nm]
+            for a_ in A_:
+                b_ = min(B_, key=lambda b: float(np.hypot(*(b - a_))))
+                v_ = b_ - a_
+                L_ = float(np.hypot(*v_))
+                if L_ < 1.3:
+                    continue
+                u_ = v_ / L_
+                nn = np.array([-u_[1], u_[0]]) * CHANNEL_W / 2.0
+                a2, b2 = a_ + u_ * 0.6, b_ - u_ * 0.6
+                out_.append((nm, np.array([a2 + nn, b2 + nn, b2 - nn, a2 - nn])))
+        return out_
+
     def seat(ref):
         """Seat ref's satellites at their pins; then each satellite's own (recursive)."""
-        for r in sorted(decaps.get(ref, ()), key=lambda r: r.get("max_mm", 9)):
+        for r in sorted(decaps.get(ref, ()), key=lambda r: (0 if tight_nets & pnets.get(r.get("cap") or r.get("ref"), set())
+                                                                & pnets[ref] else 1, r.get("max_mm", 9))):
             c = r.get("cap") or r.get("ref")
             if c in placed_sat or c in fixed or c not in idx:
                 continue
@@ -531,6 +563,76 @@ def _place(parts, notes, rules, keep=()):
             if c in placed_sat and c != anc:
                 sats.setdefault(anc, []).append((c, r))
     moved, gain = _local(G, parts, pl, [r for r in free if r not in miss], rots, inreg, wnet, rules, notes_c, sats)
+    # ---- 5b. tight paths: reserved once the turns are settled, intruders re-dropped
+    # ⚠ A TIGHT LOOP'S PATH IS RESERVED (motor_ctrl from footprints, 2026-11-11): Y1 seated
+    # at U4.5 and U4's decap C8 sat on the line from U4.5/6 to Y1 -- OSC_IN/OSC_OUT did not
+    # route. After the local pass each anchor -> tight-net satellite strip is stamped into
+    # the grid and every other part crossing it is lifted and dropped again at the nearest
+    # free spot. (Two earlier forms were reverted: charging crossings in the local pass --
+    # a satellite is placed by its seat, so C8 never moved and the members' charge cascaded
+    # into 8 broken rules; stamping the strip at seat time -- it froze U4's first turn, the
+    # pass could not re-seat Y1, and U4 went back to 0.)
+    tpairs = []
+    for anc, rs in decaps.items():
+        for r in rs:
+            c = r.get("cap") or r.get("ref")
+            if anc in pl and c in pl and tight_nets & pnets[anc] & pnets[c]:
+                tpairs.append((anc, c))
+    XY_ = np.stack([G.X.ravel(), G.Y.ravel()], axis=1)
+    for anc in sorted({a_ for a_, _ in tpairs}):
+        tight_sats = {c for a_, c in tpairs if a_ == anc}
+        sts = [(nm, st, c) for c in sorted(tight_sats) for nm, st in strips(anc, c)]
+        if not sts:
+            continue
+        P = pi.Placed(parts, pl)
+
+        def crosses(o, P=P):
+            cy = np.asarray(P.crtyd(o), float)
+            return len(cy) and any(pi._inside(st, cy).any() or pi._inside(cy, st).any() for _, st, _ in sts)
+        # the anchor's other satellites are re-seated TOGETHER round the reserved paths (one at
+        # a time could not repack a crowded edge: C8 left U4.1's corner for the far side of U4,
+        # into the U4 -> U7 channel -- BOOT0, LINK_TX, SWDIO, SENSE_24V went open, f7); other
+        # parts on a path are dropped again at the nearest free spot
+        lift = [(c, r) for r in sorted(decaps.get(anc, ()), key=lambda r: r.get("max_mm", 9))
+                for c in [r.get("cap") or r.get("ref")]
+                if c in pl and c in idx and c not in fixed and c not in tight_sats]
+        lifted = {c for c, _ in lift}
+        others = [o for o in pl if o in parts and o != anc and o not in tight_sats and o not in lifted
+                  and o in idx and o not in fixed and crosses(o)]
+        if not others and not any(crosses(c) for c in lifted):
+            for nm, st, c in sts:
+                G.occ += pi._inside(st, XY_).reshape(G.H, G.W).astype(G.occ.dtype)
+            continue
+        olds = {o: list(pl[o]) for o in list(lifted) + others}
+        for o in olds:
+            mo, ao, bo = mask(parts[o], pl[o][2])
+            _unstamp(G, mo, ao, bo, *G.ij(*pl[o][:2]), grow=halo(parts[o]))
+            del pl[o]
+        for nm, st, c in sts:
+            G.occ += pi._inside(st, XY_).reshape(G.H, G.W).astype(G.occ.dtype)
+        for c, r in lift:
+            if c in pl:
+                continue                                # a cap with two rules: seated once
+            P = pi.Placed(parts, pl)
+            t_ = _seat(r, P, pl, anc)
+            if not (_drop_sat(G, parts, c, t_, rots(c, olds[c][2]), pl, inreg.get(c), anc, r, near_mm=r.get("max_mm"))
+                    or _drop_sat(G, parts, c, t_, rots(c, olds[c][2]), pl, inreg.get(c), anc, r)):
+                pl[c] = olds[c]
+                mo, ao, bo = mask(parts[c], pl[c][2])
+                _stamp(G, mo, ao, bo, *G.ij(*pl[c][:2]), force=True, grow=halo(parts[c]))
+                log.append("tight paths of %s: %s found no seat clear of them -- left" % (anc, c))
+        for o in others:
+            if not _drop(G, parts, o, np.asarray(olds[o][:2]), rots(o, olds[o][2]), pl, inreg.get(o)):
+                pl[o] = olds[o]
+                mo, ao, bo = mask(parts[o], pl[o][2])
+                _stamp(G, mo, ao, bo, *G.ij(*pl[o][:2]), force=True, grow=halo(parts[o]))
+        mv_ = {o: float(np.hypot(pl[o][0] - olds[o][0], pl[o][1] - olds[o][1])) for o in olds}
+        for o, d_ in mv_.items():
+            if d_ > 0.05:
+                why[o] = why.get(o, "") + "; re-seated round %s's tight paths" % anc
+        log.append("tight paths of %s (%s) reserved; re-seated %s" % (
+            anc, " ".join(sorted({nm for nm, _, _ in sts})),
+            " ".join("%s %.1f" % (o, d_) for o, d_ in sorted(mv_.items()) if d_ > 0.05) or "nothing moved"))
     # ---- 6. forbid zones: repair, else say so
     unmet = _forbid_repair(G, parts, pl, rules, notes_c, inreg, target, rots, rot, sats, set(idx) - set(miss), why, log)
     for x, det, w in unmet:
@@ -547,6 +649,7 @@ def _place(parts, notes, rules, keep=()):
     return pl, log, why
 
 
+CHANNEL_W = 0.6     # mm: the strip a tight net's MST edge keeps clear
 POUR_W = 25.0       # mm of wirelength a pad inside another net's pour corridor is worth
 RULE_W = 10.0       # mm of wirelength a millimetre of broken soft rule is worth (local pass)
 SOFT_KINDS = ("decap", "near", "between", "thermal", "apart", "chain", "tight")
