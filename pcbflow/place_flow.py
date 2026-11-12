@@ -169,15 +169,7 @@ def _pours(notes, parts, pl, rules, base_zones):
     ground pour on the same layer. Returns the POUR lines for the report."""
     P = pi.Placed(parts, pl)
     notes_r = dict(notes, _regions={r["name"]: r["poly"] for r in rules if r["kind"] == "region"})
-    paths = (notes.get("quality", {}) or {}).get("power_paths", ()) or ()
-
-    def amps_of(r):
-        """The current the pour carries: the declared path between its own pins, else the
-        net's largest (a 3.8 A J10 path sized the 2.9 A Q2-J7 pour at 3.8 mm)."""
-        al = set(r.get("along", ()))
-        hit = [float(p_["amps"]) for p_ in paths if p_["net"] == r["net"] and p_["from"] in al
-               and al & set(p_["to"] if isinstance(p_["to"], (list, tuple)) else [p_["to"]])]
-        return max(hit) if hit else max([float(p_["amps"]) for p_ in paths if p_["net"] == r["net"]] or [0.0]) or None
+    amps_of = lambda r: pi.pour_amps(r, notes)
     # a notes file that is itself a flow's output already carries last run's pours: a
     # dict zone on a pour rule's own net and layer is replaced, not stacked on (two +24V
     # pours on B.Cu, motor_ctrl v4: DRC zones_intersect)
