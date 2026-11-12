@@ -45,7 +45,9 @@ MECHANICAL (from the CAD -- a fresh board is mostly these)
                                    is the design, not a placement choice
 
 ELECTRICAL / FLOORPLAN
-  region    name poly              a floorplan band; in_region refs region keeps parts in it
+  region    name poly [exclusive]  a floorplan band; in_region refs region keeps parts in it;
+                                   exclusive: closed to every other part but its members'
+                                   satellites (near / decap on a member)
   apart     a b min_mm             two groups' courtyards at least min_mm apart (noise)
   thermal   ref others apart_mm    a heat source off the sensors and off each other
   decap     cap pin max_mm [also]  the capacitor's land on the pin's net within max_mm of it (and of every pin
@@ -57,6 +59,14 @@ ELECTRICAL / FLOORPLAN
   array     refs axis pitch [tol]  one rule for a repeat: same off-axis, equal pitch along
   current   net amps [dT]          the current a net carries: widths() turns it into the track
                                    width (IPC-2221), so power is drawn as power
+  pour      net layer region|along [width_mm] [priority]
+                                   a current no track can carry: a copper zone on `layer`, over
+                                   the named region or round the pins `along` ("Q2.2", "J7.1":
+                                   the hull of width_mm circles at each, default twice the
+                                   IPC width of the net's largest power path, >= 2 mm).
+                                   place_flow writes it into notes["zones"]; the report counts
+                                   other nets' pads inside on that layer (room: a pour goes
+                                   only where its layer has it -- +3V3 on In2, output_panel)
   (auto_floorplan(parts) proposes the noise `apart` rules: switch nodes and USB / relay
    edges off references, ADC / amplifier inputs, photodiodes and crystals)
   tight     nets max_mm [weight]   a loop the datasheet wants small (a buck's SW node, its FB,
@@ -69,6 +79,7 @@ IC's supply and ground, at its nearest supply pin -- the rule a fresh board gets
 from __future__ import annotations
 
 import ast
+import collections
 import json
 import math
 import os
@@ -360,6 +371,13 @@ def check(rule, P, notes, H=None):
                 out.append((rule["max_mm"] - hp, nm, "%.1f mm across, wants %.1f" % (hp, rule["max_mm"])))
     elif k == "current":
         pass                                # a width, not a placement: see widths()
+    elif k == "pour":
+        poly = pour_poly(rule, P, notes)
+        if poly is None:
+            out.append((-99.0, rule["net"], "pour: no region %r and no pins along" % rule.get("region")))
+        else:
+            n = len(pour_foreign(rule, P, poly))
+            out.append((-float(n), rule["net"], "pour on %s: %d other net pad(s) inside" % (rule["layer"], n)))
     elif k == "array":
         refs = _refs(rule["refs"], parts)
         ax = 0 if rule["axis"] in ("x", "X") else 1
@@ -422,7 +440,7 @@ def _farads(v):
 
 
 def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-6, ground=("GND",), more_mm=2.0,
-                cells=()):
+                cells=(), descriptions=None):
     """Rules for every capacitor across a SUPPLY net (SUPPLY: '+...', VCC, VDD, VBUS, VREF, ...)
     and ground: a small one (< bulk_f) gets `decap` at the nearest IC pin on that net, a bulk
     one `near` that part. The sources considered are ICs, ferrites and inductors (a buck's
@@ -438,10 +456,39 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
     max_mm + more_mm at weight 0.5: a rule refinement can trade, never one that packs caps
     round a fine-pitch part at the cost of its escapes."""
     P = Placed(parts, notes.get("placements", {}))
+    placed = bool(notes.get("placements"))
     rules = []
+    pinpair = []                 # caps across two pins of one IC: kept out of the supply passes
     ics = [r for r in parts if re.match(r"^(U|FB|L)\d", r)]
+    # a cap the intent already places (near / decap / a cell member) is the author's
+    ruled = {r.get("cap") or r.get("ref") for r in cells if r.get("kind") in ("near", "decap", "fixed", "pin")}
+    ruled |= {m for r in cells if r.get("kind") == "group" for m in r["members"]}
     for c in sorted(r for r in parts if re.match(r"^C\d", r)):
+        if c in ruled:
+            continue
         nets = {q["net"] for q in parts[c]["pads"]}
+        if len(nets) == 2 and not (nets & set(ground)):
+            # ⚠ A CAP ACROSS TWO PINS OF ONE IC BELONGS AT THEM (output_panel C4, 2026-11-11):
+            # a bootstrap cap (BOOT to SW), a VCC-to-VIN bypass. Not across a supply and
+            # ground, so it got no rule, landed 7.8 mm off U5.4 on the net graph, and BOOT
+            # went open the moment a pour took some of the corridor. At the pin of the net
+            # with fewer pads (BOOT, not SW).
+            on = {}
+            for u in ics:
+                if not re.match(r"^U\d", u):
+                    continue
+                for q in parts[u]["pads"]:
+                    if q["net"] in nets and q["num"]:
+                        on.setdefault(u, {}).setdefault(q["net"], q["num"])
+            both = sorted(u for u, m in on.items() if len(m) == 2)
+            if both:
+                u = both[0]
+                npads = {n_: sum(1 for p_ in parts.values() for q in p_["pads"] if q["net"] == n_) for n_ in nets}
+                n_ = min(sorted(nets), key=lambda x: npads[x])
+                pinpair.append({"kind": "decap", "cap": c, "pin": "%s.%s" % (u, on[u][n_]), "max_mm": max_mm,
+                              "hard": False, "weight": 1.0, "src": "auto_decaps (netlist)",
+                              "why": "%s across %s and %s, both pins of %s: at them" % ((c,) + tuple(sorted(nets)) + (u,))})
+            continue
         if not (nets & set(ground)) or len(nets) != 2:
             continue
         sup = (nets - set(ground)).pop()
@@ -458,7 +505,40 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
                     cands.append((d, "%s.%s" % (u, q["num"])))
         if not cands:
             continue
-        d, pin = min(cands)
+        # ⚠ THE SCHEMATIC SAYS WHOSE IT IS (motor_ctrl trial, 2026-11-11): "U8 switch
+        # decoupling", "U7 VCC bypass". Unplaced, the deal gave C35/C37/C38 to the MCU and
+        # U8-U10 went without. A description naming an IC on this rail decides it.
+        said = [u for u in re.findall(r"(?<![A-Za-z0-9])(U[0-9]+)(?![0-9])", (descriptions or {}).get(c, ""))
+                if any(t[1].split(".")[0] == u for t in cands)]
+        if not said:
+            # ...or a role the IC's own description carries: "MCU supply decoupling" and
+            # U4 "RISC-V MCU" (all-caps words of three letters or more: MCU, PHY, ADC, LDO)
+            words = set(re.findall(r"(?<![A-Za-z])([A-Z]{3,})(?![A-Za-z])", (descriptions or {}).get(c, "")))
+            said = sorted({t[1].split(".")[0] for t in cands
+                           if words & set(re.findall(r"(?<![A-Za-z])([A-Z]{3,})(?![A-Za-z])",
+                                                     (descriptions or {}).get(t[1].split(".")[0], "")))})
+            said = said if len(said) == 1 else []
+        if said:
+            cands = [t for t in cands if t[1].split(".")[0] == said[0]]
+        if not placed:
+            # ⚠ A FRESH BOARD HAS NO DISTANCES (motor_ctrl trial, 2026-11-11): every pin read
+            # 0 mm and the "nearest" was the first in sort order -- all eleven +3V3 caps to
+            # L1.2, the buck inductor. Unplaced, caps are dealt out: an IC (U) before a
+            # source (L, FB), the one holding fewest caps on this rail first.
+            # caps per supply pin: a QFN-68 with eight VDD pins takes eight before a SOT-23
+            # takes its second
+            load = collections.Counter(r_["pin"].split(".")[0] for r_ in rules if r_.get("_rail") == sup)
+            npin = collections.Counter(t[1].split(".")[0] for t in cands)
+            f_ = _farads((values or {}).get(c))
+            if f_ is not None and f_ >= bulk_f:
+                # bulk: at the rail's source (inductor, ferrite), else its biggest load
+                d, pin = min(cands, key=lambda t: (0 if not t[1].startswith("U") else 1,
+                                                   -npin[t[1].split(".")[0]], t[1]))
+            else:
+                d, pin = min(cands, key=lambda t: (0 if t[1].startswith("U") else 1,
+                                                   load[t[1].split(".")[0]] / float(npin[t[1].split(".")[0]]), t[1]))
+        else:
+            d, pin = min(cands)
         f = _farads((values or {}).get(c))
         if f is not None and f >= bulk_f:
             rules.append({"kind": "near", "ref": c, "target": pin.split(".")[0], "max_mm": bulk_mm, "hard": False,
@@ -466,7 +546,7 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
         else:
             rules.append({"kind": "decap", "cap": c, "pin": pin, "max_mm": max_mm, "hard": False, "weight": 1.0,
                           "why": "%s across %s and ground: at its supply pin" % (c, sup), "src": "auto_decaps (netlist)",
-                          "_f": f if f is not None else 0.0})
+                          "_f": f if f is not None else 0.0, "_rail": sup})
     # ⚠ EVERY IC ON A RAIL GETS ONE (optical fold, 2026-11-11). Nearest-pin assignment let
     # U6's eight +3V3D pins take every +3V3D cap, and the LDO U8 whose OUTPUT is +3V3D got
     # none: quality A2 failed U8.2 (nearest cap 5.4 mm). And on a fresh board, with no
@@ -506,7 +586,7 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
                 return (min(o_) if o_ else 1e9, -r.get("_f", 0.0), r["cap"])
             give = min(mine, key=gap)
             g_ = gap(give)[0]
-            if g_ < 1e9:
+            if 1e-6 < g_ < 1e9:
                 a_ = xy[give["pin"].split(".", 1)[1]]
                 keep_ = min((x for x in mine if x is not give),
                             key=lambda x: math.hypot(a_[0] - xy[x["pin"].split(".", 1)[1]][0],
@@ -516,6 +596,8 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
                 keep_["why"] += " (also serves %s, %.1f mm along the package: its cap went to %s)" % (
                     give["pin"], g_, u)
             by[d].remove(give)
+            give.pop("also", None)                     # it serves its new IC, nothing of the old
+            give.pop("_tight", None)
             num = next(q["num"] for q in parts[u]["pads"] if q["net"] == net and q["num"])
             give["pin"] = "%s.%s" % (u, num)
             give["why"] = "%s across %s and ground: %s's own (it had none; given by %s)" % (give["cap"], net, u, d)
@@ -531,7 +613,8 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
     for r in rules:
         r.pop("_f", None)
         r.pop("_tight", None)
-    return rules
+        r.pop("_rail", None)
+    return rules + pinpair
 
 
 def auto_singles(parts, ground=("GND",), max_mm=8.0, skip=(), weight=0.5, two_pad=False):
@@ -693,6 +776,44 @@ def floor_breaches(stem, rules, placements=None, parts_path=None):
             if s < 0 and r["kind"] != "region"]
 
 
+def pour_poly(rule, P, notes, amps=None):
+    """A `pour` rule's outline in board mm (the notes' frame, as zones take it): the named
+    region's polygon, or the convex hull of width_mm circles round each pin `along`."""
+    if rule.get("region"):
+        return (notes.get("_regions") or {}).get(rule["region"])
+    pins = [P.pad(*x.split(".", 1)) for x in rule.get("along", ())]
+    if len(pins) < 1:
+        return None
+    w = rule.get("width_mm")
+    if w is None:
+        w = max(2.0, 1.5 * width_for(amps)) if amps else 2.0
+    r = float(w) / 2.0
+    pts = np.array([(float(p[0]) + r * math.cos(a), float(p[1]) + r * math.sin(a))
+                    for p in pins for a in np.linspace(0, 2 * math.pi, 16, endpoint=False)])
+    from scipy.spatial import ConvexHull
+    h = ConvexHull(pts)
+    return [[round(float(x), 3), round(float(y), 3)] for x, y in pts[h.vertices]]
+
+
+def pour_foreign(rule, P, poly):
+    """Other nets' pads inside a pour's outline on its layer: ["U4.3", ...]."""
+    from matplotlib.path import Path as _Path
+    path = _Path(np.asarray(poly, float))
+    side = "B" if rule["layer"].startswith("B.") else "F"
+    inner = rule["layer"].startswith("In")
+    out = []
+    for ref, p in P.parts.items():
+        if ref not in P.pl:
+            continue
+        for q in p["pads"]:
+            if q["net"] == rule["net"] or not q["num"]:
+                continue
+            on = q.get("tht") or (not inner and p.get("side", "F") == side)
+            if on and path.contains_point(tuple(P.pad(ref, q["num"]))):
+                out.append("%s.%s" % (ref, q["num"]))
+    return out
+
+
 def width_for(amps, dT=10.0, oz=1.0, inner=False, min_mm=0.2):
     """IPC-2221 track width (mm) for a current: I = k dT^0.44 A^0.725, A in mil^2, k 0.048
     outer / 0.024 inner, 1 oz = 1.378 mil. Rounded up to 0.05 mm, never under min_mm."""
@@ -716,6 +837,18 @@ def widths(rules, inner=False, **kw):
     for r in rules:
         if r["kind"] == "current":
             out[r["net"]] = width_for(float(r["amps"]), r.get("dT", 10.0), inner=inner, **kw)
+    return out
+
+
+def read_descriptions(net_path):
+    """{ref: description} from a KiCad .net (SKiDL writes each part's description there:
+    "U7 VCC bypass", "MCU supply decoupling")."""
+    txt = open(net_path, encoding="utf-8").read()
+    out = {}
+    for b in re.split(r"\(comp\s", txt)[1:]:
+        m, d = re.search(r'\(ref "?([^")\s]+)', b), re.search(r'\(description "([^"]*)"', b)
+        if m and d:
+            out[m.group(1)] = d.group(1)
     return out
 
 

@@ -394,6 +394,24 @@ def _place(parts, notes, rules, keep=()):
             out = ~pi._inside(regions[r["region"]], np.stack([G.X.ravel(), G.Y.ravel()], axis=1)).reshape(G.H, G.W)
             for ref in pi._refs(r["refs"], parts):
                 inreg[ref] = out
+    # ⚠ AN EXCLUSIVE REGION KEEPS OTHERS OUT (motor_ctrl trial, 2026-11-11): in_region holds
+    # its members in, but nothing held the rest out -- the Pi band filled with parts that
+    # had no business there and J4, the USB-C the band exists for, had "no room". A region
+    # with exclusive: true is closed to every free part that is neither a member nor a
+    # satellite (near / decap) of one: J4's ESD clamps and CC resistors still sit by it.
+    XY = np.stack([G.X.ravel(), G.Y.ravel()], axis=1)
+    for r in rules:
+        if r["kind"] != "region" or not r.get("exclusive"):
+            continue
+        members = {x for q in rules if q["kind"] == "in_region" and q["region"] == r["name"]
+                   for x in pi._refs(q["refs"], parts)}
+        sats = {q.get("cap") or q.get("ref") for q in rules if q["kind"] in ("near", "decap")
+                and ((q.get("target") or q.get("pin") or "").split(".")[0] in members)}
+        inside = pi._inside(regions[r["name"]], XY).reshape(G.H, G.W)
+        for ref in parts:
+            if ref in members or ref in sats or ref in fixed:
+                continue
+            inreg[ref] = inside if ref not in inreg else (inreg[ref] | inside)
     for ref in fixed:
         m, ai, aj = mask(parts[ref], pl[ref][2])
         _stamp(G, m, ai, aj, *G.ij(*pl[ref][:2]), force=True, grow=halo(parts[ref]))
