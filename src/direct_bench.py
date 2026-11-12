@@ -563,11 +563,13 @@ def _collar(i: int, t: float) -> cq.Workplane:
         dy, dz = at_ang(a)                           # the spring goes on)
         out = out.cut(cyl_x(3.4, 30, f0 - 1, y=y + dy, z=z + dz))
     # the TAB: from the plate out past the rod, TAB_L along x from the plate's +X face back,
-    # and its RADIAL SLOT
+    # and its RADIAL SLOT. Its outer end is ROUND, concentric with the slot's (user, 2026-11-12:
+    # the square corners came close to the next string's spring): GUIDE_WALL all round the slot
     w = GUIDE_SLOT + 2 * GUIDE_WALL
-    r1 = GUIDE_R + GUIDE_D / 2 + GUIDE_FLOAT + GUIDE_WALL
-    out = out.union(_radial_box(i, p1 - TAB_L, p1, D.NUT_FLANGE_L / 2 - 2.0, r1, w))
     lo, hi = GUIDE_R - GUIDE_FLOAT, GUIDE_R + GUIDE_FLOAT
+    out = out.union(_radial_box(i, p1 - TAB_L, p1, D.NUT_FLANGE_L / 2 - 2.0, hi, w))
+    dy, dz = at_ang(guide_ang(i), hi)
+    out = out.union(cyl_x(w, TAB_L, p1 - TAB_L, y=y + dy, z=z + dz))
     out = out.cut(_radial_box(i, p1 - TAB_L - 1, p1 + 1, lo, hi, GUIDE_SLOT))
     for r in (lo, hi):                                                              # round ends
         dy, dz = at_ang(guide_ang(i), r)
