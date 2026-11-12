@@ -1151,6 +1151,40 @@
     }
     return at((lo + hi) / 2);
   }
+  // THE POINT OF `e` NEAREST `t`, for every entity that has a surface or edge to measure to
+  // (a line or a cylinder runs on without end, as its axis always has); null for the rest
+  function nearestOn(e, t) {
+    const out = (c, v, r) => v.length() < 1e-9 ? null : c.clone().add(v.normalize().multiplyScalar(r));
+    switch (e.kind) {
+      case 'point': return e.p.clone();
+      case 'circle': return nearestOnArc(e, p => p.distanceTo(t));
+      case 'sphere': return out(e.c, t.clone().sub(e.c), e.r) || e.pick.clone();
+      case 'line': return onLine(e.a, e.b.clone().sub(e.a).normalize(), t);
+      case 'cyl': { const f = onLine(e.p, e.d, t); return out(f, t.clone().sub(f), e.r) || e.pick.clone(); }
+      case 'torus': {
+        const flat = x => x.clone().sub(e.p).sub(e.d.clone().multiplyScalar(x.clone().sub(e.p).dot(e.d)));
+        const w = flat(t).length() > 1e-9 ? flat(t) : flat(e.pick);
+        const ring = e.p.clone().add(w.normalize().multiplyScalar(e.R));
+        return out(ring, t.clone().sub(ring), e.r) || e.pick.clone();
+      }
+    }
+    return null;
+  }
+  // the point of a sphere, a cylinder lying along the plane, or a torus, that reaches furthest
+  // toward the plane: [that point, the gap to the plane, negative when it crosses it]
+  function reachTo(e, pl) {
+    const centre = e.kind === 'sphere' ? e.c : e.kind === 'cyl' ? onLine(e.p, e.d, e.pick) : e.p;
+    const s0 = centre.clone().sub(pl.p).dot(pl.n), u = pl.n.clone().multiplyScalar(s0 < 0 ? 1 : -1);
+    let sp = centre.clone().add(u.clone().multiplyScalar(e.r));
+    if (e.kind === 'torus') {
+      const flat = x => x.clone().sub(e.d.clone().multiplyScalar(x.dot(e.d)));
+      let w = flat(u);
+      if (w.length() < 1e-6) w = flat(e.pick.clone().sub(e.p));       // axis square to the plane
+      sp.add(w.normalize().multiplyScalar(e.R));
+    }
+    const s1 = sp.clone().sub(pl.p).dot(pl.n);
+    return [sp, s0 < 0 ? -s1 : s1];
+  }
   // the dimension between two entities: {big, lines[], a, b} with a-b the dimension line
   function between(ea, eb) {
     let A = refOf(ea), B = refOf(eb), flip = false;
@@ -1159,43 +1193,45 @@
     const out = { lines: [] };
     const para = (u, v) => u.clone().cross(v).length() < 1e-5;
     const arcA = (flip ? eb : ea).kind === 'circle' ? (flip ? eb : ea) : null;
-    if (A.t === 'P' && B.t === 'P') {
-      // A CIRCLE OR SPHERE MEASURES FROM ITS NEAREST POINT, NOT ITS CENTRE (user, 2026-11-10): the
-      // gap is what anyone measuring to a hole or a boss wants. Each side's nearest point to the
-      // other is found in turn; for a circle against a point that settles on the first pass, and
-      // two circles settle in a few.
-      const round = e => e.kind === 'circle' || e.kind === 'sphere';
-      const nearOn = (e, R, t) => e.kind === 'circle' ? nearestOnArc(e, p => p.distanceTo(t))
-        : e.kind === 'sphere' && t.distanceTo(e.c) > 1e-9
-          ? e.c.clone().add(t.clone().sub(e.c).normalize().multiplyScalar(e.r)) : R.p;
-      let pa = A.p, pb = B.p;
-      if (round(ea) || round(eb)) {
-        for (let i = 0; i < 24; i++) {
-          const nb = nearOn(eb, B, pa), na = nearOn(ea, A, nb);
-          const done = nb.distanceTo(pb) < 1e-7 && na.distanceTo(pa) < 1e-7;
-          pa = na; pb = nb;
-          if (done) break;
-        }
+    // A ROUND THING MEASURES FROM ITS NEAREST POINT, NEVER ITS CENTRE OR AXIS (user, 2026-11-10
+    // for circles, 2026-11-12 for surfaces): the gap is what anyone measuring to a hole, a
+    // boss, a bearing or a shaft wants.
+    const ROUND = ['circle', 'sphere', 'cyl', 'torus'];
+    const round = ROUND.includes(ea.kind) || ROUND.includes(eb.kind);
+    const straight = e => e.kind === 'line' || e.kind === 'cyl';
+    const skew = straight(ea) && straight(eb) && !para(A.d, B.d);       // that is an angle
+    const pl = ea.kind === 'plane' ? ea : eb.kind === 'plane' ? eb : null;
+    const solid = pl && [ea, eb].find(e => e.kind === 'sphere' || e.kind === 'torus'
+      || (e.kind === 'cyl' && Math.abs(e.d.dot(pl.n)) < 1e-5));
+    if (solid) {
+      const [sp, gap] = reachTo(solid, pl);
+      out.big = `${f3(Math.abs(gap))} mm`; out.a = sp;
+      out.b = sp.clone().sub(pl.n.clone().multiplyScalar(sp.clone().sub(pl.p).dot(pl.n)));
+      out.lines.push(gap >= 0 ? `nearest point of the ${NAMES[solid.kind]} to the plane, square to it`
+        : `the ${NAMES[solid.kind]} crosses the plane: it reaches this far past it`);
+    } else if (round && !skew && nearestOn(ea, ea.pick) && nearestOn(eb, eb.pick)) {
+      // each side's nearest point to the other in turn, until neither moves
+      let pa = nearestOn(ea, eb.pick), pb = nearestOn(eb, pa);
+      for (let i = 0; i < 200; i++) {
+        const na = nearestOn(ea, pb), nb = nearestOn(eb, na);
+        const done = na.distanceTo(pa) < 1e-9 && nb.distanceTo(pb) < 1e-9;
+        pa = na; pb = nb;
+        if (done) break;
       }
       const d = pb.clone().sub(pa);
       out.big = `${f3(d.length())} mm`; out.a = pa; out.b = pb;
+      out.lines.push(`nearest points of the ${NAMES[ea.kind]} and the ${NAMES[eb.kind]}`);
       out.lines.push(`ΔX ${f3(Math.abs(d.x))}  ΔY ${f3(Math.abs(d.y))}  ΔZ ${f3(Math.abs(d.z))}`);
-      if (round(ea) || round(eb)) {
-        const edge = e => e.kind === 'circle' ? 'nearest edge of the circle'
-          : e.kind === 'sphere' ? 'nearest point of the sphere' : (refOf0(e).what || 'point');
-        out.lines.push(`from ${edge(ea)} to ${edge(eb)}`);
-      } else if (A.what || B.what) out.lines.push(`from ${A.what || 'point'} to ${B.what || 'point'}`);
+    } else if (A.t === 'P' && B.t === 'P') {
+      const d = B.p.clone().sub(A.p);
+      out.big = `${f3(d.length())} mm`; out.a = A.p; out.b = B.p;
+      out.lines.push(`ΔX ${f3(Math.abs(d.x))}  ΔY ${f3(Math.abs(d.y))}  ΔZ ${f3(Math.abs(d.z))}`);
+      if (A.what || B.what) out.lines.push(`from ${A.what || 'point'} to ${B.what || 'point'}`);
     } else if (A.t === 'P' && B.t === 'L') {
       const foot = B.p.clone().add(B.d.clone().multiplyScalar(A.p.clone().sub(B.p).dot(B.d)));
       const d = foot.distanceTo(A.p);
       out.big = `${f3(d)} mm`; out.a = A.p; out.b = foot;
       out.lines.push(`${A.what || 'point'} to ${B.what || 'line'}, square to it`);
-      if (B.r) out.lines.push(`to its surface ${f3(Math.abs(d - B.r))}`);
-      if (arcA) {
-        const dist = p => p.distanceTo(onLine(B.p, B.d, p)), near = nearestOnArc(arcA, dist);
-        out.lines[0] = `nearest edge of the circle to ${B.what || 'line'}, square to it`;
-        out.big = `${f3(dist(near))} mm`; out.a = near; out.b = onLine(B.p, B.d, near);
-      }
     } else if (A.t === 'P' && B.t === 'PL') {
       const s = A.p.clone().sub(B.p).dot(B.n);
       out.big = `${f3(Math.abs(s))} mm`; out.a = A.p; out.b = A.p.clone().sub(B.n.clone().multiplyScalar(s));
@@ -1205,15 +1241,13 @@
         out.lines[0] = 'nearest edge of the circle to the plane, square to it';
         out.big = `${f3(dist(near))} mm`; out.a = near;
         out.b = near.clone().sub(B.n.clone().multiplyScalar(near.clone().sub(B.p).dot(B.n)));
-      } else if (A.r) out.lines.push(`edge of it to the plane ${f3(Math.abs(Math.abs(s) - A.r))} (if it stands square)`);
+      }
     } else if (A.t === 'L' && B.t === 'L') {
       if (para(A.d, B.d)) {
         const foot = onLine(B.p, B.d, A.q);
         const d = foot.distanceTo(A.q);
         out.big = `${f3(d)} mm`; out.a = A.q; out.b = foot;
         out.lines.push(`parallel ${A.what === 'axis' || B.what === 'axis' ? 'axes' : 'lines'}`);
-        if (A.r && B.r) out.lines.push(`wall between them ${f3(d - A.r - B.r)}`);
-        else if (A.r || B.r) out.lines.push(`line to the surface ${f3(Math.abs(d - (A.r || B.r)))}`);
       } else {
         const n = A.d.clone().cross(B.d).normalize();
         const d = Math.abs(B.p.clone().sub(A.p).dot(n));
@@ -1229,7 +1263,6 @@
         const d = A.p.clone().sub(B.p).dot(B.n);
         out.big = `${f3(Math.abs(d))} mm`; out.a = A.q; out.b = A.q.clone().sub(B.n.clone().multiplyScalar(d));
         out.lines.push(`${A.what || 'line'} to the plane it runs along`);
-        if (A.r) out.lines.push(`surface to the plane ${f3(Math.abs(Math.abs(d) - A.r))}`);
       } else {
         out.big = deg(Math.asin(Math.min(1, Math.abs(s))));
         out.lines.push(`${A.what || 'line'} to the plane` + (Math.abs(Math.abs(s) - 1) < 1e-6 ? ' (square to it)' : ''));
