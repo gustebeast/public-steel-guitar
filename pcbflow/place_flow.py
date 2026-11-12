@@ -4,7 +4,8 @@
 
 <dir> holds ONE board: <stem>.net, <stem>.board.json (the notes -- outline, cutouts, pairs,
 layers; any placements in it are kept only for parts nothing else places, i.e. the
-post_route_refs) and <stem>.parts.json (place_geom.py). The project's footprints come from
+post_route_refs) and <stem>.parts.json (place_geom.py; when it is missing the flow makes it
+with place_geom --from-net, from the footprints alone -- no layout needed). The project's footprints come from
 PCBFLOW_FOOTPRINT_DIRS / PCBFLOW_PROJECT, as for layout.py.
 
   1. intent    the rules JSON, plus place_intent's defaults -- auto_decaps, auto_singles,
@@ -177,6 +178,11 @@ def _pours(notes, parts, pl, rules, base_zones):
         hit = [float(p_["amps"]) for p_ in paths if p_["net"] == r["net"] and p_["from"] in al
                and al & set(p_["to"] if isinstance(p_["to"], (list, tuple)) else [p_["to"]])]
         return max(hit) if hit else max([float(p_["amps"]) for p_ in paths if p_["net"] == r["net"]] or [0.0]) or None
+    # a notes file that is itself a flow's output already carries last run's pours: a
+    # dict zone on a pour rule's own net and layer is replaced, not stacked on (two +24V
+    # pours on B.Cu, motor_ctrl v4: DRC zones_intersect)
+    mine = {(r["net"], r["layer"]) for r in rules if r["kind"] == "pour"}
+    base_zones = [z for z in base_zones if not (isinstance(z, dict) and (z.get("net"), z.get("layer")) in mine)]
     zones, out = list(base_zones), []
     for r in rules:
         if r["kind"] != "pour":
@@ -186,7 +192,16 @@ def _pours(notes, parts, pl, rules, base_zones):
             out.append("%s on %s: NO OUTLINE (region %r unknown, no pins along) -- not poured"
                        % (r["net"], r["layer"], r.get("region")))
             continue
-        zones.append({"net": r["net"], "layer": r["layer"], "poly": poly, "priority": int(r.get("priority", 1))})
+        # ⚠ TWO POURS OF DIFFERENT NETS ON ONE LAYER NEED DIFFERENT PRIORITIES (motor_ctrl,
+        # 2026-11-11): +5V_RAW (L2-F2) and +5V (F2-J5) both on F.Cu at priority 1 met at F2:
+        # DRC zones_intersect, and the fill gave neither a clean edge. A later pour on a layer
+        # that already holds one goes a step above it; KiCad fills the higher first and keeps
+        # clearance, which is what two rails meeting at a fuse want.
+        pr = int(r.get("priority", 1))
+        taken = [z["priority"] for z in zones[len(base_zones):] if z["layer"] == r["layer"] and z["net"] != r["net"]]
+        if "priority" not in r and pr in taken:
+            pr = max(taken) + 1
+        zones.append({"net": r["net"], "layer": r["layer"], "poly": poly, "priority": pr})
         f = pi.pour_foreign(r, P, poly)
         out.append("%s on %s %s: %d corner(s), %s" % (
             r["net"], r["layer"], ("region " + r["region"]) if r.get("region") else "along " + "-".join(r["along"]),
@@ -239,13 +254,19 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
         shutil.copy(stem + ".board.json", os.path.join(fd, "input.board.json"))
     notes = json.load(open(os.path.join(fd, "input.board.json"), encoding="utf-8"))
     parts_path = stem + ".parts.json"
+    if not os.path.exists(parts_path):
+        # a fresh board has no layout to read geometry from: every netlist part's pads and
+        # courtyard come from its footprint (place_geom --from-net; identical to a layout dump)
+        rc, out, T["geom"] = _run([KICAD_PY, os.path.join(HERE, "place_geom.py"), stem, "pads", "--from-net"], log)
+        if rc or not os.path.exists(parts_path):
+            raise SystemExit("place_flow: place_geom --from-net failed: " + out[-2000:])
     parts = json.load(open(parts_path, encoding="utf-8"))["parts"]
     if fold:
         post = list(notes.get("post_route_refs", ()))
         miss = [r_ for r_ in post if r_ not in parts]
         if miss:
             raise SystemExit("place_flow: --fold-post but parts.json has no geometry for %s -- re-run place_geom "
-                             "on the full netlist" % " ".join(miss))
+                             "--from-net (every netlist part)" % " ".join(miss))
         notes["post_route_refs"], notes["post_route_nets"] = [], []
         for r_ in post:
             notes.get("placements", {}).pop(r_, None)
@@ -265,6 +286,9 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     ip = os.path.join(fd, "intent.json")
     json.dump(rules, open(ip, "w"), indent=1)
     say = lambda s: (print("place_flow: " + s), log.write("## " + s + "\n"), log.flush())
+    floor = pi.unregioned_sensitive(parts, rules)
+    for f_ in floor:
+        say("WARN " + f_)
     say("intent: %d rules%s" % (len(rules), (" (+ " + ", ".join(added) + ")") if added else ""))
     if widened:
         say("net widths from `current`: " + ", ".join(widened))
@@ -325,7 +349,7 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
              if re.search(r"refused|overlap|no room|stitch:|could only", line)][:12]
     if rc != 0:
         say("layout REFUSED the placement -- the flow stops at the gates")
-        _report(fd, base, rules, init_log, cells_log, gates, None, None, None, why, T, refused=out[-1500:],
+        _report(fd, base, rules, init_log, cells_log, gates, None, None, None, why, T, refused=out[-1500:], floor=floor,
                 room=room, width=wlines)
         return 2
 
@@ -364,11 +388,13 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
                                if str(r.get("status", "")).upper() == "FAIL"][:20]}
         except (OSError, ValueError):
             qual = {"error": out[-600:]}
-    _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T, room=room, width=wlines, pours=plines)
+    _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T, room=room, width=wlines, pours=plines,
+            floor=floor)
     return 0
 
 
-def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T, refused=None, room=(), width=(), pours=()):
+def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T, refused=None, room=(), width=(), pours=(),
+            floor=()):
     forbid = [l_ for l_ in init_log + cells_log if "FORBID" in l_]
     prov = collections.Counter(_klass(w) for w in why.values())
     S = {k: (score or {}).get(k) for k in ("open", "pairs", "islands", "uncoupled", "vias", "length_mm", "floor",
@@ -393,6 +419,7 @@ def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, 
     L += ["NO ROOM: " + ("; ".join(room) if room else "none")]
     L += ["WIDTH " + w_ for w_ in width]
     L += ["POUR " + p_ for p_ in pours]
+    L += ["WARN " + f_ for f_ in floor]
     if fin:
         L += ["", "finish: %s" % (fin.get("error") or "%d unconnected%s, %d violation(s)%s" % (
             fin["unconnected"], (" (" + " ".join(fin.get("unconnected_nets", ())) + ")") if fin["unconnected"] else "",

@@ -222,6 +222,13 @@ def _place(parts, notes, rules, keep=()):
             a = r.get("at", 0.0) - mid
             pl[ref] = [ux * s + along[0] * a, uy * s + along[1] * a, rot]
             why[ref] = "rule %d panel %s [%s]" % (i_r, r["edge"], r.get("src", ""))
+            # the copper, not the body, decides how far out it may go (gap 6): a pad's far side
+            # stays edge_clear inside the outline -- the body is pulled in by the shortfall
+            sl = [x for x in pi.check(r, pi.Placed(parts, pl), notes) if x[2].startswith("pad ")]
+            if sl and sl[0][0] < 0:
+                pl[ref] = [pl[ref][0] + ux * sl[0][0], pl[ref][1] + uy * sl[0][0], rot]
+                log.append("panel %s pulled in %.2f mm: %s" % (ref, -sl[0][0], sl[0][2]))
+                why[ref] += " -- pulled in %.2f for pad-to-edge copper clearance" % -sl[0][0]
     # a rigid cell follows its anchor (the anchor fixed above; a free-anchor cell -- moved
     # whole by the legaliser -- is not built yet: say so rather than scatter the cell)
     for i_r, r in enumerate(rules):
@@ -311,6 +318,16 @@ def _place(parts, notes, rules, keep=()):
             rs = r["refs"]
             for a_, b_ in zip(rs, rs[1:]):
                 spring(a_, np.zeros(2), b_, np.zeros(2), 2.0)
+        elif r["kind"] == "between" and r.get("ref") in idx:
+            # equal springs to both ends: the optimum is the midpoint, on the line
+            for t in (r["a"], r["b"]):
+                if "." in t:
+                    tr, num = t.split(".", 1)
+                    k = [q["num"] for q in parts[tr]["pads"]].index(num)
+                    ot = _pad_off(parts[tr], pl[tr][2] if tr in pl else rot0(tr))[k]
+                else:
+                    tr, ot = t, np.zeros(2)
+                spring(r["ref"], np.zeros(2), tr, ot, 2.0 * float(r.get("weight", 1.0)))
         elif r["kind"] == "near" and r.get("ref") in idx and len(parts[r["ref"]]["pads"]) > IC_PADS:
             # an IC near a part (optical's PHY near the socket): a spring here, not a
             # satellite drop -- see the satellite note below
@@ -531,7 +548,7 @@ def _place(parts, notes, rules, keep=()):
 
 
 RULE_W = 10.0       # mm of wirelength a millimetre of broken soft rule is worth (local pass)
-SOFT_KINDS = ("decap", "near", "thermal", "apart", "chain", "tight")
+SOFT_KINDS = ("decap", "near", "between", "thermal", "apart", "chain", "tight")
 
 
 def _pin_at(P, r):
@@ -598,6 +615,8 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
         for f in ("others", "refs", "a", "b"):
             if isinstance(r.get(f), list):
                 names |= set(r[f])
+            elif f in ("a", "b") and isinstance(r.get(f), str):
+                names.add(r[f].split(".")[0])           # between: a pad or a part
         for nm in r.get("nets") or ():                 # tight: every part on those nets
             names |= members.get(nm, set())
         for n in names:

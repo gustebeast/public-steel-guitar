@@ -1,6 +1,17 @@
 """place_geom.py: each footprint's LOCAL geometry, for placing without pcbnew (PLACEMENT.md).
 
     <KiCad python> place_geom.py <stem>        reads <stem>.kicad_pcb, writes <stem>.parts.json
+    <KiCad python> place_geom.py <stem> [pads|courtyard] --from-net
+                                               reads <stem>.net and the footprint libraries:
+                                               no laid-out board needed (a FRESH board)
+
+⚠ A FRESH BOARD HAS NO LAID-OUT COPY (motor_ctrl trial, 2026-11-11). Reading geometry off
+a layout meant laying the board out first -- with placements it does not have -- and the
+copy's rotations then rode along in parts.json's `at` into place_init as the default turn
+of every part without a `rot` rule: the hand board's decisions, leaking into a placement
+meant to be made without them. --from-net loads each component's footprint from the
+libraries layout.py uses (PCBFLOW_FOOTPRINT_DIRS), gives its pads the netlist's nets, and
+dumps it at the origin, rot 0, front side: geometry and nothing else.
 
 Placement tools (place_intent, place_init, place_refine) run in plain Python and need to
 know, for a part at (x, y, rot), where each of its pads and its courtyard land. That is a
@@ -37,8 +48,60 @@ def _rot(x, y, deg):
     return x * c - y * s, x * s + y * c
 
 
-def dump(stem, anchor="pads"):
-    board = pcbnew.LoadBoard(stem + ".kicad_pcb")
+def _net_board(stem):
+    """A BOARD holding every component of <stem>.net at the origin, rot 0, front side,
+    its pads on the netlist's nets -- built from the footprint libraries alone."""
+    import re
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import layout                                       # FP_DIRS, _load_footprint, rings
+    txt = open(stem + ".net", encoding="utf-8").read()
+    notes = {}
+    if os.path.exists(stem + ".board.json"):
+        notes = json.load(open(stem + ".board.json", encoding="utf-8"))
+    comps = {}
+    for b in re.split(r"\(comp\s", txt)[1:]:
+        m, f = re.search(r'\(ref "?([^")\s]+)', b), re.search(r'\(footprint "([^"]+)"', b)
+        if m and f:
+            comps[m.group(1)] = f.group(1)
+    nodes = {}                                          # (ref, pin) -> net
+    nets_txt = txt[txt.find("(nets"):] if "(nets" in txt else ""
+    for b in re.split(r"\(net\s", nets_txt)[1:]:
+        nm = re.search(r'\(name "([^"]*)"', b)
+        if not nm:
+            continue
+        for r_, p_ in re.findall(r'\(node\s*\(ref "?([^")\s]+)"?\)\s*\(pin "?([^")\s]+)"?\)', b):
+            nodes[(r_, p_)] = nm.group(1)
+    # a one-pin net (KiCad's unconnected-pin nets, "U7_NC_7") carries nothing: the laid-out
+    # board leaves those pads net-less, so the two paths give the same parts.json
+    count = {}
+    for n in nodes.values():
+        count[n] = count.get(n, 0) + 1
+    nodes = {k: n for k, n in nodes.items() if count[n] > 1}
+    board = pcbnew.BOARD()
+    board.SetCopperLayerCount(int(notes.get("layers", 2)))
+    netinfo = {}
+    for n in sorted(set(nodes.values())):
+        ni = pcbnew.NETINFO_ITEM(board, n)
+        board.Add(ni)
+        netinfo[n] = ni
+    for ref, spec in sorted(comps.items()):
+        fp = layout._load_footprint(spec)
+        fp.SetReference(ref)
+        try:
+            layout._grow_thin_rings(fp, int(notes.get("layers", 2)), notes)
+        except Exception:                               # noqa: BLE001 -- geometry still stands
+            pass
+        board.Add(fp)
+        fp.SetPosition(pcbnew.VECTOR2I(pcbnew.FromMM(SHEET[0]), pcbnew.FromMM(SHEET[1])))
+        for q in fp.Pads():
+            n = nodes.get((ref, q.GetNumber()))
+            if n is not None:
+                q.SetNet(netinfo[n])
+    return board
+
+
+def dump(stem, anchor="pads", from_net=False):
+    board = _net_board(stem) if from_net else pcbnew.LoadBoard(stem + ".kicad_pcb")
     parts, worst = {}, 0.0
     for fp in board.GetFootprints():
         ref = fp.GetReference()
@@ -100,4 +163,5 @@ def dump(stem, anchor="pads"):
 
 
 if __name__ == "__main__":
-    dump(os.path.abspath(sys.argv[1]), *(sys.argv[2:3] or []))
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    dump(os.path.abspath(args[0]), *(args[1:2] or []), from_net="--from-net" in sys.argv)
