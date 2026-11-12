@@ -142,7 +142,10 @@ KEY_D = D.STRING_NUT_D + 0.8                        # 4.8: the ball's way in
 KEY_DROP = 5.0                                      # its centre under the axis: the slit's length
 SLIT_W = 2.2                                        # string 10's 1.78 and room
 WIN_HY = KEY_D / 2 + 1.4                            # 3.8: the plate window's half-width in Y
-WIN_Z = (-(KEY_DROP + KEY_D / 2 + 1.2), 3.2)        # ...and its reach under / over the axis
+# ...and its reach under / over the axis: down a whole ball's width past the ball's hole, room to
+# bring the ball in to the keyhole's bottom when restringing (user, 2026-11-12); that still
+# leaves 1.9 over the next row's axle bore
+WIN_Z = (-(KEY_DROP + KEY_D / 2 + KEY_D), 3.2)
 # THE SPRING (2026-11-11): McMaster 9654K335 -- 0.75 in OD, 0.091 in tempered spring steel, 6.5 in,
 # loop ends -- its LOOPS CUT OFF and the body cut to SPRING_COILS whole coils (one spring a piece,
 # ~$2.71). Close-wound, 7.03 lbf (31.3 N) initial tension, ~1.72 N/mm with 35 working coils
@@ -1043,8 +1046,6 @@ EP_TUNNEL = 7.2                                      # the screw's way in from t
 EP_M3_CLR = 3.4
 EP_SCREW_Z = (BAR_Z[1] - 8.0, BAR_Z[0] + 5.5)        # the two screws in each bar end (the low one
                                                      # 5.5 up: its tunnel then clears row c's axle)
-FLOOR_GAP = 0.5                                      # the floor stops short of the endplate: only
-                                                     # the walls carry the squeeze, on one face
 
 
 def bar_y() -> tuple:
@@ -1102,18 +1103,16 @@ def _bar_screws() -> list:
 
 
 def _body() -> cq.Workplane:
-    """The walls and floor up to the endplate: the walls end at x_j (the squeeze face), the floor
-    FLOOR_GAP short of the endplate's back, and each wall carries its bar's channel, open at +X."""
+    """The walls and floor up to the endplate, all ending at x_j: one print, so one flat face the
+    endplate bears on. The floor carries the strings' pull across the middle (2026-11-12:
+    no floor gap; the walls alone left the endplate a 168 mm beam at ~16 MPa through a lane).
+    Each wall carries its bar's channel, open at +X."""
     (x0, _), (y0, y1), (z0, z1) = body_box()["outer"]
     (a0, _), (b0, b1), (c0, _) = body_box()["inner"]
     xj = ep_x()["x_j"]
     w = box_at(xj - x0, y1 - y0, z1 - z0, x=(x0 + xj) / 2, y=(y0 + y1) / 2, z=(z0 + z1) / 2)
-    # (the floor ends FLOOR_GAP short of the endplate: only the walls carry the squeeze)
     w = w.cut(box_at(xj + 1 - a0, b1 - b0, z1 - c0 + 2.0, x=(a0 + xj + 1) / 2, y=(b0 + b1) / 2,
                      z=(c0 + z1 + 2.0) / 2))
-    fx = xj - FLOOR_GAP                              # the floor's end
-    w = w.cut(box_at(xj + 1 - fx, b1 - b0, c0 - z0 + 2, x=(fx + xj + 1) / 2, y=(b0 + b1) / 2,
-                     z=(z0 - 2 + c0) / 2))
     for yc in bar_y():
         w = w.cut(_bar_box(yc, x0 + BODY_WALL, xj + 1, BAR_CLR))
     return w
