@@ -24,8 +24,10 @@ netlist part's pads and courtyard from its footprint alone (on motor_ctrl the 10
 pads match a layout dump exactly). Write it yourself first if the intent script reads it. Set PCBFLOW_FOOTPRINT_DIRS / PCBFLOW_PROJECT as for layout.py.
 
 The stages:
-1. The intent. Unless `--no-auto`, auto_decaps, auto_singles and auto_floorplan are added
-   for any set the file does not already carry.
+1. The intent. Unless `--no-auto`, auto_decaps and auto_floorplan are added for any set the
+   file does not already carry. auto_singles is opt-in (`--auto-singles`, lead ruling
+   2026-11-12): test pads' 8 mm `near` cost routing on two boards (output_panel op12: a pair
+   fault, 20.9 mm uncoupled); their `access` rule is what matters.
 2. place_init, then place_cells.
 3. layout.py, as the legality gate. A refusal stops the run.
 4. score.py --intent, then finish.py (router + finish chain), then quality.py --brief.
@@ -83,7 +85,7 @@ combination the proofs ran. Write it in this order:
      turned to face it.
 5. **The defaults, through place_flow:**
    * auto_decaps: a decap at each IC supply pin.
-   * auto_singles: test pads at their driver pin.
+   * auto_singles (opt-in, `--auto-singles`): test pads at their driver pin.
    * auto_floorplan: switch nodes 10 mm off sensitive parts (hard, `forbid`); USB/relay
      edges off analog parts (soft).
    * Review what they propose (`place_intent.py <stem> <intent>` prints every rule's slack
@@ -929,6 +931,64 @@ default noise `apart` rules derived from the netlist:
 route: `floor` (a count) and `floor_breaches` (the worst ten) in the JSON, plus a FLOOR
 line on stderr. They are never folded into `key`. A placement that routes well but is
 electrically wrong can no longer pass quietly.
+
+## Where it stands for the re-layout (2026-11-12)
+
+**What works from scratch** (netlist + footprints + an intent file; no hand coordinates):
+* Part geometry from the footprints alone (`place_geom --from-net`, called by the flow when
+  parts.json is missing). Rotations are all decided by the turn stage.
+* Decoupling without authoring: `auto_decaps` deals caps out per supply pin, matches ICs by
+  netlist description, gives bootstrap caps a pin rule, and keeps ONE tight cap per supply
+  pin per rail. The extra caps of a covered rail go loose (`near` the IC, 8 mm, weight 0.5).
+* Noise floorplan by default (`auto_floorplan`): switch node vs sensitive parts is a hard
+  forbid zone, and the USB/relay edge rules are soft. The flow WARNs when a switcher is held
+  in a region and a sensitive part is not.
+* Pours from the intent (`pour` rules, per-layer priority, stale zones replaced), with the
+  pour corridor charged in placement (POUR_W).
+* Panel parts sit their pads clear of the copper edge.
+* Tight escape paths of an anchor's satellites are reserved (CHANNEL_W 0.6), and the anchor's
+  other satellites are re-seated around them.
+* `between a b` for a part that belongs on a signal path.
+* Cell turns are chosen by routing them: the top two candidates are full-routed (CONFIRM_TOP)
+  and forbid zones are hard.
+* `auto_singles` is opt-in (`--auto-singles`). By default output_panel is back to op14.
+* Finish is bounded: close_last stops a rip-up join at the deadline. It ran 11 h on f10;
+  on f11 it ran 721 s.
+
+**Results, equal terms (declared copper stripped, notes placements stripped):**
+
+| board | open in score | uncoupled | vias | finish | quality FAIL |
+|---|---|---|---|---|---|
+| optical (opt13, auto + cells) | 0 | 2.4 | 202 | 0 unconnected | 0 |
+| output_panel (op15, default) | 0 | 0.52 | 253 | 0 unconnected | 3 |
+| motor_ctrl from footprints (f10) | 2 | -- | -- | 1 unconnected (CAN1_TX) | 10 |
+| motor_ctrl + `between J1 U4` on U2 (f11) | -- | -- | -- | 1 unconnected (CAN1_TX) | 11 |
+
+Optical and output_panel are at their goal. motor_ctrl is not: the lead's bar is 0 open in
+the route score with the other two unchanged.
+
+**Tried this round and reverted:**
+* A loose cap aimed at its supply pin instead of the IC centre. Optical went to 3.11
+  uncoupled and 2 FAIL (A17 x2), output_panel to 1.03 / 259 vias, and motor_ctrl with
+  `between` to 3 unconnected / 12 FAIL (f13).
+
+**Open gaps, in order:**
+1. **motor_ctrl CAN1 escape.** U4.46/47 sit on U4's south edge, and U8, R32, C12, C13 and C9
+   crowd it. The tight-path reservation protects satellite paths, not a signal pin's way out
+   to a far part. Next: reserve an escape for a pin whose net leaves the anchor's cluster,
+   the same way 5b reserves tight paths.
+2. **`between` loses to a satellite rule** on the same part: the satellite wins. On f11 U2
+   moved onto the J1-U4 line and CAN1_TX still failed, so the line was not the fix by itself.
+3. **Gap 7, the placement corridor**, is only part done: pours are charged, signal corridors
+   are not.
+4. **Optical GND finish noise**: close_last results vary from run to run on GND stitching.
+5. `auto_singles` stays off until it helps a board without costing output_panel.
+
+**Authoring time:**
+* Writing an intent from the netlist: 2.5 min to the first intent, 6 min to the first flow,
+  and about 25 min over three intents (motor_ctrl trial).
+* Machine time per full flow: place_init ~30 s, score 4-7.5 min, place_cells ~10 min when
+  there are cells, finish 7-12 min. A board is about 20-30 min end to end, unattended.
 
 ## Rules carried over
 
