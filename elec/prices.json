@@ -205,6 +205,32 @@
       "order": "100 x laser-cut 304 stainless, 4 mm, no finish: parts $34.00 (material $16 + cutting $18) + UPS Express Saver DDP $46.15 = $80.15, instant quote read 2026-11-03 (final price subject to their review)",
       "what": "The keyhead nut plate (nut_block.plate), one per string: its crown is the break, its shelf pinches the one wrap under the rod, the side screw pins the tail to its -X face. 37.75 x 18.05 x 4 mm (quoted at 21.25 wide; the part shrank 3.2 when the rod moved +X, so the quote is high if anything)."
     },
+    "keyhole_plate": {
+      "usd": 0.34,
+      "verified": "v",
+      "per_instrument": 10,
+      "qty": 100,
+      "vendor": "JLCCNC (sheet metal)",
+      "sku": "steel/keyhole_plate.step",
+      "order": "100 x laser-cut 304 stainless, 4 mm, no finish, untapped: parts $34.00, instant quote read 2026-11-12. On one order with 100 nut plates ($32.00): parts $66.00 + UPS Express Saver $56.66 = $122.66, so the keyhole plates add ~$44 per 100 delivered. Tapping needs a drawing and is priced on their review (final price subject to their review; the 2.2 slit and the 2.5 holes in 4 mm are under the sheet thickness)",
+      "what": "The direct-drive yoke's keyhole plate (direct_bench.keyhole_plate), one per string: O22 x 4, the ball's hole, the slit, two M3 tapped holes for the yoke's M3 x 30s."
+    },
+    "m3_shcs_30": {
+      "usd": 0.1228,
+      "verified": "v",
+      "per_instrument": 20,
+      "vendor": "McMaster-Carr",
+      "sku": "91292A022",
+      "what": "M3x30 socket head cap screw (18-8, ISO 4762) -- the direct-drive yokes, two per string, tapped into the keyhole plate. $6.14 per pack of 50, read off McMaster 2026-11-12."
+    },
+    "m3_shcs_20": {
+      "usd": 0.0969,
+      "verified": "v",
+      "per_instrument": 8,
+      "vendor": "McMaster-Carr",
+      "sku": "91292A123",
+      "what": "M3x20 socket head cap screw (18-8, ISO 4762) -- the direct-drive endplates' bar clamp, four per endplate into the tapped wall-bar ends. $9.69 per pack of 100, read off McMaster 2026-11-12."
+    },
     "guide_rod_o3_5": {
       "usd": 1.13,
       "verified": "v",
