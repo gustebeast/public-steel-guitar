@@ -296,6 +296,15 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     if rc not in (0, 3):
         raise SystemExit("place_flow: place_init failed (see flow/flow.log)\n" + out[-800:])
     init_log = [line for line in out.splitlines() if line.startswith("place_init:")]
+    # a GROW is the floorplan the board was placed in: every later gate judges that one
+    gp = init[:-5] + ".grow.json"
+    if os.path.exists(gp):
+        grown = json.load(open(gp))
+        for r in rules:
+            if r["kind"] == "region" and r["name"] in grown:
+                r["poly"] = grown[r["name"]]
+        json.dump(rules, open(ip, "w"), indent=1)
+        say("regions grown by place_init (GROW): " + ", ".join(sorted(grown)))
     room = []
     reg = _regions_of(rules, parts)
     for line in init_log:

@@ -188,6 +188,9 @@ def place(parts, notes, rules, keep=()):
     return pl, log, why
 
 
+GROWN = {}        # region name -> grown poly, from the last place() (main writes it beside --out)
+
+
 def _place_grow(parts, notes, rules, keep=()):
     """_place, and once more with a region edge grown when a TANGLE HINT says the region's
     edge is what keeps a fine-pitch IC in its tangled turn.
@@ -240,6 +243,29 @@ def _place_grow(parts, notes, rules, keep=()):
         for r in rules2:
             if r["kind"] == "region" and r["name"] == name:
                 r["poly"] = new
+    # ⚠ THE ROOM IS THE SATELLITE'S, NOT THE ANCHOR'S (motor_ctrl, 2026-11-12): with the band
+    # grown 4.3 mm west for Y1, the quadratic stage pulled U4 itself 1.9 mm west into it (its
+    # nets pull that way), and Y1 stranded again at turn 0. The anchor is held where the first
+    # run put it -- a square of its courtyard's long side + HOLD_PAD, so every turn fits.
+    held_at = []
+    for h in {g[0]["anchor"]: g[0] for g in grows}.values():
+        a_ = h["anchor"]
+        cy_ = np.asarray(parts[a_]["crtyd"] or [[0, 0], [1, 1]], float)
+        half = float(np.max(np.ptp(cy_, axis=0))) / 2.0 + HOLD_PAD
+        x_, y_ = pl[a_][:2]
+        nm_ = "_hold_" + a_
+        bx0, by0, bx1, by1 = x_ - half, y_ - half, x_ + half, y_ + half
+        for r in rules2:
+            if r["kind"] == "in_region" and a_ in r.get("refs", ()):
+                # ...and still inside its own region (f24: U4 turned and sat 0.19 mm past `logic`)
+                rp = np.asarray([q for q in rules2 if q["kind"] == "region" and q["name"] == r["region"]][0]["poly"], float)
+                bx0, by0 = max(bx0, rp[:, 0].min()), max(by0, rp[:, 1].min())
+                bx1, by1 = min(bx1, rp[:, 0].max()), min(by1, rp[:, 1].max())
+                r["refs"] = [x for x in r["refs"] if x != a_]
+        rules2.append({"kind": "region", "name": nm_, "hard": True,
+                       "poly": [[bx0, by0], [bx1, by0], [bx1, by1], [bx0, by1]]})
+        rules2.append({"kind": "in_region", "refs": [a_], "region": nm_, "hard": True})
+        held_at.append("%s held at (%.1f, %.1f)" % (a_, x_, y_))
     pl2, log2, why2 = _place(parts, notes, rules2, keep, [])
     P2 = pi.Placed(parts, pl2)
     good = True
@@ -257,9 +283,11 @@ def _place_grow(parts, notes, rules, keep=()):
                 c, "held" if held else "still stranded"))
     if not good:
         return pl, log, why
+    GROWN.clear()
+    GROWN.update({name: new for _, _, name, _, new in grows})
     for h, c, name, msg, _ in grows:
-        log2.append("GROW: region %s, %s -- for %s (%s %g -> %g, %d -> %d crossing escapes)" % (
-            name, msg, c, h["anchor"], h["rot"], h["to"], h["cross"][0], h["cross"][1]))
+        log2.append("GROW: region %s, %s -- for %s (%s %g -> %g, %d -> %d crossing escapes; %s)" % (
+            name, msg, c, h["anchor"], h["rot"], h["to"], h["cross"][0], h["cross"][1], "; ".join(held_at)))
     return pl2, log2, why2
 
 
@@ -593,6 +621,11 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
     # so C8 never moved, and the members' charge cascaded into 8 broken rules.)
     tight_nets = {nm for r in rules if r["kind"] == "tight" for nm in r["nets"]}
     pnets = {r_: {q["net"] for q in parts[r_]["pads"] if q["net"]} for r_ in parts}
+    for anc_, rs_ in decaps.items():
+        for r_ in rs_:
+            c_ = r_.get("cap") or r_.get("ref")
+            if anc_ in pnets and tight_nets & pnets.get(c_, set()) & pnets[anc_]:
+                r_["_tight"] = sorted(tight_nets & pnets.get(c_, set()) & pnets[anc_])
 
     def strips(ref, c):
         """The strips (CHANNEL_W) from each of ref's pins on a tight net shared with c to c's
@@ -815,7 +848,10 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
 CHANNEL_W = 0.6     # mm: the strip a tight net's MST edge keeps clear
 TANGLE_FANOUT = 8   # parts: a net on more is a rail, left out of the escape tangle
 TANGLE_RATIO = 1.5  # a turn hint needs the other turn to cross this many times fewer
+TANGLE_PINS = 24    # pads: a fine-pitch IC this big has a fan-out that can tangle
+TANGLE_W = 3.0      # mm of net per crossing escape at a fine-pitch IC (tie-break after stranding)
 TANGLE_MIN = 10     # ...and at least this many crossings fewer
+HOLD_PAD = 0.3      # mm: room round a held anchor's courtyard in a grown re-run (turns fit)
 SEAT_GAP = 1.0      # mm: pin to satellite courtyard when a grown region seats it
 GROW_PAD = 0.5      # mm: a region edge grown for a stranded satellite goes this far past its shortfall
 POUR_W = 25.0       # mm of wirelength a pad inside another net's pour corridor is worth
@@ -960,9 +996,18 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
             n += len(pi.pour_foreign(r, P, poly, refs=None if r in ends.get(ref, ()) else {ref}))
         return POUR_W * n
 
+    # ⚠ THE TANGLE BREAKS A TIE, IT DOES NOT TRADE (lead, 2026-11-12): a fine-pitch IC's
+    # crossing escapes cost TANGLE_W each, inside the cost that ranks AFTER stranding -- so a
+    # turn that untangles but strands a satellite still loses. motor_ctrl, power band at 0
+    # and the grow allowed: Y1 held, but U4 stayed at 270 on net cost (80 crossings vs 40).
+    def tangle_pen(ref):
+        if ref not in tangled:
+            return 0.0
+        return TANGLE_W * _tangle(parts, pl, ref, members, rails_l)
+
     def penalty(ref):
         if not rel.get(ref):
-            return pour_pen(ref)
+            return pour_pen(ref) + tangle_pen(ref)
         P = pi.Placed(parts, pl)
         v = pour_pen(ref)
         for r in rel[ref]:
@@ -971,7 +1016,7 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
                     v += r.get("weight", 1.0) * max(0.0, -sl)
             except (KeyError, ValueError):
                 pass
-        return RULE_W * v
+        return RULE_W * v + tangle_pen(ref)
 
     def total():
         return cost(scope)
@@ -995,7 +1040,9 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
     rails_l = {nm for nm, m in members.items() if len(m) > TANGLE_FANOUT}
     rails_l |= {q["net"] for r in rules if r["kind"] == "decap"
                 for q in parts.get(r.get("cap") or r.get("ref"), {"pads": ()})["pads"] if q["net"]}
-    tangled = {r_ for r_ in refs if r_[:1] == "U" and len(parts[r_]["pads"]) >= 8 and _fine_pitch(parts[r_])}
+    # only a big package: a 10-pin MSOP's escapes walk round it in a millimetre (output_panel
+    # U14/U16 turned 180 on 2-3 crossings each when every fine-pitch part counted)
+    tangled = {r_ for r_ in refs if r_[:1] == "U" and len(parts[r_]["pads"]) >= TANGLE_PINS and _fine_pitch(parts[r_])}
     t0 = total()
     moved = set()
     fixed_local = set(pl) - set(refs)
@@ -1405,18 +1452,78 @@ def _drop_sat(G, parts, c, t, rots, pl, forbid, anchor, rule, near_mm=None):
     ⚠ WHY (optical, 2026-11-11): U6 (LQFP-176, halo 2.5) kept its whole ring out --
     C117 seated 24 mm from U6.136 because the 2.5 mm ring plus the cap did not fit between
     U6 and the compute region's edge, where the hand board has the cap 1 mm off the body."""
-    big = rule is not None and rule["kind"] == "decap" and anchor in pl and halo(parts[anchor]) > HALO_SMALL
+    # ...and so may a TIGHT-LOOP satellite, but only IN FRONT OF ITS OWN PINS (motor_ctrl from
+    # footprints, 2026-11-12): Y1 (the crystal, `tight` OSC_IN/OSC_OUT) was held 2.5 mm off
+    # U4, its centre 4.25 mm out -- past its 4 mm `near` on any straight side, so U4 kept
+    # 270 (a corner fits it) with CAN1 and CAN2 crossing in front of the 0.4 mm row. Let into
+    # the WHOLE ring, it sat on U4's north edge in front of BOOT0 / PG_5V and both went open.
+    # The window is the outward side of the edge carrying its tight pins, along that edge
+    # the pins' span +- half the satellite.
+    tight = rule is not None and rule.get("_tight") and rule["kind"] != "decap"
+    # A FALLBACK, judged by the rule: the plain drop first, kept if the rule holds; only a
+    # stranded tight satellite tries the window, and keeps whichever seat breaks it less.
+    # (Always open, it moved 51 parts on output_panel, whose crystals already held.)
+    plain = None
+    if tight:
+        if not _drop(G, parts, c, t, rots, pl, forbid, near_mm):
+            plain = None
+        else:
+            s0 = _slack(rule, parts, pl)
+            if s0 >= -0.05:
+                return True
+            plain = (list(pl[c]), s0)
+            _lift(G, parts, pl, c)
+    big = (rule is not None and (rule["kind"] == "decap" or tight)
+           and anchor in pl and halo(parts[anchor]) > HALO_SMALL)
+    delta = None
     if big:
         m, ai, aj = mask(parts[anchor], pl[anchor][2])
         ij = G.ij(*pl[anchor][:2])
-        _put(G.occ, *_grow(m, ai, aj, halo(parts[anchor]), G.g), *ij, -1)
-        _put(G.occ, *_grow(m, ai, aj, HALO_SMALL, G.g), *ij)
+        delta = np.zeros_like(G.occ)
+        _put(delta, *_grow(m, ai, aj, halo(parts[anchor]), G.g), *ij, -1)
+        _put(delta, *_grow(m, ai, aj, HALO_SMALL, G.g), *ij)
+        if tight:
+            P = pi.Placed(parts, pl)
+            cy = np.asarray(P.crtyd(anchor), float)
+            lo, hi = cy.min(axis=0), cy.max(axis=0)
+            half = float(np.max(np.ptp(np.asarray(parts[c]["crtyd"] or [[0, 0], [1, 1]], float), axis=0))) / 2.0 + 0.5
+            win = np.zeros(G.occ.shape, bool)
+            for q in parts[anchor]["pads"]:
+                if q["net"] not in rule["_tight"]:
+                    continue
+                pp = P.pad(anchor, q["num"])
+                gaps = [pp[0] - lo[0], hi[0] - pp[0], pp[1] - lo[1], hi[1] - pp[1]]
+                k = int(np.argmin(gaps))
+                if k < 2:
+                    out = (G.X < lo[0] + 0.05) if k == 0 else (G.X > hi[0] - 0.05)
+                    along = np.abs(G.Y - pp[1]) <= half
+                else:
+                    out = (G.Y < lo[1] + 0.05) if k == 2 else (G.Y > hi[1] - 0.05)
+                    along = np.abs(G.X - pp[0]) <= half
+                win |= out & along
+            delta[~win] = 0
+        G.occ += delta
     try:
-        return _drop(G, parts, c, t, rots, pl, forbid, near_mm)
+        ok = _drop(G, parts, c, t, rots, pl, forbid, near_mm)
     finally:
-        if big:
-            _put(G.occ, *_grow(m, ai, aj, HALO_SMALL, G.g), *ij, -1)
-            _put(G.occ, *_grow(m, ai, aj, halo(parts[anchor]), G.g), *ij)
+        if delta is not None:
+            G.occ -= delta
+    if tight and plain is not None:
+        if ok and _slack(rule, parts, pl) > plain[1]:
+            return True
+        if ok:
+            _lift(G, parts, pl, c)
+        _put_back(G, parts, pl, c, plain[0])
+        return True
+    return ok
+
+
+def _slack(rule, parts, pl):
+    """A rule's worst slack at this placement (mm; < 0 is broken); -inf if it cannot be read."""
+    try:
+        return min(x[0] for x in pi.check(rule, pi.Placed(parts, pl), {}))
+    except (KeyError, ValueError, TypeError):
+        return float("-inf")
 
 
 def _drop(G, parts, ref, t, rots, pl, forbid=None, near_mm=None):
@@ -1485,6 +1592,12 @@ def main(argv):
     out = a.out or stem + ".init.json"
     json.dump(pl, open(out, "w"), indent=0)
     json.dump(why, open(out[:-5] + ".why.json" if out.endswith(".json") else out + ".why", "w"), indent=0)
+    # the floorplan GROW changed, for the flow's later gates (score --intent judges regions)
+    gp = out[:-5] + ".grow.json" if out.endswith(".json") else out + ".grow"
+    if GROWN:
+        json.dump(GROWN, open(gp, "w"), indent=0)
+    elif os.path.exists(gp):
+        os.remove(gp)
     print("place_init: %d placements -> %s (%.1f s)" % (len(pl), out, time.time() - t0))
     unmet = [line for line in log if line.startswith("FORBID NOT MET")]
     if unmet:
