@@ -297,8 +297,18 @@ four are fixed here.
    * Equal-terms result, footprint geometry, clean notes: 0 open in the route score, finish
      1 unconnected (+5V_RAW), 0 violations, quality 14 FAIL. That is v3's result, with no
      hand rotation in it.
-   * A turn has to be judged with its satellites re-seated, as the local pass does. A
-     crystal's `near` needs to weigh like the route failure it causes. **Open.**
+   * **CLOSED (turns judged with satellites re-seated):** the local pass ranks each turn by
+     (satellites left outside their radius, cost), and accepts a move that strands fewer
+     even at a wirelength cost. A part with a stranded satellite is tried in place even when
+     it already sits at its net optimum (the pass used to skip it).
+   * motor_ctrl from footprints: U4 turns to 270, Y1 meets its `near`, and broken soft
+     rules drop from 7 to 4.
+   * Still open: Y1 at its pin is not the same as OSC routed. In f6, U4's decap C8 sat
+     between U4.5/6 and Y1, and OSC_IN/OSC_OUT stayed open.
+   * Tried and reverted: charging another part's courtyard inside a `tight` net's pad
+     hull. OSC_IN's hull (U4.5, Y1, C4) is too big; the charge stranded decaps 14-16 mm
+     and pushed U6 into the +5V pour. The loop's escape channel has to be measured, not
+     the hull.
 6. **`panel` knows the body front, not the pads.** Side-entry J2/J6 with overhang 0 put
    their mounting pads inside the copper edge clearance (v1). The panel rule should
    check pad-to-edge copper clearance. **CLOSED:** `check` adds a pad line, so every pad's
@@ -314,6 +324,12 @@ four are fixed here.
    * The POUR room check names them but does not act. **Open.**
    * Needed: either a pour corridor treated as a keepout for other nets' pads on its
      layer, or "turn the connector so its power pin faces its load".
+   * **CLOSED in placement:** the local pass charges POUR_W (25 mm) for every pad of another
+     net inside a pour's corridor on its layer. A pour's endpoint part pays for every
+     foreign pad its corridor then holds, so it can turn or move.
+   * motor_ctrl f6: all three pours clear (they had F1.2, D6, C17 and R21 in them). The
+     +5V pour's narrowest cut goes from 0.00 to 1.24 mm (1.37 asked); the two pours that
+     were cut to zero pass A1.
 8. **Floorplanning is still the author's job.**
    * v2 left the MCU unregioned and the net graph put it beside the 5 V buck. The 10 mm
      zone was then NOT MET, and the crystal was pushed 15 mm off its pins.
@@ -824,9 +840,13 @@ out past it.
 * For each free-anchor cell, the other three quarter turns are tried. Each turned cell is
   dropped whole at the free spot nearest the anchor, laid out, and re-scored against the
   parent route with `--intent`.
-* The best by place_refine's key must also beat the parent in a full route before it is
-  kept. It then becomes the next cell's parent.
-* Bounded at 3 candidates + 1 confirm per cell.
+* The best TWO by place_refine's key are each full-routed. The better full route is kept
+  if it also beats the parent, and it becomes the next cell's parent.
+  * One re-score is one sample. Optical opt7 kept U7_90 (re-score 2.34) and full-routed it
+    at 5.52 uncoupled.
+  * Confirming the runner-up too, opt8 kept U7_0 (re-score 6.49, full 3.11 uncoupled,
+    208 vias).
+* Bounded at 3 candidates + 2 confirms per cell (CONFIRM_TOP).
 * Without free cells it writes the placements unchanged: output_panel is byte-identical to
   vF3.
 

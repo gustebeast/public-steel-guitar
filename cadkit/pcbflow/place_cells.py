@@ -15,9 +15,11 @@ intent order:
      legaliser, halos, the anchor's region); a turn with no room is skipped;
   3. each candidate is laid out (layout.py) and re-scored as a change of the parent
      (router/rescore.py, --parent), `jobs` at a time, floor breaches reported (--intent);
-  4. the best by place_refine's key, if it beats the parent's, is routed IN FULL and kept
-     only if the full route beats the parent too -- the confirm rule place_refine earned
-     (a re-score is one sample of "what this change does"). It is the next cell's parent.
+  4. the best TWO by place_refine's key (CONFIRM_TOP) that beat the parent's are each routed
+     IN FULL, and the better full route is kept if it beats the parent too -- the confirm
+     rule place_refine earned (a re-score is one sample of "what this change does"; optical's
+     U7_90 re-scored 2.34 and full-routed 5.52, U7_0 6.49 and 3.11). It is the next cell's
+     parent.
 
 A FORBID ZONE IS HARD (lead ruling, 2026-11-11). A turn that breaks more `forbid` zones
 than its parent gets ONE repair: the unit breaking it -- a free-anchor cell or a free part,
@@ -288,28 +290,37 @@ def cells(d, intent, parts_path=None, jobs=4, soft=False, log=print):
                 s["forbid"] = _forbid_breaks(stem, rules, q, parts_path)
                 keep.append((tag, q, s))
         good = keep
-        best = min(good, key=lambda t: _key(t[2])) if good else None
-        if best is None or not _better(best[2], parent):
+        # 4. confirm by a full route -- the TOP TWO by the re-score, the better full route kept
+        # ⚠ ONE RE-SCORE IS ONE SAMPLE (optical, 2026-11-11): U7_90 re-scored 2.34 mm uncoupled,
+        # best of the four, and full-routed at 5.52; opt6 had kept U7_0 (re-score 6.35, full
+        # 3.11). The ranking between close candidates is noise, so the runner-up is routed too.
+        ranked = sorted([t for t in good if _better(t[2], parent)], key=lambda t: _key(t[2]))[:CONFIRM_TOP]
+        if not ranked:
             log("place_cells: %s stays at %g" % (a, pl[a][2]))
             continue
-        # 4. confirm by a full route
-        tag, q, s = best
-        cs = os.path.join(work, tag, os.path.basename(stem))
-        full = _score(cs, intent, parts_path, save=True)
-        rec.append({"cell": a, "cand": tag, "confirm": full})
-        log("place_cells:   %-10s full route %s" % (tag, full.get("error") or {k: full.get(k) for k in (
-            "open", "pairs", "uncoupled", "vias", "length_mm", "floor", "failed")}))
-        if "error" not in full and _better(full, parent):
-            pl, parent, pstem = q, full, cs
-            json.dump(full, open(pstem + ".score.json", "w"))
+        won = None
+        for tag, q, s in ranked:
+            cs = os.path.join(work, tag, os.path.basename(stem))
+            full = _score(cs, intent, parts_path, save=True)
+            rec.append({"cell": a, "cand": tag, "confirm": full})
+            log("place_cells:   %-10s full route %s" % (tag, full.get("error") or {k: full.get(k) for k in (
+                "open", "pairs", "uncoupled", "vias", "length_mm", "floor", "failed")}))
+            if "error" not in full and _better(full, parent) and (won is None or _key(full) < _key(won[1])):
+                won = (q, full, cs)
+        if won is not None:
+            pl, parent, pstem = won
+            json.dump(parent, open(pstem + ".score.json", "w"))
             log("place_cells: %s turned to %g (kept)" % (a, pl[a][2]))
         else:
-            log("place_cells: %s's best turn lost its full-route confirm; stays at %g" % (a, pl[a][2]))
+            log("place_cells: %s's best turns lost their full-route confirm; stays at %g" % (a, pl[a][2]))
     json.dump(rec, open(os.path.join(work, "cells.json"), "w"), indent=1)
     json.dump(pl, open(stem + ".cells.json", "w"), indent=0)
     log("place_cells: best %s -> %s" % ({k: parent.get(k) for k in ("open", "pairs", "uncoupled", "vias", "floor")},
                                        stem + ".cells.json"))
     return pl, rec
+
+
+CONFIRM_TOP = 2      # candidates full-routed per cell (one re-score is one sample)
 
 
 def main(argv):

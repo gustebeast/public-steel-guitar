@@ -547,6 +547,7 @@ def _place(parts, notes, rules, keep=()):
     return pl, log, why
 
 
+POUR_W = 25.0       # mm of wirelength a pad inside another net's pour corridor is worth
 RULE_W = 10.0       # mm of wirelength a millimetre of broken soft rule is worth (local pass)
 SOFT_KINDS = ("decap", "near", "between", "thermal", "apart", "chain", "tight")
 
@@ -622,11 +623,37 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
         for n in names:
             rel.setdefault(n, []).append(r)
 
-    def penalty(ref):
-        if not rel.get(ref):
+    # ⚠ A POUR IS PLACEMENT'S BUSINESS TOO (gap 7, motor_ctrl from footprints, 2026-11-11):
+    # the +5V_RAW (L2-F2) and +5V (F2-J5) pours were cut to 0.00-0.07 mm by other nets' pads
+    # placed in their corridors (F1.2; D6, C17, R21) -- quality A1 FAIL on 3 A paths. A pad
+    # inside another net's pour corridor on its layer costs POUR_W; a pour's own endpoint
+    # part pays for every foreign pad its corridor then holds (so it can turn or move).
+    pours = [r for r in rules if r["kind"] == "pour" and r.get("along")]
+    pamps = {id(r): pi.pour_amps(r, notes or {}) for r in pours}
+    ends = {}
+    for r in pours:
+        for x in r["along"]:
+            ends.setdefault(x.split(".")[0], []).append(r)
+
+    def pour_pen(ref):
+        if not pours:
             return 0.0
         P = pi.Placed(parts, pl)
-        v = 0.0
+        n = 0
+        for r in pours:
+            if any(x.split(".")[0] not in pl for x in r["along"]):
+                continue
+            poly = pi.pour_poly(r, P, notes or {}, pamps[id(r)])
+            if poly is None:
+                continue
+            n += len(pi.pour_foreign(r, P, poly, refs=None if r in ends.get(ref, ()) else {ref}))
+        return POUR_W * n
+
+    def penalty(ref):
+        if not rel.get(ref):
+            return pour_pen(ref)
+        P = pi.Placed(parts, pl)
+        v = pour_pen(ref)
         for r in rel[ref]:
             try:
                 for sl, _, _ in pi.check(r, P, notes or {}):
@@ -637,6 +664,21 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
 
     def total():
         return cost(scope)
+
+    def stranded(ref):
+        """How many of ref's satellites sit outside their rule's radius: a turn or move is
+        judged on this FIRST, then on cost (see the satellite note in the pass)."""
+        n = 0
+        P = pi.Placed(parts, pl)
+        for c, r in (sats or {}).get(ref, ()):
+            if c not in pl:
+                continue
+            try:
+                if min(x[0] for x in pi.check(r, P, notes or {})) < -0.05:
+                    n += 1
+            except (KeyError, ValueError):
+                pass
+        return n
 
     t0 = total()
     moved = set()
@@ -664,8 +706,17 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
             if not tg:
                 continue
             t = np.mean(tg, axis=0)
+            # ⚠ A TURN IS JUDGED WITH ITS SATELLITES RE-SEATED, STRANDED ONES FIRST (motor_ctrl
+            # from footprints, 2026-11-11): every `at` 0, U4 kept rot 0 with OSC_IN (U4.5)
+            # facing its region's edge; Y1 (near U4.5, 4 mm) could only seat 5.7 mm off. The
+            # pass skipped U4 (already at its net optimum) and, when it did try turns, a
+            # 1.7 mm breach weighed 17 against tens of mm of net -- so rot 0 stayed. Now a part
+            # with a stranded satellite is tried in place, and turns rank by (stranded, cost).
+            s0 = stranded(ref)
             if np.hypot(t[0] - x, t[1] - y) < 0.5 and len(pads[ref]) > 2:
-                continue
+                if not s0:
+                    continue
+                t = np.array([x, y])
             # ⚠ AN ANCHOR MOVES WITH ITS SATELLITES (output_panel, 2026-11-11): the buck's
             # SW node stayed 42 mm because U5 and L1 each carry caps whose rules a lone move
             # would break; lifted as a group -- the part, then each cap re-seated at its pin
@@ -708,7 +759,7 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
                         else:
                             ok = False
                             break
-                cc = cost(gnets) + sum(penalty(g) for g in group) if ok else None
+                cc = (stranded(ref), cost(gnets) + sum(penalty(g) for g in group)) if ok else None
                 if ok and (best_t is None or cc < best_t[0]):
                     best_t = (cc, {g: list(pl[g]) for g in group})
                 for g in placed_g:
@@ -728,7 +779,8 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
                 print("  PLACE_DEBUG %s at %s target %s group %s ok=%s cost %.1f -> %.1f (nets %.1f pen %.1f)" % (
                     ref, old_xy, np.round(t, 1), group, ok, c0, cost(gnets) + sum(penalty(g) for g in group),
                     cost(gnets), sum(penalty(g) for g in group)))
-            if ok and cost(gnets) + sum(penalty(g) for g in group) < c0 - 0.5:
+            s1 = stranded(ref) if ok else s0
+            if ok and (s1 < s0 or (s1 == s0 and cost(gnets) + sum(penalty(g) for g in group) < c0 - 0.5)):
                 moved.update(group)
                 changed = True
                 continue

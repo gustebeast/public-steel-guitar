@@ -857,7 +857,17 @@ def pour_poly(rule, P, notes, amps=None):
     return [[round(float(x), 3), round(float(y), 3)] for x, y in pts[h.vertices]]
 
 
-def pour_foreign(rule, P, poly):
+def pour_amps(rule, notes):
+    """The current a `pour` carries: the declared power path between its own `along` pins,
+    else the net's largest (a 3.8 A J10 path sized the 2.9 A Q2-J7 pour at 3.8 mm)."""
+    paths = (notes.get("quality", {}) or {}).get("power_paths", ()) or ()
+    al = set(rule.get("along", ()))
+    hit = [float(p_["amps"]) for p_ in paths if p_["net"] == rule["net"] and p_["from"] in al
+           and al & set(p_["to"] if isinstance(p_["to"], (list, tuple)) else [p_["to"]])]
+    return max(hit) if hit else max([float(p_["amps"]) for p_ in paths if p_["net"] == rule["net"]] or [0.0]) or None
+
+
+def pour_foreign(rule, P, poly, refs=None):
     """Other nets' pads inside a pour's outline on its layer: ["U4.3", ...]."""
     from matplotlib.path import Path as _Path
     path = _Path(np.asarray(poly, float))
@@ -865,7 +875,7 @@ def pour_foreign(rule, P, poly):
     inner = rule["layer"].startswith("In")
     out = []
     for ref, p in P.parts.items():
-        if ref not in P.pl:
+        if ref not in P.pl or (refs is not None and ref not in refs):
             continue
         for q in p["pads"]:
             if q["net"] == rule["net"] or not q["num"]:
