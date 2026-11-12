@@ -147,7 +147,7 @@ def place(parts, notes, rules, keep=()):
     fixed0 = {r["ref"] for r in rules if r["kind"] in ("fixed", "pin", "panel")} | set(keep)
     cells = {r["anchor"]: r["members"] for r in rules if r["kind"] == "group" and r["anchor"] not in fixed0}
     if not cells:
-        return _place(parts, notes, rules, keep)
+        return _place_grow(parts, notes, rules, keep)
     owner = {m: a for a, ms in cells.items() for m in ms}
     P2 = {r: p for r, p in parts.items() if r not in owner}
     for a, ms in cells.items():
@@ -177,7 +177,7 @@ def place(parts, notes, rules, keep=()):
             if isinstance(r.get(f), list):
                 r[f] = list(dict.fromkeys(owner.get(x, x) for x in r[f]))
         R2.append(r)
-    pl, log, why = _place(P2, notes, R2, keep)
+    pl, log, why = _place_grow(P2, notes, R2, keep)
     for a, ms in cells.items():
         ax, ay, ar = pl[a]
         for m, (dx, dy, dr) in ms.items():
@@ -188,7 +188,142 @@ def place(parts, notes, rules, keep=()):
     return pl, log, why
 
 
-def _place(parts, notes, rules, keep=()):
+def _place_grow(parts, notes, rules, keep=()):
+    """_place, and once more with a region edge grown when a TANGLE HINT says the region's
+    edge is what keeps a fine-pitch IC in its tangled turn.
+
+    ⚠ A REGION IS THE AUTHOR'S FLOORPLAN (lead, 2026-11-12): the grow may not undo it.
+    * Only the edge nearest the stranded satellite's pin, and only by its shortfall +
+      GROW_PAD.
+    * Never into another region, and never within any `apart` / `thermal` distance (forbid
+      zones included) of the other side's placed parts.
+    * The grown run is kept only if the anchor took the untangled turn and the satellite
+      is no longer stranded; else the floorplan stands and it stays a hint.
+    * Every grow, blocked grow and kept-as-written is a log line (GROW ...), which
+      place_flow copies into report.md.
+    motor_ctrl from footprints, `logic` band back at x = 6: U4 turns 270 -> 0 on its own."""
+    hint_out = []
+    pl, log, why = _place(parts, notes, rules, keep, hint_out)
+    if not hint_out:
+        return pl, log, why
+    regions = {r["name"]: r for r in rules if r["kind"] == "region"}
+    P = pi.Placed(parts, pl)
+    grows = []
+    for h in hint_out:
+        for c, short, at in h["stranded"]:
+            names = sorted({r["region"] for r in rules if r["kind"] == "in_region"
+                            and c in r.get("refs", ()) and r["region"] in regions}) or \
+                sorted({r["region"] for r in rules if r["kind"] == "in_region"
+                        and h["anchor"] in r.get("refs", ()) and r["region"] in regions})
+            if not names:
+                log.append("GROW BLOCKED: %s/%s is in no region -- a region is not what strands it; "
+                           "stays a hint" % (h["anchor"], c))
+                continue
+            name = names[0]
+            poly = np.asarray(regions[name]["poly"], float)
+            # the room the satellite needs, not its shortfall: Y1 (4.2 x 3.5) was 1.7 mm past its
+            # `near`, but seating it off U4.5 at all takes its narrow side + a seat gap past the pin
+            # (a 2.2 mm grow turned U4 and left Y1 where it was)
+            cy_ = np.asarray(parts[c]["crtyd"] or [[0, 0], [1, 1]], float)
+            depth = float(np.min(np.ptp(cy_, axis=0)))
+            ok, msg, new = _grow_edge(poly, np.asarray(at, float), short + GROW_PAD, name, regions, rules,
+                                      parts, pl, P, reach=SEAT_GAP + depth + GROW_PAD)
+            if not ok:
+                log.append("GROW BLOCKED: region %s, %s (for %s/%s); stays a hint" % (name, msg, h["anchor"], c))
+                continue
+            regions[name] = dict(regions[name], poly=new)
+            grows.append((h, c, name, msg, new))
+    if not grows:
+        return pl, log, why
+    rules2 = [dict(r) for r in rules]
+    for _, _, name, _, new in grows:
+        for r in rules2:
+            if r["kind"] == "region" and r["name"] == name:
+                r["poly"] = new
+    pl2, log2, why2 = _place(parts, notes, rules2, keep, [])
+    P2 = pi.Placed(parts, pl2)
+    good = True
+    for h, c, name, msg, _ in grows:
+        turned = abs((pl2[h["anchor"]][2] - h["to"] + 180.0) % 360.0 - 180.0) < 0.5
+        r_ = [r for r in rules if (r.get("ref") == c or r.get("cap") == c) and r["kind"] in ("near", "decap")]
+        try:
+            held = all(min(x[0] for x in pi.check(r, P2, notes)) >= -0.05 for r in r_)
+        except (KeyError, ValueError):
+            held = False
+        if not (turned and held):
+            good = False
+            log.append("GROW TRIED: region %s, %s -- %s %s, %s %s; the floorplan stands as written" % (
+                name, msg, h["anchor"], "turned" if turned else "did not turn to %g" % h["to"],
+                c, "held" if held else "still stranded"))
+    if not good:
+        return pl, log, why
+    for h, c, name, msg, _ in grows:
+        log2.append("GROW: region %s, %s -- for %s (%s %g -> %g, %d -> %d crossing escapes)" % (
+            name, msg, c, h["anchor"], h["rot"], h["to"], h["cross"][0], h["cross"][1]))
+    return pl2, log2, why2
+
+
+def _grow_edge(poly, at, d, name, regions, rules, parts, pl, P, reach=0.0):
+    """Move the polygon edge nearest `at` outward by d mm -- or further, until the edge is
+    `reach` mm beyond `at` -- if that keeps to the floorplan. -> (ok, what, new_poly)."""
+    n = len(poly)
+    best = None
+    for k in range(n):
+        a, b = poly[k], poly[(k + 1) % n]
+        v = b - a
+        L = float(np.hypot(*v))
+        if L < 1e-9:
+            continue
+        t = float(np.clip(np.dot(at - a, v) / (L * L), 0.0, 1.0))
+        dist = float(np.hypot(*(at - (a + t * v))))
+        if best is None or dist < best[0]:
+            best = (dist, k, v / L)
+    _, k, u = best
+    nrm = np.array([u[1], -u[0]])
+    a, b = poly[k], poly[(k + 1) % n]
+    if pi._inside(poly, ((a + b) / 2.0 + nrm * 0.01)[None])[0]:
+        nrm = -nrm                                     # outward
+    d = max(d, float(np.dot(at, nrm)) + reach - float(np.dot(a, nrm)))
+    if abs(nrm[0]) > 0.99:
+        side, axis = ("+X" if nrm[0] > 0 else "-X"), 0
+    elif abs(nrm[1]) > 0.99:
+        side, axis = ("+Y" if nrm[1] > 0 else "-Y"), 1
+    else:
+        side, axis = "edge %d" % k, None
+    what = ("edge %s %.2f -> %.2f (%.1f mm)" % (side, a[axis], a[axis] + nrm[axis] * d, d)
+            if axis is not None else "%s by %.1f mm" % (side, d))
+    g = np.linspace(0.02, 0.98, 25)
+    S = np.array([a + (b - a) * s_ + nrm * d * t_ for s_ in g for t_ in g])
+    for nm, r in regions.items():
+        if nm != name and pi._inside(np.asarray(r["poly"], float), S).any():
+            return False, "%s would run into region %s" % (what, nm), None
+    members = {x for r in rules if r["kind"] == "in_region" and r["region"] == name for x in r.get("refs", ())}
+    for r in rules:
+        if r["kind"] not in ("apart", "thermal"):
+            continue
+        A = set(pi._refs(r.get("a") or [r["ref"]], parts))
+        B = set(pi._refs(r.get("b") or r.get("others") or [], parts))
+        dmin = float(r.get("min_mm", r.get("apart_mm", 0.0)))
+        for mine, other in ((A, B), (B, A)):
+            if not (mine & members):
+                continue
+            for o in other - members:
+                if o not in pl:
+                    continue
+                cy = np.asarray(P.crtyd(o), float)
+                if len(cy) < 3:
+                    continue
+                dd = min(float(np.min(np.hypot(*(S - q).T))) for q in cy)
+                if pi._inside(cy, S).any() or dd < dmin:
+                    return False, "%s would come %.1f mm from %s, inside a %g mm apart rule" % (
+                        what, dd, o, dmin), None
+    new = poly.copy()
+    new[k] = a + nrm * d
+    new[(k + 1) % n] = b + nrm * d
+    return True, what, [[round(float(x), 3), round(float(y), 3)] for x, y in new]
+
+
+def _place(parts, notes, rules, keep=(), hint_out=None):
     pl = {}
     log = []
     why = {}                     # provenance: which rule (or stage) set each coordinate
@@ -586,8 +721,11 @@ def _place(parts, notes, rules, keep=()):
         log.append("TANGLE HINT: %s at %g has %d crossing escapes, at %g only %d -- but there %s%s. "
                    "Give it room (a wider band, or loosen that rule) and it will turn." % (
                        ref_, pl[ref_][2], cur[0][2], alt[0], alt[2],
-                       ", ".join("%s lands %.1f mm past its rule" % (c, d_) for c, d_ in alt[1]),
+                       ", ".join("%s lands %.1f mm past its rule" % (c, d_) for c, d_, _ in alt[1]),
                        " (in region %s)" % "/".join(regs) if regs else ""))
+        if hint_out is not None:
+            hint_out.append({"anchor": ref_, "rot": pl[ref_][2], "to": alt[0], "stranded": alt[1],
+                             "cross": (cur[0][2], alt[2])})
     # ---- 5b. tight paths: reserved once the turns are settled, intruders re-dropped
     # ⚠ A TIGHT LOOP'S PATH IS RESERVED (motor_ctrl from footprints, 2026-11-11): Y1 seated
     # at U4.5 and U4's decap C8 sat on the line from U4.5/6 to Y1 -- OSC_IN/OSC_OUT did not
@@ -678,6 +816,8 @@ CHANNEL_W = 0.6     # mm: the strip a tight net's MST edge keeps clear
 TANGLE_FANOUT = 8   # parts: a net on more is a rail, left out of the escape tangle
 TANGLE_RATIO = 1.5  # a turn hint needs the other turn to cross this many times fewer
 TANGLE_MIN = 10     # ...and at least this many crossings fewer
+SEAT_GAP = 1.0      # mm: pin to satellite courtyard when a grown region seats it
+GROW_PAD = 0.5      # mm: a region edge grown for a stranded satellite goes this far past its shortfall
 POUR_W = 25.0       # mm of wirelength a pad inside another net's pour corridor is worth
 RULE_W = 10.0       # mm of wirelength a millimetre of broken soft rule is worth (local pass)
 SOFT_KINDS = ("decap", "near", "between", "thermal", "apart", "chain", "tight")
@@ -946,7 +1086,9 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
                         except (KeyError, ValueError):
                             continue
                         if m_ < -0.05:
-                            short.append((c, -m_))
+                            tg_ = r.get("pin") or r.get("target") or ""
+                            at_ = P.pad(*tg_.split(".", 1)) if "." in tg_ else np.asarray(pl[ref][:2], float)
+                            short.append((c, -m_, [float(at_[0]), float(at_[1])]))
                     rec_.append((rr, short, _tangle(parts, pl, ref, members, rails_l)))
                 if ok and (best_t is None or cc < best_t[0]):
                     best_t = (cc, {g: list(pl[g]) for g in group})

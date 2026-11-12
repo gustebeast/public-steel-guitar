@@ -965,8 +965,12 @@ electrically wrong can no longer pass quietly.
 | motor_ctrl + `between J1 U4` on U2 (f11) | -- | -- | -- | 1 unconnected (CAN1_TX) | 11 |
 | **motor_ctrl, logic band 2 mm wider (f21, f22 from the example)** | **0** | 0.0 | 125 | **0 unconnected, 0 violations** | 11 |
 
-All three are at goal. On motor_ctrl the score takes 31 s and the finish 53 s (it was 5-7 min
-and 12 min while CAN1 fought its way out). Its 11 FAILs are the buck region's power-path
+All three route. **But f21/f22 break Y1's `near` (4 mm) by 1.66 mm** -- found 2026-11-12
+after the result was reported: with the band at 4, U4 turns to 0 and Y1 still cannot seat
+off U4.5 (west of U4 there is 0.6 mm of band for a 3.5 mm crystal), so it sits north at
+5.7 mm. The lead's ruling holds Y1's near, so this is a trade for the lead to decide, not a
+result. On motor_ctrl the score takes 31 s and the finish 53 s (it was 5-7 min and 12 min
+while CAN1 fought its way out). Its 11 FAILs are the buck region's power-path
 widths, U2.5's cap distance and connector-label declarations; none is at the MCU.
 
 **Tried this round and reverted:**
@@ -1001,6 +1005,29 @@ widths, U2.5's cap distance and connector-label declarations; none is at the MCU
   "U4 at 270 has 85 crossing escapes, at 0 only 33 -- but there Y1 lands 1.7 mm past its rule
   (in region logic). Give it room ... and it will turn." Log only: optical, output_panel and
   motor_ctrl place byte-identically.
+
+**GROW: the hint acts, inside the floorplan (lead, 2026-11-12).** `_place_grow` re-places once
+with the stranding region edge moved:
+* Only the edge nearest the stranded satellite's pin moves. It moves by the room the
+  satellite needs (pin + SEAT_GAP 1.0 + its narrow side + GROW_PAD 0.5), never less than its
+  shortfall + GROW_PAD.
+* Blocked if the strip enters another region, or comes within any `apart`/`thermal`
+  distance (forbid zones included) of the other side's placed parts.
+* The grown run is kept only if the anchor took the untangled turn AND the satellite holds.
+  Else the first run stands.
+* Every outcome is a GROW / GROW BLOCKED / GROW TRIED line in report.md.
+
+On motor_ctrl with the band back at 6 it is honest and blocked:
+
+    GROW BLOCKED: region logic, edge -X 6.00 -> 1.67 (4.3 mm) would run into region power
+    (for U4/Y1); stays a hint
+
+The first version grew by the shortfall (2.2 mm): U4 turned and Y1 stayed stranded, the same
+trade as f21. With the power band pulled back to x = 0 the grow is allowed. Then Y1 holds
+(+0.12) but U4 stays at 270: with nothing stranded, net cost prefers 270, and the tangle is
+not a cost. So on this floorplan, "U4 at 0 with Y1 held" needs the power band moved AND a
+tangle term in the turn cost; both are the lead's call. optical, output_panel and motor_ctrl
+place byte-identically with GROW in.
 
 Tried and dropped on the way (each measured on all three boards):
 
