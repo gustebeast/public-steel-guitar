@@ -1870,9 +1870,31 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
 
 ## Direct drive: guide rod held at both ends, no screw sleeves (2026-11-12)
 
-- **Guide rod:** McMaster 89535K84, 3/16" 304 stainless. One 6 ft length ($7.45) cuts 10 rods at **168.7 mm**, all the same length. Saw it and deburr the ends.
-  - It sits 15 mm off the screw axis at 300°, the same on every string. String 1's +X seat is an ear past the rod plate's +Y edge.
-  - Its −X end goes in a blind seat in a boss on the anchor plug, the +X end in a blind seat in the rod plate. It is trapped between the two seats, with no press fit.
+- **Guide rod:** McMaster 89535K84, 3/16" 304 stainless. One 6 ft length ($7.45) cuts 10 rods at **175.6 mm** (updated with the endplate below), all the same length. Saw it and deburr the ends.
+  - It sits 15 mm off the screw axis at 300°, the same on every string.
+  - Its −X end goes in a blind seat in a boss on the anchor plug, the +X end in a blind seat in the endplate. It is trapped between the two seats, with no press fit.
 - **Nothing on the nut touches the rod.** The collar (now **PCTG**, unfilled, so glass fibres don't scour the stainless) has a tab with a radial slot. The slot is a close fit across to stop rotation, with ±1 mm free along the radius, so a rod a little out of line never pushes the nut off the screw axis.
 - **Lubrication:** PTFE dry-film spray on the rod at assembly. No grease or oil.
 - **Sleeves removed.** The plug and collar never turn; the screw turns through Ø10 clearance holes in both. The spring is always in tension, so it stays straight and clear of the screw.
+
+## Direct drive: one-piece endplate, slide-in axles, steel wall bars (2026-11-12)
+
+- **Endplate:** one PETG-GF print that replaces the rod plate, the comb and the cheeks. Print it standing, building −Z → +Z (its −Z face on the bed). It spans the full instrument height and holds:
+  - the 10 guide-rod seats, in bosses running back from the plate;
+  - the 4 axles: three bend-bearing rows and the bridge row;
+  - the fingers, one lane per string, so every gap between bearings has a finger (formerly 3 fingers);
+  - the two wall bars' ends.
+- **Bearing clearance:** the plate now stands 1 mm off the bend bearings (formerly 4 mm).
+- **Axles:** Ø8 steel, about 175 mm long.
+  - Each slides in from the −Y side through every bearing in its row and stops on a 3 mm wall at the +Y side.
+  - To remove one, push it back out with an allen key through the Ø3.2 hole in that stop wall.
+  - The stop wall only locates the axle along Y; nothing pushes on it.
+- **Wall bars:** 1/4" × 3-1/2" A-36 flat bar, one in each side wall, the 3-1/2" standing vertical. The top edge sits 20 mm under the strings' top.
+  - Steel, not aluminium: it expands like the strings.
+  - **Drill and tap each bar end** for M3, two holes 10 deep, on the bar's centreline in thickness, 8.0 mm under the top edge and 5.5 mm over the bottom edge. Use a printed drill jig so the holes come out dead centre.
+- **Clamping:**
+  - Each bar end drops into a 5 mm locating pocket and **stops 1 mm short** of the endplate's 8 mm back wall.
+  - Four M3 × 20 socket-head cap screws, each with a DIN 9021 M3 washer (Ø9), go in from the endplate's +X end through tunnels. They pass the back wall into the bar ends.
+  - Tighten until the side walls' ends are pulled hard against the endplate. The bars never bear on the plastic, so the screws squeeze the sections together.
+  - Thread engagement in the bar: about 7 mm (2.4 × d).
+  - The floor stops 0.5 mm short of the endplate, so only the walls carry the squeeze.

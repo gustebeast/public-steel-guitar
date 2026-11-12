@@ -89,7 +89,10 @@ YK_H = 20 * D.BEAD                                  # 16: yoke, flange face -> r
 YK_ROOF = 3 * D.BEAD                                # 2.4
 YK_D = D.NUT_FLANGE_L                               # 22: round, as the nut's flange
 X_YT0 = -26.0                                       # yoke roof at the slack end of travel
-ROD_PLATE = (-24.0, -20.0)                          # the rods' plate (and the strings' holes)
+BRG_CLR = 1.0                                       # the endplate's face off the bend bearings' rim
+# the rods' plate (and the balls' windows): its +X face BRG_CLR off the bend bearings' rim, so it
+# fills the old 4 mm gap and fuses with the comb (user, 2026-11-12): -24 .. -17, 7 thick
+ROD_PLATE = (-24.0, X_BEND - R - BRG_CLR)
 # THE ROUND NUT (user, 2026-11-09): the common Tr8x2 brass flange nut, Ø22 x 3.5 flange with FOUR
 # Ø3.5 holes on a Ø16 circle at 45 deg -- no flats needed here (a row's nuts are 28.5 apart, the
 # next row's 28.1). Its holes do everything:
@@ -265,8 +268,10 @@ def spring_force(t: float, i: int) -> float:
 # the rod's -X end: 0.5 short of the stop flange's back at the slack end (the spring starts
 # there), so at full travel it is still 3.15 into the 3.5 flange
 ROD_END = ANCHOR[1] + 1.0                           # the rod's -X end: 1 off the anchor plate
-ROD_L = round(ROD_PLATE[1] - 0.3 - ROD_END, 1)     # ...and 0.3 inside the plate's +X face: ~169,
-                                                    # every string the same
+# its +X end, deep in the endplate: the seat runs on past the plate until 1.0 of plastic is left
+# before the NEXT ROW's axle bore (rows 0 and 1 have one just under their rods): ~11 of grip
+ROD_TIP = X_BEND - (D.BRIDGE_AXLE_D + 0.2) / 2 - 1.0 - 0.3
+ROD_L = round(ROD_TIP - ROD_END, 1)                 # 175.6, every string the same
 
 # ── motors and stations ─────────────────────────────────────────────────────────────────────
 M_HALF = D.MOTOR_SQ / 2                             # 21.15
@@ -782,115 +787,29 @@ def _motor(i: int) -> list:
 
 
 def _bend_parts() -> list:
-    """Each row's axle (cheek to cheek) and its strings' 688s, plus the bridge's own bearings."""
-    from . import components as C
-    out = [("db_bridge_bearings", C.bridge_bearings())]
-    for k in range(LEVELS):
-        zc = z_level(k) + R
-        out.append((f"db_bend_axle_r{'abc'[k]}",
-                    cyl_y(D.BRIDGE_AXLE_D, 2 * CHEEK_Y[1], -CHEEK_Y[1], x=X_BEND, z=zc)))
+    """Each string's two 688s: the bridge bearing and the bend bearing at its row. Their AXLES
+    are the endplate's (endplate_axles): they run wall to wall, so they are sized by the body."""
+    from .helpers import ball_bearing_y
+    out = []
     for i in range(N):
         out.append((f"db_bend_brg_{i}", ball_bearing(D.BRG688_OD, D.BRG688_ID, D.BRG688_W)
                     .rotate((0, 0, 0), (1, 0, 0), -90)
                     .translate((X_BEND, y_of(i) - D.BRG688_W / 2, z_level(level(i)) + R))))
+        out.append((f"db_bridge_brg_{i}", ball_bearing_y(D.BRIDGE_BEARING_OD, D.BRIDGE_AXLE_D + 0.3,
+                                                         D.BRIDGE_BEARING_W, y_of(i) - D.BRIDGE_BEARING_W / 2,
+                                                         x=D.BRIDGE_AXLE_X, z=D.BRIDGE_BEARING_Z)))
     return out
 
 
-CHEEK_Y = (48.6, 54.6)                              # each cheek, |y| from..to
-CHEEK_X = (-20.0, 2.0)
-CHEEK_Z = (z_level(LEVELS - 1) - 12.0, -12.0)
-
-
-def _cheeks() -> cq.Workplane:
-    (x0, x1), (z0, z1), (a, b) = CHEEK_X, CHEEK_Z, CHEEK_Y
-    out = None
-    for s in (1, -1):
-        c = box_at(x1 - x0, b - a, z1 - z0, x=(x0 + x1) / 2, y=s * (a + b) / 2, z=(z0 + z1) / 2)
-        out = c if out is None else out.union(c)
-    for k in range(LEVELS):
-        out = out.cut(cyl_y(D.BRIDGE_AXLE_D + 0.2, 200, -100, x=X_BEND, z=z_level(k) + R))
-    return out
-
-
-# THE COMB (user, 2026-11-09): one printed PETG-GF part between the cheeks, its SPINE under the
-# bottom row (z COMB_SPINE_Z, nothing passes there: the bottom row's strings leave -X at -84.8),
-# its TINES standing up from it in the gaps between strings, each round all three axles.
-#   - A tine fits a gap only between two strings of DIFFERENT rows -- every gap is one -- and has
-#     9.5 - 5 (a 688 on one side, on some row) to fill: 4.3 thick, 0.1 off each bearing face.
-#   - It LOCATES the bearings along the axle: the face stands 0.1 off the bearing's INNER race
-#     (Ø10.6 round the bore), and a 0.5 RELIEF from Ø10.6 to Ø17 keeps it off the turning outer
-#     race and shield. Two END TINES against the cheeks do the same for strings 1 and 10.
-#   - Three middle tines, at the gaps y = +28.5, 0, -28.5: the even split (spans <= 28.5 of 97).
-#   - The spine is grounded only through the axles at the cheeks, so the middle tines are as
-#     stiff as the spine is; it is made as deep as the motors allow (z down to -106.0).
-# PRINTS -Z -> +Z: the spine on the bed, the tines walls up from it, the axle holes teardrops
-# peaked +Z. The axle's load (toward the bridge and the nut, (-X, +Z)) runs down the tine into
-# the spine ACROSS the layers: ~155 N on 4.3 x 17, about 2 MPa.
-COMB_TINE_Y = (28.5, 0.0, -28.5)                    # the middle tines' centres (string gaps)
-COMB_X = (-15.0, 2.0)                               # round the axles at X_BEND -8, to the cheeks' face
-COMB_SPINE_Z = (-106.0, -90.8)
-COMB_TOP = z_level(0) + R + 8.0                     # -16: 4 of ring over the top axle
+# (the CHEEKS and the separate COMB are gone: the ENDPLATE holds the axles. Kept for the
+# bearings' clearances:)
 COMB_CLR, COMB_RELIEF = 0.1, 0.5
-RACE_D, SHIELD_D = 10.6, 17.0                       # 688 inner race OD (tine contact), relief to
-
-
-def _comb_tines():
-    """(y0, y1) of every tine: the three middle ones, then one against each cheek."""
-    half = (9.5 - D.BRG688_W) / 2 - COMB_CLR         # 2.15
-    out = [(yc - half, yc + half) for yc in COMB_TINE_Y]
-    face = y_of(0) + D.BRG688_W / 2 + COMB_CLR      # string 1's bearing face, +0.1
-    out += [(face, CHEEK_Y[0]), (-CHEEK_Y[0], -face)]
-    return out
-
-
-def _comb() -> cq.Workplane:
-    from cadkit.holes import teardrop_hole
-    (x0, x1), (s0, s1) = COMB_X, COMB_SPINE_Z
-    out = box_at(x1 - x0, 2 * CHEEK_Y[0], s1 - s0, x=(x0 + x1) / 2, y=0, z=(s0 + s1) / 2)
-    for y0, y1 in _comb_tines():
-        out = out.union(box_at(x1 - x0, y1 - y0, COMB_TOP - s0, x=(x0 + x1) / 2,
-                               y=(y0 + y1) / 2, z=(s0 + COMB_TOP) / 2))
-    for k in range(LEVELS):
-        zc = z_level(k) + R
-        out = out.cut(teardrop_hole(D.BRIDGE_AXLE_D + 0.2, 2 * CHEEK_Y[0] + 2,
-                                    axis_point=(X_BEND, -CHEEK_Y[0] - 1, zc), axis_dir=(0, 1, 0)))
-        for i in range(N):                           # each bearing beside a tine: its relief
-            if level(i) != k:
-                continue
-            yb = y_of(i)
-            for y0, y1 in _comb_tines():
-                if 0 < y0 - (yb + D.BRG688_W / 2) < 1.0:       # bearing on the tine's -Y side
-                    out = out.cut(_tube_y(SHIELD_D, RACE_D, y0 - 1, y0 + COMB_RELIEF, zc))
-                elif 0 < (yb - D.BRG688_W / 2) - y1 < 1.0:     # ...on its +Y side
-                    out = out.cut(_tube_y(SHIELD_D, RACE_D, y1 - COMB_RELIEF, y1 + 1, zc))
-    return out
+RACE_D, SHIELD_D = 10.6, 17.0                       # 688 inner race OD (finger contact), relief to
 
 
 def _tube_y(od, idd, y0, y1, zc):
     return (cyl_y(od, y1 - y0, y0, x=X_BEND, z=zc)
             .cut(cyl_y(idd, y1 - y0 + 2, y0 - 1, x=X_BEND, z=zc)))
-
-
-def _plate_yz(x0, x1, z0, z1) -> cq.Workplane:
-    return box_at(x1 - x0, 2 * CHEEK_Y[0], z1 - z0, x=(x0 + x1) / 2, y=0, z=(z0 + z1) / 2)
-
-
-def _rod_plate() -> cq.Workplane:
-    x0, x1 = ROD_PLATE
-    # down past the bottom row's guide rods (their seats are blind in it), not just to the cheeks
-    z0 = min([CHEEK_Z[0]] + [rod_yz(i)[1] - GUIDE_SEAT / 2 - GUIDE_WALL for i in range(N)])
-    w = _plate_yz(x0, x1, z0, -20.5)
-    for i in range(N):
-        lo, hi = WIN_Z                               # the window the ball passes through
-        w = w.cut(yaw(box_at(10, 2 * WIN_HY, hi - lo, x=(x0 + x1) / 2, y=y_of(i),
-                             z=za(i) + (lo + hi) / 2), i))
-    for i in range(N):                               # each guide rod's seat: a boss (string 1's
-        ry, rz = rod_yz(i)                           # stands past the plate's +Y edge), blind
-        w = w.union(yaw(cyl_x(GUIDE_SEAT + 2 * GUIDE_WALL, x1 - x0, x0, y=ry, z=rz), i))
-    for i in range(N):
-        ry, rz = rod_yz(i)
-        w = w.cut(yaw(cyl_x(GUIDE_SEAT, x1 - 0.3 - (x0 - 3), x0 - 3, y=ry, z=rz), i))
-    return w
 
 
 def _anchor_y():
@@ -1065,7 +984,6 @@ def _drive(t: float) -> list:
     for i in range(N):
         out += kept(string_parts, i, t)
     out += kept(_bend_parts)
-    out += [("db_cheeks", kept(_cheeks)), ("db_rod_plate", kept(_rod_plate)), ("db_comb", kept(_comb))]
     return [_compound(nm, w) for nm, w in out]
 
 
@@ -1099,17 +1017,201 @@ def body_box() -> dict:
     return dict(inner=inner, outer=outer, ui_bottom_at_anchor=ui_bottom)
 
 
+# THE WALL BARS (user, 2026-11-12): a 1/4 x 3-1/2 in A-36 flat bar in each side wall, its 3-1/2
+# standing in Z. The usable height runs from the lowest motor's bottom to the strings' top less
+# 20 (103.6): the bar sits at its top, under a two-bead skin and its clearance. Steel, not
+# aluminium: the bars set the length the strings are stretched over, and steel expands with
+# them (aluminium would drift ~3-4 cents/degC). 1/4 thick keeps the standard 10.4 wall.
+# THE CLAMP (user, 2026-11-12): each endplate screws to the bars' ends, four M3s along X into
+# holes drilled and tapped in the bar ends (+Z+Y, -Z+Y, +Z-Y, -Z-Y; a printed drill jig puts them
+# dead centre), M3 x 16 through a Ø9 washer (DIN 9021 M3: ~9 MPa on the plastic at 0.5 kN, a
+# level PETG-GF holds without creeping off), reached down a tunnel from the +X end. The bars STOP SHORT of the endplate's wall (EP_GAP), so the
+# screws pull the endplate onto the walls' ends and squeeze the sections together; the bar end
+# only locates in a shallow POCKET. Sizes from the load (memory endplate-bar-clamp): pocket 5
+# (locating only), wall 8 (bending over the bar's width), the counterbore over it for the head
+# and washer.
+BAR_T, BAR_H = 25.4 / 4, 25.4 * 3.5                  # 6.35 across Y, 88.9 in Z
+BAR_CLR, BAR_SKIN = 0.2, 2 * D.BEAD
+STRING_TOP = D.STRING_Z + 1.9 / 2                    # the heaviest string's top
+BAR_Z = (STRING_TOP - 20.0 - BAR_SKIN - BAR_CLR - BAR_H, STRING_TOP - 20.0 - BAR_SKIN - BAR_CLR)
+EP_POCKET, EP_GAP, EP_WALL = 5.0, 1.0, 8.0
+EP_WASHER = (9.0, 0.8)                               # DIN 9021 M3: OD, thickness (~9 MPa at 0.5 kN)
+EP_TUNNEL = EP_WASHER[0] + 0.6                       # the screw's way in from the +X end, its head
+                                                     # and washer on the back wall's +X face
+EP_M3_CLR = 3.4
+EP_SCREW_Z = (BAR_Z[1] - 8.0, BAR_Z[0] + 5.5)        # the two screws in each bar end (the low one
+                                                     # 5.5 up: its tunnel then clears row c's axle)
+EP_END_T = 4 * D.BEAD                                # the end's skin, past the strings' drop
+FLOOR_GAP = 0.5                                      # the floor stops short of the endplate: only
+                                                     # the walls carry the squeeze, on one face
+
+
+def bar_y() -> tuple:
+    """Each wall bar's centre y (the -Y wall's, the +Y wall's): the middle of its wall."""
+    (_, _), (y0, y1), _ = body_box()["outer"]
+    return y0 + BODY_WALL / 2, y1 - BODY_WALL / 2
+
+
+def ep_x() -> dict:
+    """Along X from the JOINT (x_j: the walls' and the rod plate's -X face) to the +X END: the
+    bar's pocket, its end (the gap after it), the BACK WALL the screws pull on, and the end."""
+    x_j = ROD_PLATE[0]
+    bar_end = x_j + EP_POCKET
+    wall0 = bar_end + EP_GAP
+    x_end = body_box()["inner"][0][1] + EP_END_T
+    return dict(x_j=x_j, bar_end=bar_end, wall0=wall0, wall1=wall0 + EP_WALL, x_end=x_end)
+
+
+def _bar_box(yc: float, x0: float, x1: float, grow: float = 0.0) -> cq.Workplane:
+    z0, z1 = BAR_Z[0] - grow, BAR_Z[1] + grow
+    return box_at(x1 - x0, BAR_T + 2 * grow, z1 - z0, x=(x0 + x1) / 2, y=yc, z=(z0 + z1) / 2)
+
+
+def _wall_bars() -> list:
+    """The two bars, each with its two tapped M3 holes in the +X end (drawn as the tap drill)."""
+    # TODO: the -X end stops short of the -X endplate (the keyhead's), which is not modelled here
+    x0 = body_box()["outer"][0][0] + BODY_WALL + 1.0
+    x1 = ep_x()["bar_end"]
+    out = []
+    for k, yc in enumerate(bar_y()):
+        b = _bar_box(yc, x0, x1)
+        for zc in EP_SCREW_Z:
+            b = b.cut(cyl_x(2.5, 10.0, x1 - 10.0, y=yc, z=zc))
+        out.append((f"db_wall_bar_{k}", b))
+    return out
+
+
+def _bar_screws() -> list:
+    """The four M3 x 20 SHCS and their washers: through the back wall into the bar ends (head on
+    the washer on the wall's +X face; 20 is the stock length that reaches 7.2 into the bar, 2.4 d
+    of thread in steel, inside the 10 deep tapped hole)."""
+    from . import belt_tensioner as BTn
+    e = ep_x()
+    out = None
+    for yc in bar_y():
+        for zc in EP_SCREW_Z:
+            top = e["wall1"] + EP_WASHER[1] + BTn.HEAD_H
+            sc = _cap("m3", 20.0, (top, yc, zc), (-1, 0, 0))
+            sc = sc.union(cyl_x(EP_WASHER[0], EP_WASHER[1], e["wall1"], y=yc, z=zc)
+                          .cut(cyl_x(3.2, EP_WASHER[1] + 1, e["wall1"] - 0.5, y=yc, z=zc)))
+            out = sc if out is None else out.union(sc)
+    return out
+
+
 def _body() -> cq.Workplane:
-    (x0, x1), (y0, y1), (z0, z1) = body_box()["outer"]
-    (a0, a1), (b0, b1), (c0, _) = body_box()["inner"]
-    w = box_at(x1 - x0, y1 - y0, z1 - z0, x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(z0 + z1) / 2)
-    return w.cut(box_at(a1 - a0, b1 - b0, z1 - c0 + 2.0, x=(a0 + a1) / 2, y=(b0 + b1) / 2,
-                        z=(c0 + z1 + 2.0) / 2))
+    """The walls and floor up to the endplate: the walls end at x_j (the squeeze face), the floor
+    FLOOR_GAP short of the endplate's back, and each wall carries its bar's channel, open at +X."""
+    (x0, _), (y0, y1), (z0, z1) = body_box()["outer"]
+    (a0, _), (b0, b1), (c0, _) = body_box()["inner"]
+    xj = ep_x()["x_j"]
+    w = box_at(xj - x0, y1 - y0, z1 - z0, x=(x0 + xj) / 2, y=(y0 + y1) / 2, z=(z0 + z1) / 2)
+    # (the floor ends FLOOR_GAP short of the endplate: only the walls carry the squeeze)
+    w = w.cut(box_at(xj + 1 - a0, b1 - b0, z1 - c0 + 2.0, x=(a0 + xj + 1) / 2, y=(b0 + b1) / 2,
+                     z=(c0 + z1 + 2.0) / 2))
+    fx = xj - FLOOR_GAP                              # the floor's end
+    w = w.cut(box_at(xj + 1 - fx, b1 - b0, c0 - z0 + 2, x=(fx + xj + 1) / 2, y=(b0 + b1) / 2,
+                     z=(z0 - 2 + c0) / 2))
+    for yc in bar_y():
+        w = w.cut(_bar_box(yc, x0 + BODY_WALL, xj + 1, BAR_CLR))
+    return w
+
+
+# THE ENDPLATE (user, 2026-11-12): ONE printed PETG-GF part, the instrument's +X end from the
+# JOINT (x_j, where the walls and floor end) to the end, the full height (the bed under it to the
+# bridge axle's top), PRINTED -Z -> +Z. Just enough of it to:
+#   - hold each GUIDE ROD (its seat from the plate's back, ~11 deep: ROD_TIP);
+#   - be the ROD PLATE (x_j .. ROD_PLATE[1]), with the balls' windows; it stays under the pickup
+#     (PLATE_TOP) where the pickup reaches it;
+#   - hold the 4 AXLES (the three bend rows and the bridge): each slides in from the -Y face to a
+#     STOP AXLE_STOP_T short of the +Y face, where a PUSH hole lets a 2.5 key push it back out;
+#   - put a FINGER in all 9 gaps between the strings (each lane LANE_HW each side of a string,
+#     its bearings' clearance), the side zones solid past strings 1 and 10;
+#   - take the BAR ENDS: a POCKET (locating), the GAP, the BACK WALL the M3s pull on, and a
+#     tunnel from the +X end down to the screw heads.
+EP_TOP = D.BRIDGE_BEARING_Z + (D.BRIDGE_AXLE_D + 0.2) / 2 + 3 * D.BEAD   # 14.5: over the bridge axle
+PLATE_TOP = -20.5                                    # under the pickup ...
+PLATE_LOW_X = -20.0                                  # ... where it reaches (x -21)
+PICK_Y = (-52.9, 51.1)                               # the pickup's y, and 1 each side
+LANE_HW = D.BRG688_W / 2 + COMB_CLR                  # 2.6: a string's lane, its bearings in it
+LANE_FLOOR = 3.0                                     # each lane open from this under the string
+AXLE_STOP_T, PUSH_D = 3.0, 3.2                       # the +Y stop; the push-out hole (a 2.5 key)
+
+
+def axle_zs() -> list:
+    """(name, z) of the four axles, all at x X_BEND."""
+    return [(f"db_bend_axle_r{'abc'[k]}", z_level(k) + R) for k in range(LEVELS)] + \
+           [("db_bridge_axle", D.BRIDGE_BEARING_Z)]
+
+
+def axle_span() -> tuple:
+    """Each axle's y: in 0.5 from the -Y face, to its stop."""
+    (_, _), (y0, y1), _ = body_box()["outer"]
+    return y0 + 0.5, y1 - AXLE_STOP_T
+
+
+def endplate_axles() -> list:
+    a, b = axle_span()
+    return [(nm, cyl_y(D.BRIDGE_AXLE_D, b - a, a, x=X_BEND, z=zc)) for nm, zc in axle_zs()]
+
+
+def _endplate() -> cq.Workplane:
+    from cadkit.holes import teardrop_hole
+    (_, _), (y0, y1), (z0, _) = body_box()["outer"]
+    e = ep_x()
+    xj, xe = e["x_j"], e["x_end"]
+    x_in = body_box()["inner"][0][1]
+    w = box_at(xe - xj, y1 - y0, EP_TOP - z0, x=(xj + xe) / 2, y=(y0 + y1) / 2, z=(z0 + EP_TOP) / 2)
+    w = w.cut(box_at(PLATE_LOW_X - xj + 1, PICK_Y[1] - PICK_Y[0], EP_TOP - PLATE_TOP + 1,
+                     x=(xj - 1 + PLATE_LOW_X) / 2, y=sum(PICK_Y) / 2,
+                     z=(PLATE_TOP + EP_TOP + 1) / 2))            # low under the pickup
+    for i in range(N):                                           # the lanes, and the windows
+        za_i = za(i)
+        w = w.cut(box_at(x_in - ROD_PLATE[1], 2 * LANE_HW, EP_TOP + 1 - (za_i - LANE_FLOOR),
+                         x=(ROD_PLATE[1] + x_in) / 2, y=y_of(i),
+                         z=(za_i - LANE_FLOOR + EP_TOP + 1) / 2))
+        lo, hi = WIN_Z
+        w = w.cut(box_at(ROD_PLATE[1] - xj + 2, 2 * WIN_HY, hi - lo, x=(xj + ROD_PLATE[1]) / 2,
+                         y=y_of(i), z=za_i + (lo + hi) / 2))
+    rb = GUIDE_SEAT / 2 + GUIDE_WALL                             # the rods' bosses: a teardrop
+    for i in range(N):                                           # peaked -Z, so where one stands
+        ry, rz = rod_yz(i)                                       # in a lane it prints from the plate
+        w = w.union(teardrop_hole(2 * rb, ROD_TIP + 0.3 + 1.0 - xj, axis_point=(xj, ry, rz),
+                                  axis_dir=(1, 0, 0), print_up=(0, 0, -1)))
+    for i in range(N):
+        ry, rz = rod_yz(i)
+        w = w.cut(teardrop_hole(GUIDE_SEAT, ROD_TIP + 0.3 - (xj - 3), axis_point=(xj - 3, ry, rz),
+                                axis_dir=(1, 0, 0), fit=True))
+    a, b = axle_span()
+    for nm, zc in axle_zs():                                     # the axles: in from -Y, the stop,
+        w = w.cut(teardrop_hole(D.BRIDGE_AXLE_D + 0.2, b - (y0 - 1), axis_point=(X_BEND, y0 - 1, zc),
+                                axis_dir=(0, 1, 0)))
+        w = w.cut(teardrop_hole(PUSH_D, y1 + 1 - (b - 0.5), axis_point=(X_BEND, b - 0.5, zc),
+                                axis_dir=(0, 1, 0)))             # and the push-out hole
+    for i in range(N):                                           # the fingers' reliefs: off the
+        for zc in (z_level(level(i)) + R, D.BRIDGE_BEARING_Z):   # turning outer races, both sides
+            yb = y_of(i)
+            w = w.cut(_tube_y(SHIELD_D, RACE_D, yb - LANE_HW - COMB_RELIEF, yb - LANE_HW + 0.01, zc))
+            w = w.cut(_tube_y(SHIELD_D, RACE_D, yb + LANE_HW - 0.01, yb + LANE_HW + COMB_RELIEF, zc))
+    for yc in bar_y():                                           # the bars' ends
+        w = w.cut(_bar_box(yc, xj - 1, e["wall0"], BAR_CLR))      # pocket + gap
+        for zc in EP_SCREW_Z:
+            w = w.cut(teardrop_hole(EP_M3_CLR, e["wall1"] - e["bar_end"] + 1,
+                                    axis_point=(e["bar_end"], yc, zc), axis_dir=(1, 0, 0), fit=True))
+            w = w.cut(teardrop_hole(EP_TUNNEL, xe + 1 - e["wall1"], axis_point=(e["wall1"], yc, zc),
+                                    axis_dir=(1, 0, 0)))
+    return w
+
+
+@_lru_cache(maxsize=None)
+def endplate_full():
+    return _endplate()
 
 
 def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
     from .changer_bench import ghosts as _ghosts
-    out = _drive(t) + [_compound("db_anchor", _anchor()), _compound("db_anchor_m4", _anchor_bolts())]
+    out = _drive(t) + [("db_endplate", endplate_full())] + endplate_axles()
+    out += [_compound("db_anchor", _anchor()), _compound("db_anchor_m4", _anchor_bolts())]
+    out += _wall_bars() + [_compound("db_bar_m3", _bar_screws())]
     out = [(nm, _made(nm, w)) for nm, w in out] + list(ui_parts()[0])
     out.append(("db_body", _made("db_body", _body())))   # opaque PETG-GF, as the lead's chassis
     out += [g for g in _ghosts(y_hi=RAIL_HI)
@@ -1121,8 +1223,8 @@ def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
 # frames in the instrument's PETG-GF, the bought parts as they are.
 MATERIAL = {
     "yoke": "petg-gf", "collar": "pctg", "block": "petg-gf", "mplate": "petg-gf",
-    "cheeks": "petg-gf", "rod_plate": "petg-gf", "anchor": "stainless", "anchor_m4": "steel",
-    "comb": "petg-gf", "body": "petg-gf",
+    "endplate": "petg-gf", "bar_m3": "steel", "bridge_axle": "steel", "bridge_brg": "polished", "anchor": "stainless", "anchor_m4": "steel",
+    "body": "petg-gf", "wall_bar": "steel",
     "nut": "brass", "ball": "brass", "screw": "steel", "rod": "steel", "string": "polished",
     "brg": "polished", "bend_brg": "polished", "bridge_bearings": "polished",
     "bend_axle_ra": "steel", "bend_axle_rb": "steel", "bend_axle_rc": "steel",
@@ -1161,8 +1263,9 @@ COLORS = {
     "coupler": (0.85, 0.45, 0.15), "cpl_m3": "set_screw",
     "housing": (0.30, 0.36, 0.42), "hb": "set_screw", "insert": "nut",
     "collar_a": (0.85, 0.45, 0.15), "collar_b": (0.85, 0.45, 0.15), "ca_m3": "set_screw", "block": (0.30, 0.36, 0.42), "mplate": (0.30, 0.33, 0.38),
-    "cheeks": (0.42, 0.50, 0.62), "rod_plate": (0.42, 0.50, 0.62), "anchor": "nut_plate", "anchor_m4": "set_screw",
-    "comb": (0.36, 0.30, 0.42), "body": "chassis",
+    "endplate": (0.36, 0.30, 0.42), "bar_m3": "set_screw", "bridge_axle": "set_screw",
+    "bridge_brg": "bridge_bearings", "anchor": "nut_plate", "anchor_m4": "set_screw",
+    "body": "chassis", "wall_bar": "nut_plate",
 }
 
 
@@ -1206,15 +1309,24 @@ def is_intended(a: str, b: str) -> bool:
     if all(n.startswith("ghost_") for n in pair):
         return True
     bends = {"db_bend_axle_ra", "db_bend_axle_rb", "db_bend_axle_rc", "db_bend_brg"}
-    if "db_string" in pair and pair & (bends | {"db_bridge_bearings", "ghost_keyhead"}):
+    if "db_string" in pair and pair & (bends | {"db_bridge_brg", "db_bridge_axle", "ghost_keyhead"}):
         return True
-    if "db_cheeks" in pair and pair & (bends | {"db_rod_plate", "db_anchor", "db_comb"}):
+    if "db_bridge_brg" in pair and "db_bridge_axle" in pair:       # each bridge 688 on its axle
+        return True
+    if "db_bar_m3" in pair and "db_wall_bar" in pair:              # threaded into the bar ends
+        return True
+    # the lead's instrument's ghosts (deck, walls, keyhead) stand where this body's own walls,
+    # bars and endplate now are: no clash to report against a ghost of the other design
+    if any(n.startswith("ghost_") for n in pair) and pair & {
+            "db_wall_bar", "db_endplate", "db_bar_m3", "db_body", "db_bridge_axle",
+            "db_bend_axle_ra", "db_bend_axle_rb", "db_bend_axle_rc"}:
         return True
     if "db_bend_brg" in pair and pair & bends - {"db_bend_brg"}:      # each 688 on its axle
         return True
-    if "db_rod" in pair and "db_rod_plate" in pair:
+    if "db_rod" in pair and "db_endplate" in pair:
         return True
-    if "db_anchor_m4" in pair and pair & {"db_anchor", "ghost_wall_hi", "ghost_wall_lo", "db_body"}:
+    if "db_anchor_m4" in pair and pair & {"db_anchor", "ghost_wall_hi", "ghost_wall_lo", "db_body",
+                                          "db_wall_bar"}:
         return True
     if "db_anchor" in pair and pair & {"db_plug", "db_brg", "db_housing", "db_hb", "db_collar_b"}:
         return True
