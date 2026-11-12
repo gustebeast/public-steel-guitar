@@ -305,10 +305,37 @@ four are fixed here.
      rules drop from 7 to 4.
    * Still open: Y1 at its pin is not the same as OSC routed. In f6, U4's decap C8 sat
      between U4.5/6 and Y1, and OSC_IN/OSC_OUT stayed open.
-   * Tried and reverted: charging another part's courtyard inside a `tight` net's pad
-     hull. OSC_IN's hull (U4.5, Y1, C4) is too big; the charge stranded decaps 14-16 mm
-     and pushed U6 into the +5V pour. The loop's escape channel has to be measured, not
-     the hull.
+   * **Tight paths reserved (place_init step 5b).**
+     * A satellite sharing a `tight` net with its anchor seats first.
+     * After the local pass, the strip (CHANNEL_W 0.6 mm) from each anchor pin to its
+       satellite's pin on that net is stamped into the grid.
+     * The anchor's other satellites are lifted and re-seated together round the strips.
+       Any other part on a strip is dropped again nearby.
+     * motor_ctrl: C8 and C9 leave the U4 -> Y1 path, and OSC_IN/OSC_OUT route (open in f6).
+   * Tried and reverted on the way there:
+     * Charging a courtyard inside the net's pad HULL. OSC_IN's hull (U4.5, Y1, C4) covers
+       half the logic band; decaps stranded 14-16 mm.
+     * Charging MST-strip crossings in the local pass. A satellite is placed by its seat,
+       not by that cost, so C8 never moved, and the members' charge cascaded into 8
+       broken rules.
+     * Stamping strips at seat time. That froze U4's first turn: the pass could not re-seat
+       Y1, and U4 went back to 0.
+     * Re-seating one intruder at a time. C8 went to U4.1's far side, into the U4 -> U7
+       channel (f7: BOOT0, LINK_TX, SWDIO, SENSE_24V open).
+   * **Still open: motor_ctrl from footprints ends with 4 unconnected (f8):** +3V3, PG_5V,
+     SENSE_24V and SWDIO.
+     * U4's corner at pin 1 holds C14, the OSC paths, TP1 and R7. C8 cannot get within 5 mm
+       of U4.1, and the repacked caps crowd U4's west escapes (hot spot: C9, C12, R21).
+     * f5 (U4 at 0, Y1 5.66 mm off its pin, a 4 mm `near`) had 0 open in the route score.
+       Holding the crystal to 4 mm costs this board routing room. The next lever is U4's
+       escape halo versus its decaps, not the crystal.
+   * Stranding priority, checked against the two small regressions it caused:
+     * output_panel 252 -> 263 vias: the buck group (U5, L1, caps) moved 36 mm. Stranded
+       satellites went 4 -> 1 (C17, C2 and the BOOT cap C4 back at their pins).
+     * optical's new A2 (U9.5): stranded satellites went 2 -> 1 (C141).
+     * A bounded price per stranded satellite (25, 40 and 80 mm) left U4 at 0 with Y1
+       stranded, on every value. Lexicographic is kept: those are trades for rescued
+       satellites, not losses.
 6. **`panel` knows the body front, not the pads.** Side-entry J2/J6 with overhang 0 put
    their mounting pads inside the copper edge clearance (v1). The panel rule should
    check pad-to-edge copper clearance. **CLOSED:** `check` adds a pad line, so every pad's
