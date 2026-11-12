@@ -417,6 +417,7 @@ def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, 
     L += ["WIDTH " + w_ for w_ in width]
     L += ["POUR " + p_ for p_ in pours]
     L += ["WARN " + f_ for f_ in floor]
+    L += [x_.split("place_init: ", 1)[-1] for x_ in init_log if "TANGLE HINT" in x_]
     if fin:
         L += ["", "finish: %s" % (fin.get("error") or "%d unconnected%s, %d violation(s)%s" % (
             fin["unconnected"], (" (" + " ".join(fin.get("unconnected_nets", ())) + ")") if fin["unconnected"] else "",

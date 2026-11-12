@@ -963,9 +963,11 @@ electrically wrong can no longer pass quietly.
 | output_panel (op15, default) | 0 | 0.52 | 253 | 0 unconnected | 3 |
 | motor_ctrl from footprints (f10) | 2 | -- | -- | 1 unconnected (CAN1_TX) | 10 |
 | motor_ctrl + `between J1 U4` on U2 (f11) | -- | -- | -- | 1 unconnected (CAN1_TX) | 11 |
+| **motor_ctrl, logic band 2 mm wider (f21, f22 from the example)** | **0** | 0.0 | 125 | **0 unconnected, 0 violations** | 11 |
 
-Optical and output_panel are at their goal. motor_ctrl is not: the lead's bar is 0 open in
-the route score with the other two unchanged.
+All three are at goal. On motor_ctrl the score takes 31 s and the finish 53 s (it was 5-7 min
+and 12 min while CAN1 fought its way out). Its 11 FAILs are the buck region's power-path
+widths, U2.5's cap distance and connector-label declarations; none is at the MCU.
 
 **Tried this round and reverted:**
 * A loose cap aimed at its supply pin instead of the IC centre. Optical went to 3.11
@@ -973,16 +975,43 @@ the route score with the other two unchanged.
   `between` to 3 unconnected / 12 FAIL (f13).
 
 **Open gaps, in order:**
-1. **motor_ctrl CAN1 escape.** U4.46/47 sit on U4's south edge, and U8, R32, C12, C13 and C9
-   crowd it. The tight-path reservation protects satellite paths, not a signal pin's way out
-   to a far part. Next: reserve an escape for a pin whose net leaves the anchor's cluster,
-   the same way 5b reserves tight paths.
+1. ~~motor_ctrl CAN1 escape~~ **CLOSED (2026-11-12)**: see "The CAN1 escape" below.
 2. **`between` loses to a satellite rule** on the same part: the satellite wins. On f11 U2
    moved onto the J1-U4 line and CAN1_TX still failed, so the line was not the fix by itself.
 3. **Gap 7, the placement corridor**, is only part done: pours are charged, signal corridors
    are not.
 4. **Optical GND finish noise**: close_last results vary from run to run on GND stitching.
 5. `auto_singles` stays off until it helps a board without costing output_panel.
+
+**The CAN1 escape (2026-11-12).** It was not the parts in front of the pins:
+* The router's own words: "CAN1_TX still shares space ... beside CAN1_RX, CAN2_RX, CAN2_TX,
+  SWDIO". U4 sat at 270, so CAN1 (pins 46/47, bound for U2 at -X) was east of CAN2 (35/36,
+  bound for U3 at +X) on the same 0.4 mm row. The two buses crossed in front of the pins,
+  CAN2 ran along the pin tips, and CAN1 had no exit.
+* Counted as crossing escape chords (each pin's angle round U4 against its net's far pads):
+  177 at 270, 72 at 0.
+* U4 could not turn to 0: U4.5 (OSC_IN) then faced the `logic` band's -X edge, which the
+  trial floorplan drew flush with U4's courtyard. Y1 seated 1.7 mm past its 4 mm `near`, and
+  stranding ranks first, so 270 won.
+* The fix is the floorplan: the band moved 6 -> 4 mm (examples/intent_motor_ctrl.py). U4 turns
+  to 0 on net cost alone. 0 open, 0 unconnected, 0 violations (f21, f22).
+* **What the system gained: `TANGLE HINT`.** place_init records, for each fine-pitch IC, each
+  turn's crossings and stranded satellites. When the turn it kept crosses 1.5x as often (and
+  10 more) as a turn a stranded satellite forbade, it says so, in flow.log and report.md:
+  "U4 at 270 has 85 crossing escapes, at 0 only 33 -- but there Y1 lands 1.7 mm past its rule
+  (in region logic). Give it room ... and it will turn." Log only: optical, output_panel and
+  motor_ctrl place byte-identically.
+
+Tried and dropped on the way (each measured on all three boards):
+
+| attempt | motor_ctrl | output_panel | optical | why dropped |
+|---|---|---|---|---|
+| loose cap aimed at its supply pin | 1 unconnected | 1.03 uncoupled, 259 vias | 3.11 uncoupled | worse on both others |
+| fan-out band: no loose cap / small part 4.5 mm in front of an IC's leaving signal pins | 1 unconnected | 1.32-1.48 uncoupled (0.52) | same | worse on output_panel, not decisive |
+| same, every part >= 8 pads (connectors, relay) | 1 unconnected | 13.5 uncoupled, 20 FAIL | same | relay K1 lifted 28 mm |
+| layout: every fine-pitch part's escape lanes keep ALL stitch vias out (C12's GND via sat in front of U4.47) | no change alone | -- | layout 29 -> 472 s | slow, not decisive |
+| tangle as a turn cost (3 mm per crossing) | U4 stays 270 (stranding first) | -- | -- | not decisive; the hint carries it |
+| turn retried with the anchor slid back by the stranded satellite's shortfall | same spot | -- | -- | U4's hole is the only one its size |
 
 **Authoring time:**
 * Writing an intent from the netlist: 2.5 min to the first intent, 6 min to the first flow,

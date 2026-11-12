@@ -46,10 +46,14 @@ REG = {
     "pi": [[-X1 + 9.0, -Y1], [X1 - 8.0, -Y1], [X1 - 8.0, -Y1 + 11.0], [-X1 + 9.0, -Y1 + 11.0]],
     # the 3 A buck between the 24 V inlet (top edge) and the Pi feed (-Y edge); disjoint
     # from both bands (overlapping regions crowded J4 and U5 out: "no room")
-    "power": [[-X1 + 9.0, -Y1 + 11.0], [2.0, -Y1 + 11.0], [2.0, 16.0], [-X1 + 9.0, 16.0]],
+    "power": [[-X1 + 9.0, -Y1 + 11.0], [0.0, -Y1 + 11.0], [0.0, 16.0], [-X1 + 9.0, 16.0]],
     # the MCU, its crystal and the USB bridge: the +X half, clear of the 5 V buck's 10 mm
     # (v2: unregioned, U4 landed beside the buck and the crystal was pushed 15 mm off it)
-    "logic": [[6.0, -Y1 + 11.0], [X1 - 1.0, -Y1 + 11.0], [X1 - 1.0, Y1], [6.0, Y1]],
+    # 2026-11-12: the -X edge moved 6 -> 4. At 6 the band was flush with U4's courtyard, so
+    # U4 could not turn to 0 (Y1 no room by U4.5) and sat at 270 with CAN1 and CAN2 crossing
+    # in front of its 0.4 mm row -- CAN1_TX open in every run; place_init's TANGLE HINT
+    # names this. At 4: U4 at 0, 0 open in the score, 0 unconnected (f21).
+    "logic": [[4.0, -Y1 + 11.0], [X1 - 1.0, -Y1 + 11.0], [X1 - 1.0, Y1], [4.0, Y1]],
 }
 for n, p in REG.items():
     r("region", "floorplan band", "trial floorplan", name=n, poly=p, exclusive=(n in ("pi", "top")))
