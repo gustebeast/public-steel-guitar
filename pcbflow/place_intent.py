@@ -473,8 +473,17 @@ def _farads(v):
     return float(m.group(1)) * {"p": 1e-12, "n": 1e-9, "u": 1e-6, "µ": 1e-6, "m": 1e-3, "": 1.0}[m.group(2)]
 
 
+def _pin_key(p):
+    """'U4.13' sorts after 'U4.2': numbers as numbers."""
+    r_, n_ = p.split(".", 1)
+    return (r_, int(n_) if n_.isdigit() else 1 << 30, n_)
+
+
+A2_REACH = 5.0       # mm: quality A2's reach from a supply pin to its nearest cap
+
+
 def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-6, ground=("GND",), more_mm=2.0,
-                cells=(), descriptions=None):
+                cells=(), descriptions=None, loose_mm=8.0):
     """Rules for every capacitor across a SUPPLY net (SUPPLY: '+...', VCC, VDD, VBUS, VREF, ...)
     and ground: a small one (< bulk_f) gets `decap` at the nearest IC pin on that net, a bulk
     one `near` that part. The sources considered are ICs, ferrites and inductors (a buck's
@@ -569,8 +578,12 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
                 d, pin = min(cands, key=lambda t: (0 if not t[1].startswith("U") else 1,
                                                    -npin[t[1].split(".")[0]], t[1]))
             else:
+                # ...and within the IC, the supply pin holding fewest caps (unplaced, every pin
+                # tied and all six of U4's +3V3 caps went to U4.1, the first in sort order)
+                pload = collections.Counter(r_["pin"] for r_ in rules if r_.get("_rail") == sup)
                 d, pin = min(cands, key=lambda t: (0 if t[1].startswith("U") else 1,
-                                                   load[t[1].split(".")[0]] / float(npin[t[1].split(".")[0]]), t[1]))
+                                                   load[t[1].split(".")[0]] / float(npin[t[1].split(".")[0]]),
+                                                   pload[t[1]], _pin_key(t[1])))
         else:
             d, pin = min(cands)
         f = _farads((values or {}).get(c))
@@ -637,6 +650,36 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
             give["why"] = "%s across %s and ground: %s's own (it had none; given by %s)" % (give["cap"], net, u, d)
             by.setdefault(u, []).append(give)
             have.add((u, net))
+    # ⚠ ONE TIGHT CAP PER SUPPLY PIN; EXTRA CAPS GO LOOSE (lead ruling, motor_ctrl from
+    # footprints, 2026-11-11). U4.1 and U4.68 (+3V3, 1 mm apart round the corner) each got a
+    # cap seated at the pin; with the crystal's paths reserved on that edge, C8 had no seat
+    # within 5 mm and was re-seated round the IC into U4's other escapes -- four nets open.
+    # A2 judges a PIN by the nearest cap within A2_REACH: a tight cap (<= max_mm off its pin)
+    # covers every pin within A2_REACH - max_mm of it along the package. A cap whose pin is
+    # already so covered becomes a loose `near` the IC (loose_mm, weight 0.5): it stays on the
+    # rail beside the part without taking a seat from the pins' escape room.
+    cover = A2_REACH - max_mm
+    for d, rs in by.items():
+        if not re.match(r"^U\d", d):
+            continue
+        xy = {q["num"]: q["xy"] for q in parts[d]["pads"]}
+        tight = {}                  # per RAIL: a +3V3D cap does not cover a +3V3A pin (optical U6.38)
+        for r in sorted(rs, key=lambda r: (r["_f"], r["cap"])):
+            pins = [r["pin"]] + list(r.get("also", ()))
+            pts = [xy[x.split(".", 1)[1]] for x in pins if x.split(".", 1)[1] in xy]
+            tr = tight.setdefault(rail(r), [])
+            if pts and tr and all(min(math.hypot(a_[0] - b_[0], a_[1] - b_[1]) for b_ in tr) <= cover
+                                  for a_ in pts):
+                r["kind"], r["ref"], r["target"] = "near", r.pop("cap"), d
+                r["max_mm"], r["weight"] = loose_mm, 0.5
+                r["why"] += " -- %s is covered by a tight cap within %.1f mm along the package: loose, beside %s" % (
+                    r.pop("pin"), cover, d)
+                r.pop("also", None)
+                r["_loose"] = True
+                continue
+            tr += pts
+    for d in list(by):
+        by[d] = [r for r in by[d] if not r.get("_loose")]
     for rs in by.values():
         for k, r in enumerate(sorted(rs, key=lambda r: (r["_f"], r["cap"]))):
             if r.get("also"):
@@ -648,6 +691,7 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
         r.pop("_f", None)
         r.pop("_tight", None)
         r.pop("_rail", None)
+        r.pop("_loose", None)
     return rules + pinpair
 
 
