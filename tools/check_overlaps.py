@@ -13,6 +13,7 @@ UNINTENDED interpenetrations.
   py -3.12 -m tools.check_overlaps --exclude string,wire            # skip more bases
   py -3.12 -m tools.check_overlaps -j 14      # set worker count (default: cores/2)
   py -3.12 -m tools.check_overlaps --serial   # single-process (baseline/debug)
+  py -3.12 -m tools.check_overlaps --coils    # springs/threads as drawn (default: as cylinders)
 
 The belts are slow to boolean (swept compounds dominate the runtime) and rarely
 move, so the DEFAULT scan skips them for a quick inner-loop check; pass --full for
@@ -571,10 +572,11 @@ MIN_VOL = 0.05
 # NOT an exclusion list -- nothing is assumed safe; a changed part always recomputes.
 # Gitignored: it is derived, per-worktree, and cheap to rebuild.
 CACHE = str(pathlib.Path(__file__).resolve().parent.parent / ".overlap-cache.json")
+HELIX_CACHE = str(pathlib.Path(__file__).resolve().parent.parent / ".helix-proxy-cache.json")
 
 
 def gate(comps, *, full=False, only=(), exclude=(), jobs=None, show_all=False,
-         cache=None) -> int:
+         cache=None, coils=False) -> int:
     """Scan ALREADY-BUILT components and return the unintended-overlap count.
 
     ``comps`` is ``[(name, cq.Shape), ...]`` — i.e. what ``collect_components()``
@@ -596,6 +598,17 @@ def gate(comps, *, full=False, only=(), exclude=(), jobs=None, show_all=False,
         if skip:
             comps = [(n, s) for n, s in comps if base(n) not in skip]
             print(f"skipping base names (pass --full to include): {sorted(skip)}")
+    if not coils:
+        # HELICES AS CYLINDERS (user, 2026-11-12): a spring's coils or a screw's thread cost
+        # minutes a pair to boolean and answer no clearance question their cylinder doesn't
+        # (the cylinder is the stricter answer). tools/helix_proxy.py; --coils keeps them.
+        import time
+        from tools.helix_proxy import swap
+        t0 = time.time()
+        comps, hit = swap(comps, cache_path=HELIX_CACHE)
+        bases = sorted({base(n) for n in hit})
+        print(f"helices checked as their cylinders: {len(hit)} parts ({', '.join(bases)}) "
+              f"in {time.time() - t0:.1f} s (--coils to check the coils)")
     return run(comps, intended, jobs=jobs, show_all=show_all, min_vol=MIN_VOL,
                cache=CACHE if cache is None else cache)
 
@@ -610,6 +623,8 @@ def main():
     ap.add_argument("--only", default="", metavar="A,B",
                     help="check ONLY these comma-separated base names")
     ap.add_argument("--serial", action="store_true", help="single-process (baseline/debug)")
+    ap.add_argument("--coils", action="store_true",
+                    help="check springs and threads as drawn, not as their cylinders (slow)")
     ap.add_argument("-j", "--jobs", type=int, default=None,
                     help="worker processes (default: cores/2)")
     args = ap.parse_args()
@@ -622,7 +637,8 @@ def main():
                   only=[s for s in args.only.split(",") if s],
                   exclude=[s for s in args.exclude.split(",") if s],
                   jobs=1 if args.serial else args.jobs,
-                  show_all=args.all))
+                  show_all=args.all,
+                  coils=args.coils))
 
 
 if __name__ == "__main__":
