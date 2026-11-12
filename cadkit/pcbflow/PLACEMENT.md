@@ -18,8 +18,10 @@ One command runs a board end to end:
     py -3.12 place_flow.py <dir> <intent.json> [--no-auto] [--soft-forbid] [--skip-finish] [--fold-post]
 
 `<dir>` holds `<stem>.net`, `<stem>.board.json` (the notes: outline, cutouts, slots, pairs,
-layers, `post_route_refs`) and `<stem>.parts.json` (`place_geom.py` on any laid-out copy of
-the board). Set PCBFLOW_FOOTPRINT_DIRS / PCBFLOW_PROJECT as for layout.py.
+layers, `post_route_refs`) and `<stem>.parts.json`. A fresh board needs no layout: when
+parts.json is missing the flow writes it with `place_geom.py <stem> pads --from-net`, each
+netlist part's pads and courtyard from its footprint alone (on motor_ctrl the 107 parts'
+pads match a layout dump exactly). Write it yourself first if the intent script reads it. Set PCBFLOW_FOOTPRINT_DIRS / PCBFLOW_PROJECT as for layout.py.
 
 The stages:
 1. The intent. Unless `--no-auto`, auto_decaps, auto_singles and auto_floorplan are added
@@ -70,6 +72,11 @@ combination the proofs ran. Write it in this order:
    * `near` for parts that belong at a part or pin (an ESD clamp at its connector, CC
      resistors at their CC pins, a PHY near its socket). On an IC, `near` is a spring that
      stiffens until it holds.
+   * `between` for a part on the path between two others (a transceiver between its MCU
+     and its connector, a series resistor between driver and load): `{kind: "between",
+     ref, a, b, max_mm}`, where a and b are parts or pins. It is met when the part's centre is
+     within max_mm of the a-b segment. In place_init it is two equal springs, so its optimum
+     is the midpoint.
    * `decap` where auto_decaps' pin choice is wrong (optical's C130 at U10's VBUS pin).
    * `current` for power nets, which sets the widths.
    * Declared `diff_pairs` with a `chain` in the notes: a pass-through part in a chain is
@@ -279,11 +286,30 @@ four are fixed here.
 4. **The report hid the NO ROOM line when layout refused.** Fixed.
 5. **parts.json needs a laid-out board** (place_geom), and its `at` rotations leak into
    place_init as defaults. For a fresh board, part geometry should come from the
-   footprints alone. **Open.**
+   footprints alone. **CLOSED:** `place_geom --from-net`. The flow calls it when parts.json
+   is missing; every `at` is 0.
+   * What that exposes: the turn stage now decides every rotation. The hand board's 270 on
+     U4 had been leaking in. From footprints, U4 starts at 0 and OSC_IN faces the logic
+     region's edge, so Y1 lands 5.7 mm off U4.5 against its 4 mm `near`.
+   * Tried and reverted: charging a turn for each satellite pin that faces out of the
+     region. The quadratic turn picked 180, but the local pass turned U4 back to 0 on net
+     cost and stranded Y1 16 mm off, giving 13 broken soft rules instead of 10.
+   * Equal-terms result, footprint geometry, clean notes: 0 open in the route score, finish
+     1 unconnected (+5V_RAW), 0 violations, quality 14 FAIL. That is v3's result, with no
+     hand rotation in it.
+   * A turn has to be judged with its satellites re-seated, as the local pass does. A
+     crystal's `near` needs to weigh like the route failure it causes. **Open.**
 6. **`panel` knows the body front, not the pads.** Side-entry J2/J6 with overhang 0 put
    their mounting pads inside the copper edge clearance (v1). The panel rule should
-   check pad-to-edge copper clearance. **Open.**
+   check pad-to-edge copper clearance. **CLOSED:** `check` adds a pad line, so every pad's
+   far side must stay `edge_clear` (default 0.3, layout's copper-to-edge) inside the
+   outline. place_init pulls the body in by the shortfall and logs it. With v1's overhang 0,
+   J2 and J6 come in 0.40 mm. output_panel's six panel parts all pass.
 7. **A pour cannot go round a pin row, and placement does not see the pour.**
+   * Also seen: two pours of different nets on one layer at the same priority. The
+     footprint-only run's +5V_RAW (L2-F2) and +5V (F2-J5) met at F2, giving DRC
+     zones_intersect. FIXED: a later pour on a layer that already holds another net's pour
+     goes one priority above it.
    * J3.1->J3.6 (2.7 A) runs along J3's own row, and the J3->J1 capsule crosses J1.2-4.
    * The POUR room check names them but does not act. **Open.**
    * Needed: either a pour corridor treated as a keepout for other nets' pads on its
@@ -292,14 +318,25 @@ four are fixed here.
    * v2 left the MCU unregioned and the net graph put it beside the 5 V buck. The 10 mm
      zone was then NOT MET, and the crystal was pushed 15 mm off its pins.
    * One region fixed it (v3).
-   * Nothing warns that a sensitive IC has no region while a switcher does. **Open.**
+   * Nothing warned that a sensitive IC had no region while a switcher did. **CLOSED as a
+     warning, not automation:** the report's `WARN` line (`unregioned_sensitive`) names it.
+     On the v2 intent it reads "U4 Y1 unregioned while switcher L2 U5 is"; v3 is silent.
 9. **Locality across bands.** U2 (bus A transceiver) followed J1 to the top edge, and
    CAN1_TX ran 34 mm to the MCU (A23). `near` pulls a part to one target; a part between
-   two (a transceiver between its MCU and its connector) has no rule. **Open.**
+   two (a transceiver between its MCU and its connector) had no rule. **CLOSED:** `between`.
+   * Its first use did not help. On U2, which also has `near J1`, U2 stays a satellite
+     dropped at J1: a small part's `near` wins, and `between` only reaches the local pass.
+   * The re-drop moved Y1's load caps, and OSC_IN/OSC_OUT failed in the footprint-only
+     run. Without the rule, U2 already sat on the J1-U4 line.
+   * Use `between` INSTEAD of a `near` on a part, not as well as one. Making a satellite's
+     seat respect `between` is **open**.
 
 Verdict: placing from scratch works, and every board finishes through the same flow. On
 equal terms, though, this board ends with fewer unconnected than the hand placement but
 more quality FAILs. The open items above (5-9) are what a re-layout author would hit next.
+
+The report's **WARN** lines name a sensitive IC or crystal left unregioned while the
+switcher that auto_floorplan keeps off it is held in a region.
 
 The report's **NO ROOM** line lists every part the placer or the silk labeller found no
 room for, with the region it was held to.

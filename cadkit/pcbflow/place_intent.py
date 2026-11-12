@@ -266,6 +266,26 @@ def check(rule, P, notes, H=None):
             mid = float(((b @ along).max() + (b @ along).min()) / 2.0)
             out.append((-abs(mid - rule["at"]) + rule.get("tol", 0.05), ref,
                         "centre along the edge %.3f, wanted %.3f" % (mid, rule["at"])))
+        # ⚠ THE BODY FRONT IS NOT THE COPPER (motor_ctrl trial v1, gap 6, 2026-11-11): J2/J6's
+        # side-entry bodies sat on the floor edge as asked, and their mounting pads lay inside
+        # the 0.3 mm copper-to-edge clearance -- four DRC copper_edge_clearance. Every pad's
+        # far side must stay edge_clear (layout's m_CopperEdgeClearance) inside the outline's
+        # edge on that side.
+        poly = np.asarray((notes or {}).get("outline_poly") or _rect((notes or {}).get("outline_mm", (1e3, 1e3))), float)
+        edge = float((poly @ (ux, uy)).max())
+        ec = float(rule.get("edge_clear", 0.3))
+        x0, y0, a0 = P.at(ref)
+        worst = None
+        for q in P.parts[ref]["pads"]:
+            w, h = q["size"]
+            c = [(-w / 2, -h / 2), (w / 2, -h / 2), (w / 2, h / 2), (-w / 2, h / 2)]
+            loc = _rot(c, q.get("rot", 0.0)) + q["xy"]
+            far = float((P.world(ref, loc) @ (ux, uy)).max())
+            if worst is None or far > worst[0]:
+                worst = (far, q["num"])
+        if worst is not None:
+            out.append((edge - ec - worst[0], ref, "pad %s %.3f from the %s edge, copper wants %.2f"
+                        % (worst[1], edge - worst[0], e, ec)))
     elif k == "mate":
         ref, d, L_ = rule["ref"], rule["dir"], rule["length"]
         clear = rule.get("clear", 0.0)
@@ -345,6 +365,20 @@ def check(rule, P, notes, H=None):
             float(_edge_dist_inside(P.crtyd(ref), P.target(t)).max() * -1)
         d = max(d, 0.0)
         out.append((m - d, ref, "%.2f from %s" % (d, t)))
+    elif k == "between":
+        # a part ON the path between two others (a series resistor between driver and load,
+        # a transceiver between its connector and the MCU, motor_ctrl trial gap 9): its centre
+        # within max_mm of the segment joining the targets (a pad, or a part's centre),
+        # projected between the ends -- `near` both cannot say "not off to one side"
+        ref = rule["ref"]
+        ends = [P.target(t).mean(axis=0) if "." in t else np.asarray(P.at(t)[:2], float)
+                for t in (rule["a"], rule["b"])]
+        c = np.asarray(P.at(ref)[:2], float)
+        v = ends[1] - ends[0]
+        u = float(np.clip(np.dot(c - ends[0], v) / (np.dot(v, v) or 1e-9), 0.0, 1.0))
+        d = float(np.hypot(*(c - ends[0] - u * v)))
+        out.append((rule.get("max_mm", 2.0) - d, ref, "%.2f off the %s-%s line (at %.0f%%)"
+                    % (d, rule["a"], rule["b"], 100 * u)))
     elif k == "chain":
         refs = rule["refs"]
         pts = [np.asarray(P.at(r)[:2]) for r in refs]
@@ -752,6 +786,34 @@ def auto_floorplan(parts, sensitive=SENSITIVE, noisy=NOISY_EDGE, xtal=XTAL_NET, 
                           "why": "USB / relay edges (%s) off the analog parts" % " ".join(loud),
                           "src": "auto_floorplan (netlist)"})
     return rules
+
+
+def unregioned_sensitive(parts, rules):
+    """Report lines: a sensitive IC or crystal left out of every region while a switcher
+    feeding it is held in one (motor_ctrl trial gap 8, 2026-11-11).
+
+    A WARNING, not automation: v2 regioned the 5 V buck and left the MCU unsaid, and
+    place_init put U4 beside the buck with its crystal 15 mm off. auto_floorplan's `apart`
+    still applies, but a regioned switcher is a floorplan that has been half written --
+    the author decided where the noise goes and not where the listener goes."""
+    held = set()
+    for r in rules:
+        if r["kind"] == "in_region":
+            held |= set(_refs(r["refs"], parts))
+        elif r["kind"] in ("fixed", "pin", "panel"):
+            held.add(r["ref"])
+    held |= fixed_refs(rules)
+    out = []
+    for r in auto_floorplan(parts):
+        if not r.get("forbid"):
+            continue
+        sw = [x for x in r["a"] if x in held and re.match(r"^[UL]\d", x)]
+        if not sw:
+            continue
+        loose = [x for x in r["b"] if x not in held and re.match(r"^[UY]\d", x)]
+        if loose:
+            out.append("%s unregioned while switcher %s is (%s)" % (" ".join(loose), " ".join(sw), r["why"]))
+    return out
 
 
 FLOOR_KINDS = ("apart", "thermal", "in_region", "region")
