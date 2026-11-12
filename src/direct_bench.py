@@ -85,7 +85,14 @@ def y_of(i: int) -> float:
 
 
 # ── along the screw (x, before the yaw) ─────────────────────────────────────────────────────
-YK_H = 20 * D.BEAD                                  # 16: yoke, flange face -> roof
+# THE YOKE'S M3s (user, 2026-11-12): from behind the collar, through the flange and the printed
+# spacer, tapped into the keyhole plate, the tip 0.5 under its +X face. So the screw's length sets
+# the yoke, and the yoke sets the gap from the nut to the ball -- the one lever on travel (the
+# screw tip may come up to the ball). M3 x 25 (McMaster 91292A020), a different SKU from the bar
+# clamp's: each is the shortest that does its own job (two SKUs, user 2026-11-12).
+KEY_M3_L = 25.0
+YK_H = KEY_M3_L - 6.0                               # 19: flange face -> plate's +X face (the head
+                                                    # 3, collar 3, flange 3.5 behind; tip 0.5 short)
 # THE KEYHOLE PLATE (user, 2026-11-12: a ball end on a 2.4 printed roof is ~8 mm^2 of plastic
 # under the whole string, and the yoke's M3s threaded into plastic -- neither holds for years).
 # The roof is now a LASER-CUT 304 PLATE, 4 mm, the nut plates' sheet (one JLCCNC order): the
@@ -95,7 +102,8 @@ YK_H = 20 * D.BEAD                                  # 16: yoke, flange face -> r
 # is unchanged; the plate is its last YK_ROOF.
 YK_ROOF = 4.0                                       # the keyhole plate's thickness
 YK_D = D.NUT_FLANGE_L                               # 22: round, as the nut's flange
-X_YT0 = -26.0                                       # yoke roof at the slack end of travel
+X_FT0 = -42.0                                       # the nut flange's +X face at the slack end
+X_YT0 = X_FT0 + YK_H                                # the yoke's +X face there
 BRG_CLR = 1.0                                       # the endplate's face off the bend bearings' rim
 # the rods' plate (and the balls' windows), the endplate's -X wall: its +X face BRG_CLR off the
 # bend bearings' rim (user, 2026-11-12), its thickness whole beads, chosen for the load by the
@@ -511,9 +519,6 @@ def _yoke(i: int, t: float) -> cq.Workplane:
     return out
 
 
-KEY_M3_L = 22.0                                     # McMaster 91292A801, THE SAME SCREW as the bar
-                                                    # clamp's (user, 2026-11-12: one M3 SKU); head
-                                                    # behind the collar to 0.5 under the plate's +X face
 
 
 def keyhole_plate() -> cq.Workplane:
@@ -571,7 +576,6 @@ def _collar(i: int, t: float) -> cq.Workplane:
 
 
 def _m3s(i: int, t: float) -> cq.Workplane:
-    assert KEY_M3_L == bar_screw_len(), "the yoke's M3s and the bar clamp's are meant to be one SKU"
     y, z = y_of(i), za(i)
     (p0, _), heads, _, _ = x_collar(t)
     out = None
@@ -1103,9 +1107,11 @@ def ep_x() -> dict:
 
 
 # McMaster 18-8 M3 SHCS stock lengths (91292A: 20, 22, 25, 30 read 2026-11-12) and the thread in the
-# bar: 2.5 d at least; the tapped hole goes EP_TAP_EXTRA past the tip
+# bar: 1.5 d -- in steel that already outlasts the screw, and every mm more is drilling and
+# tapping the bar end (user, 2026-11-12: only as deep as a firm, lasting grip needs); the tapped
+# hole goes EP_TAP_EXTRA past the tip
 M3_STOCK = (16.0, 20.0, 22.0, 25.0, 30.0)
-EP_ENGAGE, EP_TAP_EXTRA = 7.5, 2.0
+EP_ENGAGE, EP_TAP_EXTRA = 1.5 * 3.0, 2.0
 
 
 def bar_screw_len() -> float:

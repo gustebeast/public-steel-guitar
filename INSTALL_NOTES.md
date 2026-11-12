@@ -1891,11 +1891,19 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
   - The stop wall only locates the axle along Y; nothing pushes on it.
 - **Wall bars:** 1/4" × 3-1/2" A-36 flat bar, one in each side wall, the 3-1/2" standing vertical. The top edge sits 20 mm under the strings' top.
   - Steel, not aluminium: it expands like the strings.
-  - **Drill and tap each bar end** for M3, two holes 10.5 deep (Ø2.5 tap drill), on the bar's centreline in thickness, 8.0 mm under the top edge and 5.5 mm over the bottom edge. Use a printed drill jig so the holes come out dead centre.
+  - **Drill and tap each bar end** for M3, two holes 8.5 deep (Ø2.5 tap drill; only as deep as the grip needs), on the bar's centreline in thickness, 8.0 mm under the top edge and 5.5 mm over the bottom edge. Use a printed drill jig so the holes come out dead centre.
 - **Clamping:**
   - Each bar end drops into a 5 mm locating pocket and **stops 1 mm short** of the endplate's back wall (12.7 mm, running out to the heads).
-  - Four M3 × 22 socket-head cap screws (McMaster 91292A801), each with an ISO 7089 / DIN 125-A M3 washer (Ø7 × 0.5; the Ø9 DIN 9021 left too thin a wall), sit in shallow counterbores in the endplate's +X end, **heads flush**, and pass the back wall into the bar ends.
+  - Four M3 × 20 socket-head cap screws (McMaster 91292A123), each with an ISO 7089 / DIN 125-A M3 washer (Ø7 × 0.5; the Ø9 DIN 9021 left too thin a wall), sit in shallow counterbores in the endplate's +X end, **heads flush**, and pass the back wall into the bar ends.
   - Tighten until the side walls' ends are pulled hard against the endplate. The bars never bear on the plastic, so the screws squeeze the sections together.
-  - Thread engagement in the bar: about 8.3 mm (2.5 × d or more).
+  - Thread engagement in the bar: about 6.3 mm (over 1.5 × d: in steel that outlasts the screw).
   - The floor ends flush with the walls (one print), so the endplate bears on the floor across the middle as well as on the walls. The floor carries most of the strings' pull.
   - **Torque: snug, about 0.3 N·m** (a light pull on the short arm of the 2.5 key). The strings' pull already presses the endplate onto the walls; the screws only hold it there. Harder pulls overload the plastic under the small washer, and it creeps.
+
+## Direct drive: steel keyhole plate on each yoke (2026-11-12)
+
+- **Keyhole plate:** laser-cut 304 stainless, 4 mm, Ø22, one per string, cut from the same sheet as the nut plates (`steel/keyhole_plate.step`, from `build.py`). It replaces the yoke's printed roof.
+  - The string's ball end bears on the steel. The plastic yoke behind it is only a spacer that shapes the ball's pocket.
+  - **Tap its two Ø2.5 holes M3** (or have the cutter tap them).
+- **Yoke screws:** two **M3 × 25** socket-head cap screws (McMaster 91292A020). They go in from behind the collar, through the nut flange and the yoke, and thread into the plate, stopping 0.5 mm short of its face. Nothing threads into plastic.
+- The yoke is 19 mm from flange to plate face. At full travel the screw tip stops 4.65 mm short of the ball, so travel can grow to about 12 mm without the screw reaching the ball.
