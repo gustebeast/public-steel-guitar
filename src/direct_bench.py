@@ -88,10 +88,10 @@ def y_of(i: int) -> float:
 # THE YOKE'S M3s (user, 2026-11-12): from behind the collar, through the flange and the printed
 # spacer, tapped into the keyhole plate, the tip 0.5 under its +X face. So the screw's length sets
 # the yoke, and the yoke sets the gap from the nut to the ball -- the one lever on travel (the
-# screw tip may come up to the ball). M3 x 25 (McMaster 91292A020), a different SKU from the bar
-# clamp's: each is the shortest that does its own job (two SKUs, user 2026-11-12).
-KEY_M3_L = 25.0
-YK_H = KEY_M3_L - 6.0                               # 19: flange face -> plate's +X face (the head
+# screw tip may come up to the ball). M3 x 30 (McMaster 91292A022; user 2026-11-12: travel to
+# spare), a different SKU from the bar clamp's (two SKUs, user 2026-11-12).
+KEY_M3_L = 30.0
+YK_H = KEY_M3_L - 6.0                               # 24: flange face -> plate's +X face (the head
                                                     # 3, collar 3, flange 3.5 behind; tip 0.5 short)
 # THE KEYHOLE PLATE (user, 2026-11-12: a ball end on a 2.4 printed roof is ~8 mm^2 of plastic
 # under the whole string, and the yoke's M3s threaded into plastic -- neither holds for years).
@@ -102,8 +102,6 @@ YK_H = KEY_M3_L - 6.0                               # 19: flange face -> plate's
 # is unchanged; the plate is its last YK_ROOF.
 YK_ROOF = 4.0                                       # the keyhole plate's thickness
 YK_D = D.NUT_FLANGE_L                               # 22: round, as the nut's flange
-X_FT0 = -42.0                                       # the nut flange's +X face at the slack end
-X_YT0 = X_FT0 + YK_H                                # the yoke's +X face there
 BRG_CLR = 1.0                                       # the endplate's face off the bend bearings' rim
 # the rods' plate (and the balls' windows), the endplate's -X wall: its +X face BRG_CLR off the
 # bend bearings' rim (user, 2026-11-12), its thickness whole beads, chosen for the load by the
@@ -114,6 +112,15 @@ EP_PLATE_N = 4                                      # beads: FEA 2026-11-12, wit
                                                     # MPa peak at open pitch: the axles tie the fingers,
                                                     # the plate barely matters; 3.2 clears the pickup
 ROD_PLATE = (X_BEND - R - BRG_CLR - EP_PLATE_N * D.BEAD, X_BEND - R - BRG_CLR)
+# THE DRIVE'S PLACE ALONG X (user, 2026-11-12: "tons of space at -X: move the motors, anchor, etc
+# -X to make room for the 30 mm screw"). At the slack end the yoke's +X face stands YK_CLR off the
+# endplate's plate; the nut, collar, springs, plugs, anchor plate and motors all sit DRIVE_DX
+# further -X than the 2026-11-11 layout (nut flange at -42, anchor at -190), so the springs and
+# the leadscrews keep their lengths; only the guide rods grow by DRIVE_DX.
+YK_CLR = 1.0
+X_FT0 = ROD_PLATE[0] - YK_CLR - YK_H                # the nut flange's +X face at the slack end
+X_YT0 = X_FT0 + YK_H                                # the yoke's +X face there
+DRIVE_DX = -42.0 - X_FT0
 # THE ROUND NUT (user, 2026-11-09): the common Tr8x2 brass flange nut, Ø22 x 3.5 flange with FOUR
 # Ø3.5 holes on a Ø16 circle at 45 deg -- no flats needed here (a row's nuts are 28.5 apart, the
 # next row's 28.1). Its holes do everything:
@@ -223,7 +230,7 @@ SCREW_CLR = 10.0                                    # the plug's and collar's ho
 # through the rail's inner skin into M4 tapped in the A-36 wall bar, so the pull goes straight
 # into the steel. Those bolts sit at z between the spring rows: a 2.5 key reaches each along Y.
 ANCHOR_T = 4.0
-ANCHOR = (-190.0 - ANCHOR_T, -190.0)                # the plate's web, x
+ANCHOR = (-190.0 - DRIVE_DX - ANCHOR_T, -190.0 - DRIVE_DX)   # the plate's web, x
 ANCHOR_Z = (None, -8.0)                             # its top at most (DECK_UNDER -3.2); _anchor_z
 ANCHOR_FL = 16.0                                    # each fold's depth, toward +X
 ANCHOR_CLR = 0.5                                    # off the body's walls and floor, and under the UI
@@ -295,7 +302,7 @@ ROD_END = ANCHOR[1] + 1.0                           # the rod's -X end: 1 off th
 # its +X end, deep in the endplate: the seat runs on past the plate until 1.0 of plastic is left
 # before the NEXT ROW's axle bore (rows 0 and 1 have one just under their rods): ~11 of grip
 ROD_TIP = X_BEND - (D.BRIDGE_AXLE_D + 0.2) / 2 - 1.0 - 0.3
-ROD_L = round(ROD_TIP - ROD_END, 1)                 # 175.6, every string the same
+ROD_L = round(ROD_TIP - ROD_END, 1)                 # every string the same
 
 # ── motors and stations ─────────────────────────────────────────────────────────────────────
 M_HALF = D.MOTOR_SQ / 2                             # 21.15

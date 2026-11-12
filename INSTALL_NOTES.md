@@ -1870,7 +1870,7 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
 
 ## Direct drive: guide rod held at both ends, no screw sleeves (2026-11-12)
 
-- **Guide rod:** McMaster 89535K84, 3/16" 304 stainless. One 6 ft length ($7.45) cuts 10 rods at **175.6 mm** (updated with the endplate below), all the same length. Saw it and deburr the ends.
+- **Guide rod:** McMaster 89535K84, 3/16" 304 stainless. One 6 ft length ($7.45) cuts 10 rods at **178.8 mm** (updated with the endplate and the 30 mm yoke below), all the same length. Saw it and deburr the ends.
   - It sits 15 mm off the screw axis at 300°, the same on every string.
   - Its −X end goes in a blind seat in a boss on the anchor plug, the +X end in a blind seat in the endplate. It is trapped between the two seats, with no press fit.
 - **Nothing on the nut touches the rod.** The collar (now **PCTG**, unfilled, so glass fibres don't scour the stainless) has a tab with a radial slot. The slot is a close fit across to stop rotation, with ±1 mm free along the radius, so a rod a little out of line never pushes the nut off the screw axis.
@@ -1905,5 +1905,5 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
 - **Keyhole plate:** laser-cut 304 stainless, 4 mm, Ø22, one per string, cut from the same sheet as the nut plates (`steel/keyhole_plate.step`, from `build.py`). It replaces the yoke's printed roof.
   - The string's ball end bears on the steel. The plastic yoke behind it is only a spacer that shapes the ball's pocket.
   - **Tap its two Ø2.5 holes M3** (or have the cutter tap them).
-- **Yoke screws:** two **M3 × 25** socket-head cap screws (McMaster 91292A020). They go in from behind the collar, through the nut flange and the yoke, and thread into the plate, stopping 0.5 mm short of its face. Nothing threads into plastic.
-- The yoke is 19 mm from flange to plate face. At full travel the screw tip stops 4.65 mm short of the ball, so travel can grow to about 12 mm without the screw reaching the ball.
+- **Yoke screws:** two **M3 × 30** socket-head cap screws (McMaster 91292A022). They go in from behind the collar, through the nut flange and the yoke, and thread into the plate, stopping 0.5 mm short of its face. Nothing threads into plastic.
+- The yoke is 24 mm from flange to plate face. The whole drive (nut, springs, plugs, anchor plate, motors) sits 3.2 mm further −X to make room, so the springs and leadscrews keep their lengths. The screw tip can now travel up to 18 mm before it reaches the ball (travel is still 8.35 until the springs are re-checked).
