@@ -13,16 +13,13 @@ the last one is still running, so the motor follows the foot). SAFE BY CONSTRUCT
   * nothing heard for HOLD_S: no new targets, the motor holds where it is;
   * the speed is capped at RPM (the fastest the spring test ran);
   * Ctrl-C or SIGTERM (pkill -f publicbench.pedaldrive): back to start, play as it was.
-SMOOTH SLOW PRESSES (user, 2026-11-11: the grind is the motor vibrating on SLOW, delicate pedal
-work; a slammed pedal may be noisy). The pedal arrives in 128 steps (~30 counts each), and each
-step sent as its own full-speed move with no ramp made a slow press a train of sprint-and-stop
-jolts. Now, on a steady TICK:
-  * a big change (SLAM_STEPS pedal steps at once: a slammed pedal) goes at full RPM;
-  * otherwise the motor is aimed at where the pedal IS (ahead of it while the foot moves) at the
-    pedal's own recent SPEED (smoothed over TAU) plus a catch-up of the lag over T_CATCH: it never
-    gets there early and stops, so a press is one continuous move. (2026-11-11 v1 aimed at a
-    smoothed point each tick at 1.5x the speed to reach it: the motor arrived early and stopped
-    every tick, notchy at ordinary speeds.)
+PACED TO THE PEDAL (user, 2026-11-11: notchy at ordinary speeds; one logged press). The pedal
+sends a value only every ~20-30 ms, and an ordinary press is ~0.1 s end to end, so each value
+jumps 20-45 of its 128 steps. Sent at full speed, the motor covered each jump in ~2 ms and stood
+for the rest: hop-wait-hop. Now the motor is aimed at the latest value at the speed that gets it
+there just as the NEXT value is due (the pedal's own interval, measured), so a press is one
+continuous move at the foot's pace (~140 rpm for a full 0.1 s sweep), about one interval behind.
+When the values stop, the rest is made up within T_END.
 --rpm-fixed sends every target at RPM as before (to compare).
 Stop the phone service first (it shares the serial port): sudo systemctl stop public-steel-guitar-phone
 """
@@ -44,9 +41,8 @@ RPM = 1200
 HOLD_S = 0.5
 TICK = 0.01                      # s: targets go out on this tick, ~100 a second
 DEADBAND = 2                     # counts: smaller changes are not sent
-TAU = 0.08                       # s: the pedal's speed is smoothed over about this
-T_CATCH = 0.06                   # s: the lag behind the pedal is made up over about this
-SLAM_STEPS = 6                   # pedal steps (of 127) at once: a slam, full speed
+INTERVAL0 = 0.025                # s: the pedal's interval between values, until it is measured
+T_END = 0.015                    # s: the shortest time a move is given (when values stop coming)
 RPM_MIN = 1                      # the driver takes 1 rpm: a slow foot is never outrun
 RPM_RESEND = 0.15                # a new speed goes out when it differs by this fraction
 
@@ -63,9 +59,7 @@ def main():
     a.add_argument("--raise-sign", type=int, choices=(1, -1), default=RAISE_SIGN)
     a.add_argument("--rpm-fixed", action="store_true", help="every target at RPM, unsmoothed (the old way)")
     a.add_argument("--acc", type=int, default=0, help="the motor's ramp, 0 (none) .. 255")
-    a.add_argument("--tau", type=float, default=TAU, help="s: the pedal's speed smoothed over this")
     a.add_argument("--log", help="jsonl: every pedal value heard and every move sent, timed")
-    a.add_argument("--catch", type=float, default=T_CATCH, help="s: the lag made up over this")
     o = a.parse_args()
     up, dn = throw_counts(o.semitones), throw_counts(-o.semitones)     # dn < 0
     assert 0 < up <= T // 2, "a throw over half a turn: give a smaller --semitones"
@@ -106,8 +100,7 @@ def main():
     last_rx, sent, sent_rpm, n, last_seq = 0.0, home, 0, 0, -1
     v_raw = None
     est = float(home)                                # where the motor should be by now
-    rate = 0.0                                       # the pedal's speed, counts a second, smoothed
-    prev_tgt = None
+    interval, t_val, v_last = INTERVAL0, 0.0, None   # the pedal's pace: its interval, last change
     t_prev = time.monotonic()
     try:
         while True:
@@ -128,26 +121,29 @@ def main():
                     continue
                 last_seq, last_rx, v_raw = seq, now, v
                 note(k="rx", v=v, at=round(time.monotonic(), 4))
+                if v != v_last:                      # a new value: the pedal's pace
+                    gap = now - t_val
+                    if 0.004 < gap < 0.1:
+                        interval += (gap - interval) * 0.3
+                    t_val, v_last = now, v
             if v_raw is None:
                 continue
             if last_rx and now - last_rx > HOLD_S:
                 print("nothing heard for %.1f s: holding at %+d" % (HOLD_S, sent - home), flush=True)
-                last_rx, v_raw, prev_tgt = 0.0, None, None
+                last_rx, v_raw = 0.0, None
                 continue
             tgt = min(hi, max(lo, home + o.raise_sign * throw_counts(o.semitones * (1.0 - 2.0 * v_raw))))
-            step = 0 if prev_tgt is None else tgt - prev_tgt
-            prev_tgt = tgt
-            rate += (step / dt - rate) * min(1.0, dt / o.tau)
             # where the motor got to since the last tick, at the speed it was sent
             go = sent - est
             est += max(-abs(go), min(abs(go), (1 if go > 0 else -1) * sent_rpm * per_rpm * dt))
             lag = tgt - est
             if abs(lag) < DEADBAND and tgt == sent:
                 continue
-            if o.rpm_fixed or abs(step) >= SLAM_STEPS * up / 63.5 / 2:
-                rpm = RPM                            # the old way, or a slam
-            else:
-                rpm = int(min(RPM, max(RPM_MIN, (abs(rate) + abs(lag) / o.catch) / per_rpm)))
+            if o.rpm_fixed:
+                rpm = RPM
+            else:                                    # there just as the next value is due
+                t_left = max(T_END, t_val + interval - now)
+                rpm = int(min(RPM, max(RPM_MIN, abs(lag) / t_left / per_rpm + 0.5)))
             if tgt == sent and sent_rpm and abs(rpm - sent_rpm) <= RPM_RESEND * sent_rpm:
                 continue
             m.move_abs(tgt, rpm, o.acc)
