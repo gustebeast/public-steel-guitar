@@ -101,10 +101,12 @@ CHIP_XY = (BOARD_W / 2 - SPEC_X1, BOARD_L / 2 - SPEC_Z1)
 
 # Anything TALLER than 1.5 mm must keep its whole footprint outside the magnet
 # cap's swept circle, because the board installs by dropping straight down past
-# the cap. Only the connector and the transceiver (SOIC-8, 1.75) qualify now that the
-# inductor went with the buck; every passive here is under 1.5, the LDO is 1.45.
+# the cap. The connectors, the transceiver (SOIC-8, 1.75), the terminator switch (2.3)
+# and -- since the 2026-11-03 grow -- the MCU (LQFP-48, 1.6; it was missing from this list,
+# found by the cold placement holdout 2026-11-12) qualify; every passive here is under 1.5,
+# the LDO is 1.45.
 CAP_SWEEP_R = 5.66
-TALL_PARTS = ("J1", "J2", "U2", "SW1")
+TALL_PARTS = ("J1", "J2", "U2", "SW1", "U3")
 SW1_XY = (-2.5500, -7.3000)       # the terminator switch's centre, chip frame
 
 
