@@ -1882,11 +1882,11 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
 - **Endplate:** one PETG-GF print that replaces the rod plate, the comb and the cheeks. Print it standing, building −Z → +Z (its −Z face on the bed). It spans the full instrument height and holds:
   - the 10 guide-rod seats, in bosses running back from the plate;
   - the 4 axles: three bend-bearing rows and the bridge row;
-  - the fingers, one lane per string, so every gap between bearings has a finger (formerly 3 fingers);
+  - the fingers, one lane per string, so every gap between bearings has a finger (formerly 3 fingers). Each lane is open through the top and the +X end, so a string feeds in and out when restringing;
   - the two wall bars' ends.
 - **Bearing clearance:** the plate now stands 1 mm off the bend bearings (formerly 4 mm).
-- **Axles:** Ø8 steel, about 175 mm long.
-  - Each slides in from the −Y side through every bearing in its row and stops on a 3 mm wall at the +Y side.
+- **Axles:** Ø8 steel, all four **106.7 mm** long: the bearing span plus 8 mm of grip in the endplate at each end.
+  - Each slides in from the −Y side, down its bore and through every bearing in its row, and stops on a 3 mm wall at the +Y side. Push it the last stretch with the long arm of the 2.5 key.
   - To remove one, push it back out with an allen key through the Ø3.2 hole in that stop wall.
   - The stop wall only locates the axle along Y; nothing pushes on it.
 - **Wall bars:** 1/4" × 3-1/2" A-36 flat bar, one in each side wall, the 3-1/2" standing vertical. The top edge sits 20 mm under the strings' top.

@@ -1145,10 +1145,16 @@ def axle_zs() -> list:
            [("db_bridge_axle", D.BRIDGE_BEARING_Z)]
 
 
+AXLE_GRIP = D.BRIDGE_AXLE_D                          # each end's grip in plastic past the outer lane
+                                                     # (user, 2026-11-12: axles only as long as a
+                                                     # solid grip needs; the fingers between hold it too)
+
+
 def axle_span() -> tuple:
-    """Each axle's y: in 0.5 from the -Y face, to its stop."""
-    (_, _), (y0, y1), _ = body_box()["outer"]
-    return y0 + 0.5, y1 - AXLE_STOP_T
+    """Each axle's y: one length for all four rows (one part to stock), the outermost lanes'
+    width plus AXLE_GRIP each side. It goes in from -Y down its bore and stops on the +Y wall."""
+    ys = [y_of(i) for i in range(N)]
+    return min(ys) - LANE_HW - AXLE_GRIP, max(ys) + LANE_HW + AXLE_GRIP
 
 
 def endplate_axles() -> list:
@@ -1161,15 +1167,16 @@ def _endplate() -> cq.Workplane:
     (_, _), (y0, y1), (z0, _) = body_box()["outer"]
     e = ep_x()
     xj, xe = e["x_j"], e["x_end"]
-    x_in = body_box()["inner"][0][1]
     w = box_at(xe - xj, y1 - y0, EP_TOP - z0, x=(xj + xe) / 2, y=(y0 + y1) / 2, z=(z0 + EP_TOP) / 2)
     w = w.cut(box_at(PLATE_LOW_X - xj + 1, PICK_Y[1] - PICK_Y[0], EP_TOP - PLATE_TOP + 1,
                      x=(xj - 1 + PLATE_LOW_X) / 2, y=sum(PICK_Y) / 2,
                      z=(PLATE_TOP + EP_TOP + 1) / 2))            # low under the pickup
     for i in range(N):                                           # the lanes, and the windows
         za_i = za(i)
-        w = w.cut(box_at(x_in - ROD_PLATE[1], 2 * LANE_HW, EP_TOP + 1 - (za_i - LANE_FLOOR),
-                         x=(ROD_PLATE[1] + x_in) / 2, y=y_of(i),
+        # each lane runs out through the +X end and the top (user, 2026-11-12: open, only the
+        # fingers between the bearings, so a string feeds in and out when restringing)
+        w = w.cut(box_at(xe + 1 - ROD_PLATE[1], 2 * LANE_HW, EP_TOP + 1 - (za_i - LANE_FLOOR),
+                         x=(ROD_PLATE[1] + xe + 1) / 2, y=y_of(i),
                          z=(za_i - LANE_FLOOR + EP_TOP + 1) / 2))
         lo, hi = WIN_Z
         w = w.cut(box_at(ROD_PLATE[1] - xj + 2, 2 * WIN_HY, hi - lo, x=(xj + ROD_PLATE[1]) / 2,
