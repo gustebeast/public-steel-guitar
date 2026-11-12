@@ -64,6 +64,7 @@ def main():
     a.add_argument("--rpm-fixed", action="store_true", help="every target at RPM, unsmoothed (the old way)")
     a.add_argument("--acc", type=int, default=0, help="the motor's ramp, 0 (none) .. 255")
     a.add_argument("--tau", type=float, default=TAU, help="s: the pedal's speed smoothed over this")
+    a.add_argument("--log", help="jsonl: every pedal value heard and every move sent, timed")
     a.add_argument("--catch", type=float, default=T_CATCH, help="s: the lag made up over this")
     o = a.parse_args()
     up, dn = throw_counts(o.semitones), throw_counts(-o.semitones)     # dn < 0
@@ -90,6 +91,14 @@ def main():
     print("start %d = middle; up %+d, down %+d counts (+-%.2f st); listening on udp %d"
           % (home, o.raise_sign * up, o.raise_sign * dn, o.semitones, o.port), flush=True)
 
+    logf = open(o.log, "a") if o.log else None
+    if logf:
+        import json
+        def note(**kw):
+            logf.write(json.dumps(dict(t=round(time.monotonic(), 4), **kw)) + chr(10))
+    else:
+        def note(**kw):
+            pass
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(("0.0.0.0", o.port))
     sock.setblocking(False)
@@ -118,6 +127,7 @@ def main():
                 if seq <= last_seq and last_seq - seq < 1000:      # late or repeated datagram
                     continue
                 last_seq, last_rx, v_raw = seq, now, v
+                note(k="rx", v=v, at=round(time.monotonic(), 4))
             if v_raw is None:
                 continue
             if last_rx and now - last_rx > HOLD_S:
@@ -141,6 +151,7 @@ def main():
             if tgt == sent and sent_rpm and abs(rpm - sent_rpm) <= RPM_RESEND * sent_rpm:
                 continue
             m.move_abs(tgt, rpm, o.acc)
+            note(k="mv", tgt=tgt - home, rpm=rpm, est=round(est - home, 1))
             sent, sent_rpm, n = tgt, rpm, n + 1
             if n % 50 == 1:
                 print("pedal %.2f -> %+d counts at %d rpm" % (v_raw, tgt - home, rpm), flush=True)
@@ -149,6 +160,8 @@ def main():
     finally:
         m.move_abs(home, 300, 0)
         time.sleep(0.5)
+        if logf:
+            logf.close()
         print("back at start: %+d counts" % (m.position() - home), flush=True)
         if was:
             try:
