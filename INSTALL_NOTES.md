@@ -1894,7 +1894,8 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
   - **Drill and tap each bar end** for M3, two holes 10 deep, on the bar's centreline in thickness, 8.0 mm under the top edge and 5.5 mm over the bottom edge. Use a printed drill jig so the holes come out dead centre.
 - **Clamping:**
   - Each bar end drops into a 5 mm locating pocket and **stops 1 mm short** of the endplate's 8 mm back wall.
-  - Four M3 × 20 socket-head cap screws, each with a DIN 9021 M3 washer (Ø9), go in from the endplate's +X end through tunnels. They pass the back wall into the bar ends.
+  - Four M3 × 20 socket-head cap screws, each with an ISO 7089 / DIN 125-A M3 washer (Ø7 × 0.5; the Ø9 DIN 9021 left too thin a wall), go in from the endplate's +X end through tunnels. They pass the back wall into the bar ends.
   - Tighten until the side walls' ends are pulled hard against the endplate. The bars never bear on the plastic, so the screws squeeze the sections together.
-  - Thread engagement in the bar: about 7 mm (2.4 × d).
+  - Thread engagement in the bar: about 7.5 mm (2.5 × d).
   - The floor stops 0.5 mm short of the endplate, so only the walls carry the squeeze.
+  - **Torque: snug, about 0.3 N·m** (a light pull on the short arm of the 2.5 key). The strings' pull already presses the endplate onto the walls; the screws only hold it there. Harder pulls overload the plastic under the small washer, and it creeps.

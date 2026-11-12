@@ -1035,9 +1035,11 @@ BAR_CLR, BAR_SKIN = 0.2, 2 * D.BEAD
 STRING_TOP = D.STRING_Z + 1.9 / 2                    # the heaviest string's top
 BAR_Z = (STRING_TOP - 20.0 - BAR_SKIN - BAR_CLR - BAR_H, STRING_TOP - 20.0 - BAR_SKIN - BAR_CLR)
 EP_POCKET, EP_GAP, EP_WALL = 5.0, 1.0, 8.0
-EP_WASHER = (9.0, 0.8)                               # DIN 9021 M3: OD, thickness (~9 MPa at 0.5 kN)
-EP_TUNNEL = EP_WASHER[0] + 0.6                       # the screw's way in from the +X end, its head
-                                                     # and washer on the back wall's +X face
+# ISO 7089 / DIN 125-A M3 washer (user, 2026-11-12: the Ø9 DIN 9021 left a razor edge; the head
+# is 2.45 from the wall's outer face, so a washer may reach 0.85 past it and keep 1.6 of wall)
+EP_WASHER = (7.0, 0.5)                               # OD, thickness
+EP_TUNNEL = 7.2                                      # the screw's way in from the +X end (as printed,
+                                                     # fit=True): 0.1 a side over the washer, 1.6 wall
 EP_M3_CLR = 3.4
 EP_SCREW_Z = (BAR_Z[1] - 8.0, BAR_Z[0] + 5.5)        # the two screws in each bar end (the low one
                                                      # 5.5 up: its tunnel then clears row c's axle)
@@ -1083,7 +1085,7 @@ def _wall_bars() -> list:
 
 def _bar_screws() -> list:
     """The four M3 x 20 SHCS and their washers: through the back wall into the bar ends (head on
-    the washer on the wall's +X face; 20 is the stock length that reaches 7.2 into the bar, 2.4 d
+    the washer on the wall's +X face; 20 is the stock length that reaches 7.5 into the bar, 2.5 d
     of thread in steel, inside the 10 deep tapped hole)."""
     from . import belt_tensioner as BTn
     e = ep_x()
@@ -1198,7 +1200,7 @@ def _endplate() -> cq.Workplane:
             w = w.cut(teardrop_hole(EP_M3_CLR, e["wall1"] - e["bar_end"] + 1,
                                     axis_point=(e["bar_end"], yc, zc), axis_dir=(1, 0, 0), fit=True))
             w = w.cut(teardrop_hole(EP_TUNNEL, xe + 1 - e["wall1"], axis_point=(e["wall1"], yc, zc),
-                                    axis_dir=(1, 0, 0)))
+                                    axis_dir=(1, 0, 0), fit=True))
     return w
 
 
@@ -1314,6 +1316,10 @@ def is_intended(a: str, b: str) -> bool:
     if "db_bridge_brg" in pair and "db_bridge_axle" in pair:       # each bridge 688 on its axle
         return True
     if "db_bar_m3" in pair and "db_wall_bar" in pair:              # threaded into the bar ends
+        return True
+    # the tunnels and clearance holes are drawn 0.4 under (fit=True: sideways teardrops print that
+    # much over), so the Ø7 washer and the shank touch the holes as drawn, not as printed
+    if "db_bar_m3" in pair and "db_endplate" in pair:
         return True
     # the lead's instrument's ghosts (deck, walls, keyhead) stand where this body's own walls,
     # bars and endplate now are: no clash to report against a ghost of the other design
