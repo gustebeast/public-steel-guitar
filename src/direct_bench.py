@@ -86,7 +86,14 @@ def y_of(i: int) -> float:
 
 # ── along the screw (x, before the yaw) ─────────────────────────────────────────────────────
 YK_H = 20 * D.BEAD                                  # 16: yoke, flange face -> roof
-YK_ROOF = 3 * D.BEAD                                # 2.4
+# THE KEYHOLE PLATE (user, 2026-11-12: a ball end on a 2.4 printed roof is ~8 mm^2 of plastic
+# under the whole string, and the yoke's M3s threaded into plastic -- neither holds for years).
+# The roof is now a LASER-CUT 304 PLATE, 4 mm, the nut plates' sheet (one JLCCNC order): the
+# keyhole is cut in it and the yoke's two M3s are TAPPED into it, so the string goes ball ->
+# steel plate -> steel screws -> collar -> nut, with no thread in plastic. The printed yoke
+# behind it only spaces it and shapes the ball's pocket. YK_H (flange face -> plate's +X face)
+# is unchanged; the plate is its last YK_ROOF.
+YK_ROOF = 4.0                                       # the keyhole plate's thickness
 YK_D = D.NUT_FLANGE_L                               # 22: round, as the nut's flange
 X_YT0 = -26.0                                       # yoke roof at the slack end of travel
 BRG_CLR = 1.0                                       # the endplate's face off the bend bearings' rim
@@ -487,24 +494,40 @@ def _tube_x(od, idd, x0, x1, y, z):
 def _yoke(i: int, t: float) -> cq.Workplane:
     y, z = y_of(i), za(i)
     ft, yt = x_ft(t), x_yt(t)
-    out = cyl_x(YK_D, YK_H, ft, y=y, z=z)
+    out = cyl_x(YK_D, YK_H - YK_ROOF, ft, y=y, z=z)                                 # the spacer
     out = out.cut(cyl_x(D.SCREW_OD + 0.8, yt - YK_ROOF - ft + 1, ft - 1, y=y, z=z))   # tip + ball
     out = out.cut(cyl_x(D.NUT_LIP_D + 0.4, D.NUT_LIP_L + 1.3, ft - 1, y=y, z=z))      # lip register
     ry, rz = rod_yz(i)
     out = out.cut(cyl_x(GUIDE_D + 2.0, YK_H + 2, ft - 1, y=ry, z=rz))                 # rod: clear
     for a in HOLE_ANG["m3"]:                                                          # the M3s bite
         dy, dz = at_ang(a)
-        out = out.cut(cyl_x(2.5, M3_L - COLLAR_T - D.NUT_FLANGE_T + 1.0, ft - 1, y=y + dy, z=z + dz))
-    # the keyhole: the ball's hole KEY_DROP down, the slit up to the axis, and behind the roof
-    # a pocket the ball slides up in (its 3 along the axis, Ø4 across)
+        out = out.cut(cyl_x(3.4, YK_H + 2, ft - 1, y=y + dy, z=z + dz))           # clear: they
+                                                                                  # tap the plate
+    # behind the plate, a pocket the ball slides up in (its 3 along the axis, Ø4 across)
     rx0 = yt - YK_ROOF
-    out = out.cut(cyl_x(KEY_D, YK_ROOF + 2, rx0 - 1, y=y, z=z - KEY_DROP))
-    out = out.cut(box_at(YK_ROOF + 2, SLIT_W, KEY_DROP, x=rx0 + YK_ROOF / 2, y=y, z=z - KEY_DROP / 2))
-    out = out.cut(cyl_x(SLIT_W, YK_ROOF + 2, rx0 - 1, y=y, z=z))
     pk = D.STRING_NUT_L + 0.6
     out = out.cut(box_at(pk, KEY_D, KEY_DROP + KEY_D / 2, x=rx0 - pk / 2, y=y,
                          z=z - (KEY_DROP + KEY_D / 2) / 2))
     return out
+
+
+KEY_M3_L = 22.0                                     # McMaster 91292A801, THE SAME SCREW as the bar
+                                                    # clamp's (user, 2026-11-12: one M3 SKU); head
+                                                    # behind the collar to 0.5 under the plate's +X face
+
+
+def keyhole_plate() -> cq.Workplane:
+    """The keyhole plate in its own frame (+X face at x = 0, axis on y = z = 0), as cut from the
+    4 mm sheet: a Ø YK_D disc, the ball's hole KEY_DROP under the axis, the slit up to a round
+    end on the axis, and the yoke's two M3 tapped holes (drawn as the Ø2.5 tap drill)."""
+    w = cyl_x(YK_D, YK_ROOF, -YK_ROOF, y=0, z=0)
+    w = w.cut(cyl_x(KEY_D, YK_ROOF + 2, -YK_ROOF - 1, y=0, z=-KEY_DROP))
+    w = w.cut(box_at(YK_ROOF + 2, SLIT_W, KEY_DROP, x=-YK_ROOF / 2, y=0, z=-KEY_DROP / 2))
+    w = w.cut(cyl_x(SLIT_W, YK_ROOF + 2, -YK_ROOF - 1, y=0, z=0))
+    for a in HOLE_ANG["m3"]:
+        dy, dz = at_ang(a)
+        w = w.cut(cyl_x(2.5, YK_ROOF + 2, -YK_ROOF - 1, y=dy, z=dz))
+    return w
 
 
 def rod_yz(i: int):
@@ -548,12 +571,13 @@ def _collar(i: int, t: float) -> cq.Workplane:
 
 
 def _m3s(i: int, t: float) -> cq.Workplane:
+    assert KEY_M3_L == bar_screw_len(), "the yoke's M3s and the bar clamp's are meant to be one SKU"
     y, z = y_of(i), za(i)
     (p0, _), heads, _, _ = x_collar(t)
     out = None
     for a in HOLE_ANG["m3"]:
         dy, dz = at_ang(a)
-        sc = _cap("m3", M3_L, (heads, y + dy, z + dz), (1, 0, 0))
+        sc = _cap("m3", KEY_M3_L, (heads, y + dy, z + dz), (1, 0, 0))
         out = sc if out is None else out.union(sc)
     return out
 
@@ -919,6 +943,7 @@ def string_parts(i: int, t: float) -> list:
     ft = x_ft(t)
     parts = [
         ("db_yoke", _yoke(i, t)),
+        ("db_keyplate", keyhole_plate().translate((x_yt(t), y, z))),
         ("db_ball", cyl_x(D.STRING_NUT_D, D.STRING_NUT_L, _ball_x(t) - D.STRING_NUT_L / 2, y=y, z=z)),
         ("db_nut", _nut(i, t)),
         ("db_collar", _collar(i, t)),
@@ -1262,7 +1287,7 @@ def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
 # What each part is made of, for the viewer's shine (cadkit.web.finishes.made_of): printed
 # frames in the instrument's PETG-GF, the bought parts as they are.
 MATERIAL = {
-    "yoke": "petg-gf", "collar": "pctg", "block": "petg-gf", "mplate": "petg-gf",
+    "yoke": "petg-gf", "keyplate": "steel", "collar": "pctg", "block": "petg-gf", "mplate": "petg-gf",
     "endplate": "petg-gf", "bar_m3": "steel", "bridge_axle": "steel", "bridge_brg": "polished", "anchor": "stainless", "anchor_m4": "steel",
     "body": "petg-gf", "wall_bar": "steel",
     "nut": "brass", "ball": "brass", "screw": "steel", "rod": "steel", "string": "polished",
@@ -1305,7 +1330,7 @@ COLORS = {
     "collar_a": (0.85, 0.45, 0.15), "collar_b": (0.85, 0.45, 0.15), "ca_m3": "set_screw", "block": (0.30, 0.36, 0.42), "mplate": (0.30, 0.33, 0.38),
     "endplate": (0.36, 0.30, 0.42), "bar_m3": "set_screw", "bridge_axle": "set_screw",
     "bridge_brg": "bridge_bearings", "anchor": "nut_plate", "anchor_m4": "set_screw",
-    "body": "chassis", "wall_bar": "nut_plate",
+    "body": "chassis", "wall_bar": "nut_plate", "keyplate": "nut_plate",
 }
 
 
@@ -1330,7 +1355,8 @@ def _base(nm: str):
 _SAME = {frozenset(p) for p in (
     ("db_screw", "db_nut"), ("db_screw", "db_brg"), ("db_screw", "db_coupler"),
     ("db_nut", "db_yoke"), ("db_nut", "db_collar"),
-    ("db_m3", "db_collar"), ("db_m3", "db_nut"), ("db_m3", "db_yoke"), ("db_spring", "db_plug"),
+    ("db_m3", "db_collar"), ("db_m3", "db_nut"), ("db_m3", "db_yoke"), ("db_m3", "db_keyplate"),
+    ("db_spring", "db_plug"),
     ("db_yoke", "db_ball"), ("db_string", "db_ball"), ("db_string", "db_yoke"),
     ("db_collar", "db_spring"), ("db_brg", "db_block"), ("db_coupler", "db_motor"),
     ("db_motor", "db_mplate"), ("db_motor",), ("db_coupler", "db_block"),
