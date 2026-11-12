@@ -17,10 +17,12 @@ SMOOTH SLOW PRESSES (user, 2026-11-11: the grind is the motor vibrating on SLOW,
 work; a slammed pedal may be noisy). The pedal arrives in 128 steps (~30 counts each), and each
 step sent as its own full-speed move with no ramp made a slow press a train of sprint-and-stop
 jolts. Now, on a steady TICK:
-  * the pedal is SMOOTHED: a small change (under SLAM_STEPS steps) glides there over TAU; a big
-    one (a slammed pedal) passes straight through, so quick presses stay quick;
-  * the speed is MATCHED: each target goes out at the speed that reaches it in about one tick
-    (RPM_LEAD of it, RPM_MIN at least, RPM at most), so a slow foot is a slow continuous move.
+  * a big change (SLAM_STEPS pedal steps at once: a slammed pedal) goes at full RPM;
+  * otherwise the motor is aimed at where the pedal IS (ahead of it while the foot moves) at the
+    pedal's own recent SPEED (smoothed over TAU) plus a catch-up of the lag over T_CATCH: it never
+    gets there early and stops, so a press is one continuous move. (2026-11-11 v1 aimed at a
+    smoothed point each tick at 1.5x the speed to reach it: the motor arrived early and stopped
+    every tick, notchy at ordinary speeds.)
 --rpm-fixed sends every target at RPM as before (to compare).
 Stop the phone service first (it shares the serial port): sudo systemctl stop public-steel-guitar-phone
 """
@@ -41,9 +43,11 @@ RPM = 1200
 HOLD_S = 0.5
 TICK = 0.01                      # s: targets go out on this tick, ~100 a second
 DEADBAND = 2                     # counts: smaller changes are not sent
-TAU = 0.04                       # s: a small pedal change glides over about this
-SLAM_STEPS = 6                   # pedal steps (of 127) at once: a slam, passed straight through
-RPM_MIN, RPM_LEAD = 5, 1.5       # the matched speed: RPM_LEAD x what reaches the target in a tick
+TAU = 0.08                       # s: the pedal's speed is smoothed over about this
+T_CATCH = 0.06                   # s: the lag behind the pedal is made up over about this
+SLAM_STEPS = 6                   # pedal steps (of 127) at once: a slam, full speed
+RPM_MIN = 1                      # the driver takes 1 rpm: a slow foot is never outrun
+RPM_RESEND = 0.15                # a new speed goes out when it differs by this fraction
 
 
 def throw_counts(semitones: float) -> int:
@@ -58,7 +62,8 @@ def main():
     a.add_argument("--raise-sign", type=int, choices=(1, -1), default=RAISE_SIGN)
     a.add_argument("--rpm-fixed", action="store_true", help="every target at RPM, unsmoothed (the old way)")
     a.add_argument("--acc", type=int, default=0, help="the motor's ramp, 0 (none) .. 255")
-    a.add_argument("--tau", type=float, default=TAU, help="s: how long a small pedal change glides")
+    a.add_argument("--tau", type=float, default=TAU, help="s: the pedal's speed smoothed over this")
+    a.add_argument("--catch", type=float, default=T_CATCH, help="s: the lag made up over this")
     o = a.parse_args()
     up, dn = throw_counts(o.semitones), throw_counts(-o.semitones)     # dn < 0
     assert 0 < up <= T // 2, "a throw over half a turn: give a smaller --semitones"
@@ -83,14 +88,17 @@ def main():
     sock.bind(("0.0.0.0", o.port))
     sock.setblocking(False)
     per_rpm = T / 60.0                               # counts a second at 1 rpm
-    last_rx, sent, n, last_seq = 0.0, home, 0, -1
-    v_raw = v_f = None                               # the pedal as heard, and smoothed
+    last_rx, sent, sent_rpm, n, last_seq = 0.0, home, 0, 0, -1
+    v_raw = None
+    est = float(home)                                # where the motor should be by now
+    rate = 0.0                                       # the pedal's speed, counts a second, smoothed
+    prev_tgt = None
     t_prev = time.monotonic()
     try:
         while True:
             time.sleep(max(0.0, TICK - (time.monotonic() - t_prev)))
             now = time.monotonic()
-            dt, t_prev = now - t_prev, now
+            dt, t_prev = max(1e-3, now - t_prev), now
             while True:                              # everything that arrived since the last tick
                 try:
                     data, peer = sock.recvfrom(64)
@@ -108,21 +116,28 @@ def main():
                 continue
             if last_rx and now - last_rx > HOLD_S:
                 print("nothing heard for %.1f s: holding at %+d" % (HOLD_S, sent - home), flush=True)
-                last_rx, v_raw, v_f = 0.0, None, None
+                last_rx, v_raw, prev_tgt = 0.0, None, None
                 continue
-            slam = v_f is None or o.rpm_fixed or abs(v_raw - v_f) * 127 >= SLAM_STEPS
-            if slam:
-                v_f = v_raw                          # first heard, the old way, or a slam: full speed
+            tgt = min(hi, max(lo, home + o.raise_sign * throw_counts(o.semitones * (1.0 - 2.0 * v_raw))))
+            step = 0 if prev_tgt is None else tgt - prev_tgt
+            prev_tgt = tgt
+            rate += (step / dt - rate) * min(1.0, dt / o.tau)
+            # where the motor got to since the last tick, at the speed it was sent
+            go = sent - est
+            est += max(-abs(go), min(abs(go), (1 if go > 0 else -1) * sent_rpm * per_rpm * dt))
+            lag = tgt - est
+            if abs(lag) < DEADBAND and tgt == sent:
+                continue
+            if o.rpm_fixed or abs(step) >= SLAM_STEPS * up / 63.5 / 2:
+                rpm = RPM                            # the old way, or a slam
             else:
-                v_f += (v_raw - v_f) * min(1.0, dt / o.tau)
-            tgt = min(hi, max(lo, home + o.raise_sign * throw_counts(o.semitones * (1.0 - 2.0 * v_f))))
-            if abs(tgt - sent) < DEADBAND:
+                rpm = int(min(RPM, max(RPM_MIN, (abs(rate) + abs(lag) / o.catch) / per_rpm)))
+            if tgt == sent and sent_rpm and abs(rpm - sent_rpm) <= RPM_RESEND * sent_rpm:
                 continue
-            rpm = RPM if slam else int(min(RPM, max(RPM_MIN, RPM_LEAD * abs(tgt - sent) / TICK / per_rpm)))
             m.move_abs(tgt, rpm, o.acc)
-            sent, n = tgt, n + 1
+            sent, sent_rpm, n = tgt, rpm, n + 1
             if n % 50 == 1:
-                print("pedal %.2f -> %+d counts at %d rpm" % (v_f, tgt - home, rpm), flush=True)
+                print("pedal %.2f -> %+d counts at %d rpm" % (v_raw, tgt - home, rpm), flush=True)
     except KeyboardInterrupt:
         pass
     finally:
