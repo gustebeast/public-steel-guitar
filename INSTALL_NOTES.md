@@ -1906,4 +1906,18 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
   - The string's ball end bears on the steel. The plastic yoke behind it is only a spacer that shapes the ball's pocket.
   - **Tap its two Ø2.5 holes M3** (or have the cutter tap them).
 - **Yoke screws:** two **M3 × 30** socket-head cap screws (McMaster 91292A022). They go in from behind the collar, through the nut flange and the yoke, and thread into the plate, stopping 0.5 mm short of its face. Nothing threads into plastic.
-- The yoke is 24 mm from flange to plate face. The whole drive (nut, springs, plugs, anchor plate, motors) sits 3.2 mm further −X to make room, so the springs and leadscrews keep their lengths. The screw tip can now travel up to 18 mm before it reaches the ball (travel is still 8.35 until the springs are re-checked).
+- The yoke is 24 mm from flange to plate face. The whole drive (nut, springs, plugs, anchor plate, motors) sits 3.2 mm further −X to make room, so the springs and leadscrews keep their lengths. See the travel section below for how far the nut runs.
+
+## Direct drive: slack end at the endplate, 15.6 mm travel (2026-11-12)
+
+- **Slack end = contact.** To restring, the motor drives the nut until the keyhole plate sits on the endplate's plate, as a hard stop.
+- **Cut each leadscrew** so that in that position it **only just threads the nut: three turns (6 mm) into its −X end**. All the rest of the nut's length becomes travel.
+  - Lengths: 170.5, 247.5, 324.5 and 401.5 mm by station, from the coupler end. `direct_bench` reports them.
+- **Travel is 15.6 mm** from the slack end. It stops 1 mm before the tightest spring (string 10) closes its coils. At that point the screw tip is still about 8 mm from the ball.
+- **Restringing:**
+  1. Drive to the slack end.
+  2. Lower the keyhead inserts only enough to release the clamp.
+  3. Swap the string.
+  4. Raise the inserts to clamp it.
+  5. Let the motor pull the string up to pitch.
+- **Why the slack doesn't matter:** whatever slack the hand leaves is taken up in travel. It only moves where open pitch lands, and the spring's help changes by 1.72 N per mm of that.

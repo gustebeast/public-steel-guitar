@@ -53,7 +53,13 @@ def cyl_z(d: float, length: float, z0: float, *, x: float = 0.0, y: float = 0.0)
         d / 2, length, pnt=cq.Vector(x, y, z0), dir=cq.Vector(0, 0, 1)))
 
 N = D.N_STRINGS
-T_TRAVEL = D.CARRIAGE_TRAVEL                        # 8.35
+# THE TRAVEL (user, 2026-11-12): from the slack end (keyhole plate on the endplate, the screw just
+# threading the nut) to where the nut may pull. Restringing leaves an unknown slack the motor
+# takes up, so the travel covers slack -> open -> +3 st on the stretchiest string with hand slack
+# to spare (E9's G#4: ~0.0-5 + 6.3 + 2.6 = ~14). It stops 1 mm short of the tightest spring's
+# coils closing (string 10, 16.6 from the slack end); the screw tip would only reach the ball
+# at ~23.9.
+T_TRAVEL = 15.6
 T_OPEN = D.DL_OPEN / T_TRAVEL                       # open pitch, from the slack end
 
 # ── rows ────────────────────────────────────────────────────────────────────────────────────
@@ -117,7 +123,9 @@ ROD_PLATE = (X_BEND - R - BRG_CLR - EP_PLATE_N * D.BEAD, X_BEND - R - BRG_CLR)
 # endplate's plate; the nut, collar, springs, plugs, anchor plate and motors all sit DRIVE_DX
 # further -X than the 2026-11-11 layout (nut flange at -42, anchor at -190), so the springs and
 # the leadscrews keep their lengths; only the guide rods grow by DRIVE_DX.
-YK_CLR = 1.0
+# THE SLACK END IS CONTACT (user, 2026-11-12): to restring, the motor drives the keyhole plate
+# all the way onto the endplate's plate, its hard stop
+YK_CLR = 0.0
 X_FT0 = ROD_PLATE[0] - YK_CLR - YK_H                # the nut flange's +X face at the slack end
 X_YT0 = X_FT0 + YK_H                                # the yoke's +X face there
 DRIVE_DX = -42.0 - X_FT0
@@ -248,7 +256,12 @@ def x_ft(t: float) -> float:
     return x_yt(t) - YK_H
 
 
-SCREW_TIP = x_ft(0.0) - D.SCREW_END_GAP             # under the flange face at the slack end
+# THE SCREW'S CUT END (user, 2026-11-12): at the slack end it only JUST threads the nut, so the
+# rest of the nut's length is travel before the tip can reach the ball. NUT_ENGAGE_SLACK: three
+# turns of the Tr8x2 (the string is slack there; only the spring pulls, < 100 N on ~40 mm^2 of
+# brass thread)
+NUT_ENGAGE_SLACK = 3 * 2.0
+SCREW_TIP = x_ft(0.0) - D.NUT_H + NUT_ENGAGE_SLACK
 
 
 def x_collar(t: float):
