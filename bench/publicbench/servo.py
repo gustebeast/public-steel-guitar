@@ -37,6 +37,9 @@ SET_MODE = 0x82             # 1 byte: 0..2 pulse-input modes, 3 SR_OPEN, 4 SR_CL
 SET_BITRATE = 0x8A          # 1 byte: 0 125K, 1 250K, 2 500K (default), 3 1M   (manual V1.0.9 5.2.10)
 SET_RESPOND = 0x8C          # respond u8, active u8: 1 0 answers a move when it starts and not when it
                             # arrives; 0 x answers nothing (V1.0.9 5.2.12; the "active" byte is V1.0.4 on)
+SET_ZERO = 0x92              # no parameters: the current axis position becomes 0, the encoder reading
+                            # too. AFTER A POWER CYCLE THE TWO DISAGREE (2026-11-11: absolute moves
+                            # landed a steady ~495 counts off the reading): zero before absolute moves
 SR_VFOC = 5
 MOVE_REL = 0xF4             # speed u16, acc u8, int24 counts, relative
 MOVE_ABS = 0xF5             # speed u16, acc u8, int24 counts, absolute
@@ -89,6 +92,9 @@ class Servo:
 
     def enable(self, on=True, at=None):
         return self._send(bytes([ENABLE, 1 if on else 0]), at)
+
+    def set_zero(self, at=None):
+        return self._send(bytes([SET_ZERO]), at)
 
     def set_mode(self, mode: int = SR_VFOC, at=None):
         return self._send(bytes([SET_MODE, mode]), at)

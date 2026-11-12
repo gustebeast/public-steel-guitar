@@ -86,6 +86,8 @@ def main():
         print("play state not read (%s); going on" % e)
     m.enable(True)
     time.sleep(0.3)
+    m.set_zero()                                     # absolute moves and the reading agree from here
+    time.sleep(0.3)
     home = m.position()
     lo, hi = sorted((home + o.raise_sign * up, home + o.raise_sign * dn))
     print("start %d = middle; up %+d, down %+d counts (+-%.2f st); listening on udp %d"

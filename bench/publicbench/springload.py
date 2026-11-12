@@ -111,6 +111,8 @@ def run(o):
         if link.wait_frame(p.m._mine(servo.ENABLE), n, 0.5) is None:
             raise TimeoutError("the motor did not answer ENABLE")
         time.sleep(0.3)
+        p.m.set_zero()                                   # absolute moves and the reading agree
+        time.sleep(0.3)
         home = p.ask(servo.READ_ENCODER)
         step = int(round(o.step * T))
         lim = step
