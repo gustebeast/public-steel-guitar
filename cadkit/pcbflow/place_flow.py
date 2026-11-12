@@ -196,9 +196,39 @@ def _pours(notes, parts, pl, rules, base_zones):
     return out
 
 
+def _project_guard(stem):
+    """Refuse a run whose finish chain would write into a MAIN checkout.
+
+    ⚠ (lead, 2026-11-11): the motor_ctrl trial ran with PCBFLOW_PROJECT on the main
+    checkout's elec/, and finish's export_geom rewrote elec/geom/motor_ctrl.geom.json
+    there -- a trial's geometry in the shipped project, which blocked a propagation until
+    it was restored. The project (PCBFLOW_PROJECT, else the stem's grandparent, as
+    finish.project_dir) must not sit in a git MAIN working tree (a .git DIRECTORY); a
+    linked worktree (.git file) or a plain scratch folder is fine. PCBFLOW_ALLOW_MAIN=1 for
+    a deliberate run."""
+    env = os.environ.get("PCBFLOW_PROJECT")
+    proj = os.path.abspath(env) if env else os.path.dirname(os.path.dirname(os.path.abspath(stem)))
+    if os.environ.get("PCBFLOW_ALLOW_MAIN") == "1":
+        return proj
+    d_ = proj
+    while True:
+        g = os.path.join(d_, ".git")
+        if os.path.isdir(g):
+            raise SystemExit("place_flow: REFUSED -- the project %s is inside the main checkout %s; the finish "
+                             "chain writes geom/ and out/ there. Point PCBFLOW_PROJECT at a scratch worktree "
+                             "(PCBFLOW_ALLOW_MAIN=1 to mean it)." % (proj, d_))
+        if os.path.isfile(g):
+            return proj                                 # a linked worktree: scratch by design
+        up = os.path.dirname(d_)
+        if up == d_:
+            return proj
+        d_ = up
+
+
 def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, keep_widths=False):
     d = os.path.abspath(d)
     stem = _stem(d)
+    _project_guard(stem)
     base = os.path.basename(stem)
     fd = os.path.join(d, "flow")
     os.makedirs(fd, exist_ok=True)
