@@ -1278,6 +1278,11 @@
         out.lines.push('angle between the two faces');
       }
     }
+    // EVERY DISTANCE SAYS ITS ΔX ΔY ΔZ (user, 2026-11-12), along the dimension line drawn
+    if (out.a && out.b && / mm$/.test(out.big) && !out.lines.some(l => l.startsWith('ΔX'))) {
+      const d = out.b.clone().sub(out.a);
+      out.lines.splice(1, 0, `ΔX ${f3(Math.abs(d.x))}  ΔY ${f3(Math.abs(d.y))}  ΔZ ${f3(Math.abs(d.z))}`);
+    }
     const pp = ea.pick.distanceTo(eb.pick);
     if (!(ea.kind === 'point' && eb.kind === 'point')) out.lines.push(`<span class="dim">between the two picked points ${f3(pp)}</span>`);
     if (!out.a) { out.a = ea.pick; out.b = eb.pick; }
