@@ -219,6 +219,88 @@ What is left, and where it belongs:
 | optical auto, folded | 0 (after the close_last fix) | 20 declared + 2 silk_edge | 2: A17 x2 (J2 labels) |
 | output_panel auto | 0 | 6 silk_edge (hand's 6) | 5: A1 x4 (+24V J7 1.0 vs 1.3; J1_VBUS land-limited 0.5 vs 0.53, 53 mV), A17 J6 stale |
 
+**Pours from intent (2026-11-11, lead).** A current no track can carry is a
+`pour(net, layer, region | along [, width_mm, priority])` rule.
+* place_flow builds the outline at the placed pins: the named region, or the hull of
+  circles round each `along` pin. The default width is 1.5x the IPC width of the declared
+  path between those pins, at least 2 mm.
+* The outline is written into notes["zones"] at priority 1, so it wins over a board-wide
+  ground pour on the same layer.
+* The report prints a POUR line counting other nets' pads inside the outline on its layer.
+  That is the room check: a pour goes only where its layer has room (the +3V3-on-In2
+  lesson).
+* **quality A1 measured a pour's cross-section over its whole extent**, so a cut across
+  the rounded tip, past the pad, read 0.20 mm and failed a 3.8 mm pour. It now measures
+  only the cuts between the path's two ends. The shipped boards' quality is unchanged.
+* **output_panel +24V Q2->J7 (2.9 A) on F.Cu.**
+  * First run: A1 passed (narrowest cut 3.80 mm against 1.30 needed), but BOOT went open.
+    Taking a corridor for the pour exposed C4, the bootstrap cap, sitting 7.8 mm from
+    U5.4: auto_decaps gave a cap across two pins of one IC no rule at all.
+  * Now it does, at the pin of the net with fewer pads: bootstrap caps, output_panel C32
+    on the DAC.
+  * With that: **0 open, 252 vias (281 before), 2150.8 mm, finish 0 unconnected,
+    quality 4 FAIL (5 before).**
+
+**From-scratch authoring trial: motor_ctrl R2 (2026-11-11, lead).** The intent
+(`examples/intent_motor_ctrl.py`) was written from the netlist only, its part descriptions
+and nets, plus the mechanical facts in src/electronics.py:
+* the +X edge stands on the floor, and the bus-B side-entry plugs come in through it;
+* the Pi lies off -Y;
+* the board is a 61.8 x 55 rectangle, single-sided, with no holes.
+
+The hand placement was not read; parts.json's `at` was zeroed.
+
+Time (agent wall clock, from the session log):
+* 2.5 min to the first intent;
+* 6 min to the first full flow;
+* about 25 min and three intents to the third, including the system fixes below.
+
+| motor_ctrl | open (score) | vias | finish | quality FAIL |
+|---|---|---|---|---|
+| hand, stripped (equal terms) | 2 (SENSE_24V, SEL_LINK) | | 2 unconnected, 0 violations | 9, all A1 |
+| auto v1 | 1 | 129 | 0 unconnected, 2 copper_edge (J2/J6 mounting pads) | 20 |
+| auto v2 (exclusive bands, grown power region) | 4 | 123 | 4 unconnected (crystal, CAN1) | 18 |
+| auto v3 (+ a logic region for the MCU) | 2 | 139 | 1 unconnected (SWDIO), 0 violations | 14 |
+
+**What the vocabulary and the defaults lacked**, in the order the trial hit them. The first
+four are fixed here.
+1. **auto_decaps assumed a placement.** Unplaced, every distance is 0, and all +3V3 caps
+   went to L1.2, the buck inductor, by sort order. Now:
+   * caps are dealt out by caps per supply pin, ICs before sources;
+   * bulk caps go to the rail's source;
+   * caps the intent already places are left alone;
+   * **the netlist description decides**: "U8 switch decoupling" names its IC, and "MCU
+     supply decoupling" matches U4's "RISC-V MCU" (`read_descriptions`).
+2. **A cap across two pins of one IC** (bootstrap, CB-SW) got no rule. It now gets one,
+   at the pin.
+3. **A region held its members in but nobody out.** The Pi band filled with other parts
+   and J4 had no room. `region ... exclusive: true` is now closed to all but its members
+   and their satellites.
+4. **The report hid the NO ROOM line when layout refused.** Fixed.
+5. **parts.json needs a laid-out board** (place_geom), and its `at` rotations leak into
+   place_init as defaults. For a fresh board, part geometry should come from the
+   footprints alone. **Open.**
+6. **`panel` knows the body front, not the pads.** Side-entry J2/J6 with overhang 0 put
+   their mounting pads inside the copper edge clearance (v1). The panel rule should
+   check pad-to-edge copper clearance. **Open.**
+7. **A pour cannot go round a pin row, and placement does not see the pour.**
+   * J3.1->J3.6 (2.7 A) runs along J3's own row, and the J3->J1 capsule crosses J1.2-4.
+   * The POUR room check names them but does not act. **Open.**
+   * Needed: either a pour corridor treated as a keepout for other nets' pads on its
+     layer, or "turn the connector so its power pin faces its load".
+8. **Floorplanning is still the author's job.**
+   * v2 left the MCU unregioned and the net graph put it beside the 5 V buck. The 10 mm
+     zone was then NOT MET, and the crystal was pushed 15 mm off its pins.
+   * One region fixed it (v3).
+   * Nothing warns that a sensitive IC has no region while a switcher does. **Open.**
+9. **Locality across bands.** U2 (bus A transceiver) followed J1 to the top edge, and
+   CAN1_TX ran 34 mm to the MCU (A23). `near` pulls a part to one target; a part between
+   two (a transceiver between its MCU and its connector) has no rule. **Open.**
+
+Verdict: placing from scratch works, and every board finishes through the same flow. On
+equal terms, though, this board ends with fewer unconnected than the hand placement but
+more quality FAILs. The open items above (5-9) are what a re-layout author would hit next.
+
 The report's **NO ROOM** line lists every part the placer or the silk labeller found no
 room for, with the region it was held to.
 

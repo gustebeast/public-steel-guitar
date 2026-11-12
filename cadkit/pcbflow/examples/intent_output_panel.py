@@ -59,6 +59,9 @@ r("thermal", "the switcher and its inductor off the pickup preamp and ADC", "%s 
 r("thermal", "", "%s noise bands" % OP, ref="L1", others=["U8", "U2", "U7", "J8"], apart_mm=30.0, hard=False)
 
 # ---------------------------------------------------------------- electrical
+r("pour", "2.9 A from the reverse-polarity FET to the 24 V output jack: IPC asks 1.3 mm, more "
+  "than a track is drawn (POWER_W_MAX 1.0) -- a pour on F.Cu, where both lands are",
+  "quality.power_paths +24V Q2.2 > J7.1", net="+24V", layer="F.Cu", along=["Q2.2", "J7.1"])
 for c in pi.auto_decaps(parts, notes, pi.read_values(stem + ".net"), cells=R):
     c.pop("_now", None)
     R.append(c)

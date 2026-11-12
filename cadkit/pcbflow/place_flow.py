@@ -80,7 +80,8 @@ def _intent(rules, parts, notes, net_path, auto):
     added = []
     if auto:
         if "auto_decaps (netlist)" not in have:
-            new = pi.auto_decaps(parts, notes, pi.read_values(net_path), cells=rules)
+            new = pi.auto_decaps(parts, notes, pi.read_values(net_path), cells=rules,
+                                 descriptions=pi.read_descriptions(net_path))
             for c in new:
                 c.pop("_now", None)
             rules = rules + new
@@ -161,6 +162,40 @@ def _raise_widths(notes, parts, pl, keep=False):
     return out
 
 
+def _pours(notes, parts, pl, rules, base_zones):
+    """notes["zones"] = the input's own zones + one per `pour` rule at the placed pins
+    (place_intent.pour_poly), priority 1 by default so it wins its region over a board-wide
+    ground pour on the same layer. Returns the POUR lines for the report."""
+    P = pi.Placed(parts, pl)
+    notes_r = dict(notes, _regions={r["name"]: r["poly"] for r in rules if r["kind"] == "region"})
+    paths = (notes.get("quality", {}) or {}).get("power_paths", ()) or ()
+
+    def amps_of(r):
+        """The current the pour carries: the declared path between its own pins, else the
+        net's largest (a 3.8 A J10 path sized the 2.9 A Q2-J7 pour at 3.8 mm)."""
+        al = set(r.get("along", ()))
+        hit = [float(p_["amps"]) for p_ in paths if p_["net"] == r["net"] and p_["from"] in al
+               and al & set(p_["to"] if isinstance(p_["to"], (list, tuple)) else [p_["to"]])]
+        return max(hit) if hit else max([float(p_["amps"]) for p_ in paths if p_["net"] == r["net"]] or [0.0]) or None
+    zones, out = list(base_zones), []
+    for r in rules:
+        if r["kind"] != "pour":
+            continue
+        poly = pi.pour_poly(r, P, notes_r, amps_of(r))
+        if poly is None:
+            out.append("%s on %s: NO OUTLINE (region %r unknown, no pins along) -- not poured"
+                       % (r["net"], r["layer"], r.get("region")))
+            continue
+        zones.append({"net": r["net"], "layer": r["layer"], "poly": poly, "priority": int(r.get("priority", 1))})
+        f = pi.pour_foreign(r, P, poly)
+        out.append("%s on %s %s: %d corner(s), %s" % (
+            r["net"], r["layer"], ("region " + r["region"]) if r.get("region") else "along " + "-".join(r["along"]),
+            len(poly), ("%d other net pad(s) inside -- the layer may not have room: %s" % (len(f), " ".join(f[:8])))
+            if f else "no other net's pad inside"))
+    notes["zones"] = zones
+    return out
+
+
 def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, keep_widths=False):
     d = os.path.abspath(d)
     stem = _stem(d)
@@ -227,6 +262,8 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     wlines = _raise_widths(notes, parts, pl, keep_widths)
     for w_ in wlines:
         say("WIDTH " + w_)
+    base_zones = list(notes.get("zones", []) or [])
+    plines = _pours(notes, parts, pl, rules, base_zones)
     json.dump(dict(notes, placements=pl), open(stem + ".board.json", "w"), indent=0)
     cmd = [sys.executable, "place_cells.py", d, ip, "--parts", parts_path] + (["--soft-forbid"] if soft else [])
     # place_cells keeps its own work in <dir>/cells; a stale parent route there would be a
@@ -241,6 +278,9 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
         if pl.get(r_) != pc[r_]:
             why[r_] = "place_cells: cell turned / repaired by route (%s)" % why.get(r_, "")
     pl = pc
+    plines = _pours(notes, parts, pl, rules, base_zones)
+    for p_ in plines:
+        say("POUR " + p_)
     w2 = _raise_widths(notes, parts, pl, keep_widths)
     for w_ in w2:
         if w_ not in wlines:
@@ -255,7 +295,8 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
              if re.search(r"refused|overlap|no room|stitch:|could only", line)][:12]
     if rc != 0:
         say("layout REFUSED the placement -- the flow stops at the gates")
-        _report(fd, base, rules, init_log, cells_log, gates, None, None, None, why, T, refused=out[-1500:])
+        _report(fd, base, rules, init_log, cells_log, gates, None, None, None, why, T, refused=out[-1500:],
+                room=room, width=wlines)
         return 2
 
     # 4. score, finish, quality
@@ -293,18 +334,18 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
                                if str(r.get("status", "")).upper() == "FAIL"][:20]}
         except (OSError, ValueError):
             qual = {"error": out[-600:]}
-    _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T, room=room, width=wlines)
+    _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T, room=room, width=wlines, pours=plines)
     return 0
 
 
-def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T, refused=None, room=(), width=()):
+def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T, refused=None, room=(), width=(), pours=()):
     forbid = [l_ for l_ in init_log + cells_log if "FORBID" in l_]
     prov = collections.Counter(_klass(w) for w in why.values())
     S = {k: (score or {}).get(k) for k in ("open", "pairs", "islands", "uncoupled", "vias", "length_mm", "floor",
                                             "failed", "faulted", "floor_breaches", "error")}
     rep = {"board": base, "rules": len(rules), "score": S, "forbid": forbid, "gates": gates, "finish": fin,
            "quality": qual, "provenance": dict(prov), "seconds": {k: round(v) for k, v in T.items()},
-           "refused": refused, "no_room": list(room), "width": list(width)}
+           "refused": refused, "no_room": list(room), "width": list(width), "pours": list(pours)}
     json.dump(rep, open(os.path.join(fd, "report.json"), "w"), indent=1)
     L = ["# place_flow: %s" % base, ""]
     if refused:
@@ -321,6 +362,7 @@ def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, 
     L += ["FORBID: " + (" / ".join(forbid) if forbid else "none")]
     L += ["NO ROOM: " + ("; ".join(room) if room else "none")]
     L += ["WIDTH " + w_ for w_ in width]
+    L += ["POUR " + p_ for p_ in pours]
     if fin:
         L += ["", "finish: %s" % (fin.get("error") or "%d unconnected%s, %d violation(s)%s" % (
             fin["unconnected"], (" (" + " ".join(fin.get("unconnected_nets", ())) + ")") if fin["unconnected"] else "",
