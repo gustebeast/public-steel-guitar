@@ -1043,7 +1043,6 @@ EP_TUNNEL = 7.2                                      # the screw's way in from t
 EP_M3_CLR = 3.4
 EP_SCREW_Z = (BAR_Z[1] - 8.0, BAR_Z[0] + 5.5)        # the two screws in each bar end (the low one
                                                      # 5.5 up: its tunnel then clears row c's axle)
-EP_END_T = 4 * D.BEAD                                # the end's skin, past the strings' drop
 FLOOR_GAP = 0.5                                      # the floor stops short of the endplate: only
                                                      # the walls carry the squeeze, on one face
 
@@ -1060,7 +1059,9 @@ def ep_x() -> dict:
     x_j = ROD_PLATE[0]
     bar_end = x_j + EP_POCKET
     wall0 = bar_end + EP_GAP
-    x_end = body_box()["inner"][0][1] + EP_END_T
+    # the +X end (the fingers' tips) flush with the outside of the heaviest gauge the instrument
+    # takes where it drops off the bearings (user, 2026-11-12: no more than that)
+    x_end = X_BEND + R + D.STRING_GAUGE_MAX
     return dict(x_j=x_j, bar_end=bar_end, wall0=wall0, wall1=wall0 + EP_WALL, x_end=x_end)
 
 
