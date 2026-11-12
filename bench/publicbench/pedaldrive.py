@@ -12,7 +12,7 @@ the last one is still running, so the motor follows the foot). SAFE BY CONSTRUCT
   * the target is CLAMPED to the counts of -semitones .. +semitones: the nut never leaves them;
   * nothing heard for HOLD_S: no new targets, the motor holds where it is;
   * the speed is capped at RPM (the fastest the spring test ran);
-  * Ctrl-C: back to start, play as it was.
+  * Ctrl-C or SIGTERM (pkill -f publicbench.pedaldrive): back to start, play as it was.
 SMOOTH SLOW PRESSES (user, 2026-11-11: the grind is the motor vibrating on SLOW, delicate pedal
 work; a slammed pedal may be noisy). The pedal arrives in 128 steps (~30 counts each), and each
 step sent as its own full-speed move with no ramp made a slow press a train of sprint-and-stop
@@ -29,6 +29,7 @@ Stop the phone service first (it shares the serial port): sudo systemctl stop pu
 from __future__ import annotations
 
 import argparse
+import signal
 import socket
 import time
 
@@ -68,6 +69,11 @@ def main():
     up, dn = throw_counts(o.semitones), throw_counts(-o.semitones)     # dn < 0
     assert 0 < up <= T // 2, "a throw over half a turn: give a smaller --semitones"
 
+    # a background start (nohup ... &) IGNORES SIGINT: SIGTERM ends it the same way, back to start
+    def _stop(*_):
+        raise KeyboardInterrupt
+    signal.signal(signal.SIGTERM, _stop)
+    signal.signal(signal.SIGINT, _stop)
     link = MotorCtrlLink()
     m = servo.Servo(link, o.id)
     was = None
