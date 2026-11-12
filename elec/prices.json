@@ -56,13 +56,22 @@
       "per_instrument": 10,
       "what": "MKS SERVO42D CAN MT (board + MOTOR) -- makerbase3d.com variant table, in stock 2026-09-30. MB is the BOARD ONLY at $22.99 and is the wrong SKU."
     },
+    "psu_usbc_65w": {
+      "usd": 29.99,
+      "verified": "m",
+      "per_instrument": 1,
+      "vendor": "Anker (retail)",
+      "sku": "Anker 65W USB-C PD charger (715 Nano II class)",
+      "date": "2026-11-12",
+      "what": "USB-C PD wall charger, 65 W (20 V 3.25 A). USER'S CHOICE 2026-11-12 for the BOM until the instrument's real draw is measured: the inlet becomes USB-C PD 9-20 V boosted to 24 V (docs/bronner-work-items.md R2-6), so any laptop charger runs it and a smaller one runs it in a reduced mode. $29.99 is the list price from search listings (Android Authority / Slickdeals, deals $21.99-25.99 through 2026), NOT a product page, hence 'm'. Bring-up uses the user's own Framework charger. A USB-C cable rated for the charger is NOT in this price (see missing.usbc_cable)."
+    },
     "psu_24v_160w": {
       "usd": 47.7,
       "verified": "v",
-      "per_instrument": 1,
+      "per_instrument": 0,
       "vendor": "OnlineComponents",
       "sku": "GST160A24-R7B",
-      "what": "Mean Well GST160A24-R7B sealed DESKTOP adapter, 24 V 6.67 A 160 W, IEC C14 in, 4-pin locking DIN out (mates the Kycon KPJX-4S-S on output_panel). USER'S CHOICE 2026-10-01, replacing the open-frame LRS-150-24 ($20.69 landed). $47.70 at 10, 891 in stock, page read by bronner. BEFORE shipping and tax. OnlineComponents' cart adds a $16.72 tariff line at qty 1 ($52.40 + $16.72 = $69.12 landed before shipping, read 2026-10-07); the per-10 tariff has not been read. The listing calls it 'no longer manufactured'; see BOM.md."
+      "what": "SUPERSEDED 2026-11-12 by psu_usbc_65w (USB-C PD inlet, R2-6); per_instrument 0, kept as the priced barrel alternative. Mean Well GST160A24-R7B sealed DESKTOP adapter, 24 V 6.67 A 160 W, IEC C14 in, 4-pin locking DIN out (mates the Kycon KPJX-4S-S on output_panel). USER'S CHOICE 2026-10-01, replacing the open-frame LRS-150-24 ($20.69 landed). $47.70 at 10, 891 in stock, page read by bronner. BEFORE shipping and tax. OnlineComponents' cart adds a $16.72 tariff line at qty 1 ($52.40 + $16.72 = $69.12 landed before shipping, read 2026-10-07); the per-10 tariff has not been read. The listing calls it 'no longer manufactured'; see BOM.md."
     },
     "bearing_688zz_screw": {
       "usd": 3.23,
@@ -5031,7 +5040,8 @@
       "KNOWN ABSENT, listed so the total is honest about its own holes. cost.py prints",
       "these under the table and refuses to call the number complete while any remain."
     ],
-    "psu": "PRICED: Mean Well GST160A24-R7B at $47.70, see mechanical.psu_24v_160w. Its shipping, tax and tariff are NOT measured. The design question stands: one motor's slew current is unmeasured, and the firmware mover cap is set from it (bring-up item).",
+    "psu": "PRICED: Anker 65W USB-C charger at $29.99 [m], see mechanical.psu_usbc_65w (the GST160A24-R7B barrel supply is kept at per_instrument 0). Shipping, tax and tariff NOT measured. The R2-6 inlet electronics (PD sinks, boost) are not in any netlist yet, so their ~$13.70/instrument is NOT in the board line.",
+    "usbc_cable": "NOT PRICED: a USB-C to USB-C cable rated for the charger (3 A for 65 W, 5 A e-marked for 100 W) -- the Anker 65W does not include one; ~$8-10 is an unread estimate.",
     "wire": "PRICED PER SPOOL 2026-10-20, NOT PER INSTRUMENT: two gauges, six 25 ft spools of McMaster 8054T (22 AWG 8054T13 $3.91, 26 AWG 8054T11 $3.22; BOM.md, Hook-up wire: two gauges) cover one instrument above the floor. LENGTH IS MEASURED, tools/wire_total.py totals the drawn harness at 15.26 m per instrument over 115 runs (152.6 m for a ten-instrument order), which is the figure BOM.md never had.",
     "pogo": "PRICED NOW: the four leg pogo boards (elec/leg_pogo.py) are in the PCB line -- fab, assembly and their spring-pin parts. What they do not have is a measured JLCPCB quote; at 10 x 17.6 and 13 x 19.3 mm they are well under the 70 mm rail threshold, so expect the same edge-rail penalty as can_tee if ordered by the hundred.",
     "pi_ram": "DECIDED, with a risk attached. The user chose the 1GB at $35 because it is the only Pi 4 that can actually be bought ten at a time (the 2GB is capped at one per customer across the trade). What is NOT settled is whether Dexed + USB gadget + USB host fits 1GB headless -- a design question with bronner. If it does not, the fallback is the 4GB at $100, +$65/instrument on today's line.",
