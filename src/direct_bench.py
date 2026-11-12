@@ -119,7 +119,11 @@ KEY_DROP = 5.0                                      # its centre under the axis:
 SLIT_W = 2.2                                        # string 10's 1.78 and room
 WIN_HY = KEY_D / 2 + 1.4                            # 3.8: the plate window's half-width in Y
 WIN_Z = (-(KEY_DROP + KEY_D / 2 + 1.2), 3.2)        # ...and its reach under / over the axis
-# THE SPRING: 3/4 in OD stainless extension spring stock, cut to length (SKU TBD). Each end SCREWS
+# THE SPRING (2026-11-11): McMaster 9654K335 -- 0.75 in OD, 0.091 in tempered spring steel, 6.5 in,
+# loop ends -- its LOOPS CUT OFF and the body cut to SPRING_COILS whole coils (one spring a piece,
+# ~$2.71). Close-wound, 7.03 lbf (31.3 N) initial tension, ~1.72 N/mm with 35 working coils
+# (McMaster's 1.70 at 35.5). A production spring is to be wound to a force-at-length drawing.
+# Each end SCREWS
 # ONTO A SEAT, its last coils wound over a plug of the spring's own inside diameter -- the way
 # cut-to-length springs are meant to be ended -- so nothing is hooked off the axis.
 #   NUT END: the COLLAR -- a plate clamped under the two M3 heads on the flange's back, two webs at
@@ -127,21 +131,32 @@ WIN_Z = (-(KEY_DROP + KEY_D / 2 + 1.2), 3.2)        # ...and its reach under / o
 #   WALL END: the ANCHOR PLUG -- a seat on the plate's +X face, bolted through the plate to the
 #            thrust HOUSING behind it (THE THRUST HOUSING). The plug carries the SLEEVE over the
 #            screw.
-SPRING_OD, SPRING_WIRE = 19.05, 2.0
-SPRING_ID = SPRING_OD - 2 * SPRING_WIRE             # 15.05: the seats' diameter
-ACTIVE_PITCH = 2.5                                  # the open coils between the grips, about
+SPRING_OD, SPRING_WIRE = 19.05, 2.31             # 0.75 / 0.091 in
+SPRING_ID = SPRING_OD - 2 * SPRING_WIRE             # 14.43: the seats' diameter
+SPRING_ACTIVE = 35                                  # working coils between the grips (whole turns)
+SPRING_IT, SPRING_K = 31.3, 1.72                    # N initial tension, N/mm for SPRING_ACTIVE
+# THE FORCE PER STRING (user, 2026-11-11: per-position lengths). Each string's spring is set at
+# OPEN pitch to 95 % of its lightest string at -3 st (any C6/E9 gauge players use), less 1 N of
+# drift over the +-3 st travel and less 5 N for the stock spring's tolerance (McMaster's
+# +-0.3 lbf / +-10 % rate on a sibling: ~+-4..6 N); a strong spring then still stays under the
+# string at -3 st, so the nut never crosses its backlash. Typical setups get 37..46 % help at
+# their top raise. Index = string - 1. The ONLY per-string difference is the plug's neck: the
+# same cut spring, stretched to its length (spring_len_open).
+SPRING_F = (67.0, 68.0, 61.0, 66.0, 55.0, 61.0, 61.0, 63.0, 54.0, 53.0)
 # HOW AN END HOLDS (user, 2026-11-09: "wrap the wire at the end around something"). Each seat is a
 # THREADED POST: a helical groove the spring's last GRIP_TURNS coils are screwed into (the wire
 # wraps the post, the load spread round the whole thread; its crests show between the coils).
 # Then the wire's END is a TANG: bent straight back along the axis through a hole in the stop
 # flange, and hooked over behind it -- so the spring cannot unscrew itself off the post.
-GRIP_TURNS, GRIP_PITCH = 4, 3.0                     # the end coils in the post's thread
-SEAT_GRIP = GRIP_TURNS * GRIP_PITCH                 # 12 of post under them
+GRIP_TURNS, GRIP_PITCH = 4, 2.6                     # the end coils in the post's thread: the
+                                                    # close-wound 2.31 opened a little as they go on
+SPRING_COILS = SPRING_ACTIVE + 2 * GRIP_TURNS       # 43: the cut piece, ~100 free
+SEAT_GRIP = GRIP_TURNS * GRIP_PITCH                 # 10.4 of post under them
 SEAT_L = SEAT_GRIP                                   # no more: the open coils cross past it
 STOP_D, STOP_T = SPRING_OD + 2.0, 2.0               # the STOP FLANGE each spring end butts against
-R_COIL = (SPRING_OD - SPRING_WIRE) / 2              # 8.525: the wire's centre
+R_COIL = (SPRING_OD - SPRING_WIRE) / 2              # 8.37: the wire's centre
 SEAT_D = 2 * R_COIL                                 # the post: its thread's crests at the wire's centre
-GROOVE_D = SPRING_WIRE + 0.2
+GROOVE_D = SPRING_WIRE + 0.1                         # under GRIP_PITCH: turns stay apart
 TANG_BACK, TANG_HOOK = SPRING_WIRE / 2 + STOP_T + 1.2, 2.6   # the tang: through, then over
 PLUG_GAP = 4.5                                      # the plug's flange off the plate: the hook's
                                                     # room, and with the flange the ears' 6.5 (an
@@ -188,16 +203,39 @@ def x_collar(t: float):
     return (pb - COLLAR_T, pb), heads, (f0, f1), (f0 - SEAT_L, f0)
 
 
-def x_plug():
+def spring_len_open(i: int) -> float:
+    """String i's spring, end coil centre to end coil centre, at open pitch: the grips plus the
+    working coils close-wound and stretched to SPRING_F[i]."""
+    return 2 * SEAT_GRIP + SPRING_ACTIVE * SPRING_WIRE + (SPRING_F[i] - SPRING_IT) / SPRING_K
+
+
+def _plug_x0(i=None) -> float:
+    """The plug's flange face off the plate: PLUG_GAP, and string i's neck longer by however much
+    shorter its spring sits than the plain plug would leave it (None: the plain plug)."""
+    f0 = ANCHOR[1] + PLUG_GAP
+    if i is None:
+        return f0
+    free = x_collar(T_OPEN)[2][0] - SPRING_WIRE / 2 - (f0 + STOP_T + SPRING_WIRE / 2)
+    d = free - spring_len_open(i)
+    assert d >= 0, f"string {i + 1}: its spring wants {-d:.1f} more than the plain plug leaves"
+    return f0 + d
+
+
+def x_plug(i=None):
     """The anchor plug along x: the neck off the plate's +X face, the stop flange, the seat."""
     a1 = ANCHOR[1]
-    f0 = a1 + PLUG_GAP
+    f0 = _plug_x0(i)
     return (a1, f0), (f0, f0 + STOP_T), (f0 + STOP_T, f0 + STOP_T + SEAT_L)
 
 
-def spring_span(t: float):
+def spring_span(t: float, i=None):
     """The spring, x from..to: its end coils' centres a wire's radius off each flange face."""
-    return x_plug()[1][1] + SPRING_WIRE / 2, x_collar(t)[2][0] - SPRING_WIRE / 2
+    return x_plug(i)[1][1] + SPRING_WIRE / 2, x_collar(t)[2][0] - SPRING_WIRE / 2
+
+
+def spring_force(t: float, i: int) -> float:
+    span = spring_span(t, i)
+    return SPRING_IT + SPRING_K * (span[1] - span[0] - 2 * SEAT_GRIP - SPRING_ACTIVE * SPRING_WIRE)
 
 
 # THE SLEEVE IS SPLIT 50/50 (user, 2026-11-09): half fixed on the anchor plug, half riding the
@@ -384,15 +422,17 @@ def report() -> str:
            f"+Y rail inner face {RAIL_HI:.2f} (today {Y_HI}): {RAIL_HI - Y_HI:+.2f} wider, all on axis",
            f"stations x (pulley plane): " + "  ".join(f"{X_REF0 - s * STATION_P:.1f}"
                                                       for s in range(4)) + f"  pitch {STATION_P}",
-           "string row station  motor (x, y, z)            plug  screw length  spring at slack/full"]
+           "string row station  motor (x, y, z)            plug  screw length  spring at slack/full"
+           "   N at slack/open/full"]
     for i in range(N):
         m = yaw_pt((x_ref(i), y_of(i), za(i)), i)
         sl = SCREW_TIP - (x_ref(i) + 11.0)
-        s0 = spring_span(0)[1] - spring_span(0)[0]
-        s1 = spring_span(1)[1] - spring_span(1)[0]
+        s0 = spring_span(0, i)[1] - spring_span(0, i)[0]
+        s1 = spring_span(1, i)[1] - spring_span(1, i)[0]
         dirn = {0: "+Z", 90: "-Y", 180: "-Z", 270: "+Y"}[PLUG_DIR[i]]
         out.append(f"  {i + 1:2d}   {level(i)}     {STATION[i]}     ({m[0]:7.1f}, {m[1]:6.1f}, {m[2]:6.1f})"
-                   f"   {dirn}   {sl:6.1f}        {s0:5.1f} / {s1:5.1f}")
+                   f"   {dirn}   {sl:6.1f}        {s0:5.1f} / {s1:5.1f}"
+                   f"   {spring_force(0, i):4.1f} / {spring_force(T_OPEN, i):4.1f} / {spring_force(1, i):4.1f}")
     low = min(za(i) for i in range(N)) - M_HALF
     far = min(x_ref(i) for i in range(N)) - M_BACK
     out.append(f"deepest: the lowest motor's bottom z {low:.1f}  (today's bottom -81.8)")
@@ -447,7 +487,7 @@ def _collar(i: int, t: float) -> cq.Workplane:
         dy, dz = at_ang(a)
         out = out.union(cyl_x(PILLAR_D, p0 - f1 + 0.5, f1 - 0.5, y=y + dy, z=z + dz))
     out = out.union(cyl_x(STOP_D, f1 - f0, f0, y=y, z=z))                          # stop flange
-    x0, x1 = spring_span(t)                                                         # the post:
+    x0, x1 = spring_span(t, i)                                                      # the post:
     out = out.union(_post(i, x0, x1 - x0 - SEAT_GRIP, D.NUT_BOSS_D + 0.4))          # threaded
     out = out.cut(cyl_x(D.NUT_BOSS_D + 0.4, 60, s0 - 1, y=y, z=z))                  # boss, screw
     out = out.union(_tube_x(13.0, SLEEVE_ID, s0, s0 + 3.0, y, z))                   # post's floor,
@@ -516,12 +556,13 @@ def _screw(i: int, x0: float, x1: float) -> cq.Workplane:
 
 
 def _spring(i: int, t: float) -> cq.Workplane:
-    x0, x1 = spring_span(t)
+    x0, x1 = spring_span(t, i)
     if not COILS:
         return _tube_x(SPRING_OD, SPRING_ID, x0, x1, y_of(i), za(i))
     L = x1 - x0
     act = L - 2 * SEAT_GRIP
-    k = max(1, round(act / ACTIVE_PITCH))           # whole turns: every piece starts at angle 0
+    k = SPRING_ACTIVE                               # whole turns: every piece starts at angle 0
+    assert act > k * SPRING_WIRE, "the working coils solid" 
     pieces = [_helix(0.0, GRIP_PITCH, SEAT_GRIP, SPRING_WIRE),
               _helix(SEAT_GRIP, act / k, act, SPRING_WIRE),
               _helix(SEAT_GRIP + act, GRIP_PITCH, SEAT_GRIP, SPRING_WIRE)]
@@ -548,8 +589,8 @@ def _post(i: int, x0: float, z0: float, bore: float) -> cq.Workplane:
     post = cq.Workplane("XY").add(cq.Solid.makeCylinder(SEAT_D / 2, SEAT_L - lo + hi,
                                                         cq.Vector(0, 0, z0 + lo)))
     post = post.cut(_helix(z0, GRIP_PITCH, SEAT_L, GROOVE_D))
-    post = post.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(bore / 2, SEAT_L + 2,
-                                                                 cq.Vector(0, 0, z0 - 1))))
+    post = post.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(bore / 2, SEAT_L - lo + hi + 2,
+                                                                 cq.Vector(0, 0, z0 + lo - 1))))
     return _in_spring(post, i, x0)
 
 
@@ -559,7 +600,7 @@ def _tang_hole(i: int, x_from: float) -> cq.Workplane:
 
 def _anchor_plug(i: int) -> cq.Workplane:
     y, z = y_of(i), za(i)
-    (a0, a1), (f0, f1), (s0, s1) = x_plug()
+    (a0, a1), (f0, f1), (s0, s1) = x_plug(i)
     out = cyl_x(SPRING_ID, f0 - a0, a0, y=y, z=z)                                   # neck
     out = out.union(cyl_x(STOP_D, f1 - f0, f0, y=y, z=z))                           # stop flange
     out = out.union(_ears(i, a0, f1, 4.5))                                          # the inserts'
@@ -571,7 +612,7 @@ def _anchor_plug(i: int) -> cq.Workplane:
         dy, dz = at_ang(a, EAR_R)
         out = out.cut(cyl_x(6.1, 5.0, a0 - 1, y=y + dy, z=z + dz).translate((1, 0, 0)))  # insert
         out = out.cut(cyl_x(4.4, f1 - a0 + 2, a0 - 1, y=y + dy, z=z + dz))              # tip's way
-    out = out.union(_post(i, spring_span(0.0)[0], 0.0, SLEEVE_ID))                  # threaded post
+    out = out.union(_post(i, spring_span(0.0, i)[0], 0.0, SLEEVE_ID))               # threaded post
     return out.cut(_tang_hole(i, f0))
 
 

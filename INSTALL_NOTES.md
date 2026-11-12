@@ -1857,3 +1857,13 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
   - Hold the insert while you snug the M3 if it starts to turn.
   - D bore fit: 0.15 mm a side over the shaft. It beat 0.30 in a side-by-side print (2026-11-10); the slit lets it open to go on.
   - The pin drill jig is not needed for this.
+
+## Direct drive: nut springs, one cut spring, per-string plug necks (2026-11-11)
+
+- **Spring:** McMaster 9654K335 (0.75" OD, 0.091" tempered spring steel, 6.5", loop ends). Cut both loops off and cut the body to **43 whole coils**: 35 working coils plus 4 at each end screwed onto the threaded posts. One spring makes one piece. Wipe it with light oil, since it's plain steel.
+- **Force per string at open pitch** (string 1..10): 67, 68, 61, 66, 55, 61, 61, 63, 54, 53 N.
+  - Each is 95% of the lightest string at −3 st, less 1 N of drift and less 5 N for the stock tolerance. A strong spring still stays under the string at −3 st, so the nut never crosses its backlash.
+  - The forces come from the plug necks only: each string's plug neck is 0.2–8.9 mm longer (`direct_bench.SPRING_F`, `spring_len_open`).
+- **Assembly:** no adjusting and no measuring. The printed neck sets the spring's length.
+- **Restringing (slack end):** about 7 N more than at open pitch. At full raise travel, about 7.5 N less.
+- **Production:** order springs wound to a force-at-length drawing (±5%) instead of cut stock.
