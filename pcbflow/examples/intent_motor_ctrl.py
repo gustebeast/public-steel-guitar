@@ -49,11 +49,12 @@ REG = {
     "power": [[-X1 + 9.0, -Y1 + 11.0], [0.0, -Y1 + 11.0], [0.0, 16.0], [-X1 + 9.0, 16.0]],
     # the MCU, its crystal and the USB bridge: the +X half, clear of the 5 V buck's 10 mm
     # (v2: unregioned, U4 landed beside the buck and the crystal was pushed 15 mm off it)
-    # 2026-11-12: the -X edge moved 6 -> 4. At 6 the band was flush with U4's courtyard, so
-    # U4 could not turn to 0 (Y1 no room by U4.5) and sat at 270 with CAN1 and CAN2 crossing
-    # in front of its 0.4 mm row -- CAN1_TX open in every run; place_init's TANGLE HINT
-    # names this. At 4: U4 at 0, 0 open in the score, 0 unconnected (f21).
-    "logic": [[4.0, -Y1 + 11.0], [X1 - 1.0, -Y1 + 11.0], [X1 - 1.0, Y1], [4.0, Y1]],
+    # 2026-11-12: the band stays at 6, flush with U4's courtyard. At 270, U4 has CAN1 and
+    # CAN2 crossing in front of its 0.4 mm row (CAN1_TX open in every run); at 0, Y1 needs
+    # room west of U4.5. place_init's GROW gives the band that room when it is free -- which
+    # is why the power band now ends at 0, not 2 (lead, as the trial floorplan's author).
+    # (Moving this edge to 4 by hand closed CAN but left Y1 1.7 mm past its near: f21.)
+    "logic": [[6.0, -Y1 + 11.0], [X1 - 1.0, -Y1 + 11.0], [X1 - 1.0, Y1], [6.0, Y1]],
 }
 for n, p in REG.items():
     r("region", "floorplan band", "trial floorplan", name=n, poly=p, exclusive=(n in ("pi", "top")))

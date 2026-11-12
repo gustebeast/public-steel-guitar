@@ -1029,6 +1029,43 @@ not a cost. So on this floorplan, "U4 at 0 with Y1 held" needs the power band mo
 tangle term in the turn cost; both are the lead's call. optical, output_panel and motor_ctrl
 place byte-identically with GROW in.
 
+**The re-prove at x = 6 (lead decisions (a) + (b), 2026-11-12).** Four things, each needed:
+1. (a) The trial floorplan's power band ends at x = 0 (was 2), so GROW has room. The `logic`
+   band is back at 6.
+2. (b) The tangle is a cost after stranding: TANGLE_W 3 mm per crossing escape. It applies
+   to fine-pitch ICs of TANGLE_PINS (24) pads and up. With every fine-pitch part counted,
+   output_panel's 10-pin U14/U16 turned 180 on 2-3 crossings.
+3. **A tight-loop satellite may stand inside its anchor's escape halo, in front of its OWN
+   pins, as a fallback** (`_drop_sat`). The 2.5 mm ring held Y1's centre 4.25 mm out,
+   past its 4 mm `near` on any straight side. That is why U4 only ever fitted Y1 at 270's
+   corner.
+   * Let into the whole ring, Y1 sat on U4's north edge, and BOOT0 / PG_5V went open.
+   * So the window is the outward side of the edge carrying its tight pins, the pins'
+     span +- half the satellite.
+   * Judged by the rule: the plain drop is kept if the rule holds. Always open, it moved
+     51 parts on output_panel, whose crystals already held.
+4. **GROW holds the anchor where the first run put it**, clipped to its own region. With the
+   band grown, the quadratic stage pulled U4 1.9 mm west into the room meant for Y1, so Y1
+   stranded again; in-place turn retries could not help, because U4 was already there before
+   the local pass.
+   * The grown regions go to `init.grow.json`; place_flow rewrites intent.json with them,
+     so the score judges the floorplan the board was placed in.
+
+Result:
+* GROW: region logic, edge -X 6.00 -> 1.67 (4.3 mm) -- for Y1 (U4 270 -> 0, 80 -> 40
+  crossing escapes; U4 held at (10.6, 1.9)).
+* U4 at 0, Y1 2.98 mm inside its 4 mm near, CAN closed.
+* optical and output_panel place byte-identically and route as before: opt20 202 vias, 0
+  FAIL; op22 0.52 uncoupled, 253 vias, 3 FAIL, = op15.
+
+**OPEN: motor_ctrl is not 0/0 yet** (f24, f25: PED_H / PED_L open in the score, finish 2
+unconnected (+5V_RAW, PED_H); floor 0 once the grown band reaches the score, f25).
+* The new placement reshuffled the +X side. U9 (the pedal mux, 0.5 mm 10-pin) sits at 270
+  with PED_L/PED_H (pins 7/8) facing J2. Its decap C37 (at U9.10) is 1 mm south-east of
+  pin 8, on PED_H's way to D4 and J2.4.
+* That is the same pattern as C12 at U4: a decap in a signal pin's fan-out, now on a small
+  IC.
+
 Tried and dropped on the way (each measured on all three boards):
 
 | attempt | motor_ctrl | output_panel | optical | why dropped |
