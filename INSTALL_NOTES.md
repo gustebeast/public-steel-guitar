@@ -1884,18 +1884,18 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
   - the 4 axles: three bend-bearing rows and the bridge row;
   - the fingers, one lane per string, so every gap between bearings has a finger (formerly 3 fingers). Each lane is open through the top and the +X end, so a string feeds in and out when restringing;
   - the two wall bars' ends.
-- **Bearing clearance:** the plate now stands 1 mm off the bend bearings (formerly 4 mm).
+- **Bearing clearance:** the plate now stands 1 mm off the bend bearings (formerly 4 mm). The plate is 3.2 mm (4 beads): an FEA of the endplate under all ten strings at open pitch reads about 9 MPa peak and 0.2 mm at the bridge row, with the axles in. The axles tie the fingers together and carry most of it, so always run with all four axles in.
 - **Axles:** Ø8 steel, all four **106.7 mm** long: the bearing span plus 8 mm of grip in the endplate at each end.
   - Each slides in from the −Y side, down its bore and through every bearing in its row, and stops on a 3 mm wall at the +Y side. Push it the last stretch with the long arm of the 2.5 key.
   - To remove one, push it back out with an allen key through the Ø3.2 hole in that stop wall.
   - The stop wall only locates the axle along Y; nothing pushes on it.
 - **Wall bars:** 1/4" × 3-1/2" A-36 flat bar, one in each side wall, the 3-1/2" standing vertical. The top edge sits 20 mm under the strings' top.
   - Steel, not aluminium: it expands like the strings.
-  - **Drill and tap each bar end** for M3, two holes 10 deep, on the bar's centreline in thickness, 8.0 mm under the top edge and 5.5 mm over the bottom edge. Use a printed drill jig so the holes come out dead centre.
+  - **Drill and tap each bar end** for M3, two holes 10.5 deep (Ø2.5 tap drill), on the bar's centreline in thickness, 8.0 mm under the top edge and 5.5 mm over the bottom edge. Use a printed drill jig so the holes come out dead centre.
 - **Clamping:**
-  - Each bar end drops into a 5 mm locating pocket and **stops 1 mm short** of the endplate's 8 mm back wall.
-  - Four M3 × 20 socket-head cap screws, each with an ISO 7089 / DIN 125-A M3 washer (Ø7 × 0.5; the Ø9 DIN 9021 left too thin a wall), go in from the endplate's +X end through tunnels. They pass the back wall into the bar ends.
+  - Each bar end drops into a 5 mm locating pocket and **stops 1 mm short** of the endplate's back wall (12.7 mm, running out to the heads).
+  - Four M3 × 22 socket-head cap screws (McMaster 91292A801), each with an ISO 7089 / DIN 125-A M3 washer (Ø7 × 0.5; the Ø9 DIN 9021 left too thin a wall), sit in shallow counterbores in the endplate's +X end, **heads flush**, and pass the back wall into the bar ends.
   - Tighten until the side walls' ends are pulled hard against the endplate. The bars never bear on the plastic, so the screws squeeze the sections together.
-  - Thread engagement in the bar: about 7.5 mm (2.5 × d).
+  - Thread engagement in the bar: about 8.3 mm (2.5 × d or more).
   - The floor ends flush with the walls (one print), so the endplate bears on the floor across the middle as well as on the walls. The floor carries most of the strings' pull.
   - **Torque: snug, about 0.3 N·m** (a light pull on the short arm of the 2.5 key). The strings' pull already presses the endplate onto the walls; the screws only hold it there. Harder pulls overload the plastic under the small washer, and it creeps.

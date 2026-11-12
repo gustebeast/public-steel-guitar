@@ -90,9 +90,15 @@ YK_ROOF = 3 * D.BEAD                                # 2.4
 YK_D = D.NUT_FLANGE_L                               # 22: round, as the nut's flange
 X_YT0 = -26.0                                       # yoke roof at the slack end of travel
 BRG_CLR = 1.0                                       # the endplate's face off the bend bearings' rim
-# the rods' plate (and the balls' windows): its +X face BRG_CLR off the bend bearings' rim, so it
-# fills the old 4 mm gap and fuses with the comb (user, 2026-11-12): -24 .. -17, 7 thick
-ROD_PLATE = (-24.0, X_BEND - R - BRG_CLR)
+# the rods' plate (and the balls' windows), the endplate's -X wall: its +X face BRG_CLR off the
+# bend bearings' rim (user, 2026-11-12), its thickness whole beads, chosen for the load by the
+# FEA (tools: the endplate under the strings' open-pitch pull, sustained). Its -X face is x_j,
+# where the body's walls and floor end.
+EP_PLATE_N = 4                                      # beads: FEA 2026-11-12, with the axles in their
+                                                    # bores, 3.2 / 4.8 / 7.2 thick read 8.9 / 8.8 / 8.6
+                                                    # MPa peak at open pitch: the axles tie the fingers,
+                                                    # the plate barely matters; 3.2 clears the pickup
+ROD_PLATE = (X_BEND - R - BRG_CLR - EP_PLATE_N * D.BEAD, X_BEND - R - BRG_CLR)
 # THE ROUND NUT (user, 2026-11-09): the common Tr8x2 brass flange nut, Ø22 x 3.5 flange with FOUR
 # Ø3.5 holes on a Ø16 circle at 45 deg -- no flats needed here (a row's nuts are 28.5 apart, the
 # next row's 28.1). Its holes do everything:
@@ -1063,7 +1069,25 @@ def ep_x() -> dict:
     # the +X end (the fingers' tips) flush with the outside of the heaviest gauge the instrument
     # takes where it drops off the bearings (user, 2026-11-12: no more than that)
     x_end = X_BEND + R + D.STRING_GAUGE_MAX
-    return dict(x_j=x_j, bar_end=bar_end, wall0=wall0, wall1=wall0 + EP_WALL, x_end=x_end)
+    # the screw heads FLUSH with the +X end (user, 2026-11-12): the back wall runs on to the
+    # washer under the head, so it is EP_WALL at least (the 8 the load needs) and usually more
+    from . import belt_tensioner as BTn
+    wall1 = x_end - EP_WASHER[1] - BTn.HEAD_H
+    assert wall1 - wall0 >= EP_WALL, "the back wall is thinner than the load needs"
+    return dict(x_j=x_j, bar_end=bar_end, wall0=wall0, wall1=wall1, x_end=x_end)
+
+
+# McMaster 18-8 M3 SHCS stock lengths (91292A: 20, 22, 25, 30 read 2026-11-12) and the thread in the
+# bar: 2.5 d at least; the tapped hole goes EP_TAP_EXTRA past the tip
+M3_STOCK = (16.0, 20.0, 22.0, 25.0, 30.0)
+EP_ENGAGE, EP_TAP_EXTRA = 7.5, 2.0
+
+
+def bar_screw_len() -> float:
+    """The shortest stock M3 that, head flush with the +X end, reaches EP_ENGAGE into the bar."""
+    e = ep_x()
+    need = e["wall1"] - e["bar_end"] + EP_ENGAGE
+    return min(L for L in M3_STOCK if L >= need)
 
 
 def _bar_box(yc: float, x0: float, x1: float, grow: float = 0.0) -> cq.Workplane:
@@ -1080,22 +1104,22 @@ def _wall_bars() -> list:
     for k, yc in enumerate(bar_y()):
         b = _bar_box(yc, x0, x1)
         for zc in EP_SCREW_Z:
-            b = b.cut(cyl_x(2.5, 10.0, x1 - 10.0, y=yc, z=zc))
+            depth = bar_screw_len() - (ep_x()["wall1"] - x1) + EP_TAP_EXTRA
+            b = b.cut(cyl_x(2.5, depth, x1 - depth, y=yc, z=zc))
         out.append((f"db_wall_bar_{k}", b))
     return out
 
 
 def _bar_screws() -> list:
-    """The four M3 x 20 SHCS and their washers: through the back wall into the bar ends (head on
-    the washer on the wall's +X face; 20 is the stock length that reaches 7.5 into the bar, 2.5 d
-    of thread in steel, inside the 10 deep tapped hole)."""
+    """The four M3 SHCS (bar_screw_len) and their washers: through the back wall into the bar
+    ends, the head on its washer flush with the +X end."""
     from . import belt_tensioner as BTn
     e = ep_x()
     out = None
     for yc in bar_y():
         for zc in EP_SCREW_Z:
             top = e["wall1"] + EP_WASHER[1] + BTn.HEAD_H
-            sc = _cap("m3", 20.0, (top, yc, zc), (-1, 0, 0))
+            sc = _cap("m3", bar_screw_len(), (top, yc, zc), (-1, 0, 0))
             sc = sc.union(cyl_x(EP_WASHER[0], EP_WASHER[1], e["wall1"], y=yc, z=zc)
                           .cut(cyl_x(3.2, EP_WASHER[1] + 1, e["wall1"] - 0.5, y=yc, z=zc)))
             out = sc if out is None else out.union(sc)
@@ -1168,9 +1192,10 @@ def _endplate() -> cq.Workplane:
     e = ep_x()
     xj, xe = e["x_j"], e["x_end"]
     w = box_at(xe - xj, y1 - y0, EP_TOP - z0, x=(xj + xe) / 2, y=(y0 + y1) / 2, z=(z0 + EP_TOP) / 2)
-    w = w.cut(box_at(PLATE_LOW_X - xj + 1, PICK_Y[1] - PICK_Y[0], EP_TOP - PLATE_TOP + 1,
-                     x=(xj - 1 + PLATE_LOW_X) / 2, y=sum(PICK_Y) / 2,
-                     z=(PLATE_TOP + EP_TOP + 1) / 2))            # low under the pickup
+    if PLATE_LOW_X > xj:                                         # low under the pickup
+        w = w.cut(box_at(PLATE_LOW_X - xj + 1, PICK_Y[1] - PICK_Y[0], EP_TOP - PLATE_TOP + 1,
+                         x=(xj - 1 + PLATE_LOW_X) / 2, y=sum(PICK_Y) / 2,
+                         z=(PLATE_TOP + EP_TOP + 1) / 2))
     for i in range(N):                                           # the lanes, and the windows
         za_i = za(i)
         # each lane runs out through the +X end and the top (user, 2026-11-12: open, only the
