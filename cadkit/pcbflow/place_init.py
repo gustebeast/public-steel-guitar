@@ -562,7 +562,32 @@ def _place(parts, notes, rules, keep=()):
             c = r.get("cap") or r.get("ref")
             if c in placed_sat and c != anc:
                 sats.setdefault(anc, []).append((c, r))
-    moved, gain = _local(G, parts, pl, [r for r in free if r not in miss], rots, inreg, wnet, rules, notes_c, sats)
+    hints = {}
+    moved, gain = _local(G, parts, pl, [r for r in free if r not in miss], rots, inreg, wnet, rules, notes_c, sats,
+                         hints=hints)
+    # ⚠ A TURN THE FLOORPLAN FORBIDS IS SAID, NOT TAKEN (motor_ctrl from footprints,
+    # 2026-11-12): CAN1_TX/RX stayed open f10-f19 under every placement fix tried. U4 sat at
+    # 270, with CAN1 (pins 46/47, bound for U2 at -X) east of CAN2 (35/36, bound for U3 at
+    # +X) on one 0.4 mm row: 177 crossing escape chords, and CAN2 ran along the pin tips.
+    # At 0 it is 72 -- but U4.5 then faced the `logic` band's edge, which the trial
+    # floorplan drew flush with U4's courtyard, and Y1 seated 1.7 mm past its 4 mm `near`,
+    # so stranding (lexicographic, lead ruling) kept 270. Widening the band 2 mm: U4 turned
+    # to 0 on net cost alone, 0 open, 0 unconnected (f21). A tangle COST (3 mm/crossing) and
+    # a fan-out band clear of loose parts were tried and dropped: neither was decisive, and
+    # the band cost output_panel 0.5 -> 1.3 mm uncoupled. What the author needs is the line.
+    for ref_, rec in sorted(hints.items()):
+        if ref_ not in pl:
+            continue
+        cur = [x for x in rec if abs((x[0] - pl[ref_][2] + 180.0) % 360.0 - 180.0) < 0.5]
+        alt = min(rec, key=lambda x: x[2])
+        if not cur or not alt[1] or alt[2] * TANGLE_RATIO > cur[0][2] or cur[0][2] - alt[2] < TANGLE_MIN:
+            continue
+        regs = sorted({r["region"] for r in rules if r["kind"] == "in_region" and ref_ in r.get("refs", ())})
+        log.append("TANGLE HINT: %s at %g has %d crossing escapes, at %g only %d -- but there %s%s. "
+                   "Give it room (a wider band, or loosen that rule) and it will turn." % (
+                       ref_, pl[ref_][2], cur[0][2], alt[0], alt[2],
+                       ", ".join("%s lands %.1f mm past its rule" % (c, d_) for c, d_ in alt[1]),
+                       " (in region %s)" % "/".join(regs) if regs else ""))
     # ---- 5b. tight paths: reserved once the turns are settled, intruders re-dropped
     # ⚠ A TIGHT LOOP'S PATH IS RESERVED (motor_ctrl from footprints, 2026-11-11): Y1 seated
     # at U4.5 and U4's decap C8 sat on the line from U4.5/6 to Y1 -- OSC_IN/OSC_OUT did not
@@ -650,9 +675,52 @@ def _place(parts, notes, rules, keep=()):
 
 
 CHANNEL_W = 0.6     # mm: the strip a tight net's MST edge keeps clear
+TANGLE_FANOUT = 8   # parts: a net on more is a rail, left out of the escape tangle
+TANGLE_RATIO = 1.5  # a turn hint needs the other turn to cross this many times fewer
+TANGLE_MIN = 10     # ...and at least this many crossings fewer
 POUR_W = 25.0       # mm of wirelength a pad inside another net's pour corridor is worth
 RULE_W = 10.0       # mm of wirelength a millimetre of broken soft rule is worth (local pass)
 SOFT_KINDS = ("decap", "near", "between", "thermal", "apart", "chain", "tight")
+
+
+def _fine_pitch(part, lim=0.65):
+    """True if some two pads of the part sit closer than lim mm (a QFN/QFP row)."""
+    xy = np.asarray([q["xy"] for q in part["pads"]], float)
+    if len(xy) < 2:
+        return False
+    d = np.hypot(*(xy[:, None, :] - xy[None, :, :]).transpose(2, 0, 1))
+    np.fill_diagonal(d, 9e9)
+    return bool(d.min() < lim)
+
+
+def _tangle(parts, pl, ref, members, rails):
+    """Escape crossings of a part: each signal pin's chord, from its angle round the part to
+    the angle of its net's far pads; two chords cross iff their ends interleave (pairs bound
+    for the same part skipped -- their order is the far part's business). Each crossing is
+    a via, or a net walled in front of a fine-pitch row."""
+    P = pi.Placed(parts, pl)
+    ctr = np.asarray(pl[ref][:2], float)
+    items = []
+    for q in parts[ref]["pads"]:
+        nm = q["net"]
+        if not nm or nm in rails:
+            continue
+        far = [r for r in members.get(nm, ()) if r != ref and r in pl]
+        if not far:
+            continue
+        a = P.pad(ref, q["num"])
+        t = np.mean([P.pad(r, x["num"]) for r in far for x in parts[r]["pads"] if x["net"] == nm], axis=0)
+        items.append((math.atan2(a[1] - ctr[1], a[0] - ctr[0]), math.atan2(t[1] - ctr[1], t[0] - ctr[0]),
+                      frozenset(far)))
+    tau = 2.0 * math.pi
+    n = 0
+    for i in range(len(items)):
+        p1, t1, f1 = items[i]
+        span = (t1 - p1) % tau
+        for p2, t2, f2 in items[i + 1:]:
+            if not (f1 & f2) and (((p2 - p1) % tau) < span) != (((t2 - p1) % tau) < span):
+                n += 1
+    return n
 
 
 def _pin_at(P, r):
@@ -672,7 +740,7 @@ def _seat(r, P, pl, anc):
     return np.asarray(pl[anc][:2])
 
 
-def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=None, passes=3):
+def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=None, passes=3, hints=None):
     """Detailed placement: a part the legaliser dropped far from its nets (the greedy
     biggest-first drop puts it at the nearest FREE spot, which can be across the board) is
     lifted and dropped again at the free spot nearest its nets' optimum, kept there only if
@@ -783,6 +851,11 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
                 pass
         return n
 
+    # fine-pitch ICs whose turn is worth a hint (see the TANGLE note where _local is called)
+    rails_l = {nm for nm, m in members.items() if len(m) > TANGLE_FANOUT}
+    rails_l |= {q["net"] for r in rules if r["kind"] == "decap"
+                for q in parts.get(r.get("cap") or r.get("ref"), {"pads": ()})["pads"] if q["net"]}
+    tangled = {r_ for r_ in refs if r_[:1] == "U" and len(parts[r_]["pads"]) >= 8 and _fine_pitch(parts[r_])}
     t0 = total()
     moved = set()
     fixed_local = set(pl) - set(refs)
@@ -842,6 +915,7 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
             # first turn that fitted was taken, and two-pin nets the hand board routes with
             # no via (BOOT, FB, DAC_FILT, SW_GATE) took two -- a part facing the wrong way.
             best_t = None
+            rec_ = []
             # ⚠ A ZONE IS NOT FOR TRADING (output_panel, 2026-11-11): the pass moved L1 28 mm
             # and paid a 9.3 mm breach of the crystal's zone (93 in the penalty) for 2100 of
             # other soft-rule gains -- L1 ended 0.67 mm from Y1. Moves keep forbid zones.
@@ -863,6 +937,17 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
                             ok = False
                             break
                 cc = (stranded(ref), cost(gnets) + sum(penalty(g) for g in group)) if ok else None
+                if ok and hints is not None and ref in tangled:
+                    P = pi.Placed(parts, pl)
+                    short = []
+                    for c, r in (sats or {}).get(ref, ()):
+                        try:
+                            m_ = min(x_[0] for x_ in pi.check(r, P, notes or {}))
+                        except (KeyError, ValueError):
+                            continue
+                        if m_ < -0.05:
+                            short.append((c, -m_))
+                    rec_.append((rr, short, _tangle(parts, pl, ref, members, rails_l)))
                 if ok and (best_t is None or cc < best_t[0]):
                     best_t = (cc, {g: list(pl[g]) for g in group})
                 for g in placed_g:
@@ -870,6 +955,8 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
                     _unstamp(G, mg_, gi_, gj_, *G.ij(*pl[g][:2]), grow=halo(parts[g]))
                 for g in group:
                     pl[g] = list(olds[g])
+            if rec_:
+                hints[ref] = rec_
             ok = best_t is not None
             placed_g = []
             if ok:
