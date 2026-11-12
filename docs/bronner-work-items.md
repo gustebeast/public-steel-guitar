@@ -1377,6 +1377,70 @@ JLC-assemblable, sensibly priced USB-C receptacle (mid-mount or raised) centres 
 it, checking land and panel hole. Otherwise keep the current part and do not ask again. Report which
 way it went and the price delta.
 
+**R2-6. USB-C PD power inlet replaces the 24 V DIN jack (user, 2026-11-12) -- NOT STARTED, no netlist change yet.**
+Two USB-C ports, each carrying data AND power. Either port takes a USB-C PD charger, negotiates the highest
+voltage it offers between 9 and 20 V, and a boost stage makes the instrument's 24 V. Why (user): a backup when
+someone forgets the charger -- any laptop charger runs the instrument, and a phone charger runs it in a reduced
+mode. Replaces J6 (Kycon KPJX-4S-S) and the Mean Well GST160A24-R7B; the BOM now carries an Anker 65W
+(`psu_usbc_65w` in elec/prices.json, [m]). Bring-up uses the user's own Framework charger, so nothing is bought
+until the real draw is measured.
+
+*Power path, per port:* USB-C receptacle (TYPE-C-31-M-12, C165948, 16P 5 A, the J1 part) -> PD sink controller
+with I2C (AP33772S, C50341643: reads every voltage/current the charger offers BEFORE anything draws, drives the
+port's FET switch) -> two back-to-back N-FETs (NCEP4090GU, C502976, 40 V 2.2 mR). The two ports join after their
+switches; firmware turns on one port at a time (the better charger, break-before-make). Seamless hand-over between
+chargers would add two LM74700 ideal-diode controllers (C2941042, ~$4.90 the pair) -- not in the first cut.
+
+*Boost 9-20 V -> 24 V, ~100 W:* every input is below 24 V, so boost only, not buck-boost. LM5122 synchronous boost
+controller (C77241), 2x NCEP4090, 10 uH 15 A inductor (XR181810VC, C53307993 -- through-hole 17.8 mm; the SMD
+CDEP15D90 C171580 has 155 in stock), 8x 22 uF 35 V 1210 (C6120016), 2x 470 uF 35 V polymer (C46550430). Input
+current tops out ~5 A at any setting (PD gives 3 A at 9 and 15 V, 5 A at 20 V), so the stage is sized for 5 A in.
+Output 24 V keeps every downstream rail as designed (motor_ctrl's 5 V buck turns on at 18.1 V; SERVO42D 12-24 V).
+
+*Knowing the power is short -- before and during:*
+1. At power-up the AP33772S reports the charger's offer (e.g. "20 V 3.25 A = 65 W"). The output panel MCU picks a
+   power mode from it and tells the Pi, which shows it on the screen ("65 W charger -- lights limited", "under
+   45 W -- use a larger charger").
+2. While playing, U16 (INA226, already on R2: 5 mR shunt, I2C2 0x40) measures the live draw; the governor sheds
+   load before the contract's limit. Move U16 to the boosted 24 V side (or keep it at the input and scale by the
+   boost's efficiency -- decide with the layout). Wire U16's Alert pin to a U1 interrupt (today it is polled) so a
+   sag or over-current is acted on in microseconds, not at the next poll.
+3. A USB-C charger asked for more than it offers usually shuts off or hiccups, rebooting the instrument mid-song,
+   so the governor must PREVENT, not detect: lights dim first, motor moves are staggered, the Pi and boards are
+   never starved (the priority order of the power governor, 2026-10-30).
+
+*Power modes (thresholds set after measurement):*
+- **Full** -- everything, lights to their cap.
+- **Reduced** -- lights capped to what the contract leaves; simultaneous movers capped.
+- **Minimal** (user, 2026-11-12) -- the Pi and the optical pickup OFF; only the output panel, motor_ctrl, the pedal
+  and lever sensors and the motors run, from a phone charger if need be. The magnetic pickup still plays through
+  J8. Needs: (a) the mode decided at power-up from the contract -- never cut a running Pi (SD card); (b) switchable
+  feeds for the Pi's 5 V (motor_ctrl U5 has an EN and PG_5V already) and the optical pickup; (c) a warning that
+  does not need the screen, since the screen is the Pi's -- an LED pattern on the output panel ("low power --
+  connect a larger charger"); (d) motor_ctrl playing from copedent and tuning stored in its own flash, with the Pi
+  only needed to change them -- confirm that is how its firmware keeps them.
+
+*Data:* both ports carry USB 2.0 data as well. This collides with R2-2 (J1 is a dual-role data port that
+SOURCES 1.5 A to a device). Decide per port: (i) both ports sink power and do data as today's J1 does, with a
+power-role swap needed to also feed a device -- that needs a full PD controller per port (TPS25750, C2868209,
+$2.16 @10, +~$2.50 the pair) instead of the AP33772S; or (ii) one port is the charger + data port and J1 stays the
+dual-role device port as designed. The second port's data needs a hub port or the TS3USB221 mux (C130085, $0.29).
+
+*Cost, per instrument (JLCPCB API @10, 2026-11-12):*
+| | Barrel (today) | USB-C (this item) |
+|---|---|---|
+| Inlet electronics | ~$3.55 (KPJX-4S-S 1.88, SQD50P06 + 2N7002 0.99, SMF24A 0.02, INA226 + shunt 0.65) | ~$13.70 (2x connector 0.37, 2x AP33772S 1.87, 4x port FETs 1.91, mux 0.29, boost 6.21 incl. LM5122 1.53 / FETs 0.96 / inductor 0.64 / caps 2.28 / small parts 0.40, switch + INA226 1.64, ~6 new extended parts' fees 1.80) |
+| Supply | GST160A24-R7B $47.70 [v] + tariff (GST90A24 ~$26-31) | Anker 65W $29.99 [m] (100 W UGREEN ~$40) + cable ~$8-10 (unread) |
+| Total | ~$51 + tariff | ~$52 with 65 W, ~$62 with 100 W |
+
+*Measure first (the thresholds depend on it):* the 50 W baseline in the budget is NOT measured -- the Pi's 16.7 W
+is a supply rating. On the same Z-Wave plug as the 2026-11-12 motor test: the Pi idle and loaded, the boards with no
+motor moving, the lights at full, and a motor's step-current PEAK (the plug averages ~1 s; U16 or a scope).
+Measured so far (2026-11-12): one loaded motor +0.9 W moving, +0.65 W holding.
+
+*Layout cost:* output_panel R2 is 56 x 98 mm and already tight; the boost (an 18 mm inductor, bulk caps) and a
+second USB-C mouth need room on the panel edge and the board. Check before committing the netlist.
+
 **R2-2 load switch picked (2026-10-30): TPS2553DBVR, C55266, 46,854 stock, $0.54.** TI SLVS841E pp.1 and 4: 1.5 A continuous at TJ up to 105 C (1.2 A to 125 C), ILIM 15k gives 1.61 to 1.80 A, 85 mOhm typ / 135 max, reverse comparator trips at VOUT - VIN 95 to 190 mV in 3 to 7 ms, 1 uA max reverse leak, EN active high, constant-current not latch-off (the -1 latches). DBV pins: 1 IN 2 GND 3 EN 4 FAULT# 5 ILIM 6 OUT. At 1.5 A it dissipates up to 0.30 W. Still to read: TUSB320LAI pins and modes. In stock: TUSB320LAIRWBR C132554 2,603; TS3USB221RSER C130085; INA226AIDGSR C49851 42,376; CH340C C84681. Nothing is in the netlist yet.
 
 **R2-2 design, from the sheets (2026-10-30). Changes robustness items 1, 2, 4 and 5.**
