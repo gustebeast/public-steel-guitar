@@ -1135,7 +1135,7 @@ PLATE_TOP = -20.5                                    # under the pickup ...
 PLATE_LOW_X = -20.0                                  # ... where it reaches (x -21)
 PICK_Y = (-52.9, 51.1)                               # the pickup's y, and 1 each side
 LANE_HW = D.BRG688_W / 2 + COMB_CLR                  # 2.6: a string's lane, its bearings in it
-LANE_FLOOR = 3.0                                     # each lane open from this under the string
+LANE_WALL = 2 * D.BEAD                               # a lane's floor over the next row's axle bore
 AXLE_STOP_T, PUSH_D = 3.0, 3.2                       # the +Y stop; the push-out hole (a 2.5 key)
 
 
@@ -1175,9 +1175,15 @@ def _endplate() -> cq.Workplane:
         za_i = za(i)
         # each lane runs out through the +X end and the top (user, 2026-11-12: open, only the
         # fingers between the bearings, so a string feeds in and out when restringing)
-        w = w.cut(box_at(xe + 1 - ROD_PLATE[1], 2 * LANE_HW, EP_TOP + 1 - (za_i - LANE_FLOOR),
-                         x=(ROD_PLATE[1] + xe + 1) / 2, y=y_of(i),
-                         z=(za_i - LANE_FLOOR + EP_TOP + 1) / 2))
+        # ...and down as deep as the window, so the keyhole's bottom shows from above and the
+        # ball goes straight in (user, 2026-11-12), but LANE_WALL over the peak of the next
+        # row's axle bore (a teardrop, peaked +Z) where one runs under the lane
+        lo = za_i + WIN_Z[0]
+        under = [zc for _, zc in axle_zs() if zc < za_i]
+        if under:
+            lo = max(lo, max(under) + (D.BRIDGE_AXLE_D + 0.2) / 2 * math.sqrt(2) + LANE_WALL)
+        w = w.cut(box_at(xe + 1 - ROD_PLATE[1], 2 * LANE_HW, EP_TOP + 1 - lo,
+                         x=(ROD_PLATE[1] + xe + 1) / 2, y=y_of(i), z=(lo + EP_TOP + 1) / 2))
         lo, hi = WIN_Z
         w = w.cut(box_at(ROD_PLATE[1] - xj + 2, 2 * WIN_HY, hi - lo, x=(xj + ROD_PLATE[1]) / 2,
                          y=y_of(i), z=za_i + (lo + hi) / 2))
