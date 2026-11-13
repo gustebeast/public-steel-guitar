@@ -1406,8 +1406,13 @@ def output_board():
     v3d += u16[6]
     vin_brain += u16[8], u16[9]                # VBUS, IN-: the load side
     vin += u16[10]                             # IN+: the supply side
-    _res("R112", "5mR 1W", "brain-board shunt: 5 A is 25 mV of the INA226's 81.9, 0.13 W",
-         vin, vin_brain, "Resistor_SMD:R_0805_2012Metric")
+    # ⚠ 2512, NOT 0805 (output_power finish, 2026-11-13): VIN_BUS and VIN_BRAIN are In2 pours
+    # carrying up to 10 A, and an 0805's 1.0 x 1.4 mm lands cannot take the via array that joins
+    # a land to them -- the router's single via was the path's choke point (quality A1). The
+    # brain's own 4 mohm 2512 (R109) lands take one; 10 A is 40 mV of the INA226's 81.9 and
+    # 0.4 W of its 2 W. FIRMWARE: the INA226 calibration is for 4 mohm, not 5.
+    _res("R112", "4mR 1W", "brain-board shunt, 4 mohm 2512 (C326588, as brain R109): 10 A is 40 mV "
+         "of the INA226's 81.9, 0.4 W", vin, vin_brain, "Resistor_SMD:R_2512_6332Metric")
     _cap("C116", "100nF", "U16 VS bypass", v3d, gnd)
     for net, ref in ((io["I2C2_SCL"], "R84"), (io["I2C2_SDA"], "R85"),
                      (io["INA_ALERT_N"], "R91")):

@@ -658,8 +658,9 @@ CAP_ACROSS["output_signal"] = {"C32": CAP_ACROSS["output_panel"]["C32"]}
 RES_MODEL["output_power"] = {
     **{r: ("i", 5.0, "the port sense shunt at the PD maximum, 5 A (output_split.py power_paths: 5.0 A per port)")
        for r in ("R70", "R75")},
-    "R112": ("i", 10.0, "the INA226 shunt with both ports at 5 A: the J10 + J12 leads' 10 A worst case "
-                        "(output_split.py power_paths, 4 x 2.5 A)"),
+    "R112": ("v", lambda L, R: 10.0 * R("R112"), "the INA226 shunt (4 mohm 2512): both ports at 5 A, the "
+                                                 "J10 + J12 leads' 10 A worst case (output_split.py power_paths, "
+                                                 "4 x 2.5 A) x its resistance"),
     **{r: ("i", 0.001, "PWR_EN into the switch FET's gate: gate charge only; 1 mA allowed") for r in ("R71", "R76")},
     **{r: ("i", 0.001, "into the AP33772S VOUT sense pin: microamps; 1 mA allowed") for r in ("R72", "R77")},
 }

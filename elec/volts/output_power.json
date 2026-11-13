@@ -948,12 +948,14 @@
    "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
   },
   "R112.1": {
-   "max": 50.0,
-   "src": "element V -- PA0805FRF870R005L (C6351848): JLCPCB parts API attributes for C6351848, fetched 2026-10-30; no voltage listed, 50 V entered so the check grades the 1 W, sqrt(PR) is 0.22 V"
+   "max": "none",
+   "src": "PA2512FKF7W0R004E (C326588): JLCPCB parts API attributes for C326588 (PA2512FKF7W0R004E, YAGEO), fetched 2026-11-13 (2 W, 4 mohm, no voltage listed); Yageo PA_E series datasheet V.10 (2018-01-31) p.4 'Rated voltage': V = sqrt(P x R) = sqrt(2 W x 4 mohm) = 0.089 V",
+   "why": "its element V limit (0.089 V) is not one to ground: it was judged on 0.04 V steady, 0.04 V transient -- 400.0 mW of 2000 mW -- the INA226 shunt (4 mohm 2512): both ports at 5 A, the J10 + J12 leads' 10 A worst case (output_split.py power_paths, 4 x 2.5 A) x its resistance"
   },
   "R112.2": {
-   "max": 50.0,
-   "src": "element V -- PA0805FRF870R005L (C6351848): JLCPCB parts API attributes for C6351848, fetched 2026-10-30; no voltage listed, 50 V entered so the check grades the 1 W, sqrt(PR) is 0.22 V"
+   "max": "none",
+   "src": "PA2512FKF7W0R004E (C326588): JLCPCB parts API attributes for C326588 (PA2512FKF7W0R004E, YAGEO), fetched 2026-11-13 (2 W, 4 mohm, no voltage listed); Yageo PA_E series datasheet V.10 (2018-01-31) p.4 'Rated voltage': V = sqrt(P x R) = sqrt(2 W x 4 mohm) = 0.089 V",
+   "why": "its element V limit (0.089 V) is not one to ground: it was judged on 0.04 V steady, 0.04 V transient -- 400.0 mW of 2000 mW -- the INA226 shunt (4 mohm 2512): both ports at 5 A, the J10 + J12 leads' 10 A worst case (output_split.py power_paths, 4 x 2.5 A) x its resistance"
   },
   "R119.1": {
    "max": 50.0,
