@@ -1885,11 +1885,55 @@ def repair_plane_orphans(board, notes, probe_mm=12.0, max_items=24):
                   "fallout, NOT repairing (look at the pour, not the tracks)"
                   % (len(loose), net))
             continue
+        # ⚠ THE PLANE ON THE TRACK'S OWN LAYER (output_board oneG_j6, 2026-11-13): every zone
+        # of the net was a target whatever its layer, so two F.Cu GND stubs were "reconnected"
+        # to In1/B.Cu fill they could never touch -- logged as repaired, still loose. A track
+        # aims at its own layer's pour; on a layer the net does not pour, at the net's
+        # PLANE-CONNECTED barrels (vias, plated pad holes) -- the copper that reaches the plane.
+        board.BuildConnectivity()
+        conn = board.GetConnectivity()
+        on_plane = set()
+        for z in zs:
+            for it in conn.GetConnectedItems(z):
+                try:
+                    on_plane.add(it.m_Uuid.AsString())
+                except Exception:
+                    pass
+        barrels = [v.GetPosition() for v in board.GetTracks()
+                   if v.GetClass() == "PCB_VIA" and v.GetNetname() == net
+                   and v.m_Uuid.AsString() in on_plane]
+        barrels += [pd.GetPosition() for m in board.GetFootprints() for pd in m.Pads()
+                    if pd.GetNetname() == net and pd.GetDrillSizeX() > 0
+                    and pd.m_Uuid.AsString() in on_plane]
+
+        def _targets(src, layer):
+            own = [z for z in zs if z.IsOnLayer(layer)]
+            if own:
+                return [(p, r, True) for p, r in _plane_points(src, own, probe_mm)]
+            near = sorted((math.hypot(p.x - src.x, p.y - src.y), p) for p in barrels)
+            return [(p, pcbnew.ToMM(int(d)), False) for d, p in near
+                    if d <= pcbnew.FromMM(probe_mm)][:6]
+
         for t in loose:
             w = t.GetWidth()
             done = False
             for src in (t.GetStart(), t.GetEnd()):
-                for tgt, r in _plane_points(src, zs, probe_mm):
+                for tgt, r, bite in _targets(src, t.GetLayer()):
+                    if not bite:            # a barrel: end ON it, no bite past it
+                        if not _path_clear(board, src, tgt, net, t.GetLayer(), w):
+                            continue
+                        nt = pcbnew.PCB_TRACK(board)
+                        nt.SetStart(src)
+                        nt.SetEnd(tgt)
+                        nt.SetWidth(w)
+                        nt.SetLayer(t.GetLayer())
+                        nt.SetNet(t.GetNet())
+                        board.Add(nt)
+                        laid += 1
+                        done = True
+                        print("      reconnected %s at %.2f,%.2f to a plane barrel (%.2f mm)"
+                              % (net, pcbnew.ToMM(src.x), pcbnew.ToMM(src.y), r))
+                        break
                     dx, dy = tgt.x - src.x, tgt.y - src.y
                     n = math.hypot(dx, dy) or 1.0
                     end = pcbnew.VECTOR2I(int(tgt.x + dx / n * w), int(tgt.y + dy / n * w))
