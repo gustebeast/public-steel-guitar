@@ -1934,6 +1934,8 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
 - **Length:** 184.8 mm, so 9 per 6 ft length (was 10). Two lengths per instrument, $7.45 more.
 
 ### Anchor plate: drops onto pins, no screws
+> **SUPERSEDED (2026-11-12):** see "Anchor plate on screw shanks" below. The pins and the 26 mm end folds are gone.
+
 - **No fasteners at all.** The four M4 x 10 bolts and the M4 tapping in the wall bars are gone.
   - The 2.5 mm key could not reach those bolts along Y past the springs, and there are to be no screws through the outer walls.
 - **Pins:** each wall bar gets two Ø5 holes drilled straight through along Y (no tap), at x −177.5 (14.7 mm from the plate's web) and z −24.6 / −45.4. Use the printed drill jig.
@@ -1980,7 +1982,49 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
   3. **Turn the collar back 44.8°**: just enough to take each head wholly past its way in, with each channel about two head diameters of arc. Arc slots in its plate carry it under the heads, which end at 45° and 225°, over the key holes. The way in sits clear of the guide-rod tab at 325°.
   4. Tighten both with the 2.5 mm key from −X, down the Ø3.4 hole through the post, its floor and the flange.
   5. **Then** screw the spring on and fit its sleeve. The wire crosses the key's line, so the screws must be tight first. The guide rods go in last, so nothing blocks the turn.
-- **Printing:** the collar prints **+X → −X**, plate on the bed. The flange and its detent teeth are cleared over both channels, so they print open to the top.
+- **Printing (SUPERSEDED, see "Collar printed −X → +X on a cone" below):** the collar prints **+X → −X**, plate on the bed. The flange and its detent teeth are cleared over both channels, so they print open to the top.
   - The detent teeth remain on about half their ring.
   - The spring post's wall still runs over the inner half of each channel, a bridge of about 12 mm along the arc, anchored at both ends on the post's unbroken ring. Clearing it too would cost about half the post's thread.
   - The bridge will come out uneven, and nothing bears on it (the heads clamp the plate). So the channel runs 1 mm further in under it, leaving 1.5 mm over each head for the bridge to sag into.
+
+## Direct drive: anchor plate on screw shanks (2026-11-12)
+
+Replaces the pins. Nothing shows outside the walls, and no key has to reach past a spring.
+
+- **Why the folds stay:** a flat 4 mm sheet across the 157 mm span would see about 215 MPa at mid-span, past 304's ~205 yield, and sag 1.4 mm. The top and bottom folds make a channel (I ≈ 11,800 vs 364 mm⁴): about 49 MPa and 0.04 mm.
+- **Screws:** four M4 × 10 button heads a side, the stock 18-8 length already bought by the 80. Each goes in from inside the **empty** body, through a teardrop hole in the rail's inner skin, and is tapped into the A-36 wall bar. Drill Ø3.3 and tap M4 right through the bar; about 3.4 mm (5 turns) is engaged.
+  - Heights: z −24.9, −46.7, −68.5, −90.25. x is 18 mm past the web's +X face.
+  - Load: about 250 N each, bending the shank over ~4.3 mm. That gives ~350 MPa in the M4's core, under the ~450 yield. Three a side would sit at yield.
+- **Spacers are part of the body:** a printed boss under each head, 4.8 mm off the skin (the fold's 0.5 gap, 4 mm thickness and 0.3 slide). Tighten each screw down onto its boss.
+  - Each boss is a block below the shank, topped at the axis, plus a column on its +X side up to the head's top. A 45° ramp runs under it. Nothing goes over the screw.
+  - Its −X side stands 1 mm clear of the end fold's edge. That gap is the **window**: the fold bears on the bare steel shank.
+- **Plate:** the end folds are 16 mm deep, like the top and bottom flaps, with no slots. Their +X edges bear on the shanks.
+  - A bent flange's length holds to about ±0.3 mm, so the web may sit that far off the rib.
+- **Reference rib:** a printed rib on each wall, 2.4 mm across x and 10 mm out from the wall, from the floor to the plate's top. It sits 0.2 mm off the web's −X face, so the web drops in between the rib and the screws.
+  - It has a hole for the guide rod on string 1's line, which passes through it.
+- **Order:**
+  1. Slide the bars in from +X.
+  2. Screw in the eight M4s, down onto their bosses.
+  3. Drop the anchor plate in from above, between the ribs and the shanks.
+  4. Continue as before: plugs, housings, screws, endplate, guide rods, motors, UI and deck.
+
+## Direct drive: collar printed −X → +X on a cone (2026-11-12)
+
+The plate-down print left each head pocket's roof as a bean-shaped bridge with no reliable ends.
+
+- **Print −X → +X:** the post's end goes on the bed.
+- **Cone:** the flange's underside is a 45° cone from r 9.53 (just outside the spring wire) outward. The detent teeth stand on the cone, and the grip sleeve's end is the same cone with the teeth's complement cut into it (24 teeth, 0.6 high, 60° back, as before).
+  - Print the sleeve with its conical end **up**.
+- **Body:** a Ø24 ring, with a lobe out to Ø25.3 over each head pocket (two beads of wall past the pocket).
+  - On the top row it is cut flat 0.3 mm under the pickup.
+  - Clearances: 0.3 mm to the pickup, 0.65 mm to the nearest neighbouring collar.
+- **Pockets:** closed all round. Each floor faces up, one bead off the cone and 0.3 mm under the head. The roof is the plate, which overhangs only about 1–1.4 mm each side of the slot the shank turns in.
+- **Rod tab:** now a **fin** from the bed to the plate, outside the sleeve, so it has no underside. The rod slot runs its whole length and is open toward the sleeve; its side walls are the rotation lock.
+- **Known small ledge:** the flat ring between the post's thread crest (r 8.37) and the cone's foot (r 9.53) is a 1.2 mm overhang.
+  - The cone can't start lower without its pocket floors reaching the M3 heads.
+  - Moving the spring's end instead would need 1 mm from the plugs, and string 2's plug has 0.2 mm to give.
+
+## Direct drive: leadscrews at 331 mm (2026-11-12)
+
+- At 329–331 mm (strings 4, 6 and 10), OCCT's thread boolean returned a valid solid of the right volume whose flanks were stacked cylinders. It passed every check and drew as a plain rod.
+- `direct_bench._screw` now asks for helical (B-spline) flanks. If no nearby length gives them, it cuts a longer screw from outside OCCT's bad band (~312–352 mm) and saws it to length.
