@@ -765,7 +765,18 @@ BOARD_NOTES = {
     # heights a footprint does not tell (cadkit place_intent.part_height reads these for the
     # station-2 height zone; branner's CAD reads them for the bodies): the boost's polymer
     # caps are jieerrui MA35V470M10X13 -- 13 mm on a 10 mm land (MA series datasheet p.4)
-    "part_heights": {"C113": 13.0, "C114": 13.0},
+    # Max seated heights from each maker's drawing (read 2026-11-13), because board_geom's
+    # HEIGHT has no row for these footprints and the zone must not let them in unmeasured.
+    "part_heights": {
+        "C113": 13.0, "C114": 13.0,   # jieerrui MA35V470M10X13: 13 mm (MA series datasheet p.4)
+        "D1": 1.10,      # SMF24A (Jingdao, C169430): SOD-123FL outline dim A 0.9-1.1, "SMF5.0A~SMF440A-200W" 2020.10 p.4
+        "D13": 1.10,     # BAT54WS: SOD323 dim A2 1.00-1.10 (Diodes DS30098 Rev. 14-2, package outline)
+        "L3": 4.0,       # SWPA5040S4R7MT: C max 4.0 (Sunlord SWPA catalogue p.2, Shape and Dimensions)
+        "L4": 7.0,       # SRP1770TA-100M: 6.7 +- 0.3 incl. terminal (Bourns REV. 11/19 p.1, Product Dimensions)
+        "Q8": 1.10, "Q9": 1.10,       # NCEP4090GU: DFN5X6-8L(G) dim A 0.90-1.10 (NCE V4.0 p.5)
+        "R109": 0.88,    # PA2512FKF7W0R004E: H 0.63 +- 0.25 (Yageo PA_E 2512 spec V.10 p.4, Table 1)
+        "U20": 1.10,     # LM5122 PWP0020A: 1.1 MAX (TI SNVS954H, mechanical data PWP0020A)
+    },
     "qty_per_instrument": 1,
     "edge_parts": {"+Y": ["J21", "J22", "J23", "J24", "J25", "J26", "J27", "J28", "J29",
                           "J30", "J15", "J16", "J10", "J12", "J11", "J3", "J4"]},
