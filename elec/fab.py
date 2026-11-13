@@ -174,6 +174,7 @@ LCSC = {
     "TPS2553DBVR": "C55266",        # TI current-limited switch, SOT-23-6 (motor_ctrl U6, pi_cap U1); 58,077 in stock
                                     # 2026-10-04 -- motor_ctrl U6, bus B's 5 V
     "PZ1.27-2x8P": "C22438114",     # the same family's 2x8, for the UI board's 16-way
+    "PZ1.27-2x8P ZZ": "C22438123",  # its STRAIGHT sibling (brain J5, vertical): 1,580 on 2026-11-13
                                     # ribbon; 2050 in stock 2026-10-04
     "PB-22E85-S-5.7C-C-W": "C22462024",   # Legion self-locking push switch, 2P2T, THT,
                                     # 12 V 0.3 A; 2535 in stock 2026-10-04. The power button.

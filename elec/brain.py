@@ -727,9 +727,12 @@ def brain():
               "SW_PUSH": "UI_SW_PUSH", "ENC_A": "UI_ENC_A", "ENC_B": "UI_ENC_B",
               "SCLK": "UI_SCLK", "SDIN": "UI_SDIN", "DC": "UI_DC", "CS_N": "UI_CS_N",
               "RES_N": "UI_RES_N"}
-    j5 = _part("J5", "PinHeader_2x08", "PZ1.27-2x8P", "UI board ribbon, 16-way 1.27 mm 2x8 "
-               "VERTICAL, off the board face under the UI station: the top edge is all JSTs "
-               "(LCSC part to pick -- open item)",
+    # ⚠ NOT "PZ1.27-2x8P" (2026-11-13): fab.py maps that value to C22438114, the family's
+    # RIGHT-ANGLE header (ui_board / pi_cap) -- this footprint is the vertical one, so it
+    # would have been ordered wrong. The straight part is the same family's ZZ.
+    j5 = _part("J5", "PinHeader_2x08", "PZ1.27-2x8P ZZ", "UI board ribbon, 16-way 1.27 mm 2x8 "
+               "VERTICAL THT, off the board face under the UI station: the top edge is all JSTs "
+               "(HX PZ1.27-2x8P ZZ, LCSC C22438123)",
                "Connector_PinHeader_1.27mm:PinHeader_2x08_P1.27mm_Vertical",
                [Pin(num=i + 1, func=P) for i in range(16)])
     for way, sig in enumerate(harness.UI_RIBBON, start=1):
@@ -775,6 +778,7 @@ BOARD_NOTES = {
         "L4": 7.0,       # SRP1770TA-100M: 6.7 +- 0.3 incl. terminal (Bourns REV. 11/19 p.1, Product Dimensions)
         "Q8": 1.10, "Q9": 1.10,       # NCEP4090GU: DFN5X6-8L(G) dim A 0.90-1.10 (NCE V4.0 p.5)
         "R109": 0.88,    # PA2512FKF7W0R004E: H 0.63 +- 0.25 (Yageo PA_E 2512 spec V.10 p.4, Table 1)
+        "J5": 5.3,       # HX PZ1.27-2x8P ZZ: 1.00 plastic + 3.90 pin, +-0.2 each (Hanxia drawing p.1, C22438123)
         "U20": 1.10,     # LM5122 PWP0020A: 1.1 MAX (TI SNVS954H, mechanical data PWP0020A)
     },
     "qty_per_instrument": 1,
@@ -788,7 +792,6 @@ BOARD_NOTES = {
         "CM5 5 V: U5 is 3 A (LMR33630); CM5 asks 5 A with USB loads -- measure; LMR33640 fits",
         "LM5122 OPT tied to AGND for a single-phase master -- confirm in SNVS954H",
         "L4 (10 uH / 15 A) and C113/C114 (470 uF / 35 V polymer) lands are placeholders",
-        "J5: vertical 2x8 1.27 mm header (the top edge is all JSTs) -- pick the LCSC part",
         "320 x 70 at X -520..-200, Z -107.2..-37.2: branner to confirm the -Y wall stretch and "
         "the 21 mm under the UI station for the mated plugs",
         "CM5 variant: an eMMC part (no SD socket here); four M2.5 mounting holes for it",
@@ -824,10 +827,15 @@ BOARD_NOTES["match"] = [
                  ("FLASH", "the CM5's USB3-1 2.0 lane -> U9 / U10, the arm-flashing switches."))]
 BOARD_NOTES["quality"] = {
     "pinouts": _cited(["NUP2105LT1G", "S4B-XH-SM4-TB", "S6B-XH-SM4-TB", "S6B-PH-SM4-TB",
-                       "TYPE-C-31-M-12", "S4B-PH-SM4-TB", "PZ1.27-2x8P", "THROW", "2N7002",
+                       "TYPE-C-31-M-12", "S4B-PH-SM4-TB", "THROW", "2N7002",
                        "SQD50P06-15L", "CH32V307WCU6", "TS3USB221ARSER", "TPS2553DBVR",
                        "TCAN3413DR", "SN65HVD230DR", "LMR33630ADDAR", "LMR33630BRNXR",
                        "AP2112K-3.3TRG1", "TAXM8M4RFDCET2T"])
+               | {"PZ1.27-2x8P ZZ": "HX PZ1.27-2x8P ZZ drawing (LCSC C22438123) p.1: a plain "
+                                     "straight two-row header, the maker numbers nothing -- the "
+                                     "numbering is the footprint's (KiCad PinHeader_2x08_P1.27mm_"
+                                     "Vertical: odd pads one row, even the other, 1 / 2 at one end) "
+                                     "and the way order is harness.UI_RIBBON, as pi_cap.py's 2x8"}
                | {"NCEP4090GU": "as output_board.py: "
                                 + __import__("output_board").PD_PINOUTS["NCEP4090GU"]}
                | {"S6B-XH-SM4-TB": "JST eXH.pdf p.6, Header / SMT type: the same drawing as the "

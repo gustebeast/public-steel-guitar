@@ -3291,6 +3291,13 @@
    "c": "470uF",
    "case": "D10xL13",
    "src": "jieerrui MA series datasheet p.4 row MA35V470M10X13: 35 V, 470 uF, 16 mohm, ripple 3.8 A at 100 kHz"
+  },
+  "C22438123": {
+   "kind": "conn",
+   "v": 500,
+   "i": 1.0,
+   "src": "hanxia PZ1.27 datasheet p.4 (the family's rating, as C22438114): 500 V, 1 A",
+   "mpn": "HX PZ1.27-2x8P ZZ"
   }
  }
 }
