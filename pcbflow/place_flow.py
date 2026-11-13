@@ -458,7 +458,7 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     if rc != 0:
         say("layout REFUSED the placement -- the flow stops at the gates")
         _report(fd, base, rules, init_log, cells_log, gates, None, None, None, why, T, refused=out[-1500:], floor=floor,
-                room=room, width=wlines)
+                room=room, width=wlines, fill=pi.region_fill(rules, parts, pl))
         return 2
 
     # 4. score, finish, quality
@@ -511,7 +511,7 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
         except (OSError, ValueError):
             qual = {"error": out[-600:]}
     _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T, room=room, width=wlines, pours=plines,
-            floor=floor)
+            floor=floor, fill=pi.region_fill(rules, parts, pl))
     return 0
 
 
@@ -579,14 +579,16 @@ def _rule_line(r):
 
 
 def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T, refused=None, room=(), width=(), pours=(),
-            floor=()):
+            floor=(), fill=()):
     forbid = [l_ for l_ in init_log + cells_log if "FORBID" in l_]
     prov = collections.Counter(_klass(w) for w in why.values())
     S = {k: (score or {}).get(k) for k in ("open", "pairs", "islands", "uncoupled", "vias", "length_mm", "floor",
                                             "failed", "faulted", "floor_breaches", "error")}
     rep = {"board": base, "rules": len(rules), "score": S, "forbid": forbid, "gates": gates, "finish": fin,
            "quality": qual, "provenance": dict(prov), "seconds": {k: round(v) for k, v in T.items()},
-           "refused": refused, "no_room": list(room), "width": list(width), "pours": list(pours)}
+           "refused": refused, "no_room": list(room), "width": list(width), "pours": list(pours),
+           "region_fill": [dict(region=n, area_mm2=round(a), courtyard_mm2=round(u), fill=round(f, 3))
+                           for n, a, u, f in fill]}
     json.dump(rep, open(os.path.join(fd, "report.json"), "w"), indent=1)
     L = ["# place_flow: %s" % base, ""]
     if refused:
@@ -607,6 +609,8 @@ def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, 
     L += ["NO ROOM: " + ("; ".join(room) if room else "none")]
     L += ["WIDTH " + w_ for w_ in width]
     L += ["POUR " + p_ for p_ in pours]
+    if fill:
+        L += ["REGION FILL (courtyards / area): " + "  ".join("%s %.2f" % (n, f) for n, _, _, f in fill)]
     L += ["WARN " + f_ for f_ in floor]
     L += [x_.split("place_init: ", 1)[-1] for x_ in init_log if "TANGLE HINT" in x_ or "GROW" in x_]
     if fin:
