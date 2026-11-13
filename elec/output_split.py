@@ -197,6 +197,8 @@ def _idle(net_path, refs):
 def quality(half, net_path):
     import quality_share as QS
     q = {"pinouts": dict(QS.cited(PINOUT_VALUES))}
+    if half == "power":
+        q["pinouts"].update(OB.PD_PINOUTS)
     q["pinouts"]["PinSocket_2x12_P1.27mm" if half == "power" else "PinHeader_2x12_P1.27mm"] = J20_CITE
     idle = _idle(net_path, [r for r in IDLE_WHY])
     unc = {ref: {"pins": pins, "why": IDLE_WHY[ref]} for ref, pins in idle.items()}

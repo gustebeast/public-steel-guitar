@@ -62,7 +62,7 @@ OPEN ITEMS (BOARD_NOTES["open_items"]):
     hold -- measure; the LMR33640 (4 A) takes the same land.
   - LM5122 OPT tied to AGND (single-phase master) -- confirm in SNVS954H.
   - L4 and C113/C114: placeholder lands (R2-6: XR181810VC / CDEP15D90; C46550430).
-  - NCEP4090GU pinout taken as the PowerPAK-SO8 family's -- check at order.
+  - (closed 2026-11-13) NCEP4090GU pinout read from NCE's sheet: output_board.PD_PINOUTS.
   - CM5 variant: an eMMC one (no SD socket on this board), e.g. CM5104032.
 """
 from __future__ import annotations
@@ -771,7 +771,6 @@ BOARD_NOTES = {
         "J5: vertical 2x8 1.27 mm header (the top edge is all JSTs) -- pick the LCSC part",
         "320 x 70 at X -520..-200, Z -107.2..-37.2: branner to confirm the -Y wall stretch and "
         "the 21 mm under the UI station for the mated plugs",
-        "NCEP4090GU pinout assumed PowerPAK-SO8 (1-3 S, 4 G, tab D)",
         "CM5 variant: an eMMC part (no SD socket here); four M2.5 mounting holes for it",
     ],
 }
@@ -782,7 +781,7 @@ def _cited(values):
     """Pinout citations this board shares with the instrument's earlier boards, read from their
     own notes so the two never drift. Importing those modules builds no parts (checked: 0
     before and after). A part not found here stays UNCITED -- an A4 FAIL is the honest state
-    for the DF40 land, the NCEP4090 and the LM5122 until someone reads them against the
+    for the DF40 land and the LM5122 (the NCEP4090 is read: output_board.PD_PINOUTS) until someone reads them against the
     maker's drawing (open items)."""
     import importlib
     out = {}
@@ -809,6 +808,8 @@ BOARD_NOTES["quality"] = {
                        "SQD50P06-15L", "CH32V307WCU6", "TS3USB221ARSER", "TPS2553DBVR",
                        "TCAN3413DR", "SN65HVD230DR", "LMR33630ADDAR", "LMR33630BRNXR",
                        "AP2112K-3.3TRG1", "TAXM8M4RFDCET2T"])
+               | {"NCEP4090GU": "as output_board.py: "
+                                + __import__("output_board").PD_PINOUTS["NCEP4090GU"]}
                | {"S6B-XH-SM4-TB": "JST eXH.pdf p.6, Header / SMT type: the same drawing as the "
                                    "4-way S4B-XH-SM4-TB (pi_cap.py's citation): No. 1 circuit is "
                                    "the right-hand post seen from above, mouth away; KiCad "

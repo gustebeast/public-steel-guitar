@@ -50,11 +50,9 @@ fix to one does not reach the other. What is new, and why:
     still read true -- except that "U1" in them was the CH32V307 and is the H743 here.
 
 OPEN ITEMS (in BOARD_NOTES["open_items"] too, so they print with the board):
-  - AP33772S land: DS46176 calls the package W-QFN4040-24 (Type A1) and its pin table
-    lists no exposed pad; the footprint carries KiCad's EP 2.6 x 2.6, tied to PWR_GND.
-    Check the package outline before layout.
-  - NCEP4090GU pinout taken as the PowerPAK-SO8 family's (1-3 S, 4 G, tab D): LCSC's
-    sheet came back empty. Check at order.
+  - (closed 2026-11-13) AP33772S EP: DS46176 Rev. 10-2 Table 1 has "EPAD GND" and p.17
+    asks it on GND -- KiCad's pad 25, PWR_GND. NCEP4090GU read from NCE's own sheet V4.0
+    p.1 (1-3 S, 4 G, 5-8 D = the tab). Citations in PD_PINOUTS below.
   - The brain board takes the boost (LM5122, SNVS954H 8.2 values; inrush behind BRAIN_EN)
     and the power button: it is designed to harness.BRAIN_POWER / BRAIN_SIGNAL.
 """
@@ -192,11 +190,25 @@ def _res(tag, value, desc, a, b, fp="Resistor_SMD:R_0402_1005Metric"):
 
 
 C0402, C0805 = "Capacitor_SMD:C_0402_1005Metric", "Capacitor_SMD:C_0805_2012Metric"
+# Pinout citations for the PD parts, read 2026-11-13 against the maker's sheets AND the KiCad
+# footprints' pad numbering (output_split's power half and the brain cite them from here).
+PD_PINOUTS = {
+    "NCEP4090GU": "NCE NCEP4090GU datasheet V4.0 (LCSC C502976) p.1 'DFN 5X6' top/bottom view + "
+                  "schematic: 1-3 S, 4 G, 5-8 D, drain tab = 5-8 (bottom view); p.5 DFN5X6-8L(G) "
+                  "outline. KiCad TDSON-8-1: pads 1-4 the leads, pad 5 the tab spanning 5-8",
+    "AP33772SDKZ-13": "Diodes DS46176 Rev. 10-2 p.3 Table 1 (W-QFN4040-24 Type A1): 1 ISENP, 2 NC, "
+                      "3 GND, 4 SDA, 5 SCL, 6 FLIP, 7 GPIO, 8 LED, 9 INT, 10 NC, 11 VSEL, 12 V18, "
+                      "13 OTP, 14 NC, 15 IFB, 16 CC2, 17 CC1, 18 DN, 19 DP, 20 V5V, 21 NC, 22 VOUT, "
+                      "23 PWR_EN, 24 VCC, EPAD GND (KiCad pad 25); p.17 EP to GND",
+    "LM74700QDBVRQ1": "TI SNOSD17G p.3 Figure 5-1 / Table 5-1, DBV (SOT-23-6): 1 VCAP, 2 GND, 3 EN, "
+                      "4 CATHODE, 5 GATE, 6 ANODE (the DDF table 5-2 differs); FET source on ANODE, "
+                      "drain on CATHODE. KiCad SOT-23-6 pads 1-6 as numbered",
+}
 C1206, C1210 = "Capacitor_SMD:C_1206_3216Metric", "Capacitor_SMD:C_1210_3225Metric"
 SOT23 = "Package_TO_SOT_SMD:SOT-23"
 # NCEP4090GU, DFN5x6-8L, 40 V 2.2 mR at 10 V / 3.3 mR at 4.5 V (LCSC C502976). The usual
-# PowerPAK SO-8 land: pads 1-3 source, 4 gate, 5 the drain tab. ⚠ pinout read from the
-# package family, not from NCE's sheet (LCSC's PDF came back empty) -- check at order.
+# PowerPAK SO-8 land: pads 1-3 source, 4 gate, 5 the drain tab -- confirmed against NCE's
+# sheet V4.0 p.1 on 2026-11-13 (PD_PINOUTS).
 FET_FP = "Package_TO_SOT_SMD:TDSON-8-1"
 
 
@@ -1470,9 +1482,6 @@ BOARD_NOTES = {
     "edge_parts": {"+X": ["J1", "J2", "J5"], "+Y": ["J8"], "-X": ["J3", "J4", "J9", "J10", "J11", "J12"]},
     "placements": {},
     "open_items": [
-        "AP33772S land: W-QFN4040-24 (Type A1), the pin table lists no exposed pad -- check "
-        "DS46176's package outline against QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm",
-        "NCEP4090GU pinout assumed PowerPAK-SO8 (1-3 S, 4 G, tab D) -- LCSC's sheet was empty",
         "brain board: the 24 V boost and the power button move there (harness.BRAIN_POWER / BRAIN_SIGNAL); its VIN input soft-starts behind BRAIN_EN",
         "AP33772SDKZ-13 vs -FA02: VSEL/GPIO only on FA02; this board uses neither",
     ],
