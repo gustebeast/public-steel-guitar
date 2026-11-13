@@ -357,6 +357,7 @@ class Router(CoupledMixin):
 
     # ----------------------------------------------------------------- one net
     REGION_COST = 6.0                # crossing another net's regional pour (model.region_net)
+    WHOLE_COST = 200.0               # crossing another net's WHOLE pour (model.whole_net)
     DEBUG_MERGE = False
     DIVE_STUB = 1.0                  # a diving rail keeps to the surface this near its lands
     OFFRUN_COST = 4.0                # a relaxed pair's cell price off its home layers
@@ -743,6 +744,9 @@ class Router(CoupledMixin):
         # so it keeps cell's), cell for cell.
         rn = m.region_net[sl]
         np.multiply(cell, self.REGION_COST, out=cell, where=(rn != 0) & (rn != nid))
+        if getattr(m, "whole_any", False):
+            wn = m.whole_net[sl]
+            np.multiply(cell, self.WHOLE_COST, out=cell, where=(wn != 0) & (wn != nid))
         if self.ESC_COST > 1.0:
             es = self._escape_map()[sl]
             np.multiply(cell, self.ESC_COST, out=cell, where=(es != 0) & (es != nid))

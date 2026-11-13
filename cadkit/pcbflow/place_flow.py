@@ -271,7 +271,8 @@ def _pours(notes, parts, pl, rules, base_zones):
         taken = [z["priority"] for z in zones[len(base_zones):] if z["layer"] == r["layer"] and z["net"] != r["net"]]
         if "priority" not in r and pr in taken:
             pr = max(taken) + 1
-        zones.append({"net": r["net"], "layer": r["layer"], "poly": poly, "priority": pr})
+        zones.append({"net": r["net"], "layer": r["layer"], "poly": poly, "priority": pr,
+                      **({"whole": True} if r.get("whole") else {})})
         # opt-in (`pad_vias`, set by auto_pour): the pour's big lands on another layer get a
         # via array sized to the current -- layout._pour_pad_vias
         if (r.get("pad_vias") or r.get("auto_amps") is not None) and r.get("along") and amps_of(r):

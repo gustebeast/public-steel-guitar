@@ -5066,7 +5066,7 @@ def _add_via(board, net, x, y, drill=0.3, diameter=0.6):
     board.Add(v)
 
 
-def _add_zone(board, net, layer, inset, w, h, poly=None, priority=0, clearance=None):
+def _add_zone(board, net, layer, inset, w, h, poly=None, priority=0, clearance=None, name=None):
     """A copper pour over the whole board less `inset`. Not decoration: it is
     how the THT pads reach GND at all, since no GND track is drawn.
 
@@ -5111,6 +5111,8 @@ def _add_zone(board, net, layer, inset, w, h, poly=None, priority=0, clearance=N
     # matter are the ones touching a pad, and those are connected by definition.
     zone.SetIslandRemovalMode(pcbnew.ISLAND_REMOVAL_MODE_ALWAYS)
     zone.SetAssignedPriority(priority)
+    if name:
+        zone.SetZoneName(name)      # "whole": the router keeps other nets off it (model._whole)
     # ⚠ THE POUR'S CLEARANCE IS KICAD'S 0.5 mm PROJECT DEFAULT UNLESS A BOARD SAYS
     # (output_panel, 2026-11-07). Nobody chose it: against a 0.127 mm track rule it cuts a
     # 1.6 mm hole round every 0.6 mm via, and seven vias by the MCU merged into a 5.2 mm
@@ -5713,7 +5715,8 @@ def build(stem):
                              "board" % net_name)
         _add_zone(board, nets_by_name[net_name], layer, inset,
                   *notes["outline_mm"], poly=poly, priority=prio,
-                  clearance=notes.get("zone_clearance"))
+                  clearance=notes.get("zone_clearance"),
+                  name="whole" if isinstance(z, dict) and z.get("whole") else None)
     if notes.get("zones"):
         # ⚠ BUILD THE CONNECTIVITY GRAPH FIRST. A board assembled by script has none --
         # it is built by the editor as you work, and nothing here was ever "worked on".
