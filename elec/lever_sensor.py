@@ -793,6 +793,12 @@ BOARD_NOTES = {
     "quality": {
         # A17 (cadkit/PCB_QUALITY.md): a connector whose pinout block is on the OTHER face,
         # and why. Way 1 is marked on the connector's own side in every case.
+        "connector_labels": {
+            _j: {"back_only": "J1 and J2 stand end to end across the whole 19.8 mm the board's height "
+                              "leaves (conn_keepout), mouths at the -X edge, and the face beside them is "
+                              "their mated plugs' run: no front site holds the four-line pinout block, so "
+                              "it is on the back, behind the pair"}
+            for _j in ("J1", "J2")},
         # A16, PCB_QUALITY.md 'Steady and transient': U5's pins declared here (so the generated
         # U5 entries step aside), the bus side with its transient judged on the part's ESD rating
         "pin_volts": {
