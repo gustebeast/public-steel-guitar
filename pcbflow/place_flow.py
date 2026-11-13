@@ -205,6 +205,15 @@ def _raise_widths(notes, parts, pl, keep=False):
         # where power_width charges all of it to the far end (0.92 mm asked for 0.21 A).
         # Modelled here, not in the router's own sizing: changing that cost the series gate
         # a pair on ONX03 (2026-11-11).
+        # ⚠ ONE IC's SUPPLY PINS ARE ONE LOAD (output_signal, 2026-11-13): +3V3D at 0.58 A to
+        # the H743's 19 VDD pins, unsplit, sized every pin's track for the whole 0.58 A, raised
+        # the net to 0.71 mm through the MCU's fanout, and the finish went 0 open -> 11 and timed
+        # out. A fan to 4+ pins of one part without `split` is almost always that -- said here.
+        _refs = {d_.split(".")[0] for d_ in live}
+        if not pp.get("split") and len(live) >= 4 and len(_refs) == 1:
+            print("place_flow: WARNING: power path %s %s -> %d pins of %s at %.2f A each, not `split`: "
+                  "if those pins draw the amps TOGETHER, mark it split" % (n, pp["from"], len(live),
+                                                                          _refs.pop(), float(pp["amps"])))
         pp_ = dict(pp, to=live, amps=float(pp["amps"]) / 2.0) if pp.get("split") else dict(pp, to=live)
         w = min(POWER_W_MAX, power_width(pp_, q_, at))
         if w > need.get(n, (0.0,))[0]:
