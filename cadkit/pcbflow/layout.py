@@ -3822,6 +3822,82 @@ def _inside_many(outline, X, Y, margin):
     return inside & out
 
 
+def _pour_pad_vias(board, specs, via_d=0.6, via_drill=0.3, clr=0.2, hole_gap=0.45):
+    """A via ARRAY in each big land that feeds a current-carrying pour on another layer.
+
+    ⚠ ONE VIA IS A CHOKE POINT (output_power, 2026-11-13). auto_pour moved the 5-10 A nets
+    onto an In2 pour, and the router then joined each F.Cu land to it through ONE 0.3 mm via:
+    a barrel worth 0.67 mm of track against 2.77 mm asked for 5 A, and quality A1 failed every
+    such path. `specs` (notes["pour_vias"], written by place_flow for pours that opt in) give
+    each pour's net, layer, `along` pads and the width its current needs; every land on that
+    list that is on ANOTHER copper layer, SMD, and big enough to give up a via's paste (the
+    stitcher's 4 mm2 and via + 0.6 mm tests) gets ceil(width / barrel) vias in a grid, nearest
+    the centre first, each clear of every hole by `hole_gap` and of other nets' tracks and
+    vias. A land too small is left to the router and REPORTED. Returns the report lines."""
+    import math
+    barrel = math.pi * via_drill * 25.0 / 35.0            # quality A1's equivalent width
+    pitch = pcbnew.FromMM(max(via_d + clr, via_drill + hole_gap + 0.01))
+    holes, foreign = [], []
+    for fp in board.GetFootprints():
+        for p in fp.Pads():
+            if p.GetAttribute() in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH):
+                q = p.GetPosition()
+                holes.append((q.x, q.y, p.GetDrillSize().x / 2.0))
+    for tr in board.GetTracks():
+        if tr.GetClass() == "PCB_VIA":
+            holes.append((tr.GetPosition().x, tr.GetPosition().y, tr.GetDrillValue() / 2.0))
+        foreign.append(tr)
+    fps = {fp.GetReference(): fp for fp in board.GetFootprints()}
+    out = []
+    for s in specs:
+        want = int(math.ceil(float(s["width_mm"]) / barrel - 1e-9))
+        lid = board.GetLayerID(s["layer"])
+        for key in s["pads"]:
+            ref, num = key.split(".", 1)
+            fp = fps.get(ref)
+            pad = next((p for p in fp.Pads() if p.GetNumber() == num), None) if fp else None
+            if pad is None or pad.IsOnLayer(lid) or pad.GetAttribute() != pcbnew.PAD_ATTRIB_SMD:
+                continue                       # on the pour's own layer: the fill joins it
+            w, h = pcbnew.ToMM(pad.GetBoundingBox().GetWidth()), pcbnew.ToMM(pad.GetBoundingBox().GetHeight())
+            if w * h < 4.0 or min(w, h) < via_d + 0.6:
+                out.append("%s: land %.1f x %.1f mm too small for a via array -- the router's via "
+                           "is its only path to %s on %s" % (key, w, h, s["net"], s["layer"]))
+                continue
+            bb, c = pad.GetBoundingBox(), pad.GetPosition()
+            m = pcbnew.FromMM(via_d / 2.0 + 0.1)
+            nx = max(1, int((bb.GetWidth() - 2 * m) // pitch) + 1)
+            ny = max(1, int((bb.GetHeight() - 2 * m) // pitch) + 1)
+            x0 = bb.GetCenter().x - (nx - 1) * pitch / 2.0
+            y0 = bb.GetCenter().y - (ny - 1) * pitch / 2.0
+            sites = sorted(((x0 + i * pitch, y0 + j * pitch) for i in range(nx) for j in range(ny)),
+                           key=lambda q: math.hypot(q[0] - c.x, q[1] - c.y))
+            made = 0
+            for x, y in sites:
+                if made >= want:
+                    break
+                pt = pcbnew.VECTOR2I(int(x), int(y))
+                if not pad.HitTest(pt, 0):     # the grid is inset by m in the land's box
+                    continue
+                if any(math.hypot(x - hx, y - hy) - hr - pcbnew.FromMM(via_drill / 2.0)
+                       < pcbnew.FromMM(hole_gap) for hx, hy, hr in holes):
+                    continue
+                if any(tr.GetNetname() != s["net"] and tr.HitTest(pt, int(pcbnew.FromMM(via_d / 2.0 + clr)))
+                       for tr in foreign):
+                    continue
+                v = pcbnew.PCB_VIA(board)
+                v.SetPosition(pt)
+                v.SetWidth(pcbnew.FromMM(via_d))
+                v.SetDrill(pcbnew.FromMM(via_drill))
+                v.SetNet(pad.GetNet())
+                v.SetViaType(pcbnew.VIATYPE_THROUGH)
+                board.Add(v)
+                holes.append((x, y, pcbnew.FromMM(via_drill / 2.0)))
+                made += 1
+            out.append("%s: %d of %d via(s) in the land to %s on %s (%.2f mm asked, %.2f a barrel)"
+                       % (key, made, want, s["net"], s["layer"], float(s["width_mm"]), barrel))
+    return out
+
+
 def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
                        clr=0.2, max_reach=3.0, allow=(), keepouts=(),
                        escape_pins=(), escape_runs=None, declared=(), declared_vias=(),
@@ -4311,7 +4387,14 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
               break
           if _lanes and not _lane_on[0]:
               lane_crossed.append("%s.%s" % (fp.GetReference(), pad.GetNumber()))
-          for strict[0] in (True, False):
+          # ⚠ THE NON-STRICT RETRY IS FOR A THROUGH-HOLE PAD ONLY: its search ring starts in
+          # its own barrel (see `holes` above). An SMD pad that finds no strict site has no
+          # such excuse, and the retry put output_power's J2.A1 stitch 0.227 mm drill to drill
+          # from the same socket's shell slot (quality A12, 2026-11-13). A board passing A12
+          # never took this branch for an SMD pad, so none of them moves; an SMD pad left
+          # without a site is REPORTED below as no room, as the docstring promises.
+          _pth = pad.GetAttribute() in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH)
+          for strict[0] in ((True, False) if _pth else (True,)):
             # ⚠ A FINE RADIAL STEP, because the spot that works is sometimes a slot rather
             # than a field. The ESD array's centre pin is its GROUND -- where the clamp
             # diodes dump what they catch -- and it is boxed in: the pair's two rails leave
@@ -5221,6 +5304,14 @@ def build(stem):
                 raise SystemExit("declared via %s at (%.2f, %.2f) stands in a slug_max "
                                  "ring (see _slug_rings)" % (_v[0], _v[1], _v[2]))
     stitch = set(notes.get("stitch_nets", ()))
+    # ⚠ A PLANE WITH NO stitch_nets IS A PLANE NOTHING REACHES BY VIA: no exposed pad gets
+    # one, and quality A8 only says so after a full finish. The output split and the brain
+    # (2026-11-13) each copied `zones` from a template and not this key -- say it here.
+    _planes = sorted({z[0] for z in notes.get("zones", ())
+                      if isinstance(z, (list, tuple)) and "GND" in str(z[0]).upper()})
+    if _planes and not stitch:
+        print("  WARNING: ground plane(s) %s but no stitch_nets -- exposed pads and ground "
+              "pads get NO via to the plane (quality A8). Declare stitch_nets." % "/".join(_planes))
     if stitch:
         n = _stitch_plane_pads(board, stitch, _outline_pts(notes),
                                allow=set(notes.get("stitch_exceptions", ())),
@@ -5232,6 +5323,9 @@ def build(stem):
                                net_widths=notes.get("net_widths"))
         print("  stitched %d pad(s) on %s straight to the plane"
               % (n, "/".join(sorted(stitch))))
+    if notes.get("pour_vias"):
+        for _l in _pour_pad_vias(board, notes["pour_vias"]):
+            print("  pour vias: " + _l)
 
 
     # ⚠ AFTER THE STITCHING, WHICH REVERSES WHAT THIS COMMENT USED TO SAY. The first
