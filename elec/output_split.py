@@ -258,7 +258,10 @@ def quality(half, net_path):
             [{"net": "V5_PRE", "from": "J20.%d" % w, "to": ["U15.1", "R98.1", "FB1.1"], "amps": 0.53}
              for w in range(1, 6)]
             + [{"net": "VBUS_OPT", "from": "U15.6", "to": ["J4.A4", "J4.B9"], "amps": 1.8}]
-            + [{"net": "+3V3D", "from": "U21.2", "to": VDD, "amps": 0.58}])
+            # "split": 0.58 A is what the H743's VDD pins draw TOGETHER. Unsplit, it was
+            # charged in full to each of 19 pins, raised +3V3D to 0.71 mm through the MCU's
+            # fanout, and the finish went from 0 open to 11 and timed out (osg_j4, 2026-11-13)
+            + [{"net": "+3V3D", "from": "U21.2", "to": VDD, "amps": 0.58, "split": True}])
         q["not_power"] = dict({n: "a presence loop from a brain lead's way 3: a logic level"
                                for n in ("PWR_LEAD1_N", "PWR_LEAD2_N")},
                               LOW_PWR="an MCU output to the brain lead J11: a logic level",
