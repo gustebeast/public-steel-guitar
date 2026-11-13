@@ -555,7 +555,9 @@ def brain():
         j = _usbc(tag, what)
         gnd += j["A1"], j["A12"], j["B1"], j["B12"], j["SH"]
         Net("%s_VBUS_NC" % tag).connect(j["A4"], j["B4"], j["A9"], j["B9"])
-        Net("%s_CC_NC" % tag).connect(j["A5"], j["B5"])  # data-only C-to-C; both ends NC-safe
+        # CC1 / CC2 left OPEN, each on its own: a data-only C-to-C link with no VBUS, so
+        # nothing negotiates. Tying them (as before) is the A6 trap: an e-marked cable's Ra
+        # would sit across both.
         dp += j["A6"], j["B6"]
         dm += j["A7"], j["B7"]
 
@@ -640,6 +642,13 @@ def brain():
              "motor %d (string %d) -- SERVO42D: 24 V + bus A, side entry, mouth UP"
              % (k + 1, k + 1), XH4_SIDE, harness.XH_PINOUT,
              {"V24": v24, "GND": gnd, "CAN_H": a_h, "CAN_L": a_l})
+    # A2: a 24 V bypass at the row, one per neighbouring pair of motor headers (within 25 mm of
+    # each): a stepper driver's chopper edges come back down its lead, and the boost's output
+    # caps sit up to 250 mm away at the +X end. The SERVO42D carries its own bulk; these are
+    # the board-side HF return, not a reservoir.
+    for tag, pair in (("C116", "J25"), ("C117", "J24 / J26"), ("C118", "J30 / J21"),
+                      ("C119", "J23 / J27"), ("C120", "J29"), ("C121", "J22 / J28")):
+        _cap(tag, "10uF/50V", "+24V bypass at motor header(s) %s" % pair, v24, gnd, C1206)
 
     # ── bus B: two arms, each CAN or the flash lane (motor_ctrl's _arm_switches) ────────────
     ped_h, ped_l, lev_h, lev_l = Net("PED_H"), Net("PED_L"), Net("LEV_H"), Net("LEV_L")
@@ -762,6 +771,131 @@ BOARD_NOTES = {
     ],
 }
 
+
+# ── quality (cadkit/PCB_QUALITY.md), first pass after br8's finish (2026-11-13) ─────────────
+def _cited(values):
+    """Pinout citations this board shares with the instrument's earlier boards, read from their
+    own notes so the two never drift. Importing those modules builds no parts (checked: 0
+    before and after). A part not found here stays UNCITED -- an A4 FAIL is the honest state
+    for the DF40 land, the NCEP4090 and the LM5122 until someone reads them against the
+    maker's drawing (open items)."""
+    import importlib
+    out = {}
+    for mod in ("motor_ctrl", "output_panel", "pi_cap", "lever_sensor", "optical"):
+        cited = importlib.import_module(mod).BOARD_NOTES.get("quality", {}).get("pinouts", {})
+        for v in values:
+            if v in cited and v not in out:
+                out[v] = "as %s.py: %s" % (mod, cited[v])
+    return out
+
+
+_USB_HS = ("USB 2.0 high speed, 480 Mbps: 2,080 ps a bit, so skew has room; the pair stays a PAIR "
+           "on one layer (differential impedance is the two conductors' geometry) and collects "
+           "no more than two vias. The same budget as output_panel's hub pairs.")
+BOARD_NOTES["match"] = [
+    {"name": n, "max_skew_mm": 8.3, "same_layer": True, "max_vias": 2,
+     "nets": ["%s_DP" % n, "%s_DM" % n], "why": w + " " + _USB_HS}
+    for n, w in (("GADGET", "J13 -> the CM5's USB OTG port (the panel ports' data, via the output board)."),
+                 ("OB_LINK", "J14 -> the CM5's USB3-0 2.0 lane: the output board's H743 link."),
+                 ("FLASH", "the CM5's USB3-1 2.0 lane -> U9 / U10, the arm-flashing switches."))]
+BOARD_NOTES["quality"] = {
+    "pinouts": _cited(["NUP2105LT1G", "S4B-XH-SM4-TB", "S6B-XH-SM4-TB", "S6B-PH-SM4-TB",
+                       "TYPE-C-31-M-12", "S4B-PH-SM4-TB", "PZ1.27-2x8P", "THROW", "2N7002",
+                       "SQD50P06-15L", "CH32V307WCU6", "TS3USB221ARSER", "TPS2553DBVR",
+                       "TCAN3413DR", "SN65HVD230DR", "LMR33630ADDAR", "LMR33630BRNXR",
+                       "AP2112K-3.3TRG1", "TAXM8M4RFDCET2T"])
+               | {"S6B-XH-SM4-TB": "JST eXH.pdf p.6, Header / SMT type: the same drawing as the "
+                                   "4-way S4B-XH-SM4-TB (pi_cap.py's citation): No. 1 circuit is "
+                                   "the right-hand post seen from above, mouth away; KiCad "
+                                   "JST_XH_S6B-XH-SM4-TB keeps the 4-way's tails -Y, pad 1 -X. "
+                                   "Read 2026-11-13"},
+    # where each supply enters, where it goes, and the WORST-case amps (not the budget)
+    "power_paths": (
+        # the chargers' 5-20 V: four VIN ways (two a lead, harness.BRAIN_POWER), 2.5 A each at 10 A
+        [{"net": "VIN_BRAIN", "from": "%s.%d" % (j, w), "to": ["Q2.3"], "amps": 2.5}
+         for j in ("J10", "J12") for w in (1, 6)]
+        + [{"net": "VIN_SW", "from": "Q2.2", "to": ["R109.1"], "amps": 10.0},     # the boost's input
+           {"net": "VIN_SW", "from": "Q2.2", "to": ["R108.1"], "amps": 0.02},    # LM5122 VIN filter
+           # 24 V out of the boost: 100 W, 4.5 A at the high side; ten motors, the lights, two bucks
+           {"net": "+24V", "from": "Q9.5", "to": ["F3.1"], "amps": 3.0},         # the lighting bus
+           {"net": "+24V", "from": "Q9.5", "to": ["R23.2"], "amps": 0.8},        # the CM5 buck's feed
+           {"net": "+24V", "from": "Q9.5", "to": ["U7.2", "U7.9", "U7.10"], "amps": 0.3}]
+        + [{"net": "+24V", "from": "Q9.5", "to": ["J%d.1" % k], "amps": 0.45} for k in range(21, 31)]
+        + [{"net": "+24V_F", "from": "R23.1", "to": ["F1.1"], "amps": 0.8},
+           {"net": "+24V_BUCK", "from": "F1.2", "to": ["U5.2"], "amps": 0.8},
+           {"net": "+24V_LED", "from": "F3.2", "to": ["J3.1"], "amps": 1.5},
+           {"net": "+24V_LED", "from": "F3.2", "to": ["J4.1"], "amps": 1.5},
+           # the CM5's 5 V: U5's 3 A limit, through F2, onto its six 5 V pins
+           {"net": "+5V_RAW", "from": "L2.2", "to": ["F2.1"], "amps": 3.0},
+           {"net": "+5V_CM5", "from": "F2.2", "to": ["J1.77", "J1.79", "J1.81", "J1.83", "J1.85",
+                                                    "J1.87"], "amps": 3.0},
+           # +5V_AUX: the bus-B arms (TPS2553 limited) and the 3V3 LDO
+           {"net": "+5V_AUX", "from": "L3.2", "to": ["U6.1"], "amps": 0.5},
+           {"net": "+5V_AUX", "from": "L3.2", "to": ["U11.1"], "amps": 0.5},
+           {"net": "+5V_AUX", "from": "L3.2", "to": ["U8.1", "U8.3"], "amps": 0.3},
+           {"net": "+5V_BUSB_PED", "from": "U6.6", "to": ["J15.1"], "amps": 0.5},
+           {"net": "+5V_BUSB_LEV", "from": "U11.6", "to": ["J16.1"], "amps": 0.5},
+           {"net": "+3V3", "from": "U8.5", "to": ["U1.1", "U1.13", "U1.17", "U1.31", "U1.32",
+                                                 "U1.50", "U1.51", "U1.67", "U1.68"], "amps": 0.1},
+           {"net": "+3V3", "from": "U8.5", "to": ["U2.3", "U2.5", "U3.3", "U9.10", "U10.10"],
+            "amps": 0.03},
+           {"net": "+3V3_UI", "from": "U12.6", "to": ["J5.10"], "amps": 0.1}]),
+    "not_power": {
+        "PWR_GATE": "Q2's gate: R51 / R50 bias and the soft-start cap, microamps",
+        "PWR_HOLD": "the CH32's hold line into Q3 through D13: a gate, microamps",
+        "PWR_PULL": "Q3's drain onto the gate divider: the same microamps",
+        "PWR_Q3_SRC": "Q3 in series with Q10 on the gate path: microamps",
+        "PWR_SW_UP": "a throw of the power button (UI ribbon way 15): a logic level",
+        "PWR_SW_DN": "the button's other throw (way 16): a logic level",
+        "VCC5": "U5's internal VCC regulator pin, bypassed by C19 only: no load",
+        "VCC7": "U7's internal VCC regulator pin, bypassed by C53 only: no load",
+    },
+    # A13: what the DESIGN leaves open
+    "unconnected": {
+        "J1": {"pins": "3 4 5 6 9 10 11 12 15 16 17 18 19 20 35 36 37 39 40 56 57 58 61 62 63 64 "
+                       "67 68 69 70 72 73 75 76 80 82 88 89 90 91 94 95 96 97 99 100",
+               "why": "CM5 pins 1-100 this carrier does not use (Ethernet, spare GPIO, SD, LEDs, "
+                      "camera / display GPIO): open, as RP-008180-DS-7 allows for unused functions. "
+                      "The DF40 pad = CM5 pin mapping is itself an open item"},
+        "J2": {"pins": "1 2 4 6 9 10 11 12 15 16 17 18 21 22 23 24 27 28 29 30 33 35 39 40 41 42 43 "
+                       "45 46 47 48 49 51 52 53 54 57 58 59 60 64 66 69 70 71 72 75 76 77 78 81 82 "
+                       "83 84 87 88 89 90 93 94 95 96 99 100",
+               "why": "CM5 pins 101-200 this carrier does not use (HDMI, MIPI CSI / DSI, PCIe, the "
+                      "USB3 SuperSpeed lanes): open, as RP-008180-DS-7 allows"},
+        "U1": {"pins": "2 3 4 8 9 10 11 14 15 16 23 25 26 27 30 37 38 40 41 42 53 54 55 58 59 60 61 62",
+               "why": "GPIO this board gives no function: left open, firmware leaves it an input "
+                      "with pull-down (as motor_ctrl)"},
+        "J1[3-6].MP": "a side-entry JST's mounting tabs: solder only",
+        "J1[0-2].MP": "a side-entry JST's mounting tabs: solder only",
+        "J[34].MP": "a side-entry JST's mounting tabs: solder only",
+        "J2[1-9].MP": "a side-entry JST's mounting tabs: solder only",
+        "J30.MP": "a side-entry JST's mounting tabs: solder only",
+        "J1[34].[AB]5": "USB-C CC1 / CC2: a data-only board-to-board link, no VBUS, nothing "
+                        "negotiates -- each open on its own (A6)",
+        "J1[34].[AB]8": "USB-C sideband (SBU): USB 2.0 does not use it",
+        "J1[02].4": "BRAIN_POWER way 4: the lead's one empty way (harness)",
+        "U3.5": "SN65HVD230 Vref output: nothing here uses the reference (as motor_ctrl)",
+        "U7.8": "LMR33630 PG: open drain, not read (as optical U13.8)",
+        "U8.4": "AP2112K pin 4 is the maker's NC",
+        "U12.4": "TPS2553 FAULT#: open drain, the UI rail's fault is not read",
+        "U20.1": "LM5122 SYNCOUT: a single-phase master syncs nothing",
+        "U20.13": "LM5122 MODE: open selects the internal divider (diode emulation, skip)",
+    },
+    "waive": {
+        "A22:J1": "the CM5's own pinout (RP-008180-DS-7): its 3V3 OUTPUT pins sit beside its 5 V "
+                  "inputs on the module, and a carrier cannot reorder a DF40 it mates with",
+    },
+    "net_groups": [
+        {"name": "ten motor drops on bus A: CAN_H and CAN_L ways on two nets, ten each",
+         "pins": ["J2[1-9].[34]", "J30.[34]"], "nets": 2, "each": 10},
+        {"name": "ten motor drops: the 24 V way on one net", "pins": ["J2[1-9].1", "J30.1"],
+         "nets": 1, "each": 10},
+        {"name": "bus B's two arms: each its own 5 V and pair", "pins": ["J1[56].[134]"],
+         "nets": 6, "each": 1},
+        {"name": "two LED drops: one 24 V net, each its own SPI", "pins": ["J[34].[134]"], "nets": 5},
+        {"name": "three USB pairs", "nets_like": "(GADGET|OB_LINK|FLASH)_D[PM]", "count": 6},
+    ],
+}
 
 if __name__ == "__main__":
     brain()
