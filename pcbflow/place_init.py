@@ -150,7 +150,7 @@ def place(parts, notes, rules, keep=()):
     fixed0 ={r["ref"] for r in rules if r["kind"] in ("fixed", "pin", "panel")} | set(keep)
     cells = {r["anchor"]: r["members"] for r in rules if r["kind"] == "group" and r["anchor"] not in fixed0}
     if not cells:
-        return _place_grow(parts, notes, rules, keep)
+        return _place_bus(parts, notes, rules, keep)
     owner = {m: a for a, ms in cells.items() for m in ms}
     P2 = {r: p for r, p in parts.items() if r not in owner}
     for a, ms in cells.items():
@@ -180,7 +180,7 @@ def place(parts, notes, rules, keep=()):
             if isinstance(r.get(f), list):
                 r[f] = list(dict.fromkeys(owner.get(x, x) for x in r[f]))
         R2.append(r)
-    pl, log, why = _place_grow(P2, notes, R2, keep)
+    pl, log, why = _place_bus(P2, notes, R2, keep)
     for a, ms in cells.items():
         ax, ay, ar = pl[a]
         for m, (dx, dy, dr) in ms.items():
@@ -311,6 +311,83 @@ def _place_two_sided(parts, notes, rules, keep, back):
     return pl, log, why
 
 
+BUS_MIN = 4       # two-pin nets between the same two ICs that make a parallel bus
+
+
+def _buses(parts):
+    """[(anchor, partner, nets)]: BUS_MIN or more two-pin nets joining the same two ICs (each
+    over IC_PADS pads) -- ULPI, SAI, a parallel bus. The anchor is the one with more pads."""
+    nets = {}
+    for ref, p in parts.items():
+        for q in p["pads"]:
+            if q["net"] and q["num"]:
+                nets.setdefault(q["net"], []).append((ref, q["num"]))
+    by = {}
+    for nm, pins in nets.items():
+        rs = sorted({r for r, _ in pins})
+        if len(pins) == 2 and len(rs) == 2 and all(len(parts[r]["pads"]) > IC_PADS for r in rs):
+            by.setdefault(tuple(rs), []).append(nm)
+    out = []
+    for (a, b), ns in sorted(by.items()):
+        if len(ns) >= BUS_MIN:
+            if len(parts[b]["pads"]) > len(parts[a]["pads"]):
+                a, b = b, a
+            out.append((a, b, sorted(ns)))
+    return out
+
+
+def _bus_len(parts, pl, nets):
+    P = pi.Placed(parts, pl)
+    tot = 0.0
+    for nm in nets:
+        pts = [pt for r in parts if r in pl for pt in P.pads_on(r, nm)]
+        if len(pts) == 2:
+            tot += float(np.hypot(*(pts[0] - pts[1])))
+    return tot
+
+
+def _place_bus(parts, notes, rules, keep=()):
+    """_place_grow, then ONE retry per parallel bus whose anchor faces the wrong way.
+
+    ⚠ A FAST BUS TURNS ITS ANCHOR -- AFTER THE PARTNER HAS A SEAT (output_board, 2026-11-13).
+    U1's twelve ULPI pins sat on the side facing the power band; the PHY was legalised 19 mm
+    off to the side and CK / DIR / NXT / STP went open (ob8). Turning U1 by hand so that side
+    faced the PHY's seat left only CK open (ob10). Weighting the bus in the TURN stage did not
+    do it (ob11): the turn judges against the quadratic targets, which pull the partner into
+    the anchor's bus side even where its region forbids it. So the turn is judged where the
+    partner actually LANDED: the anchor's rotation that brings its bus pins' centroid nearest
+    the partner is tried, and kept only if the bus gets shorter and no part loses its seat.
+    A board whose buses already face their partners never retries: identical."""
+    pl, log, why = _place_grow(parts, notes, rules, keep)
+    fixed = {r["ref"] for r in rules if r["kind"] in ("fixed", "pin", "panel", "rot")} | set(keep)
+    for a, b, ns in _buses(parts):
+        if a in fixed or a not in pl or b not in pl:
+            continue
+        x, y, r0 = pl[a]
+        sel = [q for q in parts[a]["pads"] if q["net"] in ns]
+
+        def face(rot):
+            c = (_pad_off(dict(parts[a], pads=sel), rot)).mean(axis=0) + (x, y)
+            return float(np.hypot(*(c - np.asarray(pl[b][:2]))))
+        best = min((0.0, 90.0, 180.0, 270.0), key=face)
+        if abs((best - r0 + 180.0) % 360.0 - 180.0) < 0.5:
+            continue
+        before = _bus_len(parts, pl, ns)
+        rules2 = list(rules) + [{"kind": "rot", "ref": a, "allowed": [best], "hard": True,
+                                 "src": "place_init bus turn", "why": "%s's bus to %s" % (a, b)}]
+        pl2, log2, why2 = _place_grow(parts, notes, rules2, keep)
+        after = _bus_len(parts, pl2, ns) if a in pl2 and b in pl2 else float("inf")
+        if len(pl2) >= len(pl) and after < before:
+            log2.append("BUS TURN: %s %g -> %g, its %d-net bus to %s %.0f -> %.0f mm"
+                        % (a, r0, best, len(ns), b, before, after))
+            pl, log, why = pl2, log2, why2
+            why[a] = "bus turn: its %d-net bus faces %s (%s)" % (len(ns), b, why.get(a, ""))
+        else:
+            log.append("BUS TURN TRIED: %s %g -> %g -- bus %.0f -> %.0f mm, %d -> %d seated; kept %g"
+                       % (a, r0, best, before, after, len(pl), len(pl2), r0))
+    return pl, log, why
+
+
 GROWN = {}        # region name -> grown poly, from the last place() (main writes it beside --out)
 
 
@@ -393,6 +470,14 @@ def _place_grow(parts, notes, rules, keep=()):
     P2 = pi.Placed(parts, pl2)
     good = True
     for h, c, name, msg, _ in grows:
+        # ⚠ THE RETRY CAN LOSE THE ANCHOR (output_board ob9, 2026-11-13): held in its square,
+        # U14 found no room and was not in pl2 -- a KeyError killed the flow. No seat is
+        # "did not turn": the grow failed and the floorplan stands, as for any other miss.
+        if h["anchor"] not in pl2:
+            good = False
+            log.append("GROW TRIED: region %s, %s -- %s found no room in the retry; the floorplan "
+                       "stands as written" % (name, msg, h["anchor"]))
+            continue
         turned = abs((pl2[h["anchor"]][2] - h["to"] + 180.0) % 360.0 - 180.0) < 0.5
         r_ = [r for r in rules if (r.get("ref") == c or r.get("cap") == c) and r["kind"] in ("near", "decap")]
         try:

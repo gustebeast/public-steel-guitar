@@ -1199,6 +1199,23 @@ front. Courtyard fill is not the cost for a dense board; via room is. It stays a
 board with a spare underside, a connector or a low module. The output_board's next step is a
 floorplan (regions, as optical and output_panel route with), not the back.
 
+**Bus turn (2026-11-13), place_init `_place_bus`.** A parallel bus is BUS_MIN (4) or more
+two-pin nets joining the same two ICs (ULPI, SAI). After legalisation, the anchor (the IC with
+more pads) gets one retry, at the rotation that brings its bus pins' centroid nearest the
+partner's seat. The retry is kept only if the bus gets shorter and no part loses its seat.
+
+Weighting the bus in the TURN stage was tried first and failed (output_board ob11: U1 stayed
+at 0). The turn judges against the quadratic targets, which pull the partner into the
+anchor's bus side even where the partner's region forbids it.
+
+Results:
+* With no retry firing, it is byte-identical on lever_sensor, ui_board, output_panel, optical,
+  output_board and brain.
+* output_board ob12, no hand `rot`: "BUS TURN: U1 0 -> 270, its 12-net bus to U4 222 -> 170
+  mm". That is the turn ob10 had been given by hand.
+* Score 30 open against ob10's 25. The ULPI opens went 4 -> 4 and PD 17 -> 14; the rest moved
+  to the brain-link band. Placement variance; the band is the binding constraint, not the bus.
+
 ## Rules carried over
 
 * Keep every run to minutes; no hour-plus sweeps (ROUTER.md, route-time notes).
