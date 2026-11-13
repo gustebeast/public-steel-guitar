@@ -1814,6 +1814,69 @@ def _plane_orphans(board, net):
     return loose, zs
 
 
+def _plane_main(board, net, zs):
+    """The plane's MAIN body at FILL-ISLAND level, or None when the net is one piece:
+    {"items": uuids, "islands": {layer: [polys]}}.
+
+    ⚠ A ZONE IS NOT ONE PIECE OF COPPER (output_board oneG_j6, 2026-11-13): KiCad's
+    GetConnectedItems(ZONE) answers for every fill island of the zone at once, so copper on a
+    SEPARATE island of the GND pour read as "on the plane" and the board finished with one
+    GND item open that no repair could see. GetConnectedItems(ITEM) is island-true, so the
+    clusters are KiCad's own: each track / via / pad's connected set, zones left out of the
+    union (a zone's uuid is shared by all its islands and would merge them back). The main
+    body is the largest cluster.
+
+    ⚠ NOT A GEOMETRY OF ITS OWN: a first version built the island graph by hand (fill
+    polygons, shared ends, pad centres) and on oneG_j6 split eight nets KiCad calls whole --
+    29 stubs laid, most of them redundant. KiCad's connectivity is the truth DRC reports."""
+    conn = board.GetConnectivity()
+    its = [t for t in board.GetTracks() if t.GetNetname() == net]
+    its += [pd for m in board.GetFootprints() for pd in m.Pads() if pd.GetNetname() == net]
+    seen, clusters = set(), []
+    for it in its:
+        u = it.m_Uuid.AsString()
+        if u in seen:
+            continue
+        cl = {u}
+        for x in conn.GetConnectedItems(it):
+            try:
+                if x.GetClass() != "ZONE":
+                    cl.add(x.m_Uuid.AsString())
+            except Exception:
+                pass
+        seen |= cl
+        clusters.append(cl)
+    if len(clusters) < 2:
+        return None
+    main = max(clusters, key=len)
+    # the fill islands the main body stands in: those holding one of its barrels (or, on
+    # a track's own layer, one of its track ends)
+    pts = []
+    for t in board.GetTracks():
+        if t.GetNetname() != net or t.m_Uuid.AsString() not in main:
+            continue
+        if t.GetClass() == "PCB_VIA":
+            pts.append((None, t.GetPosition()))
+        else:
+            pts += [(t.GetLayer(), t.GetStart()), (t.GetLayer(), t.GetEnd())]
+    for m in board.GetFootprints():
+        for pd in m.Pads():
+            if pd.GetNetname() == net and pd.m_Uuid.AsString() in main:
+                pts.append((None if pd.GetDrillSizeX() > 0 else pd.GetLayer(), pd.GetPosition()))
+    out = {"items": main, "islands": {}}
+    for z in zs:
+        for L in z.GetLayerSet().Seq():
+            fp = z.GetFilledPolysList(L)
+            for i in range(fp.OutlineCount()):
+                sp = pcbnew.SHAPE_POLY_SET()
+                sp.AddOutline(fp.Outline(i))
+                for h in range(fp.HoleCount(i)):
+                    sp.AddHole(fp.Hole(i, h))
+                if any((ly is None or ly == L) and sp.Collide(q) for ly, q in pts):
+                    out["islands"].setdefault(L, []).append(sp)
+    return out
+
+
 def _path_clear(board, a, z, net, layer, w, step_mm=0.1):
     """Sample the straight run a->z and refuse it if any sample sits in ANOTHER net's copper.
 
@@ -1844,15 +1907,18 @@ def _path_clear(board, a, z, net, layer, w, step_mm=0.1):
     return True
 
 
-def _plane_points(pos, zs, probe_mm=12.0, step_mm=0.1, limit=6):
-    """Plane positions within reach of `pos`, NEAREST FIRST so a blocked path tries the next."""
+def _plane_points(pos, zs, probe_mm=12.0, step_mm=0.1, limit=6, polys=None):
+    """Plane positions within reach of `pos`, NEAREST FIRST so a blocked path tries the next.
+    `polys` (SHAPE_POLY_SETs) replaces the zones' fills: only the plane's MAIN islands."""
     out = []
+    hit = ((lambda p: any(sp.Collide(p) for sp in polys)) if polys is not None else
+           (lambda p: any(z.GetFilledPolysList(z.GetLayer()).Collide(p) for z in zs)))
     for i in range(1, int(probe_mm / step_mm) + 1):
         r = i * step_mm
         for a in range(0, 360, 5):
             p = pcbnew.VECTOR2I(int(pos.x + r * 1e6 * math.cos(math.radians(a))),
                                 int(pos.y + r * 1e6 * math.sin(math.radians(a))))
-            if any(z.GetFilledPolysList(z.GetLayer()).Collide(p) for z in zs):
+            if hit(p):
                 out.append((p, r))
                 if len(out) >= limit:
                     return out
@@ -1875,9 +1941,23 @@ def repair_plane_orphans(board, notes, probe_mm=12.0, max_items=24):
     if not notes.get("zones"):
         return 0
     board.BuildConnectivity()
+    # island level only where KiCad itself finds the board unconnected: a connected board
+    # takes exactly the zone-level path it always did
+    split = board.GetConnectivity().GetUnconnectedCount(False) > 0
     laid = 0
     for net in sorted({z.GetNetname() for z in board.Zones()}):
         loose, zs = _plane_orphans(board, net)
+        main = _plane_main(board, net, zs) if split and zs else None
+        if main is not None:
+            seen = {t.m_Uuid.AsString() for t in loose}
+            more = [t for t in board.GetTracks()
+                    if t.GetClass() == "PCB_TRACK" and t.GetNetname() == net
+                    and t.m_Uuid.AsString() not in main["items"]
+                    and t.m_Uuid.AsString() not in seen]
+            if more:
+                print("      %s: %d track(s) on a fill island cut off from the plane's main "
+                      "body (zone-level connectivity called them joined)" % (net, len(more)))
+            loose = loose + more
         if not loose:
             continue
         if len(loose) > max_items:
@@ -1899,6 +1979,8 @@ def repair_plane_orphans(board, notes, probe_mm=12.0, max_items=24):
                     on_plane.add(it.m_Uuid.AsString())
                 except Exception:
                     pass
+        if main is not None:
+            on_plane = main["items"]
         barrels = [v.GetPosition() for v in board.GetTracks()
                    if v.GetClass() == "PCB_VIA" and v.GetNetname() == net
                    and v.m_Uuid.AsString() in on_plane]
@@ -1908,13 +1990,39 @@ def repair_plane_orphans(board, notes, probe_mm=12.0, max_items=24):
 
         def _targets(src, layer):
             own = [z for z in zs if z.IsOnLayer(layer)]
-            if own:
+            if own and main is not None:
+                polys = main["islands"].get(layer)
+                if polys:
+                    return [(p, r, True) for p, r in
+                            _plane_points(src, own, probe_mm, polys=polys)]
+            elif own:
                 return [(p, r, True) for p, r in _plane_points(src, own, probe_mm)]
             near = sorted((math.hypot(p.x - src.x, p.y - src.y), p) for p in barrels)
             return [(p, pcbnew.ToMM(int(d)), False) for d, p in near
                     if d <= pcbnew.FromMM(probe_mm)][:6]
 
+        # ⚠ ONE STUB A PIECE, NOT ONE A TRACK (oneG_j6, 2026-11-13): a stranded piece of six
+        # tracks took six stubs, three of them the same 2.5 mm run laid three times. Once a
+        # stub joins a piece, the rest of that piece is joined: each loose track's piece is
+        # read before anything is laid, and a track whose piece is joined is skipped.
+        piece = {}
         for t in loose:
+            u = t.m_Uuid.AsString()
+            if u in piece:
+                continue
+            cl = {u}
+            for x in conn.GetConnectedItems(t):
+                try:
+                    if x.GetClass() != "ZONE":
+                        cl.add(x.m_Uuid.AsString())
+                except Exception:
+                    pass
+            for v in cl:
+                piece.setdefault(v, cl)
+        joined = set()
+        for t in loose:
+            if t.m_Uuid.AsString() in joined:
+                continue
             w = t.GetWidth()
             done = False
             for src in (t.GetStart(), t.GetEnd()):
@@ -1958,6 +2066,8 @@ def repair_plane_orphans(board, notes, probe_mm=12.0, max_items=24):
                     break
                 if done:
                     break
+            if done:
+                joined |= piece.get(t.m_Uuid.AsString(), set())
             if not done:
                 print("      ⚠ %s at %.2f,%.2f is stranded from the plane and NO clear "
                       "path reaches it -- left alone (a short is worse). Move the part "
