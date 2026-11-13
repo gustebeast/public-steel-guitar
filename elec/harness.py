@@ -90,6 +90,7 @@ UI_RIBBON = ("SW_A", "SW_B", "SW_C", "SW_D", "SW_PUSH", "ENC_A", "ENC_B",
 #   LIGHTS_LINK  motor_ctrl J7 <-> pi_cap J4          4-way: fused 24 V for the lights out,
 #                the two throws in
 #   PI_5V_LINK   motor_ctrl J5 <-> pi_cap J2          6-way PH: the Pi's 5 V on two contacts
+#   BRAIN_LINK   output_board J10 <-> brain board     8-way: 5-20 V in, enable / mode out
 #
 # Each is the standard at the top of this file: power, GND, data, data, and a 6-way adds
 # GND, power on the far end.
@@ -102,6 +103,13 @@ PI_5V_LINK = ("V5", "GND", NC, NC, "GND", "V5")
 LED_DROP = ("V24", "GND", "SCK", "SDT")
 # a two-way power lead (output_panel J9 -> the optical board's J2)
 POWER_PAIR = ("V24", "GND")
+# BRAIN_LINK (direct-drive instrument, 2026-11-12): output_board J10 -> the brain board.
+# 8-way XH: the chargers' OR-ed 5-20 V (VIN) on two contacts each end -- the boost that makes
+# the 24 V lives on the brain board, beside what it feeds -- and four 3.3 V logic ways:
+# BRAIN_EN and LOW_PWR from the output board's MCU (it reads the PD contracts and picks the
+# mode before anything big starts), PWR_BTN and BRAIN_PG back from the brain board, open
+# drain, pulled up at the output board.
+BRAIN_LINK = ("VIN", "GND", "BRAIN_EN", "LOW_PWR", "PWR_BTN", "BRAIN_PG", "GND", "VIN")
 
 
 def check_ways(ways, power, ground=("GND",), where=""):
