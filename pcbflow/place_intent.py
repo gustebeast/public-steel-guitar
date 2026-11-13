@@ -521,7 +521,7 @@ def check(rule, P, notes, H=None):
             out.append((tol - abs((q[ax] - p[ax]) - rule["pitch"]), s, "pitch %.3f after %s" % (q[ax] - p[ax], r)))
         for (p, r) in pts:
             out.append((tol - abs(p[1 - ax] - off[0]), r, "off the row by %.3f" % (p[1 - ax] - off[0])))
-    elif k == "region":
+    elif k in ("region", "auto_pour"):
         pass
     else:
         raise ValueError("unknown rule kind %r" % k)
@@ -1125,6 +1125,59 @@ def width_for(amps, dT=10.0, oz=1.0, inner=False, min_mm=0.2):
     area = (amps / (k * dT ** 0.44)) ** (1.0 / 0.725)          # mil^2
     w = area / (1.378 * oz) * 0.0254                            # mm
     return round(max(min_mm, math.ceil(w / 0.05 - 1e-9) * 0.05), 2)
+
+
+def auto_pour(rules, parts, notes=None):
+    """OPT-IN (an `auto_pour` rule; no rule, no change): every `current` rule at or above
+    its `amps` becomes a `pour` on its `layer` along all the net's pads, instead of a width.
+
+    ⚠ WHY (output_power, 2026-11-13): as `current` widths, two 10 A nets asked 7.2 mm and six
+    5 A port nets 2.8 mm, through a field of QFN and FET pads: 17-27 nets stayed open at
+    0.22-0.43 region fill, 49-110 vias -- the router had no lanes left. The same paths as
+    pours (the 10 A on the free In2, the 5 A on F.Cu) routed 0 open, and the finish closed.
+    A trace that wide is a pour drawn badly. `max_frac` (default 0.25) is the guard the
+    widths() note asks for: a pour whose outline, once the parts are placed, covers more of
+    the board than that is dropped and the net goes back to its width (_pours says so).
+
+    auto_pour(amps, layer [, max_frac, width_mm, layers_by_net]) -- the pour runs along the net's
+    declared power_paths terminals when it has any, else its non-IC pads. A net with its own
+    `pour` rule is left alone. Returns (rules, lines)."""
+    ap = [r for r in rules if r["kind"] == "auto_pour"]
+    if not ap:
+        return rules, []
+    a = ap[-1]
+    poured = {r["net"] for r in rules if r["kind"] == "pour"}
+    out, lines = [], []
+    for r in rules:
+        if r["kind"] == "current" and float(r["amps"]) >= float(a["amps"]) - 1e-9                 and r["net"] not in poured:
+            along = ["%s.%s" % (ref, q["num"]) for ref, p in sorted(parts.items())
+                     for q in p["pads"] if q["net"] == r["net"] and q["num"]]
+            # an IC's pins on a power net are TAPS (sense, supply), not the current's path:
+            # a hull through them took in 8-26 other nets' pads round the PD controllers
+            # (output_power, opa). The track reaches them; the pour spans the parts the
+            # current flows through.
+            path = [x for x in along if not re.match(r"^U\d", x)]
+            along = path if len(path) >= 2 else along
+            # ...and where the board DECLARES the current's path (quality.power_paths), the
+            # pour runs along exactly its terminals: on an outer layer a hull through every
+            # pad on the net takes in other nets' pads (opaf: PA_VCC and PB_VOUT open, the
+            # hand pours along from -> to closed 0 / 0)
+            pp = [x for p_ in ((notes or {}).get("quality", {}) or {}).get("power_paths", ()) or ()
+                  if p_["net"] == r["net"]
+                  for x in [p_["from"]] + list(p_["to"] if isinstance(p_["to"], (list, tuple)) else [p_["to"]])]
+            if len(set(pp)) >= 2:
+                along = sorted(set(pp))
+            layer = (a.get("layers_by_net") or {}).get(r["net"], a["layer"])
+            w = float(a.get("width_mm") or max(3.0, width_for(float(r["amps"]))))
+            out.append(dict(kind="pour", net=r["net"], layer=layer, along=along, width_mm=w,
+                            why="auto_pour: %s at %.1f A -- %s" % (r["net"], float(r["amps"]), r["why"]),
+                            src=r.get("src", ""), hard=False, auto_amps=float(r["amps"]),
+                            max_frac=float(a.get("max_frac", 0.25))))
+            lines.append("%s %.1f A -> pour on %s along %d pad(s), %.1f mm" % (
+                r["net"], float(r["amps"]), layer, len(along), w))
+        else:
+            out.append(r)
+    return out, lines
 
 
 def widths(rules, inner=False, **kw):
