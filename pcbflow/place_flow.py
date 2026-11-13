@@ -318,6 +318,18 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
 
     # 1. intent
     rules, added = _intent(json.load(open(intent_path, encoding="utf-8")), parts, notes, stem + ".net", auto, singles)
+    # TWO-SIDED (opt-in: `side` rules with side "B", place_intent.back_refs). The parts file is
+    # turned over ON DISK, once (mirror_back is idempotent), so place_init, score and every
+    # check read the geometry layout builds; layout turns the same parts over from back_refs.
+    back = pi.back_refs(rules)
+    if back:
+        parts = pi.mirror_back(parts, back)
+        pj = json.load(open(parts_path, encoding="utf-8"))
+        pj["parts"] = parts
+        json.dump(pj, open(parts_path, "w", encoding="utf-8"), indent=0)
+        notes["back_refs"] = sorted(set(notes.get("back_refs", ())) | set(back))
+        print("place_flow: two-sided: %d part(s) on the back (B.Cu)" % len(back))
+        log.write("## two-sided: %s on the back\n" % " ".join(back))
     # power is a width, from the current it carries (place_intent.widths): never narrower
     # than the notes already declare
     nw = dict(notes.get("net_widths", {}) or {})
