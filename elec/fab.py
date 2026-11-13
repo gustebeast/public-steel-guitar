@@ -202,6 +202,25 @@ LCSC = {
                                     # 3.0 high: the display's ribbon (2026-10-23, in place
                                     # of JUSHUO AFA07-S20FCA-00 C262724, which has no
                                     # published current rating). 5,590 in stock.
+    # -- the brain board, 2026-11-13, every code read back off JLCPCB's parts API --------
+    # (three codes quoted in brain.py's descriptions were NOT these parts: C191023 is a
+    # 1N5819WS, C72043 an Everlight LED, C2848476 is not in the catalogue)
+    "BZT52C12T-7": "C507911",       # Diodes Inc BZT52C12T-7, SOD-523; 5,736 on 2026-11-13 (brain D12)
+    "BAT54WS": "C124205",           # Diodes Inc BAT54WS-7-F, SOD-323; 64,872 on 2026-11-13 (brain D13)
+    "KT-0603G": "C12624",           # Hubei KENTO KT-0603G, 0603 green; 267,918 on 2026-11-13 (brain D18)
+    "LM5122PWPR": "C77241",         # TI LM5122MHX/NOPB: the HTSSOP-20 PWP reel (SNVS954H orderables;
+                                    # there is no "LM5122PWPR"); 20,357 on 2026-11-13 (brain U20)
+    "NCEP4090GU": "C502976",        # Wuxi NCE Power NCEP4090GU, DFN5x6-8L; 3,236 on 2026-11-13 (brain Q8/Q9)
+    "DF40C-100DS-0.4V(51)": "C597931",  # Hirose DF40C-100DS-0.4V(51); 134 on 2026-11-13 -- THIN,
+                                    # 2 per instrument (brain J1/J2). The (58) form is C3642394, 396
+    "S6B-XH-SM4-TB": "C191914",     # JST S6B-XH-SM4-TB(LF)(SN), 5,661; the bare listing
+                                    # C20493992 is 0 (brain J10/J12)
+    # Keyed by value, not in PASSIVES: lcsc_check.check_passives reads a chip size out of
+    # the footprint name, which these two do not have.
+    "10uH 15A": "C2045568",         # Bourns SRP1770TA-100M; ZERO in stock on 2026-11-13 (brain L4)
+    "470uF/35V": "C46550413",       # jieerrui JVJ35V470M10x10, SMD D10xL10.5 Al electrolytic, 35 V;
+                                    # 136,983 on 2026-11-13 (brain C113/C114). brain.py's C46550430
+                                    # is a THROUGH-HOLE 8x15 polymer, not this land
 }
 # ── EVERY PASSIVE, BY (VALUE, FOOTPRINT) ──────────────────────────────────────────────
 # These rows used to go to the fab with no part number -- "a generic passive, chosen at
@@ -291,6 +310,19 @@ PASSIVES = {
     ("9k09 1%", "R_0402_1005Metric"):        "C274897",   # Yageo RC0402FR-079K09L, 1 %; 47,319 in stock
     ("0R", "R_0603_1608Metric"):             "C21189",   # UniOhm 0603WAF0000T5E; basic
     ("120R", "R_0603_1608Metric"):           "C22787",   # UniOhm 0603WAF1200T5E, 1 %, 100 mW; basic
+    # -- the brain board, 2026-11-13, read off JLCPCB's parts API ------------------------
+    ("22uF/35V", "C_1210_3225Metric"):       "C778721",   # Taiyo Yuden GMK325BJ226MM-P, 35 V X5R 20 %; 148,503 in stock
+    ("470nF/50V", "C_0603_1608Metric"):      "C77572",   # FH 0603B474K500NT, 50 V X7R 10 %; 136,525 in stock
+    ("100pF/50V", "C_0402_1005Metric"):      "C1546",   # FH 0402CG101J500NT, 50 V C0G 5 %; basic, 3,352,469 in stock
+    ("22k", "R_0402_1005Metric"):            "C25768",   # UniOhm 0402WGF2202TCE, 1 %; basic, 1,317,157 in stock
+    ("825R 1%", "R_0402_1005Metric"):        "C270580",   # UniOhm 0402WGF8250TCE, 1 %; 30,602 in stock
+    ("470nF/25V", "C_0402_1005Metric"):      "C92361",    # Samsung CL05A474KA5NNNC, 25 V X5R; 142,099 in stock
+    ("330pF/50V", "C_0402_1005Metric"):      "C190579",   # FH 0402CG331J500NT, 50 V C0G 5 %; 4,542 in stock
+    ("36k5 1%", "R_0402_1005Metric"):        "C25887",    # UniOhm 0402WGF3652TCE, 1 %; 88,875 in stock
+    ("2k67 1%", "R_0402_1005Metric"):        "C82298",    # UniOhm 0402WGF2671TCE, 1 %; 7,723 in stock
+    ("68k1 1%", "R_0402_1005Metric"):        "C11537",    # UniOhm 0402WGF6812TCE, 1 %; 10,081 in stock
+    ("3R", "R_0603_1608Metric"):             "C23157",   # UniOhm 0603WAF300KT5E, 1 %, 100 mW; 26,653 in stock
+    ("4mR 1W", "R_2512_6332Metric"):         "C326588",   # Yageo PA2512FKF7W0R004E, 1 %, 2 W; 9,402 in stock
 }
 
 # ⚠ EVERY VALUE STRING MUST BE ACCOUNTED FOR -- IN LCSC, GENERIC, OR HERE.
