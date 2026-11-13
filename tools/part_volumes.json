@@ -113,6 +113,10 @@
    "material": "petg-gf",
    "volume_mm3": 324258.2
   },
+  "keyhole_plate": {
+   "material": null,
+   "volume_mm3": 1344.3
+  },
   "kl_axle": {
    "material": "pctg",
    "volume_mm3": 2075.4
