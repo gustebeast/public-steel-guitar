@@ -453,7 +453,9 @@ def output_board():
         _res(tag, "5k1", "J9 CC Rd: a device", j9[pin], gnd)
 
     # ── J4: USB HIGH-SPEED HOST to the optical board -- this board powers it ──────────
-    opt_dp, opt_dm, opt_vbus = Net("OPT_DP"), Net("OPT_DM"), Net("OPT_VBUS")
+    # VBUS_OPT, not OPT_VBUS: a rail's name says it is one (cadkit quality.POWER), so A6 sees
+    # R29 / R30 as this source port's Rp to its own VBUS (output_signal, 2026-11-13)
+    opt_dp, opt_dm, opt_vbus = Net("OPT_DP"), Net("OPT_DM"), Net("VBUS_OPT")
     j4 = _usbc("J4", "USB HS host -> the optical board (right-angle C plug at its end, "
                "down through the top panel), stock C-to-C lead")
     gnd += j4["SH"], j4["A1"], j4["A12"], j4["B1"], j4["B12"]
