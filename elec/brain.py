@@ -371,8 +371,12 @@ def brain():
     b["SW"] += u20[18]
     b["HO"] += u20[19]
     b["BST"] += u20[20]
-    _two("L4", "L", "10uH 15A", "boost inductor, 10 uH, Isat >= 15 A, SHIELDED -- placeholder "
-         "land; SKU open (R2-6: XR181810VC C53307993 / CDEP15D90 C171580)",
+    # Bourns SRP1770TA-100M, GLOBAL SOURCING / CONSIGNED (lead, 2026-11-13; 0 at LCSC): Isat1
+    # 24 A at a 20 % drop, Irms 16.5 A (Bourns REV 11/19 p.1) against a 13.8 A worst-case peak
+    # (9 V, 108 W, 95 %: 12.6 A + half of 2.25 A ripple) x 1.3 = 17.9 A. No in-stock 17 x 17
+    # part meets it (prices.json missing["brain:L4"] has the search).
+    _two("L4", "L", "10uH 15A", "boost inductor, Bourns SRP1770TA-100M (C2045568, global sourcing): "
+         "10 uH, Isat 24 A at 20 %, shielded",
          "Inductor_SMD:L_Bourns_SRP1770TA_16.9x16.9mm", b["LMID"], b["SW"])
     _res("R109", "4mR 1W", "boost current sense, VIN side of L4 (TI's 4 mR)", vin_sw,
          b["LMID"], "Resistor_SMD:R_2512_6332Metric")
