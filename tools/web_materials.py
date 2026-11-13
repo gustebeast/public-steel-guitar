@@ -143,6 +143,16 @@ def material_of(name: str):
     base = re.sub(r"(_\d+)+$", "", name)
     if base.startswith("ghost_"):
         return "pctg-clear"
+    # THE PLANK BENCH (src.plank_bench): its prints are PETG-GF; its bought parts are the
+    # instrument's own, renamed "x..." (the stack turned along X) or "inline_..." (the motor)
+    if base.startswith("plank_") or base == "inline_coupler":
+        return "petg-gf"
+    if re.search(r"_m[34](_[a-z]+)?$|^crown_axle$", base):
+        return "steel"
+    if base.startswith("inline_motor"):
+        base = base[len("inline_"):]
+    elif re.match(r"^x(nut|string_nut|leadscrew|yoke_m3_\w+|screw_\w+)$", base):
+        base = base[1:]
     for pre, mod in _BENCHES:
         if base.startswith(pre):
             import importlib

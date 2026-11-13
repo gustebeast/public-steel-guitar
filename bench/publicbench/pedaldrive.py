@@ -1,0 +1,195 @@
+"""Drive string 1's motor from an expression pedal streamed over the network (user, 2026-11-11).
+
+    python3 -m publicbench.pedaldrive                  middle = where the motor is now (neutral),
+                                                       fully up +1 st, fully down -1 st
+    python3 -m publicbench.pedaldrive --semitones 2    a whole step each way
+
+The pedal is read on another computer (bench/pedal_send.py, on the Mac the pedal is plugged
+into) and arrives here as UDP datagrams "<seq> <value 0..1>" on --port. THE PEDAL'S MIDDLE IS
+NEUTRAL (user, 2026-11-11): value 0 (fully up) raises --semitones, 1 (fully down) lowers it as far,
+and the motor's target is start + that pitch's counts, sent as an absolute move (F5 takes a new target while
+the last one is still running, so the motor follows the foot). SAFE BY CONSTRUCTION:
+  * the target is CLAMPED to the counts of -semitones .. +semitones: the nut never leaves them;
+  * nothing heard for HOLD_S: no new targets, the motor holds where it is;
+  * the speed is capped at RPM (the fastest the spring test ran);
+  * Ctrl-C or SIGTERM (pkill -f publicbench.pedaldrive): back to start, play as it was.
+PACED TO THE PEDAL (user, 2026-11-11: notchy at ordinary speeds; one logged press). The pedal
+sends a value only every ~20-30 ms, and an ordinary press is ~0.1 s end to end, so each value
+jumps 20-45 of its 128 steps. Sent at full speed, the motor covered each jump in ~2 ms and stood
+for the rest: hop-wait-hop. Now the motor is aimed at the latest value at the speed that gets it
+there just as the NEXT value is due (the pedal's own interval, measured), so a press is one
+continuous move at the foot's pace (~140 rpm for a full 0.1 s sweep), about one interval behind.
+When the values stop, the rest is made up within T_END.
+BUFFERED (--buffer, default BUFFER; user, 2026-11-11: "more lag but input more like our own
+pedal"): every value is played back --buffer late, gliding from one to the next over at most
+--buffer, so the drive sees a smooth pedal changing every tick, the way our own sensor would
+report, at the cost of that much lag. --buffer 0 paces to the raw values instead.
+--rpm-fixed sends every target at RPM as before (to compare).
+Stop the phone service first (it shares the serial port): sudo systemctl stop public-steel-guitar-phone
+"""
+from __future__ import annotations
+
+import argparse
+import signal
+import socket
+import time
+
+from . import servo
+from .link import MotorCtrlLink
+from .springload import RAISE_SIGN
+
+T = servo.COUNTS_PER_TURN
+LEAD = 2.0                       # mm per turn, Tr8x2
+DL_OPEN = 2.0                    # mm: string 1's model on this bench (phone/pitchctl.py)
+RPM = 1200
+HOLD_S = 0.5
+TICK = 0.01                      # s: targets go out on this tick, ~100 a second
+DEADBAND = 2                     # counts: smaller changes are not sent
+INTERVAL0 = 0.025                # s: the pedal's interval between values, until it is measured
+BUFFER = 0.035                   # s: one Lehle interval and its jitter
+T_END = 0.015                    # s: the shortest time a move is given (when values stop coming)
+RPM_MIN = 1                      # the driver takes 1 rpm: a slow foot is never outrun
+RPM_RESEND = 0.15                # a new speed goes out when it differs by this fraction
+
+
+def throw_counts(semitones: float) -> int:
+    return int(round(DL_OPEN * (2.0 ** (semitones / 6.0) - 1.0) / LEAD * T))
+
+
+def main():
+    a = argparse.ArgumentParser()
+    a.add_argument("--port", type=int, default=5005)
+    a.add_argument("--semitones", type=float, default=1.0, help="fully up raises this, fully down lowers it")
+    a.add_argument("--id", type=int, default=1)
+    a.add_argument("--raise-sign", type=int, choices=(1, -1), default=RAISE_SIGN)
+    a.add_argument("--rpm-fixed", action="store_true", help="every target at RPM, unsmoothed (the old way)")
+    a.add_argument("--acc", type=int, default=0, help="the motor's ramp, 0 (none) .. 255")
+    a.add_argument("--buffer", type=float, default=BUFFER, help="s: values played back this late, gliding")
+    a.add_argument("--log", help="jsonl: every pedal value heard and every move sent, timed")
+    o = a.parse_args()
+    up, dn = throw_counts(o.semitones), throw_counts(-o.semitones)     # dn < 0
+    assert 0 < up <= T // 2, "a throw over half a turn: give a smaller --semitones"
+
+    # a background start (nohup ... &) IGNORES SIGINT: SIGTERM ends it the same way, back to start
+    def _stop(*_):
+        raise KeyboardInterrupt
+    signal.signal(signal.SIGTERM, _stop)
+    signal.signal(signal.SIGINT, _stop)
+    link = MotorCtrlLink()
+    m = servo.Servo(link, o.id)
+    was = None
+    try:
+        r = link.ask("P")
+        was = len(r) > 2 and r[0] == "P" and r[2] == "1"
+        link.ask("P 0")
+    except Exception as e:
+        print("play state not read (%s); going on" % e)
+    m.enable(True)
+    time.sleep(0.3)
+    m.set_zero()                                     # absolute moves and the reading agree from here
+    time.sleep(0.3)
+    home = m.position()
+    lo, hi = sorted((home + o.raise_sign * up, home + o.raise_sign * dn))
+    print("start %d = middle; up %+d, down %+d counts (+-%.2f st); listening on udp %d"
+          % (home, o.raise_sign * up, o.raise_sign * dn, o.semitones, o.port), flush=True)
+
+    logf = open(o.log, "a") if o.log else None
+    if logf:
+        import json
+        def note(**kw):
+            logf.write(json.dumps(dict(t=round(time.monotonic(), 4), **kw)) + chr(10))
+    else:
+        def note(**kw):
+            pass
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind(("0.0.0.0", o.port))
+    sock.setblocking(False)
+    per_rpm = T / 60.0                               # counts a second at 1 rpm
+    last_rx, sent, sent_rpm, n, last_seq = 0.0, home, 0, 0, -1
+    v_raw = None
+    est = float(home)                                # where the motor should be by now
+    interval, t_val, v_last = INTERVAL0, 0.0, None   # the pedal's pace: its interval, last change
+    ev = []                                          # (t, value) at each change, for --buffer
+
+    def played(tp):
+        """The pedal at time tp: the value then, gliding into the next over at most --buffer."""
+        i = len(ev) - 1
+        while i > 0 and ev[i][0] > tp:
+            i -= 1
+        ta, va = ev[i]
+        if ta > tp or i + 1 >= len(ev):
+            return va
+        tb, vb = ev[i + 1]
+        start = max(ta, tb - o.buffer)
+        return va if tp <= start else va + (vb - va) * (tp - start) / (tb - start)
+    t_prev = time.monotonic()
+    try:
+        while True:
+            time.sleep(max(0.0, TICK - (time.monotonic() - t_prev)))
+            now = time.monotonic()
+            dt, t_prev = max(1e-3, now - t_prev), now
+            while True:                              # everything that arrived since the last tick
+                try:
+                    data, peer = sock.recvfrom(64)
+                except (BlockingIOError, socket.timeout):
+                    break
+                try:
+                    seq, v = data.decode().split()
+                    seq, v = int(seq), min(1.0, max(0.0, float(v)))
+                except ValueError:
+                    continue
+                if seq <= last_seq and last_seq - seq < 1000:      # late or repeated datagram
+                    continue
+                last_seq, last_rx, v_raw = seq, now, v
+                note(k="rx", v=v, at=round(time.monotonic(), 4))
+                if v != v_last:                      # a new value: the pedal's pace
+                    gap = now - t_val
+                    if 0.004 < gap < 0.1:
+                        interval += (gap - interval) * 0.3
+                    t_val, v_last = now, v
+                    ev.append((now, v))
+                    del ev[:-64]
+            if v_raw is None:
+                continue
+            if last_rx and now - last_rx > HOLD_S:
+                print("nothing heard for %.1f s: holding at %+d" % (HOLD_S, sent - home), flush=True)
+                last_rx, v_raw = 0.0, None
+                continue
+            v_use = played(now - o.buffer) if o.buffer > 0 else v_raw
+            tgt = min(hi, max(lo, home + o.raise_sign * throw_counts(o.semitones * (1.0 - 2.0 * v_use))))
+            # where the motor got to since the last tick, at the speed it was sent
+            go = sent - est
+            est += max(-abs(go), min(abs(go), (1 if go > 0 else -1) * sent_rpm * per_rpm * dt))
+            lag = tgt - est
+            if abs(lag) < DEADBAND and tgt == sent:
+                continue
+            if o.rpm_fixed:
+                rpm = RPM
+            else:                                    # there just as the next value is due
+                t_left = TICK if o.buffer > 0 else max(T_END, t_val + interval - now)
+                rpm = int(min(RPM, max(RPM_MIN, abs(lag) / t_left / per_rpm + 0.5)))
+            if tgt == sent and sent_rpm and abs(rpm - sent_rpm) <= RPM_RESEND * sent_rpm:
+                continue
+            m.move_abs(tgt, rpm, o.acc)
+            note(k="mv", tgt=tgt - home, rpm=rpm, est=round(est - home, 1))
+            sent, sent_rpm, n = tgt, rpm, n + 1
+            if n % 50 == 1:
+                print("pedal %.2f -> %+d counts at %d rpm" % (v_use, tgt - home, rpm), flush=True)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        m.move_abs(home, 300, 0)
+        time.sleep(0.5)
+        if logf:
+            logf.close()
+        print("back at start: %+d counts" % (m.position() - home), flush=True)
+        if was:
+            try:
+                link.ask("P 1")
+            except Exception:
+                pass
+        link.close()
+
+
+if __name__ == "__main__":
+    main()

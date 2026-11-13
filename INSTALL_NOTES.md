@@ -1611,6 +1611,59 @@ straight off the yoke's roof and runs dead level to the crown.
   through the 688, and turn it into the nut, holding the yoke.
   5. String over the crown to the tuner. Drive it by hand with the belt ends as before.
 
+#### Motor wall ramp, slider insert pocket (2026-11-11)
+
+- **Motor block:** the string's pull sheared the face wall off its base along a layer line. Its
+  -X face now has a 45 deg ramp at the root, 12.2 tall (its foot 1.0 short of the station). It is
+  cut back round the coupler's swept circle and round the two lower face M3s' heads, so a key
+  still reaches them along X. There's no ramp +Y of the +Y lower M3, where the wood screw is.
+- **Counter slider:** the insert's pocket is 6.6, was 5.9. The insert slides 13.8 in, so it is a
+  sliding fit. If it turns with the screw, touch it home against the lip with the iron.
+- Reprint plank_motor_block and plank_counter_slider.
+
+#### Lowered X rig, no head (2026-11-10)
+
+The counter post tore on a layer line at its base with the springs set as loose as they go
+(~70 N, only two of its four wood screws in). Their pull was 67 mm over that base, because the
+X rig still sat at the vertical-screw rig's height. Now:
+
+- **Axis 26.25 over the wood (was 72.2).** The in-line motor rests on its block's base pad
+  (0.3 under the can), so the post's lever is 21.5 instead of 67: about a third of the bending
+  at the same pull.
+- **Reprint all four:** station_x, motor_block, counter_post, and nothing else changes shape
+  except their height. Every plank hole stays where it is.
+- **Motor block:** the 45 deg ribs are gone; a base pad runs under the whole can, and the gauge
+  arms now start at its +X end.
+- **Counter post:** the space under the slider's deck is solid, full width, so the wall's root
+  is the whole footprint. **Drive all four wood screws before the springs go on.**
+  Its +X face is flush with the screw tabs' edge (2.5 thicker there); the screw head's
+  counterbore is just 2.5 deeper, so the key goes in the same way.
+- **No head or crown tower: the crown stand** (plank_crown_stand) holds the bought Ø8 x 100
+  shaft across the plank, its top on the string's underside, so the string leaves it level with
+  the yoke. Screw it down (four wood screws, +Y face on the plank's edge) with the axle's centre
+  607.0 -X of the yoke's roof at mid travel (the scale span, as before). Slide the shaft through
+  both cheeks; the string runs over it between them and on down -X to the tuner.
+- **Station X floor:** its base is now solid under the whole room, 21.45 under the axis, clear
+  of the nut and its M3s at any angle (they sweep 11.0).
+- **Spring check:** McMaster 9654K634 reads 4 lbf initial tension, 7.9 lbf/in, 46 lbf max at
+  10.3 in, which is what the model uses. Two springs pull 69 N backed off fully (78 N with the
+  in-line motor's limit) and 150 N fully in.
+
+#### Widened X station (2026-11-10)
+The buttresses stopped the nut, its M3s and the yoke short of full travel when they are held with
+the ears horizontal. The frame is now 41.4 wide (half-width 20.7), the same as the motor wall less
+what the counter springs need. It clears the nut at any angle over the whole travel.
+- **Reprint** `coupons/plank_station_x.step`, base on the bed.
+- **One NEW plank hole:** the +Y screw at the rail end has no room outside the wider wall (its
+  head would be past the plank's edge). It moves INSIDE the open room, just -X of the rail wall:
+  at the counter/inline rig's place that is x -113.0, y 52.25. Drill it. Set the new station on
+  its other three holes first and mark through.
+- The other three are the old holes. The +Y one at the foot end has its own pad, and the buttress
+  is trimmed back off it so the key goes straight down. Drive the room's screw down through the
+  open top past the nut, with the nut's ears vertical.
+- Edge rims: each countersink stands 1.0-1.2 from its tab's edge (the +Y one against the plank's
+  edge), so that rim prints as one bead.
+
 ### The counter-spring rig: the X rig with the string, a spring pulling back on the pulley side (2026-11-09)
 The X rig exactly as before (head, motor, string to the crown), plus springs pulling the yoke +X,
 against the string. The nut's thread then carries string minus spring. Set anywhere from 50 % to
@@ -1699,7 +1752,7 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
 ### Direct bench: stainless anchor plate (2026-11-09)
 - The spring anchor is now laser-cut 304 stainless, 4 mm, from the same JLCCNC sheet-metal order as the nut plates. It is bent into a tray: top, bottom and both ends folded 16 mm toward +X. It spans rail to rail with 0.5 mm clearance each side.
 - Why: it carries about 730 N from the springs, all the time. A printed wall would sag about 7 mm and then creep.
-- Mount: four M4 x 10 button heads, two per end fold, at z -16 and z -45.4. Each goes through the rail's inner skin into an M4 tapped hole in the A-36 wall bar. Drill and tap the bar to match before sliding it into the rail. The rail's inner skin gets a matching Ø4.5 hole.
+- Mount (SUPERSEDED 2026-11-12: the plate now hangs on four Ø5 dowels, no screws; see "Installing the guide rods and the anchor plate" below): four M4 x 10 button heads, two per end fold, at z -16 and z -45.4. Each goes through the rail's inner skin into an M4 tapped hole in the A-36 wall bar. Drill and tap the bar to match before sliding it into the rail. The rail's inner skin gets a matching Ø4.5 hole.
 - Order of assembly:
   1. Bolt the plate in before the drives go in. The 2.5 mm key reaches each bolt along Y, between the spring rows.
   2. Then put each anchor plug through from +X with its lugs along Y, and turn it a quarter to Z.
@@ -1804,3 +1857,206 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
   - Hold the insert while you snug the M3 if it starts to turn.
   - D bore fit: 0.15 mm a side over the shaft. It beat 0.30 in a side-by-side print (2026-11-10); the slit lets it open to go on.
   - The pin drill jig is not needed for this.
+
+## Direct drive: nut springs, one cut spring, per-string plug necks (2026-11-11)
+
+- **Spring:** McMaster 9654K335 (0.75" OD, 0.091" tempered spring steel, 6.5", loop ends). Cut both loops off and cut the body to **43 whole coils**: 35 working coils plus 4 at each end screwed onto the threaded posts. One spring makes one piece. Wipe it with light oil, since it's plain steel.
+- **Force per string at open pitch** (string 1..10): 67, 68, 61, 66, 55, 61, 61, 63, 54, 53 N.
+  - Each is 95% of the lightest string at −3 st, less 1 N of drift and less 5 N for the stock tolerance. A strong spring still stays under the string at −3 st, so the nut never crosses its backlash.
+  - The forces come from the plug necks only: each string's plug neck is 0.2–8.9 mm longer (`direct_bench.SPRING_F`, `spring_len_open`).
+- **Assembly:** no adjusting and no measuring. The printed neck sets the spring's length.
+- **Restringing (slack end):** about 7 N more than at open pitch. At full raise travel, about 7.5 N less.
+- **Production:** order springs wound to a force-at-length drawing (±5%) instead of cut stock.
+
+## Direct drive: guide rod held at both ends, no screw sleeves (2026-11-12)
+
+- **Guide rod:** McMaster 89535K84, 3/16" 304 stainless. Rods are **184.8 mm**, all the same length, so one 6 ft length ($7.45) now cuts 9; buy two lengths per instrument (see "Installing the guide rods and the anchor plate" below). Saw it and deburr the ends.
+  - It sits 15.35 mm off the screw axis at 325°, the same on every string (moved 2026-11-12, see below).
+  - (Superseded 2026-11-12: it now slides in from −X through the anchor plate and the plug; see below.)
+- **Nothing on the nut touches the rod.** The collar (now **PCTG**, unfilled, so glass fibres don't scour the stainless) has a tab with a radial slot. The slot is a close fit across to stop rotation, with ±1 mm free along the radius, so a rod a little out of line never pushes the nut off the screw axis.
+- **Lubrication:** PTFE dry-film spray on the rod at assembly. No grease or oil.
+- **Sleeves removed.** The plug and collar never turn; the screw turns through Ø10 clearance holes in both. The spring is always in tension, so it stays straight and clear of the screw.
+
+## Direct drive: one-piece endplate, slide-in axles, steel wall bars (2026-11-12)
+
+- **Endplate:** one PETG-GF print that replaces the rod plate, the comb and the cheeks. Print it standing, building −Z → +Z (its −Z face on the bed). It spans the full instrument height and holds:
+  - the 10 guide-rod seats, in bosses running back from the plate;
+  - the 4 axles: three bend-bearing rows and the bridge row;
+  - the fingers, one lane per string, so every gap between bearings has a finger (formerly 3 fingers). Each lane is open through the top and the +X end, so a string feeds in and out when restringing;
+  - the two wall bars' ends.
+- **Bearing clearance:** the plate now stands 1 mm off the bend bearings (formerly 4 mm). The plate is 3.2 mm (4 beads): an FEA of the endplate under all ten strings at open pitch reads about 9 MPa peak and 0.2 mm at the bridge row, with the axles in. The axles tie the fingers together and carry most of it, so always run with all four axles in.
+- **Axles:** Ø8 steel, all four **106.7 mm** long: the bearing span plus 8 mm of grip in the endplate at each end.
+  - Each slides in from the −Y side, down its bore and through every bearing in its row, and stops on a 3 mm wall at the +Y side. Push it the last stretch with the long arm of the 2.5 key.
+  - To remove one, push it back out with an allen key through the Ø3.2 hole in that stop wall.
+  - The stop wall only locates the axle along Y; nothing pushes on it.
+- **Wall bars:** 1/4" × 3-1/2" A-36 flat bar, one in each side wall, the 3-1/2" standing vertical. The top edge sits 20 mm under the strings' top.
+  - Steel, not aluminium: it expands like the strings.
+  - **Drill and tap each bar end** for M3, two holes 8.5 deep (Ø2.5 tap drill; only as deep as the grip needs), on the bar's centreline in thickness, 8.0 mm under the top edge and 5.5 mm over the bottom edge. Use a printed drill jig so the holes come out dead centre.
+- **Clamping:**
+  - Each bar end drops into a 5 mm locating pocket and **stops 1 mm short** of the endplate's back wall (12.7 mm, running out to the heads).
+  - Four M3 × 20 socket-head cap screws (McMaster 91292A123), each with an ISO 7089 / DIN 125-A M3 washer (Ø7 × 0.5; the Ø9 DIN 9021 left too thin a wall), sit in shallow counterbores in the endplate's +X end, **heads flush**, and pass the back wall into the bar ends.
+  - Tighten until the side walls' ends are pulled hard against the endplate. The bars never bear on the plastic, so the screws squeeze the sections together.
+  - Thread engagement in the bar: about 6.3 mm (over 1.5 × d: in steel that outlasts the screw).
+  - The floor ends flush with the walls (one print), so the endplate bears on the floor across the middle as well as on the walls. The floor carries most of the strings' pull.
+  - **Torque: snug, about 0.3 N·m** (a light pull on the short arm of the 2.5 key). The strings' pull already presses the endplate onto the walls; the screws only hold it there. Harder pulls overload the plastic under the small washer, and it creeps.
+
+## Direct drive: steel keyhole plate on each yoke (2026-11-12)
+
+- **Keyhole plate:** laser-cut 304 stainless, 4 mm, Ø22, one per string, cut from the same sheet as the nut plates (`steel/keyhole_plate.step`, from `build.py`). It replaces the yoke's printed roof.
+  - The string's ball end bears on the steel. The plastic yoke behind it is only a spacer that shapes the ball's pocket.
+  - **Tap its two Ø2.5 holes M3** (or have the cutter tap them).
+- **Yoke screws:** two **M3 × 30** socket-head cap screws (McMaster 91292A022). They go in from behind the collar, through the nut flange and the yoke, and thread into the plate, stopping 0.5 mm short of its face. Nothing threads into plastic.
+- The yoke is 24 mm from flange to plate face. The whole drive (nut, springs, plugs, anchor plate, motors) sits 3.2 mm further −X to make room, so the springs and leadscrews keep their lengths. See the travel section below for how far the nut runs.
+
+## Direct drive: slack end at the endplate, 15.6 mm travel (2026-11-12)
+
+- **Slack end = contact.** To restring, the motor drives the nut until the keyhole plate sits on the endplate's plate, as a hard stop.
+- **Cut each leadscrew** so that in that position it **only just threads the nut: three turns (6 mm) into its −X end**. All the rest of the nut's length becomes travel.
+  - Lengths: 170.5, 247.5, 324.5 and 401.5 mm by station, from the coupler end. `direct_bench` reports them.
+- **Travel is 15.6 mm** from the slack end. It stops 1 mm before the tightest spring (string 10) closes its coils. At that point the screw tip is still about 8 mm from the ball.
+- **Restringing:**
+  1. Drive to the slack end.
+  2. Lower the keyhead inserts only enough to release the clamp.
+  3. Swap the string.
+  4. Raise the inserts to clamp it.
+  5. Let the motor pull the string up to pitch.
+- **Why the slack doesn't matter:** whatever slack the hand leaves is taken up in travel. It only moves where open pitch lands, and the spring's help changes by 1.72 N per mm of that.
+
+## Direct drive: installing the guide rods and the anchor plate (2026-11-12)
+
+### Guide rods: in last, from −X
+- **Position:** 15.35 mm off the screw axis at **325°**, on every string. That is 1.6 mm from the rod's own spring-end sleeve, as far as it can get from the neighbours' collars (worst gap 4.5 mm, was 3.4 mm at 300°), with the collar's tab 7 mm above the floor. 290° pushed the plug's boss into the next plug.
+- **Path:** the anchor plate has a Ø5.36 hole on each rod's line, and the plug's rod boss is now a through hole.
+- **Install:** after the endplate is screwed on and the drives are in, but before the motors, push each rod in from behind the anchor plate. It goes through the plate, the plug, and the collar's slot, then home into its blind seat in the endplate.
+  - Three crush ribs over the last 4 mm of that seat (0.15 mm bite) grip the tip, so it stays put. The only load along the rod is the collar tab's ~2 N of friction.
+  - No rod has to find a hidden hole, and the endplate never has to be offered up onto ten rod tips at once.
+- **Removal:** the −X end stands 2 mm proud of the plate's −X face, clear of the housing and its ears (now at 155° and 275°, moved so the rod boss clears the next string's ear). Pull it with pliers.
+- **Length:** 184.8 mm, so 9 per 6 ft length (was 10). Two lengths per instrument, $7.45 more.
+
+### Anchor plate: drops onto pins, no screws
+> **SUPERSEDED (2026-11-12):** see "Anchor plate on screw shanks" below. The pins and the 26 mm end folds are gone.
+
+- **No fasteners at all.** The four M4 x 10 bolts and the M4 tapping in the wall bars are gone.
+  - The 2.5 mm key could not reach those bolts along Y past the springs, and there are to be no screws through the outer walls.
+- **Pins:** each wall bar gets two Ø5 holes drilled straight through along Y (no tap), at x −177.5 (14.7 mm from the plate's web) and z −24.6 / −45.4. Use the printed drill jig.
+  - A Ø5 x 12 hardened dowel goes in from inside the empty body, through a Ø5 hole in the rail's inner skin that grips it, about 4.5 mm into the bar. 1 mm stands proud of the anchor fold's inner face.
+  - Pin SKU still to read (McMaster's hardened metric dowels, 91595A series).
+  - Use **hardened**: 0.5 kN per pin over ~4.5 mm of lever is ~180 MPa of bending, too much for 18-8.
+- **Plate:** each end fold has an open-topped slot (5.4 wide, round bottom) that drops over its two pins. The top and bottom flaps stop at the end folds (corner reliefs in the flat pattern).
+  - **Cut flat, then bent.** The slot's −X edge is what the pins bear on, so it must stay true through the bend. A feature closer to a bend than its inner radius plus two thicknesses (about 12 mm in 4 mm sheet) gets pulled as the bend forms.
+  - So the two **end folds are 26 mm deep** (the top and bottom flaps stay 16), and the slot's bearing edge sits 12.3 mm from the web.
+  - The 0.4 mm drop-in clearance covers a bend's usual ±0.2–0.3 mm. Each side hangs on its own pins, so the two folds needn't match exactly.
+- **Load path:** the strings and springs pull the plate +X (~2 kN in all). The slot's −X edge bears on the pins, steel on steel into the bars. With the strings off, the UI and the deck above keep it from lifting (0.5 mm under the UI).
+- **Order:**
+  1. Slide the bars in from +X.
+  2. Push the four pins in.
+  3. Drop the anchor plate onto the pins.
+  4. Fit each plug, housing and screw.
+  5. Screw on the endplate.
+  6. Push the guide rods in from −X.
+  7. Fit the motors.
+  8. Fit the UI and deck.
+
+## Direct drive: grip sleeves replace the bent spring ends (2026-11-12)
+
+- **No more tangs.** Each spring is now just cut to 43 coils, with no bending and no heating. The tang holes in the stop flanges are gone.
+- **The grip sleeve.** A printed PETG-GF sleeve, OD 22.45 mm, goes over each end's four grip coils, two per spring.
+  - Its bore carries the outer half of the thread. The post's groove holds the inner half of the wire and the sleeve's groove the outer half, so the wire is trapped all the way round.
+- **Fitting:**
+  1. Screw the spring's end coils onto the post.
+  2. Screw the sleeve on over them until it bottoms on the stop flange.
+  3. Snug it by hand. The 2.5 mm key through its cross-hole works as a tommy bar.
+- **Detent:** a ring of 24 sawtooth teeth, 0.6 mm high, sits between the sleeve's end face and the flange.
+  - They click past as the sleeve goes on (the gentle side faces the tightening direction).
+  - The steep 60° side resists it backing off as the jam relaxes.
+  - To remove it, twist firmly: 60° is steep enough to hold against the spring's ~0.03 N·m, not so steep that it locks for good.
+- **Flanges:** both stop flanges (on the plug and on the collar) grow to Ø22.45 to carry the teeth.
+- **Clearance:** the sleeve is 1.74 mm from its own guide rod (rod at 15.35 mm, 325°). Neighbouring strings' sleeves and plugs are clear.
+
+## Direct drive: solid collar on a bayonet over the M3 heads (2026-11-12)
+> **SUPERSEDED (2026-11-12):** see "Collar on brass inserts, M3 heads on the keyhole plate" below.
+
+
+- **The collar is solid** from its plate back to the stop flange (no air gap, no pillars), Ø22.45. It has pockets for the M3 heads and the nut boss's bore through the middle. **The nut is not modified.**
+- **A 30 mm screw can't come in along X** past the post and flange, so the screws go in first and the collar goes on over them:
+  1. Put both M3 × 30 through the nut flange and the yoke into the keyhole plate. Leave each head **3 mm proud** of the flange (the collar plate's thickness).
+  2. Slide the collar along the leadscrew onto the nut, turned **about 45°** (44.8°) from its working position. The heads pass through the two head-sized holes in its plate (at about 90° and 270°) into the pockets behind.
+  3. **Turn the collar back 44.8°**: just enough to take each head wholly past its way in, with each channel about two head diameters of arc. Arc slots in its plate carry it under the heads, which end at 45° and 225°, over the key holes. The way in sits clear of the guide-rod tab at 325°.
+  4. Tighten both with the 2.5 mm key from −X, down the Ø3.4 hole through the post, its floor and the flange.
+  5. **Then** screw the spring on and fit its sleeve. The wire crosses the key's line, so the screws must be tight first. The guide rods go in last, so nothing blocks the turn.
+- **Printing (SUPERSEDED, see "Collar printed −X → +X on a cone" below):** the collar prints **+X → −X**, plate on the bed. The flange and its detent teeth are cleared over both channels, so they print open to the top.
+  - The detent teeth remain on about half their ring.
+  - The spring post's wall still runs over the inner half of each channel, a bridge of about 12 mm along the arc, anchored at both ends on the post's unbroken ring. Clearing it too would cost about half the post's thread.
+  - The bridge will come out uneven, and nothing bears on it (the heads clamp the plate). So the channel runs 1 mm further in under it, leaving 1.5 mm over each head for the bridge to sag into.
+
+## Direct drive: anchor plate on screw shanks (2026-11-12)
+
+Replaces the pins. Nothing shows outside the walls, and no key has to reach past a spring.
+
+- **Why the folds stay:** a flat 4 mm sheet across the 157 mm span would see about 215 MPa at mid-span, past 304's ~205 yield, and sag 1.4 mm. The top and bottom folds make a channel (I ≈ 11,800 vs 364 mm⁴): about 49 MPa and 0.04 mm.
+- **Screws:** four M4 × 10 button heads a side, the stock 18-8 length already bought by the 80. Each goes in from inside the **empty** body, through a teardrop hole in the rail's inner skin, and is tapped into the A-36 wall bar. Drill Ø3.3 and tap M4 right through the bar; about 3.4 mm (5 turns) is engaged.
+  - Heights: z −24.9, −46.7, −68.5, −90.25. x is 18 mm past the web's +X face.
+  - Load: about 250 N each, bending the shank over ~4.3 mm. That gives ~350 MPa in the M4's core, under the ~450 yield. Three a side would sit at yield.
+- **Spacers are part of the body:** a printed boss under each head, 4.8 mm off the skin (the fold's 0.5 gap, 4 mm thickness and 0.3 slide). Tighten each screw down onto its boss.
+  - Each boss is a block below the shank, topped at the axis, plus a column on its +X side up to the head's top. A 45° ramp runs under it. Nothing goes over the screw.
+  - Its −X side stands 1 mm clear of the end fold's edge. That gap is the **window**: the fold bears on the bare steel shank.
+- **Plate:** the end folds are 16 mm deep, like the top and bottom flaps, with no slots. Their +X edges bear on the shanks.
+  - A bent flange's length holds to about ±0.3 mm, so the web may sit that far off the rib.
+- **Reference rib:** a printed rib on each wall, 2.4 mm across x and 10 mm out from the wall, from the floor to the plate's top. It sits 0.2 mm off the web's −X face, so the web drops in between the rib and the screws.
+  - It has a hole for the guide rod on string 1's line, which passes through it.
+- **Order:**
+  1. Slide the bars in from +X.
+  2. Screw in the eight M4s, down onto their bosses.
+  3. Drop the anchor plate in from above, between the ribs and the shanks.
+  4. Continue as before: plugs, housings, screws, endplate, guide rods, motors, UI and deck.
+
+## Direct drive: collar printed −X → +X on a cone (2026-11-12)
+> **SUPERSEDED (2026-11-12):** see "Collar on brass inserts, M3 heads on the keyhole plate" below.
+
+
+The plate-down print left each head pocket's roof as a bean-shaped bridge with no reliable ends.
+
+- **Print −X → +X:** the post's end goes on the bed.
+- **Cone:** the flange's underside is a 45° cone from r 9.53 (just outside the spring wire) outward. The detent teeth stand on the cone, and the grip sleeve's end is the same cone with the teeth's complement cut into it (24 teeth, 0.6 high, 60° back, as before).
+  - Print the sleeve with its conical end **up**.
+- **Body:** a Ø24 ring, with a lobe out to Ø25.3 over each head pocket (two beads of wall past the pocket).
+  - On the top row it is cut flat 0.3 mm under the pickup.
+  - Clearances: 0.3 mm to the pickup, 0.65 mm to the nearest neighbouring collar.
+- **Pockets:** closed all round. Each floor faces up, one bead off the cone and 0.3 mm under the head. The roof is the plate, which overhangs only about 1–1.4 mm each side of the slot the shank turns in.
+- **Rod tab:** now a **fin** from the bed to the plate, outside the sleeve, so it has no underside. The rod slot runs its whole length and is open toward the sleeve; its side walls are the rotation lock.
+- **Known small ledge:** the flat ring between the post's thread crest (r 8.37) and the cone's foot (r 9.53) is a 1.2 mm overhang.
+  - The cone can't start lower without its pocket floors reaching the M3 heads.
+  - Moving the spring's end instead would need 1 mm from the plugs, and string 2's plug has 0.2 mm to give.
+
+## Direct drive: leadscrews at 331 mm (2026-11-12)
+
+- At 329–331 mm (strings 4, 6 and 10), OCCT's thread boolean returned a valid solid of the right volume whose flanks were stacked cylinders. It passed every check and drew as a plain rod.
+- `direct_bench._screw` now asks for helical (B-spline) flanks. If no nearby length gives them, it cuts a longer screw from outside OCCT's bad band (~312–352 mm) and saws it to length.
+
+## Direct drive: collar on brass inserts, M3 heads on the keyhole plate (2026-11-12)
+
+Replaces the bayonet collar and the cone collar. Neither printed: the bayonet's pocket roofs had nothing to bridge from, and the cone version still had overhangs.
+
+- **The screws turn round:** the two M3 × 30 (same SKU) now go in from +X.
+  - Each head sits on the keyhole plate's +X face, and the shank runs −X through the plate (now **Ø3.4 clearance, not tapped**), the printed yoke spacer and the nut flange.
+  - It threads into a brass insert in the collar (McMaster 94459A130, as in the belt clamps; measure one first), engaging 4.0 mm of thread.
+- **Load path:** the insert's +X end is flush with the collar's face, which sits on the nut flange's back. So the string's pull runs plate → screws → insert → brass flange, with no plastic in it. The inserts only hold the collar on against the spring (~70 N).
+- **Yoke spacer:** 1.5 mm shorter (22.5 mm from the nut flange's face to the plate's +X face, was 24) so the M3 × 30 reaches 4 mm into the insert. The whole drive sits 1.5 mm further +X; the springs and leadscrews keep their lengths.
+- **Collar:** solid Ø22.45 from the nut flange back to the stop flange. **Print +X → −X**, with the face that sits on the nut flange on the bed.
+  - Each insert pocket is a Ø4.0 heat-set pilot (the 3.9 pilot end drops in), 4.6 mm deep, under a 45° cone roof. Nothing overhangs.
+  - The pocket wall is 0.7 mm to the nut-boss bore and 1.2 mm to the outside.
+  - The detent teeth print on top, flat again, and the grip sleeve is back to its flat toothed end.
+  - The rod tab is the short one again, starting on the bed.
+- **Install:**
+  1. Heat-set both inserts flush.
+  2. Slide the collar onto the nut boss, then fit the yoke and keyhole plate on the nut's +X side.
+  3. Put the M3s in from +X and tighten them with the 2.5 mm key **before** the endplate goes on. There is no key access through the endplate afterwards: the heads sit behind its fingers.
+- **Endplate:** the keyhole plate still bottoms out on the rod plate at the slack end. The 3 mm heads sink into teardrop holes (Ø6.1, apex +Z) through the 3.2 mm plate.
+  - Where the lower hole (225°) stands beside the ball window, the plastic sliver between them is opened. The hole's far flank runs on at 45° to the window's edge, so the hole and the window print as one opening.
+- **Windows:** as wide as the lane (±2.6 mm, was ±3.8), with the floor level with the bottom of the keyhole's ball hole (7.4 mm under the axis, was 12.2). A ball slid along the floor drops straight into the pocket instead of meeting steel under the hole.
+- **Lanes:**
+  - Each lane is filled solid above its bend bearing: open up to 1 mm over the bearing, under a 45° roof peaked along X.
+  - Above that it is solid, up to a flat-floored pocket 1 mm under the bridge bearing.
+  - The fill stands 1.5 mm −X of the string's vertical drop, which keeps an open slot at the +X face.
+  - The ball now goes in from +X at the bend bearing's level, not down the lane from the top.
+- **JLCCNC keyhole plates** (order W2026111305203947, in review, unpaid): the two M3 holes become **Ø3.4 clearance**, with no tapping. The order must change before it is paid.

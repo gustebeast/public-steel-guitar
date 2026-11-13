@@ -222,11 +222,13 @@ def _zbore(d, x, y, z0, z1, up=UP):
     return printable_bore(d, z1 - z0, axis_point=(x, y, z0), axis_dir=(0.0, 0.0, 1.0), print_up=up)
 
 
-def _wood_screw(x, y, up=UP):
+def _wood_screw(x, y, up=UP, zp=None):
     """Clearance through the base and the 45 deg countersink from its top face (a 45 deg cone
-    lying sideways is AT the overhang rule, so it needs no teardrop of its own)."""
-    zt = Z_PLANK + BASE_T
-    clr = _zbore(WOOD_CLR_D, x, y, Z_PLANK - 1.0, zt + 1.0, up)
+    lying sideways is AT the overhang rule, so it needs no teardrop of its own). zp: the plank's
+    top (Z_PLANK; the X rig's is Z_PLANK_X)."""
+    zp = Z_PLANK if zp is None else zp
+    zt = zp + BASE_T
+    clr = _zbore(WOOD_CLR_D, x, y, zp - 1.0, zt + 1.0, up)
     csk = cq.Workplane("XY").add(cq.Solid.makeCone(WOOD_CLR_D / 2.0, WOOD_CSK_D / 2.0, WOOD_CSK_DEPTH,
                                                    pnt=cq.Vector(x, y, zt - WOOD_CSK_DEPTH)))
     return clr.union(csk).union(_zbore(WOOD_CSK_D, x, y, zt - 0.01, zt + 60.0, up))
@@ -330,6 +332,15 @@ def station_axial() -> cq.Workplane:
 # open on top), and two side walls. The +Y wall is what stops the yoke turning (its corner, 12 off
 # the axis, meets it after ~3 deg); the yoke's arm runs in a slot in the -Y wall, rod-less.
 XR_ZA = D.STRING_Z - D.STRING_GAUGE[I] / 2.0     # 15.81
+# THE X RIG'S PLANK IS ITS OWN, 51 HIGHER (user, 2026-11-10: "lower everything such that the motor
+# sits level with the wood"). Z_PLANK was the vertical screw's (the pulley over the station's
+# floor); lying along X nothing needs that height, and the counter post tore on a layer line at
+# its base with the springs' pull 67 over it. Now the in-line motor rests on its block's base pad
+# (MOTOR_SEAT_CLR for the driver housing's 0.1 below the can) and that sets the axis' height over
+# the wood: 26.25, was 72.2. The head and crown tower are gone too (user): a bought axle bar on
+# the plank is the string's break, its top at the axis' height.
+MOTOR_SEAT_CLR = 0.3
+Z_PLANK_X = XR_ZA - D.MOTOR_SQ / 2 - MOTOR_SEAT_CLR - BASE_T
 XR_ROOF_MID = D.NUT_TOP_Z + YK_H - D.CARRIAGE_TRAVEL / 2.0   # the yoke's roof, local z, mid-travel
 XR_OFF = CROWN_X + SCALE_SPAN + XR_ROOF_MID      # world x of local z 0
 XR_WALL = 6 * D.BEAD                             # 4.8: each buttress
@@ -364,7 +375,12 @@ XR_SEAT_Z0 = XR_ZA - (D.SUPPORT_BRG_OD + 0.2) / 2 - 2 * D.BEAD   # the thick par
 XR_X0 = XR_XR - 37.8                             # the buttresses' foot
 # CENTRED ON THE SCREW (user, 2026-11-08): the rail wall and both buttresses symmetric about SY, so
 # the 688's seat is in the middle of the plate. The base too, its +Y face still the plank's edge.
-XR_HW = ROOM_HY + XR_WALL                        # 11.4: the frame's half-width
+# WIDENED (user, 2026-11-10): at 11.4 the buttresses stopped the nut, its M3s and the yoke held
+# with the ears HORIZONTAL (Y) short of the screw's full travel. "As far as we can fit, the same
+# width as the motor wall": the motor's 21.15 would leave the counter springs 0.55, so their 1.0
+# (asserted at CS_DY) sets it.
+XR_HW = 20.7                                     # the frame's half-width
+assert XR_HW - XR_WALL >= D.NUT_FLANGE_L / 2 + CLR - 1e-9, "the nut's ears, horizontal, hit the buttresses"
 XR_Y0, XR_Y1 = SY - XR_HW, SY + XR_HW            # 31.35 .. 54.15
 # THE PLANK'S HOLES ARE THE SECOND PRINT'S (user, 2026-11-08: reuse the drill points): x -7.9 and
 # 26.07, y 16.75 and 60.55. The base reaches them with a tab each off the strips under the walls.
@@ -372,7 +388,18 @@ XR_SCREWS_X = (X1_AX - 6.4, XR_X1 - 6.4)         # -7.9, 26.07
 XR_SCREWS_Y = (Y0_AX - FLANGE / 2, Y1 + FLANGE / 2)   # 16.75, 60.55
 XR_TAB = 6.4                                     # a tab's half-length in X round its screw
 assert XR_SCREWS_Y[0] + WOOD_CSK_D / 2 <= XR_Y0 - 1e-9, "a -Y screw head under the buttress"
-assert XR_SCREWS_Y[1] - WOOD_CSK_D / 2 >= XR_Y1 + 1e-9, "a +Y screw head under the buttress"
+# THE +Y SIDE no longer has room outside the walls (a head there would be past the plank's edge):
+#   foot end   the old hole (-7.9, 60.55), the +Y buttress's foot trimmed back off it so the key
+#              goes straight down (_wood_screw's access bore).
+#   rail end   a NEW hole (user, 2026-11-10: "widen + new hole") INSIDE the open room, just -X of
+#              the rail wall, on a pad off the +Y wall's strip -- reached down through the open top.
+XR_IN_HOLE = (XR_XR - WOOD_CSK_D / 2 - 1.0, SY + XR_HW - XR_WALL - WOOD_CSK_D / 2 - 1.6)
+XR_HOLES = [(XR_SCREWS_X[0], XR_SCREWS_Y[0]), (XR_SCREWS_X[1], XR_SCREWS_Y[0]),
+            (XR_SCREWS_X[0], XR_SCREWS_Y[1]), XR_IN_HOLE]
+XR_FOOT_X = XR_SCREWS_X[0] + WOOD_CSK_D / 2       # the +Y buttress starts here, past the old hole
+# the key goes down past the nut with its ears VERTICAL (its 10.5 flat across Y): a 2.5 key's
+# ~3.5 of shank clear of that
+assert XR_IN_HOLE[1] - 3.5 / 2 >= SY + 10.5 / 2 + 0.5 - 1e-9, "the key can't pass the nut to the room's screw"
 assert XR_X0 <= XR_SCREWS_X[0] - WOOD_CSK_D / 2 - 1.6 + 1e-9, "under 1.6 of base past the -X screws' countersinks"
 
 
@@ -383,15 +410,17 @@ def _xz_prism(pts, y0, y1):
 
 def station_x() -> cq.Workplane:
     """The X rig's frame, built +Z (base down): every bore along X is a teardrop."""
-    zb = Z_PLANK + BASE_T
-    # base: the U -- the full footprint less the room's floor
-    # base: strips under the walls, a pad under the rail wall, and a tab out to each screw
-    s = _box(XR_X0, XR_X1, XR_Y0, XR_Y0 + XR_WALL, Z_PLANK, zb)
-    s = s.union(_box(XR_X0, XR_X1, XR_Y1 - XR_WALL, XR_Y1, Z_PLANK, zb))
-    s = s.union(_box(XR_XR, XR_X1, XR_Y0, XR_Y1, Z_PLANK, zb))
+    zb = Z_PLANK_X + BASE_T
+    # base: a SOLID FLOOR the whole footprint (user, 2026-11-10: "like the other blocks"; with the
+    # plank up 51 the room's floor is 21.45 under the axis, clear of the nut and yoke turning),
+    # and a tab out to each screw
+    s = _box(XR_X0, XR_X1, XR_Y0, XR_Y1, Z_PLANK_X, zb)
     for x in XR_SCREWS_X:
-        s = s.union(_box(x - XR_TAB, x + XR_TAB, Y0_AX - FLANGE, XR_Y0 + 0.01, Z_PLANK, zb))
-        s = s.union(_box(x - XR_TAB, x + XR_TAB, XR_Y1 - 0.01, Y_EDGE, Z_PLANK, zb))
+        s = s.union(_box(x - XR_TAB, x + XR_TAB, Y0_AX - FLANGE, XR_Y0 + 0.01, Z_PLANK_X, zb))
+    fx, fy = XR_SCREWS_X[0], XR_SCREWS_Y[1]                                     # the foot's +Y hole's pad
+    s = s.union(_box(fx - XR_TAB, fx + XR_TAB, fy - XR_TAB, Y_EDGE, Z_PLANK_X, zb))
+    hx, hy = XR_IN_HOLE                                                         # the room's pad
+    s = s.union(_box(hx - XR_TAB, XR_XR + 0.01, hy - XR_TAB, XR_Y1 - XR_WALL + 0.01, Z_PLANK_X, zb))
     # the rail wall: thick round the seat, thin under it, a 45 deg step
     s = s.union(_box(XR_X1 - XR_RAIL_T2, XR_X1, XR_Y0, XR_Y1, zb - 0.01, XR_TOP))
     dx = XR_X1 - XR_RAIL_T2 - XR_XR
@@ -402,14 +431,47 @@ def station_x() -> cq.Workplane:
            (XR_X0, zb - 0.01)]
     s = s.union(_xz_prism(tri, XR_Y0, XR_Y0 + XR_WALL))
     # the +Y buttress, the same triangle
-    s = s.union(_xz_prism(tri, XR_Y1 - XR_WALL, XR_Y1))
+    s = s.union(_xz_prism(tri, XR_Y1 - XR_WALL, XR_Y1).cut(
+        _box(XR_X0 - 1.0, XR_FOOT_X, XR_Y1 - XR_WALL - 1.0, XR_Y1 + 1.0, zb, XR_TOP + 1.0)))
     # the rail wall's bores: screw_rail's seat, lip and boss passage, as printed
     s = s.cut(_xbore(D.SUPPORT_BRG_OD + 0.2, RAIL_BOT - 1.0, BRG_TOP_Z + 1e-3))
     s = s.cut(_xbore(SR.SEAT_LEDGE_D, RAIL_BOT - 1.0, LEDGE_TOP))
     s = s.cut(_xbore(SR.NUT_PASS_D, LEDGE_TOP - 0.01, RAIL_TOP + 1.0))
-    for x in XR_SCREWS_X:
-        for y in XR_SCREWS_Y:
-            s = s.cut(_wood_screw(x, y, UP))
+    for x, y in XR_HOLES:
+        s = s.cut(_wood_screw(x, y, UP, Z_PLANK_X))
+    return s
+
+
+# THE CROWN STAND (user, 2026-11-10: "a small lifter that screws into the wood and raises the
+# axle"): the X rig's string break, CROWN_X. Two cheeks either side of the string hold the bought
+# Ø8 x 100 shaft (the bridge axle's, BRIDGE_AXLE_D/L) across Y, its top on the string's underside,
+# so the string leaves it dead level with the yoke's roof; the tail goes on down -X to the tuner
+# between them. A tab each side at each end for a wood screw, the +Y pair's base out to Y_EDGE
+# like every other base. Base down; the axle's bores are teardrops, AXLE_BORE as the station's.
+CR_ZC = XR_ZA - D.STRING_GAUGE[I] / 2 - D.BRIDGE_AXLE_D / 2   # the axle's centre
+CR_GAP = 8 * D.BEAD                              # 6.4: half the gap the string runs in
+CR_CHEEK = 8 * D.BEAD                            # 6.4: each cheek, in Y
+CR_HX = 10.0                                     # the cheeks' half-length in X
+CR_TOP = CR_ZC + AXLE_BORE / 2 + 3 * D.BEAD      # 2.4 over the bore's crown
+CR_SX = CR_HX + XR_TAB                           # the screws, off CROWN_X in X: past the cheeks
+CR_SY = CR_GAP + CR_CHEEK / 2                    # ...and off the axis in Y, on the cheeks' lines
+assert CR_ZC - AXLE_BORE / 2 >= Z_PLANK_X + BASE_T + D.MIN_WALL_2P - 1e-9, "the axle's bore into the base"
+
+
+def crown_stand() -> cq.Workplane:
+    """The axle's two cheeks on a base, four wood-screw tabs. In place (world), base down."""
+    zb = Z_PLANK_X + BASE_T
+    x0, x1 = CROWN_X - CR_SX - XR_TAB, CROWN_X + CR_SX + XR_TAB
+    s = _box(x0, x1, SY - CR_SY - XR_TAB, Y_EDGE, Z_PLANK_X, zb)
+    for sy in (-1, 1):
+        y0, y1 = sorted((SY + sy * CR_GAP, SY + sy * (CR_GAP + CR_CHEEK)))
+        s = s.union(_box(CROWN_X - CR_HX, CROWN_X + CR_HX, y0, y1, zb - 0.01, CR_TOP))
+    s = s.cut(printable_bore(AXLE_BORE, 2 * (CR_GAP + CR_CHEEK) + 2.0,
+                             axis_point=(CROWN_X, SY - CR_GAP - CR_CHEEK - 1.0, CR_ZC),
+                             axis_dir=(0.0, 1.0, 0.0), print_up=UP))
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            s = s.cut(_wood_screw(CROWN_X + sx * CR_SX, SY + sy * CR_SY, UP, Z_PLANK_X))
     return s
 
 
@@ -423,18 +485,20 @@ def assembly_x():
         return w.rotate((0, 0, 0), (0, 1, 0), -90).translate((XR_OFF, 0.0, XR_ZA - SX))
     ax = dict(assembly(axial=True))
     dz = -D.CARRIAGE_TRAVEL / 2.0
-    out = [("plank_station_x", station_x()), ("plank_head", ax["plank_head"]),
-           ("crown_dowel", ax["crown_dowel"])]
+    g = D.STRING_GAUGE[I]
+    # NO HEAD (user, 2026-11-10): the Ø8 axle on the crown stand breaks the string
+    out = [("plank_station_x", station_x()),
+           ("plank_crown_stand", crown_stand()),
+           ("crown_axle", cyl_y(D.BRIDGE_AXLE_D, D.BRIDGE_AXLE_L, SY - D.BRIDGE_AXLE_L / 2, x=CROWN_X, z=CR_ZC))]
     for nm in XR_PARTS:
         w = ax[nm]
         if nm in ("nut_0", "yoke_0", "string_nut_0", "yoke_m3_lo_0", "yoke_m3_hi_0"):
             w = w.translate((0, 0, dz))
         out.append(("x" + nm, turn(w)))
-    out += [(nm, w) for nm, w in ax.items() if nm.startswith("motor_")]
     g = D.STRING_GAUGE[I]
     a = (_xr_x(D.NUT_TOP_Z + dz + YK_R0 - D.STRING_NUT_D / 2), SY, XR_ZA)
     crown = (CROWN_X, SY, XR_ZA)
-    st = _seg(a, crown, g / 2).union(_seg(crown, (-770.0, SY, Z_PLANK + 15.0), g / 2))
+    st = _seg(a, crown, g / 2).union(_seg(crown, (CROWN_X - 40.0, SY, Z_PLANK_X + 2.0), g / 2))
     out.append(("string_0", st))
     return out
 
@@ -539,7 +603,10 @@ GAP_MIN = 0.5                                    # the slider's +X face at the w
 # cannot be torn out of its melt. The pocket is a snug teardrop: if the insert turns with the
 # screw, touch it home with the iron.
 SL_LIP = 4 * D.BEAD                              # 3.2: ~60 mm^2 in shear round the insert, 2.4 MPa at 147 N
-SL_POCKET_D = 5.9                                # teardrop: between cadkit's heat-set 5.7 and drop-in 6.1
+# 6.6, was 5.9 (user, 2026-11-11: "quite a bit undersized so the insert can't slide in"). It is not
+# a short drop-in pocket but a 13.8 SLIDE along a sideways teardrop: a sliding fit over the insert's
+# ~6.0 knurl (cadkit's round drop-in pocket is 6.1), not a press. The lip, not the pocket, holds it.
+SL_POCKET_D = 6.6
 XS1_OUT, XS1_IN = X_TIP + BITE_MIN + SL_LIP, PW0 - GAP_MIN   # the slider's +X face, out .. in
 CS_STROKE = XS1_IN - XS1_OUT                     # 32.6
 
@@ -564,6 +631,10 @@ RIB_T = 6 * D.BEAD
 DECK_X0 = XS1_OUT - BAR_L + 8.0                  # the deck still under the slider, backed out
 POST_X0 = XR_SCREWS_X[0] - XR_TAB                # the base's -X end
 POST_TOP = XR_ZA + 12 * D.BEAD
+# FLUSH WITH THE SCREW TABS (user, 2026-11-10: the wall's +X root is where it split): its +X face
+# out to the tabs' +X edge, the head's seat unmoved -- the counterbore just deeper
+POST_XF = XR_SCREWS_X[1] + XR_TAB                # 32.47, was PW1 (30.0)
+assert POST_XF >= PW1
 
 
 def _pin(x, y):
@@ -648,24 +719,26 @@ def slider(xs1=XS1_IN) -> cq.Workplane:
 def counter_post() -> cq.Workplane:
     """The wall with the M4 x 40, the deck the slider rides on, two ribs under it, and a base on the
     X station's old four plank holes. Base down."""
-    zb = Z_PLANK + BASE_T
-    s = _box(PW0, PW1, SY - POST_HW, SY + POST_HW, zb - 0.01, POST_TOP)
+    zb = Z_PLANK_X + BASE_T
+    s = _box(PW0, POST_XF, SY - POST_HW, SY + POST_HW, zb - 0.01, POST_TOP)
     s = s.union(_box(DECK_X0, PW0 + 0.01, SY - POST_HW, SY + POST_HW, DECK_TOP - 3 * D.BEAD, DECK_TOP))
     # the ribs: full height over the base, their -X ends a 45 deg underside out to the deck's end
     d45 = POST_X0 - DECK_X0
     rib = [(DECK_X0, DECK_TOP), (PW0 + 0.01, DECK_TOP), (PW0 + 0.01, zb - 0.01), (POST_X0, zb - 0.01),
            (POST_X0, DECK_TOP - 3 * D.BEAD - d45), (DECK_X0, DECK_TOP - 3 * D.BEAD)]
-    for y0 in (SY - POST_HW, SY + POST_HW - RIB_T):
-        s = s.union(_xz_prism(rib, y0, y0 + RIB_T))
+    # SOLID, full width (user, 2026-11-10: the post tore at its base): with the X rig's plank up
+    # 51 the deck is only ~5 over the base, so the two ribs became one block -- no bridge under the
+    # deck, and the wall's root is the whole post's footprint
+    s = s.union(_xz_prism(rib, SY - POST_HW, SY + POST_HW))
     # base: a strip under the ribs and wall, a crossbar out to each pair of holes
-    s = s.union(_box(POST_X0, PW1, SY - POST_HW, SY + POST_HW, Z_PLANK, zb))
+    s = s.union(_box(POST_X0, POST_XF, SY - POST_HW, SY + POST_HW, Z_PLANK_X, zb))
     for x in XR_SCREWS_X:
-        s = s.union(_box(x - XR_TAB, x + XR_TAB, XR_SCREWS_Y[0] - XR_TAB, Y_EDGE, Z_PLANK, zb))
-    s = s.cut(_xb(M4.shaft_clr_d, PW0 - 1.0, PW1 + 1.0))
-    s = s.cut(_xb(HEAD_D, X_HEAD, PW1 + 1.0))
+        s = s.union(_box(x - XR_TAB, x + XR_TAB, XR_SCREWS_Y[0] - XR_TAB, Y_EDGE, Z_PLANK_X, zb))
+    s = s.cut(_xb(M4.shaft_clr_d, PW0 - 1.0, POST_XF + 1.0))
+    s = s.cut(_xb(HEAD_D, X_HEAD, POST_XF + 1.0))
     for x in XR_SCREWS_X:
         for y in XR_SCREWS_Y:
-            s = s.cut(_wood_screw(x, y, UP))
+            s = s.cut(_wood_screw(x, y, UP, Z_PLANK_X))
     return s
 
 
@@ -701,7 +774,7 @@ def assembly_counter(level=1.0):
             g = D.STRING_GAUGE[I]
             a = (_xr_x(D.NUT_TOP_Z - D.CARRIAGE_TRAVEL / 2.0 + YK_R0 - D.STRING_NUT_D / 2) + CS_DX, SY, XR_ZA)
             crown = (CROWN_X, SY, XR_ZA)
-            w = _seg(a, crown, g / 2).union(_seg(crown, (-770.0, SY, Z_PLANK + 15.0), g / 2))
+            w = _seg(a, crown, g / 2).union(_seg(crown, (CROWN_X - 40.0, SY, Z_PLANK_X + 2.0), g / 2))
         out.append((nm, w))
     xs1 = slider_for(level)
     out.append(("plank_counter_yoke", counter_yoke()))
@@ -761,6 +834,10 @@ INLINE_XS1_MIN = INLINE_BACK + 0.5 + BAR_L        # the slider's +X face, backed
 INLINE_X_SCREWS = (INLINE_FACE - INLINE_WALL_T - 6.6, INLINE_FACE - INLINE_WALL_T - 6.6 + 33.97)
 assert INLINE_X_SCREWS[0] - XR_TAB >= XR_X1 + CS_DX + 0.2 - 1e-9, "the block's tab on the station's"
 assert INLINE_XS1_MIN <= XS1_IN, "the motor leaves the slider no room"
+# the face wall's ramp: its foot 1.0 short of the station's +X face; the coupler (its clamp's M3
+# the farthest out) sweeps INLINE_SWEEP_R round the axis
+INLINE_RAMP = INLINE_FACE - INLINE_WALL_T - (XR_X1 + CS_DX) - 1.0
+INLINE_SWEEP_R = 13.31 + 0.5
 CRADLE_HW = 12.0                                  # the ribs' outer faces: inside the wood screws' heads
 GAUGE_T = D.BEAD                                  # 0.8: the gauge arms to the counter post
 M_HALF = D.MOTOR_SQ / 2
@@ -768,24 +845,37 @@ M_HALF = D.MOTOR_SQ / 2
 
 def motor_block() -> cq.Workplane:
     """The face wall, two ribs and the base on four new plank holes. Base down."""
-    zb = Z_PLANK + BASE_T
+    zb = Z_PLANK_X + BASE_T
     w0, w1 = INLINE_FACE - INLINE_WALL_T, INLINE_FACE
     s = _box(w0, w1, SY - M_HALF, SY + M_HALF, zb - 0.01, XR_ZA + M_HALF)       # the face wall
-    # TWO RIBS brace the wall (user, 2026-11-09: the solid cradle was material for nothing -- the
-    # four face M3s carry the motor). 45 deg triangles, their top edge just under the can, the
-    # slope facing up in the base-down print; inside the wood screws' heads in Y.
-    top = XR_ZA - M_HALF - 0.4
-    run = top - zb                                   # 45 deg: as long as it is tall
-    tri = [(w1 - 0.01, zb - 0.01), (w1 - 0.01, top), (w1 + run, zb - 0.01)]
+    # THE MOTOR'S PAD (user, 2026-11-10: the motor sits level with the wood): the base under the
+    # whole can, the wall's +X foot -- an L, so the pad and the motor bolted to the wall brace it
+    # (the 45 deg ribs that stood under the raised can are gone). Z_PLANK_X puts the can
+    # MOTOR_SEAT_CLR over it: the faceplate's M3s align the motor, the pad only catches it.
+    pad1 = INLINE_BACK
+    s = s.union(_box(w0, pad1, SY - M_HALF, SY + M_HALF, Z_PLANK_X, zb))
     for y0 in (SY - CRADLE_HW, SY + CRADLE_HW - RIB_T):
-        s = s.union(_xz_prism(tri, y0, y0 + RIB_T))
-        s = s.union(_box(w0, w1 + run, y0, y0 + RIB_T, Z_PLANK, zb))           # its strip of base
         # a GAUGE ARM on from it (user, 2026-11-09): 0.8 tall on the plank, ending exactly at the
         # counter post's -X base edge. Butt the post against both and it is at its spacing, square
-        s = s.union(_box(w1 + run - 0.01, POST_X0, y0, y0 + RIB_T, Z_PLANK, Z_PLANK + GAUGE_T))
+        s = s.union(_box(pad1 - 0.01, POST_X0, y0, y0 + RIB_T, Z_PLANK_X, Z_PLANK_X + GAUGE_T))
     for x in INLINE_X_SCREWS:
-        s = s.union(_box(x - XR_TAB, x + XR_TAB, XR_SCREWS_Y[0] - XR_TAB, Y_EDGE, Z_PLANK, zb))
-    s = s.union(_box(INLINE_X_SCREWS[0], w1, XR_SCREWS_Y[0] - XR_TAB, Y_EDGE, Z_PLANK, zb))
+        s = s.union(_box(x - XR_TAB, x + XR_TAB, XR_SCREWS_Y[0] - XR_TAB, Y_EDGE, Z_PLANK_X, zb))
+    s = s.union(_box(INLINE_X_SCREWS[0], w1, XR_SCREWS_Y[0] - XR_TAB, Y_EDGE, Z_PLANK_X, zb))
+    # THE WALL'S ROOT, RAMPED (user, 2026-11-11: the string's pull sheared the wall off its base
+    # along a layer line): a 45 deg ramp the wall's full width on its -X face, as tall as the
+    # station leaves room for (INLINE_RAMP), then cut back for what has to pass -- the coupler's
+    # swept circle and the lower face M3s' heads and their key along X.
+    h = INLINE_RAMP
+    s = s.union(_xz_prism([(w0 + 0.01, zb - 0.01), (w0 + 0.01, zb + h), (w0 - h, zb - 0.01)],
+                          SY - M_HALF, SY + M_HALF))
+    s = s.cut(cyl_x(2 * INLINE_SWEEP_R, h + 2.0, w0 - h - 1.0, y=SY, z=XR_ZA))
+    hr = MC.CLAMP_HEAD[0] / 2 + 0.5
+    for sy in (1, -1):
+        yc = SY + sy * INLINE_HOLES / 2
+        s = s.cut(_box(w0 - h - 1.0, w0, yc - hr, yc + hr, XR_ZA - INLINE_HOLES / 2 - hr, zb + h + 1.0))
+    # ...and none at all +Y of the +Y key's channel: the +Y -X wood screw's access bore is there,
+    # and the two together left only slivers
+    s = s.cut(_box(w0 - h - 1.0, w0, SY + INLINE_HOLES / 2 - hr, SY + M_HALF + 1.0, zb, zb + h + 1.0))
     s = s.cut(_xb(D.NEMA17_PILOT_D + 0.6, w0 - 1.0, w1 + 1.0))                  # the pilot
     for sy in (1, -1):
         for sz in (1, -1):
@@ -795,7 +885,7 @@ def motor_block() -> cq.Workplane:
                                      axis_dir=(1.0, 0.0, 0.0), print_up=UP))
     for x in INLINE_X_SCREWS:
         for y in XR_SCREWS_Y:
-            s = s.cut(_wood_screw(x, y, UP))
+            s = s.cut(_wood_screw(x, y, UP, Z_PLANK_X))
     return s
 
 
@@ -1031,6 +1121,7 @@ def print_parts():
     spring = (("plank_counter_post", counter_post()), ("plank_counter_yoke", counter_yoke()),
               ("plank_counter_slider", slider()), ("plank_motor_block", motor_block()),   # all base down
               # the coupler stands on its motor end (+Y -> +Z): the D bore round, boss up
+              ("plank_crown_stand", crown_stand()),
               ("plank_inline_coupler", MC.coupler(INLINE_C1, INLINE_BOSS).rotate((0, 0, 0), (1, 0, 0), 90)))
     for nm, w in (("plank_station", st), ("plank_head", head()),   # the real tee board holds the motor (user)
                   ("plank_station_axial", sa), ("plank_yoke", yk), ("plank_station_x", out_x)) + spring:
