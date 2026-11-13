@@ -199,6 +199,110 @@ def check_passives(low_stock=2000):
     return bad
 
 
+# ── CONNECTORS: does the ordered part have the footprint's shape? ──────────────────────
+# ⚠ A NAME CHECK CANNOT SEE THIS (brain J5, 2026-11-13). The brain's vertical UI header took
+# the value "PZ1.27-2x8P", fab maps that to C22438114 -- and C22438114 IS a PZ1.27-2x8P, the
+# family's RIGHT-ANGLE one, so main() above passes it. Mounted on a vertical land it would have
+# reached the order. So each connector placed on a built board is judged on what its FOOTPRINT
+# says (Vertical / Horizontal, SMD / THT, rows x ways) against what the catalogue says the code
+# is (its description, spec and Chinese ERP name), and a disagreement is reported.
+_RA = re.compile(r"right\s*angle|horizontal|side\s*entry|\b90\s*(?:deg|°)|弯|卧", re.I)
+_VT = re.compile(r"vertical|straight|top\s*entry|\b180\s*(?:deg|°)|直插|立", re.I)
+_SMD = re.compile(r"surface\s*mount|\bsmd\b|\bsmt\b|贴", re.I)
+_THT = re.compile(r"through\s*hole|plugin|\bdip\b|\btht\b|插", re.I)
+
+
+def _fp_shape(fp):
+    """KiCad footprint name -> (orientation 'V'/'RA'/None, mount 'SMD'/'THT'/None, ways or None)."""
+    n = fp.split(":")[-1]
+    ori = "RA" if re.search(r"Horizontal|RightAngle|_RA\b|SideEntry", n) else (
+        "V" if re.search(r"Vertical|TopEntry", n) else None)
+    if ori is None:
+        # JST's own naming says it: S..B is side entry, B..B top entry (the XH / PH / ZH
+        # catalogue); a USB-C receptacle land is a horizontal one; a DF40 is a stacking
+        # (vertical) board-to-board pair
+        ori = ("RA" if re.search(r"^JST_[A-Z]+_S\d+B-|^USB_C_Receptacle", n) else
+               "V" if re.search(r"^JST_[A-Z]+_B\d+B-|DF40", n) else None)
+    mount ="SMD" if re.search(r"SMD|SMT|-SM\d|_SM\b", n) else (
+        "THT" if re.search(r"^(PinHeader|PinSocket|JST_[A-Z]+_B\d+B|IDC-Header)", n) else None)
+    m = re.search(r"(\d+)x(\d+)", n)
+    ways = int(m.group(1)) * int(m.group(2)) if m else None
+    if ways is None:
+        m = re.search(r"^JST_[A-Z]+_[SB](\d+)B-", n)          # S4B / B6B: the way count
+        ways = int(m.group(1)) if m else None
+    return ori, mount, ways
+
+
+def _cat_shape(rec):
+    """Catalogue record -> (orientation, mount, ways), each None where it says nothing."""
+    s = " ".join(str(rec.get(k) or "") for k in ("describe", "componentSpecificationEn", "erpComponentName"))
+    ra, vt = bool(_RA.search(s)), bool(_VT.search(s))
+    sm, th = bool(_SMD.search(s)), bool(_THT.search(s))
+    m = re.search(r"\b(\d+)x(\d+)P\b", s)
+    ways = int(m.group(1)) * int(m.group(2)) if m else None
+    if ways is None:
+        m = re.search(r"(?<![\w.])(\d+)P\b", s)
+        ways = int(m.group(1)) if m else None
+    return ("RA" if ra and not vt else "V" if vt and not ra else None,
+            "SMD" if sm and not th else "THT" if th and not sm else None, ways)
+
+
+def check_connectors(boards=None):
+    """Every J / P part on the built netlists (out/*.net), whose value fab.LCSC maps to a
+    code, against that code's catalogue record. Returns [(board, ref, value, code, why)]."""
+    import fab
+    nets = sorted(f[:-4] for f in os.listdir(os.path.join(HERE, "out")) if f.endswith(".net"))
+    bad, seen = [], {}
+    cover = {"connectors": 0, "orientation": 0, "mount": 0, "ways": 0, "no code": []}
+    for b in boards or nets:
+        s = io.open(os.path.join(HERE, "out", b + ".net"), encoding="utf-8").read()
+        if "(components" not in s:
+            continue
+        for blk in s[s.index("(components"):s.index("(nets")].split("(comp")[1:]:
+            ref = re.search(r'\(ref "([^"]+)"', blk)
+            val = re.search(r'\(value "([^"]*)"', blk)
+            fp = re.search(r'\(footprint "([^"]*)"', blk)
+            if not (ref and val and fp) or not re.match(r"^(J|P)\d", ref.group(1)):
+                continue
+            cover["connectors"] += 1
+            code = fab.LCSC.get(val.group(1))
+            if not code:
+                cover["no code"].append("%s %s (%s)" % (b, ref.group(1), val.group(1)))
+                continue
+            if code not in seen:
+                try:
+                    seen[code] = lookup_full(code)
+                except Exception as e:
+                    print("  %s %s %s -> lookup failed: %r" % (b, ref.group(1), code, e))
+                    seen[code] = None
+                time.sleep(0.15)
+            rec = seen[code]
+            if rec is None:
+                continue
+            fo, fm, fw = _fp_shape(fp.group(1))
+            co, cm, cw = _cat_shape(rec)
+            why = []
+            cover["orientation"] += bool(fo and co)
+            cover["mount"] += bool(fm and cm)
+            cover["ways"] += bool(fw and cw)
+            if fo and co and fo != co:
+                why.append("footprint %s, part %s" % ({"V": "vertical", "RA": "right-angle"}[fo],
+                                                      {"V": "vertical", "RA": "right-angle"}[co]))
+            if fm and cm and fm != cm:
+                why.append("footprint %s, part %s" % (fm, cm))
+            if fw and cw and fw != cw:
+                why.append("footprint %d ways, part %d" % (fw, cw))
+            if why:
+                bad.append((b, ref.group(1), val.group(1), code,
+                            "; ".join(why) + " (" + rec.get("componentModelEn", "") + ")"))
+    # a clean result means nothing unless it says what it could judge
+    print("  connector shapes: %d connector(s) on %d board(s); judged on orientation %d, mount %d, "
+          "ways %d; %d with no fab.LCSC code (not checked)"
+          % (cover["connectors"], len(boards or nets), cover["orientation"], cover["mount"],
+             cover["ways"], len(cover["no code"])))
+    return bad
+
+
 def main(low_stock=200):
     src = io.open(os.path.join(HERE, "fab.py"), encoding="utf-8").read()
     body = re.search(r"^LCSC = \{(.*?)^\}", src, re.S | re.M).group(1)
@@ -219,6 +323,7 @@ def main(low_stock=200):
         time.sleep(0.15)
     print("%d code(s) checked" % len(pairs))
     bad += [(v + " @ " + f, c, why) for v, f, c, why in check_passives()]
+    bad += [("%s %s %s" % (b, r, v), c, why) for b, r, v, c, why in check_connectors()]
     if thin:
         # ⚠ DIVIDE BY THE PER-INSTRUMENT COUNT, WHICH THIS FILE USED TO ASK A HUMAN TO
         # DO. Its own note says "a threshold that does not know the BOM quantity cannot
@@ -255,4 +360,10 @@ def main(low_stock=200):
 
 
 if __name__ == "__main__":
+    if "--connectors" in sys.argv:          # the shape check alone, every built board
+        _b = check_connectors()
+        for _r in _b:
+            print("  %-14s %-5s %-22s %-10s %s" % _r)
+        print("%d connector(s) whose part disagrees with its footprint" % len(_b))
+        sys.exit(1 if _b else 0)
     sys.exit(main())
