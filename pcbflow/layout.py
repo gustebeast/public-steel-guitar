@@ -3822,7 +3822,8 @@ def _inside_many(outline, X, Y, margin):
     return inside & out
 
 
-def _pour_pad_vias(board, specs, via_d=0.6, via_drill=0.3, clr=0.2, hole_gap=0.45, filled=False):
+def _pour_pad_vias(board, specs, via_d=0.6, via_drill=0.3, clr=0.2, hole_gap=0.45, filled=False,
+                   zone_clr=None, outline=None):
     """A via ARRAY in each big land that feeds a current-carrying pour on another layer.
 
     ⚠ ONE VIA IS A CHOKE POINT (output_power, 2026-11-13). auto_pour moved the 5-10 A nets
@@ -3842,7 +3843,17 @@ def _pour_pad_vias(board, specs, via_d=0.6, via_drill=0.3, clr=0.2, hole_gap=0.4
     each land gets at most that budget, LESS the vias already in it, and the shortfall
     against the current's ask is REPORTED -- the rest of the current needs vias beside the
     land, or filled vias, which is a cost decision, not this pass's. An exposed pad is not
-    capped (A12 does not count it either)."""
+    capped (A12 does not count it either).
+
+    ⚠ ...AND WHAT THE LAND CANNOT HOLD SPILLS BESIDE IT (lead ruling, 2026-11-13). Filled
+    vias put a fab cost on the whole board for three lands; a via field just outside the
+    pad costs nothing. A capped land's remaining vias go in one or two rows round the pad's
+    edge (clear of the land, so no paste reaches them; clear of every hole, other nets'
+    pads and tracks, rule areas and the board edge), and a small pour of the land's own net
+    on the land's layer -- the hull of the pad and those vias, priority 9 -- joins them to
+    the pad. That makes the pad, the in-pad vias and the spilled ones ONE piece of copper,
+    which is what A1's parallel-via sum needs: vias each on its own track would be graded
+    one barrel at a time. What still does not fit is REPORTED."""
     import math
     barrel = math.pi * via_drill * 25.0 / 35.0            # quality A1's equivalent width
     pitch = pcbnew.FromMM(max(via_d + clr, via_drill + hole_gap + 0.01))
@@ -3913,13 +3924,136 @@ def _pour_pad_vias(board, specs, via_d=0.6, via_drill=0.3, clr=0.2, hole_gap=0.4
                 board.Add(v)
                 holes.append((x, y, pcbnew.FromMM(via_drill / 2.0)))
                 made += 1
+            spilled = 0
+            if not filled and made < want:
+                spilled = _spill_vias(board, pad, s["net"], want - made, holes, foreign,
+                                      via_d, via_drill, clr, hole_gap, pitch, zone_clr,
+                                      outline=outline)
+                made += spilled
             out.append("%s: %d of %d via(s) in the land to %s on %s (%.2f mm asked, %.2f a barrel)%s"
                        % (key, made, want, s["net"], s["layer"], float(s["width_mm"]), barrel,
-                          "" if cap >= want else " -- CAPPED at %d by the land's paste (A12): "
-                          "%.2f mm of the current still needs vias beside the land, or "
-                          "filled vias (quality.fab via_in_pad)" % (cap, max(0.0, float(
-                              s["width_mm"]) - made * barrel))))
+                          "" if cap >= want else " -- CAPPED at %d by the land's paste (A12), "
+                          "%d spilled beside it%s" % (cap, spilled, "" if made >= want else
+                          ": %.2f mm of the current still has no via -- room round the land, "
+                          "or filled vias (quality.fab via_in_pad)"
+                          % max(0.0, float(s["width_mm"]) - made * barrel))))
     return out
+
+
+def _spill_vias(board, pad, net, n, holes, foreign, via_d, via_drill, clr, hole_gap, pitch,
+                zone_clr=None, rows=2, outline=None):
+    """Up to `n` vias of `net` in rows round `pad`'s edge, joined to it by a small pour on
+    the pad's layer (see _pour_pad_vias). Returns how many it placed; `holes` grows.
+
+    ⚠ THE BOARD EDGE IS NOT DRAWN YET WHEN THIS RUNS (output_power ope_j2): the Edge.Cuts
+    go on after the stitching, so GetBoardEdgesBoundingBox() was the parts' box and every
+    site round three connectors and a 2512 failed the edge test -- "0 spilled", with 41
+    free sites on the finished board. `outline` (board-local mm, _outline_pts) is the
+    edge; the drawn one is only the fallback."""
+    import math
+    bb, c = pad.GetBoundingBox(), pad.GetPosition()
+    r = pcbnew.FromMM(via_d / 2.0)
+    lid = next(l for l in (pcbnew.F_Cu, pcbnew.B_Cu) if pad.IsOnLayer(l))
+    m_edge = pcbnew.FromMM(via_d / 2.0 + 0.5)
+    if outline:
+        poly = [(lambda q: (q.x, q.y))(_to_board(x, y)) for x, y in outline]
+    else:
+        e_ = board.GetBoardEdgesBoundingBox()
+        poly = [(e_.GetLeft(), e_.GetTop()), (e_.GetRight(), e_.GetTop()),
+                (e_.GetRight(), e_.GetBottom()), (e_.GetLeft(), e_.GetBottom())]
+
+    def inside(x, y):
+        hit, near = False, float("inf")
+        for (ax, ay), (bx, by) in zip(poly, poly[1:] + poly[:1]):
+            if (ay > y) != (by > y) and x < ax + (y - ay) * (bx - ax) / (by - ay):
+                hit = not hit
+            dx, dy = bx - ax, by - ay
+            t = max(0.0, min(1.0, ((x - ax) * dx + (y - ay) * dy) / float(dx * dx + dy * dy or 1)))
+            near = min(near, math.hypot(x - ax - t * dx, y - ay - t * dy))
+        return hit and near >= m_edge
+    others = [q for fp in board.GetFootprints() for q in fp.Pads() if q.GetNetname() != net]
+    keep = [z for z in board.Zones() if z.GetIsRuleArea() and z.GetDoNotAllowVias()]
+    sites = []
+    for k in range(rows):
+        off = r + pcbnew.FromMM(0.25) + k * pitch          # via centre beyond the land's box
+        x0, x1 = bb.GetLeft() - off, bb.GetRight() + off
+        y0, y1 = bb.GetTop() - off, bb.GetBottom() + off
+        nx = max(2, int((x1 - x0) // pitch) + 1)
+        ny = max(2, int((y1 - y0) // pitch) + 1)
+        for i in range(nx):
+            x = x0 + i * (x1 - x0) / (nx - 1)
+            sites += [(x, y0), (x, y1)]
+        for j in range(1, ny - 1):
+            y = y0 + j * (y1 - y0) / (ny - 1)
+            sites += [(x0, y), (x1, y)]
+    sites.sort(key=lambda q: math.hypot(q[0] - c.x, q[1] - c.y))
+    placed = []
+    for x, y in sites:
+        if len(placed) >= n:
+            break
+        pt = pcbnew.VECTOR2I(int(x), int(y))
+        if pad.HitTest(pt, int(r + pcbnew.FromMM(0.05))):
+            continue                                       # off the land: no paste drains
+        if not inside(x, y):
+            continue
+        if any(math.hypot(x - hx, y - hy) - hr - pcbnew.FromMM(via_drill / 2.0)
+               < pcbnew.FromMM(hole_gap) for hx, hy, hr in holes):
+            continue
+        if any(q.HitTest(pt, int(r + pcbnew.FromMM(clr))) for q in others
+               if abs(q.GetPosition().x - x) < pcbnew.FromMM(15)
+               and abs(q.GetPosition().y - y) < pcbnew.FromMM(15)):
+            continue
+        if any(tr.GetNetname() != net and tr.HitTest(pt, int(r + pcbnew.FromMM(clr)))
+               for tr in foreign):
+            continue
+        if any(z.Outline().Contains(pt) for z in keep):
+            continue
+        v = pcbnew.PCB_VIA(board)
+        v.SetPosition(pt)
+        v.SetWidth(pcbnew.FromMM(via_d))
+        v.SetDrill(pcbnew.FromMM(via_drill))
+        v.SetNet(pad.GetNet())
+        v.SetViaType(pcbnew.VIATYPE_THROUGH)
+        board.Add(v)
+        holes.append((x, y, pcbnew.FromMM(via_drill / 2.0)))
+        placed.append((x, y))
+    if not placed:
+        return 0
+    # the joining pour: hull of the land's box and each via's ring
+    e = r + pcbnew.FromMM(0.1)
+    pts = [(bb.GetLeft(), bb.GetTop()), (bb.GetRight(), bb.GetTop()),
+           (bb.GetRight(), bb.GetBottom()), (bb.GetLeft(), bb.GetBottom())]
+    for x, y in placed:
+        pts += [(x - e, y - e), (x + e, y - e), (x + e, y + e), (x - e, y + e)]
+    pts = sorted(set(pts))
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+    lo, hi = [], []
+    for q in pts:
+        while len(lo) >= 2 and cross(lo[-2], lo[-1], q) <= 0:
+            lo.pop()
+        lo.append(q)
+    for q in reversed(pts):
+        while len(hi) >= 2 and cross(hi[-2], hi[-1], q) <= 0:
+            hi.pop()
+        hi.append(q)
+    hull = lo[:-1] + hi[:-1]
+    z = pcbnew.ZONE(board)
+    z.SetLayer(lid)
+    z.SetNet(pad.GetNet())
+    z.SetIsFilled(True)
+    z.SetPadConnection(pcbnew.ZONE_CONNECTION_FULL)
+    z.SetIslandRemovalMode(pcbnew.ISLAND_REMOVAL_MODE_ALWAYS)   # see _add_zone
+    z.SetAssignedPriority(9)
+    if zone_clr is not None:
+        z.SetLocalClearance(pcbnew.FromMM(float(zone_clr)))
+    ol = z.Outline()
+    ol.NewOutline()
+    for x, y in hull:
+        ol.Append(int(x), int(y))
+    board.Add(z)
+    return len(placed)
 
 
 def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
@@ -5349,7 +5483,8 @@ def build(stem):
               % (n, "/".join(sorted(stitch))))
     if notes.get("pour_vias"):
         for _l in _pour_pad_vias(board, notes["pour_vias"], filled=bool(
-                (((notes.get("quality") or {}).get("fab")) or {}).get("via_in_pad"))):
+                (((notes.get("quality") or {}).get("fab")) or {}).get("via_in_pad")),
+                zone_clr=notes.get("zone_clearance"), outline=_outline_pts(notes)):
             print("  pour vias: " + _l)
 
 
