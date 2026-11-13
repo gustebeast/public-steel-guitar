@@ -640,7 +640,7 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
             con |= set(pi._refs(r["a"], parts)) | set(pi._refs(r["b"], parts))
         elif r["kind"] == "height":
             H_ = pi.heights() if H_ is None else H_
-            con |= {x for x in parts if (H_.get(parts[x]["fpid"]) or 0.0) > float(r["max_mm"])}
+            con |= {x for x in parts if (pi.part_height(x, parts, H_, notes) or 0.0) > float(r["max_mm"])}
     # ...but only a BIG one, and never a tight loop's member: a test pad's `access`, a crystal's or an
     # ESD clamp's noise `apart` (auto_floorplan) leave those satellites (optical, output_panel)
     tnets = {nm for r in rules if r["kind"] == "tight" for nm in r["nets"]}
@@ -848,7 +848,7 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
         H_z = pi.heights() if H_z is None else H_z
         inside = pi._inside(np.asarray(r["poly"], float), XY).reshape(G.H, G.W)
         for ref in parts:
-            if ref in fixed or (H_z.get(parts[ref]["fpid"]) or 0.0) <= float(r["max_mm"]):
+            if ref in fixed or (pi.part_height(ref, parts, H_z, notes) or 0.0) <= float(r["max_mm"]):
                 continue
             inreg[ref] = inside if ref not in inreg else (inreg[ref] | inside)
     for ref in fixed:
