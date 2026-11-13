@@ -90,7 +90,8 @@ UI_RIBBON = ("SW_A", "SW_B", "SW_C", "SW_D", "SW_PUSH", "ENC_A", "ENC_B",
 #   LIGHTS_LINK  motor_ctrl J7 <-> pi_cap J4          4-way: fused 24 V for the lights out,
 #                the two throws in
 #   PI_5V_LINK   motor_ctrl J5 <-> pi_cap J2          6-way PH: the Pi's 5 V on two contacts
-#   BRAIN_LINK   output_board J10 <-> brain board     8-way: 5-20 V in, enable / mode out
+#   BRAIN_POWER  output_board J10 <-> brain board     VH 2-way: 5-20 V, up to 10 A
+#   BRAIN_SIGNAL output_board J11 <-> brain board     6-way XH: enable / mode out, button / PG in
 #
 # Each is the standard at the top of this file: power, GND, data, data, and a 6-way adds
 # GND, power on the far end.
@@ -103,13 +104,19 @@ PI_5V_LINK = ("V5", "GND", NC, NC, "GND", "V5")
 LED_DROP = ("V24", "GND", "SCK", "SDT")
 # a two-way power lead (output_panel J9 -> the optical board's J2)
 POWER_PAIR = ("V24", "GND")
-# BRAIN_LINK (direct-drive instrument, 2026-11-12): output_board J10 -> the brain board.
-# 8-way XH: the chargers' OR-ed 5-20 V (VIN) on two contacts each end -- the boost that makes
-# the 24 V lives on the brain board, beside what it feeds -- and four 3.3 V logic ways:
-# BRAIN_EN and LOW_PWR from the output board's MCU (it reads the PD contracts and picks the
-# mode before anything big starts), PWR_BTN and BRAIN_PG back from the brain board, open
-# drain, pulled up at the output board.
-BRAIN_LINK = ("VIN", "GND", "BRAIN_EN", "LOW_PWR", "PWR_BTN", "BRAIN_PG", "GND", "VIN")
+# The brain board's feed (direct-drive instrument, 2026-11-13): TWO leads, output_board -> brain.
+# BRAIN_POWER  J10, JST VH 2-way (3.96 mm, 10 A a contact, 18 AWG): the chargers' OR-ed
+#   5-20 V. ⚠ NOT XH: sized from the worst case, not the budget. PD caps CURRENT -- 3 A below
+#   20 V, 5 A only at 20 V on a 5 A cable -- so one port is <= 5 A, but two ports at the same
+#   voltage share through the ideal diodes: 6.5 A from two 65 W chargers, up to 10 A from two
+#   5 A contracts. XH is 3 A a contract (lead, 2026-11-13). The boost that turns it into
+#   24 V is on the brain board, beside what it feeds.
+# BRAIN_SIGNAL J11, 6-way XH, NO POWER WAY: BRAIN_EN and LOW_PWR from the output board's MCU
+#   (it reads the contracts and picks the mode before anything big starts), PWR_BTN and
+#   BRAIN_PG back from the brain board, open drain, pulled up at the output board. Ground at
+#   both ends, so a reversed lead puts ground on ground.
+BRAIN_POWER = ("VIN", "GND")
+BRAIN_SIGNAL = ("GND", "BRAIN_EN", "LOW_PWR", "PWR_BTN", "BRAIN_PG", "GND")
 
 
 def check_ways(ways, power, ground=("GND",), where=""):

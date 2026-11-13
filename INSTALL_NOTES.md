@@ -2028,3 +2028,11 @@ The plate-down print left each head pocket's roof as a bean-shaped bridge with n
 
 - At 329–331 mm (strings 4, 6 and 10), OCCT's thread boolean returned a valid solid of the right volume whose flanks were stacked cylinders. It passed every check and drew as a plain rod.
 - `direct_bench._screw` now asks for helical (B-spline) flanks. If no nearby length gives them, it cuts a longer screw from outside OCCT's bad band (~312–352 mm) and saws it to length.
+
+## Output board → brain board: two leads, not one (2026-11-13)
+
+- **J10 is a JST VH 2-way (3.96 mm), not XH.** It carries the USB chargers' 5–20 V to the brain board, where the 24 V boost now lives.
+  - Crimp it with **18 AWG** and VH contacts (SVH-21T-P1.1). The XH/PH die does not fit VH contacts, so it needs its own die.
+  - Why not XH: two chargers at the same voltage share current through the ideal diodes. Two 65 W chargers give 6.5 A; two 5 A contracts give up to 10 A. XH is rated 3 A per contact. VH is 10 A.
+- **J11 is a 6-way XH carrying only logic**: GND, BRAIN_EN, LOW_PWR, PWR_BTN, BRAIN_PG, GND. It has no power way, so a reversed lead puts ground on ground.
+- Pinouts are in `elec/harness.py` as `BRAIN_POWER` and `BRAIN_SIGNAL`.
