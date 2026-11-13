@@ -1752,7 +1752,7 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
 ### Direct bench: stainless anchor plate (2026-11-09)
 - The spring anchor is now laser-cut 304 stainless, 4 mm, from the same JLCCNC sheet-metal order as the nut plates. It is bent into a tray: top, bottom and both ends folded 16 mm toward +X. It spans rail to rail with 0.5 mm clearance each side.
 - Why: it carries about 730 N from the springs, all the time. A printed wall would sag about 7 mm and then creep.
-- Mount: four M4 x 10 button heads, two per end fold, at z -16 and z -45.4. Each goes through the rail's inner skin into an M4 tapped hole in the A-36 wall bar. Drill and tap the bar to match before sliding it into the rail. The rail's inner skin gets a matching Ø4.5 hole.
+- Mount (SUPERSEDED 2026-11-12: the plate now hangs on four Ø5 dowels, no screws; see "Installing the guide rods and the anchor plate" below): four M4 x 10 button heads, two per end fold, at z -16 and z -45.4. Each goes through the rail's inner skin into an M4 tapped hole in the A-36 wall bar. Drill and tap the bar to match before sliding it into the rail. The rail's inner skin gets a matching Ø4.5 hole.
 - Order of assembly:
   1. Bolt the plate in before the drives go in. The 2.5 mm key reaches each bolt along Y, between the spring rows.
   2. Then put each anchor plug through from +X with its lugs along Y, and turn it a quarter to Z.
@@ -1870,9 +1870,9 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
 
 ## Direct drive: guide rod held at both ends, no screw sleeves (2026-11-12)
 
-- **Guide rod:** McMaster 89535K84, 3/16" 304 stainless. One 6 ft length ($7.45) cuts 10 rods at **178.8 mm** (updated with the endplate and the 30 mm yoke below), all the same length. Saw it and deburr the ends.
-  - It sits 15 mm off the screw axis at 300°, the same on every string.
-  - Its −X end goes in a blind seat in a boss on the anchor plug, the +X end in a blind seat in the endplate. It is trapped between the two seats, with no press fit.
+- **Guide rod:** McMaster 89535K84, 3/16" 304 stainless. Rods are **184.8 mm**, all the same length, so one 6 ft length ($7.45) now cuts 9; buy two lengths per instrument (see "Installing the guide rods and the anchor plate" below). Saw it and deburr the ends.
+  - It sits 15.35 mm off the screw axis at 325°, the same on every string (moved 2026-11-12, see below).
+  - (Superseded 2026-11-12: it now slides in from −X through the anchor plate and the plug; see below.)
 - **Nothing on the nut touches the rod.** The collar (now **PCTG**, unfilled, so glass fibres don't scour the stainless) has a tab with a radial slot. The slot is a close fit across to stop rotation, with ±1 mm free along the radius, so a rod a little out of line never pushes the nut off the screw axis.
 - **Lubrication:** PTFE dry-film spray on the rod at assembly. No grease or oil.
 - **Sleeves removed.** The plug and collar never turn; the screw turns through Ø10 clearance holes in both. The spring is always in tension, so it stays straight and clear of the screw.
@@ -1921,3 +1921,49 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
   4. Raise the inserts to clamp it.
   5. Let the motor pull the string up to pitch.
 - **Why the slack doesn't matter:** whatever slack the hand leaves is taken up in travel. It only moves where open pitch lands, and the spring's help changes by 1.72 N per mm of that.
+
+## Direct drive: installing the guide rods and the anchor plate (2026-11-12)
+
+### Guide rods: in last, from −X
+- **Position:** 15.35 mm off the screw axis at **325°**, on every string. That is 1.6 mm from the rod's own spring-end sleeve, as far as it can get from the neighbours' collars (worst gap 4.5 mm, was 3.4 mm at 300°), with the collar's tab 7 mm above the floor. 290° pushed the plug's boss into the next plug.
+- **Path:** the anchor plate has a Ø5.36 hole on each rod's line, and the plug's rod boss is now a through hole.
+- **Install:** after the endplate is screwed on and the drives are in, but before the motors, push each rod in from behind the anchor plate. It goes through the plate, the plug, and the collar's slot, then home into its blind seat in the endplate.
+  - Three crush ribs over the last 4 mm of that seat (0.15 mm bite) grip the tip, so it stays put. The only load along the rod is the collar tab's ~2 N of friction.
+  - No rod has to find a hidden hole, and the endplate never has to be offered up onto ten rod tips at once.
+- **Removal:** the −X end stands 2 mm proud of the plate's −X face, clear of the housing and its ears (now at 155° and 275°, moved so the rod boss clears the next string's ear). Pull it with pliers.
+- **Length:** 184.8 mm, so 9 per 6 ft length (was 10). Two lengths per instrument, $7.45 more.
+
+### Anchor plate: drops onto pins, no screws
+- **No fasteners at all.** The four M4 x 10 bolts and the M4 tapping in the wall bars are gone.
+  - The 2.5 mm key could not reach those bolts along Y past the springs, and there are to be no screws through the outer walls.
+- **Pins:** each wall bar gets two Ø5 holes drilled straight through along Y (no tap), at x −184.2 and z −24.6 / −45.4. Use the printed drill jig.
+  - A Ø5 x 12 hardened dowel goes in from inside the empty body, through a Ø5 hole in the rail's inner skin that grips it, about 4.5 mm into the bar. 1 mm stands proud of the anchor fold's inner face.
+  - Pin SKU still to read (McMaster's hardened metric dowels, 91595A series).
+  - Use **hardened**: 0.5 kN per pin over ~4.5 mm of lever is ~180 MPa of bending, too much for 18-8.
+- **Plate:** each end fold has an open-topped slot (5.4 wide, round bottom) that drops over its two pins. The top and bottom flaps stop at the end folds (corner reliefs in the flat pattern).
+- **Load path:** the strings and springs pull the plate +X (~2 kN in all). The slot's −X edge bears on the pins, steel on steel into the bars. With the strings off, the UI and the deck above keep it from lifting (0.5 mm under the UI).
+- **Order:**
+  1. Slide the bars in from +X.
+  2. Push the four pins in.
+  3. Drop the anchor plate onto the pins.
+  4. Fit each plug, housing and screw.
+  5. Screw on the endplate.
+  6. Push the guide rods in from −X.
+  7. Fit the motors.
+  8. Fit the UI and deck.
+
+## Direct drive: grip sleeves replace the bent spring ends (2026-11-12)
+
+- **No more tangs.** Each spring is now just cut to 43 coils, with no bending and no heating. The tang holes in the stop flanges are gone.
+- **The grip sleeve.** A printed PETG-GF sleeve, OD 22.45 mm, goes over each end's four grip coils, two per spring.
+  - Its bore carries the outer half of the thread. The post's groove holds the inner half of the wire and the sleeve's groove the outer half, so the wire is trapped all the way round.
+- **Fitting:**
+  1. Screw the spring's end coils onto the post.
+  2. Screw the sleeve on over them until it bottoms on the stop flange.
+  3. Snug it by hand. The 2.5 mm key through its cross-hole works as a tommy bar.
+- **Detent:** a ring of 24 sawtooth teeth, 0.6 mm high, sits between the sleeve's end face and the flange.
+  - They click past as the sleeve goes on (the gentle side faces the tightening direction).
+  - The steep 60° side resists it backing off as the jam relaxes.
+  - To remove it, twist firmly: 60° is steep enough to hold against the spring's ~0.03 N·m, not so steep that it locks for good.
+- **Flanges:** both stop flanges (on the plug and on the collar) grow to Ø22.45 to carry the teeth.
+- **Clearance:** the sleeve is 1.74 mm from its own guide rod (rod at 15.35 mm, 325°). Neighbouring strings' sleeves and plugs are clear.
