@@ -223,7 +223,10 @@ def refresh():
             return False
         home().mkdir(parents=True, exist_ok=True)
         log = open(home() / "update.log", "ab")
-        flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW             if os.name == "nt" else 0
+        # CREATE_NO_WINDOW, NOT DETACHED_PROCESS: Windows ignores NO_WINDOW beside DETACHED, and a
+        # detached process has no console, so every console child it runs (cargo, rustc, build
+        # scripts) opened a VISIBLE console of its own. A hidden console is inherited instead.
+        flags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
         subprocess.Popen([sys.executable, "-m", "cadkit.web.desktop", "--update"], cwd=str(SRC.parents[1]),
                          stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, creationflags=flags,
                          close_fds=True)
@@ -331,7 +334,8 @@ def build():
         print("cadkit desktop: with DLSS Ray Reconstruction (NVIDIA's SDK found; DESK_DLSS=0 turns it off)")
     r = subprocess.run([cargo, "build", "--release", "--manifest-path", str(SRC / "Cargo.toml"),
                         "--target-dir", str(home() / "target")] + (["--features", "dlss"] if dlss else []),
-                       env={**os.environ, **extra, **(dlss[1] if dlss else {})})
+                       env={**os.environ, **extra, **(dlss[1] if dlss else {})},
+                       creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
     if r.returncode != 0:
         raise SystemExit("cadkit desktop: the build failed")
     if dlss:
