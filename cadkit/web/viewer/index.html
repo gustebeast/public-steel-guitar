@@ -1186,7 +1186,9 @@
     return [sp, s0 < 0 ? -s1 : s1];
   }
   // the dimension between two entities: {big, lines[], a, b} with a-b the dimension line
-  function between(ea, eb) {
+  // `centres`: the other reading -- a circle by its centre, a cylinder or torus by its axis,
+  // a sphere by its centre -- which is what the eye expects of two coaxial arcs
+  function between(ea, eb, centres = false) {
     let A = refOf(ea), B = refOf(eb), flip = false;
     const order = { P: 0, L: 1, PL: 2 };
     if (order[A.t] > order[B.t]) { [A, B] = [B, A]; flip = true; }
@@ -1201,7 +1203,7 @@
     const straight = e => e.kind === 'line' || e.kind === 'cyl';
     const skew = straight(ea) && straight(eb) && !para(A.d, B.d);       // that is an angle
     const pl = ea.kind === 'plane' ? ea : eb.kind === 'plane' ? eb : null;
-    const solid = pl && [ea, eb].find(e => e.kind === 'sphere' || e.kind === 'torus'
+    const solid = !centres && pl && [ea, eb].find(e => e.kind === 'sphere' || e.kind === 'torus'
       || (e.kind === 'cyl' && Math.abs(e.d.dot(pl.n)) < 1e-5));
     if (solid) {
       const [sp, gap] = reachTo(solid, pl);
@@ -1209,7 +1211,7 @@
       out.b = sp.clone().sub(pl.n.clone().multiplyScalar(sp.clone().sub(pl.p).dot(pl.n)));
       out.lines.push(gap >= 0 ? `nearest point of the ${NAMES[solid.kind]} to the plane, square to it`
         : `the ${NAMES[solid.kind]} crosses the plane: it reaches this far past it`);
-    } else if (round && !skew && nearestOn(ea, ea.pick) && nearestOn(eb, eb.pick)) {
+    } else if (round && !centres && !skew && nearestOn(ea, ea.pick) && nearestOn(eb, eb.pick)) {
       // each side's nearest point to the other in turn, until neither moves
       let pa = nearestOn(ea, eb.pick), pb = nearestOn(eb, pa);
       for (let i = 0; i < 200; i++) {
@@ -1236,7 +1238,7 @@
       const s = A.p.clone().sub(B.p).dot(B.n);
       out.big = `${f3(Math.abs(s))} mm`; out.a = A.p; out.b = A.p.clone().sub(B.n.clone().multiplyScalar(s));
       out.lines.push(`${A.what || 'point'} to plane, square to it`);
-      if (arcA) {
+      if (arcA && !centres) {
         const dist = p => Math.abs(p.clone().sub(B.p).dot(B.n)), near = nearestOnArc(arcA, dist);
         out.lines[0] = 'nearest edge of the circle to the plane, square to it';
         out.big = `${f3(dist(near))} mm`; out.a = near;
@@ -1284,9 +1286,24 @@
       out.lines.splice(1, 0, `ΔX ${f3(Math.abs(d.x))}  ΔY ${f3(Math.abs(d.y))}  ΔZ ${f3(Math.abs(d.z))}`);
     }
     const pp = ea.pick.distanceTo(eb.pick);
+    out.tag = centres ? 'centres and axes' : 'nearest points';
     if (!(ea.kind === 'point' && eb.kind === 'point')) out.lines.push(`<span class="dim">between the two picked points ${f3(pp)}</span>`);
     if (!out.a) { out.a = ea.pick; out.b = eb.pick; }
     return out;
+  }
+
+  // EVERY READING OF A PAIR, paged in the readout (user, 2026-11-12: two coaxial arcs are
+  // measured centre to centre by the eye, nearest points by default): the nearest points first,
+  // then centres and axes when a round thing makes that a different figure
+  function readings(ea, eb) {
+    const R = [between(ea, eb)];
+    const ROUND = ['circle', 'sphere', 'cyl', 'torus'];
+    if (ROUND.includes(ea.kind) || ROUND.includes(eb.kind)) {
+      const c = between(ea, eb, true);
+      const same = c.big === R[0].big && c.a.distanceTo(R[0].a) < 1e-6 && c.b.distanceTo(R[0].b) < 1e-6;
+      if (!same) R.push(c);
+    }
+    return R;
   }
 
   // drawing the picks
@@ -1332,7 +1349,7 @@
     M.parts.add(g);
     return g;
   }
-  const meas = { A: null, B: null, hover: null, objs: { A: null, B: null, hover: null, dim: null }, mid: null };
+  const meas = { A: null, B: null, hover: null, objs: { A: null, B: null, hover: null, dim: null }, mid: null, opt: 0 };
   function drop(k) { const o = meas.objs[k]; if (o) { o.removeFromParent(); meas.objs[k] = null; } }
   function clearMeasure() {
     meas.A = meas.B = meas.hover = null; meas.mid = null;
@@ -1358,7 +1375,10 @@
     else if (!meas.A) h += '<div class="dim">click a corner, an edge or a face — then a second one for the distance or angle between them</div>';
     else {
       if (meas.A && meas.B) {
-        const r = between(meas.A, meas.B);
+        const R = readings(meas.A, meas.B), r = R[meas.opt % R.length];
+        if (R.length > 1) h += `<div class="bar" style="margin:2px 0 4px"><div class="btn" id="mprev">‹<span class="k">←</span></div>` +
+          `<span class="dim" style="align-self:center">${r.tag} · ${meas.opt % R.length + 1} of ${R.length}</span>` +
+          `<div class="btn" id="mnext">›<span class="k">→</span></div></div>`;
         h += `<div class="big">${r.big}</div><div class="v">${r.lines.join('<br>')}</div>`;
       }
       h += `<table style="margin-top:4px">${row(meas.A, 'a', 'A')}${row(meas.B, 'b', 'B')}</table>`;
@@ -1367,6 +1387,9 @@
     if (meas.A) h += '<div class="bar" style="margin-top:6px"><div class="btn" id="mclear">clear<span class="k">esc</span></div></div>';
     el.innerHTML = h;
     const c = $('mclear'); if (c) c.onclick = clearMeasure;
+    const pv = $('mprev'), nx = $('mnext');
+    if (pv) pv.onclick = () => pageMeasure(-1);
+    if (nx) nx.onclick = () => pageMeasure(1);
   }
   function measureClick(e) {
     if (!e) return;
@@ -1374,16 +1397,28 @@
       drop('A'); drop('B'); drop('dim'); meas.B = null; meas.mid = null; $('dimlabel').style.display = 'none';
       meas.A = e; meas.objs.A = entityObject(e, 'a');
     } else {
-      meas.B = e; meas.objs.B = entityObject(e, 'b');
-      const r = between(meas.A, meas.B);
-      if (r.a.distanceTo(r.b) > 1e-6) {
-        meas.objs.dim = fatLine([r.a, r.b], dimMat); M.parts.add(meas.objs.dim);
-        meas.mid = r.a.clone().lerp(r.b, 0.5);
-      } else meas.mid = r.a.clone();
-      $('dimlabel').textContent = r.big;
+      meas.B = e; meas.objs.B = entityObject(e, 'b'); meas.opt = 0;
+      drawDim();
     }
     setHover(null);
     showReadout();
+  }
+  function drawDim() {
+    drop('dim');
+    const R = readings(meas.A, meas.B), r = R[meas.opt % R.length];
+    if (r.a.distanceTo(r.b) > 1e-6) {
+      meas.objs.dim = fatLine([r.a, r.b], dimMat); M.parts.add(meas.objs.dim);
+      meas.mid = r.a.clone().lerp(r.b, 0.5);
+    } else meas.mid = r.a.clone();
+    $('dimlabel').textContent = r.big;
+  }
+  function pageMeasure(step) {
+    if (!meas.A || !meas.B) return false;
+    const n = readings(meas.A, meas.B).length;
+    if (n < 2) return false;
+    meas.opt = ((meas.opt + step) % n + n) % n;
+    drawDim(); showReadout();
+    return true;
   }
   function setMode(m) {
     mode = m;
@@ -1421,6 +1456,8 @@
       return;
     }
     if (e.key === 'Escape') { mode === 'measure' ? clearMeasure() : clearSelection(); return; }
+    if (mode === 'measure' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')
+        && pageMeasure(e.key === 'ArrowLeft' ? -1 : 1)) { e.preventDefault(); return; }
     // (letters either case: caps lock on is not a reason for a key to do nothing)
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
     if (!e.repeat && !e.ctrlKey && !e.metaKey) switch (k) {
