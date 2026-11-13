@@ -3822,7 +3822,7 @@ def _inside_many(outline, X, Y, margin):
     return inside & out
 
 
-def _pour_pad_vias(board, specs, via_d=0.6, via_drill=0.3, clr=0.2, hole_gap=0.45):
+def _pour_pad_vias(board, specs, via_d=0.6, via_drill=0.3, clr=0.2, hole_gap=0.45, filled=False):
     """A via ARRAY in each big land that feeds a current-carrying pour on another layer.
 
     ⚠ ONE VIA IS A CHOKE POINT (output_power, 2026-11-13). auto_pour moved the 5-10 A nets
@@ -3833,7 +3833,16 @@ def _pour_pad_vias(board, specs, via_d=0.6, via_drill=0.3, clr=0.2, hole_gap=0.4
     list that is on ANOTHER copper layer, SMD, and big enough to give up a via's paste (the
     stitcher's 4 mm2 and via + 0.6 mm tests) gets ceil(width / barrel) vias in a grid, nearest
     the centre first, each clear of every hole by `hole_gap` and of other nets' tracks and
-    vias. A land too small is left to the router and REPORTED. Returns the report lines."""
+    vias. A land too small is left to the router and REPORTED. Returns the report lines.
+
+    ⚠ ...AND NO MORE THAN THE PASTE CAN FEED. quality A12 lets open barrels in a land hold a
+    quarter of the paste a 0.12 mm stencil prints on it (0.113 mm3 a 0.3 mm via through
+    1.6 mm): about one via per 3.8 mm2. The first arrays put 6 vias in 2512 lands and A12
+    failed them all. Unless `filled` (quality.fab via_in_pad: filled-and-capped vias ordered),
+    each land gets at most that budget, LESS the vias already in it, and the shortfall
+    against the current's ask is REPORTED -- the rest of the current needs vias beside the
+    land, or filled vias, which is a cost decision, not this pass's. An exposed pad is not
+    capped (A12 does not count it either)."""
     import math
     barrel = math.pi * via_drill * 25.0 / 35.0            # quality A1's equivalent width
     pitch = pcbnew.FromMM(max(via_d + clr, via_drill + hole_gap + 0.01))
@@ -3848,6 +3857,8 @@ def _pour_pad_vias(board, specs, via_d=0.6, via_drill=0.3, clr=0.2, hole_gap=0.4
             holes.append((tr.GetPosition().x, tr.GetPosition().y, tr.GetDrillValue() / 2.0))
         foreign.append(tr)
     fps = {fp.GetReference(): fp for fp in board.GetFootprints()}
+    thick = pcbnew.ToMM(board.GetDesignSettings().GetBoardThickness()) or 1.6
+    one = math.pi * (via_drill / 2.0) ** 2 * thick         # mm3 one barrel holds
     out = []
     for s in specs:
         want = int(math.ceil(float(s["width_mm"]) / barrel - 1e-9))
@@ -3863,6 +3874,15 @@ def _pour_pad_vias(board, specs, via_d=0.6, via_drill=0.3, clr=0.2, hole_gap=0.4
                 out.append("%s: land %.1f x %.1f mm too small for a via array -- the router's via "
                            "is its only path to %s on %s" % (key, w, h, s["net"], s["layer"]))
                 continue
+            cap = want
+            ep = re.search(r"\dEP|_EP\d|-EP", fp.GetFPIDAsString().split(":")[-1])
+            if not filled and not ep:
+                sz = pad.GetSize()
+                paste = pcbnew.ToMM(sz.x) * pcbnew.ToMM(sz.y) * 0.12
+                have = sum(math.pi * (pcbnew.ToMM(t.GetDrillValue()) / 2.0) ** 2 * thick
+                           for t in board.GetTracks() if t.GetClass() == "PCB_VIA"
+                           and pad.HitTest(t.GetPosition(), int(t.GetDrillValue() / 2)))
+                cap = max(0, int(math.floor((0.25 * paste - have) / one + 1e-9)))
             bb, c = pad.GetBoundingBox(), pad.GetPosition()
             m = pcbnew.FromMM(via_d / 2.0 + 0.1)
             nx = max(1, int((bb.GetWidth() - 2 * m) // pitch) + 1)
@@ -3873,7 +3893,7 @@ def _pour_pad_vias(board, specs, via_d=0.6, via_drill=0.3, clr=0.2, hole_gap=0.4
                            key=lambda q: math.hypot(q[0] - c.x, q[1] - c.y))
             made = 0
             for x, y in sites:
-                if made >= want:
+                if made >= min(want, cap):
                     break
                 pt = pcbnew.VECTOR2I(int(x), int(y))
                 if not pad.HitTest(pt, 0):     # the grid is inset by m in the land's box
@@ -3893,8 +3913,12 @@ def _pour_pad_vias(board, specs, via_d=0.6, via_drill=0.3, clr=0.2, hole_gap=0.4
                 board.Add(v)
                 holes.append((x, y, pcbnew.FromMM(via_drill / 2.0)))
                 made += 1
-            out.append("%s: %d of %d via(s) in the land to %s on %s (%.2f mm asked, %.2f a barrel)"
-                       % (key, made, want, s["net"], s["layer"], float(s["width_mm"]), barrel))
+            out.append("%s: %d of %d via(s) in the land to %s on %s (%.2f mm asked, %.2f a barrel)%s"
+                       % (key, made, want, s["net"], s["layer"], float(s["width_mm"]), barrel,
+                          "" if cap >= want else " -- CAPPED at %d by the land's paste (A12): "
+                          "%.2f mm of the current still needs vias beside the land, or "
+                          "filled vias (quality.fab via_in_pad)" % (cap, max(0.0, float(
+                              s["width_mm"]) - made * barrel))))
     return out
 
 
@@ -5324,7 +5348,8 @@ def build(stem):
         print("  stitched %d pad(s) on %s straight to the plane"
               % (n, "/".join(sorted(stitch))))
     if notes.get("pour_vias"):
-        for _l in _pour_pad_vias(board, notes["pour_vias"]):
+        for _l in _pour_pad_vias(board, notes["pour_vias"], filled=bool(
+                (((notes.get("quality") or {}).get("fab")) or {}).get("via_in_pad"))):
             print("  pour vias: " + _l)
 
 
