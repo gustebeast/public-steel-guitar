@@ -1099,6 +1099,7 @@ system afterwards; the board that exposed it is then spent, and the next check i
 | 2b | lever_sensor, run 1 with face -> face_at only | NO ROOM: U3, its rules named | promoted parts placed FIRST took the middle (U2, promoted only for height) |
 | 2c | same, promoted parts in area order | stopped: U2 1.75 inside the cap's 1.5 zone | place_init never treated a `height` zone as closed to a taller part |
 | 2d | same, height zones forbidden to taller parts | **routed: 0 unconnected, 10 violations (9 silk, J1/J2 courtyards -- the hand board's declared pair), 2 FAIL (A17 labels)** | (cold lever_sensor places and routes) |
+| 4 | fret_led_mid (97 parts, 210.8 x 70.4, 4L; 60 LEDs + 4 seam pogos fixed from the CAD, 33 free) | **no stops; 33/33 placed (28 satellites at their pins), drivers found the +Y band unasked; finish 4 unconnected (+14V5, three LED returns), 0 violations; 2 FAIL (M32 J13/J14: the hand board fails it the same way -- a netlist finding)**; 31 min (score 640 s, finish 1210 s: ownroute 629, close_last 501) | the CAD fixes an LED's position but not its turn: they kept 0 and a zone's returns left away from their driver; close_last's second attempt re-searched the same four gaps (236 s, 4 -> 8, put back) |
 
 Fixed after them:
 * `panel`: `face` is a distance (>= 0, refused otherwise), `face_at` takes the coordinate;

@@ -615,8 +615,18 @@ def finish(stem, rounds=1, keep_route=False):
                 print("  close_last did not run (%s)" % (exc,))
                 _n3, _v3 = best_n, best_v + 1
             if (_v3, _n3) < (best_v, best_n):
+                _fresh = set(_nets3) - set(nets)
                 best_n, best_v, nets = _n3, _v3, _nets3
                 if not best_n or best_v > _v0:
+                    break
+                # ⚠ NO RETRY ON THE SAME GAPS (fret_led_mid holdout 4, 2026-11-12): the second
+                # attempt is for a net the first one OPENED (optical's islanded decap pad,
+                # below). When every net still open was open before this attempt, the retry
+                # walks the same gaps through the same rip-up loops: 236 s there for 4 -> 8,
+                # put back; motor_ctrl f27 3 -> 3, put back.
+                if not _fresh:
+                    print("  close_last: %d still open, every one open before this attempt -- "
+                          "no retry (it would search the same gaps)" % best_n)
                     break
                 # ⚠ AND AGAIN FROM THE BETTER BOARD (optical, 2026-11-05). A decap's GND pad
                 # was fed by the pour; the +3V3D closures cut the pour round it, the refill
