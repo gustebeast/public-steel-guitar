@@ -106,6 +106,7 @@ HEIGHT = {
     "JST_PH_S6B-PH-SM4-TB_1x06-1MP_P2.00mm_Horizontal": 5.5,
     "JST_PH_S8B-PH-SM4-TB_1x08-1MP_P2.00mm_Horizontal": 5.5,
     "JST_PH_S4B-PH-K_1x04_P2.00mm_Horizontal": 4.85,           # cadkit.pcb PH_THT_SIDE_H
+    "Kangshen_DSHP01TSGER": 2.3,      # slide DIP: body 5.4 x 2.88 x 2.3 (drawing DSHP-001-S-A)
     "JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal": 6.0,   # JST eXH p.6 (was 5.75,
                                                                # the TOP-entry part's depth)
     "JST_XH_S4B-XH-A_1x04_P2.50mm_Horizontal": 6.1,            # JST eXH p.5, side entry THT

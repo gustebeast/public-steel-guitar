@@ -1083,6 +1083,32 @@ Tried and dropped on the way (each measured on all three boards):
 * Machine time per full flow: place_init ~30 s, score 4-7.5 min, place_cells ~10 min when
   there are cells, finish 7-12 min. A board is about 20-30 min end to end, unattended.
 
+## Holdouts (cold intents on boards never used to tune the system, 2026-11-12)
+
+A holdout is written from the netlist and the CAD's mechanical facts only, run once on a
+committed hash with no fixes, and reported as it comes out. A finding is fixed in the
+system afterwards; the board that exposed it is then spent, and the next check is a new board.
+
+| run | board | result | what it exposed |
+|---|---|---|---|
+| 1 | lever_sensor (47 parts, 45 x 21.9) | layout refused: U4 / J1 / J2 overlap | `panel.face` read as a coordinate (-19.46) put J1/J2 off the +X edge; panel never turned the part (mouth +Y on a -X panel); nothing checked a panel part against the outline |
+| 1b | same, authoring corrected | layout refused: SW1 no room, on the crystal corner | a big constrained satellite (SW1: access + apart) seated after the board filled; NO ROOM reached layout overlapping |
+| 2 | same, run 1's intent | intent refused at once, naming J1's negative face | (the fix working) |
+| 3 | ui_board (13 parts, 121 x 32) | stopped before layout: SW1 0.24 inside a hole keep-out | the keep-out was the author's guess against a CAD-fixed part; the stop named rule, part and mm |
+
+Fixed after them:
+* `panel`: `face` is a distance (>= 0, refused otherwise), `face_at` takes the coordinate;
+  without a `rot` rule the part turns its mouth (the body's side away from its SIGNAL pads) to
+  the edge (`place_intent.panel_rot`; reproduces all six output_panel hand turns, and found
+  motor_ctrl's J2/J6 sideways in every from-scratch run -- hand board 90, flow 0).
+* the flow stops BEFORE layout on NO ROOM (the part and every rule naming it) and on a broken
+  hard mechanical rule (outline incl. a panel part's pads, keepout, hole, fixed, height).
+* a satellite that is big (>= SAT_BIG_MM2 courtyard), carries an access / apart / height
+  constraint and is in no tight loop is placed as a part, before any satellite is seated.
+* `keepout` takes `except` (optical's -Y face rule named J1/J2 in its text and nowhere else).
+* board_geom HEIGHT: DSHP01 2.3.
+Optical and output_panel place_init byte-identical across all of it.
+
 ## Rules carried over
 
 * Keep every run to minutes; no hour-plus sweeps (ROUTER.md, route-time notes).

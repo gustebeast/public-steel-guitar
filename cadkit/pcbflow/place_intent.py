@@ -20,12 +20,18 @@ re-layout can tell which rules still hold when the thing they came from changes.
 MECHANICAL (from the CAD -- a fresh board is mostly these)
   outline                          every courtyard inside Edge.Cuts (panel parts excepted)
   hole      xy d keepout           a mounting hole and its head's clearance: no courtyard
-  keepout   poly [side]            no courtyard inside (deck wall, standoff, rib, cable run)
+  keepout   poly [side] [except]   no courtyard inside (deck wall, standoff, rib, cable run);
+                                   `except` names parts the CAD puts there on purpose
   height    poly max_mm            no part taller than max_mm inside (lid, deck, strings)
-  panel     ref edge at face [overhang] [anchor]
+  panel     ref edge at face|face_at [overhang] [anchor]
                                    a connector whose MOUTH the panel fixes: the body front
                                    (F.Fab extent toward `edge`) at face + overhang, its
-                                   centre `at` along the edge
+                                   centre `at` along the edge. `face` is a DISTANCE out from
+                                   the board centre along `edge` (>= 0: the -X face of a 45 mm
+                                   board is 22.5, not -22.5); `face_at` is the same face as a
+                                   board coordinate. Unless a `rot` rule says otherwise the
+                                   part is turned so its mouth -- the body's far side from its
+                                   pads -- points at the edge
   mate      ref dir length [clear]
                                    the plug / cable insertion stroke as a swept keep-out:
                                    from the part's body along dir (+X, -X, +Y, -Y; L+X ... in
@@ -217,6 +223,45 @@ def _refs(arg, parts):
     return list(arg)
 
 
+def panel_face(rule):
+    """A panel rule's face as a distance along its edge's outward direction.
+
+    ⚠ `face` IS A DISTANCE, NOT A COORDINATE (lever_sensor holdout 1, 2026-11-12): written cold
+    as the -X face's x, -19.46, it put J1 / J2 off the +X edge on top of the sensor, and no
+    check said so -- the outline skipped panel parts and the panel check shared the sign. A
+    negative `face` is refused; `face_at` takes the coordinate."""
+    ux, uy = DIRS[rule["edge"]]
+    if "face_at" in rule:
+        return float(rule["face_at"]) * (ux + uy)
+    f = float(rule["face"])
+    if f < 0:
+        raise ValueError("panel %s: face %.3f is negative -- `face` is a DISTANCE out from the board centre "
+                         "along %s; give the coordinate as face_at" % (rule["ref"], f, rule["edge"]))
+    return f
+
+
+def panel_rot(parts, ref, edge, prefer=None):
+    """The turn (0/90/180/270) that points ref's mouth at `edge`. The mouth is where the body
+    stands past the SIGNAL pads (numbered: 1, A5 -- mounting and shield pads, MP / SH / blank,
+    sit anywhere): the vector from their centroid to the body's centre, turned,
+    must point most nearly along the edge's outward direction; `prefer` on a tie. (Reach
+    toward the edge was tried first: a 12 mm-wide side-entry PH reads farther across than
+    deep and kept its mouth sideways.)"""
+    ux, uy = DIRS[edge]
+    best = None
+    for rr in (0.0, 90.0, 180.0, 270.0):
+        P_ = Placed(parts, {ref: [0.0, 0.0, rr]})
+        b_ = np.asarray(P_.body(ref), float)
+        sig = [q["num"] for q in parts[ref]["pads"] if re.match(r"^[A-Z]?\d+$", q["num"] or "")]
+        sig = sig or [q["num"] for q in parts[ref]["pads"]]
+        pads_ = np.array([P_.pad(ref, n_) for n_ in sig] or [[0.0, 0.0]], float)
+        v = (b_.max(axis=0) + b_.min(axis=0)) / 2.0 - pads_.mean(axis=0)
+        key = (-round(float(v @ (ux, uy)), 3), 0 if prefer is not None and abs(rr - prefer) < 1e-6 else 1)
+        if best is None or key < best[0]:
+            best = (key, rr)
+    return best[1]
+
+
 def check(rule, P, notes, H=None):
     """[(slack mm, subject, detail)] for one rule against placement P."""
     k = rule["kind"]
@@ -224,12 +269,25 @@ def check(rule, P, notes, H=None):
     parts = P.parts
     if k == "outline":
         poly = notes.get("outline_poly") or _rect(notes["outline_mm"])
-        skip = set(rule.get("except", ())) | {r["ref"] for r in notes.get("_panel", ())}
+        panel = {r["ref"] for r in notes.get("_panel", ())}
+        skip = set(rule.get("except", ())) | panel
         for ref in parts:
             if ref in skip:
                 continue
             s = float(_edge_dist_inside(poly, P.crtyd(ref)).min())
             out.append((s, ref, "courtyard to Edge.Cuts"))
+        # a panel part's BODY may stand past its edge, but its pads may not leave the board
+        # (holdout 1: J1 / J2 wholly off the board passed every intent check)
+        pp = np.asarray(poly, float)
+        for ref in sorted(panel - set(rule.get("except", ()))):
+            if ref not in parts or ref not in P.pl:
+                continue
+            pts = np.array([P.pad(ref, q["num"]) for q in parts[ref]["pads"]], float)
+            if not len(pts):
+                continue
+            ins = _inside(pp, pts)
+            d = np.min([_seg_dist(pts, pp[i], pp[(i + 1) % len(pp)]) for i in range(len(pp))], axis=0)
+            out.append((float(np.where(ins, d, -d).min()), ref, "panel part's pads to Edge.Cuts"))
     elif k == "hole":
         c, keep = np.asarray(rule["xy"], float), rule["d"] / 2.0 + rule.get("keepout", 0.0)
         for ref in parts:
@@ -239,8 +297,9 @@ def check(rule, P, notes, H=None):
                 out.append((s, ref, "to the hole's keep-out at %.2f,%.2f" % tuple(c)))
     elif k == "keepout":
         poly = rule["poly"]
+        exc = set(rule.get("except", ()))
         for ref in parts:
-            if rule.get("side") and parts[ref]["side"] != rule["side"]:
+            if ref in exc or (rule.get("side") and parts[ref]["side"] != rule["side"]):
                 continue
             s = _poly_dist(P.crtyd(ref), poly)
             if s < 3.0:
@@ -258,7 +317,7 @@ def check(rule, P, notes, H=None):
         ux, uy = DIRS[e]
         b = P.body(ref)
         front = float((b @ (ux, uy)).max())
-        want = rule["face"] + rule.get("overhang", 0.0)
+        want = panel_face(rule) + rule.get("overhang", 0.0)
         out.append((-abs(front - want) + rule.get("tol", 0.05), ref,
                     "body front %.3f, the panel wants %.3f" % (front, want)))
         if "at" in rule:
