@@ -1154,7 +1154,7 @@ def auto_pour(rules, parts, notes=None):
     widths() note asks for: a pour whose outline, once the parts are placed, covers more of
     the board than that is dropped and the net goes back to its width (_pours says so).
 
-    auto_pour(amps, layer [, max_frac, width_mm, layers_by_net]) -- the pour runs along the net's
+    auto_pour(amps, layer [, max_frac, width_mm, layers_by_net, whole]) -- the pour runs along the net's
     declared power_paths terminals when it has any, else its non-IC pads. A net with its own
     `pour` rule is left alone. Returns (rules, lines)."""
     ap = [r for r in rules if r["kind"] == "auto_pour"]
@@ -1187,7 +1187,8 @@ def auto_pour(rules, parts, notes=None):
             out.append(dict(kind="pour", net=r["net"], layer=layer, along=along, width_mm=w,
                             why="auto_pour: %s at %.1f A -- %s" % (r["net"], float(r["amps"]), r["why"]),
                             src=r.get("src", ""), hard=False, auto_amps=float(r["amps"]),
-                            max_frac=float(a.get("max_frac", 0.25))))
+                            max_frac=float(a.get("max_frac", 0.25)),
+                            **({"whole": True} if a.get("whole") else {})))
             lines.append("%s %.1f A -> pour on %s along %d pad(s), %.1f mm" % (
                 r["net"], float(r["amps"]), layer, len(along), w))
         else:

@@ -891,17 +891,27 @@ class Boards:
                 # body's full width -- drawn as a box it could never pass its panel hole
                 m = self.mouth(board, f["ref"])
                 sd, sl = spec["stub"]
-                assert m["dir"][0] > 0.99, "a stubbed panel part must face +X"
-                x1 = m["front"] - sl
+                # +X or -X (output_board, 2026-11-13: its panel is the board's -X edge). Drawn
+                # along u = sg * x, so a -X panel is the +X one mirrored; +X is unchanged
+                sg = 1.0 if m["dir"][0] > 0.99 else -1.0 if m["dir"][0] < -0.99 else 0.0
+                assert sg, "a stubbed panel part must face +X or -X"
                 ax_z = t + m["axis_h"]
-                out = out.union(cq.Workplane("YZ").circle(sd / 2.0).extrude(sl)
-                                .translate((x1, m["across"], ax_z)))
+
+                def _run(u0, u1, wp):        # wp extruded over u0..u1 (u0 < u1), in x
+                    a, b = sorted((sg * u0, sg * u1))
+                    return wp.extrude(b - a).translate((a, m["across"], ax_z))
+                u_front = sg * m["front"]
+                u_sh = u_front - sl                      # the shoulder: the body box ends here
+                out = out.union(_run(u_sh, u_front, cq.Workplane("YZ").circle(sd / 2.0)))
                 af, ht, shd, shl = spec["nut"]
-                head0 = x1 + spec["clamp"]              # the head bears on the clamp's face
-                out = out.union(cq.Workplane("YZ").polygon(6, af / math.cos(math.pi / 6))
-                                .extrude(ht).translate((head0, m["across"], ax_z)))
-                out = out.union(cq.Workplane("YZ").circle(shd / 2.0).extrude(shl)
-                                .translate((head0 - shl, m["across"], ax_z)))
+                head0 = u_sh + spec["clamp"]            # the head bears on the clamp's face
+                out = out.union(_run(head0, head0 + ht, cq.Workplane("YZ").polygon(
+                    6, af / math.cos(math.pi / 6))))
+                out = out.union(_run(head0 - shl, head0, cq.Workplane("YZ").circle(shd / 2.0)))
+                if sg > 0:
+                    x1 = sg * u_sh
+                else:
+                    x0 = sg * u_sh
             out = out.union(_box(x1 - x0, y1 - y0, h, x=(x0 + x1) / 2.0,
                                  y=(y0 + y1) / 2.0, z=z0 + h / 2.0))
             if spec and spec["nose"]:

@@ -66,6 +66,7 @@ class Model:
         self.edges = RS._edges(txt)
         self.keepouts = _keepouts(txt)
         self.pours = _pours(txt)
+        self.whole = _pours(txt, named="whole")
         self.zone_rule = _zone_rules(txt)
         # where each pour's copper actually IS (its fill), net by net; the outline where
         # a pour has no fill yet. Plane joins aim here (negotiate build_nets/_to_plane).
@@ -223,6 +224,26 @@ class Model:
                 i0, i1, j0, j1 = win
                 sub = self.region_net[lid[L_], i0:i1, j0:j1]
                 sub[_in_poly(X, Y, pts)] = nid
+        # ⚠ A BAND IS CUT BY ONE CROSSING (output_board, 2026-11-13): VIN_BUS at 10 A as a
+        # 7.2 mm In2 band 78 mm long, chargers to shunt, crossed by GND tracks at
+        # REGION_COST, refilled in five islands and finished 78 mm open. A blob survives a
+        # crossing; a band does not. A pour zone NAMED "whole" (opt-in: auto_pour `whole`)
+        # costs other nets WHOLE_COST on its layer -- priced, not banned (a ban walled U6
+        # off on optical), so a net crosses it only where no other layer will do.
+        # whole_net[k] = the net a whole pour keeps each cell for (0 = none).
+        self.whole_net = np.zeros((L, ny, nx), np.int32)
+        for net_name, polys in self.whole.items():
+            nid = self.net_id.get(net_name, -1)
+            for L_, pts in polys:
+                if L_ not in lid:
+                    continue
+                win = self._window(min(q[0] for q in pts), min(q[1] for q in pts),
+                                   max(q[0] for q in pts), max(q[1] for q in pts), 0.0)
+                X, Y = grid(win)
+                i0, i1, j0, j1 = win
+                sub = self.whole_net[lid[L_], i0:i1, j0:j1]
+                sub[_in_poly(X, Y, pts)] = nid
+        self.whole_any = bool(self.whole_net.any())
         # ⚠ A POURED LAND NEEDS ROOM TO BREATHE (optical R33.2 GND, 2026-11-08: a foreign
         # track hugging the land left the F.Cu GND pour too few thermal spokes, DRC
         # starved_thermal, and close_last would not run past it). Round every land whose net
@@ -576,8 +597,9 @@ def _area(pts):
                          for i in range(len(pts))))
 
 
-def _pours(txt):
-    """{net: [(layer, outline pts)]}: every copper zone's OUTLINE, in board coordinates.
+def _pours(txt, named=None):
+    """{net: [(layer, outline pts)]}: every copper zone's OUTLINE, in board coordinates
+    (only the zones of that `name` when `named` is given).
 
     Read from the board, not from board.json's `zones`, because that list comes in two
     spellings (a whole-layer three-tuple, or a dict with a `poly` region in layout's own
@@ -585,6 +607,8 @@ def _pours(txt):
     out = {}
     for z in re.findall(r"\(zone\b(.*?)\n\t\)", txt, re.S):
         if "(keepout" in z:
+            continue
+        if named is not None and not re.search(r'\(name "%s"\)' % re.escape(named), z):
             continue
         nt = re.search(r'\(net "([^"]*)"', z)
         ly = re.search(r'\(layer "([^"]+)"\)', z)
