@@ -156,22 +156,22 @@
   "HUB_DN2_DM": {
    "peak": 3.45,
    "v": 3.349,
-   "why": "U4.9 (io) can reach its supply +3V3"
+   "why": "U4.7 (io) can reach its supply +3V3"
   },
   "HUB_DN2_DP": {
    "peak": 3.45,
    "v": 3.349,
-   "why": "U4.10 (io) can reach its supply +3V3"
+   "why": "U4.8 (io) can reach its supply +3V3"
   },
   "HUB_DN3_DM": {
    "peak": 3.45,
    "v": 3.349,
-   "why": "U4.7 (io) can reach its supply +3V3"
+   "why": "U4.9 (io) can reach its supply +3V3"
   },
   "HUB_DN3_DP": {
    "peak": 3.45,
    "v": 3.349,
-   "why": "U4.8 (io) can reach its supply +3V3"
+   "why": "U4.10 (io) can reach its supply +3V3"
   },
   "HUB_DN4_DM": {
    "peak": 3.45,
@@ -261,7 +261,7 @@
   "JACK_MODE": {
    "peak": 3.45,
    "v": 3.349,
-   "why": "U1.27 (io) can reach its supply +3V3; U1.28 (io) can reach its supply +3V3"
+   "why": "U1.28 (io) can reach its supply +3V3"
   },
   "JACK_RING": {
    "v": 2.6,
@@ -1755,10 +1755,6 @@
    "max": 3.75,
    "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
   },
-  "U1.27": {
-   "max": 3.75,
-   "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
-  },
   "U1.28": {
    "max": 3.75,
    "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
@@ -1799,7 +1795,7 @@
    "max": 3.75,
    "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
   },
-  "U1.41": {
+  "U1.40": {
    "max": 3.75,
    "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
   },
@@ -2458,10 +2454,6 @@
    "max": "none",
    "src": "TAXM12M4RFBCCT2T (C133337): passive crystal: no voltage rating applies (drive level is a separate check, quality M24)",
    "why": "no voltage rating applies"
-  },
-  "U1.40": {
-   "max": 3.75,
-   "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
   }
  }
 }
