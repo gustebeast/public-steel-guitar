@@ -164,6 +164,21 @@ def _zone_point(board, net, layer, toward, inset=0.35):
     return best[1] if best else None
 
 
+def _open_count(board, net):
+    """The board's unconnected count, after refilling `net`'s zones (a stitch via joins an
+    island only through the fill). KiCad's python exposes no per-net ratsnest, so the
+    caller compares counts before and after."""
+    try:
+        pcbnew.ZONE_FILLER(board).Fill([z for z in board.Zones() if z.GetNetname() == net])
+        board.BuildConnectivity()
+        try:
+            return board.GetConnectivity().GetUnconnectedCount(False)
+        except TypeError:
+            return board.GetConnectivity().GetUnconnectedCount()
+    except Exception:
+        return None
+
+
 def _stitch_islands(board, net, plane, clr=0.2, step=0.25):
     """A via in every island of the net's pour that nothing goes through, where the plane's
     pour is too (or, with no plane, a joined piece of the net's pour on another layer):
@@ -637,6 +652,15 @@ def _rip_one(board, stem, net, model, layers, layer_id, named, gap, tries, close
         board = pcbnew.LoadBoard(stem + ".kicad_pcb")
         return plan
 
+    # ⚠ THE DEADLINE HOLDS INSIDE A RIP TOO (motor_ctrl from footprints, f10, 2026-11-12):
+    # the budget was checked between tries, the maze inside one respected it, but the
+    # through-other-nets `search` it falls back to did not -- once past the deadline every
+    # join skipped the maze and went straight to an unbounded search. Twelve take-up / put-back
+    # rounds on CAN1_TX ran finish to 40186 s (11 h) for the same 1 unconnected. Past the
+    # deadline nothing new is searched: the rip is given up and the board put back.
+    if _time.time() > deadline:
+        print("close_last: %s -- out of time before the way through was looked for" % net)
+        return board, 0
     res = search(model, tries, WIDTH)
     if res is None:
         print("close_last: %s -- no path even through other nets' track" % net)
@@ -679,6 +703,10 @@ def _rip_one(board, stem, net, model, layers, layer_id, named, gap, tries, close
                 r2 = RS.maze3d(mb, layers, a[2], a[1], b[2], b[1], w=wb, step=step, reach=REACH)
                 if r2 is not None:
                     break
+            if r2 is None and _time.time() > deadline:
+                print("close_last: %s -- out of time joining it again round %s" % (B, net))
+                stuck, ok = B, False
+                break
             if r2 is None:
                 r2 = search(mb, [((a[1], a[2]), (b[1], b[2]), RS.MAZE_STEP),
                                  ((a[1], a[2]), (b[1], b[2]), 0.05)], wb)
@@ -774,16 +802,22 @@ def main(stem):
                   % (_time.time() - _t0, ", ".join(t[0] for t in todo[_i:])))
             break
         # zone to zone: an island nothing goes through, joined to the plane by a via
-        if za and zb:
-            if net in stitched:
-                continue
+        # ⚠ ONCE PER NET, THEN ROUTED (optical fold, 2026-11-11): every later zone-to-zone
+        # item on a net already stitched was skipped outright, so a pour sliver round U7.1/2
+        # that the stitcher had no room to drill stayed open beside a GND via 1.1 mm away.
+        # After the one stitching pass, what is still open is closed like any other pair.
+        if za and zb and net not in stitched:
             stitched.add(net)
+            n0 = _open_count(board, net)
             laid = _stitch_islands(board, net, plane)
             if laid:
                 made += 1
                 print("close_last: %s -- %d pour island(s) stitched to the plane at %s"
                       % (net, len(laid), laid))
-                continue
+                n1 = _open_count(board, net)
+                if n0 is None or n1 is None or n1 < n0:
+                    continue
+                print("close_last: %s -- still open after stitching: routing it" % net)
         # a zone end goes to its copper nearest the other end
         if za and not zb:
             pa = _zone_point(board, net, la, pb) or pa

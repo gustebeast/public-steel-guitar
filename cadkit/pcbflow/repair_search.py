@@ -199,6 +199,16 @@ def _pads(board_txt):
             lay = re.search(r"\(layers([^)]*)\)", body)
             names = re.findall(r'"?([\w.*]+)"?', lay.group(1)) if lay else []
             cu = {n for n in names if n.endswith(".Cu")}
+            # ⚠ A PASTE WINDOW IS NOT COPPER (output_panel, 2026-11-10). TO-252 and QFN
+            # footprints carry unnumbered, net-less pads on F.Paste alone, laid over the tab
+            # and the belly. "No .Cu layer" read as "every layer", so each window was a
+            # no-net copper island INSIDE the land: every cell of Q2's +24V tab sat within
+            # 0.32 mm of foreign copper (a 0.5 track needs 0.41), U4's GND belly within 0.27,
+            # and neither land could start a path -- +24V and GND open on an empty board.
+            # That is the copper the hand boards held: 17 +24V tracks typed round it. A pad
+            # with a layer list and no copper on it (and no drill) is left out.
+            if names and not cu and "thru_hole" not in body[:40]:
+                continue
             out.append(dict(x1=gx - ux * half_len, y1=gy - uy * half_len,
                             x2=gx + ux * half_len, y2=gy + uy * half_len,
                             r=half_w, net=nt.group(1) if nt else "",

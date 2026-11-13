@@ -35,9 +35,12 @@ WHAT THE NAME IS MADE FROM -- what the function can actually read, BY VALUE:
   * the arguments, by the same rule;
   * an object of a project class by its attributes (not a `*cache*`/`*memo*` one), or by its
     own `__kept_key__()` when it has one;
-  * GEOMETRY by where it came from: a result of another kept call carries that call's
-    name, so a kept chassis passed into a kept cut costs nothing to name; any other
-    solid is named by a hash of its BREP;
+  * GEOMETRY by WHAT IT IS: a result of another kept call carries the hash of its stored
+    BREP (computed once, when it is written), so a kept chassis passed into a kept cut costs
+    nothing to name -- and an upstream result that is RECOMPUTED BUT COMES OUT IDENTICAL keeps
+    its name, so nothing made from it is computed again (EARLY CUTOFF: a chassis change that
+    leaves the anchor as it was stops at the anchor). Any other solid is named by a hash of
+    its BREP the same way. (Results written before this carry their call's key instead.);
   * an environment variable it names in a string ("PI_NO_CRADLE"), by its value;
   * project data files the function OPENED while it was computed (a board's JSON...):
     recorded with the result, and a result whose files have changed since is computed
@@ -81,7 +84,7 @@ import weakref
 
 import cadquery as cq
 
-__all__ = ["kept", "keep", "tally", "store", "fingerprint"]
+__all__ = ["kept", "keep", "tally", "store", "fingerprint", "part", "Part", "parts"]
 
 _PLAIN = (int, float, str, bool, type(None), bytes, complex)
 _TALLY = {"read": 0, "drawn": 0, "plain": 0, "read_s": 0.0, "drawn_s": 0.0}
@@ -627,8 +630,11 @@ def _write(key, result, deps, seconds):
         t = brep.with_suffix(tmp)
         t.write_bytes(_brep_bytes(comp))
         os.replace(t, brep)
+    # THE RESULT'S CONTENT NAME (early cutoff): its stored BREP, reals rounded as _shape_token
+    # rounds them, so a recompute that comes out the same solid gets the same name
+    content = hashlib.sha1(_quantised(_brep_bytes(comp))).hexdigest() if shapes else key
     meta = {"skel": skel, "n": len(shapes), "deps": deps, "s": round(seconds, 2),
-            "t": time.time()}
+            "t": time.time(), "c": content}
     t = (d / (key + ".json")).with_suffix(tmp)
     t.write_text(json.dumps(meta))
     os.replace(t, d / (key + ".json"))                 # the json last: it says "complete"
@@ -662,7 +668,7 @@ def _read(key):
         os.utime(d / (key + ".json"))                  # recently used: pruned last
     except OSError:
         pass
-    return (_unpack(meta["skel"], shapes, key),)
+    return (_unpack(meta["skel"], shapes, "c" + meta.get("c", key)),)
 
 
 def _prune():
@@ -749,6 +755,47 @@ def keep(fn):
         return kept(fn, *args, **kw)
     wrapper.__kept__ = True
     return wrapper
+
+
+# ── one entry per PART ─────────────────────────────────────────────────────────────
+# EVERY PART A VIEW CAN SHOW OR HIDE IS KEPT ON ITS OWN (user, 2026-11-12). One kept call over
+# a whole sub-assembly means an edit to any one of its parts -- a collar -- recomputes all of
+# them, the costly ones too (a coil spring, a threaded rod): ~15 min a view on the direct
+# bench. An assembly instead LISTS its parts as Part(name, make, *args): `parts()` keeps each
+# under its own name, so an edit costs exactly the parts whose code or inputs it touched.
+# Additive: a plain (name, shape) entry in the same list is passed through as it is, and every
+# existing kept() call keeps working.
+class Part(tuple):
+    """A part to be built: (name, make, args, kw). `parts()` builds it through kept()."""
+    __slots__ = ()
+
+    def __new__(cls, name, make, *args, **kw):
+        return tuple.__new__(cls, (name, make, args, kw))
+
+    @property
+    def name(self):
+        return self[0]
+
+    def build(self):
+        _, make, args, kw = self
+        return kept(make, *args, **kw)
+
+
+def part(name, make, *args, **kw):
+    """(name, kept(make, *args, **kw)): build one part now, under its own kept entry."""
+    return name, Part(name, make, *args, **kw).build()
+
+
+def parts(items):
+    """An assembly's listing, built: each Part through its own kept entry, each plain
+    (name, shape) as it is. Use it wherever parts are collected (a view, a build, a gate)."""
+    out = []
+    for it in items:
+        if isinstance(it, Part):
+            out.append((it.name, it.build()))
+        else:
+            out.append(it)
+    return out
 
 
 def tally() -> str:

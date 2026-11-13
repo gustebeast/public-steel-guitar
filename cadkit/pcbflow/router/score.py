@@ -10,7 +10,20 @@ One JSON line per board, keys in order of how much they matter:
   contention  the negotiation's history cost summed over the board (where nets fought)
   hot         the three most contested 2 mm squares and the parts beside them
   length_mm   routed track length, vias  routed via count, sec  wall time
+  failed      the nets behind `open`, faulted  the pairs behind `pairs` (what a placement fix aims at)
 `key` is the tuple to sort placements by: smaller is better.
+
+    --save auto            keep each board's route as <stem>.route.pkl (a parent)
+    --intent <rules.json>  also check the placement's FLOORPLAN rules (apart, thermal,
+                           in_region -- place_intent.auto_floorplan's noise rules among them):
+                           `floor` = how many are broken, `floor_breaches` the worst ten,
+                           and a FLOOR line on stderr. The router cannot see noise: a board
+                           with the buck beside the PHY routes fine (optical, 2026-11-11), so
+                           the breach is printed beside the route, never folded into `key`.
+    --parts <parts.json>   place_geom's geometry for --intent (default <stem>.parts.json)
+    --parent <route.pkl>   route each board as a CHANGE of that parent (rescore.py): nets
+                           whose pads did not move and whose copper is still legal are kept;
+                           `delta` says how many. contention is not comparable to a full route.
 
 ⚠ WHY THE ROUTE AND NOT A CHEAPER PROXY (ROUTER.md, "Pad-scale escape and RUDY", 2026-11-09).
 Every cheap score tried failed to rank placements: per-part escape max-flow (every part
@@ -35,7 +48,7 @@ from concurrent.futures import ThreadPoolExecutor
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def score(stem, budget_s=900.0):
+def score(stem, budget_s=900.0, parent=None, save=None):
     sys.path.insert(0, HERE)
     import numpy as np
     from router.model import Model
@@ -46,7 +59,18 @@ def score(stem, budget_s=900.0):
     r = Router(m)
     r.log = lambda s: None
     nets = r.build_nets(pours=m.fills)
-    failed = r.run(budget_s=budget_s)
+    delta = None
+    if parent:
+        # PLACEMENT.md (c): only what the placement change touched is routed
+        import pickle
+        from router import rescore
+        with open(parent, "rb") as fh:
+            failed, delta = rescore.delta_run(r, pickle.load(fh), budget_s=budget_s)
+    else:
+        failed = r.run(budget_s=budget_s)
+    if save:
+        from router import rescore
+        rescore.save(r, save)
     pairs = sum(len(r.pair_faults(n) or ()) for n in nets
                 if n.mate is not None and n.partner is None)
     isl = 0
@@ -80,16 +104,23 @@ def score(stem, budget_s=900.0):
            for _s, x, y, _l, refs in congestion.hotspots(r, top=3)]
     out = dict(open=len(failed) + part, pairs=pairs, islands=isl, uncoupled=round(unc, 2),
                contention=round(float(r.hist.sum()), 1), length_mm=round(length, 1),
-               vias=vias, hot=hot, sec=round(time.time() - t0, 1))
+               vias=vias, hot=hot, sec=round(time.time() - t0, 1),
+               failed=sorted({getattr(n, "name", str(n)) for n in failed}
+                             | {n.name for n in nets if not n.failed and (getattr(n, "n_open", 0) or 0)}),
+               faulted=sorted(n.name for n in nets if n.mate is not None and n.partner is None
+                              and (r.pair_faults(n) or ())))
+    if delta:
+        out["delta"] = delta
     out["key"] = [out["open"], out["pairs"], out["islands"], out["uncoupled"],
                   out["contention"], out["vias"], out["length_mm"]]
     return out
 
 
-def _one_proc(stem, budget_s):
+def _one_proc(stem, budget_s, parent=None, save=None):
     """Score in its own process: numba state, and a crash, stay per board."""
     p = subprocess.run([sys.executable, os.path.abspath(__file__), "--one", stem,
-                        "--budget", str(budget_s)], capture_output=True, text=True,
+                        "--budget", str(budget_s)] + (["--parent", parent] if parent else [])
+                       + (["--save", save] if save else []), capture_output=True, text=True,
                        env=dict(os.environ, PYTHONIOENCODING="utf-8"), cwd=HERE)
     line = (p.stdout.strip().splitlines() or ["null"])[-1]
     try:
@@ -99,8 +130,30 @@ def _one_proc(stem, budget_s):
     return dict(res or {"error": "no output"}, stem=stem)
 
 
+def _floor(r, stem, intent, parts_path):
+    """r with the floorplan rules' breaches beside the route (see --intent)."""
+    if not intent:
+        return r
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    import place_intent as pi
+    rules = json.load(open(intent, encoding="utf-8"))
+    br = sorted(pi.floor_breaches(stem, rules, parts_path=parts_path))
+    out = {}
+    for k, v in r.items():
+        out[k] = v
+        if k == "islands":
+            out["floor"] = len(br)
+    out.setdefault("floor", len(br))
+    out["floor_breaches"] = [[round(s, 2), subj, det] for s, subj, det, _ in br[:10]]
+    if br:
+        print("FLOOR %s: %d floorplan rule(s) broken, worst %s %s (%s)"
+              % (os.path.basename(stem), len(br), br[0][1], br[0][2], br[0][3][:60]), file=sys.stderr)
+    return out
+
+
 def main(argv):
     jobs, budget, stems, one = max(1, (os.cpu_count() or 4) // 4), 900.0, [], False
+    parent = save = intent = parts_path = None
     i = 0
     while i < len(argv):
         a = argv[i]
@@ -108,6 +161,14 @@ def main(argv):
             jobs = int(argv[i + 1]); i += 2; continue
         if a == "--budget":
             budget = float(argv[i + 1]); i += 2; continue
+        if a == "--parent":
+            parent = os.path.abspath(argv[i + 1]); i += 2; continue
+        if a == "--save":
+            save = argv[i + 1]; i += 2; continue
+        if a == "--intent":
+            intent = os.path.abspath(argv[i + 1]); i += 2; continue
+        if a == "--parts":
+            parts_path = os.path.abspath(argv[i + 1]); i += 2; continue
         if a == "--one":
             one = True; i += 1; continue
         stems.append(os.path.abspath(a[:-len(".kicad_pcb")] if a.endswith(".kicad_pcb") else a))
@@ -115,10 +176,13 @@ def main(argv):
     if not stems:
         raise SystemExit(__doc__)
     if one:
-        print(json.dumps(score(stems[0], budget)))
+        print(json.dumps(_floor(score(stems[0], budget, parent, save), stems[0], intent, parts_path)))
         return 0
     with ThreadPoolExecutor(jobs) as ex:
-        res = list(ex.map(lambda s: _one_proc(s, budget), stems))
+        # --save names a file per board: <stem>.route.pkl when given as "auto"
+        res = list(ex.map(lambda s: _one_proc(s, budget, parent,
+                                              (s + ".route.pkl") if save == "auto" else save), stems))
+    res = [_floor(r, s, intent, parts_path) for r, s in zip(res, stems)]
     for r in sorted(res, key=lambda r: r.get("key") or [math.inf]):
         print(json.dumps(r))
     return 0

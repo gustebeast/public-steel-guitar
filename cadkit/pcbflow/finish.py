@@ -31,6 +31,7 @@ import os
 import re
 import shutil
 import subprocess
+import time
 
 import netcheck
 import sys
@@ -297,6 +298,7 @@ def _run(script, stem):
     able to answer, and a progress line costs nothing.
     """
     out = []
+    t0 = time.time()
     proc = subprocess.Popen([PY, _step(script, stem), stem],
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                             text=True, bufsize=1)
@@ -306,9 +308,18 @@ def _run(script, stem):
         out.append(line)
         sys.stdout.write("    " + line)
         sys.stdout.flush()
-    if proc.wait():
+    rc = proc.wait()
+    # every step's wall time, summed by script at the end (STEP_SECONDS): a finish that got
+    # slower says WHERE without a profiler (motor_ctrl f27, 2026-11-12: 650 -> 1496 s)
+    dt = time.time() - t0
+    STEP_SECONDS[script] = STEP_SECONDS.get(script, 0.0) + dt
+    sys.stdout.write("    [%s %.0f s]\n" % (script, dt))
+    if rc:
         raise SystemExit("%s failed on %s" % (script, stem))
     return "".join(out)
+
+
+STEP_SECONDS = {}
 
 
 def _check_fresh(stem):
@@ -841,3 +852,6 @@ if __name__ == "__main__":
             except OSError:
                 _r = 1
         finish(os.path.abspath(st), rounds=_r, keep_route=_keep)
+        print("finish: seconds by step: " + ", ".join("%s %.0f" % kv for kv in
+                                                     sorted(STEP_SECONDS.items(), key=lambda kv: -kv[1])))
+        STEP_SECONDS.clear()

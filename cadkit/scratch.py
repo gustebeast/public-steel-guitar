@@ -286,7 +286,8 @@ class ScratchView:
         """
         if self._live_memo is None:
             t0 = time.time()
-            parts = list(self.live())
+            from .kept import parts as _built
+            parts = _built(self.live())             # a Part(name, make, ...) is kept on its own
             if self.pose:
                 parts = [(n, self.pose(n, w)) for n, w in parts]
             self._live_memo = parts

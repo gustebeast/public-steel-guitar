@@ -39,6 +39,7 @@ orders of magnitude below what matters.
 from __future__ import annotations
 
 import json
+import re
 import os
 import sys
 
@@ -47,7 +48,7 @@ import wx                                       # noqa: E402  (KiCad's python sh
 wx.DisableAsserts()                             # NO MODAL DIALOGS IN A BUILD STEP -- see route.py
 
 
-def net_lengths(board, merge_ref=None, merge_r=4.0):
+def net_lengths(board, merge_ref=None, merge_r=4.0, nets=None):
     """{net name: (copper length in mm, {layer name: length}, via count)}."""
     # ⚠ A PAD-MERGE STUB IS NOT PART OF THE TRANSMISSION LINE, and counting it made this
     # check cry wolf twice on the optical board. A USB-C carries D+ on BOTH A6 and B6 and
@@ -64,11 +65,18 @@ def net_lengths(board, merge_ref=None, merge_r=4.0):
     # The exclusion is by NAMED REF, not by guessing which stubs look like merges: a
     # group says where its merge is, or nothing is excluded.
     skip = []
-    if merge_ref:
-        fp = board.FindFootprintByReference(merge_ref)
+    for ref in ([merge_ref] if isinstance(merge_ref, str) else (merge_ref or ())):
+        fp = board.FindFootprintByReference(ref)
         if fp is not None:
-            c = fp.GetPosition()
-            skip.append((c.x, c.y, pcbnew.FromMM(merge_r)))
+            # centred on the pair's OWN pads on the connector, not the footprint origin: a
+            # USB-C's origin can sit mm off its pad row (output_panel J2 turned 90: the merge
+            # vias 2.6 mm from the pads fell outside a 4 mm circle round the origin)
+            pp = [q.GetPosition() for q in fp.Pads() if nets and q.GetNetname() in nets]
+            if pp:
+                c = (sum(q.x for q in pp) / len(pp), sum(q.y for q in pp) / len(pp))
+            else:
+                c = (fp.GetPosition().x, fp.GetPosition().y)
+            skip.append((c[0], c[1], pcbnew.FromMM(merge_r)))
 
     def _in_merge(t):
         for cx, cy, r in skip:
@@ -95,6 +103,26 @@ def net_lengths(board, merge_ref=None, merge_r=4.0):
             layer = board.GetLayerName(t.GetLayer())
             per_layer[layer] = per_layer.get(layer, 0.0) + mm
         out[name] = (total, per_layer, vias)
+    return out
+
+
+def merge_refs(board, nets):
+    """The footprints that carry EVERY net of a pair on exactly two pads -- a USB-C
+    receptacle, whose duplicated D+/D- pads layout._flip_merge joins. Read off the
+    netlist, so the exclusion stays by named ref: a group that declares no merge_at gets
+    these. (output_panel, 2026-11-11: a placement-chosen turn of J3 let the merge be laid
+    where it never had been, and HUB_UP read 4 vias and a split layer set off the
+    merge's own stub.) CONNECTORS ONLY: a pass-through part (a USBLC6's IO1 in and out)
+    also carries each net on two pads, but its die joins them and its copper IS the line."""
+    out = []
+    for fp in board.GetFootprints():
+        if not re.match(r"J\d", fp.GetReference()):
+            continue
+        n = {}
+        for q in fp.Pads():
+            n[q.GetNetname()] = n.get(q.GetNetname(), 0) + 1
+        if all(n.get(x) == 2 for x in nets):
+            out.append(fp.GetReference())
     return out
 
 
@@ -126,10 +154,8 @@ def check(stem):
     bad = 0
     for g in groups:
         # a group measured through a pad-merge connector says so; see net_lengths
-        if g.get("merge_at"):
-            lens = net_lengths(board, g["merge_at"], g.get("merge_r", 4.0))
-        else:
-            lens = net_lengths(board)
+        mr = g.get("merge_at") or merge_refs(board, g["nets"])
+        lens = net_lengths(board, mr, g.get("merge_r", 4.0), set(g["nets"])) if mr else net_lengths(board)
         nets = g["nets"]
         missing = [n for n in nets if n not in lens]
         if missing:

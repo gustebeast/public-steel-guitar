@@ -487,8 +487,27 @@ def _rail_volts(net):
     return 5.0 if net.upper().startswith("VBUS") else None
 
 
-def _pour_narrowest(b, net, layer):
+def _ends(b, a, z):
+    """The board positions of two "REF.PAD" names, or None if either is not found."""
+    out = []
+    for nm in (a, z):
+        ref, num = nm.split(".", 1)
+        fp = b.FindFootprintByReference(ref)
+        q = next((q for q in fp.Pads() if q.GetNumber() == num), None) if fp is not None else None
+        if q is None:
+            return None
+        out.append((q.GetPosition().x, q.GetPosition().y))
+    return tuple(out)
+
+
+def _pour_narrowest(b, net, layer, between=None):
     """(mm, x, y) of the narrowest axis-aligned cut through this net's fill on `layer`.
+
+    between = ((x0, y0), (x1, y1)) in board units, the path's two ends: only the cuts
+    BETWEEN them count, across the axis they are separated along, stepped 0.5 mm off each
+    land. ⚠ WITHOUT IT A POUR'S OWN END WAS ITS CHOKE POINT (output_panel +24V, 2026-11-11):
+    the scan ran over the fill's whole extent, and a cut across a rounded tip -- past the
+    pad the current enters by -- read 0.20 mm and failed a 3.8 mm pour carrying 2.9 A.
 
     Sums the covered span along each scanline rather than taking the outer extent, so a
     pour in two lobes with a gap between them reports the copper it HAS and not the
@@ -522,6 +541,14 @@ def _pour_narrowest(b, net, layer):
     STEPS = 400
     for axis in (0, 1):
         lo, hi = (min(ys), max(ys)) if axis == 0 else (min(xs), max(xs))
+        if between is not None:
+            a_, b_ = between
+            k_ = 1 if axis == 0 else 0
+            u0, u1 = sorted((a_[k_], b_[k_]))
+            off = pcbnew.FromMM(0.5)
+            if u1 - u0 < 2 * off + pcbnew.FromMM(0.5):
+                continue                       # the ends are not separated along this axis
+            lo, hi = max(lo, u0 + off), min(hi, u1 - off)
         if hi <= lo:
             continue
         for k in range(1, STEPS):
@@ -602,7 +629,7 @@ def power_paths(ctx):
                     # more than the previous answer, and the text says which it is rather
                     # than letting a reader take it for a minimum.
                     need = required_width_mm(amps, layer, ctx.q)
-                    cut = _pour_narrowest(ctx.board, net, layer)
+                    cut = _pour_narrowest(ctx.board, net, layer, _ends(ctx.board, p["from"], dst))
                     if cut is None:
                         out.append((subject, None,
                                     "%.2f A through a pour, and no filled polygon for %s "

@@ -362,6 +362,7 @@ class Router(CoupledMixin):
     OFFRUN_COST = 4.0                # a relaxed pair's cell price off its home layers
     WIDEN_AFTER = 3                  # rounds a net may share before its search window widens...
     STALL_ROUNDS = 2                 # ...once the whole negotiation is this many rounds without gain
+    SUB_STALL_STOP = 3               # a re-negotiation round locked copper stops this many rounds without gain
     RELAX_AFTER = 10                 # rounds a layer-held pair may share before it is relaxed (4 relaxed USB mid-negotiation, 11-08)
     FILL_MARGIN = 0.15               # a plane-join via's pad this far inside the fill's edge
     PLANE_JOIN_MM = (2.0, 6.0)       # a plane join looks this near its piece first (then everywhere)
@@ -503,6 +504,7 @@ class Router(CoupledMixin):
     ESC_MM = 0.8
     ESC_PITCH = 0.8                  # a part is fine-pitch below this pad pitch...
     ESC_PINS = 8                     # ...with at least this many pads
+    ESC_VIA_BAN = True               # a coupled lay's vias keep off other nets' fine-pitch escape stubs
 
     def _escape_map(self):
         es = getattr(self, "_esc", None)
@@ -695,6 +697,31 @@ class Router(CoupledMixin):
                 pad[1:-1, 1:-1] = vlegal
                 cache[key] = distance_transform_edt(pad)[1:-1, 1:-1] > rr_
             vlegal = cache[key]
+        # ⚠ A COUPLED LAY'S VIAS STAND CLEAR OF OTHER PINS' EXITS (output_panel HUB_DN3 after
+        # the U4 port swap, 2026-11-10): HUB_DN3 has one pocket to change layer in, east of
+        # U4 pins 9/10 between HUB_DN1 (crossing to U1) and pin 8. The coupled rails, free to
+        # place their vias round the centreline's layer change, stacked them across the line
+        # -- DM's 1.3 mm in front of pin 8, HUB_DN2_DP's only way out. The lay met every rule
+        # 0.8 mm apart, every re-negotiation round it left pin 8 boxed in, and it was put
+        # back: the pair ran 6 mm apart. A track crossing an escape stub pays ESC_COST and can
+        # be moved off it; a via there leaves the pin nowhere to go. Inside a coupled lay
+        # (the centreline and its laned rails) no via stands in another net's fine-pitch
+        # escape stub; the rails then stagger theirs inside the pocket. Router-alone: HUB_DN3
+        # 6.1 -> 0.0 mm, the board's pairs 8.8 -> 0.6. NOT for every via (every net: optical's
+        # ULPI fan-out reshuffled both ways, 554.7 -> 557.5) nor every pair rail (optical USB,
+        # laid uncoupled, lost the vias it needs by U7: 9.1 -> 41.6).
+        if (self.ESC_VIA_BAN and self.ESC_COST > 1.0 and (own_ids or lane is not None)
+                and vlegal.any()):
+            from scipy.ndimage import distance_transform_edt
+            ids = tuple(sorted(own_ids)) if own_ids else (nid,)
+            cache = self.__dict__.setdefault("_erode_cache", {})
+            vkey = ("escv", ids, i0, i1, j0, j1)
+            if vkey not in cache:
+                es = self._escape_map()[sl]
+                oth = ((es != 0) & ~np.isin(es, ids)).any(axis=0)
+                cache[vkey] = (distance_transform_edt(~oth) * m.pitch >= m.via_d / 2.0) if oth.any() else None
+            if cache[vkey] is not None:
+                vlegal = vlegal & cache[vkey]
         occ =self.occ_t.reshape(L, H, W)[sl].astype(np.float32)
         if net.width > self.wref + 1e-6:
             rr = int(math.ceil((net.width - self.wref) / 2.0 / m.pitch))
@@ -880,7 +907,8 @@ class Router(CoupledMixin):
         # the edge facing the other land (JP1, 0.077 mm against 0.127).
         fdf = fd.ravel()
         for p in pieces:
-            if not np.isfinite(cellf[p]).any():
+            # a plane net's piece 0 (its pour) may have no cell in this window: nothing to open
+            if p.size and not np.isfinite(cellf[p]).any():
                 best = p[fdf[p] >= fdf[p].max() - 1e-6]
                 cellf[best] = 1.0
         n = L * h * w
@@ -1203,6 +1231,8 @@ class Router(CoupledMixin):
             b = a.mate
             if b is None or a.partner is not None or a.group is None:
                 continue
+            if self._only is not None and a not in self._only:
+                continue                 # rescore: a pair kept whole from the parent is finished
             # ⚠ A PAIR RIPPED OUT IS FINISHED TOO (optical, C102 +0.12/+0.48, 2026-11-10): the
             # negotiation ended with USB_DP/DM sharing space with LED_ROW, both were ripped,
             # and the finish skipped them -- the board's most important pair left open while
@@ -1797,6 +1827,8 @@ class Router(CoupledMixin):
         for net in self.nets:
             if not net.plane or net.failed:
                 continue
+            if self._only is not None and net not in self._only:
+                continue
             # ⚠ ONE PIECE AT A TIME (optical +3V3D, 2026-11-09: three pieces were cut off;
             # the one at 118.8,150.3 could only re-join through ULPI_CK/STP, a locked group,
             # and re-joining all three together put all three back). Each cut-off piece is
@@ -1859,16 +1891,45 @@ class Router(CoupledMixin):
         first again against second -- coupled: in lanes round the pair's centreline
         (coupled.py). (shared cells, pair faults), or None if a rail fails."""
         if coupled is True:
-            # the pin pairs the pair may use, best first (coupled._choose_ends): the
-            # first that lays wins
-            got = None
+            # the pin pairs the pair may use, best first (coupled._choose_ends).
+            # ⚠ THE FIRST THAT LAYS IS NOT THE ONE THAT LAYS TO THE RULES (optical USB at
+            # U10, 2026-11-10): on 11 of the series' 109 placements C112 stood 1 mm east of
+            # the clamp's east pins (6 / 4), and the first choice -- in by the east pins, out
+            # by the west -- had no room for the centreline to leave them: it started on
+            # DM's pad, DP's lane could not reach pin 6, and DP dived under DM to pin 1
+            # (layers, vias). That lay was kept because it laid; the other pin pairs were
+            # never tried, and the pair finished 30-40 mm apart. Every choice is laid; the
+            # fewest faults win, then the fewest shared cells; a clean one stops the search.
+            # Series gate: uncoupled 554.7 -> 386.6 mm, 28 boards closer, 9 a little further.
+            # ⚠ AND THE MOST COUPLED, NOT THE LEAST IN OTHERS' WAY (the 9, 2026-11-10): ranked
+            # by shared cells second, the choice through 19 cells beat a more coupled one
+            # through 41 -- but _displace moves the rest for either, and the finish holds
+            # lays most coupled first. Faults, then mm uncoupled, then shared cells: 386.6 ->
+            # 346.9 mm, no board further than before the choices were all laid.
+            best = None
             self._ends_left = True
             for k in range(self.COUPLE_ENDS):
                 got = self._pair_try(pf, first, second, relax, layers, offrun_mult, refine,
                                      via_mult, coupled=k + 1)
-                if got is not None or not self._ends_left:
+                left = self._ends_left
+                if got is not None:
+                    unc = round(self._uncoupled(first), 1) if self._pair_spec(first) is not None else 0.0
+                    key = (len(got[1]), unc, got[0])
+                    if best is None or key < best[0]:
+                        best = (key, got, {x: (x.paths, x.necks, x.failed) for x in (first, second)})
+                    if (key[0], key[2]) == (0, 0) or not self.COUPLE_ENDS_ALL:
+                        break
+                if not left:
                     break
-            return got
+            if best is None:
+                return None
+            for x in (first, second):
+                self._unmark(x)
+            for x in (first, second):
+                x.paths, x.necks, x.failed = best[2][x]
+                if x.paths and not x.failed:
+                    self._mark(x)
+            return best[1]
         for x in (first, second):
             self._unmark(x)
             x.paths, x.necks, x.failed = [], [], False
@@ -2378,6 +2439,7 @@ class Router(CoupledMixin):
         return [n for n in self.nets if n.failed]
 
     PRIORITY_REPAIR = True
+    _only = None                     # rescore.delta_run: the finish looks only at these nets
     PRIO_MAX = 8                     # stuck nets a repair takes on; more is a placement problem
 
     def _sharers(self, grp):
@@ -2733,8 +2795,16 @@ class Router(CoupledMixin):
                 best, since = score, 0
             else:
                 since += 1
-                if since >= 8:
-                    self.log("  no better in 8 rounds: stopping")
+                # ⚠ A RE-NEGOTIATION ROUND LOCKED COPPER GIVES UP SOONER (output_panel with
+                # J1's CC/VBUS re-drawn, 2026-11-10: 28 min against 5). With CC1/CC2 boxed in,
+                # every wall repair and pair displacement ran to the 8-round stop at ~12 s a
+                # round -- fourteen of them, none ever better than its first round. Pricing
+                # harder at pf in the tens of thousands moves nothing; three rounds without
+                # gain end a sub-negotiation (the main one keeps eight). Series gate: no board
+                # changed, J1 board 1698 -> 833 s.
+                lim = self.SUB_STALL_STOP if locked else 8
+                if since >= lim:
+                    self.log("  no better in %d rounds: stopping" % lim)
                     break
             self._stalled = since >= self.STALL_ROUNDS
             if time.time() - t0 > budget_s:

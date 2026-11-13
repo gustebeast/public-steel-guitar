@@ -38,6 +38,7 @@ class CoupledMixin:
     LANE_VIA = 0.9             # free room round each centreline layer change
     BAND_COST = 0.5            # price of a cell on the exact offset
     COUPLE_ENDS = 3            # pin-pair choices a coupled lay tries, best first
+    COUPLE_ENDS_ALL = True     # ...each of them laid, the fewest faults kept (not the first that lays)
     EXIT_SIDE = True                 # a land with no outward line is sided by where each rail leaves it
     MID_VIA_MULTS = (1.0, 5.0, 25.0)   # centreline via price steps until its layer changes fit max_vias
     MID_SLACKS = (0.1, 0.05, 0.0)   # mm each side of the centreline's pair width, tried in turn
@@ -196,6 +197,8 @@ class CoupledMixin:
         for a in list(self.nets):
             b = a.mate
             if b is None or a.partner is not None or a.group is None:
+                continue
+            if getattr(self, "_only", None) is not None and a not in self._only:
                 continue
             spec = self._pair_spec(a)
             if not spec or not spec.get("fallback"):
@@ -452,8 +455,12 @@ class CoupledMixin:
             ua = out(p)
             same = [q for q in pb if q.get("fp") == p.get("fp") and
                     ua[0] * out(q)[0] + ua[1] * out(q)[1] > 0.7]
-            if same:
-                q = min(same, key=lambda q: math.hypot(q["gx"] - p["gx"], q["gy"] - p["gy"]))
+            # ⚠ EVERY PARTNER IN REACH, NOT THE NEAREST (optical J1, 2026-11-11): on a
+            # USB-C's B7 A6 A7 B6 row A6 is 0.5 mm from BOTH A7 and B7, the tie went to list
+            # order, and B6/B7 -- the one combination uncrossed against U10 -- was never
+            # offered: USB_DP/DM dived to B.Cu beside U10 in every route. _choose_ends ranks
+            # twists; it can only rank what it is given.
+            for q in sorted(same, key=lambda q: math.hypot(q["gx"] - p["gx"], q["gy"] - p["gy"])):
                 if math.hypot(q["gx"] - p["gx"], q["gy"] - p["gy"]) < 3.0:
                     ca_, cb_ = cells_of(ca, p), cells_of(cb, q)
                     if ca_.size and cb_.size:
