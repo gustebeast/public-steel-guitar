@@ -18,17 +18,17 @@ fix to one does not reach the other. What is new, and why:
   * IT STANDS ON ITS EDGE. The board lies in the instrument's X-Z plane in the +X -Y
     corner (a box ~68 x 37 x 113), and its ports run VERTICALLY along the +X edge, out
     through the new thin +X endplate. The deck underside (z -3.2) is its top limit.
-  * THE OPTICAL PROCESSING MOVED HERE (user). The optical board is now sensors, ADCs and a
-    small USB forwarder (STM32U5A5). This board's MCU is the old optical board's
-    STM32H743IIT6 + USB3300 ULPI PHY, re-pointed: a USB HIGH-SPEED HOST to the optical
-    board (J4), and a FULL-SPEED DEVICE to the brain board's CM5 (J9, OTG_FS on
-    PA11/PA12). It also REPLACES THE CH32V307: it clocks both converters (SAI1, PE2-PE6),
-    drives the relay, the jack mode and the gain pot. The hub (CH334F) and the CH340
+  * THE OPTICAL PROCESSING MOVED HERE (user), AND THE OPTICAL BOARD'S CONVERTERS TALK TO IT
+    DIRECTLY (user, 2026-11-13: no forwarder MCU -- cost, and the STM32U5A5's stock -- "ribbon
+    cable is fine"). The optical board is sensors, emitters, TIAs, its five TLV320ADC3140s and
+    a quiet LDO; a 16-way 1.27 mm ribbon (J4) carries their TDM lanes, their I2C, the emitter
+    gate and 5 V. This board's MCU is the old optical board's STM32H743IIT6 on the SAME SAI
+    map it used there (SAI1 A/B + SAI2 A/B + SAI3 A, all on SAI1's clocks), so the lock-in
+    firmware carries over; no USB3300, no ULPI. It is a FULL-SPEED DEVICE to the brain board's
+    CM5 (J9, OTG_FS on PA11/PA12). It also REPLACES THE CH32V307: it clocks both audio
+    converters (SAI4, PF6-PF9 + PB2), drives the relay, the jack mode and the gain pot. The hub (CH334F) and the CH340
     flash path are gone: the H743's ROM DFU loader lives on OTG_FS, so the CM5 flashes
     it over J9 (USB-only firmware rule); BOOT0 has a pad for recovery.
-    ⚠ THE USB3300, NOT A USB3343: the optical board swapped the 3343 out before ordering
-    (docs/optical-bringup-diagnostics.md -- the USB334x link-power-management fault on
-    the H7). Same PHY, same pin map, same 24 MHz oscillator; here wired as an A-DEVICE.
   * DUAL USB-C POWER + DATA (work item R2-6). J1 and J2 each sink USB PD (5-20 V; EPR is
     not enabled) through an AP33772S, and LM74700 ideal diodes OR the two onto VIN_BUS,
     so a second charger can be plugged or pulled while playing. The OR-ed 5-20 V goes to
@@ -257,20 +257,30 @@ PIN = {
     "PD8": 96, "PD9": 97, "PD10": 98, "PD11": 99, "PD12": 100, "PD13": 101, "PD3": 145, "PD4": 146,
     "PG2": 106, "PG3": 107, "PG6": 110, "PG7": 111, "PG8": 112,
     "PE7": 68, "PE8": 69, "PE11": 74, "PE12": 75, "PE14": 77,
+    # the optical lanes' and SAI4's (KiCad 10 MCU_ST_STM32H7.kicad_sym, STM32H743IITx, its
+    # pins' alternate-function lists, read 2026-11-13)
+    "PF6": 24, "PF7": 25, "PF8": 26, "PF9": 27, "PB2": 58, "PI6": 175, "PD1": 143,
 }
-# OTG_HS ULPI -- exactly the optical board's (DIR and NXT off the analog-switch pads)
-ULPI = {"ULPI_D0": "PA3", "ULPI_D1": "PB0", "ULPI_D2": "PB1", "ULPI_D3": "PB10",
-        "ULPI_D4": "PB11", "ULPI_D5": "PB12", "ULPI_D6": "PB13", "ULPI_D7": "PB5",
-        "ULPI_CK": "PA5", "ULPI_STP": "PC0", "ULPI_DIR": "PI11", "ULPI_NXT": "PH4"}
 # Everything else this board asks of the MCU: net name -> port. AF in the comment.
 MCU_IO = {
-    # SAI1: block A master-transmit to the DAC, block B synchronous-receive from the ADC.
-    # Same four pins the optical board's SAI used, plus MCLK_A for the converters' SCKI/SCK.
-    "I2S_CK": "PE5",        # SAI1_SCK_A  AF6
-    "I2S_WS": "PE4",        # SAI1_FS_A   AF6
-    "I2S_SDO": "PE6",       # SAI1_SD_A   AF6 -> PCM5102A DIN
-    "I2S_SDI": "PE3",       # SAI1_SD_B   AF6 <- PCM1808 DOUT
-    "I2S_MCK": "PE2",       # SAI1_MCLK_A AF6
+    # THE OPTICAL LANES, exactly the optical board's map (optical.py SAI_CLK / SAI_SD): 192 kHz,
+    # BCLK 12.288 MHz, one lane per converter, SAI2 and SAI3 synchronous slaves of SAI1
+    "SAI_SCK": "PE5",       # SAI1_SCK_A
+    "SAI_FS": "PE4",        # SAI1_FS_A
+    "SAI_SD1": "PE6",       # SAI1_SD_A   <- optical U15
+    "SAI_SD2": "PE3",       # SAI1_SD_B   <- U16
+    "SAI_SD3": "PA0",       # SAI2_SD_B   <- U17
+    "SAI_SD4": "PI6",       # SAI2_SD_A   <- U18
+    "SAI_SD5": "PD1",       # SAI3_SD_A   <- U19
+    "OPT_EMIT": "PB3",      # TIM2_CH2: the emitter gate, frequency-locked to FSYNC (optical.py)
+    # SAI4 for the 48 kHz audio converters, its own clock domain: block B master-transmit to
+    # the DAC, block A synchronous to block B receiving the ADC (SAI4's A clock pins are
+    # PE4/PE5 only, which the optical lanes hold)
+    "I2S_CK": "PF8",        # SAI4_SCK_B
+    "I2S_WS": "PF9",        # SAI4_FS_B
+    "I2S_SDO": "PF6",       # SAI4_SD_B   -> PCM5102A DIN
+    "I2S_SDI": "PB2",       # SAI4_SD_A   <- PCM1808 DOUT
+    "I2S_MCK": "PF7",       # SAI4_MCLK_B
     "MCU_DM": "PA11",       # OTG_FS_DM -> J9, the brain board's CM5
     "MCU_DP": "PA12",       # OTG_FS_DP
     # three I2C buses: the two AP33772S share the fixed address 0x52, so each has its own
@@ -495,19 +505,23 @@ def output_board():
     for tag, pin in (("R1", "A5"), ("R2", "B5")):
         _res(tag, "5k1", "J9 CC Rd: a device", j9[pin], gnd)
 
-    # ── J4: USB HIGH-SPEED HOST to the optical board -- this board powers it ──────────
-    # VBUS_OPT, not OPT_VBUS: a rail's name says it is one (cadkit quality.POWER), so A6 sees
-    # R29 / R30 as this source port's Rp to its own VBUS (output_signal, 2026-11-13)
-    opt_dp, opt_dm, opt_vbus = Net("OPT_DP"), Net("OPT_DM"), Net("VBUS_OPT")
-    j4 = _usbc("J4", "USB HS host -> the optical board (right-angle C plug at its end, "
-               "down through the top panel), stock C-to-C lead")
-    gnd += j4["SH"], j4["A1"], j4["A12"], j4["B1"], j4["B12"]
-    opt_vbus += j4["A4"], j4["B4"], j4["A9"], j4["B9"]
-    opt_dp += j4["A6"], j4["B6"]
-    opt_dm += j4["A7"], j4["B7"]
-    for tag, pin in (("R29", "A5"), ("R30", "B5")):
-        _res(tag, "56k", "J4 CC Rp to VBUS: a host, default USB power -- R2's J4 rule",
-             j4[pin], opt_vbus)
+    # ── J4: the RIBBON to the optical board -- this board powers and clocks it ───────────
+    # 20 ways, 1.27 mm, vertical, an IDC ribbon (wire n = pin n): eleven signals, 5 V on two
+    # wires, and SEVEN grounds so that every 12.288 MHz line has a ground beside it and the
+    # bit clock has one on each side. Sixteen ways left I2C SDA no wire.
+    opt_5v = Net("+5V_OPT")
+    j4 = Part(name="Conn_02x10", ref_prefix="J", ref="J4", tag="J4", dest="NETLIST",
+              tool="skidl", value="PZ1.27-2x10P ZZ",
+              description="ribbon to the optical board: five TDM lanes + clocks, I2C, emitter "
+              "gate, 5 V (1.27 mm 2x10 vertical, HX PZ1.27 family as J5 on the brain)",
+              footprint="Connector_PinHeader_1.27mm:PinHeader_2x10_P1.27mm_Vertical",
+              pins=[Pin(num=n, func=P) for n in range(1, 21)])
+    for pin, net in ((1, opt_5v), (2, opt_5v), (3, gnd), (4, io["SAI_SCK"]), (5, gnd),
+                     (6, io["SAI_FS"]), (7, gnd), (8, io["SAI_SD1"]), (9, io["SAI_SD2"]),
+                     (10, gnd), (11, io["SAI_SD3"]), (12, io["SAI_SD4"]), (13, gnd),
+                     (14, io["SAI_SD5"]), (15, gnd), (16, io["OPT_EMIT"]), (17, gnd),
+                     (18, io["I2C2_SDA"]), (19, io["I2C2_SCL"]), (20, gnd)):
+        net += j4[pin]
     # ── J5: the 1/4 in jack. PCB-MOUNT, so no hand-soldered lug. ─────────────
     # BOM.md already specifies this Neutrik; it is a PCB part with a panel bushing,
     # and mounting it as a free-floating panel jack was what implied hand-soldered
@@ -587,13 +601,13 @@ def output_board():
 
     # ── U1: STM32H743IIT6 -- the optical board's processor, moved here (user) ──────────
     # Everything the optical board proved about this part carries: the LQFP-176, the 25 MHz
-    # HSE crystal, the 2.2 uF VCAPs, the ULPI map, the USB3300 on a 24 MHz oscillator. What
-    # is new is only which way the USB faces and what the SAI talks to.
+    # HSE crystal, the 2.2 uF VCAPs, the SAI map to the five converters. What is new: the
+    # converters are at the far end of a ribbon, and USB is full speed only (to the CM5).
     mcu_pins = range(1, 177)
     u1 = Part(name="STM32H743IIT6", ref_prefix="U", ref="U1", tag="U1", dest="NETLIST",
               tool="skidl", value="STM32H743IIT6",
-              description="MCU, LQFP-176: OTG_HS ULPI host to the optical board, OTG_FS "
-              "device to the CM5, SAI1 to the converters (LCSC C89597)",
+              description="MCU, LQFP-176: SAI1-3 TDM from the optical board's five converters, "
+              "OTG_FS device to the CM5, SAI4 to the audio converters (LCSC C89597)",
               footprint="Package_QFP:LQFP-176_24x24mm_P0.5mm",
               pins=[Pin(num=n, func=P) for n in mcu_pins])
     for n in MCU_VDD:
@@ -613,9 +627,6 @@ def output_board():
     vcap1, vcap2 = Net("VCAP1"), Net("VCAP2")
     vcap1 += u1[PIN["VCAP1"]]
     vcap2 += u1[PIN["VCAP2"]]
-    ulpi = {k: Net(k) for k in ULPI}
-    for sig, port in ULPI.items():
-        ulpi[sig] += u1[PIN[port]]
     # ⚠ THE AP33772S INT IS A 5 V PUSH-PULL OUTPUT (from its V5V) and PD10 / PD11 are FT pins,
     # whose limit is VDD + 4 V: 4.0 V with the H743 unpowered, which the charger side can
     # outlive at start-up (voltage_check FAIL, 2026-11-13). Each INT reaches its pin through a
@@ -633,7 +644,7 @@ def output_board():
     used = (set(MCU_VDD) | set(MCU_VSS)
             | {PIN[k] for k in ("VSSA", "VDDA", "VREF+", "VBAT", "VDD33_USB", "PDR_ON", "PH0",
                                 "PH1", "NRST", "BOOT0", "PA13", "PA14", "VCAP1", "VCAP2")}
-            | {PIN[p] for p in ULPI.values()} | {PIN[p] for p in MCU_IO.values()})
+            | {PIN[p] for p in MCU_IO.values()})
     for n in mcu_pins:
         if n not in used:
             Net("U1_NC_%d" % n).connect(u1[n])
@@ -669,63 +680,10 @@ def output_board():
     _cap("C15", "12pF", "HSE crystal load -- C0G", osc_in, gnd)
     _cap("C16", "12pF", "HSE crystal load -- C0G", osc_out, gnd)
 
-    # ── U4: USB3300 ULPI PHY, now an A-DEVICE (host) ───────────────────────────────────
-    # Optical's wiring with three changes for the host role: ID to ground (A-device), VBUS
-    # sensed off OPT_VBUS -- the 5 V this board SOURCES through U15 -- and CPEN left open,
-    # because U15's EN belongs to an MCU pin (OPT_VBUS_EN) that firmware owns outright,
-    # rather than to whichever ULPI register write the host stack happens to make.
-    u4 = Part(name="USB3300", ref_prefix="U", ref="U4", tag="U4", dest="NETLIST", tool="skidl",
-              value="USB3300-EZK-TR",
-              description="USB 2.0 HIGH-SPEED ULPI PHY, QFN-32 5x5, host side (LCSC C108383)",
-              footprint="Package_DFN_QFN:QFN-32-1EP_5x5mm_P0.5mm_EP3.45x3.45mm",
-              pins=[Pin(num=n, func=P) for n in range(1, 34)])
-    v1v8, v1v8a = Net("PHY_1V8"), Net("PHY_1V8A")
-    rbias, phy_vbus, phy_xi = Net("PHY_RBIAS"), Net("PHY_VBUS"), Net("PHY_XI")
-    for pin, sig in ((11, "ULPI_NXT"), (12, "ULPI_DIR"), (13, "ULPI_STP"), (14, "ULPI_CK"),
-                     (17, "ULPI_D7"), (18, "ULPI_D6"), (19, "ULPI_D5"), (20, "ULPI_D4"),
-                     (21, "ULPI_D3"), (22, "ULPI_D2"), (23, "ULPI_D1"), (24, "ULPI_D0")):
-        ulpi[sig] += u4[pin]
-    gnd += u4[1], u4[2], u4[9], u4[33]         # GND, GND, RESET (active high), the flag
-    gnd += u4[5]                               # ID low: an A-device
-    phy_vbus += u4[4]
-    opt_dp += u4[7]
-    opt_dm += u4[8]
-    v3d += u4[6], u4[16], u4[25], u4[30], u4[31]   # the four supply pins, and REG_EN
-    v1v8 += u4[15], u4[26]
-    v1v8a += u4[29]
-    rbias += u4[32]
-    phy_xi += u4[28]
-    for _n in (3, 10, 27):                     # CPEN, EXTVBUS, and XO (clocked on XI)
-        Net("U4_NC_%d" % _n).connect(u4[_n])
-    _res("R89", "12k 1%", "PHY RBIAS -- a PRECISION part: it sets the USB transmitter's "
-         "drive current", rbias, gnd)
-    _res("R90", "10k", "PHY VBUS series, DS00001783C figure 7-1", opt_vbus, phy_vbus)
-    for tag, net, val, why, fp in (
-            ("C140", v3d, "100nF", "PHY VDD3.3 bypass -- pin 6", C0402),
-            ("C141", v3d, "100nF", "PHY VDD3.3 bypass -- pin 16", C0402),
-            ("C142", v3d, "100nF", "PHY VDDIO bypass -- pin 25", C0402),
-            ("C143", v3d, "100nF", "PHY VDDA3.3 bypass -- pin 30", C0402),
-            ("C144", v1v8, "4.7uF", "PHY VDD1.8 regulator output -- pin 26", C0805),
-            ("C145", v1v8, "100nF", "PHY VDD1.8 bypass -- pin 26", C0402),
-            ("C146", v1v8, "100nF", "PHY VDD1.8 bypass -- pin 15", C0402),
-            ("C147", v1v8a, "4.7uF", "PHY VDDA1.8 regulator output -- pin 29", C0805),
-            ("C148", v1v8a, "100nF", "PHY VDDA1.8 bypass -- pin 29", C0402)):
-        _cap(tag, val, why, net, gnd, fp)
-    y2 = Part(name="Oscillator", ref_prefix="Y", ref="Y2", tag="Y2", dest="NETLIST",
-              tool="skidl", value="CJO05-240003320B30",
-              description="PHY reference, 24 MHz 3.3 V CMOS oscillator (LCSC C712738)",
-              footprint="Oscillator:Oscillator_SMD_Abracon_ASE-4Pin_3.2x2.5mm",
-              pins=[Pin(num=1, name="EN", func=P), Pin(num=2, name="GND", func=P),
-                    Pin(num=3, name="OUT", func=P), Pin(num=4, name="VDD", func=P)])
-    v3d += y2[4], y2[1]
-    gnd += y2[2]
-    phy_xi += y2[3]
-    _cap("C150", "100nF", "24 MHz oscillator supply bypass -- Y2 pin 4", v3d, gnd)
-
     # ── U15: the optical board's 5 V, switched and limited (R2's J1 switch, re-used) ──────
-    # The optical board is USB-powered now (user) and in MINIMAL mode it is OFF (R2-6), so
-    # its VBUS is a switch the MCU owns: off through reset (R88), 1.6-1.8 A limit (R86).
-    u15 = _fix("U15", "TPS2553DBVR", "optical-board VBUS switch, 1.6-1.8 A, reverse-"
+    # The optical board is powered from here over the ribbon and in MINIMAL mode it is OFF
+    # (R2-6), so its 5 V is a switch the MCU owns: off through reset (R88), 1.6-1.8 A (R86).
+    u15 = _fix("U15", "TPS2553DBVR", "optical-board 5 V switch, 1.6-1.8 A, reverse-"
                "blocking (LCSC C55266)", "Package_TO_SOT_SMD:SOT-23-6", range(1, 7))
     v5_pre = Net("V5_PRE")
     v5_pre += u15[1]
@@ -734,17 +692,17 @@ def output_board():
     io["OPT_FAULT_N"] += u15[4]
     ilim = Net("U15_ILIM")
     ilim += u15[5]
-    opt_vbus += u15[6]
+    opt_5v += u15[6]
     _res("R86", "15k 1%", "U15 ILIM: 1.61 to 1.80 A", ilim, gnd)
     _res("R87", "4k7", "U15 FAULT# up", io["OPT_FAULT_N"], v3d)
     _res("R88", "100k", "OPT_VBUS_EN down: the optical board is off until the MCU says",
          io["OPT_VBUS_EN"], gnd)
     _cap("C118", "100nF", "U15 IN bypass", v5_pre, gnd)
-    _cap("C119", "10uF/16V", "J4 VBUS output: USB-C's 10 uF limit", opt_vbus, gnd, C0805)
+    _cap("C119", "10uF/16V", "J4 ribbon 5 V output, at the switch", opt_5v, gnd, C0805)
 
     # ── U21: +3V3D, the logic's own LDO -- the optical board's U8 and its input resistor ──
-    # From V5_PRE (the buck side of FB1), as on the optical board, so the MCU's and the PHY's
-    # current never crosses the audio side of the bead.
+    # From V5_PRE (the buck side of FB1), as on the optical board, so the MCU's current never
+    # crosses the audio side of the bead.
     u21 = Part(name="AP2114H-3.3", ref_prefix="U", ref="U21", tag="U21", dest="NETLIST",
                tool="skidl", value="AP2114H-3.3TRG1",
                description="3V3 DIGITAL LDO, SOT-223 tab, ceramic-stable (LCSC C150716)",
@@ -1511,29 +1469,81 @@ def output_board():
 
 
 # ── the board ────────────────────────────────────────────────────────────────────────────
-# ⚠ NOT PLACED YET. This is the netlist and the frame; placement comes from the intent-driven
-# placer (pcbflow place_intent), not a hand dictionary, and the board's real size and
-# outline follow from that run against the bench geometry. The frame below is the box the
-# user gave (68 x 113 in the instrument's X-Z plane) less the deck clearance on top and the
-# floor on the bottom: board X = instrument X, board Y = instrument Z.
-# The +X edge is the PANEL: J1, J2 (power + data in), J5 (the jack) stand on it, running
-# vertically; J8 (the pickup's screws) sits on the TOP edge, reachable from above with the
-# deck off; J3, J4, J9 (the internal USB links) and J10 + J12 (5-20 V, two XH in
-# parallel) and J11 (enable, mode, button -- the brain board) face -X, into the instrument.
-BOARD_W, BOARD_L = 68.0, 100.0
+# ONE BOARD, ALL THE ROOM THERE IS (user, 2026-11-13: "I want a single output board. You can use
+# all the available space"). It stands in the instrument's X-Z plane on the -Y side; board X =
+# instrument X + 84, board Y = instrument Z + 56. Its limits, read off src.direct_bench:
+#   +X  instrument x = 0: the board runs INTO the +X endplate (x -20.2 .. 2.0, cut for it) so the
+#       panel connectors' 1.9 mm overhang ends flush with the outside face (user: "22 mm more")
+#   -X  instrument x = -168: the anchor's M4 heads end at -170.4 (user: "clear the screws")
+#   top instrument z = -5 under the deck (its underside -3.2); bottom z = -107 off the floor
+#   the -X top corner is cut away below z -20: the UI board's clamp and screw come down to
+#       z -18.1 at x < -147
+# Depth: the spring plugs end at y -58.1 and the wall bar starts at y -93.7, so the laminate
+# sits at the +Y side and the parts face -Y into ~32 mm. Single-sided.
+# The +X edge is the PANEL: J1, J2 (power + data in), J5 (the jack); J8 (the pickup's screws)
+# is on the TOP edge, reachable from above with the deck off; the internal leads (J3, J9 to the
+# CM5, J4 the optical ribbon, J10-J12 to the brain board) are on the -X side.
+BOARD_W, BOARD_L = 168.0, 102.0
+NOTCH = (-61.0, 36.0)          # x below, y above: cut away (instrument x < -145, z > -20)
+POWER_POLY = [[-84, -51], [84, -51], [84, 0], [20, 0], [20, -10], [-40, -10], [-40, 0], [-84, 0]]
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
+    "outline_poly": [[-84, -51], [84, -51], [84, 51], [NOTCH[0], 51], [NOTCH[0], NOTCH[1]],
+                     [-84, NOTCH[1]]],
     "layers": 4,
-    "zones": [("GND", "In1.Cu", 0.3), ("GND", "B.Cu", 0.3)],
+    # PWR_GND under the power section on In1 (the split's power half had it as its whole In1),
+    # GND everywhere else; R60 is the star between them
+    "zones": [{"net": "PWR_GND", "layer": "In1.Cu", "inset": 0.3, "poly": POWER_POLY, "priority": 1},
+              ("GND", "In1.Cu", 0.3), ("GND", "B.Cu", 0.3)],
+    "stitch_nets": ("PWR_GND", "GND"),
+    # exposed pads only before routing; the router takes the rest (cadkit 72d70a5: brain 14 -> 1 open)
+    "stitch_scope": "exposed",
     "qty_per_instrument": 1,
     "panel_edge": "+X",
-    "edge_parts": {"+X": ["J1", "J2", "J5"], "+Y": ["J8"], "-X": ["J3", "J4", "J9", "J10", "J11", "J12"]},
+    "edge_parts": {"+X": ["J1", "J2", "J5"], "+Y": ["J8"], "-X": ["J3", "J4", "J9"]},
     "placements": {},
     "open_items": [
         "brain board: the 24 V boost and the power button move there (harness.BRAIN_POWER / BRAIN_SIGNAL); its VIN input soft-starts behind BRAIN_EN",
         "AP33772SDKZ-13 vs -FA02: VSEL/GPIO only on FA02; this board uses neither",
+        "J4 ribbon header PZ1.27-2x10P ZZ: find its LCSC code and stock (the 2x8 is C22438123); the optical board's end mirrors this pinout",
+        "J4 ribbon: 12.288 MHz BCLK + five lanes over the ribbon -- keep it short (optical top panel to this board) and series-terminate the clock at its source (SAI1 SCK pin)",
+        "the +X endplate is cut for the board and its three panel connectors (branner's)",
+        "A16 voltage declarations: voltage_check has output_power / output_signal seeds; merge them into one output_board entry",
     ],
 }
+
+
+def quality_notes(net_path):
+    """The split's two declaration sets as ONE board's: J20 is gone, so every path, waiver and
+    group that crossed it is restated end to end on this board."""
+    import output_split as OS
+    qp, qs = OS.quality("power", net_path), OS.quality("signal", net_path)
+    q = {"pinouts": dict(qp["pinouts"], **qs["pinouts"])}
+    for k in [k for k in q["pinouts"] if "2x12_P1.27mm" in k]:
+        del q["pinouts"][k]
+    unc = dict(qp["unconnected"], **qs["unconnected"])
+    for k in [k for k in unc if k.startswith("J[49]") or k.startswith("J[123]") or k == "U4"]:
+        del unc[k]
+    unc["J[139].[AB]8"] = "USB-C sideband (SBU): USB 2.0 does not use it"
+    q["unconnected"] = unc
+    q["decoupling"] = qp["decoupling"]
+    q["not_power"] = dict(qp["not_power"], **qs["not_power"])
+    paths = [x for x in qp["power_paths"] if not str(x.get("from", "")).startswith("J20")
+             and not any(str(t).startswith("J20") for t in x["to"])]
+    paths += [x for x in qs["power_paths"] if not str(x.get("from", "")).startswith("J20")
+              and x["net"] != "VBUS_OPT"]
+    paths += [
+        # the 5 V buck's output to its three loads, on this board now (the split sent it over J20)
+        {"net": "V5_PRE", "from": "L1.2", "to": ["U15.1"], "amps": 1.8},
+        {"net": "V5_PRE", "from": "L1.2", "to": ["R98.1"], "amps": 0.6},
+        {"net": "V5_PRE", "from": "L1.2", "to": ["FB1.1"], "amps": 0.3},
+        {"net": "+5V_OPT", "from": "U15.6", "to": ["J4.1", "J4.2"], "amps": 1.8, "split": True},
+        {"net": "+3V3D", "from": "U21.2", "to": ["U17.10", "U16.6"], "amps": 0.005},
+    ]
+    q["power_paths"] = paths
+    q["net_groups"] = [g for g in qp["net_groups"]]
+    match = [m for m in qp["match"] + qs["match"] if m["name"] != "OPT"]
+    return q, match
 
 
 if __name__ == "__main__":
@@ -1543,6 +1553,9 @@ if __name__ == "__main__":
     generate_netlist(file_=net_path)
     netcheck.grounds_meet(net_path)            # R60 joins GND and PWR_GND
     netcheck.no_orphan_pins(net_path)
+    notes = dict(BOARD_NOTES)
+    q, match = quality_notes(net_path)
+    notes["match"], notes["quality"] = match, q
     with open(os.path.join(OUT_DIR, "output_board.board.json"), "w") as f:
-        json.dump(BOARD_NOTES, f, indent=2)
+        json.dump(notes, f, indent=2)
     print("output_board netlist written; %d open items" % len(BOARD_NOTES["open_items"]))
