@@ -1125,6 +1125,38 @@ Fixed after them:
   on a 33 mm CAN1 gap where f24 had 4-8 mm PED gaps; the router 253 -> 363).
 Optical and output_panel place_init byte-identical across all of it.
 
+### Tried after holdout 4, and dropped (2026-11-12) -- do not rebuild without new evidence
+
+**Turning a fixed part with no stated rotation toward its nets** (fret_led_mid's LEDs, rotation
+free in the CAD). Cost: escape length to the nearest far pad + TANGLE_W per crossing chord.
+Identity held on optical, output_panel, lever_sensor and ui_board.
+| | holdout 4 (no turns) | per part (f5) | per zone, LED-to-LED nets grouped (f6) |
+|---|---|---|---|
+| route open | 5 | 6 | 10 |
+| vias | 245 | 225 | 147 |
+| length mm | 5412 | 4480 | 4233 |
+| finish unconnected | 4 | 7 | 7 |
+Per part, 14 of 15 zones came out mixed and their links crossed (fret_led.py's own note). Grouped,
+every zone took the same turn (90), and all 60 returns met the driver band together. Shorter and
+fewer vias, more opens. The hand design picks 0 or 180 per zone by which side of its driver the
+zone sits. Diffs: scratchpad esc/fixed_turns_per_part.diff, fixed_turns_group.diff (bronner session).
+
+**An anchor fan-in / pin-escape predictor** (per anchor side: nets ARRIVING from that direction
+against the free corridor's lanes, cut by neighbour courtyards; plus wrap = quarter turns pad side
+-> arrival side). Calibrated on 74 existing runs (motor_ctrl 28, output_panel 19, optical 21,
+fret_led_mid 3, lever_sensor 1, ui_board 2), with no new routes. Spearman against finish unconnected:
+| | route open | vias | length | wrap | peak | over | `_tangle` crossings |
+|---|---|---|---|---|---|---|---|
+| all 74 | **0.79** | -0.42 | -0.31 | -0.26 | -0.31 | -0.31 | -0.07 |
+| motor_ctrl 28 | **0.66** | -0.06 | -0.01 | 0.07 | -0.42 | -- | -0.07 |
+| output_panel 19 | **0.69** | 0.36 | 0.00 | -0.35 | -0.08 | -- | 0.06 |
+fret_led_mid ran backwards: wrap 549 / 193 / 191 and crossings 101 / 86 / 82 against unconnected
+4 / 7 / 7. `over` is zero on every board but optical, which finishes clean, so the corridor beside an
+anchor side is never short: the 3-20x headroom score.py's 11-09 note found for escape max-flow.
+The router's own route-open is still the only measure that ranks finish results. A cut-line
+term was considered and skipped: the coarse global router's overflow is one already.
+Script: scratchpad esc/fanin.py (bronner session).
+
 ## Rules carried over
 
 * Keep every run to minutes; no hour-plus sweeps (ROUTER.md, route-time notes).
