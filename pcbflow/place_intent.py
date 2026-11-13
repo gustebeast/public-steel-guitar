@@ -19,7 +19,9 @@ re-layout can tell which rules still hold when the thing they came from changes.
 
 MECHANICAL (from the CAD -- a fresh board is mostly these)
   outline                          every courtyard inside Edge.Cuts (panel parts excepted)
-  hole      xy d keepout           a mounting hole and its head's clearance: no courtyard
+  hole      xy d keepout           a mounting hole and its head's clearance: no courtyard.
+                                   A notes cutout with `keepout_d` (the CAD's boss / post /
+                                   head) makes this rule itself and overrides a typed one
   keepout   poly [side] [except]   no courtyard inside (deck wall, standoff, rib, cable run);
                                    `except` names parts the CAD puts there on purpose
   height    poly max_mm            no part taller than max_mm inside (lid, deck, strings)
