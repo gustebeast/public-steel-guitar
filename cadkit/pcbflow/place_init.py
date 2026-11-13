@@ -847,6 +847,16 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
             continue
         H_z = pi.heights() if H_z is None else H_z
         inside = pi._inside(np.asarray(r["poly"], float), XY).reshape(G.H, G.W)
+        # ⚠ A PART WITH NO HEIGHT IS NOT A LOW PART (lead, 2026-11-13): the zone used to let
+        # every part it could not measure in without a word -- the brain's 13 mm polymer caps
+        # among them. Say which, so the board adds part_heights (or board_geom a HEIGHT row).
+        # Only prints; nothing placed differs.
+        _unk = sorted("%s (%s)" % (x, parts[x]["fpid"]) for x in parts
+                      if x not in fixed and pi.part_height(x, parts, H_z, notes) is None)
+        if _unk:
+            print("place_init: WARNING: height zone %r (max %.1f mm) cannot measure %d part(s), which "
+                  "it lets in unchecked -- give them part_heights in the board notes: %s"
+                  % (r.get("why", r.get("name", "")), float(r["max_mm"]), len(_unk), ", ".join(_unk)))
         for ref in parts:
             if ref in fixed or (pi.part_height(ref, parts, H_z, notes) or 0.0) <= float(r["max_mm"]):
                 continue

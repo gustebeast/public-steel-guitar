@@ -1249,6 +1249,39 @@ placement edits swing the score by 5-14, so one sample cannot rank a 6 mm edit. 
 rebalance toward even fill is therefore not built: nothing yet shows that even fill routes
 better. Revisit it with several samples per variant.
 
+### Placement stability: a small netlist edit re-plans the whole board (brain, 2026-11-13) -- PARKED
+
+The gap: seven small parts (six 1206 bypass caps and one 0402 resistor) re-placed the WHOLE
+brain board, and the score went from 1 open to 8-12. The evidence:
+
+* br9: 1 open (BST_VIN), 551 vias, 707 s.
+* br9c re-ran br9 from its own `flow/input.board.json` under a 4-job load. It reproduced br9
+  exactly: every placement, 1 open, 551 vias, 735 s. The router is deterministic, and the
+  load changes only the time.
+* br11n and br11 used the same intent on the netlist with C116-C121 and R63 added.
+  * br11n (no rule for the caps): auto_decaps piled all six at one spot. 8 failed.
+  * br11 (A2 `near` rules spreading them along the motor row): 12 failed.
+  * Most of the losses are in the boost cell (BST_*). That region, its parts and its fill
+    (0.41) did not change.
+
+So a netlist edit moves parts it never touches, and the score swings with them. A layout that
+closes once is then lost to an unrelated edit, which is exactly when a board is nearly done.
+
+**What it should do:** move only the parts the edit touches.
+1. Seed from the previous run's placements. The mechanism exists: a notes file's
+   `placements` are already taken as seeds, which is the trap `16173cd` now warns about.
+2. Freeze every cell and region whose parts and nets the edit did not change.
+3. Place the new parts, and the parts sharing a net with them, into the space that is left.
+4. Re-route incrementally where the router allows it.
+
+This belongs with the incremental work (warm start in (c)). It is NOT built. Unpark it if the
+brain does not close after its 2-3 perturbation ranking, or the next time a finished board
+takes a small netlist edit.
+
+**Trap found on the way:** a trial's `<stem>.board.json` is the flow's OUTPUT, with every
+placement in it. Copying it as the input of a "control" run seeds that run, so it is not a
+rerun: 21 failed against br9's 1. A clean rerun copies `flow/input.board.json`.
+
 ## Rules carried over
 
 * Keep every run to minutes; no hour-plus sweeps (ROUTER.md, route-time notes).
