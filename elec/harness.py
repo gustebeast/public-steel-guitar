@@ -110,7 +110,9 @@ POWER_PAIR = ("V24", "GND")
 #   20 V on a 5 A cable -- so one port is <= 5 A, but two ports at the same voltage share
 #   through the ideal diodes: 6.5 A from two 65 W chargers, up to 10 A from two 5 A
 #   contracts. At <= 2.5 A a way (XH's 3 A, derated for paralleling) 10 A is 4 + 4 ways:
-#   two standard 4-way leads, data ways empty. ⚠ THE WIRE IS 22 AWG XH, NOT A NEW GAUGE:
+#   two standard 4-way leads. Way 3 is a PRESENCE LOOP -- strapped to GND at the brain
+#   end, pulled up and read at the output board -- so a missing lead is SENSED, not
+#   left to an install note (lead, 2026-11-13); way 4 is empty. ⚠ THE WIRE IS 22 AWG XH, NOT A NEW GAUGE:
 #   the two-gauge rule (user, 2026-11-01) -- 22 AWG XH for the high rail, 26 AWG PH for 5 V,
 #   no third gauge, no new crimp die. A first cut here used a VH 2-way on 18 AWG and broke
 #   it (caught by the lead). The boost that makes the 24 V is on the brain board.
@@ -118,7 +120,7 @@ POWER_PAIR = ("V24", "GND")
 #   (it reads the contracts and picks the mode before anything big starts), PWR_BTN and
 #   BRAIN_PG back from the brain board, open drain, pulled up at the output board. Ground at
 #   both ends, so a reversed lead puts ground on ground.
-BRAIN_POWER = ("VIN", "GND", NC, NC)
+BRAIN_POWER = ("VIN", "GND", "LEAD_SENSE", NC)
 BRAIN_SIGNAL = ("GND", "BRAIN_EN", "LOW_PWR", "PWR_BTN", "BRAIN_PG", "GND")
 
 

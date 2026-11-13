@@ -2033,6 +2033,7 @@ The plate-down print left each head pocket's roof as a bean-shaped bridge with n
 
 - **J10 and J12 are two ordinary 4-way XH power leads, plugged in parallel.** Both carry the USB chargers' 5–20 V to the brain board, where the 24 V boost now lives.
   - Standard 22 AWG and XH crimps, same as every other XH lead. Ways 3 and 4 are empty.
-  - **Plug both.** One charger needs only one lead, but two chargers sharing can reach 10 A, and that is 2.5 A a way only with both leads in.
+  - **Plug both.** Two chargers sharing can reach 10 A, which is 2.5 A a way only with both leads in.
+  - Way 3 of each lead is a presence loop, strapped to GND at the brain board. The output board's MCU reads it: with a lead missing it limits the input to one charger or keeps the brain board off.
 - **J11 is a 6-way XH carrying only logic**: GND, BRAIN_EN, LOW_PWR, PWR_BTN, BRAIN_PG, GND. It has no power way, so a reversed lead puts ground on ground.
 - Pinouts are in `elec/harness.py` as `BRAIN_POWER` and `BRAIN_SIGNAL`.

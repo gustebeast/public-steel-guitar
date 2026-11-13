@@ -223,7 +223,7 @@ PIN = {
     "VCAP1": 81, "VCAP2": 125,
     # new on this board
     "PA11": 122, "PA12": 123, "PB6": 164, "PB7": 165, "PH7": 84, "PH8": 85,
-    "PD8": 96, "PD9": 97, "PD10": 98, "PD11": 99, "PD12": 100, "PD13": 101,
+    "PD8": 96, "PD9": 97, "PD10": 98, "PD11": 99, "PD12": 100, "PD13": 101, "PD3": 145, "PD4": 146,
     "PG2": 106, "PG3": 107, "PG6": 110, "PG7": 111, "PG8": 112,
     "PE7": 68, "PE8": 69, "PE11": 74, "PE12": 75, "PE14": 77,
 }
@@ -259,6 +259,8 @@ MCU_IO = {
     "LOW_PWR": "PG7",       # high = MINIMAL mode: the brain board leaves the CM5 off
     "PWR_BTN": "PE8",       # the power button, from the brain board (open drain)
     "BRAIN_PG": "PG8",      # the brain board's 24 V is good (open drain)
+    "PWR_LEAD1_N": "PD3",   # J10 power lead present (LOW); its way 3 is GND at the brain
+    "PWR_LEAD2_N": "PD4",   # J12 power lead present (LOW)
 }
 
 
@@ -1254,7 +1256,8 @@ def output_board():
     # data ways empty, 22 AWG -- the two-gauge rule (user, 11-01) allows no other wire, so a
     # VH 2-way on 18 AWG tried first was reverted. Firmware also keeps ONE port carrying (the
     # other asked for a lower voltage, so its diode blocks): one charger is <= 5 A, 1.25 A a
-    # way. Missing lead AND two 5 A chargers sharing is the double fault left: 5 A a way.
+    # way. A missing lead is SENSED on way 3 (below), so the double fault -- one lead out,
+    # two 5 A chargers sharing, 5 A a way -- is caught by firmware, not an install note.
     # ⚠ AND THE COPPER: J1/J2 -> Q4..Q7 -> R112 -> J10/J12 is a 10 A path, pour it, do not trace it.
     # ⚠ INRUSH IS THE BRAIN BOARD'S TO LIMIT: VIN reaches its input the moment a port's
     # switch closes, so its boost input sits behind a soft-start switch gated by BRAIN_EN.
@@ -1273,11 +1276,19 @@ def output_board():
                footprint=XH_FP,
                pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(harness.BRAIN_POWER)])
     harness.check_ways(harness.BRAIN_POWER, ("VIN",), ("GND", harness.NC), where="J10/J12")
-    for j in (j10, j12):
+    # WAY 3 IS A PRESENCE LOOP (lead, 2026-11-13): the brain board straps it to GND, so a lead
+    # that is in reads LOW. Either one HIGH and firmware caps the input at ONE charger's
+    # contract (the other asked for a lower voltage, its diode blocks) or holds BRAIN_EN off --
+    # the unplugged-lead double fault, sensed instead of written in INSTALL_NOTES.
+    for j, k, ser, pu in ((j10, "PWR_LEAD1_N", "R119", "R120"),
+                          (j12, "PWR_LEAD2_N", "R121", "R122")):
         vin_brain += j[1]
         pgnd += j[2]
-        for k in (3, 4):
-            Net("%s_NC_%d" % (j.ref, k)).connect(j[k])
+        loop = Net("%s_LOOP" % j.ref)
+        loop += j[3]
+        Net("%s_NC_4" % j.ref).connect(j[4])
+        _res(ser, "1k", "%s presence loop in from the cable" % j.ref, loop, io[k])
+        _res(pu, "10k", "%s presence pull-up: HIGH = lead missing" % j.ref, io[k], v3d)
     j11 = Part(name="B6B-XH-A", ref_prefix="J", ref="J11", tag="J11", dest="NETLIST",
                tool="skidl", value="B6B-XH-A",
                description="to the brain board: enable, low-power mode out; button, "
