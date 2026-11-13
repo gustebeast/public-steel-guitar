@@ -374,11 +374,17 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
         elif r["kind"] == "panel":
             ref = r["ref"]
             rot = rot0(ref)
+            if ref not in rot_of:
+                # no `rot` rule: turn the mouth to the edge (holdout 1: rot came from parts.json's
+                # zeroed `at`, and the PH plug faced +Y on a -X panel)
+                rot = pi.panel_rot(parts, ref, r["edge"], prefer=rot)
+                if abs(rot - rot0(ref)) > 1e-6:
+                    log.append("panel %s turned to %g: its mouth faces %s" % (ref, rot, r["edge"]))
             ux, uy = pi.DIRS[r["edge"]]
             P = pi.Placed(parts, {ref: [0.0, 0.0, rot]})
             b = P.body(ref)
             front = float((b @ (ux, uy)).max())
-            want = r["face"] + r.get("overhang", 0.0)
+            want = pi.panel_face(r) + r.get("overhang", 0.0)
             along = (0.0, 1.0) if ux else (1.0, 0.0)
             mid = float(((b @ along).max() + (b @ along).min()) / 2.0)
             s = want - front
@@ -407,6 +413,33 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
             why[ref] = "rule %d group: %s's cell [%s]" % (i_r, r["anchor"], r.get("src", ""))
     fixed = set(pl)
     log.append("fixed %d: %s" % (len(fixed), " ".join(sorted(fixed))))
+
+    # ⚠ A CONSTRAINED SATELLITE IS NOT A SATELLITE (lever_sensor holdout 1b, 2026-11-12): SW1
+    # (the 8.9 mm DIP terminator: `access`, an `apart` from the sensor, `near` R4) was seated
+    # as R4's satellite after every other satellite had filled the board -- "no room", dropped
+    # on the crystal corner, six overlaps. A small part that carries its own mechanical
+    # constraint (access / apart, or too tall for a height zone) is placed as a part in its
+    # own right, before any satellite is seated; its `near` is a spring.
+    H_ = None
+    con = set()
+    for r in rules:
+        if r["kind"] == "access" and r.get("ref") in parts:
+            con.add(r["ref"])
+        elif r["kind"] == "apart":
+            con |= set(pi._refs(r["a"], parts)) | set(pi._refs(r["b"], parts))
+        elif r["kind"] == "height":
+            H_ = pi.heights() if H_ is None else H_
+            con |= {x for x in parts if (H_.get(parts[x]["fpid"]) or 0.0) > float(r["max_mm"])}
+    # ...but only a BIG one, and never a tight loop's member: a test pad's `access`, a crystal's or an
+    # ESD clamp's noise `apart` (auto_floorplan) leave those satellites (optical, output_panel)
+    tnets = {nm for r in rules if r["kind"] == "tight" for nm in r["nets"]}
+
+    def _big(x):
+        c_ = np.asarray(parts[x]["crtyd"] or [[0, 0], [0, 0]], float)
+        return float(np.prod(np.ptp(c_, axis=0))) >= SAT_BIG_MM2
+    promoted = {r["ref"] for r in rules if r["kind"] == "near" and r.get("ref") in con
+                and len(parts[r["ref"]]["pads"]) <= IC_PADS and _big(r["ref"])
+                and not (tnets & {q["net"] for q in parts[r["ref"]]["pads"] if q["net"]})}
 
     # ---- 2. global (quadratic)
     free = [r for r in sorted(parts) if r not in fixed]
@@ -491,7 +524,8 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
                 else:
                     tr, ot = t, np.zeros(2)
                 spring(r["ref"], np.zeros(2), tr, ot, 2.0 * float(r.get("weight", 1.0)))
-        elif r["kind"] == "near" and r.get("ref") in idx and len(parts[r["ref"]]["pads"]) > IC_PADS:
+        elif r["kind"] == "near" and r.get("ref") in idx and (len(parts[r["ref"]]["pads"]) > IC_PADS
+                                                               or r["ref"] in promoted):
             # an IC near a part (optical's PHY near the socket): a spring here, not a
             # satellite drop -- see the satellite note below
             t = r["target"]
@@ -599,7 +633,8 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
     for r in rules:
         if r["kind"] == "decap":
             decaps.setdefault(r["pin"].split(".")[0], []).append(r)
-        elif r["kind"] == "near" and r.get("ref") in idx and len(parts[r["ref"]]["pads"]) <= IC_PADS:
+        elif (r["kind"] == "near" and r.get("ref") in idx and len(parts[r["ref"]]["pads"]) <= IC_PADS
+              and r["ref"] not in promoted):
             # ⚠ ONLY SMALL PARTS ARE SATELLITES (optical, 2026-11-11). U7 (the PHY, `near`
             # J1) was a satellite: dropped at J1's centre after J1, and -- not being in the
             # drop order -- its own ten decaps were never seated at its pins (C121 26 mm off
@@ -608,7 +643,7 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
             decaps.setdefault(r["target"].split(".")[0], []).append(r)
     area = {ref: float(np.prod(np.ptp(np.asarray(parts[ref]["crtyd"] or [[0, 0], [1, 1]]), axis=0))) for ref in free}
     sat = {r_.get("cap") or r_.get("ref") for v in decaps.values() for r_ in v}
-    order = sorted((r for r in free if r not in sat), key=lambda r: -area[r])
+    order = sorted((r for r in free if r not in sat), key=lambda r: (0 if r in promoted else 1, -area[r]))
     placed_sat = set()
     miss = []
     # ⚠ A TIGHT LOOP'S PATH IS RESERVED BEFORE THE DECAPS TAKE IT (motor_ctrl from
@@ -687,6 +722,8 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
             elif fb is not None:
                 tail = ", NO room clear of its apart/thermal rules"
             why[ref] = "net graph (quadratic), nearest free spot" + (" in its region" if ref in inreg else "") + tail
+            if ref in promoted:
+                why[ref] += " (constrained: placed before the satellites)"
         seat(ref)
     for c in sorted(sat - placed_sat - fixed):
         if c in idx:
@@ -845,6 +882,7 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
     return pl, log, why
 
 
+SAT_BIG_MM2 = 20.0  # mm2 of courtyard: a constrained satellite this big is placed as a part (SW1 ~39)
 CHANNEL_W = 0.6     # mm: the strip a tight net's MST edge keeps clear
 TANGLE_FANOUT = 8   # parts: a net on more is a rail, left out of the escape tangle
 TANGLE_RATIO = 1.5  # a turn hint needs the other turn to cross this many times fewer

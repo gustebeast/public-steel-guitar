@@ -280,6 +280,12 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
             nw[n] = w
     notes["net_widths"] = nw
     wlines = []
+    for r_ in rules:
+        if r_["kind"] == "panel":
+            try:
+                pi.panel_face(r_)
+            except ValueError as e:
+                raise SystemExit("place_flow: intent refused -- %s" % e)
     ip = os.path.join(fd, "intent.json")
     json.dump(rules, open(ip, "w"), indent=1)
     say = lambda s: (print("place_flow: " + s), log.write("## " + s + "\n"), log.flush())
@@ -319,6 +325,35 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
             pl[r_] = v
             why[r_] = "carried from input (not in parts.json: %s)" % (
                 "post_route_refs" if r_ in notes.get("post_route_refs", ()) else "no geometry")
+    # ⚠ THE FLOW STOPS BEFORE LAYOUT ON A PLACEMENT IT KNOWS IS BROKEN (lever_sensor holdouts
+    # 1 / 1b, 2026-11-12): a part with no room was left overlapping and a connector sat wholly
+    # off the board, and both went on to layout, which refused them as courtyard overlaps --
+    # naming the victims, not the cause. Two stops, each naming the part and its rules:
+    #   NO ROOM  -- place_init found no legal seat; the rules that bind the part are listed
+    #   BROKEN   -- a hard MECHANICAL rule (outline, keepout, hole, fixed, height) fails
+    if room:
+        bind = []
+        for x in room:
+            ref_ = x.split(" ", 1)[0]
+            rs = [_rule_line(r_) for r_ in rules if ref_ in _rule_refs(r_, parts)]
+            bind.append("%s -- bound by: %s" % (x, "; ".join(rs) if rs else "no rule (the board is full)"))
+        say("NO ROOM -- the flow stops before layout: " + " | ".join(bind))
+        _report(fd, base, rules, init_log, [], [], None, None, None, why, T,
+                refused="place_init: NO ROOM\n" + "\n".join(bind), floor=floor, room=room)
+        return 2
+    notes_k = dict(notes, _panel=[r_ for r_ in rules if r_["kind"] == "panel"])
+    P_k = pi.Placed(parts, pl)
+    broken = []
+    for i_, r_ in enumerate(rules):
+        if r_["kind"] in ("outline", "keepout", "hole", "fixed", "height") and r_.get("hard", True):
+            for s_, ref_, det in pi.check(r_, P_k, notes_k):
+                if s_ < -0.05:
+                    broken.append("rule %d %s: %s %s (%.2f mm)" % (i_, r_["kind"], ref_, det, s_))
+    if broken:
+        say("BROKEN hard rules -- the flow stops before layout: " + " | ".join(broken[:8]))
+        _report(fd, base, rules, init_log, [], [], None, None, None, why, T,
+                refused="intent check: BROKEN hard mechanical rules\n" + "\n".join(broken[:20]), floor=floor, room=room)
+        return 2
     wlines = _raise_widths(notes, parts, pl, keep_widths)
     for w_ in wlines:
         say("WIDTH " + w_)
@@ -399,6 +434,26 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     return 0
 
 
+def _rule_refs(r, parts):
+    """The refs a rule names (ref, refs, cap, a, b, members, anchor; a target part)."""
+    out = set()
+    for k in ("ref", "cap", "anchor"):
+        if isinstance(r.get(k), str):
+            out.add(r[k])
+    for k in ("refs", "a", "b"):
+        if r.get(k):
+            out |= set(pi._refs(r[k], parts))
+    if isinstance(r.get("target"), str):
+        out.add(r["target"].split(".")[0])
+    out |= set(r.get("members") or ())
+    return out
+
+
+def _rule_line(r):
+    keys = [k for k in ("ref", "target", "a", "b", "tool_d", "min_mm", "max_mm", "region", "edge") if k in r]
+    return "%s(%s)" % (r["kind"], ", ".join("%s=%s" % (k, r[k]) for k in keys))
+
+
 def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T, refused=None, room=(), width=(), pours=(),
             floor=()):
     forbid = [l_ for l_ in init_log + cells_log if "FORBID" in l_]
@@ -411,7 +466,10 @@ def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, 
     json.dump(rep, open(os.path.join(fd, "report.json"), "w"), indent=1)
     L = ["# place_flow: %s" % base, ""]
     if refused:
-        L += ["**layout REFUSED the placement.**", "", "```", refused.strip()[-1200:], "```", ""]
+        L += ["**%s**" % ("place_init found NO ROOM -- the flow stopped before layout." if refused.startswith("place_init: NO ROOM")
+                          else "the intent check found BROKEN hard rules -- the flow stopped before layout."
+                          if refused.startswith("intent check:") else "layout REFUSED the placement."),
+              "", "```", refused.strip()[-1200:], "```", ""]
     if score:
         L += ["| route score | open | pairs | islands | uncoupled | vias | length | floor |",
               "|---|---|---|---|---|---|---|---|",

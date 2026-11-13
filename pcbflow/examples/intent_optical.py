@@ -42,7 +42,7 @@ for poly in ([[X0, Y0], [X0 + EK, Y0], [X0 + EK, Y1], [X0, Y1]], [[X1 - EK, Y0],
              [[X0, Y1 - EK], [X1, Y1 - EK], [X1, Y1], [X0, Y1]]):
     r("keepout", "body >= EDGE_KEEP 1.2 to the edge", "op EDGE_KEEP, check at ~4004", poly=poly)
 r("keepout", "-Y face: EDGE_KEEP except J1/J2 (fixed, stamped over it)", "op ~4015",
-  poly=[[X0, Y0 - 1.0], [X1, Y0 - 1.0], [X1, Y0 + EK], [X0, Y0 + EK]])
+  poly=[[X0, Y0 - 1.0], [X1, Y0 - 1.0], [X1, Y0 + EK], [X0, Y0 + EK]], **{"except": ["J1", "J2"]})
 for c in notes["cutouts"]:
     r("hole", "M4 board screw: the O7.6 head + PKG_CLR 0.25", "op mount_points ~3225, check ~4091",
       xy=c["xy"], d=c["d"], keepout=(7.6 - c["d"]) / 2 + 0.25)
