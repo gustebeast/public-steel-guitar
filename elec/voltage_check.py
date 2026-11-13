@@ -72,8 +72,8 @@ DEFAULT_ELEC = HERE
 OUT = os.path.join(HERE, "out", "volts")              # the report and the per-pin tables
 DECL = os.path.join(HERE, "volts")                    # what the generators load (tracked)
 LEG = ("leg_pogo_male_bottom", "leg_pogo_male_top", "leg_pogo_female_bottom", "leg_pogo_female_top")
-BOARDS = ("can_tee", "pi_cap", "motor_ctrl", "output_panel", "optical", "lever_sensor") + LEG + ("brain", "output_power", "output_signal")
-ORDER = ("output_panel", "motor_ctrl", "pi_cap", "optical", "can_tee", "lever_sensor") + LEG + ("brain", "output_power", "output_signal")   # sources before sinks
+BOARDS = ("can_tee", "pi_cap", "motor_ctrl", "output_panel", "optical", "lever_sensor") + LEG + ("brain", "output_board")
+ORDER = ("output_panel", "motor_ctrl", "pi_cap", "optical", "can_tee", "lever_sensor") + LEG + ("brain", "output_board")   # sources before sinks
 GNDS = ("GND", "PWR_GND")
 EPS = 1e-6
 
@@ -445,6 +445,27 @@ SEEDS["output_signal"] = {
 }
 
 
+# ── THE OUTPUT BOARD AS ONE (user, 2026-11-13: "I want a single output board") ───────────
+# The two halves' seeds, joined: what crossed J20 is local now, so every ("from",
+# "output_power", ...) on the signal half goes (its driver or pull-up is on this board and
+# resolves here), +3V3D is U21's own LDO again, and the optical board's USB (OPT_DP / OPT_DM,
+# the PHY) is gone with the forwarder MCU (user, 2026-11-13): the ribbon J4 carries the SAI
+# lanes, the emitter gate and I2C2 instead. output_power / output_signal stay defined above as
+# the split's record; they are no longer BOARDS.
+_OPT_LANE = ("abs", dict(v=_V3D, vt=_V3D * 1.03, vf=5.25,
+                         why="a 3.3 V logic lane on the ribbon J4 (the H743 at +3V3D, or the optical "
+                             "board's converters at their 3.3 V IOVDD); FAULT = the ribbon's +5V_OPT "
+                             "(V5_PRE through U15, 5.17 V steady max) onto it, a crushed IDC"))
+SEEDS["output_board"] = {
+    **{k: v for k, v in SEEDS["output_power"].items() if k not in ("+3V3D",)},
+    **{k: v for k, v in SEEDS["output_signal"].items()
+       if not (v[0] == "from" and v[1] == "output_power") and k not in ("OPT_DP", "OPT_DM")},
+    "+3V3D": ("ldo", "U21", "AP2114H-3.3: 3.3 V +1.5 %; +3 % transient"),
+    "+5V_OPT": ("like", "V5_PRE", 0.0, "U15 (the ribbon's current-limited switch) passes V5_PRE"),
+    **{n: _OPT_LANE for n in ("SAI_SCK", "SAI_FS", "SAI_SD1", "SAI_SD2", "SAI_SD3", "SAI_SD4",
+                              "SAI_SD5", "OPT_EMIT")},
+}
+
 # (ref regex, pin regex, spec) -- for nets that have no stable name, picked by a pin on them
 PIN_SEEDS = {
     "pi_cap": [(r"^J1$", r".*", ("like", "+3V3_PI", 0.0, "Raspberry Pi GPIO: 3.3 V CMOS"))],
@@ -704,6 +725,23 @@ _OUT_CODES = {
     ("PinHeader_2x12_P1.27mm", "PinHeader_2x12_P1.27mm_Vertical_SMD"): "C22436132",
 }
 CODE_FALLBACK = {"output_power": _OUT_CODES, "output_signal": _OUT_CODES}
+
+# ── the output board as ONE (2026-11-13): the halves' tables joined, J20 gone ──────────────
+ZENER_FEED["output_board"] = dict(ZENER_FEED["output_power"])
+FET_VGS["output_board"] = dict(FET_VGS["output_power"])
+CAP_ACROSS["output_board"] = {**CAP_ACROSS["output_power"], **CAP_ACROSS["output_signal"]}
+RES_MODEL["output_board"] = {**RES_MODEL["output_power"], **RES_MODEL["output_signal"]}
+CURRENTS["output_board"] = (
+    [c for c in CURRENTS["output_power"] if c[0] != "J20" and c[0] != "L1"]
+    + [c for c in CURRENTS["output_signal"] if c[0] != "J20"]
+    + [("L1", None, 2.64, "the 5 V buck's output: every V5_PRE load at once (U15's 1.80 A limit + "
+                          "U21's 0.58 A + 0.26 A analog)")])
+REVIEW_NOTES["output_board"] = {**REVIEW_NOTES["output_power"], **REVIEW_NOTES["output_signal"]}
+CODE_FALLBACK["output_board"] = {
+    # J4, the optical ribbon: PZ1.27-2x10P ZZ has no LCSC code yet (output_board open item);
+    # rated as its stocked 2 x 8 sibling, the same HX PZ1.27 family and contacts
+    ("PZ1.27-2x10P ZZ", "PinHeader_2x10_P1.27mm_Vertical_SMD"): "C22438123",
+}
 
 
 # ── netlist + BOM ─────────────────────────────────────────────────────────────────────────

@@ -506,7 +506,8 @@ def output_board():
         _res(tag, "5k1", "J9 CC Rd: a device", j9[pin], gnd)
 
     # ── J4: the RIBBON to the optical board -- this board powers and clocks it ───────────
-    # 20 ways, 1.27 mm, vertical, an IDC ribbon (wire n = pin n): eleven signals, 5 V on two
+    # 20 ways, 1.27 mm, vertical SMD (a THT 2 x 10 at 1.27 traps its inner row: 0.27 mm between
+    # pads, oneB_j0 left all eight lanes open), an IDC ribbon (wire n = pin n): eleven signals, 5 V on two
     # wires, and SEVEN grounds so that every 12.288 MHz line has a ground beside it and the
     # bit clock has one on each side. Sixteen ways left I2C SDA no wire.
     opt_5v = Net("+5V_OPT")
@@ -514,7 +515,7 @@ def output_board():
               tool="skidl", value="PZ1.27-2x10P ZZ",
               description="ribbon to the optical board: five TDM lanes + clocks, I2C, emitter "
               "gate, 5 V (1.27 mm 2x10 vertical, HX PZ1.27 family as J5 on the brain)",
-              footprint="Connector_PinHeader_1.27mm:PinHeader_2x10_P1.27mm_Vertical",
+              footprint="Connector_PinHeader_1.27mm:PinHeader_2x10_P1.27mm_Vertical_SMD",
               pins=[Pin(num=n, func=P) for n in range(1, 21)])
     for pin, net in ((1, opt_5v), (2, opt_5v), (3, gnd), (4, io["SAI_SCK"]), (5, gnd),
                      (6, io["SAI_FS"]), (7, gnd), (8, io["SAI_SD1"]), (9, io["SAI_SD2"]),
@@ -522,6 +523,10 @@ def output_board():
                      (14, io["SAI_SD5"]), (15, gnd), (16, io["OPT_EMIT"]), (17, gnd),
                      (18, io["I2C2_SDA"]), (19, io["I2C2_SCL"]), (20, gnd)):
         net += j4[pin]
+    # the ribbon's 5 V at the HEADER as well as at the switch (C119): quality A9 found the
+    # nearest capacitor to J4's 5 V ways 40 mm off (oneG_j6, 2026-11-13); the optical board's
+    # 1.8 A of converter and emitter current steps through this pair of wires
+    _cap("C153", "10uF/16V", "J4 ribbon 5 V, at the header", opt_5v, gnd, C0805)
     # ── J5: the 1/4 in jack. PCB-MOUNT, so no hand-soldered lug. ─────────────
     # BOM.md already specifies this Neutrik; it is a PCB part with a panel bushing,
     # and mounting it as a free-floating panel jack was what implied hand-soldered
@@ -1469,45 +1474,55 @@ def output_board():
 
 
 # ── the board ────────────────────────────────────────────────────────────────────────────
-# ONE BOARD, ALL THE ROOM THERE IS (user, 2026-11-13: "I want a single output board. You can use
-# all the available space"). It stands in the instrument's X-Z plane on the -Y side; board X =
-# instrument X + 84, board Y = instrument Z + 56. Its limits, read off src.direct_bench:
-#   +X  instrument x = 0: the board runs INTO the +X endplate (x -20.2 .. 2.0, cut for it) so the
-#       panel connectors' 1.9 mm overhang ends flush with the outside face (user: "22 mm more")
-#   -X  instrument x = -168: the anchor's M4 heads end at -170.4 (user: "clear the screws")
-#   top instrument z = -5 under the deck (its underside -3.2); bottom z = -107 off the floor
-#   the -X top corner is cut away below z -20: the UI board's clamp and screw come down to
-#       z -18.1 at x < -147
-# Depth: the spring plugs end at y -58.1 and the wall bar starts at y -93.7, so the laminate
-# sits at the +Y side and the parts face -Y into ~32 mm. Single-sided.
-# The +X edge is the PANEL: J1, J2 (power + data in), J5 (the jack); J8 (the pickup's screws)
-# is on the TOP edge, reachable from above with the deck off; the internal leads (J3, J9 to the
-# CM5, J4 the optical ribbon, J10-J12 to the brain board) are on the -X side.
-BOARD_W, BOARD_L = 168.0, 102.0
-NOTCH = (-61.0, 36.0)          # x below, y above: cut away (instrument x < -145, z > -20)
-POWER_POLY = [[-84, -51], [84, -51], [84, 0], [20, 0], [20, -10], [-40, -10], [-40, 0], [-84, 0]]
+# ONE BOARD (user, 2026-11-13: "I want a single output board"), 120.3 x 100, DROPPED IN AND
+# SLID HOME (user, 2026-11-13: "slide in down -z and then over +x"). The board stands in the
+# instrument's X-Z plane, its back at y -87.5 (component face -85.9: branner moved it +1.7 so
+# UNCLIPPED 3.4 mm THT tails clear the -Y wall's inner face at -91.7 by 0.8) and its parts
+# facing +Y. It drops down -Z with the deck off, then slides +X 19 into a pocket fitted to it
+# in the +X endplate (branner), the panel connectors up behind a 4.0 outer wall that carries
+# only their holes (J5's nut clamps that wall: src/board_geom.py PANEL).
+#   +X  FINAL instrument x -3.87 = 2.03 - 4.0 wall - J5's 1.9 protrusion
+#   -X  final -124.17; during the drop -143.17, clear of the UI clamp (it ends at x -147.0)
+#   z   -108.24 .. -8.24 (the bottom edge in a floor groove, the top under the deck)
+# SEEN FROM ITS COMPONENT SIDE (+Y, looking -Y) the instrument's +X is on the LEFT, so:
+#   board x = -(instrument x + 64.02), board y = instrument z + 58.24
+# The PANEL is the board's -X edge: J1, J2 (power + data in), J5 (the jack); J8 (the pickup's
+# screws) is on the TOP edge under the open deck; the internal leads (J3, J9 to the CM5,
+# J4 the optical ribbon, J10-J12 to the brain) come off the +X end. The parts inside the
+# endplate pocket: elec/output_board.pocket.json (what branner cuts the pocket from).
+# The mount (an M4, branner's pick at x > -124) is ON HOLD until he places it.
+BOARD_W, BOARD_L = 120.3, 100.0
+XC, ZC = -64.02, -58.24
+XL = BOARD_W / 2 - 35.0         # the brain-lead band: the last 35 mm (the placement intent)
+# PWR_GND under the power section: the chargers at the panel end (-X), the buck and the brain
+# leads along the bottom
+POWER_POLY = [[-BOARD_W / 2, -50], [BOARD_W / 2, -50], [BOARD_W / 2, 0], [XL, 0], [XL, -10],
+              [-20, -10], [-20, 0], [-BOARD_W / 2, 0]]
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
-    "outline_poly": [[-84, -51], [84, -51], [84, 51], [NOTCH[0], 51], [NOTCH[0], NOTCH[1]],
-                     [-84, NOTCH[1]]],
+    "outline_poly": [[-BOARD_W / 2, -50], [BOARD_W / 2, -50], [BOARD_W / 2, 50], [-BOARD_W / 2, 50]],
+    "frame": {"instrument_x": "-(board x) - 64.02", "instrument_z": "board y - 58.24",
+              "component_face_y": -85.9, "faces": "+Y", "by": "branner 2026-11-13",
+              "install": "drop -Z at x - 19, slide +X 19 into the endplate pocket"},
     "layers": 4,
-    # PWR_GND under the power section on In1 (the split's power half had it as its whole In1),
-    # GND everywhere else; R60 is the star between them
     "zones": [{"net": "PWR_GND", "layer": "In1.Cu", "inset": 0.3, "poly": POWER_POLY, "priority": 1},
               ("GND", "In1.Cu", 0.3), ("GND", "B.Cu", 0.3)],
     "stitch_nets": ("PWR_GND", "GND"),
     # exposed pads only before routing; the router takes the rest (cadkit 72d70a5: brain 14 -> 1 open)
     "stitch_scope": "exposed",
     "qty_per_instrument": 1,
-    "panel_edge": "+X",
-    "edge_parts": {"+X": ["J1", "J2", "J5"], "+Y": ["J8"], "-X": ["J3", "J4", "J9"]},
+    "panel_edge": "-X",
+    # A17: twenty unnamed 1.27 mm ways -- the labeller prints a pinout block beside J4
+    "silk_pinout": ["J4"],
+    "edge_parts": {"-X": ["J1", "J2", "J5"], "+Y": ["J8"], "+X": ["J3", "J9"]},
     "placements": {},
     "open_items": [
         "brain board: the 24 V boost and the power button move there (harness.BRAIN_POWER / BRAIN_SIGNAL); its VIN input soft-starts behind BRAIN_EN",
         "AP33772SDKZ-13 vs -FA02: VSEL/GPIO only on FA02; this board uses neither",
         "J4 ribbon header PZ1.27-2x10P ZZ: find its LCSC code and stock (the 2x8 is C22438123); the optical board's end mirrors this pinout",
         "J4 ribbon: 12.288 MHz BCLK + five lanes over the ribbon -- keep it short (optical top panel to this board) and series-terminate the clock at its source (SAI1 SCK pin)",
-        "the +X endplate is cut for the board and its three panel connectors (branner's)",
+        "the +X endplate pocket (branner) is cut from elec/output_board.pocket.json: regenerate it whenever the parts within 19 mm of the panel edge move",
+        "the mount: one M4 (branner) at x > -124, not yet placed -- reserve its keepout when it is",
         "A16 voltage declarations: voltage_check has output_power / output_signal seeds; merge them into one output_board entry",
     ],
 }
@@ -1519,12 +1534,18 @@ def quality_notes(net_path):
     import output_split as OS
     qp, qs = OS.quality("power", net_path), OS.quality("signal", net_path)
     q = {"pinouts": dict(qp["pinouts"], **qs["pinouts"])}
+    q["pinouts"]["PZ1.27-2x10P ZZ"] = (
+        "HX PZ1.27 family drawing (as the brain's PZ1.27-2x8P ZZ, LCSC C22438123, p.1): a plain "
+        "straight two-row header, the maker numbers nothing -- the numbering is the footprint's "
+        "(KiCad PinHeader_2x10_P1.27mm_Vertical_SMD: odd pads one row, even the other, 1 / 2 at "
+        "one end) and the way order is this file's J4 block, which the optical board's end "
+        "mirrors (IDC ribbon: wire n = pin n)")
     for k in [k for k in q["pinouts"] if "2x12_P1.27mm" in k]:
         del q["pinouts"][k]
     unc = dict(qp["unconnected"], **qs["unconnected"])
     for k in [k for k in unc if k.startswith("J[49]") or k.startswith("J[123]") or k == "U4"]:
         del unc[k]
-    unc["J[139].[AB]8"] = "USB-C sideband (SBU): USB 2.0 does not use it"
+    unc["J[1239].[AB]8"] = "USB-C sideband (SBU): USB 2.0 does not use it"
     q["unconnected"] = unc
     q["decoupling"] = qp["decoupling"]
     q["not_power"] = dict(qp["not_power"], **qs["not_power"])
@@ -1556,6 +1577,8 @@ if __name__ == "__main__":
     notes = dict(BOARD_NOTES)
     q, match = quality_notes(net_path)
     notes["match"], notes["quality"] = match, q
+    import volts_decl                   # A16: generated by voltage_check.py --declare output_board
+    volts_decl.into(notes, "output_board")
     with open(os.path.join(OUT_DIR, "output_board.board.json"), "w") as f:
         json.dump(notes, f, indent=2)
     print("output_board netlist written; %d open items" % len(BOARD_NOTES["open_items"]))

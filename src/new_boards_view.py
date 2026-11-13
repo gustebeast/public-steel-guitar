@@ -1,19 +1,21 @@
 """THE NEW INSTRUMENT'S BOARDS IN PLACE -- a VIEW of the direct-drive instrument (src.direct_bench)
-with the routed brain and output boards where the 2026-11-12 plan and their placement intents put
-them. Not a fit study: no overlap gate, and the positions are the intents' frames, not a mount.
+with the routed brain and output boards where their frames put them. Not a fit study: no overlap
+gate, and the positions are the intents' frames, not a mount.
 
   * brain (320 x 70): on its side, -Y of the motors, component side facing -Y (away from the
-    motors, JSTs mouth-up). Board X = instrument X + 360, board Y = instrument Z.
-  * output_signal (68 x 100): stood in the XZ plane in the +X -Y box beside the endplate,
-    component side facing -Y. Board X = instrument X, board Y = instrument Z.
-  * output_power (68 x 72): 15 mm further -Y, FACING output_signal, its centre 14 mm lower.
-    Board X = -instrument X, board Y = instrument Z.
+    motors, JSTs mouth-up). Board X = instrument X + 360, board Y = instrument Z. (To move: user
+    2026-11-13, flat in the -X +Y corner -- not drawn there until it is re-placed.)
+  * output_board (120.3 x 100, ONE board, drops in -Z then slides +X 19 into a pocket fitted to it in the +X endplate: user 2026-11-13): back face on the
+    -Y side at y -87.5 (branner: +1.7 so unclipped 3.4 tails clear the wall at -91.7), parts facing +Y; board x = -(instrument x + 64.02), board y =
+    instrument z + 58.24 (x -124.17 .. -3.87). The panel (board -X edge) sits 4.0 + 1.9 behind the outer face; parts in the pocket: elec/output_board.pocket.json.
   * the optical board is NOT drawn: it is being redesigned (user 2026-11-13: no forwarder MCU,
     a ribbon to the output board).
 
-The geometry is whatever elec/geom/<board>.geom.json holds -- the latest finished trial.
+The geometry is elec/geom/<board>.geom.json: bronner exports the CHOSEN trial into it (cadkit
+kicad_geom.py --out), since trial runs all write there. Each board's solids are KEPT (cadkit.kept,
+keyed on that file): a render rebuilds only a board whose geometry changed.
 
-    view: agent_sync.py scope --set src.new_boards_view --attr assembly; py -3.12 -m tools.scratch_view
+    view: agent_sync.py scope --set src.new_boards_view --attr assembly; agent_sync.py view --solo
 """
 from __future__ import annotations
 
@@ -32,6 +34,7 @@ VIEW_HEIGHT = {
     "Hirose_DF40C-100DS-0.4V_2x50_P0.4mm": 1.5,   # the CM5 mezzanine's mated stack (CM5 datasheet)
     "L_Bourns_SRP1770TA_16.9x16.9mm": 7.0,   # brain part_heights L4
     "PinHeader_2x08_P1.27mm_Vertical": 5.3,  # brain part_heights J5 (HX PZ1.27-2x8P ZZ)
+    "PinHeader_2x10_P1.27mm_Vertical_SMD": 5.3,   # output_board J4 PZ1.27-2x10P: AS its 2x8 sibling
     "TDSON-8-1": 1.10,                       # brain part_heights Q8/Q9
     "Texas_PWP0020A": 1.20,                  # HTSSOP-20, TI PWP0020A outline: 1.2 max
     "QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm": 1.0,   # ESTIMATED, a 4 x 4 QFN's usual 1.0 max
@@ -41,24 +44,30 @@ VIEW_HEIGHT = {
     "PinSocket_2x12_P1.27mm_Vertical_SMD": 8.0,
 }
 
-BOARDS = Boards(BG.GEOM_DIR, height={**BG.HEIGHT, **VIEW_HEIGHT}, tail=BG.TAIL,
-                tht_legs=BG.THT_LEGS, panel=BG.PANEL)
+# built EXACTLY as src.board_geom.BOARDS (silk font, revisions), heights extended: the web export
+# finds a board by its lettering drawn by THAT instance, so a different font is a different board
+BOARDS = BG._with_revs(Boards(BG.GEOM_DIR, height={**BG.HEIGHT, **VIEW_HEIGHT}, tail=BG.TAIL,
+                              tht_legs=BG.THT_LEGS, panel=BG.PANEL,
+                              **({"silk_font": BG._FONT, "silk_cap": BG.SILK_FONT_CAP}
+                                 if BG._FONT else {})))
 
-GAP = 15.0                    # output_signal to output_power, board to board
-SIG_Y = -66.0                 # output_signal's back face: just -Y of the motors' -64
-SIG_X, SIG_Z = -56.0, -58.0   # its centre: inside the endplate (x -20), bottom on z -108
-PWR_Z = SIG_Z - 14.0
 BRAIN_Y, BRAIN_DX, BRAIN_Z = -66.0, -360.0, -71.0
+OB_X, OB_BACK_Y, OB_Z = -64.02, -87.5, -58.24      # output_board centre, FINAL (x -124.17..-3.87 after the +X slide d 19), back face (branner)
 
 
-def _fab_refs(board):
-    return [f["ref"] for f in BOARDS.load(board)["footprints"] if f["fab"]]
+def _build(board):
+    """(board, lettering) of `board` in its own frame, as the shipped boards are drawn: ONE
+    solid (laminate + every part, BOARDS.solid) and its silkscreen (BOARDS.ink). The web
+    export finds the board by its lettering and swaps the boxes for KiCad's coloured models
+    (cadkit.web.boards), so the two must be posed alike and the parts must not be split off."""
+    return BOARDS.solid(board), BOARDS.ink(board)
 
 
 @lru_cache(maxsize=None)
 def _parts(board):
-    """(laminate, parts) of `board` in its own frame: laminate z 0 .. t, parts above."""
-    return BOARDS.plate(board), BOARDS.bodies(board, _fab_refs(board))
+    # kept: keyed on the code and the geom.json it opens, so an unchanged board is a read
+    from cadkit.kept import kept
+    return tuple(kept(_build, board))
 
 
 def _facing_minus_y(w, x, y, z):
@@ -74,19 +83,17 @@ def _facing_plus_y_mirrored(w, x, y, z):
 
 def boards() -> list:
     out = []
-    t = BOARDS.load("output_power")["thickness_mm"]
     place = (
         ("brain", _facing_minus_y, (BRAIN_DX, BRAIN_Y, BRAIN_Z)),
-        ("output_signal", _facing_minus_y, (SIG_X, SIG_Y, SIG_Z)),
-        # its back face GAP + two laminates further -Y, its parts toward output_signal
-        ("output_power", _facing_plus_y_mirrored, (SIG_X, SIG_Y - 2 * t - GAP, PWR_Z)),
+        # board -X = instrument +X, parts toward +Y: (x, y, z) -> (-x, z, y)
+        ("output_board", _facing_plus_y_mirrored, (OB_X, OB_BACK_Y, OB_Z)),
     )
     from cadkit.web.finishes import made_of
     for b, pose, at in place:
-        plate, parts = _parts(b)
-        # this module's own names; tools.web_materials' general pcb rule answers both
-        out.append(("%s_pcb" % b, made_of(pose(plate, *at), "board")))
-        out.append(("%s_pcb_parts" % b, made_of(pose(parts, *at), "nylon")))
+        solid, ink = _parts(b)
+        out.append(("%s_pcb" % b, made_of(pose(solid, *at), "board")))
+        if ink is not None:
+            out.append(("%s_pcb_silk" % b, made_of(pose(ink, *at), "ink")))
     return out
 
 
