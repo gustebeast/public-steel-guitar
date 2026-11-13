@@ -758,6 +758,10 @@ BOARD_NOTES = {
     "layers": 4,
     "zones": [("GND", "In1.Cu", 0.3), ("GND", "B.Cu", 0.3)],
     "stitch_nets": ("GND",),   # exposed pads and GND pads straight to the plane
+    # heights a footprint does not tell (cadkit place_intent.part_height reads these for the
+    # station-2 height zone; branner's CAD reads them for the bodies): the boost's polymer
+    # caps are jieerrui MA35V470M10X13 -- 13 mm on a 10 mm land (MA series datasheet p.4)
+    "part_heights": {"C113": 13.0, "C114": 13.0},
     "qty_per_instrument": 1,
     "edge_parts": {"+Y": ["J21", "J22", "J23", "J24", "J25", "J26", "J27", "J28", "J29",
                           "J30", "J15", "J16", "J10", "J12", "J11", "J3", "J4"]},

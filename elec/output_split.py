@@ -82,6 +82,8 @@ NOTES = {
         "zones": [("PWR_GND", "In1.Cu", 0.3), ("GND", "B.Cu", 0.3)],
         # every ground pad -- the AP33772S bellies above all -- drops a via to its plane
         "stitch_nets": ("PWR_GND", "GND"),
+        "firmware": ["see output_signal's notes: the INA226 here (U16, R112 = 4 mohm) is read "
+                     "by the H743 there; CALIBRATION = 2560 at Current_LSB 0.5 mA"],
         "qty_per_instrument": 1,
         "panel_edge": "-X",
         "edge_parts": {"-X": ["J1", "J2"], "+X": ["J3", "J10", "J12"]},   # its own frame: mirrored
@@ -100,6 +102,16 @@ NOTES = {
         "layers": 4,
         "zones": [("GND", "In1.Cu", 0.3), ("GND", "B.Cu", 0.3)],
         "stitch_nets": ("GND",),   # U4's belly and every GND pad to the plane
+        # what the H743's firmware must know about this hardware (lead, 2026-11-13)
+        "firmware": [
+            "INA226 (output_power U16, 0x40 on I2C2 via J20): shunt R112 = 4 mohm (was 5 mohm on "
+            "R2; changed 2026-11-13). Current_LSB 0.5 mA (10 A worst case / 2^15 = 0.31 mA, rounded "
+            "up), so CALIBRATION (reg 0x05) = 0.00512 / (0.0005 A x 0.004 ohm) = 2560 = 0x0A00 "
+            "(INA226 datasheet SBOS547, the calibration-register equation); Power_LSB = 25 x "
+            "Current_LSB = 12.5 mW. Raw: shunt LSB 2.5 uV, so 10 A = 40 mV = 16000 counts.",
+            "AP33772S INT (PD10 / PD11) arrives through 4k7 / 10k dividers (R123-R126): high reads "
+            "~3.4 V, a normal FT-pin input; no pull configuration needed.",
+        ],
         "qty_per_instrument": 1,
         "panel_edge": "+X",
         "edge_parts": {"+X": ["J5"], "+Y": ["J8"], "-X": ["J4", "J9", "J11"]},
