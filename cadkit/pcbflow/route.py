@@ -17,6 +17,7 @@ placement in <board>.board.json is the thing under version control.
 """
 from __future__ import annotations
 
+import _nowindow  # noqa: F401  (no console windows on Windows: _nowindow.py)
 import json
 import math
 import os

@@ -49,6 +49,7 @@ flow/input.board.json). Every stage's output is in <dir>/flow/.
 """
 from __future__ import annotations
 
+import _nowindow  # noqa: F401  (no console windows on Windows: _nowindow.py)
 import argparse
 import collections
 import json
