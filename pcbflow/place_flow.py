@@ -67,7 +67,7 @@ import place_intent as pi  # noqa: E402
 from place_refine import KICAD_PY, _stem  # noqa: E402
 
 AUTO = {"auto_decaps (netlist)": "decaps", "auto_singles (netlist)": "singles",
-        "auto_floorplan (netlist)": "floorplan"}
+        "auto_floorplan (netlist)": "floorplan", "auto_switcher (netlist)": "switcher"}
 
 
 def _run(cmd, log, cwd=HERE):
@@ -111,6 +111,10 @@ def _intent(rules, parts, notes, net_path, auto, singles=False):
                 c.pop("_now", None)
             rules = rules + new
             added.append("auto_decaps %d" % len(new))
+        if "auto_switcher (netlist)" not in have:
+            new = pi.auto_switcher(parts, cells=rules)
+            rules = rules + new
+            added.append("auto_switcher %d" % len(new))
         # ⚠ auto_singles IS OPT-IN (lead ruling, 2026-11-12): two boards where the test pads'
         # 8 mm `near` cost routing -- output_panel op12, 3 rules: a pair fault and 20.9 mm
         # uncoupled against op14's 0 / 0.52. A test pad's `access` rule is what matters;

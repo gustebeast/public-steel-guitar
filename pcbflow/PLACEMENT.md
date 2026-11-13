@@ -1216,6 +1216,27 @@ Results:
 * Score 30 open against ob10's 25. The ULPI opens went 4 -> 4 and PD 17 -> 14; the rest moved
   to the brain-link band. Placement variance; the band is the binding constraint, not the bus.
 
+**auto_switcher (2026-11-13), place_intent.** The flow adds it beside auto_decaps. It
+writes `near` rules for a switching controller's own loops, read off the netlist's structure.
+Our SKiDL netlists carry no pin names, so a key on "HO" / "LO" never fires.
+* A switcher is a U on a small net (6 refs or fewer) that has an inductor -- the SW node --
+  and that drives a FET of its own.
+* Gate drive: a two-pad net from one of its pins to a Q. The FET goes within 8 mm.
+* Control pin: a net of 5 pads or fewer joining one of its pins and only R / C -- FB, COMP,
+  VCC, RT, SS, UVLO, SLOPE. Each passive goes within 5 mm.
+
+Brain board (LM5122 boost):
+
+| run | rules | open |
+|---|---|---|
+| br4 | none | 4 (BST_FB / HO / LO, +3V3) |
+| br5 | by hand | 2 |
+| br7 | auto, no hand rules | 1 (BST_VIN) |
+
+Integrated converters (FETs inside) are left out. With the LMR33630's two FB rules, output_panel
+went from 0 / 0 / 0.52 (opB: open / pairs / uncoupled) to 0 / 1 / 1.03 (opA). It fires on no
+other board: lever, ui, output_panel, optical and output_board get zero rules.
+
 ## Rules carried over
 
 * Keep every run to minutes; no hour-plus sweeps (ROUTER.md, route-time notes).
