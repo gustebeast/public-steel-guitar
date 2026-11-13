@@ -610,44 +610,44 @@
    "why": "this part IS the clamp on USBA_DM: it stands 5 V (where its leakage is specified) and starts to conduct at 5.4 V, the figure a steady level must stay under"
   },
   "J1.A4": {
-   "max": 20.0,
-   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+   "max": 48.0,
+   "src": "rated V -- PTCFW-H22A-005 (C54829820): YUWENFA PTCFW-H22A-005 drawing p.1/3: rated 48 V, 5 A, 240 W; land p.2/3 identical to HRO TYPE-C-31-M-12"
   },
   "J1.A5": {
-   "max": 20.0,
-   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+   "max": 48.0,
+   "src": "rated V -- PTCFW-H22A-005 (C54829820): YUWENFA PTCFW-H22A-005 drawing p.1/3: rated 48 V, 5 A, 240 W; land p.2/3 identical to HRO TYPE-C-31-M-12"
   },
   "J1.A6": {
-   "max": 20.0,
-   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+   "max": 48.0,
+   "src": "rated V -- PTCFW-H22A-005 (C54829820): YUWENFA PTCFW-H22A-005 drawing p.1/3: rated 48 V, 5 A, 240 W; land p.2/3 identical to HRO TYPE-C-31-M-12"
   },
   "J1.A7": {
-   "max": 20.0,
-   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+   "max": 48.0,
+   "src": "rated V -- PTCFW-H22A-005 (C54829820): YUWENFA PTCFW-H22A-005 drawing p.1/3: rated 48 V, 5 A, 240 W; land p.2/3 identical to HRO TYPE-C-31-M-12"
   },
   "J1.A9": {
-   "max": 20.0,
-   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+   "max": 48.0,
+   "src": "rated V -- PTCFW-H22A-005 (C54829820): YUWENFA PTCFW-H22A-005 drawing p.1/3: rated 48 V, 5 A, 240 W; land p.2/3 identical to HRO TYPE-C-31-M-12"
   },
   "J1.B4": {
-   "max": 20.0,
-   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+   "max": 48.0,
+   "src": "rated V -- PTCFW-H22A-005 (C54829820): YUWENFA PTCFW-H22A-005 drawing p.1/3: rated 48 V, 5 A, 240 W; land p.2/3 identical to HRO TYPE-C-31-M-12"
   },
   "J1.B5": {
-   "max": 20.0,
-   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+   "max": 48.0,
+   "src": "rated V -- PTCFW-H22A-005 (C54829820): YUWENFA PTCFW-H22A-005 drawing p.1/3: rated 48 V, 5 A, 240 W; land p.2/3 identical to HRO TYPE-C-31-M-12"
   },
   "J1.B6": {
-   "max": 20.0,
-   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+   "max": 48.0,
+   "src": "rated V -- PTCFW-H22A-005 (C54829820): YUWENFA PTCFW-H22A-005 drawing p.1/3: rated 48 V, 5 A, 240 W; land p.2/3 identical to HRO TYPE-C-31-M-12"
   },
   "J1.B7": {
-   "max": 20.0,
-   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+   "max": 48.0,
+   "src": "rated V -- PTCFW-H22A-005 (C54829820): YUWENFA PTCFW-H22A-005 drawing p.1/3: rated 48 V, 5 A, 240 W; land p.2/3 identical to HRO TYPE-C-31-M-12"
   },
   "J1.B9": {
-   "max": 20.0,
-   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+   "max": 48.0,
+   "src": "rated V -- PTCFW-H22A-005 (C54829820): YUWENFA PTCFW-H22A-005 drawing p.1/3: rated 48 V, 5 A, 240 W; land p.2/3 identical to HRO TYPE-C-31-M-12"
   },
   "J10.1": {
    "max": 250.0,
@@ -682,44 +682,44 @@
    "src": "rated V -- S6B-XH-SM4-TB(LF)(SN) (C191914): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
   },
   "J2.A4": {
-   "max": 20.0,
-   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+   "max": 48.0,
+   "src": "rated V -- PTCFW-H22A-005 (C54829820): YUWENFA PTCFW-H22A-005 drawing p.1/3: rated 48 V, 5 A, 240 W; land p.2/3 identical to HRO TYPE-C-31-M-12"
   },
   "J2.A5": {
-   "max": 20.0,
-   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+   "max": 48.0,
+   "src": "rated V -- PTCFW-H22A-005 (C54829820): YUWENFA PTCFW-H22A-005 drawing p.1/3: rated 48 V, 5 A, 240 W; land p.2/3 identical to HRO TYPE-C-31-M-12"
   },
   "J2.A6": {
-   "max": 20.0,
-   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+   "max": 48.0,
+   "src": "rated V -- PTCFW-H22A-005 (C54829820): YUWENFA PTCFW-H22A-005 drawing p.1/3: rated 48 V, 5 A, 240 W; land p.2/3 identical to HRO TYPE-C-31-M-12"
   },
   "J2.A7": {
-   "max": 20.0,
-   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+   "max": 48.0,
+   "src": "rated V -- PTCFW-H22A-005 (C54829820): YUWENFA PTCFW-H22A-005 drawing p.1/3: rated 48 V, 5 A, 240 W; land p.2/3 identical to HRO TYPE-C-31-M-12"
   },
   "J2.A9": {
-   "max": 20.0,
-   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+   "max": 48.0,
+   "src": "rated V -- PTCFW-H22A-005 (C54829820): YUWENFA PTCFW-H22A-005 drawing p.1/3: rated 48 V, 5 A, 240 W; land p.2/3 identical to HRO TYPE-C-31-M-12"
   },
   "J2.B4": {
-   "max": 20.0,
-   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+   "max": 48.0,
+   "src": "rated V -- PTCFW-H22A-005 (C54829820): YUWENFA PTCFW-H22A-005 drawing p.1/3: rated 48 V, 5 A, 240 W; land p.2/3 identical to HRO TYPE-C-31-M-12"
   },
   "J2.B5": {
-   "max": 20.0,
-   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+   "max": 48.0,
+   "src": "rated V -- PTCFW-H22A-005 (C54829820): YUWENFA PTCFW-H22A-005 drawing p.1/3: rated 48 V, 5 A, 240 W; land p.2/3 identical to HRO TYPE-C-31-M-12"
   },
   "J2.B6": {
-   "max": 20.0,
-   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+   "max": 48.0,
+   "src": "rated V -- PTCFW-H22A-005 (C54829820): YUWENFA PTCFW-H22A-005 drawing p.1/3: rated 48 V, 5 A, 240 W; land p.2/3 identical to HRO TYPE-C-31-M-12"
   },
   "J2.B7": {
-   "max": 20.0,
-   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+   "max": 48.0,
+   "src": "rated V -- PTCFW-H22A-005 (C54829820): YUWENFA PTCFW-H22A-005 drawing p.1/3: rated 48 V, 5 A, 240 W; land p.2/3 identical to HRO TYPE-C-31-M-12"
   },
   "J2.B9": {
-   "max": 20.0,
-   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+   "max": 48.0,
+   "src": "rated V -- PTCFW-H22A-005 (C54829820): YUWENFA PTCFW-H22A-005 drawing p.1/3: rated 48 V, 5 A, 240 W; land p.2/3 identical to HRO TYPE-C-31-M-12"
   },
   "J20.1": {
    "max": 30.0,

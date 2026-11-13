@@ -679,13 +679,12 @@ CURRENTS["output_signal"] = [
     ("FB1", None, 0.26, "the analog 5 V (output_split.py power_paths)"),
 ]
 REVIEW_NOTES["output_power"] = {
-    ("J1", "FAIL"): "The receptacle's 20 V is USB Type-C's SPR rating class, the voltage a 20 V PD contract is "
-                    "defined against; the 21 V is that contract's +5 % tolerance. Not a new exposure for a "
-                    "USB-C sink, but an EPR-rated (48 V) receptacle would give the margin this check asks for.",
-    ("J2", "FAIL"): "As J1.",
     ("J10", "SUSPECT"): "Accepted (lead, 2026-11-13): 2.5 A a way on two XH ways is exactly the two-gauge rule's "
                         "sizing for a 22 AWG XH power way; the 10 A is the worst case of both leads on one charger.",
     ("J12", "SUSPECT"): "As J10.",
+    ("L1", "SUSPECT"): "Accepted (lead, 2026-11-13): no 4.7 uH 5040 part at LCSC reaches Isat AND Irms >= 3.43 A "
+                       "(the ferrite 5040s stop at 3.0-3.3 A); the nearest, Sunlord MWSA0503S-4R7MT (C408410, "
+                       "Isat 3.68 / Irms 4.0 A), is a 5.4 x 5.2 land. 2.64 A is the worst case of every V5_PRE load at once.",
 }
 REVIEW_NOTES["output_signal"] = {
     ("D5", "SUSPECT"): REVIEW_NOTES["output_panel"][("D5", "SUSPECT")],

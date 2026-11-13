@@ -65,6 +65,7 @@ LCSC = {
     "NUP2105LT1G": "C14486",        # onsemi dual CAN-line TVS, 24 V stand-off, SOT-23; 273,420
     "LMR16006XDDCR": "C87080",      # 60 V 0.6 A buck, lever + motor controller
     "TYPE-C-31-M-12": "C165948",    # USB-C receptacle, motor controller + panel
+    "PTCFW-H22A-005": "C54829820",  # YUWENFA USB-C 16P, 48 V / 5 A, TYPE-C-31-M-12's land; 3,835 on 2026-11-13 (output_power J1/J2)
     "HX-TYPE-C 16P 180 LC-B H10.0": "C49261584",  # motor_ctrl R2 J4: vertical USB-C, THT; 1,765 (2026-11-03)
     "CH32V203G6U6": "C5142280",     # lever board MCU until 2026-11-03 (rev 1)
     "CH32V203C8T6": "C3001172",     # lever board MCU since 2026-11-03: USBFS on PB6/PB7; 9,420 on 2026-11-03
@@ -218,16 +219,18 @@ LCSC = {
     "LM5122PWPR": "C77241",         # TI LM5122MHX/NOPB: the HTSSOP-20 PWP reel (SNVS954H orderables;
                                     # there is no "LM5122PWPR"); 20,357 on 2026-11-13 (brain U20)
     "NCEP4090GU": "C502976",        # Wuxi NCE Power NCEP4090GU, DFN5x6-8L; 3,236 on 2026-11-13 (brain Q8/Q9)
-    "DF40C-100DS-0.4V(51)": "C597931",  # Hirose DF40C-100DS-0.4V(51); 134 on 2026-11-13 -- THIN,
-                                    # 2 per instrument (brain J1/J2). The (58) form is C3642394, 396
+    "DF40C-100DS-0.4V(51)": "C3642394",  # Hirose DF40C-100DS-0.4V(58), the same part on other
+                                    # packaging: 196 on 2026-11-13 (C597931, the (51), had fallen
+                                    # to 34) -- THIN, 2 per instrument (brain J1/J2): order early
     "S6B-XH-SM4-TB": "C191914",     # JST S6B-XH-SM4-TB(LF)(SN), 5,661; the bare listing
                                     # C20493992 is 0 (brain J10/J12)
     # Keyed by value, not in PASSIVES: lcsc_check.check_passives reads a chip size out of
     # the footprint name, which these two do not have.
     "10uH 15A": "C2045568",         # Bourns SRP1770TA-100M; ZERO in stock on 2026-11-13 (brain L4)
-    "470uF/35V": "C46550413",       # jieerrui JVJ35V470M10x10, SMD D10xL10.5 Al electrolytic, 35 V;
-                                    # 136,983 on 2026-11-13 (brain C113/C114). brain.py's C46550430
-                                    # is a THROUGH-HOLE 8x15 polymer, not this land
+    "470uF/35V": "C46550472",       # jieerrui MA35V470M10X13, SMD POLYMER D10x13, 35 V, 16 mohm,
+                                    # 3.8 A ripple at 100 kHz; 66,146 on 2026-11-13 (brain C113/C114).
+                                    # Was C46550413, a wet Al part rated 0.42 A at 250 kHz against
+                                    # a boost whose output caps carry ~5.8 A RMS between them
 }
 # ── EVERY PASSIVE, BY (VALUE, FOOTPRINT) ──────────────────────────────────────────────
 # These rows used to go to the fab with no part number -- "a generic passive, chosen at

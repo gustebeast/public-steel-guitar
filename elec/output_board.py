@@ -158,13 +158,13 @@ def _d(tag, value, desc, fp="Diode_SMD:D_SOD-523"):
                 pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
 
 
-def _usbc(tag, desc):
+def _usbc(tag, desc, value="TYPE-C-31-M-12"):
     pins = ([Pin(num=n, func=P) for n in
              ("A1", "A4", "A5", "A6", "A7", "A8", "A9", "A12",
               "B1", "B4", "B5", "B6", "B7", "B8", "B9", "B12")]
             + [Pin(num="SH", func=P)])
     return Part(name="USB_C_Receptacle", ref_prefix="J", ref=tag, tag=tag, dest="NETLIST",
-                tool="skidl", value="TYPE-C-31-M-12", description=desc,
+                tool="skidl", value=value, description=desc,
                 footprint=USBC_FP, pins=pins)
 
 
@@ -200,6 +200,12 @@ PD_PINOUTS = {
                       "3 GND, 4 SDA, 5 SCL, 6 FLIP, 7 GPIO, 8 LED, 9 INT, 10 NC, 11 VSEL, 12 V18, "
                       "13 OTP, 14 NC, 15 IFB, 16 CC2, 17 CC1, 18 DN, 19 DP, 20 V5V, 21 NC, 22 VOUT, "
                       "23 PWR_EN, 24 VCC, EPAD GND (KiCad pad 25); p.17 EP to GND",
+    "PTCFW-H22A-005": "YUWENFA PTCFW-H22A-005 drawing P-TCF-003 rev A0 (LCSC C54829820) sheet 2/3, "
+                      "PIN ASSIGNMENTS: A1/A12/B1/B12 GND, A4/A9/B4/B9 VBUS, A5 CC1, B5 CC2, A6/B6 D+, "
+                      "A7/B7 D-, A8/B8 SBU; its recommended layout (component side) puts A1/B12 at the "
+                      "left end and A12/B1 at the right, 8.64 slot span, 4.18 / 5.79, two 0.65 pegs -- "
+                      "TYPE-C-31-M-12's land, which KiCad's USB_C_Receptacle_HRO_TYPE-C-31-M-12 numbers "
+                      "by the same names (read 2026-11-13)",
     "LM74700QDBVRQ1": "TI SNOSD17G p.3 Figure 5-1 / Table 5-1, DBV (SOT-23-6): 1 VCAP, 2 GND, 3 EN, "
                       "4 CATHODE, 5 GATE, 6 ANODE (the DDF table 5-2 differs); FET source on ANODE, "
                       "drain on CATHODE. KiCad SOT-23-6 pads 1-6 as numbered",
@@ -329,8 +335,12 @@ def output_board():
             ("B", "J2", "U14", "Q5", "Q7", "U19", "R75", "RT2",
              ("R76", "R77", "R78", "R79"), ("C86", "C87", "C88", "C89", "C90", "C91"),
              "D15", "D16", ("D12", "D13"), ("D22", "D23"))):
+        # ⚠ A 48 V (EPR-class) RECEPTACLE, not the HRO TYPE-C-31-M-12 (lead ruling 2026-11-13):
+        # HRO's drawing rates that one 20 V, under the PD contract's 21 V; YUWENFA's
+        # PTCFW-H22A-005 is rated 48 V / 5 A on its own drawing (p.1/3) on the same land
+        # (p.2/3: 8.64 slots, 4.18 / 5.79, two 0.65 pegs), at the same price
         j = _usbc(j_ref, "panel USB-C %s: USB PD power in (5-20 V) + USB 2.0 data to the "
-                  "CM5's gadget port (LCSC C165948)" % side)
+                  "CM5's gadget port; 48 V receptacle (LCSC C54829820)" % side, "PTCFW-H22A-005")
         pgnd += j["A1"], j["A12"], j["B1"], j["B12"], j["SH"]
         vbus, vcc, vout = Net("P%s_VBUS" % side), Net("P%s_VCC" % side), Net("P%s_VOUT" % side)
         vbus += j["A4"], j["B4"], j["A9"], j["B9"]

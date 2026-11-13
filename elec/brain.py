@@ -407,8 +407,9 @@ def brain():
         _cap("C%d" % (105 + k), "22uF/35V", "boost output ceramic, ahead of the polymers "
              "(TI: ceramics first)", v24, gnd, C1210)
     for tag in ("C113", "C114"):
-        _cap(tag, "470uF/35V", "boost output bulk, polymer -- placeholder land, SKU open "
-             "(R2-6: C46550430)", v24, gnd, "Capacitor_SMD:CP_Elec_10x10.5")
+        _cap(tag, "470uF/35V", "boost output bulk, polymer, jieerrui MA35V470M10X13: 3.8 A ripple; "
+             "10 mm base on the 10x10.5 land, 13 mm TALL (LCSC C46550472)", v24, gnd,
+             "Capacitor_SMD:CP_Elec_10x10.5")
     _cap("C115", "100nF/50V", "+24V HF bypass", v24, gnd)
     _diode("D3", "SMCJ24A", "+24V clamp, 1.5 kW -- ten stepper drivers' kick lands here",
            v24, gnd, "Diode_SMD:D_SMC")

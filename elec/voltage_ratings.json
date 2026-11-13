@@ -3268,6 +3268,29 @@
    },
    "mpn": "SMBJ22A",
    "src": "Littelfuse SMBJ Series datasheet (Revised JC.07/04/25 v4) p.2, electrical characteristics row SMBJ22A: VRWM 22 V, VBR 24.40-26.90 V @1 mA, VC 35.5 V @ IPP 16.9 A (10/1000 us), 600 W"
+  },
+  "C54829820": {
+   "kind": "conn",
+   "v": 48.0,
+   "i": 5.0,
+   "mpn": "PTCFW-H22A-005",
+   "src": "YUWENFA PTCFW-H22A-005 drawing p.1/3: rated 48 V, 5 A, 240 W; land p.2/3 identical to HRO TYPE-C-31-M-12"
+  },
+  "C3642394": {
+   "kind": "conn",
+   "v": 30.0,
+   "i": 0.3,
+   "src": "Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)",
+   "mpn": "DF40C-100DS-0.4V(58)"
+  },
+  "C46550472": {
+   "mpn": "MA35V470M10X13",
+   "kind": "cap",
+   "v": 35.0,
+   "diel": "polymer",
+   "c": "470uF",
+   "case": "D10xL13",
+   "src": "jieerrui MA series datasheet p.4 row MA35V470M10X13: 35 V, 470 uF, 16 mohm, ripple 3.8 A at 100 kHz"
   }
  }
 }
