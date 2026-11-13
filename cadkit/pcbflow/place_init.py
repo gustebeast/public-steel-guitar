@@ -419,7 +419,10 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
     # as R4's satellite after every other satellite had filled the board -- "no room", dropped
     # on the crystal corner, six overlaps. A small part that carries its own mechanical
     # constraint (access / apart, or too tall for a height zone) is placed as a part in its
-    # own right, before any satellite is seated; its `near` is a spring.
+    # own right, in area order with the other parts, so no satellite seated after its
+    # anchor can take its room; its `near` is a spring. (Placing these FIRST of all was
+    # tried -- holdout 2b: U2, promoted only for being 1.75 tall, took the board's middle
+    # and the LQFP-48 had no room.)
     H_ = None
     con = set()
     for r in rules:
@@ -626,6 +629,20 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
             if ref in members or ref in sats or ref in fixed:
                 continue
             inreg[ref] = inside if ref not in inreg else (inreg[ref] | inside)
+    # ⚠ A HEIGHT ZONE IS CLOSED TO A TALLER PART (lever_sensor holdout 2c, 2026-11-12): only the
+    # checker knew the rule, so U2 (SOIC-8, 1.75) dropped inside the magnet cap's 1.5 mm sweep
+    # and the flow stopped before layout. The zone is forbidden to every free part over its
+    # limit, the way an exclusive region is to outsiders.
+    H_z = None
+    for r in rules:
+        if r["kind"] != "height":
+            continue
+        H_z = pi.heights() if H_z is None else H_z
+        inside = pi._inside(np.asarray(r["poly"], float), XY).reshape(G.H, G.W)
+        for ref in parts:
+            if ref in fixed or (H_z.get(parts[ref]["fpid"]) or 0.0) <= float(r["max_mm"]):
+                continue
+            inreg[ref] = inside if ref not in inreg else (inreg[ref] | inside)
     for ref in fixed:
         m, ai, aj = mask(parts[ref], pl[ref][2])
         _stamp(G, m, ai, aj, *G.ij(*pl[ref][:2]), force=True, grow=halo(parts[ref]))
@@ -643,7 +660,7 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
             decaps.setdefault(r["target"].split(".")[0], []).append(r)
     area = {ref: float(np.prod(np.ptp(np.asarray(parts[ref]["crtyd"] or [[0, 0], [1, 1]]), axis=0))) for ref in free}
     sat = {r_.get("cap") or r_.get("ref") for v in decaps.values() for r_ in v}
-    order = sorted((r for r in free if r not in sat), key=lambda r: (0 if r in promoted else 1, -area[r]))
+    order = sorted((r for r in free if r not in sat), key=lambda r: -area[r])
     placed_sat = set()
     miss = []
     # ⚠ A TIGHT LOOP'S PATH IS RESERVED BEFORE THE DECAPS TAKE IT (motor_ctrl from

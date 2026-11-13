@@ -1095,6 +1095,10 @@ system afterwards; the board that exposed it is then spent, and the next check i
 | 1b | same, authoring corrected | layout refused: SW1 no room, on the crystal corner | a big constrained satellite (SW1: access + apart) seated after the board filled; NO ROOM reached layout overlapping |
 | 2 | same, run 1's intent | intent refused at once, naming J1's negative face | (the fix working) |
 | 3 | ui_board (13 parts, 121 x 32) | stopped before layout: SW1 0.24 inside a hole keep-out | the keep-out was the author's guess against a CAD-fixed part; the stop named rule, part and mm |
+| 3b | ui_board, cutouts carry the CAD's `keepout_d` | **routed: 0 unconnected, 1 violation (dangling), 0 FAIL** | hole keep-outs now come from the CAD, never the author |
+| 2b | lever_sensor, run 1 with face -> face_at only | NO ROOM: U3, its rules named | promoted parts placed FIRST took the middle (U2, promoted only for height) |
+| 2c | same, promoted parts in area order | stopped: U2 1.75 inside the cap's 1.5 zone | place_init never treated a `height` zone as closed to a taller part |
+| 2d | same, height zones forbidden to taller parts | **routed: 0 unconnected, 10 violations (9 silk, J1/J2 courtyards -- the hand board's declared pair), 2 FAIL (A17 labels)** | (cold lever_sensor places and routes) |
 
 Fixed after them:
 * `panel`: `face` is a distance (>= 0, refused otherwise), `face_at` takes the coordinate;
@@ -1107,6 +1111,11 @@ Fixed after them:
   constraint and is in no tight loop is placed as a part, before any satellite is seated.
 * `keepout` takes `except` (optical's -Y face rule named J1/J2 in its text and nowhere else).
 * board_geom HEIGHT: DSHP01 2.3.
+* a cutout's `keepout_d` (the CAD's boss / post / head) makes its `hole` rule, overriding a typed one.
+* a `height` zone is forbidden in place_init to every free part taller than its limit.
+* constrained satellites go in area order with the other parts, not first of all.
+* finish.py prints each step's wall time and the sum by step (motor_ctrl f27: close_last 321 -> 1282 s
+  on a 33 mm CAN1 gap where f24 had 4-8 mm PED gaps; the router 253 -> 363).
 Optical and output_panel place_init byte-identical across all of it.
 
 ## Rules carried over

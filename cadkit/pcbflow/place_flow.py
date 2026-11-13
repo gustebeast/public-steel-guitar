@@ -52,6 +52,7 @@ from __future__ import annotations
 import argparse
 import collections
 import json
+import math
 import os
 import re
 import shutil
@@ -80,6 +81,27 @@ def _run(cmd, log, cwd=HERE):
 def _intent(rules, parts, notes, net_path, auto, singles=False):
     have = {r.get("src") for r in rules}
     added = []
+    # ⚠ A HOLE'S KEEP-OUT IS THE CAD'S, NOT THE AUTHOR'S (ui_board holdout 3, 2026-11-12): the cold
+    # intent guessed 1.0 round a spigot and stopped on the CAD-fixed encoder 0.24 inside it. A
+    # cutout that carries `keepout_d` -- the boss, post or head that lands on the board there, as
+    # the board generator reads it from the CAD -- sets its hole rule: added when the intent has
+    # none at that xy, overwritten (and said so) when the intent typed another number.
+    for c in notes.get("cutouts", ()) or ():
+        if not c.get("keepout_d"):
+            continue
+        k = max(0.0, (float(c["keepout_d"]) - float(c["d"])) / 2.0)
+        same = [r for r in rules if r["kind"] == "hole"
+                and math.hypot(r["xy"][0] - c["xy"][0], r["xy"][1] - c["xy"][1]) < 0.05]
+        src = "notes cutouts keepout_d (CAD%s)" % (": " + c["what"] if c.get("what") else "")
+        for r in same:
+            if abs(float(r.get("keepout", 0.0)) - k) > 1e-6:
+                added.append("hole (%.1f, %.1f) keep-out %.2f -> %.2f from the CAD"
+                             % (c["xy"][0], c["xy"][1], float(r.get("keepout", 0.0)), k))
+                r["keepout"], r["src"] = k, src
+        if not same:
+            rules = rules + [dict(kind="hole", why=c.get("what") or "mounting hole: the CAD's keep-out",
+                                  src=src, hard=True, xy=list(c["xy"]), d=float(c["d"]), keepout=k)]
+            added.append("hole (%.1f, %.1f) from the CAD" % (c["xy"][0], c["xy"][1]))
     if auto:
         if "auto_decaps (netlist)" not in have:
             new = pi.auto_decaps(parts, notes, pi.read_values(net_path), cells=rules,
