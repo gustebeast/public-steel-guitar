@@ -581,6 +581,68 @@ def _pin_key(p):
 A2_REACH = 5.0       # mm: quality A2's reach from a supply pin to its nearest cap
 
 
+def auto_switcher(parts, cells=(), gate_mm=8.0, ctrl_mm=5.0, small=5, sw_refs=6):
+    """`near` rules for a switching regulator's own loops, read off the netlist's STRUCTURE.
+
+    ⚠ WHY (brain board, 2026-11-13): the LM5122 boost sat in its region with its loads loose.
+    The gate drives, FB and VCC came out open in br3 / br4 (1, then 4 open). Pinning each load
+    to the controller's pin -- FETs to HO / LO, the FB divider at FB, the VCC cap at VCC, as
+    SNVS954H 10.1 asks -- routed every boost net in br5 (2 open, neither the boost's).
+
+    STRUCTURE, NOT PIN NAMES. Our netlists carry none (SKiDL parts built from numbered pins),
+    so a rule keyed on "HO" would never fire:
+    * SWITCHER: an IC (U*) on a net with an inductor (L*) and at most sw_refs parts -- its SW
+      node -- that drives a FET of its own (a gate-drive net, below). A ferrite (FB*) is not an
+      inductor here; an integrated converter (FETs inside) gets nothing.
+    * GATE DRIVE: a net of exactly two pads, one the switcher's pin and one a FET's (Q*). The
+      FET goes within gate_mm of that pin.
+    * CONTROL PIN: a net of at most `small` pads joining ONE pin of the switcher and only
+      passives (R / C) -- FB, COMP, VCC, RT, SS, UVLO, SLOPE. Each passive goes within ctrl_mm.
+    The bootstrap cap (across two of its pins) is auto_decaps' pin-pair rule already. A part
+    the author already ties (near / decap / fixed / pin / a group member) is left alone."""
+    ruled = {r.get("cap") or r.get("ref") for r in cells if r.get("kind") in ("near", "decap", "fixed", "pin")}
+    ruled |= {m for r in cells if r.get("kind") == "group" for m in r["members"]}
+    on = {}                                   # net -> [(ref, num)]
+    for ref, p in parts.items():
+        for q in p["pads"]:
+            if q["net"] and q["num"]:
+                on.setdefault(q["net"], []).append((ref, q["num"]))
+    # the SW node, not the output rail: a rail touches every IC it feeds (a TPS2553 on the
+    # buck's +5V read as a switcher, op / ob / brain), the node only the switcher and its loop
+    sw = sorted({u for n, pads in on.items() if any(re.match(r"^L\d", r) for r, _ in pads)
+                 and len({r for r, _ in pads}) <= sw_refs
+                 for u, _ in pads if re.match(r"^U\d", u)})
+    # ⚠ ONLY A CONTROLLER THAT DRIVES ITS OWN FETS (output_panel, 2026-11-13): an integrated
+    # buck's loop is inside the package. The LMR33630's two FB rules on output_panel cost a
+    # pair fault and 0.5 mm uncoupled (opA 0 / 1 / 1.03 against opB 0 / 0 / 0.52), and that
+    # board routed without them. The rules earn their keep on the LM5122 (brain br4 -> br5),
+    # which has gate drives: a switcher counts only with one.
+    sw = [u for u in sw if any(len(pads) == 2 and sum(1 for r, _ in pads if r == u) == 1
+                                and any(re.match(r"^Q\d", r) for r, _ in pads) for pads in on.values())]
+    out, seen = [], set()
+    for u in sw:
+        for n, pads in sorted(on.items()):
+            mine = [num for r, num in pads if r == u]
+            if len(mine) != 1:
+                continue
+            others = [(r, num) for r, num in pads if r != u]
+            pin = "%s.%s" % (u, mine[0])
+            if len(pads) == 2 and re.match(r"^Q\d", others[0][0]):
+                cand, mm, what = [others[0][0]], gate_mm, "gate drive"
+            elif len(pads) <= small and others and all(re.match(r"^[RC]\d", r) for r, _ in others):
+                cand, mm, what = sorted({r for r, _ in others}), ctrl_mm, "control pin"
+            else:
+                continue
+            for ref in cand:
+                if ref in ruled or ref in seen:
+                    continue
+                seen.add(ref)
+                out.append({"kind": "near", "ref": ref, "target": pin, "max_mm": mm, "hard": False,
+                            "src": "auto_switcher (netlist)",
+                            "why": "%s's %s on %s: at the pin (switching regulator layout)" % (u, what, n)})
+    return out
+
+
 def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-6, ground=("GND",), more_mm=2.0,
                 cells=(), descriptions=None, loose_mm=8.0):
     """Rules for every capacitor across a SUPPLY net (SUPPLY: '+...', VCC, VDD, VBUS, VREF, ...)
