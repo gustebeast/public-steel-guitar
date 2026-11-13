@@ -322,13 +322,13 @@ def output_board():
     # which this instrument does not use, and they would hang on the data lines.
     # Each AP33772S has a bus to itself: the address is fixed at 0x52.
     usb_pair = {}
-    for side, j_ref, u_ref, qs, qd, ui, rs, rt, refs_r, refs_c, d_tvs, d_stb, d_esd in (
+    for side, j_ref, u_ref, qs, qd, ui, rs, rt, refs_r, refs_c, d_tvs, d_stb, d_esd, clamp_refs in (
             ("A", "J1", "U13", "Q4", "Q6", "U18", "R70", "RT1",
              ("R71", "R72", "R73", "R74"), ("C80", "C81", "C82", "C83", "C84", "C85"),
-             "D11", "D14", None),
+             "D11", "D14", None, ("D20", "D21")),
             ("B", "J2", "U14", "Q5", "Q7", "U19", "R75", "RT2",
              ("R76", "R77", "R78", "R79"), ("C86", "C87", "C88", "C89", "C90", "C91"),
-             "D15", "D16", ("D12", "D13"))):
+             "D15", "D16", ("D12", "D13"), ("D22", "D23"))):
         j = _usbc(j_ref, "panel USB-C %s: USB PD power in (5-20 V) + USB 2.0 data to the "
                   "CM5's gadget port (LCSC C165948)" % side)
         pgnd += j["A1"], j["A12"], j["B1"], j["B12"], j["SH"]
@@ -375,6 +375,20 @@ def output_board():
         gate += q["G"]
         _res(refs_r[0], "6k2", "port %s switch gate resistor (DS46176 fig. 1)" % side,
              pwr_en, gate)
+        # ⚠ THE SINGLE SWITCH FET'S GATE NEEDS A CLAMP BOTH WAYS (voltage_check, 2026-11-13).
+        # OFF, PWR_EN pulls the gate to ground while VOUT stays charged -- C84 holds it and the
+        # ideal diode behind stops it draining -- so VGS = -VOUT, the whole 21 V contract, over
+        # the NCEP4090GU's +-20 V. Fig. 1's back-to-back pair has a floating common source and
+        # never sees it; this simplification does. A single zener cannot fix it: ON, the gate
+        # sits ~4 V above the source and would forward-bias it. Two BZT52C12T anti-series
+        # (common anode) clamp at +-(12.7 + 0.7) V and stay off below 11.4 V either way; the
+        # clamp current is R71's, (21 - 13.4) / 6k2 = 1.2 mA, and it drains VOUT as it goes.
+        gclamp = Net("P%s_GCLAMP" % side)
+        for dz, k, why in ((clamp_refs[0], gate, "gate side"), (clamp_refs[1], vout, "source side")):
+            z = _fix(dz, "BZT52C12T-7", "port %s switch gate-source clamp, %s: two 12 V zeners "
+                     "anti-series (LCSC C507911)" % (side, why), "Diode_SMD:D_SOD-523", (1, 2))
+            k += z[1]                          # KiCad diode land: pad 1 = K
+            gclamp += z[2]
         _res(refs_r[1], "200R", "port %s VOUT sense series (DS46176 fig. 1)" % side,
              vout, vsense)
         _res(refs_r[2], "5k1", "port %s CC1 Rd -- external on this part" % side, cc1, pgnd)
@@ -585,7 +599,19 @@ def output_board():
     ulpi = {k: Net(k) for k in ULPI}
     for sig, port in ULPI.items():
         ulpi[sig] += u1[PIN[port]]
+    # ⚠ THE AP33772S INT IS A 5 V PUSH-PULL OUTPUT (from its V5V) and PD10 / PD11 are FT pins,
+    # whose limit is VDD + 4 V: 4.0 V with the H743 unpowered, which the charger side can
+    # outlive at start-up (voltage_check FAIL, 2026-11-13). Each INT reaches its pin through a
+    # 4k7 / 10k divider: 5.33 V worst case -> 3.63 V, a 5.0 V high -> 3.40 V (over 0.7 VDD).
+    int_div = {"PDA_INT": ("R123", "R124"), "PDB_INT": ("R125", "R126")}
     for name, port in MCU_IO.items():
+        if name in int_div:
+            at_pin = Net(name + "_MCU")
+            at_pin += u1[PIN[port]]
+            top, bot = int_div[name]
+            _res(top, "4k7", "%s divider, top: the AP33772S's 5 V INT into an FT pin" % name, io[name], at_pin)
+            _res(bot, "10k", "%s divider, bottom: 3.63 V worst case at %s" % (name, port), at_pin, gnd)
+            continue
         io[name] += u1[PIN[port]]
     used = (set(MCU_VDD) | set(MCU_VSS)
             | {PIN[k] for k in ("VSSA", "VDDA", "VREF+", "VBAT", "VDD33_USB", "PDR_ON", "PH0",

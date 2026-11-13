@@ -40,6 +40,12 @@ BOARDS = ("can_tee", "lever_sensor", "motor_ctrl", "output_panel",
 # down somewhere in elec/ or BOM.md, and a blank means the decision has not been
 # made. See the module docstring on why blank beats a guess.
 LCSC = {
+    # the output board's PD power half (output_board.py / output_split.py, 2026-11-13)
+    "AP33772SDKZ-13": "C50341643",  # Diodes USB PD sink, W-QFN4040-24 (LCSC lists the -FA02 page; same pinout)
+    "LM74700QDBVRQ1": "C2941042",   # TI ideal-diode controller, SOT-23-6
+    "NCP15XH103F03RC": "C77131",    # Murata 10k NTC 0402, the AP33772S OTP sensor
+    "SS34": "C8678",                # MDD 40 V 3 A Schottky, SMA
+    "KT-0603R": "C2286",            # KENTO red 0603 LED
     "S8B-XH-A": "C157914",          # 8-way side-entry XH, motor tee trunk
     "DSHP01TSGER": "C3293141",      # 1-position slide DIP switch, the tee's terminator; 21,200 stock
     "2.54-2*20P": "C5124634",       # 2x20 female header, the pi_cap's Pi socket
@@ -240,6 +246,12 @@ LCSC = {
 # dielectric, tolerance. `elec/lcsc_check.py` re-reads them all and compares. Basic parts
 # wherever one exists (no extended-part fee, placed by Economic assembly).
 PASSIVES = {
+    # the output board's PD half: each ordered as a part fab already buys, rated at least as asked
+    ("10uF/35V", "C_1206_3216Metric"):       "C13585",   # the 10uF/50V 1206 below (CL31A106KBHNNNE, 50 V X5R)
+    ("1uF/10V", "C_0402_1005Metric"):        "C52923",   # CL05A105KA5NQNC, 25 V X5R
+    ("100nF/25V", "C_0402_1005Metric"):      "C307331",  # CL05B104KB54PNC, 50 V X7R
+    ("6k2", "R_0402_1005Metric"):            "C25915",   # UniOhm 0402WGF6201TCE, 1 %
+    ("200R", "R_0402_1005Metric"):           "C25087",   # UniOhm 0402WGF2000TCE, 1 %
     ("100nF", "C_0402_1005Metric"):          "C307331",   # Samsung CL05B104KB54PNC, 50 V X7R 10 %; basic
     ("100nF/16V", "C_0402_1005Metric"):      "C307331",
     ("100nF/50V", "C_0402_1005Metric"):      "C307331",

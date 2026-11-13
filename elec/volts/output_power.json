@@ -1,0 +1,1466 @@
+{
+ "net_volts": {
+  "+3V3D": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U21 (AP2114H-3.3) on output_signal, back over J20 way 9: 3.3 V +1.5 %, +3 % transient -- U21's own figures, as output_signal's +3V3D"
+  },
+  "BOOT": {
+   "peak": 42.925,
+   "v": 26.5,
+   "why": "bootstrap: SW + 5.5 V, held by U5"
+  },
+  "BUCK_PG_NC": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "BUCK_VCC": {
+   "v": 5.0,
+   "why": "generated inside U5 (VCC)"
+  },
+  "DATA_SEL": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "the H743's output on output_signal over J20 (R92 holds it low when the MCU is off): a +3V3D logic level [= +3V3D+0]"
+  },
+  "FB": {
+   "peak": 1.083,
+   "v": 1.031,
+   "why": "divider off V5_PRE: x 0.1994"
+  },
+  "GADGET_DM": {
+   "v": 3.6,
+   "why": "USB 2.0 data to the output board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
+  },
+  "GADGET_DP": {
+   "v": 3.6,
+   "why": "USB 2.0 data to the output board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
+  },
+  "GND": 0,
+  "I2C2_SCL": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "through R84"
+  },
+  "I2C2_SDA": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "through R85"
+  },
+  "INA_ALERT_N": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "through R91"
+  },
+  "J10_LOOP": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "lead presence loop: pulled up to +3V3D through R119 + R120, the brain end grounds it [= +3V3D+0]"
+  },
+  "J10_NC_4": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "J12_LOOP": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "lead presence loop: pulled up to +3V3D through R121 + R122, the brain end grounds it [= +3V3D+0]"
+  },
+  "J12_NC_4": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "J3_VBUS_NC": {
+   "peak": 5.5,
+   "v": 5.25,
+   "why": "the data-only link carries no VBUS; a standard cable's VBUS wire lands on these pads only, 5.25 V if anything drives it"
+  },
+  "N$1": {
+   "v": 0.0,
+   "why": "pulled to ground"
+  },
+  "N$2": {
+   "v": 0.0,
+   "why": "pulled to ground"
+  },
+  "PA_CC1": {
+   "peak": 5.5,
+   "v": 5.25,
+   "why": "USB-C CC behind the sink's 5k1 Rd: a source's Rp pull-up, or VCONN (5.5 V max) on the other CC; FAULT = VBUS (the contract) shorted onto it in the plug, the case DS46176 p.1 rates the AP33772S's CC pins for (34 V)"
+  },
+  "PA_CC2": {
+   "peak": 5.5,
+   "v": 5.25,
+   "why": "USB-C CC behind the sink's 5k1 Rd: a source's Rp pull-up, or VCONN (5.5 V max) on the other CC; FAULT = VBUS (the contract) shorted onto it in the plug, the case DS46176 p.1 rates the AP33772S's CC pins for (34 V)"
+  },
+  "PA_GATE": {
+   "peak": 41.425,
+   "v": 25.0,
+   "why": "through R71"
+  },
+  "PA_GCLAMP": {
+   "peak": 37.425,
+   "v": 21.0,
+   "why": "common anode of the anti-series gate clamp: at most the source (VOUT), the gate side's zener blocking [= PA_VOUT+0]"
+  },
+  "PA_IFB": {
+   "v": 5.33,
+   "why": "U13.15 (IFB) can reach its supply PA_V5V"
+  },
+  "PA_ORGATE": {
+   "peak": 51.325,
+   "v": 34.9,
+   "why": "LM74700 GATE: driven from VCAP, so at most VCAP (SNOSD17G s6.5; GATE-ANODE 15 V abs, s6.1) [= PA_VOUT+13.9]"
+  },
+  "PA_OTP": {
+   "v": 5.33,
+   "why": "U13.13 (OTP) can reach its supply PA_V5V"
+  },
+  "PA_PWR_EN": {
+   "peak": 41.425,
+   "v": 25.0,
+   "why": "AP33772S gate drive from its charge pump (DS46176 p.12, VOUT-Enable Switch); no output level is published, only that PWR_EN may not exceed VCC + 4 V (p.5 abs max), so that is the bound -- ASSUMED, the IC holding its own rating [= PA_VCC+4]"
+  },
+  "PA_V18": {
+   "v": 1.89,
+   "why": "AP33772S V18, '1.8V LDO output for internal use only' (DS46176 p.3 Table 1); no tolerance published, +5 % ASSUMED"
+  },
+  "PA_V5V": {
+   "v": 5.33,
+   "why": "AP33772S V5V LDO output, 4.37 / 4.85 / 5.33 V (DS46176 p.6, V5V section)"
+  },
+  "PA_VBUS": {
+   "peak": 37.425,
+   "v": 21.0,
+   "why": "USB PD contract, 20 V +5 % (USB PD 3.x 7.1.8; EPR not enabled); transient = the SMF24A clamps (D11 / D15 at the ports, D19 at the brain leads) at a live plug's 4.3 A -- BRAIN_VIN, the same net the brain board takes on J10 / J12"
+  },
+  "PA_VCAP": {
+   "peak": 51.325,
+   "v": 34.9,
+   "why": "LM74700 charge pump: VCAP - ANODE turns off at 13.9 V max (SNOSD17G s6.5) [= PA_VOUT+13.9]"
+  },
+  "PA_VCC": {
+   "peak": 37.425,
+   "v": 21.0,
+   "why": "through R70"
+  },
+  "PA_VOUT": {
+   "peak": 37.425,
+   "v": 21.0,
+   "why": "behind Q4, the port switch [= PA_VCC+0]"
+  },
+  "PA_VOUT_SNS": {
+   "peak": 37.425,
+   "v": 21.0,
+   "why": "through R72"
+  },
+  "PB_CC1": {
+   "peak": 5.5,
+   "v": 5.25,
+   "why": "USB-C CC behind the sink's 5k1 Rd: a source's Rp pull-up, or VCONN (5.5 V max) on the other CC; FAULT = VBUS (the contract) shorted onto it in the plug, the case DS46176 p.1 rates the AP33772S's CC pins for (34 V)"
+  },
+  "PB_CC2": {
+   "peak": 5.5,
+   "v": 5.25,
+   "why": "USB-C CC behind the sink's 5k1 Rd: a source's Rp pull-up, or VCONN (5.5 V max) on the other CC; FAULT = VBUS (the contract) shorted onto it in the plug, the case DS46176 p.1 rates the AP33772S's CC pins for (34 V)"
+  },
+  "PB_GATE": {
+   "peak": 41.425,
+   "v": 25.0,
+   "why": "through R76"
+  },
+  "PB_GCLAMP": {
+   "peak": 37.425,
+   "v": 21.0,
+   "why": "common anode of the anti-series gate clamp: at most the source (VOUT), the gate side's zener blocking [= PB_VOUT+0]"
+  },
+  "PB_IFB": {
+   "v": 5.33,
+   "why": "U14.15 (IFB) can reach its supply PB_V5V"
+  },
+  "PB_ORGATE": {
+   "peak": 51.325,
+   "v": 34.9,
+   "why": "LM74700 GATE: driven from VCAP, so at most VCAP (SNOSD17G s6.5; GATE-ANODE 15 V abs, s6.1) [= PB_VOUT+13.9]"
+  },
+  "PB_OTP": {
+   "v": 5.33,
+   "why": "U14.13 (OTP) can reach its supply PB_V5V"
+  },
+  "PB_PWR_EN": {
+   "peak": 41.425,
+   "v": 25.0,
+   "why": "AP33772S gate drive from its charge pump (DS46176 p.12, VOUT-Enable Switch); no output level is published, only that PWR_EN may not exceed VCC + 4 V (p.5 abs max), so that is the bound -- ASSUMED, the IC holding its own rating [= PB_VCC+4]"
+  },
+  "PB_V18": {
+   "v": 1.89,
+   "why": "AP33772S V18, '1.8V LDO output for internal use only' (DS46176 p.3 Table 1); no tolerance published, +5 % ASSUMED"
+  },
+  "PB_V5V": {
+   "v": 5.33,
+   "why": "AP33772S V5V LDO output, 4.37 / 4.85 / 5.33 V (DS46176 p.6, V5V section)"
+  },
+  "PB_VBUS": {
+   "peak": 37.425,
+   "v": 21.0,
+   "why": "USB PD contract, 20 V +5 % (USB PD 3.x 7.1.8; EPR not enabled); transient = the SMF24A clamps (D11 / D15 at the ports, D19 at the brain leads) at a live plug's 4.3 A -- BRAIN_VIN, the same net the brain board takes on J10 / J12"
+  },
+  "PB_VCAP": {
+   "peak": 51.325,
+   "v": 34.9,
+   "why": "LM74700 charge pump: VCAP - ANODE turns off at 13.9 V max (SNOSD17G s6.5) [= PB_VOUT+13.9]"
+  },
+  "PB_VCC": {
+   "peak": 37.425,
+   "v": 21.0,
+   "why": "through R75"
+  },
+  "PB_VOUT": {
+   "peak": 37.425,
+   "v": 21.0,
+   "why": "behind Q5, the port switch [= PB_VCC+0]"
+  },
+  "PB_VOUT_SNS": {
+   "peak": 37.425,
+   "v": 21.0,
+   "why": "through R77"
+  },
+  "PDA_INT": {
+   "v": 5.33,
+   "why": "U13.9 (INT) can reach its supply PA_V5V"
+  },
+  "PDA_SCL": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "through R80"
+  },
+  "PDA_SDA": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "through R81"
+  },
+  "PDB_INT": {
+   "v": 5.33,
+   "why": "U14.9 (INT) can reach its supply PB_V5V"
+  },
+  "PDB_SCL": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "through R82"
+  },
+  "PDB_SDA": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "through R83"
+  },
+  "PWR_GND": 0,
+  "PWR_LEAD1_N": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "through R119; through R120"
+  },
+  "PWR_LEAD2_N": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "through R121; through R122"
+  },
+  "SW": {
+   "peak": 37.425,
+   "v": 21.0,
+   "why": "buck switch node: VIN while the high side is on [= VSTBY+0]"
+  },
+  "U13_NC_10": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "U13_NC_11": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "U13_NC_14": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "U13_NC_18": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "U13_NC_19": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "U13_NC_2": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "U13_NC_21": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "U13_NC_6": {
+   "v": 5.33,
+   "why": "U13.6 (FLIP) can reach its supply PA_V5V"
+  },
+  "U13_NC_7": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "U13_NC_8": {
+   "v": 5.33,
+   "why": "U13.8 (LED) can reach its supply PA_V5V"
+  },
+  "U14_NC_10": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "U14_NC_11": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "U14_NC_14": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "U14_NC_18": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "U14_NC_19": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "U14_NC_2": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "U14_NC_21": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "U14_NC_6": {
+   "v": 5.33,
+   "why": "U14.6 (FLIP) can reach its supply PB_V5V"
+  },
+  "U14_NC_7": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "U14_NC_8": {
+   "v": 5.33,
+   "why": "U14.8 (LED) can reach its supply PB_V5V"
+  },
+  "USBA_DM": {
+   "v": 3.6,
+   "why": "USB 2.0 data (VOH 3.6 V max, USB 2.0 7.1.1) from a PD port to U17; FAULT = the port's own VBUS, up to the 20 V contract, onto a data way (a damaged cable)"
+  },
+  "USBA_DP": {
+   "v": 3.6,
+   "why": "USB 2.0 data (VOH 3.6 V max, USB 2.0 7.1.1) from a PD port to U17; FAULT = the port's own VBUS, up to the 20 V contract, onto a data way (a damaged cable)"
+  },
+  "USBB_DM": {
+   "v": 3.6,
+   "why": "USB 2.0 data (VOH 3.6 V max, USB 2.0 7.1.1) from a PD port to U17; FAULT = the port's own VBUS, up to the 20 V contract, onto a data way (a damaged cable)"
+  },
+  "USBB_DP": {
+   "v": 3.6,
+   "why": "USB 2.0 data (VOH 3.6 V max, USB 2.0 7.1.1) from a PD port to U17; FAULT = the port's own VBUS, up to the 20 V contract, onto a data way (a damaged cable)"
+  },
+  "V5_PRE": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "LMR33630: VFB max x (1 + top/bot), 1 % resistors; +5 % overshoot: 1.015 V x (1 + R11/R12) -> 5.17 V max"
+  },
+  "VIN_BRAIN": {
+   "peak": 37.425,
+   "v": 21.0,
+   "why": "USB PD contract, 20 V +5 % (USB PD 3.x 7.1.8; EPR not enabled); transient = the SMF24A clamps (D11 / D15 at the ports, D19 at the brain leads) at a live plug's 4.3 A -- BRAIN_VIN, the same net the brain board takes on J10 / J12"
+  },
+  "VIN_BUS": {
+   "peak": 37.425,
+   "v": 21.0,
+   "why": "USB PD contract, 20 V +5 % (USB PD 3.x 7.1.8; EPR not enabled); transient = the SMF24A clamps (D11 / D15 at the ports, D19 at the brain leads) at a live plug's 4.3 A -- BRAIN_VIN, the same net the brain board takes on J10 / J12"
+  },
+  "VSTBY": {
+   "peak": 37.425,
+   "v": 21.0,
+   "why": "either port's VCC through D14 / D16 (SS34): taken at VBUS, ignoring the drop [= PA_VBUS+0]"
+  }
+ },
+ "pin_volts": {
+  "C116.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C117.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C17.1": {
+   "max": 50.0,
+   "src": "rated V -- CL31A106KBHNNNE (C13585): JLCPCB parts API attributes for C13585 (CL31A106KBHNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C18.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C2.1": {
+   "max": 50.0,
+   "src": "rated V -- CL31A106KBHNNNE (C13585): JLCPCB parts API attributes for C13585 (CL31A106KBHNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C3.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C4.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C4.2": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C5.1": {
+   "max": 25.0,
+   "src": "rated V -- CL21A226MAQNNNE (C45783): JLCPCB parts API attributes for C45783 (CL21A226MAQNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C6.1": {
+   "max": 25.0,
+   "src": "rated V -- CL21A226MAQNNNE (C45783): JLCPCB parts API attributes for C45783 (CL21A226MAQNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C63.1": {
+   "max": 25.0,
+   "src": "rated V -- CL05A105KA5NQNC (C52923): JLCPCB parts API attributes for C52923 (CL05A105KA5NQNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C64.1": {
+   "max": 25.0,
+   "src": "rated V -- CL21A226MAQNNNE (C45783): JLCPCB parts API attributes for C45783 (CL21A226MAQNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C65.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C80.1": {
+   "max": 50.0,
+   "src": "rated V -- CL31A106KBHNNNE (C13585): JLCPCB parts API attributes for C13585 (CL31A106KBHNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C81.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C82.1": {
+   "max": 25.0,
+   "src": "rated V -- CL05A105KA5NQNC (C52923): JLCPCB parts API attributes for C52923 (CL05A105KA5NQNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C83.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C84.1": {
+   "max": 50.0,
+   "src": "rated V -- CL31A106KBHNNNE (C13585): JLCPCB parts API attributes for C13585 (CL31A106KBHNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C85.1": {
+   "max": "none",
+   "src": "CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06",
+   "why": "its rated V limit (50 V) is not one to ground: it was judged on 13.9 V steady, 13.9 V transient -- LM74700 charge-pump cap, VCAP to ANODE: the pump stops at 13.9 V max (SNOSD17G s6.5)"
+  },
+  "C85.2": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C86.1": {
+   "max": 50.0,
+   "src": "rated V -- CL31A106KBHNNNE (C13585): JLCPCB parts API attributes for C13585 (CL31A106KBHNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C87.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C88.1": {
+   "max": 25.0,
+   "src": "rated V -- CL05A105KA5NQNC (C52923): JLCPCB parts API attributes for C52923 (CL05A105KA5NQNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C89.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C90.1": {
+   "max": 50.0,
+   "src": "rated V -- CL31A106KBHNNNE (C13585): JLCPCB parts API attributes for C13585 (CL31A106KBHNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C91.1": {
+   "max": "none",
+   "src": "CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06",
+   "why": "its rated V limit (50 V) is not one to ground: it was judged on 13.9 V steady, 13.9 V transient -- LM74700 charge-pump cap, VCAP to ANODE: the pump stops at 13.9 V max (SNOSD17G s6.5)"
+  },
+  "C91.2": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C92.1": {
+   "max": 35.0,
+   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+  },
+  "C93.1": {
+   "max": 35.0,
+   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+  },
+  "C96.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C97.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "D11.1": {
+   "max": 26.7,
+   "peak": "none",
+   "src": "SMF24A (C169430): JLCPCB parts API attributes for C169430 (24 V, 29.5 V, 38.9 V at 5.1 A 10/1000 us, 200 W)",
+   "why": "this part IS the clamp on PA_VBUS: it stands 24 V (where its leakage is specified) and starts to conduct at 26.7 V, the figure a steady level must stay under"
+  },
+  "D12.1": {
+   "max": 5.4,
+   "peak": "none",
+   "src": "LESD5L5.0CT1G (C5274293): LRC LESD5L5.0CT1G datasheet p.2 electrical table (VRWM 5.0, VBR min 5.4 @1 mA); VC 12.9 V from JLCPCB parts API attributes for C5274293",
+   "why": "this part IS the clamp on USBB_DP: it stands 5 V (where its leakage is specified) and starts to conduct at 5.4 V, the figure a steady level must stay under"
+  },
+  "D13.1": {
+   "max": 5.4,
+   "peak": "none",
+   "src": "LESD5L5.0CT1G (C5274293): LRC LESD5L5.0CT1G datasheet p.2 electrical table (VRWM 5.0, VBR min 5.4 @1 mA); VC 12.9 V from JLCPCB parts API attributes for C5274293",
+   "why": "this part IS the clamp on USBB_DM: it stands 5 V (where its leakage is specified) and starts to conduct at 5.4 V, the figure a steady level must stay under"
+  },
+  "D14.1": {
+   "max": 40.0,
+   "src": "VRRM -- SS34 (C8678): MDD SS32 thru SS3200 datasheet Rev 2024A5 p.1 maximum ratings, column SS34: VRRM / VDC 40 V, I(AV) 3.0 A, IFSM 80 A; band = cathode (the same figures in the JLCPCB parts API attributes for C8678)"
+  },
+  "D14.2": {
+   "max": 40.0,
+   "src": "VRRM -- SS34 (C8678): MDD SS32 thru SS3200 datasheet Rev 2024A5 p.1 maximum ratings, column SS34: VRRM / VDC 40 V, I(AV) 3.0 A, IFSM 80 A; band = cathode (the same figures in the JLCPCB parts API attributes for C8678)"
+  },
+  "D15.1": {
+   "max": 26.7,
+   "peak": "none",
+   "src": "SMF24A (C169430): JLCPCB parts API attributes for C169430 (24 V, 29.5 V, 38.9 V at 5.1 A 10/1000 us, 200 W)",
+   "why": "this part IS the clamp on PB_VBUS: it stands 24 V (where its leakage is specified) and starts to conduct at 26.7 V, the figure a steady level must stay under"
+  },
+  "D16.1": {
+   "max": 40.0,
+   "src": "VRRM -- SS34 (C8678): MDD SS32 thru SS3200 datasheet Rev 2024A5 p.1 maximum ratings, column SS34: VRRM / VDC 40 V, I(AV) 3.0 A, IFSM 80 A; band = cathode (the same figures in the JLCPCB parts API attributes for C8678)"
+  },
+  "D16.2": {
+   "max": 40.0,
+   "src": "VRRM -- SS34 (C8678): MDD SS32 thru SS3200 datasheet Rev 2024A5 p.1 maximum ratings, column SS34: VRRM / VDC 40 V, I(AV) 3.0 A, IFSM 80 A; band = cathode (the same figures in the JLCPCB parts API attributes for C8678)"
+  },
+  "D19.1": {
+   "max": 26.7,
+   "peak": "none",
+   "src": "SMF24A (C169430): JLCPCB parts API attributes for C169430 (24 V, 29.5 V, 38.9 V at 5.1 A 10/1000 us, 200 W)",
+   "why": "this part IS the clamp on VIN_BRAIN: it stands 24 V (where its leakage is specified) and starts to conduct at 26.7 V, the figure a steady level must stay under"
+  },
+  "D2.1": {
+   "max": 5.4,
+   "peak": "none",
+   "src": "LESD5L5.0CT1G (C5274293): LRC LESD5L5.0CT1G datasheet p.2 electrical table (VRWM 5.0, VBR min 5.4 @1 mA); VC 12.9 V from JLCPCB parts API attributes for C5274293",
+   "why": "this part IS the clamp on USBA_DP: it stands 5 V (where its leakage is specified) and starts to conduct at 5.4 V, the figure a steady level must stay under"
+  },
+  "D20.1": {
+   "max": "none",
+   "src": "BZT52C12T-7 (C507911): Diodes Inc BZT52C2V0T-BZT52C36T datasheet DS30502 Rev. 17-2 p.2: BZT52C12T VZ 11.4-12.7 V @5 mA, PD 300 mW",
+   "why": "20 mW steady, 53 mW at the transient, of 300 mW (fed from PA_VOUT through 6.2 k)"
+  },
+  "D20.2": {
+   "max": "none",
+   "src": "BZT52C12T-7 (C507911): Diodes Inc BZT52C2V0T-BZT52C36T datasheet DS30502 Rev. 17-2 p.2: BZT52C12T VZ 11.4-12.7 V @5 mA, PD 300 mW",
+   "why": "20 mW steady, 53 mW at the transient, of 300 mW (fed from PA_VOUT through 6.2 k)"
+  },
+  "D21.1": {
+   "max": "none",
+   "src": "BZT52C12T-7 (C507911): Diodes Inc BZT52C2V0T-BZT52C36T datasheet DS30502 Rev. 17-2 p.2: BZT52C12T VZ 11.4-12.7 V @5 mA, PD 300 mW",
+   "why": "20 mW steady, 53 mW at the transient, of 300 mW (fed from PA_VOUT through 6.2 k)"
+  },
+  "D21.2": {
+   "max": "none",
+   "src": "BZT52C12T-7 (C507911): Diodes Inc BZT52C2V0T-BZT52C36T datasheet DS30502 Rev. 17-2 p.2: BZT52C12T VZ 11.4-12.7 V @5 mA, PD 300 mW",
+   "why": "20 mW steady, 53 mW at the transient, of 300 mW (fed from PA_VOUT through 6.2 k)"
+  },
+  "D22.1": {
+   "max": "none",
+   "src": "BZT52C12T-7 (C507911): Diodes Inc BZT52C2V0T-BZT52C36T datasheet DS30502 Rev. 17-2 p.2: BZT52C12T VZ 11.4-12.7 V @5 mA, PD 300 mW",
+   "why": "20 mW steady, 53 mW at the transient, of 300 mW (fed from PB_VOUT through 6.2 k)"
+  },
+  "D22.2": {
+   "max": "none",
+   "src": "BZT52C12T-7 (C507911): Diodes Inc BZT52C2V0T-BZT52C36T datasheet DS30502 Rev. 17-2 p.2: BZT52C12T VZ 11.4-12.7 V @5 mA, PD 300 mW",
+   "why": "20 mW steady, 53 mW at the transient, of 300 mW (fed from PB_VOUT through 6.2 k)"
+  },
+  "D23.1": {
+   "max": "none",
+   "src": "BZT52C12T-7 (C507911): Diodes Inc BZT52C2V0T-BZT52C36T datasheet DS30502 Rev. 17-2 p.2: BZT52C12T VZ 11.4-12.7 V @5 mA, PD 300 mW",
+   "why": "20 mW steady, 53 mW at the transient, of 300 mW (fed from PB_VOUT through 6.2 k)"
+  },
+  "D23.2": {
+   "max": "none",
+   "src": "BZT52C12T-7 (C507911): Diodes Inc BZT52C2V0T-BZT52C36T datasheet DS30502 Rev. 17-2 p.2: BZT52C12T VZ 11.4-12.7 V @5 mA, PD 300 mW",
+   "why": "20 mW steady, 53 mW at the transient, of 300 mW (fed from PB_VOUT through 6.2 k)"
+  },
+  "D3.1": {
+   "max": 5.4,
+   "peak": "none",
+   "src": "LESD5L5.0CT1G (C5274293): LRC LESD5L5.0CT1G datasheet p.2 electrical table (VRWM 5.0, VBR min 5.4 @1 mA); VC 12.9 V from JLCPCB parts API attributes for C5274293",
+   "why": "this part IS the clamp on USBA_DM: it stands 5 V (where its leakage is specified) and starts to conduct at 5.4 V, the figure a steady level must stay under"
+  },
+  "J1.A4": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J1.A5": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J1.A6": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J1.A7": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J1.A9": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J1.B4": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J1.B5": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J1.B6": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J1.B7": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J1.B9": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J10.1": {
+   "max": 250.0,
+   "src": "rated V -- S6B-XH-SM4-TB(LF)(SN) (C191914): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J10.3": {
+   "max": 250.0,
+   "src": "rated V -- S6B-XH-SM4-TB(LF)(SN) (C191914): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J10.4": {
+   "max": 250.0,
+   "src": "rated V -- S6B-XH-SM4-TB(LF)(SN) (C191914): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J10.6": {
+   "max": 250.0,
+   "src": "rated V -- S6B-XH-SM4-TB(LF)(SN) (C191914): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J12.1": {
+   "max": 250.0,
+   "src": "rated V -- S6B-XH-SM4-TB(LF)(SN) (C191914): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J12.3": {
+   "max": 250.0,
+   "src": "rated V -- S6B-XH-SM4-TB(LF)(SN) (C191914): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J12.4": {
+   "max": 250.0,
+   "src": "rated V -- S6B-XH-SM4-TB(LF)(SN) (C191914): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J12.6": {
+   "max": 250.0,
+   "src": "rated V -- S6B-XH-SM4-TB(LF)(SN) (C191914): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J2.A4": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J2.A5": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J2.A6": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J2.A7": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J2.A9": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J2.B4": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J2.B5": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J2.B6": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J2.B7": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J2.B9": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J20.1": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.12": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.13": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.14": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.15": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.16": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.17": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.18": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.19": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.2": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.20": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.21": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.22": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.23": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.3": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.4": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.5": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.9": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J3.A4": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J3.A5": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J3.A6": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J3.A7": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J3.A9": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J3.B4": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J3.B5": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J3.B6": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J3.B7": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J3.B9": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "L1.1": {
+   "max": "none",
+   "src": "SWPA5040S4R7MT (C48496): elec/buck_cell.py: Sunlord table, Isat 3.50 A guaranteed; DCR 39 mohm max; Itemp taken at the cell's 3 A",
+   "why": "no voltage rating applies; current checked below"
+  },
+  "L1.2": {
+   "max": "none",
+   "src": "SWPA5040S4R7MT (C48496): elec/buck_cell.py: Sunlord table, Isat 3.50 A guaranteed; DCR 39 mohm max; Itemp taken at the cell's 3 A",
+   "why": "no voltage rating applies; current checked below"
+  },
+  "Q4.1": {
+   "max": "none",
+   "src": "NCEP4090GU (C502976): Wuxi NCE Power NCEP4090GU datasheet V4.0 p.1 absolute maximum ratings: VDS 40 V, VGS +/-20 V, ID 90 A (TC 25 C; 63.6 A at 100 C). Pin map is brain.py's footprint numbering (1-3 S, 4 G, 5 drain tab); the datasheet's pin drawing is an image and was not read",
+   "why": "reference terminal"
+  },
+  "Q4.2": {
+   "max": "none",
+   "src": "NCEP4090GU (C502976): Wuxi NCE Power NCEP4090GU datasheet V4.0 p.1 absolute maximum ratings: VDS 40 V, VGS +/-20 V, ID 90 A (TC 25 C; 63.6 A at 100 C). Pin map is brain.py's footprint numbering (1-3 S, 4 G, 5 drain tab); the datasheet's pin drawing is an image and was not read",
+   "why": "reference terminal"
+  },
+  "Q4.3": {
+   "max": "none",
+   "src": "NCEP4090GU (C502976): Wuxi NCE Power NCEP4090GU datasheet V4.0 p.1 absolute maximum ratings: VDS 40 V, VGS +/-20 V, ID 90 A (TC 25 C; 63.6 A at 100 C). Pin map is brain.py's footprint numbering (1-3 S, 4 G, 5 drain tab); the datasheet's pin drawing is an image and was not read",
+   "why": "reference terminal"
+  },
+  "Q4.4": {
+   "max": "none",
+   "src": "NCEP4090GU (C502976): Wuxi NCE Power NCEP4090GU datasheet V4.0 p.1 absolute maximum ratings: VDS 40 V, VGS +/-20 V, ID 90 A (TC 25 C; 63.6 A at 100 C). Pin map is brain.py's footprint numbering (1-3 S, 4 G, 5 drain tab); the datasheet's pin drawing is an image and was not read",
+   "why": "its VGS limit (20 V) is not one to ground: it was judged on 13.4 V steady, 13.4 V transient -- gate-source clamped by two BZT52C12T anti-series (VZ max 12.7 V + 0.7 V forward); OFF with VOUT charged the clamp holds VGS there on R71's 1.2 mA; ON it is under 4 V (PWR_EN - VCC, DS46176 p.5)"
+  },
+  "Q4.5": {
+   "max": 40.0,
+   "src": "VDS -- NCEP4090GU (C502976): Wuxi NCE Power NCEP4090GU datasheet V4.0 p.1 absolute maximum ratings: VDS 40 V, VGS +/-20 V, ID 90 A (TC 25 C; 63.6 A at 100 C). Pin map is brain.py's footprint numbering (1-3 S, 4 G, 5 drain tab); the datasheet's pin drawing is an image and was not read"
+  },
+  "Q5.1": {
+   "max": "none",
+   "src": "NCEP4090GU (C502976): Wuxi NCE Power NCEP4090GU datasheet V4.0 p.1 absolute maximum ratings: VDS 40 V, VGS +/-20 V, ID 90 A (TC 25 C; 63.6 A at 100 C). Pin map is brain.py's footprint numbering (1-3 S, 4 G, 5 drain tab); the datasheet's pin drawing is an image and was not read",
+   "why": "reference terminal"
+  },
+  "Q5.2": {
+   "max": "none",
+   "src": "NCEP4090GU (C502976): Wuxi NCE Power NCEP4090GU datasheet V4.0 p.1 absolute maximum ratings: VDS 40 V, VGS +/-20 V, ID 90 A (TC 25 C; 63.6 A at 100 C). Pin map is brain.py's footprint numbering (1-3 S, 4 G, 5 drain tab); the datasheet's pin drawing is an image and was not read",
+   "why": "reference terminal"
+  },
+  "Q5.3": {
+   "max": "none",
+   "src": "NCEP4090GU (C502976): Wuxi NCE Power NCEP4090GU datasheet V4.0 p.1 absolute maximum ratings: VDS 40 V, VGS +/-20 V, ID 90 A (TC 25 C; 63.6 A at 100 C). Pin map is brain.py's footprint numbering (1-3 S, 4 G, 5 drain tab); the datasheet's pin drawing is an image and was not read",
+   "why": "reference terminal"
+  },
+  "Q5.4": {
+   "max": "none",
+   "src": "NCEP4090GU (C502976): Wuxi NCE Power NCEP4090GU datasheet V4.0 p.1 absolute maximum ratings: VDS 40 V, VGS +/-20 V, ID 90 A (TC 25 C; 63.6 A at 100 C). Pin map is brain.py's footprint numbering (1-3 S, 4 G, 5 drain tab); the datasheet's pin drawing is an image and was not read",
+   "why": "its VGS limit (20 V) is not one to ground: it was judged on 13.4 V steady, 13.4 V transient -- gate-source clamped by two BZT52C12T anti-series (VZ max 12.7 V + 0.7 V forward); OFF with VOUT charged the clamp holds VGS there on R71's 1.2 mA; ON it is under 4 V (PWR_EN - VCC, DS46176 p.5)"
+  },
+  "Q5.5": {
+   "max": 40.0,
+   "src": "VDS -- NCEP4090GU (C502976): Wuxi NCE Power NCEP4090GU datasheet V4.0 p.1 absolute maximum ratings: VDS 40 V, VGS +/-20 V, ID 90 A (TC 25 C; 63.6 A at 100 C). Pin map is brain.py's footprint numbering (1-3 S, 4 G, 5 drain tab); the datasheet's pin drawing is an image and was not read"
+  },
+  "Q6.1": {
+   "max": "none",
+   "src": "NCEP4090GU (C502976): Wuxi NCE Power NCEP4090GU datasheet V4.0 p.1 absolute maximum ratings: VDS 40 V, VGS +/-20 V, ID 90 A (TC 25 C; 63.6 A at 100 C). Pin map is brain.py's footprint numbering (1-3 S, 4 G, 5 drain tab); the datasheet's pin drawing is an image and was not read",
+   "why": "reference terminal"
+  },
+  "Q6.2": {
+   "max": "none",
+   "src": "NCEP4090GU (C502976): Wuxi NCE Power NCEP4090GU datasheet V4.0 p.1 absolute maximum ratings: VDS 40 V, VGS +/-20 V, ID 90 A (TC 25 C; 63.6 A at 100 C). Pin map is brain.py's footprint numbering (1-3 S, 4 G, 5 drain tab); the datasheet's pin drawing is an image and was not read",
+   "why": "reference terminal"
+  },
+  "Q6.3": {
+   "max": "none",
+   "src": "NCEP4090GU (C502976): Wuxi NCE Power NCEP4090GU datasheet V4.0 p.1 absolute maximum ratings: VDS 40 V, VGS +/-20 V, ID 90 A (TC 25 C; 63.6 A at 100 C). Pin map is brain.py's footprint numbering (1-3 S, 4 G, 5 drain tab); the datasheet's pin drawing is an image and was not read",
+   "why": "reference terminal"
+  },
+  "Q6.4": {
+   "max": "none",
+   "src": "NCEP4090GU (C502976): Wuxi NCE Power NCEP4090GU datasheet V4.0 p.1 absolute maximum ratings: VDS 40 V, VGS +/-20 V, ID 90 A (TC 25 C; 63.6 A at 100 C). Pin map is brain.py's footprint numbering (1-3 S, 4 G, 5 drain tab); the datasheet's pin drawing is an image and was not read",
+   "why": "its VGS limit (20 V) is not one to ground: it was judged on 13.9 V steady, 13.9 V transient -- LM74700 GATE swings from ANODE (its discharge switch) up to VCAP, which the charge pump stops at 13.9 V max over ANODE (SNOSD17G s6.5); the source is ANODE"
+  },
+  "Q6.5": {
+   "max": 40.0,
+   "src": "VDS -- NCEP4090GU (C502976): Wuxi NCE Power NCEP4090GU datasheet V4.0 p.1 absolute maximum ratings: VDS 40 V, VGS +/-20 V, ID 90 A (TC 25 C; 63.6 A at 100 C). Pin map is brain.py's footprint numbering (1-3 S, 4 G, 5 drain tab); the datasheet's pin drawing is an image and was not read"
+  },
+  "Q7.1": {
+   "max": "none",
+   "src": "NCEP4090GU (C502976): Wuxi NCE Power NCEP4090GU datasheet V4.0 p.1 absolute maximum ratings: VDS 40 V, VGS +/-20 V, ID 90 A (TC 25 C; 63.6 A at 100 C). Pin map is brain.py's footprint numbering (1-3 S, 4 G, 5 drain tab); the datasheet's pin drawing is an image and was not read",
+   "why": "reference terminal"
+  },
+  "Q7.2": {
+   "max": "none",
+   "src": "NCEP4090GU (C502976): Wuxi NCE Power NCEP4090GU datasheet V4.0 p.1 absolute maximum ratings: VDS 40 V, VGS +/-20 V, ID 90 A (TC 25 C; 63.6 A at 100 C). Pin map is brain.py's footprint numbering (1-3 S, 4 G, 5 drain tab); the datasheet's pin drawing is an image and was not read",
+   "why": "reference terminal"
+  },
+  "Q7.3": {
+   "max": "none",
+   "src": "NCEP4090GU (C502976): Wuxi NCE Power NCEP4090GU datasheet V4.0 p.1 absolute maximum ratings: VDS 40 V, VGS +/-20 V, ID 90 A (TC 25 C; 63.6 A at 100 C). Pin map is brain.py's footprint numbering (1-3 S, 4 G, 5 drain tab); the datasheet's pin drawing is an image and was not read",
+   "why": "reference terminal"
+  },
+  "Q7.4": {
+   "max": "none",
+   "src": "NCEP4090GU (C502976): Wuxi NCE Power NCEP4090GU datasheet V4.0 p.1 absolute maximum ratings: VDS 40 V, VGS +/-20 V, ID 90 A (TC 25 C; 63.6 A at 100 C). Pin map is brain.py's footprint numbering (1-3 S, 4 G, 5 drain tab); the datasheet's pin drawing is an image and was not read",
+   "why": "its VGS limit (20 V) is not one to ground: it was judged on 13.9 V steady, 13.9 V transient -- LM74700 GATE swings from ANODE (its discharge switch) up to VCAP, which the charge pump stops at 13.9 V max over ANODE (SNOSD17G s6.5); the source is ANODE"
+  },
+  "Q7.5": {
+   "max": 40.0,
+   "src": "VDS -- NCEP4090GU (C502976): Wuxi NCE Power NCEP4090GU datasheet V4.0 p.1 absolute maximum ratings: VDS 40 V, VGS +/-20 V, ID 90 A (TC 25 C; 63.6 A at 100 C). Pin map is brain.py's footprint numbering (1-3 S, 4 G, 5 drain tab); the datasheet's pin drawing is an image and was not read"
+  },
+  "R11.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R11.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R112.1": {
+   "max": 50.0,
+   "src": "element V -- PA0805FRF870R005L (C6351848): JLCPCB parts API attributes for C6351848, fetched 2026-10-30; no voltage listed, 50 V entered so the check grades the 1 W, sqrt(PR) is 0.22 V"
+  },
+  "R112.2": {
+   "max": 50.0,
+   "src": "element V -- PA0805FRF870R005L (C6351848): JLCPCB parts API attributes for C6351848, fetched 2026-10-30; no voltage listed, 50 V entered so the check grades the 1 W, sqrt(PR) is 0.22 V"
+  },
+  "R119.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1001TCE (C11702): JLCPCB parts API attributes for C11702, fetched 2026-10-30"
+  },
+  "R119.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1001TCE (C11702): JLCPCB parts API attributes for C11702, fetched 2026-10-30"
+  },
+  "R12.1": {
+   "max": 50.0,
+   "src": "element V -- RC0402FR-0724K9L (C138027): JLCPCB parts API attributes for C138027 (RC0402FR-0724K9L, YAGEO), fetched 2026-10-06"
+  },
+  "R120.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R120.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R121.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1001TCE (C11702): JLCPCB parts API attributes for C11702, fetched 2026-10-30"
+  },
+  "R121.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1001TCE (C11702): JLCPCB parts API attributes for C11702, fetched 2026-10-30"
+  },
+  "R122.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R122.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R3.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF5101TCE (C25905): JLCPCB parts API attributes for C25905 (0402WGF5101TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R4.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF5101TCE (C25905): JLCPCB parts API attributes for C25905 (0402WGF5101TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R70.1": {
+   "max": 50.0,
+   "src": "element V -- PA0805FRF870R005L (C6351848): JLCPCB parts API attributes for C6351848, fetched 2026-10-30; no voltage listed, 50 V entered so the check grades the 1 W, sqrt(PR) is 0.22 V"
+  },
+  "R70.2": {
+   "max": 50.0,
+   "src": "element V -- PA0805FRF870R005L (C6351848): JLCPCB parts API attributes for C6351848, fetched 2026-10-30; no voltage listed, 50 V entered so the check grades the 1 W, sqrt(PR) is 0.22 V"
+  },
+  "R71.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF6201TCE (C25915): JLCPCB parts API attributes for C25915 (0402WGF6201TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-11-13"
+  },
+  "R71.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF6201TCE (C25915): JLCPCB parts API attributes for C25915 (0402WGF6201TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-11-13"
+  },
+  "R72.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF2000TCE (C25087): JLCPCB parts API attributes for C25087 (0402WGF2000TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-11-13"
+  },
+  "R72.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF2000TCE (C25087): JLCPCB parts API attributes for C25087 (0402WGF2000TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-11-13"
+  },
+  "R73.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF5101TCE (C25905): JLCPCB parts API attributes for C25905 (0402WGF5101TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R74.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF5101TCE (C25905): JLCPCB parts API attributes for C25905 (0402WGF5101TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R75.1": {
+   "max": 50.0,
+   "src": "element V -- PA0805FRF870R005L (C6351848): JLCPCB parts API attributes for C6351848, fetched 2026-10-30; no voltage listed, 50 V entered so the check grades the 1 W, sqrt(PR) is 0.22 V"
+  },
+  "R75.2": {
+   "max": 50.0,
+   "src": "element V -- PA0805FRF870R005L (C6351848): JLCPCB parts API attributes for C6351848, fetched 2026-10-30; no voltage listed, 50 V entered so the check grades the 1 W, sqrt(PR) is 0.22 V"
+  },
+  "R76.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF6201TCE (C25915): JLCPCB parts API attributes for C25915 (0402WGF6201TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-11-13"
+  },
+  "R76.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF6201TCE (C25915): JLCPCB parts API attributes for C25915 (0402WGF6201TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-11-13"
+  },
+  "R77.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF2000TCE (C25087): JLCPCB parts API attributes for C25087 (0402WGF2000TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-11-13"
+  },
+  "R77.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF2000TCE (C25087): JLCPCB parts API attributes for C25087 (0402WGF2000TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-11-13"
+  },
+  "R78.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF5101TCE (C25905): JLCPCB parts API attributes for C25905 (0402WGF5101TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R79.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF5101TCE (C25905): JLCPCB parts API attributes for C25905 (0402WGF5101TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R80.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R80.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R81.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R81.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R82.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R82.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R83.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R83.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R84.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF4701TCE (C25900): JLCPCB parts API attributes for C25900 (0402WGF4701TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R84.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF4701TCE (C25900): JLCPCB parts API attributes for C25900 (0402WGF4701TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R85.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF4701TCE (C25900): JLCPCB parts API attributes for C25900 (0402WGF4701TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R85.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF4701TCE (C25900): JLCPCB parts API attributes for C25900 (0402WGF4701TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R91.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF4701TCE (C25900): JLCPCB parts API attributes for C25900 (0402WGF4701TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R91.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF4701TCE (C25900): JLCPCB parts API attributes for C25900 (0402WGF4701TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R92.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "RT1.1": {
+   "max": 31.6,
+   "src": "element V -- NCP15XH103F03RC (C77131): Murata NTC thermistor catalogue (the PDF on LCSC C77131) p.10 table, NCP15XH103F03RC: 10k +/-1 % at 25 C, B25/50 3380 K, permissible operating current 0.31 mA, rated electric power 100 mW (25 C). No voltage rating is published: 31.6 V entered = sqrt(100 mW x 10k), the rated power's voltage at 25 C"
+  },
+  "RT2.1": {
+   "max": 31.6,
+   "src": "element V -- NCP15XH103F03RC (C77131): Murata NTC thermistor catalogue (the PDF on LCSC C77131) p.10 table, NCP15XH103F03RC: 10k +/-1 % at 25 C, B25/50 3380 K, permissible operating current 0.31 mA, rated electric power 100 mW (25 C). No voltage rating is published: 31.6 V entered = sqrt(100 mW x 10k), the rated power's voltage at 25 C"
+  },
+  "U13.1": {
+   "max": 31.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U13.10": {
+   "max": "none",
+   "src": "AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)",
+   "why": "not connected"
+  },
+  "U13.11": {
+   "max": 7.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U13.12": {
+   "max": 5.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U13.13": {
+   "max": 7.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U13.14": {
+   "max": "none",
+   "src": "AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)",
+   "why": "not connected"
+  },
+  "U13.15": {
+   "max": 7.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U13.16": {
+   "max": 34.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U13.17": {
+   "max": 34.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U13.18": {
+   "max": 7.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U13.19": {
+   "max": 7.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U13.2": {
+   "max": "none",
+   "src": "AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)",
+   "why": "not connected"
+  },
+  "U13.20": {
+   "max": 7.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U13.21": {
+   "max": "none",
+   "src": "AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)",
+   "why": "not connected"
+  },
+  "U13.22": {
+   "max": 31.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U13.23": {
+   "max": 41.425,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U13.24": {
+   "max": 34.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U13.4": {
+   "max": 7.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U13.5": {
+   "max": 7.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U13.6": {
+   "max": 7.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U13.7": {
+   "max": 7.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U13.8": {
+   "max": 7.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U13.9": {
+   "max": 7.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U14.1": {
+   "max": 31.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U14.10": {
+   "max": "none",
+   "src": "AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)",
+   "why": "not connected"
+  },
+  "U14.11": {
+   "max": 7.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U14.12": {
+   "max": 5.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U14.13": {
+   "max": 7.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U14.14": {
+   "max": "none",
+   "src": "AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)",
+   "why": "not connected"
+  },
+  "U14.15": {
+   "max": 7.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U14.16": {
+   "max": 34.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U14.17": {
+   "max": 34.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U14.18": {
+   "max": 7.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U14.19": {
+   "max": 7.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U14.2": {
+   "max": "none",
+   "src": "AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)",
+   "why": "not connected"
+  },
+  "U14.20": {
+   "max": 7.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U14.21": {
+   "max": "none",
+   "src": "AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)",
+   "why": "not connected"
+  },
+  "U14.22": {
+   "max": 31.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U14.23": {
+   "max": 41.425,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U14.24": {
+   "max": 34.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U14.4": {
+   "max": 7.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U14.5": {
+   "max": 7.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U14.6": {
+   "max": 7.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U14.7": {
+   "max": 7.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U14.8": {
+   "max": 7.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U14.9": {
+   "max": 7.0,
+   "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "U16.10": {
+   "max": 40.0,
+   "src": "abs max -- INA226AIDGSR (C49851): TI INA226 datasheet SBOS547 s6.1 p.4: VS 6, IN+/IN- and VBUS -0.3..40, SDA 6, SCL VS+0.3; common mode 0-36 V"
+  },
+  "U16.3": {
+   "max": 6.0,
+   "src": "abs max -- INA226AIDGSR (C49851): TI INA226 datasheet SBOS547 s6.1 p.4: VS 6, IN+/IN- and VBUS -0.3..40, SDA 6, SCL VS+0.3; common mode 0-36 V"
+  },
+  "U16.4": {
+   "max": 6.0,
+   "src": "abs max -- INA226AIDGSR (C49851): TI INA226 datasheet SBOS547 s6.1 p.4: VS 6, IN+/IN- and VBUS -0.3..40, SDA 6, SCL VS+0.3; common mode 0-36 V"
+  },
+  "U16.5": {
+   "max": 3.75,
+   "src": "abs max -- INA226AIDGSR (C49851): TI INA226 datasheet SBOS547 s6.1 p.4: VS 6, IN+/IN- and VBUS -0.3..40, SDA 6, SCL VS+0.3; common mode 0-36 V"
+  },
+  "U16.6": {
+   "max": 6.0,
+   "src": "abs max -- INA226AIDGSR (C49851): TI INA226 datasheet SBOS547 s6.1 p.4: VS 6, IN+/IN- and VBUS -0.3..40, SDA 6, SCL VS+0.3; common mode 0-36 V"
+  },
+  "U16.8": {
+   "max": 40.0,
+   "src": "abs max -- INA226AIDGSR (C49851): TI INA226 datasheet SBOS547 s6.1 p.4: VS 6, IN+/IN- and VBUS -0.3..40, SDA 6, SCL VS+0.3; common mode 0-36 V"
+  },
+  "U16.9": {
+   "max": 40.0,
+   "src": "abs max -- INA226AIDGSR (C49851): TI INA226 datasheet SBOS547 s6.1 p.4: VS 6, IN+/IN- and VBUS -0.3..40, SDA 6, SCL VS+0.3; common mode 0-36 V"
+  },
+  "U17.1": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221RSER (C130085): TI TS3USB221 datasheet p.4 absolute maximum: VCC 4.6, control input 7, switch I/O 7 V, on-state current 120 mA"
+  },
+  "U17.10": {
+   "max": 4.6,
+   "src": "abs max -- TS3USB221RSER (C130085): TI TS3USB221 datasheet p.4 absolute maximum: VCC 4.6, control input 7, switch I/O 7 V, on-state current 120 mA"
+  },
+  "U17.2": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221RSER (C130085): TI TS3USB221 datasheet p.4 absolute maximum: VCC 4.6, control input 7, switch I/O 7 V, on-state current 120 mA"
+  },
+  "U17.3": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221RSER (C130085): TI TS3USB221 datasheet p.4 absolute maximum: VCC 4.6, control input 7, switch I/O 7 V, on-state current 120 mA"
+  },
+  "U17.4": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221RSER (C130085): TI TS3USB221 datasheet p.4 absolute maximum: VCC 4.6, control input 7, switch I/O 7 V, on-state current 120 mA"
+  },
+  "U17.7": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221RSER (C130085): TI TS3USB221 datasheet p.4 absolute maximum: VCC 4.6, control input 7, switch I/O 7 V, on-state current 120 mA"
+  },
+  "U17.8": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221RSER (C130085): TI TS3USB221 datasheet p.4 absolute maximum: VCC 4.6, control input 7, switch I/O 7 V, on-state current 120 mA"
+  },
+  "U17.9": {
+   "max": 7.0,
+   "src": "abs max -- TS3USB221RSER (C130085): TI TS3USB221 datasheet p.4 absolute maximum: VCC 4.6, control input 7, switch I/O 7 V, on-state current 120 mA"
+  },
+  "U18.1": {
+   "max": 52.425,
+   "src": "abs max -- LM74700QDBVRQ1 (C2941042): TI LM74700-Q1 datasheet SNOSD17G (Dec 2020) s6.1 p.5: ANODE to GND -65..65 V, EN -0.3..65 V, GATE to ANODE -0.3..15 V, VCAP to ANODE -0.3..15 V, CATHODE to ANODE -5..75 V; s6.3 ANODE, CATHODE, EN to GND 60 V recommended; s6.5 p.7 charge pump turn-off VCAP-ANODE 11.6/13/13.9 V; p.3 Table 5-1 DBV pinout 1 VCAP 2 GND 3 EN 4 CATHODE 5 GATE 6 ANODE"
+  },
+  "U18.3": {
+   "max": 65.0,
+   "src": "abs max -- LM74700QDBVRQ1 (C2941042): TI LM74700-Q1 datasheet SNOSD17G (Dec 2020) s6.1 p.5: ANODE to GND -65..65 V, EN -0.3..65 V, GATE to ANODE -0.3..15 V, VCAP to ANODE -0.3..15 V, CATHODE to ANODE -5..75 V; s6.3 ANODE, CATHODE, EN to GND 60 V recommended; s6.5 p.7 charge pump turn-off VCAP-ANODE 11.6/13/13.9 V; p.3 Table 5-1 DBV pinout 1 VCAP 2 GND 3 EN 4 CATHODE 5 GATE 6 ANODE"
+  },
+  "U18.4": {
+   "max": 75.0,
+   "src": "abs max -- LM74700QDBVRQ1 (C2941042): TI LM74700-Q1 datasheet SNOSD17G (Dec 2020) s6.1 p.5: ANODE to GND -65..65 V, EN -0.3..65 V, GATE to ANODE -0.3..15 V, VCAP to ANODE -0.3..15 V, CATHODE to ANODE -5..75 V; s6.3 ANODE, CATHODE, EN to GND 60 V recommended; s6.5 p.7 charge pump turn-off VCAP-ANODE 11.6/13/13.9 V; p.3 Table 5-1 DBV pinout 1 VCAP 2 GND 3 EN 4 CATHODE 5 GATE 6 ANODE"
+  },
+  "U18.5": {
+   "max": 52.425,
+   "src": "abs max -- LM74700QDBVRQ1 (C2941042): TI LM74700-Q1 datasheet SNOSD17G (Dec 2020) s6.1 p.5: ANODE to GND -65..65 V, EN -0.3..65 V, GATE to ANODE -0.3..15 V, VCAP to ANODE -0.3..15 V, CATHODE to ANODE -5..75 V; s6.3 ANODE, CATHODE, EN to GND 60 V recommended; s6.5 p.7 charge pump turn-off VCAP-ANODE 11.6/13/13.9 V; p.3 Table 5-1 DBV pinout 1 VCAP 2 GND 3 EN 4 CATHODE 5 GATE 6 ANODE"
+  },
+  "U18.6": {
+   "max": 65.0,
+   "src": "abs max -- LM74700QDBVRQ1 (C2941042): TI LM74700-Q1 datasheet SNOSD17G (Dec 2020) s6.1 p.5: ANODE to GND -65..65 V, EN -0.3..65 V, GATE to ANODE -0.3..15 V, VCAP to ANODE -0.3..15 V, CATHODE to ANODE -5..75 V; s6.3 ANODE, CATHODE, EN to GND 60 V recommended; s6.5 p.7 charge pump turn-off VCAP-ANODE 11.6/13/13.9 V; p.3 Table 5-1 DBV pinout 1 VCAP 2 GND 3 EN 4 CATHODE 5 GATE 6 ANODE"
+  },
+  "U19.1": {
+   "max": 52.425,
+   "src": "abs max -- LM74700QDBVRQ1 (C2941042): TI LM74700-Q1 datasheet SNOSD17G (Dec 2020) s6.1 p.5: ANODE to GND -65..65 V, EN -0.3..65 V, GATE to ANODE -0.3..15 V, VCAP to ANODE -0.3..15 V, CATHODE to ANODE -5..75 V; s6.3 ANODE, CATHODE, EN to GND 60 V recommended; s6.5 p.7 charge pump turn-off VCAP-ANODE 11.6/13/13.9 V; p.3 Table 5-1 DBV pinout 1 VCAP 2 GND 3 EN 4 CATHODE 5 GATE 6 ANODE"
+  },
+  "U19.3": {
+   "max": 65.0,
+   "src": "abs max -- LM74700QDBVRQ1 (C2941042): TI LM74700-Q1 datasheet SNOSD17G (Dec 2020) s6.1 p.5: ANODE to GND -65..65 V, EN -0.3..65 V, GATE to ANODE -0.3..15 V, VCAP to ANODE -0.3..15 V, CATHODE to ANODE -5..75 V; s6.3 ANODE, CATHODE, EN to GND 60 V recommended; s6.5 p.7 charge pump turn-off VCAP-ANODE 11.6/13/13.9 V; p.3 Table 5-1 DBV pinout 1 VCAP 2 GND 3 EN 4 CATHODE 5 GATE 6 ANODE"
+  },
+  "U19.4": {
+   "max": 75.0,
+   "src": "abs max -- LM74700QDBVRQ1 (C2941042): TI LM74700-Q1 datasheet SNOSD17G (Dec 2020) s6.1 p.5: ANODE to GND -65..65 V, EN -0.3..65 V, GATE to ANODE -0.3..15 V, VCAP to ANODE -0.3..15 V, CATHODE to ANODE -5..75 V; s6.3 ANODE, CATHODE, EN to GND 60 V recommended; s6.5 p.7 charge pump turn-off VCAP-ANODE 11.6/13/13.9 V; p.3 Table 5-1 DBV pinout 1 VCAP 2 GND 3 EN 4 CATHODE 5 GATE 6 ANODE"
+  },
+  "U19.5": {
+   "max": 52.425,
+   "src": "abs max -- LM74700QDBVRQ1 (C2941042): TI LM74700-Q1 datasheet SNOSD17G (Dec 2020) s6.1 p.5: ANODE to GND -65..65 V, EN -0.3..65 V, GATE to ANODE -0.3..15 V, VCAP to ANODE -0.3..15 V, CATHODE to ANODE -5..75 V; s6.3 ANODE, CATHODE, EN to GND 60 V recommended; s6.5 p.7 charge pump turn-off VCAP-ANODE 11.6/13/13.9 V; p.3 Table 5-1 DBV pinout 1 VCAP 2 GND 3 EN 4 CATHODE 5 GATE 6 ANODE"
+  },
+  "U19.6": {
+   "max": 65.0,
+   "src": "abs max -- LM74700QDBVRQ1 (C2941042): TI LM74700-Q1 datasheet SNOSD17G (Dec 2020) s6.1 p.5: ANODE to GND -65..65 V, EN -0.3..65 V, GATE to ANODE -0.3..15 V, VCAP to ANODE -0.3..15 V, CATHODE to ANODE -5..75 V; s6.3 ANODE, CATHODE, EN to GND 60 V recommended; s6.5 p.7 charge pump turn-off VCAP-ANODE 11.6/13/13.9 V; p.3 Table 5-1 DBV pinout 1 VCAP 2 GND 3 EN 4 CATHODE 5 GATE 6 ANODE"
+  },
+  "U5.10": {
+   "max": 38.0,
+   "src": "abs max -- LMR33630BRNXR (C2071384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; VQFN (RNX) pinout p.2-3 table 6-1"
+  },
+  "U5.12": {
+   "max": 37.725,
+   "src": "abs max -- LMR33630BRNXR (C2071384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; VQFN (RNX) pinout p.2-3 table 6-1"
+  },
+  "U5.2": {
+   "max": 38.0,
+   "src": "abs max -- LMR33630BRNXR (C2071384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; VQFN (RNX) pinout p.2-3 table 6-1"
+  },
+  "U5.3": {
+   "max": 37.725,
+   "src": "abs max -- LMR33630BRNXR (C2071384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; VQFN (RNX) pinout p.2-3 table 6-1"
+  },
+  "U5.4": {
+   "max": "none",
+   "src": "LMR33630BRNXR (C2071384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; VQFN (RNX) pinout p.2-3 table 6-1",
+   "why": "bootstrap node, rated SW+5.5 and set by the IC itself"
+  },
+  "U5.5": {
+   "max": 5.5,
+   "src": "abs max -- LMR33630BRNXR (C2071384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; VQFN (RNX) pinout p.2-3 table 6-1"
+  },
+  "U5.7": {
+   "max": 5.5,
+   "src": "abs max -- LMR33630BRNXR (C2071384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; VQFN (RNX) pinout p.2-3 table 6-1"
+  },
+  "U5.8": {
+   "max": 22.0,
+   "src": "abs max -- LMR33630BRNXR (C2071384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; VQFN (RNX) pinout p.2-3 table 6-1"
+  },
+  "U5.9": {
+   "max": 37.725,
+   "src": "abs max -- LMR33630BRNXR (C2071384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; VQFN (RNX) pinout p.2-3 table 6-1"
+  }
+ }
+}
