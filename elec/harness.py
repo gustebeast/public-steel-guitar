@@ -126,6 +126,43 @@ POWER_PAIR = ("V24", "GND")
 #   both ends, so a reversed lead puts ground on ground.
 BRAIN_POWER = ("VIN", "GND", "LEAD_SENSE", NC, "GND", "VIN")
 BRAIN_SIGNAL = ("GND", "BRAIN_EN", "LOW_PWR", "PWR_BTN", "BRAIN_PG", "GND")
+# The output board's two halves (2026-11-13, the split): output_power J20 -> output_signal J20,
+# a 2 x 12 1.27 mm board-to-board pair, NO cable. Way n is the connector's pin n: odd ways one
+# row, even the other, so way n faces n+-1 across and n+-2 along. What crosses, and why it is
+# only this: the power half has both PD sinks, the ideal diodes, the INA226, the data switch
+# and the 5 V buck; the signal half has the MCU that talks to all of them and every 5 V load.
+#   V5_PRE x5   the buck's 5 V BEFORE the bead (FB1 is on the signal half, where the rails it
+#               separates are). Worst case 2.64 A: U15's 1.80 A limit (the optical board) +
+#               U21's 0.58 A (the MCU + PHY, optical's M25 figure) + 0.26 A analog. 0.53 A a
+#               way on five, under half a 1.27 mm contact's typical 1 A.
+#   GND x6      the same 2.64 A back, 0.44 A a way; and one beside each power way.
+#   +3V3D x1    the signal half's logic rail OUT to the power half's pull-ups, U17 and U16:
+#               ~5 mA.
+#   12 signals  the two PD controllers' I2C + INT (each its own bus, fixed 0x52), the INA226's
+#               I2C2 + ALERT, DATA_SEL (U17), and the two brain-lead presence loops.
+OUTPUT_LINK = ("V5", "V5", "V5", "V5", "V5", "GND", "GND", "GND", "V3D", "GND", "GND",
+               "PDA_SCL", "PDA_SDA", "PDA_INT", "PDB_SCL", "PDB_SDA", "PDB_INT",
+               "I2C2_SCL", "I2C2_SDA", "INA_ALERT_N", "DATA_SEL", "PWR_LEAD1_N", "PWR_LEAD2_N",
+               "GND")
+
+
+def check_ways_2row(ways, power, ground=("GND",), where=""):
+    """check_ways for a two-row header numbered odd / even (way n's neighbours: n+-1 across,
+    n+-2 along). The same standard: a rail only beside ground or that rail."""
+    ways = tuple(ways)
+    for i, w in enumerate(ways):
+        if w not in power:
+            continue
+        across = i + 1 if i % 2 == 0 else i - 1
+        for j in (across, i - 2, i + 2):
+            if 0 <= j < len(ways) and ways[j] not in ground and ways[j] != w:
+                raise AssertionError(
+                    "%s: way %d (%s) carries a rail and way %d (%s) beside it is neither "
+                    "ground nor that rail -- elec/harness.py, the standard"
+                    % (where, i + 1, w, j + 1, ways[j]))
+
+
+check_ways_2row(OUTPUT_LINK, ("V5", "V3D"), where="OUTPUT_LINK")
 
 
 def check_ways(ways, power, ground=("GND",), where=""):

@@ -2,6 +2,14 @@
 
     py -3.12 elec/output_board.py       # -> elec/out/output_board.{net,board.json}
 
+⚠ NOT A BOARD TO ORDER ANY MORE (2026-11-13, the split). As one 68 x 100 board it did not
+route (ob10: 30 nets open after the full finish, 0.54 fill). It is now TWO boards stacked
+face to face in the same box -- output_power.py and output_signal.py -- and THIS FILE IS
+STILL THEIR CIRCUIT: output_split.py builds output_board() and keeps one half of it, with
+a board-to-board connector on the nets that cross (harness.OUTPUT_LINK). Change the
+circuit here; change which half a part is on in output_split.py. Running this file alone
+still writes the whole netlist, which is useful for checks and nothing else.
+
 A NEW BOARD for branner's direct_bench instrument (user, 2026-11-12). output_panel.py is
 the old instrument's board, is shipped, and is NOT touched by anything here; the audio
 chain below is COPIED from its R2 (by tools in the bronner scratchpad, 2026-11-12), so a
@@ -92,7 +100,11 @@ TRS_FP = "Connector_Audio:Jack_6.35mm_Neutrik_NMJ6HCD2_Horizontal"
 # elec/footprints/Steel.pretty.
 DC_FP = "Steel:Kycon_KPJX-4S-S"
 XH_FP = "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"
-XH6_FP = "Connector_JST:JST_XH_B6B-XH-A_1x06_P2.50mm_Vertical"
+# SIDE ENTRY since the split (2026-11-13): the two output boards face each other ~15 mm
+# apart, so a vertical plug would point into the other board. Every internal lead now
+# enters from the -X edge, as the brain board's do (its S6B-XH-SM4-TB, the same part).
+XH6_FP = "Connector_JST:JST_XH_S6B-XH-SM4-TB_1x06-1MP_P2.50mm_Horizontal"
+PH6_FP = "Connector_JST:JST_PH_S6B-PH-SM4-TB_1x06-1MP_P2.00mm_Horizontal"
 TERM_FP = "TerminalBlock:TerminalBlock_MaiXu_MX126-5.0-02P_1x02_P5.00mm"
 TERM_FP_R2 = "Steel:MaiXu_MX128-5.0-02P_1x02_P5.00mm"     # slotted: no second tool (R2-3)
 MCU_FP = "Package_DFN_QFN:QFN-68-1EP_8x8mm_P0.4mm_EP5.2x5.2mm"
@@ -1264,18 +1276,20 @@ def output_board():
     # switch closes, so its boost input sits behind a soft-start switch gated by BRAIN_EN.
     vin_brain = Net("VIN_BRAIN")
     vin_brain.drive = Pin.drives.POWER
-    j10 = Part(name="B6B-XH-A", ref_prefix="J", ref="J10", tag="J10", dest="NETLIST",
-               tool="skidl", value="B6B-XH-A",
+    j10 = Part(name="S6B-XH-SM4-TB", ref_prefix="J", ref="J10", tag="J10", dest="NETLIST",
+               tool="skidl", value="S6B-XH-SM4-TB",
                description="to the brain board: the chargers' 5-20 V, lead 1 of 2 in parallel "
                            "(harness.BRAIN_POWER)",
                footprint=XH6_FP,
-               pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(harness.BRAIN_POWER)])
-    j12 = Part(name="B6B-XH-A", ref_prefix="J", ref="J12", tag="J12", dest="NETLIST",
-               tool="skidl", value="B6B-XH-A",
+               pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(harness.BRAIN_POWER)]
+               + [Pin(num="MP", name="MP", func=P)])
+    j12 = Part(name="S6B-XH-SM4-TB", ref_prefix="J", ref="J12", tag="J12", dest="NETLIST",
+               tool="skidl", value="S6B-XH-SM4-TB",
                description="to the brain board: the chargers' 5-20 V, lead 2 of 2 in parallel "
                            "(harness.BRAIN_POWER)",
                footprint=XH6_FP,
-               pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(harness.BRAIN_POWER)])
+               pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(harness.BRAIN_POWER)]
+               + [Pin(num="MP", name="MP", func=P)])
     harness.check_ways(harness.BRAIN_POWER, ("VIN",), ("GND", harness.NC), where="J10/J12")
     # WAY 3 IS A PRESENCE LOOP (lead, 2026-11-13): the brain board straps it to GND, so a lead
     # that is in reads LOW. Either one HIGH and firmware caps the input at ONE charger's
@@ -1290,12 +1304,13 @@ def output_board():
         Net("%s_NC_4" % j.ref).connect(j[4])
         _res(ser, "1k", "%s presence loop in from the cable" % j.ref, loop, io[k])
         _res(pu, "10k", "%s presence pull-up: HIGH = lead missing" % j.ref, io[k], v3d)
-    j11 = Part(name="B6B-PH-K", ref_prefix="J", ref="J11", tag="J11", dest="NETLIST",
-               tool="skidl", value="B6B-PH-K",
+    j11 = Part(name="S6B-PH-SM4-TB", ref_prefix="J", ref="J11", tag="J11", dest="NETLIST",
+               tool="skidl", value="S6B-PH-SM4-TB",
                description="to the brain board: enable, low-power mode out; button, "
                            "power-good in (harness.BRAIN_SIGNAL)",
-               footprint="Connector_JST:JST_PH_B6B-PH-K_1x06_P2.00mm_Vertical",
-               pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(harness.BRAIN_SIGNAL)])
+               footprint=PH6_FP,
+               pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(harness.BRAIN_SIGNAL)]
+               + [Pin(num="MP", name="MP", func=P)])
     link = {"GND": gnd}
     for k in ("BRAIN_EN", "LOW_PWR", "PWR_BTN", "BRAIN_PG"):
         link[k] = Net("LINK_" + k)
