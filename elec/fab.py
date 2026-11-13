@@ -154,6 +154,7 @@ LCSC = {
     "MX128-5.0-02P-Y": "C5188463",  # MAX MX128-5.0-02P-GN01-Cu-Y-A, slotted, stock 1,353 on 2026-10-30 -- output_panel R2 J8 (R2-3)
     "TUSB320LAIRWBR": "C132554",    # TI USB-C role detect, X2QFN-12; 2,603 on 2026-10-30 -- THIN
     "TS3USB221RSER": "C130085",     # TI USB 2:1 switch, UQFN-10; 64,390 on 2026-10-30
+    "SMBJ22A": "C224015",           # Littelfuse SMB TVS, 22 V stand-off, 600 W: the output power half's port clamps
     "SMF24A": "C169430",            # SOD-123FL TVS, 24 V stand-off, 200 W; 99,839 on 2026-10-30
     "INA226AIDGSR": "C49851",       # TI power monitor, VSSOP-10; 42,364 on 2026-10-30
     # The two CLASS lines whose pinout the netlist actually writes out, so a part can be

@@ -354,6 +354,14 @@ SEEDS["brain"] = {
 PD_VIN = dict(BRAIN_VIN, why="USB PD contract, 20 V +5 %% (USB PD 3.x 7.1.8; EPR not enabled); transient = "
                              "the %s clamps (D11 / D15 at the ports, D19 at the brain leads) at a live plug's "
                              "4.3 A -- BRAIN_VIN, the same net the brain board takes on J10 / J12" % _D10["mpn"])
+# ...but the PORTS clamp lower since 2026-11-13: D11 / D15 are SMBJ22A, which take the same
+# live plug to 29.1 V (the SMF24A's 37.4 V was over the AP33772S's 31 V). Everything behind
+# a port -- VCC, VOUT, VIN_BUS through the ideal diode, VIN_BRAIN through R112 -- is bounded
+# by that clamp; D19 (SMF24A, VBR from 26.7 V) at the leads conducts no earlier than it.
+_DP = PARTS["C224015"]
+PORT_VIN = dict(PD_VIN, vt=_DP["vbr_max"] + (_DP["vc"] - _DP["vbr_max"]) * min(1.0, 4.3 / _DP["ipp"]),
+                why="USB PD contract, 20 V +5 %% (USB PD 3.x 7.1.8; EPR not enabled); transient = the port "
+                    "clamps D11 / D15 (%s) at a live plug's 4.3 A, the inlet figure BRAIN_VIN uses" % _DP["mpn"])
 _AP2114 = PARTS["C150716"]
 _V3D = _AP2114["vout"] * (1 + _AP2114["vout_tol"])
 _USB_PD_DATA = ("abs", dict(v=3.6, vt=3.6, vf=PD_VIN["v"],
@@ -364,7 +372,7 @@ _PD_CC = ("abs", dict(v=5.25, vt=5.5, vf=PD_VIN["v"],
                           "the other CC; FAULT = VBUS (the contract) shorted onto it in the plug, the case "
                           "DS46176 p.1 rates the AP33772S's CC pins for (34 V)"))
 SEEDS["output_power"] = {
-    **{n: ("abs", PD_VIN) for n in ("PA_VBUS", "PB_VBUS", "VIN_BUS", "VIN_BRAIN")},
+    **{n: ("abs", PORT_VIN) for n in ("PA_VBUS", "PB_VBUS", "VIN_BUS", "VIN_BRAIN")},
     **{"P%s_VOUT" % s: ("like", "P%s_VCC" % s, 0.0, "behind Q%d, the port switch" % q)
        for s, q in (("A", 4), ("B", 5))},
     "VSTBY": ("like", "PA_VBUS", 0.0, "either port's VCC through D14 / D16 (SS34): taken at VBUS, ignoring the drop"),
@@ -675,11 +683,9 @@ REVIEW_NOTES["output_power"] = {
                     "defined against; the 21 V is that contract's +5 % tolerance. Not a new exposure for a "
                     "USB-C sink, but an EPR-rated (48 V) receptacle would give the margin this check asks for.",
     ("J2", "FAIL"): "As J1.",
-    ("U13", "SUSPECT"): "Real: the SMF24A's clamping level at a live plug is above the AP33772S's 31 V on ISENP / "
-                        "VOUT. The clamp is sized for a 24 V stand-off over the 20 V contract; its VC is not.",
-    ("U14", "SUSPECT"): "As U13.",
-    ("C92", "SUSPECT"): "The 35 V VIN_BUS bulk against the clamp's live-plug level, as on the brain board.",
-    ("C93", "SUSPECT"): "As C92.",
+    ("J10", "SUSPECT"): "Accepted (lead, 2026-11-13): 2.5 A a way on two XH ways is exactly the two-gauge rule's "
+                        "sizing for a 22 AWG XH power way; the 10 A is the worst case of both leads on one charger.",
+    ("J12", "SUSPECT"): "As J10.",
 }
 REVIEW_NOTES["output_signal"] = {
     ("D5", "SUSPECT"): REVIEW_NOTES["output_panel"][("D5", "SUSPECT")],

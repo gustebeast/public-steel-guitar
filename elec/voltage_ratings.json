@@ -3253,6 +3253,21 @@
    "v": 30.0,
    "i": 1.0,
    "src": "PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "C224015": {
+   "kind": "tvs",
+   "vrwm": 22.0,
+   "vbr_min": 24.4,
+   "vbr_max": 26.9,
+   "vc": 35.5,
+   "ipp": 16.9,
+   "bidir": false,
+   "pins": {
+    "1": "K",
+    "2": "A"
+   },
+   "mpn": "SMBJ22A",
+   "src": "Littelfuse SMBJ Series datasheet (Revised JC.07/04/25 v4) p.2, electrical characteristics row SMBJ22A: VRWM 22 V, VBR 24.40-26.90 V @1 mA, VC 35.5 V @ IPP 16.9 A (10/1000 us), 600 W"
   }
  }
 }

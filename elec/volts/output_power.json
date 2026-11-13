@@ -6,7 +6,7 @@
    "why": "U21 (AP2114H-3.3) on output_signal, back over J20 way 9: 3.3 V +1.5 %, +3 % transient -- U21's own figures, as output_signal's +3V3D"
   },
   "BOOT": {
-   "peak": 42.925,
+   "peak": 34.588,
    "v": 26.5,
    "why": "bootstrap: SW + 5.5 V, held by U5"
   },
@@ -94,12 +94,12 @@
    "why": "USB-C CC behind the sink's 5k1 Rd: a source's Rp pull-up, or VCONN (5.5 V max) on the other CC; FAULT = VBUS (the contract) shorted onto it in the plug, the case DS46176 p.1 rates the AP33772S's CC pins for (34 V)"
   },
   "PA_GATE": {
-   "peak": 41.425,
+   "peak": 33.088,
    "v": 25.0,
    "why": "through R71"
   },
   "PA_GCLAMP": {
-   "peak": 37.425,
+   "peak": 29.088,
    "v": 21.0,
    "why": "common anode of the anti-series gate clamp: at most the source (VOUT), the gate side's zener blocking [= PA_VOUT+0]"
   },
@@ -108,7 +108,7 @@
    "why": "U13.15 (IFB) can reach its supply PA_V5V"
   },
   "PA_ORGATE": {
-   "peak": 51.325,
+   "peak": 42.988,
    "v": 34.9,
    "why": "LM74700 GATE: driven from VCAP, so at most VCAP (SNOSD17G s6.5; GATE-ANODE 15 V abs, s6.1) [= PA_VOUT+13.9]"
   },
@@ -117,7 +117,7 @@
    "why": "U13.13 (OTP) can reach its supply PA_V5V"
   },
   "PA_PWR_EN": {
-   "peak": 41.425,
+   "peak": 33.088,
    "v": 25.0,
    "why": "AP33772S gate drive from its charge pump (DS46176 p.12, VOUT-Enable Switch); no output level is published, only that PWR_EN may not exceed VCC + 4 V (p.5 abs max), so that is the bound -- ASSUMED, the IC holding its own rating [= PA_VCC+4]"
   },
@@ -130,27 +130,27 @@
    "why": "AP33772S V5V LDO output, 4.37 / 4.85 / 5.33 V (DS46176 p.6, V5V section)"
   },
   "PA_VBUS": {
-   "peak": 37.425,
+   "peak": 29.088,
    "v": 21.0,
-   "why": "USB PD contract, 20 V +5 % (USB PD 3.x 7.1.8; EPR not enabled); transient = the SMF24A clamps (D11 / D15 at the ports, D19 at the brain leads) at a live plug's 4.3 A -- BRAIN_VIN, the same net the brain board takes on J10 / J12"
+   "why": "USB PD contract, 20 V +5 % (USB PD 3.x 7.1.8; EPR not enabled); transient = the port clamps D11 / D15 (SMBJ22A) at a live plug's 4.3 A, the inlet figure BRAIN_VIN uses"
   },
   "PA_VCAP": {
-   "peak": 51.325,
+   "peak": 42.988,
    "v": 34.9,
    "why": "LM74700 charge pump: VCAP - ANODE turns off at 13.9 V max (SNOSD17G s6.5) [= PA_VOUT+13.9]"
   },
   "PA_VCC": {
-   "peak": 37.425,
+   "peak": 29.088,
    "v": 21.0,
    "why": "through R70"
   },
   "PA_VOUT": {
-   "peak": 37.425,
+   "peak": 29.088,
    "v": 21.0,
    "why": "behind Q4, the port switch [= PA_VCC+0]"
   },
   "PA_VOUT_SNS": {
-   "peak": 37.425,
+   "peak": 29.088,
    "v": 21.0,
    "why": "through R72"
   },
@@ -165,12 +165,12 @@
    "why": "USB-C CC behind the sink's 5k1 Rd: a source's Rp pull-up, or VCONN (5.5 V max) on the other CC; FAULT = VBUS (the contract) shorted onto it in the plug, the case DS46176 p.1 rates the AP33772S's CC pins for (34 V)"
   },
   "PB_GATE": {
-   "peak": 41.425,
+   "peak": 33.088,
    "v": 25.0,
    "why": "through R76"
   },
   "PB_GCLAMP": {
-   "peak": 37.425,
+   "peak": 29.088,
    "v": 21.0,
    "why": "common anode of the anti-series gate clamp: at most the source (VOUT), the gate side's zener blocking [= PB_VOUT+0]"
   },
@@ -179,7 +179,7 @@
    "why": "U14.15 (IFB) can reach its supply PB_V5V"
   },
   "PB_ORGATE": {
-   "peak": 51.325,
+   "peak": 42.988,
    "v": 34.9,
    "why": "LM74700 GATE: driven from VCAP, so at most VCAP (SNOSD17G s6.5; GATE-ANODE 15 V abs, s6.1) [= PB_VOUT+13.9]"
   },
@@ -188,7 +188,7 @@
    "why": "U14.13 (OTP) can reach its supply PB_V5V"
   },
   "PB_PWR_EN": {
-   "peak": 41.425,
+   "peak": 33.088,
    "v": 25.0,
    "why": "AP33772S gate drive from its charge pump (DS46176 p.12, VOUT-Enable Switch); no output level is published, only that PWR_EN may not exceed VCC + 4 V (p.5 abs max), so that is the bound -- ASSUMED, the IC holding its own rating [= PB_VCC+4]"
   },
@@ -201,27 +201,27 @@
    "why": "AP33772S V5V LDO output, 4.37 / 4.85 / 5.33 V (DS46176 p.6, V5V section)"
   },
   "PB_VBUS": {
-   "peak": 37.425,
+   "peak": 29.088,
    "v": 21.0,
-   "why": "USB PD contract, 20 V +5 % (USB PD 3.x 7.1.8; EPR not enabled); transient = the SMF24A clamps (D11 / D15 at the ports, D19 at the brain leads) at a live plug's 4.3 A -- BRAIN_VIN, the same net the brain board takes on J10 / J12"
+   "why": "USB PD contract, 20 V +5 % (USB PD 3.x 7.1.8; EPR not enabled); transient = the port clamps D11 / D15 (SMBJ22A) at a live plug's 4.3 A, the inlet figure BRAIN_VIN uses"
   },
   "PB_VCAP": {
-   "peak": 51.325,
+   "peak": 42.988,
    "v": 34.9,
    "why": "LM74700 charge pump: VCAP - ANODE turns off at 13.9 V max (SNOSD17G s6.5) [= PB_VOUT+13.9]"
   },
   "PB_VCC": {
-   "peak": 37.425,
+   "peak": 29.088,
    "v": 21.0,
    "why": "through R75"
   },
   "PB_VOUT": {
-   "peak": 37.425,
+   "peak": 29.088,
    "v": 21.0,
    "why": "behind Q5, the port switch [= PB_VCC+0]"
   },
   "PB_VOUT_SNS": {
-   "peak": 37.425,
+   "peak": 29.088,
    "v": 21.0,
    "why": "through R77"
   },
@@ -265,7 +265,7 @@
    "why": "through R121; through R122"
   },
   "SW": {
-   "peak": 37.425,
+   "peak": 29.088,
    "v": 21.0,
    "why": "buck switch node: VIN while the high side is on [= VSTBY+0]"
   },
@@ -371,17 +371,17 @@
    "why": "LMR33630: VFB max x (1 + top/bot), 1 % resistors; +5 % overshoot: 1.015 V x (1 + R11/R12) -> 5.17 V max"
   },
   "VIN_BRAIN": {
-   "peak": 37.425,
+   "peak": 29.088,
    "v": 21.0,
-   "why": "USB PD contract, 20 V +5 % (USB PD 3.x 7.1.8; EPR not enabled); transient = the SMF24A clamps (D11 / D15 at the ports, D19 at the brain leads) at a live plug's 4.3 A -- BRAIN_VIN, the same net the brain board takes on J10 / J12"
+   "why": "USB PD contract, 20 V +5 % (USB PD 3.x 7.1.8; EPR not enabled); transient = the port clamps D11 / D15 (SMBJ22A) at a live plug's 4.3 A, the inlet figure BRAIN_VIN uses"
   },
   "VIN_BUS": {
-   "peak": 37.425,
+   "peak": 29.088,
    "v": 21.0,
-   "why": "USB PD contract, 20 V +5 % (USB PD 3.x 7.1.8; EPR not enabled); transient = the SMF24A clamps (D11 / D15 at the ports, D19 at the brain leads) at a live plug's 4.3 A -- BRAIN_VIN, the same net the brain board takes on J10 / J12"
+   "why": "USB PD contract, 20 V +5 % (USB PD 3.x 7.1.8; EPR not enabled); transient = the port clamps D11 / D15 (SMBJ22A) at a live plug's 4.3 A, the inlet figure BRAIN_VIN uses"
   },
   "VSTBY": {
-   "peak": 37.425,
+   "peak": 29.088,
    "v": 21.0,
    "why": "either port's VCC through D14 / D16 (SS34): taken at VBUS, ignoring the drop [= PA_VBUS+0]"
   }
@@ -460,9 +460,8 @@
    "src": "rated V -- CL31A106KBHNNNE (C13585): JLCPCB parts API attributes for C13585 (CL31A106KBHNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
   "C85.1": {
-   "max": "none",
-   "src": "CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06",
-   "why": "its rated V limit (50 V) is not one to ground: it was judged on 13.9 V steady, 13.9 V transient -- LM74700 charge-pump cap, VCAP to ANODE: the pump stops at 13.9 V max (SNOSD17G s6.5)"
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
   "C85.2": {
    "max": 50.0,
@@ -489,9 +488,8 @@
    "src": "rated V -- CL31A106KBHNNNE (C13585): JLCPCB parts API attributes for C13585 (CL31A106KBHNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
   "C91.1": {
-   "max": "none",
-   "src": "CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06",
-   "why": "its rated V limit (50 V) is not one to ground: it was judged on 13.9 V steady, 13.9 V transient -- LM74700 charge-pump cap, VCAP to ANODE: the pump stops at 13.9 V max (SNOSD17G s6.5)"
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
   "C91.2": {
    "max": 50.0,
@@ -514,10 +512,10 @@
    "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
   "D11.1": {
-   "max": 26.7,
+   "max": 24.4,
    "peak": "none",
-   "src": "SMF24A (C169430): JLCPCB parts API attributes for C169430 (24 V, 29.5 V, 38.9 V at 5.1 A 10/1000 us, 200 W)",
-   "why": "this part IS the clamp on PA_VBUS: it stands 24 V (where its leakage is specified) and starts to conduct at 26.7 V, the figure a steady level must stay under"
+   "src": "SMBJ22A (C224015): Littelfuse SMBJ Series datasheet (Revised JC.07/04/25 v4) p.2, electrical characteristics row SMBJ22A: VRWM 22 V, VBR 24.40-26.90 V @1 mA, VC 35.5 V @ IPP 16.9 A (10/1000 us), 600 W",
+   "why": "this part IS the clamp on PA_VBUS: it stands 22 V (where its leakage is specified) and starts to conduct at 24.4 V, the figure a steady level must stay under"
   },
   "D12.1": {
    "max": 5.4,
@@ -540,10 +538,10 @@
    "src": "VRRM -- SS34 (C8678): MDD SS32 thru SS3200 datasheet Rev 2024A5 p.1 maximum ratings, column SS34: VRRM / VDC 40 V, I(AV) 3.0 A, IFSM 80 A; band = cathode (the same figures in the JLCPCB parts API attributes for C8678)"
   },
   "D15.1": {
-   "max": 26.7,
+   "max": 24.4,
    "peak": "none",
-   "src": "SMF24A (C169430): JLCPCB parts API attributes for C169430 (24 V, 29.5 V, 38.9 V at 5.1 A 10/1000 us, 200 W)",
-   "why": "this part IS the clamp on PB_VBUS: it stands 24 V (where its leakage is specified) and starts to conduct at 26.7 V, the figure a steady level must stay under"
+   "src": "SMBJ22A (C224015): Littelfuse SMBJ Series datasheet (Revised JC.07/04/25 v4) p.2, electrical characteristics row SMBJ22A: VRWM 22 V, VBR 24.40-26.90 V @1 mA, VC 35.5 V @ IPP 16.9 A (10/1000 us), 600 W",
+   "why": "this part IS the clamp on PB_VBUS: it stands 22 V (where its leakage is specified) and starts to conduct at 24.4 V, the figure a steady level must stay under"
   },
   "D16.1": {
    "max": 40.0,
@@ -568,42 +566,42 @@
   "D20.1": {
    "max": "none",
    "src": "BZT52C12T-7 (C507911): Diodes Inc BZT52C2V0T-BZT52C36T datasheet DS30502 Rev. 17-2 p.2: BZT52C12T VZ 11.4-12.7 V @5 mA, PD 300 mW",
-   "why": "20 mW steady, 53 mW at the transient, of 300 mW (fed from PA_VOUT through 6.2 k)"
+   "why": "20 mW steady, 36 mW at the transient, of 300 mW (fed from PA_VOUT through 6.2 k)"
   },
   "D20.2": {
    "max": "none",
    "src": "BZT52C12T-7 (C507911): Diodes Inc BZT52C2V0T-BZT52C36T datasheet DS30502 Rev. 17-2 p.2: BZT52C12T VZ 11.4-12.7 V @5 mA, PD 300 mW",
-   "why": "20 mW steady, 53 mW at the transient, of 300 mW (fed from PA_VOUT through 6.2 k)"
+   "why": "20 mW steady, 36 mW at the transient, of 300 mW (fed from PA_VOUT through 6.2 k)"
   },
   "D21.1": {
    "max": "none",
    "src": "BZT52C12T-7 (C507911): Diodes Inc BZT52C2V0T-BZT52C36T datasheet DS30502 Rev. 17-2 p.2: BZT52C12T VZ 11.4-12.7 V @5 mA, PD 300 mW",
-   "why": "20 mW steady, 53 mW at the transient, of 300 mW (fed from PA_VOUT through 6.2 k)"
+   "why": "20 mW steady, 36 mW at the transient, of 300 mW (fed from PA_VOUT through 6.2 k)"
   },
   "D21.2": {
    "max": "none",
    "src": "BZT52C12T-7 (C507911): Diodes Inc BZT52C2V0T-BZT52C36T datasheet DS30502 Rev. 17-2 p.2: BZT52C12T VZ 11.4-12.7 V @5 mA, PD 300 mW",
-   "why": "20 mW steady, 53 mW at the transient, of 300 mW (fed from PA_VOUT through 6.2 k)"
+   "why": "20 mW steady, 36 mW at the transient, of 300 mW (fed from PA_VOUT through 6.2 k)"
   },
   "D22.1": {
    "max": "none",
    "src": "BZT52C12T-7 (C507911): Diodes Inc BZT52C2V0T-BZT52C36T datasheet DS30502 Rev. 17-2 p.2: BZT52C12T VZ 11.4-12.7 V @5 mA, PD 300 mW",
-   "why": "20 mW steady, 53 mW at the transient, of 300 mW (fed from PB_VOUT through 6.2 k)"
+   "why": "20 mW steady, 36 mW at the transient, of 300 mW (fed from PB_VOUT through 6.2 k)"
   },
   "D22.2": {
    "max": "none",
    "src": "BZT52C12T-7 (C507911): Diodes Inc BZT52C2V0T-BZT52C36T datasheet DS30502 Rev. 17-2 p.2: BZT52C12T VZ 11.4-12.7 V @5 mA, PD 300 mW",
-   "why": "20 mW steady, 53 mW at the transient, of 300 mW (fed from PB_VOUT through 6.2 k)"
+   "why": "20 mW steady, 36 mW at the transient, of 300 mW (fed from PB_VOUT through 6.2 k)"
   },
   "D23.1": {
    "max": "none",
    "src": "BZT52C12T-7 (C507911): Diodes Inc BZT52C2V0T-BZT52C36T datasheet DS30502 Rev. 17-2 p.2: BZT52C12T VZ 11.4-12.7 V @5 mA, PD 300 mW",
-   "why": "20 mW steady, 53 mW at the transient, of 300 mW (fed from PB_VOUT through 6.2 k)"
+   "why": "20 mW steady, 36 mW at the transient, of 300 mW (fed from PB_VOUT through 6.2 k)"
   },
   "D23.2": {
    "max": "none",
    "src": "BZT52C12T-7 (C507911): Diodes Inc BZT52C2V0T-BZT52C36T datasheet DS30502 Rev. 17-2 p.2: BZT52C12T VZ 11.4-12.7 V @5 mA, PD 300 mW",
-   "why": "20 mW steady, 53 mW at the transient, of 300 mW (fed from PB_VOUT through 6.2 k)"
+   "why": "20 mW steady, 36 mW at the transient, of 300 mW (fed from PB_VOUT through 6.2 k)"
   },
   "D3.1": {
    "max": 5.4,
@@ -1198,7 +1196,7 @@
    "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
   },
   "U13.23": {
-   "max": 41.425,
+   "max": 33.088,
    "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
   },
   "U13.24": {
@@ -1294,7 +1292,7 @@
    "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
   },
   "U14.23": {
-   "max": 41.425,
+   "max": 33.088,
    "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
   },
   "U14.24": {
@@ -1386,7 +1384,7 @@
    "src": "abs max -- TS3USB221RSER (C130085): TI TS3USB221 datasheet p.4 absolute maximum: VCC 4.6, control input 7, switch I/O 7 V, on-state current 120 mA"
   },
   "U18.1": {
-   "max": 52.425,
+   "max": 44.088,
    "src": "abs max -- LM74700QDBVRQ1 (C2941042): TI LM74700-Q1 datasheet SNOSD17G (Dec 2020) s6.1 p.5: ANODE to GND -65..65 V, EN -0.3..65 V, GATE to ANODE -0.3..15 V, VCAP to ANODE -0.3..15 V, CATHODE to ANODE -5..75 V; s6.3 ANODE, CATHODE, EN to GND 60 V recommended; s6.5 p.7 charge pump turn-off VCAP-ANODE 11.6/13/13.9 V; p.3 Table 5-1 DBV pinout 1 VCAP 2 GND 3 EN 4 CATHODE 5 GATE 6 ANODE"
   },
   "U18.3": {
@@ -1398,7 +1396,7 @@
    "src": "abs max -- LM74700QDBVRQ1 (C2941042): TI LM74700-Q1 datasheet SNOSD17G (Dec 2020) s6.1 p.5: ANODE to GND -65..65 V, EN -0.3..65 V, GATE to ANODE -0.3..15 V, VCAP to ANODE -0.3..15 V, CATHODE to ANODE -5..75 V; s6.3 ANODE, CATHODE, EN to GND 60 V recommended; s6.5 p.7 charge pump turn-off VCAP-ANODE 11.6/13/13.9 V; p.3 Table 5-1 DBV pinout 1 VCAP 2 GND 3 EN 4 CATHODE 5 GATE 6 ANODE"
   },
   "U18.5": {
-   "max": 52.425,
+   "max": 44.088,
    "src": "abs max -- LM74700QDBVRQ1 (C2941042): TI LM74700-Q1 datasheet SNOSD17G (Dec 2020) s6.1 p.5: ANODE to GND -65..65 V, EN -0.3..65 V, GATE to ANODE -0.3..15 V, VCAP to ANODE -0.3..15 V, CATHODE to ANODE -5..75 V; s6.3 ANODE, CATHODE, EN to GND 60 V recommended; s6.5 p.7 charge pump turn-off VCAP-ANODE 11.6/13/13.9 V; p.3 Table 5-1 DBV pinout 1 VCAP 2 GND 3 EN 4 CATHODE 5 GATE 6 ANODE"
   },
   "U18.6": {
@@ -1406,7 +1404,7 @@
    "src": "abs max -- LM74700QDBVRQ1 (C2941042): TI LM74700-Q1 datasheet SNOSD17G (Dec 2020) s6.1 p.5: ANODE to GND -65..65 V, EN -0.3..65 V, GATE to ANODE -0.3..15 V, VCAP to ANODE -0.3..15 V, CATHODE to ANODE -5..75 V; s6.3 ANODE, CATHODE, EN to GND 60 V recommended; s6.5 p.7 charge pump turn-off VCAP-ANODE 11.6/13/13.9 V; p.3 Table 5-1 DBV pinout 1 VCAP 2 GND 3 EN 4 CATHODE 5 GATE 6 ANODE"
   },
   "U19.1": {
-   "max": 52.425,
+   "max": 44.088,
    "src": "abs max -- LM74700QDBVRQ1 (C2941042): TI LM74700-Q1 datasheet SNOSD17G (Dec 2020) s6.1 p.5: ANODE to GND -65..65 V, EN -0.3..65 V, GATE to ANODE -0.3..15 V, VCAP to ANODE -0.3..15 V, CATHODE to ANODE -5..75 V; s6.3 ANODE, CATHODE, EN to GND 60 V recommended; s6.5 p.7 charge pump turn-off VCAP-ANODE 11.6/13/13.9 V; p.3 Table 5-1 DBV pinout 1 VCAP 2 GND 3 EN 4 CATHODE 5 GATE 6 ANODE"
   },
   "U19.3": {
@@ -1418,7 +1416,7 @@
    "src": "abs max -- LM74700QDBVRQ1 (C2941042): TI LM74700-Q1 datasheet SNOSD17G (Dec 2020) s6.1 p.5: ANODE to GND -65..65 V, EN -0.3..65 V, GATE to ANODE -0.3..15 V, VCAP to ANODE -0.3..15 V, CATHODE to ANODE -5..75 V; s6.3 ANODE, CATHODE, EN to GND 60 V recommended; s6.5 p.7 charge pump turn-off VCAP-ANODE 11.6/13/13.9 V; p.3 Table 5-1 DBV pinout 1 VCAP 2 GND 3 EN 4 CATHODE 5 GATE 6 ANODE"
   },
   "U19.5": {
-   "max": 52.425,
+   "max": 44.088,
    "src": "abs max -- LM74700QDBVRQ1 (C2941042): TI LM74700-Q1 datasheet SNOSD17G (Dec 2020) s6.1 p.5: ANODE to GND -65..65 V, EN -0.3..65 V, GATE to ANODE -0.3..15 V, VCAP to ANODE -0.3..15 V, CATHODE to ANODE -5..75 V; s6.3 ANODE, CATHODE, EN to GND 60 V recommended; s6.5 p.7 charge pump turn-off VCAP-ANODE 11.6/13/13.9 V; p.3 Table 5-1 DBV pinout 1 VCAP 2 GND 3 EN 4 CATHODE 5 GATE 6 ANODE"
   },
   "U19.6": {
@@ -1430,7 +1428,7 @@
    "src": "abs max -- LMR33630BRNXR (C2071384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; VQFN (RNX) pinout p.2-3 table 6-1"
   },
   "U5.12": {
-   "max": 37.725,
+   "max": 29.388,
    "src": "abs max -- LMR33630BRNXR (C2071384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; VQFN (RNX) pinout p.2-3 table 6-1"
   },
   "U5.2": {
@@ -1438,7 +1436,7 @@
    "src": "abs max -- LMR33630BRNXR (C2071384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; VQFN (RNX) pinout p.2-3 table 6-1"
   },
   "U5.3": {
-   "max": 37.725,
+   "max": 29.388,
    "src": "abs max -- LMR33630BRNXR (C2071384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; VQFN (RNX) pinout p.2-3 table 6-1"
   },
   "U5.4": {
@@ -1459,7 +1457,7 @@
    "src": "abs max -- LMR33630BRNXR (C2071384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; VQFN (RNX) pinout p.2-3 table 6-1"
   },
   "U5.9": {
-   "max": 37.725,
+   "max": 29.388,
    "src": "abs max -- LMR33630BRNXR (C2071384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; VQFN (RNX) pinout p.2-3 table 6-1"
   }
  }

@@ -423,8 +423,15 @@ def output_board():
         vout += qo["S1"], qo["S2"], qo["S3"]
         vin += qo["D"]
         dgate += qo["G"]
-        d = _d(d_tvs, "SMF24A", "port %s VBUS clamp, 200 W, 24 V standoff over the 20 V "
-               "contract (LCSC C169430)" % side, "Diode_SMD:D_SOD-123F")
+        # ⚠ SMB, NOT THE SOD-123FL SMF24A (voltage_check, 2026-11-13). The SMF24A clamps a
+        # live plug at 37.4 V, over the AP33772S's 31 V on ISENP / VOUT and 34 V on VCC
+        # (DS46176 Rev. 10-2 p.5); an SMF22A still reaches 33.5 V. The SMBJ22A's 16.9 A IPP
+        # puts it at 29.1 V for the same surge (Littelfuse SMBJ datasheet p.2). Diodes' own EVB
+        # (user guide Rev. 2.0 p.6-7) fits no VBUS TVS at all, so there is nothing to copy.
+        # A series R on the sense pins is no answer: VCC sits 5 mohm from ISENP and is the
+        # chip's supply (p.18 wants the sense traces straight off the shunt's pads).
+        d = _d(d_tvs, "SMBJ22A", "port %s VBUS clamp, 600 W, 22 V standoff over the 21 V "
+               "contract, 29.1 V at a live plug (LCSC C224015)" % side, "Diode_SMD:D_SMB")
         vbus += d[1]
         pgnd += d[2]
         d = _d(d_stb, "SS34", "port %s -> VSTBY Schottky, 40 V 3 A: the logic runs from "
