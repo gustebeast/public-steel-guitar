@@ -468,6 +468,7 @@ def _lay(board, stem, net, res, width, layer_id, named, gap):
     return length
 
 
+CLOSE_MAX_GAP_MM = float(os.environ.get("CLOSE_MAX_GAP_MM", "15.0"))   # longer is the router's (see main)
 RIP_MAX = 6                   # nets close_last may take up for one closure
 RIP_TOTAL = 9                 # ...and in all, counting those that must move to rejoin them
 
@@ -834,6 +835,16 @@ def main(stem):
         if la not in layers or lb not in layers:
             print("close_last: %s ends on a layer this does not route (%s / %s)"
                   % (net, la, lb))
+            continue
+        # ⚠ A LONG GAP IS A ROUTER OPEN, NOT A CLOSURE (motor_ctrl f27, 2026-11-12): CAN1_TX /
+        # CAN1_RX left open across ~33 mm, and the rip-up maze spent 829 + 453 s laying 34-46 mm
+        # detours through four other nets -- the finish went 650 -> 1496 s. This step joins
+        # the last short breaks a route leaves; a gap over CLOSE_MAX_GAP_MM is named and left
+        # for placement and the router.
+        _g = ((pa[0] - pb[0]) ** 2 + (pa[1] - pb[1]) ** 2) ** 0.5
+        if _g > CLOSE_MAX_GAP_MM:
+            print("close_last: %s -- ROUTER OPEN, gap %.1f mm between (%.2f, %.2f) and (%.2f, %.2f): "
+                  "over %.0f mm, not a closure -- left open" % (net, _g, pa[0], pa[1], pb[0], pb[1], CLOSE_MAX_GAP_MM))
             continue
         # a fresh model per net: the copper laid for the previous one is an obstacle now
         board.Save(stem + ".kicad_pcb")

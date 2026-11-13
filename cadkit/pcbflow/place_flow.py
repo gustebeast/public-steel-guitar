@@ -120,6 +120,31 @@ def _intent(rules, parts, notes, net_path, auto, singles=False):
             added.append("auto_singles %d" % len(new))
         if "auto_floorplan (netlist)" not in have:
             new = pi.auto_floorplan(parts)
+            # ⚠ THE AUTHOR'S TIE BEATS THE GUESS (lever_sensor holdout 2d, 2026-11-12): U6, the
+            # BOOT0 detector, is `near` U3.44 by the author's rule; auto_floorplan read its
+            # BUS_SENSE input as analog and asked it 6 mm off the MCU's USB edge. The two
+            # cannot both hold and FLOOR reported a breach no placement could fix. A part
+            # the author ties (near / decap) to a part on the other side of an auto `apart`
+            # leaves that rule; the part it is tied to stays on its own side.
+            tie = set()
+            for r_ in rules:
+                if r_["kind"] in ("near", "decap"):
+                    x = r_.get("ref") or r_.get("cap")
+                    y = (r_.get("target") or r_.get("pin") or "").split(".")[0]
+                    if x and y:
+                        tie.add((x, y))         # x is tied TO y: x leaves, y stays
+            for r_ in new:
+                if r_["kind"] != "apart":
+                    continue
+                a_, b_ = list(r_["a"]), list(r_["b"])
+                gone = sorted({m for m in b_ for o in a_ if (m, o) in tie})
+                gone_a = sorted({m for m in a_ for o in b_ if (m, o) in tie} - set(gone))
+                if gone or gone_a:
+                    r_["b"] = [m for m in b_ if m not in gone]
+                    r_["a"] = [m for m in a_ if m not in gone_a]
+                    added.append("auto_floorplan: %s left out of '%s' (tied by the intent's near/decap)"
+                                 % (" ".join(gone + gone_a), r_["why"]))
+            new = [r_ for r_ in new if r_["kind"] != "apart" or (r_["a"] and r_["b"])]
             rules = rules + new
             added.append("auto_floorplan %d" % len(new))
     return rules, added

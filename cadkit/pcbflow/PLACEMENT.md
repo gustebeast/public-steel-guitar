@@ -1114,6 +1114,12 @@ Fixed after them:
 * a cutout's `keepout_d` (the CAD's boss / post / head) makes its `hole` rule, overriding a typed one.
 * a `height` zone is forbidden in place_init to every free part taller than its limit.
 * constrained satellites go in area order with the other parts, not first of all.
+* close_last refuses a gap over CLOSE_MAX_GAP_MM (15) as a ROUTER OPEN, net and gap named; finish gives each
+  close_last attempt its own deadline (CLOSE_ATTEMPT_S 600, within CLOSE_TOTAL_S 1800). motor_ctrl f27 copy:
+  finish 1496 -> ~411 s (close_last 1282 -> 12), CAN1_TX / RX named open at 29.8 / 33.3 mm; optical,
+  output_panel and ui_board finish exactly as before.
+* auto_floorplan's `apart` leaves out a part the intent ties (near / decap) to the other side: lever_sensor's
+  U6 (`near` U3.44) had been asked 6 mm off U3 as "analog" for its BUS_SENSE input.
 * finish.py prints each step's wall time and the sum by step (motor_ctrl f27: close_last 321 -> 1282 s
   on a 33 mm CAN1 gap where f24 had 4-8 mm PED gaps; the router 253 -> 363).
 Optical and output_panel place_init byte-identical across all of it.

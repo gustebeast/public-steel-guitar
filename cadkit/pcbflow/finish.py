@@ -320,6 +320,8 @@ def _run(script, stem):
 
 
 STEP_SECONDS = {}
+CLOSE_TOTAL_S = 1800.0     # close_last, all attempts on one board
+CLOSE_ATTEMPT_S = 600.0    # ...and any one attempt
 
 
 def _check_fresh(stem):
@@ -584,13 +586,21 @@ def finish(stem, rounds=1, keep_route=False):
         _skip = set()
         import time as _time
         _close_t0 = _time.time()
+        _user_budget = float(os.environ.get("CLOSE_LAST_BUDGET_S", "1e9"))
+        _had_budget = "CLOSE_LAST_BUDGET_S" in os.environ
         for _attempt in range(4):
             # a retry is worth a few minutes, not another route's worth (see close_last)
-            if _attempt and _time.time() - _close_t0 > 1800:
+            if _attempt and _time.time() - _close_t0 > CLOSE_TOTAL_S:
                 print("  close_last: no further attempt, %.0f min spent"
                       % ((_time.time() - _close_t0) / 60))
                 break
             os.environ["CLOSE_LAST_SKIP"] = ",".join(sorted(_skip))
+            # ⚠ EACH ATTEMPT GETS ITS OWN DEADLINE (motor_ctrl f27, 2026-11-12): the 1800 s was
+            # checked only BETWEEN attempts, and the first alone ran 829 s. close_last stops
+            # searching at CLOSE_LAST_BUDGET_S; it is set per attempt to the smaller of
+            # CLOSE_ATTEMPT_S and what is left of CLOSE_TOTAL_S.
+            _left = CLOSE_TOTAL_S - (_time.time() - _close_t0)
+            os.environ["CLOSE_LAST_BUDGET_S"] = "%.0f" % max(30.0, min(CLOSE_ATTEMPT_S, _left, _user_budget))
             try:
                 _run("close_last.py", stem)
                 if not _attempt:
@@ -648,6 +658,8 @@ def finish(stem, rounds=1, keep_route=False):
             print("  ... and trying again without %s" % ", ".join(sorted(_blame)))
             _skip |= _blame
         os.environ.pop("CLOSE_LAST_SKIP", None)
+        if not _had_budget:
+            os.environ.pop("CLOSE_LAST_BUDGET_S", None)
         os.remove(stem + ".preclose.kicad_pcb")
         os.remove(stem + ".preclose.drc.json")
 
