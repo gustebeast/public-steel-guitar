@@ -144,7 +144,10 @@ def place(parts, notes, rules, keep=()):
     its pins, a PHY with its decap column -- is the design; only WHERE it goes is a
     placement choice. A group needed a fixed anchor before, so a cell had to be pinned or
     dissolved into free parts that the legaliser then scattered."""
-    fixed0 = {r["ref"] for r in rules if r["kind"] in ("fixed", "pin", "panel")} | set(keep)
+    back = pi.back_refs(rules)
+    if back:
+        return _place_two_sided(parts, notes, rules, keep, back)
+    fixed0 ={r["ref"] for r in rules if r["kind"] in ("fixed", "pin", "panel")} | set(keep)
     cells = {r["anchor"]: r["members"] for r in rules if r["kind"] == "group" and r["anchor"] not in fixed0}
     if not cells:
         return _place_grow(parts, notes, rules, keep)
@@ -185,6 +188,126 @@ def place(parts, notes, rules, keep=()):
             pl[m] = [round(ax + float(o[0]), 4), round(ay + float(o[1]), 4), (ar + dr) % 360.0]
             why[m] = "group: %s's cell, placed whole (free anchor)" % a
     log.append("free-anchor cells placed whole: %s" % " ".join("%s(+%d)" % (a, len(ms)) for a, ms in cells.items()))
+    return pl, log, why
+
+
+BACK_ONLY = ("outline", "hole", "current")       # kinds that bind the back pass as they are
+GHOST = 0.02                                       # mm: a front SMD part's mark on the back grid
+THT_GROW = 0.3                                     # mm round a through pad, both sides
+
+
+def _rule_refs(r):
+    """Every ref a rule names (ref / cap / the lists / pin and target strings)."""
+    out = set()
+    for f in ("ref", "cap"):
+        if isinstance(r.get(f), str):
+            out.add(r[f])
+    for f in ("pin", "target"):
+        if isinstance(r.get(f), str):
+            out.add(r[f].split(".", 1)[0])
+    for f in ("refs", "others", "a", "b"):
+        if isinstance(r.get(f), list):
+            out |= set(r[f])
+        elif isinstance(r.get(f), str) and f in ("a", "b"):
+            out.add(r[f].split(".", 1)[0])
+    if r.get("kind") == "group":
+        out.add(r["anchor"])
+        out |= set(r["members"])
+    return out
+
+
+def _ghost(part):
+    """A front part as the BACK grid sees it: its pads (the nets' springs) and, for a through-
+    hole part, its through pads as the obstacle -- they pierce the board. An SMD front part
+    leaves only a GHOST-sized mark: the back face under it is free."""
+    tht = [q for q in part["pads"] if q.get("tht")]
+    if not tht and len(part["pads"]) > IC_PADS:
+        # ⚠ A FRONT IC'S ESCAPE BAND IS NOT FREE ON THE BACK (ob3, 2026-11-13): its decaps,
+        # seated "at their pins" on the back, sat under U1's pad ring -- where its escape vias
+        # go, and the router bans a via near ANY pad on any layer (52 open, from 50). Each pad
+        # blocks its own size plus the IC's halo; the middle under the body stays free.
+        g = halo(part)
+        sq = []
+        for q in part["pads"]:
+            r = max(q["size"]) / 2.0 + g
+            x, y = q["xy"]
+            sq.append([[x - r, y - r], [x + r, y - r], [x + r, y + r], [x - r, y + r]])
+        return dict(part, crtyd=sq[0], crtyd_multi=sq, n_own=0)
+    if tht:
+        xs = [q["xy"][0] for q in tht]
+        ys = [q["xy"][1] for q in tht]
+        r = max(max(q["size"]) for q in tht) / 2.0 + THT_GROW
+        cy = [[min(xs) - r, min(ys) - r], [max(xs) + r, min(ys) - r],
+              [max(xs) + r, max(ys) + r], [min(xs) - r, max(ys) + r]]
+    else:
+        cy = [[-GHOST, -GHOST], [GHOST, -GHOST], [GHOST, GHOST], [-GHOST, GHOST]]
+    return dict(part, crtyd=cy, crtyd_multi=None, n_own=0)
+
+
+def _place_two_sided(parts, notes, rules, keep, back):
+    """Front first, exactly as a one-sided board but without the back parts; then the back
+    parts on a grid of their own, every front part FIXED where the front pass put it.
+
+    ⚠ OPT-IN, PER INTENT (lead, 2026-11-13): only a `side` rule with side "B" sends a part
+    here (pi.back_refs). The output board's courtyards filled 0.55 of 68 x 100 against the
+    0.41-0.47 a dense board routes at; its LQFP-176 and jack cannot shrink, its box cannot
+    grow, and layout.py already turns back_refs over. The back pass:
+      * sees the outline, holes and cutouts (both faces) and only the keep-outs and height
+        zones marked side "B" -- a front keep-out (a module's stack) is the front's;
+      * sees a front part as _ghost: through pads block, SMD bodies do not;
+      * keeps every rule that names a back part (near / decap / apart / chain / rot) and
+        every `tight` loop, so a back decap still goes under its pin.
+    The parts are mirrored first (pi.mirror_back), so the back pass and every later check see
+    the geometry layout will build."""
+    parts = pi.mirror_back(parts, back)
+    bset = set(back)
+    front = {r: p for r, p in parts.items() if r not in bset}
+    rf = []
+    for r in rules:
+        if r["kind"] == "side" and r.get("ref") in bset:
+            continue
+        if _rule_refs(r) & bset:
+            if r["kind"] in ("near", "decap", "apart", "chain", "rot", "group", "in_region"):
+                continue
+            r = dict(r)
+            for f in ("refs", "others", "a", "b"):
+                if isinstance(r.get(f), list):
+                    r[f] = [x for x in r[f] if x not in bset]
+        if r["kind"] in ("keepout", "height") and r.get("side") == "B":
+            continue
+        rf.append(r)
+    plF, logF, whyF = place(front, notes, rf, keep)
+
+    P2 = {r: _ghost(p) for r, p in front.items()}
+    P2.update({r: parts[r] for r in back})
+    rb = [dict(kind="fixed", ref=r, xy=[plF[r][0], plF[r][1]], rot=plF[r][2], why="front pass",
+               src="place_init two-sided") for r in sorted(front)]
+    for r in rules:
+        k = r["kind"]
+        if k in BACK_ONLY or k == "tight":
+            rb.append(r)
+        elif k in ("keepout", "height"):
+            if r.get("side") == "B":
+                rb.append(r)
+        elif k == "side":
+            continue
+        elif k == "apart":
+            # only a separation BETWEEN two back parts: one judged against a front ghost
+            # measures the ghost, not the part (ob3: "U5 7.29 from U8", both front)
+            a_ = set(pi._refs(r.get("a") or [r["ref"]], parts))
+            b_ = set(pi._refs(r.get("b") or r["others"], parts))
+            if a_ & bset and b_ & bset:
+                rb.append(dict(r, a=sorted(a_ & bset), b=sorted(b_ & bset), others=None, ref=None))
+        elif _rule_refs(r) & bset and k in ("near", "decap", "chain", "rot"):
+            rb.append(r)
+    plB, logB, whyB = place(P2, notes, rb, ())
+    pl = dict(plF)
+    why = dict(whyF)
+    for r in back:
+        pl[r] = plB[r]
+        why[r] = "BACK side: " + whyB.get(r, "")
+    log = list(logF) + ["two-sided: %d part(s) on the back, placed after the front: %s"
+                        % (len(back), " ".join(back))] + ["back: " + x for x in logB if not x.startswith("fixed ")]
     return pl, log, why
 
 

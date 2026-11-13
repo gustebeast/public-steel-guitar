@@ -1170,6 +1170,35 @@ esc/keep_best_knobs.diff (bronner session). Parked for FINISH only, not the scor
 both rounds and keep the better. Quality outranks speed there, and one extra repair pass is
 cheap. Revisit it when a new board's finish leaves opens.
 
+**Two-sided placement (2026-11-13), opt-in: a `side` rule with side "B".** The output_board
+(direct-drive instrument) had courtyards over 0.55 of 68 x 100 and 50 open. Its LQFP-176 is
+pinned by ULPI DIR/NXT on PI11/PH4, its jack is fixed, and its box cannot grow. place_init now
+runs two passes:
+* the front, as before, without the back parts;
+* the back on its own grid, with every front part fixed as a GHOST: through pads block,
+  SMD bodies do not, and an IC over 8 pads blocks its pads plus its halo.
+
+pi.mirror_back turns the back parts over: y -> -y, then the rotation. That was measured on
+KiCad 10, where layout's Flip(pos, False) + SetOrientation is R(rot) * mirror_y. The flow
+mirrors the parts file on disk and writes notes `back_refs`.
+
+Off, it is byte-identical on lever_sensor, ui_board, output_panel, optical, output_board and
+brain (place_init output and provenance).
+
+On, it built: layout took 126 flipped parts with no courtyard overlap. It did NOT route
+better:
+
+| run | back parts | front fill | open |
+|---|---|---|---|
+| one-sided | 0 | 0.55 | 50 |
+| decaps at their pins under U1 | 126 | 0.48 | 52 |
+| front IC escape band blocked | 126 | 0.48 | 65 |
+
+The router bans a via near ANY pad on either layer, so every back pad takes via room from the
+front. Courtyard fill is not the cost for a dense board; via room is. It stays available for a
+board with a spare underside, a connector or a low module. The output_board's next step is a
+floorplan (regions, as optical and output_panel route with), not the back.
+
 ## Rules carried over
 
 * Keep every run to minutes; no hour-plus sweeps (ROUTER.md, route-time notes).

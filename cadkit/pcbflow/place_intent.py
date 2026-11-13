@@ -225,6 +225,43 @@ def _refs(arg, parts):
     return list(arg)
 
 
+def back_refs(rules):
+    """The parts the intent puts on the board's UNDERSIDE: every `side` rule with side "B".
+
+    ⚠ TWO-SIDED PLACEMENT IS OPT-IN (lead, 2026-11-13). With no such rule nothing anywhere in
+    the flow changes: place_init takes its one-sided path and every board places
+    byte-identically. A back-side part is still checked by the `side` rule itself."""
+    return sorted({r["ref"] for r in rules if r.get("kind") == "side" and r.get("side") == "B"})
+
+
+def mirror_back(parts, refs):
+    """parts with each ref in refs turned over: side "B", local geometry mirrored y -> -y.
+
+    WHY y AND NOT x: layout.py flips a back_refs part with Flip(pos, False) and THEN sets its
+    rotation. Measured on KiCad 10 (S4B-XH-SM4, 2026-11-13): the flip is a left-right mirror
+    at orientation 180, and SetOrientationDegrees(rot) turns that by rot - 180. In this
+    frame (+Y up) that is R(rot) applied to the footprint mirrored y -> -y -- so a mirrored
+    part placed like any other lands where layout puts it. Idempotent: a part already on
+    "B" is left alone."""
+    out = dict(parts)
+    for ref in refs:
+        p = parts[ref]
+        if p.get("side") == "B":
+            continue
+        q = dict(p, side="B")
+        q["pads"] = [dict(d, xy=[d["xy"][0], -d["xy"][1]], rot=(-d.get("rot", 0.0)) % 360.0)
+                     for d in p["pads"]]
+        if p.get("crtyd"):
+            q["crtyd"] = [[x, -y] for x, y in p["crtyd"]][::-1]
+        if p.get("fab"):
+            f = p["fab"]
+            q["fab"] = [f[0], f[1], -f[3], -f[2]]
+        if p.get("at"):
+            q["at"] = [p["at"][0], -p["at"][1], p["at"][2]]
+        out[ref] = q
+    return out
+
+
 def panel_face(rule):
     """A panel rule's face as a distance along its edge's outward direction.
 
@@ -455,7 +492,8 @@ def check(rule, P, notes, H=None):
         out.append((0.0 if ok else -1.0, ref, "rot %g, allowed %s" % (r, rule["allowed"])))
     elif k == "side":
         ref = rule["ref"]
-        out.append((0.0 if parts[ref]["side"] == rule["side"] else -1.0, ref, "on %s" % parts[ref]["side"]))
+        side = "B" if (parts[ref].get("side") == "B" or ref in notes.get("back_refs", ())) else "F"
+        out.append((0.0 if side == rule["side"] else -1.0, ref, "on %s" % side))
     elif k == "tight":
         for nm in rule["nets"]:
             pts = [P.pad(ref, q["num"]) for ref, p in P.parts.items() if ref in P.pl
