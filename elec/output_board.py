@@ -24,8 +24,9 @@ fix to one does not reach the other. What is new, and why:
   * DUAL USB-C POWER + DATA (work item R2-6). J1 and J2 each sink USB PD (5-20 V; EPR is
     not enabled) through an AP33772S, and LM74700 ideal diodes OR the two onto VIN_BUS,
     so a second charger can be plugged or pulled while playing. The OR-ed 5-20 V goes to
-    the brain board on J10, a JST VH sized for the two-charger worst case (10 A), measured
-    by U16, with the logic on J11 (harness.BRAIN_POWER / BRAIN_SIGNAL); the 24 V boost is THERE,
+    the brain board on J10 + J12, two 4-way XH leads in parallel sized for the two-charger
+    worst case (10 A, 22 AWG), measured by U16, with the logic on J11
+    (harness.BRAIN_POWER / BRAIN_SIGNAL); the 24 V boost is THERE,
     beside the motors it feeds and away from this board's pickup preamp (see J10). Each
     port's USB 2.0 data reaches the CM5's gadget port through a TS3USB221 (U17 -> J3). No
     barrel jack, no brick.
@@ -1245,28 +1246,38 @@ def output_board():
     #   PWR_BTN                   -> the power button, read on the brain board (the UI
     #     station hangs beside it now) and passed here, so "off" can quiet this board too.
     #   BRAIN_PG                  -> the brain board's 24 V is good.
-    # ⚠ THE POWER IS ON ITS OWN VH 2-WAY, J10, SIZED FROM THE WORST CASE (lead, 2026-11-13).
-    # The first cut put VIN on an 8-way XH, two contacts a rail, 6 A -- and the worst case is
-    # not one charger. PD caps CURRENT, not power (3 A below 20 V; 5 A only at 20 V on a 5 A
-    # cable), so a lower voltage never means more amps; but two ports at the SAME voltage
+    # ⚠ THE POWER IS ON TWO 4-WAY XH LEADS IN PARALLEL, J10 + J12, SIZED FROM THE WORST CASE
+    # (lead, 2026-11-13). PD caps CURRENT, not power (3 A below 20 V; 5 A only at 20 V on a
+    # 5 A cable), so a lower voltage never means more amps; but two ports at the SAME voltage
     # share through the ideal diodes: 6.5 A from two 65 W chargers, up to 10 A from two 5 A
-    # contracts. VH is 10 A a contact on 18 AWG. Firmware also keeps ONE port carrying (the
-    # other asked for a lower voltage, so its diode blocks) -- that is the policy; the
-    # connector is sized so the policy is not what stands between a bug and a hot pin.
-    # ⚠ AND THE COPPER: J1/J2 -> Q4..Q7 -> R112 -> J10 is a 10 A path, pour it, do not trace it.
+    # contracts. At <= 2.5 A a way that is 4 VIN + 4 GND ways: two standard 4-way XH leads,
+    # data ways empty, 22 AWG -- the two-gauge rule (user, 11-01) allows no other wire, so a
+    # VH 2-way on 18 AWG tried first was reverted. Firmware also keeps ONE port carrying (the
+    # other asked for a lower voltage, so its diode blocks): one charger is <= 5 A, 1.25 A a
+    # way. Missing lead AND two 5 A chargers sharing is the double fault left: 5 A a way.
+    # ⚠ AND THE COPPER: J1/J2 -> Q4..Q7 -> R112 -> J10/J12 is a 10 A path, pour it, do not trace it.
     # ⚠ INRUSH IS THE BRAIN BOARD'S TO LIMIT: VIN reaches its input the moment a port's
     # switch closes, so its boost input sits behind a soft-start switch gated by BRAIN_EN.
     vin_brain = Net("VIN_BRAIN")
     vin_brain.drive = Pin.drives.POWER
-    j10 = Part(name="B2P-VH", ref_prefix="J", ref="J10", tag="J10", dest="NETLIST",
-               tool="skidl", value="B2P-VH(LF)(SN)",
-               description="to the brain board: the chargers' 5-20 V, 10 A a contact "
-                           "(harness.BRAIN_POWER; LCSC C144392)",
-               footprint="Connector_JST:JST_VH_B2P-VH_1x02_P3.96mm_Vertical",
+    j10 = Part(name="B4B-XH-A", ref_prefix="J", ref="J10", tag="J10", dest="NETLIST",
+               tool="skidl", value="B4B-XH-A",
+               description="to the brain board: the chargers' 5-20 V, lead 1 of 2 in parallel "
+                           "(harness.BRAIN_POWER)",
+               footprint=XH_FP,
                pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(harness.BRAIN_POWER)])
-    harness.check_ways(harness.BRAIN_POWER, ("VIN",), ("GND", harness.NC), where="J10")
-    vin_brain += j10[1]
-    pgnd += j10[2]
+    j12 = Part(name="B4B-XH-A", ref_prefix="J", ref="J12", tag="J12", dest="NETLIST",
+               tool="skidl", value="B4B-XH-A",
+               description="to the brain board: the chargers' 5-20 V, lead 2 of 2 in parallel "
+                           "(harness.BRAIN_POWER)",
+               footprint=XH_FP,
+               pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(harness.BRAIN_POWER)])
+    harness.check_ways(harness.BRAIN_POWER, ("VIN",), ("GND", harness.NC), where="J10/J12")
+    for j in (j10, j12):
+        vin_brain += j[1]
+        pgnd += j[2]
+        for k in (3, 4):
+            Net("%s_NC_%d" % (j.ref, k)).connect(j[k])
     j11 = Part(name="B6B-XH-A", ref_prefix="J", ref="J11", tag="J11", dest="NETLIST",
                tool="skidl", value="B6B-XH-A",
                description="to the brain board: enable, low-power mode out; button, "
@@ -1418,8 +1429,8 @@ def output_board():
 # floor on the bottom: board X = instrument X, board Y = instrument Z.
 # The +X edge is the PANEL: J1, J2 (power + data in), J5 (the jack) stand on it, running
 # vertically; J8 (the pickup's screws) sits on the TOP edge, reachable from above with the
-# deck off; J3, J4, J9 (the internal USB links) and J10 (5-20 V, VH) and J11 (enable,
-# mode, button -- the brain board) face -X, into the instrument.
+# deck off; J3, J4, J9 (the internal USB links) and J10 + J12 (5-20 V, two XH in
+# parallel) and J11 (enable, mode, button -- the brain board) face -X, into the instrument.
 BOARD_W, BOARD_L = 68.0, 100.0
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
@@ -1427,7 +1438,7 @@ BOARD_NOTES = {
     "zones": [("GND", "In1.Cu", 0.3), ("GND", "B.Cu", 0.3)],
     "qty_per_instrument": 1,
     "panel_edge": "+X",
-    "edge_parts": {"+X": ["J1", "J2", "J5"], "+Y": ["J8"], "-X": ["J3", "J4", "J9", "J10", "J11"]},
+    "edge_parts": {"+X": ["J1", "J2", "J5"], "+Y": ["J8"], "-X": ["J3", "J4", "J9", "J10", "J11", "J12"]},
     "placements": {},
     "open_items": [
         "AP33772S land: W-QFN4040-24 (Type A1), the pin table lists no exposed pad -- check "

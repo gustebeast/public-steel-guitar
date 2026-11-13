@@ -90,7 +90,7 @@ UI_RIBBON = ("SW_A", "SW_B", "SW_C", "SW_D", "SW_PUSH", "ENC_A", "ENC_B",
 #   LIGHTS_LINK  motor_ctrl J7 <-> pi_cap J4          4-way: fused 24 V for the lights out,
 #                the two throws in
 #   PI_5V_LINK   motor_ctrl J5 <-> pi_cap J2          6-way PH: the Pi's 5 V on two contacts
-#   BRAIN_POWER  output_board J10 <-> brain board     VH 2-way: 5-20 V, up to 10 A
+#   BRAIN_POWER  output_board J10, J12 <-> brain      two 4-way XH in parallel: 5-20 V, <= 10 A
 #   BRAIN_SIGNAL output_board J11 <-> brain board     6-way XH: enable / mode out, button / PG in
 #
 # Each is the standard at the top of this file: power, GND, data, data, and a 6-way adds
@@ -105,17 +105,20 @@ LED_DROP = ("V24", "GND", "SCK", "SDT")
 # a two-way power lead (output_panel J9 -> the optical board's J2)
 POWER_PAIR = ("V24", "GND")
 # The brain board's feed (direct-drive instrument, 2026-11-13): TWO leads, output_board -> brain.
-# BRAIN_POWER  J10, JST VH 2-way (3.96 mm, 10 A a contact, 18 AWG): the chargers' OR-ed
-#   5-20 V. ⚠ NOT XH: sized from the worst case, not the budget. PD caps CURRENT -- 3 A below
-#   20 V, 5 A only at 20 V on a 5 A cable -- so one port is <= 5 A, but two ports at the same
-#   voltage share through the ideal diodes: 6.5 A from two 65 W chargers, up to 10 A from two
-#   5 A contracts. XH is 3 A a contract (lead, 2026-11-13). The boost that turns it into
-#   24 V is on the brain board, beside what it feeds.
+# BRAIN_POWER  J10 + J12, TWO 4-way XH leads in parallel, 22 AWG: the chargers' OR-ed 5-20 V.
+#   Sized from the worst case, not the budget. PD caps CURRENT -- 3 A below 20 V, 5 A only at
+#   20 V on a 5 A cable -- so one port is <= 5 A, but two ports at the same voltage share
+#   through the ideal diodes: 6.5 A from two 65 W chargers, up to 10 A from two 5 A
+#   contracts. At <= 2.5 A a way (XH's 3 A, derated for paralleling) 10 A is 4 + 4 ways:
+#   two standard 4-way leads, data ways empty. ⚠ THE WIRE IS 22 AWG XH, NOT A NEW GAUGE:
+#   the two-gauge rule (user, 2026-11-01) -- 22 AWG XH for the high rail, 26 AWG PH for 5 V,
+#   no third gauge, no new crimp die. A first cut here used a VH 2-way on 18 AWG and broke
+#   it (caught by the lead). The boost that makes the 24 V is on the brain board.
 # BRAIN_SIGNAL J11, 6-way XH, NO POWER WAY: BRAIN_EN and LOW_PWR from the output board's MCU
 #   (it reads the contracts and picks the mode before anything big starts), PWR_BTN and
 #   BRAIN_PG back from the brain board, open drain, pulled up at the output board. Ground at
 #   both ends, so a reversed lead puts ground on ground.
-BRAIN_POWER = ("VIN", "GND")
+BRAIN_POWER = ("VIN", "GND", NC, NC)
 BRAIN_SIGNAL = ("GND", "BRAIN_EN", "LOW_PWR", "PWR_BTN", "BRAIN_PG", "GND")
 
 
