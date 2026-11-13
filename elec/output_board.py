@@ -1289,11 +1289,11 @@ def output_board():
         Net("%s_NC_4" % j.ref).connect(j[4])
         _res(ser, "1k", "%s presence loop in from the cable" % j.ref, loop, io[k])
         _res(pu, "10k", "%s presence pull-up: HIGH = lead missing" % j.ref, io[k], v3d)
-    j11 = Part(name="B6B-XH-A", ref_prefix="J", ref="J11", tag="J11", dest="NETLIST",
-               tool="skidl", value="B6B-XH-A",
+    j11 = Part(name="B6B-PH-K", ref_prefix="J", ref="J11", tag="J11", dest="NETLIST",
+               tool="skidl", value="B6B-PH-K",
                description="to the brain board: enable, low-power mode out; button, "
                            "power-good in (harness.BRAIN_SIGNAL)",
-               footprint="Connector_JST:JST_XH_B6B-XH-A_1x06_P2.50mm_Vertical",
+               footprint="Connector_JST:JST_PH_B6B-PH-K_1x06_P2.00mm_Vertical",
                pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(harness.BRAIN_SIGNAL)])
     link = {"GND": gnd}
     for k in ("BRAIN_EN", "LOW_PWR", "PWR_BTN", "BRAIN_PG"):

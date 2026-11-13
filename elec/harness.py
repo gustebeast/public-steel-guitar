@@ -91,7 +91,7 @@ UI_RIBBON = ("SW_A", "SW_B", "SW_C", "SW_D", "SW_PUSH", "ENC_A", "ENC_B",
 #                the two throws in
 #   PI_5V_LINK   motor_ctrl J5 <-> pi_cap J2          6-way PH: the Pi's 5 V on two contacts
 #   BRAIN_POWER  output_board J10, J12 <-> brain      two 4-way XH in parallel: 5-20 V, <= 10 A
-#   BRAIN_SIGNAL output_board J11 <-> brain board     6-way XH: enable / mode out, button / PG in
+#   BRAIN_SIGNAL output_board J11 <-> brain board     6-way PH: enable / mode out, button / PG in
 #
 # Each is the standard at the top of this file: power, GND, data, data, and a 6-way adds
 # GND, power on the far end.
@@ -116,7 +116,8 @@ POWER_PAIR = ("V24", "GND")
 #   the two-gauge rule (user, 2026-11-01) -- 22 AWG XH for the high rail, 26 AWG PH for 5 V,
 #   no third gauge, no new crimp die. A first cut here used a VH 2-way on 18 AWG and broke
 #   it (caught by the lead). The boost that makes the 24 V is on the brain board.
-# BRAIN_SIGNAL J11, 6-way XH, NO POWER WAY: BRAIN_EN and LOW_PWR from the output board's MCU
+# BRAIN_SIGNAL J11, 6-way PH on 26 AWG (logic only -- the two-gauge rule's small wire; lead,
+#   2026-11-13: it was XH, which cost the brain board 6.5 mm of top edge), NO POWER WAY: BRAIN_EN and LOW_PWR from the output board's MCU
 #   (it reads the contracts and picks the mode before anything big starts), PWR_BTN and
 #   BRAIN_PG back from the brain board, open drain, pulled up at the output board. Ground at
 #   both ends, so a reversed lead puts ground on ground.

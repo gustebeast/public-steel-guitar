@@ -19,7 +19,14 @@ parallel, way 3 of each strapped to GND as the presence loop) and the logic on J
 (harness.BRAIN_SIGNAL).
 
 MOUNTING (user): on its side in the X-Z plane against the -Y wall, -Y of the motors, if --
-and only if -- every motor JST faces up. They do: twelve side-entry headers on the +Z edge.
+and only if -- every motor JST faces up. EVERY JST does (lead, 2026-11-13): all seventeen are
+side-entry headers on the +Z edge, mouths up -- the ten motors, each over its own station
+(src.direct_bench STATION, within ~1 mm of the motor's X span: short CAN drops), the two
+bus-B arms, the two LED drops and the three output-board leads in the gaps. That is 292 mm of
+courtyard, so the board is 320 long (instrument X -520..-200) and 70 tall (Z -107.2..-37.2): the
+top edge sits 21 mm under the UI station's underside (z -16.1), room for a mated XH plug and
+its wire's bend under the UI board. The UI ribbon (J5) is a pin header, not a JST: a VERTICAL
+2x8 off the board face under the UI station.
 The CM5 and the bucks sit on the station-3 stretch (66 mm free in Y); only low parts beside
 station 2 (19 mm above z -54). Longer leads so it can be lifted out are acceptable.
 
@@ -86,7 +93,7 @@ R0402 = "Resistor_SMD:R_0402_1005Metric"
 SOT23 = "Package_TO_SOT_SMD:SOT-23"
 # side entry, mouth off the board edge: on the +Z edge, the plug goes in from above
 XH4_SIDE = "Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal"
-XH6_SIDE = "Connector_JST:JST_XH_S6B-XH-SM4-TB_1x06-1MP_P2.50mm_Horizontal"
+PH6_SIDE = "Connector_JST:JST_PH_S6B-PH-SM4-TB_1x06-1MP_P2.00mm_Horizontal"
 PH4_SIDE = "Connector_JST:JST_PH_S4B-PH-SM4-TB_1x04-1MP_P2.00mm_Horizontal"
 USBC_FP = "Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12"
 DF40_FP = "Connector_Hirose_DF40:Hirose_DF40C-100DS-0.4V_2x50_P0.4mm"
@@ -261,8 +268,8 @@ def brain():
              XH4_SIDE, harness.BRAIN_POWER, {"VIN": vin, "GND": gnd, "LEAD_SENSE": gnd},
              power=("VIN",))
     link = {k: Net("LINK_" + k) for k in ("BRAIN_EN", "LOW_PWR", "PWR_BTN", "BRAIN_PG")}
-    _jst("J11", "S6B-XH-SM4-TB", "logic to / from the output board (harness.BRAIN_SIGNAL)",
-         XH6_SIDE, harness.BRAIN_SIGNAL, dict(link, GND=gnd), power=())
+    _jst("J11", "S6B-PH-SM4-TB", "logic to / from the output board (harness.BRAIN_SIGNAL)",
+         PH6_SIDE, harness.BRAIN_SIGNAL, dict(link, GND=gnd), power=())
     _cap("C1", "22uF/35V", "VIN bulk at the inlet, AHEAD of the switch", vin, gnd, C1210)
     _cap("C2", "100nF/50V", "VIN HF bypass at J10", vin, gnd)
     _diode("D1", "SMF24A", "VIN clamp, 200 W (LCSC C169430)", vin, gnd, "Diode_SMD:D_SOD-123F")
@@ -620,7 +627,7 @@ def brain():
     # bus A is a LINE on this board: the ten motor headers in a row, terminated at both ends
     _res("R5", "120R", "bus A termination at the row's U2 end, 1%", a_h, a_l,
          "Resistor_SMD:R_0603_1608Metric")
-    _res("R6", "120R", "bus A termination at the row's far end, 1% -- place past J30", a_h,
+    _res("R6", "120R", "bus A termination at the row's far end, 1% -- place past J25 (motor 5, the -X end)", a_h,
          a_l, "Resistor_SMD:R_0603_1608Metric")
     d2 = _fix("D2", "NUP2105LT1G", "bus A clamp: CAN_H and CAN_L to GND, 24 V stand-off",
               SOT23, range(1, 4))
@@ -702,8 +709,9 @@ def brain():
               "SCLK": "UI_SCLK", "SDIN": "UI_SDIN", "DC": "UI_DC", "CS_N": "UI_CS_N",
               "RES_N": "UI_RES_N"}
     j5 = _part("J5", "PinHeader_2x08", "PZ1.27-2x8P", "UI board ribbon, 16-way 1.27 mm 2x8 "
-               "right-angle (LCSC C22438114)",
-               "Connector_PinHeader_1.27mm:PinHeader_2x08_P1.27mm_Horizontal",
+               "VERTICAL, off the board face under the UI station: the top edge is all JSTs "
+               "(LCSC part to pick -- open item)",
+               "Connector_PinHeader_1.27mm:PinHeader_2x08_P1.27mm_Vertical",
                [Pin(num=i + 1, func=P) for i in range(16)])
     for way, sig in enumerate(harness.UI_RIBBON, start=1):
         if sig == "GND":
@@ -725,10 +733,11 @@ def brain():
 
 # ── the board ──────────────────────────────────────────────────────────────────────────────
 # NOT PLACED YET. The frame is the stretch the bench geometry leaves against the -Y wall
-# (X -520..-200, Z up to the deck): ~300 x 75, board X = instrument X, board Y = instrument Z.
+# (X -520..-200, Z -107.2..-37.2): 320 x 70, board X = instrument X + 360, board Y = instrument
+# Z + 72.2 (the top edge 21 mm under the UI station's z -16.1: a mated XH and its wire's bend).
 # The +Y edge (instrument +Z, up) carries the twelve side-entry headers, mouths up, and the
 # power / logic leads from the output board; the CM5 and both bucks on the station-3 stretch.
-BOARD_W, BOARD_L = 300.0, 75.0
+BOARD_W, BOARD_L = 320.0, 70.0
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
     "layers": 4,
@@ -736,6 +745,7 @@ BOARD_NOTES = {
     "qty_per_instrument": 1,
     "edge_parts": {"+Y": ["J21", "J22", "J23", "J24", "J25", "J26", "J27", "J28", "J29",
                           "J30", "J15", "J16", "J10", "J12", "J11", "J3", "J4"]},
+    # every JST on +Y, mouth up (lead, 2026-11-13); J5's vertical 2x8 LCSC part is open
     "placements": {},
     "open_items": [
         "DF40 pad n = CM5 pin n (J1) / n+100 (J2), pad 1 at the module's pin-1 end, J1-J2 "
@@ -743,6 +753,9 @@ BOARD_NOTES = {
         "CM5 5 V: U5 is 3 A (LMR33630); CM5 asks 5 A with USB loads -- measure; LMR33640 fits",
         "LM5122 OPT tied to AGND for a single-phase master -- confirm in SNVS954H",
         "L4 (10 uH / 15 A) and C113/C114 (470 uF / 35 V polymer) lands are placeholders",
+        "J5: vertical 2x8 1.27 mm header (the top edge is all JSTs) -- pick the LCSC part",
+        "320 x 70 at X -520..-200, Z -107.2..-37.2: branner to confirm the -Y wall stretch and "
+        "the 21 mm under the UI station for the mated plugs",
         "NCEP4090GU pinout assumed PowerPAK-SO8 (1-3 S, 4 G, tab D)",
         "CM5 variant: an eMMC part (no SD socket here); four M2.5 mounting holes for it",
     ],
