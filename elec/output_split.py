@@ -230,7 +230,9 @@ def quality(half, net_path):
             + [{"net": "VIN_BUS", "from": d, "to": ["R112.1"], "amps": 5.0} for d in ("Q6.5", "Q7.5")]
             + [{"net": "VIN_BRAIN", "from": "R112.2", "to": ["%s.%d" % (j, w)], "amps": 2.5}
                for j in ("J10", "J12") for w in (1, 6)]
-            + [{"net": "VSTBY", "from": d, "to": ["U5.2", "U5.9", "U5.10"], "amps": 1.5}
+            # split: U5's whole 1.5 A input shared by its VIN group (pins 2, 9, 10), each
+            # laid in copper as wide as the 0.4 mm pitch allows (buck_cell) -- not 1.5 A each
+            + [{"net": "VSTBY", "from": d, "to": ["U5.2", "U5.9", "U5.10"], "amps": 1.5, "split": True}
                for d in ("D14.1", "D16.1")]
             + [{"net": "V5_PRE", "from": "L1.2", "to": ["J20.%d" % w for w in range(1, 6)],
                 "amps": 2.64}])
