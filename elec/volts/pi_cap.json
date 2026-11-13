@@ -41,6 +41,11 @@
    "v": 3.465,
    "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
   },
+  "PI_NC_22": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
   "PI_NC_24": {
    "peak": 3.564,
    "v": 3.465,
@@ -81,17 +86,12 @@
    "v": 3.465,
    "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
   },
-  "PI_NC_36": {
-   "peak": 3.564,
-   "v": 3.465,
-   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
-  },
-  "PI_NC_37": {
-   "peak": 3.564,
-   "v": 3.465,
-   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
-  },
   "PI_NC_5": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "PI_NC_7": {
    "peak": 3.564,
    "v": 3.465,
    "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
@@ -379,7 +379,7 @@
   },
   "R5.1": {
    "max": 50.0,
-   "src": "element V -- 0402WGF4992TCE (C25897): JLCPCB parts API attributes for C25897 (0402WGF4992TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+   "src": "element V -- RC0402FR-0749K9L (C137969): YAGEO RC0402FR-07 series, the series C163455 / C138058 / C138027 / C138045 / C274897 / C327251 are read from (JLCPCB parts API, 2026-10-06: 50 V, 62.5 mW for every value); fab.py's R22 from 2026-11-01"
   },
   "U1.1": {
    "max": 7.0,
