@@ -266,7 +266,12 @@ M4_HEAD = (7.6, 2.2)                                # ISO 7380 button head (the 
 ANCHOR_PIN_D, ANCHOR_PIN_L, ANCHOR_PIN_PROUD = 5.0, 12.0, 1.0
 ANCHOR_SLOT_W = ANCHOR_PIN_D + 0.4                  # laser-cut: a drop-in fit across x
 COLLAR_T = 3.0                                      # the collar's plate
-PILLAR_D = 5.2                                      # the collar's two pillars past the M3 heads
+# the collar's turn onto the M3 heads: only as far as takes the head (5.5) wholly over the plate
+# past its way in (head + 0.6) and 0.3 more (user, 2026-11-12: just enough to get the screw in):
+# each channel is then ~12 of arc, about two head diameters
+BRIDGE_SAG = 1.0                                    # room under a printed bridge for its sag
+BAYONET_TURN = math.degrees(2 * math.asin((M3_HEAD[0] / 2 + (M3_HEAD[0] + 0.6) / 2 + 0.3)
+                                          / NUT_PCD))   # 44.8
 
 
 def x_yt(t: float) -> float:
@@ -593,27 +598,79 @@ def rod_yz(i: int):
 
 def _radial_box(i: int, x0: float, x1: float, r0: float, r1: float, w: float) -> cq.Workplane:
     """A box x0..x1, from radius r0 to r1 off string i's axis toward its guide rod, w wide."""
+    return _radial_box_at(i, x0, x1, r0, r1, w, guide_ang(i))
+
+
+def _arc_x(i: int, x0: float, x1: float, r: float, w: float, a0: float, a1: float,
+           open_out: bool = False) -> cq.Workplane:
+    """A slot x0..x1 along the arc of radius r round string i's axis, from angle a0 to a1, w wide
+    with round ends; open_out runs it on out past the outside (a pocket open to the side)."""
+    ro = (STOP_D / 2 + 2.0) if open_out else r + w / 2
+    ring = cyl_x(2 * ro, x1 - x0, x0, y=y_of(i), z=za(i)).cut(
+        cyl_x(2 * (r - w / 2), x1 - x0 + 2, x0 - 1, y=y_of(i), z=za(i)))
+    R = 2 * ro + 5                                   # the wedge a0..a1, as a fan of triangles
+    n = max(2, int(abs(a1 - a0) / 10) + 1)
+    pts = [(0.0, 0.0)] + [at_ang(a0 + (a1 - a0) * k / n, R) for k in range(n + 1)]
+    wedge = (cq.Workplane("YZ", origin=(x0 - 1, y_of(i), za(i))).polyline(pts).close()
+             .extrude(x1 - x0 + 2))
+    out = ring.intersect(wedge)
+    for a in (a0, a1):                                # the round ends
+        dy, dz = at_ang(a, r)
+        out = out.union(cyl_x(w, x1 - x0, x0, y=y_of(i) + dy, z=za(i) + dz))
+        if open_out:
+            out = out.union(_radial_box_at(i, x0, x1, r, ro, w, a))
+    return out
+
+
+def _radial_box_at(i: int, x0: float, x1: float, r0: float, r1: float, w: float,
+                   a: float) -> cq.Workplane:
+    """A box x0..x1, from radius r0 to r1 off string i's axis toward angle a, w wide."""
     b = box_at(x1 - x0, w, r1 - r0, x=(x0 + x1) / 2, y=0, z=(r0 + r1) / 2)        # along +Z ...
-    return b.rotate((0, 0, 0), (1, 0, 0), guide_ang(i) - 90).translate((0, y_of(i), za(i)))
+    return b.rotate((0, 0, 0), (1, 0, 0), a - 90).translate((0, y_of(i), za(i)))
 
 
 def _collar(i: int, t: float) -> cq.Workplane:
     y, z = y_of(i), za(i)
     (p0, p1), heads, (f0, f1), (s0, s1) = x_collar(t)
     out = cyl_x(D.NUT_FLANGE_L, p1 - p0, p0, y=y, z=z)                             # the plate
-    for a in HOLE_ANG["web"]:                        # pillars past the M3 heads to the flange
-        dy, dz = at_ang(a)
-        out = out.union(cyl_x(PILLAR_D, p0 - f1 + 0.5, f1 - 0.5, y=y + dy, z=z + dz))
-    out = out.union(cyl_x(STOP_D, f1 - f0, f0, y=y, z=z))                          # stop flange
+    # SOLID from the plate back to the flange (user, 2026-11-12: no air gap), the flange's own
+    # diameter: only a POCKET for each M3 head (0.3 a side round it) and the nut boss's bore below
+    out = out.union(cyl_x(STOP_D, p0 - f0 + 0.01, f0, y=y, z=z))                   # + stop flange
+    hw = M3_HEAD[0] / 2 + 0.3                        # the head pockets: below, with the bayonet
     x0, x1 = spring_span(t, i)                                                      # the post:
     out = out.union(_post(i, x0, x1 - x0 - SEAT_GRIP, D.NUT_BOSS_D + 0.4))          # threaded
     out = out.cut(cyl_x(D.NUT_BOSS_D + 0.4, 60, s0 - 1, y=y, z=z))                  # boss, screw
     out = out.union(_tube_x(13.0, SCREW_CLR, s0, s0 + 3.0, y, z))                   # post's floor
     x0, x1 = spring_span(t, i)                       # the detent's teeth on the flange
     out = out.union(_in_spring(_teeth(x1 - x0 + SPRING_WIRE / 2, -1, 1), i, x0))
-    for a in HOLE_ANG["m3"]:                         # the M3s, and the key's way to them (before
-        dy, dz = at_ang(a)                           # the spring goes on)
-        out = out.cut(cyl_x(3.4, 30, f0 - 1, y=y + dy, z=z + dz))
+    # A BAYONET ON THE M3 HEADS (user, 2026-11-12: a 30 mm screw cannot come in along X past the
+    # post and the flange; put the screws in the nut first, then the collar onto them). The M3s go
+    # through the nut flange and yoke into the keyhole plate first, heads left COLLAR_T proud.
+    # The collar slides along the leadscrew onto the nut, the heads through two head-sized holes
+    # in its plate BAYONET_TURN past their places into the pockets behind, then TURNS back: the
+    # plate's arc slots carry it under the heads. The 2.5 key reaches each head from -X down a
+    # Ø3.4 hole through the post, its floor and the flange -- tighten both before the spring goes
+    # on (its wire crosses that line). Nothing on the nut is cut.
+    for a in HOLE_ANG["m3"]:
+        dy, dz = at_ang(a)
+        out = out.cut(cyl_x(3.4, p1 - s0 + 2, s0 - 1, y=y + dy, z=z + dz))
+        a0 = a + BAYONET_TURN                       # (+: the way in clear of the rod tab at 325)
+        out = out.cut(_arc_x(i, p0 - 0.01, p1 + 0.01, NUT_PCD / 2, 3.4, a0, a))      # the slot
+        dy, dz = at_ang(a0)                                                        # the way in
+        out = out.cut(cyl_x(2 * hw, p1 - p0 + 0.02, p0 - 0.01, y=y + dy, z=z + dz))
+        out = out.cut(_arc_x(i, f1, p0 + 0.01, NUT_PCD / 2, 2 * hw, a0, a, open_out=True))
+        # PRINTED +X -> -X, the plate on the bed (user, 2026-11-12): nothing of the flange or its
+        # teeth over the channels, so they print open to the sky. The post's wall (r 5.3..8.37)
+        # still runs over their inner half: a ~12 bridge along each arc, anchored both ends on
+        # the post's unbroken ring. A bridge comes out uneven (user, 2026-11-12: do not rely on
+        # its floor), and nothing bears on it -- the heads clamp the plate -- so the channel
+        # runs BRIDGE_SAG further in under it: the head turns past whatever sags.
+        out = out.cut(_arc_x(i, f1 - BRIDGE_SAG, f1 + 0.02, NUT_PCD / 2, 2 * hw, a0, a, open_out=True))
+        out = out.cut(_arc_x(i, f0, f1 + 0.02, NUT_PCD / 2, 2 * hw, a0, a, open_out=True)
+                      .cut(cyl_x(SEAT_D + 0.01, f1 - f0 + 1, f0 - 0.5, y=y, z=z)))
+        out = out.cut(_arc_x(i, f0 - DET_H - 0.01, f0 + 0.01, NUT_PCD / 2, 2 * hw, a0, a,
+                             open_out=True).cut(cyl_x(2 * DET_R0 - 0.2, DET_H + 1, f0 - DET_H - 0.5,
+                                                      y=y, z=z)))
     # the TAB: from the plate out past the rod, TAB_L along x from the plate's +X face back,
     # and its RADIAL SLOT. Its outer end is ROUND, concentric with the slot's (user, 2026-11-12:
     # the square corners came close to the next string's spring): GUIDE_WALL all round the slot
@@ -925,16 +982,22 @@ def _motor(i: int) -> list:
 def _bend_parts() -> list:
     """Each string's two 688s: the bridge bearing and the bend bearing at its row. Their AXLES
     are the endplate's (endplate_axles): they run wall to wall, so they are sized by the body."""
-    from .helpers import ball_bearing_y
     out = []
     for i in range(N):
-        out.append((f"db_bend_brg_{i}", ball_bearing(D.BRG688_OD, D.BRG688_ID, D.BRG688_W)
-                    .rotate((0, 0, 0), (1, 0, 0), -90)
-                    .translate((X_BEND, y_of(i) - D.BRG688_W / 2, z_level(level(i)) + R))))
-        out.append((f"db_bridge_brg_{i}", ball_bearing_y(D.BRIDGE_BEARING_OD, D.BRIDGE_AXLE_D + 0.3,
-                                                         D.BRIDGE_BEARING_W, y_of(i) - D.BRIDGE_BEARING_W / 2,
-                                                         x=D.BRIDGE_AXLE_X, z=D.BRIDGE_BEARING_Z)))
+        out.append((f"db_bend_brg_{i}", kept(_bend_brg, i)))
+        out.append((f"db_bridge_brg_{i}", kept(_bridge_brg, i)))
     return out
+
+
+def _bend_brg(i: int) -> cq.Workplane:
+    return (ball_bearing(D.BRG688_OD, D.BRG688_ID, D.BRG688_W).rotate((0, 0, 0), (1, 0, 0), -90)
+            .translate((X_BEND, y_of(i) - D.BRG688_W / 2, z_level(level(i)) + R)))
+
+
+def _bridge_brg(i: int) -> cq.Workplane:
+    from .helpers import ball_bearing_y
+    return ball_bearing_y(D.BRIDGE_BEARING_OD, D.BRIDGE_AXLE_D + 0.3, D.BRIDGE_BEARING_W,
+                          y_of(i) - D.BRIDGE_BEARING_W / 2, x=D.BRIDGE_AXLE_X, z=D.BRIDGE_BEARING_Z)
 
 
 # (the CHEEKS and the separate COMB are gone: the ENDPLATE holds the axles. Kept for the
@@ -1042,40 +1105,62 @@ def _mplate(i: int) -> cq.Workplane:
     return out
 
 
+def _keyplate_at(i: int, t: float) -> cq.Workplane:
+    return keyhole_plate().translate((x_yt(t), y_of(i), za(i)))
+
+
+def _ball(i: int, t: float) -> cq.Workplane:
+    return cyl_x(D.STRING_NUT_D, D.STRING_NUT_L, _ball_x(t) - D.STRING_NUT_L / 2, y=y_of(i), z=za(i))
+
+
+def _rod(i: int) -> cq.Workplane:
+    return cyl_x(GUIDE_D, ROD_L, ROD_END, y=rod_yz(i)[0], z=rod_yz(i)[1])
+
+
+def _screw_at(i: int) -> cq.Workplane:
+    return _screw(i, x_ref(i) + SCREW_X0, SCREW_TIP)
+
+
+def _brg(i: int) -> cq.Workplane:
+    return (ball_bearing(D.BRG688_OD, D.BRG688_ID, 2 * D.BRG688_W)
+            .rotate((0, 0, 0), (0, 1, 0), 90).translate((ANCHOR[0] - HOUSE_POCKET, y_of(i), za(i))))
+
+
+def _cpl_m3(i: int) -> cq.Workplane:
+    return _coupler_clamp(i, "m3")
+
+
+def _cpl_insert(i: int) -> cq.Workplane:
+    return _coupler_clamp(i, "insert")
+
+
+# String i's parts: (name, builder, whether it moves with travel t). EACH IS KEPT ON ITS OWN
+# (user, 2026-11-12: "Why aren't we caching everything separately?"): an edit to one part's code
+# rebuilds that part only -- the coil springs and the threaded screws (most of the build time)
+# are not redone for a collar or a plug change, and parts that do not move with travel are built
+# once for every t.
+_STRING_PARTS = (
+    ("db_yoke", _yoke, True), ("db_keyplate", _keyplate_at, True), ("db_ball", _ball, True),
+    ("db_nut", _nut, True), ("db_collar", _collar, True), ("db_m3", _m3s, True),
+    ("db_spring", _spring, True), ("db_sleeve_p", _sleeve_plug, False),
+    ("db_sleeve_c", _sleeve_collar, True), ("db_plug", _anchor_plug, False),
+    ("db_rod", _rod, False), ("db_screw", _screw_at, False), ("db_coupler", _coupler, False),
+    ("db_cpl_m3", _cpl_m3, False), ("db_cpl_insert", _cpl_insert, False),
+    ("db_housing", _housing, False), ("db_hb", _housing_bolts, False),
+    ("db_insert", _inserts, False), ("db_collar_a", _collar_a, False),
+    ("db_ca_m3", _collar_a_m3, False), ("db_collar_b", _collar_b, False),
+    ("db_brg", _brg, False), ("db_mplate", _mplate, False),
+)
+
+
 def string_parts(i: int, t: float) -> list:
-    """String i's drive, drawn along -X at (y_of(i), za(i)), yawed into place."""
-    y, z = y_of(i), za(i)
-    xr = x_ref(i)
-    ft = x_ft(t)
-    parts = [
-        ("db_yoke", _yoke(i, t)),
-        ("db_keyplate", keyhole_plate().translate((x_yt(t), y, z))),
-        ("db_ball", cyl_x(D.STRING_NUT_D, D.STRING_NUT_L, _ball_x(t) - D.STRING_NUT_L / 2, y=y, z=z)),
-        ("db_nut", _nut(i, t)),
-        ("db_collar", _collar(i, t)),
-        ("db_m3", _m3s(i, t)),
-        ("db_spring", _spring(i, t)),
-        ("db_sleeve_p", _sleeve_plug(i)),
-        ("db_sleeve_c", _sleeve_collar(i, t)),
-        ("db_plug", _anchor_plug(i)),
-        ("db_rod", cyl_x(GUIDE_D, ROD_L, ROD_END, y=rod_yz(i)[0], z=rod_yz(i)[1])),
-        ("db_screw", _screw(i, xr + SCREW_X0, SCREW_TIP)),
-        ("db_coupler", _coupler(i)),
-        ("db_cpl_m3", _coupler_clamp(i, "m3")),
-        ("db_cpl_insert", _coupler_clamp(i, "insert")),
-        ("db_housing", _housing(i)),
-        ("db_hb", _housing_bolts(i)),
-        ("db_insert", _inserts(i)),
-        ("db_collar_a", _collar_a(i)),
-        ("db_ca_m3", _collar_a_m3(i)),
-        ("db_collar_b", _collar_b(i)),
-        ("db_brg", ball_bearing(D.BRG688_OD, D.BRG688_ID, 2 * D.BRG688_W)
-         .rotate((0, 0, 0), (0, 1, 0), 90).translate((ANCHOR[0] - HOUSE_POCKET, y, z))),
-        ("db_mplate", _mplate(i)),
-    ]
-    out = [(f"{nm}_{i}", yaw(w, i)) for nm, w in parts]
-    out += [(nm, yaw(w, i)) for nm, w in _motor(i)]
-    out.append((f"db_string_{i}", _string(i, t)))
+    """String i's drive, drawn along -X at (y_of(i), za(i)), yawed into place: each part kept."""
+    out = []
+    for nm, make, moves in _STRING_PARTS:
+        args = (t,) if moves else ()
+        out.append((f"{nm}_{i}", yaw(kept(make, i, *args), i)))
+    out += [(nm, yaw(w, i)) for nm, w in kept(_motor, i)]
+    out.append((f"db_string_{i}", kept(_string, i, t)))
     return out
 
 
@@ -1122,13 +1207,13 @@ def _compound(nm, w):
 
 def _drive(t: float) -> list:
     """Every part but the anchor plate and its bolts, the UI, the ghosts and the body.
-    KEPT (user, 2026-11-11: "changing the chassis shouldn't rebuild the items inside it"): each
-    builder's result is read back from cadkit's store until something IT reads changes, so an
-    edit to the body, the anchor or the UI's placement rebuilds none of this."""
+    KEPT PART BY PART (user, 2026-11-11: "changing the chassis shouldn't rebuild the items inside
+    it"; 2026-11-12: every showable part its own entry): each part is read back from cadkit's
+    store until something IT reads changes."""
     out = []
     for i in range(N):
-        out += kept(string_parts, i, t)
-    out += kept(_bend_parts)
+        out += string_parts(i, t)                   # each part kept on its own (_STRING_PARTS)
+    out += _bend_parts()
     return [_compound(nm, w) for nm, w in out]
 
 
@@ -1234,21 +1319,23 @@ def _bar_box(yc: float, x0: float, x1: float, grow: float = 0.0) -> cq.Workplane
 
 
 def _wall_bars() -> list:
-    """The two bars, each with its two tapped M3 holes in the +X end (drawn as the tap drill)."""
+    return [(f"db_wall_bar_{k}", kept(_wall_bar, k)) for k in range(2)]
+
+
+def _wall_bar(k: int) -> cq.Workplane:
+    """Bar k (0: -Y, 1: +Y), its two tapped M3 holes in the +X end (drawn as the tap drill)."""
     # TODO: the -X end stops short of the -X endplate (the keyhead's), which is not modelled here
     x0 = body_box()["outer"][0][0] + BODY_WALL + 1.0
     x1 = ep_x()["bar_end"]
-    out = []
-    for k, yc in enumerate(bar_y()):
-        b = _bar_box(yc, x0, x1)
-        for zc in EP_SCREW_Z:
-            depth = bar_screw_len() - (ep_x()["wall1"] - x1) + EP_TAP_EXTRA
-            b = b.cut(cyl_x(2.5, depth, x1 - depth, y=yc, z=zc))
-        for zp in _anchor_pin_z():                   # the anchor's pins: drilled through, Ø5
-            b = b.cut(cyl_y(ANCHOR_PIN_D, BAR_T + 2, yc - BAR_T / 2 - 1,
-                            x=ANCHOR[1] + ANCHOR_FL / 2, z=zp))
-        out.append((f"db_wall_bar_{k}", b))
-    return out
+    yc = bar_y()[k]
+    b = _bar_box(yc, x0, x1)
+    for zc in EP_SCREW_Z:
+        depth = bar_screw_len() - (ep_x()["wall1"] - x1) + EP_TAP_EXTRA
+        b = b.cut(cyl_x(2.5, depth, x1 - depth, y=yc, z=zc))
+    for zp in _anchor_pin_z():                       # the anchor's pins: drilled through, Ø5
+        b = b.cut(cyl_y(ANCHOR_PIN_D, BAR_T + 2, yc - BAR_T / 2 - 1,
+                        x=ANCHOR[1] + ANCHOR_FL / 2, z=zp))
+    return b
 
 
 def _bar_screws() -> list:
@@ -1327,8 +1414,12 @@ def axle_span() -> tuple:
 
 
 def endplate_axles() -> list:
+    return [(nm, kept(_axle, k)) for k, (nm, _) in enumerate(axle_zs())]
+
+
+def _axle(k: int) -> cq.Workplane:
     a, b = axle_span()
-    return [(nm, cyl_y(D.BRIDGE_AXLE_D, b - a, a, x=X_BEND, z=zc)) for nm, zc in axle_zs()]
+    return cyl_y(D.BRIDGE_AXLE_D, b - a, a, x=X_BEND, z=axle_zs()[k][1])
 
 
 def _endplate() -> cq.Workplane:
@@ -1396,16 +1487,18 @@ def _endplate() -> cq.Workplane:
 
 @_lru_cache(maxsize=None)
 def endplate_full():
-    return _endplate()
+    return kept(_endplate)
 
 
 def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
     from .changer_bench import ghosts as _ghosts
     out = _drive(t) + [("db_endplate", endplate_full())] + endplate_axles()
-    out += [_compound("db_anchor", _anchor()), _compound("db_anchor_pin", _anchor_pins())]
-    out += _wall_bars() + [_compound("db_bar_m3", _bar_screws())]
+    # EVERY PART THE VIEW CAN SHOW OR HIDE IS KEPT ON ITS OWN (user, 2026-11-12): an edit
+    # rebuilds the parts whose code or inputs it touched, and nothing else
+    out += [_compound("db_anchor", kept(_anchor)), _compound("db_anchor_pin", kept(_anchor_pins))]
+    out += _wall_bars() + [_compound("db_bar_m3", kept(_bar_screws))]
     out = [(nm, _made(nm, w)) for nm, w in out] + list(ui_parts()[0])
-    out.append(("db_body", _made("db_body", _body())))   # opaque PETG-GF, as the lead's chassis
+    out.append(("db_body", _made("db_body", kept(_body))))   # opaque PETG-GF, as the lead's chassis
     out += [g for g in _ghosts(y_hi=RAIL_HI)
             if g[0] != "ghost_bottom_now" and (all_ghosts or g[0] == "ghost_pickup")]
     return out

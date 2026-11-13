@@ -1967,3 +1967,17 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
   - To remove it, twist firmly: 60° is steep enough to hold against the spring's ~0.03 N·m, not so steep that it locks for good.
 - **Flanges:** both stop flanges (on the plug and on the collar) grow to Ø22.45 to carry the teeth.
 - **Clearance:** the sleeve is 1.74 mm from its own guide rod (rod at 15.35 mm, 325°). Neighbouring strings' sleeves and plugs are clear.
+
+## Direct drive: solid collar on a bayonet over the M3 heads (2026-11-12)
+
+- **The collar is solid** from its plate back to the stop flange (no air gap, no pillars), Ø22.45. It has pockets for the M3 heads and the nut boss's bore through the middle. **The nut is not modified.**
+- **A 30 mm screw can't come in along X** past the post and flange, so the screws go in first and the collar goes on over them:
+  1. Put both M3 × 30 through the nut flange and the yoke into the keyhole plate. Leave each head **3 mm proud** of the flange (the collar plate's thickness).
+  2. Slide the collar along the leadscrew onto the nut, turned **about 45°** (44.8°) from its working position. The heads pass through the two head-sized holes in its plate (at about 90° and 270°) into the pockets behind.
+  3. **Turn the collar back 44.8°**: just enough to take each head wholly past its way in, with each channel about two head diameters of arc. Arc slots in its plate carry it under the heads, which end at 45° and 225°, over the key holes. The way in sits clear of the guide-rod tab at 325°.
+  4. Tighten both with the 2.5 mm key from −X, down the Ø3.4 hole through the post, its floor and the flange.
+  5. **Then** screw the spring on and fit its sleeve. The wire crosses the key's line, so the screws must be tight first. The guide rods go in last, so nothing blocks the turn.
+- **Printing:** the collar prints **+X → −X**, plate on the bed. The flange and its detent teeth are cleared over both channels, so they print open to the top.
+  - The detent teeth remain on about half their ring.
+  - The spring post's wall still runs over the inner half of each channel, a bridge of about 12 mm along the arc, anchored at both ends on the post's unbroken ring. Clearing it too would cost about half the post's thread.
+  - The bridge will come out uneven, and nothing bears on it (the heads clamp the plate). So the channel runs 1 mm further in under it, leaving 1.5 mm over each head for the bridge to sag into.
