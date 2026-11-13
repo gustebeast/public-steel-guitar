@@ -52,6 +52,7 @@ from __future__ import annotations
 import argparse
 import collections
 import json
+import numpy as np
 import math
 import os
 import re
@@ -401,6 +402,9 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
         _report(fd, base, rules, init_log, [], [], None, None, None, why, T,
                 refused="intent check: BROKEN hard mechanical rules\n" + "\n".join(broken[:20]), floor=floor, room=room)
         return 2
+    for w_ in _chain_warns(rules, parts, pl):
+        say("WARN " + w_)
+        floor.append(w_)
     wlines = _raise_widths(notes, parts, pl, keep_widths)
     for w_ in wlines:
         say("WIDTH " + w_)
@@ -460,9 +464,23 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
                 room += ["%s (silk label: no free site)" % x.strip() for x in m.group(1).split(",")]
         try:
             dr = json.load(open(stem + ".finish.drc.json", encoding="utf-8"))
-            fin = {"unconnected": len(dr.get("unconnected_items", [])), "violations": len(dr.get("violations", [])),
-                   "rc": rc}
-            fin["by_type"] = dict(collections.Counter(v.get("type") for v in dr.get("violations", [])))
+            # ⚠ COUNT AS finish.py COUNTS (lever_sensor holdout 2d, 2026-11-12): finish said "0
+            # violation(s)" and this report said 10 -- nine silk_overlap WARNINGS and the J1/J2
+            # courtyard the project DECLARES (pcb_declared.py). Errors that are not declared are
+            # the violations; declared ones and warnings are listed apart.
+            vs = dr.get("violations", [])
+            warn = [v for v in vs if v.get("severity") == "warning"]
+            err = [v for v in vs if v.get("severity") != "warning"]
+            try:
+                import finish as _fin
+                import netcheck as _nc
+                ok_, bad_ = _nc.classify_violations(dict(dr, violations=err), _fin._declared(stem))
+            except Exception:                       # no project / no declarations: all count
+                ok_, bad_ = [], [(v.get("type"), []) for v in err]
+            fin = {"unconnected": len(dr.get("unconnected_items", [])), "violations": len(bad_),
+                   "declared": len(ok_), "warnings": len(warn), "rc": rc}
+            fin["by_type"] = dict(collections.Counter(t for t, _ in bad_))
+            fin["warn_by_type"] = dict(collections.Counter(v.get("type") for v in warn))
             fin["unconnected_nets"] = sorted({i.get("description", "").split("[")[-1].split("]")[0]
                                               for x in dr.get("unconnected_items", []) for i in x.get("items", [])
                                               if "[" in i.get("description", "")})
@@ -479,6 +497,49 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T, room=room, width=wlines, pours=plines,
             floor=floor)
     return 0
+
+
+CHAIN_WARN_MM = 20.0     # a near-chain's far signal run longer than this is reported
+
+
+def _chain_warns(rules, parts, pl):
+    """WARN lines: a part held in an author's band, a part `near` it, and that part's other
+    small signal nets running far to an IC -- the band is what keeps the chain long.
+
+    ⚠ WHY (motor_ctrl trial, 2026-11-12): the intent banded J1 on the -X edge; U2 (`near` J1)
+    followed it and CAN1_TX / RX ran ~30 mm to U4's pins and stayed open in every run. The
+    band was an authoring error (J1 is mid-board on the hand board and in the CAD), and
+    nothing said so. A WARN, not a stop: the band may be real, and then the run is the price."""
+    band = {x: r_["region"] for r_ in rules if r_["kind"] == "in_region" for x in pi._refs(r_["refs"], parts)}
+    net_of = {}
+    for ref, v in parts.items():
+        for q in v["pads"]:
+            if q["net"]:
+                net_of.setdefault(q["net"], []).append((ref, q["num"]))
+    P = pi.Placed(parts, pl)
+    out = []
+    for r_ in rules:
+        if r_["kind"] != "near" or "ref" not in r_ or r_["ref"] not in pl:
+            continue
+        y = r_["ref"]
+        x = (r_.get("target") or "").split(".")[0]
+        if x not in band:
+            continue
+        xn = {q["net"] for q in parts.get(x, {}).get("pads", ()) if q["net"]}
+        for q in parts[y]["pads"]:
+            nm = q["net"]
+            ends = net_of.get(nm, ())
+            if (not nm or nm in xn or nm in ("GND",) or pi.SUPPLY.search(nm) or len(ends) > 4):
+                continue
+            for z, num in ends:
+                if z in (x, y) or z not in pl or not re.match(r"^U\d", z):
+                    continue
+                d = float(np.hypot(*(P.pad(y, q["num"]) - P.pad(z, num))))
+                if d > CHAIN_WARN_MM:
+                    out.append("CHAIN %s (band %s) -> %s (near %s, %.0f mm) -> %s.%s %s: %.1f mm -- the band holds the "
+                               "chain's IC end far away; is %s's band mechanical?"
+                               % (x, band[x], y, x, float(r_.get("max_mm", 0)), z, num, nm, d, x))
+    return out
 
 
 def _rule_refs(r, parts):
@@ -536,7 +597,9 @@ def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, 
         L += ["", "finish: %s" % (fin.get("error") or "%d unconnected%s, %d violation(s)%s" % (
             fin["unconnected"], (" (" + " ".join(fin.get("unconnected_nets", ())) + ")") if fin["unconnected"] else "",
             fin["violations"], (" (" + ", ".join("%s %d" % kv for kv in sorted(fin.get("by_type", {}).items())) + ")")
-            if fin["violations"] else ""))]
+            if fin["violations"] else "") + (", %d declared" % fin["declared"] if fin.get("declared") else "")
+            + (", %d warning(s) (%s)" % (fin["warnings"], ", ".join("%s %d" % kv for kv in sorted(fin.get("warn_by_type", {}).items())))
+               if fin.get("warnings") else ""))]
     if qual:
         L += ["quality: %s" % (qual.get("error") or "%s FAIL, %s OPEN%s" % (
             qual["fail"], qual["open"], (" (" + " ".join(map(str, qual["failed"])) + ")") if qual.get("failed") else ""))]
