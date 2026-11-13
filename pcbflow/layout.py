@@ -1890,14 +1890,18 @@ def repair_plane_orphans(board, notes, probe_mm=12.0, max_items=24):
             done = False
             for src in (t.GetStart(), t.GetEnd()):
                 for tgt, r in _plane_points(src, zs, probe_mm):
-                    if not _path_clear(board, src, tgt, net, t.GetLayer(), w):
-                        continue
                     dx, dy = tgt.x - src.x, tgt.y - src.y
                     n = math.hypot(dx, dy) or 1.0
+                    end = pcbnew.VECTOR2I(int(tgt.x + dx / n * w), int(tgt.y + dy / n * w))
+                    # ⚠ CHECK THE STUB THAT IS LAID, NOT THE ONE THAT REACHES THE PLANE: the
+                    # end runs w past tgt to bite into the pour, and checking only to tgt let
+                    # a 1.05 mm VIN_BUS stub's cap overlap C84.2 (PWR_GND) by 0.4 mm on the
+                    # single output board (2026-11-13) -- six shorts on a board that routed
+                    if not _path_clear(board, src, end, net, t.GetLayer(), w):
+                        continue
                     nt = pcbnew.PCB_TRACK(board)
                     nt.SetStart(src)
-                    nt.SetEnd(pcbnew.VECTOR2I(int(tgt.x + dx / n * w),
-                                              int(tgt.y + dy / n * w)))
+                    nt.SetEnd(end)
                     nt.SetWidth(w)
                     nt.SetLayer(t.GetLayer())
                     nt.SetNet(t.GetNet())
