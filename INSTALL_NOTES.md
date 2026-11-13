@@ -1936,11 +1936,14 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
 ### Anchor plate: drops onto pins, no screws
 - **No fasteners at all.** The four M4 x 10 bolts and the M4 tapping in the wall bars are gone.
   - The 2.5 mm key could not reach those bolts along Y past the springs, and there are to be no screws through the outer walls.
-- **Pins:** each wall bar gets two Ø5 holes drilled straight through along Y (no tap), at x −184.2 and z −24.6 / −45.4. Use the printed drill jig.
+- **Pins:** each wall bar gets two Ø5 holes drilled straight through along Y (no tap), at x −177.5 (14.7 mm from the plate's web) and z −24.6 / −45.4. Use the printed drill jig.
   - A Ø5 x 12 hardened dowel goes in from inside the empty body, through a Ø5 hole in the rail's inner skin that grips it, about 4.5 mm into the bar. 1 mm stands proud of the anchor fold's inner face.
   - Pin SKU still to read (McMaster's hardened metric dowels, 91595A series).
   - Use **hardened**: 0.5 kN per pin over ~4.5 mm of lever is ~180 MPa of bending, too much for 18-8.
 - **Plate:** each end fold has an open-topped slot (5.4 wide, round bottom) that drops over its two pins. The top and bottom flaps stop at the end folds (corner reliefs in the flat pattern).
+  - **Cut flat, then bent.** The slot's −X edge is what the pins bear on, so it must stay true through the bend. A feature closer to a bend than its inner radius plus two thicknesses (about 12 mm in 4 mm sheet) gets pulled as the bend forms.
+  - So the two **end folds are 26 mm deep** (the top and bottom flaps stay 16), and the slot's bearing edge sits 12.3 mm from the web.
+  - The 0.4 mm drop-in clearance covers a bend's usual ±0.2–0.3 mm. Each side hangs on its own pins, so the two folds needn't match exactly.
 - **Load path:** the strings and springs pull the plate +X (~2 kN in all). The slot's −X edge bears on the pins, steel on steel into the bars. With the strings off, the UI and the deck above keep it from lifting (0.5 mm under the UI).
 - **Order:**
   1. Slide the bars in from +X.

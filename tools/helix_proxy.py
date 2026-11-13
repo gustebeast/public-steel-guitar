@@ -176,7 +176,13 @@ def proxy(solid):
     o = tuple(c[j] + u0 * e1[j] + v0 * e2[j] + s0 * ax[j] for j in range(3))
     mid = cq.Vector(*(o[j] + (s1 - s0) / 2 * ax[j] for j in range(3)))
     hollow = not solid.isInside(mid) and rmin > 0.3 * rout
-    return _make([list(o), list(ax), s1 - s0, rmin if hollow else 0.0, rout])
+    if not hollow:
+        # A SOLID THREAD STAYS EXACT: a leadscrew or threaded knob runs engaged in its nut, and a
+        # rod at the thread's crest diameter overlaps the nut's thread by design (measured: a
+        # leadscrew 1.1 into its nut, a knob 0.9 into its chassis). Only hollow coils -- springs --
+        # become cylinders, where the tube's wall is the coil's own swept band.
+        return None
+    return _make([list(o), list(ax), s1 - s0, rmin, rout])
 
 
 def _make(params):
@@ -188,6 +194,31 @@ def _make(params):
     if ri > 0:
         out = out.cut(cq.Solid.makeCylinder(ri, L, o, ax))
     out.params = params
+    return out
+
+
+def _merge(cyls):
+    """Coaxial tubes of one part -> one tube each over their joint span, outermost wall."""
+    import math
+    groups = []
+    for c in cyls:
+        o, ax, L, ri, ro = c.params
+        for g in groups:
+            o2, ax2 = g[0], g[1]
+            d = [o[j] - o2[j] for j in range(3)]
+            along = sum(d[j] * ax2[j] for j in range(3))
+            off = math.sqrt(max(0.0, sum(x * x for x in d) - along * along))
+            if abs(sum(ax[j] * ax2[j] for j in range(3))) > 0.9994 and off < 0.2:
+                s0 = along if sum(ax[j] * ax2[j] for j in range(3)) > 0 else along - L
+                g[2].append((s0, s0 + L, ri, ro))
+                break
+        else:
+            groups.append((o, ax, [(0.0, L, ri, ro)]))
+    out = []
+    for o, ax, spans in groups:
+        s0, s1 = min(s[0] for s in spans), max(s[1] for s in spans)
+        ri, ro = min(s[2] for s in spans), max(s[3] for s in spans)
+        out.append(_make([[o[j] + s0 * ax[j] for j in range(3)], list(ax), s1 - s0, ri, ro]))
     return out
 
 
@@ -218,7 +249,7 @@ def swap(comps, cache_path=None):
             out.append((nm, sh))
             continue
         _canonical(cands)
-        new, changed = [], False
+        new, cyls = [], []
         for s_ in sols:
             p = None
             if _candidate(s_):
@@ -231,11 +262,17 @@ def swap(comps, cache_path=None):
                 used[key] = params
                 p = None if params is None else _make(params)
             if p is not None:
-                changed = True
-                new.extend(p.Solids())
+                cyls.append(p)
             else:
                 new.append(s_)
-        if changed:
+        if cyls:
+            # NO OVERLAPPING SOLIDS IN ONE PART: a spring's grip and active coils become three
+            # tubes that overlap end to end, and the gate's boolean (BRepAlgoAPI_Common) returns
+            # an EMPTY result, not an error, for a compound whose own solids overlap (measured:
+            # 0 against an old spring the coils cut 1381 into). Fusing them is no cure -- the
+            # fused tube came back 0 against a wire the separate tubes hit by 99. Coaxial tubes
+            # merge into one tube over their joint span (see _merge).
+            new.extend(_merge(cyls))
             hit.append(nm)
             out.append((nm, cq.Compound.makeCompound(new) if len(new) > 1 else new[0]))
         else:

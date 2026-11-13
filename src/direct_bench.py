@@ -258,13 +258,21 @@ SCREW_CLR = 10.0                                    # the plug's and collar's ho
 ANCHOR_T = 4.0
 ANCHOR = (-190.0 - DRIVE_DX - ANCHOR_T, -190.0 - DRIVE_DX)   # the plate's web, x
 ANCHOR_Z = (None, -8.0)                             # its top at most (DECK_UNDER -3.2); _anchor_z
-ANCHOR_FL = 16.0                                    # each fold's depth, toward +X
+ANCHOR_FL = 16.0                                    # the top and bottom folds' depth, toward +X
+# THE END FOLDS run deeper, for the pins' slots (user, 2026-11-12: cut flat, then bent -- does the
+# slot stay true?). A feature nearer a bend than its inner radius (~T) and two thicknesses pulls
+# as the bend forms; the slot's -X edge is the face the pins bear on, so it stands
+# ANCHOR_BEND_CLR clear of the web, and the fold runs on past the slot by two thicknesses.
+ANCHOR_BEND_CLR = ANCHOR_T + 2 * ANCHOR_T          # 12: inner radius ~T + 2 T
 ANCHOR_CLR = 0.5                                    # off the body's walls and floor, and under the UI
 M4_HEAD = (7.6, 2.2)                                # ISO 7380 button head (the housing's bolts)
 # the pins: 0.5 kN each over ~4.5 of lever (bar face to the fold's middle): ~180 MPa bending in
 # a Ø5 -- a hardened dowel (yield ~1 GPa), not 18-8. 12 long: 1 proud of the fold, 4.5 in the bar
 ANCHOR_PIN_D, ANCHOR_PIN_L, ANCHOR_PIN_PROUD = 5.0, 12.0, 1.0
-ANCHOR_SLOT_W = ANCHOR_PIN_D + 0.4                  # laser-cut: a drop-in fit across x
+ANCHOR_SLOT_W = ANCHOR_PIN_D + 0.4                  # laser-cut: a drop-in fit across x (the
+                                                    # 0.4 also takes a bend's +-0.2..0.3)
+ANCHOR_PIN_DX = ANCHOR_BEND_CLR + ANCHOR_SLOT_W / 2  # 14.7: the pins, x off the web's +X face
+ANCHOR_END_FL = math.ceil(ANCHOR_PIN_DX + ANCHOR_SLOT_W / 2 + 2 * ANCHOR_T)   # 26: the end folds
 COLLAR_T = 3.0                                      # the collar's plate
 # the collar's turn onto the M3 heads: only as far as takes the head (5.5) wholly over the plate
 # past its way in (head + 0.6) and 0.3 more (user, 2026-11-12: just enough to get the screw in):
@@ -1040,10 +1048,11 @@ def _anchor() -> cq.Workplane:
     for zc in (z1 - T / 2, z0 + T / 2):              # top and bottom: the channel (flaps of
         w = w.union(box_at(F, y1 - y0 - 2 * T, T, x=xf, y=(y0 + y1) / 2, z=zc))   # their own,
     zp = min(_anchor_pin_z())                        # between the end folds)
+    xs, Fe = x1 + ANCHOR_PIN_DX, ANCHOR_END_FL        # the slots' x; the end folds' depth
     for yc in (y1 - T / 2, y0 + T / 2):              # both ends: hung on the pins
-        w = w.union(box_at(F, T, z1 - z0, x=xf, y=yc, z=(z0 + z1) / 2))
-        w = w.cut(box_at(ANCHOR_SLOT_W, T + 2, z1 + 1 - zp, x=xf, y=yc, z=(zp + z1 + 1) / 2))
-        w = w.cut(cyl_y(ANCHOR_SLOT_W, T + 2, yc - T / 2 - 1, x=xf, z=zp))     # its round end
+        w = w.union(box_at(Fe, T, z1 - z0, x=x1 + Fe / 2, y=yc, z=(z0 + z1) / 2))
+        w = w.cut(box_at(ANCHOR_SLOT_W, T + 2, z1 + 1 - zp, x=xs, y=yc, z=(zp + z1 + 1) / 2))
+        w = w.cut(cyl_y(ANCHOR_SLOT_W, T + 2, yc - T / 2 - 1, x=xs, z=zp))     # its round end
     for i in range(N):                               # collar B's hole (the bearing's rim round
         y, z = y_of(i), za(i)                        # it), the two bolts, and the rod's way in
         w = w.cut(cyl_x(PLATE_HOLE_D, 20, x0 - 10, y=y, z=z))
@@ -1057,7 +1066,7 @@ def _anchor() -> cq.Workplane:
 
 def _anchor_pins() -> cq.Workplane:
     """The four Ø5 dowels: ANCHOR_PIN_PROUD inside each end fold, out through the skin into the bar."""
-    (y0, y1), xf = _anchor_y(), ANCHOR[1] + ANCHOR_FL / 2
+    (y0, y1), xf = _anchor_y(), ANCHOR[1] + ANCHOR_PIN_DX
     out = None
     for yf, sg in ((y1 - ANCHOR_T, 1), (y0 + ANCHOR_T, -1)):   # each fold's inner face, outward
         y_in = yf - sg * ANCHOR_PIN_PROUD
@@ -1226,7 +1235,7 @@ def _extents(drive, ui, pick):
         bb = w.val().BoundingBox()
         for k, (a, b) in enumerate(((bb.xmin, bb.xmax), (bb.ymin, bb.ymax), (bb.zmin, bb.zmax))):
             lo[k], hi[k] = min(lo[k], a), max(hi[k], b)
-    ax0, ax1 = ANCHOR[0], ANCHOR[1] + ANCHOR_FL
+    ax0, ax1 = ANCHOR[0], ANCHOR[1] + ANCHOR_END_FL
     zs = [bb.zmin for bb in (w.val().BoundingBox() for w in ui) if bb.xmax > ax0 and bb.xmin < ax1]
     return lo, hi, min(zs, default=ANCHOR_Z[1] + 1.0)
 
@@ -1334,7 +1343,7 @@ def _wall_bar(k: int) -> cq.Workplane:
         b = b.cut(cyl_x(2.5, depth, x1 - depth, y=yc, z=zc))
     for zp in _anchor_pin_z():                       # the anchor's pins: drilled through, Ø5
         b = b.cut(cyl_y(ANCHOR_PIN_D, BAR_T + 2, yc - BAR_T / 2 - 1,
-                        x=ANCHOR[1] + ANCHOR_FL / 2, z=zp))
+                        x=ANCHOR[1] + ANCHOR_PIN_DX, z=zp))
     return b
 
 
@@ -1370,7 +1379,7 @@ def _body() -> cq.Workplane:
         for zp in _anchor_pin_z():                   # the anchor pins through the INNER skin only
             lo, hi = min(yc, yin), max(yc, yin)      # (a grip as printed; the outer skin stays whole)
             w = w.cut(cyl_y(ANCHOR_PIN_D, hi - lo + 0.5, lo - (0.5 if lo == yin else 0),
-                            x=ANCHOR[1] + ANCHOR_FL / 2, z=zp))
+                            x=ANCHOR[1] + ANCHOR_PIN_DX, z=zp))
     return w
 
 

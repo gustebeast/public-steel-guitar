@@ -2562,7 +2562,12 @@ def collect_components():
     comps += _wrap_rod_component()
     for i in range(D.N_STRINGS):
         comps.extend(_string_components(i))
-    return comps
+    # EVERY PART ITS OWN KEPT ENTRY (user, 2026-11-12): a module may list a part as
+    # cadkit.kept.Part(name, make, *args) and it is built here through its own kept() call, so
+    # an edit rebuilds only the parts it touched. Plain (name, shape) entries pass through.
+    # (Scratch scopes, width_work_components and the rest, go through parts() in cadkit.scratch.)
+    from cadkit.kept import parts
+    return parts(comps)
 
 
 # Per-part colours (single source of truth — the viewer and the scratch view both
