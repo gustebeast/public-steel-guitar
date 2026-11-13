@@ -862,7 +862,7 @@ BOARD_NOTES["quality"] = {
            # the CM5's 5 V: U5's 3 A limit, through F2, onto its six 5 V pins
            {"net": "+5V_RAW", "from": "L2.2", "to": ["F2.1"], "amps": 3.0},
            {"net": "+5V_CM5", "from": "F2.2", "to": ["J1.77", "J1.79", "J1.81", "J1.83", "J1.85",
-                                                    "J1.87"], "amps": 3.0},
+                                                    "J1.87"], "amps": 3.0, "split": True},
            # +5V_AUX: the bus-B arms (TPS2553 limited) and the 3V3 LDO
            {"net": "+5V_AUX", "from": "L3.2", "to": ["U6.1"], "amps": 0.5},
            {"net": "+5V_AUX", "from": "L3.2", "to": ["U11.1"], "amps": 0.5},
