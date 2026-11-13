@@ -1157,6 +1157,19 @@ The router's own route-open is still the only measure that ranks finish results.
 term was considered and skipped: the coarse global router's overflow is one already.
 Script: scratchpad esc/fanin.py (bronner session).
 
+**Handing the repairs the negotiation's BEST round, not its last** (router/negotiate.py `_rounds`).
+On fret_led_mid the best round was 23 (5 nets sharing), and eight rounds without gain then ended
+at 31 with 7. The repairs started from the 7. Snapshot at each new best, restore it if the
+last round is worse. All 74 calibration runs fine-scored with it on. Spearman against finish
+unconnected went 0.794 -> 0.831 (motor_ctrl 0.664 -> 0.688, output_panel unchanged). Better 4:
+fret f6 10 -> 9, motor_ctrl f27 3 -> 2, f6 5 -> 4, f7 9 -> 6. Worse 2: motor_ctrl f5 and
+"fresh" 0 -> 1, confirmed on the same code with it off. The best-counted round is not always
+the better start for the repairs: on f5 the last round's sharing set repaired to 0 and the
+best round's to 1. That fails the no-board-worse gate, so it is not committed. Diff: scratchpad
+esc/keep_best_knobs.diff (bronner session). Parked for FINISH only, not the score: repair from
+both rounds and keep the better. Quality outranks speed there, and one extra repair pass is
+cheap. Revisit it when a new board's finish leaves opens.
+
 ## Rules carried over
 
 * Keep every run to minutes; no hour-plus sweeps (ROUTER.md, route-time notes).
