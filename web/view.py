@@ -423,7 +423,8 @@ def ensure_server(model_dir, port=PORT, same_page=False, restart=False):
     if info is None:
         flags = 0
         if os.name == "nt":
-            flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+            # a hidden console, not DETACHED: a detached server's console children would each pop a window
+            flags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW
         package_parent = pathlib.Path(__file__).resolve().parents[2]
         subprocess.Popen([sys.executable, "-m", "cadkit.web.view", "--serve", "--port", str(port)],
                          cwd=str(package_parent), stdin=subprocess.DEVNULL,
@@ -696,8 +697,9 @@ def spawn_job(where, job, argv):
         lock.write_text(json.dumps({"t": time.time()}))
         kw = {}
         if os.name == "nt":
-            kw["creationflags"] = (subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
-                                   | subprocess.CREATE_NO_WINDOW)
+            # NO_WINDOW without DETACHED (Windows ignores NO_WINDOW beside DETACHED): the job gets a
+            # hidden console its own children inherit, so git / kicad-cli / py under it pop no windows
+            kw["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW
         else:
             kw["start_new_session"] = True
         log = open(where / (job + ".log"), "w")
