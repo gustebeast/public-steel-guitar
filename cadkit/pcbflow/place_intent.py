@@ -165,6 +165,21 @@ def heights():
     return {}
 
 
+def part_height(ref, parts, H, notes=None):
+    """A part's height above the face: the board notes' `part_heights` {ref: mm} first, else
+    board_geom's HEIGHT by footprint, else None.
+
+    ⚠ A FOOTPRINT IS NOT A HEIGHT (brain, 2026-11-13): C113/C114 went to a 13 mm polymer on
+    the 10 mm CP_Elec_10x10.5 land, and HEIGHT has no CP_Elec entry at all -- a height zone
+    skips a part it cannot measure, so a 13 mm can would have been free to sit in the
+    station-2 band. The board that knows the part says so in its notes (which the CAD reads
+    too); the footprint table stays the default."""
+    ph = (notes or {}).get("part_heights") or {}
+    if ref in ph:
+        return float(ph[ref])
+    return H.get(parts[ref]["fpid"])
+
+
 class Placed:
     """Parts at a placement: world courtyards, pads, bodies (board frame, mm)."""
 
@@ -346,7 +361,7 @@ def check(rule, P, notes, H=None):
     elif k == "height":
         H = H if H is not None else heights()
         for ref in parts:
-            h = H.get(parts[ref]["fpid"])
+            h = part_height(ref, parts, H, notes)
             if h is None:
                 continue
             if _poly_dist(P.crtyd(ref), rule["poly"]) < 0:
