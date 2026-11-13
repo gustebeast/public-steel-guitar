@@ -1237,6 +1237,18 @@ Integrated converters (FETs inside) are left out. With the LMR33630's two FB rul
 went from 0 / 0 / 0.52 (opB: open / pairs / uncoupled) to 0 / 1 / 1.03 (opA). It fires on no
 other board: lever, ui, output_panel, optical and output_board get zero rules.
 
+**Region fill is reported, NOT rebalanced (2026-11-13).** The place report now gives a REGION
+FILL line, and report.json gives `region_fill`: courtyard area over region area, each part
+counted in the region holding its centre.
+
+Rebalancing was tested by hand first. On output_board ob12 the fills were link 0.70 and buck
+0.18, side by side. ob13 moved their shared edge 6 mm, which made link 0.52 and buck 0.22. The
+score went 30 -> 39 open. The extra opens were not in the band that moved: ULPI went 4 -> 8,
+in the compute region, which nothing touched. On a board this full (0.54 overall), small
+placement edits swing the score by 5-14, so one sample cannot rank a 6 mm edit. An automatic
+rebalance toward even fill is therefore not built: nothing yet shows that even fill routes
+better. Revisit it with several samples per variant.
+
 ## Rules carried over
 
 * Keep every run to minutes; no hour-plus sweeps (ROUTER.md, route-time notes).

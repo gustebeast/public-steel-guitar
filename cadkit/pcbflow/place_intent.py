@@ -581,6 +581,33 @@ def _pin_key(p):
 A2_REACH = 5.0       # mm: quality A2's reach from a supply pin to its nearest cap
 
 
+def region_fill(rules, parts, pl):
+    """[(region, area mm2, courtyards mm2, fill)] -- each placed part counted in the first
+    region holding its courtyard's centre. Courtyards only (no halo): the number layout and
+    the router see. ⚠ WHY (output_board ob12, 2026-11-13): a floorplan's regions are drawn by
+    hand, and one sat at 0.70 beside another at 0.18 with no report saying so."""
+    regs = [(r["name"], np.asarray(r["poly"], float)) for r in rules
+            if r.get("kind") == "region" and not r["name"].startswith("_")]
+    if not regs:
+        return []
+    P = Placed(parts, pl)
+
+    def area(c):
+        c = np.asarray(c, float)
+        return abs(float(np.dot(c[:, 0], np.roll(c[:, 1], 1)) - np.dot(c[:, 1], np.roll(c[:, 0], 1)))) / 2.0
+    used = {n: 0.0 for n, _ in regs}
+    for ref in pl:
+        if ref not in parts:
+            continue
+        c = P.crtyd(ref)
+        cen = np.asarray(c).mean(axis=0)[None, :]
+        for n, poly in regs:
+            if _inside(poly, cen)[0]:
+                used[n] += area(c)
+                break
+    return [(n, area(poly), used[n], used[n] / max(area(poly), 1e-9)) for n, poly in regs]
+
+
 def auto_switcher(parts, cells=(), gate_mm=8.0, ctrl_mm=5.0, small=5, sw_refs=6):
     """`near` rules for a switching regulator's own loops, read off the netlist's STRUCTURE.
 
