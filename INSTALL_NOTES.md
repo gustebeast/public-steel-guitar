@@ -1974,6 +1974,8 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
 - **Clearance:** the sleeve is 1.74 mm from its own guide rod (rod at 15.35 mm, 325°). Neighbouring strings' sleeves and plugs are clear.
 
 ## Direct drive: solid collar on a bayonet over the M3 heads (2026-11-12)
+> **SUPERSEDED (2026-11-12):** see "Collar on brass inserts, M3 heads on the keyhole plate" below.
+
 
 - **The collar is solid** from its plate back to the stop flange (no air gap, no pillars), Ø22.45. It has pockets for the M3 heads and the nut boss's bore through the middle. **The nut is not modified.**
 - **A 30 mm screw can't come in along X** past the post and flange, so the screws go in first and the collar goes on over them:
@@ -2009,6 +2011,8 @@ Replaces the pins. Nothing shows outside the walls, and no key has to reach past
   4. Continue as before: plugs, housings, screws, endplate, guide rods, motors, UI and deck.
 
 ## Direct drive: collar printed −X → +X on a cone (2026-11-12)
+> **SUPERSEDED (2026-11-12):** see "Collar on brass inserts, M3 heads on the keyhole plate" below.
+
 
 The plate-down print left each head pocket's roof as a bean-shaped bridge with no reliable ends.
 
@@ -2028,3 +2032,31 @@ The plate-down print left each head pocket's roof as a bean-shaped bridge with n
 
 - At 329–331 mm (strings 4, 6 and 10), OCCT's thread boolean returned a valid solid of the right volume whose flanks were stacked cylinders. It passed every check and drew as a plain rod.
 - `direct_bench._screw` now asks for helical (B-spline) flanks. If no nearby length gives them, it cuts a longer screw from outside OCCT's bad band (~312–352 mm) and saws it to length.
+
+## Direct drive: collar on brass inserts, M3 heads on the keyhole plate (2026-11-12)
+
+Replaces the bayonet collar and the cone collar. Neither printed: the bayonet's pocket roofs had nothing to bridge from, and the cone version still had overhangs.
+
+- **The screws turn round:** the two M3 × 30 (same SKU) now go in from +X.
+  - Each head sits on the keyhole plate's +X face, and the shank runs −X through the plate (now **Ø3.4 clearance, not tapped**), the printed yoke spacer and the nut flange.
+  - It threads into a brass insert in the collar (McMaster 94459A130, as in the belt clamps; measure one first), engaging 4.0 mm of thread.
+- **Load path:** the insert's +X end is flush with the collar's face, which sits on the nut flange's back. So the string's pull runs plate → screws → insert → brass flange, with no plastic in it. The inserts only hold the collar on against the spring (~70 N).
+- **Yoke spacer:** 1.5 mm shorter (22.5 mm from the nut flange's face to the plate's +X face, was 24) so the M3 × 30 reaches 4 mm into the insert. The whole drive sits 1.5 mm further +X; the springs and leadscrews keep their lengths.
+- **Collar:** solid Ø22.45 from the nut flange back to the stop flange. **Print +X → −X**, with the face that sits on the nut flange on the bed.
+  - Each insert pocket is a Ø4.0 heat-set pilot (the 3.9 pilot end drops in), 4.6 mm deep, under a 45° cone roof. Nothing overhangs.
+  - The pocket wall is 0.7 mm to the nut-boss bore and 1.2 mm to the outside.
+  - The detent teeth print on top, flat again, and the grip sleeve is back to its flat toothed end.
+  - The rod tab is the short one again, starting on the bed.
+- **Install:**
+  1. Heat-set both inserts flush.
+  2. Slide the collar onto the nut boss, then fit the yoke and keyhole plate on the nut's +X side.
+  3. Put the M3s in from +X and tighten them with the 2.5 mm key **before** the endplate goes on. There is no key access through the endplate afterwards: the heads sit behind its fingers.
+- **Endplate:** the keyhole plate still bottoms out on the rod plate at the slack end. The 3 mm heads sink into teardrop holes (Ø6.1, apex +Z) through the 3.2 mm plate.
+  - Where the lower hole (225°) stands beside the ball window, the plastic sliver between them is opened. The hole's far flank runs on at 45° to the window's edge, so the hole and the window print as one opening.
+- **Windows:** as wide as the lane (±2.6 mm, was ±3.8), with the floor level with the bottom of the keyhole's ball hole (7.4 mm under the axis, was 12.2). A ball slid along the floor drops straight into the pocket instead of meeting steel under the hole.
+- **Lanes:**
+  - Each lane is filled solid above its bend bearing: open up to 1 mm over the bearing, under a 45° roof peaked along X.
+  - Above that it is solid, up to a flat-floored pocket 1 mm under the bridge bearing.
+  - The fill stands 1.5 mm −X of the string's vertical drop, which keeps an open slot at the +X face.
+  - The ball now goes in from +X at the bend bearing's level, not down the lane from the top.
+- **JLCCNC keyhole plates** (order W2026111305203947, in review, unpaid): the two M3 holes become **Ø3.4 clearance**, with no tapping. The order must change before it is paid.

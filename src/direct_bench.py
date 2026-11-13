@@ -91,19 +91,29 @@ def y_of(i: int) -> float:
 
 
 # ── along the screw (x, before the yaw) ─────────────────────────────────────────────────────
-# THE YOKE'S M3s (user, 2026-11-12): from behind the collar, through the flange and the printed
-# spacer, tapped into the keyhole plate, the tip 0.5 under its +X face. So the screw's length sets
-# the yoke, and the yoke sets the gap from the nut to the ball -- the one lever on travel (the
-# screw tip may come up to the ball). M3 x 30 (McMaster 91292A022; user 2026-11-12: travel to
-# spare), a different SKU from the bar clamp's (two SKUs, user 2026-11-12).
+# THE YOKE'S M3s (user, 2026-11-12): HEADS ON THE KEYHOLE PLATE'S +X FACE, each shank -X
+# through the plate, the printed spacer and the nut flange into a brass INSERT in the collar (the
+# collar then needs no way in for a head, and prints with no bridge: the old heads behind it
+# needed a bayonet and pockets nothing could print). The insert's +X end is flush on the flange's
+# back face, so the string's pull runs plate -> screws -> insert -> brass flange with no plastic
+# in it; the inserts only hold the collar on against the spring. So the screw's length sets the
+# yoke, and the yoke sets the gap from the nut to the ball -- the one lever on travel (the screw
+# tip may come up to the ball). M3 x 30 (McMaster 91292A022; user 2026-11-12: travel to spare),
+# a different SKU from the bar clamp's (two SKUs, user 2026-11-12); the spacer is shortened so
+# it bites KEY_M3_ENGAGE into the insert (user, 2026-11-12: shorten the yoke slightly).
 KEY_M3_L = 30.0
-YK_H = KEY_M3_L - 6.0                               # 24: flange face -> plate's +X face (the head
-                                                    # 3, collar 3, flange 3.5 behind; tip 0.5 short)
+COL_INS = (4.7, 4.3)                                # the insert: McMaster 94459A130 brass M3,
+                                                    # OD over the knurl, installed length (as
+                                                    # belt_tensioner's: measure one first)
+COL_INS_HOLE = 4.0                                  # its heat-set pilot (the 3.9 pilot end drops
+                                                    # in; 4.8 drop-in left 0.3 to the nut's bore)
+KEY_M3_ENGAGE = COL_INS[1] - 0.3                    # 4.0 of thread in the insert
+YK_H = KEY_M3_L - D.NUT_FLANGE_T - KEY_M3_ENGAGE    # 22.5: flange face -> plate's +X face
 # THE KEYHOLE PLATE (user, 2026-11-12: a ball end on a 2.4 printed roof is ~8 mm^2 of plastic
 # under the whole string, and the yoke's M3s threaded into plastic -- neither holds for years).
 # The roof is now a LASER-CUT 304 PLATE, 4 mm, the nut plates' sheet (one JLCCNC order): the
-# keyhole is cut in it and the yoke's two M3s are TAPPED into it, so the string goes ball ->
-# steel plate -> steel screws -> collar -> nut, with no thread in plastic. The printed yoke
+# keyhole is cut in it and the yoke's two M3s pass through it (Ø3.4, heads on its +X face), so
+# the string goes ball -> steel plate -> steel screws -> brass inserts -> nut, no thread in plastic. The printed yoke
 # behind it only spaces it and shapes the ball's pocket. YK_H (flange face -> plate's +X face)
 # is unchanged; the plate is its last YK_ROOF.
 YK_ROOF = 4.0                                       # the keyhole plate's thickness
@@ -180,11 +190,10 @@ M3_L = 12.0
 KEY_D = D.STRING_NUT_D + 0.8                        # 4.8: the ball's way in
 KEY_DROP = 5.0                                      # its centre under the axis: the slit's length
 SLIT_W = 2.2                                        # string 10's 1.78 and room
-WIN_HY = KEY_D / 2 + 1.4                            # 3.8: the plate window's half-width in Y
-# ...and its reach under / over the axis: down a whole ball's width past the ball's hole, room to
-# bring the ball in to the keyhole's bottom when restringing (user, 2026-11-12); that still
-# leaves 1.9 over the next row's axle bore
-WIN_Z = (-(KEY_DROP + KEY_D / 2 + KEY_D), 3.2)
+# ...and its reach under / over the axis: its FLOOR level with the bottom of the keyhole's ball
+# hole (user, 2026-11-12: a ball slid in along the floor drops straight into the pocket; a floor
+# a ball's width lower ran it into the plate's steel under the hole)
+WIN_Z = (-(KEY_DROP + KEY_D / 2), 3.2)
 # THE SPRING (2026-11-11): McMaster 9654K335 -- 0.75 in OD, 0.091 in tempered spring steel, 6.5 in,
 # loop ends -- its LOOPS CUT OFF and the body cut to SPRING_COILS whole coils (one spring a piece,
 # ~$2.71). Close-wound, 7.03 lbf (31.3 N) initial tension, ~1.72 N/mm with 35 working coils
@@ -275,41 +284,12 @@ ANCHOR_SPACER_L = ANCHOR_CLR + ANCHOR_T + 0.3       # the fold's gap, thickness,
 ANCHOR_SCREW_DX = ANCHOR_FL + 2.0                   # the shank's axis off the web's +X face
 ANCHOR_RIB = (3 * D.BEAD, 10.0, 0.2)                # the reference rib: across x, out from the wall
                                                     # (past the bend's radius), its gap to the web
-COLLAR_T = 3.0                                      # the collar's plate
-# the collar's turn onto the M3 heads: only as far as takes the head (5.5) wholly over the plate
-# past its way in (head + 0.6) and 0.3 more (user, 2026-11-12: just enough to get the screw in):
-# each channel is then ~12 of arc, about two head diameters
-# THE COLLAR'S OD (user, 2026-11-12: the channels cut out through the side left it flimsy, and
-# their roof could not print): every head pocket CLOSED, two beads of wall round its outside, so
-# the collar is a whole ring and each pocket's roof is a bridge held on its ends and outer wall.
-# Room: the neighbours' tab tips come to r 12.7 (at ~108 deg, past the pockets), the top row's
-# pickup (z -20) to r 12.2. So a COLLAR_OD ring (0.7 off those tabs), and over each pocket a LOBE
-# out to two beads past it (r 12.65, rounding off at its ends); on the top row everything is cut
-# FLAT at COLLAR_TOP, still a bead over the pocket.
-COLLAR_HW = M3_HEAD[0] / 2 + 0.3                    # a head pocket's half-width
-COLLAR_LOBE = 2 * (COLLAR_HW + 2 * D.BEAD)          # the lobe's width round the pocket's arc
-COLLAR_OD = 24.0
-# PRINTED -X -> +X, the post's end on the bed (user, 2026-11-12: the pockets' bean-shaped roofs
-# had no reliable ends to bridge). So nothing of the collar may hang flat over the bed side:
-#   - the flange's underside is a 45 deg CONE from just outside the spring's wire (the end coil
-#     sits flat under the flat middle), and the detent's teeth stand on that cone; the grip
-#     sleeve's end is the same cone, the teeth's complement in it (user: make the sleeve match);
-#   - each head pocket's floor faces up now, and stays COLLAR_CONE_WALL (two beads square to
-#     the cone) over it; the pocket's roof is the plate, whose underside overhangs only the
-#     ~1-1.4 between the pocket's side and the slot the shank turns in;
-#   - the rod's TAB is a FIN from the bed (the post's end) up to the plate, outside the sleeve:
-#     no underside at all, and the rod's slot runs its whole length.
-COLLAR_CONE_R0 = R_COIL + SPRING_WIRE / 2           # 9.525: the cone's foot, past the wire
-COLLAR_CONE_WALL = D.BEAD * math.sqrt(2)            # a bead square to the cone, along x (two
-                                                    # would reach the heads: the pocket floor
-                                                    # stays 0.15 under them as it is)
-COLLAR_HEAD_CLR = 0.3                               # a pocket's floor under the head's far face
-COLLAR_FIN_R0 = GUIDE_R - GUIDE_FLOAT                 # the fin from the slot's inner end: open
-                                                    # toward the sleeve (its sides are the lock)
-COLLAR_TOP = -20.0 - 0.3                            # under the pickup
-BAYONET_TURN = math.degrees(2 * math.asin((M3_HEAD[0] / 2 + (M3_HEAD[0] + 0.6) / 2 + 0.3)
-                                          / NUT_PCD))   # 44.8
-
+# THE COLLAR (user, 2026-11-12): SOLID from the nut flange back to its stop flange, as round as
+# the flange (STOP_D), PRINTED +X -> -X, its +X face (on the flange) on the bed: two insert pockets
+# up from that face, each under a 45 deg CONE ROOF, the stop flange's face and its detent teeth on
+# top. Nothing overhangs. COLLAR_L is the length the plate and the old heads' room took, kept so
+# the springs keep their lengths.
+COLLAR_L = 3.0 + M3_HEAD[1] + 0.5                   # 6.5: flange's back face -> the stop flange
 
 def x_yt(t: float) -> float:
     return X_YT0 - t * T_TRAVEL
@@ -329,13 +309,12 @@ SCREW_TIP = x_ft(0.0) - D.NUT_H + NUT_ENGAGE_SLACK
 
 
 def x_collar(t: float):
-    """The collar along x: plate (from, to), the heads' far face, the stop flange (from, to),
+    """The collar along x: its +X face (on the nut flange's back), the stop flange (from, to),
     the seat (from, to) -- the seat runs -X from the flange, the spring's end on the flange."""
     pb = x_ft(t) - D.NUT_FLANGE_T                   # the nut flange's back face
-    heads = pb - COLLAR_T - M3_HEAD[1]
-    f1 = heads - 0.5
+    f1 = pb - COLLAR_L
     f0 = f1 - STOP_T
-    return (pb - COLLAR_T, pb), heads, (f0, f1), (f0 - SEAT_L, f0)
+    return pb, (f0, f1), (f0 - SEAT_L, f0)
 
 
 def spring_len_open(i: int) -> float:
@@ -350,7 +329,7 @@ def _plug_x0(i=None) -> float:
     f0 = ANCHOR[1] + PLUG_GAP
     if i is None:
         return f0
-    free = x_collar(T_OPEN)[2][0] - SPRING_WIRE / 2 - (f0 + STOP_T + SPRING_WIRE / 2)
+    free = x_collar(T_OPEN)[1][0] - SPRING_WIRE / 2 - (f0 + STOP_T + SPRING_WIRE / 2)
     d = free - spring_len_open(i)
     assert d >= 0, f"string {i + 1}: its spring wants {-d:.1f} more than the plain plug leaves"
     return f0 + d
@@ -365,7 +344,7 @@ def x_plug(i=None):
 
 def spring_span(t: float, i=None):
     """The spring, x from..to: its end coils' centres a wire's radius off each flange face."""
-    return x_plug(i)[1][1] + SPRING_WIRE / 2, x_collar(t)[2][0] - SPRING_WIRE / 2
+    return x_plug(i)[1][1] + SPRING_WIRE / 2, x_collar(t)[1][0] - SPRING_WIRE / 2
 
 
 def spring_force(t: float, i: int) -> float:
@@ -600,8 +579,7 @@ def _yoke(i: int, t: float) -> cq.Workplane:
     out = out.cut(cyl_x(GUIDE_D + 2.0, YK_H + 2, ft - 1, y=ry, z=rz))                 # rod: clear
     for a in HOLE_ANG["m3"]:                                                          # the M3s bite
         dy, dz = at_ang(a)
-        out = out.cut(cyl_x(3.4, YK_H + 2, ft - 1, y=y + dy, z=z + dz))           # clear: they
-                                                                                  # tap the plate
+        out = out.cut(cyl_x(3.4, YK_H + 2, ft - 1, y=y + dy, z=z + dz))           # clear
     # behind the plate, a pocket the ball slides up in (its 3 along the axis, Ø4 across)
     rx0 = yt - YK_ROOF
     pk = D.STRING_NUT_L + 0.6
@@ -617,14 +595,14 @@ def _yoke(i: int, t: float) -> cq.Workplane:
 def keyhole_plate() -> cq.Workplane:
     """The keyhole plate in its own frame (+X face at x = 0, axis on y = z = 0), as cut from the
     4 mm sheet: a Ø YK_D disc, the ball's hole KEY_DROP under the axis, the slit up to a round
-    end on the axis, and the yoke's two M3 tapped holes (drawn as the Ø2.5 tap drill)."""
+    end on the axis, and the yoke's two M3 clearance holes (Ø3.4: the heads sit on its +X face)."""
     w = cyl_x(YK_D, YK_ROOF, -YK_ROOF, y=0, z=0)
     w = w.cut(cyl_x(KEY_D, YK_ROOF + 2, -YK_ROOF - 1, y=0, z=-KEY_DROP))
     w = w.cut(box_at(YK_ROOF + 2, SLIT_W, KEY_DROP, x=-YK_ROOF / 2, y=0, z=-KEY_DROP / 2))
     w = w.cut(cyl_x(SLIT_W, YK_ROOF + 2, -YK_ROOF - 1, y=0, z=0))
     for a in HOLE_ANG["m3"]:
         dy, dz = at_ang(a)
-        w = w.cut(cyl_x(2.5, YK_ROOF + 2, -YK_ROOF - 1, y=dy, z=dz))
+        w = w.cut(cyl_x(3.4, YK_ROOF + 2, -YK_ROOF - 1, y=dy, z=dz))
     return w
 
 
@@ -638,27 +616,6 @@ def _radial_box(i: int, x0: float, x1: float, r0: float, r1: float, w: float) ->
     return _radial_box_at(i, x0, x1, r0, r1, w, guide_ang(i))
 
 
-def _arc_x(i: int, x0: float, x1: float, r: float, w: float, a0: float, a1: float,
-           open_out: bool = False) -> cq.Workplane:
-    """A slot x0..x1 along the arc of radius r round string i's axis, from angle a0 to a1, w wide
-    with round ends; open_out runs it on out past the outside (a pocket open to the side)."""
-    ro = (STOP_D / 2 + 2.0) if open_out else r + w / 2
-    ring = cyl_x(2 * ro, x1 - x0, x0, y=y_of(i), z=za(i)).cut(
-        cyl_x(2 * (r - w / 2), x1 - x0 + 2, x0 - 1, y=y_of(i), z=za(i)))
-    R = 2 * ro + 5                                   # the wedge a0..a1, as a fan of triangles
-    n = max(2, int(abs(a1 - a0) / 10) + 1)
-    pts = [(0.0, 0.0)] + [at_ang(a0 + (a1 - a0) * k / n, R) for k in range(n + 1)]
-    wedge = (cq.Workplane("YZ", origin=(x0 - 1, y_of(i), za(i))).polyline(pts).close()
-             .extrude(x1 - x0 + 2))
-    out = ring.intersect(wedge)
-    for a in (a0, a1):                                # the round ends
-        dy, dz = at_ang(a, r)
-        out = out.union(cyl_x(w, x1 - x0, x0, y=y_of(i) + dy, z=za(i) + dz))
-        if open_out:
-            out = out.union(_radial_box_at(i, x0, x1, r, ro, w, a))
-    return out
-
-
 def _radial_box_at(i: int, x0: float, x1: float, r0: float, r1: float, w: float,
                    a: float) -> cq.Workplane:
     """A box x0..x1, from radius r0 to r1 off string i's axis toward angle a, w wide."""
@@ -666,103 +623,62 @@ def _radial_box_at(i: int, x0: float, x1: float, r0: float, r1: float, w: float,
     return b.rotate((0, 0, 0), (1, 0, 0), a - 90).translate((0, y_of(i), za(i)))
 
 
-def _above_cone(zf: float, dz: float = 0.0, rmax: float = 30.0, h: float = 60.0) -> cq.Workplane:
-    """In the spring's frame: everything over the collar's underside cone shifted dz along z --
-    flat at zf + dz inside COLLAR_CONE_R0, rising 45 deg (+z) outside it -- to zf + h."""
-    r0 = COLLAR_CONE_R0
-    pts = [(0.0, zf + dz), (r0, zf + dz), (rmax, zf + dz + rmax - r0), (rmax, zf + h), (0.0, zf + h)]
-    return cq.Workplane("XZ").polyline(pts).close().revolve(360, (0, 0, 0), (0, 1, 0))
-
-
-def _teeth_cone(zf: float, tighten: int) -> cq.Workplane:
-    """The detent's teeth on the collar's CONE (spring frame), hanging DET_H toward -z off it, on
-    the ring DET_R0..SLEEVE_OD/2: _teeth's sawtooth, each tooth lofted from the ring's inner edge
-    to its outer one along the 45 deg cone. Rises gently / drops steeply in the tightening sense."""
-    r0, r1 = DET_R0, SLEEVE_OD / 2
-    rm = (r0 + r1) / 2
-    pitch = 2 * math.pi * rm / DET_N
-    steep = DET_H / math.tan(math.radians(DET_BACK))
-    crest = (pitch - steep) if tighten > 0 else steep
-    da, dc = 2 * math.pi / DET_N, 2 * math.pi / DET_N * crest / pitch
-    out = None
-    for k in range(DET_N):
-        a = k * da
-        wires = []
-        for r in (r0 - 0.3, r1 + 0.3):
-            zb = zf + r - COLLAR_CONE_R0                # the cone here
-            pts = [(a, zb + 0.3), (a, zb), (a + dc, zb - DET_H), (a + da, zb), (a + da, zb + 0.3)]
-            wires.append(cq.Wire.makePolygon(
-                [cq.Vector(r * math.cos(t_), r * math.sin(t_), z_) for t_, z_ in pts], close=True))
-        tooth = cq.Workplane("XY").add(cq.Solid.makeLoft(wires, ruled=True))
-        out = tooth if out is None else out.union(tooth)
-    return out.intersect(_ring(r0, r1, zf - DET_H - 1.0, zf + (r1 - COLLAR_CONE_R0) + 1.0))
-
-
 def _collar(i: int, t: float) -> cq.Workplane:
     y, z = y_of(i), za(i)
-    (p0, p1), heads, (f0, f1), (s0, s1) = x_collar(t)
-    out = cyl_x(COLLAR_OD, p1 - f0, f0, y=y, z=z)                                  # plate+flange
-    for a in HOLE_ANG["m3"]:                                                        # + the lobes
-        out = out.union(_arc_x(i, f0, p1, NUT_PCD / 2, COLLAR_LOBE, a + BAYONET_TURN, a))
-    # SOLID from the plate back to the flange (user, 2026-11-12: no air gap): only a POCKET for
-    # each M3 head and the nut boss's bore
-    hw = COLLAR_HW
+    pb, (f0, f1), (s0, s1) = x_collar(t)
+    out = cyl_x(STOP_D, pb - f0, f0, y=y, z=z)                                      # solid
     x0, x1 = spring_span(t, i)                                                      # the post:
-    zf = x1 - x0 + SPRING_WIRE / 2                   # the flange's face, spring frame
-    out = out.intersect(_in_spring(_above_cone(zf), i, x0))                         # the cone
     out = out.union(_post(i, x0, x1 - x0 - SEAT_GRIP, D.NUT_BOSS_D + 0.4))          # threaded
     out = out.cut(cyl_x(D.NUT_BOSS_D + 0.4, 60, s0 - 1, y=y, z=z))                  # boss, screw
-    bed = x1 - SEAT_GRIP + GRIP_PITCH / 2            # the post's end: THE BED (printed -X -> +X)
-    out = out.union(_tube_x(13.0, SCREW_CLR, bed, bed + 3.0, y, z))                 # post's floor
-    out = out.union(_in_spring(_teeth_cone(zf, 1), i, x0))                          # the detent
-    # A BAYONET ON THE M3 HEADS (user, 2026-11-12: a 30 mm screw cannot come in along X past the
-    # post and the flange; put the screws in the nut first, then the collar onto them). The M3s go
-    # through the nut flange and yoke into the keyhole plate first, heads left COLLAR_T proud.
-    # The collar slides along the leadscrew onto the nut, the heads through two head-sized holes
-    # in its plate BAYONET_TURN past their places into the pockets behind, then TURNS back: the
-    # plate's arc slots carry it under the heads. The 2.5 key reaches each head from -X down a
-    # Ø3.4 hole through the post, its floor and the flange -- tighten both before the spring goes
-    # on (its wire crosses that line). Nothing on the nut is cut.
+    out = out.union(_tube_x(13.0, SCREW_CLR, s0, s0 + 3.0, y, z))                   # post's floor
+    # the detent's teeth (sunk 0.02 into the flange and 0.02 inside its rim: fused flush with
+    # both, the solid came back invalid)
+    zf = x1 - x0 + SPRING_WIRE / 2
+    teeth = (_teeth(zf, -1, 1).translate((0, 0, 0.02))
+             .intersect(_ring(DET_R0, SLEEVE_OD / 2 - 0.02, zf - DET_H - 1, zf + 1)))
+    out = out.union(_in_spring(teeth, i, x0))
+    # THE INSERTS' POCKETS: up from the +X face (the bed), the insert's length and 0.3, under a
+    # 45 deg cone roof -- a hole printed along the build, so round, and no ceiling
+    d, h = COL_INS_HOLE, COL_INS[1] + 0.3
     for a in HOLE_ANG["m3"]:
         dy, dz = at_ang(a)
-        out = out.cut(cyl_x(3.4, p1 - s0 + 2, s0 - 1, y=y + dy, z=z + dz))
-        a0 = a + BAYONET_TURN                       # (+: the way in clear of the rod tab at 325)
-        out = out.cut(_arc_x(i, p0 - 0.01, p1 + 0.01, NUT_PCD / 2, 3.4, a0, a))      # the slot
-        dy, dz = at_ang(a0)                                                        # the way in
-        out = out.cut(cyl_x(2 * hw, p1 - p0 + 0.02, p0 - 0.01, y=y + dy, z=z + dz))
-        # the head's POCKET, closed all round, its floor COLLAR_HEAD_CLR under the head and never
-        # nearer the cone than COLLAR_CONE_WALL
-        out = out.cut(_arc_x(i, heads - COLLAR_HEAD_CLR, p0 + 0.01, NUT_PCD / 2, 2 * hw, a0, a)
-                      .intersect(_in_spring(_above_cone(zf, COLLAR_CONE_WALL), i, x0)))
-    if level(i) == 0:                                # the top row: flat under the pickup
-        out = out.cut(box_at(p1 - f0 + 2, COLLAR_OD + 2, 10, x=(f0 + p1) / 2, y=y,
-                             z=COLLAR_TOP + 5))
-    # the TAB: from the plate out past the rod, TAB_L along x from the plate's +X face back,
-    # and its RADIAL SLOT. Its outer end is ROUND, concentric with the slot's (user, 2026-11-12:
-    # the square corners came close to the next string's spring): GUIDE_WALL all round the slot
-    # -- and, printed -X -> +X, a FIN from the bed (the post's end) outside the sleeve
+        out = out.cut(cyl_x(d, h + 1, pb - h, y=y + dy, z=z + dz))
+        out = out.cut(cq.Workplane("XY").add(cq.Solid.makeCone(
+            d / 2, 0.0, d / 2, cq.Vector(pb - h + 0.01, y + dy, z + dz), cq.Vector(-1, 0, 0))))
+    # the TAB: from the +X face out past the rod, TAB_L along x, and its RADIAL SLOT. Its outer
+    # end is ROUND, concentric with the slot's (user, 2026-11-12: the square corners came close to
+    # the next string's spring): GUIDE_WALL all round the slot
     w = GUIDE_SLOT + 2 * GUIDE_WALL
     lo, hi = GUIDE_R - GUIDE_FLOAT, GUIDE_R + GUIDE_FLOAT
-    out = out.union(_radial_box(i, p1 - TAB_L, p1, D.NUT_FLANGE_L / 2 - 2.0, hi, w)
-                    .intersect(_in_spring(_above_cone(zf), i, x0)))             # over the cone
-    out = out.union(_radial_box(i, bed, p1, COLLAR_FIN_R0, hi, w))
+    out = out.union(_radial_box(i, pb - TAB_L, pb, D.NUT_FLANGE_L / 2 - 2.0, hi, w))
     dy, dz = at_ang(guide_ang(i), hi)
-    out = out.union(cyl_x(w, p1 - bed, bed, y=y + dy, z=z + dz))
-    out = out.cut(_radial_box(i, bed - 1, p1 + 1, lo, hi, GUIDE_SLOT))
-    out = out.cut(_radial_box(i, bed - 1, p1 + 1, SLEEVE_OD / 2 - 0.2, lo, GUIDE_SLOT))  # open in
+    out = out.union(cyl_x(w, TAB_L, pb - TAB_L, y=y + dy, z=z + dz))
+    out = out.cut(_radial_box(i, pb - TAB_L - 1, pb + 1, lo, hi, GUIDE_SLOT))
     for r in (lo, hi):                                                              # round ends
         dy, dz = at_ang(guide_ang(i), r)
-        out = out.cut(cyl_x(GUIDE_SLOT, p1 - bed + 2, bed - 1, y=y + dy, z=z + dz))
+        out = out.cut(cyl_x(GUIDE_SLOT, TAB_L + 2, pb - TAB_L - 1, y=y + dy, z=z + dz))
+    return out
+
+
+def _collar_inserts(i: int, t: float) -> cq.Workplane:
+    """The two brass inserts, their +X ends flush with the collar's face (on the nut flange)."""
+    y, z = y_of(i), za(i)
+    pb = x_collar(t)[0]
+    out = None
+    for a in HOLE_ANG["m3"]:
+        dy, dz = at_ang(a)
+        b = _tube_x(COL_INS[0], 2.5, pb - COL_INS[1], pb, y + dy, z + dz)
+        out = b if out is None else out.union(b)
     return out
 
 
 def _m3s(i: int, t: float) -> cq.Workplane:
     y, z = y_of(i), za(i)
-    (p0, _), heads, _, _ = x_collar(t)
     out = None
     for a in HOLE_ANG["m3"]:
         dy, dz = at_ang(a)
-        sc = _cap("m3", KEY_M3_L, (heads, y + dy, z + dz), (1, 0, 0))
+        # heads on the keyhole plate's +X face, into the collar's inserts (KEY_M3_ENGAGE)
+        sc = _cap("m3", KEY_M3_L, (x_yt(t) + M3_HEAD[1], y + dy, z + dz), (-1, 0, 0))
         out = sc if out is None else out.union(sc)
     return out
 
@@ -888,20 +804,13 @@ def _teeth(zf: float, s: int, tighten: int) -> cq.Workplane:
     return out.intersect(_ring(r0, r1, zf, zf + s * DET_H))
 
 
-def _sleeve_local(zf: float, s: int, z_far: float, z0: float, tighten: int,
-                  cone: bool = False) -> cq.Workplane:
+def _sleeve_local(zf: float, s: int, z_far: float, z0: float, tighten: int) -> cq.Workplane:
     """The grip sleeve in the spring's frame: from the flange face zf (its end on the teeth)
     toward s to z_far, bore SLEEVE_CLR off the post, the grip coils' groove (helix from z0, as
     the post's), the teeth's complement on its end, and the key's cross-hole."""
     ri, ro = R_COIL + SLEEVE_CLR, SLEEVE_OD / 2
-    if cone:                                         # the collar's end (s -1): its CONE, matched
-        top = zf + (ro - COLLAR_CONE_R0) + 1.0
-        body = _ring(ri, ro, z_far, top).cut(_above_cone(zf, -DET_H))
-        band = (_ring(DET_R0, ro, z_far, top).intersect(_above_cone(zf, -DET_H))
-                .cut(_above_cone(zf)).cut(_teeth_cone(zf, tighten)))
-    else:
-        body = _ring(ri, ro, zf + s * DET_H, z_far)
-        band = _ring(DET_R0, ro, zf, zf + s * DET_H).cut(_teeth(zf, s, tighten))
+    body = _ring(ri, ro, zf + s * DET_H, z_far)
+    band = _ring(DET_R0, ro, zf, zf + s * DET_H).cut(_teeth(zf, s, tighten))
     body = body.union(band)
     body = body.cut(_helix(z0, GRIP_PITCH, SEAT_L, GROOVE_D))
     zk = (zf + z_far) / 2                                    # the key's cross-hole, through
@@ -923,8 +832,7 @@ def _sleeve_collar(i: int, t: float) -> cq.Workplane:
     x0, x1 = spring_span(t, i)
     L = x1 - x0
     zf = L + SPRING_WIRE / 2
-    return _in_spring(_sleeve_local(zf, -1, L - SEAT_L + GRIP_PITCH / 2, L - SEAT_GRIP, 1,
-                                    cone=True), i, x0)
+    return _in_spring(_sleeve_local(zf, -1, L - SEAT_L + GRIP_PITCH / 2, L - SEAT_GRIP, 1), i, x0)
 
 
 def _anchor_plug(i: int) -> cq.Workplane:
@@ -1247,6 +1155,7 @@ def _cpl_insert(i: int) -> cq.Workplane:
 _STRING_PARTS = (
     ("db_yoke", _yoke, True), ("db_keyplate", _keyplate_at, True), ("db_ball", _ball, True),
     ("db_nut", _nut, True), ("db_collar", _collar, True), ("db_m3", _m3s, True),
+    ("db_col_ins", _collar_inserts, True),
     ("db_spring", _spring, True), ("db_sleeve_p", _sleeve_plug, False),
     ("db_sleeve_c", _sleeve_collar, True), ("db_plug", _anchor_plug, False),
     ("db_rod", _rod, False), ("db_screw", _screw_at, False), ("db_coupler", _coupler, False),
@@ -1524,6 +1433,9 @@ PLATE_LOW_X = -20.0                                  # ... where it reaches (x -
 PICK_Y = (-52.9, 51.1)                               # the pickup's y, and 1 each side
 LANE_HW = D.BRG688_W / 2 + COMB_CLR                  # 2.6: a string's lane, its bearings in it
 LANE_WALL = 2 * D.BEAD                               # a lane's floor over the next row's axle bore
+EP_BRG_CLR = 1.0                                     # a lane's roof / floor off a bearing's rim
+EP_STR_CLR = 1.5                                     # the fill stands this far -X of the string's
+                                                     # vertical drop (user: inset for clearance)
 AXLE_STOP_T, PUSH_D = 3.0, 3.2                       # the +Y stop; the push-out hole (a 2.5 key)
 
 
@@ -1575,11 +1487,48 @@ def _endplate() -> cq.Workplane:
         under = [zc for _, zc in axle_zs() if zc < za_i]
         if under:
             lo = max(lo, max(under) + (D.BRIDGE_AXLE_D + 0.2) / 2 * math.sqrt(2) + LANE_WALL)
-        w = w.cut(box_at(xe + 1 - ROD_PLATE[1], 2 * LANE_HW, EP_TOP + 1 - lo,
-                         x=(ROD_PLATE[1] + xe + 1) / 2, y=y_of(i), z=(lo + EP_TOP + 1) / 2))
+        # THE LANE IS FILLED OVER ITS BEND BEARING (user, 2026-11-12: no string goes in there):
+        # open from the window's floor up to EP_BRG_CLR over the bend bearing, under a 45 deg
+        # roof peaked along x (printed -Z -> +Z); solid from there up to a pocket with a flat floor
+        # EP_BRG_CLR under the bridge bearing, open through the top; and a SLOT at the +X face the
+        # string drops through, EP_STR_CLR off it, the lane's whole height
+        y_i, x0l, x1l = y_of(i), ROD_PLATE[1], xe + 1
+        zr = z_level(level(i)) + R + D.BRG688_OD / 2 + EP_BRG_CLR      # the roof's eaves
+        w = w.cut(box_at(x1l - x0l, 2 * LANE_HW, zr - lo, x=(x0l + x1l) / 2, y=y_i,
+                         z=(lo + zr) / 2))
+        w = w.cut(cq.Workplane("YZ", origin=(x0l, 0, 0))
+                  .polyline([(y_i - LANE_HW, zr - 0.01), (y_i + LANE_HW, zr - 0.01),
+                             (y_i, zr + LANE_HW)]).close().extrude(x1l - x0l))
+        zb = BR_C[1] - D.BRG688_OD / 2 - EP_BRG_CLR                    # the bridge's pocket
+        w = w.cut(box_at(x1l - x0l, 2 * LANE_HW, EP_TOP + 1 - zb, x=(x0l + x1l) / 2, y=y_i,
+                         z=(zb + EP_TOP + 1) / 2))
+        xs = X_DROP - EP_STR_CLR                                       # the string's slot
+        w = w.cut(box_at(x1l - xs, 2 * LANE_HW, EP_TOP + 1 - lo, x=(xs + x1l) / 2, y=y_i,
+                         z=(lo + EP_TOP + 1) / 2))
         lo, hi = WIN_Z
-        w = w.cut(box_at(ROD_PLATE[1] - xj + 2, 2 * WIN_HY, hi - lo, x=(xj + ROD_PLATE[1]) / 2,
+        # the window as wide as the lane (user, 2026-11-12): the ball comes down the lane, so
+        # anything wider only took plate away (and met the M3 heads' holes)
+        w = w.cut(box_at(ROD_PLATE[1] - xj + 2, 2 * LANE_HW, hi - lo, x=(xj + ROD_PLATE[1]) / 2,
                          y=y_of(i), z=za_i + (lo + hi) / 2))
+        # THE M3 HEADS' HOLES (user, 2026-11-12, trial: heads on the keyhole plate's +X face): the
+        # plate still bottoms out on the rod plate, the heads (3 tall) sunk in it -- teardrops
+        # (printed -Z -> +Z), 0.3 round the head, right through the 3.2 plate
+        for a in HOLE_ANG["m3"]:
+            dy, dz = at_ang(a)
+            w = w.cut(teardrop_hole(M3_HEAD[0] + 0.6, ROD_PLATE[1] - xj + 2,
+                                    axis_point=(xj - 1, y_of(i) + dy, za_i + dz), axis_dir=(1, 0, 0)))
+            # where a hole stands beside the window, the sliver between them is OPENED (user,
+            # 2026-11-12: too little plastic there to print): the hole's far flank runs on at
+            # 45 deg up to the window's edge, its near half joins the window
+            yw = y_of(i) + math.copysign(LANE_HW, dy)
+            if abs(dy) - (M3_HEAD[0] + 0.6) / 2 < LANE_HW + 2 * D.BEAD and za_i + dz < za_i + WIN_Z[1]:
+                rh, yc, zc = (M3_HEAD[0] + 0.6) / 2, y_of(i) + dy, za_i + dz
+                sg = 1 if yw > yc else -1                    # toward the window
+                p1 = (yc - sg * rh / math.sqrt(2), zc + rh / math.sqrt(2))   # far flank's tangent
+                p2 = (yw, p1[1] + abs(yw - p1[0]))                           # ...at 45 deg on
+                pts = [p1, p2, (yw, zc - rh), (yc, zc - rh)]
+                w = w.cut(cq.Workplane("YZ", origin=(xj - 1, 0, 0)).polyline(pts).close()
+                          .extrude(ROD_PLATE[1] - xj + 2))
     rb = GUIDE_SEAT / 2 + GUIDE_WALL                             # the rods' bosses: a teardrop
     for i in range(N):                                           # peaked -Z, so where one stands
         ry, rz = rod_yz(i)                                       # in a lane it prints from the plate
@@ -1645,7 +1594,7 @@ MATERIAL = {
     "nut": "brass", "ball": "brass", "screw": "steel", "rod": "steel", "string": "polished",
     "brg": "polished", "bend_brg": "polished", "bridge_bearings": "polished",
     "bend_axle_ra": "steel", "bend_axle_rb": "steel", "bend_axle_rc": "steel",
-    "spring": "stainless", "plug": "petg-gf", "sleeve_p": "petg-gf", "sleeve_c": "petg-gf", "m3": "steel", "coupler": "petg-gf",
+    "spring": "stainless", "plug": "petg-gf", "sleeve_p": "petg-gf", "sleeve_c": "petg-gf", "m3": "steel", "col_ins": "brass", "coupler": "petg-gf",
     "cpl_m3": "steel", "cpl_insert": "brass", "housing": "petg-gf", "hb": "steel", "insert": "brass",
     "collar_a": "petg-gf", "collar_b": "petg-gf", "ca_m3": "steel",
 }
@@ -1677,7 +1626,7 @@ COLORS = {
     "bend_axle_rc": "leadscrew",
     "yoke": (0.39, 0.58, 0.93), "collar": (0.85, 0.45, 0.15),
     "spring": "leg_latch_spring", "plug": (0.85, 0.45, 0.15),
-    "sleeve_p": (0.95, 0.75, 0.20), "sleeve_c": (0.95, 0.75, 0.20), "m3": "set_screw",
+    "sleeve_p": (0.95, 0.75, 0.20), "sleeve_c": (0.95, 0.75, 0.20), "m3": "set_screw", "col_ins": "nut",
     "coupler": (0.85, 0.45, 0.15), "cpl_m3": "set_screw",
     "housing": (0.30, 0.36, 0.42), "hb": "set_screw", "insert": "nut",
     "collar_a": (0.85, 0.45, 0.15), "collar_b": (0.85, 0.45, 0.15), "ca_m3": "set_screw", "block": (0.30, 0.36, 0.42), "mplate": (0.30, 0.33, 0.38),
@@ -1708,6 +1657,7 @@ def _base(nm: str):
 _SAME = {frozenset(p) for p in (
     ("db_screw", "db_nut"), ("db_screw", "db_brg"), ("db_screw", "db_coupler"),
     ("db_nut", "db_yoke"), ("db_nut", "db_collar"),
+    ("db_m3", "db_col_ins"), ("db_col_ins", "db_collar"),       # threaded; heat-set (melted in)
     ("db_m3", "db_collar"), ("db_m3", "db_nut"), ("db_m3", "db_yoke"), ("db_m3", "db_keyplate"),
     ("db_spring", "db_plug"),
     ("db_sleeve_p", "db_plug"), ("db_sleeve_p", "db_spring"),
