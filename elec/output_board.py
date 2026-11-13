@@ -65,7 +65,7 @@ os.chdir(OUT_DIR)
 
 import json  # noqa: E402
 
-from skidl import ERC, Net, Part, Pin, generate_netlist, subcircuit  # noqa: E402
+from skidl import ERC, Net, Part, Pin, generate_netlist  # noqa: E402
 
 import harness                                      # noqa: E402
 import netcheck                                     # noqa: E402

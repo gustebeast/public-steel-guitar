@@ -484,8 +484,10 @@ def brain():
 
     # ── J1 / J2: THE CM5 ────────────────────────────────────────────────────────────────
     cm5 = [_part(tag, "DF40C-100DS-0.4V", "DF40C-100DS-0.4V(51)",
-                 "CM5 mezzanine, carrier side, pins %d-%d (Hirose; 1.5 mm mated with the "
-                 "CM5's DF40C-100DP)" % (1 + 100 * k, 100 + 100 * k), DF40_FP,
+                 "CM5 mezzanine, carrier side, pins %d-%d -- the CM5 datasheet names "
+                 "Amphenol 10164227-1001A1RLF (1.5 mm stack, NOTHING under the module); "
+                 "Hirose DF40C-100DS-0.4V is the same land" % (1 + 100 * k, 100 + 100 * k),
+                 DF40_FP,
                  [Pin(num=n, func=P) for n in range(1, 101)])
            for k, tag in enumerate(("J1", "J2"))]
 
@@ -736,7 +738,8 @@ BOARD_NOTES = {
                           "J30", "J15", "J16", "J10", "J12", "J11", "J3", "J4"]},
     "placements": {},
     "open_items": [
-        "DF40 pad n = CM5 pin n (J1) / n+100 (J2): check against the CM5 IO board's KiCad files",
+        "DF40 pad n = CM5 pin n (J1) / n+100 (J2), pad 1 at the module's pin-1 end, J1-J2 "
+        "34.4 apart (scaled off CM5 DS fig. 4): check all three against the CM5 design files",
         "CM5 5 V: U5 is 3 A (LMR33630); CM5 asks 5 A with USB loads -- measure; LMR33640 fits",
         "LM5122 OPT tied to AGND for a single-phase master -- confirm in SNVS954H",
         "L4 (10 uH / 15 A) and C113/C114 (470 uF / 35 V polymer) lands are placeholders",
