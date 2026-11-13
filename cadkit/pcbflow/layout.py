@@ -4056,11 +4056,33 @@ def _spill_vias(board, pad, net, n, holes, foreign, via_d, via_drill, clr, hole_
     return len(placed)
 
 
+def _exposed_pad(pad, fp):
+    """An exposed (thermal) pad: the footprint is an EP part and this is its unnumbered or
+    largest SMD land -- the same test quality A8 / A12 make."""
+    if not re.search(r"\dEP|_EP\d|-EP", fp.GetFPIDAsString().split(":")[-1]):
+        return False
+    if not pad.GetNumber():
+        return True
+    smd = [q.GetSize().x * q.GetSize().y for q in fp.Pads()
+           if q.GetAttribute() == pcbnew.PAD_ATTRIB_SMD]
+    return bool(smd) and pad.GetAttribute() == pcbnew.PAD_ATTRIB_SMD and \
+        pad.GetSize().x * pad.GetSize().y >= max(smd) - 1
+
+
 def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
                        clr=0.2, max_reach=3.0, allow=(), keepouts=(),
                        escape_pins=(), escape_runs=None, declared=(), declared_vias=(),
-                       net_widths=None):
+                       net_widths=None, scope="all"):
     """Give every pad on a plane net its own via down to the plane layers.
+
+    ⚠ OPT-IN: notes["stitch_scope"] = "exposed" stitches only EXPOSED PADS (and named
+    escape pins) before routing, and leaves every other plane pad to the router
+    (output_signal, 2026-11-13). Pre-stitching all 160 GND pads there fenced the fine-pitch
+    escapes with fixed vias: the score route took 2500 s for 5-6 open against 604 s for 3
+    without them, and the finish without them connected every GND pad (osnf_j4: GND not
+    among the unconnected) at the cost of ONE A8 item -- U4's exposed pad with no via,
+    which is exactly what this scope keeps. Not the default: on the 28 x 21 boards the
+    ordering note below is measured the other way, and the kept boards stay byte-identical.
 
     ⚠ WITHOUT THIS, A GROUND PAD'S CONNECTION DEPENDS ON THE POUR'S ISLAND TOPOLOGY,
     which the router decides after the fact. The F.Cu ground pour connects every
@@ -4264,6 +4286,8 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
         _key = "%s.%s" % (fp.GetReference(), pad.GetNumber())
         _is_escape = _key in escape_pins
         if pad.GetNetname() not in nets_wanted and not _is_escape:
+            continue
+        if scope == "exposed" and not _is_escape and not _exposed_pad(pad, fp):
             continue
         # ⚠ A PAD'S OWN DRILL IS INVISIBLE TO ITS OWN STITCH VIA, and on a THROUGH-HOLE
         # pad that means the via lands in the hole. `free()` below skips every obstacle
@@ -5478,7 +5502,8 @@ def build(stem):
                                escape_runs=notes.get("escape_runs"),
                                declared=notes.get("tracks", ()),
                                declared_vias=notes.get("vias", ()),
-                               net_widths=notes.get("net_widths"))
+                               net_widths=notes.get("net_widths"),
+                               scope=notes.get("stitch_scope", "all"))
         print("  stitched %d pad(s) on %s straight to the plane"
               % (n, "/".join(sorted(stitch))))
     if notes.get("pour_vias"):
