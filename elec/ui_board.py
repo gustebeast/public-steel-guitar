@@ -434,8 +434,15 @@ for _i in range(7):
 
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
-    "cutouts": ([{"xy": list(UI.SCREW_XY), "d": UI.SCREW_CLR_D}]
-                + [{"xy": list(xy), "d": UI.SPIGOT_D + 2 * UI.SPIGOT_CLR}
+    # keepout_d: what lands on the board round each hole, from the CAD (src/ui_panel.py) -- the
+    # M4's deck-side boss, and each spigot's O(SPIGOT_D + 2) post. pcbflow's place_flow turns it
+    # into the hole rule itself, so an intent author never types a clearance (holdout 3,
+    # 2026-11-12: a guessed 1.0 stopped the flow on the CAD-fixed encoder). _HOLES below
+    # checks the hand board against the same numbers.
+    "cutouts": ([{"xy": list(UI.SCREW_XY), "d": UI.SCREW_CLR_D, "keepout_d": round(_BOSS_D, 3),
+                  "what": "M4 screw, deck-side boss"}]
+                + [{"xy": list(xy), "d": UI.SPIGOT_D + 2 * UI.SPIGOT_CLR,
+                    "keepout_d": round(UI.SPIGOT_D + 2.0, 3), "what": "deck spigot post"}
                    for xy in UI.SPIGOTS]),
     "layers": 2,
     "thickness_mm": UI.BOARD_T,
