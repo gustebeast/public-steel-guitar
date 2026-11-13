@@ -92,6 +92,7 @@ TRS_FP = "Connector_Audio:Jack_6.35mm_Neutrik_NMJ6HCD2_Horizontal"
 # elec/footprints/Steel.pretty.
 DC_FP = "Steel:Kycon_KPJX-4S-S"
 XH_FP = "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"
+XH6_FP = "Connector_JST:JST_XH_B6B-XH-A_1x06_P2.50mm_Vertical"
 TERM_FP = "TerminalBlock:TerminalBlock_MaiXu_MX126-5.0-02P_1x02_P5.00mm"
 TERM_FP_R2 = "Steel:MaiXu_MX128-5.0-02P_1x02_P5.00mm"     # slotted: no second tool (R2-3)
 MCU_FP = "Package_DFN_QFN:QFN-68-1EP_8x8mm_P0.4mm_EP5.2x5.2mm"
@@ -1248,12 +1249,12 @@ def output_board():
     #   PWR_BTN                   -> the power button, read on the brain board (the UI
     #     station hangs beside it now) and passed here, so "off" can quiet this board too.
     #   BRAIN_PG                  -> the brain board's 24 V is good.
-    # ⚠ THE POWER IS ON TWO 4-WAY XH LEADS IN PARALLEL, J10 + J12, SIZED FROM THE WORST CASE
+    # ⚠ THE POWER IS ON TWO 6-WAY XH LEADS IN PARALLEL, J10 + J12, SIZED FROM THE WORST CASE
     # (lead, 2026-11-13). PD caps CURRENT, not power (3 A below 20 V; 5 A only at 20 V on a
     # 5 A cable), so a lower voltage never means more amps; but two ports at the SAME voltage
     # share through the ideal diodes: 6.5 A from two 65 W chargers, up to 10 A from two 5 A
-    # contracts. At <= 2.5 A a way that is 4 VIN + 4 GND ways: two standard 4-way XH leads,
-    # data ways empty, 22 AWG -- the two-gauge rule (user, 11-01) allows no other wire, so a
+    # contracts. At <= 2.5 A a way that is 4 VIN + 4 GND ways: two VIN and two GND on each
+    # of two 6-way XH leads (harness.BRAIN_POWER; the first cut had ONE VIN way a lead), 22 AWG -- the two-gauge rule (user, 11-01) allows no other wire, so a
     # VH 2-way on 18 AWG tried first was reverted. Firmware also keeps ONE port carrying (the
     # other asked for a lower voltage, so its diode blocks): one charger is <= 5 A, 1.25 A a
     # way. A missing lead is SENSED on way 3 (below), so the double fault -- one lead out,
@@ -1263,17 +1264,17 @@ def output_board():
     # switch closes, so its boost input sits behind a soft-start switch gated by BRAIN_EN.
     vin_brain = Net("VIN_BRAIN")
     vin_brain.drive = Pin.drives.POWER
-    j10 = Part(name="B4B-XH-A", ref_prefix="J", ref="J10", tag="J10", dest="NETLIST",
-               tool="skidl", value="B4B-XH-A",
+    j10 = Part(name="B6B-XH-A", ref_prefix="J", ref="J10", tag="J10", dest="NETLIST",
+               tool="skidl", value="B6B-XH-A",
                description="to the brain board: the chargers' 5-20 V, lead 1 of 2 in parallel "
                            "(harness.BRAIN_POWER)",
-               footprint=XH_FP,
+               footprint=XH6_FP,
                pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(harness.BRAIN_POWER)])
-    j12 = Part(name="B4B-XH-A", ref_prefix="J", ref="J12", tag="J12", dest="NETLIST",
-               tool="skidl", value="B4B-XH-A",
+    j12 = Part(name="B6B-XH-A", ref_prefix="J", ref="J12", tag="J12", dest="NETLIST",
+               tool="skidl", value="B6B-XH-A",
                description="to the brain board: the chargers' 5-20 V, lead 2 of 2 in parallel "
                            "(harness.BRAIN_POWER)",
-               footprint=XH_FP,
+               footprint=XH6_FP,
                pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(harness.BRAIN_POWER)])
     harness.check_ways(harness.BRAIN_POWER, ("VIN",), ("GND", harness.NC), where="J10/J12")
     # WAY 3 IS A PRESENCE LOOP (lead, 2026-11-13): the brain board straps it to GND, so a lead
@@ -1282,8 +1283,8 @@ def output_board():
     # the unplugged-lead double fault, sensed instead of written in INSTALL_NOTES.
     for j, k, ser, pu in ((j10, "PWR_LEAD1_N", "R119", "R120"),
                           (j12, "PWR_LEAD2_N", "R121", "R122")):
-        vin_brain += j[1]
-        pgnd += j[2]
+        vin_brain += j[1], j[6]
+        pgnd += j[2], j[5]
         loop = Net("%s_LOOP" % j.ref)
         loop += j[3]
         Net("%s_NC_4" % j.ref).connect(j[4])

@@ -14,7 +14,7 @@ old instrument's boards and the cables between them:
                    Bus A is a linear bus on the board, terminated at both ends of the row
                    (R5, R6); each drop is the motor lead, 0.1-0.3 m.
 And it takes the 24 V BOOST from the output board (fill and noise -- output_board.py J10):
-the chargers' OR-ed 5-20 V arrives on J10 + J12 (harness.BRAIN_POWER, two 4-way XH in
+the chargers' OR-ed 5-20 V arrives on J10 + J12 (harness.BRAIN_POWER, two 6-way XH in
 parallel, way 3 of each strapped to GND as the presence loop) and the logic on J11
 (harness.BRAIN_SIGNAL).
 
@@ -93,6 +93,7 @@ R0402 = "Resistor_SMD:R_0402_1005Metric"
 SOT23 = "Package_TO_SOT_SMD:SOT-23"
 # side entry, mouth off the board edge: on the +Z edge, the plug goes in from above
 XH4_SIDE = "Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal"
+XH6_SIDE = "Connector_JST:JST_XH_S6B-XH-SM4-TB_1x06-1MP_P2.50mm_Horizontal"
 PH6_SIDE = "Connector_JST:JST_PH_S6B-PH-SM4-TB_1x06-1MP_P2.00mm_Horizontal"
 PH4_SIDE = "Connector_JST:JST_PH_S4B-PH-SM4-TB_1x04-1MP_P2.00mm_Horizontal"
 USBC_FP = "Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12"
@@ -259,13 +260,13 @@ def brain():
     io = {k: Net(k) for k in list(CM5_IO) + list(CH32_IO) if k != "BOOT1_PB2"}
 
     # ── J10 / J12 / J11: from the output board ─────────────────────────────────────────
-    # Two 4-way XH power leads in parallel (10 A worst case at 2.5 A a way, 22 AWG: the
-    # two-gauge rule), way 3 of each STRAPPED TO GND here -- the output board reads it as
+    # Two 6-way XH power leads in parallel (10 A worst case at 2.5 A a way: two VIN and two GND
+    # ways on each, 22 AWG: the two-gauge rule), way 3 of each STRAPPED TO GND here -- the output board reads it as
     # "this lead is in". Then the 6-way logic lead.
     for tag in ("J10", "J12"):
-        _jst(tag, "S4B-XH-SM4-TB", "5-20 V in from the output board, lead %s of 2 in "
+        _jst(tag, "S6B-XH-SM4-TB", "5-20 V in from the output board, lead %s of 2 in "
              "parallel; way 3 = the presence loop, strapped to GND" % tag[-1:],
-             XH4_SIDE, harness.BRAIN_POWER, {"VIN": vin, "GND": gnd, "LEAD_SENSE": gnd},
+             XH6_SIDE, harness.BRAIN_POWER, {"VIN": vin, "GND": gnd, "LEAD_SENSE": gnd},
              power=("VIN",))
     link = {k: Net("LINK_" + k) for k in ("BRAIN_EN", "LOW_PWR", "PWR_BTN", "BRAIN_PG")}
     _jst("J11", "S6B-PH-SM4-TB", "logic to / from the output board (harness.BRAIN_SIGNAL)",
