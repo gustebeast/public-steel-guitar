@@ -71,9 +71,10 @@ AUTO = {"auto_decaps (netlist)": "decaps", "auto_singles (netlist)": "singles",
         "auto_floorplan (netlist)": "floorplan", "auto_switcher (netlist)": "switcher"}
 
 
-def _run(cmd, log, cwd=HERE):
+def _run(cmd, log, cwd=HERE, env=None):
     t = time.time()
-    p = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd, env=dict(os.environ, PYTHONIOENCODING="utf-8"))
+    p = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd,
+                       env=dict(os.environ, PYTHONIOENCODING="utf-8", **(env or {})))
     out = (p.stdout or "") + (p.stderr or "")
     log.write("$ %s\n%s\n[rc %d, %.0f s]\n\n" % (" ".join(cmd), out, p.returncode, time.time() - t))
     log.flush()
@@ -520,7 +521,10 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
             continue
     fin = qual = None
     if not skip_finish:
-        rc, out, T["finish"] = _run([KICAD_PY, os.path.join(HERE, "finish.py"), stem], log)
+        # the finish starts from the route the score just drew (ownroute.py, OWNROUTE_PARENT)
+        par = stem + ".route.pkl"
+        rc, out, T["finish"] = _run([KICAD_PY, os.path.join(HERE, "finish.py"), stem], log,
+                                    env={"OWNROUTE_PARENT": par} if os.path.isfile(par) else None)
         for line in out.splitlines():
             m = re.search(r"no free site for: (.*)$", line)
             if m:
