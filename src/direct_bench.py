@@ -41,6 +41,7 @@ import functools as _functools
 from functools import lru_cache as _lru_cache
 
 from cadkit.kept import kept
+from cadkit.board_geom import mask_rgb as _mask_rgb   # a board is a solder-mask colour (cadkit f715f57)
 
 import cadquery as cq
 
