@@ -213,6 +213,24 @@ class Model:
         # region_net[k] = the net a regional pour reserves each cell for (0 = none).
         self.region_net = np.zeros((L, ny, nx), np.int32)
         board_area = _area(_loops(self.edges)[0]) if self.edges else 0.0
+        # ⚠ A WHOLE-LAYER POUR IS NOT PRICED BUT IT IS STILL JUDGED (output_board mL2,
+        # 2026-11-14): the > 80 % skip below kept GND's In1 / B.Cu planes out of region_net,
+        # and negotiate._islands reads region_net to know which pours to judge -- so the
+        # crossings cut GND into 25 + 28 fill islands, 18 joins landed on them and nothing
+        # saw it. plane_cells[net id] = bool[L, ny, nx], every big pour on a routed layer:
+        # what _islands judges, never what routing is charged.
+        self.plane_cells = {}
+        for net_name, polys in self.pours.items():
+            nid = self.net_id.get(net_name, -1)
+            for L_, pts in polys:
+                if L_ not in lid or _area(pts) <= 0.8 * board_area:
+                    continue
+                win = self._window(min(q[0] for q in pts), min(q[1] for q in pts),
+                                   max(q[0] for q in pts), max(q[1] for q in pts), 0.0)
+                X, Y = grid(win)
+                i0, i1, j0, j1 = win
+                pc = self.plane_cells.setdefault(nid, np.zeros((L, ny, nx), bool))
+                pc[lid[L_], i0:i1, j0:j1] |= _in_poly(X, Y, pts)
         for net_name, polys in self.pours.items():
             nid = self.net_id.get(net_name, -1)
             for L_, pts in polys:
