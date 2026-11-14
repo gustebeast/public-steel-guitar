@@ -66,7 +66,9 @@ nothing to misread.
 """
 from __future__ import annotations
 
-import _nowindow  # noqa: F401  (no console windows on Windows: _nowindow.py)
+# imported as cadkit.pcbflow.fab_package (a project's fab.py), never as a script -- so the
+# package-relative form; a bare `import _nowindow` needs pcbflow/ on sys.path and broke fab.py
+from . import _nowindow  # noqa: F401  (no console windows on Windows: _nowindow.py)
 from . import fab_frames
 
 import csv
