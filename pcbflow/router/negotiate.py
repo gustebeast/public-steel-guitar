@@ -2573,7 +2573,34 @@ class Router(CoupledMixin):
         self._finish_pairs()
         self._fallback_pairs()
         self._pour_islands()
+        self._no_shorts()
         return [n for n in self.nets if n.failed] + list(getattr(self, "unreachable", ()))
+
+    def _no_shorts(self):
+        """⚠ NOTHING LEAVES SHARING (output_board mK finish, 2026-11-13): _rip runs after the
+        negotiation, but the pair finish and the island pass after it lay copper of their
+        own; the FLASH pair finish ran past the run's deadline, was "kept as negotiated",
+        and its FLASH_DM sat 0.055 mm from a re-routed VIN_BRAIN join on F.Cu -- a signal
+        shorted to a 10 A rail, written to the board and only caught by the post-route's
+        short rip. A legal board with a net open beats a short: whatever still shares
+        after the last stage comes out, one net at a time (a plane net's shared joins
+        first, then signals), re-checked after each so only one side of a pair goes."""
+        done = set()
+        for _ in range(2 * len(self.nets) + 2):
+            sharing = [n for n in self.nets if not n.failed and n.paths
+                       and any(c.size for c in self._conflicts(n))]
+            if not sharing:
+                return
+            sharing.sort(key=lambda n: (not n.plane, n.mate is not None, n in done))
+            n = sharing[0]
+            self.log("  still sharing after the finish: %s -- ripped (a short is worse than "
+                     "an open)" % n.name)
+            if n in done:                # its shared joins came out and it still shares
+                self._unmark(n)
+                n.paths, n.necks, n.failed = [], [], True
+            else:
+                done.add(n)
+                self._rip([n])
 
     PRIORITY_REPAIR = True
     _only = None                     # rescore.delta_run: the finish looks only at these nets
