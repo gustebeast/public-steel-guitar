@@ -338,7 +338,12 @@ class Router(CoupledMixin):
                     parent[ra] = rb
         keep = []
         for net in self.nets:
-            if net.plane or net.mate is not None or len(net.pieces) < 2:
+            # ⚠ PLANE NETS TOO (output_board mJ, 2026-11-13): U30, the isolated converter,
+            # sat 3.81 mm off the moat -- its AGND pin on the charger side, the AGND pour and
+            # every other AGND pad on the audio side -- and a plane net was not checked here,
+            # so the cut showed up 50 minutes later as 50 unconnected AGND items. A plane
+            # net's piece 0 is its pour: the pour's regions must reach every pad piece.
+            if net.mate is not None or len(net.pieces) < 2:
                 keep.append(net)
                 continue
             roots = []
@@ -358,6 +363,7 @@ class Router(CoupledMixin):
             reach = set(roots[0])
             grown = True
             rest = roots[1:]
+            idx = {id(r_): q for q, r_ in enumerate(roots)}
             while grown and rest:
                 grown = False
                 for r_ in list(rest):
@@ -368,9 +374,17 @@ class Router(CoupledMixin):
             if rest:
                 net.failed = True
                 self.unreachable.append(net)
+                where = []
+                for r_ in rest[:4]:      # the stray pieces, by a cell of each (board mm)
+                    c0 = int(net.pieces[idx[id(r_)]][0])
+                    rc = c0 % (H * W)
+                    where.append("(%.2f, %.2f) on %s" % (m.cx[rc % W], m.cy[rc // W],
+                                                         m.route_layers[c0 // (H * W)]))
                 (getattr(self, "log", None) or print)(
-                    "UNREACHABLE: %s -- its pads lie in %d separate region(s) of the board's "
-                    "outline and keep-outs; refused before negotiation" % (net.name, len(rest) + 1))
+                    "UNREACHABLE: %s -- its %s lie in %d separate region(s) of the board's "
+                    "outline and keep-outs; refused before negotiation. Cut off: %s"
+                    % (net.name, "pour and pads" if net.plane else "pads", len(rest) + 1,
+                       "; ".join(where)))
             else:
                 keep.append(net)
         self.nets = keep
