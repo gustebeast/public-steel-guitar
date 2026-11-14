@@ -277,7 +277,103 @@ class Router(CoupledMixin):
                 self.nets.remove(b_)
                 self.nets.insert(self.nets.index(a_) + 1, b_)
         self._chain_legs(by, lid)
+        self._static_unreachable()
         return self.nets
+
+    # A net whose pieces sit in DIFFERENT regions of the board's static map -- the outline
+    # and the rule-area keep-outs, which bind every net alike -- cannot be routed by any
+    # amount of negotiation. ⚠ OUTPUT_BOARD mF (2026-11-13): three digital parts placed
+    # inside the isolated audio corner, its moat sealed by a rule area on every layer, and
+    # the placement-scoring route negotiated their five nets for 3017 s (budget 900) until
+    # the flow's timeout killed it. Refused here in about a second, by name; the nets go to
+    # self.unreachable and run() reports them failed without routing them.
+    STATIC_COARSE = 4                # cells per coarse cell (0.2 mm at the 0.05 pitch)
+
+    def _static_unreachable(self):
+        self.unreachable = []
+        m = self.m
+        if not m.keepouts:
+            return
+        from scipy.ndimage import label
+        from .model import _in_poly
+        L, H, W, f = self.L, self.H, self.W, self.STATIC_COARSE
+        h, w = -(-H // f), -(-W // f)
+        ys = m.cy[::f][:h]
+        xs = m.cx[::f][:w]
+        X, Y = np.meshgrid(xs, ys)
+        # coarse "open" per routing layer: inside the board, not in a track ban. Sampled at
+        # the coarse cell's corner -- a wall thinner than a coarse cell can be missed, which
+        # only ever makes the map MORE connected: a missed refusal, never a wrong one.
+        inside = m.edge[::f, ::f][:h, :w] > 0
+        opened = np.repeat(inside[None], L, axis=0)
+        via_ok = inside.copy()
+        for z in m.keepouts:
+            zin = _in_poly(X, Y, z["pts"])
+            if z["tracks"]:
+                for k, ln in enumerate(m.route_layers):
+                    if ln in z["layers"] or "*.Cu" in z["layers"]:
+                        opened[k] &= ~zin
+            if z["vias"] or z["tracks"]:
+                via_ok &= ~zin
+        lab = np.zeros((L, h, w), np.int64)
+        base = 0
+        for k in range(L):
+            lk, n = label(opened[k])
+            lab[k] = np.where(lk > 0, lk + base, 0)
+            base += n
+        if base == 0:
+            return
+        parent = np.arange(base + 1)
+
+        def find(a):
+            while parent[a] != a:
+                parent[a] = parent[parent[a]]
+                a = parent[a]
+            return a
+        for k in range(1, L):            # a via joins the layers wherever one may stand
+            both = via_ok & (lab[k] > 0) & (lab[k - 1] > 0)
+            for a_, b_ in set(zip(lab[k][both].tolist(), lab[k - 1][both].tolist())):
+                ra, rb = find(a_), find(b_)
+                if ra != rb:
+                    parent[ra] = rb
+        keep = []
+        for net in self.nets:
+            if net.plane or net.mate is not None or len(net.pieces) < 2:
+                keep.append(net)
+                continue
+            roots = []
+            for pc in net.pieces:
+                k = pc // (H * W)
+                rc = pc % (H * W)
+                ids = lab[k, (rc // W) // f, (rc % W) // f]
+                ids = {find(int(x)) for x in ids[ids > 0]}
+                if not ids:              # a piece wholly on blocked cells: no claim
+                    roots = None
+                    break
+                roots.append(ids)
+            if roots is None:
+                keep.append(net)
+                continue
+            # pieces join if they share a region; anything left apart is unreachable
+            reach = set(roots[0])
+            grown = True
+            rest = roots[1:]
+            while grown and rest:
+                grown = False
+                for r_ in list(rest):
+                    if r_ & reach:
+                        reach |= r_
+                        rest.remove(r_)
+                        grown = True
+            if rest:
+                net.failed = True
+                self.unreachable.append(net)
+                (getattr(self, "log", None) or print)(
+                    "UNREACHABLE: %s -- its pads lie in %d separate region(s) of the board's "
+                    "outline and keep-outs; refused before negotiation" % (net.name, len(rest) + 1))
+            else:
+                keep.append(net)
+        self.nets = keep
 
     def _chain_legs(self, by, lid):
         """⚠ A diff pair's CHAIN IS AN ORDER, NOT A SET (optical USB_HS, 2026-11-08). The
@@ -1235,6 +1331,9 @@ class Router(CoupledMixin):
             b = a.mate
             if b is None or a.partner is not None or a.group is None:
                 continue
+            if self._left(1.0) <= 0.0 and not (a.failed or b.failed):
+                self.log("  pair %s/%s: past the run's deadline, kept as negotiated" % (a.name, b.name))
+                continue
             if self._only is not None and a not in self._only:
                 continue                 # rescore: a pair kept whole from the parent is finished
             # ⚠ A PAIR RIPPED OUT IS FINISHED TOO (optical, C102 +0.12/+0.48, 2026-11-10): the
@@ -1302,6 +1401,11 @@ class Router(CoupledMixin):
             ruled = []                     # [(shared cells, skew, state)]: to the rules, but in others' space
             cl_best = None                 # (mm uncoupled, state, cand): the closest clean coupled lay
             for c in cands:
+                # the run's deadline: past it, the first lay found stands (or the pair keeps
+                # what the negotiation gave it) -- no more attempts (mF replay, 2026-11-13:
+                # 735 s of pair attempts after a 600 s deadline)
+                if self._left(1.0) <= 0.0 and (best is not None or ruled or cl_best is not None):
+                    break
                 is_cpl = len(c) > 8 and c[8]
                 if cl_best is not None and (not is_cpl or cl_best[0] <= 0.0):
                     break                      # coupled attempts done (or one not apart at all): laid below
@@ -2421,7 +2525,22 @@ class Router(CoupledMixin):
         return bad
 
     # ----------------------------------------------------------------- the loop
+    # ⚠ THE BUDGET WAS PER CALL, NOT PER RUN (output_board mF, 2026-11-13): run() handed
+    # _rounds its budget_s and checked it between rounds only, then the pair finish and the
+    # repairs each called _rounds again with a fresh 600 s of their own. A 300 s replay of
+    # mF's placement: main rounds 406 s, then 602 + 378 + ... in _finish_pairs -- the
+    # placement score's 900 s became 3017 s and the flow's timeout. ONE deadline per run():
+    # the main negotiation gets budget_s, everything after it shares at most one more, and
+    # every _rounds call stops at the deadline (between nets, not only between rounds).
+    # A route that finished inside 2 x budget before is unchanged.
+    DEADLINE_MUL = 2.0
+
+    def _left(self, want):
+        dl = getattr(self, "_deadline", None)
+        return want if dl is None else max(0.0, min(want, dl - time.time()))
+
     def run(self, iters=40, pf0=0.5, pf_mul=1.6, hf=0.4, budget_s=1800):
+        self._deadline = time.time() + self.DEADLINE_MUL * budget_s
         self._premerge()
         self._neg = (pf_mul, hf)
         if self.USE_GLOBAL and os.environ.get("OWNROUTE_GLOBAL", "1") != "0":
@@ -2440,7 +2559,7 @@ class Router(CoupledMixin):
         self._finish_pairs()
         self._fallback_pairs()
         self._pour_islands()
-        return [n for n in self.nets if n.failed]
+        return [n for n in self.nets if n.failed] + list(getattr(self, "unreachable", ()))
 
     PRIORITY_REPAIR = True
     _only = None                     # rescore.delta_run: the finish looks only at these nets
@@ -2694,6 +2813,7 @@ class Router(CoupledMixin):
         (never re-routed). Returns (nets still sharing or failed, final pf)."""
         pf_mul, hf = getattr(self, "_neg", (1.6, 0.4))
         t0 = time.time()
+        budget_s = self._left(budget_s)
         best, since = None, 0
         self._stalled = False
         kept0 = {n: n.keep_paths for n in self.nets if n.plane}
@@ -2701,6 +2821,8 @@ class Router(CoupledMixin):
             for net in todo:
                 if net in locked:
                     continue
+                if time.time() - t0 > budget_s and it > 1:
+                    break                # past the run's deadline: finish the round here
                 # ⚠ A PLANE JOIN AIMS WHERE THE POUR WILL BE, EVERY ROUND (optical +3V3D by
                 # U6, 2026-11-09): join targets were the pour's polygon, so a join ended in the
                 # region's corner where a B.Cu track along its edge had cut the fill off; the
