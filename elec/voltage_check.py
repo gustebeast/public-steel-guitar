@@ -279,12 +279,23 @@ BRAIN_VIN = dict(v=21.0, vt=_D10["vbr_max"] + (_D10["vc"] - _D10["vbr_max"]) * m
 # boards keep system.rail_tvs (the SMCJ24A they were built with). Same surge bound.
 R2_RAIL_TVS = PARTS[os.environ.get("R2_RAIL_TVS", "C310042")]
 R2_V24_CLAMP = R2_RAIL_TVS["vbr_max"] + (R2_RAIL_TVS["vc"] - R2_RAIL_TVS["vbr_max"]) * min(1.0, SURGE["i"] / R2_RAIL_TVS["ipp"])
-BRAIN_24 = dict(v=V24_STEADY, vt=R2_V24_CLAMP,
-                why="the LM5122 boost's output, 1.2 V x (1 + 50.725 / 2.67) = 24.0 V nominal; steady taken "
-                    "as the brick rail's 24 V +10 %% (covers the reference's tolerance, load-release "
-                    "overshoot and stepper regeneration, which the boost cannot sink); transient = D3, "
+# STEADY FROM THE BOOST ITSELF (lead, 2026-11-14), not the brick's 24 V +10 %: VREF 1.212 V max
+# (SNVS954H 6.5: 1.188 / 1.2 / 1.212) through the 1 % divider at its worst, 50.725k high and
+# 2.67k low -> 24.70 V. PLUS 1.0 V of allowance for the decel back-drive into the bulk: the
+# boost cannot sink, so energy the drivers return lifts the rail until the loads drain it. A
+# SUSTAINED lift needs the motors to return more than they draw; measured they are net
+# consumers (~0.9 W a motor moving, motor-power-measured), so what returns is a bump a
+# few ms long (0.3 J -- ten 54 g cm2 rotors from 1000 rpm, ASSUMED -- is gone into ~50 W of
+# load in 6 ms), i.e. a TRANSIENT the clamp bounds. The 1.0 V covers that bump's tail plus
+# the boost's load-release overshoot between events; 25.7 V stays under D3's 26 V stand-off.
+BRAIN_24_STEADY = 1.212 * (1 + 50.725 * 1.01 / (2.67 * 0.99)) + 1.0
+BRAIN_24 = dict(v=BRAIN_24_STEADY, vt=R2_V24_CLAMP,
+                why="the LM5122 boost's output, 1.2 V x (1 + 50.725 / 2.67) = 24.0 V nominal; steady %.2f V = "
+                    "VREF 1.212 V max (SNVS954H 6.5) through the 1 %% divider at its worst (24.70 V) + 1.0 V "
+                    "for regeneration's tail and load-release overshoot (the boost cannot sink; the motors "
+                    "are net consumers, so regeneration is a bump, bounded by the clamp); transient = D3, "
                     "%s, at %.0f A of surge: %.1f V (breakdown %.1f-%.1f V, VC %.1f V at %.1f A)"
-                    % (R2_RAIL_TVS["mpn"], SURGE["i"], R2_V24_CLAMP, R2_RAIL_TVS["vbr_min"],
+                    % (BRAIN_24_STEADY, R2_RAIL_TVS["mpn"], SURGE["i"], R2_V24_CLAMP, R2_RAIL_TVS["vbr_min"],
                        R2_RAIL_TVS["vbr_max"], R2_RAIL_TVS["vc"], R2_RAIL_TVS["ipp"]))
 SEEDS["brain"] = {
     "VIN_BRAIN": ("abs", BRAIN_VIN),
@@ -870,9 +881,6 @@ SEEDS["connector_board"] = {
 CODE_FALLBACK["connector_board"] = {
     # J1: PZ1.27-2x15P ZZ has no LCSC code yet: its stocked 2 x 8 sibling, as output_board's J240
     ("PZ1.27-2x15P ZZ", "PinHeader_2x15_P1.27mm_Vertical_SMD"): "C22438123",
-    # J11-J20: KF350-3.5-4P is C42400616 at LCSC with ZERO stock (2026-11-14, open item): rated
-    # as the stocked 2-way of the same series and contacts (C474892, 300 V / 10 A)
-    ("KF350-3.5-4P", "TerminalBlock_Phoenix_PT-1,5-4-3.5-H_1x04_P3.50mm_Horizontal"): "C474892",
 }
 CODE_FALLBACK["output_board"] = {
     # U5, merged: the 4 A LMR33640 in the 3 A part's RNX land, no LCSC code yet (open item).

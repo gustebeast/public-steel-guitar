@@ -2,27 +2,27 @@
  "net_volts": {
   "+24V": {
    "peak": 37.614,
-   "v": 26.4,
-   "why": "the LM5122 boost's output, 1.2 V x (1 + 50.725 / 2.67) = 24.0 V nominal; steady taken as the brick rail's 24 V +10 % (covers the reference's tolerance, load-release overshoot and stepper regeneration, which the boost cannot sink); transient = D3, SMCJ26A, at 20 A of surge: 37.6 V (breakdown 28.9-31.9 V, VC 42.1 V at 35.7 A)"
+   "v": 25.703,
+   "why": "the LM5122 boost's output, 1.2 V x (1 + 50.725 / 2.67) = 24.0 V nominal; steady 25.70 V = VREF 1.212 V max (SNVS954H 6.5) through the 1 % divider at its worst (24.70 V) + 1.0 V for regeneration's tail and load-release overshoot (the boost cannot sink; the motors are net consumers, so regeneration is a bump, bounded by the clamp); transient = D3, SMCJ26A, at 20 A of surge: 37.6 V (breakdown 28.9-31.9 V, VC 42.1 V at 35.7 A)"
   },
   "+24V_BUCK": {
    "peak": 37.614,
-   "v": 26.4,
+   "v": 25.703,
    "why": "through F201"
   },
   "+24V_F": {
    "peak": 37.614,
-   "v": 26.4,
+   "v": 25.703,
    "why": "through R223"
   },
   "+24V_LED": {
    "peak": 37.614,
-   "v": 26.4,
+   "v": 25.703,
    "why": "through F203"
   },
   "+24V_RIB": {
    "peak": 37.614,
-   "v": 26.4,
+   "v": 25.703,
    "why": "F204 (PPTC) from +24V, out on the connector ribbon [= +24V+0]"
   },
   "+3V3D": {
@@ -101,7 +101,7 @@
   },
   "BOOT5": {
    "peak": 43.114,
-   "v": 31.9,
+   "v": 31.203,
    "why": "bootstrap: SW5 + 5.5 V, held by U205"
   },
   "BRAIN_EN": {
@@ -111,7 +111,7 @@
   },
   "BST_BST": {
    "peak": 46.614,
-   "v": 35.4,
+   "v": 34.703,
    "why": "bootstrap: SW plus VCC less D17's drop [= BST_SW+8]"
   },
   "BST_COMP": {
@@ -134,17 +134,17 @@
   },
   "BST_FB": {
    "peak": 1.881,
-   "v": 1.32,
+   "v": 1.285,
    "why": "R105 / (R103 + R104 + R105): the regulated 1.2 V, and the divided rail whatever it does"
   },
   "BST_FBMID": {
    "peak": 2.462,
-   "v": 1.728,
+   "v": 1.682,
    "why": "(R104 + R105) / (R103 + R104 + R105)"
   },
   "BST_HO": {
    "peak": 46.614,
-   "v": 35.4,
+   "v": 34.703,
    "why": "high-side gate drive: SW to BST [= BST_SW+8]"
   },
   "BST_LMID": {
@@ -175,7 +175,7 @@
   },
   "BST_SW": {
    "peak": 38.614,
-   "v": 27.4,
+   "v": 26.703,
    "why": "boost switch node: VOUT plus Q9's body diode while it commutates [= +24V+1]"
   },
   "BST_UVLO": {
@@ -892,7 +892,7 @@
   },
   "EN5": {
    "peak": 2.559,
-   "v": 1.796,
+   "v": 1.748,
    "why": "divider off +24V: x 0.0680"
   },
   "EN_LEV": {
@@ -1561,7 +1561,7 @@
   },
   "SENSE_24V": {
    "peak": 3.419,
-   "v": 2.4,
+   "v": 2.337,
    "why": "divider off +24V: x 0.0909"
   },
   "SENSE_5V": {
@@ -1586,7 +1586,7 @@
   },
   "SW5": {
    "peak": 37.614,
-   "v": 26.4,
+   "v": 25.703,
    "why": "buck switch node: VIN while the high side is on [= +24V_BUCK+0]"
   },
   "SWCLK": {

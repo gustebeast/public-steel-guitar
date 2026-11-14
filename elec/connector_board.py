@@ -49,7 +49,12 @@ C0402, C0805, C1206 = ("Capacitor_SMD:C_0402_1005Metric", "Capacitor_SMD:C_0805_
                        "Capacitor_SMD:C_1206_3216Metric")
 R0603 = "Resistor_SMD:R_0603_1608Metric"
 SOT23 = "Package_TO_SOT_SMD:SOT-23"
-TB4 = "TerminalBlock_Phoenix:TerminalBlock_Phoenix_PT-1,5-4-3.5-H_1x04_P3.50mm_Horizontal"
+# J11-J20 PLUGGABLE (lead, 2026-11-14): KF350-3.5-4P had zero stock, so a 3.5 mm pluggable 4-way
+# with BOTH halves stocked -- MAX MX15EDGRC-3.5-04P header (C5188297, 8,523) + MX15EDGK-3.5-04P
+# plug (C5188251, 9,319; M2 SLOTTED screw, the -Y suffix: the same 2.0 mm blade). 300 V / 8 A
+# each (UL, both drawings). The land is Phoenix MC 1,5/4-G-3,5's at MAX's 1.40 mm hole; the
+# courtyard carries the mated plug, 17 mm in front of the pin row
+TB4 = "Steel:MAX_MX15EDGRC-3.5-04P_1x04_P3.50mm_Horizontal_Mated"
 # TOP ENTRY: the board lies flat on the floor, mouths up (+Z), ~100 mm free above (branner 11-13)
 XH4_TOP = "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"
 PH4_TOP = "Connector_JST:JST_PH_B4B-PH-SM4-TB_1x04-1MP_P2.00mm_Vertical"
@@ -105,8 +110,9 @@ def connector_board():
 
     # ── J11-J20: the ten motors, screw terminals, bus A in a line along them ────────────
     for k in range(10):
-        _ways("J%d" % (11 + k), "KF350-3.5-4P", "motor %d (string %d) -- SERVO42D: 24 V + bus A, "
-              "3.5 mm screw terminal, M2 slotted (2.0 mm blade, as the motor's own)" % (k + 1, k + 1),
+        _ways("J%d" % (11 + k), "MX15EDGRC-3.5-04P", "motor %d (string %d) -- SERVO42D: 24 V + bus A, "
+              "3.5 mm pluggable header; its MX15EDGK plug takes the wires on M2 slotted screws (2.0 mm "
+              "blade, as the motor's own)" % (k + 1, k + 1),
               TB4, harness.XH_PINOUT,
               {"V24": v24, "GND": gnd, "CAN_H": n["CANA_H"], "CAN_L": n["CANA_L"]}, power=("V24",))
     # the row's far end: the bus's second 120R (the first is at the brain's transceiver)
@@ -153,13 +159,12 @@ BOARD_NOTES = {
     "zones": [("GND", "B.Cu", 0.3)],
     "qty_per_instrument": 1,
     "open_items": [
-        "J11-J20 KF350-3.5-4P: LCSC C42400616 has ZERO stock (2026-11-14); the 2-way (C474892) has 10,892 and the series interlocks -- two 2-ways per motor, or another 4-way source (voltage_check rates it as the 2-way)",
         "the M4 mount: pick its x / y once placed and send them to branner (floor boss + heat-set)",
         "WIRE ENTRIES (branner 11-13, for the intent): never +Y (the wall is 1.5 off the +Y edge); not -Y over board x 12.35..67.35 (motor 4, 1.5 off the -Y edge at instrument x -523..-468) -- point those along X; parts at board x < -73.45 (instrument x < -608.8, branner 11-13: the nut block's +X face thickened 2.4) stay under 41 tall, top <= z -66.2 (the keyhead nut prism)",
         "J11-J20 wire entry side: the Phoenix PT-H footprint's entry assumed on its +Y (KiCad frame) -- check against the drawing before the mate rules are trusted",
         "motor leads: 0.4 m for motors 1, 6, 7 (branner's Manhattan runs to a board centred x -560 y 46); 0.4 for all = one SKU",
         "the SERVO42D's own 4-way terminal order -- match J11-J20's to it so a lead is straight across",
-        "KF350-3.5-4P: confirm M2 slotted (2.0 mm blade) and its LCSC code; the footprint is Phoenix PT 1,5/4-3,5-H (same 3.5 mm pitch, check the pin-1 offset)",
+        "J11-J20 MX15EDGRC + MX15EDGK: the mated depth (17 mm from the pin row) is read off two drawings, not a sample -- check one pair; the land's body outline (Fab/silk) is still Phoenix MC's",
         "J1 PZ1.27-2x15P ZZ: LCSC code and stock (the 2x8 is C22438123)",
     ],
 }

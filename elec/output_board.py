@@ -1901,6 +1901,8 @@ BOARD_NOTES = {
         "the +X endplate pocket (branner) is cut from elec/output_board.pocket.json: regenerate it whenever the parts within 19 mm of the panel edge move",
         "the mount: one M4 (branner) at x > -124, not yet placed -- reserve its keepout when it is",
         "A16 voltage declarations: voltage_check has output_power / output_signal seeds; merge them into one output_board entry",
+        "F204 (2920L200/60GR, 2 A hold / 4 A trip, approved 2026-11-14): measure the motors' sub-second step peaks on the first board (output-side INA226 or a scope) -- the hold was chosen on the ~0.4 A ten motors draw moving",
+        "boost bulk counts (2 in, 5 out at 22uF/50V 2220) assume 50 % DC-bias retention at 24 V, 70 % at 20 V: PSA publishes no curve -- measure one part",
         "audio isolation: B0509S-1WR3 (YLPTEC) 11..111 mA: R60 (1k2) holds the 10 % minimum with the converters' clocks halted; measure the clock-halted audio-side draw on the first board (no maker publishes a MINIMUM for it)",
         "U5 as the ONE logic 5 V (merged): LMR33640 in the RNX footprint (confirm the orderable and LCSC code), an inductor with Isat >= 5 A in the 5x5 land, D14 / D16 (SS34, 3 A) feed it on a 5 V contract -- 5 A parts if full load is allowed there",
         "USB data chokes FL3 / FL4: ACM2012-900-2P-T002 is marked 'not recommended for new design' on TDK's catalogue (20220113); ordered as T-CND's C55213549. Windings 1-4 / 2-3 READ off TDK's circuit diagram, pads match KiCad's Coilank footprint",
