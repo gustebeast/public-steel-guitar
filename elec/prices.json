@@ -5006,6 +5006,11 @@
       "usd": 0.0014,
       "verified": "v",
       "what": "150k C25755 -- JLCPCB parts API at qty 20"
+    },
+    "output_board:L1": {
+      "usd": 0.0961,
+      "verified": "v",
+      "what": "FXL0630-4R7-M C167220 -- JLCPCB parts API at qty 10, 149,211 in stock, 2026-11-13 (merged output board's one logic 5 V buck, 6 A / 9 A)"
     }
   },
   "modules": {

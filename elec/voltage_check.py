@@ -74,7 +74,7 @@ DECL = os.path.join(HERE, "volts")                    # what the generators load
 LEG = ("leg_pogo_male_bottom", "leg_pogo_male_top", "leg_pogo_female_bottom", "leg_pogo_female_top")
 BOARDS = ("can_tee", "pi_cap", "motor_ctrl", "output_panel", "optical", "lever_sensor") + LEG + ("brain", "output_board")
 ORDER = ("output_panel", "motor_ctrl", "pi_cap", "optical", "can_tee", "lever_sensor") + LEG + ("brain", "output_board")   # sources before sinks
-GNDS = ("GND", "PWR_GND")
+GNDS = ("GND", "PWR_GND", "AGND")    # AGND: the isolated audio domain's own 0 V (output_board)
 EPS = 1e-6
 
 RAT = json.load(io.open(os.path.join(HERE, "voltage_ratings.json"), encoding="utf-8"))
@@ -737,7 +737,108 @@ CURRENTS["output_board"] = (
     + [("L1", None, 2.64, "the 5 V buck's output: every V5_PRE load at once (U15's 1.80 A limit + "
                           "U21's 0.58 A + 0.26 A analog)")])
 REVIEW_NOTES["output_board"] = {**REVIEW_NOTES["output_power"], **REVIEW_NOTES["output_signal"]}
+# ── the brain BUILT ONTO the output board (output_board.MERGED, 2026-11-13) ───────────────
+# brain.py's parts are renumbered +200 there (U5 -> U205), its colliding net names get a B_
+# prefix, its +5V_AUX buck is gone (V5_PRE feeds it) and, with the CH32 folded into the H743,
+# its +3V3 LDO too (+3V3D). Its tables join the output board's through _rn, so a brain
+# change shows up here without retyping.
+import re as _re
+
+
+def _rn(ref):
+    m = _re.match(r"^([A-Z]+)(\d+)$", ref)
+    return "%s%d" % (m.group(1), int(m.group(2)) + 200) if m else ref
+
+
+def _rn_fn(f):
+    return f if not callable(f) else (lambda L, R, _f=f: _f(L, lambda r: R(_rn(r))))
+
+
+_BRAIN_GONE = {"+5V_AUX", "+3V3", "J13_VBUS_NC", "J14_VBUS_NC", "GADGET_DP", "GADGET_DM",
+               "OB_LINK_DP", "OB_LINK_DM"}
+
+
+def _rn_seed(spec):
+    if spec[0] == "buck":
+        return (spec[0], _rn(spec[1]), _rn(spec[2]), _rn(spec[3])) + tuple(spec[4:])
+    if spec[0] == "ldo":
+        return (spec[0], _rn(spec[1])) + tuple(spec[2:])
+    return spec
+
+
+SEEDS["output_board"].update({k: _rn_seed(v) for k, v in SEEDS["brain"].items()
+                              if k not in _BRAIN_GONE})
+for _n in ("J10_LOOP", "J12_LOOP", "J3_VBUS_NC", "J9_VBUS_NC",    # the leads and links: on-board now
+           "LINK_BRAIN_PG", "LINK_PWR_BTN", "SW7", "+3V3"):    # BRAIN_PG gone; PWR_BTN its own; U7 / U8 gone
+    SEEDS["output_board"].pop(_n, None)
+PIN_SEEDS["output_board"] = [(r"^J20[12]$", pr, sp) for _r, pr, sp in PIN_SEEDS["brain"]]
+for _T in (RES_MODEL, CAP_ACROSS, FET_VGS, ZENER_FEED):
+    _T["output_board"] = dict(_T.get("output_board", {}))
+    for _k, _v in _T.get("brain", {}).items():
+        _v = tuple(_rn_fn(x) for x in _v)
+        if _T is ZENER_FEED:
+            _v = (_v[0], tuple(_rn(r) for r in _v[1]))
+        elif _T is FET_VGS and _v[0] == "zener":
+            _v = (_v[0], _rn(_v[1])) + _v[2:]
+        _T["output_board"][_rn(_k)] = _v
+CAP_ACROSS["output_board"].pop("C254", None)    # brain C54: U7's bootstrap, U7 is gone
+# no brain leads (J10 / J12) on the merged board; L1 carries every logic 5 V now -- output_board's
+# U5 sum: optical 1.8 + H743 0.58 + isolated audio 0.3 + transceivers / arm switches ~0.45
+CURRENTS["output_board"] = ([c for c in CURRENTS["output_board"] if c[0] not in ("J10", "J12", "L1")]
+                            + [("L1", None, 3.1, "the ONE logic 5 V buck's output, merged: optical "
+                                "1.8 A + the H743 0.58 + isolated audio 0.3 + the brain's 3.3 V / arm "
+                                "loads ~0.45 (output_board U5)")])
+# THE ISOLATED AUDIO DOMAIN (output_board._isolation, 2026-11-13): its rails were renamed
+# (+5V -> +5V_A, +3V3 -> +3V3_A) and now come from U30 (B0509S 5 -> 9 V) -> FB1 -> U31 (LP2985-50)
+for _k, _v in list(SEEDS["output_board"].items()):
+    if _v[0] in ("like", "ratio") and _v[1] in ("+5V", "+3V3"):
+        SEEDS["output_board"][_k] = (_v[0], {"+5V": "+5V_A", "+3V3": "+3V3_A"}[_v[1]]) + tuple(_v[2:])
+SEEDS["output_board"].update({
+    "ISO9_RAW": ("abs", dict(v=10.8, vt=11.5, why="U30 B0509S-1WR3, an UNREGULATED 9 V module: taken at "
+                                                 "+20 % for light load (ASSUMED -- Mornsun's load-regulation "
+                                                 "curve not read; open item with its pinout)")),
+    "ISO9": ("like", "ISO9_RAW", 0.0, "FB1 from ISO9_RAW"),
+    "ISO_LDO_BYP": ("abs", dict(v=1.5, vt=1.5, why="LP2985 BYPASS: its internal ~1.2 V reference node; "
+                                                   "1.5 V an assumed bound")),
+    "+5V_A": ("abs", dict(v=5.0 * 1.025, vt=5.0 * 1.025 * 1.03,
+                          why="U31 LP2985-50, standard grade +-2.5 % over temperature (ASSUMED from TI's "
+                              "LP2985 family; read SLVS522 when its LCSC code is picked); +3 % transient")),
+    "+3V3_A": ("ldo", "U6", "AP2112K-3.3 from +5V_A: 3.3 V +1.5 %; +3 % transient"),
+    **{n: ("like", "+3V3_A", 0.0, "an isolator's audio-side output / input at its +3V3_A VCC2")
+       for n in ("I2S_CK_ISO", "I2S_MCK_ISO", "I2S_WS_ISO", "I2S_SDI_ISO", "I2S_SDO_ISO",
+                 "POT_SCK_ISO", "POT_SDI_ISO", "POT_CS_ISO", "JACK_MODE_ISO")},
+    "+24V_RIB": ("like", "+24V", 0.0, "F204 (PPTC) from +24V, out on the connector ribbon"),
+    # USB-C connector side of the common-mode chokes FL1-FL4: the same levels as the board side
+    "PA_VBUS_J": ("like", "PA_VBUS", 0.0, "FL1's connector side of PA_VBUS"),
+    "PB_VBUS_J": ("like", "PB_VBUS", 0.0, "FL2's connector side of PB_VBUS"),
+    **{n: ("abs", dict(v=0.3, vt=1.0, why="the USB-C ground return on the connector side of the "
+                                          "CMC: GND plus the choke's IR drop at 5 A; 1 V a "
+                                          "ground-bounce bound (assumed)"))
+       for n in ("PA_GND_J", "PB_GND_J")},
+    **{n: SEEDS["output_board"]["USBA_DP"] for n in ("USBA_DP_J", "USBA_DM_J", "USBB_DP_J", "USBB_DM_J")},
+    "RELAY_COIL": ("like", "V5_PRE", 1.25, "coil turn-off: V5_PRE (the coil is on the charger side) plus "
+                                           "D4's forward drop (1.25 V max)"),
+})
+# the audio domain's rails were renamed when it was isolated (output_board._isolation)
+_ALIAS = {"+5V": "+5V_A", "+3V3": "+3V3_A"}
+
+
+def _alias_fn(f):
+    return f if not callable(f) else (lambda L, R, _f=f: _f(lambda n: L(_ALIAS.get(n, n)), R))
+
+
+for _T in (RES_MODEL, CAP_ACROSS, FET_VGS):
+    _T["output_board"] = {k: tuple(_alias_fn(x) for x in v) for k, v in _T["output_board"].items()}
+
+
 CODE_FALLBACK["output_board"] = {
+    # U5, merged: the 4 A LMR33640 in the 3 A part's RNX land, no LCSC code yet (open item).
+    # Rated as the LMR33630 (C2071384): the same 1.0 V feedback reference and pin limits
+    # (the same TI family sheet's absolute-maximum table) -- confirm when the code is picked
+    ("LMR33640 (RNX, open item)", "Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm"): "C2071384",
+    # J240, the connector ribbon (harness.CONN_RIBBON): no LCSC code yet; rated as its stocked
+    # 2 x 8 sibling, the same HX PZ1.27 family and contacts (as J4 above)
+    ("PZ1.27-2x15P ZZ", "PinHeader_2x15_P1.27mm_Vertical_SMD"): "C22438123",
     # J4, the optical ribbon: PZ1.27-2x10P ZZ has no LCSC code yet (output_board open item);
     # rated as its stocked 2 x 8 sibling, the same HX PZ1.27 family and contacts
     ("PZ1.27-2x10P ZZ", "PinHeader_2x10_P1.27mm_Vertical_SMD"): "C22438123",

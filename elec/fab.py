@@ -26,8 +26,12 @@ from cadkit.pcbflow import fab_package as _fab  # noqa: E402
 # elec/fret_led.py cut to two panels -- see that module. `foot_led` is the OTHER
 # lighting job, the one that fires down at the player's feet. (The single side-mount
 # `led_strip` both replaced is gone, 2026-10-01.)
-BOARDS = ("can_tee", "lever_sensor", "motor_ctrl", "output_panel",
-          "pi_cap", "optical", "ui_board", "fret_led_mid", "fret_led_key",
+# THE INSTRUMENT'S BOARDS (user 2026-11-13 architecture, lead's BOM swap): the output
+# board IS the brain (CM5 + H743, brain.py built onto it) and the field connectors are on
+# the passive connector board. motor_ctrl, output_panel and pi_cap left the count here;
+# their generators and fab outputs stay as the locked R1 record (r1-boards-locked).
+BOARDS = ("can_tee", "lever_sensor", "output_board", "connector_board",
+          "optical", "ui_board", "fret_led_mid", "fret_led_key",
           "foot_led_a", "foot_led_b",
           # the leg's blind-mate boards (elec/leg_pogo.py, 2026-10-01): two joints, and each
           # joint's pair is the MIRROR of the other's, so four designs
@@ -96,6 +100,7 @@ LCSC = {
     # worst case against the TPS560430's 1.4 A maximum current limit, which is the
     # number TI tells you to size against.
     "WPN4020H4R7MT": "C98363",       # 4.7 uH, 4x4x2.0 closed-circuit, Isat 4.0 A (optical L1)
+    "FXL0630-4R7-M": "C167220",      # 4.7 uH, 6.45x6.6x2.8 molded, 6 A / 9 A (output_board L1, merged)
     "SWPA5040S4R7MT": "C48496",      # 4.7 uH, 5x5x4.0 shielded, Isat 3.50 A min (the LED bucks)
     "LMR33630BRNXR": "C2071384",     # the 1.4 MHz RNX part (the LED bucks, elec/buck_cell.py; optical U13)
     # -- motor_ctrl's parts that were values and not parts until the 2026-10-04 review --

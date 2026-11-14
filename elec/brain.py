@@ -250,27 +250,58 @@ CH32_IO = {
 }
 
 
-def brain():
-    gnd = Net("GND")
-    v24, vin, vin_sw = Net("+24V"), Net("VIN_BRAIN"), Net("VIN_SW")
-    v5a, v5c, v33 = Net("+5V_AUX"), Net("+5V_CM5"), Net("+3V3")
+def brain(merged=None):
+    """The brain's circuit. merged=None: the standalone board (retired 2026-11-13, kept so
+    its netlist still builds). merged={"gnd": net, "vin": net}: built ONTO THE OUTPUT BOARD
+    (user, 2026-11-13: "the output board becomes the brain board"), sharing its GND and
+    its VIN_BRAIN; the inter-board leads and USB links are left out (output_board joins the
+    nets this returns) and every field connector -- ten motors, both bus-B arms, both LED
+    drops -- is replaced by ONE ribbon header to the connector board (harness.CONN_RIBBON),
+    whose field-side parts (the far bus-A terminator, the clamps, the header bypasses) are
+    connector_board.py's."""
+    gnd = merged["gnd"] if merged else Net("GND")
+    v24, vin_sw = Net("+24V"), Net("VIN_SW")
+    vin = merged["vin"] if merged else Net("VIN_BRAIN")
+    v5c = Net("+5V_CM5")
+    # merged with the H743 folded in: the output board's +3V3D (its U21) is the transceivers' and
+    # switches' 3.3 V, and U8 goes -- one logic LDO for one board
+    v33 = merged["v33"] if merged and "v33" in merged else Net("+3V3")
+    # FOLD (user, 2026-11-13: "unify more work onto a single processor"): the output board's
+    # H743 takes the CH32's job. merged["mcu"] hands over the H743-side nets for the CH32's
+    # signals (CAN1/2, the sense / power-sequencing lines, USART1 to the CM5) and its NRST /
+    # BOOT0; U1, Y1, their passives and pads are left out, and the CM5 keeps R30-R33.
+    fold = merged["mcu"] if merged and "mcu" in merged else None
+    cm5_io = dict(CM5_IO)
+    if fold:
+        # the CM5 talks to the H743 over USB (OB_LINK), so the "read me" line goes; the arms'
+        # CAN/USB switches move to the CM5, which runs the arm flashing (lever-usb-flash) and
+        # must not depend on the H743's firmware to do it
+        del cm5_io["MCU_IRQ_CM5"]
+        cm5_io["SEL_PED"], cm5_io["SEL_LEV"] = 4, 7
+    # merged: the output board's own 5 V (V5_PRE, its U5 on the chargers' raw input) IS the
+    # logic 5 V -- one buck for both boards' logic (user, 2026-11-13: "combining multiple 5V
+    # bucks into one"), and the CH32 runs from a charger's attach, not from the boost's 24 V
+    v5a = merged["v5a"] if merged and "v5a" in merged else Net("+5V_AUX")
     cm5_3v3 = Net("CM5_3V3")
     for n in (gnd, v24, vin, vin_sw, v5a, v5c, v33, cm5_3v3):
         n.drive = Pin.drives.POWER
-    io = {k: Net(k) for k in list(CM5_IO) + list(CH32_IO) if k != "BOOT1_PB2"}
+    io = {k: Net(k) for k in dict.fromkeys(list(cm5_io) + list(CH32_IO)) if k != "BOOT1_PB2"}
+    if fold:
+        io.update(fold)
 
     # ── J10 / J12 / J11: from the output board ─────────────────────────────────────────
     # Two 6-way XH power leads in parallel (10 A worst case at 2.5 A a way: two VIN and two GND
     # ways on each, 22 AWG: the two-gauge rule), way 3 of each STRAPPED TO GND here -- the output board reads it as
     # "this lead is in". Then the 6-way logic lead.
-    for tag in ("J10", "J12"):
+    for tag in (() if merged else ("J10", "J12")):
         _jst(tag, "S6B-XH-SM4-TB", "5-20 V in from the output board, lead %s of 2 in "
              "parallel; way 3 = the presence loop, strapped to GND" % tag[-1:],
              XH6_SIDE, harness.BRAIN_POWER, {"VIN": vin, "GND": gnd, "LEAD_SENSE": gnd},
              power=("VIN",))
     link = {k: Net("LINK_" + k) for k in ("BRAIN_EN", "LOW_PWR", "PWR_BTN", "BRAIN_PG")}
-    _jst("J11", "S6B-PH-SM4-TB", "logic to / from the output board (harness.BRAIN_SIGNAL)",
-         PH6_SIDE, harness.BRAIN_SIGNAL, dict(link, GND=gnd), power=())
+    if not merged:
+        _jst("J11", "S6B-PH-SM4-TB", "logic to / from the output board (harness.BRAIN_SIGNAL)",
+             PH6_SIDE, harness.BRAIN_SIGNAL, dict(link, GND=gnd), power=())
     _cap("C1", "22uF/35V", "VIN bulk at the inlet, AHEAD of the switch", vin, gnd, C1210)
     _cap("C2", "100nF/50V", "VIN HF bypass at J10", vin, gnd)
     _diode("D1", "SMF24A", "VIN clamp, 200 W (LCSC C169430)", vin, gnd, "Diode_SMD:D_SOD-123F")
@@ -334,13 +365,18 @@ def brain():
     _res("R58", "100k", "Q12 gate down", btn_g, gnd)
     _small("Q12", "PWR_BTN to the output board, open drain: LOW = the button says ON",
            link["PWR_BTN"], btn_g, gnd)
-    _res("R59", "10k", "the button as J11 carries it, into the CH32 (pulled up at the "
-         "output board)", link["PWR_BTN"], io["BTN_IN"])
-    _res("R60", "10k", "LOW_PWR as J11 carries it, into the CH32", link["LOW_PWR"],
-         io["LOW_PWR_IN"])
+    # folded, the H743 that drives LOW_PWR and reads PWR_BTN is the same MCU these fed, and it
+    # reads +24V itself (SENSE_24V): the second copies of the button / LOW_PWR and the
+    # BRAIN_PG report go
+    if not fold:
+        _res("R59", "10k", "the button as J11 carries it, into the CH32 (pulled up at the "
+             "output board)", link["PWR_BTN"], io["BTN_IN"])
+        _res("R60", "10k", "LOW_PWR as J11 carries it, into the CH32", link["LOW_PWR"],
+             io["LOW_PWR_IN"])
     _res("R61", "100k", "LOW_PWR down: full mode with the lead out", link["LOW_PWR"], gnd)
-    _res("R62", "1k", "BRAIN_PG out, open drain from the CH32: LOW = +24V good",
-         io["BRAIN_PG_N"], link["BRAIN_PG"])
+    if not fold:
+        _res("R62", "1k", "BRAIN_PG out, open drain from the CH32: LOW = +24V good",
+             io["BRAIN_PG_N"], link["BRAIN_PG"])
 
     # ── U20: THE BOOST, VIN_SW (5-20 V) -> 24 V, ~100 W. LM5122, TI SNVS954H 8.2 ────────────
     # TI's worked example is this design almost exactly (9/12/20 V in, 24 V 4.5 A out, 250 kHz,
@@ -421,34 +457,36 @@ def brain():
     # ── U7: +5V_AUX -- the buck cell (output_board's U5), always on with the 24 V ───────────
     # Feeds what must run in MINIMAL mode: the CH32 (via U8), the transceivers, bus B's 5 V.
     # motor_ctrl took bus B's 5 V off the Pi's rail; minimal mode turns that rail off.
-    sw7, boot7, fb7, vcc7 = Net("SW7"), Net("BOOT7"), Net("FB7"), Net("VCC7")
-    u7 = _part("U7", "LMR33630", BC.U_VALUE, "24 V -> +5V_AUX synchronous buck, 1.4 MHz, 3 A "
-               "(LCSC %s)" % BC.U_LCSC, BC.U_FP, [Pin(num=n, func=P) for n in range(1, 13)])
-    gnd += u7[1], u7[11], u7[6]
-    v24 += u7[2], u7[10], u7[9]
-    sw7 += u7[3], u7[12]
-    boot7 += u7[4]
-    vcc7 += u7[5]
-    fb7 += u7[7]
-    Net("U7_PG_NC").connect(u7[8])
-    _two("L3", "L", BC.L1_VALUE, BC.L1_DESC, BC.L1_FP, sw7, v5a)
-    _res("R14", "100k", "+5V_AUX feedback, top", v5a, fb7)
-    _res("R15", "24k9 1%", "+5V_AUX feedback, bottom: 5.02 V", fb7, gnd)
-    for tag, val, a, why, fp in (("C51", "10uF/50V", v24, "U7 input bulk", C1206),
-                                 ("C52", "100nF/50V", v24, "U7 input HF, pins 10/11", C0402),
-                                 ("C53", "1uF/25V", vcc7, "U7 VCC", C0402),
-                                 ("C55", "22uF/16V", v5a, "+5V_AUX bulk", C0805),
-                                 ("C56", "22uF/16V", v5a, "+5V_AUX bulk", C0805)):
-        _cap(tag, val, why, a, gnd, fp)
-    _cap("C54", "100nF/50V", "U7 bootstrap", boot7, sw7)
-    u8 = _fix("U8", "AP2112K-3.3TRG1", "+5V_AUX -> +3V3 for the CH32, the transceivers, the "
-              "switches (LCSC C51118)", "Package_TO_SOT_SMD:SOT-23-5", range(1, 6))
-    v5a += u8[1], u8[3]
-    gnd += u8[2]
-    Net("U8_NC_4").connect(u8[4])
-    v33 += u8[5]
-    _cap("C57", "1uF", "U8 input", v5a, gnd)
-    _cap("C58", "10uF", "+3V3 bulk", v33, gnd, C0805)
+    if not (merged and "v5a" in merged):
+        sw7, boot7, fb7, vcc7 = Net("SW7"), Net("BOOT7"), Net("FB7"), Net("VCC7")
+        u7 = _part("U7", "LMR33630", BC.U_VALUE, "24 V -> +5V_AUX synchronous buck, 1.4 MHz, 3 A "
+                   "(LCSC %s)" % BC.U_LCSC, BC.U_FP, [Pin(num=n, func=P) for n in range(1, 13)])
+        gnd += u7[1], u7[11], u7[6]
+        v24 += u7[2], u7[10], u7[9]
+        sw7 += u7[3], u7[12]
+        boot7 += u7[4]
+        vcc7 += u7[5]
+        fb7 += u7[7]
+        Net("U7_PG_NC").connect(u7[8])
+        _two("L3", "L", BC.L1_VALUE, BC.L1_DESC, BC.L1_FP, sw7, v5a)
+        _res("R14", "100k", "+5V_AUX feedback, top", v5a, fb7)
+        _res("R15", "24k9 1%", "+5V_AUX feedback, bottom: 5.02 V", fb7, gnd)
+        for tag, val, a, why, fp in (("C51", "10uF/50V", v24, "U7 input bulk", C1206),
+                                     ("C52", "100nF/50V", v24, "U7 input HF, pins 10/11", C0402),
+                                     ("C53", "1uF/25V", vcc7, "U7 VCC", C0402),
+                                     ("C55", "22uF/16V", v5a, "+5V_AUX bulk", C0805),
+                                     ("C56", "22uF/16V", v5a, "+5V_AUX bulk", C0805)):
+            _cap(tag, val, why, a, gnd, fp)
+        _cap("C54", "100nF/50V", "U7 bootstrap", boot7, sw7)
+    if not (merged and "v33" in merged):
+        u8 = _fix("U8", "AP2112K-3.3TRG1", "+5V_AUX -> +3V3 for the CH32, the transceivers, the "
+                  "switches (LCSC C51118)", "Package_TO_SOT_SMD:SOT-23-5", range(1, 6))
+        v5a += u8[1], u8[3]
+        gnd += u8[2]
+        Net("U8_NC_4").connect(u8[4])
+        v33 += u8[5]
+        _cap("C57", "1uF", "U8 input", v5a, gnd)
+        _cap("C58", "10uF", "+3V3 bulk", v33, gnd, C0805)
 
     # ── U5: +5V_CM5 -- motor_ctrl's Pi buck, its fuse and its crowbar (motor_ctrl.py U5) ─────
     # EN: motor_ctrl's 18.1 V UVLO divider, and Q15 holds it low while LOW_PWR is high
@@ -520,7 +558,7 @@ def brain():
     cnet(v5c, *CM5_5V_IN)
     cnet(cm5_3v3, *CM5_3V3_OUT)
     cnet(cm5_3v3, CM5_PIN["GPIO_VREF"])          # 3.3 V GPIO; may not float or be grounded
-    for name, g in CM5_IO.items():
+    for name, g in cm5_io.items():
         cnet(io[name], GPIO[g])
     pwrbut, nrpiboot, led_act = Net("CM5_PWR_BUT"), Net("CM5_nRPIBOOT"), Net("CM5_LED_nACT")
     cnet(pwrbut, CM5_PIN["PWR_Button"])
@@ -557,10 +595,11 @@ def brain():
     nrpiboot += tp7[1]
 
     # ── J13 / J14: the two USB links from the output board ───────────────────────────────
-    for tag, (dp, dm), what in (("J13", (otg_p, otg_n), "the panel ports' data -> the CM5's "
-                                 "USB 2.0 OTG (gadget; rpiboot) -- from output board J3"),
-                                ("J14", (lnk_p, lnk_n), "the output board's H743 (OTG_FS "
-                                 "device) -> the CM5's USB3-0 USB2 pair -- from output J9")):
+    for tag, (dp, dm), what in (() if merged else (
+            ("J13", (otg_p, otg_n), "the panel ports' data -> the CM5's "
+             "USB 2.0 OTG (gadget; rpiboot) -- from output board J3"),
+            ("J14", (lnk_p, lnk_n), "the output board's H743 (OTG_FS "
+             "device) -> the CM5's USB3-0 USB2 pair -- from output J9"))):
         j = _usbc(tag, what)
         gnd += j["A1"], j["A12"], j["B1"], j["B12"], j["SH"]
         Net("%s_VBUS_NC" % tag).connect(j["A4"], j["B4"], j["A9"], j["B9"])
@@ -570,48 +609,54 @@ def brain():
         dp += j["A6"], j["B6"]
         dm += j["A7"], j["B7"]
 
-    # ── U1: THE CH32V307 -- motor_ctrl's MCU and wiring ──────────────────────────────────
-    u1 = _fix("U1", "CH32V307WCU6", "RISC-V MCU, 2x hardware CAN (LCSC C5142795)",
-              "Package_DFN_QFN:QFN-68-1EP_8x8mm_P0.4mm_EP5.2x5.2mm", range(1, 70))
-    for n in CH32_PWR["VSS"]:
-        gnd += u1[n]
-    for n in CH32_PWR["VDD"]:
-        v33 += u1[n]
-    u1_used = set(CH32_PWR["VSS"]) | set(CH32_PWR["VDD"])
-    for name, n in CH32_IO.items():
-        if name == "BOOT1_PB2":
+    # ── U1: THE CH32V307 -- motor_ctrl's MCU and wiring (gone when the H743 takes its job) ──────────────────────────────────
+    if not fold:
+        u1 = _fix("U1", "CH32V307WCU6", "RISC-V MCU, 2x hardware CAN (LCSC C5142795)",
+                  "Package_DFN_QFN:QFN-68-1EP_8x8mm_P0.4mm_EP5.2x5.2mm", range(1, 70))
+        for n in CH32_PWR["VSS"]:
             gnd += u1[n]
-        else:
-            io[name] += u1[n]
-        u1_used.add(n)
-    for n in range(1, 70):
-        if n not in u1_used:
-            Net("U1_NC_%d" % n).connect(u1[n])
-    y1 = _fix("Y1", "TAXM8M4RFDCET2T", "8 MHz HSE, CL 12 pF -- CAN bit timing wants a crystal",
-              "Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm", range(1, 5))
-    io["OSC_IN"] += y1[1]
-    io["OSC_OUT"] += y1[3]
-    gnd += y1[2], y1[4]
-    _cap("C4", "15pF", "crystal load", io["OSC_IN"], gnd)
-    _cap("C5", "15pF", "crystal load", io["OSC_OUT"], gnd)
-    _cap("C6", "100nF", "NRST filter", io["NRST"], gnd)
-    _res("R7", "10k", "BOOT0 pull-down", io["BOOT0"], gnd)
-    _res("R8", "10k", "NRST pull-up", io["NRST"], v33)
-    for k, tag in enumerate(("C7", "C8", "C9", "C10", "C11", "C12", "C13", "C14")):
-        _cap(tag, "100nF", "MCU supply decoupling", v33, gnd)
-    _cap("C15", "10uF", "MCU bulk", v33, gnd, C0805)
-    for ref, net, what in (("TP1", io["SWDIO"], "SWDIO"), ("TP2", io["SWCLK"], "SWCLK"),
-                           ("TP3", io["NRST"], "NRST"), ("TP4", gnd, "GND"),
-                           ("TP5", v33, "+3V3"), ("TP6", io["BOOT0"], "BOOT0")):
-        tp = _part(ref, "TestPoint", "SWD", "SWD pad -- %s; bare copper" % what,
-                   "TestPoint:TestPoint_Pad_D1.5mm", [Pin(num=1, func=P)])
-        net += tp[1]
-    # the CM5 link: 1k in every line, so a powered side never feeds an unpowered one
-    for ref, a, b_, what in (("R30", "CM5_TX", "MCU_RX", "CM5 UART4 TX -> CH32 USART1 RX"),
-                             ("R31", "MCU_TX", "CM5_RX", "CH32 USART1 TX -> CM5 UART4 RX"),
-                             ("R32", "CM5_MCU_RST", "NRST", "CM5 GPIO25 -> CH32 NRST"),
-                             ("R33", "CM5_MCU_BOOT", "BOOT0", "CM5 GPIO19 -> CH32 BOOT0"),
-                             ("R34", "MCU_IRQ", "MCU_IRQ_CM5", "CH32 PA8 -> CM5 GPIO4")):
+        for n in CH32_PWR["VDD"]:
+            v33 += u1[n]
+        u1_used = set(CH32_PWR["VSS"]) | set(CH32_PWR["VDD"])
+        for name, n in CH32_IO.items():
+            if name == "BOOT1_PB2":
+                gnd += u1[n]
+            else:
+                io[name] += u1[n]
+            u1_used.add(n)
+        for n in range(1, 70):
+            if n not in u1_used:
+                Net("U1_NC_%d" % n).connect(u1[n])
+        y1 = _fix("Y1", "TAXM8M4RFDCET2T", "8 MHz HSE, CL 12 pF -- CAN bit timing wants a crystal",
+                  "Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm", range(1, 5))
+        io["OSC_IN"] += y1[1]
+        io["OSC_OUT"] += y1[3]
+        gnd += y1[2], y1[4]
+        _cap("C4", "15pF", "crystal load", io["OSC_IN"], gnd)
+        _cap("C5", "15pF", "crystal load", io["OSC_OUT"], gnd)
+        _cap("C6", "100nF", "NRST filter", io["NRST"], gnd)
+        _res("R7", "10k", "BOOT0 pull-down", io["BOOT0"], gnd)
+        _res("R8", "10k", "NRST pull-up", io["NRST"], v33)
+        for k, tag in enumerate(("C7", "C8", "C9", "C10", "C11", "C12", "C13", "C14")):
+            _cap(tag, "100nF", "MCU supply decoupling", v33, gnd)
+        _cap("C15", "10uF", "MCU bulk", v33, gnd, C0805)
+        for ref, net, what in (("TP1", io["SWDIO"], "SWDIO"), ("TP2", io["SWCLK"], "SWCLK"),
+                               ("TP3", io["NRST"], "NRST"), ("TP4", gnd, "GND"),
+                               ("TP5", v33, "+3V3"), ("TP6", io["BOOT0"], "BOOT0")):
+            tp = _part(ref, "TestPoint", "SWD", "SWD pad -- %s; bare copper" % what,
+                       "TestPoint:TestPoint_Pad_D1.5mm", [Pin(num=1, func=P)])
+            net += tp[1]
+    # the CM5 link: 1k in every line, so a powered side never feeds an unpowered one. Folded,
+    # the same four land on the H743: USART1 PA9 / PA10 (a ROM-loader port, AN2606) and NRST /
+    # BOOT0 -- the CM5 can always force the H743 into its ROM loader (PCB_QUALITY M43).
+    tgt = "H743" if fold else "CH32"
+    lk = [("R30", "CM5_TX", "MCU_RX", "CM5 UART4 TX -> %s USART1 RX" % tgt),
+          ("R31", "MCU_TX", "CM5_RX", "%s USART1 TX -> CM5 UART4 RX" % tgt),
+          ("R32", "CM5_MCU_RST", "NRST", "CM5 GPIO25 -> %s NRST" % tgt),
+          ("R33", "CM5_MCU_BOOT", "BOOT0", "CM5 GPIO19 -> %s BOOT0" % tgt)]
+    if not fold:
+        lk.append(("R34", "MCU_IRQ", "MCU_IRQ_CM5", "CH32 PA8 -> CM5 GPIO4"))
+    for ref, a, b_, what in lk:
         _res(ref, "1k", what + " -- series: no back-powering in minimal mode", io[a], io[b_])
 
     # ── the two CAN transceivers (motor_ctrl's U2 / U3) ──────────────────────────────────
@@ -639,14 +684,15 @@ def brain():
     # bus A is a LINE on this board: the ten motor headers in a row, terminated at both ends
     _res("R5", "120R", "bus A termination at the row's U2 end, 1%", a_h, a_l,
          "Resistor_SMD:R_0603_1608Metric")
-    _res("R6", "120R", "bus A termination at the row's far end, 1% -- place past J25 (motor 5, the -X end)", a_h,
-         a_l, "Resistor_SMD:R_0603_1608Metric")
-    d2 = _fix("D2", "NUP2105LT1G", "bus A clamp: CAN_H and CAN_L to GND, 24 V stand-off",
-              SOT23, range(1, 4))
-    a_h += d2[1]
-    a_l += d2[2]
-    gnd += d2[3]
-    for k in range(10):
+    if not merged:
+        _res("R6", "120R", "bus A termination at the row's far end, 1% -- place past J25 (motor 5, the -X end)", a_h,
+             a_l, "Resistor_SMD:R_0603_1608Metric")
+        d2 = _fix("D2", "NUP2105LT1G", "bus A clamp: CAN_H and CAN_L to GND, 24 V stand-off",
+                  SOT23, range(1, 4))
+        a_h += d2[1]
+        a_l += d2[2]
+        gnd += d2[3]
+    for k in (() if merged else range(10)):
         _jst("J%d" % (21 + k), "S4B-XH-SM4-TB",
              "motor %d (string %d) -- SERVO42D: 24 V + bus A, side entry, mouth UP"
              % (k + 1, k + 1), XH4_SIDE, harness.XH_PINOUT,
@@ -655,8 +701,8 @@ def brain():
     # each): a stepper driver's chopper edges come back down its lead, and the boost's output
     # caps sit up to 250 mm away at the +X end. The SERVO42D carries its own bulk; these are
     # the board-side HF return, not a reservoir.
-    for tag, pair in (("C116", "J25"), ("C117", "J24 / J26"), ("C118", "J30 / J21"),
-                      ("C119", "J23 / J27"), ("C120", "J29"), ("C121", "J22 / J28")):
+    for tag, pair in (() if merged else (("C116", "J25"), ("C117", "J24 / J26"), ("C118", "J30 / J21"),
+                      ("C119", "J23 / J27"), ("C120", "J29"), ("C121", "J22 / J28"))):
         _cap(tag, "10uF/50V", "+24V bypass at motor header(s) %s" % pair, v24, gnd, C1206)
 
     # ── bus B: two arms, each CAN or the flash lane (motor_ctrl's _arm_switches) ────────────
@@ -680,7 +726,7 @@ def brain():
         _cap(ctag, "100nF", "%s switch decoupling" % tag, v33, gnd)
         _res(rtag, "100k", "%s S pull-down: the %s arm is CAN until firmware says USB"
              % (tag, what), sel, gnd)
-    for tag, net in (("D4", ped_h), ("D5", ped_l), ("D10", lev_h), ("D11", lev_l)):
+    for tag, net in (() if merged else (("D4", ped_h), ("D5", ped_l), ("D10", lev_h), ("D11", lev_l))):
         _diode(tag, "ESD5B5.0ST1G", "bus B ESD clamp, arm pin to GND (LCSC C93623)", net, gnd)
     _tps2553("U6", "pedal arm 5 V, 0.52 A", v5a, io["EN_PED"], v5_ped, io["BUSB_FAULT_N"],
              "R22", "49k9 1%", gnd)
@@ -690,18 +736,21 @@ def brain():
         _res(tag, "100k", "%s EN pull-up: the arm is powered unless firmware says off" % what,
              v33, net)
     _res("R38", "10k", "BUSB_FAULT_N pull-up", io["BUSB_FAULT_N"], v33)
-    for tag, net, val, why, fp in (("C39", v5_ped, "1uF/16V", "U6 OUT", C0402),
-                                   ("C40", v5_lev, "1uF/16V", "U11 OUT", C0402),
-                                   ("C41", v5a, "100nF", "U6 / U11 IN", C0402),
-                                   ("C42", v5_ped, "10uF/16V", "pedal arm bulk at J15", C0805),
-                                   ("C43", v5_lev, "10uF/16V", "lever arm bulk at J16", C0805)):
+    _arm_caps = [("C39", v5_ped, "1uF/16V", "U6 OUT", C0402),
+                 ("C40", v5_lev, "1uF/16V", "U11 OUT", C0402),
+                 ("C41", v5a, "100nF", "U6 / U11 IN", C0402)]
+    if not merged:                     # the arms' bulk sits at their headers: the connector board's
+        _arm_caps += [("C42", v5_ped, "10uF/16V", "pedal arm bulk at J15", C0805),
+                      ("C43", v5_lev, "10uF/16V", "lever arm bulk at J16", C0805)]
+    for tag, net, val, why, fp in _arm_caps:
         _cap(tag, val, why, net, gnd, fp)
-    _jst("J15", "S4B-PH-SM4-TB", "bus B, the PEDAL arm -- 5 V PH, side entry, mouth UP; "
-         "its lead comes up through the instrument's floor", PH4_SIDE, harness.PH_PINOUT,
-         {"V5": v5_ped, "GND": gnd, "CAN_H": ped_h, "CAN_L": ped_l})
-    _jst("J16", "S4B-PH-SM4-TB", "bus B, the LEVER arm -- 5 V PH, side entry, mouth UP; "
-         "its lead comes up through the instrument's floor", PH4_SIDE, harness.PH_PINOUT,
-         {"V5": v5_lev, "GND": gnd, "CAN_H": lev_h, "CAN_L": lev_l})
+    if not merged:
+        _jst("J15", "S4B-PH-SM4-TB", "bus B, the PEDAL arm -- 5 V PH, side entry, mouth UP; "
+             "its lead comes up through the instrument's floor", PH4_SIDE, harness.PH_PINOUT,
+             {"V5": v5_ped, "GND": gnd, "CAN_H": ped_h, "CAN_L": ped_l})
+        _jst("J16", "S4B-PH-SM4-TB", "bus B, the LEVER arm -- 5 V PH, side entry, mouth UP; "
+             "its lead comes up through the instrument's floor", PH4_SIDE, harness.PH_PINOUT,
+             {"V5": v5_lev, "GND": gnd, "CAN_H": lev_h, "CAN_L": lev_l})
 
     # ── the lights (motor_ctrl F3 + pi_cap J3 / J6): fused 24 V and the CM5's two SPIs ──────
     v24_led = Net("+24V_LED")
@@ -716,10 +765,29 @@ def brain():
                              ("R42", io["SCK_FOOT_PI"], sck_ft, "foot SCLK series termination"),
                              ("R43", io["SDT_FOOT_PI"], sdt_ft, "foot MOSI series termination")):
         _res(ref, "68R", what + " (pi_cap's 68R)", a, b_)
-    _jst("J3", "S4B-XH-SM4-TB", "to fret_led_key J1 -- 24 V and SPI0 (harness.LED_DROP)",
-         XH4_SIDE, harness.LED_DROP, {"V24": v24_led, "GND": gnd, "SCK": sck, "SDT": sdt})
-    _jst("J4", "S4B-XH-SM4-TB", "to foot_led_a J1 -- 24 V and SPI5 (harness.LED_DROP)",
-         XH4_SIDE, harness.LED_DROP, {"V24": v24_led, "GND": gnd, "SCK": sck_ft, "SDT": sdt_ft})
+    if not merged:
+        _jst("J3", "S4B-XH-SM4-TB", "to fret_led_key J1 -- 24 V and SPI0 (harness.LED_DROP)",
+             XH4_SIDE, harness.LED_DROP, {"V24": v24_led, "GND": gnd, "SCK": sck, "SDT": sdt})
+        _jst("J4", "S4B-XH-SM4-TB", "to foot_led_a J1 -- 24 V and SPI5 (harness.LED_DROP)",
+             XH4_SIDE, harness.LED_DROP, {"V24": v24_led, "GND": gnd, "SCK": sck_ft, "SDT": sdt_ft})
+    else:
+        # ── THE CONNECTOR RIBBON: every field connector is on the connector board now ──
+        # The motors' 24 V leaves through its own fuse: a crushed ribbon or a shorted motor
+        # lead must open here, not in one 30 AWG wire (four in parallel carry ~4 A).
+        v24_rib = Net("+24V_RIB")
+        v24_rib.drive = Pin.drives.POWER
+        _two("F4", "Fuse", "PPTC 3A hold / 30 V (open item)", "the motors' 24 V onto the "
+             "connector ribbon: 4 x 30 AWG at ~1 A each", "Fuse:Fuse_1812_4532Metric", v24, v24_rib)
+        _cap("C122", "10uF/50V", "ribbon 24 V bulk, after F4", v24_rib, gnd, C1206)
+        _jst("J40", "PZ1.27-2x15P ZZ", "the CONNECTOR BOARD ribbon, 30-way 1.27 mm 2x15 IDC "
+             "(harness.CONN_RIBBON): motors' 24 V, the lights' 24 V, bus A, both arms (CAN or "
+             "the flash lane) with their 5 V, both LED SPIs (LCSC open item)",
+             "Connector_PinHeader_1.27mm:PinHeader_2x15_P1.27mm_Vertical_SMD", harness.CONN_RIBBON,
+             {"V24": v24_rib, "V24L": v24_led, "GND": gnd, "CANA_H": a_h, "CANA_L": a_l,
+              "PED_H": ped_h, "PED_L": ped_l, "LEV_H": lev_h, "LEV_L": lev_l,
+              "V5_PED": v5_ped, "V5_LEV": v5_lev, "SCK": sck, "SDT": sdt,
+              "SCK_FOOT": sck_ft, "SDT_FOOT": sdt_ft},
+             power=("V24", "V24L", "V5_PED", "V5_LEV"))
 
     # ── J5: the UI ribbon (pi_cap's J5, same order, harness.UI_RIBBON) ────────────────────
     v33_ui = Net("+3V3_UI")
@@ -751,6 +819,7 @@ def brain():
              ui_flt, "R44", "49k9 1%", gnd)
     _cap("C46", "1uF/16V", "U12 OUT", v33_ui, gnd)
     _cap("C47", "100nF", "U12 IN", cm5_3v3, gnd)
+    return {"link": link, "gadget": (otg_p, otg_n), "oblink": (lnk_p, lnk_n)}
 
 
 # ── the board ──────────────────────────────────────────────────────────────────────────────

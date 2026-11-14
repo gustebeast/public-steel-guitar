@@ -6,8 +6,8 @@ gate, and the positions are the intents' frames, not a mount.
     motors, JSTs mouth-up). Board X = instrument X + 360, board Y = instrument Z. (To move: user
     2026-11-13, flat in the -X +Y corner -- not drawn there until it is re-placed.)
   * output_board (120.3 x 100, ONE board, drops in -Z then slides +X 19 into a pocket fitted to it in the +X endplate: user 2026-11-13): back face on the
-    -Y side at y -87.5 (branner: +1.7 so unclipped 3.4 tails clear the wall at -91.7), parts facing +Y; board x = -(instrument x + 64.02), board y =
-    instrument z + 58.24 (x -124.17 .. -3.87). The panel (board -X edge) sits 4.0 + 1.9 behind the outer face; parts in the pocket: elec/output_board.pocket.json.
+    -Y side at y -87.5 (branner: +1.7 so unclipped 3.4 tails clear the wall at -91.7), parts facing +Y; board x = -(instrument x + 59.72), board y =
+    instrument z + 58.24 (x -119.87 .. 0.43). The panel (board -X edge) sits 1.6 behind the outer face (USB inset 1.6, J5 2.4 back on the board); parts in the pocket: elec/output_board.pocket.json.
   * the optical board is NOT drawn: it is being redesigned (user 2026-11-13: no forwarder MCU,
     a ribbon to the output board).
 
@@ -52,7 +52,7 @@ BOARDS = BG._with_revs(Boards(BG.GEOM_DIR, height={**BG.HEIGHT, **VIEW_HEIGHT}, 
                                  if BG._FONT else {})))
 
 BRAIN_Y, BRAIN_DX, BRAIN_Z = -66.0, -360.0, -71.0
-OB_X, OB_BACK_Y, OB_Z = -64.02, -87.5, -58.24      # output_board centre, FINAL (x -124.17..-3.87 after the +X slide d 19), back face (branner)
+OB_X, OB_BACK_Y, OB_Z = -74.985, -87.5, -58.24     # output_board (= brain) centre, FINAL (x -150.4..0.43, 150.83 wide), back face (branner)
 
 
 def _build(board):
@@ -60,7 +60,12 @@ def _build(board):
     solid (laminate + every part, BOARDS.solid) and its silkscreen (BOARDS.ink). The web
     export finds the board by its lettering and swaps the boxes for KiCad's coloured models
     (cadkit.web.boards), so the two must be posed alike and the parts must not be split off."""
-    return BOARDS.solid(board), BOARDS.ink(board)
+    return BOARDS.solid(board, skip=SKIP.get(board, ())), BOARDS.ink(board)
+
+
+# parts the project draws as THE PART, not a box (as output_panel's J8 is: src/screw_terminal.py,
+# the slotted MX128 -- one flat blade for it and the motors' terminals)
+SKIP = {"output_board": ("J8",)}
 
 
 @lru_cache(maxsize=None)
@@ -94,6 +99,10 @@ def boards() -> list:
         out.append(("%s_pcb" % b, made_of(pose(solid, *at), "board")))
         if ink is not None:
             out.append(("%s_pcb_silk" % b, made_of(pose(ink, *at), "ink")))
+        if "J8" in SKIP.get(b, ()):
+            from . import screw_terminal as ST
+            for k, v in ST.parts(b, "J8").items():
+                out.append(("%s_term%s" % (b, "" if k == "housing" else "_metal"), pose(v, *at)))
     return out
 
 

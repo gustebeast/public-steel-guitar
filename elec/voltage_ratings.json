@@ -3298,6 +3298,13 @@
    "i": 1.0,
    "src": "hanxia PZ1.27 datasheet p.4 (the family's rating, as C22438114): 500 V, 1 A",
    "mpn": "HX PZ1.27-2x8P ZZ"
+  },
+  "C167220": {
+   "kind": "ind",
+   "isat": 9.0,
+   "itemp": 6.0,
+   "mpn": "FXL0630-4R7-M",
+   "src": "JLC listing C167220 (2026-11-13): '33mOhm 4.7uH 6A 9A', read as 6 A rated / 9 A saturation -- confirm on Changjiang's sheet"
   }
  }
 }

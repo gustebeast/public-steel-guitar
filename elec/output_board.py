@@ -105,6 +105,7 @@ XH6_FP = "Connector_JST:JST_XH_S6B-XH-SM4-TB_1x06-1MP_P2.50mm_Horizontal"
 PH6_FP = "Connector_JST:JST_PH_S6B-PH-SM4-TB_1x06-1MP_P2.00mm_Horizontal"
 TERM_FP = "TerminalBlock:TerminalBlock_MaiXu_MX126-5.0-02P_1x02_P5.00mm"
 TERM_FP_R2 = "Steel:MaiXu_MX128-5.0-02P_1x02_P5.00mm"     # slotted: no second tool (R2-3)
+TERM_FP_35 = "TerminalBlock_Phoenix:TerminalBlock_Phoenix_PT-1,5-2-3.5-H_1x02_P3.50mm_Horizontal"
 MCU_FP = "Package_DFN_QFN:QFN-68-1EP_8x8mm_P0.4mm_EP5.2x5.2mm"
 ADC_FP = "Package_SO:TSSOP-14_4.4x5mm_P0.65mm"     # PCM1808PWR is a 14-pin TSSOP
 DAC_FP = "Package_SO:TSSOP-20_4.4x6.5mm_P0.65mm"
@@ -190,6 +191,7 @@ def _res(tag, value, desc, a, b, fp="Resistor_SMD:R_0402_1005Metric"):
 
 
 C0402, C0805 = "Capacitor_SMD:C_0402_1005Metric", "Capacitor_SMD:C_0805_2012Metric"
+C0603 = "Capacitor_SMD:C_0603_1608Metric"
 # Pinout citations for the PD parts, read 2026-11-13 against the maker's sheets AND the KiCad
 # footprints' pad numbering (output_split's power half and the brain cite them from here).
 PD_PINOUTS = {
@@ -306,25 +308,231 @@ MCU_IO = {
 
 
 
+# THE OUTPUT BOARD IS THE BRAIN (user, 2026-11-13): brain.py's circuit is built onto this one
+# (its field connectors replaced by the connector-board ribbon). False = the two-board design.
+MERGED = True
+
+
+# THE H743 TAKES THE CH32's JOB (user, 2026-11-13: "unify more work onto a single processor").
+# The CH32V307's signals, onto free H743 ports -- every one read from KiCad 10's
+# MCU_ST_STM32H7.kicad_sym (STM32H743IITx, pin numbers + alternate functions, 2026-11-13) and
+# checked unused by the merged netlist. FDCAN2 RX/TX on PB12/PB13 is the H743's own pair; FDCAN1
+# on PH13/PH14 (PA11/PA12 is OTG_FS). USART1 on PA9/PA10 is one of the H74x ROM loader's ports
+# (ST AN2606); PA9's OTG_FS VBUS-sense alternate stays off (firmware). The CH32's BTN_IN /
+# LOW_PWR_IN / BRAIN_PG_N copies go: this MCU drives LOW_PWR and reads PWR_BTN already, and
+# reads +24V itself on SENSE_24V.
+FOLD = MERGED
+FOLD_IO = {
+    "CAN1_TX": "PH13", "CAN1_RX": "PH14",       # FDCAN1 -> U202 TCAN3413, bus A (motors)
+    "CAN2_TX": "PB13", "CAN2_RX": "PB12",       # FDCAN2 -> U203 SN65HVD230, bus B (arms)
+    "MCU_TX": "PA9", "MCU_RX": "PA10",          # USART1 <-> CM5 UART4 (R230 / R231), ROM loader
+    "SENSE_24V": "PA4", "SENSE_5V": "PA5",      # ADC1_INP18 / ADC1_INP19, the brain's dividers
+    "PG_5V": "PG0",                             # U205's power-good
+    "BUSB_FAULT_N": "PG1",                      # the arm 5 V switches' fault (open drain)
+    "EN_PED": "PE13", "EN_LEV": "PE15",         # the arm 5 V switches
+    "PWR_HOLD": "PG4",                          # holds Q202 on through the CM5's shutdown
+    "CM5_ON": "PG5",                            # CM5_3V3 is up
+    "CM5_PWRBTN": "PG9",                        # -> Q214 -> the CM5's PWR_Button
+}
+FOLD_PINS = {"PH13": 128, "PH14": 129, "PB12": 92, "PB13": 93, "PA9": 120, "PA10": 121,
+             "PA4": 50, "PA5": 51, "PG0": 66, "PG1": 67, "PE13": 76, "PE15": 78, "PG4": 108,
+             "PG5": 109, "PG9": 152}
+if FOLD:
+    for _k, _v in FOLD_PINS.items():
+        assert PIN.get(_k, _v) == _v, _k
+    PIN.update(FOLD_PINS)
+    MCU_IO.update(FOLD_IO)
+    del MCU_IO["BRAIN_PG"]                      # nobody reports +24V good to itself
+
+
+def _circuit_parts():
+    from builtins import default_circuit         # skidl 2.x keeps it there
+    return list(default_circuit.parts)
+
+
+def _renumber(parts, offset):
+    """REF n -> REF n+offset for the parts another file built (brain.py's, +200): one board,
+    one set of refs. A ref with no trailing number is refused rather than guessed."""
+    import re as _re
+    for pt in parts:
+        m = _re.match(r"^([A-Z]+)(\d+)(?:_\d+)?$", pt.tag or pt.ref)
+        assert m, "cannot renumber %r" % (pt.tag or pt.ref)
+        old = pt.tag or pt.ref
+        pt.ref = pt.tag = "%s%d" % (m.group(1), int(m.group(2)) + offset)
+        for pin in pt.pins:                  # its "<ref>_NC_<n>" nets follow the ref
+            for net in pin.nets:
+                nm = _re.match(r"^%s_NC_(\d+)(?:_\d+)?$" % _re.escape(old), net.name)
+                if nm:
+                    net.name = "%s_NC_%s" % (pt.ref, nm.group(1))
+
+
+# the signals that cross the audio isolation barrier (U32-U34): MCU -> audio unless noted
+XING = ("I2S_MCK", "I2S_CK", "I2S_WS", "I2S_SDO", "I2S_SDI", "POT_CS", "POT_SCK", "POT_SDI",
+        "JACK_MODE")
+# the audio section, grown from these over every net but the barrier's (_audio_parts)
+AUDIO_SEEDS = ("U2", "U3", "U6", "U7", "U8", "U9", "U10", "U11", "U12", "J5", "J8")
+BARRIER = ("U30", "U32", "U33", "U34")        # one side each: wired explicitly
+QSOP16 = "Package_SO:QSOP-16_3.9x4.9mm_P0.635mm"
+
+
+def _isolation(gnd, agnd, v5_pre, v3d, v3v3, v5, iso9_raw, iso9, io, iso):
+    """The barrier: U30 (power) and U32-U34 (logic). Pinouts READ, not remembered, except
+    where an open item says otherwise:
+      ISO7741 / ISO7740, DBQ (QSOP-16): TI SLLSEP4K Table 4-1 -- 1 VCC1 2 GND1 3 INA 4 INB
+        5 INC 6 OUTD (7741) / IND (7740) 7 EN1 (7741) / NC (7740) 8 GND1 9 GND2 10 EN2
+        11 IND (7741) / OUTD (7740) 12 OUTC 13 OUTB 14 OUTA 15 GND2 16 VCC2. Non-F parts
+        output HIGH on an open input or an unpowered side 1 (Table 7-2): POT_CS idles high
+        (deselected), as R39 / R40 wanted.
+      ISO7710F, D (SOIC-8): TI SLLSER9E -- 1 VCC1 2 IN 3 VCC1 4 GND1 5 GND2 6 OUT 7 NC 8 VCC2;
+        F = LOW on an open input: JACK_MODE reads balanced through the MCU's reset.
+      LP2985-50, DBV: TI SLVS522S Table 4-1 -- 1 VIN 2 GND 3 ON/OFF 4 BYPASS 5 VOUT; 16 V max
+        in (legacy die), 2.2 uF ceramic out, 10 nF bypass (7.1.3).
+      B0509S-1WR3 (Mornsun, SIP-4): 1 -Vin 2 +Vin 3 0V 4 +Vo AS THE MURATA MEE1 / NME FAMILY
+        IT CLONES -- NOT YET READ OFF MORNSUN'S SHEET (open item)."""
+    p = Pin.types.PASSIVE
+    u30 = Part(name="DCDC_ISO", ref_prefix="U", ref="U30", tag="U30", dest="NETLIST", tool="skidl",
+               value="B0509S-1WR3", description="1 W isolated DC-DC, 5 -> 9 V unregulated, "
+               "1.5 kV: the audio section's power, across the barrier (Mornsun)",
+               footprint="Converter_DCDC:Converter_DCDC_Murata_MEE1SxxxxSC_THT",
+               pins=[Pin(num=i, func=p) for i in range(1, 5)])
+    gnd += u30[1]
+    v5_pre += u30[2]
+    agnd += u30[3]
+    iso9_raw += u30[4]
+    # 9 V, not 5: the module is unregulated (its output climbs at light load), so it feeds
+    # a low-noise LDO with headroom rather than the converters directly -- and the LDO's
+    # PSRR is the module's ripple filter, after FB1
+    u31 = Part(name="LDO_5V", ref_prefix="U", ref="U31", tag="U31", dest="NETLIST", tool="skidl",
+               value="LP2985-50DBVR", description="the audio's +5V: low-noise LDO, 150 mA, "
+               "16 V in, from the isolated 9 V (TI SLVS522S)",
+               footprint="Package_TO_SOT_SMD:SOT-23-5",
+               pins=[Pin(num=i, func=p) for i in range(1, 6)])
+    byp = Net("ISO_LDO_BYP")
+    iso9 += u31[1], u31[3]
+    agnd += u31[2]
+    byp += u31[4]
+    v5 += u31[5]
+    for tag, val, a, b, why, fp in (
+            ("C160", "4.7uF/10V", v5_pre, gnd, "U30 input", C0805),
+            ("C161", "4.7uF/25V", iso9_raw, agnd, "U30 output, before FB1", C0805),
+            ("C162", "1uF/25V", iso9, agnd, "U31 input, after FB1", C0603),
+            ("C163", "10nF", byp, agnd, "U31 noise bypass (SLVS522S 7.1.3)", C0402),
+            ("C164", "4.7uF/10V", v5, agnd, "U31 output: 2.2 uF minimum effective", C0805)):
+        _cap(tag, val, "isolated supply: " + why, a, b, fp)
+
+    def iso_chip(tag, value, fp, side1, side2, desc):
+        """side1 / side2: {pin: net}; the supplies and grounds added here."""
+        u = Part(name="ISO", ref_prefix="U", ref=tag, tag=tag, dest="NETLIST", tool="skidl",
+                 value=value, description=desc, footprint=fp,
+                 pins=[Pin(num=n, func=p) for n in sorted(set(side1) | set(side2))])
+        for k, net in list(side1.items()) + list(side2.items()):
+            net += u[k]
+        return u
+
+    # U32: the converters' clocks out, the ADC's data back
+    iso_chip("U32", "ISO7741DBQR", QSOP16,
+             {1: v3d, 2: gnd, 3: io["I2S_MCK"], 4: io["I2S_CK"], 5: io["I2S_WS"], 6: io["I2S_SDI"],
+              7: v3d, 8: gnd},
+             {9: agnd, 10: v3v3, 11: iso["I2S_SDI"], 12: iso["I2S_WS"], 13: iso["I2S_CK"],
+              14: iso["I2S_MCK"], 15: agnd, 16: v3v3},
+             "4-ch digital isolator 3F/1R, 100 Mbps: MCLK, BCK, LRCK out, the ADC's data back (TI)")
+    # U33: the DAC's data and the pot's SPI
+    iso_chip("U33", "ISO7740DBQR", QSOP16,
+             {1: v3d, 2: gnd, 3: io["I2S_SDO"], 4: io["POT_CS"], 5: io["POT_SCK"], 6: io["POT_SDI"],
+              8: gnd},
+             {7: Net("U33_NC_7"), 9: agnd, 10: v3v3, 11: iso["POT_SDI"], 12: iso["POT_SCK"],
+              13: iso["POT_CS"], 14: iso["I2S_SDO"], 15: agnd, 16: v3v3},
+             "4-ch digital isolator 4F: the DAC's data, the gain pot's SPI (TI)")
+    # U34: the jack mode bit, default LOW (balanced)
+    iso_chip("U34", "ISO7710FDR", "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm",
+             {1: v3d, 2: io["JACK_MODE"], 3: v3d, 4: gnd},
+             {5: agnd, 6: iso["JACK_MODE"], 7: Net("U34_NC_7"), 8: v3v3},
+             "1-ch digital isolator, F = low on an open input: JACK_MODE (TI)")
+    for tag, a, b, why in (("C165", v3d, gnd, "U32 VCC1"), ("C166", v3v3, agnd, "U32 VCC2"),
+                           ("C167", v3d, gnd, "U33 VCC1"), ("C168", v3v3, agnd, "U33 VCC2"),
+                           ("C169", v3d, gnd, "U34 VCC1"), ("C170", v3v3, agnd, "U34 VCC2")):
+        _cap(tag, "100nF", "isolator bypass, " + why, a, b, C0402)
+
+
+def _audio_parts():
+    """Every part of the audio section: grown from AUDIO_SEEDS over every net except GND,
+    the barrier's other side and the relay coil -- so a part added to the chain later is
+    in it without a list to keep."""
+    from builtins import default_circuit         # skidl 2.x keeps it there
+    stop = {"GND", "AGND", "PWR_GND", "V5_PRE", "+3V3D", "RELAY_COIL"} | set(XING)
+    seen, todo = set(AUDIO_SEEDS), list(AUDIO_SEEDS)
+    parts = {pt.ref: pt for pt in default_circuit.parts}
+    while todo:
+        for pin in parts[todo.pop()].pins:
+            for net in pin.nets:
+                if net.name in stop:
+                    continue
+                for q in net.pins:
+                    r = q.part.ref
+                    if r not in seen and r not in BARRIER:
+                        seen.add(r)
+                        todo.append(r)
+    return seen
+
+
+def _move_audio_grounds(gnd, agnd):
+    """The chain was written on one ground (output_panel's R2); every GND pin of an audio
+    part goes to AGND here, in one place, and nothing of the audio may be left on GND."""
+    audio = _audio_parts()
+    moved = 0
+    for pin in list(gnd.pins):
+        if pin.part.ref in audio:
+            pin.disconnect()
+            agnd += pin
+            moved += 1
+    left = sorted({q.part.ref for q in gnd.pins} & audio)
+    assert not left, "audio parts still on GND: %s" % left
+    # and the other way: NOTHING outside the audio section and the barrier touches AGND (R60
+    # did, 2026-11-13 -- written against `agnd` when that was GND's alias, it tied PWR_GND
+    # straight onto the isolated ground and no check saw it)
+    stray = sorted({q.part.ref for q in agnd.pins} - audio - set(BARRIER) - {"U31"})
+    assert not stray, "parts outside the audio section on AGND: %s" % stray
+    return audio, moved
+
+
 def output_board():
     # ⚠ ONE SIGNAL GROUND, PWR_GND SEPARATE, R60 THE STAR -- output_panel's rule, kept. The
     # power path (both USB-C inlets, the ideal diodes, VIN_BUS and J10) is PWR_GND: the
     # brain board's motor current returns through it to the chargers and never crosses GND. The buck U5 stands on GND as on R2, so its input current (<= ~1.3 A
     # on a 5 V contract) is what R60 carries -- an 0603 then, 1206 here.
     gnd = Net("GND")
-    agnd = gnd
-    v5, v3v3 = Net("+5V"), Net("+3V3")         # +3V3: U6, the converters' rail, as on R2
+    # ⚠ THE AUDIO IS ISOLATED (user, 2026-11-13: "I like all three as a bulletproof
+    # solution" -- the hum fix). AGND is the audio section's own ground: the pickup (J8),
+    # the jack (J5), both converters, the buffers, the pot, the mode switch and +5V / +3V3
+    # (which feed nothing else). It has NO copper path to GND: power crosses in U30 (an
+    # isolated DC-DC), the converters' and the pot's logic in U32-U34 (digital isolators),
+    # and the relay's coil-to-contact gap is the barrier at K1. A two-prong charger's Y-cap
+    # leakage, or a computer on the USB data, then has no path to the jack's sleeve -- the
+    # hum it makes through an earthed amp is designed out, not filtered.
+    agnd = Net("AGND")
+    # the AUDIO rails, isolated (U30 / U31 / U6) and named so: +5V / +3V3 are the brain's
+    v5, v3v3 = Net("+5V_A"), Net("+3V3_A")     # +3V3_A: U6, the converters' rail, as on R2
     v3d = Net("+3V3D")                         # U21: the MCU, the PHY, the logic
-    pgnd = Net("PWR_GND")
+    # ONE GROUND ON THE MERGED BOARD (2026-11-13): PWR_GND was kept apart, joined at R60, so the
+    # chargers' and the brain's return current never crossed the AUDIO's reference. The audio is
+    # galvanically isolated now (AGND), so that reason is gone -- and on one board a split between
+    # the CM5 / CH32 / boost and the H743 would cost more than it saves. Placement keeps the big
+    # currents apart instead: chargers and the boost along the bottom and the far end, the boost's
+    # hot loop on its own local pours.
+    pgnd = gnd if MERGED else Net("PWR_GND")
     vstby, vin = Net("VSTBY"), Net("VIN_BUS")
-    for n in (gnd, v5, v3v3, v3d, pgnd, vstby, vin):
+    for n in (gnd, agnd, v5, v3v3, v3d, pgnd, vstby, vin):
         n.drive = Pin.drives.POWER
     io = {k: Net(k) for k in MCU_IO}           # every MCU signal net, by name
-    relay, jack_mode = io["RELAY"], io["JACK_MODE"]
-    pot_cs, pot_sck, pot_sdi = io["POT_CS"], io["POT_SCK"], io["POT_SDI"]
-    i2s_ck, i2s_ws = io["I2S_CK"], io["I2S_WS"]
-    i2s_sdo, i2s_sdi, mclk = io["I2S_SDO"], io["I2S_SDI"], io["I2S_MCK"]
-    osc_in, osc_out, nrst, boot0 = Net("OSC_IN"), Net("OSC_OUT"), Net("NRST"), Net("BOOT0")
+    relay = io["RELAY"]                        # the relay COIL stays on GND (see K1)
+    # the audio parts below connect to the ISOLATED side of each crossing; U32-U34 join
+    # them to the MCU's io nets
+    iso = {k: Net(k + "_ISO") for k in XING}
+    jack_mode = iso["JACK_MODE"]
+    pot_cs, pot_sck, pot_sdi = iso["POT_CS"], iso["POT_SCK"], iso["POT_SDI"]
+    i2s_ck, i2s_ws = iso["I2S_CK"], iso["I2S_WS"]
+    i2s_sdo, i2s_sdi, mclk = iso["I2S_SDO"], iso["I2S_SDI"], iso["I2S_MCK"]
+    osc_in, osc_out, nrst, boot0 = Net("OSC_IN"), Net("OSC_OUT"), Net("NRST"), Net("MCU_BOOT0")
 
     # ── J1/J2: THE PANEL USB-C PORTS -- each one power IN and data, either one alone runs it ──
     # Per port, DS46176 figure 1 with one change: ONE switch FET, not the back-to-back pair,
@@ -338,25 +546,47 @@ def output_board():
     # which this instrument does not use, and they would hang on the data lines.
     # Each AP33772S has a bus to itself: the address is fixed at 0x52.
     usb_pair = {}
-    for side, j_ref, u_ref, qs, qd, ui, rs, rt, refs_r, refs_c, d_tvs, d_stb, d_esd, clamp_refs in (
+    for side, j_ref, u_ref, qs, qd, ui, rs, rt, refs_r, refs_c, d_tvs, d_stb, d_esd, clamp_refs, fl_p, fl_d in (
             ("A", "J1", "U13", "Q4", "Q6", "U18", "R70", "RT1",
              ("R71", "R72", "R73", "R74"), ("C80", "C81", "C82", "C83", "C84", "C85"),
-             "D11", "D14", None, ("D20", "D21")),
+             "D11", "D14", None, ("D20", "D21"), "FL1", "FL3"),
             ("B", "J2", "U14", "Q5", "Q7", "U19", "R75", "RT2",
              ("R76", "R77", "R78", "R79"), ("C86", "C87", "C88", "C89", "C90", "C91"),
-             "D15", "D16", ("D12", "D13"), ("D22", "D23"))):
+             "D15", "D16", ("D12", "D13"), ("D22", "D23"), "FL2", "FL4")):
         # ⚠ A 48 V (EPR-class) RECEPTACLE, not the HRO TYPE-C-31-M-12 (lead ruling 2026-11-13):
         # HRO's drawing rates that one 20 V, under the PD contract's 21 V; YUWENFA's
         # PTCFW-H22A-005 is rated 48 V / 5 A on its own drawing (p.1/3) on the same land
         # (p.2/3: 8.64 slots, 4.18 / 5.79, two 0.65 pegs), at the same price
         j = _usbc(j_ref, "panel USB-C %s: USB PD power in (5-20 V) + USB 2.0 data to the "
                   "CM5's gadget port; 48 V receptacle (LCSC C54829820)" % side, "PTCFW-H22A-005")
-        pgnd += j["A1"], j["A12"], j["B1"], j["B12"], j["SH"]
         vbus, vcc, vout = Net("P%s_VBUS" % side), Net("P%s_VCC" % side), Net("P%s_VOUT" % side)
-        vbus += j["A4"], j["B4"], j["A9"], j["B9"]
         dp, dm = Net("USB%s_DP" % side), Net("USB%s_DM" % side)
-        dp += j["A6"], j["B6"]
-        dm += j["A7"], j["B7"]
+        # COMMON-MODE CHOKES AT THE PORT (user, 2026-11-13, the hum fix part 2): a charger's
+        # switching hash rides VBUS, GND and the shield together. The power pair (VBUS, GND)
+        # goes through one choke and the data pair through another, so the cable's
+        # common-mode current meets the choke on EVERY conductor that reaches the board --
+        # a choke on the power alone would let it return round the data lines' ground.
+        # The shield lands on the CONNECTOR side, with the TVS.
+        vbus_j, gnd_j = Net("P%s_VBUS_J" % side), Net("P%s_GND_J" % side)
+        dp_j, dm_j = Net("USB%s_DP_J" % side), Net("USB%s_DM_J" % side)
+        gnd_j += j["A1"], j["A12"], j["B1"], j["B12"], j["SH"]
+        vbus_j += j["A4"], j["B4"], j["A9"], j["B9"]
+        dp_j += j["A6"], j["B6"]
+        dm_j += j["A7"], j["B7"]
+        for tag, value, fp, (a1, a2), (b1, b2), why in (
+                (fl_p, "744273102", "Inductor_SMD:L_CommonModeChoke_Wuerth_WE-SL5-HC",
+                 (vbus_j, vbus), (gnd_j, pgnd), "power pair: WE-SL5 HC, >= 5 A (part number "
+                 "an open item)"),
+                (fl_d, "ACM2012-900-2P-T002", "Inductor_SMD:L_CommonModeChoke_Coilank_ACM2012",
+                 (dp_j, dp), (dm_j, dm), "USB 2.0 data pair: 90 ohm common mode, passes HS")):
+            fl = Part(name="CMC", ref_prefix="FL", ref=tag, tag=tag, dest="NETLIST", tool="skidl",
+                      value=value, description="port %s common-mode choke, %s; windings 1-4 and "
+                      "2-3 (open item: read off the maker's sheet)" % (side, why), footprint=fp,
+                      pins=[Pin(num=i, func=P) for i in range(1, 5)])
+            a1 += fl[1]
+            a2 += fl[4]
+            b1 += fl[2]
+            b2 += fl[3]
         usb_pair[side] = (dp, dm)
         cc1, cc2 = Net("P%s_CC1" % side), Net("P%s_CC2" % side)
         cc1 += j["A5"]
@@ -452,8 +682,8 @@ def output_board():
         # chip's supply (p.18 wants the sense traces straight off the shunt's pads).
         d = _d(d_tvs, "SMBJ22A", "port %s VBUS clamp, 600 W, 22 V standoff over the 21 V "
                "contract, 29.1 V at a live plug (LCSC C224015)" % side, "Diode_SMD:D_SMB")
-        vbus += d[1]
-        pgnd += d[2]
+        vbus_j += d[1]                         # at the connector, ahead of the choke
+        gnd_j += d[2]
         d = _d(d_stb, "SS34", "port %s -> VSTBY Schottky, 40 V 3 A: the logic runs from "
                "vSafe5V before any contract (LCSC C8678)" % side, "Diode_SMD:D_SMA")
         vstby += d[1]                          # pad 1 = K
@@ -474,13 +704,14 @@ def output_board():
 
     # ── J3: the panel data to the CM5's gadget port; J9: this MCU to a CM5 host port ──
     gad_dp, gad_dm = Net("GADGET_DP"), Net("GADGET_DM")
-    j3 = _usbc("J3", "to the brain board's CM5 USB OTG (gadget) port, stock C-to-C lead")
-    gnd += j3["SH"], j3["A1"], j3["A12"], j3["B1"], j3["B12"]
-    Net("J3_VBUS_NC").connect(j3["A4"], j3["B4"], j3["A9"], j3["B9"])   # dead, as R2's J2
-    gad_dp += j3["A6"], j3["B6"]
-    gad_dm += j3["A7"], j3["B7"]
-    for tag, pin in (("R3", "A5"), ("R4", "B5")):
-        _res(tag, "5k1", "J3 CC Rd: this end is the device side", j3[pin], gnd)
+    if not MERGED:
+        j3 = _usbc("J3", "to the brain board's CM5 USB OTG (gadget) port, stock C-to-C lead")
+        gnd += j3["SH"], j3["A1"], j3["A12"], j3["B1"], j3["B12"]
+        Net("J3_VBUS_NC").connect(j3["A4"], j3["B4"], j3["A9"], j3["B9"])   # dead, as R2's J2
+        gad_dp += j3["A6"], j3["B6"]
+        gad_dm += j3["A7"], j3["B7"]
+        for tag, pin in (("R3", "A5"), ("R4", "B5")):
+            _res(tag, "5k1", "J3 CC Rd: this end is the device side", j3[pin], gnd)
     u17 = _fix("U17", "TS3USB221RSER", "which panel port's data reaches the CM5 "
                "(LCSC C130085)", "Package_DFN_QFN:Texas_UQFN-10_1.5x2mm_P0.5mm", range(1, 11))
     (a_dp, a_dm), (b_dp, b_dm) = usb_pair["A"], usb_pair["B"]
@@ -496,14 +727,15 @@ def output_board():
     _res("R92", "100k", "DATA_SEL down: J1 is the data port until the MCU says", io["DATA_SEL"], gnd)
     _cap("C117", "100nF", "U17 VCC bypass", v3d, gnd)
 
-    j9 = _usbc("J9", "to a brain-board CM5 host port: this MCU's OTG_FS device, stock "
-               "C-to-C lead")
-    gnd += j9["SH"], j9["A1"], j9["A12"], j9["B1"], j9["B12"]
-    Net("J9_VBUS_NC").connect(j9["A4"], j9["B4"], j9["A9"], j9["B9"])   # powered here
-    io["MCU_DP"] += j9["A6"], j9["B6"]
-    io["MCU_DM"] += j9["A7"], j9["B7"]
-    for tag, pin in (("R1", "A5"), ("R2", "B5")):
-        _res(tag, "5k1", "J9 CC Rd: a device", j9[pin], gnd)
+    if not MERGED:
+        j9 = _usbc("J9", "to a brain-board CM5 host port: this MCU's OTG_FS device, stock "
+                   "C-to-C lead")
+        gnd += j9["SH"], j9["A1"], j9["A12"], j9["B1"], j9["B12"]
+        Net("J9_VBUS_NC").connect(j9["A4"], j9["B4"], j9["A9"], j9["B9"])   # powered here
+        io["MCU_DP"] += j9["A6"], j9["B6"]
+        io["MCU_DM"] += j9["A7"], j9["B7"]
+        for tag, pin in (("R1", "A5"), ("R2", "B5")):
+            _res(tag, "5k1", "J9 CC Rd: a device", j9[pin], gnd)
 
     # ── J4: the RIBBON to the optical board -- this board powers and clocks it ───────────
     # 20 ways, 1.27 mm, vertical SMD (a THT 2 x 10 at 1.27 traps its inner row: 0.27 mm between
@@ -589,9 +821,14 @@ def output_board():
     # screw terminal takes them as they are.
     pk_hot = Net("PICKUP_HOT")
     j8 = Part(name="SCREW_2", ref_prefix="J", ref="J8", tag="J8", dest="NETLIST", tool="skidl",
-              value="MX126-5.0-02P" if REV == 1 else "MX128-5.0-02P-Y",
-              description="magnetic pickup in, screw terminals",
-              footprint=TERM_FP if REV == 1 else TERM_FP_R2,
+              # ONE BLADE FOR EVERY SCREW (user, 2026-11-13: "the motors use a small flat head so
+              # for the screw terminals we should use a flathead as well so a single tool can do
+              # both"): the SERVO42D's terminals take a 2.0 mm blade; the MX128's M2.5 slot wants
+              # a wider one. So J8 is the connector board's 3.5 mm M2-slotted block, 2-way.
+              value="KF350-3.5-2P",
+              description="magnetic pickup in, 3.5 mm screw terminal, M2 slotted (2.0 mm blade, "
+                          "as the motors' and the connector board's)",
+              footprint=TERM_FP_35,
               pins=[Pin(num=1, name="HOT", func=P), Pin(num=2, name="RET", func=P)])
     # R2 TURNS J8 180 DEGREES (lead, 2026-10-29): on the dropped board its +Y entry sat in
     # string 10's clamp sweep, so the wires come in from -Y, over the board. Turned about
@@ -806,8 +1043,14 @@ def output_board():
     sw, boot, fb = Net("SW"), Net("BOOT"), Net("FB")
     bgnd = gnd
     u5 = Part(name="LMR33630", ref_prefix="U", ref="U5", tag="U5", dest="NETLIST",
-              tool="skidl", value=BC.U_VALUE, description="VSTBY (5-20 V) -> 5 V synchronous "
-              "buck, 1.4 MHz, 3 A (LCSC %s)" % BC.U_LCSC, footprint=BC.U_FP,
+              tool="skidl",
+              # MERGED: the ONE logic 5 V (the brain's +5V_AUX folded in, user 2026-11-13): optical
+              # 1.8 A + the H743 0.58 + the isolated audio 0.3 + the CH32 side and both arms ~0.45
+              # = ~3.1 A, past the 3 A part -- the 4 A sibling (open item: orderable + inductor)
+              value="LMR33640 (RNX, open item)" if MERGED else BC.U_VALUE,
+              description="VSTBY (5-20 V) -> 5 V synchronous buck, 1.4 MHz, %s" % (
+                  "4 A: every logic 5 V on the board" if MERGED else "3 A (LCSC %s)" % BC.U_LCSC),
+              footprint=BC.U_FP,
               pins=[Pin(num=n, func=P) for n in range(1, 13)])
     bgnd += u5[1], u5[11], u5[6]
     vstby += u5[2], u5[10], u5[9]
@@ -1097,8 +1340,8 @@ def output_board():
     k1 = Part(name="G6K-2F-Y", ref_prefix="K", tag="K1", dest="NETLIST", tool="skidl",
               value="G6K-2F-Y-DC5", description="true-bypass select; DE-ENERGISED = DIRECT "
               "(LCSC C47190)", footprint=RELAY_FP, pins=[Pin(num=i, func=P) for i in range(1, 9)])
-    v5 += k1[1]
-    coil += k1[8]
+    v5_pre += k1[1]            # the COIL is on the charger side (V5_PRE / GND, Q1); the
+    coil += k1[8]              # contacts are in the audio: G6K coil-contact 1.5 kV
     sel += k1[3]
     direct += k1[2]
     dac_att += k1[4]
@@ -1145,14 +1388,23 @@ def output_board():
               # limit, and its typical clears the maximum. Same series, same land.
               # Ripple 5 x (1 - 5 / 24) / (15 uH x 700 kHz) = 0.38 A, so the 0.257 A worst
               # load peaks at 0.45 A. LCSC C19634062, 3 x 3 x 1.5.
-              value="PNR3015-150M" if REV == 1 else BC.L1_VALUE,
+              # MERGED: L1 carries every logic 5 V (~3.1 A, voltage_check FAIL on the 3 A
+              # SWPA5040). Changjiang FXL0630-4R7-M, 4.7 uH (TI's value at 1.4 MHz, as the
+              # cell), 6 A rated / 9 A saturation, 33 mohm, 6.45 x 6.6 x 2.8 (JLC listing
+              # C167220, 149k stock; read which figure is Isat on cjiang's sheet). The 5.4 x
+              # 5.2 FXL0530 saturates at 5 A -- not above the LMR33640's low-side limit, which
+              # TI's rule (SNVSAN3F 9.2.2.4, the cell's) asks the inductor to clear.
+              value="PNR3015-150M" if REV == 1 else ("FXL0630-4R7-M" if MERGED else BC.L1_VALUE),
               description=("15 uH buck output inductor, Isat 1.4 A, SHIELDED -- it sits on "
                            "the same board as a magnetic pickup's preamp"
-                           if REV == 1 else BC.L1_DESC),
+                           if REV == 1 else (
+                               "buck output inductor, 4.7 uH +-20 % shielded molded, 6 A / 9 A, "
+                               "33 mohm, 6.45 x 6.6 x 2.8 (LCSC C167220)" if MERGED else BC.L1_DESC)),
               # APV's own land (its sheet's a 1.0, b 1.1, c 2.7): pads 1.1 x 2.7 with 1.0
               # between them. The Taiyo Yuden NR-30xx land this used is 0.8 x 2.7 with 1.4,
               # which left the part's 0.9 mm terminals 0.25 mm short of pad on each inner side
-              footprint="Steel:L_APV_PNR3015" if REV == 1 else BC.L1_FP,
+              footprint="Steel:L_APV_PNR3015" if REV == 1 else (
+                  "Inductor_SMD:L_Changjiang_FXL0630" if MERGED else BC.L1_FP),
               pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
     sw += l1[1]
     v5_pre += l1[2]
@@ -1168,8 +1420,11 @@ def output_board():
                "sat under the board's 257 mA worst case",
                footprint="Inductor_SMD:L_0603_1608Metric",
                pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
-    v5_pre += fb1[1]
-    v5 += fb1[2]
+    # NOW THE ISOLATED SUPPLY'S FILTER: U30's raw 9 V -> FB1 -> U31 (the audio's 5 V LDO)
+    iso9_raw, iso9 = Net("ISO9_RAW"), Net("ISO9")
+    iso9_raw += fb1[1]
+    iso9 += fb1[2]
+    _isolation(gnd, agnd, v5_pre, v3d, v3v3, v5, iso9_raw, iso9, io, iso)
 
     # ── diodes ───────────────────────────────────────────────────────────────
     # 60 V, not 40: its cathode is the switch node, which stands at VIN, and the rail
@@ -1189,9 +1444,9 @@ def output_board():
     # across the supply every time the relay is switched on: 5 V through a 150 mA diode
     # into a FET that is fully enhanced. Nothing in the build could see it (two nets, two
     # pads, either way round routes clean); the manual polarity review did.
-    d4 = _d("D4", "1N4148WT", "coil flyback, cathode to +5V (LCSC C917006) -- the coil is "
+    d4 = _d("D4", "1N4148WT", "coil flyback, cathode to V5_PRE (LCSC C917006) -- the coil is "
             "an inductor and the FET is not")
-    v5 += d4[1]
+    v5_pre += d4[1]
     coil += d4[2]
     # D5 IS THE PHANTOM GUARD'S CLAMP and it sits INSIDE the DC block: a blocking
     # capacitor stops the 48 V but passes the insertion edge straight through.
@@ -1229,7 +1484,8 @@ def output_board():
     # ── R2's relay, jack-mode, input and buck passives (output_panel's resistor list) ─────
     _res("R5", "100R", "relay gate series", relay, q1[1])
     _res("R36", "100k", "relay gate pull-down -- off through reset", q1[1], gnd)
-    _res("R37", "100k", "JACK_MODE pull-down -- balanced through reset", jack_mode, gnd)
+    _res("R37", "100k", "JACK_MODE pull-down -- balanced through reset: on the MCU side, "
+         "where the pin floats; U34 is the F part, LOW on an open input", io["JACK_MODE"], gnd)
     _res("R8", "1M", "pickup input bias to VMID -- and the LOAD the pickup sees, which "
          "sets its tone: 1M is a typical amplifier input", pk_in, vmid)
     _res("R9", "220R", "output series -- bounds a phantom-power fault and C1's inrush",
@@ -1250,9 +1506,10 @@ def output_board():
     for tag in ("C5", "C6", "C64"):
         _cap(tag, "22uF/16V", "5 V bulk, BUCK SIDE of the bead", v5_pre, bgnd, C0805)
     _cap("C65", "100nF/50V", "buck output HF bypass", v5_pre, bgnd)
-    _res("R60", "0R", "ground tie, PWR_GND to GND -- the instrument's star point. 1206: it "
-         "carries the buck's input current home (<= ~1.3 A on a 5 V contract)",
-         pgnd, agnd, "Resistor_SMD:R_1206_3216Metric")
+    if not MERGED:                     # merged: one ground, no star tie
+        _res("R60", "0R", "ground tie, PWR_GND to GND -- the instrument's star point. 1206: it "
+             "carries the buck's input current home (<= ~1.3 A on a 5 V contract)",
+             pgnd, gnd, "Resistor_SMD:R_1206_3216Metric")   # GND: AGND is isolated
     for tag, val, net, ref, desc in (
             ("C7", "10uF", v5, agnd, "5 V bulk, board side of the bead"),
             ("C8", "100nF", v5, agnd, "5 V HF bypass"),
@@ -1296,60 +1553,110 @@ def output_board():
     # switch closes, so its boost input sits behind a soft-start switch gated by BRAIN_EN.
     vin_brain = Net("VIN_BRAIN")
     vin_brain.drive = Pin.drives.POWER
-    j10 = Part(name="S6B-XH-SM4-TB", ref_prefix="J", ref="J10", tag="J10", dest="NETLIST",
-               tool="skidl", value="S6B-XH-SM4-TB",
-               description="to the brain board: the chargers' 5-20 V, lead 1 of 2 in parallel "
-                           "(harness.BRAIN_POWER)",
-               footprint=XH6_FP,
-               pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(harness.BRAIN_POWER)]
-               + [Pin(num="MP", name="MP", func=P)])
-    j12 = Part(name="S6B-XH-SM4-TB", ref_prefix="J", ref="J12", tag="J12", dest="NETLIST",
-               tool="skidl", value="S6B-XH-SM4-TB",
-               description="to the brain board: the chargers' 5-20 V, lead 2 of 2 in parallel "
-                           "(harness.BRAIN_POWER)",
-               footprint=XH6_FP,
-               pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(harness.BRAIN_POWER)]
-               + [Pin(num="MP", name="MP", func=P)])
-    harness.check_ways(harness.BRAIN_POWER, ("VIN",), ("GND", harness.NC), where="J10/J12")
-    # WAY 3 IS A PRESENCE LOOP (lead, 2026-11-13): the brain board straps it to GND, so a lead
-    # that is in reads LOW. Either one HIGH and firmware caps the input at ONE charger's
-    # contract (the other asked for a lower voltage, its diode blocks) or holds BRAIN_EN off --
-    # the unplugged-lead double fault, sensed instead of written in INSTALL_NOTES.
-    for j, k, ser, pu in ((j10, "PWR_LEAD1_N", "R119", "R120"),
-                          (j12, "PWR_LEAD2_N", "R121", "R122")):
-        vin_brain += j[1], j[6]
-        pgnd += j[2], j[5]
-        loop = Net("%s_LOOP" % j.ref)
-        loop += j[3]
-        Net("%s_NC_4" % j.ref).connect(j[4])
-        _res(ser, "1k", "%s presence loop in from the cable" % j.ref, loop, io[k])
-        _res(pu, "10k", "%s presence pull-up: HIGH = lead missing" % j.ref, io[k], v3d)
-    j11 = Part(name="S6B-PH-SM4-TB", ref_prefix="J", ref="J11", tag="J11", dest="NETLIST",
-               tool="skidl", value="S6B-PH-SM4-TB",
-               description="to the brain board: enable, low-power mode out; button, "
-                           "power-good in (harness.BRAIN_SIGNAL)",
-               footprint=PH6_FP,
-               pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(harness.BRAIN_SIGNAL)]
-               + [Pin(num="MP", name="MP", func=P)])
     link = {"GND": gnd}
     for k in ("BRAIN_EN", "LOW_PWR", "PWR_BTN", "BRAIN_PG"):
         link[k] = Net("LINK_" + k)
-    for i, w in enumerate(harness.BRAIN_SIGNAL):
-        link[w] += j11[i + 1]
-    for k, ref in (("BRAIN_EN", "R113"), ("LOW_PWR", "R114")):
-        _res(ref, "1k", "%s out to the cable -- bounds a short on 300 mm of wire" % k,
-             io[k], link[k])
-    for k, ref, pu in (("PWR_BTN", "R115", "R117"), ("BRAIN_PG", "R116", "R118")):
-        _res(ref, "1k", "%s in from the cable" % k, link[k], io[k])
-        _res(pu, "10k", "%s pull-up: the brain board drives it open-drain" % k, io[k], v3d)
-    _res("R94", "100k", "BRAIN_EN down: the brain board stays off through reset",
-         io["BRAIN_EN"], gnd)
-    _res("R93", "100k", "LOW_PWR down: full mode unless firmware says otherwise",
-         io["LOW_PWR"], gnd)
-    d = _d("D19", "SMF24A", "VIN_BRAIN clamp at the cable, 200 W (LCSC C169430)",
-           "Diode_SMD:D_SOD-123F")
-    vin_brain += d[1]
-    pgnd += d[2]
+    if MERGED:
+        # THE BRAIN, BUILT ON THIS BOARD (user, 2026-11-13: "the output board becomes the brain
+        # board"). On PWR_GND -- the ground its leads landed on (J10/J12 ways 2/5), so the 24 V
+        # boost's and the motors' return currents reach the chargers without crossing GND, and
+        # the R60 star stays the one place the two meet. Its parts are renumbered +200 (U1 ->
+        # U201) so the two circuits' refs never meet.
+        import brain as BR
+        from builtins import default_circuit
+        before = {id(pt) for pt in _circuit_parts()}
+        ours = {n.name for n in default_circuit.nets}
+        nets0 = {id(n) for n in default_circuit.nets}
+        mg = {"gnd": pgnd, "vin": vin_brain, "v5a": v5_pre}
+        if FOLD:
+            mg["v33"] = v3d
+            mg["mcu"] = dict({k: io[k] for k in FOLD_IO}, NRST=nrst, BOOT0=boot0)
+        bn = BR.brain(mg)
+        # the brain's own nets that share a name with this board's (its CH32's NRST, OSC_IN,
+        # SWDIO ... beside the H743's) get a B_ prefix: two nets, two names
+        # a trailing number is skidl's collision suffix (NRST1) UNLESS brain.py itself wrote
+        # that name (SW5, FB5: its U5 buck's) -- read from its Net("...") literals
+        import re as _re2
+        declared = set(_re2.findall(r'Net\("([^"%]+)"\)', open(BR.__file__, encoding="utf-8").read()))
+        for n in list(default_circuit.nets):
+            if id(n) in nets0 or (n.name in declared and n.name not in ours):
+                continue
+            if n.name.rstrip("0123456789") in ours | {x + "_" for x in ours}:
+                base = n.name
+                while base and base[-1].isdigit() and base[:-1] in ours:
+                    base = base[:-1]
+                if base in ours:
+                    n.name = "B_" + base
+        _renumber([pt for pt in _circuit_parts() if id(pt) not in before], 200)
+        for k in ("BRAIN_EN", "LOW_PWR", "PWR_BTN", "BRAIN_PG"):
+            link[k] += bn["link"][k]
+        gad_dp += bn["gadget"][0]
+        gad_dm += bn["gadget"][1]
+        io["MCU_DP"] += bn["oblink"][0]
+        io["MCU_DM"] += bn["oblink"][1]
+        for k, pu in (("PWR_LEAD1_N", "R120"), ("PWR_LEAD2_N", "R122")):
+            _res(pu, "10k", "%s: no lead any more (merged) -- held HIGH, firmware ignores it" % k,
+                 io[k], v3d)
+    else:
+        j10 = Part(name="S6B-XH-SM4-TB", ref_prefix="J", ref="J10", tag="J10", dest="NETLIST",
+                   tool="skidl", value="S6B-XH-SM4-TB",
+                   description="to the brain board: the chargers' 5-20 V, lead 1 of 2 in parallel "
+                               "(harness.BRAIN_POWER)",
+                   footprint=XH6_FP,
+                   pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(harness.BRAIN_POWER)]
+                   + [Pin(num="MP", name="MP", func=P)])
+        j12 = Part(name="S6B-XH-SM4-TB", ref_prefix="J", ref="J12", tag="J12", dest="NETLIST",
+                   tool="skidl", value="S6B-XH-SM4-TB",
+                   description="to the brain board: the chargers' 5-20 V, lead 2 of 2 in parallel "
+                               "(harness.BRAIN_POWER)",
+                   footprint=XH6_FP,
+                   pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(harness.BRAIN_POWER)]
+                   + [Pin(num="MP", name="MP", func=P)])
+        harness.check_ways(harness.BRAIN_POWER, ("VIN",), ("GND", harness.NC), where="J10/J12")
+        # WAY 3 IS A PRESENCE LOOP (lead, 2026-11-13): the brain board straps it to GND, so a lead
+        # that is in reads LOW. Either one HIGH and firmware caps the input at ONE charger's
+        # contract (the other asked for a lower voltage, its diode blocks) or holds BRAIN_EN off --
+        # the unplugged-lead double fault, sensed instead of written in INSTALL_NOTES.
+        for j, k, ser, pu in ((j10, "PWR_LEAD1_N", "R119", "R120"),
+                              (j12, "PWR_LEAD2_N", "R121", "R122")):
+            vin_brain += j[1], j[6]
+            pgnd += j[2], j[5]
+            loop = Net("%s_LOOP" % j.ref)
+            loop += j[3]
+            Net("%s_NC_4" % j.ref).connect(j[4])
+            _res(ser, "1k", "%s presence loop in from the cable" % j.ref, loop, io[k])
+            _res(pu, "10k", "%s presence pull-up: HIGH = lead missing" % j.ref, io[k], v3d)
+        j11 = Part(name="S6B-PH-SM4-TB", ref_prefix="J", ref="J11", tag="J11", dest="NETLIST",
+                   tool="skidl", value="S6B-PH-SM4-TB",
+                   description="to the brain board: enable, low-power mode out; button, "
+                               "power-good in (harness.BRAIN_SIGNAL)",
+                   footprint=PH6_FP,
+                   pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(harness.BRAIN_SIGNAL)]
+                   + [Pin(num="MP", name="MP", func=P)])
+        for i, w in enumerate(harness.BRAIN_SIGNAL):
+            link[w] += j11[i + 1]
+    if FOLD:
+        # one board, one MCU: no cable to bound, so the link lines are the MCU's own nets; the
+        # brain section's R252 / R261 are the pull-downs, R117 the button's pull-up
+        for k in ("BRAIN_EN", "LOW_PWR", "PWR_BTN"):
+            io[k] += link[k]
+        _res("R117", "10k", "PWR_BTN pull-up: Q212 drives it open-drain", io["PWR_BTN"], v3d)
+    else:
+        for k, ref in (("BRAIN_EN", "R113"), ("LOW_PWR", "R114")):
+            _res(ref, "1k", "%s out to the cable -- bounds a short on 300 mm of wire" % k,
+                 io[k], link[k])
+        for k, ref, pu in (("PWR_BTN", "R115", "R117"), ("BRAIN_PG", "R116", "R118")):
+            _res(ref, "1k", "%s in from the cable" % k, link[k], io[k])
+            _res(pu, "10k", "%s pull-up: the brain board drives it open-drain" % k, io[k], v3d)
+        _res("R94", "100k", "BRAIN_EN down: the brain board stays off through reset",
+             io["BRAIN_EN"], gnd)
+        _res("R93", "100k", "LOW_PWR down: full mode unless firmware says otherwise",
+             io["LOW_PWR"], gnd)
+    if not MERGED:                     # merged: the brain's own inlet clamp (D201) is it
+        d = _d("D19", "SMF24A", "VIN_BRAIN clamp at the cable, 200 W (LCSC C169430)",
+               "Diode_SMD:D_SOD-123F")
+        vin_brain += d[1]
+        pgnd += d[2]
     for k in range(2):
         _cap("C%d" % (92 + k), "22uF/35V", "VIN_BUS bulk -- the brain board's boost carries "
              "its own input caps", vin, pgnd, C1210)
@@ -1469,6 +1776,15 @@ def output_board():
         r = _r(tag, val, desc)
         a += r[1]
         b += r[2]
+    if MERGED:
+        # nets joined across the two circuits keep ONE stable name (skidl picks either side's,
+        # and the A16 / quality declarations key on it)
+        # (skidl's merge_names honours fixed_name)
+        for net in (gad_dp, gad_dm, io["MCU_DP"], io["MCU_DM"]) + (
+                tuple(io[k] for k in ("BRAIN_EN", "LOW_PWR", "PWR_BTN")) if FOLD else ()):
+            net.fixed_name = True
+    audio, moved = _move_audio_grounds(gnd, agnd)
+    print("audio isolated: %d parts, %d ground pins moved to AGND" % (len(audio), moved))
 
 
 
@@ -1479,35 +1795,74 @@ def output_board():
 # instrument's X-Z plane, its back at y -87.5 (component face -85.9: branner moved it +1.7 so
 # UNCLIPPED 3.4 mm THT tails clear the -Y wall's inner face at -91.7 by 0.8) and its parts
 # facing +Y. It drops down -Z with the deck off, then slides +X 19 into a pocket fitted to it
-# in the +X endplate (branner), the panel connectors up behind a 4.0 outer wall that carries
-# only their holes (J5's nut clamps that wall: src/board_geom.py PANEL).
-#   +X  FINAL instrument x -3.87 = 2.03 - 4.0 wall - J5's 1.9 protrusion
-#   -X  final -124.17; during the drop -143.17, clear of the UI clamp (it ends at x -147.0)
+# in the +X endplate (branner). USB INSET 1.6 (user, 2026-11-13: "keeping the USB fully on
+# the PCB and then having 1.6mm of plastic, so the plug is 1.6mm inset and there is 1.6mm of
+# plastic holding the PCB in place"): the board's panel edge stops against a 1.6 wall, the
+# USB-C bodies end AT that edge (no overhang, mouths 1.6 behind the outer face), and the jack
+# J5 sits 2.4 back on the board so its shoulder meets the inside of its own 4.0 clamp wall
+# (its nut clamps it: src/board_geom.py PANEL; the board edge runs on under it in a slot).
+#   +X  FINAL instrument x 0.43 = 2.03 - 1.6 wall
+#   -X  final -150.4; during the drop -169.4 = 1.0 clear of the anchor screws' M4 heads
+#       (src/direct_bench.py _anchor_screw_at: x -174.2, heads to -170.4, standing off the
+#       -Y wall to y -84.7, into the board's band). The UI station is IGNORED for now (user,
+#       2026-11-13): its clamp (to x -147) is in the drop path and moves later
 #   z   -108.24 .. -8.24 (the bottom edge in a floor groove, the top under the deck)
 # SEEN FROM ITS COMPONENT SIDE (+Y, looking -Y) the instrument's +X is on the LEFT, so:
-#   board x = -(instrument x + 64.02), board y = instrument z + 58.24
+#   board x = -(instrument x + 74.985), board y = instrument z + 58.24
 # The PANEL is the board's -X edge: J1, J2 (power + data in), J5 (the jack); J8 (the pickup's
 # screws) is on the TOP edge under the open deck; the internal leads (J3, J9 to the CM5,
 # J4 the optical ribbon, J10-J12 to the brain) come off the +X end. The parts inside the
 # endplate pocket: elec/output_board.pocket.json (what branner cuts the pocket from).
 # The mount (an M4, branner's pick at x > -124) is ON HOLD until he places it.
-BOARD_W, BOARD_L = 120.3, 100.0
-XC, ZC = -64.02, -58.24
+BOARD_W, BOARD_L = 150.83, 100.0
+XC, ZC = -74.985, -58.24
 XL = BOARD_W / 2 - 35.0         # the brain-lead band: the last 35 mm (the placement intent)
 # PWR_GND under the power section: the chargers at the panel end (-X), the buck and the brain
 # leads along the bottom
 POWER_POLY = [[-BOARD_W / 2, -50], [BOARD_W / 2, -50], [BOARD_W / 2, 0], [XL, 0], [XL, -10],
               [-20, -10], [-20, 0], [-BOARD_W / 2, 0]]
+# THE ISOLATED AUDIO CORNER: the panel end's top (J5, J8 above it), AGND's own pour; GND and
+# PWR_GND stop MOAT short of it all round, so the barrier is a 1 mm copper-free gap that only
+# U30, U32-U34 and K1 straddle. The placement intent's "analog" region is this rectangle.
+AUDIO_X1, AUDIO_Y0, MOAT = -14.0, 6.0, 1.0
+AUDIO_POLY = [[-BOARD_W / 2, AUDIO_Y0], [AUDIO_X1, AUDIO_Y0], [AUDIO_X1, BOARD_L / 2],
+              [-BOARD_W / 2, BOARD_L / 2]]
+GND_POLY = [[-BOARD_W / 2, -BOARD_L / 2], [BOARD_W / 2, -BOARD_L / 2], [BOARD_W / 2, BOARD_L / 2],
+            [AUDIO_X1 + MOAT, BOARD_L / 2], [AUDIO_X1 + MOAT, AUDIO_Y0 - MOAT],
+            [-BOARD_W / 2, AUDIO_Y0 - MOAT]]
+MOAT_POLY = [[-BOARD_W / 2, AUDIO_Y0 - MOAT], [AUDIO_X1 + MOAT, AUDIO_Y0 - MOAT],
+             [AUDIO_X1 + MOAT, BOARD_L / 2], [AUDIO_X1, BOARD_L / 2], [AUDIO_X1, AUDIO_Y0],
+             [-BOARD_W / 2, AUDIO_Y0]]
+# FIRMWARE RULES the fold makes (one H743: optical SAI1-3, audio SAI4, FDCAN1/2, the motor loop)
+FIRMWARE_NOTES = [
+    "Interrupt handlers stay SHORT -- the SAI DMA half/complete ISRs only flag a block, the FDCAN "
+    "ISR only moves frames between the message-RAM FIFOs and a queue. The DSP (lock-in, audio "
+    "mix) and the lever -> motor mapping run outside interrupt context, the DSP lowest. Then no "
+    "order of the two ISRs can underrun audio (DMA moves the samples without the CPU; a block "
+    "is ~167 us at 32 samples / 192 kHz) or overflow CAN (FDCAN RX FIFOs hold up to 64 frames). "
+    "Priority, highest first: SAI DMA, FDCAN, USB, then the deferred work (lead 2026-11-13 asked "
+    "SAI DMA above CAN; with short ISRs that order costs CAN a few microseconds).",
+    "DMA buffers in non-cacheable RAM (MPU) or with explicit cache maintenance: the H7's "
+    "classic stale-data fault.",
+    "No interrupts-off critical sections around the motor weight table: swap a pointer.",
+    "Measure the lock-in loop's cycles (DWT) at bring-up; the 10-17 % CPU estimate is paper.",
+]
+
+
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
+    "audio_poly": AUDIO_POLY,
     "outline_poly": [[-BOARD_W / 2, -50], [BOARD_W / 2, -50], [BOARD_W / 2, 50], [-BOARD_W / 2, 50]],
-    "frame": {"instrument_x": "-(board x) - 64.02", "instrument_z": "board y - 58.24",
+    "frame": {"instrument_x": "-(board x) - 74.985", "instrument_z": "board y - 58.24",
               "component_face_y": -85.9, "faces": "+Y", "by": "branner 2026-11-13",
               "install": "drop -Z at x - 19, slide +X 19 into the endplate pocket"},
     "layers": 4,
-    "zones": [{"net": "PWR_GND", "layer": "In1.Cu", "inset": 0.3, "poly": POWER_POLY, "priority": 1},
-              ("GND", "In1.Cu", 0.3), ("GND", "B.Cu", 0.3)],
-    "stitch_nets": ("PWR_GND", "GND"),
+    "zones": [*([] if MERGED else [{"net": "PWR_GND", "layer": "In1.Cu", "inset": 0.3, "poly": POWER_POLY, "priority": 1}]),
+              {"net": "GND", "layer": "In1.Cu", "inset": 0.3, "poly": GND_POLY},
+              {"net": "GND", "layer": "B.Cu", "inset": 0.3, "poly": GND_POLY},
+              {"net": "AGND", "layer": "In1.Cu", "inset": 0.3, "poly": AUDIO_POLY},
+              {"net": "AGND", "layer": "B.Cu", "inset": 0.3, "poly": AUDIO_POLY}],
+    "stitch_nets": ("GND", "AGND") if MERGED else ("PWR_GND", "GND", "AGND"),
     # exposed pads only before routing; the router takes the rest (cadkit 72d70a5: brain 14 -> 1 open)
     "stitch_scope": "exposed",
     "qty_per_instrument": 1,
@@ -1516,6 +1871,11 @@ BOARD_NOTES = {
     "silk_pinout": ["J4"],
     "edge_parts": {"-X": ["J1", "J2", "J5"], "+Y": ["J8"], "+X": ["J3", "J9"]},
     "placements": {},
+    "firmware_notes": FIRMWARE_NOTES,
+    # THE MOAT, sealed on every layer: no track, via or fill crosses between the audio corner
+    # and the rest -- only the barrier parts' pads straddle it (cadkit A25 checks the result)
+    "rule_areas": [{"poly": MOAT_POLY, "layers": "all",
+                    "why": "the isolated audio corner's 1 mm moat (lead 2026-11-13)"}] if MERGED else [],
     "open_items": [
         "brain board: the 24 V boost and the power button move there (harness.BRAIN_POWER / BRAIN_SIGNAL); its VIN input soft-starts behind BRAIN_EN",
         "AP33772SDKZ-13 vs -FA02: VSEL/GPIO only on FA02; this board uses neither",
@@ -1524,8 +1884,113 @@ BOARD_NOTES = {
         "the +X endplate pocket (branner) is cut from elec/output_board.pocket.json: regenerate it whenever the parts within 19 mm of the panel edge move",
         "the mount: one M4 (branner) at x > -124, not yet placed -- reserve its keepout when it is",
         "A16 voltage declarations: voltage_check has output_power / output_signal seeds; merge them into one output_board entry",
+        "audio isolation: B0509S-1WR3 pinout (1 -Vin 2 +Vin 3 0V 4 +Vo assumed from the Murata MEE1 family) -- read it off Mornsun's sheet; LCSC codes for B0509S-1WR3, ISO7741DBQR, ISO7740DBQR, ISO7710FDR, LP2985-50DBVR",
+        "U5 as the ONE logic 5 V (merged): LMR33640 in the RNX footprint (confirm the orderable and LCSC code), an inductor with Isat >= 5 A in the 5x5 land, D14 / D16 (SS34, 3 A) feed it on a 5 V contract -- 5 A parts if full load is allowed there",
+        "USB-C common-mode chokes FL1-FL4: winding pins (1-4 / 2-3 assumed) and the WE-SL5 HC part number with >= 5 A, both off the makers' sheets; LCSC codes",
+        "audio isolation: the board is meant to be measured (pickup into an amp: no charger / phone charger / laptop charger / two chargers / a computer on the data) against R1",
+        "the UI station's clamp (to x -147) is in this board's drop path (to x -169.4): ignored for now (user 2026-11-13), it moves -X later",
     ],
 }
+
+
+def _merged_quality(paths, q):
+    """The merged board's declarations: the output side's, with what pointed at the brain leads
+    (J10 / J12) re-aimed at the brain's own power switch and the audio rails under their new
+    names, plus brain.py's own (refs +200) minus everything that now lives on the connector
+    board (the motor / arm / LED headers) -- re-aimed at the ribbon header J240."""
+    import re as _re
+    import brain as BR
+    out = []
+    for x in paths:
+        if any(str(t).startswith(("J10.", "J12.")) for t in x["to"]):
+            continue
+        x = dict(x)
+        if x["net"] == "+5V" and x["from"] == "FB1.2":
+            x["from"], x["net"] = "U31.5", "+5V_A"         # the isolated LDO, not the bead
+        elif x["net"] == "+3V3":
+            x["net"] = "+3V3_A"
+        out.append(x)
+    out.append({"net": "VIN_BRAIN", "from": "R112.2", "to": ["Q202.3"], "amps": 10.0})
+
+    def rn(t):
+        m = _re.match(r"^([A-Z]+)(\d+)(\..*)?$", t)
+        return "%s%d%s" % (m.group(1), int(m.group(2)) + 200, m.group(3) or "") if m else t
+    field = _re.compile(r"^J(1[0256]|2\d|30|3|4)\.")
+    for x in BR.BOARD_NOTES["quality"]["power_paths"]:
+        if field.match(str(x["from"])) or any(field.match(str(t)) for t in x["to"]):
+            continue
+        x = dict(x, **{"from": rn(x["from"]), "to": [rn(t) for t in x["to"]]})
+        # the brain's +5V_AUX buck (U207 / L203) is gone: its loads hang on V5_PRE (U5 / L1)
+        x["to"] = [t for t in x["to"] if not t.startswith("U207.")]
+        if not x["to"]:
+            continue
+        if FOLD:
+            # the CH32 (U201) and its LDO (U208) are gone: the transceivers / switches hang on
+            # +3V3D from U21
+            x["to"] = [t for t in x["to"] if not t.startswith(("U201.", "U208."))]
+            if not x["to"]:
+                continue
+            if x["from"].startswith("U208."):
+                x = dict(x, net="+3V3D", **{"from": "U21.2"})
+        if x["net"] == "+5V_AUX":
+            x = dict(x, net="V5_PRE", **{"from": "L1.2"})
+        out.append(x)
+    out += [
+        # the ribbon (harness.CONN_RIBBON): the motors' fused 24 V on ways 1-4, the lights' on
+        # 7-8, each arm's 5 V on one way
+        {"net": "+24V", "from": "Q209.5", "to": ["F204.1"], "amps": 4.0},
+        {"net": "+24V_RIB", "from": "F204.2", "to": ["J240.1", "J240.2", "J240.3", "J240.4"],
+         "amps": 4.0, "split": True},
+        {"net": "+24V_LED", "from": "F203.2", "to": ["J240.7", "J240.8"], "amps": 3.0, "split": True},
+        {"net": "+5V_BUSB_PED", "from": "U206.6", "to": ["J240.19"], "amps": 0.5},
+        {"net": "+5V_BUSB_LEV", "from": "U211.6", "to": ["J240.22"], "amps": 0.5},
+    ]
+    bq = BR.BOARD_NOTES["quality"]
+    q = dict(q)
+    q["not_power"] = dict(q["not_power"], **bq.get("not_power", {}))
+    unc = dict(q["unconnected"])
+    cm5_used = set()
+    if FOLD:                           # the CM5 GPIOs the fold puts to work (SEL_PED / SEL_LEV)
+        cm5_used = {str(BR.GPIO[4]), str(BR.GPIO[7])}
+    for k, v in bq.get("unconnected", {}).items():
+        m = _re.match(r"^([A-Z]+\d+)(\.\w+)?$", k)
+        if not m or field.match(m.group(1) + "."):
+            continue
+        if rn(m.group(1)) == "U207" or (FOLD and rn(m.group(1)) in ("U201", "U208")):
+            continue
+        if m.group(1) == "J1" and isinstance(v, dict) and cm5_used:
+            v = dict(v, pins=" ".join(x for x in v["pins"].split() if x not in cm5_used))
+        unc[rn(m.group(1)) + (m.group(2) or "")] = v
+    for k in [k for k in unc if k.startswith(("J1[02]", "J11"))]:
+        del unc[k]                     # the brain leads (J10 / J12 / J11): on-board now
+    # cadkit A25: the audio domain is reached from AGND only through the barrier (the DC-DC,
+    # the three isolators, the relay's coil-to-contact gap) and keeps the moat on every layer.
+    # No creepage figure is declared: the barrier breaks a hum loop at a few volts, it is not
+    # a safety barrier (B0509S 1.5 kV test, ISO774x 5 kV, as bought, not relied on)
+    q["isolation"] = {"ground": "AGND", "barrier": ["U30", "U32", "U33", "U34", "K1"],
+                      "moat_mm": MOAT, "why": "the isolated audio domain (user 2026-11-13: the "
+                      "hum fix, 'all three, bulletproof'); output_board._isolation"}
+    # the USB-C grounds on the connector side of FL1 / FL2 (the CMCs): grounds, by another name
+    q["ground_nets"] = sorted(set(q.get("ground_nets", ())) | {"PA_GND_J", "PB_GND_J"})
+    unc["U33.7"] = "ISO7740 DBQ pin 7 is NC (TI SLLSEP4K Table 4-1; the ISO7741's EN1)"
+    unc["U34.7"] = "ISO7710F D pin 7 is NC (TI SLLSER9E pin table)"
+    q["unconnected"] = unc
+    q["pinouts"] = dict(bq.get("pinouts", {}), **q["pinouts"])
+    if FOLD:
+        q["manual"] = dict(q.get("manual", {}), M43=(
+            "ONE programmable part on this board apart from the CM5: U1, the STM32H743 (the CH32 "
+            "folded into it, 2026-11-13). (a) The host is the CM5 ON THIS BOARD (J201/J202), "
+            "reached over its own USB-C (gadget) or the network: its UART4 (GPIO12/13) -> R230 / "
+            "R231 1k -> U1 USART1 PA10 RX / PA9 TX. (b) ST's ROM loader, AN2606 Rev 61 Table 113: "
+            "STM32H74x USART1 on PA9/PA10 (the same table optical.py's M43 cites). (c) The CM5 "
+            "drives GPIO19 -> R233 1k -> MCU_BOOT0 (R7 10k down at rest) and GPIO25 -> R232 1k "
+            "-> NRST (R6 10k up, C54): BOOT0 high, pulse NRST, the loader answers -- no firmware "
+            "of U1's and no hand on the board, so first flash, update and recovery are one path. "
+            "The CM5 itself: nRPIBOOT / rpiboot over its USB-C, the Raspberry Pi way. "
+            "R232/R233 are 1k so a CM5 GPIO left as an input never fights R6/R7 and an "
+            "unpowered CM5 cannot be back-fed. TP1-TP6 (SWD, NRST, BOOT0) stay for dead hardware "
+            "(M9). NOT YET PROVEN ON A BOARD."))
+    return out, q
 
 
 def quality_notes(net_path):
@@ -1557,13 +2022,35 @@ def quality_notes(net_path):
         # the 5 V buck's output to its three loads, on this board now (the split sent it over J20)
         {"net": "V5_PRE", "from": "L1.2", "to": ["U15.1"], "amps": 1.8},
         {"net": "V5_PRE", "from": "L1.2", "to": ["R98.1"], "amps": 0.6},
-        {"net": "V5_PRE", "from": "L1.2", "to": ["FB1.1"], "amps": 0.3},
+        {"net": "V5_PRE", "from": "L1.2", "to": ["U30.2"], "amps": 0.3},
         {"net": "+5V_OPT", "from": "U15.6", "to": ["J4.1", "J4.2"], "amps": 1.8, "split": True},
         {"net": "+3V3D", "from": "U21.2", "to": ["U17.10", "U16.6"], "amps": 0.005},
     ]
+    # the port chokes (FL1 / FL2) sit between the connector's VBUS pins and the sense resistor
+    chk = {"PA_VBUS": ("PA_VBUS_J", "FL1"), "PB_VBUS": ("PB_VBUS_J", "FL2")}
+    keep = []
+    for x in paths:
+        if x["net"] in chk and str(x["from"]).startswith(("J1.", "J2.")):
+            jn, fl = chk[x["net"]]
+            keep.append(dict(x, net=jn, to=[fl + ".1"]))
+        else:
+            keep.append(x)
+    paths = keep + [{"net": n, "from": fl + ".4", "to": [r + ".1"], "amps": 5.0}
+                    for n, fl, r in (("PA_VBUS", "FL1", "R70"), ("PB_VBUS", "FL2", "R75"))]
+    if MERGED:
+        paths, q = _merged_quality(paths, q)
     q["power_paths"] = paths
     q["net_groups"] = [g for g in qp["net_groups"]]
     match = [m for m in qp["match"] + qs["match"] if m["name"] != "OPT"]
+    if MERGED:
+        import brain as BR
+        match += [m for m in BR.BOARD_NOTES["match"] if m["name"] == "FLASH"]
+        # the USB-C pairs' connector side, J1 / J2 -> FL3 / FL4: the same pair, a few mm long
+        base = {m["name"]: m for m in match}
+        for n in ("USBA", "USBB"):
+            if n in base:
+                match.append(dict(base[n], name=n + "_J", nets=[n + "_DP_J", n + "_DM_J"],
+                                  why="%s's connector side, before its common-mode choke" % n))
     return q, match
 
 
@@ -1572,7 +2059,8 @@ if __name__ == "__main__":
     ERC()
     net_path = os.path.join(OUT_DIR, "output_board.net")
     generate_netlist(file_=net_path)
-    netcheck.grounds_meet(net_path)            # R60 joins GND and PWR_GND
+    if not MERGED:
+        netcheck.grounds_meet(net_path)        # R60 joins GND and PWR_GND
     netcheck.no_orphan_pins(net_path)
     notes = dict(BOARD_NOTES)
     q, match = quality_notes(net_path)

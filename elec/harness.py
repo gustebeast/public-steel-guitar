@@ -203,3 +203,19 @@ def ph_trunk_pins():
     return (tuple(x + "_IN" for x in PH_PINOUT)
             + tuple(x + "_OUT" for x in PH_PINOUT))
 
+
+
+# THE CONNECTOR RIBBON (user, 2026-11-13: the output board becomes the brain, and the field
+# connectors -- ten motors, both bus-B arms, both LED drops -- move to a passive CONNECTOR BOARD
+# in the +Y -X corner on ONE premade 2 x 15 1.27 mm IDC ribbon). Way n = header pin n = ribbon
+# wire n; the header numbers odd / even (n+-1 across, n+-2 along). Power on PARALLEL wires
+# (user: "use multiple ribbon pins for power and ground"; nothing on it is audio): +24 V (the
+# motors) on 4, the lighting's fused +24 V on 2, ground on 12. Each rail sits beside ground or
+# itself along the cable AND on the header, and the two clock pairs ride between grounds.
+CONN_RIBBON = ("V24", "V24", "V24", "V24", "GND", "GND", "V24L", "V24L", "GND", "GND",
+               "CANA_H", "CANA_L", "PED_H", "PED_L", "LEV_H", "LEV_L", "GND", "GND",
+               "V5_PED", "GND", "GND", "V5_LEV", "GND", "GND",
+               "SCK", "SDT", "SCK_FOOT", "SDT_FOOT", "GND", "GND")
+assert len(CONN_RIBBON) == 30
+check_ways(CONN_RIBBON, ("V24", "V24L", "V5_PED", "V5_LEV"), where="CONN_RIBBON (cable)")
+check_ways_2row(CONN_RIBBON, ("V24", "V24L", "V5_PED", "V5_LEV"), where="CONN_RIBBON (header)")
