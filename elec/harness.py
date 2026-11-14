@@ -90,6 +90,8 @@ UI_RIBBON = ("SW_A", "SW_B", "SW_C", "SW_D", "SW_PUSH", "ENC_A", "ENC_B",
 #   LIGHTS_LINK  motor_ctrl J7 <-> pi_cap J4          4-way: fused 24 V for the lights out,
 #                the two throws in
 #   PI_5V_LINK   motor_ctrl J5 <-> pi_cap J2          6-way PH: the Pi's 5 V on two contacts
+#   BRAIN_POWER  output_board J10, J12 <-> brain      two 4-way XH in parallel: 5-20 V, <= 10 A
+#   BRAIN_SIGNAL output_board J11 <-> brain board     6-way PH: enable / mode out, button / PG in
 #
 # Each is the standard at the top of this file: power, GND, data, data, and a 6-way adds
 # GND, power on the far end.
@@ -102,6 +104,65 @@ PI_5V_LINK = ("V5", "GND", NC, NC, "GND", "V5")
 LED_DROP = ("V24", "GND", "SCK", "SDT")
 # a two-way power lead (output_panel J9 -> the optical board's J2)
 POWER_PAIR = ("V24", "GND")
+# The brain board's feed (direct-drive instrument, 2026-11-13): TWO leads, output_board -> brain.
+# BRAIN_POWER  J10 + J12, TWO 6-way XH leads in parallel, 22 AWG: the chargers' OR-ed 5-20 V.
+#   Sized from the worst case, not the budget. PD caps CURRENT -- 3 A below 20 V, 5 A only at
+#   20 V on a 5 A cable -- so one port is <= 5 A, but two ports at the same voltage share
+#   through the ideal diodes: 6.5 A from two 65 W chargers, up to 10 A from two 5 A
+#   contracts. At <= 2.5 A a way (XH's 3 A, derated for paralleling) 10 A is 4 VIN + 4 GND
+#   ways: TWO VIN AND TWO GND ON EACH LEAD, the rails at the ends beside their grounds.
+#   ⚠ THE FIRST CUT HAD ONE VIN WAY A LEAD (5 A a way at the worst case, over XH's 3 A):
+#   caught 2026-11-13 writing the brain board's power_paths. Way 3 is a PRESENCE LOOP --
+#   strapped to GND at the brain end, pulled up and read at the output board -- so a missing
+#   lead is SENSED, not left to an install note (lead, 2026-11-13); way 4 is empty. Six ways,
+#   not five: JST makes no 5-way side-entry XH-SM4 (KiCad has 3, 4 and 6). ⚠ THE WIRE IS 22 AWG XH, NOT A NEW GAUGE:
+#   the two-gauge rule (user, 2026-11-01) -- 22 AWG XH for the high rail, 26 AWG PH for 5 V,
+#   no third gauge, no new crimp die. A first cut here used a VH 2-way on 18 AWG and broke
+#   it (caught by the lead). The boost that makes the 24 V is on the brain board.
+# BRAIN_SIGNAL J11, 6-way PH on 26 AWG (logic only -- the two-gauge rule's small wire; lead,
+#   2026-11-13: it was XH, which cost the brain board 6.5 mm of top edge), NO POWER WAY: BRAIN_EN and LOW_PWR from the output board's MCU
+#   (it reads the contracts and picks the mode before anything big starts), PWR_BTN and
+#   BRAIN_PG back from the brain board, open drain, pulled up at the output board. Ground at
+#   both ends, so a reversed lead puts ground on ground.
+BRAIN_POWER = ("VIN", "GND", "LEAD_SENSE", NC, "GND", "VIN")
+BRAIN_SIGNAL = ("GND", "BRAIN_EN", "LOW_PWR", "PWR_BTN", "BRAIN_PG", "GND")
+# The output board's two halves (2026-11-13, the split): output_power J20 -> output_signal J20,
+# a 2 x 12 1.27 mm board-to-board pair, NO cable. Way n is the connector's pin n: odd ways one
+# row, even the other, so way n faces n+-1 across and n+-2 along. What crosses, and why it is
+# only this: the power half has both PD sinks, the ideal diodes, the INA226, the data switch
+# and the 5 V buck; the signal half has the MCU that talks to all of them and every 5 V load.
+#   V5_PRE x5   the buck's 5 V BEFORE the bead (FB1 is on the signal half, where the rails it
+#               separates are). Worst case 2.64 A: U15's 1.80 A limit (the optical board) +
+#               U21's 0.58 A (the MCU + PHY, optical's M25 figure) + 0.26 A analog. 0.53 A a
+#               way on five, under half a 1.27 mm contact's typical 1 A.
+#   GND x6      the same 2.64 A back, 0.44 A a way; and one beside each power way.
+#   +3V3D x1    the signal half's logic rail OUT to the power half's pull-ups, U17 and U16:
+#               ~5 mA.
+#   12 signals  the two PD controllers' I2C + INT (each its own bus, fixed 0x52), the INA226's
+#               I2C2 + ALERT, DATA_SEL (U17), and the two brain-lead presence loops.
+OUTPUT_LINK = ("V5", "V5", "V5", "V5", "V5", "GND", "GND", "GND", "V3D", "GND", "GND",
+               "PDA_SCL", "PDA_SDA", "PDA_INT", "PDB_SCL", "PDB_SDA", "PDB_INT",
+               "I2C2_SCL", "I2C2_SDA", "INA_ALERT_N", "DATA_SEL", "PWR_LEAD1_N", "PWR_LEAD2_N",
+               "GND")
+
+
+def check_ways_2row(ways, power, ground=("GND",), where=""):
+    """check_ways for a two-row header numbered odd / even (way n's neighbours: n+-1 across,
+    n+-2 along). The same standard: a rail only beside ground or that rail."""
+    ways = tuple(ways)
+    for i, w in enumerate(ways):
+        if w not in power:
+            continue
+        across = i + 1 if i % 2 == 0 else i - 1
+        for j in (across, i - 2, i + 2):
+            if 0 <= j < len(ways) and ways[j] not in ground and ways[j] != w:
+                raise AssertionError(
+                    "%s: way %d (%s) carries a rail and way %d (%s) beside it is neither "
+                    "ground nor that rail -- elec/harness.py, the standard"
+                    % (where, i + 1, w, j + 1, ways[j]))
+
+
+check_ways_2row(OUTPUT_LINK, ("V5", "V3D"), where="OUTPUT_LINK")
 
 
 def check_ways(ways, power, ground=("GND",), where=""):
@@ -142,3 +203,19 @@ def ph_trunk_pins():
     return (tuple(x + "_IN" for x in PH_PINOUT)
             + tuple(x + "_OUT" for x in PH_PINOUT))
 
+
+
+# THE CONNECTOR RIBBON (user, 2026-11-13: the output board becomes the brain, and the field
+# connectors -- ten motors, both bus-B arms, both LED drops -- move to a passive CONNECTOR BOARD
+# in the +Y -X corner on ONE premade 2 x 15 1.27 mm IDC ribbon). Way n = header pin n = ribbon
+# wire n; the header numbers odd / even (n+-1 across, n+-2 along). Power on PARALLEL wires
+# (user: "use multiple ribbon pins for power and ground"; nothing on it is audio): +24 V (the
+# motors) on 4, the lighting's fused +24 V on 2, ground on 12. Each rail sits beside ground or
+# itself along the cable AND on the header, and the two clock pairs ride between grounds.
+CONN_RIBBON = ("V24", "V24", "V24", "V24", "GND", "GND", "V24L", "V24L", "GND", "GND",
+               "CANA_H", "CANA_L", "PED_H", "PED_L", "LEV_H", "LEV_L", "GND", "GND",
+               "V5_PED", "GND", "GND", "V5_LEV", "GND", "GND",
+               "SCK", "SDT", "SCK_FOOT", "SDT_FOOT", "GND", "GND")
+assert len(CONN_RIBBON) == 30
+check_ways(CONN_RIBBON, ("V24", "V24L", "V5_PED", "V5_LEV"), where="CONN_RIBBON (cable)")
+check_ways_2row(CONN_RIBBON, ("V24", "V24L", "V5_PED", "V5_LEV"), where="CONN_RIBBON (header)")

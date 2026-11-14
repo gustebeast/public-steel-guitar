@@ -2735,6 +2735,576 @@
    "ohm": 470000.0,
    "case": "0402",
    "src": "JLCPCB parts API for C25790 (0402WGF4703TCE, UNI-ROYAL), the house 0402 series (as C26083), read 2026-11-03"
+  },
+  "C507911": {
+   "kind": "zener",
+   "vz_min": 11.4,
+   "vz_max": 12.7,
+   "p": 0.3,
+   "pins": {
+    "1": "K",
+    "2": "A"
+   },
+   "src": "Diodes Inc BZT52C2V0T-BZT52C36T datasheet DS30502 Rev. 17-2 p.2: BZT52C12T VZ 11.4-12.7 V @5 mA, PD 300 mW",
+   "mpn": "BZT52C12T-7"
+  },
+  "C124205": {
+   "kind": "diode",
+   "vr": 30.0,
+   "if": 0.1,
+   "pins": {
+    "1": "K",
+    "2": "A"
+   },
+   "src": "Diodes Inc BAT54WS datasheet DS30098 Rev. 14-2 p.2 maximum ratings: VRRM/VRWM/VR 30 V, IO 100 mA (IF continuous 200 mA, IFSM 600 mA), PD 200 mW",
+   "mpn": "BAT54WS-7-F"
+  },
+  "C12624": {
+   "kind": "led",
+   "if": 0.03,
+   "vr": 5.0,
+   "vf": 2.6,
+   "p": 0.1,
+   "pins": {
+    "1": "K",
+    "2": "A"
+   },
+   "src": "Hubei KENTO KT-0603G specification p.3 absolute maximum ratings (Pd 100 mW, IFP 60 mA, DC IF 30 mA, VR 5 V); VF 2.6 min / 3.1 max @5 mA (no typ given; min entered, the conservative side for current)",
+   "mpn": "KT-0603G"
+  },
+  "C77241": {
+   "kind": "ic",
+   "supply": {
+    "VIN": "5",
+    "VCC": "17",
+    "SW": "18",
+    "BST": "20"
+   },
+   "pins": {
+    "1": {
+     "n": "SYNCOUT",
+     "max": 7.0
+    },
+    "2": {
+     "n": "OPT",
+     "max": 15.0
+    },
+    "3": {
+     "n": "CSN",
+     "max": 75.0,
+     "min": -0.3,
+     "rec": 65.0
+    },
+    "4": {
+     "n": "CSP",
+     "max": 75.0,
+     "min": -0.3,
+     "rec": 65.0
+    },
+    "5": {
+     "n": "VIN",
+     "max": 75.0,
+     "min": -0.3,
+     "rec": 65.0
+    },
+    "6": {
+     "n": "UVLO",
+     "max": 15.0
+    },
+    "7": {
+     "n": "SS",
+     "max": 7.0
+    },
+    "8": {
+     "n": "SYNCIN/RT",
+     "max": 7.0
+    },
+    "9": {
+     "n": "AGND",
+     "gnd": true
+    },
+    "10": {
+     "n": "FB",
+     "max": 15.0
+    },
+    "11": {
+     "n": "COMP",
+     "max": 7.0
+    },
+    "12": {
+     "n": "SLOPE",
+     "max": 7.0
+    },
+    "13": {
+     "n": "MODE",
+     "max": 15.0
+    },
+    "14": {
+     "n": "RES",
+     "max": 7.0
+    },
+    "15": {
+     "n": "PGND",
+     "gnd": true
+    },
+    "16": {
+     "n": "LO",
+     "max": "VCC+0.3",
+     "drv": "VCC"
+    },
+    "17": {
+     "n": "VCC",
+     "max": 15.0,
+     "rec": 14.0
+    },
+    "18": {
+     "n": "SW",
+     "max": 105.0,
+     "min": -5.0,
+     "rec": 100.0
+    },
+    "19": {
+     "n": "HO",
+     "max": "BST+0.3",
+     "drv": "BST"
+    },
+    "20": {
+     "n": "BST",
+     "max": 115.0,
+     "note": "BST to SW 15 V abs max, 3.8-14 V recommended"
+    },
+    "21": {
+     "n": "EP",
+     "gnd": true
+    }
+   },
+   "src": "TI LM5122 datasheet SNVS954H p.6 s6.1 absolute maximum (to AGND): VIN, CSP, CSN -0.3..75 V; BST-SW, FB, MODE, UVLO, OPT, VCC -0.3..15 V; SW -5..105 V; BST -0.3..115 V; SS, SLOPE, SYNCIN/RT -0.3..7 V; CSP-CSN and PGND -0.3..0.3 V; HO-SW -0.3..BST-SW+0.3; LO -0.3..VCC+0.3; COMP, RES, SYNCOUT -0.3..7 V. p.7 s6.3: VIN 4.5-65, VCC 14, BST-SW 3.8-14, CSP/CSN 3-65, SW 100 V. 20-pin PWP pinout p.4-6 (EP: no internal connection, soldered to ground). MPN on the catalogue is LM5122MHX/NOPB, the same HTSSOP-20 PWP",
+   "mpn": "LM5122MHX/NOPB"
+  },
+  "C502976": {
+   "kind": "fet",
+   "ch": "N",
+   "vds": 40.0,
+   "vgs": 20.0,
+   "id": 90.0,
+   "pins": {
+    "1": "S",
+    "2": "S",
+    "3": "S",
+    "4": "G",
+    "5": "D"
+   },
+   "src": "Wuxi NCE Power NCEP4090GU datasheet V4.0 p.1 absolute maximum ratings: VDS 40 V, VGS +/-20 V, ID 90 A (TC 25 C; 63.6 A at 100 C). Pin map is brain.py's footprint numbering (1-3 S, 4 G, 5 drain tab); the datasheet's pin drawing is an image and was not read",
+   "mpn": "NCEP4090GU"
+  },
+  "C597931": {
+   "kind": "conn",
+   "v": 30.0,
+   "i": 0.3,
+   "src": "Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)",
+   "mpn": "DF40C-100DS-0.4V(51)"
+  },
+  "C191914": {
+   "kind": "conn",
+   "v": 250,
+   "i": 3.0,
+   "src": "JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'",
+   "mpn": "S6B-XH-SM4-TB(LF)(SN)"
+  },
+  "C2045568": {
+   "kind": "ind",
+   "isat": 24.0,
+   "itemp": 16.5,
+   "dcr_max": 0.0092,
+   "src": "Bourns SRP1770TA series datasheet p.1 table: SRP1770TA-100M DCR 8.4 typ / 9.2 max mohm, Irms 16.5 A (40 C rise), Isat1 24 A (L -20 %), Isat2 29 A (L -30 %). Isat entered is Isat1. (The catalogue's 13 mohm / 29 A disagree with the datasheet; datasheet used)",
+   "mpn": "SRP1770TA-100M"
+  },
+  "C778721": {
+   "mpn": "GMK325BJ226MM-P",
+   "kind": "cap",
+   "v": 35.0,
+   "diel": "X5R",
+   "c": "22uF",
+   "case": "1210",
+   "src": "JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+  },
+  "C46550413": {
+   "mpn": "JVJ35V470M10x10",
+   "kind": "cap",
+   "v": 35.0,
+   "diel": "Al",
+   "c": "470uF",
+   "case": "D10xL10.5",
+   "src": "JLCPCB parts API attributes for C46550413 (JVJ35V470M10x10, jieerrui), fetched 2026-11-13; jieerrui JVJ series datasheet p.5 row JVJ35V470M10X10: 35 V, 470 uF, 10x10.5, ripple 320 mA"
+  },
+  "C77572": {
+   "mpn": "0603B474K500NT",
+   "kind": "cap",
+   "v": 50.0,
+   "diel": "X7R",
+   "c": "470nF",
+   "case": "0603",
+   "src": "JLCPCB parts API attributes for C77572 (0603B474K500NT, FH (Guangdong Fenghua Advanced Tech)), fetched 2026-11-13"
+  },
+  "C1546": {
+   "mpn": "0402CG101J500NT",
+   "kind": "cap",
+   "v": 50.0,
+   "diel": "C0G",
+   "c": "100pF",
+   "case": "0402",
+   "src": "JLCPCB parts API attributes for C1546 (0402CG101J500NT, FH (Guangdong Fenghua Advanced Tech)), fetched 2026-11-13"
+  },
+  "C25768": {
+   "mpn": "0402WGF2202TCE",
+   "kind": "res",
+   "p": 0.0625,
+   "v": 50.0,
+   "ohm": 22000.0,
+   "case": "0402",
+   "src": "JLCPCB parts API attributes for C25768 (0402WGF2202TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-11-13"
+  },
+  "C270580": {
+   "mpn": "0402WGF8250TCE",
+   "kind": "res",
+   "p": 0.0625,
+   "v": 50.0,
+   "ohm": 825.0,
+   "case": "0402",
+   "src": "JLCPCB parts API attributes for C270580 (0402WGF8250TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-11-13"
+  },
+  "C23157": {
+   "mpn": "0603WAF300KT5E",
+   "kind": "res",
+   "p": 0.1,
+   "v": 75.0,
+   "ohm": 3.0,
+   "case": "0603",
+   "src": "JLCPCB parts API attributes for C23157 (0603WAF300KT5E, UNI-ROYAL(Uniroyal Elec)), fetched 2026-11-13"
+  },
+  "C326588": {
+   "mpn": "PA2512FKF7W0R004E",
+   "kind": "res",
+   "p": 2.0,
+   "v": 0.089,
+   "ohm": 0.004,
+   "case": "2512",
+   "src": "JLCPCB parts API attributes for C326588 (PA2512FKF7W0R004E, YAGEO), fetched 2026-11-13 (2 W, 4 mohm, no voltage listed); Yageo PA_E series datasheet V.10 (2018-01-31) p.4 'Rated voltage': V = sqrt(P x R) = sqrt(2 W x 4 mohm) = 0.089 V"
+  },
+  "C92361": {
+   "mpn": "CL05A474KA5NNNC",
+   "kind": "cap",
+   "v": 25.0,
+   "diel": "X5R",
+   "c": "470nF",
+   "case": "0402",
+   "src": "JLCPCB parts API attributes for C92361 (CL05A474KA5NNNC, Samsung Electro-Mechanics), fetched 2026-11-13"
+  },
+  "C190579": {
+   "mpn": "0402CG331J500NT",
+   "kind": "cap",
+   "v": 50.0,
+   "diel": "C0G",
+   "c": "330pF",
+   "case": "0402",
+   "src": "JLCPCB parts API attributes for C190579 (0402CG331J500NT, FH (Guangdong Fenghua Advanced Tech)), fetched 2026-11-13"
+  },
+  "C25887": {
+   "mpn": "0402WGF3652TCE",
+   "kind": "res",
+   "p": 0.0625,
+   "v": 50.0,
+   "ohm": 36500.0,
+   "case": "0402",
+   "src": "JLCPCB parts API attributes for C25887 (0402WGF3652TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-11-13"
+  },
+  "C82298": {
+   "mpn": "0402WGF2671TCE",
+   "kind": "res",
+   "p": 0.0625,
+   "v": 50.0,
+   "ohm": 2670.0,
+   "case": "0402",
+   "src": "JLCPCB parts API attributes for C82298 (0402WGF2671TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-11-13"
+  },
+  "C11537": {
+   "mpn": "0402WGF6812TCE",
+   "kind": "res",
+   "p": 0.0625,
+   "v": 50.0,
+   "ohm": 68100.0,
+   "case": "0402",
+   "src": "JLCPCB parts API attributes for C11537 (0402WGF6812TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-11-13"
+  },
+  "C50341643": {
+   "mpn": "AP33772SDKZ-13",
+   "kind": "ic",
+   "supply": {
+    "VCC": "24",
+    "V5V": "20"
+   },
+   "pins": {
+    "1": {
+     "n": "ISENP",
+     "max": 31.0
+    },
+    "2": {
+     "n": "NC"
+    },
+    "10": {
+     "n": "NC"
+    },
+    "14": {
+     "n": "NC"
+    },
+    "21": {
+     "n": "NC"
+    },
+    "3": {
+     "n": "GND",
+     "gnd": true
+    },
+    "25": {
+     "n": "EPAD",
+     "gnd": true
+    },
+    "4": {
+     "n": "SDA",
+     "max": 7.0,
+     "note": "open drain; recommended pull-up 4.37-5.33 V (p.5) -- here 3.3 V, above its 1.4 V VIH"
+    },
+    "5": {
+     "n": "SCL",
+     "max": 7.0,
+     "note": "recommended pull-up 4.37-5.33 V (p.5) -- here 3.3 V, above its 1.4 V VIH"
+    },
+    "6": {
+     "n": "FLIP",
+     "max": 7.0,
+     "drv": "V5V"
+    },
+    "7": {
+     "n": "GPIO",
+     "max": 7.0,
+     "note": "no row in the abs max table; rated as the 5 V DIO pins beside it (ASSUMED)"
+    },
+    "8": {
+     "n": "LED",
+     "max": 7.0,
+     "drv": "V5V"
+    },
+    "9": {
+     "n": "INT",
+     "max": 7.0,
+     "drv": "V5V",
+     "note": "push-pull, VGPIOO 4.37-5.33 V (p.6)"
+    },
+    "11": {
+     "n": "VSEL",
+     "max": 7.0,
+     "note": "no row in the abs max table; rated as the 5 V pins (ASSUMED)"
+    },
+    "12": {
+     "n": "V18",
+     "max": 5.0
+    },
+    "13": {
+     "n": "OTP",
+     "max": 7.0,
+     "drv": "V5V",
+     "note": "100 uA +/-8 % current source into the NTC (p.6); compliance taken as V5V"
+    },
+    "15": {
+     "n": "IFB",
+     "max": 7.0,
+     "drv": "V5V",
+     "note": "no row in the abs max table; an AI pin of the 5 V class (Note 4), rated 7 V and bounded by V5V (ASSUMED)"
+    },
+    "16": {
+     "n": "CC2",
+     "max": 34.0
+    },
+    "17": {
+     "n": "CC1",
+     "max": 34.0
+    },
+    "18": {
+     "n": "DN",
+     "max": 7.0
+    },
+    "19": {
+     "n": "DP",
+     "max": 7.0
+    },
+    "20": {
+     "n": "V5V",
+     "max": 7.0,
+     "rec": 5.33
+    },
+    "22": {
+     "n": "VOUT",
+     "max": 31.0
+    },
+    "23": {
+     "n": "PWR_EN",
+     "max": "VCC+4",
+     "note": "PWR_EN -0.3..38 V to GND and -30..+4 V to VCC (p.5); the VCC-relative limit is the tighter one here"
+    },
+    "24": {
+     "n": "VCC",
+     "max": 34.0,
+     "rec": 31.0
+    }
+   },
+   "src": "Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
+  },
+  "C2941042": {
+   "mpn": "LM74700QDBVRQ1",
+   "kind": "ic",
+   "supply": {
+    "ANODE": "6"
+   },
+   "pins": {
+    "1": {
+     "n": "VCAP",
+     "max": "ANODE+15"
+    },
+    "2": {
+     "n": "GND",
+     "gnd": true
+    },
+    "3": {
+     "n": "EN",
+     "max": 65.0,
+     "rec": 60.0
+    },
+    "4": {
+     "n": "CATHODE",
+     "max": 75.0,
+     "rec": 60.0,
+     "note": "CATHODE to ANODE -5..75 V (taken with ANODE at GND); recommended CATHODE to GND 60 V"
+    },
+    "5": {
+     "n": "GATE",
+     "max": "ANODE+15"
+    },
+    "6": {
+     "n": "ANODE",
+     "max": 65.0,
+     "rec": 60.0
+    }
+   },
+   "src": "TI LM74700-Q1 datasheet SNOSD17G (Dec 2020) s6.1 p.5: ANODE to GND -65..65 V, EN -0.3..65 V, GATE to ANODE -0.3..15 V, VCAP to ANODE -0.3..15 V, CATHODE to ANODE -5..75 V; s6.3 ANODE, CATHODE, EN to GND 60 V recommended; s6.5 p.7 charge pump turn-off VCAP-ANODE 11.6/13/13.9 V; p.3 Table 5-1 DBV pinout 1 VCAP 2 GND 3 EN 4 CATHODE 5 GATE 6 ANODE"
+  },
+  "C77131": {
+   "mpn": "NCP15XH103F03RC",
+   "kind": "res",
+   "p": 0.1,
+   "v": 31.6,
+   "ohm": 10000.0,
+   "case": "0402",
+   "src": "Murata NTC thermistor catalogue (the PDF on LCSC C77131) p.10 table, NCP15XH103F03RC: 10k +/-1 % at 25 C, B25/50 3380 K, permissible operating current 0.31 mA, rated electric power 100 mW (25 C). No voltage rating is published: 31.6 V entered = sqrt(100 mW x 10k), the rated power's voltage at 25 C"
+  },
+  "C8678": {
+   "mpn": "SS34",
+   "kind": "diode",
+   "vr": 40.0,
+   "if": 3.0,
+   "pins": {
+    "1": "K",
+    "2": "A"
+   },
+   "src": "MDD SS32 thru SS3200 datasheet Rev 2024A5 p.1 maximum ratings, column SS34: VRRM / VDC 40 V, I(AV) 3.0 A, IFSM 80 A; band = cathode (the same figures in the JLCPCB parts API attributes for C8678)"
+  },
+  "C2286": {
+   "mpn": "KT-0603R",
+   "kind": "led",
+   "if": 0.025,
+   "vr": 5.0,
+   "vf": 1.8,
+   "p": 0.04,
+   "pins": {
+    "1": "K",
+    "2": "A"
+   },
+   "src": "Hubei KENTO KT-0603R specification A.0 (2018-12-06) p.3 absolute maximum ratings (Pd 40 mW, IFP 60 mA, DC IF 25 mA, VR 5 V); VF 1.8 min / 2.4 max @20 mA (min entered, the conservative side for current, as KT-0603G)"
+  },
+  "C25915": {
+   "mpn": "0402WGF6201TCE",
+   "kind": "res",
+   "p": 0.0625,
+   "v": 50.0,
+   "ohm": 6200.0,
+   "case": "0402",
+   "src": "JLCPCB parts API attributes for C25915 (0402WGF6201TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-11-13"
+  },
+  "C25087": {
+   "mpn": "0402WGF2000TCE",
+   "kind": "res",
+   "p": 0.0625,
+   "v": 50.0,
+   "ohm": 200.0,
+   "case": "0402",
+   "src": "JLCPCB parts API attributes for C25087 (0402WGF2000TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-11-13"
+  },
+  "C22436132": {
+   "mpn": "HC-PM127-4.3H-2x12PS",
+   "kind": "conn",
+   "v": 30.0,
+   "i": 1.0,
+   "src": "PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "C224015": {
+   "kind": "tvs",
+   "vrwm": 22.0,
+   "vbr_min": 24.4,
+   "vbr_max": 26.9,
+   "vc": 35.5,
+   "ipp": 16.9,
+   "bidir": false,
+   "pins": {
+    "1": "K",
+    "2": "A"
+   },
+   "mpn": "SMBJ22A",
+   "src": "Littelfuse SMBJ Series datasheet (Revised JC.07/04/25 v4) p.2, electrical characteristics row SMBJ22A: VRWM 22 V, VBR 24.40-26.90 V @1 mA, VC 35.5 V @ IPP 16.9 A (10/1000 us), 600 W"
+  },
+  "C54829820": {
+   "kind": "conn",
+   "v": 48.0,
+   "i": 5.0,
+   "mpn": "PTCFW-H22A-005",
+   "src": "YUWENFA PTCFW-H22A-005 drawing p.1/3: rated 48 V, 5 A, 240 W; land p.2/3 identical to HRO TYPE-C-31-M-12"
+  },
+  "C3642394": {
+   "kind": "conn",
+   "v": 30.0,
+   "i": 0.3,
+   "src": "Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)",
+   "mpn": "DF40C-100DS-0.4V(58)"
+  },
+  "C46550472": {
+   "mpn": "MA35V470M10X13",
+   "kind": "cap",
+   "v": 35.0,
+   "diel": "polymer",
+   "c": "470uF",
+   "case": "D10xL13",
+   "src": "jieerrui MA series datasheet p.4 row MA35V470M10X13: 35 V, 470 uF, 16 mohm, ripple 3.8 A at 100 kHz"
+  },
+  "C22438123": {
+   "kind": "conn",
+   "v": 500,
+   "i": 1.0,
+   "src": "hanxia PZ1.27 datasheet p.4 (the family's rating, as C22438114): 500 V, 1 A",
+   "mpn": "HX PZ1.27-2x8P ZZ"
+  },
+  "C167220": {
+   "kind": "ind",
+   "isat": 9.0,
+   "itemp": 6.0,
+   "mpn": "FXL0630-4R7-M",
+   "src": "JLC listing C167220 (2026-11-13): '33mOhm 4.7uH 6A 9A', read as 6 A rated / 9 A saturation -- confirm on Changjiang's sheet"
   }
  }
 }

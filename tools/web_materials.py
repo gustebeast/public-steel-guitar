@@ -156,7 +156,12 @@ def material_of(name: str):
     for pre, mod in _BENCHES:
         if base.startswith(pre):
             import importlib
-            return importlib.import_module(mod).material_of(base)
+            # the bench's table is authoritative for ITS parts; a db_ part it does not list
+            # falls through to the general rules (pcb, screw, ...) like any other name
+            m = importlib.import_module(mod).material_of(base)
+            if m is not None:
+                return m
+            break
     return _filament_of(name) or finish_of(base)
 
 

@@ -26,8 +26,12 @@ from cadkit.pcbflow import fab_package as _fab  # noqa: E402
 # elec/fret_led.py cut to two panels -- see that module. `foot_led` is the OTHER
 # lighting job, the one that fires down at the player's feet. (The single side-mount
 # `led_strip` both replaced is gone, 2026-10-01.)
-BOARDS = ("can_tee", "lever_sensor", "motor_ctrl", "output_panel",
-          "pi_cap", "optical", "ui_board", "fret_led_mid", "fret_led_key",
+# THE INSTRUMENT'S BOARDS (user 2026-11-13 architecture, lead's BOM swap): the output
+# board IS the brain (CM5 + H743, brain.py built onto it) and the field connectors are on
+# the passive connector board. motor_ctrl, output_panel and pi_cap left the count here;
+# their generators and fab outputs stay as the locked R1 record (r1-boards-locked).
+BOARDS = ("can_tee", "lever_sensor", "output_board", "connector_board",
+          "optical", "ui_board", "fret_led_mid", "fret_led_key",
           "foot_led_a", "foot_led_b",
           # the leg's blind-mate boards (elec/leg_pogo.py, 2026-10-01): two joints, and each
           # joint's pair is the MIRROR of the other's, so four designs
@@ -40,6 +44,12 @@ BOARDS = ("can_tee", "lever_sensor", "motor_ctrl", "output_panel",
 # down somewhere in elec/ or BOM.md, and a blank means the decision has not been
 # made. See the module docstring on why blank beats a guess.
 LCSC = {
+    # the output board's PD power half (output_board.py / output_split.py, 2026-11-13)
+    "AP33772SDKZ-13": "C50341643",  # Diodes USB PD sink, W-QFN4040-24 (LCSC lists the -FA02 page; same pinout)
+    "LM74700QDBVRQ1": "C2941042",   # TI ideal-diode controller, SOT-23-6
+    "NCP15XH103F03RC": "C77131",    # Murata 10k NTC 0402, the AP33772S OTP sensor
+    "SS34": "C8678",                # MDD 40 V 3 A Schottky, SMA
+    "KT-0603R": "C2286",            # KENTO red 0603 LED
     "S8B-XH-A": "C157914",          # 8-way side-entry XH, motor tee trunk
     "DSHP01TSGER": "C3293141",      # 1-position slide DIP switch, the tee's terminator; 21,200 stock
     "2.54-2*20P": "C5124634",       # 2x20 female header, the pi_cap's Pi socket
@@ -59,6 +69,7 @@ LCSC = {
     "NUP2105LT1G": "C14486",        # onsemi dual CAN-line TVS, 24 V stand-off, SOT-23; 273,420
     "LMR16006XDDCR": "C87080",      # 60 V 0.6 A buck, lever + motor controller
     "TYPE-C-31-M-12": "C165948",    # USB-C receptacle, motor controller + panel
+    "PTCFW-H22A-005": "C54829820",  # YUWENFA USB-C 16P, 48 V / 5 A, TYPE-C-31-M-12's land; 3,835 on 2026-11-13 (output_power J1/J2)
     "HX-TYPE-C 16P 180 LC-B H10.0": "C49261584",  # motor_ctrl R2 J4: vertical USB-C, THT; 1,765 (2026-11-03)
     "CH32V203G6U6": "C5142280",     # lever board MCU until 2026-11-03 (rev 1)
     "CH32V203C8T6": "C3001172",     # lever board MCU since 2026-11-03: USBFS on PB6/PB7; 9,420 on 2026-11-03
@@ -89,6 +100,7 @@ LCSC = {
     # worst case against the TPS560430's 1.4 A maximum current limit, which is the
     # number TI tells you to size against.
     "WPN4020H4R7MT": "C98363",       # 4.7 uH, 4x4x2.0 closed-circuit, Isat 4.0 A (optical L1)
+    "FXL0630-4R7-M": "C167220",      # 4.7 uH, 6.45x6.6x2.8 molded, 6 A / 9 A (output_board L1, merged)
     "SWPA5040S4R7MT": "C48496",      # 4.7 uH, 5x5x4.0 shielded, Isat 3.50 A min (the LED bucks)
     "LMR33630BRNXR": "C2071384",     # the 1.4 MHz RNX part (the LED bucks, elec/buck_cell.py; optical U13)
     # -- motor_ctrl's parts that were values and not parts until the 2026-10-04 review --
@@ -148,6 +160,7 @@ LCSC = {
     "MX128-5.0-02P-Y": "C5188463",  # MAX MX128-5.0-02P-GN01-Cu-Y-A, slotted, stock 1,353 on 2026-10-30 -- output_panel R2 J8 (R2-3)
     "TUSB320LAIRWBR": "C132554",    # TI USB-C role detect, X2QFN-12; 2,603 on 2026-10-30 -- THIN
     "TS3USB221RSER": "C130085",     # TI USB 2:1 switch, UQFN-10; 64,390 on 2026-10-30
+    "SMBJ22A": "C224015",           # Littelfuse SMB TVS, 22 V stand-off, 600 W: the output power half's port clamps
     "SMF24A": "C169430",            # SOD-123FL TVS, 24 V stand-off, 200 W; 99,839 on 2026-10-30
     "INA226AIDGSR": "C49851",       # TI power monitor, VSSOP-10; 42,364 on 2026-10-30
     # The two CLASS lines whose pinout the netlist actually writes out, so a part can be
@@ -166,6 +179,7 @@ LCSC = {
     "TPS2553DBVR": "C55266",        # TI current-limited switch, SOT-23-6 (motor_ctrl U6, pi_cap U1); 58,077 in stock
                                     # 2026-10-04 -- motor_ctrl U6, bus B's 5 V
     "PZ1.27-2x8P": "C22438114",     # the same family's 2x8, for the UI board's 16-way
+    "PZ1.27-2x8P ZZ": "C22438123",  # its STRAIGHT sibling (brain J5, vertical): 1,580 on 2026-11-13
                                     # ribbon; 2050 in stock 2026-10-04
     "PB-22E85-S-5.7C-C-W": "C22462024",   # Legion self-locking push switch, 2P2T, THT,
                                     # 12 V 0.3 A; 2535 in stock 2026-10-04. The power button.
@@ -202,6 +216,27 @@ LCSC = {
                                     # 3.0 high: the display's ribbon (2026-10-23, in place
                                     # of JUSHUO AFA07-S20FCA-00 C262724, which has no
                                     # published current rating). 5,590 in stock.
+    # -- the brain board, 2026-11-13, every code read back off JLCPCB's parts API --------
+    # (three codes quoted in brain.py's descriptions were NOT these parts: C191023 is a
+    # 1N5819WS, C72043 an Everlight LED, C2848476 is not in the catalogue)
+    "BZT52C12T-7": "C507911",       # Diodes Inc BZT52C12T-7, SOD-523; 5,736 on 2026-11-13 (brain D12)
+    "BAT54WS": "C124205",           # Diodes Inc BAT54WS-7-F, SOD-323; 64,872 on 2026-11-13 (brain D13)
+    "KT-0603G": "C12624",           # Hubei KENTO KT-0603G, 0603 green; 267,918 on 2026-11-13 (brain D18)
+    "LM5122PWPR": "C77241",         # TI LM5122MHX/NOPB: the HTSSOP-20 PWP reel (SNVS954H orderables;
+                                    # there is no "LM5122PWPR"); 20,357 on 2026-11-13 (brain U20)
+    "NCEP4090GU": "C502976",        # Wuxi NCE Power NCEP4090GU, DFN5x6-8L; 3,236 on 2026-11-13 (brain Q8/Q9)
+    "DF40C-100DS-0.4V(51)": "C3642394",  # Hirose DF40C-100DS-0.4V(58), the same part on other
+                                    # packaging: 196 on 2026-11-13 (C597931, the (51), had fallen
+                                    # to 34) -- THIN, 2 per instrument (brain J1/J2): order early
+    "S6B-XH-SM4-TB": "C191914",     # JST S6B-XH-SM4-TB(LF)(SN), 5,661; the bare listing
+                                    # C20493992 is 0 (brain J10/J12)
+    # Keyed by value, not in PASSIVES: lcsc_check.check_passives reads a chip size out of
+    # the footprint name, which these two do not have.
+    "10uH 15A": "C2045568",         # Bourns SRP1770TA-100M; ZERO in stock on 2026-11-13 (brain L4)
+    "470uF/35V": "C46550472",       # jieerrui MA35V470M10X13, SMD POLYMER D10x13, 35 V, 16 mohm,
+                                    # 3.8 A ripple at 100 kHz; 66,146 on 2026-11-13 (brain C113/C114).
+                                    # Was C46550413, a wet Al part rated 0.42 A at 250 kHz against
+                                    # a boost whose output caps carry ~5.8 A RMS between them
 }
 # ── EVERY PASSIVE, BY (VALUE, FOOTPRINT) ──────────────────────────────────────────────
 # These rows used to go to the fab with no part number -- "a generic passive, chosen at
@@ -221,6 +256,12 @@ LCSC = {
 # dielectric, tolerance. `elec/lcsc_check.py` re-reads them all and compares. Basic parts
 # wherever one exists (no extended-part fee, placed by Economic assembly).
 PASSIVES = {
+    # the output board's PD half: each ordered as a part fab already buys, rated at least as asked
+    ("10uF/35V", "C_1206_3216Metric"):       "C13585",   # the 10uF/50V 1206 below (CL31A106KBHNNNE, 50 V X5R)
+    ("1uF/10V", "C_0402_1005Metric"):        "C52923",   # CL05A105KA5NQNC, 25 V X5R
+    ("100nF/25V", "C_0402_1005Metric"):      "C307331",  # CL05B104KB54PNC, 50 V X7R
+    ("6k2", "R_0402_1005Metric"):            "C25915",   # UniOhm 0402WGF6201TCE, 1 %
+    ("200R", "R_0402_1005Metric"):           "C25087",   # UniOhm 0402WGF2000TCE, 1 %
     ("100nF", "C_0402_1005Metric"):          "C307331",   # Samsung CL05B104KB54PNC, 50 V X7R 10 %; basic
     ("100nF/16V", "C_0402_1005Metric"):      "C307331",
     ("100nF/50V", "C_0402_1005Metric"):      "C307331",
@@ -291,6 +332,19 @@ PASSIVES = {
     ("9k09 1%", "R_0402_1005Metric"):        "C274897",   # Yageo RC0402FR-079K09L, 1 %; 47,319 in stock
     ("0R", "R_0603_1608Metric"):             "C21189",   # UniOhm 0603WAF0000T5E; basic
     ("120R", "R_0603_1608Metric"):           "C22787",   # UniOhm 0603WAF1200T5E, 1 %, 100 mW; basic
+    # -- the brain board, 2026-11-13, read off JLCPCB's parts API ------------------------
+    ("22uF/35V", "C_1210_3225Metric"):       "C778721",   # Taiyo Yuden GMK325BJ226MM-P, 35 V X5R 20 %; 148,503 in stock
+    ("470nF/50V", "C_0603_1608Metric"):      "C77572",   # FH 0603B474K500NT, 50 V X7R 10 %; 136,525 in stock
+    ("100pF/50V", "C_0402_1005Metric"):      "C1546",   # FH 0402CG101J500NT, 50 V C0G 5 %; basic, 3,352,469 in stock
+    ("22k", "R_0402_1005Metric"):            "C25768",   # UniOhm 0402WGF2202TCE, 1 %; basic, 1,317,157 in stock
+    ("825R 1%", "R_0402_1005Metric"):        "C270580",   # UniOhm 0402WGF8250TCE, 1 %; 30,602 in stock
+    ("470nF/25V", "C_0402_1005Metric"):      "C92361",    # Samsung CL05A474KA5NNNC, 25 V X5R; 142,099 in stock
+    ("330pF/50V", "C_0402_1005Metric"):      "C190579",   # FH 0402CG331J500NT, 50 V C0G 5 %; 4,542 in stock
+    ("36k5 1%", "R_0402_1005Metric"):        "C25887",    # UniOhm 0402WGF3652TCE, 1 %; 88,875 in stock
+    ("2k67 1%", "R_0402_1005Metric"):        "C82298",    # UniOhm 0402WGF2671TCE, 1 %; 7,723 in stock
+    ("68k1 1%", "R_0402_1005Metric"):        "C11537",    # UniOhm 0402WGF6812TCE, 1 %; 10,081 in stock
+    ("3R", "R_0603_1608Metric"):             "C23157",   # UniOhm 0603WAF300KT5E, 1 %, 100 mW; 26,653 in stock
+    ("4mR 1W", "R_2512_6332Metric"):         "C326588",   # Yageo PA2512FKF7W0R004E, 1 %, 2 W; 9,402 in stock
 }
 
 # ⚠ EVERY VALUE STRING MUST BE ACCOUNTED FOR -- IN LCSC, GENERIC, OR HERE.

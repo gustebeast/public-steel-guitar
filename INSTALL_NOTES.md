@@ -2060,3 +2060,13 @@ Replaces the bayonet collar and the cone collar. Neither printed: the bayonet's 
   - The fill stands 1.5 mm −X of the string's vertical drop, which keeps an open slot at the +X face.
   - The ball now goes in from +X at the bend bearing's level, not down the lane from the top.
 - **JLCCNC keyhole plates** (order W2026111305203947, in review, unpaid): the two M3 holes become **Ø3.4 clearance**, with no tapping. The order must change before it is paid.
+
+## Output board → brain board: three leads (2026-11-13)
+
+- **J10 and J12 are two 6-way XH power leads, plugged in parallel.** Both carry the USB chargers' 5–20 V to the brain board, where the 24 V boost now lives.
+  - Standard 22 AWG and XH crimps, same as every other XH lead. Ways, 1 to 6: VIN, GND, presence, empty, GND, VIN.
+  - Each lead carries VIN on two ways (1 and 6) and ground on two (2 and 5).
+  - **Plug both.** Two chargers sharing can reach 10 A. That is 2.5 A a way only with both leads in.
+  - Way 3 of each lead is a presence loop, strapped to GND at the brain board. The output board's MCU reads it: with a lead missing it limits the input to one charger or keeps the brain board off.
+- **J11 is a 6-way PH (26 AWG) carrying only logic**: GND, BRAIN_EN, LOW_PWR, PWR_BTN, BRAIN_PG, GND. It has no power way, so a reversed lead puts ground on ground. It is the only PH lead between these two boards, so it cannot go in an XH power socket.
+- Pinouts are in `elec/harness.py` as `BRAIN_POWER` and `BRAIN_SIGNAL`.
