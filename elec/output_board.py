@@ -593,7 +593,7 @@ def output_board():
                  (dp_j, dp), (dm_j, dm), "USB 2.0 data pair: 90 ohm common mode, passes HS")):
             fl = Part(name="CMC", ref_prefix="FL", ref=tag, tag=tag, dest="NETLIST", tool="skidl",
                       value=value, description="port %s common-mode choke, %s; windings 1-4 and "
-                      "2-3 (open item: read off the maker's sheet)" % (side, why), footprint=fp,
+                      "2-3 (read off the maker's sheet, 2026-11-14)" % (side, why), footprint=fp,
                       pins=[Pin(num=i, func=P) for i in range(1, 5)])
             a1 += fl[1]
             a2 += fl[4]
@@ -1995,6 +1995,14 @@ def _merged_quality(paths, q):
     unc["U34.7"] = "ISO7710F D pin 7 is NC (TI SLLSER9E pin table)"
     q["unconnected"] = unc
     q["pinouts"] = dict(bq.get("pinouts", {}), **q["pinouts"])
+    q["pinouts"]["PESD2USB5UX"] = (
+        "Nexperia PESD2USB5UX datasheet (LCSC C3709087's PDF) Table 2 pinning: 1 K1, 2 K2 "
+        "(cathodes, the two lines), 3 CA common anode (GND); SOT23 pads 1 / 2 / 3 as KiCad's -- "
+        "D219 / D220: 1 = bus B H, 2 = bus B L, 3 = GND (read 2026-11-14)")
+    q["pinouts"]["744273501"] = (
+        "Wurth Elektronik 744273501 (WE-SL5 HC) datasheet p.1 schematic: windings 1-4 and 2-3, "
+        "pads numbered as KiCad's L_CommonModeChoke_Wuerth_WE-SL5-HC -- FL1 / FL2: 1-4 VBUS "
+        "connector -> board, 2-3 GND connector -> board (read 2026-11-14, we-online.com)")
     if FOLD:
         q["manual"] = dict(q.get("manual", {}), M43=(
             "ONE programmable part on this board apart from the CM5: U1, the STM32H743 (the CH32 "
