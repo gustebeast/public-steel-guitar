@@ -56,6 +56,12 @@ def core(stem):
         with open(parent, "rb") as fh:
             par = pickle.load(fh)
         if (par["H"], par["W"], par["L"]) == (r.H, r.W, r.L):
+            # ⚠ THE RETRY IS BOUNDED (output_board mK, 2026-11-13): the score left 5 nets open
+            # after its full 2 x 900 s, and delta_run re-negotiated them on this route's own
+            # 1800 s budget (a 3600 s deadline) until the flow's limit killed the finish. Nets
+            # the score could not close in half an hour seldom close given more; they get
+            # OWNROUTE_PARENT_BUDGET_S (300 s, so a 600 s deadline) and go to the report.
+            budget = min(budget, float(os.environ.get("OWNROUTE_PARENT_BUDGET_S", "300")))
             failed, st = rescore.delta_run(r, par, budget_s=budget, log=print)
             print("ownroute: from the score's route %s: %d net(s) kept, %d routed (%.0f s)"
                   % (os.path.basename(parent), st["kept"], st["routed"], st["sec"]))
