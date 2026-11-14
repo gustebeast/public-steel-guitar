@@ -23,7 +23,10 @@ low: the keyhead nut prism only reaches down to z -64.8), y 27..65, ~100 mm open
 terminals are ordinary HORIZONTAL-entry blocks with their screws straight up, and they need not
 line the edge (user, 2026-11-13: "we can still put them in the middle as long as there is enough
 space for the wires to come out and bend up"): each keeps 12 mm clear in front of its mouth for
-the wires' bend, and the placer turns them freely. The JSTs are top entry. Frame: board x =
+the wires' bend, and the placer turns them freely. PLUGGABLE since 2026-11-14 (MAX MX15EDGRC +
+MX15EDGK): the mated plug runs 10.6 past the header's front, so the stroke is 10.6 + the 12 mm
+bend, and its two M2 screws face +Z -- a 2.0 mm blade reaches them straight down only under
+open sky, i.e. NOT at board x < -73.45 (the keyhead nut prism, ~41 mm above the face there). The JSTs are top entry. Frame: board x =
 instrument x + 535.35, board y = instrument y - 46.0. One M4 into a floor boss (branner) -- its
 x / y go to him once placed. Motor leads: 0.4 m for motors 1, 6, 7 (or 0.4 for all: one SKU).
 """
@@ -152,6 +155,8 @@ def connector_board():
 
 
 BOARD_NOTES = {
+    # the mated MX15EDGRC + MX15EDGK pair, 11.10 tall (MAX drawings): the placer's height zones
+    "part_heights": {"J%d" % (11 + k): 11.1 for k in range(10)},
     "outline_mm": (172.7, 37.0),         # instrument x -621.7..-449.0, y 27.5..64.5 (branner 11-13: -X 1 mm off the 22.23 keyhead slab at -622.67)
     "frame": {"instrument_x": "board x - 535.35", "instrument_y": "board y + 46.0",
               "underside_z": -107.2, "faces": "+Z", "by": "branner 2026-11-13"},
@@ -164,7 +169,9 @@ BOARD_NOTES = {
         "J11-J20 wire entry side: the Phoenix PT-H footprint's entry assumed on its +Y (KiCad frame) -- check against the drawing before the mate rules are trusted",
         "motor leads: 0.4 m for motors 1, 6, 7 (branner's Manhattan runs to a board centred x -560 y 46); 0.4 for all = one SKU",
         "the SERVO42D's own 4-way terminal order -- match J11-J20's to it so a lead is straight across",
-        "J11-J20 MX15EDGRC + MX15EDGK: the mated depth (17 mm from the pin row) is read off two drawings, not a sample -- check one pair; the land's body outline (Fab/silk) is still Phoenix MC's",
+        "J11-J20 MX15EDGRC + MX15EDGK: the mated depth (16.5 mm from the pin row, 17 courtyard) and 11.1 height are read off two drawings, not a sample -- check one pair",
+        "placement intent (not written yet), J11-J20 each: mate Jn L+Y 22.6 1.0 (the plug's 10.6 past the header + the 12 mm wire bend), access Jn top 6 (the M2 screws, a 2.0 mm blade from +Z), and the body at board x >= -73.45 (open sky: the nut prism is ~41 mm above the face beyond it)",
+        "instrument model: the connector board is not in src/ yet -- once placed, the overlap gate needs it at its frame with BOARDS.solid(mated=True) (src/board_geom.SIDE_PLUG_RUN carries the plug) against the nut block, the endplates and the motor cable path",
         "J1 PZ1.27-2x15P ZZ: LCSC code and stock (the 2x8 is C22438123)",
     ],
 }

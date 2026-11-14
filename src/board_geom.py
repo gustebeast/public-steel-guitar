@@ -98,6 +98,10 @@ _HEIGHT: dict = {
     "D_SOD-123F": 1.10, "MSOP-10_3x3mm_P0.5mm_Tight": 1.10, "SOIC-16_3.9x9.9mm_P1.27mm": 1.75,
     "Texas_RWB0012A_X2QFN-12_1.6x1.6mm_P0.4mm": 0.40, "Texas_UQFN-10_1.5x2mm_P0.5mm": 0.55,
     "MaiXu_MX128-5.0-02P_1x02_P5.00mm": 14.0,
+    # connector board J11-J20 (2026-11-14): MAX MX15EDGRC-3.5-04P header 9.20 tall, its MX15EDGK
+    # plug 11.10 (both drawings, 22.09.14) -- the mated pair's height, since the instrument
+    # always has the plug in (and SIDE_PLUG_RUN carries it past the header's mouth)
+    "MAX_MX15EDGRC-3.5-04P_1x04_P3.50mm_Horizontal_Mated": 11.1,
     # output_panel U10, the AD8402 gain pot: 14-lead narrow SOIC, 1.75 max (JEDEC MS-012-AB)
     "SOIC-14_3.9x8.7mm_P1.27mm": 1.75,
     # the tee's 8-way trunk: the same shell as cadkit's S4B-XH-A, eight ways long. The tee
@@ -174,7 +178,13 @@ def _silk_font():
 
 
 _FONT = _silk_font()
+# A SIDE-ENTRY part's mated plug past its own mouth, by footprint-name prefix (cadkit
+# SIDE_PLUG_RUN; project wins). MX15EDGK-3.5: 15.90 long, 5.30 of it inside the header -> 10.6
+# past the header's front face (5.9 from the pin row): 16.5 from the pins, the footprint's
+# 17 mm courtyard
+SIDE_PLUG_RUN = {"MAX_MX15EDGRC-3.5-": 10.6}
 BOARDS = _with_revs(Boards(GEOM_DIR, height=_HEIGHT, tail=_TAIL, tht_legs=_THT_LEGS, panel=_PANEL,
+                           side_plug_run=SIDE_PLUG_RUN,
                            **({"silk_font": _FONT, "silk_cap": SILK_FONT_CAP} if _FONT else {})))
 
 HEIGHT, TAIL, THT_LEGS, PANEL = BOARDS.HEIGHT, BOARDS.TAIL, BOARDS.THT_LEGS, BOARDS.PANEL
@@ -185,7 +195,7 @@ def on_the_bench(unmated) -> Boards:
     the (board, ref) headers nothing is plugged into there (in the instrument every
     header has its plug)."""
     return _with_revs(Boards(GEOM_DIR, height=_HEIGHT, tail=_TAIL, tht_legs=_THT_LEGS,
-                             panel=_PANEL, unmated=unmated,
+                             panel=_PANEL, unmated=unmated, side_plug_run=SIDE_PLUG_RUN,
                              **({"silk_font": _FONT, "silk_cap": SILK_FONT_CAP} if _FONT else {})))
 
 
