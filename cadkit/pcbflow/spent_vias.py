@@ -26,6 +26,7 @@ when all of these hold:
 finish.py re-runs the DRC and puts the board back if the count of unconnected items or
 violations goes up.
 """
+import _nowindow  # noqa: F401  (no console windows on Windows: _nowindow.py)
 import json
 import math
 import os

@@ -49,6 +49,7 @@ flow/input.board.json). Every stage's output is in <dir>/flow/.
 """
 from __future__ import annotations
 
+import _nowindow  # noqa: F401  (no console windows on Windows: _nowindow.py)
 import argparse
 import collections
 import json
@@ -70,9 +71,10 @@ AUTO = {"auto_decaps (netlist)": "decaps", "auto_singles (netlist)": "singles",
         "auto_floorplan (netlist)": "floorplan", "auto_switcher (netlist)": "switcher"}
 
 
-def _run(cmd, log, cwd=HERE):
+def _run(cmd, log, cwd=HERE, env=None):
     t = time.time()
-    p = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd, env=dict(os.environ, PYTHONIOENCODING="utf-8"))
+    p = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd,
+                       env=dict(os.environ, PYTHONIOENCODING="utf-8", **(env or {})))
     out = (p.stdout or "") + (p.stderr or "")
     log.write("$ %s\n%s\n[rc %d, %.0f s]\n\n" % (" ".join(cmd), out, p.returncode, time.time() - t))
     log.flush()
@@ -246,6 +248,14 @@ def _pours(notes, parts, pl, rules, base_zones):
         if r["kind"] != "pour":
             continue
         poly = pi.pour_poly(r, P, notes_r, amps_of(r))
+        if poly is not None and r.get("around") and not r.get("region"):
+            # opt-in (auto_pour `around`): the band goes round other nets' pads (pour_around)
+            ar = pi.pour_around(r, P, notes_r, amps_of(r))
+            if ar is None:
+                out.append("%s on %s: no band round the other nets' pads reaches every pin -- "
+                           "the hull kept" % (r["net"], r["layer"]))
+            else:
+                poly = ar
         if poly is not None and r.get("auto_amps") is not None:
             ow, ol = (notes.get("outline_mm") or (0, 0))[:2]
             area = abs(sum(poly[i][0] * poly[i - 1][1] - poly[i - 1][0] * poly[i][1]
@@ -271,7 +281,8 @@ def _pours(notes, parts, pl, rules, base_zones):
         taken = [z["priority"] for z in zones[len(base_zones):] if z["layer"] == r["layer"] and z["net"] != r["net"]]
         if "priority" not in r and pr in taken:
             pr = max(taken) + 1
-        zones.append({"net": r["net"], "layer": r["layer"], "poly": poly, "priority": pr})
+        zones.append({"net": r["net"], "layer": r["layer"], "poly": poly, "priority": pr,
+                      **({"whole": True} if r.get("whole") else {})})
         # opt-in (`pad_vias`, set by auto_pour): the pour's big lands on another layer get a
         # via array sized to the current -- layout._pour_pad_vias
         if (r.get("pad_vias") or r.get("auto_amps") is not None) and r.get("along") and amps_of(r):
@@ -518,7 +529,10 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
             continue
     fin = qual = None
     if not skip_finish:
-        rc, out, T["finish"] = _run([KICAD_PY, os.path.join(HERE, "finish.py"), stem], log)
+        # the finish starts from the route the score just drew (ownroute.py, OWNROUTE_PARENT)
+        par = stem + ".route.pkl"
+        rc, out, T["finish"] = _run([KICAD_PY, os.path.join(HERE, "finish.py"), stem], log,
+                                    env={"OWNROUTE_PARENT": par} if os.path.isfile(par) else None)
         for line in out.splitlines():
             m = re.search(r"no free site for: (.*)$", line)
             if m:

@@ -42,6 +42,7 @@ four turns of one cell is a measurement, not a sweep.
 """
 from __future__ import annotations
 
+import _nowindow  # noqa: F401  (no console windows on Windows: _nowindow.py)
 import argparse
 import json
 import os

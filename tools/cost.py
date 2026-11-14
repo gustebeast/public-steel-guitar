@@ -68,11 +68,25 @@ def load_volumes():
         return json.load(fh).get("parts", {})
 
 
+def design_boards():
+    """fab.BOARDS, parsed: the boards in the instrument. ⚠ NOT every geom file (2026-11-13):
+    elec/geom keeps every board ever routed -- the retired brain, the abandoned
+    output_power / output_signal split, the R1 boards -- and globbing it priced them all
+    into one instrument. Which boards exist is fab.py's list (as tools/lcsc_prices.py)."""
+    src = open(os.path.join(ROOT, "elec", "fab.py"), encoding="utf-8").read()
+    body = src[src.index("BOARDS = ("):src.index("# ── SOURCING")]
+    return re.findall(r'"([a-z0-9_]+)"', body)
+
+
 def board_geoms():
-    """{board: geom dict} for every routed board whose geometry is committed."""
+    """{board: geom dict or None} for every board in the design; None = no routed geometry
+    yet, which prices as UNPRICED, never as nothing."""
     out = {}
-    for p in sorted(glob.glob(os.path.join(GEOM, "*.geom.json"))):
-        name = os.path.basename(p)[:-len(".geom.json")]
+    for name in design_boards():
+        p = os.path.join(GEOM, name + ".geom.json")
+        if not os.path.isfile(p):
+            out[name] = None
+            continue
         with open(p, encoding="utf-8") as fh:
             out[name] = json.load(fh)
     return out
@@ -348,6 +362,10 @@ def main(argv=None):
         if qty is None:
             notes.append("board %r: qty_per_instrument could not be resolved -- EXCLUDED" % board)
             continue
+        if geom is None:
+            unpriced_all.append((board, ["the WHOLE BOARD x%d: no routed geometry yet (parts, "
+                                         "fab and assembly all UNPRICED)" % qty]))
+            continue
         in_order = qty * ORDER_INSTRUMENTS
         p_each, priced, unp = board_parts_cost(board, geom, prices, keep)
         layers = guess_layers(board, geom)
@@ -446,11 +464,13 @@ def main(argv=None):
         print("%-*s  $%8.2f" % (width, g, usd))
     print("-" * (width + 12))
     total = sum(u for _, u in groups)
-    print("%-*s  $%8.2f" % (width, "TOTAL", total))
+    print("%-*s  $%8.2f%s" % (width, "TOTAL", total,
+                               "  + UNPRICED (below)" if unpriced_all else ""))
 
     if unpriced_all:
         n = sum(len(u) for _, u in unpriced_all)
-        print("\n%d PLACED PART(S) WITH NO PRICE -- counted as $0, so the total is LOW:" % n)
+        print("\n%d UNPRICED item(s) -- no LCSC code or no price: NOT in the total, which is "
+              "therefore a LOWER BOUND:" % n)
         for board, unp in unpriced_all:
             print("  %-14s %s" % (board, ", ".join(unp[:6]) + (" ..." if len(unp) > 6 else "")))
 

@@ -812,7 +812,7 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
     # ---- 4. legal
     G = Grid(poly, [dict(c) for c in notes.get("cutouts", ())] +
              [{"xy": r["xy"], "d": r["d"], "keepout": r.get("keepout", 0.0)} for r in rules if r["kind"] == "hole"],
-             [r["poly"] for r in rules if r["kind"] == "keepout"])
+             [r["poly"] for r in rules if r["kind"] == "keepout" and not r.get("except")])
     inreg = {}
     for r in rules:
         if r["kind"] == "in_region":
@@ -835,6 +835,20 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
         inside = pi._inside(regions[r["name"]], XY).reshape(G.H, G.W)
         for ref in parts:
             if ref in members or ref in sats or ref in fixed:
+                continue
+            inreg[ref] = inside if ref not in inreg else (inreg[ref] | inside)
+    # ⚠ A KEEP-OUT'S "except" LIST WAS IGNORED HERE (output_board mG, 2026-11-13): every
+    # keep-out went into the grid as solid, so the 80 audio parts its except list names --
+    # the isolated corner's own -- found NO ROOM in the corner they were drawn for. (The CM5
+    # keep-out never showed it: its two excepted parts are fixed.) A keep-out with an except
+    # list is closed, like an exclusive region, to every free part NOT on it.
+    for r in rules:
+        if r["kind"] != "keepout" or not r.get("except"):
+            continue
+        exc = set(r["except"])
+        inside = pi._inside(np.asarray(r["poly"], float), XY).reshape(G.H, G.W)
+        for ref in parts:
+            if ref in exc or ref in fixed:
                 continue
             inreg[ref] = inside if ref not in inreg else (inreg[ref] | inside)
     # ⚠ A HEIGHT ZONE IS CLOSED TO A TALLER PART (lever_sensor holdout 2c, 2026-11-12): only the

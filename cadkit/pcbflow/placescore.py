@@ -31,6 +31,7 @@ KICAD_PYTHON names KiCad's Python as for ownroute.py.
 """
 from __future__ import annotations
 
+import _nowindow  # noqa: F401  (no console windows on Windows: _nowindow.py)
 import argparse
 import json
 import math

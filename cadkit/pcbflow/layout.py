@@ -1690,9 +1690,98 @@ def drop_degenerate(board, floor_mm=0.005, width_frac=0.1):
     so the clean-up belongs where both can be caught rather than at either source.
     """
     floor = pcbnew.FromMM(floor_mm)
-    doomed = [t for t in board.GetTracks()
-              if t.GetClass() != "PCB_VIA"
-              and t.GetLength() < max(floor, t.GetWidth() * width_frac)]
+    # ONE list: GetTracks() hands back new wrappers each call, so id() only means
+    # something within a single list
+    tracks = list(board.GetTracks())
+    short = [t for t in tracks
+             if t.GetClass() != "PCB_VIA"
+             and t.GetLength() < max(floor, t.GetWidth() * width_frac)]
+    # ⚠ COVERED BY WHAT STAYS, NOT BY EACH OTHER (output_board mK, 2026-11-13): the own
+    # router drew a V5_PRE run on 1.15 mm copper as a 0.05 mm staircase -- a 1:2 slope the
+    # grid steps out -- and every step was under a tenth of the width, so all 30-odd went
+    # together and the run was cut in two (4 V5_PRE and 5 +5V_CM5 connections open after
+    # the finish, all present in the router's own output). The ratio argument above holds
+    # for ONE fragment between kept neighbours; for a chain, each step is covered only by
+    # the steps beside it. So a short segment goes only if each of its ends lies inside
+    # same-net copper on its layer that is staying (a longer track, a via, a pad, or a
+    # short segment already kept); otherwise it is kept, and covers the next one.
+    import math
+    keep = {}
+    def add(key, item):
+        keep.setdefault(key, []).append(item)
+    sset = set(id(t) for t in short)
+    for t in tracks:
+        if not t.GetNetname():
+            continue
+        if t.GetClass() == "PCB_VIA":
+            p_ = t.GetPosition()
+            for ly in (pcbnew.F_Cu, pcbnew.B_Cu) + tuple(board.GetEnabledLayers().CuStack()):
+                add((t.GetNetname(), ly), ("pt", p_.x, p_.y, t.GetWidth(pcbnew.F_Cu) / 2.0))
+        elif id(t) not in sset:
+            a_, b_ = t.GetStart(), t.GetEnd()
+            add((t.GetNetname(), t.GetLayer()), ("seg", a_.x, a_.y, b_.x, b_.y, t.GetWidth() / 2.0))
+    for fp in board.GetFootprints():
+        for pad in fp.Pads():
+            if not pad.GetNetname():
+                continue
+            p_, sz = pad.GetPosition(), pad.GetSize(pcbnew.F_Cu)
+            for ly in board.GetEnabledLayers().CuStack():
+                if pad.IsOnLayer(ly):
+                    add((pad.GetNetname(), ly), ("pt", p_.x, p_.y, min(sz.x, sz.y) / 2.0))
+
+    def inside(key, x, y):
+        for it in keep.get(key, ()):
+            if it[0] == "pt":
+                if math.hypot(x - it[1], y - it[2]) <= it[3]:
+                    return True
+            else:
+                _, x0, y0, x1, y1, r = it
+                dx, dy = x1 - x0, y1 - y0
+                L2 = dx * dx + dy * dy
+                u = 0.0 if L2 == 0 else max(0.0, min(1.0, ((x - x0) * dx + (y - y0) * dy) / L2))
+                if math.hypot(x - (x0 + u * dx), y - (y0 + u * dy)) <= r:
+                    return True
+        return False
+    shorts = {}
+    for t in short:
+        a_, b_ = t.GetStart(), t.GetEnd()
+        shorts.setdefault((t.GetNetname(), t.GetLayer()), []).append(
+            (t, ("seg", a_.x, a_.y, b_.x, b_.y, t.GetWidth() / 2.0)))
+
+    def touches_any(key, t, x, y):
+        if inside(key, x, y):
+            return True
+        for o, it in shorts.get(key, ()):
+            if o is not t:
+                _, x0, y0, x1, y1, r = it
+                if min(math.hypot(x - x0, y - y0), math.hypot(x - x1, y - y1)) <= r:
+                    return True
+        return False
+    # ⚠ BOTH ENDS IN ONE ITEM, NOT EACH END IN SOME ITEM (output_board mL2, 2026-11-14): a
+    # +24V In2 staircase of 0.05-0.15 mm steps, its long runs widened by widen_necks to
+    # 1.9 / 2.03 mm, made every step "degenerate"; each step's ends lay inside one widened
+    # disc or the other, so all went -- but the two discs stood 2.02 mm apart against
+    # 1.97 of radii, and the net was cut. A staying track or via is convex, so a short
+    # segment with BOTH ends inside the SAME one is covered end to end; nothing less is.
+    def covered(key, x1, y1, x2, y2):
+        def _in(it, x, y):
+            if it[0] == "pt":
+                return math.hypot(x - it[1], y - it[2]) <= it[3]
+            _, x0, y0, x1_, y1_, r = it
+            dx, dy = x1_ - x0, y1_ - y0
+            L2 = dx * dx + dy * dy
+            u = 0.0 if L2 == 0 else max(0.0, min(1.0, ((x - x0) * dx + (y - y0) * dy) / L2))
+            return math.hypot(x - (x0 + u * dx), y - (y0 + u * dy)) <= r
+        return any(_in(it, x1, y1) and _in(it, x2, y2) for it in keep.get(key, ()))
+    doomed = []
+    for t in sorted(short, key=lambda t: t.GetLength()):
+        key = (t.GetNetname(), t.GetLayer())
+        a_, b_ = t.GetStart(), t.GetEnd()
+        orphan = not (touches_any(key, t, a_.x, a_.y) or touches_any(key, t, b_.x, b_.y))
+        if not t.GetNetname() or orphan or covered(key, a_.x, a_.y, b_.x, b_.y):
+            doomed.append(t)
+        else:
+            add(key, ("seg", a_.x, a_.y, b_.x, b_.y, t.GetWidth() / 2.0))
     for t in doomed:
         board.Remove(t)
         _REMOVED.append(t)
@@ -1814,6 +1903,69 @@ def _plane_orphans(board, net):
     return loose, zs
 
 
+def _plane_main(board, net, zs):
+    """The plane's MAIN body at FILL-ISLAND level, or None when the net is one piece:
+    {"items": uuids, "islands": {layer: [polys]}}.
+
+    ⚠ A ZONE IS NOT ONE PIECE OF COPPER (output_board oneG_j6, 2026-11-13): KiCad's
+    GetConnectedItems(ZONE) answers for every fill island of the zone at once, so copper on a
+    SEPARATE island of the GND pour read as "on the plane" and the board finished with one
+    GND item open that no repair could see. GetConnectedItems(ITEM) is island-true, so the
+    clusters are KiCad's own: each track / via / pad's connected set, zones left out of the
+    union (a zone's uuid is shared by all its islands and would merge them back). The main
+    body is the largest cluster.
+
+    ⚠ NOT A GEOMETRY OF ITS OWN: a first version built the island graph by hand (fill
+    polygons, shared ends, pad centres) and on oneG_j6 split eight nets KiCad calls whole --
+    29 stubs laid, most of them redundant. KiCad's connectivity is the truth DRC reports."""
+    conn = board.GetConnectivity()
+    its = [t for t in board.GetTracks() if t.GetNetname() == net]
+    its += [pd for m in board.GetFootprints() for pd in m.Pads() if pd.GetNetname() == net]
+    seen, clusters = set(), []
+    for it in its:
+        u = it.m_Uuid.AsString()
+        if u in seen:
+            continue
+        cl = {u}
+        for x in conn.GetConnectedItems(it):
+            try:
+                if x.GetClass() != "ZONE":
+                    cl.add(x.m_Uuid.AsString())
+            except Exception:
+                pass
+        seen |= cl
+        clusters.append(cl)
+    if len(clusters) < 2:
+        return None
+    main = max(clusters, key=len)
+    # the fill islands the main body stands in: those holding one of its barrels (or, on
+    # a track's own layer, one of its track ends)
+    pts = []
+    for t in board.GetTracks():
+        if t.GetNetname() != net or t.m_Uuid.AsString() not in main:
+            continue
+        if t.GetClass() == "PCB_VIA":
+            pts.append((None, t.GetPosition()))
+        else:
+            pts += [(t.GetLayer(), t.GetStart()), (t.GetLayer(), t.GetEnd())]
+    for m in board.GetFootprints():
+        for pd in m.Pads():
+            if pd.GetNetname() == net and pd.m_Uuid.AsString() in main:
+                pts.append((None if pd.GetDrillSizeX() > 0 else pd.GetLayer(), pd.GetPosition()))
+    out = {"items": main, "islands": {}}
+    for z in zs:
+        for L in z.GetLayerSet().Seq():
+            fp = z.GetFilledPolysList(L)
+            for i in range(fp.OutlineCount()):
+                sp = pcbnew.SHAPE_POLY_SET()
+                sp.AddOutline(fp.Outline(i))
+                for h in range(fp.HoleCount(i)):
+                    sp.AddHole(fp.Hole(i, h))
+                if any((ly is None or ly == L) and sp.Collide(q) for ly, q in pts):
+                    out["islands"].setdefault(L, []).append(sp)
+    return out
+
+
 def _path_clear(board, a, z, net, layer, w, step_mm=0.1):
     """Sample the straight run a->z and refuse it if any sample sits in ANOTHER net's copper.
 
@@ -1844,15 +1996,18 @@ def _path_clear(board, a, z, net, layer, w, step_mm=0.1):
     return True
 
 
-def _plane_points(pos, zs, probe_mm=12.0, step_mm=0.1, limit=6):
-    """Plane positions within reach of `pos`, NEAREST FIRST so a blocked path tries the next."""
+def _plane_points(pos, zs, probe_mm=12.0, step_mm=0.1, limit=6, polys=None):
+    """Plane positions within reach of `pos`, NEAREST FIRST so a blocked path tries the next.
+    `polys` (SHAPE_POLY_SETs) replaces the zones' fills: only the plane's MAIN islands."""
     out = []
+    hit = ((lambda p: any(sp.Collide(p) for sp in polys)) if polys is not None else
+           (lambda p: any(z.GetFilledPolysList(z.GetLayer()).Collide(p) for z in zs)))
     for i in range(1, int(probe_mm / step_mm) + 1):
         r = i * step_mm
         for a in range(0, 360, 5):
             p = pcbnew.VECTOR2I(int(pos.x + r * 1e6 * math.cos(math.radians(a))),
                                 int(pos.y + r * 1e6 * math.sin(math.radians(a))))
-            if any(z.GetFilledPolysList(z.GetLayer()).Collide(p) for z in zs):
+            if hit(p):
                 out.append((p, r))
                 if len(out) >= limit:
                     return out
@@ -1875,9 +2030,23 @@ def repair_plane_orphans(board, notes, probe_mm=12.0, max_items=24):
     if not notes.get("zones"):
         return 0
     board.BuildConnectivity()
+    # island level only where KiCad itself finds the board unconnected: a connected board
+    # takes exactly the zone-level path it always did
+    split = board.GetConnectivity().GetUnconnectedCount(False) > 0
     laid = 0
     for net in sorted({z.GetNetname() for z in board.Zones()}):
         loose, zs = _plane_orphans(board, net)
+        main = _plane_main(board, net, zs) if split and zs else None
+        if main is not None:
+            seen = {t.m_Uuid.AsString() for t in loose}
+            more = [t for t in board.GetTracks()
+                    if t.GetClass() == "PCB_TRACK" and t.GetNetname() == net
+                    and t.m_Uuid.AsString() not in main["items"]
+                    and t.m_Uuid.AsString() not in seen]
+            if more:
+                print("      %s: %d track(s) on a fill island cut off from the plane's main "
+                      "body (zone-level connectivity called them joined)" % (net, len(more)))
+            loose = loose + more
         if not loose:
             continue
         if len(loose) > max_items:
@@ -1885,19 +2054,95 @@ def repair_plane_orphans(board, notes, probe_mm=12.0, max_items=24):
                   "fallout, NOT repairing (look at the pour, not the tracks)"
                   % (len(loose), net))
             continue
+        # ⚠ THE PLANE ON THE TRACK'S OWN LAYER (output_board oneG_j6, 2026-11-13): every zone
+        # of the net was a target whatever its layer, so two F.Cu GND stubs were "reconnected"
+        # to In1/B.Cu fill they could never touch -- logged as repaired, still loose. A track
+        # aims at its own layer's pour; on a layer the net does not pour, at the net's
+        # PLANE-CONNECTED barrels (vias, plated pad holes) -- the copper that reaches the plane.
+        board.BuildConnectivity()
+        conn = board.GetConnectivity()
+        on_plane = set()
+        for z in zs:
+            for it in conn.GetConnectedItems(z):
+                try:
+                    on_plane.add(it.m_Uuid.AsString())
+                except Exception:
+                    pass
+        if main is not None:
+            on_plane = main["items"]
+        barrels = [v.GetPosition() for v in board.GetTracks()
+                   if v.GetClass() == "PCB_VIA" and v.GetNetname() == net
+                   and v.m_Uuid.AsString() in on_plane]
+        barrels += [pd.GetPosition() for m in board.GetFootprints() for pd in m.Pads()
+                    if pd.GetNetname() == net and pd.GetDrillSizeX() > 0
+                    and pd.m_Uuid.AsString() in on_plane]
+
+        def _targets(src, layer):
+            own = [z for z in zs if z.IsOnLayer(layer)]
+            if own and main is not None:
+                polys = main["islands"].get(layer)
+                if polys:
+                    return [(p, r, True) for p, r in
+                            _plane_points(src, own, probe_mm, polys=polys)]
+            elif own:
+                return [(p, r, True) for p, r in _plane_points(src, own, probe_mm)]
+            near = sorted((math.hypot(p.x - src.x, p.y - src.y), p) for p in barrels)
+            return [(p, pcbnew.ToMM(int(d)), False) for d, p in near
+                    if d <= pcbnew.FromMM(probe_mm)][:6]
+
+        # ⚠ ONE STUB A PIECE, NOT ONE A TRACK (oneG_j6, 2026-11-13): a stranded piece of six
+        # tracks took six stubs, three of them the same 2.5 mm run laid three times. Once a
+        # stub joins a piece, the rest of that piece is joined: each loose track's piece is
+        # read before anything is laid, and a track whose piece is joined is skipped.
+        piece = {}
         for t in loose:
+            u = t.m_Uuid.AsString()
+            if u in piece:
+                continue
+            cl = {u}
+            for x in conn.GetConnectedItems(t):
+                try:
+                    if x.GetClass() != "ZONE":
+                        cl.add(x.m_Uuid.AsString())
+                except Exception:
+                    pass
+            for v in cl:
+                piece.setdefault(v, cl)
+        joined = set()
+        for t in loose:
+            if t.m_Uuid.AsString() in joined:
+                continue
             w = t.GetWidth()
             done = False
             for src in (t.GetStart(), t.GetEnd()):
-                for tgt, r in _plane_points(src, zs, probe_mm):
-                    if not _path_clear(board, src, tgt, net, t.GetLayer(), w):
-                        continue
+                for tgt, r, bite in _targets(src, t.GetLayer()):
+                    if not bite:            # a barrel: end ON it, no bite past it
+                        if not _path_clear(board, src, tgt, net, t.GetLayer(), w):
+                            continue
+                        nt = pcbnew.PCB_TRACK(board)
+                        nt.SetStart(src)
+                        nt.SetEnd(tgt)
+                        nt.SetWidth(w)
+                        nt.SetLayer(t.GetLayer())
+                        nt.SetNet(t.GetNet())
+                        board.Add(nt)
+                        laid += 1
+                        done = True
+                        print("      reconnected %s at %.2f,%.2f to a plane barrel (%.2f mm)"
+                              % (net, pcbnew.ToMM(src.x), pcbnew.ToMM(src.y), r))
+                        break
                     dx, dy = tgt.x - src.x, tgt.y - src.y
                     n = math.hypot(dx, dy) or 1.0
+                    end = pcbnew.VECTOR2I(int(tgt.x + dx / n * w), int(tgt.y + dy / n * w))
+                    # ⚠ CHECK THE STUB THAT IS LAID, NOT THE ONE THAT REACHES THE PLANE: the
+                    # end runs w past tgt to bite into the pour, and checking only to tgt let
+                    # a 1.05 mm VIN_BUS stub's cap overlap C84.2 (PWR_GND) by 0.4 mm on the
+                    # single output board (2026-11-13) -- six shorts on a board that routed
+                    if not _path_clear(board, src, end, net, t.GetLayer(), w):
+                        continue
                     nt = pcbnew.PCB_TRACK(board)
                     nt.SetStart(src)
-                    nt.SetEnd(pcbnew.VECTOR2I(int(tgt.x + dx / n * w),
-                                              int(tgt.y + dy / n * w)))
+                    nt.SetEnd(end)
                     nt.SetWidth(w)
                     nt.SetLayer(t.GetLayer())
                     nt.SetNet(t.GetNet())
@@ -1910,6 +2155,8 @@ def repair_plane_orphans(board, notes, probe_mm=12.0, max_items=24):
                     break
                 if done:
                     break
+            if done:
+                joined |= piece.get(t.m_Uuid.AsString(), set())
             if not done:
                 print("      ⚠ %s at %.2f,%.2f is stranded from the plane and NO clear "
                       "path reaches it -- left alone (a short is worse). Move the part "
@@ -4056,11 +4303,33 @@ def _spill_vias(board, pad, net, n, holes, foreign, via_d, via_drill, clr, hole_
     return len(placed)
 
 
+def _exposed_pad(pad, fp):
+    """An exposed (thermal) pad: the footprint is an EP part and this is its unnumbered or
+    largest SMD land -- the same test quality A8 / A12 make."""
+    if not re.search(r"\dEP|_EP\d|-EP", fp.GetFPIDAsString().split(":")[-1]):
+        return False
+    if not pad.GetNumber():
+        return True
+    smd = [q.GetSize().x * q.GetSize().y for q in fp.Pads()
+           if q.GetAttribute() == pcbnew.PAD_ATTRIB_SMD]
+    return bool(smd) and pad.GetAttribute() == pcbnew.PAD_ATTRIB_SMD and \
+        pad.GetSize().x * pad.GetSize().y >= max(smd) - 1
+
+
 def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
                        clr=0.2, max_reach=3.0, allow=(), keepouts=(),
                        escape_pins=(), escape_runs=None, declared=(), declared_vias=(),
-                       net_widths=None):
+                       net_widths=None, scope="all"):
     """Give every pad on a plane net its own via down to the plane layers.
+
+    ⚠ OPT-IN: notes["stitch_scope"] = "exposed" stitches only EXPOSED PADS (and named
+    escape pins) before routing, and leaves every other plane pad to the router
+    (output_signal, 2026-11-13). Pre-stitching all 160 GND pads there fenced the fine-pitch
+    escapes with fixed vias: the score route took 2500 s for 5-6 open against 604 s for 3
+    without them, and the finish without them connected every GND pad (osnf_j4: GND not
+    among the unconnected) at the cost of ONE A8 item -- U4's exposed pad with no via,
+    which is exactly what this scope keeps. Not the default: on the 28 x 21 boards the
+    ordering note below is measured the other way, and the kept boards stay byte-identical.
 
     ⚠ WITHOUT THIS, A GROUND PAD'S CONNECTION DEPENDS ON THE POUR'S ISLAND TOPOLOGY,
     which the router decides after the fact. The F.Cu ground pour connects every
@@ -4264,6 +4533,8 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
         _key = "%s.%s" % (fp.GetReference(), pad.GetNumber())
         _is_escape = _key in escape_pins
         if pad.GetNetname() not in nets_wanted and not _is_escape:
+            continue
+        if scope == "exposed" and not _is_escape and not _exposed_pad(pad, fp):
             continue
         # ⚠ A PAD'S OWN DRILL IS INVISIBLE TO ITS OWN STITCH VIA, and on a THROUGH-HOLE
         # pad that means the via lands in the hole. `free()` below skips every obstacle
@@ -5038,7 +5309,7 @@ def _add_via(board, net, x, y, drill=0.3, diameter=0.6):
     board.Add(v)
 
 
-def _add_zone(board, net, layer, inset, w, h, poly=None, priority=0, clearance=None):
+def _add_zone(board, net, layer, inset, w, h, poly=None, priority=0, clearance=None, name=None):
     """A copper pour over the whole board less `inset`. Not decoration: it is
     how the THT pads reach GND at all, since no GND track is drawn.
 
@@ -5083,6 +5354,8 @@ def _add_zone(board, net, layer, inset, w, h, poly=None, priority=0, clearance=N
     # matter are the ones touching a pad, and those are connected by definition.
     zone.SetIslandRemovalMode(pcbnew.ISLAND_REMOVAL_MODE_ALWAYS)
     zone.SetAssignedPriority(priority)
+    if name:
+        zone.SetZoneName(name)      # "whole": the router keeps other nets off it (model._whole)
     # ⚠ THE POUR'S CLEARANCE IS KICAD'S 0.5 mm PROJECT DEFAULT UNLESS A BOARD SAYS
     # (output_panel, 2026-11-07). Nobody chose it: against a 0.127 mm track rule it cuts a
     # 1.6 mm hole round every 0.6 mm via, and seven vias by the MCU merged into a 5.2 mm
@@ -5478,7 +5751,8 @@ def build(stem):
                                escape_runs=notes.get("escape_runs"),
                                declared=notes.get("tracks", ()),
                                declared_vias=notes.get("vias", ()),
-                               net_widths=notes.get("net_widths"))
+                               net_widths=notes.get("net_widths"),
+                               scope=notes.get("stitch_scope", "all"))
         print("  stitched %d pad(s) on %s straight to the plane"
               % (n, "/".join(sorted(stitch))))
     if notes.get("pour_vias"):
@@ -5668,6 +5942,41 @@ def build(stem):
         _edge_hole(board, *r)
     for sl in notes.get("outline_slots", ()):
         _edge_slot(board, [tuple(p) for p in sl["poly"]], sl["rects"])
+    # "rule_areas": opt-in keep-outs in the zones' frame, e.g. a galvanic barrier's moat
+    # (output_board, 2026-11-13: digital tracks ran through the 1 mm moat of the isolated
+    # audio corner because nothing told the router it was there). Each: {"poly": [[x, y]...],
+    # "layers": "all" or ["F.Cu", ...], "tracks" / "vias" / "fills": allowed? (default
+    # False), "why"}. Pads stay allowed: the barrier parts straddle it.
+    for ra in notes.get("rule_areas", ()):
+        _poly = pcbnew.SHAPE_LINE_CHAIN()
+        for _pt in ra["poly"]:
+            _poly.Append(_to_board(float(_pt[0]), float(_pt[1])))
+        _poly.SetClosed(True)
+        _z = pcbnew.ZONE(board)
+        _z.SetIsRuleArea(True)
+        _z.SetDoNotAllowTracks(not ra.get("tracks", False))
+        _z.SetDoNotAllowVias(not ra.get("vias", False))
+        _z.SetDoNotAllowZoneFills(not ra.get("fills", False))
+        _z.SetDoNotAllowPads(False)
+        if ra.get("layers", "all") == "all":
+            _z.SetLayerSet(pcbnew.LSET.AllCuMask())
+        else:
+            _ls = pcbnew.LSET()
+            for _ln in ra["layers"]:
+                _ls.AddLayer(board.GetLayerID(_ln))
+            _z.SetLayerSet(_ls)
+        _z.AddPolygon(_poly)
+        board.Add(_z)
+    # A BARRIER PART'S THROUGH-HOLE PADS KEEP NO UNCONNECTED INNER RINGS (output_board mK,
+    # 2026-11-13): U30's THT pins stood 0.90 apart on In1 and B.Cu as on the outer layers;
+    # an annulus on a layer the pin connects nothing on is copper at the barrier for nothing.
+    # Opt-in by quality.isolation (the declared barrier parts); outer layers always kept.
+    _bar = set(((notes.get("quality") or {}).get("isolation") or {}).get("barrier", ()))
+    for fp in (board.GetFootprints() if _bar else ()):
+        if fp.GetReference() in _bar:
+            for pad in fp.Pads():
+                if pad.GetAttribute() == pcbnew.PAD_ATTRIB_PTH:
+                    pad.SetUnconnectedLayerMode(pcbnew.UNCONNECTED_LAYER_MODE_REMOVE_EXCEPT_START_AND_END)
 
     for z in notes.get("zones", []):
         # Two spellings, because the three-tuple is every board's ground plane and should
@@ -5684,7 +5993,8 @@ def build(stem):
                              "board" % net_name)
         _add_zone(board, nets_by_name[net_name], layer, inset,
                   *notes["outline_mm"], poly=poly, priority=prio,
-                  clearance=notes.get("zone_clearance"))
+                  clearance=notes.get("zone_clearance"),
+                  name="whole" if isinstance(z, dict) and z.get("whole") else None)
     if notes.get("zones"):
         # ⚠ BUILD THE CONNECTIVITY GRAPH FIRST. A board assembled by script has none --
         # it is built by the editor as you work, and nothing here was ever "worked on".

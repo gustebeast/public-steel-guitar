@@ -11,6 +11,7 @@ Two interpreters, because the two halves need different things:
 Plain `ownroute.py <stem>` does both, each in whichever interpreter has what it needs."""
 from __future__ import annotations
 
+import _nowindow  # noqa: F401  (no console windows on Windows: _nowindow.py)
 import json
 import os
 import shutil
@@ -36,7 +37,38 @@ def core(stem):
     nets = r.build_nets(pours=pours)
     print("ownroute: %d net(s) to join (%d of them to their pours: %s)"
           % (len(nets), sum(n.plane for n in nets), ", ".join(sorted(pours)) or "none"))
-    failed = r.run(budget_s=float(os.environ.get("OWNROUTE_BUDGET_S", "1800")))
+    budget = float(os.environ.get("OWNROUTE_BUDGET_S", "1800"))
+    # ⚠ THE SCORE HAS ALREADY ROUTED THIS PLACEMENT (output_board mJ, 2026-11-13): place_flow
+    # scores the placement with a full route (31 min on the merged output board) and then
+    # finish.py routed the SAME placement again from nothing; the second route was still
+    # running when the flow's 55-minute limit killed it, so the run produced no board, no
+    # DRC and no quality at all. OWNROUTE_PARENT names the score's saved route
+    # (<stem>.route.pkl): every net whose pads and copper are still legal starts from it and
+    # only the rest -- the score's failures, anything the layout moved -- is negotiated
+    # (rescore.delta_run, the placement-change machinery). The router is deterministic, so
+    # a kept net is the copper a fresh route would have drawn; a parent from another grid
+    # (outline or layers changed) is refused and the board routed in full.
+    parent = os.environ.get("OWNROUTE_PARENT")
+    failed = None
+    if parent and os.path.isfile(parent):
+        import pickle
+        from router import rescore
+        with open(parent, "rb") as fh:
+            par = pickle.load(fh)
+        if (par["H"], par["W"], par["L"]) == (r.H, r.W, r.L):
+            # ⚠ THE RETRY IS BOUNDED (output_board mK, 2026-11-13): the score left 5 nets open
+            # after its full 2 x 900 s, and delta_run re-negotiated them on this route's own
+            # 1800 s budget (a 3600 s deadline) until the flow's limit killed the finish. Nets
+            # the score could not close in half an hour seldom close given more; they get
+            # OWNROUTE_PARENT_BUDGET_S (300 s, so a 600 s deadline) and go to the report.
+            budget = min(budget, float(os.environ.get("OWNROUTE_PARENT_BUDGET_S", "300")))
+            failed, st = rescore.delta_run(r, par, budget_s=budget, log=print)
+            print("ownroute: from the score's route %s: %d net(s) kept, %d routed (%.0f s)"
+                  % (os.path.basename(parent), st["kept"], st["routed"], st["sec"]))
+        else:
+            print("ownroute: parent %s is on another grid -- routing in full" % parent)
+    if failed is None:
+        failed = r.run(budget_s=budget)
     from router import congestion
     congestion.report(r)
     congestion.pair_dives(r)
@@ -113,6 +145,14 @@ def _has(mod):
 
 
 if __name__ == "__main__":
+    # a log line (the router's warnings carry a warning sign) must never kill a route whose
+    # stdout is a file in the console's code page (output_board, 2026-11-14: cp1252,
+    # UnicodeEncodeError at round 5 of a 25-minute route)
+    for _s in (sys.stdout, sys.stderr):
+        try:
+            _s.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
     stem = os.path.abspath(sys.argv[1])
     me = os.path.abspath(__file__)
     if "--core" in sys.argv:

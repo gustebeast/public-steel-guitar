@@ -1,0 +1,3003 @@
+{
+ "net_volts": {
+  "+3V3": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "AP2112K-3.3: 3.3 V +1.5 %; +3 % transient"
+  },
+  "+3V3D": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "AP2114H-3.3: 3.3 V +1.5 %; +3 % transient"
+  },
+  "+5V": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "through FB1"
+  },
+  "ADC_IN": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "AC-coupled ADC input, biased inside the PCM1808; bounded by VCC [= +5V+0]"
+  },
+  "ADC_VREF": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "U2.1 (VREF) can reach its supply +5V"
+  },
+  "AUDIO_PROC": {
+   "v": 3.0,
+   "why": "PCM5102A line out, 2.1 Vrms ground-centred"
+  },
+  "AUDIO_SEL": {
+   "v": 2.6,
+   "why": "relay common: either source, 0 V referenced"
+  },
+  "BOOT0": {
+   "v": 0.0,
+   "why": "pulled to ground"
+  },
+  "BRAIN_EN": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.68 (io) can reach its supply +3V3D"
+  },
+  "BRAIN_PG": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.112 (io) can reach its supply +3V3D; through R116; through R118"
+  },
+  "BUF_OUT": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "U7.1 (OUT) can reach its supply +5V; through R9"
+  },
+  "DAC_ATT": {
+   "v": 1.5,
+   "why": "DAC out / 2 (R14, R15)"
+  },
+  "DAC_CAPM": {
+   "v": 3.4,
+   "why": "PCM5102A flying cap, negative side"
+  },
+  "DAC_CAPP": {
+   "v": 3.3,
+   "why": "generated inside U3 (CAPP)"
+  },
+  "DAC_FILT": {
+   "v": 3.0,
+   "why": "PCM5102A line out behind 470R"
+  },
+  "DAC_LDOO": {
+   "v": 1.8,
+   "why": "generated inside U3 (LDOO)"
+  },
+  "DAC_OUT_R": {
+   "v": 3.0,
+   "why": "PCM5102A line out, 2.1 Vrms ground-centred"
+  },
+  "DAC_R_FILT": {
+   "v": 3.0,
+   "why": "PCM5102A line out behind 470R"
+  },
+  "DAC_VNEG": {
+   "v": 3.4,
+   "why": "PCM5102A charge-pump negative rail"
+  },
+  "DATA_SEL": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.107 (io) can reach its supply +3V3D"
+  },
+  "DIRECT_AC": {
+   "v": 2.6,
+   "why": "pickup buffer, AC-coupled to 0 V: +/- half the 5 V rail"
+  },
+  "GND": 0,
+  "I2C2_SCL": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "over J20 from output_power, where its pull-up or driver is [output_power.I2C2_SCL: through R84]"
+  },
+  "I2C2_SDA": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "over J20 from output_power, where its pull-up or driver is [output_power.I2C2_SDA: through R85]"
+  },
+  "I2S_CK": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.4 (io) can reach its supply +3V3D"
+  },
+  "I2S_MCK": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.1 (io) can reach its supply +3V3D"
+  },
+  "I2S_SDI": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.2 (io) can reach its supply +3V3D; U2.9 (DOUT) can reach its supply +3V3"
+  },
+  "I2S_SDO": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.5 (io) can reach its supply +3V3D"
+  },
+  "I2S_WS": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.3 (io) can reach its supply +3V3D"
+  },
+  "INA_ALERT_N": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "over J20 from output_power, where its pull-up or driver is [output_power.INA_ALERT_N: through R91]"
+  },
+  "INV_IN_N": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "through R26"
+  },
+  "INV_OUT": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "U11.1 (OUT) can reach its supply +5V; through R27"
+  },
+  "J9_VBUS_NC": {
+   "peak": 5.5,
+   "v": 5.25,
+   "why": "the data-only link carries no VBUS; a standard cable's VBUS wire lands on these pads only, 5.25 V if anything drives it"
+  },
+  "JACK_MODE": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.97 (io) can reach its supply +3V3D"
+  },
+  "JACK_RING": {
+   "v": 2.6,
+   "why": "as JACK_TIP: a TRS ring lands on XLR pin 3"
+  },
+  "JACK_TIP": {
+   "v": 2.6,
+   "why": "output behind its DC block; FAULT = 48 V phantom (52 V max) from a mixer's XLR input through its 6.81 k, loaded by the 100 k bleed"
+  },
+  "LDO_NC": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "LINK_BRAIN_EN": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "through R113"
+  },
+  "LINK_BRAIN_PG": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "the brain board's 24 V good on J11, its MCU behind R62 [brain.LINK_BRAIN_PG: through R62]"
+  },
+  "LINK_LOW_PWR": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "through R114"
+  },
+  "LINK_PWR_BTN": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "the power button from the brain board on J11 (Q12, open drain) [brain.LINK_PWR_BTN: through R59]"
+  },
+  "LOW_PWR": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.111 (io) can reach its supply +3V3D"
+  },
+  "MCU_DM": {
+   "v": 3.6,
+   "why": "USB 2.0 data to the output board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
+  },
+  "MCU_DP": {
+   "v": 3.6,
+   "why": "USB 2.0 data to the output board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
+  },
+  "N$3": {
+   "v": 0.0,
+   "why": "pulled to ground"
+  },
+  "N$4": {
+   "v": 0.0,
+   "why": "pulled to ground"
+  },
+  "N$5": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "through R29"
+  },
+  "N$6": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "through R30"
+  },
+  "N$7": {
+   "v": 0.0,
+   "why": "pulled to ground"
+  },
+  "NRST": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.31 (io) can reach its supply +3V3D; through R6"
+  },
+  "OPT_DM": {
+   "v": 3.6,
+   "why": "USB 2.0 data, U4 to J4; FAULT = J4's VBUS (V5_PRE through U15, 5.17 V steady max) onto a data way, as output_panel's PI_DP"
+  },
+  "OPT_DP": {
+   "v": 3.6,
+   "why": "USB 2.0 data, U4 to J4; FAULT = J4's VBUS (V5_PRE through U15, 5.17 V steady max) onto a data way, as output_panel's PI_DP"
+  },
+  "OPT_FAULT_N": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.106 (io) can reach its supply +3V3D; through R87"
+  },
+  "OPT_VBUS_EN": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.101 (io) can reach its supply +3V3D"
+  },
+  "OSC_IN": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.29 (io) can reach its supply +3V3D"
+  },
+  "OSC_OUT": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.30 (io) can reach its supply +3V3D"
+  },
+  "OUT_BLOCKED": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "op-amp side of the DC block, behind R9: the buffer's own rail [= +5V+0]"
+  },
+  "OUT_BUF_IN": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "AC-coupled onto VMID: VMID +/- 2.6 V, bounded by the 5 V rail [= +5V+0]"
+  },
+  "PDA_INT": {
+   "v": 5.33,
+   "why": "over J20 from output_power, where its pull-up or driver is [output_power.PDA_INT: U13.9 (INT) can reach its supply PA_V5V]"
+  },
+  "PDA_INT_MCU": {
+   "v": 3.626,
+   "why": "divider off PDA_INT: x 0.6803"
+  },
+  "PDA_SCL": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "over J20 from output_power, where its pull-up or driver is [output_power.PDA_SCL: through R80]"
+  },
+  "PDA_SDA": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "over J20 from output_power, where its pull-up or driver is [output_power.PDA_SDA: through R81]"
+  },
+  "PDB_INT": {
+   "v": 5.33,
+   "why": "over J20 from output_power, where its pull-up or driver is [output_power.PDB_INT: U14.9 (INT) can reach its supply PB_V5V]"
+  },
+  "PDB_INT_MCU": {
+   "v": 3.626,
+   "why": "divider off PDB_INT: x 0.6803"
+  },
+  "PDB_SCL": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "over J20 from output_power, where its pull-up or driver is [output_power.PDB_SCL: through R82]"
+  },
+  "PDB_SDA": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "over J20 from output_power, where its pull-up or driver is [output_power.PDB_SDA: through R83]"
+  },
+  "PHY_1V8": {
+   "v": 1.8,
+   "why": "generated inside U4 (VDD1.8)"
+  },
+  "PHY_1V8A": {
+   "v": 1.8,
+   "why": "generated inside U4 (VDDA1.8)"
+  },
+  "PHY_RBIAS": {
+   "v": 0.0,
+   "why": "pulled to ground"
+  },
+  "PHY_VBUS": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "through R90"
+  },
+  "PHY_XI": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "Y2.3 (OUT) can reach its supply +3V3D"
+  },
+  "PICKUP_BUF": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "U8.1 (OUT) can reach its supply +5V"
+  },
+  "PICKUP_HOT": {
+   "v": 5.0,
+   "why": "magnetic pickup at the screw terminal: assumed under 5 V peak (external, unverifiable)"
+  },
+  "PICKUP_IN": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "AC-coupled onto VMID; a magnetic pickup is volts at most [= +5V+0]"
+  },
+  "POT_CS": {
+   "peak": 3.259,
+   "v": 3.104,
+   "why": "divider off +5V: x 0.6000"
+  },
+  "POT_RS": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "through R38"
+  },
+  "POT_SCK": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.75 (io) can reach its supply +3V3D"
+  },
+  "POT_SDI": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.77 (io) can reach its supply +3V3D"
+  },
+  "PWR_BTN": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.69 (io) can reach its supply +3V3D; through R115; through R117"
+  },
+  "PWR_LEAD1_N": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "over J20 from output_power, where its pull-up or driver is [output_power.PWR_LEAD1_N: through R119; through R120]"
+  },
+  "PWR_LEAD2_N": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "over J20 from output_power, where its pull-up or driver is [output_power.PWR_LEAD2_N: through R121; through R122]"
+  },
+  "RELAY": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.96 (io) can reach its supply +3V3D; through R5"
+  },
+  "RELAY_COIL": {
+   "peak": 6.682,
+   "v": 6.424,
+   "why": "coil turn-off: +5V plus D4's forward drop (1.25 V max) [= +5V+1.25]"
+  },
+  "RING_ATT": {
+   "v": 1.5,
+   "why": "DAC out / 2 (R24, R25)"
+  },
+  "RING_BLOCKED": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "op-amp side of the DC block, behind R20: the buffer's own rail [= +5V+0]"
+  },
+  "RING_BUF_IN": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "AC-coupled onto VMID: VMID +/- 2.6 V, bounded by the 5 V rail [= +5V+0]"
+  },
+  "RING_BUF_OUT": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "U9.1 (OUT) can reach its supply +5V; through R20"
+  },
+  "RING_BUF_SEL": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "through U12"
+  },
+  "RING_GAIN": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "through U10; through U12"
+  },
+  "RING_SEL": {
+   "v": 2.6,
+   "why": "relay common: either source, 0 V referenced"
+  },
+  "STATUS_LED": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.110 (io) can reach its supply +3V3D"
+  },
+  "STATUS_LED_A": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "through R97"
+  },
+  "SWCLK": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.137 (io) can reach its supply +3V3D"
+  },
+  "SWDIO": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.124 (io) can reach its supply +3V3D"
+  },
+  "TIP_GAIN": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "through U10"
+  },
+  "U15_ILIM": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "U15.5 (ILIM) can reach its supply V5_PRE"
+  },
+  "U1_NC_10": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.10 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_104": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.104 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_105": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.105 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_108": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.108 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_109": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.109 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_11": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.11 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_115": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.115 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_116": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.116 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_117": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.117 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_118": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.118 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_119": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.119 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_12": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.12 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_120": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.120 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_121": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.121 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_128": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.128 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_129": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.129 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_130": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.130 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_131": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.131 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_132": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.132 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_133": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.133 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_134": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.134 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_138": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.138 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_139": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.139 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_140": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.140 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_141": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.141 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_142": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.142 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_143": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.143 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_144": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.144 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_147": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.147 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_150": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.150 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_151": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.151 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_152": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.152 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_153": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.153 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_154": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.154 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_155": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.155 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_156": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.156 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_157": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.157 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_160": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.160 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_161": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.161 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_162": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.162 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_167": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.167 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_168": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.168 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_169": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.169 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_170": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.170 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_173": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.173 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_174": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.174 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_175": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.175 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_176": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.176 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_18": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.18 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_19": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.19 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_20": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.20 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_21": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.21 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_24": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.24 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_25": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.25 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_26": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.26 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_27": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.27 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_28": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.28 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_33": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.33 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_34": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.34 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_35": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.35 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_40": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.40 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_41": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.41 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_42": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.42 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_43": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.43 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_44": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.44 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_46": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.46 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_50": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.50 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_52": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.52 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_53": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.53 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_54": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.54 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_55": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.55 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_58": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.58 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_59": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.59 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_60": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.60 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_63": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.63 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_64": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.64 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_65": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.65 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_66": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.66 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_67": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.67 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_7": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.7 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_70": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.70 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_73": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.73 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_76": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.76 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_78": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.78 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_8": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.8 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_83": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.83 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_86": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.86 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_87": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.87 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_88": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.88 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_89": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.89 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_9": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.9 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_94": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.94 (io) can reach its supply +3V3D"
+  },
+  "U1_NC_95": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.95 (io) can reach its supply +3V3D"
+  },
+  "U21_VIN": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "through R98"
+  },
+  "U4_NC_10": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U4.10 (io) can reach its supply +3V3D"
+  },
+  "U4_NC_27": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U4.27 (io) can reach its supply +3V3D"
+  },
+  "U4_NC_3": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U4.3 (io) can reach its supply +3V3D"
+  },
+  "ULPI_CK": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.51 (io) can reach its supply +3V3D; U4.14 (io) can reach its supply +3V3D"
+  },
+  "ULPI_D0": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.47 (io) can reach its supply +3V3D; U4.24 (io) can reach its supply +3V3D"
+  },
+  "ULPI_D1": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.56 (io) can reach its supply +3V3D; U4.23 (io) can reach its supply +3V3D"
+  },
+  "ULPI_D2": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.57 (io) can reach its supply +3V3D; U4.22 (io) can reach its supply +3V3D"
+  },
+  "ULPI_D3": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.79 (io) can reach its supply +3V3D; U4.21 (io) can reach its supply +3V3D"
+  },
+  "ULPI_D4": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.80 (io) can reach its supply +3V3D; U4.20 (io) can reach its supply +3V3D"
+  },
+  "ULPI_D5": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.92 (io) can reach its supply +3V3D; U4.19 (io) can reach its supply +3V3D"
+  },
+  "ULPI_D6": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.93 (io) can reach its supply +3V3D; U4.18 (io) can reach its supply +3V3D"
+  },
+  "ULPI_D7": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.163 (io) can reach its supply +3V3D; U4.17 (io) can reach its supply +3V3D"
+  },
+  "ULPI_DIR": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.13 (io) can reach its supply +3V3D; U4.12 (io) can reach its supply +3V3D"
+  },
+  "ULPI_NXT": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.45 (io) can reach its supply +3V3D; U4.11 (io) can reach its supply +3V3D"
+  },
+  "ULPI_STP": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U1.32 (io) can reach its supply +3V3D; U4.13 (io) can reach its supply +3V3D"
+  },
+  "V5_PRE": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "the 5 V buck's output from output_power, J20 ways 1-5 [output_power.V5_PRE: LMR33630: VFB max x (1 + top/bot), 1 % resistors; +5 % overshoot: 1.015 V x (1 + R11/R12) -> 5.17 V max]"
+  },
+  "VBUS_OPT": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "U15.6 (OUT) can reach its supply V5_PRE"
+  },
+  "VCAP1": {
+   "v": 1.2,
+   "why": "generated inside U1 (VCAP1)"
+  },
+  "VCAP2": {
+   "v": 1.2,
+   "why": "generated inside U1 (VCAP2)"
+  },
+  "VMID": {
+   "peak": 2.716,
+   "v": 2.587,
+   "why": "R17/R18 mid-rail"
+  }
+ },
+ "pin_volts": {
+  "C1.1": {
+   "max": 100.0,
+   "src": "rated V -- HMK325B7225KN-T (C92775): JLCPCB parts API attributes for C92775 (HMK325B7225KN-T, Taiyo Yuden), fetched 2026-10-06"
+  },
+  "C1.2": {
+   "max": 100.0,
+   "src": "rated V -- HMK325B7225KN-T (C92775): JLCPCB parts API attributes for C92775 (HMK325B7225KN-T, Taiyo Yuden), fetched 2026-10-06"
+  },
+  "C118.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C119.1": {
+   "max": 25.0,
+   "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C120.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C121.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C122.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C123.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C124.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C125.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C126.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C127.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C128.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C129.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C13.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C130.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C131.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C132.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C133.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C134.1": {
+   "max": 50.0,
+   "src": "rated V -- CL21A225KBQNNNE (C377773): JLCPCB parts API attributes for C377773 (CL21A225KBQNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C135.1": {
+   "max": 50.0,
+   "src": "rated V -- CL21A225KBQNNNE (C377773): JLCPCB parts API attributes for C377773 (CL21A225KBQNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C136.1": {
+   "max": 25.0,
+   "src": "rated V -- CL05A105KA5NQNC (C52923): JLCPCB parts API attributes for C52923 (CL05A105KA5NQNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C137.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C138.1": {
+   "max": 25.0,
+   "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C14.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C140.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C141.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C142.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C143.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C144.1": {
+   "max": 25.0,
+   "src": "rated V -- CL21A475KAQNNNE (C1779): JLCPCB parts API attributes for C1779 (CL21A475KAQNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C145.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C146.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C147.1": {
+   "max": 25.0,
+   "src": "rated V -- CL21A475KAQNNNE (C1779): JLCPCB parts API attributes for C1779 (CL21A475KAQNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C148.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C15.1": {
+   "max": 50.0,
+   "src": "rated V -- 0402CG120J500NT (C1547): JLCPCB parts API attributes for C1547 (0402CG120J500NT, FH (Guangdong Fenghua Advanced Tech)), fetched 2026-10-06"
+  },
+  "C150.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C151.1": {
+   "max": 25.0,
+   "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C152.1": {
+   "max": 25.0,
+   "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C16.1": {
+   "max": 50.0,
+   "src": "rated V -- 0402CG120J500NT (C1547): JLCPCB parts API attributes for C1547 (0402CG120J500NT, FH (Guangdong Fenghua Advanced Tech)), fetched 2026-10-06"
+  },
+  "C19.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C20.1": {
+   "max": 25.0,
+   "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C21.1": {
+   "max": 25.0,
+   "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C22.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C23.1": {
+   "max": 25.0,
+   "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C24.1": {
+   "max": 50.0,
+   "src": "rated V -- CL21B105KBFNNNE (C28323): JLCPCB parts API attributes for C28323 (CL21B105KBFNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C24.2": {
+   "max": 50.0,
+   "src": "rated V -- CL21B105KBFNNNE (C28323): JLCPCB parts API attributes for C28323 (CL21B105KBFNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C25.1": {
+   "max": 25.0,
+   "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C26.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C27.1": {
+   "max": 25.0,
+   "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C28.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C29.1": {
+   "max": 25.0,
+   "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C30.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C31.1": {
+   "max": 6.3,
+   "src": "rated V -- CL05A106MQ5NUNC (C15525): JLCPCB parts API attributes for C15525 (CL05A106MQ5NUNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C32.1": {
+   "max": 50.0,
+   "src": "rated V -- CL21A225KBQNNNE (C377773): JLCPCB parts API attributes for C377773 (CL21A225KBQNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C32.2": {
+   "max": 50.0,
+   "src": "rated V -- CL21A225KBQNNNE (C377773): JLCPCB parts API attributes for C377773 (CL21A225KBQNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C33.1": {
+   "max": 50.0,
+   "src": "rated V -- CL21A225KBQNNNE (C377773): JLCPCB parts API attributes for C377773 (CL21A225KBQNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C34.1": {
+   "max": 50.0,
+   "src": "rated V -- GRM1555C1H222GA01D (C2987940): JLCPCB parts API attributes for C2987940 (GRM1555C1H222GA01D, Murata Electronics), fetched 2026-10-06"
+  },
+  "C37.1": {
+   "max": 50.0,
+   "src": "rated V -- 1206N104J500CT (C170182): JLCPCB parts API attributes for C170182 (1206N104J500CT, Walsin Tech Corp), fetched 2026-10-06"
+  },
+  "C37.2": {
+   "max": 50.0,
+   "src": "rated V -- 1206N104J500CT (C170182): JLCPCB parts API attributes for C170182 (1206N104J500CT, Walsin Tech Corp), fetched 2026-10-06"
+  },
+  "C38.1": {
+   "max": 25.0,
+   "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C38.2": {
+   "max": 25.0,
+   "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C39.1": {
+   "max": 50.0,
+   "src": "rated V -- CL21B105KBFNNNE (C28323): JLCPCB parts API attributes for C28323 (CL21B105KBFNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C39.2": {
+   "max": 50.0,
+   "src": "rated V -- CL21B105KBFNNNE (C28323): JLCPCB parts API attributes for C28323 (CL21B105KBFNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C40.1": {
+   "max": 25.0,
+   "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C41.1": {
+   "max": 100.0,
+   "src": "rated V -- HMK325B7225KN-T (C92775): JLCPCB parts API attributes for C92775 (HMK325B7225KN-T, Taiyo Yuden), fetched 2026-10-06"
+  },
+  "C41.2": {
+   "max": 100.0,
+   "src": "rated V -- HMK325B7225KN-T (C92775): JLCPCB parts API attributes for C92775 (HMK325B7225KN-T, Taiyo Yuden), fetched 2026-10-06"
+  },
+  "C42.1": {
+   "max": 50.0,
+   "src": "rated V -- CL21B105KBFNNNE (C28323): JLCPCB parts API attributes for C28323 (CL21B105KBFNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C42.2": {
+   "max": 50.0,
+   "src": "rated V -- CL21B105KBFNNNE (C28323): JLCPCB parts API attributes for C28323 (CL21B105KBFNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C43.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C44.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C45.1": {
+   "max": 50.0,
+   "src": "rated V -- GRM1555C1H222GA01D (C2987940): JLCPCB parts API attributes for C2987940 (GRM1555C1H222GA01D, Murata Electronics), fetched 2026-10-06"
+  },
+  "C46.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C47.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C54.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C58.1": {
+   "max": 25.0,
+   "src": "rated V -- CL05A105KA5NQNC (C52923): JLCPCB parts API attributes for C52923 (CL05A105KA5NQNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C59.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C60.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C62.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C7.1": {
+   "max": 25.0,
+   "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C8.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C9.1": {
+   "max": 25.0,
+   "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "D18.2": {
+   "max": "none",
+   "src": "KT-0603R (C2286): Hubei KENTO KT-0603R specification A.0 (2018-12-06) p.3 absolute maximum ratings (Pd 40 mW, IFP 60 mA, DC IF 25 mA, VR 5 V); VF 1.8 min / 2.4 max @20 mA (min entered, the conservative side for current, as KT-0603G)",
+   "why": "1.5 mA of 25 mA DC, 3 mW of 40 mW (VF typ 1.8 V)"
+  },
+  "D4.1": {
+   "max": 75.0,
+   "src": "VRRM -- 1N4148WT (C917006): JSMSEMI 1N4148WT datasheet p.1 max ratings: VRRM 75 V, VRM 100 V, IO 150 mA"
+  },
+  "D4.2": {
+   "max": 75.0,
+   "src": "VRRM -- 1N4148WT (C917006): JSMSEMI 1N4148WT datasheet p.1 max ratings: VRRM 75 V, VRM 100 V, IO 150 mA"
+  },
+  "D5.1": {
+   "max": 5.8,
+   "peak": "none",
+   "src": "ESD5B5.0ST1G (C93623): onsemi ESD5B5.0S datasheet p.2 electrical table (VRWM 5.0, VBR 5.8-7.8 @1 mA), p.1 max ratings (50 W 8x20 us, 10 W 10x1000 us, 200 mW)",
+   "why": "this part IS the clamp on OUT_BLOCKED: it stands 5 V (where its leakage is specified) and starts to conduct at 5.8 V, the figure a steady level must stay under"
+  },
+  "D7.1": {
+   "max": 5.8,
+   "peak": "none",
+   "src": "ESD5B5.0ST1G (C93623): onsemi ESD5B5.0S datasheet p.2 electrical table (VRWM 5.0, VBR 5.8-7.8 @1 mA), p.1 max ratings (50 W 8x20 us, 10 W 10x1000 us, 200 mW)",
+   "why": "this part IS the clamp on RING_BLOCKED: it stands 5 V (where its leakage is specified) and starts to conduct at 5.8 V, the figure a steady level must stay under"
+  },
+  "FB1.1": {
+   "max": "none",
+   "src": "BLM18KG601SN1D (C85833): Murata BLM18KG datasheet p.1: BLM18KG601SN1 rated current 1300 mA (85 C), DCR 0.15 ohm",
+   "why": "no voltage rating applies; current checked below"
+  },
+  "FB1.2": {
+   "max": "none",
+   "src": "BLM18KG601SN1D (C85833): Murata BLM18KG datasheet p.1: BLM18KG601SN1 rated current 1300 mA (85 C), DCR 0.15 ohm",
+   "why": "no voltage rating applies; current checked below"
+  },
+  "J11.2": {
+   "max": 100.0,
+   "src": "rated V -- S6B-PH-SM4-TB(LF)(SN) (C265405): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
+  },
+  "J11.3": {
+   "max": 100.0,
+   "src": "rated V -- S6B-PH-SM4-TB(LF)(SN) (C265405): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
+  },
+  "J11.4": {
+   "max": 100.0,
+   "src": "rated V -- S6B-PH-SM4-TB(LF)(SN) (C265405): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
+  },
+  "J11.5": {
+   "max": 100.0,
+   "src": "rated V -- S6B-PH-SM4-TB(LF)(SN) (C265405): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
+  },
+  "J20.1": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.12": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.13": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.14": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.15": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.16": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.17": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.18": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.19": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.2": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.20": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.21": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.22": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.23": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.3": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.4": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.5": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J20.9": {
+   "max": 30.0,
+   "src": "rated V -- HC-PM127-4.3H-2x12PS (C22436132): PLACEHOLDER for J20 on both output halves, which is not chosen yet (output_split open item: the mated height). Hong Cheng HC-PM127-4.3H-2x12PS is the stocked 1.27 mm 2x12 SMD vertical socket at JLC (1,508 on 2026-11-13); JLCPCB parts API attributes give 1 A and no voltage, and the maker's drawing gives neither. 30 V is ASSUMED: the lowest working voltage of any rated board-to-board connector in this file (Hirose DF40, 0.4 mm pitch, C597931), a floor a 1.27 mm part clears; nothing over 5.6 V crosses J20. Replace when J20 is chosen"
+  },
+  "J4.A4": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J4.A5": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J4.A6": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J4.A7": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J4.A9": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J4.B4": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J4.B5": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J4.B6": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J4.B7": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J4.B9": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J5.R": {
+   "max": 50.0,
+   "peak": 1000.0,
+   "src": "rated V -- NMJ6HCD2 (C368502): Neutrik NMJ6HCD2 product page, technical data, read 2026-10-06: dielectric strength 1 kV dc; insulation resistance >= 1 Gohm at 500 V dc; rated current per contact 3 A; switch contact 0.5 A at 50 V. Neutrik gives no 'rated voltage' line: 50 V is the only working voltage it states, 1 kV dc the withstand"
+  },
+  "J5.T": {
+   "max": 50.0,
+   "peak": 1000.0,
+   "src": "rated V -- NMJ6HCD2 (C368502): Neutrik NMJ6HCD2 product page, technical data, read 2026-10-06: dielectric strength 1 kV dc; insulation resistance >= 1 Gohm at 500 V dc; rated current per contact 3 A; switch contact 0.5 A at 50 V. Neutrik gives no 'rated voltage' line: 50 V is the only working voltage it states, 1 kV dc the withstand"
+  },
+  "J8.2": {
+   "max": 300.0,
+   "src": "rated V -- MX128-5.0-02P-GN01-Cu-Y-A (C5188463): JLCPCB parts API attributes for C5188463 (300 V, 10 A)"
+  },
+  "J9.A4": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J9.A5": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J9.A6": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J9.A7": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J9.A9": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J9.B4": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J9.B5": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J9.B6": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J9.B7": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "J9.B9": {
+   "max": 20.0,
+   "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
+  },
+  "K1.1": {
+   "max": 7.5,
+   "src": "coil max -- G6K-2F-Y-DC5 (C47190): Omron G6K datasheet p.3 coil ratings (5 VDC: 21.1 mA, max voltage 150 % of rated) and contact ratings (max switching 125 VAC / 60 VDC, 1 A)"
+  },
+  "K1.2": {
+   "max": 60.0,
+   "src": "switching V -- G6K-2F-Y-DC5 (C47190): Omron G6K datasheet p.3 coil ratings (5 VDC: 21.1 mA, max voltage 150 % of rated) and contact ratings (max switching 125 VAC / 60 VDC, 1 A)"
+  },
+  "K1.3": {
+   "max": 60.0,
+   "src": "switching V -- G6K-2F-Y-DC5 (C47190): Omron G6K datasheet p.3 coil ratings (5 VDC: 21.1 mA, max voltage 150 % of rated) and contact ratings (max switching 125 VAC / 60 VDC, 1 A)"
+  },
+  "K1.4": {
+   "max": 60.0,
+   "src": "switching V -- G6K-2F-Y-DC5 (C47190): Omron G6K datasheet p.3 coil ratings (5 VDC: 21.1 mA, max voltage 150 % of rated) and contact ratings (max switching 125 VAC / 60 VDC, 1 A)"
+  },
+  "K1.5": {
+   "max": 60.0,
+   "src": "switching V -- G6K-2F-Y-DC5 (C47190): Omron G6K datasheet p.3 coil ratings (5 VDC: 21.1 mA, max voltage 150 % of rated) and contact ratings (max switching 125 VAC / 60 VDC, 1 A)"
+  },
+  "K1.6": {
+   "max": 60.0,
+   "src": "switching V -- G6K-2F-Y-DC5 (C47190): Omron G6K datasheet p.3 coil ratings (5 VDC: 21.1 mA, max voltage 150 % of rated) and contact ratings (max switching 125 VAC / 60 VDC, 1 A)"
+  },
+  "K1.7": {
+   "max": 60.0,
+   "src": "switching V -- G6K-2F-Y-DC5 (C47190): Omron G6K datasheet p.3 coil ratings (5 VDC: 21.1 mA, max voltage 150 % of rated) and contact ratings (max switching 125 VAC / 60 VDC, 1 A)"
+  },
+  "K1.8": {
+   "max": 7.5,
+   "src": "coil max -- G6K-2F-Y-DC5 (C47190): Omron G6K datasheet p.3 coil ratings (5 VDC: 21.1 mA, max voltage 150 % of rated) and contact ratings (max switching 125 VAC / 60 VDC, 1 A)"
+  },
+  "Q1.1": {
+   "max": 12.0,
+   "src": "VGS -- AO3400A (C20917): AOS AO3400A datasheet p.1 absolute maximum ratings: VDS 30 V, VGS +/-12 V, ID 5.7 A"
+  },
+  "Q1.3": {
+   "max": 30.0,
+   "src": "VDS -- AO3400A (C20917): AOS AO3400A datasheet p.1 absolute maximum ratings: VDS 30 V, VGS +/-12 V, ID 5.7 A"
+  },
+  "R1.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF5101TCE (C25905): JLCPCB parts API attributes for C25905 (0402WGF5101TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R10.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R113.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1001TCE (C11702): JLCPCB parts API attributes for C11702, fetched 2026-10-30"
+  },
+  "R113.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1001TCE (C11702): JLCPCB parts API attributes for C11702, fetched 2026-10-30"
+  },
+  "R114.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1001TCE (C11702): JLCPCB parts API attributes for C11702, fetched 2026-10-30"
+  },
+  "R114.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1001TCE (C11702): JLCPCB parts API attributes for C11702, fetched 2026-10-30"
+  },
+  "R115.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1001TCE (C11702): JLCPCB parts API attributes for C11702, fetched 2026-10-30"
+  },
+  "R115.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1001TCE (C11702): JLCPCB parts API attributes for C11702, fetched 2026-10-30"
+  },
+  "R116.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1001TCE (C11702): JLCPCB parts API attributes for C11702, fetched 2026-10-30"
+  },
+  "R116.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1001TCE (C11702): JLCPCB parts API attributes for C11702, fetched 2026-10-30"
+  },
+  "R117.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R117.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R118.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R118.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R123.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF4701TCE (C25900): JLCPCB parts API attributes for C25900 (0402WGF4701TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R123.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF4701TCE (C25900): JLCPCB parts API attributes for C25900 (0402WGF4701TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R124.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R125.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF4701TCE (C25900): JLCPCB parts API attributes for C25900 (0402WGF4701TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R125.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF4701TCE (C25900): JLCPCB parts API attributes for C25900 (0402WGF4701TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R126.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R13.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF4700TCE (C25117): JLCPCB parts API attributes for C25117 (0402WGF4700TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R13.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF4700TCE (C25117): JLCPCB parts API attributes for C25117 (0402WGF4700TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R14.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R14.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R15.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R16.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R16.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R17.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R17.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R18.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R2.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF5101TCE (C25905): JLCPCB parts API attributes for C25905 (0402WGF5101TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R20.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF2200TCE (C25091): JLCPCB parts API attributes for C25091 (0402WGF2200TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R20.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF2200TCE (C25091): JLCPCB parts API attributes for C25091 (0402WGF2200TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R21.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R22.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R22.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R23.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF4700TCE (C25117): JLCPCB parts API attributes for C25117 (0402WGF4700TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R23.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF4700TCE (C25117): JLCPCB parts API attributes for C25117 (0402WGF4700TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R24.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R24.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R25.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R26.1": {
+   "max": 50.0,
+   "src": "element V -- RT0402BRD0710KL (C190095): JLCPCB parts API attributes for C190095 (RT0402BRD0710KL, YAGEO), fetched 2026-10-06"
+  },
+  "R26.2": {
+   "max": 50.0,
+   "src": "element V -- RT0402BRD0710KL (C190095): JLCPCB parts API attributes for C190095 (RT0402BRD0710KL, YAGEO), fetched 2026-10-06"
+  },
+  "R27.1": {
+   "max": 50.0,
+   "src": "element V -- RT0402BRD0710KL (C190095): JLCPCB parts API attributes for C190095 (RT0402BRD0710KL, YAGEO), fetched 2026-10-06"
+  },
+  "R27.2": {
+   "max": 50.0,
+   "src": "element V -- RT0402BRD0710KL (C190095): JLCPCB parts API attributes for C190095 (RT0402BRD0710KL, YAGEO), fetched 2026-10-06"
+  },
+  "R28.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R29.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF5602TCE (C25796): JLCPCB parts API attributes for C25796 (0402WGF5602TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R29.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF5602TCE (C25796): JLCPCB parts API attributes for C25796 (0402WGF5602TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R30.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF5602TCE (C25796): JLCPCB parts API attributes for C25796 (0402WGF5602TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R30.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF5602TCE (C25796): JLCPCB parts API attributes for C25796 (0402WGF5602TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R36.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R37.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R38.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R38.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R39.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R39.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R40.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1503TCE (C25755): JLCPCB parts API attributes for C25755 (0402WGF1503TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R5.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1000TCE (C25076): JLCPCB parts API attributes for C25076 (0402WGF1000TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R5.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1000TCE (C25076): JLCPCB parts API attributes for C25076 (0402WGF1000TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R6.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R6.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R7.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R8.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1004TCE (C26083): JLCPCB parts API attributes for C26083 (0402WGF1004TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R8.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1004TCE (C26083): JLCPCB parts API attributes for C26083 (0402WGF1004TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R86.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1502TCE (C25756): JLCPCB parts API attributes for C25756, fetched 2026-10-30"
+  },
+  "R87.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF4701TCE (C25900): JLCPCB parts API attributes for C25900 (0402WGF4701TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R87.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF4701TCE (C25900): JLCPCB parts API attributes for C25900 (0402WGF4701TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R88.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R89.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1202TCE (C25752): JLCPCB parts API attributes for C25752 (0402WGF1202TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R9.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF2200TCE (C25091): JLCPCB parts API attributes for C25091 (0402WGF2200TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R9.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF2200TCE (C25091): JLCPCB parts API attributes for C25091 (0402WGF2200TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R90.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R90.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R93.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R94.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R97.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1001TCE (C11702): JLCPCB parts API attributes for C11702, fetched 2026-10-30"
+  },
+  "R97.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1001TCE (C11702): JLCPCB parts API attributes for C11702, fetched 2026-10-30"
+  },
+  "R98.1": {
+   "max": 200.0,
+   "src": "element V -- FRC2512F1R20TS (C2960682): FOJAN FRC datasheet V3.0 p.4-5 (LCSC C2960682): 2512, 1 W at 70 C, 200 V"
+  },
+  "R98.2": {
+   "max": 200.0,
+   "src": "element V -- FRC2512F1R20TS (C2960682): FOJAN FRC datasheet V3.0 p.4-5 (LCSC C2960682): 2512, 1 W at 70 C, 200 V"
+  },
+  "TP1.1": {
+   "max": "none",
+   "src": "SWD (no LCSC code): no LCSC code / no rating applies",
+   "why": "bare copper"
+  },
+  "TP2.1": {
+   "max": "none",
+   "src": "SWD (no LCSC code): no LCSC code / no rating applies",
+   "why": "bare copper"
+  },
+  "TP3.1": {
+   "max": "none",
+   "src": "SWD (no LCSC code): no LCSC code / no rating applies",
+   "why": "bare copper"
+  },
+  "TP5.1": {
+   "max": "none",
+   "src": "SWD (no LCSC code): no LCSC code / no rating applies",
+   "why": "bare copper"
+  },
+  "TP6.1": {
+   "max": "none",
+   "src": "SWD (no LCSC code): no LCSC code / no rating applies",
+   "why": "bare copper"
+  },
+  "U1.1": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.10": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.100": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.101": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.103": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.104": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.105": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.106": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.107": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.108": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.109": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.11": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.110": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.111": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.112": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.114": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.115": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.116": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.117": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.118": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.119": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.12": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.120": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.121": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.122": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.123": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.124": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.125": {
+   "max": "none",
+   "src": "STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)",
+   "why": "generated inside the IC"
+  },
+  "U1.127": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.128": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.129": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.13": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.130": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.131": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.132": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.133": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.134": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.136": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.137": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.138": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.139": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.140": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.141": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.142": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.143": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.144": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.145": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.146": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.147": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.149": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.15": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.150": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.151": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.152": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.153": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.154": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.155": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.156": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.157": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.159": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.16": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.160": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.161": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.162": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.163": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.164": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.165": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.166": {
+   "max": 9.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.167": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.168": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.169": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.17": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.170": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.171": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.172": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.173": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.174": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.175": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.176": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.18": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.19": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.2": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.20": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.21": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.23": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.24": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.25": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.26": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.27": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.28": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.29": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.3": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.30": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.31": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.32": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.33": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.34": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.35": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.36": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.38": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.39": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.4": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.40": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.41": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.42": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.43": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.44": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.45": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.46": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.47": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.49": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.5": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.50": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.51": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.52": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.53": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.54": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.55": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.56": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.57": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.58": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.59": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.6": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.60": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.62": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.63": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.64": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.65": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.66": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.67": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.68": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.69": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.7": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.70": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.72": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.73": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.74": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.75": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.76": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.77": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.78": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.79": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.8": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.80": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.81": {
+   "max": "none",
+   "src": "STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)",
+   "why": "generated inside the IC"
+  },
+  "U1.82": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.83": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.84": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.85": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.86": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.87": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.88": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.89": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.9": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.91": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.92": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.93": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.94": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.95": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.96": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.97": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.98": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U1.99": {
+   "max": 4.0,
+   "src": "abs max -- STM32H743IIT6 (C89597): ST STM32H742/743 datasheet p.104 table 21: VDDx -0.3..4.0 V; TT and other pins 4.0 V; BOOT0 9.0 V; FT pins higher (not credited)"
+  },
+  "U10.10": {
+   "max": 7.0,
+   "src": "abs max -- AD8402ARZ10 (C578716): Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA PULSED, continuous +/-5 mA at the wiper and +/-2.1 mA A to B for the 10k part (Rev. E, order review 2026-10-08; the board runs 0.31 mA). Operating supply 2.7..5.5 V. The check's 0.258 V on U10.12 is the rail's own 5 % allowance (the pot nets are declared at +5V against VDD + 0), not a pin margin"
+  },
+  "U10.11": {
+   "max": 8.0,
+   "src": "abs max -- AD8402ARZ10 (C578716): Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA PULSED, continuous +/-5 mA at the wiper and +/-2.1 mA A to B for the 10k part (Rev. E, order review 2026-10-08; the board runs 0.31 mA). Operating supply 2.7..5.5 V. The check's 0.258 V on U10.12 is the rail's own 5 % allowance (the pot nets are declared at +5V against VDD + 0), not a pin margin"
+  },
+  "U10.12": {
+   "max": 5.432,
+   "src": "abs max -- AD8402ARZ10 (C578716): Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA PULSED, continuous +/-5 mA at the wiper and +/-2.1 mA A to B for the 10k part (Rev. E, order review 2026-10-08; the board runs 0.31 mA). Operating supply 2.7..5.5 V. The check's 0.258 V on U10.12 is the rail's own 5 % allowance (the pot nets are declared at +5V against VDD + 0), not a pin margin"
+  },
+  "U10.13": {
+   "max": 5.432,
+   "src": "abs max -- AD8402ARZ10 (C578716): Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA PULSED, continuous +/-5 mA at the wiper and +/-2.1 mA A to B for the 10k part (Rev. E, order review 2026-10-08; the board runs 0.31 mA). Operating supply 2.7..5.5 V. The check's 0.258 V on U10.12 is the rail's own 5 % allowance (the pot nets are declared at +5V against VDD + 0), not a pin margin"
+  },
+  "U10.14": {
+   "max": 5.432,
+   "src": "abs max -- AD8402ARZ10 (C578716): Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA PULSED, continuous +/-5 mA at the wiper and +/-2.1 mA A to B for the 10k part (Rev. E, order review 2026-10-08; the board runs 0.31 mA). Operating supply 2.7..5.5 V. The check's 0.258 V on U10.12 is the rail's own 5 % allowance (the pot nets are declared at +5V against VDD + 0), not a pin margin"
+  },
+  "U10.2": {
+   "max": 5.432,
+   "src": "abs max -- AD8402ARZ10 (C578716): Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA PULSED, continuous +/-5 mA at the wiper and +/-2.1 mA A to B for the 10k part (Rev. E, order review 2026-10-08; the board runs 0.31 mA). Operating supply 2.7..5.5 V. The check's 0.258 V on U10.12 is the rail's own 5 % allowance (the pot nets are declared at +5V against VDD + 0), not a pin margin"
+  },
+  "U10.3": {
+   "max": 5.432,
+   "src": "abs max -- AD8402ARZ10 (C578716): Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA PULSED, continuous +/-5 mA at the wiper and +/-2.1 mA A to B for the 10k part (Rev. E, order review 2026-10-08; the board runs 0.31 mA). Operating supply 2.7..5.5 V. The check's 0.258 V on U10.12 is the rail's own 5 % allowance (the pot nets are declared at +5V against VDD + 0), not a pin margin"
+  },
+  "U10.4": {
+   "max": 5.432,
+   "src": "abs max -- AD8402ARZ10 (C578716): Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA PULSED, continuous +/-5 mA at the wiper and +/-2.1 mA A to B for the 10k part (Rev. E, order review 2026-10-08; the board runs 0.31 mA). Operating supply 2.7..5.5 V. The check's 0.258 V on U10.12 is the rail's own 5 % allowance (the pot nets are declared at +5V against VDD + 0), not a pin margin"
+  },
+  "U10.6": {
+   "max": 7.0,
+   "src": "abs max -- AD8402ARZ10 (C578716): Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA PULSED, continuous +/-5 mA at the wiper and +/-2.1 mA A to B for the 10k part (Rev. E, order review 2026-10-08; the board runs 0.31 mA). Operating supply 2.7..5.5 V. The check's 0.258 V on U10.12 is the rail's own 5 % allowance (the pot nets are declared at +5V against VDD + 0), not a pin margin"
+  },
+  "U10.7": {
+   "max": 7.0,
+   "src": "abs max -- AD8402ARZ10 (C578716): Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA PULSED, continuous +/-5 mA at the wiper and +/-2.1 mA A to B for the 10k part (Rev. E, order review 2026-10-08; the board runs 0.31 mA). Operating supply 2.7..5.5 V. The check's 0.258 V on U10.12 is the rail's own 5 % allowance (the pot nets are declared at +5V against VDD + 0), not a pin margin"
+  },
+  "U10.8": {
+   "max": 7.0,
+   "src": "abs max -- AD8402ARZ10 (C578716): Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA PULSED, continuous +/-5 mA at the wiper and +/-2.1 mA A to B for the 10k part (Rev. E, order review 2026-10-08; the board runs 0.31 mA). Operating supply 2.7..5.5 V. The check's 0.258 V on U10.12 is the rail's own 5 % allowance (the pot nets are declared at +5V against VDD + 0), not a pin margin"
+  },
+  "U10.9": {
+   "max": 7.0,
+   "src": "abs max -- AD8402ARZ10 (C578716): Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA PULSED, continuous +/-5 mA at the wiper and +/-2.1 mA A to B for the 10k part (Rev. E, order review 2026-10-08; the board runs 0.31 mA). Operating supply 2.7..5.5 V. The check's 0.258 V on U10.12 is the rail's own 5 % allowance (the pot nets are declared at +5V against VDD + 0), not a pin margin"
+  },
+  "U11.1": {
+   "max": 5.932,
+   "src": "abs max -- TLV9061IDBVR (C398358): TI TLV906x datasheet p.12 s8.1: supply (V+)-(V-) 6 V; inputs (V-)-0.5..(V+)+0.5 V, +/-10 mA; s8.3 VS 1.8-5.5 V; SOT-23-5 (DBV) pinout"
+  },
+  "U11.3": {
+   "max": 5.932,
+   "src": "abs max -- TLV9061IDBVR (C398358): TI TLV906x datasheet p.12 s8.1: supply (V+)-(V-) 6 V; inputs (V-)-0.5..(V+)+0.5 V, +/-10 mA; s8.3 VS 1.8-5.5 V; SOT-23-5 (DBV) pinout"
+  },
+  "U11.4": {
+   "max": 5.932,
+   "src": "abs max -- TLV9061IDBVR (C398358): TI TLV906x datasheet p.12 s8.1: supply (V+)-(V-) 6 V; inputs (V-)-0.5..(V+)+0.5 V, +/-10 mA; s8.3 VS 1.8-5.5 V; SOT-23-5 (DBV) pinout"
+  },
+  "U11.5": {
+   "max": 6.0,
+   "src": "abs max -- TLV9061IDBVR (C398358): TI TLV906x datasheet p.12 s8.1: supply (V+)-(V-) 6 V; inputs (V-)-0.5..(V+)+0.5 V, +/-10 mA; s8.3 VS 1.8-5.5 V; SOT-23-5 (DBV) pinout"
+  },
+  "U12.1": {
+   "max": 5.932,
+   "src": "abs max -- TS5A3159DCKR (C46388): TI TS5A3159 datasheet p.3 s6.1: V+ -0.5..6.5 V; VNO/VNC/VCOM -0.5..V+ +0.5 V; VIN -0.5..6.5 V"
+  },
+  "U12.3": {
+   "max": 5.932,
+   "src": "abs max -- TS5A3159DCKR (C46388): TI TS5A3159 datasheet p.3 s6.1: V+ -0.5..6.5 V; VNO/VNC/VCOM -0.5..V+ +0.5 V; VIN -0.5..6.5 V"
+  },
+  "U12.4": {
+   "max": 5.932,
+   "src": "abs max -- TS5A3159DCKR (C46388): TI TS5A3159 datasheet p.3 s6.1: V+ -0.5..6.5 V; VNO/VNC/VCOM -0.5..V+ +0.5 V; VIN -0.5..6.5 V"
+  },
+  "U12.5": {
+   "max": 6.5,
+   "src": "abs max -- TS5A3159DCKR (C46388): TI TS5A3159 datasheet p.3 s6.1: V+ -0.5..6.5 V; VNO/VNC/VCOM -0.5..V+ +0.5 V; VIN -0.5..6.5 V"
+  },
+  "U12.6": {
+   "max": 6.5,
+   "src": "abs max -- TS5A3159DCKR (C46388): TI TS5A3159 datasheet p.3 s6.1: V+ -0.5..6.5 V; VNO/VNC/VCOM -0.5..V+ +0.5 V; VIN -0.5..6.5 V"
+  },
+  "U15.1": {
+   "max": 7.0,
+   "src": "abs max -- TPS2553DBVR (C55266): TI TPS2552/3 datasheet p.3 absolute maximum ratings: IN, OUT, EN, ILIM, FAULT -0.3..7 V; p.4 recommended VIN 2.5-6.5 V"
+  },
+  "U15.3": {
+   "max": 7.0,
+   "src": "abs max -- TPS2553DBVR (C55266): TI TPS2552/3 datasheet p.3 absolute maximum ratings: IN, OUT, EN, ILIM, FAULT -0.3..7 V; p.4 recommended VIN 2.5-6.5 V"
+  },
+  "U15.4": {
+   "max": 7.0,
+   "src": "abs max -- TPS2553DBVR (C55266): TI TPS2552/3 datasheet p.3 absolute maximum ratings: IN, OUT, EN, ILIM, FAULT -0.3..7 V; p.4 recommended VIN 2.5-6.5 V"
+  },
+  "U15.5": {
+   "max": 7.0,
+   "src": "abs max -- TPS2553DBVR (C55266): TI TPS2552/3 datasheet p.3 absolute maximum ratings: IN, OUT, EN, ILIM, FAULT -0.3..7 V; p.4 recommended VIN 2.5-6.5 V"
+  },
+  "U15.6": {
+   "max": 7.0,
+   "src": "abs max -- TPS2553DBVR (C55266): TI TPS2552/3 datasheet p.3 absolute maximum ratings: IN, OUT, EN, ILIM, FAULT -0.3..7 V; p.4 recommended VIN 2.5-6.5 V"
+  },
+  "U2.1": {
+   "max": 5.732,
+   "src": "abs max -- PCM1808PWR (C55513): TI PCM1808 datasheet SLES177A p.2 absolute maximum ratings: VCC 6.5 V, VDD 4 V; LRCK/BCK/DOUT VDD+0.3 (<4 V); SCKI/MD0/MD1/FMT 6.5 V; VINL/VINR/VREF VCC+0.3"
+  },
+  "U2.13": {
+   "max": 5.732,
+   "src": "abs max -- PCM1808PWR (C55513): TI PCM1808 datasheet SLES177A p.2 absolute maximum ratings: VCC 6.5 V, VDD 4 V; LRCK/BCK/DOUT VDD+0.3 (<4 V); SCKI/MD0/MD1/FMT 6.5 V; VINL/VINR/VREF VCC+0.3"
+  },
+  "U2.14": {
+   "max": 5.732,
+   "src": "abs max -- PCM1808PWR (C55513): TI PCM1808 datasheet SLES177A p.2 absolute maximum ratings: VCC 6.5 V, VDD 4 V; LRCK/BCK/DOUT VDD+0.3 (<4 V); SCKI/MD0/MD1/FMT 6.5 V; VINL/VINR/VREF VCC+0.3"
+  },
+  "U2.3": {
+   "max": 6.5,
+   "src": "abs max -- PCM1808PWR (C55513): TI PCM1808 datasheet SLES177A p.2 absolute maximum ratings: VCC 6.5 V, VDD 4 V; LRCK/BCK/DOUT VDD+0.3 (<4 V); SCKI/MD0/MD1/FMT 6.5 V; VINL/VINR/VREF VCC+0.3"
+  },
+  "U2.4": {
+   "max": 4.0,
+   "src": "abs max -- PCM1808PWR (C55513): TI PCM1808 datasheet SLES177A p.2 absolute maximum ratings: VCC 6.5 V, VDD 4 V; LRCK/BCK/DOUT VDD+0.3 (<4 V); SCKI/MD0/MD1/FMT 6.5 V; VINL/VINR/VREF VCC+0.3"
+  },
+  "U2.6": {
+   "max": 6.5,
+   "src": "abs max -- PCM1808PWR (C55513): TI PCM1808 datasheet SLES177A p.2 absolute maximum ratings: VCC 6.5 V, VDD 4 V; LRCK/BCK/DOUT VDD+0.3 (<4 V); SCKI/MD0/MD1/FMT 6.5 V; VINL/VINR/VREF VCC+0.3"
+  },
+  "U2.7": {
+   "max": 3.75,
+   "src": "abs max -- PCM1808PWR (C55513): TI PCM1808 datasheet SLES177A p.2 absolute maximum ratings: VCC 6.5 V, VDD 4 V; LRCK/BCK/DOUT VDD+0.3 (<4 V); SCKI/MD0/MD1/FMT 6.5 V; VINL/VINR/VREF VCC+0.3"
+  },
+  "U2.8": {
+   "max": 3.75,
+   "src": "abs max -- PCM1808PWR (C55513): TI PCM1808 datasheet SLES177A p.2 absolute maximum ratings: VCC 6.5 V, VDD 4 V; LRCK/BCK/DOUT VDD+0.3 (<4 V); SCKI/MD0/MD1/FMT 6.5 V; VINL/VINR/VREF VCC+0.3"
+  },
+  "U2.9": {
+   "max": 3.75,
+   "src": "abs max -- PCM1808PWR (C55513): TI PCM1808 datasheet SLES177A p.2 absolute maximum ratings: VCC 6.5 V, VDD 4 V; LRCK/BCK/DOUT VDD+0.3 (<4 V); SCKI/MD0/MD1/FMT 6.5 V; VINL/VINR/VREF VCC+0.3"
+  },
+  "U21.2": {
+   "max": 6.5,
+   "src": "abs max -- AP2114H-3.3TRG1 (C150716): Diodes/BCD AP2114 datasheet p.7: VIN absolute max 6.5 V, recommended 2.5-6.0 V; p.1 output accuracy +/-1.5 %"
+  },
+  "U21.3": {
+   "max": 6.5,
+   "src": "abs max -- AP2114H-3.3TRG1 (C150716): Diodes/BCD AP2114 datasheet p.7: VIN absolute max 6.5 V, recommended 2.5-6.0 V; p.1 output accuracy +/-1.5 %"
+  },
+  "U3.1": {
+   "max": 3.9,
+   "src": "abs max -- PCM5102APWR (C107671): TI PCM510xA datasheet p.6 s8.1: AVDD/CPVDD/DVDD -0.3..3.9 V; digital inputs (DVDD 3.3 V) 3.9 V; s8.3 AVDD nominal 3.3, max 3.46 V"
+  },
+  "U3.12": {
+   "max": 3.9,
+   "src": "abs max -- PCM5102APWR (C107671): TI PCM510xA datasheet p.6 s8.1: AVDD/CPVDD/DVDD -0.3..3.9 V; digital inputs (DVDD 3.3 V) 3.9 V; s8.3 AVDD nominal 3.3, max 3.46 V"
+  },
+  "U3.13": {
+   "max": 3.9,
+   "src": "abs max -- PCM5102APWR (C107671): TI PCM510xA datasheet p.6 s8.1: AVDD/CPVDD/DVDD -0.3..3.9 V; digital inputs (DVDD 3.3 V) 3.9 V; s8.3 AVDD nominal 3.3, max 3.46 V"
+  },
+  "U3.14": {
+   "max": 3.9,
+   "src": "abs max -- PCM5102APWR (C107671): TI PCM510xA datasheet p.6 s8.1: AVDD/CPVDD/DVDD -0.3..3.9 V; digital inputs (DVDD 3.3 V) 3.9 V; s8.3 AVDD nominal 3.3, max 3.46 V"
+  },
+  "U3.15": {
+   "max": 3.9,
+   "src": "abs max -- PCM5102APWR (C107671): TI PCM510xA datasheet p.6 s8.1: AVDD/CPVDD/DVDD -0.3..3.9 V; digital inputs (DVDD 3.3 V) 3.9 V; s8.3 AVDD nominal 3.3, max 3.46 V"
+  },
+  "U3.17": {
+   "max": 3.9,
+   "src": "abs max -- PCM5102APWR (C107671): TI PCM510xA datasheet p.6 s8.1: AVDD/CPVDD/DVDD -0.3..3.9 V; digital inputs (DVDD 3.3 V) 3.9 V; s8.3 AVDD nominal 3.3, max 3.46 V"
+  },
+  "U3.18": {
+   "max": "none",
+   "src": "PCM5102APWR (C107671): TI PCM510xA datasheet p.6 s8.1: AVDD/CPVDD/DVDD -0.3..3.9 V; digital inputs (DVDD 3.3 V) 3.9 V; s8.3 AVDD nominal 3.3, max 3.46 V",
+   "why": "generated inside the IC"
+  },
+  "U3.2": {
+   "max": "none",
+   "src": "PCM5102APWR (C107671): TI PCM510xA datasheet p.6 s8.1: AVDD/CPVDD/DVDD -0.3..3.9 V; digital inputs (DVDD 3.3 V) 3.9 V; s8.3 AVDD nominal 3.3, max 3.46 V",
+   "why": "generated inside the IC"
+  },
+  "U3.20": {
+   "max": 3.9,
+   "src": "abs max -- PCM5102APWR (C107671): TI PCM510xA datasheet p.6 s8.1: AVDD/CPVDD/DVDD -0.3..3.9 V; digital inputs (DVDD 3.3 V) 3.9 V; s8.3 AVDD nominal 3.3, max 3.46 V"
+  },
+  "U3.4": {
+   "max": "none",
+   "src": "PCM5102APWR (C107671): TI PCM510xA datasheet p.6 s8.1: AVDD/CPVDD/DVDD -0.3..3.9 V; digital inputs (DVDD 3.3 V) 3.9 V; s8.3 AVDD nominal 3.3, max 3.46 V",
+   "why": "generated inside the IC"
+  },
+  "U3.5": {
+   "max": "none",
+   "src": "PCM5102APWR (C107671): TI PCM510xA datasheet p.6 s8.1: AVDD/CPVDD/DVDD -0.3..3.9 V; digital inputs (DVDD 3.3 V) 3.9 V; s8.3 AVDD nominal 3.3, max 3.46 V",
+   "why": "generated inside the IC"
+  },
+  "U3.6": {
+   "max": "none",
+   "src": "PCM5102APWR (C107671): TI PCM510xA datasheet p.6 s8.1: AVDD/CPVDD/DVDD -0.3..3.9 V; digital inputs (DVDD 3.3 V) 3.9 V; s8.3 AVDD nominal 3.3, max 3.46 V",
+   "why": "generated inside the IC"
+  },
+  "U3.7": {
+   "max": "none",
+   "src": "PCM5102APWR (C107671): TI PCM510xA datasheet p.6 s8.1: AVDD/CPVDD/DVDD -0.3..3.9 V; digital inputs (DVDD 3.3 V) 3.9 V; s8.3 AVDD nominal 3.3, max 3.46 V",
+   "why": "generated inside the IC"
+  },
+  "U3.8": {
+   "max": 3.9,
+   "src": "abs max -- PCM5102APWR (C107671): TI PCM510xA datasheet p.6 s8.1: AVDD/CPVDD/DVDD -0.3..3.9 V; digital inputs (DVDD 3.3 V) 3.9 V; s8.3 AVDD nominal 3.3, max 3.46 V"
+  },
+  "U4.10": {
+   "max": 4.0,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U4.11": {
+   "max": 4.0,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U4.12": {
+   "max": 4.0,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U4.13": {
+   "max": 4.0,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U4.14": {
+   "max": 4.0,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U4.15": {
+   "max": 2.5,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U4.16": {
+   "max": 4.0,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U4.17": {
+   "max": 4.0,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U4.18": {
+   "max": 4.0,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U4.19": {
+   "max": 4.0,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U4.20": {
+   "max": 4.0,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U4.21": {
+   "max": 4.0,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U4.22": {
+   "max": 4.0,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U4.23": {
+   "max": 4.0,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U4.24": {
+   "max": 4.0,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U4.25": {
+   "max": 4.0,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U4.26": {
+   "max": 2.5,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U4.27": {
+   "max": 4.0,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U4.28": {
+   "max": 4.0,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U4.29": {
+   "max": 2.5,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U4.3": {
+   "max": 4.0,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U4.30": {
+   "max": 4.0,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U4.31": {
+   "max": 4.0,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U4.32": {
+   "max": 4.0,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U4.4": {
+   "max": 5.5,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U4.6": {
+   "max": 4.0,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U4.7": {
+   "max": 5.5,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U4.8": {
+   "max": 5.5,
+   "src": "abs max -- USB3300-EZK-TR (C108383): Microchip USB3300 datasheet DS00001783C p.11 table 4-1: VBUS/ID/DP/DM -0.5..5.5 V; VDD1.8/VDDA1.8 2.5 V; 3.3 V supply and I/O 4.0 V; s7 'XI ... driven with a 0 to 3.3 volt signal'"
+  },
+  "U6.1": {
+   "max": 6.5,
+   "src": "abs max -- AP2112K-3.3TRG1 (C51118): Diodes Inc AP2112 datasheet DS39724 Rev.2 p.3: VCC absolute max 6.5 V, recommended VIN 2.5-6.0 V; p.1 output accuracy +/-1.5 %"
+  },
+  "U6.3": {
+   "max": 6.5,
+   "src": "abs max -- AP2112K-3.3TRG1 (C51118): Diodes Inc AP2112 datasheet DS39724 Rev.2 p.3: VCC absolute max 6.5 V, recommended VIN 2.5-6.0 V; p.1 output accuracy +/-1.5 %"
+  },
+  "U6.4": {
+   "max": "none",
+   "src": "AP2112K-3.3TRG1 (C51118): Diodes Inc AP2112 datasheet DS39724 Rev.2 p.3: VCC absolute max 6.5 V, recommended VIN 2.5-6.0 V; p.1 output accuracy +/-1.5 %",
+   "why": "not connected"
+  },
+  "U6.5": {
+   "max": 6.5,
+   "src": "abs max -- AP2112K-3.3TRG1 (C51118): Diodes Inc AP2112 datasheet DS39724 Rev.2 p.3: VCC absolute max 6.5 V, recommended VIN 2.5-6.0 V; p.1 output accuracy +/-1.5 %"
+  },
+  "U7.1": {
+   "max": 5.932,
+   "src": "abs max -- TLV9061IDBVR (C398358): TI TLV906x datasheet p.12 s8.1: supply (V+)-(V-) 6 V; inputs (V-)-0.5..(V+)+0.5 V, +/-10 mA; s8.3 VS 1.8-5.5 V; SOT-23-5 (DBV) pinout"
+  },
+  "U7.3": {
+   "max": 5.932,
+   "src": "abs max -- TLV9061IDBVR (C398358): TI TLV906x datasheet p.12 s8.1: supply (V+)-(V-) 6 V; inputs (V-)-0.5..(V+)+0.5 V, +/-10 mA; s8.3 VS 1.8-5.5 V; SOT-23-5 (DBV) pinout"
+  },
+  "U7.4": {
+   "max": 5.932,
+   "src": "abs max -- TLV9061IDBVR (C398358): TI TLV906x datasheet p.12 s8.1: supply (V+)-(V-) 6 V; inputs (V-)-0.5..(V+)+0.5 V, +/-10 mA; s8.3 VS 1.8-5.5 V; SOT-23-5 (DBV) pinout"
+  },
+  "U7.5": {
+   "max": 6.0,
+   "src": "abs max -- TLV9061IDBVR (C398358): TI TLV906x datasheet p.12 s8.1: supply (V+)-(V-) 6 V; inputs (V-)-0.5..(V+)+0.5 V, +/-10 mA; s8.3 VS 1.8-5.5 V; SOT-23-5 (DBV) pinout"
+  },
+  "U8.1": {
+   "max": 5.932,
+   "src": "abs max -- TLV9061IDBVR (C398358): TI TLV906x datasheet p.12 s8.1: supply (V+)-(V-) 6 V; inputs (V-)-0.5..(V+)+0.5 V, +/-10 mA; s8.3 VS 1.8-5.5 V; SOT-23-5 (DBV) pinout"
+  },
+  "U8.3": {
+   "max": 5.932,
+   "src": "abs max -- TLV9061IDBVR (C398358): TI TLV906x datasheet p.12 s8.1: supply (V+)-(V-) 6 V; inputs (V-)-0.5..(V+)+0.5 V, +/-10 mA; s8.3 VS 1.8-5.5 V; SOT-23-5 (DBV) pinout"
+  },
+  "U8.4": {
+   "max": 5.932,
+   "src": "abs max -- TLV9061IDBVR (C398358): TI TLV906x datasheet p.12 s8.1: supply (V+)-(V-) 6 V; inputs (V-)-0.5..(V+)+0.5 V, +/-10 mA; s8.3 VS 1.8-5.5 V; SOT-23-5 (DBV) pinout"
+  },
+  "U8.5": {
+   "max": 6.0,
+   "src": "abs max -- TLV9061IDBVR (C398358): TI TLV906x datasheet p.12 s8.1: supply (V+)-(V-) 6 V; inputs (V-)-0.5..(V+)+0.5 V, +/-10 mA; s8.3 VS 1.8-5.5 V; SOT-23-5 (DBV) pinout"
+  },
+  "U9.1": {
+   "max": 5.932,
+   "src": "abs max -- TLV9061IDBVR (C398358): TI TLV906x datasheet p.12 s8.1: supply (V+)-(V-) 6 V; inputs (V-)-0.5..(V+)+0.5 V, +/-10 mA; s8.3 VS 1.8-5.5 V; SOT-23-5 (DBV) pinout"
+  },
+  "U9.3": {
+   "max": 5.932,
+   "src": "abs max -- TLV9061IDBVR (C398358): TI TLV906x datasheet p.12 s8.1: supply (V+)-(V-) 6 V; inputs (V-)-0.5..(V+)+0.5 V, +/-10 mA; s8.3 VS 1.8-5.5 V; SOT-23-5 (DBV) pinout"
+  },
+  "U9.4": {
+   "max": 5.932,
+   "src": "abs max -- TLV9061IDBVR (C398358): TI TLV906x datasheet p.12 s8.1: supply (V+)-(V-) 6 V; inputs (V-)-0.5..(V+)+0.5 V, +/-10 mA; s8.3 VS 1.8-5.5 V; SOT-23-5 (DBV) pinout"
+  },
+  "U9.5": {
+   "max": 6.0,
+   "src": "abs max -- TLV9061IDBVR (C398358): TI TLV906x datasheet p.12 s8.1: supply (V+)-(V-) 6 V; inputs (V-)-0.5..(V+)+0.5 V, +/-10 mA; s8.3 VS 1.8-5.5 V; SOT-23-5 (DBV) pinout"
+  },
+  "Y1.1": {
+   "max": "none",
+   "src": "TAXM25M4RDBCCT2T (C403946): passive crystal: no voltage rating applies (drive level is a separate check, quality M24)",
+   "why": "no voltage rating applies"
+  },
+  "Y1.3": {
+   "max": "none",
+   "src": "TAXM25M4RDBCCT2T (C403946): passive crystal: no voltage rating applies (drive level is a separate check, quality M24)",
+   "why": "no voltage rating applies"
+  },
+  "Y2.1": {
+   "max": 3.63,
+   "src": "operating -- CJO05-240003320B30 (C712738): CJ CJO05 oscillator datasheet p.2 s3.6: input voltage 3.3 Vdc +/-10 % (operating limit; no absolute maximum is published, so the pin is rated against 3.63 V)"
+  },
+  "Y2.3": {
+   "max": 3.63,
+   "src": "operating -- CJO05-240003320B30 (C712738): CJ CJO05 oscillator datasheet p.2 s3.6: input voltage 3.3 Vdc +/-10 % (operating limit; no absolute maximum is published, so the pin is rated against 3.63 V)"
+  },
+  "Y2.4": {
+   "max": 3.63,
+   "src": "operating -- CJO05-240003320B30 (C712738): CJ CJO05 oscillator datasheet p.2 s3.6: input voltage 3.3 Vdc +/-10 % (operating limit; no absolute maximum is published, so the pin is rated against 3.63 V)"
+  }
+ }
+}

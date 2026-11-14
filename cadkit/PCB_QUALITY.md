@@ -909,6 +909,32 @@ fixer's model is a rule that will one day pass a board the fixer broke.
 
 *Break it* never. Move the object to `.Fab` instead.
 
+### A25 — An isolation barrier is not bridged
+
+**Rule.** Opt-in: a board that declares `quality.isolation` (a galvanically isolated domain,
+e.g. an audio section behind a DC-DC module and digital isolators) is checked three ways.
+1. **Netlist.** Starting from the domain's ground (`isolation.ground`, e.g. `AGND`), the
+   domain is every net reached through every part EXCEPT the declared `barrier` parts. If
+   that flood reaches any other ground net, a part bridges the barrier: hard FAIL, with the
+   path (part and net, step by step). Each barrier part must have pads on both sides.
+2. **Copper.** On every copper layer, the domain's copper (tracks, vias, pads, zone fills)
+   keeps at least `isolation.moat_mm` from every other net's copper. Inside a barrier part,
+   its own side-1 to side-2 pads are the part's rating, not the board's, and are left out.
+   Any closer copper is a hard FAIL naming the layer.
+3. **Creepage report.** The smallest gap found, per layer (outer layers are creepage over
+   the surface, inner ones clearance through the laminate), printed as a note every run,
+   against `isolation.creepage_mm` when declared.
+
+**Why.** An isolated audio section exists to break a ground loop (a two-prong charger's
+leakage current through the guitar cable); ONE resistor, via or pour that touches both
+grounds undoes it silently, and nothing else in this pass would notice: two grounds joined
+by a 0 R are a perfectly well-formed board. (2026-11-13, the merged output board: an R60
+"star" resistor written for the old PWR_GND split was found tying PWR_GND to AGND.)
+
+**Declaration.** `quality.isolation = {"ground": "AGND", "barrier": [refs], "moat_mm": 1.0,
+"creepage_mm": optional, "why": text}`. No declaration, no rows: other boards are untouched.
+A bridge is fixed, never waived.
+
 ## Manual checks
 
 Sign each in `quality["manual"]` with what you checked against. If a rule does not apply

@@ -23,6 +23,7 @@ every candidate (refine.json), and leaves the best placements in <dir>/<stem>.re
 """
 from __future__ import annotations
 
+import _nowindow  # noqa: F401  (no console windows on Windows: _nowindow.py)
 import argparse
 import glob
 import json

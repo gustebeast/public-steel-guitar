@@ -305,7 +305,7 @@ class Boards:
     def __init__(self, geom_dir, *, height=None, tail=None, tht_legs=None, panel=None,
                  xh_mated_h=XH_MATED_H, ph_mated_h=PH_MATED_H, tht_tail=THT_TAIL,
                  side_plug_run=None, silk_font=None, silk_cap=SILK_CAP,
-                 silk_subst=None, unmated=(), finish="hasl"):
+                 silk_subst=None, unmated=(), finish="hasl", body_material=None):
         self.geom_dir = os.fspath(geom_dir)
         self.HEIGHT = dict(HEIGHT, **(height or {}))
         self.TAIL = dict(TAIL, **(tail or {}))
@@ -321,6 +321,11 @@ class Boards:
         # header and no housing in it (cadkit.web.boards) -- and a holder nothing is
         # fitted in, such as a fuse holder with its blade out, empty (cadkit.web.parts)
         self.UNMATED = {tuple(u) for u in unmated}
+        # {footprint name: material} -- what a part's BODY is made of where the web view has
+        # no model for it (KiCad's library has none here, cadkit.web.parts draws none): the
+        # box is then shown as that material. THERE IS NO DEFAULT: an undeclared box fails
+        # the web export (cadkit.web.boards.detail) rather than showing as board-green.
+        self.BODY_MATERIAL = dict(body_material or {})
         self._cache = {}
 
     def __kept_key__(self) -> str:
@@ -891,17 +896,27 @@ class Boards:
                 # body's full width -- drawn as a box it could never pass its panel hole
                 m = self.mouth(board, f["ref"])
                 sd, sl = spec["stub"]
-                assert m["dir"][0] > 0.99, "a stubbed panel part must face +X"
-                x1 = m["front"] - sl
+                # +X or -X (output_board, 2026-11-13: its panel is the board's -X edge). Drawn
+                # along u = sg * x, so a -X panel is the +X one mirrored; +X is unchanged
+                sg = 1.0 if m["dir"][0] > 0.99 else -1.0 if m["dir"][0] < -0.99 else 0.0
+                assert sg, "a stubbed panel part must face +X or -X"
                 ax_z = t + m["axis_h"]
-                out = out.union(cq.Workplane("YZ").circle(sd / 2.0).extrude(sl)
-                                .translate((x1, m["across"], ax_z)))
+
+                def _run(u0, u1, wp):        # wp extruded over u0..u1 (u0 < u1), in x
+                    a, b = sorted((sg * u0, sg * u1))
+                    return wp.extrude(b - a).translate((a, m["across"], ax_z))
+                u_front = sg * m["front"]
+                u_sh = u_front - sl                      # the shoulder: the body box ends here
+                out = out.union(_run(u_sh, u_front, cq.Workplane("YZ").circle(sd / 2.0)))
                 af, ht, shd, shl = spec["nut"]
-                head0 = x1 + spec["clamp"]              # the head bears on the clamp's face
-                out = out.union(cq.Workplane("YZ").polygon(6, af / math.cos(math.pi / 6))
-                                .extrude(ht).translate((head0, m["across"], ax_z)))
-                out = out.union(cq.Workplane("YZ").circle(shd / 2.0).extrude(shl)
-                                .translate((head0 - shl, m["across"], ax_z)))
+                head0 = u_sh + spec["clamp"]            # the head bears on the clamp's face
+                out = out.union(_run(head0, head0 + ht, cq.Workplane("YZ").polygon(
+                    6, af / math.cos(math.pi / 6))))
+                out = out.union(_run(head0 - shl, head0, cq.Workplane("YZ").circle(shd / 2.0)))
+                if sg > 0:
+                    x1 = sg * u_sh
+                else:
+                    x0 = sg * u_sh
             out = out.union(_box(x1 - x0, y1 - y0, h, x=(x0 + x1) / 2.0,
                                  y=(y0 + y1) / 2.0, z=z0 + h / 2.0))
             if spec and spec["nose"]:

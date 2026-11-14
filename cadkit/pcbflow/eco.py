@@ -40,6 +40,7 @@ board in the usual <project>/out; a board anywhere else needs it set by hand.
 """
 from __future__ import annotations
 
+import _nowindow  # noqa: F401  (no console windows on Windows: _nowindow.py)
 import json
 import math
 import os

@@ -37,6 +37,10 @@ that agreed with the full chain. Several placements score at once, a process eac
 """
 from __future__ import annotations
 
+try:
+    import _nowindow  # noqa: F401  (no console windows on Windows: _nowindow.py)
+except ImportError:
+    pass
 import json
 import math
 import os

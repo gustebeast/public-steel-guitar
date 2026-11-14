@@ -1,0 +1,548 @@
+{
+ "board": "output_board, ONE board, 120.3 x 100 x 1.6, FINAL position (after the +X slide d = 19)",
+ "source": "trial oneG_j6 (bronner 2026-11-13); smaller parts may still move a few mm between trials, panel parts are pinned",
+ "edge_x": -3.87,
+ "minus_x_edge": -124.17,
+ "z": [
+  -108.24000000000001,
+  -8.240000000000002
+ ],
+ "laminate_y": [
+  -87.5,
+  -85.9
+ ],
+ "component_face_y": -85.9,
+ "back_side_parts": [],
+ "courtyard_note": "x/z are COURTYARDS (body + assembly margin), not bodies; h from src/board_geom HEIGHT",
+ "parts_past_inner_face": [
+  {
+   "ref": "J5",
+   "footprint": "Jack_6.35mm_Neutrik_NMJ6HCD2_Horizontal",
+   "side": "front (+Y)",
+   "x": [
+    -29.05,
+    -1.53
+   ],
+   "z": [
+    -32.35,
+    -12.13
+   ],
+   "h": 15.67,
+   "y": [
+    -85.9,
+    -70.23
+   ],
+   "tail": {
+    "length": 3.4,
+    "y": [
+     -90.9,
+     -87.5
+    ],
+    "x": [
+     -23.22,
+     -7.52
+    ],
+    "z": [
+     -31.86,
+     -12.62
+    ],
+    "note": "UNCLIPPED; x/z over the through-hole pads (pads ROTATED as their own size, conservative)"
+   },
+   "protrudes": 1.9,
+   "courtyard_past_edge": 2.3,
+   "opening": "round 11.8",
+   "axis_off_face": 8.14,
+   "wall": "4.0 (src/board_geom.py PANEL clamp): stub 11.4 x 3.0 past the shoulder, nut 11 AF x 2.05, washer 9 x 3.74, rear mount, boss 18.8, cbore 15.6"
+  },
+  {
+   "ref": "J1",
+   "footprint": "USB_C_Receptacle_HRO_TYPE-C-31-M-12",
+   "side": "front (+Y)",
+   "x": [
+    -11.28,
+    -1.88
+   ],
+   "z": [
+    -63.56,
+    -52.92
+   ],
+   "h": 3.25,
+   "y": [
+    -85.9,
+    -82.65
+   ],
+   "tail": {
+    "length": 3.4,
+    "y": [
+     -90.9,
+     -87.5
+    ],
+    "x": [
+     -10.2,
+     -4.17
+    ],
+    "z": [
+     -63.61,
+     -52.87
+    ],
+    "note": "UNCLIPPED; x/z over the through-hole pads (pads ROTATED as their own size, conservative)"
+   },
+   "protrudes": 1.55,
+   "courtyard_past_edge": 2.0,
+   "opening": "stadium 12.8 x 7.0",
+   "axis_off_face": 1.65
+  },
+  {
+   "ref": "J2",
+   "footprint": "USB_C_Receptacle_HRO_TYPE-C-31-M-12",
+   "side": "front (+Y)",
+   "x": [
+    -11.28,
+    -1.88
+   ],
+   "z": [
+    -91.56,
+    -80.92
+   ],
+   "h": 3.25,
+   "y": [
+    -85.9,
+    -82.65
+   ],
+   "tail": {
+    "length": 3.4,
+    "y": [
+     -90.9,
+     -87.5
+    ],
+    "x": [
+     -10.2,
+     -4.17
+    ],
+    "z": [
+     -91.61,
+     -80.87
+    ],
+    "note": "UNCLIPPED; x/z over the through-hole pads (pads ROTATED as their own size, conservative)"
+   },
+   "protrudes": 1.55,
+   "courtyard_past_edge": 2.0,
+   "opening": "stadium 12.8 x 7.0",
+   "axis_off_face": 1.65
+  },
+  {
+   "ref": "D11",
+   "footprint": "D_SMB",
+   "side": "front (+Y)",
+   "x": [
+    -23.61,
+    -19.12
+   ],
+   "z": [
+    -58.89,
+    -51.59
+   ],
+   "h": 2.45,
+   "y": [
+    -85.9,
+    -83.45
+   ]
+  },
+  {
+   "ref": "D15",
+   "footprint": "D_SMB",
+   "side": "front (+Y)",
+   "x": [
+    -20.81,
+    -13.52
+   ],
+   "z": [
+    -89.39,
+    -84.89
+   ],
+   "h": 2.45,
+   "y": [
+    -85.9,
+    -83.45
+   ]
+  },
+  {
+   "ref": "C41",
+   "footprint": "C_1210_3225Metric",
+   "side": "front (+Y)",
+   "x": [
+    -20.06,
+    -15.47
+   ],
+   "z": [
+    -35.94,
+    -32.75
+   ],
+   "h": 1.8,
+   "y": [
+    -85.9,
+    -84.1
+   ]
+  },
+  {
+   "ref": "C90",
+   "footprint": "C_1206_3216Metric",
+   "side": "front (+Y)",
+   "x": [
+    -19.06,
+    -14.47
+   ],
+   "z": [
+    -84.48,
+    -82.2
+   ],
+   "h": 1.6,
+   "y": [
+    -85.9,
+    -84.3
+   ]
+  },
+  {
+   "ref": "C20",
+   "footprint": "C_0805_2012Metric",
+   "side": "front (+Y)",
+   "x": [
+    -18.56,
+    -15.17
+   ],
+   "z": [
+    -47.41,
+    -45.47
+   ],
+   "h": 1.45,
+   "y": [
+    -85.9,
+    -84.45
+   ]
+  },
+  {
+   "ref": "U9",
+   "footprint": "SOT-23-5",
+   "side": "front (+Y)",
+   "x": [
+    -18.49,
+    -14.4
+   ],
+   "z": [
+    -39.64,
+    -36.25
+   ],
+   "h": 1.45,
+   "y": [
+    -85.9,
+    -84.45
+   ]
+  },
+  {
+   "ref": "C24",
+   "footprint": "C_0805_2012Metric",
+   "side": "front (+Y)",
+   "x": [
+    -18.14,
+    -16.19
+   ],
+   "z": [
+    -43.34,
+    -39.95
+   ],
+   "h": 1.45,
+   "y": [
+    -85.9,
+    -84.45
+   ]
+  },
+  {
+   "ref": "U2",
+   "footprint": "TSSOP-14_4.4x5mm_P0.65mm",
+   "side": "front (+Y)",
+   "x": [
+    -24.81,
+    -19.32
+   ],
+   "z": [
+    -45.98,
+    -38.3
+   ],
+   "h": 1.2,
+   "y": [
+    -85.9,
+    -84.7
+   ]
+  },
+  {
+   "ref": "U19",
+   "footprint": "SOT-23-6",
+   "side": "front (+Y)",
+   "x": [
+    -19.06,
+    -15.67
+   ],
+   "z": [
+    -81.78,
+    -77.69
+   ],
+   "h": 1.1,
+   "y": [
+    -85.9,
+    -84.8
+   ]
+  },
+  {
+   "ref": "Q7",
+   "footprint": "TDSON-8-1",
+   "side": "front (+Y)",
+   "x": [
+    -20.65,
+    -13.5
+   ],
+   "z": [
+    -74.67,
+    -69.02
+   ],
+   "h": 1.1,
+   "y": [
+    -85.9,
+    -84.8
+   ]
+  },
+  {
+   "ref": "D12",
+   "footprint": "D_SOD-523",
+   "side": "front (+Y)",
+   "x": [
+    -15.36,
+    -13.97
+   ],
+   "z": [
+    -79.48,
+    -77.0
+   ],
+   "h": 0.75,
+   "y": [
+    -85.9,
+    -85.15
+   ]
+  },
+  {
+   "ref": "D13",
+   "footprint": "D_SOD-523",
+   "side": "front (+Y)",
+   "x": [
+    -18.61,
+    -16.12
+   ],
+   "z": [
+    -77.34,
+    -75.94
+   ],
+   "h": 0.75,
+   "y": [
+    -85.9,
+    -85.15
+   ]
+  },
+  {
+   "ref": "D2",
+   "footprint": "D_SOD-523",
+   "side": "front (+Y)",
+   "x": [
+    -18.61,
+    -16.12
+   ],
+   "z": [
+    -64.23,
+    -62.84
+   ],
+   "h": 0.75,
+   "y": [
+    -85.9,
+    -85.15
+   ]
+  },
+  {
+   "ref": "D3",
+   "footprint": "D_SOD-523",
+   "side": "front (+Y)",
+   "x": [
+    -15.71,
+    -13.23
+   ],
+   "z": [
+    -64.23,
+    -62.84
+   ],
+   "h": 0.75,
+   "y": [
+    -85.9,
+    -85.15
+   ]
+  },
+  {
+   "ref": "D7",
+   "footprint": "D_SOD-523",
+   "side": "front (+Y)",
+   "x": [
+    -15.16,
+    -13.77
+   ],
+   "z": [
+    -35.29,
+    -32.8
+   ],
+   "h": 0.75,
+   "y": [
+    -85.9,
+    -85.15
+   ]
+  },
+  {
+   "ref": "C19",
+   "footprint": "C_0402_1005Metric",
+   "side": "front (+Y)",
+   "x": [
+    -18.07,
+    -16.26
+   ],
+   "z": [
+    -45.09,
+    -44.19
+   ],
+   "h": 0.55,
+   "y": [
+    -85.9,
+    -85.35
+   ]
+  },
+  {
+   "ref": "C58",
+   "footprint": "C_0402_1005Metric",
+   "side": "front (+Y)",
+   "x": [
+    -20.72,
+    -19.81
+   ],
+   "z": [
+    -48.25,
+    -46.44
+   ],
+   "h": 0.55,
+   "y": [
+    -85.9,
+    -85.35
+   ]
+  },
+  {
+   "ref": "C91",
+   "footprint": "C_0402_1005Metric",
+   "side": "front (+Y)",
+   "x": [
+    -15.32,
+    -14.41
+   ],
+   "z": [
+    -81.75,
+    -79.94
+   ],
+   "h": 0.55,
+   "y": [
+    -85.9,
+    -85.35
+   ]
+  },
+  {
+   "ref": "C43",
+   "footprint": "C_0402_1005Metric",
+   "side": "front (+Y)",
+   "x": [
+    -15.27,
+    -13.46
+   ],
+   "z": [
+    -40.7,
+    -39.79
+   ],
+   "h": 0.55,
+   "y": [
+    -85.9,
+    -85.35
+   ]
+  },
+  {
+   "ref": "R20",
+   "footprint": "R_0402_1005Metric",
+   "side": "front (+Y)",
+   "x": [
+    -14.03,
+    -13.1
+   ],
+   "z": [
+    -37.56,
+    -35.72
+   ],
+   "h": 0.5,
+   "y": [
+    -85.9,
+    -85.4
+   ]
+  },
+  {
+   "ref": "R21",
+   "footprint": "R_0402_1005Metric",
+   "side": "front (+Y)",
+   "x": [
+    -13.44,
+    -12.5
+   ],
+   "z": [
+    -34.67,
+    -32.81
+   ],
+   "h": 0.5,
+   "y": [
+    -85.9,
+    -85.4
+   ]
+  },
+  {
+   "ref": "R73",
+   "footprint": "R_0402_1005Metric",
+   "side": "front (+Y)",
+   "x": [
+    -18.73,
+    -17.8
+   ],
+   "z": [
+    -57.57,
+    -55.72
+   ],
+   "h": 0.5,
+   "y": [
+    -85.9,
+    -85.4
+   ]
+  },
+  {
+   "ref": "R76",
+   "footprint": "R_0402_1005Metric",
+   "side": "front (+Y)",
+   "x": [
+    -20.84,
+    -19.9
+   ],
+   "z": [
+    -91.66,
+    -89.81
+   ],
+   "h": 0.5,
+   "y": [
+    -85.9,
+    -85.4
+   ]
+  }
+ ]
+}

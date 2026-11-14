@@ -2111,3 +2111,11 @@ Collar A's bore is the motor coupler's formed thread, and its split now runs fro
 through the +Y side, so the M3 x 12 closes it onto the screw. Print it -X -> +X (its -X face on the
 bed, the bearing boss last); the M3 holes across it print as teardrops.
 The housing's guide-rod cap has a cone roof: a small hole at the boss's end is expected.
+
+## Output board: no leads to a brain board — it IS the brain (2026-11-13)
+
+- **The output board carries the CM5 and the H743 itself**, so the brain board, its two XH power leads (J10, J12) and its PH logic lead (J11) no longer exist. Nothing to plug between them.
+- **Two ribbons leave the output board:**
+  - **J240 → connector board J1**: one premade 30-way 1.27 mm (2 × 15) IDC ribbon. It carries the motors' 24 V, the lights' 24 V, bus A, both bus-B arms and the two clock / data pairs (SCK / SDT, SCK_FOOT / SDT_FOOT). Power rides on several parallel wires; pinout `CONN_RIBBON` in `elec/harness.py`.
+  - **J4 → optical board**: the 20-way (2 × 10) ribbon for the pickup's converters.
+- Plug both ribbons with the power off. The ten motors, both bus-B arms and both LED drops plug into the **connector board**, not the output board.
