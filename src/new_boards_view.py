@@ -46,12 +46,13 @@ VIEW_HEIGHT = {
     "PinHeader_2x15_P1.27mm_Vertical_SMD": 5.3,   # J1 PZ1.27-2x15P: AS its 2x8 / 2x10 siblings
     "JST_PH_B4B-PH-SM4-TB_1x04-1MP_P2.00mm_Vertical": 5.5,   # AS cadkit's PH side-entry (PH_SIDE_H); mated -> ph_mated_h
     "C_2220_5750Metric": 2.5,                # ESTIMATED: a 22 uF / 50 V 2220's usual 2.5 max
-    # output_board parts the committed geom carries without a height (the view raised KeyError
-    # at HEAD, 2026-11-14): from the drawings where read
+    # output_board parts with no height in the project table (the view raised KeyError
+    # at HEAD, 2026-11-14; geom = the mL2 trial): from the drawings where read
     "L_CommonModeChoke_Coilank_ACM2012": 1.3,     # TDK ACM2012: 2.0 x 1.2 x 1.3
     "Converter_DCDC_Murata_MEE1SxxxxSC_THT": 10.0,   # U30 B0509S-1WR3: 11.50 x 6.0 x 10.0 (Mornsun)
     "L_CommonModeChoke_Wuerth_WE-SL5-HC": 5.0,    # ESTIMATED: Wurth's PDF refused the fetch -- read it
-    "Fuse_1812_4532Metric": 1.5,             # ESTIMATED; F204 is a 2920 now -- the geom is a stale export
+    "Fuse_2920_7451Metric": 2.0,             # F204 2920L200/60GR: ESTIMATED (conservative) -- read Littelfuse's drawing
+    "L_Changjiang_FXL0630": 3.0,             # L1: the series' 0630 = 6.6 x 7.0 x 3.0
     "TerminalBlock_Phoenix_PT-1,5-2-3.5-H_1x02_P3.50mm_Horizontal": 8.5,   # J8: ESTIMATED, a 3.5 mm PT's usual body
 }
 
