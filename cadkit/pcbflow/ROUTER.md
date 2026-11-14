@@ -265,6 +265,26 @@ candidate set inside a placement search -- a few boards, minutes -- not a sweep.
   length 1988 good, 2032 to 2185 bad. All five still route closed, so `open` alone cannot
   rank them and contention is the term that does. ~45 s a board, three at once.
 
+**Order-dependent pin-row escapes (output_signal, 2026-11-13) -- not a placement score, not
+a local repair.** 16 candidates of 3-4 passives moved 1-4 mm (6 legal) and 9 jitters of
+0.05-0.15 mm, all routed with the same router. The unmoved board and 8 of 9 jitters route
+clean; every real move opened 2-7 nets, ALL at the USB3300 (U4: PHY_XI, PHY_1V8A,
+ULPI_*), although the moved parts sat 10-54 mm from it (one cap turned 15 mm away opened
+ULPI_D3/D4). Neither the global plan (overflow 2.8-3.5 throughout) nor a pad-scale escape
+ratio per IC (flat to the third decimal) moves with these placements: the escape is
+routable, and whichever order the negotiation falls in decides it. Logged, ULPI_D3/D4
+never lack a path -- they end sharing each other's (and D2's) space at U4's pins, and
+priority repair and wall repair both fail before `_rip` opens them. Tried and reverted
+(patch kept outside the repo): (1) region rip-up -- every net within 1.5 / 3 / 6 mm of the
+conflict (9 / 14 / 27 nets) lifted and re-laid stuck-first, shorter- or longer-first: no
+order better; (2) the same with the history zeroed for the lifted set: no change; (3) the
+lifted set re-negotiated with `_rounds` from pf 0.5: worse, 10 nets open including GND --
+**`_rounds` on a subset disturbs the plane nets** (their keep_paths / joins), so it is not
+a sub-solver until plane nets and everything outside the lift are locked. Read placements
+over several jitters (`placescore --spread`) rather than one route. If this shows again at
+a large pin row (an H743 or CM5 escape), making `_rounds` subset-safe and retrying (3) is
+the next step.
+
 ## Runtime
 
 Python 3.12 + numpy + numba (installed 2026-11-08). The finish chain runs steps under
