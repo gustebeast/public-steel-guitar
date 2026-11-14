@@ -1004,6 +1004,34 @@ def auto_floorplan(parts, sensitive=SENSITIVE, noisy=NOISY_EDGE, xtal=XTAL_NET, 
             sens.add(r)
         elif len(parts[r]["pads"]) == 2 and sig and all(sensitive.search(n) for n in sig):
             sens.add(r)
+    # ⚠ A SENSITIVE NAME IS NOT ENOUGH FOR A TWO-PIN PART (output_board mJ, 2026-11-13): the
+    # power button's SW_SENSE -- 10 V, a zener clamp, a 1 ms RC into a FET gate -- matched
+    # SENSE\w*, so its zener D208 and pull-up R254 joined the analog parts and the trial
+    # reported the H743 2.26 mm from D208 as a floorplan miss. A two-pin part listens only
+    # if a sensitive net of its own reaches something that listens: a sensitive IC, a
+    # photodiode, or another such net's part (a divider chain). Ones reaching none leave.
+    def _hears(r, seen):
+        for n in rnets[r] - set(ground):
+            if not sensitive.search(n):
+                continue
+            for o in nets.get(n, set()) - {r}:
+                if o in seen:
+                    continue
+                if re.match(r"^PD\d", o) or (ic(o) and o in sens):
+                    return True
+                if o in sens and len(parts[o]["pads"]) == 2 and _hears(o, seen | {r, o}):
+                    return True
+        return False
+    sens -= {r for r in list(sens) if len(parts[r]["pads"]) == 2 and not _hears(r, {r})}
+    # ⚠ A PART'S OWN INPUT IS NOT ITS VICTIM (output_board mJ, same day): SENSE_5V /
+    # SENSE_24V's divider resistors read as sensitive by name, and the MCU they feed
+    # carries USB -- so the rule asked U1 to stand 6 mm off its own ADC dividers. A two-pin
+    # sensitive part whose sensitive net lands on a pin of the loud group is that group's
+    # input: it belongs AT the group, and leaves that rule's sensitive side.
+    def _own(group):
+        g = set(group)
+        return {r for r in sens if len(parts[r]["pads"]) == 2
+                and any(nets.get(n, set()) & g for n in rnets[r] - set(ground) if sensitive.search(n))}
     rules = []
     for L in sorted(r for r in parts if re.match(r"^L\d", r) and r not in skip):
         for n in sorted(rnets[L]):
@@ -1011,7 +1039,7 @@ def auto_floorplan(parts, sensitive=SENSITIVE, noisy=NOISY_EDGE, xtal=XTAL_NET, 
             if SUPPLY.search(n) or n in ground or len(members) > 4 or not any(ic(m) for m in members if m != L):
                 continue
             grp = sorted(members - set(skip))
-            b = sorted((sens | crystals) - set(grp))
+            b = sorted((sens | crystals) - set(grp) - _own(grp))
             if b:
                 rules.append({"kind": "apart", "a": grp, "b": b, "min_mm": switch_mm, "hard": False, "weight": 1.0,
                               "forbid": True,
@@ -1027,7 +1055,7 @@ def auto_floorplan(parts, sensitive=SENSITIVE, noisy=NOISY_EDGE, xtal=XTAL_NET, 
                           "why": "switch node %s off the USB path (%s)" % (r0["a"], " ".join(b)),
                           "src": "auto_floorplan (netlist)"})
     if loud:
-        b = sorted(sens - set(loud))
+        b = sorted(sens - set(loud) - _own(loud))
         if b:
             rules.append({"kind": "apart", "a": loud, "b": b, "min_mm": edge_mm, "hard": False, "weight": 0.5, "forbid": False,
                           "why": "USB / relay edges (%s) off the analog parts" % " ".join(loud),
