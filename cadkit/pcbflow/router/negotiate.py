@@ -489,6 +489,8 @@ class Router(CoupledMixin):
     COUPLE_WALLS = True              # a coupled centreline goes round pairs already to the rules
     PAIR_WALL = True                 # in a pair attempt the mate's copper is a wall (_pair_try)
     PLANE_MAIN = True                # plane joins aim at the main body's fill as it stands (_rounds)
+    NOPATH_RETRY = 3                 # rounds a net may find no path before _rounds stops searching it
+    PAIR_RENEG_S = 120.0             # a pair refinish's re-negotiation budget (_pair_renegotiate)
     PLANE_KEEP = True                # a sharing plane net re-joins only its sharing pieces (_rounds)
 
     # ⚠ HEURISTIC WEIGHT 1.2 (optical S53o0, 2026-11-09): negotiation 123 -> 90 s, same
@@ -1785,7 +1787,11 @@ class Router(CoupledMixin):
         # it was never re-routed -- the pair kept one shared cell and was put back. Every
         # net whose keep-out covers a cell the pair shares is moved too.
         todo += [o for o in self._covering([a, b]) if o not in lock and o not in todo and not o.failed]
-        left, _ = self._rounds(todo, pf, 12, 600, locked=lock)
+        # ⚠ A PAIR'S RE-NEGOTIATION GETS PAIR_RENEG_S, NOT THE ROUND'S 600 (output_board mL2,
+        # 2026-11-14, three router-alone runs): the one that succeeded (GADGET) took 31-33 s;
+        # every one past 100 s was put back -- 200-370 s each, ending 9-102 nets open --
+        # and together they were ~500 s of a 1657-2115 s route.
+        left, _ = self._rounds(todo, pf, 12, self.PAIR_RENEG_S, locked=lock)
         fail1 = self._open_w(lock, left)
         if self.TUNE and fail1 <= fail0 and self._skew_only(self.pair_faults(a)):
             self._tune(a)                  # the rest moved: meander the short rail in the room left
@@ -1845,8 +1851,11 @@ class Router(CoupledMixin):
         extra = zc - (self.wref / 2.0 + m.clear + m.margin)
         if extra > m.pitch / 2.0:
             from scipy.ndimage import distance_transform_edt
+            # only on the pour's own layers (a whole plane's judge runs every round: GND is
+            # on 2 of output_board's 4)
+            on = reg[sl].reshape(L, -1).any(axis=1)
             other = np.stack([distance_transform_edt(~other[k]) * m.pitch < extra
-                              if other[k].any() else other[k] for k in range(L)])
+                              if (on[k] and other[k].any()) else other[k] for k in range(L)])
         fill = reg[sl] & (fd >= zc) & ~other
         fill &= (m.edge[i0:i1, j0:j1] >= m.edge_clear)[None]
         rr = max(1, int(round(zt / 2.0 / m.pitch)))
@@ -2466,6 +2475,21 @@ class Router(CoupledMixin):
                     break
             if path is None:
                 return None
+            # ⚠ A THROUGH VIA ON THE WAY IS ALREADY THE JOIN (optical replay, 2026-11-14): a join
+            # from Cd2.2 changed layer F.Cu -> In2 at a plane via site, ran 0.35 mm on In2 and
+            # ended on another site, where the join's via went in -- two vias 0.35 mm apart,
+            # drills 0.05 mm apart (A12), since claims come after the search. A via is a
+            # through via: the first layer change on the way that stands on a free plane site
+            # reaches the plane, so the join ends there (source side kept, its via added below).
+            kk_, rr_ = path // (h * w), path % (h * w)
+            at_ = np.nonzero((rr_[1:] == rr_[:-1]) & (kk_[1:] != kk_[:-1]))[0]
+            if at_.size > 0:
+                free_ = np.isfinite(vcell.reshape(-1))
+                for t_ in at_[::-1]:                     # from the source end
+                    if site[rr_[t_]] and free_[rr_[t_]] and not tgt0[path[t_ + 1]]:
+                        if t_ + 1 > 0:
+                            path = path[t_ + 1:]
+                        break
             # ⚠ A JOIN THAT ARRIVES ON THE POUR'S OWN LAYER NEEDS NO VIA (optical +3V3D,
             # 2026-11-09: the regional pour is on B.Cu, a join's track came in on B.Cu, and
             # the layer change always added here dropped a via touching B.Cu only -- the
@@ -2504,8 +2528,10 @@ class Router(CoupledMixin):
         d = np.hypot(ij[:, None, 0] - ij[None, :, 0], ij[:, None, 1] - ij[None, :, 1]) * m.pitch
         lim = m.via_drill + m.hole_to_hole
         for a_, b_ in np.argwhere(np.triu(d < lim - 1e-9, 1)):
-            self.log("  ⚠ %s: plane-join vias %.2f mm apart (hole-to-hole wants %.2f)"
-                     % (net.name, d[a_, b_], lim))
+            self.log("  ⚠ %s: plane-join vias %.2f mm apart (hole-to-hole wants %.2f) at "
+                     "(%.2f, %.2f) / (%.2f, %.2f)"
+                     % (net.name, d[a_, b_], lim, float(m.cx[int(ij[a_, 1])]), float(m.cy[int(ij[a_, 0])]),
+                        float(m.cx[int(ij[b_, 1])]), float(m.cy[int(ij[b_, 0])])))
 
     # ----------------------------------------------------------------- occupancy
     def _mark(self, net):
@@ -2892,6 +2918,8 @@ class Router(CoupledMixin):
         budget_s = self._left(budget_s)
         best, since = None, 0
         self._stalled = False
+        for n in self.nets:
+            n.nopath = 0                 # each negotiation tries a no-path net afresh (NOPATH_RETRY)
         kept0 = {n: n.keep_paths for n in self.nets if n.plane}
         for it in range(1, iters + 1):
             for net in todo:
@@ -2915,6 +2943,7 @@ class Router(CoupledMixin):
                 net.main_xy = mx0
                 net.n_open = 0
                 net.failed = paths is None
+                net.nopath = (getattr(net, "nopath", 0) + 1) if net.failed else 0
                 net.paths = paths or []
                 if not paths:
                     net.necks = []
@@ -2927,7 +2956,14 @@ class Router(CoupledMixin):
                 if net in locked:
                     continue
                 if net.failed:
-                    todo.append(net)
+                    # ⚠ NO PATH THREE ROUNDS RUNNING IS NO PATH (optical replay, 2026-11-14): 20
+                    # nets found none in every round, each a failed search flooding the whole
+                    # 3 x 3595 x 1146 grid -- ~96 s a round, the 1800 s budget gone in 19. Other
+                    # nets are priced, not walls, so pricing harder does not open a way: a net
+                    # with no path NOPATH_RETRY rounds running is not searched again this
+                    # negotiation (still counted failed; a later negotiation tries it afresh).
+                    if getattr(net, "nopath", 0) < self.NOPATH_RETRY:
+                        todo.append(net)
                     continue
                 shared = False
                 bad_q = set()
