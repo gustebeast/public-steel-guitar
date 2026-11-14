@@ -5853,6 +5853,31 @@ def build(stem):
         _edge_hole(board, *r)
     for sl in notes.get("outline_slots", ()):
         _edge_slot(board, [tuple(p) for p in sl["poly"]], sl["rects"])
+    # "rule_areas": opt-in keep-outs in the zones' frame, e.g. a galvanic barrier's moat
+    # (output_board, 2026-11-13: digital tracks ran through the 1 mm moat of the isolated
+    # audio corner because nothing told the router it was there). Each: {"poly": [[x, y]...],
+    # "layers": "all" or ["F.Cu", ...], "tracks" / "vias" / "fills": allowed? (default
+    # False), "why"}. Pads stay allowed: the barrier parts straddle it.
+    for ra in notes.get("rule_areas", ()):
+        _poly = pcbnew.SHAPE_LINE_CHAIN()
+        for _pt in ra["poly"]:
+            _poly.Append(_to_board(float(_pt[0]), float(_pt[1])))
+        _poly.SetClosed(True)
+        _z = pcbnew.ZONE(board)
+        _z.SetIsRuleArea(True)
+        _z.SetDoNotAllowTracks(not ra.get("tracks", False))
+        _z.SetDoNotAllowVias(not ra.get("vias", False))
+        _z.SetDoNotAllowZoneFills(not ra.get("fills", False))
+        _z.SetDoNotAllowPads(False)
+        if ra.get("layers", "all") == "all":
+            _z.SetLayerSet(pcbnew.LSET.AllCuMask())
+        else:
+            _ls = pcbnew.LSET()
+            for _ln in ra["layers"]:
+                _ls.AddLayer(board.GetLayerID(_ln))
+            _z.SetLayerSet(_ls)
+        _z.AddPolygon(_poly)
+        board.Add(_z)
 
     for z in notes.get("zones", []):
         # Two spellings, because the three-tuple is every board's ground plane and should

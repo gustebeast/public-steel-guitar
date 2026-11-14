@@ -152,6 +152,7 @@ HARD = {
     "A20": ("",),
     "A21": ("",),
     "A24": ("",),
+    "A25": ("",),
     "A16": ("steady-state worst case", "can make NO CLAIM",
             "no worst-case voltage is declared", "NO voltage rating is declared",
             "states no `max`", "with no `src`", "gives no `why`"),
@@ -2777,6 +2778,144 @@ def closure_detours(ctx):
     if not out:
         out.append(("-", None, "no closure laid by close_last is on this board"))
     return out
+
+
+@rule("A25")
+def isolation_barrier(ctx):
+    """quality.isolation: the isolated domain is reached from its ground only through the
+    barrier parts (netlist), keeps moat_mm from every other net's copper on every layer
+    (copper), and the smallest gap is reported (creepage). PCB_QUALITY.md A25."""
+    iso = ctx.q.get("isolation")
+    if not iso:
+        return []
+    rows = []
+    dom_gnd, barrier = iso["ground"], set(iso.get("barrier", ()))
+    moat = float(iso.get("moat_mm", 1.0))
+    # 1. the netlist flood, barrier parts excluded
+    part_nets = collections.defaultdict(set)
+    for net, pads in ctx.by_net.items():
+        for ref, _n, _p in pads:
+            part_nets[ref].add(net)
+    parent = {dom_gnd: None}
+    todo = [dom_gnd]
+    while todo:
+        net = todo.pop()
+        for ref, _n, _p in ctx.by_net.get(net, ()):
+            if ref in barrier:
+                continue
+            for nxt in part_nets[ref]:
+                if nxt not in parent:
+                    parent[nxt] = (ref, net)
+                    todo.append(nxt)
+    domain = set(parent)
+    leaks = sorted(n for n in domain if n in ctx.grounds and n != dom_gnd)
+    for g in leaks:
+        path, n = [], g
+        while parent[n]:
+            ref, prev = parent[n]
+            path.append("%s -> %s" % (ref, n))
+            n = prev
+        rows.append((g, False, "the isolated domain (%s) reaches %s without a barrier part: "
+                     "%s -> %s. A part bridges the barrier"
+                     % (dom_gnd, g, dom_gnd, " -> ".join(reversed(path)))))
+    for ref in sorted(barrier):
+        nets = part_nets.get(ref, set())
+        if not (nets & domain and nets - domain):
+            rows.append((ref, False, "barrier part %s does not have pads on both sides of the "
+                         "barrier (domain %s, other %s)" % (ref, sorted(nets & domain)[:3],
+                                                            sorted(nets - domain)[:3])))
+    if leaks:
+        return rows                       # the copper sides mean nothing while the nets join
+    # 2 / 3. the copper, layer by layer
+    err = pcbnew.FromMM(0.005)
+    corner = pcbnew.CORNER_STRATEGY_ROUND_ALL_CORNERS
+
+    def sets(layer):
+        dom, oth, dom_b, oth_b = (pcbnew.SHAPE_POLY_SET() for _ in range(4))
+        for tr in ctx.board.GetTracks():
+            if tr.IsOnLayer(layer) and tr.GetNetname():
+                tr.TransformShapeToPolygon(dom if tr.GetNetname() in domain else oth,
+                                           layer, 0, err, pcbnew.ERROR_INSIDE)
+        for fp in ctx.board.GetFootprints():
+            bar = fp.GetReference() in barrier
+            for pad in fp.Pads():
+                if not pad.IsOnLayer(layer) or not pad.GetNetname():
+                    continue
+                side = pad.GetNetname() in domain
+                tgt = (dom_b if side else oth_b) if bar else (dom if side else oth)
+                pad.TransformShapeToPolygon(tgt, layer, 0, err, pcbnew.ERROR_INSIDE)
+        for z in ctx.board.Zones():
+            if z.IsOnLayer(layer) and z.GetNetname() and not z.GetIsRuleArea():
+                (dom if z.GetNetname() in domain else oth).BooleanAdd(
+                    z.GetFilledPolysList(layer))
+        return dom, oth, dom_b, oth_b
+
+    def touches(a, b, gap):
+        if a.OutlineCount() == 0 or b.OutlineCount() == 0:
+            return False
+        x = pcbnew.SHAPE_POLY_SET(a)
+        if gap > 0:
+            x.Inflate(pcbnew.FromMM(gap), corner, err)
+        x.BooleanIntersection(b)
+        return x.Area() > 1e3            # nm^2: past rounding
+
+    def min_gap(pairs, hi=5.0):
+        if not any(touches(a, b, hi) for a, b in pairs):
+            return None                  # nothing within hi
+        if any(touches(a, b, 0.0) for a, b in pairs):
+            return 0.0
+        lo = 0.0
+        for _ in range(9):
+            mid = (lo + hi) / 2
+            if any(touches(a, b, mid) for a, b in pairs):
+                hi = mid
+            else:
+                lo = mid
+        return hi
+
+    gaps = {}
+    for layer in ctx.board.GetEnabledLayers().CuStack():
+        dom, oth, dom_b, oth_b = sets(layer)
+        # a barrier part's own side-1 / side-2 pads (dom_b vs oth_b) are its rating, not ours
+        g = min_gap([(dom, oth), (dom, oth_b), (dom_b, oth)])
+        name = ctx.board.GetLayerName(layer)
+        gaps[name] = g
+        if g is not None and g < moat - 0.01:
+            # where: each piece of other-net copper inside the moat, with its net
+            spots = []
+            band = pcbnew.SHAPE_POLY_SET(dom)
+            band.Inflate(pcbnew.FromMM(moat - 0.01), corner, err)
+            band.BooleanAdd(pcbnew.SHAPE_POLY_SET(dom_b))
+            for nm, items in (("track", ctx.board.GetTracks()), ("zone", ctx.board.Zones())):
+                for it in items:
+                    if not it.IsOnLayer(layer) or it.GetNetname() in domain or not it.GetNetname():
+                        continue
+                    ps = pcbnew.SHAPE_POLY_SET()
+                    if nm == "zone":
+                        ps = pcbnew.SHAPE_POLY_SET(it.GetFilledPolysList(layer))
+                    else:
+                        it.TransformShapeToPolygon(ps, layer, 0, err, pcbnew.ERROR_INSIDE)
+                    ps.BooleanIntersection(band)
+                    if ps.Area() > 1e3:
+                        bb = ps.BBox()
+                        c = (MM(bb.Centre().x), MM(bb.Centre().y))
+                        spots.append("%s %s %s" % (it.GetNetname(), nm, _where(ctx, c)))
+            rows.append((name, False, "on %s the isolated domain's copper comes within %.2f mm "
+                         "of another net's (the moat is %.2f mm): copper is in the moat -- %s"
+                         % (name, g, moat, "; ".join(spots[:6]) or "pads only")))
+    need = iso.get("creepage_mm")
+    shown = ", ".join("%s %s" % (k, "-" if v is None else "%.2f" % v) for k, v in gaps.items())
+    found = [v for v in gaps.values() if v is not None]
+    worst = min(found) if found else None
+    short = need is not None and worst is not None and worst < need
+    rows.append(("creepage", False if short else None,
+                 "smallest gap between the isolated domain (%d nets) and everything else, per "
+                 "layer (outer = creepage, inner = clearance; '-' = none within 5 mm): %s%s"
+                 % (len(domain), shown, "" if need is None else "; declared need %.2f mm" % need)))
+    if not any(ok is False for _s, ok, _t in rows):
+        rows.insert(0, (dom_gnd, True, "isolated: %d net(s) reached from %s only through %s"
+                        % (len(domain), dom_gnd, ", ".join(sorted(barrier)))))
+    return rows
 
 
 @rule("A24")
