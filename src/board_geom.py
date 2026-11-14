@@ -174,7 +174,28 @@ def _silk_font():
 
 
 _FONT = _silk_font()
+# WHAT EACH BODY WITH NO 3D MODEL IS MADE OF (cadkit Boards(body_material=), 2026-11-14): the
+# web export has no board-green default any more -- a footprint with no model, no web_parts
+# drawing and no entry here stops the export. Colours as these packages usually come; a part
+# whose datasheet says otherwise is corrected here.
+BLACK, CREAM_LCP = (0.05, 0.05, 0.05), (0.85, 0.80, 0.68)
+BODY_MATERIAL = {
+    "Converter_DCDC_Murata_MEE1SxxxxSC_THT": ("epoxy", BLACK),        # isolated DC-DC, black SIP case
+    "Fuse_1812_4532Metric": ("epoxy", (0.78, 0.62, 0.25)),             # PPTC, tan coat
+    "Fuse_2920_7451Metric": ("epoxy", (0.78, 0.62, 0.25)),             # PPTC, tan coat
+    "Hanxia_HX-TYPE-C-16P-180-LC-B-H10.0_Vertical": "stainless",       # USB-C receptacle shell
+    "Hirose_DF40C-100DS-0.4V_2x50_P0.4mm": ("nylon", CREAM_LCP),       # CM5 mezzanine (LCP)
+    "JST_PH_B4B-PH-SM4-TB_1x04-1MP_P2.00mm_Vertical": ("nylon", (0.93, 0.90, 0.80)),
+    "L_Bourns_SRP1770TA_16.9x16.9mm": ("ferrite", (0.22, 0.22, 0.23)),  # moulded composite
+    "L_CommonModeChoke_Wuerth_WE-SL5-HC": ("ferrite", (0.10, 0.10, 0.10)),
+    "MaiXu_MX128-5.0-02P_1x02_P5.00mm": ("nylon", (0.10, 0.45, 0.20)),  # green terminal block
+    "Molex_52271-2079_1x20-1MP_P1.0mm_Horizontal": ("nylon", CREAM_LCP),
+    "Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm": ("epoxy", BLACK),
+    "Texas_RWB0012A_X2QFN-12_1.6x1.6mm_P0.4mm": ("epoxy", BLACK),
+    "Texas_UQFN-10_1.5x2mm_P0.5mm": ("epoxy", BLACK),
+}
 BOARDS = _with_revs(Boards(GEOM_DIR, height=_HEIGHT, tail=_TAIL, tht_legs=_THT_LEGS, panel=_PANEL,
+                           body_material=BODY_MATERIAL,
                            **({"silk_font": _FONT, "silk_cap": SILK_FONT_CAP} if _FONT else {})))
 
 HEIGHT, TAIL, THT_LEGS, PANEL = BOARDS.HEIGHT, BOARDS.TAIL, BOARDS.THT_LEGS, BOARDS.PANEL
@@ -185,7 +206,7 @@ def on_the_bench(unmated) -> Boards:
     the (board, ref) headers nothing is plugged into there (in the instrument every
     header has its plug)."""
     return _with_revs(Boards(GEOM_DIR, height=_HEIGHT, tail=_TAIL, tht_legs=_THT_LEGS,
-                             panel=_PANEL, unmated=unmated,
+                             panel=_PANEL, unmated=unmated, body_material=BODY_MATERIAL,
                              **({"silk_font": _FONT, "silk_cap": SILK_FONT_CAP} if _FONT else {})))
 
 

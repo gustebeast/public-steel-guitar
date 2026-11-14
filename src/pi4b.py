@@ -111,7 +111,9 @@ SD_SOCKET_H = 1.5                # ESTIMATE: a push-push microSD socket's height
 SD_CARD_T = 1.0                  # the microSD standard's
 SD_CARD_GAP = 0.3                # ESTIMATE: the card's top face under the board
 
-RGB = {"board": (0.05, 0.38, 0.20), "shell": (0.78, 0.79, 0.81), "lid": (0.74, 0.75, 0.77),
+# the board is a green SOLDER MASK, and cadkit's export takes a board only in a mask's colour
+from cadkit.board_geom import mask_rgb as _mask_rgb   # noqa: E402
+RGB = {"board": _mask_rgb("green"), "shell": (0.78, 0.79, 0.81), "lid": (0.74, 0.75, 0.77),
        "black": (0.07, 0.07, 0.08), "pin": (0.83, 0.68, 0.25), "cream": (0.90, 0.87, 0.78),
        "blue": (0.10, 0.30, 0.75), "passive": (0.36, 0.25, 0.14)}
 # the parts, by what each is made of: name suffix -> (colour, finish)
