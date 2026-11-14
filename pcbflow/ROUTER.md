@@ -303,6 +303,14 @@ the next step.
   fresh join for an earlier piece dropped its via 0.20 mm from a later kept one (drills
   overlapping, A12). Only the claims move up -- making kept paths targets early changed
   which pieces join where and cost fret_led_key GND at U10.
+- **A kept-board replay starts from `layout.py`, not from the kept board stripped**
+  (2026-11-14). Stripping a kept board's tracks takes its DECLARED copper too (notes
+  `tracks` / `vias`, e.g. optical's comb lanes): optical then had 20 nets with no path, ran
+  ~96 s a round and never finished in 55 min -- read at first as the router being slow.
+  `layout.py <stem>` on the board's net + notes gives the same placement as `elec/kept`
+  (270 of 270 parts unmoved; the kept board's extra parts are post-route ones) with the
+  declared copper laid: optical routes in 66 s. `NOPATH_RETRY` came out of the bad replay
+  -- sound, but no real board has needed it yet.
 - **Parent replays do not test the router.** `OWNROUTE_PARENT` reuses the stored paths:
   a fix inside negotiation is verified only by a full router-alone run on the same placed
   board, old code against new.
