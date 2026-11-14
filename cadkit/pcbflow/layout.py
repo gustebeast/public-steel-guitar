@@ -5878,6 +5878,16 @@ def build(stem):
             _z.SetLayerSet(_ls)
         _z.AddPolygon(_poly)
         board.Add(_z)
+    # A BARRIER PART'S THROUGH-HOLE PADS KEEP NO UNCONNECTED INNER RINGS (output_board mK,
+    # 2026-11-13): U30's THT pins stood 0.90 apart on In1 and B.Cu as on the outer layers;
+    # an annulus on a layer the pin connects nothing on is copper at the barrier for nothing.
+    # Opt-in by quality.isolation (the declared barrier parts); outer layers always kept.
+    _bar = set(((notes.get("quality") or {}).get("isolation") or {}).get("barrier", ()))
+    for fp in (board.GetFootprints() if _bar else ()):
+        if fp.GetReference() in _bar:
+            for pad in fp.Pads():
+                if pad.GetAttribute() == pcbnew.PAD_ATTRIB_PTH:
+                    pad.SetUnconnectedLayerMode(pcbnew.UNCONNECTED_LAYER_MODE_REMOVE_EXCEPT_START_AND_END)
 
     for z in notes.get("zones", []):
         # Two spellings, because the three-tuple is every board's ground plane and should
