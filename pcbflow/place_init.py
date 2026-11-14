@@ -566,7 +566,11 @@ def _near_reach(parts, rules, pl):
     checked against the regions before anything is placed: a subject held in a region (its
     in_region rules) whose nearest point is further from the target -- a placed part, or
     the region the target is held in -- than the rule allows cannot meet it anywhere."""
-    regions = {r["name"]: np.asarray(r["poly"], float) for r in rules if r["kind"] == "region"}
+    # the AUTHOR's regions only: a grown re-run holds an anchor in its own `_hold_<ref>` square
+    # where the first run put it (_place_grow), and a rule the first run left broken there is
+    # the report's NEAR BROKEN, not a refusal (output_board mN replay: U14 held 22.9 off J2)
+    regions = {r["name"]: np.asarray(r["poly"], float) for r in rules
+               if r["kind"] == "region" and not r["name"].startswith("_")}
     held = {}
     for r in rules:
         if r["kind"] == "in_region" and r["region"] in regions:
