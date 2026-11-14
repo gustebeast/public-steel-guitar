@@ -61,6 +61,7 @@ class Model:
         self.pads = RS._pads(txt)
         _attach_custom(txt, self.pads)
         _attach_drills(txt, self.pads)
+        _attach_clearance(txt, self.pads)
         self.segs = RS._segments(txt)
         self.vias = RS._vias(txt)
         self.edges = RS._edges(txt)
@@ -170,12 +171,21 @@ class Model:
         hole_extra = self.hole_clear - self.clear
         for p in self.pads:
             net = self.net_id.get(p["net"], -1)
-            r = pad_reach(p)
+            # ⚠ A FOOTPRINT'S OWN CLEARANCE IS A RULE TOO (output_board mL2 U220, 2026-11-14:
+            # all 17 clearance faults). Texas_PWP0020A carries (clearance 0.2) and DRC holds
+            # every item to the larger of the two clearances; the router knew only the
+            # netclass's 0.127, so tracks beside U220's 0.65-pitch lands sat at 0.165-0.194.
+            # The land goes in grown by its extra clearance (as a drill's larger rule does
+            # below), so the one clearance test covers it.
+            extra = max(0.0, p.get("lclear", 0.0) - self.clear)
+            r = pad_reach(p) + extra
             win = self._window(p["gx"] - r, p["gy"] - r, p["gx"] + r, p["gy"] + r, reach)
             X, Y = grid(win)
             d = pad_dist(p, X, Y).astype(np.float32)
             i0, i1, j0, j1 = win
             np.minimum(pad_near[i0:i1, j0:j1], d, out=pad_near[i0:i1, j0:j1])
+            if extra > 0.0:
+                d = d - np.float32(extra)
             for L_ in self.route_layers:
                 if p["cu"] is None or L_ in p["cu"]:
                     put(lid[L_], win, d, net)
@@ -574,6 +584,29 @@ def _attach_custom(txt, pads):
                 if len(pts) >= 3:
                     polys.append(pts)
             p["circles"], p["polys"] = circles, polys
+
+
+def _attach_clearance(txt, pads):
+    """Each pad's local clearance onto its pad dict as lclear (mm): its own (clearance x),
+    else its footprint's. Pads without one are left as they are."""
+    by = {}
+    for p in pads:
+        if p.get("name"):
+            by.setdefault(p["name"], []).append(p)
+    for f in re.findall(r"\(footprint\b(.*?)\n\t\)", txt, re.S):
+        if "(clearance" not in f:
+            continue
+        ref = re.search(r'\(property "Reference" "([^"]*)"', f)
+        if not ref:
+            continue
+        fc = re.search(r"\n\t\t\(clearance ([\d.]+)\)", f)
+        fc = float(fc.group(1)) if fc else 0.0
+        for m in re.finditer(r'\(pad "([^"]*)"(.*?)\n\t\t\)', f, re.S):
+            pc = re.search(r"\n\t\t\t\(clearance ([\d.]+)\)", m.group(2))
+            c = float(pc.group(1)) if pc else fc
+            if c > 0.0:
+                for p in by.get("%s.%s" % (ref.group(1), m.group(1)), ()):
+                    p["lclear"] = max(p.get("lclear", 0.0), c)
 
 
 def _attach_drills(txt, pads):

@@ -319,6 +319,41 @@ the next step.
   re-routing the walling nets with the re-join (tried, removed): every attempt left
   more islands than it closed. On a 4-layer board where every layer carries signals, a
   plane strip is a placement and layer-plan fact.
+- **A plane net "sharing" only for its islands must not be ripped** (output_board mL2,
+  2026-11-14). `_rounds` lists a plane net with a pour piece cut off as sharing, though
+  none of its joins shares space. Once `_left_w` priced such a net as its island pieces
+  (2 open, not 279), pair re-negotiations that left GND so were accepted -- and `_rip`,
+  finding no sharing join (`_bad_joins` None), took ALL of GND out: 260 unconnected, three
+  times in one pair finish. `_rip` now keeps a plane net none of whose joins or vias share
+  space; the island pass re-joins its pieces. Any change to how a left net is weighed has
+  to be read against what `_rip` then does to it.
+- **The island judge's grid error is not a constant** (2026-11-14). The judged fill is a
+  grid fill: routed copper is stamped at cell centres within R0, grown by an EDT, and
+  emitted straightened up to `STRAIGHT_TOL` off those centres; the min-width trim is a grid
+  opening (disk round(2.5) = 2 cells against KiCad's 0.125). Both errors are sub-cell and
+  vary by place, so no slack constant reproduces KiCad. The default (`FILL_SLACK` /
+  `FILL_SLACK_FD` 0.03 on both) is CHOSEN BY ROUTE OUTCOME on mL2 (2 open / 0 clearance,
+  against 7 open for the derived pitch/sqrt2 on routed copper and 0 on fixed) -- it is not
+  a KiCad match, and fret_led_key's +14V5 island (a 0.226 neck against 0.25, at the end
+  of a strip between two diagonal tracks) still reads as joined under it. Do not "fix" a
+  count by tuning the constant. The exact judge (`OWNROUTE_FILL_EXACT`, opt-in, island
+  pass only) measures the band against emit's own geometry and reads connectivity off the
+  exactly eroded set; it agrees with KiCad on fret_led_key and optical, and costs ~5x the
+  grid judge per call (mL2 GND 7.9 s vs 1.5 s).
+- **Compare like states with KiCad.** The island judge on the snapshot taken BEFORE
+  `_pour_islands` (`OWNROUTE_SNAPSHOT_ISLANDS`) is not comparable with KiCad's refill of the
+  routed board: the island pass re-routes joins in between (mL2's "3 pieces = KiCad" rested
+  on that, and was void). Judge the FINAL state (pickled after `_no_shorts`) against the
+  board that route wrote -- and load the UNROUTED board as the model's base, or every
+  routed track counts twice (as fixed copper and as paths).
+- **The router's budgets are CPU time, never the wall clock** (2026-11-14). The same code
+  on the same placed board (output_board mL2) ended 0, 2 and 7 nets open: the logs, timings
+  stripped, are identical until a re-route phase stopped "out of time" after round 6 on a
+  quiet machine and after round 4 beside renders and three other routes. `negotiate._clock`
+  is `time.process_time` (the router is single-threaded; score.py runs a process per
+  board). Any comparison made under the wall clock -- old-vs-new gates run at different
+  loads, `score.py --jobs N` sets, the 11-09 "negotiation chaos" labels -- is suspect until
+  repeated. Prove determinism by routing the same board twice at once.
 - **Parent replays do not test the router.** `OWNROUTE_PARENT` reuses the stored paths:
   a fix inside negotiation is verified only by a full router-alone run on the same placed
   board, old code against new.
