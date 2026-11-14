@@ -100,8 +100,8 @@ def connector_board():
     _ways("J1", "PZ1.27-2x15P ZZ", "the brain ribbon, 30-way 1.27 mm 2x15 IDC "
           "(harness.CONN_RIBBON; LCSC open item)", RIBBON, harness.CONN_RIBBON, rib,
           power=("V24", "V24L", "V5_PED", "V5_LEV"))
-    _two("C1", "22uF/35V", "ribbon 24 V bulk at J1 -- the brain's F204 / C322 are 0.3 m away",
-         v24, gnd, "Capacitor_SMD:C_1210_3225Metric")
+    _two("C1", "22uF/50V", "ribbon 24 V bulk at J1 -- the brain's F204 / C322 are 0.3 m away; "
+         "50 V on a 24 V rail (the 35 V 1210 sat at 75 %)", v24, gnd, "Capacitor_SMD:C_2220_5750Metric")
 
     # ── J11-J20: the ten motors, screw terminals, bus A in a line along them ────────────
     for k in range(10):

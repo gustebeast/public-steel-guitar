@@ -387,8 +387,9 @@ def _isolation(gnd, agnd, v5_pre, v3d, v3v3, v5, iso9_raw, iso9, io, iso):
         F = LOW on an open input: JACK_MODE reads balanced through the MCU's reset.
       LP2985-50, DBV: TI SLVS522S Table 4-1 -- 1 VIN 2 GND 3 ON/OFF 4 BYPASS 5 VOUT; 16 V max
         in (legacy die), 2.2 uF ceramic out, 10 nF bypass (7.1.3).
-      B0509S-1WR3 (Mornsun, SIP-4): 1 -Vin 2 +Vin 3 0V 4 +Vo AS THE MURATA MEE1 / NME FAMILY
-        IT CLONES -- NOT YET READ OFF MORNSUN'S SHEET (open item)."""
+      B0509S-1WR3 (YLPTEC, SIP-4, LCSC C5369463): 1 -Vin 2 +Vin 3 -Vout 4 +Vout -- READ off the
+        pin-definition table and drawing of YLPTEC's B_S-1WR3 sheet rev A2.1 (2024-07-19) p.4,
+        2026-11-14 (the MEE1 pattern, as assumed). Its minimum load is 10 % of rated (p.4 s3)."""
     p = Pin.types.PASSIVE
     u30 = Part(name="DCDC_ISO", ref_prefix="U", ref="U30", tag="U30", dest="NETLIST", tool="skidl",
                value="B0509S-1WR3", description="1 W isolated DC-DC, 5 -> 9 V unregulated, "
@@ -1885,9 +1886,9 @@ BOARD_NOTES = {
         "the +X endplate pocket (branner) is cut from elec/output_board.pocket.json: regenerate it whenever the parts within 19 mm of the panel edge move",
         "the mount: one M4 (branner) at x > -124, not yet placed -- reserve its keepout when it is",
         "A16 voltage declarations: voltage_check has output_power / output_signal seeds; merge them into one output_board entry",
-        "audio isolation: B0509S-1WR3 pinout (1 GND 2 Vin 3 0V 4 +Vo, the MEE1 pattern) -- confirm on the drawing of the part bought (YLPTEC C5369463, rev A2.1: its PDF text layer is garbled); its output below 10 % load is unspecified (ISO9_RAW taken at +20 %)",
+        "audio isolation: B0509S-1WR3 (YLPTEC) is a 1 W / 111 mA module that wants >= 10 % load (11 mA); check the audio side's draw against both, and its output below 10 % load is unspecified (ISO9_RAW taken at +20 %)",
         "U5 as the ONE logic 5 V (merged): LMR33640 in the RNX footprint (confirm the orderable and LCSC code), an inductor with Isat >= 5 A in the 5x5 land, D14 / D16 (SS34, 3 A) feed it on a 5 V contract -- 5 A parts if full load is allowed there",
-        "USB data chokes FL3 / FL4 (ACM2012): winding pins 1-4 / 2-3 to confirm on TDK's drawing (the power chokes FL1 / FL2 are read: 744273501, 5 A)",
+        "USB data chokes FL3 / FL4: ACM2012-900-2P-T002 is marked 'not recommended for new design' on TDK's catalogue (20220113); ordered as T-CND's C55213549. Windings 1-4 / 2-3 READ off TDK's circuit diagram, pads match KiCad's Coilank footprint",
         "audio isolation: the board is meant to be measured (pickup into an amp: no charger / phone charger / laptop charger / two chargers / a computer on the data) against R1",
         "the UI station's clamp (to x -147) is in this board's drop path (to x -169.4): ignored for now (user 2026-11-13), it moves -X later",
     ],

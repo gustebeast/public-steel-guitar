@@ -89,6 +89,9 @@ P = Pin.types.PASSIVE
 C0402, C0603 = "Capacitor_SMD:C_0402_1005Metric", "Capacitor_SMD:C_0603_1608Metric"
 C0805, C1206 = "Capacitor_SMD:C_0805_2012Metric", "Capacitor_SMD:C_1206_3216Metric"
 C1210 = "Capacitor_SMD:C_1210_3225Metric"
+# 22 uF at 50 V (lead, 2026-11-14): the 35 V 1210 sat at 75 % on +24 V and under the clamped 37 V
+# VIN transient; no 22 uF / 50 V MLCC is stocked in 1210, so the 2220 (PSA FS55X226K500EHG, X7R)
+C2220 = "Capacitor_SMD:C_2220_5750Metric"
 R0402 = "Resistor_SMD:R_0402_1005Metric"
 SOT23 = "Package_TO_SOT_SMD:SOT-23"
 # side entry, mouth off the board edge: on the +Z edge, the plug goes in from above
@@ -302,7 +305,7 @@ def brain(merged=None):
     if not merged:
         _jst("J11", "S6B-PH-SM4-TB", "logic to / from the output board (harness.BRAIN_SIGNAL)",
              PH6_SIDE, harness.BRAIN_SIGNAL, dict(link, GND=gnd), power=())
-    _cap("C1", "22uF/35V", "VIN bulk at the inlet, AHEAD of the switch", vin, gnd, C1210)
+    _cap("C1", "22uF/50V", "VIN bulk at the inlet, AHEAD of the switch", vin, gnd, C2220)
     _cap("C2", "100nF/50V", "VIN HF bypass at J10", vin, gnd)
     _diode("D1", "SMF24A", "VIN clamp, 200 W (LCSC C169430)", vin, gnd, "Diode_SMD:D_SOD-123F")
 
@@ -441,11 +444,11 @@ def brain(merged=None):
     _cap("C100", "100nF", "soft-start, ~12 ms", b["SS"], gnd)
     _cap("C101", "470nF/25V", "hiccup restart timer (TI's)", b["RES"], gnd)
     for k in range(4):
-        _cap("C%d" % (92 + k), "22uF/35V", "boost input bulk, after Q2", vin_sw, gnd, C1210)
+        _cap("C%d" % (92 + k), "22uF/50V", "boost input bulk, after Q2", vin_sw, gnd, C2220)
     _cap("C96", "100nF/50V", "VIN_SW HF bypass at the boost", vin_sw, gnd)
     for k in range(8):
-        _cap("C%d" % (105 + k), "22uF/35V", "boost output ceramic, ahead of the polymers "
-             "(TI: ceramics first)", v24, gnd, C1210)
+        _cap("C%d" % (105 + k), "22uF/50V", "boost output ceramic, ahead of the polymers "
+             "(TI: ceramics first)", v24, gnd, C2220)
     for tag in ("C113", "C114"):
         _cap(tag, "470uF/35V", "boost output bulk, polymer, jieerrui MA35V470M10X13: 3.8 A ripple; "
              "10 mm base on the 10x10.5 land, 13 mm TALL (LCSC C46550472)", v24, gnd,
@@ -728,6 +731,17 @@ def brain(merged=None):
              % (tag, what), sel, gnd)
     for tag, net in (() if merged else (("D4", ped_h), ("D5", ped_l), ("D10", lev_h), ("D11", lev_l))):
         _diode(tag, "ESD5B5.0ST1G", "bus B ESD clamp, arm pin to GND (LCSC C93623)", net, gnd)
+    # AT THE SWITCHES (lead, 2026-11-14): the arms' own clamps (ESD5B5.0, on the connector board
+    # when merged) break down as high as 7.8 V, over U9 / U10's 7 V I/O. A deep-snapback pair
+    # right at each switch's arm pins holds an IEC 8 kV hit to 4.32 V by 30 ns and 3.3 V at
+    # 8 A TLP (Nexperia PESD2USB5UX Fig. 10, Table 7), 0.47 pF -- nothing to a full-speed USB
+    # or CAN pair. 1 K1, 2 K2, 3 common anode
+    for tag, (h, l), what in (("D19", (ped_h, ped_l), "U9"), ("D20", (lev_h, lev_l), "U10")):
+        d = _fix(tag, "PESD2USB5UX", "bus B clamp at %s's arm pins: 2-line, 5 V stand-off, "
+                 "deep snapback, 0.47 pF (Nexperia, LCSC C3709087)" % what, SOT23, range(1, 4))
+        h += d[1]
+        l += d[2]
+        gnd += d[3]
     _tps2553("U6", "pedal arm 5 V, 0.52 A", v5a, io["EN_PED"], v5_ped, io["BUSB_FAULT_N"],
              "R22", "49k9 1%", gnd)
     _tps2553("U11", "lever arm 5 V, 0.52 A", v5a, io["EN_LEV"], v5_lev, io["BUSB_FAULT_N"],

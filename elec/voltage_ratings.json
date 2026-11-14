@@ -3631,6 +3631,32 @@
    "v": 36.0,
    "i": 3.0,
    "src": "JLCPCB parts API attributes for C22435908 (LUTE 2920L300/36GR): voltage max 36 V, hold 3 A, trip 5 A, max current 40 A, Ri min 12 mOhm, fetched 2026-11-14"
+  },
+  "C3709087": {
+   "mpn": "PESD2USB5UX",
+   "kind": "tvs",
+   "vrwm": 5.0,
+   "vbr_min": 7.2,
+   "vbr_max": 11.0,
+   "vc": 4.32,
+   "ipp": 8.0,
+   "bidir": false,
+   "pins": {
+    "1": "K",
+    "2": "K",
+    "3": "A"
+   },
+   "ir_ua": 0.05,
+   "src": "Nexperia PESD2USB5UX datasheet (LCSC C3709087's PDF) Table 7: VRWM 5 V, VBR 7.2 / 8.7 / 11 V at 1 mA (the snapback TRIGGER, not the clamp), IRM 50 nA max at 5 V, Cd 0.47 / 0.6 pF, VCL 3.3 V at IPP 8 A TLP; Fig. 10: +8 kV IEC 61000-4-2 clamped to 4.32 V at 30 ns (Fig. 11: -3.70 V); pins 1 K1 2 K2 3 common anode. Read 2026-11-14"
+  },
+  "C784103": {
+   "mpn": "FS55X226K500EHG",
+   "kind": "cap",
+   "v": 50.0,
+   "diel": "X7R",
+   "c": "22uF",
+   "case": "2220",
+   "src": "JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   }
  }
 }

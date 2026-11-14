@@ -816,6 +816,15 @@ SEEDS["output_board"].update({
                                           "ground-bounce bound (assumed)"))
        for n in ("PA_GND_J", "PB_GND_J")},
     **{n: SEEDS["output_board"]["USBA_DP"] for n in ("USBA_DP_J", "USBA_DM_J", "USBB_DP_J", "USBB_DM_J")},
+    # bus B AT THE SWITCHES (lead, 2026-11-14): D219 / D220 (PESD2USB5UX) sit on U209 / U210's arm
+    # pins, so an ESD hit reaches them as that clamp's residue, not the arms' ESD5B5.0 breakdown
+    **{n: ("abs", dict(v=5.0, vt=5.0, why="bus B with D219 / D220 (PESD2USB5UX) at the switch pins: steady "
+                                          "5 V (CAN_B's conservative figure; the nodes are 3.3 V SN65HVD230s); "
+                                          "an IEC 8 kV hit is held to 4.32 V by 30 ns (Fig. 10) and 3.3 V at "
+                                          "8 A TLP, under the steady figure -- so transient = steady. Its 7.2-11 V "
+                                          "trigger is a slow-source figure, and no conductor in the arm cable "
+                                          "is above 5 V short of the declared fault"))
+       for n in ("CANB_H", "CANB_L", "PED_H", "PED_L", "LEV_H", "LEV_L")},
     "RELAY_COIL": ("like", "V5_PRE", 1.25, "coil turn-off: V5_PRE (the coil is on the charger side) plus "
                                            "D4's forward drop (1.25 V max)"),
 })

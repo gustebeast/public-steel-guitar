@@ -247,14 +247,12 @@
    "why": "bus A: dominant level of a 5 V transceiver in a SERVO42D (assumed, not known); transient = the NUP2105L's maximum breakdown either way (24 V stand-off, so the +24 V conductor beside it in the same 4-wire trunk is a level it stands, not one it clamps); FAULT = that conductor shorted on"
   },
   "CANB_H": {
-   "peak": 7.8,
    "v": 5.0,
-   "why": "bus B: 5 V nodes; nothing above 5 V in its cable; transient = the ESD5B5.0 clamps' maximum breakdown (motor_ctrl D4 / D5, and each lever board's own)"
+   "why": "bus B with D219 / D220 (PESD2USB5UX) at the switch pins: steady 5 V (CAN_B's conservative figure; the nodes are 3.3 V SN65HVD230s); an IEC 8 kV hit is held to 4.32 V by 30 ns (Fig. 10) and 3.3 V at 8 A TLP, under the steady figure -- so transient = steady. Its 7.2-11 V trigger is a slow-source figure, and no conductor in the arm cable is above 5 V short of the declared fault"
   },
   "CANB_L": {
-   "peak": 7.8,
    "v": 5.0,
-   "why": "bus B: 5 V nodes; nothing above 5 V in its cable; transient = the ESD5B5.0 clamps' maximum breakdown (motor_ctrl D4 / D5, and each lever board's own)"
+   "why": "bus B with D219 / D220 (PESD2USB5UX) at the switch pins: steady 5 V (CAN_B's conservative figure; the nodes are 3.3 V SN65HVD230s); an IEC 8 kV hit is held to 4.32 V by 30 ns (Fig. 10) and 3.3 V at 8 A TLP, under the steady figure -- so transient = steady. Its 7.2-11 V trigger is a slow-source figure, and no conductor in the arm cable is above 5 V short of the declared fault"
   },
   "CM5_3V3": {
    "peak": 3.564,
@@ -1046,14 +1044,12 @@
    "why": "not connected"
   },
   "LEV_H": {
-   "peak": 7.8,
    "v": 5.0,
-   "why": "bus B: 5 V nodes; nothing above 5 V in its cable; transient = the ESD5B5.0 clamps' maximum breakdown (motor_ctrl D4 / D5, and each lever board's own)"
+   "why": "bus B with D219 / D220 (PESD2USB5UX) at the switch pins: steady 5 V (CAN_B's conservative figure; the nodes are 3.3 V SN65HVD230s); an IEC 8 kV hit is held to 4.32 V by 30 ns (Fig. 10) and 3.3 V at 8 A TLP, under the steady figure -- so transient = steady. Its 7.2-11 V trigger is a slow-source figure, and no conductor in the arm cable is above 5 V short of the declared fault"
   },
   "LEV_L": {
-   "peak": 7.8,
    "v": 5.0,
-   "why": "bus B: 5 V nodes; nothing above 5 V in its cable; transient = the ESD5B5.0 clamps' maximum breakdown (motor_ctrl D4 / D5, and each lever board's own)"
+   "why": "bus B with D219 / D220 (PESD2USB5UX) at the switch pins: steady 5 V (CAN_B's conservative figure; the nodes are 3.3 V SN65HVD230s); an IEC 8 kV hit is held to 4.32 V by 30 ns (Fig. 10) and 3.3 V at 8 A TLP, under the steady figure -- so transient = steady. Its 7.2-11 V trigger is a slow-source figure, and no conductor in the arm cable is above 5 V short of the declared fault"
   },
   "LOWPWR_G": {
    "v": 0.0,
@@ -1329,14 +1325,12 @@
    "why": "U1.85 (io) can reach its supply +3V3D; through R83"
   },
   "PED_H": {
-   "peak": 7.8,
    "v": 5.0,
-   "why": "bus B: 5 V nodes; nothing above 5 V in its cable; transient = the ESD5B5.0 clamps' maximum breakdown (motor_ctrl D4 / D5, and each lever board's own)"
+   "why": "bus B with D219 / D220 (PESD2USB5UX) at the switch pins: steady 5 V (CAN_B's conservative figure; the nodes are 3.3 V SN65HVD230s); an IEC 8 kV hit is held to 4.32 V by 30 ns (Fig. 10) and 3.3 V at 8 A TLP, under the steady figure -- so transient = steady. Its 7.2-11 V trigger is a slow-source figure, and no conductor in the arm cable is above 5 V short of the declared fault"
   },
   "PED_L": {
-   "peak": 7.8,
    "v": 5.0,
-   "why": "bus B: 5 V nodes; nothing above 5 V in its cable; transient = the ESD5B5.0 clamps' maximum breakdown (motor_ctrl D4 / D5, and each lever board's own)"
+   "why": "bus B with D219 / D220 (PESD2USB5UX) at the switch pins: steady 5 V (CAN_B's conservative figure; the nodes are 3.3 V SN65HVD230s); an IEC 8 kV hit is held to 4.32 V by 30 ns (Fig. 10) and 3.3 V at 8 A TLP, under the steady figure -- so transient = steady. Its 7.2-11 V trigger is a slow-source figure, and no conductor in the arm cable is above 5 V short of the declared fault"
   },
   "PG_5V": {
    "peak": 3.45,
@@ -2507,8 +2501,8 @@
    "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
   "C201.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C202.1": {
    "max": 50.0,
@@ -2689,20 +2683,20 @@
    "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
   "C292.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C293.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C294.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C295.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C296.1": {
    "max": 50.0,
@@ -2765,40 +2759,40 @@
    "src": "rated V -- 0402CG101J500NT (C1546): JLCPCB parts API attributes for C1546 (0402CG101J500NT, FH (Guangdong Fenghua Advanced Tech)), fetched 2026-11-13"
   },
   "C305.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C306.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C307.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C308.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C309.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C31.1": {
    "max": 6.3,
    "src": "rated V -- CL05A106MQ5NUNC (C15525): JLCPCB parts API attributes for C15525 (CL05A106MQ5NUNC, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
   "C310.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C311.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C312.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C313.1": {
    "max": 35.0,
@@ -3170,6 +3164,18 @@
    "src": "KT-0603G (C12624): Hubei KENTO KT-0603G specification p.3 absolute maximum ratings (Pd 100 mW, IFP 60 mA, DC IF 30 mA, VR 5 V); VF 2.6 min / 3.1 max @5 mA (no typ given; min entered, the conservative side for current)",
    "why": "0.7 mA of 30 mA DC, 2 mW of 100 mW (VF typ 2.6 V)"
   },
+  "D219.1": {
+   "max": 7.2,
+   "peak": "none",
+   "src": "PESD2USB5UX (C3709087): Nexperia PESD2USB5UX datasheet (LCSC C3709087's PDF) Table 7: VRWM 5 V, VBR 7.2 / 8.7 / 11 V at 1 mA (the snapback TRIGGER, not the clamp), IRM 50 nA max at 5 V, Cd 0.47 / 0.6 pF, VCL 3.3 V at IPP 8 A TLP; Fig. 10: +8 kV IEC 61000-4-2 clamped to 4.32 V at 30 ns (Fig. 11: -3.70 V); pins 1 K1 2 K2 3 common anode. Read 2026-11-14",
+   "why": "this part IS the clamp on PED_H: it stands 5 V (where its leakage is specified) and starts to conduct at 7.2 V, the figure a steady level must stay under"
+  },
+  "D219.2": {
+   "max": 7.2,
+   "peak": "none",
+   "src": "PESD2USB5UX (C3709087): Nexperia PESD2USB5UX datasheet (LCSC C3709087's PDF) Table 7: VRWM 5 V, VBR 7.2 / 8.7 / 11 V at 1 mA (the snapback TRIGGER, not the clamp), IRM 50 nA max at 5 V, Cd 0.47 / 0.6 pF, VCL 3.3 V at IPP 8 A TLP; Fig. 10: +8 kV IEC 61000-4-2 clamped to 4.32 V at 30 ns (Fig. 11: -3.70 V); pins 1 K1 2 K2 3 common anode. Read 2026-11-14",
+   "why": "this part IS the clamp on PED_L: it stands 5 V (where its leakage is specified) and starts to conduct at 7.2 V, the figure a steady level must stay under"
+  },
   "D22.1": {
    "max": "none",
    "src": "BZT52C12T-7 (C507911): Diodes Inc BZT52C2V0T-BZT52C36T datasheet DS30502 Rev. 17-2 p.2: BZT52C12T VZ 11.4-12.7 V @5 mA, PD 300 mW",
@@ -3179,6 +3185,18 @@
    "max": "none",
    "src": "BZT52C12T-7 (C507911): Diodes Inc BZT52C2V0T-BZT52C36T datasheet DS30502 Rev. 17-2 p.2: BZT52C12T VZ 11.4-12.7 V @5 mA, PD 300 mW",
    "why": "20 mW steady, 36 mW at the transient, of 300 mW (fed from PB_VOUT through 6.2 k)"
+  },
+  "D220.1": {
+   "max": 7.2,
+   "peak": "none",
+   "src": "PESD2USB5UX (C3709087): Nexperia PESD2USB5UX datasheet (LCSC C3709087's PDF) Table 7: VRWM 5 V, VBR 7.2 / 8.7 / 11 V at 1 mA (the snapback TRIGGER, not the clamp), IRM 50 nA max at 5 V, Cd 0.47 / 0.6 pF, VCL 3.3 V at IPP 8 A TLP; Fig. 10: +8 kV IEC 61000-4-2 clamped to 4.32 V at 30 ns (Fig. 11: -3.70 V); pins 1 K1 2 K2 3 common anode. Read 2026-11-14",
+   "why": "this part IS the clamp on LEV_H: it stands 5 V (where its leakage is specified) and starts to conduct at 7.2 V, the figure a steady level must stay under"
+  },
+  "D220.2": {
+   "max": 7.2,
+   "peak": "none",
+   "src": "PESD2USB5UX (C3709087): Nexperia PESD2USB5UX datasheet (LCSC C3709087's PDF) Table 7: VRWM 5 V, VBR 7.2 / 8.7 / 11 V at 1 mA (the snapback TRIGGER, not the clamp), IRM 50 nA max at 5 V, Cd 0.47 / 0.6 pF, VCL 3.3 V at IPP 8 A TLP; Fig. 10: +8 kV IEC 61000-4-2 clamped to 4.32 V at 30 ns (Fig. 11: -3.70 V); pins 1 K1 2 K2 3 common anode. Read 2026-11-14",
+   "why": "this part IS the clamp on LEV_L: it stands 5 V (where its leakage is specified) and starts to conduct at 7.2 V, the figure a steady level must stay under"
   },
   "D23.1": {
    "max": "none",

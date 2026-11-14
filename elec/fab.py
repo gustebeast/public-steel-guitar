@@ -213,6 +213,7 @@ LCSC = {
     "LP2985-50DBVR": "C74511",      # TI 5 V 150 mA LDO, SOT-23-5 (TI's own, not a clone); 14,190 stock
     "B0509S-1WR3": "C5369463",      # YLPTEC 1 W 5 -> 9 V isolated module, SIP-4; 1,575 stock (Mornsun's own not stocked)
     "2920L300/36GR": "C22435908",   # LUTE PPTC 2920, 3 A hold / 5 A trip, 36 V; 14,726 stock (output board F204)
+    "PESD2USB5UX": "C3709087",      # Nexperia 2-line deep-snapback ESD, SOT-23, 5 V, 0.47 pF; 16,970 stock (bus B at U209 / U210)
     "744273501": "C2651123",        # Wurth WE-SL5 HC 5 A / 80 V common-mode choke; 2,113 stock
     "ACM2012-900-2P-T002": "C55213549",  # T-CND, TDK ACM2012-900 pattern, 50 V 0.4 A; 5,094 stock (TDK's C19972: 0)
     "KF350-3.5-2P": "C474892",      # Cixi Kefa 3.5 mm 2-way screw terminal, M2 slot, 300 V 10 A; 10,892 stock
@@ -346,6 +347,7 @@ PASSIVES = {
     ("0R", "R_0603_1608Metric"):             "C21189",   # UniOhm 0603WAF0000T5E; basic
     ("120R", "R_0603_1608Metric"):           "C22787",   # UniOhm 0603WAF1200T5E, 1 %, 100 mW; basic
     # -- the brain board, 2026-11-13, read off JLCPCB's parts API ------------------------
+    ("22uF/50V", "C_2220_5750Metric"):       "C784103",   # PSA FS55X226K500EHG, 50 V X7R 10 %; 52,414 in stock -- no 22 uF / 50 V 1210 is stocked
     ("22uF/35V", "C_1210_3225Metric"):       "C778721",   # Taiyo Yuden GMK325BJ226MM-P, 35 V X5R 20 %; 148,503 in stock
     ("470nF/50V", "C_0603_1608Metric"):      "C77572",   # FH 0603B474K500NT, 50 V X7R 10 %; 136,525 in stock
     ("100pF/50V", "C_0402_1005Metric"):      "C1546",   # FH 0402CG101J500NT, 50 V C0G 5 %; basic, 3,352,469 in stock
