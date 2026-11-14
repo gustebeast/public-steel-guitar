@@ -21,8 +21,8 @@ step = D_ + '/ep.step'
 cq.exporters.export(d.endplate_full(), step)
 T0 = [math.sqrt(2) * (f + 6) / 0.95 for f in d.SPRING_F]          # open pitch, N
 rows = dict(d.axle_zs())
-rowz = {0: rows['db_bend_axle_ra'], 1: rows['db_bend_axle_rb'], 2: rows['db_bend_axle_rc']}
-zb = rows['db_bridge_axle']
+rowz = {0: rows['bend_axle_ra'], 1: rows['bend_axle_rb'], 2: rows['bend_axle_rc']}
+zb = rows['bridge_axle']
 xb, r_b = d.X_BEND, (d.D.BRIDGE_AXLE_D + 0.2) / 2
 xj = d.ep_x()['x_j']
 (_, _), (yo0, yo1), (zo0, _) = d.body_box()['outer']

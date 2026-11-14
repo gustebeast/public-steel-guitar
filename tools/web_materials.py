@@ -130,9 +130,9 @@ def unit_of(name: str):
     return None
 
 
-# THE BENCHES keep their own tables (their parts are named cb_ / db_ and are in no PARTS
+# THE BENCHES keep their own tables (their parts are named cb_ / wb_ and are in no PARTS
 # row), and the instrument's limits they draw (ghost_) are no material at all: see-through.
-_BENCHES = (("cb_", "src.changer_bench"), ("db_", "src.direct_bench"))
+_BENCHES = (("cb_", "src.changer_bench"), ("wb_", "src.wood_bench"))
 
 
 def material_of(name: str):
@@ -153,6 +153,9 @@ def material_of(name: str):
         base = base[len("inline_"):]
     elif re.match(r"^x(nut|string_nut|leadscrew|yoke_m3_\w+|screw_\w+)$", base):
         base = base[1:]
+    from src import direct_bench as _DB      # THE INSTRUMENT (plain names, user 2026-11-14)
+    if _DB.owns(base):
+        return _DB.material_of(base)
     for pre, mod in _BENCHES:
         if base.startswith(pre):
             import importlib

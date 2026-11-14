@@ -1,0 +1,317 @@
+"""WOOD BENCH -- one string of the DIRECT-DRIVE instrument on a wooden plank (user, 2026-11-13).
+
+STRING 6 (index 5): the user has a 370 mm Tr8x2 screw, and string 6's station takes the 331 mm
+cut (strings 4, 6 and 10 share it). Every bought part and every printed drive part is the
+instrument's own, DRAWN AT THE INSTRUMENT'S WORLD COORDINATES (src.direct_bench at T_OPEN): the
+yoke, keyplate, nut, collar, spring, sleeves, plug, guide rod, housing, collars A and B, the 688,
+the coupler, the SERVO42D, the bend and bridge 688s on their axles, the keyhead's nut plate. What
+is new here is only what holds them up off a plank:
+
+    MOTOR BLOCK   the plank bench's in-line motor block (src.plank_bench.motor_block), REUSED AS
+                  PRINTED (user): turned 180 deg about Z so the motor faces +X. Its axis stands
+                  26.25 over the wood; that height sets the plank (Z_PLANK) for everything else.
+                  It replaces the instrument's motor plate (mplate).
+    ANCHOR        a printed stand-in for the stainless anchor tray (user: "a part to stand in as
+                  the anchor"): the tray's 4 mm web at the tray's x, with string 6's holes (collar
+                  B, the rod, the housing's two M4s), held by two 45 deg buttresses on its +X side
+                  (the screw's thrust pushes the web +X), and a RAIL along the plank to the
+                  endplate: the rail's +X end BUTTS the endplate's joint face (x_j), so the
+                  anchor-to-endplate spacing the guide rod and the spring are cut to is the print's,
+                  not the plank's. Body and walls between them are not needed: the rail is the
+                  body, in compression between the two, as the instrument's walls and floor are.
+    ENDPLATE      the +X endplate cut down to string 6 (direct_bench._endplate(only=5)): the
+                  bridge bearing's 90 deg turn down and the bend bearing's 90 deg turn back -X,
+                  the lane, the keyhole plate's window, the rod's seat. SHORTENED BY KH_DROP
+                  (user, 2026-11-13): a band of the fill between the two bearings comes out, so
+                  the bridge bearing sits level with the lowered crown. Base out to the plank screws.
+    KEYHEAD       the V2 NUT BLOCK cut down to string 6 (src.nut_block_v2 / keyhead_v2): the nut
+                  plate (or its stand-in), the wrap rod, the side screw, the wedge height screw,
+                  string 6's coil zone, lane and window. Only the block (user, 2026-11-13): its
+                  bottom IS the wooden floor, so it stands KH_DROP lower than in the instrument.
+
+THE PLANK: its top is Z_PLANK; every base's -Y face is one plane, Y_EDGE (the motor block's own
+tab edge, turned): lay them flush with the plank's edge and they are in line. The keyhead and
+the endplate keep the instrument's spacing (the scale length): crown (NUT_BLOCK_X) to the bridge
+bearing's axle, SCALE_SPAN, is the one measurement to make on the plank.
+
+    py -3.12 -m src.wood_bench      -> coupons/wb_*.step
+"""
+
+from __future__ import annotations
+
+import pathlib
+
+import cadquery as cq
+
+from . import dimensions as D
+from . import direct_bench as DB
+from . import plank_bench as PB
+from .helpers import box_at, cyl_x
+from cadkit.kept import kept
+
+I = 5                                            # string 6
+Y5, Z5, XR = DB.y_of(I), DB.za(I), DB.x_ref(I)   # the screw's axis; XR its pulley plane
+BASE_T = PB.BASE_T                               # 4.8
+# THE PLANK: the motor block's axis height over the wood (its pad under the can) sets it
+AXIS_OVER_PLANK = PB.XR_ZA - PB.Z_PLANK_X        # 26.25
+Z_PLANK = Z5 - AXIS_OVER_PLANK                   # -111.43
+ZB = Z_PLANK + BASE_T                            # every base's top
+UP = (0.0, 0.0, 1.0)
+TAB = 6.4                                        # a screw tab's half-size round its screw
+
+
+def _box(x0, x1, y0, y1, z0, z1):
+    return box_at(x1 - x0, y1 - y0, z1 - z0, x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(z0 + z1) / 2)
+
+
+def _screw(x, y, up=UP):
+    """A wood screw's clearance and countersink from the base's top; `up` the part's build
+    direction (a sideways bore prints as a teardrop)."""
+    return PB._wood_screw(x, y, up, Z_PLANK)
+
+
+# ── THE MOTOR BLOCK: the plank bench's, turned 180 deg about Z onto string 6's axis ──────────
+def _turn(w):
+    """plank_bench's X-rig frame -> here: 180 deg about Z through its pulley plane on its axis,
+    that point onto string 6's pulley plane (XR) on string 6's axis."""
+    return (w.translate((-PB.INLINE_XP, -PB.SY, -PB.XR_ZA)).rotate((0, 0, 0), (0, 0, 1), 180)
+            .translate((XR, Y5, Z5)))
+
+
+Y_EDGE = Y5 - (PB.Y_EDGE - PB.SY)                # -28.35: the block's tab edge, turned to -Y
+
+
+def motor_block() -> cq.Workplane:
+    return _turn(PB.motor_block())
+
+
+def _motor_m3s() -> list:
+    from . import motor_coupler as MC
+    w0 = PB.INLINE_FACE - PB.INLINE_WALL_T
+    out = []
+    for sy in (1, -1):
+        for sz in (1, -1):
+            out.append((f"wb_face_m3_{(sy + 1) // 2}{(sz + 1) // 2}", _turn(MC.cap_screw(
+                "m3", MC.M3_L, (w0 - 3.0, PB.SY + sy * PB.INLINE_HOLES / 2,
+                                PB.XR_ZA + sz * PB.INLINE_HOLES / 2), (1, 0, 0)))))
+    return out
+
+
+# ── THE ANCHOR STAND-IN ──────────────────────────────────────────────────────────────────────
+AX0, AX1 = DB.ANCHOR                             # the web, -194.7 .. -190.7
+A_TOP = Z5 + 19.0                                # -66.2: 8 over the plug's and housing's tops
+A_IN = (Y5 - 16.35, Y5 + 18.45)                  # the buttresses' inner faces: 1.0 off the
+                                                 # housing's and plug's widest (-20.1 .. 12.7)
+A_WALL = 6 * D.BEAD                              # 4.8: each buttress
+A_Y = (Y_EDGE, A_IN[1] + A_WALL)                # the -Y buttress out to the edge: flat to print on
+A_FOOT = AX1 + (A_TOP - ZB)                      # the buttresses' 45 deg foot, x
+A_BASE_X0 = AX0 - 16.0                           # the base's -X end: room for two screws
+RAIL_Y = (Y_EDGE, Y_EDGE + 16.0)                 # the rail to the endplate: along the edge
+XJ = DB.ep_x()["x_j"]                            # -20.2: the endplate's joint face
+
+
+def anchor() -> cq.Workplane:
+    """The web (the tray's, at its x), two buttresses +X of it, the base, the rail to x_j.
+    PRINTS BASE DOWN (+Z): the buttresses stand as walls either side of the web, so the web
+    spans between them along its layers. Its X holes are teardrops peaked +Z."""
+    from cadkit.holes import teardrop_hole
+    pu = A_UP
+    w = _box(AX0, AX1, A_Y[0], A_Y[1], Z_PLANK, A_TOP)                       # the web
+    for y0, y1 in ((A_Y[0], A_IN[0]), (A_IN[1], A_Y[1])):                    # the buttresses
+        tri = (cq.Workplane("XZ", origin=(0, y1, 0))
+               .polyline([(AX1 - 0.01, ZB - 0.01), (AX1 - 0.01, A_TOP), (A_FOOT, ZB - 0.01)])
+               .close().extrude(y1 - y0))
+        w = w.union(tri)
+    w = w.union(_box(A_BASE_X0, A_FOOT + 2 * TAB, Y_EDGE, A_Y[1], Z_PLANK, ZB))    # the base
+    w = w.union(_box(A_FOOT, XJ, RAIL_Y[0], RAIL_Y[1], Z_PLANK, ZB))               # the rail
+    # string 6's holes, as the tray's: collar B's (the bearing's rim round it), the rod's, the
+    # housing's two M4 bolts
+    def hole(d, y, z):
+        return teardrop_hole(d, AX1 - AX0 + 2.0, axis_point=(AX0 - 1.0, y, z),
+                             axis_dir=(1, 0, 0), print_up=pu, fit=True)
+    w = w.cut(hole(DB.PLATE_HOLE_D, Y5, Z5))
+    ry, rz = DB.rod_yz(I)
+    w = w.cut(hole(DB.GUIDE_SEAT + 0.4, ry, rz))
+    for a in DB.EAR_ANG:
+        dy, dz = DB.at_ang(a, DB.EAR_R)
+        w = w.cut(hole(4.5, Y5 + dy, Z5 + dz))
+    for x, y in A_SCREWS:
+        w = w.cut(_screw(x, y, pu))
+    return w
+
+
+A_UP = (0.0, 0.0, 1.0)
+A_SCREWS = [(A_BASE_X0 + TAB, Y_EDGE + TAB), (A_BASE_X0 + TAB, A_Y[1] - TAB),
+            (A_FOOT + TAB, Y_EDGE + TAB), (A_FOOT + TAB, A_Y[1] - TAB),
+            ((A_FOOT + XJ) / 2, (RAIL_Y[0] + RAIL_Y[1]) / 2), (XJ - 2 * TAB, (RAIL_Y[0] + RAIL_Y[1]) / 2)]
+
+
+# ── THE +X ENDPLATE, CUT DOWN TO STRING 6 ────────────────────────────────────────────────────
+E = DB.ep_x()
+EP_Y = (Y5 - 12.0, DB.rod_yz(I)[0] + DB.GUIDE_SEAT / 2 + DB.GUIDE_WALL + 3.0)   # -16.75 .. 15.6
+EP_TAB_X = E["x_end"] + 2 * TAB                  # the base's +X tabs past the end
+EP_BASE_Y1 = EP_Y[1] + 2 * TAB                   # the base: a flange each side in Y, flush
+EP_SCREWS = [(x, y) for x in (XJ + TAB, E["x_end"] - TAB)     # with the +X face
+             for y in (Y_EDGE + TAB, EP_BASE_Y1 - TAB)]
+
+
+def endplate() -> cq.Workplane:
+    """direct_bench's endplate with only string 6's features, cut to EP_Y and the plank, with the
+    band EP_BAND taken out of the fill between the bearings (everything over it comes down KH_DROP).
+    PRINTS AS THE INSTRUMENT'S, +X -> -X on its +X face (the base's flanges flush with it)."""
+    w = DB._endplate(only=I).intersect(_box(XJ - 1, E["x_end"] + 1, EP_Y[0], EP_Y[1], Z_PLANK, 100))
+    lo = w.intersect(_box(XJ - 2, E["x_end"] + 2, EP_Y[0] - 1, EP_Y[1] + 1, Z_PLANK - 1, EP_BAND[0]))
+    hi = w.intersect(_box(XJ - 2, E["x_end"] + 2, EP_Y[0] - 1, EP_Y[1] + 1, EP_BAND[1], 100))
+    w = lo.union(hi.translate((0.0, 0.0, KH_DROP)))
+    w = w.union(_box(XJ, E["x_end"], Y_EDGE, EP_BASE_Y1, Z_PLANK, ZB))   # the base, both sides
+    for x, y in EP_SCREWS:
+        w = w.cut(_screw(x, y, DB.EP_UP))
+    return w
+
+
+def ep_axles() -> list:
+    """The bend row's axle (row c) and the bridge axle (brought down KH_DROP): the instrument's
+    100 mm, through the slice."""
+    k_bend = DB.level(I)
+    n = len(DB.axle_zs()) - 1
+    return [(nm, kept(DB._axle, k).translate((0.0, 0.0, KH_DROP if k == n else 0.0)))
+            for k, (nm, _) in enumerate(DB.axle_zs()) if k in (k_bend, n)]
+
+
+# ── THE KEYHEAD: THE V2 NUT BLOCK, CUT DOWN TO STRING 6, ON THE WOOD ─────────────────────────
+from . import nut_block_v2 as NB2
+from . import keyhead_v2 as KH2
+_KH_E = KH2.extents()
+KH_DROP = Z_PLANK - _KH_E["nb_z0"]               # -47.25: the block's bottom on the plank
+# the band out of the endplate's fill: from 1.8 over the bend bearing's roof, |KH_DROP| tall (the
+# fill runs on to 1 under the bridge bearing; rows a and b's axle bores, not used here, go with it)
+_BAND0 = DB.z_level(DB.level(I)) + DB.R + D.BRG688_OD / 2 + DB.EP_BRG_CLR + 1.8
+EP_BAND = (_BAND0, _BAND0 - KH_DROP)
+assert EP_BAND[1] <= DB.BR_C[1] - D.BRG688_OD / 2 - DB.EP_BRG_CLR - 1.0, "the band runs into the bridge pocket"
+assert EP_BAND[0] > DB.rod_yz(I)[1] + DB.GUIDE_SEAT / 2 + DB.GUIDE_WALL, "the band cuts the rod's seat"
+KH_AT = (D.NUT_BLOCK_X, 0.0, D.STRING_Z + KH_DROP)   # nut block local -> bench world
+
+
+def kh_y():
+    """Just string 6's pocket and its walls (the neighbours' cuts are not made)."""
+    y = D.nut_y(I)
+    return y - 8.75, y + 8.75
+
+
+def keyhead() -> cq.Workplane:
+    """String 6's nut block: the instrument's block from its -X face to its +X face and from its
+    bottom to its top, cut with string 6's features only, standing on the plank, with a screw flange
+    each side in Y. The string pulls it +X at the crown ~76 over the wood: the two -X screws take
+    the tipping. PRINTS AS THE INSTRUMENT'S, -X -> +X on its -X face (keyhead_v2.PRINT_UP)."""
+    y0, y1 = kh_y()
+    x0, x1 = NB2.X_BACK, NB2.X_FRONT
+    z0 = _KH_E["nb_z0"] - D.STRING_Z
+    w = _box(x0, x1, y0, y1, z0, NB2.NUT_TOP)
+    w = w.union(KH2.face_thickening_local().intersect(_box(x0, x1 + 10, y0, y1, z0 - 1, NB2.NUT_TOP)))
+    p0, p1 = NB2._y_span(I)
+    lane = _box(NB2.X_BACK - 1.0, NB2.POCKET_X0 + 0.5, p0, p1, NB2.LANE_FLOOR, NB2.Z_SKY)
+    win = NB2.plier_window().intersect(_box(x0 - 2, x1, p0, p1, NB2.WIN_LO - 1, NB2.WIN_HI + 1))
+    for neg in ([NB2.insert_pocket(I), lane, win, NB2.rod_bore()]
+                + NB2.side_screw_negatives(I) + NB2.height_screw_negatives(I)):
+        w = w.cut(neg)
+    w = w.translate(KH_AT)
+    xa, xb = KH_AT[0] + x0, KH_AT[0] + x1
+    w = w.union(_box(xa, xb, Y_EDGE, y1 + 2 * TAB, Z_PLANK, ZB))
+    for x, y in KH_SCREWS():
+        w = w.cut(_screw(x, y, KH2.PRINT_UP))
+    return w
+
+
+def KH_SCREWS():
+    y0, y1 = kh_y()
+    xa, xb = KH_AT[0] + NB2.X_BACK, KH_AT[0] + NB2.X_FRONT
+    return [(x, y) for x in (xa + TAB, xb - TAB) for y in (Y_EDGE + TAB, y1 + TAB)]
+
+
+def keyhead_hardware() -> list:
+    out = [("wb_wrap_rod", NB2.rod().translate(KH_AT))]
+    for nm in ("plate", "shoe", "side_screw", "side_insert", "height_screw", "height_insert"):
+        out.append((f"wb_nut_{nm}", getattr(NB2, nm)(I).translate(KH_AT)))
+    return out
+
+
+def bench_string(t: float) -> cq.Workplane:
+    """String 6 as direct_bench draws it, the run from the crown over the bridge bearing brought
+    down KH_DROP (the crown and the bridge bearing both came down)."""
+    import math
+    g = D.STRING_GAUGE[I]
+    y0, y1 = D.nut_y(I), DB.y_of(I)
+    zs = D.STRING_Z + g / 2 + KH_DROP
+    rr = DB.R + g / 2
+    bz = DB.BR_C[1] + KH_DROP
+    pts = [(D.NUT_BLOCK_X - 30.0, y0, zs - 3.0), (D.NUT_BLOCK_X, y0, zs), (DB.BR_C[0], y1, zs)]
+    for k in range(1, 7):
+        a = math.pi / 2 * (1 - k / 6)
+        pts.append((DB.BR_C[0] + rr * math.cos(a), y1, bz + rr * math.sin(a)))
+    zc = DB.z_level(DB.level(I)) + DB.R
+    for k in range(0, 7):
+        a = -math.pi / 2 * k / 6
+        pts.append((DB.X_BEND + rr * math.cos(a), y1, zc + rr * math.sin(a)))
+    pts.append(DB.yaw_pt((DB._ball_x(t), y1, DB.za(I)), I))
+    out = None
+    for a, b in zip(pts, pts[1:]):
+        if math.dist(a, b) > 1e-3:
+            sg = DB._seg(a, b, g)
+            out = sg if out is None else out.union(sg)
+    return out
+
+
+SCALE_SPAN = DB.X_BEND - D.NUT_BLOCK_X           # crown to the bridge bearing's axle (x)
+
+
+# ── THE ASSEMBLY ─────────────────────────────────────────────────────────────────────────────
+def assembly(t: float = DB.T_OPEN) -> list:
+    out = [(nm, w) for nm, w in DB.string_parts(I, t)
+           if not nm.startswith(("mplate", "string"))]
+    out.append((f"wb_string_{I}", kept(bench_string, t)))
+    out += [(nm, w.translate((0.0, 0.0, KH_DROP)) if nm.startswith("bridge_brg") else w)
+            for nm, w in DB._bend_parts() if nm.endswith(f"_{I}")]
+    out += ep_axles()
+    out += [("wb_motor_block", kept(motor_block)), ("wb_anchor", kept(anchor)),
+            ("wb_endplate", kept(endplate)), ("wb_keyhead", kept(keyhead))]
+    out += _motor_m3s() + keyhead_hardware()
+    x0 = D.NUT_BLOCK_X - 60.0
+    out.append(("ghost_plank", _box(x0, E["x_end"] + 40.0, Y_EDGE, Y_EDGE + 90.0,
+                                    Z_PLANK - 19.0, Z_PLANK)))
+    return [(nm, _made(nm, w)) for nm, w in out]
+
+
+MATERIAL = {"wb_motor_block": "petg-gf", "wb_anchor": "petg-gf", "wb_endplate": "petg-gf",
+            "wb_keyhead": "petg-gf", "wb_wrap_rod": "steel", "ghost_plank": "wood",
+            "wb_string": "polished", "wb_nut_plate": "stainless", "wb_nut_side_insert": "brass",
+            "wb_nut_height_insert": "brass", "wb_nut_shoe": "petg-gf"}
+
+
+def material_of(base: str):
+    """tools.web_materials asks here for wb_ names."""
+    return MATERIAL.get(base) or ("steel" if ("m3" in base or "screw" in base or "rod" in base)
+                                  else None)
+
+
+def _made(nm, w):
+    from cadkit.web.finishes import made_of
+    if DB.owns(nm):
+        return DB._made(nm, w)
+    m = MATERIAL.get(nm) or ("steel" if ("m3" in nm or "screw" in nm or "plate" in nm) else
+                             "brass" if "insert" in nm else None)
+    return made_of(w, m) if m else w
+
+
+PRINTS = ("wb_anchor", "wb_endplate", "wb_keyhead", "wb_nut_shoe")       # the motor block is already printed
+
+
+def main():
+    out = pathlib.Path(__file__).resolve().parents[1] / "coupons"
+    for nm, w in assembly():
+        if nm in PRINTS:
+            cq.exporters.export(w, str(out / f"{nm}.step"))
+            print("wrote", out / f"{nm}.step")
+
+
+if __name__ == "__main__":
+    main()

@@ -444,6 +444,11 @@ def _deferred_rule(na, nb):
 
 
 def intended(na, nb) -> bool:
+    # THE DIRECT INSTRUMENT (the main build since 2026-11-13) keeps its designed contacts in ONE
+    # place, src.direct_bench.is_intended: any pair with one of its parts in it is judged there
+    from src import direct_bench as _DB
+    if _DB.owns(na) or _DB.owns(nb):
+        return _DB.is_intended(na, nb)
     _pair = frozenset({base(na), base(nb)})
     if _pair in DEFERRED:
         if _pair not in _DEFERRED_SEEN:                 # announce once, never silently
