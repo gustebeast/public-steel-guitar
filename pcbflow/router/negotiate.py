@@ -1823,6 +1823,9 @@ class Router(CoupledMixin):
         if not pl or any(L_ not in lid for L_, _ in pl):
             return None                 # a plane layer the router does not route: not judged
         reg = m.region_net == net.id     # [L, H, W]
+        pc = getattr(m, "plane_cells", {}).get(net.id)
+        if pc is not None:
+            reg = reg | pc               # a whole-layer plane is judged too (model.plane_cells)
         if not reg.any():
             return None
         ks, ii, jj = np.nonzero(reg)
@@ -2383,18 +2386,29 @@ class Router(CoupledMixin):
         tg3 = tgt0.reshape(L, h, w)
         pitch = self.m.pitch
         kp = getattr(net, "keep_paths", None) or {}
+        # ⚠ EVERY KEPT JOIN'S VIAS ARE CLAIMED BEFORE ANY FRESH JOIN IS SEARCHED (output_board
+        # mL2, 2026-11-14): kept joins were claimed in piece order, so a fresh join searched
+        # for an EARLIER piece never saw a later kept join's via and dropped its own 0.20 mm
+        # from it -- two AGND plane vias at U3.10, drills overlapping 0.10 mm (quality A12).
+        # ONLY the via claims move up: making the kept paths TARGETS early as well let fresh
+        # joins end on them out of order and cost fret_led_key GND at U10 (3 -> 6 open).
+        kept_in = {}
+        for q, (fp_, nk_) in kp.items():
+            if not (1 <= q < len(pieces)):
+                continue
+            k_, r_ = fp_ // (H * W), fp_ % (H * W)
+            ii_, jj_ = r_ // W - i0, r_ % W - j0
+            if ((ii_ >= 0) & (ii_ < h) & (jj_ >= 0) & (jj_ < w)).all():
+                lp_ = (k_ * h + ii_) * w + jj_
+                self._claim_vias(lp_, vcell, h, w)       # its vias keep every re-join's off
+                kept_in[q] = (fp_, nk_, lp_)
         for q in range(1, len(pieces)):
-            if q in kp:                                 # a good piece's join, kept (_pour_islands)
-                fp_, nk_ = kp[q]
-                k_, r_ = fp_ // (H * W), fp_ % (H * W)
-                ii_, jj_ = r_ // W - i0, r_ % W - j0
-                if ((ii_ >= 0) & (ii_ < h) & (jj_ >= 0) & (jj_ < w)).all():
-                    lp_ = (k_ * h + ii_) * w + jj_
-                    self._claim_vias(lp_, vcell, h, w)   # its vias keep the re-join's off
-                    tgt0[lp_] = True
-                    self._necks.append(nk_ if nk_ is not None else np.zeros(fp_.size, bool))
-                    paths.append(fp_)
-                    continue
+            if q in kept_in:                            # a good piece's join, kept (_pour_islands)
+                fp_, nk_, lp_ = kept_in[q]
+                tgt0[lp_] = True
+                self._necks.append(nk_ if nk_ is not None else np.zeros(fp_.size, bool))
+                paths.append(fp_)
+                continue
             pk = pieces[q] % (h * w)
             pkk = pieces[q] // (h * w)
             pi_, pj_ = pk // w, pk % w
@@ -2470,7 +2484,28 @@ class Router(CoupledMixin):
             k = path // (h * w)
             r = path % (h * w)
             paths.append((k * H + (r // w + i0)) * W + (r % w + j0))
+        self._join_via_gaps(net, paths)
         return paths
+
+    def _join_via_gaps(self, net, paths):
+        """Say so when two of a pour net's plane-join vias sit inside hole-to-hole (the
+        mL2 U3.10 pair): the claims are meant to make it impossible."""
+        H, W, m = self.H, self.W, self.m
+        cs = []
+        for p in paths:
+            p = np.asarray(p)
+            k, r = p // (H * W), p % (H * W)
+            at = np.nonzero((r[1:] == r[:-1]) & (k[1:] != k[:-1]))[0]
+            cs.extend(int(c) for c in np.unique(r[at]))
+        cs = sorted(set(cs))
+        if len(cs) < 2:
+            return
+        ij = np.array([(c // W, c % W) for c in cs], float)
+        d = np.hypot(ij[:, None, 0] - ij[None, :, 0], ij[:, None, 1] - ij[None, :, 1]) * m.pitch
+        lim = m.via_drill + m.hole_to_hole
+        for a_, b_ in np.argwhere(np.triu(d < lim - 1e-9, 1)):
+            self.log("  ⚠ %s: plane-join vias %.2f mm apart (hole-to-hole wants %.2f)"
+                     % (net.name, d[a_, b_], lim))
 
     # ----------------------------------------------------------------- occupancy
     def _mark(self, net):
