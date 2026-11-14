@@ -976,7 +976,10 @@ def detail(meshed, shape_of, boards, cache_dir=None, log=print):
                        & (local[:, 1] > y0 - 0.01) & (local[:, 1] < y1 + 0.01)]
             on = on[on[:, 2] < -0.01] if back else on[on[:, 2] > t + 0.01]
             if not len(on):
-                continue                  # nothing stands there: no box to colour
+                # nothing stands there: the project draws the part itself (output_panel's J8,
+                # src/screw_terminal) and left it out of the solid -- declared, so not a gap
+                pending[pending.index(q)] = q[:-1] + ("drawn by the project (no box)",)
+                continue
             h = float(np.abs(on[:, 2] - (0.0 if back else t)).max())
             z0, z1 = (-h, 0.0) if back else (t, t + h)
             body = _body_part((x0, x1, y0, y1, z0, z1), mat, pose)

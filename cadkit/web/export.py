@@ -772,6 +772,24 @@ def export(parts, out_dir, stem="assembly", extras=None, meshed=None, quiet=Fals
     bad = sorted({m for m in (mats or {}).values() if m and not known(m)})
     if bad:
         raise ValueError("web export: no material cadkit knows: %s" % ", ".join(bad))
+    # ⚠ A BOARD IS THE COLOUR OF A SOLDER MASK, NEVER A DEFAULT (user, 2026-11-14: "the
+    # connector PCB renders white instead of green ... this should only be possible if you
+    # manually asked for white"). A new board's part name missing from the project's colour
+    # table fell through to the default white and was drawn as a white-mask board. A part
+    # made of "board" must carry one of cadkit.board_geom.SOLDER_MASK's colours (mask_rgb of
+    # the mask it is ordered in), so white is only ever a mask someone named.
+    from ..board_geom import SOLDER_MASK
+    _masks = [tuple(_rgba(v)[:3]) for v in SOLDER_MASK.values()]
+    nomask = sorted(n for n, m in (mats or {}).items()
+                    if m == "board" and n in colors
+                    and not any(max(abs(a - b) for a, b in zip(colors[n][:3], c)) < 1e-4
+                                for c in _masks))
+    if nomask:
+        raise ValueError(
+            "web export: %d board part(s) are not the colour of any solder mask (there is no "
+            "default mask): %s. Colour each with cadkit.board_geom.mask_rgb(<the mask it is "
+            "ordered in>)." % (len(nomask), ", ".join(
+                "%s %s" % (n, tuple(round(x, 3) for x in colors[n][:3])) for n in nomask[:12])))
     if bare and not quiet:
         print("web export: %d part(s) have no material and are shown as plain plastic: %s%s"
               % (len(bare), ", ".join(bare[:8]), ", ..." if len(bare) > 8 else ""))
