@@ -776,8 +776,12 @@ def brain(merged=None):
         # lead must open here, not in one 30 AWG wire (four in parallel carry ~4 A).
         v24_rib = Net("+24V_RIB")
         v24_rib.drive = Pin.drives.POWER
-        _two("F4", "Fuse", "PPTC 3A hold / 30 V (open item)", "the motors' 24 V onto the "
-             "connector ribbon: 4 x 30 AWG at ~1 A each", "Fuse:Fuse_1812_4532Metric", v24, v24_rib)
+        # 2920L300/36: 3 A hold at 36 V (2026-11-14). The 30 V rating it had read was under the
+        # +24V rail's clamped transient (34.4 V, A16), and no 1812 PPTC holds 3 A above 33 V --
+        # so the 2920 land; 36 V, 5 A trip, 12 mOhm
+        _two("F4", "Fuse", "2920L300/36GR", "the motors' 24 V onto the connector ribbon: "
+             "4 x 30 AWG at ~1 A each; PPTC 3 A hold / 5 A trip, 36 V", "Fuse:Fuse_2920_7451Metric",
+             v24, v24_rib)
         _cap("C122", "10uF/50V", "ribbon 24 V bulk, after F4", v24_rib, gnd, C1206)
         _jst("J40", "PZ1.27-2x15P ZZ", "the CONNECTOR BOARD ribbon, 30-way 1.27 mm 2x15 IDC "
              "(harness.CONN_RIBBON): motors' 24 V, the lights' 24 V, bus A, both arms (CAN or "

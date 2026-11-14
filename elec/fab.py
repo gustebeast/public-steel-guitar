@@ -205,6 +205,17 @@ LCSC = {
     "MMBT3904": "C20526",           # CJ NPN SOT-23 (1 B 2 E 3 C), JLC basic; 2,847,066 on 2026-11-03 -- motor_ctrl R2 Q2
     "G6K-2F-Y-DC5": "C47190",       # Omron DPDT, 5 V coil (terminal arrangement p.6): the TAPE-AND-REEL listing (G6K-2F-Y-TR DC5), 64,883 on 2026-10-08; the tube listing C326376 was down to 44
     "ESD5B5.0ST1G": "C93623",       # onsemi bidirectional 5 V TVS, SOD-523, ~166k
+    # the output board's isolated audio barrier and port filters (output_board._isolation /
+    # the USB-C ports), picked 2026-11-14 with their ratings in voltage_ratings.json
+    "ISO7741DBQR": "C913840",       # TI 4-ch isolator 3F/1R, QSOP-16; 15,604 stock
+    "ISO7740DBQR": "C2877511",      # TI 4-ch isolator 4F, QSOP-16; 9,224 stock
+    "ISO7710FDR": "C2865544",       # TI 1-ch isolator, F = low default, SOIC-8; 1,321 stock
+    "LP2985-50DBVR": "C74511",      # TI 5 V 150 mA LDO, SOT-23-5 (TI's own, not a clone); 14,190 stock
+    "B0509S-1WR3": "C5369463",      # YLPTEC 1 W 5 -> 9 V isolated module, SIP-4; 1,575 stock (Mornsun's own not stocked)
+    "2920L300/36GR": "C22435908",   # LUTE PPTC 2920, 3 A hold / 5 A trip, 36 V; 14,726 stock (output board F204)
+    "744273501": "C2651123",        # Wurth WE-SL5 HC 5 A / 80 V common-mode choke; 2,113 stock
+    "ACM2012-900-2P-T002": "C55213549",  # T-CND, TDK ACM2012-900 pattern, 50 V 0.4 A; 5,094 stock (TDK's C19972: 0)
+    "KF350-3.5-2P": "C474892",      # Cixi Kefa 3.5 mm 2-way screw terminal, M2 slot, 300 V 10 A; 10,892 stock
     "TS3USB221ARSER": "C128396",    # TI USB 2:1 switch, 5.5 V tolerant I/O, UQFN-10 -- lever pair select; 74,249 on 2026-11-03
     "LMV331IDBVR": "C34731",        # TI comparator, open drain, SOT-23-5 -- lever BOOT0 detector; 194,411 on 2026-11-03
     # -- the UI board, 2026-09-25, every line read off the LCSC listing itself ------
@@ -284,6 +295,8 @@ PASSIVES = {
     ("22uF/16V", "C_0805_2012Metric"):       "C45783",   # Samsung CL21A226MAQNNNE, 25 V X5R 20 %; basic (25 V where 16 is asked)
     ("4.7uF", "C_0805_2012Metric"):          "C1779",   # Samsung CL21A475KAQNNNE, 25 V X5R 10 %; basic
     ("4.7uF/25V", "C_0805_2012Metric"):      "C1779",
+    ("4.7uF/10V", "C_0805_2012Metric"):      "C1779",    # the isolated audio supply's C160 / C164: the 25 V part
+    ("1uF/25V", "C_0603_1608Metric"):        "C15849",   # Samsung CL10A105KB8NNNC, 50 V X5R 10 %; basic, 13.3 M in stock (C162)
     ("4.7uF/50V", "C_0805_2012Metric"):      "C98192",   # Samsung CL21A475KBQNNNE, 50 V X5R 10 %; extended, 340,236 in stock
     ("100nF C0G", "C_1206_3216Metric"):      "C170182",   # FH 1206N104J500CT, 50 V NP0 5 %; 175,852 in stock
     ("10uF/50V", "C_1206_3216Metric"):       "C13585",   # Samsung CL31A106KBHNNNE, 50 V X5R 10 %; basic

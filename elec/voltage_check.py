@@ -1353,6 +1353,7 @@ class Board:
             self.row(ref, pin, "", net, s["v"], s["vt"], s["vf"], None, "n/a", "OK", "no voltage rating applies; current checked below")
 
     chk_ind = chk_bead
+    chk_cmc = chk_conn       # a common-mode choke: its rated voltage judged as a connector's working voltage
 
     def chk_switch(self, ref, c, p):
         for pin, net in self.pins_sorted(c):
@@ -1573,6 +1574,8 @@ class Board:
                     continue
                 lim, what = p["i"] * n, "%d x %g A contact%s" % (n, p["i"], "s" if n > 1 else "")
                 thr = 0.8
+            elif k == "cmc":
+                lim, what, thr = p["i"], "%g A rated per winding" % p["i"], 0.8
             elif k == "fuse":
                 lim, what, thr = p["i"], "%g A fuse" % p["i"], 0.75
             elif k == "bead":

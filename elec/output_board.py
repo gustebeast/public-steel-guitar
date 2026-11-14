@@ -416,7 +416,7 @@ def _isolation(gnd, agnd, v5_pre, v3d, v3v3, v5, iso9_raw, iso9, io, iso):
             ("C160", "4.7uF/10V", v5_pre, gnd, "U30 input", C0805),
             ("C161", "4.7uF/25V", iso9_raw, agnd, "U30 output, before FB1", C0805),
             ("C162", "1uF/25V", iso9, agnd, "U31 input, after FB1", C0603),
-            ("C163", "10nF", byp, agnd, "U31 noise bypass (SLVS522S 7.1.3)", C0402),
+            ("C163", "10nF C0G", byp, agnd, "U31 noise bypass (SLVS522S 7.1.3)", C0402),
             ("C164", "4.7uF/10V", v5, agnd, "U31 output: 2.2 uF minimum effective", C0805)):
         _cap(tag, val, "isolated supply: " + why, a, b, fp)
 
@@ -574,9 +574,10 @@ def output_board():
         dp_j += j["A6"], j["B6"]
         dm_j += j["A7"], j["B7"]
         for tag, value, fp, (a1, a2), (b1, b2), why in (
-                (fl_p, "744273102", "Inductor_SMD:L_CommonModeChoke_Wuerth_WE-SL5-HC",
-                 (vbus_j, vbus), (gnd_j, pgnd), "power pair: WE-SL5 HC, >= 5 A (part number "
-                 "an open item)"),
+                # 744273501, NOT 744273102 (2026-11-14): the 102 is the same body rated 2.5 A
+                # (Wurth's sheet); the 501 is 5 A, 80 V, 5.5 mOhm -- windings 1-4 / 2-3, read
+                (fl_p, "744273501", "Inductor_SMD:L_CommonModeChoke_Wuerth_WE-SL5-HC",
+                 (vbus_j, vbus), (gnd_j, pgnd), "power pair: WE-SL5 HC 744273501, 5 A / 80 V"),
                 (fl_d, "ACM2012-900-2P-T002", "Inductor_SMD:L_CommonModeChoke_Coilank_ACM2012",
                  (dp_j, dp), (dm_j, dm), "USB 2.0 data pair: 90 ohm common mode, passes HS")):
             fl = Part(name="CMC", ref_prefix="FL", ref=tag, tag=tag, dest="NETLIST", tool="skidl",
@@ -1884,9 +1885,9 @@ BOARD_NOTES = {
         "the +X endplate pocket (branner) is cut from elec/output_board.pocket.json: regenerate it whenever the parts within 19 mm of the panel edge move",
         "the mount: one M4 (branner) at x > -124, not yet placed -- reserve its keepout when it is",
         "A16 voltage declarations: voltage_check has output_power / output_signal seeds; merge them into one output_board entry",
-        "audio isolation: B0509S-1WR3 pinout (1 -Vin 2 +Vin 3 0V 4 +Vo assumed from the Murata MEE1 family) -- read it off Mornsun's sheet; LCSC codes for B0509S-1WR3, ISO7741DBQR, ISO7740DBQR, ISO7710FDR, LP2985-50DBVR",
+        "audio isolation: B0509S-1WR3 pinout (1 GND 2 Vin 3 0V 4 +Vo, the MEE1 pattern) -- confirm on the drawing of the part bought (YLPTEC C5369463, rev A2.1: its PDF text layer is garbled); its output below 10 % load is unspecified (ISO9_RAW taken at +20 %)",
         "U5 as the ONE logic 5 V (merged): LMR33640 in the RNX footprint (confirm the orderable and LCSC code), an inductor with Isat >= 5 A in the 5x5 land, D14 / D16 (SS34, 3 A) feed it on a 5 V contract -- 5 A parts if full load is allowed there",
-        "USB-C common-mode chokes FL1-FL4: winding pins (1-4 / 2-3 assumed) and the WE-SL5 HC part number with >= 5 A, both off the makers' sheets; LCSC codes",
+        "USB data chokes FL3 / FL4 (ACM2012): winding pins 1-4 / 2-3 to confirm on TDK's drawing (the power chokes FL1 / FL2 are read: 744273501, 5 A)",
         "audio isolation: the board is meant to be measured (pickup into an amp: no charger / phone charger / laptop charger / two chargers / a computer on the data) against R1",
         "the UI station's clamp (to x -147) is in this board's drop path (to x -169.4): ignored for now (user 2026-11-13), it moves -X later",
     ],
