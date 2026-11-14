@@ -145,6 +145,14 @@ def _has(mod):
 
 
 if __name__ == "__main__":
+    # a log line (the router's warnings carry a warning sign) must never kill a route whose
+    # stdout is a file in the console's code page (output_board, 2026-11-14: cp1252,
+    # UnicodeEncodeError at round 5 of a 25-minute route)
+    for _s in (sys.stdout, sys.stderr):
+        try:
+            _s.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
     stem = os.path.abspath(sys.argv[1])
     me = os.path.abspath(__file__)
     if "--core" in sys.argv:

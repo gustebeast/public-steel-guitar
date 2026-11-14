@@ -1161,6 +1161,143 @@ def pour_foreign(rule, P, poly, refs=None):
     return out
 
 
+AROUND_GRID = 0.1        # pour_around's grid (mm)
+AROUND_NECK = 0.6        # ...the narrowest copper it leaves past another net's pad (mm)
+AROUND_CLEAR = 0.25      # ...a pad's keep-out besides the neck (the fill's clearance, mm)
+
+
+def pour_around(rule, P, notes=None, amps=None):
+    """A pour band along its `along` pins that goes ROUND other nets' pads on its layer,
+    not through them: the band's centreline is a shortest path over a 0.1 mm grid (a
+    spanning tree over the pins, Prim on path length) on which every foreign pad's
+    circumscribed circle, grown by AROUND_CLEAR + AROUND_NECK / 2, is a wall; the band is
+    that centreline grown by width_mm / 2 -- the fill then clears the foreign pads it
+    still covers, and the centreline's corridor stays copper. None if no tree reaches
+    every pin (the caller keeps the hull and says so).
+
+    ⚠ WHY (output_board mL2, 2026-11-14): pour_poly's hull drew +24V's band straight
+    through J240 and PB_VBUS's through R76 / Q5; the fill cleared those pads and the band
+    came back in two parts, R75.1 alone on a 3.9 mm2 fragment. The router now joins a
+    split fill (negotiate.build_nets, 19b4915), but a band cut before routing is a pour
+    drawn badly."""
+    from scipy.ndimage import binary_dilation, distance_transform_edt
+    from scipy.sparse import coo_matrix
+    from scipy.sparse.csgraph import dijkstra
+    pins = [np.asarray(P.pad(*x.split(".", 1)), float) for x in rule.get("along", ())]
+    if len(pins) < 2:
+        return None
+    w = rule.get("width_mm")
+    if w is None:
+        w = max(2.0, 1.5 * width_for(amps)) if amps else 2.0
+    w = float(w)
+    g = AROUND_GRID
+    pa = np.array(pins)
+    mg = w + 6.0
+    x0, y0 = pa.min(axis=0) - mg
+    x1, y1 = pa.max(axis=0) + mg
+    nx, ny = int(math.ceil((x1 - x0) / g)) + 1, int(math.ceil((y1 - y0) / g)) + 1
+    X = x0 + np.arange(nx) * g
+    Y = y0 + np.arange(ny) * g
+    side = "B" if rule["layer"].startswith("B.") else "F"
+    inner = rule["layer"].startswith("In")
+    wall = np.zeros((ny, nx), bool)
+    own = np.zeros((ny, nx), bool)
+    for ref, p in P.parts.items():
+        if ref not in P.pl:
+            continue
+        for q in p["pads"]:
+            if not q["num"]:
+                continue
+            on = q.get("tht") or (not inner and p.get("side", "F") == side)
+            if not on:
+                continue
+            cx, cy = P.world(ref, [q["xy"]])[0]
+            rp = math.hypot(*q["size"]) / 2.0
+            mine = q["net"] == rule["net"]
+            r_ = rp if mine else rp + AROUND_CLEAR + AROUND_NECK / 2.0
+            j0, j1 = max(int((cx - r_ - x0) / g), 0), min(int((cx + r_ - x0) / g) + 2, nx)
+            i0, i1 = max(int((cy - r_ - y0) / g), 0), min(int((cy + r_ - y0) / g) + 2, ny)
+            if j0 >= j1 or i0 >= i1:
+                continue
+            d = np.hypot(X[None, j0:j1] - cx, Y[i0:i1, None] - cy) <= r_
+            (own if mine else wall)[i0:i1, j0:j1] |= d
+    free = ~wall | own
+    # a cell costs 1, up to 3 near a wall: a wide corridor before a narrow one
+    dw = distance_transform_edt(~wall) * g
+    cost = 1.0 + 2.0 * np.clip(1.0 - dw / max(w / 2.0, g), 0.0, 1.0)
+    idx = np.arange(nx * ny).reshape(ny, nx)
+    rows, cols, vals = [], [], []
+    for di, dj in ((0, 1), (1, 0), (1, 1), (1, -1)):
+        ln = math.hypot(di, dj)
+        ia, ib = slice(0, ny - di), slice(di, ny)
+        if dj >= 0:
+            ja, jb = slice(0, nx - dj), slice(dj, nx)
+        else:
+            ja, jb = slice(-dj, nx), slice(0, nx + dj)
+        ok = free[ia, ja] & free[ib, jb]
+        c_ = ln * g * (cost[ia, ja] + cost[ib, jb]) / 2.0
+        rows.append(idx[ia, ja][ok])
+        cols.append(idx[ib, jb][ok])
+        vals.append(c_[ok])
+    G = coo_matrix((np.concatenate(vals), (np.concatenate(rows), np.concatenate(cols))),
+                   shape=(nx * ny, nx * ny)).tocsr()
+    pc = [int(idx[min(max(int(round((py - y0) / g)), 0), ny - 1),
+                  min(max(int(round((px - x0) / g)), 0), nx - 1)]) for px, py in pins]
+    line = np.zeros(nx * ny, bool)
+    line[pc[0]] = True
+    left = {c for c in pc[1:] if not line[c]}
+    while left:
+        dist, pred = dijkstra(G, directed=False, indices=np.nonzero(line)[0],
+                              return_predecessors=True, min_only=True)[:2]
+        best = min(left, key=lambda c: dist[c])
+        if not np.isfinite(dist[best]):
+            return None
+        c = best
+        while c >= 0 and not line[c]:
+            line[c] = True
+            c = pred[c]
+        left = {c for c in left if not line[c]}
+    rr = int(round(w / 2.0 / g))
+    yy, xx = np.mgrid[-rr:rr + 1, -rr:rr + 1]
+    band = binary_dilation(line.reshape(ny, nx), structure=(yy * yy + xx * xx) <= rr * rr)
+    import contourpy
+    z = np.zeros((ny + 2, nx + 2))
+    z[1:-1, 1:-1] = band
+    lines = contourpy.contour_generator(z=z).lines(0.5)
+    if not lines:
+        return None
+    ring = max(lines, key=len)
+    pts = [(x0 + (c - 1) * g, y0 + (r - 1) * g) for c, r in ring]
+    pts = _simplify(pts, g / 2.0)
+    return [[round(float(x), 3), round(float(y), 3)] for x, y in pts]
+
+
+def _simplify(pts, tol):
+    """Douglas-Peucker on a closed ring (iterative)."""
+    if len(pts) > 1 and tuple(pts[0]) == tuple(pts[-1]):
+        pts = pts[:-1]
+    if len(pts) < 4:
+        return pts
+    a = np.asarray(pts, float)
+    far = int(np.argmax(np.hypot(*(a - a[0]).T)))
+    keep = {0, far, len(a) - 1}
+    stack = [(0, far), (far, len(a) - 1)]
+    while stack:
+        i, j = stack.pop()
+        if j <= i + 1:
+            continue
+        p, d = a[i], a[j] - a[i]
+        n = math.hypot(*d)
+        seg = a[i + 1:j]
+        dist = (np.abs(d[0] * (seg[:, 1] - p[1]) - d[1] * (seg[:, 0] - p[0])) / n
+                if n > 1e-12 else np.hypot(*(seg - p).T))
+        k = int(np.argmax(dist))
+        if dist[k] > tol:
+            keep.add(i + 1 + k)
+            stack += [(i, i + 1 + k), (i + 1 + k, j)]
+    return [tuple(a[k]) for k in sorted(keep)]
+
+
 def width_for(amps, dT=10.0, oz=1.0, inner=False, min_mm=0.2):
     """IPC-2221 track width (mm) for a current: I = k dT^0.44 A^0.725, A in mil^2, k 0.048
     outer / 0.024 inner, 1 oz = 1.378 mil. Rounded up to 0.05 mm, never under min_mm."""
@@ -1182,7 +1319,8 @@ def auto_pour(rules, parts, notes=None):
     widths() note asks for: a pour whose outline, once the parts are placed, covers more of
     the board than that is dropped and the net goes back to its width (_pours says so).
 
-    auto_pour(amps, layer [, max_frac, width_mm, layers_by_net, whole]) -- the pour runs along the net's
+    auto_pour(amps, layer [, max_frac, width_mm, layers_by_net, whole, around]) -- around: each
+    band goes round other nets' pads on its layer (pour_around), not through them. The pour runs along the net's
     declared power_paths terminals when it has any, else its non-IC pads. A net with its own
     `pour` rule is left alone. Returns (rules, lines)."""
     ap = [r for r in rules if r["kind"] == "auto_pour"]
@@ -1216,7 +1354,8 @@ def auto_pour(rules, parts, notes=None):
                             why="auto_pour: %s at %.1f A -- %s" % (r["net"], float(r["amps"]), r["why"]),
                             src=r.get("src", ""), hard=False, auto_amps=float(r["amps"]),
                             max_frac=float(a.get("max_frac", 0.25)),
-                            **({"whole": True} if a.get("whole") else {})))
+                            **({"whole": True} if a.get("whole") else {}),
+                            **({"around": True} if a.get("around") else {})))
             lines.append("%s %.1f A -> pour on %s along %d pad(s), %.1f mm" % (
                 r["net"], float(r["amps"]), layer, len(along), w))
         else:
