@@ -167,6 +167,7 @@ def delta_run(r, parent, iters=40, pf0=None, budget_s=900, log=None):
         r._finish_pairs()
         r._fallback_pairs()
         r._pour_islands()
+        r._no_shorts()
     finally:
         r._only = None
     for n in kept:
