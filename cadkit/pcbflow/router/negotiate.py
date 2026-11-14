@@ -173,13 +173,67 @@ class Router(CoupledMixin):
                         return inside(it["gx"], it["gy"], set(m.layers) if it["cu"] is None else it["cu"])
                     return (inside(it["x1"], it["y1"], {it["layer"]})
                             or inside(it["x2"], it["y2"], {it["layer"]}))
-                reach = [a for g in groups.values() if any(planed(a) for a in g) for a in g]
-                loose = [g for g in groups.values() if not any(planed(a) for a in g)]
+                # ⚠ A FILL IN TWO PIECES IS NOT ONE PLANE (output_board mL2, 2026-11-14): the
+                # +24V and PB_VBUS bands were already cut in two by other parts' pads before
+                # any routing, and every pad in either fragment counted as reached -- R75.1
+                # sat in a 3.9 mm2 fragment of its own, open, and nothing joined it. Fragments
+                # are linked by the net's own copper touching two of them (stitch vias, a
+                # through-hole land, a track); the linked set with the most area is the plane,
+                # a group touching only the others is a piece to join, and joins land only in
+                # the plane's fragments.
+                def _ar(pts):
+                    xs, ys = np.array([q[0] for q in pts]), np.array([q[1] for q in pts])
+                    return abs(float(np.dot(xs, np.roll(ys, 1)) - np.dot(ys, np.roll(xs, 1)))) / 2.0
+
+                def in_frag(fi, a):
+                    L_, pts = pl[fi]
+                    k, it = items[a]
+                    one = lambda x, y, lays: L_ in lays and bool(_in_poly(np.array([[x]]), np.array([[y]]), pts)[0, 0])
+                    if k == "v":
+                        return one(it["x"], it["y"], set(m.layers))
+                    if k == "p":
+                        return one(it["gx"], it["gy"], set(m.layers) if it["cu"] is None else it["cu"])
+                    return one(it["x1"], it["y1"], {it["layer"]}) or one(it["x2"], it["y2"], {it["layer"]})
+                gl = list(groups.values())
+                touch = [{fi for fi in range(len(pl)) for a in g if in_frag(fi, a)} for g in gl]
+                fu = list(range(len(pl)))
+
+                def ff(x):
+                    while fu[x] != x:
+                        fu[x] = fu[fu[x]]
+                        x = fu[x]
+                    return x
+                for t_ in touch:
+                    t_ = sorted(t_)
+                    for o_ in t_[1:]:
+                        fu[ff(o_)] = ff(t_[0])
+                comp = {}
+                for fi in range(len(pl)):
+                    comp[ff(fi)] = comp.get(ff(fi), 0.0) + _ar(pl[fi][1])
+                main = max(comp, key=comp.get) if comp else None
+                mainf = {fi for fi in range(len(pl)) if ff(fi) == main}
+                if len(comp) > 1:
+                    print("  %s: its fill is in %d unlinked part(s); the plane is the %.0f mm2 one, "
+                          "copper on the others is joined to it" % (name, len(comp), comp[main]))
+                reach = [a for g, t_ in zip(gl, touch) if t_ & mainf for a in g]
+                # ...and a cut-off fragment is ONE piece: its own fill joins every group on it
+                # (mL2: one piece per group made PA_VOUT / PB_VOUT 11 joins each, and the
+                # crowding cost USBA_DP / DM); a group on no fragment is its own piece
+                byc = {}
+                loose = []
+                for g, t_ in zip(gl, touch):
+                    if t_ & mainf:
+                        continue
+                    if t_:
+                        byc.setdefault(ff(min(t_)), []).extend(g)
+                    else:
+                        loose.append(g)
+                loose = list(byc.values()) + loose
                 if not loose:
                     continue
                 net = Net(name, m.net_id[name], m.width[name])
                 net.plane = True
-                net.pour_polys = [pts for _, pts in pl]
+                net.pour_polys = [pl[fi][1] for fi in sorted(mainf)] or [pts for _, pts in pl]
                 net.pieces = ([np.unique(np.concatenate([cells[a] for a in reach]))]
                               if reach else [np.empty(0, np.int64)])
                 net.pieces += [np.unique(np.concatenate([cells[a] for a in g])) for g in loose]
