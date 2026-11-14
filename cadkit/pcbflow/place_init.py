@@ -136,6 +136,28 @@ def _composite(parts, anchor, members):
     return dict(a, pads=pads, crtyd=a["crtyd"], crtyd_multi=cy, n_own=len(a["pads"]))
 
 
+def _pin_cap(rule, parts):
+    """⚠ A CAP `near` ITS IC's SUPPLY PIN MAY STAND IN THAT IC's RING, AS A `decap` MAY
+    (output_board mN, 2026-11-14). The project ruled the H743's 13 VDD caps as `near`
+    U1.<pin>, 3.0 mm (quality A2), so auto_decaps left them as the author's -- and only a
+    `decap` rule was let into its IC's escape ring (_drop_sat). U1's ring is 2.5 mm (176 pins)
+    and its pads sit 1.00 inside its courtyard, so every cap seated at 1.00 + 2.67 = 3.67 mm:
+    all 13 broken by the placer's own ring, not by the footprints (against the courtyard they
+    reach 1.0). Only the drop changes: re-typing the rules as `decap` moved them into the
+    decap stage and reshuffled the board (196 of 377 parts moved, a decap stranded 34 mm
+    off U212) -- the rule kind, and so the seating order, stay as written."""
+    if rule is None or rule["kind"] != "near":
+        return False
+    c, t = rule.get("ref", ""), rule.get("target", "")
+    if not (c[:1] == "C" and c[1:2].isdigit() and "." in t and c in parts):
+        return False
+    ic, num = t.split(".", 1)
+    if ic not in parts or len(parts[ic]["pads"]) <= IC_PADS:
+        return False
+    net = next((q["net"] for q in parts[ic]["pads"] if q["num"] == num), None)
+    return bool(net) and net in {q["net"] for q in parts[c]["pads"]}
+
+
 def place(parts, notes, rules, keep=()):
     """Free-anchor `group` cells are placed whole: each becomes one composite part (its
     anchor's ref) for every stage, its members expanded from the anchor's pose at the end.
@@ -1813,7 +1835,8 @@ def _drop_sat(G, parts, c, t, rots, pl, forbid, anchor, rule, near_mm=None):
     # the WHOLE ring, it sat on U4's north edge in front of BOOT0 / PG_5V and both went open.
     # The window is the outward side of the edge carrying its tight pins, along that edge
     # the pins' span +- half the satellite.
-    tight = rule is not None and rule.get("_tight") and rule["kind"] != "decap"
+    pcap = _pin_cap(rule, parts) and rule["target"].split(".", 1)[0] == anchor
+    tight = rule is not None and rule.get("_tight") and rule["kind"] != "decap" and not pcap
     # A FALLBACK, judged by the rule: the plain drop first, kept if the rule holds; only a
     # stranded tight satellite tries the window, and keeps whichever seat breaks it less.
     # (Always open, it moved 51 parts on output_panel, whose crystals already held.)
@@ -1827,7 +1850,7 @@ def _drop_sat(G, parts, c, t, rots, pl, forbid, anchor, rule, near_mm=None):
                 return True
             plain = (list(pl[c]), s0)
             _lift(G, parts, pl, c)
-    big = (rule is not None and (rule["kind"] == "decap" or tight)
+    big = (rule is not None and (rule["kind"] == "decap" or pcap or tight)
            and anchor in pl and halo(parts[anchor]) > HALO_SMALL)
     delta = None
     if big:
