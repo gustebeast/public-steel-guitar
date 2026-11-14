@@ -305,7 +305,7 @@ class Boards:
     def __init__(self, geom_dir, *, height=None, tail=None, tht_legs=None, panel=None,
                  xh_mated_h=XH_MATED_H, ph_mated_h=PH_MATED_H, tht_tail=THT_TAIL,
                  side_plug_run=None, silk_font=None, silk_cap=SILK_CAP,
-                 silk_subst=None, unmated=(), finish="hasl"):
+                 silk_subst=None, unmated=(), finish="hasl", body_material=None):
         self.geom_dir = os.fspath(geom_dir)
         self.HEIGHT = dict(HEIGHT, **(height or {}))
         self.TAIL = dict(TAIL, **(tail or {}))
@@ -321,6 +321,11 @@ class Boards:
         # header and no housing in it (cadkit.web.boards) -- and a holder nothing is
         # fitted in, such as a fuse holder with its blade out, empty (cadkit.web.parts)
         self.UNMATED = {tuple(u) for u in unmated}
+        # {footprint name: material} -- what a part's BODY is made of where the web view has
+        # no model for it (KiCad's library has none here, cadkit.web.parts draws none): the
+        # box is then shown as that material. THERE IS NO DEFAULT: an undeclared box fails
+        # the web export (cadkit.web.boards.detail) rather than showing as board-green.
+        self.BODY_MATERIAL = dict(body_material or {})
         self._cache = {}
 
     def __kept_key__(self) -> str:

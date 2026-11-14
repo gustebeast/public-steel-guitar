@@ -336,6 +336,53 @@ def _frames(P, k=3):
     return out
 
 
+def _frame(c, a1, a2):
+    x = a1 - c
+    z = np.cross(x, a2 - c)
+    if np.linalg.norm(x) < 1e-6 or np.linalg.norm(z) < 1e-6:
+        return None
+    x, z = x / np.linalg.norm(x), z / np.linalg.norm(z)
+    m = np.eye(4)
+    m[:3, 0], m[:3, 1], m[:3, 2], m[:3, 3] = x, np.cross(z, x), z, c
+    return m
+
+
+def _anchor_frames(ref, pts, tol=1e-3):
+    """[(ref frame, pts frame)] built on corners a rigid motion cannot confuse.
+
+    ⚠ "THE FARTHEST CORNER" IS NOT AN ANCHOR ON LETTERING (output_board in
+    new_boards_view, 2026-11-14): glyph corners tie on their distance from the centroid,
+    the reference took its single farthest and the posed copy tried only its three
+    farthest -- under one rotation float noise put the matching corner fourth, the board
+    was never found and every part on it stayed a green box. Anchors here are corners
+    whose distance stands apart from every other corner's by more than the noise, and a
+    posed corner is matched to one by that DISTANCE, not by its rank."""
+    c_r, c_p = ref.mean(0), pts.mean(0)
+    d_r, d_p = np.linalg.norm(ref - c_r, axis=1), np.linalg.norm(pts - c_p, axis=1)
+
+    def unique(d):
+        o = np.argsort(d)
+        s_ = d[o]
+        gap = np.minimum(np.r_[np.inf, np.diff(s_)], np.r_[np.diff(s_), np.inf])
+        return o[gap > 4 * tol][::-1]          # unique distances, farthest first
+
+    out = []
+    for i in unique(d_r)[:3]:
+        ci = np.nonzero(np.abs(d_p - d_r[i]) < tol)[0]
+        if ci.size != 1:
+            continue
+        e_r = np.linalg.norm(ref - ref[i], axis=1)
+        e_p = np.linalg.norm(pts - pts[ci[0]], axis=1)
+        for j in unique(e_r)[:3]:
+            cj = np.nonzero(np.abs(e_p - e_r[j]) < tol)[0]
+            if cj.size != 1:
+                continue
+            fa_, fb = _frame(c_r, ref[i], ref[j]), _frame(c_p, pts[ci[0]], pts[cj[0]])
+            if fa_ is not None and fb is not None:
+                out.append((fa_, fb))
+    return out
+
+
 def _nearest(A, B):
     """For each row of A the index of the nearest row of B (brute force, in slices)."""
     out = np.empty(len(A), dtype=np.int64)
@@ -353,11 +400,12 @@ def fit_pose(ref, pts, tol=2e-3):
     if len(ref) != len(pts) or len(ref) < 4:
         return None
     ref, pts = np.asarray(ref, dtype=float), np.asarray(pts, dtype=float)
+    pairs = _anchor_frames(ref, pts)
     fa = _frames(ref, 1)
-    if not fa:
-        return None
-    inv_a = np.linalg.inv(fa[0])
-    for fb in _frames(pts):
+    if fa:
+        pairs += [(fa[0], fb) for fb in _frames(pts)]
+    for fa_, fb in pairs:
+        inv_a = np.linalg.inv(fa_)
         guess = fb @ inv_a
         moved = _apply(guess, ref)
         idx = _nearest(moved, pts)
@@ -366,9 +414,16 @@ def fit_pose(ref, pts, tol=2e-3):
         A, B = ref, pts[idx]
         ca, cb = A.mean(0), B.mean(0)
         U, _, Vt = np.linalg.svd((A - ca).T @ (B - cb))
-        if np.linalg.det(Vt.T @ U.T) < 0:
-            continue                   # a mirror image is not this board
-        R = Vt.T @ U.T
+        # ⚠ THE PROPER ROTATION, NOT A REJECTED REFLECTION (output_board in new_boards_view,
+        # 2026-11-14). Lettering is FLAT: every corner at one z. For a planar set the SVD's
+        # third axis is free, so it hands back the reflection through the plane as often as
+        # the rotation -- equally good -- and "det < 0: a mirror image" threw the board
+        # away on the SVD's sign alone: no models, every part a green box. Kabsch's
+        # correction flips the least-determined axis. (Flat corners cannot tell a mirror
+        # from the board turned over; detail() settles the side: the laminate's corners at
+        # z 0 and t must lie in the board's solid at this pose.)
+        d = 1.0 if np.linalg.det(Vt.T @ U.T) >= 0 else -1.0
+        R = Vt.T @ np.diag([1.0, 1.0, d]) @ U.T
         t = cb - R @ ca
         if np.abs(A @ R.T + t - B).max() > tol:
             continue
@@ -458,6 +513,44 @@ def _own_part_made(f, h, t, pose, panel, edge=None, tip=None):
     except Exception as exc:
         print("web boards: %s (%s) could not be drawn: %s" % (f["ref"], f["fpid"], exc))
         return None
+
+
+def _body_part(box, material, pose):
+    """A footprint's body box (board frame: x0, x1, y0, y1, z0, z1) meshed where the
+    board is. `material` is a filament or a one-colour finish (its own colour), or
+    (material, (r, g, b)) -- a finish such as "epoxy" or "nylon" and the body's colour
+    (sRGB 0..1), as the part's datasheet shows it."""
+    import cadquery as cq
+    from .export import mesh_shape, ANGULAR
+    from .finishes import FILAMENTS, COLOURS
+    from OCP.gp import gp_Trsf
+    from OCP.BRepBuilderAPI import BRepBuilderAPI_Transform
+    from OCP.TopExp import TopExp_Explorer
+    from OCP.TopAbs import TopAbs_FACE
+    from .finishes import known
+    if isinstance(material, (tuple, list)):
+        material, rgb = material
+        lin = tuple(float(c) ** 2.2 for c in rgb)
+    else:
+        lin = (FILAMENTS[material][0] if material in FILAMENTS else COLOURS.get(material))
+    if not known(material):
+        raise ValueError("body_material %r is no material cadkit knows" % (material,))
+    if lin is None:
+        raise ValueError("body_material %r has no colour of its own: give (material, (r, g, "
+                         "b)), or name a filament (%s) or a one-colour finish (%s)"
+                         % (material, ", ".join(FILAMENTS), ", ".join(COLOURS)))
+    x0, x1, y0, y1, z0, z1 = box
+    b = cq.Solid.makeBox(x1 - x0, y1 - y0, z1 - z0, cq.Vector(x0, y0, z0)).wrapped
+    R, tr = pose[:3, :3], pose[:3, 3]
+    trsf = gp_Trsf()
+    trsf.SetValues(R[0, 0], R[0, 1], R[0, 2], tr[0], R[1, 0], R[1, 1], R[1, 2], tr[1],
+                   R[2, 0], R[2, 1], R[2, 2], tr[2])
+    placed = BRepBuilderAPI_Transform(b, trsf, True).Shape()
+    cols, ex = [], TopExp_Explorer(placed, TopAbs_FACE)
+    while ex.More():
+        cols.append((ex.Current(), tuple(lin)))
+        ex.Next()
+    return mesh_shape(placed, MODEL_TOLERANCE, ANGULAR, face_colors=cols, copy=False)
 
 
 def _plug_part(boards, board, ref, pose):
@@ -562,7 +655,15 @@ def detail(meshed, shape_of, boards, cache_dir=None, log=print):
     boxes_of = {n: (m["pos"].min(0), m["pos"].max(0)) for n, m in meshed.items()
                 if SEP not in n and len(m.get("pos", ())) and "inst" not in m}
 
-    def keep(why):
+    pending = []                                 # (board, solid, pose, t, local, f, why)
+
+    def keep(why, f=None):
+        """A footprint the view has no model for. Its body is shown as the material the
+        project declares for it (Boards(body_material=)), or the export fails: there is no
+        board-green default."""
+        if f is not None:
+            pending.append((board, solid_name, pose, t, local, f, why))
+            return
         stats["kept"][why] = stats["kept"].get(why, 0) + 1
 
     used = set(n for _, _, n in found)
@@ -709,7 +810,7 @@ def detail(meshed, shape_of, boards, cache_dir=None, log=print):
                 # none". On one board that silently covered an ESP32 module, a fuse
                 # holder and a SOIC-8: the three most visible things on it, reported
                 # as a clean sweep. A box a project cannot see is a box nobody fixes.
-                keep("the footprint names no model, and none is drawn in web_parts")
+                keep("the footprint names no model, and none is drawn in web_parts", f)
                 if why:
                     log("  box: %s %s names no 3D model" % (solid_name, f["ref"]))
                 continue
@@ -801,7 +902,7 @@ def detail(meshed, shape_of, boards, cache_dir=None, log=print):
             path = None
             if model:
                 if any(abs(s - 1.0) > 1e-6 for s in model["scale"]):
-                    keep("scaled model")
+                    keep("scaled model", f)
                     continue
                 path = resolve_model(model["file"])
                 same = WP.SAME_BODY.get(os.path.basename(model["file"]))
@@ -817,7 +918,7 @@ def detail(meshed, shape_of, boards, cache_dir=None, log=print):
                       if (board, f["ref"]) in getattr(boards, "UNMATED", ()) else f)
                 own = _own_part(fe, h, t, pose, panel, edge, tip)
                 if own is None:
-                    keep("no model in KiCad's library here, none drawn in web_parts")
+                    keep("no model in KiCad's library here, none drawn in web_parts", f)
                     continue
                 own, (lo, hi) = own
                 meshed[solid_name + SEP + f["ref"]] = own
@@ -833,7 +934,7 @@ def detail(meshed, shape_of, boards, cache_dir=None, log=print):
                 continue
             mm = model_mesh(path)
             if mm is None:
-                keep("model would not load")
+                keep("model would not load", f)
                 continue
             fm = footprint_matrix(f, model, t)
             p = _apply(fm, mm["pos"].astype(float))
@@ -843,7 +944,7 @@ def detail(meshed, shape_of, boards, cache_dir=None, log=print):
             slack_x = max(1.0, 0.5 * (x1 - x0))
             slack_y = max(1.0, 0.5 * (y1 - y0))
             if abs(cx - fx) > slack_x or abs(cy - fy) > slack_y:
-                keep("model does not land on its footprint")
+                keep("model does not land on its footprint", f)
                 continue
             full = pose @ fm
             key = os.path.basename(path)
@@ -860,6 +961,30 @@ def detail(meshed, shape_of, boards, cache_dir=None, log=print):
                 cut.append((a0 - 0.02, a1 + 0.02, b0 - 0.02, b1 + 0.02,
                             (t + 0.005, t + 30.0) if back else (-30.0, -0.005)))
             mate(f, h)
+        # the bodies with no model: drawn as the material the project declares, else noted
+        # for the failure below
+        mine = [q for q in pending if q[1] == solid_name and not q[-1].startswith("drawn")]
+        for q in mine:
+            f, why = q[5], q[6]
+            name = f["fpid"].split(":")[-1]
+            mat = getattr(boards, "BODY_MATERIAL", {}).get(name)
+            if mat is None:
+                continue
+            back = f["side"] == "B"
+            x0, x1, y0, y1 = f["fab"]
+            on = local[(local[:, 0] > x0 - 0.01) & (local[:, 0] < x1 + 0.01)
+                       & (local[:, 1] > y0 - 0.01) & (local[:, 1] < y1 + 0.01)]
+            on = on[on[:, 2] < -0.01] if back else on[on[:, 2] > t + 0.01]
+            if not len(on):
+                continue                  # nothing stands there: no box to colour
+            h = float(np.abs(on[:, 2] - (0.0 if back else t)).max())
+            z0, z1 = (-h, 0.0) if back else (t, t + h)
+            body = _body_part((x0, x1, y0, y1, z0, z1), mat, pose)
+            meshed[solid_name + SEP + f["ref"]] = body
+            added += 1
+            cut.append((x0 - 0.02, x1 + 0.02, y0 - 0.02, y1 + 0.02,
+                        (z0 - 0.05, -0.005) if back else (t + 0.005, z1 + 0.05)))
+            pending[pending.index(q)] = q[:-1] + ("drawn as %s" % (mat if isinstance(mat, str) else mat[0]),)
         counts[board] = counts.get(board, [0, 0])
         counts[board][0] += 1
         counts[board][1] += added
@@ -923,6 +1048,49 @@ def detail(meshed, shape_of, boards, cache_dir=None, log=print):
         stats["models"] += added
         stats["drawn"] = stats.get("drawn", 0) + drawn
     kept = "; ".join("%d %s" % (n, w) for w, n in sorted(stats["kept"].items())) or "none"
+    # ⚠ NO BOARD-GREEN DEFAULT (user, 2026-11-14: "every component should be required to
+    # provide material properties with no default"). A footprint with no model used to keep
+    # its box inside the board's solid -- shown as the laminate, green -- and a board the
+    # export could not find kept ALL its boxes: output_board's 280 parts went green and the
+    # run printed only a count. Now a body is a model, a part drawn by cadkit.web.parts, or
+    # a box in the material the project declares (Boards(body_material={footprint: ...}));
+    # anything else stops the export, by name.
+    undeclared = [q for q in pending if not q[-1].startswith("drawn")]
+    for q in pending:
+        if q[-1].startswith("drawn"):
+            stats["models"] += 1
+    lost = []
+
+    def spread(P):
+        P = np.asarray(P, float)
+        return np.linalg.svd(P - P.mean(0), compute_uv=False) / math.sqrt(len(P))
+
+    for name, m in meshed.items():
+        v = m.get("verts")
+        if v is None or name in used or len(v) not in by_count:
+            continue
+        # the same corner count AND the same shape (spread along its own axes, which no
+        # move or turn changes): a screw can share a board's lettering's count by chance
+        sv = spread(v)
+        lost += ["%s (lettering of %s)" % (name, b) for b, refs in by_count[len(v)]
+                 if np.allclose(spread(inks[(b, refs)]), sv, rtol=1e-3, atol=1e-3)]
+    lost += [k for k in stats["kept"] if k.startswith("no solid found")]
+    if undeclared or lost:
+        msg = []
+        if lost:
+            msg.append("board(s) in the scene the export could not locate (every part on "
+                       "them would be a board-green box): " + ", ".join(lost))
+        if undeclared:
+            byfp = {}
+            for q in undeclared:
+                byfp.setdefault(q[5]["fpid"].split(":")[-1], []).append(
+                    "%s %s" % (q[1], q[5]["ref"]))
+            msg.append("footprint(s) with no model and no declared body material (%s): %s. "
+                       "Declare each in Boards(body_material={footprint: material}), or "
+                       "draw it in cadkit.web.parts" % (
+                           "; ".join(sorted({q[6] for q in undeclared})),
+                           "; ".join("%s [%s]" % (k, ", ".join(v)) for k, v in sorted(byfp.items()))))
+        raise ValueError("web boards: " + " | ".join(msg))
     log("web boards: %d board(s) carry %d part model(s), %d of them drawn here [%s]; boxes kept: %s"
         % (stats["boards"], stats["models"], stats.get("drawn", 0),
            ", ".join("%s x%d: %d" % (b, n, k) for b, (n, k) in sorted(counts.items())), kept))

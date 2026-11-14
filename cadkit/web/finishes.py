@@ -39,6 +39,8 @@ FINISHES = {
     "painted":   (0.0, 0.42),     # a painted or powder-coated metal case
     "rubber":    (0.0, 0.95),     # belts
     "nylon":     (0.0, 0.50),     # connector housings
+    "epoxy":     (0.0, 0.70),     # an IC's or module's moulded body: matte black compound
+    "ferrite":   (0.0, 0.80),     # an inductor's or choke's core: dull, grainy
     "pvc":       (0.0, 0.55),     # wire insulation
     "vinyl":     (0.0, 0.20),     # clear flexible tube: the SAME polymer as "pvc" and
                                   # not the same surface. Insulation is filled, matte
