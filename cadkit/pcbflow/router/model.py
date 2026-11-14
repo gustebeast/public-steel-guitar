@@ -61,6 +61,7 @@ class Model:
         self.pads = RS._pads(txt)
         _attach_custom(txt, self.pads)
         _attach_drills(txt, self.pads)
+        _attach_clearance(txt, self.pads)
         self.segs = RS._segments(txt)
         self.vias = RS._vias(txt)
         self.edges = RS._edges(txt)
@@ -170,12 +171,21 @@ class Model:
         hole_extra = self.hole_clear - self.clear
         for p in self.pads:
             net = self.net_id.get(p["net"], -1)
-            r = pad_reach(p)
+            # ⚠ A FOOTPRINT'S OWN CLEARANCE IS A RULE TOO (output_board mL2 U220, 2026-11-14:
+            # all 17 clearance faults). Texas_PWP0020A carries (clearance 0.2) and DRC holds
+            # every item to the larger of the two clearances; the router knew only the
+            # netclass's 0.127, so tracks beside U220's 0.65-pitch lands sat at 0.165-0.194.
+            # The land goes in grown by its extra clearance (as a drill's larger rule does
+            # below), so the one clearance test covers it.
+            extra = max(0.0, p.get("lclear", 0.0) - self.clear)
+            r = pad_reach(p) + extra
             win = self._window(p["gx"] - r, p["gy"] - r, p["gx"] + r, p["gy"] + r, reach)
             X, Y = grid(win)
             d = pad_dist(p, X, Y).astype(np.float32)
             i0, i1, j0, j1 = win
             np.minimum(pad_near[i0:i1, j0:j1], d, out=pad_near[i0:i1, j0:j1])
+            if extra > 0.0:
+                d = d - np.float32(extra)
             for L_ in self.route_layers:
                 if p["cu"] is None or L_ in p["cu"]:
                     put(lid[L_], win, d, net)
@@ -213,6 +223,24 @@ class Model:
         # region_net[k] = the net a regional pour reserves each cell for (0 = none).
         self.region_net = np.zeros((L, ny, nx), np.int32)
         board_area = _area(_loops(self.edges)[0]) if self.edges else 0.0
+        # ⚠ A WHOLE-LAYER POUR IS NOT PRICED BUT IT IS STILL JUDGED (output_board mL2,
+        # 2026-11-14): the > 80 % skip below kept GND's In1 / B.Cu planes out of region_net,
+        # and negotiate._islands reads region_net to know which pours to judge -- so the
+        # crossings cut GND into 25 + 28 fill islands, 18 joins landed on them and nothing
+        # saw it. plane_cells[net id] = bool[L, ny, nx], every big pour on a routed layer:
+        # what _islands judges, never what routing is charged.
+        self.plane_cells = {}
+        for net_name, polys in self.pours.items():
+            nid = self.net_id.get(net_name, -1)
+            for L_, pts in polys:
+                if L_ not in lid or _area(pts) <= 0.8 * board_area:
+                    continue
+                win = self._window(min(q[0] for q in pts), min(q[1] for q in pts),
+                                   max(q[0] for q in pts), max(q[1] for q in pts), 0.0)
+                X, Y = grid(win)
+                i0, i1, j0, j1 = win
+                pc = self.plane_cells.setdefault(nid, np.zeros((L, ny, nx), bool))
+                pc[lid[L_], i0:i1, j0:j1] |= _in_poly(X, Y, pts)
         for net_name, polys in self.pours.items():
             nid = self.net_id.get(net_name, -1)
             for L_, pts in polys:
@@ -556,6 +584,29 @@ def _attach_custom(txt, pads):
                 if len(pts) >= 3:
                     polys.append(pts)
             p["circles"], p["polys"] = circles, polys
+
+
+def _attach_clearance(txt, pads):
+    """Each pad's local clearance onto its pad dict as lclear (mm): its own (clearance x),
+    else its footprint's. Pads without one are left as they are."""
+    by = {}
+    for p in pads:
+        if p.get("name"):
+            by.setdefault(p["name"], []).append(p)
+    for f in re.findall(r"\(footprint\b(.*?)\n\t\)", txt, re.S):
+        if "(clearance" not in f:
+            continue
+        ref = re.search(r'\(property "Reference" "([^"]*)"', f)
+        if not ref:
+            continue
+        fc = re.search(r"\n\t\t\(clearance ([\d.]+)\)", f)
+        fc = float(fc.group(1)) if fc else 0.0
+        for m in re.finditer(r'\(pad "([^"]*)"(.*?)\n\t\t\)', f, re.S):
+            pc = re.search(r"\n\t\t\t\(clearance ([\d.]+)\)", m.group(2))
+            c = float(pc.group(1)) if pc else fc
+            if c > 0.0:
+                for p in by.get("%s.%s" % (ref.group(1), m.group(1)), ()):
+                    p["lclear"] = max(p.get("lclear", 0.0), c)
 
 
 def _attach_drills(txt, pads):

@@ -2830,6 +2830,20 @@ def isolation_barrier(ctx):
     err = pcbnew.FromMM(0.005)
     corner = pcbnew.CORNER_STRATEGY_ROUND_ALL_CORNERS
 
+    def part_pads(layer):
+        """{barrier ref: (its domain-side pads, its other-side pads)} on this layer"""
+        out = {}
+        for fp in ctx.board.GetFootprints():
+            if fp.GetReference() not in barrier:
+                continue
+            d_, o_ = pcbnew.SHAPE_POLY_SET(), pcbnew.SHAPE_POLY_SET()
+            for pad in fp.Pads():
+                if pad.IsOnLayer(layer) and pad.GetNetname():
+                    pad.TransformShapeToPolygon(d_ if pad.GetNetname() in domain else o_,
+                                                layer, 0, err, pcbnew.ERROR_INSIDE)
+            out[fp.GetReference()] = (d_, o_)
+        return out
+
     def sets(layer):
         dom, oth, dom_b, oth_b = (pcbnew.SHAPE_POLY_SET() for _ in range(4))
         for tr in ctx.board.GetTracks():
@@ -2877,7 +2891,21 @@ def isolation_barrier(ctx):
     for layer in ctx.board.GetEnabledLayers().CuStack():
         dom, oth, dom_b, oth_b = sets(layer)
         # a barrier part's own side-1 / side-2 pads (dom_b vs oth_b) are its rating, not ours
-        g = min_gap([(dom, oth), (dom, oth_b), (dom_b, oth)])
+        g = min_gap([(dom, oth)])
+        # ⚠ AND SO IS WHAT THEY CARRY (output_board mK, 2026-11-13; lead: the moat is ground-
+        # loop and noise separation, not safety creepage, so the part's pin pitch IS the
+        # barrier there). U30, the B0509S, is THT at 2.54: the AGND pour joins its pin 3 and
+        # fills round it, and so stood 0.90 from pin 2 on In1 and B.Cu -- the module's own
+        # pin gap, reported as copper in the moat. A barrier part's pad is judged against
+        # the domain's copper (and its domain-side pad against everyone else's) at the
+        # smaller of the moat and that part's own pin-to-pin gap on the layer.
+        for ref, (pd, po) in part_pads(layer).items():
+            own = min_gap([(pd, po)])
+            lim = moat if own is None else min(moat, own)
+            for a_, b_ in ((dom, po), (pd, oth)):
+                gp = min_gap([(a_, b_)])
+                if gp is not None and gp < lim - 0.01:
+                    g = gp if g is None else min(g, gp)
         name = ctx.board.GetLayerName(layer)
         gaps[name] = g
         if g is not None and g < moat - 0.01:

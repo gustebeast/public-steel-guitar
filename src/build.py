@@ -118,7 +118,7 @@ PARTS = {
     # (JLCCNC, 4 mm 304) and its STEP is the file to order from; the PRINTED stand-in carries a Ø4
     # dowel in place of the crown and fits the same pocket, for the bench until the steel arrives.
     "nut_plate": (lambda: __import__("src.nut_block", fromlist=["e"]).plate(0), "steel/nut_plate.step", "LASER-CUT 304 STAINLESS, 4 mm, x10 (JLCCNC sheet metal, no finish; stone any burr off the crown): the string's break crown, the shelf that pinches the one wrap under the rod, and the -X face the side screw pins the tail to. Not printed"),
-    "keyhole_plate": (lambda: __import__("src.direct_bench", fromlist=["e"]).keyhole_plate(), "steel/keyhole_plate.step", "LASER-CUT 304 STAINLESS, 4 mm, x10, the nut plates' sheet (JLCCNC, no finish): the direct-drive yoke's roof. The string's ball end bears on it; tap the two Ø2.5 holes M3 and the yoke's M3 x 30s thread in. Not printed"),
+    "keyhole_plate": (lambda: __import__("src.direct_bench", fromlist=["e"]).keyhole_plate(), "steel/keyhole_plate.step", "LASER-CUT 304 STAINLESS, 4 mm, x10, the nut plates' sheet (JLCCNC, no finish): the direct-drive yoke's roof. The string's ball end bears on it; two Ø3.4 CLEAR holes (no tapping): the M3 x 30s go in from +X, heads on this plate, through the yoke into the collar's brass inserts. Not printed"),
     "nut_slide_insert": (lambda: __import__("src.nut_block", fromlist=["e"]).standin(0), "pctg/nut_slide_insert.step", "PCTG — nut plate STAND-IN, x10 (bench, until the steel plates arrive): the plate's outline with a cradle for a Ø4 x 4 dowel where the crown is (no glue: the string holds it down). Prints FLAT on a Y face"),
     # THE BELT CLAMP'S TWO HALVES, ten of each. (test_belt_tensioner is the same pair on one plate.)
     "belt_tensioner_half_a": (lambda: __import__("src.belt_tensioner", fromlist=["e"]).half_a(), "pctg/belt_tensioner_half_a.step", "PCTG at a 0.4 NOZZLE (the ribs) — belt-tension clamp, HEAD half (x10): belt slot, M3 head window and the key channel. Prints LYING ON ITS CLOSED +Y SIDE FACE, the slot opening upward"),
@@ -2145,7 +2145,7 @@ def _optical_fasteners():
     # from below and did need one; copying that was what put this one through the board.)
     # x20 and seated in the HAND GUARD's well, not on the board: the guard is clamped
     # between the head and the board (optical_pickup.opt_guard).
-    out.append(("optical_guard", PARTS["optical_guard"][0]()))
+    out.append(("optical_guard", PARTS_V1["optical_guard"][0]()))
     _oscr = headed_screw(M4, OP.GUARD_SCREW_L, head_d=TP.JACK_HEAD_D, head_h=_ohh,
                          socket_af=2.5)
     for _i, (_mx, _my) in enumerate(OP.mount_points()):
@@ -2167,7 +2167,7 @@ def screw_rows_components():
     determine."""
     out = [(n, w) for i in range(D.N_STRINGS) for n, w in _string_components(i)
            if n.startswith(SCREW_ROW_PARTS)]
-    out.append(("bridge_endplate", PARTS["bridge_endplate"][0]()))
+    out.append(("bridge_endplate", PARTS_V1["bridge_endplate"][0]()))
     # the bridge bearings + axle, and the strings over them (string_ above): the 688ZZ swap
     # and the string path from ear to bearing are part of the same unit
     out.append(("bridge_bearings", C.bridge_bearings()))
@@ -2220,7 +2220,7 @@ def optical_work_components():
            ("optical_cable_usb", OP.opt_cables("usb")),
            ("optical_cable_usb_metal", OP.opt_cables("metal")),
            *__import__("src.wiring", fromlist=["w"]).optical_feed(),
-           ("bridge_endplate", PARTS["bridge_endplate"][0]()),
+           ("bridge_endplate", PARTS_V1["bridge_endplate"][0]()),
            ("motor_ctrl", EL.motor_ctrl()),
            ("motor_ctrl_silk", EL.motor_ctrl_silk()),
            *EL.pi4_parts(),
@@ -2492,6 +2492,27 @@ def width_work_components():
 def collect_components():
     """EVERY placed thing in the instrument: [(name, cq.Workplane), ...].
 
+    THE DIRECT-DRIVE INSTRUMENT (user, 2026-11-13: the main build is src.direct_bench's
+    instrument; v1 stays reachable at the git tag v1-instrument and as collect_v1_components).
+    Each part is drawn where it sits at T_OPEN, every one its own kept() entry; the pickup is
+    still its stand-in (ghost_pickup). The v1 latch, legs, pedal bar and levers are NOT in it
+    yet: they come over later, and their modules and PARTS entries stay for that.
+
+    The one entry point the whole tool chain is built on -- the overlap and sweep gates, the
+    GLB exporter, scratch_view and the build profiler all take their model from here, so a
+    part that is not in this list is invisible to every check in the project. Names matter
+    beyond display: the gates key their allow-lists on them (its pairs are judged by
+    direct_bench.is_intended)."""
+    from . import direct_bench as DB
+    return DB.assembly(DB.T_OPEN)
+
+
+def collect_v1_components():
+    """THE v1 INSTRUMENT (belt drive, tag v1-instrument), kept callable for the parts the direct
+    instrument will reuse (latch, legs, pedal bar, levers). NOT the build: see collect_components.
+
+    EVERY placed thing in the v1 instrument: [(name, cq.Workplane), ...].
+
     The one entry point the whole tool chain is built on -- the overlap and sweep
     gates, the GLB and rig exporters, scratch_view and the build profiler all take
     their model from here, so a part that is not in this list is invisible to every
@@ -2730,6 +2751,11 @@ _COLORS = {
     **{"pi4" + _k: __import__("src.pi4b", fromlist=["RGB"]).RGB[_c]
        for _k, (_c, _f) in __import__("src.pi4b", fromlist=["GROUPS"]).GROUPS.items()},
     "pi_cap":          _BG.mask("pi_cap"),   # PCB green
+    # the new instrument's boards (src/new_boards_view.py): a board part with no entry here was
+    # drawn the default white -- cadkit's export now refuses a board not in a mask colour
+    "output_board_pcb":    _BG.mask("output_board"),
+    "connector_board_pcb": _BG.mask("connector_board"),
+    "brain_pcb":           _BG.mask("brain"),
     "pi_riser":        (0.05, 0.05, 0.05),   # BOUGHT: Adafruit 4079 socket riser, black
     "output_panel":    _BG.mask("output_panel"),   # output + panel board (VBUS broken,
                                              # DAC + true-bypass relay + the TS jack)
@@ -2880,6 +2906,26 @@ _WAY_COLORS = {"wire_link_1": (0.85, 0.12, 0.10), "wire_link_2": (0.05, 0.05, 0.
                "wire_link_3": (0.92, 0.92, 0.92), "wire_link_4": (0.10, 0.60, 0.25)}
 
 
+# PARTS THAT HAD NO COLOUR (2026-11-14): each fell through to the default white, which is now a
+# build failure (user: "missing from the project's colour table ... should fail the build").
+# Coloured as their material already is elsewhere in this table.
+_BRASS, _STEEL, _GF = (0.80, 0.60, 0.35), (0.55, 0.55, 0.58), _COLORS["bar_latch_collar"]
+_COLORS.update({
+    # the lever stack's heat-sets and travel stop (every station peels to these)
+    "main_position_insert": _BRASS, "main_spring_tension_insert": _BRASS,
+    "half_stop_position_insert": _BRASS, "half_stop_spring_tension_insert": _BRASS,
+    "kl_travel_stop_insert": _BRASS, "kl_travel_stop_screw": _STEEL,
+    # the fret boards' M4 joints (src/fret_light.py)
+    "fret_m4_insert_key": _BRASS, "fret_m4_insert_mid": _BRASS,
+    "fret_m4_key": _STEEL, "fret_m4_mid": _STEEL,
+    "bar_shim": _GF, "seam_bridge": _GF,             # PETG-GF printed parts
+    "ui_shaft": (0.62, 0.64, 0.67),                  # the encoder's steel shaft
+    "wall_bar": (0.55, 0.58, 0.62),                  # steel bar, as leg_shaft
+    "wire_link_plug_c": _COLORS["wire_link_plug"],
+    "wire_usb_plug_pi": _COLORS["wire_usb_plug"],
+    "wire_usb_ribbon": _COLORS["wire_usb"], "wire_usb_joint": _COLORS["wire_usb"],
+})
+
 def _color_for(name):
     # STRIP EVERY TRAILING INDEX GROUP, not just the last one -- the same lesson
     # tools.check_overlaps.base() records, and this resolver had not learned it. A part
@@ -2939,12 +2985,16 @@ def _color_for(name):
         _c = _CB.color_of(base, _COLORS)
         if _c is not None:
             return cq.Color(*_c)
-    if base.startswith("db_"):                   # ...and the direct-drive bench (src.direct_bench)
-        from . import direct_bench as _DB
+    from . import direct_bench as _DB            # ...and the instrument's (src.direct_bench)
+    if _DB.owns(base):
         _c = _DB.color_of(base, _COLORS)
         if _c is not None:
             return cq.Color(*_c)
-    return cq.Color(*_DEFAULT_COLOR)
+    # ⚠ NO DEFAULT COLOUR (user, 2026-11-14). A name nothing here knows used to come out
+    # _DEFAULT_COLOR, white -- a new board read as a white-mask PCB and nothing said so. It
+    # fails the build instead: add the part to _COLORS (or its module's own table).
+    raise KeyError("build: no colour for part %r (base %r) -- add it to src/build.py _COLORS "
+                   "or its module's colour table; there is no default" % (name, base))
 
 
 def _export_assembly(publish=True, gate=True, gate_full=True):
@@ -2952,8 +3002,6 @@ def _export_assembly(publish=True, gate=True, gate_full=True):
     with _stage("assembly: collect_components"):
         comps = collect_components()
     print(f"Assembled {len(comps)} components  [build #{build_n}]", flush=True)
-    with _stage("geometry report"):
-        print(geometry_report())
     # THE ASSEMBLY IS THIS LIST, NOT A FILE. Nothing read the one-file STEP of it but a
     # viewer, and the viewer is given the list. The printed parts' own STEPs are above.
     # Each component is left behind on its own instead, where every worktree's scratch
@@ -2968,8 +3016,7 @@ def _export_assembly(publish=True, gate=True, gate_full=True):
         # every gate always runs, so one RED doesn't hide another's result
         for label, fn in (("gate: overlaps", lambda: _report_overlaps(comps, full=gate_full)),
                           ("gate: sweep", lambda: _report_sweep(comps)),
-                          ("gate: travel", lambda: _report_travel(comps)),
-                          ("gate: carriage travel", lambda: _report_carriage_travel(comps)),
+                          ("gate: drive travel", lambda: _report_drive_travel(comps)),
                           ("gate: world pose", lambda: _report_world_pose(comps)),
                           ("gate: dead code", _report_dead)):
             with _stage(label):
@@ -3075,6 +3122,26 @@ def _report_carriage_travel(comps) -> int:
     return 1 if n else 0
 
 
+def _report_drive_travel(comps) -> int:
+    """THE DRIVE OVER ITS TRAVEL (replaces v1's carriage-travel gate, 2026-11-13): the overlap
+    gate sees every string at T_OPEN, so this redraws the instrument with every string at
+    each end of its travel (t 0 and 1) and gates that. Only the parts that move are new
+    pairs; the rest come from the pair cache. Baseline is 0."""
+    try:
+        from . import direct_bench as DB
+        from tools.check_overlaps import gate
+        n = 0
+        for t in (0.0, 1.0):
+            print(f"drive travel: every string at t = {t:.0f}", flush=True)
+            n += gate([(name, wp.val()) for name, wp in DB.assembly(t)], full=True)
+    except Exception as e:               # noqa: BLE001 -- never let a gate eat the geometry
+        print(f"drive travel gate: SKIPPED ({type(e).__name__}: {e})", flush=True)
+        return 0
+    print(f"DRIVE TRAVEL GATE: {'green' if n == 0 else f'RED -- {n} pair(s) meet at an end of the travel'}",
+          flush=True)
+    return 1 if n else 0
+
+
 def _report_dead() -> int:
     """Source drift, not geometry: module-level definitions nothing in the repo names
     any more. REPORT ONLY -- it never fails the build. Retired parts leave their
@@ -3129,6 +3196,103 @@ def _web_view(comps, build_n, publish=True):
     except Exception as e:               # noqa: BLE001 — never let the viewer break a build
         print(f"web view: skipped ({type(e).__name__}: {e})", flush=True)
     return 0
+
+# ── THE DIRECT INSTRUMENT'S PARTS (user, 2026-11-13: the main build is the direct instrument) ──
+# PARTS_V1 is v1's table as it was, for the v1 code that still reads it. PARTS is what this
+# build exports and checks: the direct instrument's parts, and the v1 parts it will REUSE (the
+# body-adapter latch, the legs, the pedal bar, the levers, the UI's printed parts) and the shop
+# tools. Everything else of v1 (chassis, decks, endplates, belts, pulleys, nut plates, its
+# coupons) leaves the table; it is in the git tag v1-instrument.
+PARTS_V1 = PARTS
+V1_REUSED = (
+    # the levers
+    "knee_housing", "knee_housing_r", "knee_lever", "kl_axle", "kl_spacer", "kl_spacer_sprung",
+    "kl_spacer_sprung_n", "kl_axle_sprung", "kl_magnet_cap", "kl_pcb_shim", "kv_pcb_shim",
+    "pedal_pcb_shim", "kv_housing", "kv_lever", "cart_base", "cart_piston",
+    # the legs and the body-adapter latch
+    "leg_foot", "body_adapter", "body_adapter_px_py", "body_adapter_px_my", "body_adapter_mx_my",
+    "fixed_sleeve", "adjust_sleeve", "fixed_tenon", "adjust_tenon", "leg_latch_slider",
+    "bar_latch_frame", "bar_latch_collar",
+    # the pedal bar
+    "pedal_bar_a", "pedal_bar_b", "pedal_bar_c", "pedal_lid_a", "pedal_lid_b", "pedal_lever",
+    "pedal_detent_nub",
+    # the UI station (src.direct_bench.ui_parts draws the same station)
+    "ui_clamp", "ui_pwr_cap", "ui_knob",
+    # shop tools
+    "coil_mandrel", "coil_mandrel_sleeve", "lever_prog_jig", "lever_prog_jig_base", "saw_jig",
+    "motor_shaft_saw_jig", "saw_jig_cap", "pin_drill_jig", "pin_drill_bushing_pilot",
+    "pin_drill_bushing_pin", "pin_drill_bushing_pilot_1", "pin_drill_bushing_pilot_2",
+    "pin_drill_bushing_pilot_3", "ream_jig",
+    # the direct drive's laser-cut plate (already the direct bench's)
+    "keyhole_plate",
+)
+
+
+def _direct_parts():
+    """The direct instrument's own parts: each per-string printed part ten times, as drawn at
+    T_OPEN (each string's is its own solid: a tab's clocking, a plug's direction), the ten in
+    ONE file (PRINTS_WITH); the body and the endplate; the anchor tray (laser cut, bent)."""
+    from . import direct_bench as DB
+    from cadkit.kept import kept
+    out, with_ = {}, {}
+    for nm, make, moves in DB._STRING_PARTS:
+        mat = DB.MATERIAL.get(nm)
+        if mat not in MATERIALS:
+            continue
+        for i in range(DB.N):
+            args = (i, DB.T_OPEN) if moves else (i,)
+            out[f"{nm}_{i}"] = (partial(kept, make, *args), f"{mat}/{nm}.step",
+                                f"{mat.upper()} -- direct drive {nm}, string {i + 1} of "
+                                f"{DB.N} (all ten in {nm}.step). src.direct_bench")
+            if i:
+                with_[f"{nm}_{i}"] = f"{nm}_0"
+    out["body"] = (partial(kept, DB._body), "petg-gf/body.step",
+                      "PETG-GF -- the direct instrument's BODY: walls and floor to the endplate "
+                      "joint, the bars' channels, the anchor's bosses and the output board's "
+                      "grooves. src.direct_bench._body")
+    out["endplate"] = (DB.endplate_full, "petg-gf/endplate.step",
+                          "PETG-GF -- the +X ENDPLATE (rod plate, axles, lanes, the bars' ends). "
+                          "PRINTED +X -> -X. src.direct_bench._endplate")
+    out["anchor"] = (partial(kept, DB._anchor), "steel/anchor.step",
+                        "STAINLESS SHEET, laser cut and bent -- the spring anchor tray, on 8 "
+                        "M4 x 10 into the wall bars. Not printed")
+    return out, with_
+
+
+_DP, _DW = _direct_parts()
+from . import direct_bench as DB_
+PARTS = {**{k: PARTS_V1[k] for k in V1_REUSED}, **_DP}
+PRINTS_WITH.update(_DW)
+FILAMENT_OF.update({k: v[1].split("/")[0] for k, v in _DP.items()})
+PRINT_ORIENTATION = {k: v for k, v in PRINT_ORIENTATION.items() if k in PARTS}
+PRINT_ORIENTATION["endplate"] = PO.from_build_dir(
+    (-1, 0, 0), "direct_bench: the endplate PRINTS +X -> -X (user, 2026-11-13: a clean exterior, "
+                "round holes along X); the axle bores peak -X, the lanes reach EP_DROOP into the "
+                "rod plate for the bridge's sag")
+for _n in [n for n in PARTS if n.startswith("collar_") and n[7:].isdigit()]:
+    PRINT_ORIENTATION[_n] = PO.from_build_dir(
+        (-1, 0, 0), "direct_bench: the collar PRINTS +X -> -X, its +X face on the bed (user, "
+                    "2026-11-12, back to the original orientation); insert pockets under cone roofs")
+# the rest of the drive's printed parts (user, 2026-11-14), each direction its module's constant
+for _base, _up, _why in (
+        ("collar_a", DB_.COLLAR_A_UP, "direct_bench.COLLAR_A_UP -- prints -X -> +X; split through, "
+                                       "teardrop M3 holes, the coupler's thread in the bore"),
+        ("plug", DB_.PLUG_UP, "direct_bench.PLUG_UP -- prints -X -> +X; cones under the stop "
+                              "flange and the insert pocket, the screw holes cut through the teeth"),
+        ("sleeve_p", DB_.SLEEVE_P_UP, "direct_bench.SLEEVE_P_UP -- prints +X -> -X; teardrop key hole"),
+        ("sleeve_c", DB_.SLEEVE_C_UP, "direct_bench.SLEEVE_C_UP -- prints -X -> +X; teardrop key hole"),
+        ("yoke", DB_.YOKE_UP, "direct_bench.YOKE_UP -- prints -X -> +X; the nut-rim register "
+                              "under a cone"),
+        ("housing", (-1.0, 0.0, 0.0), "direct_bench: the housing prints +X -> -X; the guide rod's "
+                                      "cap under a cone roof")):
+    for _n in [n for n in PARTS if n.startswith(_base + "_") and n[len(_base) + 1:].isdigit()]:
+        PRINT_ORIENTATION[_n] = PO.from_build_dir(_up, _why)
+for _n, (_b, _path, _note) in PARTS.items():
+    if _n not in PRINT_ORIENTATION:
+        PRINT_ORIENTATION[_n] = PO(
+            None, "as modelled -- a direct-bench part with no declared print yet. UNSTUDIED. "
+                  "The part note says: " + " ".join((_note or "").split())[:300], confirmed=False)
+require_declared(set(PARTS), PRINT_ORIENTATION)
 
 
 _T_MAIN = time.perf_counter()           # everything above has been imported and built

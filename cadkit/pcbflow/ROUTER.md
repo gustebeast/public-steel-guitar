@@ -265,6 +265,99 @@ candidate set inside a placement search -- a few boards, minutes -- not a sweep.
   length 1988 good, 2032 to 2185 bad. All five still route closed, so `open` alone cannot
   rank them and contention is the term that does. ~45 s a board, three at once.
 
+**Order-dependent pin-row escapes (output_signal, 2026-11-13) -- not a placement score, not
+a local repair.** 16 candidates of 3-4 passives moved 1-4 mm (6 legal) and 9 jitters of
+0.05-0.15 mm, all routed with the same router. The unmoved board and 8 of 9 jitters route
+clean; every real move opened 2-7 nets, ALL at the USB3300 (U4: PHY_XI, PHY_1V8A,
+ULPI_*), although the moved parts sat 10-54 mm from it (one cap turned 15 mm away opened
+ULPI_D3/D4). Neither the global plan (overflow 2.8-3.5 throughout) nor a pad-scale escape
+ratio per IC (flat to the third decimal) moves with these placements: the escape is
+routable, and whichever order the negotiation falls in decides it. Logged, ULPI_D3/D4
+never lack a path -- they end sharing each other's (and D2's) space at U4's pins, and
+priority repair and wall repair both fail before `_rip` opens them. Tried and reverted
+(patch kept outside the repo): (1) region rip-up -- every net within 1.5 / 3 / 6 mm of the
+conflict (9 / 14 / 27 nets) lifted and re-laid stuck-first, shorter- or longer-first: no
+order better; (2) the same with the history zeroed for the lifted set: no change; (3) the
+lifted set re-negotiated with `_rounds` from pf 0.5: worse, 10 nets open including GND --
+**`_rounds` on a subset disturbs the plane nets** (their keep_paths / joins), so it is not
+a sub-solver until plane nets and everything outside the lift are locked. Read placements
+over several jitters (`placescore --spread`) rather than one route. If this shows again at
+a large pin row (an H743 or CM5 escape), making `_rounds` subset-safe and retrying (3) is
+the next step.
+
+## Known traps
+
+- **A pour re-join that walls the board (output_board mL2, 2026-11-14).** Once
+  `_islands` judged whole-layer planes (`model.plane_cells`), GND's piece at R36
+  (76.3, 101.4) was found on a fill island and re-joined to the main body on its own --
+  and the re-join opened 77 nets (was 0), so `_pour_islands` put it back. The island sits
+  in the dense band beside the isolated-audio moat, and the only way to the main plane is
+  across everything else's corridor. Read it as a PLACEMENT fact (the piece's pad needs a
+  plane via it cannot have where it is), not as a reason to loosen the keep-only-if-better
+  rule: that rule is what stopped a 1-open fix costing 77.
+- **Pricing is not judging.** `region_net` skips pours over 80 % of the board so other
+  nets cross whole planes at no extra cost; `_islands` used to read the same array to
+  decide what to judge, so whole planes were never checked (GND cut into 25 + 28
+  islands, 18 joins on them). The judge reads `plane_cells`; the price stays `region_net`.
+- **Kept joins are claimed before fresh ones** (`_to_plane`): claimed in piece order, a
+  fresh join for an earlier piece dropped its via 0.20 mm from a later kept one (drills
+  overlapping, A12). Only the claims move up -- making kept paths targets early changed
+  which pieces join where and cost fret_led_key GND at U10.
+- **A kept-board replay starts from `layout.py`, not from the kept board stripped**
+  (2026-11-14). Stripping a kept board's tracks takes its DECLARED copper too (notes
+  `tracks` / `vias`, e.g. optical's comb lanes): optical then had 20 nets with no path, ran
+  ~96 s a round and never finished in 55 min -- read at first as the router being slow.
+  `layout.py <stem>` on the board's net + notes gives the same placement as `elec/kept`
+  (270 of 270 parts unmoved; the kept board's extra parts are post-route ones) with the
+  declared copper laid: optical routes in 66 s. `NOPATH_RETRY` came out of the bad replay
+  -- sound, but no real board has needed it yet.
+- **A price on whole planes is not how to keep them whole** (output_board mL2,
+  2026-11-14). Signals cross GND's In1 / B.Cu planes free, and on mL2 they walled off
+  thin strips (J240.29's via landed in one). Pricing other nets on a whole plane's cells
+  (tried as PLANE_COST, removed): x3 -> 6 unconnected (was 4), x8 -> 9 and 3673 s. The
+  displaced signals went to F.Cu and onto In2's VIN pours and cut those instead. Nor did
+  re-routing the walling nets with the re-join (tried, removed): every attempt left
+  more islands than it closed. On a 4-layer board where every layer carries signals, a
+  plane strip is a placement and layer-plan fact.
+- **A plane net "sharing" only for its islands must not be ripped** (output_board mL2,
+  2026-11-14). `_rounds` lists a plane net with a pour piece cut off as sharing, though
+  none of its joins shares space. Once `_left_w` priced such a net as its island pieces
+  (2 open, not 279), pair re-negotiations that left GND so were accepted -- and `_rip`,
+  finding no sharing join (`_bad_joins` None), took ALL of GND out: 260 unconnected, three
+  times in one pair finish. `_rip` now keeps a plane net none of whose joins or vias share
+  space; the island pass re-joins its pieces. Any change to how a left net is weighed has
+  to be read against what `_rip` then does to it.
+- **The island judge's grid error is not a constant** (2026-11-14). The judged fill is a
+  grid fill: routed copper is stamped at cell centres within R0, grown by an EDT, and
+  emitted straightened up to `STRAIGHT_TOL` off those centres; the min-width trim is a grid
+  opening (disk round(2.5) = 2 cells against KiCad's 0.125). Both errors are sub-cell and
+  vary by place, so no slack constant reproduces KiCad. The default (`FILL_SLACK` /
+  `FILL_SLACK_FD` 0.03 on both) is CHOSEN BY ROUTE OUTCOME on mL2 (2 open / 0 clearance,
+  against 7 open for the derived pitch/sqrt2 on routed copper and 0 on fixed) -- it is not
+  a KiCad match, and fret_led_key's +14V5 island (a 0.226 neck against 0.25, at the end
+  of a strip between two diagonal tracks) still reads as joined under it. Do not "fix" a
+  count by tuning the constant. The exact judge (`OWNROUTE_FILL_EXACT`, opt-in, island
+  pass only) measures the band against emit's own geometry and reads connectivity off the
+  exactly eroded set; it agrees with KiCad on fret_led_key and optical, and costs ~5x the
+  grid judge per call (mL2 GND 7.9 s vs 1.5 s).
+- **Compare like states with KiCad.** The island judge on the snapshot taken BEFORE
+  `_pour_islands` (`OWNROUTE_SNAPSHOT_ISLANDS`) is not comparable with KiCad's refill of the
+  routed board: the island pass re-routes joins in between (mL2's "3 pieces = KiCad" rested
+  on that, and was void). Judge the FINAL state (pickled after `_no_shorts`) against the
+  board that route wrote -- and load the UNROUTED board as the model's base, or every
+  routed track counts twice (as fixed copper and as paths).
+- **The router's budgets are CPU time, never the wall clock** (2026-11-14). The same code
+  on the same placed board (output_board mL2) ended 0, 2 and 7 nets open: the logs, timings
+  stripped, are identical until a re-route phase stopped "out of time" after round 6 on a
+  quiet machine and after round 4 beside renders and three other routes. `negotiate._clock`
+  is `time.process_time` (the router is single-threaded; score.py runs a process per
+  board). Any comparison made under the wall clock -- old-vs-new gates run at different
+  loads, `score.py --jobs N` sets, the 11-09 "negotiation chaos" labels -- is suspect until
+  repeated. Prove determinism by routing the same board twice at once.
+- **Parent replays do not test the router.** `OWNROUTE_PARENT` reuses the stored paths:
+  a fix inside negotiation is verified only by a full router-alone run on the same placed
+  board, old code against new.
+
 ## Runtime
 
 Python 3.12 + numpy + numba (installed 2026-11-08). The finish chain runs steps under

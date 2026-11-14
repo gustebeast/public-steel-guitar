@@ -267,7 +267,9 @@ _HAND = 1 if D.SCREW_HAND == "RH" else -1
 # that leaves the instrument with it -- the UI station, the fret LED boards and their
 # hardware and leads, and the pickup on its height plate. Name PREFIXES of GLB nodes.
 DECK_PREFIXES = ["top_plate", "ui_", "wire_ui", "fret_", "wire_fret_led", "pickup",
-                 "wire_pickup"]
+                 "wire_pickup",
+                 # the direct body's (src.deck_v2): the panels, their white, the LED board (user 11-14)
+                 "deck_"]
 
 
 def _clamp_motion(i):

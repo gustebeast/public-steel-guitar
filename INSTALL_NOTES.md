@@ -1860,7 +1860,7 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
 
 ## Direct drive: nut springs, one cut spring, per-string plug necks (2026-11-11)
 
-- **Spring:** McMaster 9654K335 (0.75" OD, 0.091" tempered spring steel, 6.5", loop ends). Cut both loops off and cut the body to **43 whole coils**: 35 working coils plus 4 at each end screwed onto the threaded posts. One spring makes one piece. Wipe it with light oil, since it's plain steel.
+- **Spring (2026-11-13: stainless):** McMaster 9665K36 (cut-to-length 302 stainless, 0.75" OD, 0.091" wire, 20" long). Cut it into pieces of **42 whole coils** each: 34 working coils plus 4 at each end screwed onto the threaded posts. One 20" length makes 5 pieces. Cut with an abrasive cut-off wheel (or cutters rated for piano wire), marking each cut point first, and deburr both ends so they screw onto the posts cleanly. No oil: stainless needs no rust protection.
 - **Force per string at open pitch** (string 1..10): 67, 68, 61, 66, 55, 61, 61, 63, 54, 53 N.
   - Each is 95% of the lightest string at −3 st, less 1 N of drift and less 5 N for the stock tolerance. A strong spring still stays under the string at −3 st, so the nut never crosses its backlash.
   - The forces come from the plug necks only: each string's plug neck is 0.2–8.9 mm longer (`direct_bench.SPRING_F`, `spring_len_open`).
@@ -1870,7 +1870,7 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
 
 ## Direct drive: guide rod held at both ends, no screw sleeves (2026-11-12)
 
-- **Guide rod:** McMaster 89535K84, 3/16" 304 stainless. Rods are **184.8 mm**, all the same length, so one 6 ft length ($7.45) now cuts 9; buy two lengths per instrument (see "Installing the guide rods and the anchor plate" below). Saw it and deburr the ends.
+- **Guide rod:** McMaster 89535K84, 3/16" 304 stainless. Rods are **~202.5 mm**: buy **2 ft lengths** and cut each into **three equal pieces** (mark at 203.2 and 406.4, cut on the marks; no offcut, no measuring per piece; 2026-11-13). Each piece lands 202.2..203.2 and any of them fits (203.2 is the most the cap takes: if a stock length comes long, file the long end piece to 203.2): pushed home in its endplate seat (~24 deep), the rest sits in the blind cap on the housing. Four 2 ft lengths make 12 rods for 10 strings (see "Installing the guide rods and the anchor plate" below). Saw it and deburr the ends.
   - It sits 15.35 mm off the screw axis at 325°, the same on every string (moved 2026-11-12, see below).
   - (Superseded 2026-11-12: it now slides in from −X through the anchor plate and the plug; see below.)
 - **Nothing on the nut touches the rod.** The collar (now **PCTG**, unfilled, so glass fibres don't scour the stainless) has a tab with a radial slot. The slot is a close fit across to stop rotation, with ±1 mm free along the radius, so a rod a little out of line never pushes the nut off the screw axis.
@@ -1931,7 +1931,7 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
   - Three crush ribs over the last 4 mm of that seat (0.15 mm bite) grip the tip, so it stays put. The only load along the rod is the collar tab's ~2 N of friction.
   - No rod has to find a hidden hole, and the endplate never has to be offered up onto ten rod tips at once.
 - **Removal:** the −X end stands 2 mm proud of the plate's −X face, clear of the housing and its ears (now at 155° and 275°, moved so the rod boss clears the next string's ear). Pull it with pliers.
-- **Length:** 184.8 mm, so 9 per 6 ft length (was 10). Two lengths per instrument, $7.45 more.
+- **Length:** SUPERSEDED 2026-11-13: ~202.5 mm, three per 2 ft length (see the guide rod line above).
 
 ### Anchor plate: drops onto pins, no screws
 > **SUPERSEDED (2026-11-12):** see "Anchor plate on screw shanks" below. The pins and the 26 mm end folds are gone.
@@ -2060,6 +2060,57 @@ Replaces the bayonet collar and the cone collar. Neither printed: the bayonet's 
   - The fill stands 1.5 mm −X of the string's vertical drop, which keeps an open slot at the +X face.
   - The ball now goes in from +X at the bend bearing's level, not down the lane from the top.
 - **JLCCNC keyhole plates** (order W2026111305203947, in review, unpaid): the two M3 holes become **Ø3.4 clearance**, with no tapping. The order must change before it is paid.
+
+## Keyhead (-X) endplate v2: every screw on the -X face (2026-11-13)
+From the top of the -X face down: the side screws (M4 x 12, two rows), the plier window, and the
+height screws (two rows, along +X). Every heat-set sits as far in as a two-bead wall allows.
+- **Height screws.** Upper row: strings 1, 3, 5, 7, 9, M4 x 16. Lower row: strings 2, 4, 6, 8, 10,
+  M4 x 25. Each tip pushes on its plate's 45 degree wedge foot, so one turn in lifts the plate one
+  thread pitch (0.7 mm). To thread a string, back the screw out; the plate drops about 6.5 at most.
+  While playing, every head sits inside the face (flush on a .080). Dropped to thread, a head can
+  stand a few mm proud.
+- **Order, per string:** set the HEIGHT first (height screw up until the plate stops on the strand
+  under the rod, light force), THEN pull the tail down and tighten the SIDE screw. The side screw
+  pins the tail against the steel plate's -X face: an all-metal clamp. Pull any slack with the drive.
+- **Plates (as ordered, 2026-11-14).** The steel plates are the ORIGINAL v1 plates (52.35 crown to
+  bottom, measured). Under each sits a printed PETG-GF SHOE (`nut_block_v2.shoe`, coupons/wb_nut_shoe.step
+  for the bench; print it flat on a 4 mm face) carrying the 45 degree wedge: drop the shoe into the
+  pocket first, wedge toward -X, then the plate on top. Together they are v2's 57.3 shelf-to-foot.
+  The height screw's flat tip bears on printed plastic: if it dents, swap in a steel shoe later.
+  (Was: one steel plate 57.3 shelf-to-foot, with the wedge foot.) The
+  string runs down the middle of every plate. The printed stand-ins follow the same outline.
+- **Pockets.** Around the rod each pocket widens (fingers 1.6 there) for the wrap; string 10's widens
+  further on its -Y side. Both ends of that widening are 45 degree ramps.
+- **Bar clamp.** The wall bars' -X ends sit in 5 mm pockets. Four M3 x 20 (as the +X end) through DIN 125 washers,
+  heads flush in recesses in the -X face, pull the endplate onto the walls' ends. Drill and tap
+  both ends of each bar.
+- **Rod.** The keyhead's -X strip stands to the nut block's top (12.2) across the whole width, as
+  the +X endplate does; the deck panels stop at its +X face. The wrap rod goes in and out with the
+  keyhead OFF the body (strings off): along the slot in the strip's +X (joint) face on -Y, into the
+  block. The push hole runs out through the +Y face; the 2.5 key only reaches ~36 in, so drive it
+  the rest of the way out with any Ø3 rod or punch ~100 long.
+
+## Top panels v2: four panels on the wall tongues, the LED board slid in under them (2026-11-13)
+The deck is four PCTG panels with white PCTG windows and inlays, printed deck-face down: two
+filaments, one print each (`deck_N` + `deck_white_N`). Each panel caps both walls and drops
+the fit-tested deck tongue (v1's, plate 8 B1) into a groove down the wall's centre.
+- **Order.** Keyhead OFF. Slide the panels on from -X, the +X one (pickup opening) first; each butts
+  the last. Then slide the LED board
+  (or boards, end to end) in from -X along the two cradle rails under the panels until it stops on
+  the stop wall after fret 24. Then fit the keyhead: the nut block passes into the first panel's
+  notch and closes the board's -X end; the panels butt its strip.
+- **The board.** It sits on two 45 degree lips under its edges, 1.6 over the motors' tops, LED
+  faces 7.75 under the panel; it slides in under the cell walls between the frets (0.3 over the
+  LEDs). Nothing else holds it. Keep 1.8 of each long edge's underside clear of parts (the lips) and keep
+  top-side parts under the LEDs' 1.6. Chamfer the board's +X (leading) bottom corners: the lips'
+  ends at the panel seams are square.
+- **Service.** Panels and board come out the way they went in: keyhead off first.
+
+## Direct drive: collar A threaded and split through (2026-11-14)
+Collar A's bore is the motor coupler's formed thread, and its split now runs from the bore out
+through the +Y side, so the M3 x 12 closes it onto the screw. Print it -X -> +X (its -X face on the
+bed, the bearing boss last); the M3 holes across it print as teardrops.
+The housing's guide-rod cap has a cone roof: a small hole at the boss's end is expected.
 
 ## Output board: no leads to a brain board — it IS the brain (2026-11-13)
 

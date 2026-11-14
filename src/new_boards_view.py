@@ -60,6 +60,7 @@ VIEW_HEIGHT = {
 # finds a board by its lettering drawn by THAT instance, so a different font is a different board
 BOARDS = BG._with_revs(Boards(BG.GEOM_DIR, height={**BG.HEIGHT, **VIEW_HEIGHT}, tail=BG.TAIL,
                               tht_legs=BG.THT_LEGS, panel=BG.PANEL, side_plug_run=BG.SIDE_PLUG_RUN,
+                              body_material=BG.BODY_MATERIAL,
                               **({"silk_font": BG._FONT, "silk_cap": BG.SILK_FONT_CAP}
                                  if BG._FONT else {})))
 

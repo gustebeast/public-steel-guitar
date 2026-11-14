@@ -1690,9 +1690,98 @@ def drop_degenerate(board, floor_mm=0.005, width_frac=0.1):
     so the clean-up belongs where both can be caught rather than at either source.
     """
     floor = pcbnew.FromMM(floor_mm)
-    doomed = [t for t in board.GetTracks()
-              if t.GetClass() != "PCB_VIA"
-              and t.GetLength() < max(floor, t.GetWidth() * width_frac)]
+    # ONE list: GetTracks() hands back new wrappers each call, so id() only means
+    # something within a single list
+    tracks = list(board.GetTracks())
+    short = [t for t in tracks
+             if t.GetClass() != "PCB_VIA"
+             and t.GetLength() < max(floor, t.GetWidth() * width_frac)]
+    # ⚠ COVERED BY WHAT STAYS, NOT BY EACH OTHER (output_board mK, 2026-11-13): the own
+    # router drew a V5_PRE run on 1.15 mm copper as a 0.05 mm staircase -- a 1:2 slope the
+    # grid steps out -- and every step was under a tenth of the width, so all 30-odd went
+    # together and the run was cut in two (4 V5_PRE and 5 +5V_CM5 connections open after
+    # the finish, all present in the router's own output). The ratio argument above holds
+    # for ONE fragment between kept neighbours; for a chain, each step is covered only by
+    # the steps beside it. So a short segment goes only if each of its ends lies inside
+    # same-net copper on its layer that is staying (a longer track, a via, a pad, or a
+    # short segment already kept); otherwise it is kept, and covers the next one.
+    import math
+    keep = {}
+    def add(key, item):
+        keep.setdefault(key, []).append(item)
+    sset = set(id(t) for t in short)
+    for t in tracks:
+        if not t.GetNetname():
+            continue
+        if t.GetClass() == "PCB_VIA":
+            p_ = t.GetPosition()
+            for ly in (pcbnew.F_Cu, pcbnew.B_Cu) + tuple(board.GetEnabledLayers().CuStack()):
+                add((t.GetNetname(), ly), ("pt", p_.x, p_.y, t.GetWidth(pcbnew.F_Cu) / 2.0))
+        elif id(t) not in sset:
+            a_, b_ = t.GetStart(), t.GetEnd()
+            add((t.GetNetname(), t.GetLayer()), ("seg", a_.x, a_.y, b_.x, b_.y, t.GetWidth() / 2.0))
+    for fp in board.GetFootprints():
+        for pad in fp.Pads():
+            if not pad.GetNetname():
+                continue
+            p_, sz = pad.GetPosition(), pad.GetSize(pcbnew.F_Cu)
+            for ly in board.GetEnabledLayers().CuStack():
+                if pad.IsOnLayer(ly):
+                    add((pad.GetNetname(), ly), ("pt", p_.x, p_.y, min(sz.x, sz.y) / 2.0))
+
+    def inside(key, x, y):
+        for it in keep.get(key, ()):
+            if it[0] == "pt":
+                if math.hypot(x - it[1], y - it[2]) <= it[3]:
+                    return True
+            else:
+                _, x0, y0, x1, y1, r = it
+                dx, dy = x1 - x0, y1 - y0
+                L2 = dx * dx + dy * dy
+                u = 0.0 if L2 == 0 else max(0.0, min(1.0, ((x - x0) * dx + (y - y0) * dy) / L2))
+                if math.hypot(x - (x0 + u * dx), y - (y0 + u * dy)) <= r:
+                    return True
+        return False
+    shorts = {}
+    for t in short:
+        a_, b_ = t.GetStart(), t.GetEnd()
+        shorts.setdefault((t.GetNetname(), t.GetLayer()), []).append(
+            (t, ("seg", a_.x, a_.y, b_.x, b_.y, t.GetWidth() / 2.0)))
+
+    def touches_any(key, t, x, y):
+        if inside(key, x, y):
+            return True
+        for o, it in shorts.get(key, ()):
+            if o is not t:
+                _, x0, y0, x1, y1, r = it
+                if min(math.hypot(x - x0, y - y0), math.hypot(x - x1, y - y1)) <= r:
+                    return True
+        return False
+    # ⚠ BOTH ENDS IN ONE ITEM, NOT EACH END IN SOME ITEM (output_board mL2, 2026-11-14): a
+    # +24V In2 staircase of 0.05-0.15 mm steps, its long runs widened by widen_necks to
+    # 1.9 / 2.03 mm, made every step "degenerate"; each step's ends lay inside one widened
+    # disc or the other, so all went -- but the two discs stood 2.02 mm apart against
+    # 1.97 of radii, and the net was cut. A staying track or via is convex, so a short
+    # segment with BOTH ends inside the SAME one is covered end to end; nothing less is.
+    def covered(key, x1, y1, x2, y2):
+        def _in(it, x, y):
+            if it[0] == "pt":
+                return math.hypot(x - it[1], y - it[2]) <= it[3]
+            _, x0, y0, x1_, y1_, r = it
+            dx, dy = x1_ - x0, y1_ - y0
+            L2 = dx * dx + dy * dy
+            u = 0.0 if L2 == 0 else max(0.0, min(1.0, ((x - x0) * dx + (y - y0) * dy) / L2))
+            return math.hypot(x - (x0 + u * dx), y - (y0 + u * dy)) <= r
+        return any(_in(it, x1, y1) and _in(it, x2, y2) for it in keep.get(key, ()))
+    doomed = []
+    for t in sorted(short, key=lambda t: t.GetLength()):
+        key = (t.GetNetname(), t.GetLayer())
+        a_, b_ = t.GetStart(), t.GetEnd()
+        orphan = not (touches_any(key, t, a_.x, a_.y) or touches_any(key, t, b_.x, b_.y))
+        if not t.GetNetname() or orphan or covered(key, a_.x, a_.y, b_.x, b_.y):
+            doomed.append(t)
+        else:
+            add(key, ("seg", a_.x, a_.y, b_.x, b_.y, t.GetWidth() / 2.0))
     for t in doomed:
         board.Remove(t)
         _REMOVED.append(t)
@@ -5878,6 +5967,16 @@ def build(stem):
             _z.SetLayerSet(_ls)
         _z.AddPolygon(_poly)
         board.Add(_z)
+    # A BARRIER PART'S THROUGH-HOLE PADS KEEP NO UNCONNECTED INNER RINGS (output_board mK,
+    # 2026-11-13): U30's THT pins stood 0.90 apart on In1 and B.Cu as on the outer layers;
+    # an annulus on a layer the pin connects nothing on is copper at the barrier for nothing.
+    # Opt-in by quality.isolation (the declared barrier parts); outer layers always kept.
+    _bar = set(((notes.get("quality") or {}).get("isolation") or {}).get("barrier", ()))
+    for fp in (board.GetFootprints() if _bar else ()):
+        if fp.GetReference() in _bar:
+            for pad in fp.Pads():
+                if pad.GetAttribute() == pcbnew.PAD_ATTRIB_PTH:
+                    pad.SetUnconnectedLayerMode(pcbnew.UNCONNECTED_LAYER_MODE_REMOVE_EXCEPT_START_AND_END)
 
     for z in notes.get("zones", []):
         # Two spellings, because the three-tuple is every board's ground plane and should

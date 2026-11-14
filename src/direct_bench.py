@@ -37,9 +37,11 @@ from __future__ import annotations
 
 import math
 import re as _re
+import functools as _functools
 from functools import lru_cache as _lru_cache
 
 from cadkit.kept import kept
+from cadkit.board_geom import mask_rgb as _mask_rgb   # a board is a solder-mask colour (cadkit f715f57)
 
 import cadquery as cq
 
@@ -151,7 +153,7 @@ HOLE_ANG = {"m3": (45.0, 225.0), "rod": 135.0, "web": (0.0, 180.0)}
 
 
 # THE GUIDE ROD (user, 2026-11-11/12: one held at one end is no reliable rotation lock; hold it at
-# BOTH ends). A 3/16 in 304 stainless rod (McMaster 89535K84, $7.45 a 6 ft length = 10 rods),
+# BOTH ends). A 3/16 in 304 stainless rod (McMaster 89535K84, 2 ft lengths cut in three: ROD_L),
 # outside the nut at GUIDE_R, GUIDE_ANG (the one direction free on all ten strings in the space
 # scan; 30/210 sit on the plug's insert ears). One length for every string: its -X end in a blind
 # seat in a boss on the ANCHOR PLUG (the plug's neck length varies, the seat's depth takes it),
@@ -194,10 +196,13 @@ SLIT_W = 2.2                                        # string 10's 1.78 and room
 # hole (user, 2026-11-12: a ball slid in along the floor drops straight into the pocket; a floor
 # a ball's width lower ran it into the plate's steel under the hole)
 WIN_Z = (-(KEY_DROP + KEY_D / 2), 3.2)
-# THE SPRING (2026-11-11): McMaster 9654K335 -- 0.75 in OD, 0.091 in tempered spring steel, 6.5 in,
-# loop ends -- its LOOPS CUT OFF and the body cut to SPRING_COILS whole coils (one spring a piece,
-# ~$2.71). Close-wound, 7.03 lbf (31.3 N) initial tension, ~1.72 N/mm with 35 working coils
-# (McMaster's 1.70 at 35.5). A production spring is to be wound to a force-at-length drawing.
+# THE SPRING (user, 2026-11-13: stainless, it lives inside the instrument for years): McMaster
+# 9665K36 -- CUT-TO-LENGTH 302 STAINLESS, 0.75 in OD, 0.091 in wire, 20 in close-wound, straight
+# cut ends; cut into SPRING_COILS whole-coil pieces (~5 a length, ~$6.40 each). 7.54 lbf (33.5 N)
+# initial tension; 1.37 lbf/in for the 20 in length (~220 coils), so ~1.55 N/mm for 34 working
+# coils -- ~10 % softer than the spring-steel 9654K335 it replaces (31.3 N, 1.72 N/mm at 35). Peak pull ~75 N: ~310 MPa
+# in the wire (Wahl-corrected, C 7.2), well inside 302 spring wire's extension-spring allowable.
+# A production spring is to be wound to a force-at-length drawing.
 # Each end SCREWS
 # ONTO A SEAT, its last coils wound over a plug of the spring's own inside diameter -- the way
 # cut-to-length springs are meant to be ended -- so nothing is hooked off the axis.
@@ -211,8 +216,11 @@ WIN_Z = (-(KEY_DROP + KEY_D / 2), 3.2)
 #   round a Ø8 screw. Both parts are just SCREW_CLR round the screw.
 SPRING_OD, SPRING_WIRE = 19.05, 2.31             # 0.75 / 0.091 in
 SPRING_ID = SPRING_OD - 2 * SPRING_WIRE             # 14.43: the seats' diameter
-SPRING_ACTIVE = 35                                  # working coils between the grips (whole turns)
-SPRING_IT, SPRING_K = 31.3, 1.72                    # N initial tension, N/mm for SPRING_ACTIVE
+SPRING_ACTIVE = 34                                  # working coils between the grips (whole turns):
+                                                    # 34, not 35, with the softer stainless -- at 35
+                                                    # string 1's stretched spring overran its plug by 0.7
+SPRING_IT = 7.54 * 4.448222                         # 33.5 N initial tension (9665K36)
+SPRING_K = (1.37 * 4.448222 / 25.4) * (20.0 / (SPRING_WIRE / 25.4)) / SPRING_ACTIVE   # 1.55 N/mm
 # THE FORCE PER STRING (user, 2026-11-11: per-position lengths). Each string's spring is set at
 # OPEN pitch to 95 % of its lightest string at -3 st (any C6/E9 gauge players use), less 1 N of
 # drift over the +-3 st travel and less 5 N for the stock spring's tolerance (McMaster's
@@ -233,7 +241,7 @@ SPRING_F = (67.0, 68.0, 61.0, 66.0, 55.0, 61.0, 61.0, 63.0, 54.0, 53.0)
 # cannot undo it. So the spring is just cut to SPRING_COILS: no bending, no heating, no tang.
 GRIP_TURNS, GRIP_PITCH = 4, 2.6                     # the end coils in the post's thread: the
                                                     # close-wound 2.31 opened a little as they go on
-SPRING_COILS = SPRING_ACTIVE + 2 * GRIP_TURNS       # 43: the cut piece, ~100 free
+SPRING_COILS = SPRING_ACTIVE + 2 * GRIP_TURNS       # 42: the cut piece, ~97 free
 SEAT_GRIP = GRIP_TURNS * GRIP_PITCH                 # 10.4 of post under them
 SEAT_L = SEAT_GRIP                                   # no more: the open coils cross past it
 SLEEVE_WALL = 2 * D.BEAD                            # the grip sleeve's wall past the spring
@@ -356,14 +364,31 @@ def spring_force(t: float, i: int) -> float:
 # LAST, from -X: through a hole in the anchor plate, the plug's boss (a through hole), the
 # collar's slot, and home into its blind seat in the endplate, where three CRUSH RIBS grip its
 # tip (ROD_GRIP: the only axial load is the tab's ~2 N of friction). So the endplate is on and
-# screwed down first, and no rod has to find a hidden hole. Its -X end stands ROD_PROUD out of the
-# plate's -X face, clear of the housing (r 9.6) and its ears (155/275), for pliers to pull it.
-ROD_PROUD = 2.0
-ROD_END = ANCHOR[0] - ROD_PROUD
-# its +X end, deep in the endplate: the seat runs on past the plate until 1.0 of plastic is left
-# before the NEXT ROW's axle bore (rows 0 and 1 have one just under their rods): ~11 of grip
-ROD_TIP = X_BEND - (D.BRIDGE_AXLE_D + 0.2) / 2 - 1.0 - 0.3
-ROD_L = round(ROD_TIP - ROD_END, 1)                 # every string the same
+# screwed down first, and no rod has to find a hidden hole. Its -X end stands out of the plate's
+# -X face into the housing's CAP (a blind pocket on a boss), for pliers to pull it.
+# its +X end, deep in the endplate (user, 2026-11-13: "deepen the guide rod holes", 1.6 of
+# plastic kept round them): with the endplate printed +X -> -X the axle bores peak -X and are
+# round in z, so every rod passes 2.5+ over or under them; what stops the seat is the strings'
+# slots (X_DROP - EP_STR_CLR, open the full height), which the rods of strings 4, 7 and 10 cross.
+# The seat's floor ROD_SEAT_WALL short of them: ~24 of grip
+ROD_SEAT_WALL = 1.6
+EP_STR_CLR = 1.5                                    # the endplate's fill stands this far -X of the
+                                                    # string's vertical drop (user: inset for clearance)
+ROD_TIP = X_DROP - EP_STR_CLR - ROD_SEAT_WALL - 0.3
+# THE SLOT'S ROOF (user, 2026-11-13): the slot's -X end is a 45 deg gable peaked -X (the build
+# direction), SLOT_ROOF_CLR square off every gauge the instrument takes (the string's centre drops
+# at X_DROP + g/2, round the bearing's OD). The rods beside it keep ROD_SEAT_WALL (asserted below,
+# where rod_yz exists).
+SLOT_ROOF_CLR = 1.0
+SLOT_APEX_X = min(X_DROP + g / 2 - math.sqrt(2) * (g / 2 + SLOT_ROOF_CLR)
+                  for g in tuple(D.STRING_GAUGE) + (D.STRING_GAUGE_MAX,))
+# ITS LENGTH: a 2 ft stock length (McMaster 89535K84) cut in THREE EQUAL pieces, no offcut (user,
+# 2026-11-13: "use the entire thing ... saves another cut"; the rod may be -5/+10 of 193.3).
+# 609.6 / 3, less the two cuts' kerf (~1 each); the stock is cut long (+ tolerance), so a piece
+# lands ROD_L .. a third (rod_l_max). Pushed home in its seat, the rest is -X: the housing's cap
+ROD_STOCK, ROD_PIECES, ROD_KERF = 609.6, 3, 1.0
+ROD_L = round((ROD_STOCK - (ROD_PIECES - 1) * ROD_KERF) / ROD_PIECES, 1)   # 202.5
+ROD_END = ROD_TIP - ROD_L                           # every string the same
 ROD_GRIP, ROD_RIB = 4.0, 0.15                       # the ribs: length at the seat's bottom, bite
 
 # ── motors and stations ─────────────────────────────────────────────────────────────────────
@@ -569,12 +594,20 @@ def _tube_x(od, idd, x0, x1, y, z):
     return cyl_x(od, x1 - x0, x0, y=y, z=z).cut(cyl_x(idd, x1 - x0 + 2, x0 - 1, y=y, z=z))
 
 
+YOKE_UP = (1.0, 0.0, 0.0)                           # prints -X -> +X: the face on the nut's flange on
+                                                    # the bed, the plate's face last (user, 2026-11-14)
+
+
 def _yoke(i: int, t: float) -> cq.Workplane:
+    """Printed YOKE_UP. The lip register steps in to the bore on a 45 deg cone, not a flat ring."""
     y, z = y_of(i), za(i)
     ft, yt = x_ft(t), x_yt(t)
     out = cyl_x(YK_D, YK_H - YK_ROOF, ft, y=y, z=z)                                 # the spacer
     out = out.cut(cyl_x(D.SCREW_OD + 0.8, yt - YK_ROOF - ft + 1, ft - 1, y=y, z=z))   # tip + ball
     out = out.cut(cyl_x(D.NUT_LIP_D + 0.4, D.NUT_LIP_L + 1.3, ft - 1, y=y, z=z))      # lip register
+    rl, rb = (D.NUT_LIP_D + 0.4) / 2, (D.SCREW_OD + 0.8) / 2                          # ... its roof
+    xl = ft + D.NUT_LIP_L + 0.3
+    out = out.cut(_cone_x(rl, rb - 0.01, xl - 0.01, xl + rl - rb, y, z))
     ry, rz = rod_yz(i)
     out = out.cut(cyl_x(GUIDE_D + 2.0, YK_H + 2, ft - 1, y=ry, z=rz))                 # rod: clear
     for a in HOLE_ANG["m3"]:                                                          # the M3s bite
@@ -804,7 +837,8 @@ def _teeth(zf: float, s: int, tighten: int) -> cq.Workplane:
     return out.intersect(_ring(r0, r1, zf, zf + s * DET_H))
 
 
-def _sleeve_local(zf: float, s: int, z_far: float, z0: float, tighten: int) -> cq.Workplane:
+def _sleeve_local(zf: float, s: int, z_far: float, z0: float, tighten: int,
+                  up=None) -> cq.Workplane:
     """The grip sleeve in the spring's frame: from the flange face zf (its end on the teeth)
     toward s to z_far, bore SLEEVE_CLR off the post, the grip coils' groove (helix from z0, as
     the post's), the teeth's complement on its end, and the key's cross-hole."""
@@ -814,16 +848,29 @@ def _sleeve_local(zf: float, s: int, z_far: float, z0: float, tighten: int) -> c
     body = body.union(band)
     body = body.cut(_helix(z0, GRIP_PITCH, SEAT_L, GROOVE_D))
     zk = (zf + z_far) / 2                                    # the key's cross-hole, through
-    key = cq.Workplane("XY").add(cq.Solid.makeCylinder(SLEEVE_KEY / 2, 2 * ro + 2,
-                                                       cq.Vector(0, -ro - 1, zk), cq.Vector(0, 1, 0)))
+    if up is not None:                                       # (a teardrop, peaked up the print)
+        from cadkit.holes import teardrop_hole
+        key = teardrop_hole(SLEEVE_KEY, 2 * ro + 2, axis_point=(0, -ro - 1, zk), axis_dir=(0, 1, 0),
+                            print_up=up)
+    else:
+        key = cq.Workplane("XY").add(cq.Solid.makeCylinder(SLEEVE_KEY / 2, 2 * ro + 2,
+                                                           cq.Vector(0, -ro - 1, zk), cq.Vector(0, 1, 0)))
     return body.cut(key)
+
+
+SLEEVE_P_UP = (-1.0, 0.0, 0.0)                      # world: +X -> -X
+SLEEVE_P_UP_LOCAL = (0.0, 0.0, -1.0)                # the same, in the spring's frame
+SLEEVE_C_UP = (1.0, 0.0, 0.0)                       # world: -X -> +X
+SLEEVE_C_UP_LOCAL = (0.0, 0.0, 1.0)
 
 
 def _sleeve_plug(i: int) -> cq.Workplane:
     """The plug end's sleeve: flange face at local -wire/2, over the post to its end. Tightening
     runs it toward -z: with a right-hand helix that is -angle."""
     zf = -SPRING_WIRE / 2
-    return _in_spring(_sleeve_local(zf, 1, SEAT_L - GRIP_PITCH / 2, 0.0, -1), i,
+    # PRINTS +X -> -X (user, 2026-11-14): its far end on the bed, the teeth last. Local +z is world
+    # +X here (_in_spring), so up the print is local -z
+    return _in_spring(_sleeve_local(zf, 1, SEAT_L - GRIP_PITCH / 2, 0.0, -1, up=SLEEVE_P_UP_LOCAL), i,
                       spring_span(0.0, i)[0])
 
 
@@ -832,20 +879,39 @@ def _sleeve_collar(i: int, t: float) -> cq.Workplane:
     x0, x1 = spring_span(t, i)
     L = x1 - x0
     zf = L + SPRING_WIRE / 2
-    return _in_spring(_sleeve_local(zf, -1, L - SEAT_L + GRIP_PITCH / 2, L - SEAT_GRIP, 1), i, x0)
+    # PRINTS -X -> +X (user, 2026-11-14): its far end on the bed, the teeth last; up = local +z
+    return _in_spring(_sleeve_local(zf, -1, L - SEAT_L + GRIP_PITCH / 2, L - SEAT_GRIP, 1,
+                                    up=SLEEVE_C_UP_LOCAL), i, x0)
+
+
+PLUG_UP = (1.0, 0.0, 0.0)                           # prints -X -> +X: the neck's end on the bed,
+                                                    # the teeth last (user, 2026-11-14)
+
+
+def _cone_x(r0: float, r1: float, x0: float, x1: float, y: float, z: float) -> cq.Workplane:
+    """A frustum along +X from radius r0 at x0 to r1 at x1."""
+    return cq.Workplane("XY").add(cq.Solid.makeCone(r0, r1, x1 - x0, pnt=cq.Vector(x0, y, z),
+                                                    dir=cq.Vector(1, 0, 0)))
 
 
 def _anchor_plug(i: int) -> cq.Workplane:
+    """Printed -X -> +X (PLUG_UP). Every step out in radius going +X is a 45 deg cone (user,
+    2026-11-14): under the stop flange, and from each insert's pocket down to its screw's hole; and
+    the screws' holes run right out through the teeth, which would otherwise hang over them."""
     y, z = y_of(i), za(i)
     (a0, a1), (f0, f1), (s0, s1) = x_plug(i)
     out = cyl_x(SPRING_ID, f0 - a0, a0, y=y, z=z)                                   # neck
     out = out.union(cyl_x(STOP_D, f1 - f0, f0, y=y, z=z))                           # stop flange
+    rise = (STOP_D - SPRING_ID) / 2                                                 # ... on a cone
+    out = out.union(_cone_x(SPRING_ID / 2, STOP_D / 2, f0 - rise, f0 + 0.01, y, z))
     out = out.union(_ears(i, a0, f1, 4.5))                                          # the inserts'
     out = out.cut(cyl_x(SCREW_CLR, s1 - a0 + 2, a0 - 1, y=y, z=z))                 # the screw's way
+    ins_d, ins_l, tip_d = 6.1, 5.0, 4.4
     for a in EAR_ANG:
         dy, dz = at_ang(a, EAR_R)
-        out = out.cut(cyl_x(6.1, 5.0, a0 - 1, y=y + dy, z=z + dz).translate((1, 0, 0)))  # insert
-        out = out.cut(cyl_x(4.4, f1 - a0 + 2, a0 - 1, y=y + dy, z=z + dz))              # tip's way
+        out = out.cut(cyl_x(ins_d, ins_l + 1.0, a0 - 1, y=y + dy, z=z + dz))           # insert
+        out = out.cut(_cone_x(ins_d / 2, tip_d / 2 - 0.01, a0 + ins_l - 0.01,
+                              a0 + ins_l + (ins_d - tip_d) / 2, y + dy, z + dz))    # ... its floor
     out = out.union(_post(i, spring_span(0.0, i)[0], 0.0, SCREW_CLR))               # threaded post
     # the guide rod's -X SEAT: a boss at GUIDE_R on the plate, its web back to the neck, and a
     # hole right through it: the rod slides in from -X through the plate (ROD_END)
@@ -853,7 +919,12 @@ def _anchor_plug(i: int) -> cq.Workplane:
     out = out.union(cyl_x(GUIDE_SEAT + 2 * GUIDE_WALL, f1 - a0, a0, y=y + dy, z=z + dz))
     out = out.union(_radial_box(i, a0, f1, SPRING_ID / 2 - 1.0, GUIDE_R, GUIDE_SEAT + 2 * GUIDE_WALL))
     out = out.cut(cyl_x(GUIDE_SEAT, f1 - a0 + 2, a0 - 1, y=y + dy, z=z + dz))
-    return out.union(_in_spring(_teeth(-SPRING_WIRE / 2, 1, -1), i, spring_span(0.0, i)[0]))
+    out = out.union(_in_spring(_teeth(-SPRING_WIRE / 2, 1, -1), i, spring_span(0.0, i)[0]))
+    x_end = out.val().BoundingBox().xmax
+    for a in EAR_ANG:                                                               # the tips' way,
+        dy, dz = at_ang(a, EAR_R)                                                   # out through all
+        out = out.cut(cyl_x(tip_d, x_end + 1 - (a0 + ins_l), a0 + ins_l, y=y + dy, z=z + dz))
+    return out
 
 
 def _ears(i: int, x0: float, x1: float, hw: float) -> cq.Workplane:
@@ -868,10 +939,43 @@ def _ears(i: int, x0: float, x1: float, hw: float) -> cq.Workplane:
     return out
 
 
+def rod_cap_x() -> tuple:
+    """The rod cap's boss -X end, and its pocket's floor. The boss stops 0.8 short of collar A's
+    +X end: collar A's clamp screw's head sweeps r 12 there (x -214.4..-209.0), across the boss
+    (r 10.5 at its inner side); the floor two beads."""
+    xb = x_collar_a()[0][1] - 0.8
+    return xb, xb + 2 * D.BEAD
+
+
+def rod_l_max() -> float:
+    """The longest rod the cap takes, pushed home in its seat: a stock third has to fit."""
+    m = ROD_TIP - rod_cap_x()[1] - 0.3
+    assert m >= ROD_STOCK / ROD_PIECES - 0.01, (m, "a third of the stock no longer fits the cap")
+    return m
+
+
 def _housing(i: int) -> cq.Workplane:
     y, z = y_of(i), za(i)
     h0, h1 = x_house()
     out = cyl_x(HOUSE_D, h1 - h0, h0, y=y, z=z).union(_ears(i, h0, h1, 4.5))
+    # THE ROD'S CAP (user, 2026-11-13): a third ear out to the guide rod, its +X face on the
+    # plate, a blind pocket over the rod's -X end (on a BOSS out past the housing's -X face
+    # where the rod reaches past it: rod_cap_x, rod_l_max). Fitted after the rod is pushed home,
+    # it traps it between here and its endplate seat; off again, the stub is there for pliers.
+    rb = GUIDE_SEAT / 2 + GUIDE_WALL
+    dy, dz = at_ang(guide_ang(i), GUIDE_R)
+    out = out.union(_radial_box(i, h0, h1, 0.0, GUIDE_R, 2 * rb))
+    xb, xp = rod_cap_x()
+    rod_l_max()                                     # asserts a stock third still fits
+    out = out.union(cyl_x(2 * rb, h1 - xb, xb, y=y + dy, z=z + dz))
+    out = out.cut(cyl_x(GUIDE_SEAT + 0.4, h1 + 0.01 - xp, xp, y=y + dy, z=z + dz))
+    # its ROOF IS A CONE (user, 2026-11-14): the housing prints +X -> -X, so the pocket's floor is the
+    # last thing over it -- a flat Ø5.2 bridge. A 45 deg cone from the floor's edge instead, apex -X;
+    # the rod still bottoms at xp (rod_l_max has no room to give), so the apex breaks out of the
+    # boss's end as a small hole the rod cannot pass
+    rc = (GUIDE_SEAT + 0.4) / 2
+    out = out.cut(cq.Workplane("XY").add(cq.Solid.makeCone(
+        rc, 0.0, rc, pnt=cq.Vector(xp + 0.01, y + dy, z + dz), dir=cq.Vector(-1, 0, 0))))
     out = out.cut(cyl_x(D.BRG688_OD, HOUSE_POCKET + 1, h1 - HOUSE_POCKET, y=y, z=z))   # open +X
     out = out.cut(cyl_x(RACE_OUT_D, 10, h0 - 1, y=y, z=z))
     for a in EAR_ANG:
@@ -904,19 +1008,31 @@ def _inserts(i: int) -> cq.Workplane:
     return out
 
 
+COLLAR_A_UP = (1.0, 0.0, 0.0)                       # prints -X -> +X: its -X face on the bed, the
+                                                    # boss last (user, 2026-11-14)
+
+
 def _collar_a(i: int) -> cq.Workplane:
     """Threaded on the Tr8, its boss through the housing's shoulder onto the -X inner race;
-    split on +Y and pinched across the split by an M3 x 12 (a 2.5 key from +Z)."""
+    split on +Y and pinched across the split by an M3 x 12 (a 2.5 key from +Z).
+    THE BORE IS THE COUPLER'S FORMED THREAD (user, 2026-11-14: "so it grips better"), and the split
+    runs from the bore right out through the +Y side, so the screw closes it on the thread."""
+    from cadkit.holes import teardrop_hole
+    from .motor_coupler import _thread_socket, _ridge_check
     y, z = y_of(i), za(i)
     (c0, c1), b1 = x_collar_a()
     out = cyl_x(COLLAR_A[0], c1 - c0, c0, y=y, z=z).union(cyl_x(RACE_IN_D, b1 - c1, c1, y=y, z=z))
-    out = out.cut(cyl_x(D.SCREW_OD, b1 - c0 + 2, c0 - 1, y=y, z=z))      # the thread (drawn Ø8)
-    out = out.cut(box_at(c1 - c0 + 2, COLLAR_A[0] / 2, 1.0, x=(c0 + c1) / 2,
-                         y=y + COLLAR_A[0] / 4 + 2, z=z))                 # the split, +Y
+    out = out.cut(box_at(c1 - c0 + 2, COLLAR_A[0] / 2 + 1.0, 1.0, x=(c0 + c1) / 2,
+                         y=y + (COLLAR_A[0] / 2 + 1.0) / 2, z=z))         # the split, bore to +Y
     xm = (c0 + c1) / 2
-    out = out.cut(cyl_z(M3_PILOT, 20, z - 10, x=xm, y=y + 6.5))
-    out = out.cut(cyl_z(3.4, 10, z, x=xm, y=y + 6.5))
-    return out.cut(cyl_z(M3_HEAD[0] + 0.5, 10, z + 4.6, x=xm, y=y + 6.5))
+    for d, z0, L in ((M3_PILOT, z - 10, 20.0), (3.4, z, 10.0), (M3_HEAD[0] + 0.5, z + 4.6, 10.0)):
+        out = out.cut(teardrop_hole(d, L, axis_point=(xm, y + 6.5, z0), axis_dir=(0, 0, 1),
+                                    print_up=COLLAR_A_UP))
+    # the thread last, UNCLEANED (as the coupler: a cleaned cut drops the ridges). The coupler's
+    # cutter runs along +Y in its own frame; turned onto +X here.
+    th = (_thread_socket(-1.0, b1 - c0 + 1.0).rotate((0, 0, 0), (0, 0, 1), -90)
+          .translate((c0, y, z)))
+    return out.cut(th, clean=False)
 
 
 def _collar_a_m3(i: int) -> cq.Workplane:
@@ -981,7 +1097,7 @@ def _motor(i: int) -> list:
     for k, wp, _, _fin in C.motor_parts():
         w = (wp.rotate((0, 0, 0), (0, 1, 0), PLUG_DIR[i]).rotate((0, 0, 0), (0, 0, 1), -90)
              .translate((x_ref(i), y_of(i), za(i))))
-        out.append((f"db_motor_{k}_{i}" if k else f"db_motor_{i}", w))
+        out.append((f"motor_{k}_{i}" if k else f"motor_{i}", w))
     return out
 
 
@@ -990,8 +1106,8 @@ def _bend_parts() -> list:
     are the endplate's (endplate_axles): they run wall to wall, so they are sized by the body."""
     out = []
     for i in range(N):
-        out.append((f"db_bend_brg_{i}", kept(_bend_brg, i)))
-        out.append((f"db_bridge_brg_{i}", kept(_bridge_brg, i)))
+        out.append((f"bend_brg_{i}", kept(_bend_brg, i)))
+        out.append((f"bridge_brg_{i}", kept(_bridge_brg, i)))
     return out
 
 
@@ -1153,17 +1269,17 @@ def _cpl_insert(i: int) -> cq.Workplane:
 # are not redone for a collar or a plug change, and parts that do not move with travel are built
 # once for every t.
 _STRING_PARTS = (
-    ("db_yoke", _yoke, True), ("db_keyplate", _keyplate_at, True), ("db_ball", _ball, True),
-    ("db_nut", _nut, True), ("db_collar", _collar, True), ("db_m3", _m3s, True),
-    ("db_col_ins", _collar_inserts, True),
-    ("db_spring", _spring, True), ("db_sleeve_p", _sleeve_plug, False),
-    ("db_sleeve_c", _sleeve_collar, True), ("db_plug", _anchor_plug, False),
-    ("db_rod", _rod, False), ("db_screw", _screw_at, False), ("db_coupler", _coupler, False),
-    ("db_cpl_m3", _cpl_m3, False), ("db_cpl_insert", _cpl_insert, False),
-    ("db_housing", _housing, False), ("db_hb", _housing_bolts, False),
-    ("db_insert", _inserts, False), ("db_collar_a", _collar_a, False),
-    ("db_ca_m3", _collar_a_m3, False), ("db_collar_b", _collar_b, False),
-    ("db_brg", _brg, False), ("db_mplate", _mplate, False),
+    ("yoke", _yoke, True), ("keyplate", _keyplate_at, True), ("ball", _ball, True),
+    ("nut", _nut, True), ("collar", _collar, True), ("m3", _m3s, True),
+    ("col_ins", _collar_inserts, True),
+    ("spring", _spring, True), ("sleeve_p", _sleeve_plug, False),
+    ("sleeve_c", _sleeve_collar, True), ("plug", _anchor_plug, False),
+    ("rod", _rod, False), ("screw", _screw_at, False), ("coupler", _coupler, False),
+    ("cpl_m3", _cpl_m3, False), ("cpl_insert", _cpl_insert, False),
+    ("housing", _housing, False), ("hb", _housing_bolts, False),
+    ("insert", _inserts, False), ("collar_a", _collar_a, False),
+    ("ca_m3", _collar_a_m3, False), ("collar_b", _collar_b, False),
+    ("brg", _brg, False), ("mplate", _mplate, False),
 )
 
 
@@ -1174,7 +1290,7 @@ def string_parts(i: int, t: float) -> list:
         args = (t,) if moves else ()
         out.append((f"{nm}_{i}", yaw(kept(make, i, *args), i)))
     out += [(nm, yaw(w, i)) for nm, w in kept(_motor, i)]
-    out.append((f"db_string_{i}", kept(_string, i, t)))
+    out.append((f"string_{i}", kept(_string, i, t)))
     return out
 
 
@@ -1201,9 +1317,10 @@ def ui_parts() -> tuple:
 # Its +X, +-Y and floor are the drive's and the UI's extents (the strings and the anchor plate
 # left out: the plate is SIZED TO the body) plus BODY_CLR; its -X end is the nut block's, so the
 # body holds the scale length and the current nut block. Its walls stand to the deck's top.
-# TODO: the nut block's -X face is MEASURED ONCE (src.keyhead_endplate.assembly(), its
-# keyhead_endplate part, 2026-11-11), not read live: re-measure it when the nut block changes.
-NUT_BLOCK_X0 = -648.3
+# The -X end is the V2 KEYHEAD ENDPLATE (src.keyhead_v2, 2026-11-13): its bed face is the nut
+# block's (nut_block_v2.X_BACK), read live.
+from . import nut_block_v2 as _NB2
+NUT_BLOCK_X0 = D.NUT_BLOCK_X + _NB2.X_BACK
 BODY_CLR = 2.0                                      # inside the walls and ends
 FLOOR_CLR = 0.5                                     # the floor under the lowest motor (user, 2026-11-12:
                                                     # the motors hang on their plates; the floor never
@@ -1251,7 +1368,7 @@ def body_box() -> dict:
     from .changer_bench import DECK_UNDER
     from .changer_bench import ghosts as _ghosts
     pick = [w for nm, w in _ghosts(y_hi=RAIL_HI) if nm == "ghost_pickup"]
-    drive = [w for nm, w in _drive(T_OPEN) if not nm.startswith("db_string")]
+    drive = [w for nm, w in _drive(T_OPEN) if not nm.startswith("string")]
     lo, hi, ui_bottom = kept(_extents, drive, [w for _, w in ui_parts()[0]], pick)
     top = DECK_UNDER + 9.6                          # the deck's top: the walls' top
     inner = ((NUT_BLOCK_X0 + BODY_WALL, hi[0] + BODY_CLR), (lo[1] - BODY_CLR, hi[1] + BODY_CLR),
@@ -1312,6 +1429,19 @@ def ep_x() -> dict:
     return dict(x_j=x_j, bar_end=bar_end, wall0=wall0, wall1=wall1, x_end=x_end)
 
 
+def kh_x() -> dict:
+    """The keyhead (-X) endplate's clamp, mirrored from ep_x: from its bed face (x0) the head
+    recesses (washer + head, flush), the BACK WALL the screws pull on, the gap, the bar's pocket,
+    and the JOINT (x_kj) where the walls and floor end."""
+    from . import belt_tensioner as BTn
+    x0 = NUT_BLOCK_X0
+    wall1 = x0 + EP_WASHER[1] + BTn.HEAD_H
+    e = ep_x()                                       # the SAME back wall as the +X endplate's (user,
+    wall0 = wall1 + (e["wall1"] - e["wall0"])        # 2026-11-13: symmetry), so the same thickness
+    bar_x0 = wall0 + EP_GAP
+    return dict(x0=x0, wall1=wall1, wall0=wall0, bar_x0=bar_x0, x_kj=bar_x0 + EP_POCKET)
+
+
 # McMaster 18-8 M3 SHCS stock lengths (91292A: 20, 22, 25, 30 read 2026-11-12) and the thread in the
 # bar: 1.5 d -- in steel that already outlasts the screw, and every mm more is drilling and
 # tapping the bar end (user, 2026-11-12: only as deep as a firm, lasting grip needs); the tapped
@@ -1320,10 +1450,15 @@ M3_STOCK = (16.0, 20.0, 22.0, 25.0, 30.0)
 EP_ENGAGE, EP_TAP_EXTRA = 1.5 * 3.0, 2.0
 
 
-def bar_screw_len() -> float:
-    """The shortest stock M3 that, head flush with the +X end, reaches EP_ENGAGE into the bar."""
-    e = ep_x()
-    need = e["wall1"] - e["bar_end"] + EP_ENGAGE
+def bar_screw_len(end: int = 1) -> float:
+    """The shortest stock M3 that, head flush with the end, reaches EP_ENGAGE into the bar
+    (end 1: the +X endplate's; -1: the keyhead's)."""
+    if end > 0:
+        e = ep_x()
+        need = e["wall1"] - e["bar_end"] + EP_ENGAGE
+    else:
+        k = kh_x()
+        need = k["bar_x0"] - k["wall1"] + EP_ENGAGE
     return min(L for L in M3_STOCK if L >= need)
 
 
@@ -1333,19 +1468,20 @@ def _bar_box(yc: float, x0: float, x1: float, grow: float = 0.0) -> cq.Workplane
 
 
 def _wall_bars() -> list:
-    return [(f"db_wall_bar_{k}", kept(_wall_bar, k)) for k in range(2)]
+    return [(f"wall_bar_{k}", kept(_wall_bar, k)) for k in range(2)]
 
 
 def _wall_bar(k: int) -> cq.Workplane:
     """Bar k (0: -Y, 1: +Y), its two tapped M3 holes in the +X end (drawn as the tap drill)."""
-    # TODO: the -X end stops short of the -X endplate (the keyhead's), which is not modelled here
-    x0 = body_box()["outer"][0][0] + BODY_WALL + 1.0
+    x0 = kh_x()["bar_x0"]                            # in the keyhead endplate's pocket
     x1 = ep_x()["bar_end"]
     yc = bar_y()[k]
     b = _bar_box(yc, x0, x1)
     for zc in EP_SCREW_Z:
         depth = bar_screw_len() - (ep_x()["wall1"] - x1) + EP_TAP_EXTRA
         b = b.cut(cyl_x(2.5, depth, x1 - depth, y=yc, z=zc))
+        depth = bar_screw_len(-1) - (x0 - kh_x()["wall1"]) + EP_TAP_EXTRA
+        b = b.cut(cyl_x(2.5, depth, x0, y=yc, z=zc))
     for zp in _anchor_screw_z():                     # the anchor's screws: tapped M4 through
         b = b.cut(cyl_y(3.3, BAR_T + 2, yc - BAR_T / 2 - 1, x=ANCHOR[1] + ANCHOR_SCREW_DX, z=zp))
     return b
@@ -1376,11 +1512,12 @@ def _body() -> cq.Workplane:
     (x0, _), (y0, y1), (z0, z1) = body_box()["outer"]
     (a0, _), (b0, b1), (c0, _) = body_box()["inner"]
     xj = ep_x()["x_j"]
+    x0 = kh_x()["x_kj"]                              # the -X end is the keyhead endplate's
     w = box_at(xj - x0, y1 - y0, z1 - z0, x=(x0 + xj) / 2, y=(y0 + y1) / 2, z=(z0 + z1) / 2)
     w = w.cut(box_at(xj + 1 - a0, b1 - b0, z1 - c0 + 2.0, x=(a0 + xj + 1) / 2, y=(b0 + b1) / 2,
                      z=(c0 + z1 + 2.0) / 2))
     for yc, yin in zip(bar_y(), (b0, b1)):
-        w = w.cut(_bar_box(yc, x0 + BODY_WALL, xj + 1, BAR_CLR))
+        w = w.cut(_bar_box(yc, x0 - 1, xj + 1, BAR_CLR))
         for zp in _anchor_screw_z():                 # the anchor screws through the INNER skin
             lo, hi = min(yc, yin), max(yc, yin)      # only (the outer skin stays whole)
             w = w.cut(teardrop_hole(4.4, hi - lo + 0.5, axis_point=(ANCHOR[1] + ANCHOR_SCREW_DX,
@@ -1391,9 +1528,10 @@ def _body() -> cq.Workplane:
         za0, za1 = c0, _anchor_z()[1]
         w = w.union(box_at(rw, ro, za1 - za0, x=ANCHOR[0] - rg - rw / 2, y=yin + sg * ro / 2,
                            z=(za0 + za1) / 2))
-        for i in range(N):                           # the guide rods' way past it
-            ry, rz = rod_yz(i)
-            w = w.cut(cyl_x(GUIDE_SEAT + 0.4, rw + 2, ANCHOR[0] - rg - rw - 1, y=ry, z=rz))
+        for i in range(N):                           # the guide rods' way past it, and their
+            ry, rz = rod_yz(i)                       # caps on the housings (string 1's meets it)
+            w = w.cut(cyl_x(2 * (GUIDE_SEAT / 2 + GUIDE_WALL) + 2.0, rw + 2, ANCHOR[0] - rg - rw - 1,
+                            y=ry, z=rz))
         # THE SPACERS ARE THE BODY'S (user, 2026-11-12): a printed BOSS under each anchor screw's
         # head, ANCHOR_SPACER_L off the skin, the head tightened down onto it. Printed -Z -> +Z:
         # a 45 deg RAMP under it, and nothing over the screw -- a block below the shank, its top
@@ -1412,13 +1550,16 @@ def _body() -> cq.Workplane:
             w = w.union(blk).union(col)
             lo_y = min(yin, yin + sg * L)
             w = w.cut(teardrop_hole(4.4, L + 1.0, axis_point=(xa, lo_y - 0.5, zs), axis_dir=(0, 1, 0)))
+    w = w.cut(_ob_groove())                      # the output board's bottom edge
+    from . import deck_v2 as _DK                     # the walls stop at the deck panels' underside,
+    w = w.cut(_DK.wall_cutter())                     # a groove down each for the panels' tongues
     return w
 
 
 # THE ENDPLATE (user, 2026-11-12): ONE printed PETG-GF part, the instrument's +X end from the
 # JOINT (x_j, where the walls and floor end) to the end, the full height (the bed under it to the
-# bridge axle's top), PRINTED -Z -> +Z. Just enough of it to:
-#   - hold each GUIDE ROD (its seat from the plate's back, ~11 deep: ROD_TIP);
+# bridge axle's top), PRINTED +X -> -X (EP_UP). Just enough of it to:
+#   - hold each GUIDE ROD (its seat from the plate's back, ~24 deep: ROD_TIP);
 #   - be the ROD PLATE (x_j .. ROD_PLATE[1]), with the balls' windows; it stays under the pickup
 #     (PLATE_TOP) where the pickup reaches it;
 #   - hold the 4 AXLES (the three bend rows and the bridge): each slides in from the -Y face to a
@@ -1434,27 +1575,42 @@ PICK_Y = (-52.9, 51.1)                               # the pickup's y, and 1 eac
 LANE_HW = D.BRG688_W / 2 + COMB_CLR                  # 2.6: a string's lane, its bearings in it
 LANE_WALL = 2 * D.BEAD                               # a lane's floor over the next row's axle bore
 EP_BRG_CLR = 1.0                                     # a lane's roof / floor off a bearing's rim
-EP_STR_CLR = 1.5                                     # the fill stands this far -X of the string's
-                                                     # vertical drop (user: inset for clearance)
+# the slot's gable (SLOT_APEX_X) stays ROD_SEAT_WALL off every rod seat's tip it passes beside
+for _i in range(N):
+    _ry, _ = rod_yz(_i)
+    for _j in range(N):
+        _dy = abs(_ry - y_of(_j)) - GUIDE_SEAT / 2           # the seat's nearest edge off the lane's middle
+        if _dy < LANE_HW:
+            assert SLOT_APEX_X + max(_dy, 0.0) - (ROD_TIP + 0.3) >= ROD_SEAT_WALL - 1e-9, (
+                f"the slot's roof in lane {_j + 1} leaves rod {_i + 1}'s seat "
+                f"{SLOT_APEX_X + max(_dy, 0.0) - ROD_TIP - 0.3:.2f} of wall")
 AXLE_STOP_T, PUSH_D = 3.0, 3.2                       # the +Y stop; the push-out hole (a 2.5 key)
+# THE ENDPLATE PRINTS +X -> -X (user, 2026-11-13: "a clean look on the exterior"): its +X end on
+# the bed, the joint face (x_j) last. Every hole along X (rods, M3 heads, bar screws, I/O) prints
+# ROUND; the bores across it (the axles) peak toward -X. The one bridge is the rod plate's +X face
+# over each lane (2 LANE_HW, 5.2 across): the lane reaches EP_DROOP into the plate there, so a
+# sagging bridge still clears the bend bearing's rim by BRG_CLR.
+EP_UP = (-1.0, 0.0, 0.0)
+EP_DROOP = 0.5
 
 
 def axle_zs() -> list:
     """(name, z) of the four axles, all at x X_BEND."""
-    return [(f"db_bend_axle_r{'abc'[k]}", z_level(k) + R) for k in range(LEVELS)] + \
-           [("db_bridge_axle", D.BRIDGE_BEARING_Z)]
+    return [(f"bend_axle_r{'abc'[k]}", z_level(k) + R) for k in range(LEVELS)] + \
+           [("bridge_axle", D.BRIDGE_BEARING_Z)]
 
 
-AXLE_GRIP = D.BRIDGE_AXLE_D                          # each end's grip in plastic past the outer lane
-                                                     # (user, 2026-11-12: axles only as long as a
-                                                     # solid grip needs; the fingers between hold it too)
+AXLE_L = 100.0                                       # STOCK: McMaster 6459K118, O8 x 100 (user,
+                                                     # 2026-11-13: no cutting; was 106.7 with an 8 grip)
 
 
 def axle_span() -> tuple:
     """Each axle's y: one length for all four rows (one part to stock), the outermost lanes'
-    width plus AXLE_GRIP each side. It goes in from -Y down its bore and stops on the +Y wall."""
+    width plus what AXLE_L leaves each side as its grip in plastic. It goes in from -Y down its bore and stops on the +Y wall."""
     ys = [y_of(i) for i in range(N)]
-    return min(ys) - LANE_HW - AXLE_GRIP, max(ys) + LANE_HW + AXLE_GRIP
+    grip = (AXLE_L - (max(ys) - min(ys)) - 2 * LANE_HW) / 2       # 4.65 at 100
+    assert grip >= 0.5 * D.BRIDGE_AXLE_D, grip
+    return min(ys) - LANE_HW - grip, max(ys) + LANE_HW + grip
 
 
 def endplate_axles() -> list:
@@ -1466,7 +1622,92 @@ def _axle(k: int) -> cq.Workplane:
     return cyl_y(D.BRIDGE_AXLE_D, b - a, a, x=X_BEND, z=axle_zs()[k][1])
 
 
-def _endplate() -> cq.Workplane:
+# ── THE OUTPUT BOARD (bronner's single board, 2026-11-13) ───────────────────────────────────
+# INSTALL (user, 2026-11-13): deck off, the board drops -Z beside the -Y wall, its bottom edge
+# into a groove in the body's floor, then slides OB_SLIDE +X into a POCKET in the endplate's
+# inner face until J5's shoulder meets the outer wall. The pocket FOLLOWS THE BOARD (user: no
+# more plastic away than it needs): a slot for the laminate, and for each part that ends up
+# inside the endplate a channel its courtyard's outline and height, all along X (the slide).
+# The outer face shows only the I/O: J5's round hole through its 4.0 clamp wall, the USB-Cs'
+# overmold stadiums. The board's outline and its parts are bronner's export, final position
+# (src/output_board_pocket.json, copied from his elec/output_board.pocket.json).
+import json as _json
+from pathlib import Path as _Path
+OB = _json.loads(_Path(__file__).with_name("output_board_pocket.json").read_text(encoding="utf-8"))
+OB_SLIDE = 19.0                                     # the +X slide after the drop
+OB_CLR = 0.4                                        # round every channel: a sliding fit
+
+
+def _ob_part(p: dict) -> tuple:
+    """A part's (x0, x1, z0, z1, h) in instrument coordinates, its courtyard."""
+    return p["x"][0], p["x"][1], p["z"][0], p["z"][1], p["h"]
+
+
+def _ob_pocket() -> cq.Workplane:
+    """The cutter: the laminate's slot, each part's channel, and the I/O through the wall."""
+    xj, xe = ROD_PLATE[0], X_BEND + R + D.STRING_GAUGE_MAX
+    face, (ly0, ly1), (bz0, bz1) = OB["component_face_y"], OB["laminate_y"], OB["z"]
+    edge, c = OB["edge_x"], OB_CLR
+    w = box_at(edge + c - (xj - 1), ly1 - ly0 + 2 * c, bz1 - bz0 + 2 * c,
+               x=(xj - 1 + edge + c) / 2, y=(ly0 + ly1) / 2, z=(bz0 + bz1) / 2)
+    for p in OB["parts_past_inner_face"]:
+        x0, x1, z0, z1, h = _ob_part(p)
+        if p["ref"] == "J5":                        # its shoulder bears on the wall: no gap
+            x1 = edge + p["protrudes"]
+        else:
+            x1 += c
+        w = w.union(box_at(x1 - (xj - 1), h + c + 0.01, z1 - z0 + 2 * c, x=(xj - 1 + x1) / 2,
+                           y=face + (h + c - 0.01) / 2, z=(z0 + z1) / 2))
+        tl = p.get("tail")                          # through-hole tails out of the back,
+        if tl:                                      # UNCLIPPED (board_geom: untrimmed fits)
+            (tx0, tx1), (tz0, tz1), ty0 = tl["x"], tl["z"], tl["y"][0]
+            w = w.union(box_at(tx1 + c - (xj - 1), ly0 - ty0 + c + 0.01, tz1 - tz0 + 2 * c,
+                               x=(xj - 1 + tx1 + c) / 2, y=(ty0 - c + ly0 + 0.01) / 2,
+                               z=(tz0 + tz1) / 2))
+        zc, ya = (z0 + z1) / 2, face + p.get("axis_off_face", 0.0)
+        xm = edge + p.get("protrudes", 0.0) - 0.01
+        op = p.get("opening", "")
+        if op.startswith("round"):
+            w = w.union(cyl_x(float(op.split()[1]), xe + 1 - xm, xm, y=ya, z=zc))
+        elif op.startswith("stadium"):
+            sw, sh = (float(v) for v in op.split()[1].split("x") if v) if "x" in op.split()[1] \
+                else (float(op.split()[1]), float(op.split()[3]))
+            w = w.union(cq.Workplane("YZ", origin=(xm, ya, zc)).slot2D(sw, sh, angle=90)
+                        .extrude(xe + 1 - xm))
+    return w
+
+
+def _ob_groove() -> cq.Workplane:
+    """The body floor's groove under the board's bottom edge, from where it drops to x_j."""
+    (ly0, ly1), bz0, c = OB["laminate_y"], OB["z"][0], OB_CLR
+    x0, x1 = OB["minus_x_edge"] - OB_SLIDE - c, ROD_PLATE[0] + 1
+    return box_at(x1 - x0, ly1 - ly0 + 2 * c, 3.0, x=(x0 + x1) / 2, y=(ly0 + ly1) / 2,
+                  z=bz0 - c + 1.5)
+
+
+def _ob_board() -> cq.Workplane:
+    """bronner's board as a stand-in for the gates: the laminate and its parts' courtyards
+    (final position; only the parts that reach the endplate are listed)."""
+    face, (ly0, ly1), (bz0, bz1) = OB["component_face_y"], OB["laminate_y"], OB["z"]
+    x0, x1 = OB["minus_x_edge"], OB["edge_x"]
+    w = box_at(x1 - x0, ly1 - ly0, bz1 - bz0, x=(x0 + x1) / 2, y=(ly0 + ly1) / 2, z=(bz0 + bz1) / 2)
+    for p in OB["parts_past_inner_face"]:
+        px0, px1, z0, z1, h = _ob_part(p)
+        if p["ref"] == "J5":
+            px1 = x1 + p["protrudes"]
+        w = w.union(box_at(px1 - px0, h, z1 - z0, x=(px0 + px1) / 2, y=face + h / 2,
+                           z=(z0 + z1) / 2))
+        tl = p.get("tail")
+        if tl:
+            (tx0, tx1), (tz0, tz1), (ty0, ty1) = tl["x"], tl["z"], tl["y"]
+            w = w.union(box_at(tx1 - tx0, ty1 - ty0, tz1 - tz0, x=(tx0 + tx1) / 2,
+                               y=(ty0 + ty1) / 2, z=(tz0 + tz1) / 2))
+    return w
+
+
+def _endplate(rods: bool = True, only: int = None) -> cq.Workplane:
+    """only: draw ONE string's lane, window, rod and reliefs (the wood bench's slice)."""
+    strings = range(N) if only is None else (only,)
     from cadkit.holes import teardrop_hole
     (_, _), (y0, y1), (z0, _) = body_box()["outer"]
     e = ep_x()
@@ -1476,68 +1717,76 @@ def _endplate() -> cq.Workplane:
         w = w.cut(box_at(PLATE_LOW_X - xj + 1, PICK_Y[1] - PICK_Y[0], EP_TOP - PLATE_TOP + 1,
                          x=(xj - 1 + PLATE_LOW_X) / 2, y=sum(PICK_Y) / 2,
                          z=(PLATE_TOP + EP_TOP + 1) / 2))
-    for i in range(N):                                           # the lanes, and the windows
+    for i in strings:                                           # the lanes, and the windows
         za_i = za(i)
         # each lane runs out through the +X end and the top (user, 2026-11-12: open, only the
         # fingers between the bearings, so a string feeds in and out when restringing)
         # ...and down as deep as the window, so the keyhole's bottom shows from above and the
         # ball goes straight in (user, 2026-11-12), but LANE_WALL over the peak of the next
-        # row's axle bore (a teardrop, peaked +Z) where one runs under the lane
+        # row's axle bore (peaked -X as printed, so round in z) where one runs under the lane
         lo = za_i + WIN_Z[0]
         under = [zc for _, zc in axle_zs() if zc < za_i]
         if under:
-            lo = max(lo, max(under) + (D.BRIDGE_AXLE_D + 0.2) / 2 * math.sqrt(2) + LANE_WALL)
+            lo = max(lo, max(under) + (D.BRIDGE_AXLE_D + 0.2) / 2 + LANE_WALL)
         # THE LANE IS FILLED OVER ITS BEND BEARING (user, 2026-11-12: no string goes in there):
-        # open from the window's floor up to EP_BRG_CLR over the bend bearing, under a 45 deg
-        # roof peaked along x (printed -Z -> +Z); solid from there up to a pocket with a flat floor
+        # open from the window's floor up to EP_BRG_CLR over the bend bearing (a flat roof: it
+        # is a side wall as printed, +X -> -X); solid from there up to a pocket with a flat floor
         # EP_BRG_CLR under the bridge bearing, open through the top; and a SLOT at the +X face the
         # string drops through, EP_STR_CLR off it, the lane's whole height
-        y_i, x0l, x1l = y_of(i), ROD_PLATE[1], xe + 1
+        y_i, x0l, x1l = y_of(i), ROD_PLATE[1] - EP_DROOP, xe + 1
         zr = z_level(level(i)) + R + D.BRG688_OD / 2 + EP_BRG_CLR      # the roof's eaves
         w = w.cut(box_at(x1l - x0l, 2 * LANE_HW, zr - lo, x=(x0l + x1l) / 2, y=y_i,
                          z=(lo + zr) / 2))
-        w = w.cut(cq.Workplane("YZ", origin=(x0l, 0, 0))
-                  .polyline([(y_i - LANE_HW, zr - 0.01), (y_i + LANE_HW, zr - 0.01),
-                             (y_i, zr + LANE_HW)]).close().extrude(x1l - x0l))
         zb = BR_C[1] - D.BRG688_OD / 2 - EP_BRG_CLR                    # the bridge's pocket
         w = w.cut(box_at(x1l - x0l, 2 * LANE_HW, EP_TOP + 1 - zb, x=(x0l + x1l) / 2, y=y_i,
                          z=(zb + EP_TOP + 1) / 2))
-        xs = X_DROP - EP_STR_CLR                                       # the string's slot
+        # THE STRING'S SLOT ENDS IN A ROOF (user, 2026-11-13): its -X end is a 45 deg gable
+        # peaked -X, the build direction, so the fill over the bend bearing ends in a roof and
+        # not a 5.2 bridge; the gable stands EP_STR_CLR off the heaviest string all round
+        xa, xs = SLOT_APEX_X, SLOT_APEX_X + LANE_HW
         w = w.cut(box_at(x1l - xs, 2 * LANE_HW, EP_TOP + 1 - lo, x=(xs + x1l) / 2, y=y_i,
                          z=(lo + EP_TOP + 1) / 2))
+        w = w.cut(cq.Workplane("XY", origin=(0, 0, lo))
+                  .polyline([(xs + 0.01, y_i - LANE_HW), (xs + 0.01, y_i + LANE_HW), (xa, y_i)]).close()
+                  .extrude(EP_TOP + 1 - lo))
         lo, hi = WIN_Z
         # the window as wide as the lane (user, 2026-11-12): the ball comes down the lane, so
         # anything wider only took plate away (and met the M3 heads' holes)
         w = w.cut(box_at(ROD_PLATE[1] - xj + 2, 2 * LANE_HW, hi - lo, x=(xj + ROD_PLATE[1]) / 2,
                          y=y_of(i), z=za_i + (lo + hi) / 2))
         # THE M3 HEADS' HOLES (user, 2026-11-12, trial: heads on the keyhole plate's +X face): the
-        # plate still bottoms out on the rod plate, the heads (3 tall) sunk in it -- teardrops
-        # (printed -Z -> +Z), 0.3 round the head, right through the 3.2 plate
+        # plate still bottoms out on the rod plate, the heads (3 tall) sunk in it -- round
+        # (along the print), 0.3 round the head, right through the plate
         for a in HOLE_ANG["m3"]:
             dy, dz = at_ang(a)
-            w = w.cut(teardrop_hole(M3_HEAD[0] + 0.6, ROD_PLATE[1] - xj + 2,
-                                    axis_point=(xj - 1, y_of(i) + dy, za_i + dz), axis_dir=(1, 0, 0)))
+            w = w.cut(cyl_x(M3_HEAD[0] + 0.6, ROD_PLATE[1] - xj + 2, xj - 1, y=y_of(i) + dy,
+                            z=za_i + dz))
             # where a hole stands beside the window, the sliver between them is OPENED (user,
-            # 2026-11-12: too little plastic there to print): the hole's far flank runs on at
-            # 45 deg up to the window's edge, its near half joins the window
+            # 2026-11-12: too little plastic there to print): the hole's near half joins the
+            # window, a slot the head's width
             yw = y_of(i) + math.copysign(LANE_HW, dy)
             if abs(dy) - (M3_HEAD[0] + 0.6) / 2 < LANE_HW + 2 * D.BEAD and za_i + dz < za_i + WIN_Z[1]:
                 rh, yc, zc = (M3_HEAD[0] + 0.6) / 2, y_of(i) + dy, za_i + dz
-                sg = 1 if yw > yc else -1                    # toward the window
-                p1 = (yc - sg * rh / math.sqrt(2), zc + rh / math.sqrt(2))   # far flank's tangent
-                p2 = (yw, p1[1] + abs(yw - p1[0]))                           # ...at 45 deg on
-                pts = [p1, p2, (yw, zc - rh), (yc, zc - rh)]
+                pts = [(yc, zc + rh), (yw, zc + rh), (yw, zc - rh), (yc, zc - rh)]
                 w = w.cut(cq.Workplane("YZ", origin=(xj - 1, 0, 0)).polyline(pts).close()
                           .extrude(ROD_PLATE[1] - xj + 2))
-    rb = GUIDE_SEAT / 2 + GUIDE_WALL                             # the rods' bosses: a teardrop
-    for i in range(N):                                           # peaked -Z, so where one stands
-        ry, rz = rod_yz(i)                                       # in a lane it prints from the plate
-        w = w.union(teardrop_hole(2 * rb, ROD_TIP + 0.3 + 1.0 - xj, axis_point=(xj, ry, rz),
-                                  axis_dir=(1, 0, 0), print_up=(0, 0, -1)))
-    for i in range(N):
+    # the rods' BOSSES: GUIDE_WALL round each seat where it runs beside a lane (strings 4-5, 7-8
+    # and 10 have ~0.9 without), to the seat's floor, then a 45 deg cone down to 0.8 of wall --
+    # the boss's +X end faces the bed as printed (+X -> -X), so it may not end flat in a lane
+    rb = GUIDE_SEAT / 2 + GUIDE_WALL
+    rc = GUIDE_SEAT / 2 + D.BEAD
+    for i in (strings if rods else ()):
         ry, rz = rod_yz(i)
-        w = w.cut(teardrop_hole(GUIDE_SEAT, ROD_TIP + 0.3 - (xj - 3), axis_point=(xj - 3, ry, rz),
-                                axis_dir=(1, 0, 0), fit=True))
+        xb = ROD_TIP + 0.3
+        w = w.union(cyl_x(2 * rb, xb - xj, xj, y=ry, z=rz))
+        w = w.union(cq.Solid.makeCone(rb, rc, rb - rc, cq.Vector(xb - 0.01, ry, rz), cq.Vector(1, 0, 0)))
+    for i in (strings if rods else ()):                            # ...but EP_BRG_CLR off every
+        zc = z_level(level(i)) + R                               # bend bearing's rim, where a
+        w = w.cut(cyl_y(D.BRG688_OD + 2 * EP_BRG_CLR, 2 * LANE_HW, y_of(i) - LANE_HW,   # boss runs
+                        x=X_BEND, z=zc))                         # beside the next row's lane
+    for i in (strings if rods else ()):
+        ry, rz = rod_yz(i)
+        w = w.cut(cyl_x(GUIDE_SEAT, ROD_TIP + 0.3 - (xj - 3), xj - 3, y=ry, z=rz))   # round
         # the CRUSH RIBS at its bottom (ROD_GRIP): three, at the bottom and +-120, each reaching
         # ROD_RIB inside the rod's circle -- the rod, pushed home from -X, stays put
         rr = GUIDE_D / 2 - ROD_RIB
@@ -1548,10 +1797,10 @@ def _endplate() -> cq.Workplane:
     a, b = axle_span()
     for nm, zc in axle_zs():                                     # the axles: in from -Y, the stop,
         w = w.cut(teardrop_hole(D.BRIDGE_AXLE_D + 0.2, b - (y0 - 1), axis_point=(X_BEND, y0 - 1, zc),
-                                axis_dir=(0, 1, 0)))
+                                axis_dir=(0, 1, 0), print_up=EP_UP))
         w = w.cut(teardrop_hole(PUSH_D, y1 + 1 - (b - 0.5), axis_point=(X_BEND, b - 0.5, zc),
-                                axis_dir=(0, 1, 0)))             # and the push-out hole
-    for i in range(N):                                           # the fingers' reliefs: off the
+                                axis_dir=(0, 1, 0), print_up=EP_UP))   # and the push-out hole
+    for i in strings:                                           # the fingers' reliefs: off the
         for zc in (z_level(level(i)) + R, D.BRIDGE_BEARING_Z):   # turning outer races, both sides
             yb = y_of(i)
             w = w.cut(_tube_y(SHIELD_D, RACE_D, yb - LANE_HW - COMB_RELIEF, yb - LANE_HW + 0.01, zc))
@@ -1559,10 +1808,11 @@ def _endplate() -> cq.Workplane:
     for yc in bar_y():                                           # the bars' ends
         w = w.cut(_bar_box(yc, xj - 1, e["wall0"], BAR_CLR))      # pocket + gap
         for zc in EP_SCREW_Z:
-            w = w.cut(teardrop_hole(EP_M3_CLR, e["wall1"] - e["bar_end"] + 1,
-                                    axis_point=(e["bar_end"], yc, zc), axis_dir=(1, 0, 0), fit=True))
-            w = w.cut(teardrop_hole(EP_TUNNEL, xe + 1 - e["wall1"], axis_point=(e["wall1"], yc, zc),
-                                    axis_dir=(1, 0, 0), fit=True))
+            w = w.cut(cyl_x(EP_M3_CLR, e["wall1"] - e["bar_end"] + 1, e["bar_end"], y=yc, z=zc))
+            w = w.cut(cyl_x(EP_TUNNEL, xe + 1 - e["wall1"], e["wall1"], y=yc, z=zc))   # a short
+            # bridge as printed (the back wall's +X face round the screw), 7.2 across
+    if only is None:
+        w = w.cut(_ob_pocket())                                  # the output board
     return w
 
 
@@ -1573,13 +1823,18 @@ def endplate_full():
 
 def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
     from .changer_bench import ghosts as _ghosts
-    out = _drive(t) + [("db_endplate", endplate_full())] + endplate_axles()
+    out = _drive(t) + [("endplate", endplate_full())] + endplate_axles()
     # EVERY PART THE VIEW CAN SHOW OR HIDE IS KEPT ON ITS OWN (user, 2026-11-12): an edit
     # rebuilds the parts whose code or inputs it touched, and nothing else
-    out += [_compound("db_anchor", kept(_anchor)), _compound("db_anchor_m4", kept(_anchor_screws))]
-    out += _wall_bars() + [_compound("db_bar_m3", kept(_bar_screws))]
+    out += [_compound("anchor", kept(_anchor)), _compound("anchor_m4", kept(_anchor_screws))]
+    out += _wall_bars() + [_compound("bar_m3", kept(_bar_screws))]
+    from . import keyhead_v2 as _KH                  # the -X endplate, its plates, screws and rod
+    out += _KH.parts()
+    from . import deck_v2 as _DK                     # the top panels and the fret LED stand-in
+    out += _DK.parts()
     out = [(nm, _made(nm, w)) for nm, w in out] + list(ui_parts()[0])
-    out.append(("db_body", _made("db_body", kept(_body))))   # opaque PETG-GF, as the lead's chassis
+    out.append(("ob_board", _made("ob_board", kept(_ob_board))))   # bronner's, a stand-in
+    out.append(("body", _made("body", kept(_body))))   # opaque PETG-GF, as the lead's chassis
     out += [g for g in _ghosts(y_hi=RAIL_HI)
             if g[0] != "ghost_bottom_now" and (all_ghosts or g[0] == "ghost_pickup")]
     return out
@@ -1590,19 +1845,40 @@ def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
 MATERIAL = {
     "yoke": "petg-gf", "keyplate": "steel", "collar": "pctg", "block": "petg-gf", "mplate": "petg-gf",
     "endplate": "petg-gf", "bar_m3": "steel", "bridge_axle": "steel", "bridge_brg": "polished", "anchor": "stainless", "anchor_m4": "steel",
-    "body": "petg-gf", "wall_bar": "steel",
+    "body": "petg-gf", "wall_bar": "steel", "ob_board": "board",
+    "keyhead": "petg-gf", "kh_m3": "steel", "kh_plate": "stainless", "kh_side_screw": "steel",
+    "kh_side_insert": "brass", "kh_height_screw": "steel", "kh_shoe": "petg-gf", "kh_height_insert": "brass", "kh_rod": "steel",
     "nut": "brass", "ball": "brass", "screw": "steel", "rod": "steel", "string": "polished",
     "brg": "polished", "bend_brg": "polished", "bridge_bearings": "polished",
     "bend_axle_ra": "steel", "bend_axle_rb": "steel", "bend_axle_rc": "steel",
     "spring": "stainless", "plug": "petg-gf", "sleeve_p": "petg-gf", "sleeve_c": "petg-gf", "m3": "steel", "col_ins": "brass", "coupler": "petg-gf",
     "cpl_m3": "steel", "cpl_insert": "brass", "housing": "petg-gf", "hb": "steel", "insert": "brass",
     "collar_a": "petg-gf", "collar_b": "petg-gf", "ca_m3": "steel",
+    "deck": "pctg-black", "deck_white": "pctg-clear", "fret_board": "board",
+    "fret_leds": "nylon",                        # bought 5050s: a moulded white package, its colour kept
 }
+
+
+# THE PART NAMES ARE PLAIN (user, 2026-11-14): this is the instrument now, so its parts carry no
+# bench prefix. owns() is how the shared tools (check_overlaps, check_sweep, web_materials, the
+# build's colours) know a name is this instrument's and ask here.
+def owns(name: str) -> bool:
+    """Is `name` (indices off) one of this instrument's parts?"""
+    b = _re.sub(r"(_\d+)+$", "", name.split("__")[0])
+    return b in _OWN or b in _motor_names()
+
+
+@_functools.lru_cache(maxsize=None)
+def _motor_names() -> frozenset:
+    """The motor's part names as _motor draws them (indices off): "motor" and "motor_<k>".
+    Exact names, not a "motor" prefix: v1's motor_shaft_saw_jig is not ours."""
+    from . import components as C
+    return frozenset(f"motor_{k}" if k else "motor" for k, *_ in C.motor_parts())
 
 
 def material_of(base: str):
     """The material of a direct-bench part (its name, indices off), or None."""
-    inner = base[3:]
+    inner = base
     if inner.startswith("motor"):
         if not MOTOR_FINISH:
             from . import components as C
@@ -1617,8 +1893,8 @@ def _made(nm: str, w):
     return made_of(w, m) if m else w
 
 
-# ── colours (src.build._color_for asks here for db_ names) ──────────────────────────────────
-# inner name (db_ and EVERY trailing index group off) -> a key of build._COLORS, or an RGB.
+# ── colours (src.build._color_for asks here for  names) ──────────────────────────────────
+# inner name ( and EVERY trailing index group off) -> a key of build._COLORS, or an RGB.
 COLORS = {
     "nut": "nut", "ball": "string_nut", "screw": "leadscrew", "brg": "screw_bearing",
     "string": "string", "bridge_bearings": "bridge_bearings", "rod": "guide_rod",
@@ -1627,17 +1903,28 @@ COLORS = {
     "yoke": (0.39, 0.58, 0.93), "collar": (0.85, 0.45, 0.15),
     "spring": "leg_latch_spring", "plug": (0.85, 0.45, 0.15),
     "sleeve_p": (0.95, 0.75, 0.20), "sleeve_c": (0.95, 0.75, 0.20), "m3": "set_screw", "col_ins": "nut",
-    "coupler": (0.85, 0.45, 0.15), "cpl_m3": "set_screw",
+    "coupler": (0.85, 0.45, 0.15), "cpl_m3": "set_screw", "cpl_insert": "nut",
     "housing": (0.30, 0.36, 0.42), "hb": "set_screw", "insert": "nut",
     "collar_a": (0.85, 0.45, 0.15), "collar_b": (0.85, 0.45, 0.15), "ca_m3": "set_screw", "block": (0.30, 0.36, 0.42), "mplate": (0.30, 0.33, 0.38),
     "endplate": (0.36, 0.30, 0.42), "bar_m3": "set_screw", "bridge_axle": "set_screw",
     "bridge_brg": "bridge_bearings", "anchor": "nut_plate", "anchor_m4": "set_screw",
-    "body": "chassis", "wall_bar": "nut_plate", "keyplate": "nut_plate",
+    "keyhead": (0.36, 0.30, 0.42), "kh_m3": "set_screw", "kh_plate": "nut_plate", "kh_shoe": (0.85, 0.45, 0.15),
+    "kh_side_screw": "set_screw", "kh_side_insert": "nut", "kh_height_screw": "set_screw",
+    "kh_height_insert": "nut", "kh_rod": "guide_rod",
+    "body": "chassis", "wall_bar": "nut_plate", "keyplate": "nut_plate", "ob_board": _mask_rgb("green"),
+    "deck": (0.16, 0.16, 0.18), "deck_white": (0.95, 0.95, 0.92), "fret_board": _mask_rgb("green"),
+    "fret_leds": (1.0, 0.98, 0.85),
 }
 
 
+# every base name this instrument draws (owns() reads it): the tables above, the drive's parts, and
+# the few drawn with no material or colour of their own
+_OWN = (set(MATERIAL) | set(COLORS) | {nm for nm, _, _ in _STRING_PARTS}
+        | {"string", "bend_axle_ra", "bend_axle_rb", "bend_axle_rc", "kh_rod"})
+
+
 def color_of(base: str, table: dict):
-    inner = base[3:] if base.startswith("db_") else base
+    inner = base
     v = COLORS.get(inner, inner)
     return v if isinstance(v, tuple) else table.get(v)
 
@@ -1651,25 +1938,27 @@ _IDX = _re.compile(r"_(\d+)$")
 def _base(nm: str):
     m = _IDX.search(nm)
     b, i = (nm[:m.start()], int(m.group(1))) if m else (nm, None)
-    return ("db_motor" if b.startswith("db_motor") else b), i
+    return ("motor" if b.startswith("motor") else b), i
 
 
 _SAME = {frozenset(p) for p in (
-    ("db_screw", "db_nut"), ("db_screw", "db_brg"), ("db_screw", "db_coupler"),
-    ("db_nut", "db_yoke"), ("db_nut", "db_collar"),
-    ("db_m3", "db_col_ins"), ("db_col_ins", "db_collar"),       # threaded; heat-set (melted in)
-    ("db_m3", "db_collar"), ("db_m3", "db_nut"), ("db_m3", "db_yoke"), ("db_m3", "db_keyplate"),
-    ("db_spring", "db_plug"),
-    ("db_sleeve_p", "db_plug"), ("db_sleeve_p", "db_spring"),
-    ("db_sleeve_c", "db_collar"), ("db_sleeve_c", "db_spring"),
-    ("db_yoke", "db_ball"), ("db_string", "db_ball"), ("db_string", "db_yoke"),
-    ("db_collar", "db_spring"), ("db_brg", "db_block"), ("db_coupler", "db_motor"),
-    ("db_motor", "db_mplate"), ("db_motor",), ("db_coupler", "db_block"),
-    ("db_cpl_m3", "db_cpl_insert"),
-    ("db_housing", "db_brg"), ("db_collar_a", "db_brg"), ("db_collar_b", "db_brg"),
-    ("db_collar_a", "db_screw"), ("db_collar_b", "db_screw"), ("db_ca_m3", "db_collar_a"),
-    ("db_hb", "db_housing"), ("db_hb", "db_plug"), ("db_hb", "db_insert"), ("db_insert", "db_plug"),
-    ("db_housing", "db_plug"))}
+    ("screw", "nut"), ("screw", "brg"), ("screw", "coupler"),
+    ("nut", "yoke"), ("nut", "collar"),
+    ("m3", "col_ins"), ("col_ins", "collar"),       # threaded; heat-set (melted in)
+    ("m3", "collar"), ("m3", "nut"), ("m3", "yoke"), ("m3", "keyplate"),
+    ("spring", "plug"),
+    ("sleeve_p", "plug"), ("sleeve_p", "spring"),
+    ("sleeve_c", "collar"), ("sleeve_c", "spring"),
+    ("yoke", "ball"), ("string", "ball"), ("string", "yoke"),
+    ("collar", "spring"), ("brg", "block"), ("coupler", "motor"),
+    ("motor", "mplate"), ("motor",), ("coupler", "block"),
+    ("cpl_m3", "cpl_insert"),
+    ("housing", "brg"), ("collar_a", "brg"), ("collar_b", "brg"),
+    ("collar_a", "screw"), ("collar_b", "screw"), ("ca_m3", "collar_a"),
+    ("hb", "housing"), ("hb", "plug"), ("hb", "insert"), ("insert", "plug"),
+    ("housing", "plug"),
+    ("kh_side_screw", "kh_side_insert"), ("kh_height_screw", "kh_height_insert"),
+    ("kh_height_screw", "kh_shoe"))}            # its tip bears on the shoe's wedge
 
 
 def is_intended(a: str, b: str) -> bool:
@@ -1679,32 +1968,42 @@ def is_intended(a: str, b: str) -> bool:
     pair = {ba, bb_}
     if all(n.startswith("ghost_") for n in pair):
         return True
-    bends = {"db_bend_axle_ra", "db_bend_axle_rb", "db_bend_axle_rc", "db_bend_brg"}
-    if "db_string" in pair and pair & (bends | {"db_bridge_brg", "db_bridge_axle", "ghost_keyhead"}):
+    bends = {"bend_axle_ra", "bend_axle_rb", "bend_axle_rc", "bend_brg"}
+    if "string" in pair and pair & (bends | {"bridge_brg", "bridge_axle", "ghost_keyhead"}):
         return True
-    if "db_bridge_brg" in pair and "db_bridge_axle" in pair:       # each bridge 688 on its axle
+    if "bridge_brg" in pair and "bridge_axle" in pair:       # each bridge 688 on its axle
         return True
-    if "db_bar_m3" in pair and "db_wall_bar" in pair:              # threaded into the bar ends
+    if pair & {"bar_m3", "kh_m3"} and "wall_bar" in pair:   # threaded into the bar ends
         return True
-    # the tunnels and clearance holes are drawn 0.4 under (fit=True: sideways teardrops print that
-    # much over), so the Ø7 washer and the shank touch the holes as drawn, not as printed
-    if "db_bar_m3" in pair and "db_endplate" in pair:
+    if "keyhead" in pair and pair & {"kh_side_insert", "kh_height_insert"}:   # melted in
+        return True
+    if "string" in pair and pair & {"kh_rod", "kh_plate", "kh_side_screw"}:
+        return True                                  # wound on the rod, pinched, pinned
+    if "keyhead" in pair and "ghost_keyhead" in pair:
         return True
     # the lead's instrument's ghosts (deck, walls, keyhead) stand where this body's own walls,
     # bars and endplate now are: no clash to report against a ghost of the other design
     if any(n.startswith("ghost_") for n in pair) and pair & {
-            "db_wall_bar", "db_endplate", "db_bar_m3", "db_body", "db_bridge_axle",
-            "db_bend_axle_ra", "db_bend_axle_rb", "db_bend_axle_rc"}:
+            "wall_bar", "endplate", "bar_m3", "body", "bridge_axle", "keyhead",
+            "kh_m3", "kh_plate", "kh_shoe", "kh_side_screw", "kh_side_insert", "kh_height_screw",
+            "kh_height_insert", "kh_rod",
+            "bend_axle_ra", "bend_axle_rb", "bend_axle_rc"}:
         return True
-    if "db_bend_brg" in pair and pair & bends - {"db_bend_brg"}:      # each 688 on its axle
+    # the deck panels ARE the lead's deck ghost now, and cap the walls its wall ghosts stand in
+    if pair & {"ghost_deck", "ghost_wall_hi", "ghost_wall_lo", "ghost_keyhead"} and pair & {
+            "deck", "deck_white", "fret_board", "fret_leds"}:
         return True
-    if "db_rod" in pair and "db_endplate" in pair:
+    if pair == {"deck", "deck_white"}:      # one print, two filaments: they share faces
         return True
-    if "db_anchor_m4" in pair and pair & {"ghost_wall_hi", "ghost_wall_lo", "db_wall_bar"}:
+    if "bend_brg" in pair and pair & bends - {"bend_brg"}:      # each 688 on its axle
+        return True
+    if "rod" in pair and "endplate" in pair:
+        return True
+    if "anchor_m4" in pair and pair & {"ghost_wall_hi", "ghost_wall_lo", "wall_bar"}:
         return True                                  # (tapped into the bar)
-    if "db_anchor" in pair and pair & {"ghost_wall_hi", "ghost_wall_lo"}:   # sized to THIS body
+    if "anchor" in pair and pair & {"ghost_wall_hi", "ghost_wall_lo"}:   # sized to THIS body
         return True
-    if "db_anchor" in pair and pair & {"db_plug", "db_brg", "db_housing", "db_hb", "db_collar_b"}:
+    if "anchor" in pair and pair & {"plug", "brg", "housing", "hb", "collar_b"}:
         return True
     return False
 

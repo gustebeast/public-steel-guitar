@@ -46,7 +46,18 @@ ROTATING = {
     "leadscrew":    lambda i: (D.screw_x(i), D.string_y(i)),
     "screw_bearing": lambda i: (D.screw_x(i), D.string_y(i)),
     "screw_top_bearing": lambda i: (D.screw_x(i), D.string_y(i)),
+    # THE DIRECT INSTRUMENT (2026-11-13): each string's drive turns about an X axis at
+    # (y_of(i), za(i)) -- ("x", y, z). The leadscrew itself is left out: its envelope is its own
+    # thread's cylinder, which the overlap gate already checks (helix proxies).
+    **{nm: (lambda i: ("x", _DB().y_of(i), _DB().za(i)))
+       for nm in ("coupler", "cpl_m3", "cpl_insert", "collar_a", "collar_b",
+                  "ca_m3")},
 }
+
+
+def _DB():
+    from src import direct_bench
+    return direct_bench
 
 # Pairs whose swept overlap is BY DESIGN — the same idea as check_overlaps'
 # allow list, and it must be kept just as short.
@@ -61,6 +72,11 @@ SWEPT_OK = {
     ("leadscrew", "nut"), ("leadscrew", "carriage"),
     ("screw_bearing", "bridge_endplate"),   # seated in the rail, by design
     ("leadscrew", "bridge_endplate"),       # runs through the rail's bores
+    # the direct drive: everything on one screw's axis turns with it or holds it
+    *[(a_, b_) for a_ in ("coupler", "cpl_m3", "cpl_insert", "collar_a",
+                          "collar_b", "ca_m3")
+      for b_ in ("screw", "coupler", "cpl_m3", "cpl_insert", "collar_a",
+                 "collar_b", "ca_m3", "brg", "motor_shaft") if a_ != b_],
 }
 
 MIN_REPORT = 0.5    # mm^3 — below this it is a shared face, not an interference
@@ -147,7 +163,15 @@ def gate(comps) -> int:
     spun, made = [], {}
     for name, shape in comps:
         base, i = _base(name), _index(name)
-        if base in ROTATING and i is not None:
+        if base in ROTATING and i is not None and ROTATING[base](i)[0] == "x":
+            # an X axis: turn the part so X is Z, take its envelope there, turn it back
+            _, y0, z0 = ROTATING[base](i)
+            o, ey = cq.Vector(0, 0, 0), cq.Vector(0, 1, 0)
+            env, r = envelope(shape.rotate(o, ey, -90), -z0, y0)
+            if env is not None:
+                env = env.rotate(o, ey, 90)
+            spun.append((name, base, env, r))
+        elif base in ROTATING and i is not None:
             ax, ay = ROTATING[base](i)
             zmin = shape.BoundingBox().zmin
             key = (base,) + _same_part(shape, ax, ay)
