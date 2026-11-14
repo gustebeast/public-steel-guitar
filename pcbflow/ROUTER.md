@@ -285,6 +285,28 @@ over several jitters (`placescore --spread`) rather than one route. If this show
 a large pin row (an H743 or CM5 escape), making `_rounds` subset-safe and retrying (3) is
 the next step.
 
+## Known traps
+
+- **A pour re-join that walls the board (output_board mL2, 2026-11-14).** Once
+  `_islands` judged whole-layer planes (`model.plane_cells`), GND's piece at R36
+  (76.3, 101.4) was found on a fill island and re-joined to the main body on its own --
+  and the re-join opened 77 nets (was 0), so `_pour_islands` put it back. The island sits
+  in the dense band beside the isolated-audio moat, and the only way to the main plane is
+  across everything else's corridor. Read it as a PLACEMENT fact (the piece's pad needs a
+  plane via it cannot have where it is), not as a reason to loosen the keep-only-if-better
+  rule: that rule is what stopped a 1-open fix costing 77.
+- **Pricing is not judging.** `region_net` skips pours over 80 % of the board so other
+  nets cross whole planes at no extra cost; `_islands` used to read the same array to
+  decide what to judge, so whole planes were never checked (GND cut into 25 + 28
+  islands, 18 joins on them). The judge reads `plane_cells`; the price stays `region_net`.
+- **Kept joins are claimed before fresh ones** (`_to_plane`): claimed in piece order, a
+  fresh join for an earlier piece dropped its via 0.20 mm from a later kept one (drills
+  overlapping, A12). Only the claims move up -- making kept paths targets early changed
+  which pieces join where and cost fret_led_key GND at U10.
+- **Parent replays do not test the router.** `OWNROUTE_PARENT` reuses the stored paths:
+  a fix inside negotiation is verified only by a full router-alone run on the same placed
+  board, old code against new.
+
 ## Runtime
 
 Python 3.12 + numpy + numba (installed 2026-11-08). The finish chain runs steps under

@@ -1757,12 +1757,28 @@ def drop_degenerate(board, floor_mm=0.005, width_frac=0.1):
                 if min(math.hypot(x - x0, y - y0), math.hypot(x - x1, y - y1)) <= r:
                     return True
         return False
+    # ⚠ BOTH ENDS IN ONE ITEM, NOT EACH END IN SOME ITEM (output_board mL2, 2026-11-14): a
+    # +24V In2 staircase of 0.05-0.15 mm steps, its long runs widened by widen_necks to
+    # 1.9 / 2.03 mm, made every step "degenerate"; each step's ends lay inside one widened
+    # disc or the other, so all went -- but the two discs stood 2.02 mm apart against
+    # 1.97 of radii, and the net was cut. A staying track or via is convex, so a short
+    # segment with BOTH ends inside the SAME one is covered end to end; nothing less is.
+    def covered(key, x1, y1, x2, y2):
+        def _in(it, x, y):
+            if it[0] == "pt":
+                return math.hypot(x - it[1], y - it[2]) <= it[3]
+            _, x0, y0, x1_, y1_, r = it
+            dx, dy = x1_ - x0, y1_ - y0
+            L2 = dx * dx + dy * dy
+            u = 0.0 if L2 == 0 else max(0.0, min(1.0, ((x - x0) * dx + (y - y0) * dy) / L2))
+            return math.hypot(x - (x0 + u * dx), y - (y0 + u * dy)) <= r
+        return any(_in(it, x1, y1) and _in(it, x2, y2) for it in keep.get(key, ()))
     doomed = []
     for t in sorted(short, key=lambda t: t.GetLength()):
         key = (t.GetNetname(), t.GetLayer())
         a_, b_ = t.GetStart(), t.GetEnd()
         orphan = not (touches_any(key, t, a_.x, a_.y) or touches_any(key, t, b_.x, b_.y))
-        if not t.GetNetname() or orphan or (inside(key, a_.x, a_.y) and inside(key, b_.x, b_.y)):
+        if not t.GetNetname() or orphan or covered(key, a_.x, a_.y, b_.x, b_.y):
             doomed.append(t)
         else:
             add(key, ("seg", a_.x, a_.y, b_.x, b_.y, t.GetWidth() / 2.0))
