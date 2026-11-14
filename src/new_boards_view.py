@@ -42,6 +42,17 @@ VIEW_HEIGHT = {
     # the board-to-board pair: ESTIMATED so the mated stack spans the 15 mm between the boards
     "PinHeader_2x12_P1.27mm_Vertical_SMD": 7.0,
     "PinSocket_2x12_P1.27mm_Vertical_SMD": 8.0,
+    # the connector board's (2026-11-14)
+    "PinHeader_2x15_P1.27mm_Vertical_SMD": 5.3,   # J1 PZ1.27-2x15P: AS its 2x8 / 2x10 siblings
+    "JST_PH_B4B-PH-SM4-TB_1x04-1MP_P2.00mm_Vertical": 5.5,   # AS cadkit's PH side-entry (PH_SIDE_H); mated -> ph_mated_h
+    "C_2220_5750Metric": 2.5,                # ESTIMATED: a 22 uF / 50 V 2220's usual 2.5 max
+    # output_board parts the committed geom carries without a height (the view raised KeyError
+    # at HEAD, 2026-11-14): from the drawings where read
+    "L_CommonModeChoke_Coilank_ACM2012": 1.3,     # TDK ACM2012: 2.0 x 1.2 x 1.3
+    "Converter_DCDC_Murata_MEE1SxxxxSC_THT": 10.0,   # U30 B0509S-1WR3: 11.50 x 6.0 x 10.0 (Mornsun)
+    "L_CommonModeChoke_Wuerth_WE-SL5-HC": 5.0,    # ESTIMATED: Wurth's PDF refused the fetch -- read it
+    "Fuse_1812_4532Metric": 1.5,             # ESTIMATED; F204 is a 2920 now -- the geom is a stale export
+    "TerminalBlock_Phoenix_PT-1,5-2-3.5-H_1x02_P3.50mm_Horizontal": 8.5,   # J8: ESTIMATED, a 3.5 mm PT's usual body
 }
 
 # built EXACTLY as src.board_geom.BOARDS (silk font, revisions), heights extended: the web export
@@ -52,6 +63,11 @@ BOARDS = BG._with_revs(Boards(BG.GEOM_DIR, height={**BG.HEIGHT, **VIEW_HEIGHT}, 
                                  if BG._FONT else {})))
 
 BRAIN_Y, BRAIN_DX, BRAIN_Z = -66.0, -360.0, -71.0
+# connector_board: FLAT ON THE FLOOR, component side up (+Z), its own frame's centre at
+# instrument (-535.35, 46.0), underside at z -107.2 (connector_board notes "frame", branner
+# 11-13). Drawn MATED: J11-J20's plugs (side_plug_run) and the PH / XH housings, what the
+# nut block, the endplates and the cable path have to clear.
+CB_X, CB_Y, CB_Z = -535.35, 46.0, -107.2
 OB_X, OB_BACK_Y, OB_Z = -74.985, -87.5, -58.24     # output_board (= brain) centre, FINAL (x -150.4..0.43, 150.83 wide), back face (branner)
 
 
@@ -60,12 +76,17 @@ def _build(board):
     solid (laminate + every part, BOARDS.solid) and its silkscreen (BOARDS.ink). The web
     export finds the board by its lettering and swaps the boxes for KiCad's coloured models
     (cadkit.web.boards), so the two must be posed alike and the parts must not be split off."""
-    return BOARDS.solid(board, skip=SKIP.get(board, ())), BOARDS.ink(board)
+    return (BOARDS.solid(board, skip=SKIP.get(board, ()), mated=board in MATED),
+            BOARDS.ink(board))
 
 
 # parts the project draws as THE PART, not a box (as output_panel's J8 is: src/screw_terminal.py,
 # the slotted MX128 -- one flat blade for it and the motors' terminals)
-SKIP = {"output_board": ("J8",)}
+# output_board's J8 is a 3.5 mm terminal now (screw_terminal draws the 5.00-pitch MX128 and
+# asserts it): drawn as its box until screw_terminal learns the part (2026-11-14)
+SKIP = {}
+# boards drawn with their plugs in (BOARDS.solid(mated=True))
+MATED = {"connector_board"}
 
 
 @lru_cache(maxsize=None)
@@ -86,12 +107,18 @@ def _facing_plus_y_mirrored(w, x, y, z):
             .translate((x, y, z)))
 
 
+def _flat_up(w, x, y, z):
+    """Own frame -> instrument, component side up: a translation."""
+    return w.translate((x, y, z))
+
+
 def boards() -> list:
     out = []
     place = (
         ("brain", _facing_minus_y, (BRAIN_DX, BRAIN_Y, BRAIN_Z)),
         # board -X = instrument +X, parts toward +Y: (x, y, z) -> (-x, z, y)
         ("output_board", _facing_plus_y_mirrored, (OB_X, OB_BACK_Y, OB_Z)),
+        ("connector_board", _flat_up, (CB_X, CB_Y, CB_Z)),
     )
     from cadkit.web.finishes import made_of
     for b, pose, at in place:
