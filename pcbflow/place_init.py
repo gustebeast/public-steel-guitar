@@ -559,6 +559,45 @@ def _grow_edge(poly, at, d, name, regions, rules, parts, pl, P, reach=0.0):
     return True, what, [[round(float(x), 3), round(float(y), 3)] for x, y in new]
 
 
+def _near_reach(parts, rules, pl):
+    """⚠ A HARD `near` ITS SUBJECT'S REGION CANNOT REACH FAILS HERE, BY NAME (output_board
+    mN, 2026-11-14): U17 was held in one region and its rule's target sat in another; the
+    placer met what it could by dragging the target and reported nothing. The rule is
+    checked against the regions before anything is placed: a subject held in a region (its
+    in_region rules) whose nearest point is further from the target -- a placed part, or
+    the region the target is held in -- than the rule allows cannot meet it anywhere."""
+    regions = {r["name"]: np.asarray(r["poly"], float) for r in rules if r["kind"] == "region"}
+    held = {}
+    for r in rules:
+        if r["kind"] == "in_region" and r["region"] in regions:
+            for x in pi._refs(r["refs"], parts):
+                held.setdefault(x, []).append(r["region"])
+    bad = []
+    for r in rules:
+        if r["kind"] != "near" or not r.get("hard", True) or r.get("ref") not in held:
+            continue
+        tr = r["target"].split(".", 1)[0]
+        if tr in pl:
+            where, what = np.asarray([pl[tr][:2]], float), "%s (placed)" % tr
+        elif tr in held:
+            where, what = None, "%s (held in %s)" % (tr, "/".join(held[tr]))
+        else:
+            continue
+        for reg in held[r["ref"]]:
+            if where is not None:
+                d = float(min(pi._seg_dist(where, regions[reg][i], regions[reg][(i + 1) % len(regions[reg])]).min()
+                              for i in range(len(regions[reg]))))
+                d = 0.0 if pi._inside(regions[reg], where).any() else d
+            else:
+                d = max(0.0, min(pi._poly_dist(regions[reg], regions[t_]) for t_ in held[tr]))
+            if d > float(r["max_mm"]):
+                bad.append("%s is held in region %s, which comes no nearer than %.1f mm to %s; the rule "
+                           "wants %g [%s]" % (r["ref"], reg, d, what, r["max_mm"], r.get("src", "")))
+    if bad:
+        raise SystemExit("place_init: a hard near rule no placement can meet -- re-region the part "
+                         "or relax the rule:\n  " + "\n  ".join(bad))
+
+
 def _place(parts, notes, rules, keep=(), hint_out=None):
     pl = {}
     log = []
@@ -652,6 +691,8 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
                 and len(parts[r["ref"]]["pads"]) <= IC_PADS and _big(r["ref"])
                 and not (tnets & {q["net"] for q in parts[r["ref"]]["pads"] if q["net"]})}
 
+    _near_reach(parts, rules, pl)
+
     # ---- 2. global (quadratic)
     free = [r for r in sorted(parts) if r not in fixed]
     idx = {r: i for i, r in enumerate(free)}
@@ -700,6 +741,28 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
             by[i] += w * t[1]
         elif fb:
             spring(b, ob, a, oa, w)
+
+    # ⚠ A `near` PULLS ITS SUBJECT, NEVER ITS TARGET (output_board mN, 2026-11-14). As a
+    # two-way spring the rule "U17 within 30 of FL3" pulled FL3 -- the USB pair's choke,
+    # tied by its nets to the J1 connector -- as hard as it pulled U17; U17's region held
+    # it, so the solve met the rule halfway by dragging FL3 43 mm off J1, and the rule was
+    # still broken (39.6 mm). The target is where the rule is measured FROM: a one-way
+    # spring moves only the subject, and the target answers to its own nets.
+    def spring1(a, oa, b, ob, w):
+        if a not in idx:
+            return
+        i = idx[a]
+        A[i, i] += w
+        if b in idx:
+            j = idx[b]
+            A[i, j] -= w
+            d = ob - oa
+            bx[i] += w * d[0]
+            by[i] += w * d[1]
+        else:
+            t_ = np.asarray(pl[b][:2]) + ob - oa
+            bx[i] += w * t_[0]
+            by[i] += w * t_[1]
 
     for nm, pins in nets.items():
         k = len(pins)
@@ -762,7 +825,7 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
     for _round in range(4):
         A[:], bx[:], by[:] = A0, bx0, by0
         for ref_, tr, ot, w, _m in near_springs:
-            spring(ref_, np.zeros(2), tr, ot, w)
+            spring1(ref_, np.zeros(2), tr, ot, w)
         gx, gy = np.linalg.solve(A, bx), np.linalg.solve(A, by)
         hard = False
         for sp in near_springs:
