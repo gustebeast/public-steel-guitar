@@ -1910,8 +1910,8 @@ COLORS = {
     "keyhead": (0.36, 0.30, 0.42), "kh_m3": "set_screw", "kh_plate": "nut_plate", "kh_shoe": (0.85, 0.45, 0.15),
     "kh_side_screw": "set_screw", "kh_side_insert": "nut", "kh_height_screw": "set_screw",
     "kh_height_insert": "nut", "kh_rod": "guide_rod",
-    "body": "chassis", "wall_bar": "nut_plate", "keyplate": "nut_plate", "ob_board": (0.10, 0.45, 0.20),
-    "deck": (0.16, 0.16, 0.18), "deck_white": (0.95, 0.95, 0.92), "fret_board": (0.10, 0.45, 0.20),
+    "body": "chassis", "wall_bar": "nut_plate", "keyplate": "nut_plate", "ob_board": _mask_rgb("green"),
+    "deck": (0.16, 0.16, 0.18), "deck_white": (0.95, 0.95, 0.92), "fret_board": _mask_rgb("green"),
     "fret_leds": (1.0, 0.98, 0.85),
 }
 
