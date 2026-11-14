@@ -5336,11 +5336,11 @@
       "per_instrument": 170.0,
       "what": "SXH-001T-P0.6 -- JLCPCB parts API at qty 1700"
     },
-    "C111515": {
-      "usd": 0.0068,
+    "C265456": {
+      "usd": 0.0097,
       "verified": "v",
-      "per_instrument": 112.0,
-      "what": "SPH-002T-P0.5S -- JLCPCB parts API at qty 1120"
+      "per_instrument": 96.0,
+      "what": "SPH-002T-P0.5L -- JLCPCB parts API at qty 960"
     },
     "C493083": {
       "usd": 0.0352,

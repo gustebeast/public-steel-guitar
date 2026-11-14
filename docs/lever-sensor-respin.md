@@ -67,7 +67,8 @@ axle axis and isn't negotiable. **+X** points toward the lever (the knee side), 
   which refuses a scripted fetch): 9.9 long, 7.6 deep, 4.85 tall, pins 6.25 behind the mouth
   and 3.4 below the board's top face. The plug's 2.65 run is PHR-4's 6.85 (ePH p.3) less the
   header's 4.2 pocket. `cadkit.pcb.jst_ph_side_header(smt=False)` carries them.
-- **Harness side:** PHR-4 housings, SPH-002T-P0.5S contacts and a PH crimp tool. Stock read
+- **Harness side:** PHR-4 housings, SPH-002T-P0.5L contacts (C265456; the P0.5S until
+  2026-11-13, when its stock ran out) and a PH crimp tool. Stock read
   2026-10-19 (JLCPCB parts API): header C157926 39,976; PHR-4 C111514 77,731. 22 headers an
   instrument, 20 housings at the boards, so nothing limits.
 

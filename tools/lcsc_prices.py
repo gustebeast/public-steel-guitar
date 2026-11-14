@@ -142,7 +142,10 @@ HOUSING = {("XH", 2): "C144401", ("XH", 4): "C493083", ("XH", 8): "C144407",
            # on the CAN tee (docs/can-tee-power-tap.md) so that the day the header lands,
            # its mating half is priced instead of silently missing.
            ("VH", 2): "C595405"}
-CRIMP = {"XH": "C140573", "PH": "C111515", "SH": "C263995", "VH": "C160350"}
+# PH: SPH-002T-P0.5L, not the P0.5S (2026-11-13): the P0.5S (C111515) was down to 24 in stock
+# against 960 an order. Same JST barrel and PHR housings; 24-28 AWG against 24-30, and every
+# PH lead is 26 AWG (the two-gauge rule), so the narrower range costs nothing.
+CRIMP = {"XH": "C140573", "PH": "C265456", "SH": "C263995", "VH": "C160350"}
 
 
 def design_netlists():
