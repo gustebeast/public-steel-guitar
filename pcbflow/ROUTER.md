@@ -311,6 +311,14 @@ the next step.
   (270 of 270 parts unmoved; the kept board's extra parts are post-route ones) with the
   declared copper laid: optical routes in 66 s. `NOPATH_RETRY` came out of the bad replay
   -- sound, but no real board has needed it yet.
+- **A price on whole planes is not how to keep them whole** (output_board mL2,
+  2026-11-14). Signals cross GND's In1 / B.Cu planes free, and on mL2 they walled off
+  thin strips (J240.29's via landed in one). Pricing other nets on a whole plane's cells
+  (tried as PLANE_COST, removed): x3 -> 6 unconnected (was 4), x8 -> 9 and 3673 s. The
+  displaced signals went to F.Cu and onto In2's VIN pours and cut those instead. Nor did
+  re-routing the walling nets with the re-join (tried, removed): every attempt left
+  more islands than it closed. On a 4-layer board where every layer carries signals, a
+  plane strip is a placement and layer-plan fact.
 - **Parent replays do not test the router.** `OWNROUTE_PARENT` reuses the stored paths:
   a fix inside negotiation is verified only by a full router-alone run on the same placed
   board, old code against new.

@@ -248,6 +248,14 @@ def _pours(notes, parts, pl, rules, base_zones):
         if r["kind"] != "pour":
             continue
         poly = pi.pour_poly(r, P, notes_r, amps_of(r))
+        if poly is not None and r.get("around") and not r.get("region"):
+            # opt-in (auto_pour `around`): the band goes round other nets' pads (pour_around)
+            ar = pi.pour_around(r, P, notes_r, amps_of(r))
+            if ar is None:
+                out.append("%s on %s: no band round the other nets' pads reaches every pin -- "
+                           "the hull kept" % (r["net"], r["layer"]))
+            else:
+                poly = ar
         if poly is not None and r.get("auto_amps") is not None:
             ow, ol = (notes.get("outline_mm") or (0, 0))[:2]
             area = abs(sum(poly[i][0] * poly[i - 1][1] - poly[i - 1][0] * poly[i][1]
