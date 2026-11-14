@@ -420,6 +420,16 @@ def _isolation(gnd, agnd, v5_pre, v3d, v3v3, v5, iso9_raw, iso9, io, iso):
             ("C163", "10nF C0G", byp, agnd, "U31 noise bypass (SLVS522S 7.1.3)", C0402),
             ("C164", "4.7uF/10V", v5, agnd, "U31 output: 2.2 uF minimum effective", C0805)):
         _cap(tag, val, "isolated supply: " + why, a, b, fp)
+    # R60, THE MINIMUM LOAD (lead, 2026-11-14): U30 wants >= 10 % of its 111 mA (YLPTEC p.4 s3).
+    # Running, the audio side draws ~41 mA typ / ~80 max -- PCM1808 8.6 + 5.9 (11 + 8 max,
+    # SBAS379), PCM5102A 7 + 11 at zero data (13 + 32 max, SLAS859C), the isolators' side 2
+    # ~8, four TLV9061 2.2. With the clocks halted both converters power down (0.15 / 0.7 mA)
+    # and what is left -- isolators at DC (SLLSEP4K 5.12: 2.0 + 1.9 typ) + ISO7710 + op-amps
+    # + pull-ups -- is ~8 mA typ, UNDER 11, and no minimum is published for any of it. 1k2 on
+    # the module's output adds 7.5 mA at 9 V: >= 11 even at half the typical rest, 88 mA at
+    # the running maximum. 82 mW at 9.9 V in a 250 mW 1206
+    _res("R60", "1k2 1206", "U30 minimum load: 7.5 mA at 9 V, the B0509S's 10 % with the "
+         "converters' clocks halted", iso9_raw, agnd, "Resistor_SMD:R_1206_3216Metric")
 
     def iso_chip(tag, value, fp, side1, side2, desc):
         """side1 / side2: {pin: net}; the supplies and grounds added here."""
@@ -1453,9 +1463,14 @@ def output_board():
     # D5 IS THE PHANTOM GUARD'S CLAMP and it sits INSIDE the DC block: a blocking
     # capacitor stops the 48 V but passes the insertion edge straight through.
     blocked = Net("OUT_BLOCKED")
-    d5 = _d("D5", "ESD5B5.0ST1G", "bidirectional 5 V TVS (LCSC C93623): catches the "
-            "insertion edge C1 passes through. The node it sits on idles at VMID and swings "
-            "0..5 V, inside its 5.0 V working voltage")
+    # TPD1E10B06, NOT ESD5B5.0 (lead, 2026-11-14): the node swings to +5V_A's top, 5.12 V,
+    # over the ESD5B5.0's 5.0 V stand-off. TI SLLSEB1G: 5.5 V stand-off, 6 V minimum
+    # breakdown, 10 V at 1 A, 12 pF -- sold for audio lines. What it protects survives it:
+    # the phantom edge comes through 6.81k (48 V: 7 mA at most), and U7 behind R9 takes it
+    # on an output rated for a continuous short (SBOS839N 6.1)
+    d5 = _d("D5", "TPD1E10B06DYARQ1", "bidirectional 5.5 V TVS, 12 pF (TI, LCSC C3013901): "
+            "catches the insertion edge C1 passes through. The node idles at VMID and swings "
+            "0..5.12 V, inside its 5.5 V stand-off")
     blocked += d5[1]
     agnd += d5[2]
     # ⚠ D7 IS NOT OPTIONAL, AND FINDING THAT OUT IS THE REASON THE RING TOOK MORE THAN
@@ -1465,7 +1480,7 @@ def output_board():
     # same three parts would be a brand-new 48 V path onto a brand-new op-amp. So the cold
     # leg is a part-for-part mirror of the hot one, which the matching argument at U9 wants
     # anyway: R20 for R9, D7 for D5, C41 for C1, R21 for R10.
-    d7 = _d("D7", "ESD5B5.0ST1G", "RING phantom-guard clamp -- the mirror of D5. A TRS "
+    d7 = _d("D7", "TPD1E10B06DYARQ1", "RING phantom-guard clamp -- the mirror of D5. A TRS "
             "plug's ring lands on XLR pin 3, which carries +48 V through 6.81k just like "
             "pin 2, and C41 blocks the DC but passes the insertion edge")
     ring_blocked += d7[1]
@@ -1886,7 +1901,7 @@ BOARD_NOTES = {
         "the +X endplate pocket (branner) is cut from elec/output_board.pocket.json: regenerate it whenever the parts within 19 mm of the panel edge move",
         "the mount: one M4 (branner) at x > -124, not yet placed -- reserve its keepout when it is",
         "A16 voltage declarations: voltage_check has output_power / output_signal seeds; merge them into one output_board entry",
-        "audio isolation: B0509S-1WR3 (YLPTEC) is a 1 W / 111 mA module that wants >= 10 % load (11 mA); check the audio side's draw against both, and its output below 10 % load is unspecified (ISO9_RAW taken at +20 %)",
+        "audio isolation: B0509S-1WR3 (YLPTEC) 11..111 mA: R60 (1k2) holds the 10 % minimum with the converters' clocks halted; measure the clock-halted audio-side draw on the first board (no maker publishes a MINIMUM for it)",
         "U5 as the ONE logic 5 V (merged): LMR33640 in the RNX footprint (confirm the orderable and LCSC code), an inductor with Isat >= 5 A in the 5x5 land, D14 / D16 (SS34, 3 A) feed it on a 5 V contract -- 5 A parts if full load is allowed there",
         "USB data chokes FL3 / FL4: ACM2012-900-2P-T002 is marked 'not recommended for new design' on TDK's catalogue (20220113); ordered as T-CND's C55213549. Windings 1-4 / 2-3 READ off TDK's circuit diagram, pads match KiCad's Coilank footprint",
         "audio isolation: the board is meant to be measured (pickup into an amp: no charger / phone charger / laptop charger / two chargers / a computer on the data) against R1",

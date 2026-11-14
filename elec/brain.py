@@ -61,7 +61,7 @@ OPEN ITEMS (BOARD_NOTES["open_items"]):
     USB loads. This board hangs nothing on the CM5's USB but two data links, so 3 A should
     hold -- measure; the LMR33640 (4 A) takes the same land.
   - LM5122 OPT tied to AGND (single-phase master) -- confirm in SNVS954H.
-  - L4 and C113/C114: placeholder lands (R2-6: XR181810VC / CDEP15D90; C46550430).
+  - L4: placeholder land (R2-6: XR181810VC / CDEP15D90).
   - (closed 2026-11-13) NCEP4090GU pinout read from NCE's sheet: output_board.PD_PINOUTS.
   - CM5 variant: an eMMC one (no SD socket on this board), e.g. CM5104032.
 """
@@ -443,18 +443,29 @@ def brain(merged=None):
     _res("R107", "100k", "SLOPE: K ~ 1 at the lowest input (TI's)", b["SLOPE"], gnd)
     _cap("C100", "100nF", "soft-start, ~12 ms", b["SS"], gnd)
     _cap("C101", "470nF/25V", "hiccup restart timer (TI's)", b["RES"], gnd)
-    for k in range(4):
+    # HOW MANY (lead, 2026-11-14: re-derived when the 22 uF went 50 V 2220). The 50 V X7R 2220
+    # keeps far more of its 22 uF at these voltages than the 35 V X5R 1210 did; taken as 50 %
+    # at 24 V and 70 % at 20 V (ASSUMED: PSA publishes no DC-bias curve -- measure one).
+    # IN: a boost's input current is continuous, ripple dIL = 2.4 A worst (12 V in, D 0.5,
+    # 10 uH, 250 kHz) -> 0.69 A RMS; for 50 mV, C >= dIL / (8 fsw dV) = 24 uF: two (30 uF at
+    # 20 V). OUT: the pulsed current, Iout D / (fsw dV) = 4.5 x 0.625 / (250 k x 0.24 V) = 47 uF
+    # for 1 % ripple from the ceramics ALONE (the polymers carry the RMS): five (55 uF).
+    for k in range(2):
         _cap("C%d" % (92 + k), "22uF/50V", "boost input bulk, after Q2", vin_sw, gnd, C2220)
     _cap("C96", "100nF/50V", "VIN_SW HF bypass at the boost", vin_sw, gnd)
-    for k in range(8):
+    for k in range(5):
         _cap("C%d" % (105 + k), "22uF/50V", "boost output ceramic, ahead of the polymers "
              "(TI: ceramics first)", v24, gnd, C2220)
     for tag in ("C113", "C114"):
-        _cap(tag, "470uF/35V", "boost output bulk, polymer, jieerrui MA35V470M10X13: 3.8 A ripple; "
-             "10 mm base on the 10x10.5 land, 13 mm TALL (LCSC C46550472)", v24, gnd,
+        # 50 V (2026-11-14): the SMCJ26A rail reaches 37.6 V; two carry 7 A of ripple against
+        # the ~5.8 A RMS at 9 V in (Iout sqrt(D / (1 - D)))
+        _cap(tag, "330uF/50V", "boost output bulk, polymer, jieerrui MA50V330M10X12: 3.5 A ripple, "
+             "20 mOhm; 10 mm base on the 10x10.5 land, 12.5 mm TALL (LCSC C53120968)", v24, gnd,
              "Capacitor_SMD:CP_Elec_10x10.5")
     _cap("C115", "100nF/50V", "+24V HF bypass", v24, gnd)
-    _diode("D3", "SMCJ24A", "+24V clamp, 1.5 kW -- ten stepper drivers' kick lands here",
+    # SMCJ26A (lead, 2026-11-14): the 24A's 24 V stand-off sat under the 26.4 V steady figure;
+    # the 26A reaches 37.6 V at the 20 A surge bound (the 28A: 41.1 V, over the LMR33630s' 38 V)
+    _diode("D3", "SMCJ26A", "+24V clamp, 1.5 kW -- ten stepper drivers' kick lands here",
            v24, gnd, "Diode_SMD:D_SMC")
 
     # ── U7: +5V_AUX -- the buck cell (output_board's U5), always on with the 24 V ───────────
@@ -790,11 +801,12 @@ def brain(merged=None):
         # lead must open here, not in one 30 AWG wire (four in parallel carry ~4 A).
         v24_rib = Net("+24V_RIB")
         v24_rib.drive = Pin.drives.POWER
-        # 2920L300/36: 3 A hold at 36 V (2026-11-14). The 30 V rating it had read was under the
-        # +24V rail's clamped transient (34.4 V, A16), and no 1812 PPTC holds 3 A above 33 V --
-        # so the 2920 land; 36 V, 5 A trip, 12 mOhm
-        _two("F4", "Fuse", "2920L300/36GR", "the motors' 24 V onto the connector ribbon: "
-             "4 x 30 AWG at ~1 A each; PPTC 3 A hold / 5 A trip, 36 V", "Fuse:Fuse_2920_7451Metric",
+        # 2920L200/60: 2 A hold / 4 A trip at 60 V (2026-11-14). The rail clamp (SMCJ26A) reaches
+        # 37.6 V and no 2920 PPTC holds 3 A above 36 V; 2 A is five times the ten motors' measured
+        # draw moving (~0.9 W each) and the 4 A trip is the four 30 AWG ways' ~1 A each. Their
+        # sub-second step peaks are NOT measured (open item) -- a PPTC rides those out
+        _two("F4", "Fuse", "2920L200/60GR", "the motors' 24 V onto the connector ribbon: "
+             "4 x 30 AWG at ~1 A each; PPTC 2 A hold / 4 A trip, 60 V", "Fuse:Fuse_2920_7451Metric",
              v24, v24_rib)
         _cap("C122", "10uF/50V", "ribbon 24 V bulk, after F4", v24_rib, gnd, C1206)
         _jst("J40", "PZ1.27-2x15P ZZ", "the CONNECTOR BOARD ribbon, 30-way 1.27 mm 2x15 IDC "
@@ -858,7 +870,7 @@ BOARD_NOTES = {
     # Max seated heights from each maker's drawing (read 2026-11-13), because board_geom's
     # HEIGHT has no row for these footprints and the zone must not let them in unmeasured.
     "part_heights": {
-        "C113": 13.0, "C114": 13.0,   # jieerrui MA35V470M10X13: 13 mm (MA series datasheet p.4)
+        "C113": 12.5, "C114": 12.5,   # jieerrui MA50V330M10X12: 12.5 mm seated max (JLCPCB attributes, C53120968)
         "D1": 1.10,      # SMF24A (Jingdao, C169430): SOD-123FL outline dim A 0.9-1.1, "SMF5.0A~SMF440A-200W" 2020.10 p.4
         "D13": 1.10,     # BAT54WS: SOD323 dim A2 1.00-1.10 (Diodes DS30098 Rev. 14-2, package outline)
         "L3": 4.0,       # SWPA5040S4R7MT: C max 4.0 (Sunlord SWPA catalogue p.2, Shape and Dimensions)
@@ -878,7 +890,7 @@ BOARD_NOTES = {
         "34.4 apart (scaled off CM5 DS fig. 4): check all three against the CM5 design files",
         "CM5 5 V: U5 is 3 A (LMR33630); CM5 asks 5 A with USB loads -- measure; LMR33640 fits",
         "LM5122 OPT tied to AGND for a single-phase master -- confirm in SNVS954H",
-        "L4 (10 uH / 15 A) and C113/C114 (470 uF / 35 V polymer) lands are placeholders",
+        "L4 (10 uH / 15 A) land is a placeholder; the 2220 X7R DC-bias retention (50 % at 24 V) the boost cap counts assume is not measured",
         "320 x 70 at X -520..-200, Z -107.2..-37.2: branner to confirm the -Y wall stretch and "
         "the 21 mm under the UI station for the mated plugs",
         "CM5 variant: an eMMC part (no SD socket here); four M2.5 mounting holes for it",

@@ -1,0 +1,397 @@
+{
+ "net_volts": {
+  "+24V": {
+   "peak": 37.614,
+   "v": 26.4,
+   "why": "the motors' 24 V, through the output board's F204 [output_board.+24V_RIB: F204 (PPTC) from +24V, out on the connector ribbon [= +24V+0]]"
+  },
+  "+24V_LED": {
+   "peak": 37.614,
+   "v": 26.4,
+   "why": "the lights' fused 24 V [output_board.+24V_LED: through F203]"
+  },
+  "+5V_LEV": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "the lever arm's 5 V, behind U211 [output_board.+5V_BUSB_LEV: U211.6 (OUT) can reach its supply V5_PRE]"
+  },
+  "+5V_PED": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "the pedal arm's 5 V, behind U206 [output_board.+5V_BUSB_PED: U206.6 (OUT) can reach its supply V5_PRE]"
+  },
+  "CANA_H": {
+   "peak": 32.0,
+   "v": 5.0,
+   "why": "bus A [output_board.CANA_H: bus A: dominant level of a 5 V transceiver in a SERVO42D (assumed, not known); transient = the NUP2105L's maximum breakdown either way (24 V stand-off, so the +24 V conductor beside it in the same 4-wire trunk is a level it stands, not one it clamps); FAULT = that conductor shorted on]"
+  },
+  "CANA_L": {
+   "peak": 32.0,
+   "v": 5.0,
+   "why": "bus A [output_board.CANA_L: bus A: dominant level of a 5 V transceiver in a SERVO42D (assumed, not known); transient = the NUP2105L's maximum breakdown either way (24 V stand-off, so the +24 V conductor beside it in the same 4-wire trunk is a level it stands, not one it clamps); FAULT = that conductor shorted on]"
+  },
+  "GND": 0,
+  "LEV_H": {
+   "peak": 7.8,
+   "v": 5.0,
+   "why": "bus B: 5 V nodes; nothing above 5 V in its cable; transient = the ESD5B5.0 clamps' maximum breakdown (motor_ctrl D4 / D5, and each lever board's own)"
+  },
+  "LEV_L": {
+   "peak": 7.8,
+   "v": 5.0,
+   "why": "bus B: 5 V nodes; nothing above 5 V in its cable; transient = the ESD5B5.0 clamps' maximum breakdown (motor_ctrl D4 / D5, and each lever board's own)"
+  },
+  "PED_H": {
+   "peak": 7.8,
+   "v": 5.0,
+   "why": "bus B: 5 V nodes; nothing above 5 V in its cable; transient = the ESD5B5.0 clamps' maximum breakdown (motor_ctrl D4 / D5, and each lever board's own)"
+  },
+  "PED_L": {
+   "peak": 7.8,
+   "v": 5.0,
+   "why": "bus B: 5 V nodes; nothing above 5 V in its cable; transient = the ESD5B5.0 clamps' maximum breakdown (motor_ctrl D4 / D5, and each lever board's own)"
+  },
+  "SCK": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "a lighting SPI line, down the ribbon [output_board.SCK: through R240]"
+  },
+  "SCK_FOOT": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "a lighting SPI line, down the ribbon [output_board.SCK_FOOT: through R242]"
+  },
+  "SDT": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "a lighting SPI line, down the ribbon [output_board.SDT: through R241]"
+  },
+  "SDT_FOOT": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "a lighting SPI line, down the ribbon [output_board.SDT_FOOT: through R243]"
+  }
+ },
+ "pin_volts": {
+  "C1.1": {
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
+  },
+  "C11.1": {
+   "max": 50.0,
+   "src": "rated V -- CL31A106KBHNNNE (C13585): JLCPCB parts API attributes for C13585 (CL31A106KBHNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C12.1": {
+   "max": 50.0,
+   "src": "rated V -- CL31A106KBHNNNE (C13585): JLCPCB parts API attributes for C13585 (CL31A106KBHNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C13.1": {
+   "max": 50.0,
+   "src": "rated V -- CL31A106KBHNNNE (C13585): JLCPCB parts API attributes for C13585 (CL31A106KBHNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C14.1": {
+   "max": 50.0,
+   "src": "rated V -- CL31A106KBHNNNE (C13585): JLCPCB parts API attributes for C13585 (CL31A106KBHNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C15.1": {
+   "max": 50.0,
+   "src": "rated V -- CL31A106KBHNNNE (C13585): JLCPCB parts API attributes for C13585 (CL31A106KBHNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C2.1": {
+   "max": 25.0,
+   "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C3.1": {
+   "max": 25.0,
+   "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C4.1": {
+   "max": 50.0,
+   "src": "rated V -- CL31A106KBHNNNE (C13585): JLCPCB parts API attributes for C13585 (CL31A106KBHNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "D1.1": {
+   "max": 26.2,
+   "peak": "none",
+   "src": "NUP2105LT1G (C14486): onsemi NUP2105L/D rev 5 p.2 electrical table (VRWM 24, VBR 26.2-32 @1 mA, VC 40 V @5 A and 44 V @8 A 8x20 us), p.2 max ratings (350 W 8x20 us); each line to the common pin 3, bidirectional",
+   "why": "this part IS the clamp on CANA_H: it stands 24 V (where its leakage is specified) and starts to conduct at 26.2 V, the figure a steady level must stay under"
+  },
+  "D1.2": {
+   "max": 26.2,
+   "peak": "none",
+   "src": "NUP2105LT1G (C14486): onsemi NUP2105L/D rev 5 p.2 electrical table (VRWM 24, VBR 26.2-32 @1 mA, VC 40 V @5 A and 44 V @8 A 8x20 us), p.2 max ratings (350 W 8x20 us); each line to the common pin 3, bidirectional",
+   "why": "this part IS the clamp on CANA_L: it stands 24 V (where its leakage is specified) and starts to conduct at 26.2 V, the figure a steady level must stay under"
+  },
+  "D2.1": {
+   "max": 5.8,
+   "peak": "none",
+   "src": "ESD5B5.0ST1G (C93623): onsemi ESD5B5.0S datasheet p.2 electrical table (VRWM 5.0, VBR 5.8-7.8 @1 mA), p.1 max ratings (50 W 8x20 us, 10 W 10x1000 us, 200 mW)",
+   "why": "this part IS the clamp on PED_H: it stands 5 V (where its leakage is specified) and starts to conduct at 5.8 V, the figure a steady level must stay under"
+  },
+  "D3.1": {
+   "max": 5.8,
+   "peak": "none",
+   "src": "ESD5B5.0ST1G (C93623): onsemi ESD5B5.0S datasheet p.2 electrical table (VRWM 5.0, VBR 5.8-7.8 @1 mA), p.1 max ratings (50 W 8x20 us, 10 W 10x1000 us, 200 mW)",
+   "why": "this part IS the clamp on PED_L: it stands 5 V (where its leakage is specified) and starts to conduct at 5.8 V, the figure a steady level must stay under"
+  },
+  "D4.1": {
+   "max": 5.8,
+   "peak": "none",
+   "src": "ESD5B5.0ST1G (C93623): onsemi ESD5B5.0S datasheet p.2 electrical table (VRWM 5.0, VBR 5.8-7.8 @1 mA), p.1 max ratings (50 W 8x20 us, 10 W 10x1000 us, 200 mW)",
+   "why": "this part IS the clamp on LEV_H: it stands 5 V (where its leakage is specified) and starts to conduct at 5.8 V, the figure a steady level must stay under"
+  },
+  "D5.1": {
+   "max": 5.8,
+   "peak": "none",
+   "src": "ESD5B5.0ST1G (C93623): onsemi ESD5B5.0S datasheet p.2 electrical table (VRWM 5.0, VBR 5.8-7.8 @1 mA), p.1 max ratings (50 W 8x20 us, 10 W 10x1000 us, 200 mW)",
+   "why": "this part IS the clamp on LEV_L: it stands 5 V (where its leakage is specified) and starts to conduct at 5.8 V, the figure a steady level must stay under"
+  },
+  "J1.1": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P ZZ (C22438123): hanxia PZ1.27 datasheet p.4 (the family's rating, as C22438114): 500 V, 1 A"
+  },
+  "J1.11": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P ZZ (C22438123): hanxia PZ1.27 datasheet p.4 (the family's rating, as C22438114): 500 V, 1 A"
+  },
+  "J1.12": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P ZZ (C22438123): hanxia PZ1.27 datasheet p.4 (the family's rating, as C22438114): 500 V, 1 A"
+  },
+  "J1.13": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P ZZ (C22438123): hanxia PZ1.27 datasheet p.4 (the family's rating, as C22438114): 500 V, 1 A"
+  },
+  "J1.14": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P ZZ (C22438123): hanxia PZ1.27 datasheet p.4 (the family's rating, as C22438114): 500 V, 1 A"
+  },
+  "J1.15": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P ZZ (C22438123): hanxia PZ1.27 datasheet p.4 (the family's rating, as C22438114): 500 V, 1 A"
+  },
+  "J1.16": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P ZZ (C22438123): hanxia PZ1.27 datasheet p.4 (the family's rating, as C22438114): 500 V, 1 A"
+  },
+  "J1.19": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P ZZ (C22438123): hanxia PZ1.27 datasheet p.4 (the family's rating, as C22438114): 500 V, 1 A"
+  },
+  "J1.2": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P ZZ (C22438123): hanxia PZ1.27 datasheet p.4 (the family's rating, as C22438114): 500 V, 1 A"
+  },
+  "J1.22": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P ZZ (C22438123): hanxia PZ1.27 datasheet p.4 (the family's rating, as C22438114): 500 V, 1 A"
+  },
+  "J1.25": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P ZZ (C22438123): hanxia PZ1.27 datasheet p.4 (the family's rating, as C22438114): 500 V, 1 A"
+  },
+  "J1.26": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P ZZ (C22438123): hanxia PZ1.27 datasheet p.4 (the family's rating, as C22438114): 500 V, 1 A"
+  },
+  "J1.27": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P ZZ (C22438123): hanxia PZ1.27 datasheet p.4 (the family's rating, as C22438114): 500 V, 1 A"
+  },
+  "J1.28": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P ZZ (C22438123): hanxia PZ1.27 datasheet p.4 (the family's rating, as C22438114): 500 V, 1 A"
+  },
+  "J1.3": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P ZZ (C22438123): hanxia PZ1.27 datasheet p.4 (the family's rating, as C22438114): 500 V, 1 A"
+  },
+  "J1.4": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P ZZ (C22438123): hanxia PZ1.27 datasheet p.4 (the family's rating, as C22438114): 500 V, 1 A"
+  },
+  "J1.7": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P ZZ (C22438123): hanxia PZ1.27 datasheet p.4 (the family's rating, as C22438114): 500 V, 1 A"
+  },
+  "J1.8": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P ZZ (C22438123): hanxia PZ1.27 datasheet p.4 (the family's rating, as C22438114): 500 V, 1 A"
+  },
+  "J11.1": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J11.3": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J11.4": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J12.1": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J12.3": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J12.4": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J13.1": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J13.3": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J13.4": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J14.1": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J14.3": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J14.4": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J15.1": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J15.3": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J15.4": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J16.1": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J16.3": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J16.4": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J17.1": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J17.3": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J17.4": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J18.1": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J18.3": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J18.4": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J19.1": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J19.3": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J19.4": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J2.1": {
+   "max": 100.0,
+   "src": "rated V -- B4B-PH-SM4-TB(LF)(SN) (C160354): JLCPCB parts API attributes for C160354 (JST B4B-PH-SM4-TB(LF)(SN)): voltage rating 100 V, current 2 A -- JST PH series' own figures (100 V AC/DC, 2 A at AWG 24), fetched 2026-11-14"
+  },
+  "J2.3": {
+   "max": 100.0,
+   "src": "rated V -- B4B-PH-SM4-TB(LF)(SN) (C160354): JLCPCB parts API attributes for C160354 (JST B4B-PH-SM4-TB(LF)(SN)): voltage rating 100 V, current 2 A -- JST PH series' own figures (100 V AC/DC, 2 A at AWG 24), fetched 2026-11-14"
+  },
+  "J2.4": {
+   "max": 100.0,
+   "src": "rated V -- B4B-PH-SM4-TB(LF)(SN) (C160354): JLCPCB parts API attributes for C160354 (JST B4B-PH-SM4-TB(LF)(SN)): voltage rating 100 V, current 2 A -- JST PH series' own figures (100 V AC/DC, 2 A at AWG 24), fetched 2026-11-14"
+  },
+  "J20.1": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J20.3": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J20.4": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
+  "J3.1": {
+   "max": 100.0,
+   "src": "rated V -- B4B-PH-SM4-TB(LF)(SN) (C160354): JLCPCB parts API attributes for C160354 (JST B4B-PH-SM4-TB(LF)(SN)): voltage rating 100 V, current 2 A -- JST PH series' own figures (100 V AC/DC, 2 A at AWG 24), fetched 2026-11-14"
+  },
+  "J3.3": {
+   "max": 100.0,
+   "src": "rated V -- B4B-PH-SM4-TB(LF)(SN) (C160354): JLCPCB parts API attributes for C160354 (JST B4B-PH-SM4-TB(LF)(SN)): voltage rating 100 V, current 2 A -- JST PH series' own figures (100 V AC/DC, 2 A at AWG 24), fetched 2026-11-14"
+  },
+  "J3.4": {
+   "max": 100.0,
+   "src": "rated V -- B4B-PH-SM4-TB(LF)(SN) (C160354): JLCPCB parts API attributes for C160354 (JST B4B-PH-SM4-TB(LF)(SN)): voltage rating 100 V, current 2 A -- JST PH series' own figures (100 V AC/DC, 2 A at AWG 24), fetched 2026-11-14"
+  },
+  "J4.1": {
+   "max": 250.0,
+   "src": "rated V -- B4B-XH-A(LF)(SN) (C144395): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J4.3": {
+   "max": 250.0,
+   "src": "rated V -- B4B-XH-A(LF)(SN) (C144395): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J4.4": {
+   "max": 250.0,
+   "src": "rated V -- B4B-XH-A(LF)(SN) (C144395): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J5.1": {
+   "max": 250.0,
+   "src": "rated V -- B4B-XH-A(LF)(SN) (C144395): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J5.3": {
+   "max": 250.0,
+   "src": "rated V -- B4B-XH-A(LF)(SN) (C144395): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J5.4": {
+   "max": 250.0,
+   "src": "rated V -- B4B-XH-A(LF)(SN) (C144395): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "R1.1": {
+   "max": 75.0,
+   "src": "element V -- 0603WAF1200T5E (C22787): JLCPCB parts API attributes for C22787 (0603WAF1200T5E, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R1.2": {
+   "max": 75.0,
+   "src": "element V -- 0603WAF1200T5E (C22787): JLCPCB parts API attributes for C22787 (0603WAF1200T5E, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  }
+ }
+}

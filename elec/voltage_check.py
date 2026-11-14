@@ -72,8 +72,10 @@ DEFAULT_ELEC = HERE
 OUT = os.path.join(HERE, "out", "volts")              # the report and the per-pin tables
 DECL = os.path.join(HERE, "volts")                    # what the generators load (tracked)
 LEG = ("leg_pogo_male_bottom", "leg_pogo_male_top", "leg_pogo_female_bottom", "leg_pogo_female_top")
-BOARDS = ("can_tee", "pi_cap", "motor_ctrl", "output_panel", "optical", "lever_sensor") + LEG + ("brain", "output_board")
-ORDER = ("output_panel", "motor_ctrl", "pi_cap", "optical", "can_tee", "lever_sensor") + LEG + ("brain", "output_board")   # sources before sinks
+BOARDS = ("can_tee", "pi_cap", "motor_ctrl", "output_panel", "optical", "lever_sensor") + LEG + ("brain", "output_board",
+                                                                                                "connector_board")
+ORDER = ("output_panel", "motor_ctrl", "pi_cap", "optical", "can_tee", "lever_sensor") + LEG + ("brain", "output_board",
+                                                                                                "connector_board")   # sources before sinks
 GNDS = ("GND", "PWR_GND", "AGND")    # AGND: the isolated audio domain's own 0 V (output_board)
 EPS = 1e-6
 
@@ -272,10 +274,18 @@ SEEDS = {
 BRAIN_VIN = dict(v=21.0, vt=_D10["vbr_max"] + (_D10["vc"] - _D10["vbr_max"]) * min(1.0, 4.3 / _D10["ipp"]),
                  why="the chargers' USB PD contract, 20 V +5 %% (USB PD 3.x 7.1.8); transient = D1 (%s) at "
                      "a live-plug's 4.3 A, the inlet's figure on output_panel" % _D10["mpn"])
-BRAIN_24 = dict(v=V24_STEADY, vt=V24_CLAMP,
+# THE INSTRUMENT'S (R2) RAIL CLAMP IS ITS OWN (lead, 2026-11-14): brain D3 / output_board D203
+# went SMCJ24A -> SMCJ26A, whose 26 V stand-off sits nearer the 26.4 V steady figure. The R1
+# boards keep system.rail_tvs (the SMCJ24A they were built with). Same surge bound.
+R2_RAIL_TVS = PARTS[os.environ.get("R2_RAIL_TVS", "C310042")]
+R2_V24_CLAMP = R2_RAIL_TVS["vbr_max"] + (R2_RAIL_TVS["vc"] - R2_RAIL_TVS["vbr_max"]) * min(1.0, SURGE["i"] / R2_RAIL_TVS["ipp"])
+BRAIN_24 = dict(v=V24_STEADY, vt=R2_V24_CLAMP,
                 why="the LM5122 boost's output, 1.2 V x (1 + 50.725 / 2.67) = 24.0 V nominal; steady taken "
-                    "as the brick rail's 24 V +10 %% (covers the reference's tolerance and load-release "
-                    "overshoot); transient = D3, the same %s clamp as the brick rail" % RAIL_TVS["mpn"])
+                    "as the brick rail's 24 V +10 %% (covers the reference's tolerance, load-release "
+                    "overshoot and stepper regeneration, which the boost cannot sink); transient = D3, "
+                    "%s, at %.0f A of surge: %.1f V (breakdown %.1f-%.1f V, VC %.1f V at %.1f A)"
+                    % (R2_RAIL_TVS["mpn"], SURGE["i"], R2_V24_CLAMP, R2_RAIL_TVS["vbr_min"],
+                       R2_RAIL_TVS["vbr_max"], R2_RAIL_TVS["vc"], R2_RAIL_TVS["ipp"]))
 SEEDS["brain"] = {
     "VIN_BRAIN": ("abs", BRAIN_VIN),
     "VIN_SW": ("like", "VIN_BRAIN", 0.0, "behind Q2, the power switch"),
@@ -517,6 +527,10 @@ def _vod(L, R):
 
 RES_MODEL = {
     "can_tee": {"R1": ("v", _vod, "CAN termination: SN65HVD230 dominant VOD max 3 V, 100 % dominant")},
+    # bus A's far-end terminator: ISO 11898-2 caps a dominant VOD at 3 V for every compliant node
+    # (the SERVO42D's transceiver is not known; the board's own is 3 V max), held dominant
+    "connector_board": {"R1": ("v", lambda L, R: 3.0, "bus A termination: ISO 11898-2 dominant VOD max 3 V, "
+                                                      "100 % dominant")},
     "motor_ctrl": {"R23": ("i", 0.8, "U5's input at 15 W out, the figure F1 is sized on"),
                    "R5": ("v", lambda L, R: PARTS["C22433320"]["vod_max"],
                           "CAN termination: TCAN3413 dominant VOD max 3 V, 100 % dominant")},
@@ -840,6 +854,26 @@ for _T in (RES_MODEL, CAP_ACROSS, FET_VGS):
     _T["output_board"] = {k: tuple(_alias_fn(x) for x in v) for k, v in _T["output_board"].items()}
 
 
+# ── THE CONNECTOR BOARD (lead, 2026-11-14): passive, everything it carries comes down the
+# ribbon from the output board (harness.CONN_RIBBON), so its nets are the output board's
+SEEDS["connector_board"] = {
+    "+24V": ("from", "output_board", "+24V_RIB", "the motors' 24 V, through the output board's F204"),
+    "+24V_LED": ("from", "output_board", "+24V_LED", "the lights' fused 24 V"),
+    "+5V_PED": ("from", "output_board", "+5V_BUSB_PED", "the pedal arm's 5 V, behind U206"),
+    "+5V_LEV": ("from", "output_board", "+5V_BUSB_LEV", "the lever arm's 5 V, behind U211"),
+    "CANA_H": ("from", "output_board", "CANA_H", "bus A"), "CANA_L": ("from", "output_board", "CANA_L", "bus A"),
+    # the arms' own ESD5B5.0 (D2-D5) sit here, at the connectors: their breakdown is this side's bound
+    "PED_H": ("abs", CAN_B), "PED_L": ("abs", CAN_B), "LEV_H": ("abs", CAN_B), "LEV_L": ("abs", CAN_B),
+    **{n: ("from", "output_board", n, "a lighting SPI line, down the ribbon")
+       for n in ("SCK", "SDT", "SCK_FOOT", "SDT_FOOT")},
+}
+CODE_FALLBACK["connector_board"] = {
+    # J1: PZ1.27-2x15P ZZ has no LCSC code yet: its stocked 2 x 8 sibling, as output_board's J240
+    ("PZ1.27-2x15P ZZ", "PinHeader_2x15_P1.27mm_Vertical_SMD"): "C22438123",
+    # J11-J20: KF350-3.5-4P is C42400616 at LCSC with ZERO stock (2026-11-14, open item): rated
+    # as the stocked 2-way of the same series and contacts (C474892, 300 V / 10 A)
+    ("KF350-3.5-4P", "TerminalBlock_Phoenix_PT-1,5-4-3.5-H_1x04_P3.50mm_Horizontal"): "C474892",
+}
 CODE_FALLBACK["output_board"] = {
     # U5, merged: the 4 A LMR33640 in the 3 A part's RNX land, no LCSC code yet (open item).
     # Rated as the LMR33630 (C2071384): the same 1.0 V feedback reference and pin limits

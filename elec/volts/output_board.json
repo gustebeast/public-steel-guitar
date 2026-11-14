@@ -1,27 +1,27 @@
 {
  "net_volts": {
   "+24V": {
-   "peak": 34.37,
+   "peak": 37.614,
    "v": 26.4,
-   "why": "the LM5122 boost's output, 1.2 V x (1 + 50.725 / 2.67) = 24.0 V nominal; steady taken as the brick rail's 24 V +10 % (covers the reference's tolerance and load-release overshoot); transient = D3, the same SMCJ24A clamp as the brick rail"
+   "why": "the LM5122 boost's output, 1.2 V x (1 + 50.725 / 2.67) = 24.0 V nominal; steady taken as the brick rail's 24 V +10 % (covers the reference's tolerance, load-release overshoot and stepper regeneration, which the boost cannot sink); transient = D3, SMCJ26A, at 20 A of surge: 37.6 V (breakdown 28.9-31.9 V, VC 42.1 V at 35.7 A)"
   },
   "+24V_BUCK": {
-   "peak": 34.37,
+   "peak": 37.614,
    "v": 26.4,
    "why": "through F201"
   },
   "+24V_F": {
-   "peak": 34.37,
+   "peak": 37.614,
    "v": 26.4,
    "why": "through R223"
   },
   "+24V_LED": {
-   "peak": 34.37,
+   "peak": 37.614,
    "v": 26.4,
    "why": "through F203"
   },
   "+24V_RIB": {
-   "peak": 34.37,
+   "peak": 37.614,
    "v": 26.4,
    "why": "F204 (PPTC) from +24V, out on the connector ribbon [= +24V+0]"
   },
@@ -100,7 +100,7 @@
    "why": "bootstrap: SW + 5.5 V, held by U5"
   },
   "BOOT5": {
-   "peak": 39.87,
+   "peak": 43.114,
    "v": 31.9,
    "why": "bootstrap: SW5 + 5.5 V, held by U205"
   },
@@ -110,7 +110,7 @@
    "why": "U1.68 (io) can reach its supply +3V3D"
   },
   "BST_BST": {
-   "peak": 43.37,
+   "peak": 46.614,
    "v": 35.4,
    "why": "bootstrap: SW plus VCC less D17's drop [= BST_SW+8]"
   },
@@ -133,17 +133,17 @@
    "why": "current sense, R109's input side [= VIN_BRAIN+0]"
   },
   "BST_FB": {
-   "peak": 1.719,
+   "peak": 1.881,
    "v": 1.32,
    "why": "R105 / (R103 + R104 + R105): the regulated 1.2 V, and the divided rail whatever it does"
   },
   "BST_FBMID": {
-   "peak": 2.25,
+   "peak": 2.462,
    "v": 1.728,
    "why": "(R104 + R105) / (R103 + R104 + R105)"
   },
   "BST_HO": {
-   "peak": 43.37,
+   "peak": 46.614,
    "v": 35.4,
    "why": "high-side gate drive: SW to BST [= BST_SW+8]"
   },
@@ -174,7 +174,7 @@
    "why": "driven only by the LM5122's own low-voltage circuitry, pins rated 7 V; 5 V an assumed bound"
   },
   "BST_SW": {
-   "peak": 35.37,
+   "peak": 38.614,
    "v": 27.4,
    "why": "boost switch node: VOUT plus Q9's body diode while it commutates [= +24V+1]"
   },
@@ -891,7 +891,7 @@
    "why": "pickup buffer, AC-coupled to 0 V: +/- half the 5 V rail"
   },
   "EN5": {
-   "peak": 2.338,
+   "peak": 2.559,
    "v": 1.796,
    "why": "divider off +24V: x 0.0680"
   },
@@ -1560,7 +1560,7 @@
    "why": "CM5 GPIO / unused pins: 3.3 V CMOS [= CM5_3V3+0]"
   },
   "SENSE_24V": {
-   "peak": 3.125,
+   "peak": 3.419,
    "v": 2.4,
    "why": "divider off +24V: x 0.0909"
   },
@@ -1585,7 +1585,7 @@
    "why": "buck switch node: VIN while the high side is on [= VSTBY+0]"
   },
   "SW5": {
-   "peak": 34.37,
+   "peak": 37.614,
    "v": 26.4,
    "why": "buck switch node: VIN while the high side is on [= +24V_BUCK+0]"
   },
@@ -2690,14 +2690,6 @@
    "max": 50.0,
    "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
-  "C294.1": {
-   "max": 50.0,
-   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
-  },
-  "C295.1": {
-   "max": 50.0,
-   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
-  },
   "C296.1": {
    "max": 50.0,
    "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
@@ -2782,25 +2774,13 @@
    "max": 6.3,
    "src": "rated V -- CL05A106MQ5NUNC (C15525): JLCPCB parts API attributes for C15525 (CL05A106MQ5NUNC, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
-  "C310.1": {
-   "max": 50.0,
-   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
-  },
-  "C311.1": {
-   "max": 50.0,
-   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
-  },
-  "C312.1": {
-   "max": 50.0,
-   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
-  },
   "C313.1": {
-   "max": 35.0,
-   "src": "rated V -- MA35V470M10X13 (C46550472): jieerrui MA series datasheet p.4 row MA35V470M10X13: 35 V, 470 uF, 16 mohm, ripple 3.8 A at 100 kHz"
+   "max": 50.0,
+   "src": "rated V -- MA50V330M10X12 (C53120968): JLCPCB parts API attributes for C53120968 (jieerrui MA50V330M10X12: polymer, 50 V, 330 uF 20 %, ESR 20 mOhm and ripple 3.5 A at 100 kHz, 12.5 mm seated), fetched 2026-11-14"
   },
   "C314.1": {
-   "max": 35.0,
-   "src": "rated V -- MA35V470M10X13 (C46550472): jieerrui MA series datasheet p.4 row MA35V470M10X13: 35 V, 470 uF, 16 mohm, ripple 3.8 A at 100 kHz"
+   "max": 50.0,
+   "src": "rated V -- MA50V330M10X12 (C53120968): JLCPCB parts API attributes for C53120968 (jieerrui MA50V330M10X12: polymer, 50 V, 330 uF 20 %, ESR 20 mOhm and ripple 3.5 A at 100 kHz, 12.5 mm seated), fetched 2026-11-14"
   },
   "C315.1": {
    "max": 50.0,
@@ -3102,10 +3082,10 @@
    "why": "this part IS the clamp on VIN_BRAIN: it stands 24 V (where its leakage is specified) and starts to conduct at 26.7 V, the figure a steady level must stay under"
   },
   "D203.1": {
-   "max": 26.7,
+   "max": 28.9,
    "peak": "none",
-   "src": "SMCJ24A (C310039): Brightking SMCJ series datasheet (LCSC C310039), electrical table row SMCJ24A: VRWM 24 V, VBR 26.7-29.5 V @1 mA, VC 38.9 V @ IPP 38.6 A (10/1000 us), 1500 W",
-   "why": "this part IS the clamp on +24V: it stands 24 V (where its leakage is specified) and starts to conduct at 26.7 V, the figure a steady level must stay under"
+   "src": "SMCJ26A (C310042): Brightking SMCJ series datasheet (Revision 21-Jul-14, LCSC C310042's PDF), electrical table row SMCJ26A (rows read against VRWM x 1.11; the PDF's text layer shifts the columns): VRWM 26 V, VBR 28.90-31.90 V @1 mA, VC 42.1 V @ IPP 35.7 A (10/1000 us), 1500 W. Read 2026-11-14",
+   "why": "this part IS the clamp on +24V: it stands 26 V (where its leakage is specified) and starts to conduct at 28.9 V, the figure a steady level must stay under"
   },
   "D208.1": {
    "max": "none",
@@ -3223,16 +3203,16 @@
    "src": "VRRM -- 1N4148WT (C917006): JSMSEMI 1N4148WT datasheet p.1 max ratings: VRRM 75 V, VRM 100 V, IO 150 mA"
   },
   "D5.1": {
-   "max": 5.8,
+   "max": 6.0,
    "peak": "none",
-   "src": "ESD5B5.0ST1G (C93623): onsemi ESD5B5.0S datasheet p.2 electrical table (VRWM 5.0, VBR 5.8-7.8 @1 mA), p.1 max ratings (50 W 8x20 us, 10 W 10x1000 us, 200 mW)",
-   "why": "this part IS the clamp on OUT_BLOCKED: it stands 5 V (where its leakage is specified) and starts to conduct at 5.8 V, the figure a steady level must stay under"
+   "src": "TPD1E10B06DYARQ1 (C3013901): TI TPD1E10B06 datasheet SLLSEB1G (revised August 2024) s5.5: VRWM 5.5 V either way, VBR 6 V minimum at 1 mA (no maximum published), VCLAMP 10 V at IPP 1 A 8/20 us, 14 V at 5 A; CIO 12 pF typ; IEC 61000-4-2 +-30 kV. Read 2026-11-14",
+   "why": "this part IS the clamp on OUT_BLOCKED: it stands 5.5 V (where its leakage is specified) and starts to conduct at 6 V, the figure a steady level must stay under"
   },
   "D7.1": {
-   "max": 5.8,
+   "max": 6.0,
    "peak": "none",
-   "src": "ESD5B5.0ST1G (C93623): onsemi ESD5B5.0S datasheet p.2 electrical table (VRWM 5.0, VBR 5.8-7.8 @1 mA), p.1 max ratings (50 W 8x20 us, 10 W 10x1000 us, 200 mW)",
-   "why": "this part IS the clamp on RING_BLOCKED: it stands 5 V (where its leakage is specified) and starts to conduct at 5.8 V, the figure a steady level must stay under"
+   "src": "TPD1E10B06DYARQ1 (C3013901): TI TPD1E10B06 datasheet SLLSEB1G (revised August 2024) s5.5: VRWM 5.5 V either way, VBR 6 V minimum at 1 mA (no maximum published), VCLAMP 10 V at IPP 1 A 8/20 us, 14 V at 5 A; CIO 12 pF typ; IEC 61000-4-2 +-30 kV. Read 2026-11-14",
+   "why": "this part IS the clamp on RING_BLOCKED: it stands 5.5 V (where its leakage is specified) and starts to conduct at 6 V, the figure a steady level must stay under"
   },
   "F201.1": {
    "max": 63.0,
@@ -3259,12 +3239,12 @@
    "src": "rated V -- JFC1206-1300FS (C136347): Shenzhen JDT JFC1206 fast-acting fuse datasheet p.3 table: rated voltage 63 VDC, rated current 3 A"
   },
   "F204.1": {
-   "max": 36.0,
-   "src": "rated V -- 2920L300/36GR (C22435908): JLCPCB parts API attributes for C22435908 (LUTE 2920L300/36GR): voltage max 36 V, hold 3 A, trip 5 A, max current 40 A, Ri min 12 mOhm, fetched 2026-11-14"
+   "max": 60.0,
+   "src": "rated V -- 2920L200/60GR (C49326266): JLCPCB parts API attributes for C49326266 (LUTE 2920L200/60GR): voltage max 60 V, hold 2 A, trip 4 A, max current 40 A, time to trip 4.5 s max, fetched 2026-11-14"
   },
   "F204.2": {
-   "max": 36.0,
-   "src": "rated V -- 2920L300/36GR (C22435908): JLCPCB parts API attributes for C22435908 (LUTE 2920L300/36GR): voltage max 36 V, hold 3 A, trip 5 A, max current 40 A, Ri min 12 mOhm, fetched 2026-11-14"
+   "max": 60.0,
+   "src": "rated V -- 2920L200/60GR (C49326266): JLCPCB parts API attributes for C49326266 (LUTE 2920L200/60GR): voltage max 60 V, hold 2 A, trip 4 A, max current 40 A, time to trip 4.5 s max, fetched 2026-11-14"
   },
   "FB1.1": {
    "max": "none",
@@ -5102,6 +5082,10 @@
    "max": 50.0,
    "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
   },
+  "R60.1": {
+   "max": 200.0,
+   "src": "element V -- 1206W4F1201T5E (C17891): JLCPCB parts API attributes for C17891 (1206W4F1201T5E, UNI-ROYAL: 1.2 kOhm 1 % 250 mW 1206), fetched 2026-11-14; 200 V working voltage from UniOhm's 1206 series table (the same as this file's other 1206 entries)"
+  },
   "R7.1": {
    "max": 50.0,
    "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
@@ -6463,7 +6447,7 @@
    "src": "abs max -- LMR33630ADDAR (C841384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; HSOIC (DDA) pinout p.3"
   },
   "U205.3": {
-   "max": 34.67,
+   "max": 37.914,
    "src": "abs max -- LMR33630ADDAR (C841384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; HSOIC (DDA) pinout p.3"
   },
   "U205.4": {
@@ -6484,7 +6468,7 @@
    "why": "bootstrap node, rated SW+5.5 and set by the IC itself"
   },
   "U205.8": {
-   "max": 34.67,
+   "max": 37.914,
    "src": "abs max -- LMR33630ADDAR (C841384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; HSOIC (DDA) pinout p.3"
   },
   "U206.1": {
@@ -6656,7 +6640,7 @@
    "src": "abs max -- LM5122MHX/NOPB (C77241): TI LM5122 datasheet SNVS954H p.6 s6.1 absolute maximum (to AGND): VIN, CSP, CSN -0.3..75 V; BST-SW, FB, MODE, UVLO, OPT, VCC -0.3..15 V; SW -5..105 V; BST -0.3..115 V; SS, SLOPE, SYNCIN/RT -0.3..7 V; CSP-CSN and PGND -0.3..0.3 V; HO-SW -0.3..BST-SW+0.3; LO -0.3..VCC+0.3; COMP, RES, SYNCOUT -0.3..7 V. p.7 s6.3: VIN 4.5-65, VCC 14, BST-SW 3.8-14, CSP/CSN 3-65, SW 100 V. 20-pin PWP pinout p.4-6 (EP: no internal connection, soldered to ground). MPN on the catalogue is LM5122MHX/NOPB, the same HTSSOP-20 PWP"
   },
   "U220.19": {
-   "max": 43.67,
+   "max": 46.914,
    "src": "abs max -- LM5122MHX/NOPB (C77241): TI LM5122 datasheet SNVS954H p.6 s6.1 absolute maximum (to AGND): VIN, CSP, CSN -0.3..75 V; BST-SW, FB, MODE, UVLO, OPT, VCC -0.3..15 V; SW -5..105 V; BST -0.3..115 V; SS, SLOPE, SYNCIN/RT -0.3..7 V; CSP-CSN and PGND -0.3..0.3 V; HO-SW -0.3..BST-SW+0.3; LO -0.3..VCC+0.3; COMP, RES, SYNCOUT -0.3..7 V. p.7 s6.3: VIN 4.5-65, VCC 14, BST-SW 3.8-14, CSP/CSN 3-65, SW 100 V. 20-pin PWP pinout p.4-6 (EP: no internal connection, soldered to ground). MPN on the catalogue is LM5122MHX/NOPB, the same HTSSOP-20 PWP"
   },
   "U220.20": {

@@ -3657,6 +3657,83 @@
    "c": "22uF",
    "case": "2220",
    "src": "JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
+  },
+  "C3013901": {
+   "mpn": "TPD1E10B06DYARQ1",
+   "kind": "tvs",
+   "vrwm": 5.5,
+   "vbr_min": 6.0,
+   "vbr_max": null,
+   "vc": 10.0,
+   "ipp": 1.0,
+   "bidir": true,
+   "pins": {
+    "1": "1",
+    "2": "2"
+   },
+   "src": "TI TPD1E10B06 datasheet SLLSEB1G (revised August 2024) s5.5: VRWM 5.5 V either way, VBR 6 V minimum at 1 mA (no maximum published), VCLAMP 10 V at IPP 1 A 8/20 us, 14 V at 5 A; CIO 12 pF typ; IEC 61000-4-2 +-30 kV. Read 2026-11-14"
+  },
+  "C310042": {
+   "kind": "tvs",
+   "vrwm": 26.0,
+   "vbr_min": 28.9,
+   "vbr_max": 31.9,
+   "vc": 42.1,
+   "ipp": 35.7,
+   "bidir": false,
+   "pins": {
+    "1": "K",
+    "2": "A"
+   },
+   "mpn": "SMCJ26A",
+   "src": "Brightking SMCJ series datasheet (Revision 21-Jul-14, LCSC C310042's PDF), electrical table row SMCJ26A (rows read against VRWM x 1.11; the PDF's text layer shifts the columns): VRWM 26 V, VBR 28.90-31.90 V @1 mA, VC 42.1 V @ IPP 35.7 A (10/1000 us), 1500 W. Read 2026-11-14"
+  },
+  "C310044": {
+   "kind": "tvs",
+   "vrwm": 28.0,
+   "vbr_min": 31.1,
+   "vbr_max": 34.4,
+   "vc": 45.4,
+   "ipp": 33.1,
+   "bidir": false,
+   "pins": {
+    "1": "K",
+    "2": "A"
+   },
+   "mpn": "SMCJ28A",
+   "src": "Brightking SMCJ series datasheet (Revision 21-Jul-14, LCSC C310044's PDF), electrical table row SMCJ28A (rows read against VRWM x 1.11; the PDF's text layer shifts the columns): VRWM 28 V, VBR 31.10-34.40 V @1 mA, VC 45.4 V @ IPP 33.1 A (10/1000 us), 1500 W. Read 2026-11-14"
+  },
+  "C49326266": {
+   "mpn": "2920L200/60GR",
+   "kind": "fuse",
+   "v": 60.0,
+   "i": 2.0,
+   "src": "JLCPCB parts API attributes for C49326266 (LUTE 2920L200/60GR): voltage max 60 V, hold 2 A, trip 4 A, max current 40 A, time to trip 4.5 s max, fetched 2026-11-14"
+  },
+  "C53120968": {
+   "mpn": "MA50V330M10X12",
+   "kind": "cap",
+   "v": 50.0,
+   "diel": "polymer",
+   "c": "330uF",
+   "case": "D10xL12.5",
+   "src": "JLCPCB parts API attributes for C53120968 (jieerrui MA50V330M10X12: polymer, 50 V, 330 uF 20 %, ESR 20 mOhm and ripple 3.5 A at 100 kHz, 12.5 mm seated), fetched 2026-11-14"
+  },
+  "C160354": {
+   "kind": "conn",
+   "v": 100.0,
+   "i": 2.0,
+   "mpn": "B4B-PH-SM4-TB(LF)(SN)",
+   "src": "JLCPCB parts API attributes for C160354 (JST B4B-PH-SM4-TB(LF)(SN)): voltage rating 100 V, current 2 A -- JST PH series' own figures (100 V AC/DC, 2 A at AWG 24), fetched 2026-11-14"
+  },
+  "C17891": {
+   "mpn": "1206W4F1201T5E",
+   "kind": "res",
+   "p": 0.25,
+   "v": 200.0,
+   "ohm": 1200.0,
+   "case": "1206",
+   "src": "JLCPCB parts API attributes for C17891 (1206W4F1201T5E, UNI-ROYAL: 1.2 kOhm 1 % 250 mW 1206), fetched 2026-11-14; 200 V working voltage from UniOhm's 1206 series table (the same as this file's other 1206 entries)"
   }
  }
 }
