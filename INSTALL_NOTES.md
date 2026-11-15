@@ -1800,6 +1800,20 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
   - Let the motor find its axis on the turning screw, then tighten.
 - Station pitch is 77 mm (was 90). The farthest motor is at x -522.7 (was -556.7).
 
+### Direct drive: one thrust bearing per screw, collar B threaded (2026-11-14)
+This supersedes the "two 688s" in the notes above.
+- **One 688 per screw**, the rated EZO part (the BOM always counted ten). Press it into the housing from +X. Its +X face sits on the plate's rim.
+- **Collar B is a threaded jam nut** (the motor coupler's formed thread). Before, it was a plain hole and held nothing.
+- Assembly, per screw:
+  1. Press the 688 into the housing from +X.
+  2. Slide the screw's +X end through the housing from -X.
+  3. Run collar B onto the +X end, down onto the inner race.
+  4. Run collar A up from the -X end against the inner race's other face until the play is gone. Hold collar B by the two notches in its +X face (pin spanner or pliers tips) while you turn the screw. Pinch collar A with its M3 x 12.
+  5. The inner race is now clamped between the two collars, and collar B cannot back off.
+- Nothing that turns touches anything fixed; only the bearing carries the contact:
+  - The collars' faces stand 0.8 off the housing and the plug.
+  - Collar A's body and clamp-screw head pass the rod cap's boss with about 0.45.
+
 ### Leadscrew pin hole (pin drill jig, 2026-11-09)
 - Every printed motor coupler pins its screw with one belt-clamp M3 x 12. It passes through a 1/8 in hole drilled through the screw 5.0 mm from its end, and threads into the coupler's far wall.
 - Jig parts (coupons/): `pin_drill_jig`, a second saw-jig cap (`pin_drill_jig_cap`), and two drop-in bushings (`pin_drill_bushing_pilot` 1/16 in, `pin_drill_bushing_pin` 1/8 in).

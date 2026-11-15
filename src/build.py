@@ -3254,6 +3254,8 @@ for _base, _up, _why in (
         ("sleeve_c", DB_.SLEEVE_C_UP, "direct_bench.SLEEVE_C_UP -- prints -X -> +X; teardrop key hole"),
         ("yoke", DB_.YOKE_UP, "direct_bench.YOKE_UP -- prints -X -> +X; the nut-rim register "
                               "under a cone"),
+        ("collar_b", DB_.COLLAR_B_UP, "direct_bench.COLLAR_B_UP -- prints +X -> -X; the notched "
+                                      "face on the bed, the formed thread along the build"),
         ("housing", (-1.0, 0.0, 0.0), "direct_bench: the housing prints +X -> -X; the guide rod's "
                                       "cap under a cone roof")):
     for _n in [n for n in PARTS if n.startswith(_base + "_") and n[len(_base) + 1:].isdigit()]:

@@ -15,7 +15,7 @@ THE LAYOUT
     both are) has to be DZ >= 21.15 + 4 + clearance away in Z. Strings three apart (28.5) clear
     in Y, so three rows are the fewest.
  3. THE SCREW LIES ALONG -X and the nut rides it: the string pulls the nut +X, the screw is in
-    TENSION into its two 688s at the motor end. A yoke on the nut's +X face holds the ball end on
+    TENSION into its 688 at the motor end. A yoke on the nut's +X face holds the ball end on
     the screw axis (no couple, the X rig's yoke), a Ø3.5 rod through the nut's other ear keeps it
     from turning.
  4. THE SPRING WRAPS THE SCREW. An extension spring from a collar on the nut's boss back to one
@@ -411,23 +411,32 @@ from .motor_coupler import CPL_D, CPL_X, CPL_GRIP, SCREW_X0   # src.motor_couple
 M3_PILOT = 2.5
 
 # THE THRUST HOUSING (user, 2026-11-09: "put the thrust bearings on the anchor ... it would
-# ideally hit that metal plate"). Each screw's two 688s sit in a printed HOUSING on the anchor
-# plate's -X face, and the anchor plug on its +X face; two M4 x 20 button heads through the
+# ideally hit that metal plate"). Each screw's ONE 688 (a pair until 2026-11-14) sits in a printed
+# HOUSING on the anchor plate's -X face, and the anchor plug on its +X face; two M4 x 20 button heads through the
 # housing's ears and the plate into heat-set inserts in the plug's ears clamp the three together
-# (the plug's quarter-turn lugs are gone). The screw is held in the pair by two printed collars
+# (the plug's quarter-turn lugs are gone). The screw is held in the bearing by two printed collars
 # threaded on its Tr8: COLLAR B (+X, in the plate's hole) run down first, COLLAR A (-X) run up
-# against the pair to take the play out, then pinched by an M3 x 12.
-#   strings on:  the screw pulls +X: collar A -> both inner races -> outer races -> THE PLATE's
+# against the race to take the play out, then pinched by an M3 x 12: B is then a jam nut.
+#   strings on:  the screw pulls +X: collar A -> the inner race -> the outer race -> THE PLATE's
 #                face round its hole. Metal, straight. The plug's spring pull reaches the plate
 #                through the bolts and the housing. The plate carries the string tension.
-#   strings off: the spring pulls the plug +X and pushes the screw -X (collar B -> the pair ->
+#   strings off: the spring pulls the plug +X and pushes the screw -X (collar B -> the bearing ->
 #                the housing's -X shoulder): the two meet in the bolts, the plate sees nothing.
 # Either way the motor only turns the screw. Ears at 155 / 275 deg (2026-11-12, with the rod at
 # 325 and the tangs gone): a 2-D scan of every string's flange, ears and rod boss puts the worst
 # gap at 2.1 there; 35/215 put the rod's boss 3 mm into the next string's ear.
 HOUSE_D = D.BRG688_OD + 3.2                         # 19.2: the pocket's 1.6 wall
-HOUSE_POCKET = 2 * D.BRG688_W                       # the pair, pressed in from +X
-HOUSE_SHOULDER = 2.5
+# ONE 688 PER SCREW (user, 2026-11-14; it was a pair): the rated EZO part carries the 147 N a string
+# pulls at 2.0x on its own (elec/prices.json bearing_688zz_screw, which always counted ten), and the
+# motor's own bearings hold the screw's other end, so a second one only over-constrained it. The
+# housing keeps its length -- the 5 mm freed goes into the -X shoulder and collar A's boss -- so
+# collar A, the coupler and every motor station stay where they were.
+HOUSE_POCKET = D.BRG688_W                           # the one 688, pressed in from +X
+# TURNING NEVER TOUCHES FIXED (user, 2026-11-14: "ideally the bearings handle all the contact"):
+# the two collars' faces stand SPIN_GAP off the housing and the plug -- the bearing's own axial play
+# (~0.1) and a collar printed a little long both come out of it
+SPIN_GAP = 0.8
+HOUSE_SHOULDER = 2.5 + D.BRG688_W - (SPIN_GAP - 0.5)  # 7.2: collar A stays where it was
 RACE_OUT_D = 13.6                                   # shoulder holes: on the outer race only
 RACE_IN_D = 10.4                                    # collar bosses: on the inner race only
 EAR_ANG, EAR_R = (155.0, 275.0), 12.0
@@ -450,7 +459,7 @@ def x_collar_a():
     """Collar A: (body from, body to), and its boss's end (the -X bearing's face)."""
     h0 = x_house()[0]
     b1 = ANCHOR[0] - HOUSE_POCKET
-    body1 = h0 - 0.5
+    body1 = h0 - SPIN_GAP
     return (body1 - COLLAR_A[1], body1), b1
 PLATE_T = 4.0
 STATION_GAP = 1.3
@@ -1021,8 +1030,10 @@ def _collar_a(i: int) -> cq.Workplane:
     y, z = y_of(i), za(i)
     (c0, c1), b1 = x_collar_a()
     out = cyl_x(COLLAR_A[0], c1 - c0, c0, y=y, z=z).union(cyl_x(RACE_IN_D, b1 - c1, c1, y=y, z=z))
-    out = out.cut(box_at(c1 - c0 + 2, COLLAR_A[0] / 2 + 1.0, 1.0, x=(c0 + c1) / 2,
-                         y=y + (COLLAR_A[0] / 2 + 1.0) / 2, z=z))         # the split, bore to +Y
+    # the split, bore to +Y, along the WHOLE part: body AND boss (a boss left whole is a closed
+    # ring round the thread, and the screw could not pinch it)
+    out = out.cut(box_at(b1 - c0 + 2, COLLAR_A[0] / 2 + 1.0, 1.0, x=(c0 + b1) / 2,
+                         y=y + (COLLAR_A[0] / 2 + 1.0) / 2, z=z))
     xm = (c0 + c1) / 2
     for d, z0, L in ((M3_PILOT, z - 10, 20.0), (3.4, z, 10.0), (M3_HEAD[0] + 0.5, z + 4.6, 10.0)):
         out = out.cut(teardrop_hole(d, L, axis_point=(xm, y + 6.5, z0), axis_dir=(0, 0, 1),
@@ -1041,13 +1052,32 @@ def _collar_a_m3(i: int) -> cq.Workplane:
     return _cap("m3", M3_L, (xm, y + 6.5, z + 4.6 + M3_HEAD[1]), (0, 0, -1))
 
 
+COLLAR_B_UP = (-1.0, 0.0, 0.0)                      # prints +X -> -X: the notched face on the bed,
+                                                    # the boss on the race last
+COLLAR_B_NOTCH = (1.6, 1.2)                         # the two tool notches: width, depth
+
+
 def _collar_b(i: int) -> cq.Workplane:
-    """Threaded on the Tr8 inside the plate's hole, its boss on the +X inner race."""
+    """A JAM NUT on the Tr8 inside the plate's hole, its boss on the bearing's +X inner race.
+    THE BORE IS THE COUPLER'S FORMED THREAD (user, 2026-11-14: it was a plain Ø8 hole and held
+    nothing). Run down onto the race first; collar A then comes up against the race's -X face and
+    is pinched, so the inner race is clamped between the two and B cannot back off (all of it turns
+    with the screw: nothing ever twists B on its thread). It holds the screw -X when the strings
+    are off. Two notches in its +X face take a pin spanner's or pliers' tips to hold it while the
+    screw is turned, before the plug goes on."""
+    from .motor_coupler import _thread_socket
     y, z = y_of(i), za(i)
     a0, a1 = ANCHOR
     out = cyl_x(RACE_IN_D, 0.5, a0, y=y, z=z).union(
-        cyl_x(COLLAR_B_D, a1 - 0.2 - (a0 + 0.5), a0 + 0.5, y=y, z=z))
-    return out.cut(cyl_x(D.SCREW_OD, 10, a0 - 1, y=y, z=z))
+        cyl_x(COLLAR_B_D, a1 - SPIN_GAP - (a0 + 0.5), a0 + 0.5, y=y, z=z))
+    w, dn = COLLAR_B_NOTCH
+    for sg in (1, -1):                                  # across the face, clear of the thread's crest
+        r0 = D.SCREW_OD / 2 + 0.6
+        out = out.cut(box_at(dn * 2, w, COLLAR_B_D / 2 - r0 + 1.0, x=a1 - SPIN_GAP,
+                             y=y, z=z + sg * (r0 + (COLLAR_B_D / 2 - r0 + 1.0) / 2)))
+    th = (_thread_socket(-1.0, a1 - a0 + 1.0).rotate((0, 0, 0), (0, 0, 1), -90)
+          .translate((a0, y, z)))
+    return out.cut(th, clean=False)
 
 
 def _nut(i: int, t: float) -> cq.Workplane:
@@ -1250,7 +1280,7 @@ def _screw_at(i: int) -> cq.Workplane:
 
 
 def _brg(i: int) -> cq.Workplane:
-    return (ball_bearing(D.BRG688_OD, D.BRG688_ID, 2 * D.BRG688_W)
+    return (ball_bearing(D.BRG688_OD, D.BRG688_ID, D.BRG688_W)
             .rotate((0, 0, 0), (0, 1, 0), 90).translate((ANCHOR[0] - HOUSE_POCKET, y_of(i), za(i))))
 
 
@@ -1810,9 +1840,27 @@ def _endplate(rods: bool = True, only: int = None) -> cq.Workplane:
             w = w.cut(cyl_x(EP_M3_CLR, e["wall1"] - e["bar_end"] + 1, e["bar_end"], y=yc, z=zc))
             w = w.cut(cyl_x(EP_TUNNEL, xe + 1 - e["wall1"], e["wall1"], y=yc, z=zc))   # a short
             # bridge as printed (the back wall's +X face round the screw), 7.2 across
+    # FLAT PAST THE STRINGS (user, 2026-11-14): outside the strings' band the endplate stands only to
+    # the top panels' top, so the instrument is flat except where the strings need the height
+    from . import deck_v2 as _DK
+    ya, yb = ep_raised_y()
+    for ys0, ys1 in ((y0 - 1.0, ya), (yb, y1 + 1.0)):
+        w = w.cut(box_at(xe - xj + 2, ys1 - ys0, EP_TOP + 1 - _DK.TZ, x=(xj + xe) / 2,
+                         y=(ys0 + ys1) / 2, z=(_DK.TZ + EP_TOP + 1) / 2))
     if only is None:
         w = w.cut(_ob_pocket())                                  # the output board
     return w
+
+
+def ep_raised_y() -> tuple:
+    """The +X endplate's raised band in y (user, 2026-11-14): the outermost strings' lanes and one
+    more FINGER past each (a finger is what stands between two lanes), and wide enough that the
+    bridge axle (stock AXLE_L, its top at z 12) keeps its bore: its -Y end flush with the step, its
+    +Y end on the AXLE_STOP_T stop wall with the push hole through it."""
+    ys = sorted(y_of(i) for i in range(N))
+    finger = min(b - a for a, b in zip(ys, ys[1:])) - 2 * LANE_HW
+    a, b = axle_span()
+    return min(ys[0] - LANE_HW - finger, a), max(ys[-1] + LANE_HW + finger, b + AXLE_STOP_T)
 
 
 @_lru_cache(maxsize=None)
