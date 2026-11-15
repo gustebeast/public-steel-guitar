@@ -537,6 +537,47 @@ class Router(CoupledMixin):
     WIDEN_AFTER = 3                  # rounds a net may share before its search window widens...
     STALL_ROUNDS = 2                 # ...once the whole negotiation is this many rounds without gain
     SUB_STALL_STOP = 3               # a re-negotiation round locked copper stops this many rounds without gain
+    # ⚠ NEXT TO ITS OWN LANDS A PAIR'S RAILS MEET BY CONSTRUCTION (optical v101, 2026-11-14;
+    # opt-in until its A/B): from round 8 USB_DP / USB_DM shared 11-15 cells with each other
+    # and nothing else, and HUB_PHY_DP / DM 25-28 -- every one of them 0.65-4.3 mm from the
+    # rail's own lands (USB in rounds 11-19: 1.0-2.5 mm), in the fan-out where the two leave
+    # fine-pitch pins (U10 / J1, 0.5 mm) closer than the pair band's spacing; none along the
+    # run. Counted as sharing, it priced both rails off their own exits round after round
+    # (pf 55 -> 2361) to no end. Overlap ONLY with the mate, within MATE_LAND_MM of the net's
+    # own lands, is not sharing in the negotiation; the pair finish lays that fan-out
+    # (coupled.py) and pair_faults still judges it. 0 = off.
+    MATE_LAND_MM = float(os.environ.get("OWNROUTE_MATE_LAND_MM", "0"))
+
+    def _drop_mate_land(self, net, c):
+        """`c` (shared track cells of one of `net`'s paths) less those near `net`'s own lands
+        whose only other occupant is its pair mate."""
+        mates = list({id(o): o for o in (net.mate, net.partner) + tuple(x for x in self.nets if x.partner is net)
+                      if o is not None and o is not net and o.n_t}.values())
+        if not mates or not net.pieces:
+            return c
+        HW, W = self.H * self.W, self.W
+        lc = np.unique(np.concatenate([np.asarray(q_, np.int64) % HW for q_ in net.pieces]))
+        li, lj = lc // W, lc % W
+        r2 = c % HW
+        ci, cj = r2 // W, r2 % W
+        lim = (self.MATE_LAND_MM / self.m.pitch) ** 2
+        near = np.zeros(c.size, bool)
+        for s0 in range(0, lc.size, 4096):          # chunked: c x lands can be large
+            d2 = (ci[:, None] - li[None, s0:s0 + 4096]) ** 2 + (cj[:, None] - lj[None, s0:s0 + 4096]) ** 2
+            near |= (d2 <= lim).any(axis=1)
+        if not near.any():
+            return c
+        for o in mates:
+            self._unmark(o)
+        try:
+            still = self.occ_t[c[near]] >= 2        # shared with someone besides the mate
+        finally:
+            for o in mates:
+                self._mark(o)
+        keep = ~near
+        keep[np.nonzero(near)[0][still]] = True
+        return c[keep]
+
     RELAX_AFTER = 10                 # rounds a layer-held pair may share before it is relaxed (4 relaxed USB mid-negotiation, 11-08)
     FILL_MARGIN = 0.15               # a plane-join via's pad this far inside the fill's edge
     PLANE_JOIN_MM = (2.0, 6.0)       # a plane join looks this near its piece first (then everywhere)
@@ -3359,6 +3400,8 @@ class Router(CoupledMixin):
                 bad_q = set()
                 for q, path in enumerate(net.paths):
                     c = path[self.occ_t[path] >= 2]
+                    if c.size and self.MATE_LAND_MM > 0:
+                        c = self._drop_mate_land(net, c)
                     if c.size:
                         self.hist[c] += hf
                         shared = True
