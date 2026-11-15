@@ -1957,6 +1957,12 @@ COLORS = {
     "spring": "leg_latch_spring", "plug": (0.85, 0.45, 0.15),
     "sleeve_p": (0.95, 0.75, 0.20), "sleeve_c": (0.95, 0.75, 0.20), "m3": "set_screw", "col_ins": "nut",
     "coupler": (0.85, 0.45, 0.15), "cpl_m3": "set_screw", "cpl_insert": "nut",
+    # deck v2 +X end (src.deck_v2_region): panels as the deck, the optical board in its ordered
+    # BLACK mask (as build.py's optical_pcb), the bought pickup bare aluminium, the plate as GF.
+    "deck_filler": (0.16, 0.16, 0.18), "deck_optical": (0.16, 0.16, 0.18), "deck_pickup": (0.16, 0.16, 0.18),
+    "optical_board": _mask_rgb("black"), "pickup": (0.78, 0.79, 0.80), "pickup_plate": (0.30, 0.36, 0.42),
+    "pickup_jack_insert": "nut", "pickup_ret_insert": "nut", "pickup_jack_screw": "set_screw",
+    "pickup_ret_screw": "set_screw",
     "housing": (0.30, 0.36, 0.42), "hb": "set_screw", "insert": "nut",
     "collar_a": (0.85, 0.45, 0.15), "collar_b": (0.85, 0.45, 0.15), "ca_m3": "set_screw", "block": (0.30, 0.36, 0.42), "mplate": (0.30, 0.33, 0.38),
     "endplate": (0.36, 0.30, 0.42), "bar_m3": "set_screw", "bridge_axle": "set_screw",
