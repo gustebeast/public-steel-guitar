@@ -55,13 +55,13 @@ LINKS (no CH340 any more -- the CM5 is on the board):
     hand an arm's pair from CAN to it for one flash. It replaces motor_ctrl's U7/U8 path.
 
 OPEN ITEMS (BOARD_NOTES["open_items"]):
-  - DF40 pad numbering vs CM5 pin numbering: pad n = pin n (J1) and pin n+100 (J2), as on
-    the CM4/CM5 IO board -- check against the CM5 IO board's KiCad files before layout.
+  - DF40 pad numbering vs CM5 pin numbering: pad n = pin n (J1) and pin n+100 (J2) -- CLOSED
+    2026-11-14 against CM5IO's KiCad files; placement and check in elec/cm5_mech.py.
   - CM5 5 V: U5 is the 3 A LMR33630 motor_ctrl fed the Pi 4B from; the CM5 asks 5 A with
     USB loads. This board hangs nothing on the CM5's USB but two data links, so 3 A should
     hold -- measure; the LMR33640 (4 A) takes the same land.
   - LM5122 OPT tied to AGND (single-phase master) -- confirm in SNVS954H.
-  - L4 and C113/C114: placeholder lands (R2-6: XR181810VC / CDEP15D90; C46550430).
+  - L4: placeholder land (R2-6: XR181810VC / CDEP15D90).
   - (closed 2026-11-13) NCEP4090GU pinout read from NCE's sheet: output_board.PD_PINOUTS.
   - CM5 variant: an eMMC one (no SD socket on this board), e.g. CM5104032.
 """
@@ -89,6 +89,9 @@ P = Pin.types.PASSIVE
 C0402, C0603 = "Capacitor_SMD:C_0402_1005Metric", "Capacitor_SMD:C_0603_1608Metric"
 C0805, C1206 = "Capacitor_SMD:C_0805_2012Metric", "Capacitor_SMD:C_1206_3216Metric"
 C1210 = "Capacitor_SMD:C_1210_3225Metric"
+# 22 uF at 50 V (lead, 2026-11-14): the 35 V 1210 sat at 75 % on +24 V and under the clamped 37 V
+# VIN transient; no 22 uF / 50 V MLCC is stocked in 1210, so the 2220 (PSA FS55X226K500EHG, X7R)
+C2220 = "Capacitor_SMD:C_2220_5750Metric"
 R0402 = "Resistor_SMD:R_0402_1005Metric"
 SOT23 = "Package_TO_SOT_SMD:SOT-23"
 # side entry, mouth off the board edge: on the +Z edge, the plug goes in from above
@@ -302,7 +305,7 @@ def brain(merged=None):
     if not merged:
         _jst("J11", "S6B-PH-SM4-TB", "logic to / from the output board (harness.BRAIN_SIGNAL)",
              PH6_SIDE, harness.BRAIN_SIGNAL, dict(link, GND=gnd), power=())
-    _cap("C1", "22uF/35V", "VIN bulk at the inlet, AHEAD of the switch", vin, gnd, C1210)
+    _cap("C1", "22uF/50V", "VIN bulk at the inlet, AHEAD of the switch", vin, gnd, C2220)
     _cap("C2", "100nF/50V", "VIN HF bypass at J10", vin, gnd)
     _diode("D1", "SMF24A", "VIN clamp, 200 W (LCSC C169430)", vin, gnd, "Diode_SMD:D_SOD-123F")
 
@@ -440,18 +443,29 @@ def brain(merged=None):
     _res("R107", "100k", "SLOPE: K ~ 1 at the lowest input (TI's)", b["SLOPE"], gnd)
     _cap("C100", "100nF", "soft-start, ~12 ms", b["SS"], gnd)
     _cap("C101", "470nF/25V", "hiccup restart timer (TI's)", b["RES"], gnd)
-    for k in range(4):
-        _cap("C%d" % (92 + k), "22uF/35V", "boost input bulk, after Q2", vin_sw, gnd, C1210)
+    # HOW MANY (lead, 2026-11-14: re-derived when the 22 uF went 50 V 2220). The 50 V X7R 2220
+    # keeps far more of its 22 uF at these voltages than the 35 V X5R 1210 did; taken as 50 %
+    # at 24 V and 70 % at 20 V (ASSUMED: PSA publishes no DC-bias curve -- measure one).
+    # IN: a boost's input current is continuous, ripple dIL = 2.4 A worst (12 V in, D 0.5,
+    # 10 uH, 250 kHz) -> 0.69 A RMS; for 50 mV, C >= dIL / (8 fsw dV) = 24 uF: two (30 uF at
+    # 20 V). OUT: the pulsed current, Iout D / (fsw dV) = 4.5 x 0.625 / (250 k x 0.24 V) = 47 uF
+    # for 1 % ripple from the ceramics ALONE (the polymers carry the RMS): five (55 uF).
+    for k in range(2):
+        _cap("C%d" % (92 + k), "22uF/50V", "boost input bulk, after Q2", vin_sw, gnd, C2220)
     _cap("C96", "100nF/50V", "VIN_SW HF bypass at the boost", vin_sw, gnd)
-    for k in range(8):
-        _cap("C%d" % (105 + k), "22uF/35V", "boost output ceramic, ahead of the polymers "
-             "(TI: ceramics first)", v24, gnd, C1210)
+    for k in range(5):
+        _cap("C%d" % (105 + k), "22uF/50V", "boost output ceramic, ahead of the polymers "
+             "(TI: ceramics first)", v24, gnd, C2220)
     for tag in ("C113", "C114"):
-        _cap(tag, "470uF/35V", "boost output bulk, polymer, jieerrui MA35V470M10X13: 3.8 A ripple; "
-             "10 mm base on the 10x10.5 land, 13 mm TALL (LCSC C46550472)", v24, gnd,
+        # 50 V (2026-11-14): the SMCJ26A rail reaches 37.6 V; two carry 7 A of ripple against
+        # the ~5.8 A RMS at 9 V in (Iout sqrt(D / (1 - D)))
+        _cap(tag, "330uF/50V", "boost output bulk, polymer, jieerrui MA50V330M10X12: 3.5 A ripple, "
+             "20 mOhm; 10 mm base on the 10x10.5 land, 12.5 mm TALL (LCSC C53120968)", v24, gnd,
              "Capacitor_SMD:CP_Elec_10x10.5")
     _cap("C115", "100nF/50V", "+24V HF bypass", v24, gnd)
-    _diode("D3", "SMCJ24A", "+24V clamp, 1.5 kW -- ten stepper drivers' kick lands here",
+    # SMCJ26A (lead, 2026-11-14): the 24A's 24 V stand-off sat under the 26.4 V steady figure;
+    # the 26A reaches 37.6 V at the 20 A surge bound (the 28A: 41.1 V, over the LMR33630s' 38 V)
+    _diode("D3", "SMCJ26A", "+24V clamp, 1.5 kW -- ten stepper drivers' kick lands here",
            v24, gnd, "Diode_SMD:D_SMC")
 
     # ── U7: +5V_AUX -- the buck cell (output_board's U5), always on with the 24 V ───────────
@@ -728,6 +742,17 @@ def brain(merged=None):
              % (tag, what), sel, gnd)
     for tag, net in (() if merged else (("D4", ped_h), ("D5", ped_l), ("D10", lev_h), ("D11", lev_l))):
         _diode(tag, "ESD5B5.0ST1G", "bus B ESD clamp, arm pin to GND (LCSC C93623)", net, gnd)
+    # AT THE SWITCHES (lead, 2026-11-14): the arms' own clamps (ESD5B5.0, on the connector board
+    # when merged) break down as high as 7.8 V, over U9 / U10's 7 V I/O. A deep-snapback pair
+    # right at each switch's arm pins holds an IEC 8 kV hit to 4.32 V by 30 ns and 3.3 V at
+    # 8 A TLP (Nexperia PESD2USB5UX Fig. 10, Table 7), 0.47 pF -- nothing to a full-speed USB
+    # or CAN pair. 1 K1, 2 K2, 3 common anode
+    for tag, (h, l), what in (("D19", (ped_h, ped_l), "U9"), ("D20", (lev_h, lev_l), "U10")):
+        d = _fix(tag, "PESD2USB5UX", "bus B clamp at %s's arm pins: 2-line, 5 V stand-off, "
+                 "deep snapback, 0.47 pF (Nexperia, LCSC C3709087)" % what, SOT23, range(1, 4))
+        h += d[1]
+        l += d[2]
+        gnd += d[3]
     _tps2553("U6", "pedal arm 5 V, 0.52 A", v5a, io["EN_PED"], v5_ped, io["BUSB_FAULT_N"],
              "R22", "49k9 1%", gnd)
     _tps2553("U11", "lever arm 5 V, 0.52 A", v5a, io["EN_LEV"], v5_lev, io["BUSB_FAULT_N"],
@@ -776,8 +801,13 @@ def brain(merged=None):
         # lead must open here, not in one 30 AWG wire (four in parallel carry ~4 A).
         v24_rib = Net("+24V_RIB")
         v24_rib.drive = Pin.drives.POWER
-        _two("F4", "Fuse", "PPTC 3A hold / 30 V (open item)", "the motors' 24 V onto the "
-             "connector ribbon: 4 x 30 AWG at ~1 A each", "Fuse:Fuse_1812_4532Metric", v24, v24_rib)
+        # 2920L200/60: 2 A hold / 4 A trip at 60 V (2026-11-14). The rail clamp (SMCJ26A) reaches
+        # 37.6 V and no 2920 PPTC holds 3 A above 36 V; 2 A is five times the ten motors' measured
+        # draw moving (~0.9 W each) and the 4 A trip is the four 30 AWG ways' ~1 A each. Their
+        # sub-second step peaks are NOT measured (open item) -- a PPTC rides those out
+        _two("F4", "Fuse", "2920L200/60GR", "the motors' 24 V onto the connector ribbon: "
+             "4 x 30 AWG at ~1 A each; PPTC 2 A hold / 4 A trip, 60 V", "Fuse:Fuse_2920_7451Metric",
+             v24, v24_rib)
         _cap("C122", "10uF/50V", "ribbon 24 V bulk, after F4", v24_rib, gnd, C1206)
         _jst("J40", "PZ1.27-2x15P ZZ", "the CONNECTOR BOARD ribbon, 30-way 1.27 mm 2x15 IDC "
              "(harness.CONN_RIBBON): motors' 24 V, the lights' 24 V, bus A, both arms (CAN or "
@@ -840,7 +870,7 @@ BOARD_NOTES = {
     # Max seated heights from each maker's drawing (read 2026-11-13), because board_geom's
     # HEIGHT has no row for these footprints and the zone must not let them in unmeasured.
     "part_heights": {
-        "C113": 13.0, "C114": 13.0,   # jieerrui MA35V470M10X13: 13 mm (MA series datasheet p.4)
+        "C113": 12.5, "C114": 12.5,   # jieerrui MA50V330M10X12: 12.5 mm seated max (JLCPCB attributes, C53120968)
         "D1": 1.10,      # SMF24A (Jingdao, C169430): SOD-123FL outline dim A 0.9-1.1, "SMF5.0A~SMF440A-200W" 2020.10 p.4
         "D13": 1.10,     # BAT54WS: SOD323 dim A2 1.00-1.10 (Diodes DS30098 Rev. 14-2, package outline)
         "L3": 4.0,       # SWPA5040S4R7MT: C max 4.0 (Sunlord SWPA catalogue p.2, Shape and Dimensions)
@@ -856,11 +886,12 @@ BOARD_NOTES = {
     # every JST on +Y, mouth up (lead, 2026-11-13); J5's vertical 2x8 LCSC part is open
     "placements": {},
     "open_items": [
-        "DF40 pad n = CM5 pin n (J1) / n+100 (J2), pad 1 at the module's pin-1 end, J1-J2 "
-        "34.4 apart (scaled off CM5 DS fig. 4): check all three against the CM5 design files",
+        "DF40 placement: CLOSED 2026-11-14 on the merged output board -- read off CM5IO "
+        "(RP-008099-DD-1): 34.0 apart, pad 1 at the module's +Y end, odd column -X; "
+        "elec/cm5_mech.py places it and checks the routed board",
         "CM5 5 V: U5 is 3 A (LMR33630); CM5 asks 5 A with USB loads -- measure; LMR33640 fits",
         "LM5122 OPT tied to AGND for a single-phase master -- confirm in SNVS954H",
-        "L4 (10 uH / 15 A) and C113/C114 (470 uF / 35 V polymer) lands are placeholders",
+        "L4 (10 uH / 15 A) land is a placeholder; the 2220 X7R DC-bias retention (50 % at 24 V) the boost cap counts assume is not measured",
         "320 x 70 at X -520..-200, Z -107.2..-37.2: branner to confirm the -Y wall stretch and "
         "the 21 mm under the UI station for the mated plugs",
         "CM5 variant: an eMMC part (no SD socket here); four M2.5 mounting holes for it",

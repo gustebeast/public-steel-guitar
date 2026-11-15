@@ -114,6 +114,7 @@ LCSC = {
     "JFC1206-1400FS": "C136349",     # JDT 1206 fuse 4 A 63 V; 45,541
     "JFC1206-1150FS": "C136344",     # JDT 1206 fuse 1.5 A 63 V, 240 mohm cold; 5,908 on 2026-10-07 (motor_ctrl F1)
     "DSS16": "C7467023",             # FUXINSEMI, SOD-123 1 A 60 V Schottky; 8,105 on 2026-10-07 (the buck catch diodes)
+    "SMCJ26A": "C310042",            # Brightking, SMC, unidirectional 1.5 kW: 28.9-31.9 V, 42.1 V at 35.7 A; 23,395 stock (the R2 rail clamp, brain D3 / output board D203)
     "SMCJ24A": "C310039",            # Brightking, SMC, unidirectional 1.5 kW: 26.7-29.5 V, 38.9 V at 38.6 A; 12,745 on 2026-10-07
     "SMBJ5.0A": "C83333",            # Littelfuse, SMB, unidirectional; 26,310
     "LESD5L5.0CT1G": "C5274293",     # LRC 0.5 pF bidirectional 5 V clamp, SOD-523; 12,023
@@ -134,6 +135,7 @@ LCSC = {
     # with no source is the thing this file exists to refuse. Picked by EXACT model and
     # genuine manufacturer; where a listing was the bare MPN at 0 stock and its (LF)(SN)
     # tin-plated form was stocked, the stocked form is the same part as ordered from JST.
+    "B4B-PH-SM4-TB": "C160354",     # JST B4B-PH-SM4-TB(LF)(SN), SMD top entry, 100 V 2 A; 2,123 stock (connector board J2 / J3)
     "B4B-XH-A": "C144395",          # JST B4B-XH-A(LF)(SN), stock 60,424
     "TLC5971RGER": "C543004",       # 12-ch 16-bit constant-current LED driver, VQFN-24 (fret_led, foot_led)
     "XL-5050RGBW": "C7371891",      # XINGLIGHT RGBW 5050, separate anodes/cathodes (fret_led, foot_led)
@@ -204,7 +206,24 @@ LCSC = {
     "AO3401A": "C15127",            # P-FET SOT-23, JLC basic; 1,019,825 on 2026-10-30
     "MMBT3904": "C20526",           # CJ NPN SOT-23 (1 B 2 E 3 C), JLC basic; 2,847,066 on 2026-11-03 -- motor_ctrl R2 Q2
     "G6K-2F-Y-DC5": "C47190",       # Omron DPDT, 5 V coil (terminal arrangement p.6): the TAPE-AND-REEL listing (G6K-2F-Y-TR DC5), 64,883 on 2026-10-08; the tube listing C326376 was down to 44
+    "TPD1E10B06DYARQ1": "C3013901", # TI bidirectional 5.5 V TVS, SOD-523, 12 pF: the jack's phantom guards (output board D5 / D7)
     "ESD5B5.0ST1G": "C93623",       # onsemi bidirectional 5 V TVS, SOD-523, ~166k
+    # the output board's isolated audio barrier and port filters (output_board._isolation /
+    # the USB-C ports), picked 2026-11-14 with their ratings in voltage_ratings.json
+    "ISO7741DBQR": "C913840",       # TI 4-ch isolator 3F/1R, QSOP-16; 15,604 stock
+    "ISO7740DBQR": "C2877511",      # TI 4-ch isolator 4F, QSOP-16; 9,224 stock
+    "ISO7710FDR": "C2865544",       # TI 1-ch isolator, F = low default, SOIC-8; 1,321 stock
+    "LP2985-50DBVR": "C74511",      # TI 5 V 150 mA LDO, SOT-23-5 (TI's own, not a clone); 14,190 stock
+    "B0509S-1WR3": "C5369463",      # YLPTEC 1 W 5 -> 9 V isolated module, SIP-4; 1,575 stock (Mornsun's own not stocked)
+    "2920L200/60GR": "C49326266",   # LUTE PPTC 2920, 2 A hold / 4 A trip, 60 V; 19,696 stock (output board F204)
+    "PESD2USB5UX": "C3709087",      # Nexperia 2-line deep-snapback ESD, SOT-23, 5 V, 0.47 pF; 16,970 stock (bus B at U209 / U210)
+    "744273501": "C2651123",        # Wurth WE-SL5 HC 5 A / 80 V common-mode choke; 2,113 stock
+    "ACM2012-900-2P-T002": "C55213549",  # T-CND, TDK ACM2012-900 pattern, 50 V 0.4 A; 5,094 stock (TDK's C19972: 0)
+    "MX15EDGRC-3.5-04P": "C5188297",  # MAX 3.5 mm pluggable header, right angle, 4-way, 300 V 8 A; 8,523 stock (connector board J11-J20)
+    "MX15EDGRC-3.5-02P": "C5188295",  # its 2-way: output_board J8, the magnetic pickup (user 2026-11-14)
+    "MX15EDGK-3.5-02P": "C5188249",   # the 2-way plug, slotted (Y); stock to confirm at order time
+    "MX15EDGK-3.5-04P": "C5188251",   # its plug, M2 slotted screws, 28-16 AWG; 9,319 stock -- the mating half (tools/lcsc_prices.PLUGS)
+    "KF350-3.5-2P": "C474892",      # Cixi Kefa 3.5 mm 2-way screw terminal, M2 slot, 300 V 10 A; 10,892 stock
     "TS3USB221ARSER": "C128396",    # TI USB 2:1 switch, 5.5 V tolerant I/O, UQFN-10 -- lever pair select; 74,249 on 2026-11-03
     "LMV331IDBVR": "C34731",        # TI comparator, open drain, SOT-23-5 -- lever BOOT0 detector; 194,411 on 2026-11-03
     # -- the UI board, 2026-09-25, every line read off the LCSC listing itself ------
@@ -233,6 +252,7 @@ LCSC = {
     # Keyed by value, not in PASSIVES: lcsc_check.check_passives reads a chip size out of
     # the footprint name, which these two do not have.
     "10uH 15A": "C2045568",         # Bourns SRP1770TA-100M; ZERO in stock on 2026-11-13 (brain L4)
+    "330uF/50V": "C53120968",       # jieerrui MA50V330M10X12, SMD POLYMER D10x12.5, 50 V, 20 mohm, 3.5 A ripple; 13,181 stock (brain C113/C114 since 2026-11-14)
     "470uF/35V": "C46550472",       # jieerrui MA35V470M10X13, SMD POLYMER D10x13, 35 V, 16 mohm,
                                     # 3.8 A ripple at 100 kHz; 66,146 on 2026-11-13 (brain C113/C114).
                                     # Was C46550413, a wet Al part rated 0.42 A at 250 kHz against
@@ -284,6 +304,8 @@ PASSIVES = {
     ("22uF/16V", "C_0805_2012Metric"):       "C45783",   # Samsung CL21A226MAQNNNE, 25 V X5R 20 %; basic (25 V where 16 is asked)
     ("4.7uF", "C_0805_2012Metric"):          "C1779",   # Samsung CL21A475KAQNNNE, 25 V X5R 10 %; basic
     ("4.7uF/25V", "C_0805_2012Metric"):      "C1779",
+    ("4.7uF/10V", "C_0805_2012Metric"):      "C1779",    # the isolated audio supply's C160 / C164: the 25 V part
+    ("1uF/25V", "C_0603_1608Metric"):        "C15849",   # Samsung CL10A105KB8NNNC, 50 V X5R 10 %; basic, 13.3 M in stock (C162)
     ("4.7uF/50V", "C_0805_2012Metric"):      "C98192",   # Samsung CL21A475KBQNNNE, 50 V X5R 10 %; extended, 340,236 in stock
     ("100nF C0G", "C_1206_3216Metric"):      "C170182",   # FH 1206N104J500CT, 50 V NP0 5 %; 175,852 in stock
     ("10uF/50V", "C_1206_3216Metric"):       "C13585",   # Samsung CL31A106KBHNNNE, 50 V X5R 10 %; basic
@@ -306,6 +328,7 @@ PASSIVES = {
     ("137k 1%", "R_0402_1005Metric"):        "C138058",   # Yageo RC0402FR-07137KL, 1 %; 27,854 in stock
     ("0R", "R_0402_1005Metric"):             "C17168",   # UniOhm 0402WGF0000TCE, 0 ohm jumper; basic
     ("150k", "R_0402_1005Metric"):           "C25755",   # UniOhm 0402WGF1503TCE, 1 %; preferred extended
+    ("1k2 1206", "R_1206_3216Metric"):       "C17891",   # UniOhm 1206W4F1201T5E, 1 % 250 mW; 86,896 in stock (output board R60, U30's minimum load)
     ("0R", "R_1206_3216Metric"):             "C17888",   # UniOhm 1206W4F0000T5E; basic, 2.6 M in stock (2026-10-06)
     ("120R 100mW", "R_0402_1005Metric"):     "C413065",   # Panasonic ERJ2RKF1200X, 1 %, 100 mW; 43,451 in stock (2026-10-06)
     ("180R 100mW", "R_0402_1005Metric"):     "C413069",   # Panasonic ERJ2RKF1800X, 1 %, 100 mW (the UniOhm / Yageo 0402 is 62.5); 29,615 in stock
@@ -333,6 +356,7 @@ PASSIVES = {
     ("0R", "R_0603_1608Metric"):             "C21189",   # UniOhm 0603WAF0000T5E; basic
     ("120R", "R_0603_1608Metric"):           "C22787",   # UniOhm 0603WAF1200T5E, 1 %, 100 mW; basic
     # -- the brain board, 2026-11-13, read off JLCPCB's parts API ------------------------
+    ("22uF/50V", "C_2220_5750Metric"):       "C784103",   # PSA FS55X226K500EHG, 50 V X7R 10 %; 52,414 in stock -- no 22 uF / 50 V 1210 is stocked
     ("22uF/35V", "C_1210_3225Metric"):       "C778721",   # Taiyo Yuden GMK325BJ226MM-P, 35 V X5R 20 %; 148,503 in stock
     ("470nF/50V", "C_0603_1608Metric"):      "C77572",   # FH 0603B474K500NT, 50 V X7R 10 %; 136,525 in stock
     ("100pF/50V", "C_0402_1005Metric"):      "C1546",   # FH 0402CG101J500NT, 50 V C0G 5 %; basic, 3,352,469 in stock

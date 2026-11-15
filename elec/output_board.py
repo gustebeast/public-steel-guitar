@@ -76,6 +76,7 @@ from skidl import ERC, Net, Part, Pin, generate_netlist  # noqa: E402
 import harness                                      # noqa: E402
 import netcheck                                     # noqa: E402
 import buck_cell as BC                              # noqa: E402
+import cm5_mech as CM5                              # noqa: E402
 
 # The analog chain below is output_panel's R2, copied with its REV switches in place; this
 # board is R2's chain and only that, so REV is a constant here, not an environment knob.
@@ -105,7 +106,7 @@ XH6_FP = "Connector_JST:JST_XH_S6B-XH-SM4-TB_1x06-1MP_P2.50mm_Horizontal"
 PH6_FP = "Connector_JST:JST_PH_S6B-PH-SM4-TB_1x06-1MP_P2.00mm_Horizontal"
 TERM_FP = "TerminalBlock:TerminalBlock_MaiXu_MX126-5.0-02P_1x02_P5.00mm"
 TERM_FP_R2 = "Steel:MaiXu_MX128-5.0-02P_1x02_P5.00mm"     # slotted: no second tool (R2-3)
-TERM_FP_35 = "TerminalBlock_Phoenix:TerminalBlock_Phoenix_PT-1,5-2-3.5-H_1x02_P3.50mm_Horizontal"
+TERM_FP_PLUG2 = "Steel:MAX_MX15EDGRC-3.5-02P_1x02_P3.50mm_Horizontal_Mated"   # J8, pluggable (2026-11-14)
 MCU_FP = "Package_DFN_QFN:QFN-68-1EP_8x8mm_P0.4mm_EP5.2x5.2mm"
 ADC_FP = "Package_SO:TSSOP-14_4.4x5mm_P0.65mm"     # PCM1808PWR is a 14-pin TSSOP
 DAC_FP = "Package_SO:TSSOP-20_4.4x6.5mm_P0.65mm"
@@ -387,8 +388,9 @@ def _isolation(gnd, agnd, v5_pre, v3d, v3v3, v5, iso9_raw, iso9, io, iso):
         F = LOW on an open input: JACK_MODE reads balanced through the MCU's reset.
       LP2985-50, DBV: TI SLVS522S Table 4-1 -- 1 VIN 2 GND 3 ON/OFF 4 BYPASS 5 VOUT; 16 V max
         in (legacy die), 2.2 uF ceramic out, 10 nF bypass (7.1.3).
-      B0509S-1WR3 (Mornsun, SIP-4): 1 -Vin 2 +Vin 3 0V 4 +Vo AS THE MURATA MEE1 / NME FAMILY
-        IT CLONES -- NOT YET READ OFF MORNSUN'S SHEET (open item)."""
+      B0509S-1WR3 (YLPTEC, SIP-4, LCSC C5369463): 1 -Vin 2 +Vin 3 -Vout 4 +Vout -- READ off the
+        pin-definition table and drawing of YLPTEC's B_S-1WR3 sheet rev A2.1 (2024-07-19) p.4,
+        2026-11-14 (the MEE1 pattern, as assumed). Its minimum load is 10 % of rated (p.4 s3)."""
     p = Pin.types.PASSIVE
     u30 = Part(name="DCDC_ISO", ref_prefix="U", ref="U30", tag="U30", dest="NETLIST", tool="skidl",
                value="B0509S-1WR3", description="1 W isolated DC-DC, 5 -> 9 V unregulated, "
@@ -416,9 +418,19 @@ def _isolation(gnd, agnd, v5_pre, v3d, v3v3, v5, iso9_raw, iso9, io, iso):
             ("C160", "4.7uF/10V", v5_pre, gnd, "U30 input", C0805),
             ("C161", "4.7uF/25V", iso9_raw, agnd, "U30 output, before FB1", C0805),
             ("C162", "1uF/25V", iso9, agnd, "U31 input, after FB1", C0603),
-            ("C163", "10nF", byp, agnd, "U31 noise bypass (SLVS522S 7.1.3)", C0402),
+            ("C163", "10nF C0G", byp, agnd, "U31 noise bypass (SLVS522S 7.1.3)", C0402),
             ("C164", "4.7uF/10V", v5, agnd, "U31 output: 2.2 uF minimum effective", C0805)):
         _cap(tag, val, "isolated supply: " + why, a, b, fp)
+    # R60, THE MINIMUM LOAD (lead, 2026-11-14): U30 wants >= 10 % of its 111 mA (YLPTEC p.4 s3).
+    # Running, the audio side draws ~41 mA typ / ~80 max -- PCM1808 8.6 + 5.9 (11 + 8 max,
+    # SBAS379), PCM5102A 7 + 11 at zero data (13 + 32 max, SLAS859C), the isolators' side 2
+    # ~8, four TLV9061 2.2. With the clocks halted both converters power down (0.15 / 0.7 mA)
+    # and what is left -- isolators at DC (SLLSEP4K 5.12: 2.0 + 1.9 typ) + ISO7710 + op-amps
+    # + pull-ups -- is ~8 mA typ, UNDER 11, and no minimum is published for any of it. 1k2 on
+    # the module's output adds 7.5 mA at 9 V: >= 11 even at half the typical rest, 88 mA at
+    # the running maximum. 82 mW at 9.9 V in a 250 mW 1206
+    _res("R60", "1k2 1206", "U30 minimum load: 7.5 mA at 9 V, the B0509S's 10 % with the "
+         "converters' clocks halted", iso9_raw, agnd, "Resistor_SMD:R_1206_3216Metric")
 
     def iso_chip(tag, value, fp, side1, side2, desc):
         """side1 / side2: {pin: net}; the supplies and grounds added here."""
@@ -574,14 +586,15 @@ def output_board():
         dp_j += j["A6"], j["B6"]
         dm_j += j["A7"], j["B7"]
         for tag, value, fp, (a1, a2), (b1, b2), why in (
-                (fl_p, "744273102", "Inductor_SMD:L_CommonModeChoke_Wuerth_WE-SL5-HC",
-                 (vbus_j, vbus), (gnd_j, pgnd), "power pair: WE-SL5 HC, >= 5 A (part number "
-                 "an open item)"),
+                # 744273501, NOT 744273102 (2026-11-14): the 102 is the same body rated 2.5 A
+                # (Wurth's sheet); the 501 is 5 A, 80 V, 5.5 mOhm -- windings 1-4 / 2-3, read
+                (fl_p, "744273501", "Inductor_SMD:L_CommonModeChoke_Wuerth_WE-SL5-HC",
+                 (vbus_j, vbus), (gnd_j, pgnd), "power pair: WE-SL5 HC 744273501, 5 A / 80 V"),
                 (fl_d, "ACM2012-900-2P-T002", "Inductor_SMD:L_CommonModeChoke_Coilank_ACM2012",
                  (dp_j, dp), (dm_j, dm), "USB 2.0 data pair: 90 ohm common mode, passes HS")):
             fl = Part(name="CMC", ref_prefix="FL", ref=tag, tag=tag, dest="NETLIST", tool="skidl",
                       value=value, description="port %s common-mode choke, %s; windings 1-4 and "
-                      "2-3 (open item: read off the maker's sheet)" % (side, why), footprint=fp,
+                      "2-3 (read off the maker's sheet, 2026-11-14)" % (side, why), footprint=fp,
                       pins=[Pin(num=i, func=P) for i in range(1, 5)])
             a1 += fl[1]
             a2 += fl[4]
@@ -825,10 +838,16 @@ def output_board():
               # for the screw terminals we should use a flathead as well so a single tool can do
               # both"): the SERVO42D's terminals take a 2.0 mm blade; the MX128's M2.5 slot wants
               # a wider one. So J8 is the connector board's 3.5 mm M2-slotted block, 2-way.
-              value="KF350-3.5-2P",
-              description="magnetic pickup in, 3.5 mm screw terminal, M2 slotted (2.0 mm blade, "
-                          "as the motors' and the connector board's)",
-              footprint=TERM_FP_35,
+              # PLUGGABLE since 2026-11-14 (user: "if space allows we could use it for the
+              # magnetic pickup connector on the brain board" -- plug-style screw terminals are
+              # preferred where space allows): MAX MX15EDGRC-3.5-02P header + its MX15EDGK plug,
+              # the motors' and LED leads' family. A pickup swap is now unplug, rewire on the
+              # bench, plug back. The mated plug runs 16.5 from the pin row (the 04P's numbers).
+              value="MX15EDGRC-3.5-02P",
+              description="magnetic pickup in, 3.5 mm pluggable header; its MX15EDGK plug takes the "
+                          "leads on M2 slotted screws (2.0 mm blade, as the motors' and the "
+                          "connector board's)",
+              footprint=TERM_FP_PLUG2,
               pins=[Pin(num=1, name="HOT", func=P), Pin(num=2, name="RET", func=P)])
     # R2 TURNS J8 180 DEGREES (lead, 2026-10-29): on the dropped board its +Y entry sat in
     # string 10's clamp sweep, so the wires come in from -Y, over the board. Turned about
@@ -1451,9 +1470,14 @@ def output_board():
     # D5 IS THE PHANTOM GUARD'S CLAMP and it sits INSIDE the DC block: a blocking
     # capacitor stops the 48 V but passes the insertion edge straight through.
     blocked = Net("OUT_BLOCKED")
-    d5 = _d("D5", "ESD5B5.0ST1G", "bidirectional 5 V TVS (LCSC C93623): catches the "
-            "insertion edge C1 passes through. The node it sits on idles at VMID and swings "
-            "0..5 V, inside its 5.0 V working voltage")
+    # TPD1E10B06, NOT ESD5B5.0 (lead, 2026-11-14): the node swings to +5V_A's top, 5.12 V,
+    # over the ESD5B5.0's 5.0 V stand-off. TI SLLSEB1G: 5.5 V stand-off, 6 V minimum
+    # breakdown, 10 V at 1 A, 12 pF -- sold for audio lines. What it protects survives it:
+    # the phantom edge comes through 6.81k (48 V: 7 mA at most), and U7 behind R9 takes it
+    # on an output rated for a continuous short (SBOS839N 6.1)
+    d5 = _d("D5", "TPD1E10B06DYARQ1", "bidirectional 5.5 V TVS, 12 pF (TI, LCSC C3013901): "
+            "catches the insertion edge C1 passes through. The node idles at VMID and swings "
+            "0..5.12 V, inside its 5.5 V stand-off")
     blocked += d5[1]
     agnd += d5[2]
     # ⚠ D7 IS NOT OPTIONAL, AND FINDING THAT OUT IS THE REASON THE RING TOOK MORE THAN
@@ -1463,7 +1487,7 @@ def output_board():
     # same three parts would be a brand-new 48 V path onto a brand-new op-amp. So the cold
     # leg is a part-for-part mirror of the hot one, which the matching argument at U9 wants
     # anyway: R20 for R9, D7 for D5, C41 for C1, R21 for R10.
-    d7 = _d("D7", "ESD5B5.0ST1G", "RING phantom-guard clamp -- the mirror of D5. A TRS "
+    d7 = _d("D7", "TPD1E10B06DYARQ1", "RING phantom-guard clamp -- the mirror of D5. A TRS "
             "plug's ring lands on XLR pin 3, which carries +48 V through 6.81k just like "
             "pin 2, and C41 blocks the DC but passes the insertion edge")
     ring_blocked += d7[1]
@@ -1871,6 +1895,8 @@ BOARD_NOTES = {
     "silk_pinout": ["J4"],
     "edge_parts": {"-X": ["J1", "J2", "J5"], "+Y": ["J8"], "+X": ["J3", "J9"]},
     "placements": {},
+    # THE CM5's FOUR M2.5 HOLES (CM5IO; elec/cm5_mech.py, which also checks the routed board)
+    "cutouts": CM5.cutouts() if MERGED else [],
     "firmware_notes": FIRMWARE_NOTES,
     # THE MOAT, sealed on every layer: no track, via or fill crosses between the audio corner
     # and the rest -- only the barrier parts' pads straddle it (cadkit A25 checks the result)
@@ -1884,9 +1910,11 @@ BOARD_NOTES = {
         "the +X endplate pocket (branner) is cut from elec/output_board.pocket.json: regenerate it whenever the parts within 19 mm of the panel edge move",
         "the mount: one M4 (branner) at x > -124, not yet placed -- reserve its keepout when it is",
         "A16 voltage declarations: voltage_check has output_power / output_signal seeds; merge them into one output_board entry",
-        "audio isolation: B0509S-1WR3 pinout (1 -Vin 2 +Vin 3 0V 4 +Vo assumed from the Murata MEE1 family) -- read it off Mornsun's sheet; LCSC codes for B0509S-1WR3, ISO7741DBQR, ISO7740DBQR, ISO7710FDR, LP2985-50DBVR",
+        "F204 (2920L200/60GR, 2 A hold / 4 A trip, approved 2026-11-14): measure the motors' sub-second step peaks on the first board (output-side INA226 or a scope) -- the hold was chosen on the ~0.4 A ten motors draw moving",
+        "boost bulk counts (2 in, 5 out at 22uF/50V 2220) assume 50 % DC-bias retention at 24 V, 70 % at 20 V: PSA publishes no curve -- measure one part",
+        "audio isolation: B0509S-1WR3 (YLPTEC) 11..111 mA: R60 (1k2) holds the 10 % minimum with the converters' clocks halted; measure the clock-halted audio-side draw on the first board (no maker publishes a MINIMUM for it)",
         "U5 as the ONE logic 5 V (merged): LMR33640 in the RNX footprint (confirm the orderable and LCSC code), an inductor with Isat >= 5 A in the 5x5 land, D14 / D16 (SS34, 3 A) feed it on a 5 V contract -- 5 A parts if full load is allowed there",
-        "USB-C common-mode chokes FL1-FL4: winding pins (1-4 / 2-3 assumed) and the WE-SL5 HC part number with >= 5 A, both off the makers' sheets; LCSC codes",
+        "USB data chokes FL3 / FL4: ACM2012-900-2P-T002 is marked 'not recommended for new design' on TDK's catalogue (20220113); ordered as T-CND's C55213549. Windings 1-4 / 2-3 READ off TDK's circuit diagram, pads match KiCad's Coilank footprint",
         "audio isolation: the board is meant to be measured (pickup into an amp: no charger / phone charger / laptop charger / two chargers / a computer on the data) against R1",
         "the UI station's clamp (to x -147) is in this board's drop path (to x -169.4): ignored for now (user 2026-11-13), it moves -X later",
     ],
@@ -1976,6 +2004,14 @@ def _merged_quality(paths, q):
     unc["U34.7"] = "ISO7710F D pin 7 is NC (TI SLLSER9E pin table)"
     q["unconnected"] = unc
     q["pinouts"] = dict(bq.get("pinouts", {}), **q["pinouts"])
+    q["pinouts"]["PESD2USB5UX"] = (
+        "Nexperia PESD2USB5UX datasheet (LCSC C3709087's PDF) Table 2 pinning: 1 K1, 2 K2 "
+        "(cathodes, the two lines), 3 CA common anode (GND); SOT23 pads 1 / 2 / 3 as KiCad's -- "
+        "D219 / D220: 1 = bus B H, 2 = bus B L, 3 = GND (read 2026-11-14)")
+    q["pinouts"]["744273501"] = (
+        "Wurth Elektronik 744273501 (WE-SL5 HC) datasheet p.1 schematic: windings 1-4 and 2-3, "
+        "pads numbered as KiCad's L_CommonModeChoke_Wuerth_WE-SL5-HC -- FL1 / FL2: 1-4 VBUS "
+        "connector -> board, 2-3 GND connector -> board (read 2026-11-14, we-online.com)")
     if FOLD:
         q["manual"] = dict(q.get("manual", {}), M43=(
             "ONE programmable part on this board apart from the CM5: U1, the STM32H743 (the CH32 "

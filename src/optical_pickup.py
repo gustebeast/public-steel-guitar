@@ -3409,63 +3409,24 @@ def _part_solid(p):
 
 
 def opt_pcb() -> cq.Workplane:
-    """The assembled optical strip: FR4 + EVERY placed component at its true Z, all
-    facing UP. Fab/purchased -> NO standalone STEP (cadkit convention); it exists in the
-    assembly as the fit-check that it clears the strings and fits the carrier."""
-    pcb = _outline()
-    for p in PARTS:
-        body = _part_solid(p)
-        if body is not None:                          # bare pads (TP) have no body
-            pcb = pcb.union(body)
-    # ⚠⚠ THE M4 CLEARANCE HOLES ARE BACK, WHICH IS THE 2026-09-23 INSTRUCTION COMPLETED
-    # (user: "get rid of the M4 mounting holes. We can add them back later based on where
-    # there's available space"). The space has now been found and the fab data has them: both
-    # mounts sit on the -X plinth, and elec/optical.py emits them through BOARD_NOTES
-    # ["cutouts"] as Edge.Cuts circles with router keepouts.
-    # Until this, the board was held by NOTHING while the endplate still built anchors,
-    # inserts and screws to mount_points() -- and the overlap gate had been reporting the
-    # consequence all along as optical_pcb <-> optical_screw_0/1, a 4.0 mm shank crossing
-    # 1.6 mm of laminate at each point. A fab house would have shipped solid laminate there.
-    # ⚠ CYLINDERS, NOT box_at. The note this replaces records that they were SQUARE prisms
-    # when they last existed here -- which is both a CAD/fab divergence and the reason the
-    # viewer render showed square holes. `cyl` matches what the mill actually makes.
-    # ⚠ AND FROM mount_points(), THE SAME SOURCE THE SCREW AND THE FAB READ. Three things
-    # have to agree here -- the CAD plate, the Edge.Cuts circle and the screw -- and the last
-    # time they were hand-typed the placement disagreed with both (Cd11 sitting 0.47 mm inside
-    # where the head one belongs). Driven off one function they cannot drift.
-    # cad_geom_check compares the CAD's hole count against the routed board's and reported
-    # "the CAD plate has 10 hole(s), the routed board 12" until this was added.
-    for _mx, _my in mount_points():
-        pcb = pcb.cut(cyl(M4.shaft_clr_d, PCB_T + 2.0, PCB_BOT - 1.0)
-                      .translate((_mx, _my, 0.0)))
-    # the notch in front of the USB-C (usb_notch). On the BOARD only: _outline(grow) is
-    # also the shape pockets are cut from, and a pocket that followed the notch would put
-    # plastic exactly where the plug's overmould has to go.
-    _nx0, _nx1, _ny0, _ny1 = usb_notch()
-    _nslop = 1.0 if OPTICAL_REV == 1 else 0.0       # R1's runs out through the edge
-    pcb = pcb.cut(box_at(_nx1 - _nx0, (_ny1 - _ny0) + _nslop, PCB_T + 2.0,
-                         x=(_nx0 + _nx1) / 2, y=(_ny0 + _ny1) / 2 - _nslop / 2,
-                         z=PCB_BOT + PCB_T / 2))
-    # ⚠ NO JACK ACCESS HOLE, BECAUSE THE JACK IS NOT UNDER THE BOARD. This cut it, and
-    # elec/optical.py emitted the matching circle on Edge.Cuts -- where it was a FAB
-    # DEFECT, not a hole: the jack sits at x -33.93 and the board's -X edge is at -32.16,
-    # so the O4.4 circle straddles the edge. On Edge.Cuts that is "invalid_outline: Circle
-    # + Segment" (the one unexplained violation that survived every route this week) and
-    # it stretched the routed outline's bounding box to 61.19 x 188.53 against the CAD's
-    # 57.21, which is the CAD/fab disagreement cad_geom_check has been reporting. One
-    # object, both findings.
-    #
-    # The invariant is "a driver can reach the jack", and the board satisfies it by not
-    # being there: 1.775 mm of clear air from the screw centre to the board edge against
-    # the 1.444 a 2.5 mm hex key needs across corners. Asserted below rather than assumed,
-    # because the margin is 0.33 mm and the strip has moved in X twice this month.
-    # ⚠ _s[2], NOT _s[3] -- THIS ASSERT WAS VACUOUS (2026-09-29). _SECTIONS tuples are
-    # (y0, y1, x1, x0): [2] is the -X edge (-32.156) and [3] is TAIL_X1, the +X edge
-    # (+25.056). Reading [3] compared the jack at x -33.93 against the FAR side of the board
-    # and computed a 58.99 mm gap, so the assert passed unconditionally and could never catch
-    # the one thing it exists to catch -- the strip growing -X into the driver. The comment
-    # above had the right number all along (1.775 mm); only the code was measuring the wrong
-    # edge. With [2] it reproduces 1.775 against the 1.444 a 2.5 mm hex key needs.
+    """The assembled optical strip: the ROUTED board read back from elec/geom/optical.geom.json
+    (laminate with its holes and notch, every part's F.Fab body at its height, through-hole
+    tails), placed in this module's frame. Fab/purchased -> NO standalone STEP (cadkit
+    convention); it exists in the assembly as the fit-check that it clears the strings and
+    fits the carrier.
+
+    ⚠ READ BACK, NOT DRAWN (2026-11-14). This used to union a box per entry of PARTS --
+    the generator's own placement, each package as its full LEAD envelope with its long side
+    on X. The routed footprints disagreed on four of them (Q1 / Q2 SOT-23, U11 SOT-23-5, U8
+    SOT-223: KiCad's bodies stand long side on Y), so the web export found no box at the
+    routed parts and drew NOTHING there ("boxes kept: 4 not drawn on this instance"). The
+    lettering was already read back (opt_silk); the board now is too, through the same
+    frame, so the two cannot drift apart. Checked against the drawn version: laminates agree
+    to 5.2 mm3 of 14742 (the routed outline is the fab's), same 57.22 x 179.66 extent."""
+    from . import board_geom as BG
+    dx, dy = _silk_to_world()
+    pcb = BG.BOARDS.solid("optical").translate(
+        (dx, dy, PCB_TOP - BG.load("optical")["thickness_mm"]))
     _x0 = min(_s[2] for _s in _SECTIONS)          # the board's -X edge
     gap = _x0 - JACK_ACCESS_XY[0] if JACK_ACCESS_XY[0] < _x0 else 0.0
     assert gap >= _HEX25_R, (
@@ -3475,6 +3436,8 @@ def opt_pcb() -> cq.Workplane:
         "the outline, not as a circle on Edge.Cuts straddling the edge."
         % (JACK_ACCESS_XY[0], gap, _x0, _HEX25_R))
     return pcb
+
+
 
 
 def jack_access(grow: float = 0.0) -> cq.Workplane:

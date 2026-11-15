@@ -2786,6 +2786,16 @@ _COLORS = {
     # the new boards (src/new_boards_view.py: <board>_pcb + <board>_pcb_silk)
     "brain_pcb":        _BG.mask("brain"),
     "output_board_pcb": _BG.mask("output_board"),
+    "output_board_cm5":    _BG.mask_rgb("green"),   # the Compute Module 5: Raspberry Pi's green mask
+    "output_board_cm5_soc": (0.74, 0.75, 0.77),     # the BCM2712's metal lid
+    "output_board_cm5_plug": (0.85, 0.80, 0.68),    # the CM5's DF40 plugs, cream LCP
+    "output_board_df40_leads": (0.83, 0.69, 0.22),  # J201 / J202's gold contact leads
+    "connector_board_tb_plug": (0.16, 0.55, 0.32),  # J11-J20: MX15EDGK plugs, green PA66
+    "connector_board_tb_screws": (0.72, 0.74, 0.78),   # their M2 slotted screws
+    "output_board_idc": (0.10, 0.10, 0.11),       # the ribbon headers' IDC sockets, black PBT
+    "connector_board_idc": (0.10, 0.10, 0.11),
+    "output_board_idc_ribbon": (0.62, 0.63, 0.66),   # grey 0.635 flat cable (a stub of it)
+    "connector_board_idc_ribbon": (0.62, 0.63, 0.66),
     "brain_pcb_silk":   (0.95, 0.95, 0.93),
     "output_board_pcb_silk": (0.95, 0.95, 0.93),
     "output_board_term": (0.16, 0.55, 0.32),        # J8: MX128 terminal block, green PA66
