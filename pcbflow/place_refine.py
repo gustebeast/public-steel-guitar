@@ -81,6 +81,26 @@ def _score(stem, parent=None, save=False, budget=900):
     return {"error": (p.stderr or p.stdout)[-600:]}
 
 
+def _quick(stem):
+    """router.quick's one round, in its own process (see router/quick.py): None if it fails."""
+    p = subprocess.run([sys.executable, "-m", "router.quick", stem], capture_output=True, text=True,
+                       cwd=HERE, env=dict(os.environ, PYTHONIOENCODING="utf-8"))
+    for line in reversed(p.stdout.strip().splitlines()):
+        try:
+            return json.loads(line)
+        except ValueError:
+            continue
+    return None
+
+
+# ⚠ THE k=1 REJECT FILTER (lead, 2026-11-14), opt-in: PLACE_REFINE_K1=1. A candidate whose one
+# negotiation round has a net with no path, or more than K1_MAX_NEW nets newly sharing space
+# against the parent's round 1, is dropped before its delta score (~25 s instead of a route).
+# It only rejects: k-round sharing does not rank working placements (router/quick.py).
+K1 = os.environ.get("PLACE_REFINE_K1", "0") != "0"
+K1_MAX_NEW = int(os.environ.get("PLACE_REFINE_K1_MAX_NEW", "4"))
+
+
 def _layout(stem):
     p = subprocess.run([KICAD_PY, os.path.join(HERE, "layout.py"), stem], capture_output=True, text=True,
                        env=dict(os.environ, PYTHONIOENCODING="utf-8"))
@@ -331,6 +351,7 @@ def refine(d, intent, rounds=4, cands=8, jobs=4, log=print):
         if not pick:
             break
         parent_pkl = os.path.join(cur, base + ".route.pkl")
+        q_parent = _quick(os.path.join(cur, base)) if K1 else None
 
         def run(i_p):
             i, (ref, dx, dy, t, pl, _kind) = i_p
@@ -343,6 +364,12 @@ def refine(d, intent, rounds=4, cands=8, jobs=4, log=print):
             ok, out = _layout(os.path.join(cd, base))
             if not ok:
                 return dict(dir=cd, ref=ref, move=[dx, dy, t], error="layout: " + out[-200:])
+            if q_parent is not None:
+                from router.quick import reject
+                q = _quick(os.path.join(cd, base))
+                why_ = reject(q, q_parent, K1_MAX_NEW) if q is not None else None
+                if why_:
+                    return dict(dir=cd, ref=ref, move=[dx, dy, t], error="k=1 reject: " + why_)
             s = _score(os.path.join(cd, base), parent=parent_pkl)
             return dict(dir=cd, ref=ref, move=[dx, dy, t], score=s)
 
