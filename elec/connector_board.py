@@ -220,13 +220,9 @@ BOARD_NOTES = {
                          "J1's 1.27 mm pin field allowed")}
               for n in ("CANA", "PED", "LEV")],
     "quality": {
-        # J11 / J13 (rear row, d5 and d6): the +Y edge is 0.1 mm behind the header and the
-        # band in front is the plug's; J12 / J14 take the gaps between them for their own
-        # pinout blocks. Their way-1 dots are on the front (silk_mark_in_body).
-        "connector_labels": {r: {"back_only": "rear row: the board edge 0.1 mm behind the "
-                                              "header, the plug in front, the gaps either "
-                                              "side are J12 / J14's pinouts; way-1 dot on the front"}
-                             for r in ("J11", "J13")} | {
+        # (J11 / J13's back_only went 2026-11-15: the motor plugs are lettered A-D on the
+        # front now -- silk_ways, in the band in front of the header -- with a key)
+        "connector_labels": {
             # J1 (d14 / d15): 30 ways at 1.27 mm take a two-column block 15 lines tall; the front
             # round J1 is J2 / J3, their clamps and C1, so the block goes on the back, behind
             # J1. Its way-1 mark is on the front (silk_pinout prints the block)
@@ -317,6 +313,15 @@ BOARD_NOTES = {
     # A17: J1's 30 ways named as a block (two columns, odd left, even right) -- 1.27 mm is too
     # fine for a word per way
     "silk_pinout": ["J1"],
+    # ⚠ A MOTOR PLUG IS TOLD BY ITS MOTOR, ITS WAYS BY A LETTER (user, 2026-11-15): "MTR X next
+    # to each plug saying which motor is which, then the individual ports can be labeled
+    # A B C D with a key on the side showing what A B C and D mean". Ten identical plugs read
+    # by net names were a wall of +24V / GND / CANA_H; the letters are the motor lead's own
+    # (the SERVO42D end is wired to the same key).
+    "silk_labels": {"J%d" % (11 + k): "MTR %d" % (k + 1) for k in range(10)},
+    "silk_ways": {"J%d" % (11 + k): {1: "A", 2: "B", 3: "C", 4: "D"} for k in range(10)},
+    # the key, at the -X margin between the two motor rows (board x 50.8 - 64, clear of parts)
+    "silk_words": [("A 24V" + chr(10) + "B GND" + chr(10) + "C CAN H" + chr(10) + "D CAN L", 57.0, 80.0, "front")],
     # ⚠ THE REAR ROW'S WAY-1 MARK GOES IN FRONT OF PIN 1, UNDER THE PLUG (d5, 2026-11-15):
     # J11-J15 stand 0.1 mm from the +Y edge, so behind them there is no board, and their
     # neighbours' courtyards fill both sides -- J11-J14 got no mark at all (quality A17).
