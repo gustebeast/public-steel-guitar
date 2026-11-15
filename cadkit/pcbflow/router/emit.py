@@ -188,6 +188,26 @@ def net_items(m, net):
                 continue
         kept.append(it)
     items = kept
+    # ⚠ ...AND THROUGH THE NET'S OWN ROUTED VIA, TOO (output_board mM, 2026-11-14): a 1.15 mm
+    # V5_PRE path went B.Cu -> In2 -> In1 in 0.25 mm, three through vias 0.05 and 0.2 apart --
+    # three hole_to_hole. The grid never objects (a net's own copper does not conflict with
+    # itself), but a drill does: KiCad holds holes of one net apart too. Every via here is
+    # through, so the first already joins every layer: a later layer change within
+    # hole-to-hole spacing of it takes a stub to its centre on each layer, no second drill.
+    # The stub lies between two via pads the router had already reserved on every layer.
+    h2h = m.via_drill + getattr(m, "hole_to_hole", 0.25) + EPS
+    kept, drilled = [], []
+    for it in items:
+        if it[0] == "via":
+            v = next(((x, y) for x, y in drilled if math.hypot(it[1] - x, it[2] - y) < h2h), None)
+            if v is not None:
+                if math.hypot(it[1] - v[0], it[2] - v[1]) > EPS:
+                    for L in (it[3], it[4]):
+                        kept.append(("seg", L, it[1], it[2], v[0], v[1], wn))
+                continue
+            drilled.append((it[1], it[2]))
+        kept.append(it)
+    items = kept
     for L, x, y, we in ends:
         done = False
         for p in pads:

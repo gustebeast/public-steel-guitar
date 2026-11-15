@@ -41,6 +41,7 @@ import functools as _functools
 from functools import lru_cache as _lru_cache
 
 from cadkit.kept import kept
+from cadkit.board_geom import mask_rgb as _mask_rgb   # a board is a solder-mask colour (cadkit f715f57)
 
 import cadquery as cq
 
@@ -1950,7 +1951,7 @@ COLORS = {
     "yoke": (0.39, 0.58, 0.93), "collar": (0.85, 0.45, 0.15),
     "spring": "leg_latch_spring", "plug": (0.85, 0.45, 0.15),
     "sleeve_p": (0.95, 0.75, 0.20), "sleeve_c": (0.95, 0.75, 0.20), "m3": "set_screw", "col_ins": "nut",
-    "coupler": (0.85, 0.45, 0.15), "cpl_m3": "set_screw",
+    "coupler": (0.85, 0.45, 0.15), "cpl_m3": "set_screw", "cpl_insert": "nut",
     "housing": (0.30, 0.36, 0.42), "hb": "set_screw", "insert": "nut",
     "collar_a": (0.85, 0.45, 0.15), "collar_b": (0.85, 0.45, 0.15), "ca_m3": "set_screw", "block": (0.30, 0.36, 0.42), "mplate": (0.30, 0.33, 0.38),
     "endplate": (0.36, 0.30, 0.42), "bar_m3": "set_screw", "bridge_axle": "set_screw",
@@ -1958,8 +1959,8 @@ COLORS = {
     "keyhead": (0.36, 0.30, 0.42), "kh_m3": "set_screw", "kh_plate": "nut_plate", "kh_shoe": (0.85, 0.45, 0.15),
     "kh_side_screw": "set_screw", "kh_side_insert": "nut", "kh_height_screw": "set_screw",
     "kh_height_insert": "nut", "kh_rod": "guide_rod",
-    "body": "chassis", "wall_bar": "nut_plate", "keyplate": "nut_plate", "ob_board": (0.10, 0.45, 0.20),
-    "deck": (0.16, 0.16, 0.18), "deck_white": (0.95, 0.95, 0.92), "fret_board": (0.10, 0.45, 0.20),
+    "body": "chassis", "wall_bar": "nut_plate", "keyplate": "nut_plate", "ob_board": _mask_rgb("green"),
+    "deck": (0.16, 0.16, 0.18), "deck_white": (0.95, 0.95, 0.92), "fret_board": _mask_rgb("green"),
     "fret_leds": (1.0, 0.98, 0.85),
 }
 

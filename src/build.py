@@ -2751,6 +2751,11 @@ _COLORS = {
     **{"pi4" + _k: __import__("src.pi4b", fromlist=["RGB"]).RGB[_c]
        for _k, (_c, _f) in __import__("src.pi4b", fromlist=["GROUPS"]).GROUPS.items()},
     "pi_cap":          _BG.mask("pi_cap"),   # PCB green
+    # the new instrument's boards (src/new_boards_view.py): a board part with no entry here was
+    # drawn the default white -- cadkit's export now refuses a board not in a mask colour
+    "output_board_pcb":    _BG.mask("output_board"),
+    "connector_board_pcb": _BG.mask("connector_board"),
+    "brain_pcb":           _BG.mask("brain"),
     "pi_riser":        (0.05, 0.05, 0.05),   # BOUGHT: Adafruit 4079 socket riser, black
     "output_panel":    _BG.mask("output_panel"),   # output + panel board (VBUS broken,
                                              # DAC + true-bypass relay + the TS jack)
@@ -2901,6 +2906,26 @@ _WAY_COLORS = {"wire_link_1": (0.85, 0.12, 0.10), "wire_link_2": (0.05, 0.05, 0.
                "wire_link_3": (0.92, 0.92, 0.92), "wire_link_4": (0.10, 0.60, 0.25)}
 
 
+# PARTS THAT HAD NO COLOUR (2026-11-14): each fell through to the default white, which is now a
+# build failure (user: "missing from the project's colour table ... should fail the build").
+# Coloured as their material already is elsewhere in this table.
+_BRASS, _STEEL, _GF = (0.80, 0.60, 0.35), (0.55, 0.55, 0.58), _COLORS["bar_latch_collar"]
+_COLORS.update({
+    # the lever stack's heat-sets and travel stop (every station peels to these)
+    "main_position_insert": _BRASS, "main_spring_tension_insert": _BRASS,
+    "half_stop_position_insert": _BRASS, "half_stop_spring_tension_insert": _BRASS,
+    "kl_travel_stop_insert": _BRASS, "kl_travel_stop_screw": _STEEL,
+    # the fret boards' M4 joints (src/fret_light.py)
+    "fret_m4_insert_key": _BRASS, "fret_m4_insert_mid": _BRASS,
+    "fret_m4_key": _STEEL, "fret_m4_mid": _STEEL,
+    "bar_shim": _GF, "seam_bridge": _GF,             # PETG-GF printed parts
+    "ui_shaft": (0.62, 0.64, 0.67),                  # the encoder's steel shaft
+    "wall_bar": (0.55, 0.58, 0.62),                  # steel bar, as leg_shaft
+    "wire_link_plug_c": _COLORS["wire_link_plug"],
+    "wire_usb_plug_pi": _COLORS["wire_usb_plug"],
+    "wire_usb_ribbon": _COLORS["wire_usb"], "wire_usb_joint": _COLORS["wire_usb"],
+})
+
 def _color_for(name):
     # STRIP EVERY TRAILING INDEX GROUP, not just the last one -- the same lesson
     # tools.check_overlaps.base() records, and this resolver had not learned it. A part
@@ -2965,7 +2990,11 @@ def _color_for(name):
         _c = _DB.color_of(base, _COLORS)
         if _c is not None:
             return cq.Color(*_c)
-    return cq.Color(*_DEFAULT_COLOR)
+    # ⚠ NO DEFAULT COLOUR (user, 2026-11-14). A name nothing here knows used to come out
+    # _DEFAULT_COLOR, white -- a new board read as a white-mask PCB and nothing said so. It
+    # fails the build instead: add the part to _COLORS (or its module's own table).
+    raise KeyError("build: no colour for part %r (base %r) -- add it to src/build.py _COLORS "
+                   "or its module's colour table; there is no default" % (name, base))
 
 
 def _export_assembly(publish=True, gate=True, gate_full=True):

@@ -477,6 +477,21 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     for w_ in _chain_warns(rules, parts, pl):
         say("WARN " + w_)
         floor.append(w_)
+    # ⚠ A BROKEN HARD `near` IS SAID, NOT LEFT TO A SIDE EFFECT (output_board mN, 2026-11-14):
+    # "U17 within 30 of FL3" ended 39.6 mm and the report showed only a CHAIN warning about
+    # it; the board went on to a 30-minute route with its USB pairs as long as before.
+    nb = []
+    for i_, r_ in enumerate(rules):
+        if r_["kind"] == "near" and r_.get("hard", True):
+            for s_, ref_, det in pi.check(r_, P_k, notes_k):
+                if s_ < -0.05:
+                    nb.append((s_, "NEAR BROKEN (hard) rule %d: %s %s, wants %g (%.2f mm) [%s]"
+                               % (i_, ref_, det, r_["max_mm"], s_, r_.get("src", ""))))
+    for _s, w_ in sorted(nb)[:12]:
+        say("WARN " + w_)
+        floor.append(w_)
+    if len(nb) > 12:
+        floor.append("NEAR BROKEN (hard): %d more" % (len(nb) - 12))
     wlines = _raise_widths(notes, parts, pl, keep_widths)
     for w_ in wlines:
         say("WIDTH " + w_)

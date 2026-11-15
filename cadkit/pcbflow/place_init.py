@@ -136,6 +136,28 @@ def _composite(parts, anchor, members):
     return dict(a, pads=pads, crtyd=a["crtyd"], crtyd_multi=cy, n_own=len(a["pads"]))
 
 
+def _pin_cap(rule, parts):
+    """⚠ A CAP `near` ITS IC's SUPPLY PIN MAY STAND IN THAT IC's RING, AS A `decap` MAY
+    (output_board mN, 2026-11-14). The project ruled the H743's 13 VDD caps as `near`
+    U1.<pin>, 3.0 mm (quality A2), so auto_decaps left them as the author's -- and only a
+    `decap` rule was let into its IC's escape ring (_drop_sat). U1's ring is 2.5 mm (176 pins)
+    and its pads sit 1.00 inside its courtyard, so every cap seated at 1.00 + 2.67 = 3.67 mm:
+    all 13 broken by the placer's own ring, not by the footprints (against the courtyard they
+    reach 1.0). Only the drop changes: re-typing the rules as `decap` moved them into the
+    decap stage and reshuffled the board (196 of 377 parts moved, a decap stranded 34 mm
+    off U212) -- the rule kind, and so the seating order, stay as written."""
+    if rule is None or rule["kind"] != "near":
+        return False
+    c, t = rule.get("ref", ""), rule.get("target", "")
+    if not (c[:1] == "C" and c[1:2].isdigit() and "." in t and c in parts):
+        return False
+    ic, num = t.split(".", 1)
+    if ic not in parts or len(parts[ic]["pads"]) <= IC_PADS:
+        return False
+    net = next((q["net"] for q in parts[ic]["pads"] if q["num"] == num), None)
+    return bool(net) and net in {q["net"] for q in parts[c]["pads"]}
+
+
 def place(parts, notes, rules, keep=()):
     """Free-anchor `group` cells are placed whole: each becomes one composite part (its
     anchor's ref) for every stage, its members expanded from the anchor's pose at the end.
@@ -559,6 +581,49 @@ def _grow_edge(poly, at, d, name, regions, rules, parts, pl, P, reach=0.0):
     return True, what, [[round(float(x), 3), round(float(y), 3)] for x, y in new]
 
 
+def _near_reach(parts, rules, pl):
+    """⚠ A HARD `near` ITS SUBJECT'S REGION CANNOT REACH FAILS HERE, BY NAME (output_board
+    mN, 2026-11-14): U17 was held in one region and its rule's target sat in another; the
+    placer met what it could by dragging the target and reported nothing. The rule is
+    checked against the regions before anything is placed: a subject held in a region (its
+    in_region rules) whose nearest point is further from the target -- a placed part, or
+    the region the target is held in -- than the rule allows cannot meet it anywhere."""
+    # the AUTHOR's regions only: a grown re-run holds an anchor in its own `_hold_<ref>` square
+    # where the first run put it (_place_grow), and a rule the first run left broken there is
+    # the report's NEAR BROKEN, not a refusal (output_board mN replay: U14 held 22.9 off J2)
+    regions = {r["name"]: np.asarray(r["poly"], float) for r in rules
+               if r["kind"] == "region" and not r["name"].startswith("_")}
+    held = {}
+    for r in rules:
+        if r["kind"] == "in_region" and r["region"] in regions:
+            for x in pi._refs(r["refs"], parts):
+                held.setdefault(x, []).append(r["region"])
+    bad = []
+    for r in rules:
+        if r["kind"] != "near" or not r.get("hard", True) or r.get("ref") not in held:
+            continue
+        tr = r["target"].split(".", 1)[0]
+        if tr in pl:
+            where, what = np.asarray([pl[tr][:2]], float), "%s (placed)" % tr
+        elif tr in held:
+            where, what = None, "%s (held in %s)" % (tr, "/".join(held[tr]))
+        else:
+            continue
+        for reg in held[r["ref"]]:
+            if where is not None:
+                d = float(min(pi._seg_dist(where, regions[reg][i], regions[reg][(i + 1) % len(regions[reg])]).min()
+                              for i in range(len(regions[reg]))))
+                d = 0.0 if pi._inside(regions[reg], where).any() else d
+            else:
+                d = max(0.0, min(pi._poly_dist(regions[reg], regions[t_]) for t_ in held[tr]))
+            if d > float(r["max_mm"]):
+                bad.append("%s is held in region %s, which comes no nearer than %.1f mm to %s; the rule "
+                           "wants %g [%s]" % (r["ref"], reg, d, what, r["max_mm"], r.get("src", "")))
+    if bad:
+        raise SystemExit("place_init: a hard near rule no placement can meet -- re-region the part "
+                         "or relax the rule:\n  " + "\n  ".join(bad))
+
+
 def _place(parts, notes, rules, keep=(), hint_out=None):
     pl = {}
     log = []
@@ -652,6 +717,8 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
                 and len(parts[r["ref"]]["pads"]) <= IC_PADS and _big(r["ref"])
                 and not (tnets & {q["net"] for q in parts[r["ref"]]["pads"] if q["net"]})}
 
+    _near_reach(parts, rules, pl)
+
     # ---- 2. global (quadratic)
     free = [r for r in sorted(parts) if r not in fixed]
     idx = {r: i for i, r in enumerate(free)}
@@ -700,6 +767,28 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
             by[i] += w * t[1]
         elif fb:
             spring(b, ob, a, oa, w)
+
+    # ⚠ A `near` PULLS ITS SUBJECT, NEVER ITS TARGET (output_board mN, 2026-11-14). As a
+    # two-way spring the rule "U17 within 30 of FL3" pulled FL3 -- the USB pair's choke,
+    # tied by its nets to the J1 connector -- as hard as it pulled U17; U17's region held
+    # it, so the solve met the rule halfway by dragging FL3 43 mm off J1, and the rule was
+    # still broken (39.6 mm). The target is where the rule is measured FROM: a one-way
+    # spring moves only the subject, and the target answers to its own nets.
+    def spring1(a, oa, b, ob, w):
+        if a not in idx:
+            return
+        i = idx[a]
+        A[i, i] += w
+        if b in idx:
+            j = idx[b]
+            A[i, j] -= w
+            d = ob - oa
+            bx[i] += w * d[0]
+            by[i] += w * d[1]
+        else:
+            t_ = np.asarray(pl[b][:2]) + ob - oa
+            bx[i] += w * t_[0]
+            by[i] += w * t_[1]
 
     for nm, pins in nets.items():
         k = len(pins)
@@ -762,7 +851,7 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
     for _round in range(4):
         A[:], bx[:], by[:] = A0, bx0, by0
         for ref_, tr, ot, w, _m in near_springs:
-            spring(ref_, np.zeros(2), tr, ot, w)
+            spring1(ref_, np.zeros(2), tr, ot, w)
         gx, gy = np.linalg.solve(A, bx), np.linalg.solve(A, by)
         hard = False
         for sp in near_springs:
@@ -1746,7 +1835,8 @@ def _drop_sat(G, parts, c, t, rots, pl, forbid, anchor, rule, near_mm=None):
     # the WHOLE ring, it sat on U4's north edge in front of BOOT0 / PG_5V and both went open.
     # The window is the outward side of the edge carrying its tight pins, along that edge
     # the pins' span +- half the satellite.
-    tight = rule is not None and rule.get("_tight") and rule["kind"] != "decap"
+    pcap = _pin_cap(rule, parts) and rule["target"].split(".", 1)[0] == anchor
+    tight = rule is not None and rule.get("_tight") and rule["kind"] != "decap" and not pcap
     # A FALLBACK, judged by the rule: the plain drop first, kept if the rule holds; only a
     # stranded tight satellite tries the window, and keeps whichever seat breaks it less.
     # (Always open, it moved 51 parts on output_panel, whose crystals already held.)
@@ -1760,7 +1850,7 @@ def _drop_sat(G, parts, c, t, rots, pl, forbid, anchor, rule, near_mm=None):
                 return True
             plain = (list(pl[c]), s0)
             _lift(G, parts, pl, c)
-    big = (rule is not None and (rule["kind"] == "decap" or tight)
+    big = (rule is not None and (rule["kind"] == "decap" or pcap or tight)
            and anchor in pl and halo(parts[anchor]) > HALO_SMALL)
     delta = None
     if big:
