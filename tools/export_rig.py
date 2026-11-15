@@ -308,6 +308,7 @@ BENCH_CARRIAGE = ("yoke_{}", "yoke_m3_lo_{}", "yoke_m3_hi_{}")
 
 
 def build_rig(build_n=None, out=RIG) -> pathlib.Path:
+    from src import direct_bench as _DB
     if build_n is None:
         from tools.export_glb import _current_build_n
         build_n = _current_build_n()
@@ -328,7 +329,10 @@ def build_rig(build_n=None, out=RIG) -> pathlib.Path:
             "rest_dz": DEMO_POSE_DZ.get(i, 0.0),      # baked demo offset (viewer cancels it)
             # carriage assembly: pure Z translation (raise = -Z, toward more tension)
             # the H-nut IS the carriage now: it, its ball end and nothing else
-            "carriage_nodes": [f"nut_{i}", f"string_nut_{i}"] + [n.format(i) for n in BENCH_CARRIAGE],
+            # NOT the direct drive's own parts: its nut_N / yoke_N share these names (no db_ prefix
+            # since 11-14) but ride the screw along X, so v1's Z carriage would lift them off it
+            "carriage_nodes": [n for n in [f"nut_{i}", f"string_nut_{i}"]
+                               + [n.format(i) for n in BENCH_CARRIAGE] if not _DB.owns(n)],
             # pulleys: spin about their own axis, centre in CAD space
             # `sign` is the turn per mm the NUT GOES DOWN, about `axis`: a right-hand screw
             # lowers its nut turning counter-clockwise seen from above (+Z), and the belt
