@@ -685,6 +685,9 @@ def auto_switcher(parts, cells=(), gate_mm=8.0, ctrl_mm=5.0, small=5, sw_refs=6)
     return out
 
 
+GROUND_NET = re.compile(r"^(?:[ADPS]?GND|GND_\w+|\w+_GND)$")
+
+
 def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-6, ground=("GND",), more_mm=2.0,
                 cells=(), descriptions=None, loose_mm=8.0):
     """Rules for every capacitor across a SUPPLY net (SUPPLY: '+...', VCC, VDD, VBUS, VREF, ...)
@@ -701,6 +704,16 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
     smallest value first, the first cap gets max_mm at weight 1, every further one
     max_mm + more_mm at weight 0.5: a rule refinement can trade, never one that packs caps
     round a fine-pitch part at the cost of its escapes."""
+    # ⚠ A SPLIT GROUND IS GROUND (output_board mN replay, 2026-11-14): the audio section's caps
+    # sit across +3V3_A / +5V_A and AGND, and with only "GND" counted as ground every one of
+    # them fell into the two-pins-of-one-IC branch -- which takes the FIRST IC holding both
+    # nets: all nine +3V3_A caps ruled "within 3 mm of U2.4", seven +5V_A caps of U10.6, none
+    # placeable, and the converters they serve got none. AGND / DGND / PGND / SGND (and any
+    # *_GND) are grounds, so those caps take the supply branch: each at the IC pin it serves.
+    split = {q["net"] for p_ in parts.values() for q in p_["pads"]
+             if q["net"] and GROUND_NET.match(q["net"])} - set(ground)
+    ground = tuple(sorted(set(ground) | {q["net"] for p_ in parts.values() for q in p_["pads"]
+                                          if q["net"] and GROUND_NET.match(q["net"])}))
     P = Placed(parts, notes.get("placements", {}))
     placed = bool(notes.get("placements"))
     rules = []
@@ -713,7 +726,11 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
         if c in ruled:
             continue
         nets = {q["net"] for q in parts[c]["pads"]}
-        if len(nets) == 2 and not (nets & set(ground)):
+        # ...but a cap from a split ground to a net that is NOT a supply (ISO9_RAW, POT_RS:
+        # an isolated converter's output, a reference) is still a two-pins-of-one-IC cap, as
+        # it was when only GND was ground -- the supply branch would drop it
+        odd = len(nets) == 2 and bool(nets & split) and not any(SUPPLY.search(n_) for n_ in nets - set(ground))
+        if len(nets) == 2 and (odd or not (nets & set(ground))):
             # ⚠ A CAP ACROSS TWO PINS OF ONE IC BELONGS AT THEM (output_panel C4, 2026-11-11):
             # a bootstrap cap (BOOT to SW), a VCC-to-VIN bypass. Not across a supply and
             # ground, so it got no rule, landed 7.8 mm off U5.4 on the net graph, and BOOT
@@ -890,6 +907,16 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
             elif k:
                 r["max_mm"], r["weight"] = max_mm + more_mm, 0.5
                 r["why"] += " (a further cap on this IC: within reach, not packed)"
+    # ...and a TRUE pin pair's further caps at the same pin get within reach, not packed, as
+    # the supply branch's do (lead, 2026-11-14): the first max_mm at weight 1, every further
+    # one max_mm + more_mm at 0.5 -- never a rule no placement can meet
+    seen = {}
+    for r in pinpair:
+        k = seen.get(r["pin"], 0)
+        seen[r["pin"]] = k + 1
+        if k:
+            r["max_mm"], r["weight"] = max_mm + more_mm, 0.5
+            r["why"] += " (a further cap at this pin: within reach, not packed)"
     for r in rules:
         r.pop("_f", None)
         r.pop("_tight", None)

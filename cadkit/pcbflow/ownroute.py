@@ -67,12 +67,28 @@ def core(stem):
                   % (os.path.basename(parent), st["kept"], st["routed"], st["sec"]))
         else:
             print("ownroute: parent %s is on another grid -- routing in full" % parent)
-    if failed is None:
+    full = failed is None
+    if full:
         failed = r.run(budget_s=budget)
+    shutil.copyfile(stem + ".kicad_pcb", stem + ".unrouted.kicad_pcb")   # as route.py keeps it
+    from router import rescore
+    if full and rescore.CLOSE and rescore.n_open(nets):
+        # a full route that ends with anything open restarts from itself (rescore.close_pass:
+        # why, and OWNROUTE_CLOSE_PASS=0); the router is dropped first, one board's grids at a time
+        import gc
+        snap = rescore.snapshot(r)
+        del r, m, nets, failed
+        gc.collect()
+        m, r, nets, _info = rescore.close_pass(stem, snap, log=print)
+        failed = [x for x in nets if x.failed]
+    _write(stem, m, r, nets, failed, t0)
+
+
+def _write(stem, m, r, nets, failed, t0):
     from router import congestion
+    from router import emit
     congestion.report(r)
     congestion.pair_dives(r)
-    shutil.copyfile(stem + ".kicad_pcb", stem + ".unrouted.kicad_pcb")   # as route.py keeps it
     n = emit.write(m, [x for x in nets if not x.failed], stem + ".kicad_pcb")
     print("ownroute: wrote %d item(s); %d net(s) left open: %s (%.0f s)"
           % (n, len(failed), ", ".join(x.name for x in failed) or "none", time.time() - t0))
