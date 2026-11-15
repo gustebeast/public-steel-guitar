@@ -72,6 +72,16 @@ def score(stem, budget_s=900.0, parent=None, save=None):
             failed, delta = rescore.delta_run(r, pickle.load(fh), budget_s=budget_s)
     else:
         failed = r.run(budget_s=budget_s)
+        from router import rescore
+        if rescore.CLOSE and rescore.n_open(nets):
+            # the close pass (rescore.close_pass): the leftovers re-routed from this route
+            import gc
+            snap = rescore.snapshot(r)
+            del r, m, nets, failed
+            gc.collect()
+            m, r, nets, info = rescore.close_pass(stem, snap, quiet=True)
+            failed = [n for n in nets if n.failed]
+            delta = dict(close_pass=info)
     if save:
         from router import rescore
         rescore.save(r, save)
