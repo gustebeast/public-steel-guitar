@@ -1020,6 +1020,59 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
                 out_.append((nm, np.array([a2 + nn, b2 + nn, b2 - nn, a2 - nn])))
         return out_
 
+    # ⚠ A SATELLITE THAT CANNOT SEAT AT ITS PIN TAKES ROOM, OR SAYS SO (output_board mN replay,
+    # 2026-11-14): U212 landed with D219 1.3 mm and R244 1.4 mm off its supply pin, and its
+    # decap C246 (rule 5 mm) took "the nearest free spot" 20.5 mm away -- the unbounded drop,
+    # with nothing in the log. Now: within the rule first; then a non-satellite neighbour
+    # holding the pin's patch is lifted (nearest first, EVICT_TRIES of them), the satellite
+    # seated within its rule, and the neighbour re-dropped at the nearest free spot to where
+    # it was -- kept only if both seat; else the unbounded drop, logged DECAP STRANDED.
+    # ...but only a SMALL, LOW-CURRENT neighbour (output_board replay init4, 2026-11-14): the
+    # first cut lifted L204 -- the boost's hot-loop inductor -- and C314 (+24V bulk) to seat
+    # U220's control satellites; BST_SW's pour went from 10 to 25 foreign pads, BST_LMID 1 to
+    # 15. A part on a pour's net or path (the high-current stage), or more than EVICT_AREA x
+    # the satellite's courtyard, holds its seat.
+    def _area(x):
+        return float(np.prod(np.ptp(np.asarray(parts[x]["crtyd"] or [[0, 0], [1, 1]], float), axis=0)))
+
+    def evict(c, t, ref, r, f0):
+        P = pi.Placed(parts, pl)
+        mm = float(r["max_mm"])
+        tp = np.asarray(t, float)[None]
+        cand = sorted((pi._poly_dist(P.crtyd(x), tp), x) for x in pl
+                      if x in idx and x not in sat and x != ref and x not in fixed and x not in power_held
+                      and _area(x) <= EVICT_AREA * _area(c))
+        for d, x in [q for q in cand if q[0] < mm][:EVICT_TRIES]:
+            pose = _lift(G, parts, pl, x)
+            if _drop_sat(G, parts, c, t, rots(c, rot[c]), pl, f0, ref, r, near_mm=mm):
+                if _drop(G, parts, x, pose[:2], rots(x, pose[2]), pl, inreg.get(x)):
+                    log.append("DECAP ROOM: %s lifted off %s's pin patch (%s) and re-seated %.1f mm away; %s seated"
+                               % (x, ref, r.get("pin") or r.get("target"), math.dist(pose[:2], pl[x][:2]), c))
+                    why[x] = (why.get(x, "") + "; lifted for %s's %s" % (ref, c)).lstrip("; ")
+                    return True
+                _lift(G, parts, pl, c)
+            _put_back(G, parts, pl, x, pose)
+        return False
+
+    pour_nets = {r_["net"] for r_ in rules if r_["kind"] == "pour"}
+    power_held = ({a_.split(".", 1)[0] for r_ in rules if r_["kind"] == "pour" for a_ in r_.get("along", ())}
+                  | {x for x in parts if {q["net"] for q in parts[x]["pads"]} & pour_nets})
+
+    def stranded(c, t, ref, r, f0):
+        if not _drop_sat(G, parts, c, t, rots(c, rot[c]), pl, f0, ref, r):
+            return False
+        mm = r.get("max_mm")
+        if mm is not None:
+            d = math.dist(pl[c][:2], np.asarray(t, float))
+            if d > float(mm):
+                P = pi.Placed(parts, pl)
+                tp = np.asarray(t, float)[None]
+                hold = sorted((pi._poly_dist(P.crtyd(x), tp), x) for x in pl if x not in (c, ref))[:3]
+                log.append("DECAP STRANDED: %s seated %.1f mm from %s (rule %g): the pin's patch is held by %s"
+                           % (c, d, r.get("pin") or r.get("target"), mm,
+                              ", ".join("%s %.1f" % (x, dd) for dd, x in hold)))
+        return True
+
     def seat(ref):
         """Seat ref's satellites at their pins; then each satellite's own (recursive)."""
         for r in sorted(decaps.get(ref, ()), key=lambda r: (0 if tight_nets & pnets.get(r.get("cap") or r.get("ref"), set())
@@ -1040,8 +1093,12 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
             # a satellite keeps clear of its noise zones too, when there is room (output_panel
             # 2026-11-11: Y1, the MCU crystal, seated 0.67 mm from the buck inductor)
             fb, f0 = _apart_forbid(G, parts, pl, c, rules), inreg.get(c)
-            if (fb is not None and _drop_sat(G, parts, c, t, rots(c, rot[c]), pl,
-                                             fb if f0 is None else (fb | f0), ref, r, near_mm=r.get("max_mm")))                     or _drop_sat(G, parts, c, t, rots(c, rot[c]), pl, f0, ref, r):
+            nm_ = r.get("max_mm")
+            if ((fb is not None and _drop_sat(G, parts, c, t, rots(c, rot[c]), pl,
+                                              fb if f0 is None else (fb | f0), ref, r, near_mm=nm_))
+                    or (nm_ is not None and _drop_sat(G, parts, c, t, rots(c, rot[c]), pl, f0, ref, r, near_mm=nm_))
+                    or (nm_ is not None and evict(c, t, ref, r, f0))
+                    or stranded(c, t, ref, r, f0)):
                 placed_sat.add(c)
                 why[c] = "%s at %s [%s]" % (r["kind"], r.get("pin") or r.get("target"), r.get("src", ""))
                 seat(c)
@@ -1210,6 +1267,15 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
         log.append("FORBID NOT MET: %s %s -- %s (the floorplan does not fit: move a fixed part, "
                    "shrink the zone, or give the cell room)" % (x, det, w))
         why[x] = why.get(x, "") + "; FORBID NOT MET: " + det
+    # what the later stages (local pass, repairs) leave a satellite with: said by name
+    for v in decaps.values():
+        for r in v:
+            c = r.get("cap") or r.get("ref")
+            if c in pl and r.get("max_mm") is not None:
+                s_ = _slack(r, parts, pl)
+                if s_ < -STRANDED_MM:
+                    log.append("SATELLITE OFF ITS PIN: %s %.1f mm past its rule (%s %s, %g)"
+                               % (c, -s_, r["kind"], r.get("pin") or r.get("target"), r["max_mm"]))
     log.append("local pass: %d parts moved, small-net wirelength %.0f -> %.0f mm" % (moved, gain[0], gain[1]))
     log.append("placed %d free parts (%d satellites at their pins), %d with no room: %s"
                % (len(free) - len(miss), len(placed_sat), len(miss), " ".join(miss)))
@@ -1220,6 +1286,9 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
     return pl, log, why
 
 
+STRANDED_MM = 1.0   # mm past its rule a satellite is reported (SATELLITE OFF ITS PIN)
+EVICT_AREA = 4.0    # x the satellite's courtyard: a bigger neighbour is not lifted for it
+EVICT_TRIES = 4     # neighbours a stranded satellite may lift off its pin's patch, nearest first
 SAT_BIG_MM2 = 20.0  # mm2 of courtyard: a constrained satellite this big is placed as a part (SW1 ~39)
 CHANNEL_W = 0.6     # mm: the strip a tight net's MST edge keeps clear
 TANGLE_FANOUT = 8   # parts: a net on more is a rail, left out of the escape tangle
