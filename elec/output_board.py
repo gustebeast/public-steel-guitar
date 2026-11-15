@@ -1785,8 +1785,11 @@ def output_board():
             ("C42", "1uF", ring_sel, ring_in, "ring path coupling, off K1 POLE B -- "
              "C39's mirror on the other pole", C0805),
             ("C43", "100nF", v5, agnd, "U9 bypass", None),
-            ("C44", "100nF", v5, agnd, "U10 bypass -- the pot's supply is also the reference "
-             "its wiper divides, so it gets its own", None),
+            # AD8402 Rev. E (Table 8 p.12: pin 11 VDD, the only supply pin) states no decoupling
+            # value anywhere in its 32 pages: 100 nF at the pin by convention
+            ("C44", "100nF", v5, agnd, "U10 VDD bypass -- ADI gives no value; 100 nF by "
+             "convention. The pot's supply is also the reference its wiper divides, so it gets "
+             "its own", None),
             ("C62", "100nF", pot_rs, agnd, "U10 RS power-on reset, with R38: holds RS low "
              "for about 5 ms after the rail stands (10 ms time constant), so both wipers start at midscale", None),
             ("C45", "2.2nF C0G", dac_r_filt, agnd, "DAC right output filter, with R23 -- "
