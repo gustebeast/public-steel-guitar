@@ -722,7 +722,11 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
     # ICs' supply pins once, from the datasheets: notes["supply_pins"] = {"U3": [1, 8, 20]}.
     # A listed IC is decoupled at those pins only (and quality A2 judges only those); an IC
     # not listed keeps the old guess, every pin on the rail.
-    sp = {u: {str(n) for n in v} for u, v in (notes.get("supply_pins") or {}).items()}
+    # The value is a list of pin numbers, or {number: datasheet name} -- with names, a cap whose
+    # description names the pin ("DAC CPVDD", "isolator bypass, U32 VCC2") goes to THAT pin.
+    sp_raw = notes.get("supply_pins") or {}
+    sp = {u: {str(n) for n in v} for u, v in sp_raw.items()}
+    sp_name = {u: {str(n): str(nm).upper() for n, nm in v.items()} for u, v in sp_raw.items() if isinstance(v, dict)}
     is_sup = lambda u, num: u not in sp or str(num) in sp[u]
     rules = []
     pinpair = []                 # caps across two pins of one IC: kept out of the supply passes
@@ -791,6 +795,13 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
             said = said if len(said) == 1 else []
         if said:
             cands = [t for t in cands if t[1].split(".")[0] == said[0]]
+        if sp_name:
+            # the description names the pin: "DAC CPVDD" -> the declared CPVDD pin (of the IC
+            # it names, if it names one), whatever is nearest today
+            words = set(re.findall(r"[A-Z0-9_+]+", (descriptions or {}).get(c, "").upper()))
+            named = [t for t in cands if sp_name.get(t[1].split(".")[0], {}).get(t[1].split(".", 1)[1]) in words]
+            if named:
+                cands = named
         if not placed:
             # ⚠ A FRESH BOARD HAS NO DISTANCES (motor_ctrl trial, 2026-11-11): every pin read
             # 0 mm and the "nearest" was the first in sort order -- all eleven +3V3 caps to
