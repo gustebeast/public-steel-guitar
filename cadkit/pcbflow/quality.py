@@ -879,6 +879,9 @@ def decoupling(ctx):
     ic_mm = float(cfg.get("ic_mm", 5.0))
     conn_mm = float(cfg.get("connector_mm", 25.0))
     exempt = cfg.get("exempt", {}) or {}
+    # notes["supply_pins"] (place_intent.auto_decaps): an IC listed there is judged at its
+    # datasheet supply pins only -- a mute or enable strap tied to the rail is not one
+    sp = {u: {str(n) for n in v} for u, v in (ctx.notes.get("supply_pins") or {}).items()}
     caps = collections.defaultdict(list)            # net -> [(x, y, ref)]
     for ref, fp in ctx.fps.items():
         if _prefix(ref) != "C":
@@ -899,6 +902,9 @@ def decoupling(ctx):
             kind = _prefix(ref)
             if kind not in ("U", "J", "P"):
                 continue
+            if kind == "U" and ref in sp and str(num) not in sp[ref]:
+                rows.setdefault("%s.%s" % (ref, num), "strap")
+                continue
             # an IC is judged PIN BY PIN; a connector once per net, by its nearest pin
             subject = "%s.%s" % (ref, num) if kind == "U" else ref
             x, y = _xy(pad)
@@ -908,6 +914,10 @@ def decoupling(ctx):
             if old is None or (near[0] is not None and (old[1] is None or near[0] < old[1])):
                 rows[subject] = (ic_mm if kind == "U" else conn_mm, near[0], near[1])
         for subject in sorted(rows):
+            if rows[subject] == "strap":
+                out.append((subject, None, "%s on %s is not a supply pin (notes supply_pins): "
+                            "a strap to the rail needs no capacitor" % (subject, net)))
+                continue
             limit, dist, cref = rows[subject]
             why = exempt.get(subject) or exempt.get(subject.split(".")[0])
             if why:
