@@ -971,7 +971,8 @@ impl App {
     }
 
     /// The picture is no longer what is on screen. `rigid`: it is still a picture of the same things in the
-    /// same light from nearby (the camera moved, the rig moved parts, parts were hidden or picked).
+    /// same light from nearby (the camera moved, the rig moved parts, parts were picked). Parts shown or
+    /// hidden are NOT rigid: the picture's history holds what is no longer there.
     fn touch(&mut self, rigid: bool) {
         self.rigid = if self.dirty { self.rigid && rigid } else { rigid };
         self.dirty = true;
@@ -1005,9 +1006,15 @@ impl App {
         let set = |a: &Value| -> HashSet<String> { a.as_array().map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect()).unwrap_or_default() };
         if v["hidden"].is_array() {
             self.view.hidden = set(&v["hidden"]);
+            let mut shown_changed = false;
             for (i, n) in self.part_names.iter().enumerate() {
-                g.r.set_hidden(i, self.view.hidden.contains(n));
+                shown_changed |= g.r.set_hidden(i, self.view.hidden.contains(n));
             }
+            // A PART SHOWN OR HIDDEN IS NOT THE SAME PICTURE. Taken as rigid, DLSS kept its history (no reset:
+            // the camera had not moved) and rebuilt the hidden part from it, and at rest `hold` kept that
+            // picture up until DLSS_UNTIL samples: the deck stayed on screen while the page, which picks, had
+            // already hidden it -- visible but not clickable (user, 2026-11-14).
+            rigid &= !shown_changed;
         }
         if v["sel"].is_array() {
             self.view.sel = set(&v["sel"]);
