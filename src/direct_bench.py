@@ -1972,6 +1972,12 @@ COLORS = {
     "kh_height_insert": "nut", "kh_rod": "guide_rod",
     "body": "chassis", "wall_bar": "nut_plate", "keyplate": "nut_plate", "ob_board": _mask_rgb("green"),
     "deck": (0.16, 0.16, 0.18), "deck_white": (0.95, 0.95, 0.92), "fret_board": _mask_rgb("green"),
+    "optical_board": _mask_rgb("green"),        # the stand-in: no mask ordered yet, the fab default
+    # the +X end (src/deck_v2_region.py): panels as the deck, the pickup's hardware as v1's
+    "deck_optical": (0.16, 0.16, 0.18), "deck_pickup": (0.16, 0.16, 0.18), "deck_filler": (0.16, 0.16, 0.18),
+    "pickup": (0.10, 0.10, 0.12), "pickup_plate": (0.85, 0.65, 0.30),
+    "pickup_jack_screw": (0.55, 0.55, 0.58), "pickup_ret_screw": (0.55, 0.55, 0.58),
+    "pickup_jack_insert": (0.80, 0.60, 0.35), "pickup_ret_insert": (0.80, 0.60, 0.35),
     "fret_leds": (1.0, 0.98, 0.85),
 }
 
