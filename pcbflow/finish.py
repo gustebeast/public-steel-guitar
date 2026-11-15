@@ -695,6 +695,29 @@ def finish(stem, rounds=1, keep_route=False):
             shutil.copy(stem + ".prespent.kicad_pcb", stem + ".kicad_pcb")
             os.remove(stem + ".prespent.kicad_pcb")
 
+    # A WIDE NET'S LAYER CHANGE GETS AS MANY VIAS AS ITS WIDTH NEEDS (power_vias.py: the
+    # router lays one barrel per change, ~0.67 mm of track for a 0.3 drill). Each added via
+    # is checked against clearance, holes, the edge and the router's keep-outs, and every
+    # one that does not fit is printed. Worse DRC on either count and the board goes back.
+    try:
+        shutil.copy(stem + ".kicad_pcb", stem + ".prepower.kicad_pcb")
+        _pv = _run("power_vias.py", stem)
+        if not re.search(r"power vias: \d+ wide-net via\(s\) short of barrels, 0 via", _pv or ""):
+            _n6, _nets6, _v6 = _drc(stem)
+            if _n6 > best_n or _v6 > best_v:
+                print("  !! power_vias made it worse (%d unconnected, %d violation(s) against "
+                      "%d and %d) -- putting it back" % (_n6, _v6, best_n, best_v))
+                shutil.copy(stem + ".prepower.kicad_pcb", stem + ".kicad_pcb")
+                _drc(stem)
+            else:
+                best_n, best_v, nets = _n6, _v6, _nets6
+        os.remove(stem + ".prepower.kicad_pcb")
+    except SystemExit as exc:
+        print("  power_vias.py did not run (%s)" % (exc,))
+        if os.path.exists(stem + ".prepower.kicad_pcb"):
+            shutil.copy(stem + ".prepower.kicad_pcb", stem + ".kicad_pcb")
+            os.remove(stem + ".prepower.kicad_pcb")
+
     # THE SILKSCREEN GOES ON THE BOARD THAT WON, and only there: name and revision, the
     # test pads' nets, the connectors' pinouts (silk.py). It moves no copper, and every
     # label is dropped rather than squeezed -- but "cannot add a finding" is a claim, so
