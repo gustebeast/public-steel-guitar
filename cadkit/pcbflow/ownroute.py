@@ -10,6 +10,14 @@ Two interpreters, because the two halves need different things:
   --post   route.post_route: KiCad's Python (pcbnew)
 Plain `ownroute.py <stem>` does both, each in whichever interpreter has what it needs."""
 from __future__ import annotations
+# ⚠ NO WX MODAL ON THE DESKTOP (2026-11-15): a debug assert in KiCad's wx (PCB_VIA::GetWidth
+# with no layer) opened "wxWidgets Debug Alert" on the user's screen and hung the run until
+# clicked. KiCad's python ships wxPython; asserts off before pcbnew is touched.
+try:
+    import wx as _wx
+    _wx.DisableAsserts()
+except Exception:
+    pass
 
 import _nowindow  # noqa: F401  (no console windows on Windows: _nowindow.py)
 import json

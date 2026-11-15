@@ -50,7 +50,22 @@ import shutil
 import subprocess
 import sys
 
+# ⚠ NO WX MODAL ON THE DESKTOP (2026-11-15): a debug assert in KiCad's wx (PCB_VIA::GetWidth
+# with no layer) opened "wxWidgets Debug Alert" on the user's screen and hung the run until
+# clicked. KiCad's python ships wxPython; asserts off before pcbnew is touched.
+try:
+    import wx as _wx
+    _wx.DisableAsserts()
+except Exception:
+    pass
 import pcbnew
+
+
+def _w(t):
+    """A track's width, or a via's on F.Cu: PCB_VIA::GetWidth() with no layer is a wx debug
+    assert in KiCad 10 -- a modal on the user's desktop (2026-11-15)."""
+    return t.GetWidth(pcbnew.F_Cu) if t.GetClass() == "PCB_VIA" else t.GetWidth()
+
 
 RIP = 3.0                   # mm, of the moved parts' own local copper (see _tree)
 CLEAR = 0.75                # mm from a new pad centre to any track's edge
@@ -106,7 +121,7 @@ def _reach(t):
     """((start, end), half width) of a track or via, in mm."""
     via = t.GetClass() == "PCB_VIA"
     return ((_xy(t.GetStart()), _xy(t.GetEnd())),
-            pcbnew.ToMM(t.GetWidth(pcbnew.F_Cu) if via else t.GetWidth()) / 2.0)
+            pcbnew.ToMM(t.GetWidth(pcbnew.F_Cu) if via else _w(t)) / 2.0)
 
 
 def _matched(notes):
@@ -253,7 +268,7 @@ def _detour(board, net, layer, keep, p, q, step=0.05, margin=3.0):
             if win(o, o, r + keep):
                 segs.append((o, o, r))
         elif t.GetLayer() == layer:
-            a, c, r = _xy(t.GetStart()), _xy(t.GetEnd()), mm(t.GetWidth()) / 2.0
+            a, c, r = _xy(t.GetStart()), _xy(t.GetEnd()), mm(_w(t)) / 2.0
             if win(a, c, r + keep):
                 segs.append((a, c, r))
     for f in board.GetFootprints():
@@ -385,7 +400,7 @@ def move(stem, moves):
             # Only when carried straight: swung round, the stub meets its own lands anew.
             if any(p.GetNetname() != net and not (rigid and p.GetParentFootprint().GetReference() == ref)
                    and (_seg_box((vx, vy), (vx, vy), box(bb)) < vr + EDGE
-                        or _seg_box(a, c, box(bb)) < pcbnew.ToMM(t.GetWidth()) / 2.0 + EDGE)
+                        or _seg_box(a, c, box(bb)) < pcbnew.ToMM(_w(t)) / 2.0 + EDGE)
                    for p, bb in fixed):
                 return False
             # never into an SMD land, its own net's included: solder wicks down the barrel (A14)
@@ -412,10 +427,10 @@ def move(stem, moves):
                 if u.GetClass() == "PCB_VIA" or u.GetNetname() == net or u.GetNetname() in nets:
                     return False
                 e = (_xy(u.GetStart()), _xy(u.GetEnd()))
-                w = pcbnew.ToMM(u.GetWidth()) / 2.0
+                w = pcbnew.ToMM(_w(u)) / 2.0
                 return (_seg((vx, vy), *e) < vr + w + EDGE
                         or (u.GetLayer() == t.GetLayer()
-                            and _seg_seg(a, c, *e) < pcbnew.ToMM(t.GetWidth()) / 2.0 + w + EDGE))
+                            and _seg_seg(a, c, *e) < pcbnew.ToMM(_w(t)) / 2.0 + w + EDGE))
             return not any(_cuts(u) for u in tracks)
 
         # ⚠ STRAIGHT ACROSS FIRST, THEN SWUNG ROUND THE PIN (optical C117, 2026-11-07): carried
@@ -461,7 +476,7 @@ def move(stem, moves):
         # whether its start is the end cut away
         uid = t.m_Uuid.AsString()
         if uid not in cut:
-            a, c, half = _xy(t.GetStart()), _xy(t.GetEnd()), pcbnew.ToMM(t.GetWidth()) / 2.0
+            a, c, half = _xy(t.GetStart()), _xy(t.GetEnd()), pcbnew.ToMM(_w(t)) / 2.0
             n = max(2, int(math.dist(a, c) / 0.05))
             pts = [(a[0] + (c[0] - a[0]) * k / n, a[1] + (c[1] - a[1]) * k / n) for k in range(n + 1)]
             bad = [_in_way(t, e, e, half + 0.3) for e in pts]
@@ -489,7 +504,7 @@ def move(stem, moves):
             elif u.GetLayer() == layer:
                 # another net's run the move cuts is judged by what of it stays (C132: +3V3A's
                 # stretch to the cap was refused by the +3V3D trunk the cap cuts through)
-                ua, uc, uh = _xy(u.GetStart()), _xy(u.GetEnd()), pcbnew.ToMM(u.GetWidth()) / 2.0
+                ua, uc, uh = _xy(u.GetStart()), _xy(u.GetEnd()), pcbnew.ToMM(_w(u)) / 2.0
                 segs = [(ua, uc)]
                 if u.GetNetname() not in nets and math.dist(ua, uc) > 1.0 and _in_way(u, ua, uc, uh):
                     segs = _spans(u)[0]
@@ -509,7 +524,7 @@ def move(stem, moves):
             continue
         via = t.GetClass() == "PCB_VIA"
         a, c = _xy(t.GetStart()), _xy(t.GetEnd())
-        half = pcbnew.ToMM(t.GetWidth(pcbnew.F_Cu) if via else t.GetWidth()) / 2.0
+        half = pcbnew.ToMM(t.GetWidth(pcbnew.F_Cu) if via else _w(t)) / 2.0
         # ⚠ THE PART'S OWN COPPER, NOT ITS NETS' (optical R50, 2026-11-07). Everything of the
         # moved parts' nets within RIP went, so a pull-up's via went with the In2 run beyond it
         # and close_last laid I2C2_SCL back 20 mm round a 4 mm gap. Now: the copper its pads
@@ -654,7 +669,7 @@ def move(stem, moves):
                 if u.GetClass() == "PCB_VIA":
                     if math.dist(_xy(u.GetPosition()), p) < vr + pcbnew.ToMM(u.GetWidth(pcbnew.F_Cu)) / 2.0 + EDGE:
                         return False
-                elif _seg(p, _xy(u.GetStart()), _xy(u.GetEnd())) < vr + pcbnew.ToMM(u.GetWidth()) / 2.0 + EDGE:
+                elif _seg(p, _xy(u.GetStart()), _xy(u.GetEnd())) < vr + pcbnew.ToMM(_w(u)) / 2.0 + EDGE:
                     return False
             if any(u.GetClass() == "PCB_VIA" and u.m_Uuid.AsString() != v.m_Uuid.AsString()
                    and u.m_Uuid.AsString() not in taken and u.GetNetname() == net
@@ -674,13 +689,13 @@ def move(stem, moves):
                     # (seed 71 R33: USB_CC2's stub, from the old centre, met the new GND land)
                     _, new_, p_ = stretch[t.m_Uuid.AsString()]
                     far = new_ if near(p_, o) else p_
-                hw = pcbnew.ToMM(t.GetWidth()) / 2.0
+                hw = pcbnew.ToMM(_w(t)) / 2.0
                 for u in others:
                     if u.GetClass() == "PCB_VIA":
                         if _seg(_xy(u.GetPosition()), far, p) < hw + pcbnew.ToMM(u.GetWidth(pcbnew.F_Cu)) / 2.0 + EDGE:
                             return False
                     elif u.GetLayer() == t.GetLayer() and _seg_seg(far, p, _xy(u.GetStart()), _xy(u.GetEnd())) \
-                            < hw + pcbnew.ToMM(u.GetWidth()) / 2.0 + EDGE:
+                            < hw + pcbnew.ToMM(_w(u)) / 2.0 + EDGE:
                         return False
                 if any(q.GetNetname() != net and q.IsOnLayer(t.GetLayer()) and _seg_box(far, p, box(bb)) < hw + EDGE
                        for q, bb in fixed):
@@ -708,7 +723,7 @@ def move(stem, moves):
             if not _clear(p):
                 continue
             to = next((w for w in sorted(tos, key=lambda w: math.dist(w, p))
-                       if _stretch_clear(stub, (w, p), pcbnew.ToMM(stub.GetWidth()) / 2.0)), None)
+                       if _stretch_clear(stub, (w, p), pcbnew.ToMM(_w(stub)) / 2.0)), None)
             if to is not None:
                 spot, leg_to = p, to
                 break
@@ -723,7 +738,7 @@ def move(stem, moves):
             leg = pcbnew.PCB_TRACK(board)
             leg.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(leg_to[0]), pcbnew.FromMM(leg_to[1])))
             leg.SetEnd(at_spot)
-            leg.SetWidth(stub.GetWidth())
+            leg.SetWidth(_w(stub))
             leg.SetLayer(stub.GetLayer())
             leg.SetNet(stub.GetNet())
             board.Add(leg)
@@ -771,13 +786,13 @@ def move(stem, moves):
                            for f in board.GetFootprints() for d in f.Pads()))
         tied = [e for e in free if held(e)]
         if len(tied) == 2:
-            chain_gaps.append((comp[0].GetNet(), layer, comp[0].GetWidth(), tied[0], tied[1]))
+            chain_gaps.append((comp[0].GetNet(), layer, _w(comp[0]), tied[0], tied[1]))
     # a pour's width is the pour's: a 2.6 mm GND strap closed wide only clashes with its neighbours
     poured ={(z["net"] if isinstance(z, dict) else z[0]) for z in notes.get("zones", ())}
     widths = notes.setdefault("close_widths", {})
     for t in gone:
         if t.GetClass() != "PCB_VIA" and t.GetNetname() not in poured:
-            widths[t.GetNetname()] = max(widths.get(t.GetNetname(), 0.0), pcbnew.ToMM(t.GetWidth()))
+            widths[t.GetNetname()] = max(widths.get(t.GetNetname(), 0.0), pcbnew.ToMM(_w(t)))
         board.Remove(t)
     legs = []
     gaps = list(chain_gaps)      # (net, layer, width, end, end): a run cut under a moved part
@@ -787,7 +802,7 @@ def move(stem, moves):
             if u.GetNetname() == t.GetNetname() and math.dist(e, f) < 0.005:
                 p = min((s0, e0), key=lambda w: math.dist(w, e))
                 q = min((s1, e1), key=lambda w: math.dist(w, f))
-                gaps.append((t.GetNet(), t.GetLayer(), t.GetWidth(), p, q))
+                gaps.append((t.GetNet(), t.GetLayer(), _w(t), p, q))
     for t in board.GetTracks():
         if t.m_Uuid.AsString() in stretch:
             i, new, p = stretch[t.m_Uuid.AsString()]
@@ -800,7 +815,7 @@ def move(stem, moves):
                 leg = pcbnew.PCB_TRACK(board)                     # ...and a piece from the pad
                 leg.SetStart(vn)
                 leg.SetEnd(vp)
-                leg.SetWidth(t.GetWidth())
+                leg.SetWidth(_w(t))
                 leg.SetLayer(t.GetLayer())
                 leg.SetNet(t.GetNet())
                 legs.append(leg)
@@ -809,7 +824,7 @@ def move(stem, moves):
             (t.SetStart if keep_end else t.SetEnd)(pcbnew.VECTOR2I(pcbnew.FromMM(e[0]), pcbnew.FromMM(e[1])))
         if t.m_Uuid.AsString() in split:
             sp = split[t.m_Uuid.AsString()]
-            gaps += [(t.GetNet(), t.GetLayer(), t.GetWidth(), sp[k][1], sp[k + 1][0]) for k in range(len(sp) - 1)]
+            gaps += [(t.GetNet(), t.GetLayer(), _w(t), sp[k][1], sp[k + 1][0]) for k in range(len(sp) - 1)]
             (s0, e0), *rest = sp
             t.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(s0[0]), pcbnew.FromMM(s0[1])))
             t.SetEnd(pcbnew.VECTOR2I(pcbnew.FromMM(e0[0]), pcbnew.FromMM(e0[1])))
@@ -817,7 +832,7 @@ def move(stem, moves):
                 piece = pcbnew.PCB_TRACK(board)
                 piece.SetStart(pcbnew.VECTOR2I(pcbnew.FromMM(s1[0]), pcbnew.FromMM(s1[1])))
                 piece.SetEnd(pcbnew.VECTOR2I(pcbnew.FromMM(e1[0]), pcbnew.FromMM(e1[1])))
-                piece.SetWidth(t.GetWidth())
+                piece.SetWidth(_w(t))
                 piece.SetLayer(t.GetLayer())
                 piece.SetNet(t.GetNet())
                 legs.append(piece)

@@ -421,6 +421,17 @@ does, and so does swapping the rails between a pass-through part's identical cha
 CMC's windings, a clamp's), or a polarity swap at an IC. `congestion.pair_dives`' post-hoc
 label should come from this test rather than from where a rail dived.
 
+**MEASURED 2026-11-15: UNTWISTING USBB BY A CHANNEL SWAP DOES NOT HELP -- it is worse.**
+`swap_plan` on rob_d1 proposed FL4's windings swapped (pins 1<->2, 3<->4: twisted hops 6 -> 4,
+both of USBB's straightened). Two instrumented routes of the same placement and netlist, one
+with the swap applied (`apply_swaps`), started together on the same machine load, close pass
+off: base 0 nets open, 2998 s, 15 displacements, USBB lost 3 of 3; swap 4 nets open (USBA_DP /
+DM, GADGET_DP / DM), 3280 s, 16 displacements, USBB STILL lost 3 of 3. A straight hop did not
+make USBB's displacement win, and the swap's changed copper cost two other pairs. So the twist
+is not what USBB's losses come from, and a TWIST / SWAP line stays placement feedback only:
+nothing should apply a swap without a route showing it helps. The generator keeps FL4's
+original windings.
+
 **Risks.**
 1. The outward normal for a pin on a corner or on a BGA / centre pad is ambiguous; such a
    hop is "unknown" and keeps today's path.
