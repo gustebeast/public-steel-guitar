@@ -82,8 +82,20 @@ def _run(cmd, log, cwd=HERE, env=None):
 
 
 def _intent(rules, parts, notes, net_path, auto, singles=False):
-    have = {r.get("src") for r in rules}
     added = []
+    # ⚠ AN AUTO RULE SAVED IN AN INTENT GOES STALE (output_board mP0, 2026-11-15): fin_mO's
+    # intent carried auto_decaps rules written before the split-ground fix, the `have` check
+    # below skipped regenerating them, and all twelve +3V3_A / +5V_A caps stayed ruled "at the
+    # regulator" (U2.4 / U10.6) -- nine A2 FAILs the current code would not have made. The
+    # netlist rules are DERIVED, so they are derived again every run: any saved in the file are
+    # dropped first (auto_singles only when it is on, since it is opt-in).
+    if auto:
+        drop = {k for k in AUTO if k != "auto_singles (netlist)" or singles}
+        old = [r for r in rules if r.get("src") in drop]
+        if old:
+            rules = [r for r in rules if r.get("src") not in drop]
+            added.append("re-derived: dropped %d saved auto rule(s) from the intent file" % len(old))
+    have = {r.get("src") for r in rules}
     # ⚠ A HOLE'S KEEP-OUT IS THE CAD'S, NOT THE AUTHOR'S (ui_board holdout 3, 2026-11-12): the cold
     # intent guessed 1.0 round a spigot and stopped on the CAD-fixed encoder 0.24 inside it. A
     # cutout that carries `keepout_d` -- the boss, post or head that lands on the board there, as
@@ -494,6 +506,19 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
                 if s_ < -0.05:
                     nb.append((s_, "NEAR BROKEN (hard) rule %d: %s %s, wants %g (%.2f mm) [%s]"
                                % (i_, ref_, det, r_["max_mm"], s_, r_.get("src", ""))))
+    # ⚠ A HELD PART CANNOT KEEP A HARD RULE IT WAS NEVER ASKED TO (output_board mP / mQ, 2026-11-15):
+    # every part was pinned `fixed` where fin_mO left it, so C124 sat 4.6 mm from U1.62 against
+    # a HARD 3 mm rule and no placer could move it -- one WARN among fourteen, and quality A2
+    # FAILed it three runs running. A broken hard rule whose part is held is said on its own
+    # line, by name: the hold outranks the rule, so the author must release one or the other.
+    held_ = {r_["ref"] for r_ in rules if r_["kind"] in ("fixed", "pin") and r_.get("hard", True)}
+    hb = sorted({w_.split(": ", 1)[1].split(" ", 1)[0] for _s, w_ in nb} & held_)
+    if hb:
+        w_ = ("HELD PARTS BREAK HARD RULES -- %d part(s) pinned by a fixed/pin rule miss a hard near "
+              "rule, and no placer may move them: %s. Release them or relax the rule."
+              % (len(hb), " ".join(hb)))
+        say("⚠ " + w_)
+        floor.insert(0, w_)
     for _s, w_ in sorted(nb)[:12]:
         say("WARN " + w_)
         floor.append(w_)
