@@ -291,11 +291,22 @@ class _Net:
                 self._edge(a, c, w, "track", L, mid, self._ohm(a, c, w, L))
                 segs.append((t, L, a, c, w))
         nodes = list(self.g)
+        # ⚠ A JOINT IS COPPER TOUCHING COPPER, NOT A POINT ON A CENTRE LINE (connector_board
+        # d10, 2026-11-15): a node joined a segment only if it lay within 0.02 mm of that
+        # segment's copper, so two 2 mm tracks whose ends overlap by a millimetre -- one
+        # joint to KiCad and to DRC (0 unconnected) -- were two pieces here, and A1 read a
+        # 4 A trunk as seven islands: HARD "no copper joins" on all ten motor terminals.
+        # A track's end is a round cap of its own width, so a node joins a segment when its
+        # cap reaches the segment's copper: the accuracy is the widest track ending there.
+        cap = collections.defaultdict(float)
+        for t, L, a, c, w in segs:
+            cap[a] = max(cap[a], w / 2.0)
+            cap[c] = max(cap[c], w / 2.0)
         for t, L, a, c, w in segs:          # T-junctions: a node landing mid-segment
             for n in nodes:
                 if n[0] == L and n != a and n != c and t.HitTest(
                         pcbnew.VECTOR2I(pcbnew.FromMM(n[1]), pcbnew.FromMM(n[2])),
-                        pcbnew.FromMM(0.02)):
+                        pcbnew.FromMM(max(0.02, cap.get(n, 0.0) - 0.001))):
                     self._edge(n, a, w, "track", L, (n[1], n[2]), self._ohm(n, a, w, L))
                     self._edge(n, c, w, "track", L, (n[1], n[2]), self._ohm(n, c, w, L))
         nodes = list(self.g)
