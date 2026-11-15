@@ -426,9 +426,16 @@ class _Net:
             L2 = dx * dx + dy * dy
             u = 0.0 if L2 == 0 else max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / L2))
             return math.hypot(px - (ax + u * dx), py - (ay + u * dy))
+        # a piece on a layer is a track's copper, or a pour or a pad land the via stands in
+        # (in_pour): a via from a B.Cu track up into an F.Cu pour groups with its neighbours
+        # exactly as one between two tracks (connector_board d14, the +24V spine)
+        held = collections.defaultdict(dict)
+        for (key, L), ps_ in in_pour.items():
+            for p in ps_:
+                held[p].setdefault(L, set()).add(key)
         tv = {}
         for p, v in vias_at.items():
-            on = {}
+            on = {L: set(s) for L, s in held.get(p, {}).items()}
             for t, L, a, c, w in segs:
                 if pt_seg(p[0], p[1], a[1], a[2], c[1], c[2]) <= w / 2.0 + 1e-6:
                     on.setdefault(L, set()).add(id(t))

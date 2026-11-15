@@ -102,6 +102,10 @@ def plan(stem, board):
         cb = R["cls"].get(nb.GetNetClassName() if nb else "Default", R["clear"]) if nb else R["clear"]
         return max(ca, cb, R["clear"])
 
+    own_zones = {}
+    for z in board.Zones():
+        if not z.GetIsRuleArea() and z.GetNetCode() > 0:
+            own_zones.setdefault(z.GetNetCode(), []).append(z)
     seg = [(t, t.GetLayer(), t.GetNetCode(), MM(t.GetStart().x), MM(t.GetStart().y),
             MM(t.GetEnd().x), MM(t.GetEnd().y), MM(t.GetWidth())) for t in tracks]
     placed = []                 # (x, y, r, drill, netcode) laid this run
@@ -117,22 +121,40 @@ def plan(stem, board):
             vr = MM(v.GetWidth(v.GetLayer())) / 2.0
         except TypeError:
             vr = MM(v.GetWidth()) / 2.0
-        # the via's own copper on each layer: same-net tracks with an end at its centre
+        # the via's own copper on each layer: same-net tracks whose copper holds its centre --
+        # not only an end AT the centre: the router ends a track a few hundredths off it
+        # (connector_board d14: 0.06 mm at C12, and that +24V via was never seen)
         mine = {}
         for (t, L, n_, ax, ay, bx, by, w) in seg:
-            if n_ == nc and (math.hypot(ax - vx, ay - vy) < 0.01 or math.hypot(bx - vx, by - vy) < 0.01):
+            if n_ == nc and _d_seg(vx, vy, ax, ay, bx, by) <= w / 2.0:
                 mine.setdefault(L, []).append((ax, ay, bx, by, w))
-        if len(mine) < 2:
-            continue            # a stitch into a pour, or a pad's own via: not a track-to-track change
+        if not mine:
+            continue            # a stitch between two pours: quality A1 already sums those
+        # ...or the net's own POUR on a layer with no track (connector_board d14: the +24V spine
+        # on F.Cu fed down to a B.Cu track through one via -- three motor paths CHOKE POINT).
+        # A layer the via reaches by pour joins as that pour's fill.
+        pv = pcbnew.VECTOR2I(IU(vx), IU(vy))
+        fills = {}
+        for z in own_zones.get(nc, ()):
+            for L in z.GetLayerSet().CuStack():
+                if L not in mine and z.HitTestFilledArea(L, pv):
+                    fills.setdefault(L, []).append(z)
+        if len(mine) + len(fills) < 2:
+            continue            # a pad's own via, or a stitch: not a change of layer between two pieces
         w_need = min(max(s[4] for s in v_) for v_ in mine.values())
         b = barrel_mm(drill)
         want = int(math.ceil(w_need / b - 1e-6))
+
         # vias of this net already sharing that copper count
         def inside(x, y, L):
+            if L in fills:
+                q = pcbnew.VECTOR2I(IU(x), IU(y))
+                return any(z.HitTestFilledArea(L, q) for z in fills[L])
             return any(_d_seg(x, y, ax, ay, bx, by) <= w / 2.0 for (ax, ay, bx, by, w) in mine[L])
+        layers_ = list(mine) + list(fills)
         have = 1 + sum(1 for o in vias if o is not v and o.GetNetCode() == nc
-                       and all(inside(MM(o.GetPosition().x), MM(o.GetPosition().y), L) for L in mine))
-        have += sum(1 for (x, y, r, d, n_) in placed if n_ == nc and all(inside(x, y, L) for L in mine))
+                       and all(inside(MM(o.GetPosition().x), MM(o.GetPosition().y), L) for L in layers_))
+        have += sum(1 for (x, y, r, d, n_) in placed if n_ == nc and all(inside(x, y, L) for L in layers_))
         extra = want - have
         if extra <= 0:
             continue
@@ -153,7 +175,7 @@ def plan(stem, board):
             return False
 
         def ok(x, y):
-            if not all(inside(x, y, L) for L in mine):
+            if not all(inside(x, y, L) for L in layers_):
                 return refuse("outside the net's own copper")
             # holes: every drill on the board, this run's included
             for o in vias:
@@ -211,20 +233,37 @@ def plan(stem, board):
 def main(stem):
     pcb = stem + ".kicad_pcb"
     board = pcbnew.LoadBoard(pcb)
+    filler = pcbnew.ZONE_FILLER(board)
+    filler.Fill(board.Zones())              # plan() reads the pours' fills
     rows = plan(stem, board)
     added, short = 0, []
+    # ⚠ ONE AT A TIME, AND A VIA THAT OPENS A CONNECTION COMES BACK OUT (connector_board d14,
+    # 2026-11-15). Clearance-legal is not enough: a new via's antipad can cut the neck of
+    # another net's pour, and 22 vias laid together left one GND fill island -- finish then
+    # put the whole step back. Each via is laid, the pours refilled and the unconnected count
+    # read; if it rose, the via is lifted (Remove, not Delete) and reported.
+    board.BuildConnectivity()
+    base = board.GetConnectivity().GetUnconnectedCount(False)
     for v, net, (vx, vy), w, b, want, have, got, why in rows:
+        kept = 0
         for gx, gy in got:
             nv = v.Duplicate()
             nv.SetPosition(pcbnew.VECTOR2I(IU(gx), IU(gy)))
             board.Add(nv)
-            added += 1
-        if have + len(got) < want:
+            filler.Fill(board.Zones())
+            board.BuildConnectivity()
+            if board.GetConnectivity().GetUnconnectedCount(False) > base:
+                board.Remove(nv)
+                filler.Fill(board.Zones())
+                board.BuildConnectivity()
+                why = (why + ", " if why else "") + "a via at %.2f,%.2f that opened a connection" % (gx, gy)
+                continue
+            kept += 1
+        added += kept
+        if have + kept < want:
             short.append("%s at %.2f,%.2f: %.2f mm of track wants %d barrel(s) of %.2f, has %d "
-                         "(blocked by %s)" % (net, vx, vy, w, want, b, have + len(got), why or "nothing found"))
+                         "(blocked by %s)" % (net, vx, vy, w, want, b, have + kept, why or "nothing found"))
     if added:
-        filler = pcbnew.ZONE_FILLER(board)
-        filler.Fill(board.Zones())
         board.Save(pcb)
         try:
             import layout
