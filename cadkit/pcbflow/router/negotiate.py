@@ -202,7 +202,9 @@ class Router(CoupledMixin):
                 # layer that is also ROUTED, other nets' tracks can cut that fill anywhere. Where
                 # the net pours another layer too, such a pad is its own piece: _to_plane gives
                 # it a stub and a via into the planes, as an engineer drops one beside a ground
-                # pad. Opt-in until its A/B: OWNROUTE_PAD_OWN_JOIN=1.
+                # pad. On by default since its A/B (2026-11-15: connector_board 0/0, optical
+                # 0/0 0 FAIL, output_panel 0/0 -- all same or better); OWNROUTE_PAD_OWN_JOIN=0
+                # turns it off.
                 pour_layers = {L_ for L_, _ in pl}
 
                 def own_join(it):
@@ -550,8 +552,6 @@ class Router(CoupledMixin):
     # ----------------------------------------------------------------- one net
     REGION_COST = 6.0                # crossing another net's regional pour (model.region_net)
     WHOLE_COST = 200.0               # crossing another net's WHOLE pour (model.whole_net)
-    CORRIDOR_SIGNALS_ONLY = os.environ.get("OWNROUTE_CORRIDOR_SIGNALS_ONLY", "0") == "1"
-    CORRIDOR_COST = float(os.environ.get("OWNROUTE_CORRIDOR_COST", "0"))  # another net's power corridor (model.corridor_net), opt-in
     DEBUG_MERGE = False
     DIVE_STUB = 1.0                  # a diving rail keeps to the surface this near its lands
     OFFRUN_COST = 4.0                # a relaxed pair's cell price off its home layers
@@ -601,7 +601,7 @@ class Router(CoupledMixin):
 
     RELAX_AFTER = 10                 # rounds a layer-held pair may share before it is relaxed (4 relaxed USB mid-negotiation, 11-08)
     FILL_MARGIN = 0.15               # a plane-join via's pad this far inside the fill's edge
-    PAD_OWN_JOIN = os.environ.get("OWNROUTE_PAD_OWN_JOIN", "0") == "1"   # build_nets: an SMD plane pad gets its own stub + via
+    PAD_OWN_JOIN = os.environ.get("OWNROUTE_PAD_OWN_JOIN", "1") == "1"   # build_nets: an SMD plane pad gets its own stub + via
     PLANE_JOIN_MM = (2.0, 6.0)       # a plane join looks this near its piece first (then everywhere)
     RING_COST = 4.0                  # inside another net's poured land's thermal room (model.ring_net)
     VOID_COST = 3.0                  # over a void in the track's return plane (model.ref_void)
@@ -1001,18 +1001,6 @@ class Router(CoupledMixin):
             np.multiply(cell, self.ESC_COST, out=cell, where=(es != 0) & (es != nid))
         rg = m.ring_net[sl]
         np.multiply(cell, self.RING_COST, out=cell, where=(rg != 0) & (rg != nid))
-        cor = getattr(m, "corridor_net", None)
-        cor_v = None
-        # ⚠ A POWER NET CROSSING ANOTHER'S CORRIDOR IS NOT A SIGNAL (output_board fin_mO_cor5,
-        # 2026-11-15): charged like a signal, +5V_CM5 (F202 -> J201 x6) and +24V_LED (F203 ->
-        # J240 x2) necked down to cross +24V / VIN_* and became A1 chokes -- A1 16 -> 23.
-        # OWNROUTE_CORRIDOR_SIGNALS_ONLY=1: a net on a declared power path pays only REGION_COST.
-        if (cor is not None and self.CORRIDOR_COST > 1.0
-                and not (self.CORRIDOR_SIGNALS_ONLY and net.name in getattr(m, "power_nets", ()))):
-            cs = cor[sl]
-            foreign = (cs != 0) & (cs != nid)
-            np.multiply(cell, self.CORRIDOR_COST, out=cell, where=foreign)
-            cor_v = foreign.any(axis=0)
         # over a slot in its return plane a signal pays VOID_COST a cell, so it crosses
         # square and short, never along (model._ref_voids)
         if not GROUND_RE.match(net.name):
@@ -1082,8 +1070,6 @@ class Router(CoupledMixin):
         if lane is not None:
             vlegal = vlegal & lane[2]
         vcell = np.where(vlegal, (1.0 + hv) * (1.0 + pf * occv), np.inf).astype(np.float32)
-        if cor_v is not None:
-            np.multiply(vcell, self.CORRIDOR_COST, out=vcell, where=cor_v)
         if walls:
             for o in walls:
                 if o is net or not o.n_v:

@@ -97,7 +97,6 @@ class Model:
         for pp in q.get("power_paths", ()) or ():
             w = power_width(pp, q, at)
             need[pp["net"]] = max(need.get(pp["net"], 0.0), w)
-        self.power_nets = set(need)
         widths = notes.get("net_widths", {}) or {}
         self.width = {}
         for n in names:
@@ -274,38 +273,6 @@ class Model:
                 sub = self.whole_net[lid[L_], i0:i1, j0:j1]
                 sub[_in_poly(X, Y, pts)] = nid
         self.whole_any = bool(self.whole_net.any())
-        # ⚠ A POWER CORRIDOR IS NOT A SIGNAL'S SHORTCUT (output_board mO, 2026-11-15): of the
-        # ten F.Cu power-pour necks, six were foreign tracks or VIAS through the pour -- USBB_DM
-        # across PA_VBUS, a PB_VCC join through PA_VOUT, FLASH_DM / PWR_GATE vias in the +24V
-        # corridor at Q209 (0.06 mm left of 2.03). REGION_COST priced the tracks and nothing
-        # priced the vias. Opt-in (OWNROUTE_CORRIDOR_COST > 1): a regional pour of a net on a
-        # declared power path, grown by CORRIDOR_MM, is that net's corridor; other nets pay
-        # the cost there on its layer, and a via pays it wherever ANY layer's corridor is not
-        # its own. Priced, not banned (a ban walled U6 off on optical).
-        # corridor_net[k] = the power net whose corridor the cell is (0 = none).
-        self.corridor_net = None
-        if float(os.environ.get("OWNROUTE_CORRIDOR_COST", "0")) > 1.0 and self.power_nets:
-            from scipy.ndimage import distance_transform_edt
-            grow = float(os.environ.get("OWNROUTE_CORRIDOR_MM", "0.3"))
-            pitch = self.pitch
-            g = int(math.ceil(grow / pitch))
-            cn = np.zeros((L, ny, nx), np.int32)
-            for net_name in sorted(self.power_nets):
-                nid = self.net_id.get(net_name, -1)
-                if nid < 0:
-                    continue
-                for k in range(L):
-                    msk = self.region_net[k] == nid
-                    if not msk.any():
-                        continue
-                    ii, jj = np.nonzero(msk)
-                    a0, a1 = max(0, ii.min() - g - 1), min(ny, ii.max() + g + 2)
-                    b0, b1 = max(0, jj.min() - g - 1), min(nx, jj.max() + g + 2)
-                    sub = msk[a0:a1, b0:b1]
-                    near = distance_transform_edt(~sub) * pitch <= grow
-                    tgt = cn[k, a0:a1, b0:b1]
-                    tgt[near & (tgt == 0)] = nid
-            self.corridor_net = cn if cn.any() else None
         # ⚠ A POURED LAND NEEDS ROOM TO BREATHE (optical R33.2 GND, 2026-11-08: a foreign
         # track hugging the land left the F.Cu GND pour too few thermal spokes, DRC
         # starved_thermal, and close_last would not run past it). Round every land whose net
