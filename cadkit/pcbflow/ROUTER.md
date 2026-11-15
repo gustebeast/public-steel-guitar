@@ -254,6 +254,27 @@ With the router at 15-75 s a board (HMAP), the route itself is the affordable sc
 open nets, pair faults, contention, length and vias, several placements at once, a
 process each (the "parallelism one level up" above).
 
+**Calibrated against outcomes, the plan IS a placement ranker (2026-11-15) -- `routability()`.**
+The 11-09 test above compared overflow with the router's contention map. Compared instead with
+what decides a placement, whether the router-alone run closes, on 41 placed boards that had both
+(scratch `grs/`): planned at UTIL 1.0 the overflow ranks open above closed only partly
+(output_power AUC 0.96 with a 1.01 tie between 3-open and 0-open boards; output_signal
+inverted). Planned against 0.8 of each square's tracks (SCORE_UTIL), every board that routed
+with nets open scores above every one that closed, inside each family: output_power 2.52-3.53
+open v 0.41-1.68 closed, output_board one* 6.67-7.79 v 2.93-5.92, output_signal 4.13 v 3.07.
+0.75 and 0.85 give the same split, so it is a band, not a knife-edge. Two things do NOT work:
+rescaling capacity after a 1.0 plan (AUC 0.58 on output_board, 0.00 on output_signal -- it is
+the plan negotiating round tight squares that carries the signal), and a per-side pin-escape
+term (U14's CC side has the same lanes in the 3-open and the 0-open board, as the 11-09
+escape test found). The hot list improves with it: on output_power opc_j2 the second hot spot
+sits at U14's west face beside C89/C87, the pin that stayed open. Limits: compare one
+netlist and outline only (the full output_board outline sits at 7.7-11.5 and every board of
+it closed); the score predicts open nets, not pair faults or islands -- those come from pours
+and power vias, which the plan does not see (mP0/mP5/mQ0/mO_j0 plan identically, pairs 4-7).
+Use: `routability(router)` after `build_nets(pours=m.fills)`, about 1-3 s a board, to rank or
+prune a placement set before `router/score.py` spends a route on the survivors. The router's
+own corridor pass keeps UTIL 1.0.
+
 **`router/score.py` is that score (2026-11-10).** `py -3.12 router/score.py <stem>... [--jobs N]`
 routes each placed board router-alone, a process each, and prints one JSON line a board sorted by
 `key` = (open, pair faults, islands, uncoupled mm, contention, vias, length). For a small fixed

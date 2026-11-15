@@ -37,11 +37,18 @@ from . import search as S
 GC_MM = 1.0                # G-cell size
 VIA_GC = 1.0               # a via, in G-cell steps (the detailed via_cost of 15 fine cells is 0.75 mm)
 ROUNDS = 30
+# Capacity derate for the PLACEMENT SCORE (routability() below), not for the corridors the
+# detailed router follows (that pass keeps UTIL). Calibrated 2026-11-15 against router-alone
+# outcomes of 41 placed boards (ROUTER.md "Global plan"): planned at 0.75-0.85, overflow puts
+# every board that routed with nets open above every one that closed, within each board's
+# family (output_power 6 v 6, output_board one* 3 v 8, output_signal 1 v 1); at 1.0 it does
+# not (output_power ties 1.01 open v closed, output_signal inverted).
+SCORE_UTIL = 0.8
 
 
 class GlobalRouter:
     UTIL = 1.0                 # of a square's track count a real route can use (calibrated below)
-    def __init__(self, router, gc_mm=GC_MM, log=print):
+    def __init__(self, router, gc_mm=GC_MM, log=print, util=None):
         self.r = router
         self.m = m = router.m
         self.log = log
@@ -62,7 +69,7 @@ class GlobalRouter:
         tp = (wref + m.clear) / m.pitch                  # track pitch, fine cells
         rows = blk.all(axis=4).sum(axis=2)               # rows free right across: E-W tracks
         cols = blk.all(axis=2).sum(axis=3)               # columns free right down: N-S tracks
-        self.cap = np.maximum(rows, cols).astype(np.float32) / np.float32(tp) * np.float32(self.UTIL)
+        self.cap = np.maximum(rows, cols).astype(np.float32) / np.float32(tp) * np.float32(self.UTIL if util is None else util)
         self.inside = (np.pad(m.edge >= 0, ((0, gh * b - self.H), (0, gw * b - self.W)))
                        .reshape(gh, b, gw, b).any(axis=(1, 3)))
         # a via may drop in a square if some fine site there is via-legal for any net
@@ -248,3 +255,15 @@ class GlobalRouter:
             from scipy.ndimage import binary_dilation
             mask = binary_dilation(mask, iterations=widen)
         return mask
+
+
+def routability(router, util=SCORE_UTIL, top=3):
+    """The placement score: a global plan negotiated against SCORE_UTIL of each square's
+    tracks, {overflow, squares_over, length_mm, vias, rounds, seconds, hot}. Needs
+    `router.build_nets(pours=model.fills)` first. Compare boards of ONE netlist and outline
+    only: overflow grows with board size and net count (output_board 2.9-7.8 on the small
+    outline, 7.7-11.5 on the full one, all of the latter closed)."""
+    g = GlobalRouter(router, log=lambda *a: None, util=util).run()
+    s = g.score()
+    s["hot"] = [(round(o, 1), round(x, 1), round(y, 1), near) for o, x, y, _l, near in g.hotspots(top=top)]
+    return s
