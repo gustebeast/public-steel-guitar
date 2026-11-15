@@ -39,6 +39,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
+# ⚠ NO WX MODAL ON THE DESKTOP (2026-11-15): a debug assert in KiCad's wx (PCB_VIA::GetWidth
+# with no layer) opened "wxWidgets Debug Alert" on the user's screen and hung the run until
+# clicked. KiCad's python ships wxPython; asserts off before pcbnew is touched.
+try:
+    import wx as _wx
+    _wx.DisableAsserts()
+except Exception:
+    pass
 import pcbnew                                   # noqa: E402
 import quality                                  # noqa: E402
 

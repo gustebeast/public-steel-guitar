@@ -3044,6 +3044,11 @@ def connector_labels(ctx):
     ink = _silk_ink(ctx)
     ctx.connector_ink = {}
     alias = [ctx.notes.get("silk_labels") or {}, ctx.notes.get("silk_short") or {}]
+    # `silk_ways` (kicad_silk): a connector's OWN word per way -- a letter, with the board's
+    # key saying what it carries (connector_board's motor plugs, user 2026-11-15). That word
+    # at a way names the way, and at way 1 it says which end way 1 is.
+    own_ways = {r: {int(k): str(v) for k, v in w.items()}
+                for r, w in (ctx.notes.get("silk_ways") or {}).items()}
     conns, nets = {}, {}
     for ref, fp in ctx.fps.items():
         if not (re.match(r"^J\d+$", ref) or ref in extra):
@@ -3167,6 +3172,9 @@ def connector_labels(ctx):
                 if k == way1 and owner(box, c, back) == (ref, k):
                     marked = True
                     marks.append(("text", s, c))
+            elif ref in own_ways and rest == own_ways[ref].get(k):
+                worded[k] = (s, c)
+                marked = marked or k == way1
             elif _names_net(rest, net, [a.get(net) for a in alias]):
                 # a word is this way's if it NAMES this way's net: two connectors side by
                 # side each keep their own words, whichever body a word lies nearer

@@ -85,6 +85,17 @@ them from its "strip_silk" list (what a pcbflow-generated board carries). The sa
 supply `silk_rev` (the revision, when `--rev` is not given), `silk_refs`, `silk_labels`
 and `silk_name`.
 
+`silk_ways` in the same notes: `{ref: {way: word}}` -- a connector's OWN word for each way,
+in place of the net's name and short word, with no "1" before way 1 (the words say which
+contact is which), and no pinout block: the board's key says what they carry. For a row of identical connectors whose ways are better
+told by a letter and a key than by net names (connector_board: ten motor plugs, ways
+A B C D, the key a `silk_words` block beside them -- user 2026-11-15). Every numbered way
+with a net must have its word.
+
+A CONNECTOR'S NAME: `silk_labels` keyed by a connector's ref ({"J11": "MTR 1"}) lays that
+name beside it at the legible size, nearer its own body than any other connector's -- the
+thing a person plugging a lead looks for. The designator stays as it is.
+
 `silk_words` in the same notes: `[(text, x, y, "front" | "back"), ...]`, words that belong
 to a PLACE rather than to a part's pad -- what a socket is for, a warning beside an inlet.
 x, y are the centre of the site in the BOARD FILE's millimetres (what the editor's cursor
@@ -470,6 +481,7 @@ class Side:
         # band between pad 1 and the body line, the usual pin-1 mark. Every other label,
         # a neighbour's dot included, keeps off the whole courtyard, as for any part.
         self.yards = {}
+        self.own_yard = None     # a ref whose yard the label being placed may enter (its name)
         for fp in board.GetFootprints():
             same = fp.IsFlipped() == back
             # NO INK NEAR THE OPTICS. A board that strips its sensors' own outlines
@@ -553,7 +565,8 @@ class Side:
         g = _grow(r, MM(OPTICS_CLR if optics is None else optics))
         return (not any(_hit(g, o) for o in self.dark)
                 and not any(_hit(r, o) for o in self.rects) and self.inside(r)
-                and not any(_hit(r, o) for k, o in self.yards.items() if k != mark))
+                and not any(_hit(r, o) for k, o in self.yards.items()
+                            if k != (mark or self.own_yard)))
 
     def text(self, s, size, angle=0.0):
         t = pcbnew.PCB_TEXT(self.board)
@@ -660,7 +673,7 @@ class Side:
             return out
         keep &= ~_hits(G, list(self.dark))
         keep &= ~_hits(R, list(self.rects))
-        keep &= ~_hits(R, list(self.yards.values()))
+        keep &= ~_hits(R, [o for k_, o in self.yards.items() if k_ != self.own_yard])
         for q in _np.flatnonzero(keep).tolist():
             d2, _k, x, y = cand[q]
             r = [b[0] + x, b[1] + y, b[2] + x, b[3] + y]
@@ -743,7 +756,7 @@ def _short(net, given):
     return tail[:4] if tail else net[:4]
 
 
-def _ways(side, fp, pins, forms):
+def _ways(side, fp, pins, forms, reach=None):
     """One word per way on `side`, in line with each pad, or nothing. `pins` is
     {number: pad}; `forms` is [{number: text}], the fullest wording first. Returns True
     if the whole row went down.
@@ -778,7 +791,10 @@ def _ways(side, fp, pins, forms):
         return False                      # two rows, a ring, a diagonal: the block's job
     line = xs if along_x else ys
     pitch = min(abs(line[i + 1] - line[i]) for i in range(len(nums) - 1))
-    steps = [WAY_GAP + 0.25 * i for i in range(int((WAY_REACH - WAY_GAP) / 0.25) + 1)]
+    # `reach`: a lettered connector (`silk_ways`) may stand its letters past its own housing
+    # -- in line with each pin is what ties a letter to its way, and a rear-row header has
+    # its body between the pins and the nearest free board (connector_board, 2026-11-15)
+    steps = [WAY_GAP + 0.25 * i for i in range(int(((reach or WAY_REACH) - WAY_GAP) / 0.25) + 1)]
 
     def lay(words, ang):
         texts = [side.text(words[k], SIZE_J, ang) for k in nums]
@@ -982,6 +998,7 @@ def _legend(ref, pins, word, two_rows):
 
 
 ID_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ"     # silk_legend's identifiers: no I or O, they read as 1, 0
+OWN_WAY_REACH = 12.0       # mm a `silk_ways` letter may stand from its pin (past the housing)
 WORD_REACH = 1.5           # mm a `silk_words` entry may sit from the point it was given
 
 
@@ -1006,6 +1023,8 @@ def silk(stem, rev=None, dark=(), labels=None, short=None, refs=None, way_words=
         face = _notes.get("silk_font") if face is None else face
         reach = _notes.get("silk_pinout_reach") if reach is None else reach
         sited = _notes.get("silk_words") if sited is None else sited
+        own_ways = {r: {int(k): str(v) for k, v in w.items()}
+                    for r, w in (_notes.get("silk_ways") or {}).items()}
         # `silk_ink_bleed`: 0 keeps a board's silk exactly as ORDERED (an R1 board,
         # frozen, with A12's ink waived in its notes) -- see INK_BLEED.
         bleed = _notes.get("silk_ink_bleed") if bleed is None else bleed
@@ -1016,6 +1035,7 @@ def silk(stem, rev=None, dark=(), labels=None, short=None, refs=None, way_words=
         body_marks = _notes.get("silk_mark_in_body", {}) or {}
     else:
         body_marks = {}
+        own_ways = {}
     for _r, _why in body_marks.items():
         if not str(_why).strip():
             raise SystemExit("silk_mark_in_body names %s with no reason" % _r)
@@ -1099,6 +1119,8 @@ def silk(stem, rev=None, dark=(), labels=None, short=None, refs=None, way_words=
         ref = fp.GetReference()
         if ref not in wanted or ref.startswith("TP"):      # test pads were step 1
             continue
+        if ref in own_ways:
+            continue           # a connector with its own way words: named after its ways (1c)
         s = sides[fp.IsFlipped()]
         if s.place_legible(wanted[ref], SIZE_TP, fp.GetPosition(), 10.0,
                            rivals=[o.GetPosition() for o in fps
@@ -1133,9 +1155,16 @@ def silk(stem, rev=None, dark=(), labels=None, short=None, refs=None, way_words=
             brief = {k: _short(_net(q), way_words) for k, q in pads.items()}
             shown = fp.Reference().IsVisible() and fp.Reference().GetLayer() == s.layer
             forms = []
+            if ref in own_ways:
+                _miss = sorted(set(pads) - set(own_ways[ref]))
+                if _miss:
+                    raise SystemExit("silk_ways: %s has no word for way(s) %s" % (ref, _miss))
+                full = brief = {k: own_ways[ref][k] for k in pads}
             for words in (full, brief):
                 words = dict(words)
-                if len(pads) > 1:
+                if ref in own_ways:
+                    pass                  # its own words say which contact is which
+                elif len(pads) > 1:
                     words[first] = "%d %s" % (first, words[first])
                 elif not shown:
                     # A ONE-WAY connector (a pogo land, a single turret): no "1" -- there
@@ -1146,13 +1175,33 @@ def silk(stem, rev=None, dark=(), labels=None, short=None, refs=None, way_words=
                     words[first] = "%s %s" % (ref, words[first])
                 if words not in forms:
                     forms.append(words)
-            if _ways(s, fp, pads, forms):
+            # a `silk_mark_in_body` part's words may stand in its own courtyard where the
+            # housing is not -- the rear row's only room (connector_board: board edge behind)
+            s.own_yard = ref if ref in own_ways else None
+            _put = _ways(s, fp, pads, forms, reach=OWN_WAY_REACH if ref in own_ways else None)
+            s.own_yard = None
+            if _put:
                 done.append("%s ways (%s)" % (ref, "back" if fp.IsFlipped() else "front"))
                 worded = True
                 if len(pads) == 1 and not shown:
                     united.add(ref)
             else:
                 wayless.append(ref)
+        # A CONNECTOR'S NAME (`silk_labels` by ref): beside its own body, nearer it than any
+        # other connector -- "MTR 3" is what a person plugging a motor lead looks for.
+        if (labels or {}).get(ref):
+            _riv = [o.GetPosition() for o in fps if o is not fp and o.GetReference().startswith("J")]
+            # ...and in a `silk_mark_in_body` part, in its own courtyard where the housing is
+            # not: the band under the mated plug's overhang, read whenever the plug is out
+            # (connector_board's rear row: the board edge behind, the plug's 17 mm in front)
+            s.own_yard = ref
+            _ok = s.place_legible(labels[ref], SIZE_J, fp.GetPosition(), 12.0, rivals=_riv,
+                                  turn="beside its own connector (%s)" % ref)
+            s.own_yard = None
+            if _ok:
+                done.append("%s name %r (%s)" % (ref, labels[ref], "back" if fp.IsFlipped() else "front"))
+            else:
+                missed.append("%s name" % ref)
         if worded or len(ways) < 2:
             continue
         # NO WORD PER WAY (no room, or more ways than words are offered to): THEN AT LEAST
@@ -1268,6 +1317,8 @@ def silk(stem, rev=None, dark=(), labels=None, short=None, refs=None, way_words=
                 pins[int(pad.GetNumber())] = _net(pad)
         if not pins or (len(pins) > LEGEND_MAX_PINS and ref not in pinout):
             continue
+        if ref in own_ways:
+            continue           # its ways are lettered and the board's key says what they carry
         # `silk_labels` may give a NET a shorter word too ({"+24V_LED": "24V"}): a legend
         # is as wide as its longest net name, and on a small board that width is what
         # decides whether it goes down at a legible size or at all.
