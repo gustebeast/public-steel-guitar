@@ -579,7 +579,7 @@ def _rip_one(board, stem, net, model, layers, layer_id, named, gap, tries, close
         if lim is not None:
             return length > float(lim["ratio"]) * g + 1e-9 or length > float(lim["max_mm"]) + 1e-9
         return length > ratio * g and length - g > excess
-    for g in notes.get("match", ()) + notes.get("diff_pairs", ()):
+    for g in list(notes.get("match") or ()) + list(notes.get("diff_pairs") or ()):
         fixed |= set(g.get("nets", ()) if isinstance(g, dict) else g)
     moved = set()           # nets taken up so far: laid again, never taken up twice
     softnet = lambda n: (n and n != net and n not in pour and n not in close_w and n not in wide
