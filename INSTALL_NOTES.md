@@ -2133,3 +2133,20 @@ The housing's guide-rod cap has a cone roof: a small hole at the boss's end is e
   - **J240 → connector board J1**: one premade 30-way 1.27 mm (2 × 15) IDC ribbon. It carries the motors' 24 V, the lights' 24 V, bus A, both bus-B arms and the two clock / data pairs (SCK / SDT, SCK_FOOT / SDT_FOOT). Power rides on several parallel wires; pinout `CONN_RIBBON` in `elec/harness.py`.
   - **J4 → optical board**: the 20-way (2 × 10) ribbon for the pickup's converters.
 - Plug both ribbons with the power off. The ten motors, both bus-B arms and both LED drops plug into the **connector board**, not the output board.
+
+### Deck v2: the +X end, optical panel and swappable pickup slots (2026-11-14)
+From the +X endplate going -X (src/deck_v2_region.py):
+- **Optical panel** (deck_optical), x -32.16 .. -20.25:
+  - The optical board's -X edge sits on the panel's -X edge. That puts the sensor row 20 mm from the string's termination on the bridge bearing (x -28), as in v1, with v1's 4.16 keepout from the row to the board edge.
+  - A plinth stands under the board in the endplate's raised y band (-50 .. 53), at v1's plinth height (12.04).
+  - The board is a stand-in until the optical redesign lands; its fixing and cable way are still to come.
+  - Print it standing on its -X face (builds -X -> +X).
+- **Six slots** from -32.21 to -142.23 (18.30 wide, pitch 18.35), then panel 3 as before.
+- **Pickup piece** (deck_pickup) takes any four neighbouring slots; plain fillers (deck_filler_N) take the other two.
+  - Moving the piece one slot moves the pickup 18.35. Its centre can be at -68.9, -87.2 or -105.6.
+  - At each position the pickup slides +-6 on its height plate.
+  - Swap: slide the panels off -X as far as the piece, then put the piece and fillers back in the order you want.
+- **The mount is v1's:**
+  - The pickup rests on the height plate (pickup_plate), lifted and tilted by three M4 x 20 button heads from the top (2.5 key).
+  - Turn the two +Y jacks together to level it along X; the -Y jack tilts it across the strings.
+  - Push the pickup against the plate's +Y wall with the -Y retention screw. Set it before the piece goes in: the key reaches it through the slot in the -Y skirt.

@@ -1884,7 +1884,7 @@ def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
     out.append(("ob_board", _made("ob_board", kept(_ob_board))))   # bronner's, a stand-in
     out.append(("body", _made("body", kept(_body))))   # opaque PETG-GF, as the lead's chassis
     out += [g for g in _ghosts(y_hi=RAIL_HI)
-            if g[0] != "ghost_bottom_now" and (all_ghosts or g[0] == "ghost_pickup")]
+            if g[0] not in ("ghost_bottom_now", "ghost_pickup") and all_ghosts]   # the pickup is drawn now
     return out
 
 
@@ -1904,6 +1904,11 @@ MATERIAL = {
     "collar_a": "petg-gf", "collar_b": "petg-gf", "ca_m3": "steel",
     "deck": "pctg-black", "deck_white": "pctg-clear", "fret_board": "board",
     "fret_leds": "nylon",                        # bought 5050s: a moulded white package, its colour kept
+    # the +X end (src/deck_v2_region.py): the optical panel, the pickup's piece and fillers, its mount
+    "deck_optical": "pctg-black", "deck_pickup": "pctg-black", "deck_filler": "pctg-black",
+    "optical_board": "board", "pickup": "aluminium", "pickup_plate": "petg-gf",
+    "pickup_jack_screw": "steel", "pickup_jack_insert": "brass",
+    "pickup_ret_screw": "steel", "pickup_ret_insert": "brass",
 }
 
 

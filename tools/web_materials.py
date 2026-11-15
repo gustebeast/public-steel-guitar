@@ -111,6 +111,9 @@ def finish_of(base: str):
 # and what it shows), so the viewer hides, selects and lists them as one
 # (cadkit.web.export units=).
 _ONE_PRINT = ((re.compile(r"^top_plate_color_(\d+)$"), r"top_plate_\1"),
+              # the direct body's top panel and its white windows: one two-filament print
+              # (user, 2026-11-14: select and hide/show them as one part)
+              (re.compile(r"^deck_white_(\d+)$"), r"deck_\1"),
               # one bought motor, drawn one solid per material (src/servo42d.py)
               (re.compile(r"^motor_(?:face|stack|shaft|coil_plug|driver|terminal|coil_terminal"
                           r"|screws|term_screws|buttons|lead_[a-z]+)_(\d+)$"), r"motor_\1"),
