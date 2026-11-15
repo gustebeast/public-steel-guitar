@@ -102,6 +102,7 @@ _HEIGHT: dict = {
     # plug 11.10 (both drawings, 22.09.14) -- the mated pair's height, since the instrument
     # always has the plug in (and SIDE_PLUG_RUN carries it past the header's mouth)
     "MAX_MX15EDGRC-3.5-04P_1x04_P3.50mm_Horizontal_Mated": 11.1,
+    "MAX_MX15EDGRC-3.5-02P_1x02_P3.50mm_Horizontal_Mated": 11.1,   # output_board J8 (2026-11-14), as the 04P
     # output_panel U10, the AD8402 gain pot: 14-lead narrow SOIC, 1.75 max (JEDEC MS-012-AB)
     "SOIC-14_3.9x8.7mm_P1.27mm": 1.75,
     # the tee's 8-way trunk: the same shell as cadkit's S4B-XH-A, eight ways long. The tee

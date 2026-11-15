@@ -55,8 +55,8 @@ LINKS (no CH340 any more -- the CM5 is on the board):
     hand an arm's pair from CAN to it for one flash. It replaces motor_ctrl's U7/U8 path.
 
 OPEN ITEMS (BOARD_NOTES["open_items"]):
-  - DF40 pad numbering vs CM5 pin numbering: pad n = pin n (J1) and pin n+100 (J2), as on
-    the CM4/CM5 IO board -- check against the CM5 IO board's KiCad files before layout.
+  - DF40 pad numbering vs CM5 pin numbering: pad n = pin n (J1) and pin n+100 (J2) -- CLOSED
+    2026-11-14 against CM5IO's KiCad files; placement and check in elec/cm5_mech.py.
   - CM5 5 V: U5 is the 3 A LMR33630 motor_ctrl fed the Pi 4B from; the CM5 asks 5 A with
     USB loads. This board hangs nothing on the CM5's USB but two data links, so 3 A should
     hold -- measure; the LMR33640 (4 A) takes the same land.
@@ -886,8 +886,9 @@ BOARD_NOTES = {
     # every JST on +Y, mouth up (lead, 2026-11-13); J5's vertical 2x8 LCSC part is open
     "placements": {},
     "open_items": [
-        "DF40 pad n = CM5 pin n (J1) / n+100 (J2), pad 1 at the module's pin-1 end, J1-J2 "
-        "34.4 apart (scaled off CM5 DS fig. 4): check all three against the CM5 design files",
+        "DF40 placement: CLOSED 2026-11-14 on the merged output board -- read off CM5IO "
+        "(RP-008099-DD-1): 34.0 apart, pad 1 at the module's +Y end, odd column -X; "
+        "elec/cm5_mech.py places it and checks the routed board",
         "CM5 5 V: U5 is 3 A (LMR33630); CM5 asks 5 A with USB loads -- measure; LMR33640 fits",
         "LM5122 OPT tied to AGND for a single-phase master -- confirm in SNVS954H",
         "L4 (10 uH / 15 A) land is a placeholder; the 2220 X7R DC-bias retention (50 % at 24 V) the boost cap counts assume is not measured",

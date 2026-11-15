@@ -76,6 +76,7 @@ from skidl import ERC, Net, Part, Pin, generate_netlist  # noqa: E402
 import harness                                      # noqa: E402
 import netcheck                                     # noqa: E402
 import buck_cell as BC                              # noqa: E402
+import cm5_mech as CM5                              # noqa: E402
 
 # The analog chain below is output_panel's R2, copied with its REV switches in place; this
 # board is R2's chain and only that, so REV is a constant here, not an environment knob.
@@ -105,7 +106,7 @@ XH6_FP = "Connector_JST:JST_XH_S6B-XH-SM4-TB_1x06-1MP_P2.50mm_Horizontal"
 PH6_FP = "Connector_JST:JST_PH_S6B-PH-SM4-TB_1x06-1MP_P2.00mm_Horizontal"
 TERM_FP = "TerminalBlock:TerminalBlock_MaiXu_MX126-5.0-02P_1x02_P5.00mm"
 TERM_FP_R2 = "Steel:MaiXu_MX128-5.0-02P_1x02_P5.00mm"     # slotted: no second tool (R2-3)
-TERM_FP_35 = "TerminalBlock_Phoenix:TerminalBlock_Phoenix_PT-1,5-2-3.5-H_1x02_P3.50mm_Horizontal"
+TERM_FP_PLUG2 = "Steel:MAX_MX15EDGRC-3.5-02P_1x02_P3.50mm_Horizontal_Mated"   # J8, pluggable (2026-11-14)
 MCU_FP = "Package_DFN_QFN:QFN-68-1EP_8x8mm_P0.4mm_EP5.2x5.2mm"
 ADC_FP = "Package_SO:TSSOP-14_4.4x5mm_P0.65mm"     # PCM1808PWR is a 14-pin TSSOP
 DAC_FP = "Package_SO:TSSOP-20_4.4x6.5mm_P0.65mm"
@@ -837,10 +838,16 @@ def output_board():
               # for the screw terminals we should use a flathead as well so a single tool can do
               # both"): the SERVO42D's terminals take a 2.0 mm blade; the MX128's M2.5 slot wants
               # a wider one. So J8 is the connector board's 3.5 mm M2-slotted block, 2-way.
-              value="KF350-3.5-2P",
-              description="magnetic pickup in, 3.5 mm screw terminal, M2 slotted (2.0 mm blade, "
-                          "as the motors' and the connector board's)",
-              footprint=TERM_FP_35,
+              # PLUGGABLE since 2026-11-14 (user: "if space allows we could use it for the
+              # magnetic pickup connector on the brain board" -- plug-style screw terminals are
+              # preferred where space allows): MAX MX15EDGRC-3.5-02P header + its MX15EDGK plug,
+              # the motors' and LED leads' family. A pickup swap is now unplug, rewire on the
+              # bench, plug back. The mated plug runs 16.5 from the pin row (the 04P's numbers).
+              value="MX15EDGRC-3.5-02P",
+              description="magnetic pickup in, 3.5 mm pluggable header; its MX15EDGK plug takes the "
+                          "leads on M2 slotted screws (2.0 mm blade, as the motors' and the "
+                          "connector board's)",
+              footprint=TERM_FP_PLUG2,
               pins=[Pin(num=1, name="HOT", func=P), Pin(num=2, name="RET", func=P)])
     # R2 TURNS J8 180 DEGREES (lead, 2026-10-29): on the dropped board its +Y entry sat in
     # string 10's clamp sweep, so the wires come in from -Y, over the board. Turned about
@@ -1888,6 +1895,8 @@ BOARD_NOTES = {
     "silk_pinout": ["J4"],
     "edge_parts": {"-X": ["J1", "J2", "J5"], "+Y": ["J8"], "+X": ["J3", "J9"]},
     "placements": {},
+    # THE CM5's FOUR M2.5 HOLES (CM5IO; elec/cm5_mech.py, which also checks the routed board)
+    "cutouts": CM5.cutouts() if MERGED else [],
     "firmware_notes": FIRMWARE_NOTES,
     # THE MOAT, sealed on every layer: no track, via or fill crosses between the audio corner
     # and the rest -- only the barrier parts' pads straddle it (cadkit A25 checks the result)

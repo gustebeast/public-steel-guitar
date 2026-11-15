@@ -21,6 +21,8 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+import cadquery as cq
+
 from cadkit.board_geom import Boards
 
 from . import board_geom as BG
@@ -31,7 +33,9 @@ from . import board_geom as BG
 VIEW_HEIGHT = {
     "CP_Elec_10x10.5": 13.0,                 # brain C113/C114 polymer, part_heights 13.0
     "D_SOD-323": 1.10,                       # brain part_heights D13
-    "Hirose_DF40C-100DS-0.4V_2x50_P0.4mm": 1.5,   # the CM5 mezzanine's mated stack (CM5 datasheet)
+    # the CM5 mezzanine's RECEPTACLE (ours): the 1.5 mated stack (CM5 datasheet) is drawn as two
+    # halves, this and the CM5's plug (_cm5) -- the 1.0 / 0.5 split ESTIMATED, not off Hirose's print
+    "Hirose_DF40C-100DS-0.4V_2x50_P0.4mm": 1.0,
     "L_Bourns_SRP1770TA_16.9x16.9mm": 7.0,   # brain part_heights L4
     "PinHeader_2x08_P1.27mm_Vertical": 5.3,  # brain part_heights J5 (HX PZ1.27-2x8P ZZ)
     "PinHeader_2x10_P1.27mm_Vertical_SMD": 5.3,   # output_board J4 PZ1.27-2x10P: AS its 2x8 sibling
@@ -66,10 +70,10 @@ BOARDS = BG._with_revs(Boards(BG.GEOM_DIR, height={**BG.HEIGHT, **VIEW_HEIGHT}, 
 
 BRAIN_Y, BRAIN_DX, BRAIN_Z = -66.0, -360.0, -71.0
 # connector_board: FLAT ON THE FLOOR, component side up (+Z), its own frame's centre at
-# instrument (-535.35, 46.0), underside at z -107.2 (connector_board notes "frame", branner
+# instrument (-572.175, -9.55) PROPOSED 11-15 (three rows, user), underside z -107.2 (notes "frame", branner
 # 11-13). Drawn MATED: J11-J20's plugs (side_plug_run) and the PH / XH housings, what the
 # nut block, the endplates and the cable path have to clear.
-CB_X, CB_Y, CB_Z = -535.35, 46.0, -107.2
+CB_X, CB_Y, CB_Z = -572.175, -9.55, -102.2
 OB_X, OB_BACK_Y, OB_Z = -74.985, -87.5, -58.24     # output_board (= brain) centre, FINAL (x -150.4..0.43, 150.83 wide), back face (branner)
 
 
@@ -87,8 +91,12 @@ def _build(board):
 # output_board's J8 is a 3.5 mm terminal now (screw_terminal draws the 5.00-pitch MX128 and
 # asserts it): drawn as its box until screw_terminal learns the part (2026-11-14)
 SKIP = {}
-# boards drawn with their plugs in (BOARDS.solid(mated=True))
-MATED = {"connector_board"}
+# boards drawn with their plugs in (BOARDS.solid(mated=True)): NONE. This is a view, not a fit
+# study, and a mated solid carries each side-entry plug's RUN as a bare box (SIDE_PLUG_RUN)
+# that no model replaces -- J11-J20 showed as big boxes in front of the screw terminals
+# (user, 2026-11-14: "that shouldn't appear in the render"). The JST crimp housings are drawn
+# by the web export from its own plug models either way.
+MATED = set()
 
 
 @lru_cache(maxsize=None)
@@ -114,10 +122,54 @@ def _flat_up(w, x, y, z):
     return w.translate((x, y, z))
 
 
+def _cm5(t):
+    """(module, soc) in the output board's own frame: the Compute Module 5 on its two DF40s.
+
+    Holes and outline from elec/cm5_mech.py (Raspberry Pi's CM5IO carrier); the 1.5 mm stack,
+    the 1.24 module PCB and the 2.2 SoC (4.94 mounted height) from RP-008180-DS-7 4.1.1; the
+    SoC's centre from Fig. 4 (31.99 from the pin-99 edge, 16.98 from the pin-200 edge -- the
+    module's +Y edge is its pin-1 end, its +X edge the pin-101 row). The SoC is drawn 15 x 15
+    (scaled off Fig. 4): a stand-in, not a datasheet dimension."""
+    import sys as _sys
+    import os as _os
+    _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))), "elec"))
+    import cm5_mech as CM5
+    x0, y0, x1, y1 = CM5.outline()
+    z0 = t + CM5.STANDOFF_H
+    mod = (cq.Workplane("XY").box(x1 - x0, y1 - y0, CM5.MODULE_PCB_T, centered=False)
+           .edges("|Z").fillet(3.0).translate((x0, y0, z0)))
+    for hx, hy in CM5.holes():
+        mod = mod.cut(cq.Workplane("XY").circle(CM5.HOLE_D / 2).extrude(5.0).translate((hx, hy, z0 - 1.0)))
+    sx, sy, ss, sh = x1 - 16.975, y0 + 31.9875, 15.0, 2.2
+    soc = cq.Workplane("XY").box(ss, ss, sh).translate((sx, sy, z0 + CM5.MODULE_PCB_T + sh / 2))
+    # HOW IT PLUGS IN (user, 2026-11-14: "how does the CM5 attach ... I don't see pins"): no
+    # pins -- two 100-way 0.4 mm Hirose DF40 mezzanines under the module, J201 / J202 on our
+    # side. Each is drawn as the pair it is: our receptacle (the footprint body, VIEW_HEIGHT 1.0),
+    # the CM5's plug hanging from the module's underside to meet it (1.5 stack), and a gold
+    # lead on each of the 200 pads, past the receptacle's body, where the solder joints are.
+    plug = leads = None
+    for ref in ("J201", "J202"):
+        f = BG.footprint("output_board", ref)
+        fx0, fx1, fy0, fy1 = f["fab"]
+        cx, cy = (fx0 + fx1) / 2.0, (fy0 + fy1) / 2.0
+        w, l = (fx1 - fx0) - 0.6, (fy1 - fy0) - 0.6          # the plug inside the receptacle's walls
+        hp = CM5.STANDOFF_H - VIEW_HEIGHT[f["fpid"].split(":")[-1]]
+        pb = cq.Workplane("XY").box(w, l, hp).translate((cx, cy, z0 - hp / 2.0))
+        plug = pb if plug is None else plug.union(pb)
+        pts = []
+        for x, y in f["pads"].values():
+            s = 1.0 if x > cx else -1.0
+            pts.append((x + s * 0.2, y))                       # the pad's outer half, past the body
+        ld = (cq.Workplane("XY").pushPoints(pts).rect(0.35, 0.2).extrude(0.12).translate((0, 0, t)))
+        leads = ld if leads is None else leads.union(ld)
+    return mod, soc, plug, leads
+
+
 def boards() -> list:
     out = []
     place = (
-        ("brain", _facing_minus_y, (BRAIN_DX, BRAIN_Y, BRAIN_Z)),
+        # the 320 x 70 brain is NOT drawn: the output board is the brain now (2026-11-13), and
+        # the old board read as a second connector board in the view (user, 2026-11-14)
         # board -X = instrument +X, parts toward +Y: (x, y, z) -> (-x, z, y)
         ("output_board", _facing_plus_y_mirrored, (OB_X, OB_BACK_Y, OB_Z)),
         ("connector_board", _flat_up, (CB_X, CB_Y, CB_Z)),
@@ -128,6 +180,28 @@ def boards() -> list:
         out.append(("%s_pcb" % b, made_of(pose(solid, *at), "board")))
         if ink is not None:
             out.append(("%s_pcb_silk" % b, made_of(pose(ink, *at), "ink")))
+        if b == "output_board":
+            import json as _json
+            import os as _os
+            _g = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))),
+                               "elec", "geom", "output_board.geom.json")
+            mod, soc, plug, leads = _cm5(_json.load(open(_g))["thickness_mm"])
+            out.append(("output_board_cm5", made_of(pose(mod, *at), "board")))
+            out.append(("output_board_cm5_soc", made_of(pose(soc, *at), "polished")))
+            out.append(("output_board_cm5_plug", made_of(pose(plug, *at), "nylon")))
+            out.append(("output_board_df40_leads", made_of(pose(leads, *at), "gold")))
+        # the ribbon headers' IDC sockets and a stub of each ribbon (src/ribbon_socket.py)
+        from . import ribbon_socket as RS
+        rs = RS.parts(b)
+        if rs:
+            out.append(("%s_idc" % b, made_of(pose(rs["socket"], *at), "nylon")))
+            out.append(("%s_idc_ribbon" % b, made_of(pose(rs["ribbon"], *at), "pvc")))
+        if b == "connector_board":
+            # J11-J20: the MX15EDGK screw plugs in their headers (src/pluggable_terminal.py)
+            from . import pluggable_terminal as PT
+            tb = PT.parts(b)
+            out.append(("connector_board_tb_plug", made_of(pose(tb["housing"], *at), "nylon")))
+            out.append(("connector_board_tb_screws", made_of(pose(tb["metal"], *at), "steel")))
         if "J8" in SKIP.get(b, ()):
             from . import screw_terminal as ST
             for k, v in ST.parts(b, "J8").items():
@@ -137,4 +211,6 @@ def boards() -> list:
 
 def assembly() -> list:
     from . import direct_bench as DB
-    return DB.assembly() + boards()
+    # ob_board is branner's stand-in for the output board (the gates' courtyards): the
+    # routed board drawn here replaces it
+    return [p for p in DB.assembly() if p[0] != "ob_board"] + boards()

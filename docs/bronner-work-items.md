@@ -1,5 +1,66 @@
 # bronner — open work items (2026-09-30)
 
+## 2026-11-14 (late): CM5 CONNECTORS WERE SWAPPED -- fixed, re-routing (trial mM)
+
+- mMf (mM routed + finished as split jobs): 0 unconnected / 0 violations, quality 79 FAIL
+  (mK 141), but 6 verify FAILs -- all USBA / USBB. The CM5 re-place let U17 drift 82 mm from
+  J1 (the near-J1 pull was soft): pairs 90-110 mm, 4-7 vias. Intent now HARD U17 <= 30 from FL3
+  (mK 27.5); placement job mN running.
+- Router determinism under load proven: optical var2 x12, --jobs 1 vs --jobs 3, 12/12 keys equal.
+- Worktree merged with main 85e2078e (0c25f41a); CM5 view / colour / material entries on top.
+
+- **Verdict: confirmed swapped.** Checked against Raspberry Pi's own carrier (CM5IO KiCad,
+  RP-008099-DD-1). Old J201/J202 at rot 90 had pad 1 at the low-Y end with the odd column
+  at +X; CM5IO puts it at the +Y end with the odd column at -X (rot 270), and the two are
+  34.0 apart, not 34.4. J201 (38.0, 19.0), J202 (72.0, 19.0), both 270.
+- 4x M2.5 NPTH 2.7 at (38.5, -2.5), (71.5, -2.5), (38.5, 45.5), (71.5, 45.5) as
+  BOARD_NOTES cutouts. Copper kept out under a 5 OD 1.5 mm spacer (front) and the DIN965
+  head (back).
+- `elec/cm5_mech.py` owns the geometry, and cad_geom_check runs its check on the routed
+  geom: all 200 pads by number, the holes, and nothing under the module. The old board
+  fails it; the intent reads its placement from it.
+- The view draws the module (1.24 PCB on the 1.5 stack) and the SoC (15 x 15 stand-in, Fig. 4 centre).
+- mM (2026-11-14): cm5_mech check PASSES on the routed board. Route 7 open (4 x +5V_CM5) +
+  3 hole_to_hole (stacked V5_PRE vias); the flow hit 3540 s. Re-routing router-alone (rob_mM).
+- RULE (lead, 2026-11-14): no job near an hour -- merged-board trials run placement with
+  SKIPF=1 (--skip-finish), then router-alone, then finish, as separate jobs.
+- CONNECTOR BOARD two rows (user): trial cb/d2 (scratch intent_cb2.py) 0 unconnected / 0
+  violations, quality 14 FAIL (c4 18). Router: _split_stranded (pieces[0] lands cut off).
+- OPEN: commit (a) after the cA fret/optical replays; fret-0 LEDs sent
+  to the lead for branner (25 zones = 9 TLC5971 on the v2 LED board).
+
+## 2026-11-14: OUTPUT BOARD (mL2) ROUTER WORK
+
+Every change is checked router-alone on the same placed boards (mL2, optical from layout.py,
+fret_led_key), old code against new. Committed in canonical cadkit, hashes sent to the lead:
+17ecabd, 45ba8d1, 8f269a7, 16cf41c, f67fc5f, 19b4915.
+
+| mL2 run | time | unconnected |
+|---|---|---|
+| before 17ecabd | 1805 s | 16 |
+| 8f269a7 | 1501 s | 4 (+24V, PB_VBUS, GND x2) |
+| 19b4915 | 1576 s | 4 (GND only) |
+
+- **OPEN, mL2 GND x4.** All four GND opens are under the CM5.
+  - U1.126 is boxed in by its neighbours' fan-out vias: plane pins had no escape stub.
+    Fix flagged as ESC_PLANE_PINS, under test.
+  - J240.29 and C237.2 join thin strips of the In1 / B.Cu planes walled off by signal
+    tracks.
+  - A price on whole planes made it worse (x3: 6 open, x8: 9) and was removed.
+  - Re-routing the walling nets with the re-join made more islands and was removed.
+  - Both are recorded in ROUTER.md under known traps.
+- **U220 clearance (all 17 mL2 hits).** Searches started on illegal corner cells of their
+  own land. Fixed by starting and ending on legal land cells (uncommitted). Optical
+  17 -> 16 unconnected; fret_led_key unchanged; mL2 under test.
+- **Pour bands round foreign pads**: place_intent.pour_around, opt-in via auto_pour
+  `around` (uncommitted). On mL2's placement +24V goes from 11 fill fragments to 1.
+- **CLOSED, optical +3V3D at U6.** It is no longer an open piece. What remains is
+  _phy_copper's declared fan-out via (124.52, 162.19), left dangling when the router
+  joins the piece by its own via. CLOSED 2026-11-14: finish.py's spent_vias step removes it (probed on kopt_cB: it takes all three router-alone via_dangling -- this one and ULPI_STP / ULPI_NXT with their spurs); only router-alone replays show it. Was: drop a dangling declared via after close_last
+  once its net has nothing open.
+- **Connector board** in the assembly view only (350868667, not submitted). The frame
+  collides with branner's parts; the user has the question.
+
 ## 2026-11-09: OWN ROUTER IS THE DEFAULT; R2 KEPT BOARDS RE-ROUTED; PLACEMENT TOOLING
 
 - **Own router default** (cadkit d5d8697). 15 of 15 boards signed off on the full chain

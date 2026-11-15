@@ -147,7 +147,7 @@ HOUSING = {("XH", 2): "C144401", ("XH", 4): "C493083", ("XH", 8): "C144407",
 # PH lead is 26 AWG (the two-gauge rule), so the narrower range costs nothing.
 CRIMP = {"XH": "C140573", "PH": "C265456", "SH": "C263995", "VH": "C160350"}
 # pluggable terminal blocks: board header's LCSC code -> its plug's (one plug a header)
-PLUGS = {"C5188297": "C5188251"}    # MAX MX15EDGRC-3.5-04P -> MX15EDGK-3.5-04P (connector board)
+PLUGS = {"C5188297": "C5188251", "C5188295": "C5188249"}   # MX15EDGRC -> MX15EDGK, 04P and 02P    # MAX MX15EDGRC-3.5-04P -> MX15EDGK-3.5-04P (connector board)
 
 
 def design_netlists():

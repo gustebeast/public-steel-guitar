@@ -220,6 +220,8 @@ LCSC = {
     "744273501": "C2651123",        # Wurth WE-SL5 HC 5 A / 80 V common-mode choke; 2,113 stock
     "ACM2012-900-2P-T002": "C55213549",  # T-CND, TDK ACM2012-900 pattern, 50 V 0.4 A; 5,094 stock (TDK's C19972: 0)
     "MX15EDGRC-3.5-04P": "C5188297",  # MAX 3.5 mm pluggable header, right angle, 4-way, 300 V 8 A; 8,523 stock (connector board J11-J20)
+    "MX15EDGRC-3.5-02P": "C5188295",  # its 2-way: output_board J8, the magnetic pickup (user 2026-11-14)
+    "MX15EDGK-3.5-02P": "C5188249",   # the 2-way plug, slotted (Y); stock to confirm at order time
     "MX15EDGK-3.5-04P": "C5188251",   # its plug, M2 slotted screws, 28-16 AWG; 9,319 stock -- the mating half (tools/lcsc_prices.PLUGS)
     "KF350-3.5-2P": "C474892",      # Cixi Kefa 3.5 mm 2-way screw terminal, M2 slot, 300 V 10 A; 10,892 stock
     "TS3USB221ARSER": "C128396",    # TI USB 2:1 switch, 5.5 V tolerant I/O, UQFN-10 -- lever pair select; 74,249 on 2026-11-03
