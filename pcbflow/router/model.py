@@ -22,6 +22,7 @@ POWER_W_MAX = 1.0        # the widest a power path is drawn (wider: pour it)
 DROP_SHARE = 0.6         # of a path's drop budget the track may spend (detours, vias, joints)
 DETOUR = 1.6             # routed length over Manhattan, for the drop estimate (optical V24_IN ran 2.0x)
 RING_PADS = 3            # parts with this many pads or fewer get a thermal ring
+PLANE_PIN_RING = os.environ.get("OWNROUTE_PLANE_PIN_RING", "0") == "1"   # + a big part's through-hole plane pins (opt-in)
 RING_MM = 0.9            # a poured land's thermal room, from its copper edge
 HOLE_PAD = 0.45          # a pad's hole to any other hole, edge to edge (quality.FAB hole_hole_pad)
 SUPPLY = ("+", "GND", "VCC", "VDD")
@@ -96,6 +97,7 @@ class Model:
         for pp in q.get("power_paths", ()) or ():
             w = power_width(pp, q, at)
             need[pp["net"]] = max(need.get(pp["net"], 0.0), w)
+        self.power_nets = set(need)
         widths = notes.get("net_widths", {}) or {}
         self.width = {}
         for n in names:
@@ -272,6 +274,38 @@ class Model:
                 sub = self.whole_net[lid[L_], i0:i1, j0:j1]
                 sub[_in_poly(X, Y, pts)] = nid
         self.whole_any = bool(self.whole_net.any())
+        # ⚠ A POWER CORRIDOR IS NOT A SIGNAL'S SHORTCUT (output_board mO, 2026-11-15): of the
+        # ten F.Cu power-pour necks, six were foreign tracks or VIAS through the pour -- USBB_DM
+        # across PA_VBUS, a PB_VCC join through PA_VOUT, FLASH_DM / PWR_GATE vias in the +24V
+        # corridor at Q209 (0.06 mm left of 2.03). REGION_COST priced the tracks and nothing
+        # priced the vias. Opt-in (OWNROUTE_CORRIDOR_COST > 1): a regional pour of a net on a
+        # declared power path, grown by CORRIDOR_MM, is that net's corridor; other nets pay
+        # the cost there on its layer, and a via pays it wherever ANY layer's corridor is not
+        # its own. Priced, not banned (a ban walled U6 off on optical).
+        # corridor_net[k] = the power net whose corridor the cell is (0 = none).
+        self.corridor_net = None
+        if float(os.environ.get("OWNROUTE_CORRIDOR_COST", "0")) > 1.0 and self.power_nets:
+            from scipy.ndimage import distance_transform_edt
+            grow = float(os.environ.get("OWNROUTE_CORRIDOR_MM", "0.3"))
+            pitch = self.pitch
+            g = int(math.ceil(grow / pitch))
+            cn = np.zeros((L, ny, nx), np.int32)
+            for net_name in sorted(self.power_nets):
+                nid = self.net_id.get(net_name, -1)
+                if nid < 0:
+                    continue
+                for k in range(L):
+                    msk = self.region_net[k] == nid
+                    if not msk.any():
+                        continue
+                    ii, jj = np.nonzero(msk)
+                    a0, a1 = max(0, ii.min() - g - 1), min(ny, ii.max() + g + 2)
+                    b0, b1 = max(0, jj.min() - g - 1), min(nx, jj.max() + g + 2)
+                    sub = msk[a0:a1, b0:b1]
+                    near = distance_transform_edt(~sub) * pitch <= grow
+                    tgt = cn[k, a0:a1, b0:b1]
+                    tgt[near & (tgt == 0)] = nid
+            self.corridor_net = cn if cn.any() else None
         # ⚠ A POURED LAND NEEDS ROOM TO BREATHE (optical R33.2 GND, 2026-11-08: a foreign
         # track hugging the land left the F.Cu GND pour too few thermal spokes, DRC
         # starved_thermal, and close_last would not run past it). Round every land whose net
@@ -290,12 +324,26 @@ class Model:
         for net_name, polys in self.pours.items():
             nid = self.net_id.get(net_name, -1)
             for p in self.pads:
-                if p["net"] != net_name or npads.get(p.get("fp"), 99) > RING_PADS:
+                if p["net"] != net_name:
+                    continue
+                # ⚠ A BIG PART'S THROUGH-HOLE PLANE PIN NEEDS ITS RING TOO (output_board mO2,
+                # 2026-11-15): J205.8 (GND, the UI header) joins the planes only through its
+                # barrel, and UI_ENC_A on In1 plus UI_SW_C / ENC_B / RES_N on B.Cu fenced it
+                # into a 3-8 mm2 island on both -- no via of its own, close_last "no path",
+                # the board one open. A part over RING_PADS keeps no ring on its signal
+                # layers (U3's escapes, above), but a through-hole pin of a WHOLE-LAYER pour's
+                # net gets one on that plane layer, where only the plane may reach it.
+                # OPT-IN (OWNROUTE_PLANE_PIN_RING=1): on by default the connector board's d15
+                # placement went 0 -> 1 unconnected with twelve MX15 GND ways ringed.
+                small = npads.get(p.get("fp"), 99) <= RING_PADS
+                if not small and (p["cu"] is not None or not PLANE_PIN_RING):
                     continue
                 r = pad_reach(p) + RING_MM
                 win = None
                 for L_, pts in polys:
                     if L_ not in lid or not (p["cu"] is None or L_ in p["cu"]):
+                        continue
+                    if not small and _area(pts) <= 0.8 * board_area:
                         continue
                     if not _in_poly(np.array([p["gx"]]), np.array([p["gy"]]), pts)[0]:
                         continue
