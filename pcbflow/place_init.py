@@ -1299,7 +1299,7 @@ TANGLE_MIN = 10     # ...and at least this many crossings fewer
 HOLD_PAD = 0.3      # mm: room round a held anchor's courtyard in a grown re-run (turns fit)
 SEAT_GAP = 1.0      # mm: pin to satellite courtyard when a grown region seats it
 GROW_PAD = 0.5      # mm: a region edge grown for a stranded satellite goes this far past its shortfall
-POUR_W = 25.0       # mm of wirelength a pad inside another net's pour corridor is worth
+POUR_W = 25.0       # mm of broken soft rule a pad inside another net's pour corridor is worth (x RULE_W in the pass: 250 mm of net)
 RULE_W = 10.0       # mm of wirelength a millimetre of broken soft rule is worth (local pass)
 SOFT_KINDS = ("decap", "near", "between", "thermal", "apart", "chain", "tight")
 
@@ -1450,9 +1450,14 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
             return 0.0
         return TANGLE_W * _tangle(parts, pl, ref, members, rails_l)
 
+    # ⚠ ONE PRICE FOR A PAD IN A FOREIGN POUR (lead, 2026-11-14): pour_pen was summed into the
+    # rule breach and multiplied by RULE_W only when the part had a soft rule -- a ruled part
+    # paid RULE_W x POUR_W = 250 per foreign pad, a rule-less one 25, so adding any soft rule
+    # made a part 10x more pour-averse as a side effect. Every part now pays the ruled price
+    # (the one C246 showed the pass already weighs rules against).
     def penalty(ref):
         if not rel.get(ref):
-            return pour_pen(ref) + tangle_pen(ref)
+            return RULE_W * pour_pen(ref) + tangle_pen(ref)
         P = pi.Placed(parts, pl)
         v = pour_pen(ref)
         for r in rel[ref]:
@@ -1466,12 +1471,23 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
     def total():
         return cost(scope)
 
+    # ...and a satellite's OWN rules count the same way (output_board mN replay, 2026-11-14):
+    # C246, seated at U212.6, moved itself 15.5 mm off the pin -- a pad in another net's pour
+    # corridor costs RULE_W x POUR_W = 250, its weight-0.5 rule only 10 x 0.5 x 15.5 = 78, and
+    # nothing ranked the breach first for a satellite as it is for an anchor. A move may not
+    # take a part out of its own rule any more than it may strand an anchor's satellite.
+    mine_ = {}
+    for anc_, rs_ in (sats or {}).items():
+        for c_, r_ in rs_:
+            mine_.setdefault(c_, []).append((c_, r_))
+
     def stranded(ref):
-        """How many of ref's satellites sit outside their rule's radius: a turn or move is
-        judged on this FIRST, then on cost (see the satellite note in the pass)."""
+        """How many of ref's satellites -- and of ref's own satellite rules -- sit outside
+        their rule's radius: a turn or move is judged on this FIRST, then on cost (see the
+        satellite note in the pass)."""
         n = 0
         P = pi.Placed(parts, pl)
-        for c, r in (sats or {}).get(ref, ()):
+        for c, r in list((sats or {}).get(ref, ())) + mine_.get(ref, []):
             if c not in pl:
                 continue
             try:
