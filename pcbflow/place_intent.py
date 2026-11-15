@@ -716,6 +716,14 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
                                           if q["net"] and GROUND_NET.match(q["net"])}))
     P = Placed(parts, notes.get("placements", {}))
     placed = bool(notes.get("placements"))
+    # ⚠ A STRAP IS NOT A SUPPLY PIN (output_board mP0, 2026-11-15): every netlist pin reads
+    # PASSIVE, so the nearest pin on the rail won -- C26 ("DAC CPVDD") went to U3.17, the
+    # PCM5102A's XSMT mute strap, and C168 to U33.10, the ISO7740's EN2. A board names its
+    # ICs' supply pins once, from the datasheets: notes["supply_pins"] = {"U3": [1, 8, 20]}.
+    # A listed IC is decoupled at those pins only (and quality A2 judges only those); an IC
+    # not listed keeps the old guess, every pin on the rail.
+    sp = {u: {str(n) for n in v} for u, v in (notes.get("supply_pins") or {}).items()}
+    is_sup = lambda u, num: u not in sp or str(num) in sp[u]
     rules = []
     pinpair = []                 # caps across two pins of one IC: kept out of the supply passes
     ics = [r for r in parts if re.match(r"^(U|FB|L)\d", r)]
@@ -760,7 +768,7 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
         cands = []
         for u in ics:
             for q in parts[u]["pads"]:
-                if q["net"] == sup and q["num"]:
+                if q["net"] == sup and q["num"] and is_sup(u, q["num"]):
                     try:
                         d = min(math.hypot(*(x - P.pad(u, q["num"]))) for x in P.pads_on(c, sup))
                     except (KeyError, ValueError):
@@ -832,44 +840,65 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
     incell = {r["anchor"] for r in cells if r.get("kind") == "group"} | {
         m for r in cells if r.get("kind") == "group" for m in r["members"]}
     for u in sorted(x for x in ics if re.match(r"^U\d", x) and x not in incell):
-        for net in sorted({q["net"] for q in parts[u]["pads"] if q["net"] and SUPPLY.search(q["net"])}):
-            if (u, net) in have:
-                continue
-            donors = sorted(((len([r for r in rs if rail(r) == net]), d) for d, rs in by.items() if d != u),
-                            reverse=True)
-            if not donors or donors[0][0] < 2:
-                continue
-            d = donors[0][1]
-            # the cap whose pin has ANOTHER capped pin nearest it in the IC's own frame
-            # (placement-independent): that neighbour's cap is tightened to max_mm and serves
-            # both. (Taking the largest instead left U6.171/172 at 5.7/6.1 mm: A2 judges pins.)
-            xy = {q["num"]: q["xy"] for q in parts[d]["pads"]}
-            mine = [r for r in by[d] if rail(r) == net]
+        for net in sorted({q["net"] for q in parts[u]["pads"] if q["net"] and SUPPLY.search(q["net"])
+                           and is_sup(u, q["num"])}):
+            # declared supply pins (notes supply_pins): EVERY one gets a cap within A2's reach,
+            # not one per IC and rail -- U3's CPVDD / AVDD / DVDD sit on three sides of the TSSOP
+            if u in sp:
+                uxy = {q["num"]: q["xy"] for q in parts[u]["pads"]}
+                todo = sorted({q["num"] for q in parts[u]["pads"] if q["net"] == net and is_sup(u, q["num"])},
+                              key=lambda n_: _pin_key("%s.%s" % (u, n_)))
+            else:
+                if (u, net) in have:
+                    continue
+                todo = [None]
+            for wp in todo:
+                if wp is not None:
+                    mine_u = [r for r in by.get(u, []) if rail(r) == net]
+                    if any(r["pin"].split(".", 1)[1] in uxy and wp in uxy and math.hypot(
+                            uxy[wp][0] - uxy[r["pin"].split(".", 1)[1]][0],
+                            uxy[wp][1] - uxy[r["pin"].split(".", 1)[1]][1]) <= A2_REACH - max_mm
+                           for r in mine_u):
+                        continue
+                # a donor keeps a cap for each of ITS declared supply pins on the rail (one, if
+                # it declares none): only a surplus is given
+                need_ = lambda d_: max(1, len({q["num"] for q in parts[d_]["pads"] if q["net"] == net
+                                                and q["num"] and is_sup(d_, q["num"])})) if d_ in sp else 1
+                donors = sorted(((len([r for r in rs if rail(r) == net]) - need_(d), d) for d, rs in by.items()
+                                 if d != u and d in parts), reverse=True)
+                if not donors or donors[0][0] < 1:
+                    continue
+                d = donors[0][1]
+                # the cap whose pin has ANOTHER capped pin nearest it in the IC's own frame
+                # (placement-independent): that neighbour's cap is tightened to max_mm and serves
+                # both. (Taking the largest instead left U6.171/172 at 5.7/6.1 mm: A2 judges pins.)
+                xy = {q["num"]: q["xy"] for q in parts[d]["pads"]}
+                mine = [r for r in by[d] if rail(r) == net]
 
-            def gap(r):
-                a_ = xy.get(r["pin"].split(".", 1)[1])
-                o_ = [math.hypot(a_[0] - xy[x["pin"].split(".", 1)[1]][0], a_[1] - xy[x["pin"].split(".", 1)[1]][1])
-                      for x in mine if x is not r and a_ is not None and x["pin"].split(".", 1)[1] in xy]
-                return (min(o_) if o_ else 1e9, -r.get("_f", 0.0), r["cap"])
-            give = min(mine, key=gap)
-            g_ = gap(give)[0]
-            if 1e-6 < g_ < 1e9:
-                a_ = xy[give["pin"].split(".", 1)[1]]
-                keep_ = min((x for x in mine if x is not give),
-                            key=lambda x: math.hypot(a_[0] - xy[x["pin"].split(".", 1)[1]][0],
-                                                     a_[1] - xy[x["pin"].split(".", 1)[1]][1]))
-                keep_["_tight"] = True
-                keep_["also"] = keep_.get("also", []) + [give["pin"]]
-                keep_["why"] += " (also serves %s, %.1f mm along the package: its cap went to %s)" % (
-                    give["pin"], g_, u)
-            by[d].remove(give)
-            give.pop("also", None)                     # it serves its new IC, nothing of the old
-            give.pop("_tight", None)
-            num = next(q["num"] for q in parts[u]["pads"] if q["net"] == net and q["num"])
-            give["pin"] = "%s.%s" % (u, num)
-            give["why"] = "%s across %s and ground: %s's own (it had none; given by %s)" % (give["cap"], net, u, d)
-            by.setdefault(u, []).append(give)
-            have.add((u, net))
+                def gap(r):
+                    a_ = xy.get(r["pin"].split(".", 1)[1])
+                    o_ = [math.hypot(a_[0] - xy[x["pin"].split(".", 1)[1]][0], a_[1] - xy[x["pin"].split(".", 1)[1]][1])
+                          for x in mine if x is not r and a_ is not None and x["pin"].split(".", 1)[1] in xy]
+                    return (min(o_) if o_ else 1e9, -r.get("_f", 0.0), r["cap"])
+                give = min(mine, key=gap)
+                g_ = gap(give)[0]
+                if 1e-6 < g_ < 1e9:
+                    a_ = xy[give["pin"].split(".", 1)[1]]
+                    keep_ = min((x for x in mine if x is not give),
+                                key=lambda x: math.hypot(a_[0] - xy[x["pin"].split(".", 1)[1]][0],
+                                                         a_[1] - xy[x["pin"].split(".", 1)[1]][1]))
+                    keep_["_tight"] = True
+                    keep_["also"] = keep_.get("also", []) + [give["pin"]]
+                    keep_["why"] += " (also serves %s, %.1f mm along the package: its cap went to %s)" % (
+                        give["pin"], g_, u)
+                by[d].remove(give)
+                give.pop("also", None)                     # it serves its new IC, nothing of the old
+                give.pop("_tight", None)
+                num = wp if wp is not None else next(q["num"] for q in parts[u]["pads"] if q["net"] == net and q["num"])
+                give["pin"] = "%s.%s" % (u, num)
+                give["why"] = "%s across %s and ground: %s's own (it had none; given by %s)" % (give["cap"], net, u, d)
+                by.setdefault(u, []).append(give)
+                have.add((u, net))
     # ⚠ ONE TIGHT CAP PER SUPPLY PIN; EXTRA CAPS GO LOOSE (lead ruling, motor_ctrl from
     # footprints, 2026-11-11). U4.1 and U4.68 (+3V3, 1 mm apart round the corner) each got a
     # cap seated at the pin; with the crystal's paths reserved on that edge, C8 had no seat
