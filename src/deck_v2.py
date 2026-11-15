@@ -256,7 +256,7 @@ def panel_x(k: int) -> tuple:
     return a, b
 
 
-N_PANELS = 4
+N_PANELS = 3                                    # the fret panels; the +X end is deck_v2_region's
 
 
 # ── the pieces ──────────────────────────────────────────────────────────────────────────────
@@ -482,7 +482,8 @@ def parts() -> list:
     for k in range(N_PANELS):
         out += [(f"deck_{k + 1}", kept(_panel, k)), (f"deck_white_{k + 1}", kept(_inlay, k))]
     out += [("fret_board", kept(board)), ("fret_leds", kept(leds))]
-    return out
+    from . import deck_v2_region as RG              # the optical panel and the pickup's slots (user 11-14)
+    return out + RG.parts()
 
 
 # ── the report ───────────────────────────────────────────────────────────────────────────────

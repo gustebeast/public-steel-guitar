@@ -330,7 +330,8 @@ def _project_guard(stem):
         d_ = up
 
 
-def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, keep_widths=False, singles=False):
+def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, keep_widths=False, singles=False,
+         apply_swaps=False):
     d = os.path.abspath(d)
     stem = _stem(d)
     _project_guard(stem)
@@ -477,6 +478,27 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     for w_ in _chain_warns(rules, parts, pl):
         say("WARN " + w_)
         floor.append(w_)
+    for w_ in _twist_warns(notes, parts, pl):
+        say("WARN " + w_)
+        floor.append(w_)
+    for w_ in _swap_lines(notes, parts, pl, stem, fd, apply_swaps):
+        say("WARN " + w_)
+        floor.append(w_)
+    # ⚠ A BROKEN HARD `near` IS SAID, NOT LEFT TO A SIDE EFFECT (output_board mN, 2026-11-14):
+    # "U17 within 30 of FL3" ended 39.6 mm and the report showed only a CHAIN warning about
+    # it; the board went on to a 30-minute route with its USB pairs as long as before.
+    nb = []
+    for i_, r_ in enumerate(rules):
+        if r_["kind"] == "near" and r_.get("hard", True):
+            for s_, ref_, det in pi.check(r_, P_k, notes_k):
+                if s_ < -0.05:
+                    nb.append((s_, "NEAR BROKEN (hard) rule %d: %s %s, wants %g (%.2f mm) [%s]"
+                               % (i_, ref_, det, r_["max_mm"], s_, r_.get("src", ""))))
+    for _s, w_ in sorted(nb)[:12]:
+        say("WARN " + w_)
+        floor.append(w_)
+    if len(nb) > 12:
+        floor.append("NEAR BROKEN (hard): %d more" % (len(nb) - 12))
     wlines = _raise_widths(notes, parts, pl, keep_widths)
     for w_ in wlines:
         say("WIDTH " + w_)
@@ -617,6 +639,78 @@ def _chain_warns(rules, parts, pl):
     return out
 
 
+def _twist_warns(notes, parts, pl):
+    """TWIST lines: a declared pair whose rails swap sides between two lands
+    (place_intent.pair_twists). Placement feedback: a coupled pair cannot run that hop on one
+    layer, so it pays a layer change or uncoupled mm round a land."""
+    groups = list(notes.get("match") or []) + list(notes.get("diff_pairs") or [])
+    try:
+        tw = pi.pair_twists(parts, pl, groups)
+    except Exception as e:                   # feedback only: never stops the flow
+        return ["TWIST check failed: %s" % e]
+    # a part that passes a pair through, whose rails can be swapped between its channels: small (<= 10
+    # pads) and either two pins per rail (a flow-through clamp, optical U10) or both rails of a
+    # second declared pair (a CMC, FL3: USBA on one side, USBA_J on the other). Not a connector
+    # or IC that merely carries several pairs (J202).
+    pairs = [set(g.get("nets") or ()) for g in groups if len(g.get("nets") or ()) == 2]
+    def thru(ref):
+        pads_ = parts.get(ref, {}).get("pads", ())
+        if len(pads_) > 10:
+            return False
+        nets_ = collections.Counter(q.get("net") for q in pads_ if q.get("net"))
+        held = [pr for pr in pairs if pr <= set(nets_)]
+        return any(all(nets_[n_] >= 2 for n_ in pr) for pr in held) or len({frozenset(pr) for pr in held}) >= 2
+    out = []
+    for name, a, b, st in tw:
+        if st != "twisted":
+            continue
+        t = sorted(r for r in (a, b) if thru(r))
+        out.append("TWIST %s %s -> %s: the rails swap sides between these lands, so the pair cannot run coupled "
+                   "on one layer here (it pays a layer change or uncoupled mm round a land). Fix: %sa polarity / "
+                   "pin swap at %s or %s if the part allows it, or one end mirrored to the other side. Turning a "
+                   "part never fixes it (a rotation keeps the rails' order)."
+                   % (name, a, b, ("swap the two rails between %s's channels (it passes the pair through; "
+                                   "free if its channels are identical, as a CMC's windings or a clamp's are), "
+                                   % "/".join(t)) if t else "", a, b))
+    return out
+
+
+def _swap_lines(notes, parts, pl, stem, fd, apply=False):
+    """SWAP lines: the channel swaps on pass-through parts that untwist the most pair hops
+    (place_intent.swap_plan), written to flow/pin_swaps.json. With apply (--apply-swaps, opt-in)
+    they go into this run's <stem>.net and parts.json (the input netlist kept as
+    flow/input.net) -- the netlist's GENERATOR must then carry them, or the next export loses
+    them."""
+    groups = list(notes.get("match") or []) + list(notes.get("diff_pairs") or [])
+    try:
+        n0, n1, sw = pi.swap_plan(parts, pl, groups)
+    except Exception as e:                   # feedback only: never stops the flow
+        return ["SWAP check failed: %s" % e]
+    json.dump(dict(twisted_before=n0, twisted_after=n1, applied=bool(apply and sw),
+                   swaps=[dict(ref=r, pins=[list(x) for x in prs]) for r, prs in sw]),
+              open(os.path.join(fd, "pin_swaps.json"), "w"), indent=1)
+    if not sw:
+        return []
+    nets = {r: {q["num"]: q["net"] for q in parts[r]["pads"]} for r, _ in sw}
+    out = ["SWAP %s: pins %s -- its channels are identical, so swapping the rails between them is free "
+           "in the netlist; twisted pair hops %d -> %d%s"
+           % (r, ", ".join("%s<->%s (%s/%s)" % (a, b, nets[r][a], nets[r][b]) for a, b in prs), n0, n1,
+              "" if apply else " (proposed; --apply-swaps applies it to this run)") for r, prs in sw]
+    if apply:
+        net_path = stem + ".net"
+        keep = os.path.join(fd, "input.net")
+        if not os.path.exists(keep):
+            shutil.copy(net_path, keep)
+        text = pi.apply_swaps(parts, open(net_path, encoding="utf-8").read(), sw)
+        open(net_path, "w", encoding="utf-8").write(text)
+        pj = json.load(open(stem + ".parts.json", encoding="utf-8"))
+        pj["parts"] = parts
+        json.dump(pj, open(stem + ".parts.json", "w", encoding="utf-8"), indent=0)
+        out.append("SWAP APPLIED to this run's %s.net and parts.json (input kept as flow/input.net): CARRY IT "
+                   "INTO THE NETLIST'S GENERATOR, or the next export undoes it" % os.path.basename(stem))
+    return out
+
+
 def _rule_refs(r, parts):
     """The refs a rule names (ref, refs, cap, a, b, members, anchor; a target part)."""
     out = set()
@@ -671,7 +765,8 @@ def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, 
     if fill:
         L += ["REGION FILL (courtyards / area): " + "  ".join("%s %.2f" % (n, f) for n, _, _, f in fill)]
     L += ["WARN " + f_ for f_ in floor]
-    L += [x_.split("place_init: ", 1)[-1] for x_ in init_log if "TANGLE HINT" in x_ or "GROW" in x_]
+    L += [x_.split("place_init: ", 1)[-1] for x_ in init_log if "TANGLE HINT" in x_ or "GROW" in x_
+          or "STRANDED" in x_ or "OFF ITS PIN" in x_ or "DECAP ROOM" in x_]
     if fin:
         L += ["", "finish: %s" % (fin.get("error") or "%d unconnected%s, %d violation(s)%s" % (
             fin["unconnected"], (" (" + " ".join(fin.get("unconnected_nets", ())) + ")") if fin["unconnected"] else "",
@@ -703,9 +798,12 @@ def main(argv):
                     help="report a stated net width under its power path's need instead of raising it")
     ap.add_argument("--auto-singles", action="store_true",
                     help="also add auto_singles (a test pad `near` its driver pin) -- off by default")
+    ap.add_argument("--apply-swaps", action="store_true",
+                    help="apply the proposed pair channel swaps (SWAP lines) to this run's netlist and parts "
+                         "-- the generator must then carry them")
     a = ap.parse_args(argv)
     return flow(a.dir, os.path.abspath(a.intent), not a.no_auto, a.soft_forbid, a.skip_finish, a.fold_post,
-                a.keep_widths, a.auto_singles)
+                a.keep_widths, a.auto_singles, a.apply_swaps)
 
 
 if __name__ == "__main__":

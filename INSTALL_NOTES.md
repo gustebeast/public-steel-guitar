@@ -1800,6 +1800,20 @@ and the printed frames are plain blocks. Nothing here gets printed until the lay
   - Let the motor find its axis on the turning screw, then tighten.
 - Station pitch is 77 mm (was 90). The farthest motor is at x -522.7 (was -556.7).
 
+### Direct drive: one thrust bearing per screw, collar B threaded (2026-11-14)
+This supersedes the "two 688s" in the notes above.
+- **One 688 per screw**, the rated EZO part (the BOM always counted ten). Press it into the housing from +X. Its +X face sits on the plate's rim.
+- **Collar B is a threaded jam nut** (the motor coupler's formed thread). Before, it was a plain hole and held nothing.
+- Assembly, per screw:
+  1. Press the 688 into the housing from +X.
+  2. Slide the screw's +X end through the housing from -X.
+  3. Run collar B onto the +X end, down onto the inner race.
+  4. Run collar A up from the -X end against the inner race's other face until the play is gone. Hold collar B by the two notches in its +X face (pin spanner or pliers tips) while you turn the screw. Pinch collar A with its M3 x 12.
+  5. The inner race is now clamped between the two collars, and collar B cannot back off.
+- Nothing that turns touches anything fixed; only the bearing carries the contact:
+  - The collars' faces stand 0.8 off the housing and the plug.
+  - Collar A's body and clamp-screw head pass the rod cap's boss with about 0.45.
+
 ### Leadscrew pin hole (pin drill jig, 2026-11-09)
 - Every printed motor coupler pins its screw with one belt-clamp M3 x 12. It passes through a 1/8 in hole drilled through the screw 5.0 mm from its end, and threads into the coupler's far wall.
 - Jig parts (coupons/): `pin_drill_jig`, a second saw-jig cap (`pin_drill_jig_cap`), and two drop-in bushings (`pin_drill_bushing_pilot` 1/16 in, `pin_drill_bushing_pin` 1/8 in).
@@ -2119,3 +2133,20 @@ The housing's guide-rod cap has a cone roof: a small hole at the boss's end is e
   - **J240 → connector board J1**: one premade 30-way 1.27 mm (2 × 15) IDC ribbon. It carries the motors' 24 V, the lights' 24 V, bus A, both bus-B arms and the two clock / data pairs (SCK / SDT, SCK_FOOT / SDT_FOOT). Power rides on several parallel wires; pinout `CONN_RIBBON` in `elec/harness.py`.
   - **J4 → optical board**: the 20-way (2 × 10) ribbon for the pickup's converters.
 - Plug both ribbons with the power off. The ten motors, both bus-B arms and both LED drops plug into the **connector board**, not the output board.
+
+### Deck v2: the +X end, optical panel and swappable pickup slots (2026-11-14)
+From the +X endplate going -X (src/deck_v2_region.py):
+- **Optical panel** (deck_optical), x -32.16 .. -20.25:
+  - The optical board's -X edge sits on the panel's -X edge. That puts the sensor row 20 mm from the string's termination on the bridge bearing (x -28), as in v1, with v1's 4.16 keepout from the row to the board edge.
+  - A plinth stands under the board in the endplate's raised y band (-50 .. 53), at v1's plinth height (12.04).
+  - The board is a stand-in until the optical redesign lands; its fixing and cable way are still to come.
+  - Print it standing on its -X face (builds -X -> +X).
+- **Six slots** from -32.21 to -142.23 (18.30 wide, pitch 18.35), then panel 3 as before.
+- **Pickup piece** (deck_pickup) takes any four neighbouring slots; plain fillers (deck_filler_N) take the other two.
+  - Moving the piece one slot moves the pickup 18.35. Its centre can be at -68.9, -87.2 or -105.6.
+  - At each position the pickup slides +-6 on its height plate.
+  - Swap: slide the panels off -X as far as the piece, then put the piece and fillers back in the order you want.
+- **The mount is v1's:**
+  - The pickup rests on the height plate (pickup_plate), lifted and tilted by three M4 x 20 button heads from the top (2.5 key).
+  - Turn the two +Y jacks together to level it along X; the -Y jack tilts it across the strings.
+  - Push the pickup against the plate's +Y wall with the -Y retention screw. Set it before the piece goes in: the key reaches it through the slot in the -Y skirt.

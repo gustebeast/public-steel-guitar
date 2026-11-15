@@ -291,11 +291,22 @@ class _Net:
                 self._edge(a, c, w, "track", L, mid, self._ohm(a, c, w, L))
                 segs.append((t, L, a, c, w))
         nodes = list(self.g)
+        # ⚠ A JOINT IS COPPER TOUCHING COPPER, NOT A POINT ON A CENTRE LINE (connector_board
+        # d10, 2026-11-15): a node joined a segment only if it lay within 0.02 mm of that
+        # segment's copper, so two 2 mm tracks whose ends overlap by a millimetre -- one
+        # joint to KiCad and to DRC (0 unconnected) -- were two pieces here, and A1 read a
+        # 4 A trunk as seven islands: HARD "no copper joins" on all ten motor terminals.
+        # A track's end is a round cap of its own width, so a node joins a segment when its
+        # cap reaches the segment's copper: the accuracy is the widest track ending there.
+        cap = collections.defaultdict(float)
+        for t, L, a, c, w in segs:
+            cap[a] = max(cap[a], w / 2.0)
+            cap[c] = max(cap[c], w / 2.0)
         for t, L, a, c, w in segs:          # T-junctions: a node landing mid-segment
             for n in nodes:
                 if n[0] == L and n != a and n != c and t.HitTest(
                         pcbnew.VECTOR2I(pcbnew.FromMM(n[1]), pcbnew.FromMM(n[2])),
-                        pcbnew.FromMM(0.02)):
+                        pcbnew.FromMM(max(0.02, cap.get(n, 0.0) - 0.001))):
                     self._edge(n, a, w, "track", L, (n[1], n[2]), self._ohm(n, a, w, L))
                     self._edge(n, c, w, "track", L, (n[1], n[2]), self._ohm(n, c, w, L))
         nodes = list(self.g)
@@ -404,6 +415,57 @@ class _Net:
                 if len(common) >= 2:
                     w = sum(math.pi * MM(vias_at[p].GetDrillValue()) * 25.0 / 35.0 for p in common)
                     self._edge(na, nb, w, "via", "all", common[0], self.VIA_OHM / len(common))
+        # ⚠ ...AND SO DO PARALLEL VIAS BETWEEN TWO TRACKS (power_vias.py, 2026-11-15). A wide
+        # net's layer change laid as a via array -- each via standing in the SAME track copper
+        # on both layers -- graded as one barrel, because each via is its own edge and A1
+        # takes the widest single path. Vias are one group when, on every layer both reach,
+        # their centres lie in a common track's copper; each group of two or more gets one
+        # edge of its summed barrels between its first via's nodes, layer to adjacent layer.
+        def pt_seg(px, py, ax, ay, bx, by):
+            dx, dy = bx - ax, by - ay
+            L2 = dx * dx + dy * dy
+            u = 0.0 if L2 == 0 else max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / L2))
+            return math.hypot(px - (ax + u * dx), py - (ay + u * dy))
+        # a piece on a layer is a track's copper, or a pour or a pad land the via stands in
+        # (in_pour): a via from a B.Cu track up into an F.Cu pour groups with its neighbours
+        # exactly as one between two tracks (connector_board d14, the +24V spine)
+        held = collections.defaultdict(dict)
+        for (key, L), ps_ in in_pour.items():
+            for p in ps_:
+                held[p].setdefault(L, set()).add(key)
+        tv = {}
+        for p, v in vias_at.items():
+            on = {L: set(s) for L, s in held.get(p, {}).items()}
+            for t, L, a, c, w in segs:
+                if pt_seg(p[0], p[1], a[1], a[2], c[1], c[2]) <= w / 2.0 + 1e-6:
+                    on.setdefault(L, set()).add(id(t))
+            if len(on) >= 2:
+                tv[p] = on
+        ps = sorted(tv)
+        root = {p: p for p in ps}
+
+        def find(p):
+            while root[p] != p:
+                root[p] = root[root[p]]
+                p = root[p]
+            return p
+        for i, p in enumerate(ps):
+            for q_ in ps[i + 1:]:
+                shared = set(tv[p]) & set(tv[q_])
+                if len(shared) >= 2 and all(tv[p][L] & tv[q_][L] for L in shared):
+                    root[find(p)] = find(q_)
+        groups = collections.defaultdict(list)
+        for p in ps:
+            groups[find(p)].append(p)
+        for grp in groups.values():
+            if len(grp) < 2:
+                continue
+            grp.sort()
+            w = sum(math.pi * MM(vias_at[p].GetDrillValue()) * 25.0 / 35.0 for p in grp)
+            p0 = grp[0]
+            for a, c in zip(layers, layers[1:]):
+                if (a,) + p0 in self.g and (c,) + p0 in self.g:
+                    self._edge((a,) + p0, (c,) + p0, w, "vias", "all", p0, self.VIA_OHM / len(grp))
 
     def _edge(self, a, c, w, kind, layer, at, ohm=0.0):
         self.g[a].append((c, w, kind, layer, at))

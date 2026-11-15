@@ -70,9 +70,10 @@ def _keyhead() -> cq.Workplane:
     e, k = extents(), DB.kh_x()
     xa = e["x0"]
     from . import deck_v2 as DK
-    zs = e["z1"]                                 # THE STRIP STANDS TO THE NUT BLOCK'S TOP (user, 2026-11-14),
-                                                 # its whole width, as the +X endplate does: the deck panels
-                                                 # end at its +X face (deck_v2)
+    zs = DK.TZ                                   # THE STRIP STANDS TO THE TOP PANELS' TOP (user, 2026-11-14):
+                                                 # flush with the deck past the nut block, which alone rises
+                                                 # to the nut's top (the union below) -- the deck panels end
+                                                 # at the strip's +X face (deck_v2)
     w = box_at(e["x_kj"] - xa, e["y1"] - e["y0"], zs - e["z0"],
                x=(xa + e["x_kj"]) / 2, y=(e["y0"] + e["y1"]) / 2, z=(e["z0"] + zs) / 2)
     w = w.union(box_at(e["x1"] - xa, e["nb_y1"] - e["nb_y0"], e["z1"] - e["nb_z0"],
