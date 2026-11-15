@@ -2150,3 +2150,31 @@ From the +X endplate going -X (src/deck_v2_region.py):
   - The pickup rests on the height plate (pickup_plate), lifted and tilted by three M4 x 20 button heads from the top (2.5 key).
   - Turn the two +Y jacks together to level it along X; the -Y jack tilts it across the strings.
   - Push the pickup against the plate's +Y wall with the -Y retention screw. Set it before the piece goes in: the key reaches it through the slot in the -Y skirt.
+
+### Direct drive: both collars clamped, housing over collar B, lid on the bearing (2026-11-15)
+This supersedes the collar B jam nut and the M4 housing bolts in the notes above.
+- **The stack**, from the anchor plate going -X:
+  - collar B;
+  - the housing, standing over collar B without touching it;
+  - the housing's lip, on the bearing's outer race;
+  - the 688;
+  - the lid;
+  - collar A.
+- **Locked in X:** the inner race is pinched between the two collars' bosses, and the outer race between the lip and the lid. With the spring and motor off, the screw cannot move along X.
+- **The collars are one part, printed twice.** Collar B is collar A turned end for end. Each is Ø22 with the coupler's formed thread, split through on one side and pinched by an **M3 x 10** whose head sits inside the body.
+- **Ties:** two **M3 x 30** (the yoke's SKU) per screw. Heads sink in the lid; they pass the housing's posts and the plate into **M3 heat-set inserts** (94459A130) in the plug, at 23 and 300 deg, r 14.55. M4s do not fit past collar B between the neighbouring drives.
+- **Plate:** the hole is now Ø10 (the screw only). The two tie holes are Ø3.5 at the new positions.
+- Assembly, per screw:
+  1. Heat-set the two M3 inserts into the plug's -X face.
+  2. Press the 688 into the housing's pocket from -X, onto the lip.
+  3. Drop collar B into the housing's open side between the posts, its boss toward the bearing.
+  4. Slide the screw's +X end in from -X through the bearing. Turn it into collar B, holding the collar with a finger through the open side. Carry on through the plate hole into the plug and nut.
+  5. Spin collar B along the thread until its boss sits on the inner race. Turn the screw until B's M3 faces an open side, and pinch it (2.5 key).
+  6. Fit the lid and push the two M3 x 30 ties through lid, housing and plate into the plug's inserts. Tighten.
+  7. Run collar A up from -X against the inner race until the play is gone, and pinch it.
+- **Gaps:** every collar face stands 0.8 off the plate, lip and lid. Every fixed part stands at least 0.8 outside the collars' Ø22.
+- **Axial play left:** only the 688's own internal play (radial ball bearing, a few hundredths of a mm).
+- **Strings 2 and 8 (station 0, the motors next to the anchor) have no collar A.** Their motor coupler is collar A. It already grips the screw the same way: the formed thread, pinched by its C clamp. Its +X end carries a Ø10.4 boss through the lid onto the inner race.
+  - The coupler's X is set by the bearing, not the motor. The shaft sits 1.0 short of the D's stop, and the screw's end goes 1.0 further into the socket, so the motor plate's place along X has ±1 of freedom.
+  - Assembly step 7 on these strings: run the coupler up the screw against the inner race until the play is gone, and pinch its clamp M3. Then slide the motor's shaft into the D.
+  - Removing the motor (loosen nothing, slide it off the D) leaves the coupler pinched on the screw, so the screw stays locked in X.

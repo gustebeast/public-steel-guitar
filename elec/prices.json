@@ -254,10 +254,10 @@
     "m3_shcs_30": {
       "usd": 0.1228,
       "verified": "v",
-      "per_instrument": 20,
+      "per_instrument": 40,
       "vendor": "McMaster-Carr",
       "sku": "91292A022",
-      "what": "M3x30 socket head cap screw (18-8, ISO 4762) -- the direct-drive yokes, two per string, tapped into the keyhole plate. $6.14 per pack of 50, read off McMaster 2026-11-12."
+      "what": "M3x30 socket head cap screw (18-8, ISO 4762) -- the direct-drive yokes, two per string, tapped into the keyhole plate; and the anchor housings' ties (2026-11-15), two per string through lid, housing and plate into M3 inserts in the plug. $6.14 per pack of 50, read off McMaster 2026-11-12."
     },
     "m3_shcs_20": {
       "usd": 0.0969,

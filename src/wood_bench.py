@@ -124,8 +124,7 @@ def anchor() -> cq.Workplane:
         w = w.union(tri)
     w = w.union(_box(A_BASE_X0, A_FOOT + 2 * TAB, Y_EDGE, A_Y[1], Z_PLANK, ZB))    # the base
     w = w.union(_box(A_FOOT, XJ, RAIL_Y[0], RAIL_Y[1], Z_PLANK, ZB))               # the rail
-    # string 6's holes, as the tray's: collar B's (the bearing's rim round it), the rod's, the
-    # housing's two M4 bolts
+    # string 6's holes, as the tray's: the screw's, the rod's, the housing's two M3 ties
     def hole(d, y, z):
         return teardrop_hole(d, AX1 - AX0 + 2.0, axis_point=(AX0 - 1.0, y, z),
                              axis_dir=(1, 0, 0), print_up=pu, fit=True)
@@ -134,7 +133,7 @@ def anchor() -> cq.Workplane:
     w = w.cut(hole(DB.GUIDE_SEAT + 0.4, ry, rz))
     for a in DB.EAR_ANG:
         dy, dz = DB.at_ang(a, DB.EAR_R)
-        w = w.cut(hole(4.5, Y5 + dy, Z5 + dz))
+        w = w.cut(hole(3.5, Y5 + dy, Z5 + dz))
     for x, y in A_SCREWS:
         w = w.cut(_screw(x, y, pu))
     return w
