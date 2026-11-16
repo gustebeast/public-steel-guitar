@@ -463,7 +463,7 @@ def assembly(t: float = DB.T_OPEN) -> list:
     out += [("wb_motor_mount", kept(motor_mount)), ("wb_anchor", kept(anchor)),
             ("wb_endplate", kept(endplate)), ("wb_keyhead", kept(keyhead))]
     out += _motor_m3s() + keyhead_hardware()
-    out += [("wb_optical", kept(opt_board))] + opt_hardware()
+    out += [("optical_r1", kept(opt_board))] + opt_hardware()   # its colour: direct_bench's table
     x0 = D.NUT_BLOCK_X - 60.0
     out.append(("ghost_plank", _box(x0, E["x_end"] + 40.0, Y_EDGE, Y_EDGE + 90.0,
                                     Z_PLANK - 19.0, Z_PLANK)))
@@ -472,7 +472,7 @@ def assembly(t: float = DB.T_OPEN) -> list:
 
 MATERIAL = {"wb_motor_mount": "petg-gf", "wb_anchor": "petg-gf", "wb_endplate": "petg-gf",
             "wb_tie_spacer": "petg-gf", "wb_keyplate": "petg-gf",
-            "wb_optical": "board",
+
             "wb_keyhead": "petg-gf", "wb_wrap_rod": "steel", "ghost_plank": "wood",
             "wb_string": "polished", "wb_nut_plate": "stainless", "wb_nut_side_insert": "brass",
             "wb_nut_height_insert": "brass", "wb_nut_shoe": "petg-gf"}

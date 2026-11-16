@@ -2248,7 +2248,7 @@ MATERIAL = {
     "fret_leds": "nylon",                        # bought 5050s: a moulded white package, its colour kept
     # the +X end (src/deck_v2_region.py): the optical panel, the pickup's piece and fillers, its mount
     "deck_optical": "pctg-black", "deck_pickup": "pctg-black", "deck_filler": "pctg-black",
-    "optical_board": "board", "pickup": "aluminium", "pickup_plate": "petg-gf",
+    "optical_board": "board", "optical_r1": "board", "pickup": "aluminium", "pickup_plate": "petg-gf",
     "pickup_jack_screw": "steel", "pickup_jack_insert": "brass",
     "pickup_ret_screw": "steel", "pickup_ret_insert": "brass",
 }
@@ -2310,6 +2310,7 @@ COLORS = {
     "body": "chassis", "wall_bar": "nut_plate", "keyplate": "nut_plate", "ob_board": _mask_rgb("green"),
     "deck": (0.16, 0.16, 0.18), "deck_white": (0.95, 0.95, 0.92), "fret_board": _mask_rgb("green"),
     "optical_board": _mask_rgb("green"),        # the stand-in: no mask ordered yet, the fab default
+    "optical_r1": _mask_rgb("black"),           # the R1 board in hand (src.wood_bench): ordered black
     # the +X end (src/deck_v2_region.py): panels as the deck, the pickup's hardware as v1's
     "deck_optical": (0.16, 0.16, 0.18), "deck_pickup": (0.16, 0.16, 0.18), "deck_filler": (0.16, 0.16, 0.18),
     "pickup": (0.10, 0.10, 0.12), "pickup_plate": (0.85, 0.65, 0.30),
