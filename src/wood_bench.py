@@ -342,6 +342,133 @@ def _swap(nm: str, w):
     return nm, w
 
 
+# ── THE R1 OPTICAL BOARD ON TWO 45 DEG STRUTS (user, 2026-11-16: "two 45 angled supports which hold up
+# the R1 optical board and a single screw mount ... rotate the board 180 from its original intended
+# orientation so we can get the sensors close to where they need to go without needing to run the
+# bearing/string through the PCB hole") ──────────────────────────────────────────────────────────
+# The board as ordered (elec/rev1/optical.geom.json), turned 180 deg about Z: its sensor row, on its
+# -X edge in the instrument, is its +X edge here, and the whole board lies -X of the bridge bearing
+# under the speaking length -- the bearing's slots go unused. Channel D6 (and its PD6A/B) sits under
+# string 6 where the instrument senses, 20 before the bridge axle (optical_pickup: SENSE_X -28 off
+# BRIDGE_AXLE_X -8), its top the instrument's 2.2 under the string (PART_STRING_CLR 1.1 over the
+# field's tallest 1.1 -- and nothing along the string's line on the turned board is taller: U16 0.8).
+# Held by ONE M4 x 10 button head through its own Ø4.4 hole (the one over the plank) into a fitted
+# insert in a strut's head, and resting on the other strut's pad; the rest of the board overhangs.
+OPT_SENSE_DX = -20.0                             # LED row off the bridge axle (R1: SENSE_X - BRIDGE_AXLE_X)
+OPT_GAP = 2.2                                    # string bottom -> board top (R1 PCB_TOP)
+OPT_LED = "D6"                                   # string 6's channel
+OPT_REV1 = pathlib.Path(__file__).resolve().parents[1] / "elec" / "rev1" / "optical.geom.json"
+
+
+def _opt_geom() -> dict:
+    import json
+    return json.loads(OPT_REV1.read_text(encoding="utf-8"))
+
+
+def _string_y(x: float) -> float:
+    y0, y1 = D.nut_y(I), DB.y_of(I)
+    return y0 + (y1 - y0) * (x - D.NUT_BLOCK_X) / (DB.BR_C[0] - D.NUT_BLOCK_X)
+
+
+def opt_frame():
+    """(DX, DY, Z0, t): board (x, y, z) -> world (DX - x, DY - y, Z0 + z); z 0 its underside."""
+    g = _opt_geom()
+    led = next(f for f in g["footprints"] if f["ref"] == OPT_LED)
+    t = g["thickness_mm"]
+    xs = DB.BR_C[0] + OPT_SENSE_DX
+    z0 = D.STRING_Z + KH_DROP - OPT_GAP - t      # the string's underside, less the gap and the board
+    return xs + led["x"], _string_y(xs) + led["y"], z0, t
+
+
+def _opt_to_world(x, y):
+    dx, dy, _, _ = opt_frame()
+    return dx - x, dy - y
+
+
+def opt_board() -> cq.Workplane:
+    """The R1 board (parts and all, as ordered), turned and placed."""
+    from . import board_geom as BG
+    b = BG.on_the_bench(())
+    b._cache["optical"] = _opt_geom()            # R1, whatever OPTICAL_REV the build runs
+    dx, dy, z0, _ = opt_frame()
+    return b.solid("optical").rotate((0, 0, 0), (0, 0, 1), 180).translate((dx, dy, z0))
+
+
+def opt_hole():
+    """The board's mounting hole over the plank, world (x, y)."""
+    g = _opt_geom()
+    best = None
+    for h in g["holes"]:
+        xs, ys = [p[0] for p in h], [p[1] for p in h]
+        if max(xs) - min(xs) > 6.0:              # the bearing slots
+            continue
+        x, y = _opt_to_world((min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2)
+        if Y_EDGE + OS_W < y < Y_EDGE + 90.0 - OS_W and (best is None or y < best[1]):
+            best = (x, y)
+    assert best, "no mounting hole over the plank"
+    return best
+
+
+OS_W = 11.0                                      # a strut's square section: the middle screw's
+                                                 # countersink bore (Ø9.6) rises between the two
+OS_HEAD = 10.0                                   # its vertical head: the M4's 8.5 anchor and a floor
+OS_PAD2 = (-70.0, A_Y[1] + 0.5 + OS_W / 2)       # the resting pad: under the board's -X half, its
+                                                 # strut and the base 0.5 +Y of the anchor's base
+OS_UP = (0.0, 0.0, 1.0)                          # prints base down: the struts at 45 deg
+OS_M4_L = 10.0                                   # M4 x 10: 1.6 of board, 8.4 into the 8.5 anchor
+
+
+def _os_pads():
+    return [opt_hole(), OS_PAD2]
+
+
+def _strut(px, py, top):
+    """A 45 deg strut: a OS_W square section at every height, its top centred on (px, py) at `top`
+    - OS_HEAD, climbing +X (one along per one up) from the base, then a vertical OS_W head to `top`."""
+    h = top - OS_HEAD - ZB
+    a, b_ = OS_W / 2, OS_W / 2
+    bot = [(px - h - a, py - b_, ZB), (px - h + a, py - b_, ZB), (px - h + a, py + b_, ZB), (px - h - a, py + b_, ZB)]
+    up = [(x + h, y, top - OS_HEAD) for x, y, _ in bot]
+    s = cq.Solid.makeLoft([cq.Wire.makePolygon([cq.Vector(*p) for p in bot], close=True),
+                           cq.Wire.makePolygon([cq.Vector(*p) for p in up], close=True)], True)
+    head = _box(px - a, px + a, py - b_, py + b_, top - OS_HEAD, top)
+    return cq.Workplane("XY").add(s).union(head), px - h
+
+
+def _os_layout():
+    _, _, z0, _ = opt_frame()
+    feet = [_strut(px, py, z0)[1] for px, py in _os_pads()]
+    (p1x, p1y), (p2x, p2y) = _os_pads()
+    y0, y1 = min(p1y, p2y) - OS_W / 2, max(p1y, p2y) + OS_W / 2
+    x0, x1 = min(feet) - OS_W / 2 - 2 * TAB, max(feet) + OS_W / 2 + 2 * TAB
+    lo, hi = sorted([(p1y, p1x), (p2y, p2x)])
+    ym = ((lo[0] + OS_W / 2) + (hi[0] - OS_W / 2)) / 2   # between the struts' paths: its bore rises clear
+    screws = [(x0 + TAB, y0 + TAB), (x0 + TAB, y1 - TAB), (x1 - TAB, ym)]
+    return z0, (x0, x1, y0, y1), screws
+
+
+def opt_stand() -> cq.Workplane:
+    """The base on the plank (three wood screws), the two struts, the M4 insert's anchor in the
+    screw's head. PRINTS BASE DOWN (+Z up)."""
+    from cadkit.fasteners import M4, cut_anchor
+    z0, (x0, x1, y0, y1), screws = _os_layout()
+    w = _box(x0, x1, y0, y1, Z_PLANK, ZB)
+    for px, py in _os_pads():
+        w = w.union(_strut(px, py, z0)[0])
+    for x, y in screws:
+        w = w.cut(_screw(x, y, OS_UP))
+    hx, hy = opt_hole()
+    return cut_anchor(M4, w, (hx, hy, z0), (0, 0, -1), 8.5, print_up=OS_UP)
+
+
+def opt_hardware() -> list:
+    from cadkit.fasteners import M4, M4_BUTTON_HEAD_H, m4_button_screw, seated_insert
+    _, _, z0, t = opt_frame()
+    hx, hy = opt_hole()
+    return [("wb_opt_insert", seated_insert(M4, (hx, hy, z0), (0, 0, -1))),
+            ("wb_opt_screw", m4_button_screw(OS_M4_L).translate((hx, hy, z0 + t + M4_BUTTON_HEAD_H)))]
+
+
 # ── THE ASSEMBLY ─────────────────────────────────────────────────────────────────────────────
 def assembly(t: float = DB.T_OPEN) -> list:
     out = [_swap(nm, w) for nm, w in DB.string_parts(I, t)
@@ -353,6 +480,7 @@ def assembly(t: float = DB.T_OPEN) -> list:
     out += [("wb_motor_mount", kept(motor_mount)), ("wb_anchor", kept(anchor)),
             ("wb_endplate", kept(endplate)), ("wb_keyhead", kept(keyhead))]
     out += _motor_m3s() + keyhead_hardware()
+    out += [("wb_opt_stand", kept(opt_stand)), ("wb_optical", kept(opt_board))] + opt_hardware()
     x0 = D.NUT_BLOCK_X - 60.0
     out.append(("ghost_plank", _box(x0, E["x_end"] + 40.0, Y_EDGE, Y_EDGE + 90.0,
                                     Z_PLANK - 19.0, Z_PLANK)))
@@ -360,7 +488,8 @@ def assembly(t: float = DB.T_OPEN) -> list:
 
 
 MATERIAL = {"wb_motor_mount": "petg-gf", "wb_anchor": "petg-gf", "wb_endplate": "petg-gf",
-            "wb_tie_spacer": "petg-gf", "wb_keyplate": "petg-gf",
+            "wb_tie_spacer": "petg-gf", "wb_keyplate": "petg-gf", "wb_opt_stand": "petg-gf",
+            "wb_optical": "board",
             "wb_keyhead": "petg-gf", "wb_wrap_rod": "steel", "ghost_plank": "wood",
             "wb_string": "polished", "wb_nut_plate": "stainless", "wb_nut_side_insert": "brass",
             "wb_nut_height_insert": "brass", "wb_nut_shoe": "petg-gf"}
@@ -382,7 +511,7 @@ def _made(nm, w):
 
 
 PRINTS = ("wb_motor_mount", "wb_anchor", "wb_endplate", "wb_keyhead", "wb_nut_shoe", "wb_tie_spacer",
-          "wb_keyplate")
+          "wb_keyplate", "wb_opt_stand")
 
 
 def main():

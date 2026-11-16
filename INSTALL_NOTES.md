@@ -2201,3 +2201,19 @@ String 6 on the plank (`py -3.12 -m src.wood_bench` -> coupons/wb_*.step) draws 
 - **The keyhole plate is printed** (`wb_keyplate`, PETG-GF): the instrument's 4 mm plate, same shape, until the steel one is cut. The ball bears on about 4 mm^2 either side of the slit, roughly 40 MPa under the string's 147 N. That's near what PETG-GF takes, so watch it for creep into the slit.
 - **A new motor mount matches the instrument** (`coupons/wb_motor_mount.step`, PETG-GF, prints base down). It's the instrument's 4 mm motor plate at its real place, with the same Ø22.6 pilot and four M3 holes, run down to the plank. It stands on a base with four wood screws and a buttress each side, outside the motor's square. It replaces the plank bench's motor block, whose 8 mm wall needed a different coupler. The bench now runs **the real coupler, `petg-gf/coupler.step`**. Hardware: four **M3 x 8** SHCS, heads on the plate's +X face, 4 mm into the motor's faceplate.
 - **The anchor stand-in's buttresses** now stand 1.0 off the plug's and housing's widest points, computed from string 6's ties and rod.
+
+## Clamp collars: a smooth, thicker boss (2026-11-16)
+
+The boss that runs from the collar to the 688's inner race is no longer threaded and is thicker:
+- **Smooth bore**, drawn Ø8.8 (prints about Ø8.2), clear of the screw. The collar's 11 mm body still carries the formed thread and does all the gripping; the boss only bears on the race.
+- **Ø12.0 through the lid / lip hole** (Ø13.6, so 0.8 clear a side), then a **Ø10.4 tip 0.8 long** that is the only part touching the bearing: it stays on the inner race, clear of the shields. Walls are 1.6 along the hole and 0.8 at the tip, against 0.9 before.
+- The coupler on strings 2 and 8, which is also collar A, has the same boss.
+- The thread is cut with a 0.001 mm merge tolerance, so the STEP has no near-zero sliver face (Bambu had read one as 5 open edges).
+
+## Wood bench: the R1 optical board on a printed stand (2026-11-16)
+
+The optical board as ordered (R1) sits under string 6, **turned 180 degrees** from its instrument orientation: its sensor row is on its +X edge, toward the bridge, and the whole board lies on the keyhead side of the bridge bearing. The bearing's slots in the board go unused.
+- **Channel D6** (and its photodiodes PD6A/B) is under string 6, 20 mm before the bridge axle, as on the instrument. The board's top is 2.2 under the string; nothing on the board along the string's line is taller than 1.1, so the string clears everything by at least 1.1.
+- **Stand** (`coupons/wb_opt_stand.step`, PETG-GF, prints base down): a base with three wood screws into the plank and two 11 x 11 struts at 45 degrees, both on the +Y side of the drive. One strut ends in a flat pad under the board's -X half; the other in a head under the board's Ø4.4 mounting hole (the one over the plank).
+- **Hardware**: one **M4 x 10 button head** (2.5 mm key) through the board into one **M4 fitted insert**, heat-set into the strut's head (round pocket Ø6.1). The board rests on the other pad; the rest of it overhangs (about 47 mm past the plank's -Y edge line and 51 mm on +Y), as intended.
+- Lay the stand's -Y edge 0.5 off the anchor stand-in's base on the plank.
