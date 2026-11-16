@@ -1262,7 +1262,7 @@ def _collar_local(boss_l: float = SPIN_GAP + LID_T, shaft: float = 0.0, body_l: 
     if shaft > 0:                                                 # the motor's D, before the thread
         out = out.cut(_d_bore_local(shaft, grip))
     th = _thread_socket(grip if shaft > 0 else -1.0, L + Lb + 1.0).rotate((0, 0, 0), (0, 0, 1), -90)
-    return out.cut(th, clean=False)
+    return out.cut(th, clean=False, tol=1e-3)   # fuzzy: no zero-area sliver where a crest meets an end face (Bambu read it as 5 open edges)
 
 
 # THE COUPLER'S CLAMP (user, 2026-11-16: "as close to centered as possible while leaving sufficient
