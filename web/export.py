@@ -329,7 +329,103 @@ def silk_units(done):
 DEFAULT_LAYER = 0.4                # mm: a part with no layer height of its own
 
 
-def write_glb(parts, out: pathlib.Path, extras=None, units=None, mats=None, lays=None) -> None:
+# THE 24 TURNS A BOX MAPS ONTO ITSELF BY (signed permutations, det +1): what two copies of one
+# part may differ by and still share one mesh (instancing, below)
+def _node_extras(node, name, units, mats, lays):
+    ex = {}
+    if units and name in units:                    # what it is selected and hidden with
+        ex["unit"] = units[name]
+    if mats and mats.get(name):                    # its filament, or what else it is made of
+        ex["mat"] = mats[name]
+    if lays and name in lays:                      # how it printed: the viewer's layer lines
+        ex["lay"] = lays[name]
+    if ex:
+        node["extras"] = ex
+
+
+def _turns():
+    import itertools
+    out = []
+    for perm in itertools.permutations(range(3)):
+        for sg in itertools.product((1, -1), repeat=3):
+            m = np.zeros((3, 3))
+            for r, (c, s_) in enumerate(zip(perm, sg)):
+                m[r, c] = s_
+            if np.linalg.det(m) > 0:
+                out.append(m)
+    return out
+
+
+_TURNS = _turns()
+INSTANCE_ROUND = 0.01                          # mm: two copies agree to this, or are not shared
+
+
+def _canon(pos, verts, key):
+    """(hash, turn R, centre c) of a mesh in its own canonical frame: local = R (p - c). Two
+    copies of one part, moved and turned by multiples of 90 deg, get the same hash."""
+    import hashlib
+    lo, hi = pos.min(axis=0).astype(np.float64), pos.max(axis=0).astype(np.float64)
+    c = (lo + hi) / 2
+    P = (verts if len(verts) >= 3 else pos).astype(np.float64) - c
+    best = None
+    for R in _TURNS:
+        q = np.round(P @ R.T / INSTANCE_ROUND).astype(np.int64)
+        q = q[np.lexsort(q.T[::-1])]
+        h = hashlib.sha1(q.tobytes() + repr(key).encode()).digest()
+        if best is None or h < best[0]:
+            best = (h, R)
+    return best[0], best[1], c
+
+
+def _same_points(a, b) -> bool:
+    if a.shape != b.shape:
+        return False
+    qa = np.round(a / INSTANCE_ROUND).astype(np.int64)
+    qb = np.round(b / INSTANCE_ROUND).astype(np.int64)
+    qa = qa[np.lexsort(qa.T[::-1])]
+    qb = qb[np.lexsort(qb.T[::-1])]
+    return bool((np.abs(qa - qb) <= 1).all())
+
+
+def instance_groups(parts, runs=None, verts=None):
+    """SHARE A MESH BETWEEN COPIES (2026-11-16): {name: (group, 4x4 placing its local mesh)} and
+    {group: (local pos, tri)} for every part that is a copy -- moved, and turned by multiples of
+    90 deg -- of another of the same colour. Twenty identical ties are written once and placed
+    twenty times. A copy is CHECKED, every vertex of the shared mesh placed onto its own mesh to
+    INSTANCE_ROUND; one that is not exactly a copy keeps its own mesh. `runs` ({name: the sidecar's
+    face runs}) must match too, so a copy's faces index the shared triangles the same way."""
+    groups = {}
+    for name, pos, tri, rgba, col in parts:
+        if col is not None or len(pos) < 3:
+            continue
+        r = (runs or {}).get(name)
+        key = (len(pos), len(tri), tuple(round(float(c), 4) for c in rgba), tuple(r or ()))
+        v = (verts or {}).get(name)
+        h, R, c = _canon(pos.astype(np.float64), np.zeros((0, 3)) if v is None else np.asarray(v), key)
+        groups.setdefault(h, []).append((name, pos, tri, R, c))
+    shared, local = {}, {}
+    for gid, (h, members) in enumerate(groups.items()):
+        if len(members) < 2:
+            continue
+        n0, p0, t0, R0, c0 = members[0]
+        lp = (p0.astype(np.float64) - c0) @ R0.T
+        ok = []
+        for name, pos, tri, R, c in members:
+            M = np.eye(4)
+            M[:3, :3] = R.T
+            M[:3, 3] = c
+            if _same_points(lp @ R + c, pos.astype(np.float64)):
+                ok.append((name, M))
+        if len(ok) < 2:
+            continue
+        local[gid] = (lp.astype(np.float32), t0)
+        for name, M in ok:
+            shared[name] = (gid, M)
+    return shared, local
+
+
+def write_glb(parts, out: pathlib.Path, extras=None, units=None, mats=None, lays=None,
+              runs=None, verts=None, instance=True) -> None:
     """parts = [(name, pos float32 (n,3), tri uint32 (m,3), (r, g, b, a), col)]: `col`
     is None, or uint8 (n,4) per-vertex colour (linear, as glTF's COLOR_0), and then the
     part's material is plain white under it. A part whose `mats` entry is a filament
@@ -347,6 +443,8 @@ def write_glb(parts, out: pathlib.Path, extras=None, units=None, mats=None, lays
         buf.extend(data)
         return len(views) - 1
 
+    shared, local = instance_groups(parts, runs, verts) if instance else ({}, {})
+    wrote = {}                                     # group -> its mesh's index
     for name, pos, tri, rgba, col in parts:
         if col is None and mats and mats.get(name) in FILAMENTS:
             rgba = tuple(FILAMENTS[mats[name]][0]) + (1.0,)
@@ -361,6 +459,16 @@ def write_glb(parts, out: pathlib.Path, extras=None, units=None, mats=None, lays
             if key[3] < 0.999:
                 m["alphaMode"] = "BLEND"
             materials.append(m)
+        sh = shared.get(name)
+        if sh is not None and sh[0] in wrote and meshes[wrote[sh[0]]]["primitives"][0]["material"] == mat_ix[key]:
+            nodes.append({"name": name, "mesh": wrote[sh[0]],
+                          "matrix": [round(float(x), 7) for x in sh[1].T.ravel()]})
+            _node_extras(nodes[-1], name, units, mats, lays)
+            continue
+        if sh is not None and sh[0] in wrote:
+            sh = None                              # shared, but another colour here: its own mesh
+        if sh is not None:
+            pos, tri = local[sh[0]]
         small = len(pos) < 65536
         idx = tri.astype(np.uint16 if small else np.uint32)
         vp = view(pos.astype("<f4").tobytes(), 34962)
@@ -380,15 +488,10 @@ def write_glb(parts, out: pathlib.Path, extras=None, units=None, mats=None, lays
         meshes.append({"primitives": [{"attributes": attrs, "indices": ia,
                                        "material": mat_ix[key]}]})
         nodes.append({"name": name, "mesh": len(meshes) - 1})
-        ex = {}
-        if units and name in units:                # what it is selected and hidden with
-            ex["unit"] = units[name]
-        if mats and mats.get(name):                # its filament, or what else it is made of
-            ex["mat"] = mats[name]
-        if lays and name in lays:                  # how it printed: the viewer's layer lines
-            ex["lay"] = lays[name]
-        if ex:
-            nodes[-1]["extras"] = ex
+        if sh is not None:                         # the first of a shared group: its mesh is local
+            wrote[sh[0]] = len(meshes) - 1
+            nodes[-1]["matrix"] = [round(float(x), 7) for x in sh[1].T.ravel()]
+        _node_extras(nodes[-1], name, units, mats, lays)
     # CAD Z-up -> glTF Y-up at the one root, as cadquery's exporter did
     s = 0.7071067811865476
     root = {"name": "assembly", "rotation": [-s, 0.0, 0.0, s],
@@ -697,6 +800,9 @@ def export(parts, out_dir, stem="assembly", extras=None, meshed=None, quiet=Fals
             stated[part_name] = more[0]
         if part_name in done or part_name in solids:
             raise ValueError("two parts are both named %r: the viewer addresses parts by name" % part_name)
+        over = None if callable(solid) else getattr(solid, "_cadkit_mesh", None)
+        if over is not None:                     # a mesh-only part (cadkit.mesh_parts)
+            meshed = dict(meshed or {}, **{part_name: over})
         if (meshed or {}).get(part_name) is not None:
             split = [(part_name, solid)]
         else:
@@ -833,7 +939,9 @@ def export(parts, out_dir, stem="assembly", extras=None, meshed=None, quiet=Fals
     desc.update(descriptions or {})
     if desc:
         extras["descriptions"] = desc
-    write_glb(glb_parts, glb, extras=extras, units=one, mats=mats, lays=lays)
+    write_glb(glb_parts, glb, extras=extras, units=one, mats=mats, lays=lays,
+              runs={n: m["geo"]["r"] for n, m in done.items() if "geo" in m and "r" in m["geo"]},
+              verts={n: m["verts"] for n, m in done.items() if len(m.get("verts", ())) >= 3})
     side.write_text(json.dumps({"format": FORMAT, "units": "mm", "parts": geo, "models": models},
                                separators=(",", ":")))
     if page:

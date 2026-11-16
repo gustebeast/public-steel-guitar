@@ -166,6 +166,28 @@ def read_brep(path):
     return cq.Shape.importBrep(io.BytesIO(data))
 
 
+def _put_mesh(out: pathlib.Path, name: str, mesh):
+    """A mesh-only part's look (cadkit.mesh_parts) BESIDE its proxy's BREP, tagged with the sha1
+    of that file as it stands: the view uses it while the file is that file. No mesh: any old
+    override is removed, so a part that stops being mesh-only is meshed from its solid again."""
+    f = out / "mesh" / (name + ".override.pkl")
+    if mesh is None:
+        if f.exists():
+            try:
+                f.unlink()
+            except OSError:
+                pass
+        return
+    import pickle
+    brep = out / (name + ".brep")
+    try:
+        tag = hashlib.sha1(brep.read_bytes()).hexdigest()
+    except OSError:
+        return
+    f.parent.mkdir(parents=True, exist_ok=True)
+    _put(f, pickle.dumps((tag, [(name, mesh)]), protocol=pickle.HIGHEST_PROTOCOL))
+
+
 def _write_parts(comps, out: pathlib.Path, known=None):
     """Write each component's BREP into `out`. A part whose bytes are what `known`
     ({name: sha1}) already has is LEFT ALONE, so its file keeps its time and whatever
@@ -192,15 +214,19 @@ def _write_parts(comps, out: pathlib.Path, known=None):
         h = hashlib.sha1(data).hexdigest()
         parts[name] = h
         f = out / (name + ".brep")
+        m = getattr(wp, "_cadkit_mesh", None)         # a mesh-only part (cadkit.mesh_parts)
         if known.get(name) == h and f.exists():
+            _put_mesh(out, name, m)
             continue
         d = geometry_digest(shape)
         if f.exists() and name in known and geo.get(name) == d:
             parts[name] = known[name]           # the same solid: the file stays as it is
+            _put_mesh(out, name, m)
             continue
         _put(f, data)
         geo[name] = d
         wrote += 1
+        _put_mesh(out, name, m)
     for name in [n for n in geo if n not in parts and not (out / (n + ".brep")).exists()]:
         del geo[name]
     _put(out / GEOMETRY, json.dumps(geo).encode())
