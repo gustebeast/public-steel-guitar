@@ -185,6 +185,49 @@ def _rings(rings, n) -> dict:
     return _pack(pos, np.concatenate(tri))
 
 
+def _creased(m: dict, deg: float = 40.0) -> dict:
+    """The mesh with every vertex where faces meet sharper than `deg` split, one copy for each
+    run of faces that are near one another. The viewers smooth a normal over the faces that
+    share a vertex (desktop scene.rs, the page): without this a sheet's sharp corners -- a
+    screw head's top edge, its socket's hex, a thread's crest -- shade as a soft blur.
+    Triangle count and order are kept, so feature ranges still hold."""
+    pos, tri = m["pos"].astype(np.float64), m["tri"].astype(np.int64)
+    if not len(tri):
+        return m
+    fn = np.cross(pos[tri[:, 1]] - pos[tri[:, 0]], pos[tri[:, 2]] - pos[tri[:, 0]])
+    ln = np.linalg.norm(fn, axis=1)
+    fn = np.where(ln[:, None] > 1e-12, fn / np.maximum(ln, 1e-300)[:, None], 0.0)
+    c = math.cos(math.radians(deg))
+    flat = tri.ravel()
+    order = np.argsort(flat, kind="stable")
+    starts = np.flatnonzero(np.r_[True, flat[order][1:] != flat[order][:-1]])
+    ends = np.r_[starts[1:], len(order)]
+    out, extra = flat.copy(), []
+    nv = len(pos)
+    for a, b in zip(starts, ends):
+        corners = order[a:b]
+        v = flat[corners[0]]
+        seeds = []                                     # (normal, vertex index) of each run
+        for k in corners:
+            n = fn[k // 3]
+            if not n.any():                            # a degenerate face goes with the first run
+                continue
+            for sn, vi in seeds:
+                if sn @ n >= c:
+                    out[k] = vi
+                    break
+            else:
+                vi = v if not seeds else nv + len(extra)
+                if seeds:
+                    extra.append(v)
+                seeds.append((n, vi))
+                out[k] = vi
+    if not extra:
+        return m
+    return dict(m, pos=np.ascontiguousarray(np.r_[m["pos"], m["pos"][extra]], dtype=np.float32),
+                tri=np.ascontiguousarray(out.reshape(-1, 3), dtype=np.uint32))
+
+
 def _flip(m: dict) -> dict:
     return dict(m, tri=m["tri"][:, [0, 2, 1]])
 
@@ -289,7 +332,7 @@ def threaded_rod_mesh(length: float, major: float, minor: float, pitch: float,
         out.append(_end(0.0, 0.0, lambda p: r_end(0.0, p), n, up=False))
     if ends[1]:
         out.append(_end(length, 0.0, lambda p: r_end(length, p), n, up=True))
-    return _merge(out)
+    return _creased(_merge(out))
 
 
 def _hex_r(af):
@@ -299,7 +342,7 @@ def _hex_r(af):
 
 def screw_mesh(d: float, pitch: float, length: float, head_d: float, head_h: float,
                socket_af: float, socket_depth: float = None, seg: int = 8,
-               head_seg: int = 24) -> dict:
+               head_seg: int = 48) -> dict:
     """A socket-head cap screw as cadkit.fasteners.headed_screw draws its proxy: axis Z, HEAD
     TOP at z = 0, the head Ø`head_d` x `head_h` below it with its hex socket (`socket_af` across
     the flats, `socket_depth` deep to the drill point's rim) sunk in the top, and an ISO metric
@@ -316,7 +359,7 @@ def screw_mesh(d: float, pitch: float, length: float, head_d: float, head_h: flo
     head = _rings([(0.0, -depth - tip), (hexr, -depth), (hexr, 0.0), (rh - ch, 0.0),
                    (rh, -ch), (rh, -head_h), (rr, -head_h)], head_seg)
     shank = threaded_rod_mesh(length, d, 2 * rr, pitch, 30.0, seg=seg, ends=(True, False))
-    return _merge([_orient(head, +1), _moved(shank, _translate(0, 0, -head_h - length))])
+    return _merge([_creased(_orient(head, +1)), _moved(shank, _translate(0, 0, -head_h - length))])
 
 
 def insert_mesh(d: float, pitch: float, od: float, length: float, seg: int = 8,
@@ -355,7 +398,7 @@ def insert_mesh(d: float, pitch: float, od: float, length: float, seg: int = 8,
     out.append(_end(0.0, lambda p: r_end(length, p), knurl(0.0, +1), n, up=True, phase=tw(0.0, +1)))
     out.append(_end(-length, lambda p: r_end(0.0, p), knurl(-length, -1), n, up=False,
                     phase=tw(-length, -1)))
-    return _merge(out)
+    return _creased(_merge(out))
 
 
 def _orient(m: dict, sense: int) -> dict:
