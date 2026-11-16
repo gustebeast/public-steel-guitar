@@ -331,8 +331,29 @@ DEFAULT_LAYER = 0.4                # mm: a part with no layer height of its own
 
 # THE 24 TURNS A BOX MAPS ONTO ITSELF BY (signed permutations, det +1): what two copies of one
 # part may differ by and still share one mesh (instancing, below)
-def _node_extras(node, name, units, mats, lays):
+def _feat_json(feats, M=None):
+    """A mesh's analytic features (cadkit.mesh_parts) for the GLB node: in the frame of the mesh as
+    written, so a shared mesh's are taken back through the node's matrix M (local = M^-1 world)."""
+    out = []
+    Mi = None if M is None else np.linalg.inv(M)
+    for f in feats:
+        o, z, x = (np.asarray(f[k], float) for k in ("o", "z", "x"))
+        h = f["h"]
+        if Mi is not None:
+            R, t = Mi[:3, :3], Mi[:3, 3]
+            o, z, x = R @ o + t, R @ z, R @ x
+            if np.linalg.det(R) < 0:
+                h = -h
+        g = dict(f, o=[round(float(v), 6) for v in o], z=[round(float(v), 7) for v in z],
+                 x=[round(float(v), 7) for v in x], h=int(h))
+        out.append(g)
+    return out
+
+
+def _node_extras(node, name, units, mats, lays, feats=None, M=None):
     ex = {}
+    if feats and feats.get(name):                  # its threads and coils, for a ray tracer
+        ex["feat"] = _feat_json(feats[name], M)
     if units and name in units:                    # what it is selected and hidden with
         ex["unit"] = units[name]
     if mats and mats.get(name):                    # its filament, or what else it is made of
@@ -425,7 +446,7 @@ def instance_groups(parts, runs=None, verts=None):
 
 
 def write_glb(parts, out: pathlib.Path, extras=None, units=None, mats=None, lays=None,
-              runs=None, verts=None, instance=True) -> None:
+              runs=None, verts=None, instance=True, feats=None) -> None:
     """parts = [(name, pos float32 (n,3), tri uint32 (m,3), (r, g, b, a), col)]: `col`
     is None, or uint8 (n,4) per-vertex colour (linear, as glTF's COLOR_0), and then the
     part's material is plain white under it. A part whose `mats` entry is a filament
@@ -463,7 +484,7 @@ def write_glb(parts, out: pathlib.Path, extras=None, units=None, mats=None, lays
         if sh is not None and sh[0] in wrote and meshes[wrote[sh[0]]]["primitives"][0]["material"] == mat_ix[key]:
             nodes.append({"name": name, "mesh": wrote[sh[0]],
                           "matrix": [round(float(x), 7) for x in sh[1].T.ravel()]})
-            _node_extras(nodes[-1], name, units, mats, lays)
+            _node_extras(nodes[-1], name, units, mats, lays, feats, sh[1])
             continue
         if sh is not None and sh[0] in wrote:
             sh = None                              # shared, but another colour here: its own mesh
@@ -491,7 +512,7 @@ def write_glb(parts, out: pathlib.Path, extras=None, units=None, mats=None, lays
         if sh is not None:                         # the first of a shared group: its mesh is local
             wrote[sh[0]] = len(meshes) - 1
             nodes[-1]["matrix"] = [round(float(x), 7) for x in sh[1].T.ravel()]
-        _node_extras(nodes[-1], name, units, mats, lays)
+        _node_extras(nodes[-1], name, units, mats, lays, feats, None if sh is None else sh[1])
     # CAD Z-up -> glTF Y-up at the one root, as cadquery's exporter did
     s = 0.7071067811865476
     root = {"name": "assembly", "rotation": [-s, 0.0, 0.0, s],
@@ -941,7 +962,8 @@ def export(parts, out_dir, stem="assembly", extras=None, meshed=None, quiet=Fals
         extras["descriptions"] = desc
     write_glb(glb_parts, glb, extras=extras, units=one, mats=mats, lays=lays,
               runs={n: m["geo"]["r"] for n, m in done.items() if "geo" in m and "r" in m["geo"]},
-              verts={n: m["verts"] for n, m in done.items() if len(m.get("verts", ())) >= 3})
+              verts={n: m["verts"] for n, m in done.items() if len(m.get("verts", ())) >= 3},
+              feats={n: m["feat"] for n, m in done.items() if m.get("feat")})
     side.write_text(json.dumps({"format": FORMAT, "units": "mm", "parts": geo, "models": models},
                                separators=(",", ":")))
     if page:

@@ -22,6 +22,21 @@ pub struct GpuPart {
     pub lay: [f32; 4], // build direction, in the part's own frame; w: its bed plane along that
 }
 
+/// AN ANALYTIC FEATURE (cadkit.mesh_parts "feat"): a thread or a coil the tracer solves itself, to
+/// any detail, in place of the triangles that draw it (they are left out of the part's BLAS). In
+/// the part's frame. o.w: the kind (0 thread, 1 coil); z, x: the axis and angle zero.
+///   thread: a = (crest r, root r, pitch, length), b = (a flank's axial run, hand, inward, steepness)
+///   coil:   a = (helix r, wire r, pitch, z0), b = (height, hand, cos of the lead angle, 0)
+#[repr(C)]
+#[derive(Clone, Copy, Pod, Zeroable)]
+pub struct Feat {
+    pub o: [f32; 4],
+    pub z: [f32; 4],
+    pub x: [f32; 4],
+    pub a: [f32; 4],
+    pub b: [f32; 4],
+}
+
 pub const FLAG_VCOL: u32 = 1;
 pub const FLAG_CLEAR: u32 = 2;
 pub const CLEAR_OPACITY: f32 = 0.38;   // a "-clear" filament: index.html's CLEAR, trace_blender.py's CLEAR
@@ -34,6 +49,9 @@ pub struct Part {
     pub vtx_off: u32,
     pub vtx_count: u32,
     pub clear: bool,
+    /// its analytic features: feats[feat_off..feat_off + feat_count], one AABB each (aabbs)
+    pub feat_off: u32,
+    pub feat_count: u32,
 }
 
 pub struct Scene {
@@ -42,6 +60,59 @@ pub struct Scene {
     pub indices: Vec<u32>, // local to each part
     pub parts: Vec<Part>,
     pub gpu_parts: Vec<GpuPart>,
+    pub feats: Vec<Feat>,
+    /// each feature's box in its part's frame: min xyz, max xyz
+    pub aabbs: Vec<[f32; 6]>,
+}
+
+/// A node's features -> (Feat, its box, the triangle range it replaces), placed by the node's matrix.
+fn feats_of(node: &Value, place: Option<glam::Mat4>) -> Vec<(Feat, [f32; 6], (usize, usize))> {
+    let mut out = vec![];
+    let Some(list) = node["extras"]["feat"].as_array() else { return out };
+    let v3 = |f: &Value, k: &str| glam::Vec3::new(f[k][0].as_f64().unwrap_or(0.0) as f32, f[k][1].as_f64().unwrap_or(0.0) as f32, f[k][2].as_f64().unwrap_or(0.0) as f32);
+    let num = |f: &Value, k: &str| f[k].as_f64().unwrap_or(0.0) as f32;
+    for f in list {
+        let (mut o, mut z, mut x) = (v3(f, "o"), v3(f, "z"), v3(f, "x"));
+        let mut hand = num(f, "h");
+        if let Some(m) = place {
+            o = m.transform_point3(o);
+            z = m.transform_vector3(z);
+            x = m.transform_vector3(x);
+            if glam::Mat3::from_mat4(m).determinant() < 0.0 { hand = -hand; }
+        }
+        let (z, x) = (z.normalize_or(glam::Vec3::Z), x.normalize_or(glam::Vec3::X));
+        let tri = (f["tri"][0].as_u64().unwrap_or(0) as usize, f["tri"][1].as_u64().unwrap_or(0) as usize);
+        // the box: a cylinder of radius r over the axis from s0 to s1 (each axis' reach is r sin of its angle)
+        let cyl = |r: f32, s0: f32, s1: f32| {
+            let (a, b) = (o + z * s0, o + z * s1);
+            let e = glam::Vec3::new((1.0 - z.x * z.x).max(0.0).sqrt(), (1.0 - z.y * z.y).max(0.0).sqrt(), (1.0 - z.z * z.z).max(0.0).sqrt()) * r;
+            let (lo, hi) = (a.min(b) - e, a.max(b) + e);
+            [lo.x, lo.y, lo.z, hi.x, hi.y, hi.z]
+        };
+        match f["k"].as_str() {
+            Some("t") => {
+                let (rc, rr, p, l) = (num(f, "rc"), num(f, "rr"), num(f, "p"), num(f, "L"));
+                let fl = (rc - rr) * num(f, "fl").to_radians().tan();
+                if !(fl > 0.0 && p > 0.0 && l > 0.0 && rc > rr) { continue; }
+                // how fast the surface can come at the ray: the flank's slope, axially and round
+                let k = (rc - rr) / fl;
+                let steep = (1.0 + k * k * (1.0 + (p / (std::f32::consts::TAU * rr.max(0.05))).powi(2))).sqrt();
+                let feat = Feat { o: [o.x, o.y, o.z, 0.0], z: [z.x, z.y, z.z, 0.0], x: [x.x, x.y, x.z, 0.0],
+                                  a: [rc, rr, p, l], b: [fl, hand, num(f, "in"), steep] };
+                out.push((feat, cyl(rc * 1.002 + 1e-3, -1e-3, l + 1e-3), tri));
+            }
+            Some("c") => {
+                let (r, w, p, z0, h) = (num(f, "R"), num(f, "w"), num(f, "p"), num(f, "z0"), num(f, "H"));
+                if !(w > 0.0 && p > 0.0 && h > 0.0) { continue; }
+                let ca = std::f32::consts::TAU * r / ((std::f32::consts::TAU * r).powi(2) + p * p).sqrt();
+                let feat = Feat { o: [o.x, o.y, o.z, 1.0], z: [z.x, z.y, z.z, 0.0], x: [x.x, x.y, x.z, 0.0],
+                                  a: [r, w, p, z0], b: [h, hand, ca, 0.0] };
+                out.push((feat, cyl(r + w * 1.01 + 1e-3, z0 - w * 1.01 - 1e-3, z0 + h + w * 1.01 + 1e-3), tri));
+            }
+            _ => {}
+        }
+    }
+    out
 }
 
 fn u32le(b: &[u8], o: usize) -> u32 {
@@ -90,7 +161,7 @@ pub fn load(d: &[u8]) -> Result<Scene, String> {
         }
     }
 
-    let mut s = Scene { positions: vec![], vattr: vec![], indices: vec![], parts: vec![], gpu_parts: vec![] };
+    let mut s = Scene { positions: vec![], vattr: vec![], indices: vec![], parts: vec![], gpu_parts: vec![], feats: vec![], aabbs: vec![] };
     for node in j["nodes"].as_array().ok_or("no nodes")? {
         let Some(mi) = node["mesh"].as_u64() else { continue };
         let prim = &j["meshes"][mi as usize]["primitives"][0];
@@ -148,6 +219,25 @@ pub fn load(d: &[u8]) -> Result<Scene, String> {
             let n = nrm[i].normalize_or(glam::Vec3::Z);
             s.vattr.push(Vtx { n: n.to_array(), col: cols[i] });
         }
+        // ITS ANALYTIC FEATURES: theirs in the feature table, and the triangles that draw them left out
+        let feat_off = s.feats.len() as u32;
+        let fs = feats_of(node, place);
+        if !fs.is_empty() {
+            let ntri = (s.indices.len() - idx_off as usize) / 3;
+            let mut drop = vec![false; ntri];
+            for (_, _, (a, b)) in &fs {
+                for t in (*a).min(ntri)..(*b).min(ntri) { drop[t] = true; }
+            }
+            let kept: Vec<u32> = s.indices[idx_off as usize..].chunks_exact(3).zip(&drop).filter(|(_, d)| !**d).flat_map(|(t, _)| t.to_vec()).collect();
+            s.indices.truncate(idx_off as usize);
+            s.indices.extend(kept);
+            for (f, bx, _) in fs {
+                s.feats.push(f);
+                s.aabbs.push(bx);
+            }
+        }
+        let feat_count = s.feats.len() as u32 - feat_off;
+        let idx_count = (s.indices.len() - idx_off as usize) as u32 / 3 * 3;
         // material: a part of many colours carries them (and its metal, in alpha) per vertex under one
         // plain material; any other takes its colour from the file and its surface from the finishes table
         let mat = node["extras"]["mat"].as_str();
@@ -167,9 +257,11 @@ pub fn load(d: &[u8]) -> Result<Scene, String> {
         }
         let flags = if vcol.is_some() { FLAG_VCOL } else { 0 } | if clear { FLAG_CLEAR } else { 0 };
         let l = |k: usize| node["extras"]["lay"][k].as_f64().unwrap_or(0.0) as f32;
-        s.gpu_parts.push(GpuPart { idx_off, vtx_off, flags, pitch: l(4), color, mr: [metal, rough, 0.0, 0.0],
+        // the feature table's range rides in mr's spare two numbers (as bits)
+        s.gpu_parts.push(GpuPart { idx_off, vtx_off, flags, pitch: l(4), color,
+                                   mr: [metal, rough, f32::from_bits(feat_off), f32::from_bits(feat_count)],
                                    lay: [l(0), l(1), l(2), l(3)] });
-        s.parts.push(Part { name: node["name"].as_str().unwrap_or("").to_string(), idx_off, idx_count: (ia.count / 3 * 3) as u32, vtx_off, vtx_count: pa.count as u32, clear });
+        s.parts.push(Part { name: node["name"].as_str().unwrap_or("").to_string(), idx_off, idx_count, vtx_off, vtx_count: pa.count as u32, clear, feat_off, feat_count });
     }
     Ok(s)
 }

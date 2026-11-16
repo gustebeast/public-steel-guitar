@@ -210,7 +210,7 @@ pub struct Parked(SceneGpu);
 impl Parked {
     /// what it holds of the card's memory, roughly: its buffers (the BLASes are about as much again)
     pub fn bytes(&self) -> u64 {
-        self.0.idx_buf.size() + self.0.vattr_buf.size() + self.0.parts_buf.size() + self.0.motion_buf.size()
+        self.0.idx_buf.size() + self.0.vattr_buf.size() + self.0.parts_buf.size() + self.0.motion_buf.size() + self.0.feat_buf.size()
     }
 }
 
@@ -256,7 +256,12 @@ struct SceneGpu {
     parts_buf: wgpu::Buffer,
     idx_buf: wgpu::Buffer,
     vattr_buf: wgpu::Buffer,
-    blases: Vec<wgpu::Blas>,
+    /// the analytic features (scene::Feat), and each featured part's BLAS of their boxes
+    feat_buf: wgpu::Buffer,
+    /// a part's triangles (None: it has none left, its features draw it all)
+    blases: Vec<Option<wgpu::Blas>>,
+    /// a part's features' boxes, and the TLAS slot their instance takes (after the parts')
+    pblases: Vec<Option<(wgpu::Blas, usize)>>,
     tlas: wgpu::Tlas,
     parts: Vec<GpuPart>,
     xf: Vec<[f32; 12]>,
@@ -405,6 +410,7 @@ impl Renderer {
                 e_buf(7, RW, c),
                 e_buf(8, RW, c),
                 e_buf(9, RW, c),
+                e_buf(10, RO, c),
             ],
         );
         let l_pre = layout(&device, "pre", &[e_buf(0, UNI, c), e_buf(1, RO, c), e_buf(2, RO, c), e_buf(3, RO, c), e_buf(4, RO, c), e_buf(5, RW, c), e_buf(6, RW, c), e_buf(7, RO, c), e_buf(8, RO, c), e_buf(9, RO, c)]);
@@ -500,6 +506,11 @@ impl Renderer {
         let idx_buf = buf("indices", bytemuck::cast_slice(&scene.indices), wgpu::BufferUsages::BLAS_INPUT | wgpu::BufferUsages::STORAGE);
         let vattr_buf = buf("vattr", bytemuck::cast_slice(&scene.vattr), wgpu::BufferUsages::STORAGE);
         let parts_buf = buf("parts", bytemuck::cast_slice(&scene.gpu_parts), wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST);
+        // (a binding is never empty: one feature nothing points at when there are none)
+        let feats = if scene.feats.is_empty() { vec![crate::scene::Feat::zeroed()] } else { scene.feats.clone() };
+        let feat_buf = buf("feats", bytemuck::cast_slice(&feats), wgpu::BufferUsages::STORAGE);
+        let aabbs = if scene.aabbs.is_empty() { vec![[0f32; 6]] } else { scene.aabbs.clone() };
+        let aabb_buf = buf("aabbs", bytemuck::cast_slice(&aabbs), wgpu::BufferUsages::BLAS_INPUT);
         self.queue.submit([]);
         device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
         let upload_ms = t0.elapsed().as_secs_f64() * 1e3;
@@ -516,33 +527,61 @@ impl Renderer {
                 flags: if p.clear { wgpu::AccelerationStructureGeometryFlags::empty() } else { wgpu::AccelerationStructureGeometryFlags::OPAQUE },
             })
             .collect();
-        let blases: Vec<wgpu::Blas> = sizes
+        let mk = |g: wgpu::BlasGeometrySizeDescriptors| {
+            device.create_blas(&wgpu::CreateBlasDescriptor { label: None, flags: wgpu::AccelerationStructureFlags::PREFER_FAST_TRACE, update_mode: wgpu::AccelerationStructureUpdateMode::Build }, g)
+        };
+        let blases: Vec<Option<wgpu::Blas>> = sizes
             .iter()
-            .map(|s| {
-                device.create_blas(
-                    &wgpu::CreateBlasDescriptor { label: None, flags: wgpu::AccelerationStructureFlags::PREFER_FAST_TRACE, update_mode: wgpu::AccelerationStructureUpdateMode::Build },
-                    wgpu::BlasGeometrySizeDescriptors::Triangles { descriptors: vec![s.clone()] },
-                )
-            })
+            .zip(&scene.parts)
+            .map(|(s, p)| (p.idx_count >= 3).then(|| mk(wgpu::BlasGeometrySizeDescriptors::Triangles { descriptors: vec![s.clone()] })))
             .collect();
-        let entries: Vec<wgpu::BlasBuildEntry> = scene
+        // THE ANALYTIC FEATURES (scene::Feat): each featured part's boxes, one procedural BLAS; the shader
+        // solves the surface inside each box (trace.wgsl, feat_hit)
+        let np = scene.parts.len();
+        let psizes: Vec<wgpu::BlasAABBGeometrySizeDescriptor> = scene
             .parts
             .iter()
-            .enumerate()
-            .map(|(i, p)| wgpu::BlasBuildEntry {
-                blas: &blases[i],
-                geometry: wgpu::BlasGeometries::TriangleGeometries(vec![wgpu::BlasTriangleGeometry {
-                    size: &sizes[i],
-                    vertex_buffer: &vb,
-                    first_vertex: p.vtx_off,
-                    vertex_stride: 12,
-                    index_buffer: Some(&idx_buf),
-                    first_index: Some(p.idx_off),
-                    transform_buffer: None,
-                    transform_buffer_offset: None,
-                }]),
+            .map(|p| wgpu::BlasAABBGeometrySizeDescriptor { primitive_count: p.feat_count, flags: wgpu::AccelerationStructureGeometryFlags::OPAQUE })
+            .collect();
+        let mut slot = np;
+        let pblases: Vec<Option<(wgpu::Blas, usize)>> = psizes
+            .iter()
+            .map(|ps| {
+                (ps.primitive_count > 0).then(|| {
+                    slot += 1;
+                    (mk(wgpu::BlasGeometrySizeDescriptors::AABBs { descriptors: vec![ps.clone()] }), slot - 1)
+                })
             })
             .collect();
+        let mut entries: Vec<wgpu::BlasBuildEntry> = vec![];
+        for (i, p) in scene.parts.iter().enumerate() {
+            if let Some(b) = &blases[i] {
+                entries.push(wgpu::BlasBuildEntry {
+                    blas: b,
+                    geometry: wgpu::BlasGeometries::TriangleGeometries(vec![wgpu::BlasTriangleGeometry {
+                        size: &sizes[i],
+                        vertex_buffer: &vb,
+                        first_vertex: p.vtx_off,
+                        vertex_stride: 12,
+                        index_buffer: Some(&idx_buf),
+                        first_index: Some(p.idx_off),
+                        transform_buffer: None,
+                        transform_buffer_offset: None,
+                    }]),
+                });
+            }
+            if let Some((b, _)) = &pblases[i] {
+                entries.push(wgpu::BlasBuildEntry {
+                    blas: b,
+                    geometry: wgpu::BlasGeometries::AabbGeometries(vec![wgpu::BlasAabbGeometry {
+                        size: &psizes[i],
+                        stride: 24,
+                        aabb_buffer: &aabb_buf,
+                        primitive_offset: p.feat_off * 24,
+                    }]),
+                });
+            }
+        }
         let mut enc = device.create_command_encoder(&Default::default());
         enc.build_acceleration_structures(entries.iter(), std::iter::empty());
         self.queue.submit([enc.finish()]);
@@ -550,15 +589,14 @@ impl Renderer {
         let blas_ms = t0.elapsed().as_secs_f64() * 1e3;
         drop(entries);
 
-        let np = scene.parts.len();
         let tlas = device.create_tlas(&wgpu::CreateTlasDescriptor {
             label: Some("tlas"),
-            max_instances: np.max(1) as u32,
+            max_instances: slot.max(1) as u32,
             flags: wgpu::AccelerationStructureFlags::PREFER_FAST_TRACE,
             update_mode: wgpu::AccelerationStructureUpdateMode::Build,
         });
         let motion_buf = buf("motion", bytemuck::cast_slice(&vec![IDENT; np.max(1)]), wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST);
-        self.scene = Some(SceneGpu { parts_buf, idx_buf, vattr_buf, blases, tlas, parts: scene.gpu_parts.clone(), xf: vec![IDENT; np], xf_prev: vec![IDENT; np], xf_moved: false, motion_buf, motion_live: false, hidden: vec![false; np], tlas_dirty: true, parts_dirty: false });
+        self.scene = Some(SceneGpu { parts_buf, idx_buf, vattr_buf, feat_buf, blases, pblases, tlas, parts: scene.gpu_parts.clone(), xf: vec![IDENT; np], xf_prev: vec![IDENT; np], xf_moved: false, motion_buf, motion_live: false, hidden: vec![false; np], tlas_dirty: true, parts_dirty: false });
         for i in 0..np {
             self.put_instance(i);
         }
@@ -571,7 +609,14 @@ impl Renderer {
 
     fn put_instance(&mut self, i: usize) {
         let Some(s) = self.scene.as_mut() else { return };
-        s.tlas[i] = if s.hidden[i] { None } else { Some(wgpu::TlasInstance::new(&s.blases[i], s.xf[i], i as u32, 0xff)) };
+        s.tlas[i] = match &s.blases[i] {
+            Some(b) if !s.hidden[i] => Some(wgpu::TlasInstance::new(b, s.xf[i], i as u32, 0xff)),
+            _ => None,
+        };
+        // its features ride with it: the same place, the same part index
+        if let Some((b, k)) = &s.pblases[i] {
+            s.tlas[*k] = if s.hidden[i] { None } else { Some(wgpu::TlasInstance::new(b, s.xf[i], i as u32, 0xff)) };
+        }
         s.tlas_dirty = true;
     }
 
@@ -796,7 +841,7 @@ impl Renderer {
         let stg = |size: u64| d.create_buffer(&wgpu::BufferDescriptor { label: Some("staging"), size, usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
         let (staging, guide_staging) = (stg(px * 4), stg(px * 16));
         let g = self.globals.as_entire_binding();
-        let mk_trace = |p: usize| bind(d, &self.l_trace, &[g.clone(), sc.tlas.as_binding(), sc.parts_buf.as_entire_binding(), sc.idx_buf.as_entire_binding(), sc.vattr_buf.as_entire_binding(), acc_a.as_entire_binding(), guide[p].as_entire_binding(), acc_b.as_entire_binding(), acc_c.as_entire_binding(), other.as_entire_binding()]);
+        let mk_trace = |p: usize| bind(d, &self.l_trace, &[g.clone(), sc.tlas.as_binding(), sc.parts_buf.as_entire_binding(), sc.idx_buf.as_entire_binding(), sc.vattr_buf.as_entire_binding(), acc_a.as_entire_binding(), guide[p].as_entire_binding(), acc_b.as_entire_binding(), acc_c.as_entire_binding(), other.as_entire_binding(), sc.feat_buf.as_entire_binding()]);
         let mk_pre = |p: usize| bind(d, &self.l_pre, &[g.clone(), acc_a.as_entire_binding(), guide[p].as_entire_binding(), guide[1 - p].as_entire_binding(), hist[1 - p].as_entire_binding(), hist[p].as_entire_binding(), fa.as_entire_binding(), acc_b.as_entire_binding(), acc_c.as_entire_binding(), sc.motion_buf.as_entire_binding()]);
         let mk_atrous = |p: usize| -> [wgpu::BindGroup; ATROUS_PASSES] {
             std::array::from_fn(|i| {
