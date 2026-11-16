@@ -300,7 +300,21 @@ def _run(script, stem):
     """
     out = []
     t0 = time.time()
-    proc = subprocess.Popen([PY, _step(script, stem), stem],
+    cmd = [PY, _step(script, stem), stem]
+    # ⚠ A STEP THAT STALLS SAYS WHERE (output_board mR0 / mS0, 2026-11-15): repair_planes and
+    # spent_vias each printed their last line and then sat for 66-84 min until the run's
+    # 2-hour timeout, yet repair_planes re-run alone on the same board took 9 s. With
+    # PCBFLOW_STEP_STALL_S=N the step runs under faulthandler and dumps every thread's stack
+    # to the log each N s it is still going -- the next stall names its line instead of
+    # costing an hour. Diagnostic only: the step is not stopped.
+    stall = float(os.environ.get("PCBFLOW_STEP_STALL_S", "0") or 0)
+    if stall > 0:
+        cmd = [PY, "-c", "import faulthandler, os, runpy, sys; "
+               "faulthandler.dump_traceback_later(%g, repeat=True, file=sys.stdout); "
+               "sys.argv = sys.argv[1:]; sys.path.insert(0, os.path.dirname(os.path.abspath(sys.argv[0]))); "
+               "runpy.run_path(sys.argv[0], run_name='__main__')" % stall,
+               _step(script, stem), stem]
+    proc = subprocess.Popen(cmd,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                             text=True, bufsize=1)
     for line in proc.stdout:
