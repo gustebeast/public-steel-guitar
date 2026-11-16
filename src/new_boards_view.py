@@ -21,6 +21,9 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+import os
+import sys
+
 import cadquery as cq
 
 from cadkit.board_geom import Boards
@@ -122,6 +125,38 @@ def _flat_up(w, x, y, z):
     return w.translate((x, y, z))
 
 
+# Raspberry Pi's own CM5 model, RP-007222-DD-2 "rpi-cm5 3D_STEP" (CM5R5-3dsteps.step, Spatial
+# InterOp AP214, 2024-12-17), from pip.raspberrypi.com Compute Module 5 design files. *.step is
+# git-ignored, so the file lives here locally; without it the view keeps the drawn stand-in.
+CM5_STEP = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        "elec", "models", "CM5R5-3dsteps.step")
+
+
+def _cm5_step(t):
+    """(pcb, top parts, plugs) of Raspberry Pi's CM5 STEP in the output board's frame, or None.
+
+    THE MODEL'S FRAME (read off the file, 2026-11-15): the module 55 (x) by 40 (y), PCB z 0..1.1,
+    holes at (3.5, 3.5) .. (51.5, 36.5), the DF40 plugs under it at y 1.5-4.5 and 35.5-38.5
+    (z down to -1.11), the SoC centred at (31.99, 16.98) -- RP-008180-DS-7 Fig. 4's 31.99 from
+    the pin-99 edge and 16.98 from the pin-200 edge. In OUR frame (_cm5's docstring) the pin-101
+    row is the +X edge and the pin-1 end +Y, so the model's y = 0 edge is our +X edge and its
+    x = 0 edge our -Y edge: a +90 degree turn about Z (det +1, no mirror), then its corner at
+    (x1, y0) and its underside on the 1.5 mm DF40 stack."""
+    if not os.path.exists(CM5_STEP):
+        return None
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "elec"))
+    import cm5_mech as CM5
+    x0, y0, x1, y1 = CM5.outline()
+    z0 = t + CM5.STANDOFF_H
+    sols = cq.importers.importStep(CM5_STEP).solids().vals()
+    pcb = max(sols, key=lambda s: s.Volume())
+    move = lambda s: s.rotate((0, 0, 0), (0, 0, 1), 90).translate((x1, y0, z0 - 0.03))
+    plugs = [move(s) for s in sols if s is not pcb and s.BoundingBox().zmax < 0.05]
+    tops = [move(s) for s in sols if s is not pcb and s.BoundingBox().zmax >= 0.05]
+    W = lambda ss: cq.Workplane("XY").newObject([cq.Compound.makeCompound(ss)])
+    return cq.Workplane("XY").newObject([move(pcb)]), W(tops), W(plugs)
+
+
 def _cm5(t):
     """(module, soc) in the output board's own frame: the Compute Module 5 on its two DF40s.
 
@@ -185,7 +220,11 @@ def boards() -> list:
             import os as _os
             _g = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))),
                                "elec", "geom", "output_board.geom.json")
-            mod, soc, plug, leads = _cm5(_json.load(open(_g))["thickness_mm"])
+            _t = _json.load(open(_g))["thickness_mm"]
+            mod, soc, plug, leads = _cm5(_t)
+            real = _cm5_step(_t)             # Raspberry Pi's own model, when it is on this machine
+            if real is not None:
+                mod, soc, plug = real
             out.append(("output_board_cm5", made_of(pose(mod, *at), "board")))
             out.append(("output_board_cm5_soc", made_of(pose(soc, *at), "polished")))
             out.append(("output_board_cm5_plug", made_of(pose(plug, *at), "nylon")))

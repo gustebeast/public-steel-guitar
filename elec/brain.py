@@ -849,6 +849,10 @@ def brain(merged=None):
              ui_flt, "R44", "49k9 1%", gnd)
     _cap("C46", "1uF/16V", "U12 OUT", v33_ui, gnd)
     _cap("C47", "100nF", "U12 IN", cm5_3v3, gnd)
+    # ⚠ THE UI RIBBON'S 3V3 HAS A CAP AT THE HEADER (output_board mP0 quality A2: J205 +3V3_UI's
+    # nearest cap was C246 at 54.4 mm, its switch's output, against 25 mm). The ribbon's far end
+    # is the UI board; this end gets its own 100 nF so the header pin is not fed down a trace.
+    _cap("C59", "100nF", "+3V3_UI at the UI header J5", v33_ui, gnd)
     return {"link": link, "gadget": (otg_p, otg_n), "oblink": (lnk_p, lnk_n)}
 
 
