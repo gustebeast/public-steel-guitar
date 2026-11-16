@@ -7,10 +7,11 @@ yoke, keyplate, nut, collar, spring, sleeves, plug, guide rod, housing, collars 
 the coupler, the SERVO42D, the bend and bridge 688s on their axles, the keyhead's nut plate. What
 is new here is only what holds them up off a plank:
 
-    MOTOR BLOCK   the plank bench's in-line motor block (src.plank_bench.motor_block), REUSED AS
-                  PRINTED (user): turned 180 deg about Z so the motor faces +X. Its axis stands
-                  26.25 over the wood; that height sets the plank (Z_PLANK) for everything else.
-                  It replaces the instrument's motor plate (mplate).
+    MOTOR MOUNT   the instrument's motor plate (mplate) where the instrument has it, run down to
+                  the plank on a base with two buttresses (user, 2026-11-16: it matches the
+                  instrument, so the bench runs the real coupler). It replaced the plank bench's
+                  motor block, whose axis height (26.25 over the wood) still sets the plank
+                  (Z_PLANK) and whose tab edge the plank's edge line (Y_EDGE).
     ANCHOR        a printed stand-in for the stainless anchor tray (user: "a part to stand in as
                   the anchor"): the tray's 4 mm web at the tray's x, with string 6's holes (collar
                   B, the rod, the housing's two M4s), held by two 45 deg buttresses on its +X side
@@ -34,7 +35,7 @@ tab edge, turned): lay them flush with the plank's edge and they are in line. Th
 the endplate keep the instrument's spacing (the scale length): crown (NUT_BLOCK_X) to the bridge
 bearing's axle, SCALE_SPAN, is the one measurement to make on the plank.
 
-    py -3.12 -m src.wood_bench      -> coupons/wb_*.step
+    py -3.12 -m src.wood_bench      -> coupons/woodbench/<material>/*.step + PRINT_LIST.md (all of it)
 """
 
 from __future__ import annotations
@@ -70,38 +71,86 @@ def _screw(x, y, up=UP):
     return PB._wood_screw(x, y, up, Z_PLANK)
 
 
-# ── THE MOTOR BLOCK: the plank bench's, turned 180 deg about Z onto string 6's axis ──────────
-def _turn(w):
-    """plank_bench's X-rig frame -> here: 180 deg about Z through its pulley plane on its axis,
-    that point onto string 6's pulley plane (XR) on string 6's axis."""
-    return (w.translate((-PB.INLINE_XP, -PB.SY, -PB.XR_ZA)).rotate((0, 0, 0), (0, 0, 1), 180)
-            .translate((XR, Y5, Z5)))
+# THE PLANK'S EDGE LINE: where the plank bench's motor block (the first motor mount here, its base
+# turned 180 deg about Z onto string 6) had its tab edge; the anchor, endplate and keyhead printed
+# to it, so it stays
+Y_EDGE = Y5 - (PB.Y_EDGE - PB.SY)                # -28.35
 
 
-Y_EDGE = Y5 - (PB.Y_EDGE - PB.SY)                # -28.35: the block's tab edge, turned to -Y
+# ── THE MOTOR MOUNT: THE INSTRUMENT'S PLATE, STANDING ON THE PLANK (user, 2026-11-16: "make a new
+# one that matches the instrument" ... "I want to use the real coupler") ─────────────────────────
+# It replaces the plank bench's motor block, whose 8 mm face wall stood 4 nearer the coupler than
+# the instrument's 4 mm plate, so the bench needed a coupler of its own. This is direct_bench's
+# mplate where the instrument has it -- PLATE_T thick on the motor's face, its pilot and four M3
+# holes -- run down to the plank, on a base, held square by a buttress each side OUTSIDE the
+# motor's square (inside it the face screws' heads and the coupler's swept Ø24.8 need the room).
+# The -Y buttress is what fits between the square and the plank's edge line (Y_EDGE).
+MM_X0 = XR - DB.M_FACE                           # the plate's -X face, on the motor's faceplate
+MM_X1 = MM_X0 + DB.PLATE_T
+MM_SQ = D.MOTOR_SQ
+MM_Y = (Y_EDGE, Y5 + MM_SQ / 2 + 6 * D.BEAD)    # out to the +Y buttress (4.8)
+MM_TOP = Z5 + MM_SQ / 2                          # the plate's top, as the instrument's
+MM_BUT_TOP = Z5 + 8.0                            # the buttresses' top: over the axis
+MM_FOOT = MM_X1 + (MM_BUT_TOP - ZB)              # their 45 deg foot
+MM_UP = (0.0, 0.0, 1.0)                          # prints base down
+MM_M3_L = 8.0                                    # M3 x 8: the plate's 4, 4 into the faceplate
+MM_SCREWS = [(MM_X0 - TAB, Y_EDGE + TAB), (MM_X0 - TAB, MM_Y[1] - TAB),
+             (MM_FOOT + TAB, Y_EDGE + TAB), (MM_FOOT + TAB, MM_Y[1] - TAB)]
 
 
-def motor_block() -> cq.Workplane:
-    return _turn(PB.motor_block())
+def motor_mount() -> cq.Workplane:
+    """The plate (x MM_X0..MM_X1, y over the plank's edge line to past the square, z plank to the
+    square's top), its two buttresses +X of it, the base with four wood screws. Holes as the
+    instrument's plate's, sideways here: teardrops peaked +Z."""
+    from cadkit.holes import teardrop_hole
+    w = _box(MM_X0, MM_X1, MM_Y[0], MM_Y[1], Z_PLANK, MM_TOP)
+    for y0, y1 in ((MM_Y[0], Y5 - MM_SQ / 2), (Y5 + MM_SQ / 2, MM_Y[1])):
+        assert y1 - y0 >= 3 * D.BEAD - 1e-6, (y0, y1, "a buttress under three beads")
+        tri = (cq.Workplane("XZ", origin=(0, y1, 0))
+               .polyline([(MM_X1 - 0.01, ZB - 0.01), (MM_X1 - 0.01, MM_BUT_TOP), (MM_FOOT, ZB - 0.01)])
+               .close().extrude(y1 - y0))
+        w = w.union(tri)
+    w = w.union(_box(MM_X0 - 2 * TAB, MM_FOOT + 2 * TAB, MM_Y[0], MM_Y[1], Z_PLANK, ZB))   # the base
+
+    def hole(d, y, z, fit=False):
+        return teardrop_hole(d, DB.PLATE_T + 2.0, axis_point=(MM_X0 - 1.0, y, z), axis_dir=(1, 0, 0),
+                             print_up=MM_UP, fit=fit)
+    w = w.cut(hole(D.NEMA17_PILOT_D + 0.6, Y5, Z5, fit=True))
+    for sy in (1, -1):
+        for sz in (1, -1):
+            w = w.cut(hole(3.4, Y5 + sy * DB.NEMA17_HOLES / 2, Z5 + sz * DB.NEMA17_HOLES / 2))
+    for x, y in MM_SCREWS:
+        w = w.cut(_screw(x, y, MM_UP))
+    return w
 
 
 def _motor_m3s() -> list:
+    """The four M3 x 8 SHCS, heads on the plate's +X face, into the motor's faceplate."""
     from . import motor_coupler as MC
-    w0 = PB.INLINE_FACE - PB.INLINE_WALL_T
     out = []
     for sy in (1, -1):
         for sz in (1, -1):
-            out.append((f"wb_face_m3_{(sy + 1) // 2}{(sz + 1) // 2}", _turn(MC.cap_screw(
-                "m3", MC.M3_L, (w0 - 3.0, PB.SY + sy * PB.INLINE_HOLES / 2,
-                                PB.XR_ZA + sz * PB.INLINE_HOLES / 2), (1, 0, 0)))))
+            out.append((f"wb_face_m3_{(sy + 1) // 2}{(sz + 1) // 2}", MC.cap_screw(
+                "m3", MM_M3_L, (MM_X1 + MC.M3_HEAD[1], Y5 + sy * DB.NEMA17_HOLES / 2,
+                                Z5 + sz * DB.NEMA17_HOLES / 2), (-1, 0, 0))))
     return out
 
 
 # ── THE ANCHOR STAND-IN ──────────────────────────────────────────────────────────────────────
 AX0, AX1 = DB.ANCHOR                             # the web, -194.7 .. -190.7
 A_TOP = Z5 + 19.0                                # -66.2: 8 over the plug's and housing's tops
-A_IN = (Y5 - 16.35, Y5 + 18.45)                  # the buttresses' inner faces: 1.0 off the
-                                                 # housing's and plug's widest (-20.1 .. 12.7)
+def _drive_y_extent():
+    """The plug's and housing's widest in y: their ears round string 6's ties (the plug's ring
+    round an insert, the housing's boss) and the guide rod's boss."""
+    ear = max(DB.COL_INS_HOLE / 2 + DB.EAR_WALL, DB.TIE_BOSS)
+    ys = [dy - ear for dy, _ in DB.tie_offsets(I)] + [dy + ear for dy, _ in DB.tie_offsets(I)]
+    rb = DB.GUIDE_SEAT / 2 + DB.GUIDE_WALL
+    ry = DB.rod_yz(I)[0] - Y5
+    return min(ys + [ry - rb]), max(ys + [ry + rb])
+
+
+A_IN = tuple(Y5 + v + s for v, s in zip(_drive_y_extent(), (-1.0, 1.0)))   # the buttresses' inner
+                                                 # faces: 1.0 off the plug's and housing's widest
 A_WALL = 6 * D.BEAD                              # 4.8: each buttress
 A_Y = (Y_EDGE, A_IN[1] + A_WALL)                # the -Y buttress out to the edge: flat to print on
 A_FOOT = AX1 + (A_TOP - ZB)                      # the buttresses' 45 deg foot, x
@@ -124,17 +173,15 @@ def anchor() -> cq.Workplane:
         w = w.union(tri)
     w = w.union(_box(A_BASE_X0, A_FOOT + 2 * TAB, Y_EDGE, A_Y[1], Z_PLANK, ZB))    # the base
     w = w.union(_box(A_FOOT, XJ, RAIL_Y[0], RAIL_Y[1], Z_PLANK, ZB))               # the rail
-    # string 6's holes, as the tray's: collar B's (the bearing's rim round it), the rod's, the
-    # housing's two M4 bolts
+    # string 6's holes, as the tray's: the screw's, the rod's, the housing's two M3 ties
     def hole(d, y, z):
         return teardrop_hole(d, AX1 - AX0 + 2.0, axis_point=(AX0 - 1.0, y, z),
                              axis_dir=(1, 0, 0), print_up=pu, fit=True)
     w = w.cut(hole(DB.PLATE_HOLE_D, Y5, Z5))
     ry, rz = DB.rod_yz(I)
     w = w.cut(hole(DB.GUIDE_SEAT + 0.4, ry, rz))
-    for a in DB.EAR_ANG:
-        dy, dz = DB.at_ang(a, DB.EAR_R)
-        w = w.cut(hole(4.5, Y5 + dy, Z5 + dz))
+    for dy, dz in DB.tie_offsets(I):
+        w = w.cut(hole(3.5, Y5 + dy, Z5 + dz))
     for x, y in A_SCREWS:
         w = w.cut(_screw(x, y, pu))
     return w
@@ -166,7 +213,7 @@ def endplate() -> cq.Workplane:
     w = w.union(_box(XJ, E["x_end"], Y_EDGE, EP_BASE_Y1, Z_PLANK, ZB))   # the base, both sides
     for x, y in EP_SCREWS:
         w = w.cut(_screw(x, y, DB.EP_UP))
-    return w
+    return _opt_anchor(w.union(opt_brackets()))   # the optical board's two brackets (below)
 
 
 def ep_axles() -> list:
@@ -264,24 +311,168 @@ def bench_string(t: float) -> cq.Workplane:
 SCALE_SPAN = DB.X_BEND - D.NUT_BLOCK_X           # crown to the bridge bearing's axle (x)
 
 
+# ── PRINTED STAND-INS FOR THE BOUGHT METAL (user, 2026-11-16: "swap in plastic versions of the
+# spacers and the keyplate") ───────────────────────────────────────────────────────────────────
+# THE TIE SPACERS: the instrument's are aluminium tube, 0.65 of wall -- a print needs more. Same 13
+# between lip and plate, Ø6.4 (the ear's boss is Ø5.8; 0.85 off collar B's swept Ø24.8 and 0.87 off
+# the guide rod on string 6), the M3's bore drawn 4.0: they print STANDING (+X up), and a round hole
+# prints ~0.3 small on its radius (motor_coupler.HOLE_SHRINK).
+WB_SPACER = (6.4, 4.0)
+
+
+def tie_spacers() -> cq.Workplane:
+    od, idd = WB_SPACER
+    L = DB.TIE_SPACER[2]
+    x1 = DB.ANCHOR[0]
+    out = None
+    for dy, dz in DB.tie_offsets(I):
+        s = cyl_x(od, L, x1 - L, y=Y5 + dy, z=Z5 + dz).cut(cyl_x(idd, L + 2, x1 - L - 1, y=Y5 + dy, z=Z5 + dz))
+        out = s if out is None else out.union(s)
+    return out
+
+
+# THE KEYHOLE PLATE: the instrument's 4 mm plate (direct_bench.keyhole_plate), printed in PETG-GF
+# until the steel one is cut. The ball bears on ~4 mm^2 either side of the slit: ~40 MPa under the
+# string's 147 N, near what PETG-GF takes -- watch it for creep into the slit.
+def _swap(nm: str, w):
+    if nm.startswith("tie_spacer"):
+        return "wb_tie_spacer", kept(tie_spacers)
+    if nm.startswith("keyplate"):
+        return "wb_keyplate", w
+    return nm, w
+
+
+# ── THE R1 OPTICAL BOARD ON TWO 45 DEG BRACKETS OFF THE ENDPLATE (user, 2026-11-16: "two 45 angled
+# supports which hold up the R1 optical board and a single screw mount ... rotate the board 180 from
+# its original intended orientation so we can get the sensors close to where they need to go without
+# needing to run the bearing/string through the PCB hole" ... "it would just be part of the endplate
+# not a separate part") ──────────────────────────────────────────────────────────────────────────
+# The board as ordered (elec/rev1/optical.geom.json), turned 180 deg about Z: its sensor row, on its
+# -X edge in the instrument, is its +X edge here, and the whole board lies -X of the bridge bearing
+# under the speaking length, its +X edge 3.65 off the endplate's joint face -- the bearing's slots go
+# unused. A sensor channel sits under string 6 where the instrument senses, 20 before the bridge axle
+# (optical_pickup: SENSE_X -28 off BRIDGE_AXLE_X -8), the board's top the instrument's 2.2 under the
+# string (PART_STRING_CLR 1.1 over the field's tallest 1.1; nothing along any channel's line on the
+# turned board is taller). THE CHANNEL IS D10 (PD10A/B): it is the one that puts the board's Ø4.4
+# mounting hole over the endplate (y 9.3; D6's would be at y 46.8, off its side). The endplate grows
+# two 45 deg brackets off its -X face, their tops the board's seat: the M4 x 10 button head through
+# the hole, self-tapped into one (_opt_anchor), the board resting on the other; the rest overhangs.
+OPT_SENSE_DX = -20.0                             # LED row off the bridge axle (R1: SENSE_X - BRIDGE_AXLE_X)
+OPT_GAP = 2.2                                    # string bottom -> board top (R1 PCB_TOP)
+OPT_LED = "D10"                                  # the channel under string 6 (see above)
+OPT_REV1 = pathlib.Path(__file__).resolve().parents[1] / "elec" / "rev1" / "optical.geom.json"
+OB_L = 36.0                                      # a bracket's reach off the joint face (and its
+                                                 # drop: 45 deg), its foot over the drive (z -74)
+OB_W = 11.0                                      # its width in y: the M4's tap bore, 3.5+ walls
+OB_Y2 = -11.0                                    # the resting bracket, inside EP_Y
+OB_TIP = 2.0                                     # the tip cut flat (no knife edge on the print's top)
+OS_M4_L = 10.0                                   # M4 x 10: 1.6 of board, 8.4 self-tapped into the bracket
+
+
+def _opt_geom() -> dict:
+    import json
+    return json.loads(OPT_REV1.read_text(encoding="utf-8"))
+
+
+def _string_y(x: float) -> float:
+    y0, y1 = D.nut_y(I), DB.y_of(I)
+    return y0 + (y1 - y0) * (x - D.NUT_BLOCK_X) / (DB.BR_C[0] - D.NUT_BLOCK_X)
+
+
+def opt_frame():
+    """(DX, DY, Z0, t): board (x, y, z) -> world (DX - x, DY - y, Z0 + z); z 0 its underside."""
+    g = _opt_geom()
+    led = next(f for f in g["footprints"] if f["ref"] == OPT_LED)
+    t = g["thickness_mm"]
+    xs = DB.BR_C[0] + OPT_SENSE_DX
+    z0 = D.STRING_Z + KH_DROP - OPT_GAP - t      # the string's underside, less the gap and the board
+    return xs + led["x"], _string_y(xs) + led["y"], z0, t
+
+
+def _opt_to_world(x, y):
+    dx, dy, _, _ = opt_frame()
+    return dx - x, dy - y
+
+
+def opt_board() -> cq.Workplane:
+    """The R1 board (parts and all, as ordered), turned and placed."""
+    from . import board_geom as BG
+    b = BG.on_the_bench(())
+    b._cache["optical"] = _opt_geom()            # R1, whatever OPTICAL_REV the build runs
+    dx, dy, z0, _ = opt_frame()
+    return b.solid("optical").rotate((0, 0, 0), (0, 0, 1), 180).translate((dx, dy, z0))
+
+
+def opt_hole():
+    """The board's mounting hole over the endplate, world (x, y)."""
+    g = _opt_geom()
+    for h in g["holes"]:
+        xs, ys = [p[0] for p in h], [p[1] for p in h]
+        if max(xs) - min(xs) > 6.0:              # the bearing slots
+            continue
+        x, y = _opt_to_world((min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2)
+        if EP_Y[0] + OB_W / 2 <= y <= EP_Y[1] - OB_W / 2:
+            assert XJ - OB_L + 8.0 < x < XJ, "the hole off the bracket"
+            return x, y
+    raise AssertionError("no mounting hole over the endplate: pick another OPT_LED")
+
+
+def opt_brackets() -> cq.Workplane:
+    """The two brackets, world: a 45 deg right triangle in XZ off the joint face, OB_W wide, its top
+    the board's underside, 1 into the endplate. In the endplate's print (+X -> -X) they grow up off
+    the joint face: the top a wall, the slope facing up."""
+    _, _, z0, _ = opt_frame()
+    out = None
+    for y in (opt_hole()[1], OB_Y2):
+        tri = (cq.Workplane("XZ", origin=(0, y + OB_W / 2, 0))
+               .polyline([(XJ + 1.0, z0), (XJ - OB_L, z0), (XJ - OB_L, z0 - OB_TIP),
+                          (XJ + 1.0, z0 - OB_TIP - OB_L - 1.0)]).close()
+               .extrude(OB_W))
+        out = tri if out is None else out.union(tri)
+    return out
+
+
+# SELF-TAPPED, NO INSERT (user, 2026-11-16: "use self tapping so we don't have to put in and remove
+# the insert"): the M4 cuts its own thread in the bracket, 8.4 of it under the board (5.6 x D's 0.7
+# pitch past min_bite's five), the bore 1.0 past the tip
+OPT_TAP_L = OS_M4_L - 1.6 + 1.0
+
+
+def _opt_anchor(w):
+    from cadkit.fasteners import M4, cut_selftap
+    _, _, z0, _ = opt_frame()
+    hx, hy = opt_hole()
+    return cut_selftap(M4, w, (hx, hy, z0), (0, 0, -1), OPT_TAP_L, overshoot=0.5, print_up=DB.EP_UP)
+
+
+def opt_hardware() -> list:
+    from cadkit.fasteners import M4_BUTTON_HEAD_H, m4_button_screw
+    _, _, z0, t = opt_frame()
+    hx, hy = opt_hole()
+    return [("wb_opt_screw", m4_button_screw(OS_M4_L).translate((hx, hy, z0 + t + M4_BUTTON_HEAD_H)))]
+
+
 # ── THE ASSEMBLY ─────────────────────────────────────────────────────────────────────────────
 def assembly(t: float = DB.T_OPEN) -> list:
-    out = [(nm, w) for nm, w in DB.string_parts(I, t)
+    out = [_swap(nm, w) for nm, w in DB.string_parts(I, t)
            if not nm.startswith(("mplate", "string"))]
     out.append((f"wb_string_{I}", kept(bench_string, t)))
     out += [(nm, w.translate((0.0, 0.0, KH_DROP)) if nm.startswith("bridge_brg") else w)
             for nm, w in DB._bend_parts() if nm.endswith(f"_{I}")]
     out += ep_axles()
-    out += [("wb_motor_block", kept(motor_block)), ("wb_anchor", kept(anchor)),
+    out += [("wb_motor_mount", kept(motor_mount)), ("wb_anchor", kept(anchor)),
             ("wb_endplate", kept(endplate)), ("wb_keyhead", kept(keyhead))]
     out += _motor_m3s() + keyhead_hardware()
+    out += [("optical_r1", kept(opt_board))] + opt_hardware()   # its colour: direct_bench's table
     x0 = D.NUT_BLOCK_X - 60.0
     out.append(("ghost_plank", _box(x0, E["x_end"] + 40.0, Y_EDGE, Y_EDGE + 90.0,
                                     Z_PLANK - 19.0, Z_PLANK)))
     return [(nm, _made(nm, w)) for nm, w in out]
 
 
-MATERIAL = {"wb_motor_block": "petg-gf", "wb_anchor": "petg-gf", "wb_endplate": "petg-gf",
+MATERIAL = {"wb_motor_mount": "petg-gf", "wb_anchor": "petg-gf", "wb_endplate": "petg-gf",
+            "wb_tie_spacer": "petg-gf", "wb_keyplate": "petg-gf",
+
             "wb_keyhead": "petg-gf", "wb_wrap_rod": "steel", "ghost_plank": "wood",
             "wb_string": "polished", "wb_nut_plate": "stainless", "wb_nut_side_insert": "brass",
             "wb_nut_height_insert": "brass", "wb_nut_shoe": "petg-gf"}
@@ -302,15 +493,52 @@ def _made(nm, w):
     return made_of(w, m) if m else w
 
 
-PRINTS = ("wb_anchor", "wb_endplate", "wb_keyhead", "wb_nut_shoe")       # the motor block is already printed
+PRINTS = ("wb_motor_mount", "wb_anchor", "wb_endplate", "wb_keyhead", "wb_nut_shoe", "wb_tie_spacer",
+          "wb_keyplate")
+
+
+# each bench print's build direction (the comments at each part say why)
+WB_PRINT_UP = {"wb_motor_mount": MM_UP, "wb_anchor": A_UP, "wb_endplate": DB.EP_UP,
+               "wb_keyhead": KH2.PRINT_UP, "wb_nut_shoe": NB2.SHOE_UP,
+               "wb_tie_spacer": (1.0, 0.0, 0.0),           # standing, +X up
+               "wb_keyplate": (1.0, 0.0, 0.0)}             # flat on its -X face
+# the instrument's own string-6 prints the bench does NOT use: the motor mount replaces the plate
+WB_NOT_USED = ("mplate",)
+WB_DIR = pathlib.Path(__file__).resolve().parents[1] / "coupons" / "woodbench"
 
 
 def main():
-    out = pathlib.Path(__file__).resolve().parents[1] / "coupons"
+    """EVERYTHING TO PRINT FOR THE BENCH (user, 2026-11-16: "put all the woodbench steps in a folder
+    so I can print them all"): coupons/woodbench/<material>/, each in its print pose, and
+    PRINT_LIST.md with the quantities -- the bench's own parts and string 6's instrument prints
+    (src.build's parts and print directions; collars A and B are one clamp_collar, two of it)."""
+    from cadkit.orientation import PrintOrientation as PO
+    from cadkit.step_export import export_print
+    from . import build as B
+    rows = {}
+
+    def put(w, mat, stem, up):
+        d = WB_DIR / mat
+        d.mkdir(parents=True, exist_ok=True)
+        p = d / f"{stem}.step"
+        if f"{mat}/{stem}" not in rows:
+            export_print(w, up, str(p))
+            print("wrote", p)
+        rows[f"{mat}/{stem}"] = rows.get(f"{mat}/{stem}", 0) + 1
+
     for nm, w in assembly():
         if nm in PRINTS:
-            cq.exporters.export(w, str(out / f"{nm}.step"))
-            print("wrote", out / f"{nm}.step")
+            put(w, MATERIAL[nm], nm, PO.from_build_dir(WB_PRINT_UP[nm], "src.wood_bench.WB_PRINT_UP"))
+    for leader, (stem, mat, members) in B.STRING_FAMILIES.items():
+        for key in members:
+            if key.endswith(f"_{I}") and key.rsplit("_", 1)[0] not in WB_NOT_USED:
+                put(B.PARTS[key][0](), mat, stem, B.PRINT_ORIENTATION[key])
+    (WB_DIR / "PRINT_LIST.md").write_text(
+        "# Wood bench: what to print\n\nGenerated by `py -3.12 -m src.wood_bench`: string 6's bench, "
+        "each STEP in its print pose.\n\n| file | qty |\n|---|---|\n"
+        + "\n".join(f"| `{k}.step` | {n} |" for k, n in sorted(rows.items())) + "\n",
+        encoding="utf-8")
+    print("wrote", WB_DIR / "PRINT_LIST.md")
 
 
 if __name__ == "__main__":

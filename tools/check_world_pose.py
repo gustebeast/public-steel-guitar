@@ -50,6 +50,17 @@ def _verts(shape):
     return np.array([v.toTuple() for v in shape.Vertices()])
 
 
+def _nverts(shape) -> int:
+    """The vertex count, without making a Python object per vertex (most components match no
+    part, and listing their vertices was most of this gate)."""
+    from OCP.TopExp import TopExp
+    from OCP.TopTools import TopTools_IndexedMapOfShape
+    from OCP.TopAbs import TopAbs_VERTEX
+    m = TopTools_IndexedMapOfShape()
+    TopExp.MapShapes_s(shape.wrapped, TopAbs_VERTEX, m)
+    return m.Extent()
+
+
 def _map(A, B):
     """(R, err): the rigid map (a mirror allowed) taking vertex list A onto B, in order."""
     a0, b0 = A - A.mean(0), B - B.mean(0)
@@ -87,10 +98,15 @@ def posed(parts, comps):
         keyed.setdefault(len(V), []).append((pn, shp.Volume(), V))
     out, unmatched = {pn: [] for pn in parts}, []
     for cn, shp in comps:
+        cands = keyed.get(_nverts(shp), [])
+        if not cands:                                   # no part has its vertex count: not one
+            unmatched.append(cn)
+            continue
         V = _verts(shp)
         hit = False
-        for pn, vol, A in keyed.get(len(V), []):
-            if abs(shp.Volume() - vol) > 1e-6 * max(vol, 1.0):
+        cvol = shp.Volume() if cands else 0.0           # once, not once per candidate
+        for pn, vol, A in cands:
+            if abs(cvol - vol) > 1e-6 * max(vol, 1.0):
                 continue
             R, err = _map(A, V)
             if err <= FIT_TOL:

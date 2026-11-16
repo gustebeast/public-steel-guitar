@@ -122,9 +122,11 @@ def _enclosing_centre(u, v, steps=200):
     if n > 3000:                                   # a thinned set: the farthest points survive
         k = n // 3000 + 1
         u, v = u[::k] + [max(u), min(u)], v[::k] + [v[u.index(max(u))], v[u.index(min(u))]]
+    import numpy as np                             # vectorised (2026-11-16): the same steps, the
+    U, V = np.asarray(u, float), np.asarray(v, float)   # same first-farthest point; 30 s of a build
     cu, cv = (max(u) + min(u)) / 2, (max(v) + min(v)) / 2
     for k in range(1, steps + 1):
-        j = max(range(len(u)), key=lambda q: (u[q] - cu) ** 2 + (v[q] - cv) ** 2)
+        j = int(np.argmax((U - cu) ** 2 + (V - cv) ** 2))
         cu += (u[j] - cu) / (k + 1)
         cv += (v[j] - cv) / (k + 1)
     return cu, cv
@@ -237,7 +239,8 @@ def swap(comps, cache_path=None):
     memo = {}
     if cache_path:
         try:
-            memo = json.load(open(cache_path, encoding="utf-8"))
+            with open(cache_path, encoding="utf-8") as fh:
+                memo = json.load(fh)
         except (OSError, ValueError):
             memo = {}
     used = {}
@@ -277,9 +280,23 @@ def swap(comps, cache_path=None):
             out.append((nm, cq.Compound.makeCompound(new) if len(new) > 1 else new[0]))
         else:
             out.append((nm, sh))
-    if cache_path:
+    if cache_path and any(memo.get(k, 0) != v for k, v in used.items()):
+        # MERGED, NOT REPLACED (2026-11-16): the build calls this three times (the gate at T_OPEN,
+        # the drive's t 0 and t 1), and writing only this call's answers threw the other two's
+        # away -- every build re-fitted every spring at every t (~30 s). Newest kept, capped.
+        merged = {k: v for k, v in memo.items() if k not in used}
+        merged.update(used)
+        if len(merged) > HELIX_CACHE_MAX:
+            merged = dict(list(merged.items())[-HELIX_CACHE_MAX:])
         try:
-            json.dump(used, open(cache_path, "w", encoding="utf-8"))
+            tmp = cache_path + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as fh:
+                json.dump(merged, fh)
+            import os
+            os.replace(tmp, cache_path)
         except OSError:
             pass
     return out, hit
+
+
+HELIX_CACHE_MAX = 5000

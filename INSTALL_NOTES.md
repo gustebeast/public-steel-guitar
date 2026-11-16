@@ -2150,3 +2150,69 @@ From the +X endplate going -X (src/deck_v2_region.py):
   - The pickup rests on the height plate (pickup_plate), lifted and tilted by three M4 x 20 button heads from the top (2.5 key).
   - Turn the two +Y jacks together to level it along X; the -Y jack tilts it across the strings.
   - Push the pickup against the plate's +Y wall with the -Y retention screw. Set it before the piece goes in: the key reaches it through the slot in the -Y skirt.
+
+### Direct drive: both collars clamped, housing over collar B, lid on the bearing (2026-11-15)
+This supersedes the collar B jam nut and the M4 housing bolts in the notes above.
+- **The stack**, from the anchor plate going -X:
+  - collar B;
+  - the housing, standing over collar B without touching it;
+  - the housing's lip, on the bearing's outer race;
+  - the 688;
+  - the lid;
+  - collar A.
+- **Locked in X:** the inner race is pinched between the two collars' bosses, and the outer race between the lip and the lid. With the spring and motor off, the screw cannot move along X.
+- **The collars are one part, printed twice.** Collar B is collar A turned end for end. Each is Ø22 with the coupler's formed thread, split through on one side and pinched by an **M3 x 10** whose head sits inside the body.
+- **Ties:** two **M3 x 30** (the yoke's SKU) per screw. Heads sink in the lid; they pass the housing's posts and the plate into **M3 heat-set inserts** (94459A130) in the plug, at 23 and 300 deg, r 14.55. M4s do not fit past collar B between the neighbouring drives.
+- **Plate:** the hole is now Ø10 (the screw only). The two tie holes are Ø3.5 at the new positions.
+- Assembly, per screw:
+  1. Heat-set the two M3 inserts into the plug's -X face.
+  2. Press the 688 into the housing's pocket from -X, onto the lip.
+  3. Drop collar B into the housing's open side between the posts, its boss toward the bearing.
+  4. Slide the screw's +X end in from -X through the bearing. Turn it into collar B, holding the collar with a finger through the open side. Carry on through the plate hole into the plug and nut.
+  5. Spin collar B along the thread until its boss sits on the inner race. Turn the screw until B's M3 faces an open side, and pinch it (2.5 key).
+  6. Fit the lid and push the two M3 x 30 ties through lid, housing and plate into the plug's inserts. Tighten.
+  7. Run collar A up from -X against the inner race until the play is gone, and pinch it.
+- **Gaps:** every collar face stands 0.8 off the plate, lip and lid. Every fixed part stands at least 0.8 outside the collars' Ø22.
+- **Axial play left:** only the 688's own internal play (radial ball bearing, a few hundredths of a mm).
+- **Strings 2 and 8 (station 0, the motors next to the anchor) have no collar A.** Their motor coupler is collar A. It already grips the screw the same way: the formed thread, pinched by its C clamp. Its +X end carries a Ø10.4 boss through the lid onto the inner race.
+  - The coupler's X is set by the bearing, not the motor. The shaft sits 1.0 short of the D's stop, and the screw's end goes 1.0 further into the socket, so the motor plate's place along X has ±1 of freedom.
+  - Assembly step 7 on these strings: run the coupler up the screw against the inner race until the play is gone, and pinch its clamp M3. Then slide the motor's shaft into the D.
+  - Removing the motor (loosen nothing, slide it off the D) leaves the coupler pinched on the screw, so the screw stays locked in X.
+- **Anchor collars, ties and rod (2026-11-16; replaces the housing's one-bead sleeves round the ties):**
+  - **Collars print on the 0.8 nozzle, with walls 0.8 to 1.6 in places** (user 2026-11-16: those print fine). 1.6 cannot be had on them: the boss on the bearing's inner race is 0.9 at best (the race's land, Ø10.4, round the thread's Ø8.6). Every wall is at least 0.8. Ø24.8 x 11 long, with flats top and bottom where the clamp's head pocket and insert come out, so no pocket leaves a feathered edge.
+  - **Each collar's clamp is an M3 x 10 into an M3 brass insert used as a NUT, not heat-set** (no screw threads into plastic, and it comes out again). Slide the insert into its pocket from the bottom flat until it sits on its floor under the split, hold it there with a fingertip, and drive the screw from the top flat; the screw pulls it up against the floor. The pocket is a snug slide (drawn 5.1 for the insert's 4.7 knurl): if a print runs tight, a light push seats it, never heat. The head sinks in the top flat.
+  - **Ties are M3 x 35, heads on the lid's -X face** (no longer sunk in it). Each runs through an **aluminium round spacer, OD 4.5 / ID 3.2, 13 long** (McMaster 94669A107), from the housing's lip to the anchor plate, into the plug's insert with all 4.3 of its thread. Two per string, 20 per instrument. Snug the ties, do not crank them: the spacer takes the screw's whole preload. The strings' pull goes lip -> spacers -> plate.
+  - **Ties per string** (direct_bench.TIES; the edge strings turn theirs out to the free side), r 15.95-16.45, inside the body's ribs behind the plate; **guide rod at 325 deg (unchanged), r 15.65** (was 15.35, now clear of collar B). The ears' rings round the ties are 1.2 (EAR_WALL); the tightest wall is strings 4, 7 and 8's plug, 1.07 between a tie's insert and the rod's seat. Searched together so every collar, rod, spacer and ear clears its neighbours, and the plugs' ears stay inside the anchor tray's folds.
+  - The housing is now just the lip and the bearing's pocket.
+  - Collar B turns between lip and plate: 0.8 off the lip, 1.2 off the plate.
+  - The guide rod passes collar B 0.8+ clear and stops on the lip's +X face; it floats up to 1.8 along X before it touches.
+  - Fit the spacers over the ties' shanks before offering the housing to the plate (assembly step 6).
+- **Motor coupler = the collar plus a shaft section (2026-11-16, user: "the same design as the collar except with an extra section for the motor shaft"; replaces the Ø18 coupler with its C-clamp ear):**
+  - The screw end is the anchor collar exactly: Ø24.8 x 11 with flats, the formed thread, the split, an **M3 x 10** whose head sinks in one flat, into an **M3 insert slid in from the other flat as a nut** (same 5.1 pocket, no heat). On station 0 (strings 2 and 8) it also carries collar A's Ø10.4 boss onto the inner race.
+  - The motor end is a Ø18 x 8 section with the motor's D bore (0.15 a side, the tight D that won 2026-11-10). The split runs through it too, so the D opens to go on; the clamp pinches the screw's socket.
+  - Seen from the motor (motor frame): the split is on -Z, away from the shaft's flat; the head is on -X.
+  - Prints standing on its motor end (+Y up), as before: the clamp's pockets are teardrops peaked toward the screw end.
+  - Assembly: slide the insert into its flat and hold it, thread the coupler onto the screw to its depth, pinch the M3 (2.5 key), then slide the motor's shaft into the D, turning it to match the flat.
+  - Hardware per coupler: one M3 x 10 and one M3 insert (prices.json counts them). The belt-clamp M3 x 12 is no longer used here.
+
+## Wood bench: the current drivetrain, printed stand-ins for the bought metal (2026-11-16)
+String 6 on the plank (`py -3.12 -m src.wood_bench` -> coupons/wb_*.step) draws the instrument's drive as it is now: the collar-style coupler (the instrument's own part), the clamp collars, the housing and lid, the per-string ties and the guide rod. What differs from the instrument:
+- **Tie spacers are printed** (`wb_tie_spacer`, PETG-GF, two in one file). They're Ø6.4 x 13 with a 4.0 bore, printed standing on an end, because the aluminium tube's 0.65 wall can't be printed. They keep 0.85 off collar B's swept circle and 0.87 off the guide rod. Snug the ties gently: plastic creeps under preload.
+- **The keyhole plate is printed** (`wb_keyplate`, PETG-GF): the instrument's 4 mm plate, same shape, until the steel one is cut. The ball bears on about 4 mm^2 either side of the slit, roughly 40 MPa under the string's 147 N. That's near what PETG-GF takes, so watch it for creep into the slit.
+- **A new motor mount matches the instrument** (`coupons/wb_motor_mount.step`, PETG-GF, prints base down). It's the instrument's 4 mm motor plate at its real place, with the same Ø22.6 pilot and four M3 holes, run down to the plank. It stands on a base with four wood screws and a buttress each side, outside the motor's square. It replaces the plank bench's motor block, whose 8 mm wall needed a different coupler. The bench now runs **the real coupler, `petg-gf/coupler.step`**. Hardware: four **M3 x 8** SHCS, heads on the plate's +X face, 4 mm into the motor's faceplate.
+- **The anchor stand-in's buttresses** now stand 1.0 off the plug's and housing's widest points, computed from string 6's ties and rod.
+
+## Clamp collars: a smooth, thicker boss (2026-11-16)
+
+The boss that runs from the collar to the 688's inner race is no longer threaded and is thicker:
+- **Smooth bore**, drawn Ø8.8 (prints about Ø8.2), clear of the screw. The collar's 11 mm body still carries the formed thread and does all the gripping; the boss only bears on the race.
+- **Ø12.0 through the lid / lip hole** (Ø13.6, so 0.8 clear a side), then a **Ø10.4 tip 0.8 long** that is the only part touching the bearing: it stays on the inner race, clear of the shields. Walls are 1.6 along the hole and 0.8 at the tip, against 0.9 before.
+- The coupler on strings 2 and 8, which is also collar A, has the same boss.
+- The thread is cut with a 0.001 mm merge tolerance, so the STEP has no near-zero sliver face (Bambu had read one as 5 open edges).
+
+## Wood bench: the R1 optical board on the endplate (2026-11-16)
+
+The optical board as ordered (R1) sits under string 6, **turned 180 degrees** from its instrument orientation: its sensor row is on its +X edge, toward the bridge, and the whole board lies on the keyhead side of the bridge bearing, its +X edge 3.65 off the endplate's joint face. The bearing's slots in the board go unused.
+- **Channel D10** (photodiodes PD10A/B) is the one under string 6, 20 mm before the bridge axle, as on the instrument. D10 because it is the channel that puts the board's Ø4.4 mounting hole over the endplate. The board's top is 2.2 under the string; nothing on the board along the string's line is taller than 1.1, so the string clears everything by at least 1.1.
+- **Supports are part of the endplate** (`wb_endplate`): two 45 degree brackets off its -X face, 11 wide, reaching 36 under the board, their tops the board's seat. The endplate prints +X -> -X as before, so the brackets grow straight up off the joint face (their tips cut flat 2.0).
+- **Hardware**: one **M4 x 10 button head** (2.5 mm key) through the board's hole, **self-tapped** into the bracket at y +9.3: no insert, so the board comes off and goes back on with the one screw. The bore is the M4 self-tap size (a teardrop: it is sideways in the endplate's print), 9.4 deep. Don't overtighten it. The board rests on the other bracket; the rest of it overhangs the plank, as intended.

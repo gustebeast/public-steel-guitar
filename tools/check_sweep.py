@@ -51,7 +51,7 @@ ROTATING = {
     # thread's cylinder, which the overlap gate already checks (helix proxies).
     **{nm: (lambda i: ("x", _DB().y_of(i), _DB().za(i)))
        for nm in ("coupler", "cpl_m3", "cpl_insert", "collar_a", "collar_b",
-                  "ca_m3")},
+                  "ca_m3", "cb_m3", "ca_ins", "cb_ins")},
 }
 
 
@@ -74,12 +74,22 @@ SWEPT_OK = {
     ("leadscrew", "bridge_endplate"),       # runs through the rail's bores
     # the direct drive: everything on one screw's axis turns with it or holds it
     *[(a_, b_) for a_ in ("coupler", "cpl_m3", "cpl_insert", "collar_a",
-                          "collar_b", "ca_m3")
+                          "collar_b", "ca_m3", "cb_m3", "ca_ins", "cb_ins")
       for b_ in ("screw", "coupler", "cpl_m3", "cpl_insert", "collar_a",
-                 "collar_b", "ca_m3", "brg", "motor_shaft") if a_ != b_],
+                 "collar_b", "ca_m3", "cb_m3", "ca_ins", "cb_ins", "brg", "motor_shaft")
+      if a_ != b_],
 }
 
 MIN_REPORT = 0.5    # mm^3 — below this it is a shared face, not an interference
+
+# THE CACHE (2026-11-16, user: "changing parts should automatically use cached data as much as
+# possible"): each envelope's bands by the part's exact geometry (cadkit.overlap_check's BRep
+# fingerprint) and its axis, and each envelope-vs-component volume by the envelope's numbers and
+# the component's fingerprint. A part that did not change is not sliced again, and a pair neither
+# of whose sides changed is not booleaned again. Newest kept, capped.
+import pathlib as _pl
+CACHE = str(_pl.Path(__file__).resolve().parents[1] / ".sweep-cache.json")
+CACHE_MAX = 50_000
 
 
 def _base(name: str) -> str:
@@ -101,6 +111,10 @@ def _slab(bb, zc, eps):
 
 
 def envelope(shape, ax, ay, eps=1e-3):
+    return _from_bands(_bands(shape, ax, ay, eps), ax, ay, eps)
+
+
+def _bands(shape, ax, ay, eps=1e-3):
     """The shape's swept envelope about (ax, ay): a stack of cylinders, one per Z
     band between consecutive vertex heights, each at the max radius of the vertices
     bounding that band.
@@ -113,23 +127,41 @@ def envelope(shape, ax, ay, eps=1e-3):
     bb = shape.BoundingBox()
     levels = sorted({round(v.Z, 6) for v in shape.Vertices()}
                     | {round(bb.zmin, 6), round(bb.zmax, 6)})
-    env, rmax = None, 0.0
-    for z0, z1 in zip(levels, levels[1:]):
-        if z1 - z0 <= eps:
-            continue
+
+    def r_at(zc):
         # radius from a THIN SLICE inside the band, not from the band's edge
         # vertices: a step's lower face sits on the boundary, so reading edges
         # would carry the wide section up into the narrow one.
-        r = 0.0
-        for f in (0.02, 0.5, 0.98):
-            zc = z0 + (z1 - z0) * f
-            sl = _slab(bb, zc, eps)
-            try:
-                cut = shape.intersect(sl)
-            except Exception:
-                continue
-            for v in cut.Vertices():
-                r = max(r, math.hypot(v.X - ax, v.Y - ay))
+        sl = _slab(bb, zc, eps)
+        try:
+            cut = shape.intersect(sl)
+        except Exception:
+            return 0.0
+        return max((math.hypot(v.X - ax, v.Y - ay) for v in cut.Vertices()), default=0.0)
+
+    bands = []
+    for z0, z1 in zip(levels, levels[1:]):
+        if z1 - z0 <= eps:
+            continue
+        rs = [r_at(z0 + (z1 - z0) * f) for f in (0.02, 0.5, 0.98)]
+        # A TAPERED BAND (a cone, a chamfer: its radius changes across it) as THIN bands, each at
+        # the larger of its own ends: one band at the cone's wide end reported the 2026-11-16
+        # coupler's 45 deg cone at Ø24.8 inside a Ø22.6 pilot hole it clears by 1.5. A straight
+        # taper is widest at an end, so this stays conservative.
+        if max(rs) - min(rs) > 0.05 and z1 - z0 > 0.5:
+            n = max(2, int(math.ceil((z1 - z0) / 0.25)))
+            zs = [z0 + (z1 - z0) * (k / n) for k in range(n + 1)]
+            ends = [r_at(min(max(z, z0 + (z1 - z0) * 0.02), z0 + (z1 - z0) * 0.98)) for z in zs]
+            bands += [(zs[k], zs[k + 1], max(ends[k], ends[k + 1])) for k in range(n)]
+        else:
+            bands.append((z0, z1, max(rs)))
+    return bands
+
+
+def _from_bands(bands, ax, ay, eps=1e-3):
+    """The envelope solid (and its largest radius) from its (z0, z1, r) bands about (ax, ay)."""
+    env, rmax = None, 0.0
+    for z0, z1, r in bands:
         if r <= eps:
             continue
         rmax = max(rmax, r)
@@ -160,27 +192,67 @@ def gate(comps) -> int:
     """
     # ONE envelope per part, not per copy: ten leadscrews are one threaded solid, and its
     # envelope is ~10 s of slicing (a thread has a vertex height every half pitch).
+    import hashlib
+    import json
+    import os
+    from cadkit.overlap_check import _canonical, fingerprint
+    try:
+        with open(CACHE, encoding="utf-8") as fh:
+            cache = json.load(fh)
+        assert cache.get("v") == 1
+    except (OSError, ValueError, AssertionError):
+        cache = {"v": 1, "env": {}, "pairs": {}}
+    used_env, used_pairs = {}, {}
+    _canonical([sh for _n, sh in comps])
+    # every fingerprint BEFORE any boolean (the envelopes' slicing included): OCCT mutates a
+    # boolean's operands (overlap_check), and a shape fingerprinted after one keys differently
+    # from a run that read its envelope from the cache
+    fps = {j: fingerprint(shape) for j, (_o, shape) in enumerate(comps)}
+    fp_of = {id(shape): fps[j] for j, (_o, shape) in enumerate(comps)}
+
+    def env_of(shape, ax, ay):
+        """(env, r, bands) about (ax, ay): the bands from the cache if this exact solid's are."""
+        k = fp_of.get(id(shape)) or fingerprint(shape)
+        k += "@%.6f,%.6f" % (ax, ay)
+        b = cache["env"].get(k)
+        if b is None:
+            b = [list(x) for x in _bands(shape, ax, ay)]
+        used_env[k] = b
+        return _from_bands(b, ax, ay) + (b,)
+
     spun, made = [], {}
     for name, shape in comps:
         base, i = _base(name), _index(name)
         if base in ROTATING and i is not None and ROTATING[base](i)[0] == "x":
-            # an X axis: turn the part so X is Z, take its envelope there, turn it back
+            # an X axis: turn the part so X is Z, take its envelope there, turn it back. The
+            # same part on another string is the same envelope, moved (as below: ten collars
+            # were ten envelopes, most of this gate's 300 s, 2026-11-16)
             _, y0, z0 = ROTATING[base](i)
             o, ey = cq.Vector(0, 0, 0), cq.Vector(0, 1, 0)
-            env, r = envelope(shape.rotate(o, ey, -90), -z0, y0)
+            turned = shape.rotate(o, ey, -90)
+            ax, ay = -z0, y0
+            zmin = turned.BoundingBox().zmin
+            key = ("x", base) + _same_part(turned, ax, ay)
+            if key not in made:
+                made[key] = env_of(turned, ax, ay) + (ax, ay, zmin)
+            env, r, bands, ax0, ay0, zm0 = made[key]
             if env is not None:
+                if (ax, ay, zmin) != (ax0, ay0, zm0):
+                    env = env.moved(cq.Location(cq.Vector(ax - ax0, ay - ay0, zmin - zm0)))
                 env = env.rotate(o, ey, 90)
-            spun.append((name, base, env, r))
+            eid = hashlib.sha1(json.dumps(["x", bands, ax0, ay0, zm0, ax, ay, zmin]).encode()).hexdigest()
+            spun.append((name, base, env, r, eid))
         elif base in ROTATING and i is not None:
             ax, ay = ROTATING[base](i)
             zmin = shape.BoundingBox().zmin
             key = (base,) + _same_part(shape, ax, ay)
             if key not in made:
-                made[key] = envelope(shape, ax, ay) + (ax, ay, zmin)
-            env, r, ax0, ay0, z0 = made[key]
+                made[key] = env_of(shape, ax, ay) + (ax, ay, zmin)
+            env, r, bands, ax0, ay0, z0 = made[key]
             if env is not None and (ax, ay, zmin) != (ax0, ay0, z0):
                 env = env.moved(cq.Location(cq.Vector(ax - ax0, ay - ay0, zmin - z0)))
-            spun.append((name, base, env, r))
+            eid = hashlib.sha1(json.dumps(["z", bands, ax0, ay0, z0, ax, ay, zmin]).encode()).hexdigest()
+            spun.append((name, base, env, r, eid))
 
     if not spun:
         print("check_sweep: nothing registered as rotating — see ROTATING")
@@ -193,9 +265,11 @@ def gate(comps) -> int:
     boxes = [shape.BoundingBox() for _other, shape in comps]
     ok = {tuple(sorted(p)) for p in SWEPT_OK}
     hits = []
-    for name, base, env, r in spun:
+    for name, base, env, r, eid in spun:
+        if env is None:
+            continue
         ebb = env.BoundingBox()
-        for (other, shape), obb in zip(comps, boxes):
+        for j, ((other, shape), obb) in enumerate(zip(comps, boxes)):
             if other == name:
                 continue
             obase = _base(other)
@@ -207,13 +281,32 @@ def gate(comps) -> int:
                     or obb.ymin > ebb.ymax or obb.ymax < ebb.ymin
                     or obb.zmin > ebb.zmax or obb.zmax < ebb.zmin):
                 continue
-            try:
-                v = env.intersect(shape).Volume()
-            except Exception:
-                continue
+            pk = eid + ":" + fps[j]
+            v = cache["pairs"].get(pk)
+            if v is None:
+                try:
+                    v = env.intersect(shape).Volume()
+                except Exception:
+                    continue
+            used_pairs[pk] = v
             if v > MIN_REPORT:
                 hits.append((v, name, r, other))
 
+    n_env, n_pair = (sum(k not in cache["env"] for k in used_env),
+                     sum(k not in cache["pairs"] for k in used_pairs))
+    print(f"check_sweep: {len(used_env) - n_env} of {len(used_env)} envelopes and "
+          f"{len(used_pairs) - n_pair} of {len(used_pairs)} pairs from the cache")
+    if n_env or n_pair:
+        for sect, used in (("env", used_env), ("pairs", used_pairs)):
+            merged = {k: v for k, v in cache[sect].items() if k not in used}
+            merged.update(used)
+            cache[sect] = dict(list(merged.items())[-CACHE_MAX:])
+        try:
+            with open(CACHE + ".tmp", "w", encoding="utf-8") as fh:
+                json.dump(cache, fh)
+            os.replace(CACHE + ".tmp", CACHE)
+        except OSError as e:                          # a cache never fails a gate
+            print(f"  (sweep cache not written: {e})")
     if not hits:
         print("clean: every rotating part clears everything through a full turn.")
         return 0

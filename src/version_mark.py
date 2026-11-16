@@ -157,6 +157,37 @@ def font_mark(text, height=HEIGHT):
     return out
 
 
+BURY = 0.2                   # a raised mark starts this far inside the face, so it fuses
+
+
+def emboss_mark(text, height, proud):
+    """`text` in the instrument's font, figures `height` tall, RAISED `proud` off a face: centred
+    on the origin in XY, standing +Z from z = 0 (BURY below it). None without the font. Raised,
+    not cut, where the font's stroke (FONT_STROKE * height) is under two beads: a groove that
+    narrow closes in the print, a rib that narrow still stands (user, 2026-11-16)."""
+    path = _font()
+    if not path:
+        return None
+    flat = cq.Workplane("XY").text(str(text), height / FONT_FIGURE, 1.0, fontPath=path,
+                                   halign="center", valign="center")
+    out = None
+    for f in flat.faces("<Z").vals():
+        s = cq.Solid.extrudeLinear(f.outerWire(), f.innerWires(), cq.Vector(0, 0, proud + BURY))
+        piece = cq.Workplane("XY").newObject([s]).translate((0, 0, -BURY))
+        out = piece if out is None else out.union(piece)
+    return out
+
+
+def raise_mark(body, text, at, normal, x_dir, height, proud):
+    """`body` with `text` raised off the face through `at` (OUTWARD `normal`, `x_dir` along the
+    reading), read true from outside; the body as it came on a machine without the font."""
+    m = emboss_mark(text, height, proud)
+    if m is None:
+        return body
+    plane = cq.Plane(origin=cq.Vector(*at), xDir=cq.Vector(*x_dir), normal=cq.Vector(*normal))
+    return body.union(cq.Workplane("XY").newObject([m.val().moved(plane.location)]))
+
+
 def cut_mark(body, text, at, normal, x_dir, height=HEIGHT, stroke=STROKE, font=False, shaft=SHAFT):
     """`body` with `text` cut into the face through `at` whose OUTWARD normal is `normal`;
     `x_dir` is the reading direction along the face. Read from outside, it reads true --
