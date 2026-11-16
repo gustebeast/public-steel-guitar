@@ -1195,23 +1195,31 @@ def _collar_screw_xw(which: str) -> float:
     return c0 + collar_screw_x() if which == "a" else c1 - collar_screw_x()
 
 
-def _collar_local(boss_l: float = SPIN_GAP + LID_T, shaft: float = 0.0) -> cq.Workplane:
+def _collar_local(boss_l: float = SPIN_GAP + LID_T, shaft: float = 0.0, body_l: float = CLAMP_L,
+                  screw_x: float = None, grip: float = 0.0) -> cq.Workplane:
     """THE COLLAR, along +X from 0: the body 0..CLAMP_L, the boss (`boss_l`) on to the race; split
     on +Y from the bore right out (body AND boss: a boss left whole is a closed ring round the
     thread and the screw could not pinch it), pinched by an M3 from +Z whose head sits inside the
     body. THE BORE IS THE COUPLER'S FORMED THREAD (user, 2026-11-14: "so it grips better").
     `shaft` > 0: THE COUPLER (user, 2026-11-16: "the same design as the collar except with an extra
-    section for the motor shaft"): a Ø CPL_D section `shaft` long on -X with the motor's D bore,
-    the split and the flats run on through it."""
+    section for the motor shaft"): a Ø CPL_D section `shaft` long on -X, the body `body_l` long with
+    its screw at `screw_x`, the motor's D bore from the coupler's end to `grip` and the thread on
+    from there; the split and the flats run on through it all."""
     from cadkit.holes import teardrop_hole
     from .motor_coupler import _thread_socket
     from .motor_coupler import FORM_MAJOR_C
-    L, Lb = CLAMP_L, boss_l
+    L, Lb = body_l, boss_l
     out = cyl_x(COLLAR_D, L, 0.0)
     if Lb > 0:
         out = out.union(cyl_x(RACE_IN_D, Lb, L))
     if shaft > 0:
         out = out.union(cyl_x(CPL_D, shaft, -shaft))
+        # the step out to the clamp body a 45 deg cone, not a shelf: the coupler prints standing on
+        # its motor end, and a flat step there is a 3.4 ceiling over air
+        ch = (COLLAR_D - CPL_D) / 2
+        assert ch <= shaft + 1e-9, "the cone runs past the shaft section"
+        out = out.union(cq.Workplane("XY").add(cq.Solid.makeCone(
+            CPL_D / 2, COLLAR_D / 2, ch, cq.Vector(-ch, 0, 0), cq.Vector(1, 0, 0))))
     out = out.cut(box_at(L + Lb + shaft + 2, COLLAR_D / 2 + 1.0, COLLAR_SPLIT,
                          x=(L + Lb - shaft) / 2, y=(COLLAR_D / 2 + 1.0) / 2, z=0.0))
     sy, sz = COLLAR_SCREW
@@ -1240,7 +1248,7 @@ def _collar_local(boss_l: float = SPIN_GAP + LID_T, shaft: float = 0.0) -> cq.Wo
                              z=zc + up * R / 2))
     # the head's pocket is a teardrop peaked +X (the print's up): it reaches r on -X and r*sqrt2
     # on +X, so centre THAT envelope, and both faces keep two beads
-    xm = collar_screw_x()
+    xm = collar_screw_x() if screw_x is None else screw_x
     assert min(xm - hp, L - xm - hp * math.sqrt(2)) >= w - 1e-9, "the head's pocket walls"
     assert min(xm - ri, L - xm - ri * math.sqrt(2)) >= w - 1e-9, "the insert's pocket walls"
     # the insert's slide-in pocket (from the bottom flat), the clearance hole across the split, the
@@ -1252,38 +1260,62 @@ def _collar_local(boss_l: float = SPIN_GAP + LID_T, shaft: float = 0.0) -> cq.Wo
     # the thread last, UNCLEANED (as the coupler: a cleaned cut drops the ridges). The coupler's
     # cutter runs along +Y in its own frame; turned onto +X here.
     if shaft > 0:                                                 # the motor's D, before the thread
-        out = out.cut(_d_bore_local(shaft))
-    th = _thread_socket(0.0 if shaft > 0 else -1.0, L + Lb + 1.0).rotate((0, 0, 0), (0, 0, 1), -90)
+        out = out.cut(_d_bore_local(shaft, grip))
+    th = _thread_socket(grip if shaft > 0 else -1.0, L + Lb + 1.0).rotate((0, 0, 0), (0, 0, 1), -90)
     return out.cut(th, clean=False)
 
 
-def _cpl_loc() -> cq.Location:
-    """The coupler's own frame (the collar's: axis +X, split +Y, screw head +Z) -> the motor's (axis
-    +Y from the pulley plane, the D's flat +Z): the split comes out on -Z, away from the flat, the
-    head on -X; the clamp body starts where the shaft ends (CPL_GRIP), over the screw's socket."""
-    return cq.Plane(origin=(0, CPL_GRIP, 0), xDir=(0, 1, 0), normal=(-1, 0, 0)).location
+# THE COUPLER'S CLAMP (user, 2026-11-16: "as close to centered as possible while leaving sufficient
+# clearance from the mount plate"): its screw at the coupler's middle, which pinches the D AND the
+# screw's socket (1.5 past the joint), and the Ø COLLAR_D body run down toward the motor as far as the
+# plate allows -- its 45 deg cone to Ø CPL_D at the coupler's end, so everything outside the plate's
+# pilot hole (less SPIN_GAP) stands SPIN_GAP off the plate's face. Motor frame (y along the shaft).
+_PILOT_R = (D.NEMA17_PILOT_D + 0.6) / 2                              # the mount's pilot hole
+CPL_CONE = (COLLAR_D - CPL_D) / 2                                    # 3.4: the cone's length
+PLATE_FACE_Y = -M_FACE + PLATE_T                                     # -3.5: the motor plate's back face
 
 
-def _to_motor(w: cq.Workplane) -> cq.Workplane:
-    loc = _cpl_loc()
+def cpl_layout(face_y: float = PLATE_FACE_Y) -> tuple:
+    """(the body's start, the screw) along the shaft for a mount whose back face is at `face_y`
+    (motor frame): the body as near the motor as that face allows, the screw at the coupler's
+    middle unless the body starts too late for it (its head's pocket keeps COLLAR_WALL off the
+    body's end). The instrument's plate: (-0.6, 5.5)."""
+    body = max(CPL_X[0] + CPL_CONE,
+               face_y + SPIN_GAP + (COLLAR_D / 2 - (_PILOT_R - SPIN_GAP)))
+    hp = (M3_HEAD[0] + 0.5) / 2
+    return body, max((CPL_X[0] + CPL_X[1]) / 2, body + hp + COLLAR_WALL)
+
+
+def _cpl_loc(body_y: float) -> cq.Location:
+    """The coupler's own frame (the collar's: axis +X from the body's start, split +Y, screw head
+    +Z) -> the motor's (axis +Y from the pulley plane, the D's flat +Z): the split comes out on -Z,
+    away from the flat, the head on -X."""
+    return cq.Plane(origin=(0, body_y, 0), xDir=(0, 1, 0), normal=(-1, 0, 0)).location
+
+
+def _to_motor(w: cq.Workplane, body_y: float) -> cq.Workplane:
+    loc = _cpl_loc(body_y)
     return cq.Workplane("XY").add([v.moved(loc) for v in w.vals()])
 
 
-def _d_bore_local(shaft: float) -> cq.Workplane:
-    """src.motor_coupler's D bore (D_CLR, its corners at the nozzle's radius), the shaft's length and
-    1 past its end, in the coupler's own frame."""
+def _d_bore_local(shaft: float, grip: float) -> cq.Workplane:
+    body_y = CPL_GRIP - grip
+    """src.motor_coupler's D bore (D_CLR, its corners at the nozzle's radius), from 1 past the
+    coupler's end to the shaft's end (CPL_GRIP), in the coupler's own frame."""
     from . import motor_coupler as MC
-    c0 = CPL_GRIP - shaft
     wp = cq.Workplane("XZ", origin=(0, CPL_GRIP, 0))
-    dh, pts = MC._d_bore(wp, shaft + 1.0, c0 - 1.0, CPL_GRIP, MC.D_CLR)
-    loc = _cpl_loc().inverse
+    dh, pts = MC._d_bore(wp, CPL_GRIP - CPL_X[0] + 1.0, CPL_X[0] - 1.0, CPL_GRIP, MC.D_CLR)
+    loc = _cpl_loc(body_y).inverse
     return cq.Workplane("XY").add([v.moved(loc) for v in MC._round_y_edges(dh, pts).vals()])
 
 
-def _coupler_body(boss_l: float) -> cq.Workplane:
-    """The coupler in the motor frame, from CPL_X[0] to CPL_X[1] (+ boss_l)."""
-    assert abs(CPL_X[1] - CPL_GRIP - CLAMP_L) < 1e-9, "the clamp body is the coupler past the shaft"
-    return _to_motor(_collar_local(boss_l=boss_l, shaft=CPL_GRIP - CPL_X[0]))
+def _coupler_body(boss_l: float, face_y: float = PLATE_FACE_Y) -> cq.Workplane:
+    """The coupler in the motor frame, from CPL_X[0] to CPL_X[1] (+ boss_l), laid out for a mount
+    whose back face is at face_y (cpl_layout)."""
+    body_y, screw_y = cpl_layout(face_y)
+    return _to_motor(_collar_local(boss_l=boss_l, shaft=body_y - CPL_X[0],
+                                   body_l=CPL_X[1] - body_y, screw_x=screw_y - body_y,
+                                   grip=CPL_GRIP - body_y), body_y)
 
 
 def _collar_a(i: int) -> cq.Workplane:
@@ -1367,25 +1399,26 @@ def _cpl_shift(i: int) -> float:
     return CPL_SLACK if coupler_is_collar(i) else 0.0
 
 
-def _coupler(i: int) -> cq.Workplane:
+def _coupler(i: int, face_y: float = PLATE_FACE_Y) -> cq.Workplane:
     """THE COLLAR WITH A SHAFT SECTION (_collar_local), in string i's motor frame (its D bore on the
     shaft's flat). On station 0 it is collar A as well: a boss through the lid onto the inner race,
     CPL_SLACK up the shaft."""
     boss = SPIN_GAP + LID_T if coupler_is_collar(i) else 0.0
     # built once per kind (kept on its own dimensions), then placed
-    return _motor_frame(kept(_coupler_body, boss).translate((0, _cpl_shift(i), 0)), i)
+    return _motor_frame(kept(_coupler_body, boss, face_y).translate((0, _cpl_shift(i), 0)), i)
 
 
-def _coupler_clamp(i: int, k: str) -> cq.Workplane:
+def _coupler_clamp(i: int, k: str, face_y: float = PLATE_FACE_Y) -> cq.Workplane:
     """The coupler's clamp part `k` ("m3" or "insert"): the collar's M3 x 10 and slide-in insert, in
     the coupler's own frame, carried into string i's motor frame."""
     sy, sz = COLLAR_SCREW
-    xm = collar_screw_x()
+    body_y, screw_y = cpl_layout(face_y)
+    xm = screw_y - body_y
     if k == "m3":
         w = _cap("m3", COLLAR_M3_L, (xm, sy, sz + M3_HEAD[1]), (0, 0, -1))
     else:
         w = _insert_x(-COLLAR_INS_Z, -1, (xm, sy), None, axis="z")
-    return placed(w, lambda p: _motor_frame(_to_motor(p).translate((0, _cpl_shift(i), 0)), i))
+    return placed(w, lambda p: _motor_frame(_to_motor(p, body_y).translate((0, _cpl_shift(i), 0)), i))
 
 
 def _motor(i: int) -> list:

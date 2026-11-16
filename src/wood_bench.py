@@ -100,8 +100,18 @@ def _motor_m3s() -> list:
 # ── THE ANCHOR STAND-IN ──────────────────────────────────────────────────────────────────────
 AX0, AX1 = DB.ANCHOR                             # the web, -194.7 .. -190.7
 A_TOP = Z5 + 19.0                                # -66.2: 8 over the plug's and housing's tops
-A_IN = (Y5 - 16.35, Y5 + 18.45)                  # the buttresses' inner faces: 1.0 off the
-                                                 # housing's and plug's widest (-20.1 .. 12.7)
+def _drive_y_extent():
+    """The plug's and housing's widest in y: their ears round string 6's ties (the plug's ring
+    round an insert, the housing's boss) and the guide rod's boss."""
+    ear = max(DB.COL_INS_HOLE / 2 + DB.EAR_WALL, DB.TIE_BOSS)
+    ys = [dy - ear for dy, _ in DB.tie_offsets(I)] + [dy + ear for dy, _ in DB.tie_offsets(I)]
+    rb = DB.GUIDE_SEAT / 2 + DB.GUIDE_WALL
+    ry = DB.rod_yz(I)[0] - Y5
+    return min(ys + [ry - rb]), max(ys + [ry + rb])
+
+
+A_IN = tuple(Y5 + v + s for v, s in zip(_drive_y_extent(), (-1.0, 1.0)))   # the buttresses' inner
+                                                 # faces: 1.0 off the plug's and housing's widest
 A_WALL = 6 * D.BEAD                              # 4.8: each buttress
 A_Y = (Y_EDGE, A_IN[1] + A_WALL)                # the -Y buttress out to the edge: flat to print on
 A_FOOT = AX1 + (A_TOP - ZB)                      # the buttresses' 45 deg foot, x
@@ -262,9 +272,52 @@ def bench_string(t: float) -> cq.Workplane:
 SCALE_SPAN = DB.X_BEND - D.NUT_BLOCK_X           # crown to the bridge bearing's axle (x)
 
 
+# ── PRINTED STAND-INS FOR THE BOUGHT METAL (user, 2026-11-16: "swap in plastic versions of the
+# spacers and the keyplate") ───────────────────────────────────────────────────────────────────
+# THE TIE SPACERS: the instrument's are aluminium tube, 0.65 of wall -- a print needs more. Same 13
+# between lip and plate, Ø6.4 (the ear's boss is Ø5.8; 0.85 off collar B's swept Ø24.8 and 0.87 off
+# the guide rod on string 6), the M3's bore drawn 4.0: they print STANDING (+X up), and a round hole
+# prints ~0.3 small on its radius (motor_coupler.HOLE_SHRINK).
+WB_SPACER = (6.4, 4.0)
+
+
+def tie_spacers() -> cq.Workplane:
+    od, idd = WB_SPACER
+    L = DB.TIE_SPACER[2]
+    x1 = DB.ANCHOR[0]
+    out = None
+    for dy, dz in DB.tie_offsets(I):
+        s = cyl_x(od, L, x1 - L, y=Y5 + dy, z=Z5 + dz).cut(cyl_x(idd, L + 2, x1 - L - 1, y=Y5 + dy, z=Z5 + dz))
+        out = s if out is None else out.union(s)
+    return out
+
+
+# THE KEYHOLE PLATE: the instrument's 4 mm plate (direct_bench.keyhole_plate), printed in PETG-GF
+# until the steel one is cut. The ball bears on ~4 mm^2 either side of the slit: ~40 MPa under the
+# string's 147 N, near what PETG-GF takes -- watch it for creep into the slit.
+# THE COUPLER: laid out for THIS mount (direct_bench.cpl_layout): the plank block's face wall
+# ends at motor-frame y +0.5 where the instrument's plate ends at -3.5, so the body starts later and
+# the screw sits a little past the middle
+WB_FACE_Y = PB.INLINE_XP - (PB.INLINE_FACE - PB.INLINE_WALL_T)   # 0.5
+
+
+def _swap(nm: str, w):
+    if nm == f"coupler_{I}":
+        return nm, DB._coupler(I, WB_FACE_Y)
+    if nm == f"cpl_m3_{I}":
+        return nm, DB._coupler_clamp(I, "m3", WB_FACE_Y)
+    if nm == f"cpl_insert_{I}":
+        return nm, DB._coupler_clamp(I, "insert", WB_FACE_Y)
+    if nm.startswith("tie_spacer"):
+        return "wb_tie_spacer", kept(tie_spacers)
+    if nm.startswith("keyplate"):
+        return "wb_keyplate", w
+    return nm, w
+
+
 # ── THE ASSEMBLY ─────────────────────────────────────────────────────────────────────────────
 def assembly(t: float = DB.T_OPEN) -> list:
-    out = [(nm, w) for nm, w in DB.string_parts(I, t)
+    out = [_swap(nm, w) for nm, w in DB.string_parts(I, t)
            if not nm.startswith(("mplate", "string"))]
     out.append((f"wb_string_{I}", kept(bench_string, t)))
     out += [(nm, w.translate((0.0, 0.0, KH_DROP)) if nm.startswith("bridge_brg") else w)
@@ -280,6 +333,7 @@ def assembly(t: float = DB.T_OPEN) -> list:
 
 
 MATERIAL = {"wb_motor_block": "petg-gf", "wb_anchor": "petg-gf", "wb_endplate": "petg-gf",
+            "wb_tie_spacer": "petg-gf", "wb_keyplate": "petg-gf",
             "wb_keyhead": "petg-gf", "wb_wrap_rod": "steel", "ghost_plank": "wood",
             "wb_string": "polished", "wb_nut_plate": "stainless", "wb_nut_side_insert": "brass",
             "wb_nut_height_insert": "brass", "wb_nut_shoe": "petg-gf"}
@@ -300,13 +354,15 @@ def _made(nm, w):
     return made_of(w, m) if m else w
 
 
-PRINTS = ("wb_anchor", "wb_endplate", "wb_keyhead", "wb_nut_shoe")       # the motor block is already printed
+PRINTS = ("wb_anchor", "wb_endplate", "wb_keyhead", "wb_nut_shoe", "wb_tie_spacer", "wb_keyplate")       # the motor block is already printed
 
 
 def main():
     out = pathlib.Path(__file__).resolve().parents[1] / "coupons"
     for nm, w in assembly():
-        if nm in PRINTS:
+        if nm == f"coupler_{I}":                 # the bench's own layout (WB_FACE_Y), not petg-gf/coupler.step
+            nm = "wb_coupler"
+        if nm in PRINTS or nm == "wb_coupler":
             cq.exporters.export(w, str(out / f"{nm}.step"))
             print("wrote", out / f"{nm}.step")
 

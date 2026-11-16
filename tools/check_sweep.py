@@ -114,23 +114,36 @@ def envelope(shape, ax, ay, eps=1e-3):
     bb = shape.BoundingBox()
     levels = sorted({round(v.Z, 6) for v in shape.Vertices()}
                     | {round(bb.zmin, 6), round(bb.zmax, 6)})
-    env, rmax = None, 0.0
-    for z0, z1 in zip(levels, levels[1:]):
-        if z1 - z0 <= eps:
-            continue
+
+    def r_at(zc):
         # radius from a THIN SLICE inside the band, not from the band's edge
         # vertices: a step's lower face sits on the boundary, so reading edges
         # would carry the wide section up into the narrow one.
-        r = 0.0
-        for f in (0.02, 0.5, 0.98):
-            zc = z0 + (z1 - z0) * f
-            sl = _slab(bb, zc, eps)
-            try:
-                cut = shape.intersect(sl)
-            except Exception:
-                continue
-            for v in cut.Vertices():
-                r = max(r, math.hypot(v.X - ax, v.Y - ay))
+        sl = _slab(bb, zc, eps)
+        try:
+            cut = shape.intersect(sl)
+        except Exception:
+            return 0.0
+        return max((math.hypot(v.X - ax, v.Y - ay) for v in cut.Vertices()), default=0.0)
+
+    bands = []
+    for z0, z1 in zip(levels, levels[1:]):
+        if z1 - z0 <= eps:
+            continue
+        rs = [r_at(z0 + (z1 - z0) * f) for f in (0.02, 0.5, 0.98)]
+        # A TAPERED BAND (a cone, a chamfer: its radius changes across it) as THIN bands, each at
+        # the larger of its own ends: one band at the cone's wide end reported the 2026-11-16
+        # coupler's 45 deg cone at Ø24.8 inside a Ø22.6 pilot hole it clears by 1.5. A straight
+        # taper is widest at an end, so this stays conservative.
+        if max(rs) - min(rs) > 0.05 and z1 - z0 > 0.5:
+            n = max(2, int(math.ceil((z1 - z0) / 0.25)))
+            zs = [z0 + (z1 - z0) * (k / n) for k in range(n + 1)]
+            ends = [r_at(min(max(z, z0 + (z1 - z0) * 0.02), z0 + (z1 - z0) * 0.98)) for z in zs]
+            bands += [(zs[k], zs[k + 1], max(ends[k], ends[k + 1])) for k in range(n)]
+        else:
+            bands.append((z0, z1, max(rs)))
+    env, rmax = None, 0.0
+    for z0, z1, r in bands:
         if r <= eps:
             continue
         rmax = max(rmax, r)
