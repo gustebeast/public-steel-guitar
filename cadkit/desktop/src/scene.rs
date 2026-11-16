@@ -101,9 +101,21 @@ pub fn load(d: &[u8]) -> Result<Scene, String> {
         if pa.count == 0 || ia.count < 3 || pa.data.len() < (pa.count - 1) * pa.stride + 12 {
             continue;
         }
+        // A SHARED MESH (cadkit.web.export.instance_groups): the node's matrix places it
+        let place = node["matrix"].as_array().filter(|m| m.len() == 16).map(|m| {
+            let mut c = [0f32; 16];
+            for (k, v) in m.iter().enumerate() {
+                c[k] = v.as_f64().unwrap_or(0.0) as f32;
+            }
+            glam::Mat4::from_cols_array(&c)
+        });
         for i in 0..pa.count {
             let o = i * pa.stride;
-            s.positions.push(bytemuck::pod_read_unaligned(&pa.data[o..o + 12]));
+            let p: [f32; 3] = bytemuck::pod_read_unaligned(&pa.data[o..o + 12]);
+            s.positions.push(match place {
+                Some(m) => m.transform_point3(glam::Vec3::from(p)).to_array(),
+                None => p,
+            });
         }
         match ia.comp {
             5121 => s.indices.extend(ia.data[..ia.count].iter().map(|&b| b as u32)),
