@@ -1134,10 +1134,10 @@ def belt_cut(i):
 
 # ⚠ THE BELT CLAMPS' TRAVEL IS CUT OUT OF THE BRIDGE ENDPLATE, and it is cut HERE because
 # this is where a clamp's pose is known (bridge_endplate cannot import build). As the -Y rail
-# came in (user, 2026-10-29: a narrower body), the output board's cradle -- which keys off the
+# came in (user, 2026-10-29: a narrower body), the brain board's cradle -- which keys off the
 # rail's inner face -- carried its +Y wall into string 10's clamp lane: 193 mm3 of clamp half
 # A in the endplate from 4.17 mm down (build #968, check_carriage_travel). The board itself
-# stays clear of the lane (motor_bank.RAIL_BACK_CLR's output-board term), so the lane comes
+# stays clear of the lane (motor_bank.RAIL_BACK_CLR's brain-board term), so the lane comes
 # out of the endplate rather than width going back into the body, and the wall survives only
 # past the clamps' reach (see the trim below). Each relief is the box the clamp actually shares with the
 # endplate over its whole travel, grown CLAMP_RELIEF_CLR -- read off the solids, so a clamp
@@ -1225,7 +1225,7 @@ for _i in range(1, D.N_STRINGS):
 _ep_relief = _clamp_relief(bridge_endplate)
 if _ep_relief is not None:
     bridge_endplate = bridge_endplate.cut(_ep_relief.cut(_seat_rings))
-    # (THE OUTPUT BOARD'S CRADLE TRIM IS GONE, 2026-10-29. It took the cradle's +Y wall out
+    # (THE BRAIN BOARD'S CRADLE TRIM IS GONE, 2026-10-29. It took the cradle's +Y wall out
     #  under string 10's belt, clamps and screw pulley while the board stood at -50.5. The board
     #  lies on the floor now (electronics.OP_UNDER_Z), the wall's top is under the pulley's
     #  flange, the clamps and the belt, and check_sweep / check_carriage_travel / the belt
@@ -1246,7 +1246,7 @@ for _side in {D.screw_x(_i) for _i in range(D.N_STRINGS)}:
 
 # THE PICKUP'S SCREW TERMINAL MUST STAY WIREABLE OVER STRING 10'S WHOLE CLAMP TRAVEL (2026-10-29).
 # String 10's clamp rolls as it runs to the screw pulley and at the bottom of its travel reaches
-# 1.4 mm past the output board's +Y edge, right where J8 takes the pickup's two cores. With the
+# 1.4 mm past the brain board's +Y edge, right where J8 takes the pickup's two cores. With the
 # board on the floor, R1's +Y-facing entry sat 0.44 inside that sweep (check_carriage_travel).
 # So each hole's lead-in -- the conductor's last 4 mm out of the hole along its exit, and its
 # radius plus a fit round it -- is posed against the clamp at every relief station.
@@ -1265,7 +1265,7 @@ for _k in range(CLAMP_RELIEF_STATIONS + 1):
         _j8_v = max(_j8_v, _j8_in.val().intersect(_w.val().moved(_loc)).Volume())
 assert _j8_v < 1e-3, (
     f"string 10's belt clamp runs through J8's lead-in ({_j8_v:.2f} mm3): the pickup's cores "
-    "cannot reach the output board's screw terminal")
+    "cannot reach the brain board's screw terminal")
 
 # ⚠ ...AND OUT OF THE CHASSIS' FACEPLATE WALLS (2026-10-29). At the 7.5 standoff (the pulley
 # on the shaft's D, user) each motor's faceplate is 3.45 off its own clamp's -Y side, and the
@@ -2753,7 +2753,7 @@ _COLORS = {
     "pi_cap":          _BG.mask("pi_cap"),   # PCB green
     # the new instrument's boards (src/new_boards_view.py): a board part with no entry here was
     # drawn the default white -- cadkit's export now refuses a board not in a mask colour
-    "output_board_pcb":    _BG.mask("output_board"),
+    "brain_board_pcb":    _BG.mask("brain_board"),
     "connector_board_pcb": _BG.mask("connector_board"),
     "brain_pcb":           _BG.mask("brain"),
     "pi_riser":        (0.05, 0.05, 0.05),   # BOUGHT: Adafruit 4079 socket riser, black
@@ -2785,21 +2785,21 @@ _COLORS = {
     "output_panel_silk": (0.95, 0.95, 0.93),
     # the new boards (src/new_boards_view.py: <board>_pcb + <board>_pcb_silk)
     "brain_pcb":        _BG.mask("brain"),
-    "output_board_pcb": _BG.mask("output_board"),
-    "output_board_cm5":    _BG.mask_rgb("green"),   # the Compute Module 5: Raspberry Pi's green mask
-    "output_board_cm5_soc": (0.74, 0.75, 0.77),     # the BCM2712's metal lid
-    "output_board_cm5_plug": (0.85, 0.80, 0.68),    # the CM5's DF40 plugs, cream LCP
-    "output_board_df40_leads": (0.83, 0.69, 0.22),  # J201 / J202's gold contact leads
+    "brain_board_pcb": _BG.mask("brain_board"),
+    "brain_board_cm5":    _BG.mask_rgb("green"),   # the Compute Module 5: Raspberry Pi's green mask
+    "brain_board_cm5_soc": (0.74, 0.75, 0.77),     # the BCM2712's metal lid
+    "brain_board_cm5_plug": (0.85, 0.80, 0.68),    # the CM5's DF40 plugs, cream LCP
+    "brain_board_df40_leads": (0.83, 0.69, 0.22),  # J201 / J202's gold contact leads
     "connector_board_tb_plug": (0.16, 0.55, 0.32),  # J11-J20: MX15EDGK plugs, green PA66
     "connector_board_tb_screws": (0.72, 0.74, 0.78),   # their M2 slotted screws
-    "output_board_idc": (0.10, 0.10, 0.11),       # the ribbon headers' IDC sockets, black PBT
+    "brain_board_idc": (0.10, 0.10, 0.11),       # the ribbon headers' IDC sockets, black PBT
     "connector_board_idc": (0.10, 0.10, 0.11),
-    "output_board_idc_ribbon": (0.62, 0.63, 0.66),   # grey 0.635 flat cable (a stub of it)
+    "brain_board_idc_ribbon": (0.62, 0.63, 0.66),   # grey 0.635 flat cable (a stub of it)
     "connector_board_idc_ribbon": (0.62, 0.63, 0.66),
     "brain_pcb_silk":   (0.95, 0.95, 0.93),
-    "output_board_pcb_silk": (0.95, 0.95, 0.93),
-    "output_board_term": (0.16, 0.55, 0.32),        # J8: MX128 terminal block, green PA66
-    "output_board_term_metal": (0.72, 0.74, 0.78),  # its slotted M2.5 screws and tinned pins
+    "brain_board_pcb_silk": (0.95, 0.95, 0.93),
+    "brain_board_term": (0.16, 0.55, 0.32),        # J8: MX128 terminal block, green PA66
+    "brain_board_term_metal": (0.72, 0.74, 0.78),  # its slotted M2.5 screws and tinned pins
     "output_panel_term": (0.16, 0.55, 0.32),        # J8: MX128 terminal block, green PA66
     "output_panel_term_metal": (0.72, 0.74, 0.78),  # its M2.5 screws and tinned pins
     "optical_guard":   (0.18, 0.18, 0.20),   # the hand guard over the board -- print it
@@ -3258,7 +3258,7 @@ def _direct_parts():
                 with_[f"{nm}_{i}"] = f"{nm}_0"
     out["body"] = (partial(kept, DB._body), "petg-gf/body.step",
                       "PETG-GF -- the direct instrument's BODY: walls and floor to the endplate "
-                      "joint, the bars' channels, the anchor's bosses and the output board's "
+                      "joint, the bars' channels, the anchor's bosses and the brain board's "
                       "grooves. src.direct_bench._body")
     out["endplate"] = (DB.endplate_full, "petg-gf/endplate.step",
                           "PETG-GF -- the +X ENDPLATE (rod plate, axles, lanes, the bars' ends). "

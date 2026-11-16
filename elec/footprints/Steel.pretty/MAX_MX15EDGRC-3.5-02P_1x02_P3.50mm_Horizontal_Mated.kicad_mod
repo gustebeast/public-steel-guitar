@@ -2,7 +2,7 @@
 	(version 20260206)
 	(generator "kicad-footprint-generator")
 	(layer "F.Cu")
-	(descr "MAX MX15EDGRC-3.5-02P right-angle pluggable header (LCSC C5188295) with its MX15EDGK-3.5-02P plug mated (C5188249, slotted M2): the Phoenix MC 1,5/2-G-3,5 land (same pitch and pin row) at MAX's 1.40 mm hole for 0.8 mm square pins; courtyard to 17 mm in front of the pin row = header front 5.9 + plug 15.9 - 5.3 inserted (MAX drawings MX15EDGRC-3.5-XXP / MX15EDGK-3.5-XXP), as the 04P; made 2026-11-14 for output_board J8 (user)")
+	(descr "MAX MX15EDGRC-3.5-02P right-angle pluggable header (LCSC C5188295) with its MX15EDGK-3.5-02P plug mated (C5188249, slotted M2): the Phoenix MC 1,5/2-G-3,5 land (same pitch and pin row) at MAX's 1.40 mm hole for 0.8 mm square pins; courtyard to 17 mm in front of the pin row = header front 5.9 + plug 15.9 - 5.3 inserted (MAX drawings MX15EDGRC-3.5-XXP / MX15EDGK-3.5-XXP), as the 04P; made 2026-11-14 for brain_board J8 (user)")
 	(tags "phoenix_contact connector MC_01x02_G_3.5mm")
 	(property "Reference" "REF**"
 		(at 1.75 -3 0)

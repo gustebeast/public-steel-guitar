@@ -1,7 +1,7 @@
 # The volume pedal's latency budget, checked
 
 **The user's target (2026-09-30):** "get the position info on the motor board, relay to
-the pi, then relay to the output board in <50ms".
+the pi, then relay to the brain board in <50ms".
 
 **Verdict: the budget holds with roughly 45 ms of slack, and every term that this
 hardware controls is under 5 ms. The one term that can blow it is not hardware at all —
@@ -16,7 +16,7 @@ it is Linux userspace scheduling on the Pi.**
 | 3 | arbitration wait | **< 1 ms** | 39.6% load against a 52% target. The headroom was bought for exactly this: CAN arbitrates by priority, and utilisation buys latency, not just throughput |
 | 4 | motor board MCU → Pi | **≈ 1 ms** | USB interrupt endpoint at a 1 ms interval |
 | 5 | **Pi userspace turnaround** | **1–10 ms typical, tens of ms under load** | ⚠ the only soft number in the table |
-| 6 | Pi → output board MCU | **≈ 1 ms** | same, through the panel's hub |
+| 6 | Pi → brain board MCU | **≈ 1 ms** | same, through the panel's hub |
 | 7 | MCU → the gain pot | **0.2 ms** | two 10-bit words, one per channel, of bit-banged SPI at 100 kHz into the AD8402 (it was one 16-bit word per channel into the MCP4261, 0.16 ms each) |
 | 8 | pot wiper → audible | **0** | it is an **analog** attenuator. There is no sample, so there is no sample delay |
 

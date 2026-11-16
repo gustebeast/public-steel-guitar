@@ -631,7 +631,7 @@ def output_panel():
     # 4-way's order and its mirror, so each rail has two contacts, ground stands between
     # 24 V and a switch line on both sides, and a 6-way plug cannot enter a 4-way header.
     # (user: "let's avoid a new cable between the output and motor and just put the power
-    # switch signal on the same cable carrying power from the output board to the motor
+    # switch signal on the same cable carrying power from the brain board to the motor
     # board")
     j10 = Part(name="B6B-XH-A", ref_prefix="J", ref="J10", dest="NETLIST", tool="skidl",
                value="B6B-XH-A",

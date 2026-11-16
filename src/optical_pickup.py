@@ -3653,13 +3653,13 @@ def opt_cables(which: str = "usb") -> cq.Workplane:
     """The USB lead with its plugs, at true size -- an assembly aid, not a part -- or the
     line the 24 V pair is planned along.
 
-    `which` is "metal" (the plugs' two tongues, seated in J1 and J4), "usb" (J1's down-angle plug, its ribbon, and J4's plug at the output board:
+    `which` is "metal" (the plugs' two tongues, seated in J1 and J4), "usb" (J1's down-angle plug, its ribbon, and J4's plug at the brain board:
     one bought lead, drawn black as it is) or "pwr_path" (the centre line of J2's pair as
     a list of points; its two conductors are wiring.optical_feed's, and its crimp housing
     is the one the board's export seats in the header).
 
     Modelled so the route can be planned rather than assumed: both go down opt_cable_hole's
-    shaft into the board recess and out of its open -X side to the output board."""
+    shaft into the board recess and out of its open -X side to the brain board."""
     # slim shielded USB-2 (BOM wire table); and the ENVELOPE the 24 V lead is planned in.
     # That lead is two conductors side by side at the connector's own pitch, 3.8 across
     # (wiring.optical_feed); it was drawn as one O4.0 solid, "6x 26 AWG", from when the
@@ -3728,13 +3728,13 @@ def opt_cables(which: str = "usb") -> cq.Workplane:
         _path[ref] = [(p["x"], p["y"], zt), (p["x"], yc, zt), (PWR_DROP_X, yc, zt),
                       (PWR_DROP_X, PWR_Y, zt)]
         _od[ref] = od
-    # ---- and on to the OUTPUT BOARD, which is where both cables actually go ----------------
+    # ---- and on to the BRAIN BOARD, which is where both cables actually go ----------------
     # ⚠ THEY USED TO GO TO THE PI, AND ONE OF THEM THROUGH THE RAIL. The USB lead ran the
     # length of the instrument to the Pi, through the middle of the -Y rail's section
     # (y -134.83 against a rail at -139.15..-128.75) -- a collision that was PARKED in the
     # gate's deferred list, which is exactly why nobody saw it. And the 24 V lead stopped at
     # the bottom of the conduit, connected to nothing (user: "the red one stops short and
-    # doesn't go very far at all"). The USB hub moved onto the output board: its J4 is "hub
+    # doesn't go very far at all"). The USB hub moved onto the brain board: its J4 is "hub
     # downstream -> the optical board, ~100 mm", and its J9 is "24 V out to the optical pickup
     # board". Both are a few centimetres from the conduit's foot.
     from .electronics import op_top, op_mouth
@@ -3757,7 +3757,7 @@ def opt_cables(which: str = "usb") -> cq.Workplane:
     # USB: A FLAT RIBBON, AND A RIBBON ONLY BENDS ONE WAY. It leaves J1's boot going down, flat
     # in the shaft at the plug's own layer; one 45 degree FOLD in the board recess turns it -X,
     # standing on edge under the chassis. It runs out into the bay on edge, turns back
-    # toward the output board, and a second fold lays it flat against J4's plug, which points
+    # toward the brain board, and a second fold lays it flat against J4's plug, which points
     # UP (pointing down it meets the endplate).
     #
     # THE SLACK IS DRAWN. The lead is 300 mm and the two sockets are about 140 mm of

@@ -1,25 +1,25 @@
-"""The output board, SPLIT into two boards stacked in the same box (lead, 2026-11-13).
+"""The brain board, SPLIT into two boards stacked in the same box (lead, 2026-11-13).
 
     py -3.12 elec/output_power.py      # -> elec/out/output_power.{net,board.json}
     py -3.12 elec/output_signal.py     # -> elec/out/output_signal.{net,board.json}
 
-WHY. As one 68 x 100 board, output_board did not route: its best placement (ob10) finished
+WHY. As one 68 x 100 board, brain_board did not route: its best placement (ob10) finished
 with 30 nets open and 279 unconnected items, its planes cut up, at 0.54 courtyard fill with
 the PD power stage, the H743 + ULPI PHY and the pickup preamp sharing one 37 mm box. The
 dense boards that route here sit at 0.41-0.47. Two boards ~15 mm apart in the same box
 give each a whole outline: the signal half lands near 0.33 and the power half near 0.21,
 and the PD and buck switching leave the preamp's board. ~$1 an instrument.
 
-ONE CIRCUIT, TWO BOARDS. There is no second copy of any circuit. output_board.py still
+ONE CIRCUIT, TWO BOARDS. There is no second copy of any circuit. brain_board.py still
 builds the whole thing -- its notes, its fixes, its part choices are the single source --
 and this module removes the other half's parts from it and puts a 2 x 12 1.27 mm
 board-to-board connector (J20, harness.OUTPUT_LINK) on every net that crosses. So a fix in
-output_board.py reaches both boards, and the partition is the only thing defined here.
+brain_board.py reaches both boards, and the partition is the only thing defined here.
 
 THE PARTITION, AND THE CHECK THAT HOLDS IT. A part is POWER if it is named in POWER_REFS
 or has a pin on a POWER_NET; everything else is SIGNAL. The nets that then have pins on
 both sides MUST be exactly the link's nets (harness.OUTPUT_LINK) -- a part added to
-output_board.py that drags a new net across fails the build by name, rather than shipping
+brain_board.py that drags a new net across fails the build by name, rather than shipping
 a board with an unconnected pin.
 """
 from __future__ import annotations
@@ -33,7 +33,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-import output_board as OB                          # noqa: E402  (builds nothing on import)
+import brain_board as OB                          # noqa: E402  (builds nothing on import)
 import harness                                     # noqa: E402
 import netcheck                                    # noqa: E402
 from skidl import ERC, Part, Pin, generate_netlist        # noqa: E402
@@ -131,9 +131,9 @@ def side_of(part):
 
 
 def build(half):
-    """output_board's whole circuit, then only `half` of it, with J20 on the crossing nets."""
+    """brain_board's whole circuit, then only `half` of it, with J20 on the crossing nets."""
     assert half in ("power", "signal"), half
-    OB.output_board()
+    OB.brain_board()
     circ = builtins.default_circuit
     side = {p.ref: side_of(p) for p in circ.parts}
     on = {}
@@ -296,7 +296,7 @@ def main(half):
     if half == "power":
         netcheck.grounds_meet(net_path)            # R60 joins GND and PWR_GND, on this half
     netcheck.no_orphan_pins(net_path)
-    notes = dict(NOTES[half], split_from="output_board", parts=len(refs) + 1)
+    notes = dict(NOTES[half], split_from="brain_board", parts=len(refs) + 1)
     q = quality(half, net_path)
     notes["match"] = q.pop("match")
     notes["quality"] = q

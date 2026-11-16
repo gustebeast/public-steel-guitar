@@ -193,11 +193,11 @@
   },
   "MCU_DM": {
    "v": 3.6,
-   "why": "USB 2.0 data to the output board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
+   "why": "USB 2.0 data to the brain board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
   },
   "MCU_DP": {
    "v": 3.6,
-   "why": "USB 2.0 data to the output board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
+   "why": "USB 2.0 data to the brain board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
   },
   "N$3": {
    "v": 0.0,

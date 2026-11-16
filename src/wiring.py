@@ -13,7 +13,7 @@ lives on the boards (motor_ctrl's is permanent; bus A's LAST tee has its switch 
         tee's 4-way into the SERVO42D's screw terminals (wire_drop_*_N: 22 AWG
         red/black power into the 6-way, 26 AWG yellow/green CAN into the 5-way). The 24 V pair rides the
         same tees and is fed from BOTH ends of the chain: the motor
-        controller's J1 at the west one (with CAN), the output board's J7
+        controller's J1 at the west one (with CAN), the brain board's J7
         at the east one (24 V only).
   EVERY LEAD'S CONDUCTORS COME FROM elec/harness.py (2026-10-06): CONN maps a
   connector to its way tuple, conn_end() reads each way's position off the ROUTED
@@ -253,8 +253,8 @@ LANE_PWR2  = CH_WT_ZF + 0.15 + PLINK_HALF       # -23.6: its centre
 # against the lip and USB_LANE_DZ higher -- the least that keeps two octagons 2 * USB_LANE_DY
 # apart from meeting on their slanted flats ((2 dy + dz) / sqrt 2 > 2.6).
 USB_LANE_DY, USB_LANE_DZ = 0.9, 2.1
-LANE_USB   = LANE_PWR2 + PLINK_HALF + 2.6 / 2 + 0.05     # -19.6: output board J2 -> the Pi
-LANE_HUB   = LANE_USB + USB_LANE_DZ      # -17.5: output board J3 (the hub) -> the Pi
+LANE_USB   = LANE_PWR2 + PLINK_HALF + 2.6 / 2 + 0.05     # -19.6: brain board J2 -> the Pi
+LANE_HUB   = LANE_USB + USB_LANE_DZ      # -17.5: brain board J3 (the hub) -> the Pi
 LANE_PWR   = CH_WT_ZF + 10.8     # -15.6: the 24 V head (J7 -> the east tee), hot -16.6 /
                                  #        gnd -14.6 -- first trough piece only, it leaves
                                  #        at string 10's motor for that motor's tee
@@ -1116,7 +1116,7 @@ def build_wires():
     # GND, 24 V, CAN_H, CAN_L on J1's ways 1-4 to the tee's ways 1-4 (harness.XH_PINOUT at
     # both ends). It was drawn as a CAN pair out of the middle of J1, with the tee's ground
     # and 24 V taken to J3 instead -- the 6-way that belongs to the power link from the
-    # output board -- so J1 showed two conductors of four and J3 four ends from two cables.
+    # brain board -- so J1 showed two conductors of four and J3 four ends from two cables.
     # Each conductor leaves its own way along the board's normal (+X, over the Pi cap),
     # climbs at once to the tee's own height, runs +Y past the standing board's edge and
     # over string 1's motor, and only there steps -X onto its pin and in through the mouth.
@@ -1274,11 +1274,11 @@ def build_wires():
     # panel to the westmost motor tee. Nothing had to be re-sized for it: these cables are
     # crimped from spooled wire (user), so the head is simply made to whatever length the
     # new landing needs, and cable length was never the reason the junction existed.
-    # ── THE OUTPUT BOARD'S 24 V HARNESS: TO THE WALL, ONE LOOP, THEN DOWN THE INSTRUMENT ──
+    # ── THE BRAIN BOARD'S 24 V HARNESS: TO THE WALL, ONE LOOP, THEN DOWN THE INSTRUMENT ──
     # (user, 2026-09-21: "route the wires to the chassis wall fairly directly and then coil
     # them in a single large circle before sending them down the instrument. The snake
     # pattern you have designed seems hard to achieve.") It was also drawn THROUGH the
-    # output board: the serpentine sat at a fixed spot and nothing re-checked it when the
+    # brain board: the serpentine sat at a fixed spot and nothing re-checked it when the
     # board moved, so it ran through the PCB and out below it.
     #
     # Both pairs leave their top-entry headers UP, cross the endplate's recess along the
@@ -1294,7 +1294,7 @@ def build_wires():
                                           # pair turns further out than the 24 V link, past
                                           # the optical 24 V lead's riser (OP.PWR_X_RISE)
     # THE LOOP: the J7 cable's 111 mm of balancing slack (see below) as ONE flat turn in the
-    # bay above the output board. A full turn adds its whole circumference to the conductor
+    # bay above the brain board. A full turn adds its whole circumference to the conductor
     # -- none of it is "the direct line" -- so its radius is 111 / 2 pi. It climbs 4 mm over
     # the turn so it can close without passing through itself, and its -Y point sits on the
     # wall line, where the cable arrives and leaves.
@@ -1590,7 +1590,7 @@ def build_wires():
 
     # ── THE LIGHTS LINK: motor_ctrl J7 -> pi_cap J4 (harness.LIGHTS_LINK) ────────────────
     # Fused 24 V and ground for every LED in the instrument, and the power button's two
-    # throws on their way from the UI ribbon to the output board. NOT DRAWN AT ALL until
+    # throws on their way from the UI ribbon to the brain board. NOT DRAWN AT ALL until
     # 2026-10-06: two connectors with nothing in them, and the lights' only feed.
     # J7's four ways are stacked in Z low on the standing board, facing the corridor
     # between the cap and string 1's motor; J4 faces -Y off the far side of the cap.

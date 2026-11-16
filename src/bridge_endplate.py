@@ -94,7 +94,7 @@ def seat_ring(i: int) -> cq.Workplane:
     """String i's support-bearing seat AND its wall: the seat's own teardrop (screw_rail._bore,
     the bearing + 0.2) grown MIN_WALL_2P all round, from the seat's mouth less its install drop
     up to the lip. Every seat must keep all of this (build asserts it), so nothing -- the panel
-    recess, a clamp relief, the output board's cradle trim -- may open one seat that the
+    recess, a clamp relief, the brain board's cradle trim -- may open one seat that the
     other nine still have."""
     from .screw_rail import BRG_DROP, _bore
     z0 = _SR_BOT - BRG_DROP
@@ -1142,7 +1142,7 @@ def _build() -> cq.Workplane:
                                      (_yf - _gl, FOOT_Z + 0.01)]).close()
                           .extrude(_x1 - _x0)
                           .cut(_seat_cutter()).cut(_pulley_channel(PULLEY_CH_Z0, PULLEY_CH_Z1)))
-    # ⚠ THE OUTPUT BOARD'S PLATE GOES ON AFTER THE RECESS, not before: the recess cut
+    # ⚠ THE BRAIN BOARD'S PLATE GOES ON AFTER THE RECESS, not before: the recess cut
     # above clears this whole band, so a cradle fused earlier would simply be deleted by
     # it. And BEFORE the panel openings, not after: anything of the cradle that reaches
     # the panel would otherwise fill a hole back in (the cut-order trap this file has hit
@@ -1302,7 +1302,7 @@ def op_cradle():
                     standoff=standoff, clr=OP_PANEL_CLR, base_t=_plate_t, wall_over=_wall_over)
     _base_t = max(_plate_t, M4.anchor_min_wall - standoff)    # the boss column's depth
     assert cz - standoff - _base_t >= OP_FLOOR_Z - 1e-6, (
-        "the output board's cradle hangs below the chassis floor it lies on: "
+        "the brain board's cradle hangs below the chassis floor it lies on: "
         "electronics.OP_UNDER_Z has not left the M4 anchor its depth")
     cr = cr.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         M4.boss_od / 2.0, _base_t + standoff, cq.Vector(hx, hy, -_base_t))))
@@ -1336,7 +1336,7 @@ def op_cradle():
     # above the board's edge exactly where the three connectors overhang it.
     cr = cr.cut(box_at(20.0, OP_BOARD_Y + 40.0, 60.0,
                        x=rw / 2 + OP_PANEL_CLR + 10.0, y=0.0, z=0.0))
-    # -Y: NO WALL AT ALL (user, 2026-10-29: the output board "needs no wall on its -Y side;
+    # -Y: NO WALL AT ALL (user, 2026-10-29: the brain board "needs no wall on its -Y side;
     # it may sit directly against the chassis inner wall"). The board's -Y edge is a fit off
     # the rail's inner face (electronics.op_origin), so the rail locates it there, and every
     # bit of cradle past that fit -- wall, plate, pads -- would be in the rail.

@@ -5,7 +5,7 @@ MAX (Cixi Maixu) MX15EDGRC-3.5-04P header (LCSC C5188297) + its MX15EDGK-3.5-04P
 the instrument's one flat tool). KiCad's model for the land is Phoenix's MC 1,5/4-G-3.5 --
 the HEADER only, a shrouded socket that reads as a JST in the render (user, 2026-11-14:
 "they look like JSTs"). The plug is what a player sees and works on, so it is drawn here,
-seated in each header, the way src/screw_terminal.py draws output_board's J8.
+seated in each header, the way src/screw_terminal.py draws brain_board's J8.
 
 FROM THE MAKER'S DRAWINGS (as elec/connector_board.py and src/board_geom.py read them):
   * pitch 3.50; the plug 15.90 long, 5.30 of it inside the header; the header's open face

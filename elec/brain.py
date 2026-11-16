@@ -13,7 +13,7 @@ old instrument's boards and the cables between them:
                    their mouths up, so a motor can be swapped with the board in place (user).
                    Bus A is a linear bus on the board, terminated at both ends of the row
                    (R5, R6); each drop is the motor lead, 0.1-0.3 m.
-And it takes the 24 V BOOST from the output board (fill and noise -- output_board.py J10):
+And it takes the 24 V BOOST from the brain board (fill and noise -- brain_board.py J10):
 the chargers' OR-ed 5-20 V arrives on J10 + J12 (harness.BRAIN_POWER, two 6-way XH in
 parallel, way 3 of each strapped to GND as the presence loop) and the logic on J11
 (harness.BRAIN_SIGNAL).
@@ -22,7 +22,7 @@ MOUNTING (user): on its side in the X-Z plane against the -Y wall, -Y of the mot
 and only if -- every motor JST faces up. EVERY JST does (lead, 2026-11-13): all seventeen are
 side-entry headers on the +Z edge, mouths up -- the ten motors, each over its own station
 (src.direct_bench STATION, within ~1 mm of the motor's X span: short CAN drops), the two
-bus-B arms, the two LED drops and the three output-board leads in the gaps. That is 292 mm of
+bus-B arms, the two LED drops and the three brain-board leads in the gaps. That is 292 mm of
 courtyard, so the board is 320 long (instrument X -520..-200) and 70 tall (Z -107.2..-37.2): the
 top edge sits 21 mm under the UI station's underside (z -16.1), room for a mated XH plug and
 its wire's bend under the UI board. The UI ribbon (J5) is a pin header, not a JST: a VERTICAL
@@ -31,26 +31,26 @@ The CM5 and the bucks sit on the station-3 stretch (66 mm free in Y); only low p
 station 2 (19 mm above z -54). Longer leads so it can be lifted out are acceptable.
 
 POWER, IN THE ORDER IT HAPPENS:
-  1. A charger is attached. The output board's MCU reads it and raises BRAIN_EN (J11).
+  1. A charger is attached. The brain board's MCU reads it and raises BRAIN_EN (J11).
   2. Q2 -- the old output panel's P-FET switch, now on 5-20 V with a 12 V gate clamp --
      closes only when the BUTTON says on (or the CH32 holds it, see 5) AND BRAIN_EN is high.
-     Its Miller cap is the soft start: the VIN inrush limit the output board asks for.
+     Its Miller cap is the soft start: the VIN inrush limit the brain board asks for.
   3. The LM5122 boost (U20, TI's SNVS954H 8.2 design) makes +24V for the motors and lights.
   4. Two 5 V bucks: U7 (+5V_AUX, always on with the 24 V) for the CH32, the transceivers and
      bus B's 5 V; U5 (+5V_CM5) for the CM5 only, held off by LOW_PWR (minimal mode, R2-6).
   5. THE CM5 SHUTS DOWN BEFORE ITS POWER GOES. When the button goes off, the CH32 holds Q2 on
      (PWR_HOLD through D13), presses the CM5's PWR_Button (Q14), waits for CM5_3.3V to fall
      (CM5_ON) and only then lets go. "Never cut a running Pi" is hardware here.
-  6. PWR_BTN and BRAIN_PG go back to the output board, open drain, ACTIVE LOW (pulled up
+  6. PWR_BTN and BRAIN_PG go back to the brain board, open drain, ACTIVE LOW (pulled up
      there): the button reads LOW when ON; the 24 V reads LOW when GOOD.
 
 LINKS (no CH340 any more -- the CM5 is on the board):
   * CH32 USART1 (PA9/PA10, also WCH's ROM loader) <-> CM5 UART4 (GPIO12/13), 1k series each
     way so neither back-powers the other in minimal mode. CM5 GPIO25 -> CH32 NRST, GPIO19 ->
     CH32 BOOT0: the CM5 flashes the CH32 with no tool (USB-only firmware rule).
-  * J13 (USB-C) <- output board J3: the panel ports' data to the CM5's USB 2.0 OTG (gadget,
+  * J13 (USB-C) <- brain board J3: the panel ports' data to the CM5's USB 2.0 OTG (gadget,
     and rpiboot for the eMMC with nRPIBOOT held -- TP7).
-  * J14 (USB-C) <- output board J9: the H743's OTG_FS device on the CM5's USB3-0 USB2 pair.
+  * J14 (USB-C) <- brain board J9: the H743's OTG_FS device on the CM5's USB3-0 USB2 pair.
   * The CM5's USB3-1 USB2 pair is the LEVER-FLASH LANE (docs/lever-usb-flash.md): U9/U10
     hand an arm's pair from CAN to it for one flash. It replaces motor_ctrl's U7/U8 path.
 
@@ -62,7 +62,7 @@ OPEN ITEMS (BOARD_NOTES["open_items"]):
     hold -- measure; the LMR33640 (4 A) takes the same land.
   - LM5122 OPT tied to AGND (single-phase master) -- confirm in SNVS954H.
   - L4: placeholder land (R2-6: XR181810VC / CDEP15D90).
-  - (closed 2026-11-13) NCEP4090GU pinout read from NCE's sheet: output_board.PD_PINOUTS.
+  - (closed 2026-11-13) NCEP4090GU pinout read from NCE's sheet: brain_board.PD_PINOUTS.
   - CM5 variant: an eMMC one (no SD socket on this board), e.g. CM5104032.
 """
 from __future__ import annotations
@@ -255,9 +255,9 @@ CH32_IO = {
 
 def brain(merged=None):
     """The brain's circuit. merged=None: the standalone board (retired 2026-11-13, kept so
-    its netlist still builds). merged={"gnd": net, "vin": net}: built ONTO THE OUTPUT BOARD
-    (user, 2026-11-13: "the output board becomes the brain board"), sharing its GND and
-    its VIN_BRAIN; the inter-board leads and USB links are left out (output_board joins the
+    its netlist still builds). merged={"gnd": net, "vin": net}: built ONTO THE BRAIN BOARD
+    (user, 2026-11-13: "the brain board becomes the brain board"), sharing its GND and
+    its VIN_BRAIN; the inter-board leads and USB links are left out (brain_board joins the
     nets this returns) and every field connector -- ten motors, both bus-B arms, both LED
     drops -- is replaced by ONE ribbon header to the connector board (harness.CONN_RIBBON),
     whose field-side parts (the far bus-A terminator, the clamps, the header bypasses) are
@@ -266,10 +266,10 @@ def brain(merged=None):
     v24, vin_sw = Net("+24V"), Net("VIN_SW")
     vin = merged["vin"] if merged else Net("VIN_BRAIN")
     v5c = Net("+5V_CM5")
-    # merged with the H743 folded in: the output board's +3V3D (its U21) is the transceivers' and
+    # merged with the H743 folded in: the brain board's +3V3D (its U21) is the transceivers' and
     # switches' 3.3 V, and U8 goes -- one logic LDO for one board
     v33 = merged["v33"] if merged and "v33" in merged else Net("+3V3")
-    # FOLD (user, 2026-11-13: "unify more work onto a single processor"): the output board's
+    # FOLD (user, 2026-11-13: "unify more work onto a single processor"): the brain board's
     # H743 takes the CH32's job. merged["mcu"] hands over the H743-side nets for the CH32's
     # signals (CAN1/2, the sense / power-sequencing lines, USART1 to the CM5) and its NRST /
     # BOOT0; U1, Y1, their passives and pads are left out, and the CM5 keeps R30-R33.
@@ -281,7 +281,7 @@ def brain(merged=None):
         # must not depend on the H743's firmware to do it
         del cm5_io["MCU_IRQ_CM5"]
         cm5_io["SEL_PED"], cm5_io["SEL_LEV"] = 4, 7
-    # merged: the output board's own 5 V (V5_PRE, its U5 on the chargers' raw input) IS the
+    # merged: the brain board's own 5 V (V5_PRE, its U5 on the chargers' raw input) IS the
     # logic 5 V -- one buck for both boards' logic (user, 2026-11-13: "combining multiple 5V
     # bucks into one"), and the CH32 runs from a charger's attach, not from the boost's 24 V
     v5a = merged["v5a"] if merged and "v5a" in merged else Net("+5V_AUX")
@@ -292,18 +292,18 @@ def brain(merged=None):
     if fold:
         io.update(fold)
 
-    # ── J10 / J12 / J11: from the output board ─────────────────────────────────────────
+    # ── J10 / J12 / J11: from the brain board ─────────────────────────────────────────
     # Two 6-way XH power leads in parallel (10 A worst case at 2.5 A a way: two VIN and two GND
-    # ways on each, 22 AWG: the two-gauge rule), way 3 of each STRAPPED TO GND here -- the output board reads it as
+    # ways on each, 22 AWG: the two-gauge rule), way 3 of each STRAPPED TO GND here -- the brain board reads it as
     # "this lead is in". Then the 6-way logic lead.
     for tag in (() if merged else ("J10", "J12")):
-        _jst(tag, "S6B-XH-SM4-TB", "5-20 V in from the output board, lead %s of 2 in "
+        _jst(tag, "S6B-XH-SM4-TB", "5-20 V in from the brain board, lead %s of 2 in "
              "parallel; way 3 = the presence loop, strapped to GND" % tag[-1:],
              XH6_SIDE, harness.BRAIN_POWER, {"VIN": vin, "GND": gnd, "LEAD_SENSE": gnd},
              power=("VIN",))
     link = {k: Net("LINK_" + k) for k in ("BRAIN_EN", "LOW_PWR", "PWR_BTN", "BRAIN_PG")}
     if not merged:
-        _jst("J11", "S6B-PH-SM4-TB", "logic to / from the output board (harness.BRAIN_SIGNAL)",
+        _jst("J11", "S6B-PH-SM4-TB", "logic to / from the brain board (harness.BRAIN_SIGNAL)",
              PH6_SIDE, harness.BRAIN_SIGNAL, dict(link, GND=gnd), power=())
     _cap("C1", "22uF/50V", "VIN bulk at the inlet, AHEAD of the switch", vin, gnd, C2220)
     _cap("C2", "100nF/50V", "VIN HF bypass at J10", vin, gnd)
@@ -333,7 +333,7 @@ def brain(merged=None):
     _cap("C49", "22nF/50V", "Q2 gate-drain: the soft-start slope", gate, vin_sw)
     sw_gate, sw_sense, sw_mid = Net("SW_GATE"), Net("SW_SENSE"), Net("SW_PU_MID")
     _small("Q3", "power-switch driver: the button (or PWR_HOLD)", pull, sw_gate, mid)
-    _small("Q10", "power-switch driver: BRAIN_EN from the output board", mid,
+    _small("Q10", "power-switch driver: BRAIN_EN from the brain board", mid,
            link["BRAIN_EN"], gnd)
     _res("R52", "100k", "BRAIN_EN down: off with the lead out", link["BRAIN_EN"], gnd)
     # Q3's gate-source: with Q3 AND Q10 off, the node between them is set by leakage alone and
@@ -362,18 +362,18 @@ def brain(merged=None):
     _diode("D13", "BAT54WS", "PWR_HOLD into Q3's gate: OR with the button (LCSC C124205)",
            sw_gate, io["PWR_HOLD"], "Diode_SMD:D_SOD-323")
     _res("R56", "100k", "PWR_HOLD down: no hold through reset", io["PWR_HOLD"], gnd)
-    # the button, back out to the output board: open drain, LOW = ON
+    # the button, back out to the brain board: open drain, LOW = ON
     btn_g = Net("BTN_OUT_G")
     _res("R57", "10k", "Q12 gate from the button sense", sw_sense, btn_g)
     _res("R58", "100k", "Q12 gate down", btn_g, gnd)
-    _small("Q12", "PWR_BTN to the output board, open drain: LOW = the button says ON",
+    _small("Q12", "PWR_BTN to the brain board, open drain: LOW = the button says ON",
            link["PWR_BTN"], btn_g, gnd)
     # folded, the H743 that drives LOW_PWR and reads PWR_BTN is the same MCU these fed, and it
     # reads +24V itself (SENSE_24V): the second copies of the button / LOW_PWR and the
     # BRAIN_PG report go
     if not fold:
         _res("R59", "10k", "the button as J11 carries it, into the CH32 (pulled up at the "
-             "output board)", link["PWR_BTN"], io["BTN_IN"])
+             "brain board)", link["PWR_BTN"], io["BTN_IN"])
         _res("R60", "10k", "LOW_PWR as J11 carries it, into the CH32", link["LOW_PWR"],
              io["LOW_PWR_IN"])
     _res("R61", "100k", "LOW_PWR down: full mode with the lead out", link["LOW_PWR"], gnd)
@@ -468,7 +468,7 @@ def brain(merged=None):
     _diode("D3", "SMCJ26A", "+24V clamp, 1.5 kW -- ten stepper drivers' kick lands here",
            v24, gnd, "Diode_SMD:D_SMC")
 
-    # ── U7: +5V_AUX -- the buck cell (output_board's U5), always on with the 24 V ───────────
+    # ── U7: +5V_AUX -- the buck cell (brain_board's U5), always on with the 24 V ───────────
     # Feeds what must run in MINIMAL mode: the CH32 (via U8), the transceivers, bus B's 5 V.
     # motor_ctrl took bus B's 5 V off the Pi's rail; minimal mode turns that rail off.
     if not (merged and "v5a" in merged):
@@ -504,7 +504,7 @@ def brain(merged=None):
 
     # ── U5: +5V_CM5 -- motor_ctrl's Pi buck, its fuse and its crowbar (motor_ctrl.py U5) ─────
     # EN: motor_ctrl's 18.1 V UVLO divider, and Q15 holds it low while LOW_PWR is high
-    # (MINIMAL mode: the output board decided from the contract before anything started).
+    # (MINIMAL mode: the brain board decided from the contract before anything started).
     v24_f, v24_buck, v5_raw = Net("+24V_F"), Net("+24V_BUCK"), Net("+5V_RAW")
     v5_raw.drive = Pin.drives.POWER
     sw5, boot5, vcc5, fb5, en5 = Net("SW5"), Net("BOOT5"), Net("VCC5"), Net("FB5"), Net("EN5")
@@ -608,11 +608,11 @@ def brain(merged=None):
                 [Pin(num=1, func=P)])
     nrpiboot += tp7[1]
 
-    # ── J13 / J14: the two USB links from the output board ───────────────────────────────
+    # ── J13 / J14: the two USB links from the brain board ───────────────────────────────
     for tag, (dp, dm), what in (() if merged else (
             ("J13", (otg_p, otg_n), "the panel ports' data -> the CM5's "
-             "USB 2.0 OTG (gadget; rpiboot) -- from output board J3"),
-            ("J14", (lnk_p, lnk_n), "the output board's H743 (OTG_FS "
+             "USB 2.0 OTG (gadget; rpiboot) -- from brain board J3"),
+            ("J14", (lnk_p, lnk_n), "the brain board's H743 (OTG_FS "
              "device) -> the CM5's USB3-0 USB2 pair -- from output J9"))):
         j = _usbc(tag, what)
         gnd += j["A1"], j["A12"], j["B1"], j["B12"], j["SH"]
@@ -849,7 +849,7 @@ def brain(merged=None):
              ui_flt, "R44", "49k9 1%", gnd)
     _cap("C46", "1uF/16V", "U12 OUT", v33_ui, gnd)
     _cap("C47", "100nF", "U12 IN", cm5_3v3, gnd)
-    # ⚠ THE UI RIBBON'S 3V3 HAS A CAP AT THE HEADER (output_board mP0 quality A2: J205 +3V3_UI's
+    # ⚠ THE UI RIBBON'S 3V3 HAS A CAP AT THE HEADER (brain_board mP0 quality A2: J205 +3V3_UI's
     # nearest cap was C246 at 54.4 mm, its switch's output, against 25 mm). The ribbon's far end
     # is the UI board; this end gets its own 100 nF so the header pin is not fed down a trace.
     _cap("C59", "100nF", "+3V3_UI at the UI header J5", v33_ui, gnd)
@@ -861,7 +861,7 @@ def brain(merged=None):
 # (X -520..-200, Z -107.2..-37.2): 320 x 70, board X = instrument X + 360, board Y = instrument
 # Z + 72.2 (the top edge 21 mm under the UI station's z -16.1: a mated XH and its wire's bend).
 # The +Y edge (instrument +Z, up) carries the twelve side-entry headers, mouths up, and the
-# power / logic leads from the output board; the CM5 and both bucks on the station-3 stretch.
+# power / logic leads from the brain board; the CM5 and both bucks on the station-3 stretch.
 BOARD_W, BOARD_L = 320.0, 70.0
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
@@ -890,7 +890,7 @@ BOARD_NOTES = {
     # every JST on +Y, mouth up (lead, 2026-11-13); J5's vertical 2x8 LCSC part is open
     "placements": {},
     "open_items": [
-        "DF40 placement: CLOSED 2026-11-14 on the merged output board -- read off CM5IO "
+        "DF40 placement: CLOSED 2026-11-14 on the merged brain board -- read off CM5IO "
         "(RP-008099-DD-1): 34.0 apart, pad 1 at the module's +Y end, odd column -X; "
         "elec/cm5_mech.py places it and checks the routed board",
         "CM5 5 V: U5 is 3 A (LMR33630); CM5 asks 5 A with USB loads -- measure; LMR33640 fits",
@@ -908,7 +908,7 @@ def _cited(values):
     """Pinout citations this board shares with the instrument's earlier boards, read from their
     own notes so the two never drift. Importing those modules builds no parts (checked: 0
     before and after). A part not found here stays UNCITED -- an A4 FAIL is the honest state
-    for the DF40 land and the LM5122 (the NCEP4090 is read: output_board.PD_PINOUTS) until someone reads them against the
+    for the DF40 land and the LM5122 (the NCEP4090 is read: brain_board.PD_PINOUTS) until someone reads them against the
     maker's drawing (open items)."""
     import importlib
     out = {}
@@ -926,8 +926,8 @@ _USB_HS = ("USB 2.0 high speed, 480 Mbps: 2,080 ps a bit, so skew has room; the 
 BOARD_NOTES["match"] = [
     {"name": n, "max_skew_mm": 8.3, "same_layer": True, "max_vias": 2,
      "nets": ["%s_DP" % n, "%s_DM" % n], "why": w + " " + _USB_HS}
-    for n, w in (("GADGET", "J13 -> the CM5's USB OTG port (the panel ports' data, via the output board)."),
-                 ("OB_LINK", "J14 -> the CM5's USB3-0 2.0 lane: the output board's H743 link."),
+    for n, w in (("GADGET", "J13 -> the CM5's USB OTG port (the panel ports' data, via the brain board)."),
+                 ("OB_LINK", "J14 -> the CM5's USB3-0 2.0 lane: the brain board's H743 link."),
                  ("FLASH", "the CM5's USB3-1 2.0 lane -> U9 / U10, the arm-flashing switches."))]
 BOARD_NOTES["quality"] = {
     "pinouts": _cited(["NUP2105LT1G", "S4B-XH-SM4-TB", "S6B-XH-SM4-TB", "S6B-PH-SM4-TB",
@@ -940,8 +940,8 @@ BOARD_NOTES["quality"] = {
                                      "numbering is the footprint's (KiCad PinHeader_2x08_P1.27mm_"
                                      "Vertical: odd pads one row, even the other, 1 / 2 at one end) "
                                      "and the way order is harness.UI_RIBBON, as pi_cap.py's 2x8"}
-               | {"NCEP4090GU": "as output_board.py: "
-                                + __import__("output_board").PD_PINOUTS["NCEP4090GU"]}
+               | {"NCEP4090GU": "as brain_board.py: "
+                                + __import__("brain_board").PD_PINOUTS["NCEP4090GU"]}
                | {"S6B-XH-SM4-TB": "JST eXH.pdf p.6, Header / SMT type: the same drawing as the "
                                    "4-way S4B-XH-SM4-TB (pi_cap.py's citation): No. 1 circuit is "
                                    "the right-hand post seen from above, mouth away; KiCad "

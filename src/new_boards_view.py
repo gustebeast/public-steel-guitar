@@ -1,15 +1,15 @@
 """THE NEW INSTRUMENT'S BOARDS IN PLACE -- a VIEW of the direct-drive instrument (src.direct_bench)
-with the routed brain and output boards where their frames put them. Not a fit study: no overlap
+with the routed brain and brain boards where their frames put them. Not a fit study: no overlap
 gate, and the positions are the intents' frames, not a mount.
 
   * brain (320 x 70): on its side, -Y of the motors, component side facing -Y (away from the
     motors, JSTs mouth-up). Board X = instrument X + 360, board Y = instrument Z. (To move: user
     2026-11-13, flat in the -X +Y corner -- not drawn there until it is re-placed.)
-  * output_board (120.3 x 100, ONE board, drops in -Z then slides +X 19 into a pocket fitted to it in the +X endplate: user 2026-11-13): back face on the
+  * brain_board (120.3 x 100, ONE board, drops in -Z then slides +X 19 into a pocket fitted to it in the +X endplate: user 2026-11-13): back face on the
     -Y side at y -87.5 (branner: +1.7 so unclipped 3.4 tails clear the wall at -91.7), parts facing +Y; board x = -(instrument x + 59.72), board y =
-    instrument z + 58.24 (x -119.87 .. 0.43). The panel (board -X edge) sits 1.6 behind the outer face (USB inset 1.6, J5 2.4 back on the board); parts in the pocket: elec/output_board.pocket.json.
+    instrument z + 58.24 (x -119.87 .. 0.43). The panel (board -X edge) sits 1.6 behind the outer face (USB inset 1.6, J5 2.4 back on the board); parts in the pocket: elec/brain_board.pocket.json.
   * the optical board is NOT drawn: it is being redesigned (user 2026-11-13: no forwarder MCU,
-    a ribbon to the output board).
+    a ribbon to the brain board).
 
 The geometry is elec/geom/<board>.geom.json: bronner exports the CHOSEN trial into it (cadkit
 kicad_geom.py --out), since trial runs all write there. Each board's solids are KEPT (cadkit.kept,
@@ -41,7 +41,7 @@ VIEW_HEIGHT = {
     "Hirose_DF40C-100DS-0.4V_2x50_P0.4mm": 1.0,
     "L_Bourns_SRP1770TA_16.9x16.9mm": 7.0,   # brain part_heights L4
     "PinHeader_2x08_P1.27mm_Vertical": 5.3,  # brain part_heights J5 (HX PZ1.27-2x8P ZZ)
-    "PinHeader_2x10_P1.27mm_Vertical_SMD": 5.3,   # output_board J4 PZ1.27-2x10P: AS its 2x8 sibling
+    "PinHeader_2x10_P1.27mm_Vertical_SMD": 5.3,   # brain_board J4 PZ1.27-2x10P: AS its 2x8 sibling
     "TDSON-8-1": 1.10,                       # brain part_heights Q8/Q9
     "Texas_PWP0020A": 1.20,                  # HTSSOP-20, TI PWP0020A outline: 1.2 max
     "QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm": 1.0,   # ESTIMATED, a 4 x 4 QFN's usual 1.0 max
@@ -53,7 +53,7 @@ VIEW_HEIGHT = {
     "PinHeader_2x15_P1.27mm_Vertical_SMD": 5.3,   # J1 PZ1.27-2x15P: AS its 2x8 / 2x10 siblings
     "JST_PH_B4B-PH-SM4-TB_1x04-1MP_P2.00mm_Vertical": 5.5,   # AS cadkit's PH side-entry (PH_SIDE_H); mated -> ph_mated_h
     "C_2220_5750Metric": 2.5,                # ESTIMATED: a 22 uF / 50 V 2220's usual 2.5 max
-    # output_board parts with no height in the project table (the view raised KeyError
+    # brain_board parts with no height in the project table (the view raised KeyError
     # at HEAD, 2026-11-14; geom = the mL2 trial): from the drawings where read
     "L_CommonModeChoke_Coilank_ACM2012": 1.3,     # TDK ACM2012: 2.0 x 1.2 x 1.3
     "Converter_DCDC_Murata_MEE1SxxxxSC_THT": 10.0,   # U30 B0509S-1WR3: 11.50 x 6.0 x 10.0 (Mornsun)
@@ -77,7 +77,7 @@ BRAIN_Y, BRAIN_DX, BRAIN_Z = -66.0, -360.0, -71.0
 # 11-13). Drawn MATED: J11-J20's plugs (side_plug_run) and the PH / XH housings, what the
 # nut block, the endplates and the cable path have to clear.
 CB_X, CB_Y, CB_Z = -572.175, -9.55, -102.2
-OB_X, OB_BACK_Y, OB_Z = -74.985, -87.5, -58.24     # output_board (= brain) centre, FINAL (x -150.4..0.43, 150.83 wide), back face (branner)
+OB_X, OB_BACK_Y, OB_Z = -74.985, -87.5, -58.24     # brain_board (= brain) centre, FINAL (x -150.4..0.43, 150.83 wide), back face (branner)
 
 
 def _build(board):
@@ -91,7 +91,7 @@ def _build(board):
 
 # parts the project draws as THE PART, not a box (as output_panel's J8 is: src/screw_terminal.py,
 # the slotted MX128 -- one flat blade for it and the motors' terminals)
-# output_board's J8 is a 3.5 mm terminal now (screw_terminal draws the 5.00-pitch MX128 and
+# brain_board's J8 is a 3.5 mm terminal now (screw_terminal draws the 5.00-pitch MX128 and
 # asserts it): drawn as its box until screw_terminal learns the part (2026-11-14)
 SKIP = {}
 # boards drawn with their plugs in (BOARDS.solid(mated=True)): NONE. This is a view, not a fit
@@ -133,7 +133,7 @@ CM5_STEP = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
 
 
 def _cm5_step(t):
-    """(pcb, top parts, plugs) of Raspberry Pi's CM5 STEP in the output board's frame, or None.
+    """(pcb, top parts, plugs) of Raspberry Pi's CM5 STEP in the brain board's frame, or None.
 
     THE MODEL'S FRAME (read off the file, 2026-11-15): the module 55 (x) by 40 (y), PCB z 0..1.1,
     holes at (3.5, 3.5) .. (51.5, 36.5), the DF40 plugs under it at y 1.5-4.5 and 35.5-38.5
@@ -158,7 +158,7 @@ def _cm5_step(t):
 
 
 def _cm5(t):
-    """(module, soc) in the output board's own frame: the Compute Module 5 on its two DF40s.
+    """(module, soc) in the brain board's own frame: the Compute Module 5 on its two DF40s.
 
     Holes and outline from elec/cm5_mech.py (Raspberry Pi's CM5IO carrier); the 1.5 mm stack,
     the 1.24 module PCB and the 2.2 SoC (4.94 mounted height) from RP-008180-DS-7 4.1.1; the
@@ -184,7 +184,7 @@ def _cm5(t):
     # lead on each of the 200 pads, past the receptacle's body, where the solder joints are.
     plug = leads = None
     for ref in ("J201", "J202"):
-        f = BG.footprint("output_board", ref)
+        f = BG.footprint("brain_board", ref)
         fx0, fx1, fy0, fy1 = f["fab"]
         cx, cy = (fx0 + fx1) / 2.0, (fy0 + fy1) / 2.0
         w, l = (fx1 - fx0) - 0.6, (fy1 - fy0) - 0.6          # the plug inside the receptacle's walls
@@ -203,10 +203,10 @@ def _cm5(t):
 def boards() -> list:
     out = []
     place = (
-        # the 320 x 70 brain is NOT drawn: the output board is the brain now (2026-11-13), and
+        # the 320 x 70 brain is NOT drawn: the brain board is the brain now (2026-11-13), and
         # the old board read as a second connector board in the view (user, 2026-11-14)
         # board -X = instrument +X, parts toward +Y: (x, y, z) -> (-x, z, y)
-        ("output_board", _facing_plus_y_mirrored, (OB_X, OB_BACK_Y, OB_Z)),
+        ("brain_board", _facing_plus_y_mirrored, (OB_X, OB_BACK_Y, OB_Z)),
         ("connector_board", _flat_up, (CB_X, CB_Y, CB_Z)),
     )
     from cadkit.web.finishes import made_of
@@ -215,20 +215,20 @@ def boards() -> list:
         out.append(("%s_pcb" % b, made_of(pose(solid, *at), "board")))
         if ink is not None:
             out.append(("%s_pcb_silk" % b, made_of(pose(ink, *at), "ink")))
-        if b == "output_board":
+        if b == "brain_board":
             import json as _json
             import os as _os
             _g = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))),
-                               "elec", "geom", "output_board.geom.json")
+                               "elec", "geom", "brain_board.geom.json")
             _t = _json.load(open(_g))["thickness_mm"]
             mod, soc, plug, leads = _cm5(_t)
             real = _cm5_step(_t)             # Raspberry Pi's own model, when it is on this machine
             if real is not None:
                 mod, soc, plug = real
-            out.append(("output_board_cm5", made_of(pose(mod, *at), "board")))
-            out.append(("output_board_cm5_soc", made_of(pose(soc, *at), "polished")))
-            out.append(("output_board_cm5_plug", made_of(pose(plug, *at), "nylon")))
-            out.append(("output_board_df40_leads", made_of(pose(leads, *at), "gold")))
+            out.append(("brain_board_cm5", made_of(pose(mod, *at), "board")))
+            out.append(("brain_board_cm5_soc", made_of(pose(soc, *at), "polished")))
+            out.append(("brain_board_cm5_plug", made_of(pose(plug, *at), "nylon")))
+            out.append(("brain_board_df40_leads", made_of(pose(leads, *at), "gold")))
         # the ribbon headers' IDC sockets and a stub of each ribbon (src/ribbon_socket.py)
         from . import ribbon_socket as RS
         rs = RS.parts(b)
@@ -250,6 +250,6 @@ def boards() -> list:
 
 def assembly() -> list:
     from . import direct_bench as DB
-    # ob_board is branner's stand-in for the output board (the gates' courtyards): the
+    # ob_board is branner's stand-in for the brain board (the gates' courtyards): the
     # routed board drawn here replaces it
     return [p for p in DB.assembly() if p[0] != "ob_board"] + boards()

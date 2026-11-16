@@ -854,11 +854,11 @@
   },
   "GADGET_DM": {
    "v": 3.6,
-   "why": "USB 2.0 data to the output board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
+   "why": "USB 2.0 data to the brain board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
   },
   "GADGET_DP": {
    "v": 3.6,
-   "why": "USB 2.0 data to the output board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
+   "why": "USB 2.0 data to the brain board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
   },
   "GND": 0,
   "J10_NC_4": {
@@ -943,11 +943,11 @@
   },
   "OB_LINK_DM": {
    "v": 3.6,
-   "why": "USB 2.0 data to the output board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
+   "why": "USB 2.0 data to the brain board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
   },
   "OB_LINK_DP": {
    "v": 3.6,
-   "why": "USB 2.0 data to the output board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
+   "why": "USB 2.0 data to the brain board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
   },
   "OSC_IN": {
    "peak": 3.45,

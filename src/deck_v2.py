@@ -100,7 +100,7 @@ SKIRT_CLR = 0.2                                 # off the wall's inner face: a s
                                                 # the panel takes up before the skirt bears
 RIB_T = D.MIN_WALL_2P
 RIB_PITCH = 25.0                                # at most, between ribs along X
-# 1.2 over the output board's top (-8.2), 3.9 over the motors' (-10.9)
+# 1.2 over the brain board's top (-8.2), 3.9 over the motors' (-10.9)
 RIB_Z = -7.0
 GAP = 0.05                                      # between panels, and off the endplates
 SEAM_FRET_CLR = TP.INLAY_W / 2 + D.MIN_WALL_2P  # a seam off any fret line's centre

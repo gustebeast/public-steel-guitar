@@ -1,7 +1,7 @@
 """THE CM5 ON THE OUTPUT (BRAIN) BOARD -- its mechanical reference, and the check that the
 routed board still matches it.
 
-    py -3.12 elec/cm5_mech.py        # checks elec/geom/output_board.geom.json
+    py -3.12 elec/cm5_mech.py        # checks elec/geom/brain_board.geom.json
 
 SOURCES. Raspberry Pi's own carrier, CM5IO (RP-008099-DD-1, CM5IO.kicad_pcb, footprint
 `Raspberry-Pi-5-Compute-Module`), and the CM5 datasheet RP-008180-DS-7 section 4.1.1 / Fig. 4.
@@ -20,7 +20,7 @@ geometry. The reference is now read off Raspberry Pi's own carrier, the board's 
 and its holes both come from here, and check() reads the ROUTED board back (geom.json pads by
 number) so a later re-placement cannot regress it.
 
-OUR FRAME: the output board's board-centre frame (geom.json, y UP), component side up. The
+OUR FRAME: the brain board's board-centre frame (geom.json, y UP), component side up. The
 CM5IO frame maps in with a y flip only (same component side -- a y flip is KiCad's y-down to
 our y-up, not a mirror): ours = (HOLE0.x + x, HOLE0.y - y).
 """
@@ -31,7 +31,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-# the module's pin-1-side hole in the output board's frame: the module sits 40 (x) by 55 (y)
+# the module's pin-1-side hole in the brain board's frame: the module sits 40 (x) by 55 (y)
 # in the top-right corner, centre (55.0, 21.5)
 HOLE0 = (38.5, -2.5)
 HOLE_D = 2.7                    # CM5IO: MountingHole_2.7mm_M2.5_DIN965, NPTH
@@ -128,7 +128,7 @@ def check(geom):
 
 
 def main(argv):
-    p = argv[1] if len(argv) > 1 else os.path.join(HERE, "geom", "output_board.geom.json")
+    p = argv[1] if len(argv) > 1 else os.path.join(HERE, "geom", "brain_board.geom.json")
     bad = check(json.load(open(p)))
     for b in bad:
         print("  CM5: " + b)

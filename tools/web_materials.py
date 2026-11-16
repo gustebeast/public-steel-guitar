@@ -94,14 +94,14 @@ _FINISH = [(re.compile(rx), finish) for rx, finish in _motor_rules() + (
     (r"^pi4_(black|ffc|usb3|card)$", "nylon"),
     (r"^pi_riser$", "nylon"),                     # Adafruit 4079 socket riser: black housing
     (r"^pi4_passives$", "painted"),
-    (r"^output_board_cm5$", "board"),            # the Compute Module 5 (src/new_boards_view.py)
-    (r"^output_board_cm5_soc$", "polished"),     # ...its SoC's metal lid
-    (r"^output_board_cm5_plug$", "nylon"),       # ...the DF40 plugs on its underside (LCP)
-    (r"^output_board_df40_leads$", "gold"),      # J201 / J202's contact leads on their pads
+    (r"^brain_board_cm5$", "board"),            # the Compute Module 5 (src/new_boards_view.py)
+    (r"^brain_board_cm5_soc$", "polished"),     # ...its SoC's metal lid
+    (r"^brain_board_cm5_plug$", "nylon"),       # ...the DF40 plugs on its underside (LCP)
+    (r"^brain_board_df40_leads$", "gold"),      # J201 / J202's contact leads on their pads
     (r"^connector_board_tb_plug$", "nylon"),      # J11-J20's MX15EDGK plugs (src/pluggable_terminal.py)
     (r"^connector_board_tb_screws$", "steel"),    # ...their M2 slotted screws
-    (r"^(output|connector)_board_idc$", "nylon"),           # IDC sockets (src/ribbon_socket.py)
-    (r"^(output|connector)_board_idc_ribbon$", "pvc"),      # ...a stub of each ribbon
+    (r"^(brain|connector)_board_idc$", "nylon"),           # IDC sockets (src/ribbon_socket.py)
+    (r"^(brain|connector)_board_idc_ribbon$", "pvc"),      # ...a stub of each ribbon
     (r"(^|_)pcb(_[a-z]+)?$|_board_(top|bottom)$|^(motor_ctrl|output_panel|pi_cap|pi4)$", "board"),
 )]
 
@@ -134,7 +134,7 @@ _ONE_PRINT = ((re.compile(r"^top_plate_color_(\d+)$"), r"top_plate_\1"),
               # what is mounted or plugged on a new board is one thing with it (user, 2026-11-14:
               # "boards should be selectable as a single part"): the CM5 and its SoC lid, the
               # DF40 pair, the IDC sockets and ribbon stubs, the MX15 plugs and their screws
-              (re.compile(r"^(output_board|connector_board)_(?:cm5\w*|df40\w*|idc\w*|tb_\w+)$"),
+              (re.compile(r"^(brain_board|connector_board)_(?:cm5\w*|df40\w*|idc\w*|tb_\w+)$"),
                r"\1_pcb"))
 
 

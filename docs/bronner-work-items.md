@@ -29,7 +29,7 @@
 - OPEN: commit (a) after the cA fret/optical replays; fret-0 LEDs sent
   to the lead for branner (25 zones = 9 TLC5971 on the v2 LED board).
 
-## 2026-11-14: OUTPUT BOARD (mL2) ROUTER WORK
+## 2026-11-14: BRAIN BOARD (mL2) ROUTER WORK
 
 Every change is checked router-alone on the same placed boards (mL2, optical from layout.py,
 fret_led_key), old code against new. Committed in canonical cadkit, hashes sent to the lead:
@@ -1217,11 +1217,11 @@ unconnected to 0, 0 violations). R1 hole offset 0.05 kept, lead's ruling. Leads:
 `cad_geom_check._r1_fit` (detectors exact, the two M4 mounts 0.05 off from the pilot's growth, which
 R1's O4.4 takes). R1 stays reproducible behind OPTICAL_REV; the CAD only passes at R2.
 
-## Narrower body: Pi up to the motors, M3 through its own hole, output board on the rail (2026-10-29)
+## Narrower body: Pi up to the motors, M3 through its own hole, brain board on the rail (2026-10-29)
 
 User asks, relayed by the lead: the -Y rail comes in (branner), the Pi "mounts with one screw
 through one of its mount holes, then moves right up to the nearby motors", the cap stays in
-the Pi's footprint, the output board rides the rail with no -Y wall, and the side wall is
+the Pi's footprint, the brain board rides the rail with no -Y wall, and the side wall is
 continuous and uncut ("The pi USB needs to clear the wall, we can't cut the wall").
 
 | what | value | where |
@@ -1230,8 +1230,8 @@ continuous and uncut ("The pi USB needs to clear the wall, we can't cut the wall
 | Pi standoff | 13.6 (17 beads) = motor bay BUMP_H 11.2 + 2.0 assumed THT tails + 0.4 | `PI_STANDOFF` |
 | Pi +Y edge | string 3's motor driver (motor_driver_2) face - 0.5 = -47.15 (0.82 true gap, the driver standing 0.65 over the laminate). The cap's ribbon socket then sits against string 2's motor drop riser (wire_drop_canl_1): cable on cable, allowed (user 2026-10-29) | `PI_FP`, `D.PI_MOTOR_*` |
 | plug -Y face | -106.39 (Xilaghy flat head + ribbon fold, 2026-10-29; was -115.39 with the StarTech boot) | `D.PI_PLUG_Y0`, asserted by `electronics._check_plug_y0` |
-| rail inner face | -115.55: 3 beads behind string 10's motor, set by the OUTPUT BOARD (+Y edge -49.25, D.OP_PULLEY_CLR off string 10's screw pulley); the plug is off the wall's list. Cradle +Y wall cut round that pulley's swept flange. Next: board 66 -> 62 (follow-up B) | branner, `motor_bank.RAIL_BACK_CLR` |
-| output board | -Y edge OP_PANEL_CLR off the rail's inner face; +Y 0.89 off string 10's belt clamp (max +8.64 from build #967) | `electronics.op_origin`, `bridge_endplate` cradle cut |
+| rail inner face | -115.55: 3 beads behind string 10's motor, set by the BRAIN BOARD (+Y edge -49.25, D.OP_PULLEY_CLR off string 10's screw pulley); the plug is off the wall's list. Cradle +Y wall cut round that pulley's swept flange. Next: board 66 -> 62 (follow-up B) | branner, `motor_bank.RAIL_BACK_CLR` |
+| brain board | -Y edge OP_PANEL_CLR off the rail's inner face; +Y 0.89 off string 10's belt clamp (max +8.64 from build #967) | `electronics.op_origin`, `bridge_endplate` cradle cut |
 | pi_cap | the ribbon band (J5, J6) moved WEST out of string 2's motor-driver span (J5_DX -17.865, J6_DX -9.7); the board grows 7.0 at -X (CAP_EXT_X) and U1 goes there at (-29.0, 1.5); the GND pours are polygons so they reach it. Re-routed 0 unconnected / 0 violations. The notch-over-the-driver idea was tried and abandoned (J5's courtyard overlapped J1, 6 nets open) | `elec/pi_cap.py` J5_DX, J6_DX, U1_XY, CAP_EXT_X |
 
 Rejected, measured: a pocket in the rail for the head (user: no wall cuts); 11.2 standoff (the
@@ -1343,7 +1343,7 @@ is inside the -105.05 rail. Built behind `OPTICAL_REV` (default 2) in src/optica
 - Run 7 (running): the same without the router keepout. That is the A/B.
 - Also fixed: the stale J2.MP in quality.unconnected (R2's top-entry XH has no tab).
 - A12 silk 0.12 and the verify 188.53 outline are scratch-project artefacts (silk.py / export_geom can't import cadkit there).
-- Answered the lead / branner on the output board drop: max THT tail 3.4 (XH posts; solid() draws all THT at 3.4).
+- Answered the lead / branner on the brain board drop: max THT tail 3.4 (XH posts; solid() draws all THT at 3.4).
 
 Earlier plan (superseded where it says growth):
 
@@ -1357,7 +1357,7 @@ Lead rulings, 2026-10-29:
 - **Board edge** at about -94 (world), with the compute section repacked and grown -X
   where the strip allows. The strip stays aligned to the strings and bearings exactly as R1.
 - **R1 stays reproducible** behind `OPTICAL_REV=1` (TAIL_X1_R1 etc.), with an INSTALL_NOTES
-  stop-gap: the R1 board spills over -Y, and its leads run outside to the output board.
+  stop-gap: the R1 board spills over -Y, and its leads run outside to the brain board.
 
 Measured on the R1 board (board.json frame = world + 28.3):
 - PCB_YM -122.58. J1 (11.48, -117.8), J2 (-22.56, -116.5).
@@ -1409,7 +1409,7 @@ in hand exactly (board.json identical but for quality-note text), and `elec/rev1
 board. If Ethernet is wanted: an F-M adapter above the optical board, or a USB Ethernet dongle
 (user to try it for Dante). The text below is kept as the record only.**
 
-~~R2-1~~. Ethernet pass-through, the J1 -> J2 USB pattern. Two RJ45s on the output board: one on the
+~~R2-1~~. Ethernet pass-through, the J1 -> J2 USB pattern. Two RJ45s on the brain board: one on the
 -X edge fed from the Pi's built-in GbE by a short stock Cat6 patch (~0.2-0.3 m), one in the panel,
 traces between. For Dante via Inferno on the Pi (github.com/teodly/inferno; Pi 4 tested, software
 PTP timestamps) and RTP-MIDI (rtpmidid) to LAN computers, alongside USB, no mode switching.
@@ -1911,7 +1911,7 @@ carry the assembly and bench notes. The original brief, kept for reference:
 **(lead, relaying the user's decision, 2026-10-04):**
 the UI ribbon grows 14 -> 16 ways (15 = PWR_SW_UP, 16 = PWR_SW_DN; brenner's MR changes
 `harness.UI_RIBBON` and `ui_board`). Mine: (1) `pi_cap` J5 -> the 2x8 (HX PZ1.27-2x8P WZ,
-C22438114), the two new ways passed straight to the output board's cable, the Pi does not
+C22438114), the two new ways passed straight to the brain board's cable, the Pi does not
 read them -- START WHEN brenner's change is on main (pi_cap's assert fires until then, on
 purpose). (2) `output_panel`: a switch element on the 24 V inlet, ahead of everything
 including the Pi's supply, sized for the full supply current, driven by the switch state;
@@ -4178,7 +4178,7 @@ thing to look at in the bay.
      Per the orientation rule this is a RE-AUTHOR in the new orientation, not a rotate.
   3. **TAKE wire_link OFF USB.** The Pi<->motor_ctrl link is travel offsets at a low rate and
      could ride the GPIO header pi_cap already sits on -- one plug gone for no geometry. It
-     does NOT solve wire_usb, which is the output board's 20-channel USB audio.
+     does NOT solve wire_usb, which is the brain board's 20-channel USB audio.
 ⚠ 2 and 3 are not mine alone to pick: 2 touches the cradles and brenner's adapter, 3 is a
 control-architecture change. 1 is inside my scope.
 
@@ -4928,7 +4928,7 @@ of that volume at all.
 (motor_0 y -41.25, motor_1 -50.75, motor_2 -60.25, motor_3 -69.75, motor_4 -79.25) and the
 row only marches -Y as it goes +X. A 56 mm band at y -130..-74 misses every one of them at
 every X out to -404. The only solid obstruction in the band is board_screw_2 / board_insert_2
-(the output board's M4) at x -610..-597.80 -- dodged by starting at x > -597.80. Everything
+(the brain board's M4) at x -610..-597.80 -- dodged by starting at x > -597.80. Everything
 else there is cable, which re-routes by definition. **There is ~200 mm of X where I claimed
 21.8, and the Pi needs 85.**
 
@@ -5017,7 +5017,7 @@ re-derived, not just re-run.
      below; the -X/-Y leg's adapter reaches x -592.46 and memory says there is no chassis
      floor over a leg).
   2. Re-author `PI_FP`/`pi5()` in the WORLD frame -- flat is not a tray part any more, so it
-     stops going through `stand()` entirely, the way the output board already does.
+     stops going through `stand()` entirely, the way the brain board already does.
   3. `pi_cap` + `PI_HDR_*` + `pi_port_pt` on top of it.
   4. Cradle, screw, foot.
   5. wiring.py leads, then optical's `pi_column_x`/`usb_run_length`.

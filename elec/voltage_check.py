@@ -72,11 +72,11 @@ DEFAULT_ELEC = HERE
 OUT = os.path.join(HERE, "out", "volts")              # the report and the per-pin tables
 DECL = os.path.join(HERE, "volts")                    # what the generators load (tracked)
 LEG = ("leg_pogo_male_bottom", "leg_pogo_male_top", "leg_pogo_female_bottom", "leg_pogo_female_top")
-BOARDS = ("can_tee", "pi_cap", "motor_ctrl", "output_panel", "optical", "lever_sensor") + LEG + ("brain", "output_board",
+BOARDS = ("can_tee", "pi_cap", "motor_ctrl", "output_panel", "optical", "lever_sensor") + LEG + ("brain", "brain_board",
                                                                                                 "connector_board")
-ORDER = ("output_panel", "motor_ctrl", "pi_cap", "optical", "can_tee", "lever_sensor") + LEG + ("brain", "output_board",
+ORDER = ("output_panel", "motor_ctrl", "pi_cap", "optical", "can_tee", "lever_sensor") + LEG + ("brain", "brain_board",
                                                                                                 "connector_board")   # sources before sinks
-GNDS = ("GND", "PWR_GND", "AGND")    # AGND: the isolated audio domain's own 0 V (output_board)
+GNDS = ("GND", "PWR_GND", "AGND")    # AGND: the isolated audio domain's own 0 V (brain_board)
 EPS = 1e-6
 
 RAT = json.load(io.open(os.path.join(HERE, "voltage_ratings.json"), encoding="utf-8"))
@@ -274,7 +274,7 @@ SEEDS = {
 BRAIN_VIN = dict(v=21.0, vt=_D10["vbr_max"] + (_D10["vc"] - _D10["vbr_max"]) * min(1.0, 4.3 / _D10["ipp"]),
                  why="the chargers' USB PD contract, 20 V +5 %% (USB PD 3.x 7.1.8); transient = D1 (%s) at "
                      "a live-plug's 4.3 A, the inlet's figure on output_panel" % _D10["mpn"])
-# THE INSTRUMENT'S (R2) RAIL CLAMP IS ITS OWN (lead, 2026-11-14): brain D3 / output_board D203
+# THE INSTRUMENT'S (R2) RAIL CLAMP IS ITS OWN (lead, 2026-11-14): brain D3 / brain_board D203
 # went SMCJ24A -> SMCJ26A, whose 26 V stand-off sits nearer the 26.4 V steady figure. The R1
 # boards keep system.rail_tvs (the SMCJ24A they were built with). Same surge bound.
 R2_RAIL_TVS = PARTS[os.environ.get("R2_RAIL_TVS", "C310042")]
@@ -321,7 +321,7 @@ SEEDS["brain"] = {
     "PED_H": ("abs", CAN_B), "PED_L": ("abs", CAN_B),
     "LEV_H": ("abs", CAN_B), "LEV_L": ("abs", CAN_B),
     "FLASH_DP": SEEDS["motor_ctrl"]["FLASH_DP"], "FLASH_DM": SEEDS["motor_ctrl"]["FLASH_DM"],
-    **{n: ("abs", dict(v=3.6, vt=3.6, vf=5.25, why="USB 2.0 data to the output board over a C-to-C lead; "
+    **{n: ("abs", dict(v=3.6, vt=3.6, vf=5.25, why="USB 2.0 data to the brain board over a C-to-C lead; "
                                                     "FAULT = a cable's VBUS onto a data way"))
        for n in ("GADGET_DP", "GADGET_DM", "OB_LINK_DP", "OB_LINK_DM")},
     **{n: ("abs", dict(v=5.25, vt=5.5, why="the data-only link carries no VBUS; a standard cable's VBUS "
@@ -359,7 +359,7 @@ SEEDS["brain"] = {
        for n in ("PWR_SW_UP", "PWR_SW_DN")},
 }
 
-# ── THE OUTPUT BOARD, IN TWO HALVES (2026-11-13) ──────────────────────────────────────────
+# ── THE BRAIN BOARD, IN TWO HALVES (2026-11-13) ──────────────────────────────────────────
 # output_power: both PD sinks, the ideal diodes, VIN_BUS -> R112 -> the brain leads, the 5 V
 # buck. output_signal: the H743, the PHY, the audio chain; it takes V5_PRE from output_power
 # over J20 and sends +3V3D back. ORDER resolves output_power first, so output_signal reads
@@ -369,7 +369,7 @@ SEEDS["brain"] = {
 #
 # VBUS / VIN_BUS / VIN_BRAIN reuse BRAIN_VIN: they ARE the brain's VIN_BRAIN (the same net,
 # carried on J10 / J12), the same chargers' 20 V contract (+5 %, USB PD 3.x 7.1.8; EPR is not
-# enabled, output_board.py), and the clamp at every place on this path is the same SMF24A
+# enabled, brain_board.py), and the clamp at every place on this path is the same SMF24A
 # (D11 / D15 at the ports, D19 at the leads) taking the same live-plug current, so its
 # transient is the same figure.
 PD_VIN = dict(BRAIN_VIN, why="USB PD contract, 20 V +5 %% (USB PD 3.x 7.1.8; EPR not enabled); transient = "
@@ -457,7 +457,7 @@ SEEDS["output_signal"] = {
     **{n: ("abs", dict(v=3.6, vt=3.6, vf=5.25, why="USB 2.0 data, U4 to J4; FAULT = J4's VBUS (V5_PRE through "
                                                   "U15, 5.17 V steady max) onto a data way, as output_panel's PI_DP"))
        for n in ("OPT_DP", "OPT_DM")},
-    # the analog chain is output_panel's (R2), kept exactly by output_board.py: its levels with it
+    # the analog chain is output_panel's (R2), kept exactly by brain_board.py: its levels with it
     **{n: SEEDS["output_panel"][n] for n in (
         "AUDIO_PROC", "DAC_OUT_R", "DAC_FILT", "DAC_R_FILT", "DAC_ATT", "RING_ATT", "DIRECT_AC",
         "AUDIO_SEL", "RING_SEL", "OUT_BUF_IN", "RING_BUF_IN", "PICKUP_IN", "PICKUP_HOT", "ADC_IN",
@@ -466,7 +466,7 @@ SEEDS["output_signal"] = {
 }
 
 
-# ── THE OUTPUT BOARD AS ONE (user, 2026-11-13: "I want a single output board") ───────────
+# ── THE BRAIN BOARD AS ONE (user, 2026-11-13: "I want a single brain board") ───────────
 # The two halves' seeds, joined: what crossed J20 is local now, so every ("from",
 # "output_power", ...) on the signal half goes (its driver or pull-up is on this board and
 # resolves here), +3V3D is U21's own LDO again, and the optical board's USB (OPT_DP / OPT_DM,
@@ -477,7 +477,7 @@ _OPT_LANE = ("abs", dict(v=_V3D, vt=_V3D * 1.03, vf=5.25,
                          why="a 3.3 V logic lane on the ribbon J4 (the H743 at +3V3D, or the optical "
                              "board's converters at their 3.3 V IOVDD); FAULT = the ribbon's +5V_OPT "
                              "(V5_PRE through U15, 5.17 V steady max) onto it, a crushed IDC"))
-SEEDS["output_board"] = {
+SEEDS["brain_board"] = {
     **{k: v for k, v in SEEDS["output_power"].items() if k not in ("+3V3D",)},
     **{k: v for k, v in SEEDS["output_signal"].items()
        if not (v[0] == "from" and v[1] == "output_power") and k not in ("OPT_DP", "OPT_DM")},
@@ -626,7 +626,7 @@ ZENER_FEED = {"output_panel": {"D8": ("+24V_IN", ("R33", "R34"))},
               "brain": {"D8": ("VIN_BRAIN", ("R53", "R54")),
                         "D12": ("VIN_BRAIN", ("R50",))},
               # the port switches' gate clamps: VOUT through the pair into PWR_EN's pull-down,
-              # R71 / R76 the only resistance on that path (output_board, 2026-11-13)
+              # R71 / R76 the only resistance on that path (brain_board, 2026-11-13)
               "output_power": {"D20": ("PA_VOUT", ("R71",)), "D21": ("PA_VOUT", ("R71",)),
                                "D22": ("PB_VOUT", ("R76",)), "D23": ("PB_VOUT", ("R76",))}}
 
@@ -680,12 +680,12 @@ CURRENTS = {
 }
 
 
-# ── the output board's two halves: models, currents and notes ─────────────────────────────
+# ── the brain board's two halves: models, currents and notes ─────────────────────────────
 FET_VGS["output_power"] = {
     # The port switch. ON, its gate is PWR_EN behind 6k2, at most VCC + 4 V (DS46176 p.5) with
     # the source near VCC: a few volts. OFF, PWR_EN pulls the gate down while VOUT stays up (C84
     # holds it; Q6 / U18 stop it draining into VIN_BUS), so unclamped VGS would reach -VOUT, the
-    # whole 21 V contract (this check's FAIL of 2026-11-13). output_board now clamps it both ways
+    # whole 21 V contract (this check's FAIL of 2026-11-13). brain_board now clamps it both ways
     # with two BZT52C12T anti-series (D20/D21, D22/D23): |VGS| <= VZ max + one forward drop.
     **{q: ("fixed", PARTS["C507911"]["vz_max"] + 0.7,
            "gate-source clamped by two BZT52C12T anti-series (VZ max %.1f V + 0.7 V forward); OFF with VOUT "
@@ -751,21 +751,21 @@ _OUT_CODES = {
 }
 CODE_FALLBACK = {"output_power": _OUT_CODES, "output_signal": _OUT_CODES}
 
-# ── the output board as ONE (2026-11-13): the halves' tables joined, J20 gone ──────────────
-ZENER_FEED["output_board"] = dict(ZENER_FEED["output_power"])
-FET_VGS["output_board"] = dict(FET_VGS["output_power"])
-CAP_ACROSS["output_board"] = {**CAP_ACROSS["output_power"], **CAP_ACROSS["output_signal"]}
-RES_MODEL["output_board"] = {**RES_MODEL["output_power"], **RES_MODEL["output_signal"]}
-CURRENTS["output_board"] = (
+# ── the brain board as ONE (2026-11-13): the halves' tables joined, J20 gone ──────────────
+ZENER_FEED["brain_board"] = dict(ZENER_FEED["output_power"])
+FET_VGS["brain_board"] = dict(FET_VGS["output_power"])
+CAP_ACROSS["brain_board"] = {**CAP_ACROSS["output_power"], **CAP_ACROSS["output_signal"]}
+RES_MODEL["brain_board"] = {**RES_MODEL["output_power"], **RES_MODEL["output_signal"]}
+CURRENTS["brain_board"] = (
     [c for c in CURRENTS["output_power"] if c[0] != "J20" and c[0] != "L1"]
     + [c for c in CURRENTS["output_signal"] if c[0] != "J20"]
     + [("L1", None, 2.64, "the 5 V buck's output: every V5_PRE load at once (U15's 1.80 A limit + "
                           "U21's 0.58 A + 0.26 A analog)")])
-REVIEW_NOTES["output_board"] = {**REVIEW_NOTES["output_power"], **REVIEW_NOTES["output_signal"]}
-# ── the brain BUILT ONTO the output board (output_board.MERGED, 2026-11-13) ───────────────
+REVIEW_NOTES["brain_board"] = {**REVIEW_NOTES["output_power"], **REVIEW_NOTES["output_signal"]}
+# ── the brain BUILT ONTO the brain board (brain_board.MERGED, 2026-11-13) ───────────────
 # brain.py's parts are renumbered +200 there (U5 -> U205), its colliding net names get a B_
 # prefix, its +5V_AUX buck is gone (V5_PRE feeds it) and, with the CH32 folded into the H743,
-# its +3V3 LDO too (+3V3D). Its tables join the output board's through _rn, so a brain
+# its +3V3 LDO too (+3V3D). Its tables join the brain board's through _rn, so a brain
 # change shows up here without retyping.
 import re as _re
 
@@ -791,34 +791,34 @@ def _rn_seed(spec):
     return spec
 
 
-SEEDS["output_board"].update({k: _rn_seed(v) for k, v in SEEDS["brain"].items()
+SEEDS["brain_board"].update({k: _rn_seed(v) for k, v in SEEDS["brain"].items()
                               if k not in _BRAIN_GONE})
 for _n in ("J10_LOOP", "J12_LOOP", "J3_VBUS_NC", "J9_VBUS_NC",    # the leads and links: on-board now
            "LINK_BRAIN_PG", "LINK_PWR_BTN", "SW7", "+3V3"):    # BRAIN_PG gone; PWR_BTN its own; U7 / U8 gone
-    SEEDS["output_board"].pop(_n, None)
-PIN_SEEDS["output_board"] = [(r"^J20[12]$", pr, sp) for _r, pr, sp in PIN_SEEDS["brain"]]
+    SEEDS["brain_board"].pop(_n, None)
+PIN_SEEDS["brain_board"] = [(r"^J20[12]$", pr, sp) for _r, pr, sp in PIN_SEEDS["brain"]]
 for _T in (RES_MODEL, CAP_ACROSS, FET_VGS, ZENER_FEED):
-    _T["output_board"] = dict(_T.get("output_board", {}))
+    _T["brain_board"] = dict(_T.get("brain_board", {}))
     for _k, _v in _T.get("brain", {}).items():
         _v = tuple(_rn_fn(x) for x in _v)
         if _T is ZENER_FEED:
             _v = (_v[0], tuple(_rn(r) for r in _v[1]))
         elif _T is FET_VGS and _v[0] == "zener":
             _v = (_v[0], _rn(_v[1])) + _v[2:]
-        _T["output_board"][_rn(_k)] = _v
-CAP_ACROSS["output_board"].pop("C254", None)    # brain C54: U7's bootstrap, U7 is gone
-# no brain leads (J10 / J12) on the merged board; L1 carries every logic 5 V now -- output_board's
+        _T["brain_board"][_rn(_k)] = _v
+CAP_ACROSS["brain_board"].pop("C254", None)    # brain C54: U7's bootstrap, U7 is gone
+# no brain leads (J10 / J12) on the merged board; L1 carries every logic 5 V now -- brain_board's
 # U5 sum: optical 1.8 + H743 0.58 + isolated audio 0.3 + transceivers / arm switches ~0.45
-CURRENTS["output_board"] = ([c for c in CURRENTS["output_board"] if c[0] not in ("J10", "J12", "L1")]
+CURRENTS["brain_board"] = ([c for c in CURRENTS["brain_board"] if c[0] not in ("J10", "J12", "L1")]
                             + [("L1", None, 3.1, "the ONE logic 5 V buck's output, merged: optical "
                                 "1.8 A + the H743 0.58 + isolated audio 0.3 + the brain's 3.3 V / arm "
-                                "loads ~0.45 (output_board U5)")])
-# THE ISOLATED AUDIO DOMAIN (output_board._isolation, 2026-11-13): its rails were renamed
+                                "loads ~0.45 (brain_board U5)")])
+# THE ISOLATED AUDIO DOMAIN (brain_board._isolation, 2026-11-13): its rails were renamed
 # (+5V -> +5V_A, +3V3 -> +3V3_A) and now come from U30 (B0509S 5 -> 9 V) -> FB1 -> U31 (LP2985-50)
-for _k, _v in list(SEEDS["output_board"].items()):
+for _k, _v in list(SEEDS["brain_board"].items()):
     if _v[0] in ("like", "ratio") and _v[1] in ("+5V", "+3V3"):
-        SEEDS["output_board"][_k] = (_v[0], {"+5V": "+5V_A", "+3V3": "+3V3_A"}[_v[1]]) + tuple(_v[2:])
-SEEDS["output_board"].update({
+        SEEDS["brain_board"][_k] = (_v[0], {"+5V": "+5V_A", "+3V3": "+3V3_A"}[_v[1]]) + tuple(_v[2:])
+SEEDS["brain_board"].update({
     "ISO9_RAW": ("abs", dict(v=10.8, vt=11.5, why="U30 B0509S-1WR3, an UNREGULATED 9 V module: taken at "
                                                  "+20 % for light load (ASSUMED -- Mornsun's load-regulation "
                                                  "curve not read; open item with its pinout)")),
@@ -840,7 +840,7 @@ SEEDS["output_board"].update({
                                           "CMC: GND plus the choke's IR drop at 5 A; 1 V a "
                                           "ground-bounce bound (assumed)"))
        for n in ("PA_GND_J", "PB_GND_J")},
-    **{n: SEEDS["output_board"]["USBA_DP"] for n in ("USBA_DP_J", "USBA_DM_J", "USBB_DP_J", "USBB_DM_J")},
+    **{n: SEEDS["brain_board"]["USBA_DP"] for n in ("USBA_DP_J", "USBA_DM_J", "USBB_DP_J", "USBB_DM_J")},
     # bus B AT THE SWITCHES (lead, 2026-11-14): D219 / D220 (PESD2USB5UX) sit on U209 / U210's arm
     # pins, so an ESD hit reaches them as that clamp's residue, not the arms' ESD5B5.0 breakdown
     **{n: ("abs", dict(v=5.0, vt=5.0, why="bus B with D219 / D220 (PESD2USB5UX) at the switch pins: steady "
@@ -853,7 +853,7 @@ SEEDS["output_board"].update({
     "RELAY_COIL": ("like", "V5_PRE", 1.25, "coil turn-off: V5_PRE (the coil is on the charger side) plus "
                                            "D4's forward drop (1.25 V max)"),
 })
-# the audio domain's rails were renamed when it was isolated (output_board._isolation)
+# the audio domain's rails were renamed when it was isolated (brain_board._isolation)
 _ALIAS = {"+5V": "+5V_A", "+3V3": "+3V3_A"}
 
 
@@ -862,27 +862,27 @@ def _alias_fn(f):
 
 
 for _T in (RES_MODEL, CAP_ACROSS, FET_VGS):
-    _T["output_board"] = {k: tuple(_alias_fn(x) for x in v) for k, v in _T["output_board"].items()}
+    _T["brain_board"] = {k: tuple(_alias_fn(x) for x in v) for k, v in _T["brain_board"].items()}
 
 
 # ── THE CONNECTOR BOARD (lead, 2026-11-14): passive, everything it carries comes down the
-# ribbon from the output board (harness.CONN_RIBBON), so its nets are the output board's
+# ribbon from the brain board (harness.CONN_RIBBON), so its nets are the brain board's
 SEEDS["connector_board"] = {
-    "+24V": ("from", "output_board", "+24V_RIB", "the motors' 24 V, through the output board's F204"),
-    "+24V_LED": ("from", "output_board", "+24V_LED", "the lights' fused 24 V"),
-    "+5V_PED": ("from", "output_board", "+5V_BUSB_PED", "the pedal arm's 5 V, behind U206"),
-    "+5V_LEV": ("from", "output_board", "+5V_BUSB_LEV", "the lever arm's 5 V, behind U211"),
-    "CANA_H": ("from", "output_board", "CANA_H", "bus A"), "CANA_L": ("from", "output_board", "CANA_L", "bus A"),
+    "+24V": ("from", "brain_board", "+24V_RIB", "the motors' 24 V, through the brain board's F204"),
+    "+24V_LED": ("from", "brain_board", "+24V_LED", "the lights' fused 24 V"),
+    "+5V_PED": ("from", "brain_board", "+5V_BUSB_PED", "the pedal arm's 5 V, behind U206"),
+    "+5V_LEV": ("from", "brain_board", "+5V_BUSB_LEV", "the lever arm's 5 V, behind U211"),
+    "CANA_H": ("from", "brain_board", "CANA_H", "bus A"), "CANA_L": ("from", "brain_board", "CANA_L", "bus A"),
     # the arms' own ESD5B5.0 (D2-D5) sit here, at the connectors: their breakdown is this side's bound
     "PED_H": ("abs", CAN_B), "PED_L": ("abs", CAN_B), "LEV_H": ("abs", CAN_B), "LEV_L": ("abs", CAN_B),
-    **{n: ("from", "output_board", n, "a lighting SPI line, down the ribbon")
+    **{n: ("from", "brain_board", n, "a lighting SPI line, down the ribbon")
        for n in ("SCK", "SDT", "SCK_FOOT", "SDT_FOOT")},
 }
 CODE_FALLBACK["connector_board"] = {
-    # J1: PZ1.27-2x15P ZZ has no LCSC code yet: its stocked 2 x 8 sibling, as output_board's J240
+    # J1: PZ1.27-2x15P ZZ has no LCSC code yet: its stocked 2 x 8 sibling, as brain_board's J240
     ("PZ1.27-2x15P ZZ", "PinHeader_2x15_P1.27mm_Vertical_SMD"): "C22438123",
 }
-CODE_FALLBACK["output_board"] = {
+CODE_FALLBACK["brain_board"] = {
     # U5, merged: the 4 A LMR33640 in the 3 A part's RNX land, no LCSC code yet (open item).
     # Rated as the LMR33630 (C2071384): the same 1.0 V feedback reference and pin limits
     # (the same TI family sheet's absolute-maximum table) -- confirm when the code is picked
@@ -890,7 +890,7 @@ CODE_FALLBACK["output_board"] = {
     # J240, the connector ribbon (harness.CONN_RIBBON): no LCSC code yet; rated as its stocked
     # 2 x 8 sibling, the same HX PZ1.27 family and contacts (as J4 above)
     ("PZ1.27-2x15P ZZ", "PinHeader_2x15_P1.27mm_Vertical_SMD"): "C22438123",
-    # J4, the optical ribbon: PZ1.27-2x10P ZZ has no LCSC code yet (output_board open item);
+    # J4, the optical ribbon: PZ1.27-2x10P ZZ has no LCSC code yet (brain_board open item);
     # rated as its stocked 2 x 8 sibling, the same HX PZ1.27 family and contacts
     ("PZ1.27-2x10P ZZ", "PinHeader_2x10_P1.27mm_Vertical_SMD"): "C22438123",
 }

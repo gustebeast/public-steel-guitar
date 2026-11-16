@@ -1205,15 +1205,15 @@ lifting, so **seat the board before that panel goes on**. Sight down both faces 
 nothing on the board should touch a guide on the way in.
 
 **It comes to rest on a printed post under J3** (the 6-way white header, the 24 V link to
-the output board): the housing sits on the post's top. Its bottom edge then hangs 0.34 above
+the brain board): the housing sits on the post's top. Its bottom edge then hangs 0.34 above
 the underside, so J2/J6 can be squeezed from below. The post stands under the header only, so
 J3's lead can be plugged in before the board goes down or after. It holds with the legs on or
 off. (It used to rest on the -X/-Y leg's adapter; the 7.5 pulley standoff moved the
 board off it.)
 
-## Pickup lead into J8, output board R2: from -Y, over the board (2026-10-29)
+## Pickup lead into J8, brain board R2: from -Y, over the board (2026-10-29)
 
-On the R2 output board the pickup's screw terminal (J8) is **turned to face -Y**, into the
+On the R2 brain board the pickup's screw terminal (J8) is **turned to face -Y**, into the
 board. With the board down on the chassis floor, a +Y entry would sit inside string 10's
 belt-clamp travel. So:
 - Bring the pickup lead down beside J8 and over the top of its housing. Drop it in front of the
@@ -1229,7 +1229,7 @@ belt-clamp travel. So:
 
 The design shows the R2 boards only. Until they arrive, the R1 boards are a bench stop-gap:
 - **Pi cap:** the Pi sits loose at an angle.
-- **Output board:** it stays outside the instrument.
+- **Brain board:** it stays outside the instrument.
 - **Optical board:** it goes on the same two mount holes and lines up with the strings; its tail may spill over the edge.
 - **Motor board:** its J4 is a 4-way PH, so the Pi link is the crimped USB-A to PH lead (the R1
   table under the lead colours). Its J7 sits low: lights-lead ways 3 and 4 are under the floor's top,
@@ -1268,9 +1268,9 @@ keyhead can stay on.
 **Removal is the reverse:** slide the bridge endplate off +X (the pogos push B out a little), slide B
 out at +X, then A, letting the lead follow it back through the channel.
 
-## The output board goes in low, short of home, and slides +X under string 10's seat (2026-10-29)
+## The brain board goes in low, short of home, and slides +X under string 10's seat (2026-10-29)
 
-The output board (`output_panel`) lies on the chassis floor now: its cradle's plate rests on
+The brain board (`output_panel`) lies on the chassis floor now: its cradle's plate rests on
 the floor and the board stands only as high as its M4 insert's anchor needs (underside at
 z -62.85, the pins' cut ends 2.7 above the plate). Over it, the bridge endplate's screw rail
 runs on across string 10's bearing seat at the seat's own depth, so that seat is whole like
@@ -1307,7 +1307,7 @@ x10): the same outline, with a cradle for a Ø4 x 4 dowel where the steel plate'
 
 ## Optical leads: 24 V through the cable hole first, then the USB lead (2026-10-30)
 
-On the R2 optical board both leads reach the output board through one closed house-shaped hole
+On the R2 optical board both leads reach the brain board through one closed house-shaped hole
 in the bridge endplate, under the closed cable hole in the optical board. It is sized to pass
 one plug at a time, so the order matters:
 
@@ -1317,7 +1317,7 @@ one plug at a time, so the order matters:
 3. The USB-C plug at J1 needs the wider pocket at the top of the hole: it backs off -Y into it
    to come out of its socket. Leave the pocket clear.
 
-## Output board R2: the panel USB-C port works both ways (2026-10-30)
+## Brain board R2: the panel USB-C port works both ways (2026-10-30)
 
 The panel socket J1 is one port with two jobs. Plug a computer in and it reaches the Pi, as before.
 Plug a USB device in (an audio interface such as a Shure MVX2U) and the board powers it, up to
@@ -2126,13 +2126,13 @@ through the +Y side, so the M3 x 12 closes it onto the screw. Print it -X -> +X 
 bed, the bearing boss last); the M3 holes across it print as teardrops.
 The housing's guide-rod cap has a cone roof: a small hole at the boss's end is expected.
 
-## Output board: no leads to a brain board — it IS the brain (2026-11-13)
+## Brain board: no leads to a brain board — it IS the brain (2026-11-13)
 
-- **The output board carries the CM5 and the H743 itself**, so the brain board, its two XH power leads (J10, J12) and its PH logic lead (J11) no longer exist. Nothing to plug between them.
-- **Two ribbons leave the output board:**
+- **The brain board carries the CM5 and the H743 itself**, so the brain board, its two XH power leads (J10, J12) and its PH logic lead (J11) no longer exist. Nothing to plug between them.
+- **Two ribbons leave the brain board:**
   - **J240 → connector board J1**: one premade 30-way 1.27 mm (2 × 15) IDC ribbon. It carries the motors' 24 V, the lights' 24 V, bus A, both bus-B arms and the two clock / data pairs (SCK / SDT, SCK_FOOT / SDT_FOOT). Power rides on several parallel wires; pinout `CONN_RIBBON` in `elec/harness.py`.
   - **J4 → optical board**: the 20-way (2 × 10) ribbon for the pickup's converters.
-- Plug both ribbons with the power off. The ten motors, both bus-B arms and both LED drops plug into the **connector board**, not the output board.
+- Plug both ribbons with the power off. The ten motors, both bus-B arms and both LED drops plug into the **connector board**, not the brain board.
 
 ### Deck v2: the +X end, optical panel and swappable pickup slots (2026-11-14)
 From the +X endplate going -X (src/deck_v2_region.py):

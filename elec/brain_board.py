@@ -1,11 +1,11 @@
-"""Output board -- the direct-drive instrument's audio, optical processing and USB-C power. x1.
+"""Brain board -- the direct-drive instrument's audio, optical processing and USB-C power. x1.
 
-    py -3.12 elec/output_board.py       # -> elec/out/output_board.{net,board.json}
+    py -3.12 elec/brain_board.py       # -> elec/out/brain_board.{net,board.json}
 
 ⚠ NOT A BOARD TO ORDER ANY MORE (2026-11-13, the split). As one 68 x 100 board it did not
 route (ob10: 30 nets open after the full finish, 0.54 fill). It is now TWO boards stacked
 face to face in the same box -- output_power.py and output_signal.py -- and THIS FILE IS
-STILL THEIR CIRCUIT: output_split.py builds output_board() and keeps one half of it, with
+STILL THEIR CIRCUIT: output_split.py builds brain_board() and keeps one half of it, with
 a board-to-board connector on the nets that cross (harness.OUTPUT_LINK). Change the
 circuit here; change which half a part is on in output_split.py. Running this file alone
 still writes the whole netlist, which is useful for checks and nothing else.
@@ -63,8 +63,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# OUTPUT_BOARD_OUT points a trial layout/route at a COPY (never mid-run over elec/out)
-OUT_DIR = (os.environ.get("OUTPUT_BOARD_OUT")
+# BRAIN_BOARD_OUT points a trial layout/route at a COPY (never mid-run over elec/out)
+OUT_DIR = (os.environ.get("BRAIN_BOARD_OUT")
            or os.path.join(os.path.dirname(os.path.abspath(__file__)), "out"))
 os.makedirs(OUT_DIR, exist_ok=True)
 os.chdir(OUT_DIR)
@@ -99,7 +99,7 @@ TRS_FP = "Connector_Audio:Jack_6.35mm_Neutrik_NMJ6HCD2_Horizontal"
 # elec/footprints/Steel.pretty.
 DC_FP = "Steel:Kycon_KPJX-4S-S"
 XH_FP = "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"
-# SIDE ENTRY since the split (2026-11-13): the two output boards face each other ~15 mm
+# SIDE ENTRY since the split (2026-11-13): the two brain boards face each other ~15 mm
 # apart, so a vertical plug would point into the other board. Every internal lead now
 # enters from the -X edge, as the brain board's do (its S6B-XH-SM4-TB, the same part).
 XH6_FP = "Connector_JST:JST_XH_S6B-XH-SM4-TB_1x06-1MP_P2.50mm_Horizontal"
@@ -309,7 +309,7 @@ MCU_IO = {
 
 
 
-# THE OUTPUT BOARD IS THE BRAIN (user, 2026-11-13): brain.py's circuit is built onto this one
+# THE BRAIN BOARD IS THE BRAIN (user, 2026-11-13): brain.py's circuit is built onto this one
 # (its field connectors replaced by the connector-board ribbon). False = the two-board design.
 MERGED = True
 
@@ -524,7 +524,7 @@ def _move_audio_grounds(gnd, agnd):
     return audio, moved
 
 
-def output_board():
+def brain_board():
     # ⚠ ONE SIGNAL GROUND, PWR_GND SEPARATE, R60 THE STAR -- output_panel's rule, kept. The
     # power path (both USB-C inlets, the ideal diodes, VIN_BUS and J10) is PWR_GND: the
     # brain board's motor current returns through it to the chargers and never crosses GND. The buck U5 stands on GND as on R2, so its input current (<= ~1.3 A
@@ -1606,7 +1606,7 @@ def output_board():
     for k in ("BRAIN_EN", "LOW_PWR", "PWR_BTN", "BRAIN_PG"):
         link[k] = Net("LINK_" + k)
     if MERGED:
-        # THE BRAIN, BUILT ON THIS BOARD (user, 2026-11-13: "the output board becomes the brain
+        # THE BRAIN, BUILT ON THIS BOARD (user, 2026-11-13: "the brain board becomes the brain
         # board"). On PWR_GND -- the ground its leads landed on (J10/J12 ways 2/5), so the 24 V
         # boost's and the motors' return currents reach the chargers without crossing GND, and
         # the R60 star stays the one place the two meet. Its parts are renumbered +200 (U1 ->
@@ -1842,7 +1842,7 @@ def output_board():
 
 
 # ── the board ────────────────────────────────────────────────────────────────────────────
-# ONE BOARD (user, 2026-11-13: "I want a single output board"), 120.3 x 100, DROPPED IN AND
+# ONE BOARD (user, 2026-11-13: "I want a single brain board"), 120.3 x 100, DROPPED IN AND
 # SLID HOME (user, 2026-11-13: "slide in down -z and then over +x"). The board stands in the
 # instrument's X-Z plane, its back at y -87.5 (component face -85.9: branner moved it +1.7 so
 # UNCLIPPED 3.4 mm THT tails clear the -Y wall's inner face at -91.7 by 0.8) and its parts
@@ -1864,7 +1864,7 @@ def output_board():
 # The PANEL is the board's -X edge: J1, J2 (power + data in), J5 (the jack); J8 (the pickup's
 # screws) is on the TOP edge under the open deck; the internal leads (J3, J9 to the CM5,
 # J4 the optical ribbon, J10-J12 to the brain) come off the +X end. The parts inside the
-# endplate pocket: elec/output_board.pocket.json (what branner cuts the pocket from).
+# endplate pocket: elec/brain_board.pocket.json (what branner cuts the pocket from).
 # The mount (an M4, branner's pick at x > -124) is ON HOLD until he places it.
 BOARD_W, BOARD_L = 150.83, 100.0
 XC, ZC = -74.985, -58.24
@@ -1941,9 +1941,9 @@ BOARD_NOTES = {
         "AP33772SDKZ-13 vs -FA02: VSEL/GPIO only on FA02; this board uses neither",
         "J4 ribbon header PZ1.27-2x10P ZZ: find its LCSC code and stock (the 2x8 is C22438123); the optical board's end mirrors this pinout",
         "J4 ribbon: 12.288 MHz BCLK + five lanes over the ribbon -- keep it short (optical top panel to this board) and series-terminate the clock at its source (SAI1 SCK pin)",
-        "the +X endplate pocket (branner) is cut from elec/output_board.pocket.json: regenerate it whenever the parts within 19 mm of the panel edge move",
+        "the +X endplate pocket (branner) is cut from elec/brain_board.pocket.json: regenerate it whenever the parts within 19 mm of the panel edge move",
         "the mount: one M4 (branner) at x > -124, not yet placed -- reserve its keepout when it is",
-        "A16 voltage declarations: voltage_check has output_power / output_signal seeds; merge them into one output_board entry",
+        "A16 voltage declarations: voltage_check has output_power / output_signal seeds; merge them into one brain_board entry",
         "F204 (2920L200/60GR, 2 A hold / 4 A trip, approved 2026-11-14): measure the motors' sub-second step peaks on the first board (output-side INA226 or a scope) -- the hold was chosen on the ~0.4 A ten motors draw moving",
         "boost bulk counts (2 in, 5 out at 22uF/50V 2220) assume 50 % DC-bias retention at 24 V, 70 % at 20 V: PSA publishes no curve -- measure one part",
         "audio isolation: B0509S-1WR3 (YLPTEC) 11..111 mA: R60 (1k2) holds the 10 % minimum with the converters' clocks halted; measure the clock-halted audio-side draw on the first board (no maker publishes a MINIMUM for it)",
@@ -2031,7 +2031,7 @@ def _merged_quality(paths, q):
     # a safety barrier (B0509S 1.5 kV test, ISO774x 5 kV, as bought, not relied on)
     q["isolation"] = {"ground": "AGND", "barrier": ["U30", "U32", "U33", "U34", "K1"],
                       "moat_mm": MOAT, "why": "the isolated audio domain (user 2026-11-13: the "
-                      "hum fix, 'all three, bulletproof'); output_board._isolation"}
+                      "hum fix, 'all three, bulletproof'); brain_board._isolation"}
     # the USB-C grounds on the connector side of FL1 / FL2 (the CMCs): grounds, by another name
     q["ground_nets"] = sorted(set(q.get("ground_nets", ())) | {"PA_GND_J", "PB_GND_J"})
     unc["U33.7"] = "ISO7740 DBQ pin 7 is NC (TI SLLSEP4K Table 4-1; the ISO7741's EN1)"
@@ -2125,9 +2125,9 @@ def quality_notes(net_path):
 
 
 if __name__ == "__main__":
-    output_board()
+    brain_board()
     ERC()
-    net_path = os.path.join(OUT_DIR, "output_board.net")
+    net_path = os.path.join(OUT_DIR, "brain_board.net")
     generate_netlist(file_=net_path)
     if not MERGED:
         netcheck.grounds_meet(net_path)        # R60 joins GND and PWR_GND
@@ -2153,8 +2153,8 @@ if __name__ == "__main__":
         "U6": {"1": "VIN", "5": "VOUT"},
         "U210": {"10": "VCC"},
     }
-    import volts_decl                   # A16: generated by voltage_check.py --declare output_board
-    volts_decl.into(notes, "output_board")
-    with open(os.path.join(OUT_DIR, "output_board.board.json"), "w") as f:
+    import volts_decl                   # A16: generated by voltage_check.py --declare brain_board
+    volts_decl.into(notes, "brain_board")
+    with open(os.path.join(OUT_DIR, "brain_board.board.json"), "w") as f:
         json.dump(notes, f, indent=2)
-    print("output_board netlist written; %d open items" % len(BOARD_NOTES["open_items"]))
+    print("brain_board netlist written; %d open items" % len(BOARD_NOTES["open_items"]))
