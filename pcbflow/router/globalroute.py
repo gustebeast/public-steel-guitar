@@ -267,3 +267,20 @@ def routability(router, util=SCORE_UTIL, top=3):
     s = g.score()
     s["hot"] = [(round(o, 1), round(x, 1), round(y, 1), near) for o, x, y, _l, near in g.hotspots(top=top)]
     return s
+
+
+if __name__ == "__main__":
+    # py -3.12 -m router.globalroute <stem>... : one JSON line a board (routability + stem),
+    # from the pcbflow folder -- the placement score place_flow records under PCBFLOW_ROUTABILITY=1
+    import json
+    import sys
+    from .model import Model
+    from .negotiate import Router
+    for stem in sys.argv[1:]:
+        m = Model(stem)
+        r = Router(m)
+        r.log = lambda s: None
+        r.build_nets(pours=m.fills)
+        s = routability(r)
+        s["stem"] = stem
+        print(json.dumps(s), flush=True)

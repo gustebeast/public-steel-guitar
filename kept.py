@@ -59,7 +59,9 @@ WHAT A RESULT MAY BE: a cq.Workplane (any number of shapes, its plane kept), a c
 plain data (numbers, strings, None, bools), and tuples, lists and dicts of those, to any
 depth. The first build computes it, writes it, and hands back the result READ FROM THAT
 FILE -- the very one every later build gets -- so a build that computed and a build that
-read give the same model, to the byte.
+read give the same model, to the byte. A mesh-only part's LOOK (cadkit.mesh_parts, hung on a
+Workplane or Shape) travels with it, in key.mesh.pkl beside the BREP, and is part of the
+result's content name.
 
 CADKIT_KEPT=0 computes everything. CADKIT_KEPT_MAX_GB (default 20) caps the store; the
 least recently used results go first.
@@ -74,6 +76,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import pickle
 import os
 import pathlib
 import sys
@@ -568,17 +571,20 @@ def _deps_ok(deps) -> bool:
 
 
 # ── result <-> files ───────────────────────────────────────────────────────────────
-def _pack(x, shapes):
+_MESH = "_cadkit_mesh"                          # a mesh-only part's look (cadkit.mesh_parts)
+
+
+def _pack(x, shapes, meshes=None):
     if isinstance(x, _PLAIN) and not isinstance(x, (bytes, complex)):
         return x
     if isinstance(x, tuple):
-        return {"T": [_pack(v, shapes) for v in x]}
+        return {"T": [_pack(v, shapes, meshes) for v in x]}
     if isinstance(x, list):
-        return {"L": [_pack(v, shapes) for v in x]}
+        return {"L": [_pack(v, shapes, meshes) for v in x]}
     if isinstance(x, dict):
         if not all(isinstance(k, str) for k in x):
             raise _Unkeyable("a dict result with non-string keys")
-        return {"D": {k: _pack(v, shapes) for k, v in x.items()}}
+        return {"D": {k: _pack(v, shapes, meshes) for k, v in x.items()}}
     lazy = getattr(type(x), "__name__", "") == "_Lazy"
     if lazy:
         x = object.__getattribute__(x, "_lazy_get")()
@@ -590,37 +596,55 @@ def _pack(x, shapes):
             idx.append(len(shapes))
             shapes.append(o)
         p = x.plane
-        return {"W": idx, "P": [p.origin.toTuple(), p.xDir.toTuple(), p.zDir.toTuple()]}
+        out = {"W": idx, "P": [p.origin.toTuple(), p.xDir.toTuple(), p.zDir.toTuple()]}
+        return _pack_mesh(x, out, meshes)
     if isinstance(x, cq.Shape):
         shapes.append(x)
-        return {"S": len(shapes) - 1}
+        return _pack_mesh(x, {"S": len(shapes) - 1}, meshes)
     raise _Unkeyable("a %s result" % type(x).__name__)
 
 
-def _unpack(x, shapes, key, path="r"):
+def _pack_mesh(x, out, meshes):
+    """A hung mesh (cadkit.mesh_parts) travels beside the BREP, in key.mesh.pkl."""
+    m = getattr(x, _MESH, None)
+    if m is not None:
+        if meshes is None:
+            raise _Unkeyable("a mesh-only part where meshes are not kept")
+        out["M"] = len(meshes)
+        meshes.append(m)
+    return out
+
+
+def _unpack(x, shapes, key, path="r", meshes=()):
     if isinstance(x, dict):
         if "T" in x:
-            return tuple(_unpack(v, shapes, key, "%s.%d" % (path, i)) for i, v in enumerate(x["T"]))
+            return tuple(_unpack(v, shapes, key, "%s.%d" % (path, i), meshes)
+                         for i, v in enumerate(x["T"]))
         if "L" in x:
-            return [_unpack(v, shapes, key, "%s.%d" % (path, i)) for i, v in enumerate(x["L"])]
+            return [_unpack(v, shapes, key, "%s.%d" % (path, i), meshes)
+                    for i, v in enumerate(x["L"])]
         if "D" in x:
-            return {k: _unpack(v, shapes, key, path + "." + k) for k, v in x["D"].items()}
+            return {k: _unpack(v, shapes, key, path + "." + k, meshes) for k, v in x["D"].items()}
         if "W" in x:
             o, xd, zd = x["P"]
             w = cq.Workplane(cq.Plane(o, xd, zd))
             w.objects = [shapes[i] for i in x["W"]]
             setattr(w, _ATTR, key + ":" + path)
+            if "M" in x:
+                setattr(w, _MESH, meshes[x["M"]])
             return w
         if "S" in x:
             s = shapes[x["S"]]
             setattr(s, _ATTR, key + ":" + path)
+            if "M" in x:
+                setattr(s, _MESH, meshes[x["M"]])
             return s
     return x
 
 
 def _write(key, result, deps, seconds):
-    shapes = []
-    skel = _pack(result, shapes)                       # raises _Unkeyable
+    shapes, meshes = [], []
+    skel = _pack(result, shapes, meshes)               # raises _Unkeyable
     d = store() / key[:2]
     d.mkdir(parents=True, exist_ok=True)
     tmp = ".%d.%d.tmp" % (os.getpid(), threading.get_ident())
@@ -633,8 +657,15 @@ def _write(key, result, deps, seconds):
     # THE RESULT'S CONTENT NAME (early cutoff): its stored BREP, reals rounded as _shape_token
     # rounds them, so a recompute that comes out the same solid gets the same name
     content = hashlib.sha1(_quantised(_brep_bytes(comp))).hexdigest() if shapes else key
+    if meshes:
+        # the look is part of the result: a new thread or knurl is a new content name
+        blob = pickle.dumps(meshes, protocol=pickle.HIGHEST_PROTOCOL)
+        t = (d / (key + ".mesh.pkl")).with_suffix(tmp)
+        t.write_bytes(blob)
+        os.replace(t, d / (key + ".mesh.pkl"))
+        content = hashlib.sha1((content + hashlib.sha1(blob).hexdigest()).encode()).hexdigest()
     meta = {"skel": skel, "n": len(shapes), "deps": deps, "s": round(seconds, 2),
-            "t": time.time(), "c": content}
+            "t": time.time(), "c": content, "m": len(meshes)}
     t = (d / (key + ".json")).with_suffix(tmp)
     t.write_text(json.dumps(meta))
     os.replace(t, d / (key + ".json"))                 # the json last: it says "complete"
@@ -664,11 +695,24 @@ def _read(key):
                 it.Next()
         if len(shapes) != meta["n"]:
             return None
+    meshes = ()
+    if meta.get("m"):
+        try:
+            meshes = pickle.loads((d / (key + ".mesh.pkl")).read_bytes())
+        except Exception:
+            return None
+        if len(meshes) != meta["m"]:
+            return None
     try:
         os.utime(d / (key + ".json"))                  # recently used: pruned last
     except OSError:
         pass
-    return (_unpack(meta["skel"], shapes, "c" + meta.get("c", key)),)
+    return (_unpack(meta["skel"], shapes, "c" + meta.get("c", key), meshes=meshes),)
+
+
+def _siblings(f):
+    """A kept result's files: its json (first), its BREP, its meshes."""
+    return (f, f.with_suffix(".brep"), f.with_name(f.stem + ".mesh.pkl"))
 
 
 def _prune():
@@ -681,8 +725,7 @@ def _prune():
     for f in store().glob("*/*.json"):
         try:
             st = f.stat()
-            b = f.with_suffix(".brep")
-            size = st.st_size + (b.stat().st_size if b.exists() else 0)
+            size = st.st_size + sum(g.stat().st_size for g in _siblings(f)[1:] if g.exists())
         except OSError:
             continue
         files.append((st.st_mtime, f, size))
@@ -690,7 +733,7 @@ def _prune():
     if total <= cap:
         return
     for _t, f, size in sorted(files):
-        for g in (f, f.with_suffix(".brep")):
+        for g in _siblings(f):
             try:
                 g.unlink()
             except OSError:
