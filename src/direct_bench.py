@@ -490,6 +490,15 @@ LIP_T = 4.0                                         # 5 beads: the lip spans its
 LID_T = LIP_T                                       # the same, so both collars' bosses match
 RACE_OUT_D = 13.6                                   # lip and lid holes: on the outer race only
 RACE_IN_D = 10.4                                    # collar bosses: on the inner race only
+# THE BOSS (user, 2026-11-16: "very thin ... make it a smooth cylinder rather than threaded ... any
+# room to increase its OD"). Only its TIP has to be on the inner race (Ø10.4 inside the 688's 10.6
+# land, clear of the shields); the rest runs through the lip / lid hole (Ø13.6), so it is that hole
+# less SPIN_GAP a side, the tip SPIN_GAP long (the shields sit back of the race face). Its bore is
+# SMOOTH, clear of the screw's crests (prints ~8.2 on the Ø8 screw): the body's 11 of thread grip,
+# the boss only carries the race. Walls: 1.6 (two beads) along the hole, 0.8 at the tip.
+BOSS_D = RACE_OUT_D - 2 * SPIN_GAP                  # 12.0
+BOSS_TIP = SPIN_GAP                                 # Ø RACE_IN_D, on the race
+BOSS_BORE = 8.8                                     # drawn: the formed thread's crest groove + 0.2
 # THE TIES (2-D packing of every string against its neighbours, 2026-11-15): the ties pass collar
 # B, so they stand outside its swept circle, between the neighbours' collars. An M4 fits nowhere
 # (best -1.8 mm, every pair of angles); an M3 with one bead round its shank fits at 23 / 300 deg,
@@ -1210,8 +1219,12 @@ def _collar_local(boss_l: float = SPIN_GAP + LID_T, shaft: float = 0.0, body_l: 
     from .motor_coupler import FORM_MAJOR_C
     L, Lb = body_l, boss_l
     out = cyl_x(COLLAR_D, L, 0.0)
-    if Lb > 0:
+    if Lb > 0:                                    # the boss: Ø BOSS_D, its tip on the race
+        tip = min(BOSS_TIP, Lb)
+        assert (RACE_IN_D - BOSS_BORE) / 2 >= COLLAR_WALL - 1e-9 and FORM_MAJOR_C < BOSS_BORE, "the boss tip's wall"
         out = out.union(cyl_x(RACE_IN_D, Lb, L))
+        if Lb > tip:
+            out = out.union(cyl_x(BOSS_D, Lb - tip, L))
     if shaft > 0:
         out = out.union(cyl_x(CPL_D, shaft, -shaft))
         # the step out to the clamp body a 45 deg cone, not a shelf: the coupler prints standing on
@@ -1261,7 +1274,9 @@ def _collar_local(boss_l: float = SPIN_GAP + LID_T, shaft: float = 0.0, body_l: 
     # cutter runs along +Y in its own frame; turned onto +X here.
     if shaft > 0:                                                 # the motor's D, before the thread
         out = out.cut(_d_bore_local(shaft, grip))
-    th = _thread_socket(grip if shaft > 0 else -1.0, L + Lb + 1.0).rotate((0, 0, 0), (0, 0, 1), -90)
+    if Lb > 0:                                    # the boss's bore smooth (BOSS_BORE > the thread's major)
+        out = out.cut(cyl_x(BOSS_BORE, Lb + 1.0, L))
+    th = _thread_socket(grip if shaft > 0 else -1.0, L + 1.0).rotate((0, 0, 0), (0, 0, 1), -90)
     return out.cut(th, clean=False, tol=1e-3)   # fuzzy: no zero-area sliver where a crest meets an end face (Bambu read it as 5 open edges)
 
 
