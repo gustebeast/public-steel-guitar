@@ -68,6 +68,7 @@ import urllib.parse
 SRC = pathlib.Path(__file__).resolve().parents[1] / "desktop"
 PAGE = pathlib.Path(__file__).resolve().parent / "viewer" / "index.html"
 PORT = 8136
+PROBE_PORT = 18136     # a `desk --probe` run's door (desktop/src/door.rs): tests never touch the user's app
 NAME = "CadkitViewer.exe"
 
 

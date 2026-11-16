@@ -16,7 +16,10 @@
 //! (cadkit.web.view.show) says through the same door that a project has a new model.
 //!   --open <model folder>   that project's tab, in front      --data-root <dir>   the data folder
 //!   --page <file>           the viewer page from this file, for working on the page (it reloads on edit)
-//!   --probe                 answers /test/... through the door too (state, captures, input): for checks
+//!   --probe                 answers /test/... through the door too (state, captures, input): for checks.
+//!                           Its door is 127.0.0.1:18136, not the app's, so a test runs beside the user's
+//!                           window and never closes it (with its own --data-root, never their tabs)
+//!   --port <n>              the door on another port (else CADKIT_DESKTOP_PORT, else 8136, or 18136 for --probe)
 //! One content webview a tab, made when the tab is first shown and hidden while another is; ONE renderer.
 //! A tab that is left keeps its model ON THE CARD (the last few: KEEP_SCENES), so coming back to it is a
 //! picture at once; its page is then asked to say its whole state again.
@@ -207,6 +210,8 @@ struct Args {
     page: Option<PathBuf>,
     /// app: /test/... is answered through the door, and the window stays above others (for captures)
     probe: bool,
+    /// the door's port (--port), over CADKIT_DESKTOP_PORT and the default (door::port)
+    port: Option<u16>,
     selftest: bool,
     /// a test run (--selftest, --probe) nobody is to see: off every screen, no taskbar button, never brought
     /// forward (DESK_SHOW=1: seen). The window capture sees it all the same.
@@ -2040,7 +2045,7 @@ fn hand_over(args: &Args, port: u16) -> bool {
 fn main() {
     cap::attach_console();
     let mut a = std::env::args().skip(1);
-    let mut args = Args { url: None, open: None, data_root: None, page: None, probe: false, selftest: false, only: String::new(), out: PathBuf::from("out"), backend: None, dxc: None, state: None, data: None, recopy: None, unseen: false };
+    let mut args = Args { url: None, open: None, data_root: None, page: None, probe: false, port: None, selftest: false, only: String::new(), out: PathBuf::from("out"), backend: None, dxc: None, state: None, data: None, recopy: None, unseen: false };
     while let Some(x) = a.next() {
         match x.as_str() {
             "--selftest" => args.selftest = true,
@@ -2054,8 +2059,9 @@ fn main() {
             "--data-root" => args.data_root = a.next().map(PathBuf::from),
             "--page" => args.page = a.next().map(PathBuf::from),
             "--probe" => args.probe = true,
+            "--port" => args.port = a.next().and_then(|v| v.parse().ok()),
             "-h" | "--help" => {
-                eprintln!("usage: desk                    the app: [--open <model folder>] [--data-root <dir>] [--page <index.html>] [--probe]\n       desk <url> | --selftest[=parts] [url]     one page of a cadkit server (url defaults to http://127.0.0.1:8161/)\n       either: [--out <dir>] [--backend dx12|vulkan] [--dxc <dxcompiler.dll>] [--state <file>] [--data <dir>]");
+                eprintln!("usage: desk                    the app: [--open <model folder>] [--data-root <dir>] [--page <index.html>] [--probe] [--port <n>]\n       desk <url> | --selftest[=parts] [url]     one page of a cadkit server (url defaults to http://127.0.0.1:8161/)\n       either: [--out <dir>] [--backend dx12|vulkan] [--dxc <dxcompiler.dll>] [--state <file>] [--data <dir>]");
                 return;
             }
             _ if x.starts_with("--selftest=") => {
@@ -2070,7 +2076,7 @@ fn main() {
         args.url = Some("http://127.0.0.1:8161/".into());
     }
     let app = args.url.is_none();
-    let port = door::port();
+    let port = door::port(args.port, args.probe);
     if app {
         if hand_over(&args, port) {
             cap::end_process(0);

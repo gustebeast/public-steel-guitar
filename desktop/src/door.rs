@@ -10,10 +10,12 @@ use std::sync::mpsc;
 use std::time::Duration;
 
 pub const PORT: u16 = 8136;
+/// A --probe run's own door: a test never has to close, or stand in for, the user's app on PORT
+pub const PROBE_PORT: u16 = 18136;
 
-/// The port the door is on: CADKIT_DESKTOP_PORT, else 8136.
-pub fn port() -> u16 {
-    std::env::var("CADKIT_DESKTOP_PORT").ok().and_then(|v| v.parse().ok()).unwrap_or(PORT)
+/// The port the door is on: --port, else CADKIT_DESKTOP_PORT, else 8136 (8137 for a --probe run).
+pub fn port(arg: Option<u16>, probe: bool) -> u16 {
+    arg.or_else(|| std::env::var("CADKIT_DESKTOP_PORT").ok().and_then(|v| v.parse().ok())).unwrap_or(if probe { PROBE_PORT } else { PORT })
 }
 
 /// One request through the door: its path, and its query's pairs, decoded.
