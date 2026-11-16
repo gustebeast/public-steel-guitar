@@ -2024,6 +2024,20 @@ def _path_clear(board, a, z, net, layer, w, step_mm=0.1):
               if o.GetNetname() != net and (o.GetClass() == "PCB_VIA" or o.GetLayer() == layer)]
     pads = [pd for m in board.GetFootprints() for pd in m.Pads()
             if pd.GetNetname() != net and pd.IsOnLayer(layer)]
+    # ⚠ ONLY THE COPPER WITHIN REACH OF THE RUN (output_board mR0, 2026-11-15): every sample
+    # hit-tested every other track and pad on the board -- ~8500 SWIG calls a sample, ~120
+    # samples a run, 6 targets an item -- and a board with a dozen stranded GND pads that no
+    # clear path reached sat in here 80 min. A HitTest within `acc` lies inside the item's
+    # bounding box grown by `acc`, so dropping the items whose box misses the run's box
+    # grown by `acc` changes no answer.
+    x0, x1 = min(a.x, z.x) - acc, max(a.x, z.x) + acc
+    y0, y1 = min(a.y, z.y) - acc, max(a.y, z.y) + acc
+
+    def _near(o):
+        bb = o.GetBoundingBox()
+        return not (bb.GetRight() < x0 or bb.GetLeft() > x1 or bb.GetBottom() < y0 or bb.GetTop() > y1)
+    others = [o for o in others if _near(o)]
+    pads = [pd for pd in pads if _near(pd)]
     for i in range(n + 1):
         p = pcbnew.VECTOR2I(int(a.x + (z.x - a.x) * i / n),
                             int(a.y + (z.y - a.y) * i / n))
