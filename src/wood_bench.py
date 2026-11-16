@@ -7,10 +7,11 @@ yoke, keyplate, nut, collar, spring, sleeves, plug, guide rod, housing, collars 
 the coupler, the SERVO42D, the bend and bridge 688s on their axles, the keyhead's nut plate. What
 is new here is only what holds them up off a plank:
 
-    MOTOR BLOCK   the plank bench's in-line motor block (src.plank_bench.motor_block), REUSED AS
-                  PRINTED (user): turned 180 deg about Z so the motor faces +X. Its axis stands
-                  26.25 over the wood; that height sets the plank (Z_PLANK) for everything else.
-                  It replaces the instrument's motor plate (mplate).
+    MOTOR MOUNT   the instrument's motor plate (mplate) where the instrument has it, run down to
+                  the plank on a base with two buttresses (user, 2026-11-16: it matches the
+                  instrument, so the bench runs the real coupler). It replaced the plank bench's
+                  motor block, whose axis height (26.25 over the wood) still sets the plank
+                  (Z_PLANK) and whose tab edge the plank's edge line (Y_EDGE).
     ANCHOR        a printed stand-in for the stainless anchor tray (user: "a part to stand in as
                   the anchor"): the tray's 4 mm web at the tray's x, with string 6's holes (collar
                   B, the rod, the housing's two M4s), held by two 45 deg buttresses on its +X side
@@ -70,30 +71,68 @@ def _screw(x, y, up=UP):
     return PB._wood_screw(x, y, up, Z_PLANK)
 
 
-# ── THE MOTOR BLOCK: the plank bench's, turned 180 deg about Z onto string 6's axis ──────────
-def _turn(w):
-    """plank_bench's X-rig frame -> here: 180 deg about Z through its pulley plane on its axis,
-    that point onto string 6's pulley plane (XR) on string 6's axis."""
-    return (w.translate((-PB.INLINE_XP, -PB.SY, -PB.XR_ZA)).rotate((0, 0, 0), (0, 0, 1), 180)
-            .translate((XR, Y5, Z5)))
+# THE PLANK'S EDGE LINE: where the plank bench's motor block (the first motor mount here, its base
+# turned 180 deg about Z onto string 6) had its tab edge; the anchor, endplate and keyhead printed
+# to it, so it stays
+Y_EDGE = Y5 - (PB.Y_EDGE - PB.SY)                # -28.35
 
 
-Y_EDGE = Y5 - (PB.Y_EDGE - PB.SY)                # -28.35: the block's tab edge, turned to -Y
+# ── THE MOTOR MOUNT: THE INSTRUMENT'S PLATE, STANDING ON THE PLANK (user, 2026-11-16: "make a new
+# one that matches the instrument" ... "I want to use the real coupler") ─────────────────────────
+# It replaces the plank bench's motor block, whose 8 mm face wall stood 4 nearer the coupler than
+# the instrument's 4 mm plate, so the bench needed a coupler of its own. This is direct_bench's
+# mplate where the instrument has it -- PLATE_T thick on the motor's face, its pilot and four M3
+# holes -- run down to the plank, on a base, held square by a buttress each side OUTSIDE the
+# motor's square (inside it the face screws' heads and the coupler's swept Ø24.8 need the room).
+# The -Y buttress is what fits between the square and the plank's edge line (Y_EDGE).
+MM_X0 = XR - DB.M_FACE                           # the plate's -X face, on the motor's faceplate
+MM_X1 = MM_X0 + DB.PLATE_T
+MM_SQ = D.MOTOR_SQ
+MM_Y = (Y_EDGE, Y5 + MM_SQ / 2 + 6 * D.BEAD)    # out to the +Y buttress (4.8)
+MM_TOP = Z5 + MM_SQ / 2                          # the plate's top, as the instrument's
+MM_BUT_TOP = Z5 + 8.0                            # the buttresses' top: over the axis
+MM_FOOT = MM_X1 + (MM_BUT_TOP - ZB)              # their 45 deg foot
+MM_UP = (0.0, 0.0, 1.0)                          # prints base down
+MM_M3_L = 8.0                                    # M3 x 8: the plate's 4, 4 into the faceplate
+MM_SCREWS = [(MM_X0 - TAB, Y_EDGE + TAB), (MM_X0 - TAB, MM_Y[1] - TAB),
+             (MM_FOOT + TAB, Y_EDGE + TAB), (MM_FOOT + TAB, MM_Y[1] - TAB)]
 
 
-def motor_block() -> cq.Workplane:
-    return _turn(PB.motor_block())
+def motor_mount() -> cq.Workplane:
+    """The plate (x MM_X0..MM_X1, y over the plank's edge line to past the square, z plank to the
+    square's top), its two buttresses +X of it, the base with four wood screws. Holes as the
+    instrument's plate's, sideways here: teardrops peaked +Z."""
+    from cadkit.holes import teardrop_hole
+    w = _box(MM_X0, MM_X1, MM_Y[0], MM_Y[1], Z_PLANK, MM_TOP)
+    for y0, y1 in ((MM_Y[0], Y5 - MM_SQ / 2), (Y5 + MM_SQ / 2, MM_Y[1])):
+        assert y1 - y0 >= 3 * D.BEAD - 1e-6, (y0, y1, "a buttress under three beads")
+        tri = (cq.Workplane("XZ", origin=(0, y1, 0))
+               .polyline([(MM_X1 - 0.01, ZB - 0.01), (MM_X1 - 0.01, MM_BUT_TOP), (MM_FOOT, ZB - 0.01)])
+               .close().extrude(y1 - y0))
+        w = w.union(tri)
+    w = w.union(_box(MM_X0 - 2 * TAB, MM_FOOT + 2 * TAB, MM_Y[0], MM_Y[1], Z_PLANK, ZB))   # the base
+
+    def hole(d, y, z, fit=False):
+        return teardrop_hole(d, DB.PLATE_T + 2.0, axis_point=(MM_X0 - 1.0, y, z), axis_dir=(1, 0, 0),
+                             print_up=MM_UP, fit=fit)
+    w = w.cut(hole(D.NEMA17_PILOT_D + 0.6, Y5, Z5, fit=True))
+    for sy in (1, -1):
+        for sz in (1, -1):
+            w = w.cut(hole(3.4, Y5 + sy * DB.NEMA17_HOLES / 2, Z5 + sz * DB.NEMA17_HOLES / 2))
+    for x, y in MM_SCREWS:
+        w = w.cut(_screw(x, y, MM_UP))
+    return w
 
 
 def _motor_m3s() -> list:
+    """The four M3 x 8 SHCS, heads on the plate's +X face, into the motor's faceplate."""
     from . import motor_coupler as MC
-    w0 = PB.INLINE_FACE - PB.INLINE_WALL_T
     out = []
     for sy in (1, -1):
         for sz in (1, -1):
-            out.append((f"wb_face_m3_{(sy + 1) // 2}{(sz + 1) // 2}", _turn(MC.cap_screw(
-                "m3", MC.M3_L, (w0 - 3.0, PB.SY + sy * PB.INLINE_HOLES / 2,
-                                PB.XR_ZA + sz * PB.INLINE_HOLES / 2), (1, 0, 0)))))
+            out.append((f"wb_face_m3_{(sy + 1) // 2}{(sz + 1) // 2}", MC.cap_screw(
+                "m3", MM_M3_L, (MM_X1 + MC.M3_HEAD[1], Y5 + sy * DB.NEMA17_HOLES / 2,
+                                Z5 + sz * DB.NEMA17_HOLES / 2), (-1, 0, 0))))
     return out
 
 
@@ -295,19 +334,7 @@ def tie_spacers() -> cq.Workplane:
 # THE KEYHOLE PLATE: the instrument's 4 mm plate (direct_bench.keyhole_plate), printed in PETG-GF
 # until the steel one is cut. The ball bears on ~4 mm^2 either side of the slit: ~40 MPa under the
 # string's 147 N, near what PETG-GF takes -- watch it for creep into the slit.
-# THE COUPLER: laid out for THIS mount (direct_bench.cpl_layout): the plank block's face wall
-# ends at motor-frame y +0.5 where the instrument's plate ends at -3.5, so the body starts later and
-# the screw sits a little past the middle
-WB_FACE_Y = PB.INLINE_XP - (PB.INLINE_FACE - PB.INLINE_WALL_T)   # 0.5
-
-
 def _swap(nm: str, w):
-    if nm == f"coupler_{I}":
-        return nm, DB._coupler(I, WB_FACE_Y)
-    if nm == f"cpl_m3_{I}":
-        return nm, DB._coupler_clamp(I, "m3", WB_FACE_Y)
-    if nm == f"cpl_insert_{I}":
-        return nm, DB._coupler_clamp(I, "insert", WB_FACE_Y)
     if nm.startswith("tie_spacer"):
         return "wb_tie_spacer", kept(tie_spacers)
     if nm.startswith("keyplate"):
@@ -323,7 +350,7 @@ def assembly(t: float = DB.T_OPEN) -> list:
     out += [(nm, w.translate((0.0, 0.0, KH_DROP)) if nm.startswith("bridge_brg") else w)
             for nm, w in DB._bend_parts() if nm.endswith(f"_{I}")]
     out += ep_axles()
-    out += [("wb_motor_block", kept(motor_block)), ("wb_anchor", kept(anchor)),
+    out += [("wb_motor_mount", kept(motor_mount)), ("wb_anchor", kept(anchor)),
             ("wb_endplate", kept(endplate)), ("wb_keyhead", kept(keyhead))]
     out += _motor_m3s() + keyhead_hardware()
     x0 = D.NUT_BLOCK_X - 60.0
@@ -332,7 +359,7 @@ def assembly(t: float = DB.T_OPEN) -> list:
     return [(nm, _made(nm, w)) for nm, w in out]
 
 
-MATERIAL = {"wb_motor_block": "petg-gf", "wb_anchor": "petg-gf", "wb_endplate": "petg-gf",
+MATERIAL = {"wb_motor_mount": "petg-gf", "wb_anchor": "petg-gf", "wb_endplate": "petg-gf",
             "wb_tie_spacer": "petg-gf", "wb_keyplate": "petg-gf",
             "wb_keyhead": "petg-gf", "wb_wrap_rod": "steel", "ghost_plank": "wood",
             "wb_string": "polished", "wb_nut_plate": "stainless", "wb_nut_side_insert": "brass",
@@ -354,15 +381,14 @@ def _made(nm, w):
     return made_of(w, m) if m else w
 
 
-PRINTS = ("wb_anchor", "wb_endplate", "wb_keyhead", "wb_nut_shoe", "wb_tie_spacer", "wb_keyplate")       # the motor block is already printed
+PRINTS = ("wb_motor_mount", "wb_anchor", "wb_endplate", "wb_keyhead", "wb_nut_shoe", "wb_tie_spacer",
+          "wb_keyplate")
 
 
 def main():
     out = pathlib.Path(__file__).resolve().parents[1] / "coupons"
     for nm, w in assembly():
-        if nm == f"coupler_{I}":                 # the bench's own layout (WB_FACE_Y), not petg-gf/coupler.step
-            nm = "wb_coupler"
-        if nm in PRINTS or nm == "wb_coupler":
+        if nm in PRINTS:
             cq.exporters.export(w, str(out / f"{nm}.step"))
             print("wrote", out / f"{nm}.step")
 
