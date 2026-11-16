@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import json
 import math
 import os
 import pathlib
@@ -1032,6 +1033,48 @@ def _natural(k: str):
     return [int(t) if t.isdigit() else t for t in re.split(r"(\d+)", k)]
 
 
+# ── A STEP IS WRITTEN ONLY WHEN WHAT IS IN IT CHANGED (user, 2026-11-16: "changing parts should
+# automatically use cached data as much as possible") ─────────────────────────────────────────
+# Each file's key: the content names of the bodies in it (cadkit.kept tags every result with its
+# content's sha1; anything else is hashed from its BREP), their names, and the print pose. The
+# file is skipped when it exists and its key is the one it was written with (.step_keys.json).
+_STEP_KEYS_FILE = OUT / ".step_keys.json"
+_STEP_KEYS: dict = {}
+_STEP_KEY_V = 1
+
+
+def _content_token(o) -> str:
+    from cadkit.kept import _shape_token
+    tag = getattr(o, "_cadkit_kept", None)
+    if tag:
+        return "kept:" + tag
+    shapes = o.vals() if hasattr(o, "vals") else [o]
+    return "|".join(_shape_token(x) if isinstance(x, cq.Shape) else repr(x) for x in shapes)
+
+
+def _write_print(dest: pathlib.Path, bodies, orientation) -> bool:
+    """export_print / export_print_parts of [(name, obj)] to `dest`, unless it is already that.
+    True if it was written."""
+    import hashlib
+    if not _STEP_KEYS and _STEP_KEYS_FILE.exists():
+        try:
+            _STEP_KEYS.update(json.loads(_STEP_KEYS_FILE.read_text(encoding="utf-8")))
+        except ValueError:
+            pass
+    rel = dest.resolve().relative_to(OUT.resolve()).as_posix()
+    key = hashlib.sha1(json.dumps([_STEP_KEY_V, [(n, _content_token(o)) for n, o in bodies],
+                                   repr(orientation.rot)]).encode()).hexdigest()
+    if dest.exists() and _STEP_KEYS.get(rel) == key:
+        return False
+    if len(bodies) == 1:
+        export_print(bodies[0][1], orientation, str(dest))
+    else:
+        export_print_parts(bodies, orientation, str(dest))
+    _STEP_KEYS[rel] = key
+    _STEP_KEYS_FILE.write_text(json.dumps(_STEP_KEYS, indent=0, sort_keys=True), encoding="utf-8")
+    return True
+
+
 def _export_family(leader):
     """Every member of `leader`'s family built (kept: cached), grouped by shape, ONE STEP per
     distinct shape. One shape: `stem.step`. Several: the most common (if one is) keeps `stem`,
@@ -1060,7 +1103,7 @@ def _export_family(leader):
         fn = stem if g is main else stem + "_" + "_".join(f"s{k}" for k in nos)
         rep_ = ms[0]
         t = time.perf_counter()
-        export_print(built[rep_][0], PRINT_ORIENTATION[rep_], str(d / f"{fn}.step"))
+        wrote = _write_print(d / f"{fn}.step", [(rep_, built[rep_][0])], PRINT_ORIENTATION[rep_])
         export_s = time.perf_counter() - t
         _stage_add("printed parts: STEP export", export_s)
         names = sorted({n.rsplit("_", 1)[0] for n in ms})
@@ -1073,7 +1116,7 @@ def _export_family(leader):
             record_part(n, build_s, export_s if n == rep_ else 0.0,
                         wp.val() if hasattr(wp, "val") else wp, material=mat)
             _stage_add("printed parts: build", build_s)
-        print(f"Wrote {mat}/{fn}.step  x{len(ms)}  ({by})")
+        print(f"{'Wrote' if wrote else 'Unchanged'} {mat}/{fn}.step  x{len(ms)}  ({by})")
     olds = {f"{stem}.step"} | {p.name for p in d.glob(f"{stem}_s*.step")} \
         | {f"{n.rsplit('_', 1)[0]}.step" for n in members}
     gone = [f"{mat}/{f}" for f in sorted(olds) if f not in written and (d / f).exists()]
@@ -1099,10 +1142,7 @@ def _export(name):
     for n in bodies:
         t = time.perf_counter(); wp = PARTS[n][0](); built[n] = (wp, time.perf_counter() - t)
     t = time.perf_counter()
-    if len(bodies) == 1:
-        export_print(built[name][0], PRINT_ORIENTATION[name], str(dest))
-    else:
-        export_print_parts([(n, built[n][0]) for n in bodies], PRINT_ORIENTATION[name], str(dest))
+    wrote = _write_print(dest, [(n, built[n][0]) for n in bodies], PRINT_ORIENTATION[name])
     export_s = time.perf_counter() - t
     for n in bodies[1:]:
         (OUT / FILAMENT_OF[n] / f"{n}.step").unlink(missing_ok=True)   # its own file, from before
@@ -1113,7 +1153,7 @@ def _export(name):
                     material=FILAMENT_OF.get(n) or _material_of(path))   # ~free profiling + volume hook
         _stage_add("printed parts: build", build_s)
     _stage_add("printed parts: STEP export", export_s)
-    print(f"Wrote {path}" + (f"  ({' + '.join(bodies)})" if len(bodies) > 1 else "")
+    print(f"{'Wrote' if wrote else 'Unchanged'} {path}" + (f"  ({' + '.join(bodies)})" if len(bodies) > 1 else "")
           + (f"  ({note})" if note else ""))
 
 
@@ -3432,6 +3472,21 @@ for _n, (_b, _path, _note) in PARTS.items():
             None, "as modelled -- a direct-bench part with no declared print yet. UNSTUDIED. "
                   "The part note says: " + " ".join((_note or "").split())[:300], confirmed=False)
 require_declared(set(PARTS), PRINT_ORIENTATION)
+
+
+def _once(builder):
+    """`builder`, built at most once a process: the export builds every part, and the world-pose
+    gate wants the same solids (it re-read every kept part, 2026-11-16)."""
+    box = []
+
+    def built():
+        if not box:
+            box.append(builder())
+        return box[0]
+    return built
+
+
+PARTS.update({_k: (_once(_b), _p, _nt) for _k, (_b, _p, _nt) in PARTS.items()})
 
 
 _T_MAIN = time.perf_counter()           # everything above has been imported and built

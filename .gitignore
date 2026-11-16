@@ -18,7 +18,9 @@ fast_build_map.json
 scratch.step
 elec/out/
 .overlap-cache.json
+.step_keys.json
 .helix-proxy-cache.json
+.sweep-cache.json
 skidl_REPL.*
 *.rpt
 .carriage-travel-cache.json

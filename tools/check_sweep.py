@@ -82,6 +82,15 @@ SWEPT_OK = {
 
 MIN_REPORT = 0.5    # mm^3 — below this it is a shared face, not an interference
 
+# THE CACHE (2026-11-16, user: "changing parts should automatically use cached data as much as
+# possible"): each envelope's bands by the part's exact geometry (cadkit.overlap_check's BRep
+# fingerprint) and its axis, and each envelope-vs-component volume by the envelope's numbers and
+# the component's fingerprint. A part that did not change is not sliced again, and a pair neither
+# of whose sides changed is not booleaned again. Newest kept, capped.
+import pathlib as _pl
+CACHE = str(_pl.Path(__file__).resolve().parents[1] / ".sweep-cache.json")
+CACHE_MAX = 50_000
+
 
 def _base(name: str) -> str:
     head = name.rsplit("_", 1)
@@ -102,6 +111,10 @@ def _slab(bb, zc, eps):
 
 
 def envelope(shape, ax, ay, eps=1e-3):
+    return _from_bands(_bands(shape, ax, ay, eps), ax, ay, eps)
+
+
+def _bands(shape, ax, ay, eps=1e-3):
     """The shape's swept envelope about (ax, ay): a stack of cylinders, one per Z
     band between consecutive vertex heights, each at the max radius of the vertices
     bounding that band.
@@ -142,6 +155,11 @@ def envelope(shape, ax, ay, eps=1e-3):
             bands += [(zs[k], zs[k + 1], max(ends[k], ends[k + 1])) for k in range(n)]
         else:
             bands.append((z0, z1, max(rs)))
+    return bands
+
+
+def _from_bands(bands, ax, ay, eps=1e-3):
+    """The envelope solid (and its largest radius) from its (z0, z1, r) bands about (ax, ay)."""
     env, rmax = None, 0.0
     for z0, z1, r in bands:
         if r <= eps:
@@ -174,6 +192,34 @@ def gate(comps) -> int:
     """
     # ONE envelope per part, not per copy: ten leadscrews are one threaded solid, and its
     # envelope is ~10 s of slicing (a thread has a vertex height every half pitch).
+    import hashlib
+    import json
+    import os
+    from cadkit.overlap_check import _canonical, fingerprint
+    try:
+        with open(CACHE, encoding="utf-8") as fh:
+            cache = json.load(fh)
+        assert cache.get("v") == 1
+    except (OSError, ValueError, AssertionError):
+        cache = {"v": 1, "env": {}, "pairs": {}}
+    used_env, used_pairs = {}, {}
+    _canonical([sh for _n, sh in comps])
+    # every fingerprint BEFORE any boolean (the envelopes' slicing included): OCCT mutates a
+    # boolean's operands (overlap_check), and a shape fingerprinted after one keys differently
+    # from a run that read its envelope from the cache
+    fps = {j: fingerprint(shape) for j, (_o, shape) in enumerate(comps)}
+    fp_of = {id(shape): fps[j] for j, (_o, shape) in enumerate(comps)}
+
+    def env_of(shape, ax, ay):
+        """(env, r, bands) about (ax, ay): the bands from the cache if this exact solid's are."""
+        k = fp_of.get(id(shape)) or fingerprint(shape)
+        k += "@%.6f,%.6f" % (ax, ay)
+        b = cache["env"].get(k)
+        if b is None:
+            b = [list(x) for x in _bands(shape, ax, ay)]
+        used_env[k] = b
+        return _from_bands(b, ax, ay) + (b,)
+
     spun, made = [], {}
     for name, shape in comps:
         base, i = _base(name), _index(name)
@@ -188,23 +234,25 @@ def gate(comps) -> int:
             zmin = turned.BoundingBox().zmin
             key = ("x", base) + _same_part(turned, ax, ay)
             if key not in made:
-                made[key] = envelope(turned, ax, ay) + (ax, ay, zmin)
-            env, r, ax0, ay0, zm0 = made[key]
+                made[key] = env_of(turned, ax, ay) + (ax, ay, zmin)
+            env, r, bands, ax0, ay0, zm0 = made[key]
             if env is not None:
                 if (ax, ay, zmin) != (ax0, ay0, zm0):
                     env = env.moved(cq.Location(cq.Vector(ax - ax0, ay - ay0, zmin - zm0)))
                 env = env.rotate(o, ey, 90)
-            spun.append((name, base, env, r))
+            eid = hashlib.sha1(json.dumps(["x", bands, ax0, ay0, zm0, ax, ay, zmin]).encode()).hexdigest()
+            spun.append((name, base, env, r, eid))
         elif base in ROTATING and i is not None:
             ax, ay = ROTATING[base](i)
             zmin = shape.BoundingBox().zmin
             key = (base,) + _same_part(shape, ax, ay)
             if key not in made:
-                made[key] = envelope(shape, ax, ay) + (ax, ay, zmin)
-            env, r, ax0, ay0, z0 = made[key]
+                made[key] = env_of(shape, ax, ay) + (ax, ay, zmin)
+            env, r, bands, ax0, ay0, z0 = made[key]
             if env is not None and (ax, ay, zmin) != (ax0, ay0, z0):
                 env = env.moved(cq.Location(cq.Vector(ax - ax0, ay - ay0, zmin - z0)))
-            spun.append((name, base, env, r))
+            eid = hashlib.sha1(json.dumps(["z", bands, ax0, ay0, z0, ax, ay, zmin]).encode()).hexdigest()
+            spun.append((name, base, env, r, eid))
 
     if not spun:
         print("check_sweep: nothing registered as rotating — see ROTATING")
@@ -217,9 +265,11 @@ def gate(comps) -> int:
     boxes = [shape.BoundingBox() for _other, shape in comps]
     ok = {tuple(sorted(p)) for p in SWEPT_OK}
     hits = []
-    for name, base, env, r in spun:
+    for name, base, env, r, eid in spun:
+        if env is None:
+            continue
         ebb = env.BoundingBox()
-        for (other, shape), obb in zip(comps, boxes):
+        for j, ((other, shape), obb) in enumerate(zip(comps, boxes)):
             if other == name:
                 continue
             obase = _base(other)
@@ -231,13 +281,32 @@ def gate(comps) -> int:
                     or obb.ymin > ebb.ymax or obb.ymax < ebb.ymin
                     or obb.zmin > ebb.zmax or obb.zmax < ebb.zmin):
                 continue
-            try:
-                v = env.intersect(shape).Volume()
-            except Exception:
-                continue
+            pk = eid + ":" + fps[j]
+            v = cache["pairs"].get(pk)
+            if v is None:
+                try:
+                    v = env.intersect(shape).Volume()
+                except Exception:
+                    continue
+            used_pairs[pk] = v
             if v > MIN_REPORT:
                 hits.append((v, name, r, other))
 
+    n_env, n_pair = (sum(k not in cache["env"] for k in used_env),
+                     sum(k not in cache["pairs"] for k in used_pairs))
+    print(f"check_sweep: {len(used_env) - n_env} of {len(used_env)} envelopes and "
+          f"{len(used_pairs) - n_pair} of {len(used_pairs)} pairs from the cache")
+    if n_env or n_pair:
+        for sect, used in (("env", used_env), ("pairs", used_pairs)):
+            merged = {k: v for k, v in cache[sect].items() if k not in used}
+            merged.update(used)
+            cache[sect] = dict(list(merged.items())[-CACHE_MAX:])
+        try:
+            with open(CACHE + ".tmp", "w", encoding="utf-8") as fh:
+                json.dump(cache, fh)
+            os.replace(CACHE + ".tmp", CACHE)
+        except OSError as e:                          # a cache never fails a gate
+            print(f"  (sweep cache not written: {e})")
     if not hits:
         print("clean: every rotating part clears everything through a full turn.")
         return 0
