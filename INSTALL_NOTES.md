@@ -2210,10 +2210,9 @@ The boss that runs from the collar to the 688's inner race is no longer threaded
 - The coupler on strings 2 and 8, which is also collar A, has the same boss.
 - The thread is cut with a 0.001 mm merge tolerance, so the STEP has no near-zero sliver face (Bambu had read one as 5 open edges).
 
-## Wood bench: the R1 optical board on a printed stand (2026-11-16)
+## Wood bench: the R1 optical board on the endplate (2026-11-16)
 
-The optical board as ordered (R1) sits under string 6, **turned 180 degrees** from its instrument orientation: its sensor row is on its +X edge, toward the bridge, and the whole board lies on the keyhead side of the bridge bearing. The bearing's slots in the board go unused.
-- **Channel D6** (and its photodiodes PD6A/B) is under string 6, 20 mm before the bridge axle, as on the instrument. The board's top is 2.2 under the string; nothing on the board along the string's line is taller than 1.1, so the string clears everything by at least 1.1.
-- **Stand** (`coupons/wb_opt_stand.step`, PETG-GF, prints base down): a base with three wood screws into the plank and two 11 x 11 struts at 45 degrees, both on the +Y side of the drive. One strut ends in a flat pad under the board's -X half; the other in a head under the board's Ø4.4 mounting hole (the one over the plank).
-- **Hardware**: one **M4 x 10 button head** (2.5 mm key) through the board into one **M4 fitted insert**, heat-set into the strut's head (round pocket Ø6.1). The board rests on the other pad; the rest of it overhangs (about 47 mm past the plank's -Y edge line and 51 mm on +Y), as intended.
-- Lay the stand's -Y edge 0.5 off the anchor stand-in's base on the plank.
+The optical board as ordered (R1) sits under string 6, **turned 180 degrees** from its instrument orientation: its sensor row is on its +X edge, toward the bridge, and the whole board lies on the keyhead side of the bridge bearing, its +X edge 3.65 off the endplate's joint face. The bearing's slots in the board go unused.
+- **Channel D10** (photodiodes PD10A/B) is the one under string 6, 20 mm before the bridge axle, as on the instrument. D10 because it is the channel that puts the board's Ø4.4 mounting hole over the endplate. The board's top is 2.2 under the string; nothing on the board along the string's line is taller than 1.1, so the string clears everything by at least 1.1.
+- **Supports are part of the endplate** (`wb_endplate`): two 45 degree brackets off its -X face, 11 wide, reaching 36 under the board, their tops the board's seat. The endplate prints +X -> -X as before, so the brackets grow straight up off the joint face (their tips cut flat 2.0).
+- **Hardware**: one **M4 x 10 button head** (2.5 mm key) through the board's hole into one **M4 fitted insert**, heat-set into the bracket at y +9.3 (sideways in the print: the 5.7 teardrop pocket). The board rests on the other bracket; the rest of it overhangs the plank, as intended.

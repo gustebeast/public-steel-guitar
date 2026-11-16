@@ -213,7 +213,7 @@ def endplate() -> cq.Workplane:
     w = w.union(_box(XJ, E["x_end"], Y_EDGE, EP_BASE_Y1, Z_PLANK, ZB))   # the base, both sides
     for x, y in EP_SCREWS:
         w = w.cut(_screw(x, y, DB.EP_UP))
-    return w
+    return _opt_anchor(w.union(opt_brackets()))   # the optical board's two brackets (below)
 
 
 def ep_axles() -> list:
@@ -342,22 +342,31 @@ def _swap(nm: str, w):
     return nm, w
 
 
-# ── THE R1 OPTICAL BOARD ON TWO 45 DEG STRUTS (user, 2026-11-16: "two 45 angled supports which hold up
-# the R1 optical board and a single screw mount ... rotate the board 180 from its original intended
-# orientation so we can get the sensors close to where they need to go without needing to run the
-# bearing/string through the PCB hole") ──────────────────────────────────────────────────────────
+# ── THE R1 OPTICAL BOARD ON TWO 45 DEG BRACKETS OFF THE ENDPLATE (user, 2026-11-16: "two 45 angled
+# supports which hold up the R1 optical board and a single screw mount ... rotate the board 180 from
+# its original intended orientation so we can get the sensors close to where they need to go without
+# needing to run the bearing/string through the PCB hole" ... "it would just be part of the endplate
+# not a separate part") ──────────────────────────────────────────────────────────────────────────
 # The board as ordered (elec/rev1/optical.geom.json), turned 180 deg about Z: its sensor row, on its
 # -X edge in the instrument, is its +X edge here, and the whole board lies -X of the bridge bearing
-# under the speaking length -- the bearing's slots go unused. Channel D6 (and its PD6A/B) sits under
-# string 6 where the instrument senses, 20 before the bridge axle (optical_pickup: SENSE_X -28 off
-# BRIDGE_AXLE_X -8), its top the instrument's 2.2 under the string (PART_STRING_CLR 1.1 over the
-# field's tallest 1.1 -- and nothing along the string's line on the turned board is taller: U16 0.8).
-# Held by ONE M4 x 10 button head through its own Ø4.4 hole (the one over the plank) into a fitted
-# insert in a strut's head, and resting on the other strut's pad; the rest of the board overhangs.
+# under the speaking length, its +X edge 3.65 off the endplate's joint face -- the bearing's slots go
+# unused. A sensor channel sits under string 6 where the instrument senses, 20 before the bridge axle
+# (optical_pickup: SENSE_X -28 off BRIDGE_AXLE_X -8), the board's top the instrument's 2.2 under the
+# string (PART_STRING_CLR 1.1 over the field's tallest 1.1; nothing along any channel's line on the
+# turned board is taller). THE CHANNEL IS D10 (PD10A/B): it is the one that puts the board's Ø4.4
+# mounting hole over the endplate (y 9.3; D6's would be at y 46.8, off its side). The endplate grows
+# two 45 deg brackets off its -X face, their tops the board's seat: the M4 x 10 button head through
+# the hole into a fitted insert in one, the board resting on the other; the rest of it overhangs.
 OPT_SENSE_DX = -20.0                             # LED row off the bridge axle (R1: SENSE_X - BRIDGE_AXLE_X)
 OPT_GAP = 2.2                                    # string bottom -> board top (R1 PCB_TOP)
-OPT_LED = "D6"                                   # string 6's channel
+OPT_LED = "D10"                                  # the channel under string 6 (see above)
 OPT_REV1 = pathlib.Path(__file__).resolve().parents[1] / "elec" / "rev1" / "optical.geom.json"
+OB_L = 36.0                                      # a bracket's reach off the joint face (and its
+                                                 # drop: 45 deg), its foot over the drive (z -74)
+OB_W = 11.0                                      # its width in y: the insert's 5.7 pocket, 2.6 walls
+OB_Y2 = -11.0                                    # the resting bracket, inside EP_Y
+OB_TIP = 2.0                                     # the tip cut flat (no knife edge on the print's top)
+OS_M4_L = 10.0                                   # M4 x 10: 1.6 of board, 8.4 into the 8.5 anchor
 
 
 def _opt_geom() -> dict:
@@ -395,70 +404,39 @@ def opt_board() -> cq.Workplane:
 
 
 def opt_hole():
-    """The board's mounting hole over the plank, world (x, y)."""
+    """The board's mounting hole over the endplate, world (x, y)."""
     g = _opt_geom()
-    best = None
     for h in g["holes"]:
         xs, ys = [p[0] for p in h], [p[1] for p in h]
         if max(xs) - min(xs) > 6.0:              # the bearing slots
             continue
         x, y = _opt_to_world((min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2)
-        if Y_EDGE + OS_W < y < Y_EDGE + 90.0 - OS_W and (best is None or y < best[1]):
-            best = (x, y)
-    assert best, "no mounting hole over the plank"
-    return best
+        if EP_Y[0] + OB_W / 2 <= y <= EP_Y[1] - OB_W / 2:
+            assert XJ - OB_L + 8.0 < x < XJ, "the hole off the bracket"
+            return x, y
+    raise AssertionError("no mounting hole over the endplate: pick another OPT_LED")
 
 
-OS_W = 11.0                                      # a strut's square section: the middle screw's
-                                                 # countersink bore (Ø9.6) rises between the two
-OS_HEAD = 10.0                                   # its vertical head: the M4's 8.5 anchor and a floor
-OS_PAD2 = (-70.0, A_Y[1] + 0.5 + OS_W / 2)       # the resting pad: under the board's -X half, its
-                                                 # strut and the base 0.5 +Y of the anchor's base
-OS_UP = (0.0, 0.0, 1.0)                          # prints base down: the struts at 45 deg
-OS_M4_L = 10.0                                   # M4 x 10: 1.6 of board, 8.4 into the 8.5 anchor
-
-
-def _os_pads():
-    return [opt_hole(), OS_PAD2]
-
-
-def _strut(px, py, top):
-    """A 45 deg strut: a OS_W square section at every height, its top centred on (px, py) at `top`
-    - OS_HEAD, climbing +X (one along per one up) from the base, then a vertical OS_W head to `top`."""
-    h = top - OS_HEAD - ZB
-    a, b_ = OS_W / 2, OS_W / 2
-    bot = [(px - h - a, py - b_, ZB), (px - h + a, py - b_, ZB), (px - h + a, py + b_, ZB), (px - h - a, py + b_, ZB)]
-    up = [(x + h, y, top - OS_HEAD) for x, y, _ in bot]
-    s = cq.Solid.makeLoft([cq.Wire.makePolygon([cq.Vector(*p) for p in bot], close=True),
-                           cq.Wire.makePolygon([cq.Vector(*p) for p in up], close=True)], True)
-    head = _box(px - a, px + a, py - b_, py + b_, top - OS_HEAD, top)
-    return cq.Workplane("XY").add(s).union(head), px - h
-
-
-def _os_layout():
+def opt_brackets() -> cq.Workplane:
+    """The two brackets, world: a 45 deg right triangle in XZ off the joint face, OB_W wide, its top
+    the board's underside, 1 into the endplate. In the endplate's print (+X -> -X) they grow up off
+    the joint face: the top a wall, the slope facing up."""
     _, _, z0, _ = opt_frame()
-    feet = [_strut(px, py, z0)[1] for px, py in _os_pads()]
-    (p1x, p1y), (p2x, p2y) = _os_pads()
-    y0, y1 = min(p1y, p2y) - OS_W / 2, max(p1y, p2y) + OS_W / 2
-    x0, x1 = min(feet) - OS_W / 2 - 2 * TAB, max(feet) + OS_W / 2 + 2 * TAB
-    lo, hi = sorted([(p1y, p1x), (p2y, p2x)])
-    ym = ((lo[0] + OS_W / 2) + (hi[0] - OS_W / 2)) / 2   # between the struts' paths: its bore rises clear
-    screws = [(x0 + TAB, y0 + TAB), (x0 + TAB, y1 - TAB), (x1 - TAB, ym)]
-    return z0, (x0, x1, y0, y1), screws
+    out = None
+    for y in (opt_hole()[1], OB_Y2):
+        tri = (cq.Workplane("XZ", origin=(0, y + OB_W / 2, 0))
+               .polyline([(XJ + 1.0, z0), (XJ - OB_L, z0), (XJ - OB_L, z0 - OB_TIP),
+                          (XJ + 1.0, z0 - OB_TIP - OB_L - 1.0)]).close()
+               .extrude(OB_W))
+        out = tri if out is None else out.union(tri)
+    return out
 
 
-def opt_stand() -> cq.Workplane:
-    """The base on the plank (three wood screws), the two struts, the M4 insert's anchor in the
-    screw's head. PRINTS BASE DOWN (+Z up)."""
+def _opt_anchor(w):
     from cadkit.fasteners import M4, cut_anchor
-    z0, (x0, x1, y0, y1), screws = _os_layout()
-    w = _box(x0, x1, y0, y1, Z_PLANK, ZB)
-    for px, py in _os_pads():
-        w = w.union(_strut(px, py, z0)[0])
-    for x, y in screws:
-        w = w.cut(_screw(x, y, OS_UP))
+    _, _, z0, _ = opt_frame()
     hx, hy = opt_hole()
-    return cut_anchor(M4, w, (hx, hy, z0), (0, 0, -1), 8.5, print_up=OS_UP)
+    return cut_anchor(M4, w, (hx, hy, z0), (0, 0, -1), 8.5, print_up=DB.EP_UP)
 
 
 def opt_hardware() -> list:
@@ -480,7 +458,7 @@ def assembly(t: float = DB.T_OPEN) -> list:
     out += [("wb_motor_mount", kept(motor_mount)), ("wb_anchor", kept(anchor)),
             ("wb_endplate", kept(endplate)), ("wb_keyhead", kept(keyhead))]
     out += _motor_m3s() + keyhead_hardware()
-    out += [("wb_opt_stand", kept(opt_stand)), ("wb_optical", kept(opt_board))] + opt_hardware()
+    out += [("wb_optical", kept(opt_board))] + opt_hardware()
     x0 = D.NUT_BLOCK_X - 60.0
     out.append(("ghost_plank", _box(x0, E["x_end"] + 40.0, Y_EDGE, Y_EDGE + 90.0,
                                     Z_PLANK - 19.0, Z_PLANK)))
@@ -488,7 +466,7 @@ def assembly(t: float = DB.T_OPEN) -> list:
 
 
 MATERIAL = {"wb_motor_mount": "petg-gf", "wb_anchor": "petg-gf", "wb_endplate": "petg-gf",
-            "wb_tie_spacer": "petg-gf", "wb_keyplate": "petg-gf", "wb_opt_stand": "petg-gf",
+            "wb_tie_spacer": "petg-gf", "wb_keyplate": "petg-gf",
             "wb_optical": "board",
             "wb_keyhead": "petg-gf", "wb_wrap_rod": "steel", "ghost_plank": "wood",
             "wb_string": "polished", "wb_nut_plate": "stainless", "wb_nut_side_insert": "brass",
@@ -511,15 +489,14 @@ def _made(nm, w):
 
 
 PRINTS = ("wb_motor_mount", "wb_anchor", "wb_endplate", "wb_keyhead", "wb_nut_shoe", "wb_tie_spacer",
-          "wb_keyplate", "wb_opt_stand")
+          "wb_keyplate")
 
 
 # each bench print's build direction (the comments at each part say why)
 WB_PRINT_UP = {"wb_motor_mount": MM_UP, "wb_anchor": A_UP, "wb_endplate": DB.EP_UP,
                "wb_keyhead": KH2.PRINT_UP, "wb_nut_shoe": NB2.SHOE_UP,
                "wb_tie_spacer": (1.0, 0.0, 0.0),           # standing, +X up
-               "wb_keyplate": (1.0, 0.0, 0.0),             # flat on its -X face
-               "wb_opt_stand": OS_UP}
+               "wb_keyplate": (1.0, 0.0, 0.0)}             # flat on its -X face
 # the instrument's own string-6 prints the bench does NOT use: the motor mount replaces the plate
 WB_NOT_USED = ("mplate",)
 WB_DIR = pathlib.Path(__file__).resolve().parents[1] / "coupons" / "woodbench"
