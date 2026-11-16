@@ -557,7 +557,10 @@ def insert(spec):
                                  (0, 0, -spec.insert_l), (0, 0, 1)))
     bore = cq.Workplane(obj=_cyl(spec.insert_bore_d, spec.insert_l + 2,
                                  (0, 0, -spec.insert_l - 1), (0, 0, 1)))
-    return made_of(body.cut(bore), "brass")
+    # ITS LOOK (cadkit.mesh_parts): the knurl and the thread inside, over the plain tube
+    from .mesh_parts import insert_mesh, with_mesh
+    return with_mesh(made_of(body.cut(bore), "brass"),
+                     insert_mesh(spec.screw_d, spec.pitch, od, spec.insert_l))
 
 
 def _rot_z_onto(shape, direction):
@@ -575,14 +578,16 @@ def _rot_z_onto(shape, direction):
 def seated_insert(spec, pnt, direction):
     """The insert dummy seated in the pocket of a cut_anchor / cut_insert_bore at
     the SAME (pnt, direction): it fills the pocket from the mouth inward."""
-    ins = _rot_z_onto(insert(spec).translate((0, 0, spec.insert_l)), direction)
-    return ins.translate(cq.Vector(*pnt).toTuple())
+    from .mesh_parts import placed
+    return placed(insert(spec), lambda w: _rot_z_onto(w.translate((0, 0, spec.insert_l)), direction)
+                  .translate(cq.Vector(*pnt).toTuple()))
 
 
 def boss_insert(spec, pt, direction):
     """The insert dummy seated in a cut_boss_* pocket (SAME pt/direction)."""
-    ins = insert(spec).translate((0, 0, -spec.boss_prot + spec.insert_l))
-    return _rot_z_onto(ins, direction).translate(cq.Vector(*pt).toTuple())
+    from .mesh_parts import placed
+    return placed(insert(spec), lambda w: _rot_z_onto(
+        w.translate((0, 0, -spec.boss_prot + spec.insert_l)), direction).translate(cq.Vector(*pt).toTuple()))
 
 
 def screw(spec, length=None):
@@ -615,7 +620,10 @@ def headed_screw(spec, length, head_d, head_h, socket_af=2.0, socket_depth=None)
     depth = socket_depth if socket_depth else max(0.6, 0.6 * head_h)
     hexd = socket_af / math.cos(math.radians(30))
     socket = cq.Workplane("XY").polygon(6, hexd).extrude(-depth).translate((0, 0, 0.01))
-    return made_of(cq.Workplane(obj=body).cut(socket), "steel")
+    # ITS LOOK (cadkit.mesh_parts): the ISO thread on the shank, over the plain cylinder
+    from .mesh_parts import screw_mesh, with_mesh
+    return with_mesh(made_of(cq.Workplane(obj=body).cut(socket), "steel"),
+                     screw_mesh(spec.screw_d, spec.pitch, length, head_d, head_h, socket_af, depth))
 
 
 # ════════════════════════════════════════════════════════════════════════════

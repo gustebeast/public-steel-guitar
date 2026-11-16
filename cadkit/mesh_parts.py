@@ -21,14 +21,23 @@ HOW IT TRAVELS. `with_mesh(proxy, mesh, matrix)` hangs the mesh on the proxy Wor
 `_cadkit_mesh` (already in the proxy's frame: the matrix is applied once, here). Then:
   * cadkit.scratch writes it BESIDE the proxy's BREP (mesh/<name>.override.pkl, tagged with
     the BREP file's sha1), and the view reads it in place of meshing the proxy;
-  * cadkit.web.export.export() uses it in place of meshing the proxy.
-Anything that rebuilds the Workplane (a translate, a kept() round trip) DROPS it: hang the
-mesh on last, after the part is placed, and do not keep() a mesh-only part (it costs nothing
-to make).
+  * cadkit.web.export.export() uses it in place of meshing the proxy;
+  * a kept() round trip CARRIES it (cadkit.kept stores it beside the BREP, key.mesh.pkl).
+Anything that rebuilds the Workplane (a translate, a rotate, a union) DROPS it: move a
+mesh-only part with `placed(part, fn)` and join several with `fused(parts)`, which carry it.
+
+BOUGHT HARDWARE (2026-11-16). Screws, heat-set inserts and nuts are drawn the same way: the
+proxy stays what the gate and the STEP see (cadkit.fasteners' dummies, a nut's lathe body), the
+look is the real thing -- an ISO thread on every shank, a knurled insert with its thread inside,
+a nut threaded through: `screw_mesh`, `insert_mesh`, and `swap_bore` (any solid's plain bore
+drawn threaded, the rest of it tessellated as it is). cadkit.fasteners' headed_screw, insert and
+seated_insert hang them. A hundred screws are a hundred copies of one mesh, which the web export
+shares (cadkit.web.export: one mesh, moved).
 
 A mesh is export's dict: {"pos": float32 (n, 3), "tri": uint32 (m, 3), "verts": float32
-(k, 3), "geo": {"f", "r", "e", "fe"}}. It is ONE face of kind "o" (other): the measure tool
-snaps to its triangles, not to a radius.
+(k, 3), "geo": {"f", "r", "e", "fe"}}. A closed-form piece is ONE face of kind "o" (other): the
+measure tool snaps to its triangles, not to a radius. A tessellated piece (swap_bore, fused)
+keeps the kernel's face records, so its flats and holes still measure as flats and holes.
 """
 from __future__ import annotations
 
@@ -36,7 +45,8 @@ import math
 
 import numpy as np
 
-__all__ = ["threaded_rod_mesh", "coil_mesh", "with_mesh", "affine_of", "mesh_of", "ATTR"]
+__all__ = ["threaded_rod_mesh", "coil_mesh", "screw_mesh", "insert_mesh", "swap_bore",
+           "iso_minor", "with_mesh", "affine_of", "mesh_of", "placed", "fused", "ATTR"]
 
 ATTR = "_cadkit_mesh"
 
@@ -49,12 +59,61 @@ def _pack(pos, tri) -> dict:
 
 
 def _merge(meshes) -> dict:
+    """Meshes as one: their faces, edges and corners kept (a run of faces each); closed-form
+    pieces (one "o" face each) as one "o" face."""
+    meshes = [m for m in meshes if m is not None and len(m["tri"])]
+    if len(meshes) == 1:
+        return meshes[0]
     pos, tri, n = [], [], 0
     for m in meshes:
         pos.append(m["pos"])
         tri.append(m["tri"].astype(np.int64) + n)
         n += len(m["pos"])
-    return _pack(np.concatenate(pos), np.concatenate(tri))
+    if all(m["geo"]["f"] == [["o"]] for m in meshes):
+        return _pack(np.concatenate(pos), np.concatenate(tri))
+    verts, f, r, e, fe = [], [], [0], [], []
+    for m in meshes:
+        g = m["geo"]
+        verts.append(m["verts"])
+        ne = len(e)
+        f += g["f"]
+        r += [r[-1] + (b - a) for a, b in zip(g["r"], g["r"][1:])]
+        e += g["e"]
+        fe += [[k + ne for k in ids] for ids in g["fe"]]
+    return {"pos": np.concatenate(pos).astype(np.float32),
+            "tri": np.concatenate(tri).astype(np.uint32),
+            "verts": np.concatenate(verts).astype(np.float32),
+            "geo": {"f": f, "r": r, "e": e, "fe": fe}}
+
+
+def _moved(mesh: dict, matrix) -> dict:
+    """The mesh moved by a 4x4 matrix: its points, corners and face records."""
+    R, t = matrix[:3, :3], matrix[:3, 3]
+    p = mesh["pos"].astype(np.float64) @ R.T + t
+    out = dict(mesh, pos=p.astype(np.float32))
+    if len(mesh["verts"]):
+        out["verts"] = (mesh["verts"].astype(np.float64) @ R.T + t).astype(np.float32)
+    if np.linalg.det(R) < 0:
+        out["tri"] = mesh["tri"][:, [0, 2, 1]]
+    g = mesh["geo"]
+    if any(f != ["o"] for f in g["f"]) or g["e"]:
+        out["geo"] = dict(g, f=[_moved_face(f, R, t) for f in g["f"]], e=[None] * 0)
+        out["geo"]["fe"] = [[] for _ in g["f"]]       # edges are not carried through a move
+    return out
+
+
+def _moved_face(f, R, t):
+    def P(v):
+        return [round(float(x), 4) for x in R @ np.asarray(v, float) + t]
+
+    def V(v):
+        return [round(float(x), 6) for x in R @ np.asarray(v, float)]
+    k = f[0]
+    if k in ("p", "c", "k", "t"):
+        return [k] + P(f[1:4]) + V(f[4:7]) + list(f[7:])
+    if k == "s":
+        return [k] + P(f[1:4]) + list(f[4:])
+    return f
 
 
 def _disc(r, z, n, up: bool) -> dict:
@@ -67,22 +126,49 @@ def _disc(r, z, n, up: bool) -> dict:
     return _pack(pos, tri)
 
 
-def threaded_rod_mesh(length: float, major: float, minor: float, pitch: float,
-                      flank_deg: float = 15.0, hand: str = "RH", seg: int = 36) -> dict:
-    """A single-start trapezoidal thread (ISO 2904 Tr by default: 30 deg included), axis +Z
-    from z = 0 to `length`, crests on Ø`major`, roots on Ø`minor`. The surface is the profile
-    swept along the helix (each profile corner its own helical line, so the flats are flat and
-    the flanks straight), clipped to the two end planes, with a root-Ø disc over each end.
-    `seg` facets a turn."""
-    rc, rr = major / 2, minor / 2
+def _rings(rings, n) -> dict:
+    """A sheet through closed rings, each sampled at the same n angles (from +X, anticlockwise
+    seen from +Z, each ring turned on by its optional third term, a phase): rings = [(r, z)] or
+    [(r, z, phase)], r a number or a function of the angle array. Consecutive
+    rings are joined by quads whose faces point OUT where the rings climb +Z at a constant
+    radius (a shank read bottom to top); a sequence running the other way faces in."""
+    phi = 2 * math.pi * np.arange(n) / n
+    pts = []
+    for ring in rings:
+        rf, z = ring[:2]
+        ph = phi + (ring[2] if len(ring) > 2 else 0.0)
+        r = np.broadcast_to(np.asarray(rf(ph) if callable(rf) else rf, float), ph.shape)
+        pts.append(np.c_[r * np.cos(ph), r * np.sin(ph), np.full(n, float(z))])
+    pos = np.concatenate(pts)
+    k = np.arange(n)
+    tri = []
+    for i in range(len(rings) - 1):
+        a, b = i * n + k, i * n + (k + 1) % n
+        c, d = a + n, b + n
+        tri += [np.c_[a, b, d], np.c_[a, d, c]]
+    return _pack(pos, np.concatenate(tri))
+
+
+def _flip(m: dict) -> dict:
+    return dict(m, tri=m["tri"][:, [0, 2, 1]])
+
+
+def _profile(rc, rr, pitch, flank_deg):
+    """One pitch of a trapezoidal thread's profile, (s, r) from the middle of a groove."""
     h = rc - rr
     fl = h * math.tan(math.radians(flank_deg))       # a flank's axial run
     cw = pitch / 2 - fl                              # the tooth across its crest (Tr: 0.366 p)
     gw = pitch - cw - 2 * fl                         # the groove across its root
     assert cw > 0 and gw > 0, "the profile does not close"
-    # one pitch of profile, s along the axis from the middle of a groove: (s, r)
-    prof = [(0.0, rr), (gw / 2, rr), (gw / 2 + fl, rc), (gw / 2 + fl + cw, rc),
+    return [(0.0, rr), (gw / 2, rr), (gw / 2 + fl, rc), (gw / 2 + fl + cw, rc),
             (gw / 2 + 2 * fl + cw, rr)]
+
+
+def _thread(length, rc, rr, pitch, flank_deg=15.0, hand="RH", seg=36, inward=False):
+    """The bare helical surface of a thread, z = 0..length, faces out (inward=True: toward the
+    axis, the inside of a nut). Returns (mesh, r_end): r_end(z, phi) is the surface's radius
+    at height z, angle phi -- what an end face closes against."""
+    prof = _profile(rc, rr, pitch, flank_deg)
     K = len(prof)
     turns = int(math.ceil(length / pitch)) + 3
     J = turns * seg + 1                              # angle steps over the whole run
@@ -114,15 +200,198 @@ def threaded_rod_mesh(length: float, major: float, minor: float, pitch: float,
     t1 = np.stack([a, b, d], axis=-1).reshape(-1, 3)
     t2 = np.stack([a, d, c], axis=-1).reshape(-1, 3)
     tri = np.concatenate([t1, t2])
-    if sgn < 0:
+    if (sgn < 0) != inward:
         tri = tri[:, [0, 2, 1]]
     # drop triangles squashed flat on an end plane (all three corners clipped to it)
     zt = pos[tri, 2]
     flat = ((zt <= 1e-9).all(axis=1)) | ((zt >= length - 1e-9).all(axis=1))
     tri = tri[~flat]
     used, inv = np.unique(tri.ravel(), return_inverse=True)
-    rod = _pack(pos[used], inv.reshape(-1, 3))
-    return _merge([rod, _disc(rr, 0.0, seg, False), _disc(rr, length, seg, True)])
+    xs = np.array([p[0] for p in prof] + [pitch])
+    rs = np.array([p[1] for p in prof] + [prof[0][1]])
+
+    def r_end(z, phi):
+        t_ = np.mod(sgn * phi, 2 * math.pi)
+        return np.interp(np.mod(z + 2 * pitch - pitch * t_ / (2 * math.pi), pitch), xs, rs)
+    return _pack(pos[used], inv.reshape(-1, 3)), r_end
+
+
+def _end(z, inner, outer, n, up, phase=0.0):
+    """An end face at z from radius `inner` out to `outer` (numbers or functions of the angle;
+    0 inside: a disc), facing +Z if `up`; `phase` turns its samples (to meet a twisted ring)."""
+    m = _rings([(inner, z, phase), (outer, z, phase)], n)
+    # inner -> outer at one height: the quads face -Z as _rings builds them
+    return _flip(m) if up else m
+
+
+def iso_minor(d: float, pitch: float) -> float:
+    """An ISO metric thread's basic minor Ø (D1 = d - 1.0825 p): where a nut's crests sit, and
+    the root a screw is drawn to here, so the two draw as one surface where they meet."""
+    return d - 1.0825 * pitch
+
+
+def threaded_rod_mesh(length: float, major: float, minor: float, pitch: float,
+                      flank_deg: float = 15.0, hand: str = "RH", seg: int = 36,
+                      ends=(True, True)) -> dict:
+    """A single-start trapezoidal thread (ISO 2904 Tr by default: 30 deg included; ISO metric
+    with flank_deg=30 and minor=iso_minor), axis +Z from z = 0 to `length`, crests on Ø`major`,
+    roots on Ø`minor`. The surface is the profile swept along the helix (each profile corner its
+    own helical line, so the flats are flat and the flanks straight), clipped to the two end
+    planes, each end closed by a disc out to the thread's own edge there (`ends`: which).
+    `seg` facets a turn."""
+    rod, r_end = _thread(length, major / 2, minor / 2, pitch, flank_deg, hand, seg)
+    n = 4 * seg
+    out = [rod]
+    if ends[0]:
+        out.append(_end(0.0, 0.0, lambda p: r_end(0.0, p), n, up=False))
+    if ends[1]:
+        out.append(_end(length, 0.0, lambda p: r_end(length, p), n, up=True))
+    return _merge(out)
+
+
+def _hex_r(af):
+    """A hexagon `af` across its flats, corners on 0, 60, ... deg: its radius at an angle."""
+    return lambda phi: (af / 2) / np.cos(np.mod(phi, math.pi / 3) - math.pi / 6)
+
+
+def screw_mesh(d: float, pitch: float, length: float, head_d: float, head_h: float,
+               socket_af: float, socket_depth: float = None, seg: int = 8,
+               head_seg: int = 24) -> dict:
+    """A socket-head cap screw as cadkit.fasteners.headed_screw draws its proxy: axis Z, HEAD
+    TOP at z = 0, the head Ø`head_d` x `head_h` below it with its hex socket (`socket_af` across
+    the flats, `socket_depth` deep to the drill point's rim) sunk in the top, and an ISO metric
+    thread Ø`d` x `pitch` from under the head down to z = -head_h - length. `seg` facets a turn
+    of the thread, `head_seg` the head (a multiple of six: the socket's corners)."""
+    assert head_seg % 6 == 0
+    depth = socket_depth if socket_depth else max(0.6, 0.6 * head_h)
+    rh, ch = head_d / 2, min(0.1 * head_d, 0.4)       # the head's top edge, broken
+    rr = iso_minor(d, pitch) / 2
+    hexr = _hex_r(socket_af)
+    tip = 0.5 * socket_af * math.tan(math.radians(31))  # the 118 deg drill point
+    # one sheet from the socket's point to the shank: up the socket, across the top, round the
+    # edge, down the side, in under the head
+    head = _rings([(0.0, -depth - tip), (hexr, -depth), (hexr, 0.0), (rh - ch, 0.0),
+                   (rh, -ch), (rh, -head_h), (rr, -head_h)], head_seg)
+    shank = threaded_rod_mesh(length, d, 2 * rr, pitch, 30.0, seg=seg, ends=(True, False))
+    return _merge([_orient(head, +1), _moved(shank, _translate(0, 0, -head_h - length))])
+
+
+def insert_mesh(d: float, pitch: float, od: float, length: float, seg: int = 8,
+                ridges: int = None, depth: float = None) -> dict:
+    """A heat-set insert as cadkit.fasteners.insert draws its proxy: axis Z, TOP at z = 0, down
+    to z = -length, Ø`od` over its knurl. Two knurled bands twisted opposite ways with a plain
+    groove between (what holds it in the plastic), an ISO metric thread Ø`d` x `pitch` inside."""
+    ro = od / 2
+    depth = depth if depth else 0.06 * od              # the knurl's teeth
+    ridges = ridges if ridges else max(8, int(round(math.pi * od / 1.2)))
+    n = 4 * ridges                                     # four samples a tooth
+    rg = ro - 1.6 * depth                              # the groove
+    lead = 2 * math.pi * ro / math.tan(math.radians(30))   # a tooth's turn, 30 deg off the axis
+
+    def tw(z, sg):
+        return sg * 2 * math.pi * z / lead             # the band's twist at z
+
+    def knurl(z, sg):
+        return lambda phi: ro - depth * 2 * np.abs(
+            np.mod((phi - tw(z, sg)) * ridges / (2 * math.pi), 1.0) - 0.5)
+
+    # every ring sampled TURNED WITH THE TWIST, so its samples sit on the teeth's corners at
+    # every height and the teeth run straight up the sheet (a fixed grid saws them)
+    out = []
+    bands = [(-0.45 * length, 0.0, +1), (-length, -0.55 * length, -1)]
+    for z0, z1, sg in bands:
+        zs = np.linspace(z0, z1, max(2, int(math.ceil((z1 - z0) / 0.5)) + 1))
+        out.append(_orient(_rings([(knurl(z, sg), z, tw(z, sg)) for z in zs], n), +1))
+    z0, z1 = bands[0][0], bands[1][1]
+    out.append(_end(z0, rg, knurl(z0, +1), n, up=False, phase=tw(z0, +1)))   # the groove's roof
+    out.append(_end(z1, rg, knurl(z1, -1), n, up=True, phase=tw(z1, -1)))    # ... and floor
+    out.append(_orient(_rings([(rg, z1), (rg, z0)], n), +1))
+    hole, r_end = _thread(length, d / 2, iso_minor(d, pitch) / 2, pitch, 30.0, seg=seg,
+                          inward=True)
+    out.append(_moved(hole, _translate(0, 0, -length)))
+    out.append(_end(0.0, lambda p: r_end(length, p), knurl(0.0, +1), n, up=True, phase=tw(0.0, +1)))
+    out.append(_end(-length, lambda p: r_end(0.0, p), knurl(-length, -1), n, up=False,
+                    phase=tw(-length, -1)))
+    return _merge(out)
+
+
+def _orient(m: dict, sense: int) -> dict:
+    """A sheet turned to face out (+1) or in (-1) from the Z axis, judged by its triangles'
+    normals against their radial direction (summed: a sheet faces one way throughout)."""
+    p = m["pos"].astype(np.float64)[m["tri"]]
+    nrm = np.cross(p[:, 1] - p[:, 0], p[:, 2] - p[:, 0])
+    c = p.mean(axis=1)
+    rad = np.c_[c[:, 0], c[:, 1], np.zeros(len(c))]
+    s = float((nrm * rad).sum())
+    if s == 0.0:
+        return m
+    return m if (s > 0) == (sense > 0) else _flip(m)
+
+
+def swap_bore(shape, d: float, pitch: float, axis_pt, axis_dir, flank_deg: float = 30.0,
+              minor: float = None, hand: str = "RH", seg: int = 24, tol: float = 0.02) -> dict:
+    """`shape` tessellated as it is (cadkit.web.export.mesh_shape: its faces keep their records)
+    except its plain Ø`d` bore about (axis_pt, axis_dir), which is drawn threaded instead --
+    roots on Ø`d`, crests on Ø`minor` (ISO metric's D1 by default) -- with a ring closing each
+    end of the bore against the thread. A nut, a tapped hole: any solid with a hole a thread
+    belongs in. In the shape's own frame."""
+    from cadkit.web.export import mesh_shape
+    sh = shape.val() if hasattr(shape, "val") else shape
+    m = mesh_shape(getattr(sh, "wrapped", sh))
+    ax = np.asarray(axis_dir, float)
+    ax = ax / np.linalg.norm(ax)
+    o = np.asarray(axis_pt, float)
+    keep, drop = [], []
+    for k, f in enumerate(m["geo"]["f"]):
+        bore = (f[0] == "c" and abs(f[7] - d / 2) < tol
+                and abs(abs(float(np.dot(f[4:7], ax))) - 1) < 1e-6
+                and np.linalg.norm(np.cross(np.asarray(f[1:4], float) - o, ax)) < tol)
+        (drop if bore else keep).append(k)
+    if not drop:
+        raise ValueError("swap_bore: no Ø%.3f bore on that axis" % d)
+    r = m["geo"]["r"]
+    ids = np.concatenate([np.arange(r[k], r[k + 1]) for k in drop])
+    t = (m["pos"][m["tri"][ids].ravel()].astype(float) - o) @ ax
+    t0, t1 = float(t.min()), float(t.max())
+    L = t1 - t0
+    hole, r_end = _thread(L, d / 2, (minor or iso_minor(d, pitch)) / 2, pitch, flank_deg,
+                          hand, seg, inward=True)
+    n = 4 * seg
+    local = _merge([hole, _end(0.0, lambda p: r_end(0.0, p), d / 2, n, up=False),
+                    _end(L, lambda p: r_end(L, p), d / 2, n, up=True)])
+    return _merge([_sub_faces(m, keep), _moved(local, _frame(o + t0 * ax, ax))])
+
+
+def _sub_faces(m, keep):
+    """The mesh `m` with only faces `keep` (indices), their records and edges kept."""
+    r = m["geo"]["r"]
+    tris, runs, faces, fe = [], [0], [], []
+    for k in keep:
+        tris.append(m["tri"][r[k]:r[k + 1]])
+        runs.append(runs[-1] + (r[k + 1] - r[k]))
+        faces.append(m["geo"]["f"][k])
+        fe.append(m["geo"]["fe"][k])
+    tri = np.concatenate(tris) if tris else np.zeros((0, 3), np.uint32)
+    return {"pos": m["pos"], "tri": tri.astype(np.uint32), "verts": m["verts"],
+            "geo": {"f": faces, "r": runs, "e": m["geo"]["e"], "fe": fe}}
+
+
+def _translate(x, y, z):
+    m = np.eye(4)
+    m[:3, 3] = (x, y, z)
+    return m
+
+
+def _frame(origin, zdir):
+    """The matrix taking +Z at the origin onto `zdir` at `origin` (any turn about it)."""
+    z = np.asarray(zdir, float) / np.linalg.norm(zdir)
+    helper = np.array([1.0, 0, 0]) if abs(z[0]) < 0.9 else np.array([0, 1.0, 0])
+    x = np.cross(helper, z)
+    x /= np.linalg.norm(x)
+    y = np.cross(z, x)
+    m = np.eye(4)
+    m[:3, 0], m[:3, 1], m[:3, 2], m[:3, 3] = x, y, z, origin
+    return m
 
 
 def coil_mesh(pieces, coil_r: float, wire_d: float, seg: int = 24, ring: int = 8,
@@ -180,11 +449,7 @@ def with_mesh(proxy, mesh: dict, matrix=None):
     """Hang `mesh` (in its own frame; `matrix` places it, as affine_of gives) on the proxy
     Workplane, and return the proxy."""
     if matrix is not None:
-        p = mesh["pos"].astype(np.float64)
-        p = p @ matrix[:3, :3].T + matrix[:3, 3]
-        mesh = dict(mesh, pos=p.astype(np.float32))
-        if np.linalg.det(matrix[:3, :3]) < 0:
-            mesh["tri"] = mesh["tri"][:, [0, 2, 1]]
+        mesh = _moved(mesh, matrix)
     setattr(proxy, ATTR, mesh)
     return proxy
 
@@ -192,3 +457,36 @@ def with_mesh(proxy, mesh: dict, matrix=None):
 def mesh_of(obj):
     """The mesh hung on a part, or None."""
     return getattr(obj, ATTR, None)
+
+
+def placed(part, place):
+    """`place(part)` (rotates, translates: a function Workplane -> Workplane), its hung mesh
+    moved with it -- what a plain `.translate` drops."""
+    out = place(part)
+    m = mesh_of(part)
+    if m is None or out is part:
+        return out
+    return with_mesh(out, m, affine_of(place))
+
+
+def fused(parts):
+    """The parts as one Workplane: their solids unioned (the proxy), their looks merged -- a
+    part with no mesh of its own lends its tessellation. Two screws in a lid are one part."""
+    parts = [p for p in parts if p is not None]
+    if not parts:
+        return None
+    out = parts[0]
+    for p in parts[1:]:
+        out = out.union(p)
+    if all(mesh_of(p) is None for p in parts):
+        return out
+    from cadkit.web.export import mesh_shape
+    looks = []
+    for p in parts:
+        m = mesh_of(p)
+        if m is None:
+            sh = p.val() if hasattr(p, "val") else p
+            m = mesh_shape(getattr(sh, "wrapped", sh))
+        looks.append(m)
+    setattr(out, ATTR, _merge(looks))
+    return out

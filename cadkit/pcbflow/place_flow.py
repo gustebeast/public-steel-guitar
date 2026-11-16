@@ -565,6 +565,21 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
         return 2
 
     # 4. score, finish, quality
+    # the global plan's routability (ROUTER.md "Global plan", SCORE_UTIL): seconds, recorded so a
+    # set of trials of ONE netlist and outline can be ranked before routes are spent on them
+    rout = None
+    if os.environ.get("PCBFLOW_ROUTABILITY") == "1":
+        rc, out, T["routability"] = _run([sys.executable, "-m", "router.globalroute", stem], log)
+        for line in reversed(out.splitlines()):
+            try:
+                rout = json.loads(line)
+                break
+            except ValueError:
+                continue
+        if rout:
+            say("ROUTABILITY overflow %.2f over %d square(s), %.0f mm, %d via(s); hot %s"
+                % (rout["overflow"], rout["squares_over"], rout["length_mm"], rout["vias"],
+                   "; ".join("%.1f at (%.0f, %.0f) %s" % (o, x, y, "/".join(nr)) for o, x, y, nr in rout["hot"])))
     rc, out, T["score"] = _run([sys.executable, "-m", "router.score", stem, "--save", "auto", "--intent", ip,
                                 "--parts", parts_path], log)
     score = None
@@ -617,7 +632,7 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
         except (OSError, ValueError):
             qual = {"error": out[-600:]}
     _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T, room=room, width=wlines, pours=plines,
-            floor=floor, fill=pi.region_fill(rules, parts, pl))
+            floor=floor, fill=pi.region_fill(rules, parts, pl), routability=rout)
     return 0
 
 
@@ -757,7 +772,7 @@ def _rule_line(r):
 
 
 def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T, refused=None, room=(), width=(), pours=(),
-            floor=(), fill=()):
+            floor=(), fill=(), routability=None):
     forbid = [l_ for l_ in init_log + cells_log if "FORBID" in l_]
     prov = collections.Counter(_klass(w) for w in why.values())
     S = {k: (score or {}).get(k) for k in ("open", "pairs", "islands", "uncoupled", "vias", "length_mm", "floor",
@@ -766,7 +781,8 @@ def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, 
            "quality": qual, "provenance": dict(prov), "seconds": {k: round(v) for k, v in T.items()},
            "refused": refused, "no_room": list(room), "width": list(width), "pours": list(pours),
            "region_fill": [dict(region=n, area_mm2=round(a), courtyard_mm2=round(u), fill=round(f, 3))
-                           for n, a, u, f in fill]}
+                           for n, a, u, f in fill],
+           "routability": routability}
     json.dump(rep, open(os.path.join(fd, "report.json"), "w"), indent=1)
     L = ["# place_flow: %s" % base, ""]
     if refused:
