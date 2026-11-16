@@ -356,17 +356,17 @@ def _swap(nm: str, w):
 # turned board is taller). THE CHANNEL IS D10 (PD10A/B): it is the one that puts the board's Ø4.4
 # mounting hole over the endplate (y 9.3; D6's would be at y 46.8, off its side). The endplate grows
 # two 45 deg brackets off its -X face, their tops the board's seat: the M4 x 10 button head through
-# the hole into a fitted insert in one, the board resting on the other; the rest of it overhangs.
+# the hole, self-tapped into one (_opt_anchor), the board resting on the other; the rest overhangs.
 OPT_SENSE_DX = -20.0                             # LED row off the bridge axle (R1: SENSE_X - BRIDGE_AXLE_X)
 OPT_GAP = 2.2                                    # string bottom -> board top (R1 PCB_TOP)
 OPT_LED = "D10"                                  # the channel under string 6 (see above)
 OPT_REV1 = pathlib.Path(__file__).resolve().parents[1] / "elec" / "rev1" / "optical.geom.json"
 OB_L = 36.0                                      # a bracket's reach off the joint face (and its
                                                  # drop: 45 deg), its foot over the drive (z -74)
-OB_W = 11.0                                      # its width in y: the insert's 5.7 pocket, 2.6 walls
+OB_W = 11.0                                      # its width in y: the M4's tap bore, 3.5+ walls
 OB_Y2 = -11.0                                    # the resting bracket, inside EP_Y
 OB_TIP = 2.0                                     # the tip cut flat (no knife edge on the print's top)
-OS_M4_L = 10.0                                   # M4 x 10: 1.6 of board, 8.4 into the 8.5 anchor
+OS_M4_L = 10.0                                   # M4 x 10: 1.6 of board, 8.4 self-tapped into the bracket
 
 
 def _opt_geom() -> dict:
@@ -432,19 +432,24 @@ def opt_brackets() -> cq.Workplane:
     return out
 
 
+# SELF-TAPPED, NO INSERT (user, 2026-11-16: "use self tapping so we don't have to put in and remove
+# the insert"): the M4 cuts its own thread in the bracket, 8.4 of it under the board (5.6 x D's 0.7
+# pitch past min_bite's five), the bore 1.0 past the tip
+OPT_TAP_L = OS_M4_L - 1.6 + 1.0
+
+
 def _opt_anchor(w):
-    from cadkit.fasteners import M4, cut_anchor
+    from cadkit.fasteners import M4, cut_selftap
     _, _, z0, _ = opt_frame()
     hx, hy = opt_hole()
-    return cut_anchor(M4, w, (hx, hy, z0), (0, 0, -1), 8.5, print_up=DB.EP_UP)
+    return cut_selftap(M4, w, (hx, hy, z0), (0, 0, -1), OPT_TAP_L, overshoot=0.5, print_up=DB.EP_UP)
 
 
 def opt_hardware() -> list:
-    from cadkit.fasteners import M4, M4_BUTTON_HEAD_H, m4_button_screw, seated_insert
+    from cadkit.fasteners import M4_BUTTON_HEAD_H, m4_button_screw
     _, _, z0, t = opt_frame()
     hx, hy = opt_hole()
-    return [("wb_opt_insert", seated_insert(M4, (hx, hy, z0), (0, 0, -1))),
-            ("wb_opt_screw", m4_button_screw(OS_M4_L).translate((hx, hy, z0 + t + M4_BUTTON_HEAD_H)))]
+    return [("wb_opt_screw", m4_button_screw(OS_M4_L).translate((hx, hy, z0 + t + M4_BUTTON_HEAD_H)))]
 
 
 # ── THE ASSEMBLY ─────────────────────────────────────────────────────────────────────────────
