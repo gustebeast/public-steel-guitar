@@ -522,6 +522,91 @@ def coil_mesh(pieces, coil_r: float, wire_d: float, seg: int = 24, ring: int = 8
     return _merge(out)
 
 
+def _tube(c, t, ref, w, ring):
+    """A tube of radius w round the centre line c (n, 3) with tangents t and a reference
+    direction `ref` (n, 3) to start each ring from, its faces out (as coil_mesh's), open ends."""
+    t = t / np.linalg.norm(t, axis=1)[:, None]
+    bn = np.cross(t, ref)
+    bn /= np.linalg.norm(bn, axis=1)[:, None]
+    er = np.cross(bn, t)
+    a = np.linspace(0, 2 * math.pi, ring, endpoint=False)
+    pos = (c[:, None, :] + w * (np.cos(a)[None, :, None] * er[:, None, :]
+                                + np.sin(a)[None, :, None] * bn[:, None, :])).reshape(-1, 3)
+    i = np.arange(len(c) - 1)[:, None] * ring
+    k = np.arange(ring)[None, :]
+    p00, p01 = i + k, i + (k + 1) % ring
+    p10, p11 = p00 + ring, p01 + ring
+    tri = np.concatenate([np.stack([p00, p11, p10], -1).reshape(-1, 3),
+                          np.stack([p00, p01, p11], -1).reshape(-1, 3)])
+    return _pack(pos, tri)
+
+
+def tube_path_mesh(pieces, d: float, ring: int = 16, seg: int = 64) -> dict:
+    """A wire of Ø`d` along a path, as a string runs: straight between things, round a bearing,
+    wound on an axle -- each piece an ANALYTIC FEATURE (a ray tracer draws it exact, at any
+    zoom) over a triangle tube for everything else. Pieces, in the frame the mesh is in:
+        ("line", a, b)                                  straight from a to b
+        ("arc", centre, axis, start, angle_deg)         round `axis` (right hand) from the point
+                                                        `start` through angle_deg
+        ("helix", base, axis, start, pitch, height[, hand])  wound on `axis` from `start`
+                                                        (its radius = |start - base| across the
+                                                        axis), rising `height` along it
+    The pieces are drawn each with round ends, so where one meets the next they join smooth.
+    `ring` facets the wire round, `seg` an arc's full turn (the triangles only)."""
+    w = d / 2
+    out = []
+    for pc in pieces:
+        kind = pc[0]
+        if kind == "line":
+            a, b = np.asarray(pc[1], float), np.asarray(pc[2], float)
+            L = float(np.linalg.norm(b - a))
+            if L < 1e-9:
+                continue
+            c = np.array([[0.0, 0.0, 0.0], [0.0, 0.0, L]])
+            m = _tube(c, np.tile([0.0, 0.0, 1.0], (2, 1)), np.tile([1.0, 0.0, 0.0], (2, 1)), w, ring)
+            m["feat"] = [{"k": "s", "o": [0.0, 0.0, 0.0], "z": [0.0, 0.0, 1.0], "x": [1.0, 0.0, 0.0],
+                          "L": L, "w": float(w), "h": 1, "tri": [0, int(len(m["tri"]))]}]
+            out.append(_moved(m, _frame(a, b - a)))
+        elif kind == "arc":
+            cen, ax, st = (np.asarray(v, float) for v in pc[1:4])
+            ax = ax / np.linalg.norm(ax)
+            r0 = st - cen
+            r0 = r0 - ax * (r0 @ ax)
+            R = float(np.linalg.norm(r0))
+            th = math.radians(float(pc[4]))
+            if R < 1e-9 or abs(th) < 1e-9:
+                continue
+            if th < 0:                                # a negative angle: the same arc round -axis
+                ax, th = -ax, -th
+            n = max(2, int(math.ceil(th / (2 * math.pi) * seg)) + 1)
+            aa = np.linspace(0.0, th, n)
+            c = np.c_[R * np.cos(aa), R * np.sin(aa), np.zeros(n)]
+            m = _tube(c, np.c_[-np.sin(aa), np.cos(aa), np.zeros(n)], np.c_[np.cos(aa), np.sin(aa), np.zeros(n)], w, ring)
+            m["feat"] = [{"k": "a", "o": [0.0, 0.0, 0.0], "z": [0.0, 0.0, 1.0], "x": [1.0, 0.0, 0.0],
+                          "R": R, "A": math.degrees(th), "w": float(w), "h": 1, "tri": [0, int(len(m["tri"]))]}]
+            x = r0 / R
+            M = np.eye(4)
+            M[:3, 0], M[:3, 1], M[:3, 2], M[:3, 3] = x, np.cross(ax, x), ax, cen
+            out.append(_moved(m, M))
+        elif kind == "helix":
+            base, ax, st = (np.asarray(v, float) for v in pc[1:4])
+            pitch, height = float(pc[4]), float(pc[5])
+            hand = pc[6] if len(pc) > 6 else "RH"
+            ax = ax / np.linalg.norm(ax)
+            r0 = st - base
+            z0 = float(r0 @ ax)
+            r0 = r0 - ax * z0
+            R = float(np.linalg.norm(r0))
+            m = coil_mesh([(z0, pitch, height)], R, d, ring=ring, hand=hand)
+            x = r0 / R
+            M = np.eye(4)
+            M[:3, 0], M[:3, 1], M[:3, 2], M[:3, 3] = x, np.cross(ax, x), ax, base
+            out.append(_moved(m, M))
+        else:
+            raise ValueError("tube_path_mesh: no piece kind %r" % (kind,))
+    return _merge(out)
+
+
 def affine_of(place) -> np.ndarray:
     """The 4x4 matrix of a placement given as a function Workplane -> Workplane (the same
     rotate / translate calls that place the proxy), read off four points it moves."""

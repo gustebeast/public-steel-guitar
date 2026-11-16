@@ -109,6 +109,22 @@ fn feats_of(node: &Value, place: Option<glam::Mat4>) -> Vec<(Feat, [f32; 6], (us
                                   a: [r, w, p, z0], b: [h, hand, ca, 0.0] };
                 out.push((feat, cyl(r + w * 1.01 + 1e-3, z0 - w * 1.01 - 1e-3, z0 + h + w * 1.01 + 1e-3), tri));
             }
+            // a straight run of wire (a capsule): along z from 0 to L, radius w
+            Some("s") => {
+                let (l, w) = (num(f, "L"), num(f, "w"));
+                if !(w > 0.0 && l > 0.0) { continue; }
+                let feat = Feat { o: [o.x, o.y, o.z, 2.0], z: [z.x, z.y, z.z, 0.0], x: [x.x, x.y, x.z, 0.0],
+                                  a: [w, l, 0.0, 0.0], b: [0.0, hand, 0.0, 0.0] };
+                out.push((feat, cyl(w * 1.01 + 1e-3, -w * 1.01 - 1e-3, l + w * 1.01 + 1e-3), tri));
+            }
+            // wire round an arc (part of a torus): radius R about z, from x through A degrees
+            Some("a") => {
+                let (r, w, a) = (num(f, "R"), num(f, "w"), num(f, "A").to_radians());
+                if !(w > 0.0 && r > 0.0 && a > 0.0) { continue; }
+                let feat = Feat { o: [o.x, o.y, o.z, 3.0], z: [z.x, z.y, z.z, 0.0], x: [x.x, x.y, x.z, 0.0],
+                                  a: [w, r, a, 0.0], b: [0.0, hand, 0.0, 0.0] };
+                out.push((feat, cyl(r + w * 1.01 + 1e-3, -w * 1.01 - 1e-3, w * 1.01 + 1e-3), tri));
+            }
             _ => {}
         }
     }

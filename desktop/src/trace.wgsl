@@ -25,7 +25,8 @@ struct Vtx { nx: f32, ny: f32, nz: f32, col: u32 }
 // what the OTHER samples of the pixel met, as of the last restart: a part's index if they all met one part,
 // OTHER_BACKDROP if all went past everything, OTHER_MIXED if they differ, OTHER_NONE if there were none
 @group(0) @binding(9) var<storage, read_write> other_id: array<u32>;
-// THE ANALYTIC FEATURES (scene.rs Feat): a thread's helical sheet or a coil's wire, drawn from its own
+// THE ANALYTIC FEATURES (scene.rs Feat, kind in o.w: 0 thread, 1 coil, 2 straight wire, 3 wire
+// round an arc): a thread's helical sheet, a coil's or a string's wire, drawn from its own
 // equation rather than its triangles -- as fine at any zoom. Each is a box in a featured part's second BLAS;
 // a ray into the box marches the surface (feat_hit). A part's first feature: bitcast<u32>(mr.z).
 struct Feat { o: vec4f, z: vec4f, x: vec4f, a: vec4f, b: vec4f }
@@ -78,6 +79,18 @@ fn feat_basis(f: Feat) -> mat3x3f {
 // how far inside the solid q is (negative: outside), as a distance the surface cannot be nearer than
 // (a thread's by its steepest slope; a coil's by the tube round the helix, near enough at a coil's lead)
 fn feat_val(f: Feat, q: vec3f) -> f32 {
+  if (f.o.w > 1.5) {
+    let w = f.a.x;
+    if (f.o.w < 2.5) {
+      // a straight run: the capsule round z from 0 to L (exact)
+      return w - length(q - vec3f(0.0, 0.0, clamp(q.z, 0.0, f.a.y)));
+    }
+    // an arc: the torus round z of radius R, from x through A, round at its ends (exact)
+    let R = f.a.y; let A = f.a.z;
+    let ang = fmod(atan2(q.y, q.x), TAU);
+    if (ang <= A) { return w - length(vec2f(length(q.xy) - R, q.z)); }
+    return w - min(length(q - vec3f(R, 0.0, 0.0)), length(q - vec3f(R * cos(A), R * sin(A), 0.0)));
+  }
   let rho = length(q.xy);
   let phi = atan2(q.y, q.x);
   if (f.o.w < 0.5) {
@@ -95,7 +108,9 @@ fn feat_val(f: Feat, q: vec3f) -> f32 {
   let R = f.a.x; let w = f.a.y; let p = f.a.z; let z0 = f.a.w; let H = f.b.x; let hd = f.b.y;
   let A = TAU * H / p;
   let ph = fmod(hd * phi, TAU);
-  let k = floor((q.z - z0) / p - ph / TAU);
+  // the two turns about q's height at q's angle -- kept to the turns the wire has there (past its
+  // ends both would miss, and the end point alone puts the last turn much too far)
+  let k = clamp(floor((q.z - z0) / p - ph / TAU), 0.0, max(floor((A - ph) / TAU) - 1.0, 0.0));
   var best = 1e9;
   for (var j = 0; j < 2; j++) {
     let a = ph + TAU * (k + f32(j));
@@ -125,7 +140,9 @@ fn feat_hit(fi: u32, oo: vec3f, od: vec3f, wo: vec3f, wd: vec3f, tmin: f32, tmax
   let qd = B * od;
   var rb: f32; var lo: f32; var hi: f32;
   if (f.o.w < 0.5) { rb = f.a.x * 1.002 + 1e-3; lo = 0.0; hi = f.a.w; }
-  else { rb = f.a.x + f.a.y * 1.01 + 1e-3; lo = f.a.w - f.a.y * 1.01; hi = f.a.w + f.b.x + f.a.y * 1.01; }
+  else if (f.o.w < 1.5) { rb = f.a.x + f.a.y * 1.01 + 1e-3; lo = f.a.w - f.a.y * 1.01; hi = f.a.w + f.b.x + f.a.y * 1.01; }
+  else if (f.o.w < 2.5) { rb = f.a.x * 1.01 + 1e-3; lo = -f.a.x * 1.01; hi = f.a.y + f.a.x * 1.01; }
+  else { rb = f.a.y + f.a.x * 1.01 + 1e-3; lo = -f.a.x * 1.01; hi = f.a.x * 1.01; }
   // the bounding cylinder and the slab
   var t0 = tmin; var t1 = tmax;
   let a = dot(qd.xy, qd.xy);
@@ -144,7 +161,7 @@ fn feat_hit(fi: u32, oo: vec3f, od: vec3f, wo: vec3f, wd: vec3f, tmin: f32, tmax
     t0 = max(t0, min(ta, tb)); t1 = min(t1, max(ta, tb));
   }
   if (t0 >= t1) { return -1.0; }
-  let k = select(1.0, 0.9, f.o.w > 0.5);
+  let k = select(1.0, 0.8, f.o.w > 0.5 && f.o.w < 1.5);   // a coil's distance is near; the rest exact
   var t = t0;
   var tp = t0;
   var vp = 0.0;
