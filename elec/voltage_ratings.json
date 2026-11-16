@@ -3741,6 +3741,13 @@
    "i": 8.0,
    "mpn": "MX15EDGRC-3.5-04P-GN01-Cu-A",
    "src": "MAX (Cixi Maixu) drawing MX15EDGRC-3.5-XXP (22.09.14, LCSC C5188297's PDF) NOTES1: UL 300 V / 8 A, withstanding AC 2000 V / 1 min; IEC 250 V / 7 A (pollution degree 2). Its plug MX15EDGK-3.5-XXP (C5188251): UL 300 V / 8 A, 28-16 AWG, M2.0 screw. Read 2026-11-14"
+  },
+  "C5188295": {
+   "kind": "conn",
+   "v": 300.0,
+   "i": 8.0,
+   "mpn": "MX15EDGRC-3.5-02P-GN01-Cu-A",
+   "src": "MAX (Cixi Maixu) drawing MX15EDGRC-3.5-XXP (22.09.14, LCSC C5188297's PDF) NOTES1: UL 300 V / 8 A, withstanding AC 2000 V / 1 min; IEC 250 V / 7 A (pollution degree 2). Its plug MX15EDGK-3.5-XXP (C5188251): UL 300 V / 8 A, 28-16 AWG, M2.0 screw. Read 2026-11-14 -- the drawing is the series' (XX = pin count): the 2-way C5188295 carries the same 300 V / 8 A"
   }
  }
 }
