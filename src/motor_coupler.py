@@ -278,4 +278,8 @@ def cap_screw(kind: str, length: float, top, shank_dir) -> cq.Workplane:
     else:
         s = headed_screw(M4, length, 7.6, 2.2, 2.5)
     d = tuple(-c for c in shank_dir)                # headed_screw's shank runs -Z
-    return _rot_z_onto(s, d).translate(tuple(top))
+    try:                                            # its look (thread, socket) moved with it
+        from cadkit.mesh_parts import placed
+    except ImportError:
+        return _rot_z_onto(s, d).translate(tuple(top))
+    return placed(s, lambda w: _rot_z_onto(w, d).translate(tuple(top)))

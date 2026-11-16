@@ -41,6 +41,19 @@ import functools as _functools
 from functools import lru_cache as _lru_cache
 
 from cadkit.kept import kept
+try:                    # BOUGHT HARDWARE DRAWN AS IT IS (cadkit.mesh_parts, 2026-11-16): threads, knurls
+    from cadkit.mesh_parts import placed, fused, insert_mesh, swap_bore, with_mesh, affine_of
+except ImportError:     # a cadkit before them: the plain proxies, placed and joined as ever
+    insert_mesh = swap_bore = None
+
+    def placed(part, place):
+        return place(part)
+
+    def fused(parts):
+        out = None
+        for p in parts:
+            out = p if out is None else out.union(p)
+        return out
 from cadkit.board_geom import mask_rgb as _mask_rgb   # a board is a solder-mask colour (cadkit f715f57)
 
 import cadquery as cq
@@ -813,23 +826,34 @@ def _collar_inserts(i: int, t: float) -> cq.Workplane:
     """The two brass inserts, their +X ends flush with the collar's face (on the nut flange)."""
     y, z = y_of(i), za(i)
     pb = x_collar(t)[0]
-    out = None
-    for a in HOLE_ANG["m3"]:
-        dy, dz = at_ang(a)
-        b = _tube_x(COL_INS[0], 2.5, pb - COL_INS[1], pb, y + dy, z + dz)
-        out = b if out is None else out.union(b)
-    return out
+    return fused([_insert_x(pb, -1, y + dy, z + dz) for dy, dz in (at_ang(a) for a in HOLE_ANG["m3"])])
+
+
+def _insert_x(mouth: float, sense: int, y: float, z: float, axis: str = "x") -> cq.Workplane:
+    """An M3 heat-set insert (COL_INS) along X, its mouth at x = `mouth`, running `sense` (+1/-1)
+    into the part; axis="z": upright, the mouth at z = `mouth` and the insert below it. The proxy
+    is the tube the gate always checked; the look the knurl and the thread (cadkit.mesh_parts)."""
+    od, l = COL_INS
+    if axis == "z":
+        x0, x1 = mouth - l, mouth
+        proxy = cq.Workplane("XY").add(cq.Solid.makeCylinder(od / 2, l, cq.Vector(y[0], y[1], x0)))
+        proxy = proxy.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(1.25, l + 2, cq.Vector(y[0], y[1], x0 - 1))))
+        place = lambda w: w.translate((y[0], y[1], mouth))                   # noqa: E731
+    else:
+        x0, x1 = (mouth - l, mouth) if sense < 0 else (mouth, mouth + l)
+        proxy = _tube_x(od, 2.5, x0, x1, y, z)
+        # the insert's own frame: top at z = 0, down -Z -> the mouth, running `sense` along X
+        place = lambda w: w.rotate((0, 0, 0), (0, 1, 0), 90 if sense < 0 else -90).translate((mouth, y, z))  # noqa: E731
+    if insert_mesh is None:
+        return proxy
+    return with_mesh(proxy, insert_mesh(3.0, 0.5, od, l), affine_of(place))
 
 
 def _m3s(i: int, t: float) -> cq.Workplane:
     y, z = y_of(i), za(i)
-    out = None
-    for a in HOLE_ANG["m3"]:
-        dy, dz = at_ang(a)
-        # heads on the keyhole plate's +X face, into the collar's inserts (KEY_M3_ENGAGE)
-        sc = _cap("m3", KEY_M3_L, (x_yt(t) + M3_HEAD[1], y + dy, z + dz), (-1, 0, 0))
-        out = sc if out is None else out.union(sc)
-    return out
+    # heads on the keyhole plate's +X face, into the collar's inserts (KEY_M3_ENGAGE)
+    return fused([_cap("m3", KEY_M3_L, (x_yt(t) + M3_HEAD[1], y + dy, z + dz), (-1, 0, 0))
+                  for dy, dz in (at_ang(a) for a in HOLE_ANG["m3"])])
 
 
 def _cap(kind: str, length: float, top, shank_dir) -> cq.Workplane:
@@ -1118,11 +1142,7 @@ def _tie_spacers(i: int) -> cq.Workplane:
     od, idd, L = TIE_SPACER
     x1 = ANCHOR[0]
     assert abs(x1 - L - x_lip()[1]) < 1e-6
-    out = None
-    for dy, dz in tie_offsets(i):
-        b = _tube_x(od, idd, x1 - L, x1, y_of(i) + dy, za(i) + dz)
-        out = b if out is None else out.union(b)
-    return out
+    return fused([_tube_x(od, idd, x1 - L, x1, y_of(i) + dy, za(i) + dz) for dy, dz in tie_offsets(i)])
 
 
 def _lid(i: int) -> cq.Workplane:
@@ -1141,21 +1161,14 @@ def _housing_bolts(i: int) -> cq.Workplane:
     into the plug's inserts."""
     y, z = y_of(i), za(i)
     hu = x_lid()[0]                                 # the heads' underside: on the lid's -X face
-    out = None
-    for dy, dz in tie_offsets(i):
-        b = _cap("m3", TIE_L, (hu - M3_HEAD[1], y + dy, z + dz), (1, 0, 0))
-        out = b if out is None else out.union(b)
-    return out
+    return fused([_cap("m3", TIE_L, (hu - M3_HEAD[1], y + dy, z + dz), (1, 0, 0))
+                  for dy, dz in tie_offsets(i)])
 
 
 def _inserts(i: int) -> cq.Workplane:
     """The plug's two M3 heat-set inserts (the collar's: COL_INS), flush in its -X face."""
     y, z = y_of(i), za(i)
-    out = None
-    for dy, dz in tie_offsets(i):
-        b = _tube_x(COL_INS[0], 2.5, ANCHOR[1], ANCHOR[1] + COL_INS[1], y + dy, z + dz)
-        out = b if out is None else out.union(b)
-    return out
+    return fused([_insert_x(ANCHOR[1], +1, y + dy, z + dz) for dy, dz in tie_offsets(i)])
 
 
 COLLAR_A_UP = (1.0, 0.0, 0.0)                       # prints -X -> +X: its -X face on the bed, the
@@ -1252,11 +1265,7 @@ def _collar_ins(i: int, which: str) -> cq.Workplane:
     (c0, c1), _ = x_collar_a() if which == "a" else x_collar_b()
     sy, _ = COLLAR_SCREW
     sg = 1 if which == "a" else -1
-    od, l = COL_INS
-    z1 = za(i) - COLLAR_INS_Z
-    xw = _collar_screw_xw(which)
-    o = cq.Workplane("XY").add(cq.Solid.makeCylinder(od / 2, l, cq.Vector(xw, y_of(i) + sg * sy, z1 - l)))
-    return o.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(1.25, l + 2, cq.Vector(xw, y_of(i) + sg * sy, z1 - l - 1))))
+    return _insert_x(za(i) - COLLAR_INS_Z, -1, (_collar_screw_xw(which), y_of(i) + sg * sy), None, axis="z")
 
 
 def _collar_a_ins(i: int) -> cq.Workplane:
@@ -1285,7 +1294,12 @@ def _nut(i: int, t: float) -> cq.Workplane:
     for a in (45.0, 135.0, 225.0, 315.0):
         dy, dz = at_ang(a)
         out = out.cut(cyl_x(3.5, 10, ft - 5, y=y + dy, z=z + dz))
-    return out
+    if swap_bore is None:
+        return out
+    # its look: the Tr8x2 thread through it (crests on the screw's root + clearance), the rest as built
+    return with_mesh(out, swap_bore(out, D.SCREW_OD, D.SCREW_PITCH, (ft, y, z), (1, 0, 0),
+                                    flank_deg=15.0, minor=D.SCREW_OD - D.SCREW_PITCH,
+                                    hand=D.SCREW_HAND))
 
 
 def _ball_x(t: float) -> float:
@@ -1317,7 +1331,8 @@ def _coupler(i: int) -> cq.Workplane:
 def _coupler_clamp(i: int, k: str) -> cq.Workplane:
     """The coupler's clamp part `k` ("m3" or "insert"), in string i's motor frame."""
     from . import motor_coupler as MC
-    return _motor_frame(dict(MC.clamp_parts())[k].translate((0, _cpl_shift(i), 0)), i)
+    return placed(dict(MC.clamp_parts())[k],
+                  lambda w: _motor_frame(w.translate((0, _cpl_shift(i), 0)), i))
 
 
 def _motor(i: int) -> list:
@@ -1418,12 +1433,8 @@ def _anchor_screw_at():
 
 def _anchor_screws() -> cq.Workplane:
     """The M4 x 10 button heads: head on its spacer, into the wall and the bar."""
-    out = None
-    for yw, sg, x, z in _anchor_screw_at():
-        top = yw + sg * (ANCHOR_SPACER_L + M4_HEAD[1])
-        b = _cap("m4", ANCHOR_SCREW_L, (x, top, z), (0, -sg, 0))
-        out = b if out is None else out.union(b)
-    return out
+    return fused([_cap("m4", ANCHOR_SCREW_L, (x, yw + sg * (ANCHOR_SPACER_L + M4_HEAD[1]), z), (0, -sg, 0))
+                  for yw, sg, x, z in _anchor_screw_at()])
 
 
 def _string(i: int, t: float) -> cq.Workplane:
@@ -1534,7 +1545,7 @@ def string_parts(i: int, t: float) -> list:
         elif moves and nm in _RIGID:
             dx = x_ft(t) - x_ft(0.0)
             w = kept(make, i, 0.0)
-            w = w.translate((dx, 0.0, 0.0)) if dx else w
+            w = placed(w, lambda p: p.translate((dx, 0.0, 0.0))) if dx else w
         else:
             w = kept(make, i, *((t,) if moves else ()))
         out.append((f"{nm}_{i}", yaw(w, i)))
@@ -1581,8 +1592,13 @@ BODY_FLOOR = 6 * D.BEAD                             # 4.8
 def _compound(nm, w):
     # a part of several solids (a pair of bolts) goes as ONE compound: the view and the export
     # take a part's first solid only
-    return (nm, cq.Workplane("XY").add(cq.Compound.makeCompound(w.solids().vals()))
-            if len(w.solids().vals()) > 1 else w)
+    if len(w.solids().vals()) <= 1:
+        return (nm, w)
+    out = cq.Workplane("XY").add(cq.Compound.makeCompound(w.solids().vals()))
+    look = getattr(w, "_cadkit_mesh", None)          # a hung look (cadkit.mesh_parts): same frame
+    if look is not None:
+        out._cadkit_mesh = look
+    return (nm, out)
 
 
 def _drive(t: float) -> list:
@@ -1741,15 +1757,14 @@ def _bar_screws() -> list:
     ends, the head on its washer flush with the +X end."""
     from . import belt_tensioner as BTn
     e = ep_x()
-    out = None
+    out = []
     for yc in bar_y():
         for zc in EP_SCREW_Z:
             top = e["wall1"] + EP_WASHER[1] + BTn.HEAD_H
-            sc = _cap("m3", bar_screw_len(), (top, yc, zc), (-1, 0, 0))
-            sc = sc.union(cyl_x(EP_WASHER[0], EP_WASHER[1], e["wall1"], y=yc, z=zc)
-                          .cut(cyl_x(3.2, EP_WASHER[1] + 1, e["wall1"] - 0.5, y=yc, z=zc)))
-            out = sc if out is None else out.union(sc)
-    return out
+            out += [_cap("m3", bar_screw_len(), (top, yc, zc), (-1, 0, 0)),
+                    cyl_x(EP_WASHER[0], EP_WASHER[1], e["wall1"], y=yc, z=zc)
+                    .cut(cyl_x(3.2, EP_WASHER[1] + 1, e["wall1"] - 0.5, y=yc, z=zc))]
+    return fused(out)
 
 
 def _body() -> cq.Workplane:
