@@ -25,6 +25,11 @@ struct Vtx { nx: f32, ny: f32, nz: f32, col: u32 }
 // what the OTHER samples of the pixel met, as of the last restart: a part's index if they all met one part,
 // OTHER_BACKDROP if all went past everything, OTHER_MIXED if they differ, OTHER_NONE if there were none
 @group(0) @binding(9) var<storage, read_write> other_id: array<u32>;
+// THE ANALYTIC FEATURES (scene.rs Feat): a thread's helical sheet or a coil's wire, drawn from its own
+// equation rather than its triangles -- as fine at any zoom. Each is a box in a featured part's second BLAS;
+// a ray into the box marches the surface (feat_hit). A part's first feature: bitcast<u32>(mr.z).
+struct Feat { o: vec4f, z: vec4f, x: vec4f, a: vec4f, b: vec4f }
+@group(0) @binding(10) var<storage, read> feats: array<Feat>;
 
 // THE LIGHT IS THE BLENDER TRACER'S (cadkit/web/trace_blender.py), figure for figure: its room (bright
 // below, as off a pale floor, dim overhead), its sun (0.03 rad across), its path lengths (4 bounces, at
@@ -58,7 +63,129 @@ fn pcg(v: u32) -> u32 {
 fn rand() -> f32 { rng = pcg(rng); return f32(rng >> 8u) * (1.0 / 16777216.0); }
 fn rand2() -> vec2f { let a = rand(); let b = rand(); return vec2f(a, b); }
 
-struct Hit { hit: bool, t: f32, part: u32, prim: u32, bary: vec2f, o2w: mat4x3f }
+struct Hit { hit: bool, t: f32, part: u32, prim: u32, bary: vec2f, o2w: mat4x3f, gen: bool, w2o: mat4x3f }
+
+const TAU = 6.28318530717959;
+fn fmod(a: f32, m: f32) -> f32 { return a - floor(a / m) * m; }
+
+// The feature's frame: q = (x, y, along the axis) about its origin
+fn feat_basis(f: Feat) -> mat3x3f {
+  let z = f.z.xyz;
+  let x = f.x.xyz;
+  return mat3x3f(x, cross(z, x), z);
+}
+
+// how far inside the solid q is (negative: outside), as a distance the surface cannot be nearer than
+// (a thread's by its steepest slope; a coil's by the tube round the helix, near enough at a coil's lead)
+fn feat_val(f: Feat, q: vec3f) -> f32 {
+  let rho = length(q.xy);
+  let phi = atan2(q.y, q.x);
+  if (f.o.w < 0.5) {
+    // thread: r = R(z, phi), the profile mesh_parts._thread draws -- a crest of p/2 - flank run, centred
+    // on p/2 of the phase, flanks down to the root
+    let rc = f.a.x; let rr = f.a.y; let p = f.a.z; let fl = f.b.x;
+    let t = fmod(f.b.y * phi, TAU);
+    let ph = fmod(q.z + 2.0 * p - p * t / TAU, p);
+    let cw = 0.5 * p - fl;
+    let r = mix(rc, rr, clamp((abs(ph - 0.5 * p) - 0.5 * cw) / fl, 0.0, 1.0));
+    let g = select(r - rho, rho - r, f.b.z > 0.5);
+    return g / f.b.w;
+  }
+  // coil: the wire (radius w) round (R cos(h a), R sin(h a), z0 + p a / 2 pi), a in 0 .. 2 pi H / p
+  let R = f.a.x; let w = f.a.y; let p = f.a.z; let z0 = f.a.w; let H = f.b.x; let hd = f.b.y;
+  let A = TAU * H / p;
+  let ph = fmod(hd * phi, TAU);
+  let k = floor((q.z - z0) / p - ph / TAU);
+  var best = 1e9;
+  for (var j = 0; j < 2; j++) {
+    let a = ph + TAU * (k + f32(j));
+    if (a >= 0.0 && a <= A) {
+      let dz = q.z - (z0 + p * a / TAU);
+      best = min(best, sqrt((rho - R) * (rho - R) + dz * dz * f.b.z * f.b.z));
+    }
+  }
+  best = min(best, length(q - vec3f(R, 0.0, z0)));
+  best = min(best, length(q - vec3f(R * cos(hd * A), R * sin(hd * A), z0 + H)));
+  return w - best;
+}
+
+// is the local point inside the feature's extent (a thread is clipped to 0 .. L; its ends are the
+// part's own triangles) and on the kept side of the section plane
+fn feat_kept(f: Feat, q: vec3f, wp: vec3f, clip: bool) -> bool {
+  if (f.o.w < 0.5 && (q.z < 0.0 || q.z > f.a.w)) { return false; }
+  return !(clip && dot(G.clip.xyz, wp) + G.clip.w < 0.0);
+}
+
+// the first t in (tmin, tmax) where the ray meets the feature's surface, entering or leaving (as a
+// triangle would be met), or -1
+fn feat_hit(fi: u32, oo: vec3f, od: vec3f, wo: vec3f, wd: vec3f, tmin: f32, tmax: f32, clip: bool) -> f32 {
+  let f = feats[fi];
+  let B = transpose(feat_basis(f));
+  let qo = B * (oo - f.o.xyz);
+  let qd = B * od;
+  var rb: f32; var lo: f32; var hi: f32;
+  if (f.o.w < 0.5) { rb = f.a.x * 1.002 + 1e-3; lo = 0.0; hi = f.a.w; }
+  else { rb = f.a.x + f.a.y * 1.01 + 1e-3; lo = f.a.w - f.a.y * 1.01; hi = f.a.w + f.b.x + f.a.y * 1.01; }
+  // the bounding cylinder and the slab
+  var t0 = tmin; var t1 = tmax;
+  let a = dot(qd.xy, qd.xy);
+  let b = dot(qo.xy, qd.xy);
+  let c = dot(qo.xy, qo.xy) - rb * rb;
+  if (a < 1e-12) { if (c > 0.0) { return -1.0; } }
+  else {
+    let disc = b * b - a * c;
+    if (disc < 0.0) { return -1.0; }
+    let sq = sqrt(disc);
+    t0 = max(t0, (-b - sq) / a); t1 = min(t1, (-b + sq) / a);
+  }
+  if (abs(qd.z) < 1e-9) { if (qo.z < lo - 1e-3 || qo.z > hi + 1e-3) { return -1.0; } }
+  else {
+    let ta = (lo - 1e-3 - qo.z) / qd.z; let tb = (hi + 1e-3 - qo.z) / qd.z;
+    t0 = max(t0, min(ta, tb)); t1 = min(t1, max(ta, tb));
+  }
+  if (t0 >= t1) { return -1.0; }
+  let k = select(1.0, 0.9, f.o.w > 0.5);
+  var t = t0;
+  var tp = t0;
+  var vp = 0.0;
+  for (var i = 0; i < 256; i++) {
+    let v = feat_val(f, qo + qd * t);
+    if (i > 0 && (v > 0.0) != (vp > 0.0)) {
+      // a crossing: bisect it, then keep it if it is where the surface is drawn
+      var ta = tp; var tb = t;
+      for (var j = 0; j < 14; j++) {
+        let tm = 0.5 * (ta + tb);
+        if ((feat_val(f, qo + qd * tm) > 0.0) == (vp > 0.0)) { ta = tm; } else { tb = tm; }
+      }
+      let tr = 0.5 * (ta + tb);
+      if (tr > tmin && feat_kept(f, qo + qd * tr, wo + wd * tr, clip)) { return tr; }
+    }
+    if (t >= t1) { break; }
+    vp = v; tp = t;
+    t = min(t + max(abs(v) * k, max(2e-4, 2e-6 * t)), t1);
+  }
+  return -1.0;
+}
+
+// the outward normal at a feature's point, in the part's own frame
+fn feat_normal(fi: u32, op: vec3f) -> vec3f {
+  let f = feats[fi];
+  let M = feat_basis(f);
+  let q = transpose(M) * (op - f.o.xyz);
+  let e = 1e-3;
+  let gx = feat_val(f, q + vec3f(e, 0.0, 0.0)) - feat_val(f, q - vec3f(e, 0.0, 0.0));
+  let gy = feat_val(f, q + vec3f(0.0, e, 0.0)) - feat_val(f, q - vec3f(0.0, e, 0.0));
+  let gz = feat_val(f, q + vec3f(0.0, 0.0, e)) - feat_val(f, q - vec3f(0.0, 0.0, e));
+  return normalize(M * -vec3f(gx, gy, gz));
+}
+
+// a candidate box, met by a ray query: the feature's hit nearer than `top` (what is held), or -1
+// (the query itself must stay in its own function: naga will not take it by pointer)
+fn feat_candidate(c: RayIntersection, o: vec3f, d: vec3f, tmin: f32, top: f32, clip: bool) -> f32 {
+  let w2o = c.world_to_object;
+  let fi = bitcast<u32>(parts[c.instance_custom_data].mr.z) + c.primitive_index;
+  return feat_hit(fi, w2o * vec4f(o, 1.0), w2o * vec4f(d, 0.0), o, d, tmin, top, clip);
+}
 
 // A candidate hit is passed over (the ray goes on) when it lies on the cut side of the section plane, or,
 // with a clear part, most of the time. Only clear parts are non-opaque geometry; with a section on, every
@@ -69,6 +196,12 @@ fn trace(o: vec3f, d: vec3f, tmin: f32, tmax: f32) -> Hit {
   rayQueryInitialize(&rq, tlas, RayDesc(select(RAY_FLAG_NONE, RAY_FLAG_FORCE_NO_OPAQUE, clip), 0xFFu, tmin, tmax, o, d));
   while (rayQueryProceed(&rq)) {
     let c = rayQueryGetCandidateIntersection(&rq);
+    if (c.kind == RAY_QUERY_INTERSECTION_AABB) {
+      let held = rayQueryGetCommittedIntersection(&rq);
+      let th = feat_candidate(c, o, d, tmin, select(tmax, held.t, held.kind != RAY_QUERY_INTERSECTION_NONE), clip);
+      if (th > 0.0) { rayQueryGenerateIntersection(&rq, th); }
+      continue;
+    }
     if (clip && dot(G.clip.xyz, o + d * c.t) + G.clip.w < 0.0) { continue; }
     if ((parts[c.instance_custom_data].flags & F_CLEAR) != 0u) {
       if (see_through) { veiled = true; continue; }
@@ -81,6 +214,8 @@ fn trace(o: vec3f, d: vec3f, tmin: f32, tmax: f32) -> Hit {
   h.hit = i.kind != RAY_QUERY_INTERSECTION_NONE;
   h.t = i.t; h.part = i.instance_custom_data; h.prim = i.primitive_index; h.bary = i.barycentrics;
   h.o2w = i.object_to_world;
+  h.gen = i.kind == RAY_QUERY_INTERSECTION_GENERATED;
+  h.w2o = i.world_to_object;
   return h;
 }
 
@@ -90,6 +225,11 @@ fn occluded(o: vec3f, d: vec3f) -> bool {
   rayQueryInitialize(&rq, tlas, RayDesc(RAY_FLAG_TERMINATE_ON_FIRST_HIT | select(RAY_FLAG_NONE, RAY_FLAG_FORCE_NO_OPAQUE, clip), 0xFFu, 0.0, 30000.0, o, d));
   while (rayQueryProceed(&rq)) {
     let c = rayQueryGetCandidateIntersection(&rq);
+    if (c.kind == RAY_QUERY_INTERSECTION_AABB) {
+      let th = feat_candidate(c, o, d, 0.0, 30000.0, clip);
+      if (th > 0.0) { rayQueryGenerateIntersection(&rq, th); }
+      continue;
+    }
     if (clip && dot(G.clip.xyz, o + d * c.t) + G.clip.w < 0.0) { continue; }
     if ((parts[c.instance_custom_data].flags & F_CLEAR) != 0u && rand() >= parts[c.instance_custom_data].color.a) { continue; }
     rayQueryConfirmIntersection(&rq);
@@ -116,6 +256,20 @@ fn layered(s: Surf, h: Hit, p: Part, at: vec3f, d: vec3f) -> vec3f {
 
 fn surface(h: Hit, at: vec3f, d: vec3f) -> Surf {
   let p = parts[h.part];
+  if (h.gen) {
+    // a feature's point: its normal from its equation, its finish the part's
+    var s: Surf;
+    let nl = feat_normal(bitcast<u32>(p.mr.z) + h.prim, h.w2o * vec4f(at, 1.0));
+    s.g = normalize(h.o2w * vec4f(nl, 0.0));
+    s.n = s.g;
+    if ((G.flags & 128u) != 0u && p.pitch > 0.0) { s.n = layered(s, h, p, at, d); }
+    s.base = p.color.rgb;
+    s.metal = p.mr.x;
+    s.rough = p.mr.y;
+    s.emit = vec3f(0.0);
+    if ((p.flags & F_SEL) != 0u) { s.base = mix(s.base, SEL, 0.55); s.metal = s.metal * 0.3; s.emit = SEL * 0.10; }
+    return s;
+  }
   let io = p.idx_off + 3u * h.prim;
   let v0 = verts[indices[io] + p.vtx_off];
   let v1 = verts[indices[io + 1u] + p.vtx_off];

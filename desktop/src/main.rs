@@ -626,6 +626,7 @@ fn try_backend(window: &Arc<Window>, which: &str, args: &Args, size: PhysicalSiz
     let scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
     let mut r = Renderer::new(device, queue, config.format);
     if let Some(e) = pollster::block_on(scope.pop()) {
+        eprintln!("{e}"); // the whole of it (the message below keeps one line)
         return Err(format!("its shaders do not compile: {}", e.to_string().lines().next().unwrap_or("")));
     }
     if config.format == wgpu::TextureFormat::Rgba16Float {

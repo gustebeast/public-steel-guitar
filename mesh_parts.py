@@ -35,7 +35,11 @@ seated_insert hang them. A hundred screws are a hundred copies of one mesh, whic
 shares (cadkit.web.export: one mesh, moved).
 
 A mesh is export's dict: {"pos": float32 (n, 3), "tri": uint32 (m, 3), "verts": float32
-(k, 3), "geo": {"f", "r", "e", "fe"}}. A closed-form piece is ONE face of kind "o" (other): the
+(k, 3), "geo": {"f", "r", "e", "fe"}}, and optionally "feat": the ANALYTIC FEATURES in it (a
+thread's helical sheet, a coil's wire), each with its frame, its numbers and the triangle range
+that draws it -- so a ray tracer can solve the surface itself, to any detail, in place of those
+triangles (cadkit.web.export carries them into the GLB; the desktop viewer traces them). Every
+move and merge here carries them. A closed-form piece is ONE face of kind "o" (other): the
 measure tool snaps to its triangles, not to a radius. A tessellated piece (swap_bore, fused)
 keeps the kernel's face records, so its flats and holes still measure as flats and holes.
 """
@@ -58,19 +62,37 @@ def _pack(pos, tri) -> dict:
             "geo": {"f": [["o"]], "r": [0, int(len(tri))], "e": [], "fe": [[]]}}
 
 
+def _feats(meshes):
+    """The meshes' analytic features as one list, each triangle range moved on past the
+    triangles of the meshes before it."""
+    out, nt = [], 0
+    for m in meshes:
+        for f in m.get("feat", ()):
+            out.append(dict(f, tri=[f["tri"][0] + nt, f["tri"][1] + nt]))
+        nt += len(m["tri"])
+    return out
+
+
+def _with_feats(m, feats):
+    if feats:
+        m["feat"] = feats
+    return m
+
+
 def _merge(meshes) -> dict:
     """Meshes as one: their faces, edges and corners kept (a run of faces each); closed-form
-    pieces (one "o" face each) as one "o" face."""
+    pieces (one "o" face each) as one "o" face. Their analytic features carried."""
     meshes = [m for m in meshes if m is not None and len(m["tri"])]
     if len(meshes) == 1:
         return meshes[0]
+    feats = _feats(meshes)
     pos, tri, n = [], [], 0
     for m in meshes:
         pos.append(m["pos"])
         tri.append(m["tri"].astype(np.int64) + n)
         n += len(m["pos"])
     if all(m["geo"]["f"] == [["o"]] for m in meshes):
-        return _pack(np.concatenate(pos), np.concatenate(tri))
+        return _with_feats(_pack(np.concatenate(pos), np.concatenate(tri)), feats)
     verts, f, r, e, fe = [], [], [0], [], []
     for m in meshes:
         g = m["geo"]
@@ -80,10 +102,10 @@ def _merge(meshes) -> dict:
         r += [r[-1] + (b - a) for a, b in zip(g["r"], g["r"][1:])]
         e += g["e"]
         fe += [[k + ne for k in ids] for ids in g["fe"]]
-    return {"pos": np.concatenate(pos).astype(np.float32),
-            "tri": np.concatenate(tri).astype(np.uint32),
-            "verts": np.concatenate(verts).astype(np.float32),
-            "geo": {"f": f, "r": r, "e": e, "fe": fe}}
+    return _with_feats({"pos": np.concatenate(pos).astype(np.float32),
+                        "tri": np.concatenate(tri).astype(np.uint32),
+                        "verts": np.concatenate(verts).astype(np.float32),
+                        "geo": {"f": f, "r": r, "e": e, "fe": fe}}, feats)
 
 
 def _moved(mesh: dict, matrix) -> dict:
@@ -95,10 +117,24 @@ def _moved(mesh: dict, matrix) -> dict:
         out["verts"] = (mesh["verts"].astype(np.float64) @ R.T + t).astype(np.float32)
     if np.linalg.det(R) < 0:
         out["tri"] = mesh["tri"][:, [0, 2, 1]]
+    if mesh.get("feat"):
+        out["feat"] = [_moved_feat(f, R, t) for f in mesh["feat"]]
     g = mesh["geo"]
     if any(f != ["o"] for f in g["f"]) or g["e"]:
         out["geo"] = dict(g, f=[_moved_face(f, R, t) for f in g["f"]], e=[None] * 0)
         out["geo"]["fe"] = [[] for _ in g["f"]]       # edges are not carried through a move
+    return out
+
+
+def _moved_feat(f, R, t):
+    """An analytic feature moved: its origin, axis and angle-zero direction (a mirror turns its
+    hand)."""
+    o = R @ np.asarray(f["o"], float) + t
+    z = R @ np.asarray(f["z"], float)
+    x = R @ np.asarray(f["x"], float)
+    out = dict(f, o=[float(v) for v in o], z=[float(v) for v in z], x=[float(v) for v in x])
+    if np.linalg.det(R) < 0:
+        out["h"] = -f["h"]
     return out
 
 
@@ -213,7 +249,14 @@ def _thread(length, rc, rr, pitch, flank_deg=15.0, hand="RH", seg=36, inward=Fal
     def r_end(z, phi):
         t_ = np.mod(sgn * phi, 2 * math.pi)
         return np.interp(np.mod(z + 2 * pitch - pitch * t_ / (2 * math.pi), pitch), xs, rs)
-    return _pack(pos[used], inv.reshape(-1, 3)), r_end
+    m = _pack(pos[used], inv.reshape(-1, 3))
+    # THE SHEET AS A FEATURE: its surface is r = r_end(z, phi) for z in 0..length -- solid inside
+    # it (a screw), or outside it (inward: a nut's hole)
+    m["feat"] = [{"k": "t", "o": [0.0, 0.0, 0.0], "z": [0.0, 0.0, 1.0], "x": [1.0, 0.0, 0.0],
+                  "L": float(length), "rc": float(rc), "rr": float(rr), "p": float(pitch),
+                  "fl": float(flank_deg), "h": int(sgn), "in": int(bool(inward)),
+                  "tri": [0, int(len(m["tri"]))]}]
+    return m, r_end
 
 
 def _end(z, inner, outer, n, up, phase=0.0):
@@ -426,7 +469,13 @@ def coil_mesh(pieces, coil_r: float, wire_d: float, seg: int = 24, ring: int = 8
         p11 = p01 + ring
         tri = np.concatenate([np.stack([p00, p11, p10], -1).reshape(-1, 3),     # outward
                               np.stack([p00, p01, p11], -1).reshape(-1, 3)])
-        out.append(_pack(pos, tri))
+        m = _pack(pos, tri)
+        # THE PIECE AS A FEATURE: a tube of radius wire_d / 2 round the helix
+        # (coil_r cos a, coil_r sin a, z0 + pitch a / 2 pi), a from 0 to 2 pi height / pitch
+        m["feat"] = [{"k": "c", "o": [0.0, 0.0, 0.0], "z": [0.0, 0.0, 1.0], "x": [1.0, 0.0, 0.0],
+                      "z0": float(z0), "p": float(pitch), "H": float(height), "R": float(coil_r),
+                      "w": float(R), "h": int(sgn), "tri": [0, int(len(tri))]}]
+        out.append(m)
     return _merge(out)
 
 
