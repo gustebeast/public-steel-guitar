@@ -1909,6 +1909,12 @@ BOARD_NOTES = {
               "component_face_y": -85.9, "faces": "+Y", "by": "branner 2026-11-13",
               "install": "drop -Z at x - 19, slide +X 19 into the endplate pocket"},
     "layers": 4,
+    # In1 IS A SOLID REFERENCE PLANE, NO SIGNALS (2026-11-16): routed, U1's and J201's fan-out
+    # cut its GND pour into fragments and the tightened decaps' join vias landed in them --
+    # mS0 router-alone 0 open / 5 pairs / 19 islands, 13 of them GND. The same placement with
+    # In1 a plane: 0 / 6 / 4, no GND island left (the 4 are VIN_BUS's, as on mP0), and the
+    # USB HS pairs and the audio get an unbroken return path under them.
+    "plane_layers": ["In1.Cu"],
     "zones": [*([] if MERGED else [{"net": "PWR_GND", "layer": "In1.Cu", "inset": 0.3, "poly": POWER_POLY, "priority": 1}]),
               {"net": "GND", "layer": "In1.Cu", "inset": 0.3, "poly": GND_POLY},
               {"net": "GND", "layer": "B.Cu", "inset": 0.3, "poly": GND_POLY},
