@@ -2187,3 +2187,10 @@ This supersedes the collar B jam nut and the M4 housing bolts in the notes above
   - Collar B turns between lip and plate: 0.8 off the lip, 1.2 off the plate.
   - The guide rod passes collar B 0.8+ clear and stops on the lip's +X face; it floats up to 1.8 along X before it touches.
   - Fit the spacers over the ties' shanks before offering the housing to the plate (assembly step 6).
+- **Motor coupler = the collar plus a shaft section (2026-11-16, user: "the same design as the collar except with an extra section for the motor shaft"; replaces the Ø18 coupler with its C-clamp ear):**
+  - The screw end is the anchor collar exactly: Ø24.8 x 11 with flats, the formed thread, the split, an **M3 x 10** whose head sinks in one flat, into an **M3 insert slid in from the other flat as a nut** (same 5.1 pocket, no heat). On station 0 (strings 2 and 8) it also carries collar A's Ø10.4 boss onto the inner race.
+  - The motor end is a Ø18 x 8 section with the motor's D bore (0.15 a side, the tight D that won 2026-11-10). The split runs through it too, so the D opens to go on; the clamp pinches the screw's socket.
+  - Seen from the motor (motor frame): the split is on -Z, away from the shaft's flat; the head is on -X.
+  - Prints standing on its motor end (+Y up), as before: the clamp's pockets are teardrops peaked toward the screw end.
+  - Assembly: slide the insert into its flat and hold it, thread the coupler onto the screw to its depth, pinch the M3 (2.5 key), then slide the motor's shaft into the D, turning it to match the flat.
+  - Hardware per coupler: one M3 x 10 and one M3 insert (prices.json counts them). The belt-clamp M3 x 12 is no longer used here.
