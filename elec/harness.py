@@ -73,7 +73,7 @@ UI_RIBBON = ("SW_A", "SW_B", "SW_C", "SW_D", "SW_PUSH", "ENC_A", "ENC_B",
              "GND", "SCLK", "+3V3", "SDIN", "DC", "CS_N", "RES_N",
              # THE POWER BUTTON'S TWO THROWS, appended so ways 1-14 stay where both
              # boards routed them. They are NOT the Pi's: the cap passes them through to
-             # the output board, which is where the supply comes in and the only place it
+             # the brain board, which is where the supply comes in and the only place it
              # can be cut. Each is shorted to GND (way 8) in one of the button's two
              # states and open in the other -- UP with the button out, DN with it latched
              # in -- and whatever pulls them up has to stay at or under the switch's
@@ -90,8 +90,8 @@ UI_RIBBON = ("SW_A", "SW_B", "SW_C", "SW_D", "SW_PUSH", "ENC_A", "ENC_B",
 #   LIGHTS_LINK  motor_ctrl J7 <-> pi_cap J4          4-way: fused 24 V for the lights out,
 #                the two throws in
 #   PI_5V_LINK   motor_ctrl J5 <-> pi_cap J2          6-way PH: the Pi's 5 V on two contacts
-#   BRAIN_POWER  output_board J10, J12 <-> brain      two 4-way XH in parallel: 5-20 V, <= 10 A
-#   BRAIN_SIGNAL output_board J11 <-> brain board     6-way PH: enable / mode out, button / PG in
+#   BRAIN_POWER  brain_board J10, J12 <-> brain      two 4-way XH in parallel: 5-20 V, <= 10 A
+#   BRAIN_SIGNAL brain_board J11 <-> brain board     6-way PH: enable / mode out, button / PG in
 #
 # Each is the standard at the top of this file: power, GND, data, data, and a 6-way adds
 # GND, power on the far end.
@@ -104,7 +104,7 @@ PI_5V_LINK = ("V5", "GND", NC, NC, "GND", "V5")
 LED_DROP = ("V24", "GND", "SCK", "SDT")
 # a two-way power lead (output_panel J9 -> the optical board's J2)
 POWER_PAIR = ("V24", "GND")
-# The brain board's feed (direct-drive instrument, 2026-11-13): TWO leads, output_board -> brain.
+# The brain board's feed (direct-drive instrument, 2026-11-13): TWO leads, brain_board -> brain.
 # BRAIN_POWER  J10 + J12, TWO 6-way XH leads in parallel, 22 AWG: the chargers' OR-ed 5-20 V.
 #   Sized from the worst case, not the budget. PD caps CURRENT -- 3 A below 20 V, 5 A only at
 #   20 V on a 5 A cable -- so one port is <= 5 A, but two ports at the same voltage share
@@ -113,20 +113,20 @@ POWER_PAIR = ("V24", "GND")
 #   ways: TWO VIN AND TWO GND ON EACH LEAD, the rails at the ends beside their grounds.
 #   ⚠ THE FIRST CUT HAD ONE VIN WAY A LEAD (5 A a way at the worst case, over XH's 3 A):
 #   caught 2026-11-13 writing the brain board's power_paths. Way 3 is a PRESENCE LOOP --
-#   strapped to GND at the brain end, pulled up and read at the output board -- so a missing
+#   strapped to GND at the brain end, pulled up and read at the brain board -- so a missing
 #   lead is SENSED, not left to an install note (lead, 2026-11-13); way 4 is empty. Six ways,
 #   not five: JST makes no 5-way side-entry XH-SM4 (KiCad has 3, 4 and 6). ⚠ THE WIRE IS 22 AWG XH, NOT A NEW GAUGE:
 #   the two-gauge rule (user, 2026-11-01) -- 22 AWG XH for the high rail, 26 AWG PH for 5 V,
 #   no third gauge, no new crimp die. A first cut here used a VH 2-way on 18 AWG and broke
 #   it (caught by the lead). The boost that makes the 24 V is on the brain board.
 # BRAIN_SIGNAL J11, 6-way PH on 26 AWG (logic only -- the two-gauge rule's small wire; lead,
-#   2026-11-13: it was XH, which cost the brain board 6.5 mm of top edge), NO POWER WAY: BRAIN_EN and LOW_PWR from the output board's MCU
+#   2026-11-13: it was XH, which cost the brain board 6.5 mm of top edge), NO POWER WAY: BRAIN_EN and LOW_PWR from the brain board's MCU
 #   (it reads the contracts and picks the mode before anything big starts), PWR_BTN and
-#   BRAIN_PG back from the brain board, open drain, pulled up at the output board. Ground at
+#   BRAIN_PG back from the brain board, open drain, pulled up at the brain board. Ground at
 #   both ends, so a reversed lead puts ground on ground.
 BRAIN_POWER = ("VIN", "GND", "LEAD_SENSE", NC, "GND", "VIN")
 BRAIN_SIGNAL = ("GND", "BRAIN_EN", "LOW_PWR", "PWR_BTN", "BRAIN_PG", "GND")
-# The output board's two halves (2026-11-13, the split): output_power J20 -> output_signal J20,
+# The brain board's two halves (2026-11-13, the split): output_power J20 -> output_signal J20,
 # a 2 x 12 1.27 mm board-to-board pair, NO cable. Way n is the connector's pin n: odd ways one
 # row, even the other, so way n faces n+-1 across and n+-2 along. What crosses, and why it is
 # only this: the power half has both PD sinks, the ideal diodes, the INA226, the data switch
@@ -205,7 +205,7 @@ def ph_trunk_pins():
 
 
 
-# THE CONNECTOR RIBBON (user, 2026-11-13: the output board becomes the brain, and the field
+# THE CONNECTOR RIBBON (user, 2026-11-13: the brain board becomes the brain, and the field
 # connectors -- ten motors, both bus-B arms, both LED drops -- move to a passive CONNECTOR BOARD
 # in the +Y -X corner on ONE premade 2 x 15 1.27 mm IDC ribbon). Way n = header pin n = ribbon
 # wire n; the header numbers odd / even (n+-1 across, n+-2 along). Power on PARALLEL wires

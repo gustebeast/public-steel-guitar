@@ -30,11 +30,11 @@
   },
   "GADGET_DM": {
    "v": 3.6,
-   "why": "USB 2.0 data to the output board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
+   "why": "USB 2.0 data to the brain board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
   },
   "GADGET_DP": {
    "v": 3.6,
-   "why": "USB 2.0 data to the output board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
+   "why": "USB 2.0 data to the brain board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
   },
   "GND": 0,
   "I2C2_SCL": {

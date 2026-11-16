@@ -6,7 +6,7 @@
 ⚠ WHAT THIS REPLACED, AND WHY IT HAD TO. The previous version compared the CAD's
 hand-copied connector anchors with elec/<board>.py's placements -- the numbers layout is
 GIVEN. A copy checked against its own source can only agree, and it did while:
-  * the output board's two panel connectors' bodies stopped 0.54 mm short of the edge
+  * the brain board's two panel connectors' bodies stopped 0.54 mm short of the edge
     (their COURTYARDS had been placed flush; a courtyard is the keep-out, not the part),
   * the 24 V barrel inlet faced along the board at the chassis rail (0 degrees, where
     that footprint's mouth is its local +Y) and the CAD drew it as a panel inlet,
@@ -214,14 +214,14 @@ def _r1_fit(board):
 
 
 def _cm5(board):
-    """The output board's CM5: DF40 pads on Raspberry Pi's CM5IO positions, holes cut,
+    """The brain board's CM5: DF40 pads on Raspberry Pi's CM5IO positions, holes cut,
     nothing under the module (elec/cm5_mech.py -- the 2026-11-14 swapped-connector bug)."""
-    if board != "output_board":
+    if board != "brain_board":
         return 0
     import cm5_mech
-    bad = cm5_mech.check(json.load(open(os.path.join(HERE, "geom", "output_board.geom.json"))))
+    bad = cm5_mech.check(json.load(open(os.path.join(HERE, "geom", "brain_board.geom.json"))))
     for b in bad:
-        print("   output_board CM5: " + b)
+        print("   brain_board CM5: " + b)
     return len(bad)
 
 

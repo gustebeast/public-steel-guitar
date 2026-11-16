@@ -156,7 +156,7 @@ Six holes, 2 x 3 at 2.50 x 5.40. Our pads 1-2-3 are one row and 4-5-6 the other,
 two poles carry the same three nets (1 and 4 PWR_SW_DN, 2 and 5 GND, 3 and 6
 PWR_SW_UP), so a maker who numbers the rows the other way round -- the fab's footprint
 does -- changes nothing. End for end swaps UP and DN: the button's sense, which the
-output board's JP1 picks either way. State: **holds by construction**; which throw is
+brain board's JP1 picks either way. State: **holds by construction**; which throw is
 closed with the button out is still a meter reading on the first part.
 
 ### 5.4 The seam pogo pins (C5203987) against the lands they meet

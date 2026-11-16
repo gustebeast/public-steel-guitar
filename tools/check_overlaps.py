@@ -342,7 +342,7 @@ def _knee(n) -> bool:
 DEFERRED = {
             # (chassis <-> optical_cable_usb/pwr, OWNER bronner, is UN-deferred 2026-09-21:
             # the USB run no longer goes to the Pi through the -Y rail -- both optical leads
-            # now end a few cm away on the output board, J4 and J9 -- so the gate checks them
+            # now end a few cm away on the brain board, J4 and J9 -- so the gate checks them
             # again. Parked, the collision had been invisible for four days.)
             # (THE OPTICAL BOARD INTO THE BRIDGE ENDPLATE, 479.5 mm3, deferred 2026-09-22,
             # OWNER bronner, is RETIRED 2026-10-29: the build no longer reports the pair and

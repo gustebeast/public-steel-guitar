@@ -84,7 +84,7 @@ M10_BACK_Y = D.string_y(D.N_STRINGS - 1) - MOTOR_PULLEY_STANDOFF - D.MOTOR_BODY_
 # 2026-10-29), each in whole beads: the motor's install room (D.MOTOR_INSTALL_CLR) and the
 # Pi's USB-C plug, PI_PLUG_CLR off its -Y extent (rounded OUT to a bead, never a pocket).
 _PI_PLUG_NEED = math.ceil((M10_BACK_Y - (D.PI_PLUG_Y0 - D.PI_PLUG_CLR)) / D.BEAD - 1e-9) * D.BEAD
-# ...and the OUTPUT BOARD's +Y edge (it stands on this rail, so it comes in with it): it must
+# ...and the BRAIN BOARD's +Y edge (it stands on this rail, so it comes in with it): it must
 # stay D.OP_PULLEY_CLR off string 10's screw pulley's swept flange (lead, 2026-10-29), so the
 # rail can never push the board into that pulley without the build saying so. The board's
 # width is the ROUTED outline's.

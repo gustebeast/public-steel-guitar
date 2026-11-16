@@ -745,8 +745,8 @@ MOTOR_HEIGHT_MEASURED = 51.1    # lowest flat (the cover's) -> top of the coil l
 #   cut (user, earlier the same day); now this. The shaft is cut flush with the pulley's +Y
 #   face (components.MOTOR_SHAFT_CUT_L) with the saw jig.
 # The R1 foot-LED boards this squeezes against the +Y rail are DEFERRED (user,
-# tools/check_overlaps DEFERRED_RULES; rev-2 boards narrower); the output board is not, so
-# motor_bank.RAIL_BACK_CLR's output-board term holds the -Y rail where that board allows.
+# tools/check_overlaps DEFERRED_RULES; rev-2 boards narrower); the brain board is not, so
+# motor_bank.RAIL_BACK_CLR's brain-board term holds the -Y rail where that board allows.
 MOTOR_PILOT_H = 2.0             # the faceplate's Ø22 pilot boss, proud of the face
 MOTOR_SHAFT_PROUD = 19.5        # out of the pilot boss
 MOTOR_SHAFT_FLAT_L = 18.0       # measured, from the tip
@@ -766,7 +766,7 @@ MOTOR_INSTALL_CLR = 2 * BEAD                   # 1.6 string 10's motor back -> r
 # The plug's -Y extent, D.PI_PLUG_Y0, is bronner's (the Pi pose block): it lives in this file
 # because electronics imports chassis, so chassis cannot read electronics.
 PI_PLUG_CLR = 0.5                              # plug -> wall
-# THE OUTPUT BOARD stands on the -Y rail (electronics.op_origin: its -Y edge OP_PANEL_CLR off the
+# THE BRAIN BOARD stands on the -Y rail (electronics.op_origin: its -Y edge OP_PANEL_CLR off the
 # rail's inner face), so as the rail comes in its +Y edge rides toward string 10's screw pulley.
 # It stays OP_PULLEY_CLR off that pulley's swept flange (lead, 2026-10-29) -- the third need in
 # motor_bank.RAIL_BACK_CLR. Both live here for the same reason as PI_PLUG_CLR.

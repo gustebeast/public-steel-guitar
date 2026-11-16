@@ -1915,7 +1915,7 @@ def _body() -> cq.Workplane:
             w = w.union(blk).union(col)
             lo_y = min(yin, yin + sg * L)
             w = w.cut(teardrop_hole(4.4, L + 1.0, axis_point=(xa, lo_y - 0.5, zs), axis_dir=(0, 1, 0)))
-    w = w.cut(_ob_groove())                      # the output board's bottom edge
+    w = w.cut(_ob_groove())                      # the brain board's bottom edge
     # THE CONNECTOR BOARD'S BOSS (lead / bronner, 2026-11-15): one M4 heat-set boss up off the
     # floor, its top the board's underside (lifted CB_BOSS_TOP - floor = 5.0 for the MX15 THT
     # tails: confirm the tails on a sample before printing), the insert's pocket in its top
@@ -1994,7 +1994,7 @@ def _axle(k: int) -> cq.Workplane:
     return cyl_y(D.BRIDGE_AXLE_D, b - a, a, x=X_BEND, z=axle_zs()[k][1])
 
 
-# ── THE OUTPUT BOARD (bronner's single board, 2026-11-13) ───────────────────────────────────
+# ── THE BRAIN BOARD (bronner's single board, 2026-11-13) ───────────────────────────────────
 # INSTALL (user, 2026-11-13): deck off, the board drops -Z beside the -Y wall, its bottom edge
 # into a groove in the body's floor, then slides OB_SLIDE +X into a POCKET in the endplate's
 # inner face until J5's shoulder meets the outer wall. The pocket FOLLOWS THE BOARD (user: no
@@ -2002,10 +2002,10 @@ def _axle(k: int) -> cq.Workplane:
 # inside the endplate a channel its courtyard's outline and height, all along X (the slide).
 # The outer face shows only the I/O: J5's round hole through its 4.0 clamp wall, the USB-Cs'
 # overmold stadiums. The board's outline and its parts are bronner's export, final position
-# (src/output_board_pocket.json, copied from his elec/output_board.pocket.json).
+# (src/brain_board_pocket.json, copied from his elec/brain_board.pocket.json).
 import json as _json
 from pathlib import Path as _Path
-OB = _json.loads(_Path(__file__).with_name("output_board_pocket.json").read_text(encoding="utf-8"))
+OB = _json.loads(_Path(__file__).with_name("brain_board_pocket.json").read_text(encoding="utf-8"))
 OB_SLIDE = 19.0                                     # the +X slide after the drop
 OB_CLR = 0.4                                        # round every channel: a sliding fit
 
@@ -2191,7 +2191,7 @@ def _endplate(rods: bool = True, only: int = None) -> cq.Workplane:
         w = w.cut(box_at(xe - xj + 2, ys1 - ys0, EP_TOP + 1 - _DK.TZ, x=(xj + xe) / 2,
                          y=(ys0 + ys1) / 2, z=(_DK.TZ + EP_TOP + 1) / 2))
     if only is None:
-        w = w.cut(_ob_pocket())                                  # the output board
+        w = w.cut(_ob_pocket())                                  # the brain board
     return w
 
 

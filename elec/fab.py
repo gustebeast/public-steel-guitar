@@ -30,7 +30,7 @@ from cadkit.pcbflow import fab_package as _fab  # noqa: E402
 # board IS the brain (CM5 + H743, brain.py built onto it) and the field connectors are on
 # the passive connector board. motor_ctrl, output_panel and pi_cap left the count here;
 # their generators and fab outputs stay as the locked R1 record (r1-boards-locked).
-BOARDS = ("can_tee", "lever_sensor", "output_board", "connector_board",
+BOARDS = ("can_tee", "lever_sensor", "brain_board", "connector_board",
           "optical", "ui_board", "fret_led_mid", "fret_led_key",
           "foot_led_a", "foot_led_b",
           # the leg's blind-mate boards (elec/leg_pogo.py, 2026-10-01): two joints, and each
@@ -44,7 +44,7 @@ BOARDS = ("can_tee", "lever_sensor", "output_board", "connector_board",
 # down somewhere in elec/ or BOM.md, and a blank means the decision has not been
 # made. See the module docstring on why blank beats a guess.
 LCSC = {
-    # the output board's PD power half (output_board.py / output_split.py, 2026-11-13)
+    # the brain board's PD power half (brain_board.py / output_split.py, 2026-11-13)
     "AP33772SDKZ-13": "C50341643",  # Diodes USB PD sink, W-QFN4040-24 (LCSC lists the -FA02 page; same pinout)
     "LM74700QDBVRQ1": "C2941042",   # TI ideal-diode controller, SOT-23-6
     "NCP15XH103F03RC": "C77131",    # Murata 10k NTC 0402, the AP33772S OTP sensor
@@ -100,7 +100,7 @@ LCSC = {
     # worst case against the TPS560430's 1.4 A maximum current limit, which is the
     # number TI tells you to size against.
     "WPN4020H4R7MT": "C98363",       # 4.7 uH, 4x4x2.0 closed-circuit, Isat 4.0 A (optical L1)
-    "FXL0630-4R7-M": "C167220",      # 4.7 uH, 6.45x6.6x2.8 molded, 6 A / 9 A (output_board L1, merged)
+    "FXL0630-4R7-M": "C167220",      # 4.7 uH, 6.45x6.6x2.8 molded, 6 A / 9 A (brain_board L1, merged)
     "SWPA5040S4R7MT": "C48496",      # 4.7 uH, 5x5x4.0 shielded, Isat 3.50 A min (the LED bucks)
     "LMR33630BRNXR": "C2071384",     # the 1.4 MHz RNX part (the LED bucks, elec/buck_cell.py; optical U13)
     # -- motor_ctrl's parts that were values and not parts until the 2026-10-04 review --
@@ -114,7 +114,7 @@ LCSC = {
     "JFC1206-1400FS": "C136349",     # JDT 1206 fuse 4 A 63 V; 45,541
     "JFC1206-1150FS": "C136344",     # JDT 1206 fuse 1.5 A 63 V, 240 mohm cold; 5,908 on 2026-10-07 (motor_ctrl F1)
     "DSS16": "C7467023",             # FUXINSEMI, SOD-123 1 A 60 V Schottky; 8,105 on 2026-10-07 (the buck catch diodes)
-    "SMCJ26A": "C310042",            # Brightking, SMC, unidirectional 1.5 kW: 28.9-31.9 V, 42.1 V at 35.7 A; 23,395 stock (the R2 rail clamp, brain D3 / output board D203)
+    "SMCJ26A": "C310042",            # Brightking, SMC, unidirectional 1.5 kW: 28.9-31.9 V, 42.1 V at 35.7 A; 23,395 stock (the R2 rail clamp, brain D3 / brain board D203)
     "SMCJ24A": "C310039",            # Brightking, SMC, unidirectional 1.5 kW: 26.7-29.5 V, 38.9 V at 38.6 A; 12,745 on 2026-10-07
     "SMBJ5.0A": "C83333",            # Littelfuse, SMB, unidirectional; 26,310
     "LESD5L5.0CT1G": "C5274293",     # LRC 0.5 pF bidirectional 5 V clamp, SOD-523; 12,023
@@ -196,7 +196,7 @@ LCSC = {
     "AP2112K-3.3TRG1": "C51118",    # Diodes Inc, SOT-23-5: 1 IN 2 GND 3 EN 4 NC 5 OUT --
                                     # exact match to U6. 600 mA against a 300 mA class.
                                     # Stock 55,831.
-    # ── the output board's analog rewrite, 2026-09-21: every one of these is wired pin by
+    # ── the brain board's analog rewrite, 2026-09-21: every one of these is wired pin by
     # pin from the maker's own table (see output_panel.py), which is what the three
     # placeholder OPENs below were waiting for ─────────────────────────────────────────
     "PCM1808PWR": "C55513",         # TI ADC, TSSOP-14 (SLES177B Pin Functions)
@@ -206,21 +206,21 @@ LCSC = {
     "AO3401A": "C15127",            # P-FET SOT-23, JLC basic; 1,019,825 on 2026-10-30
     "MMBT3904": "C20526",           # CJ NPN SOT-23 (1 B 2 E 3 C), JLC basic; 2,847,066 on 2026-11-03 -- motor_ctrl R2 Q2
     "G6K-2F-Y-DC5": "C47190",       # Omron DPDT, 5 V coil (terminal arrangement p.6): the TAPE-AND-REEL listing (G6K-2F-Y-TR DC5), 64,883 on 2026-10-08; the tube listing C326376 was down to 44
-    "TPD1E10B06DYARQ1": "C3013901", # TI bidirectional 5.5 V TVS, SOD-523, 12 pF: the jack's phantom guards (output board D5 / D7)
+    "TPD1E10B06DYARQ1": "C3013901", # TI bidirectional 5.5 V TVS, SOD-523, 12 pF: the jack's phantom guards (brain board D5 / D7)
     "ESD5B5.0ST1G": "C93623",       # onsemi bidirectional 5 V TVS, SOD-523, ~166k
-    # the output board's isolated audio barrier and port filters (output_board._isolation /
+    # the brain board's isolated audio barrier and port filters (brain_board._isolation /
     # the USB-C ports), picked 2026-11-14 with their ratings in voltage_ratings.json
     "ISO7741DBQR": "C913840",       # TI 4-ch isolator 3F/1R, QSOP-16; 15,604 stock
     "ISO7740DBQR": "C2877511",      # TI 4-ch isolator 4F, QSOP-16; 9,224 stock
     "ISO7710FDR": "C2865544",       # TI 1-ch isolator, F = low default, SOIC-8; 1,321 stock
     "LP2985-50DBVR": "C74511",      # TI 5 V 150 mA LDO, SOT-23-5 (TI's own, not a clone); 14,190 stock
     "B0509S-1WR3": "C5369463",      # YLPTEC 1 W 5 -> 9 V isolated module, SIP-4; 1,575 stock (Mornsun's own not stocked)
-    "2920L200/60GR": "C49326266",   # LUTE PPTC 2920, 2 A hold / 4 A trip, 60 V; 19,696 stock (output board F204)
+    "2920L200/60GR": "C49326266",   # LUTE PPTC 2920, 2 A hold / 4 A trip, 60 V; 19,696 stock (brain board F204)
     "PESD2USB5UX": "C3709087",      # Nexperia 2-line deep-snapback ESD, SOT-23, 5 V, 0.47 pF; 16,970 stock (bus B at U209 / U210)
     "744273501": "C2651123",        # Wurth WE-SL5 HC 5 A / 80 V common-mode choke; 2,113 stock
     "ACM2012-900-2P-T002": "C55213549",  # T-CND, TDK ACM2012-900 pattern, 50 V 0.4 A; 5,094 stock (TDK's C19972: 0)
     "MX15EDGRC-3.5-04P": "C5188297",  # MAX 3.5 mm pluggable header, right angle, 4-way, 300 V 8 A; 8,523 stock (connector board J11-J20)
-    "MX15EDGRC-3.5-02P": "C5188295",  # its 2-way: output_board J8, the magnetic pickup (user 2026-11-14)
+    "MX15EDGRC-3.5-02P": "C5188295",  # its 2-way: brain_board J8, the magnetic pickup (user 2026-11-14)
     "MX15EDGK-3.5-02P": "C5188249",   # the 2-way plug, slotted (Y); stock to confirm at order time
     "MX15EDGK-3.5-04P": "C5188251",   # its plug, M2 slotted screws, 28-16 AWG; 9,319 stock -- the mating half (tools/lcsc_prices.PLUGS)
     "KF350-3.5-2P": "C474892",      # Cixi Kefa 3.5 mm 2-way screw terminal, M2 slot, 300 V 10 A; 10,892 stock
@@ -276,7 +276,7 @@ LCSC = {
 # dielectric, tolerance. `elec/lcsc_check.py` re-reads them all and compares. Basic parts
 # wherever one exists (no extended-part fee, placed by Economic assembly).
 PASSIVES = {
-    # the output board's PD half: each ordered as a part fab already buys, rated at least as asked
+    # the brain board's PD half: each ordered as a part fab already buys, rated at least as asked
     ("10uF/35V", "C_1206_3216Metric"):       "C13585",   # the 10uF/50V 1206 below (CL31A106KBHNNNE, 50 V X5R)
     ("1uF/10V", "C_0402_1005Metric"):        "C52923",   # CL05A105KA5NQNC, 25 V X5R
     ("100nF/25V", "C_0402_1005Metric"):      "C307331",  # CL05B104KB54PNC, 50 V X7R
@@ -328,7 +328,7 @@ PASSIVES = {
     ("137k 1%", "R_0402_1005Metric"):        "C138058",   # Yageo RC0402FR-07137KL, 1 %; 27,854 in stock
     ("0R", "R_0402_1005Metric"):             "C17168",   # UniOhm 0402WGF0000TCE, 0 ohm jumper; basic
     ("150k", "R_0402_1005Metric"):           "C25755",   # UniOhm 0402WGF1503TCE, 1 %; preferred extended
-    ("1k2 1206", "R_1206_3216Metric"):       "C17891",   # UniOhm 1206W4F1201T5E, 1 % 250 mW; 86,896 in stock (output board R60, U30's minimum load)
+    ("1k2 1206", "R_1206_3216Metric"):       "C17891",   # UniOhm 1206W4F1201T5E, 1 % 250 mW; 86,896 in stock (brain board R60, U30's minimum load)
     ("0R", "R_1206_3216Metric"):             "C17888",   # UniOhm 1206W4F0000T5E; basic, 2.6 M in stock (2026-10-06)
     ("120R 100mW", "R_0402_1005Metric"):     "C413065",   # Panasonic ERJ2RKF1200X, 1 %, 100 mW; 43,451 in stock (2026-10-06)
     ("180R 100mW", "R_0402_1005Metric"):     "C413069",   # Panasonic ERJ2RKF1800X, 1 %, 100 mW (the UniOhm / Yageo 0402 is 62.5); 29,615 in stock

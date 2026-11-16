@@ -925,11 +925,11 @@
   },
   "GADGET_DM": {
    "v": 3.6,
-   "why": "USB 2.0 data to the output board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
+   "why": "USB 2.0 data to the brain board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
   },
   "GADGET_DP": {
    "v": 3.6,
-   "why": "USB 2.0 data to the output board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
+   "why": "USB 2.0 data to the brain board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
   },
   "GND": 0,
   "I2C2_SCL": {
@@ -1066,11 +1066,11 @@
   },
   "MCU_DM": {
    "v": 3.6,
-   "why": "USB 2.0 data to the output board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
+   "why": "USB 2.0 data to the brain board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
   },
   "MCU_DP": {
    "v": 3.6,
-   "why": "USB 2.0 data to the output board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
+   "why": "USB 2.0 data to the brain board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
   },
   "MCU_RX": {
    "peak": 3.564,
@@ -2412,9 +2412,21 @@
    "max": 25.0,
    "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
+  "C139.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
   "C14.1": {
    "max": 50.0,
    "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C140.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C141.1": {
+   "max": 25.0,
+   "src": "rated V -- CL05A105KA5NQNC (C52923): JLCPCB parts API attributes for C52923 (CL05A105KA5NQNC, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
   "C15.1": {
    "max": 50.0,
@@ -2663,6 +2675,10 @@
    "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
   "C250.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C259.1": {
    "max": 50.0,
    "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
@@ -4220,7 +4236,7 @@
   },
   "J8.2": {
    "max": 300.0,
-   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+   "src": "rated V -- MX15EDGRC-3.5-02P-GN01-Cu-A (C5188295): MAX (Cixi Maixu) drawing MX15EDGRC-3.5-XXP (22.09.14, LCSC C5188297's PDF) NOTES1: UL 300 V / 8 A, withstanding AC 2000 V / 1 min; IEC 250 V / 7 A (pollution degree 2). Its plug MX15EDGK-3.5-XXP (C5188251): UL 300 V / 8 A, 28-16 AWG, M2.0 screw. Read 2026-11-14 -- the drawing is the series' (XX = pin count): the 2-way C5188295 carries the same 300 V / 8 A"
   },
   "JP201.1": {
    "max": "none",

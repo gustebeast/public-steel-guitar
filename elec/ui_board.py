@@ -182,12 +182,12 @@ PULLED_UP = ("SW_A", "SW_B", "SW_C", "SW_D", "SW_PUSH", "ENC_A", "ENC_B")
 # -- SW2: the power button (user, 2026-10-04) --------------------------------
 # A self-locking 2P2T push switch. It switches NOTHING on this board: both poles are
 # paralleled, their commons go to the ribbon's GND, and each throw rides its own way to
-# the output board, which is where the supply comes in and the only place it can be cut.
+# the brain board, which is where the supply comes in and the only place it can be cut.
 # So the state arrives there as one line shorted to GND and the other open, and that
 # board picks whichever polarity fails the way it wants.
 # ⚠ NO PULL-UP HERE, on purpose. The seven above hang off +3V3, which is the Pi's rail and
 # is DEAD when this switch has done its job; a pull-up to it would be a path from the
-# output board's standby supply back into an unpowered Pi.
+# brain board's standby supply back into an unpowered Pi.
 # ⚠ 12 V 0.3 A IS THE SWITCH'S RATING, so what pulls these lines up at the far end has to
 # be a logic-level standby node, never the 24 V rail.
 # ⚠ WHICH THROW IS WHICH IS OFF THE DRAWING'S SCHEMATIC, NOT A METER: it shows each common
@@ -586,7 +586,7 @@ BOARD_NOTES = {
                   "pitch, 2026-10-23.) Tin contacts, as the cable's are. "
                   "Encoder and stick contacts: 10 mA at 5 V DC maximum (Alps), carrying "
                   "0.33 mA from a 10k pull-up to 3.3 V. Power switch: 12 V 0.3 A (Legion), "
-                  "seeing the output board's 10 V zener (9.4 to 10.6 V) open and 2.55 mA "
+                  "seeing the brain board's 10 V zener (9.4 to 10.6 V) open and 2.55 mA "
                   "closed -- output_panel.py, at D8",
             "M9": "no MCU, nothing to program. Every net is on a through-hole pin of J2, "
                   "SW1 or SW2, all open to a probe from the back of the board: J2 carries "
@@ -679,7 +679,7 @@ BOARD_NOTES = {
                    "across them (the contact is rated 10 mA and a capacitor's charge "
                    "would be spent through it at every make). None of them wakes or "
                    "resets anything. The power switch latches mechanically and is "
-                   "filtered where it is read: R35 / C50, 1 ms, on the output board",
+                   "filtered where it is read: R35 / C50, 1 ms, on the brain board",
             "M42": "stock at JLCPCB on 2026-10-05: encoder 7,310, power switch 2,537, "
                    "ribbon header 2,050, all three passives basic parts in the millions; "
                    "on 2026-10-23 the FFC socket 5,590 (C588186, extended). The display module and "

@@ -424,7 +424,7 @@ def motor_ctrl():
     j6 = _ph4("J6", "bus B OUT -- to the lever chain, 5 V, JST PH side entry")
     # ⚠ J3 IS A 6-WAY, AND WAYS 5 AND 6 ARE THE POWER BUTTON (user, 2026-10-04: "let's avoid
     # a new cable between the output and motor and just put the power switch signal on the
-    # same cable carrying power from the output board to the motor board"). The button is on
+    # same cable carrying power from the brain board to the motor board"). The button is on
     # the UI board; its two throws come down the 16-way ribbon to pi_cap, across the lights
     # cable to J7 below, over this board on copper, and out here to output_panel J10, where
     # the switch element on the 24 V inlet is. This board does not read them and puts
@@ -619,7 +619,7 @@ def motor_ctrl():
     #   48 PA13 = SWDIO    , 52 PA14 = SWCLK
     #   1 VBAT -- tied to 3V3 (2026-09-21)
     #
-    # ⚠ VBAT (PIN 1) WAS NEVER CONNECTED, on this board AND the output board, both "checked
+    # ⚠ VBAT (PIN 1) WAS NEVER CONNECTED, on this board AND the brain board, both "checked
     # against the QFN68 column". The check covered the pins that were WIRED; nothing asked
     # which pins of the package were not. VBAT feeds the backup domain (RTC, backup
     # registers) and WCH, like every part in this family, wants it tied to VDD when no

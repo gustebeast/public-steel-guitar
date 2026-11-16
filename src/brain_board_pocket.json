@@ -1,5 +1,5 @@
 {
- "board": "output_board, ONE board, 120.3 x 100 x 1.6, FINAL position (after the +X slide d = 19)",
+ "board": "brain_board, ONE board, 120.3 x 100 x 1.6, FINAL position (after the +X slide d = 19)",
  "source": "trial oneG_j6 (bronner 2026-11-13); smaller parts may still move a few mm between trials, panel parts are pinned",
  "edge_x": -3.87,
  "minus_x_edge": -124.17,

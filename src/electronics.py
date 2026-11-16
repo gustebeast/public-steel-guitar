@@ -105,7 +105,7 @@ BD_T = 1.6
 # ⚠⚠ THE PI LIES FLAT ON THE CHASSIS FLOOR AND THESE ARE WORLD COORDS (user, 2026-09-29,
 # with two drawings: the footprint on a plan view and the board in it, "with the I/O facing
 # +x"). It is NOT a tray part any more -- it does not go through stand() -- exactly as the
-# output board already does not. 85 on X, 56 on Y, ports on the +X END.
+# brain board already does not. 85 on X, 56 on Y, ports on the +X END.
 # WHY: standing, the Pi ate 85 mm of a Y band only 152 wide, which is what squeezed its USB
 # gap to 4.68 and made ask #3 unfixable by placement. Flat it eats 56, freeing 29 mm.
 # MEASURED, not chosen: an 85 x 56 x 15.6 box here collides with NOTHING (0.00 mm3 against
@@ -276,7 +276,7 @@ MCTRL_FLOOR_EDGE_X = -528.15           # tray +X edge == world z -80.85, the flo
 #      and the tray has the Z for it. Relays the whole bay, the cradles and every lead.
 #   3. TAKE wire_link OFF USB -- the Pi<->motor_ctrl link is travel offsets, low rate, and
 #      could ride the GPIO header pi_cap already sits on. That removes one plug but not
-#      wire_usb, which is the output board's 20-channel USB audio and cannot move.
+#      wire_usb, which is the brain board's 20-channel USB audio and cannot move.
 # ⚠ _MCTRL_CY -10.5 -> -7.0 GOES WITH BOARD_L 62.0 -> 55.0 (2026-09-29). The board lost
 # 7.00 mm of bare laminate off its PI-FACING edge; _MCTRL_CY is a CENTRE, so leaving it at
 # -10.5 would have taken 3.50 off each end and walked the +Y edge from 20.50 to 17.00 --
@@ -404,7 +404,7 @@ def stand_pt(x: float, y: float, z: float):
 #
 # Both halves of the panel I/O ride this number, which is why one stale constant broke
 # the whole interface and why fixing it here fixes both:
-#   * the output board rides JACK_FACE_DX (see output_panel), so it sat 20.36 mm too far
+#   * the brain board rides JACK_FACE_DX (see output_panel), so it sat 20.36 mm too far
 #     -X -- its USB-C, barrel and TS ended up in the bay instead of at the face;
 #   * bridge_endplate cuts the 4 mm recess and the three jack bores at JACK_WALL_X, so
 #     it was cutting them in FREE AIR 20 mm inboard of the wall. Probing the endplate at
@@ -419,7 +419,7 @@ JACK_TIP = D.BRIDGE_BASE_X1                          # the endplate's +X outer f
 # the board's setback behind the panel and for the recess the endplate cuts around it.
 # 0.3 is this project's usual printed-to-rigid fit (see pcb_cradle's clr default).
 OP_PANEL_CLR = D.OP_PANEL_CLR             # (in dimensions: motor_bank's rail reads it)
-# THE PANEL IN FRONT OF THE OUTPUT BOARD IS 1.6, NOT 4.0 (user, 2026-09-21: "the board is
+# THE PANEL IN FRONT OF THE BRAIN BOARD IS 1.6, NOT 4.0 (user, 2026-09-21: "the board is
 # also 4mm recessed from the endplate +x wall ... make the endplate thinner there so it's
 # closer to flush"). The board's placements are built to the same two numbers --
 # elec/output_panel.py PANEL_CLR / PANEL_T -- and output_panel() checks the ROUTED board
@@ -440,7 +440,7 @@ OUTPUT_PANEL_REV = BG.OUTPUT_PANEL_REV       # 2 = R2 (default), 1 = the board i
 # clear of the board, 10.75 from the -Y rail's inner face, and 50 mm from the audio
 # jack, which is the separation that matters.
 # ⚠ THE BOARD RIDES THE -Y RAIL NOW, AND TS_Y IS GONE (user, 2026-10-29: the body narrows
-# and the output board "needs no wall on its -Y side; it may sit directly against the
+# and the brain board "needs no wall on its -Y side; it may sit directly against the
 # chassis inner wall"). It was the one panel input -- the TS jack's axis at y -68.0 -- and
 # it put the board's -Y edge 9.05 off the rail. The board's -Y edge is now a fit off the
 # rail's inner face (op_origin), so it follows wherever the rail is set, and every panel
@@ -678,7 +678,7 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     plate's plane, a lip under its edge carries it off the face, so the only way in or out
     is straight off the face -- and one M4 button closes that (through the motor
     controller's mounting ear; beside the Pi's +Y edge, its holes being too small). Same pattern, same
-    single 2.5 mm hex key, as the motor tees and the output board.
+    single 2.5 mm hex key, as the motor tees and the brain board.
 
     Authored in the FLAT tray frame (where PI_FP/MCTRL_FP and BOARD_Z are written) and
     posed by stand(), exactly as the tray was, so the footprints stay the numbers this
@@ -972,7 +972,7 @@ def board_screws():
     """The M4 through each of OUR boards' mounting ears: [(name, solid)] -- an M4x10 button
     head seated on the board's top face and its heat-set insert in the boss below, placed
     from the same hole the cradles are bored from. The motor controller's is authored in
-    the flat tray frame and stood up with the board; the output board's is world-vertical."""
+    the flat tray frame and stood up with the board; the brain board's is world-vertical."""
     from cadkit.fasteners import M4 as _M4, M4_BUTTON_HEAD_H, m4_button_screw, seated_insert
     L = 10.0                                   # M4x10: 1.6 of board, 8.4 into the 8.5 anchor
     assert L - _PCB_T <= _M4.anchor_min_wall + 1e-9
@@ -1226,7 +1226,7 @@ def pi4() -> cq.Workplane:
     air above the 16.0.
 
     ⚠ NO stand(). This board is not in the tray any more -- it lies on the chassis floor,
-    so it is authored where it sits, the way the output board already is. The I/O is on the
+    so it is authored where it sits, the way the brain board already is. The I/O is on the
     +X end (user: "with the I/O facing +x"), looking down the instrument into open floor."""
     cx, cy = _ctr(PI_FP)
     b = _board(PI_FP, PI_Z)
@@ -1443,7 +1443,7 @@ def pi_cap_pin(ref, n):
 _OP = BG.load("output_panel")
 OP_BOARD_X, OP_BOARD_Y = _OP["outline_mm"]
 _OP_T = _OP["thickness_mm"]
-# THE OUTPUT BOARD SITS AS LOW AS ITS PINS ALLOW (user, 2026-10-29: "Why is the output board as
+# THE BRAIN BOARD SITS AS LOW AS ITS PINS ALLOW (user, 2026-10-29: "Why is the brain board as
 # high +Z as it is? Why not lower it so it's just as far above the floor as needed to clear its
 # pins"). JACK_Z was a typed -40.8 and the board hung off it, 12 mm higher than anything needed.
 # The chain runs from the floor up now:
@@ -1593,13 +1593,13 @@ def output_panel() -> cq.Workplane:
 
 
 def output_panel_silk():
-    """The output board's lettering, both faces, where the board is -- its own part
+    """The brain board's lettering, both faces, where the board is -- its own part
     (white ink)."""
     return BG.ink("output_panel").translate(op_origin())
 
 
 def op_top(ref: str):
-    """World (x, y, z) of the TOP of the output board's connector `ref`, over its body
+    """World (x, y, z) of the TOP of the brain board's connector `ref`, over its body
     centre -- where a lead leaves a TOP-ENTRY header (J7, J9, J10 are vertical XH)."""
     cx, cy, cz = op_origin()
     f = BG.footprint("output_panel", ref)
@@ -1627,7 +1627,7 @@ OP_EDGE_REFS = ("J2", "J3", "J4")       # the -X-facing USB receptacles (elec ED
 
 
 def op_mouth(ref: str):
-    """World (x, y, z) of the MOUTH of one of the output board's -X-facing USB receptacles:
+    """World (x, y, z) of the MOUTH of one of the brain board's -X-facing USB receptacles:
     the -X face of its body, mid-body across it, on the shell's axis. Where a plug seats.
 
     ⚠ THIS EXISTS BECAUSE BOTH CABLES THAT PLUG IN HERE GOT IT WRONG THE SAME WAY, and
@@ -1701,7 +1701,7 @@ def _mctrl_fab(ref):
 # table -- sixty rows of courtyard boxes and pad-row centres typed from motor_ctrl.py's
 # placements -- and cad_geom_check found 8 of its 60 parts not where the router left them.
 # A copy of the layout's INPUT cannot know where the layout's OUTPUT put anything; the same
-# export the output board's CAD reads (elec/geom/*.geom.json) can.
+# export the brain board's CAD reads (elec/geom/*.geom.json) can.
 # The connectors wiring.py asks about: each lead leaves its body's centre.
 MCTRL_J = {r: ((_f := _mctrl_fab(r))[0] / 2 + _f[1] / 2, _f[2] / 2 + _f[3] / 2,
                BG.footprint("motor_ctrl", r)["rot"])

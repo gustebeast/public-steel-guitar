@@ -701,7 +701,7 @@ def pcb(panel):
     agreed with nothing but itself: it had no drivers, no buck, no inductor, no harness
     plug and no mounting hole, which are exactly the parts that decide whether this
     thing fits under the deck. The same argument board_geom's own docstring makes about
-    the output board, and the same three classes of error waiting in it."""
+    the brain board, and the same three classes of error waiting in it."""
     from . import board_geom as BG
     return _placed(panel, BG.solid(BOARD_NAME[panel]))
 

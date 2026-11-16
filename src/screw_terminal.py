@@ -1,4 +1,4 @@
-"""The magnetic pickup's screw terminal on the output board (J8), drawn as the part.
+"""The magnetic pickup's screw terminal on the brain board (J8), drawn as the part.
 
 MAX / MaiXu MX128-5.0-02P-GN01-Cu-Y-A (LCSC C5188463), the slotted R2 part (R2-3). The board's own solid draws every
 other part as its F.Fab box extruded to a height; this one is drawn here instead

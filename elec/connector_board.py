@@ -2,10 +2,10 @@
 
     py -3.12 elec/connector_board.py       # -> elec/out/connector_board.{net,board.json}
 
-A NEW BOARD (user, 2026-11-13): "the output board becomes the brain board ... The motors, pedal
+A NEW BOARD (user, 2026-11-13): "the brain board becomes the brain board ... The motors, pedal
 bus, lever bus, fret LED and floor LED all connect to the connector board. The connector board
 goes in the +y -x corner and puts its connectors facing +z." It is PASSIVE: one 2 x 15 1.27 mm
-IDC ribbon (harness.CONN_RIBBON) to the brain (output_board.py J240), and
+IDC ribbon (harness.CONN_RIBBON) to the brain (brain_board.py J240), and
 
   * TEN 4-WAY SCREW TERMINALS for the motors (user, 2026-11-13: "it saves a bunch of crimping and
     the motor already uses screw terminals"). 3.5 mm pitch, M2 slotted screws: the SAME 2.0 mm
@@ -103,7 +103,7 @@ def connector_board():
         n[k].drive = Pin.drives.POWER
     gnd, v24, v24l = n["GND"], n["+24V"], n["+24V_LED"]
 
-    # ── J1: the ribbon from the brain (output_board.py J240), the same way order ─────────
+    # ── J1: the ribbon from the brain (brain_board.py J240), the same way order ─────────
     rib = {"V24": v24, "V24L": v24l, "GND": gnd, "CANA_H": n["CANA_H"], "CANA_L": n["CANA_L"],
            "PED_H": n["PED_H"], "PED_L": n["PED_L"], "LEV_H": n["LEV_H"], "LEV_L": n["LEV_L"],
            "V5_PED": n["+5V_PED"], "V5_LEV": n["+5V_LEV"], "SCK": n["SCK"], "SDT": n["SDT"],
@@ -247,7 +247,7 @@ BOARD_NOTES = {
             "A1:+24V_LED J1.7>J5.1": "the same two vias as J4: 1.35 against 1.37 at the 3 A fuse, "
                                       "1.70 A real (docs/lighting-bus.md)",
         },
-        # A1. The motors' 24 V is FUSED AT THE BRAIN AT 4 A (output_board F204, its power_paths
+        # A1. The motors' 24 V is FUSED AT THE BRAIN AT 4 A (brain_board F204, its power_paths
         # declare the ribbon's ways 1-4 at 4.0 A split), so 4 A is the most this bus can ever
         # carry and every +24V track is sized for it. Not 10 x 0.8 A = 8 A: the motor bus budget
         # is <= 5 A with slewing staggered by firmware (docs/can-tee-power-tap.md; the PSU is
