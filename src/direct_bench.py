@@ -473,9 +473,15 @@ COLLAR_D, CLAMP_L = 24.8, 11.0                      # Ø, body length: the head'
                                                     # off both faces
 COLLAR_SCREW = (6.78, 3.43)                         # the clamp M3's axis off the bore, its head's
                                                     # underside off the split's middle
-COLLAR_INS_Z = 2.53                                 # the insert's top (its floor) under the split's
-                                                    # middle; pressed in from the bottom flat, it
+COLLAR_INS_Z = 2.85                                 # the insert's top (its floor) under the split's
+                                                    # middle; slid in from the bottom flat, it
                                                     # pulls up against that floor
+# THE INSERT IS A NUT, NOT HEAT-SET (user, 2026-11-16: "a wider slot ... use them as a nut"): it slides
+# into its pocket by hand and the clamp screw pulls it up against the pocket's floor, so it comes back
+# out and goes in again as often as the collar does. Its pocket is a SNUG SLIDE sized as a round hole
+# (the knurl's 4.7 + 0.8: the fit print's PETG-GF slide was +0.85 on 1/4", small holes shrink more),
+# drawn as the sideways teardrop it is (cadkit holes fit=True: 0.4 smaller)
+COL_INS_NUT = COL_INS[0] + 0.8                      # 5.5 round -> 5.1 drawn
 COLLAR_SPLIT = 1.0                                  # the split's width
 COLLAR_M3_L = 10.0                                  # M3 x 10: 4.0 of the insert's 4.3 of thread,
                                                     # its tip inside the insert
@@ -1209,15 +1215,17 @@ def _collar_local() -> cq.Workplane:
     wall = FORM_MAJOR_C / 2 + w
     hp = (M3_HEAD[0] + 0.5) / 2
     hs = COLLAR_SPLIT / 2
+    from cadkit.holes import as_printed_d
+    ri = as_printed_d(COL_INS_NUT, (0, 0, 1), COLLAR_A_UP) / 2     # the insert's pocket, as drawn
     z_top, z_bot = sz + M3_HEAD[1], -(zi + ins_l)                 # the flats: the head's top and
                                                                   # the insert's end flush
     assert math.hypot(sy - 1.7, hs) >= wall - 1e-6, "the clearance hole at the split"
     assert math.hypot(sy - hp, sz) >= wall - 1e-6, "the head's pocket"
-    assert math.hypot(sy - ins_od / 2, zi) >= wall - 1e-6, "the insert's pocket"
+    assert math.hypot(sy - ri, zi) >= wall - 1e-6, "the insert's pocket"
     assert sz - hs >= w and zi - hs >= w, "over and under the split"
     assert z_top - FORM_MAJOR_C / 2 >= w and -z_bot - FORM_MAJOR_C / 2 >= w, "the flats off the bore"
     assert math.hypot(sy + hp + w, z_top) <= R + 1e-6, "round the head's pocket, to its flat"
-    assert math.hypot(sy + ins_od / 2 + w, -z_bot) <= R + 1e-6, "round the insert, to its flat"
+    assert math.hypot(sy + ri + w, -z_bot) <= R + 1e-6, "round the insert, to its flat"
     eng = COLLAR_M3_L - (sz + zi)
     assert 3.5 <= eng <= ins_l, (eng, "the screw's thread in the insert, its tip inside it")
     for zc, up in ((z_top, 1), (z_bot, -1)):                      # the flats, the body's whole length
@@ -1226,12 +1234,13 @@ def _collar_local() -> cq.Workplane:
     # on +X, so centre THAT envelope, and both faces keep two beads
     xm = collar_screw_x()
     assert min(xm - hp, L - xm - hp * math.sqrt(2)) >= w - 1e-9, "the head's pocket walls"
-    # the insert's heat-set pilot (from the bottom flat), the clearance hole across the split, the
+    assert min(xm - ri, L - xm - ri * math.sqrt(2)) >= w - 1e-9, "the insert's pocket walls"
+    # the insert's slide-in pocket (from the bottom flat), the clearance hole across the split, the
     # head's pocket (out through the top flat)
-    for d, z0, h in ((COL_INS_HOLE, z_bot - 1.0, ins_l + 1.0),
-                     (3.4, -zi - 0.01, zi + sz + 0.02), (M3_HEAD[0] + 0.5, sz, R)):
+    for d, z0, h, fit in ((COL_INS_NUT, z_bot - 1.0, ins_l + 1.0, True),
+                          (3.4, -zi - 0.01, zi + sz + 0.02, False), (M3_HEAD[0] + 0.5, sz, R, False)):
         out = out.cut(teardrop_hole(d, h, axis_point=(xm, sy, z0), axis_dir=(0, 0, 1),
-                                    print_up=COLLAR_A_UP))
+                                    print_up=COLLAR_A_UP, fit=fit))
     # the thread last, UNCLEANED (as the coupler: a cleaned cut drops the ridges). The coupler's
     # cutter runs along +Y in its own frame; turned onto +X here.
     th = _thread_socket(-1.0, L + Lb + 1.0).rotate((0, 0, 0), (0, 0, 1), -90)
