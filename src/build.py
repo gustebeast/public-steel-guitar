@@ -3275,8 +3275,8 @@ for _n in [n for n in PARTS if n.startswith("collar_") and n[7:].isdigit()]:
                     "2026-11-12, back to the original orientation); insert pockets under cone roofs")
 # the rest of the drive's printed parts (user, 2026-11-14), each direction its module's constant
 for _base, _up, _why in (
-        ("collar_a", DB_.COLLAR_A_UP, "direct_bench.COLLAR_A_UP -- prints -X -> +X; split through, "
-                                       "teardrop M3 holes, the coupler's thread in the bore"),
+        ("collar_a", DB_.COLLAR_A_UP, "direct_bench.COLLAR_A_UP -- prints -X -> +X (0.8 nozzle; walls 0.8 at least round its "
+                                       "holes and the boss); split through, the clamp insert from the bottom flat"),
         ("plug", DB_.PLUG_UP, "direct_bench.PLUG_UP -- prints -X -> +X; cones under the stop "
                               "flange and the insert pocket, the screw holes cut through the teeth"),
         ("sleeve_p", DB_.SLEEVE_P_UP, "direct_bench.SLEEVE_P_UP -- prints +X -> -X; teardrop key hole"),
@@ -3286,9 +3286,9 @@ for _base, _up, _why in (
         ("collar_b", DB_.COLLAR_B_UP, "direct_bench.COLLAR_B_UP -- collar A's part turned end for "
                                       "end: the same print, boss last"),
         ("housing", DB_.HOUSE_UP, "direct_bench.HOUSE_UP -- prints -X -> +X: the pocket's mouth on "
-                                  "the bed, the lip a 1.2 ledge, posts up to the plate face"),
-        ("lid", DB_.LID_UP, "direct_bench.LID_UP -- prints +X -> -X: the ties' head pockets open "
-                            "on top")):
+                                  "the bed, the lip a 1.2 ledge (the spacers carry it to the plate)"),
+        ("lid", DB_.LID_UP, "direct_bench.LID_UP -- prints +X -> -X, the race's face on top; the ties' heads "
+                            "on its -X face")):
     for _n in [n for n in PARTS if n.startswith(_base + "_") and n[len(_base) + 1:].isdigit()]:
         PRINT_ORIENTATION[_n] = PO.from_build_dir(_up, _why)
 for _n, (_b, _path, _note) in PARTS.items():

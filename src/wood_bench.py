@@ -131,8 +131,7 @@ def anchor() -> cq.Workplane:
     w = w.cut(hole(DB.PLATE_HOLE_D, Y5, Z5))
     ry, rz = DB.rod_yz(I)
     w = w.cut(hole(DB.GUIDE_SEAT + 0.4, ry, rz))
-    for a in DB.EAR_ANG:
-        dy, dz = DB.at_ang(a, DB.EAR_R)
+    for dy, dz in DB.tie_offsets(I):
         w = w.cut(hole(3.5, Y5 + dy, Z5 + dz))
     for x, y in A_SCREWS:
         w = w.cut(_screw(x, y, pu))
