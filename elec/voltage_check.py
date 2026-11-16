@@ -72,8 +72,10 @@ DEFAULT_ELEC = HERE
 OUT = os.path.join(HERE, "out", "volts")              # the report and the per-pin tables
 DECL = os.path.join(HERE, "volts")                    # what the generators load (tracked)
 LEG = ("leg_pogo_male_bottom", "leg_pogo_male_top", "leg_pogo_female_bottom", "leg_pogo_female_top")
-BOARDS = ("can_tee", "pi_cap", "motor_ctrl", "output_panel", "optical", "lever_sensor") + LEG + ("brain", "output_board")
-ORDER = ("output_panel", "motor_ctrl", "pi_cap", "optical", "can_tee", "lever_sensor") + LEG + ("brain", "output_board")   # sources before sinks
+BOARDS = ("can_tee", "pi_cap", "motor_ctrl", "output_panel", "optical", "lever_sensor") + LEG + ("brain", "output_board",
+                                                                                                "connector_board")
+ORDER = ("output_panel", "motor_ctrl", "pi_cap", "optical", "can_tee", "lever_sensor") + LEG + ("brain", "output_board",
+                                                                                                "connector_board")   # sources before sinks
 GNDS = ("GND", "PWR_GND", "AGND")    # AGND: the isolated audio domain's own 0 V (output_board)
 EPS = 1e-6
 
@@ -272,10 +274,29 @@ SEEDS = {
 BRAIN_VIN = dict(v=21.0, vt=_D10["vbr_max"] + (_D10["vc"] - _D10["vbr_max"]) * min(1.0, 4.3 / _D10["ipp"]),
                  why="the chargers' USB PD contract, 20 V +5 %% (USB PD 3.x 7.1.8); transient = D1 (%s) at "
                      "a live-plug's 4.3 A, the inlet's figure on output_panel" % _D10["mpn"])
-BRAIN_24 = dict(v=V24_STEADY, vt=V24_CLAMP,
-                why="the LM5122 boost's output, 1.2 V x (1 + 50.725 / 2.67) = 24.0 V nominal; steady taken "
-                    "as the brick rail's 24 V +10 %% (covers the reference's tolerance and load-release "
-                    "overshoot); transient = D3, the same %s clamp as the brick rail" % RAIL_TVS["mpn"])
+# THE INSTRUMENT'S (R2) RAIL CLAMP IS ITS OWN (lead, 2026-11-14): brain D3 / output_board D203
+# went SMCJ24A -> SMCJ26A, whose 26 V stand-off sits nearer the 26.4 V steady figure. The R1
+# boards keep system.rail_tvs (the SMCJ24A they were built with). Same surge bound.
+R2_RAIL_TVS = PARTS[os.environ.get("R2_RAIL_TVS", "C310042")]
+R2_V24_CLAMP = R2_RAIL_TVS["vbr_max"] + (R2_RAIL_TVS["vc"] - R2_RAIL_TVS["vbr_max"]) * min(1.0, SURGE["i"] / R2_RAIL_TVS["ipp"])
+# STEADY FROM THE BOOST ITSELF (lead, 2026-11-14), not the brick's 24 V +10 %: VREF 1.212 V max
+# (SNVS954H 6.5: 1.188 / 1.2 / 1.212) through the 1 % divider at its worst, 50.725k high and
+# 2.67k low -> 24.70 V. PLUS 1.0 V of allowance for the decel back-drive into the bulk: the
+# boost cannot sink, so energy the drivers return lifts the rail until the loads drain it. A
+# SUSTAINED lift needs the motors to return more than they draw; measured they are net
+# consumers (~0.9 W a motor moving, motor-power-measured), so what returns is a bump a
+# few ms long (0.3 J -- ten 54 g cm2 rotors from 1000 rpm, ASSUMED -- is gone into ~50 W of
+# load in 6 ms), i.e. a TRANSIENT the clamp bounds. The 1.0 V covers that bump's tail plus
+# the boost's load-release overshoot between events; 25.7 V stays under D3's 26 V stand-off.
+BRAIN_24_STEADY = 1.212 * (1 + 50.725 * 1.01 / (2.67 * 0.99)) + 1.0
+BRAIN_24 = dict(v=BRAIN_24_STEADY, vt=R2_V24_CLAMP,
+                why="the LM5122 boost's output, 1.2 V x (1 + 50.725 / 2.67) = 24.0 V nominal; steady %.2f V = "
+                    "VREF 1.212 V max (SNVS954H 6.5) through the 1 %% divider at its worst (24.70 V) + 1.0 V "
+                    "for regeneration's tail and load-release overshoot (the boost cannot sink; the motors "
+                    "are net consumers, so regeneration is a bump, bounded by the clamp); transient = D3, "
+                    "%s, at %.0f A of surge: %.1f V (breakdown %.1f-%.1f V, VC %.1f V at %.1f A)"
+                    % (BRAIN_24_STEADY, R2_RAIL_TVS["mpn"], SURGE["i"], R2_V24_CLAMP, R2_RAIL_TVS["vbr_min"],
+                       R2_RAIL_TVS["vbr_max"], R2_RAIL_TVS["vc"], R2_RAIL_TVS["ipp"]))
 SEEDS["brain"] = {
     "VIN_BRAIN": ("abs", BRAIN_VIN),
     "VIN_SW": ("like", "VIN_BRAIN", 0.0, "behind Q2, the power switch"),
@@ -517,6 +538,10 @@ def _vod(L, R):
 
 RES_MODEL = {
     "can_tee": {"R1": ("v", _vod, "CAN termination: SN65HVD230 dominant VOD max 3 V, 100 % dominant")},
+    # bus A's far-end terminator: ISO 11898-2 caps a dominant VOD at 3 V for every compliant node
+    # (the SERVO42D's transceiver is not known; the board's own is 3 V max), held dominant
+    "connector_board": {"R1": ("v", lambda L, R: 3.0, "bus A termination: ISO 11898-2 dominant VOD max 3 V, "
+                                                      "100 % dominant")},
     "motor_ctrl": {"R23": ("i", 0.8, "U5's input at 15 W out, the figure F1 is sized on"),
                    "R5": ("v", lambda L, R: PARTS["C22433320"]["vod_max"],
                           "CAN termination: TCAN3413 dominant VOD max 3 V, 100 % dominant")},
@@ -816,6 +841,15 @@ SEEDS["output_board"].update({
                                           "ground-bounce bound (assumed)"))
        for n in ("PA_GND_J", "PB_GND_J")},
     **{n: SEEDS["output_board"]["USBA_DP"] for n in ("USBA_DP_J", "USBA_DM_J", "USBB_DP_J", "USBB_DM_J")},
+    # bus B AT THE SWITCHES (lead, 2026-11-14): D219 / D220 (PESD2USB5UX) sit on U209 / U210's arm
+    # pins, so an ESD hit reaches them as that clamp's residue, not the arms' ESD5B5.0 breakdown
+    **{n: ("abs", dict(v=5.0, vt=5.0, why="bus B with D219 / D220 (PESD2USB5UX) at the switch pins: steady "
+                                          "5 V (CAN_B's conservative figure; the nodes are 3.3 V SN65HVD230s); "
+                                          "an IEC 8 kV hit is held to 4.32 V by 30 ns (Fig. 10) and 3.3 V at "
+                                          "8 A TLP, under the steady figure -- so transient = steady. Its 7.2-11 V "
+                                          "trigger is a slow-source figure, and no conductor in the arm cable "
+                                          "is above 5 V short of the declared fault"))
+       for n in ("CANB_H", "CANB_L", "PED_H", "PED_L", "LEV_H", "LEV_L")},
     "RELAY_COIL": ("like", "V5_PRE", 1.25, "coil turn-off: V5_PRE (the coil is on the charger side) plus "
                                            "D4's forward drop (1.25 V max)"),
 })
@@ -831,6 +865,23 @@ for _T in (RES_MODEL, CAP_ACROSS, FET_VGS):
     _T["output_board"] = {k: tuple(_alias_fn(x) for x in v) for k, v in _T["output_board"].items()}
 
 
+# ── THE CONNECTOR BOARD (lead, 2026-11-14): passive, everything it carries comes down the
+# ribbon from the output board (harness.CONN_RIBBON), so its nets are the output board's
+SEEDS["connector_board"] = {
+    "+24V": ("from", "output_board", "+24V_RIB", "the motors' 24 V, through the output board's F204"),
+    "+24V_LED": ("from", "output_board", "+24V_LED", "the lights' fused 24 V"),
+    "+5V_PED": ("from", "output_board", "+5V_BUSB_PED", "the pedal arm's 5 V, behind U206"),
+    "+5V_LEV": ("from", "output_board", "+5V_BUSB_LEV", "the lever arm's 5 V, behind U211"),
+    "CANA_H": ("from", "output_board", "CANA_H", "bus A"), "CANA_L": ("from", "output_board", "CANA_L", "bus A"),
+    # the arms' own ESD5B5.0 (D2-D5) sit here, at the connectors: their breakdown is this side's bound
+    "PED_H": ("abs", CAN_B), "PED_L": ("abs", CAN_B), "LEV_H": ("abs", CAN_B), "LEV_L": ("abs", CAN_B),
+    **{n: ("from", "output_board", n, "a lighting SPI line, down the ribbon")
+       for n in ("SCK", "SDT", "SCK_FOOT", "SDT_FOOT")},
+}
+CODE_FALLBACK["connector_board"] = {
+    # J1: PZ1.27-2x15P ZZ has no LCSC code yet: its stocked 2 x 8 sibling, as output_board's J240
+    ("PZ1.27-2x15P ZZ", "PinHeader_2x15_P1.27mm_Vertical_SMD"): "C22438123",
+}
 CODE_FALLBACK["output_board"] = {
     # U5, merged: the 4 A LMR33640 in the 3 A part's RNX land, no LCSC code yet (open item).
     # Rated as the LMR33630 (C2071384): the same 1.0 V feedback reference and pin limits
@@ -1353,6 +1404,7 @@ class Board:
             self.row(ref, pin, "", net, s["v"], s["vt"], s["vf"], None, "n/a", "OK", "no voltage rating applies; current checked below")
 
     chk_ind = chk_bead
+    chk_cmc = chk_conn       # a common-mode choke: its rated voltage judged as a connector's working voltage
 
     def chk_switch(self, ref, c, p):
         for pin, net in self.pins_sorted(c):
@@ -1573,6 +1625,8 @@ class Board:
                     continue
                 lim, what = p["i"] * n, "%d x %g A contact%s" % (n, p["i"], "s" if n > 1 else "")
                 thr = 0.8
+            elif k == "cmc":
+                lim, what, thr = p["i"], "%g A rated per winding" % p["i"], 0.8
             elif k == "fuse":
                 lim, what, thr = p["i"], "%g A fuse" % p["i"], 0.75
             elif k == "bead":

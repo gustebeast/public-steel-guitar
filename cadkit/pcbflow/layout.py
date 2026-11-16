@@ -1517,12 +1517,6 @@ def tidy_router_vias(board, notes, min_gap_mm=0.25):
         return any(name == n and math.hypot(p.x - x, p.y - y) < pcbnew.FromMM(3.0)
                    for n, x, y in escape_at)
 
-    doomed, joins, reported = {}, [], []
-    for v in vias:
-        if (conn.TestTrackEndpointDangling(v, False) and not _declared(v)
-                and not _escape(v)):
-            doomed[v.m_Uuid.AsString()] = "dangling %s" % v.GetNetname()
-
     def _ends(v):
         """Track ends landing in this via's pad, on a layer it spans -- for the HANDOVER
         only. Used to move copper, never to decide whether a via is needed."""
@@ -1538,6 +1532,50 @@ def tidy_router_vias(board, notes, min_gap_mm=0.25):
                     out.append((t.GetLayer(), t.GetWidth()))
                     break
         return out
+
+    # ⚠ NOR IS A PAD'S PLANE JOIN (connector_board d15 + ring, 2026-11-15): J1.5 (GND) had
+    # its stub to a via the planes were meant to take, but +24V copper had pushed the GND
+    # fill off that spot, so KiCad called the via dangling and this pass deleted it -- the
+    # pad left on a stranded fill island, the board one open, and nothing said why. A via
+    # of a net poured on a layer the via spans but none of its own tracks are on is a
+    # dive INTO a plane: if it reaches no fill it is a join that missed, not a leaving --
+    # kept, and named, so close_last / repair_planes start from it.
+    poured = {}
+    for z in board.Zones():
+        if not z.GetIsRuleArea() and z.GetNetCode() > 0:
+            poured.setdefault(z.GetNetCode(), set()).update(z.GetLayerSet().CuStack())
+
+    def _plane_join(v):
+        pl = poured.get(v.GetNetCode())
+        if not pl:
+            return False
+        lo, hi = v.TopLayer(), v.BottomLayer()
+        mine = {L for L, _w in _ends(v)}
+        return any(lo <= L <= hi and L not in mine for L in pl) and bool(mine)
+
+    doomed, joins, reported = {}, [], []
+    missed_joins = []
+    for v in vias:
+        if (conn.TestTrackEndpointDangling(v, False) and not _declared(v)
+                and not _escape(v)):
+            if _plane_join(v):
+                p_ = v.GetPosition()
+                missed_joins.append("%s at %.2f,%.2f" % (v.GetNetname(), pcbnew.ToMM(p_.x),
+                                                         pcbnew.ToMM(p_.y)))
+                continue
+            doomed[v.m_Uuid.AsString()] = "dangling %s" % v.GetNetname()
+    if missed_joins:
+        print("      ⚠ %d plane-join via(s) reach no fill -- KEPT, not tidied (the pad's only way "
+              "to its plane; a fill island or a crowded spot): %s"
+              % (len(missed_joins), ", ".join(missed_joins[:8])))
+        if os.environ.get("PCBFLOW_MOVE_PLANE_JOINS", "0") == "1":
+            moved = _move_plane_joins(board, [v for v in vias if _plane_join(v)
+                                              and conn.TestTrackEndpointDangling(v, False)],
+                                      _ends, poured)
+            if moved:
+                print("      moved %d plane-join via(s) into their plane's fill: %s"
+                      % (len(moved), ", ".join(moved[:8])))
+
 
     for i, a in enumerate(vias):
         if a.m_Uuid.AsString() in doomed:
@@ -2279,6 +2317,115 @@ def _plane_gap(pos, zones):
             if any(z.GetFilledPolysList(z.GetLayer()).Collide(p) for z in zones):
                 return (r,)
     return (float("nan"),)
+
+
+MOVE_JOIN_MM = 2.5          # how far a plane-join via may move to reach its plane's fill
+MOVE_JOIN_STEP = 0.1
+
+
+def _move_plane_joins(board, vias, ends, poured, clr_mm=0.2, hole_mm=0.25):
+    """Move each plane-join via that reaches no fill to the nearest spot, within
+    MOVE_JOIN_MM, where its whole pad sits in the net's FILL on a plane layer, clear of
+    every other net's copper; the stub that came to it is extended on its own layer.
+    Returns ["NET a,b -> c,d", ...].
+
+    ⚠ A JOIN AIMED AT THE OUTLINE, THEN BURIED (connector_board d15 + ring, 2026-11-15):
+    J1.5 / J1.9's GND vias were placed where the plane was going to be; +24V_LED's 1.4 mm
+    track and +24V's 2.05 mm feed then took B.Cu there, the fill could not reach either via,
+    and the pads were open. Opt-in (PCBFLOW_MOVE_PLANE_JOINS=1) until its A/B."""
+    import math
+    out = []
+    F = pcbnew.FromMM
+    for v in vias:
+        nc, net = v.GetNetCode(), v.GetNetname()
+        planes = [L for L in poured.get(nc, ()) if v.TopLayer() <= L <= v.BottomLayer()]
+        st = ends(v)
+        if not st or not planes:
+            continue
+        zs = [z for z in board.Zones() if z.GetNetCode() == nc and not z.GetIsRuleArea()]
+        pcbnew.ZONE_FILLER(board).Fill(zs)
+        r = _via_r(v)
+        drill = v.GetDrillValue()
+        p0 = v.GetPosition()
+        L_stub, w_stub = st[0]
+        others = [t for t in board.GetTracks() if t.GetNetCode() != nc]
+        pads = [q for q in board.GetPads() if q.GetNetCode() != nc]
+        own_smd = [q for q in board.GetPads() if q.GetNetCode() == nc
+                   and q.GetAttribute() == pcbnew.PAD_ATTRIB_SMD]
+        holes = ([(t.GetPosition(), t.GetDrillValue()) for t in board.GetTracks()
+                  if isinstance(t, pcbnew.PCB_VIA) and t is not v]
+                 + [(q.GetPosition(), q.GetDrillSize().x) for q in board.GetPads()
+                    if q.GetDrillSize().x > 0])
+
+        def in_fill(q):
+            ring = [pcbnew.VECTOR2I(int(q.x + (r + F(0.05)) * math.cos(a)),
+                                    int(q.y + (r + F(0.05)) * math.sin(a)))
+                    for a in [k * math.pi / 4 for k in range(8)]]
+            return any(all(z.HitTestFilledArea(L, c) for c in [q] + ring)
+                       for z in zs for L in planes if z.IsOnLayer(L))
+
+        def seg_d(px, py, ax, ay, bx, by):
+            dx, dy = bx - ax, by - ay
+            L2 = dx * dx + dy * dy
+            t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / L2))
+            return math.hypot(px - (ax + t * dx), py - (ay + t * dy))
+
+        def clear(q):
+            for (hp, hd) in holes:
+                if math.hypot(q.x - hp.x, q.y - hp.y) < (drill + hd) / 2.0 + F(hole_mm):
+                    return False
+            for t in others:
+                if isinstance(t, pcbnew.PCB_VIA):
+                    if math.hypot(q.x - t.GetPosition().x, q.y - t.GetPosition().y) < r + _via_r(t) + F(clr_mm):
+                        return False
+                elif seg_d(q.x, q.y, t.GetStart().x, t.GetStart().y, t.GetEnd().x,
+                           t.GetEnd().y) < r + t.GetWidth() / 2.0 + F(clr_mm):
+                    return False
+            # the stub's extension on its own layer, p0 -> q
+            n = max(1, int(math.hypot(q.x - p0.x, q.y - p0.y) / F(0.1)))
+            for k in range(n + 1):
+                c = pcbnew.VECTOR2I(int(p0.x + (q.x - p0.x) * k / n), int(p0.y + (q.y - p0.y) * k / n))
+                for t in others:
+                    if not isinstance(t, pcbnew.PCB_VIA) and t.GetLayer() != L_stub:
+                        continue
+                    if isinstance(t, pcbnew.PCB_VIA):
+                        if math.hypot(c.x - t.GetPosition().x, c.y - t.GetPosition().y) < w_stub / 2.0 + _via_r(t) + F(clr_mm):
+                            return False
+                    elif seg_d(c.x, c.y, t.GetStart().x, t.GetStart().y, t.GetEnd().x,
+                               t.GetEnd().y) < w_stub / 2.0 + t.GetWidth() / 2.0 + F(clr_mm):
+                        return False
+                for pd in pads:
+                    if pd.IsOnLayer(L_stub) and pd.HitTest(c, int(w_stub / 2.0 + F(clr_mm))):
+                        return False
+            for pd in pads:
+                if pd.HitTest(q, int(r + F(clr_mm))):
+                    return False
+            # ...nor into a soldered land of its OWN net: an open via in an SMD pad wicks
+            # the joint (connector_board replay: J1.5's via moved 0.4 mm onto J1.5 itself,
+            # quality A12 / A14 hard)
+            for pd in own_smd:
+                if pd.HitTest(q, int(r + F(0.05))):
+                    return False
+            return True
+
+        n = int(MOVE_JOIN_MM / MOVE_JOIN_STEP)
+        cands = sorted((math.hypot(i, j), i, j) for i in range(-n, n + 1) for j in range(-n, n + 1)
+                       if 0 < math.hypot(i, j) <= n)
+        for _d, i, j in cands:
+            q = pcbnew.VECTOR2I(p0.x + int(F(i * MOVE_JOIN_STEP)), p0.y + int(F(j * MOVE_JOIN_STEP)))
+            if in_fill(q) and clear(q):
+                t = pcbnew.PCB_TRACK(board)
+                t.SetStart(p0)
+                t.SetEnd(q)
+                t.SetWidth(int(w_stub))
+                t.SetLayer(L_stub)
+                t.SetNetCode(nc)
+                board.Add(t)
+                v.SetPosition(q)
+                out.append("%s %.2f,%.2f -> %.2f,%.2f" % (net, pcbnew.ToMM(p0.x), pcbnew.ToMM(p0.y),
+                                                          pcbnew.ToMM(q.x), pcbnew.ToMM(q.y)))
+                break
+    return out
 
 
 def _via_r(v):

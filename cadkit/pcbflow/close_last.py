@@ -315,6 +315,9 @@ def _pad_layer(board, net, layer, pos):
     return layer
 
 
+LAST_STRANDED = False      # _lay: the last closure laid nothing (main does not count it)
+
+
 def _lay(board, stem, net, res, width, layer_id, named, gap):
     """Lay one search result `res` = (runs, vias) for `net` at `width`, and record it as a
     closure of `gap` between the two ends `named`. Returns the track length laid."""
@@ -460,6 +463,19 @@ def _lay(board, stem, net, res, width, layer_id, named, gap):
         v.SetDrill(pcbnew.FromMM(RS.VIA_DRILL))
         v.SetNetCode(code)
         board.Add(v)
+    # ⚠ A CLOSURE THAT LAYS NOTHING CLOSED NOTHING (connector_board d15 rerouted, 2026-11-15):
+    # J2.2 (GND) sat in a 22 mm2 island of the F.Cu pour that LEV_L / LEV_H / PED_H had fenced
+    # off; the search walked the net's own pour cells to the plane, laid 0 mm and 0 vias, and
+    # this printed "closed" while DRC kept the item open. The model's pour is the outline, not
+    # the fill KiCad makes: with nothing laid, say STRANDED and do not count it.
+    global LAST_STRANDED
+    LAST_STRANDED = length < 1e-3 and not vias and not laid
+    if LAST_STRANDED:
+        print("close_last: %s STRANDED between (%.2f, %.2f) and (%.2f, %.2f): the only way found runs "
+              "through the net's own pour, whose fill does not join them there -- NOT closed (move a "
+              "track off the patch, or give the pad its own via)"
+              % (net, named[0][1][0], named[0][1][1], named[1][1][0], named[1][1][1]))
+        return length
     print("close_last: %s closed with %.2f mm over %s and %d via(s)"
           % (net, length, "/".join(L for L, _p in runs), len(vias)))
     _record(stem, {"net": net, "a": [round(c, 3) for c in named[0][1]],
@@ -579,7 +595,7 @@ def _rip_one(board, stem, net, model, layers, layer_id, named, gap, tries, close
         if lim is not None:
             return length > float(lim["ratio"]) * g + 1e-9 or length > float(lim["max_mm"]) + 1e-9
         return length > ratio * g and length - g > excess
-    for g in notes.get("match", ()) + notes.get("diff_pairs", ()):
+    for g in list(notes.get("match") or ()) + list(notes.get("diff_pairs") or ()):
         fixed |= set(g.get("nets", ()) if isinstance(g, dict) else g)
     moved = set()           # nets taken up so far: laid again, never taken up twice
     softnet = lambda n: (n and n != net and n not in pour and n not in close_w and n not in wide
@@ -937,7 +953,8 @@ def main(stem):
                 made += ok
             continue
         _lay(board, stem, net, res, width, layer_id, named, gap)
-        made += 1
+        if not LAST_STRANDED:
+            made += 1
     board.Save(stem + ".kicad_pcb")
     return made
 

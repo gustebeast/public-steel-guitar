@@ -1,28 +1,28 @@
 {
  "net_volts": {
   "+24V": {
-   "peak": 34.37,
-   "v": 26.4,
-   "why": "the LM5122 boost's output, 1.2 V x (1 + 50.725 / 2.67) = 24.0 V nominal; steady taken as the brick rail's 24 V +10 % (covers the reference's tolerance and load-release overshoot); transient = D3, the same SMCJ24A clamp as the brick rail"
+   "peak": 37.614,
+   "v": 25.703,
+   "why": "the LM5122 boost's output, 1.2 V x (1 + 50.725 / 2.67) = 24.0 V nominal; steady 25.70 V = VREF 1.212 V max (SNVS954H 6.5) through the 1 % divider at its worst (24.70 V) + 1.0 V for regeneration's tail and load-release overshoot (the boost cannot sink; the motors are net consumers, so regeneration is a bump, bounded by the clamp); transient = D3, SMCJ26A, at 20 A of surge: 37.6 V (breakdown 28.9-31.9 V, VC 42.1 V at 35.7 A)"
   },
   "+24V_BUCK": {
-   "peak": 34.37,
-   "v": 26.4,
+   "peak": 37.614,
+   "v": 25.703,
    "why": "through F201"
   },
   "+24V_F": {
-   "peak": 34.37,
-   "v": 26.4,
+   "peak": 37.614,
+   "v": 25.703,
    "why": "through R223"
   },
   "+24V_LED": {
-   "peak": 34.37,
-   "v": 26.4,
+   "peak": 37.614,
+   "v": 25.703,
    "why": "through F203"
   },
   "+24V_RIB": {
-   "peak": 34.37,
-   "v": 26.4,
+   "peak": 37.614,
+   "v": 25.703,
    "why": "F204 (PPTC) from +24V, out on the connector ribbon [= +24V+0]"
   },
   "+3V3D": {
@@ -100,8 +100,8 @@
    "why": "bootstrap: SW + 5.5 V, held by U5"
   },
   "BOOT5": {
-   "peak": 39.87,
-   "v": 31.9,
+   "peak": 43.114,
+   "v": 31.203,
    "why": "bootstrap: SW5 + 5.5 V, held by U205"
   },
   "BRAIN_EN": {
@@ -110,8 +110,8 @@
    "why": "U1.68 (io) can reach its supply +3V3D"
   },
   "BST_BST": {
-   "peak": 43.37,
-   "v": 35.4,
+   "peak": 46.614,
+   "v": 34.703,
    "why": "bootstrap: SW plus VCC less D17's drop [= BST_SW+8]"
   },
   "BST_COMP": {
@@ -133,18 +133,18 @@
    "why": "current sense, R109's input side [= VIN_BRAIN+0]"
   },
   "BST_FB": {
-   "peak": 1.719,
-   "v": 1.32,
+   "peak": 1.881,
+   "v": 1.285,
    "why": "R105 / (R103 + R104 + R105): the regulated 1.2 V, and the divided rail whatever it does"
   },
   "BST_FBMID": {
-   "peak": 2.25,
-   "v": 1.728,
+   "peak": 2.462,
+   "v": 1.682,
    "why": "(R104 + R105) / (R103 + R104 + R105)"
   },
   "BST_HO": {
-   "peak": 43.37,
-   "v": 35.4,
+   "peak": 46.614,
+   "v": 34.703,
    "why": "high-side gate drive: SW to BST [= BST_SW+8]"
   },
   "BST_LMID": {
@@ -174,8 +174,8 @@
    "why": "driven only by the LM5122's own low-voltage circuitry, pins rated 7 V; 5 V an assumed bound"
   },
   "BST_SW": {
-   "peak": 35.37,
-   "v": 27.4,
+   "peak": 38.614,
+   "v": 26.703,
    "why": "boost switch node: VOUT plus Q9's body diode while it commutates [= +24V+1]"
   },
   "BST_UVLO": {
@@ -247,14 +247,12 @@
    "why": "bus A: dominant level of a 5 V transceiver in a SERVO42D (assumed, not known); transient = the NUP2105L's maximum breakdown either way (24 V stand-off, so the +24 V conductor beside it in the same 4-wire trunk is a level it stands, not one it clamps); FAULT = that conductor shorted on"
   },
   "CANB_H": {
-   "peak": 7.8,
    "v": 5.0,
-   "why": "bus B: 5 V nodes; nothing above 5 V in its cable; transient = the ESD5B5.0 clamps' maximum breakdown (motor_ctrl D4 / D5, and each lever board's own)"
+   "why": "bus B with D219 / D220 (PESD2USB5UX) at the switch pins: steady 5 V (CAN_B's conservative figure; the nodes are 3.3 V SN65HVD230s); an IEC 8 kV hit is held to 4.32 V by 30 ns (Fig. 10) and 3.3 V at 8 A TLP, under the steady figure -- so transient = steady. Its 7.2-11 V trigger is a slow-source figure, and no conductor in the arm cable is above 5 V short of the declared fault"
   },
   "CANB_L": {
-   "peak": 7.8,
    "v": 5.0,
-   "why": "bus B: 5 V nodes; nothing above 5 V in its cable; transient = the ESD5B5.0 clamps' maximum breakdown (motor_ctrl D4 / D5, and each lever board's own)"
+   "why": "bus B with D219 / D220 (PESD2USB5UX) at the switch pins: steady 5 V (CAN_B's conservative figure; the nodes are 3.3 V SN65HVD230s); an IEC 8 kV hit is held to 4.32 V by 30 ns (Fig. 10) and 3.3 V at 8 A TLP, under the steady figure -- so transient = steady. Its 7.2-11 V trigger is a slow-source figure, and no conductor in the arm cable is above 5 V short of the declared fault"
   },
   "CM5_3V3": {
    "peak": 3.564,
@@ -893,8 +891,8 @@
    "why": "pickup buffer, AC-coupled to 0 V: +/- half the 5 V rail"
   },
   "EN5": {
-   "peak": 2.338,
-   "v": 1.796,
+   "peak": 2.559,
+   "v": 1.748,
    "why": "divider off +24V: x 0.0680"
   },
   "EN_LEV": {
@@ -1046,14 +1044,12 @@
    "why": "not connected"
   },
   "LEV_H": {
-   "peak": 7.8,
    "v": 5.0,
-   "why": "bus B: 5 V nodes; nothing above 5 V in its cable; transient = the ESD5B5.0 clamps' maximum breakdown (motor_ctrl D4 / D5, and each lever board's own)"
+   "why": "bus B with D219 / D220 (PESD2USB5UX) at the switch pins: steady 5 V (CAN_B's conservative figure; the nodes are 3.3 V SN65HVD230s); an IEC 8 kV hit is held to 4.32 V by 30 ns (Fig. 10) and 3.3 V at 8 A TLP, under the steady figure -- so transient = steady. Its 7.2-11 V trigger is a slow-source figure, and no conductor in the arm cable is above 5 V short of the declared fault"
   },
   "LEV_L": {
-   "peak": 7.8,
    "v": 5.0,
-   "why": "bus B: 5 V nodes; nothing above 5 V in its cable; transient = the ESD5B5.0 clamps' maximum breakdown (motor_ctrl D4 / D5, and each lever board's own)"
+   "why": "bus B with D219 / D220 (PESD2USB5UX) at the switch pins: steady 5 V (CAN_B's conservative figure; the nodes are 3.3 V SN65HVD230s); an IEC 8 kV hit is held to 4.32 V by 30 ns (Fig. 10) and 3.3 V at 8 A TLP, under the steady figure -- so transient = steady. Its 7.2-11 V trigger is a slow-source figure, and no conductor in the arm cable is above 5 V short of the declared fault"
   },
   "LOWPWR_G": {
    "v": 0.0,
@@ -1329,14 +1325,12 @@
    "why": "U1.85 (io) can reach its supply +3V3D; through R83"
   },
   "PED_H": {
-   "peak": 7.8,
    "v": 5.0,
-   "why": "bus B: 5 V nodes; nothing above 5 V in its cable; transient = the ESD5B5.0 clamps' maximum breakdown (motor_ctrl D4 / D5, and each lever board's own)"
+   "why": "bus B with D219 / D220 (PESD2USB5UX) at the switch pins: steady 5 V (CAN_B's conservative figure; the nodes are 3.3 V SN65HVD230s); an IEC 8 kV hit is held to 4.32 V by 30 ns (Fig. 10) and 3.3 V at 8 A TLP, under the steady figure -- so transient = steady. Its 7.2-11 V trigger is a slow-source figure, and no conductor in the arm cable is above 5 V short of the declared fault"
   },
   "PED_L": {
-   "peak": 7.8,
    "v": 5.0,
-   "why": "bus B: 5 V nodes; nothing above 5 V in its cable; transient = the ESD5B5.0 clamps' maximum breakdown (motor_ctrl D4 / D5, and each lever board's own)"
+   "why": "bus B with D219 / D220 (PESD2USB5UX) at the switch pins: steady 5 V (CAN_B's conservative figure; the nodes are 3.3 V SN65HVD230s); an IEC 8 kV hit is held to 4.32 V by 30 ns (Fig. 10) and 3.3 V at 8 A TLP, under the steady figure -- so transient = steady. Its 7.2-11 V trigger is a slow-source figure, and no conductor in the arm cable is above 5 V short of the declared fault"
   },
   "PG_5V": {
    "peak": 3.45,
@@ -1566,8 +1560,8 @@
    "why": "CM5 GPIO / unused pins: 3.3 V CMOS [= CM5_3V3+0]"
   },
   "SENSE_24V": {
-   "peak": 3.125,
-   "v": 2.4,
+   "peak": 3.419,
+   "v": 2.337,
    "why": "divider off +24V: x 0.0909"
   },
   "SENSE_5V": {
@@ -1591,8 +1585,8 @@
    "why": "buck switch node: VIN while the high side is on [= VSTBY+0]"
   },
   "SW5": {
-   "peak": 34.37,
-   "v": 26.4,
+   "peak": 37.614,
+   "v": 25.703,
    "why": "buck switch node: VIN while the high side is on [= +24V_BUCK+0]"
   },
   "SWCLK": {
@@ -2442,7 +2436,23 @@
    "max": 50.0,
    "src": "rated V -- 0402CG120J500NT (C1547): JLCPCB parts API attributes for C1547 (0402CG120J500NT, FH (Guangdong Fenghua Advanced Tech)), fetched 2026-10-06"
   },
+  "C160.1": {
+   "max": 25.0,
+   "src": "rated V -- CL21A475KAQNNNE (C1779): JLCPCB parts API attributes for C1779 (CL21A475KAQNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
   "C161.1": {
+   "max": 25.0,
+   "src": "rated V -- CL21A475KAQNNNE (C1779): JLCPCB parts API attributes for C1779 (CL21A475KAQNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C162.1": {
+   "max": 50.0,
+   "src": "rated V -- CL10A105KB8NNNC (C15849): JLCPCB parts API attributes for C15849 (CL10A105KB8NNNC, Samsung Electro-Mechanics: 1uF 50V X5R 10 % 0603), fetched 2026-11-14"
+  },
+  "C163.1": {
+   "max": 50.0,
+   "src": "rated V -- GRM1555C1H103JE01D (C22400107): JLCPCB parts API attributes for C22400107 (GRM1555C1H103JE01D, Murata Electronics), fetched 2026-10-06"
+  },
+  "C164.1": {
    "max": 25.0,
    "src": "rated V -- CL21A475KAQNNNE (C1779): JLCPCB parts API attributes for C1779 (CL21A475KAQNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
@@ -2491,8 +2501,8 @@
    "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
   "C201.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C202.1": {
    "max": 50.0,
@@ -2673,20 +2683,12 @@
    "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
   "C292.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C293.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
-  },
-  "C294.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
-  },
-  "C295.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C296.1": {
    "max": 50.0,
@@ -2749,48 +2751,36 @@
    "src": "rated V -- 0402CG101J500NT (C1546): JLCPCB parts API attributes for C1546 (0402CG101J500NT, FH (Guangdong Fenghua Advanced Tech)), fetched 2026-11-13"
   },
   "C305.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C306.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C307.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C308.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C309.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C31.1": {
    "max": 6.3,
    "src": "rated V -- CL05A106MQ5NUNC (C15525): JLCPCB parts API attributes for C15525 (CL05A106MQ5NUNC, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
-  "C310.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
-  },
-  "C311.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
-  },
-  "C312.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
-  },
   "C313.1": {
-   "max": 35.0,
-   "src": "rated V -- MA35V470M10X13 (C46550472): jieerrui MA series datasheet p.4 row MA35V470M10X13: 35 V, 470 uF, 16 mohm, ripple 3.8 A at 100 kHz"
+   "max": 50.0,
+   "src": "rated V -- MA50V330M10X12 (C53120968): JLCPCB parts API attributes for C53120968 (jieerrui MA50V330M10X12: polymer, 50 V, 330 uF 20 %, ESR 20 mOhm and ripple 3.5 A at 100 kHz, 12.5 mm seated), fetched 2026-11-14"
   },
   "C314.1": {
-   "max": 35.0,
-   "src": "rated V -- MA35V470M10X13 (C46550472): jieerrui MA series datasheet p.4 row MA35V470M10X13: 35 V, 470 uF, 16 mohm, ripple 3.8 A at 100 kHz"
+   "max": 50.0,
+   "src": "rated V -- MA50V330M10X12 (C53120968): JLCPCB parts API attributes for C53120968 (jieerrui MA50V330M10X12: polymer, 50 V, 330 uF 20 %, ESR 20 mOhm and ripple 3.5 A at 100 kHz, 12.5 mm seated), fetched 2026-11-14"
   },
   "C315.1": {
    "max": 50.0,
@@ -3092,10 +3082,10 @@
    "why": "this part IS the clamp on VIN_BRAIN: it stands 24 V (where its leakage is specified) and starts to conduct at 26.7 V, the figure a steady level must stay under"
   },
   "D203.1": {
-   "max": 26.7,
+   "max": 28.9,
    "peak": "none",
-   "src": "SMCJ24A (C310039): Brightking SMCJ series datasheet (LCSC C310039), electrical table row SMCJ24A: VRWM 24 V, VBR 26.7-29.5 V @1 mA, VC 38.9 V @ IPP 38.6 A (10/1000 us), 1500 W",
-   "why": "this part IS the clamp on +24V: it stands 24 V (where its leakage is specified) and starts to conduct at 26.7 V, the figure a steady level must stay under"
+   "src": "SMCJ26A (C310042): Brightking SMCJ series datasheet (Revision 21-Jul-14, LCSC C310042's PDF), electrical table row SMCJ26A (rows read against VRWM x 1.11; the PDF's text layer shifts the columns): VRWM 26 V, VBR 28.90-31.90 V @1 mA, VC 42.1 V @ IPP 35.7 A (10/1000 us), 1500 W. Read 2026-11-14",
+   "why": "this part IS the clamp on +24V: it stands 26 V (where its leakage is specified) and starts to conduct at 28.9 V, the figure a steady level must stay under"
   },
   "D208.1": {
    "max": "none",
@@ -3154,6 +3144,18 @@
    "src": "KT-0603G (C12624): Hubei KENTO KT-0603G specification p.3 absolute maximum ratings (Pd 100 mW, IFP 60 mA, DC IF 30 mA, VR 5 V); VF 2.6 min / 3.1 max @5 mA (no typ given; min entered, the conservative side for current)",
    "why": "0.7 mA of 30 mA DC, 2 mW of 100 mW (VF typ 2.6 V)"
   },
+  "D219.1": {
+   "max": 7.2,
+   "peak": "none",
+   "src": "PESD2USB5UX (C3709087): Nexperia PESD2USB5UX datasheet (LCSC C3709087's PDF) Table 7: VRWM 5 V, VBR 7.2 / 8.7 / 11 V at 1 mA (the snapback TRIGGER, not the clamp), IRM 50 nA max at 5 V, Cd 0.47 / 0.6 pF, VCL 3.3 V at IPP 8 A TLP; Fig. 10: +8 kV IEC 61000-4-2 clamped to 4.32 V at 30 ns (Fig. 11: -3.70 V); pins 1 K1 2 K2 3 common anode. Read 2026-11-14",
+   "why": "this part IS the clamp on PED_H: it stands 5 V (where its leakage is specified) and starts to conduct at 7.2 V, the figure a steady level must stay under"
+  },
+  "D219.2": {
+   "max": 7.2,
+   "peak": "none",
+   "src": "PESD2USB5UX (C3709087): Nexperia PESD2USB5UX datasheet (LCSC C3709087's PDF) Table 7: VRWM 5 V, VBR 7.2 / 8.7 / 11 V at 1 mA (the snapback TRIGGER, not the clamp), IRM 50 nA max at 5 V, Cd 0.47 / 0.6 pF, VCL 3.3 V at IPP 8 A TLP; Fig. 10: +8 kV IEC 61000-4-2 clamped to 4.32 V at 30 ns (Fig. 11: -3.70 V); pins 1 K1 2 K2 3 common anode. Read 2026-11-14",
+   "why": "this part IS the clamp on PED_L: it stands 5 V (where its leakage is specified) and starts to conduct at 7.2 V, the figure a steady level must stay under"
+  },
   "D22.1": {
    "max": "none",
    "src": "BZT52C12T-7 (C507911): Diodes Inc BZT52C2V0T-BZT52C36T datasheet DS30502 Rev. 17-2 p.2: BZT52C12T VZ 11.4-12.7 V @5 mA, PD 300 mW",
@@ -3163,6 +3165,18 @@
    "max": "none",
    "src": "BZT52C12T-7 (C507911): Diodes Inc BZT52C2V0T-BZT52C36T datasheet DS30502 Rev. 17-2 p.2: BZT52C12T VZ 11.4-12.7 V @5 mA, PD 300 mW",
    "why": "20 mW steady, 36 mW at the transient, of 300 mW (fed from PB_VOUT through 6.2 k)"
+  },
+  "D220.1": {
+   "max": 7.2,
+   "peak": "none",
+   "src": "PESD2USB5UX (C3709087): Nexperia PESD2USB5UX datasheet (LCSC C3709087's PDF) Table 7: VRWM 5 V, VBR 7.2 / 8.7 / 11 V at 1 mA (the snapback TRIGGER, not the clamp), IRM 50 nA max at 5 V, Cd 0.47 / 0.6 pF, VCL 3.3 V at IPP 8 A TLP; Fig. 10: +8 kV IEC 61000-4-2 clamped to 4.32 V at 30 ns (Fig. 11: -3.70 V); pins 1 K1 2 K2 3 common anode. Read 2026-11-14",
+   "why": "this part IS the clamp on LEV_H: it stands 5 V (where its leakage is specified) and starts to conduct at 7.2 V, the figure a steady level must stay under"
+  },
+  "D220.2": {
+   "max": 7.2,
+   "peak": "none",
+   "src": "PESD2USB5UX (C3709087): Nexperia PESD2USB5UX datasheet (LCSC C3709087's PDF) Table 7: VRWM 5 V, VBR 7.2 / 8.7 / 11 V at 1 mA (the snapback TRIGGER, not the clamp), IRM 50 nA max at 5 V, Cd 0.47 / 0.6 pF, VCL 3.3 V at IPP 8 A TLP; Fig. 10: +8 kV IEC 61000-4-2 clamped to 4.32 V at 30 ns (Fig. 11: -3.70 V); pins 1 K1 2 K2 3 common anode. Read 2026-11-14",
+   "why": "this part IS the clamp on LEV_L: it stands 5 V (where its leakage is specified) and starts to conduct at 7.2 V, the figure a steady level must stay under"
   },
   "D23.1": {
    "max": "none",
@@ -3189,16 +3203,16 @@
    "src": "VRRM -- 1N4148WT (C917006): JSMSEMI 1N4148WT datasheet p.1 max ratings: VRRM 75 V, VRM 100 V, IO 150 mA"
   },
   "D5.1": {
-   "max": 5.8,
+   "max": 6.0,
    "peak": "none",
-   "src": "ESD5B5.0ST1G (C93623): onsemi ESD5B5.0S datasheet p.2 electrical table (VRWM 5.0, VBR 5.8-7.8 @1 mA), p.1 max ratings (50 W 8x20 us, 10 W 10x1000 us, 200 mW)",
-   "why": "this part IS the clamp on OUT_BLOCKED: it stands 5 V (where its leakage is specified) and starts to conduct at 5.8 V, the figure a steady level must stay under"
+   "src": "TPD1E10B06DYARQ1 (C3013901): TI TPD1E10B06 datasheet SLLSEB1G (revised August 2024) s5.5: VRWM 5.5 V either way, VBR 6 V minimum at 1 mA (no maximum published), VCLAMP 10 V at IPP 1 A 8/20 us, 14 V at 5 A; CIO 12 pF typ; IEC 61000-4-2 +-30 kV. Read 2026-11-14",
+   "why": "this part IS the clamp on OUT_BLOCKED: it stands 5.5 V (where its leakage is specified) and starts to conduct at 6 V, the figure a steady level must stay under"
   },
   "D7.1": {
-   "max": 5.8,
+   "max": 6.0,
    "peak": "none",
-   "src": "ESD5B5.0ST1G (C93623): onsemi ESD5B5.0S datasheet p.2 electrical table (VRWM 5.0, VBR 5.8-7.8 @1 mA), p.1 max ratings (50 W 8x20 us, 10 W 10x1000 us, 200 mW)",
-   "why": "this part IS the clamp on RING_BLOCKED: it stands 5 V (where its leakage is specified) and starts to conduct at 5.8 V, the figure a steady level must stay under"
+   "src": "TPD1E10B06DYARQ1 (C3013901): TI TPD1E10B06 datasheet SLLSEB1G (revised August 2024) s5.5: VRWM 5.5 V either way, VBR 6 V minimum at 1 mA (no maximum published), VCLAMP 10 V at IPP 1 A 8/20 us, 14 V at 5 A; CIO 12 pF typ; IEC 61000-4-2 +-30 kV. Read 2026-11-14",
+   "why": "this part IS the clamp on RING_BLOCKED: it stands 5.5 V (where its leakage is specified) and starts to conduct at 6 V, the figure a steady level must stay under"
   },
   "F201.1": {
    "max": 63.0,
@@ -3224,6 +3238,14 @@
    "max": 63.0,
    "src": "rated V -- JFC1206-1300FS (C136347): Shenzhen JDT JFC1206 fast-acting fuse datasheet p.3 table: rated voltage 63 VDC, rated current 3 A"
   },
+  "F204.1": {
+   "max": 60.0,
+   "src": "rated V -- 2920L200/60GR (C49326266): JLCPCB parts API attributes for C49326266 (LUTE 2920L200/60GR): voltage max 60 V, hold 2 A, trip 4 A, max current 40 A, time to trip 4.5 s max, fetched 2026-11-14"
+  },
+  "F204.2": {
+   "max": 60.0,
+   "src": "rated V -- 2920L200/60GR (C49326266): JLCPCB parts API attributes for C49326266 (LUTE 2920L200/60GR): voltage max 60 V, hold 2 A, trip 4 A, max current 40 A, time to trip 4.5 s max, fetched 2026-11-14"
+  },
   "FB1.1": {
    "max": "none",
    "src": "BLM18KG601SN1D (C85833): Murata BLM18KG datasheet p.1: BLM18KG601SN1 rated current 1300 mA (85 C), DCR 0.15 ohm",
@@ -3233,6 +3255,62 @@
    "max": "none",
    "src": "BLM18KG601SN1D (C85833): Murata BLM18KG datasheet p.1: BLM18KG601SN1 rated current 1300 mA (85 C), DCR 0.15 ohm",
    "why": "no voltage rating applies; current checked below"
+  },
+  "FL1.1": {
+   "max": 80.0,
+   "src": "rated V -- 744273501 (C2651123): Wurth Elektronik 744273501 (WE-SL5 HC) datasheet p.1 electrical properties: rated voltage VR 80 V, rated current 5000 mA (dT 40 K), RDC 5.5 mOhm max, 5 uH, 500 Ohm @100 MHz, insulation test 500 V AC; windings 1-4 and 2-3 (schematic). Read 2026-11-14 (we-online.com, through Chrome)"
+  },
+  "FL1.2": {
+   "max": 80.0,
+   "src": "rated V -- 744273501 (C2651123): Wurth Elektronik 744273501 (WE-SL5 HC) datasheet p.1 electrical properties: rated voltage VR 80 V, rated current 5000 mA (dT 40 K), RDC 5.5 mOhm max, 5 uH, 500 Ohm @100 MHz, insulation test 500 V AC; windings 1-4 and 2-3 (schematic). Read 2026-11-14 (we-online.com, through Chrome)"
+  },
+  "FL1.4": {
+   "max": 80.0,
+   "src": "rated V -- 744273501 (C2651123): Wurth Elektronik 744273501 (WE-SL5 HC) datasheet p.1 electrical properties: rated voltage VR 80 V, rated current 5000 mA (dT 40 K), RDC 5.5 mOhm max, 5 uH, 500 Ohm @100 MHz, insulation test 500 V AC; windings 1-4 and 2-3 (schematic). Read 2026-11-14 (we-online.com, through Chrome)"
+  },
+  "FL2.1": {
+   "max": 80.0,
+   "src": "rated V -- 744273501 (C2651123): Wurth Elektronik 744273501 (WE-SL5 HC) datasheet p.1 electrical properties: rated voltage VR 80 V, rated current 5000 mA (dT 40 K), RDC 5.5 mOhm max, 5 uH, 500 Ohm @100 MHz, insulation test 500 V AC; windings 1-4 and 2-3 (schematic). Read 2026-11-14 (we-online.com, through Chrome)"
+  },
+  "FL2.2": {
+   "max": 80.0,
+   "src": "rated V -- 744273501 (C2651123): Wurth Elektronik 744273501 (WE-SL5 HC) datasheet p.1 electrical properties: rated voltage VR 80 V, rated current 5000 mA (dT 40 K), RDC 5.5 mOhm max, 5 uH, 500 Ohm @100 MHz, insulation test 500 V AC; windings 1-4 and 2-3 (schematic). Read 2026-11-14 (we-online.com, through Chrome)"
+  },
+  "FL2.4": {
+   "max": 80.0,
+   "src": "rated V -- 744273501 (C2651123): Wurth Elektronik 744273501 (WE-SL5 HC) datasheet p.1 electrical properties: rated voltage VR 80 V, rated current 5000 mA (dT 40 K), RDC 5.5 mOhm max, 5 uH, 500 Ohm @100 MHz, insulation test 500 V AC; windings 1-4 and 2-3 (schematic). Read 2026-11-14 (we-online.com, through Chrome)"
+  },
+  "FL3.1": {
+   "max": 50.0,
+   "src": "rated V -- ACM2012-900-2P-T002 (C55213549): T-CND ACM2012-900-2P-T002: JLCPCB parts API attributes for C55213549 (50 V DC, 400 mA, 90 Ohm @100 MHz, 190 mOhm), fetched 2026-11-14; the same figures as TDK's own ACM2012 catalogue (C19972's PDF: ACM2012-900-2P-T002 rated voltage 50 V max, rated current 0.4 A max)"
+  },
+  "FL3.2": {
+   "max": 50.0,
+   "src": "rated V -- ACM2012-900-2P-T002 (C55213549): T-CND ACM2012-900-2P-T002: JLCPCB parts API attributes for C55213549 (50 V DC, 400 mA, 90 Ohm @100 MHz, 190 mOhm), fetched 2026-11-14; the same figures as TDK's own ACM2012 catalogue (C19972's PDF: ACM2012-900-2P-T002 rated voltage 50 V max, rated current 0.4 A max)"
+  },
+  "FL3.3": {
+   "max": 50.0,
+   "src": "rated V -- ACM2012-900-2P-T002 (C55213549): T-CND ACM2012-900-2P-T002: JLCPCB parts API attributes for C55213549 (50 V DC, 400 mA, 90 Ohm @100 MHz, 190 mOhm), fetched 2026-11-14; the same figures as TDK's own ACM2012 catalogue (C19972's PDF: ACM2012-900-2P-T002 rated voltage 50 V max, rated current 0.4 A max)"
+  },
+  "FL3.4": {
+   "max": 50.0,
+   "src": "rated V -- ACM2012-900-2P-T002 (C55213549): T-CND ACM2012-900-2P-T002: JLCPCB parts API attributes for C55213549 (50 V DC, 400 mA, 90 Ohm @100 MHz, 190 mOhm), fetched 2026-11-14; the same figures as TDK's own ACM2012 catalogue (C19972's PDF: ACM2012-900-2P-T002 rated voltage 50 V max, rated current 0.4 A max)"
+  },
+  "FL4.1": {
+   "max": 50.0,
+   "src": "rated V -- ACM2012-900-2P-T002 (C55213549): T-CND ACM2012-900-2P-T002: JLCPCB parts API attributes for C55213549 (50 V DC, 400 mA, 90 Ohm @100 MHz, 190 mOhm), fetched 2026-11-14; the same figures as TDK's own ACM2012 catalogue (C19972's PDF: ACM2012-900-2P-T002 rated voltage 50 V max, rated current 0.4 A max)"
+  },
+  "FL4.2": {
+   "max": 50.0,
+   "src": "rated V -- ACM2012-900-2P-T002 (C55213549): T-CND ACM2012-900-2P-T002: JLCPCB parts API attributes for C55213549 (50 V DC, 400 mA, 90 Ohm @100 MHz, 190 mOhm), fetched 2026-11-14; the same figures as TDK's own ACM2012 catalogue (C19972's PDF: ACM2012-900-2P-T002 rated voltage 50 V max, rated current 0.4 A max)"
+  },
+  "FL4.3": {
+   "max": 50.0,
+   "src": "rated V -- ACM2012-900-2P-T002 (C55213549): T-CND ACM2012-900-2P-T002: JLCPCB parts API attributes for C55213549 (50 V DC, 400 mA, 90 Ohm @100 MHz, 190 mOhm), fetched 2026-11-14; the same figures as TDK's own ACM2012 catalogue (C19972's PDF: ACM2012-900-2P-T002 rated voltage 50 V max, rated current 0.4 A max)"
+  },
+  "FL4.4": {
+   "max": 50.0,
+   "src": "rated V -- ACM2012-900-2P-T002 (C55213549): T-CND ACM2012-900-2P-T002: JLCPCB parts API attributes for C55213549 (50 V DC, 400 mA, 90 Ohm @100 MHz, 190 mOhm), fetched 2026-11-14; the same figures as TDK's own ACM2012 catalogue (C19972's PDF: ACM2012-900-2P-T002 rated voltage 50 V max, rated current 0.4 A max)"
   },
   "J1.A1": {
    "max": 48.0,
@@ -4140,6 +4218,10 @@
    "peak": 1000.0,
    "src": "rated V -- NMJ6HCD2 (C368502): Neutrik NMJ6HCD2 product page, technical data, read 2026-10-06: dielectric strength 1 kV dc; insulation resistance >= 1 Gohm at 500 V dc; rated current per contact 3 A; switch contact 0.5 A at 50 V. Neutrik gives no 'rated voltage' line: 50 V is the only working voltage it states, 1 kV dc the withstand"
   },
+  "J8.2": {
+   "max": 300.0,
+   "src": "rated V -- KF350-3.5-2P (C474892): JLCPCB parts API attributes for C474892 (KF350-3.5-2P, Cixi Kefa): voltage rating 300 V, current 10 A, 18-24 AWG, M2 screw, fetched 2026-11-14 (the PDF is an image of the drawing)"
+  },
   "JP201.1": {
    "max": "none",
    "src": "THROW (no LCSC code): no LCSC code / no rating applies",
@@ -4999,6 +5081,10 @@
   "R6.2": {
    "max": 50.0,
    "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R60.1": {
+   "max": 200.0,
+   "src": "element V -- 1206W4F1201T5E (C17891): JLCPCB parts API attributes for C17891 (1206W4F1201T5E, UNI-ROYAL: 1.2 kOhm 1 % 250 mW 1206), fetched 2026-11-14; 200 V working voltage from UniOhm's 1206 series table (the same as this file's other 1206 entries)"
   },
   "R7.1": {
    "max": 50.0,
@@ -6361,7 +6447,7 @@
    "src": "abs max -- LMR33630ADDAR (C841384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; HSOIC (DDA) pinout p.3"
   },
   "U205.3": {
-   "max": 34.67,
+   "max": 37.914,
    "src": "abs max -- LMR33630ADDAR (C841384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; HSOIC (DDA) pinout p.3"
   },
   "U205.4": {
@@ -6382,7 +6468,7 @@
    "why": "bootstrap node, rated SW+5.5 and set by the IC itself"
   },
   "U205.8": {
-   "max": 34.67,
+   "max": 37.914,
    "src": "abs max -- LMR33630ADDAR (C841384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; HSOIC (DDA) pinout p.3"
   },
   "U206.1": {
@@ -6554,7 +6640,7 @@
    "src": "abs max -- LM5122MHX/NOPB (C77241): TI LM5122 datasheet SNVS954H p.6 s6.1 absolute maximum (to AGND): VIN, CSP, CSN -0.3..75 V; BST-SW, FB, MODE, UVLO, OPT, VCC -0.3..15 V; SW -5..105 V; BST -0.3..115 V; SS, SLOPE, SYNCIN/RT -0.3..7 V; CSP-CSN and PGND -0.3..0.3 V; HO-SW -0.3..BST-SW+0.3; LO -0.3..VCC+0.3; COMP, RES, SYNCOUT -0.3..7 V. p.7 s6.3: VIN 4.5-65, VCC 14, BST-SW 3.8-14, CSP/CSN 3-65, SW 100 V. 20-pin PWP pinout p.4-6 (EP: no internal connection, soldered to ground). MPN on the catalogue is LM5122MHX/NOPB, the same HTSSOP-20 PWP"
   },
   "U220.19": {
-   "max": 43.67,
+   "max": 46.914,
    "src": "abs max -- LM5122MHX/NOPB (C77241): TI LM5122 datasheet SNVS954H p.6 s6.1 absolute maximum (to AGND): VIN, CSP, CSN -0.3..75 V; BST-SW, FB, MODE, UVLO, OPT, VCC -0.3..15 V; SW -5..105 V; BST -0.3..115 V; SS, SLOPE, SYNCIN/RT -0.3..7 V; CSP-CSN and PGND -0.3..0.3 V; HO-SW -0.3..BST-SW+0.3; LO -0.3..VCC+0.3; COMP, RES, SYNCOUT -0.3..7 V. p.7 s6.3: VIN 4.5-65, VCC 14, BST-SW 3.8-14, CSP/CSN 3-65, SW 100 V. 20-pin PWP pinout p.4-6 (EP: no internal connection, soldered to ground). MPN on the catalogue is LM5122MHX/NOPB, the same HTSSOP-20 PWP"
   },
   "U220.20": {
@@ -6647,15 +6733,152 @@
    "max": 3.9,
    "src": "abs max -- PCM5102APWR (C107671): TI PCM510xA datasheet p.6 s8.1: AVDD/CPVDD/DVDD -0.3..3.9 V; digital inputs (DVDD 3.3 V) 3.9 V; s8.3 AVDD nominal 3.3, max 3.46 V"
   },
+  "U30.2": {
+   "max": 9.0,
+   "src": "abs max -- B0509S-1WR3 (C5369463): YLPTEC B_S-1WR3 datasheet rev A2.1 (2024-07-19), the LCSC record's PDF: 5 V-input models input range 4.5-5.5 V, input surge -0.7..9 V; B0509S 9 V / 111 mA; load regulation (10-100 % load) 8 % typ 10 % max, line +-1.2 %; isolation 1500 VDC / 1 min; pins 1 GND 2 Vin 3 0V 4 +Vo as the drawing (the B_S-1WR3 / MEE1 pattern). Read 2026-11-14"
+  },
+  "U30.4": {
+   "max": "none",
+   "src": "B0509S-1WR3 (C5369463): YLPTEC B_S-1WR3 datasheet rev A2.1 (2024-07-19), the LCSC record's PDF: 5 V-input models input range 4.5-5.5 V, input surge -0.7..9 V; B0509S 9 V / 111 mA; load regulation (10-100 % load) 8 % typ 10 % max, line +-1.2 %; isolation 1500 VDC / 1 min; pins 1 GND 2 Vin 3 0V 4 +Vo as the drawing (the B_S-1WR3 / MEE1 pattern). Read 2026-11-14",
+   "why": "generated inside the IC"
+  },
+  "U31.1": {
+   "max": 16.0,
+   "src": "abs max -- LP2985-50DBVR (C74511): TI LP2985 datasheet SLVS522S (revised May 2025) s5.1 absolute maximum, the LOWER of the legacy and new dies throughout: VIN -0.3..16 V (new 18), VOUT -0.3..9 V (new: VIN + 0.3 or 9), BYPASS -0.3..3 V (new chip), ON/OFF -0.3..16 V (new 18); s5.3 VIN 2.2..16 V; s5.5 VOUT tolerance +-2.5 % (legacy, 1..150 mA). Pinout 4-1 (DBV): 1 VIN 2 GND 3 ON/OFF 4 BYPASS 5 VOUT. Read 2026-11-14"
+  },
+  "U31.3": {
+   "max": 16.0,
+   "src": "abs max -- LP2985-50DBVR (C74511): TI LP2985 datasheet SLVS522S (revised May 2025) s5.1 absolute maximum, the LOWER of the legacy and new dies throughout: VIN -0.3..16 V (new 18), VOUT -0.3..9 V (new: VIN + 0.3 or 9), BYPASS -0.3..3 V (new chip), ON/OFF -0.3..16 V (new 18); s5.3 VIN 2.2..16 V; s5.5 VOUT tolerance +-2.5 % (legacy, 1..150 mA). Pinout 4-1 (DBV): 1 VIN 2 GND 3 ON/OFF 4 BYPASS 5 VOUT. Read 2026-11-14"
+  },
+  "U31.4": {
+   "max": 3.0,
+   "src": "abs max -- LP2985-50DBVR (C74511): TI LP2985 datasheet SLVS522S (revised May 2025) s5.1 absolute maximum, the LOWER of the legacy and new dies throughout: VIN -0.3..16 V (new 18), VOUT -0.3..9 V (new: VIN + 0.3 or 9), BYPASS -0.3..3 V (new chip), ON/OFF -0.3..16 V (new 18); s5.3 VIN 2.2..16 V; s5.5 VOUT tolerance +-2.5 % (legacy, 1..150 mA). Pinout 4-1 (DBV): 1 VIN 2 GND 3 ON/OFF 4 BYPASS 5 VOUT. Read 2026-11-14"
+  },
+  "U31.5": {
+   "max": 9.0,
+   "src": "abs max -- LP2985-50DBVR (C74511): TI LP2985 datasheet SLVS522S (revised May 2025) s5.1 absolute maximum, the LOWER of the legacy and new dies throughout: VIN -0.3..16 V (new 18), VOUT -0.3..9 V (new: VIN + 0.3 or 9), BYPASS -0.3..3 V (new chip), ON/OFF -0.3..16 V (new 18); s5.3 VIN 2.2..16 V; s5.5 VOUT tolerance +-2.5 % (legacy, 1..150 mA). Pinout 4-1 (DBV): 1 VIN 2 GND 3 ON/OFF 4 BYPASS 5 VOUT. Read 2026-11-14"
+  },
+  "U32.1": {
+   "max": 6.0,
+   "src": "abs max -- ISO7741DBQR (C913840): TI ISO7740 / ISO7741 / ISO7742 datasheet SLLSEP4K (revised August 2026) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx, ENx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), all against the LOCAL ground (GND1 or GND2, footnote 2); s5.3 recommended VCC 2.25..5.5 V. Pin table 4-1 (DBQ): 1 VCC1 2 GND1 3 INA 4 INB 5 INC 6 OUTD 7 EN1 8 GND1 9 GND2 10 EN2 11 IND 12 OUTC 13 OUTB 14 OUTA 15 GND2 16 VCC2. Read 2026-11-14"
+  },
+  "U32.10": {
+   "max": 3.95,
+   "src": "abs max -- ISO7741DBQR (C913840): TI ISO7740 / ISO7741 / ISO7742 datasheet SLLSEP4K (revised August 2026) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx, ENx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), all against the LOCAL ground (GND1 or GND2, footnote 2); s5.3 recommended VCC 2.25..5.5 V. Pin table 4-1 (DBQ): 1 VCC1 2 GND1 3 INA 4 INB 5 INC 6 OUTD 7 EN1 8 GND1 9 GND2 10 EN2 11 IND 12 OUTC 13 OUTB 14 OUTA 15 GND2 16 VCC2. Read 2026-11-14"
+  },
+  "U32.11": {
+   "max": 3.95,
+   "src": "abs max -- ISO7741DBQR (C913840): TI ISO7740 / ISO7741 / ISO7742 datasheet SLLSEP4K (revised August 2026) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx, ENx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), all against the LOCAL ground (GND1 or GND2, footnote 2); s5.3 recommended VCC 2.25..5.5 V. Pin table 4-1 (DBQ): 1 VCC1 2 GND1 3 INA 4 INB 5 INC 6 OUTD 7 EN1 8 GND1 9 GND2 10 EN2 11 IND 12 OUTC 13 OUTB 14 OUTA 15 GND2 16 VCC2. Read 2026-11-14"
+  },
+  "U32.12": {
+   "max": 3.95,
+   "src": "abs max -- ISO7741DBQR (C913840): TI ISO7740 / ISO7741 / ISO7742 datasheet SLLSEP4K (revised August 2026) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx, ENx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), all against the LOCAL ground (GND1 or GND2, footnote 2); s5.3 recommended VCC 2.25..5.5 V. Pin table 4-1 (DBQ): 1 VCC1 2 GND1 3 INA 4 INB 5 INC 6 OUTD 7 EN1 8 GND1 9 GND2 10 EN2 11 IND 12 OUTC 13 OUTB 14 OUTA 15 GND2 16 VCC2. Read 2026-11-14"
+  },
+  "U32.13": {
+   "max": 3.95,
+   "src": "abs max -- ISO7741DBQR (C913840): TI ISO7740 / ISO7741 / ISO7742 datasheet SLLSEP4K (revised August 2026) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx, ENx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), all against the LOCAL ground (GND1 or GND2, footnote 2); s5.3 recommended VCC 2.25..5.5 V. Pin table 4-1 (DBQ): 1 VCC1 2 GND1 3 INA 4 INB 5 INC 6 OUTD 7 EN1 8 GND1 9 GND2 10 EN2 11 IND 12 OUTC 13 OUTB 14 OUTA 15 GND2 16 VCC2. Read 2026-11-14"
+  },
+  "U32.14": {
+   "max": 3.95,
+   "src": "abs max -- ISO7741DBQR (C913840): TI ISO7740 / ISO7741 / ISO7742 datasheet SLLSEP4K (revised August 2026) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx, ENx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), all against the LOCAL ground (GND1 or GND2, footnote 2); s5.3 recommended VCC 2.25..5.5 V. Pin table 4-1 (DBQ): 1 VCC1 2 GND1 3 INA 4 INB 5 INC 6 OUTD 7 EN1 8 GND1 9 GND2 10 EN2 11 IND 12 OUTC 13 OUTB 14 OUTA 15 GND2 16 VCC2. Read 2026-11-14"
+  },
+  "U32.16": {
+   "max": 6.0,
+   "src": "abs max -- ISO7741DBQR (C913840): TI ISO7740 / ISO7741 / ISO7742 datasheet SLLSEP4K (revised August 2026) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx, ENx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), all against the LOCAL ground (GND1 or GND2, footnote 2); s5.3 recommended VCC 2.25..5.5 V. Pin table 4-1 (DBQ): 1 VCC1 2 GND1 3 INA 4 INB 5 INC 6 OUTD 7 EN1 8 GND1 9 GND2 10 EN2 11 IND 12 OUTC 13 OUTB 14 OUTA 15 GND2 16 VCC2. Read 2026-11-14"
+  },
+  "U32.3": {
+   "max": 3.95,
+   "src": "abs max -- ISO7741DBQR (C913840): TI ISO7740 / ISO7741 / ISO7742 datasheet SLLSEP4K (revised August 2026) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx, ENx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), all against the LOCAL ground (GND1 or GND2, footnote 2); s5.3 recommended VCC 2.25..5.5 V. Pin table 4-1 (DBQ): 1 VCC1 2 GND1 3 INA 4 INB 5 INC 6 OUTD 7 EN1 8 GND1 9 GND2 10 EN2 11 IND 12 OUTC 13 OUTB 14 OUTA 15 GND2 16 VCC2. Read 2026-11-14"
+  },
+  "U32.4": {
+   "max": 3.95,
+   "src": "abs max -- ISO7741DBQR (C913840): TI ISO7740 / ISO7741 / ISO7742 datasheet SLLSEP4K (revised August 2026) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx, ENx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), all against the LOCAL ground (GND1 or GND2, footnote 2); s5.3 recommended VCC 2.25..5.5 V. Pin table 4-1 (DBQ): 1 VCC1 2 GND1 3 INA 4 INB 5 INC 6 OUTD 7 EN1 8 GND1 9 GND2 10 EN2 11 IND 12 OUTC 13 OUTB 14 OUTA 15 GND2 16 VCC2. Read 2026-11-14"
+  },
+  "U32.5": {
+   "max": 3.95,
+   "src": "abs max -- ISO7741DBQR (C913840): TI ISO7740 / ISO7741 / ISO7742 datasheet SLLSEP4K (revised August 2026) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx, ENx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), all against the LOCAL ground (GND1 or GND2, footnote 2); s5.3 recommended VCC 2.25..5.5 V. Pin table 4-1 (DBQ): 1 VCC1 2 GND1 3 INA 4 INB 5 INC 6 OUTD 7 EN1 8 GND1 9 GND2 10 EN2 11 IND 12 OUTC 13 OUTB 14 OUTA 15 GND2 16 VCC2. Read 2026-11-14"
+  },
+  "U32.6": {
+   "max": 3.95,
+   "src": "abs max -- ISO7741DBQR (C913840): TI ISO7740 / ISO7741 / ISO7742 datasheet SLLSEP4K (revised August 2026) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx, ENx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), all against the LOCAL ground (GND1 or GND2, footnote 2); s5.3 recommended VCC 2.25..5.5 V. Pin table 4-1 (DBQ): 1 VCC1 2 GND1 3 INA 4 INB 5 INC 6 OUTD 7 EN1 8 GND1 9 GND2 10 EN2 11 IND 12 OUTC 13 OUTB 14 OUTA 15 GND2 16 VCC2. Read 2026-11-14"
+  },
+  "U32.7": {
+   "max": 3.95,
+   "src": "abs max -- ISO7741DBQR (C913840): TI ISO7740 / ISO7741 / ISO7742 datasheet SLLSEP4K (revised August 2026) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx, ENx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), all against the LOCAL ground (GND1 or GND2, footnote 2); s5.3 recommended VCC 2.25..5.5 V. Pin table 4-1 (DBQ): 1 VCC1 2 GND1 3 INA 4 INB 5 INC 6 OUTD 7 EN1 8 GND1 9 GND2 10 EN2 11 IND 12 OUTC 13 OUTB 14 OUTA 15 GND2 16 VCC2. Read 2026-11-14"
+  },
+  "U33.1": {
+   "max": 6.0,
+   "src": "abs max -- ISO7740DBQR (C2877511): TI ISO7740 / ISO7741 / ISO7742 datasheet SLLSEP4K (revised August 2026) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx, ENx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), all against the LOCAL ground (GND1 or GND2, footnote 2); s5.3 recommended VCC 2.25..5.5 V. Pin table 4-1 (DBQ): 1 VCC1 2 GND1 3 INA 4 INB 5 INC 6 IND 7 NC 8 GND1 9 GND2 10 EN2 11 OUTD 12 OUTC 13 OUTB 14 OUTA 15 GND2 16 VCC2. Read 2026-11-14"
+  },
+  "U33.10": {
+   "max": 3.95,
+   "src": "abs max -- ISO7740DBQR (C2877511): TI ISO7740 / ISO7741 / ISO7742 datasheet SLLSEP4K (revised August 2026) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx, ENx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), all against the LOCAL ground (GND1 or GND2, footnote 2); s5.3 recommended VCC 2.25..5.5 V. Pin table 4-1 (DBQ): 1 VCC1 2 GND1 3 INA 4 INB 5 INC 6 IND 7 NC 8 GND1 9 GND2 10 EN2 11 OUTD 12 OUTC 13 OUTB 14 OUTA 15 GND2 16 VCC2. Read 2026-11-14"
+  },
+  "U33.11": {
+   "max": 3.95,
+   "src": "abs max -- ISO7740DBQR (C2877511): TI ISO7740 / ISO7741 / ISO7742 datasheet SLLSEP4K (revised August 2026) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx, ENx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), all against the LOCAL ground (GND1 or GND2, footnote 2); s5.3 recommended VCC 2.25..5.5 V. Pin table 4-1 (DBQ): 1 VCC1 2 GND1 3 INA 4 INB 5 INC 6 IND 7 NC 8 GND1 9 GND2 10 EN2 11 OUTD 12 OUTC 13 OUTB 14 OUTA 15 GND2 16 VCC2. Read 2026-11-14"
+  },
+  "U33.12": {
+   "max": 3.95,
+   "src": "abs max -- ISO7740DBQR (C2877511): TI ISO7740 / ISO7741 / ISO7742 datasheet SLLSEP4K (revised August 2026) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx, ENx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), all against the LOCAL ground (GND1 or GND2, footnote 2); s5.3 recommended VCC 2.25..5.5 V. Pin table 4-1 (DBQ): 1 VCC1 2 GND1 3 INA 4 INB 5 INC 6 IND 7 NC 8 GND1 9 GND2 10 EN2 11 OUTD 12 OUTC 13 OUTB 14 OUTA 15 GND2 16 VCC2. Read 2026-11-14"
+  },
+  "U33.13": {
+   "max": 3.95,
+   "src": "abs max -- ISO7740DBQR (C2877511): TI ISO7740 / ISO7741 / ISO7742 datasheet SLLSEP4K (revised August 2026) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx, ENx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), all against the LOCAL ground (GND1 or GND2, footnote 2); s5.3 recommended VCC 2.25..5.5 V. Pin table 4-1 (DBQ): 1 VCC1 2 GND1 3 INA 4 INB 5 INC 6 IND 7 NC 8 GND1 9 GND2 10 EN2 11 OUTD 12 OUTC 13 OUTB 14 OUTA 15 GND2 16 VCC2. Read 2026-11-14"
+  },
+  "U33.14": {
+   "max": 3.95,
+   "src": "abs max -- ISO7740DBQR (C2877511): TI ISO7740 / ISO7741 / ISO7742 datasheet SLLSEP4K (revised August 2026) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx, ENx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), all against the LOCAL ground (GND1 or GND2, footnote 2); s5.3 recommended VCC 2.25..5.5 V. Pin table 4-1 (DBQ): 1 VCC1 2 GND1 3 INA 4 INB 5 INC 6 IND 7 NC 8 GND1 9 GND2 10 EN2 11 OUTD 12 OUTC 13 OUTB 14 OUTA 15 GND2 16 VCC2. Read 2026-11-14"
+  },
+  "U33.16": {
+   "max": 6.0,
+   "src": "abs max -- ISO7740DBQR (C2877511): TI ISO7740 / ISO7741 / ISO7742 datasheet SLLSEP4K (revised August 2026) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx, ENx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), all against the LOCAL ground (GND1 or GND2, footnote 2); s5.3 recommended VCC 2.25..5.5 V. Pin table 4-1 (DBQ): 1 VCC1 2 GND1 3 INA 4 INB 5 INC 6 IND 7 NC 8 GND1 9 GND2 10 EN2 11 OUTD 12 OUTC 13 OUTB 14 OUTA 15 GND2 16 VCC2. Read 2026-11-14"
+  },
+  "U33.3": {
+   "max": 3.95,
+   "src": "abs max -- ISO7740DBQR (C2877511): TI ISO7740 / ISO7741 / ISO7742 datasheet SLLSEP4K (revised August 2026) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx, ENx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), all against the LOCAL ground (GND1 or GND2, footnote 2); s5.3 recommended VCC 2.25..5.5 V. Pin table 4-1 (DBQ): 1 VCC1 2 GND1 3 INA 4 INB 5 INC 6 IND 7 NC 8 GND1 9 GND2 10 EN2 11 OUTD 12 OUTC 13 OUTB 14 OUTA 15 GND2 16 VCC2. Read 2026-11-14"
+  },
+  "U33.4": {
+   "max": 3.95,
+   "src": "abs max -- ISO7740DBQR (C2877511): TI ISO7740 / ISO7741 / ISO7742 datasheet SLLSEP4K (revised August 2026) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx, ENx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), all against the LOCAL ground (GND1 or GND2, footnote 2); s5.3 recommended VCC 2.25..5.5 V. Pin table 4-1 (DBQ): 1 VCC1 2 GND1 3 INA 4 INB 5 INC 6 IND 7 NC 8 GND1 9 GND2 10 EN2 11 OUTD 12 OUTC 13 OUTB 14 OUTA 15 GND2 16 VCC2. Read 2026-11-14"
+  },
+  "U33.5": {
+   "max": 3.95,
+   "src": "abs max -- ISO7740DBQR (C2877511): TI ISO7740 / ISO7741 / ISO7742 datasheet SLLSEP4K (revised August 2026) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx, ENx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), all against the LOCAL ground (GND1 or GND2, footnote 2); s5.3 recommended VCC 2.25..5.5 V. Pin table 4-1 (DBQ): 1 VCC1 2 GND1 3 INA 4 INB 5 INC 6 IND 7 NC 8 GND1 9 GND2 10 EN2 11 OUTD 12 OUTC 13 OUTB 14 OUTA 15 GND2 16 VCC2. Read 2026-11-14"
+  },
+  "U33.6": {
+   "max": 3.95,
+   "src": "abs max -- ISO7740DBQR (C2877511): TI ISO7740 / ISO7741 / ISO7742 datasheet SLLSEP4K (revised August 2026) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx, ENx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), all against the LOCAL ground (GND1 or GND2, footnote 2); s5.3 recommended VCC 2.25..5.5 V. Pin table 4-1 (DBQ): 1 VCC1 2 GND1 3 INA 4 INB 5 INC 6 IND 7 NC 8 GND1 9 GND2 10 EN2 11 OUTD 12 OUTC 13 OUTB 14 OUTA 15 GND2 16 VCC2. Read 2026-11-14"
+  },
   "U33.7": {
    "max": "none",
-   "src": "ISO7740DBQR (no LCSC code): no LCSC code / no rating applies",
-   "why": "no rating in voltage_ratings.json for no LCSC code (ISO7740DBQR)"
+   "src": "ISO7740DBQR (C2877511): TI ISO7740 / ISO7741 / ISO7742 datasheet SLLSEP4K (revised August 2026) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx, ENx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), all against the LOCAL ground (GND1 or GND2, footnote 2); s5.3 recommended VCC 2.25..5.5 V. Pin table 4-1 (DBQ): 1 VCC1 2 GND1 3 INA 4 INB 5 INC 6 IND 7 NC 8 GND1 9 GND2 10 EN2 11 OUTD 12 OUTC 13 OUTB 14 OUTA 15 GND2 16 VCC2. Read 2026-11-14",
+   "why": "not connected"
+  },
+  "U34.1": {
+   "max": 6.0,
+   "src": "abs max -- ISO7710FDR (C2865544): TI ISO7710 datasheet SLLSER9E (revised December 2024) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), against the local ground; recommended VCC 2.25..5.5 V. D (SOIC-8): 1 VCC1 2 IN 3 VCC1 4 GND1 5 GND2 6 OUT 7 NC 8 VCC2. Read 2026-11-14"
+  },
+  "U34.2": {
+   "max": 3.95,
+   "src": "abs max -- ISO7710FDR (C2865544): TI ISO7710 datasheet SLLSER9E (revised December 2024) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), against the local ground; recommended VCC 2.25..5.5 V. D (SOIC-8): 1 VCC1 2 IN 3 VCC1 4 GND1 5 GND2 6 OUT 7 NC 8 VCC2. Read 2026-11-14"
+  },
+  "U34.3": {
+   "max": 6.0,
+   "src": "abs max -- ISO7710FDR (C2865544): TI ISO7710 datasheet SLLSER9E (revised December 2024) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), against the local ground; recommended VCC 2.25..5.5 V. D (SOIC-8): 1 VCC1 2 IN 3 VCC1 4 GND1 5 GND2 6 OUT 7 NC 8 VCC2. Read 2026-11-14"
+  },
+  "U34.6": {
+   "max": 3.95,
+   "src": "abs max -- ISO7710FDR (C2865544): TI ISO7710 datasheet SLLSER9E (revised December 2024) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), against the local ground; recommended VCC 2.25..5.5 V. D (SOIC-8): 1 VCC1 2 IN 3 VCC1 4 GND1 5 GND2 6 OUT 7 NC 8 VCC2. Read 2026-11-14"
   },
   "U34.7": {
    "max": "none",
-   "src": "ISO7710FDR (no LCSC code): no LCSC code / no rating applies",
-   "why": "no rating in voltage_ratings.json for no LCSC code (ISO7710FDR)"
+   "src": "ISO7710FDR (C2865544): TI ISO7710 datasheet SLLSER9E (revised December 2024) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), against the local ground; recommended VCC 2.25..5.5 V. D (SOIC-8): 1 VCC1 2 IN 3 VCC1 4 GND1 5 GND2 6 OUT 7 NC 8 VCC2. Read 2026-11-14",
+   "why": "not connected"
+  },
+  "U34.8": {
+   "max": 6.0,
+   "src": "abs max -- ISO7710FDR (C2865544): TI ISO7710 datasheet SLLSER9E (revised December 2024) s5.1 absolute maximum: VCC1, VCC2 -0.5..6 V; INx, OUTx -0.5..VCCx + 0.5 V, never above 6 V (footnote 3), against the local ground; recommended VCC 2.25..5.5 V. D (SOIC-8): 1 VCC1 2 IN 3 VCC1 4 GND1 5 GND2 6 OUT 7 NC 8 VCC2. Read 2026-11-14"
   },
   "U5.10": {
    "max": 38.0,

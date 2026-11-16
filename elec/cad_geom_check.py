@@ -29,6 +29,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, ROOT)
+sys.path.insert(0, HERE)
 
 from cadkit import board_check as _CHK                # noqa: E402
 
@@ -91,13 +92,23 @@ def _cad(board):
         ink = dict(P.ink(j))["pogo_%s_silk_%s" % (kind, j.name)]
         turn = lambda w: w.rotate((j.x, j.y, 0.0), (j.x, j.y, 1.0), -j.ang)
         return turn(s), turn(ink)
+    if board == "connector_board":
+        # the new connector board (src/new_boards_view.py), in its own frame, with the MX15EDGK
+        # plugs src/pluggable_terminal.py seats in J4 / J5 / J11-J20 -- drawn as their own
+        # part, so added here as output_panel's J8 is (lead, 2026-11-14)
+        from src import new_boards_view as NB
+        from src import pluggable_terminal as PT
+        sol, ink = NB._parts(board)
+        for v in PT.parts(board).values():
+            sol = sol.union(v)
+        return sol, ink
     raise KeyError(board)
 
 
 BOARDS = ("output_panel", "motor_ctrl", "optical", "lever_sensor", "can_tee",
           "pi_cap", "ui_board", "fret_led_mid", "fret_led_key", "foot_led_a", "foot_led_b",
           "leg_pogo_male_bottom", "leg_pogo_male_top",
-          "leg_pogo_female_bottom", "leg_pogo_female_top")
+          "leg_pogo_female_bottom", "leg_pogo_female_top", "connector_board")
 
 
 def _ui_rule_check():
@@ -202,9 +213,21 @@ def _r1_fit(board):
     return bad
 
 
+def _cm5(board):
+    """The output board's CM5: DF40 pads on Raspberry Pi's CM5IO positions, holes cut,
+    nothing under the module (elec/cm5_mech.py -- the 2026-11-14 swapped-connector bug)."""
+    if board != "output_board":
+        return 0
+    import cm5_mech
+    bad = cm5_mech.check(json.load(open(os.path.join(HERE, "geom", "output_board.geom.json"))))
+    for b in bad:
+        print("   output_board CM5: " + b)
+    return len(bad)
+
+
 def check(board, verbose=True):
     solid, ink = _cad(board)
-    return _rev_silk(board) + _r1_fit(board) + _CHK.check(board, solid, BG.load(board), verbose=verbose,
+    return _cm5(board) + _rev_silk(board) + _r1_fit(board) + _CHK.check(board, solid, BG.load(board), verbose=verbose,
                                          strict_ends=True, ends_ok=ENDS_OK.get(board), ink=ink)
 
 

@@ -33,6 +33,7 @@ import http.server
 import json
 import os
 import pathlib
+import hashlib
 import pickle
 import shutil
 import socket
@@ -772,6 +773,14 @@ def _cached_mesh(brep, taken, whole):
     of the lead's build are made once, by whichever worktree first looks, for all."""
     from ..scratch import read_brep
     from .export import mesh_shape, pieces, TOLERANCE, ANGULAR, FORMAT
+    over = brep.parent / "mesh" / (brep.stem + ".override.pkl")    # a mesh-only part's look
+    if over.exists():
+        try:
+            tag, m = pickle.loads(over.read_bytes())
+            if tag == hashlib.sha1(brep.read_bytes()).hexdigest():
+                return m
+        except Exception:
+            pass
     st = brep.stat()
     key = (st.st_size, st.st_mtime_ns, TOLERANCE, ANGULAR, FORMAT, "pieces", brep.stem in whole)
     f = brep.parent / "mesh" / (brep.stem + ".pkl")

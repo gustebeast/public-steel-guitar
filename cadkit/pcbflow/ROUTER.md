@@ -254,6 +254,27 @@ With the router at 15-75 s a board (HMAP), the route itself is the affordable sc
 open nets, pair faults, contention, length and vias, several placements at once, a
 process each (the "parallelism one level up" above).
 
+**Calibrated against outcomes, the plan IS a placement ranker (2026-11-15) -- `routability()`.**
+The 11-09 test above compared overflow with the router's contention map. Compared instead with
+what decides a placement, whether the router-alone run closes, on 41 placed boards that had both
+(scratch `grs/`): planned at UTIL 1.0 the overflow ranks open above closed only partly
+(output_power AUC 0.96 with a 1.01 tie between 3-open and 0-open boards; output_signal
+inverted). Planned against 0.8 of each square's tracks (SCORE_UTIL), every board that routed
+with nets open scores above every one that closed, inside each family: output_power 2.52-3.53
+open v 0.41-1.68 closed, output_board one* 6.67-7.79 v 2.93-5.92, output_signal 4.13 v 3.07.
+0.75 and 0.85 give the same split, so it is a band, not a knife-edge. Two things do NOT work:
+rescaling capacity after a 1.0 plan (AUC 0.58 on output_board, 0.00 on output_signal -- it is
+the plan negotiating round tight squares that carries the signal), and a per-side pin-escape
+term (U14's CC side has the same lanes in the 3-open and the 0-open board, as the 11-09
+escape test found). The hot list improves with it: on output_power opc_j2 the second hot spot
+sits at U14's west face beside C89/C87, the pin that stayed open. Limits: compare one
+netlist and outline only (the full output_board outline sits at 7.7-11.5 and every board of
+it closed); the score predicts open nets, not pair faults or islands -- those come from pours
+and power vias, which the plan does not see (mP0/mP5/mQ0/mO_j0 plan identically, pairs 4-7).
+Use: `routability(router)` after `build_nets(pours=m.fills)`, about 1-3 s a board, to rank or
+prune a placement set before `router/score.py` spends a route on the survivors. The router's
+own corridor pass keeps UTIL 1.0.
+
 **`router/score.py` is that score (2026-11-10).** `py -3.12 router/score.py <stem>... [--jobs N]`
 routes each placed board router-alone, a process each, and prints one JSON line a board sorted by
 `key` = (open, pair faults, islands, uncoupled mm, contention, vias, length). For a small fixed
@@ -284,6 +305,188 @@ a sub-solver until plane nets and everything outside the lift are locked. Read p
 over several jitters (`placescore --spread`) rather than one route. If this shows again at
 a large pin row (an H743 or CM5 escape), making `_rounds` subset-safe and retrying (3) is
 the next step.
+
+## Design note: a declared pair negotiated as ONE unit (proposed 2026-11-14, NOT BUILT)
+
+**The problem it removes.** Optical v101 (owner trace, `who.py`): from round 8 USB_DP
+shared space with USB_DM and nothing else, HUB_PHY_DP with HUB_PHY_DM likewise; rounds 11-19
+ran with pf 55 -> 2361 until the 8-round no-gain stop, and the priority repair then cleared
+the pair in 1.4 s by laying one rail and the other round it. Both rails pay the same price
+for the same cells, so each moves and they meet again: negotiation cannot break a
+symmetric conflict, an order can. `MATE_STOP` (opt-in) is the stop-gap: it ends the main
+negotiation once every sharing net shares only with its mate and hands over to the repairs.
+
+**The fix.** The pair finish already lays a declared pair as one (`coupled.py`: the
+centreline as a temporary net as wide as the pair, then each rail in a lane at half the
+spacing either side, the second keeping the first as a wall). Use the same lay INSIDE the
+negotiation, so the two rails never compete for cells at all.
+
+- **Where it plugs in.** `_rounds`' per-net loop: for a declared pair's head net (`mate`
+  set, `partner is None`, `_pair_spec` declared), call a `_route_pair_unit(a, pf)` in
+  place of `_route_net(a)` then `_route_net(b)`, and skip `b` when the order reaches it. It
+  searches the centreline at the round's pf / history (so the pair is priced against
+  everyone else as one wide net), lays both lanes, and returns both rails' paths. The
+  per-net sharing loop after the round is unchanged: rails share with OTHER nets only,
+  and history lands on the cells they share.
+- **Kept cheap in the rounds.** The finish tries `COUPLE_ENDS` (3) pin-pair choices x
+  `MID_SLACKS` (3): up to 9 centreline searches. In the rounds: one end choice (the last
+  round's winner, cached on the net; the best-ranked on round 1) and one slack (0.1). The
+  full exploration stays in the finish.
+- **Fallback.** A unit lay that fails (no centreline, or a lane cannot reach a land)
+  falls back to the current two-net route for that round. That keeps today's behaviour as
+  the floor, with `MATE_STOP` still catching that case.
+- **What it replaces.** `MATE_STOP`, which no longer has anything to catch for declared
+  pairs. The priority repair's partner orders (`grp`, `grp[::-1]`) for declared pairs,
+  where the lane wall IS the order. Most of the finish's coupled re-lay, which becomes a
+  check that re-lays only a faulted or apart pair rather than the default path. Also the
+  partner band in `_route_net` (`negotiate.py` ~1021) for declared pairs; undeclared mates
+  keep it.
+
+**Measure first, before building.** Where are the 11-15 cells the mates share in rounds
+11-19: at the fine-pitch lands (U10 / J1, 0.5 mm pitch, where the two pins sit closer than
+the band's spacing and the rails MUST neck) or mid-run? If they are at the lands, the
+symmetric conflict is a land-exit problem: the cheaper fix is that mate-vs-mate overlap
+within `COUPLE_END_MM` of their own lands, where both run necked, is not counted as
+sharing. The unit lay is the fix only if the overlap is along the run. (`who.py` +
+the cells' distance to each rail's lands answers it; one route.)
+
+**Risks.**
+1. CPU per round: a centreline search plus two lane searches per pair, against two plain
+   searches. The centreline is wider, so its window is tighter. Judge by the A/B, not by
+   argument.
+2. Fine-pitch ends: the centreline starts BETWEEN the lands. Where the escape stubs
+   (`ESC_*`) or a neighbour's via block that midpoint, the unit fails every round and the
+   fallback carries it; count fallbacks in the A/B.
+3. Layer relax (`RELAX_AFTER`): today each rail relaxes on its own. As a unit the
+   centreline relaxes, and both rails follow it.
+4. Rescore / delta (`rescore.delta_run`): a pair must be kept or re-routed whole. That
+   already holds in practice (a moved land changes both rails' pieces) but should be
+   asserted.
+5. Plane joins and `keep_paths` are untouched (pairs are never plane nets).
+
+**Gate.** The 12 optical variants plus output_board mL2: open, pair faults, uncoupled mm
+(the key ranks it, and v101's `MATE_STOP` run already lost 2.6 mm on HUB_PHY) and CPU,
+each against `MATE_STOP` and against neither.
+
+## Design note: decide a pair's twist BEFORE routing (proposed 2026-11-14, NOT BUILT)
+
+**What the pair finish's displacements do (output_board, rob_d1 placement; rob_close,
+rob_d1 and rob_kf2 route logs, parsed per displacement).** Each attempt that lays a pair to the rules
+through other nets' space runs `_displace`: one sub-negotiation of up to `PAIR_RENEG_S`
+(120 s), kept only if no more nets are open, the pair has no faults, and it shares nothing.
+
+| run | wins | CPU on wins | losses | CPU on losses | losses ending >20 open |
+|---|---|---|---|---|---|
+| rob_close, first route | 2 | 260 s | 11 | 1387 s | 6 |
+| rob_close, close pass | 2 | 53 s | 9 | 956 s | 4 |
+| rob_d1 | 2 | 246 s | 13 | 1420 s | 5 |
+| rob_kf2 (RENEG 50) | 2 | 54 s | 17 | 970 s | 15 |
+
+- **Wins** are the same few pairs every time, laid through FEW cells: USBA_DP_J (16),
+  MCU_DP (55; 12 in the close pass), USBA_DP (6). They are local pushes.
+- **Losses** are 84-95% of the displacements' CPU. Each spends its whole budget, and 4 in 9
+  to 15 in 17 end with 35-132 open (GND, +3V3D, CAN, ...): a pushed pair re-negotiates far past
+  its own neighbourhood.
+- **USBB_DP/DM and FLASH_DP/DM lose every attempt in every run** and end "layers, vias --
+  no attempt met the rules". Afterwards the router reports them as "the pair crosses itself
+  there -- a placement twist; routing cannot keep it on one layer" (`congestion.pair_dives`).
+  rob_close spends 751 s (first route) + 676 s (close pass) on the two of them; rob_d1
+  605 s. If they are twisted, no displacement CAN win: the fault is topology, not congestion.
+- An anomaly to fix on its own: rob_d1 MCU_DP left 1 net open (was 8), the board better,
+  and was put back, because the keep test also requires the pair fault-free. That is
+  the case `DISPLACE_KEEP_FEWER` was written for (parked: its only A/B was worse).
+
+**The change.** A coupled pair is a ribbon, and in one plane a ribbon keeps its handedness:
+which rail is on the left, seen along the direction of travel. At each end of a hop that
+handedness is fixed by the lands: the outward normal `n` of the part's side the pins sit on,
+and the rail order `d = P - N` across it. Leaving end A, `s_A = sign(n_A x d_A)`; arriving at
+end B, travel is `-n_B`, so `s_B = sign(-n_B x d_B)`. **`s_A != s_B` means a twisted hop:**
+no same-layer coupled route exists, and one rail must change layer once, somewhere. (U10 ->
+U31 on optical, `pair_dives`' own docstring, is this case.) Hops split at pass-through parts
+(`merge_at`), as the pair finish already splits them.
+
+Computed once, after `build_nets` and before the negotiation, for every declared pair hop:
+1. **Negotiation.** A twisted pair is routed relaxed from round 1, budgeted one crossing
+   (max_vias counted with it), instead of being held to its layers for `RELAX_AFTER` (10)
+   rounds it cannot meet.
+2. **Finish.** No displacement whose aim is `layers` or `vias` for a twisted pair. It is
+   laid once, fewest faults, and the fault is reported as placement (the twist, with the
+   parts at each end). Skew and open still get their attempts.
+3. **Placement feedback.** The twist goes into the score / placement report up front (which
+   part to turn, which pin order to swap), not as a post-hoc guess from where a rail dived.
+   `pair_dives` today calls every dive a twist.
+
+**Measure first (seconds, no route).** Run the handedness test on rob_d1's placement for
+every declared pair. It must flag USBB and FLASH and NOT USBA / MCU / GADGET, whose
+displacements do win, or lose to congestion. If it flags none, the USBB / FLASH losses are
+congestion after all and this note is wrong; say so here.
+
+**MEASURED 2026-11-14: THE NOTE IS WRONG AS STATED; not built.** The handedness test on
+rob_d1 (each pad's own long axis for its normal, both pins of the pair agreeing) flags
+USBA (FL3 -> U17), USBB (FL4 -> U17 and FL4 -> J2), MCU (J202 -> U1) and FLASH (all three
+hops) as twisted, and only GADGET as straight. USBA and MCU are twisted too, yet their
+displacements WIN, and in rob_close's final board neither left its layers (only USBB and
+FLASH did). The premise fails because the handedness is fixed only for a COUPLED ribbon,
+and the finish's "to the rules" is layers, vias and skew, not coupling. In a plane two
+rails can always untwist if one goes round the end of a land row or round a part, so a
+twisted hop can be laid to the rules uncoupled, paying in uncoupled mm. A twist is
+therefore a coupling cost, not "routing cannot", and it does not separate USBB / FLASH's
+losses from USBA / MCU's wins. What does separate them is still open: candidates are
+whether the untwisting detour has room (USBB has two twisted hops in a row through FL4;
+FLASH three, through the two U209 / U210 switches 4 mm apart), and whether a corner pin
+lets the rail enter its land from the side (U17's USBA pins are 1 / 2, at the row end).
+The twist IS worth reporting as placement feedback, and since 2026-11-14 it is: place_flow's
+report prints a TWIST line per twisted hop (`place_intent.pair_twists`). No rotation fixes a
+twist (a turn keeps orientation, so the normal and the rail order turn together); a mirror
+does, and so does swapping the rails between a pass-through part's identical channels (a
+CMC's windings, a clamp's), or a polarity swap at an IC. `congestion.pair_dives`' post-hoc
+label should come from this test rather than from where a rail dived.
+
+**MEASURED 2026-11-15: UNTWISTING USBB BY A CHANNEL SWAP DOES NOT HELP -- it is worse.**
+`swap_plan` on rob_d1 proposed FL4's windings swapped (pins 1<->2, 3<->4: twisted hops 6 -> 4,
+both of USBB's straightened). Two instrumented routes of the same placement and netlist, one
+with the swap applied (`apply_swaps`), started together on the same machine load, close pass
+off: base 0 nets open, 2998 s, 15 displacements, USBB lost 3 of 3; swap 4 nets open (USBA_DP /
+DM, GADGET_DP / DM), 3280 s, 16 displacements, USBB STILL lost 3 of 3. A straight hop did not
+make USBB's displacement win, and the swap's changed copper cost two other pairs. So the twist
+is not what USBB's losses come from, and a TWIST / SWAP line stays placement feedback only:
+nothing should apply a swap without a route showing it helps. The generator keeps FL4's
+original windings.
+
+**Risks.**
+1. The outward normal for a pin on a corner or on a BGA / centre pad is ambiguous; such a
+   hop is "unknown" and keeps today's path.
+2. A ribbon CAN un-twist by going round a part's far end (a pass-through clamp, or a
+   connector with pins on two faces). Treat a land with pins on more than one side as
+   unknown.
+3. Relaxing early may let a twisted pair take more vias than the one crossing; budget it
+   at one.
+
+**Gate (one A/B, when memory allows).** The rob_d1 placement, router alone, `OWNROUTE_TWIST`
+0 vs 1, run back to back: finish CPU (expect -600 to -1400 s), first-route open, close-pass
+open, pair faults (must not rise; USBB / FLASH were already faulted), and uncoupled mm.
+Then the 12 optical variants for no regression (optical's USB_HS through U10 may test
+twisted on some placements).
+
+## Tried and parked (2026-11-14)
+
+Measured negatives, so nobody retries them blind. "Kept on" names a `parked/*` branch
+in canonical cadkit, each one commit off main (not for merging; cadkit main is vendored
+everywhere). Optical = the 12 `rank/v100-v111` variants unless a board is named.
+
+| Idea | Measured | Verdict | Kept on |
+|---|---|---|---|
+| **Fixed-copper cache**: legality / price masks built once per net and window, not every round | Bit-identical on optical, but 78.5 -> 79.7 CPU s. Hit rate ~50% (a net's window recurs about twice, then moves); `_route_in` itself 13.2 -> 12.7 s. Its time is the per-round congestion arithmetic, not legality. | Reverted | not kept |
+| **A\* memo**: skip identical repeat searches (9.4 s, 21% of A\* on optical) | A route's cost arrays total 6.7 GB; a blake2b key costs ~9 s, the whole saving. crc32 (~2 s) needs a stored copy to verify each hit. A version-counter key misses per-net inputs (walls, lanes, partner paths, necks, pf, corridors) and would silently return a wrong route. | Dropped before coding | none |
+| **No-path early reject** (`_reachable` at every A\* call site, not only the leg search) | v100: no-path searches 2.7 s of a 66 s route, 2.0 s at the main search (12 calls, 9 whole-board). The check costs 7.4-7.6 s there at any size threshold 50k-500k cells; above 800k it saves 0.38 s for ~7 s. Never wrong, just dearer than what it skips. | Not built | none (the check already exists: `REACH_MIN`, line ~1248) |
+| **HCOST**: cost-aware A\* heuristic (`search.hcost_map`, multi-source Dijkstra from the targets) | 1336 vs 1242 CPU s (+7.6%); 5 of 12 faster; v102 gained 3 pair faults. Swings both ways (v102 94 -> 181 s, v107 120 -> 92 s): a different heuristic picks different paths and the negotiation takes another trajectory. Both arms ran under memory pressure. | Parked | `parked/hcost-and-knobs` |
+| **PAIR_RENEG_S 50 + DISPLACE_KEEP_FEWER** | output_board rob_d1: first route 6 open (RELAY, USBA_DP/DM, PDA_SDA, GADGET_DP/DM) vs 4 at RENEG 120; the capped close pass got 23, so 6 open stood vs rob_close's 0, at the same ~3100 s. | Parked | `parked/hcost-and-knobs` (opt-in env knobs) |
+| **MATE_STOP**: stop the main negotiation once every sharing net shares only with its pair mate | v101 alone: 124.3 -> 109.8 s. Six variants: uncoupled 26.65 -> 32.59 mm; HUB_PHY 0.0 -> 1.6 / 2.58 / 3.32 mm on v100-v102 (the negotiation had not coupled it yet); CPU +2.8%, unusable (arms ran 0.5-1.5 GB free apart). 0 open, 0 faults. | Parked; `MATE_LAND_MM` (negotiate.py, opt-in, A/B pending) targets the same tail | `parked/mate-stop` |
+| **Pair-corridor release** in `rescore.delta_run`: when a moved part carries a coupled pair, release kept nets crossing its area | conn_cluster_J1: the moved pads' area (+1.5 mm) released nothing (J1 moved into clear board; 0 nets even at 5 mm). The pair's corridor box (+1 mm) gave uncoupled 58.5 -> 11.6 mm vs the full route's 0.21. ic_shift_U7 then re-routed 42 nets in 246 s against a 169 s full route. Capped at 8 nets (+2 mm): J1 11.5, U7 unchanged. A pessimistic delta only loses candidates (the winner is full-routed). | Parked | `parked/pair-release` |
+| **U220 placement order**, three forms (place_init) | output_board mN. v1 (U220 first): foreign pads in pours 31 -> 56, L204 between U220 and its FETs. v2 (every near spring followed): hard breaks on U14 / U17. v3 (pour members wait for their anchors): U220 strands 10 -> 3 but L204, 17 x 17, found no room. | Parked | `parked/u220-order` (form v3) |
+| **U220 drop zone**: a big pour part kept off its IC's pin patches | mN: stranded 10 -> 3, off-pin 2 -> 1, but foreign pads 32 -> 98. With L204 / Q202 kept clear, U220 took its target and the boost power stage spread round it, so the BST_LMID / +24V pour hulls closed over U220's pins (34 of the new pads). A courtyard box instead of the circumscribed disc gave the identical result: the pin-patch discs decide it. cb / opt / fk unchanged (the zone never fires there). | Parked | `parked/u220-dropzone` |
+| **Power corridor cost** (`OWNROUTE_CORRIDOR_COST` / `_MM` / `_SIGNALS_ONLY`): a declared power path's regional pour, grown 0.3 mm, priced x5 for other nets' tracks on its layer and for any foreign via | output_board mO cor5: A1 16 -> 23 -- power nets crossing another's corridor necked down (+5V_CM5 F202 -> J201, +24V_LED F203 -> J240). mP placement: mP5 1 open / 69 FAIL vs mP0 0 open / 65. Signals only (power nets exempt), mO cor5s: 2 open / 0 violations / 68 FAIL / A1 24 vs cor5's 2 / 1 / 67 / 23 -- no better. Three placements, three losses: the necks it targets are a placement / pour-shape fact, not a pricing one. | Parked (2026-11-15) | `parked/corridor` (a9006b4, the last commit with the code) |
+| **Join ring** (`OWNROUTE_JOIN_RING`): a pour net's join landing -- the router's join end and every stitch via layout placed -- rings its pour layers by RING_MM; foreign tracks (v2) and vias (v3) pay RING_COST there | connector_board d15 + plane-pin ring: 1 -> 0 open (J1.5's GND stitch via no longer buried by +24V_LED / +24V; the stitch vias are FIXED copper the router never saw -- v1, rings on router joins only, changed nothing). output_panel: v2 0 -> 1 open (C51.2's GND stitch via caged by 5 foreign vias at 0.77-1.22 mm, cut from B.Cu and In1 -- v2 priced tracks only); v3 0/0, same FAILs. optical v3: 0 -> 1 open (+5V C143 - TP10), route 168 -> 206 s. ~10 % of a plane layer priced 4x reshuffles the whole route. | Parked (2026-11-15) | `parked/join-ring` (e3e5c87) |
 
 ## Known traps
 

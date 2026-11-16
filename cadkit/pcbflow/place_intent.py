@@ -716,6 +716,18 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
                                           if q["net"] and GROUND_NET.match(q["net"])}))
     P = Placed(parts, notes.get("placements", {}))
     placed = bool(notes.get("placements"))
+    # ⚠ A STRAP IS NOT A SUPPLY PIN (output_board mP0, 2026-11-15): every netlist pin reads
+    # PASSIVE, so the nearest pin on the rail won -- C26 ("DAC CPVDD") went to U3.17, the
+    # PCM5102A's XSMT mute strap, and C168 to U33.10, the ISO7740's EN2. A board names its
+    # ICs' supply pins once, from the datasheets: notes["supply_pins"] = {"U3": [1, 8, 20]}.
+    # A listed IC is decoupled at those pins only (and quality A2 judges only those); an IC
+    # not listed keeps the old guess, every pin on the rail.
+    # The value is a list of pin numbers, or {number: datasheet name} -- with names, a cap whose
+    # description names the pin ("DAC CPVDD", "isolator bypass, U32 VCC2") goes to THAT pin.
+    sp_raw = notes.get("supply_pins") or {}
+    sp = {u: {str(n) for n in v} for u, v in sp_raw.items()}
+    sp_name = {u: {str(n): str(nm).upper() for n, nm in v.items()} for u, v in sp_raw.items() if isinstance(v, dict)}
+    is_sup = lambda u, num: u not in sp or str(num) in sp[u]
     rules = []
     pinpair = []                 # caps across two pins of one IC: kept out of the supply passes
     ics = [r for r in parts if re.match(r"^(U|FB|L)\d", r)]
@@ -760,7 +772,7 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
         cands = []
         for u in ics:
             for q in parts[u]["pads"]:
-                if q["net"] == sup and q["num"]:
+                if q["net"] == sup and q["num"] and is_sup(u, q["num"]):
                     try:
                         d = min(math.hypot(*(x - P.pad(u, q["num"]))) for x in P.pads_on(c, sup))
                     except (KeyError, ValueError):
@@ -783,6 +795,13 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
             said = said if len(said) == 1 else []
         if said:
             cands = [t for t in cands if t[1].split(".")[0] == said[0]]
+        if sp_name:
+            # the description names the pin: "DAC CPVDD" -> the declared CPVDD pin (of the IC
+            # it names, if it names one), whatever is nearest today
+            words = set(re.findall(r"[A-Z0-9_+]+", (descriptions or {}).get(c, "").upper()))
+            named = [t for t in cands if sp_name.get(t[1].split(".")[0], {}).get(t[1].split(".", 1)[1]) in words]
+            if named:
+                cands = named
         if not placed:
             # ⚠ A FRESH BOARD HAS NO DISTANCES (motor_ctrl trial, 2026-11-11): every pin read
             # 0 mm and the "nearest" was the first in sort order -- all eleven +3V3 caps to
@@ -832,44 +851,65 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
     incell = {r["anchor"] for r in cells if r.get("kind") == "group"} | {
         m for r in cells if r.get("kind") == "group" for m in r["members"]}
     for u in sorted(x for x in ics if re.match(r"^U\d", x) and x not in incell):
-        for net in sorted({q["net"] for q in parts[u]["pads"] if q["net"] and SUPPLY.search(q["net"])}):
-            if (u, net) in have:
-                continue
-            donors = sorted(((len([r for r in rs if rail(r) == net]), d) for d, rs in by.items() if d != u),
-                            reverse=True)
-            if not donors or donors[0][0] < 2:
-                continue
-            d = donors[0][1]
-            # the cap whose pin has ANOTHER capped pin nearest it in the IC's own frame
-            # (placement-independent): that neighbour's cap is tightened to max_mm and serves
-            # both. (Taking the largest instead left U6.171/172 at 5.7/6.1 mm: A2 judges pins.)
-            xy = {q["num"]: q["xy"] for q in parts[d]["pads"]}
-            mine = [r for r in by[d] if rail(r) == net]
+        for net in sorted({q["net"] for q in parts[u]["pads"] if q["net"] and SUPPLY.search(q["net"])
+                           and is_sup(u, q["num"])}):
+            # declared supply pins (notes supply_pins): EVERY one gets a cap within A2's reach,
+            # not one per IC and rail -- U3's CPVDD / AVDD / DVDD sit on three sides of the TSSOP
+            if u in sp:
+                uxy = {q["num"]: q["xy"] for q in parts[u]["pads"]}
+                todo = sorted({q["num"] for q in parts[u]["pads"] if q["net"] == net and is_sup(u, q["num"])},
+                              key=lambda n_: _pin_key("%s.%s" % (u, n_)))
+            else:
+                if (u, net) in have:
+                    continue
+                todo = [None]
+            for wp in todo:
+                if wp is not None:
+                    mine_u = [r for r in by.get(u, []) if rail(r) == net]
+                    if any(r["pin"].split(".", 1)[1] in uxy and wp in uxy and math.hypot(
+                            uxy[wp][0] - uxy[r["pin"].split(".", 1)[1]][0],
+                            uxy[wp][1] - uxy[r["pin"].split(".", 1)[1]][1]) <= A2_REACH - max_mm
+                           for r in mine_u):
+                        continue
+                # a donor keeps a cap for each of ITS declared supply pins on the rail (one, if
+                # it declares none): only a surplus is given
+                need_ = lambda d_: max(1, len({q["num"] for q in parts[d_]["pads"] if q["net"] == net
+                                                and q["num"] and is_sup(d_, q["num"])})) if d_ in sp else 1
+                donors = sorted(((len([r for r in rs if rail(r) == net]) - need_(d), d) for d, rs in by.items()
+                                 if d != u and d in parts), reverse=True)
+                if not donors or donors[0][0] < 1:
+                    continue
+                d = donors[0][1]
+                # the cap whose pin has ANOTHER capped pin nearest it in the IC's own frame
+                # (placement-independent): that neighbour's cap is tightened to max_mm and serves
+                # both. (Taking the largest instead left U6.171/172 at 5.7/6.1 mm: A2 judges pins.)
+                xy = {q["num"]: q["xy"] for q in parts[d]["pads"]}
+                mine = [r for r in by[d] if rail(r) == net]
 
-            def gap(r):
-                a_ = xy.get(r["pin"].split(".", 1)[1])
-                o_ = [math.hypot(a_[0] - xy[x["pin"].split(".", 1)[1]][0], a_[1] - xy[x["pin"].split(".", 1)[1]][1])
-                      for x in mine if x is not r and a_ is not None and x["pin"].split(".", 1)[1] in xy]
-                return (min(o_) if o_ else 1e9, -r.get("_f", 0.0), r["cap"])
-            give = min(mine, key=gap)
-            g_ = gap(give)[0]
-            if 1e-6 < g_ < 1e9:
-                a_ = xy[give["pin"].split(".", 1)[1]]
-                keep_ = min((x for x in mine if x is not give),
-                            key=lambda x: math.hypot(a_[0] - xy[x["pin"].split(".", 1)[1]][0],
-                                                     a_[1] - xy[x["pin"].split(".", 1)[1]][1]))
-                keep_["_tight"] = True
-                keep_["also"] = keep_.get("also", []) + [give["pin"]]
-                keep_["why"] += " (also serves %s, %.1f mm along the package: its cap went to %s)" % (
-                    give["pin"], g_, u)
-            by[d].remove(give)
-            give.pop("also", None)                     # it serves its new IC, nothing of the old
-            give.pop("_tight", None)
-            num = next(q["num"] for q in parts[u]["pads"] if q["net"] == net and q["num"])
-            give["pin"] = "%s.%s" % (u, num)
-            give["why"] = "%s across %s and ground: %s's own (it had none; given by %s)" % (give["cap"], net, u, d)
-            by.setdefault(u, []).append(give)
-            have.add((u, net))
+                def gap(r):
+                    a_ = xy.get(r["pin"].split(".", 1)[1])
+                    o_ = [math.hypot(a_[0] - xy[x["pin"].split(".", 1)[1]][0], a_[1] - xy[x["pin"].split(".", 1)[1]][1])
+                          for x in mine if x is not r and a_ is not None and x["pin"].split(".", 1)[1] in xy]
+                    return (min(o_) if o_ else 1e9, -r.get("_f", 0.0), r["cap"])
+                give = min(mine, key=gap)
+                g_ = gap(give)[0]
+                if 1e-6 < g_ < 1e9:
+                    a_ = xy[give["pin"].split(".", 1)[1]]
+                    keep_ = min((x for x in mine if x is not give),
+                                key=lambda x: math.hypot(a_[0] - xy[x["pin"].split(".", 1)[1]][0],
+                                                         a_[1] - xy[x["pin"].split(".", 1)[1]][1]))
+                    keep_["_tight"] = True
+                    keep_["also"] = keep_.get("also", []) + [give["pin"]]
+                    keep_["why"] += " (also serves %s, %.1f mm along the package: its cap went to %s)" % (
+                        give["pin"], g_, u)
+                by[d].remove(give)
+                give.pop("also", None)                     # it serves its new IC, nothing of the old
+                give.pop("_tight", None)
+                num = wp if wp is not None else next(q["num"] for q in parts[u]["pads"] if q["net"] == net and q["num"])
+                give["pin"] = "%s.%s" % (u, num)
+                give["why"] = "%s across %s and ground: %s's own (it had none; given by %s)" % (give["cap"], net, u, d)
+                by.setdefault(u, []).append(give)
+                have.add((u, net))
     # ⚠ ONE TIGHT CAP PER SUPPLY PIN; EXTRA CAPS GO LOOSE (lead ruling, motor_ctrl from
     # footprints, 2026-11-11). U4.1 and U4.68 (+3V3, 1 mm apart round the corner) each got a
     # cap seated at the pin; with the crystal's paths reserved on that edge, C8 had no seat
@@ -1088,6 +1128,212 @@ def auto_floorplan(parts, sensitive=SENSITIVE, noisy=NOISY_EDGE, xtal=XTAL_NET, 
                           "why": "USB / relay edges (%s) off the analog parts" % " ".join(loud),
                           "src": "auto_floorplan (netlist)"})
     return rules
+
+
+# ⚠ A PAIR'S PIN ORDER CAN TWIST IT (output_board rob_d1, 2026-11-14). Two rails running side by
+# side keep which one is on the left, seen along the run; at each land that order is fixed by the
+# pins: the part side they sit on (outward normal n) and which rail is which (d = P - N). Leaving
+# end A, s = sign(n_A x d_A); arriving at B, s = sign(-n_B x d_B). Unequal = a TWISTED hop: the
+# pair cannot run coupled on one layer, so it either changes layer or one rail detours round a
+# land, paying uncoupled mm (USBA / MCU on rob_d1 met the rules that way; USBB / FLASH did not).
+# Placement feedback, not a routing rule: NO rotation changes it (a turn keeps orientation, so
+# n and d turn together at both ends of any part); a mirror does (one end on the other side),
+# and so does re-binding which rail goes to which pin -- free on a pass-through part whose
+# channels are identical (a CMC's windings, a clamp's or a USB mux's channels: optical's
+# "turn U10 by 180" fixed it because turning a symmetric clamp IS a channel swap), or a
+# polarity swap where the IC has one.
+def pair_twists(parts, pl, groups):
+    """[(group name, ref A, ref B, "twisted" | "straight" | "unknown: why")] for every same-layer
+    two-net pair hop: a hop runs between two placed parts that carry both rails."""
+    P = Placed(parts, pl)
+    out = []
+
+    def normal(ref, q, c):
+        sx, sy = q["size"]
+        if abs(sx - sy) < 0.1 * max(sx, sy):
+            return None                              # a square pad: no long axis
+        ax = np.asarray([1.0, 0.0] if sx > sy else [0.0, 1.0])
+        if q.get("rot"):
+            ax = _rot([ax], float(q["rot"]))[0]
+        o = P.world(ref, [[0.0, 0.0]])[0]
+        u = P.world(ref, [ax])[0] - o
+        u = u / max(np.hypot(*u), 1e-9)
+        xy = P.pad(ref, q["num"])
+        return u if np.dot(u, xy - c) >= 0 else -u
+
+    def end(ref, qp, qn):
+        cy = np.asarray(P.crtyd(ref), float)
+        c = (cy.min(axis=0) + cy.max(axis=0)) / 2.0
+        a_, b_ = normal(ref, qp, c), normal(ref, qn, c)
+        if a_ is None or b_ is None:
+            return None, "a square pad on %s" % ref
+        if np.dot(a_, b_) < 0.9:
+            return None, "%s's two pins face different ways" % ref
+        return (a_ + b_) / 2.0, ""
+
+    seen = set()
+    for g in groups:
+        nets = g.get("nets") or []
+        if len(nets) != 2 or not g.get("same_layer", True) or frozenset(nets) in seen:
+            continue
+        seen.add(frozenset(nets))
+        pn, nn = nets
+        on = {}
+        for ref, v in parts.items():
+            if ref not in pl:
+                continue
+            qp = [q for q in v["pads"] if q.get("net") == pn]
+            qn = [q for q in v["pads"] if q.get("net") == nn]
+            if qp and qn:
+                on[ref] = [(a, b) for a in qp for b in qn]
+        refs = sorted(on)
+        mid = {r: np.mean([(P.pad(r, a["num"]) + P.pad(r, b["num"])) / 2.0 for a, b in on[r]], axis=0) for r in refs}
+        # the hops: the minimum spanning tree over the parts (a chain through a pass-through
+        # part, not every pair of parts on the net)
+        hops, inn = [], refs[:1]
+        while refs and len(inn) < len(refs):
+            ra, rb = min(((a, b) for a in inn for b in refs if b not in inn),
+                         key=lambda ab: float(np.hypot(*(mid[ab[0]] - mid[ab[1]]))))
+            hops.append((ra, rb))
+            inn.append(rb)
+        for ra, rb in hops:
+            if True:
+                def pick(r, other):          # the pin pair nearest the other end, then the closest-spaced
+                    return min(on[r], key=lambda ab: (
+                        round(float(np.hypot(*((P.pad(r, ab[0]["num"]) + P.pad(r, ab[1]["num"])) / 2.0 - mid[other]))), 1),
+                        float(np.hypot(*(P.pad(r, ab[0]["num"]) - P.pad(r, ab[1]["num"]))))))
+                (qa, qa2), (qb, qb2) = pick(ra, rb), pick(rb, ra)
+                na, wa = end(ra, qa, qa2)
+                nb, wb = end(rb, qb, qb2)
+                if na is None or nb is None:
+                    out.append((g.get("name") or pn, ra, rb, "unknown: " + (wa or wb)))
+                    continue
+                da = P.pad(ra, qa["num"]) - P.pad(ra, qa2["num"])
+                db = P.pad(rb, qb["num"]) - P.pad(rb, qb2["num"])
+                sa = np.sign(na[0] * da[1] - na[1] * da[0])
+                sb = np.sign(-nb[0] * db[1] + nb[1] * db[0])
+                out.append((g.get("name") or pn, ra, rb, "twisted" if sa != sb else "straight"))
+    return out
+
+
+def _swap_pairs(part, groups):
+    """[(pin, pin)] that swap a pass-through part's rails between its identical channels, or None
+    when the part is not one: <= 10 pads, only the pins of one or two declared pairs besides
+    ground / supply, and every pair's two rails on it equally often (a CMC's windings: FL4 pins
+    1/2 and 3/4; a flow-through clamp's channels). Each rail's pin swaps with the other rail's
+    nearest pin."""
+    pads = part.get("pads", ())
+    if len(pads) > 10:
+        return None
+    nets = {q.get("net") for q in pads if q.get("net")}
+    held = [g for g in groups if len(g) == 2 and g <= nets]
+    rest = nets - set().union(*held) if held else nets
+    if not held or len(held) > 2 or any(not (GROUND_NET.search(n) or SUPPLY.search(n)) for n in rest):
+        return None
+    out = []
+    for g in held:
+        pn, nn = sorted(g)
+        qp = [q for q in pads if q.get("net") == pn]
+        qn = [q for q in pads if q.get("net") == nn]
+        if len(qp) != len(qn):
+            return None
+        free = list(qn)
+        for q in qp:
+            m = min(free, key=lambda r: math.hypot(r["xy"][0] - q["xy"][0], r["xy"][1] - q["xy"][1]))
+            free.remove(m)
+            out.append((q["num"], m["num"]))
+    return out
+
+
+def swap_plan(parts, pl, groups, max_parts=10):
+    """The channel swaps on pass-through parts that leave the fewest twisted pair hops
+    (pair_twists), fewest swaps on a tie. Each swap is free in the netlist (identical channels)
+    but must be carried into the netlist's generator. Returns (twisted before, twisted after,
+    [(ref, [(pin, pin)])])."""
+    import copy
+    gsets = [frozenset(g.get("nets") or ()) for g in groups if len(g.get("nets") or ()) == 2]
+    cand = {}
+    for ref, v in parts.items():
+        if ref in pl:
+            sp = _swap_pairs(v, gsets)
+            if sp:
+                cand[ref] = sp
+    names = sorted(cand)[:max_parts]
+
+    def count(sel):
+        pp = parts
+        if sel:
+            pp = dict(parts)
+            for ref in sel:
+                v = copy.deepcopy(parts[ref])
+                by = {q["num"]: q for q in v["pads"]}
+                for a_, b_ in cand[ref]:
+                    by[a_]["net"], by[b_]["net"] = by[b_]["net"], by[a_]["net"]
+                pp[ref] = v
+        return sum(1 for t in pair_twists(pp, pl, groups) if t[3] == "twisted")
+
+    n0 = count(())
+    best = (n0, 0, ())
+    for k in range(1, len(names) + 1):
+        for sel in __import__("itertools").combinations(names, k):
+            n_ = count(sel)
+            if (n_, k) < best[:2]:
+                best = (n_, k, sel)
+    return n0, best[0], [(r, cand[r]) for r in best[2]]
+
+
+def apply_swaps(parts, net_text, swaps):
+    """Apply swap_plan's swaps to a parts dict (in place) and a KiCad netlist's text (returned):
+    each swapped pin's node moves to the other rail's net."""
+    for ref, prs in swaps:
+        by = {q["num"]: q for q in parts[ref]["pads"]}
+        for a_, b_ in prs:
+            by[a_]["net"], by[b_]["net"] = by[b_]["net"], by[a_]["net"]
+    # the netlist: find each (net ...) block's span and each (node (ref R) (pin P) ...) in it
+    def spans(text, head):
+        out, i = [], 0
+        while True:
+            i = text.find(head, i)
+            if i < 0:
+                return out
+            depth, j = 0, i
+            while True:
+                if text[j] == "(":
+                    depth += 1
+                elif text[j] == ")":
+                    depth -= 1
+                    if depth == 0:
+                        break
+                j += 1
+            out.append((i, j + 1))
+            i = j + 1
+    moves = {}
+    for ref, prs in swaps:
+        for a_, b_ in prs:
+            moves[(ref, a_)] = (ref, b_)
+            moves[(ref, b_)] = (ref, a_)
+    # where each moved pin's net is now, from the swapped parts (its new net)
+    target = {(ref, q["num"]): q["net"] for ref, _ in swaps for q in parts[ref]["pads"]}
+    nodes = {}                            # (ref, pin) -> node text, removed from its old net
+    text = net_text
+    for (i, j) in reversed(spans(text, "(net")):
+        blk = text[i:j]
+        new = blk
+        for (ni, nj) in reversed(spans(blk, "(node")):
+            nd = blk[ni:nj]
+            m = re.search(r'\(ref "([^"]+)"\)\s*\(pin "([^"]+)"\)', nd)
+            if m and (m.group(1), m.group(2)) in moves:
+                nodes[(m.group(1), m.group(2))] = nd
+                new = new[:ni] + new[nj:]
+        text = text[:i] + new + text[j:]
+    for (ref, pin), nd in nodes.items():
+        net = target[(ref, pin)]
+        m = re.search(r'\(name "%s"\)' % re.escape(net), text)
+        if not m:
+            raise ValueError("apply_swaps: net %s not in the netlist" % net)
+        k = m.end()
+        text = text[:k] + "\n      " + nd + text[k:]
+    return text
 
 
 def unregioned_sensitive(parts, rules):

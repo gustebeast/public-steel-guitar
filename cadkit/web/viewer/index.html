@@ -633,8 +633,18 @@
     nodes = {};
     const moving = movingNames();
     const groups = new Map();
+    const I4 = new THREE.Matrix4();
     for (const mesh of [...parts.children]) {
       if (!mesh.isMesh) continue;
+      // A SHARED MESH (cadkit.web.export.instance_groups): the file holds one copy and each part's
+      // node places it. Every part is its own geometry in the model's frame below, so the place
+      // is baked into a copy here, and the node goes back to identity.
+      mesh.updateMatrix();
+      if (!mesh.matrix.equals(I4)) {
+        mesh.geometry = mesh.geometry.clone().applyMatrix4(mesh.matrix);
+        mesh.position.set(0, 0, 0); mesh.quaternion.identity(); mesh.scale.set(1, 1, 1);
+        mesh.updateMatrix();
+      }
       const g = mesh.geometry, col = g.attributes.color ? g.attributes.color.array : null;
       const clear = /-clear$/.test(mesh.userData.mat || '');
       const mat = col ? vcMat : partMaterial(
@@ -1160,6 +1170,16 @@
       case 'circle': return nearestOnArc(e, p => p.distanceTo(t));
       case 'sphere': return out(e.c, t.clone().sub(e.c), e.r) || e.pick.clone();
       case 'line': return onLine(e.a, e.b.clone().sub(e.a).normalize(), t);
+      case 'curve': {                         // a sampled edge (a spline, a hole's lip in a face):
+        let best = null, bd = Infinity;       // the nearest point on its polyline
+        for (let i = 0; i + 1 < e.pts.length; i++) {
+          const a = e.pts[i], ab = e.pts[i + 1].clone().sub(a), L2 = ab.dot(ab);
+          const u = L2 > 0 ? Math.min(1, Math.max(0, t.clone().sub(a).dot(ab) / L2)) : 0;
+          const q = a.clone().add(ab.multiplyScalar(u)), d = q.distanceTo(t);
+          if (d < bd) { bd = d; best = q; }
+        }
+        return best || e.pick.clone();
+      }
       case 'cyl': { const f = onLine(e.p, e.d, t); return out(f, t.clone().sub(f), e.r) || e.pick.clone(); }
       case 'torus': {
         const flat = x => x.clone().sub(e.p).sub(e.d.clone().multiplyScalar(x.clone().sub(e.p).dot(e.d)));
@@ -1198,7 +1218,7 @@
     // A ROUND THING MEASURES FROM ITS NEAREST POINT, NEVER ITS CENTRE OR AXIS (user, 2026-11-10
     // for circles, 2026-11-12 for surfaces): the gap is what anyone measuring to a hole, a
     // boss, a bearing or a shaft wants.
-    const ROUND = ['circle', 'sphere', 'cyl', 'torus'];
+    const ROUND = ['circle', 'sphere', 'cyl', 'torus', 'curve'];
     const round = ROUND.includes(ea.kind) || ROUND.includes(eb.kind);
     const straight = e => e.kind === 'line' || e.kind === 'cyl';
     const skew = straight(ea) && straight(eb) && !para(A.d, B.d);       // that is an angle
@@ -1297,7 +1317,7 @@
   // then centres and axes when a round thing makes that a different figure
   function readings(ea, eb) {
     const R = [between(ea, eb)];
-    const ROUND = ['circle', 'sphere', 'cyl', 'torus'];
+    const ROUND = ['circle', 'sphere', 'cyl', 'torus', 'curve'];
     if (ROUND.includes(ea.kind) || ROUND.includes(eb.kind)) {
       const c = between(ea, eb, true);
       const same = c.big === R[0].big && c.a.distanceTo(R[0].a) < 1e-6 && c.b.distanceTo(R[0].b) < 1e-6;

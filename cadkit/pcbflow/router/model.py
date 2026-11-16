@@ -22,6 +22,7 @@ POWER_W_MAX = 1.0        # the widest a power path is drawn (wider: pour it)
 DROP_SHARE = 0.6         # of a path's drop budget the track may spend (detours, vias, joints)
 DETOUR = 1.6             # routed length over Manhattan, for the drop estimate (optical V24_IN ran 2.0x)
 RING_PADS = 3            # parts with this many pads or fewer get a thermal ring
+PLANE_PIN_RING = os.environ.get("OWNROUTE_PLANE_PIN_RING", "0") == "1"   # + a big part's through-hole plane pins (opt-in)
 RING_MM = 0.9            # a poured land's thermal room, from its copper edge
 HOLE_PAD = 0.45          # a pad's hole to any other hole, edge to edge (quality.FAB hole_hole_pad)
 SUPPLY = ("+", "GND", "VCC", "VDD")
@@ -290,12 +291,26 @@ class Model:
         for net_name, polys in self.pours.items():
             nid = self.net_id.get(net_name, -1)
             for p in self.pads:
-                if p["net"] != net_name or npads.get(p.get("fp"), 99) > RING_PADS:
+                if p["net"] != net_name:
+                    continue
+                # ⚠ A BIG PART'S THROUGH-HOLE PLANE PIN NEEDS ITS RING TOO (output_board mO2,
+                # 2026-11-15): J205.8 (GND, the UI header) joins the planes only through its
+                # barrel, and UI_ENC_A on In1 plus UI_SW_C / ENC_B / RES_N on B.Cu fenced it
+                # into a 3-8 mm2 island on both -- no via of its own, close_last "no path",
+                # the board one open. A part over RING_PADS keeps no ring on its signal
+                # layers (U3's escapes, above), but a through-hole pin of a WHOLE-LAYER pour's
+                # net gets one on that plane layer, where only the plane may reach it.
+                # OPT-IN (OWNROUTE_PLANE_PIN_RING=1): on by default the connector board's d15
+                # placement went 0 -> 1 unconnected with twelve MX15 GND ways ringed.
+                small = npads.get(p.get("fp"), 99) <= RING_PADS
+                if not small and (p["cu"] is not None or not PLANE_PIN_RING):
                     continue
                 r = pad_reach(p) + RING_MM
                 win = None
                 for L_, pts in polys:
                     if L_ not in lid or not (p["cu"] is None or L_ in p["cu"]):
+                        continue
+                    if not small and _area(pts) <= 0.8 * board_area:
                         continue
                     if not _in_poly(np.array([p["gx"]]), np.array([p["gy"]]), pts)[0]:
                         continue
