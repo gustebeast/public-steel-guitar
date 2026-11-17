@@ -1538,6 +1538,33 @@ def _anchor_screws() -> cq.Workplane:
                   for yw, sg, x, z in _anchor_screw_at()])
 
 
+def string_pieces(i: int, t: float, drop: float = 0.0) -> list:
+    """String i's path for cadkit.mesh_parts.tube_path_mesh, as it runs: in off the crown, over
+    the bridge bearing (90 -> 0 deg), along to the bend axle and round it (0 -> -90 deg), out to the
+    ball. Straight runs and true arcs, so the desktop tracer draws it exact (user, 2026-11-16:
+    "infinitely smooth rather than segmented"). `drop` lowers the crown and the bridge (the wood
+    bench's KH_DROP)."""
+    g = D.STRING_GAUGE[i]
+    y0, y1 = D.nut_y(i), y_of(i)
+    zs = D.STRING_Z + g / 2 + drop
+    rr = R + g / 2
+    bx, bz = BR_C[0], BR_C[1] + drop
+    zc = z_level(level(i)) + R
+    top = (bx, y1, bz + rr)
+    return [("line", (D.NUT_BLOCK_X - 30.0, y0, zs - 3.0), (D.NUT_BLOCK_X, y0, zs)),
+            ("line", (D.NUT_BLOCK_X, y0, zs), top),
+            ("arc", (bx, y1, bz), (0, 1, 0), top, 90.0),
+            ("line", (bx + rr, y1, bz), (X_BEND + rr, y1, zc)),
+            ("arc", (X_BEND, y1, zc), (0, 1, 0), (X_BEND + rr, y1, zc), 90.0),
+            ("line", (X_BEND, y1, zc - rr), yaw_pt((_ball_x(t), y1, za(i)), i))]
+
+
+def with_string_look(proxy: cq.Workplane, i: int, t: float, drop: float = 0.0) -> cq.Workplane:
+    """The string's proxy (the gates' solid, unchanged) with its exact look hung on it."""
+    from cadkit.mesh_parts import tube_path_mesh, with_mesh
+    return with_mesh(proxy, tube_path_mesh(string_pieces(i, t, drop), D.STRING_GAUGE[i]))
+
+
 def _string(i: int, t: float) -> cq.Workplane:
     g = D.STRING_GAUGE[i]
     y0, y1 = D.nut_y(i), y_of(i)
@@ -1557,7 +1584,7 @@ def _string(i: int, t: float) -> cq.Workplane:
         if math.dist(a, b) > 1e-3:
             s = _seg(a, b, g)
             out = s if out is None else out.union(s)
-    return out
+    return with_string_look(out, i, t)
 
 
 def _mplate(i: int) -> cq.Workplane:

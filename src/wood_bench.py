@@ -305,7 +305,7 @@ def bench_string(t: float) -> cq.Workplane:
         if math.dist(a, b) > 1e-3:
             sg = DB._seg(a, b, g)
             out = sg if out is None else out.union(sg)
-    return out
+    return DB.with_string_look(out, I, t, KH_DROP)
 
 
 SCALE_SPAN = DB.X_BEND - D.NUT_BLOCK_X           # crown to the bridge bearing's axle (x)
