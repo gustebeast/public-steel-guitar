@@ -1416,11 +1416,22 @@ def pour_amps(rule, notes):
 
 
 def pour_foreign(rule, P, poly, refs=None):
-    """Other nets' pads inside a pour's outline on its layer: ["U4.3", ...]."""
+    """Other nets' pads inside a pour's outline on its layer: ["U4.3", ...].
+
+    ⚠ A PAD IS ITS AREA, NOT ITS CENTRE (brain_board mT4, 2026-11-16) -- PCBFLOW_POUR_AREA=1
+    while it is measured, then the default. A MOSFET's drain tab is 4.5 mm across: Q5's sat
+    with its centre outside the PB_VOUT band and 8.8 mm2 of it inside, the fill went round it
+    and A1 read the pour's cut as 0.00 mm -- while this said "no foreign pads", so the turn
+    stage (place_init pour_pen) never saw a reason to face the source pins at the next stage.
+    Q4/Q6's tabs did the same to PA_VOUT (5.6 mm2 each). With the flag a pad counts when any
+    of a 5 x 5 sample grid over it lies inside."""
     from matplotlib.path import Path as _Path
+    import os
     path = _Path(np.asarray(poly, float))
     side = "B" if rule["layer"].startswith("B.") else "F"
     inner = rule["layer"].startswith("In")
+    area = os.environ.get("PCBFLOW_POUR_AREA") == "1"
+    grid = np.array([(a, b) for a in np.linspace(-0.5, 0.5, 5) for b in np.linspace(-0.5, 0.5, 5)])
     out = []
     for ref, p in P.parts.items():
         if ref not in P.pl or (refs is not None and ref not in refs):
@@ -1429,7 +1440,14 @@ def pour_foreign(rule, P, poly, refs=None):
             if q["net"] == rule["net"] or not q["num"]:
                 continue
             on = q.get("tht") or (not inner and p.get("side", "F") == side)
-            if on and path.contains_point(tuple(P.pad(ref, q["num"]))):
+            if not on:
+                continue
+            if area:
+                loc = _rot(grid * np.asarray(q["size"], float), float(q.get("rot") or 0.0)) + q["xy"]
+                hit = path.contains_points(P.world(ref, loc)).any()
+            else:
+                hit = path.contains_point(tuple(P.pad(ref, q["num"])))
+            if hit:
                 out.append("%s.%s" % (ref, q["num"]))
     return out
 
