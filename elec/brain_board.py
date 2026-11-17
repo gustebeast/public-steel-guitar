@@ -2151,6 +2151,9 @@ if __name__ == "__main__":
                          ("USBB", "", ["FL4", "U17"]), ("MCU", "", ["J202", "U1"]),
                          ("FLASH", "", ["J202", "U209", "U210"]), ("USBA", "_J", ["FL3", "J1"]),
                          ("USBB", "_J", ["FL4", "J2"]))]
+    notes["pair_corridor"] = True      # placement prices each pair hop's corridor (cadkit place_init)
+    # a small pour land's via array goes beside it, bridged: Q202.3 fed VIN_BRAIN's 10 A to In2 through one via (mV16)
+    notes["pour_spill_small"] = True
     # The ICs' datasheet supply pins, by name (cadkit auto_decaps / quality A2, 2026-11-15): a
     # cap goes to the pin its description names, and a strap tied to a rail is not judged as a
     # supply. Pin tables: ST DS12110 Rev 11 Table 9 pp.64-87 (U1; pin 171 PDR_ON is a strap);
