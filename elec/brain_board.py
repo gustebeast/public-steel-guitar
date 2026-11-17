@@ -2405,6 +2405,24 @@ def quality_notes(net_path):
     for k in [k for k in unc if k.startswith("J[49]") or k.startswith("J[123]") or k == "U4"]:
         del unc[k]
     unc["J[1239].[AB]8"] = "USB-C sideband (SBU): USB 2.0 does not use it"
+    if MERGED:
+        # the service port and the merged power parts (A13, mV22/23: each idle on purpose)
+        unc["J7.[AB]8"] = "service port USB-C sideband (SBU): USB 2.0 does not use it"
+        unc["U35.4"] = "TUSB321 PORT floating = DRP (ZHCSDT2A pin table)"
+        unc["U35.6"] = "TUSB321 VCONN_FAULT: no VCONN on a USB 2.0 port"
+        unc["U35.7"] = "TUSB321 OUT1: current advertisement unread (U36 sets the limit)"
+        unc["U35.8"] = "TUSB321 OUT2: as OUT1"
+        unc["U35.11"] = "TUSB321 DIR: plug orientation unread (USB 2.0 needs none)"
+        unc["U36.4"] = "TPS2552 FAULT#: unread, the switch limits by itself"
+        unc["U37.[3-6]"] = "CH334P DS3 / DS4 (DM4 DP4 DM3 DP3): two downstream ports unused"
+        unc["U37.1[34]"] = "CH334P RESET#/CDP and PGANG: internal pull-ups, float (WCH V2.91 Fig 1-1)"
+        unc["U39.1"] = "SN74LVC1G17 DBV pin 1 is NC (SCES351V)"
+        unc["U42.4"] = "TPS22918 CT floating: fastest rise"
+        unc["U42.5"] = "TPS22918 QOD floating: no output discharge needed on U30's input"
+        unc["U5.4"] = "LMR33640 PG: unread"
+        unc["U205.4"] = "TPS552892 CC flag: unused"
+        unc["U205.16"] = "TPS552892 CDC floating: no cable-droop lift (SLVSGT7 6.5)"
+        unc["U221.6"] = "TPS22965 CT floating: fastest rise"
     q["unconnected"] = unc
     q["decoupling"] = qp["decoupling"]
     q["not_power"] = dict(qp["not_power"], **qs["not_power"])
