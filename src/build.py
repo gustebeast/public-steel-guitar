@@ -5,10 +5,11 @@
   py -3.12 -m src.build --list       # list part names
 
 The instrument is src.direct_bench's (user, 2026-11-13). Its printed parts come from there
-(_direct_parts, below); the parts it reuses from earlier designs -- the knee levers, the leg
-and its latches, the pedal bar, the UI station's printed parts and the shop jigs -- are
-listed in PARTS here and built by their own modules. The v1 belt-drive instrument is gone
-from the build (lead, 2026-11-17); it is at the git tag v1-instrument.
+(_direct_parts, below); PARTS here lists the rest: the UI station's printed parts and the
+shop jigs, each built by its own module. Everything of the v1 belt-drive instrument is gone,
+including the parts once kept to reuse -- the knee levers, the leg and its latches and the
+pedal bar (user, 2026-11-17: they get redesigned for this body). It is all at the git tag
+v1-instrument.
 """
 
 from __future__ import annotations
@@ -48,15 +49,6 @@ def _m(name):
     return importlib.import_module("src." + name)
 
 
-def _PB(attr):
-    return getattr(_m("pedal_bar"), attr)()
-
-
-def _PB_bar(attr):
-    """A pedal-bar piece with its pedal housings fused in (foot_pedal.bar_piece)."""
-    return _m("foot_pedal").bar_piece(attr)
-
-
 # ── PRINTED parts → each is exported as its own STEP. ────────────────────
 # This is the ONLY set that gets STEP files; purchased parts and stand-ins appear only in
 # the assembly. Values are (builder, path, note); the builder runs at export time, so
@@ -68,60 +60,9 @@ def _PB_bar(attr):
 #   steel/    laser-cut sheet (ordered, not printed)
 #   tools/    shop jigs
 PARTS = {
-    "knee_housing": (lambda: _m("knee_lever").knee_housing, "petg-gf/knee_housing.step", "PETG-GF — knee-lever (LKL) housing: ONE parametric prism derived from the lever/cartridge/body extents, minus the house-pockets, backstop threads + lever room, plus FOUR fused octagon mount tenons on the top face (one per chassis rib crossing; the +X-most survives only as a stub over each cheek) and the MT6701 board CRADLE on the +Y face (grooves + plinth + floor; the board drops in from +Z with the lever OFF the instrument and the chassis underside becomes its lid — no retaining screw. Ø14 driver bore reserved for the magnet cap, plus a relief channel through the cheek and the -X web for the board's side-entry CAN connector and its plug). Retention is all on -X: the +X web stops at the plinth top so NOTHING stands +X of the prism face. Depth lock deferred"),
-    "knee_housing_r": (lambda: _m("knee_lever").knee_housing_r, "petg-gf/knee_housing_r.step", "PETG-GF — RIGHT-HAND knee-lever housing (LKR, RKR: struck by the knee moving +X): knee_housing's mirror image in X, except the board cradle, plug tunnel and knee relief, which are cut for the ONE sensor board turned over about the axle (connector toward +X, long end up, 1.7 higher, no shim). Print 2. The mirrored lever, cartridges and axle it carries are not exported yet"),
-    "knee_lever": (lambda: _m("knee_lever").knee_lever,   "pctg/knee_lever.step",   "PCTG — knee-lever (LKL) arm + knee paddle (takes knee strikes: toughness over stiffness); the +Y axle journal + magnet stub print INTEGRAL (stand off the lying -Y bed face)"),
-    "kl_axle": (lambda: _m("knee_lever").kl_axle, "pctg/kl_axle.step", "PCTG — knee-lever AXLE ×1: ONE full-length part fitted LAST, slid +Y→−Y through bearing/lever/bearing (the old integral stub could never enter its bearing). Ø8 journals, D-FLAT key through the hub, flange land seating on the +Y inner race (= the air-gap datum), threaded magnet pocket, M4 thread-forming bore in the −Y tip for the retention screw + washer. Prints STANDING, POCKET-DOWN, with a brim"),
-    "kl_spacer": (lambda: _m("knee_lever").spacer(), "pctg/kl_spacer.step", "PCTG — axle SPACER ×2 per lever (×2 per pedal): Ø10 ring between the lever's flat face and each bearing's INNER race, through the seat's printed shoulder. Part of the clamped rotating stack (land, races, spacers, lever, washer), which is what locks the lever in Y. Slip it over the axle as the axle goes through. Prints FLAT"),
-    "kl_spacer_sprung": (lambda: _m("knee_lever").spacer(_m("knee_lever").SPRUNG_SPACER_T), "pctg/kl_spacer_sprung.step", "PCTG — LKL axle SPACER, +Y (the stack with the PRELOAD SPRING): the same Ø10 ring as kl_spacer but EXACT, lever face -> +Y inner race (2.00, not 2.05) -- the spring takes up the print error instead of a sized-long clamp. Prints FLAT"),
-    "kl_spacer_sprung_n": (lambda: _m("knee_lever").spacer(_m("knee_lever").SPRUNG_SPACER_T_N), "pctg/kl_spacer_sprung_n.step", "PCTG — LKL axle SPACER, -Y (3.59): lever face -> the -Y inner race, through both -Y shoulders (the -Y bearing sits out past the preload spring). Prints FLAT"),
-    "kl_axle_sprung": (lambda: _m("knee_lever").kl_axle_sprung, "pctg/kl_axle_sprung.step", "PCTG — the LKL's AXLE: kl_axle 1.59 longer at the -Y end, for the -Y bearing out past the PRELOAD SPRING (McMaster 9714K29). Same journals, flat, land, magnet pocket and end screw. Prints STANDING, POCKET-DOWN, with a brim"),
-    "kl_magnet_cap": (lambda: _m("knee_lever").kl_magnet_cap, "pctg/kl_magnet_cap.step", "PCTG — magnet CAP ×1: female-threaded HEX nut (9.35 across flats, for a 3/8-inch driver) screwing over the axle's pocket collar to clamp the Ø6 diametric disc; centre stays open so nothing intrudes on the air gap. Fit it BEFORE the sensor board. Prints APERTURE-DOWN"),
-    "kl_pcb_shim": (lambda: (lambda KL: KL.pcb_shim(KL.HOUS_Z0, KL.HOUS_Z1))(_m("knee_lever")), "pctg/kl_pcb_shim.step", "PCTG — sensor-board shim, LEFT-HAND knee levers (x2: LKL, RKL): a 33.0 x 1.55 strip one board thick that drops down the cradle grooves on top of the board, so the chassis underside presses the board through it. The right-hand housings need none. Prints FLAT, on a big face"),
-    "kv_pcb_shim": (lambda: _m("knee_lever_vert").kv_pcb_shim, "pctg/kv_pcb_shim.step", "PCTG — sensor-board shim, VERTICAL knee lever (x1): the same plate 20.95 tall, filling the taller housing's cradle above the one board. Prints FLAT, on a big face"),
-    "pedal_pcb_shim": (lambda: (lambda KL, FP: KL.pcb_shim(FP.CRADLE_Z0, FP.SHIM_TOP, FP.BOARD_FLIP))(_m("knee_lever"), _m("foot_pedal")), "pctg/pedal_pcb_shim.step", "PCTG — sensor-board shim, FOOT PEDALS (x5): the same plate 24.70 tall, standing from the board's edge to the bar's lid groove; the LID presses it. Prints FLAT, on a big face"),
-    "kv_housing": (lambda: _m("knee_lever_vert").kv_housing, "petg-gf/kv_housing.step", "PETG-GF — VERTICAL knee-lever (LKV) housing: same prism derivation as LKL but with the feel block TRANSLATED above the axle (not mirrored — the pocket gable stays up for printability), so the axle sits 19.2 lower and the arm has room to swing UP. Y is asymmetric (-16.10..+13.90): the -Y wall is 2.2 wider to fit TWO octagon tenons at the 23mm rib pitch, while the +Y sensor face is untouched. Tenons slide along local X (= the guitar's Y once posed). Carries the SAME sensor cradle as LKL (knee_lever._cradle, parameterised by the housing Z extents) - the board is just taller here, 31.2 vs 19. Rest stop deferred"),
-    "kv_lever": (lambda: _m("knee_lever_vert").kv_lever, "pctg/kv_lever.step", "PCTG — VERTICAL knee-lever (LKV) arm: an L. Hub on the axle, a LEG rising +Z carrying the return lobe at 13.2 (sized so the 20° throw gives the SAME 4.51 spring stroke as LKL's 30°), and a 50mm ARM running +X that the knee lifts — 17.1 of paddle rise"),
-    "cart_base": (lambda: _m("knee_lever").cart_base, "pctg/cart_base.step", "PCTG — spring-cartridge (inverted-U, open -Z; shared: print 2, for main + half-stop)"),
-    "cart_piston": (lambda: _m("knee_lever").cart_piston, "pctg/cart_piston.step", "PCTG — spring-cartridge piston, flat follower tongue (shared: print 2)"),
-    "leg_foot": (lambda: heal(_m("legs").leg_foot()),    "tpu/leg_foot.step",    "TPU — SHARED dovetail foot ×4 (user: one look): 44-sq pad + tenon into the underside mortise of the -Y leg blocks AND the pedal bar; the wired bar one covers the plug-threading access"),
-    "body_adapter": (lambda: heal(_m("leg_stack").body_adapter()), "petg-gf/body_adapter.step", "PETG-GF — body adapter, -X/+Y corner (the leg): slides into the body's mortises along Y (two octagon ridges + the end-wall tongue in its rebate), one M4 shear pin down the rail + the endplate's lock pin; blind mortise below for the fixed tenon, with the body latch's pocket. Prints +Y -> -Y"),
-    "body_adapter_px_py": (lambda: heal(_m("leg_stack").body_adapter(_m("chassis").LEG_STATIONS_X[0], _m("chassis").LEG_Y[0])), "petg-gf/body_adapter_px_py.step", "PETG-GF — body adapter, +X/+Y corner: the same adapter with its body joinery built for that corner (tongue toward +X)"),
-    "body_adapter_px_my": (lambda: heal(_m("leg_stack").body_adapter(_m("chassis").LEG_STATIONS_X[0], _m("chassis").LEG_Y[1])), "petg-gf/body_adapter_px_my.step", "PETG-GF — body adapter, +X/-Y corner (tongue toward +X, screw down the -Y rail)"),
-    "body_adapter_mx_my": (lambda: heal(_m("leg_stack").body_adapter(_m("chassis").LEG_STATIONS_X[1], _m("chassis").LEG_Y[1])), "petg-gf/body_adapter_mx_my.step", "PETG-GF — body adapter, -X/-Y corner (tongue toward -X, screw down the -Y rail)"),
-    "fixed_sleeve": (lambda: heal(_m("leg_stack").fixed_sleeve()), "petg-gf/fixed_sleeve.step", "PETG-GF — fixed sleeve: butts the adapter, pinned to the fixed tenon by one +X screw; the body latch's pad sits flush in its -Y face. Prints +Y -> -Y"),
-    "adjust_sleeve": (lambda: heal(_m("leg_stack").adjust_sleeve()), "petg-gf/adjust_sleeve.step", "PETG-GF — adjust sleeve: butts the fixed sleeve; one +X screw pins the fixed tenon, one sets the height through the adjust tenon's ladder. Prints +Y -> -Y"),
-    "fixed_tenon": (lambda: heal(_m("leg_stack").fixed_tenon()), "petg-gf/fixed_tenon.step", "PETG-GF — fixed floating tenon: adapter <-> fixed sleeve <-> adjust sleeve, houses the body latch slider and spring. Prints diagonally (+X+Y -> -X-Y)"),
-    "adjust_tenon": (lambda: heal(_m("leg_stack").adjust_tenon()), "petg-gf/adjust_tenon.step", "PETG-GF — adjust floating tenon: the height ladder (blind +X holes) and, at its bar end, the pedal bar latch's pocket and lead-in. Prints diagonally (+X+Y -> -X-Y)"),
-    "leg_latch_slider": (lambda: heal(_m("leg_latch").slider()), "pctg/leg_latch_slider.step", "PCTG — body latch slider: push-to-connect hook into the adapter, flush 20x20 pad on the fixed sleeve, one steel coil. Prints -X -> +X"),
-    "bar_latch_frame": (lambda: heal(_m("leg_stack").bar_latch_frame()), "pctg/bar_latch_frame.step", "PCTG — pedal bar yoke latch: a ring round the adjust tenon, hook in its pocket, 20x20 pad flush in the collar, a cup seating its one coil. Prints ring down"),
-    "bar_latch_collar": (lambda: heal(_m("leg_stack").bar_latch_collar()), "petg-gf/bar_latch_collar.step", "PETG-GF — pedal bar latch collar: the top 22.4 of the bar's tower, holding the yoke and its springs; two T rails slide it onto the tower from +Y, one M4x40 button head into a heat-set insert in the tower locks it. Prints on its +Y face"),
-    "pedal_bar_a": (lambda: _PB_bar("pedal_bar_a"), "petg-gf/pedal_bar_a.step", "PETG-GF — pedal bar, -X piece (35.6 wide, flush with the slimmed leg blocks; fused WIRED tower; trough + lid groove; splice tenons at +X). ~205 long: prints STRAIGHT; _b drops onto the tenons, the LID locks the stack — no glue"),
-    "pedal_bar_b": (lambda: _PB_bar("pedal_bar_b"), "petg-gf/pedal_bar_b.step", "PETG-GF — pedal bar, MID piece (trough only; XS1 cavities -X, XS2 tenons +X). ~229 long: straight print; slides straight down onto _a's tenons (the lid is the Z lock — no glue)"),
-    "pedal_bar_c": (lambda: _PB_bar("pedal_bar_c"), "petg-gf/pedal_bar_c.step", "PETG-GF — pedal bar, +X piece (35.6 wide, flush with the slimmed leg blocks; fused PLAIN tower; splice cavities at -X). ~229 long: straight print; slides straight down onto _b's tenons (the lid is the Z lock — no glue)"),
-    "pedal_lid_a": (lambda: heal(_PB("pedal_lid_a")), "petg-gf/pedal_lid_a.step", "PETG-GF — sliding dovetail lid, -X piece (covers the TRRS latch; bridges bar splice XS1; carries the lock dimple). Goes in SECOND, and its -X end finishes FLUSH with the bar. 318 long: diagonal, TOP-FACE DOWN (45-deg flanks)"),
-    "pedal_lid_b": (lambda: heal(_PB("pedal_lid_b")), "petg-gf/pedal_lid_b.step", "PETG-GF — sliding dovetail lid, +X piece (covers the plain latch; bridges XS2). INSTALL BOTH FROM THE -X END: B first, run it the whole bar until it butts the 1.6 end wall, then A behind it — A's dimple clicks the nub and pins the stack. 317 long: diagonal, TOP-FACE DOWN"),
-    "pedal_lever": (lambda: heal(_m("foot_pedal").pedal_lever()), "pctg/pedal_lever.step", "PCTG — FOOT PEDAL lever ×3 (initial design): hub on the axle, leg carrying the return lobe at 13.2 (sized so the 20° throw gives the SAME 4.51 spring stroke as the knee levers — which is what lets the half stop transfer for free), a 90 mm arm running out to the player and the pedal board across its end (30.8 mm of travel, ~1.6→3 N at the board)"),
-    "pedal_detent_nub": (lambda: heal(_PB("nub_part")), "tpu/pedal_detent_nub.step", "TPU — detent nub ×1 (Ø4×4): presses into the bar top as the LID lock"),
     "ui_clamp": (lambda: heal(_m("ui_panel").clamp()), "petg-gf/ui_clamp.step", "PETG-GF - the UI clamp plate. It lies against the BOARD'S UNDERSIDE (3.2 thick, a relief under each through-hole footprint for the tails) and one M4x10 pulls it up into the deck panel's own boss, gripping the board between its whole top face and the deck's bearings; two spigots off the deck locate it. It holds the display too: two arms step up past the board and run +Y under the module, either side of the display's ribbon, to a crossbar at its far mounting-hole row, and four columns -- two off that crossbar, two off tabs beside the board's ends -- press the module's PCB into the window ledge. The ribbon carries no load, so that is the screen's whole retention. GF because it is a stiffness part. Prints PLATE-DOWN, its own flat underside on the bed, so every rib, column and post grows straight up off it"),
     "ui_pwr_cap": (lambda: heal(_m("ui_panel").power_cap()), "pctg/ui_pwr_cap.step", "PCTG - the power button's cap: a plain O15.2 disc with a blind square socket, pressed onto the latching switch's 3.3 mm stem and guided by its hole in the deck. Prints TOP-FACE-DOWN, the socket opening upward, so the face the thumb meets is the bed's and the socket's floor is printed before its walls. The socket bottoms on the stem's end: a push goes through the cap's full thickness, not through the press fit. PCTG, the knob's resin and the deck's"),
     "ui_knob": (lambda: heal(_m("ui_panel").knob()), "pctg/ui_knob.step", "PCTG - the UI cap: a O8 shank up through the deck and a O17 disc over it, bored O2.6x1.8 for the Alps shaft's tip. Prints DISC-DOWN (its own flat face on the bed), so the shank and the bore are both vertical and the bore's ceiling is the last thing printed. PCTG because it is the one part of the instrument a player touches every time they change a setting, and the deck it sits on is the same resin"),
-    "coil_mandrel": (
-    lambda: heal(_m("coil_mandrel").mandrel()),
-    "tools/coil_mandrel.step",
-    "TOOL — inner mandrel for winding the leg's TRRS lead into a 7-turn coil. Barrel Ø15.2 with a helical pitch rib, flange-down on a Ø27.8 base, TAIL_RUN of plain barrel each side so both tails leave AXIAL, and a full-thickness slit so the starting tail carries on DOWN through the flange. PA6-GF, printed SOLID"),
-    "coil_mandrel_sleeve": (
-    lambda: heal(_m("coil_mandrel").sleeve()),
-    "tools/coil_mandrel_sleeve.step",
-    "TOOL — the mandrel's outer sleeve, bore Ø23.0. It caps the coil's diameter so the mean lands on arithmetic rather than on spring-back, and holds both axial tails against the barrel while they set. PA6-GF, printed SOLID"),
-    "lever_prog_jig": (
-    lambda: heal(_m("lever_jig").jig()),
-    "tools/lever_prog_jig.step",
-    "TOOL — pogo nest for flashing the 11 lever/pedal sensor boards. The board drops in COMPONENT FACE DOWN onto four pogo pins (Adafruit 2430) standing at TP1–TP4 (positions read from the routed board), and J1 is powered through the end window. NO GLUE: each pin stands on the base plate and is held up by its own lead, which is nipped under the ear by the one M4 screw. One brass M4 insert in the ear's underside. PETG, printed as drawn"),
-    "lever_prog_jig_base": (
-    lambda: heal(_m("lever_jig").base()),
-    "tools/lever_prog_jig_base.step",
-    "TOOL — the jig's base plate: the flat the four pins stand on, screwed to the nest's ear with one M4 x 10 button screw whose head is sunk in the underside. PETG, printed UPSIDE DOWN (the counterbore opens upward)"),
     "saw_jig": (
     lambda: heal(_m("saw_jig").body()),
     "tools/saw_jig.step",
@@ -194,71 +135,16 @@ OUT = pathlib.Path(__file__).resolve().parents[1]
 # turns each into the pose the STEP is written in. A part no module declares exports as
 # modelled and is marked confirmed=False; the build names those on every run.
 def _declared():
-    LS, KL, KV = _m("leg_stack"), _m("knee_lever"), _m("knee_lever_vert")
-    FP, UI, PB, LG = _m("foot_pedal"), _m("ui_panel"), _m("pedal_bar"), _m("legs")
-    LJ, CM, SJG, MSJ, RJG = (_m("lever_jig"), _m("coil_mandrel"), _m("saw_jig"),
-                             _m("motor_shaft_saw_jig"), _m("ream_jig"))
-
+    UI = _m("ui_panel")
+    SJG, MSJ, RJG = _m("saw_jig"), _m("motor_shaft_saw_jig"), _m("ream_jig")
     out = {}
-    # the leg stack names its parts individually, each with its reasons in leg_stack's own
-    # comments (the ridges, the latch pocket's bridge, the layer-support test on the slider)
-    for _n, _up in LS.PRINT_UP.items():
-        out[_n] = PO.from_build_dir(
-            _up, "leg_stack.PRINT_UP %r — see leg_stack for why (the ridges, "
-                 "the latch pocket, the slider's layer-support test)" % (_up,))
-    out["leg_latch_slider"] = out.pop("latch_slider")   # the PARTS name
     for _names, _up, _why in (
-        (["knee_housing"], KL.PRINT_UP, "knee_lever.PRINT_UP — builds +Z, as modelled"),
-        (["knee_housing_r"], KL.PRINT_UP,
-         "knee_lever.PRINT_UP — builds +Z, as modelled (the X-mirror of knee_housing)"),
-        (["kv_housing"], KV.PRINT_UP,
-         "knee_lever_vert.PRINT_UP — builds +Z; the pocket gable is kept UP for exactly this"),
-        (["knee_lever"], KL.LEVER_UP,
-         "knee_lever.LEVER_UP — the arm lies on its -Y face and builds +Y. Already "
-         "machine-readable: cut_axle_bore hands this to cadkit as print_up, which is why the "
-         "axle bore comes back a plain cylinder and not a teardrop (the bore runs ALONG the build)"),
-        (["cart_base"], KL.CART_UP,
-         "knee_lever.CART_UP — builds +Z with the housing it sits in, which is what its peaked "
-         "roof is drawn for: the housing pocket cut from it is then self-supporting"),
-        (["kl_axle", "kl_axle_sprung"], KL.AXLE_UP,
-         "knee_lever.AXLE_UP — STANDING, POCKET-DOWN: drawn along +Z then rotated +Z->+Y, so "
-         "the collar end faces +Y and the build runs away from it. That bed face is only "
-         "14.8 mm2, which is exactly why the part note calls for a brim"),
-        (["kl_magnet_cap"], KL.MAGNET_CAP_UP,
-         "knee_lever.MAGNET_CAP_UP — APERTURE-DOWN, same construction as the axle: the "
-         "flange face is the bed (its +Y end, 55.2 mm2)"),
-        (["kl_spacer", "kl_spacer_sprung", "kl_spacer_sprung_n"], KL.SPACER_UP,
-         "knee_lever.SPACER_UP — a flat ring, either face on the bed"),
-        (["cart_piston"], KL.PISTON_UP,
-         "knee_lever.PISTON_UP — stands on its +X SPRING-SEAT face, the one flat 10x10 end, "
-         "so body, follower tongue and nose all grow ALONG the build"),
-        (["kv_lever"], KV.LEVER_UP,
-         "knee_lever_vert.LEVER_UP — the same one fact as the LKL arm, on this lever's axle "
-         "(X): it lies on its -X face"),
-        (["kv_pcb_shim"], KV.SHIM_UP,
-         "knee_lever_vert.SHIM_UP — the same flat plate as the LKL shim, standing in this "
-         "lever's board plane (across X): it lies on its -X face"),
-        (["kl_pcb_shim", "pedal_pcb_shim"], KL.SHIM_UP,
-         "knee_lever.SHIM_UP — flat on a big face, building through its own 1.6 thickness"),
-        (["pedal_lever"], FP.LEVER_UP,
-         "foot_pedal.LEVER_UP — the LKL arm direction again, through the foot pedal pose"),
         (["ui_knob"], UI.KNOB_UP,
          "ui_panel.KNOB_UP — DISC-DOWN, on the flat top face it presents to the player. Every "
          "other way up puts the shaft bore blind end over air"),
         (["ui_clamp"], UI.CLAMP_UP,
          "ui_panel.CLAMP_UP — flat underside on the bed, every pad, rib and post growing "
          "straight up off it"),
-        (["pedal_bar_a", "pedal_bar_b", "pedal_bar_c"], PB.BAR_UP,
-         "pedal_bar.BAR_UP — the bar prints lying on its -Y face, building +Y"),
-        (["pedal_lid_a", "pedal_lid_b"], PB.LID_UP,
-         "pedal_bar.LID_UP — the OPPOSITE of BAR_UP, and it has to be: the lid profile runs "
-         "out to the bar +Y face, so it builds -Y, and its 45 dovetail flanks are only "
-         "overhangs this way up"),
-        (["leg_foot"], LG.FOOT_UP, "legs.FOOT_UP — the 44-sq pad is the bed, tenon up"),
-        (["lever_prog_jig"], LJ.JIG_UP,
-         "lever_jig.JIG_UP — prints as drawn: flat on the base face, posts growing up"),
-        (["lever_prog_jig_base"], LJ.BASE_UP,
-         "lever_jig.BASE_UP — upside down: the screw head's counterbore opens upward"),
         (["saw_jig"], SJG.BODY_UP,
          "saw_jig.BODY_UP — as drawn, table face on the bed: the V and roof of the rod tunnel "
          "and the fork's arch are all 45 deg"),
@@ -271,39 +157,14 @@ def _declared():
         (["saw_jig_cap"], SJG.CAP_UP,
          "saw_jig.CAP_UP — as drawn: the rod notch's two 45 deg faces rise off the bed, the "
          "pad pocket opens up"),
-        (["coil_mandrel"], CM.MANDREL_UP,
-         "coil_mandrel.MANDREL_UP — flange-down on its O27.8 base, as drawn"),
-        (["coil_mandrel_sleeve"], CM.SLEEVE_UP,
-         "coil_mandrel.SLEEVE_UP — as drawn (a plain tube: both ends measure identically)"),
     ):
         for _n in _names:
             out[_n] = PO.from_build_dir(_up, _why)
-
-    # THE BODY-ADAPTER CORNERS. The body tenons on the top face run along Y and END at one Y
-    # face, so that face is the bed (leg_stack.ADAPTER_UP states the rule for the -X/+Y one);
-    # the corner variants are that part with its joinery rebuilt, and the bed is the Y end
-    # the tenons leave unbroken, which flips with the corner. px_my breaks neither end, so it
-    # follows its corner-mate mx_my.
-    _ADAPTER_WHY = ("the body tenons run along Y and END at this corner Y face, so that face "
-                    "is the bed (leg_stack.ADAPTER_UP rule, mirrored with the corner): built "
-                    "the other way each ridge starts in mid-air and the 45 ramp that fixes it "
-                    "costs 481 mm3 of tenon engagement")
-    for _n, _up in (("body_adapter_px_py", (0.0, -1.0, 0.0)),
-                    ("body_adapter_px_my", (0.0, 1.0, 0.0)),
-                    ("body_adapter_mx_my", (0.0, 1.0, 0.0))):
-        out[_n] = PO.from_build_dir(_up, _ADAPTER_WHY)
-
     # Declared by its module, but NOT YET CONFIRMED by the user (2026-10-12).
     out["ui_pwr_cap"] = PO.from_build_dir(
         UI.PWR_CAP_UP,
         "ui_panel.PWR_CAP_UP — top face on the bed, the stem's socket opening upward. Measured "
         "that way up: no ceiling and no curved overhang. Chosen, not yet confirmed",
-        confirmed=False)
-    out["pedal_detent_nub"] = PO(
-        ((1, 0, 0), -90),
-        "NOTHING IN THE PROJECT DECLARES THIS ONE. Measured: a O4x4 TPU cylinder whose axis "
-        "lies along Y, so standing it up is the only way it has a footprint at all (12.6 mm2) "
-        "and it is overhang-free that way. Low stakes, but unchecked",
         confirmed=False)
     return {k: v for k, v in out.items() if k in PARTS}
 
@@ -429,6 +290,22 @@ def _natural(k: str):
 _STEP_KEYS_FILE = OUT / ".step_keys.json"
 _STEP_KEYS: dict = {}
 _STEP_KEY_V = 1
+_PRODUCED: set = set()          # every STEP this run wrote or found current (rel to OUT)
+
+
+def _sweep_stale_steps():
+    """After a FULL build: delete every .step in a folder the build writes into that this run
+    did not produce (user, 2026-11-17: a part that leaves the build takes its file with it).
+    Only the folders PARTS' paths name, and only their own *.step, not subfolders."""
+    dirs = {(OUT / path).parent for _b, path, _n in PARTS.values()}
+    gone = sorted(f for d in dirs for f in d.glob("*.step")
+                  if f.resolve().relative_to(OUT.resolve()).as_posix() not in _PRODUCED)
+    for f in gone:
+        f.unlink()
+        _STEP_KEYS.pop(f.resolve().relative_to(OUT.resolve()).as_posix(), None)
+        print(f"  removed stale {f.resolve().relative_to(OUT.resolve()).as_posix()}")
+    if gone:
+        _STEP_KEYS_FILE.write_text(json.dumps(_STEP_KEYS, indent=0, sort_keys=True), encoding="utf-8")
 
 
 def _content_token(o) -> str:
@@ -452,6 +329,7 @@ def _write_print(dest: pathlib.Path, bodies, orientation) -> bool:
     rel = dest.resolve().relative_to(OUT.resolve()).as_posix()
     key = hashlib.sha1(json.dumps([_STEP_KEY_V, [(n, _content_token(o)) for n, o in bodies],
                                    repr(orientation.rot)]).encode()).hexdigest()
+    _PRODUCED.add(rel)
     if dest.exists() and _STEP_KEYS.get(rel) == key:
         return False
     if len(bodies) == 1:
@@ -578,345 +456,54 @@ def collect_components():
     return DB.assembly(DB.T_OPEN)
 
 
-from elec import harness as _EH  # noqa: E402  (the PCB's pin order, single-sourced)
 from . import board_geom as _BG  # noqa: E402
+from . import servo42d as _SV    # noqa: E402
+
+# THE COLOUR TABLE: every name the direct assembly resolves through it (measured over the
+# assembly at T_OPEN and at both ends of the travel, lead 2026-11-17; the v1 instrument's
+# 258 other entries went with it). direct_bench.color_of and changer_bench.color_of alias
+# their own parts into these keys (the body draws as `chassis`, a spring as
+# `leg_latch_spring`), which is why some names here are not parts of this instrument.
 _COLORS = {
-    "bridge_endplate": (0.39, 0.58, 0.93),   # PETG-GF — load-critical
-    "keyhead_endplate": (0.42, 0.50, 0.62),   # PETG-GF — keyhead endplate + nut block (merged)
-    # belt-tension clamp: two printed halves (0.4 nozzle), steel M3, brass insert
-    "belt_tensioner_half_a": (0.95, 0.55, 0.15),    # head half    printed
-    "belt_tensioner_half_b": (0.95, 0.70, 0.25),    # insert half  printed
-    "belt_tensioner_screw":  (0.55, 0.55, 0.58),   # steel M3 socket head
-    "belt_tensioner_insert": (0.72, 0.60, 0.30),   # brass M3 insert (dropped in behind a shoulder)
-    # …and the parked assembled coupon (green = clearly a reference, not a product part)
-    # The coupon keeps its own COOL family so the parked copy never reads as a real
-    # clamp; same one-hue-per-SKU rule within it.
-    "screw_pulley":    (0.00, 0.55, 0.55),
-    "screw_top_bearing": (0.69, 0.77, 0.87),
-    "motor_pulley":    (0.00, 0.55, 0.55),
-    "leadscrew":       (0.75, 0.75, 0.78),   # steel
-    "screw_bearing":   (0.69, 0.77, 0.87),
     "bridge_bearings": (0.69, 0.77, 0.87),
-    "nut":             (0.82, 0.60, 0.20),   # brass
-    "string_nut":      (0.82, 0.60, 0.20),   # brass string-end fitting (demo)
-    "guide_rod":       (0.35, 0.35, 0.38),
-    "rod_plug":        (0.85, 0.45, 0.15),
-    "belt":            (0.13, 0.13, 0.13),   # GT2 black
-    "string":          (0.85, 0.85, 0.85),
-    "break_dowel":     (0.75, 0.75, 0.78),
-    "nut_height_screw": (0.72, 0.74, 0.78),   # M4 x 40 button, pushes the insert up
-    "nut_height_insert": (0.72, 0.60, 0.30),  # M4 heat-set in the keyhead slab
-    "nut_plate":       (0.80, 0.81, 0.83),   # laser-cut 304: lighter than the rod it pinches against
-    "nut_side_screw":  (0.72, 0.74, 0.78),   # M4 x 10 button, pins the tail
-    "nut_side_insert": (0.72, 0.60, 0.30),   # M4 heat-set in the bed face
-    "nut_slide_insert": (0.86, 0.72, 0.30),   # the printed stand-in, if ever drawn
-   # steel dowel (gauged break pin)
-    "nut_wrap_rod":    (0.62, 0.66, 0.72),   # THE CAPSTAN -- one rod, and it is the bridge
-                                             # axle's own O5 g6 shaft
-    "set_screw":       (0.55, 0.55, 0.58),   # alloy set screw
-    "pickup_jack_screw":  (0.55, 0.55, 0.58),  # M4 top-access height set-screw jack
-    "pickup_jack_insert":  (0.80, 0.60, 0.35),  # brass heat-set insert (jack)
-    "pickup_retention_screw": (0.55, 0.55, 0.58),  # M4 -Y retention cup-tip set screw
-    "pickup_retention_insert": (0.80, 0.60, 0.35),  # brass heat-set insert (-Y retention grub)
-    "chassis":         (0.46, 0.52, 0.55),   # PETG-GF frame
-    "pickup":          (0.10, 0.10, 0.12),   # DEMO pickup body
-    "pickup_zplate":   (0.85, 0.65, 0.30),   # PCTG height plate (under the pickup)
-    "leg_body_stub":   (0.36, 0.42, 0.46),
-    # redesigned leg (src.leg_stack): sleeves read as the GF structure they are,
-    # tenons a shade warmer so the floating pieces are tellable at a glance
-    "body_adapter":    (0.36, 0.42, 0.46),   # PETG-GF, same family as leg_head
-    "fixed_sleeve":    (0.42, 0.48, 0.52),   # PETG-GF, as the old segment bodies
-    "adjust_sleeve":   (0.42, 0.48, 0.52),
-    "fixed_tenon":     (0.55, 0.52, 0.44),   # PETG-GF floating tenons
-    "adjust_tenon":    (0.62, 0.56, 0.42),
-    "leg_latch_slider": (0.85, 0.35, 0.20),  # body latch accent
-    "leg_latch_spring": (0.62, 0.64, 0.67),  # stainless coil (purchased)
-    "lock_pin_screw":  (0.55, 0.55, 0.58),   # M4x12 button head (purchased)
-    "lock_pin_insert": (0.80, 0.60, 0.35),   # brass heat-set insert
-    # the leg's blind-mates: pogo boards (src.leg_pogo). PCB green, gold pads/pins,
-    # the JST PH mated envelope in harness white, screws steel
-    "pogo_male_board":   _BG.mask("leg_pogo_male_top"),
-    "pogo_female_board": _BG.mask("leg_pogo_female_top"),
-    "pogo_male_pins":    (0.83, 0.69, 0.22),
-    "pogo_female_pads":  (0.83, 0.69, 0.22),
-    # the lighting seams' plungers (src.pogo_part): gold plated, the colour their barrels
-    # are drawn in. They had no entry and came out the default white
-    "fret_pogo_pins":    (0.83, 0.68, 0.25),
-    "foot_pogo_pins":    (0.83, 0.68, 0.25),
-    "pogo_male_ph":      (0.90, 0.90, 0.86),
-    "pogo_female_ph":    (0.90, 0.90, 0.86),
-    "pogo_male_screw":   (0.62, 0.64, 0.67),
-    "pogo_female_screw": (0.62, 0.64, 0.67),
-    "pogo_male_insert":  (0.72, 0.52, 0.20),   # the brass heat-set inserts
-    "pogo_female_insert": (0.72, 0.52, 0.20),
-    # the leg's harness: FOUR conductors, in the same colours src.wiring gives every
-    # CAN run (black GND / red hot / yellow CAN-H / green CAN-L) -- INCLUDING through
-    # the slack coil, which used to be one red body at the bundle's diameter and is now
-    # four helices carrying their own places in the bundle (user)
-    # ...keyed BY PIN NUMBER off elec.harness, in wiring's colour order (return black,
-    # rail red, CAN-H yellow, CAN-L green), so the colours follow the pinout instead of
-    # being a fifth place the circuit names are written out
-    "bar_trrs_sleeve": (0.03, 0.03, 0.03),   # the bottom joint's TPU carrier (black)
-    "bar_trrs_plug":   (0.15, 0.15, 0.17),   # ...the male plug it floats
-    "bar_trrs_spring": (0.62, 0.64, 0.67),   # ...and the coil above it
-    "bar_latch_frame": (0.85, 0.35, 0.20),   # pedal bar latch accent
-    "bar_latch_collar": (0.36, 0.42, 0.46),  # PETG-GF, the bar tower's family
-    "bar_latch_spring": (0.62, 0.64, 0.67),
-    "bar_latch_screw": (0.55, 0.55, 0.58),   # M4 button -- same SKU, same colour
-    "bar_latch_insert": (0.80, 0.60, 0.35),  # as the leg's screw and insert
-    "leg_seg_body":    (0.42, 0.48, 0.52),   # square GF bodies
-    "leg_head":        (0.36, 0.42, 0.46),
-    "leg_plug_retainer": (0.42, 0.48, 0.52),
-    "chassis_trrs_jack": (0.62, 0.64, 0.67),
-    "leg_column_plug":  (0.32, 0.36, 0.58),  # slate, matches the bar plug
-    "chassis_trrs_cable": (0.45, 0.45, 0.48),
-    "leg_column_cable": (0.45, 0.45, 0.48),
-    "leg_cable_coil":  (0.45, 0.45, 0.48),   # heat-set coil section (slack
-                                             # take-up in the segment core)
-    "leg_sleeve":      (0.36, 0.42, 0.46),
-    "leg_shaft":       (0.55, 0.58, 0.62),
-    "leg_foot":        (0.12, 0.12, 0.13),   # TPU
-    # pedal bar (2 spliced pieces + 2 dovetail-lid pieces) + latches
-    "pedal_bar_a":      (0.30, 0.45, 0.35),  # PETG-GF bar, -X piece
-    "pedal_bar_b":      (0.33, 0.48, 0.38),  # PETG-GF bar, mid piece
-    "pedal_bar_c":      (0.31, 0.46, 0.36),  # PETG-GF bar, +X piece
-    "pedal_lid_a":      (0.50, 0.58, 0.52),  # dovetail lid, -X piece
-    "pedal_lid_b":      (0.54, 0.62, 0.56),  # dovetail lid, +X piece
-    "pedal_detent_nub": (0.12, 0.12, 0.13),  # TPU hold-closed detent nub
-
-    "shaft_trrs_jack": (0.62, 0.64, 0.67),       # bar-joint jack (10-03404)
-    "shaft_trrs_cable": (0.45, 0.45, 0.48),
-    "jack_seat_ring":  (0.42, 0.48, 0.52),
-    # knee lever (LKL) — input-side control
-    "knee_housing":    (0.30, 0.36, 0.42),   # PCTG housing
-    "knee_lever":      (0.27, 0.51, 0.71),   # PCTG lever/paddle
-    "kl_axle":         (0.30, 0.54, 0.68),   # PCTG full-length axle (near the lever blue)
-    "kl_axle_screw":   (0.55, 0.55, 0.58),   # M4 x 10 button in the axle's -Y end
-    "kl_axle_washer":  (0.72, 0.72, 0.75),
-    "kl_preload_spring": (0.35, 0.36, 0.40),  # McMaster 9714K29 wave disc spring (dark spring steel)
-    "kl_spacer_sprung": (0.30, 0.54, 0.68),   # the LKL's exact spacers (kl_spacer's blue)
-    "kl_spacer_sprung_n": (0.30, 0.54, 0.68),
-    "kl_axle_sprung":  (0.30, 0.54, 0.68),   # the LKL's axle (kl_axle's blue)
-    "kv_axle_screw":   (0.55, 0.55, 0.58),
-    "kv_axle_washer":  (0.72, 0.72, 0.75),
-    "kl_magnet_cap":   (0.24, 0.44, 0.56),   # PCTG magnet retainer
-    "kl_spacer":       (0.30, 0.54, 0.68),   # PCTG axle spacers (the axle's blue)
-    # the rest of the sensor board's real population (knee_lever.SENSOR_BOM). The
-    # kv_/pedal{i}_ instances inherit these by the prefix rules in _color_for.
-    "kl_bearing":      (0.69, 0.77, 0.87),   # MR85ZZ
-    "kl_magnet":       (0.80, 0.20, 0.20),   # diametric magnet
-    "kl_pcb":          _BG.mask("lever_sensor"),   # MT6701 board (green)
-    "kv_housing":      (0.30, 0.36, 0.42),   # LKV housing (PETG-GF, as LKL)
-    # ...THE SAME BLUE AS LKL'S ARM, not a colour of its own (user, 2026-09-25: "the
-    # levers are blue for LKL but yellow for LKV, we should color them consistently").
-    # The comment beside it already said "as LKL" while the number said otherwise, which
-    # is how it survived: same part, same job, same material, two colours.
-    "kv_lever":        (0.27, 0.51, 0.71),   # LKV arm (PCTG, as LKL -- the same blue)
-    "kv_pcb":          _BG.mask("lever_sensor"),   # LKV MT6701 board (green, as LKL)
-    "kv_pcb_shim":     (0.75, 0.75, 0.78),   # LKV board shim (printed, takes up the slack)
-    # feel parts (unified: two identical spring cartridges, main -Y + half-stop +Y)
-    "main_spring":                        (0.04, 0.16, 0.55),   # JIS light-load die spring: painted blue
-    "half_stop_spring":                   (0.04, 0.16, 0.55),
-    "main_spring_tension_screw":          (0.55, 0.55, 0.58),
-    "half_stop_spring_tension_screw":     (0.62, 0.62, 0.66),
-    "main_cart_base":                     (0.85, 0.65, 0.13),   # printed cartridge (shared part)
-    "main_cart_piston":                   (0.95, 0.80, 0.30),
-    "half_stop_cart_base":                (0.80, 0.60, 0.10),
-    "half_stop_cart_piston":              (0.92, 0.76, 0.26),
-    "main_spring_seat_washer":            (0.72, 0.72, 0.75),   # steel washers + position screws
-    "half_stop_spring_seat_washer":       (0.72, 0.72, 0.75),
-    "main_position_washer":               (0.72, 0.72, 0.75),
-    "half_stop_position_washer":          (0.72, 0.72, 0.75),
-    "main_position_screw":                (0.55, 0.55, 0.58),
-    "half_stop_position_screw":           (0.62, 0.62, 0.66),
-    # electronics bay (dummies) + panel jacks
-
-    # the Pi's parts, each its own colour (src/pi4b.py: "pi4" is the laminate)
-    **{"pi4" + _k: __import__("src.pi4b", fromlist=["RGB"]).RGB[_c]
-       for _k, (_c, _f) in __import__("src.pi4b", fromlist=["GROUPS"]).GROUPS.items()},
-    "pi_cap":          _BG.mask("pi_cap"),   # PCB green
-    # the new instrument's boards (src/new_boards_view.py): a board part with no entry here was
-    # drawn the default white -- cadkit's export now refuses a board not in a mask colour
-    "connector_board_pcb": _BG.mask("connector_board"),
-    "pi_riser":        (0.05, 0.05, 0.05),   # BOUGHT: Adafruit 4079 socket riser, black
-    "output_panel":    _BG.mask("output_panel"),   # output + panel board (VBUS broken,
-                                             # DAC + true-bypass relay + the TS jack)
-    "motor_ctrl":      _BG.mask("motor_ctrl"),   # motor controller PCB (CH32V307 +
-                                             # 2x CAN transceiver + XH headers)
-    "tee_pcb":         _BG.mask("can_tee"),   # trunk-and-drop bus tee PCBs
-    "tee_cradle":      (0.32, 0.55, 0.42),   # PCTG drop-in PCB cradle (pcb_cradle, side hold-down)
-    "trrs_adapter_pcb":    _BG.mask("trrs_adapter"),   # the leg's TRRS<->XH adapter (bronner's board)
-    "trrs_adapter_plug":   (0.15, 0.15, 0.17),   # the lead from the leg, plugged in
-    "trrs_adapter_screw":  (0.55, 0.55, 0.58),   # M4 button, 2.5 hex -- the one lock
-    "trrs_adapter_insert": (0.80, 0.60, 0.35),   # its brass heat-set insert
-    "tee_screw":       (0.72, 0.74, 0.78),   # M4x10 button, BESIDE the tee board
-    "tee_insert":      (0.72, 0.60, 0.30),
-    "board_screw":     (0.72, 0.74, 0.78),   # M4x10 button THROUGH our boards' mounting ears
-    "board_insert":    (0.72, 0.60, 0.30),   # its heat-set brass, in the cradle boss   # M4 heat-set brass, in the cradle boss
-    "optical_pcb":     _BG.mask("optical"),   # per-string optical strip: BLACK mask, as ordered
-    # ⚠ MATCHED TO THE LOOSE-WIRE COLOURS BELOW, not picked fresh: a USB run is a USB
-    # run whether it is drawn as a wire or as a modelled cable, and the old single entry
-    # was (0.15,0.15,0.17) -- near-black, which this project reserves for TPU.
-    "optical_cable_usb_metal": (0.75, 0.76, 0.78),   # the plugs' steel tongues
-    "optical_cable_usb": (0.03, 0.03, 0.035),  # black, as the bought lead is: the optical board USB ribbon and its two plugs
-    "optical_insert":  (0.72, 0.60, 0.30),   # M4 heat-set brass, board grips
-    "optical_screw":   (0.72, 0.74, 0.78),   # M4x20 button, through the guard and the board
-    "optical_silk":    (0.95, 0.95, 0.93),   # silkscreen ink, its own part on each board
-    "pi_cap_silk":     (0.95, 0.95, 0.93),
-    "motor_ctrl_silk": (0.95, 0.95, 0.93),
-    "output_panel_silk": (0.95, 0.95, 0.93),
-    # the new boards (src/new_boards_view.py: <board>_pcb + <board>_pcb_silk)
-    "brain_pcb":        _BG.mask("brain"),
-    "brain_board_pcb": _BG.mask("brain_board"),
-    "brain_board_cm5":    _BG.mask_rgb("green"),   # the Compute Module 5: Raspberry Pi's green mask
-    "brain_board_cm5_soc": (0.74, 0.75, 0.77),     # the BCM2712's metal lid
-    "brain_board_cm5_plug": (0.85, 0.80, 0.68),    # the CM5's DF40 plugs, cream LCP
-    "brain_board_df40_leads": (0.83, 0.69, 0.22),  # J201 / J202's gold contact leads
-    "connector_board_tb_plug": (0.16, 0.55, 0.32),  # J11-J20: MX15EDGK plugs, green PA66
-    "connector_board_tb_screws": (0.72, 0.74, 0.78),   # their M2 slotted screws
-    "brain_board_idc": (0.10, 0.10, 0.11),       # the ribbon headers' IDC sockets, black PBT
-    "connector_board_idc": (0.10, 0.10, 0.11),
-    "brain_board_idc_ribbon": (0.62, 0.63, 0.66),   # grey 0.635 flat cable (a stub of it)
-    "connector_board_idc_ribbon": (0.62, 0.63, 0.66),
-    "brain_pcb_silk":   (0.95, 0.95, 0.93),
-    "brain_board_pcb_silk": (0.95, 0.95, 0.93),
-    "brain_board_term": (0.16, 0.55, 0.32),        # J8: MX128 terminal block, green PA66
-    "brain_board_term_metal": (0.72, 0.74, 0.78),  # its slotted M2.5 screws and tinned pins
-    "output_panel_term": (0.16, 0.55, 0.32),        # J8: MX128 terminal block, green PA66
-    "output_panel_term_metal": (0.72, 0.74, 0.78),  # its M2.5 screws and tinned pins
-    "optical_guard":   (0.18, 0.18, 0.20),   # the hand guard over the board -- print it
-                                             # DARK: it is the one surface facing the
-                                             # detectors, so a light one would bounce IR
-    "top_plate":       (0.88, 0.91, 0.94),   # transparent-PCTG deck base + fret lines
-    "top_plate_color": (0.30, 0.33, 0.38),   # colour-PCTG deck layer (skin contact)
-    "chassis_light":   (0.88, 0.91, 0.94),   # light window -- the deck panels' white
-    "ui_pcb":          _BG.mask("ui_board"),   # the UI board, as fabbed
-    "ui_display":      (0.16, 0.16, 0.18),   # the module's metal bezel -- the part the
-                                             # deck's ledge bears on and covers
-    "ui_screen":       (0.004, 0.004, 0.005),   # an OLED is black where it is not lit
-    "ui_screen_lit":   (0.93, 0.96, 1.0),    # ...and this module (WDW) lights white
-    "ui_disp_ffc_socket": (0.90, 0.86, 0.72),  # the module's Molex FFC socket, natural nylon
-    "ui_ffc":          (0.93, 0.93, 0.90),   # the display's flat cable: white PET film
-                                             # (JUSHUO's drawing: "white" under-layer)
-    "ui_ffc_contacts": (0.78, 0.79, 0.80),   # ...its bared tinned conductors at each end
-    "ui_ffc_stiffener": (0.12, 0.35, 0.80),  # ...and its blue PET stiffeners
-    "ui_clamp":        (0.36, 0.30, 0.42),   # the printed clamp plate under the board
-    "ui_insert":       (0.72, 0.60, 0.38),   # brass heat-set
-    "ui_screw":        (0.62, 0.64, 0.67),
-    "ui_knob":         (0.15, 0.15, 0.17),   # the printed cap on the encoder
-    "ui_pwr_cap":      (0.15, 0.15, 0.17),   # ...and the one on the power switch
-    "ui_pwr_stem":     (0.94, 0.94, 0.92),   # the switch's own plunger, moulded white
-    "dc_jack":         (0.62, 0.64, 0.67),
-    # wire harness: HUE = gauge bucket, SHADE = the specific wire in the bucket
-    #   green = 28 AWG shielded audio | amber = 28 AWG logic | violet = USB-2
-    # CAN + power trunk = its 4 colour-coded conductors (user override):
-    #   black = gnd | red = 24 V | yellow = CAN-H | green = CAN-L
-    "wire_pwr_hot":    (0.85, 0.12, 0.10),   # red         - CAN 24 V
-    "wire_pwr_gnd":    (0.05, 0.05, 0.05),   # black       - CAN ground/return
-    "wire_canh":       (0.95, 0.85, 0.10),   # yellow      - bus A CAN-H
-    "wire_canl":       (0.13, 0.72, 0.20),   # green       - bus A CAN-L
-    "wire_canb_gnd":   (0.05, 0.05, 0.05),   # black       - bus B ground (levers)
-    "wire_canb_v5":    (0.85, 0.12, 0.10),   # red         - bus B +5 V  (levers)
-    "wire_canb_h":     (0.95, 0.85, 0.10),   # yellow      - bus B CAN-H (levers)
-    "wire_canb_l":     (0.13, 0.72, 0.20),   # green       - bus B CAN-L (levers)
-    "wire_canb_coil":  (0.45, 0.45, 0.48),   # grey        - the slack, drawn as a bundle
-    "wire_canbh":      (0.95, 0.85, 0.10),   # yellow      - bus B CAN-H
-    "wire_canbl":      (0.13, 0.72, 0.20),   # green       - bus B CAN-L
-    # the motor drops, tee to motor screw terminals: the CAN scheme
-    "wire_drop_v24":   (0.85, 0.12, 0.10),   # red
-    "wire_drop_gnd":   (0.05, 0.05, 0.05),   # black
-    "wire_drop_canh":  (0.95, 0.85, 0.10),   # yellow
-    "wire_drop_canl":  (0.13, 0.72, 0.20),   # green
-                                             #   XH pigtail (factory jacket)
-    "wire_pickup":     (0.55, 0.85, 0.55),   # lightest green - the magnetic pickup's
-                                             #   shielded lead, coil underside -> the
-                                             #   output panel's J8 screw terminals
-    "wire_link":       (0.95, 0.72, 0.22),   # light amber - motor controller <-> Pi, USB
-    "wire_tdm":        (0.80, 0.46, 0.10),   # deep amber  - CS stack -> Pi
-    # THE UI RIBBON, fourteen conductors. Grey is what 1.27 flat cable is; conductor 1
-    # is its red stripe, which is the only marking an IDC cable carries and the only
-    # thing that tells you which way round the plug goes.
-    # named per PANEL, not per index (_color_for strips digits, not words), because
-    # "mid" and "key" are what every other file calls these two boards
-    "fret_pcb_mid":    _BG.mask("fret_led_mid"),   # PCB green
-    "fret_pcb_key":    _BG.mask("fret_led_key"),
-    "foot_pcb_a":      _BG.mask("foot_led_a"),
-    "foot_pcb_b":      _BG.mask("foot_led_b"),
-    "fret_pcb_mid_silk": (0.95, 0.95, 0.93),   # silkscreen ink, its own part on each board
-    "fret_pcb_key_silk": (0.95, 0.95, 0.93),
-    "foot_pcb_a_silk": (0.95, 0.95, 0.93),
-    "foot_pcb_b_silk": (0.95, 0.95, 0.93),
-    "ui_pcb_silk":     (0.95, 0.95, 0.93),
-    "tee_silk":        (0.95, 0.95, 0.93),
-    "kl_pcb_silk":     (0.95, 0.95, 0.93),
-    "pogo_male_silk":  (0.95, 0.95, 0.93),
-    "pogo_female_silk": (0.95, 0.95, 0.93),
-    "wire_ui":         (0.55, 0.56, 0.58),
-    "ui_ribbon_socket": (0.10, 0.10, 0.11),  # its two 1.27 IDC sockets, black PBT
-    "wire_usb":        (0.55, 0.25, 0.75),   # violet      - output panel J2 -> the Pi's USB-C
-    "wire_hub":        (0.38, 0.32, 0.85),   # indigo      - output panel J3 (the hub) -> a Pi USB-A
-    "wire_usb_plug":   (0.03, 0.03, 0.035),  # the leads' moulded plugs, black as bought
-    "wire_hub_plug":   (0.03, 0.03, 0.035),
-    "wire_link_plug":  (0.03, 0.03, 0.035),
+    "chassis": (0.46, 0.52, 0.55),
+    "guide_rod": (0.35, 0.35, 0.38),
+    "leadscrew": (0.75, 0.75, 0.78),
+    "leg_latch_spring": (0.62, 0.64, 0.67),
+    "nut": (0.82, 0.60, 0.20),
+    "nut_plate": (0.80, 0.81, 0.83),
+    "pickup": (0.10, 0.10, 0.12),
+    "pickup_jack_insert": (0.80, 0.60, 0.35),
+    "pickup_jack_screw": (0.55, 0.55, 0.58),
+    "screw_bearing": (0.69, 0.77, 0.87),
+    "set_screw": (0.55, 0.55, 0.58),
+    "string": (0.85, 0.85, 0.85),
+    "string_nut": (0.82, 0.60, 0.20),
+    "wall_bar": (0.55, 0.58, 0.62),                  # steel flat bar
+    # the UI station (src/ui_panel.py)
+    "ui_clamp": (0.36, 0.30, 0.42),
+    "ui_disp_ffc_socket": (0.90, 0.86, 0.72),
+    "ui_display": (0.16, 0.16, 0.18),
+    "ui_ffc": (0.93, 0.93, 0.90),
+    "ui_ffc_contacts": (0.78, 0.79, 0.80),
+    "ui_ffc_stiffener": (0.12, 0.35, 0.80),
+    "ui_insert": (0.72, 0.60, 0.38),
+    "ui_knob": (0.15, 0.15, 0.17),
+    "ui_pcb": _BG.mask("ui_board"),
+    "ui_pcb_silk": (0.95, 0.95, 0.93),
+    "ui_pwr_cap": (0.15, 0.15, 0.17),
+    "ui_pwr_stem": (0.94, 0.94, 0.92),
+    "ui_screen": (0.004, 0.004, 0.005),
+    "ui_screen_lit": (0.93, 0.96, 1.0),
+    "ui_screw": (0.62, 0.64, 0.67),
+    "ui_shaft": (0.62, 0.64, 0.67),                  # the encoder's steel shaft
 }
-_DEFAULT_COLOR = (0.80, 0.80, 0.80)
+# the SERVO42D's parts take the colours it was measured in (src/servo42d.py LOOK)
+_COLORS.update({("motor_" + _k) if _k else "motor": _rgb for _k, (_rgb, _) in _SV.LOOK.items()})
 _TPU_BLACK = (0.03, 0.03, 0.03)                  # ALL TPU parts render black (user rule)
 # every part whose output path is tpu/... -> black, regardless of instance prefix/suffix
 _TPU_BASES = tuple(sorted((k for k, v in PARTS.items() if v[1].startswith("tpu/")), key=len, reverse=True))
 
-
-# the two lighting leads, a conductor a part: black GND, red 24 V, white SCK, blue SDT
-from . import led_leads as _LL                                   # noqa: E402
-# the SERVO42D's parts take the colours it was measured in (src/servo42d.py LOOK)
-from . import servo42d as _SV
-_COLORS.update({("motor_" + _k) if _k else "motor": _rgb for _k, (_rgb, _) in _SV.LOOK.items()})
-_COLORS.update({"wire_%s_led_%s" % (_lead, _w.lower()): _LL.COLORS[_w]
-                for _lead in ("foot", "fret") for _w in _LL.WAYS})
-_COLORS.update({
-    "%s_wire_%s" % (run, n.lower()): {"GND": (0.05, 0.05, 0.05), "V5": (0.85, 0.12, 0.10),
-                                      "CAN_H": (0.95, 0.85, 0.10),
-                                      "CAN_L": (0.13, 0.72, 0.20)}[n]
-    for run in ("pogo", "pedal") for n in _EH.PH_PINOUT})
-
-
-# The keyhead's three board-to-board leads, a conductor a part, in the harness's own
-# colours: black ground, red rail, and the power button's two throws yellow (out) and
-# green (latched in), the spools the BOM holds. And the lever chain's head, which is bus B like the rest of the
-# chain: its four had no entry of their own and came out the default grey, as did the
-# Pi's 5 V four (the lead's audit, 2026-10-06).
-_NET_RGB = {"gnd": (0.05, 0.05, 0.05), "v24": (0.85, 0.12, 0.10), "v5": (0.85, 0.12, 0.10),
-            "up": (0.95, 0.80, 0.10), "dn": (0.10, 0.60, 0.25)}
-_COLORS.update({"wire_%s_%s" % (_lead, _net): _rgb
-                for _lead in ("plink", "lights", "5v", "opt")
-                for _net, _rgb in _NET_RGB.items()})
-_COLORS.update({"wire_canb_%s_lkl" % _n: _COLORS["wire_canb_%s" % _n]
-                for _n in ("gnd", "v5", "h", "l")})
-
-
-# The USB lead's four as they go into J4: the jacket stays amber, the wires are a hand's pinning.
-_WAY_COLORS = {"wire_link_1": (0.85, 0.12, 0.10), "wire_link_2": (0.05, 0.05, 0.05),
-               "wire_link_3": (0.92, 0.92, 0.92), "wire_link_4": (0.10, 0.60, 0.25)}
-
-
-# PARTS THAT HAD NO COLOUR (2026-11-14): each fell through to the default white, which is now a
-# build failure (user: "missing from the project's colour table ... should fail the build").
-# Coloured as their material already is elsewhere in this table.
-_BRASS, _STEEL, _GF = (0.80, 0.60, 0.35), (0.55, 0.55, 0.58), _COLORS["bar_latch_collar"]
-_COLORS.update({
-    # the lever stack's heat-sets and travel stop (every station peels to these)
-    "main_position_insert": _BRASS, "main_spring_tension_insert": _BRASS,
-    "half_stop_position_insert": _BRASS, "half_stop_spring_tension_insert": _BRASS,
-    "kl_travel_stop_insert": _BRASS, "kl_travel_stop_screw": _STEEL,
-    # the fret boards' M4 joints (src/fret_light.py)
-    "fret_m4_insert_key": _BRASS, "fret_m4_insert_mid": _BRASS,
-    "fret_m4_key": _STEEL, "fret_m4_mid": _STEEL,
-    "bar_shim": _GF, "seam_bridge": _GF,             # PETG-GF printed parts
-    "ui_shaft": (0.62, 0.64, 0.67),                  # the encoder's steel shaft
-    "wall_bar": (0.55, 0.58, 0.62),                  # steel bar, as leg_shaft
-    "wire_link_plug_c": _COLORS["wire_link_plug"],
-    "wire_usb_plug_pi": _COLORS["wire_usb_plug"],
-    "wire_usb_ribbon": _COLORS["wire_usb"], "wire_usb_joint": _COLORS["wire_usb"],
-})
 
 def _color_for(name):
     # STRIP EVERY TRAILING INDEX GROUP, not just the last one -- the same lesson
@@ -924,52 +511,11 @@ def _color_for(name):
     # numbered twice (`wire_canb_gnd_0_0`: net, segment, half) kept one index after a
     # single strip, matched nothing in _COLORS, and came out the default white. The
     # overlap gate had already been bitten by exactly this and fixed; colours had not.
-    if name in _WAY_COLORS:
-        return cq.Color(*_WAY_COLORS[name])
     base = re.sub(r"(_\d+)+$", "", name)
     if base in _TPU_BASES or any(base.endswith(k) for k in _TPU_BASES):
         return cq.Color(*_TPU_BLACK)             # TPU is always black
     if base in _COLORS:
         return cq.Color(*_COLORS[base])
-    # the pogo boards are named per joint (pogo_male_board_top / _bottom)
-    _pg = re.match(r"(pogo_[a-z]+_[a-z]+)_(?:top|bottom)$", base)
-    if _pg and _pg.group(1) in _COLORS:
-        return cq.Color(*_COLORS[_pg.group(1)])
-    # The three foot pedals are the knee-lever core VERBATIM, only posed and named
-    # pedal{i}_<knee part>. Strip that station prefix and inherit the sibling's
-    # colour rather than adding 66 near-duplicate entries — otherwise every pedal
-    # part falls through to default grey and the whole assembly reads as one blank
-    # mass (user: "the pedals are all white rather than using the same colour
-    # scheme as the levers").
-    # The axle group is named kl_* on the knee lever and pedal{i}_* here, so try the
-    # kl_ sibling too: pedal0_pcb -> kl_pcb, pedal0_bearing -> kl_bearing. The feel
-    # lanes need no prefix (main_cart_base is already unqualified).
-    # Every lever carries the SAME sensor stack, named kl_* / kv_* / pedal{i}_*. Strip
-    # whichever station prefix this is and inherit the kl_ sibling's colour rather than
-    # triplicating the table. kl_ FIRST, then the bare name: bare-name-first collided,
-    # because the sensor board's "buck" is not the project's other "buck".
-    # The four non-LKL LEVER STATIONS prefix the same way (lkr_knee_housing,
-    # vkl_kv_lever, ...), so they ride this rule too — the alternative was six
-    # copies of the same 29 entries, and any station left out would have gone grey
-    # exactly the way the pedals did.
-    # PEEL EVERY PREFIX, not one (user, 2026-09-25: "the cartridges/pistons are yellow
-    # for the LKL but white for LKV, we should color them consistently"). A vertical
-    # lever's cartridge is DOUBLY prefixed -- vkl_kv_main_cart_piston, station then
-    # design -- so a single strip reached kv_main_cart_piston, which is in no table, and
-    # the whole feel stack came out default white beside LKL's yellow one. Peeling until
-    # something matches costs nothing and is what "the same part at another station"
-    # actually means.
-    inner = base
-    for _ in range(3):
-        _st = re.match(r"(?:pedal\d+|lkr|vkl|rkl|rkr|kv|kl)_(.+)$", inner)
-        if not _st:
-            break
-        inner = _st.group(1)
-        for k in (f"kl_{inner}", inner, f"kv_{inner}"):
-            if k in _COLORS:
-                return cq.Color(*_COLORS[k])
-    if base == "pedal_lever":
-        return cq.Color(*_COLORS["knee_lever"])   # it IS the knee lever, posed
     # the changer bench (src.changer_bench) keeps its own small table, mostly aliases into
     # this one, so its 380 parts are not white
     if base.startswith(("cb_", "ghost_")):
@@ -1338,6 +884,7 @@ def main() -> None:
 
     for name in PARTS:
         _export(name)
+    _sweep_stale_steps()
     # ⚠ VOLUMES FIRST. report_build_regressions() ends by CLEARING the record list, so
     # writing the volumes after it wrote an empty file (found by the file being 100
     # bytes, lead 2026-09-30). Order matters here and nothing else would have said so.
