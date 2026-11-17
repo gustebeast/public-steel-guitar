@@ -2028,7 +2028,7 @@ def _lift(G, parts, pl, r):
     return pl.pop(r)
 
 
-ROOM_DIAG = os.environ.get("PCBFLOW_ROOM_DIAG", "0") == "1"
+ROOM_DIAG = os.environ.get("PCBFLOW_ROOM_DIAG", "1") == "1"  # 0 turns the diagnoses off
 ROOM_DIAG_R = 40.0  # mm round the target: the placed parts a NO ROOM diagnosis may lift
 
 
