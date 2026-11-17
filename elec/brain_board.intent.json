@@ -689,10 +689,10 @@
   "layer": "F.Cu",
   "along": [
    "F204.2",
-   "J240.1",
-   "J240.2",
-   "J240.3",
-   "J240.4"
+   "J240.14",
+   "J240.15",
+   "J240.16",
+   "J240.17"
   ],
   "width_mm": 3.0,
   "why": "auto_pour: +24V_RIB at 4.0 A -- brain.py's rail (merged)",

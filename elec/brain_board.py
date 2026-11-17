@@ -2191,9 +2191,11 @@ FIRMWARE_NOTES = [
     # decides, so a slow boot cannot land a healthy board in flash mode.
     "BOOT_ORDER: never put RPIBOOT (USB device boot) in the CM5's EEPROM BOOT_ORDER -- it has no "
     "timeout. Flash mode holds nRPIBOOT in hardware (Q217); nothing else should send the ROM to USB.",
-    "5 V ONLY (a PC's port, or a 5 V-only charger): run the minimal mode -- the boost stays off "
-    "(BRAIN_EN low) and the lights stay dark; U20's 4.49 V UVLO lets the CM5 run but the motors "
-    "need a contract.",
+    "5 V ONLY (a 5 V-only charger, or a PC's port outside flash mode): run the low-power mode -- "
+    "the CM5, the optical board and the lights OFF, the boost off (BRAIN_EN low). U5 then carries "
+    "~1.3 A, inside the 3 A a 5 V contract gives a port and D14 / D16's (SS34) 3 A; full load "
+    "(~3.1 A) needs a 9 V or higher contract (lead 2026-11-17). The motors need a contract too. "
+    "The one exception is hardware flash mode, which powers the CM5 by design (budget below).",
     # ...and the flash-mode current budget only holds at a PC port's 1.5 A if the CM5's
     # peak and U1's never overlap: U1 at 400 MHz, all peripherals on, Tj 85 C is 400 mA max
     # (DS12110 Rev 3 Table 29; +~20 % at 480 MHz) against the CM5's 900 mA operating figure.
@@ -2248,8 +2250,7 @@ BOARD_NOTES = {
     "open_items": [
         "brain board: the 24 V boost and the power button move there (harness.BRAIN_POWER / BRAIN_SIGNAL); its VIN input soft-starts behind BRAIN_EN",
         "AP33772SDKZ-13 vs -FA02: VSEL/GPIO only on FA02; this board uses neither",
-        "J4 / J240 ribbon headers sourced 2026-11-17 (HX PZ1.27-2x10P TP C41376042, JXTCONN A127M05-0B30P51-H10A40 C41427104), both SMD as their lands: NOT shrouded (no 1.27 mm box header is stocked) -- mark pin 1 on the silk; reversed, J240 puts +24 V on CAN / SPI. The optical board's end mirrors J4's pinout",
-        "the lights' +24 V rides TWO ribbon ways (7-8) behind F3, a 3 A fuse: the contacts and 30 AWG wire are ~1 A each -- either the lights' real draw stays under 2 A, or F3 drops to 2 A, or V24L takes more ways",
+        "J4 / J240 ribbon headers sourced 2026-11-17 (HX PZ1.27-2x10P TP C41376042, JXTCONN A127M05-0B30P51-H10A40 C41427104), both SMD as their lands, NOT shrouded (none stocked at 1.27 mm): J240's pinout is rotation-safe instead (harness.CONN_RIBBON -- a turned plug lands every rail on itself); keep the pin-1 silk. The optical board's end mirrors J4's pinout",
         "J4 ribbon: 12.288 MHz BCLK + five lanes over the ribbon -- keep it short (optical top panel to this board) and series-terminate the clock at its source (SAI1 SCK pin)",
         "the +X endplate pocket (branner) is cut from elec/brain_board.pocket.json: regenerate it whenever the parts within 19 mm of the panel edge move",
         "the mount: one M4 (branner) at x > -124, not yet placed -- reserve its keepout when it is",
@@ -2257,7 +2258,6 @@ BOARD_NOTES = {
         "F204 (2920L200/60GR, 2 A hold / 4 A trip, approved 2026-11-14): measure the motors' sub-second step peaks on the first board (output-side INA226 or a scope) -- the hold was chosen on the ~0.4 A ten motors draw moving",
         "boost bulk counts (2 in, 5 out at 22uF/50V 2220) assume 50 % DC-bias retention at 24 V, 70 % at 20 V: PSA publishes no curve -- measure one part",
         "audio isolation: B0509S-1WR3 (YLPTEC) 11..111 mA: R60 (1k2) holds the 10 % minimum with the converters' clocks halted; measure the clock-halted audio-side draw on the first board (no maker publishes a MINIMUM for it)",
-        "U5 (LMR33640DDDAR, 4 A, sourced 2026-11-17) on a 5 V-ONLY contract: the firmware must hold the low-power mode (optical off, ~1.3 A) -- the contract is 3 A per port and D14 / D16 are SS34 (3 A); full load (~3.1 A) only on a 9 V or higher contract",
         "USB data chokes FL3 / FL4: ACM2012-900-2P-T002 is marked 'not recommended for new design' on TDK's catalogue (20220113); ordered as T-CND's C55213549. Windings 1-4 / 2-3 READ off TDK's circuit diagram, pads match KiCad's Coilank footprint",
         "audio isolation: the board is meant to be measured (pickup into an amp: no charger / phone charger / laptop charger / two chargers / a computer on the data) against R1",
         "the UI station's clamp (to x -147) is in this board's drop path (to x -169.4): ignored for now (user 2026-11-13), it moves -X later",
@@ -2308,14 +2308,15 @@ def _merged_quality(paths, q):
             x = dict(x, net="V5_PRE", **{"from": "L1.2"})
         out.append(x)
     out += [
-        # the ribbon (harness.CONN_RIBBON): the motors' fused 24 V on ways 1-4, the lights' on
-        # 7-8, each arm's 5 V on one way
+        # the ribbon (harness.CONN_RIBBON, rotation-safe): the motors' fused 24 V on four ways,
+        # the lights' on four, each arm's 5 V on one -- the way numbers are the harness's
         {"net": "+24V", "from": "Q209.5", "to": ["F204.1"], "amps": 4.0},
-        {"net": "+24V_RIB", "from": "F204.2", "to": ["J240.1", "J240.2", "J240.3", "J240.4"],
+        {"net": "+24V_RIB", "from": "F204.2", "to": ["J240.%d" % w for w in harness.ribbon_ways("V24")],
          "amps": 4.0, "split": True},
-        {"net": "+24V_LED", "from": "F203.2", "to": ["J240.7", "J240.8"], "amps": 3.0, "split": True},
-        {"net": "+5V_BUSB_PED", "from": "U206.6", "to": ["J240.19"], "amps": 0.5},
-        {"net": "+5V_BUSB_LEV", "from": "U211.6", "to": ["J240.22"], "amps": 0.5},
+        {"net": "+24V_LED", "from": "F203.2", "to": ["J240.%d" % w for w in harness.ribbon_ways("V24L")],
+         "amps": 3.0, "split": True},
+        {"net": "+5V_BUSB_PED", "from": "U206.6", "to": ["J240.%d" % w for w in harness.ribbon_ways("V5_PED")], "amps": 0.5},
+        {"net": "+5V_BUSB_LEV", "from": "U211.6", "to": ["J240.%d" % w for w in harness.ribbon_ways("V5_LEV")], "amps": 0.5},
     ]
     bq = BR.BOARD_NOTES["quality"]
     q = dict(q)

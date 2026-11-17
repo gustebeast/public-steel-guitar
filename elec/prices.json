@@ -1582,7 +1582,7 @@
     "motor_ctrl:J2": {
       "usd": 0.3066,
       "verified": "v",
-      "what": "S4B-PH-SM4-TB C265102 -- JLCPCB parts API at qty 40"
+      "what": "S4B-PH-SM4-TB C265102 -- JLCPCB parts API at qty 40", "stock": "0 in stock 2026-11-17 (lcsc_check): motor_ctrl is a locked R1 test board, no design change -- check before any reorder"
     },
     "optical:Y1": {
       "usd": 0.0765,
@@ -1787,7 +1787,7 @@
     "motor_ctrl:J6": {
       "usd": 0.3066,
       "verified": "v",
-      "what": "S4B-PH-SM4-TB C265102 -- JLCPCB parts API at qty 40"
+      "what": "S4B-PH-SM4-TB C265102 -- JLCPCB parts API at qty 40", "stock": "0 in stock 2026-11-17 (lcsc_check): motor_ctrl is a locked R1 test board, no design change -- check before any reorder"
     },
     "output_panel:Q2": {
       "usd": 0.9706,

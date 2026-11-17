@@ -241,14 +241,14 @@ BOARD_NOTES = {
         # barrel against 1.37 needed at 3 A for a 10 C rise -- power_vias' third opened a GND
         # neck and was refused. At the real 1.70 A two barrels have 2x margin
         "waive": {
-            "A1:+24V_LED J1.7>J4.1": "1.35 mm of via barrel against 1.37 at the 3 A fuse; the load "
+            "A1:+24V_LED J1.%d>J4.1" % harness.ribbon_ways("V24L")[0]: "1.35 mm of via barrel against 1.37 at the 3 A fuse; the load "
                                       "is 1.70 A at full white (docs/lighting-bus.md), 2x margin; "
                                       "a third via opened a GND neck (power_vias, reported)",
-            "A1:+24V_LED J1.7>J5.1": "the same two vias as J4: 1.35 against 1.37 at the 3 A fuse, "
+            "A1:+24V_LED J1.%d>J5.1" % harness.ribbon_ways("V24L")[0]: "the same two vias as J4: 1.35 against 1.37 at the 3 A fuse, "
                                       "1.70 A real (docs/lighting-bus.md)",
         },
         # A1. The motors' 24 V is FUSED AT THE BRAIN AT 4 A (brain_board F204, its power_paths
-        # declare the ribbon's ways 1-4 at 4.0 A split), so 4 A is the most this bus can ever
+        # declare the ribbon's four +24 V ways at 4.0 A split), so 4 A is the most this bus can ever
         # carry and every +24V track is sized for it. Not 10 x 0.8 A = 8 A: the motor bus budget
         # is <= 5 A with slewing staggered by firmware (docs/can-tee-power-tap.md; the PSU is
         # 6.5 A for the whole instrument), and the fuse caps it lower still. The 0.8 A per
@@ -258,17 +258,17 @@ BOARD_NOTES = {
             # the ribbon's four 24 V ways share the 4 A, 1 A each (the JXTCONN header's contacts
             # are rated 1 A, LCSC C41427104 -- at the limit, F4 holds 2 A: M32 read 4 A on J1.1 alone when the trunk was declared from it), and meet at
             # C1, the bulk cap beside J1; the trunk runs from there
-            [{"net": "+24V", "from": "J1.%d" % w, "to": ["C1.1"], "amps": 1.0} for w in (1, 2, 3, 4)]
+            [{"net": "+24V", "from": "J1.%d" % w, "to": ["C1.1"], "amps": 1.0} for w in harness.ribbon_ways("V24")]
             + [{"net": "+24V", "from": "C1.1", "to": ["J%d.1" % k for k in range(11, 21)],
                 "amps": 4.0, "split": True}]
             + [{"net": "+24V", "from": "C1.1", "to": ["J%d.1" % k], "amps": 0.8}
                for k in range(11, 21)]
-            # the lights: fused 3 A at the brain (F203, ways 7-8); every zone full white is 1.70 A
+            # the lights: fused 3 A at the brain (F203, four ways -- harness.CONN_RIBBON); every zone full white is 1.70 A
             # (docs/lighting-bus.md), sized here to the fuse
-            + [{"net": "+24V_LED", "from": "J1.7", "to": ["J4.1", "J5.1"], "amps": 3.0}]
+            + [{"net": "+24V_LED", "from": "J1.%d" % harness.ribbon_ways("V24L")[0], "to": ["J4.1", "J5.1"], "amps": 3.0}]
             # each arm's 5 V: the brain's limiter on each (U206 / U211) is declared 0.5 A
-            + [{"net": "+5V_PED", "from": "J1.19", "to": ["J2.1"], "amps": 0.5},
-               {"net": "+5V_LEV", "from": "J1.22", "to": ["J3.1"], "amps": 0.5}]),
+            + [{"net": "+5V_PED", "from": "J1.%d" % harness.ribbon_ways("V5_PED")[0], "to": ["J2.1"], "amps": 0.5},
+               {"net": "+5V_LEV", "from": "J1.%d" % harness.ribbon_ways("V5_LEV")[0], "to": ["J3.1"], "amps": 0.5}]),
         # A13: nothing is left open; how many nets each repeated structure is on
         "unconnected": {},
         "net_groups": [

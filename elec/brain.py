@@ -891,6 +891,8 @@ def brain(merged=None):
     # ── the lights (motor_ctrl F3 + pi_cap J3 / J6): fused 24 V and the CM5's two SPIs ──────
     v24_led = Net("+24V_LED")
     v24_led.drive = Pin.drives.POWER
+    # 3 A: at or under the lights' FOUR ribbon ways x 1 A (harness.CONN_RIBBON; 0.8 A each
+    # derated = 3.2 A) and over their 1.70 A full-white draw (docs/lighting-bus.md)
     _two("F3", "Fuse", "JFC1206-1300FS", "24 V fuse for the lighting bus -- a short on a 600 mm "
          "LED cable must not take the motors down", "Fuse:Fuse_1206_3216Metric", v24, v24_led)
     _cap("C44", "10uF/50V", "lighting-bus bulk after the fuse", v24_led, gnd, C1206)

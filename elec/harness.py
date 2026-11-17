@@ -205,10 +205,38 @@ def ph_trunk_pins():
 # (user: "use multiple ribbon pins for power and ground"; nothing on it is audio): +24 V (the
 # motors) on 4, the lighting's fused +24 V on 2, ground on 12. Each rail sits beside ground or
 # itself along the cable AND on the header, and the two clock pairs ride between grounds.
-CONN_RIBBON = ("V24", "V24", "V24", "V24", "GND", "GND", "V24L", "V24L", "GND", "GND",
-               "CANA_H", "CANA_L", "PED_H", "PED_L", "LEV_H", "LEV_L", "GND", "GND",
-               "V5_PED", "GND", "GND", "V5_LEV", "GND", "GND",
-               "SCK", "SDT", "SCK_FOOT", "SDT_FOOT", "GND", "GND")
+# ⚠ ROTATION-SAFE, WHICH IS WHY IT READS AS A PALINDROME (lead 2026-11-17). No 1.27 mm
+# SHROUDED header is stocked, so the IDC plug fits either way round; turned 180 deg, way n
+# lands on way 31 - n. Every rail therefore faces itself: +24 V (ways 14-17, the centre) on
+# +24 V, the lights' +24 V (9, 11, 20, 22) on itself, ground on ground; the two arms' 5 V
+# (8, 23) swap, both 5 V from identical switches. Signals only ever meet signals: the arms'
+# CAN pairs swap (CAN on CAN), the two SPI clocks swap, and bus A's pair meets the two SPI
+# data lines, which carry 68R series resistors at the brain (R40-R43) -- so a reversed plug
+# is survivable without a series R in the terminated CAN buses. The lights take FOUR ways
+# (docs/lighting-bus.md: 1.70 A at full white; contacts derated to 0.8 A, so two ways'
+# 1.6 A was short) behind F3's 3 A, at or under 4 x 1 A. Found by a search over the
+# symmetric layouts that pass both check_ways rules (CAN pairs on adjacent wires and across
+# the header, each clock beside ground).
+CONN_RIBBON = ("PED_H", "PED_L", "CANA_H", "CANA_L", "SCK", "GND", "GND", "V5_PED",
+               "V24L", "GND", "V24L", "GND", "GND", "V24", "V24", "V24", "V24", "GND", "GND",
+               "V24L", "GND", "V24L", "V5_LEV", "GND", "GND",
+               "SCK_FOOT", "SDT_FOOT", "SDT", "LEV_H", "LEV_L")
+_RIB_SWAP = {"V5_PED": "V5_LEV", "V5_LEV": "V5_PED"}
+for _n, _w in enumerate(CONN_RIBBON):            # the rotation: a rail meets its own rail
+    _r = CONN_RIBBON[len(CONN_RIBBON) - 1 - _n]
+    if _w in ("V24", "V24L", "GND") or _r in ("V24", "V24L", "GND"):
+        assert _r == _w, "CONN_RIBBON way %d (%s) meets %s when the plug is turned" % (_n + 1, _w, _r)
+    elif _w in _RIB_SWAP:
+        assert _r == _RIB_SWAP[_w], (_n + 1, _w, _r)
+    else:
+        assert _r not in ("V24", "V24L", "GND", "V5_PED", "V5_LEV"), (_n + 1, _w, _r)
+
+
+def ribbon_ways(name):
+    """Header pin numbers carrying `name` on CONN_RIBBON (way n = pin n)."""
+    return [i + 1 for i, w in enumerate(CONN_RIBBON) if w == name]
+
+
 assert len(CONN_RIBBON) == 30
 check_ways(CONN_RIBBON, ("V24", "V24L", "V5_PED", "V5_LEV"), where="CONN_RIBBON (cable)")
 check_ways_2row(CONN_RIBBON, ("V24", "V24L", "V5_PED", "V5_LEV"), where="CONN_RIBBON (header)")
