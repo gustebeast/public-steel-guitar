@@ -1,0 +1,6261 @@
+[
+ {
+  "kind": "outline",
+  "why": "every part on the laminate",
+  "src": "board notes outline_poly",
+  "hard": true
+ },
+ {
+  "kind": "panel",
+  "why": "the 1/4 in jack, in the analog band beside the pickup's input",
+  "src": "user 2026-11-12/13; branner 2026-11-13",
+  "hard": true,
+  "ref": "J5",
+  "edge": "-X",
+  "face": 75.415,
+  "overhang": -2.400000000000001,
+  "at": 36.0
+ },
+ {
+  "kind": "panel",
+  "why": "panel USB-C A: power + data in, beside its charger",
+  "src": "user 2026-11-12/13; branner 2026-11-13",
+  "hard": true,
+  "ref": "J1",
+  "edge": "-X",
+  "face": 75.415,
+  "overhang": 0.0,
+  "at": 0.0
+ },
+ {
+  "kind": "panel",
+  "why": "panel USB-C B: power + data in, beside its charger",
+  "src": "user 2026-11-12/13; branner 2026-11-13",
+  "hard": true,
+  "ref": "J2",
+  "edge": "-X",
+  "face": 75.415,
+  "overhang": 0.0,
+  "at": -28.0
+ },
+ {
+  "kind": "mate",
+  "why": "the ribbon's IDC plug goes straight in from the component side",
+  "src": "output_board.py J4",
+  "hard": true,
+  "ref": "J4",
+  "dir": "up",
+  "length": 10.0,
+  "clear": 0.5
+ },
+ {
+  "kind": "near",
+  "why": "the ribbon header by the SAI pins (PE2-PE6 are U1 pins 1-5)",
+  "src": "output_board.py J4",
+  "hard": true,
+  "ref": "J4",
+  "target": "U1.4",
+  "max_mm": 20.0
+ },
+ {
+  "kind": "near",
+  "why": "HSE crystal at PH0/PH1",
+  "src": "output_board.py Y1",
+  "hard": true,
+  "ref": "Y1",
+  "target": "U1.29",
+  "max_mm": 6.0
+ },
+ {
+  "kind": "near",
+  "why": "the ribbon's 5 V bulk cap at the header (quality A9: 40 mm off, oneG_j6)",
+  "src": "output_board.py C153",
+  "hard": true,
+  "ref": "C153",
+  "target": "J4.1",
+  "max_mm": 4.0
+ },
+ {
+  "kind": "near",
+  "why": "the data switch between the two panel ports",
+  "src": "output_board.py U17",
+  "hard": false,
+  "ref": "U17",
+  "target": "J1",
+  "max_mm": 25.0
+ },
+ {
+  "kind": "near",
+  "why": "the panel data switch by the USB pairs' chokes (match groups USBA / USBB)",
+  "src": "output_board.py U17; mMf verify, mN",
+  "hard": true,
+  "ref": "U17",
+  "target": "FL3",
+  "max_mm": 15.0
+ },
+ {
+  "kind": "near",
+  "why": "port A's PD controller at its connector (CC lines, sense)",
+  "src": "DS46176 fig. 1",
+  "hard": true,
+  "ref": "U13",
+  "target": "J1",
+  "max_mm": 14.0
+ },
+ {
+  "kind": "near",
+  "why": "port A's ideal diode beside its switch",
+  "src": "output_board.py",
+  "hard": false,
+  "ref": "U18",
+  "target": "Q4",
+  "max_mm": 10.0
+ },
+ {
+  "kind": "near",
+  "why": "port B's PD controller at its connector (CC lines, sense)",
+  "src": "DS46176 fig. 1",
+  "hard": true,
+  "ref": "U14",
+  "target": "J2",
+  "max_mm": 14.0
+ },
+ {
+  "kind": "near",
+  "why": "port B's ideal diode beside its switch",
+  "src": "output_board.py",
+  "hard": false,
+  "ref": "U19",
+  "target": "Q5",
+  "max_mm": 10.0
+ },
+ {
+  "kind": "pour",
+  "net": "VIN_BUS",
+  "layer": "In2.Cu",
+  "along": [
+   "Q6.5",
+   "Q7.5",
+   "R112.1"
+  ],
+  "width_mm": 7.2,
+  "why": "auto_pour: VIN_BUS at 10.0 A -- two 5 A contracts sharing through the ideal diodes",
+  "src": "output_board.py",
+  "hard": false,
+  "auto_amps": 10.0,
+  "max_frac": 0.25,
+  "whole": true
+ },
+ {
+  "kind": "pour",
+  "net": "VIN_BRAIN",
+  "layer": "In2.Cu",
+  "along": [
+   "Q202.3",
+   "R112.2"
+  ],
+  "width_mm": 7.2,
+  "why": "auto_pour: VIN_BRAIN at 10.0 A -- the same, out to the brain board on J10 + J12",
+  "src": "output_board.py",
+  "hard": false,
+  "auto_amps": 10.0,
+  "max_frac": 0.25,
+  "whole": true
+ },
+ {
+  "kind": "pour",
+  "net": "PA_VBUS",
+  "layer": "F.Cu",
+  "along": [
+   "FL1.4",
+   "R70.1"
+  ],
+  "width_mm": 3.0,
+  "why": "auto_pour: PA_VBUS at 5.0 A -- one port's 5 A contract",
+  "src": "output_board.py",
+  "hard": false,
+  "auto_amps": 5.0,
+  "max_frac": 0.25,
+  "whole": true
+ },
+ {
+  "kind": "pour",
+  "net": "PA_VCC",
+  "layer": "F.Cu",
+  "along": [
+   "Q4.5",
+   "R70.2"
+  ],
+  "width_mm": 3.0,
+  "why": "auto_pour: PA_VCC at 5.0 A -- port A",
+  "src": "output_board.py",
+  "hard": false,
+  "auto_amps": 5.0,
+  "max_frac": 0.25,
+  "whole": true
+ },
+ {
+  "kind": "pour",
+  "net": "PA_VOUT",
+  "layer": "F.Cu",
+  "along": [
+   "Q4.1",
+   "Q6.1"
+  ],
+  "width_mm": 3.0,
+  "why": "auto_pour: PA_VOUT at 5.0 A -- port A",
+  "src": "output_board.py",
+  "hard": false,
+  "auto_amps": 5.0,
+  "max_frac": 0.25,
+  "whole": true
+ },
+ {
+  "kind": "pour",
+  "net": "PB_VBUS",
+  "layer": "F.Cu",
+  "along": [
+   "FL2.4",
+   "R75.1"
+  ],
+  "width_mm": 3.0,
+  "why": "auto_pour: PB_VBUS at 5.0 A -- port B",
+  "src": "output_board.py",
+  "hard": false,
+  "auto_amps": 5.0,
+  "max_frac": 0.25,
+  "whole": true
+ },
+ {
+  "kind": "pour",
+  "net": "PB_VCC",
+  "layer": "F.Cu",
+  "along": [
+   "Q5.5",
+   "R75.2"
+  ],
+  "width_mm": 3.0,
+  "why": "auto_pour: PB_VCC at 5.0 A -- port B",
+  "src": "output_board.py",
+  "hard": false,
+  "auto_amps": 5.0,
+  "max_frac": 0.25,
+  "whole": true
+ },
+ {
+  "kind": "pour",
+  "net": "PB_VOUT",
+  "layer": "F.Cu",
+  "along": [
+   "Q5.1",
+   "Q7.1"
+  ],
+  "width_mm": 3.0,
+  "why": "auto_pour: PB_VOUT at 5.0 A -- port B",
+  "src": "output_board.py",
+  "hard": false,
+  "auto_amps": 5.0,
+  "max_frac": 0.25,
+  "whole": true
+ },
+ {
+  "kind": "current",
+  "why": "U5's input on a 5 V contract",
+  "src": "output_board.py",
+  "hard": true,
+  "net": "VSTBY",
+  "amps": 1.5
+ },
+ {
+  "kind": "current",
+  "why": "optical 1.8 A + U21 + the audio side",
+  "src": "output_board.py",
+  "hard": true,
+  "net": "V5_PRE",
+  "amps": 2.6
+ },
+ {
+  "kind": "current",
+  "why": "U15's limit, out on the ribbon",
+  "src": "output_board.py",
+  "hard": true,
+  "net": "+5V_OPT",
+  "amps": 1.8
+ },
+ {
+  "kind": "current",
+  "why": "H743",
+  "src": "output_board.py",
+  "hard": true,
+  "net": "+3V3D",
+  "amps": 0.4
+ },
+ {
+  "kind": "auto_pour",
+  "why": "currents at or above 4 A are pours, not tracks",
+  "src": "lead 2026-11-13",
+  "hard": true,
+  "amps": 4.0,
+  "layer": "F.Cu",
+  "layers_by_net": {
+   "VIN_BUS": "In2.Cu",
+   "VIN_BRAIN": "In2.Cu",
+   "VIN_SW": "In2.Cu"
+  },
+  "whole": true
+ },
+ {
+  "kind": "fixed",
+  "why": "ISO7741: rows either side of the vertical moat",
+  "src": "cadkit A25; output_board BARRIER",
+  "hard": true,
+  "ref": "U32",
+  "xy": [
+   -13.5,
+   33.0
+  ],
+  "rot": 180.0
+ },
+ {
+  "kind": "fixed",
+  "why": "ISO7740: rows either side of the vertical moat",
+  "src": "cadkit A25; output_board BARRIER",
+  "hard": true,
+  "ref": "U33",
+  "xy": [
+   -13.5,
+   26.0
+  ],
+  "rot": 180.0
+ },
+ {
+  "kind": "fixed",
+  "why": "ISO7710F: rows either side of the vertical moat",
+  "src": "cadkit A25; output_board BARRIER",
+  "hard": true,
+  "ref": "U34",
+  "xy": [
+   -13.5,
+   19.0
+  ],
+  "rot": 180.0
+ },
+ {
+  "kind": "fixed",
+  "why": "B0509S: pins 1-2 (in) charger side, 3-4 (out) audio side",
+  "src": "cadkit A25; output_board BARRIER",
+  "hard": true,
+  "ref": "U30",
+  "xy": [
+   -13.5,
+   12.0
+  ],
+  "rot": 270.0
+ },
+ {
+  "kind": "fixed",
+  "why": "relay: coil on the charger side, contacts in the audio corner",
+  "src": "cadkit A25; output_board BARRIER",
+  "hard": true,
+  "ref": "K1",
+  "xy": [
+   -38.7,
+   7.7
+  ],
+  "rot": 180.0
+ },
+ {
+  "kind": "fixed",
+  "why": "CM5 connector on its CM5IO position (module turned 90, top-right corner)",
+  "src": "CM5IO RP-008099-DD-1; elec/cm5_mech.py",
+  "hard": true,
+  "ref": "J201",
+  "xy": [
+   38.0,
+   19.0
+  ],
+  "rot": 270.0
+ },
+ {
+  "kind": "fixed",
+  "why": "CM5 connector on its CM5IO position (module turned 90, top-right corner)",
+  "src": "CM5IO RP-008099-DD-1; elec/cm5_mech.py",
+  "hard": true,
+  "ref": "J202",
+  "xy": [
+   72.0,
+   19.0
+  ],
+  "rot": 270.0
+ },
+ {
+  "kind": "keepout",
+  "why": "the isolated audio corner and its moat: audio-domain and barrier parts only (86 of them)",
+  "src": "cadkit A25; output_board AUDIO_POLY",
+  "hard": true,
+  "poly": [
+   [
+    -75.415,
+    5.0
+   ],
+   [
+    -13.0,
+    5.0
+   ],
+   [
+    -13.0,
+    50.0
+   ],
+   [
+    -75.415,
+    50.0
+   ]
+  ],
+  "except": [
+   "C1",
+   "C13",
+   "C14",
+   "C161",
+   "C162",
+   "C163",
+   "C164",
+   "C166",
+   "C168",
+   "C170",
+   "C19",
+   "C20",
+   "C21",
+   "C22",
+   "C23",
+   "C24",
+   "C25",
+   "C26",
+   "C27",
+   "C28",
+   "C29",
+   "C30",
+   "C31",
+   "C32",
+   "C33",
+   "C34",
+   "C37",
+   "C38",
+   "C39",
+   "C40",
+   "C41",
+   "C42",
+   "C43",
+   "C44",
+   "C45",
+   "C46",
+   "C47",
+   "C58",
+   "C59",
+   "C60",
+   "C62",
+   "C7",
+   "C8",
+   "C9",
+   "D5",
+   "D7",
+   "FB1",
+   "J1",
+   "J5",
+   "J8",
+   "K1",
+   "R10",
+   "R13",
+   "R14",
+   "R15",
+   "R16",
+   "R17",
+   "R18",
+   "R20",
+   "R21",
+   "R22",
+   "R23",
+   "R24",
+   "R25",
+   "R26",
+   "R27",
+   "R28",
+   "R38",
+   "R39",
+   "R40",
+   "R60",
+   "R8",
+   "R9",
+   "U10",
+   "U11",
+   "U12",
+   "U2",
+   "U3",
+   "U30",
+   "U31",
+   "U32",
+   "U33",
+   "U34",
+   "U6",
+   "U7",
+   "U8",
+   "U9"
+  ]
+ },
+ {
+  "kind": "keepout",
+  "why": "under the CM5: the 1.5 mm stack leaves no clearance (CM5 DS 4.1.1)",
+  "src": "CM5 DS 4.1.1",
+  "hard": true,
+  "poly": [
+   [
+    35.0,
+    -6.0
+   ],
+   [
+    75.0,
+    -6.0
+   ],
+   [
+    75.0,
+    49.0
+   ],
+   [
+    35.0,
+    49.0
+   ]
+  ],
+  "except": [
+   "J201",
+   "J202"
+  ]
+ },
+ {
+  "kind": "near",
+  "why": "CM5 supply bypass",
+  "src": "brain.py (merged)",
+  "hard": true,
+  "ref": "C223",
+  "target": "J201.81",
+  "max_mm": 12.0
+ },
+ {
+  "kind": "near",
+  "why": "CM5 supply bypass",
+  "src": "brain.py (merged)",
+  "hard": true,
+  "ref": "C224",
+  "target": "J201.81",
+  "max_mm": 12.0
+ },
+ {
+  "kind": "near",
+  "why": "CM5 supply bypass",
+  "src": "brain.py (merged)",
+  "hard": true,
+  "ref": "C225",
+  "target": "J201.81",
+  "max_mm": 12.0
+ },
+ {
+  "kind": "near",
+  "why": "bus A transceiver VIO bypass",
+  "src": "brain.py (merged)",
+  "hard": true,
+  "ref": "C233",
+  "target": "U202.5",
+  "max_mm": 4.0
+ },
+ {
+  "kind": "near",
+  "why": "bus A's near-end 120R at its transceiver (the far one is on the connector board)",
+  "src": "brain.py (merged)",
+  "hard": true,
+  "ref": "R205",
+  "target": "U202",
+  "max_mm": 8.0
+ },
+ {
+  "kind": "near",
+  "why": "the ribbon's 24 V bulk at its header",
+  "src": "brain.py (merged)",
+  "hard": true,
+  "ref": "C322",
+  "target": "J240",
+  "max_mm": 15.0
+ },
+ {
+  "kind": "near",
+  "why": "the ribbon by the transceivers",
+  "src": "brain.py (merged)",
+  "hard": false,
+  "ref": "J240",
+  "target": "U202",
+  "max_mm": 35.0
+ },
+ {
+  "kind": "near",
+  "why": "VIN bulk at the power switch",
+  "src": "brain.py (merged)",
+  "hard": false,
+  "ref": "C201",
+  "target": "Q202",
+  "max_mm": 20.0
+ },
+ {
+  "kind": "mate",
+  "why": "the connector ribbon's IDC plug from the component side",
+  "src": "brain.py (merged)",
+  "hard": true,
+  "ref": "J240",
+  "dir": "up",
+  "length": 10.0,
+  "clear": 0.5
+ },
+ {
+  "kind": "mate",
+  "why": "the UI ribbon's IDC plug from the component side",
+  "src": "brain.py (merged)",
+  "hard": true,
+  "ref": "J205",
+  "dir": "up",
+  "length": 10.0,
+  "clear": 0.5
+ },
+ {
+  "kind": "pour",
+  "net": "VIN_SW",
+  "layer": "In2.Cu",
+  "along": [
+   "Q202.2",
+   "R308.1",
+   "R309.1"
+  ],
+  "width_mm": 7.2,
+  "why": "auto_pour: VIN_SW at 10.0 A -- brain.py's rail (merged)",
+  "src": "brain.py",
+  "hard": false,
+  "auto_amps": 10.0,
+  "max_frac": 0.25,
+  "whole": true
+ },
+ {
+  "kind": "pour",
+  "net": "BST_LMID",
+  "layer": "F.Cu",
+  "along": [
+   "L204.1",
+   "R309.2",
+   "R311.1"
+  ],
+  "width_mm": 7.2,
+  "why": "auto_pour: BST_LMID at 10.0 A -- brain.py's rail (merged)",
+  "src": "brain.py",
+  "hard": false,
+  "auto_amps": 10.0,
+  "max_frac": 0.25,
+  "whole": true
+ },
+ {
+  "kind": "pour",
+  "net": "BST_SW",
+  "layer": "F.Cu",
+  "along": [
+   "C299.2",
+   "L204.2",
+   "Q208.5",
+   "Q209.1",
+   "Q209.2",
+   "Q209.3"
+  ],
+  "width_mm": 7.2,
+  "why": "auto_pour: BST_SW at 10.0 A -- brain.py's rail (merged)",
+  "src": "brain.py",
+  "hard": false,
+  "auto_amps": 10.0,
+  "max_frac": 0.25,
+  "whole": true
+ },
+ {
+  "kind": "pour",
+  "net": "+24V",
+  "layer": "F.Cu",
+  "along": [
+   "F203.1",
+   "F204.1",
+   "Q209.5",
+   "R223.2"
+  ],
+  "width_mm": 3.0,
+  "why": "auto_pour: +24V at 4.5 A -- brain.py's rail (merged)",
+  "src": "brain.py",
+  "hard": false,
+  "auto_amps": 4.5,
+  "max_frac": 0.25,
+  "whole": true
+ },
+ {
+  "kind": "pour",
+  "net": "+24V_RIB",
+  "layer": "F.Cu",
+  "along": [
+   "F204.2",
+   "J240.1",
+   "J240.2",
+   "J240.3",
+   "J240.4"
+  ],
+  "width_mm": 3.0,
+  "why": "auto_pour: +24V_RIB at 4.0 A -- brain.py's rail (merged)",
+  "src": "brain.py",
+  "hard": false,
+  "auto_amps": 4.0,
+  "max_frac": 0.25,
+  "whole": true
+ },
+ {
+  "kind": "current",
+  "why": "brain.py's rail (merged)",
+  "src": "brain.py",
+  "hard": true,
+  "net": "+24V_LED",
+  "amps": 3.0
+ },
+ {
+  "kind": "current",
+  "why": "brain.py's rail (merged)",
+  "src": "brain.py",
+  "hard": true,
+  "net": "+5V_CM5",
+  "amps": 3.0
+ },
+ {
+  "kind": "current",
+  "why": "brain.py's rail (merged)",
+  "src": "brain.py",
+  "hard": true,
+  "net": "+5V_RAW",
+  "amps": 3.0
+ },
+ {
+  "kind": "current",
+  "why": "brain.py's rail (merged)",
+  "src": "brain.py",
+  "hard": true,
+  "net": "+5V_AUX",
+  "amps": 1.5
+ },
+ {
+  "kind": "near",
+  "why": "PESD2USB5UX at U209's arm pins (a5442a9b0 / 2b2ea1218)",
+  "src": "output_board.py (2026-11-14)",
+  "hard": true,
+  "ref": "D219",
+  "target": "U209",
+  "max_mm": 5.0
+ },
+ {
+  "kind": "near",
+  "why": "PESD2USB5UX at U210's arm pins",
+  "src": "output_board.py (2026-11-14)",
+  "hard": true,
+  "ref": "D220",
+  "target": "U210",
+  "max_mm": 5.0
+ },
+ {
+  "kind": "near",
+  "why": "U30 B0509S minimum-load bleed at its output",
+  "src": "output_board.py (2026-11-14)",
+  "hard": false,
+  "ref": "R60",
+  "target": "U30",
+  "max_mm": 8.0
+ },
+ {
+  "kind": "near",
+  "why": "the relay coil's driver beside the relay (charger side of its barrier)",
+  "src": "output_board.py Q1",
+  "hard": false,
+  "ref": "Q1",
+  "target": "K1",
+  "max_mm": 10.0
+ },
+ {
+  "kind": "region",
+  "why": "the isolated audio: pickup chain, ADC / DAC, output stage, its LDO, with J8 and J5",
+  "src": "one-board floorplan",
+  "hard": true,
+  "name": "analog",
+  "poly": [
+   [
+    -75.415,
+    7.0
+   ],
+   [
+    -15.0,
+    7.0
+   ],
+   [
+    -15.0,
+    50.0
+   ],
+   [
+    -75.415,
+    50.0
+   ]
+  ]
+ },
+ {
+  "kind": "in_region",
+  "why": "the isolated audio: pickup chain, ADC / DAC, output stage, its LDO, with J8 and J5",
+  "src": "one-board floorplan",
+  "hard": true,
+  "refs": [
+   "U2",
+   "U3",
+   "U6",
+   "U7",
+   "U8",
+   "U9",
+   "U10",
+   "U11",
+   "U12",
+   "FB1",
+   "U31"
+  ],
+  "region": "analog"
+ },
+ {
+  "kind": "region",
+  "why": "both chargers' paths beside J1 / J2: chokes, PD controller, switch, ideal diode; the panel data switch U17 by its two pairs (mN)",
+  "src": "one-board floorplan",
+  "hard": true,
+  "name": "pd",
+  "poly": [
+   [
+    -75.415,
+    -50.0
+   ],
+   [
+    -20.0,
+    -50.0
+   ],
+   [
+    -20.0,
+    0.0
+   ],
+   [
+    -75.415,
+    0.0
+   ]
+  ]
+ },
+ {
+  "kind": "in_region",
+  "why": "both chargers' paths beside J1 / J2: chokes, PD controller, switch, ideal diode; the panel data switch U17 by its two pairs (mN)",
+  "src": "one-board floorplan",
+  "hard": true,
+  "refs": [
+   "U13",
+   "U14",
+   "Q4",
+   "Q5",
+   "Q6",
+   "Q7",
+   "U18",
+   "U19",
+   "FL1",
+   "FL2",
+   "FL3",
+   "FL4",
+   "U15",
+   "U16",
+   "R112",
+   "U17"
+  ],
+  "region": "pd"
+ },
+ {
+  "kind": "region",
+  "why": "the H743, its clock and its LDO in the middle",
+  "src": "one-board floorplan",
+  "hard": true,
+  "name": "compute",
+  "poly": [
+   [
+    -20.0,
+    -8.0
+   ],
+   [
+    34.0,
+    -8.0
+   ],
+   [
+    34.0,
+    50.0
+   ],
+   [
+    -5.0,
+    50.0
+   ],
+   [
+    -5.0,
+    5.0
+   ],
+   [
+    -20.0,
+    5.0
+   ]
+  ]
+ },
+ {
+  "kind": "in_region",
+  "why": "the H743, its clock and its LDO in the middle",
+  "src": "one-board floorplan",
+  "hard": true,
+  "refs": [
+   "U1",
+   "Y1",
+   "U21"
+  ],
+  "region": "compute"
+ },
+ {
+  "kind": "region",
+  "why": "the 24 V boost and the power switch: the far corner from the audio (lead 11-13)",
+  "src": "one-board floorplan",
+  "hard": true,
+  "name": "boost",
+  "poly": [
+   [
+    20.0,
+    -50.0
+   ],
+   [
+    75.415,
+    -50.0
+   ],
+   [
+    75.415,
+    -8.0
+   ],
+   [
+    20.0,
+    -8.0
+   ]
+  ]
+ },
+ {
+  "kind": "in_region",
+  "why": "the 24 V boost and the power switch: the far corner from the audio (lead 11-13)",
+  "src": "one-board floorplan",
+  "hard": true,
+  "refs": [
+   "U220",
+   "Q202",
+   "R250",
+   "R251",
+   "D212",
+   "C248",
+   "C249",
+   "R300",
+   "R301",
+   "R302",
+   "R303",
+   "R304",
+   "R305",
+   "R306",
+   "R307",
+   "R308",
+   "R310",
+   "C292",
+   "C293",
+   "C296",
+   "C297",
+   "C298",
+   "C300",
+   "C301",
+   "C302",
+   "C303",
+   "C304",
+   "C305",
+   "C306",
+   "C307",
+   "C308",
+   "C309",
+   "C313",
+   "C314"
+  ],
+  "region": "boost"
+ },
+ {
+  "kind": "region",
+  "why": "the boost's hot loop, the far +X end",
+  "src": "one-board floorplan",
+  "hard": true,
+  "name": "boost_hot",
+  "poly": [
+   [
+    32.0,
+    -50.0
+   ],
+   [
+    75.415,
+    -50.0
+   ],
+   [
+    75.415,
+    -8.0
+   ],
+   [
+    32.0,
+    -8.0
+   ]
+  ]
+ },
+ {
+  "kind": "in_region",
+  "why": "the boost's hot loop, the far +X end",
+  "src": "one-board floorplan",
+  "hard": true,
+  "refs": [
+   "Q208",
+   "Q209",
+   "L204",
+   "D203",
+   "C299",
+   "C315",
+   "R309",
+   "R311"
+  ],
+  "region": "boost_hot"
+ },
+ {
+  "kind": "region",
+  "why": "5 V supplies, the INA226 and shunt, the CAN transceivers, the arm / UI switches, the connector ribbon: the bottom-middle band",
+  "src": "one-board floorplan",
+  "hard": true,
+  "name": "power",
+  "poly": [
+   [
+    -20.0,
+    -50.0
+   ],
+   [
+    20.0,
+    -50.0
+   ],
+   [
+    20.0,
+    -8.0
+   ],
+   [
+    -20.0,
+    -8.0
+   ]
+  ]
+ },
+ {
+  "kind": "in_region",
+  "why": "5 V supplies, the INA226 and shunt, the CAN transceivers, the arm / UI switches, the connector ribbon: the bottom-middle band",
+  "src": "one-board floorplan",
+  "hard": true,
+  "refs": [
+   "U5",
+   "L1",
+   "U205",
+   "L202",
+   "U202",
+   "U203",
+   "U206",
+   "U211",
+   "U209",
+   "U210",
+   "U212",
+   "J240",
+   "F203",
+   "F204"
+  ],
+  "region": "power"
+ },
+ {
+  "kind": "near",
+  "why": "H743 VDD pin 15's own 100 nF",
+  "src": "output_board.py C120; quality A2",
+  "hard": true,
+  "ref": "C120",
+  "target": "U1.15",
+  "max_mm": 3.0
+ },
+ {
+  "kind": "near",
+  "why": "H743 VDD pin 23's own 100 nF",
+  "src": "output_board.py C121; quality A2",
+  "hard": true,
+  "ref": "C121",
+  "target": "U1.23",
+  "max_mm": 3.0
+ },
+ {
+  "kind": "near",
+  "why": "H743 VDD pin 36's own 100 nF",
+  "src": "output_board.py C122; quality A2",
+  "hard": true,
+  "ref": "C122",
+  "target": "U1.36",
+  "max_mm": 3.0
+ },
+ {
+  "kind": "near",
+  "why": "H743 VDD pin 49's own 100 nF",
+  "src": "output_board.py C123; quality A2",
+  "hard": true,
+  "ref": "C123",
+  "target": "U1.49",
+  "max_mm": 3.0
+ },
+ {
+  "kind": "near",
+  "why": "H743 VDD pin 62's own 100 nF",
+  "src": "output_board.py C124; quality A2",
+  "hard": true,
+  "ref": "C124",
+  "target": "U1.62",
+  "max_mm": 3.0
+ },
+ {
+  "kind": "near",
+  "why": "H743 VDD pin 72's own 100 nF",
+  "src": "output_board.py C125; quality A2",
+  "hard": true,
+  "ref": "C125",
+  "target": "U1.72",
+  "max_mm": 3.0
+ },
+ {
+  "kind": "near",
+  "why": "H743 VDD pin 82's own 100 nF",
+  "src": "output_board.py C126; quality A2",
+  "hard": true,
+  "ref": "C126",
+  "target": "U1.82",
+  "max_mm": 3.0
+ },
+ {
+  "kind": "near",
+  "why": "H743 VDD pin 91's own 100 nF",
+  "src": "output_board.py C127; quality A2",
+  "hard": true,
+  "ref": "C127",
+  "target": "U1.91",
+  "max_mm": 3.0
+ },
+ {
+  "kind": "near",
+  "why": "H743 VDD pin 103's own 100 nF",
+  "src": "output_board.py C128; quality A2",
+  "hard": true,
+  "ref": "C128",
+  "target": "U1.103",
+  "max_mm": 3.0
+ },
+ {
+  "kind": "near",
+  "why": "H743 VDD pin 127's own 100 nF",
+  "src": "output_board.py C129; quality A2",
+  "hard": true,
+  "ref": "C129",
+  "target": "U1.127",
+  "max_mm": 3.0
+ },
+ {
+  "kind": "near",
+  "why": "H743 VDD pin 136's own 100 nF",
+  "src": "output_board.py C130; quality A2",
+  "hard": true,
+  "ref": "C130",
+  "target": "U1.136",
+  "max_mm": 3.0
+ },
+ {
+  "kind": "near",
+  "why": "H743 VDD pin 149's own 100 nF",
+  "src": "output_board.py C131; quality A2",
+  "hard": true,
+  "ref": "C131",
+  "target": "U1.149",
+  "max_mm": 3.0
+ },
+ {
+  "kind": "near",
+  "why": "H743 VDD pin 159's own 100 nF",
+  "src": "output_board.py C132; quality A2",
+  "hard": true,
+  "ref": "C132",
+  "target": "U1.159",
+  "max_mm": 3.0
+ },
+ {
+  "kind": "near",
+  "why": "H743 VDD pin 172's own 100 nF",
+  "src": "output_board.py C133; quality A2",
+  "hard": true,
+  "ref": "C133",
+  "target": "U1.172",
+  "max_mm": 3.0
+ },
+ {
+  "kind": "hole",
+  "why": "CM5 M2.5 mount (CM5IO; 1.5 mm spacer)",
+  "src": "notes cutouts keepout_d (CAD: CM5 M2.5 mount (CM5IO; 1.5 mm spacer))",
+  "hard": true,
+  "xy": [
+   38.5,
+   -2.5
+  ],
+  "d": 2.7,
+  "keepout": 1.15
+ },
+ {
+  "kind": "hole",
+  "why": "CM5 M2.5 mount (CM5IO; 1.5 mm spacer)",
+  "src": "notes cutouts keepout_d (CAD: CM5 M2.5 mount (CM5IO; 1.5 mm spacer))",
+  "hard": true,
+  "xy": [
+   71.5,
+   -2.5
+  ],
+  "d": 2.7,
+  "keepout": 1.15
+ },
+ {
+  "kind": "hole",
+  "why": "CM5 M2.5 mount (CM5IO; 1.5 mm spacer)",
+  "src": "notes cutouts keepout_d (CAD: CM5 M2.5 mount (CM5IO; 1.5 mm spacer))",
+  "hard": true,
+  "xy": [
+   38.5,
+   45.5
+  ],
+  "d": 2.7,
+  "keepout": 1.15
+ },
+ {
+  "kind": "hole",
+  "why": "CM5 M2.5 mount (CM5IO; 1.5 mm spacer)",
+  "src": "notes cutouts keepout_d (CAD: CM5 M2.5 mount (CM5IO; 1.5 mm spacer))",
+  "hard": true,
+  "xy": [
+   71.5,
+   45.5
+  ],
+  "d": 2.7,
+  "keepout": 1.15
+ },
+ {
+  "kind": "decap",
+  "cap": "C116",
+  "pin": "U16.6",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "why": "C116 across +3V3D and ground: at its supply pin",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "decap",
+  "cap": "C117",
+  "pin": "U17.10",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "why": "C117 across +3V3D and ground: at its supply pin",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "decap",
+  "cap": "C118",
+  "pin": "U15.1",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "why": "C118 across V5_PRE and ground: at its supply pin",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "near",
+  "ref": "C119",
+  "target": "U15",
+  "max_mm": 8.0,
+  "hard": false,
+  "why": "C119, bulk on +5V_OPT: beside the IC it feeds",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "decap",
+  "cap": "C136",
+  "pin": "U1.6",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "why": "C136 across +3V3D and ground: at its supply pin",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "decap",
+  "cap": "C137",
+  "pin": "U202.3",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "why": "C137 across +3V3D and ground: at its supply pin",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "near",
+  "ref": "C138",
+  "target": "U1",
+  "max_mm": 8.0,
+  "hard": false,
+  "why": "C138, bulk on +3V3D: beside the IC it feeds",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "near",
+  "ref": "C151",
+  "target": "U21",
+  "max_mm": 8.0,
+  "hard": false,
+  "why": "C151, bulk on U21_VIN: beside the IC it feeds",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "near",
+  "ref": "C152",
+  "target": "U21",
+  "max_mm": 8.0,
+  "hard": false,
+  "why": "C152, bulk on +3V3D: beside the IC it feeds",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "near",
+  "ref": "C160",
+  "target": "U30",
+  "max_mm": 8.0,
+  "hard": false,
+  "why": "C160, bulk on V5_PRE: beside the IC it feeds",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "decap",
+  "cap": "C165",
+  "pin": "U32.1",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "why": "C165 across +3V3D and ground: at its supply pin",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "decap",
+  "cap": "C167",
+  "pin": "U33.1",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "why": "C167 across +3V3D and ground: at its supply pin",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "decap",
+  "cap": "C169",
+  "pin": "U34.1",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "why": "C169 across +3V3D and ground: at its supply pin",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "decap",
+  "cap": "C202",
+  "pin": "U16.8",
+  "max_mm": 5.0,
+  "hard": false,
+  "weight": 0.5,
+  "why": "C202 across VIN_BRAIN and ground: at its supply pin (a further cap on this IC: within reach, not packed)",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "near",
+  "ref": "C216",
+  "target": "U205",
+  "max_mm": 8.0,
+  "hard": false,
+  "why": "C216, bulk on +24V_BUCK: beside the IC it feeds",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "near",
+  "ref": "C217",
+  "target": "U205",
+  "max_mm": 8.0,
+  "hard": false,
+  "why": "C217, bulk on +24V_BUCK: beside the IC it feeds",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "decap",
+  "cap": "C218",
+  "pin": "U205.2",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "why": "C218 across +24V_BUCK and ground: at its supply pin",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "decap",
+  "cap": "C219",
+  "pin": "U205.6",
+  "max_mm": 5.0,
+  "hard": false,
+  "weight": 0.5,
+  "why": "C219 across VCC5 and ground: at its supply pin (a further cap on this IC: within reach, not packed)",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "near",
+  "ref": "C221",
+  "target": "L202",
+  "max_mm": 8.0,
+  "hard": false,
+  "why": "C221, bulk on +5V_RAW: beside the IC it feeds",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "near",
+  "ref": "C222",
+  "target": "L202",
+  "max_mm": 8.0,
+  "hard": false,
+  "why": "C222, bulk on +5V_RAW: beside the IC it feeds",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "near",
+  "max_mm": 8.0,
+  "hard": false,
+  "weight": 0.5,
+  "why": "C229 across CM5_3V3 and ground: at its supply pin -- U212.1 is covered by a tight cap within 2.0 mm along the package: loose, beside U212",
+  "src": "auto_decaps (netlist)",
+  "ref": "C229",
+  "target": "U212"
+ },
+ {
+  "kind": "near",
+  "ref": "C231",
+  "target": "L202",
+  "max_mm": 8.0,
+  "hard": false,
+  "why": "C231, bulk on +5V_RAW: beside the IC it feeds",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "near",
+  "ref": "C232",
+  "target": "L202",
+  "max_mm": 8.0,
+  "hard": false,
+  "why": "C232, bulk on +5V_RAW: beside the IC it feeds",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "decap",
+  "cap": "C234",
+  "pin": "U203.3",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "why": "C234 across +3V3D and ground: at its supply pin",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "decap",
+  "cap": "C237",
+  "pin": "U209.10",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "why": "C237 across +3V3D and ground: at its supply pin",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "decap",
+  "cap": "C238",
+  "pin": "U21.2",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "why": "C238 across +3V3D and ground: at its supply pin",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "decap",
+  "cap": "C239",
+  "pin": "U206.6",
+  "max_mm": 5.0,
+  "hard": false,
+  "weight": 0.5,
+  "why": "C239 across +5V_BUSB_PED and ground: at its supply pin (a further cap on this IC: within reach, not packed)",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "decap",
+  "cap": "C240",
+  "pin": "U211.6",
+  "max_mm": 5.0,
+  "hard": false,
+  "weight": 0.5,
+  "why": "C240 across +5V_BUSB_LEV and ground: at its supply pin (a further cap on this IC: within reach, not packed)",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "decap",
+  "cap": "C241",
+  "pin": "U206.1",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "why": "C241 across V5_PRE and ground: at its supply pin",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "decap",
+  "cap": "C246",
+  "pin": "U212.6",
+  "max_mm": 5.0,
+  "hard": false,
+  "weight": 0.5,
+  "why": "C246 across +3V3_UI and ground: at its supply pin (a further cap on this IC: within reach, not packed)",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "decap",
+  "cap": "C247",
+  "pin": "U212.3",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "why": "C247 across CM5_3V3 and ground: at its supply pin",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "decap",
+  "cap": "C297",
+  "pin": "U220.5",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "why": "C297 across BST_VIN and ground: at its supply pin",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "near",
+  "ref": "C298",
+  "target": "U220",
+  "max_mm": 8.0,
+  "hard": false,
+  "why": "C298, bulk on BST_VCC: beside the IC it feeds",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "near",
+  "ref": "C5",
+  "target": "L1",
+  "max_mm": 8.0,
+  "hard": false,
+  "why": "C5, bulk on V5_PRE: beside the IC it feeds",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "near",
+  "ref": "C6",
+  "target": "L1",
+  "max_mm": 8.0,
+  "hard": false,
+  "why": "C6, bulk on V5_PRE: beside the IC it feeds",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "decap",
+  "cap": "C63",
+  "pin": "U5.5",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "why": "C63 across BUCK_VCC and ground: at its supply pin",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "near",
+  "ref": "C64",
+  "target": "L1",
+  "max_mm": 8.0,
+  "hard": false,
+  "why": "C64, bulk on V5_PRE: beside the IC it feeds",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "decap",
+  "cap": "C65",
+  "pin": "U211.1",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "why": "C65 across V5_PRE and ground: at its supply pin",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "near",
+  "ref": "C80",
+  "target": "U13",
+  "max_mm": 8.0,
+  "hard": false,
+  "why": "C80, bulk on PA_VBUS: beside the IC it feeds",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "decap",
+  "cap": "C82",
+  "pin": "U13.20",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "why": "C82 across PA_V5V and ground: at its supply pin",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "near",
+  "ref": "C84",
+  "target": "U18",
+  "max_mm": 8.0,
+  "hard": false,
+  "why": "C84, bulk on PA_VOUT: beside the IC it feeds",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "near",
+  "ref": "C86",
+  "target": "U14",
+  "max_mm": 8.0,
+  "hard": false,
+  "why": "C86, bulk on PB_VBUS: beside the IC it feeds",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "decap",
+  "cap": "C88",
+  "pin": "U14.20",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "why": "C88 across PB_V5V and ground: at its supply pin",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "near",
+  "ref": "C90",
+  "target": "U19",
+  "max_mm": 8.0,
+  "hard": false,
+  "why": "C90, bulk on PB_VOUT: beside the IC it feeds",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "near",
+  "ref": "C92",
+  "target": "U16",
+  "max_mm": 8.0,
+  "hard": false,
+  "why": "C92, bulk on VIN_BUS: beside the IC it feeds",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "near",
+  "ref": "C93",
+  "target": "U16",
+  "max_mm": 8.0,
+  "hard": false,
+  "why": "C93, bulk on VIN_BUS: beside the IC it feeds",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "decap",
+  "cap": "C96",
+  "pin": "U16.10",
+  "max_mm": 5.0,
+  "hard": false,
+  "weight": 0.5,
+  "why": "C96 across VIN_BUS and ground: at its supply pin (a further cap on this IC: within reach, not packed)",
+  "src": "auto_decaps (netlist)"
+ },
+ {
+  "kind": "near",
+  "max_mm": 8.0,
+  "hard": false,
+  "weight": 0.5,
+  "why": "C97 across VIN_BRAIN and ground: at its supply pin -- U16.9 is covered by a tight cap within 2.0 mm along the package: loose, beside U16",
+  "src": "auto_decaps (netlist)",
+  "ref": "C97",
+  "target": "U16"
+ },
+ {
+  "kind": "decap",
+  "cap": "C13",
+  "pin": "U10.6",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C13 across +5V_A and AGND, both pins of U10: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C14",
+  "pin": "U2.4",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C14 across +3V3_A and AGND, both pins of U2: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C161",
+  "pin": "U30.4",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C161 across AGND and ISO9_RAW, both pins of U30: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C162",
+  "pin": "U31.1",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C162 across AGND and ISO9, both pins of U31: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C163",
+  "pin": "U31.4",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C163 across AGND and ISO_LDO_BYP, both pins of U31: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C164",
+  "pin": "U10.6",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C164 across +5V_A and AGND, both pins of U10: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C166",
+  "pin": "U2.4",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C166 across +3V3_A and AGND, both pins of U2: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C168",
+  "pin": "U2.4",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C168 across +3V3_A and AGND, both pins of U2: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C170",
+  "pin": "U2.4",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C170 across +3V3_A and AGND, both pins of U2: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C19",
+  "pin": "U2.1",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C19 across ADC_VREF and AGND, both pins of U2: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C20",
+  "pin": "U2.1",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C20 across ADC_VREF and AGND, both pins of U2: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C21",
+  "pin": "U10.6",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C21 across +5V_A and AGND, both pins of U10: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C22",
+  "pin": "U2.4",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C22 across +3V3_A and AGND, both pins of U2: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C220",
+  "pin": "U205.7",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C220 across BOOT5 and SW5, both pins of U205: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C23",
+  "pin": "U2.4",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C23 across +3V3_A and AGND, both pins of U2: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C25",
+  "pin": "U2.4",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C25 across +3V3_A and AGND, both pins of U2: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C26",
+  "pin": "U2.4",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C26 across +3V3_A and AGND, both pins of U2: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C27",
+  "pin": "U2.4",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C27 across +3V3_A and AGND, both pins of U2: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C28",
+  "pin": "U2.4",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C28 across +3V3_A and AGND, both pins of U2: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C29",
+  "pin": "U2.4",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C29 across +3V3_A and AGND, both pins of U2: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C299",
+  "pin": "U220.20",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C299 across BST_BST and BST_SW, both pins of U220: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C30",
+  "pin": "U3.18",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C30 across AGND and DAC_LDOO, both pins of U3: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C303",
+  "pin": "U220.11",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C303 across BST_COMP and BST_FB, both pins of U220: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C304",
+  "pin": "U220.3",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C304 across BST_CSNF and BST_CSPF, both pins of U220: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C31",
+  "pin": "U3.18",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C31 across AGND and DAC_LDOO, both pins of U3: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C32",
+  "pin": "U3.4",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C32 across DAC_CAPM and DAC_CAPP, both pins of U3: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C33",
+  "pin": "U3.5",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C33 across AGND and DAC_VNEG, both pins of U3: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C4",
+  "pin": "U5.4",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C4 across BOOT and SW, both pins of U5: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C40",
+  "pin": "U10.2",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C40 across AGND and VMID, both pins of U10: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C43",
+  "pin": "U10.6",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C43 across +5V_A and AGND, both pins of U10: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C44",
+  "pin": "U10.6",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C44 across +5V_A and AGND, both pins of U10: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C46",
+  "pin": "U10.6",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C46 across +5V_A and AGND, both pins of U10: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C47",
+  "pin": "U10.6",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C47 across +5V_A and AGND, both pins of U10: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C58",
+  "pin": "U10.6",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C58 across +5V_A and AGND, both pins of U10: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C59",
+  "pin": "U10.6",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C59 across +5V_A and AGND, both pins of U10: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C60",
+  "pin": "U10.6",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C60 across +5V_A and AGND, both pins of U10: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C62",
+  "pin": "U10.10",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C62 across AGND and POT_RS, both pins of U10: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C7",
+  "pin": "U10.6",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C7 across +5V_A and AGND, both pins of U10: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C8",
+  "pin": "U10.6",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C8 across +5V_A and AGND, both pins of U10: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C85",
+  "pin": "U18.1",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C85 across PA_VCAP and PA_VOUT, both pins of U18: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C9",
+  "pin": "U2.4",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C9 across +3V3_A and AGND, both pins of U2: at them"
+ },
+ {
+  "kind": "decap",
+  "cap": "C91",
+  "pin": "U19.1",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "auto_decaps (netlist)",
+  "why": "C91 across PB_VCAP and PB_VOUT, both pins of U19: at them"
+ },
+ {
+  "kind": "near",
+  "ref": "R306",
+  "target": "U220.11",
+  "max_mm": 5.0,
+  "hard": false,
+  "src": "auto_switcher (netlist)",
+  "why": "U220's control pin on BST_COMP: at the pin (switching regulator layout)"
+ },
+ {
+  "kind": "near",
+  "ref": "R311",
+  "target": "U220.3",
+  "max_mm": 5.0,
+  "hard": false,
+  "src": "auto_switcher (netlist)",
+  "why": "U220's control pin on BST_CSNF: at the pin (switching regulator layout)"
+ },
+ {
+  "kind": "near",
+  "ref": "R310",
+  "target": "U220.4",
+  "max_mm": 5.0,
+  "hard": false,
+  "src": "auto_switcher (netlist)",
+  "why": "U220's control pin on BST_CSPF: at the pin (switching regulator layout)"
+ },
+ {
+  "kind": "near",
+  "ref": "C302",
+  "target": "U220.10",
+  "max_mm": 5.0,
+  "hard": false,
+  "src": "auto_switcher (netlist)",
+  "why": "U220's control pin on BST_FB: at the pin (switching regulator layout)"
+ },
+ {
+  "kind": "near",
+  "ref": "R304",
+  "target": "U220.10",
+  "max_mm": 5.0,
+  "hard": false,
+  "src": "auto_switcher (netlist)",
+  "why": "U220's control pin on BST_FB: at the pin (switching regulator layout)"
+ },
+ {
+  "kind": "near",
+  "ref": "R305",
+  "target": "U220.10",
+  "max_mm": 5.0,
+  "hard": false,
+  "src": "auto_switcher (netlist)",
+  "why": "U220's control pin on BST_FB: at the pin (switching regulator layout)"
+ },
+ {
+  "kind": "near",
+  "ref": "Q209",
+  "target": "U220.19",
+  "max_mm": 8.0,
+  "hard": false,
+  "src": "auto_switcher (netlist)",
+  "why": "U220's gate drive on BST_HO: at the pin (switching regulator layout)"
+ },
+ {
+  "kind": "near",
+  "ref": "Q208",
+  "target": "U220.16",
+  "max_mm": 8.0,
+  "hard": false,
+  "src": "auto_switcher (netlist)",
+  "why": "U220's gate drive on BST_LO: at the pin (switching regulator layout)"
+ },
+ {
+  "kind": "near",
+  "ref": "C301",
+  "target": "U220.14",
+  "max_mm": 5.0,
+  "hard": false,
+  "src": "auto_switcher (netlist)",
+  "why": "U220's control pin on BST_RES: at the pin (switching regulator layout)"
+ },
+ {
+  "kind": "near",
+  "ref": "R300",
+  "target": "U220.8",
+  "max_mm": 5.0,
+  "hard": false,
+  "src": "auto_switcher (netlist)",
+  "why": "U220's control pin on BST_RT: at the pin (switching regulator layout)"
+ },
+ {
+  "kind": "near",
+  "ref": "R307",
+  "target": "U220.12",
+  "max_mm": 5.0,
+  "hard": false,
+  "src": "auto_switcher (netlist)",
+  "why": "U220's control pin on BST_SLOPE: at the pin (switching regulator layout)"
+ },
+ {
+  "kind": "near",
+  "ref": "C300",
+  "target": "U220.7",
+  "max_mm": 5.0,
+  "hard": false,
+  "src": "auto_switcher (netlist)",
+  "why": "U220's control pin on BST_SS: at the pin (switching regulator layout)"
+ },
+ {
+  "kind": "near",
+  "ref": "R301",
+  "target": "U220.6",
+  "max_mm": 5.0,
+  "hard": false,
+  "src": "auto_switcher (netlist)",
+  "why": "U220's control pin on BST_UVLO: at the pin (switching regulator layout)"
+ },
+ {
+  "kind": "near",
+  "ref": "R302",
+  "target": "U220.6",
+  "max_mm": 5.0,
+  "hard": false,
+  "src": "auto_switcher (netlist)",
+  "why": "U220's control pin on BST_UVLO: at the pin (switching regulator layout)"
+ },
+ {
+  "kind": "near",
+  "ref": "R308",
+  "target": "U220.5",
+  "max_mm": 5.0,
+  "hard": false,
+  "src": "auto_switcher (netlist)",
+  "why": "U220's control pin on BST_VIN: at the pin (switching regulator layout)"
+ },
+ {
+  "kind": "apart",
+  "a": [
+   "C4",
+   "L1",
+   "U5"
+  ],
+  "b": [
+   "C15",
+   "C16",
+   "C24",
+   "C37",
+   "R219",
+   "R221",
+   "R8",
+   "U1",
+   "U10",
+   "U11",
+   "U2",
+   "U8",
+   "Y1"
+  ],
+  "min_mm": 10.0,
+  "hard": false,
+  "weight": 1.0,
+  "forbid": true,
+  "why": "switch node SW (C4 L1 U5): off every sensitive part",
+  "src": "auto_floorplan (netlist)"
+ },
+ {
+  "kind": "apart",
+  "a": [
+   "C220",
+   "L202",
+   "U205"
+  ],
+  "b": [
+   "C15",
+   "C16",
+   "C24",
+   "C37",
+   "R219",
+   "R221",
+   "R8",
+   "U1",
+   "U10",
+   "U11",
+   "U2",
+   "U8",
+   "Y1"
+  ],
+  "min_mm": 10.0,
+  "hard": false,
+  "weight": 1.0,
+  "forbid": true,
+  "why": "switch node SW5 (C220 L202 U205): off every sensitive part",
+  "src": "auto_floorplan (netlist)"
+ },
+ {
+  "kind": "apart",
+  "a": [
+   "C4",
+   "L1",
+   "U5"
+  ],
+  "b": [
+   "J1",
+   "J2",
+   "J202",
+   "U1",
+   "U13",
+   "U14",
+   "U17",
+   "U209",
+   "U210"
+  ],
+  "min_mm": 9.0,
+  "hard": false,
+  "weight": 0.5,
+  "forbid": false,
+  "why": "switch node ['C4', 'L1', 'U5'] off the USB path (J1 J2 J202 U1 U13 U14 U17 U209 U210)",
+  "src": "auto_floorplan (netlist)"
+ },
+ {
+  "kind": "apart",
+  "a": [
+   "C220",
+   "L202",
+   "U205"
+  ],
+  "b": [
+   "J1",
+   "J2",
+   "J202",
+   "U1",
+   "U13",
+   "U14",
+   "U17",
+   "U209",
+   "U210"
+  ],
+  "min_mm": 9.0,
+  "hard": false,
+  "weight": 0.5,
+  "forbid": false,
+  "why": "switch node ['C220', 'L202', 'U205'] off the USB path (J1 J2 J202 U1 U13 U14 U17 U209 U210)",
+  "src": "auto_floorplan (netlist)"
+ },
+ {
+  "kind": "apart",
+  "a": [
+   "J1",
+   "J2",
+   "J202",
+   "K1",
+   "U1",
+   "U13",
+   "U14",
+   "U17",
+   "U209",
+   "U210"
+  ],
+  "b": [
+   "C24",
+   "C37",
+   "R8",
+   "U10",
+   "U11",
+   "U2",
+   "U8"
+  ],
+  "min_mm": 6.0,
+  "hard": false,
+  "weight": 0.5,
+  "forbid": false,
+  "why": "USB / relay edges (J1 J2 J202 K1 U1 U13 U14 U17 U209 U210) off the analog parts",
+  "src": "auto_floorplan (netlist)"
+ },
+ {
+  "kind": "pour",
+  "net": "PA_VCC",
+  "layer": "In2.Cu",
+  "along": [
+   "Q4.5",
+   "R70.2"
+  ],
+  "width_mm": 3.0,
+  "hard": false,
+  "why": "mP: PA_VCC's F.Cu pour has to pass between its own MOSFET's source and gate pins; a second layer under it, joined by the pour via arrays",
+  "src": "fin_mO quality A1, bronner 2026-11-15",
+  "pad_vias": true
+ },
+ {
+  "kind": "pour",
+  "net": "PB_VCC",
+  "layer": "In2.Cu",
+  "along": [
+   "Q5.5",
+   "R75.2"
+  ],
+  "width_mm": 3.0,
+  "hard": false,
+  "why": "mP: PB_VCC's F.Cu pour has to pass between its own MOSFET's source and gate pins; a second layer under it, joined by the pour via arrays",
+  "src": "fin_mO quality A1, bronner 2026-11-15",
+  "pad_vias": true
+ },
+ {
+  "kind": "pour",
+  "net": "PA_VBUS_J",
+  "layer": "F.Cu",
+  "along": [
+   "J1.A4",
+   "J1.A9",
+   "J1.B4",
+   "J1.B9",
+   "FL1.1"
+  ],
+  "width_mm": 1.5,
+  "hard": false,
+  "why": "mP: the USB-C VBUS bar -- A4/A9/B4/B9 joined in copper, out to the choke",
+  "src": "fin_mO quality A1, bronner 2026-11-15",
+  "pad_vias": true
+ },
+ {
+  "kind": "pour",
+  "net": "PB_VBUS_J",
+  "layer": "F.Cu",
+  "along": [
+   "J2.A4",
+   "J2.A9",
+   "J2.B4",
+   "J2.B9",
+   "FL2.1"
+  ],
+  "width_mm": 1.5,
+  "hard": false,
+  "why": "mP: the USB-C VBUS bar -- A4/A9/B4/B9 joined in copper, out to the choke",
+  "src": "fin_mO quality A1, bronner 2026-11-15",
+  "pad_vias": true
+ },
+ {
+  "kind": "fixed",
+  "ref": "C1",
+  "xy": [
+   -48.915,
+   23.9
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C116",
+  "xy": [
+   -27.015,
+   -11.5
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C117",
+  "xy": [
+   -41.315,
+   -3.8
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C118",
+  "xy": [
+   -23.515,
+   -2.4
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C119",
+  "xy": [
+   -22.115,
+   -7.9
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C134",
+  "xy": [
+   -15.315,
+   1.9
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C135",
+  "xy": [
+   24.985,
+   -7.7
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C136",
+  "xy": [
+   18.285,
+   21.3
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C138",
+  "xy": [
+   -5.515,
+   -8.2
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C15",
+  "xy": [
+   9.185,
+   24.9
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C151",
+  "xy": [
+   21.385,
+   29.9
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C152",
+  "xy": [
+   19.085,
+   29.9
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C153",
+  "xy": [
+   -5.015,
+   40.3
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C16",
+  "xy": [
+   6.185,
+   28.1
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C160",
+  "xy": [
+   -11.215,
+   5.4
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C161",
+  "xy": [
+   -18.515,
+   15.4
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C162",
+  "xy": [
+   -31.015,
+   12.2
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C163",
+  "xy": [
+   -25.915,
+   14.4
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C165",
+  "xy": [
+   -9.015,
+   30.3
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C167",
+  "xy": [
+   -10.115,
+   22.5
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C169",
+  "xy": [
+   -9.015,
+   17.4
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C17",
+  "xy": [
+   -20.515,
+   -22.9
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C18",
+  "xy": [
+   -23.615,
+   -23.1
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C2",
+  "xy": [
+   -22.415,
+   -25.6
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C201",
+  "xy": [
+   22.985,
+   -40.1
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C202",
+  "xy": [
+   -27.015,
+   -13.8
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C21",
+  "xy": [
+   -31.115,
+   19.9
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C216",
+  "xy": [
+   -20.815,
+   -34.3
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C217",
+  "xy": [
+   -18.115,
+   -36.6
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C218",
+  "xy": [
+   -19.615,
+   -29.7
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C219",
+  "xy": [
+   -9.815,
+   -32.8
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C220",
+  "xy": [
+   -10.315,
+   -31.0
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C221",
+  "xy": [
+   -8.515,
+   -16.0
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C222",
+  "xy": [
+   -13.315,
+   -20.8
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C223",
+  "xy": [
+   31.985,
+   12.8
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C224",
+  "xy": [
+   31.985,
+   9.1
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C225",
+  "xy": [
+   31.985,
+   16.5
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C226",
+  "xy": [
+   -24.915,
+   3.0
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C227",
+  "xy": [
+   -26.015,
+   0.0
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C228",
+  "xy": [
+   -26.215,
+   2.3
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C229",
+  "xy": [
+   13.385,
+   -28.1
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C231",
+  "xy": [
+   -17.515,
+   -25.6
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C232",
+  "xy": [
+   -12.615,
+   -25.6
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C233",
+  "xy": [
+   -18.315,
+   -16.2
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C234",
+  "xy": [
+   0.285,
+   -36.8
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C237",
+  "xy": [
+   16.185,
+   -25.7
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C239",
+  "xy": [
+   -6.415,
+   -13.5
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C24",
+  "xy": [
+   -24.915,
+   18.3
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C240",
+  "xy": [
+   -10.815,
+   -13.5
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C241",
+  "xy": [
+   -2.415,
+   -16.3
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C244",
+  "xy": [
+   22.385,
+   -15.4
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C245",
+  "xy": [
+   11.185,
+   -22.0
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C246",
+  "xy": [
+   13.185,
+   -26.8
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C247",
+  "xy": [
+   11.385,
+   -32.9
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C248",
+  "xy": [
+   22.185,
+   -19.5
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C249",
+  "xy": [
+   40.685,
+   -22.7
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C250",
+  "xy": [
+   28.085,
+   -11.3
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C292",
+  "xy": [
+   29.985,
+   -45.9
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C293",
+  "xy": [
+   52.385,
+   -15.8
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C296",
+  "xy": [
+   45.385,
+   -12.2
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C297",
+  "xy": [
+   66.385,
+   -44.5
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C298",
+  "xy": [
+   73.185,
+   -31.6
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C299",
+  "xy": [
+   64.485,
+   -22.8
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C3",
+  "xy": [
+   -21.815,
+   -20.9
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C300",
+  "xy": [
+   72.385,
+   -42.2
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C301",
+  "xy": [
+   70.785,
+   -33.4
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C302",
+  "xy": [
+   73.185,
+   -38.6
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C303",
+  "xy": [
+   71.085,
+   -35.5
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C304",
+  "xy": [
+   63.585,
+   -44.2
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C305",
+  "xy": [
+   36.985,
+   -39.0
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C306",
+  "xy": [
+   62.485,
+   -15.8
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C307",
+  "xy": [
+   28.785,
+   -29.0
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C308",
+  "xy": [
+   36.985,
+   -45.3
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C309",
+  "xy": [
+   29.985,
+   -38.2
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C313",
+  "xy": [
+   37.585,
+   -29.0
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C314",
+  "xy": [
+   47.685,
+   -43.0
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C315",
+  "xy": [
+   63.185,
+   -22.8
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C32",
+  "xy": [
+   -37.115,
+   37.1
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C322",
+  "xy": [
+   1.085,
+   -22.7
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C33",
+  "xy": [
+   -37.815,
+   34.1
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C34",
+  "xy": [
+   -33.515,
+   15.8
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C37",
+  "xy": [
+   -31.715,
+   41.6
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C38",
+  "xy": [
+   -37.415,
+   14.7
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C39",
+  "xy": [
+   -35.415,
+   18.2
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C4",
+  "xy": [
+   -7.615,
+   -35.5
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C40",
+  "xy": [
+   -37.115,
+   21.2
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C41",
+  "xy": [
+   -53.815,
+   23.9
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C42",
+  "xy": [
+   -41.715,
+   15.3
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C45",
+  "xy": [
+   -45.015,
+   17.3
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C5",
+  "xy": [
+   -3.815,
+   -46.6
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C54",
+  "xy": [
+   17.285,
+   24.1
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C6",
+  "xy": [
+   -3.815,
+   -36.8
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C62",
+  "xy": [
+   -32.115,
+   30.7
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C63",
+  "xy": [
+   -8.015,
+   -33.2
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C64",
+  "xy": [
+   -9.615,
+   -41.7
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C65",
+  "xy": [
+   -8.215,
+   -13.5
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C7",
+  "xy": [
+   -30.515,
+   17.6
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C80",
+  "xy": [
+   -43.015,
+   -8.4
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C81",
+  "xy": [
+   -51.815,
+   1.0
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C82",
+  "xy": [
+   -53.815,
+   -6.8
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C83",
+  "xy": [
+   -55.415,
+   -5.2
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C84",
+  "xy": [
+   -39.115,
+   -16.6
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C85",
+  "xy": [
+   -36.615,
+   -19.1
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C86",
+  "xy": [
+   -63.015,
+   -22.1
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C87",
+  "xy": [
+   -66.615,
+   -11.7
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C88",
+  "xy": [
+   -65.615,
+   -19.4
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C89",
+  "xy": [
+   -69.715,
+   -15.2
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C90",
+  "xy": [
+   -46.215,
+   -35.1
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C91",
+  "xy": [
+   -53.815,
+   -32.3
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C92",
+  "xy": [
+   -25.715,
+   -17.2
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C93",
+  "xy": [
+   -29.615,
+   -13.2
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C96",
+  "xy": [
+   -28.815,
+   -16.8
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C97",
+  "xy": [
+   -22.915,
+   -9.7
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "D11",
+  "xy": [
+   -63.015,
+   -1.8
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "D12",
+  "xy": [
+   -41.915,
+   -12.7
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "D13",
+  "xy": [
+   -44.015,
+   -10.7
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "D14",
+  "xy": [
+   -33.315,
+   -17.1
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "D15",
+  "xy": [
+   -61.615,
+   -33.6
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "D16",
+  "xy": [
+   -30.815,
+   -27.0
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "D18",
+  "xy": [
+   -3.415,
+   -19.0
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "D2",
+  "xy": [
+   -46.115,
+   -4.1
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "D20",
+  "xy": [
+   -50.815,
+   -18.0
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "D201",
+  "xy": [
+   5.885,
+   -22.7
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "D203",
+  "xy": [
+   66.085,
+   -29.0
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "D208",
+  "xy": [
+   28.885,
+   -3.1
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "D209",
+  "xy": [
+   -10.415,
+   0.0
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "D21",
+  "xy": [
+   -47.915,
+   -13.2
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "D212",
+  "xy": [
+   31.085,
+   -23.7
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "D213",
+  "xy": [
+   27.485,
+   -14.2
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "D217",
+  "xy": [
+   70.485,
+   -31.3
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "D218",
+  "xy": [
+   32.485,
+   32.4
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "D219",
+  "xy": [
+   18.485,
+   -30.1
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "D22",
+  "xy": [
+   -56.015,
+   -20.0
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "D220",
+  "xy": [
+   13.285,
+   -35.5
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "D23",
+  "xy": [
+   -57.715,
+   -20.0
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "D3",
+  "xy": [
+   -43.815,
+   -3.4
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "D4",
+  "xy": [
+   -35.415,
+   1.2
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "D5",
+  "xy": [
+   -44.915,
+   28.5
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "D7",
+  "xy": [
+   -50.915,
+   21.3
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "F201",
+  "xy": [
+   -24.615,
+   -33.0
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "F202",
+  "xy": [
+   -16.015,
+   -21.8
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "F203",
+  "xy": [
+   14.785,
+   -22.7
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "F204",
+  "xy": [
+   -1.615,
+   -27.8
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "FB1",
+  "xy": [
+   -24.115,
+   11.7
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "FL1",
+  "xy": [
+   -55.715,
+   -12.3
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "FL2",
+  "xy": [
+   -56.115,
+   -26.3
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "FL3",
+  "xy": [
+   -55.315,
+   -2.8
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "FL4",
+  "xy": [
+   -62.315,
+   -10.8
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "J205",
+  "xy": [
+   30.785,
+   24.9
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "J240",
+  "xy": [
+   9.885,
+   -16.0
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "J4",
+  "xy": [
+   -3.115,
+   31.3
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "JP201",
+  "xy": [
+   29.385,
+   11.4
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "L1",
+  "xy": [
+   -3.815,
+   -41.7
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "L202",
+  "xy": [
+   -8.515,
+   -20.8
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "L204",
+  "xy": [
+   52.885,
+   -28.5
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "Q1",
+  "xy": [
+   -30.815,
+   1.1
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "Q202",
+  "xy": [
+   35.585,
+   -16.7
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "Q203",
+  "xy": [
+   22.685,
+   -11.1
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "Q208",
+  "xy": [
+   69.885,
+   -20.1
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "Q209",
+  "xy": [
+   69.485,
+   -12.2
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "Q210",
+  "xy": [
+   -8.815,
+   -5.7
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "Q212",
+  "xy": [
+   -12.515,
+   -5.7
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "Q214",
+  "xy": [
+   28.385,
+   7.1
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "Q215",
+  "xy": [
+   -15.415,
+   -1.8
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R10",
+  "xy": [
+   -53.015,
+   21.0
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R11",
+  "xy": [
+   -5.815,
+   -35.0
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R112",
+  "xy": [
+   -29.015,
+   -22.9
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R117",
+  "xy": [
+   -8.615,
+   5.0
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R12",
+  "xy": [
+   -6.315,
+   -36.8
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R120",
+  "xy": [
+   26.285,
+   0.4
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R122",
+  "xy": [
+   31.385,
+   2.2
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R123",
+  "xy": [
+   -29.515,
+   -4.2
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R124",
+  "xy": [
+   -19.215,
+   -5.0
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R125",
+  "xy": [
+   -35.915,
+   -9.7
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R126",
+  "xy": [
+   -17.415,
+   -6.0
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R13",
+  "xy": [
+   -33.615,
+   17.6
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R14",
+  "xy": [
+   -34.915,
+   14.0
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R15",
+  "xy": [
+   -33.115,
+   13.4
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R16",
+  "xy": [
+   -37.315,
+   31.5
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R17",
+  "xy": [
+   -39.315,
+   31.2
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R18",
+  "xy": [
+   -40.615,
+   31.2
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R20",
+  "xy": [
+   -48.815,
+   21.0
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R203",
+  "xy": [
+   -18.115,
+   -18.5
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R204",
+  "xy": [
+   7.985,
+   -32.6
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R205",
+  "xy": [
+   -8.015,
+   -25.2
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R21",
+  "xy": [
+   -57.415,
+   25.0
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R210",
+  "xy": [
+   -6.215,
+   -32.4
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R211",
+  "xy": [
+   -6.215,
+   -33.7
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R212",
+  "xy": [
+   -18.315,
+   -13.6
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R213",
+  "xy": [
+   -20.115,
+   -16.0
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R216",
+  "xy": [
+   -10.815,
+   -8.0
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R217",
+  "xy": [
+   -15.115,
+   -4.3
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R218",
+  "xy": [
+   -7.315,
+   15.1
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R219",
+  "xy": [
+   -9.115,
+   15.6
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R22",
+  "xy": [
+   -39.715,
+   21.6
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R220",
+  "xy": [
+   -7.715,
+   19.7
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R221",
+  "xy": [
+   -6.415,
+   19.7
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R222",
+  "xy": [
+   -4.215,
+   -16.9
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R223",
+  "xy": [
+   -25.715,
+   -30.3
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R224",
+  "xy": [
+   26.285,
+   11.3
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R225",
+  "xy": [
+   26.785,
+   2.2
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R226",
+  "xy": [
+   27.985,
+   0.2
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R227",
+  "xy": [
+   32.185,
+   34.0
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R228",
+  "xy": [
+   30.285,
+   4.8
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R229",
+  "xy": [
+   28.485,
+   4.1
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R23",
+  "xy": [
+   -42.715,
+   19.0
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R230",
+  "xy": [
+   27.585,
+   15.0
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R231",
+  "xy": [
+   28.885,
+   15.0
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R232",
+  "xy": [
+   22.485,
+   22.6
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R233",
+  "xy": [
+   26.885,
+   19.4
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R235",
+  "xy": [
+   -12.415,
+   -9.5
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R236",
+  "xy": [
+   2.085,
+   -10.0
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R237",
+  "xy": [
+   -13.515,
+   1.6
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R238",
+  "xy": [
+   -4.615,
+   -11.3
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R24",
+  "xy": [
+   -43.215,
+   17.1
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R240",
+  "xy": [
+   30.285,
+   3.5
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R241",
+  "xy": [
+   29.085,
+   2.2
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R242",
+  "xy": [
+   30.685,
+   -1.4
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R243",
+  "xy": [
+   28.385,
+   -1.6
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R244",
+  "xy": [
+   15.185,
+   -27.8
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R25",
+  "xy": [
+   -41.515,
+   13.5
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R250",
+  "xy": [
+   29.285,
+   -15.1
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R251",
+  "xy": [
+   29.585,
+   -24.0
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R252",
+  "xy": [
+   -8.515,
+   -8.2
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R253",
+  "xy": [
+   24.385,
+   -16.4
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R254",
+  "xy": [
+   27.985,
+   -7.5
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R255",
+  "xy": [
+   28.985,
+   -5.3
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R256",
+  "xy": [
+   24.885,
+   -13.6
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R257",
+  "xy": [
+   29.285,
+   -7.6
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R258",
+  "xy": [
+   8.685,
+   -10.0
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R26",
+  "xy": [
+   -39.715,
+   36.4
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R261",
+  "xy": [
+   -3.015,
+   -9.5
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R263",
+  "xy": [
+   27.885,
+   -9.5
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R27",
+  "xy": [
+   -40.015,
+   24.4
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R28",
+  "xy": [
+   -43.815,
+   13.5
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R300",
+  "xy": [
+   68.385,
+   -46.3
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R301",
+  "xy": [
+   63.485,
+   -45.5
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R302",
+  "xy": [
+   63.485,
+   -46.8
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R303",
+  "xy": [
+   70.185,
+   -46.8
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R304",
+  "xy": [
+   69.685,
+   -45.0
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R305",
+  "xy": [
+   71.985,
+   -44.1
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R306",
+  "xy": [
+   72.385,
+   -36.2
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R307",
+  "xy": [
+   71.885,
+   -38.5
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R308",
+  "xy": [
+   61.385,
+   -45.0
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R309",
+  "xy": [
+   56.685,
+   -43.3
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R310",
+  "xy": [
+   65.785,
+   -46.1
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R311",
+  "xy": [
+   57.585,
+   -38.6
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R36",
+  "xy": [
+   -23.915,
+   -1.1
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R37",
+  "xy": [
+   -9.115,
+   14.2
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R5",
+  "xy": [
+   -21.715,
+   -1.9
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R6",
+  "xy": [
+   3.485,
+   25.4
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R60",
+  "xy": [
+   -22.615,
+   14.0
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R7",
+  "xy": [
+   26.785,
+   17.3
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R70",
+  "xy": [
+   -47.315,
+   -8.9
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R71",
+  "xy": [
+   -49.015,
+   -11.4
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R72",
+  "xy": [
+   -46.215,
+   -6.5
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R73",
+  "xy": [
+   -57.615,
+   -1.9
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R74",
+  "xy": [
+   -57.615,
+   -3.6
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R75",
+  "xy": [
+   -51.215,
+   -20.3
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R76",
+  "xy": [
+   -56.315,
+   -17.9
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R77",
+  "xy": [
+   -59.215,
+   -20.3
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R78",
+  "xy": [
+   -67.415,
+   -20.5
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R79",
+  "xy": [
+   -65.615,
+   -21.0
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R8",
+  "xy": [
+   -41.815,
+   24.9
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R80",
+  "xy": [
+   -22.115,
+   2.5
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R81",
+  "xy": [
+   -23.115,
+   4.3
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R82",
+  "xy": [
+   -34.415,
+   -12.8
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R83",
+  "xy": [
+   -34.415,
+   -11.5
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R84",
+  "xy": [
+   -3.615,
+   22.6
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R85",
+  "xy": [
+   -5.115,
+   21.0
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R86",
+  "xy": [
+   -19.915,
+   -2.6
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R87",
+  "xy": [
+   -16.715,
+   -7.3
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R88",
+  "xy": [
+   -14.915,
+   -7.6
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R9",
+  "xy": [
+   -45.115,
+   34.7
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R91",
+  "xy": [
+   -2.315,
+   -11.3
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R92",
+  "xy": [
+   -25.815,
+   -2.9
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R97",
+  "xy": [
+   -4.815,
+   -10.0
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R98",
+  "xy": [
+   21.985,
+   25.9
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "RT1",
+  "xy": [
+   -53.915,
+   0.0
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "RT2",
+  "xy": [
+   -69.215,
+   -13.4
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "TP1",
+  "xy": [
+   25.985,
+   -11.1
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "TP2",
+  "xy": [
+   26.885,
+   -5.1
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "TP207",
+  "xy": [
+   32.685,
+   5.8
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "TP3",
+  "xy": [
+   3.585,
+   28.6
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "TP4",
+  "xy": [
+   -18.815,
+   0.0
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "TP5",
+  "xy": [
+   -18.815,
+   2.9
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "TP6",
+  "xy": [
+   24.685,
+   20.8
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "U1",
+  "xy": [
+   9.485,
+   6.8
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "U10",
+  "xy": [
+   -33.815,
+   26.2
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "U11",
+  "xy": [
+   -41.215,
+   27.6
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "U12",
+  "xy": [
+   -41.615,
+   21.9
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "U13",
+  "xy": [
+   -50.615,
+   -3.8
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "U14",
+  "xy": [
+   -64.915,
+   -16.0
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "U15",
+  "xy": [
+   -22.115,
+   -4.9
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "U16",
+  "xy": [
+   -23.115,
+   -12.9
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "U17",
+  "xy": [
+   -39.015,
+   -3.8
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "U18",
+  "xy": [
+   -39.115,
+   -20.2
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "U19",
+  "xy": [
+   -50.915,
+   -33.0
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "U202",
+  "xy": [
+   -14.815,
+   -14.5
+  ],
+  "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "U203",
+  "xy": [
+   4.785,
+   -35.9
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "U205",
+  "xy": [
+   -14.815,
+   -30.6
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "U206",
+  "xy": [
+   -3.515,
+   -13.8
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "U209",
+  "xy": [
+   18.485,
+   -26.1
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "U21",
+  "xy": [
+   14.185,
+   28.3
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "U210",
+  "xy": [
+   17.285,
+   -35.5
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "U211",
+  "xy": [
+   -9.115,
+   -11.0
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "U212",
+  "xy": [
+   13.585,
+   -30.6
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "U220",
+  "xy": [
+   66.785,
+   -39.2
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "U31",
+  "xy": [
+   -28.215,
+   12.1
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "U5",
+  "xy": [
+   -9.915,
+   -36.2
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "U6",
+  "xy": [
+   -43.715,
+   31.9
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "U7",
+  "xy": [
+   -42.215,
+   35.8
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "U8",
+  "xy": [
+   -39.615,
+   18.3
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "U9",
+  "xy": [
+   -45.715,
+   20.3
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "Y1",
+  "xy": [
+   6.085,
+   25.2
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "J8",
+  "xy": [
+   -24.3,
+   24.54
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "magnetic pickup terminals down the board face, plug +Y to board y 41.5 (instrument z -16.7), pads centre board y 24.54 (instrument z -33.7); x -24.3 leaves the barrier column (U32/U33 at x -13.5) a 2.3 mm strip for U32/U33's audio-side decaps -- pins at instrument x -48.9 / -52.4",
+  "src": "branner 2026-11-15 (J8 re-measure); bronner x -55 audio corner"
+ }
+]
