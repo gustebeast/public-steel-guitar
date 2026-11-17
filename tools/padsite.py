@@ -219,7 +219,7 @@ def main():
                         # The same centres-vs-courtyard slip cost a pass on R30 earlier the
                         # same day. Two tests of the same thing must agree, and the assert
                         # is the authority, so this mirrors it.
-                        import src.top_plate as _TP
+                        import src.deck_layout as _TP
                         _hr = _TP.JACK_HEAD_D / 2.0
                         _hw = OP.CRTYD["TP"][0] / 2.0
                         _hh = OP.CRTYD["TP"][1] / 2.0

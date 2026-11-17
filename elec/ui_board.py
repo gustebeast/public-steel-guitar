@@ -758,7 +758,7 @@ def _check_against_cad():
         assert abs(y) + ey <= _HL - my + 1e-9, (
             "%s reaches y %+.2f on a %.1f board" % (ref, abs(y) + ey, BOARD_L))
     # 2. the board stops EDGE_WALL short of the swappable band region's seam
-    from src import top_plate as TP
+    from src import deck_layout as TP
     bx, by = UI.board_centre()
     assert bx + _HW + UI.EDGE_WALL <= TP.REGION_X1 + 1e-9, (
         "the UI board's +X edge is inside the band region's seam")

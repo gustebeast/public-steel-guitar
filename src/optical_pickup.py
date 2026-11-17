@@ -136,8 +136,8 @@ import cadquery as cq
 from cadquery.selectors import NearestToPointSelector
 
 from . import dimensions as D
-from . import chassis as CH
-from . import top_plate as TP
+from . import deck_layout as CH                 # the live parts of chassis and top_plate
+from . import deck_layout as TP                 # (lead, v1 removal round 3)
 from .helpers import box_at, cyl
 from cadkit.fasteners import M4
 from cadkit.holes import house_hole
@@ -474,7 +474,6 @@ def string_budget_at(x: float) -> float:
 PART_STRING_CLR = CLR_MARGIN * string_budget_at(SENSE_X)      # 1.100
 assert abs(PART_STRING_CLR - 1.10) < 0.005, \
     "the derived clearance no longer reproduces the 1.10 it replaced"
-
 
 # ── Z STACK, built UPWARD from the deck ─────────────────────────────────────
 # Datum is the LOWEST string underside. Centres are coplanar (verified), so the THICKEST
@@ -856,7 +855,6 @@ def section_at(y: float):
             return x1, x0
     return PCB_X1S, PCB_X0
 
-
 # ── ANALOG FIELD -- everything fits in the band, which is the point ─────────
 # Column order is set by what each part loses to distance. The sensor row takes the +X
 # end (closest to the termination it is allowed to be); the quad op-amps sit immediately
@@ -876,6 +874,7 @@ ROW_X0    = SENSE_X - CRTYD[LED_PKG_NAME][0] / 2              # the row's -X edg
 #   * PART TO BOARD EDGE is a BODY rule (JLCPCB's ~1.0 mm), so EDGE_KEEP applies to PKG.
 #   * PART TO PART is a LAND rule, so it applies to CRTYD -- and two courtyards that
 #     TOUCH are already legal, because the clearance is inside the boundary.
+
 # ── the comb's slot extents in X ────────────────────────────────────────────
 # Defined HERE rather than beside the slots themselves (which need _BRG_Y, ~1350 lines
 # down) because COL_OPA is measured off the +X slot edge and has to know them.
@@ -1217,7 +1216,6 @@ def _block(out, y, items, x0, x1, reserve=None, reserve_y=None):
     for row in rows:
         y = flush(row, y)
     return y
-
 
 # ── ACCESS HOLE FOR THE PICKUP'S +Y HEIGHT JACK (user) ──────────────────────
 # One of the pickup plate's three M4 height jacks lands under this board -- at the +Y
@@ -2701,7 +2699,6 @@ if OPTICAL_REV != 1:
     next(q for q in PARTS if q["ref"] == "J2")["x"] = (
         _j1x - USB_NOTCH_W / 2 - USB_NOTCH_PAIR - EDGE_KEEP - CRTYD["XH-TE-4V"][0] / 2)
 
-
 # ── ORDERABILITY: every placed part -> a real LCSC/JLCPCB line ──────────────────────
 # PARTS above is a MODEL: description + package envelope, which is all the geometry and
 # the clearance assertions need. It is NOT orderable -- you cannot put "quad op-amp" on a
@@ -3212,7 +3209,7 @@ def usb_notch():
     x, y1 = part("J1")["x"], part("J1")["y"] - CRTYD["USB-C"][1] / 2 + USB_NOTCH_D
     if OPTICAL_REV == 1:
         return (x - USB_NOTCH_W / 2, x + USB_NOTCH_W / 2, PCB_YM, y1)
-    from . import motor_bank as _MB
+    from . import deck_layout as _MB
     return (x + 6.3 - 15.2, x + 6.3, _MB.RAIL_INNER_Y, y1)
 
 
@@ -3438,8 +3435,6 @@ def opt_pcb() -> cq.Workplane:
     return pcb
 
 
-
-
 def jack_access(grow: float = 0.0) -> cq.Workplane:
     """The pickup jack's access hole, as a cutter. Shared: the board cuts it, and
     the endplate cuts the SAME hole through the pad under it -- both are in the
@@ -3524,7 +3519,6 @@ def opt_cover() -> cq.Workplane:
     for i in range(D.N_STRINGS):                       # apertures
         roof = roof.cut(_aperture_cutter(string_y_at(i, SENSE_X)))
     return roof
-
 
 # ── CABLE CONDUIT -- both plugs leave the board and drop into the body here ──────────
 # REQUIREMENT (user): get the USB-C and the 6-way XH down into the instrument WITHOUT any
@@ -3636,7 +3630,7 @@ if OPTICAL_REV != 1:
     # from the -Y rail's wall (motor_bank.RAIL_INNER_Y + MIN_WALL_2P) up to J1's notch,
     # under the board's -Y band: the USB plug hangs in the notch, and J2's pair turns down
     # over the board's -Y edge into the band between that edge and the wall.
-    from . import motor_bank as _MB_R2
+    from . import deck_layout as _MB_R2
     CONDUIT_Y0 = _MB_R2.RAIL_INNER_Y + D.MIN_WALL_2P
     CONDUIT_Y1 = usb_notch()[3]
     CONDUIT_D = CONDUIT_Y1 - CONDUIT_Y0
@@ -3649,167 +3643,6 @@ assert CONDUIT_Y0 >= _WALL_Y - 1e-9, (
 RUN_Z      = DECK_TOP - 16.0                                  # harness plane in the box
 
 
-def opt_cables(which: str = "usb") -> cq.Workplane:
-    """The USB lead with its plugs, at true size -- an assembly aid, not a part -- or the
-    line the 24 V pair is planned along.
-
-    `which` is "metal" (the plugs' two tongues, seated in J1 and J4), "usb" (J1's down-angle plug, its ribbon, and J4's plug at the brain board:
-    one bought lead, drawn black as it is) or "pwr_path" (the centre line of J2's pair as
-    a list of points; its two conductors are wiring.optical_feed's, and its crimp housing
-    is the one the board's export seats in the header).
-
-    Modelled so the route can be planned rather than assumed: both go down opt_cable_hole's
-    shaft into the board recess and out of its open -X side to the brain board."""
-    # slim shielded USB-2 (BOM wire table); and the ENVELOPE the 24 V lead is planned in.
-    # That lead is two conductors side by side at the connector's own pitch, 3.8 across
-    # (wiring.optical_feed); it was drawn as one O4.0 solid, "6x 26 AWG", from when the
-    # link had six ways, and every clearance on its route was set against that.
-    if which == "metal":
-        from .electronics import op_mouth, op_top
-        from .board_geom import HEIGHT as _H, footprint as _fp, fp_name as _fpn
-        p1, x4, top4 = part("J1"), op_mouth("J4")[0], op_top("J4")
-        zc4 = top4[2] - _H[_fpn(_fp("output_panel", "J4")["fpid"])] / 2.0
-        tip = (box_at(USBC_TONGUE_W, USBC_MATE_L, USBC_TONGUE_T, x=p1["x"],
-                      y=usb_face_y() + USBC_MATE_L / 2.0, z=PCB_TOP + PKG[p1["pkg"]][2] / 2)
-               .edges("|Y").fillet(USBC_TONGUE_T / 2.0 - 0.01))
-        return tip.union(box_at(USBC_MATE_L, USBC_TONGUE_W, USBC_TONGUE_T,
-                                x=x4 + USBC_MATE_L / 2.0, y=top4[1], z=zc4)
-                         .edges("|X").fillet(USBC_TONGUE_T / 2.0 - 0.01))
-    USB_OD, XH_OD = 2.6, 4.0
-    out = None
-
-    def add(s):
-        nonlocal out
-        out = s if out is None else out.union(s)
-
-    _WANT = {"usb": ("J1",), "pwr_path": ("J2",)}[which]
-    _yturn, _path, _od = {}, {}, {}
-    # ⚠ THE 24 V PAIR TURNS DOWN RIGHT BEHIND ITS OWN PLUG (user, 2026-10-07). An XH plug
-    # is a crimped housing with loose wires, so the pair needs no run at plug height at
-    # all; it used to cross 20 mm sideways there to a column at the conduit's middle,
-    # from when the USB lead had a column beside it. The conduit is open behind J2.
-    # (PWR_COL_DX: it steps 7.5 mm +X as it turns. That is for the MODEL, not the
-    # wires -- cadkit's bundle carries the pair's flat round each corner without twisting
-    # it, and without one sideways leg it arrives at J9 a quarter turn out.)
-    for ref, w, h, od in (("J1", _USBC_W, _USBC_H, USB_OD),
-                          ("J2", _XH4_W, _XH4_D, XH_OD)):
-        if ref not in _WANT:
-            continue
-        p, plen = part(ref), PLUG_L[ref]
-        zc = PCB_TOP + PKG[p["pkg"]][2] / 2                   # cable/plug centre height
-        if ref == "J1":
-            # the DOWN-ANGLE plug: overmould and boot here, its ribbon with J4's below
-            yd = usb_face_y() - USBC_ANG_D / 2.0
-            # as the part looks (the seller's photo): a moulded block with its edges eased,
-            # and a relief of USBC_RIBS ribs -- both inside the boxes they were drawn as
-            add(box_at(USBC_ANG_W, USBC_ANG_D, USBC_ANG_BODY, x=p["x"], y=yd, z=zc)
-                .edges().chamfer(0.6))
-            zb = zc - USBC_ANG_BODY / 2.0
-            boot = box_at(RIBBON_W, USBC_BOOT_T, USBC_ANG_BOOT, x=p["x"], y=yd,
-                          z=zb - USBC_ANG_BOOT / 2.0)
-            step = USBC_ANG_BOOT / USBC_RIBS
-            for k in range(USBC_RIBS):                    # the gap under each rib, both faces
-                for s in (-1.0, 1.0):
-                    boot = boot.cut(box_at(RIBBON_W + 1.0, 0.6, 0.4 * step, x=p["x"],
-                                           y=yd + s * (USBC_BOOT_T / 2.0 - 0.3 + 0.01),
-                                           z=zb - (k + 0.8) * step))
-            add(boot)
-            continue
-        # (J2's crimp housing is not drawn here: the board's own export seats one in every
-        #  JST header, from the routed footprint. PLUG_L is the room planned behind it.)
-        # TOP ENTRY: the pair leaves the plug UPWARD, PLUG_L (the room planned behind a mated
-        # XH plug, along its mating axis -- now +Z) over the header's base, crosses over the
-        # guard's window to the shaft's -Y wall and drops down it (opt_cable_hole). Y, then
-        # X, then Y again, which brings its flat back along X: side by side against the wall.
-        # (R1's side-entry path is gone with R1 from the model, user 2026-10-30: the R1 board
-        # is a bench stop-gap and goes on the same holes with its leads outside.)
-        nx0, nx1, ny0, ny1 = usb_notch()
-        yc, zt = (ny0 + ny1) / 2.0, PCB_TOP + plen
-        _path[ref] = [(p["x"], p["y"], zt), (p["x"], yc, zt), (PWR_DROP_X, yc, zt),
-                      (PWR_DROP_X, PWR_Y, zt)]
-        _od[ref] = od
-    # ---- and on to the BRAIN BOARD, which is where both cables actually go ----------------
-    # ⚠ THEY USED TO GO TO THE PI, AND ONE OF THEM THROUGH THE RAIL. The USB lead ran the
-    # length of the instrument to the Pi, through the middle of the -Y rail's section
-    # (y -134.83 against a rail at -139.15..-128.75) -- a collision that was PARKED in the
-    # gate's deferred list, which is exactly why nobody saw it. And the 24 V lead stopped at
-    # the bottom of the conduit, connected to nothing (user: "the red one stops short and
-    # doesn't go very far at all"). The USB hub moved onto the brain board: its J4 is "hub
-    # downstream -> the optical board, ~100 mm", and its J9 is "24 V out to the optical pickup
-    # board". Both are a few centimetres from the conduit's foot.
-    from .electronics import op_top, op_mouth
-    if "J2" in _WANT:
-        # 24 V: down the shaft into the endplate's board recess, and onto J9 from above --
-        # J9 is a top-entry XH.
-        xd = PWR_DROP_X
-        j9 = op_top("J9")
-        # J9 stands out in the bay since the power-button work (it was in the recess), inside
-        # the plan of the J7 pair's balancing loop. So the lead leaves the recess under its
-        # roof, RISES once it is clear of the endplate's -X face, and crosses the J7 pair
-        # and the top of its loop from above before it drops onto J9.
-        _path["J2"] += [(xd, PWR_Y, PWR_Z_REC),
-                        (PWR_X_RISE, PWR_Y, PWR_Z_REC), (PWR_X_RISE, PWR_Y, PWR_Z_BAY),
-                        (j9[0], PWR_Y, PWR_Z_BAY), (j9[0], j9[1], PWR_Z_BAY), j9]
-        if which == "pwr_path":
-            return _path["J2"]
-    if "J1" not in _WANT:
-        return out
-    # USB: A FLAT RIBBON, AND A RIBBON ONLY BENDS ONE WAY. It leaves J1's boot going down, flat
-    # in the shaft at the plug's own layer; one 45 degree FOLD in the board recess turns it -X,
-    # standing on edge under the chassis. It runs out into the bay on edge, turns back
-    # toward the brain board, and a second fold lays it flat against J4's plug, which points
-    # UP (pointing down it meets the endplate).
-    #
-    # THE SLACK IS DRAWN. The lead is 300 mm and the two sockets are about 140 mm of
-    # ribbon apart, so the run goes -X past J4 and doubles back: where it turns (xu) is
-    # solved from the lead's length, not chosen. Bends are drawn square.
-    w_, t_ = RIBBON_W, RIBBON_T
-    zr = RIBBON_Z
-    p1 = part("J1")
-    zb1 = (PCB_TOP + PKG[p1["pkg"]][2] / 2) - USBC_ANG_BODY / 2.0 - USBC_ANG_BOOT
-    yd = usb_face_y() - USBC_ANG_D / 2.0                      # the drop's layer
-    yr = yd - t_                                        # the run's: the fold's other side
-    xa, xb = p1["x"] - w_ / 2.0, p1["x"] + w_ / 2.0
-    assert zb1 > zr + w_ / 2.0, "J1's boot ends below the ribbon's fold"
-    add(box_at(w_, t_, zb1 - (zr + w_ / 2.0), x=p1["x"], y=yd, z=(zb1 + zr + w_ / 2.0) / 2.0))
-    add(cq.Workplane("XZ", origin=(0, yd - t_ / 2.0, 0))
-        .polyline([(xa, zr - w_ / 2.0), (xa, zr + w_ / 2.0), (xb, zr + w_ / 2.0)]).close()
-        .extrude(t_, both=True))
-    # J4's own mouth (electronics.op_mouth; the ear's tip is 10 mm short of it)
-    from .board_geom import HEIGHT as _H, footprint as _fp, fp_name as _fpn
-    _BGH = _H[_fpn(_fp("output_panel", "J4")["fpid"])]
-    x4 = op_mouth("J4")[0]
-    y4 = op_top("J4")[1]
-    zc4 = op_top("J4")[2] - _BGH / 2.0                  # the shell's axis, mid-height
-    xd4 = x4 - USBC_ANG_D / 2.0                         # the rise's layer
-    xr4 = xd4 - t_                                      # the run's
-    zb4 = zc4 + USBC_ANG_BODY / 2.0 + USBC_ANG_BOOT
-    add(box_at(USBC_ANG_D, USBC_ANG_W, USBC_ANG_BODY, x=xd4, y=y4, z=zc4))
-    add(box_at(USBC_BOOT_T, w_, USBC_ANG_BOOT, x=xd4, y=y4, z=zb4 - USBC_ANG_BOOT / 2.0))
-    assert zb4 < zr - w_ / 2.0, "J4's boot ends above the ribbon's fold"
-    # ...and it cannot rise straight off the boot: the J7 pair's balancing loop crosses
-    # over J4 (its outside edge is at x -69.85 where the ribbon's -Y edge passes), so the
-    # ribbon lies over -X on top of the boot and rises outside the loop.
-    add(box_at(USB_J4_JOG + t_, w_, t_, x=xd4 - USB_J4_JOG / 2.0, y=y4, z=zb4 + t_ / 2.0))
-    xd4 -= USB_J4_JOG
-    xr4 = xd4 - t_
-    add(box_at(t_, w_, (zr - w_ / 2.0) - zb4, x=xd4, y=y4, z=(zb4 + zr - w_ / 2.0) / 2.0))
-    ya, yb4 = y4 - w_ / 2.0, y4 + w_ / 2.0
-    add(cq.Workplane("YZ", origin=(xd4 - t_ / 2.0, 0, 0))
-        .polyline([(ya, zr - w_ / 2.0), (yb4, zr - w_ / 2.0), (ya, zr + w_ / 2.0)]).close()
-        .extrude(t_, both=True))
-    # the run between the folds, in plan, on edge at zr
-    ybk = yr + USB_BACK_DY
-    free = USB_LEAD_L - 2 * (USBC_ANG_BODY + USBC_ANG_BOOT)
-    fixed = ((zb1 - zr) + w_ / 2.0 + xa + (ybk - yr) + xr4 + (ya - ybk) + w_ / 2.0
-             + (zr - zb4) + USB_J4_JOG)
-    xu = (fixed - free) / 2.0
-    assert xu < xr4 - 3 * t_, "the USB ribbon is too short for this route (xu %.1f)" % xu
-    plan = [(xa, yr), (xu, yr), (xu, ybk), (xr4, ybk), (xr4, ya)]
-    for (ax, ay), (bx, by) in zip(plan, plan[1:]):
-        add(box_at(abs(bx - ax) + t_, abs(by - ay) + t_, w_, x=(ax + bx) / 2.0,
-                   y=(ay + by) / 2.0, z=zr))
-    return out
 
 
 # Where the two optical leads run (see opt_cables).
@@ -4099,7 +3932,6 @@ def _assert_field_clear():
 
 
 _assert_field_clear()
-
 
 # ── HAND GUARD -- the lid over everything that is not under a string ─────────
 # (user, 2026-10-02: "it seems a bit risky having a PCB right near where your hand would

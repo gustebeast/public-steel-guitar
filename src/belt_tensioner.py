@@ -63,7 +63,7 @@ import cadquery as cq
 
 from . import dimensions as D
 from .helpers import box_at, cyl_x
-from cadkit.fasteners import FastenerSpec, headed_screw, seated_insert
+from cadkit.fasteners import headed_screw, seated_insert
 from cadkit.supports import printable_bore
 
 NOZZLE_D = 0.4                    # this part prints 0.4 (GT2 ribs)
@@ -80,21 +80,8 @@ UP_B = (0.0, 1.0, 0.0)            # B on its -y face, building +y
 TIP = 2 * B                       # a teardrop's tip dulled to a two-bead flat: the widest
                                   # flat ceiling allowed, and it keeps B's skin (asserted)
 
-# ── the screw: M3 socket head cap (ISO 4762), the 2.5 mm key ─────────────────────────────
-HEAD_D   = 5.5
-HEAD_H   = 3.0
-SCREW_L  = 12.0
-INS_D    = 4.7            # McMaster 94459A130, brass heat-set M3: OD over the knurl 4.7,
-INS_L    = 4.3            # installed length 4.3 (pilot end 3.9). OFF THE DRAWING -- MEASURE
-                          # one before printing. It is not heat-set here: it drops into a
-                          # side pocket and the screw pulls it against a shoulder.
-INS_SLIP = 0.1            # the pocket over the insert's OD, so a printed slot takes a
-                          # knurled part by hand. It is all the section has to give: the
-                          # skin over and under the pocket is then one bead (asserted).
-M3 = FastenerSpec(
-    name="M3", screw_d=3.0, pitch=0.5, selftap_d=3.2, shaft_clr_d=D.M3_CLR_D,
-    insert_pilot_d=INS_D, insert_depth=INS_L, insert_l=INS_L, insert_bore_d=3.4,
-    boss_prot=5.0)
+# ── the screw: M3 socket head cap (ISO 4762), the 2.5 mm key: src/m3_hardware.py ──────────────
+from .m3_hardware import HEAD_D, HEAD_H, SCREW_L, INS_L, M3  # noqa: E402
 SCR_CLR  = M3.shaft_clr_d                    # 3.4
 
 # ── the section ───────────────────────────────────────────────────────────────────────────
@@ -185,7 +172,7 @@ assert _KEY_RIM >= 45.0, "the key bore's rim is %.1f deg off flat, past 45" % _K
 _KEY_LIG = (SCREW_Y - (KEY_W / 2 / math.cos(math.radians(KEY_FLANK)) - TIP / 2)) - (-HW + FLANGE)
 assert _KEY_LIG >= 2 * B - 1e-6, (
     "the key bore leaves %.2f under the lips' face, under two beads" % _KEY_LIG)
-INS_POCKET = INS_D + INS_SLIP                # 4.8 the pocket's bore and the side slot's height
+from .m3_hardware import INS_POCKET  # noqa: E402  4.8 the pocket's bore and the side slot's height
 assert (BODY_T - INS_POCKET) / 2 >= B * 2 - 1e-9, (
     "the insert's pocket leaves %.2f over and under it, under two beads of %.1f"
     % ((BODY_T - INS_POCKET) / 2, B))
