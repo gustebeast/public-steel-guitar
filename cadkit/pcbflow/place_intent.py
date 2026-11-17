@@ -1441,6 +1441,76 @@ def pour_amps(rule, notes):
     return max(hit) if hit else max([float(p_["amps"]) for p_ in paths if p_["net"] == rule["net"]] or [0.0]) or None
 
 
+PAIR_CLEAR = 0.5    # mm each side of a coupled pair its corridor keeps free (a via's clearance)
+
+
+def pair_corridors(spec, P):
+    """A declared diff pair's hops as corridors: [(polygon, {the hop's two parts}, side,
+    length mm)] -- the straight line between the two parts' pin-pair midpoints, as wide as
+    the coupled pair (2 x width + gap) plus PAIR_CLEAR each side. A hop with a part not
+    placed, or a part carrying neither rail, is skipped."""
+    nets = set(spec.get("nets") or ())
+    w = float(spec.get("width", 0.2))
+    hw = (2.0 * w + float(spec.get("gap", 0.2))) / 2.0 + PAIR_CLEAR
+    chain = list(spec.get("chain") or ())
+
+    def mid(step):
+        pts = []
+        for ref in step.split("|"):
+            if ref not in P.pl or ref not in P.parts:
+                continue
+            pts += [P.pad(ref, q["num"]) for q in P.parts[ref]["pads"] if q.get("net") in nets and q["num"]]
+        return np.mean(pts, axis=0) if pts else None
+
+    out = []
+    for sa, sb in zip(chain, chain[1:]):
+        a, b = mid(sa), mid(sb)
+        if a is None or b is None:
+            continue
+        d = b - a
+        ln = float(np.hypot(*d))
+        if ln < 1e-6:
+            continue
+        n = np.array([-d[1], d[0]]) / ln * hw
+        poly = [a + n, b + n, b - n, a - n]
+        side = "F"
+        r0 = sa.split("|")[0]
+        if r0 in P.parts:
+            side = P.parts[r0].get("side", "F")
+        out.append((poly, set(sa.split("|")) | set(sb.split("|")), side, ln))
+    return out
+
+
+def pair_foreign(spec, P, poly, side, skip=(), refs=None):
+    """[(pad name, mm2 inside)] of the pads of OTHER nets inside a pair corridor on its side
+    (through-hole pads on either), its own hop's parts (`skip`) left out: their escapes are
+    the router's. The pad's area by a 5 x 5 sample grid, as pour_foreign(areas=True)."""
+    from matplotlib.path import Path as _Path
+    nets = set(spec.get("nets") or ())
+    path = _Path(np.asarray(poly, float))
+    pa = np.asarray(poly, float)
+    lo, hi = pa.min(axis=0), pa.max(axis=0)
+    grid = np.array([(a, b) for a in np.linspace(-0.5, 0.5, 5) for b in np.linspace(-0.5, 0.5, 5)])
+    out = []
+    for ref, p in P.parts.items():
+        if ref not in P.pl or ref in skip or (refs is not None and ref not in refs):
+            continue
+        x, y, _ = P.at(ref)
+        rr = float(np.max(np.abs(np.asarray([q["xy"] for q in p["pads"]], float)))) + 3.0 if p["pads"] else 0.0
+        if x < lo[0] - rr or x > hi[0] + rr or y < lo[1] - rr or y > hi[1] + rr:
+            continue
+        for q in p["pads"]:
+            if q.get("net") in nets or not q["num"]:
+                continue
+            if not (q.get("tht") or p.get("side", "F") == side):
+                continue
+            loc = _rot(grid * np.asarray(q["size"], float), float(q.get("rot") or 0.0)) + q["xy"]
+            frac = float(path.contains_points(P.world(ref, loc)).mean())
+            if frac > 0:
+                out.append(("%s.%s" % (ref, q["num"]), frac * float(q["size"][0]) * float(q["size"][1])))
+    return out
+
+
 def pour_foreign(rule, P, poly, refs=None, areas=False):
     """Other nets' pads inside a pour's outline on its layer: ["U4.3", ...].
 

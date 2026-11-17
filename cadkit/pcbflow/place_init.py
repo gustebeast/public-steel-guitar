@@ -1293,6 +1293,10 @@ SEAT_GAP = 1.0      # mm: pin to satellite courtyard when a grown region seats i
 GROW_PAD = 0.5      # mm: a region edge grown for a stranded satellite goes this far past its shortfall
 POUR_W = 25.0       # mm of broken soft rule a pad inside another net's pour corridor is worth (x RULE_W in the pass: 250 mm of net)
 POUR_PAD_MM2 = 1.0  # mm2 of foreign pad inside a pour corridor priced as one pad (PCBFLOW_POUR_AREA)
+PAIR_W = 1.0        # mm of broken soft rule per mm2 of foreign pad in a diff pair's corridor (PCBFLOW_PAIR_CORRIDOR): a step aside, never a rule trade -- at POUR_W, U13 left its hard near-J1 rule by 14.5 mm to clear 5 mm2 of USBA's corridor (mV11)
+PAIR_DEMAND_W = 4.0  # mm of net per mm2 of wiring demand a pair's hop crosses (its corridor width x RUDY along it)
+DEMAND_CELL = 1.0   # mm: the RUDY demand map's cell
+DEMAND_WIRE = 0.4   # mm of board a wire takes (track + clearance) in the demand map
 JOINT_MAX = 4       # parts turned together at most (4^4 = 256 rotation combinations)
 JOINT_NEAR = 3.0    # mm a jointly turned part may slide off its spot to fit its new turn
 RULE_W = 10.0       # mm of wirelength a millimetre of broken soft rule is worth (local pass)
@@ -1454,6 +1458,87 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
                 n += len(pi.pour_foreign(r, P, poly, refs=rs_))
         return POUR_W * n
 
+    # ⚠ A DIFF PAIR NEEDS A CORRIDOR (brain_board mV8 -> lead, 2026-11-17) --
+    # PCBFLOW_PAIR_CORRIDOR=1 while measured. The router could not couple the USB pairs on
+    # mV8's placement: MCU_DP / DM run 64 mm J202 -> U1 through the board's hottest middle,
+    # every coupled lay overlapped 640+ cells of other nets, and making room re-opened 86-89
+    # nets. Placement had priced only the pair's length (wnet x4), never the way it must go.
+    # Each hop of a declared pair is a corridor -- the straight line between its pin pairs,
+    # the coupled pair's width plus PAIR_CLEAR each side -- and another net's pad inside it
+    # costs PAIR_W per mm2, the price of a foreign pad in a pour: a hop's own parts pay for
+    # their whole corridor (they move or turn to clear or shorten it), any other part for
+    # its pads inside one (it steps out of the pair's way).
+    # a board opts in through its own notes ("pair_corridor": true), so it rebuilds from its own
+    # files and no other board changes (lead, 2026-11-17); PCBFLOW_PAIR_CORRIDOR=1 / 0 overrides
+    _pc = os.environ.get("PCBFLOW_PAIR_CORRIDOR")
+    _on = (_pc == "1") if _pc in ("0", "1") else bool((notes or {}).get("pair_corridor"))
+    pairs_c = list((notes or {}).get("diff_pairs") or ()) if _on else []
+    pair_ends = {}
+    for sp in pairs_c:
+        for st in sp.get("chain") or ():
+            for x in st.split("|"):
+                pair_ends.setdefault(x, []).append(sp)
+
+    # ...AND THE WIRING IT MUST CROSS, NOT ONLY PADS (brain_board mV8 probe, 2026-11-17): MCU's
+    # straight corridor held 2.0 mm2 of other pads, yet the router's coupled lays overlapped
+    # 640+ cells -- of other nets' TRACKS. A hop's own parts also pay PAIR_DEMAND_W x its
+    # corridor width x the wiring demand along it: RUDY (each net in scope spreads
+    # DEMAND_WIRE x its half-perimeter evenly over its bounding box), the pairs' own nets left
+    # out, the map rebuilt at the start of every pass. A shorter hop, or one round the
+    # crowd, costs less.
+    pair_nets = {nm for sp in pairs_c for nm in sp.get("nets") or ()}
+    dmap = {}
+
+    def refresh_demand():
+        if not pairs_c:
+            return
+        pts_all = np.array([p for r in pl for _, p in world(r)] or [[0.0, 0.0]])
+        lo = pts_all.min(axis=0) - 2.0
+        hi = pts_all.max(axis=0) + 2.0
+        nx_, ny_ = int(np.ceil((hi[0] - lo[0]) / DEMAND_CELL)), int(np.ceil((hi[1] - lo[1]) / DEMAND_CELL))
+        g = np.zeros((ny_, nx_))
+        for nm in scope - pair_nets:
+            pts = [p for r in members[nm] if r in pl for n2, p in world(r) if n2 == nm]
+            if len(pts) < 2:
+                continue
+            a = np.array(pts)
+            x0, y0 = a.min(axis=0) - 0.5
+            x1, y1 = a.max(axis=0) + 0.5
+            i0, i1 = int((y0 - lo[1]) // DEMAND_CELL), int((y1 - lo[1]) // DEMAND_CELL) + 1
+            j0, j1 = int((x0 - lo[0]) // DEMAND_CELL), int((x1 - lo[0]) // DEMAND_CELL) + 1
+            g[i0:i1, j0:j1] += DEMAND_WIRE * ((x1 - x0) + (y1 - y0)) / ((x1 - x0) * (y1 - y0))
+        dmap["g"], dmap["lo"] = g, lo
+
+    def hop_demand(poly):
+        g, lo = dmap.get("g"), dmap.get("lo")
+        if g is None:
+            return 0.0
+        pa = np.asarray(poly, float)
+        a, b = (pa[0] + pa[3]) / 2.0, (pa[1] + pa[2]) / 2.0
+        w_ = float(np.hypot(*(pa[0] - pa[3])))
+        ln = float(np.hypot(*(b - a)))
+        n = max(2, int(ln / 0.5))
+        s_ = a + np.outer(np.linspace(0.0, 1.0, n), b - a)
+        ii = np.clip(((s_[:, 1] - lo[1]) // DEMAND_CELL).astype(int), 0, g.shape[0] - 1)
+        jj = np.clip(((s_[:, 0] - lo[0]) // DEMAND_CELL).astype(int), 0, g.shape[1] - 1)
+        return w_ * float(g[ii, jj].mean()) * ln
+
+    def pair_pen(ref):
+        """(mm2 of foreign pad in the corridors ref is priced for, mm of net for the demand
+        its own hops cross)."""
+        if not pairs_c:
+            return 0.0, 0.0
+        P = pi.Placed(parts, pl)
+        v, dm = 0.0, 0.0
+        for sp in pairs_c:
+            for poly, hop, side, _ln in pi.pair_corridors(sp, P):
+                if ref in hop:
+                    v += sum(a_ for _, a_ in pi.pair_foreign(sp, P, poly, side, skip=hop))
+                    dm += PAIR_DEMAND_W * hop_demand(poly)
+                else:
+                    v += sum(a_ for _, a_ in pi.pair_foreign(sp, P, poly, side, skip=hop, refs={ref}))
+        return PAIR_W * v, dm
+
     # ⚠ THE TANGLE BREAKS A TIE, IT DOES NOT TRADE (lead, 2026-11-12): a fine-pitch IC's
     # crossing escapes cost TANGLE_W each, inside the cost that ranks AFTER stranding -- so a
     # turn that untangles but strands a satellite still loses. motor_ctrl, power band at 0
@@ -1469,17 +1554,18 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
     # made a part 10x more pour-averse as a side effect. Every part now pays the ruled price
     # (the one C246 showed the pass already weighs rules against).
     def penalty(ref):
+        pp_, pd_ = pair_pen(ref)
         if not rel.get(ref):
-            return RULE_W * pour_pen(ref) + tangle_pen(ref)
+            return RULE_W * (pour_pen(ref) + pp_) + pd_ + tangle_pen(ref)
         P = pi.Placed(parts, pl)
-        v = pour_pen(ref)
+        v = pour_pen(ref) + pp_
         for r in rel[ref]:
             try:
                 for sl, _, _ in pi.check(r, P, notes or {}):
                     v += r.get("weight", 1.0) * max(0.0, -sl)
             except (KeyError, ValueError):
                 pass
-        return RULE_W * v + tangle_pen(ref)
+        return RULE_W * v + pd_ + tangle_pen(ref)
 
     def total():
         return cost(scope)
@@ -1621,10 +1707,12 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
                 out_ |= set(group)
         return out_
 
+    refresh_demand()
     t0 = total()
     moved = set()
     fixed_local = set(pl) - set(refs)
     for _ in range(passes):
+        refresh_demand()
         order = sorted(refs, key=lambda r: -cost({nm for nm, _ in pads[r]} & scope))
         changed = False
         for ref in order:

@@ -130,29 +130,7 @@ PARTS = {}
 #                              be cleared in the housing first (tools/check_sweep).
 
 
-def _chassis_seg(i):
-    """The chassis prints Z-UP, bed at chassis.Z_BOT (the rib/rail bottoms). Built lazily:
-    importing src.build costs minutes, and the leg parts above must not pay it.
-
-    The OPAQUE part AND its transparent light band, unioned: they are one printed object in two
-    filaments, so the band's groove is not a ceiling -- the second filament fills it as the print
-    goes. Checking the opaque half alone reported that groove's roof as a 2159 mm2 bridge."""
-    def build():
-        from src import build as B
-        seg = B.chassis_segments[i]
-        light = B.chassis_light[i]
-        return seg.union(light) if light.solids().size() else seg
-    return build
-
-
-def _register_chassis():
-    from src import chassis as CH
-    for i in range(len(CH.SPLIT_X) + 1):
-        DECLARED_UP[f"chassis_{i}"] = ("src.chassis", "PRINT_UP")
-        BUILDERS[f"chassis_{i}"] = _chassis_seg(i)
-
-
-# â”€â”€ WHICH PARTS GET CHECKED, AND WHERE THE ORIENTATION COMES FROM â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── WHICH PARTS GET CHECKED, AND WHERE THE ORIENTATION COMES FROM ─────────
 # This registry used to hold five parts out of the seventy-one src.build prints, each with a
 # hand-typed bed plane. Two things were wrong with that. The obvious one is coverage: sixty-six
 # printed parts had never been checked for an unsupported ceiling at all. The other is that a
@@ -168,9 +146,6 @@ def _register_chassis():
 # The bed PLANE is derived too: it is the part's own extreme face on the build axis, which is
 # what the five hand-typed constants were each spelling out the long way.
 DECLARED_UP = {
-    "bridge_endplate":   ("src.bridge_endplate", "PRINT_UP"),
-    "keyhead_endplate":  ("src.keyhead_endplate", "PRINT_UP"),
-    "seam_bridge":       ("src.seam_bridge", "PRINT_UP"),
     "adjust_sleeve":     ("src.leg_stack", "SLEEVE_UP"),
     "fixed_sleeve":      ("src.leg_stack", "SLEEVE_UP"),
     "body_adapter":      ("src.leg_stack", "ADAPTER_UP"),
@@ -179,13 +154,11 @@ DECLARED_UP = {
     "leg_latch_slider":  ("src.leg_stack", "SLIDER_UP"),
     "bar_latch_frame":   ("src.leg_stack", "BAR_FRAME_UP"),
     "bar_latch_collar":  ("src.leg_stack", "BAR_COLLAR_UP"),
-    "pickup_zplate":     ("src.top_plate", "ZPL_UP"),
     "pedal_bar_a":       ("src.pedal_bar", "BAR_UP"),
     "pedal_bar_b":       ("src.pedal_bar", "BAR_UP"),
     "pedal_bar_c":       ("src.pedal_bar", "BAR_UP"),
     "knee_housing":      ("src.knee_lever", "PRINT_UP"),
     "knee_housing_r":    ("src.knee_lever", "PRINT_UP"),
-    "rod_plug":          ("src.bridge_endplate", "ROD_PLUG_UP"),
     "kv_housing":        ("src.knee_lever_vert", "PRINT_UP"),
     # ...the rest of the lever family, which does NOT share the housing's +Z: the arms
     # lie on a face and build along the axle, and each is its own module's declaration
@@ -198,9 +171,6 @@ DECLARED_UP = {
     "kl_spacer_sprung":  ("src.knee_lever", "SPACER_UP"),
     "kl_spacer_sprung_n": ("src.knee_lever", "SPACER_UP"),
     "kl_axle_sprung":    ("src.knee_lever", "AXLE_UP"),
-    "nut_slide_insert": ("src.nut_block", "INSERT_UP"),
-    "belt_tensioner_half_a": ("src.belt_tensioner", "HALF_A_UP"),
-    "belt_tensioner_half_b": ("src.belt_tensioner", "HALF_B_UP"),
     "kl_pcb_shim":       ("src.knee_lever", "SHIM_UP"),
     "kv_pcb_shim":       ("src.knee_lever_vert", "SHIM_UP"),
     "pedal_pcb_shim":    ("src.knee_lever", "SHIM_UP"),
@@ -209,10 +179,6 @@ DECLARED_UP = {
     "cart_piston":       ("src.knee_lever", "PISTON_UP"),
     "pedal_lid_a":       ("src.pedal_bar", "LID_UP"),
     "pedal_lid_b":       ("src.pedal_bar", "LID_UP"),
-    "motor_pulley":      ("src.components", "MOTOR_PULLEY_UP"),
-    "screw_pulley_hi":   ("src.components", "SCREW_PULLEY_UP"),
-    "screw_pulley_lo":   ("src.components", "SCREW_PULLEY_UP"),
-    "tension_fork":      ("src.tension_fork", "PRINT_UP"),
     "coil_mandrel":      ("src.coil_mandrel", "MANDREL_UP"),
     "coil_mandrel_sleeve": ("src.coil_mandrel", "SLEEVE_UP"),
     "lever_prog_jig":    ("src.lever_jig", "JIG_UP"),
@@ -223,14 +189,6 @@ DECLARED_UP = {
     "ui_knob":           ("src.ui_panel", "KNOB_UP"),
     "ui_pwr_cap":        ("src.ui_panel", "PWR_CAP_UP"),
     "ui_clamp":          ("src.ui_panel", "CLAMP_UP"),
-    # the print-fit coupons, which declare an orientation for the same reason the parts
-    # they stand in for do -- a coupon printed the other way up is not the same test
-    "test_section_tenon":   ("src.joint_coupon", "PRINT_UP"),
-    "test_section_mortise": ("src.joint_coupon", "PRINT_UP"),
-    "test_cover_seat":      ("src.joint_coupon", "COVER_UP"),
-    "test_cover_plate":     ("src.joint_coupon", "COVER_UP"),
-    "test_belt_tensioner":  ("src.belt_tensioner", "COUPON_UP"),
-    "test_motor_bay":       ("src.motor_bank", "COUPON_UP"),
 }
 # THE OTHER THREE BODY ADAPTERS ARE THE SAME DIRECTION, and the note that used to stand
 # here saying otherwise was simply wrong: leg_stack poses the corner variants by a PURE
@@ -239,20 +197,6 @@ DECLARED_UP = {
 # there is nothing to transform and nothing to hand-type.
 for _c in ("mx_my", "px_my", "px_py"):
     DECLARED_UP[f"body_adapter_{_c}"] = ("src.leg_stack", "ADAPTER_UP")
-# The deck panels print deck-DOWN on the one declaration -- each as ONE OBJECT with its colour
-# layer, so that is the unit checked, exactly as a chassis segment is checked with its light band
-# (see _chassis_seg, which learned this the same way). Checking a BASE alone is not a stricter
-# test, it is a wrong one: the MID panel's base has 4056 mm2 of embossed fret line standing
-# 1.6 proud of a 39350 mm2 deck, so on its own it reads as resting on the fret lines with the
-# whole field bridging -- 95 mm of it. The colour layer is what fills that 1.6, and the two go
-# on the bed as a single printed object. (Named by role, not by index: the panel count and the
-# numbering both move when a pickup slot is handed to the mid panel, and they just did.)
-# ⚠ COUNTED FROM top_plate, NOT TYPED. This was `range(6)` plus three "spare_N" names, and
-# the spares are gone while the segments went 6 -> 5 -- so a hand-typed list would have
-# declared two panels that do not exist and, the next time the count grows, left one
-# undeclared with nothing but the coverage line to notice.
-for _i in range(len(__import__("src.top_plate", fromlist=["e"]).segments)):
-    DECLARED_UP[f"top_plate_{_i}"] = ("src.top_plate", "PIECE_UP")
 # STILL UNDECLARED, and deliberately so -- a guess here makes the whole report meaningless,
 # which is worse than a gap the coverage line names every run:
 #   cart_piston       nothing states it, it takes no print_up, and its half-cylinder
@@ -288,17 +232,17 @@ def _axis_side(up, tol=1e-6):
     return ax, (-1 if comps[ax] > 0 else +1)
 
 
-# parts that are printed as ONE OBJECT with another part, and so must be checked fused to it
-FUSED_WITH = {f"top_plate_{i}": f"top_plate_{i}_color"
-              for i in list(range(6)) + ["spare_0", "spare_1", "spare_2"]}
-FUSED_WITH.update({f"chassis_{i}": f"chassis_{i}_light" for i in range(3)})
-# ...and the OTHER half of each of those pairs is therefore checked, as part of the object
-# it prints with. It needs no declaration of its own and reporting it as an unchecked gap
-# is just wrong: a colour layer has no independent print orientation, and neither has a
-# light band. Fifteen of the forty-one "never declared" parts were these halves and the
-# chassis segments (which were registered by hand, so they were checked AND reported
-# missing). A coverage line only means something if it counts the same way the run does.
-FUSED_INTO = {v: k for k, v in FUSED_WITH.items()}
+# PARTS PRINTED AS ONE OBJECT WITH ANOTHER (two filaments, one file) are checked fused to it:
+# a colour layer has no print orientation of its own, and checked alone its groove's roof
+# reads as a bridge. Read from src.build.PRINTS_WITH (body -> the part it prints INTO), never
+# typed here: a hand list of them went stale twice. Empty at the moment.
+def _prints_with():
+    from src import build as B
+    return dict(B.PRINTS_WITH)
+
+
+FUSED_INTO = _prints_with()                       # body -> host
+FUSED_WITH = {host: body for body, host in FUSED_INTO.items()}
 
 # builders for parts whose geometry is not simply src.build's PARTS entry
 BUILDERS = {}
@@ -321,7 +265,6 @@ def _src_part(name):
 
 def _register_declared():
     # EVERY declared part, diagonal or not: the checker works off the build VECTOR.
-    _register_chassis()
     for nm in DECLARED_UP:
         build = BUILDERS.get(nm) or _src_part(nm)
         PARTS[nm] = (build, _unit(_up_of(nm)), None)   # None bed = derive from the part

@@ -736,25 +736,23 @@ def pedal_bar_context():
     """The REAL pedal bar, hanging off the adjust tenon.
 
     NOT a stand-in: this is the actual src.pedal_bar geometry -- the same fused
-    pieces the printer gets, via build._PB_bar -- so the joint is read against
+    pieces the printer gets, via foot_pedal.bar_piece -- so the joint is read against
     real walls rather than a box.
 
-    The bar is modelled with z0 at its plate bottom and normally lands in the
-    instrument via build.PEDAL_LIFT_DZ, which is keyed to the OLD leg stack and
-    knows nothing about this chain. Here it is placed the other way round: the
+    The bar is modelled with z0 at its plate bottom. Here it is placed by the leg: the
     bar's mortise MOUTH (pedal_bar.TOWER_TOP) goes on Z_BAR_MOUTH, so moving the
     height setting MOVES THE BAR, as it must. The tenon then runs ENGAGE past the
     mouth and bottoms on the mortise's blind floor -- the fixed, repeatable
     install stop for this joint (user: the height adjusts at the OTHER end of
     this tenon, not here).
     """
-    from . import build as BUILD
+    from . import foot_pedal as FP
     from . import pedal_bar as PB
 
     parts = []
     for n, wp in PB.assembly_parts():
         if n in PB.PIECE_SPAN:
-            wp = BUILD._PB_bar(n)       # the fused piece, pedal housings and all
+            wp = FP.bar_piece(n)        # the fused piece, pedal housings and all
         parts.append((n, wp))
     # The pedal MECHANISMS are deliberately not here (user: "we don't need all
     # the pedals and springs"). The housings still are -- they are FUSED INTO the
