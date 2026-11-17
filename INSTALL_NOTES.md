@@ -2216,3 +2216,30 @@ The optical board as ordered (R1) sits under string 6, **turned 180 degrees** fr
 - **Channel D10** (photodiodes PD10A/B) is the one under string 6, 20 mm before the bridge axle, as on the instrument. D10 because it is the channel that puts the board's Ø4.4 mounting hole over the endplate. The board's top is 2.2 under the string; nothing on the board along the string's line is taller than 1.1, so the string clears everything by at least 1.1.
 - **Supports are part of the endplate** (`wb_endplate`): two 45 degree brackets off its -X face, 11 wide, reaching 36 under the board, their tops the board's seat. The endplate prints +X -> -X as before, so the brackets grow straight up off the joint face (their tips cut flat 2.0).
 - **Hardware**: one **M4 x 10 button head** (2.5 mm key) through the board's hole, **self-tapped** into the bracket at y +9.3: no insert, so the board comes off and goes back on with the one screw. The bore is the M4 self-tap size (a teardrop: it is sideways in the endplate's print), 9.4 deep. Don't overtighten it. The board rests on the other bracket; the rest of it overhangs the plank, as intended.
+
+
+## Direct drive: grip threads loosened, three grip turns (2026-11-16)
+
+> Supersedes the grip-thread sizes in "Grip sleeves replace the bent spring ends" (2026-11-12) and the "42 whole coils" in the spring line (2026-11-13).
+
+- **Why:** on the first prints the sleeve would not go on over the coils at all, and the post took the spring only with the wire shaving plastic off it, then barely let go. Both grooves were the wire's own Ø + 0.1, on the wire's centre line, at a 2.6 pitch, which left 0.05 a side.
+- **Pitch 2.6 → 3.6.** The close-wound coils open as they screw on; 3.6 leaves room for a real clearance and still a bead (~0.8) of plastic between turns.
+- **Post (inside the spring):** smaller. Its crests are Ø16.14 (were 16.74) and its groove Ø2.81 (wire + 0.5), 0.05 in from the wire's centre. 0.25 round the wire; it still holds the wire by 0.85.
+- **Sleeve (outside the spring):** bigger. Its bore is Ø17.94 (was 16.94) and its groove Ø3.01 (wire + 0.7), 0.1 out. 0.35 round the wire, more than the post because a printed hole shrinks; it holds the wire by 0.55.
+- **Three grip turns a end, not four.** Four at 3.6 would have made each spring 8 mm longer, and string 1's plug had 5.7 mm too little room. Three at 3.6 (10.8) is about the old four at 2.6 (10.4).
+- **Cut each spring to 40 whole coils** (34 working + 3 a end). One 20" length still makes five.
+- **Reprint** every plug, collar and both sleeves. The ratchet teeth are still drawn on them: they are to be replaced by a screw lock (next).
+
+## Shop tool: guide rod saw jig (2026-11-16)
+
+Cuts each 2 ft length of 3/16" stainless (McMaster 89535K84) into three guide rods of 202.5 mm (`direct_bench.ROD_L`), with the 6927A16 hacksaw blade and one Quick-Grip, no vise. Two printed parts: `tools/guide_rod_saw_jig.step` (217 x 41) and `tools/guide_rod_saw_jig_cap.step`. PETG, both printed as drawn.
+
+Unlike the leadscrew jig it sits wholly on the table: the piece is 202 long, so it lies in a supported V trough out to the end stop, and the clamp holds the piece side.
+
+1. Lay the jig on the table near the edge, so the clamp's lower jaw reaches under it.
+2. Feed the stock in from the -X end, through the short guide block and across the slot, until its end touches the end stop.
+3. Drop the cap into the channel next to the slot, put the clamp's pad in the cap's pocket and the other jaw under the table, and squeeze. The stack is cap, rod, jig, table.
+4. Saw down the slot, holding the long free end of the stock by hand. A blade that runs through cuts the jig's floor, not the table.
+5. Unclamp and lift the piece out of the trough. It comes out 202.5 to 202.8; file the burr square.
+6. File the stock's fresh end square, then feed it in to the stop again for the second piece.
+7. What is left is the third piece, ~202.5 (609.6 less two pieces and two ~1 mm kerfs). Any piece from about 201 to 204.0 fits. If the stock came long and the third is over 204.0, trim it in the jig like the others.

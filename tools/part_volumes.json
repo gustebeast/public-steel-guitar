@@ -111,43 +111,43 @@
   },
   "collar_0": {
    "material": "pctg",
-   "volume_mm3": 4020.4
+   "volume_mm3": 3980.0
   },
   "collar_1": {
    "material": "pctg",
-   "volume_mm3": 4020.4
+   "volume_mm3": 3980.0
   },
   "collar_2": {
    "material": "pctg",
-   "volume_mm3": 4020.4
+   "volume_mm3": 3980.0
   },
   "collar_3": {
    "material": "pctg",
-   "volume_mm3": 4020.4
+   "volume_mm3": 3980.0
   },
   "collar_4": {
    "material": "pctg",
-   "volume_mm3": 4020.4
+   "volume_mm3": 3980.0
   },
   "collar_5": {
    "material": "pctg",
-   "volume_mm3": 4020.4
+   "volume_mm3": 3980.0
   },
   "collar_6": {
    "material": "pctg",
-   "volume_mm3": 4020.4
+   "volume_mm3": 3980.0
   },
   "collar_7": {
    "material": "pctg",
-   "volume_mm3": 4020.4
+   "volume_mm3": 3980.0
   },
   "collar_8": {
    "material": "pctg",
-   "volume_mm3": 4020.4
+   "volume_mm3": 3980.0
   },
   "collar_9": {
    "material": "pctg",
-   "volume_mm3": 4020.4
+   "volume_mm3": 3980.0
   },
   "collar_a_0": {
    "material": "petg-gf",
@@ -280,6 +280,14 @@
   "fixed_tenon": {
    "material": "petg-gf",
    "volume_mm3": 131898.7
+  },
+  "guide_rod_saw_jig": {
+   "material": null,
+   "volume_mm3": 45696.8
+  },
+  "guide_rod_saw_jig_cap": {
+   "material": null,
+   "volume_mm3": 19587.9
   },
   "housing_0": {
    "material": "petg-gf",
@@ -575,43 +583,43 @@
   },
   "plug_0": {
    "material": "petg-gf",
-   "volume_mm3": 4382.3
+   "volume_mm3": 4065.8
   },
   "plug_1": {
    "material": "petg-gf",
-   "volume_mm3": 4060.9
+   "volume_mm3": 3760.3
   },
   "plug_2": {
    "material": "petg-gf",
-   "volume_mm3": 5330.5
+   "volume_mm3": 5034.7
   },
   "plug_3": {
    "material": "petg-gf",
-   "volume_mm3": 4371.6
+   "volume_mm3": 4078.8
   },
   "plug_4": {
    "material": "petg-gf",
-   "volume_mm3": 6890.6
+   "volume_mm3": 6570.9
   },
   "plug_5": {
    "material": "petg-gf",
-   "volume_mm3": 5345.7
+   "volume_mm3": 5048.9
   },
   "plug_6": {
    "material": "petg-gf",
-   "volume_mm3": 5294.6
+   "volume_mm3": 5001.8
   },
   "plug_7": {
    "material": "petg-gf",
-   "volume_mm3": 4925.4
+   "volume_mm3": 4632.6
   },
   "plug_8": {
    "material": "petg-gf",
-   "volume_mm3": 7166.7
+   "volume_mm3": 6842.6
   },
   "plug_9": {
    "material": "petg-gf",
-   "volume_mm3": 7376.5
+   "volume_mm3": 7052.4
   },
   "ream_jig": {
    "material": null,
@@ -643,83 +651,83 @@
   },
   "sleeve_c_0": {
    "material": "petg-gf",
-   "volume_mm3": 1252.0
+   "volume_mm3": 1071.0
   },
   "sleeve_c_1": {
    "material": "petg-gf",
-   "volume_mm3": 1252.0
+   "volume_mm3": 1071.0
   },
   "sleeve_c_2": {
    "material": "petg-gf",
-   "volume_mm3": 1252.0
+   "volume_mm3": 1071.0
   },
   "sleeve_c_3": {
    "material": "petg-gf",
-   "volume_mm3": 1252.0
+   "volume_mm3": 1071.0
   },
   "sleeve_c_4": {
    "material": "petg-gf",
-   "volume_mm3": 1252.0
+   "volume_mm3": 1071.0
   },
   "sleeve_c_5": {
    "material": "petg-gf",
-   "volume_mm3": 1252.0
+   "volume_mm3": 1071.0
   },
   "sleeve_c_6": {
    "material": "petg-gf",
-   "volume_mm3": 1252.0
+   "volume_mm3": 1071.0
   },
   "sleeve_c_7": {
    "material": "petg-gf",
-   "volume_mm3": 1252.0
+   "volume_mm3": 1071.0
   },
   "sleeve_c_8": {
    "material": "petg-gf",
-   "volume_mm3": 1252.0
+   "volume_mm3": 1071.0
   },
   "sleeve_c_9": {
    "material": "petg-gf",
-   "volume_mm3": 1252.0
+   "volume_mm3": 1071.0
   },
   "sleeve_p_0": {
    "material": "petg-gf",
-   "volume_mm3": 1252.3
+   "volume_mm3": 1071.3
   },
   "sleeve_p_1": {
    "material": "petg-gf",
-   "volume_mm3": 1252.3
+   "volume_mm3": 1071.3
   },
   "sleeve_p_2": {
    "material": "petg-gf",
-   "volume_mm3": 1252.3
+   "volume_mm3": 1071.3
   },
   "sleeve_p_3": {
    "material": "petg-gf",
-   "volume_mm3": 1252.3
+   "volume_mm3": 1071.3
   },
   "sleeve_p_4": {
    "material": "petg-gf",
-   "volume_mm3": 1252.3
+   "volume_mm3": 1071.3
   },
   "sleeve_p_5": {
    "material": "petg-gf",
-   "volume_mm3": 1252.3
+   "volume_mm3": 1071.3
   },
   "sleeve_p_6": {
    "material": "petg-gf",
-   "volume_mm3": 1252.3
+   "volume_mm3": 1071.3
   },
   "sleeve_p_7": {
    "material": "petg-gf",
-   "volume_mm3": 1252.3
+   "volume_mm3": 1071.3
   },
   "sleeve_p_8": {
    "material": "petg-gf",
-   "volume_mm3": 1252.3
+   "volume_mm3": 1071.3
   },
   "sleeve_p_9": {
    "material": "petg-gf",
-   "volume_mm3": 1252.3
+   "volume_mm3": 1071.3
   },
   "tension_fork": {
    "material": "pctg",

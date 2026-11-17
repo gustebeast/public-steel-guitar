@@ -255,22 +255,39 @@ SPRING_F = (67.0, 68.0, 61.0, 66.0, 55.0, 61.0, 61.0, 63.0, 54.0, 53.0)
 # sawtooth DETENT TEETH: they click past as it goes on, and the steep side stands against it
 # coming back off as the plastic relaxes -- steep enough to hold, not so steep a firm twist
 # cannot undo it. So the spring is just cut to SPRING_COILS: no bending, no heating, no tang.
-GRIP_TURNS, GRIP_PITCH = 4, 2.6                     # the end coils in the post's thread: the
-                                                    # close-wound 2.31 opened a little as they go on
-SPRING_COILS = SPRING_ACTIVE + 2 * GRIP_TURNS       # 42: the cut piece, ~97 free
+GRIP_TURNS, GRIP_PITCH = 3, 3.6                     # the end coils in the post's thread: the
+                                                    # close-wound 2.31 opened as they go on (2.6 left
+                                                    # 0.05 a side round the wire: no room for the
+                                                    # clearances below and a bead of land between
+                                                    # turns, user 2026-11-16). Three turns, not four:
+                                                    # 4 x 3.6 left string 1's plug 5.7 short; 3 x 3.6
+                                                    # is about the old 4 x 2.6, and three whole turns
+                                                    # trapped by the sleeve still share the pull
+SPRING_COILS = SPRING_ACTIVE + 2 * GRIP_TURNS       # 40: the cut piece, ~92 free
 SEAT_GRIP = GRIP_TURNS * GRIP_PITCH                 # 10.4 of post under them
 SEAT_L = SEAT_GRIP                                   # no more: the open coils cross past it
 SLEEVE_WALL = 2 * D.BEAD                            # the grip sleeve's wall past the spring
 SLEEVE_OD = SPRING_OD + 0.2 + 2 * SLEEVE_WALL        # 22.45
-SLEEVE_CLR = 0.1                                     # its bore off the post's crests
+# THE THREADS' FIT (user, 2026-11-16, first prints: the sleeve would not go on at all; the post
+# took the spring only with the wire shaving it, and it barely came back off). Both were the
+# wire's own Ø + 0.1 on the wire's centre line. Now each has its own groove, sized as the
+# printed fits we have measured go: a groove is a small HOLE round the wire, and printed holes
+# come out small, the smaller the more (Polymaker: snug on a 1/4 in shank at +0.85). The SLEEVE's
+# is the hole proper (inside a bore): Ø wire + 0.7, its centre 0.1 out. The POST's is cut in the
+# outside of a boss, which prints fat rather than shrinking: Ø wire + 0.5, its centre 0.05 in,
+# and the post's crests come in 0.3 off the wire's centre. Each keeps a land between turns
+# (GRIP_PITCH less the groove's width there) and holds the wire by over half a millimetre.
+SLEEVE_GROOVE = (SPRING_WIRE + 0.7, 0.1)             # Ø, its centre off R_COIL (+ out)
+POST_GROOVE = (SPRING_WIRE + 0.5, -0.05)
+SLEEVE_CLR = 0.6                                     # the sleeve's bore off the wire's centre line
+POST_IN = 0.3                                        # the post's crests in off it
 STOP_D, STOP_T = SLEEVE_OD, 2.0                      # the STOP FLANGE each spring end butts against:
                                                      # as wide as the sleeve, for the teeth's ring
 DET_N, DET_H, DET_BACK = 24, 0.6, 60.0               # the detent: teeth, height, the steep side's
 DET_R0 = SPRING_OD / 2 + 0.25                        # slope (deg); its ring from just past the wire
 SLEEVE_KEY = 2.7                                     # the 2.5 key's cross-hole
 R_COIL = (SPRING_OD - SPRING_WIRE) / 2              # 8.37: the wire's centre
-SEAT_D = 2 * R_COIL                                 # the post: its thread's crests at the wire's centre
-GROOVE_D = SPRING_WIRE + 0.1                         # under GRIP_PITCH: turns stay apart
+SEAT_D = 2 * (R_COIL - POST_IN)                     # the post: its thread's crests
 PLUG_GAP = 4.5                                      # the plug's flange off the plate: with the
                                                     # flange the ears' 6.5 (an M4 insert's 5 and
                                                     # the bolt's tip past it)
@@ -879,16 +896,18 @@ def _cap(kind: str, length: float, top, shank_dir) -> cq.Workplane:
 COILS = True                                        # (unused since the screw and spring are mesh-only parts, 2026-11-15)
 
 
-def _helix(z0: float, pitch: float, h: float, d: float) -> cq.Workplane:
-    """A wire of diameter d round R_COIL from local z0 for h, starting at angle 0 (local +x), in
-    the SPRING'S FRAME: local z along the screw (-> world +X), placed by _in_spring."""
-    hx = cq.Wire.makeHelix(pitch=pitch, height=h, radius=R_COIL)
-    return (cq.Workplane("XZ").center(R_COIL, 0).circle(d / 2)
+def _helix(z0: float, pitch: float, h: float, d: float, r: float = R_COIL) -> cq.Workplane:
+    """A wire of diameter d round radius r (the wire's, R_COIL) from local z0 for h, starting at
+    angle 0 (local +x), in the SPRING'S FRAME: local z along the screw (-> world +X), placed by
+    _in_spring."""
+    hx = cq.Wire.makeHelix(pitch=pitch, height=h, radius=r)
+    return (cq.Workplane("XZ").center(r, 0).circle(d / 2)
             .sweep(cq.Workplane("XY").add(hx), isFrenet=True).translate((0, 0, z0)))
 
 
-def _groove(body: cq.Workplane, z0: float) -> cq.Workplane:
-    """`body` with the grip coils' groove cut: the helix of _helix from z0, SEAT_L long, Ø GROOVE_D.
+def _groove(body: cq.Workplane, z0: float, groove) -> cq.Workplane:
+    """`body` with the grip coils' groove cut: the helix of _helix from z0, SEAT_L long; `groove`
+    (Ø, centre off R_COIL): SLEEVE_GROOVE or POST_GROOVE.
     ⚠ ONE TURN AT A TIME, AND CHECKED. As one SEAT_L sweep, OCCT's cut found no overlap with the
     sleeve or the post and handed the part back whole -- plug_5 and sleeve_p_5 went out with no
     groove at all, nothing said (user, 2026-11-16). It failed or not by where the part's far end
@@ -900,7 +919,8 @@ def _groove(body: cq.Workplane, z0: float) -> cq.Workplane:
     assert abs(n * GRIP_PITCH - SEAT_L) < 1e-6, "the grip groove is whole turns"
     out = body
     for k in range(n):
-        out = out.cut(_helix(z0 + k * GRIP_PITCH, GRIP_PITCH, GRIP_PITCH, GROOVE_D), clean=False, tol=1e-3)
+        out = out.cut(_helix(z0 + k * GRIP_PITCH, GRIP_PITCH, GRIP_PITCH, groove[0], R_COIL + groove[1]),
+                      clean=False, tol=1e-3)
     before, after = body.val().Volume(), out.val().Volume()
     assert after < before - 1.0, "the grip groove cut nothing (%.2f -> %.2f mm3)" % (before, after)
     return out
@@ -957,7 +977,7 @@ def _post(i: int, x0: float, z0: float, bore: float) -> cq.Workplane:
     hi = SPRING_WIRE / 2 if z0 > 0 else -GRIP_PITCH / 2
     post = cq.Workplane("XY").add(cq.Solid.makeCylinder(SEAT_D / 2, SEAT_L - lo + hi,
                                                         cq.Vector(0, 0, z0 + lo)))
-    post = _groove(post, z0)
+    post = _groove(post, z0, POST_GROOVE)
     post = post.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(bore / 2, SEAT_L - lo + hi + 2,
                                                                  cq.Vector(0, 0, z0 + lo - 1))))
     return _in_spring(post, i, x0)
@@ -998,7 +1018,7 @@ def _sleeve_local(zf: float, s: int, z_far: float, z0: float, tighten: int,
     body = _ring(ri, ro, zf + s * DET_H, z_far)
     band = _ring(DET_R0, ro, zf, zf + s * DET_H).cut(_teeth(zf, s, tighten))
     body = body.union(band)
-    body = _groove(body, z0)
+    body = _groove(body, z0, SLEEVE_GROOVE)
     zk = (zf + z_far) / 2                                    # the key's cross-hole, through
     if up is not None:                                       # (a teardrop, peaked up the print)
         from cadkit.holes import teardrop_hole
