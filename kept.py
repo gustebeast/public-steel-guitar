@@ -113,11 +113,61 @@ def store() -> pathlib.Path:
     return pathlib.Path(d) if d else pathlib.Path.home() / ".cadkit" / "kept"
 
 
+def _git_top(d):
+    """The nearest folder at or above `d` holding a .git (a repo or a worktree), or None."""
+    d = pathlib.Path(d).resolve()
+    for p in (d, *d.parents):
+        if (p / ".git").exists():
+            return p
+    return None
+
+
 @functools.lru_cache(maxsize=None)
-def _project_root():
-    """The project this cadkit is vendored into (its parent), or cadkit's own repo."""
+def _project_roots():
+    """Every root whose code is keyed BY CONTENT: the project this cadkit is vendored into
+    (its parent) or cadkit's own repo, AND the repo the process runs from (the cwd's).
+
+    The second matters when the canonical ../cadkit is imported ahead of a worktree's
+    vendored copy: the first root is then the cadkit repo, and before 2026-11-17 the
+    worktree's own src.* functions fell outside it and were keyed 'libfn:<name>' -- by
+    NAME only, so editing them changed nothing and stale geometry came back with every
+    gate green (branner: plugs ~1600 mm3 short)."""
     pkg = pathlib.Path(__file__).resolve().parent
-    return pkg if (pkg / ".git").exists() else pkg.parent
+    roots = [pkg if (pkg / ".git").exists() else pkg.parent]
+    try:
+        top = _git_top(os.getcwd())
+    except OSError:
+        top = None
+    if top is not None and top not in roots:
+        roots.append(top)
+    return tuple(roots)
+
+
+def _project_root():
+    return _project_roots()[0]
+
+
+@functools.lru_cache(maxsize=None)
+def _lib_dirs():
+    """Where installed (not project) code lives: the interpreter's own folders."""
+    import sysconfig
+    out = {pathlib.Path(p).resolve() for p in (sys.prefix, sys.base_prefix, sys.exec_prefix)}
+    for k in ("stdlib", "platstdlib", "purelib", "platlib"):
+        try:
+            out.add(pathlib.Path(sysconfig.get_paths()[k]).resolve())
+        except (KeyError, OSError):
+            pass
+    return tuple(out)
+
+
+def _under(p, roots):
+    for r in roots:
+        try:
+            p.relative_to(r)
+            return True
+        except ValueError:
+            pass
+    return False
 
 
 @functools.lru_cache(maxsize=4096)
@@ -125,11 +175,27 @@ def _in_project(f) -> bool:
     """A real file under the project (not "<string>", which resolves against the cwd)."""
     if not f or str(f).startswith("<") or not os.path.isabs(str(f)):
         return False
-    try:
-        pathlib.Path(f).resolve().relative_to(_project_root())
-    except ValueError:
+    if "site-packages" in str(f):
         return False
-    return "site-packages" not in str(f)
+    return _under(pathlib.Path(f).resolve(), _project_roots())
+
+
+_WARNED = set()
+
+
+def _warn_name_keyed(f, filename):
+    """A .py that is neither project code nor installed code is about to be keyed by name
+    only: say so once, since an edit to it will NOT invalidate what it built."""
+    if not filename or str(filename).startswith("<") or not os.path.isabs(str(filename)):
+        return
+    p = pathlib.Path(filename).resolve()
+    if "site-packages" in str(p) or _under(p, _lib_dirs()) or p in _WARNED:
+        return
+    _WARNED.add(p)
+    print("cadkit.kept: WARNING %s is outside the project (%s) and outside the Python install, "
+          "so its functions are keyed by NAME only and edits to it will not invalidate kept "
+          "results. Run from the project root with its vendored cadkit." % (p, ", ".join(map(str, _project_roots()))),
+          file=sys.stderr, flush=True)
 
 
 # ── module source closures (for a module used WHOLE) ───────────────────────────────
@@ -372,6 +438,7 @@ class _Namer:
     def function(self, f: types.FunctionType) -> str:
         mod = sys.modules.get(f.__module__)
         if not _in_project(f.__code__.co_filename):
+            _warn_name_keyed(f, f.__code__.co_filename)
             return "libfn:%s.%s" % (f.__module__, f.__qualname__)
         if id(f) in self.stack:
             return "fn-rec:" + f.__qualname__
