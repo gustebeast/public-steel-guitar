@@ -126,6 +126,38 @@ def merge_refs(board, nets):
     return out
 
 
+def _copper_order(board):
+    """The board's copper layers top to bottom, as layer ids."""
+    ids = [pcbnew.F_Cu] + [getattr(pcbnew, "In%d_Cu" % i) for i in range(1, 31)] + [pcbnew.B_Cu]
+    return [L for L in ids if board.IsLayerEnabled(L)]
+
+
+def _ref_switch_vias(board, net, ground=("GND", "AGND")):
+    """[(x mm, y mm, (layer names)), ...]: the vias on `net` where its copper changes between
+    layers that share no reference -- a layer's reference is the copper next to it in the
+    stack (F.Cu: In1; In2: In1 and B.Cu; B.Cu: In2 on a 4-layer board) -- so the return
+    current must jump planes there."""
+    order = _copper_order(board)
+    ref = {L: {order[i - 1] for i in [k] if i > 0} | {order[i + 1] for i in [k] if i + 1 < len(order)}
+           for k, L in enumerate(order)}
+    out = []
+    tracks = [t for t in board.GetTracks() if t.GetNetname() == net and t.GetClass() != "PCB_VIA"]
+    for v in board.GetTracks():
+        if v.GetClass() != "PCB_VIA" or v.GetNetname() != net:
+            continue
+        c = v.GetPosition()
+        r = v.GetWidth(pcbnew.F_Cu) / 2 if hasattr(v, "GetWidth") else 0
+        lay = set()
+        for t in tracks:
+            for p in (t.GetStart(), t.GetEnd()):
+                if (p - c).EuclideanNorm() <= r + 1:
+                    lay.add(t.GetLayer())
+        lay = sorted(lay)
+        if len(lay) >= 2 and any(not (ref[a] & ref[b]) for i, a in enumerate(lay) for b in lay[i + 1:]):
+            out.append((pcbnew.ToMM(c.x), pcbnew.ToMM(c.y), tuple(board.GetLayerName(L) for L in lay)))
+    return out
+
+
 def check(stem):
     board = pcbnew.LoadBoard(stem + ".kicad_pcb")
     notes = json.load(open(stem + ".board.json", encoding="utf-8"))
@@ -196,6 +228,30 @@ def check(stem):
                           "high-speed net is an impedance discontinuity"
                           % (g["name"], n, lens[n][2], g["max_vias"]))
                     bad += 1
+        # ⚠ A PAIR'S RAILS CHANGE LAYER TOGETHER (lead, 2026-11-17, brain_board max_vias 2 -> 4):
+        # a looser budget on a long USB pair holds only if each discontinuity is the same on
+        # both rails -- equal_vias: both rails carry the same count.
+        if g.get("equal_vias"):
+            cnt = {n: lens[n][2] for n in nets}
+            if len(set(cnt.values())) > 1:
+                print("FAIL %-10s the rails carry different via counts (%s) -- a pair changes "
+                      "layer as a pair" % (g["name"], ", ".join("%s %d" % kv for kv in cnt.items())))
+                bad += 1
+        # ...and where a layer change switches reference plane, the return current needs a way
+        # across: return_via_mm -- a GND via within that distance of every such via.
+        if g.get("return_via_mm"):
+            rad = float(g["return_via_mm"])
+            gv = [(pcbnew.ToMM(v.GetPosition().x), pcbnew.ToMM(v.GetPosition().y))
+                  for v in board.GetTracks() if v.GetClass() == "PCB_VIA"
+                  and v.GetNetname() in g.get("return_nets", ("GND", "AGND"))]
+            for n in nets:
+                for (x, y, lay) in _ref_switch_vias(board, n):
+                    d = min((((x - a) ** 2 + (y - b) ** 2) ** 0.5 for a, b in gv), default=1e9)
+                    if d > rad:
+                        print("FAIL %-10s %s changes %s at (%.2f, %.2f) with no GND via within %.1f mm "
+                              "(nearest %.2f) -- the return current has no way across"
+                              % (g["name"], n, "/".join(lay), x, y, rad, d))
+                        bad += 1
     print("\n%s: %d group(s) checked, %d problem(s)"
           % (os.path.basename(stem), len(groups), bad))
     return 1 if bad else 0
