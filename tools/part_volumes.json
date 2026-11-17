@@ -111,43 +111,43 @@
   },
   "collar_0": {
    "material": "pctg",
-   "volume_mm3": 4020.3
+   "volume_mm3": 4020.4
   },
   "collar_1": {
    "material": "pctg",
-   "volume_mm3": 4020.3
+   "volume_mm3": 4020.4
   },
   "collar_2": {
    "material": "pctg",
-   "volume_mm3": 4020.3
+   "volume_mm3": 4020.4
   },
   "collar_3": {
    "material": "pctg",
-   "volume_mm3": 4020.3
+   "volume_mm3": 4020.4
   },
   "collar_4": {
    "material": "pctg",
-   "volume_mm3": 4020.3
+   "volume_mm3": 4020.4
   },
   "collar_5": {
    "material": "pctg",
-   "volume_mm3": 4020.3
+   "volume_mm3": 4020.4
   },
   "collar_6": {
    "material": "pctg",
-   "volume_mm3": 4020.3
+   "volume_mm3": 4020.4
   },
   "collar_7": {
    "material": "pctg",
-   "volume_mm3": 4020.3
+   "volume_mm3": 4020.4
   },
   "collar_8": {
    "material": "pctg",
-   "volume_mm3": 4020.3
+   "volume_mm3": 4020.4
   },
   "collar_9": {
    "material": "pctg",
-   "volume_mm3": 4020.3
+   "volume_mm3": 4020.4
   },
   "collar_a_0": {
    "material": "petg-gf",
@@ -575,43 +575,43 @@
   },
   "plug_0": {
    "material": "petg-gf",
-   "volume_mm3": 4776.3
+   "volume_mm3": 4382.3
   },
   "plug_1": {
    "material": "petg-gf",
-   "volume_mm3": 4454.9
+   "volume_mm3": 4060.9
   },
   "plug_2": {
    "material": "petg-gf",
-   "volume_mm3": 5724.5
+   "volume_mm3": 5330.5
   },
   "plug_3": {
    "material": "petg-gf",
-   "volume_mm3": 4765.6
+   "volume_mm3": 4371.6
   },
   "plug_4": {
    "material": "petg-gf",
-   "volume_mm3": 7284.6
+   "volume_mm3": 6890.6
   },
   "plug_5": {
    "material": "petg-gf",
-   "volume_mm3": 5739.7
+   "volume_mm3": 5345.7
   },
   "plug_6": {
    "material": "petg-gf",
-   "volume_mm3": 5688.6
+   "volume_mm3": 5294.6
   },
   "plug_7": {
    "material": "petg-gf",
-   "volume_mm3": 5319.4
+   "volume_mm3": 4925.4
   },
   "plug_8": {
    "material": "petg-gf",
-   "volume_mm3": 7560.6
+   "volume_mm3": 7166.7
   },
   "plug_9": {
    "material": "petg-gf",
-   "volume_mm3": 7770.5
+   "volume_mm3": 7376.5
   },
   "ream_jig": {
    "material": null,
@@ -683,43 +683,43 @@
   },
   "sleeve_p_0": {
    "material": "petg-gf",
-   "volume_mm3": 1641.5
+   "volume_mm3": 1252.3
   },
   "sleeve_p_1": {
    "material": "petg-gf",
-   "volume_mm3": 1641.5
+   "volume_mm3": 1252.3
   },
   "sleeve_p_2": {
    "material": "petg-gf",
-   "volume_mm3": 1641.5
+   "volume_mm3": 1252.3
   },
   "sleeve_p_3": {
    "material": "petg-gf",
-   "volume_mm3": 1641.5
+   "volume_mm3": 1252.3
   },
   "sleeve_p_4": {
    "material": "petg-gf",
-   "volume_mm3": 1641.5
+   "volume_mm3": 1252.3
   },
   "sleeve_p_5": {
    "material": "petg-gf",
-   "volume_mm3": 1641.5
+   "volume_mm3": 1252.3
   },
   "sleeve_p_6": {
    "material": "petg-gf",
-   "volume_mm3": 1641.5
+   "volume_mm3": 1252.3
   },
   "sleeve_p_7": {
    "material": "petg-gf",
-   "volume_mm3": 1641.5
+   "volume_mm3": 1252.3
   },
   "sleeve_p_8": {
    "material": "petg-gf",
-   "volume_mm3": 1641.5
+   "volume_mm3": 1252.3
   },
   "sleeve_p_9": {
    "material": "petg-gf",
-   "volume_mm3": 1641.5
+   "volume_mm3": 1252.3
   },
   "tension_fork": {
    "material": "pctg",
