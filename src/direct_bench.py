@@ -291,8 +291,13 @@ SLEEVE_OD = SPRING_OD + 0.2 + 2 * SLEEVE_WALL        # 22.45
 # inside valleys (user, 2026-11-17, bench: at +0.4 "a bit too loose ... the overall diameter could
 # be larger"). The bore and the post's blank only need to lie between
 # the wire's centre line and the cusps (the grooves then cut every bit of them): asserted.
-SLEEVE_GROOVE = (SPRING_WIRE + 0.3, 0.0)             # Ø, its centre off R_COIL (+ out)
-POST_GROOVE = (SPRING_WIRE + 0.2, 0.0)
+SLEEVE_GROOVE = (SPRING_WIRE + 0.35, 0.0)            # Ø, its centre off R_COIL (+ out): the OUTER
+                                                     # thread (user, 2026-11-17: +0.3 a touch tight,
+                                                     # "a bit too much wrist strength")
+POST_GROOVE_C = (SPRING_WIRE + 0.2, 0.0)             # the collar's (PCTG) post: "fits nicely ... a
+                                                     # touch loose ... still feels solid" -- kept
+POST_GROOVE_P = (SPRING_WIRE + 0.3, 0.0)             # the plug's (PETG-GF): halfway between +0.4 ("a
+                                                     # bit too loose") and +0.2 (bound: would not come off)
 CREST_FLAT = 0.05                                    # the blank this far short of the cusps
 
 
@@ -307,51 +312,24 @@ def groove_cusp(g) -> float:
 # radius, and each turn's cutter is its circle CLIPPED there: narrower than a pitch, so no two
 # turns overlap (cadkit/threads.py's rule); the crests are a hair of flat the nozzle rounds anyway.
 SLEEVE_CLR = groove_cusp(SLEEVE_GROOVE) + SLEEVE_GROOVE[1] + CREST_FLAT   # the bore off R_COIL
-POST_IN = groove_cusp(POST_GROOVE) - POST_GROOVE[1] + CREST_FLAT          # the post's blank in off it
+def post_in(g) -> float:
+    """The post's blank in off R_COIL for groove g: CREST_FLAT short of its cusps."""
+    return groove_cusp(g) - g[1] + CREST_FLAT
 # A LEAD-IN at every end the spring's cut end starts its thread at (user, 2026-11-17: the sleeve
 # printed on its far end "hits a wall and can't keep cutting" -- the first layers squashed onto
 # the bed close the groove's mouth): a 45 deg cone from past the wire's outside to the cusps.
 LEAD_PAST = 0.3
 STOP_D, STOP_T = SLEEVE_OD, 2.0                      # the STOP FLANGE each spring end butts against
 R_COIL = (SPRING_OD - SPRING_WIRE) / 2              # 8.37: the wire's centre
-SEAT_D = 2 * (R_COIL - POST_IN)                     # the post: its thread's crests
+SEAT_D = 2 * (R_COIL - post_in(POST_GROOVE_C))     # the posts' widest crests (the collar's)
 PLUG_GAP = 4.5                                      # the plug's flange off the plate: with the
                                                     # flange the ears' 6.5 (an M4 insert's 5 and
                                                     # the bolt's tip past it)
 SCREW_CLR = 10.0                                    # the plug's and collar's holes round the Ø8 screw
-# THE SLEEVES' LOCK (user, 2026-11-16: the ratchet teeth "didn't work, the printer can't
-# reproduce it accurately enough" -- a screw and an insert instead, "a single screw ... for both
-# ends of the spring"). Each sleeve carries a FIN down its length, outside the spring at LOCK_R,
-# and one M3 x LOCK_M3_L goes through it along X into a brass insert (COL_INS) in the part it
-# screws home on. At the PLUG END the insert is in the +X face of one of the plug's own tie
-# bosses (the user's idea): the one that faces most upward (lock_p_ang), its boss carried LOCK_E
-# past the flange so both inserts fit on the shortest plug. At the COLLAR END the collar grows a
-# LOBE at LOCK_C (angle, radius), from its +X face to its flange's: the collars ride their own
-# nuts, so each lobe is in a gap between strings that no neighbour's lobe or rod tab uses at any
-# travel (scratch lockscan/lobe_search.py: one lobe a string fits; string 5 has one place only).
-# The top row (strings 1, 4, 7, 10) runs under the pickup's plate, ~16 over the axis the whole
-# travel: their lobes come in to LOCK_RC, just clear of the sleeve, and off the vertical. The
-# thread brings each sleeve home at the same angle every time, so its fin lands over its insert.
-# Both fins print from the bed: nothing overhangs. Turned with a ball-end 2.5 key from an angle.
-LOCK_R = 16.45                                       # the screw's axis off the string's
-LOCK_E = 3.0                                         # the plug's boss past its stop flange
-LOCK_M3_L = 10.0                                     # M3 x 10 (plug end): 2.85 of the insert's thread
-# THE COLLAR END'S INSERT IS A NUT (user, 2026-11-16: "use one of our longer M3's and use the insert
-# as a nut rather than heat setting it"; "just let them all rest on a face rather than a pocket"):
-# an M3 x LOCK_C_M3_L from the fin's -X end right through the lobe and the collar, into the insert
-# sitting on the collar's +X face. Nothing else is there (the 2026-11-16 probe: 0.5 to anything but
-# its own collar). An M3 x 30, as the yokes' (user: "don't we already stock those?"), its tip
-# LOCK_C_TIP into the nut: the fin starts flush on the collar's flange (no lobe past it here) and
-# runs on past the sleeve's far end to the head, standing up off the sleeve, which prints +X -> -X
-# with its flange end on the bed.
-LOCK_C_M3_L = 30.0
-LOCK_C_TIP = 3.3                                     # of the insert's 4.3
-LOCK_HOLE = 3.7                                      # the fins' and the collar lobe's hole round the M3
-                                                     # (user, 2026-11-17, bench: 3.6 gripped the screw in sleeve_c)
-LOCK_RC = 14.8                                       # the top row's: sleeve + 0.375 + the lobe
-LOCK_C = {0: (2.0, LOCK_RC), 1: (30.0, LOCK_R), 2: (260.0, LOCK_R), 3: (56.0, LOCK_RC),
-          4: (36.0, LOCK_R), 5: (260.0, LOCK_R), 6: (124.0, LOCK_RC), 7: (194.0, LOCK_R),
-          8: (256.0, LOCK_R), 9: (58.0, LOCK_RC)}
+# THE GRIP IS ONE PART WITH ITS PLUG OR COLLAR (user, 2026-11-17): the sleeves and their M3
+# locks are gone. The spring's two ends are one helix in two fixed threads, so it can only turn
+# by walking deeper into one end, and it bottoms there (under half a turn when the collar's
+# holes are aligned to its nut).
 
 
 # THE ANCHOR PLATE (user, 2026-11-09): every spring's pull, about 73 N each and ~730 N in all,
@@ -596,7 +574,6 @@ TIES = {0: (152.0, 282.0, 16.15), 1: (152.0, 350.0, 16.45), 2: (32.0, 302.0, 16.
 # the ears' walls round a tie's hole or insert: 1.2 (user, 2026-11-16: "spots between 1.6 and 0.8
 # will likely print fine"), which is what lets the rings pass their neighbours
 EAR_WALL = 1.2
-LOCK_HW = COL_INS_HOLE / 2 + EAR_WALL               # the lock's fin and lobe: half-width (as the ears)
 
 
 def ear_ang(i: int) -> tuple:
@@ -605,11 +582,6 @@ def ear_ang(i: int) -> tuple:
 
 def ear_r(i: int) -> float:
     return TIES[i][2]
-
-
-def lock_p_ang(i: int) -> float:
-    """The plug end's lock screw: on the tie boss that faces most upward (+Z)."""
-    return max(ear_ang(i), key=lambda a: math.sin(math.radians(a)))
 
 
 def tie_offsets(i: int) -> list:
@@ -885,13 +857,9 @@ def _collar(i: int, t: float) -> cq.Workplane:
     out = cyl_x(STOP_D, pb - f0, f0, y=y, z=z)                                      # solid
     x0, x1 = spring_span(t, i)                                                      # the post:
     out = out.union(_post(i, x0, x1 - x0 - SEAT_GRIP, D.NUT_BOSS_D + 0.4))          # threaded
+    out = out.union(_wall_collar(i, t))                                             # outer wall
     out = out.cut(cyl_x(D.NUT_BOSS_D + 0.4, 60, s0 - 1, y=y, z=z))                  # boss, screw
     out = out.union(_tube_x(13.0, SCREW_CLR, s0, s0 + 3.0, y, z))                   # post's floor
-    # the LOCK's lobe: from the +X face to the flange's, the screw's way right through to the nut
-    # on the +X face (the sleeve's fin meets it at the flange)
-    out = out.union(_lock_lug(i, *LOCK_C[i], f0, pb))
-    dy, dz = at_ang(*LOCK_C[i])
-    out = out.cut(cyl_x(LOCK_HOLE, pb - f0 + 2.0, f0 - 1.0, y=y + dy, z=z + dz))
     # THE INSERTS' POCKETS: up from the +X face (the bed), the insert's length and 0.3, under a
     # 45 deg cone roof -- a hole printed along the build, so round, and no ceiling
     d, h = COL_INS_HOLE, COL_INS[1] + 0.3
@@ -987,7 +955,7 @@ def _groove_turn(z0: float, groove, side: float) -> cq.Workplane:
 
 def _groove(body: cq.Workplane, z0: float, groove, side: float = 0.0) -> cq.Workplane:
     """`body` with the grip coils' groove cut: the helix of _helix from z0, SEAT_L long; `groove`
-    (Ø, centre off R_COIL): SLEEVE_GROOVE or POST_GROOVE.
+    (Ø, centre off R_COIL): SLEEVE_GROOVE or POST_GROOVE_C / _P.
     ⚠ ONE TURN AT A TIME, AND CHECKED. As one SEAT_L sweep, OCCT's cut found no overlap with the
     sleeve or the post and handed the part back whole -- plug_5 and sleeve_p_5 went out with no
     groove at all, nothing said (user, 2026-11-16). It failed or not by where the part's far end
@@ -1051,20 +1019,20 @@ def _spring(i: int, t: float) -> cq.Workplane:
     return with_mesh(proxy, m, affine_of(lambda w: _in_spring(w, i, x0)))
 
 
-def _post(i: int, x0: float, z0: float, bore: float) -> cq.Workplane:
+def _post(i: int, x0: float, z0: float, bore: float, groove=POST_GROOVE_C) -> cq.Workplane:
     """A threaded post SEAT_L long from local z0 (spring frame at x0), its groove matching the
     grip coils (angle 0 at z0, whole turns), bored for what passes through it."""
     # the post reaches its flange at one end, and stops half a pitch short of the open coils at
     # the other (where the pitch changes, the next turn would ride over its last crest)
     lo = -SPRING_WIRE / 2 if z0 <= 0 else GRIP_PITCH / 2
     hi = SPRING_WIRE / 2 if z0 > 0 else -GRIP_PITCH / 2
-    post = cq.Workplane("XY").add(cq.Solid.makeCylinder(SEAT_D / 2, SEAT_L - lo + hi,
+    post = cq.Workplane("XY").add(cq.Solid.makeCylinder(R_COIL - post_in(groove), SEAT_L - lo + hi,
                                                         cq.Vector(0, 0, z0 + lo)))
-    post = _groove(post, z0, POST_GROOVE, -1.0)
+    post = _groove(post, z0, groove, -1.0)
     # the lead-in at the free end (the end the spring starts on): a 45 deg chamfer off the cusps
     free = z0 + SEAT_L + hi if z0 <= 0 else z0 + lo
     sg = -1.0 if z0 <= 0 else 1.0                    # into the post from the free end
-    r_c = R_COIL - groove_cusp(POST_GROOVE) + POST_GROOVE[1]
+    r_c = R_COIL - groove_cusp(groove) + groove[1]
     r_f = R_COIL - SPRING_WIRE / 2 - LEAD_PAST
     post = post.cut(_lead_in(free, sg, r_f, r_c, outside=True))
     post = post.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(bore / 2, SEAT_L - lo + hi + 2,
@@ -1080,16 +1048,32 @@ def _ring(r0: float, r1: float, z0: float, z1: float) -> cq.Workplane:
 
 
 def _sleeve_local(zf: float, z_far: float, z0: float) -> cq.Workplane:
-    """The grip sleeve in the spring's frame: from the flange face zf to z_far, bore SLEEVE_CLR off
-    the wire's centre line, and the grip coils' groove (helix from z0, as the post's). No key
-    cross-hole since the lock (user 2026-11-16: "the sleeves don't need the holes")."""
+    """The grip's OUTER WALL in the spring's frame: from the flange face zf to z_far, bore
+    SLEEVE_CLR off the wire's centre line, and the grip coils' groove (helix from z0, as the
+    post's). ONE PART WITH ITS PLUG OR COLLAR (user, 2026-11-17: "why not merge them into a single
+    part?"): the spring screws into the slot between it and the post. No lock: the spring's two
+    ends are one helix in two fixed threads, so turning it walks it deeper into one end until it
+    bottoms there (user: "the spring ends up hitting the end of the threads at one side")."""
     body = _ring(R_COIL + SLEEVE_CLR, SLEEVE_OD / 2, zf, z_far)
     body = _groove(body, z0, SLEEVE_GROOVE, 1.0)
     r_c = R_COIL + groove_cusp(SLEEVE_GROOVE) + SLEEVE_GROOVE[1]
     r_f = R_COIL + SPRING_WIRE / 2 + LEAD_PAST
-    for zface, zother in ((zf, z_far), (z_far, zf)):  # both ends: either may meet the cut end
-        body = body.cut(_lead_in(zface, 1.0 if zother > zface else -1.0, r_f, r_c))
+    body = body.cut(_lead_in(z_far, 1.0 if zf > z_far else -1.0, r_f, r_c))   # the slot's mouth
     return body
+
+
+def _wall_plug(i: int) -> cq.Workplane:
+    """The plug's outer wall, from its stop flange over the post (world)."""
+    return _in_spring(_sleeve_local(-SPRING_WIRE / 2, SEAT_L - GRIP_PITCH / 2, 0.0), i,
+                      spring_span(0.0, i)[0])
+
+
+def _wall_collar(i: int, t: float) -> cq.Workplane:
+    """The collar's outer wall, from its flange back over its post (world)."""
+    x0, x1 = spring_span(t, i)
+    L = x1 - x0
+    return _in_spring(_sleeve_local(L + SPRING_WIRE / 2, L - SEAT_L + GRIP_PITCH / 2, L - SEAT_GRIP),
+                      i, x0)
 
 
 def _lead_in(zface: float, sg: float, r_face: float, r_in: float, outside: bool = False) -> cq.Workplane:
@@ -1105,94 +1089,6 @@ def _lead_in(zface: float, sg: float, r_face: float, r_in: float, outside: bool 
         big = cq.Solid.makeCylinder(SLEEVE_OD, h + 0.5, base, d)
         return cq.Workplane("XY").add(big.cut(cone))
     return cq.Workplane("XY").add(cq.Solid.makeCone(r_face + 0.5, r_in, h + 0.5, base, d))
-
-
-SLEEVE_P_UP = (-1.0, 0.0, 0.0)                      # world: +X -> -X
-SLEEVE_C_UP = (-1.0, 0.0, 0.0)                      # world: +X -> -X (2026-11-16: the flange end on
-                                                    # the bed, the lock's fin standing up past the far end)
-
-
-def _sleeve_plug(i: int) -> cq.Workplane:
-    """The plug end's sleeve: flange face at local -wire/2, over the post to its end. Tightening
-    runs it toward -z: with a right-hand helix that is -angle."""
-    zf = -SPRING_WIRE / 2
-    # PRINTS +X -> -X (user, 2026-11-14): its far end on the bed
-    x0 = spring_span(0.0, i)[0]
-    z_far = SEAT_L - GRIP_PITCH / 2
-    out = _in_spring(_sleeve_local(zf, z_far, 0.0), i, x0)
-    xb, xe = sleeve_p_fin_x(i)
-    return _lock_fin(out, i, lock_p_ang(i), LOCK_R, xb, xe)
-
-
-def _sleeve_collar(i: int, t: float) -> cq.Workplane:
-    """The collar end's: flange face at local L + wire/2, back over the post. It tightens +z."""
-    x0, x1 = spring_span(t, i)
-    L = x1 - x0
-    zf = L + SPRING_WIRE / 2
-    # PRINTS +X -> -X (SLEEVE_C_UP): its flange end on the bed
-    z_far = L - SEAT_L + GRIP_PITCH / 2
-    out = _in_spring(_sleeve_local(zf, z_far, L - SEAT_GRIP), i, x0)
-    xe, xb = sleeve_c_fin_x(i, t)
-    return _lock_fin(out, i, *LOCK_C[i], xe, xb)
-
-
-def sleeve_p_fin_x(i: int):
-    """The plug sleeve's fin along x: (its face on the boss, its far end -- the screw's head)."""
-    f1 = x_plug(i)[1][1]
-    return f1 + LOCK_E, spring_span(0.0, i)[0] + SEAT_L - GRIP_PITCH / 2
-
-
-def sleeve_c_fin_x(i: int, t: float):
-    """The collar sleeve's fin along x: (its far end -- the screw's head, its face on the lobe)."""
-    pb, (f0, _), _ = x_collar(t)
-    xe = pb + LOCK_C_TIP - LOCK_C_M3_L
-    assert xe < spring_span(t, i)[1] - SEAT_L + GRIP_PITCH / 2, "the collar end's fin ends inside its sleeve"
-    return xe, f0
-
-
-def _lock_lug(i: int, a: float, r: float, x0: float, x1: float, xb0: float = None) -> cq.Workplane:
-    """A web from inside the sleeve's radius out to a boss round r at angle a, x0..x1; the
-    boss alone from xb0 (one cylinder: two coaxial ones fused end to end failed in OCCT)."""
-    y, z = y_of(i), za(i)
-    r0 = SLEEVE_OD / 2 - 0.5
-    xb0 = x0 if xb0 is None else xb0
-    b = box_at(x1 - x0, 2 * LOCK_HW, r - r0, x=(x0 + x1) / 2, y=0, z=(r + r0) / 2)
-    b = b.union(cyl_x(2 * LOCK_HW, x1 - xb0, xb0, y=0, z=r))
-    return b.rotate((0, 0, 0), (1, 0, 0), a - 90).translate((0, y, z))
-
-
-def _lock_fin(sleeve: cq.Workplane, i: int, a: float, r: float, x0: float, x1: float) -> cq.Workplane:
-    """`sleeve` with its lock fin, x0..x1, and the screw's hole through it."""
-    dy, dz = at_ang(a, r)
-    out = sleeve.union(_lock_lug(i, a, r, x0, x1))
-    return out.cut(cyl_x(LOCK_HOLE, x1 - x0 + 2.0, x0 - 1.0, y=y_of(i) + dy, z=za(i) + dz))
-
-
-def _lock_at(i: int, a: float, r: float = LOCK_R):
-    dy, dz = at_ang(a, r)
-    return y_of(i) + dy, za(i) + dz
-
-
-def _lock_p_ins(i: int) -> cq.Workplane:
-    """The plug end's lock insert: its mouth on the boss's +X face."""
-    return _insert_x(sleeve_p_fin_x(i)[0], -1, *_lock_at(i, lock_p_ang(i)))
-
-
-def _lock_p_m3(i: int) -> cq.Workplane:
-    """The plug end's lock M3: its head on the fin's +X end."""
-    y, z = _lock_at(i, lock_p_ang(i))
-    return _cap("m3", LOCK_M3_L, (sleeve_p_fin_x(i)[1] + M3_HEAD[1], y, z), (-1.0, 0, 0))
-
-
-def _lock_c_ins(i: int, t: float) -> cq.Workplane:
-    """The collar end's lock nut: an insert on the collar's +X face."""
-    return _insert_x(x_collar(t)[0], 1, *_lock_at(i, *LOCK_C[i]))
-
-
-def _lock_c_m3(i: int, t: float) -> cq.Workplane:
-    """The collar end's lock M3: its head on the fin's -X end."""
-    y, z = _lock_at(i, *LOCK_C[i])
-    return _cap("m3", LOCK_C_M3_L, (sleeve_c_fin_x(i, t)[0] - M3_HEAD[1], y, z), (1.0, 0, 0))
 
 
 PLUG_UP = (1.0, 0.0, 0.0)                           # prints -X -> +X: the neck's end on the bed,
@@ -1236,29 +1132,14 @@ def _anchor_plug_raw(i: int) -> cq.Workplane:
         out = out.cut(cyl_x(ins_d, ins_l + 1.0, a0 - 1, y=y + dy, z=z + dz))           # insert
         out = out.cut(_cone_x(ins_d / 2, tip_d / 2 - 0.01, a0 + ins_l - 0.01,
                               a0 + ins_l + (ins_d - tip_d) / 2, y + dy, z + dz))    # ... its floor
-    out = out.union(_post(i, spring_span(0.0, i)[0], 0.0, SCREW_CLR))               # threaded post
+    out = out.union(_post(i, spring_span(0.0, i)[0], 0.0, SCREW_CLR, POST_GROOVE_P))  # threaded post
+    out = out.union(_wall_plug(i))                                                  # outer wall
     # the guide rod's -X SEAT: a boss at GUIDE_R on the plate, its web back to the neck, and a
     # hole right through it: the rod slides in from -X through the plate (ROD_END)
     dy, dz = at_ang(guide_ang(i), GUIDE_R)
     out = out.union(cyl_x(GUIDE_SEAT + 2 * GUIDE_WALL, f1 - a0, a0, y=y + dy, z=z + dz))
     out = out.union(_radial_box(i, a0, f1, SPRING_ID / 2 - 1.0, GUIDE_R, GUIDE_SEAT + 2 * GUIDE_WALL))
     out = out.cut(cyl_x(PLUG_GUIDE_SEAT, f1 - a0 + 2, a0 - 1, y=y + dy, z=z + dz))
-    # the LOCK: the upward tie's boss carried LOCK_E past the flange, a second insert's pocket
-    # down from its end (opening up the print)
-    dy, dz = at_ang(lock_p_ang(i), ear_r(i))
-    assert abs(ear_r(i) - LOCK_R) < 0.31, "the lock's screw is off its boss's axis"
-    xb = f1 + LOCK_E
-    out = out.union(cyl_x(2 * ear_hw, LOCK_E, f1, y=y + dy, z=z + dz))    # (end to end: an overlap failed)
-    pk = COL_INS[1] + 0.3
-    assert xb - pk >= a0 + ins_l + (ins_d - tip_d) / 2 + D.BEAD - 1e-6, "the boss's two inserts meet"
-    out = out.cut(cyl_x(ins_d, pk + 1.0, xb - pk, y=y + dy, z=z + dz))
-    # the lock M3's TIP, on its own axis (LOCK_R: up to 0.3 off the tie's, whose tip hole it runs
-    # on into): with the 2.31 grip the fin is short and the M3 x 10 reaches past the insert
-    # (2026-11-17, string 1's tip 0.26 mm3 into the plug)
-    ly, lz = _lock_at(i, lock_p_ang(i))
-    tip = sleeve_p_fin_x(i)[1] - LOCK_M3_L - 0.5
-    if tip < xb - pk:                               # only where the tip passes the insert
-        out = out.cut(cyl_x(tip_d, xb - pk - tip + 0.01, tip, y=ly, z=lz))
     x_end = out.val().BoundingBox().xmax
     for dy, dz in tie_offsets(i):  # the tips' way, out through all
         out = out.cut(cyl_x(tip_d, x_end + 1 - (a0 + ins_l), a0 + ins_l, y=y + dy, z=z + dz))
@@ -1860,10 +1741,7 @@ _STRING_PARTS = (
     ("yoke", _yoke, True), ("keyplate", _keyplate_at, True), ("ball", _ball, True),
     ("nut", _nut, True), ("collar", _collar, True), ("m3", _m3s, True),
     ("col_ins", _collar_inserts, True),
-    ("spring", _spring, True), ("sleeve_p", _sleeve_plug, False),
-    ("sleeve_c", _sleeve_collar, True), ("plug", _anchor_plug, False),
-    ("lkp_ins", _lock_p_ins, False), ("lkp_m3", _lock_p_m3, False),
-    ("lkc_ins", _lock_c_ins, True), ("lkc_m3", _lock_c_m3, True),
+    ("spring", _spring, True), ("plug", _anchor_plug, False),
     ("rod", _rod, False), ("screw", _screw_at, False), ("coupler", _coupler, False),
     ("cpl_m3", _cpl_m3, False), ("cpl_insert", _cpl_insert, False),
     ("housing", _housing, False), ("hb", _housing_bolts, False),
@@ -1880,7 +1758,7 @@ _STRING_PARTS = (
 _MESH_ONLY = {"screw", "spring"}
 # the parts that ride the nut AS ONE RIGID BODY: built once, at t = 0, and moved along x to t
 # (2026-11-15: the gate's three t's, and every view at another t, read one build of each)
-_RIGID = {"yoke", "keyplate", "ball", "nut", "collar", "m3", "col_ins", "lkc_ins"}
+_RIGID = {"yoke", "keyplate", "ball", "nut", "collar", "m3", "col_ins"}
 
 
 def string_parts(i: int, t: float, raw: bool = False) -> list:
@@ -2496,8 +2374,8 @@ MATERIAL = {
     "nut": "brass", "ball": "brass", "screw": "steel", "rod": "steel", "string": "polished",
     "brg": "polished", "bend_brg": "polished", "bridge_bearings": "polished",
     "bend_axle_ra": "steel", "bend_axle_rb": "steel", "bend_axle_rc": "steel",
-    "spring": "stainless", "plug": "petg-gf", "sleeve_p": "petg-gf", "sleeve_c": "petg-gf", "m3": "steel", "col_ins": "brass",
-    "lkp_ins": "brass", "lkp_m3": "steel", "lkc_ins": "brass", "lkc_m3": "steel", "coupler": "petg-gf",
+    "spring": "stainless", "plug": "petg-gf", "m3": "steel", "col_ins": "brass",
+    "coupler": "petg-gf",
     "cpl_m3": "steel", "cpl_insert": "brass", "housing": "petg-gf", "hb": "steel", "insert": "brass",
     "collar_a": "petg-gf", "collar_b": "petg-gf", "ca_m3": "steel", "cb_m3": "steel", "ca_ins": "brass", "cb_ins": "brass", "lid": "petg-gf", "tie_spacer": "aluminium",
     "deck": "pctg-black", "deck_white": "pctg-clear", "fret_board": "board",
@@ -2553,8 +2431,7 @@ COLORS = {
     "bend_axle_rc": "leadscrew",
     "yoke": (0.39, 0.58, 0.93), "collar": (0.85, 0.45, 0.15),
     "spring": "leg_latch_spring", "plug": (0.85, 0.45, 0.15), "adapter": (0.36, 0.42, 0.46),
-    "sleeve_p": (0.95, 0.75, 0.20), "sleeve_c": (0.95, 0.75, 0.20), "m3": "set_screw", "col_ins": "nut",
-    "lkp_m3": "set_screw", "lkc_m3": "set_screw", "lkp_ins": "nut", "lkc_ins": "nut",
+    "m3": "set_screw", "col_ins": "nut",
     "coupler": (0.85, 0.45, 0.15), "cpl_m3": "set_screw", "cpl_insert": "nut",
     "housing": (0.30, 0.36, 0.42), "hb": "set_screw", "insert": "nut",
     "collar_a": (0.85, 0.45, 0.15), "collar_b": (0.85, 0.45, 0.15), "ca_m3": "set_screw",
@@ -2603,11 +2480,8 @@ _SAME = {frozenset(p) for p in (
     ("screw", "nut"), ("screw", "brg"), ("screw", "coupler"),
     ("nut", "yoke"), ("nut", "collar"),
     ("m3", "col_ins"), ("col_ins", "collar"),       # threaded; heat-set (melted in)
-    ("lkp_m3", "lkp_ins"), ("lkp_ins", "plug"), ("lkc_m3", "lkc_ins"), ("lkc_ins", "collar"),
     ("m3", "collar"), ("m3", "nut"), ("m3", "yoke"), ("m3", "keyplate"),
     ("spring", "plug"),
-    ("sleeve_p", "plug"), ("sleeve_p", "spring"),
-    ("sleeve_c", "collar"), ("sleeve_c", "spring"),
     ("yoke", "ball"), ("string", "ball"), ("string", "yoke"),
     ("collar", "spring"), ("brg", "block"), ("coupler", "motor"),
     ("motor", "mplate"), ("motor",), ("coupler", "block"),
