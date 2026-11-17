@@ -1927,7 +1927,9 @@ BOARD_NOTES = {
     "panel_edge": "-X",
     # A17: twenty unnamed 1.27 mm ways -- the labeller prints a pinout block beside J4
     "silk_pinout": ["J4"],
-    "edge_parts": {"-X": ["J1", "J2", "J5"], "+Y": ["J8"], "+X": ["J3", "J9"]},
+    # J8 is NOT an edge part any more (2026-11-16): the pickup terminals sit down the board
+    # face, pads centre (-24.3, 24.54) rot 180, plug +Y to board y 41.5 (instrument z -16.7)
+    "edge_parts": {"-X": ["J1", "J2", "J5"], "+X": ["J3", "J9"]},
     "placements": {},
     # THE CM5's FOUR M2.5 HOLES (CM5IO; elec/cm5_mech.py, which also checks the routed board)
     "cutouts": CM5.cutouts() if MERGED else [],
