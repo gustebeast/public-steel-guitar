@@ -422,6 +422,30 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     ip = os.path.join(fd, "intent.json")
     json.dump(rules, open(ip, "w"), indent=1)
     say = lambda s: (print("place_flow: " + s), log.write("## " + s + "\n"), log.flush())
+    # ⚠ A RULE THAT NAMES A PART THE NETLIST NO LONGER HAS STOPS THE FLOW HERE, NOT LATER
+    # (brain_board mV20a/b, 2026-11-17): a saved pour rule still ran `along` R223.2 after the
+    # U5 rework removed R223; both runs placed for 20 minutes and died in _pours on a KeyError.
+    # A rule anchored on a missing part or pin (ref, cap, anchor, target, pin, also, along)
+    # is broken -- said now, every one at once; a missing name in a membership list (refs,
+    # a, b, members, except) only drops out of that list, so it is a warning.
+    stale, thin = [], []
+    for i_, r_ in enumerate(rules):
+        for k_ in ("ref", "cap", "anchor", "target", "pin", "also", "along", "refs", "a", "b", "members", "except"):
+            v_ = r_.get(k_)
+            for x_ in (v_ if isinstance(v_, list) else [v_]):
+                if not isinstance(x_, str) or not re.fullmatch(r"[A-Z]+\d+(\.\w+)?", x_):
+                    continue
+                if x_.split(".")[0] in parts:
+                    continue
+                (thin if k_ in ("refs", "a", "b", "members", "except") else stale).append(
+                    "rule %d (%s %s, src %s): %s %s" % (i_, r_["kind"], r_.get("net") or r_.get("name") or "",
+                                                       r_.get("src", "?"), k_, x_))
+    for x_ in thin:
+        say("WARN rule names a part the netlist does not have (dropped from its list): " + x_)
+    if stale:
+        say("STALE RULES -- the flow stops before placement: these rules are anchored on parts the "
+            "netlist does not have (renamed or removed?): " + " | ".join(stale))
+        return 2
     floor = pi.unregioned_sensitive(parts, rules)
     for f_ in floor:
         say("WARN " + f_)
