@@ -1614,7 +1614,7 @@ def auto_pour(rules, parts, notes=None):
     widths() note asks for: a pour whose outline, once the parts are placed, covers more of
     the board than that is dropped and the net goes back to its width (_pours says so).
 
-    auto_pour(amps, layer [, max_frac, width_mm, layers_by_net, whole, around]) -- around: each
+    auto_pour(amps, layer [, max_frac, width_mm, layers_by_net, whole, around, clear_margin]) -- around: each
     band goes round other nets' pads on its layer (pour_around), not through them. The pour runs along the net's
     declared power_paths terminals when it has any, else its non-IC pads. A net with its own
     `pour` rule is left alone. Returns (rules, lines)."""
@@ -1645,6 +1645,16 @@ def auto_pour(rules, parts, notes=None):
                 along = sorted(set(pp))
             layer = (a.get("layers_by_net") or {}).get(r["net"], a["layer"])
             w = float(a.get("width_mm") or max(3.0, width_for(float(r["amps"]))))
+            # ⚠ THE BAND LOSES ITS FILL CLEARANCE ON EACH SIDE (brain_board mV0, 2026-11-16):
+            # 5 A bands drawn 3.0 mm (IPC 2.77) filled 1.1-2.4 mm wide where other nets'
+            # escapes ran along them -- 0.5 mm of zone clearance off each side took the IPC
+            # width away. clear_margin: the band is the IPC width plus twice the board's zone
+            # clearance (notes["zone_clearance"], KiCad's 0.5 default), never under 3.0.
+            if a.get("clear_margin") and not a.get("width_mm"):
+                clr = float((notes or {}).get("zone_clearance") or 0.5)
+                # outer-layer IPC as above, on every layer: inner IPC for 10 A is 18.8 mm, a
+                # plane not a band (In2's 10 A bands closed at 7.2)
+                w = max(w, round(math.ceil((width_for(float(r["amps"])) + 2 * clr) / 0.05 - 1e-9) * 0.05, 2))
             out.append(dict(kind="pour", net=r["net"], layer=layer, along=along, width_mm=w,
                             why="auto_pour: %s at %.1f A -- %s" % (r["net"], float(r["amps"]), r["why"]),
                             src=r.get("src", ""), hard=False, auto_amps=float(r["amps"]),
