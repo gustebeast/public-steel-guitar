@@ -1225,14 +1225,28 @@ access the bring-up will need.
   named alternate (or "none") in `quality.alternates` for each part chosen by number; with
   every such part named there, the rule signs itself.
 - **M43 — A host computer and a USB cable are all it takes.** (owner's rule, 2026-10-12;
-  sharpened 2026-10-15) This is a rule about ONE BOARD. Every board either needs no
-  firmware and works as it arrives, or, over its OWN USB connection from an ordinary host
-  computer, can:
+  sharpened 2026-10-15, restated 2026-11-17) Every board either needs no firmware and works
+  as it arrives, or can be flashed from an ordinary host computer over ONE of:
+  - **its own USB receptacle**, or
+  - **a permanent link to another board that is itself flashable by this rule** -- the
+    wiring the assembled product uses in service (a bus, a board-to-board lead), so the
+    chain ends at a USB receptacle. A lever sensor with no USB, loaded over its harness from
+    the board that has USB, is this case. A temporary debug connection (a probe, a clip, a
+    jig, a bench lead, the debugging adapters bought for revision 1) is not a link.
+
+  Over that path it can:
   1. take its FIRST firmware with the part blank,
   2. take routine updates, and
   3. be RECOVERED from bad firmware -- one that crashes, ignores USB, or was cut off
      mid-write --
-  none of the three relying on the firmware already on the part being good. For each
+  none of the three relying on the firmware already on the part being good.
+  **Power and enables are part of the path.** Every board and part the path runs through
+  (the host board, a switch, the link's transceiver) and the target itself must be powered
+  and enabled with ALL the product's programmable parts blank, from the supply the
+  first flash will really have. A path whose host is switched on by the firmware of the part
+  it is meant to load is a cycle, and it fails this rule. (brain_board, 2026-11-17: the CM5
+  was to load the STM32, and the CM5's 5 V switched on only when that STM32's firmware
+  raised BRAIN_EN -- so a factory board had no path at all, only the SWD pads.) For each
   programmable part, name in the generator (a) the USB connector and the path from it to
   the part, (b) the loader that answers on that path with the part blank -- the maker's ROM
   loader, with the manual page that names its pins -- and (c) how the HOST enters that
@@ -1249,11 +1263,10 @@ access the bring-up will need.
     leaves something that still answers.
   - **Debug pads (M9) stay**, laid out for a plug-on spring-pin clip: for debugging and the
     last-resort case (dead hardware), never the way firmware normally gets in.
-  - **Exceptions are a project decision, with the reason written down**, and the excepted
-    board must still meet all three cases over the link used instead (for example a bus
-    node too small for USB, loaded over its bus). A board many copies of which sit inside
-    an assembly is the worst case, not the exception: count the disassemblies an update
-    costs.
+  - **A linked board names its link in the generator**: the board at the far end, the
+    loader that answers over the link with the part blank, and how the host board takes
+    it into that loader hands-free. A board many copies of which sit inside an assembly is
+    the worst case, not the exception: count the disassemblies an update costs.
 
 ---
 
@@ -1303,3 +1316,4 @@ Never renumber a rule: boards sign and waive by id.
 | 2026-10-06 | a four-layer sensor board: tracks on In2, an unbroken ground plane on In1 beside them | A15 tested each track against EVERY other ground layer, so the component-side pour -- cut by every part on it -- read as a 10 mm slot under tracks whose return was in the whole plane next to them. The first exemption written for it was for a DC reference; the second finding was a 200 mA switched line, which is how the rule was caught rather than waived again | A15 references the nearest ground layer in the stack-up |
 | 2026-10-07 | ten boards of one instrument, on the bench order the night before it went out | every pinout was printed and every one was on the BACK, where the labeller had found room; five XH headers on one board took the same 4-way plug, and nothing on the side the plugs come from said which was which or which end was way 1. The mechanism to print the labels existed; no rule said a board without them was unfinished | **A17** (new, measured): designator, a name for every way, and a way-1 mark on the connector's own side; a back-only pinout is declared with its reason |
 | 2026-10-12 | four boards of one instrument with a microcontroller each, at first order | none could take its first firmware from a computer and a cable: eleven sensor boards had no USB at all and needed a printed pogo jig and a probe, two needed a probe or a strap bridged by hand to reach the ROM loader, and one wired only the high-speed port its ROM loader does not serve. Two probes, seventeen soldered tails and a jig were bought to install firmware once | M43 |
+| 2026-11-17 | a merged board: a compute module meant to load the board's microcontroller over UART, with BOOT0 and reset driven | the compute module's 5 V was switched on by that microcontroller's firmware, so a factory-blank board had no path in except the SWD pads -- found at review, before order | M43 (power and enables are part of the path) |
