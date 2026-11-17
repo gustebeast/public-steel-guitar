@@ -1713,7 +1713,54 @@ def _string_path(i, sy, rise_only=False):
         prev = cur
     # THE COIL IS NOT FUSED TO ITS RUNS. Both meet it on a tangent, which OCC meshes into spikes and
     # notches at the junctions: the three solids simply overlap, and look like one string.
-    return cq.Workplane(obj=cq.Compound.makeCompound([out.val(), coil.val(), tail.val()]))
+    proxy = cq.Workplane(obj=cq.Compound.makeCompound([out.val(), coil.val(), tail.val()]))
+    # ITS LOOK is the path itself, exact (user, 2026-11-16: "infinitely smooth rather than
+    # segmented"): the solid above stays what the gates see
+    from cadkit.mesh_parts import tube_path_mesh, with_mesh
+    return with_mesh(proxy, tube_path_mesh(_string_pieces(i, sy), g))
+
+
+def _string_pieces(i, sy):
+    """String i's path as _string_path draws it, for cadkit.mesh_parts.tube_path_mesh: the rise
+    (over the ear's rim where it leans past the hole), the wrap round the bridge bearing as a TRUE
+    arc on the contact radius, the speaking length, the run down onto the wrap rod, the coil as
+    a true helix, and the tail. Pieces join with round ends, so no overlap is needed anywhere."""
+    r = D.BRIDGE_BEARING_OD / 2
+    cx, cz = D.BRIDGE_AXLE_X, D.BRIDGE_BEARING_Z
+    az = D.NUT_TOP_Z + DEMO_POSE_DZ.get(i, 0.0) - D.NUT_FLANGE_T - D.STRING_NUT_D / 2
+    g = D.STRING_GAUGE[i]
+    rad = g / 2.0
+    p0 = (D.string_anchor_x(i), sy, az)
+    brk = (D.NUT_BLOCK_X, D.nut_y(i), D.STRING_Z - g / 2.0)
+    R0 = r + rad
+    th1 = _tangent_angle(cx, cz, brk[0], brk[2], R0, -1)
+    pieces = []
+    th0 = _tangent_angle(cx, cz, p0[0], p0[2], R0, +1)
+    z_ear = az + D.STRING_NUT_D / 2 + D.NUT_FLANGE_T + 0.1
+    reach = D.NUT_HOLE_D / 2.0 - rad - 0.05
+    a0 = (cx + R0 * math.cos(th0), cz + R0 * math.sin(th0))
+    lean = (a0[0] - p0[0]) * (z_ear - p0[2]) / (a0[1] - p0[2])
+    if abs(lean) > reach:
+        rim = (p0[0] + math.copysign(reach, lean), sy, z_ear)
+        th0 = _tangent_angle(cx, cz, rim[0], rim[2], R0, +1)
+        pieces.append(("line", p0, rim))
+        p0 = rim
+    start = (cx + R0 * math.cos(th0), sy, cz + R0 * math.sin(th0))
+    end = (cx + R0 * math.cos(th1), sy, cz + R0 * math.sin(th1))
+    pieces += [("line", p0, start),
+               ("arc", (cx, sy, cz), (0, -1, 0), start, math.degrees(th1 - th0)),   # x -> z: about -Y
+               ("line", end, brk)]
+    ny, wy = NB.wrap_y_drawn(i)
+    rx, rz = D.NUT_BLOCK_X + NB.ROD_X, D.STRING_Z + NB.ROD_Z
+    hr = NB.wrap_radius(i)
+    phi = NB.touch_angle(i)
+    tang = (rx + hr * math.cos(phi), ny, rz + hr * math.sin(phi))
+    pieces += [("line", brk, tang),
+               # _wrap_coil's helix: right-hand, axis -Y from the touch angle, WRAP_F x gauge a turn
+               ("helix", (rx, ny, rz), (0, -1, 0), tang, NB.WRAP_F * g, abs(wy - ny), "RH")]
+    pts = [(D.NUT_BLOCK_X + x, wy, D.STRING_Z + z) for x, z in NB.tail_route(i)]
+    pieces += [("line", a, b) for a, b in zip(pts, pts[1:])]
+    return pieces
 
 
 def _wrap_coil(i, rad, hr):
