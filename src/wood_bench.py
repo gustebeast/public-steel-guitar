@@ -142,7 +142,7 @@ A_TOP = Z5 + 19.0                                # -66.2: 8 over the plug's and 
 def _drive_y_extent():
     """The plug's and housing's widest in y: their ears round string 6's ties (the plug's ring
     round an insert, the housing's boss) and the guide rod's boss."""
-    ear = max(DB.COL_INS_HOLE / 2 + DB.EAR_WALL, DB.TIE_BOSS)
+    ear = max(max(DB.plug_ear_hw(I)), DB.TIE_BOSS)
     ys = [dy - ear for dy, _ in DB.tie_offsets(I)] + [dy + ear for dy, _ in DB.tie_offsets(I)]
     rb = DB.GUIDE_SEAT / 2 + DB.GUIDE_WALL
     ry = DB.rod_yz(I)[0] - Y5

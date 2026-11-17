@@ -756,7 +756,7 @@ PRINT_ORIENTATION["endplate"] = PO.from_build_dir(
                 "rod plate for the bridge's sag")
 for _n in [n for n in PARTS if n.startswith("collar_") and n[7:].isdigit()]:
     PRINT_ORIENTATION[_n] = PO.from_build_dir(
-        (-1, 0, 0), "direct_bench: the collar PRINTS +X -> -X, its +X face on the bed (user, "
+        DB_.COLLAR_UP, "direct_bench.COLLAR_UP: the collar PRINTS +X -> -X, its +X face on the bed (user, "
                     "2026-11-12, back to the original orientation); insert pockets under cone roofs")
 # the rest of the drive's printed parts (user, 2026-11-14), each direction its module's constant
 for _base, _up, _why in (

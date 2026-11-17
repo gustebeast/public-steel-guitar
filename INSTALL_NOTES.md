@@ -2327,3 +2327,23 @@ Each plug and each collar now carries its own outer wall around its threaded pos
   2. Screw the collar onto the other end until it bottoms.
   3. Back the collar off, less than half a turn, until its holes line up with the nut's flange, and bolt it on.
 - **Reprint:** every plug and every collar. The bench set for string 6 is `petg-gf/plug_s6.step` and `pctg/collar.step`. The old `sleeve_p` and `sleeve_c` files are no longer exported.
+
+## Direct drive: insert pockets from one rule, the collar's nut bore, the yoke's register (2026-11-17)
+
+Every M3 insert pocket now comes from one cadkit rule, chosen by how the insert is used:
+- **Heat-set:** a Ø4.8 round pocket the insert drops into before the iron melts it home (Ø4.4 when the pocket lies sideways to the print).
+- **As a nut:** slid in by hand and pulled onto a face by its screw. Ø5.5 round, Ø5.1 sideways (the collar clamps' fit).
+
+The changes:
+- **Collar (PCTG):** its two inserts were in Ø4.0 pilots. They are now heat-set Ø4.8 pockets like the plug's.
+- **Collar bore round the nut's boss:** now Ø11.4, up from Ø10.6, which printed 9.8 and would not take the Ø10.1 boss. Each insert pocket now opens into this bore along a ~1.4 mm slit; the knurl stays just inside the wall.
+  - This is fine because the string's load does not go through the plastic. The plate's screws pull each insert onto the steel flange: its mouth is flush with the collar's face.
+  - The plastic only holds the collar against the spring (53-68 N, about 34 N per insert) and stops the inserts turning.
+  - Heat-set them square, flush with the face, with the slit side toward the bore.
+- **Yoke:** the register on the nut's Ø10.2 lip is now Ø10.7, the plank bench's settled fit. The direct yoke had kept the Ø10.6 that was a bit too tight.
+- **Plug:**
+  - Every hole is cut after every solid, so the guide rod's boss no longer fills an insert pocket back in (strings 4, 6, 7, 8).
+  - The guide rod's web starts at the axis, so no notch is left where it meets the neck.
+  - The tie bosses grow to two beads (1.6) round the pocket where the neighbouring plug leaves room. Where it does not, they stay at one bead (0.8): the upper boss on strings 4-8, about 0.95 on string 2's.
+- **Coupler (plank and wood benches):** its insert pocket is the nut rule's Ø5.1 sideways, up from a hand-drawn 4.8. The belt clamp's side-entry slot keeps its proven 4.8.
+- **Reprint:** every collar, every plug and every yoke. The string 6 bench set is `pctg/collar.step`, `petg-gf/plug_s6.step` and the yoke file from PRINT_LIST.md.
