@@ -94,8 +94,20 @@ def plan(stem, board, notes):
 
                 def ok(x, y):
                     pv = pcbnew.VECTOR2I(IU(x), IU(y))
-                    if not any(z.HitTestFilledArea(L, pv) for z in planes for L in z.GetLayerSet().CuStack()
-                               if L != pcbnew.F_Cu and L != pcbnew.B_Cu):
+                    # ⚠ THE VIA'S RING JOINS THE PLANE, NOT ITS CENTRE (brain_board mV18,
+                    # 2026-11-17): the pair's own through vias clear the In1 GND fill by the
+                    # zone clearance, and the two holes merge -- a 0.8 mm-radius hole round
+                    # each pair via. Testing the candidate's centre refused every point
+                    # within 1.0 mm (GADGET_DM, MCU_DP: "no GND plane fill there") while In1
+                    # was solid GND. A GND via joins the plane where its ring reaches the
+                    # fill (the refill flows into it); the other checks keep it clear of
+                    # the pair's copper, and the fresh count below catches anything worse.
+                    ring = [pv] + [pcbnew.VECTOR2I(IU(x + 0.95 * vr * math.cos(a * math.pi / 4)),
+                                                   IU(y + 0.95 * vr * math.sin(a * math.pi / 4)))
+                                   for a in range(8)]
+                    if not any(z.HitTestFilledArea(L, q) for z in planes for L in z.GetLayerSet().CuStack()
+                               if L != pcbnew.F_Cu and L != pcbnew.B_Cu
+                               for q in ring):
                         return refuse("no GND plane fill there")
                     for (ox, oy, od, orr, on, _nm) in vt:
                         if abs(ox - x) > 3 or abs(oy - y) > 3:
