@@ -307,7 +307,7 @@
       "vendor": "McMaster-Carr",
       "sku": "1272T38 (1 ft)",
       "order": "2 x $15.46 (1 ft length) = $30.92 for 6 axles, 5 needed; read off the product page and cart 2026-11-13",
-      "what": "O8 304 stainless rod, cold worked, -0.036/0, Rockwell B80 -- cut into THREE 100 mm axles per foot (user, 2026-11-13: not linear-motion duty, so not the $10.18 6459K118 420 linear shaft). Five per instrument: the three bend rows and the bridge axle in the endplate (direct_bench.AXLE_L) at 100, and the nut end's wrap rod cut to 83 (nut_block_v2.ROD_L: the block is the fretboard's 85.5 width, user 2026-11-13). Chamfer the sawn ends. Slip fit in the 688ZZ bore (up to 0.036 clear) and softer than the hardened shaft: watch for inner-race creep wear on the bench."
+      "what": "O8 304 stainless rod, cold worked, -0.036/0, Rockwell B80 -- cut into THREE 100 mm axles per foot (user, 2026-11-13: not linear-motion duty, so not the $10.18 6459K118 420 linear shaft). Five per instrument: the three bend rows and the bridge axle in the endplate (direct_bench.AXLE_L) at 100, and the nut end's wrap rod cut to 68 (nut_block_v2.ROD_L: the block sized from the fingers' bearing load, 70.2 wide, 2026-11-16). Chamfer the sawn ends. Slip fit in the 688ZZ bore (up to 0.036 clear) and softer than the hardened shaft: watch for inner-race creep wear on the bench."
     },
     "drive_spring_9665k36": {
       "usd": 6.384,

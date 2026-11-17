@@ -1649,24 +1649,41 @@ def _anchor_screws() -> cq.Workplane:
 
 
 def string_pieces(i: int, t: float, drop: float = 0.0) -> list:
-    """String i's path for cadkit.mesh_parts.tube_path_mesh, as it runs: in off the crown, over
+    """String i's path for cadkit.mesh_parts.tube_path_mesh, as it runs: from its tail in the nut
+    block's window, once round the rod, over the crown (_nut_pieces), over
     the bridge bearing (90 -> 0 deg), along to the bend axle and round it (0 -> -90 deg), out to the
     ball. Straight runs and true arcs, so the desktop tracer draws it exact (user, 2026-11-16:
     "infinitely smooth rather than segmented"). `drop` lowers the crown and the bridge (the wood
     bench's KH_DROP)."""
     g = D.STRING_GAUGE[i]
-    y0, y1 = D.nut_y(i), y_of(i)
-    zs = D.STRING_Z + g / 2 + drop
+    y1 = y_of(i)
     rr = R + g / 2
     bx, bz = BR_C[0], BR_C[1] + drop
     zc = z_level(level(i)) + R
     top = (bx, y1, bz + rr)
-    return [("line", (D.NUT_BLOCK_X - 30.0, y0, zs - 3.0), (D.NUT_BLOCK_X, y0, zs)),
-            ("line", (D.NUT_BLOCK_X, y0, zs), top),
+    return _nut_pieces(i, top, drop) + [
             ("arc", (bx, y1, bz), (0, 1, 0), top, 90.0),
             ("line", (bx + rr, y1, bz), (X_BEND + rr, y1, zc)),
             ("arc", (X_BEND, y1, zc), (0, 1, 0), (X_BEND + rr, y1, zc), 90.0),
             ("line", (X_BEND, y1, zc - rr), yaw_pt((_ball_x(t), y1, za(i)), i))]
+
+
+def _nut_pieces(i: int, top, drop: float = 0.0) -> list:
+    """The string at the nut block (nut_block_v2.string_pieces_local: over the crown, one wrap
+    round the rod, the tail down into the window), in the world, in from the bridge's `top`."""
+    from . import nut_block_v2 as NB2
+    ox, oz = D.NUT_BLOCK_X, D.STRING_Z + drop
+    W = lambda p: (p[0] + ox, p[1], p[2] + oz)             # noqa: E731
+    out = []
+    for pc in NB2.string_pieces_local(i, (top[0] - ox, top[2] - oz)):
+        if pc[0] == "line":
+            out.append(("line", W(pc[1]), W(pc[2])))
+        elif pc[0] == "arc":
+            out.append(("arc", W(pc[1]), pc[2], W(pc[3]), pc[4]))
+        else:
+            out.append(("helix", W(pc[1]), pc[2], W(pc[3])) + tuple(pc[4:]))
+    out[0] = ("line", tuple(top), out[0][2])                 # the run in, from the bridge's lane
+    return out
 
 
 def with_string_look(proxy: cq.Workplane, i: int, t: float, drop: float = 0.0) -> cq.Workplane:
