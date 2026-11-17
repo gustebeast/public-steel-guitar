@@ -37,6 +37,7 @@ wx.DisableAsserts()                             # NO MODAL DIALOGS IN A BUILD ST
 
 PLATING = 25.0 / 35.0       # quality._Net's via derating: 25 um barrel plating against 35 um foil
 STEP = 0.05                 # candidate grid, mm
+NEAR_MM = 3.0               # past the search disc by more than this, nothing can refuse a candidate
 MM = pcbnew.ToMM
 IU = pcbnew.FromMM
 
@@ -108,6 +109,22 @@ def plan(stem, board):
             own_zones.setdefault(z.GetNetCode(), []).append(z)
     seg = [(t, t.GetLayer(), t.GetNetCode(), MM(t.GetStart().x), MM(t.GetStart().y),
             MM(t.GetEnd().x), MM(t.GetEnd().y), MM(t.GetWidth())) for t in tracks]
+    # ⚠ READ ONCE, TEST ONLY WHAT IS NEAR (brain_board mT3, 2026-11-16): ok() asked SWIG for every
+    # via's position, drill and width, and walked every track and every pad's shape, for each of
+    # thousands of candidate centres -- plan() took 272 s on 121 vias, and the SWIG churn is
+    # what left GetConnectivity() broken afterwards (_fresh). Nothing past NEAR_MM of the search
+    # disc can refuse a candidate, so the answers are the same.
+    vt = []
+    for o in vias:
+        try:
+            orr = MM(o.GetWidth(o.GetLayer())) / 2.0
+        except TypeError:
+            orr = MM(o.GetWidth()) / 2.0
+        vt.append((o, MM(o.GetPosition().x), MM(o.GetPosition().y), MM(o.GetDrillValue()), orr, o.GetNetCode()))
+    pbox = []
+    for p in pads:
+        bb = p.GetBoundingBox()
+        pbox.append((p, MM(bb.GetLeft()), MM(bb.GetRight()), MM(bb.GetTop()), MM(bb.GetBottom())))
     placed = []                 # (x, y, r, drill, netcode) laid this run
     out = []
     for v in vias:
@@ -152,13 +169,18 @@ def plan(stem, board):
                 return any(z.HitTestFilledArea(L, q) for z in fills[L])
             return any(_d_seg(x, y, ax, ay, bx, by) <= w / 2.0 for (ax, ay, bx, by, w) in mine[L])
         layers_ = list(mine) + list(fills)
-        have = 1 + sum(1 for o in vias if o is not v and o.GetNetCode() == nc
-                       and all(inside(MM(o.GetPosition().x), MM(o.GetPosition().y), L) for L in layers_))
+        have = 1 + sum(1 for (o, ox, oy, _od, _or, on) in vt if o is not v and on == nc
+                       and all(inside(ox, oy, L) for L in layers_))
         have += sum(1 for (x, y, r, d, n_) in placed if n_ == nc and all(inside(x, y, L) for L in layers_))
         extra = want - have
         if extra <= 0:
             continue
         reach = max(w_need, 2.0 * vr + R["hole_hole"] + drill) * 2.0
+        lo_x, hi_x, lo_y, hi_y = vx - reach - NEAR_MM, vx + reach + NEAR_MM, vy - reach - NEAR_MM, vy + reach + NEAR_MM
+        vt_n = [q for q in vt if lo_x <= q[1] <= hi_x and lo_y <= q[2] <= hi_y]
+        seg_n = [s for s in seg if max(s[3], s[5]) + s[7] / 2.0 >= lo_x and min(s[3], s[5]) - s[7] / 2.0 <= hi_x
+                 and max(s[4], s[6]) + s[7] / 2.0 >= lo_y and min(s[4], s[6]) - s[7] / 2.0 <= hi_y]   # a track's copper is w/2 off its line
+        pads_n = [q[0] for q in pbox if q[2] >= lo_x and q[1] <= hi_x and q[4] >= lo_y and q[3] <= hi_y]
         cands = []
         n = int(reach / STEP)
         for i in range(-n, n + 1):
@@ -178,26 +200,20 @@ def plan(stem, board):
             if not all(inside(x, y, L) for L in layers_):
                 return refuse("outside the net's own copper")
             # holes: every drill on the board, this run's included
-            for o in vias:
-                ox, oy = MM(o.GetPosition().x), MM(o.GetPosition().y)
-                od = MM(o.GetDrillValue())
+            for (o, ox, oy, od, orr, on) in vt_n:
                 if math.hypot(x - ox, y - oy) < (drill + od) / 2.0 + R["hole_hole"]:
                     return refuse("hole to hole")
-                if o.GetNetCode() != nc:
-                    try:
-                        orr = MM(o.GetWidth(o.GetLayer())) / 2.0
-                    except TypeError:
-                        orr = MM(o.GetWidth()) / 2.0
-                    if math.hypot(x - ox, y - oy) < vr + orr + clear_of(nc, o.GetNetCode()):
+                if on != nc:
+                    if math.hypot(x - ox, y - oy) < vr + orr + clear_of(nc, on):
                         return refuse("another net's via")
             for (px, py, pr, pd, pn) in placed + [(gx, gy, vr, drill, nc) for gx, gy in got]:
                 if math.hypot(x - px, y - py) < (drill + pd) / 2.0 + R["hole_hole"]:
                     return refuse("hole to hole")
-            for (t, L, n_, ax, ay, bx, by, w) in seg:
+            for (t, L, n_, ax, ay, bx, by, w) in seg_n:
                 if n_ != nc and _d_seg(x, y, ax, ay, bx, by) < vr + w / 2.0 + clear_of(nc, n_):
                     return refuse("another net's track")
             circ = pcbnew.SHAPE_CIRCLE(pcbnew.VECTOR2I(IU(x), IU(y)), IU(vr))
-            for p in pads:
+            for p in pads_n:
                 for L in cu:
                     if not p.IsOnLayer(L):
                         continue
@@ -230,50 +246,121 @@ def plan(stem, board):
     return out
 
 
+_FRESH = """
+import json, sys
+import pcbnew
+pcb, mode, lst = sys.argv[1], sys.argv[2], sys.argv[3]
+drop = set(json.load(open(lst)))
+b = pcbnew.LoadBoard(pcb)
+for t in list(b.GetTracks()):
+    if t.m_Uuid.AsString() in drop:
+        b.Delete(t)     # NOT Remove: a removed via left GetConnectivity() a bare SwigPyObject
+pcbnew.ZONE_FILLER(b).Fill(b.Zones())
+if mode == "apply":
+    b.Save(pcb)
+else:
+    b.BuildConnectivity()
+    print("UNCONNECTED %d" % b.GetConnectivity().GetUnconnectedCount(False))
+"""
+
+
+def _fresh(pcb, mode, drop):
+    """In a FRESH KiCad python: load `pcb`, lift the vias whose UUIDs are in `drop`, refill the
+    pours, then count the unconnected items (mode "count") or save the board ("apply").
+
+    ⚠ DELETE, NEVER REMOVE (brain_board mT3, 2026-11-16): the per-via loop lifted a via that
+    opened a connection with board.Remove(), and every board.GetConnectivity() after that came
+    back a bare SwigPyObject -- AttributeError, the step failed, and no via went in anywhere:
+    every wide net's layer change read as a single-barrel CHOKE POINT in quality A1. Measured on
+    the saved board: the same 121 vias lifted by Delete count right (3), by Remove break it.
+    Each count runs on a fresh load, so nothing a lift or a refill leaves behind can reach it."""
+    import subprocess
+    import tempfile
+    fd, lst = tempfile.mkstemp(suffix=".json")
+    with os.fdopen(fd, "w") as fh:
+        json.dump(sorted(drop), fh)
+    try:
+        p = subprocess.run([sys.executable, "-c", _FRESH, pcb, mode, lst], capture_output=True,
+                           text=True, stdin=subprocess.DEVNULL)
+    finally:
+        os.remove(lst)
+    if mode == "apply":
+        if p.returncode:
+            raise SystemExit("power_vias: the fresh refill failed (%d): %s" % (p.returncode, p.stderr[-400:]))
+        return None
+    for line in (p.stdout or "").splitlines():
+        if line.startswith("UNCONNECTED "):
+            return int(line.split()[1])
+    raise SystemExit("power_vias: the fresh count failed (%d): %s" % (p.returncode, (p.stderr or "")[-400:]))
+
+
 def main(stem):
     pcb = stem + ".kicad_pcb"
     board = pcbnew.LoadBoard(pcb)
     filler = pcbnew.ZONE_FILLER(board)
     filler.Fill(board.Zones())              # plan() reads the pours' fills
     rows = plan(stem, board)
-    added, short = 0, []
-    # ⚠ ONE AT A TIME, AND A VIA THAT OPENS A CONNECTION COMES BACK OUT (connector_board d14,
-    # 2026-11-15). Clearance-legal is not enough: a new via's antipad can cut the neck of
-    # another net's pour, and 22 vias laid together left one GND fill island -- finish then
-    # put the whole step back. Each via is laid, the pours refilled and the unconnected count
-    # read; if it rose, the via is lifted (Remove, not Delete) and reported.
-    board.BuildConnectivity()
-    base = board.GetConnectivity().GetUnconnectedCount(False)
-    for v, net, (vx, vy), w, b, want, have, got, why in rows:
-        kept = 0
-        for gx, gy in got:
+    # ⚠ A VIA THAT OPENS A CONNECTION COMES BACK OUT (connector_board d14, 2026-11-15).
+    # Clearance-legal is not enough: a new via's antipad can cut the neck of another net's pour,
+    # and 22 vias laid together left one GND fill island -- finish then put the whole step back.
+    # ⚠ BUT NOT ONE REFILL PER VIA (brain_board mT3, 2026-11-16): that loop refilled every pour
+    # after each of 121 vias, in the process plan() had worn out (see _fresh). Now every planned
+    # via is laid and the board is counted once, refilled, in a fresh process; only if the count
+    # rose are the vias split in halves to find the ones that opened it -- one count when none
+    # does, a couple of dozen when one does -- and those are lifted and reported.
+    added = []                              # (uuid, row index, x, y)
+    for i, r in enumerate(rows):
+        v = r[0]
+        for gx, gy in r[7]:
             nv = v.Duplicate()
             nv.SetPosition(pcbnew.VECTOR2I(IU(gx), IU(gy)))
             board.Add(nv)
-            filler.Fill(board.Zones())
-            board.BuildConnectivity()
-            if board.GetConnectivity().GetUnconnectedCount(False) > base:
-                board.Remove(nv)
-                filler.Fill(board.Zones())
-                board.BuildConnectivity()
-                why = (why + ", " if why else "") + "a via at %.2f,%.2f that opened a connection" % (gx, gy)
-                continue
-            kept += 1
-        added += kept
-        if have + kept < want:
-            short.append("%s at %.2f,%.2f: %.2f mm of track wants %d barrel(s) of %.2f, has %d "
-                         "(blocked by %s)" % (net, vx, vy, w, want, b, have + kept, why or "nothing found"))
+            added.append((nv.m_Uuid.AsString(), i, gx, gy))
+    lifted = set()
     if added:
         board.Save(pcb)
+        ids = [a[0] for a in added]
+        base = _fresh(pcb, "count", ids)     # the board as it was
+        n_counts = [1]
+
+        def ok(laid):
+            n_counts[0] += 1
+            return _fresh(pcb, "count", [u for u in ids if u not in laid]) <= base
+
+        def search(group, laid):
+            """The members of `group` that may be laid beside `laid` without opening anything."""
+            if ok(laid | set(group)):
+                return set(group)
+            if len(group) == 1:
+                return set()
+            h = len(group) // 2
+            good = search(group[:h], laid)
+            return good | search(group[h:], laid | good)
+        kept_ids = search(ids, set())
+        lifted = set(ids) - kept_ids
+        _fresh(pcb, "apply", lifted)        # the board with the kept vias, its pours refilled
         try:
             import layout
             layout._canonical_uuids(pcb)
         except Exception:                       # noqa: BLE001
             pass
-    print("  power vias: %d wide-net via(s) short of barrels, %d via(s) added" % (len(rows), added))
+        print("  power vias: %d fresh count(s) against %d unconnected before" % (n_counts[0], base))
+    short = []
+    n_added = 0
+    for i, (v, net, (vx, vy), w, b, want, have, got, why) in enumerate(rows):
+        mine = [a for a in added if a[1] == i]
+        kept = sum(1 for a in mine if a[0] not in lifted)
+        n_added += kept
+        for a in mine:
+            if a[0] in lifted:
+                why = (why + ", " if why else "") + "a via at %.2f,%.2f that opened a connection" % (a[2], a[3])
+        if have + kept < want:
+            short.append("%s at %.2f,%.2f: %.2f mm of track wants %d barrel(s) of %.2f, has %d "
+                         "(blocked by %s)" % (net, vx, vy, w, want, b, have + kept, why or "nothing found"))
+    print("  power vias: %d wide-net via(s) short of barrels, %d via(s) added" % (len(rows), n_added))
     for s in short:
         print("  power vias: COULD NOT FIT %s" % s)
-    return added
+    return n_added
 
 
 if __name__ == "__main__":
