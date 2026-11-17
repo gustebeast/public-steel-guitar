@@ -4552,7 +4552,13 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
     # of the MCU's VSS pins with "no room" when there was plenty. Bounding boxes are
     # what pcbnew already computes, they follow the pad's rotation, and point-to-box is
     # not meaningfully more code than point-to-circle.
-    others = [(p.GetBoundingBox(), p.GetNetname()) for p, _ in pads]
+    # ⚠ A PASTE APERTURE IS NOT COPPER (brain_board mV21a/b, 2026-11-17): KiCad's exposed-pad
+    # footprints carry unnamed F.Paste-only pads over the belly (DSG0008A: two 0.73 x 0.64
+    # at +-0.4). With no net they read as ANOTHER net's copper sitting on the pad itself, so
+    # every stitch track out of U221.9 (TPS22965's thermal pad) failed its clearance and
+    # layout refused the board -- "no room for a stitching via beside U221.9". Only pads
+    # with copper are obstacles.
+    others = [(p.GetBoundingBox(), p.GetNetname()) for p, _ in pads if p.IsOnCopperLayer()]
     # ⚠ AND THE COPPER THAT IS ALREADY THERE. This used to look at pads only, which was
     # true when stitching was the first thing to lay anything. It is not any more: the
     # differential pairs are routed before this, and their tracks and transition vias
