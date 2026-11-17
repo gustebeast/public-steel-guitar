@@ -443,6 +443,14 @@ def brain(merged=None):
     _res("R103", "49k9 1%", "FB top, first half (TI's 49k9 + 825R)", v24, b["FBMID"])
     _res("R104", "825R 1%", "FB top, second half", b["FBMID"], b["FB"])
     _res("R105", "2k67 1%", "FB bottom: 1.2 x (1 + 50.725/2.67) = 24.0 V", b["FB"], gnd)
+    # CHECKED AT 5 V IN (lead, 2026-11-17: U20's UVLO is 4.49 V, so a 5 V-only source can run
+    # the boost). D = 0.79; at a 5 V / 3 A source's 13.5 W out, Rload 43 R. Above the power
+    # pole the loop is (1-D) R106 / (2 pi A Rs Cout Rtop), A = 10 (SNVS954H p.11), Cout ~715 uF
+    # (5 x 22 uF at 50 % + 2 x 330 uF): fc ~1.5 kHz (3.7 kHz at 12 V in). RHPZ (1-D)^2 R /
+    # (2 pi L) = 29 kHz, 19x above it. Phase at fc: integrator -90, zero R106/C102 at 106 Hz
+    # +86, power pole (10 Hz) -90, C103's pole at 7.1 kHz -12, RHPZ -3, ESR zero (24 kHz) +4:
+    # -105, so ~75 degrees of margin. Slope: eq. 6 with R107 gives K = 1.0 at 9 V and 1.3 at
+    # 4.5 V (over the 0.5 floor, a little over-compensated -- a slower loop, not a less stable one).
     _res("R106", "68k1 1%", "COMP series R (TI's: crossover ~5.3 kHz)", b["COMP"], b["COMPMID"])
     _cap("C102", "22nF/50V", "COMP series C", b["COMPMID"], b["FB"])
     _cap("C103", "330pF/50V", "COMP high-frequency C", b["COMP"], b["FB"])
