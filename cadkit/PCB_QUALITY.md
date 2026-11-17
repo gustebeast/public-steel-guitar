@@ -1264,8 +1264,15 @@ access the bring-up will need.
   the part, (b) the loader that answers on that path with the part blank -- the maker's ROM
   loader, with the manual page that names its pins -- and (c) how the HOST enters that
   loader without the firmware's help and with no hand on the board (for example a
-  USB-serial bridge's DTR/RTS driving BOOT and RESET). Not tweezers, not a bare pad; a
-  button is the weaker fallback, only where the host cannot reach the pins. A part whose
+  USB-serial bridge's DTR/RTS driving BOOT and RESET). Not tweezers, not a bare pad.
+  **Two grades of pass** (owner, 2026-11-17):
+  - **Ideal:** first flash, updates and recovery all happen from OUTSIDE the finished
+    product -- a cable into a port the closed enclosure already offers, nothing opened,
+    nothing pressed or bridged inside. Design for this.
+  - **Suboptimal:** some case needs a hand on a hardware item on the board (a button, a
+    jumper, a switch) reached by opening the product. It passes, but the generator says
+    which case and why the host could not reach it, and it is listed as a known gap.
+  Anything worse -- a probe, a clip, a pad held by hand, a soldered lead -- fails. A part whose
   ROM loader cannot be reached over USB (a high-speed-only port the loader does not serve,
   a part with no USB at all) gets a USB bridge on the board that can load it, or is
   changed for one that can.
