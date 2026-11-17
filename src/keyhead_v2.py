@@ -105,6 +105,8 @@ def _keyhead() -> cq.Workplane:
             w = w.cut(stepped_bore_cutter([(DB.EP_TUNNEL, k["wall1"] - xa + 1.0),
                                            (DB.EP_M3_CLR, k["wall0"] - k["wall1"] + 0.5)],
                                           (xa - 1.0, yc, zc), (1.0, 0.0, 0.0), print_up=PRINT_UP))
+    from . import body_adapter_v2 as BA                # the -X adapters' sockets
+    w = w.cut(BA.end_cut(-1))
     return w
 
 

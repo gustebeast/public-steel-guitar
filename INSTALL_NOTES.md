@@ -2272,3 +2272,33 @@ Unlike the leadscrew jig it sits wholly on the table: the piece is 202 long, so 
 5. Unclamp and lift the piece out of the trough. It comes out 202.5 to 202.8; file the burr square.
 6. File the stock's fresh end square, then feed it in to the stop again for the second piece.
 7. What is left is the third piece, ~202.5 (609.6 less two pieces and two ~1 mm kerfs). Any piece from about 201 to 204.0 fits. If the stock came long and the third is over 204.0, trim it in the jig like the others.
+
+## Direct drive: grip thread at the spring's own pitch (2026-11-17)
+
+The bench showed the 3.6 mm grip thread was wrong for a close-wound spring. The coils had to be pulled apart to fit it, the wire shaved the post's crests, and the bed end of the plug sleeve stopped the spring from cutting its way in.
+
+- **Pitch:** the thread is now **2.31 mm**, one wire per turn: the coils go on as they come off the spring.
+- **Turns:** four grip turns at each end (9.24 mm, up from 6.93), because the first bench thread felt short.
+- **Cut length: 42 whole coils** (about 97 mm close-wound), cut at a coil end. That leaves 34 working coils, so the rate is unchanged. The plugs' necks are shorter to take the longer spring; the anchor and motors do not move.
+- **Groove:** the sleeve's crests reach about 0.55 into the valleys outside the coils, the post's about 0.66 into those inside (tightened after the first bench post was a bit loose). Printed holes come out small, so the wire may cut the sleeve a little going on. The bench showed that holds.
+- **Run-out:** the groove runs out through both ends of each sleeve, so a spring threaded right through no longer jams at the far face.
+- **Lead-ins:** both ends of each sleeve's bore and the post's free end have a 45° chamfer, so the spring's cut end starts its thread without meeting the squashed first layers.
+- **Guide rod hole:** the plug's hole for the guide rod is now Ø5.36 (rod + 0.6). At Ø4.96 and Ø5.16 it was still too tight on the rod.
+- **Plug inserts:** the plug's M3 insert pockets are now Ø4.8 round (the insert's 4.7 + 0.1, the rule the M4 inserts settled), so each insert drops in before the iron melts it home. The 4.0 pilot was much too small. The bosses round them stay their old size (a bigger boss meets the neighbouring plugs), so the wall outside each insert is one bead, 0.8: heat it in square and gently. The collar's insert pockets stay at 4.0: there is no room beside the nut's bore.
+- **Lock screw holes:** the M3's clearance hole through both sleeve fins and the collar lobe is Ø3.7 (3.6 gripped the screw in the collar sleeve).
+- **Reprint:** every plug, both sleeves and every collar (the collar's post carries the thread). The bench set for string 6 is `petg-gf/plug_s6.step`, `petg-gf/sleeve_p.step`, `petg-gf/sleeve_c.step` and `pctg/collar.step`.
+- **Fitting:** as before. Screw the spring's end coils onto the post, then run the sleeve on over them until it bottoms on the flange.
+
+## Direct drive: body adapters, the legs' joint to the body (2026-11-17)
+
+One adapter at each corner, `petg-gf/adapter_0.step` to `adapter_3.step` (0: -X/+Y, 1: +X/+Y, 2: +X/-Y, 3: -X/-Y). Each is the old leg adapter's bottom half: the blind mortise for the fixed tenon, the latch pocket and its mouth chamfer, unchanged. On top are **two tenons running along X**. One is under the side wall's middle; the other is under the floor, where the body has a rib for its socket.
+
+Each adapter sits across the joint between the body and an endplate (the keyhead at -X), about half under each. The tenons' sockets are open at the joint face and closed at the far ends.
+
+- **Printing:** PETG-GF, built along X from the adapter's outer end face (on the bed), so the tenons' profile is in the layers. The tenons' outer ends are ramped so they print without a ceiling.
+- **Fitting:**
+  1. With the endplate (or the keyhead) off, slide each adapter into the body's sockets from the open end, tenons first, until it stops.
+  2. Slide the endplate on along X over the adapters' outer halves, then fit its four bar screws as usual. Tightening them pulls the endplate home and traps the adapters in X between the two closed socket ends.
+  3. The legs then go on as before: the fixed tenon up into the adapter's mortise until the latch clicks.
+- **Removing:** take the endplate off first. The adapters then slide out of the body along X.
+- **Not yet carried over:** the signal corner's pogo board. Where the bus comes down a leg is still open.

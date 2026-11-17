@@ -741,6 +741,13 @@ def _direct_parts():
     out["anchor"] = (partial(kept, DB._anchor), "steel/anchor.step",
                         "STAINLESS SHEET, laser cut and bent -- the spring anchor tray, on 8 "
                         "M4 x 10 into the wall bars. Not printed")
+    # THE BODY ADAPTERS (user, 2026-11-17), one a corner, each its own STEP
+    from . import body_adapter_v2 as BA
+    for k, ex, ey in BA.corners():
+        out[f"adapter_{k}"] = (partial(kept, BA.adapter, k), f"petg-gf/adapter_{k}.step",
+                               f"PETG-GF -- body adapter, {'+X' if ex > 0 else '-X'}/{'+Y' if ey > 0 else '-Y'} "
+                               "corner: the v1 leg half (blind mortise, latch pocket) under two X "
+                               "tenons that slide into the body and the endplate. src.body_adapter_v2")
     return out, with_
 
 
@@ -781,6 +788,11 @@ for _base, _up, _why in (
                             "on its -X face")):
     for _n in [n for n in PARTS if n.startswith(_base + "_") and n[len(_base) + 1:].isdigit()]:
         PRINT_ORIENTATION[_n] = PO.from_build_dir(_up, _why)
+from . import body_adapter_v2 as _BA
+for _k, _, _ in _BA.corners():
+    PRINT_ORIENTATION[f"adapter_{_k}"] = PO.from_build_dir(
+        _BA.adapter_up(_k), "body_adapter_v2.adapter_up -- builds along X from its outer end face: the "
+                            "X tenons' profile in the layers (N), their outer ends ramped 1.5:1")
 for _n, (_b, _path, _note) in PARTS.items():
     if _n not in PRINT_ORIENTATION:
         PRINT_ORIENTATION[_n] = PO(
