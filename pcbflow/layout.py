@@ -4231,7 +4231,7 @@ def _inside_many(outline, X, Y, margin):
 
 
 def _pour_pad_vias(board, specs, via_d=0.6, via_drill=0.3, clr=0.2, hole_gap=0.45, filled=False,
-                   zone_clr=None, outline=None):
+                   zone_clr=None, outline=None, small_spill=False):
     """A via ARRAY in each big land that feeds a current-carrying pour on another layer.
 
     ⚠ ONE VIA IS A CHOKE POINT (output_power, 2026-11-13). auto_pour moved the 5-10 A nets
@@ -4290,6 +4290,32 @@ def _pour_pad_vias(board, specs, via_d=0.6, via_drill=0.3, clr=0.2, hole_gap=0.4
                 continue                       # on the pour's own layer: the fill joins it
             w, h = pcbnew.ToMM(pad.GetBoundingBox().GetWidth()), pcbnew.ToMM(pad.GetBoundingBox().GetHeight())
             if w * h < 4.0 or min(w, h) < via_d + 0.6:
+                # ⚠ A SMALL LAND GETS ITS ARRAY BESIDE IT, BRIDGED (brain_board mV16/mV17,
+                # 2026-11-17) -- opt-in, notes["pour_spill_small"]. Q202.3 (1.2 x 2.2 mm) took
+                # VIN_BRAIN's 10 A down to its In2 pour through the router's ONE via: 0.67 mm of
+                # barrel against 7.19 asked. The count is the current's: ceil(IPC width / barrel)
+                # vias round the land, joined to it by the spill's same-net pour on the land's
+                # layer -- the bridge -- in up to SPILL_SMALL_ROWS rows.
+                if small_spill and not filled:
+                    got = []
+                    n_ = _spill_vias(board, pad, s["net"], want, holes, foreign, via_d, via_drill, clr,
+                                     hole_gap, pitch, zone_clr, rows=SPILL_SMALL_ROWS, outline=outline,
+                                     placed_out=got)
+                    if n_:
+                        bb_ = pad.GetBoundingBox()
+                        e_ = via_d / 2.0 + 0.1
+                        gx = [pcbnew.ToMM(x) for x, _ in got]
+                        gy = [pcbnew.ToMM(y) for _, y in got]
+                        bw = max(max(gx) + e_, pcbnew.ToMM(bb_.GetRight())) - min(min(gx) - e_, pcbnew.ToMM(bb_.GetLeft()))
+                        bh = max(max(gy) + e_, pcbnew.ToMM(bb_.GetBottom())) - min(min(gy) - e_, pcbnew.ToMM(bb_.GetTop()))
+                        out.append("%s: land %.1f x %.1f mm too small for a via array -- %d of %d via(s) beside "
+                                   "it, bridged by a %.1f x %.1f mm %s pour on its layer, to %s on %s "
+                                   "(%.2f mm asked, %.2f a barrel)%s"
+                                   % (key, w, h, n_, want, bw, bh, s["net"], s["net"], s["layer"],
+                                      float(s["width_mm"]), barrel,
+                                      "" if n_ >= want else ": %.2f mm of the current still has no via"
+                                      % max(0.0, float(s["width_mm"]) - n_ * barrel)))
+                        continue
                 out.append("%s: land %.1f x %.1f mm too small for a via array -- the router's via "
                            "is its only path to %s on %s" % (key, w, h, s["net"], s["layer"]))
                 continue
@@ -4348,8 +4374,11 @@ def _pour_pad_vias(board, specs, via_d=0.6, via_drill=0.3, clr=0.2, hole_gap=0.4
     return out
 
 
+SPILL_SMALL_ROWS = 3   # rows round a small land its bridged via array may take (pour_spill_small)
+
+
 def _spill_vias(board, pad, net, n, holes, foreign, via_d, via_drill, clr, hole_gap, pitch,
-                zone_clr=None, rows=2, outline=None):
+                zone_clr=None, rows=2, outline=None, placed_out=None):
     """Up to `n` vias of `net` in rows round `pad`'s edge, joined to it by a small pour on
     the pad's layer (see _pour_pad_vias). Returns how many it placed; `holes` grows.
 
@@ -4425,6 +4454,8 @@ def _spill_vias(board, pad, net, n, holes, foreign, via_d, via_drill, clr, hole_
         board.Add(v)
         holes.append((x, y, pcbnew.FromMM(via_drill / 2.0)))
         placed.append((x, y))
+    if placed_out is not None:
+        placed_out.extend(placed)
     if not placed:
         return 0
     # the joining pour: hull of the land's box and each via's ring
@@ -5919,7 +5950,8 @@ def build(stem):
     if notes.get("pour_vias"):
         for _l in _pour_pad_vias(board, notes["pour_vias"], filled=bool(
                 (((notes.get("quality") or {}).get("fab")) or {}).get("via_in_pad")),
-                zone_clr=notes.get("zone_clearance"), outline=_outline_pts(notes)):
+                zone_clr=notes.get("zone_clearance"), outline=_outline_pts(notes),
+                small_spill=bool(notes.get("pour_spill_small"))):
             print("  pour vias: " + _l)
 
 
