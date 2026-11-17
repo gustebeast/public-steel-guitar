@@ -37,6 +37,13 @@ import time
 import netcheck
 import sys
 
+# ⚠ A REMOVED ITEM'S PROXY IS KEPT FOR THE LIFE OF THE PROCESS (layout._REMOVED says why):
+# board.Remove() hands the item to its Python proxy, and when that proxy is collected the
+# bindings go bad -- measured 2026-11-16 on brain_board mT3: five tracks Removed and freed,
+# then board.GetTracks() is a bare SwigPyObject; kept alive (or Deleted) the board stays
+# sound. power_vias lost every via to exactly this (cadkit ab85a31).
+_REMOVED = []
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 CADKIT = os.path.dirname(HERE)
 PY = sys.executable
@@ -118,8 +125,10 @@ def _relay_bleed(board, pcbnew):
         for it in list(g.GetItems()):
             g.RemoveItem(it)
         board.Remove(g)
+        _REMOVED.append(g)
     for it in old:
         board.Remove(it)
+        _REMOVED.append(it)
 
 
 def _silkfit(stem):

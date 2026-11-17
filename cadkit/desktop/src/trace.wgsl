@@ -76,20 +76,36 @@ fn feat_basis(f: Feat) -> mat3x3f {
   return mat3x3f(x, cross(z, x), z);
 }
 
+// a wire's end at e, `out` the way out of the wire there: round (a ball of radius w), or flat (the
+// wire cut square: outside it by the distance to the end's disc), as inside-positive distance
+fn wire_end(q: vec3f, e: vec3f, out: vec3f, w: f32, round: f32) -> f32 {
+  let r = q - e;
+  if (round > 0.5) { return w - length(r); }
+  let ax = dot(r, out);
+  let rad = length(r - out * ax);
+  // carried a hair past the joint into the next piece (their surfaces are tangent there), so
+  // two flat ends never leave a crack between them
+  return -length(vec2f(max(ax - 0.05 * w, 0.0), max(rad - w, 0.0)));
+}
+
 // how far inside the solid q is (negative: outside), as a distance the surface cannot be nearer than
 // (a thread's by its steepest slope; a coil's by the tube round the helix, near enough at a coil's lead)
 fn feat_val(f: Feat, q: vec3f) -> f32 {
   if (f.o.w > 1.5) {
     let w = f.a.x;
     if (f.o.w < 2.5) {
-      // a straight run: the capsule round z from 0 to L (exact)
-      return w - length(q - vec3f(0.0, 0.0, clamp(q.z, 0.0, f.a.y)));
+      // a straight run: the tube round z from 0 to L, each end round or flat (b.x, b.z) (exact)
+      let L = f.a.y;
+      if (q.z >= 0.0 && q.z <= L) { return w - length(q.xy); }
+      if (q.z < 0.0) { return wire_end(q, vec3f(0.0), vec3f(0.0, 0.0, -1.0), w, f.b.x); }
+      return wire_end(q, vec3f(0.0, 0.0, L), vec3f(0.0, 0.0, 1.0), w, f.b.z);
     }
-    // an arc: the torus round z of radius R, from x through A, round at its ends (exact)
+    // an arc: the torus round z of radius R, from x through A, each end round or flat (exact)
     let R = f.a.y; let A = f.a.z;
     let ang = fmod(atan2(q.y, q.x), TAU);
     if (ang <= A) { return w - length(vec2f(length(q.xy) - R, q.z)); }
-    return w - min(length(q - vec3f(R, 0.0, 0.0)), length(q - vec3f(R * cos(A), R * sin(A), 0.0)));
+    return max(wire_end(q, vec3f(R, 0.0, 0.0), vec3f(0.0, -1.0, 0.0), w, f.b.x),
+               wire_end(q, vec3f(R * cos(A), R * sin(A), 0.0), vec3f(-sin(A), cos(A), 0.0), w, f.b.z));
   }
   let rho = length(q.xy);
   let phi = atan2(q.y, q.x);
@@ -131,8 +147,11 @@ fn feat_kept(f: Feat, q: vec3f, wp: vec3f, clip: bool) -> bool {
   return !(clip && dot(G.clip.xyz, wp) + G.clip.w < 0.0);
 }
 
-// the first t in (tmin, tmax) where the ray meets the feature's surface, entering or leaving (as a
-// triangle would be met), or -1
+// the first t in (tmin, tmax) where the ray ENTERS the feature's solid, or -1. Only entries: a
+// ray that starts inside one (a bounce leaving a string where its piece's round end lies inside
+// the next piece's) must not meet that piece's surface on its way out -- that read as shadow, a
+// black ring at every joint of a string's path. A solid's way out is never what a ray from
+// outside sees first.
 fn feat_hit(fi: u32, oo: vec3f, od: vec3f, wo: vec3f, wd: vec3f, tmin: f32, tmax: f32, clip: bool) -> f32 {
   let f = feats[fi];
   let B = transpose(feat_basis(f));
@@ -167,8 +186,8 @@ fn feat_hit(fi: u32, oo: vec3f, od: vec3f, wo: vec3f, wd: vec3f, tmin: f32, tmax
   var vp = 0.0;
   for (var i = 0; i < 256; i++) {
     let v = feat_val(f, qo + qd * t);
-    if (i > 0 && (v > 0.0) != (vp > 0.0)) {
-      // a crossing: bisect it, then keep it if it is where the surface is drawn
+    if (i > 0 && v > 0.0 && vp <= 0.0) {
+      // a way in: bisect it, then keep it if it is where the surface is drawn
       var ta = tp; var tb = t;
       for (var j = 0; j < 14; j++) {
         let tm = 0.5 * (ta + tb);
@@ -189,6 +208,19 @@ fn feat_normal(fi: u32, op: vec3f) -> vec3f {
   let f = feats[fi];
   let M = feat_basis(f);
   let q = transpose(M) * (op - f.o.xyz);
+  if (f.o.w > 1.5) {
+    // a wire: straight out from the nearest point of its centre line (exact; at a joint the
+    // differences below would mix in the flat end's plane -- a bright tick across the wire)
+    var c: vec3f;
+    if (f.o.w < 2.5) { c = vec3f(0.0, 0.0, clamp(q.z, 0.0, f.a.y)); }
+    else {
+      let R = f.a.y; let A = f.a.z;
+      let ang = fmod(atan2(q.y, q.x), TAU);
+      let a = select(select(0.0, A, fmod(ang - A, TAU) < fmod(-ang, TAU)), ang, ang <= A);
+      c = vec3f(R * cos(a), R * sin(a), 0.0);
+    }
+    return normalize(M * (q - c));
+  }
   let e = 1e-3;
   let gx = feat_val(f, q + vec3f(e, 0.0, 0.0)) - feat_val(f, q - vec3f(e, 0.0, 0.0));
   let gy = feat_val(f, q + vec3f(0.0, e, 0.0)) - feat_val(f, q - vec3f(0.0, e, 0.0));
