@@ -1415,7 +1415,7 @@ def pour_amps(rule, notes):
     return max(hit) if hit else max([float(p_["amps"]) for p_ in paths if p_["net"] == rule["net"]] or [0.0]) or None
 
 
-def pour_foreign(rule, P, poly, refs=None):
+def pour_foreign(rule, P, poly, refs=None, areas=False):
     """Other nets' pads inside a pour's outline on its layer: ["U4.3", ...].
 
     ⚠ A PAD IS ITS AREA, NOT ITS CENTRE (brain_board mT4, 2026-11-16) -- PCBFLOW_POUR_AREA=1
@@ -1424,7 +1424,8 @@ def pour_foreign(rule, P, poly, refs=None):
     and A1 read the pour's cut as 0.00 mm -- while this said "no foreign pads", so the turn
     stage (place_init pour_pen) never saw a reason to face the source pins at the next stage.
     Q4/Q6's tabs did the same to PA_VOUT (5.6 mm2 each). With the flag a pad counts when any
-    of a 5 x 5 sample grid over it lies inside."""
+    of a 5 x 5 sample grid over it lies inside. areas=True: [(name, mm2 inside)] -- the
+    sampled fraction of the pad times its size (a rectangle's area; a round pad reads high)."""
     from matplotlib.path import Path as _Path
     import os
     path = _Path(np.asarray(poly, float))
@@ -1444,11 +1445,14 @@ def pour_foreign(rule, P, poly, refs=None):
                 continue
             if area:
                 loc = _rot(grid * np.asarray(q["size"], float), float(q.get("rot") or 0.0)) + q["xy"]
-                hit = path.contains_points(P.world(ref, loc)).any()
+                frac = float(path.contains_points(P.world(ref, loc)).mean())
+                hit = frac > 0
             else:
                 hit = path.contains_point(tuple(P.pad(ref, q["num"])))
+                frac = 1.0
             if hit:
-                out.append("%s.%s" % (ref, q["num"]))
+                nm_ = "%s.%s" % (ref, q["num"])
+                out.append((nm_, frac * float(q["size"][0]) * float(q["size"][1])) if areas else nm_)
     return out
 
 
