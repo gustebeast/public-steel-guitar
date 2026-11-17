@@ -189,6 +189,8 @@ def guide_ang(i: int) -> float:
     return GUIDE_ANG_1 if i == 0 else GUIDE_ANG
 GUIDE_SEAT = GUIDE_D + 0.2                          # its two seats, a slip fit (it is trapped)
 GUIDE_SLOT = GUIDE_D + 0.2                          # the slot across, the rotation lock
+PLUG_GUIDE_SEAT = GUIDE_SEAT + 0.2                   # the plug's: 0.2 more (user, 2026-11-17: plug_9 would
+                                                    # not go on the rod at all)
 GUIDE_FLOAT = 1.0                                   # the slot's play along the radius, each way
 GUIDE_WALL = 3 * 0.8                                # round the slot and the seat: three beads
 TAB_L = 8.0                                         # the tab along x: the slot's bearing length
@@ -253,32 +255,48 @@ SPRING_F = (67.0, 68.0, 61.0, 66.0, 55.0, 61.0, 61.0, 63.0, 54.0, 53.0)
 # sleeve's its outer), screwed on over the coils home against the stop flange by hand and held
 # there by ONE SCREW (the sleeves' LOCK, below; the detent teeth that were here could not be
 # printed true). So the spring is just cut to SPRING_COILS: no bending, no heating, no tang.
-GRIP_TURNS, GRIP_PITCH = 3, 3.6                     # the end coils in the post's thread: the
-                                                    # close-wound 2.31 opened as they go on (2.6 left
-                                                    # 0.05 a side round the wire: no room for the
-                                                    # clearances below and a bead of land between
-                                                    # turns, user 2026-11-16). Three turns, not four:
-                                                    # 4 x 3.6 left string 1's plug 5.7 short; 3 x 3.6
-                                                    # is about the old 4 x 2.6, and three whole turns
-                                                    # trapped by the sleeve still share the pull
+# THE GRIP THREAD IS THE SPRING'S OWN PITCH (user, 2026-11-17, bench: at 3.6 the wire had to be
+# pulled open to the printed grooves, the post's crests were shaved by it, and the sleeve only
+# went on by the wire cutting its own way -- which it did, and held, back and forth). The spring
+# is close-wound, so its coils lie one wire apart: GRIP_PITCH is SPRING_WIRE and the coils go on
+# as they come. Three turns still (the springs are already cut to 40 coils; the 34 working coils,
+# and so the rate, unchanged).
+GRIP_TURNS, GRIP_PITCH = 3, SPRING_WIRE
 SPRING_COILS = SPRING_ACTIVE + 2 * GRIP_TURNS       # 40: the cut piece, ~92 free
-SEAT_GRIP = GRIP_TURNS * GRIP_PITCH                 # 10.4 of post under them
+SEAT_GRIP = GRIP_TURNS * GRIP_PITCH                 # 6.93 of post under them
 SEAT_L = SEAT_GRIP                                   # no more: the open coils cross past it
 SLEEVE_WALL = 2 * D.BEAD                            # the grip sleeve's wall past the spring
 SLEEVE_OD = SPRING_OD + 0.2 + 2 * SLEEVE_WALL        # 22.45
-# THE THREADS' FIT (user, 2026-11-16, first prints: the sleeve would not go on at all; the post
-# took the spring only with the wire shaving it, and it barely came back off). Both were the
-# wire's own Ø + 0.1 on the wire's centre line. Now each has its own groove, sized as the
-# printed fits we have measured go: a groove is a small HOLE round the wire, and printed holes
-# come out small, the smaller the more (Polymaker: snug on a 1/4 in shank at +0.85). The SLEEVE's
-# is the hole proper (inside a bore): Ø wire + 0.7, its centre 0.1 out. The POST's is cut in the
-# outside of a boss, which prints fat rather than shrinking: Ø wire + 0.5, its centre 0.05 in,
-# and the post's crests come in 0.3 off the wire's centre. Each keeps a land between turns
-# (GRIP_PITCH less the groove's width there) and holds the wire by over half a millimetre.
-SLEEVE_GROOVE = (SPRING_WIRE + 0.7, 0.1)             # Ø, its centre off R_COIL (+ out)
-POST_GROOVE = (SPRING_WIRE + 0.5, -0.05)
-SLEEVE_CLR = 0.6                                     # the sleeve's bore off the wire's centre line
-POST_IN = 0.3                                        # the post's crests in off it
+# THE THREADS' FIT (2026-11-17). Each groove is the wire's Ø plus a clearance, on the wire's
+# centre line. At the spring's own pitch neighbouring grooves overlap, so there is no land: the
+# crests are the cusps where two turns' grooves meet, GROOVE_CUSP(g) off the wire's centre, and
+# what holds the wire is how far a cusp reaches into the valley between two coils (the wire's
+# radius less that). The SLEEVE's is a hole (printed holes come out small): +0.3, so its cusps
+# reach ~0.55 into the outside valleys and the print's shrink only makes the wire cut a little,
+# which the bench showed holds. The POST's is cut in the outside of a boss, which prints fat:
+# +0.4, ~0.45 into the inside valleys. The bore and the post's blank only need to lie between
+# the wire's centre line and the cusps (the grooves then cut every bit of them): asserted.
+SLEEVE_GROOVE = (SPRING_WIRE + 0.3, 0.0)             # Ø, its centre off R_COIL (+ out)
+POST_GROOVE = (SPRING_WIRE + 0.4, 0.0)
+CREST_FLAT = 0.05                                    # the blank this far short of the cusps
+
+
+def groove_cusp(g) -> float:
+    """How far off R_COIL a groove's cusps (its crests) lie: two turns' circles meeting."""
+    return math.sqrt((g[0] / 2) ** 2 - (GRIP_PITCH / 2) ** 2)
+
+
+# THE BLANKS END AT THE CRESTS (2026-11-17). Neighbouring turns' circles overlap at this pitch,
+# and cut as overlapping sweeps OCCT returns broken solids (the post in 4 pieces, the sleeve a
+# negative volume). So the post's blank and the sleeve's bore stop CREST_FLAT short of the cusp
+# radius, and each turn's cutter is its circle CLIPPED there: narrower than a pitch, so no two
+# turns overlap (cadkit/threads.py's rule); the crests are a hair of flat the nozzle rounds anyway.
+SLEEVE_CLR = groove_cusp(SLEEVE_GROOVE) + SLEEVE_GROOVE[1] + CREST_FLAT   # the bore off R_COIL
+POST_IN = groove_cusp(POST_GROOVE) - POST_GROOVE[1] + CREST_FLAT          # the post's blank in off it
+# A LEAD-IN at every end the spring's cut end starts its thread at (user, 2026-11-17: the sleeve
+# printed on its far end "hits a wall and can't keep cutting" -- the first layers squashed onto
+# the bed close the groove's mouth): a 45 deg cone from past the wire's outside to the cusps.
+LEAD_PAST = 0.3
 STOP_D, STOP_T = SLEEVE_OD, 2.0                      # the STOP FLANGE each spring end butts against
 R_COIL = (SPRING_OD - SPRING_WIRE) / 2              # 8.37: the wire's centre
 SEAT_D = 2 * (R_COIL - POST_IN)                     # the post: its thread's crests
@@ -938,7 +956,26 @@ def _helix(z0: float, pitch: float, h: float, d: float, r: float = R_COIL) -> cq
             .sweep(cq.Workplane("XY").add(hx), isFrenet=True).translate((0, 0, z0)))
 
 
-def _groove(body: cq.Workplane, z0: float, groove) -> cq.Workplane:
+def _groove_turn(z0: float, groove, side: float) -> cq.Workplane:
+    """One turn of the groove's cutter from z0: its circle (Ø, centre off R_COIL) clipped at
+    CREST_FLAT/2 short of the blank's surface on `side` (-1: the post, material inside;
+    +1: the sleeve, material outside) -- under a pitch wide there, so turns never overlap."""
+    rc, gr = R_COIL + groove[1], groove[0] / 2
+    r_blank = R_COIL + side * (groove_cusp(groove) + side * groove[1] + CREST_FLAT)
+    c0 = (r_blank - side * CREST_FLAT / 2 - rc) / gr            # the clip line, as cos(theta)
+    th0 = math.acos(c0)
+    if side < 0:                                                # inner arc: theta0 .. 2pi - theta0
+        ths = [th0 + (2 * math.pi - 2 * th0) * k / 32 for k in range(33)]
+    else:                                                       # outer arc: -theta0 .. theta0
+        ths = [-th0 + 2 * th0 * k / 32 for k in range(33)]
+    pts = [(rc + gr * math.cos(t), gr * math.sin(t)) for t in ths]
+    assert 2 * abs(pts[0][1]) < GRIP_PITCH, "the clipped groove is a pitch wide"
+    hx = cq.Wire.makeHelix(pitch=GRIP_PITCH, height=GRIP_PITCH, radius=R_COIL)
+    return (cq.Workplane("XZ").polyline(pts).close()
+            .sweep(cq.Workplane("XY").add(hx), isFrenet=True).translate((0, 0, z0)))
+
+
+def _groove(body: cq.Workplane, z0: float, groove, side: float = 0.0) -> cq.Workplane:
     """`body` with the grip coils' groove cut: the helix of _helix from z0, SEAT_L long; `groove`
     (Ø, centre off R_COIL): SLEEVE_GROOVE or POST_GROOVE.
     ⚠ ONE TURN AT A TIME, AND CHECKED. As one SEAT_L sweep, OCCT's cut found no overlap with the
@@ -952,10 +989,10 @@ def _groove(body: cq.Workplane, z0: float, groove) -> cq.Workplane:
     assert abs(n * GRIP_PITCH - SEAT_L) < 1e-6, "the grip groove is whole turns"
     out = body
     for k in range(n):
-        out = out.cut(_helix(z0 + k * GRIP_PITCH, GRIP_PITCH, GRIP_PITCH, groove[0], R_COIL + groove[1]),
-                      clean=False, tol=1e-3)
+        out = out.cut(_groove_turn(z0 + k * GRIP_PITCH, groove, side), clean=False, tol=1e-3)
     before, after = body.val().Volume(), out.val().Volume()
     assert after < before - 1.0, "the grip groove cut nothing (%.2f -> %.2f mm3)" % (before, after)
+    assert len(out.solids().vals()) == 1 and out.val().isValid(), "the grip groove broke the part"
     return out
 
 
@@ -1010,7 +1047,13 @@ def _post(i: int, x0: float, z0: float, bore: float) -> cq.Workplane:
     hi = SPRING_WIRE / 2 if z0 > 0 else -GRIP_PITCH / 2
     post = cq.Workplane("XY").add(cq.Solid.makeCylinder(SEAT_D / 2, SEAT_L - lo + hi,
                                                         cq.Vector(0, 0, z0 + lo)))
-    post = _groove(post, z0, POST_GROOVE)
+    post = _groove(post, z0, POST_GROOVE, -1.0)
+    # the lead-in at the free end (the end the spring starts on): a 45 deg chamfer off the cusps
+    free = z0 + SEAT_L + hi if z0 <= 0 else z0 + lo
+    sg = -1.0 if z0 <= 0 else 1.0                    # into the post from the free end
+    r_c = R_COIL - groove_cusp(POST_GROOVE) + POST_GROOVE[1]
+    r_f = R_COIL - SPRING_WIRE / 2 - LEAD_PAST
+    post = post.cut(_lead_in(free, sg, r_f, r_c, outside=True))
     post = post.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(bore / 2, SEAT_L - lo + hi + 2,
                                                                  cq.Vector(0, 0, z0 + lo - 1))))
     return _in_spring(post, i, x0)
@@ -1028,7 +1071,27 @@ def _sleeve_local(zf: float, z_far: float, z0: float) -> cq.Workplane:
     the wire's centre line, and the grip coils' groove (helix from z0, as the post's). No key
     cross-hole since the lock (user 2026-11-16: "the sleeves don't need the holes")."""
     body = _ring(R_COIL + SLEEVE_CLR, SLEEVE_OD / 2, zf, z_far)
-    return _groove(body, z0, SLEEVE_GROOVE)
+    body = _groove(body, z0, SLEEVE_GROOVE, 1.0)
+    r_c = R_COIL + groove_cusp(SLEEVE_GROOVE) + SLEEVE_GROOVE[1]
+    r_f = R_COIL + SPRING_WIRE / 2 + LEAD_PAST
+    for zface, zother in ((zf, z_far), (z_far, zf)):  # both ends: either may meet the cut end
+        body = body.cut(_lead_in(zface, 1.0 if zother > zface else -1.0, r_f, r_c))
+    return body
+
+
+def _lead_in(zface: float, sg: float, r_face: float, r_in: float, outside: bool = False) -> cq.Workplane:
+    """A 45 deg lead-in cutter at the face zface, running sg into the part, in the spring's frame:
+    from r_face at the face to r_in. outside=False: a bore's chamfer (removes inside the cone);
+    True: a post's (removes outside it)."""
+    h = abs(r_face - r_in)
+    z0 = zface - sg * 0.5                           # the cone carried 0.5 past the face
+    base = cq.Vector(0, 0, z0)
+    d = cq.Vector(0, 0, sg)
+    if outside:
+        cone = cq.Solid.makeCone(r_face - 0.5, r_in, h + 0.5, base, d)
+        big = cq.Solid.makeCylinder(SLEEVE_OD, h + 0.5, base, d)
+        return cq.Workplane("XY").add(big.cut(cone))
+    return cq.Workplane("XY").add(cq.Solid.makeCone(r_face + 0.5, r_in, h + 0.5, base, d))
 
 
 SLEEVE_P_UP = (-1.0, 0.0, 0.0)                      # world: +X -> -X
@@ -1152,7 +1215,7 @@ def _anchor_plug(i: int) -> cq.Workplane:
     dy, dz = at_ang(guide_ang(i), GUIDE_R)
     out = out.union(cyl_x(GUIDE_SEAT + 2 * GUIDE_WALL, f1 - a0, a0, y=y + dy, z=z + dz))
     out = out.union(_radial_box(i, a0, f1, SPRING_ID / 2 - 1.0, GUIDE_R, GUIDE_SEAT + 2 * GUIDE_WALL))
-    out = out.cut(cyl_x(GUIDE_SEAT, f1 - a0 + 2, a0 - 1, y=y + dy, z=z + dz))
+    out = out.cut(cyl_x(PLUG_GUIDE_SEAT, f1 - a0 + 2, a0 - 1, y=y + dy, z=z + dz))
     # the LOCK: the upward tie's boss carried LOCK_E past the flange, a second insert's pocket
     # down from its end (opening up the print)
     dy, dz = at_ang(lock_p_ang(i), ear_r(i))
@@ -2081,6 +2144,10 @@ def _body() -> cq.Workplane:
     w = cut_pocket(M4, w, (bx, by, bt), (0, 0, -1), overshoot=0.5, print_up=(0, 0, 1))
     from . import deck_v2 as _DK                    # the walls stop at the deck panels' underside,
     w = w.cut(_DK.wall_cutter())                     # a groove down each for the panels' tongues
+    # THE BODY ADAPTERS' SOCKETS (user, 2026-11-17: the legs' adapters slide in along X), and the
+    # floor ribs over the inboard ones (src.body_adapter_v2)
+    from . import body_adapter_v2 as _BA
+    w = w.union(_BA.body_add()).cut(_BA.body_cut())
     return w
 
 
@@ -2348,6 +2415,8 @@ def _endplate(rods: bool = True, only: int = None) -> cq.Workplane:
                          y=(ys0 + ys1) / 2, z=(_DK.TZ + EP_TOP + 1) / 2))
     if only is None:
         w = w.cut(_ob_pocket())                                  # the brain board
+    from . import body_adapter_v2 as _BA                         # the +X adapters' sockets
+    w = w.cut(_BA.end_cut(1))
     return w
 
 
@@ -2381,6 +2450,8 @@ def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
     out = [(nm, _made(nm, w)) for nm, w in out] + list(ui_parts()[0])
     out.append(("ob_board", _made("ob_board", kept(_ob_board))))   # bronner's, a stand-in
     out.append(("body", _made("body", kept(_body))))   # opaque PETG-GF, as the lead's chassis
+    from . import body_adapter_v2 as _BA              # the legs' adapters, one a corner
+    out += [(nm, _made(nm, w)) for nm, w in _BA.parts()]
     out += [g for g in _ghosts(y_hi=RAIL_HI)
             if g[0] not in ("ghost_bottom_now", "ghost_pickup") and all_ghosts]   # the pickup is drawn now
     return out
@@ -2391,7 +2462,7 @@ def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
 MATERIAL = {
     "yoke": "petg-gf", "keyplate": "steel", "collar": "pctg", "block": "petg-gf", "mplate": "petg-gf",
     "endplate": "petg-gf", "bar_m3": "steel", "bridge_axle": "steel", "bridge_brg": "polished", "anchor": "stainless", "anchor_m4": "steel",
-    "body": "petg-gf", "wall_bar": "steel", "ob_board": "board",
+    "body": "petg-gf", "adapter": "petg-gf", "wall_bar": "steel", "ob_board": "board",
     "keyhead": "petg-gf", "kh_m3": "steel", "kh_plate": "stainless", "kh_side_screw": "steel",
     "kh_side_insert": "brass", "kh_height_screw": "steel", "kh_shoe": "petg-gf", "kh_height_insert": "brass", "kh_rod": "steel",
     "nut": "brass", "ball": "brass", "screw": "steel", "rod": "steel", "string": "polished",
@@ -2453,7 +2524,7 @@ COLORS = {
     "bend_brg": "bridge_bearings", "bend_axle_ra": "leadscrew", "bend_axle_rb": "leadscrew",
     "bend_axle_rc": "leadscrew",
     "yoke": (0.39, 0.58, 0.93), "collar": (0.85, 0.45, 0.15),
-    "spring": "leg_latch_spring", "plug": (0.85, 0.45, 0.15),
+    "spring": "leg_latch_spring", "plug": (0.85, 0.45, 0.15), "adapter": (0.36, 0.42, 0.46),
     "sleeve_p": (0.95, 0.75, 0.20), "sleeve_c": (0.95, 0.75, 0.20), "m3": "set_screw", "col_ins": "nut",
     "lkp_m3": "set_screw", "lkc_m3": "set_screw", "lkp_ins": "nut", "lkc_ins": "nut",
     "coupler": (0.85, 0.45, 0.15), "cpl_m3": "set_screw", "cpl_insert": "nut",
