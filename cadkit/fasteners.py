@@ -144,6 +144,11 @@ class FastenerSpec:
     # selftap_d an M3 slid straight through one. None: holes.as_printed_d(selftap_d), as for
     # every fit-sensitive hole. Use tap_d() to pick.
     selftap_td_d: Optional[float] = None
+    # THE INSERT ITSELF, apart from its pocket: OD over the knurl (None: the smaller pocket Ø,
+    # the historic dummy), and the validated ROUND pocket Ø when it is fitted AS A NUT (slid in
+    # by hand, held by the screw, never melted; None: insert_od + NUT_SLIP). See FITTED INSERTS.
+    insert_od:      Optional[float] = None
+    insert_nut_d:   Optional[float] = None
     head_recess_d:  Optional[float] = None   # cap-head counterbore (None = headless)
     head_recess_h:  Optional[float] = None
     screw_l:        Optional[float] = None   # dummy screw length, if modelled
@@ -174,6 +179,35 @@ class FastenerSpec:
         insert_pilot_td_d when it is teardropped (see that field)."""
         return _fit_d(self.insert_pilot_d, self.insert_pilot_td_d, direction, print_up)
 
+    def insert_pocket_d(self, mode, direction=None, print_up=None) -> float:
+        """THE ONE PLACE an insert's pocket Ø comes from (see FITTED INSERTS): HEAT_SET -> pilot_d
+        (the drop-in pocket the iron melts it home from), NUT -> the slide-in pocket, insert_nut_d
+        (default insert_od + NUT_SLIP) round, holes.as_printed_d of it sideways."""
+        if mode == HEAT_SET:
+            return self.pilot_d(direction, print_up)
+        if mode == NUT:
+            od = self.insert_od if self.insert_od is not None else self.insert_pilot_d
+            nut_d = self.insert_nut_d if self.insert_nut_d is not None else od + NUT_SLIP
+            return _fit_d(nut_d, None, direction, print_up)
+        raise ValueError("insert mode %r: HEAT_SET or NUT" % (mode,))
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# FITTED INSERTS — one pocket rule per MODE (user, 2026-11-17: "fitted inserts should be done
+# via cadkit and have a parameter for whether they are acting as nuts or heat set ... so it's
+# impossible ... that two M3 inserts have different size holes"; and the insert is RENDERED only
+# by fitted_insert()). Cut every pocket with fitted_insert_cutter(spec, ..., mode) and draw every
+# insert with fitted_insert(spec, ...): never a hand-rolled cylinder.
+#   HEAT_SET  the insert drops into its pocket and the iron melts it home: spec.pilot_d
+#             (validated: M4 6.1 round / 5.7 teardrop; M3 4.8 round, the M4 rule on its 4.7).
+#   NUT       slid in by hand, never melted, the screw pulls it onto a face: insert_nut_d round
+#             (validated: M3 5.5, the collar clamps 2026-11-16), as_printed_d of it sideways.
+# ════════════════════════════════════════════════════════════════════════════
+HEAT_SET = "heat_set"
+NUT = "nut"
+NUT_SLIP = 0.8          # a nut pocket over the insert's OD when the spec has no measured one
+NUT_END_SLIP = 0.3      # a nut pocket's depth over the insert's length (it slides home)
+
 
 # M2 cap screw + McMaster 94459A110 heat-set insert.
 M2 = FastenerSpec(
@@ -201,6 +235,19 @@ M4 = FastenerSpec(
     insert_pilot_d=6.1, insert_depth=5.0, insert_l=5.0, insert_bore_d=4.4,
     boss_prot=6.0, insert_pilot_td_d=5.7,
     head_recess_d=None, head_recess_h=None, screw_l=10.0,
+)
+
+
+# M3 cap screw + McMaster 94459A130 brass insert (OD 4.7 over the knurl, 4.3 long). Heat-set it
+# drops into a 4.8 round pocket (user, 2026-11-17: the 4.0 pilot "much too small"; the M4 rule);
+# as a nut it slides into 5.5 round, 5.1 teardrop (user, 2026-11-16, the collar clamps).
+M3 = FastenerSpec(
+    name="M3", screw_d=3.0, pitch=0.5,
+    selftap_d=3.2, shaft_clr_d=3.4,
+    insert_pilot_d=4.8, insert_depth=4.3, insert_l=4.3, insert_bore_d=3.0,   # the bore at the
+                                    # screw's major: a drawn screw through it does not overlap
+    boss_prot=5.0, insert_od=4.7, insert_nut_d=5.5,
+    head_recess_d=None, head_recess_h=None,
 )
 
 
@@ -553,6 +600,8 @@ def insert(spec):
     The dummy does not know its pocket's print direction, and needs not: it is the
     insert's envelope, which the smaller pocket is sized to."""
     od = min(spec.insert_pilot_d, spec.insert_pilot_td_d or spec.insert_pilot_d)
+    if spec.insert_od is not None:          # the real insert, still inside its smallest pocket
+        od = min(od, spec.insert_od)
     body = cq.Workplane(obj=_cyl(od, spec.insert_l,
                                  (0, 0, -spec.insert_l), (0, 0, 1)))
     bore = cq.Workplane(obj=_cyl(spec.insert_bore_d, spec.insert_l + 2,
@@ -561,6 +610,36 @@ def insert(spec):
     from .mesh_parts import insert_mesh, with_mesh
     return with_mesh(made_of(body.cut(bore), "brass"),
                      insert_mesh(spec.screw_d, spec.pitch, od, spec.insert_l))
+
+
+def fitted_insert_cutter(spec, pnt, direction, mode, depth=None, overshoot=0.0, print_up=None,
+                         roof=True):
+    """THE insert pocket (see FITTED INSERTS): Ø spec.insert_pocket_d(mode, ...) from the mouth
+    `pnt` into the part along `direction`, `depth` deep (default: insert_depth heat-set,
+    insert_l + NUT_END_SLIP as a nut). roof=True closes a pocket drilled INTO the build with a
+    45 degree cone to a point (no flat ceiling): cut the screw's own hole on past it after."""
+    if depth is None:
+        depth = spec.insert_depth if mode == HEAT_SET else spec.insert_l + NUT_END_SLIP
+    d = spec.insert_pocket_d(mode, direction, print_up)
+    mouth = _back(pnt, direction, overshoot)
+    out = _bore(d, depth + overshoot, mouth, direction, print_up)
+    if roof:
+        cone = _step(d, 0.0, _fwd(pnt, direction, depth - 0.01), direction, print_up)
+        if cone is not None:
+            out = out.fuse(cone)
+    return cq.Workplane(obj=out)
+
+
+def cut_fitted_insert(spec, w, pnt, direction, mode, depth=None, overshoot=0.0, print_up=None,
+                      roof=True):
+    return w.cut(fitted_insert_cutter(spec, pnt, direction, mode, depth, overshoot, print_up, roof))
+
+
+def fitted_insert(spec, pnt, direction):
+    """THE insert as drawn everywhere (see FITTED INSERTS): its mouth end at `pnt`, running
+    `direction` into the part -- the same (pnt, direction) its pocket was cut with. Heat-set or
+    nut, it is the same brass part."""
+    return seated_insert(spec, pnt, direction)
 
 
 def _rot_z_onto(shape, direction):
