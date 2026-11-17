@@ -21,7 +21,6 @@ Scoreboard, 2026-10-05 (every board listed is `0 unconnected, 0 violation(s)`):
 | board | FAIL | OPEN | what is still open |
 |---|--:|--:|---|
 | `can_tee` | 0 | 7 | M1 (the drop's way order at the MOTOR end: needs a SERVO42D in hand), M33 / M36 (user: motor current), order-time M12 M30 M37 M42 |
-| `leg_pogo_*` (four boards) | 0 | 4 | order-time M12 M30 M37 M42 |
 | `pi_cap` | 0 | 5 | M29, order-time four. M11 signed 2026-10-05 from the full build on main b0e7a911. M1 signed 2026-10-05 against the routed `ui_board`, `motor_ctrl`, fret and foot boards |
 | `lever_sensor` | 0 | 6 | M11, M29, order-time four |
 | `motor_ctrl` | 0 | 7 | M32 / M33 (user: motor current), M29, order-time four. M11 signed 2026-10-06 from the full build on main 45eeb5b8. M23 and M35 signed 2026-10-05 from WCH's reference manual |
@@ -266,6 +265,8 @@ has to get back there):
   same look (M11): `can_tee`'s ear is bare (checked); the others are to do.
 
 ### Findings from the pogo boards, 2026-10-04
+
+(The four leg_pogo boards were removed with the v1 leg, main 762d12a8, 2026-11-17; kept as a record.)
 
 * **Bus B's 5 V is not current-limited.** `src/leg_pogo.py` and the wiring notes say bus B
   runs "behind a current-limited switch"; `elec/motor_ctrl.py` ties J2 / J6 way 2 straight
