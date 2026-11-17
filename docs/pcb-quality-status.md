@@ -26,7 +26,7 @@ Scoreboard, 2026-10-05 (every board listed is `0 unconnected, 0 violation(s)`):
 | `motor_ctrl` | 0 | 7 | M32 / M33 (user: motor current), M29, order-time four. M11 signed 2026-10-06 from the full build on main 45eeb5b8. M23 and M35 signed 2026-10-05 from WCH's reference manual |
 | `output_panel` | 0 | 6 | M32 (user: motor current), M29, order-time four. M11 signed 2026-10-06 from the full build on main 45eeb5b8 |
 | `optical` | 0 | 5 | M29, order-time four. M11 signed 2026-10-05 from the full build on main b0e7a911. Bring-up: U8's case temperature and the AVDD current (`docs/optical-bringup-diagnostics.md`) |
-| `ui_board`, `fret_led`, `foot_led` | - | - | brenner's boards, not touched by this loop |
+| `ui_board`, `fret_led` | - | - | brenner's boards, not touched by this loop (`foot_led` left with v1, main 246f34fe) |
 
 "Order-time" items (M12 the order form, M30 the assembly order, M37 the files sent are the
 files checked, M42 stock on the day) can only be signed when an order is being placed. M29

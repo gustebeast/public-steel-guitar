@@ -899,7 +899,7 @@ def brain(merged=None):
     if not merged:
         _jst("J3", "S4B-XH-SM4-TB", "to fret_led_key J1 -- 24 V and SPI0 (harness.LED_DROP)",
              XH4_SIDE, harness.LED_DROP, {"V24": v24_led, "GND": gnd, "SCK": sck, "SDT": sdt})
-        _jst("J4", "S4B-XH-SM4-TB", "to foot_led_a J1 -- 24 V and SPI5 (harness.LED_DROP)",
+        _jst("J4", "S4B-XH-SM4-TB", "foot light out -- 24 V and SPI5 (harness.LED_DROP); its board is re-authored for the direct body when wanted (foot_led_a left with v1, main 246f34fe)",
              XH4_SIDE, harness.LED_DROP, {"V24": v24_led, "GND": gnd, "SCK": sck_ft, "SDT": sdt_ft})
     else:
         # ── THE CONNECTOR RIBBON: every field connector is on the connector board now ──

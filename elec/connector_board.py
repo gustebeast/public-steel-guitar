@@ -153,7 +153,7 @@ def connector_board():
           "pluggable header, its MX15EDGK plug takes the wires on M2 slotted screws", TB4,
           harness.LED_DROP, {"V24": v24l, "GND": gnd, "SCK": n["SCK"], "SDT": n["SDT"]},
           power=("V24",))
-    _ways("J5", "MX15EDGRC-3.5-04P", "to foot_led_a J1 -- 24 V and SPI (harness.LED_DROP); 3.5 mm "
+    _ways("J5", "MX15EDGRC-3.5-04P", "foot light out -- 24 V and SPI (harness.LED_DROP; the v1 foot_led_a is gone, 246f34fe); 3.5 mm "
           "pluggable header, its MX15EDGK plug takes the wires on M2 slotted screws", TB4,
           harness.LED_DROP, {"V24": v24l, "GND": gnd, "SCK": n["SCK_FOOT"], "SDT": n["SDT_FOOT"]},
           power=("V24",))

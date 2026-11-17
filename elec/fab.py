@@ -23,16 +23,18 @@ from cadkit.pcbflow import fab_package as _fab  # noqa: E402
 # SIX boards: the power board merged into motor_ctrl, and the optical pickup landed
 # (both 2026-09-15). This is now the whole instrument.
 # ...plus the two FRET LIGHTING boards (2026-09-29), which are one design in
-# elec/fret_led.py cut to two panels -- see that module. `foot_led` is the OTHER
-# lighting job, the one that fires down at the player's feet. (The single side-mount
+# elec/fret_led.py cut to two panels -- see that module. `foot_led` was the OTHER
+# lighting job, the one that fired down at the player's feet (gone with v1, 246f34fe). (The single side-mount
 # `led_strip` both replaced is gone, 2026-10-01.)
 # THE INSTRUMENT'S BOARDS (user 2026-11-13 architecture, lead's BOM swap): the output
 # board IS the brain (CM5 + H743, brain.py built onto it) and the field connectors are on
 # the passive connector board. motor_ctrl, output_panel and pi_cap left the count here;
 # their generators and fab outputs stay as the locked R1 record (r1-boards-locked).
 BOARDS = ("can_tee", "lever_sensor", "brain_board", "connector_board",
-          "optical", "ui_board", "fret_led_mid", "fret_led_key",
-          "foot_led_a", "foot_led_b")
+          "optical", "ui_board", "fret_led_mid", "fret_led_key")
+# foot_led_a / _b left with the v1 chassis they lit (main 246f34fe): a foot light for the
+# direct instrument is re-authored against its body when it is wanted; brain J4 keeps the
+# LED_DROP socket for it.
 
 # ── SOURCING ─────────────────────────────────────────────────────────────────
 # ONLY codes the repo already recorded, keyed by the part VALUE as the netlist

@@ -9,18 +9,18 @@ A part that is not in this file is not on a board, whatever another document say
 | Part | LCSC | Per instrument | Boards |
 |---|---|--:|---|
 | `0R` | C17168 | 19 | lever_sensor, fret_led_mid, fret_led_key |
-| `100k` | C25741 | 36 | brain_board, optical, fret_led_key, foot_led_a, foot_led_b |
-| `100nF` | C307331 | 222 | lever_sensor, brain_board, optical, ui_board, fret_led_mid, fret_led_key, foot_led_a, foot_led_b |
+| `100k` | C25741 | 34 | brain_board, optical, fret_led_key |
+| `100nF` | C307331 | 206 | lever_sensor, brain_board, optical, ui_board, fret_led_mid, fret_led_key |
 | `100nF C0G` | C170182 | 1 | brain_board |
 | `100pF/50V` | C1546 | 1 | brain_board |
 | `100R` | C25076 | 5 | brain_board, optical |
-| `10k` | C25744 | 58 | lever_sensor, brain_board, optical, ui_board, foot_led_a, foot_led_b |
+| `10k` | C25744 | 56 | lever_sensor, brain_board, optical, ui_board |
 | `10k 0.1%` | C190095 | 2 | brain_board |
 | `10mR 1%` | C601097 | 1 | brain_board |
 | `10nF C0G` | C22400107 | 41 | brain_board, optical |
 | `10uF` | C15525 | 16 | brain_board, optical |
 | `10uF/16V` | C15850 | 24 | brain_board, connector_board, optical, ui_board |
-| `10uF/50V` | C13585 | 31 | brain_board, connector_board, optical, fret_led_mid, fret_led_key, foot_led_a, foot_led_b |
+| `10uF/50V` | C13585 | 23 | brain_board, connector_board, optical, fret_led_mid, fret_led_key |
 | `10uH 15A` | C2045568 | 1 | brain_board |
 | `120R` | C22787 | 12 | can_tee, brain_board, connector_board |
 | `120R 100mW` | C413065 | 11 | lever_sensor |
@@ -32,19 +32,19 @@ A part that is not in this file is not on a board, whatever another document say
 | `15pF` | C1548 | 22 | lever_sensor |
 | `180R 100mW` | C413069 | 10 | optical |
 | `18k2 1%` | C2076827 | 1 | brain_board |
-| `1k` | C11702 | 14 | brain_board, optical, fret_led_key, foot_led_a |
+| `1k` | C11702 | 12 | brain_board, optical, fret_led_key |
 | `1k2 1206` | C17891 | 1 | brain_board |
 | `1M` | C26083 | 2 | brain_board |
 | `1N4148WT` | C917006 | 2 | brain_board |
 | `1R` | C25086 | 1 | optical |
 | `1uF` | C28323 | 3 | brain_board |
-| `1uF` | C52923 | 77 | lever_sensor, brain_board, optical, fret_led_mid, fret_led_key, foot_led_a, foot_led_b |
+| `1uF` | C52923 | 67 | lever_sensor, brain_board, optical, fret_led_mid, fret_led_key |
 | `1uF/25V` | C15849 | 1 | brain_board |
 | `2.2nF C0G` | C2987940 | 2 | brain_board |
 | `2.2pF` | C325452 | 20 | optical |
 | `2.2uF` | C377773 | 7 | brain_board, optical |
 | `2.2uF/100V` | C92775 | 2 | brain_board |
-| `200k 1%` | C25764 | 3 | fret_led_key, foot_led_a, foot_led_b |
+| `200k 1%` | C25764 | 1 | fret_led_key |
 | `200R` | C25087 | 2 | brain_board |
 | `220nF/50V` | C64705 | 1 | brain_board |
 | `220R` | C25091 | 2 | brain_board |
@@ -67,10 +67,10 @@ A part that is not in this file is not on a board, whatever another document say
 | `330pF/50V` | C190579 | 1 | brain_board |
 | `330uF/50V` | C53120968 | 2 | brain_board |
 | `36k5 1%` | C25887 | 1 | brain_board |
-| `3k3` | C25890 | 16 | fret_led_mid, fret_led_key, foot_led_a, foot_led_b |
+| `3k3` | C25890 | 8 | fret_led_mid, fret_led_key |
 | `3R` | C23157 | 1 | brain_board |
 | `4.7uF` | C23733 | 11 | lever_sensor |
-| `4.7uF/10V` | C1779 | 15 | brain_board, optical, foot_led_a, foot_led_b |
+| `4.7uF/10V` | C1779 | 7 | brain_board, optical |
 | `4.7uF/50V` | C98192 | 8 | fret_led_mid, fret_led_key |
 | `470k` | C25790 | 1 | brain_board |
 | `470nF/25V` | C92361 | 1 | brain_board |
@@ -120,8 +120,7 @@ A part that is not in this file is not on a board, whatever another document say
 | `ISO7710FDR` | C2865544 | 1 | brain_board |
 | `ISO7740DBQR` | C2877511 | 1 | brain_board |
 | `ISO7741DBQR` | C913840 | 1 | brain_board |
-| `JFC1206-1100FS` | C136343 | 1 | foot_led_b |
-| `JFC1206-1200FS` | C136345 | 2 | fret_led_key, foot_led_a |
+| `JFC1206-1200FS` | C136345 | 1 | fret_led_key |
 | `JFC1206-1300FS` | C136347 | 1 | brain_board |
 | `JFC1206-1400FS` | C136349 | 2 | brain_board |
 | `KT-0603G` | C12624 | 1 | brain_board |
@@ -129,7 +128,7 @@ A part that is not in this file is not on a board, whatever another document say
 | `LESD5L5.0CT1G` | C5274293 | 6 | brain_board |
 | `LM5122PWPR` | C77241 | 1 | brain_board |
 | `LM74700QDBVRQ1` | C2941042 | 3 | brain_board |
-| `LMR33630BRNXR` | C2071384 | 4 | optical, fret_led_key, foot_led_a, foot_led_b |
+| `LMR33630BRNXR` | C2071384 | 2 | optical, fret_led_key |
 | `LP2985-50DBVR` | C74511 | 1 | brain_board |
 | `LTE-C9901` | C2683614 | 10 | optical |
 | `MX15EDGRC-3.5-02P` | C5188295 | 1 | brain_board |
@@ -149,7 +148,7 @@ A part that is not in this file is not on a board, whatever another document say
 | `RK73B3ATTE2R0J` | C5139521 | 1 | optical |
 | `RKJXT1F42001` | C160841 | 1 | ui_board |
 | `S4B-XH-A` | C157925 | 10 | can_tee |
-| `S4B-XH-SM4-TB` | C161861 | 2 | fret_led_key, foot_led_a |
+| `S4B-XH-SM4-TB` | C161861 | 1 | fret_led_key |
 | `S8B-PH-SM4-TB` | C265121 | 11 | lever_sensor |
 | `S8B-XH-A` | C157914 | 10 | can_tee |
 | `SMBJ22A` | C224015 | 2 | brain_board |
@@ -164,12 +163,12 @@ A part that is not in this file is not on a board, whatever another document say
 | `SQD50P06-15L` | C3281500 | 1 | brain_board |
 | `SS34` | C8678 | 3 | brain_board |
 | `STM32H743IIT6` | C89597 | 2 | brain_board, optical |
-| `SWPA5040S4R7MT` | C48496 | 3 | fret_led_key, foot_led_a, foot_led_b |
+| `SWPA5040S4R7MT` | C48496 | 1 | fret_led_key |
 | `TAXM12M4RFBCCT2T` | C133337 | 1 | optical |
 | `TAXM25M4RDBCCT2T` | C403946 | 2 | brain_board, optical |
 | `TAXM8M4RFDCET2T` | C403948 | 11 | lever_sensor |
 | `TCAN3413DR` | C22433320 | 1 | brain_board |
-| `TLC5971RGER` | C543004 | 16 | fret_led_mid, fret_led_key, foot_led_a, foot_led_b |
+| `TLC5971RGER` | C543004 | 8 | fret_led_mid, fret_led_key |
 | `TLV320ADC3140IRTWT` | C1852021 | 5 | optical |
 | `TLV9061IDBVR` | C398358 | 5 | brain_board, optical |
 | `TLV9062IDGKR` | C398356 | 10 | optical |
@@ -189,8 +188,8 @@ A part that is not in this file is not on a board, whatever another document say
 | `USBLC6-2SC6` | C7519 | 1 | optical |
 | `WPN4020H4R7MT` | C98363 | 1 | optical |
 | `X322512MSB4SI` | C9002 | 1 | brain_board |
-| `XL-5050RGBW` | C7371891 | 164 | fret_led_mid, fret_led_key, foot_led_a, foot_led_b |
-| `YZF0002-38080-02` | C5203987 | 16 | fret_led_mid, fret_led_key, foot_led_a, foot_led_b |
+| `XL-5050RGBW` | C7371891 | 92 | fret_led_mid, fret_led_key |
+| `YZF0002-38080-02` | C5203987 | 8 | fret_led_mid, fret_led_key |
 
 ## `can_tee`
 
@@ -504,48 +503,4 @@ A part that is not in this file is not on a board, whatever another document say
 | 2 | R21, R22 | `1k 1%` | R_0402_1005Metric | C11702 |
 | 3 | R41-R43 | `0R` | R_0402_1005Metric | C17168 |
 | 3 | U1-U3 | `TLC5971RGER` | Texas_RGE0024H_VQFN-24-1EP_4x4mm_P0.5mm_EP2.7x2.7mm | C543004 |
-| 1 | U10 | `LMR33630BRNXR` | Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm | C2071384 |
-
-## `foot_led_a`
-
-1 per instrument. 78 placed part(s) in 16 line(s); 3 pad(s) and jumper(s) that are copper, not parts.
-
-| Qty | Designators | Part or value | Package | LCSC |
-|--:|---|---|---|---|
-| 5 | C1-C4, C34 | `1uF/25V` | C_0402_1005Metric | C52923 |
-| 8 | C11-C14, C32, C33, C35, C38 | `100nF/50V` | C_0402_1005Metric | C307331 |
-| 4 | C21-C24 | `4.7uF/25V` | C_0805_2012Metric | C1779 |
-| 4 | C30, C31, C36, C37 | `10uF/50V` | C_1206_3216Metric | C13585 |
-| 36 | D1-D36 | `XL-5050RGBW` | XINGLIGHT_XL-5050RGBW | C7371891 |
-| 1 | F1 | `JFC1206-1200FS` | Fuse_1206_3216Metric | C136345 |
-| 1 | J1 | `S4B-XH-SM4-TB` | JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal | C161861 |
-| 4 | J21-J24 | `YZF0002-38080-02` | Xinyangze_YZF0002-38080-02 | C5203987 |
-| 1 | L1 | `SWPA5040S4R7MT` | L_Sunlord_SWPA5040S | C48496 |
-| 4 | R1-R4 | `3k3` | R_0402_1005Metric | C25890 |
-| 1 | R10 | `100k 1%` | R_0402_1005Metric | C25741 |
-| 1 | R11 | `10k 1%` | R_0402_1005Metric | C25744 |
-| 1 | R12 | `200k 1%` | R_0402_1005Metric | C25764 |
-| 2 | R21, R22 | `1k 1%` | R_0402_1005Metric | C11702 |
-| 4 | U1-U4 | `TLC5971RGER` | Texas_RGE0024H_VQFN-24-1EP_4x4mm_P0.5mm_EP2.7x2.7mm | C543004 |
-| 1 | U10 | `LMR33630BRNXR` | Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm | C2071384 |
-
-## `foot_led_b`
-
-1 per instrument. 75 placed part(s) in 14 line(s); 3 pad(s) and jumper(s) that are copper, not parts.
-
-| Qty | Designators | Part or value | Package | LCSC |
-|--:|---|---|---|---|
-| 5 | C1-C4, C34 | `1uF/25V` | C_0402_1005Metric | C52923 |
-| 8 | C11-C14, C32, C33, C35, C38 | `100nF/50V` | C_0402_1005Metric | C307331 |
-| 4 | C21-C24 | `4.7uF/25V` | C_0805_2012Metric | C1779 |
-| 4 | C30, C31, C36, C37 | `10uF/50V` | C_1206_3216Metric | C13585 |
-| 36 | D1-D36 | `XL-5050RGBW` | XINGLIGHT_XL-5050RGBW | C7371891 |
-| 1 | F1 | `JFC1206-1100FS` | Fuse_1206_3216Metric | C136343 |
-| 4 | J11-J14 | `YZF0002-38080-02` | Xinyangze_YZF0002-38080-02 | C5203987 |
-| 1 | L1 | `SWPA5040S4R7MT` | L_Sunlord_SWPA5040S | C48496 |
-| 4 | R1-R4 | `3k3` | R_0402_1005Metric | C25890 |
-| 1 | R10 | `100k 1%` | R_0402_1005Metric | C25741 |
-| 1 | R11 | `10k 1%` | R_0402_1005Metric | C25744 |
-| 1 | R12 | `200k 1%` | R_0402_1005Metric | C25764 |
-| 4 | U1-U4 | `TLC5971RGER` | Texas_RGE0024H_VQFN-24-1EP_4x4mm_P0.5mm_EP2.7x2.7mm | C543004 |
 | 1 | U10 | `LMR33630BRNXR` | Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm | C2071384 |
