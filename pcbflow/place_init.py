@@ -1081,15 +1081,7 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
             if c in placed_sat or c in fixed or c not in idx:
                 continue
             P = pi.Placed(parts, pl)
-            if r["kind"] == "decap":
-                pin = _pin_at(P, r)
-                ctr = np.asarray(pl[ref][:2])
-                v = pin - ctr
-                t = pin + v / (np.hypot(*v) or 1.0) * 1.0          # just outside the pin
-            elif "." in r["target"]:
-                t = P.pad(*r["target"].split(".", 1))
-            else:
-                t = np.asarray(pl[ref][:2])
+            t = _seat(r, P, pl, ref)        # just outside the pin (a shared decap: off the package)
             # a satellite keeps clear of its noise zones too, when there is room (output_panel
             # 2026-11-11: Y1, the MCU crystal, seated 0.67 mm from the buck inductor)
             fb, f0 = _apart_forbid(G, parts, pl, c, rules), inreg.get(c)
@@ -1358,7 +1350,18 @@ def _seat(r, P, pl, anc):
     if r["kind"] == "decap":
         pin = _pin_at(P, r)
         v = pin - np.asarray(pl[anc][:2])
-        return pin + v / (np.hypot(*v) or 1.0) * 1.0
+        u = v / (np.hypot(*v) or 1.0)
+        if r.get("also") and anc in P.parts:
+            # ⚠ A SHARED DECAP SEATS OUTSIDE THE PACKAGE (brain_board mV8, 2026-11-16): C233
+            # serves U202.3 and U202.5, opposite sides of an SOIC-8. The mean of the two pins
+            # is inside the body, "1 mm past it" still was, and the legaliser took the nearest
+            # free spot -- beside pin 5, 5.2 mm from pin 3 (A2 asks 5). The seat is the edge
+            # of the anchor's courtyard in that direction, plus a millimetre: between the pins,
+            # just off the package.
+            c = np.asarray(pl[anc][:2], float)
+            ext = max(float(np.dot(q - c, u)) for q in P.crtyd(anc))
+            return c + u * (ext + 1.0)
+        return pin + u * 1.0
     if "." in r.get("target", ""):
         return P.pad(*r["target"].split(".", 1))
     return np.asarray(pl[anc][:2])
