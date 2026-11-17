@@ -62,7 +62,7 @@ def extents() -> dict:
 
 
 def _deck_under() -> float:
-    from .changer_bench import DECK_UNDER
+    from .deck_layout import DECK_UNDER
     return DECK_UNDER
 
 
@@ -112,7 +112,7 @@ def _keyhead() -> cq.Workplane:
 
 def _screws() -> cq.Workplane:
     """The four M3 SHCS and washers, heads flush with the -X face, into the bars' -X ends."""
-    from . import belt_tensioner as BTn
+    from . import m3_hardware as BTn
     k = DB.kh_x()
     out = None
     for yc in DB.bar_y():

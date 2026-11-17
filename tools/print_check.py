@@ -1,9 +1,9 @@
 """FAST PRINT CHECK: everything check_ceilings and check_floating look for, in seconds.
 
-  py -3.12 tools/print_check.py --part chassis_0,knee_housing   # from the last scratch build
-  py -3.12 tools/print_check.py --step src/test/test_ep_chassis.step  # a print-pose STEP (+Z up)
+  py -3.12 tools/print_check.py --part ui_clamp,ui_knob           # from the last scratch build
+  py -3.12 tools/print_check.py --step petg-gf/ui_clamp.step        # a print-pose STEP (+Z up)
   py -3.12 tools/print_check.py --part belt_tensioner_half_a_3       # a placed copy: see POSE
-  py -3.12 tools/print_check.py --part vkl_kv_housing --up 0,0,1     # direction in the CACHED pose
+  py -3.12 tools/print_check.py --part ui_knob --up 0,0,1            # direction in the CACHED pose
 
 Exit 2 if any part named could not be checked (said why, at the end).
 
@@ -164,20 +164,16 @@ def up_of(name):
     dec = _declared()
     import re
     cands = [name, re.sub(r"_\d+$", "", name)]
-    cands += [re.sub(r"^(lkr|rkl|rkr|lkl|vkl)_", "", c) for c in list(cands)]
     for c in cands:
         if c in dec:
             return tuple(float(x) for x in _value(*dec[c])), c
-    if re.match(r"chassis_\d+$", name):
-        return tuple(float(x) for x in _value("src.chassis", "PRINT_UP")), "chassis"
-    if re.match(r"top_plate_(color_)?\d+$", name):
-        return tuple(float(x) for x in _value("src.top_plate", "PIECE_UP")), "top_plate"
     raise KeyError("no declared build direction for %r: pass --up" % name)
 
 
 # ── parts ─────────────────────────────────────────────────────────────────────────────
-FUSED_WITH = {"chassis_%d" % i: "chassis_light_%d" % i for i in range(3)}
-FUSED_WITH.update({"top_plate_%d" % i: "top_plate_color_%d" % i for i in range(6)})
+# {part: the body printed fused to it}. The v1 chassis and deck pairs went with the v1 body
+# (lead, 2026-11-17); the direct instrument's two-filament prints are exported as one STEP.
+FUSED_WITH: dict = {}
 
 
 def _caches():
@@ -268,7 +264,7 @@ def resolve(name, up=None):
     if up is not None:
         return name, (lambda: load_part(name)[0]), up
     d, canon = up_of(name)
-    if canon == name or canon in ("chassis", "top_plate"):
+    if canon == name:
         return name, (lambda: load_part(name)[0]), d
     import cadquery as cq
     inst = load_part(name)[0]

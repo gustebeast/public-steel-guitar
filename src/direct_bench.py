@@ -1988,8 +1988,8 @@ def _extents(drive, ui, pick):
 @_lru_cache(maxsize=None)
 def body_box() -> dict:
     """{"inner"/"outer": ((x0, x1), (y0, y1), (z0, z1)), "ui_bottom_at_anchor": z}."""
-    from .changer_bench import DECK_UNDER
-    from .changer_bench import ghosts as _ghosts
+    from .deck_layout import DECK_UNDER
+    from .deck_layout import ghosts as _ghosts
     pick = [w for nm, w in _ghosts(y_hi=RAIL_HI) if nm == "ghost_pickup"]
     drive = [w for nm, w in _drive(T_OPEN, raw=True) if not nm.startswith("string")]
     lo, hi, ui_bottom = kept(_extents, drive, [w for _, w in ui_parts()[0]], pick)
@@ -2046,7 +2046,7 @@ def ep_x() -> dict:
     x_end = X_BEND + R + D.STRING_GAUGE_MAX
     # the screw heads FLUSH with the +X end (user, 2026-11-12): the back wall runs on to the
     # washer under the head, so it is EP_WALL at least (the 8 the load needs) and usually more
-    from . import belt_tensioner as BTn
+    from . import m3_hardware as BTn
     wall1 = x_end - EP_WASHER[1] - BTn.HEAD_H
     assert wall1 - wall0 >= EP_WALL, "the back wall is thinner than the load needs"
     return dict(x_j=x_j, bar_end=bar_end, wall0=wall0, wall1=wall1, x_end=x_end)
@@ -2056,7 +2056,7 @@ def kh_x() -> dict:
     """The keyhead (-X) endplate's clamp, mirrored from ep_x: from its bed face (x0) the head
     recesses (washer + head, flush), the BACK WALL the screws pull on, the gap, the bar's pocket,
     and the JOINT (x_kj) where the walls and floor end."""
-    from . import belt_tensioner as BTn
+    from . import m3_hardware as BTn
     x0 = NUT_BLOCK_X0
     wall1 = x0 + EP_WASHER[1] + BTn.HEAD_H
     e = ep_x()                                       # the SAME back wall as the +X endplate's (user,
@@ -2113,7 +2113,7 @@ def _wall_bar(k: int) -> cq.Workplane:
 def _bar_screws() -> list:
     """The four M3 SHCS (bar_screw_len) and their washers: through the back wall into the bar
     ends, the head on its washer flush with the +X end."""
-    from . import belt_tensioner as BTn
+    from . import m3_hardware as BTn
     e = ep_x()
     out = []
     for yc in bar_y():
@@ -2475,7 +2475,7 @@ def endplate_full():
 
 
 def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
-    from .changer_bench import ghosts as _ghosts
+    from .deck_layout import ghosts as _ghosts
     out = _drive(t) + [("endplate", endplate_full())] + endplate_axles()
     # EVERY PART THE VIEW CAN SHOW OR HIDE IS KEPT ON ITS OWN (user, 2026-11-12): an edit
     # rebuilds the parts whose code or inputs it touched, and nothing else
