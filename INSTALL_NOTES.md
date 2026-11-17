@@ -2236,6 +2236,8 @@ The optical board as ordered (R1) sits under string 6, **turned 180 degrees** fr
 
 ## Direct drive: one screw locks each sleeve, ratchet teeth gone (2026-11-16)
 
+> SUPERSEDED (2026-11-17): the sleeves are now part of the plug and the collar, and there is no lock. See "Direct drive: grip sleeves merged into the plug and collar".
+
 > Supersedes the "Detent", the key cross-hole and the Ø22.45 "carry the teeth" reason in "Grip sleeves replace the bent spring ends" (2026-11-12). The flanges stay Ø22.45.
 
 - **Why:** the printer could not make the 0.6 mm sawtooth teeth accurately enough to work. Each sleeve is now held by one M3 screw, one at each end of the spring.
@@ -2306,3 +2308,22 @@ Each adapter sits across the joint between the body and an endplate (the keyhead
   3. The legs then go on as before: the fixed tenon up into the adapter's mortise until the latch clicks.
 - **Removing:** take the endplate off first. The adapters then slide out of the body along X.
 - **Not yet carried over:** the signal corner's pogo board. Where the bus comes down a leg is still open.
+
+## Direct drive: grip sleeves merged into the plug and collar (2026-11-17)
+
+> Supersedes the separate sleeves, their lock screws and the "Lock screw holes" and "Reprint" bullets of "Grip thread at the spring's own pitch" (2026-11-17).
+
+Each plug and each collar now carries its own outer wall around its threaded post, so the spring screws into the slot between them. The sleeves, their fins, the collar lobes and the 20 lock screws and inserts are gone.
+
+- **Why no lock:** the spring's two ends are one helix held in two fixed threads. It can only turn by screwing deeper into one end, and it bottoms there.
+- **Fits (from the bench):**
+  - Outer wall groove: wire + 0.35 (was + 0.3, which took too much wrist to start).
+  - Collar post (PCTG) groove: wire + 0.2, unchanged ("a touch loose ... still feels solid").
+  - Plug post (PETG-GF) groove: wire + 0.3, halfway between the + 0.4 that was too loose and the + 0.2 that bound.
+- **Lead-in:** a 45° chamfer at the slot's mouth on the wall and at the post's free end.
+- **Printing:** as before (plug -X -> +X, collar as before). The wall prints with its part.
+- **Fitting:**
+  1. Screw one end of the spring into the plug until it bottoms.
+  2. Screw the collar onto the other end until it bottoms.
+  3. Back the collar off, less than half a turn, until its holes line up with the nut's flange, and bolt it on.
+- **Reprint:** every plug and every collar. The bench set for string 6 is `petg-gf/plug_s6.step` and `pctg/collar.step`. The old `sleeve_p` and `sleeve_c` files are no longer exported.

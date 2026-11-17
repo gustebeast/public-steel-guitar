@@ -127,43 +127,43 @@
   },
   "collar_0": {
    "material": "pctg",
-   "volume_mm3": 4010.4
+   "volume_mm3": 4798.4
   },
   "collar_1": {
    "material": "pctg",
-   "volume_mm3": 4106.6
+   "volume_mm3": 4798.4
   },
   "collar_2": {
    "material": "pctg",
-   "volume_mm3": 4106.6
+   "volume_mm3": 4798.4
   },
   "collar_3": {
    "material": "pctg",
-   "volume_mm3": 4016.8
+   "volume_mm3": 4798.4
   },
   "collar_4": {
    "material": "pctg",
-   "volume_mm3": 4106.6
+   "volume_mm3": 4798.4
   },
   "collar_5": {
    "material": "pctg",
-   "volume_mm3": 4106.6
+   "volume_mm3": 4798.4
   },
   "collar_6": {
    "material": "pctg",
-   "volume_mm3": 4016.8
+   "volume_mm3": 4798.4
   },
   "collar_7": {
    "material": "pctg",
-   "volume_mm3": 4106.6
+   "volume_mm3": 4798.4
   },
   "collar_8": {
    "material": "pctg",
-   "volume_mm3": 4106.6
+   "volume_mm3": 4798.4
   },
   "collar_9": {
    "material": "pctg",
-   "volume_mm3": 4016.8
+   "volume_mm3": 4798.4
   },
   "collar_a_0": {
    "material": "petg-gf",
@@ -599,43 +599,43 @@
   },
   "plug_0": {
    "material": "petg-gf",
-   "volume_mm3": 4794.8
+   "volume_mm3": 5771.3
   },
   "plug_1": {
    "material": "petg-gf",
-   "volume_mm3": 4431.7
+   "volume_mm3": 5408.2
   },
   "plug_2": {
    "material": "petg-gf",
-   "volume_mm3": 5677.2
+   "volume_mm3": 6653.7
   },
   "plug_3": {
    "material": "petg-gf",
-   "volume_mm3": 4722.1
+   "volume_mm3": 5698.6
   },
   "plug_4": {
    "material": "petg-gf",
-   "volume_mm3": 7286.8
+   "volume_mm3": 8263.3
   },
   "plug_5": {
    "material": "petg-gf",
-   "volume_mm3": 5695.0
+   "volume_mm3": 6671.5
   },
   "plug_6": {
    "material": "petg-gf",
-   "volume_mm3": 5634.7
+   "volume_mm3": 6611.2
   },
   "plug_7": {
    "material": "petg-gf",
-   "volume_mm3": 5269.7
+   "volume_mm3": 6246.2
   },
   "plug_8": {
    "material": "petg-gf",
-   "volume_mm3": 7573.8
+   "volume_mm3": 8550.3
   },
   "plug_9": {
    "material": "petg-gf",
-   "volume_mm3": 7781.5
+   "volume_mm3": 8758.0
   },
   "ream_jig": {
    "material": null,
