@@ -88,6 +88,8 @@ COLOURS = {
 # a move, a turn, a mirror or a trip through a STEP file changes -- and the export asks
 # the same three numbers of each part it is given. The memory is this process's own: a
 # build and its export in one run, which is every build.
+import weakref  # noqa: E402
+
 _MADE = []                      # (faces, volume, area, material)
 _MADE_MAX_FACES = 400           # nothing asked of a part bigger than anything remembered
 
@@ -121,13 +123,42 @@ def _one(solid):
     return getattr(solid, "wrapped", solid)
 
 
+# ONE MEASURE PER OBJECT (2026-11-17): a build asks again for every part it draws again -- the
+# assembly at three points of a drive's travel hands back the same kept objects, and each ask was
+# a volume and an area integral (6 s an assembly in public-steel-guitar). Keyed weakly on the
+# object asked about, so nothing is kept alive by it; an object that takes no weak reference
+# (a bare TopoDS_Shape) is measured every time, as before.
+# A kept() result carries its content's name (cadkit.kept's provenance tag), so the same content
+# met as a fresh object -- the next assembly's copy of an unmoved part -- is measured once too.
+_WHAT = weakref.WeakKeyDictionary()
+_WHAT_BY_TAG = {}
+
+
+def _what_of(solid):
+    tag = getattr(solid, "_cadkit_kept", None)
+    if tag and tag in _WHAT_BY_TAG:
+        return _WHAT_BY_TAG[tag]
+    try:
+        return _WHAT[solid]
+    except (KeyError, TypeError):
+        pass
+    w = _what(_one(solid))
+    if tag:
+        _WHAT_BY_TAG[tag] = w
+    try:
+        _WHAT[solid] = w
+    except TypeError:
+        pass
+    return w
+
+
 def made_of(solid, material):
     """Say what `solid` (cq.Workplane / cq.Shape / TopoDS_Shape) is made of, and get it
     back. The viewer then shows it as that material wherever it ends up, under any name."""
     if not known(material):
         raise ValueError("%r is no material cadkit knows: %s"
                          % (material, ", ".join(sorted(list(FILAMENTS) + list(FINISHES)))))
-    w = _what(_one(solid))
+    w = _what_of(solid)
     if w is not None and not any(_same(w, m) and m[3] == material for m in _MADE):
         _MADE.append(w + (material,))
     return solid
