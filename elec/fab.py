@@ -32,11 +32,7 @@ from cadkit.pcbflow import fab_package as _fab  # noqa: E402
 # their generators and fab outputs stay as the locked R1 record (r1-boards-locked).
 BOARDS = ("can_tee", "lever_sensor", "brain_board", "connector_board",
           "optical", "ui_board", "fret_led_mid", "fret_led_key",
-          "foot_led_a", "foot_led_b",
-          # the leg's blind-mate boards (elec/leg_pogo.py, 2026-10-01): two joints, and each
-          # joint's pair is the MIRROR of the other's, so four designs
-          "leg_pogo_male_bottom", "leg_pogo_male_top",
-          "leg_pogo_female_bottom", "leg_pogo_female_top")
+          "foot_led_a", "foot_led_b")
 
 # ── SOURCING ─────────────────────────────────────────────────────────────────
 # ONLY codes the repo already recorded, keyed by the part VALUE as the netlist
@@ -143,11 +139,6 @@ LCSC = {
                                     # and pi_cap J3, 5 V + SPI out to the strip
     "S4B-XH-SM4-TB": "C161861",     # S4B-XH-SM4-TB(LF)(SN), 20,777 -- pi_cap J2/J4,
                                     # side entry so they fit UNDER the cap (see there)
-    # the leg blind-mate (elec/leg_pogo.py), read off JLCPCB's parts API 2026-10-01:
-    "YZ165615055F-04025-02": "C54799748",   # right-angle 1x4 spring-pin header, stock 1,467
-                                            # (its -01 sibling C5296819, 902, is the same drawing)
-    "YZ185115035T-04025-01": "C54930022",   # vertical 1x4 gold target, stock 210 -- THIN
-    "S4B-ZR-SM4A-TF": "C485354",            # JST S4B-ZR-SM4A-TF(LF)(SN), stock 26,844
     "YZF0002-38080-02": "C5203987", # side-mount SMD pogo, 24 V / 12 A: the fret seam, x6 a side
     "B2B-XH-A": "C158012",          # JST B2B-XH-A(LF)(SN), stock 381,008 -- sourced
                                     # 2026-09-19 by asking the catalogue, and it is the

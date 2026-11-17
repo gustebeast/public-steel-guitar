@@ -406,7 +406,7 @@
         "$16.60 -- JLCPCB prices a batch, not a board, and the minimum is per ORDER.",
         "The error was worst exactly where the instrument has most boards.",
         "",
-        "\u26a0 Re-measure before ordering. Quotes move, and these are one day's numbers."
+        "⚠ Re-measure before ordering. Quotes move, and these are one day's numbers."
       ],
       "measured": [
         {
@@ -598,34 +598,6 @@
           "usd": 36.52,
           "verified": "v",
           "what": "0.25 mm via: 16.60, plus the 4-wire Kelvin test 16.59 and TG155 material 3.33 the form adds with it"
-        }
-      ],
-      "leg_pogo_male_bottom": [
-        {
-          "usd": 3.09,
-          "verified": "v",
-          "what": "extended-part fee, 3.09 per extended SMT part type (preferred and through-hole are exempt): 1 type"
-        }
-      ],
-      "leg_pogo_male_top": [
-        {
-          "usd": 3.09,
-          "verified": "m",
-          "what": "extended-part fee, 3.09 per extended SMT part type (preferred and through-hole are exempt): 1 type (the mirror of male_bottom; not taken to the quote)"
-        }
-      ],
-      "leg_pogo_female_bottom": [
-        {
-          "usd": 6.18,
-          "verified": "v",
-          "what": "extended-part fee, 3.09 per extended SMT part type (preferred and through-hole are exempt): 2 types"
-        }
-      ],
-      "leg_pogo_female_top": [
-        {
-          "usd": 6.18,
-          "verified": "m",
-          "what": "extended-part fee, 3.09 per extended SMT part type (preferred and through-hole are exempt): 2 types (the mirror of female_bottom; not taken to the quote)"
         }
       ],
       "pi_cap": [
@@ -2232,30 +2204,10 @@
       "verified": "v",
       "what": "S4B-XH-A C157925 -- JLCPCB parts API at qty 110"
     },
-    "leg_pogo_male_bottom:J1": {
-      "usd": 1.4761,
-      "verified": "v",
-      "what": "YZ165615055F-04025-02 C54799748 -- JLCPCB parts API at qty 20"
-    },
-    "leg_pogo_male_top:J1": {
-      "usd": 1.4761,
-      "verified": "v",
-      "what": "YZ165615055F-04025-02 C54799748 -- JLCPCB parts API at qty 20"
-    },
     "output_panel:J5": {
       "usd": 2.9165,
       "verified": "v",
       "what": "NMJ6HCD2 C368502 -- JLCPCB parts API at qty 10"
-    },
-    "leg_pogo_female_bottom:J1": {
-      "usd": 1.0226,
-      "verified": "v",
-      "what": "YZ185115035T-04025-01 C54930022 -- JLCPCB parts API at qty 20"
-    },
-    "leg_pogo_female_top:J1": {
-      "usd": 1.0226,
-      "verified": "v",
-      "what": "YZ185115035T-04025-01 C54930022 -- JLCPCB parts API at qty 20"
     },
     "lever_sensor:Y1": {
       "usd": 0.1197,
@@ -2286,16 +2238,6 @@
       "usd": 0.3089,
       "verified": "v",
       "what": "S4B-XH-SM4-TB C161861 -- JLCPCB parts API at qty 50"
-    },
-    "leg_pogo_male_bottom:J2": {
-      "usd": 0.3066,
-      "verified": "v",
-      "what": "S4B-PH-SM4-TB C265102 -- JLCPCB parts API at qty 40"
-    },
-    "leg_pogo_male_top:J2": {
-      "usd": 0.3066,
-      "verified": "v",
-      "what": "S4B-PH-SM4-TB C265102 -- JLCPCB parts API at qty 40"
     },
     "motor_ctrl:J6": {
       "usd": 0.3066,
@@ -2376,16 +2318,6 @@
       "usd": 0.5723,
       "verified": "v",
       "what": "RK73B3ATTE2R0J C5139521 -- JLCPCB parts API at qty 10"
-    },
-    "leg_pogo_female_bottom:J2": {
-      "usd": 0.2706,
-      "verified": "v",
-      "what": "S4B-ZR-SM4A-TF C485354 -- JLCPCB parts API at qty 20"
-    },
-    "leg_pogo_female_top:J2": {
-      "usd": 0.2706,
-      "verified": "v",
-      "what": "S4B-ZR-SM4A-TF C485354 -- JLCPCB parts API at qty 20"
     },
     "pi_cap:J5": {
       "usd": 0.1911,
@@ -5134,7 +5066,6 @@
     "psu": "PRICED: Anker 65W USB-C charger at $29.99 [m], see mechanical.psu_usbc_65w (the GST160A24-R7B barrel supply is kept at per_instrument 0). Shipping, tax and tariff NOT measured. The R2-6 inlet electronics (PD sinks, boost) are not in any netlist yet, so their ~$13.70/instrument is NOT in the board line.",
     "usbc_cable": "NOT PRICED: a USB-C to USB-C cable rated for the charger (3 A for 65 W, 5 A e-marked for 100 W) -- the Anker 65W does not include one; ~$8-10 is an unread estimate.",
     "wire": "PRICED PER SPOOL 2026-10-20, NOT PER INSTRUMENT: two gauges, six 25 ft spools of McMaster 8054T (22 AWG 8054T13 $3.91, 26 AWG 8054T11 $3.22; BOM.md, Hook-up wire: two gauges) cover one instrument above the floor. LENGTH IS MEASURED, tools/wire_total.py totals the drawn harness at 15.26 m per instrument over 115 runs (152.6 m for a ten-instrument order), which is the figure BOM.md never had.",
-    "pogo": "PRICED NOW: the four leg pogo boards (elec/leg_pogo.py) are in the PCB line -- fab, assembly and their spring-pin parts. What they do not have is a measured JLCPCB quote; at 10 x 17.6 and 13 x 19.3 mm they are well under the 70 mm rail threshold, so expect the same edge-rail penalty as can_tee if ordered by the hundred.",
     "pi_ram": "DECIDED, with a risk attached. The user chose the 1GB at $35 because it is the only Pi 4 that can actually be bought ten at a time (the 2GB is capped at one per customer across the trade). What is NOT settled is whether Dexed + USB gadget + USB host fits 1GB headless -- a design question with bronner. If it does not, the fallback is the 4GB at $100, +$65/instrument on today's line.",
     "landed_gaps": "SHIPPING AND TAX ARE MEASURED FOR FIVE VENDORS, NOT FOR THE BOM. Measured: Lace, JLCPCB, Makerbase, PiShop, Tinmorry, plus Jameco's tariff. UNMEASURED and therefore missing from the landed line: every listing-priced mechanical item (~$213/instrument of screws, bearings, belts, springs, shaft -- no vendor is even recorded for most of them, so there is nothing to check), the PCTG and TPU filament. Expect the landed line to grow, not shrink.",
     "brain:L4": "GLOBAL SOURCING / CONSIGNED (lead, 2026-11-13): Bourns SRP1770TA-100M (C2045568), 0 at LCSC. Worst-case PEAK input current 13.8 A (9 V in -- below that is MINIMAL mode -- 24 V x 4.5 A out, 95 % efficient: 12.63 A average + half of a 2.25 A ripple at 250 kHz; 14.5 A at 90 %); the rule asks Isat >= 1.3 x peak = 17.9 A at a 20-30 % drop. SRP1770TA: Isat1 24 A at 20 %, Isat2 29 A at 30 %, Irms 16.5 A (Bourns REV 11/19 p.1), on the current land. No in-stock 17x17 part qualifies (XR1770-100M C7498883: 18 A typ, no voltage rating; Coilank APS1770: 40 % drop, 30 V). Coilcraft XAL1510-103MED (C3911782, 187 stock, $10.42, 26.3 A at 30 %, 60 V) qualifies but is a 15 mm part on another land. WHY THIS PART AND NOT A CHEAPER ONE: the LM5122's current-limit threshold is 65.5 / 75 / 87.5 mV (min / typ / max) across the 4 mohm R109, so cycle-by-cycle limiting lets the inductor reach 21.9 A in an overload; the SRP1770TA's 24 A Isat at a 20 % drop sits above that, so it holds inductance even then. The 18 A in-stock parts would saturate before the limit acts. Price NOT measured."
@@ -5378,7 +5309,7 @@
       "$109 -> $146 on this one number. Walls dominate a part like the chassis, so it",
       "packs denser than sparse-infill intuition suggests.",
       "",
-      "\u26a0 ONE PART, and the biggest one. A small fiddly part is nearly all perimeter and",
+      "⚠ ONE PART, and the biggest one. A small fiddly part is nearly all perimeter and",
       "will run HIGHER than 0.60; a large hollow one lower. Slicing a second part -- a",
       "knee housing, say -- would show whether one factor is honest for the whole set."
     ]
@@ -5447,7 +5378,7 @@
       "",
       "THE ONE DISTINCTION THAT DECIDES THE TARIFF QUESTION is whether a vendor ships",
       "DDP -- Delivered Duty Paid. JLCPCB's DHL line says DDP outright, so its quoted",
-      "shipping is taken to ALREADY CONTAIN the duty. \u26a0 The real bench PCB order did NOT",
+      "shipping is taken to ALREADY CONTAIN the duty. ⚠ The real bench PCB order did NOT",
       "use that line: it was COMBINED with an LCSC parts order and shipped as one LCSC",
       "DHL Express parcel (not DDP), and DHL billed a $345.37 TARIFF after delivery",
       "(user, 2026-10-29) -- about 30.5% of the $1,133 combined merchandise. See",

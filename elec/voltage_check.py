@@ -71,7 +71,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_ELEC = HERE
 OUT = os.path.join(HERE, "out", "volts")              # the report and the per-pin tables
 DECL = os.path.join(HERE, "volts")                    # what the generators load (tracked)
-LEG = ("leg_pogo_male_bottom", "leg_pogo_male_top", "leg_pogo_female_bottom", "leg_pogo_female_top")
+LEG = ()      # the leg_pogo boards: removed with the v1 leg (main 762d12a8)
 BOARDS = ("can_tee", "pi_cap", "motor_ctrl", "output_panel", "optical", "lever_sensor") + LEG + ("brain", "brain_board",
                                                                                                 "connector_board")
 ORDER = ("output_panel", "motor_ctrl", "pi_cap", "optical", "can_tee", "lever_sensor") + LEG + ("brain", "brain_board",
