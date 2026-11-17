@@ -632,6 +632,8 @@ def _unpack(x, shapes, key, path="r", meshes=()):
             setattr(w, _ATTR, key + ":" + path)
             if "M" in x:
                 setattr(w, _MESH, meshes[x["M"]])
+                from .mesh_parts import looked
+                looked(w)                       # its look rides the moves made on it
             return w
         if "S" in x:
             s = shapes[x["S"]]
