@@ -28,14 +28,17 @@ TWO TENONS an adapter, a leg's kick being a moment about X either way: one under
 middle (wall_bar's line: 18 of solid wall under the bar), and its mirror LEG_W/2 the other side of
 the adapter's centre, under the 4.8 floor -- so the body carries a RIB there over the socket.
 
-THE LEG HALF is leg_stack's, unchanged (the blind mortise, the latch's pocket and its mouth
-chamfer: fit-tested), moved from the v1 leg station to each corner. The signal corner's pogo board
-is not carried over yet (where the bus comes down is the brain board's to decide).
+THE LEG HALF is the v1 leg's interface, unchanged (the blind mortise, the latch's pocket and its
+mouth chamfer: fit-tested), at each corner -- the redesigned legs meet it. Its numbers and shapes
+are inlined below from src/leg_stack.py and src/leg_latch.py as they were at 4b38b97d (both
+deleted in the v1 removal, round 2). The signal corner's pogo board is not carried over yet (where
+the bus comes down is the brain board's to decide).
 """
 
 from __future__ import annotations
 
 import functools
+import math
 
 import cadquery as cq
 
@@ -53,9 +56,69 @@ RIB_WALL = 2 * BEAD                 # ...and its top over the socket's roof
 RAMP = 1.5                          # the tenons' outer ends: run along X per rise (see _tenons)
 
 
-def _ls():
-    from . import leg_stack as LS
-    return LS
+# ── THE LEG HALF (inlined 2026-11-17 from leg_stack / leg_latch at 4b38b97d) ───────────────────
+# The leg's SECTION: a LEG_W square sleeve round an octagon mortise TEN_W across flats, its corners
+# chamfered to CHAM faces, turned 45 deg (an apex where a side-printed part's top is, so the roof is
+# two 45 faces), the tenon's slide fit FIT a face (leg_stack, square-leg rounds; the octagon's 1.6
+# faces because sharp corners bound in the fit coupons).
+LEG_W = 56 * BEAD                   # 44.8
+TEN_W = 30 * BEAD                   # 24.0
+CHAM = 2 * BEAD                     # 1.6
+FIT = 0.30
+ADAPT_L = 52.8                      # the adapter's height: its top to the sleeve's butt face
+ROOF_D = 12.8                       # the blind mortise's roof below the top
+# THE LATCH (leg_latch): the retention POCKET the leg's sprung hook clicks into -- its flat ledge is
+# what the leg hangs on -- and a 45 deg chamfer round the mortise's mouth across the latch band so
+# the hook's printed stairs ride in. All toward +Y (BUTTON_SIDE), the same at every corner.
+BUTTON_SIDE = 1.0
+BAND_W = 16 * BEAD                  # 12.8 the latch band across X
+POCKET_R = 19.74482681718907        # the pocket's reach from the axis
+LEDGE_D = 47.2                      # the ledge's depth below the top
+LEAD_D = 40.8                       # ...and the pocket's top end
+LATCH_CLR = 0.25
+FACE_R = 28 * BEAD                  # 22.4 the chamfer's band reach (the sleeve's face)
+MOUTH_CH = 3 * BEAD                 # 2.4
+_K = math.sqrt(0.5)
+
+
+def _oct_pts(w: float, cx: float, cy: float, lift: float = 0.0) -> list:
+    """The octagon (w across flats, CHAM faces) turned 45 deg on (cx, cy), lifted +Y by lift:
+    leg_stack.octagon's perimeter walk (a wrong walk self-crosses and still extrudes)."""
+    h, c = w / 2.0, CHAM / math.sqrt(2.0)
+    sq = [(h - c, h), (-(h - c), h), (-h, h - c), (-h, -(h - c)),
+          (-(h - c), -h), (h - c, -h), (h, -(h - c)), (h, h - c)]
+    return [(cx + _K * (x - y), cy + _K * (x + y) + BUTTON_SIDE * lift) for x, y in sq]
+
+
+def _mortise_cutter(cx: float, cy: float, z0: float, z1: float) -> cq.Workplane:
+    """The blind mortise from z0 up to z1: the tenon's section grown FIT a face."""
+    pts = _oct_pts(TEN_W + 2 * FIT, cx, cy)
+    return cq.Workplane("XY").polyline(pts).close().extrude(z1 - z0).translate((0, 0, z0))
+
+
+def _band(cx: float, cy: float, r0: float, r1: float, z0: float, z1: float, w: float) -> cq.Workplane:
+    return box_at(w, r1 - r0, z1 - z0, x=cx, y=cy + BUTTON_SIDE * (r0 + r1) / 2.0, z=(z0 + z1) / 2.0)
+
+
+def _bore_wire(cx: float, cy: float, z: float, lift: float) -> cq.Wire:
+    pts = [cq.Vector(x, y, z) for x, y in _oct_pts(TEN_W + 2 * FIT, cx, cy, lift)]
+    return cq.Wire.makePolygon(pts + [pts[0]])
+
+
+def _leg_half(cx: float, cy: float, top: float) -> cq.Workplane:
+    """The adapter's leg half on (cx, cy) from its top down ADAPT_L: the blind mortise open at the
+    butt face, the latch's pocket, and the mouth's chamfer across the latch band."""
+    butt = top - ADAPT_L
+    b = box_at(LEG_W, LEG_W, ADAPT_L, x=cx, y=cy, z=top - ADAPT_L / 2.0)
+    b = b.cut(_mortise_cutter(cx, cy, butt - 1.0, top - ROOF_D))
+    b = b.cut(_band(cx, cy, 0.0, POCKET_R, top - LEDGE_D - LATCH_CLR, top - LEAD_D + LATCH_CLR,
+                    BAND_W + 2 * LATCH_CLR))
+    lo = _bore_wire(cx, cy, butt - 1.0, MOUTH_CH + 1.0)
+    hi = _bore_wire(cx, cy, butt + MOUTH_CH, 0.0)
+    cone = cq.Workplane("XY").add(cq.Solid.makeLoft([lo, hi], True))
+    b = b.cut(cone.intersect(_band(cx, cy, 0.0, FACE_R, butt - 1.0, butt + MOUTH_CH + 0.01,
+                                   BAND_W + 2 * LATCH_CLR)))
+    return b
 
 
 def corners() -> list:
@@ -75,7 +138,7 @@ def frame() -> dict:
 
 
 def centre(ex: int, ey: int) -> tuple:
-    f, W = frame(), _ls().LEG_W
+    f, W = frame(), LEG_W
     cx = f["x_hi"] - W / 2 if ex > 0 else f["x_lo"] + W / 2
     cy = f["y1"] - W / 2 if ey > 0 else f["y0"] + W / 2
     return cx, cy
@@ -91,7 +154,7 @@ def stations(ey: int) -> tuple:
 
 def tenon_x(ex: int) -> tuple:
     """The tenons' run along X (x_in, x_out): END_WALL + c inside each end of the adapter."""
-    cx, W = centre(ex, 1)[0], _ls().LEG_W
+    cx, W = centre(ex, 1)[0], LEG_W
     a, b = cx - W / 2, cx + W / 2
     if ex > 0:
         return a + END_WALL + BODY_C, b - END_WALL - END_C
@@ -198,18 +261,9 @@ def body_ribs(ex: int, ey: int) -> cq.Workplane:
 
 def adapter(k: int) -> cq.Workplane:
     """Corner k's adapter: the v1 leg half moved here, and its two X tenons on top."""
-    LS = _ls()
-    from . import leg_latch as LL
     _, ex, ey = corners()[k]
     cx, cy = centre(ex, ey)
-    z0 = frame()["z0"]
-    b = box_at(LS.LEG_W, LS.LEG_W, LS.ADAPT_L, x=LS.LEG_X, y=LS.LEG_Y,
-               z=(LS.Z_BUTT + LS.Z_TOP) / 2.0)
-    b = b.cut(LS.mortise_cutter(LS.Z_BUTT - 1.0, LS.Z_MORTISE_ROOF))
-    b = b.cut(LL.adapter_pocket())
-    b = b.cut(LL.mouth_chamfer())
-    b = b.translate((cx - LS.LEG_X, cy - LS.LEG_Y, z0 - LS.Z_TOP))
-    return b.union(_tenons(ex, ey))
+    return _leg_half(cx, cy, frame()["z0"]).union(_tenons(ex, ey))
 
 
 def adapter_up(k: int) -> tuple:

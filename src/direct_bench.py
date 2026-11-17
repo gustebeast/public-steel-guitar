@@ -189,8 +189,8 @@ def guide_ang(i: int) -> float:
     return GUIDE_ANG_1 if i == 0 else GUIDE_ANG
 GUIDE_SEAT = GUIDE_D + 0.2                          # its two seats, a slip fit (it is trapped)
 GUIDE_SLOT = GUIDE_D + 0.2                          # the slot across, the rotation lock
-PLUG_GUIDE_SEAT = GUIDE_SEAT + 0.2                   # the plug's: 0.2 more (user, 2026-11-17: plug_9 would
-                                                    # not go on the rod at all)
+PLUG_GUIDE_SEAT = GUIDE_SEAT + 0.4                   # the plug's: Ø5.36 (user, 2026-11-17: plug_9 would
+                                                    # not go on the rod at all; +0.2 still too tight)
 GUIDE_FLOAT = 1.0                                   # the slot's play along the radius, each way
 GUIDE_WALL = 3 * 0.8                                # round the slot and the seat: three beads
 TAB_L = 8.0                                         # the tab along x: the slot's bearing length
@@ -234,9 +234,9 @@ WIN_Z = (-(KEY_DROP + KEY_D / 2), 3.2)
 #   round a Ø8 screw. Both parts are just SCREW_CLR round the screw.
 SPRING_OD, SPRING_WIRE = 19.05, 2.31             # 0.75 / 0.091 in
 SPRING_ID = SPRING_OD - 2 * SPRING_WIRE             # 14.43: the seats' diameter
-SPRING_ACTIVE = 34                                  # working coils between the grips (whole turns):
-                                                    # 34, not 35, with the softer stainless -- at 35
-                                                    # string 1's stretched spring overran its plug by 0.7
+SPRING_ACTIVE = 32                                  # working coils between the grips (whole turns):
+                                                    # the 40-coil pieces less 4 grip turns an end
+                                                    # (2026-11-17; 34 with 3 turns, ~6 % softer)
 SPRING_IT = 7.54 * 4.448222                         # 33.5 N initial tension (9665K36)
 SPRING_K = (1.37 * 4.448222 / 25.4) * (20.0 / (SPRING_WIRE / 25.4)) / SPRING_ACTIVE   # 1.55 N/mm
 # THE FORCE PER STRING (user, 2026-11-11: per-position lengths). Each string's spring is set at
@@ -259,11 +259,12 @@ SPRING_F = (67.0, 68.0, 61.0, 66.0, 55.0, 61.0, 61.0, 63.0, 54.0, 53.0)
 # pulled open to the printed grooves, the post's crests were shaved by it, and the sleeve only
 # went on by the wire cutting its own way -- which it did, and held, back and forth). The spring
 # is close-wound, so its coils lie one wire apart: GRIP_PITCH is SPRING_WIRE and the coils go on
-# as they come. Three turns still (the springs are already cut to 40 coils; the 34 working coils,
-# and so the rate, unchanged).
-GRIP_TURNS, GRIP_PITCH = 3, SPRING_WIRE
+# as they come. FOUR turns (user, 2026-11-17, bench: "the threads seem short ... increase the
+# amount of spring that gets engaged"): 9.24 of grip, under the old 3 x 3.6; the springs already cut
+# to 40 coils keep their length, so SPRING_ACTIVE gives up the two coils.
+GRIP_TURNS, GRIP_PITCH = 4, SPRING_WIRE
 SPRING_COILS = SPRING_ACTIVE + 2 * GRIP_TURNS       # 40: the cut piece, ~92 free
-SEAT_GRIP = GRIP_TURNS * GRIP_PITCH                 # 6.93 of post under them
+SEAT_GRIP = GRIP_TURNS * GRIP_PITCH                 # 9.24 of post under them
 SEAT_L = SEAT_GRIP                                   # no more: the open coils cross past it
 SLEEVE_WALL = 2 * D.BEAD                            # the grip sleeve's wall past the spring
 SLEEVE_OD = SPRING_OD + 0.2 + 2 * SLEEVE_WALL        # 22.45
@@ -273,11 +274,12 @@ SLEEVE_OD = SPRING_OD + 0.2 + 2 * SLEEVE_WALL        # 22.45
 # what holds the wire is how far a cusp reaches into the valley between two coils (the wire's
 # radius less that). The SLEEVE's is a hole (printed holes come out small): +0.3, so its cusps
 # reach ~0.55 into the outside valleys and the print's shrink only makes the wire cut a little,
-# which the bench showed holds. The POST's is cut in the outside of a boss, which prints fat:
-# +0.4, ~0.45 into the inside valleys. The bore and the post's blank only need to lie between
+# which the bench showed holds. The POST's is cut in the outside of a boss: +0.2, ~0.66 into the
+# inside valleys (user, 2026-11-17, bench: at +0.4 "a bit too loose ... the overall diameter could
+# be larger"). The bore and the post's blank only need to lie between
 # the wire's centre line and the cusps (the grooves then cut every bit of them): asserted.
 SLEEVE_GROOVE = (SPRING_WIRE + 0.3, 0.0)             # Ø, its centre off R_COIL (+ out)
-POST_GROOVE = (SPRING_WIRE + 0.4, 0.0)
+POST_GROOVE = (SPRING_WIRE + 0.2, 0.0)
 CREST_FLAT = 0.05                                    # the blank this far short of the cusps
 
 
@@ -988,7 +990,10 @@ def _groove(body: cq.Workplane, z0: float, groove, side: float = 0.0) -> cq.Work
     n = round(SEAT_L / GRIP_PITCH)
     assert abs(n * GRIP_PITCH - SEAT_L) < 1e-6, "the grip groove is whole turns"
     out = body
-    for k in range(n):
+    # ONE TURN PAST EACH END (user, 2026-11-17, bench: a spring threaded through stuck at the face
+    # the groove stopped 1.16 short of -- the collar sleeve's bed end, the plug sleeve's top): the
+    # groove runs out through both faces
+    for k in range(-1, n + 1):
         out = out.cut(_groove_turn(z0 + k * GRIP_PITCH, groove, side), clean=False, tol=1e-3)
     before, after = body.val().Volume(), out.val().Volume()
     assert after < before - 1.0, "the grip groove cut nothing (%.2f -> %.2f mm3)" % (before, after)
@@ -1193,6 +1198,19 @@ def _cone_x(r0: float, r1: float, x0: float, x1: float, y: float, z: float) -> c
 
 
 def _anchor_plug(i: int) -> cq.Workplane:
+    """The plug, clear of the ANCHOR's M4 heads by 0.5 (string 1's stop flange reached one, 0.8
+    deep, with the 2.31 grip). Kept apart from _anchor_plug_raw because the anchor screws sit on the
+    body's walls, and the body is sized from the drive -- body_box measures the RAW plugs (a cut
+    only takes material away, so it cannot widen the body)."""
+    out = kept(_anchor_plug_raw, i)
+    for yw, sg, ax, az in _anchor_screw_at():
+        y_a = yw + sg * ANCHOR_SPACER_L
+        y_b = y_a + sg * (M4_HEAD[1] + 0.5)
+        out = out.cut(cyl_y(M4_HEAD[0] + 1.0, abs(y_b - y_a) + 1.0, min(y_a, y_b) - 0.5, x=ax, z=az))
+    return out
+
+
+def _anchor_plug_raw(i: int) -> cq.Workplane:
     """Printed -X -> +X (PLUG_UP). Every step out in radius going +X is a 45 deg cone (user,
     2026-11-14): under the stop flange, and from each insert's pocket down to its screw's hole; and
     the screws' holes run right out through the teeth, which would otherwise hang over them."""
@@ -1225,6 +1243,13 @@ def _anchor_plug(i: int) -> cq.Workplane:
     pk = COL_INS[1] + 0.3
     assert xb - pk >= a0 + ins_l + (ins_d - tip_d) / 2 + D.BEAD - 1e-6, "the boss's two inserts meet"
     out = out.cut(cyl_x(ins_d, pk + 1.0, xb - pk, y=y + dy, z=z + dz))
+    # the lock M3's TIP, on its own axis (LOCK_R: up to 0.3 off the tie's, whose tip hole it runs
+    # on into): with the 2.31 grip the fin is short and the M3 x 10 reaches past the insert
+    # (2026-11-17, string 1's tip 0.26 mm3 into the plug)
+    ly, lz = _lock_at(i, lock_p_ang(i))
+    tip = sleeve_p_fin_x(i)[1] - LOCK_M3_L - 0.5
+    if tip < xb - pk:                               # only where the tip passes the insert
+        out = out.cut(cyl_x(tip_d, xb - pk - tip + 0.01, tip, y=ly, z=lz))
     x_end = out.val().BoundingBox().xmax
     for dy, dz in tie_offsets(i):  # the tips' way, out through all
         out = out.cut(cyl_x(tip_d, x_end + 1 - (a0 + ins_l), a0 + ins_l, y=y + dy, z=z + dz))
@@ -1854,10 +1879,13 @@ _MESH_ONLY = {"screw", "spring"}
 _RIGID = {"yoke", "keyplate", "ball", "nut", "collar", "m3", "col_ins", "lkc_ins"}
 
 
-def string_parts(i: int, t: float) -> list:
-    """String i's drive, drawn along -X at (y_of(i), za(i)), yawed into place: each part kept."""
+def string_parts(i: int, t: float, raw: bool = False) -> list:
+    """String i's drive, drawn along -X at (y_of(i), za(i)), yawed into place: each part kept.
+    raw: the plug before its anchor clearance (body_box's measure; see _anchor_plug)."""
     out = []
     for nm, make, moves in _STRING_PARTS:
+        if raw and make is _anchor_plug:
+            make = _anchor_plug_raw
         if nm in ("collar_a", "ca_m3", "ca_ins") and coupler_is_collar(i):
             continue                                # the coupler is its collar A
         if nm in _MESH_ONLY:
@@ -1921,14 +1949,14 @@ def _compound(nm, w):
     return (nm, out)
 
 
-def _drive(t: float) -> list:
+def _drive(t: float, raw: bool = False) -> list:
     """Every part but the anchor plate and its bolts, the UI, the ghosts and the body.
     KEPT PART BY PART (user, 2026-11-11: "changing the chassis shouldn't rebuild the items inside
     it"; 2026-11-12: every showable part its own entry): each part is read back from cadkit's
     store until something IT reads changes."""
     out = []
     for i in range(N):
-        out += string_parts(i, t)                   # each part kept on its own (_STRING_PARTS)
+        out += string_parts(i, t, raw)              # each part kept on its own (_STRING_PARTS)
     out += _bend_parts()
     return [_compound(nm, w) for nm, w in out]
 
@@ -1953,7 +1981,7 @@ def body_box() -> dict:
     from .changer_bench import DECK_UNDER
     from .changer_bench import ghosts as _ghosts
     pick = [w for nm, w in _ghosts(y_hi=RAIL_HI) if nm == "ghost_pickup"]
-    drive = [w for nm, w in _drive(T_OPEN) if not nm.startswith("string")]
+    drive = [w for nm, w in _drive(T_OPEN, raw=True) if not nm.startswith("string")]
     lo, hi, ui_bottom = kept(_extents, drive, [w for _, w in ui_parts()[0]], pick)
     top = DECK_UNDER + 9.6                          # the deck's top: the walls' top
     inner = ((NUT_BLOCK_X0 + BODY_WALL, hi[0] + BODY_CLR), (lo[1] - BODY_CLR, hi[1] + BODY_CLR),
