@@ -1005,7 +1005,7 @@ def brain_board():
     # bit clock has one on each side. Sixteen ways left I2C SDA no wire.
     opt_5v = Net("+5V_OPT")
     j4 = Part(name="Conn_02x10", ref_prefix="J", ref="J4", tag="J4", dest="NETLIST",
-              tool="skidl", value="PZ1.27-2x10P ZZ",
+              tool="skidl", value="PZ1.27-2x10P TP",
               description="ribbon to the optical board: five TDM lanes + clocks, I2C, emitter "
               "gate, 5 V (1.27 mm 2x10 vertical, HX PZ1.27 family as J5 on the brain)",
               footprint="Connector_PinHeader_1.27mm:PinHeader_2x10_P1.27mm_Vertical_SMD",
@@ -1329,20 +1329,37 @@ def brain_board():
               tool="skidl",
               # MERGED: the ONE logic 5 V (the brain's +5V_AUX folded in, user 2026-11-13): optical
               # 1.8 A + the H743 0.58 + the isolated audio 0.3 + the CH32 side and both arms ~0.45
-              # = ~3.1 A, past the 3 A part -- the 4 A sibling (open item: orderable + inductor)
-              value="LMR33640 (RNX, open item)" if MERGED else BC.U_VALUE,
-              description="VSTBY (5-20 V) -> 5 V synchronous buck, 1.4 MHz, %s" % (
-                  "4 A: every logic 5 V on the board" if MERGED else "3 A (LCSC %s)" % BC.U_LCSC),
-              footprint=BC.U_FP,
-              pins=[Pin(num=n, func=P) for n in range(1, 13)])
-    bgnd += u5[1], u5[11], u5[6]
-    vstby += u5[2], u5[10], u5[9]
-    sw += u5[3], u5[12]
-    boot += u5[4]
+              # = ~3.1 A, past the 3 A part -- the 4 A sibling. ⚠ THE LMR33640 IS MADE ONLY IN THE
+              # DDA HSOIC-8 (SNVSB99C p.3 Device Comparison: ADDA 400 kHz, DDDA 1000 kHz; no RNX).
+              # Picked 2026-11-17: LMR33640DDDAR, 1 MHz (LCSC C1852154, 2,358 in stock) -- at 400
+              # kHz the inductor would be 2.5x the value. VREF 1.0 V as the LMR33630: the FB
+              # divider stands. L1 FXL0630-4R7-M stands too: Isat 9 A > ISC max 6.2 A (p.6), and
+              # ripple 5 x (1 - 5/20) / (4.7 uH x 1 MHz) = 0.80 A = 20 % of 4 A at the 20 V worst.
+              value="LMR33640DDDAR" if MERGED else BC.U_VALUE,
+              description="VSTBY (5-20 V) -> 5 V synchronous buck, %s" % (
+                  "1 MHz, 4 A: every logic 5 V on the board (LCSC C1852154)" if MERGED
+                  else "1.4 MHz, 3 A (LCSC %s)" % BC.U_LCSC),
+              footprint=("Steel:Texas_DDA0008_HSOP-8-1EP_3.9x4.9mm_P1.27mm" if MERGED else BC.U_FP),
+              pins=[Pin(num=n, func=P) for n in range(1, 10 if MERGED else 13)])
     buck_vcc = Net("BUCK_VCC")
-    buck_vcc += u5[5]
-    fb += u5[7]
-    Net("BUCK_PG_NC").connect(u5[8])
+    if MERGED:
+        # SNVSB99C p.4 Table 6-1 (DDA): 1 PGND 2 VIN 3 EN 4 PG 5 FB 6 VCC 7 BOOT 8 SW, the
+        # thermal pad = AGND (KiCad pad 9). EN tied to VIN, as the RNX cell had it.
+        bgnd += u5[1], u5[9]
+        vstby += u5[2], u5[3]
+        Net("BUCK_PG_NC").connect(u5[4])
+        fb += u5[5]
+        buck_vcc += u5[6]
+        boot += u5[7]
+        sw += u5[8]
+    else:
+        bgnd += u5[1], u5[11], u5[6]
+        vstby += u5[2], u5[10], u5[9]
+        sw += u5[3], u5[12]
+        boot += u5[4]
+        buck_vcc += u5[5]
+        fb += u5[7]
+        Net("BUCK_PG_NC").connect(u5[8])
     # ── U6: 5 -> 3.3 V for the MCU, the hub and the converters' digital side ─
     u6 = Part(name="LDO_3V3", ref_prefix="U", ref="U6", tag="U6", dest="NETLIST", tool="skidl",
               value="AP2112K-3.3TRG1", description="5 V -> 3V3, AFTER the bead",
@@ -2231,7 +2248,8 @@ BOARD_NOTES = {
     "open_items": [
         "brain board: the 24 V boost and the power button move there (harness.BRAIN_POWER / BRAIN_SIGNAL); its VIN input soft-starts behind BRAIN_EN",
         "AP33772SDKZ-13 vs -FA02: VSEL/GPIO only on FA02; this board uses neither",
-        "J4 ribbon header PZ1.27-2x10P ZZ: find its LCSC code and stock (the 2x8 is C22438123); the optical board's end mirrors this pinout",
+        "J4 / J240 ribbon headers sourced 2026-11-17 (HX PZ1.27-2x10P TP C41376042, JXTCONN A127M05-0B30P51-H10A40 C41427104), both SMD as their lands: NOT shrouded (no 1.27 mm box header is stocked) -- mark pin 1 on the silk; reversed, J240 puts +24 V on CAN / SPI. The optical board's end mirrors J4's pinout",
+        "the lights' +24 V rides TWO ribbon ways (7-8) behind F3, a 3 A fuse: the contacts and 30 AWG wire are ~1 A each -- either the lights' real draw stays under 2 A, or F3 drops to 2 A, or V24L takes more ways",
         "J4 ribbon: 12.288 MHz BCLK + five lanes over the ribbon -- keep it short (optical top panel to this board) and series-terminate the clock at its source (SAI1 SCK pin)",
         "the +X endplate pocket (branner) is cut from elec/brain_board.pocket.json: regenerate it whenever the parts within 19 mm of the panel edge move",
         "the mount: one M4 (branner) at x > -124, not yet placed -- reserve its keepout when it is",
@@ -2239,7 +2257,7 @@ BOARD_NOTES = {
         "F204 (2920L200/60GR, 2 A hold / 4 A trip, approved 2026-11-14): measure the motors' sub-second step peaks on the first board (output-side INA226 or a scope) -- the hold was chosen on the ~0.4 A ten motors draw moving",
         "boost bulk counts (2 in, 5 out at 22uF/50V 2220) assume 50 % DC-bias retention at 24 V, 70 % at 20 V: PSA publishes no curve -- measure one part",
         "audio isolation: B0509S-1WR3 (YLPTEC) 11..111 mA: R60 (1k2) holds the 10 % minimum with the converters' clocks halted; measure the clock-halted audio-side draw on the first board (no maker publishes a MINIMUM for it)",
-        "U5 as the ONE logic 5 V (merged): LMR33640 in the RNX footprint (confirm the orderable and LCSC code), an inductor with Isat >= 5 A in the 5x5 land, D14 / D16 (SS34, 3 A) feed it on a 5 V contract -- 5 A parts if full load is allowed there",
+        "U5 (LMR33640DDDAR, 4 A, sourced 2026-11-17) on a 5 V-ONLY contract: the firmware must hold the low-power mode (optical off, ~1.3 A) -- the contract is 3 A per port and D14 / D16 are SS34 (3 A); full load (~3.1 A) only on a 9 V or higher contract",
         "USB data chokes FL3 / FL4: ACM2012-900-2P-T002 is marked 'not recommended for new design' on TDK's catalogue (20220113); ordered as T-CND's C55213549. Windings 1-4 / 2-3 READ off TDK's circuit diagram, pads match KiCad's Coilank footprint",
         "audio isolation: the board is meant to be measured (pickup into an amp: no charger / phone charger / laptop charger / two chargers / a computer on the data) against R1",
         "the UI station's clamp (to x -147) is in this board's drop path (to x -169.4): ignored for now (user 2026-11-13), it moves -X later",
@@ -2372,9 +2390,9 @@ def quality_notes(net_path):
     import output_split as OS
     qp, qs = OS.quality("power", net_path), OS.quality("signal", net_path)
     q = {"pinouts": dict(qp["pinouts"], **qs["pinouts"])}
-    q["pinouts"]["PZ1.27-2x10P ZZ"] = (
-        "HX PZ1.27 family drawing (as the brain's PZ1.27-2x8P ZZ, LCSC C22438123, p.1): a plain "
-        "straight two-row header, the maker numbers nothing -- the numbering is the footprint's "
+    q["pinouts"]["PZ1.27-2x10P TP"] = (
+        "HX PZ1.27 family drawing (as the brain's PZ1.27-2x8P ZZ, LCSC C22438123, p.1; this is the "
+        "family's SMD TP, C41376042): a plain straight two-row header, the maker numbers nothing -- the numbering is the footprint's "
         "(KiCad PinHeader_2x10_P1.27mm_Vertical_SMD: odd pads one row, even the other, 1 / 2 at "
         "one end) and the way order is this file's J4 block, which the optical board's end "
         "mirrors (IDC ribbon: wire n = pin n)")
@@ -2409,7 +2427,7 @@ def quality_notes(net_path):
              "split": True},
             {"net": "VIN_BUS", "from": "Q8.5", "to": ["R112.1"], "amps": 1.5},
             {"net": "VIN_BUS", "from": "Q8.5", "to": ["D24.2"], "amps": 0.5},
-            {"net": "VSTBY", "from": "D24.1", "to": ["U5.2", "U5.9", "U5.10"], "amps": 0.5,
+            {"net": "VSTBY", "from": "D24.1", "to": ["U5.2", "U5.3"], "amps": 0.5,
              "split": True},
             {"net": "V5_PRE", "from": "L1.2", "to": ["U36.1"], "amps": 1.2},
             {"net": "SVC_VBUS", "from": "U36.6", "to": ["J7.A4"], "amps": 1.2},
@@ -2546,15 +2564,15 @@ if __name__ == "__main__":
         # SLVSGT7 pp.3-4 Table 5-1: 7 VIN, 11 VOUT (the boost side's output caps close the
         # hot loop), 18 VCC ("more than 4.7 uF"); 12 ISP / 13 ISN are sense. AP2114H BCD Rev.
         # 2.2 p.3 (SOT-223 H): 3 VIN, 2 VOUT. B0509S-1WR3 YLPTEC B_S-1WR3 rev A2.1 p.4: 2 +Vin,
-        # 4 +Vout. U5 LMR33640 in the LMR33630's RNX land, SNVSAN3F p.5 Table 6-1: 2 and 10
-        # VIN, 5 VCC (1 uF); 9 EN on VSTBY is a strap.
+        # 4 +Vout. U5 LMR33640DDDAR (DDA) SNVSB99C p.4 Table 6-1: 2 VIN, 6 VCC (1 uF); 3 EN
+        # on VSTBY is a strap.
         "U13": {"24": "VCC", "20": "V5V", "12": "V18"},
         "U14": {"24": "VCC", "20": "V5V", "12": "V18"},
         "U2": {"3": "VCC", "4": "VDD"},
         "U205": {"7": "VIN", "11": "VOUT", "18": "VCC"},
         "U21": {"3": "VIN", "2": "VOUT"},
         "U30": {"2": "+Vin", "4": "+Vout"},
-        "U5": {"2": "VIN", "10": "VIN", "5": "VCC"},
+        "U5": {"2": "VIN", "6": "VCC"},
     }
     import volts_decl                   # A16: generated by voltage_check.py --declare brain_board
     volts_decl.into(notes, "brain_board")

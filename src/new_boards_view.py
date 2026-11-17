@@ -39,7 +39,8 @@ VIEW_HEIGHT = {
     # the CM5 mezzanine's RECEPTACLE (ours): the 1.5 mated stack (CM5 datasheet) is drawn as two
     # halves, this and the CM5's plug (_cm5) -- the 1.0 / 0.5 split ESTIMATED, not off Hirose's print
     "Hirose_DF40C-100DS-0.4V_2x50_P0.4mm": 1.0,
-    "L_Bourns_SRP1770TA_16.9x16.9mm": 7.0,   # brain part_heights L4
+    "L_Bourns_SRP1770TA_16.9x16.9mm": 7.0,   # brain part_heights L4 (before 2026-11-17)
+    "L_Bourns_SRP1513CA_15.5x16.5mm": 7.3,   # brain L4 APS1513M100F: 7.0 +- 0.3
     "PinHeader_2x08_P1.27mm_Vertical": 5.3,  # brain part_heights J5 (HX PZ1.27-2x8P ZZ)
     "PinHeader_2x10_P1.27mm_Vertical_SMD": 5.3,   # brain_board J4 PZ1.27-2x10P: AS its 2x8 sibling
     "TDSON-8-1": 1.10,                       # brain part_heights Q8/Q9
@@ -65,6 +66,7 @@ VIEW_HEIGHT = {
     # read TI's DSG0008A / RYQ0021B outlines and WCH's CH334 drawing before any clearance rides on them
     "Texas_DSG0008A_WSON-8-1EP_2x2mm_P0.5mm_EP0.9x1.6mm": 0.8,   # U221 TPS22965
     "Texas_RYQ0021B_VQFN-HR-21_3x5mm_P0.5mm": 1.0,               # U205 TPS552892
+    "Texas_DDA0008_HSOP-8-1EP_3.9x4.9mm_P1.27mm": 1.7,   # U5 LMR33640: DDA0008J/B "1.7 mm max height" (SNVSB99C p.38/41)
     "WCH_QFN-16-1EP_3x3mm_P0.5mm_EP1.8x1.8mm": 0.85,             # U37 CH334P
 }
 

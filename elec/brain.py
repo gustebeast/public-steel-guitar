@@ -416,13 +416,15 @@ def brain(merged=None):
     b["SW"] += u20[18]
     b["HO"] += u20[19]
     b["BST"] += u20[20]
-    # Bourns SRP1770TA-100M, GLOBAL SOURCING / CONSIGNED (lead, 2026-11-13; 0 at LCSC): Isat1
-    # 24 A at a 20 % drop, Irms 16.5 A (Bourns REV 11/19 p.1) against a 13.8 A worst-case peak
-    # (9 V, 108 W, 95 %: 12.6 A + half of 2.25 A ripple) x 1.3 = 17.9 A. No in-stock 17 x 17
-    # part meets it (prices.json missing["brain:L4"] has the search).
-    _two("L4", "L", "10uH 15A", "boost inductor, Bourns SRP1770TA-100M (C2045568, global sourcing): "
-         "10 uH, Isat 24 A at 20 %, shielded",
-         "Inductor_SMD:L_Bourns_SRP1770TA_16.9x16.9mm", b["LMID"], b["SW"])
+    # Coilank APS1513M100F (LCSC C49261410, 186 in stock 2026-11-17; AAPS1513M100F C49261563 is
+    # a second listing, 179): the Bourns SRP1513CA-100M's clone, 10 uH, Isat 30 A at a 30 % drop,
+    # Irms 19 A at a 20 C rise, 7 mohm max (Bourns SRP1513CA p.1) against a 13.8 A worst-case
+    # peak x 1.3 = 17.9 A (prices.json's derivation). It replaces the SRP1770TA-100M, which LCSC
+    # had none of (global sourcing / consigned, 2026-11-13): the search then was held to 17 x 17;
+    # this one is SMALLER (16.5 x 15.5 x 7.0), so it lands inside the old outline, pads on X.
+    _two("L4", "L", "APS1513M100F", "boost inductor, Coilank APS1513M100F = Bourns SRP1513CA-100M "
+         "(LCSC C49261410): 10 uH, Isat 30 A, Irms 19 A, shielded",
+         "Steel:L_Bourns_SRP1513CA_15.5x16.5mm", b["LMID"], b["SW"])
     _res("R109", "4mR 1W", "boost current sense, VIN side of L4 (TI's 4 mR)", vin_sw,
          b["LMID"], "Resistor_SMD:R_2512_6332Metric")
     _res("R110", "100R", "CSP filter (TI's 100R / 100 pF)", vin_sw, b["CSPF"])
@@ -918,9 +920,9 @@ def brain(merged=None):
              "4 x 30 AWG at ~1 A each; PPTC 2 A hold / 4 A trip, 60 V", "Fuse:Fuse_2920_7451Metric",
              v24, v24_rib)
         _cap("C122", "10uF/50V", "ribbon 24 V bulk, after F4", v24_rib, gnd, C1206)
-        _jst("J40", "PZ1.27-2x15P ZZ", "the CONNECTOR BOARD ribbon, 30-way 1.27 mm 2x15 IDC "
+        _jst("J40", "A127M05-0B30P51-H10A40", "the CONNECTOR BOARD ribbon, 30-way 1.27 mm 2x15 IDC "
              "(harness.CONN_RIBBON): motors' 24 V, the lights' 24 V, bus A, both arms (CAN or "
-             "the flash lane) with their 5 V, both LED SPIs (LCSC open item)",
+             "the flash lane) with their 5 V, both LED SPIs (JXTCONN, LCSC C41427104: SMD, 1 A per contact)",
              "Connector_PinHeader_1.27mm:PinHeader_2x15_P1.27mm_Vertical_SMD", harness.CONN_RIBBON,
              {"V24": v24_rib, "V24L": v24_led, "GND": gnd, "CANA_H": a_h, "CANA_L": a_l,
               "PED_H": ped_h, "PED_L": ped_l, "LEV_H": lev_h, "LEV_L": lev_l,
@@ -988,7 +990,7 @@ BOARD_NOTES = {
         "D1": 1.10,      # SMF24A (Jingdao, C169430): SOD-123FL outline dim A 0.9-1.1, "SMF5.0A~SMF440A-200W" 2020.10 p.4
         "D13": 1.10,     # BAT54WS: SOD323 dim A2 1.00-1.10 (Diodes DS30098 Rev. 14-2, package outline)
         "L3": 4.0,       # SWPA5040S4R7MT: C max 4.0 (Sunlord SWPA catalogue p.2, Shape and Dimensions)
-        "L4": 7.0,       # SRP1770TA-100M: 6.7 +- 0.3 incl. terminal (Bourns REV. 11/19 p.1, Product Dimensions)
+        "L4": 7.3,       # APS1513M100F / SRP1513CA: 7.0 +- 0.3 (Bourns SRP1513CA p.1, Product Dimensions)
         "Q8": 1.10, "Q9": 1.10,       # NCEP4090GU: DFN5X6-8L(G) dim A 0.90-1.10 (NCE V4.0 p.5)
         "R109": 0.88,    # PA2512FKF7W0R004E: H 0.63 +- 0.25 (Yageo PA_E 2512 spec V.10 p.4, Table 1)
         "J5": 5.3,       # HX PZ1.27-2x8P ZZ: 1.00 plastic + 3.90 pin, +-0.2 each (Hanxia drawing p.1, C22438123)

@@ -1581,7 +1581,7 @@
  {
   "kind": "decap",
   "cap": "C63",
-  "pin": "U5.5",
+  "pin": "U5.6",
   "max_mm": 3.0,
   "hard": false,
   "weight": 1.0,
@@ -1974,7 +1974,7 @@
  {
   "kind": "decap",
   "cap": "C4",
-  "pin": "U5.4",
+  "pin": "U5.7",
   "max_mm": 3.0,
   "hard": false,
   "weight": 1.0,

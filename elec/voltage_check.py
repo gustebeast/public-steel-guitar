@@ -922,7 +922,7 @@ SEEDS["connector_board"] = {
 }
 CODE_FALLBACK["connector_board"] = {
     # J1: PZ1.27-2x15P ZZ has no LCSC code yet: its stocked 2 x 8 sibling, as brain_board's J240
-    ("PZ1.27-2x15P ZZ", "PinHeader_2x15_P1.27mm_Vertical_SMD"): "C22438123",
+    ("A127M05-0B30P51-H10A40", "PinHeader_2x15_P1.27mm_Vertical_SMD"): "C41427104",
 }
 CODE_FALLBACK["brain_board"] = {
     # U5, merged: the 4 A LMR33640 in the 3 A part's RNX land, no LCSC code yet (open item).
@@ -931,10 +931,10 @@ CODE_FALLBACK["brain_board"] = {
     ("LMR33640 (RNX, open item)", "Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm"): "C2071384",
     # J240, the connector ribbon (harness.CONN_RIBBON): no LCSC code yet; rated as its stocked
     # 2 x 8 sibling, the same HX PZ1.27 family and contacts (as J4 above)
-    ("PZ1.27-2x15P ZZ", "PinHeader_2x15_P1.27mm_Vertical_SMD"): "C22438123",
+    ("A127M05-0B30P51-H10A40", "PinHeader_2x15_P1.27mm_Vertical_SMD"): "C41427104",
     # J4, the optical ribbon: PZ1.27-2x10P ZZ has no LCSC code yet (brain_board open item);
     # rated as its stocked 2 x 8 sibling, the same HX PZ1.27 family and contacts
-    ("PZ1.27-2x10P ZZ", "PinHeader_2x10_P1.27mm_Vertical_SMD"): "C22438123",
+    ("PZ1.27-2x10P TP", "PinHeader_2x10_P1.27mm_Vertical_SMD"): "C41376042",
 }
 
 

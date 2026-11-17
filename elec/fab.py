@@ -186,7 +186,13 @@ LCSC = {
     "TPS2553DBVR": "C55266",        # TI current-limited switch, SOT-23-6 (motor_ctrl U6, pi_cap U1); 58,077 in stock
                                     # 2026-10-04 -- motor_ctrl U6, bus B's 5 V
     "PZ1.27-2x8P": "C22438114",     # the same family's 2x8, for the UI board's 16-way
-    "PZ1.27-2x8P ZZ": "C22438123",  # its STRAIGHT sibling (brain J5, vertical): 1,580 on 2026-11-13
+    "PZ1.27-2x8P ZZ": "C22438123",
+    # 2026-11-17: the brain board's ribbons, SMD as their lands (the ZZ values they carried
+    # are the THROUGH-HOLE parts). JLC parts API: 1,105 / 875 in stock; no 1.27 mm shrouded
+    # header is stocked (the box-header listings read 0), so both are plain.
+    "PZ1.27-2x10P TP": "C41376042",  # HX, 2x10 1.27 SMD vertical: brain_board J4 (optical ribbon)
+    "A127M05-0B30P51-H10A40": "C41427104",  # JXTCONN 2x15 1.27 SMD vertical, 1 A: brain J240 + connector_board J1
+    "LMR33640DDDAR": "C1852154",     # TI 4 A buck, DDA HSOIC-8, 1 MHz: brain_board U5; 2,358 in stock  # its STRAIGHT sibling (brain J5, vertical): 1,580 on 2026-11-13
                                     # ribbon; 2050 in stock 2026-10-04
     "PB-22E85-S-5.7C-C-W": "C22462024",   # Legion self-locking push switch, 2P2T, THT,
                                     # 12 V 0.3 A; 2535 in stock 2026-10-04. The power button.
@@ -249,14 +255,14 @@ LCSC = {
     "LM5122PWPR": "C77241",         # TI LM5122MHX/NOPB: the HTSSOP-20 PWP reel (SNVS954H orderables;
                                     # there is no "LM5122PWPR"); 20,357 on 2026-11-13 (brain U20)
     "NCEP4090GU": "C502976",        # Wuxi NCE Power NCEP4090GU, DFN5x6-8L; 3,236 on 2026-11-13 (brain Q8/Q9)
-    "DF40C-100DS-0.4V(51)": "C3642394",  # Hirose DF40C-100DS-0.4V(58), the same part on other
-                                    # packaging: 196 on 2026-11-13 (C597931, the (51), had fallen
-                                    # to 34) -- THIN, 2 per instrument (brain J1/J2): order early
+    "DF40C-100DS-0.4V(51)": "C597931",   # Hirose DF40C-100DS-0.4V(51) itself: 21,196 on 2026-11-17
+                                    # (restocked; it was 34 on 11-13, when the (58) C3642394 stood
+                                    # in -- that one is down to 24). 2 per instrument (brain J1/J2)
     "S6B-XH-SM4-TB": "C191914",     # JST S6B-XH-SM4-TB(LF)(SN), 5,661; the bare listing
                                     # C20493992 is 0 (brain J10/J12)
     # Keyed by value, not in PASSIVES: lcsc_check.check_passives reads a chip size out of
     # the footprint name, which these two do not have.
-    "10uH 15A": "C2045568",         # Bourns SRP1770TA-100M; ZERO in stock on 2026-11-13 (brain L4)
+    "APS1513M100F": "C49261410",     # Coilank = Bourns SRP1513CA-100M clone, 10 uH 30 A; 186 on 2026-11-17 (brain L4)
     "330uF/50V": "C53120968",       # jieerrui MA50V330M10X12, SMD POLYMER D10x12.5, 50 V, 20 mohm, 3.5 A ripple; 13,181 stock (brain C113/C114 since 2026-11-14)
     "470uF/35V": "C46550472",       # jieerrui MA35V470M10X13, SMD POLYMER D10x13, 35 V, 16 mohm,
                                     # 3.8 A ripple at 100 kHz; 66,146 on 2026-11-13 (brain C113/C114).

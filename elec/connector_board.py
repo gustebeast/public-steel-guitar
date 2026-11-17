@@ -109,7 +109,7 @@ def connector_board():
            "V5_PED": n["+5V_PED"], "V5_LEV": n["+5V_LEV"], "SCK": n["SCK"], "SDT": n["SDT"],
            "SCK_FOOT": n["SCK_FOOT"], "SDT_FOOT": n["SDT_FOOT"]}
     harness.check_ways_2row(harness.CONN_RIBBON, ("V24", "V24L", "V5_PED", "V5_LEV"), where="J1")
-    _ways("J1", "PZ1.27-2x15P ZZ", "the brain ribbon, 30-way 1.27 mm 2x15 IDC "
+    _ways("J1", "A127M05-0B30P51-H10A40", "the brain ribbon, 30-way 1.27 mm 2x15 IDC "
           "(harness.CONN_RIBBON; LCSC open item)", RIBBON, harness.CONN_RIBBON, rib,
           power=("V24", "V24L", "V5_PED", "V5_LEV"))
     _two("C1", "22uF/50V", "ribbon 24 V bulk at J1 -- the brain's F204 / C322 are 0.3 m away; "
@@ -255,8 +255,8 @@ BOARD_NOTES = {
         # moving motor is the DERIVED budget, not a measured peak (measured 2026-11-12: +0.9 W
         # moving, +0.65 W holding, ~20x below it). Each drop is one motor: 0.8 A.
         "power_paths": (
-            # the ribbon's four 24 V ways share the 4 A, 1 A each (a PZ1.27 contact is rated
-            # 3 A: M32 read 4 A on J1.1 alone when the trunk was declared from it), and meet at
+            # the ribbon's four 24 V ways share the 4 A, 1 A each (the JXTCONN header's contacts
+            # are rated 1 A, LCSC C41427104 -- at the limit, F4 holds 2 A: M32 read 4 A on J1.1 alone when the trunk was declared from it), and meet at
             # C1, the bulk cap beside J1; the trunk runs from there
             [{"net": "+24V", "from": "J1.%d" % w, "to": ["C1.1"], "amps": 1.0} for w in (1, 2, 3, 4)]
             + [{"net": "+24V", "from": "C1.1", "to": ["J%d.1" % k for k in range(11, 21)],
@@ -293,9 +293,9 @@ BOARD_NOTES = {
                            "(D1): 1 CANA_H, 2 CANA_L, 3 GND -- the same assignment as motor_ctrl "
                            "D2, read 2026-10-06. KiCad SOT-23 uses the JEDEC TO-236 numbering the "
                            "drawing does",
-            "PZ1.27-2x15P ZZ": "HX PZ1.27 family drawing (as the brain's PZ1.27-2x8P ZZ, LCSC "
-                               "C22438123, p.1): a plain straight two-row header, the maker "
-                               "numbers nothing -- the numbering is the footprint's (KiCad "
+            "A127M05-0B30P51-H10A40": "JXTCONN 2x15 1.27 mm SMD vertical (LCSC C41427104; JLC lists "
+                               "no drawing -- check the land in the order preview): a plain "
+                               "straight two-row header, the maker numbers nothing -- the numbering is the footprint's (KiCad "
                                "PinHeader_2x15_P1.27mm_Vertical_SMD: odd pads one row, even the "
                                "other, 1 / 2 at one end) and the way order is "
                                "harness.CONN_RIBBON, which the brain's J240 is built from too "
@@ -343,7 +343,7 @@ BOARD_NOTES = {
         "J11-J20 MX15EDGRC + MX15EDGK: the mated depth (16.5 mm from the pin row, 17 courtyard) and 11.1 height are read off two drawings, not a sample -- check one pair",
         "placement intent (not written yet), J11-J20 each: mate Jn L+Y 22.6 1.0 (the plug's 10.6 past the header + the 12 mm wire bend), access Jn top 6 (the M2 screws, a 2.0 mm blade from +Z), and the body at board x >= -73.45 (open sky: the nut prism is ~41 mm above the face beyond it)",
         "instrument model: the connector board is not in src/ yet -- once placed, the overlap gate needs it at its frame with BOARDS.solid(mated=True) (src/board_geom.SIDE_PLUG_RUN carries the plug) against the nut block, the endplates and the motor cable path",
-        "J1 PZ1.27-2x15P ZZ: LCSC code and stock (the 2x8 is C22438123)",
+        "J1 (JXTCONN A127M05-0B30P51-H10A40, C41427104, 2026-11-17): JLC publishes no drawing -- confirm the SMD land against the PinHeader_2x15 footprint in the order preview; NOT shrouded (none stocked at 1.27 mm), so pin 1 must be marked on the silk and the cable stripe -- reversed, +24 V lands on CAN / SPI",
         "J4 / J5 (LED leads) are the motors' MX15 family: label the leads -- a motor plug fits an LED header (power ways agree; CAN onto SCK / SDT, no damage)",
     ],
 }
