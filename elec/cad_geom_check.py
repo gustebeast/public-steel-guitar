@@ -67,9 +67,6 @@ def _cad(board):
     if board == "optical":
         from src import optical_pickup as OP
         return OP.opt_pcb(), OP.opt_silk()
-    if board == "lever_sensor":
-        from src import knee_lever as KL
-        return KL.sensor_pcba(), KL.sensor_silk()
     if board in ("fret_led_mid", "fret_led_key"):
         # the two fret boards: the laminate with every routed body, and the LEDs, which
         # src/fret_light.py draws as their own part so they read as lit
@@ -77,21 +74,6 @@ def _cad(board):
         from src import fret_light as FL
         panel = board.rsplit("_", 1)[1]
         return FL.pcb(panel), FL.silk(panel)
-    if board.startswith("leg_pogo_"):
-        # the leg's blind-mate boards: src/leg_pogo.py draws each as board + contacts +
-        # connector at its joint. They stand on the tenon's DIAGONAL, and this check looks
-        # for axis-aligned plates, so the joint is turned 45 deg about the leg's axis first
-        # (t onto +X). That changes nothing the check measures -- parts against their board.
-        from src import leg_pogo as P
-        _, kind, joint = board.rsplit("_", 2)
-        j = P.BOTTOM if joint == "bottom" else P.TOP
-        parts = P.male(j) if kind == "male" else P.female(j)
-        s = parts[0][1]
-        for _n, part in parts[1:]:
-            s = s.union(part)
-        ink = dict(P.ink(j))["pogo_%s_silk_%s" % (kind, j.name)]
-        turn = lambda w: w.rotate((j.x, j.y, 0.0), (j.x, j.y, 1.0), -j.ang)
-        return turn(s), turn(ink)
     if board == "connector_board":
         # the new connector board (src/new_boards_view.py), in its own frame, with the MX15EDGK
         # plugs src/pluggable_terminal.py seats in J4 / J5 / J11-J20 -- drawn as their own
@@ -105,10 +87,11 @@ def _cad(board):
     raise KeyError(board)
 
 
-BOARDS = ("output_panel", "motor_ctrl", "optical", "lever_sensor", "can_tee",
+# lever_sensor and the four leg_pogo boards left with the knee lever and the leg (lead,
+# 2026-11-17): both get redesigned for the direct body, and their CAD comes back with them
+BOARDS = ("output_panel", "motor_ctrl", "optical", "can_tee",
           "pi_cap", "ui_board", "fret_led_mid", "fret_led_key", "foot_led_a", "foot_led_b",
-          "leg_pogo_male_bottom", "leg_pogo_male_top",
-          "leg_pogo_female_bottom", "leg_pogo_female_top", "connector_board")
+          "connector_board")
 
 
 def _ui_rule_check():

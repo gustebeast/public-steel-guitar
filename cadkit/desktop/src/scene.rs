@@ -35,6 +35,10 @@ pub struct Feat {
     pub x: [f32; 4],
     pub a: [f32; 4],
     pub b: [f32; 4],
+    /// a wire's (run, arc) end planes, in its own frame (x, z cross x, z): the way OUT of the wire at
+    /// its start (c) and at its end (d). Square to it alone; at a joint, the mitre between the two
+    pub c: [f32; 4],
+    pub d: [f32; 4],
 }
 
 pub const FLAG_VCOL: u32 = 1;
@@ -98,7 +102,7 @@ fn feats_of(node: &Value, place: Option<glam::Mat4>) -> Vec<(Feat, [f32; 6], (us
                 let k = (rc - rr) / fl;
                 let steep = (1.0 + k * k * (1.0 + (p / (std::f32::consts::TAU * rr.max(0.05))).powi(2))).sqrt();
                 let feat = Feat { o: [o.x, o.y, o.z, 0.0], z: [z.x, z.y, z.z, 0.0], x: [x.x, x.y, x.z, 0.0],
-                                  a: [rc, rr, p, l], b: [fl, hand, num(f, "in"), steep] };
+                                  a: [rc, rr, p, l], b: [fl, hand, num(f, "in"), steep], c: [0.0; 4], d: [0.0; 4] };
                 out.push((feat, cyl(rc * 1.002 + 1e-3, -1e-3, l + 1e-3), tri));
             }
             Some("c") => {
@@ -106,15 +110,16 @@ fn feats_of(node: &Value, place: Option<glam::Mat4>) -> Vec<(Feat, [f32; 6], (us
                 if !(w > 0.0 && p > 0.0 && h > 0.0) { continue; }
                 let ca = std::f32::consts::TAU * r / ((std::f32::consts::TAU * r).powi(2) + p * p).sqrt();
                 let feat = Feat { o: [o.x, o.y, o.z, 1.0], z: [z.x, z.y, z.z, 0.0], x: [x.x, x.y, x.z, 0.0],
-                                  a: [r, w, p, z0], b: [h, hand, ca, 0.0] };
-                out.push((feat, cyl(r + w * 1.01 + 1e-3, z0 - w * 1.01 - 1e-3, z0 + h + w * 1.01 + 1e-3), tri));
+                                  a: [r, w, p, z0], b: [h, hand, ca, 0.0], c: [0.0; 4], d: [0.0; 4] };
+                // (1.6 w past each end: a cut end's carry, see joints below)
+                out.push((feat, cyl(r + w * 1.01 + 1e-3, z0 - w * 1.6 - 1e-3, z0 + h + w * 1.6 + 1e-3), tri));
             }
             // a straight run of wire (a capsule): along z from 0 to L, radius w
             Some("s") => {
                 let (l, w) = (num(f, "L"), num(f, "w"));
                 if !(w > 0.0 && l > 0.0) { continue; }
                 let feat = Feat { o: [o.x, o.y, o.z, 2.0], z: [z.x, z.y, z.z, 0.0], x: [x.x, x.y, x.z, 0.0],
-                                  a: [w, l, 0.0, 0.0], b: [0.0, hand, 0.0, 0.0] };
+                                  a: [w, l, 0.0, 0.0], b: [1.0, hand, 1.0, 0.0], c: [0.0, 0.0, -1.0, 0.0], d: [0.0, 0.0, 1.0, 0.0] };
                 out.push((feat, cyl(w * 1.01 + 1e-3, -w * 1.01 - 1e-3, l + w * 1.01 + 1e-3), tri));
             }
             // wire round an arc (part of a torus): radius R about z, from x through A degrees
@@ -122,10 +127,53 @@ fn feats_of(node: &Value, place: Option<glam::Mat4>) -> Vec<(Feat, [f32; 6], (us
                 let (r, w, a) = (num(f, "R"), num(f, "w"), num(f, "A").to_radians());
                 if !(w > 0.0 && r > 0.0 && a > 0.0) { continue; }
                 let feat = Feat { o: [o.x, o.y, o.z, 3.0], z: [z.x, z.y, z.z, 0.0], x: [x.x, x.y, x.z, 0.0],
-                                  a: [w, r, a, 0.0], b: [0.0, hand, 0.0, 0.0] };
+                                  a: [w, r, a, 0.0], b: [1.0, hand, 1.0, 0.0],
+                                  c: [0.0, -1.0, 0.0, 0.0], d: [-a.sin(), a.cos(), 0.0, 0.0] };
                 out.push((feat, cyl(r + w * 1.01 + 1e-3, -w * 1.01 - 1e-3, w * 1.01 + 1e-3), tri));
             }
             _ => {}
+        }
+    }
+    // A WIRE'S JOINTS. A run, an arc or a coil ends round (b.x at its start, b.z at its end: 1). Where it
+    // goes on into the next piece at less than 45 deg the two are MITRED instead: each cut on the
+    // plane halfway between their directions, which meets with no seam at any angle. (Round ends
+    // bulged out of a smooth bend; flat ends square to each piece left a crease at a shallow kink:
+    // the speaking length meets the bridge bearing ~1 deg off its wrap, user 2026-11-16.)
+    let ends = |f: &Feat| -> Option<((glam::Vec3, glam::Vec3), (glam::Vec3, glam::Vec3))> {
+        let (o, z, x) = (glam::Vec3::from_slice(&f.o[..3]), glam::Vec3::from_slice(&f.z[..3]), glam::Vec3::from_slice(&f.x[..3]));
+        if f.o[3] == 2.0 {
+            Some(((o, z), (o + z * f.a[1], z)))
+        } else if f.o[3] == 3.0 {
+            let (y, r, a) = (z.cross(x), f.a[1], f.a[2]);
+            Some(((o + x * r, y), (o + (x * a.cos() + y * a.sin()) * r, y * a.cos() - x * a.sin())))
+        } else if f.o[3] == 1.0 {
+            // a coil (a string's wrap): (R cos(h a), R sin(h a), z0 + p a / 2 pi), a to 2 pi H / p
+            let (y, r, p, z0, hd) = (z.cross(x), f.a[0], f.a[2], f.a[3], f.b[1]);
+            let at = |a: f32| o + (x * (hd * a).cos() + y * (hd * a).sin()) * r + z * (z0 + p * a / std::f32::consts::TAU);
+            let tan = |a: f32| (y * (hd * a).cos() - x * (hd * a).sin()) * (r * hd) + z * (p / std::f32::consts::TAU);
+            let a1 = std::f32::consts::TAU * f.b[0] / p;
+            Some(((at(0.0), tan(0.0)), (at(a1), tan(a1))))
+        } else {
+            None
+        }
+    };
+    for k in 1..out.len() {
+        if let (Some((_, (pe, te))), Some(((ps, ts), _))) = (ends(&out[k - 1].0), ends(&out[k].0)) {
+            let (te, ts) = (te.normalize_or_zero(), ts.normalize_or_zero());
+            if pe.distance(ps) < 1e-3 * out[k].0.a[0].max(1e-3) + 1e-5 && te.dot(ts) > std::f32::consts::FRAC_1_SQRT_2 {
+                let n = (te + ts).normalize_or_zero();
+                let local = |f: &Feat, v: glam::Vec3| {
+                    let (z, x) = (glam::Vec3::from_slice(&f.z[..3]), glam::Vec3::from_slice(&f.x[..3]));
+                    [v.dot(x), v.dot(z.cross(x)), v.dot(z), 0.0]
+                };
+                // (a run's or arc's round end is flagged off in b; a coil's cut end is its plane's w = 1)
+                let coil = |f: &Feat| f.o[3] == 1.0;
+                let (cp, cn) = (coil(&out[k - 1].0), coil(&out[k].0));
+                out[k - 1].0.d = local(&out[k - 1].0, n);
+                if cp { out[k - 1].0.d[3] = 1.0; } else { out[k - 1].0.b[2] = 0.0; }
+                out[k].0.c = local(&out[k].0, -n);
+                if cn { out[k].0.c[3] = 1.0; } else { out[k].0.b[0] = 0.0; }
+            }
         }
     }
     out

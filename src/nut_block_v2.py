@@ -659,6 +659,59 @@ def tail_route(i: int):
     return [(x0, z0), (x0, TAIL_END)]
 
 
+def _tangent_up(c1, r1, c2, r2):
+    """(x, z) points where the line touching circle c1 (r1) and circle c2 (r2), BOTH UNDER IT, meets
+    each (r = 0: a point). The upper of the two such lines."""
+    dx, dz = c2[0] - c1[0], c2[1] - c1[1]
+    L = math.hypot(dx, dz)
+    ux, uz = dx / L, dz / L
+    ca = (r1 - r2) / L
+    sa = math.sqrt(max(0.0, 1.0 - ca * ca))
+    best = None
+    for s in (1.0, -1.0):                         # n = ca u + s sa (u turned 90)
+        nx, nz = ca * ux - s * sa * uz, ca * uz + s * sa * ux
+        if best is None or nz > best[1]:
+            best = (nx, nz)
+    nx, nz = best
+    return (c1[0] + r1 * nx, c1[1] + r1 * nz), (c2[0] + r2 * nx, c2[1] + r2 * nz)
+
+
+def string_pieces_local(i: int, from_xz) -> list:
+    """String i's path at the nut block, for cadkit.mesh_parts.tube_path_mesh, in the block's local
+    frame (user, 2026-11-16: "show the inserts and strings accurately so they all appear at the same
+    height, wrap around the axel once, and go down into string storage cut to height in the
+    window"): in from the point `from_xz` (x, z) on the string's own lane, OVER THE CROWN with its
+    TOP at z = 0 (the gauge-free height: every string's top level, its plate risen to it), down to
+    the rod, ONE WRAP round it (the touch, round under, past the exit, once more) marching -Y, off
+    its -X side down the plate's face, angling back +Y (the coil walks past the pocket's edge on
+    the heavy strings) to the foot of the channel's 45 degree funnel on the side screw's line, and
+    down to TAIL_END, where it is trimmed (halfway down the window)."""
+    g = D.STRING_GAUGE[i]
+    y0 = D.nut_y(i)
+    rc, cc = CROWN_R + g / 2, (DOWEL_X, -g - CROWN_R)
+    hr, rr = wrap_radius(i), (ROD_X, ROD_Z)
+    _, t1 = _tangent_up(from_xz, 0.0, cc, rc)     # the line in meets the crown
+    t2, t3 = _tangent_up(cc, rc, rr, hr)          # off the crown, onto the rod
+    a1 = math.degrees(math.atan2(t1[1] - cc[1], t1[0] - cc[0]))
+    a2 = math.degrees(math.atan2(t2[1] - cc[1], t2[0] - cc[0]))
+    at = math.atan2(t3[1] - rr[1], t3[0] - rr[0])
+    turns = ((math.radians(EXIT_DEG) - at) % (2 * math.pi)) / (2 * math.pi) + WRAPS
+    pitch = WRAP_F * g
+    ye = y0 - turns * pitch                       # the tail leaves the rod here
+    xe = ROD_X - hr                               # ... off its -X side, heading down
+    ys = D.nut_y(i) + SS_YC[i]                    # the side screw's line, under the funnel
+    py0, py1 = _y_span(i)
+    zf = LANE_FLOOR - (max(py1 - ys, ys - py0) - TAIL_W / 2)   # the funnel's foot
+    P = lambda x, y, z: (x, y, z)                 # noqa: E731
+    out = [("line", P(from_xz[0], y0, from_xz[1]), P(t1[0], y0, t1[1])),
+           ("arc", P(cc[0], y0, cc[1]), (0.0, -1.0, 0.0), P(t1[0], y0, t1[1]), a2 - a1),
+           ("line", P(t2[0], y0, t2[1]), P(t3[0], y0, t3[1])),
+           ("helix", P(rr[0], y0, rr[1]), (0.0, -1.0, 0.0), P(t3[0], y0, t3[1]), pitch, turns * pitch),
+           ("line", P(xe, ye, ROD_Z), P(xe, ys, zf)),
+           ("line", P(xe, ys, zf), P(xe, ys, TAIL_END))]
+    return out
+
+
 SKU_C = D.N_STRINGS - 1
 
 

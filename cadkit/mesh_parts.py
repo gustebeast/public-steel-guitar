@@ -50,7 +50,7 @@ import math
 import numpy as np
 
 __all__ = ["threaded_rod_mesh", "coil_mesh", "screw_mesh", "insert_mesh", "swap_bore",
-           "iso_minor", "with_mesh", "affine_of", "mesh_of", "placed", "fused", "ATTR"]
+           "iso_minor", "with_mesh", "affine_of", "mesh_of", "placed", "fused", "looked", "ATTR"]
 
 ATTR = "_cadkit_mesh"
 
@@ -624,11 +624,80 @@ def affine_of(place) -> np.ndarray:
 
 def with_mesh(proxy, mesh: dict, matrix=None):
     """Hang `mesh` (in its own frame; `matrix` places it, as affine_of gives) on the proxy
-    Workplane, and return the proxy."""
+    Workplane, and return the proxy -- made a LOOKED Workplane, so its look rides every
+    translate / rotate / mirror / union after this (see looked())."""
     if matrix is not None:
         mesh = _moved(mesh, matrix)
     setattr(proxy, ATTR, mesh)
-    return proxy
+    return looked(proxy)
+
+
+# A LOOK THAT CANNOT BE DROPPED (user, 2026-11-16: "All screws and fitted inserts should render via
+# the same pipeline so they have to be consistent"). A look used to survive only where its caller
+# remembered placed() / fused(): a screw turned with a plain .rotate().translate(), or a washer
+# .union()-ed onto it, came out a bare cylinder -- the nut block's M4s and the keyhead's M3s, while
+# the drive's, placed, rendered threaded. Now any Workplane with a look is a _Looked one: its
+# translate, rotate and mirror move the look with the solid, and its union merges the looks (a
+# part with none lends its tessellation, as fused does). A cut or intersect hands back the plain
+# solid's tessellation: the look no longer describes it.
+_LOOKED = None
+
+
+def _looked_cls():
+    global _LOOKED
+    if _LOOKED is not None:
+        return _LOOKED
+    import cadquery as cq
+
+    def _carry(src, out, place):
+        m = mesh_of(src)
+        if m is not None:
+            setattr(out, ATTR, _moved(m, affine_of(place)))
+        return out
+
+    class _Looked(cq.Workplane):
+        def translate(self, vec):
+            return _carry(self, super().translate(vec), lambda w: w.translate(vec))
+
+        def rotate(self, axisStartPoint, axisEndPoint, angleDegrees):
+            return _carry(self, super().rotate(axisStartPoint, axisEndPoint, angleDegrees),
+                          lambda w: w.rotate(axisStartPoint, axisEndPoint, angleDegrees))
+
+        def mirror(self, mirrorPlane="XY", basePointVector=None, union=False):
+            out = super().mirror(mirrorPlane, basePointVector, union)
+            if union:                                    # the solid and its image: no one matrix
+                return out
+            return _carry(self, out, lambda w: cq.Workplane.mirror(w, mirrorPlane, basePointVector))
+
+        def union(self, *others, **kw):
+            out = super().union(*others, **kw)
+            parts = [self] + [o for o in others if isinstance(o, cq.Workplane)]
+            if all(mesh_of(p) is None for p in parts):
+                return out
+            from cadkit.web.export import mesh_shape
+            looks = []
+            for p in parts:
+                m = mesh_of(p)
+                if m is None:
+                    sh = p.val() if hasattr(p, "val") else p
+                    m = mesh_shape(getattr(sh, "wrapped", sh))
+                looks.append(m)
+            setattr(out, ATTR, _merge(looks))
+            return out
+
+    _LOOKED = _Looked
+    return _LOOKED
+
+
+def looked(w):
+    """`w` (a Workplane) made one whose look rides its moves and unions; anything else as is."""
+    try:
+        import cadquery as cq
+    except ImportError:
+        return w
+    if isinstance(w, cq.Workplane) and type(w) is cq.Workplane:
+        w.__class__ = _looked_cls()
+    return w
 
 
 def mesh_of(obj):

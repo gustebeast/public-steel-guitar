@@ -29,7 +29,7 @@ struct Vtx { nx: f32, ny: f32, nz: f32, col: u32 }
 // round an arc): a thread's helical sheet, a coil's or a string's wire, drawn from its own
 // equation rather than its triangles -- as fine at any zoom. Each is a box in a featured part's second BLAS;
 // a ray into the box marches the surface (feat_hit). A part's first feature: bitcast<u32>(mr.z).
-struct Feat { o: vec4f, z: vec4f, x: vec4f, a: vec4f, b: vec4f }
+struct Feat { o: vec4f, z: vec4f, x: vec4f, a: vec4f, b: vec4f, c: vec4f, d: vec4f }
 @group(0) @binding(10) var<storage, read> feats: array<Feat>;
 
 // THE LIGHT IS THE BLENDER TRACER'S (cadkit/web/trace_blender.py), figure for figure: its room (bright
@@ -76,20 +76,56 @@ fn feat_basis(f: Feat) -> mat3x3f {
   return mat3x3f(x, cross(z, x), z);
 }
 
+// a wire's end at e, `out` the way out of the wire there: round (a ball of radius w), or flat (the
+// wire cut square: outside it by the distance to the end's disc), as inside-positive distance
+fn wire_end(q: vec3f, e: vec3f, out: vec3f, w: f32, round: f32) -> f32 {
+  let r = q - e;
+  if (round > 0.5) { return w - length(r); }
+  let ax = dot(r, out);
+  let rad = length(r - out * ax);
+  // carried a hair past the joint into the next piece (their surfaces are tangent there), so
+  // two flat ends never leave a crack between them
+  return -length(vec2f(max(ax - WIRE_LAP * w, 0.0), max(rad - w, 0.0)));
+}
+
+// how far a cut wire end is carried past its plane into the next piece: enough that two ends on one
+// plane never leave a crack (~40x f32's error at instrument scale), small enough that where a mitre
+// meets at an angle the step one tube makes out of the other (lap x sin of the kink) stays far
+// under a pixel. (0.05 w drew a dark tick across a 4 deg mitre: the step's shadow.)
+const WIRE_LAP = 0.003;
+
+// inside-positive distance to an end's plane through e, `out` the way out (carried WIRE_LAP past)
+fn cap_plane(q: vec3f, e: vec3f, out: vec3f, w: f32) -> f32 { return WIRE_LAP * w - dot(q - e, out); }
+
 // how far inside the solid q is (negative: outside), as a distance the surface cannot be nearer than
 // (a thread's by its steepest slope; a coil's by the tube round the helix, near enough at a coil's lead)
 fn feat_val(f: Feat, q: vec3f) -> f32 {
   if (f.o.w > 1.5) {
+    // a wire: its tube, cut at each end on that end's plane (c, d: square, or the mitre with the
+    // next piece), and a ball on an end that is round (b.x, b.z)
     let w = f.a.x;
+    var e0 = vec3f(0.0);
+    var e1: vec3f;
+    var v: f32;
     if (f.o.w < 2.5) {
-      // a straight run: the capsule round z from 0 to L (exact)
-      return w - length(q - vec3f(0.0, 0.0, clamp(q.z, 0.0, f.a.y)));
+      e1 = vec3f(0.0, 0.0, f.a.y);                                  // a straight run along z
+      v = w - length(q.xy);
+    } else {
+      let R = f.a.y; let A = f.a.z;                                 // an arc round z, x through A
+      e0 = vec3f(R, 0.0, 0.0);
+      e1 = vec3f(R * cos(A), R * sin(A), 0.0);
+      v = w - length(vec2f(length(q.xy) - R, q.z));
+      if (A > 3.14159) {
+        // past half a turn the two planes do not bound it: by its angle, the ends as they are
+        let ang = fmod(atan2(q.y, q.x), TAU);
+        if (ang <= A) { return v; }
+        return max(wire_end(q, e0, f.c.xyz, w, f.b.x), wire_end(q, e1, f.d.xyz, w, f.b.z));
+      }
     }
-    // an arc: the torus round z of radius R, from x through A, round at its ends (exact)
-    let R = f.a.y; let A = f.a.z;
-    let ang = fmod(atan2(q.y, q.x), TAU);
-    if (ang <= A) { return w - length(vec2f(length(q.xy) - R, q.z)); }
-    return w - min(length(q - vec3f(R, 0.0, 0.0)), length(q - vec3f(R * cos(A), R * sin(A), 0.0)));
+    v = min(v, min(cap_plane(q, e0, f.c.xyz, w), cap_plane(q, e1, f.d.xyz, w)));
+    if (f.b.x > 0.5) { v = max(v, w - length(q - e0)); }
+    if (f.b.z > 0.5) { v = max(v, w - length(q - e1)); }
+    return v;
   }
   let rho = length(q.xy);
   let phi = atan2(q.y, q.x);
@@ -104,24 +140,45 @@ fn feat_val(f: Feat, q: vec3f) -> f32 {
     let g = select(r - rho, rho - r, f.b.z > 0.5);
     return g / f.b.w;
   }
-  // coil: the wire (radius w) round (R cos(h a), R sin(h a), z0 + p a / 2 pi), a in 0 .. 2 pi H / p
+  // coil: the wire (radius w) round (R cos(h a), R sin(h a), z0 + p a / 2 pi), a in 0 .. 2 pi H / p,
+  // each end round, or cut on its plane (c, d with w = 1: the mitre with the string's next piece)
+  return coil_tube(f, q, true);
+}
+
+// a coil's centre line at a (its frame)
+fn coil_at(f: Feat, a: f32) -> vec3f {
+  return vec3f(f.a.x * cos(f.b.y * a), f.a.x * sin(f.b.y * a), f.a.w + f.a.z * a / TAU);
+}
+
+// a coil's tube, its ends round -- or, at an end cut on a plane, the wire carried on a little past
+// it (a mitre reaches past the end on its outside) and cut there (`cut`): the plane cuts only the
+// wire near that end (a half-space through the end would take every turn on its side)
+fn coil_tube(f: Feat, q: vec3f, cut: bool) -> f32 {
   let R = f.a.x; let w = f.a.y; let p = f.a.z; let z0 = f.a.w; let H = f.b.x; let hd = f.b.y;
+  let rho = length(q.xy);
   let A = TAU * H / p;
-  let ph = fmod(hd * phi, TAU);
-  // the two turns about q's height at q's angle -- kept to the turns the wire has there (past its
-  // ends both would miss, and the end point alone puts the last turn much too far)
+  let ext = 1.5 * w / R;
+  let lo = select(0.0, -ext, f.c.w > 0.5);
+  let hi = select(A, A + ext, f.d.w > 0.5);
+  let ph = fmod(hd * atan2(q.y, q.x), TAU);
+  // the turns about q's height at q's angle -- kept to the turns the wire has there (past its
+  // ends they would miss, and the end point alone puts the last turn much too far), and one either
+  // side for a cut end's carry
   let k = clamp(floor((q.z - z0) / p - ph / TAU), 0.0, max(floor((A - ph) / TAU) - 1.0, 0.0));
-  var best = 1e9;
-  for (var j = 0; j < 2; j++) {
+  var v = -1e9;
+  for (var j = -1; j < 3; j++) {
     let a = ph + TAU * (k + f32(j));
-    if (a >= 0.0 && a <= A) {
+    if (a >= lo && a <= hi) {
       let dz = q.z - (z0 + p * a / TAU);
-      best = min(best, sqrt((rho - R) * (rho - R) + dz * dz * f.b.z * f.b.z));
+      var u = w - sqrt((rho - R) * (rho - R) + dz * dz * f.b.z * f.b.z);
+      if (cut && f.c.w > 0.5 && a < 2.0 * ext) { u = min(u, cap_plane(q, coil_at(f, 0.0), f.c.xyz, w)); }
+      if (cut && f.d.w > 0.5 && a > A - 2.0 * ext) { u = min(u, cap_plane(q, coil_at(f, A), f.d.xyz, w)); }
+      v = max(v, u);
     }
   }
-  best = min(best, length(q - vec3f(R, 0.0, z0)));
-  best = min(best, length(q - vec3f(R * cos(hd * A), R * sin(hd * A), z0 + H)));
-  return w - best;
+  if (f.c.w < 0.5) { v = max(v, w - length(q - coil_at(f, 0.0))); }
+  if (f.d.w < 0.5) { v = max(v, w - length(q - coil_at(f, A))); }
+  return v;
 }
 
 // is the local point inside the feature's extent (a thread is clipped to 0 .. L; its ends are the
@@ -131,16 +188,64 @@ fn feat_kept(f: Feat, q: vec3f, wp: vec3f, clip: bool) -> bool {
   return !(clip && dot(G.clip.xyz, wp) + G.clip.w < 0.0);
 }
 
-// the first t in (tmin, tmax) where the ray meets the feature's surface, entering or leaving (as a
-// triangle would be met), or -1
+// the first t in (tmin, tmax) where the ray ENTERS the feature's solid, or -1. Only entries: a
+// ray that starts inside one (a bounce leaving a string where its piece's round end lies inside
+// the next piece's) must not meet that piece's surface on its way out -- that read as shadow, a
+// black ring at every joint of a string's path. A solid's way out is never what a ray from
+// outside sees first.
+// A STRAIGHT RUN OF WIRE, SOLVED: the tube, cut by its two end planes, and the balls of its round
+// ends -- each a quadratic, so exact and in one go. (Marched, a ray grazing along a 40 mm run never
+// got there in its steps; it went on into the next piece, whose cut end showed as a bright half
+// disc at the joint, user 2026-11-16.) Its way in, after tmin, or -1.
+fn run_hit(f: Feat, qo: vec3f, qd: vec3f, wo: vec3f, wd: vec3f, tmin: f32, tmax: f32, clip: bool) -> f32 {
+  let w = f.a.x; let L = f.a.y;
+  var tin = -1e30; var tout = 1e30;
+  let a = dot(qd.xy, qd.xy);
+  let cc = dot(qo.xy, qo.xy) - w * w;
+  if (a < 1e-12) { if (cc > 0.0) { tout = -1e30; } }
+  else {
+    let b = dot(qo.xy, qd.xy);
+    let disc = b * b - a * cc;
+    if (disc < 0.0) { tout = -1e30; } else { let sq = sqrt(disc); tin = (-b - sq) / a; tout = (-b + sq) / a; }
+  }
+  // the end planes (as cap_plane: carried WIRE_LAP w past the end)
+  for (var k = 0; k < 2; k++) {
+    let n = select(f.d.xyz, f.c.xyz, k == 0);
+    let e = select(vec3f(0.0, 0.0, L), vec3f(0.0), k == 0);
+    let dn = dot(qd, n);
+    let s0 = dot(qo - e, n) - WIRE_LAP * w;      // inside while s0 + dn t < 0
+    if (abs(dn) < 1e-12) { if (s0 >= 0.0) { tout = -1e30; } }
+    else if (dn > 0.0) { tout = min(tout, -s0 / dn); }
+    else { tin = max(tin, -s0 / dn); }
+  }
+  var best = tmax;
+  var got = false;
+  if (tin < tout && tin > tmin && tin < best) { best = tin; got = true; }
+  // a round end's ball: its way in counts where it is not already inside the cut tube
+  for (var k = 0; k < 2; k++) {
+    if (select(f.b.z, f.b.x, k == 0) < 0.5) { continue; }
+    let e = select(vec3f(0.0, 0.0, L), vec3f(0.0), k == 0);
+    let r = qo - e;
+    let aa = dot(qd, qd); let bb = dot(r, qd); let c2 = dot(r, r) - w * w;
+    let disc = bb * bb - aa * c2;
+    if (disc < 0.0) { continue; }
+    let ts = (-bb - sqrt(disc)) / aa;
+    if (ts > tmin && ts < best && !(ts > tin && ts < tout)) { best = ts; got = true; }
+  }
+  if (!got) { return -1.0; }
+  if (clip && dot(G.clip.xyz, wo + wd * best) + G.clip.w < 0.0) { return -1.0; }
+  return best;
+}
+
 fn feat_hit(fi: u32, oo: vec3f, od: vec3f, wo: vec3f, wd: vec3f, tmin: f32, tmax: f32, clip: bool) -> f32 {
   let f = feats[fi];
   let B = transpose(feat_basis(f));
   let qo = B * (oo - f.o.xyz);
   let qd = B * od;
+  if (f.o.w > 1.5 && f.o.w < 2.5) { return run_hit(f, qo, qd, wo, wd, tmin, tmax, clip); }
   var rb: f32; var lo: f32; var hi: f32;
   if (f.o.w < 0.5) { rb = f.a.x * 1.002 + 1e-3; lo = 0.0; hi = f.a.w; }
-  else if (f.o.w < 1.5) { rb = f.a.x + f.a.y * 1.01 + 1e-3; lo = f.a.w - f.a.y * 1.01; hi = f.a.w + f.b.x + f.a.y * 1.01; }
+  else if (f.o.w < 1.5) { rb = f.a.x + f.a.y * 1.01 + 1e-3; lo = f.a.w - f.a.y * 1.6; hi = f.a.w + f.b.x + f.a.y * 1.6; }
   else if (f.o.w < 2.5) { rb = f.a.x * 1.01 + 1e-3; lo = -f.a.x * 1.01; hi = f.a.y + f.a.x * 1.01; }
   else { rb = f.a.y + f.a.x * 1.01 + 1e-3; lo = -f.a.x * 1.01; hi = f.a.x * 1.01; }
   // the bounding cylinder and the slab
@@ -165,10 +270,12 @@ fn feat_hit(fi: u32, oo: vec3f, od: vec3f, wo: vec3f, wd: vec3f, tmin: f32, tmax
   var t = t0;
   var tp = t0;
   var vp = 0.0;
-  for (var i = 0; i < 256; i++) {
+  // (an arc's grazing rays creep along it as a run's did: more steps for it)
+  let steps = select(256, 1024, f.o.w > 2.5);
+  for (var i = 0; i < steps; i++) {
     let v = feat_val(f, qo + qd * t);
-    if (i > 0 && (v > 0.0) != (vp > 0.0)) {
-      // a crossing: bisect it, then keep it if it is where the surface is drawn
+    if (i > 0 && v > 0.0 && vp <= 0.0) {
+      // a way in: bisect it, then keep it if it is where the surface is drawn
       var ta = tp; var tb = t;
       for (var j = 0; j < 14; j++) {
         let tm = 0.5 * (ta + tb);
@@ -189,7 +296,38 @@ fn feat_normal(fi: u32, op: vec3f) -> vec3f {
   let f = feats[fi];
   let M = feat_basis(f);
   let q = transpose(M) * (op - f.o.xyz);
+  if (f.o.w > 1.5) {
+    // a wire: straight out from the nearest point of its centre line (exact; at a joint the
+    // differences below would mix in the flat end's plane -- a bright tick across the wire)
+    // (past a CUT end -- a mitre reaches a little beyond the end on its outside -- the tube
+    // goes on as it was: only a round end's ball turns the normal toward its centre)
+    var c: vec3f;
+    if (f.o.w < 2.5) {
+      var z = q.z;
+      if (z < 0.0 && f.b.x > 0.5) { z = 0.0; }
+      if (z > f.a.y && f.b.z > 0.5) { z = f.a.y; }
+      c = vec3f(0.0, 0.0, z);
+    } else {
+      let R = f.a.y; let A = f.a.z;
+      let ang = fmod(atan2(q.y, q.x), TAU);
+      var a = ang;
+      if (ang > A) {
+        let near_end = fmod(ang - A, TAU) < fmod(-ang, TAU);
+        if (near_end && f.b.z > 0.5) { a = A; }
+        if (!near_end && f.b.x > 0.5) { a = 0.0; }
+      }
+      c = vec3f(R * cos(a), R * sin(a), 0.0);
+    }
+    return normalize(M * (q - c));
+  }
   let e = 1e-3;
+  if (f.o.w > 0.5) {
+    // a coil: its tube's, without the cut ends' planes (as a wire's above: no tick at a joint)
+    let gx = coil_tube(f, q + vec3f(e, 0.0, 0.0), false) - coil_tube(f, q - vec3f(e, 0.0, 0.0), false);
+    let gy = coil_tube(f, q + vec3f(0.0, e, 0.0), false) - coil_tube(f, q - vec3f(0.0, e, 0.0), false);
+    let gz = coil_tube(f, q + vec3f(0.0, 0.0, e), false) - coil_tube(f, q - vec3f(0.0, 0.0, e), false);
+    return normalize(M * -vec3f(gx, gy, gz));
+  }
   let gx = feat_val(f, q + vec3f(e, 0.0, 0.0)) - feat_val(f, q - vec3f(e, 0.0, 0.0));
   let gy = feat_val(f, q + vec3f(0.0, e, 0.0)) - feat_val(f, q - vec3f(0.0, e, 0.0));
   let gz = feat_val(f, q + vec3f(0.0, 0.0, e)) - feat_val(f, q - vec3f(0.0, 0.0, e));
@@ -211,12 +349,21 @@ fn trace(o: vec3f, d: vec3f, tmin: f32, tmax: f32) -> Hit {
   let clip = (G.flags & 2u) != 0u;
   var rq: ray_query;
   rayQueryInitialize(&rq, tlas, RayDesc(select(RAY_FLAG_NONE, RAY_FLAG_FORCE_NO_OPAQUE, clip), 0xFFu, tmin, tmax, o, d));
+  // THE NEAREST FEATURE HIT IS KEPT HERE, not generated into the query: a hit generated over a
+  // farther one already generated was at times thrown away (naga's guard on the call reads the
+  // candidate's t; past that, the driver too kept the farther), so where two pieces of a string
+  // meet, the piece met first won and its cut end showed through the next (user 2026-11-16).
+  // The query keeps the triangles; the nearer of the two is the hit.
+  var ft = tmax;
+  var fc: RayIntersection;
+  var got = false;
   while (rayQueryProceed(&rq)) {
     let c = rayQueryGetCandidateIntersection(&rq);
     if (c.kind == RAY_QUERY_INTERSECTION_AABB) {
       let held = rayQueryGetCommittedIntersection(&rq);
-      let th = feat_candidate(c, o, d, tmin, select(tmax, held.t, held.kind != RAY_QUERY_INTERSECTION_NONE), clip);
-      if (th > 0.0) { rayQueryGenerateIntersection(&rq, th); }
+      let top = select(ft, min(ft, held.t), held.kind != RAY_QUERY_INTERSECTION_NONE);
+      let th = feat_candidate(c, o, d, tmin, top, clip);
+      if (th > 0.0 && th < top) { ft = th; fc = c; got = true; }
       continue;
     }
     if (clip && dot(G.clip.xyz, o + d * c.t) + G.clip.w < 0.0) { continue; }
@@ -226,12 +373,13 @@ fn trace(o: vec3f, d: vec3f, tmin: f32, tmax: f32) -> Hit {
     }
     rayQueryConfirmIntersection(&rq);
   }
-  let i = rayQueryGetCommittedIntersection(&rq);
+  var i = rayQueryGetCommittedIntersection(&rq);
   var h: Hit;
-  h.hit = i.kind != RAY_QUERY_INTERSECTION_NONE;
+  h.gen = false;
+  if (got && (i.kind == RAY_QUERY_INTERSECTION_NONE || ft < i.t)) { i = fc; i.t = ft; h.gen = true; }
+  h.hit = h.gen || i.kind != RAY_QUERY_INTERSECTION_NONE;
   h.t = i.t; h.part = i.instance_custom_data; h.prim = i.primitive_index; h.bary = i.barycentrics;
   h.o2w = i.object_to_world;
-  h.gen = i.kind == RAY_QUERY_INTERSECTION_GENERATED;
   h.w2o = i.world_to_object;
   return h;
 }
@@ -243,8 +391,8 @@ fn occluded(o: vec3f, d: vec3f) -> bool {
   while (rayQueryProceed(&rq)) {
     let c = rayQueryGetCandidateIntersection(&rq);
     if (c.kind == RAY_QUERY_INTERSECTION_AABB) {
-      let th = feat_candidate(c, o, d, 0.0, 30000.0, clip);
-      if (th > 0.0) { rayQueryGenerateIntersection(&rq, th); }
+      // (any feature hit shades: no need to hand it to the query -- see trace)
+      if (feat_candidate(c, o, d, 0.0, 30000.0, clip) > 0.0) { rayQueryTerminate(&rq); return true; }
       continue;
     }
     if (clip && dot(G.clip.xyz, o + d * c.t) + G.clip.w < 0.0) { continue; }

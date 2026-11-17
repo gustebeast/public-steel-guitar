@@ -732,7 +732,13 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
     pinpair = []                 # caps across two pins of one IC: kept out of the supply passes
     ics = [r for r in parts if re.match(r"^(U|FB|L)\d", r)]
     # a cap the intent already places (near / decap / a cell member) is the author's
-    ruled = {r.get("cap") or r.get("ref") for r in cells if r.get("kind") in ("near", "decap", "fixed", "pin")}
+    # ⚠ A HOLD PLACES A CAP, IT DOES NOT DECOUPLE IT (brain_board mV5, 2026-11-16): `fixed` /
+    # `pin` counted as the author's rule, so 111 caps frozen by a placement hold got no decap
+    # rule at all -- U21's output cap C152 sat 5.8 mm off VOUT and nothing said so until
+    # quality A2 failed the routed board. A held cap still gets its rule: the hold places it,
+    # the rule judges it (place_init does not move a fixed part; the intent report shows
+    # the breach).
+    ruled = {r.get("cap") or r.get("ref") for r in cells if r.get("kind") in ("near", "decap")}
     ruled |= {m for r in cells if r.get("kind") == "group" for m in r["members"]}
     for c in sorted(r for r in parts if re.match(r"^C\d", r)):
         if c in ruled:
@@ -778,6 +784,26 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
                     except (KeyError, ValueError):
                         d = 0.0
                     cands.append((d, "%s.%s" % (u, q["num"])))
+        # ⚠ A NAMED PLACE WINS, A CONNECTOR TOO (brain_board mV5, 2026-11-16): brain.py's C59
+        # is "+3V3_UI at the UI header J5" (J205 merged). Only ICs, beads and inductors were
+        # candidates, so the description named nothing on the list and the nearest IC pin on
+        # the rail -- U212.6, the load switch's output 52 mm away -- took it; A2 then failed
+        # J205 at 52.8 mm. A description naming ANY part that has a pin on this rail decides
+        # it: that part's rail pins are the candidates.
+        desc_c = (descriptions or {}).get(c, "")
+        named_parts = [x for x in re.findall(r"(?<![A-Za-z0-9])([A-Z]{1,3}[0-9]+)(?![0-9])", desc_c)
+                       if x in parts and x != c]
+        named_c = []
+        for x in named_parts:
+            for q in parts[x]["pads"]:
+                if q["net"] == sup and q["num"]:
+                    try:
+                        d = min(math.hypot(*(x_ - P.pad(x, q["num"]))) for x_ in P.pads_on(c, sup))
+                    except (KeyError, ValueError):
+                        d = 0.0
+                    named_c.append((d, "%s.%s" % (x, q["num"])))
+        if named_c and not any(t[1].split(".")[0] in named_parts for t in cands):
+            cands = named_c
         if not cands:
             continue
         # ⚠ THE SCHEMATIC SAYS WHOSE IT IS (motor_ctrl trial, 2026-11-11): "U8 switch
@@ -1415,12 +1441,94 @@ def pour_amps(rule, notes):
     return max(hit) if hit else max([float(p_["amps"]) for p_ in paths if p_["net"] == rule["net"]] or [0.0]) or None
 
 
-def pour_foreign(rule, P, poly, refs=None):
-    """Other nets' pads inside a pour's outline on its layer: ["U4.3", ...]."""
+PAIR_CLEAR = 0.5    # mm each side of a coupled pair its corridor keeps free (a via's clearance)
+
+
+def pair_corridors(spec, P):
+    """A declared diff pair's hops as corridors: [(polygon, {the hop's two parts}, side,
+    length mm)] -- the straight line between the two parts' pin-pair midpoints, as wide as
+    the coupled pair (2 x width + gap) plus PAIR_CLEAR each side. A hop with a part not
+    placed, or a part carrying neither rail, is skipped."""
+    nets = set(spec.get("nets") or ())
+    w = float(spec.get("width", 0.2))
+    hw = (2.0 * w + float(spec.get("gap", 0.2))) / 2.0 + PAIR_CLEAR
+    chain = list(spec.get("chain") or ())
+
+    def mid(step):
+        pts = []
+        for ref in step.split("|"):
+            if ref not in P.pl or ref not in P.parts:
+                continue
+            pts += [P.pad(ref, q["num"]) for q in P.parts[ref]["pads"] if q.get("net") in nets and q["num"]]
+        return np.mean(pts, axis=0) if pts else None
+
+    out = []
+    for sa, sb in zip(chain, chain[1:]):
+        a, b = mid(sa), mid(sb)
+        if a is None or b is None:
+            continue
+        d = b - a
+        ln = float(np.hypot(*d))
+        if ln < 1e-6:
+            continue
+        n = np.array([-d[1], d[0]]) / ln * hw
+        poly = [a + n, b + n, b - n, a - n]
+        side = "F"
+        r0 = sa.split("|")[0]
+        if r0 in P.parts:
+            side = P.parts[r0].get("side", "F")
+        out.append((poly, set(sa.split("|")) | set(sb.split("|")), side, ln))
+    return out
+
+
+def pair_foreign(spec, P, poly, side, skip=(), refs=None):
+    """[(pad name, mm2 inside)] of the pads of OTHER nets inside a pair corridor on its side
+    (through-hole pads on either), its own hop's parts (`skip`) left out: their escapes are
+    the router's. The pad's area by a 5 x 5 sample grid, as pour_foreign(areas=True)."""
     from matplotlib.path import Path as _Path
+    nets = set(spec.get("nets") or ())
+    path = _Path(np.asarray(poly, float))
+    pa = np.asarray(poly, float)
+    lo, hi = pa.min(axis=0), pa.max(axis=0)
+    grid = np.array([(a, b) for a in np.linspace(-0.5, 0.5, 5) for b in np.linspace(-0.5, 0.5, 5)])
+    out = []
+    for ref, p in P.parts.items():
+        if ref not in P.pl or ref in skip or (refs is not None and ref not in refs):
+            continue
+        x, y, _ = P.at(ref)
+        rr = float(np.max(np.abs(np.asarray([q["xy"] for q in p["pads"]], float)))) + 3.0 if p["pads"] else 0.0
+        if x < lo[0] - rr or x > hi[0] + rr or y < lo[1] - rr or y > hi[1] + rr:
+            continue
+        for q in p["pads"]:
+            if q.get("net") in nets or not q["num"]:
+                continue
+            if not (q.get("tht") or p.get("side", "F") == side):
+                continue
+            loc = _rot(grid * np.asarray(q["size"], float), float(q.get("rot") or 0.0)) + q["xy"]
+            frac = float(path.contains_points(P.world(ref, loc)).mean())
+            if frac > 0:
+                out.append(("%s.%s" % (ref, q["num"]), frac * float(q["size"][0]) * float(q["size"][1])))
+    return out
+
+
+def pour_foreign(rule, P, poly, refs=None, areas=False):
+    """Other nets' pads inside a pour's outline on its layer: ["U4.3", ...].
+
+    ⚠ A PAD IS ITS AREA, NOT ITS CENTRE (brain_board mT4, 2026-11-16) -- PCBFLOW_POUR_AREA=1
+    while it is measured, then the default. A MOSFET's drain tab is 4.5 mm across: Q5's sat
+    with its centre outside the PB_VOUT band and 8.8 mm2 of it inside, the fill went round it
+    and A1 read the pour's cut as 0.00 mm -- while this said "no foreign pads", so the turn
+    stage (place_init pour_pen) never saw a reason to face the source pins at the next stage.
+    Q4/Q6's tabs did the same to PA_VOUT (5.6 mm2 each). With the flag a pad counts when any
+    of a 5 x 5 sample grid over it lies inside. areas=True: [(name, mm2 inside)] -- the
+    sampled fraction of the pad times its size (a rectangle's area; a round pad reads high)."""
+    from matplotlib.path import Path as _Path
+    import os
     path = _Path(np.asarray(poly, float))
     side = "B" if rule["layer"].startswith("B.") else "F"
     inner = rule["layer"].startswith("In")
+    area = os.environ.get("PCBFLOW_POUR_AREA") == "1"
+    grid = np.array([(a, b) for a in np.linspace(-0.5, 0.5, 5) for b in np.linspace(-0.5, 0.5, 5)])
     out = []
     for ref, p in P.parts.items():
         if ref not in P.pl or (refs is not None and ref not in refs):
@@ -1429,8 +1537,18 @@ def pour_foreign(rule, P, poly, refs=None):
             if q["net"] == rule["net"] or not q["num"]:
                 continue
             on = q.get("tht") or (not inner and p.get("side", "F") == side)
-            if on and path.contains_point(tuple(P.pad(ref, q["num"]))):
-                out.append("%s.%s" % (ref, q["num"]))
+            if not on:
+                continue
+            if area:
+                loc = _rot(grid * np.asarray(q["size"], float), float(q.get("rot") or 0.0)) + q["xy"]
+                frac = float(path.contains_points(P.world(ref, loc)).mean())
+                hit = frac > 0
+            else:
+                hit = path.contains_point(tuple(P.pad(ref, q["num"])))
+                frac = 1.0
+            if hit:
+                nm_ = "%s.%s" % (ref, q["num"])
+                out.append((nm_, frac * float(q["size"][0]) * float(q["size"][1])) if areas else nm_)
     return out
 
 
@@ -1592,7 +1710,7 @@ def auto_pour(rules, parts, notes=None):
     widths() note asks for: a pour whose outline, once the parts are placed, covers more of
     the board than that is dropped and the net goes back to its width (_pours says so).
 
-    auto_pour(amps, layer [, max_frac, width_mm, layers_by_net, whole, around]) -- around: each
+    auto_pour(amps, layer [, max_frac, width_mm, layers_by_net, whole, around, clear_margin]) -- around: each
     band goes round other nets' pads on its layer (pour_around), not through them. The pour runs along the net's
     declared power_paths terminals when it has any, else its non-IC pads. A net with its own
     `pour` rule is left alone. Returns (rules, lines)."""
@@ -1623,6 +1741,16 @@ def auto_pour(rules, parts, notes=None):
                 along = sorted(set(pp))
             layer = (a.get("layers_by_net") or {}).get(r["net"], a["layer"])
             w = float(a.get("width_mm") or max(3.0, width_for(float(r["amps"]))))
+            # ⚠ THE BAND LOSES ITS FILL CLEARANCE ON EACH SIDE (brain_board mV0, 2026-11-16):
+            # 5 A bands drawn 3.0 mm (IPC 2.77) filled 1.1-2.4 mm wide where other nets'
+            # escapes ran along them -- 0.5 mm of zone clearance off each side took the IPC
+            # width away. clear_margin: the band is the IPC width plus twice the board's zone
+            # clearance (notes["zone_clearance"], KiCad's 0.5 default), never under 3.0.
+            if a.get("clear_margin") and not a.get("width_mm"):
+                clr = float((notes or {}).get("zone_clearance") or 0.5)
+                # outer-layer IPC as above, on every layer: inner IPC for 10 A is 18.8 mm, a
+                # plane not a band (In2's 10 A bands closed at 7.2)
+                w = max(w, round(math.ceil((width_for(float(r["amps"])) + 2 * clr) / 0.05 - 1e-9) * 0.05, 2))
             out.append(dict(kind="pour", net=r["net"], layer=layer, along=along, width_mm=w,
                             why="auto_pour: %s at %.1f A -- %s" % (r["net"], float(r["amps"]), r["why"]),
                             src=r.get("src", ""), hard=False, auto_amps=float(r["amps"]),

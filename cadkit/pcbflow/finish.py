@@ -37,6 +37,13 @@ import time
 import netcheck
 import sys
 
+# ⚠ A REMOVED ITEM'S PROXY IS KEPT FOR THE LIFE OF THE PROCESS (layout._REMOVED says why):
+# board.Remove() hands the item to its Python proxy, and when that proxy is collected the
+# bindings go bad -- measured 2026-11-16 on brain_board mT3: five tracks Removed and freed,
+# then board.GetTracks() is a bare SwigPyObject; kept alive (or Deleted) the board stays
+# sound. power_vias lost every via to exactly this (cadkit ab85a31).
+_REMOVED = []
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 CADKIT = os.path.dirname(HERE)
 PY = sys.executable
@@ -118,8 +125,10 @@ def _relay_bleed(board, pcbnew):
         for it in list(g.GetItems()):
             g.RemoveItem(it)
         board.Remove(g)
+        _REMOVED.append(g)
     for it in old:
         board.Remove(it)
+        _REMOVED.append(it)
 
 
 def _silkfit(stem):
@@ -731,6 +740,29 @@ def finish(stem, rounds=1, keep_route=False):
         if os.path.exists(stem + ".prepower.kicad_pcb"):
             shutil.copy(stem + ".prepower.kicad_pcb", stem + ".kicad_pcb")
             os.remove(stem + ".prepower.kicad_pcb")
+
+    # A PAIR'S LAYER CHANGE THAT SWITCHES REFERENCE PLANE GETS A GND VIA BESIDE IT (return_vias.py,
+    # lead 2026-11-17): only for match groups that declare return_via_mm. Worse DRC on either
+    # count and the board goes back, as for power_vias.
+    if any(g.get("return_via_mm") for g in json.load(open(stem + ".board.json", encoding="utf-8")).get("match", ())):
+        try:
+            shutil.copy(stem + ".kicad_pcb", stem + ".prereturn.kicad_pcb")
+            _rv = _run("return_vias.py", stem)
+            if not re.search(r"return vias: \d+ pair via\(s\) .*, 0 added", _rv or ""):
+                _n7, _nets7, _v7 = _drc(stem)
+                if _n7 > best_n or _v7 > best_v:
+                    print("  !! return_vias made it worse (%d unconnected, %d violation(s) against "
+                          "%d and %d) -- putting it back" % (_n7, _v7, best_n, best_v))
+                    shutil.copy(stem + ".prereturn.kicad_pcb", stem + ".kicad_pcb")
+                    _drc(stem)
+                else:
+                    best_n, best_v, nets = _n7, _v7, _nets7
+            os.remove(stem + ".prereturn.kicad_pcb")
+        except SystemExit as exc:
+            print("  return_vias.py did not run (%s)" % (exc,))
+            if os.path.exists(stem + ".prereturn.kicad_pcb"):
+                shutil.copy(stem + ".prereturn.kicad_pcb", stem + ".kicad_pcb")
+                os.remove(stem + ".prereturn.kicad_pcb")
 
     # THE SILKSCREEN GOES ON THE BOARD THAT WON, and only there: name and revision, the
     # test pads' nets, the connectors' pinouts (silk.py). It moves no copper, and every

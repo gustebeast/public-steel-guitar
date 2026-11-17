@@ -37,25 +37,15 @@ _LANE = re.compile(r"^(?:main|half_stop)_")
 
 @functools.lru_cache(maxsize=1)
 def _table():
-    """{part key: material} from PARTS, f-string keys (chassis_{_i}) as patterns."""
-    src = (ROOT / "src" / "build.py").read_text(encoding="utf-8")
-    exact, pats = {}, []
-    for m in re.finditer(r'(?:^\s{4}"([a-z0-9_]+)":\s*\(|PARTS\[(f?)"([^"]+)"\]\s*=\s*\()', src, re.M):
-        body = src[m.end(): m.end() + 1500]
-        nxt = re.search(r'\n\s{4}"[a-z0-9_]+":\s*\(|\n\s*PARTS\[', body)
-        if nxt:
-            body = body[: nxt.start()]
-        mat = re.search(r'"(%s)/[^"]+\.step"' % "|".join(MATERIALS), body)
-        if not mat:
-            continue
-        if m.group(1):
-            exact[m.group(1)] = mat.group(1)
-        elif m.group(2):                                   # an f-string key
-            pats.append((re.compile("^" + re.sub(r"\{[^}]+\}", r"\\d+", m.group(3)) + "$"),
-                         mat.group(1)))
-        else:
-            exact[m.group(3)] = mat.group(1)
-    return exact, pats
+    """{part key: material} from src.build.PARTS: each part's material is the folder its STEP
+    is written into (a body printed inside another part's file says its own, FILAMENT_OF).
+    Read off the table itself, not parsed out of build.py's source: a regex over the source
+    broke the moment the table's quoting changed (lead, 2026-11-17)."""
+    from src import build as B
+    exact = {k: path.split("/")[0] for k, (_b, path, _n) in B.PARTS.items()
+             if path.split("/")[0] in MATERIALS}
+    exact.update({k: m for k, m in B.FILAMENT_OF.items() if m in MATERIALS})
+    return exact, []
 
 
 # WHAT A BOUGHT PART IS, FROM ITS NAME. First match wins; searched in the name with its
