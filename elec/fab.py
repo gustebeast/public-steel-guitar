@@ -162,6 +162,18 @@ LCSC = {
     "MX128-5.0-02P-Y": "C5188463",  # MAX MX128-5.0-02P-GN01-Cu-Y-A, slotted, stock 1,353 on 2026-10-30 -- output_panel R2 J8 (R2-3)
     "TUSB320LAIRWBR": "C132554",    # TI USB-C role detect, X2QFN-12; 2,603 on 2026-10-30 -- THIN
     "TS3USB221RSER": "C130085",     # TI USB 2:1 switch, UQFN-10; 64,390 on 2026-10-30
+    # brain_board's U205 swap and the service port / flash mode (2026-11-17)
+    "TPS552892QWRYQRQ1": "C22375748",  # TI 36 V 8 A buck-boost, VQFN-HR-21 3x5: the CM5's 5 V
+    "TPS22965DSGR": "C122837",      # TI 6 A load switch with QOD, WSON-8: the CM5's rail
+    "TUSB321RWBR": "C139392",       # TI USB-C CC logic, GPIO only, X2QFN-12; 2,542 on 2026-11-17
+    "TPS2552DBVR": "C46506",        # TI current-limited switch, active-low EN; 9,800 on 2026-11-17
+    "CH334P": "C5373042",           # WCH USB 2.0 4-port hub, QFN-16 3x3; 27,419 on 2026-11-17
+    "SN74LVC1G17DBVR": "C7836",     # TI Schmitt buffer, SOT-23-5; 613 on 2026-11-17 -- THIN (UMW C7394021 7,026)
+    "SN74LVC06APWR": "C7807",       # TI hex inverter, open drain, TSSOP-14; 6,879 on 2026-11-17
+    "SN74LVC2G06DBVR": "C402162",   # TI dual inverter, open drain, SOT-23-6; 8,555 on 2026-11-17
+    "TPS22918DBVR": "C131941",      # TI 2 A load switch, SOT-23-6; 66,391 on 2026-11-17
+    "X322512MSB4SI": "C9002",       # YXC 12 MHz 3225; 477,806 on 2026-11-17
+    "SMF6.0A": "C178260",           # SOD-123FL TVS, 6 V stand-off, 200 W; 182,665 on 2026-11-17
     "SMBJ22A": "C224015",           # Littelfuse SMB TVS, 22 V stand-off, 600 W: the output power half's port clamps
     "SMF24A": "C169430",            # SOD-123FL TVS, 24 V stand-off, 200 W; 99,839 on 2026-10-30
     "INA226AIDGSR": "C49851",       # TI power monitor, VSSOP-10; 42,364 on 2026-10-30
@@ -276,6 +288,16 @@ LCSC = {
 # dielectric, tolerance. `elec/lcsc_check.py` re-reads them all and compares. Basic parts
 # wherever one exists (no extended-part fee, placed by Economic assembly).
 PASSIVES = {
+    # brain_board 2026-11-17 (U205 swap, service port)
+    ("10mR 1%", "R_1206_3216Metric"):        "C601097",  # HoLR1206-1W-10mR-1%, 1 W; 78,790 in stock
+    ("15nF", "C_0402_1005Metric"):           "C501821",  # 0402B153K500NT, 50 V X7R; 12,937 in stock
+    ("22pF", "C_0402_1005Metric"):           "C1555",    # 0402CG220J500NT, 50 V C0G; basic
+    ("23k2 1%", "R_0402_1005Metric"):        "C25873",   # UniOhm 0402WGF2322TCE; 84,116 in stock
+    ("30k1 1%", "R_0402_1005Metric"):        "C2076806", # as "30k1"
+    ("2k2", "R_0402_1005Metric"):            "C25879",   # UniOhm 0402WGF2201TCE; basic
+    ("887k 1%", "R_0402_1005Metric"):        "C423127",  # UniOhm 0402WGF8873TCE; 7,119 in stock
+    ("4u7/10V", "C_0603_1608Metric"):        "C1705",    # Samsung CL10A475KP8NNNC, 10 V X5R; basic
+    ("4.7uF/10V", "C_0603_1608Metric"):      "C1705",
     # the brain board's PD half: each ordered as a part fab already buys, rated at least as asked
     ("10uF/35V", "C_1206_3216Metric"):       "C13585",   # the 10uF/50V 1206 below (CL31A106KBHNNNE, 50 V X5R)
     ("1uF/10V", "C_0402_1005Metric"):        "C52923",   # CL05A105KA5NQNC, 25 V X5R

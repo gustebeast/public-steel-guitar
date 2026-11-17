@@ -306,12 +306,29 @@ SEEDS["brain"] = {
     "BST_CSNF": ("like", "VIN_BRAIN", 0.0, "current sense, R109's inductor side"),
     "+24V": ("abs", BRAIN_24),
     "BST_SW": ("like", "+24V", 1.0, "boost switch node: VOUT plus Q9's body diode while it commutates"),
-    "SW5": ("like", "+24V_BUCK", 0.0, "buck switch node: VIN while the high side is on"),
     "SW7": ("like", "+24V", 0.0, "buck switch node: VIN while the high side is on"),
-    "+5V_RAW": ("buck", "U5", "R10", "R11",
-                "LMR33630: VFB max x (1 + top/bot), 1 % resistors; +5 % overshoot; FAULT = U5's high "
-                "side fails short and D9 (SMBJ5.0A) clamps at its VC while F2 clears",
-                {"vf": PARTS["C83333"]["vc"]}),
+    # U5 is the TPS552892-Q1 buck-boost on VIN_BRAIN (brain.py, 2026-11-17)
+    "SW5_1": ("like", "VIN_BRAIN", 0.0, "buck-boost input switch node: VIN while its high side is on"),
+    "SW5_2": ("like", "+5V_BB", 0.7, "buck-boost output switch node: VOUT plus a body diode"),
+    "+5V_BB": ("buck", "U5", "R10", "R11",
+               "TPS552892-Q1: VREF max x (1 + top/bot), 1 % resistors; +5 % overshoot; FAULT = U5 "
+               "fails short and D9 (SMBJ5.0A) clamps at its VC while F2 clears",
+               {"vf": PARTS["C83333"]["vc"]}),
+    "+5V_RAW": ("like", "+5V_BB", 0.0, "behind R113, the 10 mR output sense"),
+    "+5V_SW": ("like", "+5V_RAW", 0.0, "behind U21, the CM5 rail's load switch"),
+    "VCC5": ("abs", dict(v=5.5, vt=6.0, why="TPS552892 VCC: its internal LDO, ~5.2 V; 5.5 V an assumed bound, "
+                                            "the pin is rated 6 V (SLVSGT7 s6.1)")),
+    "BOOT5_1": ("like", "SW5_1", 5.5, "bootstrap: SW1 plus VCC"),
+    "BOOT5_2": ("like", "SW5_2", 5.5, "bootstrap: SW2 plus VCC"),
+    **{n: ("abs", dict(v=3.0, vt=3.0, why="driven by the TPS552892's own low-voltage circuitry; rated VCC+0.3; "
+                                         "3 V an assumed bound"))
+       for n in ("FSW5", "COMP5", "COMP5_Z")},
+    "FB5": ("ratio", "+5V_BB", 30.1 / 130.1, "R11 / (R10 + R11): the regulated 1.2 V"),
+    # EN5: R12 / R13 from VIN_SW (D21 hides the divider from the propagation) -- 21 V x
+    # 23.2 x 1.01 / (100 x 0.99 + 23.2 x 1.01) = 3.99 V; C26 (4.7 uF, tau 88 ms) filters
+    # any surge, so transient = steady. FLASH through R17 / D21 is 3.3 V, lower.
+    "EN5": ("abs", dict(v=4.0, vt=4.0, why="U5 EN: the R12 / R13 divider off VIN_SW at 21 V (3.99 V), "
+                                          "RC-filtered by C26's 88 ms; FLASH via D21 is lower")),
     "+5V_AUX": ("buck", "U7", "R14", "R15", "LMR33630: VFB max x (1 + top/bot), 1 % resistors; +5 % overshoot"),
     "+3V3": ("ldo", "U8", "AP2112K-3.3: 3.3 V +1.5 %; +3 % transient"),
     "CM5_3V3": ("abs", dict(v=3.3 * 1.05, vt=3.3 * 1.08,
@@ -566,6 +583,8 @@ RES_MODEL = {
         "R109": ("v", lambda L, R: 12.6 * R("R109"), "the boost's input shunt: 12.6 A at its worst "
                                                      "(9 V in, full load; brain.py) x 4 mohm"),
         "R108": ("i", 0.01, "the LM5122's own VIN supply current, milliamps; 10 mA allowed"),
+        "R113": ("v", lambda L, R: 5.0 * R("R113"), "U5's output sense: the TPS552892's 50 mV ISP-ISN "
+                                                    "limit holds it to 5.0 A (SLVSGT7 8.2.2.6) x 10 mohm"),
     },
     "pi_cap": {r: ("i", 0.016, "series termination into a CMOS input; worst case the Pi pin's 16 mA "
                                "drive into a shorted line") for r in ("R1", "R2", "R3", "R4")},
@@ -762,6 +781,9 @@ CURRENTS["brain_board"] = (
     + [("L1", None, 2.64, "the 5 V buck's output: every V5_PRE load at once (U15's 1.80 A limit + "
                           "U21's 0.58 A + 0.26 A analog)")])
 REVIEW_NOTES["brain_board"] = {**REVIEW_NOTES["output_power"], **REVIEW_NOTES["output_signal"]}
+REVIEW_NOTES["brain_board"][("U36", "SUSPECT")] = (
+    "Accepted (bronner, 2026-11-17): the 10.3 V is D25's clamp at its full 19.4 A surge, a hit on the service "
+    "port's VBUS; steady is 5.5 V on a 7 V part. The panel ports' USB parts take their surges the same way.")
 # ── the brain BUILT ONTO the brain board (brain_board.MERGED, 2026-11-13) ───────────────
 # brain.py's parts are renumbered +200 there (U5 -> U205), its colliding net names get a B_
 # prefix, its +5V_AUX buck is gone (V5_PRE feeds it) and, with the CH32 folded into the H743,
@@ -807,6 +829,9 @@ for _T in (RES_MODEL, CAP_ACROSS, FET_VGS, ZENER_FEED):
             _v = (_v[0], _rn(_v[1])) + _v[2:]
         _T["brain_board"][_rn(_k)] = _v
 CAP_ACROSS["brain_board"].pop("C254", None)    # brain C54: U7's bootstrap, U7 is gone
+# the service port's ideal diode (brain_board._service_port): the panel ports' pattern
+FET_VGS["brain_board"]["Q8"] = FET_VGS["output_power"]["Q6"]
+CAP_ACROSS["brain_board"]["C67"] = CAP_ACROSS["output_power"]["C85"]
 # no brain leads (J10 / J12) on the merged board; L1 carries every logic 5 V now -- brain_board's
 # U5 sum: optical 1.8 + H743 0.58 + isolated audio 0.3 + transceivers / arm switches ~0.45
 CURRENTS["brain_board"] = ([c for c in CURRENTS["brain_board"] if c[0] not in ("J10", "J12", "L1")]
@@ -850,6 +875,23 @@ SEEDS["brain_board"].update({
                                           "trigger is a slow-source figure, and no conductor in the arm cable "
                                           "is above 5 V short of the declared fault"))
        for n in ("CANB_H", "CANB_L", "PED_H", "PED_L", "LEV_H", "LEV_L")},
+    # THE SERVICE PORT AND FLASH MODE (brain_board._service_port, 2026-11-17)
+    "SVC_VBUS": ("abs", dict(v=5.5, vt=10.3, why="the service port's VBUS: a PC's 5 V (USB 2.0 / Type-C 5.5 V max) "
+                                                "or our own V5_PRE through U36; transient = D25 (SMF6.0A) at 10.3 V")),
+    "SVC_VBUS_DET": ("ratio", "SVC_VBUS", 95.0 / (887.0 + 95.0), "R41 into the TUSB321's 95 k pull-down"),
+    "SVC_VCAP": ("like", "SVC_VBUS", 13.9, "LM74700 charge pump: VCAP - ANODE turns off at 13.9 V max"),
+    "SVC_ORGATE": ("like", "SVC_VBUS", 13.9, "LM74700 GATE: from VCAP, at most ANODE + 13.9 V"),
+    "SVC_ILIM": ("abs", dict(v=1.0, vt=1.0, why="TPS2552 ILIM: the part's own current-reference node; 1 V an "
+                                               "assumed bound")),
+    **{n: ("like", "V5_PRE", 0.0, "service CC: our Rp / VCONN from U35's VDD (V5_PRE); against a PC's Rp "
+                                  "the node sits at Rd's ~0.4-2 V")
+       for n in ("SVC_CC1", "SVC_CC2")},
+    **{n: ("abs", dict(v=3.6, vt=3.6, vf=5.5, why="USB 2.0 data on the service port; FAULT = a cable's VBUS "
+                                                 "onto a data way"))
+       for n in ("SVC_DP", "SVC_DM", "HUB2_DP", "HUB2_DM")},
+    **{n: ("like", "+3V3D", 0.0, "U39 (on +3V3D) and its outputs' loads") for n in ("FLASH_MODE", "FLASH_EN_D")},
+    **{n: ("like", "+3V3D", 0.0, "the CH334P's crystal pins, on its +3V3D") for n in ("HUB_XI", "HUB_XO")},
+    "V5_ISO": ("like", "V5_PRE", 0.0, "behind U42, the audio supply's switch"),
     "RELAY_COIL": ("like", "V5_PRE", 1.25, "coil turn-off: V5_PRE (the coil is on the charger side) plus "
                                            "D4's forward drop (1.25 V max)"),
 })

@@ -338,6 +338,13 @@ FOLD_IO = {
 FOLD_PINS = {"PH13": 128, "PH14": 129, "PB12": 92, "PB13": 93, "PA9": 120, "PA10": 121,
              "PA4": 50, "PA5": 51, "PG0": 66, "PG1": 67, "PE13": 76, "PE15": 78, "PG4": 108,
              "PG5": 109, "PG9": 152}
+# THE LINES FLASH MODE CLAMPS LOW, each behind a 2k2 from its MCU pin (PCB_QUALITY M43: no
+# firmware on any part may close the flashing path, and power and enables are part of it).
+# With a PC on the service port and U1 running ANY image: BRAIN_EN would start the 24 V boost
+# off the PC's 5 V, LOW_PWR would hold the CM5 off (Q215), CM5_PWRBTN held 5 s forces it off,
+# and the rest are loads the PC's port cannot carry. Line -> its series resistor.
+FLASH_CLAMPED = {"BRAIN_EN": "R48", "LOW_PWR": "R49", "CM5_PWRBTN": "R50", "OPT_VBUS_EN": "R51",
+                 "EN_PED": "R52", "EN_LEV": "R53", "RELAY": "R54"}
 if FOLD:
     for _k, _v in FOLD_PINS.items():
         assert PIN.get(_k, _v) == _v, _k
@@ -488,7 +495,7 @@ def _audio_parts():
     the barrier's other side and the relay coil -- so a part added to the chain later is
     in it without a list to keep."""
     from builtins import default_circuit         # skidl 2.x keeps it there
-    stop = {"GND", "AGND", "PWR_GND", "V5_PRE", "+3V3D", "RELAY_COIL"} | set(XING)
+    stop = {"GND", "AGND", "PWR_GND", "V5_PRE", "V5_ISO", "+3V3D", "RELAY_COIL"} | set(XING)
     seen, todo = set(AUDIO_SEEDS), list(AUDIO_SEEDS)
     parts = {pt.ref: pt for pt in default_circuit.parts}
     while todo:
@@ -522,6 +529,235 @@ def _move_audio_grounds(gnd, agnd):
     stray = sorted({q.part.ref for q in agnd.pins} - audio - set(BARRIER) - {"U31"})
     assert not stray, "parts outside the audio section on AGND: %s" % stray
     return audio, moved
+
+
+TS3USB221_FP = "Package_DFN_QFN:Texas_UQFN-10_1.5x2mm_P0.5mm"
+# the service port's parts, read 2026-11-17 (quality: every IC's pin map cites its sheet)
+SERVICE_PINOUTS = {
+    "TUSB321RWBR": "TI ZHCSDT2A (TUSB321, June 2015) s6 Pin Functions, RWB X2QFN-12: 1 CC1, 2 CC2, "
+                   "3 CURRENT_MODE, 4 PORT, 5 VBUS_DET, 6 VCONN_FAULT, 7 OUT1, 8 OUT2, 9 ID, 10 GND, "
+                   "11 DIR, 12 VDD; Steel:Texas_RWB0012A pads 1-12 as numbered",
+    "TPS2552DBVR": "TI SLVS841E Pin Functions, DBV: 1 IN, 2 GND, 3 EN (active low on the TPS2552), "
+                   "4 FAULT, 5 ILIM, 6 OUT",
+    "CH334P": "WCH CH334/CH335 datasheet V2.91 Figure 1-1 (CH334P, QFN16 3x3): 1 XO, 2 XI, 3 DM4, "
+              "4 DP4, 5 DM3, 6 DP3, 7 DM2, 8 DP2, 9 DM1, 10 DP1, 11 DMU, 12 DPU, 13 RESET#/CDP, "
+              "14 PGANG, 15 V5, 16 VDD33, pin 0 = the exposed pad (KiCad WCH_QFN-16 pad 17)",
+    "SN74LVC1G17DBVR": "TI SCES351V Pin Functions, DBV (SOT-23-5): 1 NC, 2 A, 3 GND, 4 Y, 5 VCC",
+    "SN74LVC06APWR": "TI SCAS596N p.1 PW package (TSSOP-14): 1A 1, 1Y 2, 2A 3, 2Y 4, 3A 5, 3Y 6, GND 7, 4Y 8, "
+                     "4A 9, 5Y 10, 5A 11, 6Y 12, 6A 13, VCC 14",
+    "SN74LVC2G06DBVR": "TI SCES307J Pin Functions, DBV (SOT-23-6): 1 1A, 2 GND, 3 2A, 4 2Y, 5 VCC, 6 1Y",
+    "TPS22918DBVR": "TI SLVSD76C Pin Functions, DBV: 1 VIN, 2 GND, 3 ON, 4 CT, 5 QOD, 6 VOUT",
+    "X322512MSB4SI": "YXC YSX321SL sheet p.1 (X322512MSB4SI, LCSC C9002), Top View Crystal Connection: "
+                     "1 / 3 the crystal, 2 / 4 GND; KiCad Crystal_SMD_3225-4Pin pads 1-4 as numbered",
+}
+
+
+def _service_port(gnd, pgnd, v3d, v5_pre, vstby, vin, io, gad_dp, gad_dm, flash_mode, iso_on):
+    """THE BOTTOM SERVICE PORT AND FLASH MODE (lead, 2026-11-17, adopted from the user's
+    proposal; cadkit PCB_QUALITY M43, ideal pass).
+
+    J7 is an inside USB-C receptacle; a panel-mount USB-C extension (M3 ears into heat-sets
+    in the chassis bottom, near the +X -Y body adapter) plugs its male end in. Two jobs:
+      * NORMAL: a later expansion board (headphone jack + two XLR inputs) on the +X -Y body
+        adapter. We are the SOURCE: U35 (TUSB321, DRP) sees its Rd and pulls ID low; ID
+        enables U36 (1.0 A current-limited 5 V) and the data rides the CH334P hub (_hub) on
+        the CM5's lever-flash lane.
+      * FLASH: a PC. Its Rp and VBUS make us the SINK, ID stays released, and FLASH_MODE =
+        (service VBUS present) AND (ID released), debounced ~60 ms. FLASH_MODE then
+          - hands the service pair to the CM5's OTG pins (U38), U17 lets go (OE#),
+          - turns the CM5's supply on (brain D221 into U205's EN), power-cycles it once
+            (Q216), and holds nRPIBOOT low (Q217): the ROM's usbboot, whatever the eMMC holds,
+          - clamps every MCU line that could close the path or overload the PC (U40 / U41,
+            FLASH_CLAMPED), and switches the audio's isolated supply off (U42).
+        A PC alone powers it: service VBUS -> U43 / Q8 (an ideal diode, nothing leaks back
+        to make a false VBUS) -> VIN_BUS -> D24 -> VSTBY, so the logic, the hub and the CM5's
+        buck-boost (4-20 V in) all run from the PC. With a charger in a panel port too, the
+        charger carries it (the higher VIN_BUS wins the OR).
+    STATED CASE (M43): flashing = a PC on the bottom service port, with any expansion board
+    unplugged first. The CM5's flasher image then programs the H743 over SWD (CM5 GPIO8/9,
+    brain R315/R316) with its NRST held (GPIO25): no firmware on any part closes the path.
+
+    Pinouts READ, 2026-11-17:
+      TUSB321RWBR (LCSC C139392), TI ZHCSDT2A Pin Functions: 1 CC1, 2 CC2, 3 CURRENT_MODE,
+        4 PORT (NC = DRP), 5 VBUS_DET (900 k from VBUS), 6 VCONN_FAULT, 7 OUT1, 8 OUT2, 9 ID
+        (open drain, low = attached as SOURCE), 10 GND, 11 DIR, 12 VDD (4.5-5.5 V). Unpowered
+        it presents Rd (9.3, Initialization: "configured internally in UFP mode with Rds") --
+        the PC turns its VBUS on into a dead board. NOT the TUSB320: its DRP needs an I2C
+        write after power-up to present Rp (SLLSEN9F 7.4.3), firmware on the path.
+      TPS2552DBVR (LCSC C46506), TI SLVS841E: 1 IN, 2 GND, 3 EN (ACTIVE LOW), 4 FAULT, 5 ILIM,
+        6 OUT; IOS(min) = 25230 / R^1.016 mA (R in k); 1 uA reverse leakage disabled.
+      LM74700QDBVRQ1: PD_PINOUTS (as the panel ports'). EN: 2.6 V max VIH, 0.5 V min VIL.
+      TS3USB221: as U17 -- D+ (8) pairs with 1 / 3, D- (7) with 2 / 4; 6 OE#, 9 S, 10 VCC.
+      SN74LVC1G17DBV: 1 NC, 2 A, 3 GND, 4 Y, 5 VCC. SN74LVC06APW: nA = 1/3/5/9/11/13, nY =
+        2/4/6/8/10/12, 7 GND, 14 VCC. SN74LVC2G06DBV: 1 1A, 2 GND, 3 2A, 4 2Y, 5 VCC, 6 1Y.
+    """
+    svbus, sdp, sdm = Net("SVC_VBUS"), Net("SVC_DP"), Net("SVC_DM")
+    svbus.drive = Pin.drives.POWER
+    cc1, cc2, sid = Net("SVC_CC1"), Net("SVC_CC2"), Net("SVC_ID")
+    j = _usbc("J7", "service port (inside): the panel-mount extension's male end; a PC for "
+              "flashing or the expansion board -- 5 V, data (LCSC C165948)")
+    pgnd += j["A1"], j["A12"], j["B1"], j["B12"], j["SH"]
+    svbus += j["A4"], j["B4"], j["A9"], j["B9"]
+    cc1 += j["A5"]
+    cc2 += j["B5"]
+    sdp += j["A6"], j["B6"]
+    sdm += j["A7"], j["B7"]
+    # SBU1 / SBU2 (A8 / B8) unconnected, as J1 / J2's
+    d = _d("D25", "SMF6.0A", "service VBUS clamp, 200 W, 6 V stand-off over USB's 5.5 V (LCSC C178260)",
+           "Diode_SMD:D_SOD-123F")
+    svbus += d[1]
+    pgnd += d[2]
+    for tag, net in (("D26", sdp), ("D27", sdm)):
+        d = _d(tag, "LESD5L5.0CT1G", "service data-line clamp, 0.5 pF (LCSC C5274293)")
+        net += d[1]
+        gnd += d[2]
+
+    # U35: the CC logic, DRP, default current (CURRENT_MODE low)
+    u35 = _fix("U35", "TUSB321RWBR", "service port CC logic: DRP, GPIO only, no firmware "
+               "(LCSC C139392)", "Steel:Texas_RWB0012A_X2QFN-12_1.6x1.6mm_P0.4mm", range(1, 13))
+    vdet = Net("SVC_VBUS_DET")
+    cc1 += u35[1]
+    cc2 += u35[2]
+    pgnd += u35[3], u35[10]                    # CURRENT_MODE low: default USB current
+    Net("U35_NC_PORT").connect(u35[4])         # PORT floating: DRP
+    vdet += u35[5]
+    for k, nm in ((6, "VCONN_FAULT"), (7, "OUT1"), (8, "OUT2"), (11, "DIR")):
+        Net("U35_NC_" + nm).connect(u35[k])
+    sid += u35[9]
+    v5_pre += u35[12]
+    _res("R41", "887k 1%", "VBUS_DET: the 900 k the TUSB321 wants (855-920 k)", svbus, vdet)
+    _res("R42", "10k", "ID pull-up to U35's own VDD (non-failsafe pin, ZHCSDT2A)", sid, v5_pre)
+    _cap("C48", "100nF", "U35 VDD bypass", v5_pre, pgnd)
+
+    # U36: 5 V OUT to the expansion board, only while ID is low (we are the source)
+    u36 = _fix("U36", "TPS2552DBVR", "service port 5 V source switch, 1.0 A min limit, active-"
+               "low EN on ID (LCSC C46506)", "Package_TO_SOT_SMD:SOT-23-6", range(1, 7))
+    ilim = Net("SVC_ILIM")
+    v5_pre += u36[1]
+    pgnd += u36[2]
+    sid += u36[3]
+    Net("U36_NC_FAULT").connect(u36[4])
+    ilim += u36[5]
+    svbus += u36[6]
+    _res("R43", "23k2 1%", "U36 ILIM: IOS(min) 1.03 A, max 1.20 (SLVS841E eq. 1; 23k2 as R213 -- "
+         "23k7 is not stocked)",
+         ilim, pgnd)
+    _cap("C50", "100nF", "U36 IN bypass", v5_pre, pgnd)
+    _cap("C51", "4.7uF/25V", "service VBUS bulk -- small, so the bleeder empties it at detach; "
+         "25 V for D25's 10.3 V clamp", svbus, pgnd, C0805)
+    _res("R44", "4k7", "service VBUS bleeder: 4.7 uF to under 1 V in ~40 ms after the "
+         "expansion board leaves, so FLASH_MODE never sees our own 5 V", svbus, pgnd)
+
+    # U43 + Q8: the PC's VBUS IN, as an ideal diode -- a Schottky here would leak back from a
+    # 20 V VIN_BUS (mA hot) onto an idle port and fake a PC. EN on ID: off while WE source
+    # (U36's 5 V must not feed VIN_BUS); the body diode starts it cold (V5_PRE, ID's pull-up,
+    # comes up from the PC's own power through it).
+    u43 = _fix("U43", "LM74700QDBVRQ1", "service port ideal-diode controller: the PC's 5 V "
+               "into VIN_BUS (LCSC C2941042)", "Package_TO_SOT_SMD:SOT-23-6", range(1, 7))
+    vcap, sgate = Net("SVC_VCAP"), Net("SVC_ORGATE")
+    vcap += u43[1]
+    pgnd += u43[2]
+    sid += u43[3]
+    vin += u43[4]
+    sgate += u43[5]
+    svbus += u43[6]
+    _cap("C67", "100nF/25V", "U43 charge-pump cap, VCAP to ANODE", vcap, svbus)
+    q8 = _nfet("Q8", "service port OR-ing FET: source to the port, drain to VIN_BUS")
+    svbus += q8["S1"], q8["S2"], q8["S3"]
+    vin += q8["D"]
+    sgate += q8["G"]
+    d = _d("D24", "SS34", "VIN_BUS -> VSTBY: the logic runs from a PC on the service port "
+           "(LCSC C8678)", "Diode_SMD:D_SMA")
+    vstby += d[1]                              # pad 1 = K
+    vin += d[2]
+
+    # FLASH_MODE: VBUS present (R45 / R46: 3.0 V at 5 V) AND ID released (D28), ~60 ms RC,
+    # squared by U39's Schmitt input. ID low (we source) or V5_PRE down holds it at ~0.3 V.
+    sns = Net("FLASH_SNS")
+    _res("R45", "100k", "FLASH_MODE sense, top", svbus, sns)
+    _res("R46", "150k", "FLASH_MODE sense, bottom", sns, gnd)
+    _cap("C49", "1uF", "FLASH_MODE debounce: 60 k x 1 uF; our own 5 V's decay peaks under "
+         "0.7 V on it at a detach (R44)", sns, gnd)
+    d = _d("D28", "BAT54WS", "FLASH_SNS -> ID: a source attach (ID low) holds flash mode off "
+           "(LCSC C124205)", "Diode_SMD:D_SOD-323")
+    sid += d[1]                                # pad 1 = K
+    sns += d[2]
+    u39 = _fix("U39", "SN74LVC1G17DBVR", "FLASH_MODE buffer, Schmitt, push-pull 3.3 V; 5.5 V-"
+               "tolerant input (LCSC C7836)", "Package_TO_SOT_SMD:SOT-23-5", range(1, 6))
+    Net("U39_NC").connect(u39[1])
+    sns += u39[2]
+    gnd += u39[3]
+    flash_mode += u39[4]
+    v3d += u39[5]
+    _cap("C56", "100nF", "U39 VCC bypass", v3d, gnd)
+
+    # the clamps: open-drain, input FLASH_MODE, output the line (FLASH_CLAMPED, 2k2 behind)
+    u40 = _fix("U40", "SN74LVC06APWR", "flash-mode line clamps, hex open drain (LCSC C7807)",
+               "Package_SO:TSSOP-14_4.4x5mm_P0.65mm", range(1, 15))
+    lines = ("BRAIN_EN", "LOW_PWR", "CM5_PWRBTN", "OPT_VBUS_EN", "EN_PED", "EN_LEV")
+    for (a, y), k in zip(((1, 2), (3, 4), (5, 6), (9, 8), (11, 10), (13, 12)), lines):
+        flash_mode += u40[a]
+        io[k] += u40[y]
+    gnd += u40[7]
+    v3d += u40[14]
+    _cap("C57", "100nF", "U40 VCC bypass", v3d, gnd)
+    u41 = _fix("U41", "SN74LVC2G06DBVR", "flash-mode clamps: RELAY, and U42's ON (LCSC C402162)",
+               "Package_TO_SOT_SMD:SOT-23-6", range(1, 7))
+    flash_mode += u41[1], u41[3]
+    gnd += u41[2]
+    iso_on += u41[4]
+    v3d += u41[5]
+    io["RELAY"] += u41[6]
+    _cap("C61", "100nF", "U41 VCC bypass", v3d, gnd)
+
+    # U38: the service pair -> the hub (S low) or the CM5's OTG pins (flash)
+    hub2_p, hub2_m = Net("HUB2_DP"), Net("HUB2_DM")
+    u38 = _fix("U38", "TS3USB221RSER", "service port data: the hub normally, the CM5's OTG "
+               "(rpiboot) in flash mode (LCSC C130085)", TS3USB221_FP, range(1, 11))
+    hub2_p += u38[1]
+    hub2_m += u38[2]
+    gad_dp += u38[3]
+    gad_dm += u38[4]
+    gnd += u38[5], u38[6]                      # OE# low: always on
+    sdm += u38[7]
+    sdp += u38[8]
+    flash_mode += u38[9]
+    v3d += u38[10]
+    _cap("C55", "100nF", "U38 VCC bypass", v3d, gnd)
+    return {"hub2": (hub2_p, hub2_m), "svbus": svbus}
+
+
+def _hub(gnd, v3d, up, lane, svc):
+    """U37, CH334P: a fixed-function USB 2.0 hub, no firmware and no EEPROM (WCH CH334/CH335
+    datasheet V2.91, Table 1-1: CH334P MTT, custom config optional, crystal-free optional).
+    On the CM5's USB3-1 pair (the lever-flash lane): DS1 -> the arms' flash switches
+    (U209 / U210, unchanged), DS2 -> the service port (U38). A lever's CH32 enumerates
+    through it as before -- full speed behind an MTT hub; nothing in the path runs code.
+    Pins (Figure 1-1, CH334P QFN16 3x3): 1 XO, 2 XI, 3 DM4, 4 DP4, 5 DM3, 6 DP3, 7 DM2,
+    8 DP2, 9 DM1, 10 DP1, 11 DMU, 12 DPU, 13 RESET#/CDP (internal pull-up: float), 14 PGANG
+    (internal pull-up: float), 15 V5, 16 VDD33, pad 0 GND (KiCad pad 17). Powered from
+    +3V3D on both V5 and VDD33 (6.1 note 3: external 3.3 V, internal LDO bypassed). A
+    12 MHz crystal, NOT crystal-free: that option is "not enabled by default on some
+    packages" (6.2); XI / XO carry ~16 pF internally, no load caps (3.x)."""
+    u37 = _fix("U37", "CH334P", "USB 2.0 4-port hub, MTT, fixed function (LCSC C5373042)",
+               "Package_DFN_QFN:WCH_QFN-16-1EP_3x3mm_P0.5mm_EP1.8x1.8mm", range(1, 18))
+    xo, xi = Net("HUB_XO"), Net("HUB_XI")
+    xo += u37[1]
+    xi += u37[2]
+    for k in (3, 4, 5, 6, 13, 14):
+        Net("U37_NC_%d" % k).connect(u37[k])
+    for (dp, dm), (pp, pm) in ((svc, (8, 7)), (lane, (10, 9)), (up, (12, 11))):
+        dp += u37[pp]
+        dm += u37[pm]
+    v3d += u37[15], u37[16]
+    gnd += u37[17]
+    y2 = _fix("Y2", "X322512MSB4SI", "12 MHz, the hub's clock; CL from the CH334's own "
+              "~16 pF (LCSC C9002)", "Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm", range(1, 5))
+    xi += y2[1]
+    xo += y2[3]
+    gnd += y2[2], y2[4]
+    _cap("C52", "100nF", "U37 V5 bypass", v3d, gnd)
+    _cap("C53", "1uF", "U37 VDD33 bypass (datasheet: 1 uF or 0.1 + 10)", v3d, gnd)
 
 
 def brain_board():
@@ -749,7 +985,11 @@ def brain_board():
     a_dp += u17[2]
     b_dm += u17[3]                             # 2D- / 2D+: J2
     b_dp += u17[4]
-    gnd += u17[5], u17[6]                      # OE# low: always on
+    gnd += u17[5]
+    # OE#: FLASH_MODE (merged) -- in flash mode the CM5's OTG pair belongs to the bottom
+    # service port (U38), so the panel ports' switch lets go of it
+    flash_mode = Net("FLASH_MODE") if MERGED else gnd
+    flash_mode += u17[6]
     gad_dp += u17[7]
     gad_dm += u17[8]
     io["DATA_SEL"] += u17[9]
@@ -917,6 +1157,14 @@ def brain_board():
             top, bot = int_div[name]
             _res(top, "4k7", "%s divider, top: the AP33772S's 5 V INT into an FT pin" % name, io[name], at_pin)
             _res(bot, "10k", "%s divider, bottom: 3.63 V worst case at %s" % (name, port), at_pin, gnd)
+            continue
+        if MERGED and name in FLASH_CLAMPED:
+            # 2k2 between the pin and the line: U40 / U41 hold the line low in flash mode
+            # against whatever this pin drives, 1.5 mA at 3.3 V (see the service port)
+            at_pin = Net(name + "_MCU")
+            at_pin += u1[PIN[port]]
+            _res(FLASH_CLAMPED[name], "2k2", "%s series: flash mode's clamp overrules the MCU "
+                 "through it" % name, at_pin, io[name])
             continue
         io[name] += u1[PIN[port]]
     used = (set(MCU_VDD) | set(MCU_VSS)
@@ -1468,7 +1716,27 @@ def brain_board():
     iso9_raw, iso9 = Net("ISO9_RAW"), Net("ISO9")
     iso9_raw += fb1[1]
     iso9 += fb1[2]
-    _isolation(gnd, agnd, v5_pre, v3d, v3v3, v5, iso9_raw, iso9, io, iso)
+    v5_iso = v5_pre
+    if MERGED:
+        # U42: THE AUDIO'S ISOLATED SUPPLY OFF IN FLASH MODE (M43: the PC's port carries the
+        # flash, and U30 is always-on -- ~0.1 A idle at 5 V, ~0.25 A loaded, whatever U1's
+        # image does with the audio). ON is pulled up and U41 pulls it low in flash mode.
+        # TI SLVSD76C Pin Functions, DBV: 1 VIN, 2 GND, 3 ON (1.0 V VIH; do not float), 4 CT
+        # (may float), 5 QOD (floating: no discharge), 6 VOUT. 2 A, 0.25 A here.
+        v5_iso = Net("V5_ISO")
+        v5_iso.drive = Pin.drives.POWER
+        iso_on = Net("ISO_ON")
+        u42 = _fix("U42", "TPS22918DBVR", "U30's 5 V switch: off in flash mode (LCSC C131941)",
+                   "Package_TO_SOT_SMD:SOT-23-6", range(1, 7))
+        v5_pre += u42[1]
+        gnd += u42[2]
+        iso_on += u42[3]
+        Net("U42_NC_CT").connect(u42[4])
+        Net("U42_NC_QOD").connect(u42[5])
+        v5_iso += u42[6]
+        _res("R47", "10k", "U42 ON up to +3V3D: U30 runs unless flash mode", iso_on, v3d)
+        _cap("C66", "1uF/10V", "U42 VIN bypass", v5_pre, gnd, C0402)
+    _isolation(gnd, agnd, v5_iso, v3d, v3v3, v5, iso9_raw, iso9, io, iso)
 
     # ── diodes ───────────────────────────────────────────────────────────────
     # 60 V, not 40: its cathode is the switch node, which stands at VIN, and the rail
@@ -1613,13 +1881,16 @@ def brain_board():
         # U201) so the two circuits' refs never meet.
         import brain as BR
         from builtins import default_circuit
+        svc = _service_port(gnd, pgnd, v3d, v5_pre, vstby, vin, io, gad_dp, gad_dm,
+                            flash_mode, iso_on)
         before = {id(pt) for pt in _circuit_parts()}
         ours = {n.name for n in default_circuit.nets}
         nets0 = {id(n) for n in default_circuit.nets}
-        mg = {"gnd": pgnd, "vin": vin_brain, "v5a": v5_pre}
+        mg = {"gnd": pgnd, "vin": vin_brain, "v5a": v5_pre, "flash": flash_mode, "hub": True}
         if FOLD:
             mg["v33"] = v3d
-            mg["mcu"] = dict({k: io[k] for k in FOLD_IO}, NRST=nrst, BOOT0=boot0)
+            mg["mcu"] = dict({k: io[k] for k in FOLD_IO}, NRST=nrst, BOOT0=boot0,
+                             SWDIO=swdio, SWCLK=swclk)
         bn = BR.brain(mg)
         # the brain's own nets that share a name with this board's (its CH32's NRST, OSC_IN,
         # SWDIO ... beside the H743's) get a B_ prefix: two nets, two names
@@ -1643,6 +1914,7 @@ def brain_board():
         gad_dm += bn["gadget"][1]
         io["MCU_DP"] += bn["oblink"][0]
         io["MCU_DM"] += bn["oblink"][1]
+        _hub(gnd, v3d, bn["hubu"], bn["flash_lane"], svc["hub2"])
         for k, pu in (("PWR_LEAD1_N", "R120"), ("PWR_LEAD2_N", "R122")):
             _res(pu, "10k", "%s: no lead any more (merged) -- held HIGH, firmware ignores it" % k,
                  io[k], v3d)
@@ -1898,6 +2170,21 @@ FIRMWARE_NOTES = [
     "classic stale-data fault.",
     "No interrupts-off critical sections around the motor weight table: swap a pointer.",
     "Measure the lock-in loop's cycles (DWT) at bring-up; the 10-17 % CPU estimate is paper.",
+    # M43 flash mode (lead 2026-11-17): a PC on the bottom service port (brain_board
+    # _service_port). No boot timing is in the path any more: the hardware, not a timer,
+    # decides, so a slow boot cannot land a healthy board in flash mode.
+    "BOOT_ORDER: never put RPIBOOT (USB device boot) in the CM5's EEPROM BOOT_ORDER -- it has no "
+    "timeout. Flash mode holds nRPIBOOT in hardware (Q217); nothing else should send the ROM to USB.",
+    "5 V ONLY (a PC's port, or a 5 V-only charger): run the minimal mode -- the boost stays off "
+    "(BRAIN_EN low) and the lights stay dark; U20's 4.49 V UVLO lets the CM5 run but the motors "
+    "need a contract.",
+    # ...and the flash-mode current budget only holds at a PC port's 1.5 A if the CM5's
+    # peak and U1's never overlap: U1 at 400 MHz, all peripherals on, Tj 85 C is 400 mA max
+    # (DS12110 Rev 3 Table 29; +~20 % at 480 MHz) against the CM5's 900 mA operating figure.
+    "FLASHER IMAGE (the CM5 image the PC serves over rpiboot in flash mode): FIRST hold U1 in "
+    "reset (GPIO25 -> NRST low) before raising its own clocks or the eMMC writes, and release U1 "
+    "only under SWD connect-under-reset, so U1's core stays halted at reset clocks while it is "
+    "flashed. Peak CM5 and running U1 never overlap at the port.",
 ]
 
 
@@ -2015,7 +2302,7 @@ def _merged_quality(paths, q):
     unc = dict(q["unconnected"])
     cm5_used = set()
     if FOLD:                           # the CM5 GPIOs the fold puts to work (SEL_PED / SEL_LEV)
-        cm5_used = {str(BR.GPIO[4]), str(BR.GPIO[7])}
+        cm5_used = {str(BR.GPIO[g]) for g in (4, 7, 8, 9)}     # + SWD on GPIO8 / GPIO9
     for k, v in bq.get("unconnected", {}).items():
         m = _re.match(r"^([A-Z]+\d+)(\.\w+)?$", k)
         if not m or field.match(m.group(1) + "."):
@@ -2059,6 +2346,17 @@ def _merged_quality(paths, q):
             "-> NRST (R6 10k up, C54): BOOT0 high, pulse NRST, the loader answers -- no firmware "
             "of U1's and no hand on the board, so first flash, update and recovery are one path. "
             "The CM5 itself: nRPIBOOT / rpiboot over its USB-C, the Raspberry Pi way. "
+            "STATED CASE (lead, 2026-11-17), IDEAL PASS: flashing = a PC on the bottom service "
+            "port (J7, through the panel-mount extension), with any expansion board unplugged "
+            "first. The PC's VBUS with ID released is FLASH_MODE (U39): it powers the board "
+            "through U43/Q8 -> VIN_BUS, power-cycles the CM5 (Q216) with nRPIBOOT held (Q217) "
+            "and its OTG pair on the port (U38, U17 off), clamps every U1 line that could close "
+            "the path (U40/U41, FLASH_CLAMPED) and switches the audio supply off (U42) -- whatever "
+            "firmware the CM5's eMMC or U1 holds. The PC serves the CM5 a flasher image over "
+            "rpiboot; it programs U1 over SWD (CM5 GPIO8/9 -> R315/R316 -> PA14/PA13) under "
+            "connect-under-reset (GPIO25 holds NRST): a pin remap cannot shut it out, and an "
+            "RDP level-1 lock is regressed to level 0 (mass erase) over the same SWD (the ROM "
+            "loader is the normal path above). "
             "R232/R233 are 1k so a CM5 GPIO left as an input never fights R6/R7 and an "
             "unpowered CM5 cannot be back-fed. TP1-TP6 (SWD, NRST, BOOT0) stay for dead hardware "
             "(M9). NOT YET PROVEN ON A BOARD."))
@@ -2077,6 +2375,8 @@ def quality_notes(net_path):
         "(KiCad PinHeader_2x10_P1.27mm_Vertical_SMD: odd pads one row, even the other, 1 / 2 at "
         "one end) and the way order is this file's J4 block, which the optical board's end "
         "mirrors (IDC ribbon: wire n = pin n)")
+    if MERGED:
+        q["pinouts"].update(SERVICE_PINOUTS)
     for k in [k for k in q["pinouts"] if "2x12_P1.27mm" in k]:
         del q["pinouts"][k]
     unc = dict(qp["unconnected"], **qs["unconnected"])
@@ -2095,6 +2395,23 @@ def quality_notes(net_path):
         {"net": "V5_PRE", "from": "L1.2", "to": ["U15.1"], "amps": 1.8},
         {"net": "V5_PRE", "from": "L1.2", "to": ["R98.1"], "amps": 0.6},
         {"net": "V5_PRE", "from": "L1.2", "to": ["U30.2"], "amps": 0.3},
+    ]
+    if MERGED:
+        paths[-1] = {"net": "V5_PRE", "from": "L1.2", "to": ["U42.1"], "amps": 0.3}
+        paths += [
+            {"net": "V5_ISO", "from": "U42.6", "to": ["U30.2"], "amps": 0.3},
+            # the service port (_service_port): the PC's 5 V in through the ideal diode, and
+            # the expansion board's 1 A out through U36
+            {"net": "SVC_VBUS", "from": "J7.A4", "to": ["Q8.1", "Q8.2", "Q8.3"], "amps": 1.5,
+             "split": True},
+            {"net": "VIN_BUS", "from": "Q8.5", "to": ["R112.1"], "amps": 1.5},
+            {"net": "VIN_BUS", "from": "Q8.5", "to": ["D24.2"], "amps": 0.5},
+            {"net": "VSTBY", "from": "D24.1", "to": ["U5.2", "U5.9", "U5.10"], "amps": 0.5,
+             "split": True},
+            {"net": "V5_PRE", "from": "L1.2", "to": ["U36.1"], "amps": 1.2},
+            {"net": "SVC_VBUS", "from": "U36.6", "to": ["J7.A4"], "amps": 1.2},
+        ]
+    paths += [
         {"net": "+5V_OPT", "from": "U15.6", "to": ["J4.1", "J4.2"], "amps": 1.8, "split": True},
         {"net": "+3V3D", "from": "U21.2", "to": ["U17.10", "U16.6"], "amps": 0.005},
     ]
@@ -2116,7 +2433,14 @@ def quality_notes(net_path):
     match = [m for m in qp["match"] + qs["match"] if m["name"] != "OPT"]
     if MERGED:
         import brain as BR
-        match += [m for m in BR.BOARD_NOTES["match"] if m["name"] == "FLASH"]
+        fl = next(m for m in BR.BOARD_NOTES["match"] if m["name"] == "FLASH")
+        match.append(dict(fl, why="the hub's DS1 (U37) -> U209 / U210, the arm-flashing "
+                          "switches. " + BR._USB_HS))
+        for n, w in (("HUBU", "the CM5's USB3-1 2.0 lane -> the hub's upstream (U37)."),
+                     ("HUB2", "the hub's DS2 (U37) -> the service-port switch (U38)."),
+                     ("SVC", "the service port J7 -> U38: the expansion board, or a PC's "
+                      "rpiboot in flash mode.")):
+            match.append(dict(fl, name=n, nets=[n + "_DP", n + "_DM"], why=w + " " + BR._USB_HS))
         # the USB-C pairs' connector side, J1 / J2 -> FL3 / FL4: the same pair, a few mm long
         base = {m["name"]: m for m in match}
         for n in ("USBA", "USBB"):
@@ -2147,10 +2471,11 @@ if __name__ == "__main__":
     # in order (lead, 2026-11-17; brain_board mV16 / mV16b).
     notes["diff_pairs"] = [
         {"nets": [n + "_DP" + j, n + "_DM" + j], "chain": ch, "width": 0.2, "gap": 0.2}
-        for n, j, ch in (("GADGET", "", ["J202", "U17"]), ("USBA", "", ["FL3", "U17"]),
+        for n, j, ch in (("GADGET", "", ["U38", "J202", "U17"]), ("USBA", "", ["FL3", "U17"]),
                          ("USBB", "", ["FL4", "U17"]), ("MCU", "", ["J202", "U1"]),
-                         ("FLASH", "", ["J202", "U209", "U210"]), ("USBA", "_J", ["FL3", "J1"]),
-                         ("USBB", "_J", ["FL4", "J2"]))]
+                         ("HUBU", "", ["J202", "U37"]), ("FLASH", "", ["U37", "U209", "U210"]),
+                         ("HUB2", "", ["U37", "U38"]), ("SVC", "", ["J7", "U38"]),
+                         ("USBA", "_J", ["FL3", "J1"]), ("USBB", "_J", ["FL4", "J2"]))]
     notes["pair_corridor"] = True      # placement prices each pair hop's corridor (cadkit place_init)
     # a small pour land's via array goes beside it, bridged: Q202.3 fed VIN_BRAIN's 10 A to In2 through one via (mV16)
     notes["pour_spill_small"] = True

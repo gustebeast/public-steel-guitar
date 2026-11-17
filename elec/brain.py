@@ -281,6 +281,12 @@ def brain(merged=None):
         # must not depend on the H743's firmware to do it
         del cm5_io["MCU_IRQ_CM5"]
         cm5_io["SEL_PED"], cm5_io["SEL_LEV"] = 4, 7
+        # SWD from the CM5 (PCB_QUALITY M43, 2026-11-17): the H743's ROM loader answers only
+        # if its option bytes allow it, and a firmware that sets RDP or remaps the pins shuts
+        # USART1 out. SWD connect-under-reset (NRST held by GPIO25) reaches the core whatever
+        # the flash holds -- so the CM5's flasher image drives SWCLK / SWDIO on GPIO8 / GPIO9.
+        if "SWDIO" in fold and "SWCLK" in fold:
+            cm5_io["CM5_SWCLK"], cm5_io["CM5_SWDIO"] = 8, 9
     # merged: the brain board's own 5 V (V5_PRE, its U5 on the chargers' raw input) IS the
     # logic 5 V -- one buck for both boards' logic (user, 2026-11-13: "combining multiple 5V
     # bucks into one"), and the CH32 runs from a charger's attach, not from the boost's 24 V
@@ -502,46 +508,130 @@ def brain(merged=None):
         _cap("C57", "1uF", "U8 input", v5a, gnd)
         _cap("C58", "10uF", "+3V3 bulk", v33, gnd, C0805)
 
-    # ── U5: +5V_CM5 -- motor_ctrl's Pi buck, its fuse and its crowbar (motor_ctrl.py U5) ─────
-    # EN: motor_ctrl's 18.1 V UVLO divider, and Q15 holds it low while LOW_PWR is high
-    # (MINIMAL mode: the brain board decided from the contract before anything started).
-    v24_f, v24_buck, v5_raw = Net("+24V_F"), Net("+24V_BUCK"), Net("+5V_RAW")
-    v5_raw.drive = Pin.drives.POWER
-    sw5, boot5, vcc5, fb5, en5 = Net("SW5"), Net("BOOT5"), Net("VCC5"), Net("FB5"), Net("EN5")
-    _res("R23", "0R", "link in U5's input branch; a damper's land if one is wanted", v24_f,
-         v24, "Resistor_SMD:R_1206_3216Metric")
-    _two("F1", "Fuse", "JFC1206-1150FS", "1.5 A 63 V: a shorted U5 must not take the 24 V down",
-         "Fuse:Fuse_1206_3216Metric", v24_f, v24_buck)
-    u5 = _part("U5", "LMR33630ADDAR", "LMR33630ADDAR", "36 V 3 A synchronous buck, 24 V -> "
-               "5 V for the CM5", "Package_SO:SOIC-8-1EP_3.9x4.9mm_P1.27mm_EP2.29x3mm",
-               [Pin(num=n, func=P) for n in range(1, 10)])
-    gnd += u5[1], u5[9]                        # PGND, AGND (motor_ctrl._LMR33630_DDA_PINS)
-    v24_buck += u5[2]
-    en5 += u5[3]
-    io["PG_5V"] += u5[4]
-    fb5 += u5[5]
-    vcc5 += u5[6]
-    boot5 += u5[7]
-    sw5 += u5[8]
-    _two("L2", "L", "VLS6045EX-6R8M", "6.8 uH 5 V buck inductor, Isat 4.7 A, shielded 6x6x4.5",
-         "Inductor_SMD:L_TDK_VLS6045EX_VLS6045AF", sw5, v5_raw)
+    # ── U5: +5V_CM5 -- A BUCK-BOOST FROM THE CHARGERS' OWN INPUT (M43, lead 2026-11-17) ──────
+    # ⚠ THE CM5 MUST COME UP FROM A PC's 5 V WITH EVERY FIRMWARE BLANK (cadkit PCB_QUALITY M43:
+    # power and enables are part of the flashing path). The LMR33630 here was a buck off the
+    # +24 V -- the boost's output, which runs only after U1's firmware raises BRAIN_EN -- so a
+    # factory board had no path into the CM5 at all. And a buck cannot make the CM5's 4.75 V
+    # floor (datasheet RP-008180-DS-7 s3.1) from a PC port's 4.75 V less a cable. So: a
+    # 4-switch buck-boost on VIN_BRAIN (the chargers' OR-ed input, 4-20 V), enabled EITHER by
+    # VIN_SW (the normal path: button AND BRAIN_EN closed Q2) OR by FLASH (the board's
+    # hardware flash mode, brain_board.py: a PC on the bottom service port). It also lifts the CM5's
+    # supply from 3 A to the 5 A it asks.
+    # TPS552892-Q1, NOT the TPS55288 (same family): the TPS55288 resets with its output OFF
+    # until an I2C write (OE bit, "Output disabled (Default)") -- nothing can write it on a
+    # blank board. And not the TPS552882: its buck side drives two EXTERNAL FETs (DR1H/DR1L).
+    # This one is fully integrated and set by resistors alone (TI SLVSGT7, Table 5-1).
+    v5_bb, v5_raw, v5_sw = Net("+5V_BB"), Net("+5V_RAW"), Net("+5V_SW")
+    for n in (v5_bb, v5_raw, v5_sw):
+        n.drive = Pin.drives.POWER
+    sw1, sw2, boot1, boot2 = Net("SW5_1"), Net("SW5_2"), Net("BOOT5_1"), Net("BOOT5_2")
+    vcc5, fb5, en5, comp5, comp5_z, fsw5 = (Net("VCC5"), Net("FB5"), Net("EN5"), Net("COMP5"),
+                                           Net("COMP5_Z"), Net("FSW5"))
+    vin_f = Net("VIN_CM5")
+    _two("F1", "Fuse", "JFC1206-1400FS", "4 A 63 V: a shorted U5 must not take VIN_BRAIN down "
+         "(25 W at a 9 V contract is 3.1 A in)", "Fuse:Fuse_1206_3216Metric", vin, vin_f)
+    u5 = _part("U5", "TPS552892-Q1", "TPS552892QWRYQRQ1",
+               "36 V 8 A fully integrated buck-boost, VIN_BRAIN 4-20 V -> 5.19 V for the CM5; "
+               "resistor-set, no I2C (LCSC C22375748; TI SLVSGT7)",
+               "Steel:Texas_RYQ0021B_VQFN-HR-21_3x5mm_P0.5mm",
+               [Pin(num=n, func=P) for n in range(1, 22)])
+    en5 += u5[1]                               # EN/UVLO: 1.15 V logic high, 1.23 V UVLO
+    gnd += u5[2]                               # MODE low: auto PFM at light load (not floating)
+    io["PG_5V"] += u5[3]                       # PG: open drain, high at 95 % of 5.19 V
+    Net("U5_NC_CC").connect(u5[4])             # CC: constant-current flag, unused
+    gnd += u5[5]                               # DITH/SYNC to ground: no dithering
+    fsw5 += u5[6]
+    vin_f += u5[7]
+    sw1 += u5[8]
+    gnd += u5[9], u5[17]                       # PGND, AGND
+    sw2 += u5[10]
+    v5_bb += u5[11], u5[12]                    # VOUT and ISP: the sense resistor follows
+    v5_raw += u5[13]                           # ISN
+    fb5 += u5[14]
+    comp5 += u5[15]
+    Net("U5_NC_CDC").connect(u5[16])           # CDC floating: no cable-droop lift (SLVSGT7 6.5)
+    vcc5 += u5[18], u5[21]                     # VCC, and EXTVCC high: the internal LDO
+    boot2 += u5[19]
+    boot1 += u5[20]
+    _two("L2", "L", "FXL0630-4R7-M", "4.7 uH, Isat 9 A, 33 mOhm, 7 x 6.6 (LCSC C167220): worst "
+         "peak 6.25 A (20 V in, 5 A out, L -20 %, 400 kHz)", "Inductor_SMD:L_Changjiang_FXL0630",
+         sw1, sw2)
     for tag in ("C16", "C17"):
-        _cap(tag, "10uF/50V", "5 V buck input bulk", v24_buck, gnd, C1206)
-    _cap("C18", "220nF/50V", "5 V buck input HF bypass, at VIN / PGND", v24_buck, gnd, C0603)
-    _cap("C19", "1uF", "5 V buck VCC bypass", vcc5, gnd)
-    _cap("C20", "100nF", "5 V buck bootstrap", boot5, sw5)
+        _cap(tag, "10uF/50V", "buck-boost input bulk", vin_f, gnd, C1206)
+    _cap("C18", "220nF/50V", "buck-boost input HF bypass, at VIN / PGND", vin_f, gnd, C0603)
+    _cap("C19", "4u7/10V", "VCC: more than 4.7 uF required (pin table)", vcc5, gnd, C0603)
+    _cap("C20", "100nF", "BOOT1 to SW1 (pin table: 0.1 uF)", boot1, sw1)
+    _cap("C123", "100nF", "BOOT2 to SW2 (pin table: 0.1 uF)", boot2, sw2)
     for tag in ("C21", "C22", "C31", "C32"):
-        _cap(tag, "22uF/25V", "5 V output bulk", v5_raw, gnd, C1206)
-    _res("R10", "100k", "5 V feedback divider, top", v5_raw, fb5)
-    _res("R11", "24k9 1%", "5 V feedback divider, bottom -- 5.02 V", fb5, gnd)
-    _res("R12", "137k 1%", "5 V EN/UVLO divider, top -- turn-on at 18.1 V", v24, en5)
-    _res("R13", "10k 1%", "5 V EN/UVLO divider, bottom", en5, gnd)
+        _cap(tag, "22uF/25V", "5 V output bulk, ~66 uF effective at 5 V", v5_bb, gnd, C1206)
+    _res("R113", "10mR 1%", "ISP-ISN output current sense: 50 mV limit / 10 mR = 5.0 A (SLVSGT7 "
+         "8.2.2.6); keeps the inductor under Isat in a fault", v5_bb, v5_raw,
+         "Resistor_SMD:R_1206_3216Metric")
+    _res("R10", "100k 1%", "5 V feedback divider, top", v5_bb, fb5)
+    _res("R11", "30k1 1%", "5 V feedback divider, bottom -- 1.2 x (1 + 100/30.1) = 5.19 V: "
+         "~5.05 V at the module at 5 A after R113 and F2", fb5, gnd)
+    _res("R112", "49k9 1%", "FSW: 400 kHz (SLVSGT7 8.2.2.1)", fsw5, gnd)
+    # compensation, boost mode at 4.0 V in (the flash case), 1.2 A, 66 uF, fc 15 kHz (fRHPZ/5):
+    # RC = 2pi Vout Rsense Cout fc / ((1-D) Vref Gea) = 10.1 k; CC = Rload Cout / (2 RC) = 14 nF;
+    # CP = Resr Cout / RC = 20 pF (SLVSGT7 eq. 24-26, Gea 190 uA/V, Rsense 0.055)
+    _res("R114", "10k", "COMP zero resistor (RC)", comp5, comp5_z)
+    _cap("C124", "15nF", "COMP zero capacitor (CC)", comp5_z, gnd)
+    _cap("C125", "22pF", "COMP high-frequency pole (CP)", comp5, gnd)
+    # EN: the NORMAL path is a UVLO divider off VIN_SW -- 1.23 x (1 + 100/23.2) = 6.53 V -- so
+    # the CM5 runs only when Q2 has closed (button AND BRAIN_EN); Q15 holds it off in MINIMAL.
+    # C126 makes the turn-on ~100 ms after VIN_SW rises: the HANDOVER from flash mode drops
+    # FLASH (EN falls at once) and U21's 225 R discharge empties the module's rail before EN
+    # comes back -- so the CM5 sees a real power cycle and re-samples a released nRPIBOOT.
+    _res("R12", "100k 1%", "EN/UVLO divider, top -- normal turn-on at 6.53 V on VIN_SW", vin_sw, en5)
+    _res("R13", "23k2 1%", "EN/UVLO divider, bottom", en5, gnd)
+    _cap("C126", "4u7/10V", "EN delay: tau 88 ms (18.8 k x 4.7 uF) -- the handover off-time",
+         en5, gnd, C0603)
+    flash = merged.get("flash") if merged else None
+    nrpiboot_n = Net("CM5_nRPIBOOT")                 # the module's pin 93, wired below
+    if flash is not None:
+        # FLASH (brain_board's U39, push-pull 3.3 V) holds EN on through D21. R117 bounds the
+        # current so Q16 can overrule it: (3.3 - 0.3) / 1k = 3 mA, and EN still sits at
+        # 3.0 x 23.2 / 24.2 = 2.9 V over the 1.23 V UVLO with R13 below it.
+        fl_d = Net("FLASH_EN_D")
+        _res("R117", "1k", "FLASH -> D21: bounded so Q16's pulse wins", flash, fl_d)
+        _diode("D21", "BAT54WS", "FLASH -> EN: flash mode turns the CM5's supply on whatever "
+               "U1 drives (LCSC C124205)", en5, fl_d, "Diode_SMD:D_SOD-323")
+        # ⚠ A REAL POWER CYCLE ON EVERY FLASH ENTRY. nRPIBOOT is sampled only at the CM5's
+        # power-up (RP-008180-DS-7: low within 2 ms of 5 V), so a PC plugged in while the
+        # module runs would find its OS, not the ROM's usbboot. FLASH's rising edge, through
+        # C128 into Q16's gate, holds EN LOW for 470 k x 1 uF x ln(3.3 / Vth): 130 ms at the
+        # 2.5 V worst Vth, ~340 typical -- U221's 225 R discharge empties the module's rail in
+        # ~50 ms -- and EN then comes
+        # up through D21 with nRPIBOOT already held (Q17). R118 drains the gate after.
+        pulse = Net("FLASH_PULSE")
+        _cap("C128", "1uF", "FLASH edge -> Q16 gate: the power-cycle pulse", flash, pulse)
+        _res("R118", "470k", "Q16 gate down: the pulse's length, 130-340 ms", pulse, gnd)
+        _small("Q16", "flash entry: holds U5's EN low >= 130 ms, so the CM5 power-cycles into "
+               "usbboot", en5, pulse, gnd)
+        _small("Q17", "flash mode: holds the CM5's nRPIBOOT low (its own 10k pull-up to "
+               "CM5_3V3) -- the ROM boots from USB, whatever the eMMC holds", nrpiboot_n, flash, gnd)
     lp_g = Net("LOWPWR_G")
     _res("R16", "10k", "Q15 gate from LOW_PWR", link["LOW_PWR"], lp_g)
     _res("R17", "100k", "Q15 gate down", lp_g, gnd)
-    _small("Q15", "MINIMAL mode: holds U5's EN low, the CM5 stays off", en5, lp_g, gnd)
+    _small("Q15", "MINIMAL mode: holds U5's EN low, the CM5 stays off (LOW_PWR is clamped low "
+           "in flash mode, brain_board)", en5, lp_g, gnd)
+    # U21: the module's rail behind a switch WITH AN OUTPUT DISCHARGE, on the same EN: the
+    # handover's power cycle is the discharge's, sized not guessed -- 225 R x ~100 uF = 22 ms,
+    # under 0.5 V in ~50 ms, inside C126's ~100 ms off-time.
+    u21 = _part("U21", "TPS22965", "TPS22965DSGR", "+5V_CM5 load switch, 6 A, 16 mOhm, QOD "
+                "225 R (TI TPS22965 datasheet; LCSC C122837)",
+                "Package_SON:Texas_DSG0008A_WSON-8-1EP_2x2mm_P0.5mm_EP0.9x1.6mm",
+                [Pin(num=n, func=P) for n in range(1, 10)])
+    v5_raw += u21[1], u21[2]
+    en5 += u21[3]                              # ON: VIH 1.1 V, VIL 0.5 V
+    v33 += u21[4]                              # VBIAS from +3V3D: the QOD works with U5 off
+    gnd += u21[5], u21[8], u21[9]
+    Net("U21_NC_CT").connect(u21[6])           # CT floating: fastest rise
+    v5_sw += u21[7]
+    _cap("C127", "1uF", "U21 VBIAS bypass", v33, gnd)
     _two("F2", "Fuse", "JFC1206-1400FS", "4 A 63 V: 5 V output fuse -- the element D9 blows "
-         "when U5 fails short", "Fuse:Fuse_1206_3216Metric", v5_raw, v5c)
+         "when U5 fails short", "Fuse:Fuse_1206_3216Metric", v5_sw, v5c)
     _diode("D9", "SMBJ5.0A", "THE CROWBAR: clamps +5V_CM5 and draws enough through F2 to "
            "open it", v5c, gnd, "Diode_SMD:D_SMB")
     for k, tag in enumerate(("C23", "C24", "C25")):
@@ -574,7 +664,7 @@ def brain(merged=None):
     cnet(cm5_3v3, CM5_PIN["GPIO_VREF"])          # 3.3 V GPIO; may not float or be grounded
     for name, g in cm5_io.items():
         cnet(io[name], GPIO[g])
-    pwrbut, nrpiboot, led_act = Net("CM5_PWR_BUT"), Net("CM5_nRPIBOOT"), Net("CM5_LED_nACT")
+    pwrbut, nrpiboot, led_act = Net("CM5_PWR_BUT"), nrpiboot_n, Net("CM5_LED_nACT")
     cnet(pwrbut, CM5_PIN["PWR_Button"])
     cnet(nrpiboot, CM5_PIN["nRPIBOOT"])
     cnet(led_act, CM5_PIN["LED_nACT"])
@@ -585,8 +675,13 @@ def brain(merged=None):
     cnet(otg_n, CM5_PIN["USB_N"])
     cnet(lnk_p, CM5_PIN["USB3_0_DP"])
     cnet(lnk_n, CM5_PIN["USB3_0_DM"])
-    cnet(fl_p, CM5_PIN["USB3_1_DP"])
-    cnet(fl_n, CM5_PIN["USB3_1_DM"])
+    # merged with a hub (brain_board: the CH334P on this lane feeds the arms' flash switches
+    # AND the bottom service port): the CM5's USB3-1 pair is the hub's upstream, and FLASH_D*
+    # is one of its downstream ports
+    hub = bool(merged and merged.get("hub"))
+    hu_p, hu_n = (Net("HUBU_DP"), Net("HUBU_DM")) if hub else (fl_p, fl_n)
+    cnet(hu_p, CM5_PIN["USB3_1_DP"])
+    cnet(hu_n, CM5_PIN["USB3_1_DM"])
     for n in range(1, 201):
         if n not in used:
             Net("CM5_NC_%d" % n).connect(cpin(n))
@@ -670,6 +765,9 @@ def brain(merged=None):
           ("R33", "CM5_MCU_BOOT", "BOOT0", "CM5 GPIO19 -> %s BOOT0" % tgt)]
     if not fold:
         lk.append(("R34", "MCU_IRQ", "MCU_IRQ_CM5", "CH32 PA8 -> CM5 GPIO4"))
+    if "CM5_SWCLK" in cm5_io:
+        lk += [("R115", "CM5_SWCLK", "SWCLK", "CM5 GPIO8 -> H743 SWCLK (PA14)"),
+               ("R116", "CM5_SWDIO", "SWDIO", "CM5 GPIO9 <-> H743 SWDIO (PA13)")]
     for ref, a, b_, what in lk:
         _res(ref, "1k", what + " -- series: no back-powering in minimal mode", io[a], io[b_])
 
@@ -853,7 +951,8 @@ def brain(merged=None):
     # nearest cap was C246 at 54.4 mm, its switch's output, against 25 mm). The ribbon's far end
     # is the UI board; this end gets its own 100 nF so the header pin is not fed down a trace.
     _cap("C59", "100nF", "+3V3_UI at the UI header J5", v33_ui, gnd)
-    return {"link": link, "gadget": (otg_p, otg_n), "oblink": (lnk_p, lnk_n)}
+    return {"link": link, "gadget": (otg_p, otg_n), "oblink": (lnk_p, lnk_n),
+            "hubu": (hu_p, hu_n), "flash_lane": (fl_p, fl_n)}
 
 
 # ── the board ──────────────────────────────────────────────────────────────────────────────
@@ -956,17 +1055,17 @@ BOARD_NOTES["quality"] = {
            {"net": "VIN_SW", "from": "Q2.2", "to": ["R108.1"], "amps": 0.02},    # LM5122 VIN filter
            # 24 V out of the boost: 100 W, 4.5 A at the high side; ten motors, the lights, two bucks
            {"net": "+24V", "from": "Q9.5", "to": ["F3.1"], "amps": 3.0},         # the lighting bus
-           {"net": "+24V", "from": "Q9.5", "to": ["R23.2"], "amps": 0.8},        # the CM5 buck's feed
            {"net": "+24V", "from": "Q9.5", "to": ["U7.2", "U7.9", "U7.10"], "amps": 0.3}]
         + [{"net": "+24V", "from": "Q9.5", "to": ["J%d.1" % k], "amps": 0.45} for k in range(21, 31)]
-        + [{"net": "+24V_F", "from": "R23.1", "to": ["F1.1"], "amps": 0.8},
-           {"net": "+24V_BUCK", "from": "F1.2", "to": ["U5.2"], "amps": 0.8},
+        + [{"net": "VIN_CM5", "from": "F1.2", "to": ["U5.7"], "amps": 3.1},    # the CM5 buck-boost's feed (25 W at 9 V)
            {"net": "+24V_LED", "from": "F3.2", "to": ["J3.1"], "amps": 1.5},
            {"net": "+24V_LED", "from": "F3.2", "to": ["J4.1"], "amps": 1.5},
-           # the CM5's 5 V: U5's 3 A limit, through F2, onto its six 5 V pins
-           {"net": "+5V_RAW", "from": "L2.2", "to": ["F2.1"], "amps": 3.0},
+           # the CM5's 5 V: U5's 5 A output limit (R113), through U21 and F2, onto its six 5 V pins
+           {"net": "+5V_BB", "from": "U5.11", "to": ["R113.1"], "amps": 5.0},
+           {"net": "+5V_RAW", "from": "R113.2", "to": ["U21.1", "U21.2"], "amps": 5.0, "split": True},
+           {"net": "+5V_SW", "from": "U21.7", "to": ["F2.1"], "amps": 4.0},
            {"net": "+5V_CM5", "from": "F2.2", "to": ["J1.77", "J1.79", "J1.81", "J1.83", "J1.85",
-                                                    "J1.87"], "amps": 3.0, "split": True},
+                                                    "J1.87"], "amps": 4.0, "split": True},
            # +5V_AUX: the bus-B arms (TPS2553 limited) and the 3V3 LDO
            {"net": "+5V_AUX", "from": "L3.2", "to": ["U6.1"], "amps": 0.5},
            {"net": "+5V_AUX", "from": "L3.2", "to": ["U11.1"], "amps": 0.5},
