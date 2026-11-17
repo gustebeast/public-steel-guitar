@@ -638,6 +638,9 @@ def brain(merged=None):
     Net("U21_NC_CT").connect(u21[6])           # CT floating: fastest rise
     v5_sw += u21[7]
     _cap("C127", "1uF", "U21 VBIAS bypass", v33, gnd)
+    # +5V_RAW had no capacitor at all (quality A2, mV22): the bulks sit on +5V_BB, behind
+    # R113. TI characterises the switch with CIN = 1 uF (SLVSBJ0F 6.6-6.7); at its VIN pins.
+    _cap("C129", "1uF", "U21 VIN bypass, after the sense resistor", v5_raw, gnd)
     _two("F2", "Fuse", "JFC1206-1400FS", "4 A 63 V: 5 V output fuse -- the element D9 blows "
          "when U5 fails short", "Fuse:Fuse_1206_3216Metric", v5_sw, v5c)
     _diode("D9", "SMBJ5.0A", "THE CROWBAR: clamps +5V_CM5 and draws enough through F2 to "
