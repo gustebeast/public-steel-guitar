@@ -195,7 +195,7 @@ def net_items(m, net):
     # through, so the first already joins every layer: a later layer change within
     # hole-to-hole spacing of it takes a stub to its centre on each layer, no second drill.
     # The stub lies between two via pads the router had already reserved on every layer.
-    h2h = m.via_drill + getattr(m, "hole_to_hole", 0.25) + EPS
+    h2h = (getattr(net, "via_drill", None) or m.via_drill) + getattr(m, "hole_to_hole", 0.25) + EPS
     kept, drilled = [], []
     for it in items:
         if it[0] == "via":
@@ -350,7 +350,8 @@ def write(model, nets, out_path):
                 blocks.append('\t(via\n\t\t(at %.4f %.4f)\n\t\t(size %g)\n\t\t(drill %g)\n'
                               '\t\t(layers "F.Cu" "B.Cu")\n\t\t(net "%s")\n'
                               '\t\t(uuid "%s")\n\t)\n'
-                              % (x, y, m.via_d, m.via_drill, net.name, uuid.uuid4()))
+                              % (x, y, getattr(net, "via_d", None) or m.via_d,
+                                 getattr(net, "via_drill", None) or m.via_drill, net.name, uuid.uuid4()))
     txt = _dedupe(m.txt)
     # split the fixed segments new copper meets mid-length (all cuts on one segment at once)
     cuts = {}

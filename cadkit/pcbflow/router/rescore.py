@@ -76,7 +76,7 @@ def _legal(r, net, paths, necks):
         if via.size:
             vi, vj = i[via], j[via]
             fdv = np.where(m.n1[:, vi, vj] == net.id, m.d2[:, vi, vj], m.d1[:, vi, vj])
-            if (fdv < m.via_d / 2.0 + m.clear + m.margin - 1e-6).any():
+            if (fdv < (getattr(net, "via_d", None) or m.via_d) / 2.0 + m.clear + m.margin - 1e-6).any():
                 return False
             if m.via_ban[vi, vj].any():
                 return False

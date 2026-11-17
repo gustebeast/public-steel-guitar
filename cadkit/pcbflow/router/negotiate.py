@@ -68,6 +68,7 @@ def _max_disk(a, rr):
 class Net:
     def __init__(self, name, nid, width):
         self.name, self.id, self.width = name, nid, width
+        self.via_d = None       # a power net's own via (model.via_size), else the board's
         self.pieces = []        # [np.array of flat cell indices (full-board, k*ny*nx + i*nx + j)]
         self.paths = []         # [np.array of flat cell indices] laid this round
         self.rec_t = None
@@ -263,6 +264,7 @@ class Router(CoupledMixin):
                     continue
                 net = Net(name, m.net_id[name], m.width[name])
                 net.plane = True
+                net.via_d, net.via_drill = m.via_size.get(name, (m.via_d, m.via_drill))
                 net.pour_polys = [pl[fi][1] for fi in sorted(mainf)] or [pts for _, pts in pl]
                 net.pieces = ([np.unique(np.concatenate([cells[a] for a in reach]))]
                               if reach else [np.empty(0, np.int64)])
@@ -278,6 +280,7 @@ class Router(CoupledMixin):
             if len(pieces) < 2:
                 continue
             net = Net(name, m.net_id[name], m.width[name])
+            net.via_d, net.via_drill = m.via_size.get(name, (m.via_d, m.via_drill))
             net.pieces = sorted(pieces, key=lambda p: -p.size)
             allc = np.concatenate(net.pieces)
             r = allc % (H * W)
@@ -925,8 +928,9 @@ class Router(CoupledMixin):
         lane = self._lane_win(net, win)        # a coupled pair's rail keeps to its lane
         if lane is not None:
             legal &= lane[0]
-        vlegal = np.all(fd >= m.via_d / 2.0 + m.clear + m.margin, axis=0)
-        vlegal &= m.edge[i0:i1, j0:j1] >= m.via_d / 2.0 + m.edge_clear + m.margin
+        nvd = getattr(net, "via_d", None) or m.via_d     # a power net's via is its own size (model.via_size)
+        vlegal = np.all(fd >= nvd / 2.0 + m.clear + m.margin, axis=0)
+        vlegal &= m.edge[i0:i1, j0:j1] >= nvd / 2.0 + m.edge_clear + m.margin
         vlegal &= ~m.via_ban[i0:i1, j0:j1]
         ve = getattr(net, "via_erode", 0.0)     # a pair's centreline: room for both vias
         if ve > 0 and vlegal.any():
@@ -2950,9 +2954,14 @@ class Router(CoupledMixin):
         L, H, W = self.L, self.H, self.W
         self.gval += 1
         rt = (net.width / 2.0 + self.wref / 2.0 + m.clear + m.margin) / m.pitch
-        rvt = (m.via_d / 2.0 + self.wref / 2.0 + m.clear + m.margin) / m.pitch
+        nvd = getattr(net, "via_d", None) or m.via_d     # its own via's size: the others keep clear of it
+        rvt = (nvd / 2.0 + self.wref / 2.0 + m.clear + m.margin) / m.pitch
         rtv = (net.width / 2.0 + m.via_d / 2.0 + m.clear + m.margin) / m.pitch
-        rvv = (m.via_d + m.clear + m.margin) / m.pitch
+        # ...and against the LARGEST via on the board: two power vias each stamping for a
+        # standard neighbour stood 0.3 mm short of each other (mV3 PB_VBUS / PB_VCC). One
+        # side's stamp is enough for the conflict to be seen, so only a power via pays it.
+        vmax = max([d_ for d_, _ in getattr(m, "via_size", {}).values()] + [m.via_d])
+        rvv = (nvd / 2.0 + (vmax if nvd > m.via_d + 1e-9 else m.via_d) / 2.0 + m.clear + m.margin) / m.pitch
         ks, iis, jjs, al, rads = [], [], [], [], []
         vk, vi, vj, vr = [], [], [], []
         rtn = (self.NECK_W / 2.0 + self.wref / 2.0 + m.clear + m.margin) / m.pitch
