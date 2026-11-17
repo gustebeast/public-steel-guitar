@@ -2272,19 +2272,3 @@ Unlike the leadscrew jig it sits wholly on the table: the piece is 202 long, so 
 5. Unclamp and lift the piece out of the trough. It comes out 202.5 to 202.8; file the burr square.
 6. File the stock's fresh end square, then feed it in to the stop again for the second piece.
 7. What is left is the third piece, ~202.5 (609.6 less two pieces and two ~1 mm kerfs). Any piece from about 201 to 204.0 fits. If the stock came long and the third is over 204.0, trim it in the jig like the others.
-
-## Keyhead nut block: 70.2 wide, wrap rod cut to 68 (2026-11-16)
-
-> Supersedes the nut block's "fretboard width" (85.5) and the wrap rod's 83 mm cut.
-
-- **Why:** the block's ends had been lined up with the fretboard's outer strings, which left about 11 mm of plastic past string 1's pocket and 10 mm past string 10's. Sizing them from the load instead gives the top panels back about 7.6 mm either side.
-- **The sizing** (`nut_block_v2`, `CREEP_MPA`):
-  - Each string pulls the rod toward its crown with up to 147 N.
-  - The Ø8 steel rod shares each pocket's load between the fingers either side. An inner finger carries 147 N; the end finger outside string 1 or 10 carries half of that.
-  - The busiest inner finger (1.6 wide) bears 11.5 MPa on the rod. The limit for PETG-GF held under load for years is set at 12 MPa, a quarter of its strength.
-  - An end finger two beads wide (1.6) bears 5.7 MPa, so the ends are never the weak link.
-  - What actually sets the width is two beads of wall past the outermost cuts: string 1's and 10's pockets, coil zones, and the side and height screws' head recesses. At +Y the rod's 1.6 end stop stands past the last finger.
-- **Wrap rod:** cut the Ø8 stock to **68 mm** (was 83), chamfer both ends. It still slides in from -Y, flush with that face, and is pushed back out from +Y with the 2.5 key.
-- **Nothing to reprint yet:** the v2 keyhead is not exported as a print yet, and the wood bench's keyhead (cut down to string 6) is unchanged. The plates, shoes, screws and inserts are unchanged.
-- **The model** now draws each string at the nut as it is wound: over the crown with every string's top level, one wrap round the rod, the tail down the plate's face onto the side screw's line, ending trimmed halfway down the plier window.
-
