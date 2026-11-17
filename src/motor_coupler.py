@@ -76,7 +76,7 @@ FORM_MINOR_C = FORM_MAJOR_C - 2 * RIDGE_H           # 7.4
 SOCKET_D = FORM_MAJOR_C                             # the formed thread's groove Ø (its envelope)
 
 # ── the C clamp: the belt clamp's M3 x 12 into its M3 insert, fitted as a nut. On -Z ────────
-from . import belt_tensioner as _BT                 # noqa: E402
+from . import m3_hardware as _BT                 # noqa: E402
 SLIT_W = 1.2                                        # the slit, on -Z: 1.5 beads, prints open
 CLAMP_SPEC = _BT.M3                                 # insert_l 4.3, OD 4.7
 CLAMP_L = _BT.SCREW_L                               # 12
@@ -273,7 +273,7 @@ def cap_screw(kind: str, length: float, top, shank_dir) -> cq.Workplane:
     as plank_bench's yoke screws); "m4": the M4 button head. Both turn with the 2.5 key."""
     from cadkit.fasteners import M4, headed_screw, _rot_z_onto
     if kind == "m3":
-        from . import belt_tensioner as BTn
+        from . import m3_hardware as BTn
         s = headed_screw(BTn.M3, length, BTn.HEAD_D, BTn.HEAD_H, 2.5)
     else:
         s = headed_screw(M4, length, 7.6, 2.2, 2.5)

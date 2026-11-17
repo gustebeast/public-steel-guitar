@@ -29,7 +29,7 @@ from . import dimensions as D
 from . import deck_v2 as DK
 from . import optical_pickup as OP
 from . import pickup_mount as PM
-from . import top_plate as TP
+from . import deck_layout as TP
 from .helpers import box_at, cyl, heal
 from cadkit.fasteners import M4, cut_counterbore, cut_insert_bore
 from cadkit.kept import kept

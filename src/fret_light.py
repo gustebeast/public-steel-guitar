@@ -49,16 +49,14 @@ from __future__ import annotations
 from . import dimensions as D
 
 # ── the fret line this has to light ───────────────────────────────────────────────────
-# ⚠ READ FROM top_plate, NOT COPIED. This module first carried HALF_LEN = 39.80 as a
+# ⚠ READ FROM src/deck_layout (top_plate's, until round 3 of the v1 removal), NOT COPIED. This module first carried HALF_LEN = 39.80 as a
 # "mirrors top_plate" constant and the cross-check caught it 6.0e-06 out: the real
 # FRET_HY is 39.799993975610, because it is BORDER_HY - INLAY_W and BORDER_HY is
 # _string_half_span() off the STRING FAN. It is a computed value that moves whenever the
 # string geometry moves, so a copy of it goes stale silently.
 #
-# The import is LATE because top_plate imports THIS module to build the cells -- the same
-# cycle ui_panel has, and the same way out of it.
 def _tp():
-    from . import top_plate as TP
+    from . import deck_layout as TP
     return TP
 
 
@@ -253,9 +251,7 @@ DECK_UNDER = 0.0                   # the deck's own underside: above it is mater
                                    # colour layer takes, below it is structure hanging free
 
 from cadkit.fasteners import M4_BUTTON_HEAD_H                    # noqa: E402
-from . import top_plate as _TP                                   # noqa: E402
-# top_plate imports THIS module only inside its panel builder, so by the time anything
-# calls that, top_plate is whole; importing it here is not the cycle _tp() exists for.
+from . import deck_layout as _TP                                 # noqa: E402
 FLOOR     = _TP.PIECE_Z_MIN       # -16.10: the lip's tip sits ON the envelope; the
                                    # sliding clearance is the motor stack's, below it
 UNDER_BOARD = max(lip_depth(), M4_BUTTON_HEAD_H)                # 2.40, the lip

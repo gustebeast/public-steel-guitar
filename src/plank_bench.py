@@ -925,40 +925,20 @@ def assembly_inline(level=1.0):
 # The bay and the tee board are carved from the instrument's motor bank and wiring, and importing
 # those builds half the instrument (src.wiring alone is over 90 s) for a few parts that never move
 # here. So they are BUILT ONCE into FROZEN (BREPs, committed, at the instrument's own world pose)
-# and read back in well under a second (user, 2026-11-08: "grab the geometry once"). Nothing
-# re-freezes them behind your back: after a change to the motor bay or the tee board, run
-#     py -3.12 -m src.plank_bench --freeze
+# and read back in well under a second (user, 2026-11-08: "grab the geometry once").
+# FINAL SINCE THE v1 REMOVAL (lead, 2026-11-17): the motor bank and the wiring they were built
+# from are gone (git tag v1-instrument), so these BREPs can no longer be rebuilt -- they are
+# the record.
 FROZEN = pathlib.Path(__file__).resolve().parent / "plank_bench_frozen"
 _TEE_KEEP = ("tee_pcb", "tee_silk", "tee_insert", "tee_screw")
 
 
-def freeze():
-    """Build the bay, its dummy board and string 1's tee board from the instrument and write them."""
-    import subprocess
-    from . import motor_bank as MB, wiring as W
-    keep = MB.COUPON_MOTOR
-    MB.COUPON_MOTOR = I
-    try:
-        bay_, dummy = MB._coupon_world()
-    finally:
-        MB.COUPON_MOTOR = keep
-    parts = [("bay", bay_), ("tee_dummy", dummy)]
-    parts += [(nm, shp) for nm, shp in W.tee_components() if nm.endswith("_0") and nm.startswith(_TEE_KEEP)]
-    FROZEN.mkdir(exist_ok=True)
-    for nm, w in parts:
-        (w.val() if hasattr(w, "val") else w).exportBrep(str(FROZEN / f"{nm}.brep"))
-    head_ = subprocess.run(["git", "log", "-1", "--format=%h %cs"], cwd=FROZEN, capture_output=True,
-                           text=True).stdout.strip()
-    (FROZEN / "FROZEN.txt").write_text(
-        "Built by `py -3.12 -m src.plank_bench --freeze` from the instrument at %s.\n%s\n"
-        % (head_, "\n".join(nm for nm, _ in parts)), encoding="utf-8")
-    return [nm for nm, _ in parts]
 
 
 def _frozen(nm):
     f = FROZEN / f"{nm}.brep"
     if not f.exists():
-        raise FileNotFoundError(f"{f} is missing: run `py -3.12 -m src.plank_bench --freeze`")
+        raise FileNotFoundError(f"{f} is missing (frozen from the v1 instrument; see git tag v1-instrument)")
     return cq.Workplane("XY").add(cq.Shape.importBrep(str(f)))
 
 
@@ -1131,10 +1111,7 @@ def print_parts():
 
 
 if __name__ == "__main__":
-    import sys
     from cadkit.step_export import export_step
-    if "--freeze" in sys.argv:
-        print("froze", ", ".join(freeze()), "into", FROZEN)
     print(f"scale span {SCALE_SPAN:.2f} (axial rig {SCALE_SPAN_AX:.2f})  plank top z {Z_PLANK:.2f}  edge y {Y_EDGE:.2f}")
     for nm, w in print_parts().items():
         bb = w.val().BoundingBox()

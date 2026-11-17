@@ -54,7 +54,7 @@ import math
 import cadquery as cq
 
 from . import dimensions as D
-from . import top_plate as TP                   # first: fret_light imports it back
+from . import deck_layout as TP                 # top_plate's live part (lead, v1 removal round 3)
 from . import fret_light as FL
 from .helpers import box_at
 from cadkit.kept import kept
@@ -146,7 +146,7 @@ def deck_x() -> tuple:
 
 
 def pickup_keepout(grow: float = 1.0) -> tuple:
-    from .changer_bench import PICKUP_GHOST
+    from .deck_layout import PICKUP_GHOST
     (x0, x1), (y0, y1), (z0, z1) = PICKUP_GHOST
     return (x0 - grow, x1 + grow), (y0 - grow, y1 + grow), (z0 - grow, z1 + grow)
 
@@ -288,7 +288,7 @@ def _rail(s: int, x0: float, x1: float) -> cq.Workplane:
 
 
 def _tongues(x0: float, x1: float) -> cq.Workplane:
-    from . import chassis as CH
+    from . import deck_layout as CH
     wl = walls()
     out = None
     for yc in (wl["c0"], wl["c1"]):
@@ -301,7 +301,7 @@ def wall_cutter() -> cq.Workplane:
     """What the body loses for the deck: everything over PZ, and a groove down each wall's
     centre, from the keyhead's joint face to the +X endplate's (open at -X: the panels slide on
     from there, the keyhead closes it)."""
-    from . import chassis as CH
+    from . import deck_layout as CH
     wl = walls()
     xa, xe = deck_x()
     out = _box(xa - 1, xe + 1, wl["y0"] - 1, wl["y1"] + 1, PZ, TZ + 5)

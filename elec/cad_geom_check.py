@@ -58,9 +58,6 @@ def _cad(board):
     if board == "can_tee":
         from src import electronics as EL
         return EL.tee_pcb(0.0, 0.0), EL.tee_silk(0.0, 0.0)
-    if board in ("foot_led_a", "foot_led_b"):
-        from src import foot_light as FOOT
-        return FOOT.pcb(board[-1]), FOOT.silk(board[-1])
     if board == "pi_cap":
         from src import electronics as EL
         return EL.pi_cap(), EL.pi_cap_silk()
@@ -70,7 +67,6 @@ def _cad(board):
     if board in ("fret_led_mid", "fret_led_key"):
         # the two fret boards: the laminate with every routed body, and the LEDs, which
         # src/fret_light.py draws as their own part so they read as lit
-        from src import top_plate  # noqa: F401  (first: fret_light needs it whole)
         from src import fret_light as FL
         panel = board.rsplit("_", 1)[1]
         return FL.pcb(panel), FL.silk(panel)
@@ -88,10 +84,10 @@ def _cad(board):
 
 
 # lever_sensor and the four leg_pogo boards left with the knee lever and the leg (lead,
-# 2026-11-17): both get redesigned for the direct body, and their CAD comes back with them
+# 2026-11-17): both get redesigned for the direct body, and their CAD comes back with them.
+# foot_led_a / _b left with the v1 chassis they lit (round 3; the board was deferred).
 BOARDS = ("output_panel", "motor_ctrl", "optical", "can_tee",
-          "pi_cap", "ui_board", "fret_led_mid", "fret_led_key", "foot_led_a", "foot_led_b",
-          "connector_board")
+          "pi_cap", "ui_board", "fret_led_mid", "fret_led_key", "connector_board")
 
 
 def _ui_rule_check():
