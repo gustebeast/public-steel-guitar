@@ -46,6 +46,13 @@ except Exception:
     pass
 import pcbnew
 
+# ⚠ A REMOVED ITEM'S PROXY IS KEPT FOR THE LIFE OF THE PROCESS (layout._REMOVED says why):
+# board.Remove() hands the item to its Python proxy, and when that proxy is collected the
+# bindings go bad -- measured 2026-11-16 on brain_board mT3: five tracks Removed and freed,
+# then board.GetTracks() is a bare SwigPyObject; kept alive (or Deleted) the board stays
+# sound. power_vias lost every via to exactly this (cadkit ab85a31).
+_REMOVED = []
+
 
 _SEG = re.compile(r'\(segment\s+\(start ([-\d.]+) ([-\d.]+)\)\s+\(end ([-\d.]+) ([-\d.]+)\)'
                   r'\s+\(width [-\d.]+\)\s+\(layer "([^"]+)"\)\s+\(net "([^"]*)"\)')
@@ -137,6 +144,7 @@ def main(stem):
     nets = sorted({t.GetNetname() for t in gone.values()})
     for t in gone.values():
         board.Remove(t)
+        _REMOVED.append(t)
     pcbnew.ZONE_FILLER(board).Fill(board.Zones())
     pcbnew.SaveBoard(stem + ".kicad_pcb", board)
     print("prune_closures: took up %d of %d new piece(s), on %s; kept %d"

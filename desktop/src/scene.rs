@@ -114,7 +114,7 @@ fn feats_of(node: &Value, place: Option<glam::Mat4>) -> Vec<(Feat, [f32; 6], (us
                 let (l, w) = (num(f, "L"), num(f, "w"));
                 if !(w > 0.0 && l > 0.0) { continue; }
                 let feat = Feat { o: [o.x, o.y, o.z, 2.0], z: [z.x, z.y, z.z, 0.0], x: [x.x, x.y, x.z, 0.0],
-                                  a: [w, l, 0.0, 0.0], b: [0.0, hand, 0.0, 0.0] };
+                                  a: [w, l, 0.0, 0.0], b: [1.0, hand, 1.0, 0.0] };
                 out.push((feat, cyl(w * 1.01 + 1e-3, -w * 1.01 - 1e-3, l + w * 1.01 + 1e-3), tri));
             }
             // wire round an arc (part of a torus): radius R about z, from x through A degrees
@@ -122,10 +122,32 @@ fn feats_of(node: &Value, place: Option<glam::Mat4>) -> Vec<(Feat, [f32; 6], (us
                 let (r, w, a) = (num(f, "R"), num(f, "w"), num(f, "A").to_radians());
                 if !(w > 0.0 && r > 0.0 && a > 0.0) { continue; }
                 let feat = Feat { o: [o.x, o.y, o.z, 3.0], z: [z.x, z.y, z.z, 0.0], x: [x.x, x.y, x.z, 0.0],
-                                  a: [w, r, a, 0.0], b: [0.0, hand, 0.0, 0.0] };
+                                  a: [w, r, a, 0.0], b: [1.0, hand, 1.0, 0.0] };
                 out.push((feat, cyl(r + w * 1.01 + 1e-3, -w * 1.01 - 1e-3, w * 1.01 + 1e-3), tri));
             }
             _ => {}
+        }
+    }
+    // A WIRE'S JOINTS. A run or an arc ends round (b.x at its start, b.z at its end: 1), which
+    // fills the corner where a path kinks. Where it goes on SMOOTHLY into the next piece the ends
+    // are flat, or a round end bulges out of the bend's outside -- a ridge at every such joint.
+    let ends = |f: &Feat| -> Option<((glam::Vec3, glam::Vec3), (glam::Vec3, glam::Vec3))> {
+        let (o, z, x) = (glam::Vec3::from_slice(&f.o[..3]), glam::Vec3::from_slice(&f.z[..3]), glam::Vec3::from_slice(&f.x[..3]));
+        if f.o[3] == 2.0 {
+            Some(((o, z), (o + z * f.a[1], z)))
+        } else if f.o[3] == 3.0 {
+            let (y, r, a) = (z.cross(x), f.a[1], f.a[2]);
+            Some(((o + x * r, y), (o + (x * a.cos() + y * a.sin()) * r, y * a.cos() - x * a.sin())))
+        } else {
+            None
+        }
+    };
+    for k in 1..out.len() {
+        if let (Some((_, (pe, te))), Some(((ps, ts), _))) = (ends(&out[k - 1].0), ends(&out[k].0)) {
+            if pe.distance(ps) < 1e-3 * out[k].0.a[0].max(1e-3) + 1e-5 && te.normalize_or_zero().dot(ts.normalize_or_zero()) > 0.9998 {
+                out[k - 1].0.b[2] = 0.0;
+                out[k].0.b[0] = 0.0;
+            }
         }
     }
     out

@@ -60,6 +60,13 @@ except Exception:
     pass
 import pcbnew
 
+# ⚠ A REMOVED ITEM'S PROXY IS KEPT FOR THE LIFE OF THE PROCESS (layout._REMOVED says why):
+# board.Remove() hands the item to its Python proxy, and when that proxy is collected the
+# bindings go bad -- measured 2026-11-16 on brain_board mT3: five tracks Removed and freed,
+# then board.GetTracks() is a bare SwigPyObject; kept alive (or Deleted) the board stays
+# sound. power_vias lost every via to exactly this (cadkit ab85a31).
+_REMOVED = []
+
 
 def _w(t):
     """A track's width, or a via's on F.Cu: PCB_VIA::GetWidth() with no layer is a wx debug
@@ -794,6 +801,7 @@ def move(stem, moves):
         if t.GetClass() != "PCB_VIA" and t.GetNetname() not in poured:
             widths[t.GetNetname()] = max(widths.get(t.GetNetname(), 0.0), pcbnew.ToMM(_w(t)))
         board.Remove(t)
+        _REMOVED.append(t)
     legs = []
     gaps = list(chain_gaps)      # (net, layer, width, end, end): a run cut under a moved part
     ones = [(t, sp[0], e) for t, sp, e in lone if t.m_Uuid.AsString() in split]
