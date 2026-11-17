@@ -732,7 +732,13 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
     pinpair = []                 # caps across two pins of one IC: kept out of the supply passes
     ics = [r for r in parts if re.match(r"^(U|FB|L)\d", r)]
     # a cap the intent already places (near / decap / a cell member) is the author's
-    ruled = {r.get("cap") or r.get("ref") for r in cells if r.get("kind") in ("near", "decap", "fixed", "pin")}
+    # ⚠ A HOLD PLACES A CAP, IT DOES NOT DECOUPLE IT (brain_board mV5, 2026-11-16): `fixed` /
+    # `pin` counted as the author's rule, so 111 caps frozen by a placement hold got no decap
+    # rule at all -- U21's output cap C152 sat 5.8 mm off VOUT and nothing said so until
+    # quality A2 failed the routed board. A held cap still gets its rule: the hold places it,
+    # the rule judges it (place_init does not move a fixed part; the intent report shows
+    # the breach).
+    ruled = {r.get("cap") or r.get("ref") for r in cells if r.get("kind") in ("near", "decap")}
     ruled |= {m for r in cells if r.get("kind") == "group" for m in r["members"]}
     for c in sorted(r for r in parts if re.match(r"^C\d", r)):
         if c in ruled:
@@ -778,6 +784,26 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
                     except (KeyError, ValueError):
                         d = 0.0
                     cands.append((d, "%s.%s" % (u, q["num"])))
+        # ⚠ A NAMED PLACE WINS, A CONNECTOR TOO (brain_board mV5, 2026-11-16): brain.py's C59
+        # is "+3V3_UI at the UI header J5" (J205 merged). Only ICs, beads and inductors were
+        # candidates, so the description named nothing on the list and the nearest IC pin on
+        # the rail -- U212.6, the load switch's output 52 mm away -- took it; A2 then failed
+        # J205 at 52.8 mm. A description naming ANY part that has a pin on this rail decides
+        # it: that part's rail pins are the candidates.
+        desc_c = (descriptions or {}).get(c, "")
+        named_parts = [x for x in re.findall(r"(?<![A-Za-z0-9])([A-Z]{1,3}[0-9]+)(?![0-9])", desc_c)
+                       if x in parts and x != c]
+        named_c = []
+        for x in named_parts:
+            for q in parts[x]["pads"]:
+                if q["net"] == sup and q["num"]:
+                    try:
+                        d = min(math.hypot(*(x_ - P.pad(x, q["num"]))) for x_ in P.pads_on(c, sup))
+                    except (KeyError, ValueError):
+                        d = 0.0
+                    named_c.append((d, "%s.%s" % (x, q["num"])))
+        if named_c and not any(t[1].split(".")[0] in named_parts for t in cands):
+            cands = named_c
         if not cands:
             continue
         # ⚠ THE SCHEMATIC SAYS WHOSE IT IS (motor_ctrl trial, 2026-11-11): "U8 switch
