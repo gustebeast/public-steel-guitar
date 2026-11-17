@@ -673,8 +673,7 @@
   "along": [
    "F203.1",
    "F204.1",
-   "Q209.5",
-   "R223.2"
+   "Q209.5"
   ],
   "width_mm": 3.0,
   "why": "auto_pour: +24V at 4.5 A -- brain.py's rail (merged)",
