@@ -1,16 +1,14 @@
 """What each part of the assembly is made of, for the viewer.
 
-    material_of("lkr_main_cart_base_0")  ->  "pctg"       the filament it is printed in
-    material_of("chassis_2")             ->  "petg-gf"
-    material_of("kl_bearing")            ->  "polished"   bought: its finish
-    material_of("tee_insert_3")          ->  "brass"
+    material_of("ui_clamp")              ->  "petg-gf"    the filament it is printed in
+    material_of("screw_bearing_3")       ->  "polished"   bought: its finish
+    material_of("ui_insert_1")           ->  "brass"
 
-The build's PARTS table (src/build.py) is the one place a printed part's material is
-written: the folder of its STEP file, "petg-gf/chassis_2.step". This reads that table AS
-TEXT, because importing the build module costs over a minute and the viewer's export
-must not. An assembly instance is named after its part with a station prefix and index
-groups round it (pedal3_axle, rkl_knee_housing, top_plate_1), so the name is reduced the
-way the build's own colour lookup reduces it.
+The instrument's own parts (src.direct_bench) say their material themselves; the build's
+PARTS table (src/build.py) says it for the rest: the folder of each STEP file,
+"petg-gf/ui_clamp.step". An assembly instance is named after its part with index groups
+after it (deck_white_3), so the name is reduced the way the build's own colour lookup
+reduces it.
 
 The viewer shows every part of one filament in that filament's colour and finish, the
 instrument as it will come off the printer.
@@ -29,10 +27,7 @@ import re
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 MATERIALS = ("petg-gf", "pctg", "tpu")
-_PRINTED = ("nut_slide_insert", "belt_tensioner_half_a", "belt_tensioner_half_b",
-            "pcb_shim")
-_STATION = re.compile(r"^(?:lkl|lkr|rkl|rkr|vkl|pedal\d+)_")
-_LANE = re.compile(r"^(?:main|half_stop)_")
+_PRINTED = ("nut_slide_insert", "belt_tensioner_half_a", "belt_tensioner_half_b")
 
 
 @functools.lru_cache(maxsize=1)
@@ -49,7 +44,7 @@ def _table():
 
 
 # WHAT A BOUGHT PART IS, FROM ITS NAME. First match wins; searched in the name with its
-# index groups off (lkr_main_spring_tension_screw, wire_canb_gnd_lkl, kl_bearing).
+# index groups off (screw_bearing, ui_insert).
 def _motor_rules():
     """The SERVO42D's parts, each its own material (src/servo42d.py LOOK says which)."""
     from src.servo42d import LOOK
@@ -63,7 +58,6 @@ _FINISH = [(re.compile(rx), finish) for rx, finish in _motor_rules() + (
     (r"insert|^nut$|^string_nut$", "brass"),      # the leadscrew nuts, the string ends
     (r"pogo_.*(pins|pads)|_pogo_pins$", "gold"),
     (r"bearing|magnet$|^string$", "polished"),
-    (r"(main|half_stop)_spring$", "painted"),     # the levers' die springs are painted blue
     (r"screw$|screw_(top|bottom)$|washer$|spring$|_dowel$|_rod$|^leadscrew$|_m4_(key|mid)$"
      r"|^ui_shaft$|^ui_display$", "steel"),
     (r"^output_panel_term_metal$", "steel"),      # J8's screws and pins
@@ -98,9 +92,8 @@ _FINISH = [(re.compile(rx), finish) for rx, finish in _motor_rules() + (
 
 def finish_of(base: str):
     """The finish of a part that is not printed, from its name; None if no rule fits."""
-    bare = _STATION.sub("", base)
     for rx, finish in _FINISH:
-        if rx.search(bare):
+        if rx.search(base):
             return finish
     return None
 
@@ -108,7 +101,7 @@ def finish_of(base: str):
 # TWO PARTS IN THE BUILD, ONE OBJECT in the hand (a print in two filaments, a screen
 # and what it shows), so the viewer hides, selects and lists them as one
 # (cadkit.web.export units=).
-_ONE_PRINT = ((re.compile(r"^top_plate_color_(\d+)$"), r"top_plate_\1"),
+_ONE_PRINT = (
               # the direct body's top panel and its white windows: one two-filament print
               # (user, 2026-11-14: select and hide/show them as one part)
               (re.compile(r"^deck_white_(\d+)$"), r"deck_\1"),
@@ -116,7 +109,6 @@ _ONE_PRINT = ((re.compile(r"^top_plate_color_(\d+)$"), r"top_plate_\1"),
               (re.compile(r"^motor_(?:face|stack|shaft|coil_plug|driver|terminal|coil_terminal"
                           r"|screws|term_screws|buttons|lead_[a-z]+)_(\d+)$"), r"motor_\1"),
               (re.compile(r"^pi4_[a-z0-9]+$"), "pi4"),            # one bought board
-              (re.compile(r"^chassis_light_(\d+)$"), r"chassis_\1"),
               # one bought display module: its bezel, its glass and what the glass shows
               # (user, 2026-11-11: hide, show and select them as one part)
               (re.compile(r"^ui_screen(?:_lit)?$"), "ui_display"),
@@ -136,9 +128,9 @@ def unit_of(name: str):
     return None
 
 
-# THE BENCHES keep their own tables (their parts are named cb_ / wb_ and are in no PARTS
-# row), and the instrument's limits they draw (ghost_) are no material at all: see-through.
-_BENCHES = (("cb_", "src.changer_bench"), ("wb_", "src.wood_bench"))
+# THE BENCHES keep their own tables (their parts are named wb_ and are in no PARTS row),
+# and the instrument's limits they draw (ghost_) are no material at all: see-through.
+_BENCHES = (("wb_", "src.wood_bench"),)
 
 
 def material_of(name: str):
@@ -177,21 +169,6 @@ def material_of(name: str):
 def _filament_of(name: str):
     exact, pats = _table()
     base = re.sub(r"(_\d+)+$", "", name)
-    # THE DECK IS ONE PRINT IN TWO PCTGs. Its `top_plate_color_N` bodies are the skin
-    # you see (the whole top face); `top_plate_N` is the body under it, CLEAR, which
-    # shows through as the fret lines and markers and lets the fret lights up through
-    # them. The chassis's light window is the same clear PCTG. "pctg-clear" is drawn
-    # see-through (cadkit's viewer: any filament named ...-clear).
-    # A BENCH COUPON (src/test/bench_joinery.py) is a piece of a real part, printed in
-    # that part's filament and drawn in its colour
-    if base.startswith("test_"):
-        from src.test.bench_joinery import source_of
-        src = source_of(base)
-        return _filament_of(src) if src else None
-    if base == "top_plate_color":
-        return "pctg"
-    if base in ("top_plate", "chassis_light"):
-        return "pctg-clear"
     # THE TWO CAPS THE HAND FINDS on the deck, the stick's and the power button's, are
     # BLACK PCTG (user, 2026-10-09), not the deck's colour
     if base in ("ui_knob", "ui_pwr_cap"):
@@ -201,12 +178,9 @@ def _filament_of(name: str):
     # other small fine-feature part (user, 2026-10-12: the nut's sliding inserts and the
     # belt clamps are PCTG and so the same green; the shims and the Pi's spacer are an
     # assumption on the same rule).
-    # The shims HAVE rows now (kl_/kv_/pedal_pcb_shim) but under their part names, not
-    # the station names the assembly draws them by, so they are still answered here.
-    if re.sub(r"^.*_(?=pcb_shim$)", "", base) in _PRINTED:
+    if base in _PRINTED:
         return "pctg"
-    # chassis_2 -- and chassis_1_0: a part drawn as several solids is exported one
-    # solid at a time (cadkit.web.pieces), each with one more index on its name
+    # a part drawn as several solids is exported one solid at a time (cadkit.web.pieces), each with one more index on its name
     tail = name
     while True:
         for rx, mat in pats:
@@ -216,16 +190,9 @@ def _filament_of(name: str):
         if cut == tail:
             break
         tail = cut
-    tries = [base]
-    bare = _STATION.sub("", base)
-    tries += [bare, "kl_" + bare, _LANE.sub("", bare)]
-    # the vertical lever's parts carry the design's prefix inside the station's
-    # (vkl_kv_main_cart_base): the same cartridge, axle and cap as every other lever's
-    inner = re.sub(r"^kv_", "", bare)
-    tries += [inner, "kl_" + inner, _LANE.sub("", inner)]
-    for t in tries:
-        if t in exact:
-            return exact[t]
+    if base in exact:
+        return exact[base]
+    bare = base
     # a part made in variants under one instance name (screw_pulley -> _hi / _lo)
     # (two or more of them: one key that merely starts the same is another part --
     # `pickup` is not pickup_zplate, `motor` is not motor_pulley). A VARIANT IS ONE WORD

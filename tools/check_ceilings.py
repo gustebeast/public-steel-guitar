@@ -129,7 +129,6 @@ PARTS = {}
 #                              deg foot adds 0.56 to the hub's swept radius, which has to
 #                              be cleared in the housing first (tools/check_sweep).
 
-
 # ── WHICH PARTS GET CHECKED, AND WHERE THE ORIENTATION COMES FROM ─────────
 # This registry used to hold five parts out of the seventy-one src.build prints, each with a
 # hand-typed bed plane. Two things were wrong with that. The obvious one is coverage: sixty-six
@@ -146,68 +145,14 @@ PARTS = {}
 # The bed PLANE is derived too: it is the part's own extreme face on the build axis, which is
 # what the five hand-typed constants were each spelling out the long way.
 DECLARED_UP = {
-    "adjust_sleeve":     ("src.leg_stack", "SLEEVE_UP"),
-    "fixed_sleeve":      ("src.leg_stack", "SLEEVE_UP"),
-    "body_adapter":      ("src.leg_stack", "ADAPTER_UP"),
-    "adjust_tenon":      ("src.leg_stack", "TENON_UP"),     # diagonal: reported, not checked
-    "fixed_tenon":       ("src.leg_stack", "TENON_UP"),     # diagonal: reported, not checked
-    "leg_latch_slider":  ("src.leg_stack", "SLIDER_UP"),
-    "bar_latch_frame":   ("src.leg_stack", "BAR_FRAME_UP"),
-    "bar_latch_collar":  ("src.leg_stack", "BAR_COLLAR_UP"),
-    "pedal_bar_a":       ("src.pedal_bar", "BAR_UP"),
-    "pedal_bar_b":       ("src.pedal_bar", "BAR_UP"),
-    "pedal_bar_c":       ("src.pedal_bar", "BAR_UP"),
-    "knee_housing":      ("src.knee_lever", "PRINT_UP"),
-    "knee_housing_r":    ("src.knee_lever", "PRINT_UP"),
-    "kv_housing":        ("src.knee_lever_vert", "PRINT_UP"),
-    # ...the rest of the lever family, which does NOT share the housing's +Z: the arms
-    # lie on a face and build along the axle, and each is its own module's declaration
-    # carried through that module's own pose (see src.helpers.pose_dir).
-    "knee_lever":        ("src.knee_lever", "LEVER_UP"),
-    "kv_lever":          ("src.knee_lever_vert", "LEVER_UP"),
-    "pedal_lever":       ("src.foot_pedal", "LEVER_UP"),
-    "kl_axle":           ("src.knee_lever", "AXLE_UP"),
-    "kl_spacer":         ("src.knee_lever", "SPACER_UP"),
-    "kl_spacer_sprung":  ("src.knee_lever", "SPACER_UP"),
-    "kl_spacer_sprung_n": ("src.knee_lever", "SPACER_UP"),
-    "kl_axle_sprung":    ("src.knee_lever", "AXLE_UP"),
-    "kl_pcb_shim":       ("src.knee_lever", "SHIM_UP"),
-    "kv_pcb_shim":       ("src.knee_lever_vert", "SHIM_UP"),
-    "pedal_pcb_shim":    ("src.knee_lever", "SHIM_UP"),
-    "kl_magnet_cap":     ("src.knee_lever", "MAGNET_CAP_UP"),
-    "cart_base":         ("src.knee_lever", "CART_UP"),
-    "cart_piston":       ("src.knee_lever", "PISTON_UP"),
-    "pedal_lid_a":       ("src.pedal_bar", "LID_UP"),
-    "pedal_lid_b":       ("src.pedal_bar", "LID_UP"),
-    "coil_mandrel":      ("src.coil_mandrel", "MANDREL_UP"),
-    "coil_mandrel_sleeve": ("src.coil_mandrel", "SLEEVE_UP"),
-    "lever_prog_jig":    ("src.lever_jig", "JIG_UP"),
-    "lever_prog_jig_base": ("src.lever_jig", "BASE_UP"),
     "saw_jig":           ("src.saw_jig", "BODY_UP"),
     "saw_jig_cap":       ("src.saw_jig", "CAP_UP"),
-    "leg_foot":          ("src.legs", "FOOT_UP"),
     "ui_knob":           ("src.ui_panel", "KNOB_UP"),
     "ui_pwr_cap":        ("src.ui_panel", "PWR_CAP_UP"),
     "ui_clamp":          ("src.ui_panel", "CLAMP_UP"),
 }
-# THE OTHER THREE BODY ADAPTERS ARE THE SAME DIRECTION, and the note that used to stand
-# here saying otherwise was simply wrong: leg_stack poses the corner variants by a PURE
-# TRANSLATION and regenerates their joinery, and it cuts every corner's lock-pin holes
-# with ADAPTER_UP unconditionally. A translation does not rotate a build direction, so
-# there is nothing to transform and nothing to hand-type.
-for _c in ("mx_my", "px_my", "px_py"):
-    DECLARED_UP[f"body_adapter_{_c}"] = ("src.leg_stack", "ADAPTER_UP")
-# STILL UNDECLARED, and deliberately so -- a guess here makes the whole report meaningless,
-# which is worse than a gap the coverage line names every run:
-#   cart_piston       nothing states it, it takes no print_up, and its half-cylinder
-#                     follower nose would be a bottom overhang in the cartridge base's +Z,
-#                     so the base's direction cannot be assumed for it;
-#   (latch_cover and latch_slider were both here. src.latch is not installed at either
-#    leg joint any more -- leg_latch and bar_latch replaced it and pedal_bar.LATCH_FOOT is
-#    None -- so neither is in src.build's PARTS and there is nothing left to orient. The
-#    module stays only as the spring and stroke both live latches are sized against.)
-#   pedal_detent_nub  a bare O4 x 4 TPU cylinder with no orientation anywhere in the code
-#                     (and no ceiling to find in any of them).
+# The v1 lever, leg, pedal-bar and jig rows went with those parts (lead, 2026-11-17, v1
+# removal rounds 2-3; git tag v1-instrument).
 
 
 def _up_of(name):

@@ -506,8 +506,8 @@ assert ENC_FLAT_W < ENC_SHAFT_D, (
 
 
 def _tp():
-    """top_plate, imported late -- it imports THIS module (see the docstring)."""
-    from . import top_plate as TP
+    """The deck's datum (src/deck_layout, top_plate's once)."""
+    from . import deck_layout as TP
     return TP
 
 
@@ -563,7 +563,7 @@ def screen_y():
     its clamp's near bar into the rail's inner face. Held on the 10.4 wall's old outer face, the
     station stays exactly where it was; the screen now sits 4.8 inboard of the deck's centre line
     between the border and the edge."""
-    from . import chassis as CH
+    from . import deck_layout as CH
     return (fret_border_y() + (CH.RAIL_INNER_Y - D.WALL_THICKNESS)) / 2.0
 
 
@@ -1210,7 +1210,7 @@ def clamp():
     mx, _my = module_centre()
     far_y = header_row_y() + MOD_HOLE_DY
     near_y = header_row_y()
-    from . import chassis as CH
+    from . import deck_layout as CH
     bar_x = 2 * MOD_HOLE_DX + CLAMP_RIB_W
     # ...THE NEAR BAR RAMPS UP OVER THE CABLE TROUGH. The panel is slid on and off with the
     # whole station bolted to it, and the trough's lip runs the length of the rail, its top
