@@ -125,6 +125,11 @@ choice between a clever part and an obtainable one, the obtainable one won.
 
 ## How the mechanism works
 
+> **Partly v1 (lead, 2026-11-17).** The drive is now DIRECT: each SERVO42D turns its
+> leadscrew through a printed coupler, with no belts, pulleys or belt clamps
+> (`src/direct_bench.py`). Where the text below describes GT2 belts it is the v1
+> instrument (git tag `v1-instrument`), and it waits on a rewrite.
+
 **The string's path** (from the player's left): each string's plain end runs
 over the crown of its own **steel nut plate** (laser-cut 304, 4 mm) in the
 **nut block** fused into the keyhead endplate, then takes **one** wrap round a
@@ -244,61 +249,42 @@ machines anywhere.
 ## Building the CAD
 
 CadQuery on Python 3.12 generates a STEP file per printed part, and the whole
-assembly as the model the web viewer shows. The assembly places ~960 components: the printed parts, every
-purchased-part dummy, the ten PCBs read back from their own routed geometry, and
-the wiring harness drawn as real cable — every conductor, with its connectors.
+assembly as the model the web viewer shows: the printed parts, every purchased-part
+dummy, and the PCBs read back from their own routed geometry.
 
 ```bash
-py -3.12 -m src.build              # all parts + the viewer's model (the guaranteed full build)
-py -3.12 -m src.build --part NAME  # one part, but still pays the ~26s module-level import
+py -3.12 -m src.build              # all parts + the viewer's model + the four gates
+py -3.12 -m src.build --part NAME  # one part (the import costs ~2 s)
 py -3.12 -m src.build --list       # list part names
-py -3.12 -m src.build --geom       # belt-geometry report
-py -3.12 -m tools.fast_build NAME  # ITERATION: rebuild one part in <1s-9s — imports ONLY that
-                                   #   part's module, not all of src.build. Builds FRESH (no
-                                   #   stale cache); handles 59/71 parts, falls back for the rest.
-py -3.12 -m tools.check_overlaps   # design gate: any unintended interpenetration.
-                                   #   A full build runs this gate ITSELF on the model it just
-                                   #   made, so you rarely need it standalone. The scan is a few
-                                   #   seconds (an incremental cache keyed on each part's
-                                   #   geometry — only changed pairs are re-measured); standalone
-                                   #   cost is dominated by rebuilding the model first.
-                                   #   --no-gate opts out.
-py -3.12 -m tools.check_sweep      # rotating parts swept through a full turn (the overlap
-                                   #   gate is structurally blind to this)
+py -3.12 -m tools.fast_build NAME  # ITERATION: rebuild one part, importing only its module
+py -3.12 -m tools.check_overlaps   # design gate: any unintended interpenetration (a full
+                                   #   build runs it itself on the model it just made)
+py -3.12 -m tools.check_sweep      # rotating parts swept through a full turn
 py -3.12 -m tools.check_ceilings   # unsupported overhangs, per part, in its own print pose
-py -3.12 -m tools.check_walls      # thin walls / minimum material
 py -3.12 -m tools.check_beads      # dimensions on the nozzle-width grid
-py -3.12 -m tools.check_cable_pairs # two cables sharing one lane -- the overlap gate treats
-                                   #   wire-on-wire as an insulated crossing, so it cannot see it
-py -3.12 -m tools.check_part_specs # the CAD's board dimensions against the ROUTED boards
+py -3.12 -m tools.check_part_specs # bought parts' drawings against the code's numbers
+py -3.12 -m tools.check_fasteners  # screw holes cut by hand instead of by cadkit
+py -3.12 tools/check_annotations.py # numbers typed in comments against what they annotate
 py -3.12 -m tools.check_dead       # source drift: definitions nothing names any more
-py -3.12 -m tools.build_profile    # per-part/module build-cost + face-count regression gate
+py -3.12 -m tools.build_profile    # per-part build-cost + face-count regression gate
 py -3.12 -m tools.export_glb       # the web viewer's model and page alone (docs/)
 ```
 
 - `src/dimensions.py` — the coordinate frame (+X along the strings toward the
-  bridge, +Y across, +Z up) and **every** dimension as a named constant.
-- `src/components.py` — schematic dummies of purchased parts (motor, screw,
-  nut, bearings, pulleys, belt, strings, dowels) used only in the assembly.
-- Printed parts, by area (`py -3.12 -m src.build --list` is the authoritative
-  list — it is generated, this is a map):
-  - **body**: `chassis_0/1/2` (each one file with its `_light` window body), `bridge_endplate`,
-    `keyhead_endplate` (nut block fused in), `nut_slide_insert` (the nut plate's printed
-    stand-in; the steel `nut_plate` is laser cut, `steel/nut_plate.step`)
-  - **top deck**: `top_plate_*` segments, each one file with its colour inlay body,
-    `pickup_zplate` (the pickup's height plate)
-  - **drivetrain**: `screw_pulley_hi`/`_lo`, `motor_pulley`, `tension_fork`,
-    and the belt-tension clamp (one `clamp_half` SKU fitted twice per string)
-  - **controls**: `knee_housing`/`knee_lever`, `kv_housing`/`kv_lever`,
-    `pedal_bar_a/b/c`, `pedal_lever`, and the shared feel cartridge
-    (`cart_base`/`cart_piston`)
-  - **UI**: `ui_clamp`, `ui_knob` — the deck's control station, a display and
-    one Alps multi-control, clamped by plastic with a single M4 for Z only
-  - **legs**: `fixed_sleeve`/`adjust_sleeve`, `fixed_tenon`/`adjust_tenon`,
-    `body_adapter*`, `leg_foot` (TPU), and the latch set
-  - **coupons**: `test_*` — print-fit test pieces, not part of the instrument
-- Every gate exits non-zero on a finding, and `src.build` runs the overlap and
-  sweep gates itself on the model it just built.
+  bridge, +Y across, +Z up) and the shared dimensions as named constants.
+- `src/components.py` — schematic dummies of purchased parts used only in the assembly.
+- Printed parts (`py -3.12 -m src.build --list` is the authoritative list):
+  - **the instrument** (`src/direct_bench.py`): `body`, `endplate`, and per string a
+    `yoke`, `collar`, `sleeve_p`/`sleeve_c`, `plug`, `coupler`, `housing`, `lid`,
+    `mplate` and the clamp collar (`collar_a`/`collar_b`, one file); the steel
+    `keyhole_plate` and `anchor` are laser cut
+  - **UI**: `ui_clamp`, `ui_knob`, `ui_pwr_cap` — the deck's control station
+  - **shop jigs** (`tools/*.step`): the saw jigs, the pin drill jig and its bushings, the
+    ream jig
+- The knee levers, pedals and legs are being redesigned for this body; the v1 ones are at
+  the git tag `v1-instrument`.
+- Every gate exits non-zero on a finding, and `src.build` runs the overlap, sweep,
+  drive-travel and world-pose gates itself on the model it just built.
 
 Envelope ≈ 100 × 200 × 655 mm (thick × across × long) — thin enough to sit on
 a keyboard rig. 10 strings at 9.5 mm pitch at the bridge.
@@ -336,7 +322,7 @@ silently. `finish.py` and `audit_board.py` are the record.
 | Path | What |
 |---|---|
 | `src/` | CadQuery source — one module per printed part + helpers |
-| `tools/` | the checkers (`check_*.py` — overlaps, sweep, ceilings, walls, beads, dead code), `fast_build` (fast single-part iteration), `build_profile` (build-cost/regression gate), the web-viewer exporters |
+| `tools/` | the checkers (`check_*.py` — overlaps, sweep, ceilings, beads, fasteners, dead code), `fast_build` (fast single-part iteration), `build_profile` (build-cost/regression gate), the web-viewer exporters |
 | `elec/` | the PCB sources — schematic + layout + autoroute + DRC + fab output, generated with skidl/KiCad, one module per board |
 | `elec/geom/` | each routed board's measured geometry, committed — what the CAD reads so the plastic tracks the board |
 | `cadkit/` | shared CAD library, vendored as a git subtree from its own repo and used by ten projects — edit it there, not here |

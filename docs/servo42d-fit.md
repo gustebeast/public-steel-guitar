@@ -1,5 +1,9 @@
 # The real SERVO42D in the bay we drew for it (2026-10-01)
 
+> **HISTORICAL (lead, 2026-11-17).** Written for the v1 belt-drive instrument, which left
+> the build in the v1 removal; its code is at the git tag `v1-instrument`. Kept as the design
+> record: the parts it describes are not in the current model.
+
 > **2026-10-20: a unit has been MEASURED.** 53.4 faceplate to back, 42.4 square, 51.1 tall
 > with the coil lead's loop on top, shaft 19.4, boss 22 x 2. `src/servo42d.py` is rebuilt from
 > those numbers and the user's video, and the BUILD now draws every motor with it

@@ -1,5 +1,9 @@
 # CAN tee: continuous power trunk, one tap per tee (bronner, 2026-09-30)
 
+> **HISTORICAL (lead, 2026-11-17).** Written for the v1 belt-drive instrument, which left
+> the build in the v1 removal; its code is at the git tag `v1-instrument`. Kept as the design
+> record: the parts it describes are not in the current model.
+
 **Status: DECIDED BY BRONNER AS THE WORKING ASSUMPTION, NOT YET CONFIRMED BY THE USER, NOT
 BUILT.** The user asked (2026-09-30) to explore "dual two pin connectors on each motor T,
 two for power and ground, two for data" out of worry about the motor line's power budget.
