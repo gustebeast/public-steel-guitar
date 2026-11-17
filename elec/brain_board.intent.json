@@ -4273,18 +4273,6 @@
  },
  {
   "kind": "fixed",
-  "ref": "R223",
-  "xy": [
-   -25.715,
-   -30.3
-  ],
-  "rot": 0.0,
-  "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
- },
- {
-  "kind": "fixed",
   "ref": "R227",
   "xy": [
    32.185,
@@ -5273,5 +5261,115 @@
   "hard": true,
   "why": "mR: held where mP0 put it",
   "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "panel",
+  "why": "the service port (inside): the panel-mount extension's male end plugs in from above, under the deck. Top edge, just clear of the audio corner (AUDIO_X1 -14): the nearest edge to the +X -Y body adapter the cable can reach -- -X is the outer panel, the bottom edge sits in the floor groove",
+  "src": "brain_board._service_port (2026-11-17)",
+  "hard": true,
+  "ref": "J7",
+  "edge": "+Y",
+  "face": 50.0,
+  "overhang": 0.0,
+  "at": -6.0
+ },
+ {
+  "kind": "near",
+  "why": "service D+ clamp at the connector",
+  "src": "brain_board._service_port (2026-11-17)",
+  "hard": true,
+  "ref": "D26",
+  "target": "J7",
+  "max_mm": 4.0
+ },
+ {
+  "kind": "near",
+  "why": "service D- clamp at the connector",
+  "src": "brain_board._service_port (2026-11-17)",
+  "hard": true,
+  "ref": "D27",
+  "target": "J7",
+  "max_mm": 4.0
+ },
+ {
+  "kind": "near",
+  "why": "service VBUS clamp at the connector",
+  "src": "brain_board._service_port (2026-11-17)",
+  "hard": true,
+  "ref": "D25",
+  "target": "J7",
+  "max_mm": 6.0
+ },
+ {
+  "kind": "near",
+  "why": "CC logic on the CC pins",
+  "src": "brain_board._service_port (2026-11-17)",
+  "hard": true,
+  "ref": "U35",
+  "target": "J7",
+  "max_mm": 10.0
+ },
+ {
+  "kind": "near",
+  "why": "the service pair's switch by its connector (match group SVC)",
+  "src": "brain_board._service_port (2026-11-17)",
+  "hard": true,
+  "ref": "U38",
+  "target": "J7",
+  "max_mm": 15.0
+ },
+ {
+  "kind": "near",
+  "why": "the expansion board's 5 V switch on the port",
+  "src": "brain_board._service_port (2026-11-17)",
+  "hard": true,
+  "ref": "U36",
+  "target": "J7",
+  "max_mm": 15.0
+ },
+ {
+  "kind": "near",
+  "why": "ideal-diode controller at its FET",
+  "src": "brain_board._service_port (2026-11-17)",
+  "hard": true,
+  "ref": "U43",
+  "target": "Q8",
+  "max_mm": 4.0
+ },
+ {
+  "kind": "near",
+  "why": "the PC's 5 V in, near the port",
+  "src": "brain_board._service_port (2026-11-17)",
+  "hard": true,
+  "ref": "Q8",
+  "target": "J7",
+  "max_mm": 20.0
+ },
+ {
+  "kind": "near",
+  "why": "the hub on the CM5's USB3-1 pair (match group HUBU)",
+  "src": "brain_board._service_port (2026-11-17)",
+  "hard": false,
+  "ref": "U37",
+  "target": "J202",
+  "max_mm": 30.0
+ },
+ {
+  "kind": "near",
+  "why": "the hub's crystal at XI / XO",
+  "src": "brain_board._service_port (2026-11-17)",
+  "hard": true,
+  "ref": "Y2",
+  "target": "U37",
+  "max_mm": 4.0
+ },
+ {
+  "kind": "near",
+  "why": "FLASH_MODE's sense near its port",
+  "src": "brain_board._service_port (2026-11-17)",
+  "hard": false,
+  "ref": "U39",
+  "target": "J7",
+  "max_mm": 25.0
  }
 ]
