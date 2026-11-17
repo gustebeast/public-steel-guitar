@@ -446,6 +446,17 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
         say("STALE RULES -- the flow stops before placement: these rules are anchored on parts the "
             "netlist does not have (renamed or removed?): " + " | ".join(stale))
         return 2
+    # ⚠ A BOARD THAT NAMES SUPPLY PINS NAMES THEM ALL (brain_board mV20, 2026-11-17): the
+    # service port's ICs were added after supply_pins was written, so U43 (an ideal diode whose
+    # VIN_BUS pin is a cathode SENSE input) fell back to "every rail pin is a supply" and took
+    # C96 and both VIN_BUS bulks, 55 mm from where they are held. Said, by name, every run.
+    sp_ = notes.get("supply_pins") or {}
+    if sp_:
+        und_ = sorted(u for u in parts if re.match(r"^U\d", u) and u not in sp_
+                      and any(q["net"] and pi.SUPPLY.search(q["net"]) for q in parts[u]["pads"]))
+        if und_:
+            say("WARN supply_pins: %d IC(s) on a supply rail are not declared, so EVERY one of their "
+                "rail pins counts as a supply (decaps, quality A2): %s" % (len(und_), " ".join(und_)))
     floor = pi.unregioned_sensitive(parts, rules)
     for f_ in floor:
         say("WARN " + f_)
