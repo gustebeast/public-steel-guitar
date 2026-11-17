@@ -2496,48 +2496,12 @@
  },
  {
   "kind": "fixed",
-  "ref": "C15",
-  "xy": [
-   9.185,
-   24.9
-  ],
-  "rot": 0.0,
-  "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
- },
- {
-  "kind": "fixed",
-  "ref": "C151",
-  "xy": [
-   21.385,
-   29.9
-  ],
-  "rot": 90.0,
-  "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
- },
- {
-  "kind": "fixed",
   "ref": "C153",
   "xy": [
    -5.015,
    40.3
   ],
   "rot": 180.0,
-  "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
- },
- {
-  "kind": "fixed",
-  "ref": "C16",
-  "xy": [
-   6.185,
-   28.1
-  ],
-  "rot": 0.0,
   "hard": true,
   "why": "mR: held where mP0 put it",
   "src": "mP0 placement, bronner 2026-11-15"
@@ -2712,18 +2676,6 @@
  },
  {
   "kind": "fixed",
-  "ref": "C219",
-  "xy": [
-   -9.815,
-   -32.8
-  ],
-  "rot": 0.0,
-  "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
- },
- {
-  "kind": "fixed",
   "ref": "C220",
   "xy": [
    -10.315,
@@ -2742,18 +2694,6 @@
    -16.0
   ],
   "rot": 0.0,
-  "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
- },
- {
-  "kind": "fixed",
-  "ref": "C222",
-  "xy": [
-   -13.315,
-   -20.8
-  ],
-  "rot": 90.0,
   "hard": true,
   "why": "mR: held where mP0 put it",
   "src": "mP0 placement, bronner 2026-11-15"
@@ -3276,18 +3216,6 @@
  },
  {
   "kind": "fixed",
-  "ref": "C54",
-  "xy": [
-   17.285,
-   24.1
-  ],
-  "rot": 90.0,
-  "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
- },
- {
-  "kind": "fixed",
   "ref": "C6",
   "xy": [
    -3.815,
@@ -3532,18 +3460,6 @@
   "xy": [
    -30.815,
    -27.0
-  ],
-  "rot": 180.0,
-  "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
- },
- {
-  "kind": "fixed",
-  "ref": "D18",
-  "xy": [
-   -3.415,
-   -19.0
   ],
   "rot": 180.0,
   "hard": true,
@@ -4296,18 +4212,6 @@
  },
  {
   "kind": "fixed",
-  "ref": "R232",
-  "xy": [
-   22.485,
-   22.6
-  ],
-  "rot": 90.0,
-  "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
- },
- {
-  "kind": "fixed",
   "ref": "R235",
   "xy": [
    -12.415,
@@ -4668,18 +4572,6 @@
  },
  {
   "kind": "fixed",
-  "ref": "R6",
-  "xy": [
-   3.485,
-   25.4
-  ],
-  "rot": 90.0,
-  "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
- },
- {
-  "kind": "fixed",
   "ref": "R60",
   "xy": [
    -22.615,
@@ -4872,18 +4764,6 @@
  },
  {
   "kind": "fixed",
-  "ref": "R98",
-  "xy": [
-   21.985,
-   25.9
-  ],
-  "rot": 180.0,
-  "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
- },
- {
-  "kind": "fixed",
   "ref": "RT2",
   "xy": [
    -69.215,
@@ -4900,30 +4780,6 @@
   "xy": [
    25.985,
    -11.1
-  ],
-  "rot": 0.0,
-  "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
- },
- {
-  "kind": "fixed",
-  "ref": "TP3",
-  "xy": [
-   3.585,
-   28.6
-  ],
-  "rot": 0.0,
-  "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
- },
- {
-  "kind": "fixed",
-  "ref": "TP6",
-  "xy": [
-   24.685,
-   20.8
   ],
   "rot": 0.0,
   "hard": true,
@@ -5082,18 +4938,6 @@
    -13.8
   ],
   "rot": 180.0,
-  "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
- },
- {
-  "kind": "fixed",
-  "ref": "U21",
-  "xy": [
-   14.185,
-   28.3
-  ],
-  "rot": 90.0,
   "hard": true,
   "why": "mR: held where mP0 put it",
   "src": "mP0 placement, bronner 2026-11-15"
