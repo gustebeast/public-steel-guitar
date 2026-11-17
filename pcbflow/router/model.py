@@ -102,6 +102,40 @@ class Model:
         for n in names:
             w = max(default_w, min(POWER_W_MAX, need.get(n, 0.0)))
             self.width[n] = float(widths.get(n, w))
+        # ⚠ A POWER NET'S VIA CARRIES ITS CURRENT (brain_board mV0, 2026-11-16) --
+        # OWNROUTE_POWER_VIA_SIZE=1 while measured. Every layer change was one 0.3 mm via, a
+        # 0.67 mm barrel by quality A1's measure (pi x drill x 25/35), and power_vias could
+        # only add barrels AFTER the route, in copper the route had left: +5V_CM5 / +24V_LED
+        # (3 A, IPC 1.37 mm) stayed two vias, 1.35, with the neighbours already packed round
+        # them. Now a net on a declared power path changes layer through ONE via whose barrel
+        # carries the path's IPC heating width (outer copper, as A1 grades a via), sized here
+        # and RESERVED by the route: legal only where that pad fits, stamped at its size so
+        # the other nets keep clear of it. Drill in 0.05 steps, at most POWER_VIA_DRILL_MAX,
+        # the annulus the board's default via has. via_size[net] = (diameter, drill).
+        self.via_size = {}
+        if os.environ.get("OWNROUTE_POWER_VIA_SIZE") == "1":
+            ipc = {}
+            dt_ = float(q.get("temp_rise_c", 10.0))
+            oz_ = float(q.get("copper_oz", 1.0))
+            for pp in q.get("power_paths", ()) or ():
+                a_ = float(pp.get("amps", 0.0))
+                if a_ > 0:
+                    w_ = (a_ / (0.048 * dt_ ** 0.44)) ** (1.0 / 0.725) / (oz_ * 1.378) * 0.0254
+                    ipc[pp["net"]] = max(ipc.get(pp["net"], 0.0), w_)
+            ann = self.via_d - self.via_drill
+            for n, w_ in ipc.items():
+                if n not in self.width or w_ <= math.pi * self.via_drill * 25.0 / 35.0 + 0.005:
+                    continue
+                # ⚠ NOT A POURED NET (mV3, 2026-11-16): sized on +24V, VIN_* and the USB-C stage
+                # too, 115 vias up to 0.8 mm drill -- each a 2 mm hole in every plane it passed:
+                # 38 GND tracks stranded from In1, VIN_BUS's In2 pieces cut off, 10 unconnected
+                # at the first pass against 2. A poured net carries its current in the pour, and
+                # A1 already sums the stitches between its pours. Only a power net the router
+                # lays as TRACK gets a bigger via.
+                if n in getattr(self, "pours", {}):
+                    continue
+                d_ = min(POWER_VIA_DRILL_MAX, math.ceil(w_ / (math.pi * 25.0 / 35.0) / 0.05 - 1e-6) * 0.05)
+                self.via_size[n] = (round(d_ + ann, 3), round(d_, 3))
 
         # ---- grid over the outline
         xs = [e[0] for e in self.edges] + [e[2] for e in self.edges]
@@ -500,6 +534,9 @@ def _rail_volts(net):
     if m:
         return float("%s.%s" % (m.group(1), m.group(2) or "0"))
     return 5.0 if net.upper().startswith("VBUS") else None
+
+
+POWER_VIA_DRILL_MAX = 0.8     # mm: the largest drill a power net's via takes (OWNROUTE_POWER_VIA_SIZE)
 
 
 def power_width(pp, q, at):
