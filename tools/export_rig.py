@@ -1,26 +1,20 @@
-"""Emit docs/rig.json — the animation manifest the web viewer plays.
+"""Emit docs/rig.json -- the animation manifest the web viewer plays.
 
-The GLB carries baked geometry (every part node has an identity transform under a
-single root that rotates CAD Z-up -> glTF Y-up). So to spin a pulley about its own
-axis, the viewer needs the pivot CENTRE and AXIS in CAD coordinates (the frame the
-part nodes live in) — which only the CAD model knows. This script reads those
-straight from dimensions.py / components.py so the viewer never re-derives geometry
-and can't drift. It also carries the C6 copedent (which control moves which strings,
-signed semitones) and the visual gains. Regenerated with the GLB on every publish.
+THE DIRECT INSTRUMENT HAS NO ANIMATION YET (lead, 2026-11-17). The rig this file used to
+write was the v1 belt drive's: each string's carriage riding its vertical leadscrew, the
+screw and motor pulleys turning, the belt clamps sliding along their runs, and the levers
+and pedals swinging at v1's stations. None of those parts are in the direct instrument, so
+that rig animated nothing and its code reached into v1 geometry on every build. It is in
+the git tag v1-instrument.
+
+What the viewer still uses is written: the copedent (its control panel and key map), the
+open tuning, the deck's name prefixes (the "hide the deck" toggle) and the build number.
+The per-string motion and the pedal poses are empty lists, which the viewer treats as
+"nothing to move". When the direct drive gets animated, its nut and yoke ride the screw
+along X; that is new work for cadkit/web/viewer, not a revival of the old Z carriage.
 
   py -3.12 -m tools.export_rig
-
-Kinematics: motor pulley (axis Y) -> twisted GT2 belt -> screw pulley (axis Z) ->
-leadscrew -> carriage travels in Z. Pulleys are 14T:14T (1:1). The leadscrew turns
-with its pulley (its thread is drawn, so the turn shows). The belt is NOT animated:
-its teeth each go their own way round the loop, which no rigid transform is.
-Nothing here is a visual fudge any more. The nut's height for a pitch is the design's
-own stretch figure (open_down = DL_OPEN, times 2^(semitones/6)), and everything
-downstream of the nut is the mechanism's own ratio: one pulley turn per
-screw lead, BELT_PER_MM of belt per mm of nut, and each belt clamp slides along its run
-and turns with the belt exactly as src.build.clamp_location places it.
 """
-
 from __future__ import annotations
 
 import json
@@ -78,327 +72,39 @@ def _idx(string_no: int) -> int:
     return string_no - 1                           # N = index + 1  <=>  index = N - 1
 
 
-def _pedals() -> list[dict]:
-    """The foot pedals' own kinematics, so the viewer can show them DEPRESS.
-
-    Everything here is read from the model, not restated:
-
-      * centre  — the axle, at (station x, MOUNT_DY, BAR_TOP_Z + the bar's lift).
-      * axis    — foot_pedal._to_guitar maps the lever's local +Y axle to guitar
-                  -X, so the pedal swings about -X (along the bar).
-      * throw   — foot_pedal.THROW_P, and NEGATIVE is the pressed direction: the
-                  cartridges sit above the lobe pushing down, so the foot drives
-                  -theta (see _to_guitar's docstring). Probed, not assumed —
-                  swing(-20) is the pose whose pad ends up lowest.
-      * lobe_rc — the piston stroke is EXACT, not a visual gain: a flat lobe face
-                  at radius RC swept through theta retracts the piston by
-                  RC*sin(theta). 13.2*sin(20) = 4.514, which is the 4.51 the pedal
-                  arm was sized around, and 9*sin(30) = 4.50 on the knee lever.
-
-    The pistons retract along guitar +Z (the cartridge bases sit above them). The
-    springs are NOT animated — a compressing helix isn't a rigid transform, same
-    reason the belt isn't (see the module docstring).
-    """
-    from src import foot_pedal as FP
-    from src.build import PEDAL_LIFT_DZ
-
-    out = []
-    for i, x in enumerate(FP.PEDAL_X):
-        out.append({
-            "i": i,
-            "center": [x, FP.MOUNT_DY, FP.BAR_TOP_Z + PEDAL_LIFT_DZ],
-            "axis": [-1, 0, 0],
-            "throw_deg": -FP.THROW_P,               # signed: pressed = -theta
-            "lobe_rc": FP.LOBE_RC_P,                # stroke = rc*sin(theta)
-            # on the axle, so they swing with the arm (the bearings, board and
-            # sensor stack do not — they stay with the housing)
-            "swing_nodes": [f"pedal_lever_{i}", f"pedal{i}_magnet"],
-            # pushed back into their cartridges as the lobe comes round
-            "piston_nodes": [f"pedal{i}_main_cart_piston",
-                             f"pedal{i}_half_stop_cart_piston"],
-            "piston_dir": [0, 0, 1],
-        })
-    return out
-
-
-def _levers() -> dict:
-    """The six KNEE LEVERS' kinematics, keyed by control name, so the viewer can
-    show them swing on q/w/e/r/t/y.
-
-    Same shape as _pedals(), read from build.LEVER_STATIONS rather than restated:
-
-      * centre — the station pose. Both designs are drawn about their axle, so the
-                 pose IS the pivot.
-      * axis   — a KL station's axle is +Y and a KV station's is +X, each as drawn;
-                 a station only translates.
-      * throw  — KL +30°, KV **-20°**, both PROBED (see _verify_levers), because the
-                 designs disagree about which way positive goes: +30 swings a KL
-                 paddle -X, which is what an "…L" lever does, but +20 drives the KV
-                 arm DOWN and the knee LIFTS that one. Shipping +20 swung the
-                 vertical lever backwards. A MIRRORED station ("…R") is the design
-                 reflected in X, and reflecting a rotation about Y negates it, so
-                 the sign flips again with the mirror.
-      * lobe_rc — piston stroke = rc*sin(theta), exact, as on the pedals.
-
-    Only the arm and the parts ON the axle swing. Housing, bearings, board and
-    sensor stack are stationary, as they are on the pedal.
-    """
-    from src import build as B
-    from src import knee_lever as KL
-    from src import knee_lever_vert as KV
-
-    # The piston retracts INTO its cartridge, so the direction is piston -> base.
-    # Measured off the placed solids rather than copied from cart_dummies' own
-    # `translate((-s, 0, 0))`: that line is written in the KNEE lever's frame and is
-    # applied AFTER the pose, so it is only correct for the design it was authored
-    # for. Deriving it here makes the mirror and the KV axle along X come out right for
-    # free, and never silently disagrees with the geometry.
-    placed = dict(B._lever_stations_components())
-
-    def _piston_dir(piston, basen):
-        if piston not in placed or basen not in placed:
-            return None
-        pc = placed[piston].val().Center()
-        bc = placed[basen].val().Center()
-        v = (bc.x - pc.x, bc.y - pc.y, bc.z - pc.z)
-        n = sum(c * c for c in v) ** 0.5
-        return [round(c / n, 6) for c in v] if n > 1e-9 else None
-
-    out = {}
-    for name, kind, sx, sy, mirrored in B.LEVER_STATIONS:
-        if sy is None:
-            sy = B._vkl_mount_y()
-        pre = "" if name == "lkl" else f"{name}_"
-        if kind == "kl":
-            mz, axis, throw, rc = KL.MOUNT_Z, [0, 1, 0], KL.THROW, KL.LOBE_RC
-            swing_nodes = [f"{pre}knee_lever", f"{pre}kl_axle", f"{pre}kl_axle_sprung",
-                           f"{pre}kl_magnet_cap", f"{pre}kl_magnet"]
-            pistons = [f"{pre}main_cart_piston", f"{pre}half_stop_cart_piston"]
-        else:
-            # NEGATIVE: the knee lifts this arm, and +THROW_V drives it down
-            mz, axis, throw, rc = KV.MOUNT_Z, [1, 0, 0], -KV.THROW_V, KV.LOBE_RC_V
-            swing_nodes = [f"{pre}kv_lever", f"{pre}kv_magnet"]
-            pistons = [f"{pre}kv_main_cart_piston", f"{pre}kv_half_stop_cart_piston"]
-        out[name.upper()] = {
-            "center": [sx, sy, mz],
-            "axis": axis,
-            "throw_deg": -throw if mirrored else throw,
-            "lobe_rc": rc,
-            "swing_nodes": swing_nodes,
-            "piston_nodes": pistons,
-            "piston_dir": _piston_dir(pistons[0], pistons[0].replace("_piston", "_base")),
-            "mirrored": mirrored,
-        }
-    return out
-
-
-def _verify_levers(levers) -> None:
-    """Check the levers TWO ways: does the transform match CAD, and does it move the
-    lever the way a knee actually drives it.
-
-    The second check exists because the first one alone shipped a bug. Matching the
-    CAD swing only proves the viewer agrees with whatever sign I fed it — it takes
-    the premise on trust, exactly the way round-tripping the copedent to note names
-    validated arithmetic against my own transcription. The vertical lever went out
-    swinging DOWN when a knee lifts it, and a same-sign check had nothing to say
-    about that.
-
-    So: apply the EXPORTED transform to the rest part and assert the physics.
-      * a horizontal lever's paddle travels -X, or +X when mirrored (an "…L" lever
-        is one the knee pushes left; "…R" is the reflection)
-      * a vertical lever's arm RISES
-    """
-    from src import build as B
-    from src import knee_lever as KL
-    from src import knee_lever_vert as KV
-
-    for name, kind, sx, sy, mirrored in B.LEVER_STATIONS:
-        if sy is None:
-            sy = B._vkl_mount_y()
-        spec = levers[name.upper()]
-        # The LOCAL angle that the exported (guitar-frame) one must correspond to.
-        # Mirroring in X negates a rotation about Y, so it comes back out here.
-        # Deriving it rather than re-stating the throw is what keeps this check
-        # about the PIVOT (centre/axis/mirror) and leaves the SIGN to the physics
-        # assert below — otherwise the two would just agree with each other.
-        th = spec["throw_deg"] * (-1 if mirrored else 1)
-        if kind == "kl":
-            local, mz = KL.knee_lever, KL.MOUNT_Z
-            swung = local.rotate((0, 0, 0), (0, 1, 0), th)
-        else:
-            local, mz = KV.kv_lever, KV.MOUNT_Z
-            swung = KV.kv_lever.rotate((0, 0, 0), (1, 0, 0), th)   # about its axle, X
-
-        def _pose(s):
-            return (s.mirror("YZ") if mirrored else s).translate((sx, sy, mz))
-
-        truth, rest = _pose(swung), _pose(local)
-        c, ax = spec["center"], spec["axis"]
-        viewer = (rest.translate((-c[0], -c[1], -c[2]))
-                      .rotate((0, 0, 0), tuple(ax), spec["throw_deg"])
-                      .translate((c[0], c[1], c[2])))
-        a, b = viewer.val().BoundingBox(), truth.val().BoundingBox()
-        err = max(abs(u - v) for u, v in
-                  ((a.xmin, b.xmin), (a.xmax, b.xmax), (a.ymin, b.ymin),
-                   (a.ymax, b.ymax), (a.zmin, b.zmin), (a.zmax, b.zmax)))
-        assert err < 1e-6, (
-            f"{name}: the viewer's pivot does not reproduce the CAD swing "
-            f"({err:.4f} mm) — check axis/sign against the mirror")
-
-        # ...and does it move the way the knee drives it?
-        r = rest.val().BoundingBox()
-        if kind == "kv":
-            assert a.zmax > r.zmax + 1.0, (
-                f"{name}: the vertical lever's arm goes DOWN ({r.zmax:.2f} -> "
-                f"{a.zmax:.2f}); a knee LIFTS it — the throw sign is inverted")
-        elif mirrored:
-            assert a.xmax > r.xmax + 1.0, (
-                f"{name}: an '…R' lever's paddle must travel +X "
-                f"({r.xmax:.2f} -> {a.xmax:.2f})")
-        else:
-            assert a.xmin < r.xmin - 1.0, (
-                f"{name}: an '…L' lever's paddle must travel -X "
-                f"({r.xmin:.2f} -> {a.xmin:.2f})")
-
-
-_HAND = 1 if D.SCREW_HAND == "RH" else -1
-
-# WHAT COMES OFF WITH THE DECK (user, 2026-10-05): space hides the deck and everything
-# that leaves the instrument with it -- the UI station, the fret LED boards and their
-# hardware and leads, and the pickup on its height plate. Name PREFIXES of GLB nodes.
-DECK_PREFIXES = ["top_plate", "ui_", "wire_ui", "fret_", "wire_fret_led", "pickup",
-                 "wire_pickup",
-                 # the direct body's (src.deck_v2): the panels, their white, the LED board (user 11-14)
-                 "deck_"]
-
-
-def _clamp_motion(i):
-    """How string i's belt clamp moves, for the viewer: it SLIDES along its belt run and
-    TURNS with the belt as it goes. Read off src.build.clamp_location -- the placement the
-    build draws and the gates step -- at the ceiling and at the floor, so the viewer
-    re-derives nothing.
-
-      nodes       the clamp's four parts
-      origin      a point on the belt line (the clamp's own origin, nut on the ceiling)
-      dir         unit vector it travels as the nut goes DOWN
-      mm_per_mm   belt per mm of nut (dimensions.BELT_PER_MM)
-      rad_per_mm  its turn about `dir` per mm of BELT travelled"""
-    import math
-    from src import build as B, belt_tensioner as BTn
-    a = B.clamp_location(i, 0.0).toTuple()
-    b = B.clamp_location(i, D.CARRIAGE_TRAVEL).wrapped.Transformation()
-    a0 = B.clamp_location(i, 0.0).wrapped.Transformation()
-
-    def col(t, k):                                    # column k of the rotation (1-based)
-        return [t.Value(r, k) for r in (1, 2, 3)]
-    o0, o1 = list(a[0]), [b.Value(r, 4) for r in (1, 2, 3)]
-    belt = D.CARRIAGE_TRAVEL * D.BELT_PER_MM
-    d = [(q - p_) / belt for p_, q in zip(o0, o1)]
-    n0, n1 = col(a0, 3), col(b, 3)                    # the clamp's normal at each end
-    cr = [n0[1] * n1[2] - n0[2] * n1[1], n0[2] * n1[0] - n0[0] * n1[2],
-          n0[0] * n1[1] - n0[1] * n1[0]]
-    ang = math.atan2(sum(c * e for c, e in zip(cr, d)), sum(p_ * q for p_, q in zip(n0, n1)))
-    return {"nodes": [f"{n}_{i}" for n, _s in BTn.clamp_components()],
-            "origin": o0, "dir": d, "mm_per_mm": D.BELT_PER_MM, "rad_per_mm": ang / belt}
-
-
-# Parts the plank bench's axial rig bolts to the nut (src/plank_bench.py). The instrument has no
-# nodes by these names, and the viewer skips a name it cannot find.
-BENCH_CARRIAGE = ("yoke_{}", "yoke_m3_lo_{}", "yoke_m3_hi_{}")
+# WHAT COMES OFF WITH THE DECK (user, 2026-10-05): the viewer's "hide the deck" hides every
+# GLB node whose name starts with one of these. The direct body's deck is src.deck_v2's:
+# the panels, their white and the LED board (user 11-14), plus the UI station and the pickup.
+DECK_PREFIXES = ["deck_", "ui_", "wire_ui", "fret_", "wire_fret_led", "pickup", "wire_pickup"]
 
 
 def build_rig(build_n=None, out=RIG) -> pathlib.Path:
-    from src import direct_bench as _DB
     if build_n is None:
         from tools.export_glb import _current_build_n
         build_n = _current_build_n()
-    # The GLB bakes a static demo pose (some carriages parked at full travel to show
-    # the extremes). The viewer cancels it so the animation starts from a clean
-    # neutral rest — read the exact per-string offset that was baked in.
-    from src.build import DEMO_POSE_DZ
-
-    strings = []
-    for i in range(D.N_STRINGS):
-        sy = D.string_y(i)
-        scz = D.screw_pulley_z(i)
-        mpos = D.motor_pos(i)                        # (mx, my, mz)
-        clamp = _clamp_motion(i)
-        strings.append({
-            "i": i,
-            "string": i + 1,                          # string number (1 = highest, far edge)
-            "rest_dz": DEMO_POSE_DZ.get(i, 0.0),      # baked demo offset (viewer cancels it)
-            # carriage assembly: pure Z translation (raise = -Z, toward more tension)
-            # the H-nut IS the carriage now: it, its ball end and nothing else
-            # NOT the direct drive's own parts: its nut_N / yoke_N share these names (no db_ prefix
-            # since 11-14) but ride the screw along X, so v1's Z carriage would lift them off it
-            "carriage_nodes": [n for n in [f"nut_{i}", f"string_nut_{i}"]
-                               + [n.format(i) for n in BENCH_CARRIAGE] if not _DB.owns(n)],
-            # pulleys: spin about their own axis, centre in CAD space
-            # `sign` is the turn per mm the NUT GOES DOWN, about `axis`: a right-hand screw
-            # lowers its nut turning counter-clockwise seen from above (+Z), and the belt
-            # then turns the motor pulley the other way about +Y. D.SCREW_HAND flips both.
-            "screw_pulley": {"node": f"screw_pulley_{i}", "with": [f"leadscrew_{i}"],
-                             "center": [D.screw_x(i), sy, scz], "axis": [0, 0, 1],
-                             "sign": _HAND},
-            "motor_pulley": {"node": f"motor_pulley_{i}",
-                             "center": list(mpos), "axis": [0, 1, 0], "sign": -_HAND},
-            # belt clamp: rides the belt, turning with it
-            "belt_clamp": clamp,
-        })
-
-    # P1..P5 are the bar's stations left to right, and foot_pedal.PEDAL_X is in
-    # that same order (index 0 = most -X = flush end, the leg side), so the
-    # control's number IS its station index. Levers carry no pedal index — the
-    # knee hardware isn't posed by the viewer yet.
-    pedals = _pedals()
-    levers = _levers()
-    _verify_levers(levers)
     copedent = []
     for name, spec in _COPEDENT.items():
         entry = {
             "name": name, "key": spec["key"],
             # JSON key stays "raises" (the viewer's contract); values are SIGNED
-            "raises": [{"i": _idx(n), "semitones": st}
-                       for n, st in spec["moves"].items()],
+            "raises": [{"i": _idx(n), "semitones": st} for n, st in spec["moves"].items()],
         }
         if name.startswith("P"):
             entry["pedal"] = int(name[1:]) - 1
-        elif name in levers:
-            entry["lever"] = levers[name]
         copedent.append(entry)
-    _nl = sum(1 for c in copedent if "lever" in c)
-    assert _nl == len(levers), f"{_nl} lever controls vs {len(levers)} stations"
-    _np = sum(1 for c in copedent if "pedal" in c)
-    assert _np == len(pedals), f"{_np} pedal controls vs {len(pedals)} stations"
-
     rig = {
         "build": build_n,
         "n_strings": D.N_STRINGS,
-        "carriage_travel": D.CARRIAGE_TRAVEL,        # hard clamp on net displacement
-        # VISUAL gains (not physical — see module docstring):
-        # The nut's height for a pitch is the design's own figure: a string is at open
-        # pitch DL_OPEN below the ceiling it was wrapped at, and n semitones from open is
-        # DL_OPEN * 2^(n/6) (dimensions.py, at DL_OPEN). The viewer applies that.
-        "open_down": D.DL_OPEN,
-        "gains": {
-            # the mechanism's own ratio, so the pulleys and the clamp agree with the nut:
-            "pulley_turns_per_mm": 1.0 / D.SCREW_PITCH,   # one turn per lead; pulleys are 1:1
-        },
         "deck_prefixes": DECK_PREFIXES,
         "open_tuning": list(OPEN_TUNING),
-        "strings": strings,
-        "pedals": pedals,
+        "strings": [],                 # no per-string motion drawn yet (see the docstring)
+        "pedals": [],
         "copedent": copedent,
     }
     out = pathlib.Path(out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(rig, indent=1))
-    print(f"wrote {out.name}  "
-          f"({len(strings)} strings, {len(pedals)} posed pedals, "
-          f"{len(copedent)} controls "
-          f"({sum(1 for k in _COPEDENT if k.startswith('P'))} pedals + "
-          f"{sum(1 for k in _COPEDENT if not k.startswith('P'))} levers), "
-          f"build #{build_n})")
+    print(f"wrote {out.name}  ({len(copedent)} controls, no motion yet, build #{build_n})")
     return out
 
 
