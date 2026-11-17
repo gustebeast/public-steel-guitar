@@ -1246,7 +1246,20 @@ access the bring-up will need.
   first flash will really have. A path whose host is switched on by the firmware of the part
   it is meant to load is a cycle, and it fails this rule. (brain_board, 2026-11-17: the CM5
   was to load the STM32, and the CM5's 5 V switched on only when that STM32's firmware
-  raised BRAIN_EN -- so a factory board had no path at all, only the SWD pads.) For each
+  raised BRAIN_EN -- so a factory board had no path at all, only the SWD pads.)
+  **No firmware can close the path -- on any part, whatever is written to it.** (owner,
+  2026-11-17) Every programmable part on the board -- an application processor or compute
+  module as much as a microcontroller -- must stay flashable whatever image was last
+  written to ANY of them: blank, crashing, wrong board's, or written to hold its pins
+  against the flash. So nothing on the path into a loader may be a pin some firmware
+  drives: not the power switch or its enable, not a data mux's select, not a USB hub or
+  switch's enable, not the loader-entry strap. Where a part's firmware does drive such a
+  pin in service, hardware must override it on the flashing path (a default the firmware
+  cannot outvote, or the host's own connection asserting it). Where one part loads another
+  on the same board, the order is written down -- the loader part recovers first over the
+  board's USB, then reloads the other -- and the loader part's own recovery may not depend
+  on the other's firmware. A linked board's host is recovered first over its own path;
+  nothing written to the linked board may stop the host taking it into its loader. For each
   programmable part, name in the generator (a) the USB connector and the path from it to
   the part, (b) the loader that answers on that path with the part blank -- the maker's ROM
   loader, with the manual page that names its pins -- and (c) how the HOST enters that
@@ -1316,4 +1329,4 @@ Never renumber a rule: boards sign and waive by id.
 | 2026-10-06 | a four-layer sensor board: tracks on In2, an unbroken ground plane on In1 beside them | A15 tested each track against EVERY other ground layer, so the component-side pour -- cut by every part on it -- read as a 10 mm slot under tracks whose return was in the whole plane next to them. The first exemption written for it was for a DC reference; the second finding was a 200 mA switched line, which is how the rule was caught rather than waived again | A15 references the nearest ground layer in the stack-up |
 | 2026-10-07 | ten boards of one instrument, on the bench order the night before it went out | every pinout was printed and every one was on the BACK, where the labeller had found room; five XH headers on one board took the same 4-way plug, and nothing on the side the plugs come from said which was which or which end was way 1. The mechanism to print the labels existed; no rule said a board without them was unfinished | **A17** (new, measured): designator, a name for every way, and a way-1 mark on the connector's own side; a back-only pinout is declared with its reason |
 | 2026-10-12 | four boards of one instrument with a microcontroller each, at first order | none could take its first firmware from a computer and a cable: eleven sensor boards had no USB at all and needed a printed pogo jig and a probe, two needed a probe or a strap bridged by hand to reach the ROM loader, and one wired only the high-speed port its ROM loader does not serve. Two probes, seventeen soldered tails and a jig were bought to install firmware once | M43 |
-| 2026-11-17 | a merged board: a compute module meant to load the board's microcontroller over UART, with BOOT0 and reset driven | the compute module's 5 V was switched on by that microcontroller's firmware, so a factory-blank board had no path in except the SWD pads -- found at review, before order | M43 (power and enables are part of the path) |
+| 2026-11-17 | a merged board: a compute module meant to load the board's microcontroller over UART, with BOOT0 and reset driven | the compute module's 5 V was switched on by that microcontroller's firmware, so a factory-blank board had no path in except the SWD pads -- found at review, before order | M43 (power and enables are part of the path; no firmware on any part, the compute module's included, may close the path -- the same board's data mux select and power enable were firmware-driven) |
