@@ -36,7 +36,9 @@ import sys
 
 from cadkit.overlap_check import run              # shared engine
 
-WIRE_OK = None      # set in main() (src.wiring needs src.build imported first)
+# {cable: parts it may touch}. The v1 harness (src.wiring) filled this; the direct instrument
+# draws no cables yet, so nothing is allowed by it (lead, 2026-11-17).
+WIRE_OK = {}
 
 
 def base(name: str) -> str:
@@ -589,11 +591,6 @@ def gate(comps, *, full=False, only=(), exclude=(), jobs=None, show_all=False,
     the model it just built instead of paying for a second full build: the
     pairwise scan is ~13 s, the build behind it is ~5.5 min.
     """
-    global WIRE_OK
-    if WIRE_OK is None:
-        import src.wiring                          # safe: src.build is imported by now
-        WIRE_OK = src.wiring.WIRE_OK
-
     only = set(only)
     if only:
         comps = [(n, s) for n, s in comps if base(n) in only]
