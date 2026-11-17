@@ -68,14 +68,7 @@ def _steps():
 
 
 def _declared(name):
-    from tools.print_check import _value, up_of
-    base = re.sub(r"(_\d+)+$", "", name)
-    if base == "top_plate_color":
-        return tuple(float(x) for x in _value("src.top_plate", "PIECE_UP"))
-    if base == "nut_slide_insert":
-        return tuple(float(x) for x in _value("src.nut_block", "INSERT_UP"))
-    if base == "chassis_light":
-        return tuple(float(x) for x in _value("src.chassis", "PRINT_UP"))
+    from tools.print_check import up_of
     try:
         return up_of(name)[0]
     except (KeyError, ValueError, FileNotFoundError):

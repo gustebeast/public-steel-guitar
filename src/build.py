@@ -461,8 +461,8 @@ from . import servo42d as _SV    # noqa: E402
 
 # THE COLOUR TABLE: every name the direct assembly resolves through it (measured over the
 # assembly at T_OPEN and at both ends of the travel, lead 2026-11-17; the v1 instrument's
-# 258 other entries went with it). direct_bench.color_of and changer_bench.color_of alias
-# their own parts into these keys (the body draws as `chassis`, a spring as
+# 258 other entries went with it). direct_bench.color_of aliases its own parts into these
+# keys (the body draws as `chassis`, a spring as
 # `leg_latch_spring`), which is why some names here are not parts of this instrument.
 _COLORS = {
     "bridge_bearings": (0.69, 0.77, 0.87),
@@ -516,14 +516,7 @@ def _color_for(name):
         return cq.Color(*_TPU_BLACK)             # TPU is always black
     if base in _COLORS:
         return cq.Color(*_COLORS[base])
-    # the changer bench (src.changer_bench) keeps its own small table, mostly aliases into
-    # this one, so its 380 parts are not white
-    if base.startswith(("cb_", "ghost_")):
-        from . import changer_bench as _CB
-        _c = _CB.color_of(base, _COLORS)
-        if _c is not None:
-            return cq.Color(*_c)
-    from . import direct_bench as _DB            # ...and the instrument's (src.direct_bench)
+    from . import direct_bench as _DB            # the instrument's own table (src.direct_bench)
     if _DB.owns(base):
         _c = _DB.color_of(base, _COLORS)
         if _c is not None:
