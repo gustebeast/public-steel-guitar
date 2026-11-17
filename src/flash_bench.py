@@ -92,8 +92,8 @@ CHAIN = (
 )
 INLET = ("panel", "J6")      # where the brick's own plug goes
 # THE LEADS MADE ONCE, AT INSTRUMENT LENGTH (user, 2026-10-31): crimp to crimp, for the bench
-# and then the instrument. wiring.lead_cuts works them out, lay included; it cannot be imported
-# here (the R1 switch above), so they come through the file tools/lead_cuts.py writes.
+# and then the instrument. v1's harness worked them out, lay included (src/wiring.lead_cuts at
+# the git tag v1-instrument); src/lead_cuts.json is what it last wrote, kept as this bench's record.
 _CUTS = json.loads((pathlib.Path(__file__).resolve().parent / "lead_cuts.json")
                    .read_text(encoding="utf-8"))
 LEAD_MM = {lead: (name, _CUTS[lead]) for lead, name in (

@@ -47,6 +47,7 @@ a mid-gap is lit from two.
 from __future__ import annotations
 
 from . import dimensions as D
+from . import deck_layout as DL
 
 # ── the fret line this has to light ───────────────────────────────────────────────────
 # ⚠ READ FROM src/deck_layout (top_plate's, until round 3 of the v1 removal), NOT COPIED. This module first carried HALF_LEN = 39.80 as a
@@ -55,32 +56,26 @@ from . import dimensions as D
 # _string_half_span() off the STRING FAN. It is a computed value that moves whenever the
 # string geometry moves, so a copy of it goes stale silently.
 #
-def _tp():
-    from . import deck_layout as TP
-    return TP
 
 
 def half_len() -> float:
     """Half the fret line in Y — top_plate.FRET_HY."""
-    return _tp().FRET_HY
+    return DL.FRET_HY
 
 
 def aperture() -> float:
     """The inlay's width in X — top_plate.INLAY_W."""
-    return _tp().INLAY_W
+    return DL.INLAY_W
 
 
 def aperture_z() -> float:
     """The inlay's underside — top_plate.TZ - FRET_T."""
-    TP = _tp()
-    return TP.TZ - TP.FRET_T
+    return DL.TZ - DL.FRET_T
 
 
 # Nominal figures, for sizing only. Anything that must AGREE with the deck calls the
 # functions above; these exist so the Z stack and the optics can be written down here.
 HALF_LEN_NOM = 39.80
-APERTURE_NOM = 2.40
-APERTURE_Z_NOM = 4.80
 
 # ── the Z stack: TOP-DOWN, from the pickup piece's envelope ───────────────────────────
 # ⚠ THE FLOOR IS top_plate.PIECE_Z_MIN, AND NOTHING UNDER THE DECK SETS IT (user,
@@ -196,16 +191,9 @@ RAMP_DEG = 58.0
 # side. Having just one means the opposite side is likely to flex out of position").
 # One M4 in the bay at the -X end, and one on an EAR at the +X end -- see M4_FAR_*.
 TAB_PLAY = 0.30                    # the board's lateral play, per side if it were shared
-HINGE_SGN = -1.0
 LIP_LAP = 1.50                     # lip under the board's edge once it is seated
 LIP_RISE = 2.0 * TAB_PLAY - 0.10   # 0.50: the ramp's start above the underside, at the wall
 LIP_CAP = D.MIN_WALL               # the flat under the ramp's tip: one bead
-EDGE_WALL_OUT = TAB_PLAY + 2.0 * WALL   # 3.50: board edge to an edge wall's OUTER face
-
-
-def edge_play(sgn):
-    """Board edge to this side's wall: all of it on the hinge side, none on the datum."""
-    return 2.0 * TAB_PLAY if sgn == HINGE_SGN else 0.0
 
 
 def lip_reach():
@@ -216,15 +204,6 @@ def lip_reach():
 def lip_depth():
     """How far the lip hangs below the board's underside."""
     return lip_reach() - LIP_RISE + LIP_CAP
-
-
-def wall_floor(panel, sgn):
-    """How deep this edge's wall hangs.
-
-    The hinge side goes down to the lip's own underside. The datum side stops FLUSH with
-    the board's underside: it only has to face the board's 1.60 of edge, and the M4's
-    head, which sits just inboard of it, laps under that face rather than into it."""
-    return BOARD_BOT - lip_depth() if sgn == HINGE_SGN else BOARD_BOT
 
 
 # the one M4's Y per board -- elec/fret_led.py cuts the hole there, reading THIS.
@@ -251,14 +230,12 @@ DECK_UNDER = 0.0                   # the deck's own underside: above it is mater
                                    # colour layer takes, below it is structure hanging free
 
 from cadkit.fasteners import M4_BUTTON_HEAD_H                    # noqa: E402
-from . import deck_layout as _TP                                 # noqa: E402
-FLOOR     = _TP.PIECE_Z_MIN       # -16.10: the lip's tip sits ON the envelope; the
+FLOOR     = DL.PIECE_Z_MIN       # -16.10: the lip's tip sits ON the envelope; the
                                    # sliding clearance is the motor stack's, below it
 UNDER_BOARD = max(lip_depth(), M4_BUTTON_HEAD_H)                # 2.40, the lip
 BOARD_BOT = FLOOR + UNDER_BOARD                                 # -13.70
 BOARD_TOP = BOARD_BOT + BOARD_T                                 # -12.10
 LED_Z     = BOARD_TOP + LED_H                                   # -10.50
-DEPTH_NOM = APERTURE_Z_NOM - LED_Z                              # 15.30, the h solved at
 
 
 def depth() -> float:
@@ -365,8 +342,7 @@ END_CELL_MAX = 11.50
 
 def fret_xs():
     """[(n, x)] the marked frets that get a cell, bridge end first — off top_plate."""
-    TP = _tp()
-    fr = [(n, x) for n, x in TP._fret_positions(-100.0, -620.0)
+    fr = [(n, x) for n, x in DL._fret_positions(-100.0, -620.0)
           if n <= 24 and n not in SKIP_FRETS]
     return sorted(fr, key=lambda t: -t[1])
 
@@ -462,71 +438,6 @@ def ramps(x_lo=None, x_hi=None):
     return heal(out)
 
 
-def edge_walls(x_lo=None, x_hi=None):
-    """The wall each long edge of the board runs against; the hinge side carries the lip.
-
-    ⚠ SECTION 8.3 SAYS THE RAMPS HOLD +-Y AND THEY VERY NEARLY DO NOT. A ramp is a
-    triangle from (BOARD_HALF_W, BOARD_TOP) out to the deck, so at the board's edge it is a
-    KNIFE EDGE: it meets the board's top corner and has nothing beside the board's 1.60 mm
-    of thickness, nor any material to carry a retainer. This drops a real face past it,
-    TAB_PLAY outboard, which is what the board bears against in Y.
-
-    It costs nothing to print: it hangs from the ramp's flat underside at BOARD_TOP, in the
-    deck's own print direction."""
-    out = None
-    for panel in BOARD_NAME:
-        bx0, bx1 = board_span(panel)
-        if x_lo is not None and not (x_lo <= (bx0 + bx1) / 2.0 <= x_hi):
-            continue
-        lo, hi = panel_range(panel)
-        first = min(_boundaries([x for _n, x in fret_xs() if lo <= x <= hi], lo, hi))
-        for sgn in (-1.0, 1.0):
-            # ⚠ KEY'S J1 PLUGS IN THROUGH ITS HINGE EDGE (user, 2026-11-01), so wall and lip
-            # stop at the comb there and the bay's -Y edge is open; the M4 holds that end
-            if panel == "key" and sgn == HINGE_SGN:
-                continue_bay = False
-                wx0 = first
-            else:
-                continue_bay = True
-                wx0 = bx0
-            floor = wall_floor(panel, sgn)
-            y0 = sgn * (BOARD_HALF_W + edge_play(sgn))
-            # the OUTER face stays where it was for both sides; the play moves the inner
-            y1 = sgn * (BOARD_HALF_W + EDGE_WALL_OUT)
-            # the datum wall stops short of the EAR, which leaves the board through it
-            wx1 = bx1 if sgn == HINGE_SGN else ear_span(panel)[0] - TAB_PLAY
-            w = box_at(wx1 - wx0, abs(y1 - y0), BOARD_TOP - floor,
-                       x=(wx0 + wx1) / 2.0, y=(y0 + y1) / 2.0,
-                       z=(BOARD_TOP + floor) / 2.0)
-            out = w if out is None else out.union(w)
-            if sgn == HINGE_SGN:
-                out = out.union(_lip(wx0, bx1, y0, sgn))
-            # ⚠ THROUGH THE BAY THE WALL HAD NOTHING TO HANG FROM (user, from the render).
-            # Along the comb it grows down out of the reflector wedge's flat underside; the
-            # wedges stop at the comb's first wall and the board runs on into its bay, so
-            # for that stretch the wall began in mid-air. It is carried up to the deck
-            # there AS A WALL: its own two faces, straight up. (It was first the wedge's
-            # triangle copied through, which is a reflector where there is no light to
-            # reflect and tapers to nothing at the deck -- user: "the 1.6mm thickness
-            # rule is violated here. Why is this a triangle and not a straight wall?")
-            if continue_bay and first - bx0 > 1e-6:
-                assert abs(y1 - y0) >= D.MIN_WALL_2P - 1e-9, abs(y1 - y0)
-                out = out.union(box_at(first - bx0, abs(y1 - y0), -BOARD_TOP,
-                                       x=(bx0 + first) / 2.0, y=(y0 + y1) / 2.0,
-                                       z=BOARD_TOP / 2.0))
-    return heal(out) if out is not None else cq.Workplane("XY")
-
-
-def _lip(bx0, bx1, y_wall, sgn):
-    """The hinge edge's lip: a 45 degree ramp off the wall face, one bead of cap under it."""
-    r = lip_reach()
-    top = BOARD_BOT + LIP_RISE
-    bot = BOARD_BOT - lip_depth()
-    pts = [(y_wall, top), (y_wall - sgn * r, top - r), (y_wall - sgn * r, bot), (y_wall, bot)]
-    return (cq.Workplane("YZ", origin=(bx0, 0, 0)).polyline(pts).close()
-            .extrude(bx1 - bx0))
-
-
 # THE FAR M4 STAYS WHERE THE BOARDS HAVE IT. It was placed off M4.boss_od, live, and the boards
 # were laid out (and made) with that at 9.2 -- a 6.0 pocket inside two 2-bead walls. When cadkit's
 # M4 pocket went to 6.1 (cadkit 1627f14, user, 2026-10-20) the boss grew to 9.3 and moved the far
@@ -584,7 +495,7 @@ def m4_boss(w, x_lo=None, x_hi=None):
     post, and a screw dummy placed by its own arithmetic: no insert in the assembly, and
     the screw's head inside the board until something finally intersected it (9.1f)."""
     from cadkit.fasteners import M4
-    up = _tp().PIECE_UP
+    up = DL.PIECE_UP
     for panel in BOARD_NAME:
         bx0, bx1 = board_span(panel)
         if x_lo is not None and not (x_lo <= (bx0 + bx1) / 2.0 <= x_hi):
@@ -605,16 +516,6 @@ def m4_joint(panel, i):
     return ScrewJoint(M4, (x, y, BOARD_BOT), (0.0, 0.0, 1.0), M4_LEN,
                       insert_at=BOARD_T, end_at=M4_LEN + M4_TIP_CLR,
                       head_d=M4_BUTTON_HEAD_D, head_h=M4_BUTTON_HEAD_H)
-
-
-def m4_screws():
-    """[(name, solid)] -- each board's screws and their inserts, from the joints themselves."""
-    out = []
-    for panel in BOARD_NAME:
-        for i in range(len(m4_xys(panel))):
-            out += m4_joint(panel, i).dummies("fret_m4_%s_%d" % (panel, i),
-                                              "fret_m4_insert_%s_%d" % (panel, i))
-    return out
 
 
 def columns(x_lo=None, x_hi=None):
@@ -658,8 +559,7 @@ BOARD_NAME = {"mid": "fret_led_mid", "key": "fret_led_key"}
 
 def panel_range(panel):
     """(x_lo, x_hi) of the deck panel a board serves."""
-    TP = _tp()
-    return (TP.MID_X1, TP.MID_X0) if panel == "mid" else (TP.KEY_X1, TP.KEY_X0)
+    return (DL.MID_X1, DL.MID_X0) if panel == "mid" else (DL.KEY_X1, DL.KEY_X0)
 
 
 def board_span(panel):
@@ -733,12 +633,11 @@ def parts(panel):
 #
 # The part's own numbers live in src/pogo_part.py, shared with the foot strip's seam.
 from .pogo_part import (POGO_MPN, POGO_PAD_L, POGO_PAD_W, POGO_BODY_L, POGO_BODY_W,   # noqa: E402,F401
-                        POGO_BODY_H, POGO_AXIS_H, POGO_PLUNGER_D, POGO_FAB_STROKE,
+                        POGO_BODY_H, POGO_AXIS_H, POGO_PLUNGER_D,
                         POGO_FREE, POGO_LIMIT, POGO_WORK)
-from .pogo_part import plunger as _pogo_plunger                                       # noqa: E402
 # not used here, but read through this module: POGO_MPN by elec/fret_led.py, the body's
 # width and height by tools/check_part_specs.py
-_RE_EXPORTED = (POGO_MPN, POGO_BODY_W, POGO_BODY_H)
+_RE_EXPORTED = (POGO_MPN, POGO_BODY_W, POGO_BODY_H, POGO_AXIS_H)
 POGO_STACK = 0.80          # +- the deck stack at the seam, both panels' ribs and the gap
 # key's barrels to key's end wall: elec/fret_led.py's WALL_CLR (0.30), plus 0.05 so its
 # strict float test is not decided by rounding when the two are equal
@@ -808,53 +707,6 @@ def pogo_pads(panel):
 def pogo_fire(panel):
     """+1 / -1: which way this board's plungers point in world X."""
     return -_SEAM[panel][1]
-
-
-def _pogo_contact():
-    """World X where the tips meet AS MODELLED -- the panels' modelled 0.05 gap included,
-    so each pogo sits a hair past POGO_WORK here and at it when the panels butt."""
-    return (pogo_pads("mid")[0][0] + pogo_pads("key")[0][0]) / 2.0
-
-
-def pogo_pins(only=None):
-    """[(name, solid)] -- the eight plungers, barrel front to the shared contact.
-    `only` keeps one board's four, for tools/_probe_tilt.py.
-
-    The barrels are the boards' own (board_geom reads the pogo's F.Fab); the plungers are
-    here because they leave the board and one set crosses key's end wall."""
-    z = BOARD_TOP + POGO_AXIS_H
-    xc = _pogo_contact()
-    out = None
-    for panel in BOARD_NAME:
-        if only is not None and panel != only:
-            continue
-        f = pogo_fire(panel)
-        for x, y, _net in pogo_pads(panel):
-            x0 = x + f * (POGO_BODY_L + POGO_FAB_STROKE) / 2.0
-            c = _pogo_plunger(x0, xc, y, z)
-            out = c if out is None else out.union(c)
-    return [("fret_pogo_pins", out)]
-
-
-def pogo_notches(x_lo=None, x_hi=None):
-    """The plungers' way through key's end wall -- CUT from the comb.
-
-    Open at the wall's base rather than a round hole: a hole with the plunger's float
-    around it would leave 0.40 of wall under it at a 1.90 axis, half a bead. Open, it
-    needs nothing below it, and in the deck's -Z print direction its roof is printed
-    before the notch starts, so it is not an overhang either. Fret 9 loses four 3.00 x
-    3.40 windows into the seam bay, which has no LEDs in it -- a light trap, not
-    crosstalk."""
-    bx = _key_seam_wall()
-    if x_lo is not None and not (x_lo <= bx <= x_hi):
-        return cq.Workplane("XY")
-    w = POGO_PLUNGER_D + 2.0 * POGO_NOTCH_CLR
-    top = POGO_AXIS_H + POGO_PLUNGER_D / 2.0 + POGO_NOTCH_CLR
-    out = None
-    for y, _net in pogo_ys():
-        c = box_at(WALL + 0.4, w, top + 0.2, x=bx, y=y, z=BOARD_TOP + (top - 0.2) / 2.0)
-        out = c if out is None else out.union(c)
-    return out
 
 
 _ps = pogo_set()

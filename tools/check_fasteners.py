@@ -1,7 +1,7 @@
 """Fastener-feature checker: every screw hole should come from cadkit, not by hand.
 
   py -3.12 -m tools.check_fasteners
-  py -3.12 -m tools.check_fasteners --only knee_lever
+  py -3.12 -m tools.check_fasteners --only direct_bench
 
 WHY THIS EXISTS. cadkit owns what a screw hole IS in this project: an ANCHOR is a
 Ø6 × 5 melt-fit pocket with a self-tapping bore below it, so the first build needs

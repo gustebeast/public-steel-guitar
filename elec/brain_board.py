@@ -229,14 +229,6 @@ def _nfet(tag, desc, value="NCEP4090GU"):
                       Pin(num=5, name="D", func=P)])
 
 
-def _small_nfet(tag, desc):
-    # 2N7002 SOT-23: 1 G  2 S  3 D (CJ 2N7002 datasheet p.1, LCSC C8545) -- as Q3
-    return Part(name="Q_NMOS", ref_prefix="Q", ref=tag, tag=tag, dest="NETLIST", tool="skidl",
-                value="2N7002", description=desc + " (LCSC C8545)", footprint=SOT23,
-                pins=[Pin(num=1, name="G", func=P), Pin(num=2, name="S", func=P),
-                      Pin(num=3, name="D", func=P)])
-
-
 # ── THE MCU: STM32H743IIT6, LQFP-176 -- the optical board's part and pin map ─────────────
 # The optical board's map (optical.PIN, derived from KiCad's STM32H743IITx symbol and checked
 # by re-deriving the LQFP144 map from its own symbol) plus the pins this board adds, read the
@@ -306,7 +298,6 @@ MCU_IO = {
     "PWR_LEAD1_N": "PD3",   # J10 power lead present (LOW); its way 3 is GND at the brain
     "PWR_LEAD2_N": "PD4",   # J12 power lead present (LOW)
 }
-
 
 
 # THE BRAIN BOARD IS THE BRAIN (user, 2026-11-13): brain.py's circuit is built onto this one
@@ -1837,8 +1828,6 @@ def brain_board():
             net.fixed_name = True
     audio, moved = _move_audio_grounds(gnd, agnd)
     print("audio isolated: %d parts, %d ground pins moved to AGND" % (len(audio), moved))
-
-
 
 
 # ── the board ────────────────────────────────────────────────────────────────────────────

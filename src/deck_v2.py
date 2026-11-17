@@ -54,7 +54,7 @@ import math
 import cadquery as cq
 
 from . import dimensions as D
-from . import deck_layout as TP                 # top_plate's live part (lead, v1 removal round 3)
+from . import deck_layout as DL
 from . import fret_light as FL
 from .helpers import box_at
 from cadkit.kept import kept
@@ -92,7 +92,7 @@ RAIL_T = D.MIN_WALL_2P
 # (+-FRET_HY 39.8) are all over it. v1's was 70.4 with ramps doing the window ends' light.
 RAIL_OUT = 41.9
 BOARD_HW = RAIL_OUT - RAIL_T - PLAY             # 40.0
-assert BOARD_HW >= TP.FRET_HY, "the board must run under the whole fret window"
+assert BOARD_HW >= DL.FRET_HY, "the board must run under the whole fret window"
 
 # ── the side regions ────────────────────────────────────────────────────────────────────────
 SKIRT_T = D.MIN_WALL_2P
@@ -103,8 +103,8 @@ RIB_PITCH = 25.0                                # at most, between ribs along X
 # 1.2 over the brain board's top (-8.2), 3.9 over the motors' (-10.9)
 RIB_Z = -7.0
 GAP = 0.05                                      # between panels, and off the endplates
-SEAM_FRET_CLR = TP.INLAY_W / 2 + D.MIN_WALL_2P  # a seam off any fret line's centre
-SEAM_MARK_CLR = TP.MARK_D / 2 + 1.5             # ...and off any marker's centre
+SEAM_FRET_CLR = DL.INLAY_W / 2 + D.MIN_WALL_2P  # a seam off any fret line's centre
+SEAM_MARK_CLR = DL.MARK_D / 2 + 1.5             # ...and off any marker's centre
 PANEL_MAX = 235.0                               # the bed (memory bambu-usable-bed)
 LEAD_IN = 0.6                                   # the rails' and lips' lead-in at each -X end
 
@@ -172,7 +172,7 @@ def ui_x() -> tuple:
 
 
 def fret_x(n: int) -> float:
-    return TP._fret_x(n)
+    return DL._fret_x(n)
 
 
 def fret_field_x0() -> float:
@@ -182,11 +182,11 @@ def fret_field_x0() -> float:
 
 def frets() -> list:
     """(n, x) of every fret line on the deck: 12-TET from the nut, to the field's +X end, while
-    two lines still leave a web between them (top_plate's rule)."""
+    two lines still leave a web between them (deck_layout's rule)."""
     out, n = [], 1
     while True:
         fx, nxt = fret_x(n), fret_x(n + 1)
-        if fx > fret_field_x0() or nxt - fx < TP.INLAY_W + TP.MIN_WEB:
+        if fx > fret_field_x0() or nxt - fx < DL.INLAY_W + DL.MIN_WEB:
             return out
         out.append((n, fx))
         n += 1
@@ -197,7 +197,7 @@ def frets() -> list:
 # across the block's face, opened through the skin, and its LED row stands just +X of the block face,
 # a courtyard's half and 0.2 clear of it -- on the board, which already starts at that face.
 def zero_window_x() -> tuple:
-    return block_face(), block_face() + TP.INLAY_W
+    return block_face(), block_face() + DL.INLAY_W
 
 
 def zero_led_x() -> float:
@@ -222,7 +222,7 @@ def stop_x() -> tuple:
 def _seam_ok(x: float) -> bool:
     if any(abs(x - fx) < SEAM_FRET_CLR for _, fx in frets()):
         return False
-    return all(abs(x - TP._mark_x(n)) >= SEAM_MARK_CLR for n in TP.MARKER_FRETS)
+    return all(abs(x - DL._mark_x(n)) >= SEAM_MARK_CLR for n in DL.MARKER_FRETS)
 
 
 def _snap(target: float, lo: float = -1e9, hi: float = 1e9) -> float:
@@ -288,11 +288,10 @@ def _rail(s: int, x0: float, x1: float) -> cq.Workplane:
 
 
 def _tongues(x0: float, x1: float) -> cq.Workplane:
-    from . import deck_layout as CH
     wl = walls()
     out = None
     for yc in (wl["c0"], wl["c1"]):
-        t = CH._deck_tg(yc, x0, x1, mortise=False).translate((0.0, 0.0, PZ))
+        t = DL._deck_tg(yc, x0, x1, mortise=False).translate((0.0, 0.0, PZ))
         out = t if out is None else out.union(t)
     return out.intersect(_box(x0 - 1, x1 + 1, wl["y0"] - 1, wl["y1"] + 1, -50, TZ))
 
@@ -301,12 +300,11 @@ def wall_cutter() -> cq.Workplane:
     """What the body loses for the deck: everything over PZ, and a groove down each wall's
     centre, from the keyhead's joint face to the +X endplate's (open at -X: the panels slide on
     from there, the keyhead closes it)."""
-    from . import deck_layout as CH
     wl = walls()
     xa, xe = deck_x()
     out = _box(xa - 1, xe + 1, wl["y0"] - 1, wl["y1"] + 1, PZ, TZ + 5)
     for yc in (wl["c0"], wl["c1"]):
-        out = out.union(CH._deck_tg(yc, xa - 1, xe + 1, mortise=True).translate((0.0, 0.0, PZ)))
+        out = out.union(DL._deck_tg(yc, xa - 1, xe + 1, mortise=True).translate((0.0, 0.0, PZ)))
     return out
 
 
@@ -413,7 +411,7 @@ def _comb(x0: float, x1: float) -> cq.Workplane:
 def _inlay_all() -> cq.Workplane:
     """Every white solid on the deck, absolute: the lit frets' windows through the skin, the
     unlit frets, the markers and the border (FRET_T deep)."""
-    hy, w = TP.FRET_HY, TP.INLAY_W
+    hy, w = DL.FRET_HY, DL.INLAY_W
     out = None
 
     def add(s):
@@ -421,35 +419,35 @@ def _inlay_all() -> cq.Workplane:
         out = s if out is None else out.union(s)
 
     for n, fx in frets():
-        z0 = PZ if n <= N_LIT else TZ - TP.FRET_T
+        z0 = PZ if n <= N_LIT else TZ - DL.FRET_T
         add(_box(fx - w / 2, fx + w / 2, -hy, hy, z0, TZ))
-    for n in sorted(TP.MARKER_FRETS):
+    for n in sorted(DL.MARKER_FRETS):
         add(_marker(n))
     # the border: the two long bands from the nut block's face to the deck's +X end, and the band
     # across at the block's face (the frame is open at +X, as v1's)
     bx0 = block_face()
     _, xe = deck_x()
     for s in (1, -1):
-        add(_box(bx0, xe, min(s * hy, s * TP.BORDER_HY), max(s * hy, s * TP.BORDER_HY),
-                 TZ - TP.FRET_T, TZ))
-    add(_box(bx0, bx0 + w, -TP.BORDER_HY, TP.BORDER_HY, TZ - TP.FRET_T, TZ))
+        add(_box(bx0, xe, min(s * hy, s * DL.BORDER_HY), max(s * hy, s * DL.BORDER_HY),
+                 TZ - DL.FRET_T, TZ))
+    add(_box(bx0, bx0 + w, -DL.BORDER_HY, DL.BORDER_HY, TZ - DL.FRET_T, TZ))
     zx0, zx1 = zero_window_x()                  # fret 0's window, through the skin
     add(_box(zx0, zx1, -hy, hy, PZ, TZ))
     return out
 
 
-QUAD_D = TP.MARK_D * 0.5                        # 2.4: the octave marker's four dots
+QUAD_D = DL.MARK_D * 0.5                        # 2.4: the octave marker's four dots
 QUAD_P = QUAD_D + D.MIN_WALL                    # 3.2: a bead of panel between them (v1's 3.0 left 0.6)
 
 
 def _marker(n: int) -> cq.Workplane:
-    """top_plate's marker, but the octave's four dots a whole bead apart."""
-    if TP.MARK_SHAPE[n % 12] != "quad":
-        return TP._marker(n)
-    x, out = TP._mark_x(n), None
+    """deck_layout's marker, but the octave's four dots a whole bead apart."""
+    if DL.MARK_SHAPE[n % 12] != "quad":
+        return DL._marker(n)
+    x, out = DL._mark_x(n), None
     for i in range(4):
-        c = (cq.Workplane("XY").circle(QUAD_D / 2).extrude(TP.FRET_T)
-             .translate((x, (i - 1.5) * QUAD_P, TZ - TP.FRET_T)))
+        c = (cq.Workplane("XY").circle(QUAD_D / 2).extrude(DL.FRET_T)
+             .translate((x, (i - 1.5) * QUAD_P, TZ - DL.FRET_T)))
         out = c if out is None else out.union(c)
     return out
 
@@ -492,7 +490,7 @@ def uniformity_report() -> str:
     end reflectors). h is the LED's face to where the light is seen; the white diffuser adds
     roughly its own thickness to it."""
     lines = ["  h (mm)  " + "  ".join(f"{n:>5d}" for n in (4, 5, 6, 8, 12, 16)) + "   LEDs per fret"]
-    hy = TP.FRET_HY
+    hy = DL.FRET_HY
     for h in (LED_GAP, LED_GAP + SKIN / 2, LED_GAP + SKIN, 15.3):
         row = []
         for n in (4, 5, 6, 8, 12, 16):

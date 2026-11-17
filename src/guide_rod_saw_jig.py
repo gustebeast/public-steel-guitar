@@ -88,7 +88,6 @@ CAP_TOP = SJ.Z_TOP + SJ.CAP_PROUD + CAP_DZ   # its pocket's rim
 CH_FLOOR = CAP_BOT - CAP_LIFT                # the channel's floor
 Z_TOP = math.floor((CAP_TOP - SJ.CAP_PROUD) / B + 1e-9) * B   # the body's top: the cap ~CAP_PROUD proud
 assert Z_TOP - (ROD_Z + ROD_R) >= 12.0, "the cheeks guide the blade too little over the rod"
-NOTCH_HW = CAP_APEX - (SJ.ROD_Z + SJ.CAP_LIFT)   # the notch's half-width at the cap's underside
 RIB_CLR = 0.5                                # the rib's top corners under the notch's faces
 CH_RIB_TOP = ROD_Z - ROD_R / SQ2 + 1.0       # the rib: 1.0 over where the rod bears on its V
 CH_RIB_HW = (CAP_APEX + CAP_DZ) - CH_RIB_TOP - RIB_CLR   # out to where the notch's face is over it

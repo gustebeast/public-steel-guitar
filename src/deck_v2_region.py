@@ -26,12 +26,12 @@ from __future__ import annotations
 import cadquery as cq
 
 from . import dimensions as D
+from . import deck_layout as DL
 from . import deck_v2 as DK
 from . import optical_pickup as OP
 from . import pickup_mount as PM
-from . import deck_layout as TP
 from .helpers import box_at, cyl, heal
-from cadkit.fasteners import M4, cut_counterbore, cut_insert_bore
+from cadkit.fasteners import M4, cut_counterbore
 from cadkit.kept import kept
 
 GAP = DK.GAP
@@ -49,7 +49,6 @@ SENSE_D = OP.SENSE_D                            # 20.0: v1's sensor row off the 
 SENSE_EDGE = OP.SENSE_X - OP.PCB_X1S            # 4.16: v1's keepout, the row to the board's -X edge
 PLINTH_TOP = OP.PLINTH_TOP                      # 12.04: the board's underside (worst-case thickness)
 OPT_BOARD_W = OP.PCB_X0 - OP.PCB_X1S            # 8.81: v1's sensor strip, -X edge to +X edge
-OPT_UP = (1.0, 0.0, 0.0)                        # prints -X -> +X: the plinth rules out deck-down
 
 
 def termination_x() -> float:
@@ -107,13 +106,13 @@ def piece_x(pos: int = PIECE_POS) -> tuple:
 
 
 # v1's piece interior, ported: everything in y and z is v1's, x is relative to the piece centre
-WALL = TP.WALL
-SKIRT_T = TP.SKIRT_T
-JACKS = [(jx - TP.PICKUP_X_NOM, jy) for jx, jy in TP.JACK_POS]      # (dx, y) off the centre
+WALL = DL.WALL
+SKIRT_T = DL.SKIRT_T
+JACKS = [(jx - DL.PICKUP_X_NOM, jy) for jx, jy in DL.JACK_POS]      # (dx, y) off the centre
 # the end walls stop short of the +Y jacks' nubs, which reach out under them (v1's piece was 80 wide
 # and its walls cleared them; at this pitch the nub's boss reaches 1.7 into the wall)
-END_WALL_Y1 = min(jy for _, jy in JACKS if jy > 0) - TP.NUB_W / 2 - 1.0
-FILL_UP = TP.PIECE_UP                           # the piece and the fillers print deck-down, as v1
+END_WALL_Y1 = min(jy for _, jy in JACKS if jy > 0) - DL.NUB_W / 2 - 1.0
+FILL_UP = DL.PIECE_UP                           # the piece and the fillers print deck-down, as v1
 
 
 def _body(x0: float, x1: float) -> cq.Workplane:
@@ -145,8 +144,8 @@ def filler(slot: int) -> cq.Workplane:
 
 
 def _cavity(ctr: float, grow: float = 0.0) -> cq.Workplane:
-    return box_at(TP.CAVITY_X + 2 * grow, TP.CAVITY_Y + 2 * grow, (TZ - BZ) + 2,
-                  x=ctr, y=TP.PLATE_CTR_Y, z=(BZ + TZ) / 2)
+    return box_at(DL.CAVITY_X + 2 * grow, DL.CAVITY_Y + 2 * grow, (TZ - BZ) + 2,
+                  x=ctr, y=DL.PLATE_CTR_Y, z=(BZ + TZ) / 2)
 
 
 def pickup_piece(pos: int = PIECE_POS) -> cq.Workplane:
@@ -154,34 +153,34 @@ def pickup_piece(pos: int = PIECE_POS) -> cq.Workplane:
     the -Y skirt and the two end walls under it, the retention screw's relief and slot."""
     x0, x1, c = piece_x(pos)
     body = _body(x0, x1).cut(_cavity(c))
-    body = body.union(box_at(x0 - x1, SKIRT_T, BZ - TP.SKIRT_DEEP_BOT,
-                             x=c, y=-(TP.HY_CLAMP + SKIRT_T / 2), z=(BZ + TP.SKIRT_DEEP_BOT) / 2))
-    ya = -TP.HY_CLAMP
+    body = body.union(box_at(x0 - x1, SKIRT_T, BZ - DL.SKIRT_DEEP_BOT,
+                             x=c, y=-(DL.HY_CLAMP + SKIRT_T / 2), z=(BZ + DL.SKIRT_DEEP_BOT) / 2))
+    ya = -DL.HY_CLAMP
     for xe in (x0 - WALL / 2, x1 + WALL / 2):
-        body = body.union(box_at(WALL, END_WALL_Y1 - ya, BZ - TP.SKIRT_DEEP_BOT,
-                                 x=xe, y=(ya + END_WALL_Y1) / 2, z=(BZ + TP.SKIRT_DEEP_BOT) / 2))
+        body = body.union(box_at(WALL, END_WALL_Y1 - ya, BZ - DL.SKIRT_DEEP_BOT,
+                                 x=xe, y=(ya + END_WALL_Y1) / 2, z=(BZ + DL.SKIRT_DEEP_BOT) / 2))
     # the retention screw's relief over its boss, and its slot through the -Y skirt (v1's, after
     # every union: a later union would refill them)
-    body = body.cut(box_at(TP.RET_RELIEF_W, TP.RET_RELIEF_Y1 - TP.RET_RELIEF_Y0,
-                           TP.RET_RELIEF_Z1 - BZ + 0.5, x=c,
-                           y=(TP.RET_RELIEF_Y0 + TP.RET_RELIEF_Y1) / 2, z=(BZ - 0.5 + TP.RET_RELIEF_Z1) / 2))
-    body = body.cut(box_at(TP.RET_SLOT_W, SKIRT_T + 2.0, BZ - TP.RET_SLOT_Z0, x=c,
-                           y=-(TP.HY_CLAMP + SKIRT_T / 2), z=(BZ + TP.RET_SLOT_Z0) / 2))
+    body = body.cut(box_at(DL.RET_RELIEF_W, DL.RET_RELIEF_Y1 - DL.RET_RELIEF_Y0,
+                           DL.RET_RELIEF_Z1 - BZ + 0.5, x=c,
+                           y=(DL.RET_RELIEF_Y0 + DL.RET_RELIEF_Y1) / 2, z=(BZ - 0.5 + DL.RET_RELIEF_Z1) / 2))
+    body = body.cut(box_at(DL.RET_SLOT_W, SKIRT_T + 2.0, BZ - DL.RET_SLOT_Z0, x=c,
+                           y=-(DL.HY_CLAMP + SKIRT_T / 2), z=(BZ + DL.RET_SLOT_Z0) / 2))
     # the jacks: each head captured in the solid deck from the top, through cadkit's counterbore
     for dx, jy in JACKS:
-        body = cut_counterbore(body, TP.HEAD_POCKET_D, TZ - TP.JACK_HEAD_Z,
+        body = cut_counterbore(body, DL.HEAD_POCKET_D, TZ - DL.JACK_HEAD_Z,
                                M4.shaft_clr_d + 0.4, TZ - (BZ - 1.0),
                                (c + dx, jy, TZ), (0.0, 0.0, -1.0),
                                print_up=FILL_UP, overshoot=1.0)
     for dx, jy in JACKS:
-        body = body.cut(cyl(M4.boss_od + D.BEAD, TP.JACK_BOSS_RELIEF + 0.5, z=BZ - 0.5)
+        body = body.cut(cyl(M4.boss_od + D.BEAD, DL.JACK_BOSS_RELIEF + 0.5, z=BZ - 0.5)
                         .translate((c + dx, jy, 0.0)))
     return heal(body)
 
 
 def pickup_plate(pos: int = PIECE_POS) -> cq.Workplane:
     """v1's height plate, at the piece's centre."""
-    return TP.pickup_zplate.translate((piece_x(pos)[2] - TP.PICKUP_X_NOM, 0.0, 0.0))
+    return DL.pickup_zplate.translate((piece_x(pos)[2] - DL.PICKUP_X_NOM, 0.0, 0.0))
 
 
 def _mount_hardware(pos: int = PIECE_POS) -> list:
@@ -189,20 +188,20 @@ def _mount_hardware(pos: int = PIECE_POS) -> list:
     _pickup_mount_components, at the piece's centre."""
     from cadkit.fasteners import insert as f_insert, headed_screw, seated_insert, m4_button_screw
     c = piece_x(pos)[2]
-    out = [("pickup", PM.pickup_demo().translate((c, TP.PK_CTR_Y, PM.PK_TOP)))]
+    out = [("pickup", PM.pickup_demo().translate((c, DL.PK_CTR_Y, PM.PK_TOP)))]
     js, ji = None, None
     for dx, jy in JACKS:
-        s = headed_screw(M4, TP.JACK_SCREW_L, head_d=TP.JACK_HEAD_D, head_h=TP.JACK_HEAD_H,
-                         socket_af=2.5).translate((c + dx, jy, TP.JACK_HEAD_Z + TP.JACK_HEAD_H))
-        n = f_insert(M4).translate((c + dx, jy, TP.JACK_MOUTH_Z))
+        s = headed_screw(M4, DL.JACK_SCREW_L, head_d=DL.JACK_HEAD_D, head_h=DL.JACK_HEAD_H,
+                         socket_af=2.5).translate((c + dx, jy, DL.JACK_HEAD_Z + DL.JACK_HEAD_H))
+        n = f_insert(M4).translate((c + dx, jy, DL.JACK_MOUTH_Z))
         js = s if js is None else js.union(s)
         ji = n if ji is None else ji.union(n)
     out += [("pickup_jack_screw", js), ("pickup_jack_insert", ji)]
-    g = m4_button_screw(TP.RET_SCREW_L).rotate((0, 0, 0), (1, 0, 0), 90)       # head -Y, tip +Y
+    g = m4_button_screw(DL.RET_SCREW_L).rotate((0, 0, 0), (1, 0, 0), 90)       # head -Y, tip +Y
     gb = g.val().BoundingBox()
-    out.append(("pickup_ret_screw", g.translate((c, TP.PK_YM - gb.ymax, TP.RET_SCREW_Z))))
-    out.append(("pickup_ret_insert", seated_insert(M4, (c, TP.PK_MAX_YM - TP.RET_BOSS_L,
-                                                        TP.RET_SCREW_Z), (0, 1, 0))))
+    out.append(("pickup_ret_screw", g.translate((c, DL.PK_YM - gb.ymax, DL.RET_SCREW_Z))))
+    out.append(("pickup_ret_insert", seated_insert(M4, (c, DL.PK_MAX_YM - DL.RET_BOSS_L,
+                                                        DL.RET_SCREW_Z), (0, 1, 0))))
     return out
 
 
@@ -225,4 +224,4 @@ def report() -> str:
             f"{SENSE_D} off the termination at {termination_x():.2f}\n"
             f"slots: {N_SLOTS} x {band_w():.2f} (pitch {pitch():.3f}), region {slot0_x():.2f}..{region_end():.2f}\n"
             f"piece {PIECE_SLOTS} slots = {piece_x()[0] - piece_x()[1]:.2f}; pickup centre at the {N_POS} "
-            f"positions {c}, each +-{TP.X_SLIDE} on the plate")
+            f"positions {c}, each +-{DL.X_SLIDE} on the plate")

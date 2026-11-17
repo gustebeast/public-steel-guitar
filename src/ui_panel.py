@@ -11,8 +11,7 @@ the CAD shows the part where it moved to rather than where the table said it wou
 material where every routed footprint's body is.
 
 WARNING: THE DATUMS ARE FUNCTIONS, NOT MODULE CONSTANTS, and that is load-bearing:
-top_plate.py imports THIS module (it cuts the deck), so this module cannot import
-top_plate at import time. Everything that needs the deck's own numbers takes them lazily.
+The deck's own numbers come from src/deck_layout (DL), which imports nothing of the deck.
 
 -- WHERE IT SITS (user, 2026-10-30, replacing 2026-09-25's and 2026-10-29's) ----------
 "Center the screen between the fretboard border and the -y edge of the top panel and then
@@ -97,6 +96,7 @@ from functools import lru_cache
 import cadquery as cq
 
 from . import dimensions as D
+from . import deck_layout as DL
 from .helpers import box_at, cyl
 from cadkit.fasteners import (M4, M4_BUTTON_HEAD_H, cut_insert_bore, m4_button_screw,
                               seated_insert)
@@ -239,7 +239,6 @@ BOARD_GAP = 10.4
 # down against this one, which is bottom contact at both ends.
 FFC_L = 50.0
 FFC_W = (MOD_FFC_N + 1) * MOD_FFC_PITCH   # 21.0, the drawing's (N+1) x 1.0
-FFC_T = 0.30                       # the PLUG: "terminal thickness" T1/T2 0.3 +-0.05
 FFC_STIFF = 8.0                    # the rigid end, measured from the cut
 FFC_INSERT = 4.0                   # ...of which this much goes into a socket: the bare
                                    # contacts, which is what both sockets are drawn for
@@ -257,9 +256,6 @@ FFC_STIFF_T = 0.225
 # -(FFC_CU_T/2 + under + stiffener), so its middle is half of under + stiffener behind
 FFC_FILM_OFF = (FFC_INS_T + FFC_STIFF_T) / 2.0
 FFC_SLOT_H = 0.50                  # both sockets' mouths, drawn: the plug and some air
-# Our end: Molex 52271-2079 (LCSC C588186), 3.0 high, 1.0 pitch, bottom contact.
-# The slot's height over our board is an ESTIMATE off its section D-D.
-J1_H = 3.0
 J1_SLOT = 1.0
 FFC_R_MIN = 1.2                    # the tightest bend drawn: four times its thickness
 FFC_TOP_Z = -2.5                   # the run under the module, clear of its rear parts
@@ -292,7 +288,7 @@ KEEPER_CLR = 0.2
 KEEPER_FLOOR = D.MIN_WALL_2P
 
 # -- THE RIBBON TO THE PI ---------------------------------------------------
-# Its shape lives here rather than in wiring.py because elec/ui_board.py imports this
+# Its shape lives here because elec/ui_board.py imports this
 # module and can be held to it: the conductor count is J2's way count and the pitch is
 # half the header's, which is what an IDC ribbon is.
 RIBBON_N = 16                      # 14 for the station + the power button's two throws
@@ -302,20 +298,6 @@ RIBBON_PITCH = 0.635               # was 1.27: the header is a 1.27 mm 2x7 now, 
 RIBBON_T = 0.65                    # 0.635 flat cable, and each conductor's pitch circle:
                                    # neighbouring ways touch, which is what makes it a
                                    # ribbon rather than sixteen wires
-# ...AND IT TURNS ONE CORNER BY BEING FOLDED. The run is flat under the deck -- width
-# in Y, thickness in Z, because there is only 10.70 of headroom and 17.78 of it on edge
-# does not fit -- so its 90 degree turn onto the Pi cap's header's line is IN THE RIBBON'S
-# OWN PLANE, and flat cable can only do that creased over at 45 degrees. Ordinary, and
-# free, but it is an assembly step somebody has to get the right way round, so the count
-# is declared here and cadkit.cables.flat_bends holds the modelled path to it. (Two until
-# 2026-10-06, when the path ended at a typed point instead of on the header; the second
-# turn, down onto the socket, is across the ribbon's width and is a plain bend.)
-# R2, ON THE RISER (2026-11-03): two. The cap's J5 turned mouth -X at the Pi's SD end, its row
-# along Y like this end's, so the ribbon runs -X straight to it and bends down onto it -- but the
-# two rows are 37.7 apart in Y (this header at y -80.8, J5 at -43.2), and that step across is
-# made in the ribbon's own plane: two 45 degree creases. R1 (bench) keeps the one.
-from .board_geom import PI_CAP_REV as _PI_CAP_REV    # noqa: E402
-RIBBON_FOLDS = 1 if _PI_CAP_REV == 1 else 2
 RIBBON_W = RIBBON_N * RIBBON_PITCH  # 10.16, the cable's own width. Every way's insulation
                                     # touches its neighbour's, so the ribbon is exactly as
                                     # wide as the ways it has -- which is also the width
@@ -333,28 +315,7 @@ IDC_COVER_M = 1.02
 IDC_GAP = RIBBON_T + 0.05          # the ribbon's slot between the two
 IDC_BODY_M = 5.08 - IDC_COVER_M - IDC_GAP
 IDC_CABLE_M = IDC_BODY_M + IDC_GAP / 2.0   # the ribbon's centre, out from the mating face
-# WHERE IT STOPS ON THE PINS. The header (HX PZ1.27-2x8P WZ, its drawing 2022-04-24) puts
-# 4.00 of pin out past its plastic, and this body is only 3.20 deep, so the socket bottoms
-# on the pin tips and stands off the plastic -- it never reaches it. 3.00 of pin inside
-# the body: Samtec give its insertion depth as 2.64 to 3.17. The board solid draws the
-# pins as a block to their tips, and the
-# socket's last IDC_PIN_IN of it is the designed mate (tools/check_overlaps.py).
-HDR_PIN_OUT = 4.00
 IDC_PIN_IN = 3.00
-
-
-def idc_socket(mouth, m, r, w):
-    """A 2x8 1.27 IDC socket: `mouth` the centre of its mating face, `m` the unit axis
-    out of it (away from the header), `r` across the rows -- the way the ribbon leaves
-    -- and `w` along them, all world axes. Body and cover as one solid with the ribbon's
-    slot left open between them."""
-    def box(dm0, dm1, dr, dw):
-        ext = [abs(m[k]) * (dm1 - dm0) + abs(r[k]) * dr + abs(w[k]) * dw for k in range(3)]
-        c = [mouth[k] + m[k] * (dm0 + dm1) / 2.0 for k in range(3)]
-        return box_at(*ext, x=c[0], y=c[1], z=c[2])
-    m0 = IDC_BODY_M + IDC_GAP
-    return (box(0.0, IDC_BODY_M, IDC_BODY_R, IDC_B)
-            .union(box(m0, m0 + IDC_COVER_M, IDC_COVER_R, IDC_B)))
 
 
 SCREW_CLR_D = 4.5                  # its clearance hole in the board
@@ -505,22 +466,15 @@ assert ENC_FLAT_W < ENC_SHAFT_D, (
     % (ENC_FLAT_W, ENC_SHAFT_D))
 
 
-def _tp():
-    """The deck's datum (src/deck_layout, top_plate's once)."""
-    from . import deck_layout as TP
-    return TP
-
-
 # -- Z: every face in the stack, derived downward from the deck's own top ----
 @lru_cache(maxsize=None)
 def z_stack():
     """(deck_top, deck_bot, mod_face, mod_back, board_top, board_bot). mod_back is the
     rear of the parts on the module's back; its PCB's back face is mod_pcb_back()."""
-    TP = _tp()
-    mod_face = TP.TZ - LEDGE_T
+    mod_face = DL.TZ - LEDGE_T
     mod_back = mod_face - MOD_T
     board_top = mod_back - BOARD_GAP
-    return (TP.TZ, TP.BZ, mod_face, mod_back, board_top, board_top - BOARD_T)
+    return (DL.TZ, DL.BZ, mod_face, mod_back, board_top, board_top - BOARD_T)
 
 
 def mod_pcb_back():
@@ -551,7 +505,7 @@ PWR_HALF = 4.25                    # the power switch's body
 
 def fret_border_y():
     """World Y of the fret border's -Y outer edge."""
-    return -_tp().BORDER_HY
+    return -DL.BORDER_HY
 
 
 def screen_y():
@@ -563,8 +517,7 @@ def screen_y():
     its clamp's near bar into the rail's inner face. Held on the 10.4 wall's old outer face, the
     station stays exactly where it was; the screen now sits 4.8 inboard of the deck's centre line
     between the border and the edge."""
-    from . import deck_layout as CH
-    return (fret_border_y() + (CH.RAIL_INNER_Y - D.WALL_THICKNESS)) / 2.0
+    return (fret_border_y() + (DL.RAIL_INNER_Y - D.WALL_THICKNESS)) / 2.0
 
 
 def input_y():
@@ -588,7 +541,7 @@ def knob_x():
     """THE RULE for the knob's X: its body and INPUT_EDGE of board are EDGE_WALL short of
     the band region's seam (nothing fixed may enter that region), and the cap stands 2.6 off
     it. The display then comes as close as the knob's hole allows; see ui_x()."""
-    return _tp().REGION_X1 - EDGE_WALL - INPUT_EDGE - ENC_SQ / 2.0
+    return DL.REGION_X1 - EDGE_WALL - INPUT_EDGE - ENC_SQ / 2.0
 
 
 @lru_cache(maxsize=None)
@@ -1059,7 +1012,7 @@ def _posts():
     """[(x, y)] in BOARD coordinates of the four columns the board is pulled up onto.
 
     COLUMNS, NOT LEDGES, and the print decides it: the deck prints face-DOWN
-    (top_plate.PIECE_UP), so everything under it grows away from the bed and a shelf
+    (deck_layout.PIECE_UP), so everything under it grows away from the bed and a shelf
     poking inward off a wall would be a ceiling with nothing beneath it. A column from
     the deck's own underside is supported the whole way.
 
@@ -1137,7 +1090,7 @@ def deck_mount():
         reason="the UI's only fastener: a self-tapped M4 in PCTG would strip the first "
                "time the clamp came off for service, and it comes off for every display "
                "swap",
-        print_up=_tp().PIECE_UP)
+        print_up=DL.PIECE_UP)
 
 
 def clamp_z():
@@ -1210,14 +1163,13 @@ def clamp():
     mx, _my = module_centre()
     far_y = header_row_y() + MOD_HOLE_DY
     near_y = header_row_y()
-    from . import deck_layout as CH
     bar_x = 2 * MOD_HOLE_DX + CLAMP_RIB_W
     # ...THE NEAR BAR RAMPS UP OVER THE CABLE TROUGH. The panel is slid on and off with the
     # whole station bolted to it, and the trough's lip runs the length of the rail, its top
     # above the plate's underside. So the plate stops short and a 45 degree face, which
     # prints, carries the bar over the lip with 1.0 of air.
-    lip_y = CH.WT_Y0 + CH.WT_D
-    lip_z = CH.WT_ZF + CH.WT_H
+    lip_y = DL.WT_Y0 + DL.WT_D
+    lip_z = DL.WT_ZF + DL.WT_H
     y0 = lip_y + (lip_z + 1.0 - bot)
     y1 = far_y + CLAMP_RIB_W / 2.0
     s = box_at(BOARD_W, BOARD_L, CLAMP_T, x=cx, y=cy, z=(top + bot) / 2.0)
@@ -1236,7 +1188,6 @@ def clamp():
         s = s.cut(box_at(x1 - x0 + 2 * CLAMP_RELIEF, fy1 - fy0 + 2 * CLAMP_RELIEF,
                          CLAMP_T + 2.0, x=cx + (x0 + x1) / 2.0, y=cy + (fy0 + fy1) / 2.0,
                          z=(top + bot) / 2.0))
-    bz = z_stack()[1]
     for sx in (-1, 1):
         for yc, z0 in ((far_y, bot), (near_y, CLAMP_ARM_Z - 1.0)):
             s = s.union(cyl(CLAMP_TIP_D, pcb_back - z0, z=z0)

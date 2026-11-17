@@ -123,7 +123,6 @@ Frames: absolute X/Y/Z. Components face +Z (UP, at the strings).
 from __future__ import annotations
 
 import math
-import os
 
 # ── REVISION (2026-10-29) ──────────────────────────────────────────────────────────────────
 # R1 is the board in hand (ordered): it reaches -Y to -122.58, past the narrowed body's -Y
@@ -136,11 +135,9 @@ import cadquery as cq
 from cadquery.selectors import NearestToPointSelector
 
 from . import dimensions as D
-from . import deck_layout as CH                 # the live parts of chassis and top_plate
-from . import deck_layout as TP                 # (lead, v1 removal round 3)
-from .helpers import box_at, cyl
+from . import deck_layout as DL
+from .helpers import box_at
 from cadkit.fasteners import M4
-from cadkit.holes import house_hole
 from cadkit.pcb import PCB_T as _PCB_T
 
 # ── where it sits ────────────────────────────────────────────────────────────
@@ -175,9 +172,9 @@ STIFF_FLOOR   = 13 * D.NOZZLE_D                  # 10.4 (was 10.0 = 12.5 beads)
 # end at the endplate. Both edges are READ from top_plate so they cannot drift: if the
 # pickup's travel or plate size changes, this band changes with it and the assertions
 # below fail rather than the parts quietly overlapping.
-DECK_TOP   = TP.TZ                                            # 6.40, deck surface
-BAND_X0    = TP.PX0                                           # -25.06, deck's +X end
-BAND_X1    = TP.PICKUP_X_NOM + TP.CAVITY_X / 2                # -39.08, cavity's +X edge
+DECK_TOP   = DL.TZ                                            # 6.40, deck surface
+BAND_X0    = DL.PX0                                           # -25.06, deck's +X end
+BAND_X1    = DL.PICKUP_X_NOM + DL.CAVITY_X / 2                # -39.08, cavity's +X edge
 BAND_CLR   = 0.2                                              # keep off both band edges
 
 # ⚠ OPT_GAP IS THE ONE UNDERIVED NUMBER IN THIS Z STACK, AND IT IS A BIG LEVER.
@@ -295,7 +292,6 @@ PKG = {
                                       # Chosen over TSSOP-14 purely for X: 6.00 across
                                       # the leads against TSSOP's 6.40, and X is the
                                       # scarce direction in a 14 mm band.
-    "QFN-24":   (4.00, 4.00, 0.90),
     "QFN-32":   (5.00, 5.00, 0.90),   # Microchip USB3300-EZK, 5 x 5 x 0.9
     "LQFP144":  (22.00, 22.00, 1.60), # JEDEC MS-026: 20x20 body, 22x22 over leads
     "LQFP176":  (26.00, 26.00, 1.60), # JEDEC MS-026: 24x24 body, 26x26 over leads
@@ -347,7 +343,6 @@ EDGE_KEEP = 1.2                                  # part -> board edge: JLCPCB's 
 # conduit straight through the endplate's exterior wall, which is the same wall that
 # sent the jack output stage to the output panel.
 CRTYD_GAP = 0.15                                 # courtyard-to-courtyard, packing only
-ROW_GAP   = 1.0
 
 # ── COURTYARDS -- THE OTHER SIZE, and the one that spaces the layout ────────
 # ⚠ PKG ABOVE IS THE BODY. THIS IS THE LAND. They are different measurements and the
@@ -378,6 +373,9 @@ CRTYD = {
     "2512R":    (7.66, 3.86),   # KiCad R_2512_6332Metric
     "SOT-23":   (3.95, 3.49),
     "SOT-23-5": (4.19, 3.49),
+    # ONE entry (lead 2026-11-17): a second "QFN-24" (5.35, left from when U7, the ULPI PHY,
+    # was a QFN-24) sat further down and silently won. U31's footprint is HVQFN-24-1EP_4x4mm
+    # _P0.5mm_EP2.5x2.5mm, whose F.CrtYd runs +-2.63 with a 0.05 stroke: 5.30 over the line.
     "QFN-24":   (5.30, 5.30),   # KiCad HVQFN-24-1EP_4x4mm
     "SOIC-16":  (7.40, 11.00),  # KiCad SOIC-16_3.9x9.9mm
     "SOD-123":  (4.20, 1.90),
@@ -395,7 +393,6 @@ CRTYD = {
     "VSSOP-8":  (6.45, 3.60),
     "WQFN-16":  (3.60, 3.60),
     "SOIC-14":  (7.49, 9.25),
-    "QFN-24":   (5.35, 5.35),
     "QFN-32":   (6.26, 6.26),   # KiCad QFN-32-1EP_5x5mm_P0.5mm_EP3.45x3.45mm
     "LQFP144":  (23.39, 23.39),
     "LQFP176":  (27.36, 27.36),   # KiCad LQFP-176_24x24mm_P0.5mm F.CrtYd
@@ -520,7 +517,6 @@ SENSE_FACE_Z   = PCB_TOP + LED_PKG[2]                         # emitter faces UP
 # 1.10 and the string's underside is 1.10 above them, of which 0.306 is the vibration
 # allowance at this station and the rest is margin.
 OPT_GAP        = STRING_BOT_MIN - SENSE_FACE_Z                # 1.22 (emitter face to string)
-AXLE_TOP       = D.BRIDGE_BEARING_Z + D.BRIDGE_AXLE_D / 2     # 12.00
 # ⚠ AND THIS IS WHAT STANDS BETWEEN THE BOARD AND THE COMB. Resting the board ON the axle
 # would let its hole become ten bearing slots with 4 mm strips between them, instead of one
 # 30 x 105 opening -- ten extra bridges across the middle of the board. The board's
@@ -543,28 +539,9 @@ PCB_BOT        = PCB_TOP - PCB_T                              # NOMINAL board un
 PLINTH_TOP     = PCB_TOP - PCB_T_MAX                          # what the endplate builds to
 STANDOFF       = PLINTH_TOP - DECK_TOP                        # under the board
 
-# ── COVER -- the lid that makes up-firing viable ────────────────────────────
-# Sits in the optical gap over the sensor row only. Three jobs: an APERTURE (each string
-# gets its own slot, so the shallow-angle ambient path is cut), a DEBRIS LID (up-firing
-# optics collect what down-firing ones shed), and physical protection during stringing.
-# It is honest about its limits: at this standoff a slot cannot collimate much -- the
-# geometric rejection is a few dB, and the heavy lifting against sun is an IR-pass
-# window (see BOM.md). What it definitely buys is the -X wall and the debris seal.
-# ⚠ THE COVER IS GONE (user, 2026-09-23: "debris isn't a compelling enough reason"), and
-# it was costing 1.90 mm of standoff -- COVER_GAP 0.30 + COVER_T 1.60 -- for an optical
-# job it was not doing. What it actually protected was TIA HEADROOM: at Rf 1M and MID 0.33
-# the amp clips at 2.97 uA of ambient, and widening the detector's view from ~+-30 to
-# ~+-60 deg is 3.7x solid angle. Rf 1M -> 250k buys that back four-fold for ~1 dB of the
-# gain. See .ins/opt_gap.py.
-# CROSSTALK IMPROVES rather than worsening, which is the part that matters for a pitch
-# pickup: the aperture bought isolation, but so does getting closer, and faster. At the
-# old 3.00 gap a +-60 deg detector viewed +-5.20 mm against a 4.75 half-pitch -- it was
-# looking at its neighbour. At 2.00 it views +-3.46 and is clear.
-COVER_GAP = 0.0
 COVER_T   = 0.0
 COVER_Z0  = SENSE_FACE_Z
 COVER_Z1  = SENSE_FACE_Z
-SLOT_DX   = 3.0                                  # aperture over the triplet, in X
 SLOT_DY   = 7.6                                  # ...and in Y: the PD15 triplet spans
                                                  # +-3.775; the teeth left between
                                                  # apertures are PITCH - 7.6 = 1.76 (>=1.6)
@@ -608,7 +585,7 @@ PITCH = abs(string_y_at(1, SENSE_X) - string_y_at(0, SENSE_X))
 # baseline. Optically the move costs ~25% of the light (line-integrated over the lit
 # string, not the point estimate), more than repaid by the part's photocurrent.
 PD_GAP = 0.35                                    # emitter body -> detector body, in Y
-PD_DY = LED_PKG[1] / 2 + PD_GAP + PD_PKG[1] / 2  # 2.375
+PD_DY = LED_PKG[1] / 2 + PD_GAP + PD_PKG[1] / 2  # 2.150
 # AND IN X THE DETECTORS SIT JUST -X OF THE ROOF'S +X STRIP, not on the emitter's centre
 # line. Their 4.5 mm land would otherwise reach the board's +X edge keep-out, and set here
 # every detector body lies wholly inside its aperture notch (x1 < APER_X1): the part is
@@ -617,7 +594,6 @@ PD_DY = LED_PKG[1] / 2 + PD_GAP + PD_PKG[1] / 2  # 2.375
 # while the board slides +X into place along the notches. 0.36 mm off the emitter's line
 # is nothing optically.
 PD_X = (BAND_X0 - D.MIN_WALL_2P) - 0.05 - PD_PKG[0] / 2      # -28.36
-END_KEEP = 2.0
 
 _OUTER_Y = max(abs(string_y_at(i, SENSE_X)) for i in range(D.N_STRINGS))
 SENSE_HL = _OUTER_Y + PD_DY                      # last sensor Y
@@ -674,35 +650,6 @@ assert D.GUIDE_ROD_D <= ROD_D_ROUTED, "the guide rod outgrew the ring this board
 _ROD_CAP = min(D.guide_rod_x(i) for i in range(D.N_STRINGS)
                if D.guide_rod_x(i) < 0) - ROD_D_ROUTED / 2 - ROD_SUPPORT
 PCB_X0  = min(BAND_X0 - BAND_CLR + STRIP_GROW_PX, _ROD_CAP)   # -23.35, strip +X edge
-# ⚠ MEASURED 2026-09-24: 1.20 mm IS FREE, AND THE BLOCKERS ARE NOT WHAT THIS NOTE SAYS.
-# Swept PCB_X1S in 0.2 mm steps rather than reasoning about it:
-#     +1.20  OK, board 62.74 wide      <- the most that costs nothing
-#     +1.40  C160 (the 1206 24 V bulk, x -36.46..-33.0) hits the edge keep-out
-#     +4.00  and only THEN the conduit assert below
-# So the row-packer/conduit story is the SECOND blocker, not the first: one 1206
-# capacitor sitting where _spread happened to leave it is what caps the trim at 1.20.
-# NOT TAKEN, deliberately. 1.2 mm off a 63.94 x 188.53 board does not cross a JLCPCB
-# price band, so the saving is mechanical only (a little less unsupported overhang past
-# the plinth), and applying it perturbs a routed board that is at 10 unconnected / 0
-# violations. Worth doing WITH the compute-section rework, not instead of it.
-# ⚠ THE -X EDGE CANNOT COME IN YET, AND THE REASON IS THE -Y END (tried 2026-09-23).
-# The user asked to reclaim the strip -X of the sensors now that nothing uses it: the
-# converter cells moved east, and the floor is the PD15 land plus EDGE_KEEP at -32.06,
-# so 6.82 mm looks free. It is not, because of how the compute section is placed.
-# _spread and _block lay rows across the FULL width x0..x1. Narrow the board and they do
-# not shrink -- they SPILL, taking more rows, and the section grows -Y. The -Y end has
-# 0.11 mm before CONDUIT_Y0 passes the endplate's exterior-wall limit, so the board is
-# LENGTH-constrained, and the packer silently converts width into length at roughly 1:1.
-# Measured: PCB_X1S -32.06 pushed the conduit to -146.26 against a -145.19 limit.
-# So this is not a board-outline change, it is a placement change: the compute section
-# has to be laid out by FUNCTION (like the MCU ring now is) rather than by rows before
-# the width can come in at all. Same root cause as the decoupling row. Deferred, not
-# abandoned -- and the assert that would have hidden it is the conduit's, not this file's.
-# ⚠ WAS THE BOARD EDGE, IS NOW ONLY THE CAVITY LIMIT. This is how far -X the board MAY
-# go before it fouls the magnetic pickup cavity -- a ceiling, not a position. The board
-# stopped using all of it on 2026-09-24; the real edge is PCB_X1S below, and the assert
-# near the bottom of this file still measures the board against this.
-PCB_CAVITY_X1 = BAND_X1 + BAND_CLR                            # -38.88, the -X ceiling
 # ⚠ THE STRIP'S -X EDGE BELONGS TO V5_PRE NOW (user, 2026-09-24: "Let's make V5_PRE the
 # west most point"). It used to be PCB_X1S, the pickup cavity's edge, which left 6.8 mm of
 # board west of the detector column doing nothing but carrying the 5 V emitter rail
@@ -764,13 +711,6 @@ Y_TAIL   = -(D.BRIDGE_ARM_OUT + WRAP_CLR)
 TAIL_X1_R1 = 25.05583
 TAIL_X1 = TAIL_X1_R1
 assert TAIL_X1 >= D.BRIDGE_BASE_X1 - 1e-9, "the R1 tail now stops short of the endplate face"
-# -X edge runs out to the STRIP's own -X edge. Sized off the LQFP144 instead (-18.40) the
-# two sections overlapped by just 1.60 in X, so the whole board hung on a 1.6 mm waist:
-# brittle, and hopeless for routing -- 20 analog channels + 10 LED drives + power all have
-# to cross it to reach the MCU. Full width makes it a smooth transition rather than a neck.
-# The -X part of the tail overhangs the plinth (which stops at the endplate face) by 13.8,
-# but that is 1.6 FR4 over open air 3.7 above the deck, not a load path.
-PCB_X1T = PCB_X1S                                             # -30.42
 # +Y HEAD -- the tail's mirror image (user). The board turns +X over the endplate at BOTH
 # Y ends, so it grips the instrument at two widely spaced points and its position becomes
 # a fixed, screwed thing rather than something that has to be eyeballed. That matters more
@@ -795,8 +735,8 @@ PLINTH_X0 = BAND_X0                                           # -16.60
 PCB_YP     = D.RAIL_HI_INNER_Y + D.WALL_THICKNESS                # 65.0
 if OPTICAL_REV == 1:
     PCB_YP = 65.95                        # the board as ordered, before the rail came in 0.95
-HEAD_LEN   = PCB_YP - HEAD_Y0                                 # 14.40, mirrored at -Y
-WRAP_Y     = Y_TAIL - HEAD_LEN                                # -65.95, compute starts here
+HEAD_LEN   = PCB_YP - HEAD_Y0                                 # 13.45, mirrored at -Y
+WRAP_Y     = Y_TAIL - HEAD_LEN                                # -65.00, compute starts here
 # COMPUTE SECTION WIDTH is set by the -Y EDGE, not by the MCU any more. Every cable now
 # leaves at -Y (user: a -X exit cannot be routed cleanly), so that edge has to carry the
 # USB-C AND the 6-way XH side by side, and THAT is the binding dimension -- the LQFP144
@@ -826,8 +766,8 @@ assert TAIL_X1 - COMPUTE_X0 >= COMPUTE_W_MIN - 1e-9, \
 # Module level because the MCU is placed AGAINST the tail screw and _parts() runs before
 # mount_points() is defined. One source, so the screw and the part that dodges it cannot
 # drift apart. MIN_WALL_2P of plinth on the outboard side of each.
-MOUNT_KEEP   = D.MIN_WALL_2P + M4.insert_pilot_d / 2          # 4.60
-MOUNT_X_HEAD = PLINTH_X0 + MOUNT_KEEP                         # -20.46, hard -X
+MOUNT_KEEP   = D.MIN_WALL_2P + M4.insert_pilot_d / 2          # 4.65
+MOUNT_X_HEAD = PLINTH_X0 + MOUNT_KEEP                         # -20.41, hard -X
 # ⚠⚠ THE TAIL MOUNT IS ON THE -X PLINTH NOW, NOT +X (user, 2026-09-29: "There seems to be
 # more open space over on the -x side, and that's closer to the optical sensors which are the
 # main thing we need to lock in position"). Both true, and it is the cheaper answer by a long
@@ -841,7 +781,6 @@ MOUNT_X_HEAD = PLINTH_X0 + MOUNT_KEEP                         # -20.46, hard -X
 # legal AXIS at -16.906 local. The binding surface is the wrap plinth, not the laminate (see
 # mount_points), so this is as far -X as an M4 can go with MIN_WALL_2P of plinth around it.
 MOUNT_X_TAIL = MOUNT_X_HEAD                                   # -20.46, the -X plinth too
-MOUNT_CLR    = M4.shaft_clr_d / 2 + 1.0                       # keep-out radius, 3.20
 # PCB_YP is an OUTPUT, set after the parts exist: the +Y-most quad's feedback grid sits
 # in the Y gap above it and reaches past the last detector, so sizing this end from the
 # sensing field alone ran parts off the board.
@@ -860,7 +799,6 @@ def section_at(y: float):
 # end (closest to the termination it is allowed to be); the quad op-amps sit immediately
 # -X of it so the summing node is a few mm long; the feedback R/C and the LED ballast
 # fill the Y GAPS rather than taking their own columns, because there is no X left.
-ROW_X0    = SENSE_X - CRTYD[LED_PKG_NAME][0] / 2              # the row's -X edge, by LAND
 # ⚠ THE OP-AMP COLUMN IS DERIVED FROM THE BOARD EDGE NOW, not from a typed gap to the
 # sensor row. It used to be `ROW_X0 - 2.0 - half a package`, which worked while the
 # spacing was in BODIES and put the quad's land 1.5 mm off the board once the spacing
@@ -972,40 +910,6 @@ COVER_X0  = COL_OPA + _OP_W / 2 + 0.5             # lid's -X edge, -22.00
 # referencing SENSE_HL left only 0.1 of material outboard of the last slot -- a knife edge
 # (user-caught). Two full beads past the aperture instead.
 COVER_HY  = _OUTER_Y + SLOT_DY / 2 + D.MIN_WALL_2P
-# ⚠ THE ROW PITCH WAS NEVER THE CONSTRAINT -- THE GAPS WERE SHARED. Each quad's
-# feedback cluster sits in a Y gap beside it, and `s` used to alternate, so U1's cluster
-# pointed -Y and U2's pointed +Y: BOTH INTO THE SAME GAP, back to back, two four-row
-# grids in the 18.73 mm between two quads. That is why the pitch could not be widened --
-# every extra 0.1 a row closed 0.6 between Cd12 and Cd22, which is the collision the
-# placement assert reported and which my arithmetic (they are 37 mm apart!) could not
-# explain: I was reading the two clusters as belonging to different gaps.
-#
-# EVERY CLUSTER NOW HANGS BELOW ITS OWN QUAD, so each gap holds exactly one. The budget
-# stops being "half a gap" and becomes a whole one, and it is not close:
-#
-#   nearest row  >= SOIC_crtyd_Y/2 + 0402_crtyd_Y/2 + clearance  ->  5.39
-#   farthest row <= 2*PITCH - the same                           -> 13.34
-#
-# 5.6 .. 11.6 at a 2.0 pitch sits inside that with 1.7 mm to spare. The point is not the
-# spare: it is that a 2.0 pitch leaves 0.97 mm of clear board between one row's courtyard
-# and the next, where 1.15 left 0.12. A 0.25 track plus its clearance is 0.377, so the
-# grid now has ROUTING CHANNELS BETWEEN ITS ROWS -- two lanes' worth -- and before it had
-# none at all. Thirteen of the router's failures were TIA nets trying to cross this field.
-FB_PITCH = 2.0                                # 0402 grid in the Y gaps, column pitch
-# ⚠ 2.4, SIZED FOR A VIA AND NOT FOR A TRACK. At 2.0 the channel between two rows is
-# 0.97 mm, which takes two 0.25 tracks and NOT a via: a 0.6 via with 0.14 clearance
-# needs 0.88 mm of clear board, so at 0.97 it fits only if it is centred to within
-# 0.04 mm. That matters because the connection that keeps failing in this field is a
-# feedback resistor to its own op-amp OUTPUT, 9.5 mm away past the SOIC -- a trip the
-# top layer cannot make at all, so it needs two vias, in these channels.
-# 2.4 gives 1.37 mm: a via with room to be placed rather than threaded. The ceiling
-# is 2.58 (the next quad's courtyard), so this still leaves margin.
-FB_ROW_PITCH = 2.4
-FB_ROWS = tuple(5.6 + k * FB_ROW_PITCH for k in range(4))
-# No per-quad pull any more. U1 needed one because it was the squeezed half of the shared
-# U1/U2 gap; nothing is squeezed now. (U1 still hangs BELOW its quad rather than above --
-# the jack's access hole takes the gap above it -- but so does every other cluster.)
-FB_ROWS_U1 = FB_ROWS
 
 
 # The converter cells' input fan (see 3e in _parts): cap x per input, relative to the
@@ -1233,7 +1137,7 @@ def _block(out, y, items, x0, x1, reserve=None, reserve_y=None):
 # the hole is centred in the gap above U1, so a shared-row cluster there still fouls it by
 # 2.20 at O4.4. And the pull is not the hole's doing either; it is U2's cluster below that
 # sets it. Both survive the diameter change untouched.
-JACK_ACCESS_XY = TP.JACK_POS[0]                 # THE JACK'S OWN POSITION, read from
+JACK_ACCESS_XY = DL.JACK_POS[0]                 # THE JACK'S OWN POSITION, read from
                                                 # top_plate -- not a copy of it, so the
                                                 # hole cannot drift off the screw
 # SIZED FOR THE DRIVER, NOT THE SCREW (user). It was O8.0 -- big enough to pass the M4
@@ -1269,8 +1173,6 @@ _HEX25_R = 2.887 / 2.0
 # genuinely small, and copper-free until O6.4, where a MID track comes within 0.259 mm -- but
 # it changes Edge.Cuts, which costs a full re-route on a board at 0 violations, and the user
 # confirmed from a top view that the head is reachable as built.
-
-
 
 
 # ⚠ WHERE A GIVEN LQFP PIN IS, DERIVED RATHER THAN MEASURED ONCE AND PASTED. The two
@@ -1567,9 +1469,9 @@ def _parts():
     _c113_y = _part_y("U6") - _lqfp_pin_offset(VCAP2_PIN)[1]   # CAD y = -footprint y
     # mount_points() is defined below this function, so the tail screw is rebuilt from
     # the same two constants it uses rather than imported -- if either moves, this moves.
-    _head_clear = TP.JACK_HEAD_D / 2 + PKG_CLR + CRTYD["0805C"][1] / 2
+    _head_clear = DL.JACK_HEAD_D / 2 + PKG_CLR + CRTYD["0805C"][1] / 2
     _tail_my = Y_TAIL - MOUNT_KEEP
-    if abs(MOUNT_X_TAIL - _c113_x) < CRTYD["0805C"][0] / 2 + TP.JACK_HEAD_D / 2             and abs(_c113_y - _tail_my) < _head_clear:
+    if abs(MOUNT_X_TAIL - _c113_x) < CRTYD["0805C"][0] / 2 + DL.JACK_HEAD_D / 2             and abs(_c113_y - _tail_my) < _head_clear:
         _c113_y = _tail_my - _head_clear         # step -Y, away from the head
     add("C113", "H7 core regulator cap, VCAP2 -- REQUIRED; hand-placed beside its own "
         "pin on the +X edge, stepped clear of the tail mount's head", "0805C",
@@ -2710,42 +2612,6 @@ if OPTICAL_REV != 1:
 # (no per-order feeder charge); everything else is Extended, at ~$1.50/unique part/order.
 MPN_UNKNOWN = "OPEN"        # deliberately unresolved -- see BOM.md, blocks ordering
 
-# ⚠ THESE BELONG TO THE OUTPUT PANEL AND MUST NOT BE IN _MPN_RULES. They were, and two
-# of them collided: _MPN_RULES matches by LONGEST PREFIX, so the panel's "D8" (relay coil
-# flyback) and "D9" (output clamp) beat this board's bare "D" rule and captured D8 and D9
-# -- which on THIS board are two of the ten IR EMITTERS. Both would have been quoted as
-# unresolved SOD-523 diodes, and nothing could have caught it: the CAD was consistent
-# with itself, the netlist was consistent with itself, and DRC does not read either.
-# The exact-ref table exists BECAUSE designators are not a clean namespace within a
-# board; this was the same failure ACROSS boards. Kept here as documentation of the
-# panel's open lines, and deliberately not reachable from mpn().
-# elec/mpn_check.py now compares this table against the netlist and is what found it.
-_OUTPUT_PANEL_OPEN = (
-    ("U14",  (MPN_UNKNOWN,       "",         1.20,  "I2S stereo audio DAC, TSSOP-20. OPEN: "
-                                                    "PCM5102A-class is the obvious pick (no "
-                                                    "MCLK needed, integrated charge-pump "
-                                                    "output, 2 Vrms). CONFIRM the part and "
-                                                    "its LCSC stock before layout")),
-    ("U15",  (MPN_UNKNOWN,       "",         0.20,  "output buffer op-amp, SOT-23-5. OPEN. "
-                                                    "WANTED: rail-to-rail output, >=10 mA "
-                                                    "drive into a long cable, and low noise "
-                                                    "-- it is the last thing before the jack")),
-    ("K1",   (MPN_UNKNOWN,       "",         1.50,  "LATCHING signal relay, 2-coil, SMD. OPEN. "
-                                                    "LATCHING is the requirement, not a "
-                                                    "preference: a held coil draws current "
-                                                    "and hums at the audio it is switching. "
-                                                    "De-energised state MUST be the direct "
-                                                    "path -- see section 3d")),
-    ("Q2",   (MPN_UNKNOWN,       "",         0.05,  "relay coil driver, SOT-23. OPEN: any "
-                                                    "logic-level N-ch; AO3400A (C20917, "
-                                                    "already on this board as Q1) would do "
-                                                    "and would not add a line")),
-    ("D8",   (MPN_UNKNOWN,       "",         0.03,  "relay coil flyback, SOD-523. OPEN")),
-    ("D9",   (MPN_UNKNOWN,       "",         0.05,  "output clamp, SOD-523. OPEN: bidirectional, "
-                                                    "and it sits INSIDE C170 -- it catches the "
-                                                    "insertion edge a DC block passes, not the "
-                                                    "48 V itself")),
-)
 
 # ref-prefix -> (mpn, lcsc, unit_usd, note). Longest prefix wins, so "PD" beats "P".
 _MPN_RULES = (
@@ -3071,7 +2937,6 @@ if OPTICAL_REV != 1:
     # R2: the lowest courtyard but J1's (which stands in its notch) plus the edge keep-out.
     # Over the rail to branner's limit (user, 2026-10-30), one bead inside the body's -115.45.
     PCB_YM = -114.65
-PCB_L  = PCB_YP - PCB_YM
 # ⚠ O-BAND, EXPERIMENTAL (user asked to try it, 2026-09-23). The board is a C: the +Y wrap
 # reaches the main body only through the sensing strip, so every digital net between U6 and
 # the converters crosses the analog strip. Closing it into an O gives them their own path.
@@ -3095,8 +2960,6 @@ PCB_L  = PCB_YP - PCB_YM
 # O_BAND_X0 = None keeps the C. Set it to test the O; the endplate is NOT yet cut for it,
 # so the overlap gate will fail on bridge_endplate until that work is done.
 O_BAND_X0 = None
-_STRIP_X0 = PCB_X0 if O_BAND_X0 is None else O_BAND_X0
-O_ROD_HOLE_D = 3.9                                     # kept for the record; nothing uses it
 O_ROD_HOLES = []                                       # none -- rods go in before the board
 
 # ── THE O, PROPERLY THIS TIME ────────────────────────────────────────────────
@@ -3120,8 +2983,6 @@ O_ROD_HOLES = []                                       # none -- rods go in befo
 # could be far thinner; the axle says it cannot be absent.
 O_SHAPE = True
 BE_ARM_W = 4.80          # bridge_endplate.ARM_W; mirrored, it imports US
-_BRG_X0 = D.BRIDGE_AXLE_X - D.BRIDGE_BEARING_OD / 2
-_BRG_X1 = D.BRIDGE_AXLE_X + D.BRIDGE_BEARING_OD / 2
 # ⚠ THE HOLE'S Y IS SET BY THE ARMS, NOT THE BEARINGS, and sizing it off the bearings
 # alone quietly decapitated the axle. The arms stand at y +-48.40 and are 4.80 wide, so
 # they reach 50.80 -- outside a hole sized to the outermost bearing at 46.85. That put them
@@ -3133,15 +2994,6 @@ _BRG_X1 = D.BRIDGE_AXLE_X + D.BRIDGE_BEARING_OD / 2
 # NO FASTENER, and an open-topped bore has nothing to stop it lifting out.
 _BRG_Y = max(max(abs(D.string_y(i)) for i in range(D.N_STRINGS)) + D.BRIDGE_BEARING_W / 2,
              D.BRIDGE_ARM_Y + BE_ARM_W / 2)
-_BRG_TOP = D.BRIDGE_BEARING_Z + D.BRIDGE_BEARING_OD / 2
-# ⚠ RAMP ALLOWANCE OFF (user, 2026-09-23: "ignore printability, I want to see what it
-# looks like"). It reserved a 45 deg run for the block to climb from the board's seat to
-# the bearing top, and measuring says it buys nothing anyway: with it at 0 the ONLY
-# unsupported material left anywhere in this region is the axle bore's own crown at
-# x -10..-7, which is pre-existing and printable_bore already handles. A vertical wall
-# from the seat to the bearing top does not grow outward with height, so it is not an
-# overhang. Turn this back on if a print says otherwise.
-_O_RAMP = 0.0                                          # was _BRG_TOP - PLINTH_TOP
 # ⚠ A COMB, NOT ONE OPENING (user, 2026-09-23). One 30 x 105 hole is the lazy shape and it
 # costs the board its whole middle. What actually pokes through the board's plane is:
 #   * ten BEARINGS, 5.0 wide on a 9.5 pitch, reaching z 16.0;
@@ -3209,14 +3061,7 @@ def usb_notch():
     x, y1 = part("J1")["x"], part("J1")["y"] - CRTYD["USB-C"][1] / 2 + USB_NOTCH_D
     if OPTICAL_REV == 1:
         return (x - USB_NOTCH_W / 2, x + USB_NOTCH_W / 2, PCB_YM, y1)
-    from . import deck_layout as _MB
-    return (x + 6.3 - 15.2, x + 6.3, _MB.RAIL_INNER_Y, y1)
-
-
-def pwr_col_x():
-    """X of the 24 V pair's drop: in the notch, the pair's width plus USBC_NOTCH_CLR in from
-    its -X end."""
-    return usb_notch()[0] + USBC_NOTCH_CLR + XH_OD / 2.0
+    return (x + 6.3 - 15.2, x + 6.3, DL.RAIL_INNER_Y, y1)
 
 
 def mount_points():
@@ -3260,7 +3105,7 @@ def mount_points():
 # body-clearance check is what let a courtyard overlap through, and a 0402's extents swap
 # when it is rotated 90 degrees, which a radius comparison cannot see.
 def _assert_mount_heads_clear():
-    _hr = TP.JACK_HEAD_D / 2.0
+    _hr = DL.JACK_HEAD_D / 2.0
     for _mx, _my in mount_points():
         for _p in PARTS:
             _cr = CRTYD.get(_p.get("pkg"))
@@ -3393,18 +3238,6 @@ def _outline(grow=0.0, t=None, zc=None):
     return out
 
 
-def _part_solid(p):
-    """Package standing UP from the board's top face (single-sided, components at the
-    strings). None where the package has NO BODY: a test point is bare copper, PKG['TP']
-    height 0.00, and a zero-height box is not a solid -- OCC raises Standard_DomainError
-    and takes the whole build with it. Nothing to draw is not the same as an error."""
-    dx, dy = part_wh(p)
-    dz = PKG[p["pkg"]][2]
-    if dz <= 0.0:
-        return None
-    return box_at(dx, dy, dz, x=p["x"], y=p["y"], z=PCB_TOP + dz / 2)
-
-
 def opt_pcb() -> cq.Workplane:
     """The assembled optical strip: the ROUTED board read back from elec/geom/optical.geom.json
     (laminate with its holes and notch, every part's F.Fab body at its height, through-hole
@@ -3435,90 +3268,10 @@ def opt_pcb() -> cq.Workplane:
     return pcb
 
 
-def jack_access(grow: float = 0.0) -> cq.Workplane:
-    """The pickup jack's access hole, as a cutter. Shared: the board cuts it, and
-    the endplate cuts the SAME hole through the pad under it -- both are in the
-    screw's way, and one description keeps them concentric."""
-    jx, jy = JACK_ACCESS_XY
-    return (cq.Workplane("XY")
-            .add(cq.Solid.makeCylinder(JACK_ACCESS_D / 2 + grow, 40.0,
-                                       pnt=cq.Vector(jx, jy, PCB_BOT - 20.0))))
-
-
-# APERTURE PLAN SHAPE -- an open-ended NOTCH, and the two shapes it is not.
-#
-# The endplate builds +X -> -X, so each layer is a Y-Z slice and anything it adds must sit
-# within 45 deg of the layer at +X of it.
-#
-#   * A CLOSED rectangular slot fails that at its -X end: the roof resumes across the full
-#     SLOT_DY x COVER_T face over void, anchored only at its two Y edges. That is a 5.0 mm
-#     bridge directly over the optics, where sag lands in the aperture.
-#   * A 45 deg V ("/\") closing the -X end fixes the bridge -- the void must close in Y, not
-#     Z, since Z is in-plane for these layers and tapering thickness only thins the bridge --
-#     but IT DOES NOT FIT. The apex needs SLOT_DY/2 = 2.50 of X measured from the packages'
-#     -X edge at -20.50, landing at -23.00, and the roof stops at COVER_X0 = -22.00 because
-#     the quad op-amps stand taller than the roof underside. Truncated there, the flank
-#     crosses the roof's -X boundary at 45 deg and leaves an acute WEDGE of roof material
-#     tapering 1.50 -> 0.00: a knife edge, measured, and under the 1.6 floor for its whole
-#     length. Both failures were caught by the user from renders.
-#
-# So the aperture simply RUNS OUT of the roof's -X edge with sides parallel to X. Nothing
-# ever closes over the void, so there is no bridge; the sides are parallel to the build
-# direction, so there is no stepover at all; and the material outboard of every aperture is
-# the full 4.40 web rather than a taper. The roof becomes a comb of stubby teeth
-# (4.40 x 5.40 x 1.60) joined at +X, which is where it fuses into the endplate's comb brace.
-#
-# The cost is that the -X end is open rather than partly closed. Cheap: the shallow-angle
-# ambient path was already being handled by the 0.30 gap over 5.40 of depth, not by this
-# edge, and -X of the cover is instrument interior rather than sky.
-#
-# To get a true gable the op-amp column would have to move ~1.5 -X so the roof could reach
-# -23.50. That trades the TIA's distance from its photodiode -- the noise-critical summing
-# node -- for lid cosmetics, which is the wrong way round unless something else wants it.
-APER_X1 = BAND_X0 - D.MIN_WALL_2P                # -26.66: leaves a FULL two-bead strip of
                                                  # roof at +X, where the old 3.0-wide slot
                                                  # left only 1.40. Still clears the packages
                                                  # (they end at -18.50) by 0.30.
 
-
-def _aperture_cutter(sy: float) -> cq.Workplane:
-    """One string's aperture: a constant-width notch, open at the roof's -X edge."""
-    return box_at(APER_X1 - (COVER_X0 - 1.0), SLOT_DY, COVER_T + 2,
-                  x=(APER_X1 + COVER_X0 - 1.0) / 2, y=sy,
-                  z=(COVER_Z0 + COVER_Z1) / 2)
-
-
-def opt_cover() -> cq.Workplane:
-    """Lid over the sensor row, UNIONED INTO THE ENDPLATE (user) rather than made as a
-    separate printed part: the plinth is only 3.2 thick and cannot host an M2 anchor, so
-    a bolt-down lid had nowhere to land. Integral solves retention by deleting it.
-    The board therefore installs by SLIDING +X under the roof, and comes out the same way
-    -- which needs the magnetic pickup out of the way first.
-
-    Was: a printed lid over the sensor row: a roof with one aperture per string, plus a -X
-    wall that closes the shallow-angle ambient path (from +X the endplate already does).
-    Drops on after the board and is the last thing installed before stringing.
-
-    It covers the ROW ONLY, not the whole board: the quad op-amps stand 1.75 above the
-    board, higher than the roof, and they need no protection -- only the optics do."""
-    # ⚠ THERE IS NO COVER ANY MORE (COVER_T 0). Return None rather than a zero-height box:
-    # OCCT raises Standard_DomainError on a 0 mm extrude, so the endplate's union of this
-    # blew up with a stack trace that says nothing about covers. Callers skip a None.
-    if COVER_T <= 0.0:
-        return None
-    # +X edge runs to the DECK BAND edge, not the board edge, so the roof fuses into the
-    # endplate's comb brace instead of floating 0.2 short of it.
-    x0, x1 = COVER_X0, BAND_X0
-    roof = box_at(x1 - x0, 2 * COVER_HY, COVER_T,
-                  x=(x0 + x1) / 2, y=0, z=(COVER_Z0 + COVER_Z1) / 2)
-    # NO -X WALL any more. Integrating the lid means the board SLIDES IN +X beneath it,
-    # so nothing may hang below the roof or the sensors cannot pass. Cheap to lose: the
-    # roof underside sits COVER_GAP (0.3) over the sensor faces across 5.4 of depth, so a
-    # ray from -X has to be within ~3 deg of horizontal to reach a detector -- the gap's
-    # own aspect ratio does what the wall did.
-    for i in range(D.N_STRINGS):                       # apertures
-        roof = roof.cut(_aperture_cutter(string_y_at(i, SENSE_X)))
-    return roof
 
 # ── CABLE CONDUIT -- both plugs leave the board and drop into the body here ──────────
 # REQUIREMENT (user): get the USB-C and the 6-way XH down into the instrument WITHOUT any
@@ -3585,14 +3338,8 @@ _USBC_W, _USBC_H = 12.35, 6.50                                # USB-IF MAX overm
 # DIMENSIONS, NOT A MEASUREMENT: re-read them off the part when one is in hand.
 USBC_ANG_W = 12.0               # overmould, along the socket's long axis
 USBC_ANG_D = 5.2                # mating face -> back of the overmould
-USBC_ANG_BODY = 10.3            # the overmould along the cable. ASSUMED centred on the
-                                # plug's axis: the photo does not dimension where it sits
-USBC_ANG_BOOT = 8.4             # the ribbed relief past it
-USBC_BOOT_T = 3.5               # ...its thickness, ASSUMED (not dimensioned)
-USBC_RIBS = 5                   # ...and its ribs, counted off the photo
 RIBBON_W = 10.8                 # the flat cable, across
 RIBBON_T = 1.5                  # ...and through, ASSUMED (not dimensioned)
-USB_LEAD_L = 300.0              # overall, taken as overmould to overmould laid straight
 # ...AND THE CONDUIT STILL TAKES A STRAIGHT PLUG OF 17.5, which is what it was cut for and
 # costs nothing to keep. J2's 14.0 is the XH housing and its wires' relief.
 PLUG_L = {"J1": 17.5, "J2": 14.0}
@@ -3614,15 +3361,14 @@ PLUG_L = {"J1": 17.5, "J2": 14.0}
 YM_AT_SURVEY = -109.54                                        # PCB_YM on main when measured
 Y_BUDGET     = 37.25                                          # board -Y edge -> instrument
 _WALL_Y = YM_AT_SURVEY - Y_BUDGET + D.MIN_WALL_2P             # -145.19, conduit's -Y limit
-CONDUIT_W = max(_XH4_D, _USBC_H) + 2 * CONDUIT_CLR            #  9.50, along X (thin axis)
 # Y answers TWO separate requirements and must satisfy the larger. Sizing it on the span
 # alone was a latent bug: it happened to be big enough only because the straight USB-C plug
 # was longer than the XH is wide, so shortening a plug would have quietly made the shaft too
 # narrow to PASS one.
-_COND_PASS = max(_XH4_W, _USBC_W) + 2 * CONDUIT_CLR           # 20.40: get a plug THROUGH
+_COND_PASS = max(_XH4_W, _USBC_W) + 2 * CONDUIT_CLR           # 15.40: get a plug THROUGH
 _COND_SPAN = max(PLUG_L.values()) + 2 * CONDUIT_CLR           # 20.50: reach past a MATED plug
 CONDUIT_D = max(_COND_PASS, _COND_SPAN)                       # 20.40, along Y
-CONDUIT_Y1 = PCB_YM - 2.0                                     # -124.58, clear of the board
+CONDUIT_Y1 = PCB_YM - 2.0                                     # -91.70, clear of the board
 CONDUIT_Y0 = CONDUIT_Y1 - CONDUIT_D
 if OPTICAL_REV != 1:
     # R2: RIGHT-ANGLE PLUGS ONLY (lead, 2026-10-29), so the shaft passes the down-angle
@@ -3630,8 +3376,7 @@ if OPTICAL_REV != 1:
     # from the -Y rail's wall (motor_bank.RAIL_INNER_Y + MIN_WALL_2P) up to J1's notch,
     # under the board's -Y band: the USB plug hangs in the notch, and J2's pair turns down
     # over the board's -Y edge into the band between that edge and the wall.
-    from . import deck_layout as _MB_R2
-    CONDUIT_Y0 = _MB_R2.RAIL_INNER_Y + D.MIN_WALL_2P
+    CONDUIT_Y0 = DL.RAIL_INNER_Y + D.MIN_WALL_2P
     CONDUIT_Y1 = usb_notch()[3]
     CONDUIT_D = CONDUIT_Y1 - CONDUIT_Y0
 assert CONDUIT_Y0 >= _WALL_Y - 1e-9, (
@@ -3640,40 +3385,8 @@ assert CONDUIT_Y0 >= _WALL_Y - 1e-9, (
     f"endplate. Specify a shorter overmold or move the board +Y.")
 
 
-RUN_Z      = DECK_TOP - 16.0                                  # harness plane in the box
-
-
-
-
-# Where the two optical leads run (see opt_cables).
-PWR_Z_TURN = RUN_Z - 3.5                # -13.1: the 24 V pair crosses UNDER the USB
-                                        # ribbon, in a trench in the conduit's floor
-                                        # (opt_pwr_slot). The pair is stacked in Z there,
-                                        # 1.9 either side of this
-                                        # opt_cables). Three pitches: the -Y rail's end
-                                        # tenon reaches x -17.46 inside the conduit since
-                                        # it became the fit-tested 8.0-deep joint (it was
-                                        # -19.93 at 3.75), and the pair hangs 1.9 either
-                                        # side of this line -- 0.5 clear of the tip
-PWR_Z_REC = -25.5                       # the 24 V lead crossing into the board recess,
-                                        # 0.3 under its roof at FOOT_Z
-PWR_X_RISE = -27.5                      # the 24 V lead's riser: its skin 0.44 off the
-                                        # endplate's -X face (-25.06)
-PWR_Z_BAY = -18.5                       # ...and its height over the bay: 1.0 over the J7
-                                        # pair's loop where the two cross (loop top -21.5)
-FOOT_ROOF_Z = CH.KH_DT_Z0                # the board recess's roof, which the cable hole opens into
-# The USB ribbon's run, on edge: its slack runs -X past the bay under chassis_0, whose band starts
-# at z -29.85 over x -134.8..-88, so the ribbon's top edge stays 0.35 under that, not the recess's roof.
-RIBBON_Z = -29.85 - 0.35 - RIBBON_W / 2.0                  # -35.6
 USBC_MATE_L = 6.6                       # the plug's stroke: its metal tongue, as measured
 USBC_TONGUE_W, USBC_TONGUE_T = 8.25, 2.4    # ...and its section, USB-C's nominal, not measured
-USB_J4_JOG = 5.0                        # the ribbon's step -X over J4's boot, to rise
-                                        # outside the J7 pair's loop
-USB_BACK_DY = 6.0                       # the doubled-back slack's leg, +Y of the run
-XH_OD = 4.0                             # the 24 V lead (6x 26 AWG), as opt_cables draws it
-
-
-USBC_NOTCH_CLR = 0.5
 
 
 def usb_face_y() -> float:
@@ -3703,8 +3416,6 @@ CABLE_HOLE_D = (math.ceil((max(_XH4_D, USBC_ANG_D + USBC_MATE_L) + 2 * CABLE_HOL
 
 # THE 24 V PAIR IN THE HOLE: at its -X end, beside where the USB head passes. It goes first.
 _nh = usb_notch()
-PWR_Y = (_nh[2] + _nh[3]) / 2.0
-PWR_DROP_X = _nh[0] + CABLE_HOLE_FIT + 1.3
 # The user's install order, in the board's hole: the XH alone, then the USB head beside the pair.
 # R2's hole only: R1's cut is a notch in the board's edge, with no shaft of its own to match.
 if OPTICAL_REV != 1:
@@ -3717,18 +3428,6 @@ if OPTICAL_REV != 1:
     assert USBC_ANG_D + USBC_MATE_L + 2 * CABLE_HOLE_FIT <= _nh[3] - _nh[2] + 1e-9, "USB head too long"
     assert _XH4_W + 2 * CABLE_HOLE_FIT <= _nh[1] - _nh[0] and _XH4_D + 2 * CABLE_HOLE_FIT <= _nh[3] - _nh[2], (
         "the XH plug no longer passes")
-
-
-def opt_cable_hole() -> cq.Workplane:
-    """R2's cable passage through the endplate (see CABLE_HOLE_FIT): usb_notch()'s plan with its
-    roof toward the build, from the board's recess up through the top. The -Y wall stands on
-    the rail's inner plane, which is the rail's own wall below FOOT_ROOF_Z and is not cut."""
-    x0, x1, y0, _y1 = usb_notch()
-    d = CABLE_HOLE_D
-    y1 = y0 + d
-    return house_hole(d, PLINTH_TOP + 1.0 - (FOOT_ROOF_Z - 1.0),
-                      axis_point=(x1 - d / 2.0, (y0 + y1) / 2.0, FOOT_ROOF_Z - 1.0),
-                      axis_dir=(0.0, 0.0, 1.0), print_up=(-1.0, 0.0, 0.0), wall=x1 - x0)
 
 
 def _assert_field_clear():
@@ -3881,7 +3580,7 @@ def _assert_field_clear():
     # a clearance-hole ring -- while the button head that actually lands on the board
     # reaches 3.8 (and was drawn at 3.5, which hid it). A part inside that radius is
     # crushed by the screw that is supposed to be holding the board.
-    _head_r = TP.JACK_HEAD_D / 2
+    _head_r = DL.JACK_HEAD_D / 2
     for mx, my in mount_points():
         for q in PARTS:
             x0, x1, y0, y1 = part_span(q)
@@ -3889,7 +3588,7 @@ def _assert_field_clear():
             if gap < PKG_CLR - 1e-9:
                 raise AssertionError(
                     f"optical strip: {q['ref']} ({q['desc']}) is {gap:.2f} from the "
-                    f"O{TP.JACK_HEAD_D} button head of the M4 mount at ({mx:.2f}, "
+                    f"O{DL.JACK_HEAD_D} button head of the M4 mount at ({mx:.2f}, "
                     f"{my:.2f}) -- under PKG_CLR {PKG_CLR}; the head would crush it")
     # 6. the lid must keep real material outboard of its last aperture, at both ends
     edge = COVER_HY - (_OUTER_Y + SLOT_DY / 2)
@@ -3933,97 +3632,12 @@ def _assert_field_clear():
 
 _assert_field_clear()
 
-# ── HAND GUARD -- the lid over everything that is not under a string ─────────
-# (user, 2026-10-02: "it seems a bit risky having a PCB right near where your hand would
-# rest ... a 1.6mm thick cover which uses the same two screws the optical PCB currently
-# uses and covers everything other than the part under the strings (no room to fit
-# plastic there)".)
-#
-# NOT the light cover above (COVER_*, deleted 2026-09-23): that one sat over the sensor row
-# and cost standoff. This one stays OFF the sensing field entirely -- it is a palm rest.
-#
-# ONE FLAT ROOF, and the height is the USB-C shell's. A stepped roof would sit lower over
-# the 1.6 mm parts beside the strings, but the part prints ROOF-DOWN (the hand's face is
-# the bed face, every wall and post grows up off it) and a step would hang the low tier in
-# the air. J2 (7.0 tall) comes through a notch instead of raising the whole roof 3.8 mm
-# for one connector at the far end of the board.
-GUARD_T = 2 * D.BEAD                             # 1.6, the user's number
-GUARD_CLR = 0.4                                  # roof underside over the tallest part
-# ⚠ TOP ONLY, AND NOTHING UNDER TWO BEADS (user, 2026-10-02: "the PCB cover breaks the
-# 1.6mm bead width rule. We can skip covering the sides and just cover the top"). The first
-# version stood on a 0.8 rim along the board's edge and hung a 0.8 lip down past it; both
-# are gone. The roof stands on POSTS and the two screw bosses, and the sides are open.
-GUARD_PART_CLR = 0.3                             # any foot <-> any part body
-GUARD_OPEN_CLR = 0.5                             # roof edge past the slots' +X end
-GUARD_WINDOW = ("J2",)                           # parts that come THROUGH the roof
-GUARD_POST_D = 3.0                               # > MIN_WALL_2P; a round post, not a wall
-GUARD_POST_IN = D.MIN_WALL_2P                    # roof left outboard of a post
-assert GUARD_POST_D >= D.MIN_WALL_2P
-GUARD_SPAN = 12.0     # no roof point further than this from a post, WHERE THERE IS BARE
-#                       BOARD FOR ONE. Tighter than the 16 the rimmed version used (user:
-#                       "we'll probably want more standoffs ... it won't be supported along
-#                       the edges anymore"). The MCU is the exception nothing can fix: a
-#                       26 mm square with no bare board inside it, ringed instead.
-GUARD_HEAD_CLR = 0.3                             # radial, well <-> button head
-GUARD_SCREW_L = 20.0     # was 12: the head now sits on the guard, 2.96 higher. x16 would
-#                          do, but x20 is already a BOM line and x16 is not
-
-_G_X0, _G_X1 = min(s[2] for s in _SECTIONS), max(s[3] for s in _SECTIONS)
-_G_Y0, _G_Y1 = min(s[0] for s in _SECTIONS), max(s[1] for s in _SECTIONS)
-GUARD_OPEN_X = O_SLOT_X1 + GUARD_OPEN_CLR        # 1.85: the string is below the board here
-GUARD_Z0 = PCB_TOP + max(PKG[p["pkg"]][2] for p in PARTS
-                         if p["ref"] not in GUARD_WINDOW) + GUARD_CLR
-GUARD_Z1 = GUARD_Z0 + GUARD_T
-GUARD_SEAT_Z = GUARD_Z1 - TP.JACK_HEAD_H         # the button head finishes FLUSH
-GUARD_WELL_D = TP.JACK_HEAD_D + 2 * GUARD_HEAD_CLR
-GUARD_BOSS_D = GUARD_WELL_D + 2 * D.MIN_WALL_2P
-# ⚠ THE ROOF REACHES IN PAST THE SCREW BOSSES (user, 2026-10-02, with a marked-up
-# screenshot: "extend the top cover a bit ... so that the screw boss material doesn't
-# create a print overhang"). The opening used to stop at the wrap seam, HEAD_Y0 51.55, and
-# the 11.4 boss at y 56.15 reaches 50.45 -- so 1.1 mm of boss stood out past the roof it
-# grows from, in mid-air on a roof-down print. The edge is the boss's own, plus a bead.
-GUARD_OPEN_Y = min(HEAD_Y0, min(abs(_my) for _mx, _my in mount_points())
-                   - GUARD_BOSS_D / 2 - D.BEAD)
-assert GUARD_OPEN_Y >= _OUTER_Y + _BRG_HY + D.MIN_WALL_2P, "the roof has reached the slots"
-assert GUARD_SEAT_Z - GUARD_T >= PCB_TOP, "no room for a 1.6 floor under the screw head"
-
-
-def _guard_windows():
-    """(x0, y0, x1, y1) openings for the parts that stand through the roof. R1's run out to
-    the board's -Y edge: its plug comes in from there. R2's are closed (user, 2026-10-31):
-    J2 is top entry and the leads come up the cable hole, so the roof carries on -Y of both."""
-    out = []
-    edge = (lambda y: _G_Y0 - 5.0) if OPTICAL_REV == 1 else (lambda y: y - GUARD_OPEN_CLR)
-    for ref in GUARD_WINDOW:
-        x0, x1, y0, y1 = part_span(part(ref))
-        a, c = x0 - GUARD_OPEN_CLR, x1 + GUARD_OPEN_CLR
-        # a strip of roof under two walls wide beside the notch is not worth keeping
-        if a - _G_X0 < 2 * D.MIN_WALL_2P:
-            a = _G_X0 - 5.0
-        if _G_X1 - c < 2 * D.MIN_WALL_2P:
-            c = _G_X1 + 5.0
-        out.append((a, edge(y0), c, y1 + GUARD_OPEN_CLR))
-    # AND OVER J1'S NOTCH (lead, 2026-10-29: "nothing over the full X span of J1's notch").
-    # R2's USB-C stands back in a notch in the board's -Y edge and its down-angle plug hangs in
-    # it, and J2's 24 V pair rises out of its top-entry plug, crosses -Y of the roof's edge to
-    # the notch and drops down it (pwr_col_x). The notch's own
-    # span is opened out to the -Y edge like a connector's, and a strip of roof left between it
-    # and J2's window -- two walls or less, which is where the pair crosses -- goes with it.
-    nx0, nx1, ny0, ny1 = usb_notch()
-    win = [nx0 - GUARD_OPEN_CLR, edge(ny0), nx1 + GUARD_OPEN_CLR, ny1 + GUARD_OPEN_CLR]
-    keep = []
-    for w in out:
-        if w[2] > win[0] - 2 * D.MIN_WALL_2P and w[0] < win[2] + 2 * D.MIN_WALL_2P:
-            win = [min(win[0], w[0]), min(win[1], w[1]), max(win[2], w[2]), max(win[3], w[3])]
-        else:
-            keep.append(w)
-    out = keep + [tuple(win)]
-    return out
-
-
+# ── LETTERING ────────────────────────────────────────────────────────────────
 def _silk_to_world():
     """(dx, dy): the routed board's own frame (centred on its outline) -> this module's."""
-    return (_G_X0 + _G_X1) / 2.0, (_G_Y0 + _G_Y1) / 2.0
+    x0, x1 = min(s[2] for s in _SECTIONS), max(s[3] for s in _SECTIONS)
+    y0, y1 = min(s[0] for s in _SECTIONS), max(s[1] for s in _SECTIONS)
+    return (x0 + x1) / 2.0, (y0 + y1) / 2.0
 
 
 def opt_silk():
@@ -4035,108 +3649,3 @@ def opt_silk():
         return None
     dx, dy = _silk_to_world()
     return w.translate((dx, dy, PCB_TOP - BG.load("optical")["thickness_mm"]))
-
-
-def _guard_free(x, y, rad):
-    """True where a foot of radius `rad` at (x, y) touches no part, pad, LABEL or screw
-    head. Labels because a post standing on a test pad's name hides it for good, and
-    because the lettering is a solid in the model now."""
-    from . import board_geom as BG
-    dx, dy = _silk_to_world()
-    for a, b, c, d in BG.silk_boxes("optical"):
-        if math.hypot(max(a + dx - x, x - b - dx, 0.0), max(c + dy - y, y - d - dy, 0.0)) < rad + GUARD_PART_CLR:
-            return False
-    for p in PARTS:
-        a, b, c, d = part_span(p)
-        if math.hypot(max(a - x, x - b, 0.0), max(c - y, y - d, 0.0)) < rad + 2 * GUARD_PART_CLR:
-            return False
-    return all(math.hypot(x - mx, y - my) >= rad + GUARD_BOSS_D / 2
-               for mx, my in mount_points())
-
-
-def _guard_covered(x, y):
-    if not (_G_X0 <= x <= _G_X1 and _G_Y0 <= y <= _G_Y1):
-        return False
-    if x < GUARD_OPEN_X and abs(y) < GUARD_OPEN_Y:
-        return False
-    return not any(a <= x <= c and b <= y <= d for a, b, c, d in _guard_windows())
-
-
-def guard_posts():
-    """Where the roof stands on the board between its edges. SEARCHED, not typed: greedy
-    farthest-point over the bare board, until no covered point is more than GUARD_SPAN from
-    a foot. A 1.6 roof spanning the board's 57 mm on its rims alone sags ~1.4 mm under a
-    resting hand, and the tallest part is GUARD_CLR under it. The posts are ALL of the
-    support now: there is no rim."""
-    step = 1.0
-    feet = [(mx, my) for mx, my in mount_points()]
-    nx, ny = int((_G_X1 - _G_X0) / step), int((_G_Y1 - _G_Y0) / step)
-    grid = [(_G_X0 + i * step, _G_Y0 + j * step) for i in range(nx + 1) for j in range(ny + 1)]
-    cov = [g for g in grid if _guard_covered(*g)]
-    edge = GUARD_POST_D / 2 + GUARD_POST_IN
-    cand = [g for g in cov if _guard_free(g[0], g[1], GUARD_POST_D / 2)
-            and all(_guard_covered(g[0] + sx * edge, g[1] + sy * edge)
-                    for sx in (-1, 1) for sy in (-1, 1))]
-    dist = {g: min(math.hypot(g[0] - fx, g[1] - fy) for fx, fy in feet) for g in cov}
-    posts = []
-    while True:
-        worst = max(cov, key=lambda g: (dist[g], g))
-        if dist[worst] <= GUARD_SPAN:
-            return posts
-        # a post right beside another one buys nothing: the first draft of this fallback
-        # walked a row of 1 mm-spaced posts down each side of the MCU, 79 in all
-        near = [g for g in cand
-                if all(math.hypot(g[0] - q[0], g[1] - q[1]) >= GUARD_SPAN / 2 for q in posts)]
-        best = min(near, key=lambda g: (math.hypot(g[0] - worst[0], g[1] - worst[1]), g),
-                   default=None)
-        if best is None or math.hypot(best[0] - worst[0], best[1] - worst[1]) > dist[worst] - 1.0:
-            # no bare board nearer than the support this point already has (over the
-            # MCU): it is as well held as it can be -- set it aside and go on
-            dist[worst] = 0.0
-            continue
-        posts.append(best)
-        for g in cov:
-            dist[g] = min(dist[g], math.hypot(g[0] - best[0], g[1] - best[1]))
-
-
-def _assert_guard_clear():
-    """What the overlap gate cannot say usefully: WHICH part a foot landed on."""
-    for mx, my in mount_points():
-        for p in PARTS:
-            x0, x1, y0, y1 = part_span(p)
-            gap = math.hypot(max(x0 - mx, mx - x1, 0.0), max(y0 - my, my - y1, 0.0))
-            if gap < GUARD_BOSS_D / 2 + GUARD_PART_CLR:
-                assert PCB_TOP + PKG[p["pkg"]][2] + GUARD_CLR <= GUARD_SEAT_Z - GUARD_T + 1e-9, (
-                    "hand guard: %s stands under the screw well at (%.2f, %.2f)"
-                    % (p["ref"], mx, my))
-
-
-_assert_guard_clear()
-
-
-def opt_guard() -> cq.Workplane:
-    """The hand guard: a 1.6 roof over every part of the board that has no string above it,
-    held by the board's own two M4s (now x20, heads flush in wells). Prints roof-down."""
-    zc = (GUARD_Z0 + GUARD_Z1) / 2
-    roof = box_at(_G_X1 - _G_X0, _G_Y1 - _G_Y0, GUARD_T,
-                  x=(_G_X0 + _G_X1) / 2, y=(_G_Y0 + _G_Y1) / 2, z=zc)
-    big = 20.0
-    roof = roof.cut(box_at(GUARD_OPEN_X - _G_X0 + big, 2 * GUARD_OPEN_Y, GUARD_T + 2,
-                           x=(GUARD_OPEN_X + _G_X0 - big) / 2, y=0.0, z=zc))
-    for a, b, c, d in _guard_windows():
-        roof = roof.cut(box_at(c - a, d - b, GUARD_T + 2, x=(a + c) / 2, y=(b + d) / 2, z=zc))
-    roof = roof.faces(">Z").chamfer(D.BEAD)      # the palm's edge, and a 45 off the bed
-    g = roof
-    h = GUARD_Z0 - PCB_TOP
-    for px, py in guard_posts():
-        g = g.union(cyl(GUARD_POST_D, h + 0.01, PCB_TOP).translate((px, py, 0.0)))
-    floor_z = GUARD_SEAT_Z - GUARD_T
-    for mx, my in mount_points():
-        boss = cyl(TP.JACK_HEAD_D, h + 0.01, PCB_TOP).union(
-            cyl(GUARD_BOSS_D, GUARD_Z0 - floor_z + 0.01, floor_z))
-        g = g.union(boss.translate((mx, my, 0.0)))
-        g = g.cut(cyl(GUARD_WELL_D, GUARD_Z1 - GUARD_SEAT_Z + 1.0, GUARD_SEAT_Z)
-                  .translate((mx, my, 0.0)))
-        g = g.cut(cyl(M4.shaft_clr_d, GUARD_Z1 - PCB_TOP + 2.0, PCB_TOP - 1.0)
-                  .translate((mx, my, 0.0)))
-    return g

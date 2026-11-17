@@ -38,7 +38,7 @@ def _reconstruct(builder, buildmod):
     """Recover {module, attr, heal} from a builder we can rebuild via a LAZY import:
       * [heal](__import__("src.X", ...).ATTR)                  -> module src.X, member ATTR
       * [heal](ALIAS.member[()]) where ALIAS is a module bound -> that module, member
-        at build.py top (`from . import legs as LG`, `import components as C`, ...)
+        at build.py top (`import components as C`, ...)
     Returns None for shapes we can't (partial(pre-built object), fused multi-module bars, ...).
     At REBUILD the member is called iff it's callable, so both a function (LG.leg_sleeve())
     and a pre-built object (mod.kv_housing) come out right."""

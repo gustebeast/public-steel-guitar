@@ -157,25 +157,6 @@ def _notches():
     return out
 
 
-# WHAT EACH GREEN WAY CARRIES (Makerbase schematic MKS SERVO42D_CAN V1.0_003), way 1 first.
-SIX_WAY = ("V+", "GND", "COM", "EN", "STP", "DIR")     # +X block: power and step/dir
-FIVE_WAY = ("5V", "GND", "IN1", "CANH", "CANL")        # -X block: CAN
-# ⚠ ASSUMED, not seen: way 1 is each block's TOP (+Z) end. The silkscreen beside the blocks
-# settles it; if it is the bottom, flip this and the drop leads re-route themselves.
-WAY1_TOP = True
-
-
-def terminal_way(block, net):
-    """(x, y, z) in the motor frame where the wire for `net` enters its block -- on the
-    block's wire face, at its hole -- and the exit direction (+-1, 0, 0). `block` is 6 or 5."""
-    names = SIX_WAY if block == TERM_6_N else FIVE_WAY
-    side = 1 if block == TERM_6_N else -1
-    k = names.index(net)                            # 0-based way
-    j = (block - 1 - k) if WAY1_TOP else k          # index into _ways, which runs bottom-up
-    return ((side * (HALF - TERM_INSET), TERM_HOLE_Y, _term_zc(block) + _ways(block)[j]),
-            (float(side), 0.0, 0.0))
-
-
 def _ways(n):
     return [(k - (n - 1) / 2) * TERM_PITCH for k in range(n)]
 
@@ -378,7 +359,6 @@ LOOK = {
     "lead_blue":     ((0.10, 0.25, 0.85), "pvc"),
     "lead_green":    ((0.10, 0.60, 0.25), "pvc"),
 }
-SUFFIXES = tuple(k for k in LOOK if k)
 
 
 def parts() -> list:

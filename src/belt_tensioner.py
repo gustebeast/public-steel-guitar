@@ -366,21 +366,6 @@ def screw_dummy() -> cq.Workplane:
     return scr.rotate((0, 0, 0), (0, 1, 0), -90).translate((-SEAT_T - HEAD_H, SCREW_Y, 0.0))
 
 
-# ── coupon: the two halves in their print poses ───────────────────────────────────────────
-COUPON_UP = (0.0, 0.0, 1.0)     # the plate's direction; each half is turned onto its bed face
-HALF_A_UP = UP_A                # each half on its own: A lies on its closed +y face,
-HALF_B_UP = UP_B                # B on its closed -y face, both slots opening upward
-
-
-def tensioner_coupon() -> cq.Workplane:
-    """Both halves lying on their closed side faces (A's +y, B's −y), slots opening up."""
-    def _on_bed(w):
-        return w.translate((0.0, 0.0, -w.val().BoundingBox().zmin))
-    a = _on_bed(half_a().rotate((0, 0, 0), (1, 0, 0), -90))
-    b = _on_bed(half_b().rotate((0, 0, 0), (1, 0, 0), 90)).translate((0.0, 12.0, 0.0))
-    return a.union(b)
-
-
 _HALF_A = half_a()               # built ONCE; every placement re-places these
 _HALF_B = half_b()
 _SCREW  = screw_dummy()

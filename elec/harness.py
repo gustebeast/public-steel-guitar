@@ -182,12 +182,6 @@ def check_ways(ways, power, ground=("GND",), where=""):
     return ways
 
 
-def ph_drop_pins():
-    """Pin names for a 4-way bus-B drop: the leg blind-mate's PH and ZH housings, and
-    the lever/pedal sensor boards' PH. Pin 1 is +5 V at every one of them."""
-    return tuple(PH_PINOUT)
-
-
 def xh_trunk_pins():
     """Pin names for an 8-way trunk: bus in on 1-4, bus out on 5-8 mirrored."""
     return (tuple(x + "_IN" for x in XH_PINOUT)
@@ -202,7 +196,6 @@ def ph_trunk_pins():
     between boards is a STRAIGHT PHR-4 jumper, way n to way n -- any cable fits any hop."""
     return (tuple(x + "_IN" for x in PH_PINOUT)
             + tuple(x + "_OUT" for x in PH_PINOUT))
-
 
 
 # THE CONNECTOR RIBBON (user, 2026-11-13: the brain board becomes the brain, and the field

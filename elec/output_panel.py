@@ -1897,7 +1897,7 @@ REV = int(os.environ.get("OUTPUT_PANEL_REV", "2"))
 assert REV in (1, 2), "OUTPUT_PANEL_REV is 1 (the board in hand) or 2"
 BOARD_L_R1 = 66.0
 BOARD_W, BOARD_L = 74.0, (BOARD_L_R1 if REV == 1 else 56.0)
-SHRINK_Y = BOARD_L_R1 - BOARD_L         # 0 on R1; off the +Y edge on R2
+SHRINK_Y = BOARD_L_R1 - BOARD_L         # 10 on R1; off the +Y edge on R2
 # ── -X GROWTH (2026-09-30). The audio section ran out of room: twenty-one TRS/gain parts
 # went in, every sweep ordering placed them legally, and every ordering left one part
 # 5-9 mm from where it belongs. The +X edge IS the panel and cannot move, so the growth
@@ -1951,8 +1951,8 @@ _J10_Y += _J10_D[1]
 # overmold lands on 0.5 mm of laminate (5.6 mm3 measured against J4's cable). Overhanging
 # the receptacle is the usual remedy. Pads stay well behind the edge: J2/J4 copper 8.38 mm,
 # J3 1.34 mm.
-USB_MOUTH_SHIFT = -1.0     # 0.5 inboard -> 0.5 proud. Routes clean ONLY with THRU/HUB_DN1 frozen (see the bottom of this file)
-BOARD_W_GROWN = BOARD_W + GROW_X        # 86.0 -- the laminate that gets fabricated
+USB_MOUTH_SHIFT = -1.0     # -1.0 inboard -> 0.5 proud. Routes clean ONLY with THRU/HUB_DN1 frozen (see the bottom of this file)
+BOARD_W_GROWN = BOARD_W + GROW_X        # 98.0 -- the laminate that gets fabricated
 # How far each panel connector's body front stands past the +X edge: the fit clearance
 # between the board and the endplate's panel, plus the panel itself. src/electronics.py
 # builds the panel to the same two numbers (OP_PANEL_CLR, OP_PANEL_T), and

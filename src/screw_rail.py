@@ -135,28 +135,6 @@ def seat_cutter() -> cq.Workplane:
     return tool
 
 
-def pulley_channel(z0: float, z1: float) -> cq.Workplane:
-    """The ten PULLEY INSTALL bores, z0..z1, as a standalone cutter.
-
-    The screw goes in FROM BELOW (user) with its pulley already threaded on -- the pulley IS the
-    retaining collar -- so the whole ASCENT has to be clear, and because the screw is long the
-    ascent starts under the instrument. What sweeps is a CIRCLE (Ø11 about the screw line), not
-    the pulley's outline, so this is a round bore per screw rather than one prism across the bay.
-
-    Lives here because this module owns the screw rows and the teardrop that shapes every bore in
-    them; the CALLER owns the Z extents, which come off the chassis floor it has to break out of.
-
-    EVERY screw gets one, including the near row's five, whose bores cut nothing but air today:
-    the only material down here is the +X end wall and it is well +X of them. The rule is "each
-    pulley owns its ascent", not "the ones that currently foul the wall" -- move a row in X and
-    nothing here needs editing."""
-    tool = None
-    for i in range(D.N_STRINGS):
-        b = _bore(PULLEY_CH_D, z1 - z0, (D.screw_x(i), D.string_y(i), z0))
-        tool = b if tool is None else tool.union(b)
-    return tool
-
-
 def _build() -> cq.Workplane:
     body = box_at(X_PX - X_NX, ACROSS, HEIGHT, x=(X_NX + X_PX) / 2, y=0, z=(BOT + TOP) / 2)
     return body.cut(seat_cutter())

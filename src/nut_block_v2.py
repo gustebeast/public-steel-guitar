@@ -1,7 +1,7 @@
 """Nut block geometry, V2 (×1) — EVERY SCREW ON THE -X FACE (user, 2026-11-13). From the top of
 the -X face down: the side screws, the plier window, the height screws. The height screws run along
 X too: each plate's foot is a 45 degree wedge and the screw's tip pushes on it -- a turn in lifts the
-plate one thread pitch. v1 (nut_block) keeps the from-below screws; the rest is v1 unchanged.
+plate one thread pitch. (v1's nut_block, at the git tag v1-instrument, kept the from-below screws.)
 
 Nut block geometry (×1) — keyhead string termination. PETG-GF, fused into the keyhead endplate.
 
@@ -68,7 +68,6 @@ PRINT_UP = (1.0, 0.0, 0.0)                      # build axis: the -X face is the
 
 # ── hardware ───────────────────────────────────────────────────────────────
 PIN_D    = D.NUT_PIN_D                          # Ø4: the crown's diameter, and the stand-in's dowel
-PIN_L    = D.NUT_PIN_L
 
 ROD_D = D.BRIDGE_AXLE_D                         # Ø8 -- the bridge axle's own shaft (user)
 ROD_FIT = 0.4                                   # the rod is LOCATED, not gripped: it slides in
@@ -125,10 +124,6 @@ BREAK_ANGLE = 15.0                              # MIN break over the crown, so t
 assert _break_at(ROD_Z, D.STRING_GAUGE_MAX) >= BREAK_ANGLE, (
     f"a {D.GAUGE_MAX_IN:.3f} in string breaks only {_break_at(ROD_Z, D.STRING_GAUGE_MAX):.2f} deg over "
     f"its crown -- under the {BREAK_ANGLE} floor, so the rod would end the speaking length")
-
-
-def _break_deg(i: int) -> float:
-    return _break_at(ROD_Z, D.STRING_GAUGE[i])
 
 
 # ── THE WRAP: ONE TURN (user) ────────────────────────────────────────────────
@@ -195,10 +190,6 @@ def _bottom_y_g(g: float) -> float:
     return -t * WRAP_F * g
 
 
-def exit_angle(i: int) -> float:
-    return touch_angle(i) + wraps(i) * 2 * math.pi
-
-
 WRAP_EPS = 0.05                                 # the coil is drawn a hair off the rod
 
 
@@ -206,27 +197,6 @@ def wrap_radius(i: int) -> float:
     """Radius of string i's coil centreline about the rod axis. THE ONE PLACE THIS IS COMPUTED."""
     return ROD_D / 2.0 + D.STRING_GAUGE[i] / 2.0 + WRAP_EPS
 
-
-def exit_point(i: int):
-    """(x, z) where string i's tail leaves the rod, in the block's local frame."""
-    a = exit_angle(i)
-    hr = wrap_radius(i)
-    return ROD_X + hr * math.cos(a), ROD_Z + hr * math.sin(a)
-
-
-def exit_dir(i: int):
-    """Unit (x, z) the tail is travelling as it leaves: at EXIT_DEG 180, straight down."""
-    a = exit_angle(i)
-    return -math.sin(a), math.cos(a)
-
-
-def wrap_y(i: int) -> tuple[float, float]:
-    """(start, end) Y of string i's coil. It arrives on its own lane and leaves -Y of it."""
-    y0 = D.nut_y(i)
-    return y0, y0 - _adv_g(D.STRING_GAUGE[i])
-
-
-wrap_y_drawn = wrap_y                           # one wrap: what is wound is what the parts are sized for
 
 MU = 0.15                                       # steel on steel, dry, deliberately pessimistic
 STRING_T = 147.0                                # per-string tension
@@ -412,13 +382,6 @@ def standin(i: int) -> cq.Workplane:
     return _place(s, i, PLATE_T)
 
 
-def standin_dowel(i: int) -> cq.Workplane:
-    """The Ø4 x 4 dowel in string i's stand-in, seated (its top on the string's underside)."""
-    from . import components as C
-    g = D.STRING_GAUGE[i]
-    return C.dowel().translate((DOWEL_X, plate_y(i), -g - PIN_D / 2))
-
-
 # The string must pass over the stand-in's arm, which stands -X of the crown: for every gauge.
 _NECK_AIR = min(-g - (DOWEL_X - STANDIN_ARM_X0) * math.tan(math.radians(_break_at(ROD_Z, g)))
                 - (-g - PIN_D / 2 - CROWN_OFF + STANDIN_TOP) for g in (D.STRING_GAUGE[0], G_ENVELOPE))
@@ -464,8 +427,6 @@ for _i in range(D.N_STRINGS):
     assert COIL_LO[_i] <= _COIL_NEED[_i] + 1e-9, f"string {_i + 1}'s coil is short of air on -Y"
     for _g in _gauges_of(_i):
         assert COIL_HI[_i] - _g / 2 >= COIL_AIR - 1e-9, f"string {_i + 1} arrives short of air on +Y"
-# the finger between string i and string i + 1 (-Y of it): under the coil zone, and in it
-FINGER_W = min(D.NUT_PITCH + POCKET_LO[i] - POCKET_HI[i + 1] for i in range(D.N_STRINGS - 1))
 FINGER_W_COIL = min(D.NUT_PITCH + COIL_LO[i] - COIL_HI[i + 1] for i in range(D.N_STRINGS - 1))
 assert FINGER_W_COIL >= D.MIN_WALL_2P - 1e-9, f"{FINGER_W_COIL:.2f} of finger beside the coils"
 
@@ -652,13 +613,6 @@ def side_insert(i: int) -> cq.Workplane:
     return seated_insert(M4, (SS_MOUTH_X, y, z), (1.0, 0.0, 0.0))
 
 
-def tail_route(i: int):
-    """The tail's route from the rod, as (x, z) points: straight down the plate's -X face to the
-    channel's floor."""
-    x0, z0 = exit_point(i)
-    return [(x0, z0), (x0, TAIL_END)]
-
-
 def _tangent_up(c1, r1, c2, r2):
     """(x, z) points where the line touching circle c1 (r1) and circle c2 (r2), BOTH UNDER IT, meets
     each (r = 0: a point). The upper of the two such lines."""
@@ -722,10 +676,6 @@ def hs_row(i: int) -> int:
 
 def height_screw_yz(i: int):
     return plate_y(i), HS_ROWS_Z[hs_row(i)]
-
-
-def plate_foot_z(i: int) -> float:
-    return shelf_z(i) - PLATE_BODY_H
 
 
 def height_tip_x(i: int) -> float:
@@ -863,7 +813,6 @@ HW   = D.string_y(0)                             # the +Y face
 Y_LO = D.string_y(D.N_STRINGS - 1)               # the -Y face
 ROD_L = math.floor(HW - Y_LO - ROD_END_W)
 _INS_HI = D.nut_y(0) + POCKET_HI[0]              # string 1's pocket, +Y
-_FACE_LO = D.nut_y(SKU_C) + POCKET_LO[SKU_C]     # string 10's pocket, -Y
 _INS_LO = D.nut_y(SKU_C) + COIL_LO[SKU_C]        # the cuts' -Y extreme: string 10's coil zone
 ROD_Y0, ROD_Y1 = Y_LO, Y_LO + ROD_L
 assert HW - _INS_HI >= D.MIN_WALL_2P, "no end block +Y of string 1's pocket"
