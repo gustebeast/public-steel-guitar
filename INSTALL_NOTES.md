@@ -2216,3 +2216,59 @@ The optical board as ordered (R1) sits under string 6, **turned 180 degrees** fr
 - **Channel D10** (photodiodes PD10A/B) is the one under string 6, 20 mm before the bridge axle, as on the instrument. D10 because it is the channel that puts the board's Ø4.4 mounting hole over the endplate. The board's top is 2.2 under the string; nothing on the board along the string's line is taller than 1.1, so the string clears everything by at least 1.1.
 - **Supports are part of the endplate** (`wb_endplate`): two 45 degree brackets off its -X face, 11 wide, reaching 36 under the board, their tops the board's seat. The endplate prints +X -> -X as before, so the brackets grow straight up off the joint face (their tips cut flat 2.0).
 - **Hardware**: one **M4 x 10 button head** (2.5 mm key) through the board's hole, **self-tapped** into the bracket at y +9.3: no insert, so the board comes off and goes back on with the one screw. The bore is the M4 self-tap size (a teardrop: it is sideways in the endplate's print), 9.4 deep. Don't overtighten it. The board rests on the other bracket; the rest of it overhangs the plank, as intended.
+
+
+## Direct drive: grip threads loosened, three grip turns (2026-11-16)
+
+> Supersedes the grip-thread sizes in "Grip sleeves replace the bent spring ends" (2026-11-12) and the "42 whole coils" in the spring line (2026-11-13).
+
+- **Why:** on the first prints the sleeve would not go on over the coils at all, and the post took the spring only with the wire shaving plastic off it, then barely let go. Both grooves were the wire's own Ø + 0.1, on the wire's centre line, at a 2.6 pitch, which left 0.05 a side.
+- **Pitch 2.6 → 3.6.** The close-wound coils open as they screw on; 3.6 leaves room for a real clearance and still a bead (~0.8) of plastic between turns.
+- **Post (inside the spring):** smaller. Its crests are Ø16.14 (were 16.74) and its groove Ø2.81 (wire + 0.5), 0.05 in from the wire's centre. 0.25 round the wire; it still holds the wire by 0.85.
+- **Sleeve (outside the spring):** bigger. Its bore is Ø17.94 (was 16.94) and its groove Ø3.01 (wire + 0.7), 0.1 out. 0.35 round the wire, more than the post because a printed hole shrinks; it holds the wire by 0.55.
+- **Three grip turns a end, not four.** Four at 3.6 would have made each spring 8 mm longer, and string 1's plug had 5.7 mm too little room. Three at 3.6 (10.8) is about the old four at 2.6 (10.4).
+- **Cut each spring to 40 whole coils** (34 working + 3 a end). One 20" length still makes five.
+- **Reprint** every plug, collar and both sleeves, with the screw lock below.
+
+## Direct drive: one screw locks each sleeve, ratchet teeth gone (2026-11-16)
+
+> Supersedes the "Detent", the key cross-hole and the Ø22.45 "carry the teeth" reason in "Grip sleeves replace the bent spring ends" (2026-11-12). The flanges stay Ø22.45.
+
+- **Why:** the printer could not make the 0.6 mm sawtooth teeth accurately enough to work. Each sleeve is now held by one M3 screw, one at each end of the spring.
+- **The fin:** each sleeve has a fin down its length, outside the spring, with a Ø3.6 hole through it along X for the screw.
+- **No cross-hole:** the sleeves no longer have the tommy-bar hole. Run them on by hand.
+- **Plug end (-X):**
+  - The insert is **heat-set** into the +X face of the plug's **upper tie boss**, the one already holding a tie insert from the -X side. That boss now stands 3.0 mm past the stop flange, and the two inserts do not meet, even on the shortest plug.
+  - An **M3 x 10** goes through the sleeve's fin into it, taking 2.85 mm of thread.
+- **Collar end (+X):**
+  - The insert is a **nut**, not heat-set. It just sits on the collar's +X face.
+  - An **M3 x 30** (the same as the yokes') goes from the end of the sleeve's fin right through the collar into it, ending 3.3 mm into the insert's 4.3.
+  - The collar has a lobe for the screw to pass through, from its +X face to its flange. The sleeve's fin starts flush against that lobe and runs about 8 mm past the sleeve's far end to the screw's head.
+  - Each lobe sits in a gap no neighbouring lobe or rod tab uses at any travel; string 5 has only one such place.
+  - The top row (strings 1, 4, 7, 10) runs under the pickup's height plate, about 16 mm over the string axis for the whole travel. Their lobes sit closer in (14.8 mm, just clear of the sleeve) and off vertical (2°, 56°, 124°, 58°).
+- **Printing:**
+  - The plug sleeve still prints +X → -X (far end on the bed).
+  - The **collar sleeve now prints +X → -X too**, with its flange end on the bed, so its fin stands up past the far end with nothing overhanging.
+- **Hardware, per string** (the same McMaster 94459A130 brass inserts as the collars'):
+  - Plug end: 1 x M3 x 10 and 1 insert, heat-set into the boss before fitting the spring.
+  - Collar end: 1 x M3 x 30 and 1 insert, dropped on by hand.
+- **Fitting:**
+  1. Screw the spring's end coils onto the post, as before.
+  2. Run the sleeve on over them by hand until it bottoms on the flange. The thread brings it home at the same angle every time, so the fin lands over the screw's way. If the fin's hole is just past it, back the sleeve off to it rather than force it on.
+  3. Plug end: drive the M3 x 10 through the fin into the insert with the ball-end 2.5 key, from an angle. The inner strings (2, 3, 5, 6, 8) have no straight line in.
+  4. Collar end: push the M3 x 30 through the fin and the collar until the tip shows on the +X face. Hold the insert on the tip and turn the screw from the fin's end until it pulls the insert onto the face.
+- **Removing:** take the screw out and unscrew the sleeve. The collar end's insert comes off the tip: keep it.
+
+## Shop tool: guide rod saw jig (2026-11-16)
+
+Cuts each 2 ft length of 3/16" stainless (McMaster 89535K84) into three guide rods of 202.5 mm (`direct_bench.ROD_L`), with the 6927A16 hacksaw blade and one Quick-Grip, no vise. One printed part, `tools/guide_rod_saw_jig.step` (217 x 41), PETG, printed as drawn. It takes the **leadscrew saw jig's cap** (`tools/saw_jig_cap.step`): the same part, no new one.
+
+Unlike the leadscrew jig it sits wholly on the table: the piece is 202 long, so it lies in a supported V trough out to the end stop, and the clamp holds the piece side.
+
+1. Lay the jig on the table near the edge, so the clamp's lower jaw reaches under it.
+2. Feed the stock in from the -X end, through the short guide block and across the slot, until its end touches the end stop.
+3. Drop the leadscrew jig's cap into the channel next to the slot (it sits lower here, on the thinner rod; a rib down the channel's middle holds the rod under it), put the clamp's pad in the cap's pocket and the other jaw under the table, and squeeze. The stack is cap, rod, jig, table.
+4. Saw down the slot, holding the long free end of the stock by hand. A blade that runs through cuts the jig's floor, not the table.
+5. Unclamp and lift the piece out of the trough. It comes out 202.5 to 202.8; file the burr square.
+6. File the stock's fresh end square, then feed it in to the stop again for the second piece.
+7. What is left is the third piece, ~202.5 (609.6 less two pieces and two ~1 mm kerfs). Any piece from about 201 to 204.0 fits. If the stock came long and the third is over 204.0, trim it in the jig like the others.

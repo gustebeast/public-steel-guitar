@@ -556,6 +556,11 @@ PARTS["motor_shaft_saw_jig"] = (
     lambda: heal(__import__("src.motor_shaft_saw_jig", fromlist=["e"]).body()),
     "tools/motor_shaft_saw_jig.step",
     "TOOL — the leadscrew saw jig's sibling for cutting each SERVO42D's shaft to components.MOTOR_SHAFT_CUT_L, no screws: the motor drops into the chassis' own bay (motor_bank.lift_prism + low_walls, the bay's boss slot), faceplate pushed home on a 1.6 lip, shaft on a cradle rib its full length to a 1.3 saw slot (McMaster 6927A16) at the cut plane with a 3.2 cheek each side, the motor-side cheek braced by two 45 deg gussets; 1.6 floor and bay walls to the shaft axis. NO CAP: the Quick-Grip pad goes straight on the motor. PETG-GF on the 0.8, printed as drawn")
+# GUIDE ROD SAW JIG -- a SHOP TOOL (user, 2026-11-16): exported, never in the assembly.
+PARTS["guide_rod_saw_jig"] = (
+    lambda: heal(__import__("src.guide_rod_saw_jig", fromlist=["e"]).body()),
+    "tools/guide_rod_saw_jig.step",
+    "TOOL — hacksaw jig for cutting each 2 ft length of 3/16 in stainless (McMaster 89535K84) into three guide rods of direct_bench.ROD_L (202.5), with one Quick-Grip and no vise: the whole jig sits on the table; the stock rests in a short diamond-tunnel guide -X of a 1.3 saw slot (McMaster 6927A16), and the piece lies in a supported 90 deg V trough out to an end stop at ROD_L from the slot's +X face, clamped next to the slot through the LEADSCREW JIG'S CAP (saw_jig_cap: no cap of its own). 217 x 41. PETG, printed as drawn (table face on the bed)")
 PARTS["saw_jig_cap"] = (
     lambda: heal(__import__("src.saw_jig", fromlist=["e"]).cap()),
     "tools/saw_jig_cap.step",
@@ -3426,7 +3431,7 @@ V1_REUSED = (
     "coil_mandrel", "coil_mandrel_sleeve", "lever_prog_jig", "lever_prog_jig_base", "saw_jig",
     "motor_shaft_saw_jig", "saw_jig_cap", "pin_drill_jig", "pin_drill_bushing_pilot",
     "pin_drill_bushing_pin", "pin_drill_bushing_pilot_1", "pin_drill_bushing_pilot_2",
-    "pin_drill_bushing_pilot_3", "ream_jig",
+    "pin_drill_bushing_pilot_3", "ream_jig", "guide_rod_saw_jig",
     # the direct drive's laser-cut plate (already the direct bench's)
     "keyhole_plate",
 )
@@ -3496,8 +3501,8 @@ for _base, _up, _why in (
                                        "holes and the boss); split through, the clamp insert from the bottom flat"),
         ("plug", DB_.PLUG_UP, "direct_bench.PLUG_UP -- prints -X -> +X; cones under the stop "
                               "flange and the insert pocket, the screw holes cut through the teeth"),
-        ("sleeve_p", DB_.SLEEVE_P_UP, "direct_bench.SLEEVE_P_UP -- prints +X -> -X; teardrop key hole"),
-        ("sleeve_c", DB_.SLEEVE_C_UP, "direct_bench.SLEEVE_C_UP -- prints -X -> +X; teardrop key hole"),
+        ("sleeve_p", DB_.SLEEVE_P_UP, "direct_bench.SLEEVE_P_UP -- prints +X -> -X; its lock fin from the bed"),
+        ("sleeve_c", DB_.SLEEVE_C_UP, "direct_bench.SLEEVE_C_UP -- prints +X -> -X; its lock fin standing on past the far end"),
         ("yoke", DB_.YOKE_UP, "direct_bench.YOKE_UP -- prints -X -> +X; the nut-rim register "
                               "under a cone"),
         ("collar_b", DB_.COLLAR_B_UP, "direct_bench.COLLAR_B_UP -- collar A's part turned end for "
