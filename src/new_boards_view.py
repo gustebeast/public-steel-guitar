@@ -61,6 +61,11 @@ VIEW_HEIGHT = {
     "Fuse_2920_7451Metric": 2.0,             # F204 2920L200/60GR: ESTIMATED (conservative) -- read Littelfuse's drawing
     "L_Changjiang_FXL0630": 3.0,             # L1: the series' 0630 = 6.6 x 7.0 x 3.0
     "TerminalBlock_Phoenix_PT-1,5-2-3.5-H_1x02_P3.50mm_Horizontal": 8.5,   # J8: ESTIMATED, a 3.5 mm PT's usual body
+    # the U5 rework and the service port (2026-11-17): ESTIMATED, the packages' usual max --
+    # read TI's DSG0008A / RYQ0021B outlines and WCH's CH334 drawing before any clearance rides on them
+    "Texas_DSG0008A_WSON-8-1EP_2x2mm_P0.5mm_EP0.9x1.6mm": 0.8,   # U221 TPS22965
+    "Texas_RYQ0021B_VQFN-HR-21_3x5mm_P0.5mm": 1.0,               # U205 TPS552892
+    "WCH_QFN-16-1EP_3x3mm_P0.5mm_EP1.8x1.8mm": 0.85,             # U37 CH334P
 }
 
 # built EXACTLY as src.board_geom.BOARDS (silk font, revisions), heights extended: the web export

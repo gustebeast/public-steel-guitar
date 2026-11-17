@@ -203,6 +203,9 @@ BODY_MATERIAL = {
     "Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm": ("epoxy", BLACK),
     "Texas_RWB0012A_X2QFN-12_1.6x1.6mm_P0.4mm": ("epoxy", BLACK),
     "Texas_UQFN-10_1.5x2mm_P0.5mm": ("epoxy", BLACK),
+    "Texas_DSG0008A_WSON-8-1EP_2x2mm_P0.5mm_EP0.9x1.6mm": ("epoxy", BLACK),   # U221 TPS22965
+    "Texas_RYQ0021B_VQFN-HR-21_3x5mm_P0.5mm": ("epoxy", BLACK),               # U205 TPS552892
+    "WCH_QFN-16-1EP_3x3mm_P0.5mm_EP1.8x1.8mm": ("epoxy", BLACK),              # U37 CH334P
 }
 BOARDS = _with_revs(Boards(GEOM_DIR, height=_HEIGHT, tail=_TAIL, tht_legs=_THT_LEGS, panel=_PANEL,
                            side_plug_run=SIDE_PLUG_RUN, body_material=BODY_MATERIAL,

@@ -490,6 +490,11 @@ _COLORS = {
     "ui_insert": (0.72, 0.60, 0.38),
     "ui_knob": (0.15, 0.15, 0.17),
     "ui_pcb": _BG.mask("ui_board"),
+    # the new boards' view (src.new_boards_view): its board names, gone with the v1 table in
+    # round 3 and needed by bronner's tab (a board must be a solder-mask colour)
+    "brain_board_pcb": _BG.mask("brain_board"),
+    "connector_board_pcb": _BG.mask("connector_board"),
+    "brain_board_cm5": _BG.mask_rgb("green"),        # the CM5's own board, as Raspberry Pi make it
     "ui_pcb_silk": (0.95, 0.95, 0.93),
     "ui_pwr_cap": (0.15, 0.15, 0.17),
     "ui_pwr_stem": (0.94, 0.94, 0.92),
