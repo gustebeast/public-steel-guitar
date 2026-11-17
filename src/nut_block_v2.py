@@ -854,13 +854,42 @@ def all_side_screw_negatives() -> cq.Workplane:
 # wall has a hole on its axis for the 2.5 key, pushed in from +Y to send the rod back out.
 ROD_END_W = D.MIN_WALL_2P
 ROD_PUSH_D = 4 * D.BEAD
-# V2: THE BLOCK IS THE FRETBOARD'S WIDTH (user, 2026-11-13): its Y faces line up with the fretboard's
-# outer edges -- string 1's and string 10's centres at the bridge bearings, where the fan is widest -- so
-# the transparent zero fret and border run straight on into it and the deck carries on -X either side.
-# The rod is CUT to fit inside it (the same O8 stock as the axles), whole mm, flush with the -Y face and
-# stopped by ROD_END_W at +Y.
-HW   = D.string_y(0)                             # the +Y face
-Y_LO = D.string_y(D.N_STRINGS - 1)               # the -Y face
+# THE BLOCK'S Y ENDS, FROM THE LOADS (user, 2026-11-16: "pick the length of the nutblock axel
+# analytically based on how much material we need at either end of the first/last inserts along Y
+# ... it will shrink this 85.5mm length and give back more room for the top panel"; it had been the
+# fretboard's width, 2026-11-13).
+#   THE LOAD. Each pocket's string pulls the rod toward its crown with up to STRING_T (the wrap's
+#   pull in, less nothing: the tail's residual is left out, which only overstates it). The Ø8 steel
+#   rod is far stiffer than the printed fingers it lies in, so it shares a pocket's load between the
+#   two fingers either side: an INNER finger holds two halves (STRING_T), an END finger one
+#   (STRING_T / 2).
+#   THE STRESS. A finger w wide bears it on the rod's projected area w x ROD_D. The busiest inner
+#   finger is the coil zone's, FINGER_W_COIL: ROD_BEAR_INNER, ~11.5 MPa.
+#   THE LIMIT. PETG-GF held under load for years creeps; the sustained stress it is allowed is
+#   CREEP_MPA, a quarter of its ~50 MPa strength (the usual creep-limited share for a glass-filled
+#   copolyester at room temperature). The inner fingers already sit under it.
+#   SO an end finger needs END_LOAD / (CREEP_MPA x ROD_D), 0.77 -- under the two beads a printed wall
+#   has anyway: END_W = MIN_WALL_2P, so the END is never the weak link (5.7 MPa, half an inner
+#   finger's). And past it, the cuts that reach furthest out (string 1's and 10's pockets, coil zones
+#   and side/height screw head recesses, whichever is wider) keep MIN_WALL_2P of wall too; at +Y the
+#   rod's end stop ROD_END_W stands past the bearing finger. The block is SYMMETRIC (the deck panels
+#   cut round it by one half-width, deck_v2.block_hw), on whole tenths.
+CREEP_MPA = 12.0
+END_LOAD = STRING_T / 2.0
+ROD_BEAR_INNER = STRING_T / (FINGER_W_COIL * ROD_D)
+assert ROD_BEAR_INNER <= CREEP_MPA, f"an inner finger bears {ROD_BEAR_INNER:.1f} MPa, past PETG-GF's creep limit"
+END_W = max(D.MIN_WALL_2P, math.ceil(END_LOAD / (CREEP_MPA * ROD_D) / D.BEAD) * D.BEAD)
+_HEAD_R = SS_HEAD_D / 2.0                        # the side and height screws' head recesses
+_CUT_HI = max(D.nut_y(0) + POCKET_HI[0], D.nut_y(0) + COIL_HI[0],
+              D.nut_y(0) + SS_YC[0] + _HEAD_R, plate_y(0) + _HEAD_R)
+_CUT_LO = min(D.nut_y(SKU_C) + POCKET_LO[SKU_C], D.nut_y(SKU_C) + COIL_LO[SKU_C],
+              D.nut_y(SKU_C) + SS_YC[SKU_C] - _HEAD_R, plate_y(SKU_C) - _HEAD_R)
+_BEAR_HI = max(D.nut_y(0) + POCKET_HI[0], D.nut_y(0) + COIL_HI[0])     # string 1's rod span ends
+_BEAR_LO = min(D.nut_y(SKU_C) + POCKET_LO[SKU_C], D.nut_y(SKU_C) + COIL_LO[SKU_C])
+_NEED = max(_CUT_HI + D.MIN_WALL_2P, _BEAR_HI + END_W + ROD_END_W,
+            -(_CUT_LO - D.MIN_WALL_2P), -(_BEAR_LO - END_W))
+HW = math.ceil(_NEED / 0.1 - 1e-9) * 0.1         # the +Y face
+Y_LO = -HW                                       # the -Y face
 ROD_L = math.floor(HW - Y_LO - ROD_END_W)
 _INS_HI = D.nut_y(0) + POCKET_HI[0]              # string 1's pocket, +Y
 _FACE_LO = D.nut_y(SKU_C) + POCKET_LO[SKU_C]     # string 10's pocket, -Y
