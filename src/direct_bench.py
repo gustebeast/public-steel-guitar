@@ -122,6 +122,11 @@ COL_INS = (4.7, 4.3)                                # the insert: McMaster 94459
                                                     # belt_tensioner's: measure one first)
 COL_INS_HOLE = 4.0                                  # its heat-set pilot (the 3.9 pilot end drops
                                                     # in; 4.8 drop-in left 0.3 to the nut's bore)
+# THE PLUG'S INSERTS DROP IN (user, 2026-11-17, bench: the plug's 4.0 pocket "much too small"):
+# the M4 rule the bench settled (cadkit.fasteners.M4: a round pocket the insert's OD + 0.1, so the
+# insert drops in before the iron melts it home), on the M3's 4.7. The collar keeps COL_INS_HOLE:
+# its pockets beside the nut's bore have no room for 4.8 (above).
+PLUG_INS_HOLE = COL_INS[0] + 0.1                    # 4.8, printed round (along the plug's build)
 KEY_M3_ENGAGE = COL_INS[1] - 0.3                    # 4.0 of thread in the insert
 YK_H = KEY_M3_L - D.NUT_FLANGE_T - KEY_M3_ENGAGE    # 22.5: flange face -> plate's +X face
 # THE KEYHOLE PLATE (user, 2026-11-12: a ball end on a 2.4 printed roof is ~8 mm^2 of plastic
@@ -234,9 +239,11 @@ WIN_Z = (-(KEY_DROP + KEY_D / 2), 3.2)
 #   round a Ø8 screw. Both parts are just SCREW_CLR round the screw.
 SPRING_OD, SPRING_WIRE = 19.05, 2.31             # 0.75 / 0.091 in
 SPRING_ID = SPRING_OD - 2 * SPRING_WIRE             # 14.43: the seats' diameter
-SPRING_ACTIVE = 32                                  # working coils between the grips (whole turns):
-                                                    # the 40-coil pieces less 4 grip turns an end
-                                                    # (2026-11-17; 34 with 3 turns, ~6 % softer)
+SPRING_ACTIVE = 34                                  # working coils between the grips (whole turns):
+                                                    # 34, not 35, with the softer stainless -- at 35
+                                                    # string 1's stretched spring overran its plug by 0.7.
+                                                    # Kept at 34 with the 4 grip turns (user, 2026-11-17:
+                                                    # nothing cut yet) -- the pieces grow to 42 coils
 SPRING_IT = 7.54 * 4.448222                         # 33.5 N initial tension (9665K36)
 SPRING_K = (1.37 * 4.448222 / 25.4) * (20.0 / (SPRING_WIRE / 25.4)) / SPRING_ACTIVE   # 1.55 N/mm
 # THE FORCE PER STRING (user, 2026-11-11: per-position lengths). Each string's spring is set at
@@ -260,10 +267,11 @@ SPRING_F = (67.0, 68.0, 61.0, 66.0, 55.0, 61.0, 61.0, 63.0, 54.0, 53.0)
 # went on by the wire cutting its own way -- which it did, and held, back and forth). The spring
 # is close-wound, so its coils lie one wire apart: GRIP_PITCH is SPRING_WIRE and the coils go on
 # as they come. FOUR turns (user, 2026-11-17, bench: "the threads seem short ... increase the
-# amount of spring that gets engaged"): 9.24 of grip, under the old 3 x 3.6; the springs already cut
-# to 40 coils keep their length, so SPRING_ACTIVE gives up the two coils.
+# amount of spring that gets engaged"): 9.24 of grip, under the old 3 x 3.6. The pieces are cut to
+# SPRING_COILS (42), so the working coils and the rate stay as they were; the plugs' necks take up the
+# longer spring (no anchor or motor moves).
 GRIP_TURNS, GRIP_PITCH = 4, SPRING_WIRE
-SPRING_COILS = SPRING_ACTIVE + 2 * GRIP_TURNS       # 40: the cut piece, ~92 free
+SPRING_COILS = SPRING_ACTIVE + 2 * GRIP_TURNS       # 42: the cut piece
 SEAT_GRIP = GRIP_TURNS * GRIP_PITCH                 # 9.24 of post under them
 SEAT_L = SEAT_GRIP                                   # no more: the open coils cross past it
 SLEEVE_WALL = 2 * D.BEAD                            # the grip sleeve's wall past the spring
@@ -333,7 +341,8 @@ LOCK_M3_L = 10.0                                     # M3 x 10 (plug end): 2.85 
 # with its flange end on the bed.
 LOCK_C_M3_L = 30.0
 LOCK_C_TIP = 3.3                                     # of the insert's 4.3
-LOCK_HOLE = 3.6                                      # the fin's hole round the M3
+LOCK_HOLE = 3.7                                      # the fins' and the collar lobe's hole round the M3
+                                                     # (user, 2026-11-17, bench: 3.6 gripped the screw in sleeve_c)
 LOCK_RC = 14.8                                       # the top row's: sleeve + 0.375 + the lobe
 LOCK_C = {0: (2.0, LOCK_RC), 1: (30.0, LOCK_R), 2: (260.0, LOCK_R), 3: (56.0, LOCK_RC),
           4: (36.0, LOCK_R), 5: (260.0, LOCK_R), 6: (124.0, LOCK_RC), 7: (194.0, LOCK_R),
@@ -1220,9 +1229,10 @@ def _anchor_plug_raw(i: int) -> cq.Workplane:
     out = out.union(cyl_x(STOP_D, f1 - f0, f0, y=y, z=z))                           # stop flange
     rise = (STOP_D - SPRING_ID) / 2                                                 # ... on a cone
     out = out.union(_cone_x(SPRING_ID / 2, STOP_D / 2, f0 - rise, f0 + 0.01, y, z))
-    out = out.union(_ears(i, a0, f1, COL_INS_HOLE / 2 + EAR_WALL))                    # the inserts'
+    ear_hw = PLUG_INS_HOLE / 2 + EAR_WALL                                           # EAR_WALL round
+    out = out.union(_ears(i, a0, f1, ear_hw))                                       # the inserts'
     out = out.cut(cyl_x(SCREW_CLR, s1 - a0 + 2, a0 - 1, y=y, z=z))                 # the screw's way
-    ins_d, ins_l, tip_d = COL_INS_HOLE, COL_INS[1] + 0.3, 3.4     # the ties' M3 inserts
+    ins_d, ins_l, tip_d = PLUG_INS_HOLE, COL_INS[1] + 0.3, 3.4    # the ties' M3 inserts
     for dy, dz in tie_offsets(i):
         out = out.cut(cyl_x(ins_d, ins_l + 1.0, a0 - 1, y=y + dy, z=z + dz))           # insert
         out = out.cut(_cone_x(ins_d / 2, tip_d / 2 - 0.01, a0 + ins_l - 0.01,
@@ -1239,7 +1249,7 @@ def _anchor_plug_raw(i: int) -> cq.Workplane:
     dy, dz = at_ang(lock_p_ang(i), ear_r(i))
     assert abs(ear_r(i) - LOCK_R) < 0.31, "the lock's screw is off its boss's axis"
     xb = f1 + LOCK_E
-    out = out.union(cyl_x(2 * LOCK_HW, LOCK_E, f1, y=y + dy, z=z + dz))   # (end to end: an overlap failed)
+    out = out.union(cyl_x(2 * ear_hw, LOCK_E, f1, y=y + dy, z=z + dz))    # (end to end: an overlap failed)
     pk = COL_INS[1] + 0.3
     assert xb - pk >= a0 + ins_l + (ins_d - tip_d) / 2 + D.BEAD - 1e-6, "the boss's two inserts meet"
     out = out.cut(cyl_x(ins_d, pk + 1.0, xb - pk, y=y + dy, z=z + dz))

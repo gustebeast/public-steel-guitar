@@ -2277,10 +2277,12 @@ Unlike the leadscrew jig it sits wholly on the table: the piece is 202 long, so 
 
 The bench showed the 3.6 mm grip thread was wrong for a close-wound spring. The coils had to be pulled apart to fit it, the wire shaved the post's crests, and the bed end of the plug sleeve stopped the spring from cutting its way in.
 
-- **Pitch:** the thread is now **2.31 mm**, one wire per turn: the coils go on as they come off the spring. Still three grip turns, so the springs already cut to 40 coils are right, and the rate is unchanged.
-- **Groove:** the sleeve's crests reach about 0.55 into the valleys outside the coils, the post's about 0.45 into those inside. Printed holes come out small, so the wire may cut the sleeve a little going on. The bench showed that holds.
+- **Pitch:** the thread is now **2.31 mm**, one wire per turn: the coils go on as they come off the spring.
+- **Turns:** four grip turns at each end (9.24 mm, up from 6.93), because the first bench thread felt short. The springs already cut to 40 coils are still right; they now have 32 working coils, about 6% stiffer.
+- **Groove:** the sleeve's crests reach about 0.55 into the valleys outside the coils, the post's about 0.66 into those inside (tightened after the first bench post was a bit loose). Printed holes come out small, so the wire may cut the sleeve a little going on. The bench showed that holds.
+- **Run-out:** the groove runs out through both ends of each sleeve, so a spring threaded right through no longer jams at the far face.
 - **Lead-ins:** both ends of each sleeve's bore and the post's free end have a 45° chamfer, so the spring's cut end starts its thread without meeting the squashed first layers.
-- **Guide rod hole:** the plug's hole for the guide rod is 0.2 bigger (Ø5.16). plug_9 would not go on the rod.
+- **Guide rod hole:** the plug's hole for the guide rod is now Ø5.36 (rod + 0.6). At Ø4.96 and Ø5.16 it was still too tight on the rod.
 - **Reprint:** every plug, both sleeves and every collar (the collar's post carries the thread). The bench set for string 6 is `petg-gf/plug_s6.step`, `petg-gf/sleeve_p.step`, `petg-gf/sleeve_c.step` and `pctg/collar.step`.
 - **Fitting:** as before. Screw the spring's end coils onto the post, then run the sleeve on over them until it bottoms on the flange.
 
