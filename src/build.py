@@ -3501,8 +3501,8 @@ for _base, _up, _why in (
                                        "holes and the boss); split through, the clamp insert from the bottom flat"),
         ("plug", DB_.PLUG_UP, "direct_bench.PLUG_UP -- prints -X -> +X; cones under the stop "
                               "flange and the insert pocket, the screw holes cut through the teeth"),
-        ("sleeve_p", DB_.SLEEVE_P_UP, "direct_bench.SLEEVE_P_UP -- prints +X -> -X; teardrop key hole"),
-        ("sleeve_c", DB_.SLEEVE_C_UP, "direct_bench.SLEEVE_C_UP -- prints -X -> +X; teardrop key hole"),
+        ("sleeve_p", DB_.SLEEVE_P_UP, "direct_bench.SLEEVE_P_UP -- prints +X -> -X; its lock fin from the bed"),
+        ("sleeve_c", DB_.SLEEVE_C_UP, "direct_bench.SLEEVE_C_UP -- prints +X -> -X; its lock fin standing on past the far end"),
         ("yoke", DB_.YOKE_UP, "direct_bench.YOKE_UP -- prints -X -> +X; the nut-rim register "
                               "under a cone"),
         ("collar_b", DB_.COLLAR_B_UP, "direct_bench.COLLAR_B_UP -- collar A's part turned end for "

@@ -2228,7 +2228,36 @@ The optical board as ordered (R1) sits under string 6, **turned 180 degrees** fr
 - **Sleeve (outside the spring):** bigger. Its bore is Ø17.94 (was 16.94) and its groove Ø3.01 (wire + 0.7), 0.1 out. 0.35 round the wire, more than the post because a printed hole shrinks; it holds the wire by 0.55.
 - **Three grip turns a end, not four.** Four at 3.6 would have made each spring 8 mm longer, and string 1's plug had 5.7 mm too little room. Three at 3.6 (10.8) is about the old four at 2.6 (10.4).
 - **Cut each spring to 40 whole coils** (34 working + 3 a end). One 20" length still makes five.
-- **Reprint** every plug, collar and both sleeves. The ratchet teeth are still drawn on them: they are to be replaced by a screw lock (next).
+- **Reprint** every plug, collar and both sleeves, with the screw lock below.
+
+## Direct drive: one screw locks each sleeve, ratchet teeth gone (2026-11-16)
+
+> Supersedes the "Detent", the key cross-hole and the Ø22.45 "carry the teeth" reason in "Grip sleeves replace the bent spring ends" (2026-11-12). The flanges stay Ø22.45.
+
+- **Why:** the printer could not make the 0.6 mm sawtooth teeth accurately enough to work. Each sleeve is now held by one M3 screw, one at each end of the spring.
+- **The fin:** each sleeve has a fin down its length, outside the spring, with a Ø3.6 hole through it along X for the screw.
+- **No cross-hole:** the sleeves no longer have the tommy-bar hole. Run them on by hand.
+- **Plug end (-X):**
+  - The insert is **heat-set** into the +X face of the plug's **upper tie boss**, the one already holding a tie insert from the -X side. That boss now stands 3.0 mm past the stop flange, and the two inserts do not meet, even on the shortest plug.
+  - An **M3 x 10** goes through the sleeve's fin into it, taking 2.85 mm of thread.
+- **Collar end (+X):**
+  - The insert is a **nut**, not heat-set. It just sits on the collar's +X face.
+  - An **M3 x 30** (the same as the yokes') goes from the end of the sleeve's fin right through the collar into it, ending 3.3 mm into the insert's 4.3.
+  - The collar has a lobe for the screw to pass through, from its +X face to its flange. The sleeve's fin starts flush against that lobe and runs about 8 mm past the sleeve's far end to the screw's head.
+  - Each lobe sits in a gap no neighbouring lobe or rod tab uses at any travel; string 5 has only one such place.
+  - The top row (strings 1, 4, 7, 10) runs under the pickup's height plate, about 16 mm over the string axis for the whole travel. Their lobes sit closer in (14.8 mm, just clear of the sleeve) and off vertical (2°, 56°, 124°, 58°).
+- **Printing:**
+  - The plug sleeve still prints +X → -X (far end on the bed).
+  - The **collar sleeve now prints +X → -X too**, with its flange end on the bed, so its fin stands up past the far end with nothing overhanging.
+- **Hardware, per string** (the same McMaster 94459A130 brass inserts as the collars'):
+  - Plug end: 1 x M3 x 10 and 1 insert, heat-set into the boss before fitting the spring.
+  - Collar end: 1 x M3 x 30 and 1 insert, dropped on by hand.
+- **Fitting:**
+  1. Screw the spring's end coils onto the post, as before.
+  2. Run the sleeve on over them by hand until it bottoms on the flange. The thread brings it home at the same angle every time, so the fin lands over the screw's way. If the fin's hole is just past it, back the sleeve off to it rather than force it on.
+  3. Plug end: drive the M3 x 10 through the fin into the insert with the ball-end 2.5 key, from an angle. The inner strings (2, 3, 5, 6, 8) have no straight line in.
+  4. Collar end: push the M3 x 30 through the fin and the collar until the tip shows on the +X face. Hold the insert on the tip and turn the screw from the fin's end until it pulls the insert onto the face.
+- **Removing:** take the screw out and unscrew the sleeve. The collar end's insert comes off the tip: keep it.
 
 ## Shop tool: guide rod saw jig (2026-11-16)
 

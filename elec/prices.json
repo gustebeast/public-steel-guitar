@@ -171,11 +171,11 @@
     "m3_insert": {
       "usd": 0.2182,
       "verified": "m",
-      "per_instrument": 79,
+      "per_instrument": 99,
       "vendor": "McMaster-Carr",
       "sku": "94459A130",
-      "order": "1 x $10.91 (pack of 50) covers 5 instruments",
-      "what": "M3 brass heat-set insert, OD 4.7, installed length 4.3 (pilot end 3.9) -- dropped into each belt clamp's half B as a captive nut behind a shoulder (not heat-set). belt_tensioner.INS_D / INS_L are this part's DRAWING numbers: measure one on arrival, before a clamp is printed. The eleventh is HEAT-SET into the chassis boss under the Raspberry Pi's hold-down hole (electronics.PI_M3, pocket 4.8). Price and SKU as picked by the lead session 2026-10-07, not re-read off the page here. DIRECT DRIVE (2026-11-16): +20 in the nut collars (col_ins, the yokes' M3x30s), +20 in the anchor plugs (the ties), +18 in the anchor collars and +10 in the couplers (their clamp screws, slid in as nuts) -- if the belt clamps are gone from the direct instrument, drop their 10."
+      "order": "2 x $10.91 (pack of 50) covers 1 instrument",
+      "what": "M3 brass heat-set insert, OD 4.7, installed length 4.3 (pilot end 3.9) -- dropped into each belt clamp's half B as a captive nut behind a shoulder (not heat-set). belt_tensioner.INS_D / INS_L are this part's DRAWING numbers: measure one on arrival, before a clamp is printed. The eleventh is HEAT-SET into the chassis boss under the Raspberry Pi's hold-down hole (electronics.PI_M3, pocket 4.8). Price and SKU as picked by the lead session 2026-10-07, not re-read off the page here. DIRECT DRIVE (2026-11-16): +20 in the nut collars (col_ins, the yokes' M3x30s), +20 in the anchor plugs (the ties), +18 in the anchor collars and +10 in the couplers (their clamp screws, slid in as nuts); +20 for the grip sleeves' locks (2026-11-16: one heat-set in each plug's upper tie boss, one in each collar's +X face as a nut) -- if the belt clamps are gone from the direct instrument, drop their 10."
     },
     "m4_button_25": {
       "usd": 0.2182,
@@ -254,10 +254,10 @@
     "m3_shcs_30": {
       "usd": 0.1228,
       "verified": "v",
-      "per_instrument": 20,
+      "per_instrument": 30,
       "vendor": "McMaster-Carr",
       "sku": "91292A022",
-      "what": "M3x30 socket head cap screw (18-8, ISO 4762) -- the direct-drive yokes, two per string, tapped into the keyhole plate. (The anchor ties went to M3x35 on 2026-11-16: m3_shcs_35.) $6.14 per pack of 50, read off McMaster 2026-11-12."
+      "what": "M3x30 socket head cap screw (18-8, ISO 4762) -- the direct-drive yokes, two per string, tapped into the keyhole plate. (The anchor ties went to M3x35 on 2026-11-16: m3_shcs_35.) $6.14 per pack of 50, read off McMaster 2026-11-12. +10 grip-sleeve locks at the collar end (2026-11-16): from each collar sleeve's fin through the collar into an insert sitting on its +X face as a nut."
     },
     "m3_shcs_35": {
       "usd": 0.2156,
@@ -270,10 +270,10 @@
     "m3_shcs_10": {
       "usd": 0.0711,
       "verified": "v",
-      "per_instrument": 28,
+      "per_instrument": 38,
       "vendor": "McMaster-Carr",
       "sku": "91292A113",
-      "what": "M3x10 socket head cap screw (18-8, ISO 4762) -- the anchor collars' clamp screws (2026-11-16): one per collar, head sunk in the body, across the split into the collar's M3 insert. 10 collar B + 8 collar A (stations 0's two strings use the coupler as collar A) + 10 couplers (the collar's clamp, 2026-11-16). $7.11 per pack of 100, read off McMaster 2026-11-16."
+      "what": "M3x10 socket head cap screw (18-8, ISO 4762) -- the anchor collars' clamp screws (2026-11-16): one per collar, head sunk in the body, across the split into the collar's M3 insert. 10 collar B + 8 collar A (stations 0's two strings use the coupler as collar A) + 10 couplers (the collar's clamp, 2026-11-16) + 10 grip-sleeve locks at the plug end (2026-11-16: through the plug sleeve's fin into the boss's insert; the collar end's are M3x30). $7.11 per pack of 100, read off McMaster 2026-11-16."
     },
     "tie_spacer": {
       "usd": 0.65,
