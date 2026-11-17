@@ -316,7 +316,10 @@ def main(low_stock=200):
             continue
         if got is None:
             bad.append((mpn, code, "NOT IN THE CATALOGUE"))
-        elif not _norm(got).startswith(_norm(mpn)):
+        # a maker's short brand ahead of the part number ("HX PZ1.27-2x8P ZZ" for Hanxia's
+        # PZ1.27-2x8P ZZ) is the listing's habit, not a different part
+        elif not any(_norm(g).startswith(_norm(mpn))
+                     for g in (got, got.split(" ", 1)[-1])):
             bad.append((mpn, code, got))
         if stock is not None and stock < low_stock:
             thin.append((mpn, code, stock))
