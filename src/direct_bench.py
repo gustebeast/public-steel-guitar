@@ -127,6 +127,10 @@ COL_INS_HOLE = 4.0                                  # its heat-set pilot (the 3.
 # insert drops in before the iron melts it home), on the M3's 4.7. The collar keeps COL_INS_HOLE:
 # its pockets beside the nut's bore have no room for 4.8 (above).
 PLUG_INS_HOLE = COL_INS[0] + 0.1                    # 4.8, printed round (along the plug's build)
+PLUG_EAR_HW = PLUG_INS_HOLE / 2 + D.BEAD            # 3.2: their bosses, ONE bead round the pocket --
+                                                    # the old boss: 0.9 already met string 4/6 and 5/7's
+                                                    # plugs (probe 2026-11-17), so the drop-in pocket
+                                                    # takes the wall down to the least we print
 KEY_M3_ENGAGE = COL_INS[1] - 0.3                    # 4.0 of thread in the insert
 YK_H = KEY_M3_L - D.NUT_FLANGE_T - KEY_M3_ENGAGE    # 22.5: flange face -> plate's +X face
 # THE KEYHOLE PLATE (user, 2026-11-12: a ball end on a 2.4 printed roof is ~8 mm^2 of plastic
@@ -1229,7 +1233,7 @@ def _anchor_plug_raw(i: int) -> cq.Workplane:
     out = out.union(cyl_x(STOP_D, f1 - f0, f0, y=y, z=z))                           # stop flange
     rise = (STOP_D - SPRING_ID) / 2                                                 # ... on a cone
     out = out.union(_cone_x(SPRING_ID / 2, STOP_D / 2, f0 - rise, f0 + 0.01, y, z))
-    ear_hw = PLUG_INS_HOLE / 2 + EAR_WALL                                           # EAR_WALL round
+    ear_hw = PLUG_EAR_HW                                                            # the insert bosses
     out = out.union(_ears(i, a0, f1, ear_hw))                                       # the inserts'
     out = out.cut(cyl_x(SCREW_CLR, s1 - a0 + 2, a0 - 1, y=y, z=z))                 # the screw's way
     ins_d, ins_l, tip_d = PLUG_INS_HOLE, COL_INS[1] + 0.3, 3.4    # the ties' M3 inserts
