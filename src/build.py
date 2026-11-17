@@ -560,11 +560,7 @@ PARTS["motor_shaft_saw_jig"] = (
 PARTS["guide_rod_saw_jig"] = (
     lambda: heal(__import__("src.guide_rod_saw_jig", fromlist=["e"]).body()),
     "tools/guide_rod_saw_jig.step",
-    "TOOL — hacksaw jig for cutting each 2 ft length of 3/16 in stainless (McMaster 89535K84) into three guide rods of direct_bench.ROD_L (202.5), with one Quick-Grip and no vise: the whole jig sits on the table; the stock rests in a short diamond-tunnel guide -X of a 1.3 saw slot (McMaster 6927A16), and the piece lies in a supported 90 deg V trough out to an end stop at ROD_L from the slot's +X face, clamped next to the slot through the cap. 217 x 41. PETG, printed as drawn (table face on the bed)")
-PARTS["guide_rod_saw_jig_cap"] = (
-    lambda: heal(__import__("src.guide_rod_saw_jig", fromlist=["e"]).cap()),
-    "tools/guide_rod_saw_jig_cap.step",
-    "TOOL — the guide rod saw jig's cap: the leadscrew jig's cap sized for the 3/16 rod. A plunger down the clamp channel, its 45 deg notch on the rod, a rimmed pocket on top for the Quick-Grip pad. PETG, printed as drawn (notch on the bed)")
+    "TOOL — hacksaw jig for cutting each 2 ft length of 3/16 in stainless (McMaster 89535K84) into three guide rods of direct_bench.ROD_L (202.5), with one Quick-Grip and no vise: the whole jig sits on the table; the stock rests in a short diamond-tunnel guide -X of a 1.3 saw slot (McMaster 6927A16), and the piece lies in a supported 90 deg V trough out to an end stop at ROD_L from the slot's +X face, clamped next to the slot through the LEADSCREW JIG'S CAP (saw_jig_cap: no cap of its own). 217 x 41. PETG, printed as drawn (table face on the bed)")
 PARTS["saw_jig_cap"] = (
     lambda: heal(__import__("src.saw_jig", fromlist=["e"]).cap()),
     "tools/saw_jig_cap.step",
@@ -3435,7 +3431,7 @@ V1_REUSED = (
     "coil_mandrel", "coil_mandrel_sleeve", "lever_prog_jig", "lever_prog_jig_base", "saw_jig",
     "motor_shaft_saw_jig", "saw_jig_cap", "pin_drill_jig", "pin_drill_bushing_pilot",
     "pin_drill_bushing_pin", "pin_drill_bushing_pilot_1", "pin_drill_bushing_pilot_2",
-    "pin_drill_bushing_pilot_3", "ream_jig", "guide_rod_saw_jig", "guide_rod_saw_jig_cap",
+    "pin_drill_bushing_pilot_3", "ream_jig", "guide_rod_saw_jig",
     # the direct drive's laser-cut plate (already the direct bench's)
     "keyhole_plate",
 )

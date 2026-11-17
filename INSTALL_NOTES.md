@@ -2232,13 +2232,13 @@ The optical board as ordered (R1) sits under string 6, **turned 180 degrees** fr
 
 ## Shop tool: guide rod saw jig (2026-11-16)
 
-Cuts each 2 ft length of 3/16" stainless (McMaster 89535K84) into three guide rods of 202.5 mm (`direct_bench.ROD_L`), with the 6927A16 hacksaw blade and one Quick-Grip, no vise. Two printed parts: `tools/guide_rod_saw_jig.step` (217 x 41) and `tools/guide_rod_saw_jig_cap.step`. PETG, both printed as drawn.
+Cuts each 2 ft length of 3/16" stainless (McMaster 89535K84) into three guide rods of 202.5 mm (`direct_bench.ROD_L`), with the 6927A16 hacksaw blade and one Quick-Grip, no vise. One printed part, `tools/guide_rod_saw_jig.step` (217 x 41), PETG, printed as drawn. It takes the **leadscrew saw jig's cap** (`tools/saw_jig_cap.step`): the same part, no new one.
 
 Unlike the leadscrew jig it sits wholly on the table: the piece is 202 long, so it lies in a supported V trough out to the end stop, and the clamp holds the piece side.
 
 1. Lay the jig on the table near the edge, so the clamp's lower jaw reaches under it.
 2. Feed the stock in from the -X end, through the short guide block and across the slot, until its end touches the end stop.
-3. Drop the cap into the channel next to the slot, put the clamp's pad in the cap's pocket and the other jaw under the table, and squeeze. The stack is cap, rod, jig, table.
+3. Drop the leadscrew jig's cap into the channel next to the slot (it sits lower here, on the thinner rod; a rib down the channel's middle holds the rod under it), put the clamp's pad in the cap's pocket and the other jaw under the table, and squeeze. The stack is cap, rod, jig, table.
 4. Saw down the slot, holding the long free end of the stock by hand. A blade that runs through cuts the jig's floor, not the table.
 5. Unclamp and lift the piece out of the trough. It comes out 202.5 to 202.8; file the burr square.
 6. File the stock's fresh end square, then feed it in to the stop again for the second piece.

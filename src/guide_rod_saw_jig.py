@@ -20,8 +20,8 @@ Rod axis along +X, the saw line at x = 0, the piece +X of it:
   SLOT    SLOT_W, open across the whole width from Z_TOP down to SLOT_UNDER under the rod. A
           cheek either side guides the blade. A blade that runs through cuts the jig's floor,
           never the table.
-  CLAMP   +X of the slot, past SUPPORT_GAP: the channel the cap (saw_jig's, re-sized) drops into
-          onto the rod. The clamp squeezes cap -> rod -> V -> jig -> table.
+  CLAMP   +X of the slot, past SUPPORT_GAP: the channel the LEADSCREW JIG'S CAP (saw_jig_cap, the
+          same part) drops into onto the rod. The clamp squeezes cap -> rod -> V -> jig -> table.
   TROUGH  a rib with a 90 deg V on top, from the clamp block to the END STOP. The rod lies with its
           axis at the rib's top, so a cut piece lifts straight out.
   STOP    at ROD_L from the slot's +X face.
@@ -61,7 +61,6 @@ ROOF_Z = ROD_Z + (ROD_R + ROOF_CLR) * SQ2
 # ── the saw ─────────────────────────────────────────────────────────────────
 SLOT_W = SJ.SLOT_W                           # 1.3, McMaster 6927A16
 SLOT_X0, SLOT_X1 = -SLOT_W / 2.0, SLOT_W / 2.0
-Z_TOP = 31 * B                               # 24.8: the cheeks guide the blade ~14 over the rod
 STOP_X = SLOT_X1 + DB.ROD_L                  # the stop's face: ROD_L from the slot's +X face
 assert DB.ROD_L + SLOT_W <= DB.rod_l_max(), "the longest piece the slot allows would not fit the cap"
 
@@ -73,12 +72,28 @@ RIB_HW = ROD_R * SQ2 + 3 * B                 # 5.8: the trough's half-width (V's
 STOP_T = 4 * B                               # 3.2
 STOP_TOP = ROD_Z + ROD_R + 3 * B             # 12.8: the stop stands over the rod
 
-# ── the cap and the clamp: saw_jig's cap, on a lower rod ────────────────────
+# ── the cap: THE LEADSCREW JIG'S OWN (user, 2026-11-16: "Can I use my existing cap?") ──
+# Its 90 deg notch sits on any round rod, a thinner one only higher up into it: on the 3/16 rod
+# the notch's apex stands ROD_R*sqrt2 over the axis, so the cap's underside comes down to
+# CAP_DROP over it -- below the axis. The clamp channel's floor goes CAP_LIFT under that, and a
+# narrow V RIB is left down its middle, inside the notch's opening, so the rod is held from
+# below the whole way under the cap.
 CAP_L = CAP_W = SJ.CAP_L                     # 33.6: square, so the pad sits either way round
-RIM_T, RIM_H = SJ.RIM_T, SJ.RIM_H
 CAP_CLR = SJ.CAP_CLR                         # 0.3
 CAP_LIFT = SJ.CAP_LIFT                       # 1.2: cap underside over the channel floor
-CAP_PROUD = SJ.CAP_PROUD
+CAP_APEX = SJ.ROD_Z + SJ.ROD_R * SQ2         # the notch's apex in the leadscrew jig's frame
+CAP_DZ = ROD_Z + ROD_R * SQ2 - CAP_APEX      # the cap moved down by this here
+CAP_BOT = SJ.ROD_Z + SJ.CAP_LIFT + CAP_DZ    # its underside
+CAP_TOP = SJ.Z_TOP + SJ.CAP_PROUD + CAP_DZ   # its pocket's rim
+CH_FLOOR = CAP_BOT - CAP_LIFT                # the channel's floor
+Z_TOP = math.floor((CAP_TOP - SJ.CAP_PROUD) / B + 1e-9) * B   # the body's top: the cap ~CAP_PROUD proud
+assert Z_TOP - (ROD_Z + ROD_R) >= 12.0, "the cheeks guide the blade too little over the rod"
+NOTCH_HW = CAP_APEX - (SJ.ROD_Z + SJ.CAP_LIFT)   # the notch's half-width at the cap's underside
+RIB_CLR = 0.5                                # the rib's top corners under the notch's faces
+CH_RIB_TOP = ROD_Z - ROD_R / SQ2 + 1.0       # the rib: 1.0 over where the rod bears on its V
+CH_RIB_HW = (CAP_APEX + CAP_DZ) - CH_RIB_TOP - RIB_CLR   # out to where the notch's face is over it
+assert CH_RIB_HW - (CH_RIB_TOP - V_APEX_Z) >= B, "the rib's lips under the cap's notch are under a bead"
+assert CH_FLOOR >= FLOOR_T, "the channel's floor is too thin over the table"
 CAP_X0 = SLOT_X1 + SUPPORT_GAP               # the cap's -X face
 CAP_X1 = CAP_X0 + CAP_L
 CH_X0, CH_X1 = CAP_X0 - CAP_CLR, CAP_X1 + CAP_CLR
@@ -116,7 +131,8 @@ def body() -> cq.Workplane:
     out = _box(X_MIN, SLOT_X0, -HW, HW, 0.0, Z_TOP)                           # stock-side guide
     out = out.union(_box(SLOT_X0, SLOT_X1, -HW, HW, 0.0, SLOT_FLOOR_Z))       # the slot's floor
     out = out.union(_box(SLOT_X1, CLAMP_X1, -HW, HW, 0.0, Z_TOP))            # cheek + clamp block
-    out = out.cut(_box(CH_X0, CH_X1, -CH_HW, CH_HW, ROD_Z, Z_TOP + 1.0))     # the clamp channel
+    out = out.cut(_box(CH_X0, CH_X1, -CH_HW, CH_HW, CH_FLOOR, Z_TOP + 1.0))  # the clamp channel
+    out = out.union(_box(CH_X0 - 0.5, CH_X1 + 0.5, -CH_RIB_HW, CH_RIB_HW, CH_FLOOR - 0.5, CH_RIB_TOP))
     out = out.cut(_tunnel(X_MIN - 1.0, CLAMP_X1 + 1.0))
     # the trough: a rib to the rod's axis, its V open on top, out to the stop
     rib = _box(CLAMP_X1 - 1.0, STOP_X, -RIB_HW, RIB_HW, 0.0, ROD_Z).cut(_vee(CLAMP_X1 - 2.0, STOP_X + 1.0))
@@ -128,17 +144,12 @@ def body() -> cq.Workplane:
 
 
 def cap() -> cq.Workplane:
-    top = Z_TOP + CAP_PROUD
-    c = _box(CAP_X0, CAP_X1, -CAP_W / 2.0, CAP_W / 2.0, ROD_Z + CAP_LIFT, top)
-    c = c.cut(_box(CAP_X0 + RIM_T, CAP_X1 - RIM_T, -CAP_W / 2.0 + RIM_T, CAP_W / 2.0 - RIM_T,
-                   top - RIM_H, top + 1.0))
-    apex = ROD_Z + ROD_R * SQ2               # 45 deg faces tangent to the rod
-    w = apex - (ROD_Z + CAP_LIFT) + 1.0
-    return c.cut(_yz_prism([(-w, ROD_Z + CAP_LIFT - 1.0), (w, ROD_Z + CAP_LIFT - 1.0), (0.0, apex)],
-                           CAP_X0 - 1.0, CAP_X1 + 1.0))
+    """The leadscrew jig's cap (saw_jig.cap, print one only if you have none), where it sits here."""
+    return SJ.cap().translate((CAP_X0 - SJ.CAP_X0, 0.0, CAP_DZ))
 
 
 def rod(length=None) -> cq.Workplane:
     """The 3/16 rod fed in to the stop, a whole 2 ft length -- for checking only."""
     length = DB.ROD_STOCK if length is None else length
     return cq.Workplane("YZ").circle(ROD_R).extrude(length).translate((STOP_X - length, 0.0, ROD_Z))
+
