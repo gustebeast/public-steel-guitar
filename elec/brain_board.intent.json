@@ -558,15 +558,6 @@
  },
  {
   "kind": "near",
-  "why": "bus A transceiver VIO bypass",
-  "src": "brain.py (merged)",
-  "hard": true,
-  "ref": "C233",
-  "target": "U202.5",
-  "max_mm": 4.0
- },
- {
-  "kind": "near",
   "why": "bus A's near-end 120R at its transceiver (the far one is on the connector board)",
   "src": "brain.py (merged)",
   "hard": true,
@@ -2113,16 +2104,6 @@
  },
  {
   "kind": "decap",
-  "cap": "C9",
-  "pin": "U2.4",
-  "max_mm": 3.0,
-  "hard": false,
-  "weight": 1.0,
-  "src": "auto_decaps (netlist)",
-  "why": "C9 across +3V3_A and AGND, both pins of U2: at them"
- },
- {
-  "kind": "decap",
   "cap": "C91",
   "pin": "U19.1",
   "max_mm": 3.0,
@@ -2600,18 +2581,6 @@
  },
  {
   "kind": "fixed",
-  "ref": "C152",
-  "xy": [
-   19.085,
-   29.9
-  ],
-  "rot": 90.0,
-  "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
- },
- {
-  "kind": "fixed",
   "ref": "C153",
   "xy": [
    -5.015,
@@ -2978,18 +2947,6 @@
    -25.6
   ],
   "rot": 0.0,
-  "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
- },
- {
-  "kind": "fixed",
-  "ref": "C233",
-  "xy": [
-   -18.315,
-   -16.2
-  ],
-  "rot": 90.0,
   "hard": true,
   "why": "mR: held where mP0 put it",
   "src": "mP0 placement, bronner 2026-11-15"
@@ -3408,18 +3365,6 @@
   "xy": [
    1.085,
    -22.7
-  ],
-  "rot": 180.0,
-  "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
- },
- {
-  "kind": "fixed",
-  "ref": "C33",
-  "xy": [
-   -37.815,
-   34.1
   ],
   "rot": 180.0,
   "hard": true,
@@ -6257,5 +6202,48 @@
   "hard": true,
   "why": "magnetic pickup terminals down the board face, plug +Y to board y 41.5 (instrument z -16.7), pads centre board y 24.54 (instrument z -33.7); x -24.3 leaves the barrier column (U32/U33 at x -13.5) a 2.3 mm strip for U32/U33's audio-side decaps -- pins at instrument x -48.9 / -52.4",
   "src": "branner 2026-11-15 (J8 re-measure); bronner x -55 audio corner"
+ },
+ {
+  "kind": "decap",
+  "cap": "C152",
+  "pin": "U21.2",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "brain_board A2 audit, bronner 2026-11-16",
+  "why": "U21 (AP2114H) output cap -- the datasheet's 4.7 uF ceramic at VOUT; was a held part with no rule, 5.8 mm off"
+ },
+ {
+  "kind": "decap",
+  "cap": "C9",
+  "pin": "U6.5",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "brain_board A2 audit, bronner 2026-11-16",
+  "why": "U6 (AP2112K) output: '3V3 (converters) bulk' is the LDO's output cap; no cap was ruled to VOUT"
+ },
+ {
+  "kind": "decap",
+  "cap": "C233",
+  "pin": "U202.3",
+  "also": [
+   "U202.5"
+  ],
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "brain_board A2 audit, bronner 2026-11-16",
+  "why": "U202 TCAN3413: one 100 nF 'supply bypass' serves VCC (3) and VIO (5), both +3V3D -- seated between them, not at VIO alone"
+ },
+ {
+  "kind": "decap",
+  "cap": "C259",
+  "pin": "J205.10",
+  "max_mm": 3.0,
+  "hard": false,
+  "weight": 1.0,
+  "src": "brain_board A2 audit, bronner 2026-11-16",
+  "why": "brain.py C59 '+3V3_UI at the UI header': auto_decaps had put it at the switch output U212.6"
  }
 ]
