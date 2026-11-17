@@ -2149,6 +2149,16 @@ POWER_POLY = [[-BOARD_W / 2, -50], [BOARD_W / 2, -50], [BOARD_W / 2, 0], [XL, 0]
 # PWR_GND stop MOAT short of it all round, so the barrier is a 1 mm copper-free gap that only
 # U30, U32-U34 and K1 straddle. The placement intent's "analog" region is this rectangle.
 AUDIO_X1, AUDIO_Y0, MOAT = -14.0, 6.0, 1.0
+# THE SERVICE PORT'S NOTCH (user, 2026-11-17). The top edge sits just under the deck, so a plug
+# cannot enter there: J7 sits on the floor of a notch, mouth +Z, and the extension's RIGHT-ANGLE
+# male end goes in downward, its overmold inside the notch and below the deck, the cable leaving
+# out of the board face (+Y) and down to the chassis bottom. Where: the clear stretch of the top
+# edge between the H743's crystal / LDO and J205 (user's pick on the mV18 render), x +3..+31 --
+# beside J202, so the hub's upstream pair stays short. Width = the overmold's width plus
+# clearance, depth = its height above the receptacle mouth plus clearance: PROVISIONAL (a
+# typical 90-degree USB-C overmold, ~12 x 9 above the mouth) until the chosen cable's drawing
+# is read. The +X edge was looked at first and is full: the CM5 to y -6, the boost's hot loop below.
+SVC_NOTCH_X, SVC_NOTCH_W, SVC_NOTCH_D = 17.0, 15.0, 11.0
 AUDIO_POLY = [[-BOARD_W / 2, AUDIO_Y0], [AUDIO_X1, AUDIO_Y0], [AUDIO_X1, BOARD_L / 2],
               [-BOARD_W / 2, BOARD_L / 2]]
 GND_POLY = [[-BOARD_W / 2, -BOARD_L / 2], [BOARD_W / 2, -BOARD_L / 2], [BOARD_W / 2, BOARD_L / 2],
@@ -2191,7 +2201,11 @@ FIRMWARE_NOTES = [
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
     "audio_poly": AUDIO_POLY,
-    "outline_poly": [[-BOARD_W / 2, -50], [BOARD_W / 2, -50], [BOARD_W / 2, 50], [-BOARD_W / 2, 50]],
+    # the service port's notch in the top edge (SVC_NOTCH_*): J7 on its floor
+    "outline_poly": [[-BOARD_W / 2, -50], [BOARD_W / 2, -50], [BOARD_W / 2, 50],
+                     [SVC_NOTCH_X + SVC_NOTCH_W / 2, 50], [SVC_NOTCH_X + SVC_NOTCH_W / 2, 50 - SVC_NOTCH_D],
+                     [SVC_NOTCH_X - SVC_NOTCH_W / 2, 50 - SVC_NOTCH_D], [SVC_NOTCH_X - SVC_NOTCH_W / 2, 50],
+                     [-BOARD_W / 2, 50]],
     "frame": {"instrument_x": "-(board x) - 74.985", "instrument_z": "board y - 58.24",
               "component_face_y": -85.9, "faces": "+Y", "by": "branner 2026-11-13",
               "install": "drop -Z at x - 19, slide +X 19 into the endplate pocket"},

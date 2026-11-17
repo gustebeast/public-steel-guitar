@@ -5264,14 +5264,14 @@
  },
  {
   "kind": "panel",
-  "why": "the service port (inside): the panel-mount extension's male end plugs in from above, under the deck. Top edge, just clear of the audio corner (AUDIO_X1 -14): the nearest edge to the +X -Y body adapter the cable can reach -- -X is the outer panel, the bottom edge sits in the floor groove",
+  "why": "the service port (inside), on the FLOOR of the top-edge notch (brain_board SVC_NOTCH_*: centre x 17, 15 wide, 11 deep, face 50 - 11 = 39): the right-angle extension's plug goes in downward, its overmold in the notch under the deck (user, 2026-11-17: the top edge alone just clears the deck; the spot is the user's pick)",
   "src": "brain_board._service_port (2026-11-17)",
   "hard": true,
   "ref": "J7",
   "edge": "+Y",
-  "face": 50.0,
+  "face": 39.0,
   "overhang": 0.0,
-  "at": -6.0
+  "at": 17.0
  },
  {
   "kind": "near",
@@ -5352,7 +5352,7 @@
   "hard": false,
   "ref": "U37",
   "target": "J202",
-  "max_mm": 30.0
+  "max_mm": 20.0
  },
  {
   "kind": "near",
