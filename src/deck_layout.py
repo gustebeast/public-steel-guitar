@@ -83,9 +83,6 @@ def _deck_tg(yc, x0, x1, mortise):
     s = _deck_halves(L, 1.0)[1] if mortise else _deck_halves(L)[0]
     return (s.rotate((0, 0, 0), (1, 0, 0), 180)
             .translate((x0 - (1.0 if mortise else 0.0), yc, TP_GZ0)))
-                                       # joint below stands 8.0 and its cavity ends c past
-                                       # that (asserted in _ep_halves)
-KH_DT_Z0       = -29 * D.BEAD           # -23.2 foot line; also the LOWER/UPPER dovetail
 
 # ── -Y rail WIRING TROUGH ─────────────────────────────────────────────────
 # A trough standing OFF the -Y rail's inner face, above the motors, for the harness to be

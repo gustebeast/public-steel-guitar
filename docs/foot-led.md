@@ -1,5 +1,9 @@
 # Foot lighting — the strip that fires down (brenner, 2026-09-30)
 
+> **HISTORICAL (lead, 2026-11-17).** Written for the v1 belt-drive instrument, which left
+> the build in the v1 removal; its code is at the git tag `v1-instrument`. Kept as the design
+> record: the parts it describes are not in the current model.
+
 > **2026-10-06: the driver is TLC5971RGER (C543004, VQFN-24) now, not the TLC59711 in HTSSOP-20.**
 > The same TI family: twelve channels, 16-bit enhanced-spectrum PWM, the same 224-bit
 > protocol, 17 V outputs; about 0.87 USD less each and a cooler package (38 C/W against

@@ -9,9 +9,13 @@ safely.
 
 Group notes by subassembly. Add to the end of a group; don't renumber old notes.
 
+Sections headed **— v1, historical** describe the v1 belt-drive instrument (git tag
+`v1-instrument`): its levers, pedals, legs, belt clamps and harness are not in the current
+model (lead, 2026-11-17). They stay as the record until their redesigns replace them.
+
 ---
 
-## Knee levers and foot pedals (feel cartridges)
+## Knee levers and foot pedals (feel cartridges) — v1, historical
 
 Every knee lever and foot pedal carries two identical cartridges: MAIN and
 HALF-STOP. Hardware per cartridge: one Ø10 × 30 die spring, two M4 heat-set
@@ -130,7 +134,7 @@ turns on the 2.5 mm hex key. See `BOM.md` and
 - **Don't** substitute a larger washer: anything over Ø9.6 reaches the bearing's
   shield and rubs.
 
-## Belt clamps: put each one together insert, screw, then B
+## Belt clamps: put each one together insert, screw, then B — v1, historical
 
 - **Where:** every belt-tension clamp (`belt_tensioner_half_a` / `_b`), before it goes on a belt.
 - **Do:** 1. drop the M3 insert into half B's side pocket (the U in its +y face), from the side,
@@ -141,7 +145,7 @@ turns on the 2.5 mm hex key. See `BOM.md` and
   drops in sideways. Once B is on, B's rail covers the slot and A's rail covers the insert's
   pocket, so each half's rail is what keeps the other's part in.
 
-## Belt clamps: splice each one with the nut ON THE CEILING, 5 mm off the pulley
+## Belt clamps: splice each one with the nut ON THE CEILING, 5 mm off the pulley — v1, historical
 
 - **Where:** every string's belt-tension clamp (`belt_tensioner_*`), all ten belts.
 - **Do:** run the string's nut UP until it stops against the endplate ceiling (the hard top
@@ -295,7 +299,7 @@ it. Nothing screws into the motor.
    round the boss for filings.
 9. Drop in the next motor (step 2). The jig stays where it is; only the clamp comes off.
 
-## Motors: push each pulley on to the end of the shaft's flat (2026-10-28)
+## Motors: push each pulley on to the end of the shaft's flat (2026-10-28) — v1, historical
 
 * The pulley's bore is a D the whole way through: line its flat up with the shaft's flat and
   push it on until it stops. It stops where the shaft's flat ends and the round part starts,
@@ -307,7 +311,7 @@ it. Nothing screws into the motor.
   of its 21.5, dimensions.MOTOR_SHAFT_FLAT_L), its sharp flange edge 1.5 off the motor's boss. If a motor's flat differs, the pulley's place moves
   with it: measure it and the pulley gets re-drawn.
 
-## Motor tees: ONE switch ON, nine OFF
+## Motor tees: ONE switch ON, nine OFF — v1, historical
 
 Every motor tee carries a 120 ohm terminator behind a small slide switch marked TERM
 (SW1, in the strip behind the connectors). The boards arrive with it OFF. Slide it to ON
@@ -659,7 +663,7 @@ bar in each wall takes most of that bending (roughly 4 cents with 30 kg on the c
 scale length does not depend on where the bar was cut. The shims are only there so the bar
 cannot rattle.
 
-## Seam bridges: optional, under a seam no lever covers, after the sections are joined (2026-11-05)
+## Seam bridges: optional, under a seam no lever covers, after the sections are joined (2026-11-05) — v1, historical
 
 `seam_bridge` (src/seam_bridge.py) ties two chassis sections together from below: a flat plate
 the length of the floor's mortises, with two knee-lever tenons standing on it. One part fits
@@ -677,7 +681,7 @@ and the bottom of each seam is where string load opens it. Nothing but the tenon
 from sliding back out -Y, the same as the knee levers until their depth lock exists. The two
 mortises it uses are taken: no knee lever can mount on those stations.
 
-## Leg blind-mate boards (src/leg_pogo.py) — ORDER MATTERS
+## Leg blind-mate boards (src/leg_pogo.py) — ORDER MATTERS — v1, historical
 
 The male board goes into the tenon's end **as a unit, from the mating face, and it
 only fits one way round**. The order below is not a preference; steps 2 and 4 cannot
@@ -740,7 +744,7 @@ past. The pocket is now swept along the whole install stroke. The part reads CLE
 rest and CLEAN fully withdrawn, which is exactly why no static check caught it —
 `leg_pogo` now sweeps the stroke instead.
 
-## Latches — ALL ON ONE SIDE
+## Latches — ALL ON ONE SIDE — v1, historical
 
 Every latch in the instrument faces the same way: the leg-to-body-adapter latch
 (`leg_latch.BUTTON_SIDE`) and the pedal bar's collar yoke (`bar_latch.PAD_SIDE`), and
@@ -765,7 +769,7 @@ place each module says which way round it is.
 
 ---
 
-## Knee lever wiring (bus B)
+## Knee lever wiring (bus B) — v1, historical
 
 Bus B daisy-chains through every lever board: in on **J1**, out on **J2** — two 4-way PH
 on the board's end, J1 the upper (see KL-5). A lever is **not** at a fixed station — its tenons drop into the chassis bottom's mortise grid
@@ -829,7 +833,7 @@ any knee depth over 197.5 mm in Y.
 
 ---
 
-## Pedal bar wiring (bus B)
+## Pedal bar wiring (bus B) — v1, historical
 
 The bar's wiring trough carries bus B from the −X (wired) leg tower to the five
 pedal sensor boards, daisy-chained: leg → pedal 1 → … → pedal 5. Each board has the bus
@@ -888,7 +892,7 @@ the power off, any board reads 60 ohm when exactly two are ON.
 
 ---
 
-## Bus B under the body (no port)
+## Bus B under the body (no port) — v1, historical
 
 Everything on bus B lives **below** the chassis floor, and so does the connector it lands
 on: the motor controller stands through the floor behind string 1's motor, and its J2
@@ -928,7 +932,7 @@ J2 and J6 are two separate 4-way housings (they were one 8-way until 2026-10-03)
 either cable unplugs on its own. Both take the same plug and nothing is damaged by
 swapping them — the board passes the bus straight through — but put them back as built.
 
-## The lights lead leaves the motor board through a slot in the floor
+## The lights lead leaves the motor board through a slot in the floor — v1, historical
 
 The motor board hangs through the chassis floor, and J7 (lights, 4-way XH) is low on it:
 its ways 3 and 4, the two button wires, are **below the floor's top**. A slot in the
@@ -1236,7 +1240,7 @@ The design shows the R2 boards only. Until they arrive, the R1 boards are a benc
   so on the bench the lead goes in before the board is stood in the chassis. Bus B's J2 / J6
   are 14 mm nearer the -Y body adapter than R2's: pull those plugs with pliers.
 
-## Foot lights: plug the lead in first, then slide the strip in from +X (2026-10-29)
+## Foot lights: plug the lead in first, then slide the strip in from +X (2026-10-29) — v1, historical
 
 The two foot-light boards (src/foot_light.py) slide along the channel over the light window,
 LEDs facing down. They go in from the **+X (bridge) end**, with the bridge endplate off. The
@@ -2272,3 +2276,33 @@ Unlike the leadscrew jig it sits wholly on the table: the piece is 202 long, so 
 5. Unclamp and lift the piece out of the trough. It comes out 202.5 to 202.8; file the burr square.
 6. File the stock's fresh end square, then feed it in to the stop again for the second piece.
 7. What is left is the third piece, ~202.5 (609.6 less two pieces and two ~1 mm kerfs). Any piece from about 201 to 204.0 fits. If the stock came long and the third is over 204.0, trim it in the jig like the others.
+
+## Direct drive: grip thread at the spring's own pitch (2026-11-17)
+
+The bench showed the 3.6 mm grip thread was wrong for a close-wound spring. The coils had to be pulled apart to fit it, the wire shaved the post's crests, and the bed end of the plug sleeve stopped the spring from cutting its way in.
+
+- **Pitch:** the thread is now **2.31 mm**, one wire per turn: the coils go on as they come off the spring.
+- **Turns:** four grip turns at each end (9.24 mm, up from 6.93), because the first bench thread felt short.
+- **Cut length: 42 whole coils** (about 97 mm close-wound), cut at a coil end. That leaves 34 working coils, so the rate is unchanged. The plugs' necks are shorter to take the longer spring; the anchor and motors do not move.
+- **Groove:** the sleeve's crests reach about 0.55 into the valleys outside the coils, the post's about 0.66 into those inside (tightened after the first bench post was a bit loose). Printed holes come out small, so the wire may cut the sleeve a little going on. The bench showed that holds.
+- **Run-out:** the groove runs out through both ends of each sleeve, so a spring threaded right through no longer jams at the far face.
+- **Lead-ins:** both ends of each sleeve's bore and the post's free end have a 45° chamfer, so the spring's cut end starts its thread without meeting the squashed first layers.
+- **Guide rod hole:** the plug's hole for the guide rod is now Ø5.36 (rod + 0.6). At Ø4.96 and Ø5.16 it was still too tight on the rod.
+- **Plug inserts:** the plug's M3 insert pockets are now Ø4.8 round (the insert's 4.7 + 0.1, the rule the M4 inserts settled), so each insert drops in before the iron melts it home. The 4.0 pilot was much too small. The bosses round them stay their old size (a bigger boss meets the neighbouring plugs), so the wall outside each insert is one bead, 0.8: heat it in square and gently. The collar's insert pockets stay at 4.0: there is no room beside the nut's bore.
+- **Lock screw holes:** the M3's clearance hole through both sleeve fins and the collar lobe is Ø3.7 (3.6 gripped the screw in the collar sleeve).
+- **Reprint:** every plug, both sleeves and every collar (the collar's post carries the thread). The bench set for string 6 is `petg-gf/plug_s6.step`, `petg-gf/sleeve_p.step`, `petg-gf/sleeve_c.step` and `pctg/collar.step`.
+- **Fitting:** as before. Screw the spring's end coils onto the post, then run the sleeve on over them until it bottoms on the flange.
+
+## Direct drive: body adapters, the legs' joint to the body (2026-11-17)
+
+One adapter at each corner, `petg-gf/adapter_0.step` to `adapter_3.step` (0: -X/+Y, 1: +X/+Y, 2: +X/-Y, 3: -X/-Y). Each is the old leg adapter's bottom half: the blind mortise for the fixed tenon, the latch pocket and its mouth chamfer, unchanged. On top are **two tenons running along X**. One is under the side wall's middle; the other is under the floor, where the body has a rib for its socket.
+
+Each adapter sits across the joint between the body and an endplate (the keyhead at -X), about half under each. The tenons' sockets are open at the joint face and closed at the far ends.
+
+- **Printing:** PETG-GF, built along X from the adapter's outer end face (on the bed), so the tenons' profile is in the layers. The tenons' outer ends are ramped so they print without a ceiling.
+- **Fitting:**
+  1. With the endplate (or the keyhead) off, slide each adapter into the body's sockets from the open end, tenons first, until it stops.
+  2. Slide the endplate on along X over the adapters' outer halves, then fit its four bar screws as usual. Tightening them pulls the endplate home and traps the adapters in X between the two closed socket ends.
+  3. The legs then go on as before: the fixed tenon up into the adapter's mortise until the latch clicks.
+- **Removing:** take the endplate off first. The adapters then slide out of the body along X.
+- **Not yet carried over:** the signal corner's pogo board. Where the bus comes down a leg is still open.

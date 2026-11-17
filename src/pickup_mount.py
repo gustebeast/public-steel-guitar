@@ -1,7 +1,7 @@
 """Pickup hardware: the DEMO pickup body (Lace Alumitone 4.0 bar) and its dimensions.
 
 The mount itself -- the Z-plate the pickup rests on, the three M4 leadscrew jacks at the
-plate corners, and the pickup's retention -- is built in top_plate.py, which reads the
+plate corners, and the pickup's retention -- is built in deck_layout.py, which reads the
 PK_* dimensions here. Frame: pickup centred X/Y, top at z=0 (build.py lifts it to PK_TOP).
 """
 
@@ -21,7 +21,7 @@ from .helpers import box_at, cyl
 # each Y end. So coverage must be reckoned against the 88.9 magnetic range, not the
 # 101.6 body edge. The strings FAN (9.5mm pitch at the changer -> 6.5mm at the nut)
 # and cross the pickup at ~+/-42; the 88.9 magnetic range (+/-44.45) covers them
-# with ~2.4mm margin when the body is placed by magnetic coverage (see top_plate).
+# with ~2.4mm margin when the body is placed by magnetic coverage (see deck_layout).
 # Depth 22 is deeper than the -14 ribs allow at the neck-slide positions -- a known
 # TODO the user will review.
 PK_W, PK_L, PK_H = 38.6, 101.6, 22.0           # X (along neck), Y (across strings), Z (deep)
@@ -37,12 +37,11 @@ PK_H_MIN = 15.0                                 # carrier-wall cap datum: walls 
 # the deepest pickup at GAP_MAX -- so the gate sees the lowest it ever goes.
 GAP_MAX = 6.0
 # GAP_MIN is 3.0, today's top of travel, and NOT 1.5: the -Y retention boss rides 9.45 over the
-# plate top and the deck's relief over it stops one bead under the deck top (top_plate
+# plate top and the deck's relief over it stops one bead under the deck top (deck_layout
 # RET_RELIEF_Z1), so the plate top can rise no further than -3.85 -- the 15 mm pickup's 2.82 gap.
 # 3.0 keeps the swept half-millimetre steps clear of it; a 16 mm pickup still reaches 2.0.
 GAP_MIN = 3.0
 PK_TOP  = D.STRING_Z - D.STRING_GAUGE_MAX - GAP_MAX   # clear the heaviest string that fits, not the demo set's
-PLATE_TRAVEL = (PK_H - PK_H_MIN) + (GAP_MAX - GAP_MIN)   # 10.0: what the jacks lift the plate
 PK_BOT  = PK_TOP - PK_H
 
 # mounting-ear holes: the pickup's own 4 corner holes, modelled on the demo body only (the

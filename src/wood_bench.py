@@ -196,7 +196,6 @@ A_SCREWS = [(A_BASE_X0 + TAB, Y_EDGE + TAB), (A_BASE_X0 + TAB, A_Y[1] - TAB),
 # ── THE +X ENDPLATE, CUT DOWN TO STRING 6 ────────────────────────────────────────────────────
 E = DB.ep_x()
 EP_Y = (Y5 - 12.0, DB.rod_yz(I)[0] + DB.GUIDE_SEAT / 2 + DB.GUIDE_WALL + 3.0)   # -16.75 .. 15.6
-EP_TAB_X = E["x_end"] + 2 * TAB                  # the base's +X tabs past the end
 EP_BASE_Y1 = EP_Y[1] + 2 * TAB                   # the base: a flange each side in Y, flush
 EP_SCREWS = [(x, y) for x in (XJ + TAB, E["x_end"] - TAB)     # with the +X face
              for y in (Y_EDGE + TAB, EP_BASE_Y1 - TAB)]

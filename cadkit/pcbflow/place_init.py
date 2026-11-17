@@ -964,6 +964,15 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
             if ref in fixed or (pi.part_height(ref, parts, H_z, notes) or 0.0) <= float(r["max_mm"]):
                 continue
             inreg[ref] = inside if ref not in inreg else (inreg[ref] | inside)
+    _fsrc = {r_.get("ref"): "%s %s" % (r_["kind"], r_.get("src", "")) for r_ in rules
+             if r_["kind"] in ("fixed", "panel") and r_.get("ref")}
+    if ROOM_DIAG:
+        try:
+            for line_ in _fixed_overlaps(parts, pl, fixed, _fsrc):
+                log.append(line_)
+                print("place_init: " + line_)
+        except Exception as e_:                 # noqa: BLE001  (a diagnosis never stops a run)
+            log.append("FIXED OVERLAP check failed: %r" % (e_,))
     for ref in fixed:
         m, ai, aj = mask(parts[ref], pl[ref][2])
         _stamp(G, m, ai, aj, *G.ij(*pl[ref][:2]), force=True, grow=halo(parts[ref]))
@@ -1105,6 +1114,13 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
                 tail = ", clear of its apart/thermal rules"
             elif not _drop(G, parts, ref, target[ref], rots(ref, rot[ref]), pl, f0):
                 miss.append(ref)
+                if ROOM_DIAG:
+                    try:
+                        line_ = _why_no_room(G, parts, pl, ref, target[ref], rots(ref, rot[ref]), f0, fixed, _fsrc)
+                    except Exception as e_:     # noqa: BLE001
+                        line_ = "NO ROOM WHY: %s -- the diagnosis failed: %r" % (ref, e_)
+                    log.append(line_)
+                    print("place_init: " + line_)
                 continue
             elif fb is not None:
                 tail = ", NO room clear of its apart/thermal rules"
@@ -2010,6 +2026,82 @@ def _lift(G, parts, pl, r):
     m, ai, aj = mask(parts[r], pl[r][2])
     _unstamp(G, m, ai, aj, *G.ij(*pl[r][:2]), grow=halo(parts[r]))
     return pl.pop(r)
+
+
+ROOM_DIAG = os.environ.get("PCBFLOW_ROOM_DIAG", "1") == "1"  # 0 turns the diagnoses off
+ROOM_DIAG_R = 40.0  # mm round the target: the placed parts a NO ROOM diagnosis may lift
+
+
+def _fixed_overlaps(parts, pl, fixed, src):
+    """Pairs of FIXED parts whose courtyards overlap, with the rule that pinned each.
+
+    ⚠ WHY (brain_board mV19c-f, 2026-11-17): J7 (the service USB-C, a new panel rule) sat on
+    U21, a hold frozen from an older placement (mP0). Fixed parts are stamped by force, so
+    nothing said so: the flow ran on, J7's satellites were pushed into U1's strip, and U1
+    had NO ROOM -- reported as the 30 rules that bind U1, none of them the cause. Four
+    routes were lost before a trace found it."""
+    P = pi.Placed(parts, pl)
+    fx = sorted(r for r in fixed if r in pl and parts.get(r, {}).get("crtyd"))
+    cy = {r: np.asarray(P.crtyd(r), float) for r in fx}
+    box = {r: (c.min(axis=0), c.max(axis=0)) for r, c in cy.items()}
+    out = []
+    for i, a in enumerate(fx):
+        for b in fx[i + 1:]:
+            (al, ah), (bl, bh) = box[a], box[b]
+            if (al > bh).any() or (bl > ah).any():
+                continue
+            d = pi._poly_dist(cy[a], cy[b])
+            if d < -GAP:
+                sa, sb = src.get(a, "?"), src.get(b, "?")
+                hint = ("both from one hold -- a footprint grew since it was frozen" if sa == sb
+                        else "one rule is newer than the other's hold")
+                out.append("FIXED OVERLAP: %s x %s by %.2f mm -- %s [%s] on %s [%s]: %s; release one"
+                           % (a, b, -d, a, sa, b, sb, hint))
+    return out
+
+
+def _why_no_room(G, parts, pl, ref, t, rots, forbid, fixed, src):
+    """A part with NO ROOM: the fewest placed parts whose lifting lets it in, named.
+
+    Counterfactual, on the grid as it was when the drop failed: every placed part within
+    ROOM_DIAG_R of the target is lifted (free parts first; the fixed ones too only if that
+    is not enough), the drop is tried, then the lifted parts go back one by one, farthest
+    first, and each one whose return shuts the part out again is a blocker. The grid and
+    pl are left exactly as they were."""
+    near = sorted((float(np.hypot(*(np.asarray(pl[o][:2]) - np.asarray(t)))), o)
+                  for o in pl if o != ref and o in parts)
+    near = [(d, o) for d, o in near if d <= ROOM_DIAG_R]
+    stages = [[o for _d, o in near if o not in fixed], [o for _d, o in near if o in fixed]]
+    lifted = {}
+
+    def fits():
+        if _drop(G, parts, ref, t, rots, pl, forbid):
+            _lift(G, parts, pl, ref)
+            return True
+        return False
+    try:
+        ok = False
+        for st in stages:
+            for o in st:
+                lifted[o] = _lift(G, parts, pl, o)
+            if fits():
+                ok = True
+                break
+        if not ok:
+            return "NO ROOM WHY: %s does not fit even with every part within %.0f mm lifted -- "                    "its region or the board is too small for it" % (ref, ROOM_DIAG_R)
+        order = sorted(lifted, key=lambda o: -float(np.hypot(*(np.asarray(lifted[o][:2]) - np.asarray(t)))))
+        block = []
+        for o in order:
+            _put_back(G, parts, pl, o, lifted.pop(o))
+            if not fits():
+                lifted[o] = _lift(G, parts, pl, o)
+                block.append(o)
+        def tag(o):
+            return "%s (%s)" % (o, "fixed: " + src.get(o, "?") if o in fixed else "placed")
+        return "NO ROOM WHY: %s fits with only these lifted: %s" % (ref, ", ".join(tag(o) for o in block))
+    finally:
+        for o, pose in lifted.items():
+            _put_back(G, parts, pl, o, pose)
 
 
 def _put_back(G, parts, pl, r, pose):

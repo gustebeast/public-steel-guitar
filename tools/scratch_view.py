@@ -17,7 +17,7 @@ those is trusted for: the caches are for the VIEW and the scoped gate only --
 WHICH PART IS YOURS COMES FROM THE SCOPE REGISTRY, NOT FROM THIS FILE. Claim it once:
 
     py -3.12 cadkit/tools/agent_sync.py scope --set src.<your_module> [--attr assembly]
-    py -3.12 cadkit/tools/agent_sync.py scope --set part:bridge_endplate,src.nut_block
+    py -3.12 cadkit/tools/agent_sync.py scope --set part:body,src.nut_block_v2
 
 (several, comma-separated, are all rebuilt every run). That deliberately does NOT live
 here. This file is TRACKED, so a per-agent config block would put every agent's "which
@@ -85,8 +85,8 @@ POSES = {"belt_tensioner": _pose_belt_tensioner}
 def _live_one(entry):
     """The parts one scope entry names. An entry is a module (its attribute given by
     the scope's --attr, else the module's OWN TAIL NAME, which is how nearly every part
-    module here is written: src/bridge_endplate.py ends in `bridge_endplate =
-    _build()`), or a BUILD PART, `part:bridge_endplate`: some parts are only ever
+    module here is written: a module ending in `name = _build()`), or a BUILD PART,
+    `part:body`: some parts are only ever
     assembled in src/build.py, so "point it at the right module attribute" has no
     correct answer for them (brenner, 2026-09-07). PARTS[name][0] is a zero-arg builder
     returning one Workplane -- exactly a live set of one."""
@@ -119,8 +119,8 @@ def _live_one(entry):
             + (f"  solids it exports: {', '.join(cands)}\n" if cands else "")
             + "  agent_sync.py scope --set " + entry + " --attr <name>")
     # THREE SHAPES, because the part modules here follow no single convention:
-    #   a bare solid         bridge_endplate = _build()        <- the common case
-    #   a callable -> solid  belt_tensioner.tensioner_coupon()
+    #   a bare solid         name = _build()                   <- the common case
+    #   a callable -> solid  ui_panel.knob()
     #   a callable -> list   build.py's _*_components()
     if callable(obj):
         obj = obj()
@@ -151,9 +151,7 @@ VIEW = ScratchView(
     live=_live,
     replaced=REPLACED,
     pose=_lookup(POSES, SCOPE.get("pose"), "pose"),
-    # nothing drawn beyond the parts: the hook drew the v1 belts as played, and the direct
-    # instrument has no belts (build.belts_as_played went with v1, lead 2026-11-17)
-    shown=None,
+    shown=None,                     # nothing drawn beyond the parts
     # Every part wears the colour the full build gives it, resolved through
     # src.build._color_for -- the very function the real build uses -- so this view
     # cannot drift from the finished assembly.
@@ -165,8 +163,7 @@ VIEW = ScratchView(
         boards=lambda: importlib.import_module("src.board_geom").BOARDS,
         materials=lambda n: importlib.import_module("tools.web_materials").material_of(n),
         units=lambda n: importlib.import_module("tools.web_materials").unit_of(n),
-        extras={"title": "Public Steel Guitar", "subtitle": "full assembly · C6 copedent",
-                "notes": importlib.import_module("tools.lead_cuts").notes()},
+        extras={"title": "Public Steel Guitar", "subtitle": "full assembly · C6 copedent"},
     ),
     # INNER-LOOP gates (`--gate`): the project's real gate functions, handed the
     # scratch model instead of a fresh 5.5-min rebuild. Scoping a gate by NAME

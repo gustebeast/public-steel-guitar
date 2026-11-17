@@ -98,7 +98,6 @@ def _assign(tree, name):
 
 def _import_of(tree, name, modname):
     """(module, attr) a name was imported as, if it was."""
-    pkg = modname.rsplit(".", 1)[0]
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom):
             for a in node.names:
@@ -136,7 +135,6 @@ def _value(modname, name, depth=0):
             return _value(modname, n.id, depth + 1)
         if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name):
             imp = _import_of(tree, n.value.id, modname)
-            mod = imp[0] + ("." + imp[1] if imp and imp[1] != n.value.id else "") if imp else None
             for cand in ([imp[0] + "." + imp[1], imp[0]] if imp else []):
                 try:
                     return _value(cand, n.attr, depth + 1)

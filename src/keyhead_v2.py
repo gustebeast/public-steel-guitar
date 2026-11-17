@@ -19,6 +19,7 @@ from __future__ import annotations
 import cadquery as cq
 
 from . import dimensions as D
+from . import m3_hardware as M3H
 from . import direct_bench as DB
 from . import nut_block_v2 as NB
 from .helpers import box_at, cyl_x
@@ -105,17 +106,18 @@ def _keyhead() -> cq.Workplane:
             w = w.cut(stepped_bore_cutter([(DB.EP_TUNNEL, k["wall1"] - xa + 1.0),
                                            (DB.EP_M3_CLR, k["wall0"] - k["wall1"] + 0.5)],
                                           (xa - 1.0, yc, zc), (1.0, 0.0, 0.0), print_up=PRINT_UP))
+    from . import body_adapter_v2 as BA                # the -X adapters' sockets
+    w = w.cut(BA.end_cut(-1))
     return w
 
 
 def _screws() -> cq.Workplane:
     """The four M3 SHCS and washers, heads flush with the -X face, into the bars' -X ends."""
-    from . import m3_hardware as BTn
     k = DB.kh_x()
     out = None
     for yc in DB.bar_y():
         for zc in DB.EP_SCREW_Z:
-            top = k["wall1"] - DB.EP_WASHER[1] - BTn.HEAD_H
+            top = k["wall1"] - DB.EP_WASHER[1] - M3H.HEAD_H
             sc = DB._cap("m3", DB.bar_screw_len(-1), (top, yc, zc), (1, 0, 0))
             sc = sc.union(cyl_x(DB.EP_WASHER[0], DB.EP_WASHER[1], k["wall1"] - DB.EP_WASHER[1], y=yc, z=zc)
                           .cut(cyl_x(3.2, DB.EP_WASHER[1] + 1, k["wall1"] - DB.EP_WASHER[1] - 0.5,

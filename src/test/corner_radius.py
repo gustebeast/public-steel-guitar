@@ -78,57 +78,6 @@ def pieces(radii=RADII, first=1):
     return out
 
 
-# SET 3, STANDING (user, 2026-10-14): the same ring stood up as a DIAMOND, its profile
-# across the layers, so its corners are made by LAYER STACKING -- the joints' layer-made
-# halves are drawn on the assumption that such a corner prints as drawn, and this
-# measures it. All four sides are 45 degree faces (self-supporting); the bottom vertex is
-# cut off where the diamond is FOOT_W wide and stood on a foot plate. Measure as before,
-# but the DIAGONALS ACROSS (left vertex to right vertex, outside and hole): those two
-# corners are the layer-made ones; the flats are across the 45 degree faces.
-RADII_3 = (0.0, 0.4, 0.8, 1.2, 2.0)
-FOOT_W = 8 * D.BEAD          # 6.4 where the diamond stands: wide enough to carry its number
-                             # ("20" is 5.6 wide) with the foot AND the ring over it
-FOOT_T = 2 * D.BEAD          # 1.6 foot plate
-FOOT_L = 10 * D.BEAD         # 8.0 foot plate along the ring's thickness
-STAND_T = 10 * D.BEAD        # 8.0 thick, so it stands
-
-
-def standing(r: float) -> cq.Workplane:
-    """One standing ring, profile in XZ, foot plate on the bed at z = 0, centred on x = 0."""
-    def square(s, h):
-        w = cq.Workplane("XY")
-        if r <= 0:
-            return w.rect(s, s).extrude(h)
-        return w.sketch().rect(s, s).vertices().fillet(r).finalize().extrude(h)
-    body = square(OUT_S, STAND_T).cut(square(IN_S, STAND_T + 2.0).translate((0, 0, -1.0)))
-    body = body.rotate((0, 0, 0), (0, 0, 1), 45).rotate((0, 0, 0), (1, 0, 0), 90)
-    lo = -OUT_S / math.sqrt(2.0) + FOOT_W / 2.0          # where the drawn diamond is FOOT_W wide
-    body = body.cut(cq.Workplane("XY").box(100, 100, 100).translate((0, 0, lo - 50.0)))
-    body = body.translate((0, 0, FOOT_T - lo))
-    foot = cq.Workplane("XY").box(OUT_S, FOOT_L, FOOT_T, centered=(True, True, False))
-    return body.union(foot.translate((0, -FOOT_L / 2.0, 0)))
-
-
-def standing_pieces(first=len(RADII) + len(RADII_2) + 1):
-    """[(name, solid)]: set 3, in a row along X, each numbered on its UNDERSIDE (the bed
-    face), right under where the diamond stands: the foot plate plus the ring above it,
-    so the cut leaves well over two beads. Reading across the ring, 4.0 tall (at 2.4 the
-    segments closed up and every figure read as an 8)."""
-    out = []
-    for k, r in enumerate(RADII_3):
-        body, mark = standing(r), dict(height=4.0, stroke=0.8)
-
-        def cut(x0):
-            return cut_mark(body, k + first, (x0, -STAND_T / 2.0, 0.0), (0, 0, -1), (1, 0, 0), **mark)
-        gb = body.val().cut(cut(0.0).val()).BoundingBox()      # the figure, to centre it
-        p = cut(-(gb.xmin + gb.xmax) / 2.0)
-        # pitched on the DIAMOND's width (OUT_S * sqrt 2), not the flat ring's: apart, so each
-        # diagonal can be measured
-        out.append(("corner_r_%d" % (k + first),
-                    p.translate((k * (OUT_S * math.sqrt(2.0) + GAP), 0.0, 0.0)).val()))
-    return out
-
-
 def assembly(origin=(-560.0, 450.0, 160.0)):
     """[(name, Workplane)] for the scratch view: the plate as it prints."""
     return [("test_" + n, cq.Workplane("XY").newObject([s]).translate(origin)) for n, s in pieces()]

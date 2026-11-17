@@ -45,35 +45,6 @@ class Part(object):
 # assembly drawing gives the finished part as O11 x 45. We never touch the connector.
 # We only ever touch the moulding. Check against the thing you can hold.
 PARTS = [
-    # THE LEG'S BLIND-MATES ARE POGO BOARDS NOW (2026-09-21), and this header is the
-    # bought part their pockets and pedestals are cut to. Off its own drawing
-    # (YZ76615070R-08025-01), not the LCSC listing's attributes, which carry no stroke.
-    Part("C54799748", "https://datasheet.lcsc.com/datasheet/pdf/"
-                      "7aab94cc3f2faa41c25b1234644cb837.pdf?productCode=C54799748",
-         "2026-09-21",
-         {
-             "pin pitch":            (2.5, "src.leg_pogo.RA_PITCH"),
-             "housing length":       (11.0, "src.leg_pogo.RA_BODY_S"),
-             "housing thickness":    (2.5, "src.leg_pogo.RA_BODY_T"),
-             "free height":          (5.5, "src.leg_pogo.RA_FREE"),
-             "working height":       (4.0, "src.leg_pogo.RA_WORK"),
-             "plunger":              (1.0, "src.leg_pogo.RA_PLUNGER_D"),
-             "rated DC volts":       (12.0, "src.leg_pogo.RA_V"),
-             "force at working, gf": (120.0, "src.leg_pogo.RA_GF"),
-         },
-         "the right-angle 1 x 4 spring-pin header on both male boards (its -01 sibling "
-         "C5296819 is the same drawing)"),
-    Part("C54930022", "https://datasheet.lcsc.com/datasheet/pdf/"
-                      "65bd6f266e7b263b1372ed187d4a9c4d.pdf?productCode=C54930022",
-         "2026-09-22",
-         {
-             "contact pitch":        (2.54, "src.leg_pogo.TG_PITCH"),
-             "housing length":       (10.2, "src.leg_pogo.TG_BODY_S"),
-             "housing width":        (2.5, "src.leg_pogo.TG_BODY_T"),
-             "contact face height":  (3.5, "src.leg_pogo.TG_FACE_H"),
-             "contact face":         (1.2, "src.leg_pogo.TG_FACE_D"),
-         },
-         "the vertical gold 1 x 4 target on both female boards"),
     # ⚠ THE FRET LED, AND IT IS HERE BECAUSE THE CODE HAD IT WRONG. src/fret_light.py
     # carried LED_H = 1.40 "body to its emitting face" from the day it was written; the
     # listing says 1.6, and so has the footprint's own description since bronner drew

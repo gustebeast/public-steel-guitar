@@ -49,6 +49,7 @@ import math
 import cadquery as cq
 
 from . import dimensions as D
+from . import m3_hardware as M3H
 from .helpers import box_at, cyl_y
 
 CPL_D = 18.0
@@ -58,14 +59,11 @@ SCREW_X0 = CPL_GRIP + 0.5                           # the screw's end
 M3_HEAD = (5.5, 3.0)                                # the benches' M3 SHCS (motor face screws)
 M3_L = 12.0
 RACE_IN_D = 10.4                                    # a boss on a 688's inner race only
-PRINT_SETUP = ("PETG-GF", 0.8)
 
 # ── drawn as PETG-GF on 0.8 prints it ───────────────────────────────────────────────────────
 from cadkit.print_corners import DRAW_MIN           # noqa: E402
 CORNER_R = max(DRAW_MIN["nozzle"])                  # 2.0: in-layer corners, convex and concave
 HOLE_SHRINK = 0.3                                   # a round hole's radius prints this much small
-D_BORE_R = D.MOTOR_SHAFT_D / 2 + HOLE_SHRINK        # 2.8
-D_FLAT_Z = D.MOTOR_SHAFT_FLAT - D.MOTOR_SHAFT_D / 2 + HOLE_SHRINK   # 2.3: the flat, off the axis
 # Tr8x2 (ISO 2904): crest flat 0.732 at Ø8, flanks 15 deg off radial -> groove 1.268 wide at the crest
 _GROOVE_AT_CREST = D.SCREW_PITCH - (D.SCREW_PITCH / 2 - 2 * 0.25 * D.SCREW_PITCH * math.tan(math.radians(15)))
 RIDGE_MAX = _GROOVE_AT_CREST / 2                    # 0.634: a 90 deg ridge's depth at that width
@@ -76,12 +74,11 @@ FORM_MINOR_C = FORM_MAJOR_C - 2 * RIDGE_H           # 7.4
 SOCKET_D = FORM_MAJOR_C                             # the formed thread's groove Ø (its envelope)
 
 # ── the C clamp: the belt clamp's M3 x 12 into its M3 insert, fitted as a nut. On -Z ────────
-from . import m3_hardware as _BT                 # noqa: E402
 SLIT_W = 1.2                                        # the slit, on -Z: 1.5 beads, prints open
-CLAMP_SPEC = _BT.M3                                 # insert_l 4.3, OD 4.7
-CLAMP_L = _BT.SCREW_L                               # 12
-CLAMP_HEAD = (_BT.HEAD_D, _BT.HEAD_H)               # 5.5 x 3
-INSERT_POCKET_D = _BT.INS_POCKET                    # 4.8: takes the knurled insert by hand
+CLAMP_SPEC = M3H.M3                                 # insert_l 4.3, OD 4.7
+CLAMP_L = M3H.SCREW_L                               # 12
+CLAMP_HEAD = (M3H.HEAD_D, M3H.HEAD_H)               # 5.5 x 3
+INSERT_POCKET_D = M3H.INS_POCKET                    # 4.8: takes the knurled insert by hand
 CLAMP_LIP = 3 * D.BEAD                              # 2.4: the -x jaw from the slit to the insert
 INS_X0 = -(SLIT_W / 2 + CLAMP_LIP)                  # -3.0: the insert's +x end, on the lip
 _HEAD_X = INS_X0 - CLAMP_SPEC.insert_l + CLAMP_L   # 4.7: the head's seat, the 12's tip at the
@@ -95,9 +92,6 @@ CLAMP_Z = SOCKET_D / 2 + 1.0 + INSERT_POCKET_D / 2  # 7.7 under the axis: 1.0 of
 EAR_TOP = max(CLAMP_Z + INSERT_POCKET_D / 2 + 2 * D.BEAD,       # two beads past the pocket, and
               CLAMP_Z + CLAMP_HEAD[0] / 2 + CORNER_R)           # the head's face flat to its rim
 EAR_Y0 = 1.3                                        # the ear's foot: 0.8 clear of the plank motor
-                                                    # block's face wall (its pilot hole, r 11.3)
-SPOT_Z = CLAMP_Z - CLAMP_HEAD[0] / 2 - CORNER_R    # the head's SPOT FACE (x = EAR_X[1]) runs up
-                                                    # to z -SPOT_Z, flat past the head's rim
 # UNDER THE EAR (user, 2026-11-10: "move the clamp +x up to a reasonable clearance from the wall",
 # so it grips the shaft AND the screw): from the motor end to EAR_Y0 the coupler turns inside the
 # plank motor block's pilot hole (r 11.3), so there the ear is trimmed to r EAR_CLIP_R (0.8 clear of
@@ -106,7 +100,6 @@ SPOT_Z = CLAMP_Z - CLAMP_HEAD[0] / 2 - CORNER_R    # the head's SPOT FACE (x = E
 EAR_CLIP_R = (D.NEMA17_PILOT_D + 0.6) / 2 - 0.8    # 10.5
 WALL_Y = EAR_Y0 - 0.8                               # the block wall's back face
 _GROW_R = EAR_CLIP_R - 0.1                          # the cone's radius at EAR_Y0
-_APEX = EAR_Y0 - _GROW_R
 assert EAR_X[1] - SLIT_W / 2 >= 2 * CORNER_R, "the +x jaw is too thin for its rounded corners"
 assert CLAMP_Z - INSERT_POCKET_D / 2 >= SOCKET_D / 2 + 0.8 - 1e-9, "the pocket breaks into the socket"
 
@@ -171,29 +164,6 @@ def _d_bore(wp, L: float, y0: float, y1: float, clr: float = D_CLR):
         box_at(2 * rb + 2, L + 2, rb, y=(y0 + y1) / 2, z=zf + rb / 2))
     xf = math.sqrt(rb * rb - zf ** 2)
     return hole, [(-xf, zf), (xf, zf)]
-
-
-def _eared_prism(y0: float, y1: float) -> cq.Workplane:
-    """Everything past the wall, ONE profile all the way: the Ø18, the ear on -Z with its spot
-    face, the slit, the D bore (the thread's core, Ø FORM_MINOR_C, is bigger: the thread cut clears
-    the D out of the socket's length and leaves the slit's rounded corners the same all the way)."""
-    wp = cq.Workplane("XZ", origin=(0, y1, 0))
-    L = y1 - y0
-    R = CPL_D / 2
-    s = wp.circle(R).extrude(L)
-    s = s.union(wp.center(sum(EAR_X) / 2, -EAR_TOP / 2).rect(EAR_X[1] - EAR_X[0], EAR_TOP).extrude(L))
-    s = s.cut(box_at(R, L + 2, EAR_TOP + 1.0, x=EAR_X[1] + R / 2, y=(y0 + y1) / 2,
-                     z=-SPOT_Z - (EAR_TOP + 1.0) / 2))                           # the spot face
-    s = _round_y_edges(s, [(EAR_X[0], -EAR_TOP), (EAR_X[1], -EAR_TOP),           # convex
-                           (EAR_X[0], -math.sqrt(R * R - EAR_X[0] ** 2)),        # concave join
-                           (EAR_X[1], -SPOT_Z), (math.sqrt(R * R - SPOT_Z ** 2), -SPOT_Z)])
-    hole, pts = _d_bore(wp, L, y0, y1)
-    s = s.cut(hole)
-    s = s.cut(box_at(SLIT_W, L + 2, EAR_TOP + 1.0, y=(y0 + y1) / 2, z=-(EAR_TOP + 1.0) / 2))
-    zi = math.sqrt(D_BORE_R ** 2 - (SLIT_W / 2) ** 2)
-    pts += [(-SLIT_W / 2, -zi), (SLIT_W / 2, -zi),                              # slit at the bore
-            (-SLIT_W / 2, -EAR_TOP), (SLIT_W / 2, -EAR_TOP)]                    # ...at the ear's face
-    return _round_y_edges(s, pts)
 
 
 def coupler(c1: float = CPL_X[1], boss_l: float = 0.0, d_clr: float = D_CLR) -> cq.Workplane:
@@ -266,15 +236,13 @@ def clamp_parts(c1: float = CPL_X[1]):
             ("insert", seated_insert(CLAMP_SPEC, (INS_X0, yc, -CLAMP_Z), (-1.0, 0.0, 0.0)))]
 
 
-
 def cap_screw(kind: str, length: float, top, shank_dir) -> cq.Workplane:
     """cadkit's headed screw (head and its hex socket drawn), head TOP at `top`, the shank
     running `shank_dir` from it. "m3": the M3 SHCS the benches use (belt_tensioner's spec,
     as plank_bench's yoke screws); "m4": the M4 button head. Both turn with the 2.5 key."""
     from cadkit.fasteners import M4, headed_screw, _rot_z_onto
     if kind == "m3":
-        from . import m3_hardware as BTn
-        s = headed_screw(BTn.M3, length, BTn.HEAD_D, BTn.HEAD_H, 2.5)
+        s = headed_screw(M3H.M3, length, M3H.HEAD_D, M3H.HEAD_H, 2.5)
     else:
         s = headed_screw(M4, length, 7.6, 2.2, 2.5)
     d = tuple(-c for c in shank_dir)                # headed_screw's shank runs -Z

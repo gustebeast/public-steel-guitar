@@ -147,7 +147,6 @@ FP = {
     "USB-C":    "Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12",
     "XH-SM-4Y": "Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal",
     "XH-TE-4V": "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical",     # R2's J2
-    "QFN-24": "Package_DFN_QFN:HVQFN-24-1EP_4x4mm_P0.5mm_EP2.5x2.5mm",
     "SOIC-16": "Package_SO:SOIC-16_3.9x9.9mm_P1.27mm",
     "SOD-123": "Diode_SMD:D_SOD-123",
 }
@@ -3009,7 +3008,7 @@ BOARD_W, BOARD_L = BOARD_X1 - BOARD_X0, BOARD_Y1 - BOARD_Y0
 # layout region), so every hand-laid coordinate in this file -- written against R1's board --
 # would land off by the centre's move. They stay written in R1's frame: the copper builders
 # take placements against CY_DRAW, and _to_board_frame shifts the result once, below.
-CY_DRAW = CY if OP.OPTICAL_REV == 1 else (OP.PCB_YM_R1 + 65.95) / 2.0   # 65.95: R1's +Y edge, before the rail came in
+CY_DRAW = CY if OP.OPTICAL_REV == 1 else (OP.PCB_YM_R1 + 65.95) / 2.0   # -28.32: R1's +Y edge, before the rail came in
 
 def _buck_sw():
     """The buck's switch node, laid rather than routed: the one net on this board that

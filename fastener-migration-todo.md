@@ -1,5 +1,9 @@
 # Fastener migration: remaining work
 
+> **HISTORICAL (lead, 2026-11-17).** Written for the v1 belt-drive instrument, which left
+> the build in the v1 removal; its code is at the git tag `v1-instrument`. Kept as the design
+> record: the parts it describes are not in the current model.
+
 **Goal (user, 2026-09-10), in priority order:**
 
 1. **One tool for every fastener**: a **2.5 mm hex key**.

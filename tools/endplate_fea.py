@@ -5,7 +5,7 @@
 
 Run from the worktree root. Supports: the body's walls and floor at x_j. Steel axles are meshed
 in, bonded in their bores (an upper bound on what slip-fit axles give)."""
-import sys, json, math, time
+import sys, math, time
 sys.path.insert(0, '.')
 import numpy as np
 D_ = sys.argv[1]; H = float(sys.argv[2])
@@ -66,8 +66,7 @@ P = P[used]; tets = remap[tets]
 print('mesh: %d nodes, %d tets (%.0f s)' % (len(P), len(tets), time.time() - t0), flush=True)
 
 import skfem as fem
-from skfem.models.elasticity import linear_elasticity, lame_parameters
-from skfem.helpers import dot
+from skfem.models.elasticity import lame_parameters
 m = fem.MeshTet(P.T.copy(), tets.T.copy())
 e = fem.ElementVector(fem.ElementTetP2())
 ib = fem.Basis(m, e, intorder=2)
@@ -100,7 +99,7 @@ def traction(sel, F, yi):
     fb = fem.FacetBasis(m, e, facets=sel, intorder=3)
     Fh = F / np.linalg.norm(F)
     def wgt(w):
-        x, y = w.x[0], w.x[1]
+        y = w.x[1]
         n = w.n
         cosv = -(n[0] * Fh[0] + n[1] * Fh[1] + n[2] * Fh[2])
         return np.maximum(cosv, 0) * np.maximum(1 - abs(y - yi) / pitch, 0)
@@ -136,7 +135,7 @@ x_, y_, z_ = X[0], X[1], X[2]
 for (a, b_, k) in ((1, 2, 3), (2, 0, 4), (0, 1, 5)):        # rotations about x, y, z
     ia, ib_ = comps[a], comps[b_]
     B[ia, k] = -X[b_][ia]; B[ib_, k] = X[a][ib_]
-from skfem.helpers import grad, sym_grad, trace, eye
+from skfem.helpers import sym_grad
 def solve(support_facets, name):
     keep = [ib.get_dofs(support_facets).all('u^1'), ib.get_dofs(walls).all('u^2'),
             ib.get_dofs(walls).all('u^3')]
@@ -152,9 +151,7 @@ def solve(support_facets, name):
     u = np.zeros(K.shape[0]); u[I] = xs
     print('%s: solved (cg info %d, %.0f s)' % (name, info, time.time() - t1), flush=True)
     # stresses at element centroids, P2 -> project to P0
-    e0 = fem.ElementVector(fem.ElementTetP0())
     def stress_comp(ii, jj):
-        b0 = ib.with_element(fem.ElementTetP0())
         uh = ib.interpolate(u)
         G = sym_grad(uh)
         s = 2 * MU[:, None] * G[ii][jj] + (LAM[:, None] * (G[0][0] + G[1][1] + G[2][2]) if ii == jj else 0)
@@ -170,8 +167,6 @@ def solve(support_facets, name):
     print('%s: steel axle peak von Mises %.0f MPa' % (name, st_vm))
     p1 = np.where(is_steel, 0, p1); vm = np.where(is_steel, 0, vm)
     cen = m.p[:, m.t].mean(axis=1)
-    vol = ib.dx.sum(axis=1)
-    disp = u[ib.nodal_dofs].T if False else None
     ux = u[ib.nodal_dofs[0]]; uz = u[ib.nodal_dofs[2]]
     order = np.argsort(-p1)
     print('%s: max |ux| %.3f mm, max |uz| %.3f mm' % (name, abs(ux).max(), abs(uz).max()))

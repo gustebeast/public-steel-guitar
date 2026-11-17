@@ -114,11 +114,6 @@ def _parts(board):
     return tuple(kept(_build, board))
 
 
-def _facing_minus_y(w, x, y, z):
-    """Own frame -> instrument, component side toward -Y: board y -> Z, board z -> -Y."""
-    return w.rotate((0, 0, 0), (1, 0, 0), 90).translate((x, y, z))
-
-
 def _facing_plus_y_mirrored(w, x, y, z):
     """Own frame -> instrument, component side toward +Y and board X = -instrument X."""
     return (w.rotate((0, 0, 0), (1, 0, 0), -90).rotate((0, 0, 0), (0, 1, 0), 180)

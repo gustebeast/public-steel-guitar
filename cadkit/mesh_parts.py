@@ -45,6 +45,7 @@ keeps the kernel's face records, so its flats and holes still measure as flats a
 """
 from __future__ import annotations
 
+import functools
 import math
 
 import numpy as np
@@ -202,30 +203,35 @@ def _creased(m: dict, deg: float = 40.0) -> dict:
     order = np.argsort(flat, kind="stable")
     starts = np.flatnonzero(np.r_[True, flat[order][1:] != flat[order][:-1]])
     ends = np.r_[starts[1:], len(order)]
-    out, extra = flat.copy(), []
+    # ONE PASS IN PLAIN FLOATS (2026-11-17): the same greedy grouping, but a corner's normal and
+    # its dot with each run's seed are Python floats, not three-element numpy calls -- those were
+    # 6.8 M ndarray.any() and @ calls a build, most of the drive-travel gate's time
+    fl, live = fn.tolist(), fn.any(axis=1).tolist()
+    fv, ol = flat.tolist(), order.tolist()
+    out, extra = list(fv), []
     nv = len(pos)
-    for a, b in zip(starts, ends):
-        corners = order[a:b]
-        v = flat[corners[0]]
+    for a, b in zip(starts.tolist(), ends.tolist()):
+        v = fv[ol[a]]
         seeds = []                                     # (normal, vertex index) of each run
-        for k in corners:
-            n = fn[k // 3]
-            if not n.any():                            # a degenerate face goes with the first run
+        for k in ol[a:b]:
+            f = k // 3
+            if not live[f]:                            # a degenerate face goes with the first run
                 continue
-            for sn, vi in seeds:
-                if sn @ n >= c:
+            n0, n1, n2 = fl[f]
+            for s0, s1, s2, vi in seeds:
+                if s0 * n0 + s1 * n1 + s2 * n2 >= c:
                     out[k] = vi
                     break
             else:
                 vi = v if not seeds else nv + len(extra)
                 if seeds:
                     extra.append(v)
-                seeds.append((n, vi))
+                seeds.append((n0, n1, n2, vi))
                 out[k] = vi
     if not extra:
         return m
     return dict(m, pos=np.ascontiguousarray(np.r_[m["pos"], m["pos"][extra]], dtype=np.float32),
-                tri=np.ascontiguousarray(out.reshape(-1, 3), dtype=np.uint32))
+                tri=np.ascontiguousarray(np.asarray(out, dtype=np.int64).reshape(-1, 3), dtype=np.uint32))
 
 
 def _flip(m: dict) -> dict:
@@ -316,6 +322,20 @@ def iso_minor(d: float, pitch: float) -> float:
     return d - 1.0825 * pitch
 
 
+def _owned(fn):
+    """Memoise a pure mesh builder by its (hashable) arguments; hand each caller its own copy of
+    the arrays, so nothing a caller does to its mesh reaches the next one."""
+    cached = functools.lru_cache(maxsize=None)(fn)
+
+    @functools.wraps(fn)
+    def build(*a, **k):
+        m = cached(*a, **k)
+        return {key: (val.copy() if isinstance(val, np.ndarray) else val) for key, val in m.items()}
+    build.cache_clear = cached.cache_clear
+    return build
+
+
+@_owned
 def threaded_rod_mesh(length: float, major: float, minor: float, pitch: float,
                       flank_deg: float = 15.0, hand: str = "RH", seg: int = 36,
                       ends=(True, True)) -> dict:
@@ -340,6 +360,7 @@ def _hex_r(af):
     return lambda phi: (af / 2) / np.cos(np.mod(phi, math.pi / 3) - math.pi / 6)
 
 
+@_owned
 def screw_mesh(d: float, pitch: float, length: float, head_d: float, head_h: float,
                socket_af: float, socket_depth: float = None, seg: int = 8,
                head_seg: int = 48) -> dict:
@@ -362,6 +383,7 @@ def screw_mesh(d: float, pitch: float, length: float, head_d: float, head_h: flo
     return _merge([_creased(_orient(head, +1)), _moved(shank, _translate(0, 0, -head_h - length))])
 
 
+@_owned
 def insert_mesh(d: float, pitch: float, od: float, length: float, seg: int = 8,
                 ridges: int = None, depth: float = None) -> dict:
     """A heat-set insert as cadkit.fasteners.insert draws its proxy: axis Z, TOP at z = 0, down

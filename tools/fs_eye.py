@@ -2,7 +2,6 @@
 
     py -3.12 tools/fs_eye.py
 """
-import sys
 import numpy as np
 
 def run(lens, cload_pf, z0=110.0, vf=0.66, rs=90.0, tr=4e-9, cend=10e-12, bits=400, seed=1, zseg=None):

@@ -37,7 +37,6 @@ from __future__ import annotations
 
 import cadquery as cq
 
-from . import motor_coupler as MC
 from . import saw_jig as SJ
 
 B = SJ.B

@@ -27,7 +27,6 @@ is +Y: the side src/wiring.py has always landed the pickup lead on.
 """
 from __future__ import annotations
 
-import math
 
 import cadquery as cq
 
