@@ -265,14 +265,6 @@ def xh_way(ways, name):
     return tuple(ways).index(name) + 1
 
 
-def xh_ground_via(jx, jy, way):
-    """(track, via) for an S4B-XH-SM4-TB placed at (jx, jy), rot 270, whose ground is
-    way `way` -- whichever one the lead's order puts it on."""
-    y = round(jy + xh_way_dy(way), 3)
-    return (("GND", "F.Cu", 0.40, [(round(jx + 3.50, 3), y), (round(jx + XH_TOE_VIA, 3), y)]),
-            ("GND", round(jx + XH_TOE_VIA, 3), y))
-
-
 # ── WHAT EVERY NET REACHES, AND WHAT EVERY PIN ON IT IS RATED FOR (quality A16) ───────
 # One declaration for every board built on this cell -- the fret boards and the foot
 # strip carry the same regulator, the same drivers, the same LEDs and the same seam pin.
@@ -354,7 +346,6 @@ def pin_volts(pogo_mpn, resistors, pogo_accepted=None):
     }
     d.update({v: r0402 for v in resistors})
     return d
-
 
 
 # The pogo pin is rated a nominal 24 V and a board that passes the raw input through one

@@ -16,8 +16,6 @@ from . import dimensions as D
 from .helpers import ball_bearing, ball_bearing_y, box_at, cyl, cyl_y
 
 from cadkit.threads import threaded_rod
-from cadkit.fasteners import set_screw, m4_insert                # the ONE dummies now live in cadkit/fasteners.py;
-# re-exported here so C.set_screw() / C.m4_insert() keep working across the project
 
 # PER-PART NOZZLE. The two GT2 pulleys are the only PRINTED parts in this module of
 # dummies, and they need a finer nozzle than the project's 0.8 for their 2 mm tooth pitch.
@@ -289,15 +287,6 @@ def _tooth_cutter(axis: str, lo: float = None, length: float = None):
     return tool if axis == "Z" else tool.rotate((0, 0, 0), (1, 0, 0), -90.0)   # Z -> +Y
 
 
-# ── Screw drive pulley (axis Z) ──────────────────────────────────────────
-# PRINT ORIENTATION (the record, declared once per part) -- both pulleys print FLANGE
-# DOWN, which the builders below already say in prose and draw: a full disc as the bed
-# face, narrowing going up, and _tooth_cutter caps the groove ends at 45 because a flat
-# one would be "unsupported in a flange-down print". The screw pulley's flange is its -Z
-# face and the motor pulley's is its -Y face (its +Y flange is the chamfered, printable
-# cone), so they build +Z and +Y respectively. Neither is posed into the assembly.
-SCREW_PULLEY_UP = (0.0, 0.0, 1.0)
-MOTOR_PULLEY_UP = (0.0, 1.0, 0.0)
 # ALL THREE PULLEYS PRINT ON A 0.4 NOZZLE (user, 2026-11-01), for the GT2 teeth: the sweep has no site
 # over 0.20 on 0.4, and every tooth tip 0.40 short on 0.8.
 PULLEY_NOZZLE_D = 0.4

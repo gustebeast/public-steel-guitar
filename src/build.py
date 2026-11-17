@@ -70,7 +70,7 @@ PARTS = {
     "motor_shaft_saw_jig": (
     lambda: heal(_m("motor_shaft_saw_jig").body()),
     "tools/motor_shaft_saw_jig.step",
-    "TOOL — the leadscrew saw jig's sibling for cutting each SERVO42D's shaft to components.MOTOR_SHAFT_CUT_L, no screws: the motor drops into the chassis' own bay (motor_bank.lift_prism + low_walls, the bay's boss slot), faceplate pushed home on a 1.6 lip, shaft on a cradle rib its full length to a 1.3 saw slot (McMaster 6927A16) at the cut plane with a 3.2 cheek each side, the motor-side cheek braced by two 45 deg gussets; 1.6 floor and bay walls to the shaft axis. NO CAP: the Quick-Grip pad goes straight on the motor. PETG-GF on the 0.8, printed as drawn"),
+    "TOOL — the leadscrew saw jig's sibling for cutting each SERVO42D's shaft to components.MOTOR_SHAFT_CUT_L, no screws: the motor drops into a copy of the v1 chassis bay (motor_shaft_saw_jig's own lift_prism + low_walls, the bay's boss slot), faceplate pushed home on a 1.6 lip, shaft on a cradle rib its full length to a 1.3 saw slot (McMaster 6927A16) at the cut plane with a 3.2 cheek each side, the motor-side cheek braced by two 45 deg gussets; 1.6 floor and bay walls to the shaft axis. NO CAP: the Quick-Grip pad goes straight on the motor. PETG-GF on the 0.8, printed as drawn"),
     "saw_jig_cap": (
     lambda: heal(_m("saw_jig").cap()),
     "tools/saw_jig_cap.step",
@@ -183,7 +183,7 @@ for _n, (_b, _path, _note) in PARTS.items():
 
 # The instrument's materials, and there are THREE (user, 2026-09-30): PETG-GF for the
 # body, PCTG for the deck and fine-feature parts, TPU for the feet. Plain PETG was here
-# for exactly three parts -- the chassis light windows -- and buying a fourth spool for
+# for exactly three parts -- v1's chassis light windows -- and buying a fourth spool for
 # three translucent strips is the opposite of what this instrument is for.
 MATERIALS = ("petg-gf", "pctg", "tpu")
 
@@ -191,7 +191,7 @@ MATERIALS = ("petg-gf", "pctg", "tpu")
 def _material_of(path):
     """The material folder a part exports into, or None.
 
-    ⚠ NOT path.split("/")[0]. Test coupons are written at the root and coil_mandrel into
+    ⚠ NOT path.split("/")[0]. Test coupons were written at the root and shop tools into
     tools/, so that returned "test_cover_plate.step" and "tools" as materials and
     tools/cost.py then had no filament price for either (lead, 2026-09-30). A part
     outside the material folders has no filament cost to attribute, and saying None is
@@ -442,10 +442,9 @@ def collect_components():
     """EVERY placed thing in the instrument: [(name, cq.Workplane), ...].
 
     THE DIRECT-DRIVE INSTRUMENT (user, 2026-11-13: the main build is src.direct_bench's
-    instrument; v1 stays reachable at the git tag v1-instrument and as collect_v1_components).
-    Each part is drawn where it sits at T_OPEN, every one its own kept() entry; the pickup is
-    still its stand-in (ghost_pickup). The v1 latch, legs, pedal bar and levers are NOT in it
-    yet: they come over later, and their modules and PARTS entries stay for that.
+    instrument; v1 is at the git tag v1-instrument). Each part is drawn where it sits at
+    T_OPEN, every one its own kept() entry; the pickup is still its stand-in (ghost_pickup).
+    The levers, the legs and the pedal bar get redesigned for this body (user, 2026-11-17).
 
     The one entry point the whole tool chain is built on -- the overlap and sweep gates, the
     GLB exporter, scratch_view and the build profiler all take their model from here, so a
@@ -560,11 +559,8 @@ def _export_assembly(publish=True, gate=True, gate_full=True):
 # elsewhere. The build fails ABOVE it, so a NEW overlap still stops it, and it must
 # always equal the count you can NAME -- a baseline kept above the real number is
 # just a licence for the next fault to arrive unnoticed.
-# NOTHING IS ACCEPTED ANY MORE. Build #657 (branner's prism-first bank rebuild, which
-# rerouted the -Y harness corridor) came back with ZERO unintended pairs, so the last
-# named defect -- chassis <-> wire_pwr_hot_10, ~0.6 mm^3, a wire clipping a solid,
-# carried since August -- is gone. Was 2, then 1, now 0: every unintended pair from
-# here is a regression and stops the build, which is what the rule above is for.
+# NOTHING IS ACCEPTED: every unintended pair is a regression and stops the build, which is
+# what the rule above is for.
 OVERLAP_BASELINE = 0
 
 
@@ -696,9 +692,6 @@ def _web_view(comps, build_n, publish=True):
     return 0
 
 # ── THE DIRECT INSTRUMENT'S PARTS (user, 2026-11-13: the main build is the direct instrument) ──
-# PARTS_V1 is v1's table as it was, for the v1 code that still reads it. PARTS is what this
-# build exports and checks: the direct instrument's parts, and the v1 parts it will REUSE (the
-# body-adapter latch, the legs, the pedal bar, the levers, the UI's printed parts) and the shop
 # ── THE DIRECT INSTRUMENT'S OWN PARTS (user, 2026-11-13: the main build is the direct instrument) ──
 # families printed from one file under another name: collar A and B are ONE part (turned end for end)
 _FAMILY_STEM = {"collar_a": "clamp_collar", "collar_b": "clamp_collar"}

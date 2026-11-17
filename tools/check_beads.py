@@ -2,7 +2,8 @@
 
   py -3.12 -m tools.check_beads             # report off-grid constants
   py -3.12 -m tools.check_beads --all       # also list what is exempt, and why
-  py -3.12 -m tools.check_beads --only legs,latch
+  py -3.12 -m tools.check_beads --only direct_bench,keyhead_v2
+  py -3.12 tools/check_beads.py            # the same, run as a script
 
 WHY: this build runs a 0.8 mm nozzle. A wall of 1.75 mm is 2.19 beads -- the
 slicer (Arachne) cannot lay 2.19 beads, so it either widens two beads to 0.88 or
@@ -50,12 +51,16 @@ This file is the project DRIVER; the walker itself is cadkit.bead_check
 from __future__ import annotations
 
 import pathlib
+import sys
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))   # run as a script too
 
 from cadkit import bead_check
 
 import src.dimensions as D
 
 SRC = pathlib.Path(__file__).resolve().parent.parent / "src"
+OWN_PROCESS = ("flash_bench",)     # sets board_geom's R1 switch before importing it
 
 # ── exemptions ──────────────────────────────────────────────────────────────
 # name -> (category, reason). A bare name matches in EVERY module; "mod.NAME"
@@ -69,55 +74,6 @@ def _ex(cat: str, **kv) -> None:
         EXEMPT[k.replace("__", ".")] = (cat, v)
 
 
-# The leg's pogo blind-mates (src.leg_pogo). The boards are FAB parts -- cut by the PCB
-# house, not laid in beads -- and the header is a bought part off its drawing.
-_ex("hardware",
-    leg_pogo__RA_PITCH="C54799748 drawing: 2.5 pin pitch",
-    leg_pogo__RA_BODY_S="C54799748 drawing: housing 11.0", leg_pogo__RA_BODY_T="...2.5 off the board",
-    leg_pogo__RA_BODY_D="C54799748 drawing: 2.5 rear to the side shoulders",
-    leg_pogo__RA_PIN_T="C54799748 drawing: plunger axis 1.30 off the face (inferred datum)",
-    leg_pogo__RA_PLUNGER_D="C54799748 drawing: plunger O1.00",
-    leg_pogo__RA_FREE="C54799748 drawing: 5.50 free", leg_pogo__RA_WORK="...4.00 working",
-    leg_pogo__TG_PITCH="C54930022 drawing: 2.54 pitch", leg_pogo__TG_BODY_S="...housing 10.2",
-    leg_pogo__TG_BODY_T="...2.5 across", leg_pogo__TG_BODY_H="...2.5 tall",
-    leg_pogo__TG_FACE_H="...contact faces 3.5 off the board", leg_pogo__TG_FACE_D="...O1.2 faces",
-    leg_pogo__TG_PAD_D="...O2.2 SMT pads",
-    leg_pogo__ZR_S="JST eZR p.5: S4B-ZR-SM4A-TF B 9.0", leg_pogo__ZR_DEPTH="...5.0 deep",
-    leg_pogo__ZR_TAIL="...(1.5) behind", leg_pogo__ZR_H="...3.7 off the board",
-    leg_pogo__ZR_PLUG="JST eZR p.2: mated 7 overall less the 5.0 body",
-    leg_pogo__F_HOLE_S="the female's M4 on the PCB, beyond the target's end",
-    leg_pogo__FB_S0="PCB outline, routed by the fab", leg_pogo__FB_S1="PCB outline, routed by the fab",
-    leg_pogo__S_C="the pin row's offset along the tenon, set by the female's screw",
-    leg_pogo__EDGE="JLCPCB component-to-edge rule", leg_pogo__MB_S="PCB outline, routed by the fab",
-    leg_pogo__HOLE_D="M4 clearance hole in the PCB (elec convention)",
-    leg_pogo__HEAD_D="M4 button head O7.0", leg_pogo__HEAD_H="...and its height",
-    leg_pogo__SE_S="JST ePH p.4: S4B-PH-SM4-TB B 11.9", leg_pogo__SE_DEPTH="...6.0 deep",
-    leg_pogo__SE_TAIL="...(2.6) tails", leg_pogo__SE_H="...5.5 off the board",
-    leg_pogo__PLUG_RUN="PHR-4 reach past a side-entry mouth (branner)",
-    leg_pogo__PLUG_S="JST ePH p.3: PHR-4 B 9.8",
-    leg_pogo__PH_PITCH="JST ePH: the PH family is 2.00 mm pitch",
-    leg_pogo__ZR_PITCH="JST eZR/eZH: the ZR/ZH family is 1.50 mm pitch",
-    leg_pogo__HARNESS_WIRE_OD="28 AWG 7/36 PVC hookup wire OD",
-    leg_pogo__HARNESS_BEND_STATIC="3 x the harness bundle, a bend rule not a printed length",
-    leg_pogo__TF="a PCB's 1.6 thickness off its back",
-    leg_pogo__PIN_T="the plunger line on the PCB: board + the header's 1.3",
-    leg_pogo__F_HOLE_T="the female's M4 on the PCB: EDGE inside the routed outline",
-    leg_pogo__FB_T0="PCB outline, routed by the fab", leg_pogo__FB_T1="PCB outline, routed by the fab",
-    leg_pogo__PAD_Z="a PCB's 1.6 thickness",
-    leg_pogo__F_SCREW_L="M4 x 8 button, a bought length",
-    leg_pogo__M_RECESS="button head height + 0.8, buried under the tenon's flat",
-    leg_pogo__M_HEAD_SEAT="the head recess floor, from cadkit's button head",
-    leg_pogo__M_END="how far the screw's hole runs past the insert, not a wall",
-    leg_pogo___D="sqrt(0.5) -- a direction cosine for the tenon's diagonal, not a length",
-    bar_latch__PAD_SIDE="+-1: which way the latch faces, a SIGN and not a length")
-_ex("clearance",
-    leg_pogo__CLR="board / connector slip fit in its printed pocket",
-    leg_pogo___WOFF="air between two conductors in the bundle -- wire, not printed",
-    leg_pogo__LOAD_SLOP="bar_latch.CLR: how far the bottom joint hangs open",
-    leg_pogo__MISALIGN="tip-on-pad landing error: octagon fit plus pocket clearances",
-    leg_pogo__PRINT_TOL="print tolerance on the pocket depths",
-    leg_pogo__SEAT_C="spring-pin compression when seated, on the header's own travel")
-
 # Screw-drive endcap + two-row endplate (branner). Each is off the 0.8 grid FOR A REASON.
 _ex("hardware",
     PULLEY_SOCKET_FLOOR_CLR="2 traces of the 0.2 nozzle the screw pulley prints at, not 0.8 beads",
@@ -129,52 +85,10 @@ _ex("hardware",
 )
 
 
-_ex("clearance",
-)
-
-
 # Real objects. These are measurements, not choices.
 _ex("hardware",
-    legs__SHELL_GAP="clearance: the endplate <-> kept-shell gap (= chassis.EP_LEG_CLR)",
-    legs__LOCK_SCREW_L="a stock M4x12 button head's length (hardware)",
-    legs__LOCK_HEAD_D="the M4 button head's diameter (hardware)",
-    legs__LOCK_HEAD_H="the M4 button head's height (hardware)",
-    legs__LOCK_Z="the leg screw's axis height, from the M4 button head's 7.6 (hardware) + air + a 2-bead floor",
-    legs__LOCK_PIN_DY="lock pin offset chosen so SERVICE_SLIDE can reach the bridge's 25.6 (user)",
-    bar_latch__SCREW_L="a stock M4x30 button head's length (hardware)",
-    # src.leg_trrs: BOUGHT PARTS and the fits on them. None of these is a printed
-    # length -- they are the Tensility 10-02155's drawing, the inline jack's moulded
-    # barrel, and the clearance/press each gets. Snapping them to the bead grid would
-    # be snapping someone else's part.
-    leg_trrs__JACK_D="the moulded inline jack's body, off Tensility 10-02135's drawing (component 50-00041, 3.5 x 7.8 x L25.8) -- a bought part, not a length we choose",
-    leg_trrs__JACK_L="...and its length, off that same drawing -- 25.8, where the old envelope said <= 40",
-    leg_trrs__PLUG_D="the 10-02155's overmould, off its drawing",
-    leg_trrs__PLUG_L="...and its length",
-    leg_trrs__BARREL_D="...its 3.5 mm barrel: the connector standard itself",
-    leg_trrs__BARREL_L="...and how much of it crosses the joint",
-    leg_trrs__CABLE_D="...and the lead's own diameter",
-    leg_trrs__JACK_BORE_D="a running clearance -- and on the COIL, not the jack: the real jack is narrower than the O8.0 spring that shares the bore, so this takes the max of the two",
-    leg_trrs__THROAT_D="the clearance that lets the overmould through and stops the jack",
-    leg_trrs__FLOAT="how short the LATCH may stop -- a travel budget, not a length",
-    leg_trrs___MOUTH_PEAK="where the plug's teardrop apex reaches -- a keep-out the ridge is cut back to, not material",
-    leg_trrs__PASS_D="clearance on the bought plug's head, so it can be threaded at all",
-    leg_trrs__THROAT_BORE_D="a SQUEEZE between two measured walls (tenon 1.66, keeper 1.60), not a free length",
-    leg_trrs__THROAT_LEAD_D="the keeper mouth's CAPTURE diameter: it is sized off the plug's barrel and how far a slack press lets it cock (2.75 of radial catch against 1.60 of cock), not off a wall",
-    leg_trrs__LUG_TURN="an ANGLE, in degrees -- the bead grid does not apply, and this one was set by where each bore's teardrop apex falls on the ledge",
-    leg_trrs__PRELOAD_TARGET="a FORCE in newtons -- 5.0 N is what holds the jack against its keeper with the leg off. Not a length, and the bead grid does not apply",
-    bar_trrs__SPR_CH_D="a running CLEARANCE on the bought coil (0.6 on O8.0, 0.3 radial) -- it centres the spring, it is not a wall",
-    bar_trrs__SPR_CH_BOT="a z STATION: where the bore steps down to the coil's own channel, set by the collar's reach at full compression plus 0.4 of clearance to the step. Not a length",
-    leg_trrs__CABLE_LEN="the bought lead's length, off the vendor's page -- a SKU fact",
-    leg_trrs__CABLE_BEND_R="the cable's PUBLISHED minimum bend radius, off Tensility's page -- a vendor fact, not a length we choose",
-    leg_trrs__CABLE_BEND_STATIC="the bend radius this design actually imposes on a SET-ONCE lead, and a deliberate deviation from the published one. Set by the coil's stretched geometry, not by the nozzle",
-    lever_jig__POGO_D="a BOUGHT pin's body (Adafruit 2430) -- a vendor dimension",
-    lever_jig__POGO_HEAD_D="a BOUGHT pin's needle head -- a vendor dimension",
-    lever_jig__POGO_L="a BOUGHT pin's uncompressed length; it sets the nest height over the base",
-    lever_jig__POGO_TRAVEL="a BOUGHT pin's travel: its published uncompressed less compressed length",
-    lever_jig__POGO_PRELOAD="a spring COMPRESSION, chosen inside the pin's travel -- not a printed wall",
-    lever_jig__POGO_BORE_D="a loose slip FIT on the pin's body -- a clearance, not a wall",
-    lever_jig__LEAD_OD="a BOUGHT jumper lead's insulation -- a vendor dimension",
-    lever_jig__SCREW_L="a BOUGHT screw's length: the instrument's M4 x 10 button",
+    # BOUGHT PARTS and the fits on them: snapping them to the bead grid would be snapping
+    # someone else's part.
     saw_jig__SLOT_W="a FIT on a bought blade's tooth set (McMaster 6927A16) -- a clearance, not a wall",
     saw_jig__FILE_ALLOW="material filed off each piece's cut end -- a machining allowance, not a wall",
     saw_jig__CAP_CLR="the cap's sliding clearance in its channel, each side -- not a wall",
@@ -189,33 +103,6 @@ _ex("hardware",
     pi4b__PIN="a BOUGHT board (Raspberry Pi 4), read off its maker's drawing -- a vendor dimension",
     pi4b__PITCH="a BOUGHT board (Raspberry Pi 4), read off its maker's drawing -- a vendor dimension",
     flash_bench__PITCH="a BOUGHT probe header's pin pitch -- a vendor dimension",
-    lever_jig__NEST_CLR="a CLEARANCE per side between the board and the rim",
-    lever_jig__LEDGE_REACH="bounded by the BOARD: 1.6 would reach under U4's body (edge 14.05 against a 14.10 ledge), 0.8 leaves 0.6 of bearing; 1.2 is the gap the cradle keepout leaves",
-    coil_mandrel__CLEAT_R="the slit sits at the CABLE'S OWN path radius (barrel + half the cable) -- put it anywhere else and it drags the tail sideways to reach it. Geometry, not a wall",
-    coil_mandrel__CAVITY_D="a MEASURED cavity, not a chosen length -- the adjust sleeve's clear bore read off the solid, which the octagon's chamfers set",
-    coil_mandrel__COIL_CABLE="a MEASURED length of bought cable -- what is left once every straight run in the leg is accounted for (docs/leg-trrs-routing.md)",
-    coil_mandrel__CLEAT_W="an INTERFERENCE on the O3.8 jacket: the cleat has to pinch the cable, not clear it",
-    coil_mandrel__SLEEVE_CLR="a sliding clearance so the outer goes over the wound coil instead of shaving it",
-    bar_trrs__PASS_D="a running clearance on the bought O6.1 plug, and 1.5 rather than the top joint's 0.5 because down here the bore also has to TURN: a rigid O6.1 x 14 body needs D >= d + L*sin(kink/2) to get round the jog",
-    bar_trrs__JB_D="a running clearance on the bought jack's O7.8 body -- the THROAT's grip is what holds it, so this bore only keeps it straight and gives its back a seat. Not a wall",
-    bar_trrs__TH_DETENT="how far the anti-rotation pin stands proud into the bayonet run: an INTERFERENCE the TPU lug squashes past, sized against the lug's 0.2 of preload rather than against the nozzle",
-    bar_trrs__BORE_D="a running clearance on the TPU collar, which is the widest thing that travels this bore -- not a wall",
-    bar_trrs__LUG_BOT="a z STATION -- where the lugs sit at rest, 0.4 above the collar's rim so the rim is what meets the jack. Not a length",
-    bar_trrs__LUG_CHAMFER="how much of the lug's free face is chamfered for printability: 1.0 and not its full 1.8, because the far face has to stay wide enough OUTSIDE the bore to be an over-insertion stop at all",
-    bar_trrs__SLV_SEAT_ID="a CLEARANCE on a bought overmould -- the collar's flange has to pass O6.1 to be threaded on from the barrel end",
-    leg_trrs__SLV_SQUEEZE="an INTERFERENCE, the TPU cup's squeeze on a BOUGHT overmould -- not a length",
-    leg_trrs__SLV_ID="...and the bore that makes it, which is PLUG_D less that squeeze",
-    leg_trrs__SLV_CLR="a running clearance: the sleeve has to TURN in its counterbore",
-    leg_trrs__CB_D="the counterbore, which is the sleeve plus that clearance -- a fit, not a wall",
-    leg_trrs__KEEP_CLR="the same running clearance for the keeper's bayonet",
-    leg_trrs__LUG_PROUD="how far a bayonet lug stands off the barrel: bounded by the TENON's 1.65 of wall at its thinnest, not chosen off the grid",
-    leg_trrs__LUG_D="...and the circle that follows from it",
-    leg_trrs__LUG_H="the lug is 0.2 TALLER than its slot -- that 0.2 is the joint's PRELOAD, in an elastomer, and 0.8 of squash would be a press",
-    leg_trrs__SPR_REST_L="a coil length off the spring's own rate and free length",
-    wiring__TRRS_FLOOR_TOP="the chassis floor slab's upper face at that station, MEASURED off the built chassis",
-    wiring__TRRS_FLOOR_BOT="the instrument's underside there, MEASURED off the built chassis",
-    foot_pedal__Y_BUDGET="the pedal housing's TUNED depth: it puts the axle 10.15 in from the bed and the sensor board just inside the -Y face. Was the bar's width, back when the bar was this wide",
-    bar_latch__SPR_REST_L="the coil's installed length: its free length less a light preload (hardware)",
 )
 _ex("hardware",
     MOTOR_SQ="NEMA17 body 42.3 sq (SERVO42D)",
@@ -248,8 +135,6 @@ _ex("hardware",
     GAUGE_MAX_IN="heaviest published pedal steel string gauge (.080) -- a purchased wire, not a printed length",
     STRING_GAUGE_MAX="GAUGE_MAX_IN in mm -- a wire diameter, not a printed length",
     NUT_BOSS_CLR="radial air round the nut boss: clearance, not a wall",
-    GUIDE_ROD_TOP="rod top Z = socket floor + the stock pin's length -- a POSITION, not a printed length",
-    BRG_SEAT_D="bearing seat bore (race + 0.1 press clearance): geometry, not a wall",
     SCREW_OD="Tr8x2 lead screw OD",
     SCREW_LEN="lead screw cut length (stock, not printed)",
     MOTOR_SHAFT_D="NEMA17 shaft Ø5",
@@ -275,7 +160,6 @@ _ex("hardware",
     WIRE_D="Ø2 shielded-pair cable (harness dummy)",
     TEE_BOARD_X="custom tee PCB outline 22 x 24 (fabbed board, not printed)",
     TEE_CONN_CY="tee PCB connector-row centre (board-local)",
-    HDR_Z="lifted XH header wire-entry top (connector body stack, purchased)",
     NUT_INSERT_L="M4 heat-set insert length 5.0",
     NUT_SCREW_L="M4 screw stock length",
     NUT_PIN_D="Ø4 dowel pin nominal (purchased)",
@@ -286,25 +170,6 @@ _ex("hardware",
     GUIDE_RUN_CLR="the guide rod's running clearance in the ear -- a FIT, not material",
     GUIDE_ROD_FIT="snug press for the rod in its socket — a FIT, i.e. a gap, not material",
     NUT_PIN_CLR="slip fit for the Ø2 dowel in its seat — a gap, not material",
-    nut_block__ROD_FIT="slide fit for the wrap rod through ten comb webs — a gap, not material",
-    nut_block__INS_CLR="slip fit for a sliding insert in its pocket — a gap, not material",
-    nut_block__COIL_CLR="air between two BARE COILS in a shared bay — a gap, and no bead is laid across it",
-    nut_block__CLAMP_PAD="pad each side of the coil's CONTACT band when sizing the clamp lobe — a margin on a measured feature, not a printed length",
-    nut_block__STACK_CLR="total Y slip of a bass insert in the shared slot — a fit, not material",
-    nut_block__BASS_CLR="= STACK_CLR/2 plus the hair that makes neighbouring pockets overlap — a gap",
-    nut_block__WRAP_EPS="the coil is drawn a hair off the rod: a modelling gap, nothing printed",
-    nut_block__BASS_OFF="bass clamp lobe offset: bounded ABOVE by abutting the neighbour and BELOW by covering the deepest bass coil — a Y position, not a printed length",
-    nut_block__DIVOT_D="= PIN_D + 0.3, the dowel's cradle: the pin plus its FIT",
-    nut_block__LIP_H="the crown less LIP_STRING_CLR: a height set by the string, not a bead count",
-    nut_block__LIP_STRING_CLR="air under the string, not a printed width",
-    nut_block__DOWEL_X="set back from the face by the insert wall and the same 0.3 dowel fit",
-    nut_block__INS_LOBE_W="= PIN_L + 0.3, the dowel lobe: the pin's length plus its fit",
-    nut_block__WRAP_F="axial rise per turn as a MULTIPLE of the string's own diameter — a ratio",
-    nut_block__MU="steel-on-steel friction coefficient (capstan) — dimensionless physics",
-    nut_block__STRING_T="per-string tension in NEWTONS that the capstan divides — a force, not a length",
-    nut_block__CLAMP_WIDTHS="clamp contact measured in STRING WIDTHS — a count, and the string sets the width",
-    nut_block__BAR_R="Ø19 steel bar — the player's tool, measured; the rod is placed to clear it",
-    nut_block___SPAN_MPA="bending STRESS in the wrap rod, MPa — the '3' is the string count, not a length",
     _GROOVE_R="GT2 groove profile radius (belt tooth form)",
     GROOVE_CLR="GT2 groove print allowance (a clearance)",
     MOTOR_SHAFT_FLAT="PURCHASED SERVO42D shaft: 4.5 across its D flat (measured)",
@@ -317,15 +182,6 @@ _ex("hardware",
     # rate are the spring's, and the bore/ID/post derive from them
     SPR_OD="latch spring Ø5.0 OD (BOM SKU)",
     SPR_WIRE="latch spring 0.6 music wire",
-    SPR_FREE="latch spring 12.0 free length",
-    SPR_SOLID="= (N+2)*wire, the spring's solid height",
-    SPR_RATE="N/mm, not a length at all",
-    SPR_ID="= SPR_OD - 2*wire, the coil bore",
-    POST_D="= SPR_ID - clearance; guides the purchased coil",
-    latch__TRRS_WAY_Z0="TRRS D11 jack handle way (legs.leg_head owns it)",
-    latch__FACE_Y="= legs.BLK_W/2 = SQ_W/2 - COVER_T - SH_CLR: grid minus a CLEARANCE",
-    latch__LG_BLK_HALF="= legs.BLK_W/2 = SQ_W/2 - COVER_T - SH_CLR: grid minus a CLEARANCE",
-    latch__OCT_TOP="measured octagon apex within the band",
     PK_MAG_L="Lace Alumitone magnetic (sensing) range 88.9",
     PK_FLG_T="Alumitone mounting-flange thickness 3.3 (datasheet)",
     PK_COIL_W="Alumitone coil-core width 31.0 (datasheet)",
@@ -335,44 +191,6 @@ _ex("hardware",
     GRUB_SWEEP="M4x10 cup-tip usable travel = screw_l - min_bite - ~1 tip",
     JACK_HEAD_D="ISO 7380 M4 button head Ø7.6",
     JACK_HEAD_H="ISO 7380 M4 button head height 2.2",
-    AXLE_D="Ø5 journal = the 695ZZ bearing bore",
-    AIR_GAP="MT6701 air-gap window (datasheet 0.5..2.0): 1.5 nominal, 1.1 at full float",
-    CHIP_DISP_MAX="MT6701 datasheet max sensing-centre misalignment",
-    HS_SPR_OD="feel die spring (uxcell B0B772B9V2) hole Ø10",
-    HS_SPR_ID="feel die spring rod Ø5 (its ID)",
-    HS_SPR_FREE="feel die spring free length 30 (+-2)",
-    HS_SPR_INST="= free length: the bay at zero preload",
-    HS_SPR_RATE="datasheet: 142.2 N at the 40% max deflection",
-    HS_SPR_MAXDEFL="JIS blue die spring max compression = 40% of free length",
-    SOCK_D="3/8-inch socket driver clearance bore (12.5-13.5 OD + room)",
-    CAP_HEX_AF="hex for a 3/8-inch (9.525 AF) socket; printed-oversize allowance",
-    AXLE_FLAT_DEPTH="D-flat depth: magnet-tilt margin vs key-face width (0.5 not 0.7)",
-    knee_lever__PCB_X0="sensor PCB outline -X edge (fabbed board; circuit-limited)",
-    knee_lever__PCB_X1="sensor PCB outline +X edge (fabbed board; edge keepout)",
-    CONN_EDGE="JLCPCB component-to-edge rule on the sensor board",
-    CONN_SPLIT="gap between J1's and J2's bought bodies on the sensor board (no plastic)",
-    CONN_GAP="J1 body -> housing face air clearance (a gap, not material)",
-    CONN_MOUTH_X="J1 / J2 mouth position on the PCB (kept from the PH-era layout)",
-    CONN_PLUG_RUN="mated PHR-4 reach past the mouth (purchased plug envelope)",
-    CONN_POCKET="clearance round J1's plug tunnel (a void, not material)",
-    PCB_WZ="sensor PCB outline height (fabbed board: J1 + J2 19.9 + 1.0 edge rule x2)",
-    CHIP_DROP="chip below the board top edge (fabbed-board layout)",
-    CAP_SWEEP_R="= hex across-corners circumradius (AF/sqrt3 = 5.312) + slip + print allowance",
-    CR_ENG="groove engagement inside the board's edge-keepout band",
-    CR_EDGE_KEEP="groove takes this much X edge (JLCPCB +-0.2 + slip budget)",
-    MAG_TH_PITCH="printed cap-thread form (cadkit.threads)",
-    MAG_TH_DEPTH="printed cap-thread flank depth (valley-overlap-limited)",
-    MAG_TH_CLR="printed cap-thread male-side fit",
-    BED="printer bed limit (256 bed minus margin)",
-    belt_tensioner__HEAD_D="ISO 4762 M3 socket head Ø5.5",
-    belt_tensioner__HEAD_H="ISO 4762 M3 socket head height 3.0",
-    belt_tensioner__SCREW_L="M3x12 stock screw (BOM length)",
-    belt_tensioner__INS_D="McMaster 94459A130 M3 insert, OD over the knurl",
-    belt_tensioner__INS_L="McMaster 94459A130 M3 insert, installed length",
-    CVR_RAIL_W="octagon rail at cadkit's family floor (h_min 4.95 at 0.8) + margin; "
-               "4.8 is below the floor",
-    UNDER_Z="comb-finger underside plane (must stay flush with _fpro's 6.5 flat); "
-            "LEAD PASS FLAGGED: deck rose to 6.4 so only 0.1 clears the deck panel",
     SENSE_D="sensing station: as close to the termination as the stiffness boundary "
             "layer allows; sets the fabbed board's sensor row",
     END_KEEP="PCB layout rule (strip-end keep-out on the fabbed board)",
@@ -386,53 +204,20 @@ _ex("hardware",
     PCB_T_TOL="+-10% FR4 fab tolerance FACTOR (dimensionless x PCB_T)",
 )
 
-# Gaps, not material. Always sub-bead; the grid does not apply.
-_ex("clearance",
-    # the redesigned leg -- every one a GAP or a hole, not material
-    leg_stack__FIT="tenon-in-mortise slide fit on every face of the octagon",
-    leg_latch__CLR="latch slider sliding clearance in its pocket, notch and recess",
-    leg_latch__SLIDE_CLR="latch slider body's clearance to the bore, sized for two "
-                         "oversize prints",
-    leg_latch__REST_OUT="= CLR * sqrt2: how far the spring pushes the slider out "
-                        "before its flanks meet the bore -- a clearance, not material",
-    leg_latch__SHRINK_ADAPTER="= SLIDE_CLR + REST_OUT: clearances only",
-    leg_latch__CH_FLOOR="= the mortise's roof + 0.5 standoff so the hook never rubs "
-                        "the tenon beside it: grid-derived plus a CLEARANCE",
-)
 _ex("clearance",
     FIT_CLR="slip fit",
     NUT_PIN_CLR="dowel drop-in fit",
     BOOL_OVERSHOOT="boolean cutter overshoot, not a feature",
     M3_CLR_D="M3 clearance hole",
     NUT_SCREW_D="M4 shaft clearance",
-    latch__CLR="latch sliding fit",
-    latch__OCT_CLR="standoff that ABSORBS the octagon apex's off-grid remainder, "
-                   "so the wall behind the pocket lands on a whole bead",
-    latch__OCT_CLR_MIN="least standoff of the channel floor from the octagon",
-    latch__TIP_GAP="hook tip -> pocket back, so the hook never bottoms",
-    SPR_BORE_D="= SPR_OD + drop-in clearance",
-    joint_coupon__CLR="octagon slide-joint fit (tenon shrunk by this)",
-    tension_fork__BODY_H="= M3_CLR_D - 0.15: slips the M3 slot height",
-    tension_fork__BODY_D="= PLATE_T - 0.3: stops shy of the motor face",
-    nut_block__CRADLE_L="= PIN_L + 0.3: a purchased dowel and its float",
-    mctrl_retention__LEDGE_IN="setback from the J3 plug's mating face (a cut extent, not a wall)",
     electronics__OP_TAIL_CLR="the least air under the brain board's cut pins; OP_STANDOFF rounds the sum up to beads",
     screw_rail__SEAT_LEDGE_D="= BRG_OD - 2.5: ledge bore = Ø5 screw + washer pass room",
-    top_plate__GAP="deck-panel assembly clearance (0.05 between consecutive panels)",
-    top_plate__OPEN_YP="piece opening = pickup +Y body edge + 0.6 assembly gap",
-    top_plate__JACK_HEAD_Z="head pocket floor = deck top - head height - 0.3 recess",
     HEAD_POCKET_D="= JACK_HEAD_D + 0.4 drop-in fit",
     CAVITY_X="deck cavity = plate + 1.5 fit clearance",
     CAVITY_Y="deck cavity = plate + 1.5 fit clearance",
-    pickup_mount__GAP="pickup-top to heaviest-string air gap (demo height setpoint)",
-    EP_TOP_CLR="endplate drop-on X clearance to the rail end",
-    KH_DT_CLR="endplate dovetail socket Y fit",
-    KH_DT_SEAT="lower-dovetail seating gap (tenon seats on the L-foot, not the ceiling)",
     SEAT_CLR="slop under the bearing stack (it seats UP on the ledge, so this is a gap)",
-    _GUIDE_WEB="a MEASURED distance between two bores (0.2 seat clearance, 1.414 = the teardrop apex's sqrt(2)) — an assert term, not material",
     SCREW_CLR_D="= SCREW_OD + 0.5: non-contact bore trimmed so the teardrop apex keeps a 2-bead web",
     AXLE_BORE="= axle Ø5 + 0.4 slide-through fit (10 bearings + 9 fingers)",
-    LANE_CLR="air each side of a wrap, before its finger",
     BAND_CLR="carrier keep-off from both deck-band edges",
     OPT_GAP="sensor-face to string optical air gap (signal-critical standoff)",
     PART_STRING_CLR="tallest component to string air floor",
@@ -440,30 +225,6 @@ _ex("clearance",
     COVER_X0="lid -X edge = op-amp column edge + 0.5 (lid stops short of the quads)",
     WRAP_CLR="wrap turn past the arm outer face (mirrored both Y)",
     CONDUIT_CLR="hand-fed plug pass-through allowance",
-    PIVOT_CLR="hub-face to thrust-boss running clearance",
-    HS_CLR="piston/coil to channel slide fit, per side",
-    HS_PILOT_D="= spring ID - 0.4 nose fit",
-    HS_POS_FWD="position screw's forward reach + 0.4 clearance (a void, not material)",
-    HS_KEY_D="= washer hole + 0.2: the 2.5 key's way to the position head (a void)",
-    AXLE_END_PROUD="axle tip past the inner race: the end screw's running clearance",
-    HS_WASH_RECESS_D="= ISO 7093 M3 washer Ø9 + 0.4 drop-in seat",
-    HS_TRAVEL="= follower travel + 0.5 margin (sweep room, not material)",
-    HS_WIN_WY="= tongue + 0.4: passes the tongue, catches the body",
-    CEIL_CLR="board top to chassis underside slide gap (the lid IS the retainer)",
-    CR_CLR="board slip fit per groove face",
-    MAG_POCKET_D="= magnet Ø + 0.2 slip",
-    MAG_COLLAR_H="collar stops 0.1 short so the cap lands on the MAGNET",
-    CAP_BASE_CLR="cap rim stops short of the flange (same anti-rattle trap)",
-    AXLE_FLAT_Y="flat runs 0.1 past the hub half-width",
-    AXLE_BORE_D="= axle Ø + 0.2 slip (the set screw holds it)",
-    CAP_CLR_H="board-to-cap gap rule: taller parts must clear the sweep",
-    HS_BACK_X="back wall = guide-post back + insert + 0.5 assembly slack (leg-capped)",
-    knee_lever__MORT_CLR="octagon mount-joint slide fit (tenon shrunk by this)",
-    BAY_CLR="printed clearance around the pedal's board bay",
-    TROUGH_X0="trough stops 0.6 off the -X tower face",
-    TROUGH_X1="trough stops 0.6 off the +X tower face",
-    SEC_MOR_L="= spigot + 0.4 tip gap (slack at the tip, never the shoulder stop)",
-    SEC_CABLE_D="axial cable way through the spigot + socket roof (wires, not material)",
     belt_tensioner__SLOT_CLR="belt-to-slot clearance (a gap, not material)",
     belt_tensioner__SLOT_H="= belt + 2 x clearance",
     belt_tensioner__EDGE_CLR="belt edge to the slot's closed end (a gap)",
@@ -472,56 +233,21 @@ _ex("clearance",
     belt_tensioner__KEY_DEG="ball-end key angle (degrees, not a length)",
     belt_tensioner__SOCKET_IN="ball centre below the head top (purchased screw)",
     belt_tensioner__INS_FIT="insert pocket slack along the screw (a gap)",
-    belt_tensioner__INS_SLIP="insert pocket over the insert's OD (a gap)",
     belt_tensioner__RAIL_CLR="rail to its flat (a gap)",
-    foot_pedal__BUS_AIR="air between a drawn conductor and a wall or the layer under it (a gap)",
-    foot_pedal__BUS_KEEP="air between two drawn conductors in one layer (a gap)",
-    foot_pedal__BUS_RIBBON="pitch of the harness's flat ribbon (wire spacing, not plastic)",
 )
 
-# Where PURCHASED parts sit relative to each other. No bead is laid to define a
-# motor pitch, so the grid buys nothing -- and these are load-bearing for the
-# LAYOUT: the rib comb is generated from the motor pitch, and the knee-lever
-# mount hardcodes a rib X, so a 0.4 mm snap here walked the comb out from under
-# the lever and buried its tenons in solid rib (3021 mm^3). Snapped and reverted
-# 2026-08-06; chassis now asserts MOUNT_X lands on a rib.
-_ex("layout",
-    leg_latch__BUTTON_SIDE="a direction SIGN (-1: the latch button faces -Y), "
-                           "not a length",
-)
-# The bus-B lever harness (src.wiring.lever_bus + the keeper it stows in). None of these
-# is printed material: they are WIRE, the space wire needs, or route geometry.
-_ex("hardware",
-    CANB_WIRE_OD="one 26 AWG conductor, insulated -- a bought wire's OD",
-    CANB_BUNDLE_OD="the four of them together (BOM, Wire)",
-)
-_ex("layout",
-    CANB_COIL_R="the radius the SLACK is wound at -- a cable bend, not a wall",
-    CANB_SLACK="the spare WIRE a segment carries -- a harness length",
-)
 _ex("layout",
     KEYHEAD_INBOARD_X="keyhead endplate inboard face X -- a POSITION (asserted in build.py)",
     MCTRL_FIT="board to printed pocket, a fit", MCTRL_Y1="PCB position: off string 1's motor back",
     MCTRL_Y0="PCB position: Y1 less the routed length", MCTRL_L="routed PCB outline",
     MCTRL_PORT_CLR="a clearance round a PCB", MCTRL_DIP="PCB position below the floor (asserted in build.py)",
-    CROSS_GROOVE_IN="cutter overshoot past the leg face (a cut extent, not a wall)",
-    LOCK_PIN_DY="leg screw axis POSITION off the leg centreline (user)",
-    SERVICE_SLIDE="leg service TRAVEL along the tongue (capped by SERVICE_SLIDE_MAX)",
-    BED_X="the printer's X travel -- why the chassis is in segments",
     MOTOR_BODY_L="PURCHASED SERVO42D depth, MEASURED 53.4 (asserted against components.motor)",
     MOTOR_CLR="slip fit round a purchased motor body in its pocket",
     BOSS_CLR="slip fit round the purchased O22 pilot boss in its drop-in slot",
     SCREW_L="stock M4 button length (6 mm)",
-    HARNESS_Y1="harness corridor edge -- a POSITION, matched to the tee boards (asserted in wiring)",
-    SEAT_HALF_W="how far the faceplate wall reaches -X to carry the tee seat (a reach)",
     TEE_MOUTH_DY="PURCHASED side-entry XH: pad row to mouth face (JST drawing)",
     TEE_BOARD_T="PCB thickness (2-layer FR4)",
     TEE_EAR_X="PCB outline: the bare mounting ear off the +X end",
-    BOTTOM_T="floor thickness: the joint's own depth plus a two-bead cap, not a wall",
-    _EP_CLR="assembly clearance, endplate pocket vs kept shell (= chassis.EP_LEG_CLR)",
-    STUB_TEN_W="the grid joint's tenon width (D.LEVER_MORT_W less its fit)",
-    LOCK_SCREW_L="purchased screw length (M4 x 18 button)",
-    LOCK_INSERT_AT="where the insert sits along the screw, inside the endplate wall",
     TEE_EAR_Y="PCB outline: how deep that ear is (fits the bank stagger)",
     TEE_OUTLINE_X="PCB outline: layout region + ear (fabbed board)",
     TEE_TAIL_CY="PCB fact: the THT tail line, board-local",
@@ -529,47 +255,13 @@ _ex("layout",
     TEE_FIT="board fit in its seat",
     TEE_WALL_OVER="seat walls over the board top -- a reach, not a wall",
     STAND_Z0="standing electronics bottom-edge POSITION (over the TRRS pigtail)",
-    PI_RUN_Z="cable POSITION: one USB cable OD over string 1's motor",
     MOTOR_X_STEP="motor pitch = 42.3 body + MOTOR_GAP; drives the rib comb",
     MOTOR_PULLEY_STANDOFF="pulley clamp position on the motor shaft (purchased-part pose)",
-    PEDAL_BAR_H="= PEDAL_AXLE_H(48, on grid) - FOOT_H(12) - HOUS_X1(8.1): a derived "
-                "value spelled literal to break the legs/foot_pedal import cycle; "
-                "foot_pedal asserts the chain",
     # harness ROUTING: positions of WIRES, which are purchased and never printed.
     # No bead is laid along a cable run, so the grid has nothing to say about
     # where one sits -- these stay where clearance to tees/motors/rails put them.
-    CAN_OFF="CAN H/L conductor separation inside the old single-jacket envelope",
-    PWR_OFF="24V pair separation; lane edges 2.1 < RACE_HW 2.4",
-    LANE_CAN="trunk lane Z, 2.0 pitch stack (wires, not printed)",
-    LANE_USB="trunk lane Z, 2.0 pitch stack (wires, not printed)",
-    LANE_CTRL="trunk lane Z, 2.0 pitch stack (wires, not printed)",
     TEE_YSHIFT="tee board centre shift; -Y edge pinned at station y-7",
     X_SLIDE="+-6 fine-X pickup slide travel (user spec; a range, not material)",
-    _LKL_X="a rib-comb station (_RIB0 + 5*_RIB); the comb inherits MOTOR_X_STEP",
-    _RKL_X="a rib-comb station (_RIB0 + 17*_RIB); the comb inherits MOTOR_X_STEP",
-    _KNEE_GAP_L="5 rib-comb steps (odd ON PURPOSE so VKL can centre); comb inherits MOTOR_X_STEP",
-    LOBE_RC="tuned feel knob: 100/9 ratio, coil fatigue headroom, 2.6 web (measured)",
-    LOBE_WY="divider/contact-stress trade knob: the asserted pocket divider moves "
-            "~4 mm per mm of lobe (a 4.8 snap left 1.0 < the 1.6 tier), while a "
-            "narrower lobe raises line-contact stress ~10%/0.5",
-    LOBE_RC_V="RC*sin(20 deg) == the horizontal lever's 4.5 stroke (feel-transfer solve)",
-    LOBE_RC_P="RC*sin(20 deg) == the horizontal lever's 4.5 stroke (feel-transfer solve)",
-    HS_SETBACK="solid-contact solve: first lobe contact at HS_ENGAGE_DEG = 15 deg",
-    FOLL_DZ="flushness solve: window bottom lands on the -Z open face",
-    MID_Y="spelled chassis Y midpoint (legacy mortise stop; import direction forbids chassis)",
-    knee_lever_vert__MOUNT_X="-455 is a rib-comb X; stations land on ribs -478/-455",
-    knee_lever_vert__MOUNT_Y="knee-depth slide default pose (continuous adjustment)",
-    TROUGH_HZ="print-proven trough section, squeezed between splice mortises and the detent/rail floor",
-    LOCK_D="detent pocket sized to the groove-floor band above the trough (asserted at limit)",
-    TROUGH_Z0="band bias within the groove floor (see TROUGH_HZ)",
-    TENON_L="the fine-stage law: travel 142 + overlap 50 + 5 dead",
-    SH_CLR="shaft-sleeve octagon SLIDE fit per side (the fine stage strokes)",
-    SH_H="slider roof pinned at the section joints' -14 roof plane (shared profile)",
-    STUB_TNG_FIT="coupon fit on the end-wall rebate's outboard face",
-    STUB_TNG_REBATE_IN="clearance: the rebate reaches into the endplate<->shell gap",
-    TRRS_DX="TRRS blind-mate axis in the octagon flare band (clearances quoted in situ)",
-    TRRS_DY="TRRS axes ride the profile's deep waist (= groove inscribed-circle centre)",
-    LATCH_FOOT="FEET index (which foot carries the latch; None = no latch) -- not a length",
 )
 
 # The instrument, not the printer.
@@ -587,14 +279,19 @@ _ex("musical",
 )
 
 
-
 def main() -> int:
     # all machinery lives in the shared engine (cadkit.bead_check) -- this file
     # is the project driver: the WHY up top, and the exemption table with a
     # written reason per entry. NON_LENGTH, N_* counts, angle names and n*BEAD
     # coefficients are the engine's business.
+    argv = sys.argv[1:]
+    if "--only" not in argv:
+        # every module but the ones that must run in a process of their own: importing
+        # flash_bench after board_geom has loaded at R2 is an error by design
+        argv += ["--only", ",".join(p.stem for p in sorted(SRC.glob("*.py"))
+                                    if p.stem not in ("__init__",) + OWN_PROCESS)]
     return bead_check.cli(src=SRC, package="src", exempt=EXEMPT,
-                          default_nozzle=float(D.NOZZLE_D))
+                          default_nozzle=float(D.NOZZLE_D), argv=argv)
 
 
 if __name__ == "__main__":

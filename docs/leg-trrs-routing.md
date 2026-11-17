@@ -1,5 +1,9 @@
 # TRRS routing down the adjustable leg
 
+> **HISTORICAL (lead, 2026-11-17).** Written for the v1 belt-drive instrument, which left
+> the build in the v1 removal; its code is at the git tag `v1-instrument`. Kept as the design
+> record: the parts it describes are not in the current model.
+
 **Parked 2026-09-16 by the user. UNPARKED 2026-09-17** — the leg↔pedal-bar joint it
 waited on now exists (both halves, `src/bar_trrs.py`), so the numbers below are measured
 rather than assumed. This is a plan, not a build.

@@ -106,7 +106,6 @@ LEDGE_TOP = SR.LEDGE_TOP - PRINTED_DROP
 BRG_TOP_Z = D.SUPPORT_BRG_Z - PRINTED_DROP       # the 688's top face
 BRG_BOT_Z = D.SUPPORT_BRG_BOT - PRINTED_DROP
 SOCKET_Z = LEDGE_TOP + 2 * D.BEAD                # -23.35: the rod's bottom, 1.6 over the lip band
-ROD_TOP = SOCKET_Z + D.GUIDE_ROD_L               # 6.45
 ROD_BORE = D.GUIDE_ROD_D + D.GUIDE_ROD_FIT       # 3.65, round
 
 # the bridge bearing: a 688 on an Ø8 shaft, as in the instrument, dropped into a pocket open on
@@ -608,7 +607,6 @@ SL_LIP = 4 * D.BEAD                              # 3.2: ~60 mm^2 in shear round 
 # ~6.0 knurl (cadkit's round drop-in pocket is 6.1), not a press. The lip, not the pocket, holds it.
 SL_POCKET_D = 6.6
 XS1_OUT, XS1_IN = X_TIP + BITE_MIN + SL_LIP, PW0 - GAP_MIN   # the slider's +X face, out .. in
-CS_STROKE = XS1_IN - XS1_OUT                     # 32.6
 
 # where the station goes: fully in = 100 % + CS_OVER with the yoke at mid travel
 CS_OVER = 1.0
@@ -621,7 +619,6 @@ CS_ROOF = CS_ROOF0 + CS_DX
 XP_SPREAD = CS_ROOF - PIN_PAD                    # the counter yoke's pins
 S_OUT = (XS1_OUT - PIN_PAD) - XP_SPREAD + PIN_D - SPR_L0         # the stretch, screw backed out
 assert spring_pull(S_OUT) <= 0.5 * T_FULL, "the screw cannot back the springs off to 50 %"
-CS_SCALE = CS_ROOF - CROWN_X                     # crown to the yoke's roof
 
 # the post: the wall, a deck under the slider on two ribs, a base on the station's old four holes
 DECK_TOP = BAR_Z0 - 0.4
@@ -818,7 +815,6 @@ from . import motor_coupler as MC
 # end the tip then reaches INLINE_TIP_IN into the yoke's YK_R0 cavity, short of the ball's seat.
 INLINE_SCREW_LEN = 38.0
 INLINE_EXTRA = INLINE_SCREW_LEN - D.SCREW_LEN     # 1.72
-INLINE_TRAVEL = D.CARRIAGE_TRAVEL + INLINE_EXTRA
 INLINE_TIP_IN = YK_PROTRUDE + INLINE_EXTRA        # 8.47 of the cavity's 12
 assert INLINE_TIP_IN <= YK_R0 - 2.0, "the 38 mm screw's tip reaches the ball end's seat"
 INLINE_SCREW_END = _xr_x(D.SCREW_BOT_Z) + CS_DX   # the screw's +X end
@@ -931,8 +927,6 @@ def assembly_inline(level=1.0):
 # the record.
 FROZEN = pathlib.Path(__file__).resolve().parent / "plank_bench_frozen"
 _TEE_KEEP = ("tee_pcb", "tee_silk", "tee_insert", "tee_screw")
-
-
 
 
 def _frozen(nm):
@@ -1083,12 +1077,6 @@ def assembly(axial=False):
         out.append((nm, shp.translate((0, 0, MOTOR_RISE))))
     out.append(("string_0", _string(axial=axial)))
     return out
-
-
-
-def assembly_axial():
-    """The axial rig (scratch view scope)."""
-    return assembly(axial=True)
 
 
 def print_parts():

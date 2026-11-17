@@ -1,5 +1,9 @@
 # Behaviour validation pass
 
+> **HISTORICAL (lead, 2026-11-17).** Written for the v1 belt-drive instrument, which left
+> the build in the v1 removal; its code is at the git tag `v1-instrument`. Kept as the design
+> record: the parts it describes are not in the current model.
+
 **2026-09-23, lead.** Written to be checked, not believed. Every number below
 either comes from the source (file and line named) or from arithmetic shown in
 full, so you can disagree with the inputs.

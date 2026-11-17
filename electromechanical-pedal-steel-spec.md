@@ -1,5 +1,9 @@
 # Electro-Mechanical Pedal Steel Guitar — Build Specification & Handoff
 
+> **HISTORICAL (lead, 2026-11-17).** Written for the v1 belt-drive instrument, which left
+> the build in the v1 removal; its code is at the git tag `v1-instrument`. Kept as the design
+> record: the parts it describes are not in the current model.
+
 **Status:** Design converged; ready for 3D modeling. No physical prototype built yet.
 **Audience:** A downstream LLM/agent doing CAD/3D modeling on the user's PC.
 **Format note:** Kept in Markdown for clean LLM ingestion.

@@ -125,40 +125,10 @@ WALL_THICKNESS  = 13 * BEAD  # 10.4 structural wall: the keyhead/bridge endplate
 BAR_T           = 15.875     # 5/8 in, across Y (measure the real bar; hot-rolled is +-0.25)
 BAR_W           = 50.8       # 2 in, standing in Z (hot-rolled is about +-0.8: measure it)
 BAR_L           = 660.4      # 26 in. Speedy's 26-1/2 in pre-cut is 12.7 too long: hacksaw it
-BAR_L_TOL       = 3.2        # pre-cut length is +1/8 in -0: the bridge pocket's shims take it up
 BAR_CLR         = 0.2        # per side, steel in a printed channel (the coupon decides)
 BAR_CHAN_T      = BAR_T + 2 * BAR_CLR       # 16.275 the channel across Y
-BAR_CHAN_W      = BAR_W + 2 * BAR_CLR       # 51.2 the channel in Z
 RAIL_T          = 25 * BEAD  # 20.0 the side rail across Y: the channel plus 1.86 of skin a side
 assert (RAIL_T - BAR_CHAN_T) / 2 >= min_wall(NOZZLE_D, beads=2), "the bar channel's skins are under two beads"
-
-# The pedal bar's Z height. Lives HERE, not in pedal_bar, because legs.py needs it
-# too (the -Y legs' wide block must equal foot + bar + tower + block on all four
-# legs — the user's equal-wide-section rule) and legs cannot import pedal_bar
-# without a cycle. Sized by the LID: the bar now prints -Y -> +Y, so the sliding
-# dovetail moved from the +Z face to the +Y face, and that face spans Z. The
-# dovetail's foot is the widest thing in it.
-PEDAL_LID_FOOT_W = 30 * BEAD   # 24.0 dovetail foot (both asserts hold: bar skin
-                               # (27.9-24)/2 = 1.95 >= 1.6, and the bar still hosts
-                               # foot + 2 skins = 27.2 <= 27.9)
-# WHAT SETS THE HEIGHT NOW: the user's playing datum, the height of the pedal AXLE
-# centre above the floor (the TPU feet's underside) — 0.8*60, on the nozzle grid.
-# The bar carries the pedal housings, so the axle rides FOOT_H + BAR_H + the
-# housing's own standoff; inverting that gives the bar. foot_pedal asserts the
-# achieved height against this datum, which is what keeps the chain honest if any
-# of the three terms moves.
-PEDAL_AXLE_H     = 0.8 * 60   # 48.0 — axle centre above the floor (user)
-PEDAL_BAR_H      = 27.9     # the bar; foot_pedal.HOUS_X1 = PEDAL_AXLE_H - FOOT_H(12) - this (8.1).
-                            # (was solved the other way, from HOUS_X1; the housing is fused into
-                            # the bar, so the 688ZZ race wall comes out of bar material instead)
-                            # spelled out rather than imported (legs/foot_pedal both
-                            # read this module — the import only goes one way).
-                            # Must still HOST the lid, which is the constraint that
-                            # used to set it (23.8 of dovetail + 2 skins = 27.0 floor):
-assert PEDAL_BAR_H >= PEDAL_LID_FOOT_W + 2 * MIN_WALL_2P, (
-    f"a {PEDAL_BAR_H} bar cannot host the {PEDAL_LID_FOOT_W} dovetail with "
-    f"{MIN_WALL_2P} skins")
-PEDAL_TOWER_BAND = 24.0     # bar top -> tower seat: the latch button band
 
 def string_y(i: int) -> float:
     """Y centre of string i (0..9) at the changer. Index 0 = string 1 (lightest) sits at
@@ -473,11 +443,6 @@ def guide_rod_x(i: int) -> float:
     return screw_x(i) + NUT_HOLE_DX if screw_far(i) else screw_x(i) - NUT_HOLE_DX
 
 
-def guide_rod_bore_d(i: int) -> float:
-    """The endplate's press bore for string i's guide rod: the far (+X) row prints tighter."""
-    return GUIDE_ROD_D + (GUIDE_ROD_FIT_PX if screw_far(i) else GUIDE_ROD_FIT)
-
-
 # String-end nut: a cylinder swaged on the string's bridge end (axis Y), slotted
 # into the carriage anchor. The string exits +Z and its pull seats the nut up
 # under the anchor roof (mechanical capture, no clamp). DEMO/purchased part.
@@ -495,11 +460,6 @@ PULLEY_OD       = 8.4       # over teeth
 PULLEY_W        = 8.0       # axial: ~6 mm toothed gap + 2 flanges (fits the 5 mm belt)
 PULLEY_FLANGE_OD = PULLEY_OD + 2.6
 PULLEY_FLANGE_T  = MIN_WALL      # 0.8 (was 1.0 = 1.25 beads). Rounded DOWN, not up: at 1.6 the
-                                 # two flanges leave a 4.8 toothed gap for a 5.0 belt -- it would not
-                                 # fit. One bead is the hard floor and fine here (a guide lip, not
-                                 # structure); the gap goes to 6.4.
-PULLEY_BORE_SCREW = FORM_MAJOR       # PILOT THREAD: the rod finishes its own
-PULLEY_BORE_MOTOR = 5.0     # = MOTOR_SHAFT_D (declared below); the motor's own shaft
 # THE PULLEY IS THE COLLAR (user). It is threaded on the rod by its pilot thread and
 # the string's own 147 N jams it UP into the thrust bearings that now sit directly on
 # top of it — the same jam that has always held the retaining collar, which is why that
@@ -608,7 +568,6 @@ SUPPORT_BRG_N   = 1
 # wanted: the string's 147 N is a permanent axial load that has long since taken up the
 # internal clearance. ⚠ CONFIRM C0r on the datasheet of whatever is actually bought.
 SUPPORT_BRG_OD  = BRG688_OD # Ø16 — 1.4 mm of web each side at the 19.0 in-row pitch
-SUPPORT_BRG_ID  = BRG688_ID # Ø8 — the bore the Tr8 screw actually passes through
 SUPPORT_BRG_W   = SUPPORT_BRG_N * BRG688_W          # 5.0 — ONE bearing now, not a stack
 BRG_LEDGE_T     = 5 * BEAD                          # 4.0 of rail over the outer rings: a 1.6
                                                     # lip + 2.4 of nut band, whose lowest 0.8
@@ -622,45 +581,6 @@ BRG_LEDGE_T     = 5 * BEAD                          # 4.0 of rail over the outer
 # is placed by the nut's floor, and the floor needs the belt runs.)
 
 
-# STRING ACCESS CHANNELS (user, 2026-09-10). With two screw rows, a string can no longer be
-# threaded into its nut ear from the +X face: the far row is buried behind the near one.
-# Instead each string feeds UP from underneath, through a straight vertical channel in the
-# rail plate and the chassis floor, already pointing along Z the way it has to leave the ear.
-# The channel CANNOT sit under the ear itself: the ear is NUT_HOLE_DX = 8.0 off the screw
-# axis, exactly the 688ZZ's outer radius, so a channel there runs through the thrust bearing.
-# It stands off sideways instead, as close to the bearing as the seat allows, and the last
-# few mm to the ear are a step the builder pushes across with a long thin tool from +X.
-# The channel is a HOUSE cut (cadkit.holes.house_hole, user 2026-09-10): a 4.8 x 4.8 rectangle
-# with a 45° roof on top, apex toward -X (the endplate's print direction). Its BEARING-FACING end
-# is placed so the Ø4.6 barrel passage just touches the Ø16.2 seat bore; the extra size grows
-# AWAY from the bearing. There is no wall between channel and seat — only the house breaks in:
-#   NEAR row — the ROOF points at its seat. The passage circle nestled in the roof is tangent to
-#              the bore, so the apex pokes ~0.95 past it, notching a short arc of the seat round
-#              and the ledge's outer edge (r 7.15..8.1): a few % of the thrust annulus.
-#   FAR row  — the FLOOR faces the seat, tangent to the bore, inside the seat's own teardrop
-#              apex void, so nothing is notched.
-# Either way the barrel passes the 688's OD with 0.3 to spare (8.0 + 2.0 + 0.3 = 10.3 < 10.4).
-# ...EXCEPT WHERE A LEG STANDS UNDER THE CHANNEL EVEN SLID OUT (user, 2026-09-11). The +Y
-# bridge-end leg sits right under strings 1-3, so restringing slides it out first
-# (legs.SERVICE_SLIDE is sized to clear string 1's channel); any string still covered gets no
-# channel and threads in through the changer room's open +X face instead
-# (bridge_endplate.access_blocked decides it from the leg stations and the slide).
-STRING_ACCESS_D = 6 * BEAD                      # 4.8 house width (user)
-STRING_ACCESS_H = 6 * BEAD                      # 4.8 house wall height, roof on top (user)
-_ACCESS_PASS_R  = STRING_NUT_D / 2 + 0.3        # 2.3 — the Ø4 swaged end's passage, for the standoff
-
-
-def string_access_x(i: int) -> float:
-    """X of string i's vertical access channel, stood off its screw AWAY from the screw axis
-    (toward the bearing tangent) — the house_hole axis point; its bearing-facing end sits on the seat bore."""
-    seat_r = (SUPPORT_BRG_OD + 0.2) / 2
-    toward = 1.0 if screw_x(i) < 0 else -1.0    # away from its own screw, toward X = 0
-    if screw_far(i):                            # floor faces the seat, tangent to the bore
-        off = seat_r + STRING_ACCESS_D / 2
-    else:                                       # roof faces it: apex where the nestled passage
-        apex = seat_r + _ACCESS_PASS_R - _ACCESS_PASS_R * 2 ** 0.5   # circle touches the bore
-        off = apex + STRING_ACCESS_H            # house_hole's apex is `wall` above its axis
-    return screw_x(i) + toward * off
 # Not a purchasable length: Tr5x1 stock starts at 100 mm, so every screw is cut from a
 # longer blank. That is fine because the requirement is a WINDOW, not a number — the
 # rod has to clear the nut's top at the top of travel and fill the collar at the
@@ -704,7 +624,6 @@ TEE_EAR_Y       = 8.7       # ...and the ear is only this DEEP, at the +Y end: t
                             # (motor_bank asserts it against the real stagger.)
 TEE_OUTLINE_X   = TEE_BOARD_X + TEE_EAR_X   # 49.5 fabbed outline = layout region + ear
 TEE_TAIL_CY     = 2.0       # THT tail line, board-local +Y (6.0 in from the +Y edge)
-TEE_TAIL_DROP   = 1.8       # how far those tails hang below the board's underside
 TEE_FIT         = 0.3       # board fit in its seat
 TEE_EDGE_BACK   = TEE_FIT   # the board's +X edge BELOW THE EAR stands this far inside the motor's
                             # fit line, so the seat's fit ends ON the line. On the line itself,
@@ -843,29 +762,10 @@ KEYHEAD_INBOARD_X = -607.8       # the motor bank's -X datum. It WAS the keyhead
 MOTOR_END_CLR   = MIN_WALL_2P + 2 * MOTOR_CLR   # 2.4 from the endplate's face to string 1's motor
 MOTOR_X0        = (-(KEYHEAD_INBOARD_X + MOTOR_END_CLR + MOTOR_SQ / 2)
                    - (N_STRINGS - 1) * MOTOR_X_STEP)   # 181.95: the nearest motor's -X offset
-# THE STANDING MOTOR BOARD'S PLACE IN THE FLOOR, pinned here because three modules that
-# cannot import electronics need it: the chassis (the board's floor port), motor_bank (string
-# 1's back stop IS the board's +Y wall) and wiring. build.py asserts all of it against the
-# placed board.
-#   Y1  the board's +Y edge: string 1's motor back less MOTOR_CLR -- NO WALL BETWEEN THEM
-#       (user, 2026-10-29: "drop that and move the board so it sits flush against the motor";
-#       and again at the 7.5 standoff: "the further +y the better so we want to go to its
-#       extent"). String 1's motor is stopped by a short back wall +X of the board instead
-#       (motor_bank.back_wall_x0), so the PCB is never the stop. The board follows the motors,
-#       the -Y rail does not, so the -X/-Y body adapter is no longer under it: its -Z stop is
-#       mctrl_retention's ledge under J1.
-#   Y0  ...less the board's routed length.
-#   X   the standing board with its mated plugs, in world X.
-#   DIP how far its bottom edge hangs below the floor's underside (its bus-B plugs are
-#       reached from outside), before the plugs.
-MCTRL_FIT       = 0.3            # board to printed pocket (electronics.CRADLE_CLR)
 MCTRL_Y1        = (string_y(0) - MOTOR_PULLEY_STANDOFF - MOTOR_BODY_L
                    - MOTOR_CLR)   # -18.35: behind string 1's motor
 MCTRL_L         = 55.0           # routed outline, along Y
 MCTRL_Y0        = MCTRL_Y1 - MCTRL_L                                                         # -73.35
-MCTRL_X         = (-606.5, -591.5)   # +X: R2 J4, the vertical USB-C, 10.0 over the 1.6 board (R1 -591.7)
-MCTRL_PORT_CLR  = 0.5            # round whatever of the board enters the floor
-MCTRL_DIP       = 2.0
 # Belt-plane cascade: a Ø8.4 pulley + belt wrap is wider than the 9.5 mm string
 # pitch, so adjacent screw pulleys' belts would collide. Raise the ODD pulleys
 # into a second Z plane so neighbours always differ by BELT_PLANE_DZ. Only the
@@ -946,7 +846,7 @@ NUT_BOT_MIN     = NUT_TOP_Z - CARRIAGE_TRAVEL - NUT_H          # -25.05, the FLO
 # usual rule: a boss that measures wider reaches the SHIELD. Measure both.
 SUPPORT_BRG_Z   = NUT_BOT_MIN                       # -25.05, the bearing's top = thrust ledge
                                                     # underside = the nut's floor
-SUPPORT_BRG_BOT = SUPPORT_BRG_Z - SUPPORT_BRG_W     # -31.17
+SUPPORT_BRG_BOT = SUPPORT_BRG_Z - SUPPORT_BRG_W     # -30.05
 # THE STACK SITS ON THE PULLEYS. The screw is pulled +Z, so whatever grips it has to bottom
 # against something grounded ABOVE; with the bearing on the pulley top the PULLEY is that
 # thing, and there is no retaining collar. The belts do not object: they wrap the toothed
@@ -958,10 +858,9 @@ PULLEY_TOP_MAX  = SUPPORT_BRG_BOT                   # BOTH SKUs' top (same Z)
 # and it sets the socket for both (one screw length, rod ends at the same Z everywhere). It
 # was 3 beads -- a 4.1 socket, barely two turns of a 2 mm lead. It is 9.83 now and the
 # socket 9.73 (PULLEY_SOCKET_FLOOR_CLR): ~5 turns, ~0.8 MPa on the formed thread, not ~2.0.
-PULLEY_END_A    = PULLEY_TOP_MAX - (SCREW_PULLEY_Z + BELT_PLANE_DZ)     # 14.63, HIGH band→top
-PULLEY_END_B    = PULLEY_END_A + BELT_PLANE_DZ                          # 23.43, LOW band→top
-PULLEY_COL_HI   = PULLEY_END_A - PULLEY_GAP / 2 - PULLEY_CONE - PULLEY_BOSS_H   # 9.83, HIGH
-PULLEY_COL_H    = PULLEY_COL_HI + BELT_PLANE_DZ                         # 18.63, LOW
+PULLEY_END_A    = PULLEY_TOP_MAX - (SCREW_PULLEY_Z + BELT_PLANE_DZ)     # 15.75, HIGH band→top
+PULLEY_COL_HI   = PULLEY_END_A - PULLEY_GAP / 2 - PULLEY_CONE - PULLEY_BOSS_H   # 10.95, HIGH
+PULLEY_COL_H    = PULLEY_COL_HI + BELT_PLANE_DZ                         # 19.75, LOW
 assert PULLEY_COL_HI >= 3 * BEAD - 1e-9, (
     f"the HIGH pulley's column is {PULLEY_COL_HI:.2f}: under three beads the socket is too "
     f"shallow to grip the screw. The nut's floor has come down onto the pulley plane.")
@@ -978,7 +877,7 @@ assert PULLEY_COL_HI >= 3 * BEAD - 1e-9, (
 # that much shorter (SCREW_LEN) and the pulley does not move. Still ~5 turns in the socket.
 PULLEY_GROOVE_ROOF_H = 1.02                     # components asserts the real cone fits under it
 PULLEY_SOCKET_FLOOR_CLR = PULLEY_GROOVE_ROOF_H + 1 * BEAD                 # 1.82
-PULLEY_SOCKET_L = PULLEY_END_A - PULLEY_GAP / 2 - PULLEY_SOCKET_FLOOR_CLR  # 9.73
+PULLEY_SOCKET_L = PULLEY_END_A - PULLEY_GAP / 2 - PULLEY_SOCKET_FLOOR_CLR  # 11.23
 # BOTTOM of the rod: it ends in the socket a hair short of the floor, so it never bottoms and
 # preloads the formed thread. The socket's FLOOR hangs off the band, not the top, so a deeper
 # socket takes more of the same screw and SCREW_LEN does not change.
@@ -994,14 +893,6 @@ SCREW_LEN       = SCREW_TOP_Z - SCREW_BOT_Z         # 36.28 — the CUT length (
 # already sized so its mortise plus a two-bead wall either side IS the rib (knee_lever._JW), so
 # repeating it with no gap between ribs gives one mortise + one wall.
 LEVER_MORT_W = XBAR - 2 * MIN_WALL_2P        # 7.2 across the octagon mortise (the tenon's own
-                                             # MORT_CLR cancels: mortise = tenon + 2*clr)
-# A TWO-BEAD WALL EACH SIDE, NOT ONE SHARED BETWEEN NEIGHBOURS (user, 2026-09-15). At one
-# shared 1.6 the pitch was 8.8 and a SEGMENT SEAM had nowhere to land: the seam needs solid
-# material, so the stations it crossed were dropped and mortises went missing exactly where
-# two chassis sections meet. At 3.2 the seam plane runs down the middle of a wall with 1.6
-# left on each side. The pitch is then XBAR on the nose -- each mortise gets back the full
-# rib section the joint was sized against, and consecutive ribs simply touch.
-LEVER_PITCH  = LEVER_MORT_W + 2 * MIN_WALL_2P    # 10.4
 # THE LEVER MOUNT JOINT: the fit-tested standing pair (user, 2026-10-16). knee_lever builds it;
 # it is defined here because the bottom prism below is sized from it.
 # Both halves print -Z->+Z with the slide (+Y, the knee-DEPTH adjustment) across the layers:
@@ -1105,12 +996,6 @@ BRIDGE_AXLE_X     = BRIDGE_X - BRIDGE_BEARING_OD / 2     # bearing/axle centre X
 # WIDTH DATUM (not the axle's span any more -- see BRIDGE_AXLE_L). chassis.Y_HI,
 # knee_lever.MORT_Y_END and screw_rail.ACROSS are measured from this.
 BRIDGE_AXLE_Y     = STRING_FIELD_W / 2 + 12 * BEAD  # 52.35
-# THE DOWNWARD LIGHT WINDOW (user, 2026-09-16). A slot straight through the bottom prism, one
-# XBAR inboard of the +Y rail's centre-line, so the rail stands outboard of it and none of it
-# shows from the front -- it only ever aims DOWN, at the pedals. Here rather than in chassis
-# because knee_lever has to know where it starts (the lever mortises stop there) and cannot
-# import chassis; chassis asserts the two spellings of the rail agree.
-LIGHT_WIN_W  = 8.0                                   # across Y
 # ONE XBAR INBOARD OF THE +Y RAIL'S CENTRE-LINE (user). The 1.2 left between the window and
 # the rail's inner face is NOT a wall and is not held to the wall rule: the window is a separate
 # MODEL only so the slicer can colour it, and it prints as one fused solid with the chassis.
@@ -1118,20 +1003,6 @@ LIGHT_WIN_W  = 8.0                                   # across Y
 # the shelf follow it, so a smaller connector takes only this number, down to 0 beads (string 1's
 # clamp).
 RAIL_HI_INNER_Y = BRIDGE_AXLE_Y + 2.25                 # +Y rail inner face (chassis.Y_HI - T/2)
-# (the window was set XBAR inboard of the 10.4 rail's centre-line, and it STAYS there when the rail
-#  grows outward around the steel bar: it is placed off the inner face, which does not move)
-LIGHT_WIN_YC = (RAIL_HI_INNER_Y + WALL_THICKNESS / 2) - XBAR
-LIGHT_WIN_DY = (RAIL_HI_INNER_Y + RAIL_T / 2) - LIGHT_WIN_YC   # inboard of the +Y rail's centre-line
-LIGHT_WIN_Y0 = LIGHT_WIN_YC - LIGHT_WIN_W / 2        # -Y edge: where the mortises stop
-LIGHT_WIN_Y1 = LIGHT_WIN_YC + LIGHT_WIN_W / 2
-
-# THE END STATIONS RUN THE INSTRUMENT'S FULL LENGTH (user, 2026-09-17). Every other mortise
-# stops at the light window's face, but the three outermost at each end are the ones the FEET
-# ride, and a +Y foot slides in from +Y -- so its channel has to be open that way, out through
-# the +Y rail, the way the leg's own grooves used to be. There is no window above a leg anyway
-# (it runs BETWEEN them), so nothing is lost by carrying these through.
-LEVER_FULL_END_N = 3
-MORT_FULL_Y1 = RAIL_HI_INNER_Y + RAIL_T + 1.0             # out past the +Y rail's outer face
 
 
 BRIDGE_ARM_W      = 6 * BEAD  # 4.8 bridge-endplate bearing-arm / edge-web thickness (Y); the
@@ -1210,23 +1081,16 @@ assert BRIDGE_ARM_Y - BRIDGE_ARM_W / 2 > STRING_FIELD_W / 2, (
 # this width (the bridge centres it on the bearing axle) and the drivetrain base spans it,
 # so editing any buffer here resizes both ends together -- never a hardcoded tip. The
 # keyhead nut block (nut_block.py) reads these same constants to place its features.
-# These four ARE cadkit's M4 spec — read from it rather than repeated. They used to be
+# These two ARE cadkit's M4 spec — read from it rather than repeated. They used to be
 # literals whose comment pointed at a path the cadkit migration
 # retired, so the numbers had already outlived their own citation. It matters more than
 # tidiness here: ENDPLATE_W is computed from NUT_INSERT_D, so BOTH endplates' width (and
 # with it the bridge's whole X datum chain) hangs off a heat-set insert's diameter. If
 # cadkit ever re-specs M4, that should follow by itself instead of silently not.
-NUT_INSERT_D    = M4.insert_pilot_d     # 6.1  — heat-set insert install Ø, the ROUND pocket's: a
-                                        # width budget, so the larger of cadkit's two (pilot_d)
-NUT_INSERT_L    = M4.insert_l           # 5.0
+NUT_INSERT_D    = M4.insert_pilot_d     # 6.1  — heat-set insert install Ø, the ROUND pocket's
 NUT_SCREW_D     = M4.shaft_clr_d        # 4.4  — set-screw shaft clearance
-NUT_SCREW_L     = M4.screw_l            # 10.0. The boss is NOT one screw tall: the
-                                # insert sinks to a small gap off the string (nut_block.INSERT_GAP)
-                                # and this screw's surplus length stands PROUD of the top surface.
 NUT_PIN_D       = 4.0           # Ø4 break-dowel NOMINAL diameter (McMaster 91595A119; was Ø2)
 NUT_PIN_L       = 4.0           # Ø4×4 dowel length (axis Y)
-NUT_PIN_CLR     = 0.4           # clearance perimeter around the dowel in its pocket (drop-in fit,
-                                # all faces -- the seat is Ø+2*clr and length+2*clr)
 
 BREAK_PX_BUF    = 4.0           # +X of the dowel: the lip the deck/pickup plate seat against
 DOWEL_SCREW_RUN = 8.0           # dowel -> NEAR clamp row centre (the break run to the clamp)
@@ -1280,7 +1144,7 @@ KEYHEAD_PX_BUF = 19 * BEAD / 4                      # 3.8 = KH_X - NUT_BLOCK_X, 
 # At the old 23.10 face the apex stood 0.36 PROUD of it, i.e. the seat broke out through
 # the -X face. Sized from whichever of the two reaches further, plus a 2-bead wall.
 _BRG_TEARDROP = (SUPPORT_BRG_OD + 0.2) / 2 * 1.4143            # 11.46, seat apex
-_ROD_TEARDROP = (GUIDE_ROD_D + GUIDE_ROD_FIT) / 2 * 1.4143     # 1.80, rod-bore apex
+_ROD_TEARDROP = (GUIDE_ROD_D + GUIDE_ROD_FIT) / 2 * 1.4143     # 2.58, rod-bore apex
 BRIDGE_BASE_HALF = (SCREW_ROW_DX
                     + max(_BRG_TEARDROP, NUT_HOLE_DX + _ROD_TEARDROP)
                     + MIN_WALL_2P)                             # 25.06
@@ -1303,16 +1167,11 @@ BRIDGE_BASE_X1 = BRIDGE_X + BRIDGE_HALF_PX          # +23.43  (+X face)
 
 
 # ─────────────────────────────────────────────────────────────────────────
-# String gauges — the DEMO SET the model is drawn strung with. The keyhead does NOT take
-# its shape from it: each sliding insert rises until its own string stops it, so the string
-# sets its own height, and every insert SKU is sized for the heaviest gauge its slots take
-# (nut_block.G_ENVELOPE: the pockets and channels take up to STRING_GAUGE_MAX below). Clearances to the
-# lowest string read STRING_GAUGE_MAX too. Two things still read THIS table: the SKU A/B
-# plate's Y placement asserts (nut_block.PLATE_YC) and the rod height (nut_block._G_MAX).
+# String gauges — the DEMO SET the model is drawn strung with (C6). The keyhead does NOT
+# take its shape from it: printed parts are sized for STRING_GAUGE_MAX, the envelope below.
 # Index i = string (i+1), low to high: index 0 = string 1 (lightest, +Y); index 9 =
 # string 10 (heaviest, −Y player side).
 # ─────────────────────────────────────────────────────────────────────────
-GAUGES_E9_IN = (.013, .015, .011, .014, .017, .020, .026, .030, .034, .038)  # str 1→10
 GAUGES_C6_IN = (.015, .014, .017, .020, .024, .030, .036, .042, .054, .070)  # str 1→10
 STRING_GAUGE = tuple(g * 25.4 for g in GAUGES_C6_IN)            # mm, index 0..9 = str 1..10 (C6)
 
@@ -1334,6 +1193,4 @@ NUT_BLOCK_X  = -MOUNTING_SPAN
 # ─────────────────────────────────────────────────────────────────────────
 # Fits / fasteners
 # ─────────────────────────────────────────────────────────────────────────
-FIT_CLR         = 0.30      # slip-fit clearance (e.g. guide rod in its bore)
 M3_CLR_D        = 3.4       # M3 clearance hole (NEMA17 bolt pattern)
-BOOL_OVERSHOOT  = 0.5       # extra length on cutting tools so faces clear cleanly

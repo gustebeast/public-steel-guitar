@@ -1,6 +1,6 @@
 """DIRECT BENCH -- every string's screw driven straight off its own NEMA17, no belt (user, 2026-11-09).
 
-A fit study like src.changer_bench: bought parts as they are, printed frames as plain blocks, the
+Began as a fit study (like v1's changer bench): bought parts as they are, printed frames as plain blocks, the
 instrument's limits (pickup, deck, side walls, keyhead) as GHOSTS the overlap gate measures. Held
 from the instrument: the crown at NUT_BLOCK_X, the bridge bearings (STRING_Z), the strings fanning
 from nut_y to string_y (9.5), Tr8x2 screws and the brass H-nut, CARRIAGE_TRAVEL, SERVO42D motors.
@@ -59,6 +59,7 @@ from cadkit.board_geom import mask_rgb as _mask_rgb   # a board is a solder-mask
 import cadquery as cq
 
 from . import dimensions as D
+from . import m3_hardware as M3H
 from .helpers import box_at, cyl_x, cyl_y, ball_bearing
 
 
@@ -504,7 +505,6 @@ PLUG = (21.15, 29.9, 6.2, 44.5, 38.5)               # coil plug + leads: off the
 #   THRUST     none: the coupler only TURNS the screw (~0.09 N m). The thrust bearings are on the
 #              anchor plate (THE THRUST HOUSING below), so the motor carries no axial load.
 from .motor_coupler import CPL_D, CPL_X, CPL_GRIP, SCREW_X0   # src.motor_coupler
-M3_PILOT = 2.5
 
 # THE THRUST HOUSING (user, 2026-11-09: "put the thrust bearings on the anchor"; one 688 since
 # 2026-11-14; both collars clamped, 2026-11-15). Along -X from the anchor plate's -X face:
@@ -525,10 +525,6 @@ M3_PILOT = 2.5
 #                -> the ties -> the plug, whose spring pull it is: the plate sees nothing.
 # Either way the motor only turns the screw.
 HOUSE_D = D.BRG688_OD + 3.2                         # 19.2: the pocket's 1.6 wall
-# ONE 688 PER SCREW (user, 2026-11-14; it was a pair): the rated EZO part carries the 147 N a string
-# pulls at 2.0x on its own (elec/prices.json bearing_688zz_screw, which always counted ten), and the
-# motor's own bearings hold the screw's other end, so a second one only over-constrained it.
-HOUSE_POCKET = D.BRG688_W                           # the one 688, pressed in from -X
 # TURNING NEVER TOUCHES FIXED (user, 2026-11-14: "ideally the bearings handle all the contact"):
 # every collar face stands SPIN_GAP off the plate, the lip and the lid, and every fixed thing
 # SPIN_GAP outside the collars' swept circle -- the bearing's own axial play (~0.1) and a collar
@@ -739,7 +735,8 @@ def _hits(b, c):
     return b[0] < c[1] and c[0] < b[1] and b[2] < c[3] and c[2] < b[3]
 
 
-def _body(j: int):
+def _motor_box(j: int):
+    """String j's motor, as a (y0, y1, z0, z1) box in the YZ plane."""
     return (y_of(j) - M_HALF, y_of(j) + M_HALF, za(j) - M_HALF, za(j) + M_HALF)
 
 
@@ -764,7 +761,7 @@ def _plug_dirs() -> dict:
                     if _hits(b, (y_of(j) - r, y_of(j) + r, za(j) - r, za(j) + r)):
                         bad = True
                 elif STATION[j] == STATION[i]:
-                    if _hits(b, _body(j)) or (j in out and _hits(b, _plug_box(j, out[j]))):
+                    if _hits(b, _motor_box(j)) or (j in out and _hits(b, _plug_box(j, out[j]))):
                         bad = True
             if not bad:
                 out[i] = phi
@@ -788,10 +785,10 @@ RAIL_HI = _rail_hi()
 
 # ── report ──────────────────────────────────────────────────────────────────────────────────
 def report() -> str:
-    out = [f"rows z (axis): " + "  ".join(f"{k}: {z_level(k):.1f}" for k in range(LEVELS)) +
+    out = ["rows z (axis): " + "  ".join(f"{k}: {z_level(k):.1f}" for k in range(LEVELS)) +
            f"   DZ {DZ}",
            f"+Y rail inner face {RAIL_HI:.2f} (today {Y_HI}): {RAIL_HI - Y_HI:+.2f} wider, all on axis",
-           f"stations x (pulley plane): " + "  ".join(f"{X_REF0 - s * STATION_P:.1f}"
+           "stations x (pulley plane): " + "  ".join(f"{X_REF0 - s * STATION_P:.1f}"
                                                       for s in range(4)) + f"  pitch {STATION_P}",
            "string row station  motor (x, y, z)            plug  screw length  spring at slack/full"
            "   N at slack/open/full"]
@@ -849,8 +846,6 @@ def _yoke(i: int, t: float) -> cq.Workplane:
     out = out.cut(box_at(pk, KEY_D, KEY_DROP, x=rx0 - pk / 2, y=y, z=z - KEY_DROP / 2))
     out = out.cut(cyl_x(KEY_D, pk, rx0 - pk, y=y, z=z - KEY_DROP))
     return out
-
-
 
 
 def keyhole_plate() -> cq.Workplane:
@@ -1306,11 +1301,6 @@ HOUSE_UP = (1.0, 0.0, 0.0)                          # prints -X -> +X: the pocke
 LID_UP = (-1.0, 0.0, 0.0)                           # prints +X -> -X: the heads' pockets open on top
 
 
-def _sweep_cut(x0: float, x1: float, i: int) -> cq.Workplane:
-    """Everything fixed stands SPIN_GAP outside a collar's swept circle over x0..x1."""
-    return cyl_x(COLLAR_D + 2 * SPIN_GAP, x1 - x0, x0, y=y_of(i), z=za(i))
-
-
 def _housing(i: int) -> cq.Workplane:
     """The bearing's pocket and the lip: a Ø19.2 with webs out to the ties and to the guide rod,
     whose cap the lip's +X face is (2026-11-16: no pocket; the rod floats up to it, rod_cap_x). NOTHING past the lip (user,
@@ -1448,7 +1438,7 @@ def _collar_local(boss_l: float = SPIN_GAP + LID_T, shaft: float = 0.0, body_l: 
     out = out.cut(box_at(L + Lb + shaft + 2, COLLAR_D / 2 + 1.0, COLLAR_SPLIT,
                          x=(L + Lb - shaft) / 2, y=(COLLAR_D / 2 + 1.0) / 2, z=0.0))
     sy, sz = COLLAR_SCREW
-    zi, (ins_od, ins_l) = COLLAR_INS_Z, COL_INS
+    zi, (_, ins_l) = COLLAR_INS_Z, COL_INS
     # COLLAR_WALL ROUND EVERY HOLE: the cross-section's corners nearest the thread's
     # crests, and round the head's pocket and the insert out to the round, up to the flats
     w, R = COLLAR_WALL, COLLAR_D / 2
@@ -2050,8 +2040,7 @@ def ep_x() -> dict:
     x_end = X_BEND + R + D.STRING_GAUGE_MAX
     # the screw heads FLUSH with the +X end (user, 2026-11-12): the back wall runs on to the
     # washer under the head, so it is EP_WALL at least (the 8 the load needs) and usually more
-    from . import m3_hardware as BTn
-    wall1 = x_end - EP_WASHER[1] - BTn.HEAD_H
+    wall1 = x_end - EP_WASHER[1] - M3H.HEAD_H
     assert wall1 - wall0 >= EP_WALL, "the back wall is thinner than the load needs"
     return dict(x_j=x_j, bar_end=bar_end, wall0=wall0, wall1=wall1, x_end=x_end)
 
@@ -2060,9 +2049,8 @@ def kh_x() -> dict:
     """The keyhead (-X) endplate's clamp, mirrored from ep_x: from its bed face (x0) the head
     recesses (washer + head, flush), the BACK WALL the screws pull on, the gap, the bar's pocket,
     and the JOINT (x_kj) where the walls and floor end."""
-    from . import m3_hardware as BTn
     x0 = NUT_BLOCK_X0
-    wall1 = x0 + EP_WASHER[1] + BTn.HEAD_H
+    wall1 = x0 + EP_WASHER[1] + M3H.HEAD_H
     e = ep_x()                                       # the SAME back wall as the +X endplate's (user,
     wall0 = wall1 + (e["wall1"] - e["wall0"])        # 2026-11-13: symmetry), so the same thickness
     bar_x0 = wall0 + EP_GAP
@@ -2117,12 +2105,11 @@ def _wall_bar(k: int) -> cq.Workplane:
 def _bar_screws() -> list:
     """The four M3 SHCS (bar_screw_len) and their washers: through the back wall into the bar
     ends, the head on its washer flush with the +X end."""
-    from . import m3_hardware as BTn
     e = ep_x()
     out = []
     for yc in bar_y():
         for zc in EP_SCREW_Z:
-            top = e["wall1"] + EP_WASHER[1] + BTn.HEAD_H
+            top = e["wall1"] + EP_WASHER[1] + M3H.HEAD_H
             out += [_cap("m3", bar_screw_len(), (top, yc, zc), (-1, 0, 0)),
                     cyl_x(EP_WASHER[0], EP_WASHER[1], e["wall1"], y=yc, z=zc)
                     .cut(cyl_x(3.2, EP_WASHER[1] + 1, e["wall1"] - 0.5, y=yc, z=zc))]
@@ -2297,7 +2284,7 @@ def _ob_pocket() -> cq.Workplane:
                            y=face + (h + c - 0.01) / 2, z=(z0 + z1) / 2))
         tl = p.get("tail")                          # through-hole tails out of the back,
         if tl:                                      # UNCLIPPED (board_geom: untrimmed fits)
-            (tx0, tx1), (tz0, tz1), ty0 = tl["x"], tl["z"], tl["y"][0]
+            (_, tx1), (tz0, tz1), ty0 = tl["x"], tl["z"], tl["y"][0]
             w = w.union(box_at(tx1 + c - (xj - 1), ly0 - ty0 + c + 0.01, tz1 - tz0 + 2 * c,
                                x=(xj - 1 + tx1 + c) / 2, y=(ty0 - c + ly0 + 0.01) / 2,
                                z=(tz0 + tz1) / 2))
@@ -2428,7 +2415,6 @@ def _endplate(rods: bool = True, only: int = None) -> cq.Workplane:
         # ROD_RIB inside the rod's circle -- the rod, pushed home from -X, stays put
         rr = GUIDE_D / 2 - ROD_RIB
         for a in (270.0, 30.0, 150.0):
-            ca, sa = math.cos(math.radians(a)), math.sin(math.radians(a))
             rib = box_at(ROD_GRIP, 0.8, 1.0, x=ROD_TIP + 0.3 - ROD_GRIP / 2, y=0, z=rr + 0.5)
             w = w.union(rib.rotate((0, 0, 0), (1, 0, 0), a - 90).translate((0, ry, rz)))
     a, b = axle_span()
@@ -2604,8 +2590,6 @@ def color_of(base: str, table: dict):
 
 
 # ── the gate ────────────────────────────────────────────────────────────────────────────────
-import re as _re
-
 _IDX = _re.compile(r"_(\d+)$")
 
 

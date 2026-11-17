@@ -1,7 +1,7 @@
 """Flat-ceiling (unsupported-bridge) checker for a part in ITS print orientation.
 
   py -3.12 -m tools.check_ceilings                 # every registered part
-  py -3.12 -m tools.check_ceilings --only bridge_endplate
+  py -3.12 -m tools.check_ceilings --only ui_clamp
   py -3.12 -m tools.check_ceilings --min 50        # only ceilings over 50 mm^2
 
 WHY THIS EXISTS: the overlap gate reports interpenetration and nothing else. It

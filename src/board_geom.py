@@ -37,7 +37,7 @@ from __future__ import annotations
 
 import os
 
-from cadkit.board_geom import Boards, SILK_CAP, SILK_T, fp_name, mask_rgb  # noqa: F401  (re-exported)
+from cadkit.board_geom import Boards, mask_rgb
 
 GEOM_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                         "elec", "geom")          # tracked: elec/out is git-ignored
@@ -226,9 +226,7 @@ footprint = BOARDS.footprint
 tails = BOARDS.tails
 holes = BOARDS.holes
 mouth = BOARDS.mouth
-lead_exit = BOARDS.lead_exit
 bodies = BOARDS.bodies
 silk = BOARDS.silk
 ink = BOARDS.ink
-silk_boxes = BOARDS.silk_boxes
 solid = BOARDS.solid

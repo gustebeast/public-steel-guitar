@@ -1,5 +1,9 @@
 # Where the belt clamps can live (2026-10-01)
 
+> **HISTORICAL (lead, 2026-11-17).** Written for the v1 belt-drive instrument, which left
+> the build in the v1 removal; its code is at the git tag `v1-instrument`. Kept as the design
+> record: the parts it describes are not in the current model.
+
 `CARRIAGE_TRAVEL` = 7.97 mm assumes each belt's tension clamp may run the whole straight
 span between its two pulley flanges, less 5 mm at each end. **It may not.** This is the
 measurement that says so. Reproduce with `py -3.12 -m tools.clamp_study 8 out.json B`
