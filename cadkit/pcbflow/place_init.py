@@ -1468,7 +1468,11 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
     # costs PAIR_W per mm2, the price of a foreign pad in a pour: a hop's own parts pay for
     # their whole corridor (they move or turn to clear or shorten it), any other part for
     # its pads inside one (it steps out of the pair's way).
-    pairs_c = list((notes or {}).get("diff_pairs") or ()) if os.environ.get("PCBFLOW_PAIR_CORRIDOR") == "1" else []
+    # a board opts in through its own notes ("pair_corridor": true), so it rebuilds from its own
+    # files and no other board changes (lead, 2026-11-17); PCBFLOW_PAIR_CORRIDOR=1 / 0 overrides
+    _pc = os.environ.get("PCBFLOW_PAIR_CORRIDOR")
+    _on = (_pc == "1") if _pc in ("0", "1") else bool((notes or {}).get("pair_corridor"))
+    pairs_c = list((notes or {}).get("diff_pairs") or ()) if _on else []
     pair_ends = {}
     for sp in pairs_c:
         for st in sp.get("chain") or ():
