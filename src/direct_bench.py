@@ -887,6 +887,25 @@ def _helix(z0: float, pitch: float, h: float, d: float) -> cq.Workplane:
             .sweep(cq.Workplane("XY").add(hx), isFrenet=True).translate((0, 0, z0)))
 
 
+def _groove(body: cq.Workplane, z0: float) -> cq.Workplane:
+    """`body` with the grip coils' groove cut: the helix of _helix from z0, SEAT_L long, Ø GROOVE_D.
+    ⚠ ONE TURN AT A TIME, AND CHECKED. As one SEAT_L sweep, OCCT's cut found no overlap with the
+    sleeve or the post and handed the part back whole -- plug_5 and sleeve_p_5 went out with no
+    groove at all, nothing said (user, 2026-11-16). It failed or not by where the part's far end
+    fell (sleeve top at 9.0 cut; 9.05, 9.1 -- where it is -- 7.8, 6.5 did not), with or without a
+    fuzzy tolerance. Abutting one-turn sweeps, cut in turn (cadkit/threads.py's rule for long
+    helices), cut at every height tried and take the same volume (1332.9 vs 1333.0 where both
+    work). A groove that removes nothing stops the build instead of shipping a plain part."""
+    n = round(SEAT_L / GRIP_PITCH)
+    assert abs(n * GRIP_PITCH - SEAT_L) < 1e-6, "the grip groove is whole turns"
+    out = body
+    for k in range(n):
+        out = out.cut(_helix(z0 + k * GRIP_PITCH, GRIP_PITCH, GRIP_PITCH, GROOVE_D), clean=False, tol=1e-3)
+    before, after = body.val().Volume(), out.val().Volume()
+    assert after < before - 1.0, "the grip groove cut nothing (%.2f -> %.2f mm3)" % (before, after)
+    return out
+
+
 def _in_spring(wp: cq.Workplane, i: int, x0: float) -> cq.Workplane:
     """Local spring frame -> the string's (local +x, angle 0, lands on world -Z)."""
     return wp.rotate((0, 0, 0), (0, 1, 0), 90).translate((x0, y_of(i), za(i)))
@@ -938,7 +957,7 @@ def _post(i: int, x0: float, z0: float, bore: float) -> cq.Workplane:
     hi = SPRING_WIRE / 2 if z0 > 0 else -GRIP_PITCH / 2
     post = cq.Workplane("XY").add(cq.Solid.makeCylinder(SEAT_D / 2, SEAT_L - lo + hi,
                                                         cq.Vector(0, 0, z0 + lo)))
-    post = post.cut(_helix(z0, GRIP_PITCH, SEAT_L, GROOVE_D))
+    post = _groove(post, z0)
     post = post.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(bore / 2, SEAT_L - lo + hi + 2,
                                                                  cq.Vector(0, 0, z0 + lo - 1))))
     return _in_spring(post, i, x0)
@@ -979,7 +998,7 @@ def _sleeve_local(zf: float, s: int, z_far: float, z0: float, tighten: int,
     body = _ring(ri, ro, zf + s * DET_H, z_far)
     band = _ring(DET_R0, ro, zf, zf + s * DET_H).cut(_teeth(zf, s, tighten))
     body = body.union(band)
-    body = body.cut(_helix(z0, GRIP_PITCH, SEAT_L, GROOVE_D))
+    body = _groove(body, z0)
     zk = (zf + z_far) / 2                                    # the key's cross-hole, through
     if up is not None:                                       # (a teardrop, peaked up the print)
         from cadkit.holes import teardrop_hole
