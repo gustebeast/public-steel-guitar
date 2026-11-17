@@ -484,6 +484,20 @@ def pedal_lever() -> cq.Workplane:
     return _lever()
 
 
+def bar_piece(attr):
+    """A pedal-bar piece (pedal_bar.<attr>, e.g. "pedal_bar_a") with its pedal HOUSINGS fused
+    in (user: the housing is not a separate part -- fuse_into_bar). It lives here, not in
+    pedal_bar, because this module reads pedal_bar for the bar's faces and the import has
+    to stay one-way. The X span is pedal_bar.PIECE_SPAN's, never the caller's: the assembly
+    needs the same fusion, and passing the range in twice is what let the two disagree.
+
+    Heal BEFORE the threads, not after (thread rules: cut last and alone, never heal a
+    threaded part)."""
+    span = PB.PIECE_SPAN[attr]
+    piece = cut_feel_access(heal(fuse_into_bar(getattr(PB, attr)(), *span)), *span)
+    return cut_wire_ways(piece, *span)
+
+
 def fuse_into_bar(piece, x0, x1):
     """Union every pedal housing whose station falls in [x0, x1) INTO a pedal-bar
     piece. The housing is not a separate part (user): there is nothing to adjust
