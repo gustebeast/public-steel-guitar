@@ -391,11 +391,19 @@
  {
   "kind": "keepout",
   "why": "the isolated audio corner and its moat: audio-domain and barrier parts only (86 of them)",
-  "src": "cadkit A25; output_board AUDIO_POLY",
+  "src": "cadkit A25; output_board AUDIO_POLY (notched 2026-11-17)",
   "hard": true,
   "poly": [
    [
     -75.415,
+    23.0
+   ],
+   [
+    -49.0,
+    23.0
+   ],
+   [
+    -49.0,
     5.0
    ],
    [
@@ -779,6 +787,14 @@
   "poly": [
    [
     -75.415,
+    25.0
+   ],
+   [
+    -47.0,
+    25.0
+   ],
+   [
+    -47.0,
     7.0
    ],
    [
@@ -817,7 +833,7 @@
  },
  {
   "kind": "region",
-  "why": "both chargers' paths beside J1 / J2: chokes, PD controller, switch, ideal diode; the panel data switch U17 by its two pairs (mN)",
+  "why": "both chargers' paths beside J1 / J2: chokes, PD controller, switch, ideal diode; the panel data switch U17 by its two pairs (mN); and the audio corner's old bottom-left, between J1 and J5 (notched out 2026-11-17)",
   "src": "one-board floorplan",
   "hard": true,
   "name": "pd",
@@ -835,8 +851,16 @@
     0.0
    ],
    [
-    -75.415,
+    -50.0,
     0.0
+   ],
+   [
+    -50.0,
+    22.0
+   ],
+   [
+    -75.415,
+    22.0
    ]
   ]
  },
@@ -2448,18 +2472,6 @@
  },
  {
   "kind": "fixed",
-  "ref": "C1",
-  "xy": [
-   -48.915,
-   23.9
-  ],
-  "rot": 180.0,
-  "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
- },
- {
-  "kind": "fixed",
   "ref": "C116",
   "xy": [
    -27.015,
@@ -3156,36 +3168,12 @@
  },
  {
   "kind": "fixed",
-  "ref": "C41",
-  "xy": [
-   -53.815,
-   23.9
-  ],
-  "rot": 180.0,
-  "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
- },
- {
-  "kind": "fixed",
   "ref": "C42",
   "xy": [
    -41.715,
    15.3
   ],
   "rot": 0.0,
-  "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
- },
- {
-  "kind": "fixed",
-  "ref": "C45",
-  "xy": [
-   -45.015,
-   17.3
-  ],
-  "rot": 270.0,
   "hard": true,
   "why": "mR: held where mP0 put it",
   "src": "mP0 placement, bronner 2026-11-15"
@@ -3564,18 +3552,6 @@
  },
  {
   "kind": "fixed",
-  "ref": "D7",
-  "xy": [
-   -50.915,
-   21.3
-  ],
-  "rot": 0.0,
-  "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
- },
- {
-  "kind": "fixed",
   "ref": "F201",
   "xy": [
    -24.615,
@@ -3816,18 +3792,6 @@
  },
  {
   "kind": "fixed",
-  "ref": "R10",
-  "xy": [
-   -53.015,
-   21.0
-  ],
-  "rot": 270.0,
-  "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
- },
- {
-  "kind": "fixed",
   "ref": "R112",
   "xy": [
    -29.015,
@@ -3948,18 +3912,6 @@
  },
  {
   "kind": "fixed",
-  "ref": "R20",
-  "xy": [
-   -48.815,
-   21.0
-  ],
-  "rot": 90.0,
-  "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
- },
- {
-  "kind": "fixed",
   "ref": "R203",
   "xy": [
    -18.115,
@@ -3990,18 +3942,6 @@
    -25.2
   ],
   "rot": 180.0,
-  "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
- },
- {
-  "kind": "fixed",
-  "ref": "R21",
-  "xy": [
-   -57.415,
-   25.0
-  ],
-  "rot": 0.0,
   "hard": true,
   "why": "mR: held where mP0 put it",
   "src": "mP0 placement, bronner 2026-11-15"
@@ -4200,18 +4140,6 @@
  },
  {
   "kind": "fixed",
-  "ref": "R24",
-  "xy": [
-   -43.215,
-   17.1
-  ],
-  "rot": 0.0,
-  "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
- },
- {
-  "kind": "fixed",
   "ref": "R25",
   "xy": [
    -41.515,
@@ -4350,18 +4278,6 @@
    24.4
   ],
   "rot": 270.0,
-  "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
- },
- {
-  "kind": "fixed",
-  "ref": "R28",
-  "xy": [
-   -43.815,
-   13.5
-  ],
-  "rot": 180.0,
   "hard": true,
   "why": "mR: held where mP0 put it",
   "src": "mP0 placement, bronner 2026-11-15"
@@ -4960,18 +4876,6 @@
   "xy": [
    -39.615,
    18.3
-  ],
-  "rot": 180.0,
-  "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
- },
- {
-  "kind": "fixed",
-  "ref": "U9",
-  "xy": [
-   -45.715,
-   20.3
   ],
   "rot": 180.0,
   "hard": true,

@@ -2155,6 +2155,14 @@ POWER_POLY = [[-BOARD_W / 2, -50], [BOARD_W / 2, -50], [BOARD_W / 2, 0], [XL, 0]
 # PWR_GND stop MOAT short of it all round, so the barrier is a 1 mm copper-free gap that only
 # U30, U32-U34 and K1 straddle. The placement intent's "analog" region is this rectangle.
 AUDIO_X1, AUDIO_Y0, MOAT = -14.0, 6.0, 1.0
+# ...LESS THE PANEL-SIDE NOTCH (lead 2026-11-17, from the user's look at the mV25 render): the
+# corner's bottom-left, between J5 and J1, held no audio part -- the chain packs along the
+# barrier and under J5 -- so it was AGND fill that bought nothing while the rest of the board
+# routed congested. The isolated region fits its parts: x < AUDIO_NX below y AUDIO_NY is
+# handed back to the panel's chargers (the placement's "pd" region). The moat stays ONE closed
+# 1 mm gap round the new outline, still crossed only by U30, U32-U34 and K1; J5 stays on the
+# panel edge inside it, and the corner nearest the boost (AUDIO_X1, AUDIO_Y0) does not move.
+AUDIO_NX, AUDIO_NY = -48.0, 24.0
 # THE SERVICE PORT'S NOTCH (user, 2026-11-17). The top edge sits just under the deck, so a plug
 # cannot enter there: J7 sits on the floor of a notch, mouth +Z, and the extension's RIGHT-ANGLE
 # male end goes in downward, its overmold inside the notch and below the deck, the cable leaving
@@ -2165,14 +2173,17 @@ AUDIO_X1, AUDIO_Y0, MOAT = -14.0, 6.0, 1.0
 # typical 90-degree USB-C overmold, ~12 x 9 above the mouth) until the chosen cable's drawing
 # is read. The +X edge was looked at first and is full: the CM5 to y -6, the boost's hot loop below.
 SVC_NOTCH_X, SVC_NOTCH_W, SVC_NOTCH_D = 17.0, 15.0, 11.0
-AUDIO_POLY = [[-BOARD_W / 2, AUDIO_Y0], [AUDIO_X1, AUDIO_Y0], [AUDIO_X1, BOARD_L / 2],
-              [-BOARD_W / 2, BOARD_L / 2]]
+AUDIO_POLY = [[-BOARD_W / 2, AUDIO_NY], [AUDIO_NX, AUDIO_NY], [AUDIO_NX, AUDIO_Y0],
+              [AUDIO_X1, AUDIO_Y0], [AUDIO_X1, BOARD_L / 2], [-BOARD_W / 2, BOARD_L / 2]]
 GND_POLY = [[-BOARD_W / 2, -BOARD_L / 2], [BOARD_W / 2, -BOARD_L / 2], [BOARD_W / 2, BOARD_L / 2],
             [AUDIO_X1 + MOAT, BOARD_L / 2], [AUDIO_X1 + MOAT, AUDIO_Y0 - MOAT],
-            [-BOARD_W / 2, AUDIO_Y0 - MOAT]]
-MOAT_POLY = [[-BOARD_W / 2, AUDIO_Y0 - MOAT], [AUDIO_X1 + MOAT, AUDIO_Y0 - MOAT],
+            [AUDIO_NX - MOAT, AUDIO_Y0 - MOAT], [AUDIO_NX - MOAT, AUDIO_NY - MOAT],
+            [-BOARD_W / 2, AUDIO_NY - MOAT]]
+# the band between the two: AUDIO_POLY's open edge walked out, GND_POLY's walked back
+MOAT_POLY = [[-BOARD_W / 2, AUDIO_NY - MOAT], [AUDIO_NX - MOAT, AUDIO_NY - MOAT],
+             [AUDIO_NX - MOAT, AUDIO_Y0 - MOAT], [AUDIO_X1 + MOAT, AUDIO_Y0 - MOAT],
              [AUDIO_X1 + MOAT, BOARD_L / 2], [AUDIO_X1, BOARD_L / 2], [AUDIO_X1, AUDIO_Y0],
-             [-BOARD_W / 2, AUDIO_Y0]]
+             [AUDIO_NX, AUDIO_Y0], [AUDIO_NX, AUDIO_NY], [-BOARD_W / 2, AUDIO_NY]]
 # FIRMWARE RULES the fold makes (one H743: optical SAI1-3, audio SAI4, FDCAN1/2, the motor loop)
 FIRMWARE_NOTES = [
     "Interrupt handlers stay SHORT -- the SAI DMA half/complete ISRs only flag a block, the FDCAN "
