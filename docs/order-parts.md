@@ -21,7 +21,6 @@ A part that is not in this file is not on a board, whatever another document say
 | `10uF` | C15525 | 16 | brain_board, optical |
 | `10uF/16V` | C15850 | 24 | brain_board, connector_board, optical, ui_board |
 | `10uF/50V` | C13585 | 23 | brain_board, connector_board, optical, fret_led_mid, fret_led_key |
-| `10uH 15A` | C2045568 | 1 | brain_board |
 | `120R` | C22787 | 12 | can_tee, brain_board, connector_board |
 | `120R 100mW` | C413065 | 11 | lever_sensor |
 | `12k 1%` | C25752 | 1 | optical |
@@ -38,7 +37,7 @@ A part that is not in this file is not on a board, whatever another document say
 | `1N4148WT` | C917006 | 2 | brain_board |
 | `1R` | C25086 | 1 | optical |
 | `1uF` | C28323 | 3 | brain_board |
-| `1uF` | C52923 | 67 | lever_sensor, brain_board, optical, fret_led_mid, fret_led_key |
+| `1uF` | C52923 | 68 | lever_sensor, brain_board, optical, fret_led_mid, fret_led_key |
 | `1uF/25V` | C15849 | 1 | brain_board |
 | `2.2nF C0G` | C2987940 | 2 | brain_board |
 | `2.2pF` | C325452 | 20 | optical |
@@ -90,6 +89,7 @@ A part that is not in this file is not on a board, whatever another document say
 | `825R 1%` | C270580 | 1 | brain_board |
 | `887k 1%` | C423127 | 1 | brain_board |
 | `9k09 1%` | C274897 | 1 | optical |
+| `A127M05-0B30P51-H10A40` | C41427104 | 2 | brain_board, connector_board |
 | `ACM2012-900-2P-T002` | C55213549 | 2 | brain_board |
 | `AD8402ARZ10` | C578716 | 1 | brain_board |
 | `AO3400A` | C20917 | 2 | brain_board, optical |
@@ -97,6 +97,7 @@ A part that is not in this file is not on a board, whatever another document say
 | `AP2112K-3.3TRG1` | C51118 | 12 | lever_sensor, brain_board |
 | `AP2114H-3.3TRG1` | C150716 | 2 | brain_board, optical |
 | `AP33772SDKZ-13` | C50341643 | 2 | brain_board |
+| `APS1513M100F` | C49261410 | 1 | brain_board |
 | `B0509S-1WR3` | C5369463 | 1 | brain_board |
 | `B4B-PH-SM4-TB` | C160354 | 2 | connector_board |
 | `B4B-XH-A` | C144395 | 1 | optical |
@@ -109,7 +110,7 @@ A part that is not in this file is not on a board, whatever another document say
 | `CH334P` | C5373042 | 1 | brain_board |
 | `CH340C` | C84681 | 1 | optical |
 | `CJO05-240003320B30` | C712738 | 1 | optical |
-| `DF40C-100DS-0.4V(51)` | C3642394 | 2 | brain_board |
+| `DF40C-100DS-0.4V(51)` | C597931 | 2 | brain_board |
 | `DSHP01TSGER` | C3293141 | 21 | can_tee, lever_sensor |
 | `DSS16` | C7467023 | 1 | optical |
 | `ESD5B5.0ST1G` | C93623 | 26 | lever_sensor, connector_board |
@@ -125,10 +126,11 @@ A part that is not in this file is not on a board, whatever another document say
 | `JFC1206-1400FS` | C136349 | 2 | brain_board |
 | `KT-0603G` | C12624 | 1 | brain_board |
 | `KT-0603R` | C2286 | 1 | brain_board |
-| `LESD5L5.0CT1G` | C5274293 | 6 | brain_board |
+| `LESD5L5.0CT1G` | C5274293 | 4 | brain_board |
 | `LM5122PWPR` | C77241 | 1 | brain_board |
 | `LM74700QDBVRQ1` | C2941042 | 3 | brain_board |
 | `LMR33630BRNXR` | C2071384 | 2 | optical, fret_led_key |
+| `LMR33640DDDAR` | C1852154 | 1 | brain_board |
 | `LP2985-50DBVR` | C74511 | 1 | brain_board |
 | `LTE-C9901` | C2683614 | 10 | optical |
 | `MX15EDGRC-3.5-02P` | C5188295 | 1 | brain_board |
@@ -143,6 +145,7 @@ A part that is not in this file is not on a board, whatever another document say
 | `PD15-22B/TR8` | C161211 | 20 | optical |
 | `PESD2USB5UX` | C3709087 | 2 | brain_board |
 | `PTCFW-H22A-005` | C54829820 | 2 | brain_board |
+| `PZ1.27-2x10P TP` | C41376042 | 1 | brain_board |
 | `PZ1.27-2x8P` | C22438114 | 1 | ui_board |
 | `PZ1.27-2x8P ZZ` | C22438123 | 1 | brain_board |
 | `RK73B3ATTE2R0J` | C5139521 | 1 | optical |
@@ -185,7 +188,7 @@ A part that is not in this file is not on a board, whatever another document say
 | `TUSB321RWBR` | C139392 | 1 | brain_board |
 | `TYPE-C-31-M-12` | C165948 | 2 | brain_board, optical |
 | `USB3300-EZK-TR` | C108383 | 1 | optical |
-| `USBLC6-2SC6` | C7519 | 1 | optical |
+| `USBLC6-2SC6` | C7519 | 2 | brain_board, optical |
 | `WPN4020H4R7MT` | C98363 | 1 | optical |
 | `X322512MSB4SI` | C9002 | 1 | brain_board |
 | `XL-5050RGBW` | C7371891 | 92 | fret_led_mid, fret_led_key |
@@ -229,7 +232,7 @@ A part that is not in this file is not on a board, whatever another document say
 
 ## `brain_board`
 
-1 per instrument. 432 placed part(s) in 143 line(s); 8 pad(s) and jumper(s) that are copper, not parts.
+1 per instrument. 432 placed part(s) in 144 line(s); 8 pad(s) and jumper(s) that are copper, not parts.
 
 | Qty | Designators | Part or value | Package | LCSC |
 |--:|---|---|---|---|
@@ -245,7 +248,7 @@ A part that is not in this file is not on a board, whatever another document say
 | 4 | C32, C33, C134, C135 | `2.2uF` | C_0805_2012Metric | C377773 |
 | 2 | C34, C45 | `2.2nF C0G` | C_0402_1005Metric | C2987940 |
 | 1 | C37 | `100nF C0G` | C_1206_3216Metric | C170182 |
-| 8 | C49, C53, C58, C136, C141, C229, C327, C328 | `1uF` | C_0402_1005Metric | C52923 |
+| 9 | C49, C53, C58, C136, C141, C229, C327-C329 | `1uF` | C_0402_1005Metric | C52923 |
 | 3 | C51, C161, C298 | `4.7uF/25V` | C_0805_2012Metric | C1779 |
 | 2 | C63, C248 | `1uF/25V` | C_0402_1005Metric | C52923 |
 | 3 | C66, C82, C88 | `1uF/10V` | C_0402_1005Metric | C52923 |
@@ -269,7 +272,7 @@ A part that is not in this file is not on a board, whatever another document say
 | 2 | C313, C314 | `330uF/50V` | CP_Elec_10x10.5 | C53120968 |
 | 1 | C324 | `15nF` | C_0402_1005Metric | C501821 |
 | 1 | C325 | `22pF` | C_0402_1005Metric | C1555 |
-| 6 | D2, D3, D12, D13, D26, D27 | `LESD5L5.0CT1G` | D_SOD-523 | C5274293 |
+| 4 | D2, D3, D12, D13 | `LESD5L5.0CT1G` | D_SOD-523 | C5274293 |
 | 2 | D4, D217 | `1N4148WT` | D_SOD-523 | C917006 |
 | 2 | D5, D7 | `TPD1E10B06DYARQ1` | D_SOD-523 | C3013901 |
 | 2 | D11, D15 | `SMBJ22A` | D_SMB | C224015 |
@@ -291,14 +294,16 @@ A part that is not in this file is not on a board, whatever another document say
 | 2 | FL1, FL2 | `744273501` | L_CommonModeChoke_Wuerth_WE-SL5-HC | C2651123 |
 | 2 | FL3, FL4 | `ACM2012-900-2P-T002` | L_CommonModeChoke_Coilank_ACM2012 | C55213549 |
 | 2 | J1, J2 | `PTCFW-H22A-005` | USB_C_Receptacle_HRO_TYPE-C-31-M-12 | C54829820 |
+| 1 | J4 | `PZ1.27-2x10P TP` | PinHeader_2x10_P1.27mm_Vertical_SMD | C41376042 |
 | 1 | J5 | `NMJ6HCD2` | Jack_6.35mm_Neutrik_NMJ6HCD2_Horizontal | C368502 |
 | 1 | J7 | `TYPE-C-31-M-12` | USB_C_Receptacle_HRO_TYPE-C-31-M-12 | C165948 |
 | 1 | J8 | `MX15EDGRC-3.5-02P` | MAX_MX15EDGRC-3.5-02P_1x02_P3.50mm_Horizontal_Mated | C5188295 |
-| 2 | J201, J202 | `DF40C-100DS-0.4V(51)` | Hirose_DF40C-100DS-0.4V_2x50_P0.4mm | C3642394 |
+| 2 | J201, J202 | `DF40C-100DS-0.4V(51)` | Hirose_DF40C-100DS-0.4V_2x50_P0.4mm | C597931 |
 | 1 | J205 | `PZ1.27-2x8P ZZ` | PinHeader_2x08_P1.27mm_Vertical | C22438123 |
+| 1 | J240 | `A127M05-0B30P51-H10A40` | PinHeader_2x15_P1.27mm_Vertical_SMD | C41427104 |
 | 1 | K1 | `G6K-2F-Y-DC5` | Relay_DPDT_Omron_G6K-2F-Y | C47190 |
 | 2 | L1, L202 | `FXL0630-4R7-M` | L_Changjiang_FXL0630 | C167220 |
-| 1 | L204 | `10uH 15A` | L_Bourns_SRP1770TA_16.9x16.9mm | C2045568 |
+| 1 | L204 | `APS1513M100F` | L_Bourns_SRP1513CA_15.5x16.5mm | C49261410 |
 | 1 | Q1 | `AO3400A` | SOT-23 | C20917 |
 | 7 | Q4-Q8, Q208, Q209 | `NCEP4090GU` | TDSON-8-1 | C502976 |
 | 1 | Q202 | `SQD50P06-15L` | TO-252-2 | C3281500 |
@@ -343,6 +348,7 @@ A part that is not in this file is not on a board, whatever another document say
 | 1 | U1 | `STM32H743IIT6` | LQFP-176_24x24mm_P0.5mm | C89597 |
 | 1 | U2 | `PCM1808PWR` | TSSOP-14_4.4x5mm_P0.65mm | C55513 |
 | 1 | U3 | `PCM5102APWR` | TSSOP-20_4.4x6.5mm_P0.65mm | C107671 |
+| 1 | U5 | `LMR33640DDDAR` | Texas_DDA0008_HSOP-8-1EP_3.9x4.9mm_P1.27mm | C1852154 |
 | 1 | U6 | `AP2112K-3.3TRG1` | SOT-23-5 | C51118 |
 | 4 | U7-U9, U11 | `TLV9061IDBVR` | SOT-23-5 | C398358 |
 | 1 | U10 | `AD8402ARZ10` | SOIC-14_3.9x8.7mm_P1.27mm | C578716 |
@@ -365,6 +371,7 @@ A part that is not in this file is not on a board, whatever another document say
 | 1 | U40 | `SN74LVC06APWR` | TSSOP-14_4.4x5mm_P0.65mm | C7807 |
 | 1 | U41 | `SN74LVC2G06DBVR` | SOT-23-6 | C402162 |
 | 1 | U42 | `TPS22918DBVR` | SOT-23-6 | C131941 |
+| 1 | U44 | `USBLC6-2SC6` | SOT-23-6 | C7519 |
 | 1 | U202 | `TCAN3413DR` | SOIC-8_3.9x4.9mm_P1.27mm | C22433320 |
 | 1 | U203 | `SN65HVD230DR` | SOIC-8_3.9x4.9mm_P1.27mm | C12084 |
 | 1 | U205 | `TPS552892QWRYQRQ1` | Texas_RYQ0021B_VQFN-HR-21_3x5mm_P0.5mm | C22375748 |
@@ -373,9 +380,6 @@ A part that is not in this file is not on a board, whatever another document say
 | 1 | U221 | `TPS22965DSGR` | Texas_DSG0008A_WSON-8-1EP_2x2mm_P0.5mm_EP0.9x1.6mm | C122837 |
 | 1 | Y1 | `TAXM25M4RDBCCT2T` | Crystal_SMD_3225-4Pin_3.2x2.5mm | C403946 |
 | 1 | Y2 | `X322512MSB4SI` | Crystal_SMD_3225-4Pin_3.2x2.5mm | C9002 |
-| 1 | J4 | `PZ1.27-2x10P ZZ` | PinHeader_2x10_P1.27mm_Vertical_SMD | NO CODE |
-| 1 | J240 | `PZ1.27-2x15P ZZ` | PinHeader_2x15_P1.27mm_Vertical_SMD | NO CODE |
-| 1 | U5 | `LMR33640 (RNX, open item)` | Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm | NO CODE |
 
 ## `connector_board`
 
@@ -388,10 +392,10 @@ A part that is not in this file is not on a board, whatever another document say
 | 6 | C4, C11-C15 | `10uF/50V` | C_1206_3216Metric | C13585 |
 | 1 | D1 | `NUP2105LT1G` | SOT-23 | C14486 |
 | 4 | D2-D5 | `ESD5B5.0ST1G` | D_SOD-523 | C93623 |
+| 1 | J1 | `A127M05-0B30P51-H10A40` | PinHeader_2x15_P1.27mm_Vertical_SMD | C41427104 |
 | 2 | J2, J3 | `B4B-PH-SM4-TB` | JST_PH_B4B-PH-SM4-TB_1x04-1MP_P2.00mm_Vertical | C160354 |
 | 12 | J4, J5, J11-J20 | `MX15EDGRC-3.5-04P` | MAX_MX15EDGRC-3.5-04P_1x04_P3.50mm_Horizontal_Mated | C5188297 |
 | 1 | R1 | `120R` | R_0603_1608Metric | C22787 |
-| 1 | J1 | `PZ1.27-2x15P ZZ` | PinHeader_2x15_P1.27mm_Vertical_SMD | NO CODE |
 
 ## `optical`
 

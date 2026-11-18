@@ -4953,19 +4953,10 @@
  },
  {
   "kind": "near",
-  "why": "service D+ clamp at the connector",
-  "src": "brain_board._service_port (2026-11-17)",
+  "why": "service D+/D- ESD array at the connector, the pair straight across it",
+  "src": "brain_board._service_port (2026-11-18, lead: one flow-through array)",
   "hard": true,
-  "ref": "D26",
-  "target": "J7",
-  "max_mm": 4.0
- },
- {
-  "kind": "near",
-  "why": "service D- clamp at the connector",
-  "src": "brain_board._service_port (2026-11-17)",
-  "hard": true,
-  "ref": "D27",
+  "ref": "U44",
   "target": "J7",
   "max_mm": 4.0
  },

@@ -598,10 +598,19 @@ def _service_port(gnd, pgnd, v3d, v5_pre, vstby, vin, io, gad_dp, gad_dm, flash_
            "Diode_SMD:D_SOD-123F")
     svbus += d[1]
     pgnd += d[2]
-    for tag, net in (("D26", sdp), ("D27", sdm)):
-        d = _d(tag, "LESD5L5.0CT1G", "service data-line clamp, 0.5 pF (LCSC C5274293)")
-        net += d[1]
-        gnd += d[2]
+    # ⚠ ONE FLOW-THROUGH ARRAY, NOT TWO CLAMPS BESIDE THE PAIR (lead, 2026-11-18): D26 / D27
+    # (LESD5L5.0CT1G, SOD-523 each) were seated 3 mm off J7's pin row, the global plan's worst
+    # square on every placement mV25-mV45 (J7/D26/D27, overflow 1.0): D26's GND pad across
+    # the D+/D- exits, D27 on the far side from U38. USBLC6-2SC6 (ST, LCSC C7519, as optical's
+    # U10) has each line on BOTH sides -- 1 IO1, 2 GND, 3 IO2, 4 IO2, 5 VBUS, 6 IO1 -- so the
+    # pair runs straight across its pads at the connector. VBUS (5) to SVC_VBUS, as U10's.
+    # TPD2E2U06 (DRL) was the other candidate: both IOs on one side, no pass-through.
+    u44 = _fix("U44", "USBLC6-2SC6", "service D+/D- ESD array, flow-through, at J7 (LCSC C7519)",
+               "Package_TO_SOT_SMD:SOT-23-6", range(1, 7))
+    sdp += u44[1], u44[6]
+    gnd += u44[2]
+    sdm += u44[3], u44[4]
+    svbus += u44[5]
 
     # U35: the CC logic, DRP, default current (CURRENT_MODE low)
     u35 = _fix("U35", "TUSB321RWBR", "service port CC logic: DRP, GPIO only, no firmware "
