@@ -46,6 +46,7 @@ import cadquery as cq
 
 from . import dimensions as D
 from . import direct_bench as DB
+from . import m3_hardware as M3H
 from . import plank_bench as PB
 from .helpers import box_at, cyl_x
 from cadkit.kept import kept
@@ -314,9 +315,10 @@ SCALE_SPAN = DB.X_BEND - D.NUT_BLOCK_X           # crown to the bridge bearing's
 # spacers and the keyplate") ───────────────────────────────────────────────────────────────────
 # THE TIE SPACERS: the instrument's are aluminium tube, 0.65 of wall -- a print needs more. Same 13
 # between lip and plate, Ø6.4 (the ear's boss is Ø5.8; 0.85 off collar B's swept Ø24.8 and 0.87 off
-# the guide rod on string 6), the M3's bore drawn 4.0: they print STANDING (+X up), and a round hole
-# prints ~0.3 small on its radius (motor_coupler.HOLE_SHRINK).
-WB_SPACER = (6.4, 4.0)
+# the guide rod on string 6). The M3's bore is the printed clearance every printed M3 hole takes
+# (m3_hardware.CLR_PRINTED_D, 3.7 round: they print STANDING, +X up), not a hand 4.0 (user,
+# 2026-11-17). PCTG (user, 2026-11-17: "prints a bit more accurately at small sizes").
+WB_SPACER = (6.4, M3H.CLR_PRINTED_D)
 
 
 def tie_spacers() -> cq.Workplane:
@@ -333,11 +335,12 @@ def tie_spacers() -> cq.Workplane:
 # THE KEYHOLE PLATE: the instrument's 4 mm plate (direct_bench.keyhole_plate), printed in PETG-GF
 # until the steel one is cut. The ball bears on ~4 mm^2 either side of the slit: ~40 MPa under the
 # string's 147 N, near what PETG-GF takes -- watch it for creep into the slit.
-def _swap(nm: str, w):
+def _swap(nm: str, w, t: float = DB.T_OPEN):
     if nm.startswith("tie_spacer"):
         return "wb_tie_spacer", kept(tie_spacers)
-    if nm.startswith("keyplate"):
-        return "wb_keyplate", w
+    if nm.startswith("keyplate"):              # PRINTED: the printed M3 clearance, not the laser's 3.4
+        p = DB.keyhole_plate(M3H.CLR_PRINTED_D).translate((DB.x_yt(t), DB.y_of(I), DB.za(I)))
+        return "wb_keyplate", DB.yaw(p, I)
     return nm, w
 
 
@@ -453,7 +456,7 @@ def opt_hardware() -> list:
 
 # ── THE ASSEMBLY ─────────────────────────────────────────────────────────────────────────────
 def assembly(t: float = DB.T_OPEN) -> list:
-    out = [_swap(nm, w) for nm, w in DB.string_parts(I, t)
+    out = [_swap(nm, w, t) for nm, w in DB.string_parts(I, t)
            if not nm.startswith(("mplate", "string"))]
     out.append((f"wb_string_{I}", kept(bench_string, t)))
     out += [(nm, w.translate((0.0, 0.0, KH_DROP)) if nm.startswith("bridge_brg") else w)
@@ -470,7 +473,7 @@ def assembly(t: float = DB.T_OPEN) -> list:
 
 
 MATERIAL = {"wb_motor_mount": "petg-gf", "wb_anchor": "petg-gf", "wb_endplate": "petg-gf",
-            "wb_tie_spacer": "petg-gf", "wb_keyplate": "petg-gf",
+            "wb_tie_spacer": "pctg", "wb_keyplate": "petg-gf",
 
             "wb_keyhead": "petg-gf", "wb_wrap_rod": "steel", "ghost_plank": "wood",
             "wb_string": "polished", "wb_nut_plate": "stainless", "wb_nut_side_insert": "brass",
