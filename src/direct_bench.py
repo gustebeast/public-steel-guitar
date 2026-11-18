@@ -249,6 +249,11 @@ KEY_Z = KEY_SIGN * KEY_DROP                         # the hole's centre, z off t
 # 1.78, only 0.17 over the .080 we support -- and a printed slit comes out narrow. 0.4 over: the slot
 # loses ~0.3 printed and still passes a .080; the Ø4 ball is nowhere near getting through.
 SLIT_W = D.STRING_GAUGE_MAX + 0.4                   # 2.43
+# ...NARROWER ON THE PRINTED STAND-IN (user, 2026-11-18): the printer rounds the slit's sharp corners
+# where it meets the seat and the ball's hole, so the neck between them prints wider than drawn and the
+# ball moves through it more easily than through the laser-cut steel. 0.4 off (a bead's rounding, both
+# sides) brings the printed neck back toward the steel's; still clears the bench's string 6 (0.61) by far.
+SLIT_W_PRINTED = SLIT_W - 0.4                       # 2.03
 # THE BALL'S SEAT (user, 2026-11-18: wrapped and pulled, "it pops out"): tension pulled at any
 # angle slid the ball down the slit's flat face to the hole. A RECESS round the slit's top on the
 # plate's -X face: tension pulls the ball INTO it, and to reach the hole it must first back out
@@ -998,9 +1003,10 @@ def keyhole_plate(m3_d: float = 3.4, bench: bool = False, seat: bool = False,
             b = box_at(YK_ROOF, 2 * HOLD_EAR_R, HOLD_R - D.NUT_FLANGE_L / 2 + 2.0, x=-YK_ROOF / 2, y=0,
                        z=(HOLD_R + D.NUT_FLANGE_L / 2 - 2.0) / 2).rotate((0, 0, 0), (1, 0, 0), a - 90)
             w = w.union(cyl_x(2 * HOLD_EAR_R, YK_ROOF, -YK_ROOF, y=dy, z=dz)).union(b)
+    sw = SLIT_W_PRINTED if seat else SLIT_W                      # seat=True: the printed stand-in
     w = w.cut(cyl_x(KEY_D, YK_ROOF + 2, -YK_ROOF - 1, y=0, z=KEY_Z))
-    w = w.cut(box_at(YK_ROOF + 2, SLIT_W, KEY_DROP, x=-YK_ROOF / 2, y=0, z=KEY_Z / 2))
-    w = w.cut(cyl_x(SLIT_W, YK_ROOF + 2, -YK_ROOF - 1, y=0, z=0))
+    w = w.cut(box_at(YK_ROOF + 2, sw, KEY_DROP, x=-YK_ROOF / 2, y=0, z=KEY_Z / 2))
+    w = w.cut(cyl_x(sw, YK_ROOF + 2, -YK_ROOF - 1, y=0, z=0))
     if seat:                                                     # THE BALL'S SEAT (printed)
         w = w.cut(cyl_x(KEY_SEAT[0], KEY_SEAT[1] + 1, -YK_ROOF - 1, y=0, z=0))
     for dy, dz in ((at_ang(a) for a in HOLE_ANG["m3"]) if bench
