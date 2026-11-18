@@ -49,29 +49,15 @@ HALO_IC, HALO_SMALL, IC_PADS, HALO_MAX = 1.0, 0.25, 8, 2.5
 HALO_PER_PIN = float(os.environ.get("PLACE_HALO_K", "0.15"))
 IC_EDGE_HALO = os.environ.get("PCBFLOW_IC_EDGE_HALO", "1") == "1"   # see _drop
 # ⚠ A FINE-PITCH SIGNAL PIN'S ONLY WAY OUT IS STRAIGHT ON (brain_board mV40, 2026-11-18):
-# U221 (WSON-8, 0.5 mm) has no escape halo -- too few pins -- so C327, its VBIAS decap, seated
-# 1 mm in front of pin 4 and across pin 3: EN5 boxed in by +5V_RAW, +3V3D, the GND pad and
-# the cap, and no via allowed in a pasted land; open through route and close_last both.
-# A decap may stand inside its anchor's halo (_drop_sat), which is how C327 got there.
-# Anchors up to LANE_MAX_PADS, and A FALLBACK: a satellite whose rule breaks with the lanes
-# held is dropped again without them (mV41p, lanes on every anchor: C50 stranded off U36 into
-# U1's spot -- NO ROOM). With PCBFLOW_PIN_LANES=1 a satellite is dropped with the outward lane of each of its
-# anchor's signal pins held: a pin with an other-net neighbour closer than LANE_PITCH, on a
-# net under LANE_RAIL_PINS pins (a rail leaves by its pour), not one of the satellite's nets.
-PIN_LANES = os.environ.get("PCBFLOW_PIN_LANES", "0") == "1"
+# U221 (WSON-8, 0.5 mm) -- C327, its VBIAS decap, seated 1 mm in front of pin 4 and across
+# pin 3: EN5 boxed in by +5V_RAW, +3V3D, the GND pad and the cap, no via allowed in a pasted
+# land. With PCBFLOW_DECAP_SLIDE=1 the decap's SEAT slides along the pin row, off the exit
+# of any neighbouring fine-pitch signal pin (other-net neighbour closer than LANE_PITCH, net
+# under LANE_RAIL_PINS pins, anchor up to LANE_MAX_PADS). Holding those lanes as grid masks
+# instead (PIN_LANES, mV41r) moved 21 parts for one net, overflow 7.71 -> 10.53, and seating a
+# `near` satellite on its `between` line (BETWEEN_SEAT, mV45q) 10.34: both deleted 11-18.
 LANE_PITCH, LANE_LEN, LANE_CLR, LANE_RAIL_PINS, LANE_MAX_PADS = 0.8, 1.2, 0.3, 12, 16
-# ⚠ THE NARROW FORM (mV41r: the lane masks moved 21 parts, overflow 7.71 -> 10.53, for one
-# net). With PCBFLOW_DECAP_SLIDE=1 only the decap's SEAT changes: if the cap, seated 1 mm out
-# from its pin, would cover the exit of a neighbouring fine-pitch signal pin (same tests as the
-# lanes), the seat slides along the pin row, away from that pin, until it clears.
 DECAP_SLIDE = os.environ.get("PCBFLOW_DECAP_SLIDE", "0") == "1"
-# ⚠ A `between` RULE WAS A SPRING ONLY, NEVER A SEAT (brain_board mV45p, 2026-11-18): D26 / D27
-# (`near` J7 4 mm, satellites) were seated at J7's centre, the legaliser's nearest free spot
-# was in front of the D+/D- pins, and a soft `between` J7.A6-U38 moved nothing. With
-# PCBFLOW_BETWEEN_SEAT=1 a part-target `near` satellite that also has a `between` rule is
-# seated on that line, just clear of its anchor's courtyard.
-BETWEEN_SEAT = os.environ.get("PCBFLOW_BETWEEN_SEAT", "0") == "1"
-_BETWEEN, _QTARGET = {}, {}
 
 
 def halo(part):
@@ -892,10 +878,6 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
     if near_springs:
         log.append("near springs: %s" % " ".join("%s->%s x%g" % (a_, b_, w_) for a_, b_, _, w_, _ in near_springs))
     target = {r: np.array([gx[idx[r]], gy[idx[r]]]) for r in free}
-    _QTARGET.clear()
-    _QTARGET.update(target)
-    _BETWEEN.clear()
-    _BETWEEN.update({r["ref"]: r for r in rules if r["kind"] == "between" and r.get("ref")})
 
     # ---- 3. turn
     where = {}
@@ -1428,38 +1410,7 @@ def _seat(r, P, pl, anc):
         return t
     if "." in r.get("target", ""):
         return P.pad(*r["target"].split(".", 1))
-    if BETWEEN_SEAT and r["kind"] == "near" and r.get("ref") in _BETWEEN:
-        t = _between_seat(_BETWEEN[r["ref"]], P, pl, anc, r["ref"])
-        if t is not None:
-            return t
     return np.asarray(pl[anc][:2])
-
-
-def _between_seat(br, P, pl, anc, ref):
-    """The first point of the between line (a -> b) clear of anc's courtyard by the part's
-    half size + 0.5 mm; an end not yet placed is taken at its quadratic optimum."""
-    def end(t):
-        if "." in t:
-            tr = t.split(".", 1)[0]
-            return P.pad(*t.split(".", 1)) if tr in pl else None
-        if t in pl:
-            return np.asarray(pl[t][:2], float)
-        q = _QTARGET.get(t)
-        return None if q is None else np.asarray(q, float)
-    a, b = end(br["a"]), end(br["b"])
-    if a is None or b is None:
-        return None
-    cy = np.asarray(P.crtyd(anc), float)
-    lo, hi = cy.min(axis=0), cy.max(axis=0)
-    half = float(np.max(np.ptp(np.asarray(P.parts[ref]["crtyd"] or [[0, 0], [1, 1]], float), axis=0))) / 2.0
-    m = half + 0.5
-    v = b - a
-    L = float(np.hypot(*v)) or 1e-9
-    for s in np.arange(0.0, L, 0.1):
-        p = a + v * (s / L)
-        if p[0] < lo[0] - m or p[0] > hi[0] + m or p[1] < lo[1] - m or p[1] > hi[1] + m:
-            return p
-    return None
 
 
 def _slide_seat(r, P, anc, pin, u, t):
@@ -2425,65 +2376,6 @@ def _drop_sat(G, parts, c, t, rots, pl, forbid, anchor, rule, near_mm=None):
                 return True
             plain = (list(pl[c]), s0)
             _lift(G, parts, pl, c)
-    lanes = _pin_lanes(G, parts, pl, c, anchor) if PIN_LANES else None
-    if lanes is not None:
-        G.occ += lanes
-        try:
-            ok = _drop_sat_(G, parts, c, t, rots, pl, forbid, anchor, rule, near_mm, pcap, tight, plain)
-        finally:
-            G.occ -= lanes
-        if ok and (rule is None or _slack(rule, parts, pl) >= -0.05):
-            return True
-        if ok:
-            _lift(G, parts, pl, c)
-    return _drop_sat_(G, parts, c, t, rots, pl, forbid, anchor, rule, near_mm, pcap, tight, plain)
-
-
-_NET_PINS = {}
-
-
-def _pin_lanes(G, parts, pl, c, anchor):
-    """The cells in front of anchor's fine-pitch signal pins (PIN_LANES), as an occ delta."""
-    if anchor not in pl or anchor not in parts or parts[anchor].get("n_own", len(parts[anchor]["pads"])) > LANE_MAX_PADS:
-        return None
-    key = id(parts)
-    if key not in _NET_PINS:
-        n = {}
-        for ref in parts:
-            for q in parts[ref]["pads"]:
-                if q["net"]:
-                    n[q["net"]] = n.get(q["net"], 0) + 1
-        _NET_PINS.clear()
-        _NET_PINS[key] = n
-    npins = _NET_PINS[key]
-    own = {q["net"] for q in parts[c]["pads"] if q["net"]}
-    P = pi.Placed(parts, pl)
-    cy = np.asarray(P.crtyd(anchor), float)
-    lo, hi = cy.min(axis=0), cy.max(axis=0)
-    pads = [(q, P.pad(anchor, q["num"])) for q in parts[anchor]["pads"] if q["num"] and q["net"]]
-    lane = np.zeros(G.occ.shape, bool)
-    for q, pp in pads:
-        nm = q["net"]
-        if nm in own or npins.get(nm, 0) >= LANE_RAIL_PINS:
-            continue
-        if not any(q2["net"] != nm and np.hypot(*(p2 - pp)) < LANE_PITCH for q2, p2 in pads):
-            continue
-        half = min(q["size"]) / 2.0 + LANE_CLR
-        gaps = [pp[0] - lo[0], hi[0] - pp[0], pp[1] - lo[1], hi[1] - pp[1]]
-        k = int(np.argmin(gaps))
-        if k < 2:
-            out = ((G.X < lo[0] + 0.05) & (G.X > lo[0] - LANE_LEN)) if k == 0 else                   ((G.X > hi[0] - 0.05) & (G.X < hi[0] + LANE_LEN))
-            along = np.abs(G.Y - pp[1]) <= half
-        else:
-            out = ((G.Y < lo[1] + 0.05) & (G.Y > lo[1] - LANE_LEN)) if k == 2 else                   ((G.Y > hi[1] - 0.05) & (G.Y < hi[1] + LANE_LEN))
-            along = np.abs(G.X - pp[0]) <= half
-        lane |= out & along
-    if not lane.any():
-        return None
-    return lane.astype(G.occ.dtype)
-
-
-def _drop_sat_(G, parts, c, t, rots, pl, forbid, anchor, rule, near_mm, pcap, tight, plain):
     big = (rule is not None and (rule["kind"] == "decap" or pcap or tight)
            and anchor in pl and halo(parts[anchor]) > HALO_SMALL)
     delta = None

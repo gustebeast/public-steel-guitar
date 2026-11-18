@@ -636,8 +636,14 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
         # hour of route is spent on it -- the spreading pass's A/B (brain_board, 2026-11-17)
         say("TO ROUTABILITY: stopped before the route")
         return 0
+    # ⚠ THE SCORE'S ROUTE IS THE BOARD'S ROUTE (brain_board mV41 vs mV44, 2026-11-18): the finish
+    # starts from it (OWNROUTE_PARENT) and gets 300 s for the rest, so a flow's board is a
+    # 900 s route -- a replay, routing again from nothing at ownroute's 1800 s, finished the
+    # same placement at 3 unconnected where the flows ended at 27-28. PCBFLOW_SCORE_BUDGET_S
+    # sets the score's budget (router.score --budget; default 900 as before).
+    _sb = os.environ.get("PCBFLOW_SCORE_BUDGET_S")
     rc, out, T["score"] = _run([sys.executable, "-m", "router.score", stem, "--save", "auto", "--intent", ip,
-                                "--parts", parts_path], log)
+                                "--parts", parts_path] + (["--budget", _sb] if _sb else []), log)
     score = None
     for line in reversed(out.splitlines()):
         try:
