@@ -371,7 +371,12 @@ OPT_LED = "D10"                                  # the channel under string 6 (s
 OPT_REV1 = pathlib.Path(__file__).resolve().parents[1] / "elec" / "rev1" / "optical.geom.json"
 OB_L = 36.0                                      # a bracket's reach off the joint face (and its
                                                  # drop: 45 deg), its foot over the drive (z -74)
-OB_W = 11.0                                      # its width in y: the M4's tap bore, 3.5+ walls
+OB_W = 11.0                                      # the old width in y (opt_hole's fit test keeps it)
+# SLIM BRACKETS (user, 2026-11-18: "we don't need much to hold the board in place. One support can
+# be quite thin, the other just thick enough to fit the screw plus 1.6mm on either side"): the
+# screw's bracket the self-tap bore + 2 x 1.6, the resting one two beads
+OB_WALL = 1.6
+OB_REST_W = 2 * D.BEAD
 OB_Y2 = -11.0                                    # the resting bracket, inside EP_Y
 OB_TIP = 2.0                                     # the tip cut flat (no knife edge on the print's top)
 OS_M4_L = 10.0                                   # M4 x 10: 1.6 of board, 8.4 self-tapped into the bracket
@@ -429,13 +434,15 @@ def opt_brackets() -> cq.Workplane:
     """The two brackets, world: a 45 deg right triangle in XZ off the joint face, OB_W wide, its top
     the board's underside, 1 into the endplate. In the endplate's print (+X -> -X) they grow up off
     the joint face: the top a wall, the slope facing up."""
+    from cadkit.fasteners import M4
     _, _, z0, _ = opt_frame()
+    w_screw = M4.tap_d((0.0, 0.0, -1.0), DB.EP_UP) + 2 * OB_WALL
     out = None
-    for y in (opt_hole()[1], OB_Y2):
-        tri = (cq.Workplane("XZ", origin=(0, y + OB_W / 2, 0))
+    for y, ow in ((opt_hole()[1], w_screw), (OB_Y2, OB_REST_W)):
+        tri = (cq.Workplane("XZ", origin=(0, y + ow / 2, 0))
                .polyline([(XJ + 1.0, z0), (XJ - OB_L, z0), (XJ - OB_L, z0 - OB_TIP),
                           (XJ + 1.0, z0 - OB_TIP - OB_L - 1.0)]).close()
-               .extrude(OB_W))
+               .extrude(ow))
         out = tri if out is None else out.union(tri)
     return out
 
