@@ -47,6 +47,7 @@ WINDOW = 18.0       # mm searched round a part's target before widening
 # output_panel: 1 open against 3, one pair fault against 2.
 HALO_IC, HALO_SMALL, IC_PADS, HALO_MAX = 1.0, 0.25, 8, 2.5
 HALO_PER_PIN = float(os.environ.get("PLACE_HALO_K", "0.15"))
+IC_EDGE_HALO = os.environ.get("PCBFLOW_IC_EDGE_HALO", "0") == "1"   # see _drop
 
 
 def halo(part):
@@ -68,6 +69,7 @@ class Grid:
         inside = pi._inside(poly, pts).reshape(self.H, self.W)
         # a courtyard may meet the edge, not cross it: one cell of margin from the boundary
         self.occ = ~inside
+        self.out = ~inside                          # the outline alone (IC_EDGE_HALO in _drop)
         self.occ = binary_dilation(self.occ, iterations=1)
         for c in cutouts:
             r = c["d"] / 2.0 + c.get("keepout", 0.0)
@@ -2325,6 +2327,16 @@ def _drop(G, parts, ref, t, rots, pl, forbid=None, near_mm=None):
             mg, gi, gj = _grow(m, ai, aj, halo(parts[ref]), G.g)
             col2 = _collide((G.occ_p[i0:i1, j0:j1] > 0).astype(np.float32), mg, gi, gj)
             free = (col < 0.5) & (col2 < 0.5)
+            # ⚠ AN IC'S HALO HOLDS AGAINST THE OUTLINE TOO (brain_board mV22-24, 2026-11-17):
+            # a courtyard may meet the edge, so U35 (TUSB321, 0.4 pitch) sat 0.7 mm off the
+            # J7 notch's wall with GND on the pin facing it -- no way out past edge_clear,
+            # and the router's plane join for that one pad failed all of GND. Its halo is
+            # the escape ring it keeps from other parts; with PCBFLOW_IC_EDGE_HALO=1 it keeps
+            # it from the board's edge as well (panel and fixed parts are not dropped here).
+            if (IC_EDGE_HALO and parts[ref].get("n_own", len(parts[ref]["pads"])) > IC_PADS
+                    and getattr(G, "out", None) is not None):
+                col3 = _collide(G.out[i0:i1, j0:j1].astype(np.float32), mg, gi, gj)
+                free &= col3 < 0.5
             if not free.any():
                 continue
             fi, fj = np.nonzero(free)

@@ -219,7 +219,7 @@ class FastenerSpec:
 # by fitted_insert()). Cut every pocket with fitted_insert_cutter(spec, ..., mode) and draw every
 # insert with fitted_insert(spec, ...): never a hand-rolled cylinder.
 #   HEAT_SET  the insert drops into its pocket and the iron melts it home: spec.pilot_d
-#             (validated: M4 6.1 round / 5.7 teardrop; M3 4.8 round, the M4 rule on its 4.7).
+#             (validated: M4 6.1 round / 5.7 teardrop; M3 4.75 round: 4.8 nearly perfect, bench 2026-11-17).
 #   NUT       slid in by hand, never melted, the screw pulls it onto a face: insert_nut_d round
 #             (validated: M3 5.5, the collar clamps 2026-11-16), as_printed_d of it sideways.
 # ════════════════════════════════════════════════════════════════════════════
@@ -259,13 +259,13 @@ M4 = FastenerSpec(
 
 
 # M3 cap screw + McMaster 94459A130 brass insert (OD 4.7 over the knurl, 4.3 long). Heat-set it
-# drops into a 4.8 round pocket (user, 2026-11-17: the 4.0 pilot "much too small"; the M4 rule);
+# drops into a 4.75 round pocket (user, 2026-11-17: the 4.0 pilot "much too small"; 4.8 "nearly perfect" -- 0.05 under it, the guide end still slides in and the knurl bites a touch more);
 # as a nut it slides into 5.5 round, 5.1 teardrop (user, 2026-11-16, the collar clamps).
 M3 = FastenerSpec(
     name="M3", screw_d=3.0, pitch=0.5,
     selftap_d=3.2, shaft_clr_d=3.7, shaft_clr_td_d=3.4,   # printed: 3.6 round gripped the screw
                                                         # (bench 2026-11-17); 3.4 sideways is free
-    insert_pilot_d=4.8, insert_depth=4.3, insert_l=4.3, insert_bore_d=3.0,   # the bore at the
+    insert_pilot_d=4.75, insert_depth=4.3, insert_l=4.3, insert_bore_d=3.0,   # the bore at the
                                     # screw's major: a drawn screw through it does not overlap
     boss_prot=5.0, insert_od=4.7, insert_nut_d=5.5,
     head_recess_d=None, head_recess_h=None,
