@@ -2185,7 +2185,7 @@ This supersedes the collar B jam nut and the M4 housing bolts in the notes above
 - **Anchor collars, ties and rod (2026-11-16; replaces the housing's one-bead sleeves round the ties):**
   - **Collars print on the 0.8 nozzle, with walls 0.8 to 1.6 in places** (user 2026-11-16: those print fine). 1.6 cannot be had on them: the boss on the bearing's inner race is 0.9 at best (the race's land, Ø10.4, round the thread's Ø8.6). Every wall is at least 0.8. Ø24.8 x 11 long, with flats top and bottom where the clamp's head pocket and insert come out, so no pocket leaves a feathered edge.
   - **Each collar's clamp is an M3 x 10 into an M3 brass insert used as a NUT, not heat-set** (no screw threads into plastic, and it comes out again). Slide the insert into its pocket from the bottom flat until it sits on its floor under the split, hold it there with a fingertip, and drive the screw from the top flat; the screw pulls it up against the floor. The pocket is a snug slide (drawn 5.1 for the insert's 4.7 knurl): if a print runs tight, a light push seats it, never heat. The head sinks in the top flat.
-  - **Ties are M3 x 35, heads on the lid's -X face** (no longer sunk in it). Each runs through an **aluminium round spacer, OD 4.5 / ID 3.2, 13 long** (McMaster 94669A107), from the housing's lip to the anchor plate, into the plug's insert with all 4.3 of its thread. Two per string, 20 per instrument. Snug the ties, do not crank them: the spacer takes the screw's whole preload. The strings' pull goes lip -> spacers -> plate.
+  - **Ties are M3 x 35 (since 2026-11-17: M3 x 40, see below), heads on the lid's -X face** (no longer sunk in it). Each runs through an **aluminium round spacer, OD 4.5 / ID 3.2, 13 long** (McMaster 94669A107), from the housing's lip to the anchor plate, into the plug's insert with all 4.3 of its thread. Two per string, 20 per instrument. Snug the ties, do not crank them: the spacer takes the screw's whole preload. The strings' pull goes lip -> spacers -> plate.
   - **Ties per string** (direct_bench.TIES; the edge strings turn theirs out to the free side), r 15.95-16.45, inside the body's ribs behind the plate; **guide rod at 325 deg (unchanged), r 15.65** (was 15.35, now clear of collar B). The ears' rings round the ties are 1.2 (EAR_WALL); the tightest wall is strings 4, 7 and 8's plug, 1.07 between a tie's insert and the rod's seat. Searched together so every collar, rod, spacer and ear clears its neighbours, and the plugs' ears stay inside the anchor tray's folds.
   - The housing is now just the lip and the bearing's pocket.
   - Collar B turns between lip and plate: 0.8 off the lip, 1.2 off the plate.
@@ -2374,3 +2374,30 @@ The changes:
   - Where a boss is within ~0.5 of the neighbouring plug, only the half facing that plug stays at one bead.
   - This applies to strings 2, 4, 5, 6, 7 and 8, and both bosses on string 8.
   - Each widened side keeps >= 0.25 from the neighbour.
+
+## Nut stack on two long screws, plug inserts as nuts, shallower keyhead inserts (2026-11-17)
+
+- **Why:** the collar's inserts sat in loose pockets that only stop them turning, so nothing held the collar on the nut against the spring. The plug's heat-set inserts held the spring through their knurl's grip alone.
+- **Instrument nut stack** (keyhole plate, yoke, collar):
+  - Each of the three has two **ears** past the nut's flange, at 160° and 275°.
+  - Two **M3 x 40** go through all of them. The heads sit on the steel keyhole plate's +X face, and the shanks run beside the flange.
+  - Each screw ends in an **M3 insert used as a nut**, on an **M3 DIN 125 washer (Ø7 x 0.5)**. Each collar ear runs 4.6 past the stop flange beside the wall round the spring. The washer slides into a slot at the end of the collar's body and the insert into a notch in that extension, both from the side; everything +X of them is a solid 7.8 base.
+  - Each yoke ear runs on down beside the flange's rim to the collar's face (a **foot**, 3.5 = the flange's thickness), so the stack is solid plastic in compression with nothing bending. The yoke now prints **+X -> -X** (the plate's face on the bed); the bench yoke still prints -X -> +X.
+  - The flange's other holes now carry only the **pin**: one M3 x 10 at 45°, its head in the yoke's slot, its shank through the flange into a blind hole in the collar. It only stops the nut turning.
+  - **Assembly order:**
+    1. Screw the collar onto the spring and line it up on the nut.
+    2. Drop the pin in through the flange.
+    3. Fit the yoke and the plate.
+    4. Slide a washer and then an insert into each collar ear's slot.
+    5. Run the M3 x 40s in.
+  - Tighten the screws **snug**: preload above the loads only creeps away, and the spring never lets the joint go slack.
+- **Plug ties:** now **M3 x 40**. Each plug insert drops down a Ø4.8 bore from its ear's +X face onto a 5.6 floor and works as a nut, with the full 4.3 of thread. To pull out it would have to punch through the floor.
+- **Keyhead:** every M4 heat-set insert now sits only as deep as the lightest string needs: its mouth is 1.0 under the head as that string clamps. The side screws' recess went from 6.5 to 4.9 deep. The height screws' recesses went from 9.5 to 7.5 (row 0) and 6.5 (row 1). The screws, the heads and the bed face did not move.
+- **Wood bench (the screws on hand, may creep):**
+  - **Yoke:** the M3 x 30s run through the plate, the yoke and the flange's 45° / 225° holes into the collar's inserts, as before.
+  - **Collar to yoke:** an M3 x 20 per ear pair. The head goes on the collar ear and the shank into an insert used as a nut in a slot in the yoke ear. No washers, no spacers.
+  - **Plug:** keeps its heat-set inserts flush in the -X face, with **M3 x 30** ties, their heads sunk 3.3 in the bench lid (lid face to plug face is 30).
+- **New hardware for the instrument:** M3 x 40 (40: the ties and the stack), M3 DIN 125 washers (20), and M3 x 10 (+10 pins). The instrument no longer uses M3 x 35 or M3 x 30 (the bench keeps its 30s: plate screws and plug ties). M3 lengths on the instrument: 10, 20, 40 (the M3 x 12 was the plank bench's coupler clamp).
+- **Reprint:**
+  - **Bench:** the collar, the yoke (`pctg/collar.step`, `petg-gf/yoke.step` in coupons/woodbench) and the keyhead.
+  - **Instrument:** every collar, yoke, plug and keyhead, and the laser-cut keyhole plate (now with ears).

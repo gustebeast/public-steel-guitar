@@ -111,7 +111,7 @@ PARTS = {
     lambda: heal(_m("spring_saw_jig").body()),
     "tools/spring_saw_jig.step",
     "TOOL — hacksaw jig for cutting each 20 in length of the nut spring stock (McMaster 9665K36) into 42-coil pieces (direct_bench.SPRING_COILS, 97.0) with one Quick-Grip and no vise or screws: one straight cut square to the axis parts the close-wound spring along one turn, its flat end butting the stop for the next piece. The guide rod jig's sibling: the stock rests in a diamond-tunnel guide -X of a 1.3 saw slot (McMaster 6927A16), the piece in a supported 90 deg V trough out to an end stop at 97.0 from the slot's +X face, clamped next to the slot through the LEADSCREW JIG'S CAP (saw_jig_cap, riding the spring on its notch's edges). PETG-GF, printed as drawn (table face on the bed)"),
-    "keyhole_plate": (lambda: _m("direct_bench").keyhole_plate(), "steel/keyhole_plate.step", "LASER-CUT 304 STAINLESS, 4 mm, x10, the nut plates' sheet (JLCCNC, no finish): the direct-drive yoke's roof. The string's ball end bears on it; two Ø3.4 CLEAR holes (no tapping): the M3 x 30s go in from +X, heads on this plate, through the yoke into the collar's brass inserts. Not printed"),
+    "keyhole_plate": (lambda: _m("direct_bench").keyhole_plate(), "steel/keyhole_plate.step", "LASER-CUT 304 STAINLESS, 4 mm, x10, the nut plates' sheet (JLCCNC, no finish): the direct-drive yoke's roof. The string's ball end bears on it; two EARS past the nut's flange, each with a Ø3.4 CLEAR hole (no tapping): the stack's M3 x 40s go in from +X, heads on this plate, through the yoke's ears beside the flange into inserts used as nuts in the collar's ears. Not printed"),
 }
 # ONE PRINT, TWO FILAMENTS, ONE FILE (user, 2026-11-03). A part named here is a body of
 # the part it maps to: the two share a STEP, each its own named product, so Bambu loads
@@ -768,8 +768,8 @@ for _base, _up, _why in (
                                        "holes and the boss); split through, the clamp insert from the bottom flat"),
         ("plug", DB_.PLUG_UP, "direct_bench.PLUG_UP -- prints -X -> +X; cones under the stop "
                               "flange and the insert pocket, the screw holes cut through the teeth"),
-        ("yoke", DB_.YOKE_UP, "direct_bench.YOKE_UP -- prints -X -> +X; the nut-rim register "
-                              "under a cone"),
+        ("yoke", DB_.YOKE_UP, "direct_bench.YOKE_UP -- prints +X -> -X, the plate's face on the bed: "
+                              "the ears' feet grow up last, the nut-rim register widens going up"),
         ("collar_b", DB_.COLLAR_B_UP, "direct_bench.COLLAR_B_UP -- collar A's part turned end for "
                                       "end: the same print, boss last"),
         ("housing", DB_.HOUSE_UP, "direct_bench.HOUSE_UP -- prints -X -> +X: the pocket's mouth on "

@@ -461,9 +461,15 @@ POCKET_X0 = PLATE_X0 - TAIL_W                    # the tail channel's -X wall
 # stock length that still does its job, so the bed face comes in as far as it can. Every position is
 # taken to carry the heaviest gauge (G_ENVELOPE) for where the heads end up; the length must still let
 # the screw clamp the LIGHTEST string we fit (its tip goes furthest +X) without the head bottoming.
-SS_MOUTH_X = POCKET_X0 - D.MIN_WALL_2P - M4.insert_depth       # the recess floor
+_SS_MOUTH_DEEP = POCKET_X0 - D.MIN_WALL_2P - M4.insert_depth   # the deepest the heat-set may go
 SS_SCREW_L = min(L for L in D.M4_BUTTON_STOCK_L
-                 if L >= _ss_tip_x(min(D.STRING_GAUGE)) - SS_MOUTH_X + SS_HEAD_GAP)
+                 if L >= _ss_tip_x(min(D.STRING_GAUGE)) - _SS_MOUTH_DEEP + SS_HEAD_GAP)
+# ...BUT SEATED NO DEEPER THAN IT NEEDS (user, 2026-11-17: "Deeper inserts are harder to install and
+# uninstall. We only need it to go deep enough such that we avoid bottoming it out when tightening the
+# smallest gauge wire we support"): the mouth (the recess floor) SS_HEAD_GAP under the head as it
+# clamps the lightest string, the screw's tip furthest in. 1.6 shallower than the deepest.
+SS_MOUTH_X = _ss_tip_x(min(D.STRING_GAUGE)) - SS_SCREW_L + SS_HEAD_GAP
+assert SS_MOUTH_X <= _SS_MOUTH_DEEP + 1e-9, "the side screw's heat-set past its two-bead wall"
 _SS_HEAD_BACK = _ss_tip_x(G_ENVELOPE) - SS_SCREW_L - M4_BUTTON_HEAD_H   # a head's outer face, clamped
 # THE LANES (user: hand threading): the pocket carried out through the -X face, above LANE_FLOOR, so a
 # finger can reach under the rod either side. The recesses sit below them with a two-bead wall.
@@ -551,9 +557,16 @@ assert HS_TIP_MAX[1] <= RAMP_X1 - D.MIN_WALL, "the lower row runs off the wedge'
 # stock length whose head, screwed all the way in, stays HS_HEAD_GAP off the mouth
 HS_HEAD_GAP = SS_HEAD_GAP
 HS_SLOT_X0 = PLATE_X0 - PLATE_CLR               # the slot's -X wall, where the bore breaks in
-HS_MOUTH_X = (HS_SLOT_X0 - D.MIN_WALL_2P - M4.insert_depth,) * 2
-HS_SCREW_L = tuple(min(L for L in D.M4_BUTTON_STOCK_L if L >= HS_TIP_MAX[r] - HS_MOUTH_X[r] + HS_HEAD_GAP)
+_HS_MOUTH_DEEP = HS_SLOT_X0 - D.MIN_WALL_2P - M4.insert_depth
+HS_SCREW_L = tuple(min(L for L in D.M4_BUTTON_STOCK_L if L >= HS_TIP_MAX[r] - _HS_MOUTH_DEEP + HS_HEAD_GAP)
                    for r in (0, 1))
+# ...SEATED NO DEEPER THAN THE LIGHTEST STRING NEEDS (user, 2026-11-17, as the side screws': "Ditto for
+# the insert for the screw that sets the insert height"): the head HS_HEAD_GAP off the mouth as the
+# shelf holds the lightest gauge to the rod -- not screwed on HS_ROD_OVERLAP into it, which only the
+# plate's shape needs. 2.0 (row 0) and 3.0 (row 1) shallower than the deepest.
+HS_TIP_LIGHT = tuple(_tip_x(ROD_Z - ROD_D / 2.0 - min(D.STRING_GAUGE), r) for r in (0, 1))
+HS_MOUTH_X = tuple(HS_TIP_LIGHT[r] - HS_SCREW_L[r] + HS_HEAD_GAP for r in (0, 1))
+assert all(m <= _HS_MOUTH_DEEP + 1e-9 for m in HS_MOUTH_X), "a height screw's heat-set past its wall"
 # clamped on the heaviest gauge (the shelf lowest, the tip furthest -X), a head's outer face
 _HS_HEAD_BACK = min(_tip_x(ROD_Z - ROD_D / 2 - G_ENVELOPE, r) - HS_SCREW_L[r] - M4_BUTTON_HEAD_H for r in (0, 1))
 # THE BED FACE (v2: the direct body has no mortise grid to keep a pitch for): flush with the heads that
