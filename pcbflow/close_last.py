@@ -34,6 +34,14 @@ wx.DisableAsserts()                             # NO MODAL DIALOGS IN A BUILD ST
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import repair_search as RS   # noqa: E402
+import time as _time_mod    # noqa: E402
+# ⚠ THE BUDGET RUNS ON THIS PROCESS'S CPU TIME, NOT THE WALL CLOCK (brain_board mV28,
+# 2026-11-18): with three jobs on the machine close_last ran out of its 1200 s after half its
+# list -- 16 nets left open that a quiet run would have tried. The router moved to CPU time
+# for the same reason (negotiate._clock, 2026-11-14): the same board does the same work
+# whatever runs beside it. Nothing here runs in a subprocess, so CPU time is its own work.
+# CLOSE_LAST_CPU_CLOCK=0 restores the wall clock.
+_clock = _time_mod.process_time if os.environ.get("CLOSE_LAST_CPU_CLOCK", "1") == "1" else _time_mod.time
 
 LAYERS = ("F.Cu", "In2.Cu", "B.Cu")
 WIDTH = 0.2                   # the board's own signal width: a QFN pad row is on 0.4
@@ -612,7 +620,7 @@ def _rip_one(board, stem, net, model, layers, layer_id, named, gap, tries, close
         soft.vias = [v for v in m.vias if softnet(v["net"])]
         soft.pads, soft.edges, soft.keepouts = [], [], []
         for (l1, p1), (l2, p2), step in ends:
-            if _time.time() > deadline:
+            if _clock() > deadline:
                 return None
             r = RS.maze3d(hard, layers, p1, l1, p2, l2, w=w, step=step, reach=REACH,
                           soft=soft, soft_cost=sc)
@@ -675,7 +683,7 @@ def _rip_one(board, stem, net, model, layers, layer_id, named, gap, tries, close
     # join skipped the maze and went straight to an unbounded search. Twelve take-up / put-back
     # rounds on CAN1_TX ran finish to 40186 s (11 h) for the same 1 unconnected. Past the
     # deadline nothing new is searched: the rip is given up and the board put back.
-    if _time.time() > deadline:
+    if _clock() > deadline:
         print("close_last: %s -- out of time before the way through was looked for" % net)
         return board, 0
     res = search(model, tries, WIDTH)
@@ -715,12 +723,12 @@ def _rip_one(board, stem, net, model, layers, layer_id, named, gap, tries, close
                        key=lambda ab: math.hypot(ab[0][2][0] - ab[1][2][0], ab[0][2][1] - ab[1][2][1]))
             r2 = None
             for step in (RS.MAZE_STEP, 0.05):
-                if _time.time() > deadline:
+                if _clock() > deadline:
                     break
                 r2 = RS.maze3d(mb, layers, a[2], a[1], b[2], b[1], w=wb, step=step, reach=REACH)
                 if r2 is not None:
                     break
-            if r2 is None and _time.time() > deadline:
+            if r2 is None and _clock() > deadline:
                 print("close_last: %s -- out of time joining it again round %s" % (B, net))
                 stuck, ok = B, False
                 break
@@ -762,10 +770,10 @@ def _rip_one(board, stem, net, model, layers, layer_id, named, gap, tries, close
     # the net that would not join goes first next time, before the others take its room
     # (RR_8: SWCLK, joined last, found every way out filled by the three joined before it);
     # if it is already first it stays where it is and the way through is looked for again
-    if stuck and stuck not in first and len(first) < 3 and _time.time() < deadline:
+    if stuck and stuck not in first and len(first) < 3 and _clock() < deadline:
         return _rip_one(board, stem, net, model, layers, layer_id, named, gap, tries, close_w,
                         deadline, stay, first + (stuck,), sc)
-    if stuck and len(stay) < 4 and _time.time() < deadline:
+    if stuck and len(stay) < 4 and _clock() < deadline:
         return _rip_one(board, stem, net, model, layers, layer_id, named, gap, tries, close_w,
                         deadline, stay | {stuck}, first, sc)
     return board, 0
@@ -811,12 +819,12 @@ def main(stem):
     # CLOSE_LAST_BUDGET_S (default 20 minutes) the nets not yet reached are left open
     # and named.
     import time as _time
-    _t0 = _time.time()
+    _t0 = _clock()
     _budget = float(os.environ.get("CLOSE_LAST_BUDGET_S", "1200"))
     for _i, (net, la, pa, ta, lb, pb, tb, za, zb) in enumerate(todo):
-        if _time.time() - _t0 > _budget:
+        if _clock() - _t0 > _budget:
             print("close_last: out of time after %.0f s -- left open: %s"
-                  % (_time.time() - _t0, ", ".join(t[0] for t in todo[_i:])))
+                  % (_clock() - _t0, ", ".join(t[0] for t in todo[_i:])))
             break
         # zone to zone: an island nothing goes through, joined to the plane by a via
         # ⚠ ONCE PER NET, THEN ROUTED (optical fold, 2026-11-11): every later zone-to-zone
@@ -928,7 +936,7 @@ def main(stem):
         for _i, width in enumerate(_ladder):
             for (la, pa), (lb, pb), step in tries:
                 # the clock again: one net's pairings can outlast the whole budget
-                if _time.time() - _t0 > _budget:
+                if _clock() - _t0 > _budget:
                     break
                 res = RS.maze3d(model, layers, pa, la, pb, lb, w=width, step=step,
                                 reach=REACH)
@@ -942,13 +950,13 @@ def main(stem):
         if res is None:
             print("close_last: %s -- no path between (%.2f, %.2f) and (%.2f, %.2f)"
                   % (net, pa[0], pa[1], pb[0], pb[1]))
-            if _time.time() - _t0 < _budget:
+            if _clock() - _t0 < _budget:
                 # then a way that keeps clear of other nets' track wherever it can: a longer
                 # one that takes up less leaves the nets taken up more room to join again
                 for sc in (1.0, 4.0):
                     board, ok = _rip_one(board, stem, net, model, layers, layer_id, named, gap,
                                          tries[:4] + tries[-2:], close_w, _t0 + _budget, sc=sc)
-                    if ok or _time.time() - _t0 > _budget:
+                    if ok or _clock() - _t0 > _budget:
                         break
                 made += ok
             continue

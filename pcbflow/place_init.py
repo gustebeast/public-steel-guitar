@@ -1324,6 +1324,7 @@ POUR_PAD_MM2 = 1.0  # mm2 of foreign pad inside a pour corridor priced as one pa
 PAIR_W = 1.0        # mm of broken soft rule per mm2 of foreign pad in a diff pair's corridor (PCBFLOW_PAIR_CORRIDOR): a step aside, never a rule trade -- at POUR_W, U13 left its hard near-J1 rule by 14.5 mm to clear 5 mm2 of USBA's corridor (mV11)
 PAIR_DEMAND_W = 4.0  # mm of net per mm2 of wiring demand a pair's hop crosses (its corridor width x RUDY along it)
 DEMAND_CELL = 1.0   # mm: the RUDY demand map's cell
+SPREAD_STEPS = (2.0, 4.0)  # mm a crowded part is also tried downhill of the crowd map (PCBFLOW_SPREAD)
 DEMAND_WIRE = 0.4   # mm of board a wire takes (track + clearance) in the demand map
 JOINT_MAX = 4       # parts turned together at most (4^4 = 256 rotation combinations)
 JOINT_NEAR = 3.0    # mm a jointly turned part may slide off its spot to fit its new turn
@@ -1581,10 +1582,74 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
     # paid RULE_W x POUR_W = 250 per foreign pad, a rule-less one 25, so adding any soft rule
     # made a part 10x more pour-averse as a side effect. Every part now pays the ruled price
     # (the one C246 showed the pass already weighs rules against).
+    # ⚠ NOTHING PUSHED PARTS OUT OF A CROWD (brain_board mV25, 2026-11-17) -- PCBFLOW_SPREAD=1
+    # while measured. Every term above pulls a part toward its nets; the global plan then
+    # overflowed F.Cu at J7, U38 and U6 / R17 / R18 while ~1100 mm2 along the bottom edge held
+    # nothing (the user saw it on the render). The crowd map is RUDY over every net in scope
+    # (each spreads DEMAND_WIRE x its half-perimeter over its box); a part pays CROWD_W x the
+    # demand above the board's SPREAD_PCT percentile under its courtyard, and a crowded part
+    # is also tried SPREAD_STEPS mm downhill on the map, not only at its nets' optimum.
+    # ⚠ MEASURED AND NOT KEPT (brain_board mV31, --to-routability, global plan overflow):
+    # off 8.49 over 25 squares; W 2 / 85th 9.57 over 23; W 1 / 92nd 14.69 over 33. RUDY is
+    # wire density, and this board's overflow is F.Cu pin escape at a few parts (J7's ESD
+    # clamps, U209, U38): the term moved each jam somewhere else. Leave it off; a spreading
+    # term that works will have to price escape room at the pins, not box demand.
+    spread = os.environ.get("PCBFLOW_SPREAD") == "1"
+    crowd_w = float(os.environ.get("PCBFLOW_SPREAD_W", "2.0"))
+    crowd_pct = float(os.environ.get("PCBFLOW_SPREAD_PCT", "85"))
+    cmap = {}
+
+    def refresh_crowd():
+        if not spread:
+            return
+        pts_all = np.array([p for r in pl for _, p in world(r)] or [[0.0, 0.0]])
+        lo = pts_all.min(axis=0) - 2.0
+        hi = pts_all.max(axis=0) + 2.0
+        nx_ = int(np.ceil((hi[0] - lo[0]) / DEMAND_CELL))
+        ny_ = int(np.ceil((hi[1] - lo[1]) / DEMAND_CELL))
+        g = np.zeros((ny_, nx_))
+        for nm in scope:
+            pts = [p for r in members[nm] if r in pl for n2, p in world(r) if n2 == nm]
+            if len(pts) < 2:
+                continue
+            a_ = np.array(pts)
+            x0, y0 = a_.min(axis=0) - 0.5
+            x1, y1 = a_.max(axis=0) + 0.5
+            i0, i1 = int((y0 - lo[1]) // DEMAND_CELL), int((y1 - lo[1]) // DEMAND_CELL) + 1
+            j0, j1 = int((x0 - lo[0]) // DEMAND_CELL), int((x1 - lo[0]) // DEMAND_CELL) + 1
+            g[i0:i1, j0:j1] += DEMAND_WIRE * ((x1 - x0) + (y1 - y0)) / ((x1 - x0) * (y1 - y0))
+        nz = g[g > 0]
+        thr = float(np.percentile(nz, crowd_pct)) if nz.size else 0.0
+        gy, gx = np.gradient(g)
+        cmap.update(g=g, lo=lo, thr=thr, gx=gx, gy=gy)
+
+    def _cbox(ref):
+        c = np.asarray(pi.Placed(parts, pl).crtyd(ref), float)
+        g, lo = cmap["g"], cmap["lo"]
+        i0 = int(np.clip((c[:, 1].min() - lo[1]) // DEMAND_CELL, 0, g.shape[0] - 1))
+        i1 = int(np.clip((c[:, 1].max() - lo[1]) // DEMAND_CELL, 0, g.shape[0] - 1)) + 1
+        j0 = int(np.clip((c[:, 0].min() - lo[0]) // DEMAND_CELL, 0, g.shape[1] - 1))
+        j1 = int(np.clip((c[:, 0].max() - lo[0]) // DEMAND_CELL, 0, g.shape[1] - 1)) + 1
+        return i0, i1, j0, j1
+
+    def crowd_pen(ref):
+        if not spread or "g" not in cmap:
+            return 0.0
+        i0, i1, j0, j1 = _cbox(ref)
+        ex = cmap["g"][i0:i1, j0:j1] - cmap["thr"]
+        return crowd_w * float(np.clip(ex, 0.0, None).sum()) * DEMAND_CELL * DEMAND_CELL
+
+    def downhill(ref):
+        """unit vector away from the crowd at ref's courtyard, or None"""
+        i0, i1, j0, j1 = _cbox(ref)
+        v = -np.array([cmap["gx"][i0:i1, j0:j1].mean(), cmap["gy"][i0:i1, j0:j1].mean()])
+        n = float(np.hypot(*v))
+        return v / n if n > 1e-9 else None
+
     def penalty(ref):
         pp_, pd_ = pair_pen(ref)
         if not rel.get(ref):
-            return RULE_W * (pour_pen(ref) + pp_) + pd_ + tangle_pen(ref)
+            return RULE_W * (pour_pen(ref) + pp_) + pd_ + tangle_pen(ref) + crowd_pen(ref)
         P = pi.Placed(parts, pl)
         v = pour_pen(ref) + pp_
         for r in rel[ref]:
@@ -1593,7 +1658,7 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
                     v += r.get("weight", 1.0) * max(0.0, -sl)
             except (KeyError, ValueError):
                 pass
-        return RULE_W * v + pd_ + tangle_pen(ref)
+        return RULE_W * v + pd_ + tangle_pen(ref) + crowd_pen(ref)
 
     def total():
         return cost(scope)
@@ -1741,6 +1806,7 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
     fixed_local = set(pl) - set(refs)
     for _ in range(passes):
         refresh_demand()
+        refresh_crowd()
         order = sorted(refs, key=lambda r: -cost({nm for nm, _ in pads[r]} & scope))
         changed = False
         for ref in order:
@@ -1770,10 +1836,16 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
             # 1.7 mm breach weighed 17 against tens of mm of net -- so rot 0 stayed. Now a part
             # with a stranded satellite is tried in place, and turns rank by (stranded, cost).
             s0 = stranded(ref)
+            crowded = spread and crowd_pen(ref) > 0.0
             if np.hypot(t[0] - x, t[1] - y) < 0.5 and len(pads[ref]) > 2:
-                if not s0:
+                if not s0 and not crowded:
                     continue
                 t = np.array([x, y])
+            targets = [t]
+            if crowded:
+                u_ = downhill(ref)
+                if u_ is not None:
+                    targets += [np.array([x, y]) + d_ * u_ for d_ in SPREAD_STEPS]
             # ⚠ AN ANCHOR MOVES WITH ITS SATELLITES (output_panel, 2026-11-11): the buck's
             # SW node stayed 42 mm because U5 and L1 each carry caps whose rules a lone move
             # would break; lifted as a group -- the part, then each cap re-seated at its pin
@@ -1802,7 +1874,7 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
             # other soft-rule gains -- L1 ended 0.67 mm from Y1. Moves keep forbid zones.
             fz = _apart_forbid(G, parts, pl, ref, rules)
             fr = inreg.get(ref) if fz is None else (fz if inreg.get(ref) is None else fz | inreg.get(ref))
-            for rr in rots(ref, a):
+            for t, rr in [(t_, r_) for t_ in targets for r_ in rots(ref, a)]:
                 ok = _drop(G, parts, ref, t, [rr], pl, fr)
                 placed_g = [ref] if ok else []
                 if ok:
