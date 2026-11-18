@@ -343,7 +343,7 @@ def _project_guard(stem):
 
 
 def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, keep_widths=False, singles=False,
-         apply_swaps=False):
+         apply_swaps=False, place_only=False):
     d = os.path.abspath(d)
     stem = _stem(d)
     _project_guard(stem)
@@ -559,6 +559,12 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
         floor.append(w_)
     if len(nb) > 12:
         floor.append("NEAR BROKEN (hard): %d more" % (len(nb) - 12))
+    if place_only:
+        # --place-only: a placement A/B across boards (a placer change's evidence) needs
+        # NO ROOM, BROKEN and NEAR BROKEN, not a route -- minutes per board instead of an hour
+        say("PLACE ONLY: %d placed, %d with no room, %d hard near rule(s) broken%s"
+            % (len(pl), len(room), len(nb), (": " + " | ".join(x[1] for x in nb[:6])) if nb else ""))
+        return 0
     wlines = _raise_widths(notes, parts, pl, keep_widths)
     for w_ in wlines:
         say("WIDTH " + w_)
@@ -874,12 +880,14 @@ def main(argv):
                     help="report a stated net width under its power path's need instead of raising it")
     ap.add_argument("--auto-singles", action="store_true",
                     help="also add auto_singles (a test pad `near` its driver pin) -- off by default")
+    ap.add_argument("--place-only", action="store_true",
+                    help="stop after placement and its rule checks (no cells, layout or route)")
     ap.add_argument("--apply-swaps", action="store_true",
                     help="apply the proposed pair channel swaps (SWAP lines) to this run's netlist and parts "
                          "-- the generator must then carry them")
     a = ap.parse_args(argv)
     return flow(a.dir, os.path.abspath(a.intent), not a.no_auto, a.soft_forbid, a.skip_finish, a.fold_post,
-                a.keep_widths, a.auto_singles, a.apply_swaps)
+                a.keep_widths, a.auto_singles, a.apply_swaps, a.place_only)
 
 
 if __name__ == "__main__":
