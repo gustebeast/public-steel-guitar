@@ -2408,3 +2408,10 @@ The changes:
 - It is now **Ø5.61 (rod + 0.85)**: the measured 1/4" snug fit for an upright hole on the 0.8 nozzle. Small holes shrink at least as much, so this is a starting point, not a measured fit at Ø4.76.
 - The three crush ribs over the last 4 mm still reach 0.15 inside the rod's circle, so the rod stays put.
 - Printed in plain PLA instead of PETG-GF, the hole may come out a touch looser (PLA shrinks less). The ribs hold the rod either way.
+
+## Guide rod float, collar slot and endplate head holes (2026-11-18)
+
+- **Collar slot:** the rod's slot in the collar is now **rod + 0.1 across** (was + 0.2): less turn before it locks. Its float along the radius is **+-0.4** (was +-1.0): enough for print error between the rod's seats and the screw's axis, without bending the screw sideways.
+- **Endplate head holes:** stadiums +-0.4 along the rod's radius, **Ø6.95 across** (the head's 5.5 + 0.6 + 0.85 for the upright hole's shrink). A hole clear of the window has a 0.8 x 45 deg funnel at its mouth; a hole that meets the window opens into it in one smooth cut.
+- **Motor plate:** a **4 mm boss** under each motor M3 (the motor's holes are shallow). Motor screws are **M3 x 12**. On the bench, a printed **4 mm spacer** (`wb_motor_spacer`, x4) under each head does the same.
+- Reprint for the bench: `collar`, `wb_endplate`, `wb_motor_spacer` x4.

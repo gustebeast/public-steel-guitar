@@ -204,7 +204,9 @@ GUIDE_ANG_1 = GUIDE_ANG                             # string 1: as the rest
 def guide_ang(i: int) -> float:
     return GUIDE_ANG_1 if i == 0 else GUIDE_ANG
 GUIDE_SEAT = GUIDE_D + 0.2                          # its two seats, a slip fit (it is trapped)
-GUIDE_SLOT = GUIDE_D + 0.2                          # the slot across, the rotation lock
+GUIDE_SLOT = GUIDE_D + 0.1                          # the slot across, the rotation lock (user,
+                                                    # 2026-11-18: +0.2 printed with play enough to
+                                                    # turn before it grips; straight upright walls)
 # THE ENDPLATE'S ROD SEAT (user, 2026-11-18: GUIDE_SEAT's +0.2 printed too small to take the rod).
 # A round hole up the print (the endplate prints along X) on the 0.8 nozzle: the measured 1/4"
 # fit (memory polymaker-hole-fit) is shaft + 0.85 for a snug slide in GF, and a hole this small
@@ -213,7 +215,10 @@ GUIDE_SLOT = GUIDE_D + 0.2                          # the slot across, the rotat
 EP_ROD_SEAT = GUIDE_D + 0.85                        # 5.61
 PLUG_GUIDE_SEAT = GUIDE_SEAT + 0.4                   # the plug's: Ø5.36 (user, 2026-11-17: plug_9 would
                                                     # not go on the rod at all; +0.2 still too tight)
-GUIDE_FLOAT = 1.0                                   # the slot's play along the radius, each way
+GUIDE_FLOAT = 0.4                                   # the slot's play along the radius, each way:
+                                                    # print error between the rod's seats and the
+                                                    # screw's axis (was 1.0; user, 2026-11-18: less,
+                                                    # so the endplate's head slots stay small)
 GUIDE_WALL = 3 * 0.8                                # round the slot and the seat: three beads
 TAB_L = 8.0                                         # the tab along x: the slot's bearing length
 
@@ -224,6 +229,9 @@ def at_ang(a: float, r: float = NUT_PCD / 2):
 
 
 M3_HEAD = (5.5, 3.0)                                # SHCS head diameter, height
+EP_HEAD_HOLE = M3_HEAD[0] + 0.6 + 0.85              # 6.95: the M3 heads' holes, 0.3 round the head
+                                                    # as printed (upright, the same +0.85 rule)
+EP_HEAD_LEAD = 0.8                                  # their 45 deg lead-in, a bead
 M3_L = 12.0
 # RESTRINGING (user, 2026-11-09): a KEYHOLE in the yoke's roof. The ball end goes in through a
 # hole KEY_DROP under the axis, then slides UP a slit only the string fits through, to sit on the
@@ -679,6 +687,12 @@ def x_collar_a():
 
 
 PLATE_T = 4.0
+# THE MOTOR SCREWS' BOSSES (user, 2026-11-18): the motor's M3 holes are shallow, so a screw through
+# the bare 4 plate bottoms out before it clamps. Each screw point stands MPLATE_BOSS proud of the
+# plate's +X face (the head's side), the M3 x 12 (MOTOR_M3_L) then reaching 4 into the motor.
+MPLATE_BOSS = 4.0
+MPLATE_BOSS_D = 5.5 + 4 * 0.8                       # the head's Ø5.5 and two beads round it
+MOTOR_M3_L = 12.0
 STATION_GAP = 1.3
 STATION_P = M_BACK + CPL_X[1] + STATION_GAP         # 77.0: no bearing block any more
 # THE NEAREST STATION'S COUPLER IS ITS COLLAR A (user, 2026-11-15): the coupler already grips the
@@ -1367,6 +1381,22 @@ PLUG_UP = (1.0, 0.0, 0.0)                           # prints -X -> +X: the neck'
                                                     # the teeth last (user, 2026-11-14)
 
 
+def _hull2d(pts: list) -> list:
+    """The convex hull of 2D points, counter-clockwise (monotone chain)."""
+    pts = sorted(set((round(x, 6), round(y, 6)) for x, y in pts))
+
+    def half(seq):
+        h = []
+        for p in seq:
+            while len(h) >= 2 and ((h[-1][0] - h[-2][0]) * (p[1] - h[-2][1])
+                                   - (h[-1][1] - h[-2][1]) * (p[0] - h[-2][0])) <= 0:
+                h.pop()
+            h.append(p)
+        return h
+    lo, hi = half(pts), half(pts[::-1])
+    return lo[:-1] + hi[:-1]
+
+
 def _cone_x(r0: float, r1: float, x0: float, x1: float, y: float, z: float) -> cq.Workplane:
     """A frustum along +X from radius r0 at x0 to r1 at x1."""
     return cq.Workplane("XY").add(cq.Solid.makeCone(r0, r1, x1 - x0, pnt=cq.Vector(x0, y, z),
@@ -2038,11 +2068,15 @@ def _mplate(i: int) -> cq.Workplane:
     extra = 1.2 if STATION[i] in SLOT_STATIONS else 0.0
     x0 = xr - M_FACE
     out = box_at(PLATE_T, D.MOTOR_SQ, D.MOTOR_SQ, x=x0 + PLATE_T / 2, y=y, z=z)
+    for sy in (1, -1):                                       # the screws' bosses (MPLATE_BOSS)
+        for sz in (1, -1):
+            out = out.union(cyl_x(MPLATE_BOSS_D + extra, MPLATE_BOSS + 0.01, x0 + PLATE_T - 0.01,
+                                  y=y + sy * NEMA17_HOLES / 2, z=z + sz * NEMA17_HOLES / 2))
     out = out.cut(cyl_x(D.NEMA17_PILOT_D + 0.6 + extra, 10, x0 - 1, y=y, z=z))
     for sy in (1, -1):
         for sz in (1, -1):
-            out = out.cut(cyl_x(M3H.CLR_PRINTED_D + extra, 10, x0 - 1, y=y + sy * NEMA17_HOLES / 2,
-                                z=z + sz * NEMA17_HOLES / 2))
+            out = out.cut(cyl_x(M3H.CLR_PRINTED_D + extra, 10 + MPLATE_BOSS, x0 - 1,
+                                y=y + sy * NEMA17_HOLES / 2, z=z + sz * NEMA17_HOLES / 2))
     return out
 
 
@@ -2620,20 +2654,39 @@ def _endplate(rods: bool = True, only: int = None, bench: bool = False) -> cq.Wo
         w = w.cut(box_at(ROD_PLATE[1] - xj + 2, 2 * LANE_HW, hi - lo, x=(xj + ROD_PLATE[1]) / 2,
                          y=y_of(i), z=za_i + (lo + hi) / 2))
         # THE M3 HEADS' HOLES (user, 2026-11-12, trial: heads on the keyhole plate's +X face): the
-        # plate still bottoms out on the rod plate, the heads (3 tall) sunk in it -- round
-        # (along the print), 0.3 round the head, right through the plate
+        # plate still bottoms out on the rod plate, the heads (3 tall) sunk in it, right through
+        # the plate. EP_HEAD_HOLE across (0.3 round the head, plus the upright hole's shrink), and
+        # a STADIUM +-GUIDE_FLOAT along the guide rod's radius (user, 2026-11-18): the collar's tab
+        # lets the whole stack float that far that way, so the heads do too. A 45 deg LEAD-IN at
+        # the mouth steers them in.
+        ga = guide_ang(i)
+        uy, uz = at_ang(ga, 1.0)
+        hd = EP_HEAD_HOLE
         for dy, dz in ((at_ang(a) for a in HOLE_ANG["m3"]) if bench
                        else (at_ang(a, HOLD_R) for a in HOLD_ANG)):     # the stack's heads
-            w = w.cut(cyl_x(M3_HEAD[0] + 0.6, ROD_PLATE[1] - xj + 2, xj - 1, y=y_of(i) + dy,
-                            z=za_i + dz))
-            # where a hole stands beside the window, the sliver between them is OPENED (user,
-            # 2026-11-12: too little plastic there to print): the hole's near half joins the
-            # window, a slot the head's width
-            yw = y_of(i) + math.copysign(LANE_HW, dy)
-            if abs(dy) - (M3_HEAD[0] + 0.6) / 2 < LANE_HW + 2 * D.BEAD and za_i + dz < za_i + WIN_Z[1]:
-                rh, yc, zc = (M3_HEAD[0] + 0.6) / 2, y_of(i) + dy, za_i + dz
-                pts = [(yc, zc + rh), (yw, zc + rh), (yw, zc - rh), (yc, zc - rh)]
-                w = w.cut(cq.Workplane("YZ", origin=(xj - 1, 0, 0)).polyline(pts).close()
+            yc, zc = y_of(i) + dy, za_i + dz
+            w = w.cut(cq.Workplane("YZ", origin=(xj - 1, yc, zc))
+                      .slot2D(2 * GUIDE_FLOAT + hd, hd, ga).extrude(ROD_PLATE[1] - xj + 2))
+            ends = [(yc + k * GUIDE_FLOAT * uy, zc + k * GUIDE_FLOAT * uz) for k in (-1, 1)]
+            # where a hole stands within two beads of the window, the sliver between them is
+            # OPENED (user, 2026-11-12: too little plastic there to print): the CONVEX HULL of the
+            # hole and the window is cut, so no knife point is left where a circle meets a side
+            # (2026-11-18: the bigger holes met the window at the corners, not only beside it)
+            wy0, wy1 = y_of(i) - LANE_HW, y_of(i) + LANE_HW
+            wz0, wz1 = za_i + WIN_Z[0], za_i + WIN_Z[1]
+            gap = min(math.hypot(max(wy0 - ey, 0.0, ey - wy1), max(wz0 - ez, 0.0, ez - wz1))
+                      for ey, ez in ends) - hd / 2
+            if gap >= 2 * D.BEAD + EP_HEAD_LEAD:      # clear of the window: the lead-in, a 45 deg
+                lead = (cq.Workplane("YZ", origin=(xj - 0.01, yc, zc))           # stadium funnel
+                        .slot2D(2 * GUIDE_FLOAT + hd + 2 * EP_HEAD_LEAD, hd + 2 * EP_HEAD_LEAD, ga)
+                        .workplane(offset=EP_HEAD_LEAD + 0.02)
+                        .slot2D(2 * GUIDE_FLOAT + hd - 0.04, hd - 0.04, ga).loft())
+                w = w.cut(lead)
+            else:                                     # opened into the window: no lead-in (its
+                rh = hd / 2                           # funnel met the hull's sides in points)
+                pts = [(ey + rh * math.cos(2 * math.pi * k / 72), ez + rh * math.sin(2 * math.pi * k / 72))
+                       for ey, ez in ends for k in range(72)] + [(wy0, wz0), (wy1, wz0), (wy1, wz1), (wy0, wz1)]
+                w = w.cut(cq.Workplane("YZ", origin=(xj - 1, 0, 0)).polyline(_hull2d(pts)).close()
                           .extrude(ROD_PLATE[1] - xj + 2))
     # the rods' BOSSES: GUIDE_WALL round each seat where it runs beside a lane (strings 4-5, 7-8
     # and 10 have ~0.9 without), to the seat's floor, then a 45 deg cone down to 0.8 of wall --

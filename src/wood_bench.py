@@ -94,7 +94,11 @@ MM_TOP = Z5 + MM_SQ / 2                          # the plate's top, as the instr
 MM_BUT_TOP = Z5 + 8.0                            # the buttresses' top: over the axis
 MM_FOOT = MM_X1 + (MM_BUT_TOP - ZB)              # their 45 deg foot
 MM_UP = (0.0, 0.0, 1.0)                          # prints base down
-MM_M3_L = 8.0                                    # M3 x 8: the plate's 4, 4 into the faceplate
+MM_M3_L = 12.0                                   # M3 x 12: a SPACER's 4 and the plate's 4, 4 into
+                                                 # the motor (user, 2026-11-18: through the bare plate
+                                                 # the 12 bottoms in the motor's shallow holes)
+MM_SPACER_L = 4.0                                # the spacers under the heads (direct_bench's
+MM_SPACER_D = (DB.MPLATE_BOSS_D, 3.4)            # MPLATE_BOSS on the instrument)
 MM_SCREWS = [(MM_X0 - TAB, Y_EDGE + TAB), (MM_X0 - TAB, MM_Y[1] - TAB),
              (MM_FOOT + TAB, Y_EDGE + TAB), (MM_FOOT + TAB, MM_Y[1] - TAB)]
 
@@ -126,14 +130,17 @@ def motor_mount() -> cq.Workplane:
 
 
 def _motor_m3s() -> list:
-    """The four M3 x 8 SHCS, heads on the plate's +X face, into the motor's faceplate."""
+    """The four M3 x 12 SHCS on their 4 mm spacers (MM_SPACER_L) over the plate's +X face, into the
+    motor's faceplate; the spacers one part each."""
     from . import motor_coupler as MC
     out = []
-    for sy in (1, -1):
-        for sz in (1, -1):
-            out.append((f"wb_face_m3_{(sy + 1) // 2}{(sz + 1) // 2}", MC.cap_screw(
-                "m3", MM_M3_L, (MM_X1 + MC.M3_HEAD[1], Y5 + sy * DB.NEMA17_HOLES / 2,
-                                Z5 + sz * DB.NEMA17_HOLES / 2), (-1, 0, 0))))
+    for k, (sy, sz) in enumerate(((1, 1), (1, -1), (-1, 1), (-1, -1))):
+        yc, zc = Y5 + sy * DB.NEMA17_HOLES / 2, Z5 + sz * DB.NEMA17_HOLES / 2
+        out.append((f"wb_face_m3_{(sy + 1) // 2}{(sz + 1) // 2}", MC.cap_screw(
+            "m3", MM_M3_L, (MM_X1 + MM_SPACER_L + MC.M3_HEAD[1], yc, zc), (-1, 0, 0))))
+        sp = DB.cyl_x(MM_SPACER_D[0], MM_SPACER_L, MM_X1, y=yc, z=zc)
+        out.append((f"wb_motor_spacer_{k}", sp.cut(DB.cyl_x(MM_SPACER_D[1], MM_SPACER_L + 2, MM_X1 - 1,
+                                                             y=yc, z=zc))))
     return out
 
 
@@ -472,7 +479,7 @@ def assembly(t: float = DB.T_OPEN) -> list:
 
 
 MATERIAL = {"wb_motor_mount": "petg-gf", "wb_anchor": "petg-gf", "wb_endplate": "petg-gf",
-            "wb_tie_spacer": "pctg", "wb_keyplate": "petg-gf",
+            "wb_tie_spacer": "pctg", "wb_keyplate": "petg-gf", "wb_motor_spacer": "petg-gf",
 
             "wb_keyhead": "petg-gf", "wb_wrap_rod": "steel", "ghost_plank": "wood",
             "wb_string": "polished", "wb_nut_plate": "stainless", "wb_nut_side_insert": "brass",
@@ -496,14 +503,15 @@ def _made(nm, w):
 
 
 PRINTS = ("wb_motor_mount", "wb_anchor", "wb_endplate", "wb_keyhead", "wb_nut_shoe", "wb_tie_spacer",
-          "wb_keyplate")
+          "wb_keyplate", "wb_motor_spacer")
 
 
 # each bench print's build direction (the comments at each part say why)
 WB_PRINT_UP = {"wb_motor_mount": MM_UP, "wb_anchor": A_UP, "wb_endplate": DB.EP_UP,
                "wb_keyhead": KH2.PRINT_UP, "wb_nut_shoe": NB2.SHOE_UP,
                "wb_tie_spacer": (1.0, 0.0, 0.0),           # standing, +X up
-               "wb_keyplate": (1.0, 0.0, 0.0)}             # flat on its -X face
+               "wb_keyplate": (1.0, 0.0, 0.0),             # flat on its -X face
+               "wb_motor_spacer": (1.0, 0.0, 0.0)}         # a ring, flat
 # the instrument's own string-6 prints the bench does NOT use: the motor mount replaces the plate
 WB_NOT_USED = ("mplate",)
 # ...and the ones it prints ITS OWN WAY (direct_bench, THE WOOD BENCH'S STACK: the screws on hand)
