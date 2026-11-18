@@ -248,8 +248,8 @@
       "qty": 100,
       "vendor": "JLCCNC (sheet metal)",
       "sku": "steel/keyhole_plate.step",
-      "order": "RE-QUOTE at 3 mm (2026-11-18: split 3 + 1 for the ball's seat). Was 100 x laser-cut 304 stainless, 4 mm, no finish, untapped: parts $34.00, instant quote read 2026-11-12. On one order with 100 nut plates ($32.00): parts $66.00 + UPS Express Saver $56.66 = $122.66, so the keyhole plates add ~$44 per 100 delivered.",
-      "what": "The direct-drive yoke's keyhole plate (direct_bench.keyhole_plate(layer='plate')), one per string: 3 mm, the outline with the stack's two ears, the ball's hole, the slit, two Ø3.4 clearance holes; over the 1 mm key_seat_plate."
+      "order": "RE-QUOTE at 2 mm (2026-11-18: split 2 + 2 for the ball's seat, 2 deep; was 3 + 1). Was 100 x laser-cut 304 stainless, 4 mm, no finish, untapped: parts $34.00, instant quote read 2026-11-12. On one order with 100 nut plates ($32.00): parts $66.00 + UPS Express Saver $56.66 = $122.66, so the keyhole plates add ~$44 per 100 delivered.",
+      "what": "The direct-drive yoke's keyhole plate (direct_bench.keyhole_plate(layer='plate')), one per string: 2 mm, the outline with the stack's two ears, the ball's hole, the slit, two Ø3.4 clearance holes; over the 2 mm key_seat_plate."
     },
     "key_seat_plate": {
       "usd": 0.34,
@@ -258,8 +258,8 @@
       "qty": 100,
       "vendor": "JLCCNC (sheet metal)",
       "sku": "steel/key_seat_plate.step",
-      "order": "ESTIMATE: taken as the 4 mm keyhole plate's $0.34 a part until quoted (1 mm sheet, the same outline and cut length plus one Ø4.3 hole). Order on the same JLCCNC sheet-metal order as the keyhole and nut plates.",
-      "what": "The keyhole plate's 1 mm SEAT PLATE (direct_bench.key_seat_plate), one per string, between the keyhole plate and the yoke: the same outline, hole, slit and screw holes, and a Ø4.3 hole round the slit's top the ball drops into under tension, so it cannot slide back down to its hole (user, 2026-11-18)."
+      "order": "ESTIMATE: taken as the 4 mm keyhole plate's $0.34 a part until quoted (2 mm sheet, the same outline and cut length plus one Ø4.3 hole). Order on the same JLCCNC sheet-metal order as the keyhole and nut plates.",
+      "what": "The keyhole plate's 2 mm SEAT PLATE (direct_bench.key_seat_plate), one per string, between the keyhole plate and the yoke: the same outline, hole, slit and screw holes, and a Ø4.3 hole round the slit's top the ball drops into under tension, so it cannot slide back down to its hole (user, 2026-11-18)."
     },
     "m3_shcs_30": {
       "usd": 0.1228,

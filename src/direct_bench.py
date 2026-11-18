@@ -245,20 +245,27 @@ KEY_DROP = 5.0                                      # its centre off the axis: t
 # by itself, and stays there slack while the string is wrapped. (It was KEY_DROP under the axis.)
 KEY_SIGN = 1.0                                      # +1: the hole over the axis; -1: under
 KEY_Z = KEY_SIGN * KEY_DROP                         # the hole's centre, z off the axis
-SLIT_W = 2.2                                        # string 10's 1.78 and room
+# THE SLIT TAKES THE GAUGE ENVELOPE (user, 2026-11-18), not the set's heaviest: it was 2.2 for string 10's
+# 1.78, only 0.17 over the .080 we support -- and a printed slit comes out narrow. 0.4 over: the slot
+# loses ~0.3 printed and still passes a .080; the Ø4 ball is nowhere near getting through.
+SLIT_W = D.STRING_GAUGE_MAX + 0.4                   # 2.43
 # THE BALL'S SEAT (user, 2026-11-18: wrapped and pulled, "it pops out"): tension pulled at any
 # angle slid the ball down the slit's flat face to the hole. A RECESS round the slit's top on the
 # plate's -X face: tension pulls the ball INTO it, and to reach the hole it must first back out
 # -X against the string. Drawn for the PRINTED plate (it lies on the bed: +1.0 over the ball for
 # the shrink), just clear of the ball's hole (4.9 of 5.0 between centres).
-KEY_SEAT = (D.STRING_NUT_D + 1.0, 1.2)              # Ø5.0 x 1.2 deep
+# DEEPENED (user, 2026-11-18: "popped out of the keyplate once I started tensioning ... the pocket for
+# the ball is 1.2mm deep but the ball is 3mm x 4mm"): 1.2 let the 3-long ball tip over the rim under a
+# side pull. 2.0 is two thirds of its length -- tipping out would take ~45 deg -- and leaves a 2.0 floor
+# round the slit under the ball's push (half the 4 mm roof).
+KEY_SEAT = (D.STRING_NUT_D + 1.0, 2.0)              # Ø5.0 x 2.0 deep
 assert KEY_SEAT[0] / 2 + KEY_D / 2 < KEY_DROP, "the seat runs into the ball's hole"
 # ...ON THE STEEL PLATE (user, 2026-11-18: "will be sheet metal so ... laser cut"): TWO SHEETS, the
-# 4 mm split 3 + 1. The 3 mm KEYHOLE PLATE (+X, the heads on it) is the old plate; the 1 mm SEAT
+# 4 mm split 2 + 2 (was 3 + 1; the seat deepened with the printed one's). The 2 mm KEYHOLE PLATE (+X, the heads on it) is the old plate; the 2 mm SEAT
 # PLATE under it (-X, on the yoke) has the same outline, hole, slit and screw holes, and a Ø4.3
 # hole round the slit's top: the recess, the sheet's thickness deep. Both clamped by the stack's
 # screws; every other part sees the same 4 mm roof.
-KEY_SEAT_T = 1.0
+KEY_SEAT_T = KEY_SEAT[1]                            # 2.0: the seat sheet, the seat as deep as the printed one
 KEY_SEAT_STEEL = D.STRING_NUT_D + 0.3                # 4.3: laser cut, as drawn
 assert KEY_SEAT_STEEL / 2 + KEY_D / 2 < KEY_DROP - 0.3, "the seat plate's hole meets the ball's hole"
 # ...and its reach under / over the axis: its FLOOR level with the bottom of the keyhole's ball
@@ -999,16 +1006,16 @@ def keyhole_plate(m3_d: float = 3.4, bench: bool = False, seat: bool = False,
     for dy, dz in ((at_ang(a) for a in HOLE_ANG["m3"]) if bench
                    else (at_ang(a, HOLD_R) for a in HOLD_ANG)):
         w = w.cut(cyl_x(m3_d, YK_ROOF + 2, -YK_ROOF - 1, y=dy, z=dz))
-    if layer == "plate":                                         # the 3 mm sheet
+    if layer == "plate":                                         # the 2 mm sheet
         w = w.intersect(cyl_x(3 * YK_D, YK_ROOF - KEY_SEAT_T, -(YK_ROOF - KEY_SEAT_T), y=0, z=0))
-    elif layer == "seat":                                        # the 1 mm sheet, its seat hole
+    elif layer == "seat":                                        # the 2 mm sheet, its seat hole
         w = w.intersect(cyl_x(3 * YK_D, KEY_SEAT_T, -YK_ROOF, y=0, z=0))
         w = w.cut(cyl_x(KEY_SEAT_STEEL, KEY_SEAT_T + 2, -YK_ROOF - 1, y=0, z=0))
     return w
 
 
 def key_seat_plate(m3_d: float = 3.4) -> cq.Workplane:
-    """The 1 mm seat plate (KEY_SEAT_T) in the keyhole plate's frame."""
+    """The 2 mm seat plate (KEY_SEAT_T) in the keyhole plate's frame."""
     return keyhole_plate(m3_d, layer="seat")
 
 
