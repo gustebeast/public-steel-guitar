@@ -2396,7 +2396,7 @@ The changes:
 - **Wood bench (the screws on hand, may creep):**
   - **Yoke:** the M3 x 30s run through the plate, the yoke and the flange's 45° / 225° holes into the collar's inserts, as before.
   - **Collar to yoke:** an M3 x 20 per ear pair. The head goes on the collar ear and the shank into an insert used as a nut in a slot in the yoke ear. No washers, no spacers.
-  - **Plug:** keeps its heat-set inserts flush in the -X face, with **M3 x 30** ties, their heads sunk 3.3 in the bench lid (lid face to plug face is 30).
+  - **Plug:** keeps its heat-set inserts flush in the -X face, with **M3 x 30** ties, their heads sunk 2.0 in the bench lid (2.0 of lid under them, 2.0 of thread) (lid face to plug face is 30).
 - **New hardware for the instrument:** M3 x 40 (40: the ties and the stack), M3 DIN 125 washers (20), and M3 x 10 (+10 pins). The instrument no longer uses M3 x 35 or M3 x 30 (the bench keeps its 30s: plate screws and plug ties). M3 lengths on the instrument: 10, 20, 40 (the M3 x 12 was the plank bench's coupler clamp).
 - **Reprint:**
   - **Bench:** the collar, the yoke (`pctg/collar.step`, `petg-gf/yoke.step` in coupons/woodbench) and the keyhead.

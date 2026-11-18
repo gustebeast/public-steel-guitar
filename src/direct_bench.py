@@ -620,7 +620,10 @@ BENCH_TIE_L = KEY_M3_L                              # M3 x 30: the wood bench's 
                                                     # length. 30 we can use just in the bench"). Lid
                                                     # face to plug face is 30, so the bench lid SINKS
                                                     # the heads BENCH_HEAD_SINK (the pre-11-16 lid)
-BENCH_HEAD_SINK = M3_HEAD[1] + 0.3                  # 3.3: 3.3 of the insert's 4.3 of thread
+BENCH_HEAD_SINK = 2.0                               # 2.0 into the lid: 2.0 of the insert's thread
+                                                    # (4 turns: ~35 N a tie from the spring), 2.0 of
+                                                    # lid left under the head (user, 2026-11-18: the
+                                                    # first 3.3 left 0.7, "just a few layers")
 TIE_BOSS = M3H.CLR_PRINTED_D / 2 + EAR_WALL         # the lip's and lid's bosses round the ties
 # THE TIES' SPACERS (user, 2026-11-16): past collar B the housing has no room for a two-bead
 # wall round a tie (one bead left 1.05 to the next string's collar), so each tie runs through a
