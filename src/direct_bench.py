@@ -240,6 +240,13 @@ M3_L = 12.0
 KEY_D = D.STRING_NUT_D + 0.8                        # 4.8: the ball's way in
 KEY_DROP = 5.0                                      # its centre under the axis: the slit's length
 SLIT_W = 2.2                                        # string 10's 1.78 and room
+# THE BALL'S SEAT (user, 2026-11-18: wrapped and pulled, "it pops out"): tension pulled at any
+# angle slid the ball down the slit's flat face to the hole. A RECESS round the slit's top on the
+# plate's -X face: tension pulls the ball INTO it, and to reach the hole it must first back out
+# -X against the string. Drawn for the PRINTED plate (it lies on the bed: +1.0 over the ball for
+# the shrink), just clear of the ball's hole (4.9 of 5.0 between centres).
+KEY_SEAT = (D.STRING_NUT_D + 1.0, 1.2)              # Ø5.0 x 1.2 deep
+assert KEY_SEAT[0] / 2 + KEY_D / 2 < KEY_DROP, "the seat runs into the ball's hole"
 # ...and its reach under / over the axis: its FLOOR level with the bottom of the keyhole's ball
 # hole (user, 2026-11-12: a ball slid in along the floor drops straight into the pocket; a floor
 # a ball's width lower ran it into the plate's steel under the hole)
@@ -955,7 +962,7 @@ def _yoke(i: int, t: float, bench: bool = False) -> cq.Workplane:
     return out
 
 
-def keyhole_plate(m3_d: float = 3.4, bench: bool = False) -> cq.Workplane:
+def keyhole_plate(m3_d: float = 3.4, bench: bool = False, seat: bool = False) -> cq.Workplane:
     """The keyhole plate in its own frame (+X face at x = 0, axis on y = z = 0), as cut from the
     4 mm sheet: a Ø YK_D disc with the stack's two EARS (HOLD_ANG), the ball's hole KEY_DROP under
     the axis, the slit up to a round end on the axis, and the stack screws' clearance holes in the
@@ -971,6 +978,8 @@ def keyhole_plate(m3_d: float = 3.4, bench: bool = False) -> cq.Workplane:
     w = w.cut(cyl_x(KEY_D, YK_ROOF + 2, -YK_ROOF - 1, y=0, z=-KEY_DROP))
     w = w.cut(box_at(YK_ROOF + 2, SLIT_W, KEY_DROP, x=-YK_ROOF / 2, y=0, z=-KEY_DROP / 2))
     w = w.cut(cyl_x(SLIT_W, YK_ROOF + 2, -YK_ROOF - 1, y=0, z=0))
+    if seat:                                                     # THE BALL'S SEAT
+        w = w.cut(cyl_x(KEY_SEAT[0], KEY_SEAT[1] + 1, -YK_ROOF - 1, y=0, z=0))
     for dy, dz in ((at_ang(a) for a in HOLE_ANG["m3"]) if bench
                    else (at_ang(a, HOLD_R) for a in HOLD_ANG)):
         w = w.cut(cyl_x(m3_d, YK_ROOF + 2, -YK_ROOF - 1, y=dy, z=dz))

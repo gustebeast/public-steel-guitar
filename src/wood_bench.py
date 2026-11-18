@@ -345,7 +345,7 @@ def _swap(nm: str, w, t: float = DB.T_OPEN):
         k = int(nm.split("_")[2])
         return f"wb_tie_spacer_{k}", kept(tie_spacers)[k]
     if nm.startswith("keyplate"):              # PRINTED: the printed M3 clearance, not the laser's 3.4
-        p = DB.keyhole_plate(M3H.CLR_PRINTED_D, bench=True).translate((DB.x_yt(t), DB.y_of(I), DB.za(I)))
+        p = DB.keyhole_plate(M3H.CLR_PRINTED_D, bench=True, seat=True).translate((DB.x_yt(t), DB.y_of(I), DB.za(I)))
         return "wb_keyplate", DB.yaw(p, I)
     return nm, w
 
