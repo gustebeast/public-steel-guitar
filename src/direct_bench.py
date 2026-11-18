@@ -234,11 +234,17 @@ EP_HEAD_HOLE = M3_HEAD[0] + 0.6 + 0.85              # 6.95: the M3 heads' holes,
 EP_HEAD_LEAD = 0.8                                  # their 45 deg lead-in, a bead
 M3_L = 12.0
 # RESTRINGING (user, 2026-11-09): a KEYHOLE in the yoke's roof. The ball end goes in through a
-# hole KEY_DROP under the axis, then slides UP a slit only the string fits through, to sit on the
+# hole KEY_DROP off the axis (KEY_SIGN), then slides along a slit only the string fits through, to sit on the
 # axis behind the roof; the string's pull holds it there. The rod plate has a WINDOW in front of
 # each keyhole the ball passes through (it was a Ø2 hole: the ball could never get past it).
 KEY_D = D.STRING_NUT_D + 0.8                        # 4.8: the ball's way in
-KEY_DROP = 5.0                                      # its centre under the axis: the slit's length
+KEY_DROP = 5.0                                      # its centre off the axis: the slit's length
+# THE HOLE IS OVER THE AXIS (user, 2026-11-18): with the string running straight off the bearings,
+# tension never pulled the ball up the slit, so the SEAT holds it under load and the hole goes
+# where restringing is easiest -- on top: the ball drops in and falls down the slit into its seat
+# by itself, and stays there slack while the string is wrapped. (It was KEY_DROP under the axis.)
+KEY_SIGN = 1.0                                      # +1: the hole over the axis; -1: under
+KEY_Z = KEY_SIGN * KEY_DROP                         # the hole's centre, z off the axis
 SLIT_W = 2.2                                        # string 10's 1.78 and room
 # THE BALL'S SEAT (user, 2026-11-18: wrapped and pulled, "it pops out"): tension pulled at any
 # angle slid the ball down the slit's flat face to the hole. A RECESS round the slit's top on the
@@ -258,7 +264,7 @@ assert KEY_SEAT_STEEL / 2 + KEY_D / 2 < KEY_DROP - 0.3, "the seat plate's hole m
 # ...and its reach under / over the axis: its FLOOR level with the bottom of the keyhole's ball
 # hole (user, 2026-11-12: a ball slid in along the floor drops straight into the pocket; a floor
 # a ball's width lower ran it into the plate's steel under the hole)
-WIN_Z = (-(KEY_DROP + KEY_D / 2), 3.2)
+WIN_Z = (min(KEY_Z - KEY_D / 2, -3.2), max(KEY_Z + KEY_D / 2, 3.2))
 # THE SPRING (user, 2026-11-13: stainless, it lives inside the instrument for years): McMaster
 # 9665K36 -- CUT-TO-LENGTH 302 STAINLESS, 0.75 in OD, 0.091 in wire, 20 in close-wound, straight
 # cut ends; cut into SPRING_COILS whole-coil pieces (~5 a length, ~$6.40 each). 7.54 lbf (33.5 N)
@@ -954,26 +960,27 @@ def _yoke(i: int, t: float, bench: bool = False) -> cq.Workplane:
     pk = D.STRING_NUT_L + 0.6
     # ...its bottom ROUND, the plate's ball hole (user, 2026-11-12: a square pocket left two
     # ledges of steel under the hole a ball could catch on when the string is pulled down)
-    out = out.cut(box_at(pk, KEY_D, KEY_DROP, x=rx0 - pk / 2, y=y, z=z - KEY_DROP / 2))
-    out = out.cut(cyl_x(KEY_D, pk, rx0 - pk, y=y, z=z - KEY_DROP))
+    out = out.cut(box_at(pk, KEY_D, KEY_DROP, x=rx0 - pk / 2, y=y, z=z + KEY_Z / 2))
+    out = out.cut(cyl_x(KEY_D, pk, rx0 - pk, y=y, z=z + KEY_Z))
     if not bench:
         # ...ITS END A 45 DEG ROOF (user, 2026-11-17: printed +X -> -X, "we end up with another
         # unprintable overhang where the string nut goes"): the pocket's section carried on -X and
         # up together until it is inside the screw's bore, so its end is a slope, not a ceiling
         rise = KEY_DROP + KEY_D / 2
         sec = (cq.Workplane("YZ").workplane(offset=rx0 - pk)
-               .center(y, z - KEY_DROP / 2).rect(KEY_D, KEY_DROP).extrude(0.01)
-               .union(cq.Workplane("YZ").workplane(offset=rx0 - pk).center(y, z - KEY_DROP)
+               .center(y, z + KEY_Z / 2).rect(KEY_D, KEY_DROP).extrude(0.01)
+               .union(cq.Workplane("YZ").workplane(offset=rx0 - pk).center(y, z + KEY_Z)
                       .circle(KEY_D / 2).extrude(0.01)))
-        face = sec.faces("<X").val()
-        out = out.cut(cq.Workplane(obj=cq.Solid.extrudeLinear(face, cq.Vector(-rise, 0.0, rise))))
+        face = sec.faces("<X").val()                 # carried toward the axis (-KEY_SIGN in z)
+        out = out.cut(cq.Workplane(obj=cq.Solid.extrudeLinear(face,
+                                                             cq.Vector(-rise, 0.0, -KEY_SIGN * rise))))
     return out
 
 
 def keyhole_plate(m3_d: float = 3.4, bench: bool = False, seat: bool = False,
                   layer: str = None) -> cq.Workplane:
     """The keyhole plate in its own frame (+X face at x = 0, axis on y = z = 0), as cut from the
-    4 mm sheet: a Ø YK_D disc with the stack's two EARS (HOLD_ANG), the ball's hole KEY_DROP under
+    4 mm sheet: a Ø YK_D disc with the stack's two EARS (HOLD_ANG), the ball's hole KEY_DROP over (KEY_SIGN)
     the axis, the slit up to a round end on the axis, and the stack screws' clearance holes in the
     ears (Ø3.4 laser cut: the heads sit on its +X face). A PRINTED stand-in passes the printed
     clearance as m3_d; bench=True: the wood bench's, no ears, its M3 x 30s at HOLE_ANG["m3"]."""
@@ -984,8 +991,8 @@ def keyhole_plate(m3_d: float = 3.4, bench: bool = False, seat: bool = False,
             b = box_at(YK_ROOF, 2 * HOLD_EAR_R, HOLD_R - D.NUT_FLANGE_L / 2 + 2.0, x=-YK_ROOF / 2, y=0,
                        z=(HOLD_R + D.NUT_FLANGE_L / 2 - 2.0) / 2).rotate((0, 0, 0), (1, 0, 0), a - 90)
             w = w.union(cyl_x(2 * HOLD_EAR_R, YK_ROOF, -YK_ROOF, y=dy, z=dz)).union(b)
-    w = w.cut(cyl_x(KEY_D, YK_ROOF + 2, -YK_ROOF - 1, y=0, z=-KEY_DROP))
-    w = w.cut(box_at(YK_ROOF + 2, SLIT_W, KEY_DROP, x=-YK_ROOF / 2, y=0, z=-KEY_DROP / 2))
+    w = w.cut(cyl_x(KEY_D, YK_ROOF + 2, -YK_ROOF - 1, y=0, z=KEY_Z))
+    w = w.cut(box_at(YK_ROOF + 2, SLIT_W, KEY_DROP, x=-YK_ROOF / 2, y=0, z=KEY_Z / 2))
     w = w.cut(cyl_x(SLIT_W, YK_ROOF + 2, -YK_ROOF - 1, y=0, z=0))
     if seat:                                                     # THE BALL'S SEAT (printed)
         w = w.cut(cyl_x(KEY_SEAT[0], KEY_SEAT[1] + 1, -YK_ROOF - 1, y=0, z=0))

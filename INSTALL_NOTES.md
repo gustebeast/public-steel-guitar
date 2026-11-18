@@ -2417,3 +2417,9 @@ The changes:
 - Reprint for the bench: `collar`, `wb_endplate`, `wb_motor_spacer` x4.
 - **Ball seat (bench keyplate, 2026-11-18):** the printed keyplate has a **Ø5.0 x 1.2 recess** round the top of the slit on its -X (yoke) face. Push the ball through the hole, slide it up the slit, and pull the string: the ball drops into the recess and cannot slide back down to the hole while the string pulls. To take it out, slack the string, push the ball back (-X) out of the recess, and slide it down. The steel instrument plate does not have this yet.
 - **Ball seat on the instrument (2026-11-18):** the steel keyhole plate is now **two laser-cut sheets**, 3 mm + 1 mm (the old 4 mm). The 3 mm **keyhole plate** goes on top (+X, the stack screws' heads on it). The 1 mm **seat plate** goes under it, on the yoke: the same outline, hole, slit and screw holes, plus a **Ø4.3 hole round the slit's top**. Under tension the ball drops into that hole and cannot slide back down to the Ø4.8 hole. Fit the seat plate first, then the keyhole plate, then the stack screws through both.
+
+## Keyhole flipped: the ball's hole is now ABOVE the string (2026-11-18)
+
+- The ball's Ø4.8 hole is now **5 mm above** the string's axis; the slit runs **down** to the seat on the axis. The endplate's window moved up with it (3.2 below to 7.4 above the axis).
+- **Restringing:** feed the ball through the endplate's window and the top hole; it falls down the slit into its seat by itself and stays there with the string slack while you wrap. Under load the seat (the 1 mm seat plate; the bench's printed recess) keeps it from walking out.
+- Bench reprints: `wb_keyplate`, `yoke`, `wb_endplate` (the endplate also carries the Ø5.61 rod seat and the ±0.4 head stadiums).
