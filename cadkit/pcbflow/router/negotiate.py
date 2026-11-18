@@ -623,6 +623,9 @@ class Router(CoupledMixin):
     RIP_RECHECK = os.environ.get("ROUTER_RIP_RECHECK", "1") == "1"     # see _rip
     NO_SHORTS_COVER = os.environ.get("ROUTER_NO_SHORTS_COVER", "1") == "1"   # see _no_shorts
     RIP_MATE_LAND = os.environ.get("ROUTER_RIP_MATE_LAND", "1") == "1"       # see _rip
+    PAIR_LOCKSTEP = os.environ.get("ROUTER_PAIR_LOCKSTEP", "0") == "1"       # see _route_in
+    LOCKSTEP_MM = 1.0
+    PAIR_VIA_REL = float(os.environ.get("ROUTER_PAIR_VIA_REL", "0"))     # see _route_in
     TREE_PARTIAL_MIN = 6             # pieces: a smaller tree net is ripped whole, as before
     # pf's ceiling (0 = none). Past a few hundred, occupied cells are walls whatever pf is,
     # and the round-to-round swing (mV25: 21..41 sharing from pf 1e3 on) is the price
@@ -900,6 +903,35 @@ class Router(CoupledMixin):
             for k in range(L):
                 if k not in allowed:
                     legal[k] = False
+        # ⚠ A RELAXED PAIR STILL CHANGES LAYER AS A PAIR (brain_board mV41, 2026-11-18): every USB
+        # pair hit RELAX_AFTER ("routing it on any layer"), both rails went free independently,
+        # and verify failed them all -- GADGET_DP 13 vias against DM's 5, FLASH_DM 15, one rail
+        # diving without its mate. With ROUTER_PAIR_LOCKSTEP=1 the mate of a relaxed pair may be
+        # on layer k only within LOCKSTEP_MM of its leader's copper on k (so it changes layer
+        # where the leader does: mated vias), any layer within MATE_LAND_MM of its own lands
+        # (the fan-out); the leader keeps the freedom the relax gave it.
+        if (self.PAIR_LOCKSTEP and net.relaxed and net.same_layer and net.partner is not None
+                and net.partner.paths and not net.partner.failed):
+            lead = np.zeros((L, h, w), bool)
+            for p_ in net.partner.paths:
+                if not p_.size:
+                    continue
+                kk = p_ // (H * W)
+                rr = p_ % (H * W)
+                ii, jj = rr // W - i0, rr % W - j0
+                ok = (ii >= 0) & (ii < h) & (jj >= 0) & (jj < w)
+                lead[kk[ok], ii[ok], jj[ok]] = True
+            if lead.any():
+                own2 = np.zeros((h, w), bool)
+                for p_ in net.pieces:
+                    rr = p_ % (H * W)
+                    ii, jj = rr // W - i0, rr % W - j0
+                    ok = (ii >= 0) & (ii < h) & (jj >= 0) & (jj < w)
+                    own2[ii[ok], jj[ok]] = True
+                land = (np.sqrt(S.edt_sq(own2)) * m.pitch <= max(self.MATE_LAND_MM, 1.0)) if own2.any()                     else np.zeros((h, w), bool)
+                for k in range(L):
+                    near = (np.sqrt(S.edt_sq(lead[k])) * m.pitch <= self.LOCKSTEP_MM) if lead[k].any()                         else np.zeros((h, w), bool)
+                    legal[k] &= near | land
         circle = None
         if net.merge is not None:
             X, Y = np.meshgrid(m.cx[j0:j1], m.cy[i0:i1])
@@ -1062,6 +1094,17 @@ class Router(CoupledMixin):
                 ok = (ii >= 0) & (ii < h) & (jj >= 0) & (jj < w)
                 cell[kk[ok], ii[ok], jj[ok]] = np.inf
         self._neck_win = (neck_ok, h, w, i0, j0)
+        # ⚠ A PAIR'S VIA PRICE FOLLOWS THE CONGESTION PRICE (lead, 2026-11-18): via_mult x20 is
+        # fixed, while the cells round it climb with pf into the thousands late in the
+        # negotiation -- a dive then costs less than a few cells of crowd and GADGET_DP took
+        # 13. With ROUTER_PAIR_VIA_REL=k a matched net's via costs at least k x the median
+        # finite cell price in its window this round.
+        net._vm_eff = net.via_mult
+        if self.PAIR_VIA_REL > 0 and net.group is not None and net.group.get("max_vias") is not None:
+            smp = cell[:, ::3, ::3]
+            smp = smp[np.isfinite(smp)]
+            if smp.size:
+                net._vm_eff = max(net.via_mult, self.PAIR_VIA_REL * float(np.median(smp)) / self.via_cost)
         # ⚠ A PAIR RUNS TOGETHER: the second net of a matched pair is drawn to the band one
         # pitch off its partner's centreline -- what an engineer does by routing the two as
         # one (coupled pair routing proper is ROUTER.md milestone 3; this is its first step)
@@ -1309,11 +1352,11 @@ class Router(CoupledMixin):
                 tb = np.array([(tk // w).min(), (tk // w).max(), (tk % w).min(), (tk % w).max()], np.int64)
                 legp = None
                 if li == wleg:
-                    legp = self._through(cl, vl, s_, t_, wp & np.isfinite(cl), L, h, w, tb, net.via_mult)
+                    legp = self._through(cl, vl, s_, t_, wp & np.isfinite(cl), L, h, w, tb, getattr(net, "_vm_eff", net.via_mult))
                     if legp is not None:
                         self.wp_used.add(net.name)
                 if legp is None:
-                    path = self._astar(cl, vl.ravel(), s_, t_, L, h, w, tb, self.dir_cost, net.via_mult,
+                    path = self._astar(cl, vl.ravel(), s_, t_, L, h, w, tb, self.dir_cost, getattr(net, "_vm_eff", net.via_mult),
                                        check=True)
                     if path.size == 0:
                         legs_ok = False
@@ -1354,7 +1397,7 @@ class Router(CoupledMixin):
             tk = np.nonzero(tgt)[0] % (h * w)
             tb = np.array([(tk // w).min(), (tk // w).max(), (tk % w).min(), (tk % w).max()], np.int64)
             path = self._astar(cellf, vcell.ravel(), src, tgt, L, h, w,
-                           tb, self.dir_cost, net.via_mult)
+                           tb, self.dir_cost, getattr(net, "_vm_eff", net.via_mult))
             if path.size == 0:
                 return None
             q = int(label[path[0]])
