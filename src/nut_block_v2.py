@@ -241,7 +241,9 @@ def _ramp_gap(phi: float, g: float, arm_x0: float = ARM_X0) -> float:
 
 assert RAMP_R < CROWN_OFF, "the ramp runs past the arm into the crown"
 assert all(_ramp_gap(math.radians(a), G_ENVELOPE) > 0.0 for a in range(5, 91, 5)), "the ramp meets the wind"
-PLATE_CLR = 0.2                                 # Y slip fit, each side, in the pocket
+PLATE_CLR = 0.2                                 # the slip fit off the plate's -X face
+PLATE_CLR_Y = PLATE_CLR - 0.05                  # 0.15: Y, each side, in the pocket (user, 2026-11-18:
+                                                # "a bit less room for a string to slide by on the side")
 COIL_AIR = 0.2                                  # the coil to the pocket wall, either side: the aim
 COIL_AIR_MIN = 0.15                             # ... and the least accepted
 PLATE_CLR_X = 0.15                              # +X: the wall in front of the arm is what is left
@@ -406,8 +408,8 @@ for _i in range(D.N_STRINGS):
 # Its Y span is the plate plus its fit. The coil has to fit it too -- the string arrives on its own Y,
 # its +Y edge g/2 over -- with COIL_AIR to the finger for the demo set; the tail channel below it is the
 # same width, except string 10's, which has no neighbour -Y and opens out for the heaviest tail.
-POCKET_HI = tuple(_plate_hi(i) + PLATE_CLR for i in range(D.N_STRINGS))
-POCKET_LO = tuple(_plate_lo(i) - PLATE_CLR for i in range(D.N_STRINGS))
+POCKET_HI = tuple(_plate_hi(i) + PLATE_CLR_Y for i in range(D.N_STRINGS))
+POCKET_LO = tuple(_plate_lo(i) - PLATE_CLR_Y for i in range(D.N_STRINGS))
 for _i in range(D.N_STRINGS):
     for _g in _gauges_of(_i):
         assert POCKET_HI[_i] - _g / 2 >= COIL_AIR_MIN - 1e-9, (
@@ -837,7 +839,7 @@ HS_POCKET_X1 = D.KEYHEAD_INBOARD_X - D.NUT_BLOCK_X - D.MIN_WALL_2P
 assert HS_POCKET_X1 >= POCKET_X1 + D.MIN_WALL_2P, "the height prism stops short of walling the pockets"
 # Bending in the rod over its worst span: every finger holds it now, so a span is one pocket.
 _I = math.pi * ROD_D ** 4 / 64.0
-_SPAN = PLATE_T + 2 * PLATE_CLR
+_SPAN = PLATE_T + 2 * PLATE_CLR_Y
 _SPAN_MPA = ((STRING_T / _SPAN) * _SPAN ** 2 / 8.0) / (_I / (ROD_D / 2))
 assert _SPAN_MPA <= 250.0, f"the rod carries {_SPAN_MPA:.0f} MPa over a {_SPAN:.1f} mm pocket"
 
