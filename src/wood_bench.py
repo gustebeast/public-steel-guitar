@@ -511,7 +511,9 @@ PRINTS = ("wb_motor_mount", "wb_anchor", "wb_endplate", "wb_keyhead", "wb_nut_sh
 WB_PRINT_UP = {"wb_motor_mount": MM_UP, "wb_anchor": A_UP, "wb_endplate": DB.EP_UP,
                "wb_keyhead": KH2.PRINT_UP, "wb_nut_shoe": NB2.SHOE_UP,
                "wb_tie_spacer": (1.0, 0.0, 0.0),           # standing, +X up
-               "wb_keyplate": (1.0, 0.0, 0.0),             # flat on its -X face
+               "wb_keyplate": (-1.0, 0.0, 0.0),            # flat on its +X face: the ball's seat
+                                                           # (-X face) opens on top, no bridge
+                                                           # over it (user, 2026-11-18)
                "wb_motor_spacer": (1.0, 0.0, 0.0)}         # a ring, flat
 # the instrument's own string-6 prints the bench does NOT use: the motor mount replaces the plate
 WB_NOT_USED = ("mplate",)
