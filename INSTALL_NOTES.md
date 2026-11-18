@@ -2401,3 +2401,10 @@ The changes:
 - **Reprint:**
   - **Bench:** the collar, the yoke (`pctg/collar.step`, `petg-gf/yoke.step` in coupons/woodbench) and the keyhead.
   - **Instrument:** every collar, yoke, plug and keyhead, and the laser-cut keyhole plate (now with ears).
+
+## Endplate guide-rod seat opened to rod + 0.85 (2026-11-18)
+
+- The endplate's blind seat for each guide rod was drawn at rod + 0.2 (Ø4.96) and printed too small to take the 3/16" rod (bench, PLA).
+- It is now **Ø5.61 (rod + 0.85)**: the measured 1/4" snug fit for an upright hole on the 0.8 nozzle. Small holes shrink at least as much, so this is a starting point, not a measured fit at Ø4.76.
+- The three crush ribs over the last 4 mm still reach 0.15 inside the rod's circle, so the rod stays put.
+- Printed in plain PLA instead of PETG-GF, the hole may come out a touch looser (PLA shrinks less). The ribs hold the rod either way.

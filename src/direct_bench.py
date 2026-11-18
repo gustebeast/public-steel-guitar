@@ -205,6 +205,12 @@ def guide_ang(i: int) -> float:
     return GUIDE_ANG_1 if i == 0 else GUIDE_ANG
 GUIDE_SEAT = GUIDE_D + 0.2                          # its two seats, a slip fit (it is trapped)
 GUIDE_SLOT = GUIDE_D + 0.2                          # the slot across, the rotation lock
+# THE ENDPLATE'S ROD SEAT (user, 2026-11-18: GUIDE_SEAT's +0.2 printed too small to take the rod).
+# A round hole up the print (the endplate prints along X) on the 0.8 nozzle: the measured 1/4"
+# fit (memory polymaker-hole-fit) is shaft + 0.85 for a snug slide in GF, and a hole this small
+# shrinks at least as much -- so +0.85, the crush ribs at its bottom still biting ROD_RIB into the
+# rod. Unverified at Ø4.76: the first print of it is the check.
+EP_ROD_SEAT = GUIDE_D + 0.85                        # 5.61
 PLUG_GUIDE_SEAT = GUIDE_SEAT + 0.4                   # the plug's: Ø5.36 (user, 2026-11-17: plug_9 would
                                                     # not go on the rod at all; +0.2 still too tight)
 GUIDE_FLOAT = 1.0                                   # the slot's play along the radius, each way
@@ -2437,7 +2443,7 @@ EP_BRG_CLR = 1.0                                     # a lane's roof / floor off
 for _i in range(N):
     _ry, _ = rod_yz(_i)
     for _j in range(N):
-        _dy = abs(_ry - y_of(_j)) - GUIDE_SEAT / 2           # the seat's nearest edge off the lane's middle
+        _dy = abs(_ry - y_of(_j)) - EP_ROD_SEAT / 2          # the seat's nearest edge off the lane's middle
         if _dy < LANE_HW:
             assert SLOT_APEX_X + max(_dy, 0.0) - (ROD_TIP + 0.3) >= ROD_SEAT_WALL - 1e-9, (
                 f"the slot's roof in lane {_j + 1} leaves rod {_i + 1}'s seat "
@@ -2632,8 +2638,8 @@ def _endplate(rods: bool = True, only: int = None, bench: bool = False) -> cq.Wo
     # the rods' BOSSES: GUIDE_WALL round each seat where it runs beside a lane (strings 4-5, 7-8
     # and 10 have ~0.9 without), to the seat's floor, then a 45 deg cone down to 0.8 of wall --
     # the boss's +X end faces the bed as printed (+X -> -X), so it may not end flat in a lane
-    rb = GUIDE_SEAT / 2 + GUIDE_WALL
-    rc = GUIDE_SEAT / 2 + D.BEAD
+    rb = GUIDE_SEAT / 2 + GUIDE_WALL               # (its old size: 2.1 of wall round EP_ROD_SEAT)
+    rc = EP_ROD_SEAT / 2 + D.BEAD
     for i in (strings if rods else ()):
         ry, rz = rod_yz(i)
         xb = ROD_TIP + 0.3
@@ -2645,7 +2651,7 @@ def _endplate(rods: bool = True, only: int = None, bench: bool = False) -> cq.Wo
                         x=X_BEND, z=zc))                         # beside the next row's lane
     for i in (strings if rods else ()):
         ry, rz = rod_yz(i)
-        w = w.cut(cyl_x(GUIDE_SEAT, ROD_TIP + 0.3 - (xj - 3), xj - 3, y=ry, z=rz))   # round
+        w = w.cut(cyl_x(EP_ROD_SEAT, ROD_TIP + 0.3 - (xj - 3), xj - 3, y=ry, z=rz))   # round
         # the CRUSH RIBS at its bottom (ROD_GRIP): three, at the bottom and +-120, each reaching
         # ROD_RIB inside the rod's circle -- the rod, pushed home from -X, stays put
         rr = GUIDE_D / 2 - ROD_RIB
