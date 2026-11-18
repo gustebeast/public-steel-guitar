@@ -60,6 +60,7 @@ import cadquery as cq
 
 from . import dimensions as D
 from . import m3_hardware as M3H
+from cadkit.fasteners import HEAT_SET, NUT, fitted_insert_cutter, fitted_insert
 from .helpers import box_at, cyl_x, cyl_y, ball_bearing
 
 
@@ -118,17 +119,17 @@ def y_of(i: int) -> float:
 # a different SKU from the bar clamp's (two SKUs, user 2026-11-12); the spacer is shortened so
 # it bites KEY_M3_ENGAGE into the insert (user, 2026-11-12: shorten the yoke slightly).
 KEY_M3_L = 30.0
-COL_INS = (4.7, 4.3)                                # the insert: McMaster 94459A130 brass M3,
-                                                    # OD over the knurl, installed length (as
-                                                    # belt_tensioner's: measure one first)
-COL_INS_HOLE = 4.0                                  # its heat-set pilot (the 3.9 pilot end drops
-                                                    # in; 4.8 drop-in left 0.3 to the nut's bore)
-# THE PLUG'S INSERTS DROP IN (user, 2026-11-17, bench: the plug's 4.0 pocket "much too small"):
-# the M4 rule the bench settled (cadkit.fasteners.M4: a round pocket the insert's OD + 0.1, so the
-# insert drops in before the iron melts it home), on the M3's 4.7. The collar keeps COL_INS_HOLE:
-# its pockets beside the nut's bore have no room for 4.8 (above).
-PLUG_INS_HOLE = COL_INS[0] + 0.1                    # 4.8, printed round (along the plug's build)
-PLUG_EAR_HW = PLUG_INS_HOLE / 2 + D.BEAD            # 3.2: their bosses, ONE bead round the pocket --
+# THE BRASS M3 INSERT (McMaster 94459A130) IS cadkit.fasteners.M3 (user, 2026-11-17: "fitted inserts
+# should be done via cadkit and have a parameter for whether they are acting as nuts or heat set"):
+# every pocket is fitted_insert_cutter(INS, ..., HEAT_SET or NUT) and every drawn insert
+# fitted_insert(INS, ...), so two pockets of one mode cannot differ. HEAT_SET drops into 4.8 round
+# (the bench's plug, 2026-11-17: the 4.0 pilot "much too small"); NUT slides into 5.5 round, 5.1
+# sideways (the collar clamps, 2026-11-16).
+INS = M3H.M3
+COL_INS = (INS.insert_od, INS.insert_l)            # 4.7 over the knurl, 4.3 long
+INS_HEAT_D = INS.insert_pocket_d(HEAT_SET)          # 4.8, printed round
+INS_POCKET_L = COL_INS[1] + 0.3                     # a heat-set pocket's depth: the insert sinks flush
+PLUG_EAR_HW = INS_HEAT_D / 2 + D.BEAD               # 3.2: their bosses, ONE bead round the pocket --
                                                     # the old boss: 0.9 already met string 4/6 and 5/7's
                                                     # plugs (probe 2026-11-17), so the drop-in pocket
                                                     # takes the wall down to the least we print
@@ -143,6 +144,10 @@ YK_H = KEY_M3_L - D.NUT_FLANGE_T - KEY_M3_ENGAGE    # 22.5: flange face -> plate
 # is unchanged; the plate is its last YK_ROOF.
 YK_ROOF = 4.0                                       # the keyhole plate's thickness
 YK_D = D.NUT_FLANGE_L                               # 22: round, as the nut's flange
+NUT_LIP_REG_D = D.NUT_LIP_D + 0.5                   # 10.7: the yoke's register on the nut's Ø10.2 lip,
+                                                    # printed round from the bed -- the plank bench's
+                                                    # settled fit (10.6 "a bit too tight", user
+                                                    # 2026-11-09; the direct yoke had kept 10.6)
 BRG_CLR = 1.0                                       # the endplate's face off the bend bearings' rim
 # the rods' plate (and the balls' windows), the endplate's -X wall: its +X face BRG_CLR off the
 # bend bearings' rim (user, 2026-11-12), its thickness whole beads, chosen for the load by the
@@ -533,7 +538,6 @@ COLLAR_INS_Z = 2.85                                 # the insert's top (its floo
 # out and goes in again as often as the collar does. Its pocket is a SNUG SLIDE sized as a round hole
 # (the knurl's 4.7 + 0.8: the fit print's PETG-GF slide was +0.85 on 1/4", small holes shrink more),
 # drawn as the sideways teardrop it is (cadkit holes fit=True: 0.4 smaller)
-COL_INS_NUT = COL_INS[0] + 0.8                      # 5.5 round -> 5.1 drawn
 COLLAR_SPLIT = 1.0                                  # the split's width
 COLLAR_M3_L = 10.0                                  # M3 x 10: 4.0 of the insert's 4.3 of thread,
                                                     # its tip inside the insert
@@ -801,8 +805,8 @@ def _yoke(i: int, t: float) -> cq.Workplane:
     ft, yt = x_ft(t), x_yt(t)
     out = cyl_x(YK_D, YK_H - YK_ROOF, ft, y=y, z=z)                                 # the spacer
     out = out.cut(cyl_x(D.SCREW_OD + 0.8, yt - YK_ROOF - ft + 1, ft - 1, y=y, z=z))   # tip + ball
-    out = out.cut(cyl_x(D.NUT_LIP_D + 0.4, D.NUT_LIP_L + 1.3, ft - 1, y=y, z=z))      # lip register
-    rl, rb = (D.NUT_LIP_D + 0.4) / 2, (D.SCREW_OD + 0.8) / 2                          # ... its roof
+    out = out.cut(cyl_x(NUT_LIP_REG_D, D.NUT_LIP_L + 1.3, ft - 1, y=y, z=z))          # lip register
+    rl, rb = NUT_LIP_REG_D / 2, (D.SCREW_OD + 0.8) / 2                                # ... its roof
     xl = ft + D.NUT_LIP_L + 0.3
     out = out.cut(_cone_x(rl, rb - 0.01, xl - 0.01, xl + rl - rb, y, z))
     ry, rz = rod_yz(i)
@@ -851,23 +855,38 @@ def _radial_box_at(i: int, x0: float, x1: float, r0: float, r1: float, w: float,
     return b.rotate((0, 0, 0), (1, 0, 0), a - 90).translate((0, y_of(i), za(i)))
 
 
+COLLAR_UP = (-1.0, 0.0, 0.0)                        # prints +X -> -X: its +X face (on the nut's
+                                                    # flange) on the bed, its post last
+# THE BORE ROUND THE NUT'S BOSS (user, 2026-11-17, bench: drawn 10.6 it printed 9.8 in PCTG and the
+# Ø10.1 boss would not go in at all). It is a CLEARANCE, not a register (the two M3s locate the
+# collar), so it is generous: 11.4 is the 10.6 plus the 0.8 it lost, ~0.5 round the boss as printed.
+# Its edge is then 0.1 past the inserts' pockets' (8.0 - 2.4 = 5.6 off the axis): each pocket opens
+# into it along a 1.4 wide slit, the knurl itself (8.0 - 2.35) still 0.05 inside the bore's wall.
+# THAT IS SOUND because the string's load is not in the plastic: the plate's screws pull each insert
+# +X onto the nut's flange, brass on steel (the insert's mouth is flush with the face). The plastic
+# holds only the spring's pull (SPRING_F, 53-68 N: ~34 N an insert) and keeps the inserts from turning.
+COLLAR_NUT_D = 11.4
+assert COLLAR_NUT_D / 2 > D.NUT_BOSS_D / 2 + 0.4, "the collar's bore round the nut's boss"
+# ...AND NO KNIFE EDGES THERE (print_check 2026-11-17: the bore all but tangent to each pocket left
+# two 23 deg wedges a pocket, 4.6 long): a SLOT from the bore into each pocket, COLLAR_SLIT_W wide,
+# so the walls either side end blunt, a bead thick at least. Narrower than the insert (4.7), which
+# it still holds: the knurl keeps ~3/4 of its round.
+COLLAR_SLIT_W = 3.4
+_s = COLLAR_SLIT_W / 2
+assert (NUT_PCD / 2 - math.sqrt((INS_HEAT_D / 2) ** 2 - _s ** 2)
+        - math.sqrt((COLLAR_NUT_D / 2) ** 2 - _s ** 2)) >= D.BEAD - 1e-9, "the slot's edges: a bead"
+assert COLLAR_SLIT_W < COL_INS[0] - 1.0, "the slot lets the insert out"
+
+
 def _collar(i: int, t: float) -> cq.Workplane:
+    """Printed COLLAR_UP. Every solid first, then every hole (user, 2026-11-17: a part unioned after
+    a hole fills it back in)."""
     y, z = y_of(i), za(i)
     pb, (f0, f1), (s0, s1) = x_collar(t)
+    x0, x1 = spring_span(t, i)
     out = cyl_x(STOP_D, pb - f0, f0, y=y, z=z)                                      # solid
-    x0, x1 = spring_span(t, i)                                                      # the post:
-    out = out.union(_post(i, x0, x1 - x0 - SEAT_GRIP, D.NUT_BOSS_D + 0.4))          # threaded
+    out = out.union(_post(i, x0, x1 - x0 - SEAT_GRIP, SCREW_CLR))                   # threaded post
     out = out.union(_wall_collar(i, t))                                             # outer wall
-    out = out.cut(cyl_x(D.NUT_BOSS_D + 0.4, 60, s0 - 1, y=y, z=z))                  # boss, screw
-    out = out.union(_tube_x(13.0, SCREW_CLR, s0, s0 + 3.0, y, z))                   # post's floor
-    # THE INSERTS' POCKETS: up from the +X face (the bed), the insert's length and 0.3, under a
-    # 45 deg cone roof -- a hole printed along the build, so round, and no ceiling
-    d, h = COL_INS_HOLE, COL_INS[1] + 0.3
-    for a in HOLE_ANG["m3"]:
-        dy, dz = at_ang(a)
-        out = out.cut(cyl_x(d, h + 1, pb - h, y=y + dy, z=z + dz))
-        out = out.cut(cq.Workplane("XY").add(cq.Solid.makeCone(
-            d / 2, 0.0, d / 2, cq.Vector(pb - h + 0.01, y + dy, z + dz), cq.Vector(-1, 0, 0))))
     # the TAB: from the +X face out past the rod, TAB_L along x, and its RADIAL SLOT. Its outer
     # end is ROUND, concentric with the slot's (user, 2026-11-12: the square corners came close to
     # the next string's spring): GUIDE_WALL all round the slot
@@ -876,6 +895,18 @@ def _collar(i: int, t: float) -> cq.Workplane:
     out = out.union(_radial_box(i, pb - TAB_L, pb, D.NUT_FLANGE_L / 2 - 2.0, hi, w))
     dy, dz = at_ang(guide_ang(i), hi)
     out = out.union(cyl_x(w, TAB_L, pb - TAB_L, y=y + dy, z=z + dz))
+    # ---- holes, last ----
+    x_lo = out.val().BoundingBox().xmin
+    out = out.cut(cyl_x(SCREW_CLR, pb - x_lo + 2, x_lo - 1, y=y, z=z))             # the screw's way
+    nb = D.NUT_H - D.NUT_FLANGE_T + 1.0                                            # the boss's length
+    out = out.cut(cyl_x(COLLAR_NUT_D, nb + 1.0, pb - nb, y=y, z=z))                # ... and its bore
+    # THE INSERTS: heat-set, up from the +X face (the bed) under cadkit's cone roof
+    for a in HOLE_ANG["m3"]:
+        dy, dz = at_ang(a)
+        out = out.cut(fitted_insert_cutter(INS, (pb, y + dy, z + dz), (-1.0, 0.0, 0.0), HEAT_SET,
+                                           depth=INS_POCKET_L, overshoot=1.0, print_up=COLLAR_UP))
+        out = out.cut(_radial_box_at(i, pb - INS_POCKET_L, pb + 1.0, COLLAR_NUT_D / 2 - 0.5,
+                                     NUT_PCD / 2, COLLAR_SLIT_W, a))                # ... its slot
     out = out.cut(_radial_box(i, pb - TAB_L - 1, pb + 1, lo, hi, GUIDE_SLOT))
     for r in (lo, hi):                                                              # round ends
         dy, dz = at_ang(guide_ang(i), r)
@@ -887,27 +918,8 @@ def _collar_inserts(i: int, t: float) -> cq.Workplane:
     """The two brass inserts, their +X ends flush with the collar's face (on the nut flange)."""
     y, z = y_of(i), za(i)
     pb = x_collar(t)[0]
-    return fused([_insert_x(pb, -1, y + dy, z + dz) for dy, dz in (at_ang(a) for a in HOLE_ANG["m3"])])
-
-
-def _insert_x(mouth: float, sense: int, y: float, z: float, axis: str = "x") -> cq.Workplane:
-    """An M3 heat-set insert (COL_INS) along X, its mouth at x = `mouth`, running `sense` (+1/-1)
-    into the part; axis="z": upright, the mouth at z = `mouth` and the insert below it. The proxy
-    is the tube the gate always checked; the look the knurl and the thread (cadkit.mesh_parts)."""
-    od, l = COL_INS
-    if axis == "z":
-        x0, x1 = mouth - l, mouth
-        proxy = cq.Workplane("XY").add(cq.Solid.makeCylinder(od / 2, l, cq.Vector(y[0], y[1], x0)))
-        proxy = proxy.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(1.25, l + 2, cq.Vector(y[0], y[1], x0 - 1))))
-        place = lambda w: w.translate((y[0], y[1], mouth))                   # noqa: E731
-    else:
-        x0, x1 = (mouth - l, mouth) if sense < 0 else (mouth, mouth + l)
-        proxy = _tube_x(od, 2.5, x0, x1, y, z)
-        # the insert's own frame: top at z = 0, down -Z -> the mouth, running `sense` along X
-        place = lambda w: w.rotate((0, 0, 0), (0, 1, 0), 90 if sense < 0 else -90).translate((mouth, y, z))  # noqa: E731
-    if insert_mesh is None:
-        return proxy
-    return with_mesh(proxy, insert_mesh(3.0, 0.5, od, l), affine_of(place))
+    return fused([fitted_insert(INS, (pb, y + dy, z + dz), (-1.0, 0.0, 0.0))
+                  for dy, dz in (at_ang(a) for a in HOLE_ANG["m3"])])
 
 
 def _m3s(i: int, t: float) -> cq.Workplane:
@@ -1114,44 +1126,65 @@ def _anchor_plug(i: int) -> cq.Workplane:
     return out
 
 
+# THE TIE BOSSES GROW TO TWO BEADS WHERE THERE IS ROOM (user, 2026-11-17: plug_9's one-bead wall
+# round its insert "is too thin so the slicer dropped it"). The room is each boss's distance to the
+# nearest OTHER plug, probed 2026-11-17 on PLUG_EAR_HW bosses (tie_offsets' order); a boss takes
+# all but PLUG_EAR_GAP of it, up to two beads round the pocket. Strings 4-8's upper bosses
+# (and string 2's) sit 0.1-0.45 off their neighbour's plug, so they keep one bead: only moving
+# the ties would make room there. The overlap gate checks the result.
+_PLUG_EAR_ROOM = {0: (4.94, 5.43), 1: (3.65, 10.66), 2: (7.08, 19.92), 3: (3.40, 5.66),
+                  4: (3.60, 5.35), 5: (3.60, 13.08), 6: (3.33, 7.03), 7: (3.33, 3.55),
+                  8: (5.92, 28.53), 9: (25.59, 11.31)}
+PLUG_EAR_HW_MAX = INS_HEAT_D / 2 + 2 * D.BEAD       # 4.0: two beads round the pocket
+PLUG_EAR_GAP = 0.3                                  # left to the neighbouring plug
+
+
+def plug_ear_hw(i: int) -> tuple:
+    """String i's two tie bosses' half-widths (tie_offsets' order): as much of their room as
+    PLUG_EAR_GAP leaves, between one bead (PLUG_EAR_HW) and two (PLUG_EAR_HW_MAX)."""
+    return tuple(max(PLUG_EAR_HW, min(PLUG_EAR_HW_MAX, r - PLUG_EAR_GAP)) for r in _PLUG_EAR_ROOM[i])
+
+
 def _anchor_plug_raw(i: int) -> cq.Workplane:
     """Printed -X -> +X (PLUG_UP). Every step out in radius going +X is a 45 deg cone (user,
     2026-11-14): under the stop flange, and from each insert's pocket down to its screw's hole; and
-    the screws' holes run right out through the teeth, which would otherwise hang over them."""
+    the screws' holes run right out through the teeth, which would otherwise hang over them. Every
+    solid first, then every hole (user, 2026-11-17: the guide rod's boss, unioned after the ties'
+    pockets were cut, filled one of them back in)."""
     y, z = y_of(i), za(i)
     (a0, a1), (f0, f1), (s0, s1) = x_plug(i)
     out = cyl_x(SPRING_ID, f0 - a0, a0, y=y, z=z)                                   # neck
     out = out.union(cyl_x(STOP_D, f1 - f0, f0, y=y, z=z))                           # stop flange
     rise = (STOP_D - SPRING_ID) / 2                                                 # ... on a cone
     out = out.union(_cone_x(SPRING_ID / 2, STOP_D / 2, f0 - rise, f0 + 0.01, y, z))
-    ear_hw = PLUG_EAR_HW                                                            # the insert bosses
-    out = out.union(_ears(i, a0, f1, ear_hw))                                       # the inserts'
-    out = out.cut(cyl_x(SCREW_CLR, s1 - a0 + 2, a0 - 1, y=y, z=z))                 # the screw's way
-    ins_d, ins_l, tip_d = PLUG_INS_HOLE, COL_INS[1] + 0.3, 3.4    # the ties' M3 inserts
-    for dy, dz in tie_offsets(i):
-        out = out.cut(cyl_x(ins_d, ins_l + 1.0, a0 - 1, y=y + dy, z=z + dz))           # insert
-        out = out.cut(_cone_x(ins_d / 2, tip_d / 2 - 0.01, a0 + ins_l - 0.01,
-                              a0 + ins_l + (ins_d - tip_d) / 2, y + dy, z + dz))    # ... its floor
+    out = out.union(_ears(i, a0, f1, plug_ear_hw(i)))                               # the ties' bosses
     out = out.union(_post(i, spring_span(0.0, i)[0], 0.0, SCREW_CLR, POST_GROOVE_P))  # threaded post
     out = out.union(_wall_plug(i))                                                  # outer wall
-    # the guide rod's -X SEAT: a boss at GUIDE_R on the plate, its web back to the neck, and a
-    # hole right through it: the rod slides in from -X through the plate (ROD_END)
+    # the guide rod's -X SEAT: a boss at GUIDE_R on the plate, its web back to the neck -- FROM THE
+    # AXIS (user, 2026-11-17: begun just inside the neck, its corners left a notch each side)
     dy, dz = at_ang(guide_ang(i), GUIDE_R)
     out = out.union(cyl_x(GUIDE_SEAT + 2 * GUIDE_WALL, f1 - a0, a0, y=y + dy, z=z + dz))
-    out = out.union(_radial_box(i, a0, f1, SPRING_ID / 2 - 1.0, GUIDE_R, GUIDE_SEAT + 2 * GUIDE_WALL))
-    out = out.cut(cyl_x(PLUG_GUIDE_SEAT, f1 - a0 + 2, a0 - 1, y=y + dy, z=z + dz))
+    out = out.union(_radial_box(i, a0, f1, 0.0, GUIDE_R, GUIDE_SEAT + 2 * GUIDE_WALL))
+    # ---- holes, last ----
+    out = out.cut(cyl_x(SCREW_CLR, s1 - a0 + 2, a0 - 1, y=y, z=z))                 # the screw's way
     x_end = out.val().BoundingBox().xmax
-    for dy, dz in tie_offsets(i):  # the tips' way, out through all
-        out = out.cut(cyl_x(tip_d, x_end + 1 - (a0 + ins_l), a0 + ins_l, y=y + dy, z=z + dz))
+    for ty, tz in tie_offsets(i):  # the ties' heat-set inserts, then their tips' way out through all
+        out = out.cut(fitted_insert_cutter(INS, (a0, y + ty, z + tz), (1.0, 0.0, 0.0), HEAT_SET,
+                                           depth=INS_POCKET_L, overshoot=1.0, print_up=PLUG_UP))
+        out = out.cut(cyl_x(INS.shaft_clr_d, x_end + 1 - (a0 + INS_POCKET_L), a0 + INS_POCKET_L,
+                            y=y + ty, z=z + tz))
+    out = out.cut(cyl_x(PLUG_GUIDE_SEAT, f1 - a0 + 2, a0 - 1, y=y + dy, z=z + dz))  # the rod's seat
     return out
 
 
-def _ears(i: int, x0: float, x1: float, hw: float) -> cq.Workplane:
-    """String i's two ears (ear_ang): a web from the axis out to a boss round ear_r, x0..x1."""
+def _ears(i: int, x0: float, x1: float, hw) -> cq.Workplane:
+    """String i's two ears (ear_ang): a web from the axis out to a boss round ear_r, x0..x1; hw one
+    half-width for both, or one each (ear_ang's order)."""
     y, z = y_of(i), za(i)
     out = None
     er = ear_r(i)
-    for a in ear_ang(i):
+    hws = tuple(hw) if isinstance(hw, (tuple, list)) else (hw, hw)
+    for a, hw in zip(ear_ang(i), hws):
         e = box_at(x1 - x0, 2 * hw, er, x=(x0 + x1) / 2, y=0, z=er / 2)         # along +Z ...
         e = e.union(cyl_x(2 * hw, x1 - x0, x0, y=0, z=er))
         e = e.rotate((0, 0, 0), (1, 0, 0), a - 90).translate((0, y, z))        # ... turned to a
@@ -1266,7 +1299,8 @@ def _housing_bolts(i: int) -> cq.Workplane:
 def _inserts(i: int) -> cq.Workplane:
     """The plug's two M3 heat-set inserts (the collar's: COL_INS), flush in its -X face."""
     y, z = y_of(i), za(i)
-    return fused([_insert_x(ANCHOR[1], +1, y + dy, z + dz) for dy, dz in tie_offsets(i)])
+    return fused([fitted_insert(INS, (ANCHOR[1], y + dy, z + dz), (1.0, 0.0, 0.0))
+                  for dy, dz in tie_offsets(i)])
 
 
 COLLAR_A_UP = (1.0, 0.0, 0.0)                       # prints -X -> +X: its -X face on the bed, the
@@ -1326,8 +1360,7 @@ def _collar_local(boss_l: float = SPIN_GAP + LID_T, shaft: float = 0.0, body_l: 
     wall = FORM_MAJOR_C / 2 + w
     hp = (M3_HEAD[0] + 0.5) / 2
     hs = COLLAR_SPLIT / 2
-    from cadkit.holes import as_printed_d
-    ri = as_printed_d(COL_INS_NUT, (0, 0, 1), COLLAR_A_UP) / 2     # the insert's pocket, as drawn
+    ri = INS.insert_pocket_d(NUT, (0, 0, 1), COLLAR_A_UP) / 2       # the insert's pocket, as drawn
     z_top, z_bot = sz + M3_HEAD[1], -(zi + ins_l)                 # the flats: the head's top and
                                                                   # the insert's end flush
     assert math.hypot(sy - 1.7, hs) >= wall - 1e-6, "the clearance hole at the split"
@@ -1349,10 +1382,11 @@ def _collar_local(boss_l: float = SPIN_GAP + LID_T, shaft: float = 0.0, body_l: 
     assert min(xm - ri, L - xm - ri * math.sqrt(2)) >= w - 1e-9, "the insert's pocket walls"
     # the insert's slide-in pocket (from the bottom flat), the clearance hole across the split, the
     # head's pocket (out through the top flat)
-    for d, z0, h, fit in ((COL_INS_NUT, z_bot - 1.0, ins_l + 1.0, True),
-                          (3.4, -zi - 0.01, zi + sz + 0.02, False), (M3_HEAD[0] + 0.5, sz, R, False)):
+    out = out.cut(fitted_insert_cutter(INS, (xm, sy, -zi), (0.0, 0.0, -1.0), NUT, depth=ins_l + 1.0,
+                                       print_up=COLLAR_A_UP, roof=False))   # out through the flat
+    for d, z0, h in ((3.4, -zi - 0.01, zi + sz + 0.02), (M3_HEAD[0] + 0.5, sz, R)):
         out = out.cut(teardrop_hole(d, h, axis_point=(xm, sy, z0), axis_dir=(0, 0, 1),
-                                    print_up=COLLAR_A_UP, fit=fit))
+                                    print_up=COLLAR_A_UP))
     # the thread last, UNCLEANED (as the coupler: a cleaned cut drops the ridges). The coupler's
     # cutter runs along +Y in its own frame; turned onto +X here.
     if shaft > 0:                                                 # the motor's D, before the thread
@@ -1443,7 +1477,8 @@ def _collar_ins(i: int, which: str) -> cq.Workplane:
     (c0, c1), _ = x_collar_a() if which == "a" else x_collar_b()
     sy, _ = COLLAR_SCREW
     sg = 1 if which == "a" else -1
-    return _insert_x(za(i) - COLLAR_INS_Z, -1, (_collar_screw_xw(which), y_of(i) + sg * sy), None, axis="z")
+    return fitted_insert(INS, (_collar_screw_xw(which), y_of(i) + sg * sy, za(i) - COLLAR_INS_Z),
+                         (0.0, 0.0, -1.0))
 
 
 def _collar_a_ins(i: int) -> cq.Workplane:
@@ -1515,7 +1550,7 @@ def _coupler_clamp(i: int, k: str, face_y: float = PLATE_FACE_Y) -> cq.Workplane
     if k == "m3":
         w = _cap("m3", COLLAR_M3_L, (xm, sy, sz + M3_HEAD[1]), (0, 0, -1))
     else:
-        w = _insert_x(-COLLAR_INS_Z, -1, (xm, sy), None, axis="z")
+        w = fitted_insert(INS, (xm, sy, -COLLAR_INS_Z), (0.0, 0.0, -1.0))
     return placed(w, lambda p: _motor_frame(_to_motor(p, body_y).translate((0, _cpl_shift(i), 0)), i))
 
 

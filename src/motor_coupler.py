@@ -78,7 +78,9 @@ SLIT_W = 1.2                                        # the slit, on -Z: 1.5 beads
 CLAMP_SPEC = M3H.M3                                 # insert_l 4.3, OD 4.7
 CLAMP_L = M3H.SCREW_L                               # 12
 CLAMP_HEAD = (M3H.HEAD_D, M3H.HEAD_H)               # 5.5 x 3
-INSERT_POCKET_D = M3H.INS_POCKET                    # 4.8: takes the knurled insert by hand
+from cadkit.fasteners import NUT, fitted_insert_cutter  # noqa: E402
+INSERT_POCKET_D = CLAMP_SPEC.insert_pocket_d(NUT, (1, 0, 0), (0, 1, 0))   # 5.1: cadkit's NUT pocket
+                                                    # (5.5 round, sideways here; was a hand 4.8)
 CLAMP_LIP = 3 * D.BEAD                              # 2.4: the -x jaw from the slit to the insert
 INS_X0 = -(SLIT_W / 2 + CLAMP_LIP)                  # -3.0: the insert's +x end, on the lip
 _HEAD_X = INS_X0 - CLAMP_SPEC.insert_l + CLAMP_L   # 4.7: the head's seat, the 12's tip at the
@@ -205,9 +207,9 @@ def coupler(c1: float = CPL_X[1], boss_l: float = 0.0, d_clr: float = D_CLR) -> 
                                 axis_dir=(1, 0, 0), print_up=up))
     out = out.cut(teardrop_hole(CLAMP_HEAD[0] + 0.8, 10.0, axis_point=(EAR_X[1], yc, -CLAMP_Z),
                                 axis_dir=(1, 0, 0), print_up=up))       # the head's seat
-    out = out.cut(teardrop_hole(INSERT_POCKET_D, INS_X0 + CPL_D,           # out past the body: the
-                                axis_point=(-CPL_D, yc, -CLAMP_Z),     # insert stands proud
-                                axis_dir=(1, 0, 0), print_up=up))
+    out = out.cut(fitted_insert_cutter(CLAMP_SPEC, (INS_X0, yc, -CLAMP_Z), (-1.0, 0.0, 0.0), NUT,
+                                       depth=INS_X0 + CPL_D + 0.01, print_up=up,
+                                       roof=False))     # out past the body: the insert stands proud
     # THE FORMED THREAD, last and UNCLEANED (as components.screw_pulley): a cleaned cut leaves an
     # invalid solid that drops the ridges (2026-11-10: it printed a smooth bore)
     out = out.cut(_thread_socket(CPL_GRIP, end), clean=False)
@@ -230,10 +232,10 @@ def _ridge_check(solid, y0: float, y1: float) -> float:
 def clamp_parts(c1: float = CPL_X[1]):
     """The clamp's M3 x 12 (on the ear's +x face) and its fitted insert (on the lip), in the
     motor's frame: [("m3", ...), ("insert", ...)]."""
-    from cadkit.fasteners import seated_insert
+    from cadkit.fasteners import fitted_insert
     yc = clamp_y(c1)
     return [("m3", cap_screw("m3", CLAMP_L, (EAR_X[1] + CLAMP_HEAD[1], yc, -CLAMP_Z), (-1, 0, 0))),
-            ("insert", seated_insert(CLAMP_SPEC, (INS_X0, yc, -CLAMP_Z), (-1.0, 0.0, 0.0)))]
+            ("insert", fitted_insert(CLAMP_SPEC, (INS_X0, yc, -CLAMP_Z), (-1.0, 0.0, 0.0)))]
 
 
 def cap_screw(kind: str, length: float, top, shank_dir) -> cq.Workplane:
