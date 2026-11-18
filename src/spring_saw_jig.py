@@ -141,9 +141,9 @@ def cap() -> cq.Workplane:
 
 
 def stock_spring() -> cq.Workplane:
-    """The 20 in stock, lying in the V, its SQUARE-CUT end flat on the stop (the last cut's face:
-    the end turn tapering to a knife edge, not a loose wire tail), running out past the guide
-    (drawn 60 past it, cut square there too)."""
+    """The 20 in stock lying in the V, its FACTORY END on the stop: whole close-wound turns, the
+    wire's tip touching the stop and pointing straight DOWN into the V (user, 2026-11-17: "I want
+    the clean end so I know the orientation"). Drawn running out 60 past the guide."""
     x0, x1 = X_MIN - 60.0, STOP_X
     proxy = DB._tube_x(DB.SPRING_OD, DB.SPRING_ID, x0, x1, 0.0, AXIS_Z)
     try:
@@ -152,11 +152,23 @@ def stock_spring() -> cq.Workplane:
     except ImportError:
         return proxy
     w = DB.SPRING_WIRE
-    m = coil_mesh([(-w, w, x1 - x0 + 2 * w)], DB.R_COIL, w)   # wound past both ends ...
-    m["pos"][:, 2] = np.clip(m["pos"][:, 2], 0.0, x1 - x0)    # ... and cut flat at them
-    m.pop("feat", None)                                       # no longer the analytic helix
-    return with_mesh(proxy, m, affine_of(lambda w: w.rotate((0, 0, 0), (0, 1, 0), 90)
-                                         .translate((x0, 0.0, AXIS_Z))))
+    turns = math.floor((x1 - x0 - w) / w)
+    xs = x1 - w / 2 - turns * w                       # the wire's centre starts here ...
+    m = coil_mesh([(0.0, w, turns * w)], DB.R_COIL, w)  # ... and ends at angle 0 (down), w/2 off the stop
+    pos, tri = m["pos"].astype(float), m["tri"].astype(np.int64)
+    ring = 8                                          # coil_mesh's default ring
+    caps = []
+    for ks in (np.arange(ring), np.arange(len(pos) - ring, len(pos))):   # close both wire ends
+        c = len(pos) + len(caps)
+        caps.append(pos[ks].mean(axis=0))
+        f = np.c_[np.full(ring, c), ks, np.roll(ks, -1)]
+        tri = np.r_[tri, f, f[:, ::-1]]
+    m["pos"] = np.r_[pos, np.array(caps)].astype(np.float32)
+    m["tri"] = tri.astype(np.uint32)
+    m["geo"] = {"f": [["o"]], "r": [0, int(len(tri))], "e": [], "fe": [[]]}
+    m.pop("feat", None)
+    return with_mesh(proxy, m, affine_of(lambda wp: wp.rotate((0, 0, 0), (0, 1, 0), 90)
+                                         .translate((xs, 0.0, AXIS_Z))))
 
 
 def blade() -> cq.Workplane:
