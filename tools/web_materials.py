@@ -130,7 +130,7 @@ def unit_of(name: str):
 
 # THE BENCHES keep their own tables (their parts are named wb_ and are in no PARTS row),
 # and the instrument's limits they draw (ghost_) are no material at all: see-through.
-_BENCHES = (("wb_", "src.wood_bench"),)
+_BENCHES = (("wb_", "src.wood_bench"), ("sj_", "src.spring_saw_jig"))
 
 
 def material_of(name: str):
