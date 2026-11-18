@@ -619,6 +619,9 @@ class Router(CoupledMixin):
     # round 32 with 27 sharing, all ripped, while round 28 had left 21. With this on, _rounds
     # keeps the copper of its best round (fewest sharing + failed) and ends on it.
     BEST_ROUND = os.environ.get("ROUTER_BEST_ROUND", "1") == "1"
+    TREE_PARTIAL = os.environ.get("ROUTER_TREE_PARTIAL", "1") == "1"   # see _bad_joins
+    RIP_RECHECK = os.environ.get("ROUTER_RIP_RECHECK", "1") == "1"     # see _rip
+    TREE_PARTIAL_MIN = 6             # pieces: a smaller tree net is ripped whole, as before
     # pf's ceiling (0 = none). Past a few hundred, occupied cells are walls whatever pf is,
     # and the round-to-round swing (mV25: 21..41 sharing from pf 1e3 on) is the price
     # outrunning history (hf 0.4 a round): a capped pf leaves history to break the ties.
@@ -3288,14 +3291,27 @@ class Router(CoupledMixin):
         return bool(via.size and (self.occ_v[path[via] % (H * W)] >= 2).any())
 
     def _bad_joins(self, net):
-        """A plane net's sharing joins, if _rip would take only those (else None)."""
-        if not (self.PLANE_PARTIAL and net.plane and not net.failed and not net.fixed
-                and len(net.paths) == len(net.pieces) - 1):
+        """A plane net's sharing joins, if _rip would take only those (else None).
+
+        ⚠ ...AND A BIG TREE NET'S (brain_board mV31, 2026-11-18) -- ROUTER_TREE_PARTIAL=1 while
+        measured. +3V3D (87 pads, not a pour) shared space somewhere at the deadline and was
+        ripped whole: 87 unconnected for one crossing, and close_last cannot rebuild a rail
+        that size. A tree net's copper is one path per piece it joined, so taking out k
+        sharing paths leaves k + 1 pieces of legal copper, k opens -- what the plane case
+        counts. Its declared copper (net.fixed, the first paths) is never taken."""
+        nfix = len(net.fixed) if net.fixed else 0
+        # (no path-count test for a tree: merge circles and chain legs make one path join
+        # several pieces, so paths != pieces - 1 on exactly the big nets this is for --
+        # _tree_open counts what a rip leaves by connectivity instead)
+        tree = (self.TREE_PARTIAL and not net.plane and not net.failed
+                and len(net.pieces) >= self.TREE_PARTIAL_MIN and len(net.paths) > nfix)
+        if not tree and not (self.PLANE_PARTIAL and net.plane and not net.failed and not net.fixed
+                             and len(net.paths) == len(net.pieces) - 1):
             return None
         H, W = self.H, self.W
         bad = []
         for q, path in enumerate(net.paths):
-            if not path.size:
+            if q < nfix or not path.size:
                 continue
             c = path[self.occ_t[path] >= 2]
             k = path // (H * W)
@@ -3303,7 +3319,34 @@ class Router(CoupledMixin):
             rv = (path[via] % (H * W)) if via.size else np.empty(0, np.int64)
             if c.size or (rv.size and (self.occ_v[rv] >= 2).any()):
                 bad.append(q)
-        return bad if bad and len(bad) < len(net.paths) else None
+        if tree and not (bad and len(bad) < len(net.paths) - nfix):
+            # why a big tree net goes out whole (mV33b: +3V3D did, EN5 / GND did not)
+            self.log("  %s: tree partial declined -- %d of %d path(s) share (%d declared), %d piece(s)"
+                     % (net.name, len(bad), len(net.paths), nfix, len(net.pieces)))
+        return bad if bad and len(bad) < len(net.paths) - nfix else None
+
+    @staticmethod
+    def _tree_open(net, drop):
+        """How many joins a tree net is short once the paths `drop` are taken out: the
+        connected groups of its pieces and remaining paths (an item joins another when their
+        cells meet), less one."""
+        items = [np.unique(p) for p in net.pieces if p.size]
+        npc = len(items)
+        items += [np.unique(p) for q, p in enumerate(net.paths) if q not in drop and p.size]
+        par = list(range(len(items)))
+
+        def find(a):
+            while par[a] != a:
+                par[a] = par[par[a]]
+                a = par[a]
+            return a
+        for a in range(len(items)):
+            for b in range(a + 1, len(items)):
+                if a < npc and b < npc:
+                    continue                 # two pads' pieces meet only through copper
+                if find(a) != find(b) and np.intersect1d(items[a], items[b], assume_unique=True).size:
+                    par[find(a)] = find(b)
+        return len({find(a) for a in range(npc)}) - 1
 
     def _open_w(self, lock=(), left=()):
         """Open connections on the board: nets ripped out, plane joins ripped (n_open), and
@@ -3375,7 +3418,10 @@ class Router(CoupledMixin):
                         net.paths[q] = np.empty(0, np.int64)
                         if q < len(net.necks):
                             net.necks[q] = np.zeros(0, bool)
-                    net.n_open = getattr(net, "n_open", 0) + len(bad)
+                    if net.plane:
+                        net.n_open = getattr(net, "n_open", 0) + len(bad)
+                    else:
+                        net.n_open = getattr(net, "n_open", 0) + self._tree_open(net, ())
                     self._mark(net)
                     self.log("  %s: %d of its %d joins still share space%s: those ripped out, the rest kept"
                              % (net.name, len(bad), len(net.paths), self._where(net) or ""))
@@ -3393,7 +3439,22 @@ class Router(CoupledMixin):
                 self.log("  %s: only pour pieces cut off, no join shares space -- kept for the "
                          "island pass" % net.name)
                 continue
+            # ⚠ THE LIST IS STALE BY THE TIME IT GETS HERE (brain_board mV33c, 2026-11-18):
+            # +3V3D (94 paths) and +5V_CM5 (14) were handed to _rip as sharing, but at the rip
+            # NONE of their paths shared space -- the pair finish and repairs after the rounds
+            # had moved the others away. Ripped anyway: 87 + 15 pads open for no conflict.
+            # Re-read now; a net none of whose copper shares space keeps it.
+            if (self.RIP_RECHECK and not net.failed and not net.plane and net.paths
+                    and not any(p.size and ((self.occ_t[p] >= 2).any() or self._via_shares(p))
+                                for p in net.paths)):
+                self.log("  %s: listed as sharing, but none of its copper shares space now -- kept"
+                         % net.name)
+                continue
             if not net.failed:
+                if self.TREE_PARTIAL and not net.plane and len(net.pieces) >= self.TREE_PARTIAL_MIN:
+                    self.log("  %s: tree partial n/a -- plane %s, failed %s, %d path(s), %d declared"
+                             % (net.name, net.plane, net.failed, len(net.paths),
+                                len(net.fixed) if net.fixed else 0))
                 self.log("  %s still shares space%s: ripped out" % (net.name, self._where(net)))
             self._unmark(net)
             net.paths = []

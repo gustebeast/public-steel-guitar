@@ -127,7 +127,12 @@ def score(stem, budget_s=900.0, parent=None, save=None):
             length += float(d.sum()) * m.pitch
     hot = [{"x": round(x, 1), "y": round(y, 1), "near": refs[:3]}
            for _s, x, y, _l, refs in congestion.hotspots(r, top=3)]
-    out = dict(open=len(failed) + part, pairs=pairs, islands=isl, uncoupled=round(unc, 2),
+    # ⚠ "open" COUNTS A FAILED NET AS ONE, WHATEVER ITS SIZE (brain_board mV38a, 2026-11-18):
+    # +3V3D ripped whole (94 joins short) scored 1, the same net kept less 3 joins scored 3,
+    # so the A/B of a fix that keeps it read 37 -> 54 open where the connections short went
+    # 180 -> 84. joins_open counts what DRC will: a failed net its pieces less one.
+    joins = sum(max(1, len(n.pieces) - 1) for n in failed if hasattr(n, "pieces")) + part
+    out = dict(open=len(failed) + part, joins_open=joins, pairs=pairs, islands=isl, uncoupled=round(unc, 2),
                contention=round(float(r.hist.sum()), 1), length_mm=round(length, 1),
                vias=vias, hot=hot, sec=round(time.time() - t0, 1),
                failed=sorted({getattr(n, "name", str(n)) for n in failed}

@@ -596,6 +596,60 @@ def _pin_key(p):
 A2_REACH = 5.0       # mm: quality A2's reach from a supply pin to its nearest cap
 
 
+LEAK_RAIL = 12      # a net on more parts than this is a rail: it says nothing about where a part belongs
+
+
+def region_leaks(parts, rules):
+    """[(region, [refs])]: parts a `fixed` rule holds INSIDE a region they belong to by the
+    netlist, that no in_region rule binds there -- held in place, they leak the day the hold
+    is released.
+
+    ⚠ WHY (brain_board mV31, 2026-11-18): the analog in_region named its 11 ICs; ~70 audio
+    passives stayed in the isolated corner only by their mP0 holds. Released, C1 C41 D7 R10
+    were placed across the moat and their copper met it. The same audit found 51 more held
+    parts in pd / power / compute / boost with no binding. A part belongs to the region whose
+    bound members most of its signal-net neighbours are (rails, nets on > LEAK_RAIL parts,
+    ignored). A region rule may list `free` refs that sit in it unbound on purpose (a part
+    that straddles the region's edge by design)."""
+    bound, owner, free = {}, {}, set()
+    for r in rules:
+        if r.get("kind") == "in_region":
+            for x in r.get("refs") or ():
+                bound.setdefault(r["region"], set()).add(x)
+                owner.setdefault(x, set()).add(r["region"])
+        if r.get("kind") == "region":
+            free |= set(r.get("free") or ())
+    if not bound:
+        return []
+    polys = {r["name"]: np.asarray(r["poly"], float) for r in rules if r.get("kind") == "region"}
+    members = {}
+    for ref, p in parts.items():
+        for q in p["pads"]:
+            if q.get("net"):
+                members.setdefault(q["net"], set()).add(ref)
+    out = {}
+    for r in rules:
+        ref = r.get("ref")
+        if r.get("kind") != "fixed" or ref not in parts or ref in owner or ref in free or not r.get("xy"):
+            continue
+        votes = {}
+        for q in parts[ref]["pads"]:
+            nm = q.get("net")
+            if not nm or len(members.get(nm, ())) > LEAK_RAIL:
+                continue
+            for o in members[nm] - {ref}:
+                for g in owner.get(o, ()):
+                    votes[g] = votes.get(g, 0) + 1
+        if not votes:
+            continue
+        g, k = max(votes.items(), key=lambda kv: kv[1])
+        if 2 * k < sum(votes.values()) or g not in polys:
+            continue
+        if _inside(polys[g], np.asarray([r["xy"][:2]], float))[0]:
+            out.setdefault(g, []).append(ref)
+    return sorted((g, sorted(v)) for g, v in out.items())
+
+
 def region_fill(rules, parts, pl):
     """[(region, area mm2, courtyards mm2, fill)] -- each placed part counted in the first
     region holding its courtyard's centre. Courtyards only (no halo): the number layout and

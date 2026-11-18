@@ -343,7 +343,7 @@ def _project_guard(stem):
 
 
 def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, keep_widths=False, singles=False,
-         apply_swaps=False, place_only=False):
+         apply_swaps=False, place_only=False, to_routability=False):
     d = os.path.abspath(d)
     stem = _stem(d)
     _project_guard(stem)
@@ -460,6 +460,16 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     floor = pi.unregioned_sensitive(parts, rules)
     for f_ in floor:
         say("WARN " + f_)
+    # held parts inside the region they belong to with no rule binding them there: they leak the
+    # day the hold goes (place_intent.region_leaks; brain_board mV31). PCBFLOW_REGION_LEAK_STOP=1
+    # stops the flow on any.
+    leaks_ = pi.region_leaks(parts, rules)
+    for g_, refs_ in leaks_:
+        say("REGION LEAK %s: %d held part(s) belong there by the netlist but no in_region binds "
+            "them -- bind them, or list them in the region's `free`: %s" % (g_, len(refs_), " ".join(refs_)))
+    if leaks_ and os.environ.get("PCBFLOW_REGION_LEAK_STOP") == "1":
+        say("REGION LEAK -- the flow stops before placement (PCBFLOW_REGION_LEAK_STOP=1)")
+        return 2
     say("intent: %d rules%s" % (len(rules), (" (+ " + ", ".join(added) + ")") if added else ""))
     if widened:
         say("net widths from `current`: " + ", ".join(widened))
@@ -609,7 +619,7 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     # the global plan's routability (ROUTER.md "Global plan", SCORE_UTIL): seconds, recorded so a
     # set of trials of ONE netlist and outline can be ranked before routes are spent on them
     rout = None
-    if os.environ.get("PCBFLOW_ROUTABILITY") == "1":
+    if os.environ.get("PCBFLOW_ROUTABILITY") == "1" or to_routability:
         rc, out, T["routability"] = _run([sys.executable, "-m", "router.globalroute", stem], log)
         for line in reversed(out.splitlines()):
             try:
@@ -621,6 +631,11 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
             say("ROUTABILITY overflow %.2f over %d square(s), %.0f mm, %d via(s); hot %s"
                 % (rout["overflow"], rout["squares_over"], rout["length_mm"], rout["vias"],
                    "; ".join("%.1f at (%.0f, %.0f) %s" % (o, x, y, "/".join(nr)) for o, x, y, nr in rout["hot"])))
+    if to_routability:
+        # --to-routability: a placement change judged by the global plan (seconds) before an
+        # hour of route is spent on it -- the spreading pass's A/B (brain_board, 2026-11-17)
+        say("TO ROUTABILITY: stopped before the route")
+        return 0
     rc, out, T["score"] = _run([sys.executable, "-m", "router.score", stem, "--save", "auto", "--intent", ip,
                                 "--parts", parts_path], log)
     score = None
@@ -882,12 +897,14 @@ def main(argv):
                     help="also add auto_singles (a test pad `near` its driver pin) -- off by default")
     ap.add_argument("--place-only", action="store_true",
                     help="stop after placement and its rule checks (no cells, layout or route)")
+    ap.add_argument("--to-routability", action="store_true",
+                    help="stop after layout and the global plan's routability (no route)")
     ap.add_argument("--apply-swaps", action="store_true",
                     help="apply the proposed pair channel swaps (SWAP lines) to this run's netlist and parts "
                          "-- the generator must then carry them")
     a = ap.parse_args(argv)
     return flow(a.dir, os.path.abspath(a.intent), not a.no_auto, a.soft_forbid, a.skip_finish, a.fold_post,
-                a.keep_widths, a.auto_singles, a.apply_swaps, a.place_only)
+                a.keep_widths, a.auto_singles, a.apply_swaps, a.place_only, a.to_routability)
 
 
 if __name__ == "__main__":
