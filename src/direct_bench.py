@@ -142,7 +142,16 @@ YK_H = KEY_M3_L - D.NUT_FLANGE_T - KEY_M3_ENGAGE    # 22.5: flange face -> plate
 # the string goes ball -> steel plate -> steel screws -> brass inserts -> nut, no thread in plastic. The printed yoke
 # behind it only spaces it and shapes the ball's pocket. YK_H (flange face -> plate's +X face)
 # is unchanged; the plate is its last YK_ROOF.
-YK_ROOF = 4.0                                       # the keyhole plate's thickness
+# THE BALL'S WHOLE LENGTH IN THE PLATE (user, 2026-11-18: "4mm pocket plus however much metal we need to
+# hold the string reliably"): a 4 mm SEAT layer the 3-long ball sinks right into, nothing of it left to tip
+# over a rim, and a 3 mm LOAD layer it pulls on -- the ball's ~4.9 mm^2 on it at ~30 MPa, and the layer
+# bending between the two ear screws at ~35 MPa on a ~7 mm lever, a sixth of 304's yield (2 mm was ~77).
+# Both sheets are stocks already quoted (the nut plates' 4, the old keyhole plate's 3). YK_H does NOT grow:
+# the printed spacer behind gives up the 3, and the screw's tip loses nothing -- 7.4 short of an UNSEATED
+# ball at full travel before, 8.4 short of the seated one now (the ball sits 4 further +X in its seat).
+KEY_SEAT_DEPTH = 4.0                                # the seat layer: the ball's 3 and 1 over it
+KEY_LOAD_T = 3.0                                    # the layer the ball pulls on
+YK_ROOF = KEY_SEAT_DEPTH + KEY_LOAD_T               # 7: the keyhole plate's thickness (was 4)
 YK_D = D.NUT_FLANGE_L                               # 22: round, as the nut's flange
 NUT_LIP_REG_D = D.NUT_LIP_D + 0.6                   # 10.8: the yoke's register on the nut's Ø10.2 lip,
                                                     # printed round from the bed (user, 2026-11-17:
@@ -246,14 +255,17 @@ KEY_DROP = 5.0                                      # its centre off the axis: t
 KEY_SIGN = 1.0                                      # +1: the hole over the axis; -1: under
 KEY_Z = KEY_SIGN * KEY_DROP                         # the hole's centre, z off the axis
 # THE SLIT TAKES THE GAUGE ENVELOPE (user, 2026-11-18), not the set's heaviest: it was 2.2 for string 10's
-# 1.78, only 0.17 over the .080 we support -- and a printed slit comes out narrow. 0.4 over: the slot
-# loses ~0.3 printed and still passes a .080; the Ø4 ball is nowhere near getting through.
-SLIT_W = D.STRING_GAUGE_MAX + 0.4                   # 2.43
-# ...NARROWER ON THE PRINTED STAND-IN (user, 2026-11-18): the printer rounds the slit's sharp corners
-# where it meets the seat and the ball's hole, so the neck between them prints wider than drawn and the
-# ball moves through it more easily than through the laser-cut steel. 0.4 off (a bead's rounding, both
-# sides) brings the printed neck back toward the steel's; still clears the bench's string 6 (0.61) by far.
-SLIT_W_PRINTED = SLIT_W - 0.4                       # 2.03
+# 1.78, only 0.17 over the .080 we support. AND ITS NECK (user, measured: string 10 swells to 2.2 at the
+# nut, D.STRING_NECK_EXTRA): the swollen part is what sits in the slit. 0.2 of room over that, laser cut.
+# The ball bears on what is left of its Ø4 face round the slit, ~4.6 mm^2: 147 N is ~32 MPa there,
+# a seventh of 304's yield (the printed stand-in's PETG-GF only has to last the bench).
+SLIT_W = D.STRING_GAUGE_MAX + D.STRING_NECK_EXTRA + 0.2     # 2.65
+# ...NARROWER ON A PRINTED STAND-IN (user, 2026-11-18): the printer rounds the slit's sharp corners where
+# it meets the seat and the ball's hole, so the neck between them prints wider than drawn and the ball
+# moves through it more easily than through the laser-cut steel. A stand-in carries ONE string, so its
+# slit is sized for that one (slit_w_printed): its gauge, its neck, and the printed slot's ~0.4 loss + 0.2.
+def slit_w_printed(g: float) -> float:
+    return g + D.STRING_NECK_EXTRA + 0.6
 # THE BALL'S SEAT (user, 2026-11-18: wrapped and pulled, "it pops out"): tension pulled at any
 # angle slid the ball down the slit's flat face to the hole. A RECESS round the slit's top on the
 # plate's -X face: tension pulls the ball INTO it, and to reach the hole it must first back out
@@ -261,16 +273,16 @@ SLIT_W_PRINTED = SLIT_W - 0.4                       # 2.03
 # the shrink), just clear of the ball's hole (4.9 of 5.0 between centres).
 # DEEPENED (user, 2026-11-18: "popped out of the keyplate once I started tensioning ... the pocket for
 # the ball is 1.2mm deep but the ball is 3mm x 4mm"): 1.2 let the 3-long ball tip over the rim under a
-# side pull. 2.0 is two thirds of its length -- tipping out would take ~45 deg -- and leaves a 2.0 floor
-# round the slit under the ball's push (half the 4 mm roof).
-KEY_SEAT = (D.STRING_NUT_D + 1.0, 2.0)              # Ø5.0 x 2.0 deep
+# side pull. Now KEY_SEAT_DEPTH, the ball's whole length and 1 over (see YK_ROOF).
+KEY_SEAT = (D.STRING_NUT_D + 1.0, KEY_SEAT_DEPTH)   # Ø5.0 x 4.0 deep (printed)
+assert KEY_SEAT[1] >= D.STRING_NUT_L, "the ball stands out of its seat"
 assert KEY_SEAT[0] / 2 + KEY_D / 2 < KEY_DROP, "the seat runs into the ball's hole"
 # ...ON THE STEEL PLATE (user, 2026-11-18: "will be sheet metal so ... laser cut"): TWO SHEETS, the
-# 4 mm split 2 + 2 (was 3 + 1; the seat deepened with the printed one's). The 2 mm KEYHOLE PLATE (+X, the heads on it) is the old plate; the 2 mm SEAT
+# 7 mm split 3 + 4 (KEY_LOAD_T + KEY_SEAT_DEPTH). The 3 mm KEYHOLE PLATE (+X, the heads on it) is the old plate; the 4 mm SEAT
 # PLATE under it (-X, on the yoke) has the same outline, hole, slit and screw holes, and a Ø4.3
 # hole round the slit's top: the recess, the sheet's thickness deep. Both clamped by the stack's
-# screws; every other part sees the same 4 mm roof.
-KEY_SEAT_T = KEY_SEAT[1]                            # 2.0: the seat sheet, the seat as deep as the printed one
+# screws; every other part sees the one 7 mm roof.
+KEY_SEAT_T = KEY_SEAT_DEPTH                         # 4.0: the seat sheet, the seat as deep as the printed one
 KEY_SEAT_STEEL = D.STRING_NUT_D + 0.3                # 4.3: laser cut, as drawn
 assert KEY_SEAT_STEEL / 2 + KEY_D / 2 < KEY_DROP - 0.3, "the seat plate's hole meets the ball's hole"
 # ...and its reach under / over the axis: its FLOOR level with the bottom of the keyhole's ball
@@ -990,9 +1002,9 @@ def _yoke(i: int, t: float, bench: bool = False) -> cq.Workplane:
 
 
 def keyhole_plate(m3_d: float = 3.4, bench: bool = False, seat: bool = False,
-                  layer: str = None) -> cq.Workplane:
+                  layer: str = None, slit_w: float = None) -> cq.Workplane:
     """The keyhole plate in its own frame (+X face at x = 0, axis on y = z = 0), as cut from the
-    4 mm sheet: a Ø YK_D disc with the stack's two EARS (HOLD_ANG), the ball's hole KEY_DROP over (KEY_SIGN)
+    YK_ROOF (3 + 4 mm sheets): a Ø YK_D disc with the stack's two EARS (HOLD_ANG), the ball's hole KEY_DROP over (KEY_SIGN)
     the axis, the slit up to a round end on the axis, and the stack screws' clearance holes in the
     ears (Ø3.4 laser cut: the heads sit on its +X face). A PRINTED stand-in passes the printed
     clearance as m3_d; bench=True: the wood bench's, no ears, its M3 x 30s at HOLE_ANG["m3"]."""
@@ -1003,7 +1015,7 @@ def keyhole_plate(m3_d: float = 3.4, bench: bool = False, seat: bool = False,
             b = box_at(YK_ROOF, 2 * HOLD_EAR_R, HOLD_R - D.NUT_FLANGE_L / 2 + 2.0, x=-YK_ROOF / 2, y=0,
                        z=(HOLD_R + D.NUT_FLANGE_L / 2 - 2.0) / 2).rotate((0, 0, 0), (1, 0, 0), a - 90)
             w = w.union(cyl_x(2 * HOLD_EAR_R, YK_ROOF, -YK_ROOF, y=dy, z=dz)).union(b)
-    sw = SLIT_W_PRINTED if seat else SLIT_W                      # seat=True: the printed stand-in
+    sw = slit_w or SLIT_W                                        # a printed stand-in passes its own
     w = w.cut(cyl_x(KEY_D, YK_ROOF + 2, -YK_ROOF - 1, y=0, z=KEY_Z))
     w = w.cut(box_at(YK_ROOF + 2, sw, KEY_DROP, x=-YK_ROOF / 2, y=0, z=KEY_Z / 2))
     w = w.cut(cyl_x(sw, YK_ROOF + 2, -YK_ROOF - 1, y=0, z=0))
@@ -1012,16 +1024,16 @@ def keyhole_plate(m3_d: float = 3.4, bench: bool = False, seat: bool = False,
     for dy, dz in ((at_ang(a) for a in HOLE_ANG["m3"]) if bench
                    else (at_ang(a, HOLD_R) for a in HOLD_ANG)):
         w = w.cut(cyl_x(m3_d, YK_ROOF + 2, -YK_ROOF - 1, y=dy, z=dz))
-    if layer == "plate":                                         # the 2 mm sheet
+    if layer == "plate":                                         # the 3 mm sheet
         w = w.intersect(cyl_x(3 * YK_D, YK_ROOF - KEY_SEAT_T, -(YK_ROOF - KEY_SEAT_T), y=0, z=0))
-    elif layer == "seat":                                        # the 2 mm sheet, its seat hole
+    elif layer == "seat":                                        # the 4 mm sheet, its seat hole
         w = w.intersect(cyl_x(3 * YK_D, KEY_SEAT_T, -YK_ROOF, y=0, z=0))
         w = w.cut(cyl_x(KEY_SEAT_STEEL, KEY_SEAT_T + 2, -YK_ROOF - 1, y=0, z=0))
     return w
 
 
 def key_seat_plate(m3_d: float = 3.4) -> cq.Workplane:
-    """The 2 mm seat plate (KEY_SEAT_T) in the keyhole plate's frame."""
+    """The 4 mm seat plate (KEY_SEAT_T) in the keyhole plate's frame."""
     return keyhole_plate(m3_d, layer="seat")
 
 
@@ -1923,7 +1935,8 @@ def _nut(i: int, t: float) -> cq.Workplane:
 
 
 def _ball_x(t: float) -> float:
-    return x_yt(t) - YK_ROOF - D.STRING_NUT_L / 2
+    """The ball's centre, SEATED: down in its seat on the load layer (the string's pull puts it there)."""
+    return x_yt(t) - KEY_LOAD_T - D.STRING_NUT_L / 2
 
 
 MOTOR_FINISH = {}                                   # motor part -> its finish (motor_parts)

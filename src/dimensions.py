@@ -450,6 +450,10 @@ STRING_NUT_D    = 4.0       # measured (user): Ø4 x 3 tall ball-end nut
 STRING_NUT_L    = 3.0       # was modelled 6 -> oversize; the real 3 lets the carriage cage
                             # Y-walls go to 2.7 (= (WIDTH 9 - (L+0.6))/2), well over 2 beads
                             # (was 1.2 with the 6 mm nut)
+# THE STRING'S NECK at the nut (user, 2026-11-18, measured string 10): the wound string swells near
+# the nut, to 2.2 on the .070 (1.78) -- 0.42 over the gauge -- for the 0.8 next to the nut's 3. Anything
+# the string passes through right at the nut (the keyhole's slit) takes the gauge PLUS this.
+STRING_NECK_EXTRA = 2.2 - .070 * 25.4                        # 0.42
 
 
 # ─────────────────────────────────────────────────────────────────────────
