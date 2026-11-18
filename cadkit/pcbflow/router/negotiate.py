@@ -614,6 +614,15 @@ class Router(CoupledMixin):
     PAIR_PUSH = 0.5                  # the finish's push attempts: others' copper at this price, no history (_finish_pairs)
     PLANE_PARTIAL = True             # a plane net still sharing loses only its sharing joins (_rip)
     PLANE_OPEN_PIECE = os.environ.get("ROUTER_PLANE_OPEN_PIECE", "1") == "1"   # see _to_plane
+    # ⚠ THE LAST ROUND IS NOT THE BEST ROUND (brain_board mV25, 2026-11-17): pf x1.6 a round
+    # reached 1e6 and the sharing count swung 21..41 from round to round; the budget ran out at
+    # round 32 with 27 sharing, all ripped, while round 28 had left 21. With this on, _rounds
+    # keeps the copper of its best round (fewest sharing + failed) and ends on it.
+    BEST_ROUND = os.environ.get("ROUTER_BEST_ROUND", "1") == "1"
+    # pf's ceiling (0 = none). Past a few hundred, occupied cells are walls whatever pf is,
+    # and the round-to-round swing (mV25: 21..41 sharing from pf 1e3 on) is the price
+    # outrunning history (hf 0.4 a round): a capped pf leaves history to break the ties.
+    PF_MAX = float(os.environ.get("ROUTER_PF_MAX", "0"))
     PAIR_DISPLACE = 3                # rule-meeting attempts _displace may try per pair
     PAIR_REOPEN = True               # the pair finish also takes on a pair the negotiation ripped out
     COUPLE_WALLS = True              # a coupled centreline goes round pairs already to the rules
@@ -3398,6 +3407,7 @@ class Router(CoupledMixin):
         t0 = _clock()
         budget_s = self._left(budget_s)
         best, since = None, 0
+        snap, snap_score, last_score = None, None, None
         self._stalled = False
         for n in self.nets:
             n.nopath = 0                 # each negotiation tries a no-path net afresh (NOPATH_RETRY)
@@ -3512,8 +3522,13 @@ class Router(CoupledMixin):
                 break
             # a negotiation that has stopped improving will not start again by pricing harder
             score = nbad + nfail
+            last_score = score
             if best is None or score < best:
                 best, since = score, 0
+                if self.BEST_ROUND:
+                    snap = {n: (list(n.paths), list(n.necks), n.failed, getattr(n, "n_open", 0),
+                                getattr(n, "nopath", 0)) for n in self.nets if n not in locked}
+                    snap_score = score
             else:
                 since += 1
                 # ⚠ A RE-NEGOTIATION ROUND LOCKED COPPER GIVES UP SOONER (output_panel with
@@ -3532,6 +3547,19 @@ class Router(CoupledMixin):
                 self.log("  out of time")
                 break
             pf *= pf_mul
+            if self.PF_MAX > 0:
+                pf = min(pf, self.PF_MAX)
+        if (self.BEST_ROUND and snap is not None and todo and last_score is not None
+                and snap_score < last_score):
+            for n, (pp, nk, fl, no, npth) in snap.items():
+                self._unmark(n)
+                n.paths, n.necks, n.failed, n.n_open, n.nopath = pp, nk, fl, no, npth
+            for n in snap:
+                self._mark(n)
+            todo = [n for n in self.nets if n not in locked
+                    and (n.failed or any(c.size for c in self._conflicts(n)))]
+            self.log("  ended on the best round's copper: %d sharing or failed (the last round "
+                     "left %d)" % (len(todo), last_score))
         self._stalled = False
         for n, kp in kept0.items():
             n.keep_paths = kp
