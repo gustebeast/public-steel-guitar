@@ -2506,7 +2506,10 @@ def _body() -> cq.Workplane:
 #     its bearings' clearance), the side zones solid past strings 1 and 10;
 #   - take the BAR ENDS: a POCKET (locating), the GAP, the BACK WALL the M3s pull on, and a
 #     tunnel from the +X end down to the screw heads.
-EP_TOP = D.BRIDGE_BEARING_Z + (D.BRIDGE_AXLE_D + 0.2) / 2 + 3 * D.BEAD   # 14.5: over the bridge axle
+# THE AXLE BORES: v1's (bridge_endplate.AXLE_BORE, a teardrop at Ø8 + 0.4, a good fit in PETG-GF;
+# user, 2026-11-18: the + 0.2 they had here printed tight)
+EP_AXLE_BORE = D.BRIDGE_AXLE_D + 0.4
+EP_TOP = D.BRIDGE_BEARING_Z + EP_AXLE_BORE / 2 + 3 * D.BEAD   # 14.5: over the bridge axle
 PLATE_TOP = -20.5                                    # under the pickup ...
 PLATE_LOW_X = -20.0                                  # ... where it reaches (x -21)
 PICK_Y = (-52.9, 51.1)                               # the pickup's y, and 1 each side
@@ -2666,7 +2669,7 @@ def _endplate(rods: bool = True, only: int = None, bench: bool = False) -> cq.Wo
         lo = za_i + WIN_Z[0]
         under = [zc for _, zc in axle_zs() if zc < za_i]
         if under:
-            lo = max(lo, max(under) + (D.BRIDGE_AXLE_D + 0.2) / 2 + LANE_WALL)
+            lo = max(lo, max(under) + EP_AXLE_BORE / 2 + LANE_WALL)
         # THE LANE IS FILLED OVER ITS BEND BEARING (user, 2026-11-12: no string goes in there):
         # open from the window's floor up to EP_BRG_CLR over the bend bearing (a flat roof: it
         # is a side wall as printed, +X -> -X); solid from there up to a pocket with a flat floor
@@ -2753,7 +2756,7 @@ def _endplate(rods: bool = True, only: int = None, bench: bool = False) -> cq.Wo
             w = w.union(rib.rotate((0, 0, 0), (1, 0, 0), a - 90).translate((0, ry, rz)))
     a, b = axle_span()
     for nm, zc in axle_zs():                                     # the axles: in from -Y, the stop,
-        w = w.cut(teardrop_hole(D.BRIDGE_AXLE_D + 0.2, b - (y0 - 1), axis_point=(X_BEND, y0 - 1, zc),
+        w = w.cut(teardrop_hole(EP_AXLE_BORE, b - (y0 - 1), axis_point=(X_BEND, y0 - 1, zc),
                                 axis_dir=(0, 1, 0), print_up=EP_UP))
         w = w.cut(teardrop_hole(PUSH_D, y1 + 1 - (b - 0.5), axis_point=(X_BEND, b - 0.5, zc),
                                 axis_dir=(0, 1, 0), print_up=EP_UP))   # and the push-out hole
