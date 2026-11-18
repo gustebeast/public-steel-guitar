@@ -922,19 +922,20 @@ def _collar(i: int, t: float) -> cq.Workplane:
     return out
 
 
-def _collar_inserts(i: int, t: float) -> cq.Workplane:
-    """The two brass inserts, their +X ends flush with the collar's face (on the nut flange)."""
+def _collar_inserts(i: int, t: float) -> list:
+    """The two brass inserts, their +X ends flush with the collar's face (on the nut flange): ONE
+    PART EACH (user, 2026-11-17: only multi-material prints and boards are several pieces)."""
     y, z = y_of(i), za(i)
     pb = x_collar(t)[0]
-    return fused([fitted_insert(INS, (pb, y + dy, z + dz), (-1.0, 0.0, 0.0))
-                  for dy, dz in (at_ang(a) for a in HOLE_ANG["m3"])])
+    return [fitted_insert(INS, (pb, y + dy, z + dz), (-1.0, 0.0, 0.0))
+            for dy, dz in (at_ang(a) for a in HOLE_ANG["m3"])]
 
 
-def _m3s(i: int, t: float) -> cq.Workplane:
+def _m3s(i: int, t: float) -> list:
     y, z = y_of(i), za(i)
-    # heads on the keyhole plate's +X face, into the collar's inserts (KEY_M3_ENGAGE)
-    return fused([_cap("m3", KEY_M3_L, (x_yt(t) + M3_HEAD[1], y + dy, z + dz), (-1, 0, 0))
-                  for dy, dz in (at_ang(a) for a in HOLE_ANG["m3"])])
+    # heads on the keyhole plate's +X face, into the collar's inserts (KEY_M3_ENGAGE); one part each
+    return [_cap("m3", KEY_M3_L, (x_yt(t) + M3_HEAD[1], y + dy, z + dz), (-1, 0, 0))
+            for dy, dz in (at_ang(a) for a in HOLE_ANG["m3"])]
 
 
 def _cap(kind: str, length: float, top, shank_dir) -> cq.Workplane:
@@ -1278,12 +1279,12 @@ def _housing_label(out: cq.Workplane, i: int, h0: float, l1: float, rb: float) -
     return raise_mark(out, text, at, (0.0, s * n[0], s * n[1]), (1.0, 0.0, 0.0), h, LABEL_PROUD)
 
 
-def _tie_spacers(i: int) -> cq.Workplane:
-    """The two aluminium spacers, lip to plate, round the ties."""
+def _tie_spacers(i: int) -> list:
+    """The two aluminium spacers, lip to plate, round the ties: one part each."""
     od, idd, L = TIE_SPACER
     x1 = ANCHOR[0]
     assert abs(x1 - L - x_lip()[1]) < 1e-6
-    return fused([_tube_x(od, idd, x1 - L, x1, y_of(i) + dy, za(i) + dz) for dy, dz in tie_offsets(i)])
+    return [_tube_x(od, idd, x1 - L, x1, y_of(i) + dy, za(i) + dz) for dy, dz in tie_offsets(i)]
 
 
 def _lid(i: int) -> cq.Workplane:
@@ -1297,20 +1298,21 @@ def _lid(i: int) -> cq.Workplane:
     return out
 
 
-def _housing_bolts(i: int) -> cq.Workplane:
-    """The two ties: M3 x 30, heads sunk in the lid, through the housing's posts and the plate
-    into the plug's inserts."""
+def _housing_bolts(i: int) -> list:
+    """The two ties: M3 x 35, heads on the lid, through the housing's posts and the plate into
+    the plug's inserts: one part each."""
     y, z = y_of(i), za(i)
     hu = x_lid()[0]                                 # the heads' underside: on the lid's -X face
-    return fused([_cap("m3", TIE_L, (hu - M3_HEAD[1], y + dy, z + dz), (1, 0, 0))
-                  for dy, dz in tie_offsets(i)])
+    return [_cap("m3", TIE_L, (hu - M3_HEAD[1], y + dy, z + dz), (1, 0, 0))
+            for dy, dz in tie_offsets(i)]
 
 
-def _inserts(i: int) -> cq.Workplane:
-    """The plug's two M3 heat-set inserts (the collar's: COL_INS), flush in its -X face."""
+def _inserts(i: int) -> list:
+    """The plug's two M3 heat-set inserts (the collar's: COL_INS), flush in its -X face: one part
+    each."""
     y, z = y_of(i), za(i)
-    return fused([fitted_insert(INS, (ANCHOR[1], y + dy, z + dz), (1.0, 0.0, 0.0))
-                  for dy, dz in tie_offsets(i)])
+    return [fitted_insert(INS, (ANCHOR[1], y + dy, z + dz), (1.0, 0.0, 0.0))
+            for dy, dz in tie_offsets(i)]
 
 
 COLLAR_A_UP = (1.0, 0.0, 0.0)                       # prints -X -> +X: its -X face on the bed, the
@@ -1660,10 +1662,10 @@ def _anchor_screw_at():
     return [(yw, sg, x, z) for yw, sg in ((b0, 1), (b1, -1)) for z in _anchor_screw_z()]
 
 
-def _anchor_screws() -> cq.Workplane:
-    """The M4 x 10 button heads: head on its spacer, into the wall and the bar."""
-    return fused([_cap("m4", ANCHOR_SCREW_L, (x, yw + sg * (ANCHOR_SPACER_L + M4_HEAD[1]), z), (0, -sg, 0))
-                  for yw, sg, x, z in _anchor_screw_at()])
+def _anchor_screws() -> list:
+    """The M4 x 10 button heads: head on its spacer, into the wall and the bar; one part each."""
+    return [_cap("m4", ANCHOR_SCREW_L, (x, yw + sg * (ANCHOR_SPACER_L + M4_HEAD[1]), z), (0, -sg, 0))
+            for yw, sg, x, z in _anchor_screw_at()]
 
 
 def string_pieces(i: int, t: float, drop: float = 0.0) -> list:
@@ -1820,10 +1822,15 @@ def string_parts(i: int, t: float, raw: bool = False) -> list:
         elif moves and nm in _RIGID:
             dx = x_ft(t) - x_ft(0.0)
             w = kept(make, i, 0.0)
-            w = placed(w, lambda p: p.translate((dx, 0.0, 0.0))) if dx else w
+            if dx:
+                mv = lambda p: placed(p, lambda q: q.translate((dx, 0.0, 0.0)))   # noqa: E731
+                w = [mv(p) for p in w] if isinstance(w, (list, tuple)) else mv(w)
         else:
             w = kept(make, i, *((t,) if moves else ()))
-        out.append((f"{nm}_{i}", yaw(w, i)))
+        if isinstance(w, (list, tuple)):            # several pieces: ONE PART EACH (user, 2026-11-17)
+            out += [(f"{nm}_{k}_{i}", yaw(p, i)) for k, p in enumerate(w)]
+        else:
+            out.append((f"{nm}_{i}", yaw(w, i)))
     out += [(nm, yaw(w, i)) for nm, w in kept(_motor, i)]
     out.append((f"string_{i}", kept(_string, i, t)))
     return out
@@ -2033,10 +2040,16 @@ def _bar_screws() -> list:
     for yc in bar_y():
         for zc in EP_SCREW_Z:
             top = e["wall1"] + EP_WASHER[1] + M3H.HEAD_H
-            out += [_cap("m3", bar_screw_len(), (top, yc, zc), (-1, 0, 0)),
-                    cyl_x(EP_WASHER[0], EP_WASHER[1], e["wall1"], y=yc, z=zc)
-                    .cut(cyl_x(3.2, EP_WASHER[1] + 1, e["wall1"] - 0.5, y=yc, z=zc))]
-    return fused(out)
+            out.append(_cap("m3", bar_screw_len(), (top, yc, zc), (-1, 0, 0)))
+    return out
+
+
+def _bar_washers() -> list:
+    """The bar screws' washers (EP_WASHER), one part each, on the wall's +X face."""
+    e = ep_x()
+    return [cyl_x(EP_WASHER[0], EP_WASHER[1], e["wall1"], y=yc, z=zc)
+            .cut(cyl_x(3.2, EP_WASHER[1] + 1, e["wall1"] - 0.5, y=yc, z=zc))
+            for yc in bar_y() for zc in EP_SCREW_Z]
 
 
 def _body() -> cq.Workplane:
@@ -2392,8 +2405,10 @@ def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
     out = _drive(t) + [("endplate", endplate_full())] + endplate_axles()
     # EVERY PART THE VIEW CAN SHOW OR HIDE IS KEPT ON ITS OWN (user, 2026-11-12): an edit
     # rebuilds the parts whose code or inputs it touched, and nothing else
-    out += [_compound("anchor", kept(_anchor)), _compound("anchor_m4", kept(_anchor_screws))]
-    out += _wall_bars() + [_compound("bar_m3", kept(_bar_screws))]
+    out += [_compound("anchor", kept(_anchor))]
+    out += [(f"anchor_m4_{k}", w) for k, w in enumerate(kept(_anchor_screws))]
+    out += _wall_bars() + [(f"bar_m3_{k}", w) for k, w in enumerate(kept(_bar_screws))]
+    out += [(f"bar_washer_{k}", w) for k, w in enumerate(kept(_bar_washers))]
     from . import keyhead_v2 as _KH                  # the -X endplate, its plates, screws and rod
     out += _KH.parts()
     from . import deck_v2 as _DK                     # the top panels and the fret LED stand-in
@@ -2412,7 +2427,7 @@ def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
 # frames in the instrument's PETG-GF, the bought parts as they are.
 MATERIAL = {
     "yoke": "petg-gf", "keyplate": "steel", "collar": "pctg", "block": "petg-gf", "mplate": "petg-gf",
-    "endplate": "petg-gf", "bar_m3": "steel", "bridge_axle": "steel", "bridge_brg": "polished", "anchor": "stainless", "anchor_m4": "steel",
+    "endplate": "petg-gf", "bar_m3": "steel", "bar_washer": "steel", "bridge_axle": "steel", "bridge_brg": "polished", "anchor": "stainless", "anchor_m4": "steel",
     "body": "petg-gf", "adapter": "petg-gf", "wall_bar": "steel", "ob_board": "board",
     "keyhead": "petg-gf", "kh_m3": "steel", "kh_plate": "stainless", "kh_side_screw": "steel",
     "kh_side_insert": "brass", "kh_height_screw": "steel", "kh_shoe": "petg-gf", "kh_height_insert": "brass", "kh_rod": "steel",
@@ -2481,7 +2496,7 @@ COLORS = {
     "housing": (0.30, 0.36, 0.42), "hb": "set_screw", "insert": "nut",
     "collar_a": (0.85, 0.45, 0.15), "collar_b": (0.85, 0.45, 0.15), "ca_m3": "set_screw",
     "cb_m3": "set_screw", "ca_ins": "nut", "cb_ins": "nut", "lid": (0.30, 0.36, 0.42), "tie_spacer": (0.78, 0.79, 0.81), "block": (0.30, 0.36, 0.42), "mplate": (0.30, 0.33, 0.38),
-    "endplate": (0.36, 0.30, 0.42), "bar_m3": "set_screw", "bridge_axle": "set_screw",
+    "endplate": (0.36, 0.30, 0.42), "bar_m3": "set_screw", "bar_washer": "set_screw", "bridge_axle": "set_screw",
     "bridge_brg": "bridge_bearings", "anchor": "nut_plate", "anchor_m4": "set_screw",
     "keyhead": (0.36, 0.30, 0.42), "kh_m3": "set_screw", "kh_plate": "nut_plate", "kh_shoe": (0.85, 0.45, 0.15),
     "kh_side_screw": "set_screw", "kh_side_insert": "nut", "kh_height_screw": "set_screw",
@@ -2517,7 +2532,7 @@ _IDX = _re.compile(r"_(\d+)$")
 
 def _base(nm: str):
     m = _IDX.search(nm)
-    b, i = (nm[:m.start()], int(m.group(1))) if m else (nm, None)
+    b, i = (_re.sub(r"(_\d+)+$", "", nm), int(m.group(1))) if m else (nm, None)
     return ("motor" if b.startswith("motor") else b), i
 
 

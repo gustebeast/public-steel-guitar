@@ -321,23 +321,22 @@ SCALE_SPAN = DB.X_BEND - D.NUT_BLOCK_X           # crown to the bridge bearing's
 WB_SPACER = (6.4, M3H.CLR_PRINTED_D)
 
 
-def tie_spacers() -> cq.Workplane:
+def tie_spacers() -> list:
+    """The two printed spacers, one part each (the instrument's tie_spacer_<k>)."""
     od, idd = WB_SPACER
     L = DB.TIE_SPACER[2]
     x1 = DB.ANCHOR[0]
-    out = None
-    for dy, dz in DB.tie_offsets(I):
-        s = cyl_x(od, L, x1 - L, y=Y5 + dy, z=Z5 + dz).cut(cyl_x(idd, L + 2, x1 - L - 1, y=Y5 + dy, z=Z5 + dz))
-        out = s if out is None else out.union(s)
-    return out
+    return [cyl_x(od, L, x1 - L, y=Y5 + dy, z=Z5 + dz).cut(cyl_x(idd, L + 2, x1 - L - 1, y=Y5 + dy, z=Z5 + dz))
+            for dy, dz in DB.tie_offsets(I)]
 
 
 # THE KEYHOLE PLATE: the instrument's 4 mm plate (direct_bench.keyhole_plate), printed in PETG-GF
 # until the steel one is cut. The ball bears on ~4 mm^2 either side of the slit: ~40 MPa under the
 # string's 147 N, near what PETG-GF takes -- watch it for creep into the slit.
 def _swap(nm: str, w, t: float = DB.T_OPEN):
-    if nm.startswith("tie_spacer"):
-        return "wb_tie_spacer", kept(tie_spacers)
+    if nm.startswith("tie_spacer"):                # tie_spacer_<k>_<i>: piece k
+        k = int(nm.split("_")[2])
+        return f"wb_tie_spacer_{k}", kept(tie_spacers)[k]
     if nm.startswith("keyplate"):              # PRINTED: the printed M3 clearance, not the laser's 3.4
         p = DB.keyhole_plate(M3H.CLR_PRINTED_D).translate((DB.x_yt(t), DB.y_of(I), DB.za(I)))
         return "wb_keyplate", DB.yaw(p, I)
@@ -490,7 +489,8 @@ def _made(nm, w):
     from cadkit.web.finishes import made_of
     if DB.owns(nm):
         return DB._made(nm, w)
-    m = MATERIAL.get(nm) or ("steel" if ("m3" in nm or "screw" in nm or "plate" in nm) else
+    import re as _re
+    m = MATERIAL.get(_re.sub(r"(_\d+)+$", "", nm)) or ("steel" if ("m3" in nm or "screw" in nm or "plate" in nm) else
                              "brass" if "insert" in nm else None)
     return made_of(w, m) if m else w
 
@@ -528,9 +528,11 @@ def main():
             print("wrote", p)
         rows[f"{mat}/{stem}"] = rows.get(f"{mat}/{stem}", 0) + 1
 
+    import re as _re
     for nm, w in assembly():
-        if nm in PRINTS:
-            put(w, MATERIAL[nm], nm, PO.from_build_dir(WB_PRINT_UP[nm], "src.wood_bench.WB_PRINT_UP"))
+        b = _re.sub(r"(_\d+)+$", "", nm)          # a piece (wb_tie_spacer_1) prints as its kind
+        if b in PRINTS:
+            put(w, MATERIAL[b], b, PO.from_build_dir(WB_PRINT_UP[b], "src.wood_bench.WB_PRINT_UP"))
     for leader, (stem, mat, members) in B.STRING_FAMILIES.items():
         for key in members:
             if key.endswith(f"_{I}") and key.rsplit("_", 1)[0] not in WB_NOT_USED:
