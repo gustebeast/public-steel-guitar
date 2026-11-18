@@ -127,43 +127,43 @@
   },
   "collar_0": {
    "material": "pctg",
-   "volume_mm3": 4616.7
+   "volume_mm3": 4735.8
   },
   "collar_1": {
    "material": "pctg",
-   "volume_mm3": 4616.7
+   "volume_mm3": 4735.8
   },
   "collar_2": {
    "material": "pctg",
-   "volume_mm3": 4616.7
+   "volume_mm3": 4735.8
   },
   "collar_3": {
    "material": "pctg",
-   "volume_mm3": 4616.7
+   "volume_mm3": 4735.8
   },
   "collar_4": {
    "material": "pctg",
-   "volume_mm3": 4616.7
+   "volume_mm3": 4735.8
   },
   "collar_5": {
    "material": "pctg",
-   "volume_mm3": 4616.7
+   "volume_mm3": 4735.8
   },
   "collar_6": {
    "material": "pctg",
-   "volume_mm3": 4616.7
+   "volume_mm3": 4735.8
   },
   "collar_7": {
    "material": "pctg",
-   "volume_mm3": 4616.7
+   "volume_mm3": 4735.8
   },
   "collar_8": {
    "material": "pctg",
-   "volume_mm3": 4616.7
+   "volume_mm3": 4735.8
   },
   "collar_9": {
    "material": "pctg",
-   "volume_mm3": 4616.7
+   "volume_mm3": 4735.8
   },
   "collar_a_0": {
    "material": "petg-gf",
@@ -603,7 +603,7 @@
   },
   "plug_1": {
    "material": "petg-gf",
-   "volume_mm3": 5586.0
+   "volume_mm3": 5639.8
   },
   "plug_2": {
    "material": "petg-gf",
@@ -611,23 +611,23 @@
   },
   "plug_3": {
    "material": "petg-gf",
-   "volume_mm3": 5919.9
+   "volume_mm3": 5934.3
   },
   "plug_4": {
    "material": "petg-gf",
-   "volume_mm3": 8660.9
+   "volume_mm3": 8765.6
   },
   "plug_5": {
    "material": "petg-gf",
-   "volume_mm3": 6892.5
+   "volume_mm3": 6975.7
   },
   "plug_6": {
    "material": "petg-gf",
-   "volume_mm3": 6901.0
+   "volume_mm3": 6919.3
   },
   "plug_7": {
    "material": "petg-gf",
-   "volume_mm3": 6218.9
+   "volume_mm3": 6303.1
   },
   "plug_8": {
    "material": "petg-gf",
@@ -745,6 +745,10 @@
    "material": "petg-gf",
    "volume_mm3": 1289.2
   },
+  "spring_saw_jig": {
+   "material": null,
+   "volume_mm3": 66045.5
+  },
   "tension_fork": {
    "material": "pctg",
    "volume_mm3": 82.5
@@ -827,43 +831,43 @@
   },
   "yoke_0": {
    "material": "petg-gf",
-   "volume_mm3": 5397.1
+   "volume_mm3": 5392.6
   },
   "yoke_1": {
    "material": "petg-gf",
-   "volume_mm3": 5397.1
+   "volume_mm3": 5392.6
   },
   "yoke_2": {
    "material": "petg-gf",
-   "volume_mm3": 5397.1
+   "volume_mm3": 5392.6
   },
   "yoke_3": {
    "material": "petg-gf",
-   "volume_mm3": 5397.1
+   "volume_mm3": 5392.6
   },
   "yoke_4": {
    "material": "petg-gf",
-   "volume_mm3": 5397.1
+   "volume_mm3": 5392.6
   },
   "yoke_5": {
    "material": "petg-gf",
-   "volume_mm3": 5397.1
+   "volume_mm3": 5392.6
   },
   "yoke_6": {
    "material": "petg-gf",
-   "volume_mm3": 5397.1
+   "volume_mm3": 5392.6
   },
   "yoke_7": {
    "material": "petg-gf",
-   "volume_mm3": 5397.1
+   "volume_mm3": 5392.6
   },
   "yoke_8": {
    "material": "petg-gf",
-   "volume_mm3": 5397.1
+   "volume_mm3": 5392.6
   },
   "yoke_9": {
    "material": "petg-gf",
-   "volume_mm3": 5397.1
+   "volume_mm3": 5392.6
   }
  }
 }

@@ -144,10 +144,11 @@ YK_H = KEY_M3_L - D.NUT_FLANGE_T - KEY_M3_ENGAGE    # 22.5: flange face -> plate
 # is unchanged; the plate is its last YK_ROOF.
 YK_ROOF = 4.0                                       # the keyhole plate's thickness
 YK_D = D.NUT_FLANGE_L                               # 22: round, as the nut's flange
-NUT_LIP_REG_D = D.NUT_LIP_D + 0.5                   # 10.7: the yoke's register on the nut's Ø10.2 lip,
-                                                    # printed round from the bed -- the plank bench's
-                                                    # settled fit (10.6 "a bit too tight", user
-                                                    # 2026-11-09; the direct yoke had kept 10.6)
+NUT_LIP_REG_D = D.NUT_LIP_D + 0.6                   # 10.8: the yoke's register on the nut's Ø10.2 lip,
+                                                    # printed round from the bed (user, 2026-11-17:
+                                                    # 10.7 "a touch undersized ... on with some force";
+                                                    # the plank bench's 10.6 was too tight). The
+                                                    # collar's bore round the boss is the same 10.8.
 BRG_CLR = 1.0                                       # the endplate's face off the bend bearings' rim
 # the rods' plate (and the balls' windows), the endplate's -X wall: its +X face BRG_CLR off the
 # bend bearings' rim (user, 2026-11-12), its thickness whole beads, chosen for the load by the
@@ -865,16 +866,17 @@ def _radial_box_at(i: int, x0: float, x1: float, r0: float, r1: float, w: float,
 
 COLLAR_UP = (-1.0, 0.0, 0.0)                        # prints +X -> -X: its +X face (on the nut's
                                                     # flange) on the bed, its post last
-# THE BORE ROUND THE NUT'S BOSS (user, 2026-11-17, bench: drawn 10.6 it printed 9.8 in PCTG and the
-# Ø10.1 boss would not go in at all). It is a CLEARANCE, not a register (the two M3s locate the
-# collar), so it is generous: 11.4 is the 10.6 plus the 0.8 it lost, ~0.5 round the boss as printed.
-# Its edge is then 0.1 past the inserts' pockets' (8.0 - 2.4 = 5.6 off the axis): each pocket opens
-# into it along a 1.4 wide slit, the knurl itself (8.0 - 2.35) still 0.05 inside the bore's wall.
-# THAT IS SOUND because the string's load is not in the plastic: the plate's screws pull each insert
-# +X onto the nut's flange, brass on steel (the insert's mouth is flush with the face). The plastic
-# holds only the spring's pull (SPRING_F, 53-68 N: ~34 N an insert) and keeps the inserts from turning.
-COLLAR_NUT_D = 11.4
-assert COLLAR_NUT_D / 2 > D.NUT_BOSS_D / 2 + 0.4, "the collar's bore round the nut's boss"
+# THE BORE ROUND THE NUT'S BOSS: 10.7 (user, 2026-11-17, bench: the first collar's 10.6 "actually
+# fits pretty well"; it only needed a chamfer -- the ELEPHANT'S FOOT at its mouth on the bed kept the
+# boss out; the 11.4 that followed printed ~1 mm over the Ø10.1 boss). A CLEARANCE (the two M3s locate
+# the collar), its mouth CHAMFERED (COLLAR_MOUTH_CH). Each insert's pocket opens into it through its
+# slot (COLLAR_SLIT_W), which takes away the sliver the two would leave. THAT IS SOUND because the
+# string's load is not in the plastic: the plate's screws pull each insert +X onto the nut's flange,
+# brass on steel (the insert's mouth is flush with the face). The plastic holds only the spring's
+# pull (SPRING_F, 53-74 N: ~37 N an insert) and keeps the inserts from turning.
+COLLAR_NUT_D = D.NUT_BOSS_D + 0.5                   # 10.7: the 10.6 that fits, a touch looser (user)
+COLLAR_MOUTH_CH = 0.5
+assert COLLAR_NUT_D / 2 >= D.NUT_BOSS_D / 2 + 0.2, "the collar's bore round the nut's boss"
 # ...AND NO KNIFE EDGES THERE (print_check 2026-11-17: the bore all but tangent to each pocket left
 # two 23 deg wedges a pocket, 4.6 long): a SLOT from the bore into each pocket, COLLAR_SLIT_W wide,
 # so the walls either side end blunt, a bead thick at least. Narrower than the insert (4.7), which
@@ -908,6 +910,8 @@ def _collar(i: int, t: float) -> cq.Workplane:
     out = out.cut(cyl_x(SCREW_CLR, pb - x_lo + 2, x_lo - 1, y=y, z=z))             # the screw's way
     nb = D.NUT_H - D.NUT_FLANGE_T + 1.0                                            # the boss's length
     out = out.cut(cyl_x(COLLAR_NUT_D, nb + 1.0, pb - nb, y=y, z=z))                # ... and its bore
+    rn = COLLAR_NUT_D / 2                                                           # ... its mouth's chamfer
+    out = out.cut(_cone_x(rn, rn + COLLAR_MOUTH_CH + 0.01, pb - COLLAR_MOUTH_CH, pb + 0.01, y, z))
     # THE INSERTS: heat-set, up from the +X face (the bed) under cadkit's cone roof
     for a in HOLE_ANG["m3"]:
         dy, dz = at_ang(a)
@@ -1154,6 +1158,33 @@ def plug_ear_hw(i: int) -> tuple:
     return tuple(max(PLUG_EAR_HW, min(PLUG_EAR_HW_MAX, r - PLUG_EAR_GAP)) for r in _PLUG_EAR_ROOM[i])
 
 
+# ... AND A NARROW BOSS STILL GROWS ON ITS FREE SIDES (user, 2026-11-17: "if we could widen just the
+# sides it would help" -- the slicer dropped the one-bead wall at the sides). Only the half facing
+# the neighbouring plug has to stay narrow: the rest of the boss goes to two beads. The neighbour's
+# direction from the boss's axis (deg, +Y toward +Z, as at_ang), probed 2026-11-17 on the plugs as
+# built; the half-plane through the boss's axis keeps every new point at least the room away from a
+# flat neighbour. Keyed by tie_offsets' order; every narrow boss must be listed.
+_PLUG_EAR_NEIGHBOUR = {1: {0: 46.0}, 3: {0: -118.0}, 4: {0: 46.0}, 5: {0: 46.0}, 6: {0: -118.0},
+                       7: {0: -118.0, 1: 55.0}}
+
+
+def _ear_sides(i: int, x0: float, x1: float):
+    """String i's narrow bosses grown to PLUG_EAR_HW_MAX on the side away from their neighbour."""
+    y, z = y_of(i), za(i)
+    out = None
+    for k, ((dy, dz), hw) in enumerate(zip(tie_offsets(i), plug_ear_hw(i))):
+        n = _PLUG_EAR_NEIGHBOUR.get(i, {}).get(k)
+        assert (n is None) == (hw >= PLUG_EAR_HW_MAX - 1e-6), (i, k, "a narrow boss needs its neighbour")
+        if n is None:
+            continue
+        w = 2 * PLUG_EAR_HW_MAX + 2
+        half = (box_at(x1 - x0, w, w / 2, x=(x0 + x1) / 2, y=0, z=-w / 4)      # the side away from +Z ...
+                .rotate((0, 0, 0), (1, 0, 0), n - 90).translate((0, y + dy, z + dz)))   # ... turned to n
+        s = cyl_x(2 * PLUG_EAR_HW_MAX, x1 - x0, x0, y=y + dy, z=z + dz).intersect(half)
+        out = s if out is None else out.union(s)
+    return out
+
+
 def _anchor_plug_raw(i: int) -> cq.Workplane:
     """Printed -X -> +X (PLUG_UP). Every step out in radius going +X is a 45 deg cone (user,
     2026-11-14): under the stop flange, and from each insert's pocket down to its screw's hole; and
@@ -1167,6 +1198,8 @@ def _anchor_plug_raw(i: int) -> cq.Workplane:
     rise = (STOP_D - SPRING_ID) / 2                                                 # ... on a cone
     out = out.union(_cone_x(SPRING_ID / 2, STOP_D / 2, f0 - rise, f0 + 0.01, y, z))
     out = out.union(_ears(i, a0, f1, plug_ear_hw(i)))                               # the ties' bosses
+    sides = _ear_sides(i, a0, f1)                                                   # ... their free sides
+    out = out.union(sides) if sides is not None else out
     out = out.union(_post(i, spring_span(0.0, i)[0], 0.0, SCREW_CLR, POST_GROOVE_P))  # threaded post
     out = out.union(_wall_plug(i))                                                  # outer wall
     # the guide rod's -X SEAT: a boss at GUIDE_R on the plate, its web back to the neck -- FROM THE

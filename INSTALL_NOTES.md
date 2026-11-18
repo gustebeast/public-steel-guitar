@@ -1878,7 +1878,7 @@ This supersedes the "two 688s" in the notes above.
 
 ## Direct drive: nut springs, one cut spring, per-string plug necks (2026-11-11)
 
-- **Spring (2026-11-13: stainless):** McMaster 9665K36 (cut-to-length 302 stainless, 0.75" OD, 0.091" wire, 20" long). Cut it into pieces of **42 whole coils** each: 34 working coils plus 4 at each end screwed onto the threaded posts. One 20" length makes 5 pieces. Cut with an abrasive cut-off wheel (or cutters rated for piano wire), marking each cut point first, and deburr both ends so they screw onto the posts cleanly. No oil: stainless needs no rust protection.
+- **Spring (2026-11-13: stainless):** McMaster 9665K36 (cut-to-length 302 stainless, 0.75" OD, 0.091" wire, 20" long). Cut it into pieces of **42 whole coils** each: 34 working coils plus 4 at each end screwed onto the threaded posts. One 20" length makes 5 pieces. Cut with the hacksaw in the spring saw jig (`tools/spring_saw_jig.step`, below): one straight cut square to the axis, no marking. Deburr both ends so they screw onto the posts cleanly. No oil: stainless needs no rust protection.
 - **Force per string at open pitch** (string 1..10): 67, 68, 61, 66, 55, 61, 61, 63, 54, 53 N.
   - Each is 95% of the lightest string at −3 st, less 1 N of drift and less 5 N for the stock tolerance. A strong spring still stays under the string at −3 st, so the nut never crosses its backlash.
   - The forces come from the plug necks only: each string's plug neck is 0.2–8.9 mm longer (`direct_bench.SPRING_F`, `spring_len_open`).
@@ -2347,3 +2347,29 @@ The changes:
   - The tie bosses grow to two beads (1.6) round the pocket where the neighbouring plug leaves room. Where it does not, they stay at one bead (0.8): the upper boss on strings 4-8, about 0.95 on string 2's.
 - **Coupler (plank and wood benches):** its insert pocket is the nut rule's Ø5.1 sideways, up from a hand-drawn 4.8. The belt clamp's side-entry slot keeps its proven 4.8.
 - **Reprint:** every collar, every plug and every yoke. The string 6 bench set is `pctg/collar.step`, `petg-gf/plug_s6.step` and the yoke file from PRINT_LIST.md.
+
+## Spring saw jig, collar and yoke fits, plug boss sides (2026-11-17)
+
+- **Spring saw jig** (`tools/spring_saw_jig.step`, PETG-GF, printed as drawn). It is the guide rod jig's sibling: the same hacksaw (McMaster 4075A31), the same 32 TPI bi-metal blade (6927A16) and the same 1.3 slot. One Quick-Grip clamps it through the leadscrew jig's cap (`saw_jig_cap`); there are no screws.
+  - **Why one straight cut works:** the spring is close-wound, so a cut square to the axis runs through the wire along exactly one turn. That parts it into two pieces with no loose bits. Each end comes out as a flat face whose last turn tapers to a thin edge.
+  - **Length:** the flat end butts the end stop, so each piece is 97.0 (42 coils) from the slot with no counting.
+  - **Cap:** its notch is narrower than the spring, so it rides on the spring on the notch's two lower edges.
+  - **Use:**
+    1. Lay the jig on the table near the edge.
+    2. Lay the stock in the V with its end on the stop.
+    3. Put the cap in the channel. Clamp cap, spring, jig and table together.
+    4. Saw down the slot.
+    5. Slide the stock up to the stop and repeat. Five pieces come from one 20 in length; the first cut only squares the factory end.
+  - **Sawing:** the spring is not stretched; only its initial tension (~33 N) presses the coils together, and the clamp keeps the kerf from closing on the blade. The wire is spring-temper stainless, so:
+    - use slow, full, firm strokes, about one a second;
+    - add cutting oil;
+    - never let the blade ride without cutting, or it work-hardens the cut.
+- **Collar bore round the nut's boss: Ø10.7, with a 0.5 chamfer at its mouth** for the elephant's foot.
+  - The first collar's 10.6 fitted once that foot was cleared.
+  - The 11.4 that followed it had about 1 mm of play.
+- **Yoke's register on the nut's lip: Ø10.8.** At 10.7 it went on only with force.
+- **M3 heat-set pockets: Ø4.75** (cadkit), 0.05 under the previous pockets.
+- **Plug tie bosses grow to two beads on their free sides.**
+  - Where a boss is within ~0.5 of the neighbouring plug, only the half facing that plug stays at one bead.
+  - This applies to strings 2, 4, 5, 6, 7 and 8, and both bosses on string 8.
+  - Each widened side keeps >= 0.25 from the neighbour.
