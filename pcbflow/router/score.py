@@ -61,7 +61,17 @@ def score(stem, budget_s=900.0, parent=None, save=None):
     t0 = time.time()
     m = Model(stem)
     r = Router(m)
-    r.log = lambda s: None
+    # ⚠ THE ROUTER'S LOG WAS THROWN AWAY HERE (brain_board mV22/23, 2026-11-17): GND, 327
+    # pieces, came back with no paths on three routes in a row, and nothing in any log said
+    # why -- score() is the flow's main route and printed only its JSON. With
+    # PCBFLOW_ROUTE_LOG=1 the log goes to <stem>.route.log (stdout stays the JSON).
+    _lf = (open(stem + ".route.log", "w", encoding="utf-8")
+           if os.environ.get("PCBFLOW_ROUTE_LOG", "0") == "1" else None)
+    def _rlog(s):
+        if _lf is not None:
+            _lf.write("[%6.0f] %s\n" % (time.time() - t0, s))
+            _lf.flush()
+    r.log = _rlog
     nets = r.build_nets(pours=m.fills)
     delta = None
     if parent:
@@ -79,7 +89,8 @@ def score(stem, budget_s=900.0, parent=None, save=None):
             snap = rescore.snapshot(r)
             del r, m, nets, failed
             gc.collect()
-            m, r, nets, info = rescore.close_pass(stem, snap, quiet=True)
+            m, r, nets, info = rescore.close_pass(stem, snap, quiet=True,
+                                                  log=_rlog if _lf is not None else None)
             failed = [n for n in nets if n.failed]
             delta = dict(close_pass=info)
     if save:

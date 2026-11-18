@@ -613,6 +613,7 @@ class Router(CoupledMixin):
     TURN_STATES_MAX = 40_000_000     # heading-aware search up to this many states (x9 cells)
     PAIR_PUSH = 0.5                  # the finish's push attempts: others' copper at this price, no history (_finish_pairs)
     PLANE_PARTIAL = True             # a plane net still sharing loses only its sharing joins (_rip)
+    PLANE_OPEN_PIECE = os.environ.get("ROUTER_PLANE_OPEN_PIECE", "1") == "1"   # see _to_plane
     PAIR_DISPLACE = 3                # rule-meeting attempts _displace may try per pair
     PAIR_REOPEN = True               # the pair finish also takes on a pair the negotiation ripped out
     COUPLE_WALLS = True              # a coupled centreline goes round pairs already to the rules
@@ -819,6 +820,7 @@ class Router(CoupledMixin):
 
     def _route_net(self, net, pf):
         m = self.m
+        self._partial_open = 0
         L, H, W = self.L, self.H, self.W
         self._wp_off = self._mate_dive(net)
         if self._wp_off is not None:
@@ -2889,6 +2891,23 @@ class Router(CoupledMixin):
                     path = (kk * h + (rr // ws + a0)) * w + (rr % ws + b0)
                     break
             if path is None:
+                # ⚠ ONE PAD WITH NO WAY TO THE PLANE IS ONE OPEN JOIN, NOT THE WHOLE PLANE NET
+                # (brain_board mV22a/b, mV23a/b, 2026-11-17): U35.10, a GND pin boxed in at
+                # 0.4 pitch by the board edge, had no join to any plane site on the whole
+                # board, and this returned None -- GND, 326 other joins routable, came back
+                # with NO paths four routes running ("1 with no path" from round 1), and the
+                # finish had 322-362 unconnected against mV18's 0. Searched over the whole
+                # board and still cut off, the piece is left open (an empty join, as _rip
+                # leaves one) and counted in n_open; the rest of the net routes.
+                if self.PLANE_OPEN_PIECE and win == (0, self.H, 0, self.W):
+                    self._necks.append(np.zeros(0, bool))
+                    paths.append(np.empty(0, np.int64))
+                    self._partial_open += 1
+                    c0 = int(net.pieces[q][0]) % (self.H * self.W)
+                    self.log("  %s: piece %d at (%.2f, %.2f) has no way to the plane on the whole "
+                             "board -- left open, the rest routed"
+                             % (net.name, q, self.m.cx[c0 % self.W], self.m.cy[c0 // self.W]))
+                    continue
                 return None
             # ⚠ A THROUGH VIA ON THE WAY IS ALREADY THE JOIN (optical replay, 2026-11-14): a join
             # from Cd2.2 changed layer F.Cu -> In2 at a plane via site, ran 0.35 mm on In2 and
@@ -3403,7 +3422,7 @@ class Router(CoupledMixin):
                 self._unmark(net)
                 paths = self._route_net(net, pf)
                 net.main_xy = mx0
-                net.n_open = 0
+                net.n_open = getattr(self, "_partial_open", 0) if paths is not None else 0
                 net.failed = paths is None
                 net.nopath = (getattr(net, "nopath", 0) + 1) if net.failed else 0
                 net.paths = paths or []
