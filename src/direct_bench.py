@@ -1416,6 +1416,27 @@ PLUG_UP = (1.0, 0.0, 0.0)                           # prints -X -> +X: the neck'
                                                     # the teeth last (user, 2026-11-14)
 
 
+HULL_N = 24
+
+
+def _hull_prism_x(circles: list, corners: list, x0: float, x1: float) -> cq.Workplane:
+    """A prism along X, x0..x1, over the convex hull of circles (y, z, r) and points (y, z) in YZ --
+    true arcs and lines (cadquery.hull), not a polygon of many tiny facets (2026-11-18: those meshed
+    with open edges in the slicer)."""
+    from cadquery.hull import find_hull
+    edges = [cq.Edge.makeCircle(r, cq.Vector(y, z, 0)) for y, z, r in circles]
+    edges += cq.Wire.makePolygon([cq.Vector(y, z, 0) for y, z in corners], close=True).Edges()
+    try:
+        wire = find_hull(edges)
+    except ValueError:                       # (a circle crossing the polygon) -- a coarse polygon
+        pts = [(y + r * math.cos(2 * math.pi * k / HULL_N), z + r * math.sin(2 * math.pi * k / HULL_N))
+               for y, z, r in circles for k in range(HULL_N)] + list(corners)
+        wire = cq.Wire.makePolygon([cq.Vector(a, b, 0) for a, b in _hull2d(pts)], close=True)
+    prism = cq.Solid.extrudeLinear(cq.Face.makeFromWires(wire), cq.Vector(0, 0, x1 - x0))
+    return cq.Workplane(obj=prism.rotate(cq.Vector(0, 0, 0), cq.Vector(1, 1, 1), 120)
+                        .translate(cq.Vector(x0, 0, 0)))
+
+
 def _hull2d(pts: list) -> list:
     """The convex hull of 2D points, counter-clockwise (monotone chain)."""
     pts = sorted(set((round(x, 6), round(y, 6)) for x, y in pts))
@@ -2719,18 +2740,17 @@ def _endplate(rods: bool = True, only: int = None, bench: bool = False) -> cq.Wo
             wz0, wz1 = za_i + WIN_Z[0], za_i + WIN_Z[1]
             gap = min(math.hypot(max(wy0 - ey, 0.0, ey - wy1), max(wz0 - ez, 0.0, ez - wz1))
                       for ey, ez in ends) - hd / 2
-            if gap >= 2 * D.BEAD + EP_HEAD_LEAD:      # clear of the window: the lead-in, a 45 deg
+            if gap >= 2 * D.BEAD + EP_HEAD_LEAD and EP_HEAD_LEAD > 0:   # clear of the window: the lead-in, a 45 deg
                 lead = (cq.Workplane("YZ", origin=(xj - 0.01, yc, zc))           # stadium funnel
                         .slot2D(2 * GUIDE_FLOAT + hd + 2 * EP_HEAD_LEAD, hd + 2 * EP_HEAD_LEAD, ga)
                         .workplane(offset=EP_HEAD_LEAD + 0.02)
                         .slot2D(2 * GUIDE_FLOAT + hd - 0.04, hd - 0.04, ga).loft())
                 w = w.cut(lead)
-            else:                                     # opened into the window: no lead-in (its
+            elif gap < 2 * D.BEAD + EP_HEAD_LEAD:     # opened into the window: no lead-in (its
                 rh = hd / 2                           # funnel met the hull's sides in points)
-                pts = [(ey + rh * math.cos(2 * math.pi * k / 72), ez + rh * math.sin(2 * math.pi * k / 72))
-                       for ey, ez in ends for k in range(72)] + [(wy0, wz0), (wy1, wz0), (wy1, wz1), (wy0, wz1)]
-                w = w.cut(cq.Workplane("YZ", origin=(xj - 1, 0, 0)).polyline(_hull2d(pts)).close()
-                          .extrude(ROD_PLATE[1] - xj + 2))
+                w = w.cut(_hull_prism_x([(ey, ez, rh) for ey, ez in ends],
+                                        [(wy0, wz0), (wy1, wz0), (wy1, wz1), (wy0, wz1)],
+                                        xj - 1, ROD_PLATE[1] + 1))
     # the rods' BOSSES: GUIDE_WALL round each seat where it runs beside a lane (strings 4-5, 7-8
     # and 10 have ~0.9 without), to the seat's floor, then a 45 deg cone down to 0.8 of wall --
     # the boss's +X end faces the bed as printed (+X -> -X), so it may not end flat in a lane

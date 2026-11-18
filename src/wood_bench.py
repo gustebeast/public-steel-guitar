@@ -376,8 +376,9 @@ OB_W = 11.0                                      # the old width in y (opt_hole'
 # be quite thin, the other just thick enough to fit the screw plus 1.6mm on either side"): the
 # screw's bracket the self-tap bore + 2 x 1.6, the resting one two beads
 OB_WALL = 1.6
-OB_REST_W = 2 * D.BEAD
-OB_Y2 = -11.0                                    # the resting bracket, inside EP_Y
+OB_REST_W = 4 * D.BEAD                           # 3.2 (user, 2026-11-18), AT THE ENDPLATE'S -Y EDGE:
+                                                 # the two brackets as far apart as the plate allows
+OB_Y2 = EP_Y[0] + OB_REST_W / 2                  # the resting bracket, flush with the -Y side
 OB_TIP = 2.0                                     # the tip cut flat (no knife edge on the print's top)
 OS_M4_L = 10.0                                   # M4 x 10: 1.6 of board, 8.4 self-tapped into the bracket
 
