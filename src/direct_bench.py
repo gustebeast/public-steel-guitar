@@ -867,6 +867,15 @@ COLLAR_UP = (-1.0, 0.0, 0.0)                        # prints +X -> -X: its +X fa
 # holds only the spring's pull (SPRING_F, 53-68 N: ~34 N an insert) and keeps the inserts from turning.
 COLLAR_NUT_D = 11.4
 assert COLLAR_NUT_D / 2 > D.NUT_BOSS_D / 2 + 0.4, "the collar's bore round the nut's boss"
+# ...AND NO KNIFE EDGES THERE (print_check 2026-11-17: the bore all but tangent to each pocket left
+# two 23 deg wedges a pocket, 4.6 long): a SLOT from the bore into each pocket, COLLAR_SLIT_W wide,
+# so the walls either side end blunt, a bead thick at least. Narrower than the insert (4.7), which
+# it still holds: the knurl keeps ~3/4 of its round.
+COLLAR_SLIT_W = 3.4
+_s = COLLAR_SLIT_W / 2
+assert (NUT_PCD / 2 - math.sqrt((INS_HEAT_D / 2) ** 2 - _s ** 2)
+        - math.sqrt((COLLAR_NUT_D / 2) ** 2 - _s ** 2)) >= D.BEAD - 1e-9, "the slot's edges: a bead"
+assert COLLAR_SLIT_W < COL_INS[0] - 1.0, "the slot lets the insert out"
 
 
 def _collar(i: int, t: float) -> cq.Workplane:
@@ -896,6 +905,8 @@ def _collar(i: int, t: float) -> cq.Workplane:
         dy, dz = at_ang(a)
         out = out.cut(fitted_insert_cutter(INS, (pb, y + dy, z + dz), (-1.0, 0.0, 0.0), HEAT_SET,
                                            depth=INS_POCKET_L, overshoot=1.0, print_up=COLLAR_UP))
+        out = out.cut(_radial_box_at(i, pb - INS_POCKET_L, pb + 1.0, COLLAR_NUT_D / 2 - 0.5,
+                                     NUT_PCD / 2, COLLAR_SLIT_W, a))                # ... its slot
     out = out.cut(_radial_box(i, pb - TAB_L - 1, pb + 1, lo, hi, GUIDE_SLOT))
     for r in (lo, hi):                                                              # round ends
         dy, dz = at_ang(guide_ang(i), r)
