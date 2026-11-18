@@ -463,7 +463,8 @@ def opt_hardware() -> list:
 # ── THE ASSEMBLY ─────────────────────────────────────────────────────────────────────────────
 def assembly(t: float = DB.T_OPEN) -> list:
     out = [_swap(nm, w, t) for nm, w in DB.string_parts(I, t, bench=True)
-           if not nm.startswith(("mplate", "string"))]
+           if not nm.startswith(("mplate", "string", "keyseat"))]   # the bench's printed
+                                                                       # keyplate is one piece
     out.append((f"wb_string_{I}", kept(bench_string, t)))
     out += [(nm, w.translate((0.0, 0.0, KH_DROP)) if nm.startswith("bridge_brg") else w)
             for nm, w in DB._bend_parts() if nm.endswith(f"_{I}")]

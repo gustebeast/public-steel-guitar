@@ -247,6 +247,14 @@ SLIT_W = 2.2                                        # string 10's 1.78 and room
 # the shrink), just clear of the ball's hole (4.9 of 5.0 between centres).
 KEY_SEAT = (D.STRING_NUT_D + 1.0, 1.2)              # Ø5.0 x 1.2 deep
 assert KEY_SEAT[0] / 2 + KEY_D / 2 < KEY_DROP, "the seat runs into the ball's hole"
+# ...ON THE STEEL PLATE (user, 2026-11-18: "will be sheet metal so ... laser cut"): TWO SHEETS, the
+# 4 mm split 3 + 1. The 3 mm KEYHOLE PLATE (+X, the heads on it) is the old plate; the 1 mm SEAT
+# PLATE under it (-X, on the yoke) has the same outline, hole, slit and screw holes, and a Ø4.3
+# hole round the slit's top: the recess, the sheet's thickness deep. Both clamped by the stack's
+# screws; every other part sees the same 4 mm roof.
+KEY_SEAT_T = 1.0
+KEY_SEAT_STEEL = D.STRING_NUT_D + 0.3                # 4.3: laser cut, as drawn
+assert KEY_SEAT_STEEL / 2 + KEY_D / 2 < KEY_DROP - 0.3, "the seat plate's hole meets the ball's hole"
 # ...and its reach under / over the axis: its FLOOR level with the bottom of the keyhole's ball
 # hole (user, 2026-11-12: a ball slid in along the floor drops straight into the pocket; a floor
 # a ball's width lower ran it into the plate's steel under the hole)
@@ -962,7 +970,8 @@ def _yoke(i: int, t: float, bench: bool = False) -> cq.Workplane:
     return out
 
 
-def keyhole_plate(m3_d: float = 3.4, bench: bool = False, seat: bool = False) -> cq.Workplane:
+def keyhole_plate(m3_d: float = 3.4, bench: bool = False, seat: bool = False,
+                  layer: str = None) -> cq.Workplane:
     """The keyhole plate in its own frame (+X face at x = 0, axis on y = z = 0), as cut from the
     4 mm sheet: a Ø YK_D disc with the stack's two EARS (HOLD_ANG), the ball's hole KEY_DROP under
     the axis, the slit up to a round end on the axis, and the stack screws' clearance holes in the
@@ -978,12 +987,22 @@ def keyhole_plate(m3_d: float = 3.4, bench: bool = False, seat: bool = False) ->
     w = w.cut(cyl_x(KEY_D, YK_ROOF + 2, -YK_ROOF - 1, y=0, z=-KEY_DROP))
     w = w.cut(box_at(YK_ROOF + 2, SLIT_W, KEY_DROP, x=-YK_ROOF / 2, y=0, z=-KEY_DROP / 2))
     w = w.cut(cyl_x(SLIT_W, YK_ROOF + 2, -YK_ROOF - 1, y=0, z=0))
-    if seat:                                                     # THE BALL'S SEAT
+    if seat:                                                     # THE BALL'S SEAT (printed)
         w = w.cut(cyl_x(KEY_SEAT[0], KEY_SEAT[1] + 1, -YK_ROOF - 1, y=0, z=0))
     for dy, dz in ((at_ang(a) for a in HOLE_ANG["m3"]) if bench
                    else (at_ang(a, HOLD_R) for a in HOLD_ANG)):
         w = w.cut(cyl_x(m3_d, YK_ROOF + 2, -YK_ROOF - 1, y=dy, z=dz))
+    if layer == "plate":                                         # the 3 mm sheet
+        w = w.intersect(cyl_x(3 * YK_D, YK_ROOF - KEY_SEAT_T, -(YK_ROOF - KEY_SEAT_T), y=0, z=0))
+    elif layer == "seat":                                        # the 1 mm sheet, its seat hole
+        w = w.intersect(cyl_x(3 * YK_D, KEY_SEAT_T, -YK_ROOF, y=0, z=0))
+        w = w.cut(cyl_x(KEY_SEAT_STEEL, KEY_SEAT_T + 2, -YK_ROOF - 1, y=0, z=0))
     return w
+
+
+def key_seat_plate(m3_d: float = 3.4) -> cq.Workplane:
+    """The 1 mm seat plate (KEY_SEAT_T) in the keyhole plate's frame."""
+    return keyhole_plate(m3_d, layer="seat")
 
 
 def rod_yz(i: int):
@@ -2090,7 +2109,11 @@ def _mplate(i: int) -> cq.Workplane:
 
 
 def _keyplate_at(i: int, t: float) -> cq.Workplane:
-    return keyhole_plate().translate((x_yt(t), y_of(i), za(i)))
+    return keyhole_plate(layer="plate").translate((x_yt(t), y_of(i), za(i)))
+
+
+def _keyseat_at(i: int, t: float) -> cq.Workplane:
+    return key_seat_plate().translate((x_yt(t), y_of(i), za(i)))
 
 
 def _ball(i: int, t: float) -> cq.Workplane:
@@ -2124,7 +2147,8 @@ def _cpl_insert(i: int) -> cq.Workplane:
 # are not redone for a collar or a plug change, and parts that do not move with travel are built
 # once for every t.
 _STRING_PARTS = (
-    ("yoke", _yoke, True), ("keyplate", _keyplate_at, True), ("ball", _ball, True),
+    ("yoke", _yoke, True), ("keyplate", _keyplate_at, True), ("keyseat", _keyseat_at, True),
+    ("ball", _ball, True),
     ("nut", _nut, True), ("collar", _collar, True), ("m3", _m3s, True),
     ("col_ins", _collar_inserts, True), ("hold_wsh", _hold_washers, True),
     ("spring", _spring, True), ("plug", _anchor_plug, False),
@@ -2144,7 +2168,7 @@ _STRING_PARTS = (
 _MESH_ONLY = {"screw", "spring"}
 # the parts that ride the nut AS ONE RIGID BODY: built once, at t = 0, and moved along x to t
 # (2026-11-15: the gate's three t's, and every view at another t, read one build of each)
-_RIGID = {"yoke", "keyplate", "ball", "nut", "collar", "m3", "col_ins", "hold_wsh"}
+_RIGID = {"yoke", "keyplate", "keyseat", "ball", "nut", "collar", "m3", "col_ins", "hold_wsh"}
 
 
 # the parts the WOOD BENCH draws its own way (bench=True: its screws, THE WOOD BENCH'S STACK)
@@ -2793,7 +2817,7 @@ def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
 # What each part is made of, for the viewer's shine (cadkit.web.finishes.made_of): printed
 # frames in the instrument's PETG-GF, the bought parts as they are.
 MATERIAL = {
-    "yoke": "petg-gf", "keyplate": "steel", "collar": "pctg", "block": "petg-gf", "mplate": "petg-gf",
+    "yoke": "petg-gf", "keyplate": "steel", "keyseat": "steel", "collar": "pctg", "block": "petg-gf", "mplate": "petg-gf",
     "endplate": "petg-gf", "bar_m3": "steel", "bar_washer": "steel", "bridge_axle": "steel", "bridge_brg": "polished", "anchor": "stainless", "anchor_m4": "steel",
     "body": "petg-gf", "adapter": "petg-gf", "wall_bar": "steel", "ob_board": "board",
     "keyhead": "petg-gf", "kh_m3": "steel", "kh_plate": "stainless", "kh_side_screw": "steel",
@@ -2868,7 +2892,7 @@ COLORS = {
     "keyhead": (0.36, 0.30, 0.42), "kh_m3": "set_screw", "kh_plate": "nut_plate", "kh_shoe": (0.85, 0.45, 0.15),
     "kh_side_screw": "set_screw", "kh_side_insert": "nut", "kh_height_screw": "set_screw",
     "kh_height_insert": "nut", "kh_rod": "guide_rod",
-    "body": "chassis", "wall_bar": "nut_plate", "keyplate": "nut_plate", "ob_board": _mask_rgb("green"),
+    "body": "chassis", "wall_bar": "nut_plate", "keyplate": "nut_plate", "keyseat": "nut_plate", "ob_board": _mask_rgb("green"),
     "deck": (0.16, 0.16, 0.18), "deck_white": (0.95, 0.95, 0.92), "fret_board": _mask_rgb("green"),
     "optical_board": _mask_rgb("green"),        # the stand-in: no mask ordered yet, the fab default
     "optical_r1": _mask_rgb("black"),           # the R1 board in hand (src.wood_bench): ordered black
@@ -2907,7 +2931,7 @@ _SAME = {frozenset(p) for p in (
     ("screw", "nut"), ("screw", "brg"), ("screw", "coupler"),
     ("nut", "yoke"), ("nut", "collar"),
     ("m3", "col_ins"), ("col_ins", "collar"),       # threaded; heat-set (melted in)
-    ("m3", "collar"), ("m3", "nut"), ("m3", "yoke"), ("m3", "keyplate"),
+    ("m3", "collar"), ("m3", "nut"), ("m3", "yoke"), ("m3", "keyplate"), ("m3", "keyseat"),
     ("spring", "plug"),
     ("yoke", "ball"), ("string", "ball"), ("string", "yoke"),
     ("collar", "spring"), ("brg", "block"), ("coupler", "motor"),
