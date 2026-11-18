@@ -621,6 +621,8 @@ class Router(CoupledMixin):
     BEST_ROUND = os.environ.get("ROUTER_BEST_ROUND", "1") == "1"
     TREE_PARTIAL = os.environ.get("ROUTER_TREE_PARTIAL", "1") == "1"   # see _bad_joins
     RIP_RECHECK = os.environ.get("ROUTER_RIP_RECHECK", "1") == "1"     # see _rip
+    NO_SHORTS_COVER = os.environ.get("ROUTER_NO_SHORTS_COVER", "1") == "1"   # see _no_shorts
+    RIP_MATE_LAND = os.environ.get("ROUTER_RIP_MATE_LAND", "1") == "1"       # see _rip
     TREE_PARTIAL_MIN = 6             # pieces: a smaller tree net is ripped whole, as before
     # pf's ceiling (0 = none). Past a few hundred, occupied cells are walls whatever pf is,
     # and the round-to-round swing (mV25: 21..41 sharing from pf 1e3 on) is the price
@@ -1505,11 +1507,40 @@ class Router(CoupledMixin):
     # rail dives on ONE named layer and the other follows through the same spot (each
     # order, plain and with dives priced harder). The first attempt that meets the rules
     # and shares nothing is kept; if none does, the fewest faults win, the original first.
+    # ⚠ ONE PAIR MUST NOT TAKE EVERY PAIR'S TIME (brain_board mV43a, 2026-11-18): the pairs go
+    # one after another on what the run has left; FLASH's re-negotiations (3, each put back)
+    # ran 1552 -> 1839 s and HUBU and MCU, next, found the deadline gone -- "kept as
+    # negotiated", then ripped by _no_shorts. With ROUTER_PAIR_SHARE=k each pair works to
+    # k x its fair share of the time left (never under PAIR_SHARE_MIN_S), as close_last does.
+    PAIR_SHARE = float(os.environ.get("ROUTER_PAIR_SHARE", "0"))
+    PAIR_SHARE_MIN_S = 30.0
+    _pair_one = None
+
     def _finish_pairs(self):
+        if self.PAIR_SHARE <= 0 or getattr(self, "_deadline", None) is None:
+            return self._finish_pairs_()
+        glob = self._deadline
+        heads = [a for a in self.nets if a.mate is not None and a.partner is None and a.group is not None]
+        try:
+            for i, a in enumerate(heads):
+                self._deadline = glob
+                left = glob - _clock()
+                if left > 0:
+                    self._deadline = min(glob, _clock() + max(self.PAIR_SHARE_MIN_S,
+                                                              self.PAIR_SHARE * left / (len(heads) - i)))
+                self._pair_one = a
+                self._finish_pairs_()
+        finally:
+            self._pair_one = None
+            self._deadline = glob
+
+    def _finish_pairs_(self):
         pf = getattr(self, "_pf_last", 1.0)
         for a in list(self.nets):
             b = a.mate
             if b is None or a.partner is not None or a.group is None:
+                continue
+            if self._pair_one is not None and a is not self._pair_one:
                 continue
             if self._left(1.0) <= 0.0 and not (a.failed or b.failed):
                 self.log("  pair %s/%s: past the run's deadline, kept as negotiated" % (a.name, b.name))
@@ -3109,7 +3140,17 @@ class Router(CoupledMixin):
                        and any(c.size for c in self._conflicts(n))]
             if not sharing:
                 return
-            sharing.sort(key=lambda n: (not n.plane, n.mate is not None, n in done))
+            # ⚠ RIP THE NET IN THE MOST CONFLICTS FIRST (brain_board mV40, 2026-11-18): by the
+            # order above, non-pair signals went first, so GADGET_DP -- beside ten other nets --
+            # cost SW_PU_MID, U15_ILIM, MCU_TX, SEL_PED, +3V3_UI, HUB2_DP/DM... and then went
+            # itself: 26 nets ripped here. With ROUTER_NO_SHORTS_COVER=1, after the plane
+            # nets (their shared joins only), the signal that shares with the most others goes
+            # first -- a greedy cover; ties as before.
+            if self.NO_SHORTS_COVER:
+                deg = {n: (0 if n.plane else len(self._sharers([n]))) for n in sharing}
+                sharing.sort(key=lambda n: (not n.plane, -deg[n], n.mate is not None, n in done))
+            else:
+                sharing.sort(key=lambda n: (not n.plane, n.mate is not None, n in done))
             n = sharing[0]
             self.log("  still sharing after the finish: %s -- ripped (a short is worse than "
                      "an open)" % n.name)
@@ -3448,6 +3489,21 @@ class Router(CoupledMixin):
                     and not any(p.size and ((self.occ_t[p] >= 2).any() or self._via_shares(p))
                                 for p in net.paths)):
                 self.log("  %s: listed as sharing, but none of its copper shares space now -- kept"
+                         % net.name)
+                continue
+            # ⚠ ...AND A PAIR RAIL MEETING ONLY ITS MATE AT ITS OWN LANDS IS THE PAIR FINISH'S
+            # (brain_board mV42a, 2026-11-18): MCU_DP "still shares space beside MCU_DM" at
+            # (116.13, 104.75), 0.8 mm off U1.123 -- the fan-out the negotiation already let
+            # them share (MATE_LAND_MM) -- ripped here, BEFORE _finish_pairs could lay that
+            # fan-out coupled; MCU, FLASH, HUBU and GADGET rails all went this way. With
+            # ROUTER_RIP_MATE_LAND=1 such a rail is kept for the pair finish; _no_shorts still
+            # takes out whatever shares after it.
+            if (self.RIP_MATE_LAND and self.MATE_LAND_MM > 0 and not net.failed and not net.plane
+                    and net.paths and (net.mate is not None or net.partner is not None)
+                    and not any(p.size and self._via_shares(p) for p in net.paths)
+                    and not any(p.size and self._drop_mate_land(net, p[self.occ_t[p] >= 2]).size
+                                for p in net.paths)):
+                self.log("  %s: shares only with its mate at its own lands -- kept for the pair finish"
                          % net.name)
                 continue
             if not net.failed:
