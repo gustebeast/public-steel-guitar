@@ -2428,4 +2428,4 @@ The changes:
 - The keyhole plate is now 7 mm: a 4 mm seat layer (Ø4.3 steel / Ø5.0 printed) the 3 mm ball end sinks fully into, over a 3 mm layer it pulls on. Steel: two laser-cut sheets, 3 mm keyhole plate (+X, screw heads on it) and 4 mm key_seat_plate (-X, on the yoke).
 - The printed yoke spacer is 3 mm shorter; the stack length, screws and travel are unchanged.
 - Restring: drop the ball in the top hole, let it fall down the slit behind the plate, then pull the string: the ball must go all the way into its seat (flush or below the plate's -X face) before tensioning.
-- The slit takes the string's swollen neck at the ball (string 10 measures 2.2): 2.65 in steel; a printed stand-in's slit is sized for its one string.
+- The steel slit is 2.25: string 10's swollen neck at the ball (2.2) just passes. A heavier set (.080) would need the plate recut. A printed stand-in's slit is sized for its one string.
