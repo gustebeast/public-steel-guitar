@@ -655,8 +655,12 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     if not skip_finish:
         # the finish starts from the route the score just drew (ownroute.py, OWNROUTE_PARENT)
         par = stem + ".route.pkl"
+        # ...or, with PCBFLOW_FINISH_FRESH=1, routes the board again from nothing at ownroute's own
+        # budget, as the replay that finished brain_board mV41 at 3 unconnected did: the score
+        # stays a cheap 900 s judge for placement A/Bs, the board gets the real route.
+        fresh = os.environ.get("PCBFLOW_FINISH_FRESH", "0") == "1"
         rc, out, T["finish"] = _run([KICAD_PY, os.path.join(HERE, "finish.py"), stem], log,
-                                    env={"OWNROUTE_PARENT": par} if os.path.isfile(par) else None)
+                                    env={"OWNROUTE_PARENT": par} if os.path.isfile(par) and not fresh else None)
         for line in out.splitlines():
             m = re.search(r"no free site for: (.*)$", line)
             if m:

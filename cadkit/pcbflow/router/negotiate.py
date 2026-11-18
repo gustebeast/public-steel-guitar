@@ -623,8 +623,9 @@ class Router(CoupledMixin):
     RIP_RECHECK = os.environ.get("ROUTER_RIP_RECHECK", "1") == "1"     # see _rip
     NO_SHORTS_COVER = os.environ.get("ROUTER_NO_SHORTS_COVER", "1") == "1"   # see _no_shorts
     RIP_MATE_LAND = os.environ.get("ROUTER_RIP_MATE_LAND", "1") == "1"       # see _rip
-    PAIR_LOCKSTEP = os.environ.get("ROUTER_PAIR_LOCKSTEP", "0") == "1"       # see _route_in
-    LOCKSTEP_MM = 1.0
+    PAIR_LOCKSTEP = os.environ.get("ROUTER_PAIR_LOCKSTEP", "1") == "1"       # see _route_in
+    LOCKSTEP_MM = float(os.environ.get("ROUTER_LOCKSTEP_MM", "1.0"))
+    PAIR_BAND = float(os.environ.get("ROUTER_PAIR_BAND", "0.6"))   # the mate's price in its band
     PAIR_VIA_REL = float(os.environ.get("ROUTER_PAIR_VIA_REL", "0"))     # see _route_in
     TREE_PARTIAL_MIN = 6             # pieces: a smaller tree net is ripped whole, as before
     # pf's ceiling (0 = none). Past a few hundred, occupied cells are walls whatever pf is,
@@ -1127,7 +1128,7 @@ class Router(CoupledMixin):
                     b0, b1 = max(0, tj.min() - bc_), min(w, tj.max() + bc_ + 1)
                     dd = distance_transform_edt(~mine[k][a0:a1, b0:b1]) * m.pitch
                     band = (dd >= sp - 1e-6) & (dd <= sp + 2.5 * m.pitch)
-                    cell[k][a0:a1, b0:b1][band] *= 0.6
+                    cell[k][a0:a1, b0:b1][band] *= self.PAIR_BAND
         occv = self.occ_v.reshape(H, W)[i0:i1, j0:j1].astype(np.float32)
         hv = self.hist_v.reshape(H, W)[i0:i1, j0:j1]
         if lane is not None:
