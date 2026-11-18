@@ -966,13 +966,23 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
             inreg[ref] = inside if ref not in inreg else (inreg[ref] | inside)
     _fsrc = {r_.get("ref"): "%s %s" % (r_["kind"], r_.get("src", "")) for r_ in rules
              if r_["kind"] in ("fixed", "panel") and r_.get("ref")}
+    _fov = []
     if ROOM_DIAG:
         try:
             for line_ in _fixed_overlaps(parts, pl, fixed, _fsrc):
+                _fov.append(line_)
                 log.append(line_)
                 print("place_init: " + line_)
         except Exception as e_:                 # noqa: BLE001  (a diagnosis never stops a run)
             log.append("FIXED OVERLAP check failed: %r" % (e_,))
+    # ⚠ NAMED IN THE FIRST SECOND, REFUSED 12 MINUTES LATER (brain_board mV23, 2026-11-17):
+    # U5's land grew (RNX -> DDA) under five holds frozen round the old one; this said so,
+    # the placement ran on for 720 s, and layout refused the courtyard overlaps. With
+    # PCBFLOW_FIXED_OVERLAP_STOP=1 the run stops here. (Off by default: layout accepts the
+    # overlaps a project declares in its pcb_declared.py, which this stage does not read.)
+    if _fov and os.environ.get("PCBFLOW_FIXED_OVERLAP_STOP", "0") == "1":
+        raise SystemExit("place_init: %d FIXED OVERLAP(s) -- release one hold of each pair "
+                         "(see above); stopped before placement" % len(_fov))
     for ref in fixed:
         m, ai, aj = mask(parts[ref], pl[ref][2])
         _stamp(G, m, ai, aj, *G.ij(*pl[ref][:2]), force=True, grow=halo(parts[ref]))
