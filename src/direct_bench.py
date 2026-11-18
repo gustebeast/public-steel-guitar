@@ -507,7 +507,14 @@ from .motor_coupler import CPL_D, CPL_X, CPL_GRIP, SCREW_X0   # src.motor_couple
 #   strings off: the spring pushes the screw -X: collar B -> inner race -> outer race -> the lid
 #                -> the ties -> the plug, whose spring pull it is: the plate sees nothing.
 # Either way the motor only turns the screw.
-HOUSE_D = D.BRG688_OD + 3.2                         # 19.2: the pocket's 1.6 wall
+# THE BEARING'S POCKET (user, 2026-11-17): drawn at the 688's own 16.0 it would print ~0.3-0.4
+# under (every round hole along the build has: the yoke's 10.6 on a 10.2 lip too tight, 10.7
+# slides; the guide rod needed +0.6, the M3 +0.7). The lip and the lid hold the bearing in X, so
+# the pocket only centres it: 16.3, a firm push by hand (16.2 if it comes out loose). Its mouth
+# is on the bed, so a 45 deg CHAMFER there takes the elephant's foot.
+HOUSE_POCKET_D = D.BRG688_OD + 0.3                  # 16.3
+HOUSE_MOUTH_CH = 0.5
+HOUSE_D = HOUSE_POCKET_D + 4 * D.BEAD               # 19.5: the pocket's 1.6 wall
 # TURNING NEVER TOUCHES FIXED (user, 2026-11-14: "ideally the bearings handle all the contact"):
 # every collar face stands SPIN_GAP off the plate, the lip and the lid, and every fixed thing
 # SPIN_GAP outside the collars' swept circle -- the bearing's own axial play (~0.1) and a collar
@@ -593,7 +600,7 @@ def tie_offsets(i: int) -> list:
     return [at_ang(a, ear_r(i)) for a in ear_ang(i)]
 TIE_L = 35.0                                        # M3 x 35 (2026-11-16: heads on the lid's face,
                                                     # the 13 spacers): the insert's whole 4.3
-TIE_BOSS = 3.4 / 2 + EAR_WALL                       # the lip's and lid's bosses round the ties
+TIE_BOSS = M3H.CLR_PRINTED_D / 2 + EAR_WALL         # the lip's and lid's bosses round the ties
 # THE TIES' SPACERS (user, 2026-11-16): past collar B the housing has no room for a two-bead
 # wall round a tie (one bead left 1.05 to the next string's collar), so each tie runs through a
 # ALUMINIUM ROUND SPACER, OD 4.5 / ID 3.2, 13 long (for M3; McMaster 94669A107, $0.65; 11 and 12
@@ -813,7 +820,7 @@ def _yoke(i: int, t: float) -> cq.Workplane:
     out = out.cut(cyl_x(GUIDE_D + 2.0, YK_H + 2, ft - 1, y=ry, z=rz))                 # rod: clear
     for a in HOLE_ANG["m3"]:                                                          # the M3s bite
         dy, dz = at_ang(a)
-        out = out.cut(cyl_x(3.4, YK_H + 2, ft - 1, y=y + dy, z=z + dz))           # clear
+        out = out.cut(cyl_x(M3H.CLR_PRINTED_D, YK_H + 2, ft - 1, y=y + dy, z=z + dz))   # clear
     # behind the plate, a pocket the ball slides up in (its 3 along the axis, Ø4 across)
     rx0 = yt - YK_ROOF
     pk = D.STRING_NUT_L + 0.6
@@ -824,17 +831,18 @@ def _yoke(i: int, t: float) -> cq.Workplane:
     return out
 
 
-def keyhole_plate() -> cq.Workplane:
+def keyhole_plate(m3_d: float = 3.4) -> cq.Workplane:
     """The keyhole plate in its own frame (+X face at x = 0, axis on y = z = 0), as cut from the
     4 mm sheet: a Ø YK_D disc, the ball's hole KEY_DROP under the axis, the slit up to a round
-    end on the axis, and the yoke's two M3 clearance holes (Ø3.4: the heads sit on its +X face)."""
+    end on the axis, and the yoke's two M3 clearance holes (Ø3.4 laser cut: the heads sit on its
+    +X face). A PRINTED stand-in passes the printed clearance as m3_d (wood_bench)."""
     w = cyl_x(YK_D, YK_ROOF, -YK_ROOF, y=0, z=0)
     w = w.cut(cyl_x(KEY_D, YK_ROOF + 2, -YK_ROOF - 1, y=0, z=-KEY_DROP))
     w = w.cut(box_at(YK_ROOF + 2, SLIT_W, KEY_DROP, x=-YK_ROOF / 2, y=0, z=-KEY_DROP / 2))
     w = w.cut(cyl_x(SLIT_W, YK_ROOF + 2, -YK_ROOF - 1, y=0, z=0))
     for a in HOLE_ANG["m3"]:
         dy, dz = at_ang(a)
-        w = w.cut(cyl_x(3.4, YK_ROOF + 2, -YK_ROOF - 1, y=dy, z=dz))
+        w = w.cut(cyl_x(m3_d, YK_ROOF + 2, -YK_ROOF - 1, y=dy, z=dz))
     return w
 
 
@@ -1171,7 +1179,7 @@ def _anchor_plug_raw(i: int) -> cq.Workplane:
     for ty, tz in tie_offsets(i):  # the ties' heat-set inserts, then their tips' way out through all
         out = out.cut(fitted_insert_cutter(INS, (a0, y + ty, z + tz), (1.0, 0.0, 0.0), HEAT_SET,
                                            depth=INS_POCKET_L, overshoot=1.0, print_up=PLUG_UP))
-        out = out.cut(cyl_x(INS.shaft_clr_d, x_end + 1 - (a0 + INS_POCKET_L), a0 + INS_POCKET_L,
+        out = out.cut(cyl_x(M3H.CLR_PRINTED_D, x_end + 1 - (a0 + INS_POCKET_L), a0 + INS_POCKET_L,
                             y=y + ty, z=z + tz))
     out = out.cut(cyl_x(PLUG_GUIDE_SEAT, f1 - a0 + 2, a0 - 1, y=y + dy, z=z + dz))  # the rod's seat
     return out
@@ -1229,11 +1237,13 @@ def _housing(i: int) -> cq.Workplane:
     out = out.union(_radial_box(i, h0, l1, 0.0, GUIDE_R, 2 * rb))
     dy, dz = at_ang(guide_ang(i), GUIDE_R)
     out = out.union(cyl_x(2 * rb, l1 - h0, h0, y=y + dy, z=z + dz))
-    out = out.cut(cyl_x(D.BRG688_OD, l0 + 0.01 - (h0 - 1), h0 - 1, y=y, z=z))  # the pocket, open -X
+    out = out.cut(cyl_x(HOUSE_POCKET_D, l0 + 0.01 - (h0 - 1), h0 - 1, y=y, z=z))  # the pocket, open -X
+    rp = HOUSE_POCKET_D / 2                                                     # ... its mouth's chamfer
+    out = out.cut(_cone_x(rp + HOUSE_MOUTH_CH + 0.01, rp, h0 - 0.01, h0 + HOUSE_MOUTH_CH, y, z))
     out = out.cut(cyl_x(RACE_OUT_D, l1 - l0 + 2, l0 - 1, y=y, z=z))            # the lip's hole
     rod_l_max()                                                                 # a third still fits
     for dy, dz in tie_offsets(i):
-        out = out.cut(cyl_x(3.4, l1 - h0 + 2, h0 - 1, y=y + dy, z=z + dz))
+        out = out.cut(cyl_x(M3H.CLR_PRINTED_D, l1 - h0 + 2, h0 - 1, y=y + dy, z=z + dz))
     return _housing_label(out, i, h0, l1, rb)
 
 
@@ -1283,7 +1293,7 @@ def _lid(i: int) -> cq.Workplane:
     out = cyl_x(HOUSE_D, d1 - d0, d0, y=y, z=z).union(_ears(i, d0, d1, TIE_BOSS))
     out = out.cut(cyl_x(RACE_OUT_D, d1 - d0 + 2, d0 - 1, y=y, z=z))
     for dy, dz in tie_offsets(i):  # the ties' heads on its -X face (not sunk)
-        out = out.cut(cyl_x(3.4, d1 - d0 + 2, d0 - 1, y=y + dy, z=z + dz))
+        out = out.cut(cyl_x(M3H.CLR_PRINTED_D, d1 - d0 + 2, d0 - 1, y=y + dy, z=z + dz))
     return out
 
 
@@ -1733,7 +1743,7 @@ def _mplate(i: int) -> cq.Workplane:
     out = out.cut(cyl_x(D.NEMA17_PILOT_D + 0.6 + extra, 10, x0 - 1, y=y, z=z))
     for sy in (1, -1):
         for sz in (1, -1):
-            out = out.cut(cyl_x(3.4 + extra, 10, x0 - 1, y=y + sy * NEMA17_HOLES / 2,
+            out = out.cut(cyl_x(M3H.CLR_PRINTED_D + extra, 10, x0 - 1, y=y + sy * NEMA17_HOLES / 2,
                                 z=z + sz * NEMA17_HOLES / 2))
     return out
 
@@ -1931,7 +1941,7 @@ EP_POCKET, EP_GAP, EP_WALL = 5.0, 1.0, 8.0
 EP_WASHER = (7.0, 0.5)                               # OD, thickness
 EP_TUNNEL = 7.2                                      # the screw's way in from the +X end (as printed,
                                                      # fit=True): 0.1 a side over the washer, 1.6 wall
-EP_M3_CLR = 3.4
+EP_M3_CLR = M3H.CLR_PRINTED_D                       # 3.7: printed round (along EP_UP)
 EP_SCREW_Z = (BAR_Z[1] - 8.0, BAR_Z[0] + 5.5)        # the two screws in each bar end (the low one
                                                      # 5.5 up: its tunnel then clears row c's axle)
 
