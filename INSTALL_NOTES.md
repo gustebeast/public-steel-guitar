@@ -2423,3 +2423,9 @@ The changes:
 - The ball's Ø4.8 hole is now **5 mm above** the string's axis; the slit runs **down** to the seat on the axis. The endplate's window moved up with it (3.2 below to 7.4 above the axis).
 - **Restringing:** feed the ball through the endplate's window and the top hole; it falls down the slit into its seat by itself and stays there with the string slack while you wrap. Under load the seat (the 1 mm seat plate; the bench's printed recess) keeps it from walking out.
 - Bench reprints: `wb_keyplate`, `yoke`, `wb_endplate` (the endplate also carries the Ø5.61 rod seat and the ±0.4 head stadiums).
+
+## Keyhole plate: the ball seats its whole length (2026-11-18)
+- The keyhole plate is now 7 mm: a 4 mm seat layer (Ø4.3 steel / Ø5.0 printed) the 3 mm ball end sinks fully into, over a 3 mm layer it pulls on. Steel: two laser-cut sheets, 3 mm keyhole plate (+X, screw heads on it) and 4 mm key_seat_plate (-X, on the yoke).
+- The printed yoke spacer is 3 mm shorter; the stack length, screws and travel are unchanged.
+- Restring: drop the ball in the top hole, let it fall down the slit behind the plate, then pull the string: the ball must go all the way into its seat (flush or below the plate's -X face) before tensioning.
+- The slit takes the string's swollen neck at the ball (string 10 measures 2.2): 2.65 in steel; a printed stand-in's slit is sized for its one string.
