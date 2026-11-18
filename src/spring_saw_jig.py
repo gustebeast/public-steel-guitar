@@ -141,14 +141,20 @@ def cap() -> cq.Workplane:
 
 
 def stock_spring() -> cq.Workplane:
-    """The 20 in stock, its end on the stop, running out past the guide (drawn 60 past it)."""
+    """The 20 in stock, lying in the V, its SQUARE-CUT end flat on the stop (the last cut's face:
+    the end turn tapering to a knife edge, not a loose wire tail), running out past the guide
+    (drawn 60 past it, cut square there too)."""
     x0, x1 = X_MIN - 60.0, STOP_X
     proxy = DB._tube_x(DB.SPRING_OD, DB.SPRING_ID, x0, x1, 0.0, AXIS_Z)
     try:
+        import numpy as np
         from cadkit.mesh_parts import coil_mesh, with_mesh, affine_of
     except ImportError:
         return proxy
-    m = coil_mesh([(0.0, DB.SPRING_WIRE, x1 - x0)], DB.R_COIL, DB.SPRING_WIRE)
+    w = DB.SPRING_WIRE
+    m = coil_mesh([(-w, w, x1 - x0 + 2 * w)], DB.R_COIL, w)   # wound past both ends ...
+    m["pos"][:, 2] = np.clip(m["pos"][:, 2], 0.0, x1 - x0)    # ... and cut flat at them
+    m.pop("feat", None)                                       # no longer the analytic helix
     return with_mesh(proxy, m, affine_of(lambda w: w.rotate((0, 0, 0), (0, 1, 0), 90)
                                          .translate((x0, 0.0, AXIS_Z))))
 
