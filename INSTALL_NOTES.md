@@ -2353,6 +2353,7 @@ The changes:
 - **Spring saw jig** (`tools/spring_saw_jig.step`, PETG-GF, printed as drawn). It is the guide rod jig's sibling: the same hacksaw (McMaster 4075A31), the same 32 TPI bi-metal blade (6927A16) and the same 1.3 slot. One Quick-Grip clamps it through the leadscrew jig's cap (`saw_jig_cap`); there are no screws.
   - **Why one straight cut works:** the spring is close-wound, so a cut square to the axis runs through the wire along exactly one turn. That parts it into two pieces with no loose bits. Each end comes out as a flat face whose last turn tapers to a thin edge.
   - **Length:** the flat end butts the end stop, so each piece is 97.0 (42 coils) from the slot with no counting.
+  - **Counting a cut piece:** expect **41 full coils plus a tapered part-turn at each end**. A square cut runs along one turn, so each end's last turn thins to a knife edge, and the two tapered turns together make up the 42nd coil. That is correct. Check the length (97.0-97.4) rather than the count: about 2 mm short means the wire runs thick.
   - **Cap:** its notch is narrower than the spring, so it rides on the spring on the notch's two lower edges.
   - **Use:**
     1. Lay the jig on the table near the edge.
