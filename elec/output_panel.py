@@ -3516,13 +3516,15 @@ BOARD_NOTES["quality"] = {
                         "18/49 VSS, 32/50/68 VDD, 25 PC5, 26 PB0, 27 PB1, 35 PB12, 36 PB13, "
                         "38 PB15, 39 PC6, 48 PA13/SWDIO, 52 PA14/SWCLK, 53 PA15, 58 PB3, 60 PB5, 61 PB6 = "
                         "USBHS_DM, 62 PB7 = USBHS_DP, 63 BOOT0, pad VSS; 20 PA4, 21 PA5 off the drawing 2026-10-07",
-        "AD8402ARZ10": "Analog Devices AD8400/AD8402/AD8403 Rev. C, and Rev. E by the order review, AD8402 pin "
-                       "configuration (SOIC-14 drawing) and pin function table: 1 AGND, "
-                       "2 B2, 3 A2, 4 W2, 5 DGND, 6 SHDN, 7 CS, 8 SDI, 9 CLK, 10 RS, "
-                       "11 VDD, 12 W1, 13 A1, 14 B1. Read 2026-10-08; the drawing and the "
-                       "table agree. Board: 1 and 5 GND, 2 and 14 VMID, 3 RING_BUF_IN, "
-                       "4 RING_GAIN, 6 and 11 +5V, 7 POT_CS, 8 POT_SDI, 9 POT_SCK, "
-                       "10 POT_RS, 12 TIP_GAIN, 13 OUT_BUF_IN",
+        "AD8402ARZ10": (
+            "ADI AD8400/AD8402/AD8403 datasheet Rev. E, p.12 of 32, Figure 7 (AD8402 pin "
+            "configuration) + Table 8 AD8402 Pin Function Descriptions: 1 AGND, 2 B2, 3 A2, 4 W2,"
+            " 5 DGND, 6 SHDN, 7 CS, 8 SDI, 9 CLK, 10 RS, 11 VDD, 12 W1, 13 A1, 14 B1; note 1: "
+            "every AGND to DGND; pads as KiCad's SOIC-14 -- U10 (output_panel, brain_board, "
+            "output_board): 1/5 ground, 2/14 VMID, 3 RING_BUF_IN, 4 RING_GAIN, 6 SHDN high, 7/8/9"
+            " POT_CS/SDI/SCK, 10 POT_RS, 11 +5V, 12 TIP_GAIN, 13 OUT_BUF_IN (read 2026-11-18, the"
+            " analog.com PDF via web.archive.org)"
+        ),
         "TLV9061IDBVR": "TI SBOS839N Table 5-1, SOT-23 (DBV) column: 1 OUT, 2 V-, 3 IN+, "
                         "4 IN-, 5 V+. Read 2026-09-30",
         "TS5A3159DCKR": "TI SCDS174 p.3 Pin Functions (DBV and DCK): 1 NO, 2 GND, 3 NC, "
@@ -3876,10 +3878,11 @@ if REV != 1:
                          "6 AGND 7 FB 8 PG 9 EN 10 VIN 11 PGND 12 SW; the same pins as elec/buck_cell.py "
                          "and the optical board's U13, EN on VIN",
         "SWPA5040S4R7MT": (
-            "Sunlord sheet NOT re-read 2026-11-18 (LCSC no longer lists C48496; its datasheet "
-            "link redirects). KiCad L_Sunlord_SWPA5040S (sheet 1 of its .kicad_mod, from "
-            "Sunlord's SWPA catalogue): 2 pads, unpolarised. Board: 1 the switch node, 2 the "
-            "output rail (footprint checked 2026-11-18)"
+            "Sunlord SWPA Series catalogue (revised 2023/06/01; LCSC C84608's copy via "
+            "web.archive.org, C48496's own link is gone) p.2 Fig.3 + Recommended Land Pattern, "
+            "SWPA5040S row: two terminals, unpolarised, a 2.3 / b 1.4 / c 4.2. KiCad "
+            "L_Sunlord_SWPA5040S: pads 1.4 x 4.2 at +-1.85 (a 2.3 gap), the same. Board: 1 the "
+            "switch node, 2 the output rail (read 2026-11-18)"
         ),
         "TUSB320LAIRWBR": (
             "TI TUSB320LAI/HAI datasheet SLLSEQ8D (rev. May 2017) p.3 RWB X2QFN-12 top view + Pin"
