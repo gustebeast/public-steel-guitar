@@ -1,4 +1,4 @@
-"""Zone fills that are the same for the same board: PCBFLOW_STABLE_FILL (flag).
+"""Zone fills that are the same for the same board: PCBFLOW_STABLE_FILL (default on; =0 for KiCad's own fill).
 
 ⚠ KICAD'S FILLER IS NOT REPRODUCIBLE (brain_board, 2026-11-19). layout.py run twice on
 one input wrote two boards that differed ONLY in zone filled_polygon vertices: the same
@@ -31,7 +31,7 @@ import time
 import numpy as np
 import pcbnew
 
-ON = os.environ.get("PCBFLOW_STABLE_FILL", "0") == "1"
+ON = os.environ.get("PCBFLOW_STABLE_FILL", "1") == "1"   # default on 2026-11-19 (gate: layout x2 md5, keep-route x2, XOR 0 vs fresh fill)
 FILL_CACHE_MB = float(os.environ.get("PCBFLOW_FILL_CACHE_MB", "2000"))
 STATS = {"hit": 0, "miss": 0}
 

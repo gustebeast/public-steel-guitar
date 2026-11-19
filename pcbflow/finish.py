@@ -899,10 +899,11 @@ def finish(stem, rounds=1, keep_route=False):
     _chk = _step("cad_geom_check.py", stem)
     _cqs = ([[os.environ["CAD_PYTHON"]]] if os.environ.get("CAD_PYTHON")
             else [["py", "-3.12"], ["python3"], ["python"]])
-    # a SCRATCH project (no CAD repo beside it: no <parent>/src) has no CAD to compare: the
-    # check would read the scratch placement against the repo's committed geometry and call
-    # every moved part a disagreement. Said in the last line, not counted as a FAIL.
-    _scratch_cad = _chk and not os.path.isdir(os.path.join(os.path.dirname(project_dir(stem)), "src"))
+    # a SCRATCH project (not inside a repo: no <parent>/.git, file or folder) has no CAD to
+    # compare: the check would read the scratch placement against the repo's committed
+    # geometry and call every moved part a disagreement. Said in the last line, not counted
+    # as a FAIL. (Not "<parent>/src": a scratchpad had an unrelated src/, mVW47s2.)
+    _scratch_cad = _chk and not os.path.exists(os.path.join(os.path.dirname(project_dir(stem)), ".git"))
     if _scratch_cad:
         print("    cad_geom_check NOT RUN: scratch project %s has no CAD repo beside it"
               % project_dir(stem))
