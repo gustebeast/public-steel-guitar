@@ -938,7 +938,11 @@
     -75.415,
     22.0
    ]
-  ]
+  ],
+  "away": {
+   "U38": "USB data switch: sits in compute beside the CM5's USB it switches",
+   "Q8": "service-port VBUS switch: sits in compute beside the CM5's USB (lead 2026-11-19)"
+  }
  },
  {
   "kind": "in_region",
@@ -1190,7 +1194,10 @@
     -20.0,
     -8.0
    ]
-  ]
+  ],
+  "away": {
+   "U37": "USB hub: sits in compute beside the CM5's USB, which it serves"
+  }
  },
  {
   "kind": "in_region",
