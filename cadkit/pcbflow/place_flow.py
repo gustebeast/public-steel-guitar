@@ -343,7 +343,7 @@ def _project_guard(stem):
 
 
 def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, keep_widths=False, singles=False,
-         apply_swaps=False, place_only=False, to_routability=False):
+         apply_swaps=False, place_only=False, to_routability=False, no_score=False):
     d = os.path.abspath(d)
     stem = _stem(d)
     _project_guard(stem)
@@ -641,9 +641,15 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     # 900 s route -- a replay, routing again from nothing at ownroute's 1800 s, finished the
     # same placement at 3 unconnected where the flows ended at 27-28. PCBFLOW_SCORE_BUDGET_S
     # sets the score's budget (router.score --budget; default 900 as before).
+    # --no-score (a FINAL, lead 2026-11-18): with PCBFLOW_FINISH_FRESH the finish routes from
+    # nothing anyway, so the score's ~40 min judges nothing; placement A/Bs keep it.
     _sb = os.environ.get("PCBFLOW_SCORE_BUDGET_S")
-    rc, out, T["score"] = _run([sys.executable, "-m", "router.score", stem, "--save", "auto", "--intent", ip,
-                                "--parts", parts_path] + (["--budget", _sb] if _sb else []), log)
+    if no_score:
+        out = ""
+        say("NO SCORE: the finish routes the board from nothing")
+    else:
+        rc, out, T["score"] = _run([sys.executable, "-m", "router.score", stem, "--save", "auto", "--intent", ip,
+                                    "--parts", parts_path] + (["--budget", _sb] if _sb else []), log)
     score = None
     for line in reversed(out.splitlines()):
         try:
@@ -658,7 +664,7 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
         # ...or, with PCBFLOW_FINISH_FRESH=1, routes the board again from nothing at ownroute's own
         # budget, as the replay that finished brain_board mV41 at 3 unconnected did: the score
         # stays a cheap 900 s judge for placement A/Bs, the board gets the real route.
-        fresh = os.environ.get("PCBFLOW_FINISH_FRESH", "0") == "1"
+        fresh = os.environ.get("PCBFLOW_FINISH_FRESH", "1") == "1" or no_score
         rc, out, T["finish"] = _run([KICAD_PY, os.path.join(HERE, "finish.py"), stem], log,
                                     env={"OWNROUTE_PARENT": par} if os.path.isfile(par) and not fresh else None)
         for line in out.splitlines():
@@ -909,12 +915,14 @@ def main(argv):
                     help="stop after placement and its rule checks (no cells, layout or route)")
     ap.add_argument("--to-routability", action="store_true",
                     help="stop after layout and the global plan's routability (no route)")
+    ap.add_argument("--no-score", action="store_true",
+                    help="a final: skip the score route; the finish routes the board from nothing")
     ap.add_argument("--apply-swaps", action="store_true",
                     help="apply the proposed pair channel swaps (SWAP lines) to this run's netlist and parts "
                          "-- the generator must then carry them")
     a = ap.parse_args(argv)
     return flow(a.dir, os.path.abspath(a.intent), not a.no_auto, a.soft_forbid, a.skip_finish, a.fold_post,
-                a.keep_widths, a.auto_singles, a.apply_swaps, a.place_only, a.to_routability)
+                a.keep_widths, a.auto_singles, a.apply_swaps, a.place_only, a.to_routability, a.no_score)
 
 
 if __name__ == "__main__":
