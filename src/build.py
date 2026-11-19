@@ -78,7 +78,7 @@ PARTS = {
     "screw_spin_jig": (
     lambda: heal(_m("direct_bench").screw_spinner()),
     "tools/screw_spin_jig.step",
-    "TOOL — runs a leadscrew in fast at install: collar A's clamp body (formed thread, split, M3 x 10 into the insert used as a nut) clamped on the screw's motor end, on a 1/4 in hex shank (6.2 AF, 8 long; coupons/hex_fit.step picks the AF) for a driver's 1/4 in hex socket. The screw bottoms on the shank's cone. PETG-GF on the 0.8, standing on the hex's end (brim it), the 45 deg cone up to the body"),
+    "TOOL — runs a leadscrew in fast at install: collar A's clamp body (formed thread, split, M3 x 10 into the insert used as a nut) clamped on the screw's motor end, on a 3/8 in hex shank (9.4 AF, 8 long; coupons/hex_fit_38.step picks the AF) for a driver's 3/8 in hex socket. The screw bottoms on the shank's cone. PETG-GF on the 0.8, standing on the hex's end (brim it), the 45 deg cone up to the body"),
     "pin_drill_jig": (
     lambda: heal(_m("pin_drill_jig").body()),
     "tools/pin_drill_jig.step",

@@ -1881,9 +1881,9 @@ def _collar_local(boss_l: float = SPIN_GAP + LID_T, shaft: float = 0.0, body_l: 
 # a nut -- on a 1/4 in hex shank. The bore is blind at the body's -X face: the screw's end bottoms there.
 # Prints like collar A, -X -> +X standing on the hex's end, its pockets peaked +X; a 45 deg cone climbs
 # from the hex out to the body, so nothing overhangs.
-SPIN_HEX_AF = 6.2                                   # 1/4 in (6.35) across flats, less 0.15: printed
-                                                    # outsides come out a touch fat, and the bit's
-                                                    # socket should take it by hand
+SPIN_HEX_AF = 9.4                                   # 3/8 in (9.525) across flats (user, 2026-11-18: 1/4
+                                                    # standing lost its corners to the 0.8's 2.0 turn;
+                                                    # 3/8 keeps ~0.4 of lock); coupons/hex_fit_38 sets it
 SPIN_HEX_L = 8.0                                    # engaged in the bit's socket (user, 2026-11-18)
 
 
