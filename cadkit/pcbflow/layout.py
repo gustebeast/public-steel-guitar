@@ -1842,7 +1842,7 @@ def rip_router_shorts(board):
     # and KiCad's DRC, which allows nothing, failed it; that one violation then gated
     # close_last off for all 31 open nets. PCBFLOW_TAKEUP_EXACT=1 allows only float noise
     # (0.5 um), so anything DRC will call a clearance fault is taken up here.
-    _hair = 0.0005 if os.environ.get("PCBFLOW_TAKEUP_EXACT", "0") == "1" else 0.002
+    _hair = 0.0005 if os.environ.get("PCBFLOW_TAKEUP_EXACT", "1") == "1" else 0.002
     clr = pcbnew.ToMM(board.GetDesignSettings().m_MinClearance) - _hair
     items = []
     for t in board.GetTracks():
@@ -2107,7 +2107,13 @@ def repair_plane_orphans(board, notes, probe_mm=12.0, max_items=24):
             loose = loose + more
         if not loose:
             continue
-        if len(loose) > max_items:
+        # ⚠ GATE ON PIECES, NOT TRACKS (PCBFLOW_STRAND_PIECES, 2026-11-18): the repair lays ONE
+        # stub a piece (below), but this gate counted tracks. mV57a refused 49 GND tracks; the
+        # finished board's 19 still-loose tracks were 4 pieces, one of them 13 tracks long --
+        # four stubs' work, refused as "too many to be stitch fallout". With the flag the
+        # track count only warns, and the gate below applies max_items to pieces.
+        _by_piece = os.environ.get("PCBFLOW_STRAND_PIECES", "0") == "1"
+        if len(loose) > max_items and not _by_piece:
             print("  ⚠ %d %s track(s) stranded from the plane -- too many to be stitch "
                   "fallout, NOT repairing (look at the pour, not the tracks)"
                   % (len(loose), net))
@@ -2166,6 +2172,15 @@ def repair_plane_orphans(board, notes, probe_mm=12.0, max_items=24):
                     pass
             for v in cl:
                 piece.setdefault(v, cl)
+        if _by_piece:
+            _np = len({id(c) for c in piece.values()})
+            if _np > max_items:
+                print("  ⚠ %d %s track(s) in %d piece(s) stranded from the plane -- too many "
+                      "to be stitch fallout, NOT repairing (look at the pour, not the tracks)"
+                      % (len(loose), net, _np))
+                continue
+            print("      %s: %d stranded track(s) in %d piece(s) -- one stub a piece"
+                  % (net, len(loose), _np))
         joined = set()
         for t in loose:
             if t.m_Uuid.AsString() in joined:
