@@ -612,11 +612,18 @@ HOUSE_MOUTH_CH = 0.5
 # the ring only needs the tooth (1.6 neck, 1.6 tall), its undercut and a 1.6 wall outside it:
 # r 8.15 -> 12.4 leaves the undercut 0.75 (25 deg off the axis). 12.4 is what the neighbours allow
 # (their ears stand 12.9 off each axis at the lid's x). The ties stop the twist; seated, each lid
-# turns at most ~14 deg before its ears meet a neighbour's (scratch bay3.py, strings 2-7), so 14 teeth
-# (12.9 deg twist). Axial play before the slant bears: ~0.36 (clearance / sin 25).
+# turns ~14 deg at most before its ears meet a NEIGHBOUR'S lid (scratch bay3.py). AS FEW TEETH AS THE
+# TWIST ALLOWS, set by an INSTALL ORDER (user, 2026-11-18: longer teeth and pockets print surer; "set the
+# number of tenons based on that while going as few as possible"): every lid/sense/neighbour's first
+# touch mapped to 90 deg (scratch bay8.py) and every sense assignment searched for an order (baysolve.py):
+# 2-4 teeth admit none; 5 (36 deg) works fitting strings 1 -> 10, each lid turned as BAY_SENSE says.
+# Axial play before the slant bears: ~0.36 (clearance / sin 26).
 HOUSE_D = 24.8                                      # the bayonet's ring, r 12.4: 1.6 wall outside
                                                     # the lip, 0.5 to the neighbours' ears
-BAY_N = 14
+BAY_N = 5
+# the lid goes on turned BAY_SENSE * twist (right-handed about +X: +1 = clockwise seen from -X, the lid's
+# side) and turns back to seat; fitted in string order 1 -> 10, the neighbours it would meet not yet on
+BAY_SENSE = {0: 1, 1: -1, 2: -1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: -1}
 # THE LID STAYS Ø19.5 (the pocket's 1.6 wall; the teeth's necks are that wall carried on up): its
 # ears clear the neighbours' lids through the twist by 0.57 at worst (string 2), where Ø21 already
 # touches (scratch bay6.py). It meets the housing face to face on its ears; the ring is the teeth's.

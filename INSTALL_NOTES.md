@@ -2465,16 +2465,20 @@ Screw cut lengths (Tr8x2), per string:
 
 ## Thrust housing: the lid twist-locks into the housing all round (2026-11-18)
 
-- The lid lifted between its two ties. Its +X face now carries 14 slant-hook
-  teeth (cadkit `joinery.bayonet`). They drop through 14 pockets in the
-  housing's -X face. Twist the lid 12.9 deg and every tooth sits under a lip.
-- Fitting order: put the bearing in the housing. Hold the lid on the bearing
-  turned half a tooth (12.9 deg) from where its ear holes line up, push it
-  home, then turn it until the ear holes line up. Then fit the ties. The ties
-  are what stop it turning back.
-- The neighbours' lids leave room for that twist on every string (0.57 mm at
-  worst, string 2). Twist each lid the way that clears; one sense is blocked
-  on strings 1-7.
+- The lid lifted between its two ties. Its +X face now carries 5 slant-hook
+  teeth (cadkit `joinery.bayonet`), each about 35 deg of arc. They drop
+  through 5 pockets in the housing's -X face; twist the lid 36 deg and every
+  tooth sits under a lip.
+- Fitting: put the bearing in the housing. Look at the lid from its own side
+  (from -X). Hold it turned 36 deg from where its ear holes line up, push it
+  home, and turn it back until the holes line up. Then fit the ties; they are
+  what stop it turning back.
+- ORDER MATTERS on the instrument: fit the lids in string order 1 -> 10. A
+  36 deg twist would hit a neighbour's ears if that neighbour were already
+  on. Start each lid turned:
+  - clockwise (then turn anticlockwise to lock): strings 1, 4, 5, 6, 7, 8, 9
+  - anticlockwise (then turn clockwise to lock): strings 2, 3, 10
+  The woodbench has no neighbours: either way works.
 - The housing's ring is now 24.8 across (1.6 wall outside the lips). The lid
   stays 19.5: its teeth carry its pocket wall on up.
 - Both halves now print with their mating face UP. The housing stands on its
