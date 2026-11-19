@@ -29,6 +29,8 @@ import re
 import sys
 
 import pcbnew
+
+import stable_fill  # noqa: E402  (PCBFLOW_STABLE_FILL)
 import wx                                       # noqa: E402  (KiCad's python ships it)
 wx.DisableAsserts()                             # NO MODAL DIALOGS IN A BUILD STEP -- see route.py
 
@@ -187,7 +189,7 @@ def _open_count(board, net):
     island only through the fill). KiCad's python exposes no per-net ratsnest, so the
     caller compares counts before and after."""
     try:
-        pcbnew.ZONE_FILLER(board).Fill([z for z in board.Zones() if z.GetNetname() == net])
+        stable_fill.fill(board, [z for z in board.Zones() if z.GetNetname() == net])
         board.BuildConnectivity()
         try:
             return board.GetConnectivity().GetUnconnectedCount(False)

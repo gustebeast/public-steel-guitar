@@ -17,6 +17,7 @@ import sys
 
 import layout
 import pcbnew
+import stable_fill  # noqa: E402  (PCBFLOW_STABLE_FILL)
 import wx                                       # noqa: E402  (KiCad's python ships it)
 wx.DisableAsserts()                             # NO MODAL DIALOGS IN A BUILD STEP -- see route.py
 
@@ -46,7 +47,7 @@ def main(stem):
     # stranded. Doing it the other way round reconnects against a fill that is about to change.
     n_zones = len(board.Zones())
     if n_zones:
-        pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+        stable_fill.fill(board, board.Zones())
         board.Save(pcb)
         board = pcbnew.LoadBoard(pcb)      # a fresh handle: Fill+Save then reuse is asking for
                                            # the SwigPyObject damage this file was split out for

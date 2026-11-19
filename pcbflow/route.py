@@ -28,6 +28,8 @@ import time
 import sys
 
 import pcbnew
+
+import stable_fill  # noqa: E402  (PCBFLOW_STABLE_FILL)
 import wx
 # ⚠ NO MODAL DIALOGS IN A BUILD STEP. KiCad's Python is a wxWidgets application, and a
 # failed internal assertion pops a GUI alert -- "Do you want to stop the program?" -- and
@@ -1016,7 +1018,7 @@ def post_route(board, stem, notes, pcb):
         # this line and took 74 pads with it -- the routed board came back WORSE than
         # before the pour existed, which is a confusing way to learn it.
         board.BuildConnectivity()
-        pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+        stable_fill.fill(board, board.Zones())
         # ⚠ AND CHECK THE STITCHES AGAIN HERE, NOT ONLY IN layout.py. At layout time the
         # plane is poured around 60 parts and every stitch via lands in copper. THIS
         # refill pours it around those parts plus 700 routed tracks, and the plane that
@@ -1028,7 +1030,7 @@ def post_route(board, stem, notes, pcb):
             if n_moved:
                 # moving copper changes the pour that was just computed, so pour again
                 board.BuildConnectivity()
-                pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+                stable_fill.fill(board, board.Zones())
                 print("    moved %d of them into the plane and re-poured" % n_moved)
             if layout._check_stitches_landed(board, notes):
                 print("    (the rest have nowhere to go: move the part or except the "
@@ -1236,7 +1238,7 @@ def post_route(board, stem, notes, pcb):
     # Measured: five violations on the optical board, four of them this, from two vias.
     if board.Zones():
         board.BuildConnectivity()
-        pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+        stable_fill.fill(board, board.Zones())
     # ⚠ AND ONLY NOW CAN THE STRANDED COPPER BE FOUND. _check_stitches_landed runs in
     # layout.py ~140 lines BEFORE the first pour and can only warn; even the retry above
     # gives up on vias with "nowhere to go". This pass runs after tidy AND after the
