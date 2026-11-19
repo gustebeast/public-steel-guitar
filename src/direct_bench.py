@@ -70,12 +70,11 @@ def cyl_z(d: float, length: float, z0: float, *, x: float = 0.0, y: float = 0.0)
         d / 2, length, pnt=cq.Vector(x, y, z0), dir=cq.Vector(0, 0, 1)))
 
 N = D.N_STRINGS
-# THE TRAVEL (user, 2026-11-12): from the slack end (keyhole plate on the endplate, the screw just
-# threading the nut) to where the nut may pull. Restringing leaves an unknown slack the motor
+# THE TRAVEL (user, 2026-11-12): from the slack end (keyhole plate on the endplate) to where the nut may pull. Restringing leaves an unknown slack the motor
 # takes up, so the travel covers slack -> open -> +3 st on the stretchiest string with hand slack
 # to spare (E9's G#4: ~0.0-5 + 6.3 + 2.6 = ~14). It stops 1 mm short of the tightest spring's
-# coils closing (string 10, 16.6 from the slack end); the screw tip would only reach the ball
-# at ~23.9.
+# coils closing (string 10, 16.6 from the slack end), where that string's screw tip meets the
+# keyplate (screw_tip: the tip is set there, 2026-11-18).
 T_TRAVEL = 15.6
 T_OPEN = D.DL_OPEN / T_TRAVEL                       # open pitch, from the slack end
 
@@ -454,14 +453,6 @@ def x_ft(t: float) -> float:
     return x_yt(t) - YK_H
 
 
-# THE SCREW'S CUT END (user, 2026-11-12): at the slack end it only JUST threads the nut, so the
-# rest of the nut's length is travel before the tip can reach the ball. NUT_ENGAGE_SLACK: three
-# turns of the Tr8x2 (the string is slack there; only the spring pulls, < 100 N on ~40 mm^2 of
-# brass thread)
-NUT_ENGAGE_SLACK = 3 * 2.0
-SCREW_TIP = x_ft(0.0) - D.NUT_H + NUT_ENGAGE_SLACK
-
-
 def x_collar(t: float):
     """The collar along x: its +X face (on the nut flange's back), the stop flange (from, to),
     the seat (from, to) -- the seat runs -X from the flange, the spring's end on the flange."""
@@ -504,6 +495,39 @@ def spring_span(t: float, i=None):
 def spring_force(t: float, i: int) -> float:
     span = spring_span(t, i)
     return SPRING_IT + SPRING_K * (span[1] - span[0] - 2 * SEAT_GRIP - SPRING_ACTIVE * SPRING_WIRE)
+
+
+# THE SCREW'S TIP IS SET ON THE KEYPLATE, THE SPRING CLOSED (user, 2026-11-18: setting the collars
+# against the spring in a crowded instrument was the hard step). Assembled with no string, the spring's
+# own initial tension pulls the nut -X until its coils close solid; the screw is threaded in until its
+# tip touches the keyplate's back face, and the collars are turned onto the bearing and clamped --
+# nothing pushes on the screw then, so they turn easily. So the tip stands where each string's coils
+# close (t_coil_close), and the screw's stop and the spring's stop are one. The travel (T_TRAVEL, slack
+# to +3 st) stops short of every string's; the window the yoke gives (YK_H + NUT_H - YK_ROOF) bounds it.
+# The screws are cut per string to suit (report()); spring-to-spring scatter moves the motor end.
+def t_coil_close(i: int) -> float:
+    """t at which string i's spring closes solid (coil on coil between its grips)."""
+    closed = 2 * SEAT_GRIP + SPRING_ACTIVE * SPRING_WIRE
+    lo, hi = 0.0, 4.0
+    for _ in range(60):
+        m = (lo + hi) / 2
+        a, b = spring_span(m, i)
+        lo, hi = (m, hi) if b - a > closed else (lo, m)
+    return lo
+
+
+def screw_tip(i: int) -> float:
+    """String i's screw tip: on the keyplate's back face with its spring closed."""
+    return x_yt(t_coil_close(i)) - YK_ROOF
+
+
+# at slack the keyplate is on the endplate, so the nut cannot run off the screw; the weakest springs
+# (strings 1, 2, 4: they close past the yoke's window) still leave over a turn in the nut there, where
+# only the spring pulls (~65 N on brass Tr8)
+SLACK_ENGAGE_MIN = D.SCREW_PITCH
+for _i in range(N):
+    assert t_coil_close(_i) > 1.0, f"string {_i + 1}'s spring closes inside the travel"
+    assert screw_tip(_i) - (x_ft(0.0) - D.NUT_H) >= SLACK_ENGAGE_MIN, f"string {_i + 1}: under a turn in the nut at slack"
 
 
 # INSTALLING THE RODS (user, 2026-11-12: "we need a way to install the guide rods"). Each goes in
@@ -888,7 +912,7 @@ def report() -> str:
            "   N at slack/open/full"]
     for i in range(N):
         m = yaw_pt((x_ref(i), y_of(i), za(i)), i)
-        sl = SCREW_TIP - (x_ref(i) + 11.0)
+        sl = screw_tip(i) - screw_x0(i)
         s0 = spring_span(0, i)[1] - spring_span(0, i)[0]
         s1 = spring_span(1, i)[1] - spring_span(1, i)[0]
         dirn = {0: "+Z", 90: "-Y", 180: "-Z", 270: "+Y"}[PLUG_DIR[i]]
@@ -2206,8 +2230,19 @@ def _rod(i: int) -> cq.Workplane:
     return cyl_x(GUIDE_D, ROD_L, ROD_END, y=rod_yz(i)[0], z=rod_yz(i)[1])
 
 
+# THE SCREW'S MOTOR END sits SCREW_END_MARGIN past where the coupler first grips (SCREW_X0): the tip is
+# set by the spring as built (screw_tip), so a spring cut a little short moves the end -X, toward the
+# motor shaft's -- the margin takes most of one coil's 2.3. The coupler still grips 8 of thread.
+SCREW_END_MARGIN = 2.5
+
+
+def screw_x0(i: int) -> float:
+    """String i's screw, its motor end along x: the length to cut it is screw_tip(i) - screw_x0(i)."""
+    return x_ref(i) + SCREW_X0 + _cpl_shift(i) + SCREW_END_MARGIN
+
+
 def _screw_at(i: int) -> cq.Workplane:
-    return _screw(i, x_ref(i) + SCREW_X0 + _cpl_shift(i), SCREW_TIP)
+    return _screw(i, screw_x0(i), screw_tip(i))
 
 
 def _brg(i: int) -> cq.Workplane:

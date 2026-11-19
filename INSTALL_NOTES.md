@@ -2437,9 +2437,24 @@ bench lid also has two beads round the sunk tie heads instead of one. Overall le
 - Press the bearing into either half, then close the other half over it and tighten the two ties
   evenly. The halves stop 0.4 apart at the bearing's middle: that gap is meant to be there. The
   ties clamp the bearing's outer race, not the plastic.
-- Collars: with the strings slack, thread collar A until its boss touches the inner race and paper
-  slips between its body and the lid; clamp it. Then collar B from the other side, the same way,
-  about 0.8 off the lip. Never tension with collar A loose: it is the screw's only stop toward the
-  endplate, and the motor coupler is only a push fit on the motor shaft.
 - Coupler: about 1 mm between the motor shaft's end and the bottom of the D bore. Leave the motor's
   mounting screws loose, turn the screw a few times by hand so the motor finds its line, then tighten.
+
+## Setting the leadscrew: tip on the keyplate, spring closed (2026-11-18)
+The screw's position along its axis is now set in the instrument with no measuring:
+1. No string fitted. The spring's own 33 N pulls the nut toward the motor until its coils close
+   solid; leave it there.
+2. Thread the screw in until its tip just touches the keyplate's back face (don't force it).
+3. Turn collar B onto the 688's inner race from the endplate side, then collar A from the motor
+   side (boss on the inner race, paper clearance to the lid), and clamp both M3s. Nothing pushes on
+   the screw now, so the collars turn easily.
+4. Fit the coupler; the screw's end should sit a few mm past the motor shaft's end inside it.
+Travel is then bounded by the keyplate on the endplate (loosening: the restring position, at least
+one turn still in the nut on every string) and by the coils closing, which is also where the tip
+meets the keyplate (tightening). Tuning uses 15.6 of it; the coils close at 16.5 or more. Re-set
+the screw (steps 1-3) whenever a spring is replaced or re-cut.
+
+Screw cut lengths (Tr8x2), per string:
+| string | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| mm | 254.7 | 176.1 | 258.6 | 332.4 | 416.5 | 335.6 | 258.6 | 179.3 | 263.1 | 340.8 |
