@@ -15,6 +15,9 @@ Finish-tooling decisions (lead, 2026-11-19):
   So delete PCBFLOW_NECK_MARGIN (cadkit pcbflow/route.py). Do it once mV61 + mVW47a/b stop importing canonical cadkit.
 - PCBFLOW_TAKEUP_WHY stays (log-only).
 - W47 window placement: judge on joins_open, with both replays agreeing, against mV59/mV61.
+  Win only if BOTH replays land below the baseline's best: joins_open < 15 AND finish < 11 unconnected.
+  Baseline band (mV56 placement, mV59/60/61): joins_open 15-19, finish 11-17. Inside it = tie: keep mV56, drop W47,
+  and work the placement list above rather than more window variants.
 
 ## 2026-11-14 (late): CM5 CONNECTORS WERE SWAPPED -- fixed, re-routing (trial mM)
 
