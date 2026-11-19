@@ -925,10 +925,6 @@ CODE_FALLBACK["connector_board"] = {
     ("A127M05-0B30P51-H10A40", "PinHeader_2x15_P1.27mm_Vertical_SMD"): "C41427104",
 }
 CODE_FALLBACK["brain_board"] = {
-    # U5, merged: the 4 A LMR33640 in the 3 A part's RNX land, no LCSC code yet (open item).
-    # Rated as the LMR33630 (C2071384): the same 1.0 V feedback reference and pin limits
-    # (the same TI family sheet's absolute-maximum table) -- confirm when the code is picked
-    ("LMR33640 (RNX, open item)", "Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm"): "C2071384",
     # J240, the connector ribbon (harness.CONN_RIBBON): no LCSC code yet; rated as its stocked
     # 2 x 8 sibling, the same HX PZ1.27 family and contacts (as J4 above)
     ("A127M05-0B30P51-H10A40", "PinHeader_2x15_P1.27mm_Vertical_SMD"): "C41427104",
@@ -1951,7 +1947,19 @@ def declare(b):
                           " -- " + r["note"] if r["note"] else "")}
         else:                                          # over: let A16 say so
             pins[key] = {"max": n3(rating), "src": "%s -- %s" % (r["rkind"], src)}
-    return {"net_volts": nets, "pin_volts": pins}
+    # A4's pin roles (cadkit quality._pin_roles): each IC pin's name and ground role as its
+    # rating entry reads them off the sheet, so a ground pin off ground or a VOUT on GND
+    # fails by name (brain_board U221 pad 8, 2026-11-18)
+    roles = {}
+    for ref, c in sorted(b.comps.items()):
+        p = part_of(c)
+        if not p or p.get("kind") != "ic":
+            continue
+        for pin, spec in (p.get("pins") or {}).items():
+            if pin in c["pins"] and isinstance(spec, dict) and spec.get("n"):
+                roles["%s.%s" % (ref, pin)] = dict({"n": spec["n"]},
+                                                   **({"gnd": True} if spec.get("gnd") else {}))
+    return {"net_volts": nets, "pin_volts": pins, "pin_roles": roles}
 
 
 def main(argv):

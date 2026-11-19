@@ -3887,15 +3887,15 @@
      "max": 6.0
     },
     "8": {
-     "n": "GND",
-     "gnd": true
+     "n": "VOUT",
+     "max": 6.0
     },
     "9": {
      "n": "PAD",
      "gnd": true
     }
    },
-   "src": "TI TPS22965 datasheet s7.1: VIN, VOUT, VBIAS, ON -0.3..6 V; s7.3 VBIAS 2.5-5.7 V; CT taken at 6 V (driven by the part from VBIAS)"
+   "src": "TI TPS22965 datasheet s7.1: VIN, VOUT, VBIAS, ON -0.3..6 V; s7.3 VBIAS 2.5-5.7 V; CT taken at 6 V (driven by the part from VBIAS); DSG pinout SLVSBJ0F p.4 s6: 7 AND 8 VOUT (pin 8 was listed GND here until 2026-11-18)"
   },
   "C139392": {
    "mpn": "TUSB321RWBR",
@@ -4334,6 +4334,80 @@
    "ohm": 0.01,
    "case": "1206",
    "src": "JLCPCB parts API search for C601097 (Ever Ohms HoLR1206 1 W 10 mohm), fetched 2026-11-17; V = sqrt(P x R) = 0.1 V"
+  },
+  "C1852154": {
+   "kind": "ic",
+   "supply": {
+    "VIN": "2",
+    "SW": "8"
+   },
+   "vfb_max": 1.015,
+   "src": "TI LMR33640 datasheet SNVSB99C p.5 s7.1: VIN 38 V; EN VIN+0.3; PG 22 (and VIN+0.3); FB 5.5; VCC 5.5; BOOT SW+5.5; SW VIN+0.3 (38 V <100 ns), -0.3 (-3.5 V <100 ns); s7.3 VIN 3.8-36 V; p.6 s7.5 VFB 0.985/1/1.015 V; DDA HSOIC-8 pinout p.4 table 6-1 (read 2026-11-18)",
+   "pins": {
+    "1": {
+     "gnd": true,
+     "n": "PGND"
+    },
+    "2": {
+     "max": 38.0,
+     "rec": 36.0,
+     "n": "VIN"
+    },
+    "3": {
+     "max": "VIN+0.3",
+     "min": -0.3,
+     "n": "EN"
+    },
+    "4": {
+     "max": 22.0,
+     "n": "PG"
+    },
+    "5": {
+     "max": 5.5,
+     "n": "FB"
+    },
+    "6": {
+     "max": 5.5,
+     "internal": 5.0,
+     "n": "VCC"
+    },
+    "7": {
+     "max": "SW+5.5",
+     "boot": true,
+     "n": "BOOT"
+    },
+    "8": {
+     "max": "VIN+0.3",
+     "min": -0.3,
+     "n": "SW"
+    },
+    "9": {
+     "gnd": true,
+     "n": "AGND"
+    }
+   },
+   "mpn": "LMR33640DDDAR"
+  },
+  "C41427104": {
+   "kind": "conn",
+   "v": 1000,
+   "i": 1.0,
+   "src": "JLCPCB parts API attributes for C41427104 (Voltage Rating (Max) 1 kV, Current Rating 1 A), read 2026-11-18; the JXTCONN drawing gives no electrical rating",
+   "mpn": "A127M05-0B30P51-H10A40"
+  },
+  "C49261410": {
+   "kind": "ind",
+   "isat": 30.0,
+   "itemp": 19.0,
+   "src": "JLCPCB parts API attributes for C49261410 (Isat 30 A, current rating 25 A, DCR 7 mOhm), read 2026-11-18; itemp taken at the Bourns SRP1513CA-100M's Irms 19 A (20 C rise, SRP1513CA p.1), the part it clones -- the lower of the two",
+   "mpn": "APS1513M100F"
+  },
+  "C41376042": {
+   "kind": "conn",
+   "v": 500,
+   "i": 1.0,
+   "src": "JLCPCB parts API attributes for C41376042 (Voltage Rating (Max) 500 V, Current Rating 1 A), read 2026-11-18; the hanxia PZ1.27 family's rating (as C22438114)",
+   "mpn": "HX PZ1.27-2x10P TP"
   }
  }
 }

@@ -409,7 +409,7 @@ def _isolation(gnd, agnd, v5_pre, v3d, v3v3, v5, iso9_raw, iso9, io, iso):
     p = Pin.types.PASSIVE
     u30 = Part(name="DCDC_ISO", ref_prefix="U", ref="U30", tag="U30", dest="NETLIST", tool="skidl",
                value="B0509S-1WR3", description="1 W isolated DC-DC, 5 -> 9 V unregulated, "
-               "1.5 kV: the audio section's power, across the barrier (Mornsun)",
+               "1.5 kV: the audio section's power, across the barrier (YLPTEC)",
                footprint="Converter_DCDC:Converter_DCDC_Murata_MEE1SxxxxSC_THT",
                pins=[Pin(num=i, func=p) for i in range(1, 5)])
     gnd += u30[1]
@@ -2377,6 +2377,9 @@ def _merged_quality(paths, q):
         "Wurth Elektronik 744273501 (WE-SL5 HC) datasheet p.1 schematic: windings 1-4 and 2-3, "
         "pads numbered as KiCad's L_CommonModeChoke_Wuerth_WE-SL5-HC -- FL1 / FL2: 1-4 VBUS "
         "connector -> board, 2-3 GND connector -> board (read 2026-11-14, we-online.com)")
+    # the merged board's own ICs, each read against its TI sheet 2026-11-18 (pads from the mV55
+    # netlist; KiCad / Steel footprint pad positions checked against the package drawing)
+    q["pinouts"].update(IC_PINOUTS)
     if FOLD:
         q["manual"] = dict(q.get("manual", {}), M43=(
             "ONE programmable part on this board apart from the CM5: U1, the STM32H743 (the CH32 "
@@ -2404,6 +2407,79 @@ def _merged_quality(paths, q):
             "(M9). NOT YET PROVEN ON A BOARD."))
     return out, q
 
+
+
+# A4: the merged board's ICs, each pinout read against the maker's sheet (2026-11-18). U221's
+# reading found pad 8 (VOUT) on GND -- fixed in brain.py the same day.
+IC_PINOUTS = {
+    "ISO7710FDR": (
+        "TI ISO7710 datasheet SLLSER9E (Dec 2024) p.3 s4 Fig 4-2 (D, SOIC-8) + Pin Functions: 1 VCC1, "
+        "2 IN, 3 VCC1, 4 GND1, 5 GND2, 6 OUT, 7 NC, 8 VCC2; pads as KiCad's SOIC-8 -- U34: 1/3 +3V3D, "
+        "2 JACK_MODE, 4 GND, 5 AGND, 6 JACK_MODE_ISO, 7 NC, 8 +3V3_A (read 2026-11-18)"),
+    "ISO7740DBQR": (
+        "TI ISO774x datasheet SLLSEP4K p.4 Fig 4-1 (ISO7740 DBQ) + p.5 Table 4-1: 1 VCC1, 2 GND1, "
+        "3-6 INA-IND, 7 NC, 8 GND1, 9 GND2, 10 EN2, 11-14 OUTD-OUTA, 15 GND2, 16 VCC2; pads as "
+        "KiCad's QSOP-16 -- U33: 3->14 I2S_SDO, 4->13 POT_CS, 5->12 POT_SCK, 6->11 POT_SDI, "
+        "10 EN2 +3V3_A (read 2026-11-18)"),
+    "ISO7741DBQR": (
+        "TI ISO774x datasheet SLLSEP4K p.4 Fig 4-2 (ISO7741 DBQ) + p.5 Table 4-1: 1 VCC1, 2 GND1, "
+        "3-5 INA-INC, 6 OUTD, 7 EN1, 8 GND1, 9 GND2, 10 EN2, 11 IND, 12-14 OUTC-OUTA, 15 GND2, "
+        "16 VCC2; pads as KiCad's QSOP-16 -- U32: 3->14 I2S_MCK, 4->13 I2S_CK, 5->12 I2S_WS, "
+        "11 I2S_SDI_ISO->6 I2S_SDI, 7 EN1 +3V3D, 10 EN2 +3V3_A (read 2026-11-18)"),
+    "LM5122PWPR": (
+        "TI LM5122 datasheet SNVS954H p.4 s5 PWP pinout + pp.5-6 Pin Functions (20-pin): 1 SYNCOUT, "
+        "2 OPT, 3 CSN, 4 CSP, 5 VIN, 6 UVLO, 7 SS, 8 SYNCIN/RT, 9 AGND, 10 FB, 11 COMP, 12 SLOPE, "
+        "13 MODE, 14 RES, 15 PGND, 16 LO, 17 VCC, 18 SW, 19 HO, 20 BST, EP to ground; pads as "
+        "KiCad's Texas_PWP0020A (EP = 21) -- U220: 2 OPT on GND (master: fsw is half the RT "
+        "oscillator, p.24), 13 MODE floating (internal 0.15 V, diode emulation), 16 LO Q208, "
+        "19 HO Q209, 20 BST C299 to SW (read 2026-11-18)"),
+    "LMR33640DDDAR": (
+        "TI LMR33640 datasheet SNVSB99C p.4 s6 Fig 6-1 + Table 6-1 (DDA): 1 PGND, 2 VIN, 3 EN, 4 PG, "
+        "5 FB, 6 VCC, 7 BOOT, 8 SW, thermal pad AGND; pads as Steel:Texas_DDA0008_HSOP-8-1EP (EP = "
+        "9) -- U5: 2/3 VSTBY (EN on VIN), 5 FB R11/R12, 6 BUCK_VCC C63, 7 BOOT C4 to SW, 8 SW L1, "
+        "1/9 GND (read 2026-11-18)"),
+    "LP2985-50DBVR": (
+        "TI LP2985 datasheet SLVS522S p.3 s4 Fig 4-1 (DBV) + Table 4-1: 1 VIN, 2 GND, 3 ON/OFF, "
+        "4 BYPASS, 5 VOUT; pads as KiCad's SOT-23-5 -- U31: 1/3 ISO9 (EN on VIN), 2 AGND, "
+        "4 C163 10 nF, 5 +5V_A (read 2026-11-18)"),
+    "TPS22965DSGR": (
+        "TI TPS22965 datasheet SLVSBJ0F p.4 s6 (DSG top view) + Pin Functions: 1/2 VIN, 3 ON, "
+        "4 VBIAS, 5 GND, 6 CT, 7/8 VOUT, thermal pad GND; pads as KiCad's Texas_DSG0008A (EP = 9) "
+        "-- U221: 1/2 +5V_RAW, 3 EN5, 4 +3V3D, 5/9 GND, 6 CT floating, 7/8 +5V_SW (pad 8 was on "
+        "GND until this reading) (read 2026-11-18)"),
+    "TPS552892QWRYQRQ1": (
+        "TI TPS552892-Q1 datasheet SLVSGT7 p.3 s5 Fig 5-1 + pp.3-4 Table 5-1: 1 EN/UVLO, 2 MODE, "
+        "3 PG, 4 CC, 5 DITH/SYNC, 6 FSW, 7 VIN, 8 SW1, 9 PGND, 10 SW2, 11 VOUT, 12 ISP, 13 ISN, "
+        "14 FB, 15 COMP, 16 CDC, 17 AGND, 18 VCC, 19 BOOT2, 20 BOOT1, 21 EXTVCC; pads as "
+        "Steel:Texas_RYQ0021B against the p.37 land pattern -- U205: 2 MODE GND (auto PFM), "
+        "5 DITH GND, 11/12 +5V_BB, 13 +5V_RAW (sense R between ISP/ISN), 18/21 VCC5, "
+        "19/20 BOOT caps to SW2/SW1 (read 2026-11-18)"),
+    "A127M05-0B30P51-H10A40": (
+        "JXTCONN A127M05-0B30P51-H10A40 drawing (sheet 1/1, revision block blank; LCSC C41427104): "
+        "a plain 1.27 mm 2xN SMD header, the maker numbers nothing -- pads follow KiCad's "
+        "PinHeader_2x15_P1.27mm_Vertical_SMD (odd column -X, 1 / 2 across, n+-2 along) and J240's "
+        "way n = pad n = ribbon wire n per harness.CONN_RIBBON; netlist matches all 30 ways "
+        "(read 2026-11-18)"),
+    "ACM2012-900-2P-T002": (
+        "CND-tek ACM2012-900-2P-T002 T-CND datasheet p.1 (LCSC C55213549) schematic: windings 1-4 "
+        "and 2-3, no polarity; top view 1/2 one end, 4/3 the other, as KiCad's "
+        "L_CommonModeChoke_Coilank_ACM2012 -- FL3 / FL4: 1-4 D+ connector -> U17, 2-3 D- "
+        "connector -> U17, each line through its own winding (read 2026-11-18; TDK's own sheet "
+        "not fetched)"),
+    "B0509S-1WR3": (
+        "YLPTEC B_S-1WR3 datasheet rev A2.1 (2024-07-19) p.4 pin table: 1 -Vin, 2 +Vin, 3 -Vout, "
+        "4 +Vout, pin 1 dotted, 2.54 pitch; the same order as Murata KDC_MEE1 p.14, pads as KiCad's "
+        "Converter_DCDC_Murata_MEE1SxxxxSC_THT (pad 1 rect) -- U30: 1 GND, 2 V5_ISO, 3 AGND, "
+        "4 ISO9_RAW. The sheet says the part's own label wins: check it on the first part in "
+        "(read 2026-11-18)"),
+    "DF40C-100DS-0.4V(51)": (
+        "Raspberry Pi CM5 datasheet Release 3 (RP-008370-DS) s4.2 Table 4 pp.17-24: pins 1-100 "
+        "on one connector, 101-200 on the other, odd / even across; pads as KiCad's "
+        "Hirose_DF40C-100DS-0.4V_2x50_P0.4mm (pads 1 / 2 across) -- J201 pad n = CM5 pin n, "
+        "J202 pad n = pin n+100: all 51 GND and 6 5V pins on GND / +5V_CM5, 84/86 3V3 and 78 "
+        "GPIO_VREF on CM5_3V3, 103/105 GADGET, 134/136 MCU, 163/165 HUBU, 92 PWR_Button, "
+        "93 nRPIBOOT; pin-1 placement from CM5IO via cm5_mech.py (read 2026-11-18)"),
+}
 
 def quality_notes(net_path):
     """The split's two declaration sets as ONE board's: J20 is gone, so every path, waiver and
@@ -2482,6 +2558,10 @@ def quality_notes(net_path):
         if x["net"] in chk and str(x["from"]).startswith(("J1.", "J2.")):
             jn, fl = chk[x["net"]]
             keep.append(dict(x, net=jn, to=[fl + ".1"]))
+        elif MERGED and x["net"] == "VSTBY" and "U5.9" in x["to"]:
+            # the split's U5 was the RNX VQFN (VIN on 2, 9, 10); the merged U5 is the DDA
+            # HSOIC-8: VIN on 2, EN (tied to VIN) on 3, pad 9 is the thermal pad on GND
+            keep.append(dict(x, to=["U5.2", "U5.3"]))
         else:
             keep.append(x)
     paths = keep + [{"net": n, "from": fl + ".4", "to": [r + ".1"], "amps": 5.0}
@@ -2587,7 +2667,7 @@ if __name__ == "__main__":
         # (D): 3 VCC, 5 VIO. SN65HVD230 SLOS346O p.5: 3 VCC. LP2985 SLVS522S p.3 Table 4-1
         # (DBV): 1 VIN (>= 1 uF), 5 VOUT (>= 2.2 uF); 4 BYPASS is a noise cap, not a supply.
         # ISO7710 SLLSER9E p.3 (D): 1 and 3 VCC1, 8 VCC2. TPS22965 SLVSBJ0F p.4: 1-2 VIN
-        # ("input bypass capacitor recommended"), 4 VBIAS; 7 VOUT is the switched output.
+        # ("input bypass capacitor recommended"), 4 VBIAS; 7 / 8 VOUT are the switched output.
         # LM5122 SNVS954H pp.5-6 (20-pin PWP): 5 VIN, 17 VCC ("locally decouple to PGND").
         "U12": {"5": "V+"},
         "U202": {"3": "VCC", "5": "VIO"},

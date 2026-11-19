@@ -636,9 +636,11 @@ def brain(merged=None):
     v5_raw += u21[1], u21[2]
     en5 += u21[3]                              # ON: VIH 1.1 V, VIL 0.5 V
     v33 += u21[4]                              # VBIAS from +3V3D: the QOD works with U5 off
-    gnd += u21[5], u21[8], u21[9]
+    gnd += u21[5], u21[9]
     Net("U21_NC_CT").connect(u21[6])           # CT floating: fastest rise
-    v5_sw += u21[7]
+    # VOUT is pins 7 AND 8 (SLVSBJ0F p.4 s6 DSG top view: 1/2 VIN, 7/8 VOUT). Pad 8 sat on GND
+    # until 2026-11-18 -- a dead short from +5V_SW to ground the moment the switch closed.
+    v5_sw += u21[7], u21[8]
     _cap("C127", "1uF", "U21 VBIAS bypass", v33, gnd)
     # +5V_RAW had no capacitor at all (quality A2, mV22): the bulks sit on +5V_BB, behind
     # R113. TI characterises the switch with CIN = 1 uF (SLVSBJ0F 6.6-6.7); at its VIN pins.
@@ -1078,7 +1080,8 @@ BOARD_NOTES["quality"] = {
            # the CM5's 5 V: U5's 5 A output limit (R113), through U21 and F2, onto its six 5 V pins
            {"net": "+5V_BB", "from": "U5.11", "to": ["R113.1"], "amps": 5.0},
            {"net": "+5V_RAW", "from": "R113.2", "to": ["U21.1", "U21.2"], "amps": 5.0, "split": True},
-           {"net": "+5V_SW", "from": "U21.7", "to": ["F2.1"], "amps": 4.0},
+           {"net": "+5V_SW", "from": "U21.7", "to": ["F2.1"], "amps": 2.0},
+           {"net": "+5V_SW", "from": "U21.8", "to": ["F2.1"], "amps": 2.0},   # VOUT is 7 AND 8
            {"net": "+5V_CM5", "from": "F2.2", "to": ["J1.77", "J1.79", "J1.81", "J1.83", "J1.85",
                                                     "J1.87"], "amps": 4.0, "split": True},
            # +5V_AUX: the bus-B arms (TPS2553 limited) and the 3V3 LDO
