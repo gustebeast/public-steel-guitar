@@ -774,13 +774,13 @@ for _base, _up, _why in (
         ("collar_b", DB_.COLLAR_B_UP, "direct_bench.COLLAR_B_UP -- collar A's part turned end for "
                                       "end: the same print, boss last"),
         ("housing", DB_.HOUSE_UP, "direct_bench.HOUSE_UP -- prints -X -> +X: the pocket's mouth on "
-                                  "the bed, the lip a 1.2 ledge (the spacers carry it to the plate)"),
+                                  "the bed (half the bearing; the lid holds the other half), the lip a 1.2 ledge (the spacers carry it to the plate)"),
         ("coupler", DB_.COLLAR_A_UP, "direct_bench._collar_local -- the coupler is the collar plus a "
                                      "shaft section: prints -X -> +X standing on its motor end, the 45 deg "
                                      "cone up to the clamp body, its pockets peaked +X as the collar's"),
         ("mplate", (1.0, 0.0, 0.0), "direct_bench._mplate -- flat, its motor face on the bed: every "
                                     "hole along the build, round"),
-        ("lid", DB_.LID_UP,"direct_bench.LID_UP -- prints +X -> -X, the race's face on top; the ties' heads "
+        ("lid", DB_.LID_UP,"direct_bench.LID_UP -- prints +X -> -X: its half of the bearing pocket open on the bed (chamfered mouth), the ties' heads "
                             "on its -X face")):
     for _n in [n for n in PARTS if n.startswith(_base + "_") and n[len(_base) + 1:].isdigit()]:
         PRINT_ORIENTATION[_n] = PO.from_build_dir(_up, _why)

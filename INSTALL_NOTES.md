@@ -2429,3 +2429,17 @@ The changes:
 - The printed yoke spacer is 3 mm shorter; the stack length, screws and travel are unchanged.
 - Restring: drop the ball in the top hole, let it fall down the slit behind the plate, then pull the string: the ball must go all the way into its seat (flush or below the plate's -X face) before tensioning.
 - The steel slit is 2.3 drawn (JLCCNC +-0.1: 2.2-2.4 delivered), so string 10's swollen neck at the ball (2.2) always passes. A heavier set (.080) would need the plate recut. A printed stand-in's slit is sized for its one string.
+
+## Thrust housing: the bearing split 50/50 between housing and lid (2026-11-18)
+The 4 mm lid bent under the screw's push toward the motor. The 688 now sits half in the housing and
+half in the lid, so the lid is 6.3 thick through its ears instead of 4 (about 4x stiffer); the
+bench lid also has two beads round the sunk tie heads instead of one. Overall length is unchanged.
+- Press the bearing into either half, then close the other half over it and tighten the two ties
+  evenly. The halves stop 0.4 apart at the bearing's middle: that gap is meant to be there. The
+  ties clamp the bearing's outer race, not the plastic.
+- Collars: with the strings slack, thread collar A until its boss touches the inner race and paper
+  slips between its body and the lid; clamp it. Then collar B from the other side, the same way,
+  about 0.8 off the lip. Never tension with collar A loose: it is the screw's only stop toward the
+  endplate, and the motor coupler is only a push fit on the motor shaft.
+- Coupler: about 1 mm between the motor shaft's end and the bottom of the D bore. Leave the motor's
+  mounting screws loose, turn the screw a few times by hand so the motor finds its line, then tighten.

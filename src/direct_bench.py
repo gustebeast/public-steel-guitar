@@ -719,10 +719,25 @@ def x_lid():
     return b0 - LID_T, b0
 
 
+# THE BEARING IS SPLIT 50/50 BETWEEN HOUSING AND LID (user, 2026-11-18: the 4 mm lid "deforms instead
+# of staying sturdy"). Each holds half the 688's width in its own pocket, so the lid is as thick as
+# the housing through its ears (4 + 2.3 = 6.3: ~4x stiffer in bending than the bare 4, ~2.6x less
+# stress) for the same overall length. The two halves stop SPLIT_GAP apart at the bearing's middle,
+# so the ties clamp the OUTER RACE between lip and lid, never plastic on plastic.
+SPLIT_GAP = 0.4
+
+
+def x_split():
+    """(lid's +X face, housing's -X face): SPLIT_GAP apart about the bearing's middle."""
+    b0, b1 = x_brg()
+    m = (b0 + b1) / 2
+    return m - SPLIT_GAP / 2, m + SPLIT_GAP / 2
+
+
 def x_house():
-    """The housing, x from..to: the pocket's mouth (the bearing's -X face) to the lip's +X face
+    """The housing, x from..to: its -X face (half way along the bearing) to the lip's +X face
     (the spacers stand from there to the plate)."""
-    return x_brg()[0], x_lip()[1]
+    return x_split()[1], x_lip()[1]
 
 
 def x_collar_b():
@@ -1697,13 +1712,19 @@ def _tie_spacers(i: int) -> list:
 
 
 def _lid(i: int, bench: bool = False) -> cq.Workplane:
-    """On the outer race's -X face: the ties' heads on it (the bench: sunk BENCH_HEAD_SINK in it, for
-    its M3 x 30s), collar A's boss through its hole."""
+    """On the outer race's -X face, and round the bearing's -X half (x_split): the ties' heads on
+    its -X face (the bench: sunk BENCH_HEAD_SINK in it, for its M3 x 30s), collar A's boss through
+    its hole. Its pocket's mouth is its +X face, the bed (LID_UP), chamfered as the housing's."""
     y, z = y_of(i), za(i)
-    d0, d1 = x_lid()
-    boss = (M3_HEAD[0] + 0.5) / 2 + D.BEAD if bench else TIE_BOSS   # the bench's: a bead round the
-    out = cyl_x(HOUSE_D, d1 - d0, d0, y=y, z=z).union(_ears(i, d0, d1, boss))   # heads' pockets
+    d0, b0 = x_lid()
+    d1 = x_split()[0]
+    # the bench's: two beads round the heads' pockets (user, 2026-11-18: one bead deformed)
+    boss = (M3_HEAD[0] + 0.5) / 2 + D.MIN_WALL_2P if bench else TIE_BOSS
+    out = cyl_x(HOUSE_D, d1 - d0, d0, y=y, z=z).union(_ears(i, d0, d1, boss))
     out = out.cut(cyl_x(RACE_OUT_D, d1 - d0 + 2, d0 - 1, y=y, z=z))
+    out = out.cut(cyl_x(HOUSE_POCKET_D, d1 + 1 - (b0 - 0.01), b0 - 0.01, y=y, z=z))   # the pocket, open +X
+    rp = HOUSE_POCKET_D / 2
+    out = out.cut(_cone_x(rp, rp + HOUSE_MOUTH_CH + 0.01, d1 - HOUSE_MOUTH_CH, d1 + 0.01, y, z))
     for dy, dz in tie_offsets(i):  # the ties' heads on its -X face (not sunk)
         out = out.cut(cyl_x(M3H.CLR_PRINTED_D, d1 - d0 + 2, d0 - 1, y=y + dy, z=z + dz))
         if bench:                  # ... the bench's sunk
