@@ -2,6 +2,17 @@
 
 ## 2026-11-19: BRAIN BOARD PLACEMENT LIST + FINISH-TOOLING DECISIONS
 
+### 09:40 update: W48 judged, seeds, best-of-N
+- mVW48c (staggered, unseeded) = mVW48a byte-for-byte (md5 6ea33a4a): 2 unc / Q 110 / V 38.
+- mVW48s1 (seed 1, e4068f6d): 10 unc / Q 83 / V 14. W48 fails the old rule on both samples, so W47 stays.
+- Determinism: the router is deterministic up to its first deadline cut. W47a/b had the same inputs and split in a deadline-bounded pair re-negotiation; CPU-seconds per unit of work move with load. Fix behind a flag: OWNROUTE_WORK_CLOCK (cadkit 77d5545). Calibrate it with OWNROUTE_WORK_LOG=1.
+- Lead rule (new): order = best-of-N seeds on the chosen placement. Placement A/B = best-of-N per arm, same N on both sides. N=3 = {unseeded, seed 1, seed 2}. A win means fewer unconnected and no worse on quality or verify.
+- Queue: W47 s1 (running), W47 s2, W48 s2, then decide W47 vs W48, then a U38 round on the winner.
+- Finish-only proof: mVW48f should md5 to 6ea33a4a. If it does, replays drop the score route (~30-40 min each).
+- C322 keep-out: window_intent --keepout (cadkit 3117000, on main). Box KiCad 105.5-114 x 117.3-123.4. It's a no-op for W47, where C322 is held at 101.1.
+- Resources (user): by day 2 routes; at night ramp to the full machine once the work clock makes runs load-proof. 31 GB RAM, ~2-2.7 GB per route. Next idle work: parallel net batches inside one route; memory profile.
+
+
 Placement list (for the next placement round; things the router and finish cannot fix):
 - MCU NRST / crystal (OSC_IN/OUT): NRST only gets through by taking up OSC_OUT (mV59, mV60).
 - +3V3D / BRAIN_EN: put back 3x in close_last; +3V3D takes up DATA_SEL, I2C2_SCL, ... and cannot rejoin them.
