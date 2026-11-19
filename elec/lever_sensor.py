@@ -897,10 +897,13 @@ BOARD_NOTES = {
             "AP2112K-3.3TRG1": "Diodes DS39724 p.1-2, Pin Descriptions, SOT25 column: 1 VIN, "
                                "2 GND, 3 EN (high = on), 4 NC, 5 VOUT. Board: 1 +5V_LDO, 2 GND, "
                                "3 +5V_LDO, 4 open, 5 +3V3. Read 2026-10-04",
-            "SN65HVD230DR": "TI SLOS346 Pin Functions (SOIC-8): 1 D, 2 GND, 3 VCC, 4 R, "
-                            "5 Vref, 6 CANL, 7 CANH, 8 RS. Board: 1 CAN_TX, 2 GND, 3 +3V3, "
-                            "4 CAN_RX, 5 open, 6 CAN_L, 7 CAN_H, 8 slope resistor. Re-read "
-                            "2026-10-04",
+            "SN65HVD230DR": (
+                "TI SN65HVD230 datasheet SLOS346O (rev. Apr 2018) p.5 D-package top view + Pin "
+                "Functions table: 1 D, 2 GND, 3 VCC, 4 R, 5 Vref, 6 CANL, 7 CANH, 8 RS; pads as "
+                "KiCad's SOIC-8 -- U3 (motor_ctrl, brain), U2 (lever_sensor), U203 (brain_board, "
+                "output_board): 1 TX, 3 +3V3, 4 RX, 5 open, 8 to GND via the slope resistor (read"
+                " 2026-11-18)"
+            ),
             "CH32V203C8T6": "WCH CH32V203 datasheet V3.0 table 3-1-1, the LQFP48 column, read "
                             "2026-11-03: 1 VBAT, 5 OSC_IN, 6 OSC_OUT, 7 NRST, 8 VSSA, 9 VDDA, "
                             "23 / 35 / 47 VSS, 24 / 36 / 48 VDD, 14 PA4, 15-17 PA5-PA7 = "
@@ -919,7 +922,11 @@ BOARD_NOTES = {
                            "Board: 1 BUS_VTH, 2 GND, 3 BUS_SENSE, 4 BOOT0, 5 +3V3. Read 2026-11-03",
             "AO3401A": "AOS AO3401A, SOT-23: 1 G, 2 S, 3 D. Q1: S +5V, D +5V_OUT, G DS_GATE; "
                        "Q3: S +3V3, D +3V3_CAN, G XCVR_EN_N",
-            "2N7002": "SOT-23: 1 G, 2 S, 3 D. Q2: G DS_EN, S GND, D DS_GATE",
+            "2N7002": (
+                "CJ (JSCJ) 2N7002 datasheet J, Sep 2016 (LCSC C8545) p.1 SOT-23 pin legend: 1 "
+                "GATE, 2 SOURCE, 3 DRAIN; pads as KiCad's SOT-23 -- Q2: 1 G DS_EN, 2 S GND, "
+                "3 D DS_GATE (read 2026-11-18)"
+            ),
             "MA730GQ-Z": "MPS MA730 datasheet rev 1.1 (8/8/2022) p.2 package reference "
                          "(top view) and p.8 pin functions: 1 SSD, 2 A, 3 Z, 4 MOSI, 5 CS, "
                          "6 B, 7 MISO, 8 GND, 9 PWM, 10 TEST, 11 MGL, 12 SCLK, 13 VDD, 14 NC, "

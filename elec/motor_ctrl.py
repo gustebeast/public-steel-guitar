@@ -1888,9 +1888,13 @@ BOARD_NOTES["quality"] = {
                        "which is free), 3 is the common. Board (D2): 1 CANA_H, 2 CANA_L, "
                        "3 GND. KiCad SOT-23: 1 and 2 on the two-pin side, 3 alone, the "
                        "JEDEC TO-236 numbering the drawing uses. Read 2026-10-06",
-        "SN65HVD230DR": "TI SLOS346 Pin Functions (SOIC-8): 1 D, 2 GND, 3 VCC, 4 R, 5 Vref, "
-                        "6 CANL, 7 CANH, 8 RS. Board: 1 CANn_TX, 2 GND, 3 +3V3, 4 CANn_RX, "
-                        "5 open, 6 L, 7 H, 8 slope resistor. Re-read 2026-10-04",
+        "SN65HVD230DR": (
+            "TI SN65HVD230 datasheet SLOS346O (rev. Apr 2018) p.5 D-package top view + Pin "
+            "Functions table: 1 D, 2 GND, 3 VCC, 4 R, 5 Vref, 6 CANL, 7 CANH, 8 RS; pads as "
+            "KiCad's SOIC-8 -- U3 (motor_ctrl, brain), U2 (lever_sensor), U203 (brain_board, "
+            "output_board): 1 TX, 3 +3V3, 4 RX, 5 open, 8 to GND via the slope resistor (read "
+            "2026-11-18)"
+        ),
         "CH32V307WCU6": "WCH CH32V303/305/307/317 datasheet V3.4 p.21, the CH32V307WCU6 "
                         "pin drawing, read pin by pin against the placed board 2026-10-04: "
                         "1 VBAT, 5 OSC_IN, 6 OSC_OUT, 7 NRST, 12 VSSA, "

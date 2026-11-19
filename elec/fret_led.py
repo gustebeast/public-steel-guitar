@@ -1476,8 +1476,13 @@ def build(panel):
                 "same. Board: anodes from the feed or the previous LED's cathode of the same "
                 "colour (read 2026-11-18)"
             ),
-            "TLC5971RGER": "TI TLC5971 datasheet SBVS146D, Pin Functions table, RGE "
-                           "(VQFN-24) column",
+            "TLC5971RGER": (
+                "TI TLC5971 datasheet SBVS146D (rev. Dec 2015) pp.3-4 Pin Functions table, RGE "
+                "column: 1 SDTI, 2 SCKI, 3/4/14/17 NC, 5 SCKO, 6 SDTO, 7-12 OUTR2..OUTB3, 13 VCC,"
+                " 15 VREG, 16 IREF, 18 GND, 19-24 OUTR0..OUTB1, pad GND; pads as KiCad's "
+                "Texas_RGE0024H -- U1-U5 (fret_led_key/mid, foot_led_a/b): 13 the LED supply, 15 "
+                "VREG cap, 16 IREF, 5/6 to the next driver's 2/1 (read 2026-11-18)"
+            ),
         }, **pin),
         "waive": waive,
         "manual": _manual(panel, n_drv, len(zs), MEASURED[panel]),

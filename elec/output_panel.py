@@ -3529,13 +3529,20 @@ BOARD_NOTES["quality"] = {
                         "4 COM, 5 V+, 6 IN; IN low joins COM to NC. Board: 1 RING_GAIN "
                         "(stereo), 2 GND, 3 INV_OUT (balanced), 4 the ring buffer's "
                         "input, 5 +5V, 6 JACK_MODE. Read 2026-10-04",
-        "PCM1808PWR": "TI SLES177B Pin Functions: 1 VREF, 2 AGND, 3 VCC, 4 VDD, 5 DGND, "
-                      "6 SCKI, 7 LRCK, 8 BCK, 9 DOUT, 10 MD0, 11 MD1, 12 FMT, 13 VINL, "
-                      "14 VINR. Read 2026-09-21, re-read 2026-09-30, all 14",
-        "PCM5102APWR": "TI SLAS859C Pin Functions: 1 CPVDD, 2 CAPP, 3 CPGND, 4 CAPM, "
-                       "5 VNEG, 6 OUTL, 7 OUTR, 8 AVDD, 9 AGND, 10 DEMP, 11 FLT, 12 SCK, "
-                       "13 BCK, 14 DIN, 15 LRCK, 16 FMT, 17 XSMT, 18 LDOO, 19 DGND, "
-                       "20 DVDD. Read 2026-09-21, re-read 2026-09-30, all 20",
+        "PCM1808PWR": (
+            "TI PCM1808 datasheet SLES177B (rev. Aug 2015) p.3, PW pinout figure + Pin Functions "
+            "table: 1 VREF, 2 AGND, 3 VCC, 4 VDD, 5 DGND, 6 SCKI, 7 LRCK, 8 BCK, 9 DOUT, 10 MD0, "
+            "11 MD1, 12 FMT, 13 VINL, 14 VINR; pads as KiCad's TSSOP-14 -- U2 (output_panel, "
+            "brain_board, output_board): 3 +5V(_A), 4 +3V3(_A), 9 I2S_SDI, 10/11/12 GND (slave, "
+            "I2S), 13+14 ADC_IN (read 2026-11-18)"
+        ),
+        "PCM5102APWR": (
+            "TI PCM5102A datasheet SLAS859C (rev. May 2015) p.5 Pin Functions table (PW-20): 1 "
+            "CPVDD, 2 CAPP, 3 CPGND, 4 CAPM, 5 VNEG, 6 OUTL, 7 OUTR, 8 AVDD, 9 AGND, 10 DEMP, 11 "
+            "FLT, 12 SCK, 13 BCK, 14 DIN, 15 LRCK, 16 FMT, 17 XSMT, 18 LDOO, 19 DGND, 20 DVDD; "
+            "pads as KiCad's TSSOP-20 -- U3 (output_panel, brain_board, output_board): 1/8/17/20 "
+            "+3V3, 6 AUDIO_PROC, 7 DAC_OUT_R, 10/11/16 GND (read 2026-11-18)"
+        ),
         "CH334F": "WCH CH334 datasheet V2.5 Table 1-3, the 4F column, re-read against "
                   "V2.91 2026-09-30: 1 OVCUR#, 3 XO, 4 XI, 5 DM4, 6 DP4, 7 DM3, 8 DP3, 9 DM2, 10 DP2, 11 DM1, 12 DP1, "
                   "14 DMU, 15 DPU, 16 RESET#, 19 V5, 20 VDD33, EP GND (the figure's "
@@ -3874,24 +3881,48 @@ if REV != 1:
             "Sunlord's SWPA catalogue): 2 pads, unpolarised. Board: 1 the switch node, 2 the "
             "output rail (footprint checked 2026-11-18)"
         ),
-        "TUSB320LAIRWBR": "TI TUSB320 SLLSEN9 pin table (RWB X2QFN-12) and drawing 4221631/B: 1 CC1 2 CC2 "
-                          "3 PORT 4 VBUS_DET 5 ADDR 6 INT_N/OUT3 7 SDA/OUT1 8 SCL/OUT2 9 ID 10 GND 11 EN_N "
-                          "12 VDD; land Steel:Texas_RWB0012A, from the same drawing",
-        "TS3USB221RSER": "TI TS3USB221 pin table (RSE UQFN-10): 1 1D+ 2 1D- 3 2D+ 4 2D- 5 GND 6 OE# 7 D- "
-                         "8 D+ 9 S 10 VCC. Board: channels used crossed, see _r2_ports",
+        "TUSB320LAIRWBR": (
+            "TI TUSB320LAI/HAI datasheet SLLSEQ8D (rev. May 2017) p.3 RWB X2QFN-12 top view + Pin"
+            " Functions table, TUSB320LA column: 1 CC1, 2 CC2, 3 PORT, 4 VBUS_DET, 5 ADDR, 6 "
+            "INT_N/OUT3, 7 SDA/OUT1, 8 SCL/OUT2, 9 ID, 10 GND, 11 EN_N, 12 VDD; land "
+            "Steel:Texas_RWB0012A off drawing 4221631/B (pp.35-37) -- U13 (output_panel): 3 open "
+            "(DRP), 4 via R41 910k, 5 R42 up (I2C 0x67), 11 GND, 12 +3V3 (read 2026-11-18)"
+        ),
+        "TS3USB221RSER": (
+            "TI TS3USB221 datasheet SCDS220M (rev. Nov 2024) p.3 Figure 4-2 (RSE top view) + "
+            "Table 4-1 Pin Functions: 1 1D+, 2 1D-, 3 2D+, 4 2D-, 5 GND, 6 OE#, 7 D-, 8 D+, 9 S, "
+            "10 VCC; p.12 Table 7-1 truth table; pads as KiCad's Texas_UQFN-10_1.5x2mm -- U14 "
+            "(output_panel): 6 GND, 9 ROLE_ID_N, 10 +3V3; U17/U38 (brain_board), U17 "
+            "(output_board): 10 +3V3D; pairs crossed consistently (read 2026-11-18)"
+        ),
         "TPS2553DBVR": "TI SLVS841F p.5, DBV: 1 IN 2 GND 3 EN (active high on the 2553) 4 FAULT# 5 ILIM 6 OUT",
-        "INA226AIDGSR": "TI INA226 SBOS547 pin table (DGS VSSOP-10): 1 A1 2 A0 3 Alert 4 SDA 5 SCL 6 VS "
-                        "7 GND 8 VBUS 9 IN- 10 IN+",
+        "INA226AIDGSR": (
+            "TI INA226 datasheet SBOS547C (rev. Aug 2026) p.3 Figure 4-1 (DGS VSSOP-10) + Table "
+            "4-1 Pin Functions: 1 A1, 2 A0, 3 Alert, 4 SDA, 5 SCL, 6 VS, 7 GND, 8 VBUS, 9 IN-, 10"
+            " IN+; pads as Steel:MSOP-10_3x3mm_P0.5mm_Tight -- U16 (output_panel, brain_board, "
+            "output_board): 1/2/7 GND, 6 +3V3, 10 IN+ supply side (+24V_JACK / VIN_BUS), 8+9 load"
+            " side (read 2026-11-18)"
+        ),
         "CH340C": "WCH CH340DS1-EN V3C pp.3-4, SOP16: 1 GND 2 TXD 3 RXD 4 V3 5 UD+ 6 UD- 13 DTR# 14 RTS# "
                   "15 R232 16 VCC",
         "AO3401A": "AOS AO3401A Rev 3.1 p.1 SOT23: 1 G, 2 S, 3 D",
-        "2N7002": "CJ 2N7002 SOT-23: 1 G, 2 S, 3 D",
+        "2N7002": (
+            "CJ (JSCJ) 2N7002 datasheet J, Sep 2016 (LCSC C8545) p.1 SOT-23 pin legend: 1 GATE, 2"
+            " SOURCE, 3 DRAIN; pads as KiCad's SOT-23 -- Q5/Q6 (output_panel): S GND, "
+            "cross-coupled G/D; Q210/Q212/Q214/Q215 (brain_board, output_board): S GND; Q203: G "
+            "SW_GATE, S PWR_Q3_SRC, D PWR_PULL (read 2026-11-18)"
+        ),
         "MX128-5.0-02P-Y": (
             "MAX (Cixi Maixu) drawing MX128-5.0-XXP, 22.09.14, sheet 1/1, 'PCB Layout' view: 5.00"
             " pitch, O1.40 holes, first hole 3.10 from the body end; the maker numbers no pin. "
             "Footprint pad 1 at 0, pad 2 at +5.0. Two-way: 1 GND, 2 PICKUP_HOT (read 2026-11-18)"
         ),
-        "SMF24A": "SOD-123FL, 1 cathode (bar), 2 anode",
+        "SMF24A": (
+            "Jingdao SMF series datasheet 2020.10 (SOD123FL-TVS-SMF5.0A~SMF440A-200W, LCSC "
+            "C169430) p.1 PINNING table: 1 cathode, 2 anode; pads as KiCad's D_SOD-123F (pad 1 = "
+            "cathode) -- D10 (output_panel): 1 +24V_IN, 2 GND; D201 (brain_board, output_board), "
+            "D1 (brain): 1 VIN_BRAIN, 2 GND (read 2026-11-18)"
+        ),
     })
     _q["waive"].update({
         "A1:+24V_JACK J6.2>R61.1": "the neck at R61's 0805 land, 3 mm long: the land sets it. "

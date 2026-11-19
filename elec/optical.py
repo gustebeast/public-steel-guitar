@@ -4662,7 +4662,12 @@ BOARD_NOTES["quality"] = {
                   "against V2.91. Board: 14/15 up, 11/12 DN1 the PHY, 9/10 DN2 U32, 3/4 Y3",
         "AO3401A": "AOS AO3401A Rev 3.1 December 2023 p.1 SOT23 drawing: G, S, D. Board: 1 "
                    "FLASH_DTR_N, 2 +3V3D, 3 BOOT0",
-        "DSS16": "SOD-123, 1 cathode (bar), 2 anode, as the buck catch diodes on the LED boards",
+        "DSS16": (
+            "FUXINSEMI DSS12-DSS120 datasheet Ver2.1 p.1 Package outline (SOD-123) + Mechanical "
+            "data: colour band = cathode (no numbered pins); KiCad D_SOD-123 pad 1 = cathode -- "
+            "D1 (motor_ctrl): 1 SW, 2 GND (catch diode); D11 (optical), D9 (output_panel): 1 "
+            "FLASH_RTS_N, 2 NRST (read 2026-11-18)"
+        ),
         "B4B-XH-A": "R2's J2. JST eXH.pdf p.5, Header / Top entry type: seen from the slotted "
                     "wall, No. 1 circuit is the right-hand post. KiCad JST_XH_B4B-XH-A has that "
                     "wall at -Y and pad 1 at the -X end: the same post (as motor_ctrl). Board: "
@@ -4682,25 +4687,36 @@ BOARD_NOTES["quality"] = {
                          "1 +24V, 2 GND, 3 and 4 not crimped. Read 2026-10-04",
         "AO3400A": "AOS AO3400A datasheet rev 3 p.1, package drawing: 1 G, 2 S, 3 D. Read "
                    "2026-09-30",
-        "USBLC6-2SC6": "ST USBLC6-2 datasheet, SOT23-6L pin configuration: 1 I/O1, 2 GND, "
-                       "3 I/O2, 4 I/O2, 5 VBUS, 6 I/O1. Board: D+ on 1 and 6, D- on 3 and "
-                       "4, so each line passes through the part. Datasheet audit of "
-                       "2026-09-17 (elec/fab.py)",
-        "TLV9061IDBVR": "TI SBOS839, DBV (SOT-23-5): 1 OUT, 2 V-, 3 IN+, 4 IN-, 5 V+. "
-                        "Board: a follower, 4 tied to 1, MID_RAW on 3. Audit of 2026-09-17",
-        "TLV9062IDGKR": "TI SBOS839, DGK (VSSOP-8): 1 OUT1, 2 IN1-, 3 IN1+, 4 V-, 5 IN2+, "
-                        "6 IN2-, 7 OUT2, 8 V+. Board: MID on both IN+, a photodiode on "
-                        "each IN-. Audit of 2026-09-17",
+        "USBLC6-2SC6": (
+            "ST USBLC6-2 datasheet Doc ID 11265 Rev 5 (Oct 2011, LCSC C7519 copy) p.1 Figure 1 "
+            "functional diagram (top view), SOT23-6L: 1 I/O1, 2 GND, 3 I/O2, 4 I/O2, 5 VBUS, 6 "
+            "I/O1; pads as KiCad's SOT-23-6 -- U10 (optical): 1+6 USB_DP, 3+4 USB_DM, 5 VBUS; U44"
+            " (brain_board): SVC_DP / SVC_DM / SVC_VBUS (read 2026-11-18)"
+        ),
+        "TLV9061IDBVR": (
+            "TI TLV906x datasheet SBOS839N (rev. Jul 2026) p.5 Figure 5-1 + Table 5-1, SOT-23 "
+            "(DBV) column: 1 OUT, 2 V-, 3 IN+, 4 IN-, 5 V+; pads as KiCad's SOT-23-5 -- U11 "
+            "(optical): follower 4=1, 3 MID_RAW, 5 +3V3A; U7/U8/U9/U11 (output_panel, "
+            "brain_board, output_board): 2 GND, 5 +5V(_A) (read 2026-11-18)"
+        ),
+        "TLV9062IDGKR": (
+            "TI TLV906x datasheet SBOS839N (rev. Jul 2026) p.6 Figure 5-6 + Table 5-3, DGK "
+            "(VSSOP-8): 1 OUT1, 2 IN1-, 3 IN1+, 4 V-, 5 IN2+, 6 IN2-, 7 OUT2, 8 V+; pads as "
+            "KiCad's VSSOP-8_3x3mm_P0.65mm -- U21-U30 (optical): 3/5 MID, 2/6 TIA_IN, 1/7 "
+            "TIA_OUT, 4 GND, 8 +3V3A (read 2026-11-18)"
+        ),
         "LMR33630BRNXR": "TI LMR33630 datasheet (ZHCSHQ3F) section 6, figure 6-2 and "
                          "table 6-1, RNX: 1 PGND, 2 VIN, 3 NC (tied to SW on the board, as "
                          "the table asks), 4 BOOT, 5 VCC, 6 AGND, 7 FB, 8 PG, 9 EN, "
                          "10 VIN, 11 PGND, 12 SW. Board: EN on +24V, PG open. Read "
                          "2026-10-04",
-        "TLV320ADC3140IRTWT": "TI SBAS993, RTW: 1 AVDD, 2 AREG, 3 VREF, 4 AVSS, "
-                              "5 MICBIAS, 6-13 IN1P/M ... IN4P/M, 14 SHDNZ, 15 ADDR1, "
-                              "16 ADDR0, 17 SCL, 18 SDA, 19 IOVDD, 20 GPIO1, 21 SDOUT, "
-                              "22 BCLK, 23 FSYNC, 24 DREG, pad VSS (the pin list at "
-                              "the converters' Part in this file). Audit of 2026-09-17",
+        "TLV320ADC3140IRTWT": (
+            "TI TLV320ADC3140 datasheet SBAS993B (rev. Oct 2019) pp.4-5 RTW pinout + Pin "
+            "Functions table: 1 AVDD, 2 AREG, 3 VREF, 4 AVSS, 5 MICBIAS, 6-13 IN1P..IN4M, 14 "
+            "SHDNZ, 15 ADDR1, 16 ADDR0, 17 SCL, 18 SDA, 19 IOVDD, 20 GPIO1, 21 SDOUT, 22 BCLK, 23"
+            " FSYNC, 24 DREG, pad VSS; pads as KiCad's Texas_RTW_WQFN-24 -- U14-U18 (optical): 1 "
+            "+3V3A, 19 +3V3D, 15/16 GND, 21 SAI_SDn, 14 SHDNZn, 25 GND (read 2026-11-18)"
+        ),
         "STM32H743IIT6": "ST DS12110 figure 9 (LQFP176 pinout) and table 9, read pin by "
                          "pin 2026-10-04 for every pin this board uses: 2-5 PE3-PE6 "
                          "(SAI1 SD_B / FS_A / SCK_A / SD_A), 6 VBAT, 13 PI11 (ULPI_DIR), "
@@ -4717,10 +4733,12 @@ BOARD_NOTES["quality"] = {
                           "NXT, 12 DIR, 13 STP, 14 CLKOUT, 15 VDD1.8, 16 VDD3.3, 17-24 DATA7-DATA0, "
                           "25 VDD3.3, 26 VDD1.8, 27 XO, 28 XI, 29 VDDA1.8, 30 VDD3.3, 31 REG_EN, 32 "
                           "RBIAS, flag GND. Read 2026-10-05",
-        "AP2114H-3.3TRG1": "Diodes AP2114 datasheet, 'Pin Descriptions', column SOT-223 "
-                           "(H): 1 GND, 2 VOUT, 3 VIN, tab VOUT = KiCad "
-                           "SOT-223-3_TabPin2 (the HA suffix is a different order: "
-                           "not this part). Read 2026-10-04",
+        "AP2114H-3.3TRG1": (
+            "Diodes/BCD AP2114 datasheet Rev. 2.2 (Jan 2013) p.2 Figure 2 (H, SOT-223 top view) "
+            "and p.3 Pin Descriptions, SOT-223 (H) column: 1 GND, 2 VOUT (tab VOUT), 3 VIN (the "
+            "HA order differs); pads as KiCad's SOT-223-3_TabPin2 -- U8 (optical), U21 "
+            "(brain_board, output_board): 1 GND, 2+tab +3V3D, 3 VIN (read 2026-11-18)"
+        ),
         "TPS7A2033PDBVR": "TI TPS7A20 datasheet (SBVS338 / ZHCSKY8G) fig. 5-4, DBV 5-pin "
                           "SOT-23 top view, and its pin table: 1 IN, 2 GND, 3 EN, 4 N/C (no "
                           "internal connection), 5 OUT. Board: 1 on +5V, 3 (EN) on +3V3D, "
