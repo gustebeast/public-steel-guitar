@@ -36,6 +36,14 @@ Finish-tooling decisions (lead, 2026-11-19):
     pushed R221 7 mm from U1.50 -- dropped; SENSE_24V needs another approach. Ribbon window only (intent48h,
     scW48h): 8.80/27, C322 7.6 / D201 2.0 / C245 2.9 mm. Replaying as mVW48a/b (src srcW48).
     cadkit: fa1e0a5 + 8e7b526 (near-reach to courtyard / pad), 2933ee1 (windows grow over freed courtyards).
+    mVW48a/b launched together came out BYTE-IDENTICAL (one sample): finish 2 (+3V3D, GND), joins_open 1,
+    quality 110 (A3 38: USB layer changes; A1: +24V_LED F203.2->J240.9 necked 0.65 mm, needs 1.37 -- C322
+    moved into the path), verify 38. Independent samples running: mVW48c (staggered), mVW48s1 (OWNROUTE_SEED=1).
+    W48 replaces W47 only if finish <= 7 AND quality <= 104 on the independent samples.
+  - NEXT WINDOW RULE (lead): keep C322 off the +24V_LED path F203.2 -> J240.9, whichever layout wins.
+- A/B PROTOCOL (lead, 2026-11-19): an arm's two replays must differ by seed (OWNROUTE_SEED, cadkit f315668)
+  or be staggered; md5 the boards -- matching boards are ONE sample. Audit: mV14/mV14b were identical
+  (superseded verdict); mV55/mV55q identical but a re-quality copy; W47a/b and mV59/60/61 all differ.
   - NEXT ROUND (lead): move U38 (USB part at 127,83 between J7 116,68 / U17 58.6,103 / J202 170,72) --
     SVC_DP and GADGET_DP/DM run 205-249 mm. Bigger window than the small-part rounds.
 - TOOLING (behind a flag): J201 (CM5 connector) GND pins stranded in its pin field (mVW47b ~136.2-139.2,
