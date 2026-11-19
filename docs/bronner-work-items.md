@@ -23,6 +23,9 @@ Finish-tooling decisions (lead, 2026-11-19):
   the baseline band (103-108 / 32-36), whatever joins_open says. Finish inside the baseline band (11-17) = tie:
   keep mV56 and work the placement list.
   mVW47a: finish 7 / 0 viol, quality 88, verify 22 (joins_open 26, score open 15).
+  mVW47b: finish 4 / 0 viol (+24V_RIB, SENSE_24V, SVC_DP open), quality 104, verify 31 (joins_open 21).
+  Finish + verify pass on both; quality passes on A only (B 104 is inside the band). Proposed W47 as the order
+  candidate; waiting on the lead's call. NECK_MARGIN deleted in cadkit 393d2b1d.
 - LATER: the score router does badly on window-freed MCU enable/boot nets (mVW47a score failed BRAIN_EN(+_MCU),
   EN_LEV(+_MCU), EN_PED(+_MCU), CM5_MCU_BOOT, NRST, RELAY_MCU, OPT_VBUS_EN_MCU, PG_5V; the finish recovered most).
   Worth looking into: why freeing small parts near the MCU hurts the score router.
