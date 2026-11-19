@@ -2,6 +2,18 @@
 
 ## 2026-11-19: BRAIN BOARD PLACEMENT LIST + FINISH-TOOLING DECISIONS
 
+### 11:00 update: reproducibility, real A17 list
+- Root cause of replay variance (non-timing): KiCad holds footprints in a different order each run, and ZONE_FILLER's output depends on that order. Fix: stable_fill (PCBFLOW_STABLE_FILL, cadkit edit branch 0139bf9). It's a content-keyed, order-free fill cache that also restores fill flags and pad/via zone-layer overrides. Gate 1 passed (layout x2 md5-identical). Gate 2 (keep-route x2 + DRC zone-fill-out-of-date) is running. Once it passes: land it and turn it on by default (hygiene, no A/B).
+- Follow-up (lead): any pcbflow loop that walks footprints, pads or tracks in board order can be a nondeterminism source too (router model lists, power_vias, repair, close_last). After stable_fill lands, run one flag-on + WORK_CLOCK-on replay pair. If the boards still differ, the first split in the ownroute.log diff names the loop. Fix by sorting on (ref, pad number). No A/B if DRC stays clean.
+- Loud stages + scratch cadkit path (same commit): the labeller now runs in scratch projects. Earlier quality counts included 9 A17 + A18 + A12 artefacts.
+- REAL A17 FAILs on brain_board (labeller run, mVW48a copy), on the brain-board list:
+  - J4 ways: its pinout is on the other face only, and quality.connector_labels doesn't record why.
+  - J201 ways: many ways unnamed on the front.
+  - J202: no designator on its own side. J202 ways: unnamed ways. J202 way-1 [hard]: nothing marks way 3 (its first way).
+  - J205 ways: ways 1-16 unnamed, no pinout block.
+  - J240 ways: unnamed ways.
+- Run-time plan: drop the score pass once finish-only is md5-proven, which needs STABLE_FILL + WORK_CLOCK.
+
 ### 09:40 update: W48 judged, seeds, best-of-N
 - mVW48c (staggered, unseeded) = mVW48a byte-for-byte (md5 6ea33a4a): 2 unc / Q 110 / V 38.
 - mVW48s1 (seed 1, e4068f6d): 10 unc / Q 83 / V 14. W48 fails the old rule on both samples, so W47 stays.
