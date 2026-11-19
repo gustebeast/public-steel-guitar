@@ -812,7 +812,10 @@
   ],
   "free": [
    "K1"
-  ]
+  ],
+  "away": {
+   "U30": "B0509S isolated DC-DC: pins 1-2 charger side, 3-4 audio side, so it sits across the moat by design (its own fixed rule)"
+  }
  },
  {
   "kind": "in_region",
@@ -1021,7 +1024,10 @@
     -20.0,
     5.0
    ]
-  ]
+  ],
+  "away": {
+   "J201": "CM5 board-to-board connector held at its CM5IO position (module turned 90, top-right corner); its pins fan to every region"
+  }
  },
  {
   "kind": "in_region",
