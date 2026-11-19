@@ -28,6 +28,15 @@ Finish-tooling decisions (lead, 2026-11-19):
   candidate. NECK_MARGIN deleted in cadkit 393d2b1d (main eef4daf7).
   DECIDED (lead): W47 IS THE ORDER CANDIDATE. Placement-list changes are judged against W47's band:
   finish 4-7, quality 88-104, verify 22-31.
+- Placement-list rounds on W47 (tool: cadkit pcbflow/window_intent.py, 9bc4c53 + window confinement):
+  - W48: windows KiCad 98-114 x 111-130 (J240/C322/F204/D201: +24V_RIB, VIN_BRAIN) and 88-100 x 76-87
+    (R220/R221: SENSE_24V). Unconfined screen scW48 11.57/30 vs W47 9.80/27 -- D201 jumped 46 mm into the
+    MCU window, R84 22.6 mm. Freed parts are now held in their own window (win<k> region); re-screening scW48c.
+  - NEXT ROUND (lead): move U38 (USB part at 127,83 between J7 116,68 / U17 58.6,103 / J202 170,72) --
+    SVC_DP and GADGET_DP/DM run 205-249 mm. Bigger window than the small-part rounds.
+- TOOLING (behind a flag): J201 (CM5 connector) GND pins stranded in its pin field (mVW47b ~136.2-139.2,
+  79.6-82.8): the router joins them on F.Cu/In2.Cu with no via to the plane, and the strand repair finds no
+  clear site. Needs a planned GND escape in the pin field.
 - LATER: the score router does badly on window-freed MCU enable/boot nets (mVW47a score failed BRAIN_EN(+_MCU),
   EN_LEV(+_MCU), EN_PED(+_MCU), CM5_MCU_BOOT, NRST, RELAY_MCU, OPT_VBUS_EN_MCU, PG_5V; the finish recovered most).
   Worth looking into: why freeing small parts near the MCU hurts the score router.
