@@ -2435,8 +2435,9 @@ The 4 mm lid bent under the screw's push toward the motor. The 688 now sits half
 half in the lid, so the lid is 6.3 thick through its ears instead of 4 (about 4x stiffer); the
 bench lid also has two beads round the sunk tie heads instead of one. Overall length is unchanged.
 - Press the bearing into either half, then close the other half over it and tighten the two ties
-  evenly. The halves stop 0.4 apart at the bearing's middle: that gap is meant to be there. The
-  ties clamp the bearing's outer race, not the plastic.
+  evenly until the halves meet face to face all round. The pockets are 0.1 short of the bearing, so
+  the floors pinch its outer race as the faces close. (A gap let the two ties -- not opposite each
+  other -- tilt the lid.)
 - Coupler: about 1 mm between the motor shaft's end and the bottom of the D bore. Leave the motor's
   mounting screws loose, turn the screw a few times by hand so the motor finds its line, then tighten.
 

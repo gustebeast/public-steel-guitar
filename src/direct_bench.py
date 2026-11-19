@@ -746,9 +746,12 @@ def x_lid():
 # THE BEARING IS SPLIT 50/50 BETWEEN HOUSING AND LID (user, 2026-11-18: the 4 mm lid "deforms instead
 # of staying sturdy"). Each holds half the 688's width in its own pocket, so the lid is as thick as
 # the housing through its ears (4 + 2.3 = 6.3: ~4x stiffer in bending than the bare 4, ~2.6x less
-# stress) for the same overall length. The two halves stop SPLIT_GAP apart at the bearing's middle,
-# so the ties clamp the OUTER RACE between lip and lid, never plastic on plastic.
-SPLIT_GAP = 0.4
+# stress) for the same overall length. THE HALVES MEET FACE TO FACE (user, 2026-11-18: with a gap, the
+# two ties -- not opposite each other -- closed it on one side and opened it on the other): the faces
+# stop the lid rocking, and the pockets together are RACE_CRUSH short of the bearing, so the floors
+# pinch the outer race as the faces close.
+SPLIT_GAP = 0.0
+RACE_CRUSH = 0.1
 # THE POCKETS' FLOORS PRINT PROUD (user, 2026-11-18: the pair stood 0.8 apart on the bearing, not
 # 0.4): each floor is the 1.36 ledge over the pocket's mouth, a ceiling in its print, and sags into
 # the pocket. The 0.4 short, split between the two, is drawn back in: each floor 0.2 deeper.
@@ -756,7 +759,7 @@ POCKET_FLOOR_SAG = 0.2
 
 
 def x_split():
-    """(lid's +X face, housing's -X face): SPLIT_GAP apart about the bearing's middle."""
+    """(lid's +X face, housing's -X face): SPLIT_GAP apart (0: touching) about the bearing's middle."""
     b0, b1 = x_brg()
     m = (b0 + b1) / 2
     return m - SPLIT_GAP / 2, m + SPLIT_GAP / 2
@@ -1690,7 +1693,7 @@ def _housing(i: int) -> cq.Workplane:
     out = out.union(_radial_box(i, h0, l1, 0.0, GUIDE_R, 2 * rb))
     dy, dz = at_ang(guide_ang(i), GUIDE_R)
     out = out.union(cyl_x(2 * rb, l1 - h0, h0, y=y + dy, z=z + dz))
-    out = out.cut(cyl_x(HOUSE_POCKET_D, l0 + POCKET_FLOOR_SAG - (h0 - 1), h0 - 1, y=y, z=z))  # the pocket, open -X
+    out = out.cut(cyl_x(HOUSE_POCKET_D, l0 - RACE_CRUSH / 2 + POCKET_FLOOR_SAG - (h0 - 1), h0 - 1, y=y, z=z))  # the pocket, open -X
     rp = HOUSE_POCKET_D / 2                                                     # ... its mouth's chamfer
     out = out.cut(_cone_x(rp + HOUSE_MOUTH_CH + 0.01, rp, h0 - 0.01, h0 + HOUSE_MOUTH_CH, y, z))
     out = out.cut(cyl_x(RACE_OUT_D, l1 - l0 + 2, l0 - 1, y=y, z=z))            # the lip's hole
@@ -1750,7 +1753,7 @@ def _lid(i: int, bench: bool = False) -> cq.Workplane:
     boss = (M3_HEAD[0] + 0.5) / 2 + D.MIN_WALL_2P if bench else TIE_BOSS
     out = cyl_x(HOUSE_D, d1 - d0, d0, y=y, z=z).union(_ears(i, d0, d1, boss))
     out = out.cut(cyl_x(RACE_OUT_D, d1 - d0 + 2, d0 - 1, y=y, z=z))
-    out = out.cut(cyl_x(HOUSE_POCKET_D, d1 + 1 - (b0 - POCKET_FLOOR_SAG), b0 - POCKET_FLOOR_SAG, y=y, z=z))   # the pocket, open +X
+    out = out.cut(cyl_x(HOUSE_POCKET_D, d1 + 1 - (b0 + RACE_CRUSH / 2 - POCKET_FLOOR_SAG), b0 + RACE_CRUSH / 2 - POCKET_FLOOR_SAG, y=y, z=z))   # the pocket, open +X
     rp = HOUSE_POCKET_D / 2
     out = out.cut(_cone_x(rp, rp + HOUSE_MOUTH_CH + 0.01, d1 - HOUSE_MOUTH_CH, d1 + 0.01, y, z))
     for dy, dz in tie_offsets(i):  # the ties' heads on its -X face (not sunk)
