@@ -1,5 +1,21 @@
 # bronner — open work items (2026-09-30)
 
+## 2026-11-19: BRAIN BOARD PLACEMENT LIST + FINISH-TOOLING DECISIONS
+
+Placement list (for the next placement round; things the router and finish cannot fix):
+- MCU NRST / crystal (OSC_IN/OUT): NRST only gets through by taking up OSC_OUT (mV59, mV60).
+- +3V3D / BRAIN_EN: put back 3x in close_last; +3V3D takes up DATA_SEL, I2C2_SCL, ... and cannot rejoin them.
+- GND stranded pieces: mV60 has 26 tracks in 8 pieces with no clear path to the plane. Pads that carry GND:
+  U34.4, R219.2, U211.2 (mV57a), plus mV60 sites 87.9,129.9 / 121.7,96.2 / 82.7,132.6 (KiCad coordinates).
+- VIN_BRAIN stranded: 4 tracks in 2 pieces, near 129.6,110.7-114.3 and 105.0,122.0 (KiCad coordinates).
+- R217/Q215: loosen, it is a score hot spot.
+
+Finish-tooling decisions (lead, 2026-11-19):
+- mV60 TAKEUP_WHY: the router drew all 6 take-up pieces (1.0/1.4 mm, not widened); widen_necks drew none.
+  So delete PCBFLOW_NECK_MARGIN (cadkit pcbflow/route.py). Do it once mV61 + mVW47a/b stop importing canonical cadkit.
+- PCBFLOW_TAKEUP_WHY stays (log-only).
+- W47 window placement: judge on joins_open, with both replays agreeing, against mV59/mV61.
+
 ## 2026-11-14 (late): CM5 CONNECTORS WERE SWAPPED -- fixed, re-routing (trial mM)
 
 - mMf (mM routed + finished as split jobs): 0 unconnected / 0 violations, quality 79 FAIL
