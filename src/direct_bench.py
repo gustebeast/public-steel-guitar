@@ -1876,32 +1876,42 @@ def _collar_local(boss_l: float = SPIN_GAP + LID_T, shaft: float = 0.0, body_l: 
 
 
 # THE SCREW SPINNER (user, 2026-11-18: "a male plastic hex that has a C clamp to attach to the screw
-# (same style as the collar)", driven through the user's 1/4 in female hex bit, to run each screw in
-# fast at install). The collar's body as it is -- formed thread, split, M3 x 10 into the insert used as
-# a nut -- on a 1/4 in hex shank. The bore is blind at the body's -X face: the screw's end bottoms there.
-# Prints like collar A, -X -> +X standing on the hex's end, its pockets peaked +X; a 45 deg cone climbs
-# from the hex out to the body, so nothing overhangs.
+# (same style as the collar)"; "just taking the collar, adding a bridge over the screw hole in the top
+# and putting the hex on top"), driven by the user's 3/8 in hex socket to run each screw in at install.
+# Collar A's body as it is and as it prints (-X on the bed, its pockets peaked +X), the screw in from
+# the bed side; on its +X face a FLAT CAP bridging the bore, the screw's end bottoming on it; the hex
+# straight on the cap. The cap's underside is RECESSED a little over the thread's crests, so no
+# ridge ends on a face (touching, they left Bambu 10 open edges).
 SPIN_HEX_AF = 9.55                                  # 3/8 in (9.525) across flats, standing: the
                                                     # user's fit coupon (hex_fit_38, 2026-11-18) -- 9.55
                                                     # "fits perfect" (the 1/4 lost its corners to the
                                                     # 0.8's 2.0 turn; 3/8 keeps ~0.4 of lock)
 SPIN_HEX_L = 8.0                                    # engaged in the bit's socket (user, 2026-11-18)
+SPIN_CAP_T = 2.4                                    # the cap over the recess: three beads' worth
 
 
 def screw_spinner() -> cq.Workplane:
-    """The jig in its own frame: the clamp body 0..CLAMP_L along +X, the hex shank on -X."""
+    """The jig in collar A's frame: the clamp body 0..CLAMP_L along +X, a flat cap over it, the hex."""
+    from .motor_coupler import FORM_MAJOR_C
+    L = CLAMP_L
     body = _collar_local(boss_l=0.0)
     bb = body.val().BoundingBox()
-    rc, ri = SPIN_HEX_AF / math.sqrt(3), SPIN_HEX_AF / 2   # the hex's corner and flat radii
-    # the cone starts at the FLATS and the hex runs on into it until the cone has swallowed its
-    # corners, so no ledge is left round the hex's top (a cone from the corners left 0.76 over air)
-    ch = COLLAR_D / 2 - ri                          # the cone's length at 45 deg
-    cone = cq.Workplane("XY").add(cq.Solid.makeCone(ri, COLLAR_D / 2, ch, cq.Vector(-ch, 0, 0),
-                                                    cq.Vector(1, 0, 0)))
-    cone = cone.intersect(box_at(ch + 0.02, bb.ylen, bb.zlen, x=-ch / 2, y=bb.center.y, z=bb.center.z))
-    hexs = (cq.Workplane("YZ", origin=(-ch - SPIN_HEX_L, 0, 0)).polygon(6, 2 * rc)
-            .extrude(SPIN_HEX_L + (rc - ri)))
-    return body.union(cone).union(hexs)
+    rec_d, rec_h = FORM_MAJOR_C + 0.4, 0.6          # the recess over the thread's end: the bridge
+    cap_t = rec_h + SPIN_CAP_T
+    cap = (cyl_x(COLLAR_D, cap_t, L)
+           .intersect(box_at(cap_t, bb.ylen, bb.zlen, x=L + cap_t / 2, y=bb.center.y, z=bb.center.z))
+           .cut(cyl_x(rec_d, rec_h, L - 0.01)))
+    x0 = L + cap_t
+    hexs = (cq.Workplane("YZ", origin=(x0 - 0.01, 0, 0)).polygon(6, 2 * SPIN_HEX_AF / math.sqrt(3))
+            .extrude(SPIN_HEX_L + 0.01)
+            .rotate((0, 0, 0), (1, 0, 0), 30.0))      # a FLAT on +Y, where the split leaves: cut through
+                                                       # a corner it left two 60 deg tips and a sliver
+    out = body.union(cap).union(hexs)
+    # the collar's SPLIT runs on up through the cap and the hex: closed over by them, the M3 could
+    # not pinch the thread (the socket holds the split hex's shape)
+    top = x0 + SPIN_HEX_L
+    return out.cut(box_at(top - L + 1.0, COLLAR_D / 2 + 1.0, COLLAR_SPLIT,
+                          x=(L - 0.5 + top + 0.5) / 2, y=(COLLAR_D / 2 + 1.0) / 2, z=0.0))
 
 
 # THE COUPLER'S CLAMP (user, 2026-11-16: "as close to centered as possible while leaving sufficient

@@ -2446,7 +2446,7 @@ The screw's position along its axis is now set in the instrument with no measuri
 1. No string fitted. The spring's own 33 N pulls the nut toward the motor until its coils close
    solid; leave it there.
 2. Thread the screw in until its tip just touches the keyplate's back face (don't force it).
-   To run it in fast, clamp the screw spinner (tools/screw_spin_jig: a collar body on a 3/8 in hex,
+   To run it in fast, clamp the screw spinner (tools/screw_spin_jig: a capped collar body with a 3/8 in hex on top,
    its M3 x 10 into an insert used as a nut) on the screw's motor end and drive it with a 3/8 hex
    socket at low speed; finish the last turns by hand.
 3. Turn collar B onto the 688's inner race from the endplate side, then collar A from the motor
