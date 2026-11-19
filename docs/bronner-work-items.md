@@ -2,6 +2,19 @@
 
 ## 2026-11-19: BRAIN BOARD PLACEMENT LIST + FINISH-TOOLING DECISIONS
 
+### 14:30 update: replays are reproducible; seeds are the only variance knob
+
+- mVRP1/mVRP2 (two replays of W47, OWNROUTE_WORK_CLOCK=5.1e7 + PCBFLOW_STABLE_FILL=1):
+  both 16/0/90/24, routed boards md5-identical (uuids masked), route logs identical but
+  timing. Final boards differ only in a group member-uuid list (labeller's random silk uuids).
+- Work clock goes default-on at 5.1e7 cells/CPU-s (cadkit e50528e, landed after mVPE0/1).
+  Calibrated to the old budget, so it moves where cuts land, not how much work runs.
+- So rerun noise is gone, but ONE SEED IS STILL NOT REPRESENTATIVE: seeds swing one
+  placement 2-21 unconnected. A paired seed-1 A/B gives the effect at that net order only.
+  Opens: best-of-3 (unseeded, seed 1, seed 2) as before. Targeted effects (pin_escape
+  GADGET length / A3): if large and in the expected direction at seed 1, confirm at seed 2.
+- pin_escape arms running: mVPE0 = W48k, mVPE1 = W48k + pin_escapes ["U17.6"], seed 1.
+
 ### 12:30 update: best-of-3 W47 vs W48, lead override -> U38 round on W48k
 Rechecked on identical stages (flag-on finish --keep-route, labeller running). Columns: unconnected / violations / quality / verify.
 | | unseeded | seed 1 | seed 2 |
