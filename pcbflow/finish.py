@@ -344,7 +344,7 @@ def _run(script, stem):
 
 
 STEP_SECONDS = {}
-CLOSE_PAST_VIOL = os.environ.get("PCBFLOW_CLOSE_PAST_VIOL", "0") == "1"   # see close_last below
+CLOSE_PAST_VIOL = os.environ.get("PCBFLOW_CLOSE_PAST_VIOL", "1") == "1"   # see close_last below
 CLOSE_TOTAL_S = 1800.0     # close_last, all attempts on one board
 CLOSE_ATTEMPT_S = 600.0    # ...and any one attempt
 
