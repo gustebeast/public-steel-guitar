@@ -1,0 +1,174 @@
+{
+ "build": 1124,
+ "n_strings": 10,
+ "deck_prefixes": [
+  "deck_",
+  "ui_",
+  "wire_ui",
+  "fret_",
+  "wire_fret_led",
+  "pickup",
+  "wire_pickup"
+ ],
+ "open_tuning": [
+  "D4",
+  "E4",
+  "C4",
+  "A3",
+  "G3",
+  "E3",
+  "C3",
+  "A2",
+  "F2",
+  "C2"
+ ],
+ "strings": [],
+ "pedals": [],
+ "copedent": [
+  {
+   "name": "P1",
+   "key": "1",
+   "raises": [
+    {
+     "i": 1,
+     "semitones": 1
+    },
+    {
+     "i": 5,
+     "semitones": 1
+    },
+    {
+     "i": 9,
+     "semitones": 2
+    }
+   ],
+   "pedal": 0
+  },
+  {
+   "name": "P2",
+   "key": "2",
+   "raises": [
+    {
+     "i": 4,
+     "semitones": -1
+    },
+    {
+     "i": 8,
+     "semitones": 1
+    },
+    {
+     "i": 9,
+     "semitones": 2
+    }
+   ],
+   "pedal": 1
+  },
+  {
+   "name": "P3",
+   "key": "3",
+   "raises": [
+    {
+     "i": 1,
+     "semitones": -1
+    },
+    {
+     "i": 5,
+     "semitones": -1
+    }
+   ],
+   "pedal": 2
+  },
+  {
+   "name": "P4",
+   "key": "4",
+   "raises": [
+    {
+     "i": 2,
+     "semitones": 2
+    },
+    {
+     "i": 3,
+     "semitones": 2
+    }
+   ],
+   "pedal": 3
+  },
+  {
+   "name": "P5",
+   "key": "5",
+   "raises": [
+    {
+     "i": 6,
+     "semitones": 1
+    },
+    {
+     "i": 8,
+     "semitones": -1
+    },
+    {
+     "i": 9,
+     "semitones": -3
+    }
+   ],
+   "pedal": 4
+  },
+  {
+   "name": "LKL",
+   "key": "6",
+   "raises": [
+    {
+     "i": 3,
+     "semitones": 1
+    }
+   ]
+  },
+  {
+   "name": "VKL",
+   "key": "7",
+   "raises": [
+    {
+     "i": 0,
+     "semitones": 1
+    }
+   ]
+  },
+  {
+   "name": "LKR",
+   "key": "8",
+   "raises": [
+    {
+     "i": 3,
+     "semitones": -1
+    },
+    {
+     "i": 7,
+     "semitones": -1
+    }
+   ]
+  },
+  {
+   "name": "RKL",
+   "key": "9",
+   "raises": [
+    {
+     "i": 2,
+     "semitones": -1
+    }
+   ]
+  },
+  {
+   "name": "RKR",
+   "key": "0",
+   "raises": [
+    {
+     "i": 2,
+     "semitones": 1
+    },
+    {
+     "i": 6,
+     "semitones": 1
+    }
+   ]
+  }
+ ]
+}
