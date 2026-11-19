@@ -1826,6 +1826,11 @@ def drop_degenerate(board, floor_mm=0.005, width_frac=0.1):
     return len(doomed)
 
 
+# uuid -> (width before, width after) for every track widen_necks widened; read only by the
+# take-up log under PCBFLOW_TAKEUP_WHY=1, to attribute crowding pieces to the step that drew them
+NECKED = {}
+
+
 def rip_router_shorts(board):
     """Take up router copper that shorts or crowds another net, and report what went.
 
@@ -1900,7 +1905,7 @@ def rip_router_shorts(board):
                 0.0 if w.GetClass() == "PCB_VIA" else pcbnew.ToMM(w.GetLength()))
             if w.GetClass() == "PCB_VIA":
                 held.add(w.GetNetname())
-    doomed, seen, why = [], set(), {}
+    doomed, seen, why, _partner = [], set(), {}, {}
     for t, u in pairs:
         victim = min((t, u), key=lambda w: (w.GetNetname() in held, bad[w.GetNetname()], w.GetNetname()))
         uid = victim.m_Uuid.AsString()
@@ -1913,10 +1918,20 @@ def rip_router_shorts(board):
         why[uid] = "%s %s at %.2f,%.2f" % (other.GetNetname(),
                                          "via" if other.GetClass() == "PCB_VIA" else "track",
                                          pcbnew.ToMM(op.x), pcbnew.ToMM(op.y))
+        _partner[uid] = other.m_Uuid.AsString()
+    _why_on = os.environ.get("PCBFLOW_TAKEUP_WHY", "0") == "1"
     for t in doomed:
         print("    took up %s on %s, %.2f mm: it shorted or crowded %s"
               % (t.GetNetname(), t.GetLayerName(), pcbnew.ToMM(t.GetLength()),
                  why.get(t.m_Uuid.AsString(), "another net")))
+        if _why_on:
+            pn = NECKED.get(_partner.get(t.m_Uuid.AsString(), ""))
+            if pn:
+                print("      its neighbour was widened by widen_necks, %.3f -> %.3f mm"
+                      % (pcbnew.ToMM(pn[0]), pcbnew.ToMM(pn[1])))
+            wn = NECKED.get(t.m_Uuid.AsString())
+            print("      drawn by: %s" % ("widen_necks, %.3f -> %.3f mm" % (pcbnew.ToMM(wn[0]), pcbnew.ToMM(wn[1]))
+                                         if wn else "the router (width %.3f mm, not widened)" % pcbnew.ToMM(t.GetWidth())))
         board.Remove(t)
         _REMOVED.append(t)
     return len(doomed)
