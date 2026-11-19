@@ -632,6 +632,12 @@ def region_leaks(parts, rules):
         ref = r.get("ref")
         if r.get("kind") != "fixed" or ref not in parts or ref in owner or ref in free or not r.get("xy"):
             continue
+        # ⚠ A TRANSIENT HOLD IS NOT A HOLD THAT GETS RELEASED (brain_board W47, 2026-11-19): a
+        # window run holds every part outside the window at the source placement for that run
+        # only -- scaffolding, never committed -- so the leak this guards against (a durable
+        # hold released later) cannot happen to it. Mark such holds `"transient": true`.
+        if r.get("transient"):
+            continue
         votes = {}
         for q in parts[ref]["pads"]:
             nm = q.get("net")
