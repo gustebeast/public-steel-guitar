@@ -288,7 +288,19 @@ class Router(CoupledMixin):
             net.bbox = (int(ii.min()), int(ii.max()), int(jj.min()), int(jj.max()))
             self.nets.append(net)
         # shortest first: the only place order matters is round one
-        self.nets.sort(key=lambda n: ((n.bbox[1] - n.bbox[0]) + (n.bbox[3] - n.bbox[2]), n.name))
+        # ⚠ REPLAYS IN LOCKSTEP ARE ONE SAMPLE (brain_board mVW48a/b, 2026-11-19): budgets run on
+        # process_time, so two replays of one board launched together came out byte-identical.
+        # OWNROUTE_SEED=<int> jitters round one's order (each net's span x 1 +- SEED_JITTER, drawn
+        # per net name from the seed) so an A/B arm's replays are independent. Unset: unchanged.
+        seed = os.environ.get("OWNROUTE_SEED", "")
+        if seed:
+            import random
+            jit = {n.name: 1.0 + random.Random("%s/%s" % (seed, n.name)).uniform(-self.SEED_JITTER, self.SEED_JITTER)
+                   for n in self.nets}
+            self.nets.sort(key=lambda n: (((n.bbox[1] - n.bbox[0]) + (n.bbox[3] - n.bbox[2])) * jit[n.name], n.name))
+            self.log("  OWNROUTE_SEED=%s: round-one order jittered +-%g" % (seed, self.SEED_JITTER))
+        else:
+            self.nets.sort(key=lambda n: ((n.bbox[1] - n.bbox[0]) + (n.bbox[3] - n.bbox[2]), n.name))
         # matched groups (USB pairs): vias priced to their budget, the two routed back to back
         by = {n.name: n for n in self.nets}
         for g in m.notes.get('match', ()) or ():
@@ -602,6 +614,7 @@ class Router(CoupledMixin):
         keep[np.nonzero(near)[0][still]] = True
         return c[keep]
 
+    SEED_JITTER = 0.15               # OWNROUTE_SEED: round-one order, each net's span scaled by 1 +- this
     RELAX_AFTER = 10                 # rounds a layer-held pair may share before it is relaxed (4 relaxed USB mid-negotiation, 11-08)
     FILL_MARGIN = 0.15               # a plane-join via's pad this far inside the fill's edge
     PAD_OWN_JOIN = os.environ.get("OWNROUTE_PAD_OWN_JOIN", "1") == "1"   # build_nets: an SMD plane pad gets its own stub + via
