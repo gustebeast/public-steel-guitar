@@ -615,6 +615,20 @@ def _near_reach(parts, rules, pl):
         if r["kind"] != "near" or not r.get("hard", True) or r.get("ref") not in held:
             continue
         tr = r["target"].split(".", 1)[0]
+        # ⚠ A WHOLE-PART TARGET IS ITS COURTYARD, NOT ITS CENTRE (brain_board W48, 2026-11-19):
+        # `near U1` is measured to U1's courtyard (place_intent P.target), but this check measured
+        # to U1's centre and refused C123 in a window that holds U1's own west pads -- "11.4 mm
+        # from U1" across a 24 mm LQFP. Reach is now the centre distance less the target's own
+        # radius -- its courtyard's, or for a pad target ("U1.50", a decap's) that pad's offset
+        # from the anchor: never refuses a rule that can be met, may pass one only the placer
+        # can judge.
+        reach = 0.0
+        if "." in r["target"]:
+            num = r["target"].split(".", 1)[1]
+            xy = [q["xy"] for q in parts.get(tr, {}).get("pads", ()) if str(q.get("num")) == num]
+            reach = max((float(np.hypot(*v)) for v in xy), default=0.0)
+        elif parts.get(tr, {}).get("crtyd"):
+            reach = float(np.hypot(*np.asarray(parts[tr]["crtyd"], float).T).max())
         if tr in pl:
             where, what = np.asarray([pl[tr][:2]], float), "%s (placed)" % tr
         elif tr in held:
@@ -628,6 +642,8 @@ def _near_reach(parts, rules, pl):
                 d = 0.0 if pi._inside(regions[reg], where).any() else d
             else:
                 d = max(0.0, min(pi._poly_dist(regions[reg], regions[t_]) for t_ in held[tr]))
+            if where is not None:
+                d = max(0.0, d - reach)
             if d > float(r["max_mm"]):
                 bad.append("%s is held in region %s, which comes no nearer than %.1f mm to %s; the rule "
                            "wants %g [%s]" % (r["ref"], reg, d, what, r["max_mm"], r.get("src", "")))
