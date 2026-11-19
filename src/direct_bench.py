@@ -605,7 +605,22 @@ from .motor_coupler import CPL_D, CPL_X, CPL_GRIP, SCREW_X0   # src.motor_couple
 # is on the bed, so a 45 deg CHAMFER there takes the elephant's foot.
 HOUSE_POCKET_D = D.BRG688_OD + 0.3                  # 16.3
 HOUSE_MOUTH_CH = 0.5
-HOUSE_D = HOUSE_POCKET_D + 4 * D.BEAD               # 19.5: the pocket's 1.6 wall
+# THE BAYONET (user, 2026-11-18: "the lid is still separating from the housing. We need support all
+# the way around, not just at the two screws"): the lid's +X face carries BAY_N slant-hook teeth
+# (cadkit joinery.bayonet) that drop through as many pockets in the housing's -X face and twist
+# under its lips. The teeth's straight face IS the bearing's bore (no housing wall inside them), so
+# the ring only needs the tooth (1.6 neck, 1.6 tall), its undercut and a 1.6 wall outside it:
+# r 8.15 -> 12.4 leaves the undercut 0.75 (25 deg off the axis). 12.4 is what the neighbours allow
+# (their ears stand 12.9 off each axis at the lid's x). The ties stop the twist; seated, each lid
+# turns at most ~14 deg before its ears meet a neighbour's (scratch bay3.py, strings 2-7), so 14 teeth
+# (12.9 deg twist). Axial play before the slant bears: ~0.36 (clearance / sin 25).
+HOUSE_D = 24.8                                      # the bayonet's ring, r 12.4: 1.6 wall outside
+                                                    # the lip, 0.5 to the neighbours' ears
+BAY_N = 14
+# THE LID STAYS Ø19.5 (the pocket's 1.6 wall; the teeth's necks are that wall carried on up): its
+# ears clear the neighbours' lids through the twist by 0.57 at worst (string 2), where Ø21 already
+# touches (scratch bay6.py). It meets the housing face to face on its ears; the ring is the teeth's.
+LID_D = HOUSE_POCKET_D + 4 * D.BEAD                 # 19.5
 # TURNING NEVER TOUCHES FIXED (user, 2026-11-14: "ideally the bearings handle all the contact"):
 # every collar face stands SPIN_GAP off the plate, the lip and the lid, and every fixed thing
 # SPIN_GAP outside the collars' swept circle -- the bearing's own axial play (~0.1) and a collar
@@ -752,10 +767,24 @@ def x_lid():
 # pinch the outer race as the faces close.
 SPLIT_GAP = 0.0
 RACE_CRUSH = 0.1
-# THE POCKETS' FLOORS PRINT PROUD (user, 2026-11-18: the pair stood 0.8 apart on the bearing, not
-# 0.4): each floor is the 1.36 ledge over the pocket's mouth, a ceiling in its print, and sags into
-# the pocket. The 0.4 short, split between the two, is drawn back in: each floor 0.2 deeper.
-POCKET_FLOOR_SAG = 0.2
+# THE POCKETS' FLOORS PRINTED PROUD (user, 2026-11-18: the pair stood 0.8 apart on the bearing, not
+# 0.4) while each floor was a ceiling over a mouth on the bed. With the bayonet both halves print
+# their mating face UP (HOUSE_UP, LID_UP), so both floors are floors again: no sag to draw back.
+POCKET_FLOOR_SAG = 0.0
+
+
+def bayonet():
+    """The housing/lid bayonet (cadkit joinery.bayonet): r_in the bearing's bore, r_out the ring."""
+    from cadkit.joinery import bayonet as _bay, PrintSpec
+    gf = PrintSpec(0.8, "PETG-GF", "up")
+    # r_in a hair inside the bore: the pocket's cut then trims the teeth to it (drawn ON it, the
+    # revolved face and the cylinder left a sliver solid)
+    return _bay(HOUSE_POCKET_D / 2 - 0.05, HOUSE_D / 2, gf, gf, n=BAY_N)
+
+
+def _bay_world(w: cq.Workplane, i: int) -> cq.Workplane:
+    """cadkit's bayonet frame (axis +Z, the lid below z = 0) onto string i: +Z -> +X at x_split."""
+    return w.rotate((0, 0, 0), (0, 1, 0), 90.0).translate((x_split()[0], y_of(i), za(i)))
 
 
 def x_split():
@@ -1673,10 +1702,13 @@ def rod_l_max() -> float:
     return m
 
 
-HOUSE_UP = (1.0, 0.0, 0.0)                          # prints -X -> +X: the pocket's mouth on the bed,
+HOUSE_UP = (-1.0, 0.0, 0.0)                         # prints +X -> -X: the lip on the bed, the
+                                                    # pocket and the bayonet's groove open on top
+                                                    # (was -X -> +X, the pocket's mouth on the bed,
                                                     # the lip a 1.2 ledge over it, the rod's
                                                     # pocket open on top
-LID_UP = (-1.0, 0.0, 0.0)                           # prints +X -> -X: the heads' pockets open on top
+LID_UP = (1.0, 0.0, 0.0)                            # prints -X -> +X: the heads' face on the bed, the
+                                                    # pocket and the bayonet's teeth on top
 
 
 def _housing(i: int) -> cq.Workplane:
@@ -1694,8 +1726,7 @@ def _housing(i: int) -> cq.Workplane:
     dy, dz = at_ang(guide_ang(i), GUIDE_R)
     out = out.union(cyl_x(2 * rb, l1 - h0, h0, y=y + dy, z=z + dz))
     out = out.cut(cyl_x(HOUSE_POCKET_D, l0 - RACE_CRUSH / 2 + POCKET_FLOOR_SAG - (h0 - 1), h0 - 1, y=y, z=z))  # the pocket, open -X
-    rp = HOUSE_POCKET_D / 2                                                     # ... its mouth's chamfer
-    out = out.cut(_cone_x(rp + HOUSE_MOUTH_CH + 0.01, rp, h0 - 0.01, h0 + HOUSE_MOUTH_CH, y, z))
+    out = out.cut(_bay_world(bayonet().mortise(drop=1.0), i))                   # the bayonet's groove
     out = out.cut(cyl_x(RACE_OUT_D, l1 - l0 + 2, l0 - 1, y=y, z=z))            # the lip's hole
     rod_l_max()                                                                 # a third still fits
     for dy, dz in tie_offsets(i):
@@ -1751,15 +1782,18 @@ def _lid(i: int, bench: bool = False) -> cq.Workplane:
     d1 = x_split()[0]
     # the bench's: two beads round the heads' pockets (user, 2026-11-18: one bead deformed)
     boss = (M3_HEAD[0] + 0.5) / 2 + D.MIN_WALL_2P if bench else TIE_BOSS
-    out = cyl_x(HOUSE_D, d1 - d0, d0, y=y, z=z).union(_ears(i, d0, d1, boss))
+    out = cyl_x(LID_D, d1 - d0, d0, y=y, z=z).union(_ears(i, d0, d1, boss))
+    out = out.union(_bay_world(bayonet().tenon(root=1.0), i))                  # the bayonet's teeth
     out = out.cut(cyl_x(RACE_OUT_D, d1 - d0 + 2, d0 - 1, y=y, z=z))
-    out = out.cut(cyl_x(HOUSE_POCKET_D, d1 + 1 - (b0 + RACE_CRUSH / 2 - POCKET_FLOOR_SAG), b0 + RACE_CRUSH / 2 - POCKET_FLOOR_SAG, y=y, z=z))   # the pocket, open +X
-    rp = HOUSE_POCKET_D / 2
-    out = out.cut(_cone_x(rp, rp + HOUSE_MOUTH_CH + 0.01, d1 - HOUSE_MOUTH_CH, d1 + 0.01, y, z))
+    out = out.cut(cyl_x(HOUSE_POCKET_D, d1 + 5 - (b0 + RACE_CRUSH / 2 - POCKET_FLOOR_SAG), b0 + RACE_CRUSH / 2 - POCKET_FLOOR_SAG, y=y, z=z))   # the pocket, open +X, on through the teeth
     for dy, dz in tie_offsets(i):  # the ties' heads on its -X face (not sunk)
         out = out.cut(cyl_x(M3H.CLR_PRINTED_D, d1 - d0 + 2, d0 - 1, y=y + dy, z=z + dz))
-        if bench:                  # ... the bench's sunk
-            out = out.cut(cyl_x(M3_HEAD[0] + 0.5, BENCH_HEAD_SINK + 1, d0 - 1, y=y + dy, z=z + dz))
+        if bench:                  # ... the bench's sunk, on the bed now: the step to the hole
+            hp = (M3_HEAD[0] + 0.5) / 2                                         # coned 45 deg
+            out = out.cut(cyl_x(2 * hp, BENCH_HEAD_SINK + 1, d0 - 1, y=y + dy, z=z + dz))
+            rc = M3H.CLR_PRINTED_D / 2
+            out = out.cut(_cone_x(hp, rc, d0 + BENCH_HEAD_SINK - 0.01, d0 + BENCH_HEAD_SINK + hp - rc,
+                                  y + dy, z + dz))
     return out
 
 

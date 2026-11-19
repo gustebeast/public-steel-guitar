@@ -2462,3 +2462,26 @@ Screw cut lengths (Tr8x2), per string:
 | string | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
 |---|---|---|---|---|---|---|---|---|---|---|
 | mm | 254.7 | 176.1 | 258.6 | 332.4 | 416.5 | 335.6 | 258.6 | 179.3 | 263.1 | 340.8 |
+
+## Thrust housing: the lid twist-locks into the housing all round (2026-11-18)
+
+- The lid lifted between its two ties. Its +X face now carries 14 slant-hook
+  teeth (cadkit `joinery.bayonet`). They drop through 14 pockets in the
+  housing's -X face. Twist the lid 12.9 deg and every tooth sits under a lip.
+- Fitting order: put the bearing in the housing. Hold the lid on the bearing
+  turned half a tooth (12.9 deg) from where its ear holes line up, push it
+  home, then turn it until the ear holes line up. Then fit the ties. The ties
+  are what stop it turning back.
+- The neighbours' lids leave room for that twist on every string (0.57 mm at
+  worst, string 2). Twist each lid the way that clears; one sense is blocked
+  on strings 1-7.
+- The housing's ring is now 24.8 across (1.6 wall outside the lips). The lid
+  stays 19.5: its teeth carry its pocket wall on up.
+- Both halves now print with their mating face UP. The housing stands on its
+  lip; the lid stands on the ties' heads' face. Both bearing pockets therefore
+  have floors, not ceilings, so the 0.2 sag allowance is gone.
+- Expect up to ~0.36 mm of axial play before the slanted faces bear
+  (0.15 clearance / sin 26 deg). If the lid still lifts by that much, the next
+  step is a draw: the lips ramp down toward the locked position.
+- Reprint the housing and lid. The screws, spacers and cut lengths are
+  unchanged.
