@@ -32,6 +32,10 @@ Finish-tooling decisions (lead, 2026-11-19):
   - W48: windows KiCad 98-114 x 111-130 (J240/C322/F204/D201: +24V_RIB, VIN_BRAIN) and 88-100 x 76-87
     (R220/R221: SENSE_24V). Unconfined screen scW48 11.57/30 vs W47 9.80/27 -- D201 jumped 46 mm into the
     MCU window, R84 22.6 mm. Freed parts are now held in their own window (win<k> region); re-screening scW48c.
+    Confined two-window scW48g 11.06/30: the MCU-west window made a new hot spot (96,85 C123/R84/R220) and
+    pushed R221 7 mm from U1.50 -- dropped; SENSE_24V needs another approach. Ribbon window only (intent48h,
+    scW48h): 8.80/27, C322 7.6 / D201 2.0 / C245 2.9 mm. Replaying as mVW48a/b (src srcW48).
+    cadkit: fa1e0a5 + 8e7b526 (near-reach to courtyard / pad), 2933ee1 (windows grow over freed courtyards).
   - NEXT ROUND (lead): move U38 (USB part at 127,83 between J7 116,68 / U17 58.6,103 / J202 170,72) --
     SVC_DP and GADGET_DP/DM run 205-249 mm. Bigger window than the small-part rounds.
 - TOOLING (behind a flag): J201 (CM5 connector) GND pins stranded in its pin field (mVW47b ~136.2-139.2,
