@@ -75,6 +75,10 @@ PARTS = {
     lambda: heal(_m("saw_jig").cap()),
     "tools/saw_jig_cap.step",
     "TOOL — the saw jig's cap: a plunger down the clamp channel whose 45 deg notch seats on the rod's upper crests, with a rimmed pocket on top for the Quick-Grip pad. The clamp squeezes cap, rod, jig and table in one stack. PETG, printed as drawn (notch on the bed)"),
+    "screw_spin_jig": (
+    lambda: heal(_m("direct_bench").screw_spinner()),
+    "tools/screw_spin_jig.step",
+    "TOOL — runs a leadscrew in fast at install: collar A's clamp body (formed thread, split, M3 x 10 into the insert used as a nut) clamped on the screw's motor end, on a 1/4 in hex shank (6.2 AF, 8 long; coupons/hex_fit.step picks the AF) for a driver's 1/4 in hex socket. The screw bottoms on the shank's cone. PETG-GF on the 0.8, standing on the hex's end (brim it), the 45 deg cone up to the body"),
     "pin_drill_jig": (
     lambda: heal(_m("pin_drill_jig").body()),
     "tools/pin_drill_jig.step",
@@ -159,6 +163,9 @@ def _declared():
         (["motor_shaft_saw_jig"], MSJ.BODY_UP,
          "motor_shaft_saw_jig.BODY_UP — as drawn, table face on the bed: the bay, the boss "
          "slot, the shaft channel and the saw slot all open upward; the gussets rise at 45 deg"),
+        (["screw_spin_jig"], _m("direct_bench").COLLAR_A_UP,
+         "direct_bench.COLLAR_A_UP — standing on the hex shank's end, -X -> +X: the 45 deg cone up "
+         "to the clamp body, its insert and head pockets peaked +X as the collar's"),
         (["saw_jig_cap"], SJG.CAP_UP,
          "saw_jig.CAP_UP — as drawn: the rod notch's two 45 deg faces rise off the bed, the "
          "pad pocket opens up"),

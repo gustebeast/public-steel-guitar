@@ -1868,6 +1868,31 @@ def _collar_local(boss_l: float = SPIN_GAP + LID_T, shaft: float = 0.0, body_l: 
     return out.cut(th, clean=False, tol=1e-3)   # fuzzy: no zero-area sliver where a crest meets an end face (Bambu read it as 5 open edges)
 
 
+# THE SCREW SPINNER (user, 2026-11-18: "a male plastic hex that has a C clamp to attach to the screw
+# (same style as the collar)", driven through the user's 1/4 in female hex bit, to run each screw in
+# fast at install). The collar's body as it is -- formed thread, split, M3 x 10 into the insert used as
+# a nut -- on a 1/4 in hex shank. The bore is blind at the body's -X face: the screw's end bottoms there.
+# Prints like collar A, -X -> +X standing on the hex's end, its pockets peaked +X; a 45 deg cone climbs
+# from the hex out to the body, so nothing overhangs.
+SPIN_HEX_AF = 6.2                                   # 1/4 in (6.35) across flats, less 0.15: printed
+                                                    # outsides come out a touch fat, and the bit's
+                                                    # socket should take it by hand
+SPIN_HEX_L = 8.0                                    # engaged in the bit's socket (user, 2026-11-18)
+
+
+def screw_spinner() -> cq.Workplane:
+    """The jig in its own frame: the clamp body 0..CLAMP_L along +X, the hex shank on -X."""
+    body = _collar_local(boss_l=0.0)
+    bb = body.val().BoundingBox()
+    rc = SPIN_HEX_AF / math.sqrt(3)                 # the hex's corner radius
+    ch = COLLAR_D / 2 - rc                          # the cone's length at 45 deg
+    cone = cq.Workplane("XY").add(cq.Solid.makeCone(rc, COLLAR_D / 2, ch, cq.Vector(-ch, 0, 0),
+                                                    cq.Vector(1, 0, 0)))
+    cone = cone.intersect(box_at(ch + 0.02, bb.ylen, bb.zlen, x=-ch / 2, y=bb.center.y, z=bb.center.z))
+    hexs = (cq.Workplane("YZ", origin=(-ch - SPIN_HEX_L, 0, 0)).polygon(6, 2 * rc).extrude(SPIN_HEX_L + 0.5))
+    return body.union(cone).union(hexs)
+
+
 # THE COUPLER'S CLAMP (user, 2026-11-16: "as close to centered as possible while leaving sufficient
 # clearance from the mount plate"): its screw at the coupler's middle, which pinches the D AND the
 # screw's socket (1.5 past the joint), and the Ø COLLAR_D body run down toward the motor as far as the
