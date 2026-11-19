@@ -656,6 +656,9 @@ def region_leaks(parts, rules):
     return sorted((g, sorted(v)) for g, v in out.items())
 
 
+STRAY_MIN_VOTES = 2
+
+
 def region_strays(parts, rules, pl):
     """[(region, ref, where, why_ok)]: parts the netlist says belong to a region (the same vote
     as region_leaks: most of a part's signal-net neighbours bound there) that the placement put
@@ -698,7 +701,10 @@ def region_strays(parts, rules, pl):
         if not votes:
             continue
         g, k = max(votes.items(), key=lambda kv: kv[1])
-        if 2 * k < sum(votes.values()) or g not in polys:
+        # a CLEAR owner only: two or more neighbours and two thirds of the votes. One neighbour,
+        # or a part split between two regions (glue at the seam), says nothing about where it
+        # belongs -- W47 listed 55 such parts and a real stray would have drowned in them
+        if k < STRAY_MIN_VOTES or 3 * k < 2 * sum(votes.values()) or g not in polys:
             continue
         xy = np.asarray([pl[ref][:2]], float)
         if _inside(polys[g], xy)[0]:
