@@ -1881,9 +1881,10 @@ def _collar_local(boss_l: float = SPIN_GAP + LID_T, shaft: float = 0.0, body_l: 
 # a nut -- on a 1/4 in hex shank. The bore is blind at the body's -X face: the screw's end bottoms there.
 # Prints like collar A, -X -> +X standing on the hex's end, its pockets peaked +X; a 45 deg cone climbs
 # from the hex out to the body, so nothing overhangs.
-SPIN_HEX_AF = 9.4                                   # 3/8 in (9.525) across flats (user, 2026-11-18: 1/4
-                                                    # standing lost its corners to the 0.8's 2.0 turn;
-                                                    # 3/8 keeps ~0.4 of lock); coupons/hex_fit_38 sets it
+SPIN_HEX_AF = 9.55                                  # 3/8 in (9.525) across flats, standing: the
+                                                    # user's fit coupon (hex_fit_38, 2026-11-18) -- 9.55
+                                                    # "fits perfect" (the 1/4 lost its corners to the
+                                                    # 0.8's 2.0 turn; 3/8 keeps ~0.4 of lock)
 SPIN_HEX_L = 8.0                                    # engaged in the bit's socket (user, 2026-11-18)
 
 
@@ -1891,12 +1892,15 @@ def screw_spinner() -> cq.Workplane:
     """The jig in its own frame: the clamp body 0..CLAMP_L along +X, the hex shank on -X."""
     body = _collar_local(boss_l=0.0)
     bb = body.val().BoundingBox()
-    rc = SPIN_HEX_AF / math.sqrt(3)                 # the hex's corner radius
-    ch = COLLAR_D / 2 - rc                          # the cone's length at 45 deg
-    cone = cq.Workplane("XY").add(cq.Solid.makeCone(rc, COLLAR_D / 2, ch, cq.Vector(-ch, 0, 0),
+    rc, ri = SPIN_HEX_AF / math.sqrt(3), SPIN_HEX_AF / 2   # the hex's corner and flat radii
+    # the cone starts at the FLATS and the hex runs on into it until the cone has swallowed its
+    # corners, so no ledge is left round the hex's top (a cone from the corners left 0.76 over air)
+    ch = COLLAR_D / 2 - ri                          # the cone's length at 45 deg
+    cone = cq.Workplane("XY").add(cq.Solid.makeCone(ri, COLLAR_D / 2, ch, cq.Vector(-ch, 0, 0),
                                                     cq.Vector(1, 0, 0)))
     cone = cone.intersect(box_at(ch + 0.02, bb.ylen, bb.zlen, x=-ch / 2, y=bb.center.y, z=bb.center.z))
-    hexs = (cq.Workplane("YZ", origin=(-ch - SPIN_HEX_L, 0, 0)).polygon(6, 2 * rc).extrude(SPIN_HEX_L + 0.5))
+    hexs = (cq.Workplane("YZ", origin=(-ch - SPIN_HEX_L, 0, 0)).polygon(6, 2 * rc)
+            .extrude(SPIN_HEX_L + (rc - ri)))
     return body.union(cone).union(hexs)
 
 
