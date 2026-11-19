@@ -656,6 +656,58 @@ def region_leaks(parts, rules):
     return sorted((g, sorted(v)) for g, v in out.items())
 
 
+def region_strays(parts, rules, pl):
+    """[(region, ref, where, why_ok)]: parts the netlist says belong to a region (the same vote
+    as region_leaks: most of a part's signal-net neighbours bound there) that the placement put
+    OUTSIDE it. `where` is the region the part sits in instead ('' for none). A region rule may
+    list `away: {ref: why}` for parts that sit outside on purpose; those come back with the why.
+
+    ⚠ THE SIBLING region_leaks DOES NOT SEE (brain_board W47 audit, 2026-11-19): leaks are held
+    parts INSIDE their region with no binding; a part already OUTSIDE its region -- Q210 voted
+    boost, sitting in compute; U41/R88/R80 voted pd, in compute -- passed both checks."""
+    owner, free, away = {}, set(), {}
+    for r in rules:
+        if r.get("kind") == "in_region":
+            for x in r.get("refs") or ():
+                owner.setdefault(x, set()).add(r["region"])
+        if r.get("kind") == "region":
+            free |= set(r.get("free") or ())
+            for x, w in (r.get("away") or {}).items():
+                away[(r["name"], x)] = w
+    if not owner:
+        return []
+    polys = {r["name"]: np.asarray(r["poly"], float) for r in rules
+             if r.get("kind") == "region" and not r["name"].startswith("_")}
+    members = {}
+    for ref, p in parts.items():
+        for q in p["pads"]:
+            if q.get("net"):
+                members.setdefault(q["net"], set()).add(ref)
+    out = []
+    for ref in sorted(pl):
+        if ref not in parts or ref in owner or ref in free:
+            continue
+        votes = {}
+        for q in parts[ref]["pads"]:
+            nm = q.get("net")
+            if not nm or len(members.get(nm, ())) > LEAK_RAIL:
+                continue
+            for o in members[nm] - {ref}:
+                for g in owner.get(o, ()):
+                    votes[g] = votes.get(g, 0) + 1
+        if not votes:
+            continue
+        g, k = max(votes.items(), key=lambda kv: kv[1])
+        if 2 * k < sum(votes.values()) or g not in polys:
+            continue
+        xy = np.asarray([pl[ref][:2]], float)
+        if _inside(polys[g], xy)[0]:
+            continue
+        where = next((n for n, P in polys.items() if _inside(P, xy)[0]), "")
+        out.append((g, ref, where, away.get((g, ref), "")))
+    return out
+
+
 def region_fill(rules, parts, pl):
     """[(region, area mm2, courtyards mm2, fill)] -- each placed part counted in the first
     region holding its courtyard's centre. Courtyards only (no halo): the number layout and
