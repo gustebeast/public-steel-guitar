@@ -2,6 +2,22 @@
 
 ## 2026-11-19: BRAIN BOARD PLACEMENT LIST + FINISH-TOOLING DECISIONS
 
+### 12:30 update: best-of-3 W47 vs W48, lead override -> U38 round on W48k
+Rechecked on identical stages (flag-on finish --keep-route, labeller running). Columns: unconnected / violations / quality / verify.
+| | unseeded | seed 1 | seed 2 |
+|---|---|---|---|
+| W47 | 7/0/84/22 | 16/0/85/17 | 21/2/95/31 |
+| W48 | 2/0/106/38 | 10/0/79/14 | 5/1/88/25 |
+- Strict rule: W47 stays. No W48 board beats W47a on unconnected without being worse on quality or verify.
+- LEAD OVERRIDE (11-19): the U38 round goes on W48k = W48 + C322 keep-out, not on W47. Reasons:
+  - unconnected is the hard part, and W48 is consistently better there (median 5 vs 16; 2 of 3 boards at 7 or under vs 1 of 3);
+  - W48's quality/verify deficit sits in W48a, with a known placement cause (the C322 pinch on +24V_LED, F203.2 -> J240.9) that the keep-out removes;
+  - medians are otherwise close.
+- Order candidate stays W47a (7/0/84/22) until U38-on-W48k best-of-3 beats it under the rule. If it doesn't, the U38 round reruns on W47.
+- W48k intent: window_intent intent47base.json scW47 --win 98,114,111,130 --keepout 105.5,114,117.3,123.4. That is intent48h plus the keep-out, nothing else (checked). Screen gate: holds near 8.80/27, and C322 sits clear of the path.
+- Landed today in canonical cadkit: stable_fill default on (e1de424), loud stages + scratch path (0139bf9, e92a1c7), ownroute.log (8dac401), WORK_CLOCK flag (77d5545, rate 5.1e7 cells/cpu-s), keepout (3117000).
+- Running: reproducibility pair mVRP1/mVRP2 (W47 unseeded, WORK_CLOCK 5.1e7 + STABLE_FILL). The boards should md5-match.
+
 ### 11:00 update: reproducibility, real A17 list
 - Root cause of replay variance (non-timing): KiCad holds footprints in a different order each run, and ZONE_FILLER's output depends on that order. Fix: stable_fill (PCBFLOW_STABLE_FILL, cadkit edit branch 0139bf9). It's a content-keyed, order-free fill cache that also restores fill flags and pad/via zone-layer overrides. Gate 1 passed (layout x2 md5-identical). Gate 2 (keep-route x2 + DRC zone-fill-out-of-date) is running. Once it passes: land it and turn it on by default (hygiene, no A/B).
 - Follow-up (lead): any pcbflow loop that walks footprints, pads or tracks in board order can be a nondeterminism source too (router model lists, power_vias, repair, close_last). After stable_fill lands, run one flag-on + WORK_CLOCK-on replay pair. If the boards still differ, the first split in the ownroute.log diff names the loop. Fix by sorting on (ref, pad number). No A/B if DRC stays clean.
