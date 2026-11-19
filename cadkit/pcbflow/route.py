@@ -961,6 +961,7 @@ def widen_necks(board, notes, step_mm=0.05):
                 break
         if best > w0:
             t.SetWidth(best)
+            layout.NECKED[t.m_Uuid.AsString()] = (w0, best)   # for the take-up log (PCBFLOW_TAKEUP_WHY)
             done += 1
             gained += pcbnew.ToMM(best - w0)
     if done:
