@@ -29,6 +29,8 @@ import re
 import sys
 
 import pcbnew
+
+import stable_fill  # noqa: E402  (PCBFLOW_STABLE_FILL)
 import wx
 # ⚠ NO MODAL DIALOGS IN A BUILD STEP. KiCad's Python is a wxWidgets application, and a
 # failed internal assertion pops a GUI alert -- "Do you want to stop the program?" -- and
@@ -1382,7 +1384,7 @@ def drop_redundant_pad_vias(board, notes):
     # so the via read redundant -- and the refill after it pulled the pour back from the
     # land, leaving two GND lands joined to nothing. close_last closed one 18.4 mm round
     # (quality A23). Each test refills the pours first, as the board will be refilled.
-    fill = lambda: pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+    fill = lambda: stable_fill.fill(board, board.Zones())
     fill()
     board.BuildConnectivity()
     base = board.GetConnectivity().GetUnconnectedCount(False)
@@ -2270,7 +2272,7 @@ def repair_plane_orphans(board, notes, probe_mm=12.0, max_items=24):
                                               pcbnew.ToMM(t.GetStart().y)))
     if laid:
         board.BuildConnectivity()
-        pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+        stable_fill.fill(board, board.Zones())
     return laid
 
 
@@ -2475,7 +2477,7 @@ def _move_plane_joins(board, vias, ends, poured, clr_mm=0.2, hole_mm=0.25):
         if not st or not planes:
             continue
         zs = [z for z in board.Zones() if z.GetNetCode() == nc and not z.GetIsRuleArea()]
-        pcbnew.ZONE_FILLER(board).Fill(zs)
+        stable_fill.fill(board, zs)
         r = _via_r(v)
         drill = v.GetDrillValue()
         p0 = v.GetPosition()
@@ -6322,7 +6324,7 @@ def build(stem):
         # and a zone that filled to nothing looks in the file just like one that
         # filled fine.
         board.BuildConnectivity()
-        pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+        stable_fill.fill(board, board.Zones())
         _check_stitches_landed(board, notes)
 
     n_junk = drop_degenerate(board)

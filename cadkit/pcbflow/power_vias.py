@@ -32,6 +32,8 @@ import os
 import sys
 
 import pcbnew
+
+import stable_fill  # noqa: E402  (PCBFLOW_STABLE_FILL)
 import wx                                       # noqa: E402  (KiCad's python ships it)
 wx.DisableAsserts()                             # NO MODAL DIALOGS IN A BUILD STEP -- see route.py
 
@@ -249,19 +251,21 @@ def plan(stem, board):
 _FRESH = """
 import json, sys
 import pcbnew
+sys.path.insert(0, @HERE@)
+import stable_fill
 pcb, mode, lst = sys.argv[1], sys.argv[2], sys.argv[3]
 drop = set(json.load(open(lst)))
 b = pcbnew.LoadBoard(pcb)
 for t in list(b.GetTracks()):
     if t.m_Uuid.AsString() in drop:
         b.Delete(t)     # NOT Remove: a removed via left GetConnectivity() a bare SwigPyObject
-pcbnew.ZONE_FILLER(b).Fill(b.Zones())
+stable_fill.fill(b, b.Zones())
 if mode == "apply":
     b.Save(pcb)
 else:
     b.BuildConnectivity()
     print("UNCONNECTED %d" % b.GetConnectivity().GetUnconnectedCount(False))
-"""
+""".replace("@HERE@", repr(os.path.dirname(os.path.abspath(__file__))))
 
 
 def _fresh(pcb, mode, drop):
@@ -297,8 +301,7 @@ def _fresh(pcb, mode, drop):
 def main(stem):
     pcb = stem + ".kicad_pcb"
     board = pcbnew.LoadBoard(pcb)
-    filler = pcbnew.ZONE_FILLER(board)
-    filler.Fill(board.Zones())              # plan() reads the pours' fills
+    stable_fill.fill(board, board.Zones())              # plan() reads the pours' fills
     rows = plan(stem, board)
     # ⚠ A VIA THAT OPENS A CONNECTION COMES BACK OUT (connector_board d14, 2026-11-15).
     # Clearance-legal is not enough: a new via's antipad can cut the neck of another net's pour,
