@@ -31,7 +31,30 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 KICAD_PY = os.environ.get("KICAD_PYTHON", "C:/Program Files/KiCad/10.0/bin/python.exe")
 
 
+class _Tee:
+    """stdout AND a file: the finish's own route printed into a pipe nothing kept (mVW48f,
+    2026-11-19), so where two replays of one board split could not be found."""
+    def __init__(self, a, b):
+        self.a, self.b = a, b
+
+    def write(self, s):
+        self.a.write(s)
+        self.b.write(s)
+        return len(s)
+
+    def flush(self):
+        self.a.flush()
+        self.b.flush()
+
+    def __getattr__(self, k):
+        return getattr(self.a, k)
+
+
 def core(stem):
+    # PCBFLOW_ROUTE_LOG=1 (as for router.score): the route's own lines also go to
+    # <stem>.ownroute.log, one file per route, beside the board
+    if os.environ.get("PCBFLOW_ROUTE_LOG", "0") == "1":
+        sys.stdout = _Tee(sys.stdout, open(stem + ".ownroute.log", "w", encoding="utf-8"))
     sys.path.insert(0, HERE)
     from router.model import Model
     from router.negotiate import Router
