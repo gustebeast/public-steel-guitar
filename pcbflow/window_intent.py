@@ -85,8 +85,16 @@ def build(base, src, wins, small=8, keep_nets=("OSC_IN", "OSC_OUT"), keep_prefix
     # "except" list). For a power path a window must not crowd -- W48 freed C322 into the
     # 3 A +24V_LED run F203.2 -> J240.9 and quality A1 found it pinched to 0.65 of 1.37 mm.
     for k, (a, b, c, d) in enumerate(keepouts):
-        inside = sorted(r for r, (x, y, _) in pl.items() if r not in free
-                        and a <= x + 100.0 <= b and c <= 100.0 - y <= d)
+        # a held part whose COURTYARD reaches the box is excepted too, not just one whose
+        # centre is in it (W48k: F203 and J240 sit beside the box, courtyards 1.5-3 mm in,
+        # and the intent check stopped the flow on them)
+        def _touches(r, x, y):
+            cy = parts.get(r, {}).get("crtyd") or [[0.0, 0.0]]
+            rad = max(math.hypot(*v) for v in cy)
+            xk, yk = x + 100.0, 100.0 - y
+            dx, dy = max(a - xk, 0.0, xk - b), max(c - yk, 0.0, yk - d)
+            return math.hypot(dx, dy) <= rad
+        inside = sorted(r for r, (x, y, _) in pl.items() if r not in free and _touches(r, x, y))
         add.append(dict(kind="keepout", poly=[[a - 100.0, 100.0 - c], [b - 100.0, 100.0 - c],
                                               [b - 100.0, 100.0 - d], [a - 100.0, 100.0 - d]],
                         **({"except": inside} if inside else {}), transient=True,
