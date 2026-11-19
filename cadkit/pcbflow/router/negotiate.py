@@ -623,13 +623,21 @@ class Router(CoupledMixin):
     RIP_RECHECK = os.environ.get("ROUTER_RIP_RECHECK", "1") == "1"     # see _rip
     NO_SHORTS_COVER = os.environ.get("ROUTER_NO_SHORTS_COVER", "1") == "1"   # see _no_shorts
     RIP_MATE_LAND = os.environ.get("ROUTER_RIP_MATE_LAND", "1") == "1"       # see _rip
-    PAIR_LOCKSTEP = os.environ.get("ROUTER_PAIR_LOCKSTEP", "1") == "1"       # see _route_in
+    PAIR_LOCKSTEP = os.environ.get("ROUTER_PAIR_LOCKSTEP", "0") == "1"       # see _route_in
     LOCKSTEP_MM = float(os.environ.get("ROUTER_LOCKSTEP_MM", "1.0"))
+    # ROUTER_LOCKSTEP_FINISH=1: the lockstep rule only while the pairs are finished
+    # (_finish_pairs / _fallback_pairs), after negotiation has closed the board -- the parity
+    # lockstep buys without its cost to closure (mV54 25 unconnected vs mV55 3). Flag, off.
+    LOCKSTEP_FINISH = os.environ.get("ROUTER_LOCKSTEP_FINISH", "0") == "1"
+    # ⚠ OFF BY DEFAULT AGAIN (lead's rule, 2026-11-18): on the same placement (mV34) the full
+    # flow finished 25 unconnected with LOCKSTEP 1 / BAND 0.3 (mV54) and 3 with 0 / 0.6
+    # (mV55, as mV41): parity improved (4 of 10 pairs mismatched, from 5) but closure is
+    # worth more. Back on only after a finished-board A/B (2 replays an arm) shows it costs none.
     # ⚠ THE MATE'S BAND PULLS HARDER UNDER LOCKSTEP (brain_board mV52d/e, 2026-11-18): at x0.6
     # lockstep's mates kept their layers but wandered (uncoupled 352 / 692 mm); x0.3 brought it
     # to 194 / 194 with parity kept. Tightening LOCKSTEP_MM to 0.6, or pricing a pair's vias off
     # the congestion (PAIR_VIA_REL, deleted), made rails fail instead (joins_open 60 / 60).
-    PAIR_BAND = float(os.environ.get("ROUTER_PAIR_BAND", "0.3"))   # the mate's price in its band
+    PAIR_BAND = float(os.environ.get("ROUTER_PAIR_BAND", "0.6"))   # the mate's price in its band
     TREE_PARTIAL_MIN = 6             # pieces: a smaller tree net is ripped whole, as before
     # pf's ceiling (0 = none). Past a few hundred, occupied cells are walls whatever pf is,
     # and the round-to-round swing (mV25: 21..41 sharing from pf 1e3 on) is the price
@@ -914,7 +922,8 @@ class Router(CoupledMixin):
         # on layer k only within LOCKSTEP_MM of its leader's copper on k (so it changes layer
         # where the leader does: mated vias), any layer within MATE_LAND_MM of its own lands
         # (the fan-out); the leader keeps the freedom the relax gave it.
-        if (self.PAIR_LOCKSTEP and net.relaxed and net.same_layer and net.partner is not None
+        if ((self.PAIR_LOCKSTEP or getattr(self, "_lock_finish", False))
+                and net.relaxed and net.same_layer and net.partner is not None
                 and net.partner.paths and not net.partner.failed):
             lead = np.zeros((L, h, w), bool)
             for p_ in net.partner.paths:
@@ -3149,8 +3158,12 @@ class Router(CoupledMixin):
             with open(os.environ["OWNROUTE_SNAPSHOT"], "wb") as fh:
                 pickle.dump({"pf": pf, "nets": {n.name: (n.paths, n.necks, n.failed, n.relaxed)
                                                 for n in self.nets}}, fh)
-        self._finish_pairs()
-        self._fallback_pairs()
+        self._lock_finish = self.LOCKSTEP_FINISH
+        try:
+            self._finish_pairs()
+            self._fallback_pairs()
+        finally:
+            self._lock_finish = False
         if os.environ.get("OWNROUTE_SNAPSHOT_ISLANDS"):  # island-pass development (replay_islands.py)
             import pickle
             with open(os.environ["OWNROUTE_SNAPSHOT_ISLANDS"], "wb") as fh:
