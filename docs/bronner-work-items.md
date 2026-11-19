@@ -9,15 +9,23 @@ Placement list (for the next placement round; things the router and finish canno
   U34.4, R219.2, U211.2 (mV57a), plus mV60 sites 87.9,129.9 / 121.7,96.2 / 82.7,132.6 (KiCad coordinates).
 - VIN_BRAIN stranded: 4 tracks in 2 pieces, near 129.6,110.7-114.3 and 105.0,122.0 (KiCad coordinates).
 - R217/Q215: loosen, it is a score hot spot.
+- GADGET_DP/DM: pair split right across the board (mVW47a router opens 44 + 72 mm, ends near
+  58.6,103 / 128,85 / 170,72 KiCad coordinates).
 
 Finish-tooling decisions (lead, 2026-11-19):
 - mV60 TAKEUP_WHY: the router drew all 6 take-up pieces (1.0/1.4 mm, not widened); widen_necks drew none.
   So delete PCBFLOW_NECK_MARGIN (cadkit pcbflow/route.py). Do it once mV61 + mVW47a/b stop importing canonical cadkit.
 - PCBFLOW_TAKEUP_WHY stays (log-only).
 - W47 window placement: judge on joins_open, with both replays agreeing, against mV59/mV61.
-  Win only if BOTH replays land below the baseline's best: joins_open < 15 AND finish < 11 unconnected.
-  Baseline band (mV56 placement, mV59/60/61): joins_open 15-19, finish 11-17. Inside it = tie: keep mV56, drop W47,
-  and work the placement list above rather than more window variants.
+  RULE CHANGE (lead, 2026-11-19): placement A/Bs are decided by the FINISHED board, not the score pass.
+  joins_open is only the cheap screening proxy; the order bar is quality/verify FAILs.
+  W47 wins (becomes the order candidate) if BOTH replays finish < 11 unconnected AND quality/verify are below
+  the baseline band (103-108 / 32-36), whatever joins_open says. Finish inside the baseline band (11-17) = tie:
+  keep mV56 and work the placement list.
+  mVW47a: finish 7 / 0 viol, quality 88, verify 22 (joins_open 26, score open 15).
+- LATER: the score router does badly on window-freed MCU enable/boot nets (mVW47a score failed BRAIN_EN(+_MCU),
+  EN_LEV(+_MCU), EN_PED(+_MCU), CM5_MCU_BOOT, NRST, RELAY_MCU, OPT_VBUS_EN_MCU, PG_5V; the finish recovered most).
+  Worth looking into: why freeing small parts near the MCU hurts the score router.
 
 ## 2026-11-14 (late): CM5 CONNECTORS WERE SWAPPED -- fixed, re-routing (trial mM)
 
