@@ -922,11 +922,8 @@ def widen_necks(board, notes, step_mm=0.05):
     keepouts = []
     if os.environ.get("ROUTE_NECK_KEEPOUT", "1") == "1":
         keepouts = [z for z in board.Zones() if z.GetIsRuleArea() and z.GetDoNotAllowTracks()]
-    # ⚠ A WIDENED EDGE KEEPS THE ROUTER'S MARGIN TOO (brain_board mV56, 2026-11-18): 1082
-    # widenings, each allowed to land exactly on the rule, beside 7 router pieces taken up
-    # for crowding. PCBFLOW_NECK_MARGIN=1 holds a widened edge 0.03 mm (router.model margin)
-    # clear of the rule, as the router holds its own copper.
-    _neck_margin = pcbnew.FromMM(0.03) if os.environ.get("PCBFLOW_NECK_MARGIN", "0") == "1" else 0
+    # (A PCBFLOW_NECK_MARGIN flag held widened edges 0.03 mm off the rule; removed 2026-11-19:
+    # TAKEUP_WHY on mV60/mV61 showed every crowding take-up was router copper, none widened.)
     done, gained = 0, 0.0
     for t in list(board.GetTracks()):
         if t.GetClass() != "PCB_TRACK":
@@ -948,7 +945,7 @@ def widen_necks(board, notes, step_mm=0.05):
             me = pcbnew.SEG(t.GetStart(), t.GetEnd())
             ok = True
             for o in cand:
-                clr = max(t.GetOwnClearance(L), o.GetOwnClearance(L)) + _neck_margin
+                clr = max(t.GetOwnClearance(L), o.GetOwnClearance(L))
                 if seg.Collide(o.GetEffectiveShape(L), clr):
                     ok = False
                     break
