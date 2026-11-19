@@ -781,6 +781,11 @@ CURRENTS["brain_board"] = (
     + [("L1", None, 2.64, "the 5 V buck's output: every V5_PRE load at once (U15's 1.80 A limit + "
                           "U21's 0.58 A + 0.26 A analog)")])
 REVIEW_NOTES["brain_board"] = {**REVIEW_NOTES["output_power"], **REVIEW_NOTES["output_signal"]}
+# Not carried onto the merged board (lead, 2026-11-18: a note accepting a risk must describe
+# the board it sits on): L1 is the FXL0630-4R7-M here (Isat 9 A), not the 5040 the note
+# accepted; J10 / J12 and D5 / D7 raise no SUSPECT on this board, so there is nothing to accept.
+for _k in ("J10", "J12", "L1", "D5", "D7"):
+    REVIEW_NOTES["brain_board"].pop((_k, "SUSPECT"), None)
 REVIEW_NOTES["brain_board"][("U36", "SUSPECT")] = (
     "Accepted (bronner, 2026-11-17): the 10.3 V is D25's clamp at its full 19.4 A surge, a hit on the service "
     "port's VBUS; steady is 5.5 V on a 7 V part. The panel ports' USB parts take their surges the same way.")

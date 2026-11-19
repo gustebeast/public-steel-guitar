@@ -525,21 +525,43 @@ def _move_audio_grounds(gnd, agnd):
 TS3USB221_FP = "Package_DFN_QFN:Texas_UQFN-10_1.5x2mm_P0.5mm"
 # the service port's parts, read 2026-11-17 (quality: every IC's pin map cites its sheet)
 SERVICE_PINOUTS = {
-    "TUSB321RWBR": "TI ZHCSDT2A (TUSB321, June 2015) s6 Pin Functions, RWB X2QFN-12: 1 CC1, 2 CC2, "
-                   "3 CURRENT_MODE, 4 PORT, 5 VBUS_DET, 6 VCONN_FAULT, 7 OUT1, 8 OUT2, 9 ID, 10 GND, "
-                   "11 DIR, 12 VDD; Steel:Texas_RWB0012A pads 1-12 as numbered",
-    "TPS2552DBVR": "TI SLVS841E Pin Functions, DBV: 1 IN, 2 GND, 3 EN (active low on the TPS2552), "
-                   "4 FAULT, 5 ILIM, 6 OUT",
-    "CH334P": "WCH CH334/CH335 datasheet V2.91 Figure 1-1 (CH334P, QFN16 3x3): 1 XO, 2 XI, 3 DM4, "
-              "4 DP4, 5 DM3, 6 DP3, 7 DM2, 8 DP2, 9 DM1, 10 DP1, 11 DMU, 12 DPU, 13 RESET#/CDP, "
-              "14 PGANG, 15 V5, 16 VDD33, pin 0 = the exposed pad (KiCad WCH_QFN-16 pad 17)",
-    "SN74LVC1G17DBVR": "TI SCES351V Pin Functions, DBV (SOT-23-5): 1 NC, 2 A, 3 GND, 4 Y, 5 VCC",
-    "SN74LVC06APWR": "TI SCAS596N p.1 PW package (TSSOP-14): 1A 1, 1Y 2, 2A 3, 2Y 4, 3A 5, 3Y 6, GND 7, 4Y 8, "
-                     "4A 9, 5Y 10, 5A 11, 6Y 12, 6A 13, VCC 14",
-    "SN74LVC2G06DBVR": "TI SCES307J Pin Functions, DBV (SOT-23-6): 1 1A, 2 GND, 3 2A, 4 2Y, 5 VCC, 6 1Y",
-    "TPS22918DBVR": "TI SLVSD76C Pin Functions, DBV: 1 VIN, 2 GND, 3 ON, 4 CT, 5 QOD, 6 VOUT",
-    "X322512MSB4SI": "YXC YSX321SL sheet p.1 (X322512MSB4SI, LCSC C9002), Top View Crystal Connection: "
-                     "1 / 3 the crystal, 2 / 4 GND; KiCad Crystal_SMD_3225-4Pin pads 1-4 as numbered",
+    'TUSB321RWBR': (
+        'TI SLLSEO6C (TUSB321, rev. Aug 2018) p.3 s5 Pin Functions, RWB X2QFN-12: 1 CC1, 2 CC2, 3 '
+        'CURRENT_MODE, 4 PORT (NC = DRP), 5 VBUS_DET, 6 VCONN_FAULT (OD), 7 OUT1, 8 OUT2, 9 ID '
+        '(OD), 10 GND, 11 DIR, 12 VDD; Steel:Texas_RWB0012A pads 1-12 match the RWB0012A example '
+        'board layout (4221631/B p.23) by number and position -- U35: 1/2 SVC_CC1/2, 3 GND, 4 '
+        'open (DRP), 5 SVC_VBUS_DET, 9 SVC_ID, 10 GND, 12 V5_PRE (read 2026-11-18)'),
+    'TPS2552DBVR': (
+        'TI SLVS841G p.4 Figure 5-1 / Table 5-1, DBV SOT-23-6: 1 IN, 2 GND, 3 EN (active low on '
+        'the TPS2552), 4 FAULT (OD), 5 ILIM, 6 OUT; KiCad SOT-23-6 as numbered -- U36: 1 V5_PRE, '
+        '2 GND, 3 SVC_ID, 5 SVC_ILIM (23k2, inside 15k-232k), 6 SVC_VBUS (read 2026-11-18)'),
+    'CH334P': (
+        'WCH CH334/CH335 datasheet V2.91 p.2 Figure 1-1 (CH334P, QFN16 3x3): 1 XO, 2 XI, 3 DM4, 4 '
+        'DP4, 5 DM3, 6 DP3, 7 DM2, 8 DP2, 9 DM1, 10 DP1, 11 DMU, 12 DPU, 13 RESET#/CDP, 14 PGANG, '
+        '15 V5, 16 VDD33, EP GND; functions Table 1-3 pp.4-5; s5.1 p.21 package as KiCad '
+        'WCH_QFN-16-1EP_3x3mm (EP = pad 17) -- U37: 11/12 HUBU_DM/DP (upstream), 9/10 '
+        'FLASH_DM/DP, 7/8 HUB2_DM/DP, 15/16 +3V3D, 13/14 open (internal pull-ups) (read '
+        '2026-11-18)'),
+    'SN74LVC1G17DBVR': (
+        'TI SCES351Y p.3 s4 Pin Functions, DBV SOT-23-5: 1 NC, 2 A, 3 GND, 4 Y, 5 VCC; KiCad '
+        'SOT-23-5 as numbered -- U39: 2 FLASH_SNS, 4 FLASH_MODE, 5 +3V3D (read 2026-11-18)'),
+    'SN74LVC06APWR': (
+        'TI SCAS596N p.1 PW pin diagram (top view), TSSOP-14: 1 1A, 2 1Y, 3 2A, 4 2Y, 5 3A, 6 3Y, '
+        '7 GND, 8 4Y, 9 4A, 10 5Y, 11 5A, 12 6Y, 13 6A, 14 VCC; KiCad TSSOP-14 as numbered -- '
+        'U40: every A on FLASH_MODE; Y to BRAIN_EN, LOW_PWR, CM5_PWRBTN, OPT_VBUS_EN, EN_PED, '
+        'EN_LEV (read 2026-11-18)'),
+    'SN74LVC2G06DBVR': (
+        'TI SCES307J p.3 s5 Pin Functions, DBV SOT-23-6: 1 1A, 2 GND, 3 2A, 4 2Y (OD), 5 VCC, 6 '
+        '1Y (OD); KiCad SOT-23-6 as numbered -- U41: 1/3 FLASH_MODE, 4 ISO_ON, 6 RELAY, 5 +3V3D '
+        '(read 2026-11-18)'),
+    'TPS22918DBVR': (
+        'TI SLVSD76C p.3 s5 Pin Functions, DBV SOT-23-6: 1 VIN, 2 GND, 3 ON (do not float), 4 CT, '
+        '5 QOD, 6 VOUT; KiCad SOT-23-6 as numbered -- U42: 1 V5_PRE, 3 ISO_ON (R47 10k up), 4/5 '
+        'open, 6 V5_ISO (read 2026-11-18)'),
+    'X322512MSB4SI': (
+        'YXC YSX321SL family sheet p.1 (no revision printed; LCSC C9002) Top View Crystal '
+        'Connection: 1 / 3 the crystal, 2 / 4 GND; KiCad Crystal_SMD_3225-4Pin pads at the same '
+        'corners -- Y2: 1 HUB_XI, 3 HUB_XO, 2/4 GND (read 2026-11-18)'),
 }
 
 
