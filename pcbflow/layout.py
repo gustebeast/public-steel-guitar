@@ -2228,6 +2228,24 @@ def repair_plane_orphans(board, notes, probe_mm=12.0, max_items=24):
                     break
                 if done:
                     break
+            if not done and os.environ.get("PCBFLOW_STRAND_VIA", "0") == "1":
+                # ⚠ DOWN, NOT ACROSS (brain_board mV57a, 2026-11-18): a 12-track F.Cu GND
+                # island at R217/Q215 had no clear stub sideways to any plane copper, yet a
+                # 0.6/0.3 via fitted on its OWN track at 87.53,98.85 with In1 GND fill under
+                # it. The stub search only ever looked across its own layer; this drops one
+                # via from the piece itself onto the net's fill on another layer.
+                pv = _via_on_piece(board, net, piece.get(t.m_Uuid.AsString(), {t.m_Uuid.AsString()}), zs)
+                if pv is not None:
+                    v = pcbnew.PCB_VIA(board)
+                    v.SetPosition(pv)
+                    v.SetWidth(pcbnew.FromMM(0.6))
+                    v.SetDrill(pcbnew.FromMM(0.3))
+                    v.SetNet(t.GetNet())
+                    board.Add(v)
+                    laid += 1
+                    done = True
+                    print("      reconnected %s at %.2f,%.2f by a via down to the plane"
+                          % (net, pcbnew.ToMM(pv.x), pcbnew.ToMM(pv.y)))
             if done:
                 joined |= piece.get(t.m_Uuid.AsString(), set())
             if not done:
@@ -2239,6 +2257,70 @@ def repair_plane_orphans(board, notes, probe_mm=12.0, max_items=24):
         board.BuildConnectivity()
         pcbnew.ZONE_FILLER(board).Fill(board.Zones())
     return laid
+
+
+def _via_on_piece(board, net, uuids, zs, via_d=0.6, drill=0.3, step_mm=0.05):
+    """A point ON one of the piece's own tracks where a through via fits clear of every other
+    net (tracks, vias, pads, other nets' fill, on every copper layer), keeps hole-to-hole, and
+    lands in the net's own FILL on a layer the track is not on (VIA_CONTACT_MIN of its ring). None when there is no such point.
+    """
+    tracks = [t for t in board.GetTracks()
+              if t.GetClass() == "PCB_TRACK" and t.m_Uuid.AsString() in uuids]
+    if not tracks:
+        return None
+    ds = board.GetDesignSettings()
+    clr = ds.m_MinClearance
+    h2h = getattr(ds, "m_HoleToHoleMin", 0) or pcbnew.FromMM(0.25)
+    r = pcbnew.FromMM(via_d / 2.0)
+    x0 = min(min(t.GetStart().x, t.GetEnd().x) for t in tracks) - r - clr
+    x1 = max(max(t.GetStart().x, t.GetEnd().x) for t in tracks) + r + clr
+    y0 = min(min(t.GetStart().y, t.GetEnd().y) for t in tracks) - r - clr
+    y1 = max(max(t.GetStart().y, t.GetEnd().y) for t in tracks) + r + clr
+
+    def _near(o):
+        bb = o.GetBoundingBox()
+        return not (bb.GetRight() < x0 or bb.GetLeft() > x1 or bb.GetBottom() < y0 or bb.GetTop() > y1)
+    cu = list(board.GetEnabledLayers().CuStack())
+    others = [o for o in board.GetTracks() if o.GetNetname() != net and _near(o)]
+    others += [pd for m in board.GetFootprints() for pd in m.Pads() if pd.GetNetname() != net and _near(pd)]
+    zfill = [z for z in board.Zones() if not z.GetIsRuleArea() and z.GetNetname() != net and _near(z)]
+    holes = [(o.GetPosition(), o.GetDrillValue()) for o in board.GetTracks()
+             if o.GetClass() == "PCB_VIA" and _near(o)]
+    holes += [(pd.GetPosition(), max(pd.GetDrillSizeX(), pd.GetDrillSizeY()))
+              for m in board.GetFootprints() for pd in m.Pads() if pd.GetDrillSizeX() > 0 and _near(pd)]
+    own = [(z, l) for z in zs for l in z.GetLayerSet().CuStack()]
+
+    def _fits(pt, tl):
+        for hp, hd in holes:
+            if (hp - pt).EuclideanNorm() < pcbnew.FromMM(drill / 2.0) + hd / 2.0 + h2h:
+                return False
+        circ = pcbnew.SHAPE_CIRCLE(pt, r)
+        for L in cu:
+            for o in others:
+                if o.IsOnLayer(L) and o.GetEffectiveShape(L).Collide(circ, clr):
+                    return False
+            for z in zfill:
+                if z.IsOnLayer(L) and z.GetFilledPolysList(L).Collide(pt, r + clr):
+                    return False
+        # lands: the net's own fill on a layer other than the track's
+        ring = (pcbnew.FromMM(drill / 2.0) + r) / 2.0
+        for z, L in own:
+            if L == tl:
+                continue
+            fp = z.GetFilledPolysList(L)
+            hit = sum(1 for k in range(16) if fp.Collide(pcbnew.VECTOR2I(
+                int(pt.x + ring * math.cos(k * math.pi / 8)), int(pt.y + ring * math.sin(k * math.pi / 8)))))
+            if hit / 16.0 >= VIA_CONTACT_MIN:     # the stitcher's own "landed" test
+                return True
+        return False
+    for t in tracks:
+        a, e = t.GetStart(), t.GetEnd()
+        n = max(1, int((e - a).EuclideanNorm() / pcbnew.FromMM(step_mm)))
+        for i in range(n + 1):
+            pt = pcbnew.VECTOR2I(int(a.x + (e.x - a.x) * i / n), int(a.y + (e.y - a.y) * i / n))
+            if _fits(pt, t.GetLayer()):
+                return pt
+    return None
 
 
 def via_plane_contact(via, poly):
