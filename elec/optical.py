@@ -4668,11 +4668,13 @@ BOARD_NOTES["quality"] = {
                     "wall at -Y and pad 1 at the -X end: the same post (as motor_ctrl). Board: "
                     "1 V24_IN, 2 GND, 3 and 4 no connect, power first as every lead. Read "
                     "2026-10-30",
-        "TYPE-C-31-M-12": "KiCad's USB_C_Receptacle_HRO_TYPE-C-31-M-12 names each land by "
-                          "its USB Type-C contact (A1 ... B12), the names Korean Hroparts' "
-                          "drawing prints beside the same lands; every net is attached by "
-                          "that name (A4/A9/B4/B9 VBUS, A5/B5 CC, A6/B6 D+, A7/B7 D-, "
-                          "A1/A12/B1/B12 GND). Checked 2026-10-04",
+        "TYPE-C-31-M-12": (
+            "Korean Hroparts TYPE-C-31-M-12 drawing rev A (2020.12.08), sheet 1 of 1: 'Recommend "
+            "P.C.B Layout (component side)' land order A1/B12, A4/B9, B8, A5, B7, A6, A7, B6, A8,"
+            " B5, B4/A9, B1/A12 = KiCad USB_C_Receptacle_HRO_TYPE-C-31-M-12's pad x order; pin "
+            "table: A1/A12/B1/B12 GND, A4/A9/B4/B9 VBUS, A5/B5 CC, A6/B6 DP, A7/B7 DN; every "
+            "board attaches nets by those names (read 2026-11-18)"
+        ),
         "S4B-XH-SM4-TB": "JST eXH.pdf p.6, Header / SMT type: seen from above with the "
                          "mouth pointing away and the tails toward the viewer, No. 1 "
                          "circuit is the right-hand post. KiCad JST_XH_S4B-XH-SM4-TB has "
@@ -4823,8 +4825,12 @@ if OP.OPTICAL_REV != 1:
         "maximum with them, of U8's 1 A; 0.99 W in the SOT-223 at that corner. 5 V: 1.20 A worst, "
         "of U13's 3 A. 24 V: 0.30 A worst, through 3 A contacts, R44 (0.18 W of 1 W)")
     BOARD_NOTES["quality"]["pinouts"]["TAXM12M4RFBCCT2T"] = (
-        "the same maker's 3225 four-land outline as Y1 (LCSC C133337): 1 and 3 the crystal, 2 and "
-        "4 the can. Board: 1 HUB_XI, 3 HUB_XO, 2 / 4 GND")
+        (
+            "Yajingxin spec YJX/06 (revision page p.2: A/1 2020-5-1; issued 2026-08-26), p.7 "
+            "'Outline Dimensions' internal view: the crystal joins pads 1 and 3, 2 and 4 are the "
+            "case; pads 1-4 counter-clockwise from bottom-left as KiCad Crystal_SMD_3225-4Pin. "
+            "Board: 1 HUB_XI, 3 HUB_XO, 2 / 4 GND (read 2026-11-18)"
+        ))
     BOARD_NOTES["match"] = BOARD_NOTES["match"] + [
         {"name": "USB_HS_HUB", "max_skew_mm": 8.3, "same_layer": True, "max_vias": 2,
          "nets": ["HUB_PHY_DP", "HUB_PHY_DM"], "why": "the same 480 Mbps budget as USB_HS, "

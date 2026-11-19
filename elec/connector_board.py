@@ -300,14 +300,13 @@ BOARD_NOTES = {
                                "other, 1 / 2 at one end) and the way order is "
                                "harness.CONN_RIBBON, which the brain's J240 is built from too "
                                "(IDC ribbon: wire n = pin n)",
-            "MX15EDGRC-3.5-04P": "MAX drawings MX15EDGRC-3.5-XXP / MX15EDGK-3.5-XXP (22.09.14), the "
-                                 "sheets the Steel footprint cites: four identical posts at 3.5 mm "
-                                 "in one row; a screw-terminal plug takes a bare wire at each "
-                                 "position, so the way order is this board's and the harness's "
-                                 "(harness.XH_PINOUT for the motors, LED_DROP for J4 / J5), the "
-                                 "footprint's pad 1 at its -X end, printed on the board: each "
-                                 "way's name in front of it and the way-1 dot (A17). The leads are "
-                                 "wired to those words, not to a maker's number",
+            "MX15EDGRC-3.5-04P": (
+                "MAX drawing MX15EDGRC-3.5-XXP, 22.09.14, sheet 1/1, 'PCB Layout' view: 3.50 "
+                "pitch, O1.40 holes in one row, no pin numbers; the way order is the board's, pad"
+                " 1 at -X (pads at 0 / 3.5 / 7.0 / 10.5). J11-J20: 1 +24V, 2 GND, 3 CANA_H, 4 "
+                "CANA_L (harness.XH_PINOUT); J4 / J5: 1 +24V_LED, 2 GND, 3 SCK(_FOOT), 4 "
+                "SDT(_FOOT) (harness.LED_DROP) (read 2026-11-18)"
+            ),
         },
     },
     # A17: J1's 30 ways named as a block (two columns, odd left, even right) -- 1.27 mm is too

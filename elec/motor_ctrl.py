@@ -1907,11 +1907,22 @@ BOARD_NOTES["quality"] = {
         "TPS2553DBVR": "TI SLVS841F p.5, DBV package: 1 IN, 2 GND, 3 EN (active high on "
                        "the 2553), 4 FAULT, 5 ILIM, 6 OUT. Board: 1 +5V, 2 GND, 3 +5V, "
                        "4 BUSB_FAULT_N, 5 BUSB_ILIM, 6 +5V_BUSB. Read 2026-10-04",
-        "TAXM8M4RFDCET2T": "Yajingxin TAXM8M4RFDCET2T sheet (LCSC C403948), 'Connection' "
-                           "drawing: lands 1 and 3 are the crystal, 2 and 4 the can (GND). "
-                           "Board: 1 OSC_IN, 3 OSC_OUT, 2 / 4 GND. Read 2026-10-04",
-        "VLS6045EX-6R8M": "two-pad, unpolarised",
-        "PNR3015-150M": "two-pad, unpolarised",
+        "TAXM8M4RFDCET2T": (
+            "Yajingxin TAXM8M4RFDCET2T sheet (LCSC C403948, 1 page, no revision printed; page 1),"
+            " 'Connection' drawing: crystal between 1 and 3, 2 and 4 marked GND; pads 1-4 "
+            "counter-clockwise from bottom-left as KiCad Crystal_SMD_3225-4Pin. Board: 1 OSC_IN, "
+            "3 OSC_OUT, 2 / 4 GND (read 2026-11-18)"
+        ),
+        "VLS6045EX-6R8M": (
+            "TDK VLS6045EX catalogue 20230111 p.4/5, 'Shape & Dimensions' and 'Recommended Land "
+            "Pattern': two terminals, unpolarised; KiCad L_TDK_VLS6045EX_VLS6045AF has 2 pads. "
+            "Board: 1 the switch node, 2 the 5 V rail (read 2026-11-18)"
+        ),
+        "PNR3015-150M": (
+            "APV PNR series sheet, revised 2026-06-06, p.2 'Dimensions & Recommended Land "
+            "Pattern' (PNR3015: a 1.00, b 1.10, c 2.70): two terminals, unpolarised; "
+            "Steel:L_APV_PNR3015 has 2 pads. Board: 1 SW, 2 the output rail (read 2026-11-18)"
+        ),
     },
     "manual": {
         "M35": "read 2026-10-05. " + 'WCH publishes no errata sheet: its product page lists the datasheet and the reference manual (CH32FV2x_V3xRM) and nothing else, read 2026-10-05. ' + "The manual's USB "

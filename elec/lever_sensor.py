@@ -926,10 +926,12 @@ BOARD_NOTES = {
                          "15 SSCK, 16 MGH, 17 the pad. Land off p.26 (Steel.pretty). Board: "
                          "4 SENS_MOSI, 5 SENS_CSN, 7 SENS_MISO, 12 SENS_SCK, 13 +3V3, 8 / 10 / "
                          "the pad GND, the rest open. Read 2026-11-03",
-            "TAXM8M4RFDCET2T": "Yajingxin TAXM8M4RFDCET2T sheet (LCSC C403948), 'Connection' "
-                               "drawing: lands 1 and 3 are the crystal, 2 and 4 the can "
-                               "(GND). Board: 1 OSC_IN, 3 OSC_OUT, 2 / 4 GND. Read "
-                               "2026-10-04",
+            "TAXM8M4RFDCET2T": (
+                "Yajingxin TAXM8M4RFDCET2T sheet (LCSC C403948, 1 page, no revision printed; page"
+                " 1), 'Connection' drawing: crystal between 1 and 3, 2 and 4 marked GND; pads 1-4"
+                " counter-clockwise from bottom-left as KiCad Crystal_SMD_3225-4Pin. Board: 1 "
+                "OSC_IN, 3 OSC_OUT, 2 / 4 GND (read 2026-11-18)"
+            ),
         },
         # The manual review, 2026-10-04. Each entry is the evidence, not a tick. Left OPEN on
         # purpose: M11 (the CAD fit, after these placements reach the build), M35 (errata)
