@@ -1837,7 +1837,13 @@ def rip_router_shorts(board):
     the gap it leaves is close_last's to close, which it does on a clean board. Offending = closer than the board's minimum clearance,
     a hair's rounding allowed: router copper normally keeps 10 um more than that (route.py).
     """
-    clr = pcbnew.ToMM(board.GetDesignSettings().m_MinClearance) - 0.002
+    # ⚠ THE HAIR WAS THE WHOLE SLIVER (brain_board mV56, 2026-11-18): with 0.002 allowed, a
+    # V5_PRE track 0.125 from VIN_BRAIN (rule 0.127) passed here -- exactly 0.127 - 0.002 --
+    # and KiCad's DRC, which allows nothing, failed it; that one violation then gated
+    # close_last off for all 31 open nets. PCBFLOW_TAKEUP_EXACT=1 allows only float noise
+    # (0.5 um), so anything DRC will call a clearance fault is taken up here.
+    _hair = 0.0005 if os.environ.get("PCBFLOW_TAKEUP_EXACT", "0") == "1" else 0.002
+    clr = pcbnew.ToMM(board.GetDesignSettings().m_MinClearance) - _hair
     items = []
     for t in board.GetTracks():
         if not t.GetNetname():
