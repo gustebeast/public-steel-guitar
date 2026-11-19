@@ -2243,7 +2243,7 @@ def repair_plane_orphans(board, notes, probe_mm=12.0, max_items=24):
                     break
                 if done:
                     break
-            if not done and os.environ.get("PCBFLOW_STRAND_VIA", "0") == "1":
+            if not done and os.environ.get("PCBFLOW_STRAND_VIA", "1") == "1":
                 # ⚠ DOWN, NOT ACROSS (brain_board mV57a, 2026-11-18): a 12-track F.Cu GND
                 # island at R217/Q215 had no clear stub sideways to any plane copper, yet a
                 # 0.6/0.3 via fitted on its OWN track at 87.53,98.85 with In1 GND fill under
