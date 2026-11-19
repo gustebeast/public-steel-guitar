@@ -914,6 +914,19 @@ def widen_necks(board, notes, step_mm=0.05):
     # hit, so every track on the board read as touching the edge
     edges = [c.CSegment(i) for c in chains for i in range(c.SegmentCount())]
     others = [x for x in list(board.GetPads()) + list(board.GetTracks())]
+    # ⚠ A KEEP-OUT IS NOT COPPER, SO THE COPPER CHECK BELOW NEVER SAW ONE (brain_board mV25,
+    # 2026-11-17). The router kept +24V clear of a CM5 mounting hole's track ban at its own
+    # width; this pass then widened ten of its In2/B.Cu runs to 1.85-2.03 mm and their edges
+    # crossed the ban -- DRC items_not_allowed x10, which also stops close_last. Each track
+    # ban on the track's layer is an obstacle like any other copper (edge distance 0).
+    keepouts = []
+    if os.environ.get("ROUTE_NECK_KEEPOUT", "1") == "1":
+        keepouts = [z for z in board.Zones() if z.GetIsRuleArea() and z.GetDoNotAllowTracks()]
+    # ⚠ A WIDENED EDGE KEEPS THE ROUTER'S MARGIN TOO (brain_board mV56, 2026-11-18): 1082
+    # widenings, each allowed to land exactly on the rule, beside 7 router pieces taken up
+    # for crowding. PCBFLOW_NECK_MARGIN=1 holds a widened edge 0.03 mm (router.model margin)
+    # clear of the rule, as the router holds its own copper.
+    _neck_margin = pcbnew.FromMM(0.03) if os.environ.get("PCBFLOW_NECK_MARGIN", "0") == "1" else 0
     done, gained = 0, 0.0
     for t in list(board.GetTracks()):
         if t.GetClass() != "PCB_TRACK":
@@ -935,11 +948,13 @@ def widen_necks(board, notes, step_mm=0.05):
             me = pcbnew.SEG(t.GetStart(), t.GetEnd())
             ok = True
             for o in cand:
-                clr = max(t.GetOwnClearance(L), o.GetOwnClearance(L))
+                clr = max(t.GetOwnClearance(L), o.GetOwnClearance(L)) + _neck_margin
                 if seg.Collide(o.GetEffectiveShape(L), clr):
                     ok = False
                     break
             if ok and any(e.Distance(me) < edge_clr + w // 2 for e in edges):
+                ok = False
+            if ok and any(z.IsOnLayer(L) and seg.Collide(z.Outline(), 0) for z in keepouts):
                 ok = False
             if ok:
                 best = w

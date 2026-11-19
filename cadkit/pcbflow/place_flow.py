@@ -343,7 +343,7 @@ def _project_guard(stem):
 
 
 def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, keep_widths=False, singles=False,
-         apply_swaps=False):
+         apply_swaps=False, place_only=False, to_routability=False, no_score=False):
     d = os.path.abspath(d)
     stem = _stem(d)
     _project_guard(stem)
@@ -460,6 +460,16 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     floor = pi.unregioned_sensitive(parts, rules)
     for f_ in floor:
         say("WARN " + f_)
+    # held parts inside the region they belong to with no rule binding them there: they leak the
+    # day the hold goes (place_intent.region_leaks; brain_board mV31). PCBFLOW_REGION_LEAK_STOP=1
+    # stops the flow on any.
+    leaks_ = pi.region_leaks(parts, rules)
+    for g_, refs_ in leaks_:
+        say("REGION LEAK %s: %d held part(s) belong there by the netlist but no in_region binds "
+            "them -- bind them, or list them in the region's `free`: %s" % (g_, len(refs_), " ".join(refs_)))
+    if leaks_ and os.environ.get("PCBFLOW_REGION_LEAK_STOP") == "1":
+        say("REGION LEAK -- the flow stops before placement (PCBFLOW_REGION_LEAK_STOP=1)")
+        return 2
     say("intent: %d rules%s" % (len(rules), (" (+ " + ", ".join(added) + ")") if added else ""))
     if widened:
         say("net widths from `current`: " + ", ".join(widened))
@@ -559,6 +569,12 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
         floor.append(w_)
     if len(nb) > 12:
         floor.append("NEAR BROKEN (hard): %d more" % (len(nb) - 12))
+    if place_only:
+        # --place-only: a placement A/B across boards (a placer change's evidence) needs
+        # NO ROOM, BROKEN and NEAR BROKEN, not a route -- minutes per board instead of an hour
+        say("PLACE ONLY: %d placed, %d with no room, %d hard near rule(s) broken%s"
+            % (len(pl), len(room), len(nb), (": " + " | ".join(x[1] for x in nb[:6])) if nb else ""))
+        return 0
     wlines = _raise_widths(notes, parts, pl, keep_widths)
     for w_ in wlines:
         say("WIDTH " + w_)
@@ -603,7 +619,7 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     # the global plan's routability (ROUTER.md "Global plan", SCORE_UTIL): seconds, recorded so a
     # set of trials of ONE netlist and outline can be ranked before routes are spent on them
     rout = None
-    if os.environ.get("PCBFLOW_ROUTABILITY") == "1":
+    if os.environ.get("PCBFLOW_ROUTABILITY") == "1" or to_routability:
         rc, out, T["routability"] = _run([sys.executable, "-m", "router.globalroute", stem], log)
         for line in reversed(out.splitlines()):
             try:
@@ -615,8 +631,25 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
             say("ROUTABILITY overflow %.2f over %d square(s), %.0f mm, %d via(s); hot %s"
                 % (rout["overflow"], rout["squares_over"], rout["length_mm"], rout["vias"],
                    "; ".join("%.1f at (%.0f, %.0f) %s" % (o, x, y, "/".join(nr)) for o, x, y, nr in rout["hot"])))
-    rc, out, T["score"] = _run([sys.executable, "-m", "router.score", stem, "--save", "auto", "--intent", ip,
-                                "--parts", parts_path], log)
+    if to_routability:
+        # --to-routability: a placement change judged by the global plan (seconds) before an
+        # hour of route is spent on it -- the spreading pass's A/B (brain_board, 2026-11-17)
+        say("TO ROUTABILITY: stopped before the route")
+        return 0
+    # ⚠ THE SCORE'S ROUTE IS THE BOARD'S ROUTE (brain_board mV41 vs mV44, 2026-11-18): the finish
+    # starts from it (OWNROUTE_PARENT) and gets 300 s for the rest, so a flow's board is a
+    # 900 s route -- a replay, routing again from nothing at ownroute's 1800 s, finished the
+    # same placement at 3 unconnected where the flows ended at 27-28. PCBFLOW_SCORE_BUDGET_S
+    # sets the score's budget (router.score --budget; default 900 as before).
+    # --no-score (a FINAL, lead 2026-11-18): with PCBFLOW_FINISH_FRESH the finish routes from
+    # nothing anyway, so the score's ~40 min judges nothing; placement A/Bs keep it.
+    _sb = os.environ.get("PCBFLOW_SCORE_BUDGET_S")
+    if no_score:
+        out = ""
+        say("NO SCORE: the finish routes the board from nothing")
+    else:
+        rc, out, T["score"] = _run([sys.executable, "-m", "router.score", stem, "--save", "auto", "--intent", ip,
+                                    "--parts", parts_path] + (["--budget", _sb] if _sb else []), log)
     score = None
     for line in reversed(out.splitlines()):
         try:
@@ -628,8 +661,12 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     if not skip_finish:
         # the finish starts from the route the score just drew (ownroute.py, OWNROUTE_PARENT)
         par = stem + ".route.pkl"
+        # ...or, with PCBFLOW_FINISH_FRESH=1, routes the board again from nothing at ownroute's own
+        # budget, as the replay that finished brain_board mV41 at 3 unconnected did: the score
+        # stays a cheap 900 s judge for placement A/Bs, the board gets the real route.
+        fresh = os.environ.get("PCBFLOW_FINISH_FRESH", "1") == "1" or no_score
         rc, out, T["finish"] = _run([KICAD_PY, os.path.join(HERE, "finish.py"), stem], log,
-                                    env={"OWNROUTE_PARENT": par} if os.path.isfile(par) else None)
+                                    env={"OWNROUTE_PARENT": par} if os.path.isfile(par) and not fresh else None)
         for line in out.splitlines():
             m = re.search(r"no free site for: (.*)$", line)
             if m:
@@ -874,12 +911,18 @@ def main(argv):
                     help="report a stated net width under its power path's need instead of raising it")
     ap.add_argument("--auto-singles", action="store_true",
                     help="also add auto_singles (a test pad `near` its driver pin) -- off by default")
+    ap.add_argument("--place-only", action="store_true",
+                    help="stop after placement and its rule checks (no cells, layout or route)")
+    ap.add_argument("--to-routability", action="store_true",
+                    help="stop after layout and the global plan's routability (no route)")
+    ap.add_argument("--no-score", action="store_true",
+                    help="a final: skip the score route; the finish routes the board from nothing")
     ap.add_argument("--apply-swaps", action="store_true",
                     help="apply the proposed pair channel swaps (SWAP lines) to this run's netlist and parts "
                          "-- the generator must then carry them")
     a = ap.parse_args(argv)
     return flow(a.dir, os.path.abspath(a.intent), not a.no_auto, a.soft_forbid, a.skip_finish, a.fold_post,
-                a.keep_widths, a.auto_singles, a.apply_swaps)
+                a.keep_widths, a.auto_singles, a.apply_swaps, a.place_only, a.to_routability, a.no_score)
 
 
 if __name__ == "__main__":

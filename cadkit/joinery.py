@@ -813,6 +813,164 @@ class ArcCrossing:
                     self.arm - self.ten - self.seat))
 
 
+# ─────────── BAYONET RING — a slant hook revolved, twist-to-lock ────────────
+# Two parts that meet FACE TO FACE round a shared axis (a bearing's housing
+# and its lid) and must hold together ALL ROUND, not just at their screws
+# (first case: public-steel-guitar's thrust housing, whose lid lifted between
+# its two ties). The profile is the most compact retaining one there is: a
+# SINGLE-FLANK SLANT HOOK, user's sketch (2026-11-18) — one face along the
+# axis, one slanted face, the flat tip between:
+#
+#        tenon host (lid)             the tooth's straight face rides r_in
+#     ________    ___________         (a bore: no host wall needed inside
+#             |   \                   it); its slanted face hooks under the
+#     _____   |    \   ______         mortise host's LIP, which overhangs it
+#          |  |_____\  |              by `o`. Seen in the r-z plane, revolved.
+#          |___________|  mortise host (housing)
+#
+# Revolved about the axis and broken into N teeth with N POCKETS between
+# the lips: drop the teeth into the pockets along the axis, TWIST 180/N deg,
+# and every tooth sits under a lip. Something else stops the twist (screws
+# through both parts, a key) — the joint itself is symmetric.
+#
+# PRINT: both hosts build with the MATING FACE UP — each host's mating face
+# is its last layer (the tenon host's teeth grow up from it; the mortise
+# host's groove opens on top). The tooth's slant is then an overhang `alpha`
+# off vertical, the lip's underside the same, and the groove's far end a
+# FLOOR; alpha <= 45 deg by construction. Every segment (the tooth's neck,
+# its height, the lip's outer wall) is the 2-nozzle QUALITY tier by default;
+# the room left over is the undercut `o`, capped at the tooth height (45).
+#
+# Frame: axis = Z, mating plane z = 0, the tenon host below (z < 0), the
+# mortise host above; the tooth spans z in [0, h], its straight face at
+# r_in. Teeth centred on plan angles a0 + k*360/N (the SEATED pose);
+# pockets centred half a pitch away. The tenon host goes in turned by
+# `twist` (either sense), mates along +z through the pockets, then turns.
+
+
+class Bayonet:
+    """A bayonet ring — build via `bayonet()`. `.tenon(root)` the N teeth
+    (union into the tenon host), `.mortise(drop)` the groove + pockets (cut
+    from the mortise host), `.twist` (deg) the install rotation, `.dims`
+    the profile numbers, `.clearance` / `.back_clearance`."""
+
+    def __init__(self, r_in, r_out, n, nozzle, clearance, back_clearance,
+                 seg=None, a0=0.0):
+        if n < 2:
+            raise ValueError("a bayonet needs at least 2 teeth")
+        seg = 2.0 * nozzle if seg is None else seg
+        if seg < nozzle - 1e-9:
+            raise ValueError(f"segment {seg} is under one nozzle ({nozzle})")
+        c, bc = clearance, back_clearance
+        h = neck = wall = seg
+        # radial budget: neck + o + the slant's gap + wall, the slant's gap
+        # being c normal to it (c / cos(alpha) radially) and climbing the
+        # back_clearance past the tip (bc * tan(alpha)), alpha = atan(o/h)
+        room = r_out - r_in - neck - wall
+        o = max(room - c, 0.0)
+        for _ in range(60):
+            a = math.atan2(max(o, 0.0), h)
+            o = room - c / math.cos(a) - bc * math.tan(a)
+        o = min(o, h)                                   # the 45 deg cap
+        if o < c + nozzle / 2.0:
+            raise ValueError(
+                f"bayonet r_in {r_in} .. r_out {r_out}: undercut {o:.2f} "
+                f"leaves no hook past the {c} clearance at {seg} segments; "
+                f"grow r_out or pass a smaller seg (floor {nozzle})")
+        self.nozzle, self.n, self.a0 = nozzle, n, a0
+        self.clearance, self.back_clearance = c, bc
+        self.r_in, self.h, self.neck, self.o, self.wall = r_in, h, neck, o, wall
+        self.alpha = math.atan2(o, h)
+        self.r_tip = r_in + neck + o                     # the tooth's outer corner
+        self.r_cav = self.r_tip + c / math.cos(self.alpha) + bc * math.tan(self.alpha)
+        self.r_out = r_out
+        # teeth and pockets share the pitch; a pocket is its tooth + c each
+        # side, measured at r_in (the tightest radius)
+        ca = math.degrees(c / r_in)
+        pitch = 360.0 / n
+        self.tooth_deg = pitch / 2.0 - ca
+        self.pocket_deg = pitch / 2.0 + ca
+        self.twist = pitch / 2.0
+
+    @property
+    def dims(self):
+        return dict(r_in=self.r_in, neck=self.neck, h=self.h, o=self.o,
+                    alpha_deg=math.degrees(self.alpha), wall=self.wall,
+                    r_tip=self.r_tip, r_cav=self.r_cav, r_out=self.r_out,
+                    lip=self.r_out - (self.r_in + self.neck), n=self.n,
+                    tooth_deg=self.tooth_deg, pocket_deg=self.pocket_deg,
+                    twist=self.twist)
+
+    @staticmethod
+    def _rev(pts, a_from, sweep):
+        """Revolve an (r, z) outline `sweep` deg about Z from plan angle
+        `a_from` (deg, from +X toward +Y)."""
+        w = (cq.Workplane("XZ").polyline(pts).close()
+             .revolve(sweep, (0, 0, 0), (0, 1, 0)))
+        return w.rotate((0, 0, 0), (0, 0, 1), a_from)
+
+    def profile(self, back=1.0):
+        """The tooth's (r, z) outline, `back` below the mating plane."""
+        r, h, nk, o = self.r_in, self.h, self.neck, self.o
+        return [(r, -back), (r, h), (r + nk + o, h), (r + nk, 0.0),
+                (r + nk, -back)]
+
+    def tenon(self, root=1.0):
+        """The N teeth, SEATED (centred on a0 + k*pitch), each `root` sunk
+        below the mating plane into the tenon host."""
+        out, pitch = None, 360.0 / self.n
+        for k in range(self.n):
+            t = self._rev(self.profile(abs(root)),
+                          self.a0 + k * pitch - self.tooth_deg / 2.0,
+                          self.tooth_deg)
+            out = t if out is None else out.union(t)
+        return out
+
+    def mortise(self, drop=1.0):
+        """Cutter: the whole groove (the tooth grown `clearance` on its
+        straight and slanted faces, `back_clearance` past its tip) plus the
+        N straight-down pockets, opening `drop` below the mating plane. Its
+        inner face is r_in - clearance: the caller's bore (or wall) lies
+        inside that."""
+        c, bc, a = self.clearance, self.back_clearance, self.alpha
+        r, h, nk = self.r_in, self.h, self.neck
+        d = abs(drop)
+        mouth = r + nk + c / math.cos(a)                 # the slant moved out c
+        groove = self._rev([(r - c, -d), (r - c, h + bc), (self.r_cav, h + bc),
+                            (mouth, 0.0), (mouth, -d)], 0.0, 360.0)
+        rp = self.r_cav + 0.01
+        box = [(r - c, -d), (r - c, h + bc), (rp, h + bc), (rp, -d)]
+        pitch = 360.0 / self.n
+        out = groove
+        for k in range(self.n):
+            out = out.union(self._rev(
+                box, self.a0 + (k + 0.5) * pitch - self.pocket_deg / 2.0,
+                self.pocket_deg))
+        return out
+
+
+def bayonet(r_in, r_out, tenon, mortise, n=6, seg=None, a0=0.0,
+            clearance=None, fit="normal"):
+    """THE BAYONET RING entrypoint (see the section note): two hosts meeting
+    face to face round a shared axis, twist-locked all round. `r_in` is
+    where the teeth's straight face runs (a bore the caller provides, or a
+    wall it keeps inside r_in - clearance); `r_out` the mortise host's
+    outer radius (the wall outside the lip is part of the budget). Both
+    PrintSpecs must face 'up' (each host's mating face is its last layer).
+    `n` teeth: `twist` = 180/n, so pick n for the room the tenon host has to
+    turn in. `seg` defaults to the 2-nozzle quality tier. Clearances follow
+    joint_clearances: `clearance` on the faces, `back_clearance` past the
+    tip."""
+    for s in (tenon, mortise):
+        if s.facing != "up":
+            raise NotImplementedError(
+                "bayonet: both hosts print mating face up (facing 'up'); "
+                f"got {s.facing!r}")
+    c, bc = joint_clearances(tenon, mortise, fit, clearance)
+    nozzle = max(tenon.nozzle, mortise.nozzle)
+    return Bayonet(r_in, r_out, n, nozzle, c, bc, seg=seg, a0=a0)
+
+
 # ──────────── T-SLOT (install ∥ print-Z) slide joint — was the dovetail ──────
 # Third family, unlocked by the INSTALL AXIS rather than a print trick: print
 # orientation alone under-determines a slide joint — the INSTALL direction (the
@@ -2834,6 +2992,32 @@ if __name__ == "__main__":
         print("  unsupported combo     did NOT raise  <-- FAIL")
     except NotImplementedError:
         print("  unsupported combo     raises (ok)")
+
+    # bayonet ring: seated clear, a pull locks under the lips, the twist
+    # frees it through the pockets (either sense), every segment >= tier
+    gf = PrintSpec(0.8, "PETG-GF", "up")
+    by = bayonet(8.15, 12.4, gf, gf, n=6)
+    bhost = (cq.Workplane("XY").circle(by.r_out).circle(by.r_in - 0.5)
+             .extrude(5.0)).cut(by.mortise())
+    bt = by.tenon(root=1.0)
+    seated = vol(bt, bhost)
+    pulled = vol(bt.translate((0, 0, -0.6)), bhost)
+    freed = [vol(bt.rotate((0, 0, 0), (0, 0, 1), s * by.twist)
+                 .translate((0, 0, -3.0)), bhost) for s in (1, -1)]
+    segs = min(by.neck, by.h, by.r_out - by.r_cav)
+    ok = (seated < 1e-6 and pulled > 0.5 and max(freed) < 1e-6
+          and segs >= 1.6 - 1e-9 and math.degrees(by.alpha) <= 45 + 1e-9)
+    print(f"  bayonet ring          seated={seated:.3f} pulled={pulled:.2f} "
+          f"freed={max(freed):.3f} min seg={segs:.2f} "
+          f"alpha={math.degrees(by.alpha):.1f} {'ok' if ok else 'FAIL'}")
+    if not ok:
+        fails.append("bayonet: seat/lock/free/segments")
+    try:
+        bayonet(8.15, 11.4, gf, gf)
+        fails.append("bayonet: no-room site did not raise")
+        print("  bayonet no room       did NOT raise  <-- FAIL")
+    except ValueError:
+        print("  bayonet no room       raises (ok)")
 
     if fails:
         print("FAIL:", *fails, sep="\n  ")

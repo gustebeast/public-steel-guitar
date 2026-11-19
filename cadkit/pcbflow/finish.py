@@ -344,6 +344,7 @@ def _run(script, stem):
 
 
 STEP_SECONDS = {}
+CLOSE_PAST_VIOL = os.environ.get("PCBFLOW_CLOSE_PAST_VIOL", "0") == "1"   # see close_last below
 CLOSE_TOTAL_S = 1800.0     # close_last, all attempts on one board
 CLOSE_ATTEMPT_S = 600.0    # ...and any one attempt
 
@@ -584,9 +585,22 @@ def finish(stem, rounds=1, keep_route=False):
     # is still judged "fewer violations, else as many and fewer open".
     _v0 = best_v
     _unrelated = bool(best_v) and nets and not (_violation_nets(stem) & set(nets))
-    if best_n and (not best_v or _unrelated):
+    # ⚠ ONE VIOLATION ON AN OPEN NET GATED OFF EVERY CLOSURE (brain_board mV56, 2026-11-18): a
+    # 0.002 mm clearance (VIN_BRAIN 0.125 against 0.127 to V5_PRE) sat on one of 31 open nets,
+    # so close_last never ran and the --no-score final ended at 31 where replays of the
+    # same recipe, with 0 violations after pass 1, closed 24 -> 6 and 10 -> 3. With
+    # PCBFLOW_CLOSE_PAST_VIOL=1 the nets a violation touches are SKIPPED from the start
+    # (CLOSE_LAST_SKIP) and the rest are closed: the baseline does not move under a
+    # violation no closure touches, which is the _unrelated case made per net.
+    _tied = (_violation_nets(stem) & set(nets)) if (best_v and nets and not _unrelated) else set()
+    _past = CLOSE_PAST_VIOL and bool(_tied) and bool(set(nets) - _tied)
+    _base_skip = set(_tied) if _past else set()
+    if best_n and (not best_v or _unrelated or _past):
         if _unrelated:
             print("  close_last: %d violation(s) on other nets -- closing anyway" % best_v)
+        if _past:
+            print("  close_last: %d violation(s) touch %s -- closing the other %d net(s), those left alone"
+                  % (best_v, ", ".join(sorted(_tied)), len(set(nets) - _tied)))
         shutil.copy(stem + ".kicad_pcb", stem + ".preclose.kicad_pcb")
         shutil.copy(stem + ".finish.drc.json", stem + ".preclose.drc.json")
         # ⚠ ONE BAD CLOSURE DOES NOT COST THE GOOD ONES (optical, 2026-10-05). The search
@@ -607,7 +621,7 @@ def finish(stem, rounds=1, keep_route=False):
         # with a comment explaining that the merge kept two of its three call sites by
         # luck. That was the warning, not the fix; the pass and all three calls are
         # upstream now, which is the only version of "it stays in the chain" that holds.
-        _skip = set()
+        _skip = set(_base_skip)
         import time as _time
         _close_t0 = _time.time()
         _user_budget = float(os.environ.get("CLOSE_LAST_BUDGET_S", "1e9"))
@@ -659,7 +673,7 @@ def finish(stem, rounds=1, keep_route=False):
                 # the new starting point, and every attempt is still judged against it.
                 shutil.copy(stem + ".kicad_pcb", stem + ".preclose.kicad_pcb")
                 shutil.copy(stem + ".finish.drc.json", stem + ".preclose.drc.json")
-                _skip = set()
+                _skip = set(_base_skip)
                 print("  close_last: %d still open, again from this board" % best_n)
                 continue
             # ⚠ FIRST TAKE UP ONLY THE CLOSURES THAT BROKE A RULE (optical, 2026-11-05).
@@ -678,7 +692,7 @@ def finish(stem, rounds=1, keep_route=False):
                             break
                         shutil.copy(stem + ".kicad_pcb", stem + ".preclose.kicad_pcb")
                         shutil.copy(stem + ".finish.drc.json", stem + ".preclose.drc.json")
-                        _skip = set()
+                        _skip = set(_base_skip)
                         print("  close_last: %d still open, again from this board" % best_n)
                         continue
                 except SystemExit as exc:
