@@ -1038,7 +1038,7 @@ def pinouts(ctx):
 # A4 (pinout citation): the pin table's place in the sheet -- "p.4", "pp.17-24", "Table 6-1",
 # "Fig 4-2", "s7.1", "section 6". PCBFLOW_CITE_PAGE=1 makes a citation without one a FAIL
 # (lead, 2026-11-18: "TI doc, no page" is how brain_board's TPS22965 pin 8 passed as GND).
-CITE_PAGE = os.environ.get("PCBFLOW_CITE_PAGE", "0") == "1"
+CITE_PAGE = os.environ.get("PCBFLOW_CITE_PAGE", "1") == "1"
 _CITE_LOC = re.compile(r"\b(pp?\.\s*\d|pages?\s+\d|table\s*\d|fig(ure|\.)?\s*\d|"
                        r"s\d+(\.\d+)*\b|sections?\s*\d|sheets?\s*\d)|§\s*\d", re.I)
 # a pin whose name says it carries power or an output -- never on a ground net
