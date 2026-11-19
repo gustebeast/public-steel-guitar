@@ -2127,7 +2127,7 @@ def repair_plane_orphans(board, notes, probe_mm=12.0, max_items=24):
         # finished board's 19 still-loose tracks were 4 pieces, one of them 13 tracks long --
         # four stubs' work, refused as "too many to be stitch fallout". With the flag the
         # track count only warns, and the gate below applies max_items to pieces.
-        _by_piece = os.environ.get("PCBFLOW_STRAND_PIECES", "0") == "1"
+        _by_piece = os.environ.get("PCBFLOW_STRAND_PIECES", "1") == "1"
         if len(loose) > max_items and not _by_piece:
             print("  ⚠ %d %s track(s) stranded from the plane -- too many to be stitch "
                   "fallout, NOT repairing (look at the pour, not the tracks)"
