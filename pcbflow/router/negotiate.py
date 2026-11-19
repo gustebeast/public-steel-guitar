@@ -19,6 +19,18 @@ import time
 # process_time() counts only this process's work (the router is single-threaded), so the
 # same board makes the same rounds whatever runs beside it; the budgets still cap the work.
 _clock = time.process_time
+# ⚠ ...BUT CPU-SECONDS ARE NOT WORK (W47a/b, 2026-11-19): same inputs, identical route logs
+# through the main rounds, then a deadline-bounded pair re-negotiation stopped at a different
+# net and the boards finished 7 vs 4 unconnected. CPU-seconds per unit of work move with
+# load (clock speed, cache). OWNROUTE_WORK_CLOCK=<cells per second> makes _clock count A*
+# search-box cells instead (_astar adds L*h*w per call, x9 for turn states), so every
+# deadline falls at the same net whatever runs beside it and only OWNROUTE_SEED varies a
+# route. Calibrate the rate from OWNROUTE_WORK_LOG=1's "work clock" line (flag, off).
+_WORK = [0.0]
+_WORK_RATE = float(os.environ.get("OWNROUTE_WORK_CLOCK", "0") or 0.0)
+if _WORK_RATE > 0.0:
+    def _clock():
+        return _WORK[0] / _WORK_RATE
 
 import numpy as np
 
@@ -732,6 +744,7 @@ class Router(CoupledMixin):
         if check and L * h * w >= self.REACH_MIN and not self._reachable(cellf, vcellf, src_idx, tgt, L, h, w):
             return np.empty(0, np.int64)
         turn = L * h * w * 9 <= self.TURN_STATES_MAX and self.turn45 + self.turn90 > 0
+        _WORK[0] += L * h * w * (9 if turn else 1)
         if self.HMAP:
             # straight-line distance to the nearest target cell, in cells (search.py)
             from scipy.ndimage import distance_transform_edt
@@ -3185,6 +3198,11 @@ class Router(CoupledMixin):
                     for n in self.nets}}, fh)
         self._pour_islands()
         self._no_shorts()
+        if os.environ.get("OWNROUTE_WORK_LOG"):
+            cpu = time.process_time()
+            self.log("  work clock: %.4g cells in %.1f cpu s = %.4g cells/s%s"
+                     % (_WORK[0], cpu, _WORK[0] / max(cpu, 1e-9),
+                        " (OWNROUTE_WORK_CLOCK=%g on)" % _WORK_RATE if _WORK_RATE > 0 else ""))
         return [n for n in self.nets if n.failed] + list(getattr(self, "unreachable", ()))
 
     def _no_shorts(self):
