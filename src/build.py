@@ -450,7 +450,7 @@ def _bump_build_counter() -> int:
     return n
 
 
-def collect_components():
+def collect_components(t=None):
     """EVERY placed thing in the instrument: [(name, cq.Workplane), ...].
 
     THE DIRECT-DRIVE INSTRUMENT (user, 2026-11-13: the main build is src.direct_bench's
@@ -470,7 +470,10 @@ def collect_components():
     # that reach the endplate) was in this list. new_boards_view draws bronner's boards from
     # their geom exports; ob_board keeps only what they do not have (courtyards and unclipped
     # tails, the endplate pocket's sizes), so nothing is gated twice.
-    return DB.assembly(DB.T_OPEN) + NB.boards()
+    # t: the drive's travel (the drive-travel gate redraws the instrument at each end); the
+    # boards stand still, but they are in the model at every t -- that gate printed 662 of 676
+    # when it drew DB.assembly(t) alone (lead, 2026-11-19)
+    return DB.assembly(DB.T_OPEN if t is None else t) + NB.boards()
 
 
 from . import board_geom as _BG  # noqa: E402
@@ -640,12 +643,11 @@ def _report_drive_travel(comps) -> int:
     each end of its travel (t 0 and 1) and gates that. Only the parts that move are new
     pairs; the rest come from the pair cache. Baseline is 0."""
     try:
-        from . import direct_bench as DB
         from tools.check_overlaps import gate
         n = 0
         for t in (0.0, 1.0):
             print(f"drive travel: every string at t = {t:.0f}", flush=True)
-            n += gate([(name, wp.val()) for name, wp in DB.assembly(t)], full=True)
+            n += gate([(name, wp.val()) for name, wp in collect_components(t)], full=True)
     except Exception as e:               # noqa: BLE001 -- never let a gate eat the geometry
         print(f"drive travel gate: SKIPPED ({type(e).__name__}: {e})", flush=True)
         return 0
