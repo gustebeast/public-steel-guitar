@@ -2513,7 +2513,9 @@ def body_box() -> dict:
 # only locates in a shallow POCKET. Sizes from the load (memory endplate-bar-clamp): pocket 5
 # (locating only), wall 8 (bending over the bar's width), the counterbore over it for the head
 # and washer.
-BAR_T, BAR_H = 25.4 / 4, 25.4 * 3.5                  # 6.35 across Y, 88.9 in Z
+BAR_T, BAR_H = 6.0, 25.4 * 3.5                       # 6.0 across Y, 88.9 in Z: JLCCNC laser-cut
+                                                     # cold-rolled 6 mm sheet (user 2026-11-20: all metal
+                                                     # from JLCCNC; their thickest steel sheet is 6.0)
 BAR_CLR, BAR_SKIN = 0.2, 2 * D.BEAD
 STRING_TOP = D.STRING_Z + 1.9 / 2                    # the heaviest string's top
 BAR_Z = (STRING_TOP - 20.0 - BAR_SKIN - BAR_CLR - BAR_H, STRING_TOP - 20.0 - BAR_SKIN - BAR_CLR)
@@ -2591,19 +2593,28 @@ def _wall_bars() -> list:
     return [(f"wall_bar_{k}", kept(_wall_bar, k)) for k in range(2)]
 
 
+def wall_bar_blank(k: int = 0) -> cq.Workplane:
+    """The wall bar as JLCCNC laser-cuts it (user 2026-11-20: 6 mm cold-rolled sheet): the outline
+    and the anchor's M4 tap-drill holes through the face. The END holes are ours to drill."""
+    x0, x1, yc = kh_x()["bar_x0"], ep_x()["bar_end"], bar_y()[k]
+    b = _bar_box(yc, x0, x1)
+    for zp in _anchor_screw_z():                     # the anchor's screws: tapped M4 through
+        b = b.cut(cyl_y(3.3, BAR_T + 2, yc - BAR_T / 2 - 1, x=ANCHOR[1] + ANCHOR_SCREW_DX, z=zp))
+    return b
+
+
 def _wall_bar(k: int) -> cq.Workplane:
-    """Bar k (0: -Y, 1: +Y), its two tapped M3 holes in the +X end (drawn as the tap drill)."""
+    """Bar k (0: -Y, 1: +Y): the laser-cut blank plus the two tapped M3 holes in each end (drawn
+    as the tap drill), drilled by us."""
     x0 = kh_x()["bar_x0"]                            # in the keyhead endplate's pocket
     x1 = ep_x()["bar_end"]
     yc = bar_y()[k]
-    b = _bar_box(yc, x0, x1)
+    b = wall_bar_blank(k)
     for zc in EP_SCREW_Z:
         depth = bar_screw_len() - (ep_x()["wall1"] - x1) + EP_TAP_EXTRA
         b = b.cut(cyl_x(2.5, depth, x1 - depth, y=yc, z=zc))
         depth = bar_screw_len(-1) - (x0 - kh_x()["wall1"]) + EP_TAP_EXTRA
         b = b.cut(cyl_x(2.5, depth, x0, y=yc, z=zc))
-    for zp in _anchor_screw_z():                     # the anchor's screws: tapped M4 through
-        b = b.cut(cyl_y(3.3, BAR_T + 2, yc - BAR_T / 2 - 1, x=ANCHOR[1] + ANCHOR_SCREW_DX, z=zp))
     return b
 
 

@@ -2512,3 +2512,22 @@ long to drop in short and slide +X, so it now goes in **with the bridge (+X) end
 - **Swap:** the same steps in reverse. The anchor screws stay in.
 - Reprint the body floor section that holds the groove (now only the board's own length).
   The endplate pocket only changes where the board's parts moved.
+
+## Wall bars: laser-cut 6 mm cold-rolled steel from JLCCNC (2026-11-20)
+
+The two wall bars now come from JLCCNC, on the same order as the laser-cut plates. They are cut
+from 6 mm cold-rolled sheet (`steel/wall_bar.step`), not 1/4" A-36 bar from Speedy.
+
+- **Thickness 6.0, was 6.35.** 6 mm is JLCCNC's thickest steel sheet. The bar stays centred in
+  its wall, so each face moves in 0.175 and the channel shrinks to match. Reprint the wall
+  sections.
+- **Anchor holes come cut.** The four Ø3.3 holes for the anchor's M4 screws are laser-cut
+  through each bar. Tap them M4; there is no drilling. Each screw engages about 0.2 mm less
+  thread than in the 6.35 bar.
+- **End holes are still ours.** Drill and tap the two M3 holes in each end as before, using
+  the drill jig. Only 1.75 mm of steel is left either side of the 2.5 tap drill, so keep the
+  drill square to the end.
+- **Rust:** cold-rolled steel rusts bare. Zinc-spray the bars before they go into the walls,
+  as with the A-36.
+- **Why:** user, 2026-11-20. JLCCNC costs about $29 more per instrument than Speedy, mostly
+  express shipping on 51 kg of steel. One order and less shop time were judged worth it.
