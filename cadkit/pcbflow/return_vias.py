@@ -24,6 +24,8 @@ import os
 import sys
 
 import pcbnew
+
+import stable_fill  # noqa: E402  (PCBFLOW_STABLE_FILL)
 import wx                                       # noqa: E402
 wx.DisableAsserts()
 
@@ -170,7 +172,7 @@ def main(stem):
         print("  return vias: no group declares return_via_mm")
         return 0
     board = pcbnew.LoadBoard(pcb)
-    pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+    stable_fill.fill(board, board.Zones())
     rows = plan(stem, board, notes)
     gnd = board.FindNet("GND")
     proto = next((v for v in board.GetTracks() if v.GetClass() == "PCB_VIA" and v.GetNetname() == "GND"), None)

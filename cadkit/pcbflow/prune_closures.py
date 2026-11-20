@@ -45,6 +45,7 @@ try:
 except Exception:
     pass
 import pcbnew
+import stable_fill  # noqa: E402  (PCBFLOW_STABLE_FILL)
 
 # ⚠ A REMOVED ITEM'S PROXY IS KEPT FOR THE LIFE OF THE PROCESS (layout._REMOVED says why):
 # board.Remove() hands the item to its Python proxy, and when that proxy is collected the
@@ -145,7 +146,7 @@ def main(stem):
     for t in gone.values():
         board.Remove(t)
         _REMOVED.append(t)
-    pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+    stable_fill.fill(board, board.Zones())
     pcbnew.SaveBoard(stem + ".kicad_pcb", board)
     print("prune_closures: took up %d of %d new piece(s), on %s; kept %d"
           % (len(gone), len(new), ", ".join(nets), len(new) - len(gone)))

@@ -19,6 +19,21 @@ import time
 # process_time() counts only this process's work (the router is single-threaded), so the
 # same board makes the same rounds whatever runs beside it; the budgets still cap the work.
 _clock = time.process_time
+# ⚠ ...BUT CPU-SECONDS ARE NOT WORK (W47a/b, 2026-11-19): same inputs, identical route logs
+# through the main rounds, then a deadline-bounded pair re-negotiation stopped at a different
+# net and the boards finished 7 vs 4 unconnected. CPU-seconds per unit of work move with
+# load (clock speed, cache). OWNROUTE_WORK_CLOCK=<cells per second> makes _clock count A*
+# search-box cells instead (_astar adds L*h*w per call, x9 for turn states), so every
+# deadline falls at the same net whatever runs beside it and only OWNROUTE_SEED varies a
+# route. Calibrate the rate from OWNROUTE_WORK_LOG=1's "work clock" line.
+# DEFAULT ON at 5.1e7 (2026-11-19): calibrated on W47s2/W48s2 (4.99-5.31e7) so the budgets
+# buy the same work as before; with PCBFLOW_STABLE_FILL two replays (mVRP1/2) wrote
+# md5-identical routed boards. =0 restores the CPU-second clock.
+_WORK = [0.0]
+_WORK_RATE = float(os.environ.get("OWNROUTE_WORK_CLOCK", "5.1e7") or 0.0)
+if _WORK_RATE > 0.0:
+    def _clock():
+        return _WORK[0] / _WORK_RATE
 
 import numpy as np
 
@@ -288,7 +303,19 @@ class Router(CoupledMixin):
             net.bbox = (int(ii.min()), int(ii.max()), int(jj.min()), int(jj.max()))
             self.nets.append(net)
         # shortest first: the only place order matters is round one
-        self.nets.sort(key=lambda n: ((n.bbox[1] - n.bbox[0]) + (n.bbox[3] - n.bbox[2]), n.name))
+        # ⚠ REPLAYS IN LOCKSTEP ARE ONE SAMPLE (brain_board mVW48a/b, 2026-11-19): budgets run on
+        # process_time, so two replays of one board launched together came out byte-identical.
+        # OWNROUTE_SEED=<int> jitters round one's order (each net's span x 1 +- SEED_JITTER, drawn
+        # per net name from the seed) so an A/B arm's replays are independent. Unset: unchanged.
+        seed = os.environ.get("OWNROUTE_SEED", "")
+        if seed:
+            import random
+            jit = {n.name: 1.0 + random.Random("%s/%s" % (seed, n.name)).uniform(-self.SEED_JITTER, self.SEED_JITTER)
+                   for n in self.nets}
+            self.nets.sort(key=lambda n: (((n.bbox[1] - n.bbox[0]) + (n.bbox[3] - n.bbox[2])) * jit[n.name], n.name))
+            self.log("  OWNROUTE_SEED=%s: round-one order jittered +-%g" % (seed, self.SEED_JITTER))
+        else:
+            self.nets.sort(key=lambda n: ((n.bbox[1] - n.bbox[0]) + (n.bbox[3] - n.bbox[2]), n.name))
         # matched groups (USB pairs): vias priced to their budget, the two routed back to back
         by = {n.name: n for n in self.nets}
         for g in m.notes.get('match', ()) or ():
@@ -602,6 +629,7 @@ class Router(CoupledMixin):
         keep[np.nonzero(near)[0][still]] = True
         return c[keep]
 
+    SEED_JITTER = 0.15               # OWNROUTE_SEED: round-one order, each net's span scaled by 1 +- this
     RELAX_AFTER = 10                 # rounds a layer-held pair may share before it is relaxed (4 relaxed USB mid-negotiation, 11-08)
     FILL_MARGIN = 0.15               # a plane-join via's pad this far inside the fill's edge
     PAD_OWN_JOIN = os.environ.get("OWNROUTE_PAD_OWN_JOIN", "1") == "1"   # build_nets: an SMD plane pad gets its own stub + via
@@ -719,6 +747,7 @@ class Router(CoupledMixin):
         if check and L * h * w >= self.REACH_MIN and not self._reachable(cellf, vcellf, src_idx, tgt, L, h, w):
             return np.empty(0, np.int64)
         turn = L * h * w * 9 <= self.TURN_STATES_MAX and self.turn45 + self.turn90 > 0
+        _WORK[0] += L * h * w * (9 if turn else 1)
         if self.HMAP:
             # straight-line distance to the nearest target cell, in cells (search.py)
             from scipy.ndimage import distance_transform_edt
@@ -3172,6 +3201,11 @@ class Router(CoupledMixin):
                     for n in self.nets}}, fh)
         self._pour_islands()
         self._no_shorts()
+        if os.environ.get("OWNROUTE_WORK_LOG"):
+            cpu = time.process_time()
+            self.log("  work clock: %.4g cells in %.1f cpu s = %.4g cells/s%s"
+                     % (_WORK[0], cpu, _WORK[0] / max(cpu, 1e-9),
+                        " (OWNROUTE_WORK_CLOCK=%g on)" % _WORK_RATE if _WORK_RATE > 0 else ""))
         return [n for n in self.nets if n.failed] + list(getattr(self, "unreachable", ()))
 
     def _no_shorts(self):

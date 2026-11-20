@@ -59,6 +59,7 @@ try:
 except Exception:
     pass
 import pcbnew
+import stable_fill  # noqa: E402  (PCBFLOW_STABLE_FILL)
 
 # ⚠ A REMOVED ITEM'S PROXY IS KEPT FOR THE LIFE OF THE PROCESS (layout._REMOVED says why):
 # board.Remove() hands the item to its Python proxy, and when that proxy is collected the
@@ -868,7 +869,7 @@ def move(stem, moves):
         print("laid %s round a moved part: %.1f mm for a %.1f mm gap"
               % (net.GetNetname(), sum(math.dist(a, c) for a, c in zip(way, way[1:])), math.dist(p, q)))
     # a stale pour against a moved pad is a violation, and close_last will not start on one
-    pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+    stable_fill.fill(board, board.Zones())
     pcbnew.SaveBoard(path, board)
     with open(stem + ".board.json", "w", encoding="utf-8") as fh:
         json.dump(notes, fh, indent=1)

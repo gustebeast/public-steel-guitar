@@ -29,6 +29,8 @@ import re
 import sys
 
 import pcbnew
+
+import stable_fill  # noqa: E402  (PCBFLOW_STABLE_FILL)
 import wx
 # ⚠ NO MODAL DIALOGS IN A BUILD STEP. KiCad's Python is a wxWidgets application, and a
 # failed internal assertion pops a GUI alert -- "Do you want to stop the program?" -- and
@@ -1382,7 +1384,7 @@ def drop_redundant_pad_vias(board, notes):
     # so the via read redundant -- and the refill after it pulled the pour back from the
     # land, leaving two GND lands joined to nothing. close_last closed one 18.4 mm round
     # (quality A23). Each test refills the pours first, as the board will be refilled.
-    fill = lambda: pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+    fill = lambda: stable_fill.fill(board, board.Zones())
     fill()
     board.BuildConnectivity()
     base = board.GetConnectivity().GetUnconnectedCount(False)
@@ -1826,6 +1828,11 @@ def drop_degenerate(board, floor_mm=0.005, width_frac=0.1):
     return len(doomed)
 
 
+# uuid -> (width before, width after) for every track widen_necks widened; read only by the
+# take-up log under PCBFLOW_TAKEUP_WHY=1, to attribute crowding pieces to the step that drew them
+NECKED = {}
+
+
 def rip_router_shorts(board):
     """Take up router copper that shorts or crowds another net, and report what went.
 
@@ -1842,7 +1849,7 @@ def rip_router_shorts(board):
     # and KiCad's DRC, which allows nothing, failed it; that one violation then gated
     # close_last off for all 31 open nets. PCBFLOW_TAKEUP_EXACT=1 allows only float noise
     # (0.5 um), so anything DRC will call a clearance fault is taken up here.
-    _hair = 0.0005 if os.environ.get("PCBFLOW_TAKEUP_EXACT", "0") == "1" else 0.002
+    _hair = 0.0005 if os.environ.get("PCBFLOW_TAKEUP_EXACT", "1") == "1" else 0.002
     clr = pcbnew.ToMM(board.GetDesignSettings().m_MinClearance) - _hair
     items = []
     for t in board.GetTracks():
@@ -1900,7 +1907,7 @@ def rip_router_shorts(board):
                 0.0 if w.GetClass() == "PCB_VIA" else pcbnew.ToMM(w.GetLength()))
             if w.GetClass() == "PCB_VIA":
                 held.add(w.GetNetname())
-    doomed, seen, why = [], set(), {}
+    doomed, seen, why, _partner = [], set(), {}, {}
     for t, u in pairs:
         victim = min((t, u), key=lambda w: (w.GetNetname() in held, bad[w.GetNetname()], w.GetNetname()))
         uid = victim.m_Uuid.AsString()
@@ -1913,10 +1920,20 @@ def rip_router_shorts(board):
         why[uid] = "%s %s at %.2f,%.2f" % (other.GetNetname(),
                                          "via" if other.GetClass() == "PCB_VIA" else "track",
                                          pcbnew.ToMM(op.x), pcbnew.ToMM(op.y))
+        _partner[uid] = other.m_Uuid.AsString()
+    _why_on = os.environ.get("PCBFLOW_TAKEUP_WHY", "0") == "1"
     for t in doomed:
         print("    took up %s on %s, %.2f mm: it shorted or crowded %s"
               % (t.GetNetname(), t.GetLayerName(), pcbnew.ToMM(t.GetLength()),
                  why.get(t.m_Uuid.AsString(), "another net")))
+        if _why_on:
+            pn = NECKED.get(_partner.get(t.m_Uuid.AsString(), ""))
+            if pn:
+                print("      its neighbour was widened by widen_necks, %.3f -> %.3f mm"
+                      % (pcbnew.ToMM(pn[0]), pcbnew.ToMM(pn[1])))
+            wn = NECKED.get(t.m_Uuid.AsString())
+            print("      drawn by: %s" % ("widen_necks, %.3f -> %.3f mm" % (pcbnew.ToMM(wn[0]), pcbnew.ToMM(wn[1]))
+                                         if wn else "the router (width %.3f mm, not widened)" % pcbnew.ToMM(t.GetWidth())))
         board.Remove(t)
         _REMOVED.append(t)
     return len(doomed)
@@ -2107,7 +2124,13 @@ def repair_plane_orphans(board, notes, probe_mm=12.0, max_items=24):
             loose = loose + more
         if not loose:
             continue
-        if len(loose) > max_items:
+        # ⚠ GATE ON PIECES, NOT TRACKS (PCBFLOW_STRAND_PIECES, 2026-11-18): the repair lays ONE
+        # stub a piece (below), but this gate counted tracks. mV57a refused 49 GND tracks; the
+        # finished board's 19 still-loose tracks were 4 pieces, one of them 13 tracks long --
+        # four stubs' work, refused as "too many to be stitch fallout". With the flag the
+        # track count only warns, and the gate below applies max_items to pieces.
+        _by_piece = os.environ.get("PCBFLOW_STRAND_PIECES", "1") == "1"
+        if len(loose) > max_items and not _by_piece:
             print("  ⚠ %d %s track(s) stranded from the plane -- too many to be stitch "
                   "fallout, NOT repairing (look at the pour, not the tracks)"
                   % (len(loose), net))
@@ -2166,6 +2189,15 @@ def repair_plane_orphans(board, notes, probe_mm=12.0, max_items=24):
                     pass
             for v in cl:
                 piece.setdefault(v, cl)
+        if _by_piece:
+            _np = len({id(c) for c in piece.values()})
+            if _np > max_items:
+                print("  ⚠ %d %s track(s) in %d piece(s) stranded from the plane -- too many "
+                      "to be stitch fallout, NOT repairing (look at the pour, not the tracks)"
+                      % (len(loose), net, _np))
+                continue
+            print("      %s: %d stranded track(s) in %d piece(s) -- one stub a piece"
+                  % (net, len(loose), _np))
         joined = set()
         for t in loose:
             if t.m_Uuid.AsString() in joined:
@@ -2213,6 +2245,24 @@ def repair_plane_orphans(board, notes, probe_mm=12.0, max_items=24):
                     break
                 if done:
                     break
+            if not done and os.environ.get("PCBFLOW_STRAND_VIA", "1") == "1":
+                # ⚠ DOWN, NOT ACROSS (brain_board mV57a, 2026-11-18): a 12-track F.Cu GND
+                # island at R217/Q215 had no clear stub sideways to any plane copper, yet a
+                # 0.6/0.3 via fitted on its OWN track at 87.53,98.85 with In1 GND fill under
+                # it. The stub search only ever looked across its own layer; this drops one
+                # via from the piece itself onto the net's fill on another layer.
+                pv = _via_on_piece(board, net, piece.get(t.m_Uuid.AsString(), {t.m_Uuid.AsString()}), zs)
+                if pv is not None:
+                    v = pcbnew.PCB_VIA(board)
+                    v.SetPosition(pv)
+                    v.SetWidth(pcbnew.FromMM(0.6))
+                    v.SetDrill(pcbnew.FromMM(0.3))
+                    v.SetNet(t.GetNet())
+                    board.Add(v)
+                    laid += 1
+                    done = True
+                    print("      reconnected %s at %.2f,%.2f by a via down to the plane"
+                          % (net, pcbnew.ToMM(pv.x), pcbnew.ToMM(pv.y)))
             if done:
                 joined |= piece.get(t.m_Uuid.AsString(), set())
             if not done:
@@ -2222,8 +2272,72 @@ def repair_plane_orphans(board, notes, probe_mm=12.0, max_items=24):
                                               pcbnew.ToMM(t.GetStart().y)))
     if laid:
         board.BuildConnectivity()
-        pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+        stable_fill.fill(board, board.Zones())
     return laid
+
+
+def _via_on_piece(board, net, uuids, zs, via_d=0.6, drill=0.3, step_mm=0.05):
+    """A point ON one of the piece's own tracks where a through via fits clear of every other
+    net (tracks, vias, pads, other nets' fill, on every copper layer), keeps hole-to-hole, and
+    lands in the net's own FILL on a layer the track is not on (VIA_CONTACT_MIN of its ring). None when there is no such point.
+    """
+    tracks = [t for t in board.GetTracks()
+              if t.GetClass() == "PCB_TRACK" and t.m_Uuid.AsString() in uuids]
+    if not tracks:
+        return None
+    ds = board.GetDesignSettings()
+    clr = ds.m_MinClearance
+    h2h = getattr(ds, "m_HoleToHoleMin", 0) or pcbnew.FromMM(0.25)
+    r = pcbnew.FromMM(via_d / 2.0)
+    x0 = min(min(t.GetStart().x, t.GetEnd().x) for t in tracks) - r - clr
+    x1 = max(max(t.GetStart().x, t.GetEnd().x) for t in tracks) + r + clr
+    y0 = min(min(t.GetStart().y, t.GetEnd().y) for t in tracks) - r - clr
+    y1 = max(max(t.GetStart().y, t.GetEnd().y) for t in tracks) + r + clr
+
+    def _near(o):
+        bb = o.GetBoundingBox()
+        return not (bb.GetRight() < x0 or bb.GetLeft() > x1 or bb.GetBottom() < y0 or bb.GetTop() > y1)
+    cu = list(board.GetEnabledLayers().CuStack())
+    others = [o for o in board.GetTracks() if o.GetNetname() != net and _near(o)]
+    others += [pd for m in board.GetFootprints() for pd in m.Pads() if pd.GetNetname() != net and _near(pd)]
+    zfill = [z for z in board.Zones() if not z.GetIsRuleArea() and z.GetNetname() != net and _near(z)]
+    holes = [(o.GetPosition(), o.GetDrillValue()) for o in board.GetTracks()
+             if o.GetClass() == "PCB_VIA" and _near(o)]
+    holes += [(pd.GetPosition(), max(pd.GetDrillSizeX(), pd.GetDrillSizeY()))
+              for m in board.GetFootprints() for pd in m.Pads() if pd.GetDrillSizeX() > 0 and _near(pd)]
+    own = [(z, l) for z in zs for l in z.GetLayerSet().CuStack()]
+
+    def _fits(pt, tl):
+        for hp, hd in holes:
+            if (hp - pt).EuclideanNorm() < pcbnew.FromMM(drill / 2.0) + hd / 2.0 + h2h:
+                return False
+        circ = pcbnew.SHAPE_CIRCLE(pt, r)
+        for L in cu:
+            for o in others:
+                if o.IsOnLayer(L) and o.GetEffectiveShape(L).Collide(circ, clr):
+                    return False
+            for z in zfill:
+                if z.IsOnLayer(L) and z.GetFilledPolysList(L).Collide(pt, r + clr):
+                    return False
+        # lands: the net's own fill on a layer other than the track's
+        ring = (pcbnew.FromMM(drill / 2.0) + r) / 2.0
+        for z, L in own:
+            if L == tl:
+                continue
+            fp = z.GetFilledPolysList(L)
+            hit = sum(1 for k in range(16) if fp.Collide(pcbnew.VECTOR2I(
+                int(pt.x + ring * math.cos(k * math.pi / 8)), int(pt.y + ring * math.sin(k * math.pi / 8)))))
+            if hit / 16.0 >= VIA_CONTACT_MIN:     # the stitcher's own "landed" test
+                return True
+        return False
+    for t in tracks:
+        a, e = t.GetStart(), t.GetEnd()
+        n = max(1, int((e - a).EuclideanNorm() / pcbnew.FromMM(step_mm)))
+        for i in range(n + 1):
+            pt = pcbnew.VECTOR2I(int(a.x + (e.x - a.x) * i / n), int(a.y + (e.y - a.y) * i / n))
+            if _fits(pt, t.GetLayer()):
+                return pt
+    return None
 
 
 def via_plane_contact(via, poly):
@@ -2363,7 +2477,7 @@ def _move_plane_joins(board, vias, ends, poured, clr_mm=0.2, hole_mm=0.25):
         if not st or not planes:
             continue
         zs = [z for z in board.Zones() if z.GetNetCode() == nc and not z.GetIsRuleArea()]
-        pcbnew.ZONE_FILLER(board).Fill(zs)
+        stable_fill.fill(board, zs)
         r = _via_r(v)
         drill = v.GetDrillValue()
         p0 = v.GetPosition()
@@ -6210,7 +6324,7 @@ def build(stem):
         # and a zone that filled to nothing looks in the file just like one that
         # filled fine.
         board.BuildConnectivity()
-        pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+        stable_fill.fill(board, board.Zones())
         _check_stitches_landed(board, notes)
 
     n_junk = drop_degenerate(board)

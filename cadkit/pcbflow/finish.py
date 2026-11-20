@@ -83,6 +83,23 @@ _DEFAULT_STEP = {"silk.py": os.path.join(CADKIT, "kicad_silk.py"),
 ROUTER = "route.py" if os.environ.get("PCBFLOW_ROUTER") == "freerouting" else "ownroute.py"
 
 
+def _cadkit_path(stem):
+    """A project's hook steps import `cadkit` from the project's PARENT (elec/../cadkit, the
+    vendored copy). A scratch project (PCBFLOW_PROJECT outside a repo) has none there, and
+    silk.py, export_geom.py and cad_geom_check.py died on "No module named cadkit" in every
+    brain_board replay of 2026-11-19, unnoticed -- 9 A17 FAILs and the A18 clipping were
+    the labeller never running. Such a project gets THIS cadkit's parent on PYTHONPATH,
+    with CADKIT_KEPT=0 (canonical on sys.path must not key the kept store, see kept.py)."""
+    if os.path.isdir(os.path.join(os.path.dirname(project_dir(stem)), "cadkit")):
+        return
+    pp = os.environ.get("PYTHONPATH", "")
+    root = os.path.dirname(CADKIT)
+    if root not in pp.split(os.pathsep):
+        os.environ["PYTHONPATH"] = os.pathsep.join([x for x in (pp, root) if x])
+        os.environ["CADKIT_KEPT"] = "0"
+        print("  scratch project: cadkit for its steps from %s (CADKIT_KEPT=0)" % root)
+
+
 def _step(script, stem):
     """Path of a pipeline step: the project's own copy of a HOOK step if it has one, the
     shared default otherwise; core steps always come from here."""
@@ -344,7 +361,9 @@ def _run(script, stem):
 
 
 STEP_SECONDS = {}
-CLOSE_PAST_VIOL = os.environ.get("PCBFLOW_CLOSE_PAST_VIOL", "0") == "1"   # see close_last below
+STAGE_FAILS = []           # hook steps that failed this run: named in the last line (finish)
+STAGE_SKIPS = []           # hook steps that cannot apply (a scratch project's CAD check)
+CLOSE_PAST_VIOL = os.environ.get("PCBFLOW_CLOSE_PAST_VIOL", "1") == "1"   # see close_last below
 CLOSE_TOTAL_S = 1800.0     # close_last, all attempts on one board
 CLOSE_ATTEMPT_S = 600.0    # ...and any one attempt
 
@@ -783,6 +802,7 @@ def finish(stem, rounds=1, keep_route=False):
     # label is dropped rather than squeezed -- but "cannot add a finding" is a claim, so
     # the DRC is run again and the claim is checked rather than trusted.
     try:
+        _cadkit_path(stem)
         _run("silk.py", stem)
         _silkfit(stem)
         _n2, _nets2, _v2 = _drc(stem)
@@ -792,6 +812,7 @@ def finish(stem, rounds=1, keep_route=False):
             best_n, best_v = max(best_n, _n2), max(best_v, _v2)
     except SystemExit as exc:
         print("  silk.py did not run (%s): the board has no labels" % (exc,))
+        STAGE_FAILS.append("silk.py")
 
     # ⚠ verify.py HAD NEVER BEEN RUN BY ANYTHING. Its own docstring says "THE POINT IS
     # TO REMOVE THE HUMAN, NOT TO ADVISE ONE" and that it exits non-zero when a budget is
@@ -852,8 +873,11 @@ def finish(stem, rounds=1, keep_route=False):
         for line in proc.stdout.splitlines():
             if line.strip() and "memory leak" not in line:
                 print("    " + line)
+        if proc.returncode:
+            STAGE_FAILS.append("export_geom.py")
     except Exception as exc:
         print("    export_geom.py did not run: %r" % (exc,))
+        STAGE_FAILS.append("export_geom.py")
 
     # ...AND THEN COMPARE THE TWO SIDES, every run. Writing the geometry out is only half
     # of it: export_geom has faithfully recorded a board whose CUTOUTS disagreed with the
@@ -875,7 +899,16 @@ def finish(stem, rounds=1, keep_route=False):
     _chk = _step("cad_geom_check.py", stem)
     _cqs = ([[os.environ["CAD_PYTHON"]]] if os.environ.get("CAD_PYTHON")
             else [["py", "-3.12"], ["python3"], ["python"]])
-    for _cq in (_cqs if _chk else []):
+    # a SCRATCH project (not inside a repo: no <parent>/.git, file or folder) has no CAD to
+    # compare: the check would read the scratch placement against the repo's committed
+    # geometry and call every moved part a disagreement. Said in the last line, not counted
+    # as a FAIL. (Not "<parent>/src": a scratchpad had an unrelated src/, mVW47s2.)
+    _scratch_cad = _chk and not os.path.exists(os.path.join(os.path.dirname(project_dir(stem)), ".git"))
+    if _scratch_cad:
+        print("    cad_geom_check NOT RUN: scratch project %s has no CAD repo beside it"
+              % project_dir(stem))
+        STAGE_SKIPS.append("cad_geom_check.py (scratch project)")
+    for _cq in (_cqs if _chk and not _scratch_cad else []):
         try:
             proc = subprocess.run(_cq + [_chk, _name],
                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -887,12 +920,14 @@ def finish(stem, rounds=1, keep_route=False):
                 print("    " + line)
         if proc.returncode:
             print("    !! THE CAD AND THE FAB DATA DISAGREE -- see above")
+            STAGE_FAILS.append("cad_geom_check.py")
         break
     else:
-        print("    !! cad_geom_check DID NOT RUN: %s. THE CAD AND THE FAB DATA ARE UNCHECKED."
-              % ("no CadQuery interpreter found" if _chk else
-                 "the project has no %s (see cadkit/PCB_README.md, 'Gate it')"
-                 % os.path.join(os.path.basename(project_dir(stem)), "cad_geom_check.py")))
+        if not _scratch_cad:
+            print("    !! cad_geom_check DID NOT RUN: %s. THE CAD AND THE FAB DATA ARE UNCHECKED."
+                  % ("no CadQuery interpreter found" if _chk else
+                     "the project has no %s (see cadkit/PCB_README.md, 'Gate it')"
+                     % os.path.join(os.path.basename(project_dir(stem)), "cad_geom_check.py")))
 
     # ⚠ A RUN WITH NO PROJECT REPORTS FAILS THE BOARD DOES NOT HAVE. A copy finished
     # outside <project>/out with PCBFLOW_PROJECT unset gets the default labeller and none
@@ -905,8 +940,13 @@ def finish(stem, rounds=1, keep_route=False):
     _gens = [os.path.join(project_dir(stem), "_".join(_parts[:k]) + ".py")
              for k in range(len(_parts), 0, -1)]
     _gen = next((g for g in _gens if os.path.isfile(g)), _gens[0])
-    print("%s: %d unconnected, %d violation(s)%s%s%s"
+    # ⚠ A STAGE THAT DID NOT RUN IS A FAIL, NOT A TRACEBACK IN THE LOG (2026-11-19): see
+    # _cadkit_path -- a dead labeller read as "the usual noise" for a whole day of A/Bs.
+    print("%s: %d unconnected, %d violation(s)%s%s%s%s"
           % (os.path.basename(stem), best_n, best_v,
+             ((" -- AND STAGE(S) FAILED: %s: NOT A CLEAN BOARD" % ", ".join(STAGE_FAILS))
+              if STAGE_FAILS else "")
+             + ((" | not run: %s" % ", ".join(STAGE_SKIPS)) if STAGE_SKIPS else ""),
              (" -- AND %d verify.py FAIL(s): NOT A CLEAN BOARD" % verify_fails)
              if verify_fails else "",
              (" | quality: %d FAIL, %d OPEN" % quality) if quality else

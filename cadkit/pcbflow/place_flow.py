@@ -604,6 +604,12 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
             wlines.append(w_)
     json.dump(dict(notes, placements=pl), open(stem + ".board.json", "w"), indent=0)
     json.dump(why, open(os.path.join(fd, "provenance.json"), "w"), indent=0)
+    # netlist-owned parts placed OUTSIDE their region (place_intent.region_strays): reported,
+    # never a stop -- bind the part, or record why in the region's `away`
+    for g_, ref_, at_, ok_ in pi.region_strays(parts, rules, pl):
+        say("REGION STRAY %s: %s belongs there by the netlist but sits %s%s"
+            % (g_, ref_, ("in " + at_) if at_ else "outside every region",
+               (" -- OK: " + ok_) if ok_ else " -- bind it (in_region) or say why in the region's `away`"))
 
     # 3. layout's gates
     rc, out, T["layout"] = _run([KICAD_PY, os.path.join(HERE, "layout.py"), stem], log)
