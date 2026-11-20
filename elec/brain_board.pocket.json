@@ -1,6 +1,6 @@
 {
  "board": "brain_board, ONE board, 167.73 x 100 x 1.6, FINAL position: the +X endplate comes OFF for a board swap and the board drops in at its final x (no slide; user 2026-11-19)",
- "source": "trial scW49kf (bronner 2026-11-19: W49k round 1, widened to -167.3 + UI clamp notch; INTERIM -- re-exported from the best-of-3 winner; smaller parts may move a few mm, panel parts are pinned)",
+ "source": "trial mVW48ws1 (bronner 2026-11-20: W48w = W48k's placement exactly, on the widened outline (-167.3 + UI clamp notch), seed 1; the strip past W48k's old edge is empty; panel parts are pinned)",
  "edge_x": 0.43,
  "minus_x_edge": -167.3,
  "z": [
