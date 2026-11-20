@@ -63,7 +63,7 @@
   },
   "body": {
    "material": "petg-gf",
-   "volume_mm3": 1147890.3
+   "volume_mm3": 1185628.1
   },
   "body_adapter": {
    "material": "petg-gf",
@@ -287,7 +287,7 @@
   },
   "endplate": {
    "material": "petg-gf",
-   "volume_mm3": 378523.8
+   "volume_mm3": 378898.9
   },
   "fixed_sleeve": {
    "material": "petg-gf",
@@ -836,6 +836,10 @@
   "ui_pwr_cap": {
    "material": "pctg",
    "volume_mm3": 1292.2
+  },
+  "wall_bar_blank": {
+   "material": null,
+   "volume_mm3": 327338.6
   },
   "yoke_0": {
    "material": "petg-gf",
