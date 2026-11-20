@@ -87,6 +87,15 @@ REV = 2
 # Default off only because W48w seed 1 was routed without them (its Kelvin paths are a
 # scripted ECO); a fresh placement/route should turn them on.
 KELVIN_TIES = os.environ.get("BRAIN_KELVIN_TIES", "0") == "1"
+# BRAIN_POWER_SIZING=1 (R1 design option, lead 2026-11-20): the power copper sized from AUDITED
+# amps. ws1 (W48w seed 1) failed the widepath gate on 29 of 48 power paths -- 10 A of VIN on a
+# 0.38 mm In2 track -- because declared amps were stacked budgets and the router drew power at
+# 1.0 mm on any layer. With the option: every quality.power_paths amps value carries its source
+# (1 = a rating or limit the copper must carry, 2 = a measured / datasheet load, 3 = a guess)
+# and a citation (_AMPS_AUDIT); the router draws power up to 4.0 mm (power_w_max) and keeps
+# every power_paths net on F.Cu / B.Cu (net_layers, never relaxed -- the 0.5 oz inner layers
+# ask 5.2x the outer width); and brain.py's R113 (R313 here) limits the CM5 at 3.85 A.
+POWER_SIZING = os.environ.get("BRAIN_POWER_SIZING", "0") == "1"
 
 P = Pin.types.PASSIVE
 
@@ -2356,6 +2365,75 @@ BOARD_NOTES = {
 }
 
 
+# (net, from-prefix or None, to-prefix or None) -> (amps or None = keep, source class, citation).
+# First match wins. Refs are the merged board's (brain.py's +200).
+_PD = ("PD request capped at 3.25 A a port (choice A, lead 2026-11-20): 65 W at 20 V; PD's 9 V and "
+       "15 V fixed PDOs are 3 A at most; the BOM charger is 65 W, so a 5 A contract is never met")
+_AMPS_AUDIT = [
+    ("PA_VBUS_J", None, None, (3.25, 1, _PD + "; the socket's four VBUS pins are one end")),
+    ("PB_VBUS_J", None, None, (3.25, 1, _PD + "; the socket's four VBUS pins are one end")),
+    ("PA_VBUS", None, None, (3.25, 1, _PD)), ("PB_VBUS", None, None, (3.25, 1, _PD)),
+    ("PA_VCC", None, None, (3.25, 1, _PD)), ("PB_VCC", None, None, (3.25, 1, _PD)),
+    ("PA_VOUT", None, None, (3.25, 1, _PD)), ("PB_VOUT", None, None, (3.25, 1, _PD)),
+    ("VIN_BUS", "Q6.", None, (3.25, 1, _PD + ": port A's share into the OR")),
+    ("VIN_BUS", "Q7.", None, (3.25, 1, _PD + ": port B's share into the OR")),
+    ("VIN_BUS", "Q8.", "R112", (1.5, 1, "the service port's PC 5 V: the Type-C 1.5 A Rp advertisement we accept")),
+    ("VIN_BUS", "Q8.", "D24", (0.5, 3, "the standby feed's share: declared, unmeasured")),
+    ("SVC_VBUS", "J7.", None, (1.5, 1, "Type-C 1.5 A Rp advertisement accepted from a PC")),
+    ("SVC_VBUS", "U36.", None, (1.2, 1, "U36 TPS2552 ILIM R43 23k2: IOS max 1.20 A (SLVS841E eq. 1)")),
+    ("VIN_BRAIN", None, None, (6.5, 1, "the two ports' 3.25 A contracts ORed (LM74700) -- " + _PD)),
+    ("VIN_SW", None, "R309", (6.5, 1, "the boost's input: all of VIN_BRAIN")),
+    ("VIN_SW", None, "R308", (None, 2, "LM5122 VIN filter: microamps")),
+    ("+24V", None, "F204", (2.0, 1, "F204 2920L200/60GR PPTC: 2 A HOLD (it trips above; 4 A is the trip)")),
+    ("+24V_RIB", None, None, (2.0, 1, "F204 2 A hold, split over the ribbon's four ways")),
+    ("+24V", None, "F203", (3.0, 1, "F203 JFC1206-1300FS 3 A: kept (choice B withdrawn 2026-11-20 -- the "
+                                    "lights draw 1.70 A full white, docs/lighting-bus.md s3; 2 A would run a "
+                                    "fuse at 85 % against its 75 % derating)")),
+    ("+24V_LED", None, None, (3.0, 1, "F203 3 A, split over the ribbon's four ways; load 1.70 A full white")),
+    ("VIN_CM5", None, None, (2.5, 1, "U205 limited at 3.85 A (R313 13 mR) x 5.2 V / 0.9 at a 9 V contract")),
+    ("+5V_BB", None, None, (4.0, 1, "R313 13 mR: 3.85 A limit; copper to F202's 4 A")),
+    ("+5V_RAW", None, None, (4.0, 1, "R313 13 mR: 3.85 A limit; copper to F202's 4 A")),
+    ("+5V_SW", None, None, (2.0, 1, "half of F202's 4 A on each of U221's VOUT pins 7 / 8")),
+    ("+5V_CM5", None, None, (4.0, 1, "F202 JFC1206-1400FS 4 A; the CM5 and its USB peripherals share it "
+                                     "(16.7 W budget, motor-power-measured)")),
+    ("V5_PRE", None, "U15", (1.8, 1, "U15 ILIM R86 15k: 1.61-1.80 A; the optical board's real draw unmeasured")),
+    ("+5V_OPT", None, None, (1.8, 1, "U15 ILIM R86 15k: 1.61-1.80 A")),
+    ("V5_PRE", None, "U36", (1.2, 1, "U36 TPS2552 ILIM: 1.20 A max")),
+    ("V5_PRE", None, "U206", (0.57, 1, "U206 TPS2553 limit 0.565 A; measured load 0.255 A (pedal arm)")),
+    ("V5_PRE", None, "U211", (0.57, 1, "U211 TPS2553 limit 0.565 A; measured load 0.30 A (lever arm)")),
+    ("+5V_BUSB_PED", None, None, (0.57, 1, "U206 TPS2553 limit 0.565 A")),
+    ("+5V_BUSB_LEV", None, None, (0.57, 1, "U211 TPS2553 limit 0.565 A")),
+    ("V5_PRE", None, "R98", (None, 3, "declared, unmeasured")),
+    ("V5_PRE", None, "U42", (None, 2, "B0509S-1WR3 input at its 1 W rating")),
+    ("V5_ISO", None, None, (None, 2, "B0509S-1WR3 input at its 1 W rating")),
+    ("VSTBY", None, None, (None, 3, "declared, unmeasured")),
+    ("+3V3D", None, "U1.", (None, 3, "declared; STM32H743 at 480 MHz is ~0.3 A typical (DS12110)")),
+    ("+3V3D", None, None, (None, 2, "transceiver / switch supply currents")),
+    ("+5V_A", None, None, (None, 2, "audio LDO load")),
+    ("+3V3_A", None, None, (None, 2, "audio 3V3 load")),
+    ("+3V3_UI", None, None, (None, 2, "UI board load")),
+]
+
+
+def _audit_amps(paths):
+    """Each power path's amps from the audit, with its source class and citation beside it."""
+    out, miss = [], []
+    for x in paths:
+        to = " ".join(map(str, x["to"]))
+        hit = next((r for n, f, t, r in _AMPS_AUDIT
+                    if x["net"] == n and (f is None or str(x["from"]).startswith(f))
+                    and (t is None or t in to)), None)
+        if hit is None:
+            miss.append("%s %s>%s" % (x["net"], x["from"], to))
+            out.append(dict(x, amps_src=3, amps_cite="NOT AUDITED"))
+            continue
+        a, src, cite = hit
+        out.append(dict(x, amps=x["amps"] if a is None else a, amps_src=src, amps_cite=cite))
+    if miss:
+        print("  amps audit: %d power path(s) not audited: %s" % (len(miss), "; ".join(miss)))
+    return out
+
+
 def _merged_quality(paths, q):
     """The merged board's declarations: the output side's, with what pointed at the brain leads
     (J10 / J12) re-aimed at the brain's own power switch and the audio rails under their new
@@ -2639,7 +2717,7 @@ def quality_notes(net_path):
                     for n, fl, r in (("PA_VBUS", "FL1", "R70"), ("PB_VBUS", "FL2", "R75"))]
     if MERGED:
         paths, q = _merged_quality(paths, q)
-    q["power_paths"] = paths
+    q["power_paths"] = _audit_amps(paths) if POWER_SIZING else paths
     q["net_groups"] = [g for g in qp["net_groups"]]
     match = [m for m in qp["match"] + qs["match"] if m["name"] != "OPT"]
     if MERGED:
@@ -2676,6 +2754,10 @@ if __name__ == "__main__":
     notes = dict(BOARD_NOTES)
     q, match = quality_notes(net_path)
     notes["match"], notes["quality"] = match, q
+    if POWER_SIZING:
+        # power drawn at its IPC width (up to 4 mm: VIN at 6.5 A asks 3.97) and on outer copper only
+        notes["power_w_max"] = 4.0
+        notes["net_layers"] = {x["net"]: ["F.Cu", "B.Cu"] for x in q["power_paths"]}
     # The USB pairs routed COUPLED (router coupled.py) and priced as corridors in placement
     # (cadkit PCBFLOW_PAIR_CORRIDOR). As match groups only they were negotiated as loose nets:
     # A3 failed on layer sets and via counts (mV8). Each chain is the parts that carry both rails,

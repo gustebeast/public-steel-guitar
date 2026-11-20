@@ -575,9 +575,19 @@ def brain(merged=None):
     _cap("C123", "100nF", "BOOT2 to SW2 (pin table: 0.1 uF)", boot2, sw2)
     for tag in ("C21", "C22", "C31", "C32"):
         _cap(tag, "22uF/25V", "5 V output bulk, ~66 uF effective at 5 V", v5_bb, gnd, C1206)
-    _res("R113", "10mR 1%", "ISP-ISN output current sense: 50 mV limit / 10 mR = 5.0 A (SLVSGT7 "
-         "8.2.2.6); keeps the inductor under Isat in a fault", v5_bb, v5_raw,
-         "Resistor_SMD:R_1206_3216Metric")
+    if os.environ.get("BRAIN_POWER_SIZING", "0") == "1":
+        # ⚠ THE LIMIT SITS UNDER THE FUSE (amps audit, lead 2026-11-20, choice C): F2's 4 A
+        # already caps the CM5, so a 5.0 A limit only sized copper nobody can use. 13 mR (no
+        # 12.5 mR 1206 stocked) = 3.85 A, under F2, over the CM5's 16.7 W (3.3 A) budget. The
+        # CM5's USB peripherals share it: anything downstream of its USB drawing real power
+        # comes out of this 3.85 A.
+        _res("R113", "13mR 1%", "ISP-ISN output current sense: 50 mV limit / 13 mR = 3.85 A (SLVSGT7 "
+             "8.2.2.6), under F2's 4 A; the CM5 and its USB peripherals share it", v5_bb, v5_raw,
+             "Resistor_SMD:R_1206_3216Metric")
+    else:
+        _res("R113", "10mR 1%", "ISP-ISN output current sense: 50 mV limit / 10 mR = 5.0 A (SLVSGT7 "
+             "8.2.2.6); keeps the inductor under Isat in a fault", v5_bb, v5_raw,
+             "Resistor_SMD:R_1206_3216Metric")
     _res("R10", "100k 1%", "5 V feedback divider, top", v5_bb, fb5)
     _res("R11", "30k1 1%", "5 V feedback divider, bottom -- 1.2 x (1 + 100/30.1) = 5.19 V: "
          "~5.05 V at the module at 5 A after R113 and F2", fb5, gnd)

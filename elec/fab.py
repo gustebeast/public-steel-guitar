@@ -289,6 +289,7 @@ LCSC = {
 PASSIVES = {
     # brain_board 2026-11-17 (U205 swap, service port)
     ("10mR 1%", "R_1206_3216Metric"):        "C601097",  # HoLR1206-1W-10mR-1%, 1 W; 78,790 in stock
+    ("13mR 1%", "R_1206_3216Metric"):        "C201279",  # STE1206M1W0R013F, 1 W 50 ppm; 5,153 on 2026-11-20 -- brain R313 (BRAIN_POWER_SIZING)
     ("15nF", "C_0402_1005Metric"):           "C501821",  # 0402B153K500NT, 50 V X7R; 12,937 in stock
     ("22pF", "C_0402_1005Metric"):           "C1555",    # 0402CG220J500NT, 50 V C0G; basic
     ("23k2 1%", "R_0402_1005Metric"):        "C25873",   # UniOhm 0402WGF2322TCE; 84,116 in stock
