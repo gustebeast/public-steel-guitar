@@ -25,9 +25,12 @@ _clock = time.process_time
 # load (clock speed, cache). OWNROUTE_WORK_CLOCK=<cells per second> makes _clock count A*
 # search-box cells instead (_astar adds L*h*w per call, x9 for turn states), so every
 # deadline falls at the same net whatever runs beside it and only OWNROUTE_SEED varies a
-# route. Calibrate the rate from OWNROUTE_WORK_LOG=1's "work clock" line (flag, off).
+# route. Calibrate the rate from OWNROUTE_WORK_LOG=1's "work clock" line.
+# DEFAULT ON at 5.1e7 (2026-11-19): calibrated on W47s2/W48s2 (4.99-5.31e7) so the budgets
+# buy the same work as before; with PCBFLOW_STABLE_FILL two replays (mVRP1/2) wrote
+# md5-identical routed boards. =0 restores the CPU-second clock.
 _WORK = [0.0]
-_WORK_RATE = float(os.environ.get("OWNROUTE_WORK_CLOCK", "0") or 0.0)
+_WORK_RATE = float(os.environ.get("OWNROUTE_WORK_CLOCK", "5.1e7") or 0.0)
 if _WORK_RATE > 0.0:
     def _clock():
         return _WORK[0] / _WORK_RATE
