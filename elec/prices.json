@@ -243,13 +243,23 @@
     },
     "keyhole_plate": {
       "usd": 0.34,
-      "verified": "v",
+      "verified": "m",
       "per_instrument": 10,
       "qty": 100,
       "vendor": "JLCCNC (sheet metal)",
       "sku": "steel/keyhole_plate.step",
-      "order": "100 x laser-cut 304 stainless, 4 mm, no finish, untapped: parts $34.00, instant quote read 2026-11-12. On one order with 100 nut plates ($32.00): parts $66.00 + UPS Express Saver $56.66 = $122.66, so the keyhole plates add ~$44 per 100 delivered. Tapping needs a drawing and is priced on their review (final price subject to their review; the 2.2 slit and the 2.5 holes in 4 mm are under the sheet thickness)",
-      "what": "The direct-drive yoke's keyhole plate (direct_bench.keyhole_plate), one per string: O22 x 4, the ball's hole, the slit, two M3 tapped holes for the yoke's M3 x 30s."
+      "order": "RE-QUOTE at 3 mm (2026-11-18: the roof is now 3 + 4 mm sheets, the ball seated its whole length in the 4). Was 100 x laser-cut 304 stainless, 4 mm, no finish, untapped: parts $34.00, instant quote read 2026-11-12. On one order with 100 nut plates ($32.00): parts $66.00 + UPS Express Saver $56.66 = $122.66, so the keyhole plates add ~$44 per 100 delivered.",
+      "what": "The direct-drive yoke's keyhole plate (direct_bench.keyhole_plate(layer='plate')), one per string: 3 mm, the outline with the stack's two ears, the ball's hole, the slit, two Ø3.4 clearance holes; over the 4 mm key_seat_plate."
+    },
+    "key_seat_plate": {
+      "usd": 0.34,
+      "verified": "m",
+      "per_instrument": 10,
+      "qty": 100,
+      "vendor": "JLCCNC (sheet metal)",
+      "sku": "steel/key_seat_plate.step",
+      "order": "ESTIMATE: the old 4 mm keyhole plate's quoted $0.34 a part -- the same 4 mm sheet and outline (4 mm sheet, the same outline and cut length plus one Ø4.3 hole). Order on the same JLCCNC sheet-metal order as the keyhole and nut plates.",
+      "what": "The keyhole plate's 4 mm SEAT PLATE (direct_bench.key_seat_plate), one per string, between the keyhole plate and the yoke: the same outline, hole, slit and screw holes, and a Ø4.3 hole round the slit's top the ball sinks into its whole length under tension, so it cannot tip or slide back to its hole (user, 2026-11-18)."
     },
     "m3_shcs_30": {
       "usd": 0.1228,
@@ -406,7 +416,7 @@
         "$16.60 -- JLCPCB prices a batch, not a board, and the minimum is per ORDER.",
         "The error was worst exactly where the instrument has most boards.",
         "",
-        "\u26a0 Re-measure before ordering. Quotes move, and these are one day's numbers."
+        "⚠ Re-measure before ordering. Quotes move, and these are one day's numbers."
       ],
       "measured": [
         {
@@ -5378,7 +5388,7 @@
       "$109 -> $146 on this one number. Walls dominate a part like the chassis, so it",
       "packs denser than sparse-infill intuition suggests.",
       "",
-      "\u26a0 ONE PART, and the biggest one. A small fiddly part is nearly all perimeter and",
+      "⚠ ONE PART, and the biggest one. A small fiddly part is nearly all perimeter and",
       "will run HIGHER than 0.60; a large hollow one lower. Slicing a second part -- a",
       "knee housing, say -- would show whether one factor is honest for the whole set."
     ]
@@ -5447,7 +5457,7 @@
       "",
       "THE ONE DISTINCTION THAT DECIDES THE TARIFF QUESTION is whether a vendor ships",
       "DDP -- Delivered Duty Paid. JLCPCB's DHL line says DDP outright, so its quoted",
-      "shipping is taken to ALREADY CONTAIN the duty. \u26a0 The real bench PCB order did NOT",
+      "shipping is taken to ALREADY CONTAIN the duty. ⚠ The real bench PCB order did NOT",
       "use that line: it was COMBINED with an LCSC parts order and shipped as one LCSC",
       "DHL Express parcel (not DDP), and DHL billed a $345.37 TARIFF after delivery",
       "(user, 2026-10-29) -- about 30.5% of the $1,133 combined merchandise. See",

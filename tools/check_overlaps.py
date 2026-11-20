@@ -78,6 +78,12 @@ def intended(na, nb) -> bool:
     # print or a fab can act on. The BOARD itself is still gated against the same part.
     if "_silk" in na or "_silk" in nb:
         return True
+    # ONE ROUTED BOARD DRAWN AS SEVERAL PARTS (src/new_boards_view.py: the laminate with its
+    # parts, the CM5 on its plugs, the ribbon sockets, the screw terminal): its own layout is
+    # checked by its courtyards in pcbflow; here it is gated against everything else.
+    for b in ("brain_board", "connector_board"):
+        if na.startswith(b) and nb.startswith(b):
+            return True
     return False
 
 

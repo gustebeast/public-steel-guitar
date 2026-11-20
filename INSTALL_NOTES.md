@@ -2185,7 +2185,7 @@ This supersedes the collar B jam nut and the M4 housing bolts in the notes above
 - **Anchor collars, ties and rod (2026-11-16; replaces the housing's one-bead sleeves round the ties):**
   - **Collars print on the 0.8 nozzle, with walls 0.8 to 1.6 in places** (user 2026-11-16: those print fine). 1.6 cannot be had on them: the boss on the bearing's inner race is 0.9 at best (the race's land, Ø10.4, round the thread's Ø8.6). Every wall is at least 0.8. Ø24.8 x 11 long, with flats top and bottom where the clamp's head pocket and insert come out, so no pocket leaves a feathered edge.
   - **Each collar's clamp is an M3 x 10 into an M3 brass insert used as a NUT, not heat-set** (no screw threads into plastic, and it comes out again). Slide the insert into its pocket from the bottom flat until it sits on its floor under the split, hold it there with a fingertip, and drive the screw from the top flat; the screw pulls it up against the floor. The pocket is a snug slide (drawn 5.1 for the insert's 4.7 knurl): if a print runs tight, a light push seats it, never heat. The head sinks in the top flat.
-  - **Ties are M3 x 35, heads on the lid's -X face** (no longer sunk in it). Each runs through an **aluminium round spacer, OD 4.5 / ID 3.2, 13 long** (McMaster 94669A107), from the housing's lip to the anchor plate, into the plug's insert with all 4.3 of its thread. Two per string, 20 per instrument. Snug the ties, do not crank them: the spacer takes the screw's whole preload. The strings' pull goes lip -> spacers -> plate.
+  - **Ties are M3 x 35 (since 2026-11-17: M3 x 40, see below), heads on the lid's -X face** (no longer sunk in it). Each runs through an **aluminium round spacer, OD 4.5 / ID 3.2, 13 long** (McMaster 94669A107), from the housing's lip to the anchor plate, into the plug's insert with all 4.3 of its thread. Two per string, 20 per instrument. Snug the ties, do not crank them: the spacer takes the screw's whole preload. The strings' pull goes lip -> spacers -> plate.
   - **Ties per string** (direct_bench.TIES; the edge strings turn theirs out to the free side), r 15.95-16.45, inside the body's ribs behind the plate; **guide rod at 325 deg (unchanged), r 15.65** (was 15.35, now clear of collar B). The ears' rings round the ties are 1.2 (EAR_WALL); the tightest wall is strings 4, 7 and 8's plug, 1.07 between a tie's insert and the rod's seat. Searched together so every collar, rod, spacer and ear clears its neighbours, and the plugs' ears stay inside the anchor tray's folds.
   - The housing is now just the lip and the bearing's pocket.
   - Collar B turns between lip and plate: 0.8 off the lip, 1.2 off the plate.
@@ -2353,6 +2353,7 @@ The changes:
 - **Spring saw jig** (`tools/spring_saw_jig.step`, PETG-GF, printed as drawn). It is the guide rod jig's sibling: the same hacksaw (McMaster 4075A31), the same 32 TPI bi-metal blade (6927A16) and the same 1.3 slot. One Quick-Grip clamps it through the leadscrew jig's cap (`saw_jig_cap`); there are no screws.
   - **Why one straight cut works:** the spring is close-wound, so a cut square to the axis runs through the wire along exactly one turn. That parts it into two pieces with no loose bits. Each end comes out as a flat face whose last turn tapers to a thin edge.
   - **Length:** the flat end butts the end stop, so each piece is 97.0 (42 coils) from the slot with no counting.
+  - **Counting a cut piece:** expect **41 full coils plus a tapered part-turn at each end**. A square cut runs along one turn, so each end's last turn thins to a knife edge, and the two tapered turns together make up the 42nd coil. That is correct. Check the length (97.0-97.4) rather than the count: about 2 mm short means the wire runs thick.
   - **Cap:** its notch is narrower than the spring, so it rides on the spring on the notch's two lower edges.
   - **Use:**
     1. Lay the jig on the table near the edge.
@@ -2373,3 +2374,137 @@ The changes:
   - Where a boss is within ~0.5 of the neighbouring plug, only the half facing that plug stays at one bead.
   - This applies to strings 2, 4, 5, 6, 7 and 8, and both bosses on string 8.
   - Each widened side keeps >= 0.25 from the neighbour.
+
+## Nut stack on two long screws, plug inserts as nuts, shallower keyhead inserts (2026-11-17)
+
+- **Why:** the collar's inserts sat in loose pockets that only stop them turning, so nothing held the collar on the nut against the spring. The plug's heat-set inserts held the spring through their knurl's grip alone.
+- **Instrument nut stack** (keyhole plate, yoke, collar):
+  - Each of the three has two **ears** past the nut's flange, at 160° and 275°.
+  - Two **M3 x 40** go through all of them. The heads sit on the steel keyhole plate's +X face, and the shanks run beside the flange.
+  - Each screw ends in an **M3 insert used as a nut**, on an **M3 DIN 125 washer (Ø7 x 0.5)**. Each collar ear runs 4.6 past the stop flange beside the wall round the spring. The washer slides into a slot at the end of the collar's body and the insert into a notch in that extension, both from the side; everything +X of them is a solid 7.8 base.
+  - Each yoke ear runs on down beside the flange's rim to the collar's face (a **foot**, 3.5 = the flange's thickness), so the stack is solid plastic in compression with nothing bending. The yoke now prints **+X -> -X** (the plate's face on the bed); the bench yoke still prints -X -> +X.
+  - The flange's other holes now carry only the **pin**: one M3 x 10 at 45°, its head in the yoke's slot, its shank through the flange into a blind hole in the collar. It only stops the nut turning.
+  - **Assembly order:**
+    1. Screw the collar onto the spring and line it up on the nut.
+    2. Drop the pin in through the flange.
+    3. Fit the yoke and the plate.
+    4. Slide a washer and then an insert into each collar ear's slot.
+    5. Run the M3 x 40s in.
+  - Tighten the screws **snug**: preload above the loads only creeps away, and the spring never lets the joint go slack.
+- **Plug ties:** now **M3 x 40**. Each plug insert drops down a Ø4.8 bore from its ear's +X face onto a 5.6 floor and works as a nut, with the full 4.3 of thread. To pull out it would have to punch through the floor.
+- **Keyhead:** every M4 heat-set insert now sits only as deep as the lightest string needs: its mouth is 1.0 under the head as that string clamps. The side screws' recess went from 6.5 to 4.9 deep. The height screws' recesses went from 9.5 to 7.5 (row 0) and 6.5 (row 1). The screws, the heads and the bed face did not move.
+- **Wood bench (the screws on hand, may creep):**
+  - **Yoke:** the M3 x 30s run through the plate, the yoke and the flange's 45° / 225° holes into the collar's inserts, as before.
+  - **Collar to yoke:** an M3 x 20 per ear pair. The head goes on the collar ear and the shank into an insert used as a nut in a slot in the yoke ear. No washers, no spacers.
+  - **Plug:** keeps its heat-set inserts flush in the -X face, with **M3 x 30** ties, their heads sunk 2.0 in the bench lid (2.0 of lid under them, 2.0 of thread) (lid face to plug face is 30).
+- **New hardware for the instrument:** M3 x 40 (40: the ties and the stack), M3 DIN 125 washers (20), and M3 x 10 (+10 pins). The instrument no longer uses M3 x 35 or M3 x 30 (the bench keeps its 30s: plate screws and plug ties). M3 lengths on the instrument: 10, 20, 40 (the M3 x 12 was the plank bench's coupler clamp).
+- **Reprint:**
+  - **Bench:** the collar, the yoke (`pctg/collar.step`, `petg-gf/yoke.step` in coupons/woodbench) and the keyhead.
+  - **Instrument:** every collar, yoke, plug and keyhead, and the laser-cut keyhole plate (now with ears).
+
+## Endplate guide-rod seat opened to rod + 0.85 (2026-11-18)
+
+- The endplate's blind seat for each guide rod was drawn at rod + 0.2 (Ø4.96) and printed too small to take the 3/16" rod (bench, PLA).
+- It is now **Ø5.61 (rod + 0.85)**: the measured 1/4" snug fit for an upright hole on the 0.8 nozzle. Small holes shrink at least as much, so this is a starting point, not a measured fit at Ø4.76.
+- The three crush ribs over the last 4 mm still reach 0.15 inside the rod's circle, so the rod stays put.
+- Printed in plain PLA instead of PETG-GF, the hole may come out a touch looser (PLA shrinks less). The ribs hold the rod either way.
+
+## Guide rod float, collar slot and endplate head holes (2026-11-18)
+
+- **Collar slot:** the rod's slot in the collar is now **rod + 0.1 across** (was + 0.2): less turn before it locks. Its float along the radius is **+-0.4** (was +-1.0): enough for print error between the rod's seats and the screw's axis, without bending the screw sideways.
+- **Endplate head holes:** stadiums +-0.4 along the rod's radius, **Ø6.95 across** (the head's 5.5 + 0.6 + 0.85 for the upright hole's shrink). A hole clear of the window has a 0.8 x 45 deg funnel at its mouth; a hole that meets the window opens into it in one smooth cut.
+- **Motor plate:** a **4 mm boss** under each motor M3 (the motor's holes are shallow). Motor screws are **M3 x 12**. On the bench, a printed **4 mm spacer** (`wb_motor_spacer`, x4) under each head does the same.
+- Reprint for the bench: `collar`, `wb_endplate`, `wb_motor_spacer` x4.
+- **Ball seat (bench keyplate, 2026-11-18):** the printed keyplate has a **Ø5.0 x 1.2 recess** round the top of the slit on its -X (yoke) face. Push the ball through the hole, slide it up the slit, and pull the string: the ball drops into the recess and cannot slide back down to the hole while the string pulls. To take it out, slack the string, push the ball back (-X) out of the recess, and slide it down. The steel instrument plate does not have this yet.
+- **Ball seat on the instrument (2026-11-18):** the steel keyhole plate is now **two laser-cut sheets**, 3 mm + 1 mm (the old 4 mm). The 3 mm **keyhole plate** goes on top (+X, the stack screws' heads on it). The 1 mm **seat plate** goes under it, on the yoke: the same outline, hole, slit and screw holes, plus a **Ø4.3 hole round the slit's top**. Under tension the ball drops into that hole and cannot slide back down to the Ø4.8 hole. Fit the seat plate first, then the keyhole plate, then the stack screws through both.
+
+## Keyhole flipped: the ball's hole is now ABOVE the string (2026-11-18)
+
+- The ball's Ø4.8 hole is now **5 mm above** the string's axis; the slit runs **down** to the seat on the axis. The endplate's window moved up with it (3.2 below to 7.4 above the axis).
+- **Restringing:** feed the ball through the endplate's window and the top hole; it falls down the slit into its seat by itself and stays there with the string slack while you wrap. Under load the seat (the 1 mm seat plate; the bench's printed recess) keeps it from walking out.
+- Bench reprints: `wb_keyplate`, `yoke`, `wb_endplate` (the endplate also carries the Ø5.61 rod seat and the ±0.4 head stadiums).
+
+## Keyhole plate: the ball seats its whole length (2026-11-18)
+- The keyhole plate is now 7 mm: a 4 mm seat layer (Ø4.3 steel / Ø5.0 printed) the 3 mm ball end sinks fully into, over a 3 mm layer it pulls on. Steel: two laser-cut sheets, 3 mm keyhole plate (+X, screw heads on it) and 4 mm key_seat_plate (-X, on the yoke).
+- The printed yoke spacer is 3 mm shorter; the stack length, screws and travel are unchanged.
+- Restring: drop the ball in the top hole, let it fall down the slit behind the plate, then pull the string: the ball must go all the way into its seat (flush or below the plate's -X face) before tensioning.
+- The steel slit is 2.3 drawn (JLCCNC +-0.1: 2.2-2.4 delivered), so string 10's swollen neck at the ball (2.2) always passes. A heavier set (.080) would need the plate recut. A printed stand-in's slit is sized for its one string.
+
+## Thrust housing: the bearing split 50/50 between housing and lid (2026-11-18)
+The 4 mm lid bent under the screw's push toward the motor. The 688 now sits half in the housing and
+half in the lid, so the lid is 6.3 thick through its ears instead of 4 (about 4x stiffer); the
+bench lid also has two beads round the sunk tie heads instead of one. Overall length is unchanged.
+- Press the bearing into either half, then close the other half over it and tighten the two ties
+  evenly until the halves meet face to face all round. The pockets are 0.1 short of the bearing, so
+  the floors pinch its outer race as the faces close. (A gap let the two ties -- not opposite each
+  other -- tilt the lid.)
+- Coupler: about 1 mm between the motor shaft's end and the bottom of the D bore. Leave the motor's
+  mounting screws loose, turn the screw a few times by hand so the motor finds its line, then tighten.
+
+## Setting the leadscrew: tip on the keyplate, spring closed (2026-11-18)
+The screw's position along its axis is now set in the instrument with no measuring:
+1. No string fitted. The spring's own 33 N pulls the nut toward the motor until its coils close
+   solid; leave it there.
+2. Thread the screw in until its tip just touches the keyplate's back face (don't force it).
+   To run it in fast, clamp the screw spinner (tools/screw_spin_jig: a capped collar body with a 3/8 in hex on top,
+   its M3 x 10 into an insert used as a nut) on the screw's motor end and drive it with a 3/8 hex
+   socket at low speed; finish the last turns by hand.
+3. Turn collar B onto the 688's inner race from the endplate side, then collar A from the motor
+   side (boss on the inner race, paper clearance to the lid), and clamp both M3s. Nothing pushes on
+   the screw now, so the collars turn easily.
+4. Fit the coupler; the screw's end should sit a few mm past the motor shaft's end inside it.
+Travel is then bounded by the keyplate on the endplate (loosening: the restring position, at least
+one turn still in the nut on every string) and by the coils closing, which is also where the tip
+meets the keyplate (tightening). Tuning uses 15.6 of it; the coils close at 16.5 or more. Re-set
+the screw (steps 1-3) whenever a spring is replaced or re-cut.
+
+Screw cut lengths (Tr8x2), per string:
+| string | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| mm | 254.7 | 176.1 | 258.6 | 332.4 | 416.5 | 335.6 | 258.6 | 179.3 | 263.1 | 340.8 |
+
+## Thrust housing: the lid twist-locks into the housing all round (2026-11-18)
+
+- The lid lifted between its two ties. Its +X face now carries 5 slant-hook
+  teeth (cadkit `joinery.bayonet`), each about 35 deg of arc. They drop
+  through 5 pockets in the housing's -X face; twist the lid 36 deg and every
+  tooth sits under a lip.
+- Fitting: put the bearing in the housing. Look at the lid from its own side
+  (from -X). Hold it turned 36 deg from where its ear holes line up, push it
+  home, and turn it back until the holes line up. Then fit the ties; they are
+  what stop it turning back.
+- ORDER MATTERS on the instrument: fit the lids in string order 1 -> 10. A
+  36 deg twist would hit a neighbour's ears if that neighbour were already
+  on. Start each lid turned:
+  - clockwise (then turn anticlockwise to lock): strings 1, 4, 5, 6, 7, 8, 9
+  - anticlockwise (then turn clockwise to lock): strings 2, 3, 10
+  The woodbench has no neighbours: either way works.
+- The housing's ring is now 24.8 across (1.6 wall outside the lips). The lid
+  stays 19.5: its teeth carry its pocket wall on up.
+- Both halves now print with their mating face UP. The housing stands on its
+  lip; the lid stands on the ties' heads' face. Both bearing pockets therefore
+  have floors, not ceilings, so the 0.2 sag allowance is gone.
+- Expect up to ~0.36 mm of axial play before the slanted faces bear
+  (0.15 clearance / sin 26 deg). If the lid still lifts by that much, the next
+  step is a draw: the lips ramp down toward the locked position.
+- Reprint the housing and lid. The screws, spacers and cut lengths are
+  unchanged.
+
+## Brain board: wider, and the +X endplate comes off to fit it (2026-11-19)
+
+The brain board is now 167.7 long, reaching instrument x -167.3 (it was 150.8). That is too
+long to drop in short and slide +X, so it now goes in **with the bridge (+X) endplate off**.
+
+- **Fit:** strings off, J5's panel nut off, then the four M3 endplate screws out. Slide the
+  endplate off +X.
+- Drop the board straight down beside the -Y wall, **at its final x**. Its bottom edge goes
+  into the groove in the floor. There is no slide.
+- Slide the endplate back on -X. The board's parts ride into their channels in the pocket,
+  and J5 comes through its hole until its shoulder meets the wall. Refit J5's nut and the
+  endplate screws (snug, ~0.3 N·m).
+- **Close to the anchor screws:** the board's -X edge clears the -Y wall's four anchor-screw
+  bosses by only 0.8 mm (1.6 mm to the screw heads). Lower it straight down; don't swing its
+  -X end in.
+- **Swap:** the same steps in reverse. The anchor screws stay in.
+- Reprint the body floor section that holds the groove (now only the board's own length).
+  The endplate pocket only changes where the board's parts moved.
