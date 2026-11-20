@@ -366,24 +366,24 @@
  },
  {
   "kind": "fixed",
-  "why": "CM5 connector on its CM5IO position (module turned 90, near the top-right corner). ⚠ THE SEAT IS SET BY THE UI ENCODER / UI BOARD CLEARANCE (encoder body to instrument x -147.96, UI board edge -146.96; lead 2026-11-19): moved 5 mm toward board -X from (38, 19) so the module clears them by ~3.0 / ~2.0 with print tolerance -- do not move it back (cm5_mech.HOLE0)",
+  "why": "CM5 connector on its CM5IO position (module turned 90, top-right corner)",
   "src": "CM5IO RP-008099-DD-1; elec/cm5_mech.py",
   "hard": true,
   "ref": "J201",
   "xy": [
-   33.0,
+   38.0,
    19.0
   ],
   "rot": 270.0
  },
  {
   "kind": "fixed",
-  "why": "CM5 connector on its CM5IO position (module turned 90, near the top-right corner). ⚠ THE SEAT IS SET BY THE UI ENCODER / UI BOARD CLEARANCE (encoder body to instrument x -147.96, UI board edge -146.96; lead 2026-11-19): moved 5 mm toward board -X from (72, 19) so the module clears them by ~3.0 / ~2.0 with print tolerance -- do not move it back (cm5_mech.HOLE0)",
+  "why": "CM5 connector on its CM5IO position (module turned 90, top-right corner)",
   "src": "CM5IO RP-008099-DD-1; elec/cm5_mech.py",
   "hard": true,
   "ref": "J202",
   "xy": [
-   67.0,
+   72.0,
    19.0
   ],
   "rot": 270.0
@@ -511,24 +511,24 @@
  },
  {
   "kind": "keepout",
-  "why": "under the CM5: the 1.5 mm stack leaves no clearance (CM5 DS 4.1.1); the module's seat is set by the UI encoder / board clearance (cm5_mech.HOLE0, 2026-11-19)",
+  "why": "under the CM5: the 1.5 mm stack leaves no clearance (CM5 DS 4.1.1)",
   "src": "CM5 DS 4.1.1",
   "hard": true,
   "poly": [
    [
-    30.0,
+    35.0,
     -6.0
    ],
    [
-    70.0,
+    75.0,
     -6.0
    ],
    [
-    70.0,
+    75.0,
     49.0
    ],
    [
-    30.0,
+    35.0,
     49.0
    ]
   ],
@@ -1373,7 +1373,7 @@
   "src": "notes cutouts keepout_d (CAD: CM5 M2.5 mount (CM5IO; 1.5 mm spacer))",
   "hard": true,
   "xy": [
-   33.5,
+   38.5,
    -2.5
   ],
   "d": 2.7,
@@ -1385,7 +1385,7 @@
   "src": "notes cutouts keepout_d (CAD: CM5 M2.5 mount (CM5IO; 1.5 mm spacer))",
   "hard": true,
   "xy": [
-   66.5,
+   71.5,
    -2.5
   ],
   "d": 2.7,
@@ -1397,7 +1397,7 @@
   "src": "notes cutouts keepout_d (CAD: CM5 M2.5 mount (CM5IO; 1.5 mm spacer))",
   "hard": true,
   "xy": [
-   33.5,
+   38.5,
    45.5
   ],
   "d": 2.7,
@@ -1409,7 +1409,7 @@
   "src": "notes cutouts keepout_d (CAD: CM5 M2.5 mount (CM5IO; 1.5 mm spacer))",
   "hard": true,
   "xy": [
-   66.5,
+   71.5,
    45.5
   ],
   "d": 2.7,
@@ -2861,6 +2861,42 @@
  },
  {
   "kind": "fixed",
+  "ref": "C223",
+  "xy": [
+   31.985,
+   12.8
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C224",
+  "xy": [
+   31.985,
+   9.1
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "C225",
+  "xy": [
+   31.985,
+   16.5
+  ],
+  "rot": 90.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
   "ref": "C231",
   "xy": [
    -17.515,
@@ -3593,6 +3629,18 @@
  },
  {
   "kind": "fixed",
+  "ref": "D218",
+  "xy": [
+   32.485,
+   32.4
+  ],
+  "rot": 180.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
   "ref": "D22",
   "xy": [
    -56.015,
@@ -3689,6 +3737,18 @@
  },
  {
   "kind": "fixed",
+  "ref": "J205",
+  "xy": [
+   30.785,
+   24.9
+  ],
+  "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
   "ref": "J240",
   "xy": [
    9.885,
@@ -3707,6 +3767,18 @@
    31.3
   ],
   "rot": 0.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "JP201",
+  "xy": [
+   29.385,
+   11.4
+  ],
+  "rot": 90.0,
   "hard": true,
   "why": "mR: held where mP0 put it",
   "src": "mP0 placement, bronner 2026-11-15"
@@ -4067,6 +4139,18 @@
    -16.9
   ],
   "rot": 270.0,
+  "hard": true,
+  "why": "mR: held where mP0 put it",
+  "src": "mP0 placement, bronner 2026-11-15"
+ },
+ {
+  "kind": "fixed",
+  "ref": "R227",
+  "xy": [
+   32.185,
+   34.0
+  ],
+  "rot": 180.0,
   "hard": true,
   "why": "mR: held where mP0 put it",
   "src": "mP0 placement, bronner 2026-11-15"
