@@ -32,8 +32,14 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 # the module's pin-1-side hole in the brain board's frame: the module sits 40 (x) by 55 (y)
-# in the top-right corner, centre (55.0, 21.5)
-HOLE0 = (38.5, -2.5)
+# near the top-right corner, centre (50.0, 21.5)
+# ⚠ THE SEAT IS SET BY THE UI BOARD, NOT CHOSEN (lead / branner, 2026-11-19): at (38.5, -2.5) the
+# module's +X edge reached instrument x -149.985 and overlapped the UI board (ui_pcb, edge -146.96)
+# by 3.0, the UI encoder (body to -147.96) by 2.0, and its top-right screw head met the UI clamp
+# bar -- the gate skipped ui_pcb, so nobody saw it. 5 mm toward board -X: ~2.0 to the UI board,
+# ~3.0 to the encoder (both seat in printed parts, so they need print tolerance, not 0.98). Do not
+# move it back toward board +X.
+HOLE0 = (33.5, -2.5)
 HOLE_D = 2.7                    # CM5IO: MountingHole_2.7mm_M2.5_DIN965, NPTH
 STANDOFF_H = 1.5                # the DF40 stack height: the module's underside above our top
 STANDOFF_OD = 5.0               # M2.5 x 1.5 spacer (round, 5 OD); keep copper out from under it

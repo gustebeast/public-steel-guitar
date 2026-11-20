@@ -2218,16 +2218,14 @@ AUDIO_NX, AUDIO_NY = -48.0, 24.0
 # typical 90-degree USB-C overmold, ~12 x 9 above the mouth) until the chosen cable's drawing
 # is read. The +X edge was looked at first and is full: the CM5 to y -6, the boost's hot loop below.
 SVC_NOTCH_X, SVC_NOTCH_W, SVC_NOTCH_D = 17.0, 15.0, 11.0
-# THE UI CLAMP NOTCH (lead / branner gate, 2026-11-19): the widened board's top corner at the +X
-# end ran through ui_panel.clamp's -Y bar (instrument x -177.0..-147.0, y -92.0..-86.0, z -15.9..
-# -12.7; the old -150.4 edge already overlapped it 3.4 mm). The board gives way (moving the bar
-# re-seats the UI screen column): its top edge drops to z -16.4 (0.5 under the bar) at the +X
-# end. Asked from instrument x -146.5 (board x 71.5) -- but that line runs through the CM5's
-# top-right M2.5 hole (board 71.5, 45.5; head / keep-out 5.0, cm5_mech), so the notch starts
-# 0.5 past the hole's keep-out: board x 74.5 = instrument -149.5. ⚠ OPEN: that hole's screw head
-# on the back face (instrument x -149.0..-144.0, z -15.2..-10.2) still meets the bar's last
-# 2.0 mm (to -147.0) whatever the board does -- the bar end must stop at -149.5 (branner).
-UIC_NOTCH_X0, UIC_NOTCH_Y0 = 74.5, -16.4 - ZC          # board x, board y (41.84)
+# THE UI NOTCH (lead / branner gate, 2026-11-19): the widened board's top corner at the +X end
+# ran through ui_panel.clamp's -Y bar (instrument x -177.0..-147.0, z -15.9..-12.7) and the UI
+# board itself (ui_pcb: x to -146.96, laminate z -12.7..-11.1, tails to -16.1). The board gives
+# way (moving them re-seats the UI screen column): its top edge drops to z -16.4 from the UI
+# board's edge + 0.5 (instrument -146.46) to the +X end. The CM5 moved 5 mm toward board -X for
+# the same UI parts (cm5_mech.HOLE0), so its top-right hole's keep-out (to board x 69.0) stays
+# outside the notch.
+UIC_NOTCH_X0, UIC_NOTCH_Y0 = 146.46 + XC, -16.4 - ZC   # board x (71.475), board y (41.84)
 AUDIO_POLY = [[X0, AUDIO_NY], [AUDIO_NX, AUDIO_NY], [AUDIO_NX, AUDIO_Y0],
               [AUDIO_X1, AUDIO_Y0], [AUDIO_X1, BOARD_L / 2], [X0, BOARD_L / 2]]
 GND_POLY = [[X0, -BOARD_L / 2], [X1, -BOARD_L / 2], [X1, BOARD_L / 2],
