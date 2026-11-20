@@ -1019,13 +1019,67 @@ def pinouts(ctx):
         cite = cited.get(ref) or cited.get(value) or cited.get(name)
         kind = (value, name)
         if cite:
-            if kind not in seen_kinds:
+            if kind not in seen_kinds and CITE_PAGE and not _CITE_LOC.search(cite):
+                out.append((value or ref, False,
+                            "%s: its pinout citation names no page, table, figure or section "
+                            "-- a document number alone is how a pin list typed from memory "
+                            "passes; cite where the pin table was read: %s" % (value or ref, cite)))
+            elif kind not in seen_kinds:
                 out.append((value or ref, True, "pinout checked against: %s" % cite))
         elif kind not in seen_kinds:
             out.append((value or ref, False,
                         "%s (%s, %d pads, e.g. %s): no pinout citation"
                         % (value or ref, name, len(pads), ref)))
         seen_kinds.add(kind)
+    out += _pin_roles(ctx)
+    return out
+
+
+# A4 (pinout citation): the pin table's place in the sheet -- "p.4", "pp.17-24", "Table 6-1",
+# "Fig 4-2", "s7.1", "section 6". PCBFLOW_CITE_PAGE=1 makes a citation without one a FAIL
+# (lead, 2026-11-18: "TI doc, no page" is how brain_board's TPS22965 pin 8 passed as GND).
+CITE_PAGE = os.environ.get("PCBFLOW_CITE_PAGE", "1") == "1"
+_CITE_LOC = re.compile(r"\b(pp?\.\s*\d|pages?\s+\d|table\s*\d|fig(ure|\.)?\s*\d|"
+                       r"s\d+(\.\d+)*\b|sections?\s*\d|sheets?\s*\d)|§\s*\d", re.I)
+# a pin whose name says it carries power or an output -- never on a ground net
+_SUPPLY_PIN = re.compile(r"^(V(IN|OUT|CC|DD|BUS|BAT|S|M|REG|BIAS|IO)\w*|P?VIN\w*|AVDD|DVDD|"
+                         r"SW\d*|LX\d*|BOOT\d*|BST|\+V\w*|V\+|V5V?|V18|EXTVCC)$", re.I)
+
+
+def _pin_roles(ctx):
+    """A4: quality.pin_roles {"U221.8": {"n": "VOUT"} | {"n": "PAD", "gnd": true}} -- each IC
+    pin's name and ground role as the maker's sheet gives them (a project emits it from its
+    ratings table). A ground pin off every ground net, or a supply / output pin ON one, is a
+    FAIL: brain_board's TPS22965 pad 8 (VOUT) sat on GND until 2026-11-18. It sees only a
+    pin list that disagrees with the netlist; one typed wrong into both is A4's citation."""
+    roles = ctx.q.get("pin_roles") or {}
+    if not roles:
+        return []
+    where = {}
+    for net, pads in ctx.by_net.items():
+        for r, n, _p in pads:
+            where[(r, str(n))] = net
+    out, bad, seen = [], 0, 0
+    for key in sorted(roles, key=_nat):
+        ref, _, pin = key.partition(".")
+        spec = roles[key] if isinstance(roles[key], dict) else {"n": str(roles[key])}
+        net = where.get((ref, pin))
+        if net is None:
+            continue                    # unconnected or not on this board: A2 / A4's own
+        seen += 1
+        name, gnd = str(spec.get("n", "")), bool(spec.get("gnd"))
+        if gnd and net not in ctx.grounds:
+            bad += 1
+            out.append((key, False, "%s (%s) is a ground pin by its sheet and sits on %s, "
+                                    "not a ground net" % (key, name or "GND", net)))
+        elif not gnd and _SUPPLY_PIN.match(name) and net in ctx.grounds:
+            bad += 1
+            out.append((key, False, "%s is %s by its sheet and sits on ground net %s -- a "
+                                    "supply or output pin on ground is a short the moment "
+                                    "it drives" % (key, name, net)))
+    if not bad:
+        out.append((ctx.name + " pin roles", True, "%d pin(s) graded against their sheets' "
+                    "names: every ground pin on ground, no supply or output pin on it" % seen))
     return out
 
 

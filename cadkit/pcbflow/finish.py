@@ -83,6 +83,23 @@ _DEFAULT_STEP = {"silk.py": os.path.join(CADKIT, "kicad_silk.py"),
 ROUTER = "route.py" if os.environ.get("PCBFLOW_ROUTER") == "freerouting" else "ownroute.py"
 
 
+def _cadkit_path(stem):
+    """A project's hook steps import `cadkit` from the project's PARENT (elec/../cadkit, the
+    vendored copy). A scratch project (PCBFLOW_PROJECT outside a repo) has none there, and
+    silk.py, export_geom.py and cad_geom_check.py died on "No module named cadkit" in every
+    brain_board replay of 2026-11-19, unnoticed -- 9 A17 FAILs and the A18 clipping were
+    the labeller never running. Such a project gets THIS cadkit's parent on PYTHONPATH,
+    with CADKIT_KEPT=0 (canonical on sys.path must not key the kept store, see kept.py)."""
+    if os.path.isdir(os.path.join(os.path.dirname(project_dir(stem)), "cadkit")):
+        return
+    pp = os.environ.get("PYTHONPATH", "")
+    root = os.path.dirname(CADKIT)
+    if root not in pp.split(os.pathsep):
+        os.environ["PYTHONPATH"] = os.pathsep.join([x for x in (pp, root) if x])
+        os.environ["CADKIT_KEPT"] = "0"
+        print("  scratch project: cadkit for its steps from %s (CADKIT_KEPT=0)" % root)
+
+
 def _step(script, stem):
     """Path of a pipeline step: the project's own copy of a HOOK step if it has one, the
     shared default otherwise; core steps always come from here."""
@@ -333,6 +350,7 @@ def _run(script, stem):
         sys.stdout.write("    " + line)
         sys.stdout.flush()
     rc = proc.wait()
+    STEP_CPU[script] = STEP_CPU.get(script, 0.0) + _child_cpu(proc)
     # every step's wall time, summed by script at the end (STEP_SECONDS): a finish that got
     # slower says WHERE without a profiler (motor_ctrl f27, 2026-11-12: 650 -> 1496 s)
     dt = time.time() - t0
@@ -344,6 +362,41 @@ def _run(script, stem):
 
 
 STEP_SECONDS = {}
+STEP_CPU = {}              # every step's CPU seconds (the child process's own), by script
+# ⚠ close_last's TOTAL BUDGET IS CPU TIME, NOT WALL (2026-11-20): CLOSE_TOTAL_S was judged on
+# time.time(), so how many attempts a board got depended on machine load -- brain_board W49k
+# under four concurrent routes. Each attempt's own deadline was already CPU time (close_last's
+# CLOSE_LAST_CPU_CLOCK); the total is now the CPU the close steps' child processes used, read
+# from the OS. A/B on W48k seed 2 (wall vs CPU): identical result, identical board.
+
+
+def _child_cpu(proc):
+    """User + kernel CPU seconds of a finished subprocess (0.0 where it cannot be read)."""
+    try:
+        if os.name == "nt":
+            import ctypes
+            from ctypes import wintypes
+            ft = [wintypes.FILETIME() for _ in range(4)]
+            ok = ctypes.windll.kernel32.GetProcessTimes(
+                wintypes.HANDLE(int(proc._handle)), *[ctypes.byref(f) for f in ft])
+            if not ok:
+                return 0.0
+            return sum((f.dwHighDateTime << 32 | f.dwLowDateTime) for f in ft[2:]) / 1e7
+        import resource                     # posix: children's totals, as a delta
+        r = resource.getrusage(resource.RUSAGE_CHILDREN)
+        tot = r.ru_utime + r.ru_stime
+        d, _child_cpu.last = tot - getattr(_child_cpu, "last", 0.0), tot
+        return d
+    except Exception:
+        return 0.0
+
+
+def _close_spent(cpu0):
+    """CPU seconds the close steps have used since cpu0 (their child processes' own)."""
+    return sum(STEP_CPU.values()) - cpu0
+STAGE_FAILS = []           # hook steps that failed this run: named in the last line (finish)
+STAGE_SKIPS = []           # hook steps that cannot apply (a scratch project's CAD check)
+CLOSE_PAST_VIOL = os.environ.get("PCBFLOW_CLOSE_PAST_VIOL", "1") == "1"   # see close_last below
 CLOSE_TOTAL_S = 1800.0     # close_last, all attempts on one board
 CLOSE_ATTEMPT_S = 600.0    # ...and any one attempt
 
@@ -584,9 +637,22 @@ def finish(stem, rounds=1, keep_route=False):
     # is still judged "fewer violations, else as many and fewer open".
     _v0 = best_v
     _unrelated = bool(best_v) and nets and not (_violation_nets(stem) & set(nets))
-    if best_n and (not best_v or _unrelated):
+    # ⚠ ONE VIOLATION ON AN OPEN NET GATED OFF EVERY CLOSURE (brain_board mV56, 2026-11-18): a
+    # 0.002 mm clearance (VIN_BRAIN 0.125 against 0.127 to V5_PRE) sat on one of 31 open nets,
+    # so close_last never ran and the --no-score final ended at 31 where replays of the
+    # same recipe, with 0 violations after pass 1, closed 24 -> 6 and 10 -> 3. With
+    # PCBFLOW_CLOSE_PAST_VIOL=1 the nets a violation touches are SKIPPED from the start
+    # (CLOSE_LAST_SKIP) and the rest are closed: the baseline does not move under a
+    # violation no closure touches, which is the _unrelated case made per net.
+    _tied = (_violation_nets(stem) & set(nets)) if (best_v and nets and not _unrelated) else set()
+    _past = CLOSE_PAST_VIOL and bool(_tied) and bool(set(nets) - _tied)
+    _base_skip = set(_tied) if _past else set()
+    if best_n and (not best_v or _unrelated or _past):
         if _unrelated:
             print("  close_last: %d violation(s) on other nets -- closing anyway" % best_v)
+        if _past:
+            print("  close_last: %d violation(s) touch %s -- closing the other %d net(s), those left alone"
+                  % (best_v, ", ".join(sorted(_tied)), len(set(nets) - _tied)))
         shutil.copy(stem + ".kicad_pcb", stem + ".preclose.kicad_pcb")
         shutil.copy(stem + ".finish.drc.json", stem + ".preclose.drc.json")
         # ⚠ ONE BAD CLOSURE DOES NOT COST THE GOOD ONES (optical, 2026-10-05). The search
@@ -607,23 +673,22 @@ def finish(stem, rounds=1, keep_route=False):
         # with a comment explaining that the merge kept two of its three call sites by
         # luck. That was the warning, not the fix; the pass and all three calls are
         # upstream now, which is the only version of "it stays in the chain" that holds.
-        _skip = set()
-        import time as _time
-        _close_t0 = _time.time()
+        _skip = set(_base_skip)
+        _close_cpu0 = sum(STEP_CPU.values())
         _user_budget = float(os.environ.get("CLOSE_LAST_BUDGET_S", "1e9"))
         _had_budget = "CLOSE_LAST_BUDGET_S" in os.environ
         for _attempt in range(4):
             # a retry is worth a few minutes, not another route's worth (see close_last)
-            if _attempt and _time.time() - _close_t0 > CLOSE_TOTAL_S:
-                print("  close_last: no further attempt, %.0f min spent"
-                      % ((_time.time() - _close_t0) / 60))
+            if _attempt and _close_spent(_close_cpu0) > CLOSE_TOTAL_S:
+                print("  close_last: no further attempt, %.0f min CPU spent"
+                      % (_close_spent(_close_cpu0) / 60))
                 break
             os.environ["CLOSE_LAST_SKIP"] = ",".join(sorted(_skip))
             # ⚠ EACH ATTEMPT GETS ITS OWN DEADLINE (motor_ctrl f27, 2026-11-12): the 1800 s was
             # checked only BETWEEN attempts, and the first alone ran 829 s. close_last stops
             # searching at CLOSE_LAST_BUDGET_S; it is set per attempt to the smaller of
             # CLOSE_ATTEMPT_S and what is left of CLOSE_TOTAL_S.
-            _left = CLOSE_TOTAL_S - (_time.time() - _close_t0)
+            _left = CLOSE_TOTAL_S - _close_spent(_close_cpu0)
             os.environ["CLOSE_LAST_BUDGET_S"] = "%.0f" % max(30.0, min(CLOSE_ATTEMPT_S, _left, _user_budget))
             try:
                 _run("close_last.py", stem)
@@ -659,7 +724,7 @@ def finish(stem, rounds=1, keep_route=False):
                 # the new starting point, and every attempt is still judged against it.
                 shutil.copy(stem + ".kicad_pcb", stem + ".preclose.kicad_pcb")
                 shutil.copy(stem + ".finish.drc.json", stem + ".preclose.drc.json")
-                _skip = set()
+                _skip = set(_base_skip)
                 print("  close_last: %d still open, again from this board" % best_n)
                 continue
             # ⚠ FIRST TAKE UP ONLY THE CLOSURES THAT BROKE A RULE (optical, 2026-11-05).
@@ -678,7 +743,7 @@ def finish(stem, rounds=1, keep_route=False):
                             break
                         shutil.copy(stem + ".kicad_pcb", stem + ".preclose.kicad_pcb")
                         shutil.copy(stem + ".finish.drc.json", stem + ".preclose.drc.json")
-                        _skip = set()
+                        _skip = set(_base_skip)
                         print("  close_last: %d still open, again from this board" % best_n)
                         continue
                 except SystemExit as exc:
@@ -769,6 +834,7 @@ def finish(stem, rounds=1, keep_route=False):
     # label is dropped rather than squeezed -- but "cannot add a finding" is a claim, so
     # the DRC is run again and the claim is checked rather than trusted.
     try:
+        _cadkit_path(stem)
         _run("silk.py", stem)
         _silkfit(stem)
         _n2, _nets2, _v2 = _drc(stem)
@@ -778,6 +844,7 @@ def finish(stem, rounds=1, keep_route=False):
             best_n, best_v = max(best_n, _n2), max(best_v, _v2)
     except SystemExit as exc:
         print("  silk.py did not run (%s): the board has no labels" % (exc,))
+        STAGE_FAILS.append("silk.py")
 
     # ⚠ verify.py HAD NEVER BEEN RUN BY ANYTHING. Its own docstring says "THE POINT IS
     # TO REMOVE THE HUMAN, NOT TO ADVISE ONE" and that it exits non-zero when a budget is
@@ -838,8 +905,11 @@ def finish(stem, rounds=1, keep_route=False):
         for line in proc.stdout.splitlines():
             if line.strip() and "memory leak" not in line:
                 print("    " + line)
+        if proc.returncode:
+            STAGE_FAILS.append("export_geom.py")
     except Exception as exc:
         print("    export_geom.py did not run: %r" % (exc,))
+        STAGE_FAILS.append("export_geom.py")
 
     # ...AND THEN COMPARE THE TWO SIDES, every run. Writing the geometry out is only half
     # of it: export_geom has faithfully recorded a board whose CUTOUTS disagreed with the
@@ -861,7 +931,16 @@ def finish(stem, rounds=1, keep_route=False):
     _chk = _step("cad_geom_check.py", stem)
     _cqs = ([[os.environ["CAD_PYTHON"]]] if os.environ.get("CAD_PYTHON")
             else [["py", "-3.12"], ["python3"], ["python"]])
-    for _cq in (_cqs if _chk else []):
+    # a SCRATCH project (not inside a repo: no <parent>/.git, file or folder) has no CAD to
+    # compare: the check would read the scratch placement against the repo's committed
+    # geometry and call every moved part a disagreement. Said in the last line, not counted
+    # as a FAIL. (Not "<parent>/src": a scratchpad had an unrelated src/, mVW47s2.)
+    _scratch_cad = _chk and not os.path.exists(os.path.join(os.path.dirname(project_dir(stem)), ".git"))
+    if _scratch_cad:
+        print("    cad_geom_check NOT RUN: scratch project %s has no CAD repo beside it"
+              % project_dir(stem))
+        STAGE_SKIPS.append("cad_geom_check.py (scratch project)")
+    for _cq in (_cqs if _chk and not _scratch_cad else []):
         try:
             proc = subprocess.run(_cq + [_chk, _name],
                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -873,12 +952,14 @@ def finish(stem, rounds=1, keep_route=False):
                 print("    " + line)
         if proc.returncode:
             print("    !! THE CAD AND THE FAB DATA DISAGREE -- see above")
+            STAGE_FAILS.append("cad_geom_check.py")
         break
     else:
-        print("    !! cad_geom_check DID NOT RUN: %s. THE CAD AND THE FAB DATA ARE UNCHECKED."
-              % ("no CadQuery interpreter found" if _chk else
-                 "the project has no %s (see cadkit/PCB_README.md, 'Gate it')"
-                 % os.path.join(os.path.basename(project_dir(stem)), "cad_geom_check.py")))
+        if not _scratch_cad:
+            print("    !! cad_geom_check DID NOT RUN: %s. THE CAD AND THE FAB DATA ARE UNCHECKED."
+                  % ("no CadQuery interpreter found" if _chk else
+                     "the project has no %s (see cadkit/PCB_README.md, 'Gate it')"
+                     % os.path.join(os.path.basename(project_dir(stem)), "cad_geom_check.py")))
 
     # ⚠ A RUN WITH NO PROJECT REPORTS FAILS THE BOARD DOES NOT HAVE. A copy finished
     # outside <project>/out with PCBFLOW_PROJECT unset gets the default labeller and none
@@ -891,8 +972,13 @@ def finish(stem, rounds=1, keep_route=False):
     _gens = [os.path.join(project_dir(stem), "_".join(_parts[:k]) + ".py")
              for k in range(len(_parts), 0, -1)]
     _gen = next((g for g in _gens if os.path.isfile(g)), _gens[0])
-    print("%s: %d unconnected, %d violation(s)%s%s%s"
+    # ⚠ A STAGE THAT DID NOT RUN IS A FAIL, NOT A TRACEBACK IN THE LOG (2026-11-19): see
+    # _cadkit_path -- a dead labeller read as "the usual noise" for a whole day of A/Bs.
+    print("%s: %d unconnected, %d violation(s)%s%s%s%s"
           % (os.path.basename(stem), best_n, best_v,
+             ((" -- AND STAGE(S) FAILED: %s: NOT A CLEAN BOARD" % ", ".join(STAGE_FAILS))
+              if STAGE_FAILS else "")
+             + ((" | not run: %s" % ", ".join(STAGE_SKIPS)) if STAGE_SKIPS else ""),
              (" -- AND %d verify.py FAIL(s): NOT A CLEAN BOARD" % verify_fails)
              if verify_fails else "",
              (" | quality: %d FAIL, %d OPEN" % quality) if quality else

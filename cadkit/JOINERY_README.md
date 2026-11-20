@@ -436,6 +436,56 @@ full stop sign for matched print directions, the flat-top mushroom for opposed
 ones — which is exactly how the cable-spool's frame and mount joints share
 their install story.
 
+## Bayonet ring — face-to-face hosts round a shared axis (`bayonet()`)
+
+Two parts that meet **face to face** round an axis (a bearing housing and its
+lid) and must hold together **all round**, not only at their screws. First
+case: public-steel-guitar's thrust housing. Its lid lifted between two ties
+that are not opposite each other.
+
+The profile is the most compact one that retains: a **single-flank slant
+hook** (user's sketch, 2026-11-18). One face runs along the axis, one is
+slanted, with a flat tip between them. It is revolved and broken into N
+teeth, with N **pockets** between the lips. Drop the teeth through the
+pockets along the axis, twist `180/N`°, and every tooth sits under a lip.
+
+```
+   tenon host (lid)               the tooth's straight face rides r_in
+ ________    ___________          (a bore: no host wall inside it); the
+         |   \                    slanted face hooks under the mortise
+ _____   |    \   ______          host's lip, which overhangs it by `o`
+      |  |_____\  |               (r-z section, revolved)
+      |___________|  mortise host (housing)
+```
+
+```python
+gf = PrintSpec(0.8, "PETG-GF", "up")
+b = bayonet(r_in=8.15, r_out=12.4, tenon=gf, mortise=gf, n=8, a0=0.0)
+lid     = lid.union(b.tenon(root=1.0))      # placed: axis = Z, mating z = 0,
+housing = housing.cut(b.mortise(drop=1.0))  # tenon host below, mortise above
+b.twist, b.dims                             # 180/n deg; r_tip, o, alpha, ...
+```
+
+- **Print:** both hosts build with the mating face **up**: it is each host's
+  last layer. The tooth's slant and the lip's underside overhang `alpha` off
+  vertical, and alpha ≤ 45° by construction. The groove's far end is a floor.
+  Either other facing raises.
+- **Sizing = room in.** `r_in` is the teeth's straight face. Keep any wall the
+  caller has inside `r_in - clearance`; a bore is fine. `r_out` is the
+  mortise host's outer radius. The tooth's neck, its height and the lip's
+  outer wall are each `seg`: 2·nozzle, the quality tier, by default. What is
+  left becomes the undercut `o`, capped at the tooth height (45°). If the
+  undercut cannot clear the clearance by half a nozzle, it raises.
+- **Clearances** follow `joint_clearances`. `clearance` goes on the straight
+  and slanted faces. `back_clearance` (doubled for fiber-filled material) goes
+  past the tip.
+- **Axial play** before the slant bears is ≈ `clearance / sin(alpha)`: 0.36 at
+  alpha 25° and 0.15 clearance. A shallow slant is a loose hook.
+- **Stop:** the joint is symmetric, so something else ends the twist (screws
+  through both parts, a key). The pose that `tenon()` draws is the
+  **seated** one: teeth centred on `a0 + k·360/n`.
+- Print-UNVALIDATED as of 2026-11-18: print a coupon first.
+
 ## T-slot joint — install ∥ print-Z (`install="z"`)
 
 The third family exists because of a dimension the other two ignore: the

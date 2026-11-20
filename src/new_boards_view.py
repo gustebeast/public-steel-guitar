@@ -5,9 +5,10 @@ gate, and the positions are the intents' frames, not a mount.
   * brain (320 x 70): on its side, -Y of the motors, component side facing -Y (away from the
     motors, JSTs mouth-up). Board X = instrument X + 360, board Y = instrument Z. (To move: user
     2026-11-13, flat in the -X +Y corner -- not drawn there until it is re-placed.)
-  * brain_board (120.3 x 100, ONE board, drops in -Z then slides +X 19 into a pocket fitted to it in the +X endplate: user 2026-11-13): back face on the
-    -Y side at y -87.5 (branner: +1.7 so unclipped 3.4 tails clear the wall at -91.7), parts facing +Y; board x = -(instrument x + 59.72), board y =
-    instrument z + 58.24 (x -119.87 .. 0.43). The panel (board -X edge) sits 1.6 behind the outer face (USB inset 1.6, J5 2.4 back on the board); parts in the pocket: elec/brain_board.pocket.json.
+  * brain_board (167.73 x 100, ONE board, instrument x -167.3 .. 0.43; it drops in -Z at its FINAL x with the +X endplate
+    off, then the endplate slides back on over it: user 2026-11-19): back face on the -Y side at y -87.5 (branner: +1.7 so
+    unclipped 3.4 tails clear the wall at -91.7), parts facing +Y; geom x -> instrument x by OB_X (read, below), board y =
+    instrument z + 58.24. The panel (board -X edge) sits 1.6 behind the outer face (USB inset 1.6, J5 2.4 back on the board); parts in the pocket: elec/brain_board.pocket.json.
   * the optical board is NOT drawn: it is being redesigned (user 2026-11-13: no forwarder MCU,
     a ribbon to the brain board).
 
@@ -84,7 +85,27 @@ BRAIN_Y, BRAIN_DX, BRAIN_Z = -66.0, -360.0, -71.0
 # 11-13). Drawn MATED: J11-J20's plugs (side_plug_run) and the PH / XH housings, what the
 # nut block, the endplates and the cable path have to clear.
 CB_X, CB_Y, CB_Z = -572.175, -9.55, -102.2
-OB_X, OB_BACK_Y, OB_Z = -74.985, -87.5, -58.24     # brain_board (= brain) centre, FINAL (x -150.4..0.43, 150.83 wide), back face (branner)
+OB_BACK_Y, OB_Z = -87.5, -58.24                    # brain_board's back face, centre z (branner)
+# ITS X IS READ, NOT TYPED (lead, 2026-11-19): geom.json is centred on the outline's bounding box
+# (cadkit kicad_geom), so every outline change moves its origin -- the 167.73 board's sits 8.45
+# off the old 150.83's. bronner's pocket export records where that origin lands in the
+# instrument; the drawn edges are checked against the export's own edge_x / minus_x_edge.
+def _ob_x() -> float:
+    import json as _j
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    pk = _j.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                   "brain_board_pocket.json"), encoding="utf-8"))
+    g = _j.load(open(os.path.join(root, "elec", "geom", "brain_board.geom.json"), encoding="utf-8"))
+    x = pk["geom_frame_origin_instrument_x"]
+    w = g["outline_mm"][0]
+    lo, hi = -w / 2 + x, w / 2 + x                     # instrument x = -(geom x) + x
+    assert abs(lo - pk["minus_x_edge"]) < 0.05 and abs(hi - pk["edge_x"]) < 0.05, (
+        "brain board drawn at x %.3f..%.3f, the pocket export says %.3f..%.3f: geom.json and "
+        "pocket.json are not one trial's pair" % (lo, hi, pk["minus_x_edge"], pk["edge_x"]))
+    return x
+
+
+OB_X = _ob_x()
 
 
 def _build(board):

@@ -28,6 +28,8 @@ import time
 import sys
 
 import pcbnew
+
+import stable_fill  # noqa: E402  (PCBFLOW_STABLE_FILL)
 import wx
 # ⚠ NO MODAL DIALOGS IN A BUILD STEP. KiCad's Python is a wxWidgets application, and a
 # failed internal assertion pops a GUI alert -- "Do you want to stop the program?" -- and
@@ -914,6 +916,16 @@ def widen_necks(board, notes, step_mm=0.05):
     # hit, so every track on the board read as touching the edge
     edges = [c.CSegment(i) for c in chains for i in range(c.SegmentCount())]
     others = [x for x in list(board.GetPads()) + list(board.GetTracks())]
+    # ⚠ A KEEP-OUT IS NOT COPPER, SO THE COPPER CHECK BELOW NEVER SAW ONE (brain_board mV25,
+    # 2026-11-17). The router kept +24V clear of a CM5 mounting hole's track ban at its own
+    # width; this pass then widened ten of its In2/B.Cu runs to 1.85-2.03 mm and their edges
+    # crossed the ban -- DRC items_not_allowed x10, which also stops close_last. Each track
+    # ban on the track's layer is an obstacle like any other copper (edge distance 0).
+    keepouts = []
+    if os.environ.get("ROUTE_NECK_KEEPOUT", "1") == "1":
+        keepouts = [z for z in board.Zones() if z.GetIsRuleArea() and z.GetDoNotAllowTracks()]
+    # (A PCBFLOW_NECK_MARGIN flag held widened edges 0.03 mm off the rule; removed 2026-11-19:
+    # TAKEUP_WHY on mV60/mV61 showed every crowding take-up was router copper, none widened.)
     done, gained = 0, 0.0
     for t in list(board.GetTracks()):
         if t.GetClass() != "PCB_TRACK":
@@ -941,11 +953,14 @@ def widen_necks(board, notes, step_mm=0.05):
                     break
             if ok and any(e.Distance(me) < edge_clr + w // 2 for e in edges):
                 ok = False
+            if ok and any(z.IsOnLayer(L) and seg.Collide(z.Outline(), 0) for z in keepouts):
+                ok = False
             if ok:
                 best = w
                 break
         if best > w0:
             t.SetWidth(best)
+            layout.NECKED[t.m_Uuid.AsString()] = (w0, best)   # for the take-up log (PCBFLOW_TAKEUP_WHY)
             done += 1
             gained += pcbnew.ToMM(best - w0)
     if done:
@@ -1003,7 +1018,7 @@ def post_route(board, stem, notes, pcb):
         # this line and took 74 pads with it -- the routed board came back WORSE than
         # before the pour existed, which is a confusing way to learn it.
         board.BuildConnectivity()
-        pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+        stable_fill.fill(board, board.Zones())
         # ⚠ AND CHECK THE STITCHES AGAIN HERE, NOT ONLY IN layout.py. At layout time the
         # plane is poured around 60 parts and every stitch via lands in copper. THIS
         # refill pours it around those parts plus 700 routed tracks, and the plane that
@@ -1015,7 +1030,7 @@ def post_route(board, stem, notes, pcb):
             if n_moved:
                 # moving copper changes the pour that was just computed, so pour again
                 board.BuildConnectivity()
-                pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+                stable_fill.fill(board, board.Zones())
                 print("    moved %d of them into the plane and re-poured" % n_moved)
             if layout._check_stitches_landed(board, notes):
                 print("    (the rest have nowhere to go: move the part or except the "
@@ -1223,7 +1238,7 @@ def post_route(board, stem, notes, pcb):
     # Measured: five violations on the optical board, four of them this, from two vias.
     if board.Zones():
         board.BuildConnectivity()
-        pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+        stable_fill.fill(board, board.Zones())
     # ⚠ AND ONLY NOW CAN THE STRANDED COPPER BE FOUND. _check_stitches_landed runs in
     # layout.py ~140 lines BEFORE the first pour and can only warn; even the retry above
     # gives up on vias with "nowhere to go". This pass runs after tidy AND after the

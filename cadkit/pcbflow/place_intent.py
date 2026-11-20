@@ -596,6 +596,124 @@ def _pin_key(p):
 A2_REACH = 5.0       # mm: quality A2's reach from a supply pin to its nearest cap
 
 
+LEAK_RAIL = 12      # a net on more parts than this is a rail: it says nothing about where a part belongs
+
+
+def region_leaks(parts, rules):
+    """[(region, [refs])]: parts a `fixed` rule holds INSIDE a region they belong to by the
+    netlist, that no in_region rule binds there -- held in place, they leak the day the hold
+    is released.
+
+    ⚠ WHY (brain_board mV31, 2026-11-18): the analog in_region named its 11 ICs; ~70 audio
+    passives stayed in the isolated corner only by their mP0 holds. Released, C1 C41 D7 R10
+    were placed across the moat and their copper met it. The same audit found 51 more held
+    parts in pd / power / compute / boost with no binding. A part belongs to the region whose
+    bound members most of its signal-net neighbours are (rails, nets on > LEAK_RAIL parts,
+    ignored). A region rule may list `free` refs that sit in it unbound on purpose (a part
+    that straddles the region's edge by design)."""
+    bound, owner, free = {}, {}, set()
+    for r in rules:
+        if r.get("kind") == "in_region":
+            for x in r.get("refs") or ():
+                bound.setdefault(r["region"], set()).add(x)
+                owner.setdefault(x, set()).add(r["region"])
+        if r.get("kind") == "region":
+            free |= set(r.get("free") or ())
+    if not bound:
+        return []
+    polys = {r["name"]: np.asarray(r["poly"], float) for r in rules if r.get("kind") == "region"}
+    members = {}
+    for ref, p in parts.items():
+        for q in p["pads"]:
+            if q.get("net"):
+                members.setdefault(q["net"], set()).add(ref)
+    out = {}
+    for r in rules:
+        ref = r.get("ref")
+        if r.get("kind") != "fixed" or ref not in parts or ref in owner or ref in free or not r.get("xy"):
+            continue
+        # ⚠ A TRANSIENT HOLD IS NOT A HOLD THAT GETS RELEASED (brain_board W47, 2026-11-19): a
+        # window run holds every part outside the window at the source placement for that run
+        # only -- scaffolding, never committed -- so the leak this guards against (a durable
+        # hold released later) cannot happen to it. Mark such holds `"transient": true`.
+        if r.get("transient"):
+            continue
+        votes = {}
+        for q in parts[ref]["pads"]:
+            nm = q.get("net")
+            if not nm or len(members.get(nm, ())) > LEAK_RAIL:
+                continue
+            for o in members[nm] - {ref}:
+                for g in owner.get(o, ()):
+                    votes[g] = votes.get(g, 0) + 1
+        if not votes:
+            continue
+        g, k = max(votes.items(), key=lambda kv: kv[1])
+        if 2 * k < sum(votes.values()) or g not in polys:
+            continue
+        if _inside(polys[g], np.asarray([r["xy"][:2]], float))[0]:
+            out.setdefault(g, []).append(ref)
+    return sorted((g, sorted(v)) for g, v in out.items())
+
+
+STRAY_MIN_VOTES = 2
+
+
+def region_strays(parts, rules, pl):
+    """[(region, ref, where, why_ok)]: parts the netlist says belong to a region (the same vote
+    as region_leaks: most of a part's signal-net neighbours bound there) that the placement put
+    OUTSIDE it. `where` is the region the part sits in instead ('' for none). A region rule may
+    list `away: {ref: why}` for parts that sit outside on purpose; those come back with the why.
+
+    ⚠ THE SIBLING region_leaks DOES NOT SEE (brain_board W47 audit, 2026-11-19): leaks are held
+    parts INSIDE their region with no binding; a part already OUTSIDE its region -- Q210 voted
+    boost, sitting in compute; U41/R88/R80 voted pd, in compute -- passed both checks."""
+    owner, free, away = {}, set(), {}
+    for r in rules:
+        if r.get("kind") == "in_region":
+            for x in r.get("refs") or ():
+                owner.setdefault(x, set()).add(r["region"])
+        if r.get("kind") == "region":
+            free |= set(r.get("free") or ())
+            for x, w in (r.get("away") or {}).items():
+                away[(r["name"], x)] = w
+    if not owner:
+        return []
+    polys = {r["name"]: np.asarray(r["poly"], float) for r in rules
+             if r.get("kind") == "region" and not r["name"].startswith("_")}
+    members = {}
+    for ref, p in parts.items():
+        for q in p["pads"]:
+            if q.get("net"):
+                members.setdefault(q["net"], set()).add(ref)
+    out = []
+    for ref in sorted(pl):
+        if ref not in parts or ref in owner or ref in free:
+            continue
+        votes = {}
+        for q in parts[ref]["pads"]:
+            nm = q.get("net")
+            if not nm or len(members.get(nm, ())) > LEAK_RAIL:
+                continue
+            for o in members[nm] - {ref}:
+                for g in owner.get(o, ()):
+                    votes[g] = votes.get(g, 0) + 1
+        if not votes:
+            continue
+        g, k = max(votes.items(), key=lambda kv: kv[1])
+        # a CLEAR owner only: two or more neighbours and two thirds of the votes. One neighbour,
+        # or a part split between two regions (glue at the seam), says nothing about where it
+        # belongs -- W47 listed 55 such parts and a real stray would have drowned in them
+        if k < STRAY_MIN_VOTES or 3 * k < 2 * sum(votes.values()) or g not in polys:
+            continue
+        xy = np.asarray([pl[ref][:2]], float)
+        if _inside(polys[g], xy)[0]:
+            continue
+        where = next((n for n, P in polys.items() if _inside(P, xy)[0]), "")
+        out.append((g, ref, where, away.get((g, ref), "")))
+    return out
+
+
 def region_fill(rules, parts, pl):
     """[(region, area mm2, courtyards mm2, fill)] -- each placed part counted in the first
     region holding its courtyard's centre. Courtyards only (no halo): the number layout and
@@ -1242,19 +1360,28 @@ def pair_twists(parts, pl, groups):
     return out
 
 
-def _swap_pairs(part, groups):
+def _swap_pairs(part, groups, flip=False):
     """[(pin, pin)] that swap a pass-through part's rails between its identical channels, or None
     when the part is not one: <= 10 pads, only the pins of one or two declared pairs besides
     ground / supply, and every pair's two rails on it equally often (a CMC's windings: FL4 pins
     1/2 and 3/4; a flow-through clamp's channels). Each rail's pin swaps with the other rail's
-    nearest pin."""
+    nearest pin.
+    flip=True: a part the board DECLARES (notes "pair_flip": {ref: datasheet citation}) whose
+    rails may all trade paths at once -- a 1:2 USB mux (TS3USB221: the D+ and D- switches are
+    one spec, SCDS220M Table 7-1 p.12 selects both alike), any number of pairs plus control
+    pins. Every held pair flips together, so polarity end to end is kept (brain_board U17,
+    2026-11-19: GADGET/USBA/USBB twisted at U17, all straight flipped)."""
     pads = part.get("pads", ())
     if len(pads) > 10:
         return None
     nets = {q.get("net") for q in pads if q.get("net")}
-    held = [g for g in groups if len(g) == 2 and g <= nets]
+    # a pair declared twice (in "match" AND "diff_pairs") is ONE pair: listed twice, its swap
+    # ran twice and undid itself (brain_board U17/U44, 2026-11-19: every plan came back empty)
+    held = sorted({g for g in groups if len(g) == 2 and g <= nets}, key=sorted)
     rest = nets - set().union(*held) if held else nets
-    if not held or len(held) > 2 or any(not (GROUND_NET.search(n) or SUPPLY.search(n)) for n in rest):
+    if not held:
+        return None
+    if not flip and (len(held) > 2 or any(not (GROUND_NET.search(n) or SUPPLY.search(n)) for n in rest)):
         return None
     out = []
     for g in held:
@@ -1271,17 +1398,21 @@ def _swap_pairs(part, groups):
     return out
 
 
-def swap_plan(parts, pl, groups, max_parts=10):
+def swap_plan(parts, pl, groups, max_parts=10, flip=()):
     """The channel swaps on pass-through parts that leave the fewest twisted pair hops
     (pair_twists), fewest swaps on a tie. Each swap is free in the netlist (identical channels)
     but must be carried into the netlist's generator. Returns (twisted before, twisted after,
-    [(ref, [(pin, pin)])])."""
+    [(ref, [(pin, pin)])]).
+    ⚠ THE TWISTED-HOP COUNT IS A HINT, NOT A SCORE (brain_board W48k, 2026-11-19): the plan's
+    FL3/FL4 winding swaps took the count 7 -> 3 and the paired seed-1 route came out worse
+    (2/0/98/32 vs 2/0/90/24; GADGET 6/9 vias, skew 30.7, new USBA / USBB_J fails). Route a
+    proposed swap against its control before carrying it into the netlist."""
     import copy
     gsets = [frozenset(g.get("nets") or ()) for g in groups if len(g.get("nets") or ()) == 2]
     cand = {}
     for ref, v in parts.items():
         if ref in pl:
-            sp = _swap_pairs(v, gsets)
+            sp = _swap_pairs(v, gsets, flip=ref in flip)
             if sp:
                 cand[ref] = sp
     names = sorted(cand)[:max_parts]

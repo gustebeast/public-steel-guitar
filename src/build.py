@@ -75,6 +75,10 @@ PARTS = {
     lambda: heal(_m("saw_jig").cap()),
     "tools/saw_jig_cap.step",
     "TOOL — the saw jig's cap: a plunger down the clamp channel whose 45 deg notch seats on the rod's upper crests, with a rimmed pocket on top for the Quick-Grip pad. The clamp squeezes cap, rod, jig and table in one stack. PETG, printed as drawn (notch on the bed)"),
+    "screw_spin_jig": (
+    lambda: heal(_m("direct_bench").screw_spinner()),
+    "tools/screw_spin_jig.step",
+    "TOOL — runs a leadscrew in fast at install: collar A's clamp body (formed thread, split, M3 x 10 into the insert used as a nut) clamped on the screw's motor end, on a 3/8 in hex shank (9.55 AF, 8 long: the hex_fit_38 coupon's best) for a driver's 3/8 in hex socket. A cap bridges the bore on the body's top, the screw bottoming on it from the bed side; the hex straight on the cap; the split runs through all. PETG-GF on the 0.8, printed as collar A, its -X face on the bed"),
     "pin_drill_jig": (
     lambda: heal(_m("pin_drill_jig").body()),
     "tools/pin_drill_jig.step",
@@ -107,7 +111,12 @@ PARTS = {
     lambda: heal(_m("guide_rod_saw_jig").body()),
     "tools/guide_rod_saw_jig.step",
     "TOOL — hacksaw jig for cutting each 2 ft length of 3/16 in stainless (McMaster 89535K84) into three guide rods of direct_bench.ROD_L (202.5), with one Quick-Grip and no vise: the whole jig sits on the table; the stock rests in a short diamond-tunnel guide -X of a 1.3 saw slot (McMaster 6927A16), and the piece lies in a supported 90 deg V trough out to an end stop at ROD_L from the slot's +X face, clamped next to the slot through the LEADSCREW JIG'S CAP (saw_jig_cap: no cap of its own). 217 x 41. PETG, printed as drawn (table face on the bed)"),
-    "keyhole_plate": (lambda: _m("direct_bench").keyhole_plate(), "steel/keyhole_plate.step", "LASER-CUT 304 STAINLESS, 4 mm, x10, the nut plates' sheet (JLCCNC, no finish): the direct-drive yoke's roof. The string's ball end bears on it; two Ø3.4 CLEAR holes (no tapping): the M3 x 30s go in from +X, heads on this plate, through the yoke into the collar's brass inserts. Not printed"),
+    "spring_saw_jig": (
+    lambda: heal(_m("spring_saw_jig").body()),
+    "tools/spring_saw_jig.step",
+    "TOOL — hacksaw jig for cutting each 20 in length of the nut spring stock (McMaster 9665K36) into 42-coil pieces (direct_bench.SPRING_COILS, 97.0) with one Quick-Grip and no vise or screws: one straight cut square to the axis parts the close-wound spring along one turn, its flat end butting the stop for the next piece. The guide rod jig's sibling: the stock rests in a diamond-tunnel guide -X of a 1.3 saw slot (McMaster 6927A16), the piece in a supported 90 deg V trough out to an end stop at 97.0 from the slot's +X face, clamped next to the slot through the LEADSCREW JIG'S CAP (saw_jig_cap, riding the spring on its notch's edges). PETG-GF, printed as drawn (table face on the bed)"),
+    "key_seat_plate": (lambda: _m("direct_bench").key_seat_plate(), "steel/key_seat_plate.step", "LASER-CUT 304 STAINLESS, 4 mm, x10 (JLCCNC, no finish): under the keyhole plate, on the yoke -- the same outline, hole, slit and screw holes, and a Ø4.3 hole round the slit's top that the ball sinks right into under tension (its whole 3 mm length and 1 over), so it cannot tip or slide back to its hole. Not printed"),
+    "keyhole_plate": (lambda: _m("direct_bench").keyhole_plate(layer="plate"), "steel/keyhole_plate.step", "LASER-CUT 304 STAINLESS, 3 mm, x10 (JLCCNC, no finish): the direct-drive yoke's roof, over the 4 mm key_seat_plate (3 + 4 = 7; the ball's seat is the lower sheet, 4 deep). The ball pulls on this one. The string's ball end bears on it; two EARS past the nut's flange, each with a Ø3.4 CLEAR hole (no tapping): the stack's M3 x 40s go in from +X, heads on this plate, through the yoke's ears beside the flange into inserts used as nuts in the collar's ears. Not printed"),
 }
 # ONE PRINT, TWO FILAMENTS, ONE FILE (user, 2026-11-03). A part named here is a body of
 # the part it maps to: the two share a STEP, each its own named product, so Bambu loads
@@ -154,6 +163,9 @@ def _declared():
         (["motor_shaft_saw_jig"], MSJ.BODY_UP,
          "motor_shaft_saw_jig.BODY_UP — as drawn, table face on the bed: the bay, the boss "
          "slot, the shaft channel and the saw slot all open upward; the gussets rise at 45 deg"),
+        (["screw_spin_jig"], _m("direct_bench").COLLAR_A_UP,
+         "direct_bench.COLLAR_A_UP — as collar A, its -X face on the bed: the flat cap bridges the bore, "
+         "the hex stands on it, the pockets peaked +X as the collar's"),
         (["saw_jig_cap"], SJG.CAP_UP,
          "saw_jig.CAP_UP — as drawn: the rod notch's two 45 deg faces rise off the bed, the "
          "pad pocket opens up"),
@@ -265,8 +277,8 @@ def _print_list_update(paths_gone, rows):
     keep = {}
     if PRINT_LIST.exists():
         for ln in PRINT_LIST.read_text(encoding="utf-8").splitlines():
-            if ln.startswith("| `"):
-                keep[ln.split("`")[1]] = ln
+            if ln.startswith("| `") and (OUT / ln.split("`")[1]).exists():   # a part no longer
+                keep[ln.split("`")[1]] = ln                                       # built drops out
     for p in paths_gone:
         keep.pop(p, None)
     for p, n, what in rows:
@@ -438,7 +450,7 @@ def _bump_build_counter() -> int:
     return n
 
 
-def collect_components():
+def collect_components(t=None):
     """EVERY placed thing in the instrument: [(name, cq.Workplane), ...].
 
     THE DIRECT-DRIVE INSTRUMENT (user, 2026-11-13: the main build is src.direct_bench's
@@ -452,7 +464,16 @@ def collect_components():
     beyond display: the gates key their allow-lists on them (its pairs are judged by
     direct_bench.is_intended)."""
     from . import direct_bench as DB
-    return DB.assembly(DB.T_OPEN)
+    from . import new_boards_view as NB
+    # THE ROUTED BOARDS ARE GATED (lead, 2026-11-19): the brain board's CM5 sat 2-3 mm from the
+    # UI station with nothing checking it, because only branner's ob_board stand-in (the parts
+    # that reach the endplate) was in this list. new_boards_view draws bronner's boards from
+    # their geom exports; ob_board keeps only what they do not have (courtyards and unclipped
+    # tails, the endplate pocket's sizes), so nothing is gated twice.
+    # t: the drive's travel (the drive-travel gate redraws the instrument at each end); the
+    # boards stand still, but they are in the model at every t -- that gate printed 662 of 676
+    # when it drew DB.assembly(t) alone (lead, 2026-11-19)
+    return DB.assembly(DB.T_OPEN if t is None else t) + NB.boards()
 
 
 from . import board_geom as _BG  # noqa: E402
@@ -627,12 +648,11 @@ def _report_drive_travel(comps) -> int:
     each end of its travel (t 0 and 1) and gates that. Only the parts that move are new
     pairs; the rest come from the pair cache. Baseline is 0."""
     try:
-        from . import direct_bench as DB
         from tools.check_overlaps import gate
         n = 0
         for t in (0.0, 1.0):
             print(f"drive travel: every string at t = {t:.0f}", flush=True)
-            n += gate([(name, wp.val()) for name, wp in DB.assembly(t)], full=True)
+            n += gate([(name, wp.val()) for name, wp in collect_components(t)], full=True)
     except Exception as e:               # noqa: BLE001 -- never let a gate eat the geometry
         print(f"drive travel gate: SKIPPED ({type(e).__name__}: {e})", flush=True)
         return 0
@@ -761,7 +781,7 @@ PRINT_ORIENTATION["endplate"] = PO.from_build_dir(
                 "rod plate for the bridge's sag")
 for _n in [n for n in PARTS if n.startswith("collar_") and n[7:].isdigit()]:
     PRINT_ORIENTATION[_n] = PO.from_build_dir(
-        (-1, 0, 0), "direct_bench: the collar PRINTS +X -> -X, its +X face on the bed (user, "
+        DB_.COLLAR_UP, "direct_bench.COLLAR_UP: the collar PRINTS +X -> -X, its +X face on the bed (user, "
                     "2026-11-12, back to the original orientation); insert pockets under cone roofs")
 # the rest of the drive's printed parts (user, 2026-11-14), each direction its module's constant
 for _base, _up, _why in (
@@ -769,21 +789,21 @@ for _base, _up, _why in (
                                        "holes and the boss); split through, the clamp insert from the bottom flat"),
         ("plug", DB_.PLUG_UP, "direct_bench.PLUG_UP -- prints -X -> +X; cones under the stop "
                               "flange and the insert pocket, the screw holes cut through the teeth"),
-        ("sleeve_p", DB_.SLEEVE_P_UP, "direct_bench.SLEEVE_P_UP -- prints +X -> -X; its lock fin from the bed"),
-        ("sleeve_c", DB_.SLEEVE_C_UP, "direct_bench.SLEEVE_C_UP -- prints +X -> -X; its lock fin standing on past the far end"),
-        ("yoke", DB_.YOKE_UP, "direct_bench.YOKE_UP -- prints -X -> +X; the nut-rim register "
-                              "under a cone"),
+        ("yoke", DB_.YOKE_UP, "direct_bench.YOKE_UP -- prints +X -> -X, the plate's face on the bed: "
+                              "the ears' feet grow up last, the nut-rim register widens going up"),
         ("collar_b", DB_.COLLAR_B_UP, "direct_bench.COLLAR_B_UP -- collar A's part turned end for "
                                       "end: the same print, boss last"),
-        ("housing", DB_.HOUSE_UP, "direct_bench.HOUSE_UP -- prints -X -> +X: the pocket's mouth on "
-                                  "the bed, the lip a 1.2 ledge (the spacers carry it to the plate)"),
+        ("housing", DB_.HOUSE_UP, "direct_bench.HOUSE_UP -- prints +X -> -X: the lip on the bed, the "
+                                  "pocket (half the bearing) and the bayonet's groove open on top; the lips "
+                                  "over the teeth overhang 26 deg off vertical"),
         ("coupler", DB_.COLLAR_A_UP, "direct_bench._collar_local -- the coupler is the collar plus a "
                                      "shaft section: prints -X -> +X standing on its motor end, the 45 deg "
                                      "cone up to the clamp body, its pockets peaked +X as the collar's"),
         ("mplate", (1.0, 0.0, 0.0), "direct_bench._mplate -- flat, its motor face on the bed: every "
                                     "hole along the build, round"),
-        ("lid", DB_.LID_UP,"direct_bench.LID_UP -- prints +X -> -X, the race's face on top; the ties' heads "
-                            "on its -X face")):
+        ("lid", DB_.LID_UP,"direct_bench.LID_UP -- prints -X -> +X: the ties' heads' face on the bed, "
+                            "its half of the bearing pocket and the bayonet's teeth on top (their slant "
+                            "26 deg off vertical)")):
     for _n in [n for n in PARTS if n.startswith(_base + "_") and n[len(_base) + 1:].isdigit()]:
         PRINT_ORIENTATION[_n] = PO.from_build_dir(_up, _why)
 from . import body_adapter_v2 as _BA

@@ -171,11 +171,11 @@
     "m3_insert": {
       "usd": 0.2182,
       "verified": "m",
-      "per_instrument": 99,
+      "per_instrument": 79,
       "vendor": "McMaster-Carr",
       "sku": "94459A130",
       "order": "2 x $10.91 (pack of 50) covers 1 instrument",
-      "what": "M3 brass heat-set insert, OD 4.7, installed length 4.3 (pilot end 3.9) -- dropped into each belt clamp's half B as a captive nut behind a shoulder (not heat-set). belt_tensioner.INS_D / INS_L are this part's DRAWING numbers: measure one on arrival, before a clamp is printed. The eleventh is HEAT-SET into the chassis boss under the Raspberry Pi's hold-down hole (electronics.PI_M3, pocket 4.8). Price and SKU as picked by the lead session 2026-10-07, not re-read off the page here. DIRECT DRIVE (2026-11-16): +20 in the nut collars (col_ins, the yokes' M3x30s), +20 in the anchor plugs (the ties), +18 in the anchor collars and +10 in the couplers (their clamp screws, slid in as nuts); +20 for the grip sleeves' locks (2026-11-16: one heat-set in each plug's upper tie boss, one in each collar's +X face as a nut) -- if the belt clamps are gone from the direct instrument, drop their 10."
+      "what": "M3 brass heat-set insert, OD 4.7, installed length 4.3 (pilot end 3.9) -- dropped into each belt clamp's half B as a captive nut behind a shoulder (not heat-set). belt_tensioner.INS_D / INS_L are this part's DRAWING numbers: measure one on arrival, before a clamp is printed. The eleventh is HEAT-SET into the chassis boss under the Raspberry Pi's hold-down hole (electronics.PI_M3, pocket 4.8). Price and SKU as picked by the lead session 2026-10-07, not re-read off the page here. DIRECT DRIVE (2026-11-16): +20 in the nut collars (col_ins, the yokes' M3x30s), +20 in the anchor plugs (the ties), +18 in the anchor collars and +10 in the couplers (their clamp screws, slid in as nuts); the grip sleeves' 20 lock inserts (2026-11-16) went with the sleeves on 2026-11-17 (the grip is now one part with its plug or collar) -- if the belt clamps are gone from the direct instrument, drop their 10."
     },
     "m4_button_25": {
       "usd": 0.2182,
@@ -243,21 +243,31 @@
     },
     "keyhole_plate": {
       "usd": 0.34,
-      "verified": "v",
+      "verified": "m",
       "per_instrument": 10,
       "qty": 100,
       "vendor": "JLCCNC (sheet metal)",
       "sku": "steel/keyhole_plate.step",
-      "order": "100 x laser-cut 304 stainless, 4 mm, no finish, untapped: parts $34.00, instant quote read 2026-11-12. On one order with 100 nut plates ($32.00): parts $66.00 + UPS Express Saver $56.66 = $122.66, so the keyhole plates add ~$44 per 100 delivered. Tapping needs a drawing and is priced on their review (final price subject to their review; the 2.2 slit and the 2.5 holes in 4 mm are under the sheet thickness)",
-      "what": "The direct-drive yoke's keyhole plate (direct_bench.keyhole_plate), one per string: O22 x 4, the ball's hole, the slit, two M3 tapped holes for the yoke's M3 x 30s."
+      "order": "RE-QUOTE at 3 mm (2026-11-18: the roof is now 3 + 4 mm sheets, the ball seated its whole length in the 4). Was 100 x laser-cut 304 stainless, 4 mm, no finish, untapped: parts $34.00, instant quote read 2026-11-12. On one order with 100 nut plates ($32.00): parts $66.00 + UPS Express Saver $56.66 = $122.66, so the keyhole plates add ~$44 per 100 delivered.",
+      "what": "The direct-drive yoke's keyhole plate (direct_bench.keyhole_plate(layer='plate')), one per string: 3 mm, the outline with the stack's two ears, the ball's hole, the slit, two Ø3.4 clearance holes; over the 4 mm key_seat_plate."
+    },
+    "key_seat_plate": {
+      "usd": 0.34,
+      "verified": "m",
+      "per_instrument": 10,
+      "qty": 100,
+      "vendor": "JLCCNC (sheet metal)",
+      "sku": "steel/key_seat_plate.step",
+      "order": "ESTIMATE: the old 4 mm keyhole plate's quoted $0.34 a part -- the same 4 mm sheet and outline (4 mm sheet, the same outline and cut length plus one Ø4.3 hole). Order on the same JLCCNC sheet-metal order as the keyhole and nut plates.",
+      "what": "The keyhole plate's 4 mm SEAT PLATE (direct_bench.key_seat_plate), one per string, between the keyhole plate and the yoke: the same outline, hole, slit and screw holes, and a Ø4.3 hole round the slit's top the ball sinks into its whole length under tension, so it cannot tip or slide back to its hole (user, 2026-11-18)."
     },
     "m3_shcs_30": {
       "usd": 0.1228,
       "verified": "v",
-      "per_instrument": 30,
+      "per_instrument": 20,
       "vendor": "McMaster-Carr",
       "sku": "91292A022",
-      "what": "M3x30 socket head cap screw (18-8, ISO 4762) -- the direct-drive yokes, two per string, tapped into the keyhole plate. (The anchor ties went to M3x35 on 2026-11-16: m3_shcs_35.) $6.14 per pack of 50, read off McMaster 2026-11-12. +10 grip-sleeve locks at the collar end (2026-11-16): from each collar sleeve's fin through the collar into an insert sitting on its +X face as a nut."
+      "what": "M3x30 socket head cap screw (18-8, ISO 4762) -- the direct-drive yokes, two per string, tapped into the keyhole plate. (The anchor ties went to M3x35 on 2026-11-16: m3_shcs_35.) $6.14 per pack of 50, read off McMaster 2026-11-12. (The 10 grip-sleeve locks of 2026-11-16 went with the sleeves on 2026-11-17.)"
     },
     "m3_shcs_35": {
       "usd": 0.2156,
@@ -270,10 +280,10 @@
     "m3_shcs_10": {
       "usd": 0.0711,
       "verified": "v",
-      "per_instrument": 38,
+      "per_instrument": 28,
       "vendor": "McMaster-Carr",
       "sku": "91292A113",
-      "what": "M3x10 socket head cap screw (18-8, ISO 4762) -- the anchor collars' clamp screws (2026-11-16): one per collar, head sunk in the body, across the split into the collar's M3 insert. 10 collar B + 8 collar A (stations 0's two strings use the coupler as collar A) + 10 couplers (the collar's clamp, 2026-11-16) + 10 grip-sleeve locks at the plug end (2026-11-16: through the plug sleeve's fin into the boss's insert; the collar end's are M3x30). $7.11 per pack of 100, read off McMaster 2026-11-16."
+      "what": "M3x10 socket head cap screw (18-8, ISO 4762) -- the anchor collars' clamp screws (2026-11-16): one per collar, head sunk in the body, across the split into the collar's M3 insert. 10 collar B + 8 collar A (stations 0's two strings use the coupler as collar A) + 10 couplers (the collar's clamp, 2026-11-16). (The 10 grip-sleeve locks of 2026-11-16 went with the sleeves on 2026-11-17.) $7.11 per pack of 100, read off McMaster 2026-11-16."
     },
     "tie_spacer": {
       "usd": 0.65,

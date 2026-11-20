@@ -19,6 +19,21 @@ import time
 # process_time() counts only this process's work (the router is single-threaded), so the
 # same board makes the same rounds whatever runs beside it; the budgets still cap the work.
 _clock = time.process_time
+# ⚠ ...BUT CPU-SECONDS ARE NOT WORK (W47a/b, 2026-11-19): same inputs, identical route logs
+# through the main rounds, then a deadline-bounded pair re-negotiation stopped at a different
+# net and the boards finished 7 vs 4 unconnected. CPU-seconds per unit of work move with
+# load (clock speed, cache). OWNROUTE_WORK_CLOCK=<cells per second> makes _clock count A*
+# search-box cells instead (_astar adds L*h*w per call, x9 for turn states), so every
+# deadline falls at the same net whatever runs beside it and only OWNROUTE_SEED varies a
+# route. Calibrate the rate from OWNROUTE_WORK_LOG=1's "work clock" line.
+# DEFAULT ON at 5.1e7 (2026-11-19): calibrated on W47s2/W48s2 (4.99-5.31e7) so the budgets
+# buy the same work as before; with PCBFLOW_STABLE_FILL two replays (mVRP1/2) wrote
+# md5-identical routed boards. =0 restores the CPU-second clock.
+_WORK = [0.0]
+_WORK_RATE = float(os.environ.get("OWNROUTE_WORK_CLOCK", "5.1e7") or 0.0)
+if _WORK_RATE > 0.0:
+    def _clock():
+        return _WORK[0] / _WORK_RATE
 
 import numpy as np
 
@@ -288,7 +303,19 @@ class Router(CoupledMixin):
             net.bbox = (int(ii.min()), int(ii.max()), int(jj.min()), int(jj.max()))
             self.nets.append(net)
         # shortest first: the only place order matters is round one
-        self.nets.sort(key=lambda n: ((n.bbox[1] - n.bbox[0]) + (n.bbox[3] - n.bbox[2]), n.name))
+        # ⚠ REPLAYS IN LOCKSTEP ARE ONE SAMPLE (brain_board mVW48a/b, 2026-11-19): budgets run on
+        # process_time, so two replays of one board launched together came out byte-identical.
+        # OWNROUTE_SEED=<int> jitters round one's order (each net's span x 1 +- SEED_JITTER, drawn
+        # per net name from the seed) so an A/B arm's replays are independent. Unset: unchanged.
+        seed = os.environ.get("OWNROUTE_SEED", "")
+        if seed:
+            import random
+            jit = {n.name: 1.0 + random.Random("%s/%s" % (seed, n.name)).uniform(-self.SEED_JITTER, self.SEED_JITTER)
+                   for n in self.nets}
+            self.nets.sort(key=lambda n: (((n.bbox[1] - n.bbox[0]) + (n.bbox[3] - n.bbox[2])) * jit[n.name], n.name))
+            self.log("  OWNROUTE_SEED=%s: round-one order jittered +-%g" % (seed, self.SEED_JITTER))
+        else:
+            self.nets.sort(key=lambda n: ((n.bbox[1] - n.bbox[0]) + (n.bbox[3] - n.bbox[2]), n.name))
         # matched groups (USB pairs): vias priced to their budget, the two routed back to back
         by = {n.name: n for n in self.nets}
         for g in m.notes.get('match', ()) or ():
@@ -602,7 +629,11 @@ class Router(CoupledMixin):
         keep[np.nonzero(near)[0][still]] = True
         return c[keep]
 
+    SEED_JITTER = 0.15               # OWNROUTE_SEED: round-one order, each net's span scaled by 1 +- this
     RELAX_AFTER = 10                 # rounds a layer-held pair may share before it is relaxed (4 relaxed USB mid-negotiation, 11-08)
+    # TRIED AND REJECTED 2026-11-20: relaxing such a pair AS A PAIR (mate follows its leader's layer
+    # changes, ROUTER_PAIR_RELAX_LOCK) -- brain_board W48k seed 1 2 -> 16 unconnected, seed 2 3 -> 17,
+    # GADGET still open. Do not retry the lockstep relax.
     FILL_MARGIN = 0.15               # a plane-join via's pad this far inside the fill's edge
     PAD_OWN_JOIN = os.environ.get("OWNROUTE_PAD_OWN_JOIN", "1") == "1"   # build_nets: an SMD plane pad gets its own stub + via
     PLANE_JOIN_MM = (2.0, 6.0)       # a plane join looks this near its piece first (then everywhere)
@@ -613,6 +644,36 @@ class Router(CoupledMixin):
     TURN_STATES_MAX = 40_000_000     # heading-aware search up to this many states (x9 cells)
     PAIR_PUSH = 0.5                  # the finish's push attempts: others' copper at this price, no history (_finish_pairs)
     PLANE_PARTIAL = True             # a plane net still sharing loses only its sharing joins (_rip)
+    PLANE_OPEN_PIECE = os.environ.get("ROUTER_PLANE_OPEN_PIECE", "1") == "1"   # see _to_plane
+    # ⚠ THE LAST ROUND IS NOT THE BEST ROUND (brain_board mV25, 2026-11-17): pf x1.6 a round
+    # reached 1e6 and the sharing count swung 21..41 from round to round; the budget ran out at
+    # round 32 with 27 sharing, all ripped, while round 28 had left 21. With this on, _rounds
+    # keeps the copper of its best round (fewest sharing + failed) and ends on it.
+    BEST_ROUND = os.environ.get("ROUTER_BEST_ROUND", "1") == "1"
+    TREE_PARTIAL = os.environ.get("ROUTER_TREE_PARTIAL", "1") == "1"   # see _bad_joins
+    RIP_RECHECK = os.environ.get("ROUTER_RIP_RECHECK", "1") == "1"     # see _rip
+    NO_SHORTS_COVER = os.environ.get("ROUTER_NO_SHORTS_COVER", "1") == "1"   # see _no_shorts
+    RIP_MATE_LAND = os.environ.get("ROUTER_RIP_MATE_LAND", "1") == "1"       # see _rip
+    PAIR_LOCKSTEP = os.environ.get("ROUTER_PAIR_LOCKSTEP", "0") == "1"       # see _route_in
+    LOCKSTEP_MM = float(os.environ.get("ROUTER_LOCKSTEP_MM", "1.0"))
+    # ROUTER_LOCKSTEP_FINISH=1: the lockstep rule only while the pairs are finished
+    # (_finish_pairs / _fallback_pairs), after negotiation has closed the board -- the parity
+    # lockstep buys without its cost to closure (mV54 25 unconnected vs mV55 3). Flag, off.
+    LOCKSTEP_FINISH = os.environ.get("ROUTER_LOCKSTEP_FINISH", "0") == "1"
+    # ⚠ OFF BY DEFAULT AGAIN (lead's rule, 2026-11-18): on the same placement (mV34) the full
+    # flow finished 25 unconnected with LOCKSTEP 1 / BAND 0.3 (mV54) and 3 with 0 / 0.6
+    # (mV55, as mV41): parity improved (4 of 10 pairs mismatched, from 5) but closure is
+    # worth more. Back on only after a finished-board A/B (2 replays an arm) shows it costs none.
+    # ⚠ THE MATE'S BAND PULLS HARDER UNDER LOCKSTEP (brain_board mV52d/e, 2026-11-18): at x0.6
+    # lockstep's mates kept their layers but wandered (uncoupled 352 / 692 mm); x0.3 brought it
+    # to 194 / 194 with parity kept. Tightening LOCKSTEP_MM to 0.6, or pricing a pair's vias off
+    # the congestion (PAIR_VIA_REL, deleted), made rails fail instead (joins_open 60 / 60).
+    PAIR_BAND = float(os.environ.get("ROUTER_PAIR_BAND", "0.6"))   # the mate's price in its band
+    TREE_PARTIAL_MIN = 6             # pieces: a smaller tree net is ripped whole, as before
+    # pf's ceiling (0 = none). Past a few hundred, occupied cells are walls whatever pf is,
+    # and the round-to-round swing (mV25: 21..41 sharing from pf 1e3 on) is the price
+    # outrunning history (hf 0.4 a round): a capped pf leaves history to break the ties.
+    PF_MAX = float(os.environ.get("ROUTER_PF_MAX", "0"))
     PAIR_DISPLACE = 3                # rule-meeting attempts _displace may try per pair
     PAIR_REOPEN = True               # the pair finish also takes on a pair the negotiation ripped out
     COUPLE_WALLS = True              # a coupled centreline goes round pairs already to the rules
@@ -689,6 +750,7 @@ class Router(CoupledMixin):
         if check and L * h * w >= self.REACH_MIN and not self._reachable(cellf, vcellf, src_idx, tgt, L, h, w):
             return np.empty(0, np.int64)
         turn = L * h * w * 9 <= self.TURN_STATES_MAX and self.turn45 + self.turn90 > 0
+        _WORK[0] += L * h * w * (9 if turn else 1)
         if self.HMAP:
             # straight-line distance to the nearest target cell, in cells (search.py)
             from scipy.ndimage import distance_transform_edt
@@ -819,6 +881,7 @@ class Router(CoupledMixin):
 
     def _route_net(self, net, pf):
         m = self.m
+        self._partial_open = 0
         L, H, W = self.L, self.H, self.W
         self._wp_off = self._mate_dive(net)
         if self._wp_off is not None:
@@ -884,6 +947,36 @@ class Router(CoupledMixin):
             for k in range(L):
                 if k not in allowed:
                     legal[k] = False
+        # ⚠ A RELAXED PAIR STILL CHANGES LAYER AS A PAIR (brain_board mV41, 2026-11-18): every USB
+        # pair hit RELAX_AFTER ("routing it on any layer"), both rails went free independently,
+        # and verify failed them all -- GADGET_DP 13 vias against DM's 5, FLASH_DM 15, one rail
+        # diving without its mate. With ROUTER_PAIR_LOCKSTEP=1 the mate of a relaxed pair may be
+        # on layer k only within LOCKSTEP_MM of its leader's copper on k (so it changes layer
+        # where the leader does: mated vias), any layer within MATE_LAND_MM of its own lands
+        # (the fan-out); the leader keeps the freedom the relax gave it.
+        if ((self.PAIR_LOCKSTEP or getattr(self, "_lock_finish", False))
+                and net.relaxed and net.same_layer and net.partner is not None
+                and net.partner.paths and not net.partner.failed):
+            lead = np.zeros((L, h, w), bool)
+            for p_ in net.partner.paths:
+                if not p_.size:
+                    continue
+                kk = p_ // (H * W)
+                rr = p_ % (H * W)
+                ii, jj = rr // W - i0, rr % W - j0
+                ok = (ii >= 0) & (ii < h) & (jj >= 0) & (jj < w)
+                lead[kk[ok], ii[ok], jj[ok]] = True
+            if lead.any():
+                own2 = np.zeros((h, w), bool)
+                for p_ in net.pieces:
+                    rr = p_ % (H * W)
+                    ii, jj = rr // W - i0, rr % W - j0
+                    ok = (ii >= 0) & (ii < h) & (jj >= 0) & (jj < w)
+                    own2[ii[ok], jj[ok]] = True
+                land = (np.sqrt(S.edt_sq(own2)) * m.pitch <= max(self.MATE_LAND_MM, 1.0)) if own2.any()                     else np.zeros((h, w), bool)
+                for k in range(L):
+                    near = (np.sqrt(S.edt_sq(lead[k])) * m.pitch <= self.LOCKSTEP_MM) if lead[k].any()                         else np.zeros((h, w), bool)
+                    legal[k] &= near | land
         circle = None
         if net.merge is not None:
             X, Y = np.meshgrid(m.cx[j0:j1], m.cy[i0:i1])
@@ -1068,7 +1161,7 @@ class Router(CoupledMixin):
                     b0, b1 = max(0, tj.min() - bc_), min(w, tj.max() + bc_ + 1)
                     dd = distance_transform_edt(~mine[k][a0:a1, b0:b1]) * m.pitch
                     band = (dd >= sp - 1e-6) & (dd <= sp + 2.5 * m.pitch)
-                    cell[k][a0:a1, b0:b1][band] *= 0.6
+                    cell[k][a0:a1, b0:b1][band] *= self.PAIR_BAND
         occv = self.occ_v.reshape(H, W)[i0:i1, j0:j1].astype(np.float32)
         hv = self.hist_v.reshape(H, W)[i0:i1, j0:j1]
         if lane is not None:
@@ -1491,11 +1584,40 @@ class Router(CoupledMixin):
     # rail dives on ONE named layer and the other follows through the same spot (each
     # order, plain and with dives priced harder). The first attempt that meets the rules
     # and shares nothing is kept; if none does, the fewest faults win, the original first.
+    # ⚠ ONE PAIR MUST NOT TAKE EVERY PAIR'S TIME (brain_board mV43a, 2026-11-18): the pairs go
+    # one after another on what the run has left; FLASH's re-negotiations (3, each put back)
+    # ran 1552 -> 1839 s and HUBU and MCU, next, found the deadline gone -- "kept as
+    # negotiated", then ripped by _no_shorts. With ROUTER_PAIR_SHARE=k each pair works to
+    # k x its fair share of the time left (never under PAIR_SHARE_MIN_S), as close_last does.
+    PAIR_SHARE = float(os.environ.get("ROUTER_PAIR_SHARE", "0"))
+    PAIR_SHARE_MIN_S = 30.0
+    _pair_one = None
+
     def _finish_pairs(self):
+        if self.PAIR_SHARE <= 0 or getattr(self, "_deadline", None) is None:
+            return self._finish_pairs_()
+        glob = self._deadline
+        heads = [a for a in self.nets if a.mate is not None and a.partner is None and a.group is not None]
+        try:
+            for i, a in enumerate(heads):
+                self._deadline = glob
+                left = glob - _clock()
+                if left > 0:
+                    self._deadline = min(glob, _clock() + max(self.PAIR_SHARE_MIN_S,
+                                                              self.PAIR_SHARE * left / (len(heads) - i)))
+                self._pair_one = a
+                self._finish_pairs_()
+        finally:
+            self._pair_one = None
+            self._deadline = glob
+
+    def _finish_pairs_(self):
         pf = getattr(self, "_pf_last", 1.0)
         for a in list(self.nets):
             b = a.mate
             if b is None or a.partner is not None or a.group is None:
+                continue
+            if self._pair_one is not None and a is not self._pair_one:
                 continue
             if self._left(1.0) <= 0.0 and not (a.failed or b.failed):
                 self.log("  pair %s/%s: past the run's deadline, kept as negotiated" % (a.name, b.name))
@@ -2889,6 +3011,23 @@ class Router(CoupledMixin):
                     path = (kk * h + (rr // ws + a0)) * w + (rr % ws + b0)
                     break
             if path is None:
+                # ⚠ ONE PAD WITH NO WAY TO THE PLANE IS ONE OPEN JOIN, NOT THE WHOLE PLANE NET
+                # (brain_board mV22a/b, mV23a/b, 2026-11-17): U35.10, a GND pin boxed in at
+                # 0.4 pitch by the board edge, had no join to any plane site on the whole
+                # board, and this returned None -- GND, 326 other joins routable, came back
+                # with NO paths four routes running ("1 with no path" from round 1), and the
+                # finish had 322-362 unconnected against mV18's 0. Searched over the whole
+                # board and still cut off, the piece is left open (an empty join, as _rip
+                # leaves one) and counted in n_open; the rest of the net routes.
+                if self.PLANE_OPEN_PIECE and win == (0, self.H, 0, self.W):
+                    self._necks.append(np.zeros(0, bool))
+                    paths.append(np.empty(0, np.int64))
+                    self._partial_open += 1
+                    c0 = int(net.pieces[q][0]) % (self.H * self.W)
+                    self.log("  %s: piece %d at (%.2f, %.2f) has no way to the plane on the whole "
+                             "board -- left open, the rest routed"
+                             % (net.name, q, self.m.cx[c0 % self.W], self.m.cy[c0 // self.W]))
+                    continue
                 return None
             # ⚠ A THROUGH VIA ON THE WAY IS ALREADY THE JOIN (optical replay, 2026-11-14): a join
             # from Cd2.2 changed layer F.Cu -> In2 at a plane via site, ran 0.35 mm on In2 and
@@ -3051,8 +3190,12 @@ class Router(CoupledMixin):
             with open(os.environ["OWNROUTE_SNAPSHOT"], "wb") as fh:
                 pickle.dump({"pf": pf, "nets": {n.name: (n.paths, n.necks, n.failed, n.relaxed)
                                                 for n in self.nets}}, fh)
-        self._finish_pairs()
-        self._fallback_pairs()
+        self._lock_finish = self.LOCKSTEP_FINISH
+        try:
+            self._finish_pairs()
+            self._fallback_pairs()
+        finally:
+            self._lock_finish = False
         if os.environ.get("OWNROUTE_SNAPSHOT_ISLANDS"):  # island-pass development (replay_islands.py)
             import pickle
             with open(os.environ["OWNROUTE_SNAPSHOT_ISLANDS"], "wb") as fh:
@@ -3061,6 +3204,11 @@ class Router(CoupledMixin):
                     for n in self.nets}}, fh)
         self._pour_islands()
         self._no_shorts()
+        if os.environ.get("OWNROUTE_WORK_LOG"):
+            cpu = time.process_time()
+            self.log("  work clock: %.4g cells in %.1f cpu s = %.4g cells/s%s"
+                     % (_WORK[0], cpu, _WORK[0] / max(cpu, 1e-9),
+                        " (OWNROUTE_WORK_CLOCK=%g on)" % _WORK_RATE if _WORK_RATE > 0 else ""))
         return [n for n in self.nets if n.failed] + list(getattr(self, "unreachable", ()))
 
     def _no_shorts(self):
@@ -3078,7 +3226,17 @@ class Router(CoupledMixin):
                        and any(c.size for c in self._conflicts(n))]
             if not sharing:
                 return
-            sharing.sort(key=lambda n: (not n.plane, n.mate is not None, n in done))
+            # ⚠ RIP THE NET IN THE MOST CONFLICTS FIRST (brain_board mV40, 2026-11-18): by the
+            # order above, non-pair signals went first, so GADGET_DP -- beside ten other nets --
+            # cost SW_PU_MID, U15_ILIM, MCU_TX, SEL_PED, +3V3_UI, HUB2_DP/DM... and then went
+            # itself: 26 nets ripped here. With ROUTER_NO_SHORTS_COVER=1, after the plane
+            # nets (their shared joins only), the signal that shares with the most others goes
+            # first -- a greedy cover; ties as before.
+            if self.NO_SHORTS_COVER:
+                deg = {n: (0 if n.plane else len(self._sharers([n]))) for n in sharing}
+                sharing.sort(key=lambda n: (not n.plane, -deg[n], n.mate is not None, n in done))
+            else:
+                sharing.sort(key=lambda n: (not n.plane, n.mate is not None, n in done))
             n = sharing[0]
             self.log("  still sharing after the finish: %s -- ripped (a short is worse than "
                      "an open)" % n.name)
@@ -3260,14 +3418,27 @@ class Router(CoupledMixin):
         return bool(via.size and (self.occ_v[path[via] % (H * W)] >= 2).any())
 
     def _bad_joins(self, net):
-        """A plane net's sharing joins, if _rip would take only those (else None)."""
-        if not (self.PLANE_PARTIAL and net.plane and not net.failed and not net.fixed
-                and len(net.paths) == len(net.pieces) - 1):
+        """A plane net's sharing joins, if _rip would take only those (else None).
+
+        ⚠ ...AND A BIG TREE NET'S (brain_board mV31, 2026-11-18) -- ROUTER_TREE_PARTIAL=1 while
+        measured. +3V3D (87 pads, not a pour) shared space somewhere at the deadline and was
+        ripped whole: 87 unconnected for one crossing, and close_last cannot rebuild a rail
+        that size. A tree net's copper is one path per piece it joined, so taking out k
+        sharing paths leaves k + 1 pieces of legal copper, k opens -- what the plane case
+        counts. Its declared copper (net.fixed, the first paths) is never taken."""
+        nfix = len(net.fixed) if net.fixed else 0
+        # (no path-count test for a tree: merge circles and chain legs make one path join
+        # several pieces, so paths != pieces - 1 on exactly the big nets this is for --
+        # _tree_open counts what a rip leaves by connectivity instead)
+        tree = (self.TREE_PARTIAL and not net.plane and not net.failed
+                and len(net.pieces) >= self.TREE_PARTIAL_MIN and len(net.paths) > nfix)
+        if not tree and not (self.PLANE_PARTIAL and net.plane and not net.failed and not net.fixed
+                             and len(net.paths) == len(net.pieces) - 1):
             return None
         H, W = self.H, self.W
         bad = []
         for q, path in enumerate(net.paths):
-            if not path.size:
+            if q < nfix or not path.size:
                 continue
             c = path[self.occ_t[path] >= 2]
             k = path // (H * W)
@@ -3275,7 +3446,34 @@ class Router(CoupledMixin):
             rv = (path[via] % (H * W)) if via.size else np.empty(0, np.int64)
             if c.size or (rv.size and (self.occ_v[rv] >= 2).any()):
                 bad.append(q)
-        return bad if bad and len(bad) < len(net.paths) else None
+        if tree and not (bad and len(bad) < len(net.paths) - nfix):
+            # why a big tree net goes out whole (mV33b: +3V3D did, EN5 / GND did not)
+            self.log("  %s: tree partial declined -- %d of %d path(s) share (%d declared), %d piece(s)"
+                     % (net.name, len(bad), len(net.paths), nfix, len(net.pieces)))
+        return bad if bad and len(bad) < len(net.paths) - nfix else None
+
+    @staticmethod
+    def _tree_open(net, drop):
+        """How many joins a tree net is short once the paths `drop` are taken out: the
+        connected groups of its pieces and remaining paths (an item joins another when their
+        cells meet), less one."""
+        items = [np.unique(p) for p in net.pieces if p.size]
+        npc = len(items)
+        items += [np.unique(p) for q, p in enumerate(net.paths) if q not in drop and p.size]
+        par = list(range(len(items)))
+
+        def find(a):
+            while par[a] != a:
+                par[a] = par[par[a]]
+                a = par[a]
+            return a
+        for a in range(len(items)):
+            for b in range(a + 1, len(items)):
+                if a < npc and b < npc:
+                    continue                 # two pads' pieces meet only through copper
+                if find(a) != find(b) and np.intersect1d(items[a], items[b], assume_unique=True).size:
+                    par[find(a)] = find(b)
+        return len({find(a) for a in range(npc)}) - 1
 
     def _open_w(self, lock=(), left=()):
         """Open connections on the board: nets ripped out, plane joins ripped (n_open), and
@@ -3347,7 +3545,10 @@ class Router(CoupledMixin):
                         net.paths[q] = np.empty(0, np.int64)
                         if q < len(net.necks):
                             net.necks[q] = np.zeros(0, bool)
-                    net.n_open = getattr(net, "n_open", 0) + len(bad)
+                    if net.plane:
+                        net.n_open = getattr(net, "n_open", 0) + len(bad)
+                    else:
+                        net.n_open = getattr(net, "n_open", 0) + self._tree_open(net, ())
                     self._mark(net)
                     self.log("  %s: %d of its %d joins still share space%s: those ripped out, the rest kept"
                              % (net.name, len(bad), len(net.paths), self._where(net) or ""))
@@ -3365,7 +3566,37 @@ class Router(CoupledMixin):
                 self.log("  %s: only pour pieces cut off, no join shares space -- kept for the "
                          "island pass" % net.name)
                 continue
+            # ⚠ THE LIST IS STALE BY THE TIME IT GETS HERE (brain_board mV33c, 2026-11-18):
+            # +3V3D (94 paths) and +5V_CM5 (14) were handed to _rip as sharing, but at the rip
+            # NONE of their paths shared space -- the pair finish and repairs after the rounds
+            # had moved the others away. Ripped anyway: 87 + 15 pads open for no conflict.
+            # Re-read now; a net none of whose copper shares space keeps it.
+            if (self.RIP_RECHECK and not net.failed and not net.plane and net.paths
+                    and not any(p.size and ((self.occ_t[p] >= 2).any() or self._via_shares(p))
+                                for p in net.paths)):
+                self.log("  %s: listed as sharing, but none of its copper shares space now -- kept"
+                         % net.name)
+                continue
+            # ⚠ ...AND A PAIR RAIL MEETING ONLY ITS MATE AT ITS OWN LANDS IS THE PAIR FINISH'S
+            # (brain_board mV42a, 2026-11-18): MCU_DP "still shares space beside MCU_DM" at
+            # (116.13, 104.75), 0.8 mm off U1.123 -- the fan-out the negotiation already let
+            # them share (MATE_LAND_MM) -- ripped here, BEFORE _finish_pairs could lay that
+            # fan-out coupled; MCU, FLASH, HUBU and GADGET rails all went this way. With
+            # ROUTER_RIP_MATE_LAND=1 such a rail is kept for the pair finish; _no_shorts still
+            # takes out whatever shares after it.
+            if (self.RIP_MATE_LAND and self.MATE_LAND_MM > 0 and not net.failed and not net.plane
+                    and net.paths and (net.mate is not None or net.partner is not None)
+                    and not any(p.size and self._via_shares(p) for p in net.paths)
+                    and not any(p.size and self._drop_mate_land(net, p[self.occ_t[p] >= 2]).size
+                                for p in net.paths)):
+                self.log("  %s: shares only with its mate at its own lands -- kept for the pair finish"
+                         % net.name)
+                continue
             if not net.failed:
+                if self.TREE_PARTIAL and not net.plane and len(net.pieces) >= self.TREE_PARTIAL_MIN:
+                    self.log("  %s: tree partial n/a -- plane %s, failed %s, %d path(s), %d declared"
+                             % (net.name, net.plane, net.failed, len(net.paths),
+                                len(net.fixed) if net.fixed else 0))
                 self.log("  %s still shares space%s: ripped out" % (net.name, self._where(net)))
             self._unmark(net)
             net.paths = []
@@ -3379,6 +3610,7 @@ class Router(CoupledMixin):
         t0 = _clock()
         budget_s = self._left(budget_s)
         best, since = None, 0
+        snap, snap_score, last_score = None, None, None
         self._stalled = False
         for n in self.nets:
             n.nopath = 0                 # each negotiation tries a no-path net afresh (NOPATH_RETRY)
@@ -3403,7 +3635,7 @@ class Router(CoupledMixin):
                 self._unmark(net)
                 paths = self._route_net(net, pf)
                 net.main_xy = mx0
-                net.n_open = 0
+                net.n_open = getattr(self, "_partial_open", 0) if paths is not None else 0
                 net.failed = paths is None
                 net.nopath = (getattr(net, "nopath", 0) + 1) if net.failed else 0
                 net.paths = paths or []
@@ -3493,8 +3725,13 @@ class Router(CoupledMixin):
                 break
             # a negotiation that has stopped improving will not start again by pricing harder
             score = nbad + nfail
+            last_score = score
             if best is None or score < best:
                 best, since = score, 0
+                if self.BEST_ROUND:
+                    snap = {n: (list(n.paths), list(n.necks), n.failed, getattr(n, "n_open", 0),
+                                getattr(n, "nopath", 0)) for n in self.nets if n not in locked}
+                    snap_score = score
             else:
                 since += 1
                 # ⚠ A RE-NEGOTIATION ROUND LOCKED COPPER GIVES UP SOONER (output_panel with
@@ -3513,6 +3750,19 @@ class Router(CoupledMixin):
                 self.log("  out of time")
                 break
             pf *= pf_mul
+            if self.PF_MAX > 0:
+                pf = min(pf, self.PF_MAX)
+        if (self.BEST_ROUND and snap is not None and todo and last_score is not None
+                and snap_score < last_score):
+            for n, (pp, nk, fl, no, npth) in snap.items():
+                self._unmark(n)
+                n.paths, n.necks, n.failed, n.n_open, n.nopath = pp, nk, fl, no, npth
+            for n in snap:
+                self._mark(n)
+            todo = [n for n in self.nets if n not in locked
+                    and (n.failed or any(c.size for c in self._conflicts(n)))]
+            self.log("  ended on the best round's copper: %d sharing or failed (the last round "
+                     "left %d)" % (len(todo), last_score))
         self._stalled = False
         for n, kp in kept0.items():
             n.keep_paths = kp

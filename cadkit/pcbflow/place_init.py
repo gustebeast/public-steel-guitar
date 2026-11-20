@@ -47,6 +47,17 @@ WINDOW = 18.0       # mm searched round a part's target before widening
 # output_panel: 1 open against 3, one pair fault against 2.
 HALO_IC, HALO_SMALL, IC_PADS, HALO_MAX = 1.0, 0.25, 8, 2.5
 HALO_PER_PIN = float(os.environ.get("PLACE_HALO_K", "0.15"))
+IC_EDGE_HALO = os.environ.get("PCBFLOW_IC_EDGE_HALO", "1") == "1"   # see _drop
+# ⚠ A FINE-PITCH SIGNAL PIN'S ONLY WAY OUT IS STRAIGHT ON (brain_board mV40, 2026-11-18):
+# U221 (WSON-8, 0.5 mm) -- C327, its VBIAS decap, seated 1 mm in front of pin 4 and across
+# pin 3: EN5 boxed in by +5V_RAW, +3V3D, the GND pad and the cap, no via allowed in a pasted
+# land. With PCBFLOW_DECAP_SLIDE=1 the decap's SEAT slides along the pin row, off the exit
+# of any neighbouring fine-pitch signal pin (other-net neighbour closer than LANE_PITCH, net
+# under LANE_RAIL_PINS pins, anchor up to LANE_MAX_PADS). Holding those lanes as grid masks
+# instead (PIN_LANES, mV41r) moved 21 parts for one net, overflow 7.71 -> 10.53, and seating a
+# `near` satellite on its `between` line (BETWEEN_SEAT, mV45q) 10.34: both deleted 11-18.
+LANE_PITCH, LANE_LEN, LANE_CLR, LANE_RAIL_PINS, LANE_MAX_PADS = 0.8, 1.2, 0.3, 12, 16
+DECAP_SLIDE = os.environ.get("PCBFLOW_DECAP_SLIDE", "0") == "1"
 
 
 def halo(part):
@@ -68,6 +79,7 @@ class Grid:
         inside = pi._inside(poly, pts).reshape(self.H, self.W)
         # a courtyard may meet the edge, not cross it: one cell of margin from the boundary
         self.occ = ~inside
+        self.out = ~inside                          # the outline alone (IC_EDGE_HALO in _drop)
         self.occ = binary_dilation(self.occ, iterations=1)
         for c in cutouts:
             r = c["d"] / 2.0 + c.get("keepout", 0.0)
@@ -603,6 +615,20 @@ def _near_reach(parts, rules, pl):
         if r["kind"] != "near" or not r.get("hard", True) or r.get("ref") not in held:
             continue
         tr = r["target"].split(".", 1)[0]
+        # ⚠ A WHOLE-PART TARGET IS ITS COURTYARD, NOT ITS CENTRE (brain_board W48, 2026-11-19):
+        # `near U1` is measured to U1's courtyard (place_intent P.target), but this check measured
+        # to U1's centre and refused C123 in a window that holds U1's own west pads -- "11.4 mm
+        # from U1" across a 24 mm LQFP. Reach is now the centre distance less the target's own
+        # radius -- its courtyard's, or for a pad target ("U1.50", a decap's) that pad's offset
+        # from the anchor: never refuses a rule that can be met, may pass one only the placer
+        # can judge.
+        reach = 0.0
+        if "." in r["target"]:
+            num = r["target"].split(".", 1)[1]
+            xy = [q["xy"] for q in parts.get(tr, {}).get("pads", ()) if str(q.get("num")) == num]
+            reach = max((float(np.hypot(*v)) for v in xy), default=0.0)
+        elif parts.get(tr, {}).get("crtyd"):
+            reach = float(np.hypot(*np.asarray(parts[tr]["crtyd"], float).T).max())
         if tr in pl:
             where, what = np.asarray([pl[tr][:2]], float), "%s (placed)" % tr
         elif tr in held:
@@ -616,6 +642,8 @@ def _near_reach(parts, rules, pl):
                 d = 0.0 if pi._inside(regions[reg], where).any() else d
             else:
                 d = max(0.0, min(pi._poly_dist(regions[reg], regions[t_]) for t_ in held[tr]))
+            if where is not None:
+                d = max(0.0, d - reach)
             if d > float(r["max_mm"]):
                 bad.append("%s is held in region %s, which comes no nearer than %.1f mm to %s; the rule "
                            "wants %g [%s]" % (r["ref"], reg, d, what, r["max_mm"], r.get("src", "")))
@@ -966,13 +994,23 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
             inreg[ref] = inside if ref not in inreg else (inreg[ref] | inside)
     _fsrc = {r_.get("ref"): "%s %s" % (r_["kind"], r_.get("src", "")) for r_ in rules
              if r_["kind"] in ("fixed", "panel") and r_.get("ref")}
+    _fov = []
     if ROOM_DIAG:
         try:
             for line_ in _fixed_overlaps(parts, pl, fixed, _fsrc):
+                _fov.append(line_)
                 log.append(line_)
                 print("place_init: " + line_)
         except Exception as e_:                 # noqa: BLE001  (a diagnosis never stops a run)
             log.append("FIXED OVERLAP check failed: %r" % (e_,))
+    # ⚠ NAMED IN THE FIRST SECOND, REFUSED 12 MINUTES LATER (brain_board mV23, 2026-11-17):
+    # U5's land grew (RNX -> DDA) under five holds frozen round the old one; this said so,
+    # the placement ran on for 720 s, and layout refused the courtyard overlaps. With
+    # PCBFLOW_FIXED_OVERLAP_STOP=1 the run stops here. (Off by default: layout accepts the
+    # overlaps a project declares in its pcb_declared.py, which this stage does not read.)
+    if _fov and os.environ.get("PCBFLOW_FIXED_OVERLAP_STOP", "0") == "1":
+        raise SystemExit("place_init: %d FIXED OVERLAP(s) -- release one hold of each pair "
+                         "(see above); stopped before placement" % len(_fov))
     for ref in fixed:
         m, ai, aj = mask(parts[ref], pl[ref][2])
         _stamp(G, m, ai, aj, *G.ij(*pl[ref][:2]), force=True, grow=halo(parts[ref]))
@@ -1312,6 +1350,7 @@ POUR_PAD_MM2 = 1.0  # mm2 of foreign pad inside a pour corridor priced as one pa
 PAIR_W = 1.0        # mm of broken soft rule per mm2 of foreign pad in a diff pair's corridor (PCBFLOW_PAIR_CORRIDOR): a step aside, never a rule trade -- at POUR_W, U13 left its hard near-J1 rule by 14.5 mm to clear 5 mm2 of USBA's corridor (mV11)
 PAIR_DEMAND_W = 4.0  # mm of net per mm2 of wiring demand a pair's hop crosses (its corridor width x RUDY along it)
 DEMAND_CELL = 1.0   # mm: the RUDY demand map's cell
+SPREAD_STEPS = (2.0, 4.0)  # mm a crowded part is also tried downhill of the crowd map (PCBFLOW_SPREAD)
 DEMAND_WIRE = 0.4   # mm of board a wire takes (track + clearance) in the demand map
 JOINT_MAX = 4       # parts turned together at most (4^4 = 256 rotation combinations)
 JOINT_NEAR = 3.0    # mm a jointly turned part may slide off its spot to fit its new turn
@@ -1381,10 +1420,58 @@ def _seat(r, P, pl, anc):
             c = np.asarray(pl[anc][:2], float)
             ext = max(float(np.dot(q - c, u)) for q in P.crtyd(anc))
             return c + u * (ext + 1.0)
-        return pin + u * 1.0
+        t = pin + u * 1.0
+        if DECAP_SLIDE and not r.get("also"):
+            t = _slide_seat(r, P, anc, pin, u, t)
+        return t
     if "." in r.get("target", ""):
         return P.pad(*r["target"].split(".", 1))
     return np.asarray(pl[anc][:2])
+
+
+def _slide_seat(r, P, anc, pin, u, t):
+    """DECAP_SLIDE: t moved along the pin row off its neighbours' exits (or t as it was)."""
+    parts = P.parts
+    c = r.get("cap") or r.get("ref")
+    if c not in parts or anc not in parts or parts[anc].get("n_own", len(parts[anc]["pads"])) > LANE_MAX_PADS:
+        return t
+    cy = np.asarray(parts[c]["crtyd"] or [[-0.5, -0.5], [0.5, 0.5]], float)
+    half = float(np.max(np.ptp(cy, axis=0))) / 2.0          # either rotation: its long half
+    own = {q["net"] for q in parts[c]["pads"] if q["net"]}
+    npins = {}
+    for ref in parts:
+        for q in parts[ref]["pads"]:
+            if q["net"]:
+                npins[q["net"]] = npins.get(q["net"], 0) + 1
+    # along the pin's EDGE of the package, not across the centre -> pin line: U221.4 is a
+    # corner pin, and that line ran diagonal (the first try slid C327 nowhere)
+    # -- and from the PAD's long axis, not the nearest courtyard edge: WSON's courtyard bulges
+    # on its pad sides, so U221.4's nearest edge was +X (0.49) and its exit is -Y (0.55)
+    qa = next(q for q in parts[anc]["pads"] if q["num"] == r["pin"].split(".", 1)[1])
+    ax = np.array([1.0, 0.0]) if qa["size"][0] >= qa["size"][1] else np.array([0.0, 1.0])
+    u = pi._rot([ax], P.at(anc)[2])[0]
+    u = u / (np.hypot(*u) or 1.0)
+    if float(np.dot(pin - np.asarray(P.at(anc)[:2]), u)) < 0:
+        u = -u
+    w = np.array([-u[1], u[0]])                             # along the pin row
+    pads = [(q, P.pad(anc, q["num"])) for q in parts[anc]["pads"] if q["num"] and q["net"]]
+    lanes = []
+    for q, pp in pads:
+        if q["net"] in own or npins.get(q["net"], 0) >= LANE_RAIL_PINS:
+            continue
+        if float(np.dot(pp - pin, u)) < -0.3:                # not on this pin's side
+            continue
+        if not any(q2["net"] != q["net"] and np.hypot(*(p2 - pp)) < LANE_PITCH for q2, p2 in pads):
+            continue
+        lanes.append((float(np.dot(pp - t, w)), half + min(q["size"]) / 2.0 + LANE_CLR))
+    if not lanes:
+        return t
+    for k in range(0, 31):                                  # the smallest slide, 0.05 mm steps
+        for sg in ((1.0, -1.0) if k else (1.0,)):
+            sl = sg * 0.05 * k
+            if all(abs(off - sl) >= clr for off, clr in lanes):
+                return t + w * sl
+    return t
 
 
 def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=None, passes=3, hints=None):
@@ -1569,10 +1656,74 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
     # paid RULE_W x POUR_W = 250 per foreign pad, a rule-less one 25, so adding any soft rule
     # made a part 10x more pour-averse as a side effect. Every part now pays the ruled price
     # (the one C246 showed the pass already weighs rules against).
+    # ⚠ NOTHING PUSHED PARTS OUT OF A CROWD (brain_board mV25, 2026-11-17) -- PCBFLOW_SPREAD=1
+    # while measured. Every term above pulls a part toward its nets; the global plan then
+    # overflowed F.Cu at J7, U38 and U6 / R17 / R18 while ~1100 mm2 along the bottom edge held
+    # nothing (the user saw it on the render). The crowd map is RUDY over every net in scope
+    # (each spreads DEMAND_WIRE x its half-perimeter over its box); a part pays CROWD_W x the
+    # demand above the board's SPREAD_PCT percentile under its courtyard, and a crowded part
+    # is also tried SPREAD_STEPS mm downhill on the map, not only at its nets' optimum.
+    # ⚠ MEASURED AND NOT KEPT (brain_board mV31, --to-routability, global plan overflow):
+    # off 8.49 over 25 squares; W 2 / 85th 9.57 over 23; W 1 / 92nd 14.69 over 33. RUDY is
+    # wire density, and this board's overflow is F.Cu pin escape at a few parts (J7's ESD
+    # clamps, U209, U38): the term moved each jam somewhere else. Leave it off; a spreading
+    # term that works will have to price escape room at the pins, not box demand.
+    spread = os.environ.get("PCBFLOW_SPREAD") == "1"
+    crowd_w = float(os.environ.get("PCBFLOW_SPREAD_W", "2.0"))
+    crowd_pct = float(os.environ.get("PCBFLOW_SPREAD_PCT", "85"))
+    cmap = {}
+
+    def refresh_crowd():
+        if not spread:
+            return
+        pts_all = np.array([p for r in pl for _, p in world(r)] or [[0.0, 0.0]])
+        lo = pts_all.min(axis=0) - 2.0
+        hi = pts_all.max(axis=0) + 2.0
+        nx_ = int(np.ceil((hi[0] - lo[0]) / DEMAND_CELL))
+        ny_ = int(np.ceil((hi[1] - lo[1]) / DEMAND_CELL))
+        g = np.zeros((ny_, nx_))
+        for nm in scope:
+            pts = [p for r in members[nm] if r in pl for n2, p in world(r) if n2 == nm]
+            if len(pts) < 2:
+                continue
+            a_ = np.array(pts)
+            x0, y0 = a_.min(axis=0) - 0.5
+            x1, y1 = a_.max(axis=0) + 0.5
+            i0, i1 = int((y0 - lo[1]) // DEMAND_CELL), int((y1 - lo[1]) // DEMAND_CELL) + 1
+            j0, j1 = int((x0 - lo[0]) // DEMAND_CELL), int((x1 - lo[0]) // DEMAND_CELL) + 1
+            g[i0:i1, j0:j1] += DEMAND_WIRE * ((x1 - x0) + (y1 - y0)) / ((x1 - x0) * (y1 - y0))
+        nz = g[g > 0]
+        thr = float(np.percentile(nz, crowd_pct)) if nz.size else 0.0
+        gy, gx = np.gradient(g)
+        cmap.update(g=g, lo=lo, thr=thr, gx=gx, gy=gy)
+
+    def _cbox(ref):
+        c = np.asarray(pi.Placed(parts, pl).crtyd(ref), float)
+        g, lo = cmap["g"], cmap["lo"]
+        i0 = int(np.clip((c[:, 1].min() - lo[1]) // DEMAND_CELL, 0, g.shape[0] - 1))
+        i1 = int(np.clip((c[:, 1].max() - lo[1]) // DEMAND_CELL, 0, g.shape[0] - 1)) + 1
+        j0 = int(np.clip((c[:, 0].min() - lo[0]) // DEMAND_CELL, 0, g.shape[1] - 1))
+        j1 = int(np.clip((c[:, 0].max() - lo[0]) // DEMAND_CELL, 0, g.shape[1] - 1)) + 1
+        return i0, i1, j0, j1
+
+    def crowd_pen(ref):
+        if not spread or "g" not in cmap:
+            return 0.0
+        i0, i1, j0, j1 = _cbox(ref)
+        ex = cmap["g"][i0:i1, j0:j1] - cmap["thr"]
+        return crowd_w * float(np.clip(ex, 0.0, None).sum()) * DEMAND_CELL * DEMAND_CELL
+
+    def downhill(ref):
+        """unit vector away from the crowd at ref's courtyard, or None"""
+        i0, i1, j0, j1 = _cbox(ref)
+        v = -np.array([cmap["gx"][i0:i1, j0:j1].mean(), cmap["gy"][i0:i1, j0:j1].mean()])
+        n = float(np.hypot(*v))
+        return v / n if n > 1e-9 else None
+
     def penalty(ref):
         pp_, pd_ = pair_pen(ref)
         if not rel.get(ref):
-            return RULE_W * (pour_pen(ref) + pp_) + pd_ + tangle_pen(ref)
+            return RULE_W * (pour_pen(ref) + pp_) + pd_ + tangle_pen(ref) + crowd_pen(ref)
         P = pi.Placed(parts, pl)
         v = pour_pen(ref) + pp_
         for r in rel[ref]:
@@ -1581,7 +1732,7 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
                     v += r.get("weight", 1.0) * max(0.0, -sl)
             except (KeyError, ValueError):
                 pass
-        return RULE_W * v + pd_ + tangle_pen(ref)
+        return RULE_W * v + pd_ + tangle_pen(ref) + crowd_pen(ref)
 
     def total():
         return cost(scope)
@@ -1729,6 +1880,7 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
     fixed_local = set(pl) - set(refs)
     for _ in range(passes):
         refresh_demand()
+        refresh_crowd()
         order = sorted(refs, key=lambda r: -cost({nm for nm, _ in pads[r]} & scope))
         changed = False
         for ref in order:
@@ -1758,10 +1910,16 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
             # 1.7 mm breach weighed 17 against tens of mm of net -- so rot 0 stayed. Now a part
             # with a stranded satellite is tried in place, and turns rank by (stranded, cost).
             s0 = stranded(ref)
+            crowded = spread and crowd_pen(ref) > 0.0
             if np.hypot(t[0] - x, t[1] - y) < 0.5 and len(pads[ref]) > 2:
-                if not s0:
+                if not s0 and not crowded:
                     continue
                 t = np.array([x, y])
+            targets = [t]
+            if crowded:
+                u_ = downhill(ref)
+                if u_ is not None:
+                    targets += [np.array([x, y]) + d_ * u_ for d_ in SPREAD_STEPS]
             # ⚠ AN ANCHOR MOVES WITH ITS SATELLITES (output_panel, 2026-11-11): the buck's
             # SW node stayed 42 mm because U5 and L1 each carry caps whose rules a lone move
             # would break; lifted as a group -- the part, then each cap re-seated at its pin
@@ -1790,7 +1948,7 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
             # other soft-rule gains -- L1 ended 0.67 mm from Y1. Moves keep forbid zones.
             fz = _apart_forbid(G, parts, pl, ref, rules)
             fr = inreg.get(ref) if fz is None else (fz if inreg.get(ref) is None else fz | inreg.get(ref))
-            for rr in rots(ref, a):
+            for t, rr in [(t_, r_) for t_ in targets for r_ in rots(ref, a)]:
                 ok = _drop(G, parts, ref, t, [rr], pl, fr)
                 placed_g = [ref] if ok else []
                 if ok:
@@ -2315,6 +2473,16 @@ def _drop(G, parts, ref, t, rots, pl, forbid=None, near_mm=None):
             mg, gi, gj = _grow(m, ai, aj, halo(parts[ref]), G.g)
             col2 = _collide((G.occ_p[i0:i1, j0:j1] > 0).astype(np.float32), mg, gi, gj)
             free = (col < 0.5) & (col2 < 0.5)
+            # ⚠ AN IC'S HALO HOLDS AGAINST THE OUTLINE TOO (brain_board mV22-24, 2026-11-17):
+            # a courtyard may meet the edge, so U35 (TUSB321, 0.4 pitch) sat 0.7 mm off the
+            # J7 notch's wall with GND on the pin facing it -- no way out past edge_clear,
+            # and the router's plane join for that one pad failed all of GND. Its halo is
+            # the escape ring it keeps from other parts; with PCBFLOW_IC_EDGE_HALO=1 it keeps
+            # it from the board's edge as well -- on by default (=0 turns it off); panel and fixed parts are not dropped here.
+            if (IC_EDGE_HALO and parts[ref].get("n_own", len(parts[ref]["pads"])) > IC_PADS
+                    and getattr(G, "out", None) is not None):
+                col3 = _collide(G.out[i0:i1, j0:j1].astype(np.float32), mg, gi, gj)
+                free &= col3 < 0.5
             if not free.any():
                 continue
             fi, fj = np.nonzero(free)

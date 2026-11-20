@@ -46,6 +46,7 @@ import cadquery as cq
 
 from . import dimensions as D
 from . import direct_bench as DB
+from . import m3_hardware as M3H
 from . import plank_bench as PB
 from .helpers import box_at, cyl_x
 from cadkit.kept import kept
@@ -93,7 +94,11 @@ MM_TOP = Z5 + MM_SQ / 2                          # the plate's top, as the instr
 MM_BUT_TOP = Z5 + 8.0                            # the buttresses' top: over the axis
 MM_FOOT = MM_X1 + (MM_BUT_TOP - ZB)              # their 45 deg foot
 MM_UP = (0.0, 0.0, 1.0)                          # prints base down
-MM_M3_L = 8.0                                    # M3 x 8: the plate's 4, 4 into the faceplate
+MM_M3_L = 12.0                                   # M3 x 12: a SPACER's 4 and the plate's 4, 4 into
+                                                 # the motor (user, 2026-11-18: through the bare plate
+                                                 # the 12 bottoms in the motor's shallow holes)
+MM_SPACER_L = 4.0                                # the spacers under the heads (direct_bench's
+MM_SPACER_D = (DB.MPLATE_BOSS_D, 3.4)            # MPLATE_BOSS on the instrument)
 MM_SCREWS = [(MM_X0 - TAB, Y_EDGE + TAB), (MM_X0 - TAB, MM_Y[1] - TAB),
              (MM_FOOT + TAB, Y_EDGE + TAB), (MM_FOOT + TAB, MM_Y[1] - TAB)]
 
@@ -125,14 +130,17 @@ def motor_mount() -> cq.Workplane:
 
 
 def _motor_m3s() -> list:
-    """The four M3 x 8 SHCS, heads on the plate's +X face, into the motor's faceplate."""
+    """The four M3 x 12 SHCS on their 4 mm spacers (MM_SPACER_L) over the plate's +X face, into the
+    motor's faceplate; the spacers one part each."""
     from . import motor_coupler as MC
     out = []
-    for sy in (1, -1):
-        for sz in (1, -1):
-            out.append((f"wb_face_m3_{(sy + 1) // 2}{(sz + 1) // 2}", MC.cap_screw(
-                "m3", MM_M3_L, (MM_X1 + MC.M3_HEAD[1], Y5 + sy * DB.NEMA17_HOLES / 2,
-                                Z5 + sz * DB.NEMA17_HOLES / 2), (-1, 0, 0))))
+    for k, (sy, sz) in enumerate(((1, 1), (1, -1), (-1, 1), (-1, -1))):
+        yc, zc = Y5 + sy * DB.NEMA17_HOLES / 2, Z5 + sz * DB.NEMA17_HOLES / 2
+        out.append((f"wb_face_m3_{(sy + 1) // 2}{(sz + 1) // 2}", MC.cap_screw(
+            "m3", MM_M3_L, (MM_X1 + MM_SPACER_L + MC.M3_HEAD[1], yc, zc), (-1, 0, 0))))
+        sp = DB.cyl_x(MM_SPACER_D[0], MM_SPACER_L, MM_X1, y=yc, z=zc)
+        out.append((f"wb_motor_spacer_{k}", sp.cut(DB.cyl_x(MM_SPACER_D[1], MM_SPACER_L + 2, MM_X1 - 1,
+                                                             y=yc, z=zc))))
     return out
 
 
@@ -142,7 +150,7 @@ A_TOP = Z5 + 19.0                                # -66.2: 8 over the plug's and 
 def _drive_y_extent():
     """The plug's and housing's widest in y: their ears round string 6's ties (the plug's ring
     round an insert, the housing's boss) and the guide rod's boss."""
-    ear = max(DB.COL_INS_HOLE / 2 + DB.EAR_WALL, DB.TIE_BOSS)
+    ear = max(max(DB.plug_ear_hw(I)), DB.TIE_BOSS)
     ys = [dy - ear for dy, _ in DB.tie_offsets(I)] + [dy + ear for dy, _ in DB.tie_offsets(I)]
     rb = DB.GUIDE_SEAT / 2 + DB.GUIDE_WALL
     ry = DB.rod_yz(I)[0] - Y5
@@ -205,7 +213,7 @@ def endplate() -> cq.Workplane:
     """direct_bench's endplate with only string 6's features, cut to EP_Y and the plank, with the
     band EP_BAND taken out of the fill between the bearings (everything over it comes down KH_DROP).
     PRINTS AS THE INSTRUMENT'S, +X -> -X on its +X face (the base's flanges flush with it)."""
-    w = DB._endplate(only=I).intersect(_box(XJ - 1, E["x_end"] + 1, EP_Y[0], EP_Y[1], Z_PLANK, 100))
+    w = DB._endplate(only=I, bench=True).intersect(_box(XJ - 1, E["x_end"] + 1, EP_Y[0], EP_Y[1], Z_PLANK, 100))
     lo = w.intersect(_box(XJ - 2, E["x_end"] + 2, EP_Y[0] - 1, EP_Y[1] + 1, Z_PLANK - 1, EP_BAND[0]))
     hi = w.intersect(_box(XJ - 2, E["x_end"] + 2, EP_Y[0] - 1, EP_Y[1] + 1, EP_BAND[1], 100))
     w = lo.union(hi.translate((0.0, 0.0, KH_DROP)))
@@ -314,30 +322,32 @@ SCALE_SPAN = DB.X_BEND - D.NUT_BLOCK_X           # crown to the bridge bearing's
 # spacers and the keyplate") ───────────────────────────────────────────────────────────────────
 # THE TIE SPACERS: the instrument's are aluminium tube, 0.65 of wall -- a print needs more. Same 13
 # between lip and plate, Ø6.4 (the ear's boss is Ø5.8; 0.85 off collar B's swept Ø24.8 and 0.87 off
-# the guide rod on string 6), the M3's bore drawn 4.0: they print STANDING (+X up), and a round hole
-# prints ~0.3 small on its radius (motor_coupler.HOLE_SHRINK).
-WB_SPACER = (6.4, 4.0)
+# the guide rod on string 6). The M3's bore is the printed clearance every printed M3 hole takes
+# (m3_hardware.CLR_PRINTED_D, 3.7 round: they print STANDING, +X up), not a hand 4.0 (user,
+# 2026-11-17). PCTG (user, 2026-11-17: "prints a bit more accurately at small sizes").
+WB_SPACER = (6.4, M3H.CLR_PRINTED_D)
 
 
-def tie_spacers() -> cq.Workplane:
+def tie_spacers() -> list:
+    """The two printed spacers, one part each (the instrument's tie_spacer_<k>)."""
     od, idd = WB_SPACER
     L = DB.TIE_SPACER[2]
     x1 = DB.ANCHOR[0]
-    out = None
-    for dy, dz in DB.tie_offsets(I):
-        s = cyl_x(od, L, x1 - L, y=Y5 + dy, z=Z5 + dz).cut(cyl_x(idd, L + 2, x1 - L - 1, y=Y5 + dy, z=Z5 + dz))
-        out = s if out is None else out.union(s)
-    return out
+    return [cyl_x(od, L, x1 - L, y=Y5 + dy, z=Z5 + dz).cut(cyl_x(idd, L + 2, x1 - L - 1, y=Y5 + dy, z=Z5 + dz))
+            for dy, dz in DB.tie_offsets(I)]
 
 
 # THE KEYHOLE PLATE: the instrument's 4 mm plate (direct_bench.keyhole_plate), printed in PETG-GF
 # until the steel one is cut. The ball bears on ~4 mm^2 either side of the slit: ~40 MPa under the
 # string's 147 N, near what PETG-GF takes -- watch it for creep into the slit.
-def _swap(nm: str, w):
-    if nm.startswith("tie_spacer"):
-        return "wb_tie_spacer", kept(tie_spacers)
-    if nm.startswith("keyplate"):
-        return "wb_keyplate", w
+def _swap(nm: str, w, t: float = DB.T_OPEN):
+    if nm.startswith("tie_spacer"):                # tie_spacer_<k>_<i>: piece k
+        k = int(nm.split("_")[2])
+        return f"wb_tie_spacer_{k}", kept(tie_spacers)[k]
+    if nm.startswith("keyplate"):              # PRINTED: the printed M3 clearance, not the laser's 3.4
+        p = DB.keyhole_plate(M3H.CLR_PRINTED_D, bench=True, seat=True,
+                              slit_w=DB.slit_w_printed(D.STRING_GAUGE[I])).translate((DB.x_yt(t), DB.y_of(I), DB.za(I)))
+        return "wb_keyplate", DB.yaw(p, I)
     return nm, w
 
 
@@ -362,8 +372,14 @@ OPT_LED = "D10"                                  # the channel under string 6 (s
 OPT_REV1 = pathlib.Path(__file__).resolve().parents[1] / "elec" / "rev1" / "optical.geom.json"
 OB_L = 36.0                                      # a bracket's reach off the joint face (and its
                                                  # drop: 45 deg), its foot over the drive (z -74)
-OB_W = 11.0                                      # its width in y: the M4's tap bore, 3.5+ walls
-OB_Y2 = -11.0                                    # the resting bracket, inside EP_Y
+OB_W = 11.0                                      # the old width in y (opt_hole's fit test keeps it)
+# SLIM BRACKETS (user, 2026-11-18: "we don't need much to hold the board in place. One support can
+# be quite thin, the other just thick enough to fit the screw plus 1.6mm on either side"): the
+# screw's bracket the self-tap bore + 2 x 1.6, the resting one two beads
+OB_WALL = 1.6
+OB_REST_W = 4 * D.BEAD                           # 3.2 (user, 2026-11-18), AT THE ENDPLATE'S -Y EDGE:
+                                                 # the two brackets as far apart as the plate allows
+OB_Y2 = EP_Y[0] + OB_REST_W / 2                  # the resting bracket, flush with the -Y side
 OB_TIP = 2.0                                     # the tip cut flat (no knife edge on the print's top)
 OS_M4_L = 10.0                                   # M4 x 10: 1.6 of board, 8.4 self-tapped into the bracket
 
@@ -420,13 +436,15 @@ def opt_brackets() -> cq.Workplane:
     """The two brackets, world: a 45 deg right triangle in XZ off the joint face, OB_W wide, its top
     the board's underside, 1 into the endplate. In the endplate's print (+X -> -X) they grow up off
     the joint face: the top a wall, the slope facing up."""
+    from cadkit.fasteners import M4
     _, _, z0, _ = opt_frame()
+    w_screw = M4.tap_d((0.0, 0.0, -1.0), DB.EP_UP) + 2 * OB_WALL
     out = None
-    for y in (opt_hole()[1], OB_Y2):
-        tri = (cq.Workplane("XZ", origin=(0, y + OB_W / 2, 0))
+    for y, ow in ((opt_hole()[1], w_screw), (OB_Y2, OB_REST_W)):
+        tri = (cq.Workplane("XZ", origin=(0, y + ow / 2, 0))
                .polyline([(XJ + 1.0, z0), (XJ - OB_L, z0), (XJ - OB_L, z0 - OB_TIP),
                           (XJ + 1.0, z0 - OB_TIP - OB_L - 1.0)]).close()
-               .extrude(OB_W))
+               .extrude(ow))
         out = tri if out is None else out.union(tri)
     return out
 
@@ -453,8 +471,9 @@ def opt_hardware() -> list:
 
 # ── THE ASSEMBLY ─────────────────────────────────────────────────────────────────────────────
 def assembly(t: float = DB.T_OPEN) -> list:
-    out = [_swap(nm, w) for nm, w in DB.string_parts(I, t)
-           if not nm.startswith(("mplate", "string"))]
+    out = [_swap(nm, w, t) for nm, w in DB.string_parts(I, t, bench=True)
+           if not nm.startswith(("mplate", "string", "keyseat"))]   # the bench's printed
+                                                                       # keyplate is one piece
     out.append((f"wb_string_{I}", kept(bench_string, t)))
     out += [(nm, w.translate((0.0, 0.0, KH_DROP)) if nm.startswith("bridge_brg") else w)
             for nm, w in DB._bend_parts() if nm.endswith(f"_{I}")]
@@ -470,7 +489,7 @@ def assembly(t: float = DB.T_OPEN) -> list:
 
 
 MATERIAL = {"wb_motor_mount": "petg-gf", "wb_anchor": "petg-gf", "wb_endplate": "petg-gf",
-            "wb_tie_spacer": "petg-gf", "wb_keyplate": "petg-gf",
+            "wb_tie_spacer": "pctg", "wb_keyplate": "petg-gf", "wb_motor_spacer": "petg-gf",
 
             "wb_keyhead": "petg-gf", "wb_wrap_rod": "steel", "ghost_plank": "wood",
             "wb_string": "polished", "wb_nut_plate": "stainless", "wb_nut_side_insert": "brass",
@@ -487,22 +506,31 @@ def _made(nm, w):
     from cadkit.web.finishes import made_of
     if DB.owns(nm):
         return DB._made(nm, w)
-    m = MATERIAL.get(nm) or ("steel" if ("m3" in nm or "screw" in nm or "plate" in nm) else
+    import re as _re
+    m = MATERIAL.get(_re.sub(r"(_\d+)+$", "", nm)) or ("steel" if ("m3" in nm or "screw" in nm or "plate" in nm) else
                              "brass" if "insert" in nm else None)
     return made_of(w, m) if m else w
 
 
 PRINTS = ("wb_motor_mount", "wb_anchor", "wb_endplate", "wb_keyhead", "wb_nut_shoe", "wb_tie_spacer",
-          "wb_keyplate")
+          "wb_keyplate", "wb_motor_spacer")
 
 
 # each bench print's build direction (the comments at each part say why)
 WB_PRINT_UP = {"wb_motor_mount": MM_UP, "wb_anchor": A_UP, "wb_endplate": DB.EP_UP,
                "wb_keyhead": KH2.PRINT_UP, "wb_nut_shoe": NB2.SHOE_UP,
                "wb_tie_spacer": (1.0, 0.0, 0.0),           # standing, +X up
-               "wb_keyplate": (1.0, 0.0, 0.0)}             # flat on its -X face
+               "wb_keyplate": (-1.0, 0.0, 0.0),            # flat on its +X face: the ball's seat
+                                                           # (-X face) opens on top, no bridge
+                                                           # over it (user, 2026-11-18)
+               "wb_motor_spacer": (1.0, 0.0, 0.0)}         # a ring, flat
 # the instrument's own string-6 prints the bench does NOT use: the motor mount replaces the plate
 WB_NOT_USED = ("mplate",)
+# ...and the ones it prints ITS OWN WAY (direct_bench, THE WOOD BENCH'S STACK: the screws on hand)
+WB_VARIANT = {"yoke": lambda: kept(DB._yoke, I, DB.T_OPEN, True),
+              "collar": lambda: kept(DB._collar, I, DB.T_OPEN, True),
+              "plug": lambda: kept(DB._anchor_plug, I, True),
+              "lid": lambda: DB._lid(I, True)}
 WB_DIR = pathlib.Path(__file__).resolve().parents[1] / "coupons" / "woodbench"
 
 
@@ -525,13 +553,20 @@ def main():
             print("wrote", p)
         rows[f"{mat}/{stem}"] = rows.get(f"{mat}/{stem}", 0) + 1
 
+    import re as _re
     for nm, w in assembly():
-        if nm in PRINTS:
-            put(w, MATERIAL[nm], nm, PO.from_build_dir(WB_PRINT_UP[nm], "src.wood_bench.WB_PRINT_UP"))
+        b = _re.sub(r"(_\d+)+$", "", nm)          # a piece (wb_tie_spacer_1) prints as its kind
+        if b in PRINTS:
+            put(w, MATERIAL[b], b, PO.from_build_dir(WB_PRINT_UP[b], "src.wood_bench.WB_PRINT_UP"))
     for leader, (stem, mat, members) in B.STRING_FAMILIES.items():
         for key in members:
-            if key.endswith(f"_{I}") and key.rsplit("_", 1)[0] not in WB_NOT_USED:
-                put(B.PARTS[key][0](), mat, stem, B.PRINT_ORIENTATION[key])
+            base = key.rsplit("_", 1)[0]
+            if key.endswith(f"_{I}") and base not in WB_NOT_USED:
+                make = WB_VARIANT.get(base, B.PARTS[key][0])
+                po = (PO.from_build_dir(DB.BENCH_YOKE_UP, "direct_bench.BENCH_YOKE_UP -- the bench yoke "
+                                        "prints -X -> +X, its inserts' notches open on top")
+                      if base == "yoke" else B.PRINT_ORIENTATION[key])
+                put(make(), mat, stem, po)
     (WB_DIR / "PRINT_LIST.md").write_text(
         "# Wood bench: what to print\n\nGenerated by `py -3.12 -m src.wood_bench`: string 6's bench, "
         "each STEP in its print pose.\n\n| file | qty |\n|---|---|\n"

@@ -38,7 +38,13 @@ Derived, not invented:
                  an insert and stays selftap_d -- see there). Size a sideways self-tap
                  by hand (printable_bore, teardrop_hole) from spec.tap_d(...) too,
                  never from selftap_d.
-  * shaft_clr_d= screw_d + 0.4  — 0.2 mm/side, screw spins free.
+  * shaft_clr_d= screw_d + 0.4  — 0.2 mm/side, screw spins free: the default. A size whose
+                 PRINTED clearance was measured carries its own (M3: 3.7 round -- 3.6 gripped
+                 the screw on the bench, 2026-11-17), and shaft_clr_td_d for a hole SIDEWAYS
+                 to the build (a teardrop prints over). clr_d(direction, print_up) picks;
+                 clearance_cutter / head_bore_cutter / insert_bore_cutter use it. CUT EVERY
+                 SCREW'S FREE HOLE WITH THESE (user, 2026-11-17: "cutting holes for a given
+                 screw thread, so we get consistent fit regardless of where the hole is").
   * min_bite    = 5 × pitch     — five engaged threads is the least worth
                  relying on. M2: 5×0.4 = 2.0. M4: 5×0.7 = 3.5.
   * anchor_min_wall = insert_depth + min_bite — SIZE WALLS/LUGS/BOSSES TO THIS.
@@ -144,6 +150,13 @@ class FastenerSpec:
     # selftap_d an M3 slid straight through one. None: holes.as_printed_d(selftap_d), as for
     # every fit-sensitive hole. Use tap_d() to pick.
     selftap_td_d: Optional[float] = None
+    # THE CLEARANCE SIDEWAYS (a teardrop): None = shaft_clr_d both ways (as ever). Use clr_d().
+    shaft_clr_td_d: Optional[float] = None
+    # THE INSERT ITSELF, apart from its pocket: OD over the knurl (None: the smaller pocket Ø,
+    # the historic dummy), and the validated ROUND pocket Ø when it is fitted AS A NUT (slid in
+    # by hand, held by the screw, never melted; None: insert_od + NUT_SLIP). See FITTED INSERTS.
+    insert_od:      Optional[float] = None
+    insert_nut_d:   Optional[float] = None
     head_recess_d:  Optional[float] = None   # cap-head counterbore (None = headless)
     head_recess_h:  Optional[float] = None
     screw_l:        Optional[float] = None   # dummy screw length, if modelled
@@ -168,11 +181,52 @@ class FastenerSpec:
         teardrop's selftap_td_d (default holes.as_printed_d) when it is sideways."""
         return _fit_d(self.selftap_d, self.selftap_td_d, direction, print_up)
 
+    def clr_d(self, direction=None, print_up=None) -> float:
+        """THE screw's free hole for a hole along `direction` in a part printing along `print_up`:
+        shaft_clr_d round (along the build, or either None), shaft_clr_td_d sideways when the spec
+        has one (else shaft_clr_d: a clearance is not a fit, the teardrop's over-print is free)."""
+        try:
+            from .holes import is_teardrop
+        except ImportError:
+            from holes import is_teardrop
+        if self.shaft_clr_td_d is not None and direction is not None and print_up is not None                 and is_teardrop(direction, print_up):
+            return self.shaft_clr_td_d
+        return self.shaft_clr_d
+
     def pilot_d(self, direction=None, print_up=None) -> float:
         """The insert pocket's Ø for a hole along `direction` in a part printing along
         `print_up`: insert_pilot_d when it prints round (along the build, or print_up None),
         insert_pilot_td_d when it is teardropped (see that field)."""
         return _fit_d(self.insert_pilot_d, self.insert_pilot_td_d, direction, print_up)
+
+    def insert_pocket_d(self, mode, direction=None, print_up=None) -> float:
+        """THE ONE PLACE an insert's pocket Ø comes from (see FITTED INSERTS): HEAT_SET -> pilot_d
+        (the drop-in pocket the iron melts it home from), NUT -> the slide-in pocket, insert_nut_d
+        (default insert_od + NUT_SLIP) round, holes.as_printed_d of it sideways."""
+        if mode == HEAT_SET:
+            return self.pilot_d(direction, print_up)
+        if mode == NUT:
+            od = self.insert_od if self.insert_od is not None else self.insert_pilot_d
+            nut_d = self.insert_nut_d if self.insert_nut_d is not None else od + NUT_SLIP
+            return _fit_d(nut_d, None, direction, print_up)
+        raise ValueError("insert mode %r: HEAT_SET or NUT" % (mode,))
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# FITTED INSERTS — one pocket rule per MODE (user, 2026-11-17: "fitted inserts should be done
+# via cadkit and have a parameter for whether they are acting as nuts or heat set ... so it's
+# impossible ... that two M3 inserts have different size holes"; and the insert is RENDERED only
+# by fitted_insert()). Cut every pocket with fitted_insert_cutter(spec, ..., mode) and draw every
+# insert with fitted_insert(spec, ...): never a hand-rolled cylinder.
+#   HEAT_SET  the insert drops into its pocket and the iron melts it home: spec.pilot_d
+#             (validated: M4 6.1 round / 5.7 teardrop; M3 4.75 round: 4.8 nearly perfect, bench 2026-11-17).
+#   NUT       slid in by hand, never melted, the screw pulls it onto a face: insert_nut_d round
+#             (validated: M3 5.5, the collar clamps 2026-11-16), as_printed_d of it sideways.
+# ════════════════════════════════════════════════════════════════════════════
+HEAT_SET = "heat_set"
+NUT = "nut"
+NUT_SLIP = 0.8          # a nut pocket over the insert's OD when the spec has no measured one
+NUT_END_SLIP = 0.3      # a nut pocket's depth over the insert's length (it slides home)
 
 
 # M2 cap screw + McMaster 94459A110 heat-set insert.
@@ -201,6 +255,20 @@ M4 = FastenerSpec(
     insert_pilot_d=6.1, insert_depth=5.0, insert_l=5.0, insert_bore_d=4.4,
     boss_prot=6.0, insert_pilot_td_d=5.7,
     head_recess_d=None, head_recess_h=None, screw_l=10.0,
+)
+
+
+# M3 cap screw + McMaster 94459A130 brass insert (OD 4.7 over the knurl, 4.3 long). Heat-set it
+# drops into a 4.75 round pocket (user, 2026-11-17: the 4.0 pilot "much too small"; 4.8 "nearly perfect" -- 0.05 under it, the guide end still slides in and the knurl bites a touch more);
+# as a nut it slides into 5.5 round, 5.1 teardrop (user, 2026-11-16, the collar clamps).
+M3 = FastenerSpec(
+    name="M3", screw_d=3.0, pitch=0.5,
+    selftap_d=3.2, shaft_clr_d=3.7, shaft_clr_td_d=3.4,   # printed: 3.6 round gripped the screw
+                                                        # (bench 2026-11-17); 3.4 sideways is free
+    insert_pilot_d=4.75, insert_depth=4.3, insert_l=4.3, insert_bore_d=3.0,   # the bore at the
+                                    # screw's major: a drawn screw through it does not overlap
+    boss_prot=5.0, insert_od=4.7, insert_nut_d=5.5,
+    head_recess_d=None, head_recess_h=None,
 )
 
 
@@ -316,7 +384,7 @@ def selftap_cutter(spec, pnt, direction, length, overshoot=0.0, print_up=None):
 def clearance_cutter(spec, pnt, direction, length, overshoot=0.0, print_up=None):
     """Ø shaft_clr_d bore — the screw spins free (it threads in the FAR part)."""
     mouth = _back(pnt, direction, overshoot)
-    return cq.Workplane(obj=_bore(spec.shaft_clr_d, length + overshoot, mouth, direction,
+    return cq.Workplane(obj=_bore(spec.clr_d(direction, print_up), length + overshoot, mouth, direction,
                                   print_up))
 
 
@@ -328,8 +396,8 @@ def head_bore_cutter(spec, pnt, direction, clr_len, overshoot=0.0, print_up=None
     mouth = _back(pnt, direction, overshoot)
     recess = _bore(spec.head_recess_d, spec.head_recess_h + overshoot, mouth, direction,
                    print_up)
-    clr = _bore(spec.shaft_clr_d, clr_len + overshoot, mouth, direction, print_up)
-    cut = _with_step(recess.fuse(clr), spec.head_recess_d, spec.shaft_clr_d,
+    clr = _bore(spec.clr_d(direction, print_up), clr_len + overshoot, mouth, direction, print_up)
+    cut = _with_step(recess.fuse(clr), spec.head_recess_d, spec.clr_d(direction, print_up),
                      _fwd(pnt, direction, spec.head_recess_h), direction, print_up)
     return cq.Workplane(obj=cut)
 
@@ -458,8 +526,8 @@ def insert_bore_cutter(spec, pnt, direction, clr_len, overshoot=0.0, reason=None
     inner = _fwd(pnt, direction, spec.insert_depth)
     pd = spec.pilot_d(direction, print_up)
     pocket = _bore(pd, spec.insert_depth + overshoot, mouth, direction, print_up)
-    clr = _bore(spec.shaft_clr_d, clr_len, inner, direction, print_up)
-    cut = _with_step(pocket.fuse(clr), pd, spec.shaft_clr_d, inner,
+    clr = _bore(spec.clr_d(direction, print_up), clr_len, inner, direction, print_up)
+    cut = _with_step(pocket.fuse(clr), pd, spec.clr_d(direction, print_up), inner,
                      direction, print_up)
     return cq.Workplane(obj=cut)
 
@@ -538,7 +606,7 @@ def cut_boss_insert_bore(spec, w, pt, direction, clr_len, reason=None, print_up=
             "cut_boss_insert_bore(%s): insert-mandatory. Pass reason='…', or use "
             "cut_boss_anchor() for the standard self-tap+pocket boss." % spec.name)
     inner = _fwd(base, direction, spec.insert_depth)
-    return w.cut(cq.Workplane(obj=_bore(spec.shaft_clr_d, clr_len, inner, direction,
+    return w.cut(cq.Workplane(obj=_bore(spec.clr_d(direction, print_up), clr_len, inner, direction,
                                         print_up)))
 
 
@@ -553,6 +621,8 @@ def insert(spec):
     The dummy does not know its pocket's print direction, and needs not: it is the
     insert's envelope, which the smaller pocket is sized to."""
     od = min(spec.insert_pilot_d, spec.insert_pilot_td_d or spec.insert_pilot_d)
+    if spec.insert_od is not None:          # the real insert, still inside its smallest pocket
+        od = min(od, spec.insert_od)
     body = cq.Workplane(obj=_cyl(od, spec.insert_l,
                                  (0, 0, -spec.insert_l), (0, 0, 1)))
     bore = cq.Workplane(obj=_cyl(spec.insert_bore_d, spec.insert_l + 2,
@@ -561,6 +631,36 @@ def insert(spec):
     from .mesh_parts import insert_mesh, with_mesh
     return with_mesh(made_of(body.cut(bore), "brass"),
                      insert_mesh(spec.screw_d, spec.pitch, od, spec.insert_l))
+
+
+def fitted_insert_cutter(spec, pnt, direction, mode, depth=None, overshoot=0.0, print_up=None,
+                         roof=True):
+    """THE insert pocket (see FITTED INSERTS): Ø spec.insert_pocket_d(mode, ...) from the mouth
+    `pnt` into the part along `direction`, `depth` deep (default: insert_depth heat-set,
+    insert_l + NUT_END_SLIP as a nut). roof=True closes a pocket drilled INTO the build with a
+    45 degree cone to a point (no flat ceiling): cut the screw's own hole on past it after."""
+    if depth is None:
+        depth = spec.insert_depth if mode == HEAT_SET else spec.insert_l + NUT_END_SLIP
+    d = spec.insert_pocket_d(mode, direction, print_up)
+    mouth = _back(pnt, direction, overshoot)
+    out = _bore(d, depth + overshoot, mouth, direction, print_up)
+    if roof:
+        cone = _step(d, 0.0, _fwd(pnt, direction, depth - 0.01), direction, print_up)
+        if cone is not None:
+            out = out.fuse(cone)
+    return cq.Workplane(obj=out)
+
+
+def cut_fitted_insert(spec, w, pnt, direction, mode, depth=None, overshoot=0.0, print_up=None,
+                      roof=True):
+    return w.cut(fitted_insert_cutter(spec, pnt, direction, mode, depth, overshoot, print_up, roof))
+
+
+def fitted_insert(spec, pnt, direction):
+    """THE insert as drawn everywhere (see FITTED INSERTS): its mouth end at `pnt`, running
+    `direction` into the part -- the same (pnt, direction) its pocket was cut with. Heat-set or
+    nut, it is the same brass part."""
+    return seated_insert(spec, pnt, direction)
 
 
 def _rot_z_onto(shape, direction):
@@ -896,20 +996,20 @@ class ScrewJoint:
         """The whole hole, shaped for a part printing along `print_up`."""
         d, sp = self.direction, self.spec
         start = _back(self.entry, d, overshoot)
-        cut = _bore(sp.shaft_clr_d, self.end_at + overshoot, start, d, print_up)
+        cut = _bore(sp.clr_d(d, print_up), self.end_at + overshoot, start, d, print_up)
         if self.recess > 0:
             big = self.head_d + 2 * self.head_clr
             cut = cut.fuse(_bore(big, self.recess + overshoot, start, d, print_up))
-            cut = _with_step(cut, big, sp.shaft_clr_d, self.at(self.recess), d, print_up)
+            cut = _with_step(cut, big, sp.clr_d(d, print_up), self.at(self.recess), d, print_up)
         mouth = self.at(self.insert_at)
         pd = sp.pilot_d(d, print_up)
         cut = cut.fuse(_bore(pd, sp.insert_depth, mouth, d, print_up))
         # the pocket's floor steps down to the clearance beyond (a ceiling drilled INTO the
         # build) and its mouth steps up from the clearance before it (a ceiling drilled
         # AGAINST the build): _step cones whichever faces down
-        cut = _with_step(cut, pd, sp.shaft_clr_d,
+        cut = _with_step(cut, pd, sp.clr_d(d, print_up),
                          self.at(self.insert_at + sp.insert_depth), d, print_up)
-        cut = _with_step(cut, pd, sp.shaft_clr_d, mouth,
+        cut = _with_step(cut, pd, sp.clr_d(d, print_up), mouth,
                          tuple(-c for c in d), print_up)
         return cq.Workplane(obj=cut)
 

@@ -34,6 +34,8 @@ import subprocess
 import sys
 
 import pcbnew
+
+import stable_fill  # noqa: E402  (PCBFLOW_STABLE_FILL)
 import wx                                       # noqa: E402  (KiCad's python ships it)
 wx.DisableAsserts()                             # NO MODAL DIALOGS IN A BUILD STEP -- see route.py
 
@@ -108,7 +110,7 @@ def main(stem):
     # decide on a FILLED copy, then remove from a fresh load: the board on disk keeps
     # whatever fill state it had, and no proxy is held across a removal (tidy_router_vias)
     probe = pcbnew.LoadBoard(pcb)
-    pcbnew.ZONE_FILLER(probe).Fill(probe.Zones())
+    stable_fill.fill(probe, probe.Zones())
     probe.BuildConnectivity()
     found = spent(probe)
     if not found:
