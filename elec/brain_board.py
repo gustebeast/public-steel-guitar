@@ -2163,7 +2163,14 @@ def brain_board():
 # J5 sits 2.4 back on the board so its shoulder meets the inside of its own 4.0 clamp wall
 # (its nut clamps it: src/board_geom.py PANEL; the board edge runs on under it in a slot).
 #   +X  FINAL instrument x 0.43 = 2.03 - 1.6 wall
-#   -X  final -150.4; during the drop -169.4 = 1.0 clear of the anchor screws' M4 heads
+#   -X  final -168.1 (user, 2026-11-19: "it wouldn't be so bad if we had to take the endplate
+#       off to replace the brain board ... extend the board all the way to x=-168.1"). It was
+#       -150.4, set by the drop-and-slide: dropped at x - 19 it had to clear the anchor
+#       screws' M4 heads (src/direct_bench.py _anchor_screw_at: x -174.2, heads to -170.4).
+#       With the endplate off for a board swap it drops at its final x and needs no slide, so
+#       the -X end runs on to -168.1, 2.3 clear of those heads: +17.7 mm, +12 % area, for
+#       the routing congestion (seeds swung one placement 2..21 unconnected). It grows at the
+#       BOARD's +X end; the panel edge and the board origin stay put (X0 / X1 below).
 #       (src/direct_bench.py _anchor_screw_at: x -174.2, heads to -170.4, standing off the
 #       -Y wall to y -84.7, into the board's band). The UI station is IGNORED for now (user,
 #       2026-11-13): its clamp (to x -147) is in the drop path and moves later
@@ -2175,13 +2182,18 @@ def brain_board():
 # J4 the optical ribbon, J10-J12 to the brain) come off the +X end. The parts inside the
 # endplate pocket: elec/brain_board.pocket.json (what branner cuts the pocket from).
 # The mount (an M4, branner's pick at x > -124) is ON HOLD until he places it.
-BOARD_W, BOARD_L = 150.83, 100.0
-XC, ZC = -74.985, -58.24
-XL = BOARD_W / 2 - 35.0         # the brain-lead band: the last 35 mm (the placement intent)
+# THE OUTLINE IS NOT CENTRED ON THE ORIGIN (2026-11-19): X0 the panel edge (instrument 0.43),
+# X1 the far end (instrument -168.1). The origin stayed where the 150.83 board's centre was, so
+# the frame below and every board coordinate drawn before the widening (the audio corner, the
+# service notch, the CM5's holes, J8, the intent's held parts) keep their meaning.
+X0, X1 = -75.415, 93.115
+BOARD_W, BOARD_L = X1 - X0, 100.0          # 168.53
+XC, ZC = -74.985, -58.24                   # instrument x of board x = 0 (NOT the outline's centre)
+XL = X1 - 35.0                  # the brain-lead band: the last 35 mm (the placement intent)
 # PWR_GND under the power section: the chargers at the panel end (-X), the buck and the brain
 # leads along the bottom
-POWER_POLY = [[-BOARD_W / 2, -50], [BOARD_W / 2, -50], [BOARD_W / 2, 0], [XL, 0], [XL, -10],
-              [-20, -10], [-20, 0], [-BOARD_W / 2, 0]]
+POWER_POLY = [[X0, -50], [X1, -50], [X1, 0], [XL, 0], [XL, -10],
+              [-20, -10], [-20, 0], [X0, 0]]
 # THE ISOLATED AUDIO CORNER: the panel end's top (J5, J8 above it), AGND's own pour; GND and
 # PWR_GND stop MOAT short of it all round, so the barrier is a 1 mm copper-free gap that only
 # U30, U32-U34 and K1 straddle. The placement intent's "analog" region is this rectangle.
@@ -2204,17 +2216,17 @@ AUDIO_NX, AUDIO_NY = -48.0, 24.0
 # typical 90-degree USB-C overmold, ~12 x 9 above the mouth) until the chosen cable's drawing
 # is read. The +X edge was looked at first and is full: the CM5 to y -6, the boost's hot loop below.
 SVC_NOTCH_X, SVC_NOTCH_W, SVC_NOTCH_D = 17.0, 15.0, 11.0
-AUDIO_POLY = [[-BOARD_W / 2, AUDIO_NY], [AUDIO_NX, AUDIO_NY], [AUDIO_NX, AUDIO_Y0],
-              [AUDIO_X1, AUDIO_Y0], [AUDIO_X1, BOARD_L / 2], [-BOARD_W / 2, BOARD_L / 2]]
-GND_POLY = [[-BOARD_W / 2, -BOARD_L / 2], [BOARD_W / 2, -BOARD_L / 2], [BOARD_W / 2, BOARD_L / 2],
+AUDIO_POLY = [[X0, AUDIO_NY], [AUDIO_NX, AUDIO_NY], [AUDIO_NX, AUDIO_Y0],
+              [AUDIO_X1, AUDIO_Y0], [AUDIO_X1, BOARD_L / 2], [X0, BOARD_L / 2]]
+GND_POLY = [[X0, -BOARD_L / 2], [X1, -BOARD_L / 2], [X1, BOARD_L / 2],
             [AUDIO_X1 + MOAT, BOARD_L / 2], [AUDIO_X1 + MOAT, AUDIO_Y0 - MOAT],
             [AUDIO_NX - MOAT, AUDIO_Y0 - MOAT], [AUDIO_NX - MOAT, AUDIO_NY - MOAT],
-            [-BOARD_W / 2, AUDIO_NY - MOAT]]
+            [X0, AUDIO_NY - MOAT]]
 # the band between the two: AUDIO_POLY's open edge walked out, GND_POLY's walked back
-MOAT_POLY = [[-BOARD_W / 2, AUDIO_NY - MOAT], [AUDIO_NX - MOAT, AUDIO_NY - MOAT],
+MOAT_POLY = [[X0, AUDIO_NY - MOAT], [AUDIO_NX - MOAT, AUDIO_NY - MOAT],
              [AUDIO_NX - MOAT, AUDIO_Y0 - MOAT], [AUDIO_X1 + MOAT, AUDIO_Y0 - MOAT],
              [AUDIO_X1 + MOAT, BOARD_L / 2], [AUDIO_X1, BOARD_L / 2], [AUDIO_X1, AUDIO_Y0],
-             [AUDIO_NX, AUDIO_Y0], [AUDIO_NX, AUDIO_NY], [-BOARD_W / 2, AUDIO_NY]]
+             [AUDIO_NX, AUDIO_Y0], [AUDIO_NX, AUDIO_NY], [X0, AUDIO_NY]]
 # FIRMWARE RULES the fold makes (one H743: optical SAI1-3, audio SAI4, FDCAN1/2, the motor loop)
 FIRMWARE_NOTES = [
     "Interrupt handlers stay SHORT -- the SAI DMA half/complete ISRs only flag a block, the FDCAN "
@@ -2252,13 +2264,14 @@ BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
     "audio_poly": AUDIO_POLY,
     # the service port's notch in the top edge (SVC_NOTCH_*): J7 on its floor
-    "outline_poly": [[-BOARD_W / 2, -50], [BOARD_W / 2, -50], [BOARD_W / 2, 50],
+    "outline_poly": [[X0, -50], [X1, -50], [X1, 50],
                      [SVC_NOTCH_X + SVC_NOTCH_W / 2, 50], [SVC_NOTCH_X + SVC_NOTCH_W / 2, 50 - SVC_NOTCH_D],
                      [SVC_NOTCH_X - SVC_NOTCH_W / 2, 50 - SVC_NOTCH_D], [SVC_NOTCH_X - SVC_NOTCH_W / 2, 50],
-                     [-BOARD_W / 2, 50]],
+                     [X0, 50]],
     "frame": {"instrument_x": "-(board x) - 74.985", "instrument_z": "board y - 58.24",
               "component_face_y": -85.9, "faces": "+Y", "by": "branner 2026-11-13",
-              "install": "drop -Z at x - 19, slide +X 19 into the endplate pocket"},
+              "install": "+X endplate OFF (user 2026-11-19): drop -Z at the final x, endplate back on (it was: drop at x - 19, slide +X 19)",
+              "x_extent_instrument": [-168.1, 0.43]},
     "layers": 4,
     # In1 IS A SOLID REFERENCE PLANE, NO SIGNALS (2026-11-16): routed, U1's and J201's fan-out
     # cut its GND pour into fragments and the tightened decaps' join vias landed in them --

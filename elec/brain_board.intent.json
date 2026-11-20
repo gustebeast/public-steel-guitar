@@ -1059,25 +1059,25 @@
  },
  {
   "kind": "region",
-  "why": "the 24 V boost and the power switch: the far corner from the audio (lead 11-13)",
+  "why": "the 24 V boost and the power switch: the far corner from the audio (lead 11-13); at the widened +X end (board to instrument x -168.1, user 2026-11-19)",
   "src": "one-board floorplan",
   "hard": true,
   "name": "boost",
   "poly": [
    [
-    20.0,
+    37.7,
     -50.0
    ],
    [
-    75.415,
+    93.115,
     -50.0
    ],
    [
-    75.415,
+    93.115,
     -8.0
    ],
    [
-    20.0,
+    37.7,
     -8.0
    ]
   ]
@@ -1137,19 +1137,19 @@
   "name": "boost_hot",
   "poly": [
    [
-    32.0,
+    49.7,
     -50.0
    ],
    [
-    75.415,
+    93.115,
     -50.0
    ],
    [
-    75.415,
+    93.115,
     -8.0
    ],
    [
-    32.0,
+    49.7,
     -8.0
    ]
   ]
@@ -1173,7 +1173,7 @@
  },
  {
   "kind": "region",
-  "why": "5 V supplies, the INA226 and shunt, the CAN transceivers, the arm / UI switches, the connector ribbon: the bottom-middle band",
+  "why": "5 V supplies, the INA226 and shunt, the CAN transceivers, the arm / UI switches, the connector ribbon: the bottom-middle band; grew +17.7 into the band the boost left (2026-11-19)",
   "src": "one-board floorplan",
   "hard": true,
   "name": "power",
@@ -1183,11 +1183,11 @@
     -50.0
    ],
    [
-    20.0,
+    37.7,
     -50.0
    ],
    [
-    20.0,
+    37.7,
     -8.0
    ],
    [
@@ -3006,72 +3006,72 @@
   "kind": "fixed",
   "ref": "C249",
   "xy": [
-   40.685,
+   58.385,
    -22.7
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "C250",
   "xy": [
-   28.085,
+   45.785,
    -11.3
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "C296",
   "xy": [
-   45.385,
+   63.085,
    -12.2
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "C297",
   "xy": [
-   66.385,
+   84.085,
    -44.5
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "C298",
   "xy": [
-   73.185,
+   90.885,
    -31.6
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "C299",
   "xy": [
-   64.485,
+   82.185,
    -22.8
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
@@ -3090,144 +3090,144 @@
   "kind": "fixed",
   "ref": "C300",
   "xy": [
-   72.385,
+   90.085,
    -42.2
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "C301",
   "xy": [
-   70.785,
+   88.485,
    -33.4
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "C302",
   "xy": [
-   73.185,
+   90.885,
    -38.6
   ],
   "rot": 270.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "C303",
   "xy": [
-   71.085,
+   88.785,
    -35.5
   ],
   "rot": 270.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "C304",
   "xy": [
-   63.585,
+   81.285,
    -44.2
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "C305",
   "xy": [
-   36.985,
+   54.685,
    -39.0
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "C306",
   "xy": [
-   62.485,
+   80.185,
    -15.8
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "C308",
   "xy": [
-   36.985,
+   54.685,
    -45.3
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "C309",
   "xy": [
-   29.985,
+   47.685,
    -38.2
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "C313",
   "xy": [
-   37.585,
+   55.285,
    -29.0
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "C314",
   "xy": [
-   47.685,
+   65.385,
    -43.0
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "C315",
   "xy": [
-   63.185,
+   80.885,
    -22.8
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
@@ -3582,12 +3582,12 @@
   "kind": "fixed",
   "ref": "D203",
   "xy": [
-   66.085,
+   83.785,
    -29.0
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
@@ -3606,24 +3606,24 @@
   "kind": "fixed",
   "ref": "D212",
   "xy": [
-   31.085,
+   48.785,
    -23.7
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "D217",
   "xy": [
-   70.485,
+   88.185,
    -31.3
   ],
   "rot": 270.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
@@ -3810,48 +3810,48 @@
   "kind": "fixed",
   "ref": "L204",
   "xy": [
-   52.885,
+   70.585,
    -28.5
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "Q203",
   "xy": [
-   22.685,
+   40.385,
    -11.1
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "Q208",
   "xy": [
-   69.885,
+   87.585,
    -20.1
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "Q209",
   "xy": [
-   69.485,
+   87.185,
    -12.2
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
@@ -4206,12 +4206,12 @@
   "kind": "fixed",
   "ref": "R251",
   "xy": [
-   29.585,
+   47.285,
    -24.0
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
@@ -4314,12 +4314,12 @@
   "kind": "fixed",
   "ref": "R263",
   "xy": [
-   27.885,
+   45.585,
    -9.5
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
@@ -4338,144 +4338,144 @@
   "kind": "fixed",
   "ref": "R300",
   "xy": [
-   68.385,
+   86.085,
    -46.3
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "R301",
   "xy": [
-   63.485,
+   81.185,
    -45.5
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "R302",
   "xy": [
-   63.485,
+   81.185,
    -46.8
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "R303",
   "xy": [
-   70.185,
+   87.885,
    -46.8
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "R304",
   "xy": [
-   69.685,
+   87.385,
    -45.0
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "R305",
   "xy": [
-   71.985,
+   89.685,
    -44.1
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "R306",
   "xy": [
-   72.385,
+   90.085,
    -36.2
   ],
   "rot": 270.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "R307",
   "xy": [
-   71.885,
+   89.585,
    -38.5
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "R308",
   "xy": [
-   61.385,
+   79.085,
    -45.0
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "R309",
   "xy": [
-   56.685,
+   74.385,
    -43.3
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "R310",
   "xy": [
-   65.785,
+   83.485,
    -46.1
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
   "kind": "fixed",
   "ref": "R311",
   "xy": [
-   57.585,
+   75.285,
    -38.6
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
@@ -4854,12 +4854,12 @@
   "kind": "fixed",
   "ref": "U220",
   "xy": [
-   66.785,
+   84.485,
    -39.2
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "mR: held where mP0 put it -- +17.7 with the boost to the widened +X end (2026-11-19)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
