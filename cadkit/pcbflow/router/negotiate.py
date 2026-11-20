@@ -631,6 +631,9 @@ class Router(CoupledMixin):
 
     SEED_JITTER = 0.15               # OWNROUTE_SEED: round-one order, each net's span scaled by 1 +- this
     RELAX_AFTER = 10                 # rounds a layer-held pair may share before it is relaxed (4 relaxed USB mid-negotiation, 11-08)
+    # TRIED AND REJECTED 2026-11-20: relaxing such a pair AS A PAIR (mate follows its leader's layer
+    # changes, ROUTER_PAIR_RELAX_LOCK) -- brain_board W48k seed 1 2 -> 16 unconnected, seed 2 3 -> 17,
+    # GADGET still open. Do not retry the lockstep relax.
     FILL_MARGIN = 0.15               # a plane-join via's pad this far inside the fill's edge
     PAD_OWN_JOIN = os.environ.get("OWNROUTE_PAD_OWN_JOIN", "1") == "1"   # build_nets: an SMD plane pad gets its own stub + via
     PLANE_JOIN_MM = (2.0, 6.0)       # a plane join looks this near its piece first (then everywhere)

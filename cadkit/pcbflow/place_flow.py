@@ -801,7 +801,7 @@ def _swap_lines(notes, parts, pl, stem, fd, apply=False):
     them."""
     groups = list(notes.get("match") or []) + list(notes.get("diff_pairs") or [])
     try:
-        n0, n1, sw = pi.swap_plan(parts, pl, groups)
+        n0, n1, sw = pi.swap_plan(parts, pl, groups, flip=set(notes.get("pair_flip") or ()))
     except Exception as e:                   # feedback only: never stops the flow
         return ["SWAP check failed: %s" % e]
     json.dump(dict(twisted_before=n0, twisted_after=n1, applied=bool(apply and sw),

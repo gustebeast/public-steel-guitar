@@ -1360,19 +1360,28 @@ def pair_twists(parts, pl, groups):
     return out
 
 
-def _swap_pairs(part, groups):
+def _swap_pairs(part, groups, flip=False):
     """[(pin, pin)] that swap a pass-through part's rails between its identical channels, or None
     when the part is not one: <= 10 pads, only the pins of one or two declared pairs besides
     ground / supply, and every pair's two rails on it equally often (a CMC's windings: FL4 pins
     1/2 and 3/4; a flow-through clamp's channels). Each rail's pin swaps with the other rail's
-    nearest pin."""
+    nearest pin.
+    flip=True: a part the board DECLARES (notes "pair_flip": {ref: datasheet citation}) whose
+    rails may all trade paths at once -- a 1:2 USB mux (TS3USB221: the D+ and D- switches are
+    one spec, SCDS220M Table 7-1 p.12 selects both alike), any number of pairs plus control
+    pins. Every held pair flips together, so polarity end to end is kept (brain_board U17,
+    2026-11-19: GADGET/USBA/USBB twisted at U17, all straight flipped)."""
     pads = part.get("pads", ())
     if len(pads) > 10:
         return None
     nets = {q.get("net") for q in pads if q.get("net")}
-    held = [g for g in groups if len(g) == 2 and g <= nets]
+    # a pair declared twice (in "match" AND "diff_pairs") is ONE pair: listed twice, its swap
+    # ran twice and undid itself (brain_board U17/U44, 2026-11-19: every plan came back empty)
+    held = sorted({g for g in groups if len(g) == 2 and g <= nets}, key=sorted)
     rest = nets - set().union(*held) if held else nets
-    if not held or len(held) > 2 or any(not (GROUND_NET.search(n) or SUPPLY.search(n)) for n in rest):
+    if not held:
+        return None
+    if not flip and (len(held) > 2 or any(not (GROUND_NET.search(n) or SUPPLY.search(n)) for n in rest)):
         return None
     out = []
     for g in held:
@@ -1389,17 +1398,21 @@ def _swap_pairs(part, groups):
     return out
 
 
-def swap_plan(parts, pl, groups, max_parts=10):
+def swap_plan(parts, pl, groups, max_parts=10, flip=()):
     """The channel swaps on pass-through parts that leave the fewest twisted pair hops
     (pair_twists), fewest swaps on a tie. Each swap is free in the netlist (identical channels)
     but must be carried into the netlist's generator. Returns (twisted before, twisted after,
-    [(ref, [(pin, pin)])])."""
+    [(ref, [(pin, pin)])]).
+    ⚠ THE TWISTED-HOP COUNT IS A HINT, NOT A SCORE (brain_board W48k, 2026-11-19): the plan's
+    FL3/FL4 winding swaps took the count 7 -> 3 and the paired seed-1 route came out worse
+    (2/0/98/32 vs 2/0/90/24; GADGET 6/9 vias, skew 30.7, new USBA / USBB_J fails). Route a
+    proposed swap against its control before carrying it into the netlist."""
     import copy
     gsets = [frozenset(g.get("nets") or ()) for g in groups if len(g.get("nets") or ()) == 2]
     cand = {}
     for ref, v in parts.items():
         if ref in pl:
-            sp = _swap_pairs(v, gsets)
+            sp = _swap_pairs(v, gsets, flip=ref in flip)
             if sp:
                 cand[ref] = sp
     names = sorted(cand)[:max_parts]

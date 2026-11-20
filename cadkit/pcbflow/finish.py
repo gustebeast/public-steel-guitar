@@ -350,6 +350,7 @@ def _run(script, stem):
         sys.stdout.write("    " + line)
         sys.stdout.flush()
     rc = proc.wait()
+    STEP_CPU[script] = STEP_CPU.get(script, 0.0) + _child_cpu(proc)
     # every step's wall time, summed by script at the end (STEP_SECONDS): a finish that got
     # slower says WHERE without a profiler (motor_ctrl f27, 2026-11-12: 650 -> 1496 s)
     dt = time.time() - t0
@@ -361,6 +362,41 @@ def _run(script, stem):
 
 
 STEP_SECONDS = {}
+STEP_CPU = {}              # every step's CPU seconds (the child process's own), by script
+# ⚠ FINISH_CPU_CLOCK (flag, default off until an A/B shows it neutral; 2026-11-20): close_last's
+# total budget (CLOSE_TOTAL_S) was judged on time.time(), so how many attempts a board got
+# depended on machine load -- brain_board W49k under four concurrent routes. Each attempt's
+# own deadline is already CPU time (close_last's CLOSE_LAST_CPU_CLOCK); with this flag the
+# total is the CPU the close steps' child processes actually used, read from the OS.
+FINISH_CPU_CLOCK = os.environ.get("FINISH_CPU_CLOCK", "0") == "1"
+
+
+def _child_cpu(proc):
+    """User + kernel CPU seconds of a finished subprocess (0.0 where it cannot be read)."""
+    try:
+        if os.name == "nt":
+            import ctypes
+            from ctypes import wintypes
+            ft = [wintypes.FILETIME() for _ in range(4)]
+            ok = ctypes.windll.kernel32.GetProcessTimes(
+                wintypes.HANDLE(int(proc._handle)), *[ctypes.byref(f) for f in ft])
+            if not ok:
+                return 0.0
+            return sum((f.dwHighDateTime << 32 | f.dwLowDateTime) for f in ft[2:]) / 1e7
+        import resource                     # posix: children's totals, as a delta
+        r = resource.getrusage(resource.RUSAGE_CHILDREN)
+        tot = r.ru_utime + r.ru_stime
+        d, _child_cpu.last = tot - getattr(_child_cpu, "last", 0.0), tot
+        return d
+    except Exception:
+        return 0.0
+
+
+def _close_spent(t0, cpu0):
+    """Seconds close_last has spent: CPU of the steps run since cpu0 (FINISH_CPU_CLOCK), else wall."""
+    if FINISH_CPU_CLOCK:
+        return sum(STEP_CPU.values()) - cpu0
+    return time.time() - t0
 STAGE_FAILS = []           # hook steps that failed this run: named in the last line (finish)
 STAGE_SKIPS = []           # hook steps that cannot apply (a scratch project's CAD check)
 CLOSE_PAST_VIOL = os.environ.get("PCBFLOW_CLOSE_PAST_VIOL", "1") == "1"   # see close_last below
@@ -643,20 +679,21 @@ def finish(stem, rounds=1, keep_route=False):
         _skip = set(_base_skip)
         import time as _time
         _close_t0 = _time.time()
+        _close_cpu0 = sum(STEP_CPU.values())
         _user_budget = float(os.environ.get("CLOSE_LAST_BUDGET_S", "1e9"))
         _had_budget = "CLOSE_LAST_BUDGET_S" in os.environ
         for _attempt in range(4):
             # a retry is worth a few minutes, not another route's worth (see close_last)
-            if _attempt and _time.time() - _close_t0 > CLOSE_TOTAL_S:
-                print("  close_last: no further attempt, %.0f min spent"
-                      % ((_time.time() - _close_t0) / 60))
+            if _attempt and _close_spent(_close_t0, _close_cpu0) > CLOSE_TOTAL_S:
+                print("  close_last: no further attempt, %.0f min spent%s"
+                      % (_close_spent(_close_t0, _close_cpu0) / 60, " (CPU)" if FINISH_CPU_CLOCK else ""))
                 break
             os.environ["CLOSE_LAST_SKIP"] = ",".join(sorted(_skip))
             # ⚠ EACH ATTEMPT GETS ITS OWN DEADLINE (motor_ctrl f27, 2026-11-12): the 1800 s was
             # checked only BETWEEN attempts, and the first alone ran 829 s. close_last stops
             # searching at CLOSE_LAST_BUDGET_S; it is set per attempt to the smaller of
             # CLOSE_ATTEMPT_S and what is left of CLOSE_TOTAL_S.
-            _left = CLOSE_TOTAL_S - (_time.time() - _close_t0)
+            _left = CLOSE_TOTAL_S - _close_spent(_close_t0, _close_cpu0)
             os.environ["CLOSE_LAST_BUDGET_S"] = "%.0f" % max(30.0, min(CLOSE_ATTEMPT_S, _left, _user_budget))
             try:
                 _run("close_last.py", stem)
