@@ -464,7 +464,13 @@ def collect_components():
     beyond display: the gates key their allow-lists on them (its pairs are judged by
     direct_bench.is_intended)."""
     from . import direct_bench as DB
-    return DB.assembly(DB.T_OPEN)
+    from . import new_boards_view as NB
+    # THE ROUTED BOARDS ARE GATED (lead, 2026-11-19): the brain board's CM5 sat 2-3 mm from the
+    # UI station with nothing checking it, because only branner's ob_board stand-in (the parts
+    # that reach the endplate) was in this list. new_boards_view draws bronner's boards from
+    # their geom exports; ob_board keeps only what they do not have (courtyards and unclipped
+    # tails, the endplate pocket's sizes), so nothing is gated twice.
+    return DB.assembly(DB.T_OPEN) + NB.boards()
 
 
 from . import board_geom as _BG  # noqa: E402

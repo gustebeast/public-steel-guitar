@@ -2489,3 +2489,22 @@ Screw cut lengths (Tr8x2), per string:
   step is a draw: the lips ramp down toward the locked position.
 - Reprint the housing and lid. The screws, spacers and cut lengths are
   unchanged.
+
+## Brain board: wider, and the +X endplate comes off to fit it (2026-11-19)
+
+The brain board is now 167.7 long, reaching instrument x -167.3 (it was 150.8). That is too
+long to drop in short and slide +X, so it now goes in **with the bridge (+X) endplate off**.
+
+- **Fit:** strings off, J5's panel nut off, then the four M3 endplate screws out. Slide the
+  endplate off +X.
+- Drop the board straight down beside the -Y wall, **at its final x**. Its bottom edge goes
+  into the groove in the floor. There is no slide.
+- Slide the endplate back on -X. The board's parts ride into their channels in the pocket,
+  and J5 comes through its hole until its shoulder meets the wall. Refit J5's nut and the
+  endplate screws (snug, ~0.3 N·m).
+- **Close to the anchor screws:** the board's -X edge clears the -Y wall's four anchor-screw
+  bosses by only 0.8 mm (1.6 mm to the screw heads). Lower it straight down; don't swing its
+  -X end in.
+- **Swap:** the same steps in reverse. The anchor screws stay in.
+- Reprint the body floor section that holds the groove (now only the board's own length).
+  The endplate pocket only changes where the board's parts moved.

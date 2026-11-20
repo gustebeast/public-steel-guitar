@@ -2761,9 +2761,11 @@ def _axle(k: int) -> cq.Workplane:
 
 
 # ── THE BRAIN BOARD (bronner's single board, 2026-11-13) ───────────────────────────────────
-# INSTALL (user, 2026-11-13): deck off, the board drops -Z beside the -Y wall, its bottom edge
-# into a groove in the body's floor, then slides OB_SLIDE +X into a POCKET in the endplate's
-# inner face until J5's shoulder meets the outer wall. The pocket FOLLOWS THE BOARD (user: no
+# INSTALL (user, 2026-11-19, replacing the 11-13 drop-and-slide): the board is 167.7 long now
+# (to x -167.3, 0.8 off the anchor screws' bosses, 1.6 off their heads), too long to slide, so the
+# +X ENDPLATE COMES OFF for a board swap: the board drops -Z beside the -Y wall at its FINAL x,
+# its bottom edge into a groove in the body's floor, and the endplate slides back on -X over
+# it (the POCKET's channels run along X either way) until J5's shoulder meets the outer wall. The pocket FOLLOWS THE BOARD (user: no
 # more plastic away than it needs): a slot for the laminate, and for each part that ends up
 # inside the endplate a channel its courtyard's outline and height, all along X (the slide).
 # The outer face shows only the I/O: J5's round hole through its 4.0 clamp wall, the USB-Cs'
@@ -2772,7 +2774,6 @@ def _axle(k: int) -> cq.Workplane:
 import json as _json
 from pathlib import Path as _Path
 OB = _json.loads(_Path(__file__).with_name("brain_board_pocket.json").read_text(encoding="utf-8"))
-OB_SLIDE = 19.0                                     # the +X slide after the drop
 OB_CLR = 0.4                                        # round every channel: a sliding fit
 
 
@@ -2816,25 +2817,26 @@ def _ob_pocket() -> cq.Workplane:
 
 
 def _ob_groove() -> cq.Workplane:
-    """The body floor's groove under the board's bottom edge, from where it drops to x_j."""
+    """The body floor's groove under the board's bottom edge, its whole length to x_j."""
     (ly0, ly1), bz0, c = OB["laminate_y"], OB["z"][0], OB_CLR
-    x0, x1 = OB["minus_x_edge"] - OB_SLIDE - c, ROD_PLATE[0] + 1
+    x0, x1 = OB["minus_x_edge"] - c, ROD_PLATE[0] + 1
     return box_at(x1 - x0, ly1 - ly0 + 2 * c, 3.0, x=(x0 + x1) / 2, y=(ly0 + ly1) / 2,
                   z=bz0 - c + 1.5)
 
 
 def _ob_board() -> cq.Workplane:
-    """bronner's board as a stand-in for the gates: the laminate and its parts' courtyards
-    (final position; only the parts that reach the endplate are listed)."""
-    face, (ly0, ly1), (bz0, bz1) = OB["component_face_y"], OB["laminate_y"], OB["z"]
-    x0, x1 = OB["minus_x_edge"], OB["edge_x"]
-    w = box_at(x1 - x0, ly1 - ly0, bz1 - bz0, x=(x0 + x1) / 2, y=(ly0 + ly1) / 2, z=(bz0 + bz1) / 2)
+    """What the gates know of bronner's board BEYOND his own drawing of it (new_boards_view, in
+    the gate model since 2026-11-19): each endplate-reaching part's COURTYARD, and its
+    through-hole tails unclipped -- the sizes the endplate pocket is cut to. The laminate and
+    the parts' bodies are his parts', not repeated here."""
+    face = OB["component_face_y"]
+    w = None
     for p in OB["parts_past_inner_face"]:
         px0, px1, z0, z1, h = _ob_part(p)
         if p["ref"] == "J5":
-            px1 = x1 + p["protrudes"]
-        w = w.union(box_at(px1 - px0, h, z1 - z0, x=(px0 + px1) / 2, y=face + h / 2,
-                           z=(z0 + z1) / 2))
+            px1 = OB["edge_x"] + p["protrudes"]
+        b = box_at(px1 - px0, h, z1 - z0, x=(px0 + px1) / 2, y=face + h / 2, z=(z0 + z1) / 2)
+        w = b if w is None else w.union(b)
         tl = p.get("tail")
         if tl:
             (tx0, tx1), (tz0, tz1), (ty0, ty1) = tl["x"], tl["z"], tl["y"]
@@ -3197,6 +3199,8 @@ def is_intended(a: str, b: str) -> bool:
         return True
     if "anchor" in pair and pair & {"plug", "housing", "hb", "tie_spacer"}:
         return True
+    if "ob_board" in pair and any(n.startswith("brain_board") for n in pair):
+        return True                                  # the courtyards round his own parts
     return False
 
 

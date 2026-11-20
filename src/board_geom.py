@@ -197,12 +197,17 @@ BODY_MATERIAL = {
     "Hirose_DF40C-100DS-0.4V_2x50_P0.4mm": ("nylon", CREAM_LCP),       # CM5 mezzanine (LCP)
     "JST_PH_B4B-PH-SM4-TB_1x04-1MP_P2.00mm_Vertical": ("nylon", (0.93, 0.90, 0.80)),
     "L_Bourns_SRP1770TA_16.9x16.9mm": ("ferrite", (0.22, 0.22, 0.23)),  # moulded composite
+    "L_Bourns_SRP1513CA_15.5x16.5mm": ("ferrite", (0.22, 0.22, 0.23)),  # brain L4, metal alloy powder
     "L_CommonModeChoke_Wuerth_WE-SL5-HC": ("ferrite", (0.10, 0.10, 0.10)),
     "MaiXu_MX128-5.0-02P_1x02_P5.00mm": ("nylon", (0.10, 0.45, 0.20)),  # green terminal block
     "Molex_52271-2079_1x20-1MP_P1.0mm_Horizontal": ("nylon", CREAM_LCP),
     "Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm": ("epoxy", BLACK),
     "Texas_RWB0012A_X2QFN-12_1.6x1.6mm_P0.4mm": ("epoxy", BLACK),
     "Texas_UQFN-10_1.5x2mm_P0.5mm": ("epoxy", BLACK),
+    "Texas_DSG0008A_WSON-8-1EP_2x2mm_P0.5mm_EP0.9x1.6mm": ("epoxy", BLACK),   # U221 TPS22965
+    "Texas_RYQ0021B_VQFN-HR-21_3x5mm_P0.5mm": ("epoxy", BLACK),               # U205 TPS552892
+    "Texas_DDA0008_HSOP-8-1EP_3.9x4.9mm_P1.27mm": ("epoxy", BLACK),   # U5 LMR33640
+    "WCH_QFN-16-1EP_3x3mm_P0.5mm_EP1.8x1.8mm": ("epoxy", BLACK),              # U37 CH334P
 }
 BOARDS = _with_revs(Boards(GEOM_DIR, height=_HEIGHT, tail=_TAIL, tht_legs=_THT_LEGS, panel=_PANEL,
                            side_plug_run=SIDE_PLUG_RUN, body_material=BODY_MATERIAL,

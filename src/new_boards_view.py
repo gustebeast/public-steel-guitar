@@ -5,9 +5,10 @@ gate, and the positions are the intents' frames, not a mount.
   * brain (320 x 70): on its side, -Y of the motors, component side facing -Y (away from the
     motors, JSTs mouth-up). Board X = instrument X + 360, board Y = instrument Z. (To move: user
     2026-11-13, flat in the -X +Y corner -- not drawn there until it is re-placed.)
-  * brain_board (120.3 x 100, ONE board, drops in -Z then slides +X 19 into a pocket fitted to it in the +X endplate: user 2026-11-13): back face on the
-    -Y side at y -87.5 (branner: +1.7 so unclipped 3.4 tails clear the wall at -91.7), parts facing +Y; board x = -(instrument x + 59.72), board y =
-    instrument z + 58.24 (x -119.87 .. 0.43). The panel (board -X edge) sits 1.6 behind the outer face (USB inset 1.6, J5 2.4 back on the board); parts in the pocket: elec/brain_board.pocket.json.
+  * brain_board (167.73 x 100, ONE board, instrument x -167.3 .. 0.43; it drops in -Z at its FINAL x with the +X endplate
+    off, then the endplate slides back on over it: user 2026-11-19): back face on the -Y side at y -87.5 (branner: +1.7 so
+    unclipped 3.4 tails clear the wall at -91.7), parts facing +Y; geom x -> instrument x by OB_X (read, below), board y =
+    instrument z + 58.24. The panel (board -X edge) sits 1.6 behind the outer face (USB inset 1.6, J5 2.4 back on the board); parts in the pocket: elec/brain_board.pocket.json.
   * the optical board is NOT drawn: it is being redesigned (user 2026-11-13: no forwarder MCU,
     a ribbon to the brain board).
 
@@ -39,7 +40,8 @@ VIEW_HEIGHT = {
     # the CM5 mezzanine's RECEPTACLE (ours): the 1.5 mated stack (CM5 datasheet) is drawn as two
     # halves, this and the CM5's plug (_cm5) -- the 1.0 / 0.5 split ESTIMATED, not off Hirose's print
     "Hirose_DF40C-100DS-0.4V_2x50_P0.4mm": 1.0,
-    "L_Bourns_SRP1770TA_16.9x16.9mm": 7.0,   # brain part_heights L4
+    "L_Bourns_SRP1770TA_16.9x16.9mm": 7.0,   # brain part_heights L4 (before 2026-11-17)
+    "L_Bourns_SRP1513CA_15.5x16.5mm": 7.3,   # brain L4 APS1513M100F: 7.0 +- 0.3
     "PinHeader_2x08_P1.27mm_Vertical": 5.3,  # brain part_heights J5 (HX PZ1.27-2x8P ZZ)
     "PinHeader_2x10_P1.27mm_Vertical_SMD": 5.3,   # brain_board J4 PZ1.27-2x10P: AS its 2x8 sibling
     "TDSON-8-1": 1.10,                       # brain part_heights Q8/Q9
@@ -61,6 +63,12 @@ VIEW_HEIGHT = {
     "Fuse_2920_7451Metric": 2.0,             # F204 2920L200/60GR: ESTIMATED (conservative) -- read Littelfuse's drawing
     "L_Changjiang_FXL0630": 3.0,             # L1: the series' 0630 = 6.6 x 7.0 x 3.0
     "TerminalBlock_Phoenix_PT-1,5-2-3.5-H_1x02_P3.50mm_Horizontal": 8.5,   # J8: ESTIMATED, a 3.5 mm PT's usual body
+    # the U5 rework and the service port (2026-11-17): ESTIMATED, the packages' usual max --
+    # read TI's DSG0008A / RYQ0021B outlines and WCH's CH334 drawing before any clearance rides on them
+    "Texas_DSG0008A_WSON-8-1EP_2x2mm_P0.5mm_EP0.9x1.6mm": 0.8,   # U221 TPS22965
+    "Texas_RYQ0021B_VQFN-HR-21_3x5mm_P0.5mm": 1.0,               # U205 TPS552892
+    "Texas_DDA0008_HSOP-8-1EP_3.9x4.9mm_P1.27mm": 1.7,   # U5 LMR33640: DDA0008J/B "1.7 mm max height" (SNVSB99C p.38/41)
+    "WCH_QFN-16-1EP_3x3mm_P0.5mm_EP1.8x1.8mm": 0.85,             # U37 CH334P
 }
 
 # built EXACTLY as src.board_geom.BOARDS (silk font, revisions), heights extended: the web export
@@ -77,7 +85,27 @@ BRAIN_Y, BRAIN_DX, BRAIN_Z = -66.0, -360.0, -71.0
 # 11-13). Drawn MATED: J11-J20's plugs (side_plug_run) and the PH / XH housings, what the
 # nut block, the endplates and the cable path have to clear.
 CB_X, CB_Y, CB_Z = -572.175, -9.55, -102.2
-OB_X, OB_BACK_Y, OB_Z = -74.985, -87.5, -58.24     # brain_board (= brain) centre, FINAL (x -150.4..0.43, 150.83 wide), back face (branner)
+OB_BACK_Y, OB_Z = -87.5, -58.24                    # brain_board's back face, centre z (branner)
+# ITS X IS READ, NOT TYPED (lead, 2026-11-19): geom.json is centred on the outline's bounding box
+# (cadkit kicad_geom), so every outline change moves its origin -- the 167.73 board's sits 8.45
+# off the old 150.83's. bronner's pocket export records where that origin lands in the
+# instrument; the drawn edges are checked against the export's own edge_x / minus_x_edge.
+def _ob_x() -> float:
+    import json as _j
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    pk = _j.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                   "brain_board_pocket.json"), encoding="utf-8"))
+    g = _j.load(open(os.path.join(root, "elec", "geom", "brain_board.geom.json"), encoding="utf-8"))
+    x = pk["geom_frame_origin_instrument_x"]
+    w = g["outline_mm"][0]
+    lo, hi = -w / 2 + x, w / 2 + x                     # instrument x = -(geom x) + x
+    assert abs(lo - pk["minus_x_edge"]) < 0.05 and abs(hi - pk["edge_x"]) < 0.05, (
+        "brain board drawn at x %.3f..%.3f, the pocket export says %.3f..%.3f: geom.json and "
+        "pocket.json are not one trial's pair" % (lo, hi, pk["minus_x_edge"], pk["edge_x"]))
+    return x
+
+
+OB_X = _ob_x()
 
 
 def _build(board):
