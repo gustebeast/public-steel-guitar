@@ -363,12 +363,11 @@ def _run(script, stem):
 
 STEP_SECONDS = {}
 STEP_CPU = {}              # every step's CPU seconds (the child process's own), by script
-# ⚠ FINISH_CPU_CLOCK (flag, default off until an A/B shows it neutral; 2026-11-20): close_last's
-# total budget (CLOSE_TOTAL_S) was judged on time.time(), so how many attempts a board got
-# depended on machine load -- brain_board W49k under four concurrent routes. Each attempt's
-# own deadline is already CPU time (close_last's CLOSE_LAST_CPU_CLOCK); with this flag the
-# total is the CPU the close steps' child processes actually used, read from the OS.
-FINISH_CPU_CLOCK = os.environ.get("FINISH_CPU_CLOCK", "0") == "1"
+# ⚠ close_last's TOTAL BUDGET IS CPU TIME, NOT WALL (2026-11-20): CLOSE_TOTAL_S was judged on
+# time.time(), so how many attempts a board got depended on machine load -- brain_board W49k
+# under four concurrent routes. Each attempt's own deadline was already CPU time (close_last's
+# CLOSE_LAST_CPU_CLOCK); the total is now the CPU the close steps' child processes used, read
+# from the OS. A/B on W48k seed 2 (wall vs CPU): identical result, identical board.
 
 
 def _child_cpu(proc):
@@ -392,11 +391,9 @@ def _child_cpu(proc):
         return 0.0
 
 
-def _close_spent(t0, cpu0):
-    """Seconds close_last has spent: CPU of the steps run since cpu0 (FINISH_CPU_CLOCK), else wall."""
-    if FINISH_CPU_CLOCK:
-        return sum(STEP_CPU.values()) - cpu0
-    return time.time() - t0
+def _close_spent(cpu0):
+    """CPU seconds the close steps have used since cpu0 (their child processes' own)."""
+    return sum(STEP_CPU.values()) - cpu0
 STAGE_FAILS = []           # hook steps that failed this run: named in the last line (finish)
 STAGE_SKIPS = []           # hook steps that cannot apply (a scratch project's CAD check)
 CLOSE_PAST_VIOL = os.environ.get("PCBFLOW_CLOSE_PAST_VIOL", "1") == "1"   # see close_last below
@@ -677,23 +674,21 @@ def finish(stem, rounds=1, keep_route=False):
         # luck. That was the warning, not the fix; the pass and all three calls are
         # upstream now, which is the only version of "it stays in the chain" that holds.
         _skip = set(_base_skip)
-        import time as _time
-        _close_t0 = _time.time()
         _close_cpu0 = sum(STEP_CPU.values())
         _user_budget = float(os.environ.get("CLOSE_LAST_BUDGET_S", "1e9"))
         _had_budget = "CLOSE_LAST_BUDGET_S" in os.environ
         for _attempt in range(4):
             # a retry is worth a few minutes, not another route's worth (see close_last)
-            if _attempt and _close_spent(_close_t0, _close_cpu0) > CLOSE_TOTAL_S:
-                print("  close_last: no further attempt, %.0f min spent%s"
-                      % (_close_spent(_close_t0, _close_cpu0) / 60, " (CPU)" if FINISH_CPU_CLOCK else ""))
+            if _attempt and _close_spent(_close_cpu0) > CLOSE_TOTAL_S:
+                print("  close_last: no further attempt, %.0f min CPU spent"
+                      % (_close_spent(_close_cpu0) / 60))
                 break
             os.environ["CLOSE_LAST_SKIP"] = ",".join(sorted(_skip))
             # ⚠ EACH ATTEMPT GETS ITS OWN DEADLINE (motor_ctrl f27, 2026-11-12): the 1800 s was
             # checked only BETWEEN attempts, and the first alone ran 829 s. close_last stops
             # searching at CLOSE_LAST_BUDGET_S; it is set per attempt to the smaller of
             # CLOSE_ATTEMPT_S and what is left of CLOSE_TOTAL_S.
-            _left = CLOSE_TOTAL_S - _close_spent(_close_t0, _close_cpu0)
+            _left = CLOSE_TOTAL_S - _close_spent(_close_cpu0)
             os.environ["CLOSE_LAST_BUDGET_S"] = "%.0f" % max(30.0, min(CLOSE_ATTEMPT_S, _left, _user_budget))
             try:
                 _run("close_last.py", stem)

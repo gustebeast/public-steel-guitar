@@ -184,6 +184,85 @@ def _zone_point(board, net, layer, toward, inset=0.35):
     return best[1] if best else None
 
 
+# ⚠ AN ISLAND OF A NET'S OWN POUR IS JOINED FROM ITS PAD, NOT FROM THE POINT DRC NAMED
+# (brain_board W48k/W48w, 2026-11-20: final unconnected in both arms). R70.1 sat in a 0.8-1.3
+# mm2 piece of the PA_VBUS F.Cu pour that a neighbour had cut off from the 15-17 mm2 rest.
+# DRC named the island zone-to-zone at ONE point (50.19, 108.79) for both ends, the net has
+# no plane for _stitch_islands, so the search ran from a point to itself, laid nothing and
+# printed STRANDED every run. Now such an end goes from the
+# island's own pad (or the island) to the nearest copper of the net OUTSIDE the island:
+# another piece of the pour, a via, a track end or a pad -- an ordinary closure. A/B on
+# W48w seeds 1/2: seed 1 neutral (found PA_VBUS a path, put back for cutting PA_V5V), seed 2
+# 10 -> 9 (PB_VBUS_J closed over In2.Cu), nothing else changed.
+
+
+def _island_retarget(board, net, layer, p, inset=0.35):
+    """((layer, start), (layer, target)) joining the pour island at `p` on `layer` to the
+    nearest same-net copper outside it, or None when `p` is in no piece of the net's pour."""
+    lid = board.GetLayerID(layer)
+    P = pcbnew.VECTOR2I(pcbnew.FromMM(p[0]), pcbnew.FromMM(p[1]))
+    pieces = []
+    for z in board.Zones():
+        if z.GetNetname() != net or not z.IsOnLayer(lid):
+            continue
+        fill = z.GetFilledPolysList(lid)
+        for k in range(fill.OutlineCount()):
+            piece = pcbnew.SHAPE_POLY_SET()
+            piece.AddOutline(fill.Outline(k))
+            pieces.append(piece)
+    # DRC names a zone by its OUTLINE's first corner (_zone_point), which sits near the
+    # island, not on it (R70's island: 0.045 mm off): the island is the piece nearest that
+    # point, if one is within 1 mm
+    near = [(0 if pc.Contains(P) else pc.SquaredDistance(P), i) for i, pc in enumerate(pieces)]
+    if not near or min(near)[0] > pcbnew.FromMM(1.0) ** 2:
+        return None
+    isl = pieces[min(near)[1]]
+    others = [pc for i, pc in enumerate(pieces) if i != min(near)[1]]
+    inside = lambda q: isl.Contains(q) or isl.Collide(q, pcbnew.FromMM(0.05))
+    start = None
+    for f in board.GetFootprints():
+        for q in f.Pads():
+            if q.GetNetname() == net and q.IsOnLayer(lid) and inside(q.GetPosition()):
+                start = (layer, (pcbnew.ToMM(q.GetPosition().x), pcbnew.ToMM(q.GetPosition().y)))
+                break
+        if start:
+            break
+    if start is None:
+        start = (layer, _zone_point(board, net, layer, p, inset) or p)
+    sx, sy = pcbnew.FromMM(start[1][0]), pcbnew.FromMM(start[1][1])
+    cands = []
+    for f in board.GetFootprints():
+        for q in f.Pads():
+            c = q.GetPosition()
+            if q.GetNetname() == net and not inside(c):
+                L = layer if q.IsOnLayer(lid) else ("F.Cu" if q.IsOnLayer(pcbnew.F_Cu) else "B.Cu")
+                cands.append((L, c))
+    for t in board.GetTracks():
+        if t.GetNetname() != net:
+            continue
+        if t.GetClass() == "PCB_VIA":
+            if not inside(t.GetPosition()):
+                cands.append((layer, t.GetPosition()))
+        else:
+            for c in (t.GetStart(), t.GetEnd()):
+                if not inside(c):
+                    cands.append((board.GetLayerName(t.GetLayer()), c))
+    d = pcbnew.FromMM(inset)
+    for piece in others:
+        o = piece.Outline(0)
+        for i in range(o.PointCount()):
+            v = o.CPoint(i)
+            for dx, dy in ((d, 0), (-d, 0), (0, d), (0, -d)):
+                q = pcbnew.VECTOR2I(v.x + dx, v.y + dy)
+                if piece.Contains(q):
+                    cands.append((layer, q))
+                    break
+    if not cands:
+        return None
+    L, c = min(cands, key=lambda lc: (lc[1].x - sx) ** 2 + (lc[1].y - sy) ** 2)
+    return start, (L, (pcbnew.ToMM(c.x), pcbnew.ToMM(c.y)))
+
+
 def _open_count(board, net):
     """The board's unconnected count, after refilling `net`'s zones (a stitch via joins an
     island only through the fill). KiCad's python exposes no per-net ratsnest, so the
@@ -863,6 +942,15 @@ def main(stem):
                 if n0 is None or n1 is None or n1 < n0:
                     continue
                 print("close_last: %s -- still open after stitching: routing it" % net)
+        # an island of the net's own pour that DRC named at one point (see _island_retarget)
+        if za and zb and abs(pa[0] - pb[0]) + abs(pa[1] - pb[1]) < 0.05:
+            rt = _island_retarget(board, net, la, pa)
+            if rt:
+                (la, pa), (lb, pb) = rt
+                za = zb = ta = tb = False
+                print("close_last: %s -- pour island at (%.2f, %.2f): joining it from (%.2f, %.2f) "
+                      "to the net's copper at (%.2f, %.2f) on %s" % (net, rt[0][1][0], rt[0][1][1],
+                                                                       pa[0], pa[1], pb[0], pb[1], lb))
         # a zone end goes to its copper nearest the other end
         if za and not zb:
             pa = _zone_point(board, net, la, pb) or pa
