@@ -1239,6 +1239,10 @@ The design shows the R2 boards only. Until they arrive, the R1 boards are a benc
   table under the lead colours). Its J7 sits low: lights-lead ways 3 and 4 are under the floor's top,
   so on the bench the lead goes in before the board is stood in the chassis. Bus B's J2 / J6
   are 14 mm nearer the -Y body adapter than R2's: pull those plugs with pliers.
+- **Pi cap 5 V current (2026-11-20):** the ordered copper's +5V_PI path (J2 to J1) narrows to a
+  1.0 mm neck, about 3.3 mm long, near (114.3, 93.5-96.8). Keep the Pi and its peripherals under
+  about 2.3 A continuous, not the 3 A budget. The other R1 power paths checked fine against the
+  ordered gerbers.
 
 ## Foot lights: plug the lead in first, then slide the strip in from +X (2026-10-29) — v1, historical
 
