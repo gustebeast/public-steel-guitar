@@ -81,10 +81,12 @@ import cm5_mech as CM5                              # noqa: E402
 # The analog chain below is output_panel's R2, copied with its REV switches in place; this
 # board is R2's chain and only that, so REV is a constant here, not an environment knob.
 REV = 2
-# The BOARD's own revision (not the analog chain's REV above). 1 = the board being ordered
-# (W48w seed 1, 2026-11-20); 2 = the next one, with the Kelvin net-ties below. Default 1, so
-# the ordered board's netlist is untouched until a revision is asked for.
-BOARD_REV = int(os.environ.get("BRAIN_BOARD_REV", "1"))
+# ⚠ brain_board IS R1 UNTIL ONE IS ORDERED (user, 2026-11-20): a revision number goes up only
+# when a board has been ordered and a new version of it is designed. The Kelvin net-ties
+# below are an R1 DESIGN OPTION, not a revision: BRAIN_KELVIN_TIES=1 puts them in the netlist.
+# Default off only because W48w seed 1 was routed without them (its Kelvin paths are a
+# scripted ECO); a fresh placement/route should turn them on.
+KELVIN_TIES = os.environ.get("BRAIN_KELVIN_TIES", "0") == "1"
 
 P = Pin.types.PASSIVE
 
@@ -893,10 +895,10 @@ def brain_board():
         # took U13.1 as just another PA_VBUS pin: it joined the pour > 1 mm from R70.1 (which was
         # itself a stranded sliver), and U14.1's sense track ran through C86.1's pad -- the
         # current measurement reading the pour, invisible to DRC, verify and quality. From
-        # BOARD_REV 2 each sense pin has a net of its own, tied to the shunt at its pad by a
+        # BRAIN_KELVIN_TIES=1 each sense pin has a net of its own, tied to the shunt at its pad by a
         # NetTie, so neither the router nor a pour can land it anywhere else. Placement: the
         # ties belong ON the shunt's pads (intent: next to R70/R75, pad 1 over the shunt pad).
-        if BOARD_REV >= 2:
+        if KELVIN_TIES:
             kp, kn = Net("P%s_ISENP_K" % side), Net("P%s_VCC_K" % side)
             kp += u[1]
             kn += u[24]
