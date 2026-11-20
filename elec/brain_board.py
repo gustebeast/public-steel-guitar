@@ -2225,7 +2225,7 @@ SVC_NOTCH_X, SVC_NOTCH_W, SVC_NOTCH_D = 17.0, 15.0, 11.0
 # board's edge + 0.5 (instrument -146.46) to the +X end. The CM5 moved 5 mm toward board -X for
 # the same UI parts (cm5_mech.HOLE0), so its top-right hole's keep-out (to board x 69.0) stays
 # outside the notch.
-UIC_NOTCH_X0, UIC_NOTCH_Y0 = round(146.46 + XC, 3), round(-16.4 - ZC, 3)  # board x (71.475), board y (41.84)
+UIC_NOTCH_X0, UIC_NOTCH_Y0 = 146.46 + XC, -16.4 - ZC   # board x (71.475), board y (41.84)
 AUDIO_POLY = [[X0, AUDIO_NY], [AUDIO_NX, AUDIO_NY], [AUDIO_NX, AUDIO_Y0],
               [AUDIO_X1, AUDIO_Y0], [AUDIO_X1, BOARD_L / 2], [X0, BOARD_L / 2]]
 GND_POLY = [[X0, -BOARD_L / 2], [X1, -BOARD_L / 2], [X1, BOARD_L / 2],
