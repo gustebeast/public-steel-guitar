@@ -2163,14 +2163,16 @@ def brain_board():
 # J5 sits 2.4 back on the board so its shoulder meets the inside of its own 4.0 clamp wall
 # (its nut clamps it: src/board_geom.py PANEL; the board edge runs on under it in a slot).
 #   +X  FINAL instrument x 0.43 = 2.03 - 1.6 wall
-#   -X  final -168.1 (user, 2026-11-19: "it wouldn't be so bad if we had to take the endplate
+#   -X  final -167.3 (user, 2026-11-19: "it wouldn't be so bad if we had to take the endplate
 #       off to replace the brain board ... extend the board all the way to x=-168.1"). It was
-#       -150.4, set by the drop-and-slide: dropped at x - 19 it had to clear the anchor
-#       screws' M4 heads (src/direct_bench.py _anchor_screw_at: x -174.2, heads to -170.4).
-#       With the endplate off for a board swap it drops at its final x and needs no slide, so
-#       the -X end runs on to -168.1, 2.3 clear of those heads: +17.7 mm, +12 % area, for
-#       the routing congestion (seeds swung one placement 2..21 unconnected). It grows at the
-#       BOARD's +X end; the panel edge and the board origin stay put (X0 / X1 below).
+#       -150.4, set by the drop-and-slide (dropped at x - 19 it had to clear the anchor
+#       screws). With the endplate off for a board swap it drops at its final x and needs no
+#       slide. -168.1 was the user's figure, but branner measured the real envelope the same
+#       day: M4 axis -172.7, head rim -168.9, and the printed spacer boss (head + 1 bead, the
+#       head's seat margin -- it does not shrink) reaches -168.1, so -168.1 had 0.0 to the
+#       boss over the whole drop. -167.3 = 0.8 clear: +16.9 mm, +11 % area, for the routing
+#       congestion (seeds swung one placement 2..21 unconnected). It grows at the BOARD's +X
+#       end; the panel edge and the board origin stay put (X0 / X1 below).
 #       (src/direct_bench.py _anchor_screw_at: x -174.2, heads to -170.4, standing off the
 #       -Y wall to y -84.7, into the board's band). The UI station is IGNORED for now (user,
 #       2026-11-13): its clamp (to x -147) is in the drop path and moves later
@@ -2183,11 +2185,11 @@ def brain_board():
 # endplate pocket: elec/brain_board.pocket.json (what branner cuts the pocket from).
 # The mount (an M4, branner's pick at x > -124) is ON HOLD until he places it.
 # THE OUTLINE IS NOT CENTRED ON THE ORIGIN (2026-11-19): X0 the panel edge (instrument 0.43),
-# X1 the far end (instrument -168.1). The origin stayed where the 150.83 board's centre was, so
+# X1 the far end (instrument -167.3). The origin stayed where the 150.83 board's centre was, so
 # the frame below and every board coordinate drawn before the widening (the audio corner, the
 # service notch, the CM5's holes, J8, the intent's held parts) keep their meaning.
-X0, X1 = -75.415, 93.115
-BOARD_W, BOARD_L = X1 - X0, 100.0          # 168.53
+X0, X1 = -75.415, 92.315
+BOARD_W, BOARD_L = X1 - X0, 100.0          # 167.73
 XC, ZC = -74.985, -58.24                   # instrument x of board x = 0 (NOT the outline's centre)
 XL = X1 - 35.0                  # the brain-lead band: the last 35 mm (the placement intent)
 # PWR_GND under the power section: the chargers at the panel end (-X), the buck and the brain
@@ -2270,8 +2272,8 @@ BOARD_NOTES = {
                      [X0, 50]],
     "frame": {"instrument_x": "-(board x) - 74.985", "instrument_z": "board y - 58.24",
               "component_face_y": -85.9, "faces": "+Y", "by": "branner 2026-11-13",
-              "install": "+X endplate OFF (user 2026-11-19): drop -Z at the final x, endplate back on (it was: drop at x - 19, slide +X 19)",
-              "x_extent_instrument": [-168.1, 0.43]},
+              "install": "+X endplate OFF (user 2026-11-19): drop -Z at the final x, 0.8 clear of the anchor screws' printed spacer bosses (to -168.1; branner), endplate back on (it was: drop at x - 19, slide +X 19)",
+              "x_extent_instrument": [-167.3, 0.43]},
     "layers": 4,
     # In1 IS A SOLID REFERENCE PLANE, NO SIGNALS (2026-11-16): routed, U1's and J201's fan-out
     # cut its GND pour into fragments and the tightened decaps' join vias landed in them --
