@@ -2219,15 +2219,13 @@ AUDIO_NX, AUDIO_NY = -48.0, 24.0
 # is read. The +X edge was looked at first and is full: the CM5 to y -6, the boost's hot loop below.
 SVC_NOTCH_X, SVC_NOTCH_W, SVC_NOTCH_D = 17.0, 15.0, 11.0
 # THE UI CLAMP NOTCH (lead / branner gate, 2026-11-19): the widened board's top corner at the +X
-# end ran through ui_panel.clamp's -Y bar (instrument x -177.0..-147.0, y -92.0..-86.0, z -15.9..
-# -12.7; the old -150.4 edge already overlapped it 3.4 mm). The board gives way (moving the bar
-# re-seats the UI screen column): its top edge drops to z -16.4 (0.5 under the bar) at the +X
-# end. Asked from instrument x -146.5 (board x 71.5) -- but that line runs through the CM5's
-# top-right M2.5 hole (board 71.5, 45.5; head / keep-out 5.0, cm5_mech), so the notch starts
-# 0.5 past the hole's keep-out: board x 74.5 = instrument -149.5. ⚠ OPEN: that hole's screw head
-# on the back face (instrument x -149.0..-144.0, z -15.2..-10.2) still meets the bar's last
-# 2.0 mm (to -147.0) whatever the board does -- the bar end must stop at -149.5 (branner).
-UIC_NOTCH_X0, UIC_NOTCH_Y0 = 74.5, -16.4 - ZC          # board x, board y (41.84)
+# end met ui_panel.clamp's -Y bar, which in the build (direct_bench shifts the UI station ~14.9
+# +Y) ends at instrument x -166.55, y down to -89.2, z -15.9..-12.7 -- the bar only; branner
+# measured every other ui_* part >= 3 mm from the CM5, its plugs and this board. The board gives
+# way: its top edge drops to z -16.4 (0.5 under the bar) from instrument -166.0 (bar end + 0.55)
+# to the +X end, ~1.3 x 8.2 off the corner. (A larger notch and a CM5 move came from reading
+# ui_panel's standalone frame; reverted the same day.)
+UIC_NOTCH_X0, UIC_NOTCH_Y0 = round(166.0 + XC, 3), round(-16.4 - ZC, 3)   # board x (91.015), y (41.84)
 AUDIO_POLY = [[X0, AUDIO_NY], [AUDIO_NX, AUDIO_NY], [AUDIO_NX, AUDIO_Y0],
               [AUDIO_X1, AUDIO_Y0], [AUDIO_X1, BOARD_L / 2], [X0, BOARD_L / 2]]
 GND_POLY = [[X0, -BOARD_L / 2], [X1, -BOARD_L / 2], [X1, BOARD_L / 2],
