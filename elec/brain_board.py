@@ -81,6 +81,10 @@ import cm5_mech as CM5                              # noqa: E402
 # The analog chain below is output_panel's R2, copied with its REV switches in place; this
 # board is R2's chain and only that, so REV is a constant here, not an environment knob.
 REV = 2
+# The BOARD's own revision (not the analog chain's REV above). 1 = the board being ordered
+# (W48w seed 1, 2026-11-20); 2 = the next one, with the Kelvin net-ties below. Default 1, so
+# the ordered board's netlist is untouched until a revision is asked for.
+BOARD_REV = int(os.environ.get("BRAIN_BOARD_REV", "1"))
 
 P = Pin.types.PASSIVE
 
@@ -884,8 +888,27 @@ def brain_board():
                  "(LCSC C50341643)" % side,
                  "Package_DFN_QFN:QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm", range(1, 26))
         pgnd += u[3], u[25]                    # GND, and the land's pad
-        vcc += u[24]                           # VCC: behind the sense resistor
-        vbus += u[1]                           # ISENP: the connector side of it
+        # ⚠ KELVIN, AND ONLY A NET-TIE MAKES IT SO (brain_board W48w seed 1, 2026-11-20). ISENP
+        # and VCC sense the 5 mR shunt, but on the same nets as the power copper the router
+        # took U13.1 as just another PA_VBUS pin: it joined the pour > 1 mm from R70.1 (which was
+        # itself a stranded sliver), and U14.1's sense track ran through C86.1's pad -- the
+        # current measurement reading the pour, invisible to DRC, verify and quality. From
+        # BOARD_REV 2 each sense pin has a net of its own, tied to the shunt at its pad by a
+        # NetTie, so neither the router nor a pour can land it anywhere else. Placement: the
+        # ties belong ON the shunt's pads (intent: next to R70/R75, pad 1 over the shunt pad).
+        if BOARD_REV >= 2:
+            kp, kn = Net("P%s_ISENP_K" % side), Net("P%s_VCC_K" % side)
+            kp += u[1]
+            kn += u[24]
+            for k, (power, sense) in enumerate(((vbus, kp), (vcc, kn)), start=1):
+                tie = _fix("NT%s%d" % ("1" if side == "A" else "2", k), "NetTie",
+                           "port %s Kelvin tie, %s at the sense resistor's pad" % (side, sense.name),
+                           "NetTie:NetTie-2_SMD_Pad0.5mm", range(1, 3))
+                power += tie[1]
+                sense += tie[2]
+        else:
+            vcc += u[24]                       # VCC: behind the sense resistor
+            vbus += u[1]                       # ISENP: the connector side of it
         cc1 += u[17]
         cc2 += u[16]
         io["PD%s_SDA" % side] += u[4]
