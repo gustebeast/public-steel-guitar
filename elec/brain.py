@@ -556,8 +556,25 @@ def brain(merged=None):
     sw1 += u5[8]
     gnd += u5[9], u5[17]                       # PGND, AGND
     sw2 += u5[10]
-    v5_bb += u5[11], u5[12]                    # VOUT and ISP: the sense resistor follows
-    v5_raw += u5[13]                           # ISN
+    v5_bb += u5[11]                            # VOUT
+    # ⚠ ISP / ISN ARE KELVIN, AND ONLY A NET-TIE MAKES IT SO (brain_board esc arms, 2026-11-21).
+    # On +5V_BB / +5V_RAW themselves the router took ISP as one more +5V_BB pin (it rode the
+    # band: the pour, not R113.1's pad), and ISN -- a bottom-row pin inside +5V_BB's frozen band,
+    # 12 mm from any +5V_RAW copper -- never routed on a single seed: no current-limit sense at
+    # all. With BRAIN_KELVIN_TIES=1 (brain_board's R1 design option, on for fresh routes) each
+    # sense pin has a net of its own, tied to the shunt at its pad by a NetTie: the pair runs
+    # together and neither the router nor a pour can land it anywhere else. kelvin.py checks it.
+    if os.environ.get("BRAIN_KELVIN_TIES", "0") == "1":
+        isp5, isn5 = Net("ISP5"), Net("ISN5")
+        isp5 += u5[12]
+        isn5 += u5[13]
+        _two("NT5", "NetTie", "NetTie", "U5 ISP Kelvin tie, at R113.1's pad", "NetTie:NetTie-2_SMD_Pad0.5mm",
+             v5_bb, isp5)
+        _two("NT6", "NetTie", "NetTie", "U5 ISN Kelvin tie, at R113.2's pad", "NetTie:NetTie-2_SMD_Pad0.5mm",
+             v5_raw, isn5)
+    else:
+        v5_bb += u5[12]                        # ISP: the sense resistor follows
+        v5_raw += u5[13]                       # ISN
     fb5 += u5[14]
     comp5 += u5[15]
     Net("U5_NC_CDC").connect(u5[16])           # CDC floating: no cable-droop lift (SLVSGT7 6.5)

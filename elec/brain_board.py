@@ -699,6 +699,10 @@ def _service_port(gnd, pgnd, v3d, v5_pre, vstby, vin, io, gad_dp, gad_dm, flash_
     sgate += u43[5]
     svbus += u43[6]
     _cap("C67", "100nF/25V", "U43 charge-pump cap, VCAP to ANODE", vcap, svbus)
+    if POWER_SIZING:
+        # U43's ANODE is its declared supply pin (bias): its own HF cap there (quality A2, 2026-11-21:
+        # C51 serves J7 / U44 at the port, 25 mm away -- moving it to U43 left the port bare)
+        _cap("C98", "100nF/25V", "U43 ANODE (bias supply) HF cap, at the pin", svbus, pgnd)
     q8 = _nfet("Q8", "service port OR-ing FET: source to the port, drain to VIN_BUS")
     svbus += q8["S1"], q8["S2"], q8["S3"]
     vin += q8["D"]
@@ -1006,6 +1010,16 @@ def brain_board():
                "contract, 29.1 V at a live plug (LCSC C224015)" % side, "Diode_SMD:D_SMB")
         vbus_j += d[1]                         # at the connector, ahead of the choke
         gnd_j += d[2]
+        if POWER_SIZING:
+            # the socket's HF cap (quality A2: J1 / J2's VBUS pins had none), behind the TVS. Its
+            # size is the USB-C sink bulk budget's: cSnkBulk is 1-10 uF on an unattached sink's
+            # VBUS (USB Type-C spec, as TI TUSB422 and TPS25740B 'VBUS capacitance' quote it),
+            # and C80 / C86's 10 uF behind the choke, ahead of the load switch, already spends it
+            # (their DC-bias derating at 5 V keeps the 10.1 uF nominal sum inside). 100 nF, so
+            # the cap is for the socket's edge, not bulk (lead 2026-11-21).
+            _cap("C94" if side == "A" else "C95", "100nF/50V", "port %s socket VBUS HF cap, at "
+                 "the connector behind the TVS; inside the cSnkBulk 10 uF budget" % side,
+                 vbus_j, gnd_j, C0603)
         d = _d(d_stb, "SS34", "port %s -> VSTBY Schottky, 40 V 3 A: the logic runs from "
                "vSafe5V before any contract (LCSC C8678)" % side, "Diode_SMD:D_SMA")
         vstby += d[1]                          # pad 1 = K
@@ -2415,6 +2429,49 @@ _AMPS_AUDIT = [
 ]
 
 
+# Inductor-current nets, sized at the inductor's RMS current at the limit the copper must carry
+# (amps_src 1), I_rms = sqrt(I_dc^2 + dI^2 / 12) at the worst-ripple input. Peak current is the
+# inductor's saturation check, not a copper-heating figure (lead 2026-11-21).
+# switch_node: F.Cu only, no vias, as short as the width allows (an EMI antenna; quality gates
+# the length at SWITCH_NODE_MM). BST_LMID is NOT a switch node: inductor current at a quiet
+# potential -- width at RMS, normal power layers, vias allowed.
+_L202 = ("U205 TPS552892 buck-boost, R313 13 mR limit 3.85 A; L202 4.7 uH at 400 kHz (R312 49k9): "
+         "dI = 5.19 x (1 - 5.19/20) / (4.7 uH x 400 kHz) = 2.04 A at 20 V in; I_rms = sqrt(3.85^2 + "
+         "2.04^2/12) = 3.90 A (TI SLVSGT7 8.2.2); a 4-switch buck-boost carries L current through "
+         "both SW nodes")
+_L1 = ("U5 LMR33640 4 A rated output (TI SNVSB99C); L1 4.7 uH at 1 MHz: dI = 5 x (1 - 5/20) / "
+       "(4.7 uH x 1 MHz) = 0.80 A at 20 V in; I_rms = sqrt(4^2 + 0.80^2/12) = 4.01 A")
+_L204 = ("U220 LM5122 boost, input capped at 6.5 A (VIN_SW: the two 3.25 A PD contracts); L204 "
+         "10 uH at 250 kHz (R300 36k5): dI = Vin D / (L f), worst at Vin = 12 V, D = 0.5: 2.4 A; "
+         "I_rms = sqrt(6.5^2 + 2.4^2/12) = 6.54 A (TI SNVS954H 8.2.2)")
+_ISO = "U30 B0509S-1WR3: 1 W at 9 V out = 0.111 A (Mornsun datasheet, rated output)"
+_SWITCH_PATHS = [
+    {"net": "SW5_1", "from": "U205.8", "to": ["L202.1"], "amps": 3.9, "amps_src": 1, "amps_cite": _L202,
+     "switch_node": True},
+    {"net": "SW5_2", "from": "U205.10", "to": ["L202.2"], "amps": 3.9, "amps_src": 1, "amps_cite": _L202,
+     "switch_node": True},
+    {"net": "SW", "from": "U5.8", "to": ["L1.1"], "amps": 4.01, "amps_src": 1, "amps_cite": _L1,
+     "switch_node": True},
+    {"net": "BST_SW", "from": "L204.2", "to": ["Q208.5"], "amps": 6.54, "amps_src": 1, "amps_cite": _L204,
+     "switch_node": True},
+    {"net": "BST_SW", "from": "L204.2", "to": ["Q209.1", "Q209.2", "Q209.3"], "amps": 6.54, "amps_src": 1,
+     "amps_cite": _L204, "switch_node": True, "split": True},
+    {"net": "BST_LMID", "from": "R309.2", "to": ["L204.1"], "amps": 6.54, "amps_src": 1, "amps_cite": _L204},
+    {"net": "ISO9_RAW", "from": "U30.4", "to": ["FB1.1"], "amps": 0.12, "amps_src": 1, "amps_cite": _ISO},
+    {"net": "ISO9", "from": "FB1.2", "to": ["U31.1"], "amps": 0.12, "amps_src": 1, "amps_cite": _ISO},
+]
+# a gate drive is not a copper-heating path; it is gated on its own rule (quality gate_drives)
+_GATE_DRIVES = [
+    # HO 12 mm (lead 2026-11-21): in the boost cell Q209's gate pin sits on its switch-node side, so
+    # the drive runs the channel between the FETs -- 8.36 mm pin to pin, ~12 mm routed (celltool cells_v2)
+    {"net": "BST_HO", "driver": "U220.19", "gate": "Q209.4", "max_mm": 12.0, "return": "GND",
+     "why": "boost cell geometry: Q209 gate on its SW side, 8.36 mm pin to pin"},
+    {"net": "BST_LO", "driver": "U220.16", "gate": "Q208.4", "max_mm": 10.0, "return": "GND"},
+]
+_POWER_EXEMPT = {g["net"]: "gate drive: quality gate_drives (driver to gate <= %.0f mm, return over "
+                           "unbroken %s)" % (g["max_mm"], g["return"]) for g in _GATE_DRIVES}
+
+
 def _audit_amps(paths):
     """Each power path's amps from the audit, with its source class and citation beside it."""
     out, miss = [], []
@@ -2719,6 +2776,23 @@ def quality_notes(net_path):
     if MERGED:
         paths, q = _merged_quality(paths, q)
     q["power_paths"] = _audit_amps(paths) if POWER_SIZING else paths
+    if POWER_SIZING and MERGED:
+        # ⚠ THE SWITCH NODES WERE NOT POWER (brain_board fg/9m, 2026-11-21): no inductor net was in
+        # power_paths, so SW5_1 routed 20.7 mm of 0.2 mm track through In2, SW5_2 never routed at
+        # all, and L202 sat 10 mm from U205's SW bars. powercov (quality) now FAILs any net on an
+        # inductor, power FET, shunt, fuse or connector power pin that is neither here nor exempt.
+        q["power_paths"] += _SWITCH_PATHS
+        q["power_exempt"] = dict(_POWER_EXEMPT)
+        q["gate_drives"] = [dict(g) for g in _GATE_DRIVES]
+        # the HF cap of each hot loop against its pins, on the IC's layer (quality A28; TI SLVSGT7
+        # 8.4.1 for U205 -- both loops of a buck-boost switch; SNVSB99C 11.1 for U5; SNVS954H 11.1:
+        # the boost's loop is the output cap across the two FETs)
+        q["hot_loops"] = [
+            {"name": "U205 VIN loop", "cap": "C218", "pins": ["U205.7", "U205.9"], "max_mm": 2.0},
+            {"name": "U205 VOUT loop", "cap": "C230", "pins": ["U205.11", "U205.9"], "max_mm": 2.0},
+            {"name": "U5 VIN loop", "cap": "C3", "pins": ["U5.2", "U5.1"], "max_mm": 2.0},
+            {"name": "boost output loop", "cap": "C315", "pins": ["Q209.5", "Q208.1"], "max_mm": 2.0},
+        ]
     q["net_groups"] = [g for g in qp["net_groups"]]
     match = [m for m in qp["match"] + qs["match"] if m["name"] != "OPT"]
     if MERGED:
@@ -2767,6 +2841,8 @@ if __name__ == "__main__":
         # power drawn at its IPC width (up to 4 mm) and on outer copper only
         notes["power_w_max"] = 4.0
         notes["net_layers"] = {x["net"]: ["F.Cu", "B.Cu"] for x in q["power_paths"]}
+        # a switch node stays on its parts' layer: F.Cu only, so no via is possible (lead 2026-11-21)
+        notes["net_layers"].update({x["net"]: ["F.Cu"] for x in q["power_paths"] if x.get("switch_node")})
     # The USB pairs routed COUPLED (router coupled.py) and priced as corridors in placement
     # (cadkit PCBFLOW_PAIR_CORRIDOR). As match groups only they were negotiated as loose nets:
     # A3 failed on layer sets and via counts (mV8). Each chain is the parts that carry both rails,
@@ -2779,6 +2855,17 @@ if __name__ == "__main__":
                          ("HUB2", "", ["U37", "U38"]), ("SVC", "", ["J7", "U38"]),
                          ("USBA", "_J", ["FL3", "J1"]), ("USBB", "_J", ["FL4", "J2"]))]
     notes["pair_corridor"] = True      # placement prices each pair hop's corridor (cadkit place_init)
+    if KELVIN_TIES:
+        # Kelvin sense pairs run COUPLED, side by side to the shunt's ties (lead 2026-11-21): the
+        # AP33772s' by the router (chain: the IC, then one tie per rail); U205's ISP5/ISN5 are
+        # declared copper in the intent (its pins sit inside +5V_BB's frozen band). quality
+        # sense_pairs gates every pair's separation along its length.
+        notes["diff_pairs"] += [
+            {"nets": ["P%s_ISENP_K" % s, "P%s_VCC_K" % s], "chain": [u, "NT%d1|NT%d2" % (k, k)],
+             "width": 0.2, "gap": 0.2} for s, u, k in (("A", "U13", 1), ("B", "U14", 2))]
+        notes["quality"]["sense_pairs"] = [
+            {"nets": n, "max_sep_mm": 0.5, "end_mm": 1.2, "why": "Kelvin sense pair: coupled to the shunt"}
+            for n in (["ISP5", "ISN5"], ["PA_ISENP_K", "PA_VCC_K"], ["PB_ISENP_K", "PB_VCC_K"])]
     # a small pour land's via array goes beside it, bridged: Q202.3 fed VIN_BRAIN's 10 A to In2 through one via (mV16)
     notes["pour_spill_small"] = True
     # The ICs' datasheet supply pins, by name (cadkit auto_decaps / quality A2, 2026-11-15): a
@@ -2805,6 +2892,9 @@ if __name__ == "__main__":
         # VCC. LVC1G17 SCES351V / LVC2G06 SCES307J: 5 VCC. LVC06A SCAS596N: 14 VCC.
         # TPS22918: 1 VIN.
         "U43": {"6": "ANODE"},
+        # USBLC6-2SC6 (ST DS5009): 5 VBUS is the array's rail reference; pins 1/3/4/6 are I/O and
+        # 2 GND (quality A31 found U44 undeclared, so every SVC_VBUS pin counted, 2026-11-21)
+        "U44": {"5": "VBUS"},
         "U35": {"12": "VDD"},
         "U36": {"1": "IN"},
         "U37": {"15": "V5", "16": "VDD33"},
