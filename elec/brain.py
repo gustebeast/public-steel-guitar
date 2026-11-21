@@ -575,6 +575,9 @@ def brain(merged=None):
     _cap("C123", "100nF", "BOOT2 to SW2 (pin table: 0.1 uF)", boot2, sw2)
     for tag in ("C21", "C22", "C31", "C32"):
         _cap(tag, "22uF/25V", "5 V output bulk, ~66 uF effective at 5 V", v5_bb, gnd, C1206)
+    # The bulk 1206s cannot all sit at the pin; the datasheet asks for a small HF cap AT it.
+    _cap("C30", "100nF", "VOUT HF bypass at U5.11 to PGND: SLVSGT7 8.4.1 item 1 (p.28, 0.1 uF "
+         "0402 close to VIN/VOUT), 8.2.2.5 (p.24)", v5_bb, gnd)
     if os.environ.get("BRAIN_POWER_SIZING", "0") == "1":
         # ⚠ THE LIMIT SITS UNDER THE FUSE (amps audit, lead 2026-11-20, choice C): F2's 4 A
         # already caps the CM5, so a 5.0 A limit only sized copper nobody can use. 13 mR (no
