@@ -2428,7 +2428,8 @@ def _audit_amps(paths):
             out.append(dict(x, amps_src=3, amps_cite="NOT AUDITED"))
             continue
         a, src, cite = hit
-        out.append(dict(x, amps=x["amps"] if a is None else a, amps_src=src, amps_cite=cite))
+        out.append(dict(x, amps=x["amps"] if a is None else a, amps_src=src,
+                        amps_cite=cite + "; copper sized at a 20 C rise (quality.temp_rise_c)"))
     if miss:
         print("  amps audit: %d power path(s) not audited: %s" % (len(miss), "; ".join(miss)))
     return out
@@ -2755,7 +2756,15 @@ if __name__ == "__main__":
     q, match = quality_notes(net_path)
     notes["match"], notes["quality"] = match, q
     if POWER_SIZING:
-        # power drawn at its IPC width (up to 4 mm: VIN at 6.5 A asks 3.97) and on outer copper only
+        # ⚠ THE DESIGN RISE IS 20 C, NOT THE 10 C DEFAULT (lead 2026-11-20): the audited amps are
+        # PD-contract and fuse CEILINGS, not continuous draw (the motors measure ~1 W), and a
+        # 20 C rise at the ceiling is normal IPC-2152 practice in a vented instrument. At 10 C
+        # the 6.5 A VIN asked 3.97 mm on outer copper; rPS_h1/h2 (held W48w seats) could not fit
+        # it and left 46 nets open. 2 oz outer is the reserve, not adopted (a fab cost).
+        q["temp_rise_c"] = 20.0
+        q["temp_rise_cite"] = ("20 C at the audited ceilings (lead 2026-11-20): amps are contract / "
+                               "fuse limits, not continuous draw; IPC-2152 practice, vented instrument")
+        # power drawn at its IPC width (up to 4 mm) and on outer copper only
         notes["power_w_max"] = 4.0
         notes["net_layers"] = {x["net"]: ["F.Cu", "B.Cu"] for x in q["power_paths"]}
     # The USB pairs routed COUPLED (router coupled.py) and priced as corridors in placement
