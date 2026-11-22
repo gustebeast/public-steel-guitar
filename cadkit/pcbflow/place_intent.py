@@ -1438,7 +1438,7 @@ def _swap_pairs(part, groups, flip=False):
     return out
 
 
-def swap_plan(parts, pl, groups, max_parts=10, flip=()):
+def swap_plan(parts, pl, groups, max_parts=10, flip=(), rejected=()):
     """The channel swaps on pass-through parts that leave the fewest twisted pair hops
     (pair_twists), fewest swaps on a tie. Each swap is free in the netlist (identical channels)
     but must be carried into the netlist's generator. Returns (twisted before, twisted after,
@@ -1446,12 +1446,16 @@ def swap_plan(parts, pl, groups, max_parts=10, flip=()):
     ⚠ THE TWISTED-HOP COUNT IS A HINT, NOT A SCORE (brain_board W48k, 2026-11-19): the plan's
     FL3/FL4 winding swaps took the count 7 -> 3 and the paired seed-1 route came out worse
     (2/0/98/32 vs 2/0/90/24; GADGET 6/9 vias, skew 30.7, new USBA / USBB_J fails). Route a
-    proposed swap against its control before carrying it into the netlist."""
+    proposed swap against its control before carrying it into the netlist.
+    ⚠ ...AND A REJECTED ONE IS NOT PROPOSED AGAIN (brain_board esc13, 2026-11-22): the same FL3 / FL4
+    swap was proposed in 24 runs after W48k; its 2-seed route A/B (rPS_13s1/s2 vs 13c1/c2) lost on the
+    USB pairs both times (USBA / USBB_J hard FAILs 2 vs 0 and 2 vs 1). `rejected` (the board notes'
+    swap_rejected refs) leaves those parts out of the plan."""
     import copy
     gsets = [frozenset(g.get("nets") or ()) for g in groups if len(g.get("nets") or ()) == 2]
     cand = {}
     for ref, v in parts.items():
-        if ref in pl:
+        if ref in pl and ref not in rejected:
             sp = _swap_pairs(v, gsets, flip=ref in flip)
             if sp:
                 cand[ref] = sp

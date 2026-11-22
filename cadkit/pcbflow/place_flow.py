@@ -953,22 +953,28 @@ def _swap_lines(notes, parts, pl, stem, fd, apply=False):
     flow/input.net) -- the netlist's GENERATOR must then carry them, or the next export loses
     them."""
     groups = list(notes.get("match") or []) + list(notes.get("diff_pairs") or [])
+    # notes["swap_rejected"]: [{refs: [...], why: "the route A/B that rejected it"}] -- those parts
+    # are left out of the plan, and said once, so a lost A/B is not re-proposed every run
+    rej = [e for e in (notes.get("swap_rejected") or ()) if isinstance(e, dict) and e.get("refs")]
+    rejected = {r for e in rej for r in e["refs"]}
     try:
-        n0, n1, sw = pi.swap_plan(parts, pl, groups, flip=set(notes.get("pair_flip") or ()))
+        n0, n1, sw = pi.swap_plan(parts, pl, groups, flip=set(notes.get("pair_flip") or ()), rejected=rejected)
     except Exception as e:                   # feedback only: never stops the flow
         return ["SWAP check failed: %s" % e]
     json.dump(dict(twisted_before=n0, twisted_after=n1, applied=bool(apply and sw),
                    swaps=[dict(ref=r, pins=[list(x) for x in prs]) for r, prs in sw]),
               open(os.path.join(fd, "pin_swaps.json"), "w"), indent=1)
+    said = ["SWAP not proposed for %s: rejected by route A/B (%s)" % (" ".join(e["refs"]), e.get("why") or "no reason given")
+            for e in rej if set(e["refs"]) & set(parts)]
     if not sw:
-        return []
+        return said
     nets = {r: {q["num"]: q["net"] for q in parts[r]["pads"]} for r, _ in sw}
     out = ["SWAP %s: pins %s -- its channels are identical, so swapping the rails between them is free "
            "in the netlist; twisted pair hops %d -> %d%s"
            % (r, ", ".join("%s<->%s (%s/%s)" % (a, b, nets[r][a], nets[r][b]) for a, b in prs), n0, n1,
               "" if apply else " (proposed, NOT applied: --apply-swaps tries it on this run; once a route A/B "
                              "accepts it, `swaps.py accept` records it and the generator's apply_accepted "
-                             "carries it)") for r, prs in sw]
+                             "carries it; a rejected one goes in the board notes' swap_rejected)") for r, prs in sw] + said
     if apply:
         net_path = stem + ".net"
         keep = os.path.join(fd, "input.net")
