@@ -2184,12 +2184,17 @@ def auto_pour(rules, parts, notes=None):
     auto_pour(amps, layer [, max_frac, width_mm, layers_by_net, whole, around, clear_margin]) -- around: each
     band goes round other nets' pads on its layer (pour_around), not through them. The pour runs along the net's
     declared power_paths terminals when it has any, else its non-IC pads. A net with its own
-    `pour` rule is left alone. Returns (rules, lines)."""
+    `pour` rule, or declared `copper` tracks, is left alone. Returns (rules, lines)."""
     ap = [r for r in rules if r["kind"] == "auto_pour"]
     if not ap:
         return rules, []
     a = ap[-1]
     poured = {r["net"] for r in rules if r["kind"] == "pour"}
+    # ⚠ A DECLARED PATH IS THE NET'S COPPER (brain_board esc13, lead 2026-11-22): +5V_CM5's declared
+    # B.Cu / F.Cu route to J201 still drew a whole-net F.Cu hull over U205's cell (69 other pads inside),
+    # which left +5V_BB's band no room. A net with declared copper tracks is skipped like a poured one --
+    # by rule, not by setting its amps under the threshold.
+    poured |= {r["net"] for r in rules if r["kind"] == "copper" and r.get("tracks")}
     out, lines = [], []
     for r in rules:
         if r["kind"] == "current" and float(r["amps"]) >= float(a["amps"]) - 1e-9                 and r["net"] not in poured:

@@ -130,6 +130,8 @@ HINT = {
     "A28": "put the HF cap on the IC's layer against its supply and ground pins",
     "A29": "shorten the gate drive and keep it over unbroken ground",
     "A30": "route the sense pair side by side; seat each net tie on its shunt land",
+    "A32": "size the chain from its lowest ceiling: the net after a series part carries what the "
+           "net before it does (a 2-pin part has nowhere else to send it)",
     "A22": "put a ground way between them: order the connector power, ground, data (and "
            "its mirror on a wider housing), the same on every lead of the family",
 }
@@ -3361,6 +3363,81 @@ def sense_pairs(ctx):
                             on = True
                 out.append(("%s tie" % n, on, "%s: tie %s %s a shunt land" % (
                     n, r, "on" if on else "NOT ON -- the sense reads the pour, not the shunt")))
+    return out
+
+
+def _series_chain(paths):
+    """[(part, net_in, amps_in, net_out, amps_out, rms_out)] -- a part where exactly one net's power
+    paths END and exactly one other net's paths START: current goes in on one, out on the other.
+    amps_in sums the sources (VIN_BUS: two ports and the service feed meet at R112); amps_out is
+    the largest path leaving (branches after the part each carry their own load); rms_out says
+    every path out ends on an inductor -- an inductor-current net is sized at its RMS, ripple
+    included, over the DC that came in (BST_LMID 6.54 A after VIN_SW's 6.50)."""
+    ends, starts, src, rms = {}, {}, {}, {}
+    for p in paths:
+        try:
+            a = float(p.get("amps") or 0)
+        except (TypeError, ValueError):
+            continue
+        if a <= 0:
+            continue
+        ra = p["from"].split(".")[0]
+        tos = [t.split(".")[0] for t in (p["to"] if isinstance(p["to"], list) else [p["to"]])]
+        starts.setdefault(ra, {}).setdefault(p["net"], []).append(a)
+        rms.setdefault((ra, p["net"]), []).append(all(t.startswith("L") for t in tos))
+        for t in tos:
+            ends.setdefault(t, {}).setdefault(p["net"], []).append(a)
+            key = (t, p["net"], ra)
+            src[key] = max(src.get(key, 0.0), a)
+    out = []
+    for ref in sorted(set(ends) & set(starts)):
+        ni = [n for n in ends[ref] if n not in starts[ref]]
+        no = [n for n in starts[ref] if n not in ends[ref]]
+        if len(ni) == 1 and len(no) == 1:
+            ai = sum(v for (t, n, _r), v in src.items() if t == ref and n == ni[0])
+            out.append((ref, ni[0], ai, no[0], max(starts[ref][no[0]]), all(rms[(ref, no[0])])))
+    return out
+
+
+@rule("A32")
+def series_current(ctx):
+    """Through a series part the current does not grow: the net after it never needs more than
+    the net before it, and the net between two series parts, the second a 2-pin part (a fuse, a
+    shunt, a bead, a 0R: nowhere to branch), needs exactly what the net after that part does."""
+    paths = ctx.q.get("power_paths", ()) or ()
+    chain = _series_chain(paths)
+    if not chain:
+        return [("series current", None, "no series part between two declared power paths")]
+    # a 2-pin part that is not an inductor passes current straight through (a fuse, a shunt, a
+    # bead, a 0R, an OR diode); a regulator (U5, U31) or a converter's inductor changes it
+    two = {ref for ref, fp in ctx.fps.items()
+           if len({p.GetNumber() for p in fp.Pads() if p.GetNumber()}) == 2 and not ref.startswith("L")}
+    series = {c[0] for c in chain}
+    starts_at = {}
+    for p in paths:
+        starts_at.setdefault(p["net"], set()).add(p["from"].split(".")[0])
+    out = []
+    for ref, ni, ai, no, ao, rms_out in chain:
+        if ref not in two:
+            continue
+        if ao > ai + 1e-6 and not rms_out:
+            out.append(("%s %s>%s" % (ref, ni, no), False,
+                        "%s: %s after it is sized at %.2f A, %s before it at %.2f A -- a series part "
+                        "passes on what it receives; one of the two is wrong" % (ref, no, ao, ni, ai)))
+            continue
+        # one source only: where several feeds meet (VIN_BUS at R112: two ports and the service
+        # port, each at its own contract, ORed to a lower cap after), the sum is no figure to match
+        feeds = {p["from"].split(".")[0] for p in paths if p["net"] == ni
+                 and ref in [t.split(".")[0] for t in (p["to"] if isinstance(p["to"], list) else [p["to"]])]}
+        if (len(feeds) == 1 and feeds & (series - {ref}) and abs(ai - ao) > 1e-6
+                and not rms_out):
+            out.append(("%s %s>%s" % (ref, ni, no), False,
+                        "%s: %s runs between two series parts and is sized at %.2f A, %s after the "
+                        "2-pin %s at %.2f A -- nothing branches inside %s, so the two carry the same "
+                        "current" % (ref, ni, ai, no, ref, ao, ref)))
+            continue
+        out.append(("%s %s>%s" % (ref, ni, no), True,
+                    "%s: %s %.2f A -> %s %.2f A" % (ref, ni, ai, no, ao)))
     return out
 
 
