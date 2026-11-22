@@ -4174,6 +4174,10 @@
    "max": 25.0,
    "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
+  "C230.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
   "C231.1": {
    "max": 25.0,
    "src": "rated V -- CL31A226KAHNNNE (C12891): JLCPCB parts API attributes for C12891 (CL31A226KAHNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
