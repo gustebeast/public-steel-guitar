@@ -1021,8 +1021,8 @@ def kind_of(ref, c):
         return p["kind"]
     if ref.startswith("TP"):
         return "tp"
-    if ref.startswith("JP"):
-        return "jumper"
+    if ref.startswith("JP") or ref.startswith("NT"):
+        return "jumper"                     # a net tie is copper between two nets, like a closed jumper
     return "unknown"
 
 
@@ -1128,7 +1128,9 @@ class Board:
         p = part_of(self.comps[ref])
         if p and p.get("pass"):
             return p["pass"]
-        if ref.startswith("JP"):
+        # a net tie (NT, the Kelvin sense ties of 2026-11-20) is copper: both nets are one level.
+        # Unjoined, PA_VCC_K read 0 V and U13.23's "VCC+4" rating came out 4 V -- a false A16 FAIL
+        if ref.startswith("JP") or ref.startswith("NT"):
             return [sorted(self.comps[ref]["pins"])]
         return []
 

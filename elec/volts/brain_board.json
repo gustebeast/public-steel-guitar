@@ -1083,6 +1083,11 @@
    "v": 5.125,
    "why": "U11.1 (OUT) can reach its supply +5V_A; through R27"
   },
+  "ISN5": {
+   "peak": 5.586,
+   "v": 5.32,
+   "why": "through NT206"
+  },
   "ISO9": {
    "peak": 11.5,
    "v": 10.8,
@@ -1101,6 +1106,11 @@
    "peak": 3.45,
    "v": 3.349,
    "why": "through R47"
+  },
+  "ISP5": {
+   "peak": 5.586,
+   "v": 5.32,
+   "why": "through NT205"
   },
   "JACK_MODE": {
    "peak": 3.45,
@@ -1245,6 +1255,11 @@
    "v": 5.33,
    "why": "U13.15 (IFB) can reach its supply PA_V5V"
   },
+  "PA_ISENP_K": {
+   "peak": 29.088,
+   "v": 21.0,
+   "why": "through NT11"
+  },
   "PA_ORGATE": {
    "peak": 42.988,
    "v": 34.9,
@@ -1287,6 +1302,11 @@
    "v": 21.0,
    "why": "through R70"
   },
+  "PA_VCC_K": {
+   "peak": 29.088,
+   "v": 21.0,
+   "why": "through NT12"
+  },
   "PA_VOUT": {
    "peak": 29.088,
    "v": 21.0,
@@ -1325,6 +1345,11 @@
   "PB_IFB": {
    "v": 5.33,
    "why": "U14.15 (IFB) can reach its supply PB_V5V"
+  },
+  "PB_ISENP_K": {
+   "peak": 29.088,
+   "v": 21.0,
+   "why": "through NT21"
   },
   "PB_ORGATE": {
    "peak": 42.988,
@@ -1367,6 +1392,11 @@
    "peak": 29.088,
    "v": 21.0,
    "why": "through R75"
+  },
+  "PB_VCC_K": {
+   "peak": 29.088,
+   "v": 21.0,
+   "why": "through NT22"
   },
   "PB_VOUT": {
    "peak": 29.088,
@@ -6082,35 +6112,65 @@
    "src": "APS1513M100F (C49261410): JLCPCB parts API attributes for C49261410 (Isat 30 A, current rating 25 A, DCR 7 mOhm), read 2026-11-18; itemp taken at the Bourns SRP1513CA-100M's Irms 19 A (20 C rise, SRP1513CA p.1), the part it clones -- the lower of the two",
    "why": "no voltage rating applies; current checked below"
   },
+  "NT11.1": {
+   "max": "none",
+   "src": "NetTie (no LCSC code): no LCSC code / no rating applies",
+   "why": "bare copper"
+  },
   "NT11.2": {
    "max": "none",
    "src": "NetTie (no LCSC code): no LCSC code / no rating applies",
-   "why": "no rating in voltage_ratings.json for no LCSC code (NetTie)"
+   "why": "bare copper"
+  },
+  "NT12.1": {
+   "max": "none",
+   "src": "NetTie (no LCSC code): no LCSC code / no rating applies",
+   "why": "bare copper"
   },
   "NT12.2": {
    "max": "none",
    "src": "NetTie (no LCSC code): no LCSC code / no rating applies",
-   "why": "no rating in voltage_ratings.json for no LCSC code (NetTie)"
+   "why": "bare copper"
+  },
+  "NT205.1": {
+   "max": "none",
+   "src": "NetTie (no LCSC code): no LCSC code / no rating applies",
+   "why": "bare copper"
   },
   "NT205.2": {
    "max": "none",
    "src": "NetTie (no LCSC code): no LCSC code / no rating applies",
-   "why": "no rating in voltage_ratings.json for no LCSC code (NetTie)"
+   "why": "bare copper"
+  },
+  "NT206.1": {
+   "max": "none",
+   "src": "NetTie (no LCSC code): no LCSC code / no rating applies",
+   "why": "bare copper"
   },
   "NT206.2": {
    "max": "none",
    "src": "NetTie (no LCSC code): no LCSC code / no rating applies",
-   "why": "no rating in voltage_ratings.json for no LCSC code (NetTie)"
+   "why": "bare copper"
+  },
+  "NT21.1": {
+   "max": "none",
+   "src": "NetTie (no LCSC code): no LCSC code / no rating applies",
+   "why": "bare copper"
   },
   "NT21.2": {
    "max": "none",
    "src": "NetTie (no LCSC code): no LCSC code / no rating applies",
-   "why": "no rating in voltage_ratings.json for no LCSC code (NetTie)"
+   "why": "bare copper"
+  },
+  "NT22.1": {
+   "max": "none",
+   "src": "NetTie (no LCSC code): no LCSC code / no rating applies",
+   "why": "bare copper"
   },
   "NT22.2": {
    "max": "none",
    "src": "NetTie (no LCSC code): no LCSC code / no rating applies",
-   "why": "no rating in voltage_ratings.json for no LCSC code (NetTie)"
+   "why": "bare copper"
   },
   "Q1.1": {
    "max": 12.0,
@@ -6902,6 +6962,16 @@
   "R312.1": {
    "max": 50.0,
    "src": "element V -- RC0402FR-0749K9L (C137969): YAGEO RC0402FR-07 series, the series C163455 / C138058 / C138027 / C138045 / C274897 / C327251 are read from (JLCPCB parts API, 2026-10-06: 50 V, 62.5 mW for every value); fab.py's R22 from 2026-11-01"
+  },
+  "R313.1": {
+   "max": "none",
+   "src": "STE1206M1W0R013F (C201279): fab.py's part table for C201279 (STE1206M1W0R013F, 1206 1 W 13 mohm 50 ppm, brain R313 under BRAIN_POWER_SIZING), as the C601097 entry; V = sqrt(P x R) = 0.114 V",
+   "why": "its element V limit (0.114 V) is not one to ground: it was judged on 0.065 V steady, 0.065 V transient -- 325.0 mW of 1000 mW -- U5's output sense: the TPS552892's 50 mV ISP-ISN limit holds it to 5.0 A (SLVSGT7 8.2.2.6) x 10 mohm"
+  },
+  "R313.2": {
+   "max": "none",
+   "src": "STE1206M1W0R013F (C201279): fab.py's part table for C201279 (STE1206M1W0R013F, 1206 1 W 13 mohm 50 ppm, brain R313 under BRAIN_POWER_SIZING), as the C601097 entry; V = sqrt(P x R) = 0.114 V",
+   "why": "its element V limit (0.114 V) is not one to ground: it was judged on 0.065 V steady, 0.065 V transient -- 325.0 mW of 1000 mW -- U5's output sense: the TPS552892's 50 mV ISP-ISN limit holds it to 5.0 A (SLVSGT7 8.2.2.6) x 10 mohm"
   },
   "R314.1": {
    "max": 50.0,
@@ -8144,7 +8214,7 @@
    "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
   },
   "U13.23": {
-   "max": 4.0,
+   "max": 33.088,
    "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
   },
   "U13.24": {
@@ -8240,7 +8310,7 @@
    "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
   },
   "U14.23": {
-   "max": 4.0,
+   "max": 33.088,
    "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
   },
   "U14.24": {

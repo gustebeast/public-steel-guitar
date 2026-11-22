@@ -4326,6 +4326,15 @@
    "case": "0402",
    "src": "JLCPCB parts API search for C423127 (UniOhm 0402WGF8873TCE; 1/16 W, 50 V as the series), fetched 2026-11-17"
   },
+  "C201279": {
+   "mpn": "STE1206M1W0R013F",
+   "kind": "res",
+   "p": 1.0,
+   "v": 0.114,
+   "ohm": 0.013,
+   "case": "1206",
+   "src": "fab.py's part table for C201279 (STE1206M1W0R013F, 1206 1 W 13 mohm 50 ppm, brain R313 under BRAIN_POWER_SIZING), as the C601097 entry; V = sqrt(P x R) = 0.114 V"
+  },
   "C601097": {
    "mpn": "HoLR1206-1W-10mR-1%-75ppm",
    "kind": "res",

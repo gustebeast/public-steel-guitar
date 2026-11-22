@@ -872,6 +872,16 @@
    "why": "USB 2.0 data to the brain board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
   },
   "GND": 0,
+  "ISN5": {
+   "peak": 5.586,
+   "v": 5.32,
+   "why": "through NT6"
+  },
+  "ISP5": {
+   "peak": 5.586,
+   "v": 5.32,
+   "why": "through NT5"
+  },
   "J10_NC_4": {
    "v": 0.0,
    "why": "not connected"
@@ -3309,15 +3319,25 @@
    "src": "APS1513M100F (C49261410): JLCPCB parts API attributes for C49261410 (Isat 30 A, current rating 25 A, DCR 7 mOhm), read 2026-11-18; itemp taken at the Bourns SRP1513CA-100M's Irms 19 A (20 C rise, SRP1513CA p.1), the part it clones -- the lower of the two",
    "why": "no voltage rating applies; current checked below"
   },
+  "NT5.1": {
+   "max": "none",
+   "src": "NetTie (no LCSC code): no LCSC code / no rating applies",
+   "why": "bare copper"
+  },
   "NT5.2": {
    "max": "none",
    "src": "NetTie (no LCSC code): no LCSC code / no rating applies",
-   "why": "no rating in voltage_ratings.json for no LCSC code (NetTie)"
+   "why": "bare copper"
+  },
+  "NT6.1": {
+   "max": "none",
+   "src": "NetTie (no LCSC code): no LCSC code / no rating applies",
+   "why": "bare copper"
   },
   "NT6.2": {
    "max": "none",
    "src": "NetTie (no LCSC code): no LCSC code / no rating applies",
-   "why": "no rating in voltage_ratings.json for no LCSC code (NetTie)"
+   "why": "bare copper"
   },
   "Q10.1": {
    "max": 20.0,
@@ -3523,6 +3543,16 @@
   "R112.1": {
    "max": 50.0,
    "src": "element V -- RC0402FR-0749K9L (C137969): YAGEO RC0402FR-07 series, the series C163455 / C138058 / C138027 / C138045 / C274897 / C327251 are read from (JLCPCB parts API, 2026-10-06: 50 V, 62.5 mW for every value); fab.py's R22 from 2026-11-01"
+  },
+  "R113.1": {
+   "max": "none",
+   "src": "STE1206M1W0R013F (C201279): fab.py's part table for C201279 (STE1206M1W0R013F, 1206 1 W 13 mohm 50 ppm, brain R313 under BRAIN_POWER_SIZING), as the C601097 entry; V = sqrt(P x R) = 0.114 V",
+   "why": "its element V limit (0.114 V) is not one to ground: it was judged on 0.065 V steady, 0.065 V transient -- 325.0 mW of 1000 mW -- U5's output sense: the TPS552892's 50 mV ISP-ISN limit holds it to 5.0 A (SLVSGT7 8.2.2.6) x 10 mohm"
+  },
+  "R113.2": {
+   "max": "none",
+   "src": "STE1206M1W0R013F (C201279): fab.py's part table for C201279 (STE1206M1W0R013F, 1206 1 W 13 mohm 50 ppm, brain R313 under BRAIN_POWER_SIZING), as the C601097 entry; V = sqrt(P x R) = 0.114 V",
+   "why": "its element V limit (0.114 V) is not one to ground: it was judged on 0.065 V steady, 0.065 V transient -- 325.0 mW of 1000 mW -- U5's output sense: the TPS552892's 50 mV ISP-ISN limit holds it to 5.0 A (SLVSGT7 8.2.2.6) x 10 mohm"
   },
   "R114.1": {
    "max": 50.0,
