@@ -817,11 +817,10 @@ REVIEW_NOTES["brain_board"] = {**REVIEW_NOTES["output_power"], **REVIEW_NOTES["o
 for _k in ("J10", "J12", "L1", "D5", "D7"):
     REVIEW_NOTES["brain_board"].pop((_k, "SUSPECT"), None)
 _QOD_NOTE = (
-    "Explained (bronner, 2026-11-22, for the lead): the 6.3 V is +5V_CM5's FAULT level, U5's high side short "
-    "for the ~2 us before U21's OVLO opens (brain.py's known limit). R122 is not across it then: Q18 conducts "
-    "only after AUXOFF falls, which OVLO itself causes (SLVSFC9C Table 7-4), and by then U21 is off and "
-    "+5V_CM5 is decaying from that peak through R122 -- 0.18 W falling with the CM5's own caps, milliseconds, "
-    "inside a thick-film 0805's 2.5 x P short-time overload.")
+    "Accepted (lead, 2026-11-22): the 6.3 V is +5V_CM5's FAULT level, U205's high side short for the ~2 us "
+    "before U221's OVLO opens (brain.py's known limit). R122 is not across it then: Q18 conducts only after "
+    "AUXOFF falls, which OVLO itself causes (SLVSFC9C Table 7-4), so R122 sees only the decay from <= 6.3 V: "
+    "6.3^2 / 220 = 0.18 W peak, falling with tau ~22 ms, on a 125 mW / 150 V 0805 with pulse headroom.")
 REVIEW_NOTES.setdefault("brain", {})[("R122", "FAULT")] = _QOD_NOTE
 REVIEW_NOTES["brain_board"][("R322", "FAULT")] = _QOD_NOTE
 REVIEW_NOTES["brain_board"][("U36", "SUSPECT")] = (
