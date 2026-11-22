@@ -3486,7 +3486,15 @@ def test_pad_access(ctx):
                 continue
             bb = pad.GetBoundingBox()
             box = (MM(bb.GetLeft()), MM(bb.GetTop()), MM(bb.GetRight()), MM(bb.GetBottom()))
-            near = sorted((_box_gap(box, b), r) for r, b, side, tht in parts
+            if pad.GetShape(pcbnew.F_Cu) == pcbnew.PAD_SHAPE_CIRCLE:
+                # a round pad measures from its circle: its bounding box reads a diagonal
+                # neighbour up to r(sqrt2 - 1) closer than it is (TestPoint_Pad_D1.5: 0.31 mm)
+                c = pad.GetPosition()
+                gap = (lambda b, cx=MM(c.x), cy=MM(c.y), rr=(box[2] - box[0]) / 2.0:
+                       max(_box_gap((cx, cy, cx, cy), b) - rr, 0.0))
+            else:
+                gap = (lambda b, box=box: _box_gap(box, b))
+            near = sorted((gap(b), r) for r, b, side, tht in parts
                           if r != ref and (tht or side in faces))
             subj = "%s.%s" % (ref, pad.GetNumber() or "1")
             if not near:

@@ -538,6 +538,14 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
         notes["back_refs"] = sorted(set(notes.get("back_refs", ())) | set(back))
         print("place_flow: two-sided: %d part(s) on the back (B.Cu)" % len(back))
         log.write("## two-sided: %s on the back\n" % " ".join(back))
+    # an `access` / `mate` part's courtyard holds its reach (tool circle, plug stroke), ON DISK like the back side above, so
+    # place_init, place_cells and every check keep neighbours out of the probe's reach
+    parts, grown_ = pi.grow_reach(parts, rules)
+    if grown_:
+        pj = json.load(open(parts_path, encoding="utf-8"))
+        pj["parts"] = parts
+        json.dump(pj, open(parts_path, "w", encoding="utf-8"), indent=0)
+        print("place_flow: access / mate: %d courtyard(s) grown to their reach: %s" % (len(grown_), " ".join(grown_)))
     # opt-in: big currents as pours, not tracks (place_intent.auto_pour)
     rules, aplines = pi.auto_pour(rules, parts, notes)
     for a_ in aplines:
@@ -663,7 +671,7 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     P_k = pi.Placed(parts, pl)
     broken = []
     for i_, r_ in enumerate(rules):
-        if r_["kind"] in ("outline", "keepout", "hole", "fixed", "height") and r_.get("hard", True):
+        if r_["kind"] in pi.GATE_KINDS and pi.is_hard(r_):
             for s_, ref_, det in pi.check(r_, P_k, notes_k):
                 if s_ < -0.05:
                     broken.append("rule %d %s: %s %s (%.2f mm)" % (i_, r_["kind"], ref_, det, s_))
