@@ -243,6 +243,46 @@ def _raise_widths(notes, parts, pl, keep=False):
     return out
 
 
+def _tight_warns(rules, parts, P, notes, ic_pads=8):
+    """WARN lines for `tight` rules: every unmet one with what it achieved against what it asks,
+    and -- met or not -- one whose nets carry no part its stage can move.
+
+    ⚠ A RULE THAT SILENTLY DOES NOTHING (brain_board so_ovw8, 2026-11-22): U21_OVLO's tight (3 mm,
+    weight 2 then 8) left the node at 5.7 mm both times, overflow and every seat identical. Its
+    members were U221 (the anchor) and R319 / R320 -- small parts with a `near` to a pin, which
+    place_init seats as satellites at that pin after the stage the tight pulls; the weight never
+    reached them. Satellites follow their own near / decap rule: tighten THAT, not the tight."""
+    fixed = {r["ref"] for r in rules if r["kind"] in ("fixed", "pin")}
+    sat, anchor = set(), {}
+    for r in rules:
+        if r["kind"] == "decap":
+            sat.add(r["cap"])
+            anchor[r["cap"]] = r["pin"].split(".")[0]
+        elif (r["kind"] == "near" and r.get("ref") in parts and len(parts[r["ref"]]["pads"]) <= ic_pads):
+            sat.add(r["ref"])
+            anchor[r["ref"]] = r["target"].split(".")[0]
+    out = []
+    for i_, r in enumerate(rules):
+        if r["kind"] != "tight":
+            continue
+        members = sorted({ref for ref, p in parts.items() if ref in P.pl
+                          for q in p["pads"] if q["net"] in r["nets"]})
+        sats = [m for m in members if m in sat]
+        anchors = {anchor[m] for m in sats}
+        movable = [m for m in members if m not in sat and m not in anchors and m not in fixed]
+        res = pi.check(r, P, notes)
+        unmet = [(s_, nm, det) for s_, nm, det in res if s_ < -0.05]
+        for s_, nm, det in unmet:
+            out.append("TIGHT UNMET rule %d: %s %s (%.2f mm over) [%s]" % (i_, nm, det, -s_, r.get("src", "")))
+        if sats and not movable:
+            out.append("TIGHT CANNOT ACT rule %d (%s): its members %s are pin satellites (seated by their "
+                       "near / decap rule after the stage a tight pulls) and the rest are their anchors or "
+                       "held -- its weight moves nothing (place_init only seats them first and reserves their strips); "
+                       "tighten the satellites' own near / decap max_mm"
+                       % (i_, " ".join(r["nets"]), " ".join(sats)))
+    return out
+
+
 def _near_broken(rules, P, notes):
     """(slack, line) for every HARD `near` rule the placement misses by more than 0.05 mm: the
     part, the rule's index, the distance it sits at and the distance it wants."""
@@ -639,6 +679,9 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
         say("WARN " + w_)
         floor.append(w_)
     for w_ in _swap_lines(notes, parts, pl, stem, fd, apply_swaps):
+        say("WARN " + w_)
+        floor.append(w_)
+    for w_ in _tight_warns(rules, parts, P_k, notes_k):
         say("WARN " + w_)
         floor.append(w_)
     # ⚠ A BROKEN HARD `near` IS SAID, NOT LEFT TO A SIDE EFFECT (output_board mN, 2026-11-14):
