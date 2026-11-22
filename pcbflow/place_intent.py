@@ -1839,6 +1839,22 @@ def pour_around(rule, P, notes=None, amps=None):
             ux, uy = X[None, :] - cx, Y[:, None] - cy
             lx, ly = np.abs(ux * ca + uy * sa), np.abs(-ux * sa + uy * ca)
             own |= np.hypot(np.maximum(lx - hx, 0.0), np.maximum(ly - hy, 0.0)) <= m_own + 1e-9
+    # ⚠ THE NECK WAS REPORTED INSIDE THE PAD (brain_board sa_away, 2026-11-22): +5V_RAW's band read
+    # "neck 0.68 of 1.35 -- pinched by U221.1" while the gate measured 1.37. The pinch lay on the
+    # IN bar's escape stub (pin_escapes: pin-wide through the neighbours' fence, 0.95 past the pad),
+    # which the gate counts as pad by rule (lead, 2026-11-21) -- the band takes over at the stub's
+    # tip, so the centreline may run the stub's corridor at any neck (test_stub_own.py).
+    for e_ in pin_escapes(rule, P, notes):
+        if e_.get("layer", rule.get("layer")) != rule.get("layer"):
+            continue
+        (ax_, ay_), (bx_, by_) = e_["pts"][0], e_["pts"][-1]
+        dx_, dy_ = bx_ - ax_, by_ - ay_
+        L2 = dx_ * dx_ + dy_ * dy_
+        if L2 <= 0:
+            continue
+        ux, uy = X[None, :] - ax_, Y[:, None] - ay_
+        t_ = np.clip((ux * dx_ + uy * dy_) / L2, 0.0, 1.0)
+        own |= np.hypot(ux - t_ * dx_, uy - t_ * dy_) <= e_["width"] / 2.0 + 1e-9
     for key in rule.get("_avoid_pins", ()):
         ref, num = key.split(".", 1)
         p = P.parts.get(ref)
