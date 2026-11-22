@@ -96,6 +96,7 @@ KELVIN_TIES = os.environ.get("BRAIN_KELVIN_TIES", "0") == "1"
 # every power_paths net on F.Cu / B.Cu (net_layers, never relaxed -- the 0.5 oz inner layers
 # ask 5.2x the outer width); and brain.py's R113 (R313 here) limits the CM5 at 3.85 A.
 POWER_SIZING = os.environ.get("BRAIN_POWER_SIZING", "0") == "1"
+CM5_PROTECT = os.environ.get("BRAIN_CM5_PROTECT", "efuse")       # brain.py U21: "efuse" | "fuse_crowbar"
 
 P = Pin.types.PASSIVE
 
@@ -2405,8 +2406,13 @@ _AMPS_AUDIT = [
                                     "fuse at 85 % against its 75 % derating)")),
     ("+24V_LED", None, None, (3.0, 1, "F203 3 A, split over the ribbon's four ways; load 1.70 A full white")),
     ("VIN_CM5", None, None, (2.5, 1, "U205 limited at 3.85 A (R313 13 mR) x 5.2 V / 0.9 at a 9 V contract")),
-    ("+5V_BB", None, None, (4.0, 1, "R313 13 mR: 3.85 A limit; copper to F202's 4 A")),
-    ("+5V_RAW", None, None, (4.0, 1, "R313 13 mR: 3.85 A limit; copper to F202's 4 A")),
+    ("+5V_BB", None, None, (4.0, 1, "R313 13 mR: 3.85 A limit; copper to 4 A")),
+    ("+5V_RAW", None, None, (4.0, 1, "R313 13 mR: 3.85 A limit; copper to 4 A")),
+] + ([
+    ("+5V_CM5", None, None, (4.0, 1, "U221 TPS259470A eFuse (BRAIN_CM5_PROTECT efuse): R313 13 mR 3.85 A limit "
+                                     "governs, RILM 750 R -> ILIM 3.96 A min (SLVSFC9C s6.5); copper to 4 A; the "
+                                     "CM5 and its USB peripherals share it (16.7 W budget, motor-power-measured)")),
+] if CM5_PROTECT == "efuse" else [
     # ⚠ +5V_SW CARRIES ALL OF +5V_CM5's CURRENT (lead 2026-11-22): U221 sits in series between
     # +5V_RAW and F202, and the power gate judges the path from BOTH VOUT pins together
     # (U221.7+U221.8 > F202.1), so "half on each pin" read as 2 A on the whole leg -- a 0.51 mm
@@ -2416,6 +2422,7 @@ _AMPS_AUDIT = [
                                     "F202's 4 A (TPS22965 IMAX 6 A, no limit: SLVSBJ0F p.5)")),
     ("+5V_CM5", None, None, (4.0, 1, "F202 JFC1206-1400FS 4 A; the CM5 and its USB peripherals share it "
                                      "(16.7 W budget, motor-power-measured)")),
+]) + [
     ("V5_PRE", None, "U15", (1.8, 1, "U15 ILIM R86 15k: 1.61-1.80 A; the optical board's real draw unmeasured")),
     ("+5V_OPT", None, None, (1.8, 1, "U15 ILIM R86 15k: 1.61-1.80 A")),
     ("V5_PRE", None, "U36", (1.2, 1, "U36 TPS2552 ILIM: 1.20 A max")),
@@ -2655,6 +2662,11 @@ IC_PINOUTS = {
         "TI LP2985 datasheet SLVS522S p.3 s4 Fig 4-1 (DBV) + Table 4-1: 1 VIN, 2 GND, 3 ON/OFF, "
         "4 BYPASS, 5 VOUT; pads as KiCad's SOT-23-5 -- U31: 1/3 ISO9 (EN on VIN), 2 AGND, "
         "4 C163 10 nF, 5 +5V_A (read 2026-11-18)"),
+    "TPS259470ARPWR": (
+        "TI TPS25947 datasheet SLVSFC9C (May 2026) p.5 s5 Fig 5-1 (RPW top view) + Table 5-1: 1 EN/UVLO, "
+        "2 OVLO, 3 AUXOFF, 4 FLT, 5 IN, 6 OUT, 7 DVDT, 8 GND, 9 ILM, 10 ITIMER; pads as "
+        "Steel:Texas_RPW0010A (p.73 land pattern 4225183/A) -- U221: 1 EN5, 2 U21_OVLO, 3 U21_AUXOFF, "
+        "4 FLT open, 5 +5V_RAW, 6 +5V_CM5, 7 DVDT open, 8 GND, 9 U21_ILM, 10 ITIMER open (read 2026-11-22)"),
     "TPS22965DSGR": (
         "TI TPS22965 datasheet SLVSBJ0F p.4 s6 (DSG top view) + Pin Functions: 1/2 VIN, 3 ON, "
         "4 VBIAS, 5 GND, 6 CT, 7/8 VOUT, thermal pad GND; pads as KiCad's Texas_DSG0008A (EP = 9) "
@@ -2731,7 +2743,12 @@ def quality_notes(net_path):
         unc["U5.4"] = "LMR33640 PG: unread"
         unc["U205.4"] = "TPS552892 CC flag: unused"
         unc["U205.16"] = "TPS552892 CDC floating: no cable-droop lift (SLVSGT7 6.5)"
-        unc["U221.6"] = "TPS22965 CT floating: fastest rise"
+        if CM5_PROTECT == "efuse":
+            unc["U221.4"] = "TPS259470 FLT: open drain, unused (SLVSFC9C Table 5-1)"
+            unc["U221.7"] = "TPS259470 DVDT open: fastest rise, tR 0.17-0.35 ms (SLVSFC9C s6.7)"
+            unc["U221.10"] = "TPS259470 ITIMER open: default blanking (SLVSFC9C s6.5 test condition)"
+        else:
+            unc["U221.6"] = "TPS22965 CT floating: fastest rise"
     q["unconnected"] = unc
     q["decoupling"] = qp["decoupling"]
     q["not_power"] = dict(qp["not_power"], **qs["not_power"])
@@ -2932,7 +2949,8 @@ if __name__ == "__main__":
         "U203": {"3": "VCC"},
         "U31": {"1": "VIN", "5": "VOUT"},
         "U34": {"1": "VCC1", "3": "VCC1", "8": "VCC2"},
-        "U221": {"1": "VIN", "2": "VIN", "4": "VBIAS"},
+        **({"U221": {"5": "IN"}} if CM5_PROTECT == "efuse" else    # TPS25947 SLVSFC9C Table 5-1
+           {"U221": {"1": "VIN", "2": "VIN", "4": "VBIAS"}}),
         "U220": {"5": "VIN", "17": "VCC"},
         # batch 3 (2026-11-17) -- every IC on a rail is now declared. AP33772S DS46176 Rev. 10-2
         # p.3 Table 1: 24 VCC; 20 V5V and 12 V18 are its own LDO outputs (caps at the pin);

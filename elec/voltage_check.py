@@ -310,12 +310,35 @@ SEEDS["brain"] = {
     # U5 is the TPS552892-Q1 buck-boost on VIN_BRAIN (brain.py, 2026-11-17)
     "SW5_1": ("like", "VIN_BRAIN", 0.0, "buck-boost input switch node: VIN while its high side is on"),
     "SW5_2": ("like", "+5V_BB", 0.7, "buck-boost output switch node: VOUT plus a body diode"),
-    "+5V_BB": ("buck", "U5", "R10", "R11",
-               "TPS552892-Q1: VREF max x (1 + top/bot), 1 % resistors; +5 % overshoot; FAULT = U5 "
-               "fails short and D9 (SMBJ5.0A) clamps at its VC while F2 clears",
-               {"vf": PARTS["C83333"]["vc"]}),
-    "+5V_RAW": ("like", "+5V_BB", 0.0, "behind R113, the 10 mR output sense"),
-    "+5V_SW": ("like", "+5V_RAW", 0.0, "behind U21, the CM5 rail's load switch"),
+    **({
+        # BRAIN_CM5_PROTECT efuse (brain.py U21, lead 2026-11-22): nothing clamps +5V_BB / +5V_RAW now --
+        # a U5 high-side short puts VIN_BRAIN on them and U21 (TPS259470A, IN 28 V abs max) turns the
+        # CM5 off at its OVLO; +5V_CM5's fault is the trip plus the inductor-limited rise during tOVLO
+        "+5V_BB": ("buck", "U5", "R10", "R11",
+                   "TPS552892-Q1: VREF max x (1 + top/bot), 1 % resistors; +5 % overshoot; FAULT = U5's "
+                   "high side fails short: VIN_BRAIN on the rail (U21 opens the CM5's side)",
+                   {"vf": BRAIN_VIN["v"]}),
+        "+5V_RAW": ("like", "+5V_BB", 0.0, "behind R113, the output sense"),
+        "+5V_CM5": ("abs", dict(v=5.33, vt=5.58, vf=6.3,
+                                why="behind U21 (eFuse, RON 45 mR max): U5's 5.33 V static max (VREF 1.212 V, "
+                                    "SLVSGT7 s6.5), +5 % load release; FAULT = U21's OVLO trip 5.81 V max plus "
+                                    "~0.5 V of inductor-limited rise in 2 x tOVLO (SLVSFC9C s6.6) -- brain.py's "
+                                    "known limit")),
+        "U21_OVLO": ("ratio", "+5V_RAW", 100.0 / 474.0, "R120 / (R119 + R120): 1.2 V at the trip"),
+        "U21_ILM": ("abs", dict(v=2.0, vt=2.0, why="TPS259470 ILM: current-monitor output into RILM, driven "
+                                                    "by the part ('Internally Limited', SLVSFC9C s6.1); 2 V an "
+                                                    "assumed bound")),
+        "U21_AUXOFF": ("like", "+3V3", 0.0, "open drain, R124 to +3V3"),
+        "QOD_G": ("like", "+3V3", 0.0, "R123 to +3V3"),
+        "QOD_D": ("like", "+5V_CM5", 0.0, "R122 from +5V_CM5"),
+    } if os.environ.get("BRAIN_CM5_PROTECT", "efuse") == "efuse" else {
+        "+5V_BB": ("buck", "U5", "R10", "R11",
+                   "TPS552892-Q1: VREF max x (1 + top/bot), 1 % resistors; +5 % overshoot; FAULT = U5 "
+                   "fails short and D9 (SMBJ5.0A) clamps at its VC while F2 clears",
+                   {"vf": PARTS["C83333"]["vc"]}),
+        "+5V_RAW": ("like", "+5V_BB", 0.0, "behind R113, the 10 mR output sense"),
+        "+5V_SW": ("like", "+5V_RAW", 0.0, "behind U21, the CM5 rail's load switch"),
+    }),
     "VCC5": ("abs", dict(v=5.5, vt=6.0, why="TPS552892 VCC: its internal LDO, ~5.2 V; 5.5 V an assumed bound, "
                                             "the pin is rated 6 V (SLVSGT7 s6.1)")),
     "BOOT5_1": ("like", "SW5_1", 5.5, "bootstrap: SW1 plus VCC"),
@@ -585,6 +608,13 @@ RES_MODEL = {
         "R108": ("i", 0.01, "the LM5122's own VIN supply current, milliamps; 10 mA allowed"),
         "R113": ("v", lambda L, R: 5.0 * R("R113"), "U5's output sense: the TPS552892's 50 mV ISP-ISN "
                                                     "limit holds it to 5.0 A (SLVSGT7 8.2.2.6) x 10 mohm"),
+        # BRAIN_CM5_PROTECT efuse: the +5V_CM5 discharge (Q18 + R122) conducts only while U21's AUXOFF is
+        # low, i.e. U21's FET is off or still in inrush (SLVSFC9C Table 7-4: UVP/UVLO, OVLO, inrush L;
+        # every load fault H). Off, +5V_CM5 is the CM5's own caps decaying through R122 -- zero once
+        # they are empty; in inrush the ramp (dVdt open, the fastest) is milliseconds. No steady load.
+        "R122": ("i", 0.0, "U21's discharge: carries only the decay of +5V_CM5's caps, and the inrush ramp's "
+                           "milliseconds, while AUXOFF is low (SLVSFC9C Table 7-4); 129 mW peak for "
+                           "milliseconds, inside a thick-film 0805's 2.5 x P short-time overload"),
     },
     "pi_cap": {r: ("i", 0.016, "series termination into a CMOS input; worst case the Pi pin's 16 mA "
                                "drive into a shorted line") for r in ("R1", "R2", "R3", "R4")},
@@ -786,6 +816,14 @@ REVIEW_NOTES["brain_board"] = {**REVIEW_NOTES["output_power"], **REVIEW_NOTES["o
 # accepted; J10 / J12 and D5 / D7 raise no SUSPECT on this board, so there is nothing to accept.
 for _k in ("J10", "J12", "L1", "D5", "D7"):
     REVIEW_NOTES["brain_board"].pop((_k, "SUSPECT"), None)
+_QOD_NOTE = (
+    "Explained (bronner, 2026-11-22, for the lead): the 6.3 V is +5V_CM5's FAULT level, U5's high side short "
+    "for the ~2 us before U21's OVLO opens (brain.py's known limit). R122 is not across it then: Q18 conducts "
+    "only after AUXOFF falls, which OVLO itself causes (SLVSFC9C Table 7-4), and by then U21 is off and "
+    "+5V_CM5 is decaying from that peak through R122 -- 0.18 W falling with the CM5's own caps, milliseconds, "
+    "inside a thick-film 0805's 2.5 x P short-time overload.")
+REVIEW_NOTES.setdefault("brain", {})[("R122", "FAULT")] = _QOD_NOTE
+REVIEW_NOTES["brain_board"][("R322", "FAULT")] = _QOD_NOTE
 REVIEW_NOTES["brain_board"][("U36", "SUSPECT")] = (
     "Accepted (bronner, 2026-11-17): the 10.3 V is D25's clamp at its full 19.4 A surge, a hit on the service "
     "port's VBUS; steady is 5.5 V on a 7 V part. The panel ports' USB parts take their surges the same way.")

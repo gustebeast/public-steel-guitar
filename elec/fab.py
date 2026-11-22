@@ -157,6 +157,7 @@ LCSC = {
     "TS3USB221RSER": "C130085",     # TI USB 2:1 switch, UQFN-10; 64,390 on 2026-10-30
     # brain_board's U205 swap and the service port / flash mode (2026-11-17)
     "TPS552892QWRYQRQ1": "C22375748",  # TI 36 V 8 A buck-boost, VQFN-HR-21 3x5: the CM5's 5 V
+    "TPS259470ARPWR": "C3662799",   # TI eFuse, adjustable OVLO, auto-retry, RPW QFN-10 2x2: the CM5's rail (BRAIN_CM5_PROTECT efuse); 4,872 on 2026-11-22
     "TPS22965DSGR": "C122837",      # TI 6 A load switch with QOD, WSON-8: the CM5's rail
     "TUSB321RWBR": "C139392",       # TI USB-C CC logic, GPIO only, X2QFN-12; 2,542 on 2026-11-17
     "TPS2552DBVR": "C46506",        # TI current-limited switch, active-low EN; 9,800 on 2026-11-17
@@ -343,6 +344,10 @@ PASSIVES = {
     ("5mR 1W", "R_0805_2012Metric"):         "C6351848",  # Yageo PA0805FRF870R005L, 1 %; 10,923 on 2026-10-30 -- R2 inlet shunt
     ("100k", "R_0402_1005Metric"):           "C25741",   # UniOhm 0402WGF1003TCE, 1 %; basic
     ("100k 1%", "R_0402_1005Metric"):        "C25741",
+    ("100k 0.1%", "R_0402_1005Metric"):      "C136979",  # Yageo RT0402BRE07100KL, thin film 0.1 % 50 ppm; 60,888 on 2026-11-22 (brain R120, U21 OVLO)
+    ("374k 0.1%", "R_0603_1608Metric"):      "C861356",  # Yageo RT0603BRD07374KL, thin film 0.1 % 25 ppm; 19,796 on 2026-11-22 (brain R119, U21 OVLO)
+    ("750R", "R_0402_1005Metric"):           "C25132",   # UniOhm 0402WGF7500TCE, 1 %; 963,949 on 2026-11-22 (brain R121, U21 RILM)
+    ("220R", "R_0805_2012Metric"):           "C17557",   # UniOhm 0805W8F2200T5E, 1 % 125 mW; basic (brain R122, +5V_CM5 discharge)
     ("10k", "R_0402_1005Metric"):            "C25744",   # UniOhm 0402WGF1002TCE, 1 %; basic
     ("10k 1%", "R_0402_1005Metric"):         "C25744",
     ("10k 0.1%", "R_0402_1005Metric"):       "C190095",   # Yageo RT0402BRD0710KL, thin film 0.1 % 25 ppm; 729,784 in stock

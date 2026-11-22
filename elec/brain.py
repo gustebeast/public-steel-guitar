@@ -72,6 +72,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+CM5_PROTECT = os.environ.get("BRAIN_CM5_PROTECT", "efuse")   # "efuse" | "fuse_crowbar" (see U21)
+assert CM5_PROTECT in ("efuse", "fuse_crowbar"), CM5_PROTECT
 OUT_DIR = (os.environ.get("BRAIN_OUT")
            or os.path.join(os.path.dirname(os.path.abspath(__file__)), "out"))
 os.makedirs(OUT_DIR, exist_ok=True)
@@ -656,29 +658,97 @@ def brain(merged=None):
     _res("R17", "100k", "Q15 gate down", lp_g, gnd)
     _small("Q15", "MINIMAL mode: holds U5's EN low, the CM5 stays off (LOW_PWR is clamped low "
            "in flash mode, brain_board)", en5, lp_g, gnd)
-    # U21: the module's rail behind a switch WITH AN OUTPUT DISCHARGE, on the same EN: the
-    # handover's power cycle is the discharge's, sized not guessed -- 225 R x ~100 uF = 22 ms,
-    # under 0.5 V in ~50 ms, inside C126's ~100 ms off-time.
-    u21 = _part("U21", "TPS22965", "TPS22965DSGR", "+5V_CM5 load switch, 6 A, 16 mOhm, QOD "
-                "225 R (TI TPS22965 datasheet; LCSC C122837)",
-                "Package_SON:Texas_DSG0008A_WSON-8-1EP_2x2mm_P0.5mm_EP0.9x1.6mm",
-                [Pin(num=n, func=P) for n in range(1, 10)])
-    v5_raw += u21[1], u21[2]
-    en5 += u21[3]                              # ON: VIH 1.1 V, VIL 0.5 V
-    v33 += u21[4]                              # VBIAS from +3V3D: the QOD works with U5 off
-    gnd += u21[5], u21[9]
-    Net("U21_NC_CT").connect(u21[6])           # CT floating: fastest rise
-    # VOUT is pins 7 AND 8 (SLVSBJ0F p.4 s6 DSG top view: 1/2 VIN, 7/8 VOUT). Pad 8 sat on GND
-    # until 2026-11-18 -- a dead short from +5V_SW to ground the moment the switch closed.
-    v5_sw += u21[7], u21[8]
-    _cap("C127", "1uF", "U21 VBIAS bypass", v33, gnd)
-    # +5V_RAW had no capacitor at all (quality A2, mV22): the bulks sit on +5V_BB, behind
-    # R113. TI characterises the switch with CIN = 1 uF (SLVSBJ0F 6.6-6.7); at its VIN pins.
-    _cap("C129", "1uF", "U21 VIN bypass, after the sense resistor", v5_raw, gnd)
-    _two("F2", "Fuse", "JFC1206-1400FS", "4 A 63 V: 5 V output fuse -- the element D9 blows "
-         "when U5 fails short", "Fuse:Fuse_1206_3216Metric", v5_sw, v5c)
-    _diode("D9", "SMBJ5.0A", "THE CROWBAR: clamps +5V_CM5 and draws enough through F2 to "
-           "open it", v5c, gnd, "Diode_SMD:D_SMB")
+    # ⚠ THE CM5's PROTECTION IS AN OVLO eFUSE, NOT A FUSE AND A CROWBAR (lead 2026-11-22,
+    # BRAIN_CM5_PROTECT; "fuse_crowbar" keeps the old U21 TPS22965 + F2 + D9). The crowbar asked
+    # one fuse to do two things it cannot: HOLD R113's 3.85 A limit (96 % of JFC1206-1400FS's
+    # 4.0 A "rated" = carries 1.0 In for 4 h min, JDT JFC1206FS rev 08/28/25 p.1; derated above
+    # 25 C) and OPEN on what a 20 V source pushes when U5 fails short (~6.5 A, two 3.25 A PD
+    # contracts = 1.6 In, where only 2.5 In is a guaranteed opening, "5 sec max") while D9
+    # burns ~60 W. TPS259470A (TI SLVSFC9C, May 2026) turns the module OFF instead.
+    if CM5_PROTECT == "efuse":
+        # U21: TPS259470ARPWR, 2.7-23 V in, 28 V abs max, 5.5 A continuous, RON 28.2 mOhm typ /
+        # 45 max (s6.1, 6.3, 6.5). Pins (p.5 Fig 5-1, Table 5-1): 1 EN/UVLO, 2 OVLO, 3 AUXOFF,
+        # 4 FLT, 5 IN, 6 OUT, 7 DVDT, 8 GND, 9 ILM, 10 ITIMER. LCSC C3662799 (the latch-off L
+        # variant had 0 in stock on 2026-11-22). Heat leaves through the IN / OUT bars (RPW has no
+        # exposed pad): 0.67 W at 45 mOhm x 3.85^2, RthJA 41.7 C/W with vias (s6.4) = +28 C.
+        u21 = _part("U21", "TPS25947", "TPS259470ARPWR", "+5V_CM5 eFuse: adjustable OVLO, active "
+                    "current limit, auto-retry (TI SLVSFC9C; LCSC C3662799)",
+                    "Steel:Texas_RPW0010A_VQFN-HR-10_2x2mm_P0.45mm",
+                    [Pin(num=n, func=P) for n in range(1, 11)])
+        # EN/UVLO: active high, VUVLO(R) 1.183/1.20/1.223 V, abs max 6.5 V, rec. <= 5 V (s6.1,
+        # 6.3, 6.5) -- EN5 is R12/R13 off VIN_SW, held low by R13 at power-up and <= 20 V x
+        # 23.2/123.2 = 3.77 V; shared with U5's EN (1.23 V), so the switch is on before U5 starts
+        en5 += u21[1]
+        v5_raw += u21[5]
+        v5c += u21[6]
+        gnd += u21[8]
+        Net("U21_NC_FLT").connect(u21[4])      # FLT: open drain, unused
+        Net("U21_NC_DVDT").connect(u21[7])     # DVDT open: fastest rise (s6.7: tR 0.17-0.35 ms)
+        Net("U21_NC_ITIMER").connect(u21[10])  # ITIMER open: the default blanking
+        # OVLO: VOV(R) 1.183/1.20/1.223 V, VOV(F) 1.076/1.09/1.116 V, tOVLO 1.2 us typ (no max
+        # given: 2.4 us used) (s6.5, 6.6); s7.3.3 "turns off the power to the output" and waits for
+        # VOV(F), Table 7-3 "Shutdown", not latched -- off for as long as the overvoltage lasts
+        # (auto-retry is thermal only, Table 7-2). 374 k / 100 k 0.1 %: 1.2 x 4.74 = 5.69 V, corners
+        # 5.60-5.81 V. Normal max on +5V_RAW: U5 VREF 1.188/1.2/1.212 V (SLVSGT7 s6.5) x R10/R11 1 %
+        # + 100 nA x 100 k = 5.33 V static, ~5.58 V with a +5 % load release. CM5 VIN abs max 6.0 V,
+        # operating 4.75-5.25 V (RP-008180-DS Release 4, s4.3.1 Table 7; Table 4 pins 77-87).
+        # ⚠ KNOWN LIMIT: U5 high-side short with a 20 V source: CM5 VIN sees ~6.3 V for ~2 us
+        # (tOVLO 2x typ, inductor-limited rise (20 - 5.2) V / 4.7 uH = 3.15 A/us into ~98 uF) before
+        # the eFuse opens; abs max 6.0 V. Strictly better than the old crowbar (D9 SMBJ5.0A: >= 6.4 V
+        # VBR, 9.2 V clamp, ms-scale). Bulk cannot close it (the step falls as 1/sqrt(C): ~600 uF for
+        # 6.0 V, by which point L202 is saturated); a faster detector is the only fix, if a future rev
+        # wants one.
+        ovlo = Net("U21_OVLO")
+        _res("R119", "374k 0.1%", "U21 OVLO divider, top: trip 5.69 V (5.60-5.81)", v5_raw, ovlo,
+             "Resistor_SMD:R_0603_1608Metric")
+        _res("R120", "100k 0.1%", "U21 OVLO divider, bottom", ovlo, gnd)
+        ovlo += u21[2]                         # OVLO pin on the divider
+        # ILM: RILM 750 R -> ILIM 3.96/4.45/4.84 A (s6.5), just over R113's 3.85 A, which still
+        # governs; 750 R is the UL 2367 recognition's floor (p.1)
+        ilm = Net("U21_ILM")
+        ilm += u21[9]
+        _res("R121", "750R", "U21 ILIM: 3.96 A min, over R113's 3.85 A limit", ilm, gnd)
+        # QOD, discrete (SLVSFC9C has no output discharge -- its only "discharge" is ITIMER's): the
+        # handover's power cycle needs the module's rail emptied. Q19 holds Q18 off while AUXOFF
+        # is high ("asserted High when the input supply is valid and channel has completed inrush",
+        # Table 5-1 pin 3, open drain); off, R123 turns Q18 on and R122 empties +5V_CM5:
+        # 220 R x ~100 uF = 22 ms, under 0.5 V in ~51 ms -- inside C126's ~100 ms and Q16's >= 130 ms.
+        # Not EN5 for the inverter: EN5 sits at 1.2-1.7 V on a 6.5-9 V VIN_SW, under 2N7002's 2.5 V.
+        aux = Net("U21_AUXOFF")
+        aux += u21[3]
+        _res("R124", "100k", "U21 AUXOFF pull-up (open drain)", v33, aux)
+        qod_g, qod_d = Net("QOD_G"), Net("QOD_D")
+        _res("R123", "100k", "Q18 gate up: discharge on while U21 is off", v33, qod_g)
+        _small("Q19", "AUXOFF high (U21 on) holds Q18 off", qod_g, aux, gnd)
+        _res("R122", "220R", "+5V_CM5 discharge: 23 mA at 5 V, 22 ms with ~100 uF", v5c, qod_d,
+             "Resistor_SMD:R_0805_2012Metric")
+        _small("Q18", "+5V_CM5 output discharge while U21 is off", qod_d, qod_g, gnd)
+        # IN bypass: TI's application circuit puts a capacitor at IN (s8.2); +5V_RAW had none (A2)
+        _cap("C129", "1uF", "U21 IN bypass, after the sense resistor", v5_raw, gnd)
+    else:
+        # U21: the module's rail behind a switch WITH AN OUTPUT DISCHARGE, on the same EN: the
+        # handover's power cycle is the discharge's, sized not guessed -- 225 R x ~100 uF = 22 ms,
+        # under 0.5 V in ~50 ms, inside C126's ~100 ms off-time.
+        u21 = _part("U21", "TPS22965", "TPS22965DSGR", "+5V_CM5 load switch, 6 A, 16 mOhm, QOD "
+                    "225 R (TI TPS22965 datasheet; LCSC C122837)",
+                    "Package_SON:Texas_DSG0008A_WSON-8-1EP_2x2mm_P0.5mm_EP0.9x1.6mm",
+                    [Pin(num=n, func=P) for n in range(1, 10)])
+        v5_raw += u21[1], u21[2]
+        en5 += u21[3]                              # ON: VIH 1.1 V, VIL 0.5 V
+        v33 += u21[4]                              # VBIAS from +3V3D: the QOD works with U5 off
+        gnd += u21[5], u21[9]
+        Net("U21_NC_CT").connect(u21[6])           # CT floating: fastest rise
+        # VOUT is pins 7 AND 8 (SLVSBJ0F p.4 s6 DSG top view: 1/2 VIN, 7/8 VOUT). Pad 8 sat on GND
+        # until 2026-11-18 -- a dead short from +5V_SW to ground the moment the switch closed.
+        v5_sw += u21[7], u21[8]
+        _cap("C127", "1uF", "U21 VBIAS bypass", v33, gnd)
+        # +5V_RAW had no capacitor at all (quality A2, mV22): the bulks sit on +5V_BB, behind
+        # R113. TI characterises the switch with CIN = 1 uF (SLVSBJ0F 6.6-6.7); at its VIN pins.
+        _cap("C129", "1uF", "U21 VIN bypass, after the sense resistor", v5_raw, gnd)
+        _two("F2", "Fuse", "JFC1206-1400FS", "4 A 63 V: 5 V output fuse -- the element D9 blows "
+             "when U5 fails short", "Fuse:Fuse_1206_3216Metric", v5_sw, v5c)
+        _diode("D9", "SMBJ5.0A", "THE CROWBAR: clamps +5V_CM5 and draws enough through F2 to "
+               "open it", v5c, gnd, "Diode_SMD:D_SMB")
     for k, tag in enumerate(("C23", "C24", "C25")):
         _cap(tag, "22uF/16V", "+5V_CM5 bulk at the module's input pins", v5c, gnd, C0805)
     _res("R18", "10k", "+5V_CM5 sense divider, top", v5c, io["SENSE_5V"])
@@ -1109,11 +1179,17 @@ BOARD_NOTES["quality"] = {
            {"net": "+24V_LED", "from": "F3.2", "to": ["J4.1"], "amps": 1.5},
            # the CM5's 5 V: U5's 5 A output limit (R113), through U21 and F2, onto its six 5 V pins
            {"net": "+5V_BB", "from": "U5.11", "to": ["R113.1"], "amps": 5.0},
-           {"net": "+5V_RAW", "from": "R113.2", "to": ["U21.1", "U21.2"], "amps": 5.0, "split": True},
-           {"net": "+5V_SW", "from": "U21.7", "to": ["F2.1"], "amps": 2.0},
-           {"net": "+5V_SW", "from": "U21.8", "to": ["F2.1"], "amps": 2.0},   # VOUT is 7 AND 8
-           {"net": "+5V_CM5", "from": "F2.2", "to": ["J1.77", "J1.79", "J1.81", "J1.83", "J1.85",
-                                                    "J1.87"], "amps": 4.0, "split": True},
+           ]
+        + ([{"net": "+5V_RAW", "from": "R113.2", "to": ["U21.5"], "amps": 5.0},
+            {"net": "+5V_CM5", "from": "U21.6", "to": ["J1.77", "J1.79", "J1.81", "J1.83", "J1.85",
+                                                     "J1.87"], "amps": 4.0, "split": True}]
+           if CM5_PROTECT == "efuse" else
+           [{"net": "+5V_RAW", "from": "R113.2", "to": ["U21.1", "U21.2"], "amps": 5.0, "split": True},
+            {"net": "+5V_SW", "from": "U21.7", "to": ["F2.1"], "amps": 2.0},
+            {"net": "+5V_SW", "from": "U21.8", "to": ["F2.1"], "amps": 2.0},   # VOUT is 7 AND 8
+            {"net": "+5V_CM5", "from": "F2.2", "to": ["J1.77", "J1.79", "J1.81", "J1.83", "J1.85",
+                                                     "J1.87"], "amps": 4.0, "split": True}])
+        + [
            # +5V_AUX: the bus-B arms (TPS2553 limited) and the 3V3 LDO
            {"net": "+5V_AUX", "from": "L3.2", "to": ["U6.1"], "amps": 0.5},
            {"net": "+5V_AUX", "from": "L3.2", "to": ["U11.1"], "amps": 0.5},

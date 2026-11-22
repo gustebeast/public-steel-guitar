@@ -38,7 +38,7 @@
   "+5V_BB": {
    "peak": 5.586,
    "v": 5.32,
-   "why": "TPS552892-Q1: VREF max x (1 + top/bot), 1 % resistors; +5 % overshoot; FAULT = U5 fails short and D9 (SMBJ5.0A) clamps at its VC while F2 clears: 1.212 V x (1 + R210/R211) -> 5.32 V max"
+   "why": "TPS552892-Q1: VREF max x (1 + top/bot), 1 % resistors; +5 % overshoot; FAULT = U5's high side fails short: VIN_BRAIN on the rail (U21 opens the CM5's side): 1.212 V x (1 + R210/R211) -> 5.32 V max"
   },
   "+5V_BUSB_LEV": {
    "peak": 5.432,
@@ -51,9 +51,9 @@
    "why": "U206.6 (OUT) can reach its supply V5_PRE"
   },
   "+5V_CM5": {
-   "peak": 3.564,
-   "v": 3.465,
-   "why": "CM5 GPIO / unused pins: 3.3 V CMOS [= CM5_3V3+0]"
+   "peak": 5.58,
+   "v": 5.33,
+   "why": "behind U21 (eFuse, RON 45 mR max): U5's 5.33 V static max (VREF 1.212 V, SLVSGT7 s6.5), +5 % load release; FAULT = U21's OVLO trip 5.81 V max plus ~0.5 V of inductor-limited rise in 2 x tOVLO (SLVSFC9C s6.6) -- brain.py's known limit"
   },
   "+5V_OPT": {
    "peak": 5.432,
@@ -63,12 +63,7 @@
   "+5V_RAW": {
    "peak": 5.586,
    "v": 5.32,
-   "why": "behind R113, the 10 mR output sense [= +5V_BB+0]"
-  },
-  "+5V_SW": {
-   "peak": 5.586,
-   "v": 5.32,
-   "why": "behind U21, the CM5 rail's load switch [= +5V_RAW+0]"
+   "why": "behind R113, the output sense [= +5V_BB+0]"
   },
   "ACT_LED_A": {
    "peak": 3.45,
@@ -1526,6 +1521,16 @@
    "v": 10.6,
    "why": "the power button's throw, bounded as output_panel's SW_SENSE (D8 clamp)"
   },
+  "QOD_D": {
+   "peak": 5.58,
+   "v": 5.33,
+   "why": "R122 from +5V_CM5 [= +5V_CM5+0]"
+  },
+  "QOD_G": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "R123 to +3V3 [= +3V3_A+0]"
+  },
   "RELAY": {
    "v": 0.0,
    "why": "through R5"
@@ -1664,8 +1669,8 @@
    "why": "divider off +24V: x 0.0909"
   },
   "SENSE_5V": {
-   "peak": 1.782,
-   "v": 1.732,
+   "peak": 2.79,
+   "v": 2.665,
    "why": "divider off +5V_CM5: x 0.5000"
   },
   "STATUS_LED": {
@@ -2288,9 +2293,31 @@
    "v": 0.0,
    "why": "not connected"
   },
-  "U21_NC_CT": {
+  "U21_AUXOFF": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "open drain, R124 to +3V3 [= +3V3_A+0]"
+  },
+  "U21_ILM": {
+   "v": 2.0,
+   "why": "TPS259470 ILM: current-monitor output into RILM, driven by the part ('Internally Limited', SLVSFC9C s6.1); 2 V an assumed bound"
+  },
+  "U21_NC_DVDT": {
    "v": 0.0,
    "why": "not connected"
+  },
+  "U21_NC_FLT": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "U21_NC_ITIMER": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "U21_OVLO": {
+   "peak": 1.178,
+   "v": 1.122,
+   "why": "R120 / (R119 + R120): 1.2 V at the trip"
   },
   "U21_VIN": {
    "peak": 5.432,
@@ -3267,33 +3294,35 @@
    "n": "AGND"
   },
   "U221.1": {
-   "n": "VIN"
+   "n": "EN/UVLO"
+  },
+  "U221.10": {
+   "n": "ITIMER"
   },
   "U221.2": {
-   "n": "VIN"
+   "n": "OVLO"
   },
   "U221.3": {
-   "n": "ON"
+   "n": "AUXOFF"
   },
   "U221.4": {
-   "n": "VBIAS"
+   "n": "FLT"
   },
   "U221.5": {
+   "n": "IN"
+  },
+  "U221.6": {
+   "n": "OUT"
+  },
+  "U221.7": {
+   "n": "DVDT"
+  },
+  "U221.8": {
    "gnd": true,
    "n": "GND"
   },
-  "U221.6": {
-   "n": "CT"
-  },
-  "U221.7": {
-   "n": "VOUT"
-  },
-  "U221.8": {
-   "n": "VOUT"
-  },
   "U221.9": {
-   "gnd": true,
-   "n": "PAD"
+   "n": "ILM"
   },
   "U3.1": {
    "n": "CPVDD"
@@ -4420,10 +4449,6 @@
    "max": 10.0,
    "src": "rated V -- CL10A475KP8NNNC (C1705): JLCPCB parts API search for C1705 (CL10A475KP8NNNC, Samsung, 10 V X5R), fetched 2026-11-17"
   },
-  "C327.1": {
-   "max": 25.0,
-   "src": "rated V -- CL05A105KA5NQNC (C52923): JLCPCB parts API attributes for C52923 (CL05A105KA5NQNC, Samsung Electro-Mechanics), fetched 2026-10-06"
-  },
   "C328.1": {
    "max": 25.0,
    "src": "rated V -- CL05A105KA5NQNC (C52923): JLCPCB parts API attributes for C52923 (CL05A105KA5NQNC, Samsung Electro-Mechanics), fetched 2026-10-06"
@@ -4692,6 +4717,10 @@
    "max": 50.0,
    "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
+  "C98.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
   "D11.1": {
    "max": 24.4,
    "peak": "none",
@@ -4781,12 +4810,6 @@
    "max": "none",
    "src": "BZT52C10T-7 (C248313): Diodes Inc BZT52C2V0T-BZT52C36T datasheet p.2: BZT52C10T VZ 9.4-10.6 V @5 mA, PD 300 mW",
    "why": "13 mW steady, 32 mW at the transient, of 300 mW (fed from VIN_BRAIN through 9.4 k)"
-  },
-  "D209.1": {
-   "max": 6.4,
-   "peak": "none",
-   "src": "SMBJ5.0A (C83333): Littelfuse SMBJ series datasheet p.2 electrical table, row SMBJ5.0A (VR 5.0, VBR 6.40-7.00 @10 mA, VC 9.2 @ 65.3 A, IR 800 uA)",
-   "why": "this part IS the clamp on +5V_CM5: it stands 5 V (where its leakage is specified) and starts to conduct at 6.4 V, the figure a steady level must stay under"
   },
   "D21.1": {
    "max": "none",
@@ -4939,14 +4962,6 @@
    "src": "rated V -- JFC1206-1400FS (C136349): Shenzhen JDT JFC1206 fast-acting fuse datasheet p.3 table: rated voltage 63 VDC, rated current 4 A"
   },
   "F201.2": {
-   "max": 63.0,
-   "src": "rated V -- JFC1206-1400FS (C136349): Shenzhen JDT JFC1206 fast-acting fuse datasheet p.3 table: rated voltage 63 VDC, rated current 4 A"
-  },
-  "F202.1": {
-   "max": 63.0,
-   "src": "rated V -- JFC1206-1400FS (C136349): Shenzhen JDT JFC1206 fast-acting fuse datasheet p.3 table: rated voltage 63 VDC, rated current 4 A"
-  },
-  "F202.2": {
    "max": 63.0,
    "src": "rated V -- JFC1206-1400FS (C136349): Shenzhen JDT JFC1206 fast-acting fuse datasheet p.3 table: rated voltage 63 VDC, rated current 4 A"
   },
@@ -6067,6 +6082,36 @@
    "src": "APS1513M100F (C49261410): JLCPCB parts API attributes for C49261410 (Isat 30 A, current rating 25 A, DCR 7 mOhm), read 2026-11-18; itemp taken at the Bourns SRP1513CA-100M's Irms 19 A (20 C rise, SRP1513CA p.1), the part it clones -- the lower of the two",
    "why": "no voltage rating applies; current checked below"
   },
+  "NT11.2": {
+   "max": "none",
+   "src": "NetTie (no LCSC code): no LCSC code / no rating applies",
+   "why": "no rating in voltage_ratings.json for no LCSC code (NetTie)"
+  },
+  "NT12.2": {
+   "max": "none",
+   "src": "NetTie (no LCSC code): no LCSC code / no rating applies",
+   "why": "no rating in voltage_ratings.json for no LCSC code (NetTie)"
+  },
+  "NT205.2": {
+   "max": "none",
+   "src": "NetTie (no LCSC code): no LCSC code / no rating applies",
+   "why": "no rating in voltage_ratings.json for no LCSC code (NetTie)"
+  },
+  "NT206.2": {
+   "max": "none",
+   "src": "NetTie (no LCSC code): no LCSC code / no rating applies",
+   "why": "no rating in voltage_ratings.json for no LCSC code (NetTie)"
+  },
+  "NT21.2": {
+   "max": "none",
+   "src": "NetTie (no LCSC code): no LCSC code / no rating applies",
+   "why": "no rating in voltage_ratings.json for no LCSC code (NetTie)"
+  },
+  "NT22.2": {
+   "max": "none",
+   "src": "NetTie (no LCSC code): no LCSC code / no rating applies",
+   "why": "no rating in voltage_ratings.json for no LCSC code (NetTie)"
+  },
   "Q1.1": {
    "max": 12.0,
    "src": "VGS -- AO3400A (C20917): AOS AO3400A datasheet p.1 absolute maximum ratings: VDS 30 V, VGS +/-12 V, ID 5.7 A"
@@ -6179,6 +6224,22 @@
    "src": "VGS -- 2N7002 (C8545): CJ 2N7002 datasheet p.1 maximum ratings: VDS 60 V, VGS +/-20 V, ID 0.115 A"
   },
   "Q217.3": {
+   "max": 60.0,
+   "src": "VDS -- 2N7002 (C8545): CJ 2N7002 datasheet p.1 maximum ratings: VDS 60 V, VGS +/-20 V, ID 0.115 A"
+  },
+  "Q218.1": {
+   "max": 20.0,
+   "src": "VGS -- 2N7002 (C8545): CJ 2N7002 datasheet p.1 maximum ratings: VDS 60 V, VGS +/-20 V, ID 0.115 A"
+  },
+  "Q218.3": {
+   "max": 60.0,
+   "src": "VDS -- 2N7002 (C8545): CJ 2N7002 datasheet p.1 maximum ratings: VDS 60 V, VGS +/-20 V, ID 0.115 A"
+  },
+  "Q219.1": {
+   "max": 20.0,
+   "src": "VGS -- 2N7002 (C8545): CJ 2N7002 datasheet p.1 maximum ratings: VDS 60 V, VGS +/-20 V, ID 0.115 A"
+  },
+  "Q219.3": {
    "max": 60.0,
    "src": "VDS -- 2N7002 (C8545): CJ 2N7002 datasheet p.1 maximum ratings: VDS 60 V, VGS +/-20 V, ID 0.115 A"
   },
@@ -6842,16 +6903,6 @@
    "max": 50.0,
    "src": "element V -- RC0402FR-0749K9L (C137969): YAGEO RC0402FR-07 series, the series C163455 / C138058 / C138027 / C138045 / C274897 / C327251 are read from (JLCPCB parts API, 2026-10-06: 50 V, 62.5 mW for every value); fab.py's R22 from 2026-11-01"
   },
-  "R313.1": {
-   "max": "none",
-   "src": "HoLR1206-1W-10mR-1%-75ppm (C601097): JLCPCB parts API search for C601097 (Ever Ohms HoLR1206 1 W 10 mohm), fetched 2026-11-17; V = sqrt(P x R) = 0.1 V",
-   "why": "its element V limit (0.1 V) is not one to ground: it was judged on 0.05 V steady, 0.05 V transient -- 250.0 mW of 1000 mW -- U5's output sense: the TPS552892's 50 mV ISP-ISN limit holds it to 5.0 A (SLVSGT7 8.2.2.6) x 10 mohm"
-  },
-  "R313.2": {
-   "max": "none",
-   "src": "HoLR1206-1W-10mR-1%-75ppm (C601097): JLCPCB parts API search for C601097 (Ever Ohms HoLR1206 1 W 10 mohm), fetched 2026-11-17; V = sqrt(P x R) = 0.1 V",
-   "why": "its element V limit (0.1 V) is not one to ground: it was judged on 0.05 V steady, 0.05 V transient -- 250.0 mW of 1000 mW -- U5's output sense: the TPS552892's 50 mV ISP-ISN limit holds it to 5.0 A (SLVSGT7 8.2.2.6) x 10 mohm"
-  },
   "R314.1": {
    "max": 50.0,
    "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
@@ -6887,6 +6938,46 @@
   "R318.1": {
    "max": 50.0,
    "src": "element V -- 0402WGF4703TCE (C25790): JLCPCB parts API for C25790 (0402WGF4703TCE, UNI-ROYAL), the house 0402 series (as C26083), read 2026-11-03"
+  },
+  "R319.1": {
+   "max": 75.0,
+   "src": "element V -- RT0603BRD07374KL (C861356): JLCPCB parts API attributes for C861356 (RT0603BRD07374KL, YAGEO), fetched 2026-11-22 (100 mW; the API gives no voltage: 75 V = YAGEO RT series max working voltage for 0603)"
+  },
+  "R319.2": {
+   "max": 75.0,
+   "src": "element V -- RT0603BRD07374KL (C861356): JLCPCB parts API attributes for C861356 (RT0603BRD07374KL, YAGEO), fetched 2026-11-22 (100 mW; the API gives no voltage: 75 V = YAGEO RT series max working voltage for 0603)"
+  },
+  "R320.1": {
+   "max": 50.0,
+   "src": "element V -- RT0402BRE07100KL (C136979): JLCPCB parts API attributes for C136979 (RT0402BRE07100KL, YAGEO), fetched 2026-11-22"
+  },
+  "R321.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF7500TCE (C25132): JLCPCB parts API attributes for C25132 (0402WGF7500TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-11-22"
+  },
+  "R322.1": {
+   "max": 150.0,
+   "src": "element V -- 0805W8F2200T5E (C17557): JLCPCB parts API attributes for C17557 (0805W8F2200T5E, UNI-ROYAL(Uniroyal Elec)), fetched 2026-11-22"
+  },
+  "R322.2": {
+   "max": 150.0,
+   "src": "element V -- 0805W8F2200T5E (C17557): JLCPCB parts API attributes for C17557 (0805W8F2200T5E, UNI-ROYAL(Uniroyal Elec)), fetched 2026-11-22"
+  },
+  "R323.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R323.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R324.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R324.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
   },
   "R36.1": {
    "max": 50.0,
@@ -8053,7 +8144,7 @@
    "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
   },
   "U13.23": {
-   "max": 33.088,
+   "max": 4.0,
    "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
   },
   "U13.24": {
@@ -8149,7 +8240,7 @@
    "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
   },
   "U14.23": {
-   "max": 33.088,
+   "max": 4.0,
    "src": "abs max -- AP33772SDKZ-13 (C50341643): Diodes AP33772S datasheet DS46176 Rev. 10-2 (Aug 2026) p.5 Absolute Maximum Ratings: VCC -0.3..34, V5V -0.3..7, V18 -0.3..5, FLIP/INT/OTP/LED -0.3..7, VOUT/ISENP -0.3..31, PWR_EN -0.3..38 and -30..+4 to VCC, CC1/CC2 -0.3..34, DP/DN -0.3..7, SCL/SDA -0.3..7; Recommended VCC 3.3-31, V5V 4.37-5.33; p.6 V5V output 4.37/4.85/5.33 V, VGPIOO 4.37-5.33 V, IOTP 100 uA +/-8 %; p.3 Table 1 pinout. IFB, GPIO and VSEL have no abs max row. LCSC lists C50341643 as AP33772SDKZ-13-FA02 (the FA02 variant, GPIO/VSEL functional; same pinout)"
   },
   "U14.24": {
@@ -8665,32 +8756,40 @@
    "src": "abs max -- LM5122MHX/NOPB (C77241): TI LM5122 datasheet SNVS954H p.6 s6.1 absolute maximum (to AGND): VIN, CSP, CSN -0.3..75 V; BST-SW, FB, MODE, UVLO, OPT, VCC -0.3..15 V; SW -5..105 V; BST -0.3..115 V; SS, SLOPE, SYNCIN/RT -0.3..7 V; CSP-CSN and PGND -0.3..0.3 V; HO-SW -0.3..BST-SW+0.3; LO -0.3..VCC+0.3; COMP, RES, SYNCOUT -0.3..7 V. p.7 s6.3: VIN 4.5-65, VCC 14, BST-SW 3.8-14, CSP/CSN 3-65, SW 100 V. 20-pin PWP pinout p.4-6 (EP: no internal connection, soldered to ground). MPN on the catalogue is LM5122MHX/NOPB, the same HTSSOP-20 PWP"
   },
   "U221.1": {
-   "max": 6.0,
-   "src": "abs max -- TPS22965DSGR (C122837): TI TPS22965 datasheet s7.1: VIN, VOUT, VBIAS, ON -0.3..6 V; s7.3 VBIAS 2.5-5.7 V; CT taken at 6 V (driven by the part from VBIAS); DSG pinout SLVSBJ0F p.4 s6: 7 AND 8 VOUT (pin 8 was listed GND here until 2026-11-18)"
+   "max": 6.5,
+   "src": "abs max -- TPS259470ARPWR (C3662799): TI TPS25947 SLVSFC9C (May 2026) s6.1: IN 28 V, OUT min(28, VIN + 21), EN/UVLO / OVLO / AUXOFF / FLT -0.3..6.5 V, DVDT / ITIMER / ILM 'Internally Limited' (taken at 6.5 V: driven by the part); s6.3: IN 2.7-23 V, EN 5 V, OVLO 0.5-1.5 V, AUXOFF / FLT 5 V; RPW pinout p.5 Fig 5-1"
+  },
+  "U221.10": {
+   "max": 6.5,
+   "src": "abs max -- TPS259470ARPWR (C3662799): TI TPS25947 SLVSFC9C (May 2026) s6.1: IN 28 V, OUT min(28, VIN + 21), EN/UVLO / OVLO / AUXOFF / FLT -0.3..6.5 V, DVDT / ITIMER / ILM 'Internally Limited' (taken at 6.5 V: driven by the part); s6.3: IN 2.7-23 V, EN 5 V, OVLO 0.5-1.5 V, AUXOFF / FLT 5 V; RPW pinout p.5 Fig 5-1"
   },
   "U221.2": {
-   "max": 6.0,
-   "src": "abs max -- TPS22965DSGR (C122837): TI TPS22965 datasheet s7.1: VIN, VOUT, VBIAS, ON -0.3..6 V; s7.3 VBIAS 2.5-5.7 V; CT taken at 6 V (driven by the part from VBIAS); DSG pinout SLVSBJ0F p.4 s6: 7 AND 8 VOUT (pin 8 was listed GND here until 2026-11-18)"
+   "max": 6.5,
+   "src": "abs max -- TPS259470ARPWR (C3662799): TI TPS25947 SLVSFC9C (May 2026) s6.1: IN 28 V, OUT min(28, VIN + 21), EN/UVLO / OVLO / AUXOFF / FLT -0.3..6.5 V, DVDT / ITIMER / ILM 'Internally Limited' (taken at 6.5 V: driven by the part); s6.3: IN 2.7-23 V, EN 5 V, OVLO 0.5-1.5 V, AUXOFF / FLT 5 V; RPW pinout p.5 Fig 5-1"
   },
   "U221.3": {
-   "max": 6.0,
-   "src": "abs max -- TPS22965DSGR (C122837): TI TPS22965 datasheet s7.1: VIN, VOUT, VBIAS, ON -0.3..6 V; s7.3 VBIAS 2.5-5.7 V; CT taken at 6 V (driven by the part from VBIAS); DSG pinout SLVSBJ0F p.4 s6: 7 AND 8 VOUT (pin 8 was listed GND here until 2026-11-18)"
+   "max": 6.5,
+   "src": "abs max -- TPS259470ARPWR (C3662799): TI TPS25947 SLVSFC9C (May 2026) s6.1: IN 28 V, OUT min(28, VIN + 21), EN/UVLO / OVLO / AUXOFF / FLT -0.3..6.5 V, DVDT / ITIMER / ILM 'Internally Limited' (taken at 6.5 V: driven by the part); s6.3: IN 2.7-23 V, EN 5 V, OVLO 0.5-1.5 V, AUXOFF / FLT 5 V; RPW pinout p.5 Fig 5-1"
   },
   "U221.4": {
-   "max": 6.0,
-   "src": "abs max -- TPS22965DSGR (C122837): TI TPS22965 datasheet s7.1: VIN, VOUT, VBIAS, ON -0.3..6 V; s7.3 VBIAS 2.5-5.7 V; CT taken at 6 V (driven by the part from VBIAS); DSG pinout SLVSBJ0F p.4 s6: 7 AND 8 VOUT (pin 8 was listed GND here until 2026-11-18)"
+   "max": 6.5,
+   "src": "abs max -- TPS259470ARPWR (C3662799): TI TPS25947 SLVSFC9C (May 2026) s6.1: IN 28 V, OUT min(28, VIN + 21), EN/UVLO / OVLO / AUXOFF / FLT -0.3..6.5 V, DVDT / ITIMER / ILM 'Internally Limited' (taken at 6.5 V: driven by the part); s6.3: IN 2.7-23 V, EN 5 V, OVLO 0.5-1.5 V, AUXOFF / FLT 5 V; RPW pinout p.5 Fig 5-1"
+  },
+  "U221.5": {
+   "max": 28.0,
+   "src": "abs max -- TPS259470ARPWR (C3662799): TI TPS25947 SLVSFC9C (May 2026) s6.1: IN 28 V, OUT min(28, VIN + 21), EN/UVLO / OVLO / AUXOFF / FLT -0.3..6.5 V, DVDT / ITIMER / ILM 'Internally Limited' (taken at 6.5 V: driven by the part); s6.3: IN 2.7-23 V, EN 5 V, OVLO 0.5-1.5 V, AUXOFF / FLT 5 V; RPW pinout p.5 Fig 5-1"
   },
   "U221.6": {
-   "max": 6.0,
-   "src": "abs max -- TPS22965DSGR (C122837): TI TPS22965 datasheet s7.1: VIN, VOUT, VBIAS, ON -0.3..6 V; s7.3 VBIAS 2.5-5.7 V; CT taken at 6 V (driven by the part from VBIAS); DSG pinout SLVSBJ0F p.4 s6: 7 AND 8 VOUT (pin 8 was listed GND here until 2026-11-18)"
+   "max": 28.0,
+   "src": "abs max -- TPS259470ARPWR (C3662799): TI TPS25947 SLVSFC9C (May 2026) s6.1: IN 28 V, OUT min(28, VIN + 21), EN/UVLO / OVLO / AUXOFF / FLT -0.3..6.5 V, DVDT / ITIMER / ILM 'Internally Limited' (taken at 6.5 V: driven by the part); s6.3: IN 2.7-23 V, EN 5 V, OVLO 0.5-1.5 V, AUXOFF / FLT 5 V; RPW pinout p.5 Fig 5-1"
   },
   "U221.7": {
-   "max": 6.0,
-   "src": "abs max -- TPS22965DSGR (C122837): TI TPS22965 datasheet s7.1: VIN, VOUT, VBIAS, ON -0.3..6 V; s7.3 VBIAS 2.5-5.7 V; CT taken at 6 V (driven by the part from VBIAS); DSG pinout SLVSBJ0F p.4 s6: 7 AND 8 VOUT (pin 8 was listed GND here until 2026-11-18)"
+   "max": 6.5,
+   "src": "abs max -- TPS259470ARPWR (C3662799): TI TPS25947 SLVSFC9C (May 2026) s6.1: IN 28 V, OUT min(28, VIN + 21), EN/UVLO / OVLO / AUXOFF / FLT -0.3..6.5 V, DVDT / ITIMER / ILM 'Internally Limited' (taken at 6.5 V: driven by the part); s6.3: IN 2.7-23 V, EN 5 V, OVLO 0.5-1.5 V, AUXOFF / FLT 5 V; RPW pinout p.5 Fig 5-1"
   },
-  "U221.8": {
-   "max": 6.0,
-   "src": "abs max -- TPS22965DSGR (C122837): TI TPS22965 datasheet s7.1: VIN, VOUT, VBIAS, ON -0.3..6 V; s7.3 VBIAS 2.5-5.7 V; CT taken at 6 V (driven by the part from VBIAS); DSG pinout SLVSBJ0F p.4 s6: 7 AND 8 VOUT (pin 8 was listed GND here until 2026-11-18)"
+  "U221.9": {
+   "max": 6.5,
+   "src": "abs max -- TPS259470ARPWR (C3662799): TI TPS25947 SLVSFC9C (May 2026) s6.1: IN 28 V, OUT min(28, VIN + 21), EN/UVLO / OVLO / AUXOFF / FLT -0.3..6.5 V, DVDT / ITIMER / ILM 'Internally Limited' (taken at 6.5 V: driven by the part); s6.3: IN 2.7-23 V, EN 5 V, OVLO 0.5-1.5 V, AUXOFF / FLT 5 V; RPW pinout p.5 Fig 5-1"
   },
   "U3.1": {
    "max": 3.9,
