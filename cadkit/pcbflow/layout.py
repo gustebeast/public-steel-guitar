@@ -4657,7 +4657,8 @@ def _pour_pad_vias(board, specs, via_d=0.6, via_drill=0.3, clr=0.2, hole_gap=0.4
                 have = sum(math.pi * (pcbnew.ToMM(t.GetDrillValue()) / 2.0) ** 2 * thick
                            for t in board.GetTracks() if t.GetClass() == "PCB_VIA"
                            and pad.HitTest(t.GetPosition(), int(t.GetDrillValue() / 2)))
-                cap = max(0, int(math.floor((0.25 * paste - have) / one + 1e-9)))
+                from unwick import LAND_VIA_PASTE_FRAC   # one budget: unwick keeps what fits it
+                cap = max(0, int(math.floor((LAND_VIA_PASTE_FRAC * paste - have) / one + 1e-9)))
             bb, c = pad.GetBoundingBox(), pad.GetPosition()
             m = pcbnew.FromMM(via_d / 2.0 + 0.1)
             nx = max(1, int((bb.GetWidth() - 2 * m) // pitch) + 1)

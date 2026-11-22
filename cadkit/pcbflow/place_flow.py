@@ -923,7 +923,9 @@ def _swap_lines(notes, parts, pl, stem, fd, apply=False):
     out = ["SWAP %s: pins %s -- its channels are identical, so swapping the rails between them is free "
            "in the netlist; twisted pair hops %d -> %d%s"
            % (r, ", ".join("%s<->%s (%s/%s)" % (a, b, nets[r][a], nets[r][b]) for a, b in prs), n0, n1,
-              "" if apply else " (proposed; --apply-swaps applies it to this run)") for r, prs in sw]
+              "" if apply else " (proposed, NOT applied: --apply-swaps tries it on this run; once a route A/B "
+                             "accepts it, `swaps.py accept` records it and the generator's apply_accepted "
+                             "carries it)") for r, prs in sw]
     if apply:
         net_path = stem + ".net"
         keep = os.path.join(fd, "input.net")

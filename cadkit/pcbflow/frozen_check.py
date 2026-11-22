@@ -30,6 +30,13 @@ the intruders, the band is still lost, or when taking it alone out restores the 
 alone but all together do, they are named as one joint cut. The rest go on an "also inside" line.
 Only a lost band pays for this (a load and one band refill per intruder, at most MAX_BLAME).
 
+A BAND PIERCED IS A BAND LOST (lead 2026-11-22). On esc12 seeds 1/3/5 a router GND via sat INSIDE
+VIN_BRAIN's B.Cu trunk, (96.28, 117.15) on 12a1: the fill cleared round it, the trunk stayed one
+piece and lost under LOSS_PCT of its area, and the power gate read a 2.01 mm neck for 2.61 two
+hours later. A foreign via, or a foreign track on the band's layer, whose own copper lands on
+the BASELINE fill (not the grown outline -- standing beside the band is the crowd, not the cut)
+and that the baseline did not have is a cut whatever the pieces and area say (_piercers).
+
 PCBFLOW_FROZEN_CHECK=warn reports a lost band and goes on (replaying an old board as it was);
 =0 skips the check. A board with no frozen bands is never touched.
 """
@@ -161,6 +168,39 @@ def _intruders(board, z):
     return hit
 
 
+def _piercers(board, z, b):
+    """{uuid: what} -- new foreign copper (vias, tracks on the band's layer) on the baseline fill."""
+    if not b.get("polys"):
+        return {}
+    bp = pcbnew.SHAPE_POLY_SET()
+    for pts in b["polys"]:
+        bp.NewOutline()
+        for x, y in pts:
+            bp.Append(int(x), int(y))
+    L, net, old = z.GetFirstLayer(), z.GetNetname(), b.get("intruders", {})
+    hit = {}
+    for t in board.GetTracks():
+        u = t.m_Uuid.AsString()
+        if t.GetNetname() == net or u in old:
+            continue
+        if t.GetClass() == "PCB_VIA":
+            r = t.GetWidth(L) // 2 if t.GetWidth(L) else t.GetWidth() // 2
+            seg = pcbnew.SEG(t.GetPosition(), t.GetPosition())
+            what = "via %s at (%.2f, %.2f) on the band's copper" % (
+                t.GetNetname(), pcbnew.ToMM(t.GetPosition().x), pcbnew.ToMM(t.GetPosition().y))
+        elif t.GetLayer() == L:
+            r = t.GetWidth() // 2
+            seg = pcbnew.SEG(t.GetStart(), t.GetEnd())
+            what = "track %s w %.2f (%.2f, %.2f)->(%.2f, %.2f) on the band's copper" % (
+                t.GetNetname(), pcbnew.ToMM(t.GetWidth()), pcbnew.ToMM(t.GetStart().x),
+                pcbnew.ToMM(t.GetStart().y), pcbnew.ToMM(t.GetEnd().x), pcbnew.ToMM(t.GetEnd().y))
+        else:
+            continue
+        if bp.Collide(seg, int(r)):
+            hit[u] = what
+    return hit
+
+
 def _bad(b, m):
     d = m["area"] - b["area"]
     pct = 100.0 * d / b["area"] if b["area"] else 0.0
@@ -228,9 +268,13 @@ def main(stem, stage):
         d = m["area"] - b["area"]
         pct = 100.0 * d / b["area"] if b["area"] else 0.0
         bad = _bad(b, m)
+        pier = {} if bad else _piercers(board, dict(bands)[k], b)
+        bad = bad or bool(pier)
         print("frozen_check %s: %s %s pieces %d -> %d, area %.1f -> %.1f mm2 (%+.1f %%)%s"
               % (stage, n, ly, b["pieces"], m["pieces"], b["area"], m["area"], pct, "  LOST" if bad else ""))
-        if bad:
+        if pier:
+            lost.append((n, ly, b, m, sorted(pier.values()), [], False, True))
+        elif bad:
             newu = [u for u in m["intruders"] if u not in b.get("intruders", {})]
             order = lambda w: (not w.startswith(("via", "pour")), w)   # vias, pours first: one is a whole cut
             tracks = [u for u in newu if not u.startswith("zone:")]
@@ -246,7 +290,9 @@ def main(stem, stage):
     def _list(xs):
         return "; ".join(xs[:MAX_NAMED]) + (" ... and %d more" % (len(xs) - MAX_NAMED) if len(xs) > MAX_NAMED else "")
     for n, ly, b, m, named, rest, joint, blamed in lost:
-        if named:
+        if named and named[0].endswith("on the band's copper"):
+            what = "pierced (still %d piece(s)) by %s" % (m["pieces"], _list(named))
+        elif named:
             what = ("cut by %s%s" % ("these together (no one alone): " if joint else "", _list(named)))
         elif blamed:
             what = "no foreign track or via cuts it (all taken out, still lost) -- a pad or an outranking pour"

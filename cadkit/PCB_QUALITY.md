@@ -1017,6 +1017,18 @@ its datasheet supply pins, or `quality.supply_exempt = {ref: reason}`.
 5 mm as the pin's bypass. (2026-11-21: U5, the board's 4 A logic buck, had none, and C3, its
 HF bypass, sat 20 mm away unseen.)
 
+### A32 — A series part passes on no more current than it receives
+
+**Rule.** Where one declared power path ends on a part and one other path starts on it (a
+fuse, a shunt, a bead, a 0R, a load switch), the net after it is sized at no more amps than
+the net before it; and a net running between two such parts, the second with two pins,
+is sized at exactly the amps of the net after that 2-pin part.
+
+**Why.** The paths are sized one net at a time, and a chain can disagree with itself. (2026-11-22,
+brain_board: `+5V_SW`, the leg between load switch U221 and fuse F202, read 2 A — "half on each
+VOUT pin" — while `+5V_RAW` before it and `+5V_CM5` after it read 4 A; the gate passed a
+0.51 mm leg carrying the whole CM5 rail.)
+
 ## Manual checks
 
 Sign each in `quality["manual"]` with what you checked against. If a rule does not apply
