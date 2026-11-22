@@ -1029,6 +1029,18 @@ brain_board: `+5V_SW`, the leg between load switch U221 and fuse F202, read 2 A 
 VOUT pin" — while `+5V_RAW` before it and `+5V_CM5` after it read 4 A; the gate passed a
 0.51 mm leg carrying the whole CM5 rail.)
 
+### A33 — A test pad keeps room for a probe
+
+**Rule.** Every test pad (TP*) has no other part's courtyard within 0.75 mm (`PROBE_CLEAR_MM`,
+about 1.0 mm to the part's body) of the pad on its own face; a through-hole part counts on
+either face. Another test pad is flat copper and does not count.
+
+**Why.** A test pad is reached after assembly by a probe tip or a pogo pin, and a part seated
+against it takes the reach away without breaking any placement rule. (2026-11-22, brain_board:
+a pair corridor released ten held parts in the column round TP2, SWCLK's pad, and whether it
+stayed reachable was checked by eye.) Soft: a pad that is only ever probed before the
+neighbour is fitted may be waived, with that reason.
+
 ## Manual checks
 
 Sign each in `quality["manual"]` with what you checked against. If a rule does not apply
