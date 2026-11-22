@@ -2407,7 +2407,13 @@ _AMPS_AUDIT = [
     ("VIN_CM5", None, None, (2.5, 1, "U205 limited at 3.85 A (R313 13 mR) x 5.2 V / 0.9 at a 9 V contract")),
     ("+5V_BB", None, None, (4.0, 1, "R313 13 mR: 3.85 A limit; copper to F202's 4 A")),
     ("+5V_RAW", None, None, (4.0, 1, "R313 13 mR: 3.85 A limit; copper to F202's 4 A")),
-    ("+5V_SW", None, None, (2.0, 1, "half of F202's 4 A on each of U221's VOUT pins 7 / 8")),
+    # ⚠ +5V_SW CARRIES ALL OF +5V_CM5's CURRENT (lead 2026-11-22): U221 sits in series between
+    # +5V_RAW and F202, and the power gate judges the path from BOTH VOUT pins together
+    # (U221.7+U221.8 > F202.1), so "half on each pin" read as 2 A on the whole leg -- a 0.51 mm
+    # leg under 4 A. The ceiling is the chain's lowest: R313's 3.85 A limit, copper to F202's
+    # 4 A (TPS22965 has no current limit: IMAX 6 A continuous, SLVSBJ0F p.5).
+    ("+5V_SW", None, None, (4.0, 1, "U221 in series: all of +5V_CM5 -- R313 13 mR 3.85 A limit; copper to "
+                                    "F202's 4 A (TPS22965 IMAX 6 A, no limit: SLVSBJ0F p.5)")),
     ("+5V_CM5", None, None, (4.0, 1, "F202 JFC1206-1400FS 4 A; the CM5 and its USB peripherals share it "
                                      "(16.7 W budget, motor-power-measured)")),
     ("V5_PRE", None, "U15", (1.8, 1, "U15 ILIM R86 15k: 1.61-1.80 A; the optical board's real draw unmeasured")),
