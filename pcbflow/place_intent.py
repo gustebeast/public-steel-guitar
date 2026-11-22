@@ -286,6 +286,141 @@ def mirror_back(parts, refs):
     return out
 
 
+def _hull2(pts):
+    """Convex hull (monotone chain) of 2-D points, counter-clockwise, as [[x, y]]."""
+    pts = sorted(set((round(x, 4), round(y, 4)) for x, y in pts))
+    if len(pts) < 3:
+        return [list(q) for q in pts]
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+    lo, hi = [], []
+    for q in pts:
+        while len(lo) >= 2 and cross(lo[-2], lo[-1], q) <= 0:
+            lo.pop()
+        lo.append(q)
+    for q in reversed(pts):
+        while len(hi) >= 2 and cross(hi[-2], hi[-1], q) <= 0:
+            hi.pop()
+        hi.append(q)
+    return [list(q) for q in lo[:-1] + hi[:-1]]
+
+
+def reach_envelope(part, rule, n=24):
+    """The local-frame points an `access` or `mate` rule reserves round its part, or None when the
+    reach cannot be stated in the part's own frame (a mate along a BOARD direction: it turns with
+    the part's rotation, which placement chooses -- the gate still checks it).
+      access: a tool_d circle round the part's pads (its courtyard centre when padless);
+      mate:   the body (fab box), swept `length` along an L-direction (or just the body for
+              "up"), grown by `clear` on every side."""
+    loc = part.get("crtyd") or []
+    if rule["kind"] == "access":
+        if "tool_d" not in rule:
+            return None
+        pads = [q["xy"] for q in part.get("pads", ()) if q.get("xy") is not None] or loc or [[0.0, 0.0]]
+        cx, cy = sum(q[0] for q in pads) / len(pads), sum(q[1] for q in pads) / len(pads)
+        rad = float(rule["tool_d"]) / 2.0 / math.cos(math.pi / n)     # the polygon circumscribes the circle
+        return [(cx + rad * math.cos(2 * math.pi * k / n), cy + rad * math.sin(2 * math.pi * k / n)) for k in range(n)]
+    if rule["kind"] == "mate":
+        d = rule.get("dir", "up")
+        if d != "up" and not d.startswith("L"):
+            return None
+        f = part.get("fab")
+        if f:
+            box = [(f[0], f[2]), (f[1], f[2]), (f[1], f[3]), (f[0], f[3])]
+        elif loc:
+            box = [tuple(q) for q in loc]
+        else:
+            return None
+        if d != "up":
+            ux, uy = DIRS[d[1:]]
+            L_ = float(rule.get("length", 0.0))
+            box = box + [(x + ux * L_, y + uy * L_) for x, y in box]
+        c = float(rule.get("clear", 0.0))
+        return [(x + sx * c, y + sy * c) for x, y in _hull2(box) for sx in (-1, 1) for sy in (-1, 1)]
+    return None
+
+
+# ── which stage honours each intent kind, and what stops a flow when a hard one breaks ─────
+# ⚠ THREE RULES THAT SILENTLY DID NOTHING IN ONE DAY (brain_board 2026-11-22): `tight` named only pin
+# satellites its stage cannot move; declared copper was no obstacle to a released part; `access`
+# (and `mate`) were only score terms, and the hard BROKEN gate listed neither. test_intent_kinds.py
+# holds this table against the code: every kind check() knows has an entry, every entry names a
+# stage that reads it, and every kind that can be hard has a gate.
+#   place:  the placement stages that honour it -- "init" (place_init seating / its quadratic and
+#           local stages, SOFT_KINDS), "cells" (place_cells), "grow" (grow_reach: the courtyard holds
+#           it), "flow" (place_flow itself), "layout" (the router model: router/model.py),
+#           "expand" (place_intent turns it into other rules or widths: auto_pour -> `pour`, current -> widths), "check" (no stage seats it: check() alone, so a hard one only refuses -- array)
+#   gate:   "broken" (place_flow's BROKEN hard rules), "near" (_near_broken), "region" (the region
+#           leak stop), None (not a placement constraint)
+#   hard:   the default when a rule says nothing (the soft optimiser kinds are soft unless asked)
+KINDS = {
+    "outline":   dict(place=("init",), gate="broken", hard=True),
+    "keepout":   dict(place=("init", "cells"), gate="broken", hard=True),
+    "hole":      dict(place=("init", "cells"), gate="broken", hard=True),
+    "height":    dict(place=("init",), gate="broken", hard=True),
+    "fixed":     dict(place=("init", "cells"), gate="broken", hard=True),
+    "pin":       dict(place=("init", "cells"), gate="broken", hard=True),
+    "panel":     dict(place=("init", "cells", "flow"), gate="broken", hard=True),
+    "group":     dict(place=("init", "cells"), gate="broken", hard=True),
+    "rot":       dict(place=("init",), gate="broken", hard=True),
+    "side":      dict(place=("init",), gate="broken", hard=True),
+    "access":    dict(place=("init", "grow"), gate="broken", hard=True),
+    "mate":      dict(place=("grow",), gate="broken", hard=True),
+    "array":     dict(place=("check",), gate="broken", hard=True),
+    "near":      dict(place=("init",), gate="near", hard=True),
+    "decap":     dict(place=("init",), gate="broken", hard=True),
+    "between":   dict(place=("init",), gate="broken", hard=False),
+    "thermal":   dict(place=("init", "cells"), gate="broken", hard=False),
+    "apart":     dict(place=("init", "cells"), gate="broken", hard=False),
+    "chain":     dict(place=("init",), gate="broken", hard=False),
+    "tight":     dict(place=("init",), gate="broken", hard=False),
+    "in_region": dict(place=("init", "cells"), gate="region", hard=True),
+    "region":    dict(place=("init",), gate=None, hard=False),
+    "current":   dict(place=("expand",), gate=None, hard=False),
+    "pour":      dict(place=("flow",), gate=None, hard=False),
+    "auto_pour": dict(place=("expand",), gate=None, hard=False),
+    "copper":    dict(place=("flow",), gate=None, hard=False),
+}
+GATE_KINDS = tuple(k for k, v in KINDS.items() if v["gate"] == "broken")
+
+
+def is_hard(rule):
+    """A rule's hardness: its own `hard`, else its kind's default (KINDS)."""
+    if "hard" in rule:
+        return bool(rule["hard"])
+    return KINDS.get(rule.get("kind"), {}).get("hard", True)
+
+def grow_reach(parts, rules):
+    """parts with each `access` / `mate` part's courtyard grown to hold what the rule reserves (the
+    hull of the courtyard and reach_envelope), so every placer and check keeps neighbours out of
+    a probe's or a plug's reach -- a reach rule that is only a score term is not one. Returns
+    (parts, [refs grown]); idempotent.
+
+    ⚠ `access` AND `mate` WERE ONLY SCORE TERMS (brain_board sqah, 2026-11-22): hard access on seven
+    test pads placed cell for cell like soft (sqak), 5 of 7 pads still short of quality A33; the
+    three hard IDC `mate` strokes (J4, J240, J205) had no placement consumer either."""
+    out, grown = dict(parts), []
+    for r in rules:
+        ref = r.get("ref") if r.get("kind") in ("access", "mate") else None
+        if ref not in out:
+            continue
+        p = out[ref]
+        env = reach_envelope(p, r)
+        if env is None:
+            continue
+        loc = p.get("crtyd") or []
+        hull = _hull2(list(env) + [tuple(q) for q in loc])
+        if sorted(tuple(round(v, 4) for v in q) for q in loc) != sorted(tuple(q) for q in hull):
+            out[ref] = dict(p, crtyd=hull)
+            if ref not in grown:
+                grown.append(ref)
+    return out, grown
+
+
+grow_access = grow_reach        # b702a19's name
+
+
 def panel_face(rule):
     """A panel rule's face as a distance along its edge's outward direction.
 

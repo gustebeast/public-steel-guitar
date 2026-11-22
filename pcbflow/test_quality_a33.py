@@ -5,7 +5,8 @@
 
   0  as laid                     -> A33 checks every test pad, and its verdicts are the measured gaps
   1  a resistor moved onto TP2   -> A33 FAIL on TP2 naming that resistor, under 0.75 mm
-  2  the resistor 3 mm away      -> TP2 passes again
+  2  the resistor 6 mm away      -> TP2 passes again
+  3  diagonal, 0.90 from the circle -> passes (a round pad measures from its circle, not its box)
 Exit 0 = PASS. In memory only.
 """
 import os
@@ -44,6 +45,16 @@ r2 = tp2()
 print("case 2:", r2)
 if any(ok is False and mover in t for _s, ok, t in r2):
     bad.append("case 2: %s 6 mm away still failed TP2" % mover)
+# case 3: diagonal to TP2's round pad, its courtyard corner 0.90 mm from the pad's circle -- the pad's
+# bounding box reads it 0.59 mm away, the circle 0.90: a round pad measures from its circle
+fp.SetPosition(pcbnew.VECTOR2I(c.x + pcbnew.FromMM(6.0), c.y + pcbnew.FromMM(6.0)))
+cy = fp.GetCourtyard(pcbnew.B_CrtYd if fp.IsFlipped() else pcbnew.F_CrtYd).BBox()
+k = (0.75 + 0.90) / 2 ** 0.5
+fp.Move(pcbnew.VECTOR2I(c.x + pcbnew.FromMM(k) - cy.GetLeft(), c.y + pcbnew.FromMM(k) - cy.GetTop()))
+r3 = tp2()
+print("case 3:", r3)
+if any(ok is False and mover in t for _s, ok, t in r3) or not any(mover in t and "0.90" in t for _s, _ok, t in r3):
+    bad.append("case 3: %s diagonal 0.90 mm from the round pad not read as 0.90 and passing" % mover)
 fp.SetPosition(home)
 for x in bad:
     print("  FAIL:", x)
