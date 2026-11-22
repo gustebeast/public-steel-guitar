@@ -680,6 +680,25 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
         _report(fd, base, rules, init_log, [], [], None, None, None, why, T,
                 refused="intent check: BROKEN hard mechanical rules\n" + "\n".join(broken[:20]), floor=floor, room=room)
         return 2
+    # declared copper is an obstacle to other nets' pads (place_intent.pad_copper; lead 2026-11-22):
+    # a pad inside a declared track's clearance is a short layout refuses later -- say it here, with
+    # whether the part was held there (the intent must move) or placed there (the placer missed it).
+    # (the A/B against hand keep-outs, 2026-11-22: sqp 16.52 / 15.41 with the rule, 16.69 / 15.58 with the keep-out)
+    held_ = {x for r_ in rules if r_["kind"] in ("fixed", "pin", "panel") for x in (pi._refs(r_["refs"], parts) if "refs" in r_ else [r_.get("ref")])}
+    it_ = pi.declared_items(rules, notes)
+    pc_ = sorted(set(x for x in pi.pad_copper(P_k, it_) if x[0] < -0.005))
+    for v_, s_, d_ in sorted(set(pi.pad_copper(P_k, it_, exp=pi.PAD_MASK_EXP, near=0.0))):
+        if v_ < -0.005 and not any(s_ == x[1] for x in pc_):
+            w_ = "PAD BY DECLARED COPPER %s: %s -- inside the %.2f mask band" % (s_, d_, pi.PAD_MASK_EXP)
+            say("WARN " + w_)
+            floor.append(w_)
+    if pc_:
+        lines_ = ["%s%s: %s (%.3f mm short)" % (s_, " (held)" if s_.split(".")[0] in held_ else "", d_, -v_)
+                  for v_, s_, d_ in sorted(pc_)]
+        say("PAD ON DECLARED COPPER -- the flow stops before layout: " + " | ".join(lines_[:8]))
+        _report(fd, base, rules, init_log, [], [], None, None, None, why, T,
+                refused="intent check: PAD ON DECLARED COPPER\n" + "\n".join(lines_[:20]), floor=floor, room=room)
+        return 2
     for w_ in _chain_warns(rules, parts, pl):
         say("WARN " + w_)
         floor.append(w_)

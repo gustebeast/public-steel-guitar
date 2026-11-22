@@ -56,6 +56,8 @@ def test_hard_kinds_are_gated():
             assert "_near_broken" in flow
         elif v["gate"] == "region":
             assert "leak" in flow
+        elif v["gate"] == "pad_copper":
+            assert "PAD ON DECLARED COPPER" in flow and "pi.pad_copper(" in flow
         else:
             assert not v["hard"], "%s: hard by default with no gate" % k
         assert can_be_hard or not pi.is_hard({"kind": k}), k
@@ -66,6 +68,21 @@ def test_soft_kinds_soft_unless_asked():
         assert not pi.is_hard({"kind": k}) and pi.is_hard({"kind": k, "hard": True}), k
     for k in ("outline", "keepout", "access", "mate", "decap"):
         assert pi.is_hard({"kind": k}) and not pi.is_hard({"kind": k, "hard": False}), k
+
+
+def test_check_only_kinds_refuse_hard():
+    # a kind no stage seats (place "check" alone) cannot be hard: it would only ever refuse
+    P = pi.Placed({"D1": {"pads": [], "crtyd": [], "fab": None, "side": "F"}}, {"D1": [0.0, 0.0, 0]})
+    for k, v in pi.KINDS.items():
+        if v["place"] != ("check",):
+            continue
+        assert not v["hard"] and v["gate"] is None, k
+        try:
+            pi.check({"kind": k, "refs": ["D1"], "axis": "x", "pitch": 1.0, "hard": True}, P, {})
+        except ValueError as e:
+            assert "no seating stage" in str(e), (k, e)
+        else:
+            raise AssertionError("%s: a hard rule was accepted, and no stage seats it" % k)
 
 
 def test_grow_covers_grow_kinds():
