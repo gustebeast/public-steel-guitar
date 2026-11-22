@@ -33,7 +33,9 @@ sys.path.insert(0, HERE)
 # the modules whose code runs after the route (route.post_route's chain and finish's stages)
 MODULES = ("layout.py", "route.py", "close_last.py", "eco.py", "power_vias.py",
            "return_vias.py", "unwick.py")
-WRITE = re.compile(r"PCB_TRACK\(|PCB_VIA\(|PCB_ARC\(|\.Duplicate\(\)|\.SetPosition\(|\.SetStart\(|\.SetEnd\(")
+# .SetWidth( too: widening an existing track moves its edge (route.widen_necks cut +24V's band
+# on rPS_sqe1, 2026-11-22, and this scan never saw it -- a width is a write)
+WRITE = re.compile(r"PCB_TRACK\(|PCB_VIA\(|PCB_ARC\(|\.Duplicate\(\)|\.SetPosition\(|\.SetStart\(|\.SetEnd\(|\.SetWidth\(")
 ASKS = re.compile(r"frozen_wall\.|FrozenWall\(|_path_clear\(")
 # (module, top-level function): why it may write without asking the wall
 ALLOW = {

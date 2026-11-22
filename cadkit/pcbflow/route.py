@@ -43,6 +43,7 @@ wx.DisableAsserts()
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import layout                                        # noqa: E402  (needs the path above)
+import frozen_wall                                   # noqa: E402  (the one frozen-band wall)
 
 def _find_java():
     """$JAVA, else the newest Temurin under %LOCALAPPDATA%\\Programs\\temurin, else `java`
@@ -926,6 +927,13 @@ def widen_necks(board, notes, step_mm=0.05):
         keepouts = [z for z in board.Zones() if z.GetIsRuleArea() and z.GetDoNotAllowTracks()]
     # (A PCBFLOW_NECK_MARGIN flag held widened edges 0.03 mm off the rule; removed 2026-11-19:
     # TAKEUP_WHY on mV60/mV61 showed every crowding take-up was router copper, none widened.)
+    # ⚠ A FROZEN BAND IS NOT COPPER EITHER (brain_board rPS_sqe1 / rPS_st6a1, 2026-11-22): the
+    # declared +5V_CM5 B.Cu run at (117, 125.6)->(119.5, 123.9), laid 1.4 mm by layout, was
+    # widened here to its `current` width 2.05; its edge crossed +24V's frozen band and the
+    # refill lost 14.7 -> 13.7 mm2 -- "FROZEN BAND LOST at ownroute.py", read as the router's.
+    # Pads and tracks were obstacles, the band's outline (a zone) was not: every widening now
+    # asks the one wall (frozen_wall: outline + the zone's clearance, the router's rule).
+    wall = frozen_wall.FrozenWall(board, keepouts=False)
     done, gained = 0, 0.0
     for t in list(board.GetTracks()):
         if t.GetClass() != "PCB_TRACK":
@@ -954,6 +962,9 @@ def widen_necks(board, notes, step_mm=0.05):
             if ok and any(e.Distance(me) < edge_clr + w // 2 for e in edges):
                 ok = False
             if ok and any(z.IsOnLayer(L) and seg.Collide(z.Outline(), 0) for z in keepouts):
+                ok = False
+            if ok and wall and not wall.seg_ok((t.GetStart().x, t.GetStart().y),
+                                               (t.GetEnd().x, t.GetEnd().y), n, w // 2, L):
                 ok = False
             if ok:
                 best = w
