@@ -96,6 +96,7 @@ class Net:
         self.via_mult = 1.0     # a matched pair's vias cost more (its via budget)
         self.partner = None     # the other net of a pair, routed right after it
         self.layers_only = None # a same_layer pair's allowed routing layers (indices)
+        self.layers_hard = False  # layers_only from notes["net_layers"]: never relaxed
         self.same_layer = False # in a same_layer match group
         self.merge = None       # (x, y, r): a pad-merge connector's circle (match merge_at)
         self.run_layers = None  # a same_layer pair's layers OUTSIDE its merge circle
@@ -318,6 +319,12 @@ class Router(CoupledMixin):
             self.nets.sort(key=lambda n: ((n.bbox[1] - n.bbox[0]) + (n.bbox[3] - n.bbox[2]), n.name))
         # matched groups (USB pairs): vias priced to their budget, the two routed back to back
         by = {n.name: n for n in self.nets}
+        # notes["net_layers"]: a net kept to these layers whatever happens (model.net_layers)
+        _lid = {n_: k for k, n_ in enumerate(m.route_layers)}
+        for _nm, _lays in (getattr(m, "net_layers", None) or {}).items():
+            _keep = {_lid[L_] for L_ in _lays if L_ in _lid}
+            if _nm in by and _keep:
+                by[_nm].layers_only, by[_nm].layers_hard = _keep, True
         for g in m.notes.get('match', ()) or ():
             names = [x for x in g.get('nets', ()) if x in by]
             for x in names:
@@ -656,10 +663,10 @@ class Router(CoupledMixin):
     RIP_MATE_LAND = os.environ.get("ROUTER_RIP_MATE_LAND", "1") == "1"       # see _rip
     PAIR_LOCKSTEP = os.environ.get("ROUTER_PAIR_LOCKSTEP", "0") == "1"       # see _route_in
     LOCKSTEP_MM = float(os.environ.get("ROUTER_LOCKSTEP_MM", "1.0"))
-    # ROUTER_LOCKSTEP_FINISH=1: the lockstep rule only while the pairs are finished
-    # (_finish_pairs / _fallback_pairs), after negotiation has closed the board -- the parity
-    # lockstep buys without its cost to closure (mV54 25 unconnected vs mV55 3). Flag, off.
-    LOCKSTEP_FINISH = os.environ.get("ROUTER_LOCKSTEP_FINISH", "0") == "1"
+    # ⚠ LOCKSTEP ONLY IN THE PAIR FINISH WAS TRIED AND REJECTED (brain_board rPS_11L1/11L2 vs
+    # rPS_11k1, esc11 seed 1, 2026-11-22): the rule applied only in _finish_pairs /
+    # _fallback_pairs left joins_open 156 / 149 against 152, and pair parity worse -- 63 hard
+    # pair FAILs against 39, GADGET 10 vias against 2, MCU 4 against 8. The flag is deleted.
     # ⚠ OFF BY DEFAULT AGAIN (lead's rule, 2026-11-18): on the same placement (mV34) the full
     # flow finished 25 unconnected with LOCKSTEP 1 / BAND 0.3 (mV54) and 3 with 0 / 0.6
     # (mV55, as mV41): parity improved (4 of 10 pairs mismatched, from 5) but closure is
@@ -936,7 +943,7 @@ class Router(CoupledMixin):
         fd = np.where(np.isin(m.n1[sl], own_ids) if own_ids else m.n1[sl] == nid, m.d2[sl], m.d1[sl])
         legal = fd >= net.width / 2.0 + m.clear + m.margin
         legal &= (m.edge[i0:i1, j0:j1] >= net.width / 2.0 + m.edge_clear + m.margin)[None]
-        allowed = None if net.relaxed else net.layers_only
+        allowed = net.layers_only if net.layers_hard else (None if net.relaxed else net.layers_only)
         # ⚠ WITH NO COPPER OF ITS OWN, A same_layer PAIR'S SECOND NET FOLLOWS THE FIRST
         # (optical USB_HS, 2026-11-08: layout could not lay the pair on this placement, so
         # there was nothing to key off, and DP took B.Cu while DM stayed on F.Cu).
@@ -954,7 +961,7 @@ class Router(CoupledMixin):
         # on layer k only within LOCKSTEP_MM of its leader's copper on k (so it changes layer
         # where the leader does: mated vias), any layer within MATE_LAND_MM of its own lands
         # (the fan-out); the leader keeps the freedom the relax gave it.
-        if ((self.PAIR_LOCKSTEP or getattr(self, "_lock_finish", False))
+        if (self.PAIR_LOCKSTEP
                 and net.relaxed and net.same_layer and net.partner is not None
                 and net.partner.paths and not net.partner.failed):
             lead = np.zeros((L, h, w), bool)
@@ -1127,6 +1134,23 @@ class Router(CoupledMixin):
             neck_ok &= lane[0]
             np.multiply(cell, self.BAND_COST, out=cell, where=lane[1])
         cell[~(legal | neck_ok)] = np.inf
+        if getattr(m, "frozen_any", False):
+            # a frozen power band is a wall to every other net (model.frozen_net)
+            fz = m.frozen_net[sl]
+            fz_ban = (fz != 0) & (fz != nid)
+            vz_ban = None
+            if getattr(m, "frozen_d", None) is not None:
+                # grown by the foreign copper's reach (model.frozen_d): a track's half width,
+                # a via's radius, plus the band's own zone clearance
+                # the nearest FOREIGN band: the net's own band must not hide a neighbour's
+                fd_, fn_ = m.frozen_foreign(sl, nid)
+                zc_ = m.frozen_zclr[fn_]
+                foreign = (fn_ != 0) & (fn_ != nid)
+                fz_ban = fz_ban | (foreign & (fd_ < net.width / 2.0 + zc_))
+                vz_ban = (foreign & (fd_ < m.via_d / 2.0 + zc_)).any(axis=0)
+            cell[fz_ban] = np.inf
+        else:
+            fz_ban = None
         cell = cell.astype(np.float32, copy=False)
         walls = getattr(self, "_walls", None)
         if walls:
@@ -1167,6 +1191,10 @@ class Router(CoupledMixin):
         if lane is not None:
             vlegal = vlegal & lane[2]
         vcell = np.where(vlegal, (1.0 + hv) * (1.0 + pf * occv), np.inf).astype(np.float32)
+        if fz_ban is not None:
+            vcell[fz_ban.any(axis=0)] = np.inf       # a via is on every layer, the band's too
+            if vz_ban is not None:
+                vcell[vz_ban] = np.inf
         if walls:
             for o in walls:
                 if o is net or not o.n_v:
@@ -1403,8 +1431,13 @@ class Router(CoupledMixin):
                     k_ = path // (h * w)
                     r_ = path % (h * w)
                     paths.append((k_ * H + (r_ // w + i0)) * W + (r_ % w + j0))
-                done[a_l] = True
-                done[b_l] = True
+                # ⚠ A PART IS ONE NODE FOR THE HOP, NOT FOR THE JOIN (brain_board esc11,
+                # 2026-11-22): every pad of both parts was marked done, the pad the hop never
+                # reached included, so the join below took USB-C J1.B7 as joined to A7 and
+                # left it -- USBA_DM_J / USBB_DM_J / SVC_DM open on every seed with the router
+                # reporting them routed. Only the hop's own copper is done; a piece it touches
+                # merges, and the part's other pads are joined (or reported open) like any
+                # other piece.
             if not legs_ok:
                 # no ordered hop fits in this window: the plain tree, rather than nothing
                 # (a wider window retries the hops first; the last one falls through here)
@@ -2675,7 +2708,7 @@ class Router(CoupledMixin):
         """ " (first at x,y on layer, beside nets)" for a net's first shared cell."""
         H, W = self.H, self.W
         for pth in x.paths:
-            c = pth[self.occ_t[pth] >= 2]
+            c = self._shared(x, pth)
             if c.size:
                 r_ = c[0] % (H * W)
                 cxx, cyy = float(self.m.cx[r_ % W]), float(self.m.cy[r_ // W])
@@ -3106,6 +3139,11 @@ class Router(CoupledMixin):
         rtn = (self.NECK_W / 2.0 + self.wref / 2.0 + m.clear + m.margin) / m.pitch
         rtvn = (self.NECK_W / 2.0 + m.via_d / 2.0 + m.clear + m.margin) / m.pitch
         for q_, path in enumerate(net.paths):
+            # ⚠ an EMPTY path stamps nothing (brain_board esc9n, 2026-11-21): a +5V_RAW piece with
+            # "no way to the plane on the whole board" left [] in net.paths, R.max() of nothing
+            # raised, and the whole route died 9 s in with the traceback in a subprocess nobody read
+            if path.size == 0:
+                continue
             k = path // (H * W)
             r = path % (H * W)
             ii, jj = r // W, r % W
@@ -3141,12 +3179,66 @@ class Router(CoupledMixin):
             S.unstamp(self.occ_v, net.rec_v, net.n_v)
         net.n_t = net.n_v = 0
 
+    # ⚠ A WIDE NET SHARES SPACE AT ITS EDGE, NOT ONLY ON ITS CENTRELINE (brain_board esc11,
+    # 2026-11-22). Every net stamps the cells within its own w/2 + wref/2 + clearance -- room
+    # for a REFERENCE-width neighbour -- and "shares" was read on the centreline alone, so two
+    # nets wider than wref could stand (wa + wb)/2 - (max(wa, wb) + wref)/2 too close and the
+    # negotiation call them clean. route.py's import then took them up as shorts: VIN_BRAIN 4.0
+    # against VIN_BUS 3.79 and +24V 0.9, PA_VCC 1.27 against PA_VOUT 1.03 and VSTBY 0.76 -- 7 to
+    # 10 router tracks on every esc11 seed, each an open net after the finish. A wide net's
+    # full-width cells read the stamps within (w - wref)/2 of the centreline (a necked cell is
+    # at NECK_W = wref: the centreline); that disk plus the neighbour's stamp is exactly
+    # (wa + wb)/2 + clearance.
+
+    def _disk(self, rr):
+        cache = self.__dict__.setdefault("_disk_cache", {})
+        if rr not in cache:
+            d = np.arange(-rr, rr + 1)
+            di, dj = np.meshgrid(d, d, indexing="ij")
+            keep = di * di + dj * dj <= rr * rr
+            cache[rr] = (di[keep].astype(np.int64), dj[keep].astype(np.int64))
+        return cache[rr]
+
+    def _shared(self, net, path, q=None):
+        """The cells of `path` (one of `net`'s) whose copper comes nearer another net's than
+        the rules allow: another stamp on the centreline, or for a net wider than wref,
+        within (w - wref)/2 of it."""
+        hit = self.occ_t[path] >= 2
+        if (net is None or not path.size
+                or net.width <= self.wref + 1e-6):
+            return path[hit]
+        m = self.m
+        rr = int(math.ceil((net.width - self.wref) / 2.0 / m.pitch - 1e-9))
+        if rr <= 0:
+            return path[hit]
+        nk = None
+        if q is None:
+            for q_, p_ in enumerate(net.paths):
+                if p_ is path:
+                    q = q_
+                    break
+        if q is not None and q < len(getattr(net, "necks", ())) and len(net.necks[q]) == path.size:
+            nk = np.asarray(net.necks[q], bool)
+        H, W = self.H, self.W
+        k = path // (H * W)
+        r = path % (H * W)
+        i, j = r // W, r % W
+        sel = np.nonzero(~hit & (~nk if nk is not None else True))[0]
+        di, dj = self._disk(rr)
+        step = max(1, 4_000_000 // max(1, di.size))
+        for s0 in range(0, sel.size, step):
+            b = sel[s0:s0 + step]
+            ii = np.clip(i[b, None] + di[None, :], 0, H - 1)
+            jj = np.clip(j[b, None] + dj[None, :], 0, W - 1)
+            hit[b] |= (self.occ_t[k[b, None] * (H * W) + ii * W + jj] >= 2).any(axis=1)
+        return path[hit]
+
     def _conflicts(self, net):
         """Path cells another net's keep-out covers (own stamp counts 1 there)."""
         H, W = self.H, self.W
         bad = []
-        for path in net.paths:
-            c = path[self.occ_t[path] >= 2]
+        for q_, path in enumerate(net.paths):
+            c = self._shared(net, path, q_)
             if c.size:
                 bad.append(c)
             k = path // (H * W)
@@ -3183,19 +3275,18 @@ class Router(CoupledMixin):
             self._gr.report()
         todo, pf = self._rounds(list(self.nets), pf0, iters, budget_s)
         self._pf_last = pf
+        self.frozen_audit("after the rounds")
         todo = self._priority_repair(todo, pf)
+        self.frozen_audit("after priority repair")
         self._rip(todo)
         if os.environ.get("OWNROUTE_SNAPSHOT"):        # pair-finish development: replay from here
             import pickle
             with open(os.environ["OWNROUTE_SNAPSHOT"], "wb") as fh:
                 pickle.dump({"pf": pf, "nets": {n.name: (n.paths, n.necks, n.failed, n.relaxed)
                                                 for n in self.nets}}, fh)
-        self._lock_finish = self.LOCKSTEP_FINISH
-        try:
-            self._finish_pairs()
-            self._fallback_pairs()
-        finally:
-            self._lock_finish = False
+        self._finish_pairs()
+        self._fallback_pairs()
+        self.frozen_audit("after the pair finish")
         if os.environ.get("OWNROUTE_SNAPSHOT_ISLANDS"):  # island-pass development (replay_islands.py)
             import pickle
             with open(os.environ["OWNROUTE_SNAPSHOT_ISLANDS"], "wb") as fh:
@@ -3203,6 +3294,7 @@ class Router(CoupledMixin):
                     n.name: (n.paths, n.necks, n.failed, n.relaxed, getattr(n, "n_open", 0))
                     for n in self.nets}}, fh)
         self._pour_islands()
+        self.frozen_audit("after the island pass")
         self._no_shorts()
         if os.environ.get("OWNROUTE_WORK_LOG"):
             cpu = time.process_time()
@@ -3210,6 +3302,80 @@ class Router(CoupledMixin):
                      % (_WORK[0], cpu, _WORK[0] / max(cpu, 1e-9),
                         " (OWNROUTE_WORK_CLOCK=%g on)" % _WORK_RATE if _WORK_RATE > 0 else ""))
         return [n for n in self.nets if n.failed] + list(getattr(self, "unreachable", ()))
+
+    def _frozen_hits(self, net):
+        """Path indices whose copper enters a FOREIGN frozen band's reach (model.frozen_d):
+        a track cell nearer than its half width + the band's zone clearance, a via nearer
+        than its radius + that clearance on any layer. The net's own land cells are not
+        counted (the pad is there whatever is drawn on it)."""
+        m = self.m
+        if getattr(m, "frozen_d", None) is None or not net.paths:
+            return []
+        H, W = self.H, self.W
+        nid = net.id
+        nvd = getattr(net, "via_d", None) or m.via_d
+        out = []
+        for q, p in enumerate(net.paths):
+            p = np.asarray(p)
+            if p.size == 0:
+                continue
+            k, rc = p // (H * W), p % (H * W)
+            i, j = rc // W, rc % W
+            land = (m.n1[k, i, j] == nid) & (m.d1[k, i, j] <= 1e-6)
+            fd, fn = m.frozen_foreign((k, i, j), nid)
+            nk = net.necks[q] if q < len(net.necks) and np.asarray(net.necks[q]).size == p.size \
+                else np.zeros(p.size, bool)
+            half = np.where(nk, self.NECK_W, net.width) / 2.0
+            bad = (fn != 0) & (fn != nid) & ~land & (fd < half + m.frozen_zclr[fn] - 1e-6)
+            via = np.nonzero(k[1:] != k[:-1])[0]
+            if via.size:
+                vi, vj = i[via], j[via]
+                fdv, fnv = m.frozen_foreign((slice(None), vi, vj), nid)
+                vb = ((fnv != 0) & (fnv != nid) & (fdv < nvd / 2.0 + m.frozen_zclr[fnv] - 1e-6)).any(axis=0)
+                if vb.any():
+                    bad[via[vb]] = True
+            if bad.any():
+                c = int(rc[np.nonzero(bad)[0][0]])
+                out.append((q, float(m.cx[c % W]), float(m.cy[c // W]),
+                            [n_ for n_, i_ in m.net_id.items() if i_ == int(fn[np.nonzero(bad)[0][0]])][:1]))
+        return out
+
+    def frozen_audit(self, stage, rip=False):
+        """⚠ A FROZEN BAND IS A WALL AT THE END TOO (brain_board esc10 rPS_10a1/10a4, 2026-11-22):
+        negotiate walls the bands (model.frozen_d), yet a GND plane-join via landed INSIDE
+        +5V_BB's band at (90.33, 133.20) from R211.2, and GND / PG_5V copper crossed VIN_CM5's
+        band at U205 -- frozen_check stopped both finishes. _no_shorts only compares nets with
+        nets (occupancy); a band is a zone, not a net, so nothing checked it after the rounds.
+        Called after every copper-writing stage of run() it names the stage that broke the
+        wall (rip=False, a log line); before emit (ownroute._write) it rips what still does:
+        a plane net loses that join, a signal net comes out -- an open beats a cut band."""
+        if getattr(self.m, "frozen_d", None) is None:
+            return 0
+        n_hit = 0
+        for net in self.nets:
+            if net.failed or not net.paths:
+                continue
+            hits = self._frozen_hits(net)
+            if not hits:
+                continue
+            n_hit += 1
+            q, x, y, band = hits[0]
+            self.log("  FROZEN WALL %s: %s, %d path(s) into %s's band, first at (%.2f, %.2f)%s"
+                     % (stage, net.name, len(hits), band[0] if band else "?", x, y,
+                        " -- ripped" if rip else ""))
+            if not rip:
+                continue
+            self._unmark(net)
+            if net.plane:
+                for q, *_ in hits:
+                    net.paths[q] = np.empty(0, np.int64)
+                    if q < len(net.necks):
+                        net.necks[q] = np.zeros(0, bool)
+                net.n_open = getattr(net, "n_open", 0) + len(hits)
+                self._mark(net)
+            else:
+                net.paths, net.necks, net.failed = [], [], True
+        return n_hit
 
     def _no_shorts(self):
         """⚠ NOTHING LEAVES SHARING (output_board mK finish, 2026-11-13): _rip runs after the
@@ -3440,7 +3606,7 @@ class Router(CoupledMixin):
         for q, path in enumerate(net.paths):
             if q < nfix or not path.size:
                 continue
-            c = path[self.occ_t[path] >= 2]
+            c = self._shared(net, path, q)
             k = path // (H * W)
             via = np.nonzero(k[1:] != k[:-1])[0]
             rv = (path[via] % (H * W)) if via.size else np.empty(0, np.int64)
@@ -3494,7 +3660,7 @@ class Router(CoupledMixin):
         if b is not None:
             return self._poured_open(n, b)
         if (self.LEFT_ISLANDS and n.plane and not n.fixed and len(n.paths) == len(n.pieces) - 1
-                and not any(p.size and (self.occ_t[p] >= 2).any() for p in n.paths)):
+                and not any(p.size and self._shared(n, p).size for p in n.paths)):
             got = self._islands(n)
             if got is not None and got[0]:
                 return len(got[0])
@@ -3561,7 +3727,7 @@ class Router(CoupledMixin):
             # connections open for 2 islands. Nothing of it shares, so nothing comes out;
             # the island pass re-joins the pieces.
             if (net.plane and not net.failed and not net.fixed and net.paths
-                    and not any(p.size and ((self.occ_t[p] >= 2).any() or self._via_shares(p))
+                    and not any(p.size and (self._shared(net, p).size or self._via_shares(p))
                                 for p in net.paths)):
                 self.log("  %s: only pour pieces cut off, no join shares space -- kept for the "
                          "island pass" % net.name)
@@ -3572,7 +3738,7 @@ class Router(CoupledMixin):
             # had moved the others away. Ripped anyway: 87 + 15 pads open for no conflict.
             # Re-read now; a net none of whose copper shares space keeps it.
             if (self.RIP_RECHECK and not net.failed and not net.plane and net.paths
-                    and not any(p.size and ((self.occ_t[p] >= 2).any() or self._via_shares(p))
+                    and not any(p.size and (self._shared(net, p).size or self._via_shares(p))
                                 for p in net.paths)):
                 self.log("  %s: listed as sharing, but none of its copper shares space now -- kept"
                          % net.name)
@@ -3587,7 +3753,7 @@ class Router(CoupledMixin):
             if (self.RIP_MATE_LAND and self.MATE_LAND_MM > 0 and not net.failed and not net.plane
                     and net.paths and (net.mate is not None or net.partner is not None)
                     and not any(p.size and self._via_shares(p) for p in net.paths)
-                    and not any(p.size and self._drop_mate_land(net, p[self.occ_t[p] >= 2]).size
+                    and not any(p.size and self._drop_mate_land(net, self._shared(net, p)).size
                                 for p in net.paths)):
                 self.log("  %s: shares only with its mate at its own lands -- kept for the pair finish"
                          % net.name)
@@ -3662,7 +3828,7 @@ class Router(CoupledMixin):
                 shared = False
                 bad_q = set()
                 for q, path in enumerate(net.paths):
-                    c = path[self.occ_t[path] >= 2]
+                    c = self._shared(net, path, q)
                     if c.size and self.MATE_LAND_MM > 0:
                         c = self._drop_mate_land(net, c)
                     if c.size:
@@ -3708,7 +3874,7 @@ class Router(CoupledMixin):
                     # never came to relax it). A pair still sharing after RELAX_AFTER
                     # rounds is routed on any layer from then on, partner included.
                     if ((net.run_layers or net.layers_only or net.same_layer) and not net.relaxed
-                            and net.stuck >= self.RELAX_AFTER):
+                            and not net.layers_hard and net.stuck >= self.RELAX_AFTER):
                         for x in (net, net.partner) + tuple(o for o in self.nets if o.partner is net):
                             if x is not None and not x.relaxed:
                                 x.relaxed = True

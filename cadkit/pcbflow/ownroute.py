@@ -118,6 +118,9 @@ def core(stem):
 def _write(stem, m, r, nets, failed, t0):
     from router import congestion
     from router import emit
+    # the last word on the bands: whatever still enters one comes out before the board is written
+    if r.frozen_audit("before emit", rip=True):
+        failed = [x for x in nets if x.failed]
     congestion.report(r)
     congestion.pair_dives(r)
     n = emit.write(m, [x for x in nets if not x.failed], stem + ".kicad_pcb")

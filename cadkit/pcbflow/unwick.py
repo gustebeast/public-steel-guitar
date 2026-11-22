@@ -34,12 +34,21 @@ import sys
 
 import pcbnew
 import wx                                       # noqa: E402  (KiCad's python ships it)
+import frozen_wall  # noqa: E402  (the one frozen-band wall for post-route copper)
 wx.DisableAsserts()                             # NO MODAL DIALOGS IN A BUILD STEP -- see route.py
 
 MM = pcbnew.ToMM
 FM = pcbnew.FromMM
 FOIL = 0.12          # mm of stencil, for the volume the report quotes
 THICK = 1.6          # mm of laminate
+# ⚠ ONE BUDGET FOR A LAND'S VIAS, SHARED WITH layout's POWER VIAS (brain_board esc12,
+# 2026-11-22). layout puts a power via in a land while the land's barrels stay within this
+# share of the paste printed on it (R112.2: one via, 23 %, "CAPPED at 1 by the land's
+# paste"); this script then moved EVERY via in a small land, that one included, 1.2 mm out
+# -- off the F.Cu lobe it joined to the B.Cu trunk, so VIN_BRAIN's end field lost a barrel
+# and the power gate read 2.01 mm for 2.61 on 4 of 5 seeds. A land whose vias fit the
+# budget keeps them; quality A14 fails a via only at half the deposit.
+LAND_VIA_PASTE_FRAC = 0.25
 
 
 def _lands(board, margin_mm):
@@ -58,11 +67,14 @@ def _lands(board, margin_mm):
     return out
 
 
-def _clear(board, x, y, via, lands, keep):
+def _clear(board, x, y, via, lands, keep, wall=None):
     """Is a via centred at (x, y) clear of every land, and no closer to foreign copper
     than `keep`? Measured against pads and tracks of OTHER nets, like the stitcher."""
     pt = pcbnew.VECTOR2I(int(x), int(y))
     r = via.GetWidth(pcbnew.F_Cu) / 2 + keep
+    # a moved via stays out of other nets' frozen bands (frozen_wall)
+    if wall and not wall.via_ok(x, y, via.GetNetCode(), via.GetWidth(pcbnew.F_Cu) / 2):
+        return False
     # ⚠ CLEARING THE LAND IS NOT ENOUGH; THERE HAS TO BE A MASK DAM BETWEEN THEM. A via
     # whose edge stops 0.1 mm from the pad's edge leaves no room for a strip of solder
     # mask, so the fab prints none, and the joint simply flows down the barrel sideways
@@ -125,6 +137,7 @@ def main(stem):
     keep_mm = float(q.get("via_land_keepout", 0.25))
     cap_mm = float(q.get("via_land_move_max", 1.5))
     board = pcbnew.LoadBoard(pcb)
+    wall = frozen_wall.FrozenWall(board)
 
     vias = [t for t in board.GetTracks() if t.GetClass() == "PCB_VIA"]
     if not vias:
@@ -139,6 +152,12 @@ def main(stem):
     hole_mm = float(q.get('via_hole_hole', 0.45))
     moved, stuck, retired = [], [], []
     drilled, crowded = [], []
+    held = {}                               # barrel volume already in each land
+    for v in vias:
+        for p, n in lands:
+            if p.GetBoundingBox().Contains(v.GetPosition()):
+                held[n] = held.get(n, 0.0) + math.pi * (MM(v.GetDrillValue()) / 2.0) ** 2 * THICK
+                break
     for v in vias:
         vp = v.GetPosition()
         hit = [(p, n) for p, n in lands if p.GetBoundingBox().Contains(vp)]
@@ -148,6 +167,8 @@ def main(stem):
         barrel = math.pi * (MM(v.GetDrillValue()) / 2.0) ** 2 * THICK
         sz = pad.GetSize()
         paste = MM(sz.x) * MM(sz.y) * FOIL
+        if held.get(name, 0.0) <= LAND_VIA_PASTE_FRAC * paste + 1e-9:
+            continue                        # within the land's via budget: the joint forms
         # the ring search: nearest first, and outward in 0.1 mm steps
         # ⚠ AND THE SEARCH IS CAPPED, BECAUSE A LONG MOVE IS NOT A FIX. The first run of
         # this put C12's via 4.00 mm away -- C12 is the ADC filter capacitor for the
@@ -161,7 +182,7 @@ def main(stem):
                 a = 2 * math.pi * k / 24.0
                 x = vp.x + ring * step * math.cos(a)
                 y = vp.y + ring * step * math.sin(a)
-                if _clear(board, x, y, v, lands, FM(keep_mm)):
+                if _clear(board, x, y, v, lands, FM(keep_mm), wall):
                     best = (int(x), int(y), MM(int(ring * step)))
                     break
             if best:

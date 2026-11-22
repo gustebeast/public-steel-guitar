@@ -243,11 +243,125 @@ def _raise_widths(notes, parts, pl, keep=False):
     return out
 
 
+def _tight_warns(rules, parts, P, notes, ic_pads=8):
+    """WARN lines for `tight` rules: every unmet one with what it achieved against what it asks,
+    and -- met or not -- one whose nets carry no part its stage can move.
+
+    ⚠ A RULE THAT SILENTLY DOES NOTHING (brain_board so_ovw8, 2026-11-22): U21_OVLO's tight (3 mm,
+    weight 2 then 8) left the node at 5.7 mm both times, overflow and every seat identical. Its
+    members were U221 (the anchor) and R319 / R320 -- small parts with a `near` to a pin, which
+    place_init seats as satellites at that pin after the stage the tight pulls; the weight never
+    reached them. Satellites follow their own near / decap rule: tighten THAT, not the tight."""
+    fixed = {r["ref"] for r in rules if r["kind"] in ("fixed", "pin")}
+    sat, anchor = set(), {}
+    for r in rules:
+        if r["kind"] == "decap":
+            sat.add(r["cap"])
+            anchor[r["cap"]] = r["pin"].split(".")[0]
+        elif (r["kind"] == "near" and r.get("ref") in parts and len(parts[r["ref"]]["pads"]) <= ic_pads):
+            sat.add(r["ref"])
+            anchor[r["ref"]] = r["target"].split(".")[0]
+    out = []
+    for i_, r in enumerate(rules):
+        if r["kind"] != "tight":
+            continue
+        members = sorted({ref for ref, p in parts.items() if ref in P.pl
+                          for q in p["pads"] if q["net"] in r["nets"]})
+        sats = [m for m in members if m in sat]
+        anchors = {anchor[m] for m in sats}
+        movable = [m for m in members if m not in sat and m not in anchors and m not in fixed]
+        res = pi.check(r, P, notes)
+        unmet = [(s_, nm, det) for s_, nm, det in res if s_ < -0.05]
+        for s_, nm, det in unmet:
+            out.append("TIGHT UNMET rule %d: %s %s (%.2f mm over) [%s]" % (i_, nm, det, -s_, r.get("src", "")))
+        if sats and not movable:
+            out.append("TIGHT CANNOT ACT rule %d (%s): its members %s are pin satellites (seated by their "
+                       "near / decap rule after the stage a tight pulls) and the rest are their anchors or "
+                       "held -- its weight moves nothing (place_init only seats them first and reserves their strips); "
+                       "tighten the satellites' own near / decap max_mm"
+                       % (i_, " ".join(r["nets"]), " ".join(sats)))
+    return out
+
+
+def _near_broken(rules, P, notes):
+    """(slack, line) for every HARD `near` rule the placement misses by more than 0.05 mm: the
+    part, the rule's index, the distance it sits at and the distance it wants."""
+    nb = []
+    for i_, r_ in enumerate(rules):
+        if r_["kind"] == "near" and r_.get("hard", True):
+            for s_, ref_, det in pi.check(r_, P, notes):
+                if s_ < -0.05:
+                    nb.append((s_, "NEAR BROKEN (hard) rule %d: %s %s, wants %g (%.2f mm) [%s]"
+                               % (i_, ref_, det, r_["max_mm"], s_, r_.get("src", ""))))
+    return nb
+
+
+def _near_gate(nb, place_only):
+    """⚠ A BROKEN HARD `near` STOPS THE FLOW (lead 2026-11-21): the placer seated C222 17.2 mm
+    from U205 against a hard 8 and C230 2.54 from U205.11 against a hard 1.5, said WARN and went
+    on to layout -- the arm was judged on a board that did not keep its own constraints. A hard
+    rule is a refusal, like BROKEN keepouts: 2 = stop. --place-only (an A/B's evidence) still
+    only reports; PCBFLOW_NEAR_BROKEN_OK=1 is for replaying an old board as it was."""
+    if not nb or place_only or os.environ.get("PCBFLOW_NEAR_BROKEN_OK", "0") == "1":
+        return None
+    return 2
+
+
+def _copper(notes, P, rules):
+    """Declared copper from the intent: kind "copper" {net, tracks: [{layer, width, pts}], vias:
+    [[x, y]], on: ["REF.PIN", ...], frozen, why} in the intent frame. Into notes tracks / vias (laid
+    by layout before the fill, so a frozen band is filled round it and frozen_check's baseline
+    holds it); `frozen` adds the net to notes frozen_nets. Every pin in `on` must hold a track end
+    -- a part moved off its copper is a stop, not a dangling stub.
+
+    ⚠ WHY (brain_board esc10, 2026-11-21): U205's ISP/ISN sense pins sit in the elbow between
+    its VOUT bar and +5V_BB's frozen band; the router cannot leave them without crossing the
+    band (ISN open on every seed since k1) and a coupled lay starts from the pads it cannot
+    leave. The pair is laid here, coupled by construction, as an engineer would draw it."""
+    done = notes.setdefault("copper_rules", [])
+    lines = []
+    for r in rules:
+        if r["kind"] != "copper":
+            continue
+        key = r.get("key") or json.dumps(r, sort_keys=True)
+        if key in done:
+            continue
+        for lnd in r.get("on", ()):
+            ref, num = lnd.split(".", 1)
+            poly = np.asarray(P.pad_poly(ref, num), float)
+            from matplotlib.path import Path as _Pth
+            pp = _Pth(poly)
+            ends = [e for t in r.get("tracks", ()) for e in (t["pts"][0], t["pts"][-1])]
+            if not any(pp.contains_point(e, radius=0.02) or pp.contains_point(e, radius=-0.02) for e in ends):
+                raise SystemExit("place_flow: copper for %s names %s, but no track end lands on that pad "
+                                 "(a part moved off its declared copper?)" % (r["net"], lnd))
+        done.append(key)
+        if r.get("neck"):
+            # a BOUNDED declared neck (lead 2026-11-22): the power gate accepts this net's neck only while
+            # the fabbed copper is no narrower than min_w and no longer than max_len (widepath.judge)
+            nk = r["neck"]
+            notes.setdefault("declared_necks", []).append(dict(
+                key=key, net=r["net"], frm=nk["from"], to=nk["to"], min_w=float(nk["min_w"]),
+                max_len=float(nk["max_len"]), why=nk.get("why") or r.get("why", "")))
+        for t in r.get("tracks", ()):
+            notes.setdefault("tracks", []).append([r["net"], t["layer"], float(t["width"]), t["pts"]])
+        for v in r.get("vias", ()):
+            notes.setdefault("vias", []).append([r["net"], float(v[0]), float(v[1])])
+        if r.get("frozen"):
+            fz = notes.setdefault("frozen_nets", [])
+            if r["net"] not in fz:
+                fz.append(r["net"])
+        lines.append("%s: declared copper, %d track(s), %d via(s)%s" % (
+            r["net"], len(r.get("tracks", ())), len(r.get("vias", ())), ", frozen" if r.get("frozen") else ""))
+    return lines
+
+
 def _pours(notes, parts, pl, rules, base_zones):
     """notes["zones"] = the input's own zones + one per `pour` rule at the placed pins
     (place_intent.pour_poly), priority 1 by default so it wins its region over a board-wide
     ground pour on the same layer. Returns the POUR lines for the report."""
     P = pi.Placed(parts, pl)
+    cl = _copper(notes, P, rules)
     notes_r = dict(notes, _regions={r["name"]: r["poly"] for r in rules if r["kind"] == "region"})
     amps_of = lambda r: pi.pour_amps(r, notes)
     # a notes file that is itself a flow's output already carries last run's pours: a
@@ -256,13 +370,37 @@ def _pours(notes, parts, pl, rules, base_zones):
     mine = {(r["net"], r["layer"]) for r in rules if r["kind"] == "pour"}
     base_zones = [z for z in base_zones if not (isinstance(z, dict) and (z.get("net"), z.get("layer")) in mine)]
     zones, out, pv = list(base_zones), [], []
+    out.extend(cl)
+    bands = []                          # (net, layer, poly) of the around bands drawn so far
     for r in rules:
         if r["kind"] != "pour":
             continue
         poly = pi.pour_poly(r, P, notes_r, amps_of(r))
         if poly is not None and r.get("around") and not r.get("region"):
             # opt-in (auto_pour `around`): the band goes round other nets' pads (pour_around)
-            ar = pi.pour_around(r, P, notes_r, amps_of(r))
+            # ...and round the OTHER bands on its layer: their end pins (a B.Cu trunk's lands are
+            # F.Cu pads, invisible to the pad walls -- VIN_SW's band from Q202.2 took the room
+            # VIN_BRAIN's from Q202.3 needed) and the bands already drawn
+            ra = dict(r, _avoid_pins=[x for o in rules if o["kind"] == "pour" and o.get("around")
+                                      and o["layer"] == r["layer"] and o["net"] != r["net"]
+                                      for x in o.get("along", ())],
+                      _avoid_polys=[pg for n_, l_, pg in bands if l_ == r["layer"] and n_ != r["net"]])
+            ar = pi.pour_around(ra, P, notes_r, amps_of(r))
+            if ar is not None:
+                bands.append((r["net"], r["layer"], ar))
+                # fine-pitch end pins get a declared escape stub the band takes over from
+                for e_ in pi.pin_escapes(r, P, notes, band=ar):
+                    if any(x_["key"] == e_["key"] for x_ in notes.get("band_escapes", ())):
+                        continue                 # _pours runs twice: declare a stub once
+                    notes.setdefault("tracks", []).append([e_["net"], e_["layer"], e_["width"], e_["pts"]])
+                    notes.setdefault("band_escapes", []).append(e_)
+                    out.append("%s: escape stub %.2f wide, %.2f past the pad (pitch %.2f)" % (
+                        e_["key"], e_["width"], e_["beyond"], e_["pitch"]))
+                lst = getattr(pi.pour_around, "last", None)
+                if lst:
+                    out.append("%s on %s: band %.1f mm long, neck %.2f of %.2f mm wanted%s" % (
+                        r["net"], r["layer"], lst.get("length", 0), lst["neck"], lst["need"],
+                        (" -- pinched by " + " ".join(lst["pinch"][:10])) if lst.get("pinch") else ""))
             if ar is None:
                 out.append("%s on %s: no band round the other nets' pads reaches every pin -- "
                            "the hull kept" % (r["net"], r["layer"]))
@@ -273,7 +411,7 @@ def _pours(notes, parts, pl, rules, base_zones):
             area = abs(sum(poly[i][0] * poly[i - 1][1] - poly[i - 1][0] * poly[i][1]
                            for i in range(len(poly)))) / 2.0
             if ow and ol and area > r["max_frac"] * ow * ol:
-                w = pi.width_for(r["auto_amps"])
+                w = pi.width_for(r["auto_amps"], pi.design_dt(notes))
                 nw = notes.setdefault("net_widths", {})
                 nw[r["net"]] = max(nw.get(r["net"], 0.0), w)
                 out.append("%s on %s: auto pour would cover %.0f %% of the board (max %.0f %%) -- "
@@ -294,12 +432,14 @@ def _pours(notes, parts, pl, rules, base_zones):
         if "priority" not in r and pr in taken:
             pr = max(taken) + 1
         zones.append({"net": r["net"], "layer": r["layer"], "poly": poly, "priority": pr,
-                      **({"whole": True} if r.get("whole") else {})})
+                      **({"whole": True} if r.get("whole") else {}),
+                      **({"frozen": True} if r.get("frozen") else {})})
         # opt-in (`pad_vias`, set by auto_pour): the pour's big lands on another layer get a
         # via array sized to the current -- layout._pour_pad_vias
         if (r.get("pad_vias") or r.get("auto_amps") is not None) and r.get("along") and amps_of(r):
             pv.append({"net": r["net"], "layer": r["layer"], "pads": list(r["along"]),
-                       "amps": amps_of(r), "width_mm": pi.width_for(amps_of(r))})
+                       "amps": amps_of(r), "width_mm": pi.width_for(amps_of(r), pi.design_dt(notes)),
+                       **({"field": dict(r["field"], frozen=bool(r.get("frozen")))} if r.get("field") else {})})
         f = pi.pour_foreign(r, P, poly)
         out.append("%s on %s %s: %d corner(s), %s" % (
             r["net"], r["layer"], ("region " + r["region"]) if r.get("region") else "along " + "-".join(r["along"]),
@@ -541,16 +681,13 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     for w_ in _swap_lines(notes, parts, pl, stem, fd, apply_swaps):
         say("WARN " + w_)
         floor.append(w_)
+    for w_ in _tight_warns(rules, parts, P_k, notes_k):
+        say("WARN " + w_)
+        floor.append(w_)
     # ⚠ A BROKEN HARD `near` IS SAID, NOT LEFT TO A SIDE EFFECT (output_board mN, 2026-11-14):
     # "U17 within 30 of FL3" ended 39.6 mm and the report showed only a CHAIN warning about
     # it; the board went on to a 30-minute route with its USB pairs as long as before.
-    nb = []
-    for i_, r_ in enumerate(rules):
-        if r_["kind"] == "near" and r_.get("hard", True):
-            for s_, ref_, det in pi.check(r_, P_k, notes_k):
-                if s_ < -0.05:
-                    nb.append((s_, "NEAR BROKEN (hard) rule %d: %s %s, wants %g (%.2f mm) [%s]"
-                               % (i_, ref_, det, r_["max_mm"], s_, r_.get("src", ""))))
+    nb = _near_broken(rules, P_k, notes_k)
     # ⚠ A HELD PART CANNOT KEEP A HARD RULE IT WAS NEVER ASKED TO (output_board mP / mQ, 2026-11-15):
     # every part was pinned `fixed` where fin_mO left it, so C124 sat 4.6 mm from U1.62 against
     # a HARD 3 mm rule and no placer could move it -- one WARN among fourteen, and quality A2
@@ -569,6 +706,12 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
         floor.append(w_)
     if len(nb) > 12:
         floor.append("NEAR BROKEN (hard): %d more" % (len(nb) - 12))
+    if _near_gate(nb, place_only):
+        say("NEAR BROKEN hard rules -- the flow stops before layout: " + " | ".join(x[1] for x in sorted(nb)[:8]))
+        _report(fd, base, rules, init_log, [], [], None, None, None, why, T,
+                refused="intent check: NEAR BROKEN hard rules\n" + "\n".join(x[1] for x in sorted(nb)[:20]),
+                floor=floor, room=room)
+        return 2
     if place_only:
         # --place-only: a placement A/B across boards (a placer change's evidence) needs
         # NO ROOM, BROKEN and NEAR BROKEN, not a route -- minutes per board instead of an hour
@@ -701,14 +844,24 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
                                               if "[" in i.get("description", "")})
         except (OSError, ValueError):
             fin = {"error": out[-600:], "rc": rc}
+        # ⚠ A QUALITY PASS THAT DID NOT RUN IS A FAIL (rPS_10a5, 2026-11-21): quality.py refused
+        # (A26-A31 in the code, not in PCB_QUALITY.md), the report's "quality:" line carried the
+        # refusal text in the middle of the summary, and five seeds were scored with no A-rule
+        # numbers before anyone noticed. No quality.json written by THIS run (a refusal writes
+        # none; a stale one from an earlier pass is older) is now `skipped` and leads the report.
+        # Not the rc: quality.py exits 1 whenever any rule FAILs, which is a pass that ran.
+        qj = stem + ".quality.json"
+        t_q = time.time()
         rc, out, T["quality"] = _run([KICAD_PY, os.path.join(HERE, "quality.py"), "--brief", stem], log)
         try:
-            q = json.load(open(stem + ".quality.json", encoding="utf-8"))
+            if os.path.getmtime(qj) < t_q - 1:
+                raise ValueError("quality.py rc %d, no quality.json from this run" % rc)
+            q = json.load(open(qj, encoding="utf-8"))
             qual = {"fail": q.get("fail"), "open": q.get("open"), "waived": q.get("waived"),
                     "failed": [r.get("id") or r.get("rule") for r in q.get("results", [])
                                if str(r.get("status", "")).upper() == "FAIL"][:20]}
-        except (OSError, ValueError):
-            qual = {"error": out[-600:]}
+        except (OSError, ValueError) as exc:
+            qual = {"skipped": True, "error": "%s: %s" % (exc, out.strip()[-600:])}
     _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T, room=room, width=wlines, pours=plines,
             floor=floor, fill=pi.region_fill(rules, parts, pl), routability=rout)
     return 0
@@ -813,7 +966,9 @@ def _swap_lines(notes, parts, pl, stem, fd, apply=False):
     out = ["SWAP %s: pins %s -- its channels are identical, so swapping the rails between them is free "
            "in the netlist; twisted pair hops %d -> %d%s"
            % (r, ", ".join("%s<->%s (%s/%s)" % (a, b, nets[r][a], nets[r][b]) for a, b in prs), n0, n1,
-              "" if apply else " (proposed; --apply-swaps applies it to this run)") for r, prs in sw]
+              "" if apply else " (proposed, NOT applied: --apply-swaps tries it on this run; once a route A/B "
+                             "accepts it, `swaps.py accept` records it and the generator's apply_accepted "
+                             "carries it)") for r, prs in sw]
     if apply:
         net_path = stem + ".net"
         keep = os.path.join(fd, "input.net")
@@ -863,6 +1018,8 @@ def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, 
            "routability": routability}
     json.dump(rep, open(os.path.join(fd, "report.json"), "w"), indent=1)
     L = ["# place_flow: %s" % base, ""]
+    if qual and qual.get("skipped"):
+        L += ["**FAIL: THE QUALITY PASS DID NOT RUN -- no A-rule result on this board.**", ""]
     if refused:
         L += ["**%s**" % ("place_init found NO ROOM -- the flow stopped before layout." if refused.startswith("place_init: NO ROOM")
                           else "the intent check found BROKEN hard rules -- the flow stopped before layout."
@@ -894,7 +1051,7 @@ def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, 
             + (", %d warning(s) (%s)" % (fin["warnings"], ", ".join("%s %d" % kv for kv in sorted(fin.get("warn_by_type", {}).items())))
                if fin.get("warnings") else ""))]
     if qual:
-        L += ["quality: %s" % (qual.get("error") or "%s FAIL, %s OPEN%s" % (
+        L += ["quality: %s" % (("FAIL, DID NOT RUN -- " + qual["error"]) if qual.get("skipped") else qual.get("error") or "%s FAIL, %s OPEN%s" % (
             qual["fail"], qual["open"], (" (" + " ".join(map(str, qual["failed"])) + ")") if qual.get("failed") else ""))]
     if gates:
         L += ["", "layout notes:"] + ["  " + g for g in gates]

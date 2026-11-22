@@ -118,7 +118,7 @@ WALL_THICKNESS  = 13 * BEAD  # 10.4 structural wall: the keyhead/bridge endplate
                             # and the side rails' thickness before the steel bars (RAIL_T)
 # THE STEEL WALL BARS (user, 2026-11-06). The bench build detunes when the body is bowed by hand:
 # two plastic side walls cannot hold pitch. Each side wall now carries a 5/8 x 2 in hot-rolled
-# A-36 flat bar (prices.json wall_bar_a36_58x2), its 2 in standing up, the whole length of the
+# A-36 flat bar (the old 5/8 x 2 bar; the direct-drive instrument's is direct_bench.BAR_T, prices.json wall_bar), its 2 in standing up, the whole length of the
 # rails and on into both endplates. The wall grows OUTWARD around it (the inner faces stay where
 # they are: everything mounted inside is unmoved), 9.6 a side, 19.2 in all (user: "Let's go with
 # the 19mm widening").

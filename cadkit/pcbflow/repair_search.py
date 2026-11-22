@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import re
 import sys
 
@@ -42,6 +43,9 @@ RULE_CLEAR = 0.127     # the netclass clearance itself -- what DRC actually enfo
 MARGIN = 0.15          # on top of each obstacle's own half-width, over the netclass rule
 VIA_D, VIA_DRILL = 0.6, 0.3
 TRACK_W = 0.25
+# a frozen band's wall grown by its zone clearance (router.model frozen_d, brain_board rPS_e3
+# 2026-11-21: foreign copper ON a band's edge eats clearance + its own half width out of it)
+_FROZEN_CLR = 0.5
 GRID = 0.1
 REACH = 9.0            # how far from the pad to look, mm
 
@@ -306,6 +310,29 @@ def _keepouts(board_txt):
     return out
 
 
+def _frozen(board_txt):
+    """Frozen power bands (a pour zone NAMED "frozen", router.model.frozen_net): [{net, layers, pts}].
+
+    ⚠ A CLOSURE THROUGH A FROZEN BAND PUTS A FOREIGN NET INSIDE POWER COPPER (brain_board
+    power-first arm, lead 2026-11-20): the router walls them off for every other net, so the
+    repairs must too -- a track may not cross the band's outline on its layer, and no via of
+    another net may stand inside it (a via is on every layer). Kept apart from `keepouts`
+    because a rip's soft model clears those (close_last._rip_one) and must not clear these."""
+    out = []
+    for z in re.findall(r"\(zone\b(.*?)\n\t\)", board_txt, re.S):
+        if "(keepout" in z or not re.search(r'\(name "frozen"\)', z):
+            continue
+        nt = re.search(r'\(net "([^"]*)"', z)
+        ly = re.search(r'\(layer "([^"]+)"\)', z)
+        pg = re.search(r"\(polygon\s*\(pts((?:\s*\(xy [-\d.]+ [-\d.]+\))+)", z, re.S)
+        if not (nt and ly and pg):
+            continue
+        pts = [(float(a), float(b)) for a, b in re.findall(r"\(xy ([-\d.]+) ([-\d.]+)\)", pg.group(1))]
+        if len(pts) >= 3:
+            out.append(dict(net=nt.group(1), layers={ly.group(1)}, pts=pts))
+    return out
+
+
 def _pt_in_poly(px, py, pts):
     inside = False
     n = len(pts)
@@ -476,6 +503,7 @@ class Board:
         # ⚠ AND THE POURS, which this class did not model at all until 2026-09-30.
         self.zones = _zones(txt)
         self.keepouts = _keepouts(txt)
+        self.frozen = _frozen(txt)
         self.zone_clear = _zone_clearance(stem)
 
     def _via_near(self, x, y, r):
@@ -537,10 +565,12 @@ class Board:
         for e in self.edges:                      # and the outline, at ITS rule
             if _d_pt_seg(x, y, *e) < r + max(MARGIN, getattr(self, "edge_clear", 0.3)):
                 return False
-        for k in getattr(self, "keepouts", ()):   # a via is on every layer
+        for k in list(getattr(self, "keepouts", ())) + [
+                z for z in getattr(self, "frozen", ()) if z["net"] != self.net]:   # a via is on every layer
             pts = k["pts"]
+            g = _FROZEN_CLR if "net" in k else 0.0   # a frozen band: + its zone clearance
             if _pt_in_poly(x, y, pts) or any(
-                    _d_pt_seg(x, y, a[0], a[1], b[0], b[1]) < r
+                    _d_pt_seg(x, y, a[0], a[1], b[0], b[1]) < r + g
                     for a, b in zip(pts, pts[1:] + pts[:1])):
                 return False
         return True
@@ -706,13 +736,23 @@ class _Index:
 
         # a track keep-out's boundary, as a zero-width wall: paths start outside one, so a
         # wall they cannot cross keeps them out (see _keepouts)
-        for k in getattr(board, "keepouts", ()):
+        for k in list(getattr(board, "keepouts", ())) + [
+                z for z in getattr(board, "frozen", ()) if z["net"] != board.net]:
             if k["layers"] and layer not in k["layers"]:
                 continue
             pts = k["pts"]
+            g = _FROZEN_CLR if "net" in k else 0.0   # a frozen band: + its zone clearance
             for a, b in zip(pts, pts[1:] + pts[:1]):
-                self._put(min(a[0], b[0]), min(a[1], b[1]), max(a[0], b[0]), max(a[1], b[1]),
-                          ("seg", a[0], a[1], b[0], b[1], 0.0))
+                self._put(min(a[0], b[0]) - g, min(a[1], b[1]) - g, max(a[0], b[0]) + g, max(a[1], b[1]) + g,
+                          ("seg", a[0], a[1], b[0], b[1], g))
+        # walls a caller adds for THIS search only (close_last's CLOSE_POUR_GUARD: a power
+        # pour's outline). In-plane cells only -- via_ok never sees them, so a via may still
+        # pass through the pour as a clearance hole while no track crosses its edge.
+        for g_ in getattr(board, "guard", ()):
+            if g_["layer"] == layer:
+                self._put(min(g_["x1"], g_["x2"]), min(g_["y1"], g_["y2"]),
+                          max(g_["x1"], g_["x2"]), max(g_["y1"], g_["y2"]),
+                          ("seg", g_["x1"], g_["y1"], g_["x2"], g_["y2"], g_["half"]))
 
     def _put(self, x0, y0, x1, y1, item):
         c = self.CELL

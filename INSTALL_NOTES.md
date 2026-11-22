@@ -1239,6 +1239,10 @@ The design shows the R2 boards only. Until they arrive, the R1 boards are a benc
   table under the lead colours). Its J7 sits low: lights-lead ways 3 and 4 are under the floor's top,
   so on the bench the lead goes in before the board is stood in the chassis. Bus B's J2 / J6
   are 14 mm nearer the -Y body adapter than R2's: pull those plugs with pliers.
+- **Pi cap 5 V current (2026-11-20):** the ordered copper's +5V_PI path (J2 to J1) narrows to a
+  1.0 mm neck, about 3.3 mm long, near (114.3, 93.5-96.8). Keep the Pi and its peripherals under
+  about 2.3 A continuous, not the 3 A budget. The other R1 power paths checked fine against the
+  ordered gerbers.
 
 ## Foot lights: plug the lead in first, then slide the strip in from +X (2026-10-29) — v1, historical
 
@@ -2508,3 +2512,22 @@ long to drop in short and slide +X, so it now goes in **with the bridge (+X) end
 - **Swap:** the same steps in reverse. The anchor screws stay in.
 - Reprint the body floor section that holds the groove (now only the board's own length).
   The endplate pocket only changes where the board's parts moved.
+
+## Wall bars: laser-cut 6 mm cold-rolled steel from JLCCNC (2026-11-20)
+
+The two wall bars now come from JLCCNC, on the same order as the laser-cut plates. They are cut
+from 6 mm cold-rolled sheet (`steel/wall_bar.step`), not 1/4" A-36 bar from Speedy.
+
+- **Thickness 6.0, was 6.35.** 6 mm is JLCCNC's thickest steel sheet. The bar stays centred in
+  its wall, so each face moves in 0.175 and the channel shrinks to match. Reprint the wall
+  sections.
+- **Anchor holes come cut.** The four Ø3.3 holes for the anchor's M4 screws are laser-cut
+  through each bar. Tap them M4; there is no drilling. Each screw engages about 0.2 mm less
+  thread than in the 6.35 bar.
+- **End holes are still ours.** Drill and tap the two M3 holes in each end as before, using
+  the drill jig. Only 1.75 mm of steel is left either side of the 2.5 tap drill, so keep the
+  drill square to the end.
+- **Rust:** cold-rolled steel rusts bare. Zinc-spray the bars before they go into the walls,
+  as with the A-36.
+- **Why:** user, 2026-11-20. JLCCNC costs about $29 more per instrument than Speedy, mostly
+  express shipping on 51 kg of steel. One order and less shop time were judged worth it.

@@ -26,6 +26,7 @@ import sys
 import pcbnew
 
 import stable_fill  # noqa: E402  (PCBFLOW_STABLE_FILL)
+import frozen_wall  # noqa: E402  (the one frozen-band wall for post-route copper)
 import wx                                       # noqa: E402
 wx.DisableAsserts()
 
@@ -73,6 +74,7 @@ def plan(stem, board, notes):
     dflt = {c["name"]: c for c in pro.get("net_settings", {}).get("classes", [])}.get("Default", {})
     vd, drill = float(dflt.get("via_diameter", 0.6)), float(dflt.get("via_drill", 0.3))
     vr = vd / 2.0
+    wall = frozen_wall.FrozenWall(board)    # a return via stays out of other nets' frozen bands
 
     def clear_of(nc_b):
         nb = board.FindNet(nc_b) if nc_b else None
@@ -146,6 +148,8 @@ def plan(stem, board, notes):
                     for poly, _layers in keep:
                         if poly.Collide(circ, 0):
                             return refuse("a keep-out")
+                    if wall and not wall.via_ok_mm(x, y, gnc, vr):
+                        return refuse("another net's frozen band")
                     return True
 
                 cands = []
