@@ -2061,12 +2061,26 @@ def _path_clear(board, a, z, net, layer, w, step_mm=0.1):
         return not (bb.GetRight() < x0 or bb.GetLeft() > x1 or bb.GetBottom() < y0 or bb.GetTop() > y1)
     others = [o for o in others if _near(o)]
     pads = [pd for pd in pads if _near(pd)]
+    # ⚠ A STUB MAY NOT CROSS ANOTHER NET'S FROZEN BAND (brain_board rPS_e2, 2026-11-21): the
+    # plane reconnect laid an 11.8 mm +24V stub straight over VIN_SW's frozen F.Cu band and the
+    # refill cut it -- VIN_SW OPEN on a board whose pregate read WARN 2.57. The band's OUTLINE is
+    # the wall (its fill may not be poured yet), kept off by half the stub plus the zone's own
+    # clearance -- the router's rule (router.model frozen_d).
+    frz = []
+    for zn in board.Zones():
+        if zn.GetIsRuleArea() or zn.GetZoneName() != "frozen" or zn.GetNetname() == net or not zn.IsOnLayer(layer):
+            continue
+        zc = zn.GetLocalClearance()
+        zc = zc.value() if hasattr(zc, "value") else zc
+        frz.append((zn.Outline(), int(w / 2 + (zc or pcbnew.FromMM(0.5)))))
     for i in range(n + 1):
         p = pcbnew.VECTOR2I(int(a.x + (z.x - a.x) * i / n),
                             int(a.y + (z.y - a.y) * i / n))
         if any(o.HitTest(p, acc) for o in others):
             return False
         if any(pd.HitTest(p, acc) for pd in pads):
+            return False
+        if any(ol.Contains(p) or ol.Collide(p, r_) for ol, r_ in frz):
             return False
     return True
 
@@ -2245,6 +2259,41 @@ def repair_plane_orphans(board, notes, probe_mm=12.0, max_items=24):
                     break
                 if done:
                     break
+            if not done and os.environ.get("PCBFLOW_STRAND_VIA2", "0") == "1":
+                # ⚠ OFF THE CENTRELINE, THROUGH OTHER NETS' FILL, AND AS MANY AS THE CURRENT
+                # NEEDS (brain_board W48w seed 1, 2026-11-20). _via_on_piece found nothing for
+                # two pieces a via closes clean: D201.1's VIN_BRAIN stub (every site "hit" the
+                # In1 GND plane's fill -- which any through via does until the refill cuts its
+                # antipad) and R217's GND piece (the clean site, 84.00,103.80, is beside the
+                # track, not on its centreline). And a power stub took one 0.6/0.3 via however
+                # wide it was: D201.1's is 1.78-2.15 mm against a 0.67 mm barrel. Here a site
+                # only has to overlap a piece track, other nets' FILL does not refuse it, and a
+                # net the board gives a width or a current gets ceil(narrowest piece track /
+                # barrel) vias (narrowest piece track) -- or none, saying it cannot carry it.
+                _uu = piece.get(t.m_Uuid.AsString(), {t.m_Uuid.AsString()})
+                _wide = set((notes.get("net_widths") or {}).keys()) | {
+                    pp["net"] for pp in ((notes.get("quality") or {}).get("power_paths") or ())}
+                # the piece's NARROWEST track: what reaches the vias can be no more than it
+                # carries (power_vias' "narrower side"; D201.1's stub is 2.15 mm then 1.78 to the pad)
+                _pw = min([pcbnew.ToMM(x.GetWidth()) for x in board.GetTracks()
+                           if x.GetClass() == "PCB_TRACK" and x.m_Uuid.AsString() in _uu] or [0.2])
+                _n = max(1, math.ceil(_pw / (math.pi * 0.3 * 25.0 / 35.0) - 1e-6)) if net in _wide else 1
+                pvs = _vias_on_piece(board, net, _uu, zs, _n)
+                if len(pvs) >= _n:
+                    for pv in pvs[:_n]:
+                        v = pcbnew.PCB_VIA(board)
+                        v.SetPosition(pv)
+                        v.SetWidth(pcbnew.FromMM(0.6))
+                        v.SetDrill(pcbnew.FromMM(0.3))
+                        v.SetNet(t.GetNet())
+                        board.Add(v)
+                        laid += 1
+                    done = True
+                    print("      reconnected %s by %d via(s) down to its fill (%s)" % (
+                        net, _n, ", ".join("%.2f,%.2f" % (pcbnew.ToMM(q.x), pcbnew.ToMM(q.y)) for q in pvs[:_n])))
+                elif pvs or _n > 1:
+                    print("      ⚠ %s piece CAN'T CARRY: its %.2f mm track wants %d via(s), %d fit" % (
+                        net, _pw, _n, len(pvs)))
             if not done and os.environ.get("PCBFLOW_STRAND_VIA", "1") == "1":
                 # ⚠ DOWN, NOT ACROSS (brain_board mV57a, 2026-11-18): a 12-track F.Cu GND
                 # island at R217/Q215 had no clear stub sideways to any plane copper, yet a
@@ -2338,6 +2387,97 @@ def _via_on_piece(board, net, uuids, zs, via_d=0.6, drill=0.3, step_mm=0.05):
             if _fits(pt, t.GetLayer()):
                 return pt
     return None
+
+
+def _vias_on_piece(board, net, uuids, zs, n, via_d=0.6, drill=0.3, step_mm=0.05):
+    """Up to `n` through-via sites, each overlapping one of the piece's tracks by >= 0.15 mm,
+    clear of every other net's tracks and pads on every copper layer (min clearance) and of
+    every hole (hole-to-hole, the new ones too), landing in the net's own fill on a layer the
+    track is not on. Other nets' FILL is not an obstacle: the refill cuts round the via.
+    Sites nearest a track centreline first."""
+    tracks = [t for t in board.GetTracks()
+              if t.GetClass() == "PCB_TRACK" and t.m_Uuid.AsString() in uuids]
+    if not tracks:
+        return []
+    ds = board.GetDesignSettings()
+    clr = ds.m_MinClearance
+    h2h = getattr(ds, "m_HoleToHoleMin", 0) or pcbnew.FromMM(0.25)
+    r = pcbnew.FromMM(via_d / 2.0)
+    pad = r + clr + pcbnew.FromMM(1.0)
+    x0 = min(min(t.GetStart().x, t.GetEnd().x) for t in tracks) - pad
+    x1 = max(max(t.GetStart().x, t.GetEnd().x) for t in tracks) + pad
+    y0 = min(min(t.GetStart().y, t.GetEnd().y) for t in tracks) - pad
+    y1 = max(max(t.GetStart().y, t.GetEnd().y) for t in tracks) + pad
+
+    def _near(o):
+        bb = o.GetBoundingBox()
+        return not (bb.GetRight() < x0 or bb.GetLeft() > x1 or bb.GetBottom() < y0 or bb.GetTop() > y1)
+    cu = list(board.GetEnabledLayers().CuStack())
+    others = [(o, L, o.GetEffectiveShape(L)) for o in board.GetTracks()
+              if o.GetNetname() != net and _near(o) for L in cu if o.IsOnLayer(L)]
+    others += [(pd, L, pd.GetEffectiveShape(L)) for m in board.GetFootprints() for pd in m.Pads()
+               if pd.GetNetname() != net and _near(pd) for L in cu if pd.IsOnLayer(L)]
+    holes = [(o.GetPosition(), o.GetDrillValue()) for o in board.GetTracks()
+             if o.GetClass() == "PCB_VIA" and _near(o)]
+    holes += [(pd.GetPosition(), max(pd.GetDrillSizeX(), pd.GetDrillSizeY()))
+              for m in board.GetFootprints() for pd in m.Pads() if pd.GetDrillSizeX() > 0 and _near(pd)]
+    # no via HOLE in an SMD land of ANY net, its own included: DRC passes a same-net via in a
+    # pad, quality A12/A14 do not (solder wicks down the open hole) -- the first site this found
+    # for R217's GND piece had its hole in U41.2
+    lands = [(pd, L, pd.GetEffectiveShape(L)) for m in board.GetFootprints() for pd in m.Pads()
+             if pd.GetDrillSizeX() == 0 and _near(pd) for L in cu if pd.IsOnLayer(L)]
+    own = [(z, l) for z in zs for l in z.GetLayerSet().CuStack()]
+    dr = pcbnew.FromMM(drill)
+    ring = (dr / 2.0 + r) / 2.0
+    step = pcbnew.FromMM(step_mm)
+    cands = []
+    for t in tracks:
+        a, e = t.GetStart(), t.GetEnd()
+        reach = t.GetWidth() / 2 + r - pcbnew.FromMM(0.15)
+        seg = pcbnew.SEG(a, e)
+        xs = range(int(min(a.x, e.x) - reach), int(max(a.x, e.x) + reach) + 1, step)
+        ys = range(int(min(a.y, e.y) - reach), int(max(a.y, e.y) + reach) + 1, step)
+        for x in xs:
+            for y in ys:
+                pt = pcbnew.VECTOR2I(x, y)
+                d = seg.Distance(pt)
+                if d <= reach:
+                    cands.append((d, x, y, t.GetLayer()))
+    cands.sort()
+    got = []
+    seen = set()
+    for d, x, y, tl in cands:
+        if (x, y) in seen:
+            continue
+        seen.add((x, y))
+        pt = pcbnew.VECTOR2I(x, y)
+        if any((hp - pt).EuclideanNorm() < dr / 2.0 + hd / 2.0 + h2h for hp, hd in holes):
+            continue
+        if any((g - pt).EuclideanNorm() < dr + h2h for g in got):
+            continue
+        circ = pcbnew.SHAPE_CIRCLE(pt, r)
+        if any(sh.Collide(circ, clr) for _o, _L, sh in others):
+            continue
+        # quality's test is the HOLE in the land (pad.HitTest(pos, drill/2)); a ring that only
+        # touches a land is allowed there, so the hole is kept 0.05 mm clear of every land
+        hole = pcbnew.SHAPE_CIRCLE(pt, int(dr / 2))
+        if any(sh.Collide(hole, pcbnew.FromMM(0.05)) for _o, _L, sh in lands):
+            continue
+        landed = False
+        for z, L in own:
+            if L == tl:
+                continue
+            fp = z.GetFilledPolysList(L)
+            hit = sum(1 for k in range(16) if fp.Collide(pcbnew.VECTOR2I(
+                int(pt.x + ring * math.cos(k * math.pi / 8)), int(pt.y + ring * math.sin(k * math.pi / 8)))))
+            if hit / 16.0 >= VIA_CONTACT_MIN:
+                landed = True
+                break
+        if landed:
+            got.append(pt)
+            if len(got) >= n:
+                break
+    return got
 
 
 def via_plane_contact(via, poly):
@@ -4351,7 +4491,7 @@ def _inside_many(outline, X, Y, margin):
 
 
 def _pour_pad_vias(board, specs, via_d=0.6, via_drill=0.3, clr=0.2, hole_gap=0.45, filled=False,
-                   zone_clr=None, outline=None, small_spill=False):
+                   zone_clr=None, outline=None, small_spill=False, escapes=(), bands=()):
     """A via ARRAY in each big land that feeds a current-carrying pour on another layer.
 
     ⚠ ONE VIA IS A CHOKE POINT (output_power, 2026-11-13). auto_pour moved the 5-10 A nets
@@ -4399,10 +4539,24 @@ def _pour_pad_vias(board, specs, via_d=0.6, via_drill=0.3, clr=0.2, hole_gap=0.4
     thick = pcbnew.ToMM(board.GetDesignSettings().GetBoardThickness()) or 1.6
     one = math.pi * (via_drill / 2.0) ** 2 * thick         # mm3 one barrel holds
     out = []
-    for s in specs:
-        want = int(math.ceil(float(s["width_mm"]) / barrel - 1e-9))
+    # field specs last: their sites keep clear of the vias every other pour already put down
+    # (VIN_SW's four in Q202.2 cut VIN_BRAIN's B.Cu lobe beside Q202.3 when they came after it)
+    for s in sorted(specs, key=lambda s_: bool(s_.get("field"))):
+        # ⚠ A TRUNK END IS A VIA FIELD, NOT A BRIDGE (brain_board rPS_g1, 2026-11-21): VIN_BRAIN's B.Cu
+        # trunk had 4 of 4 vias at Q202.3, but the 2.3 x 3.1 mm bridge joining them to the land is
+        # narrower than the 2.65 mm the current wants, so the gate saw ONE barrel (0.67 mm) at the
+        # wanted width. `field` (a pour rule's, via place_flow): one spare barrel, 0.4 mm drill where
+        # the field fits it, and the bridge drawn as a LOBE -- the hull grown by width/2, on the land's
+        # layer AND the pour's, frozen when the band is -- so every barrel sits in full-width copper.
+        fld = s.get("field") or {}
+        barrel = math.pi * via_drill * 25.0 / 35.0
+        want = int(math.ceil(float(s["width_mm"]) / barrel - 1e-9)) + int(fld.get("spare", 0))
         lid = board.GetLayerID(s["layer"])
+        lobe = dict(need=float(s["width_mm"]), band=lid, frozen=bool(fld.get("frozen")),
+                    escapes=escapes, bands=bands) if fld else None
         for key in s["pads"]:
+            barrel = math.pi * via_drill * 25.0 / 35.0       # per land: a 0.4 field resets them
+            want = int(math.ceil(float(s["width_mm"]) / barrel - 1e-9)) + int(fld.get("spare", 0))
             ref, num = key.split(".", 1)
             fp = fps.get(ref)
             pad = next((p for p in fp.Pads() if p.GetNumber() == num), None) if fp else None
@@ -4416,11 +4570,21 @@ def _pour_pad_vias(board, specs, via_d=0.6, via_drill=0.3, clr=0.2, hole_gap=0.4
                 # barrel against 7.19 asked. The count is the current's: ceil(IPC width / barrel)
                 # vias round the land, joined to it by the spill's same-net pour on the land's
                 # layer -- the bridge -- in up to SPILL_SMALL_ROWS rows.
-                if small_spill and not filled:
+                if (small_spill or fld) and not filled:
                     got = []
-                    n_ = _spill_vias(board, pad, s["net"], want, holes, foreign, via_d, via_drill, clr,
-                                     hole_gap, pitch, zone_clr, rows=SPILL_SMALL_ROWS, outline=outline,
-                                     placed_out=got)
+                    vd_, vr_, pt_ = via_d, via_drill, pitch
+                    if fld.get("drill"):
+                        dr = float(fld["drill"])
+                        dd = dr + (via_d - via_drill)
+                        b4 = math.pi * dr * 25.0 / 35.0
+                        w4 = int(math.ceil(float(s["width_mm"]) / b4 - 1e-9)) + int(fld.get("spare", 0))
+                        p4 = pcbnew.FromMM(max(dd + clr, dr + hole_gap + 0.01))
+                        if _spill_vias(board, pad, s["net"], w4, list(holes), foreign, dd, dr, clr, hole_gap,
+                                       p4, zone_clr, rows=SPILL_SMALL_ROWS, outline=outline, dry=True, lobe=lobe) >= w4:
+                            vd_, vr_, pt_, want, barrel = dd, dr, p4, w4, b4
+                    n_ = _spill_vias(board, pad, s["net"], want, holes, foreign, vd_, vr_, clr,
+                                     hole_gap, pt_, zone_clr, rows=SPILL_SMALL_ROWS, outline=outline,
+                                     placed_out=got, lobe=lobe)
                     if n_:
                         bb_ = pad.GetBoundingBox()
                         e_ = via_d / 2.0 + 0.1
@@ -4482,7 +4646,7 @@ def _pour_pad_vias(board, specs, via_d=0.6, via_drill=0.3, clr=0.2, hole_gap=0.4
             if not filled and made < want:
                 spilled = _spill_vias(board, pad, s["net"], want - made, holes, foreign,
                                       via_d, via_drill, clr, hole_gap, pitch, zone_clr,
-                                      outline=outline)
+                                      outline=outline, lobe=lobe)
                 made += spilled
             out.append("%s: %d of %d via(s) in the land to %s on %s (%.2f mm asked, %.2f a barrel)%s"
                        % (key, made, want, s["net"], s["layer"], float(s["width_mm"]), barrel,
@@ -4494,11 +4658,34 @@ def _pour_pad_vias(board, specs, via_d=0.6, via_drill=0.3, clr=0.2, hole_gap=0.4
     return out
 
 
+def _hull_pts(bb, placed, e):
+    """Convex hull of a land's box and an e-grown 16-gon round each via (board units)."""
+    import math
+    pts = [(bb.GetLeft(), bb.GetTop()), (bb.GetRight(), bb.GetTop()),
+           (bb.GetRight(), bb.GetBottom()), (bb.GetLeft(), bb.GetBottom())]
+    for x, y in placed:
+        pts += [(x + e * math.cos(a), y + e * math.sin(a)) for a in [k * math.pi / 8 for k in range(16)]]
+    pts = sorted(set((int(x), int(y)) for x, y in pts))
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+    lo, hi = [], []
+    for q in pts:
+        while len(lo) >= 2 and cross(lo[-2], lo[-1], q) <= 0:
+            lo.pop()
+        lo.append(q)
+    for q in reversed(pts):
+        while len(hi) >= 2 and cross(hi[-2], hi[-1], q) <= 0:
+            hi.pop()
+        hi.append(q)
+    return lo[:-1] + hi[:-1]
+
+
 SPILL_SMALL_ROWS = 3   # rows round a small land its bridged via array may take (pour_spill_small)
 
 
 def _spill_vias(board, pad, net, n, holes, foreign, via_d, via_drill, clr, hole_gap, pitch,
-                zone_clr=None, rows=2, outline=None, placed_out=None):
+                zone_clr=None, rows=2, outline=None, placed_out=None, dry=False, lobe=None):
     """Up to `n` vias of `net` in rows round `pad`'s edge, joined to it by a small pour on
     the pad's layer (see _pour_pad_vias). Returns how many it placed; `holes` grows.
 
@@ -4530,6 +4717,59 @@ def _spill_vias(board, pad, net, n, holes, foreign, via_d, via_drill, clr, hole_
         return hit and near >= m_edge
     others = [q for fp in board.GetFootprints() for q in fp.Pads() if q.GetNetname() != net]
     keep = [z for z in board.Zones() if z.GetIsRuleArea() and z.GetDoNotAllowVias()]
+    # ⚠ A FIELD BARREL COUNTS ONLY IN FULL-WIDTH COPPER (brain_board tr_pre2, 2026-11-21): R112.2's
+    # spill put 4 vias round the land nearest-first, two on R112.1's side, where the lobe cut back
+    # for R112.1's clearance is under 2.65 mm wide -- the gate counted 2 of 5. In a lobe a site
+    # must sit width/2 + the zone clearance off every other net's pad on either layer.
+    if lobe:
+        rows = max(rows, 6)        # crowded ends: R313.1 had no site in 4 rows clear of VIN_SW's band
+        _zc = pcbnew.FromMM(float(zone_clr if zone_clr is not None else 0.5))
+        _far = pcbnew.FromMM(lobe["need"] / 2.0 + 0.25) + _zc
+        _bl = lobe["band"]
+        _lob = [q.GetBoundingBox() for q in others if q.IsOnLayer(lid) or q.IsOnLayer(_bl)]
+        _lob += [tr.GetBoundingBox() for tr in board.GetTracks()
+                 if tr.GetClass() == "PCB_VIA" and tr.GetNetname() != net
+                 and abs(tr.GetPosition().x - c.x) < pcbnew.FromMM(12)
+                 and abs(tr.GetPosition().y - c.y) < pcbnew.FromMM(12)]
+        # ...and off other nets' escape stubs and frozen bands (notes: laid after this pass). Two of
+        # +5V_BB's field vias landed on the end of VIN_CM5's pin U205.7 and cut its band off (esc_pre7)
+        _kh = "%s.%s" % (pad.GetParentFootprint().GetReference(), pad.GetNumber())
+        _segs, _polys, _send = [], [], None
+        for e_ in lobe.get("escapes") or ():
+            a_, b_ = _to_board(*e_["pts"][0]), _to_board(*e_["pts"][1])
+            if e_["key"] == _kh:
+                _send = (b_.x, b_.y)
+            elif e_["net"] != net:
+                _segs.append((a_.x, a_.y, b_.x, b_.y, pcbnew.FromMM(e_["width"] / 2.0)))
+        for zz in lobe.get("bands") or ():
+            if zz["net"] != net and zz.get("poly") and _LAYERS.get(zz["layer"]) in (lid, _bl):
+                _pp = [(lambda v_: (v_.x, v_.y))(_to_board(x_, y_)) for x_, y_ in zz["poly"]]
+                _polys.append(_pp)
+
+        def _seg_d(x, y, ax, ay, bx, by):
+            dx, dy = bx - ax, by - ay
+            u = max(0.0, min(1.0, ((x - ax) * dx + (y - ay) * dy) / float(dx * dx + dy * dy or 1)))
+            return math.hypot(x - ax - u * dx, y - ay - u * dy)
+
+        def _off_others(x, y):
+            # a via only has to clear another net's stub / band by its ring + the zone clearance;
+            # the full-width margin (_far) is for pads and vias -- with it R313.1 lost its whole field
+            # and R112.2 kept 2 of 5 (esc_pre9)
+            _nb = r + _zc + pcbnew.FromMM(0.1)
+            for ax, ay, bx, by, hw in _segs:
+                if _seg_d(x, y, ax, ay, bx, by) - hw < _nb:
+                    return False
+            for pp in _polys:
+                ins = False                       # even-odd: KiCad's python has no matplotlib
+                for i in range(len(pp)):
+                    (ax, ay), (bx, by) = pp[i - 1], pp[i]
+                    if (ay > y) != (by > y) and x < ax + (y - ay) * (bx - ax) / float(by - ay):
+                        ins = not ins
+                if ins:
+                    return False
+                if min(_seg_d(x, y, *pp[i - 1], *pp[i]) for i in range(len(pp))) < _nb:
+                    return False
+            return True
     sites = []
     for k in range(rows):
         off = r + pcbnew.FromMM(0.25) + k * pitch          # via centre beyond the land's box
@@ -4543,8 +4783,29 @@ def _spill_vias(board, pad, net, n, holes, foreign, via_d, via_drill, clr, hole_
         for j in range(1, ny - 1):
             y = y0 + j * (y1 - y0) / (ny - 1)
             sites += [(x0, y), (x1, y)]
-    sites.sort(key=lambda q: math.hypot(q[0] - c.x, q[1] - c.y))
+    _o = _send if (lobe and _send) else (c.x, c.y)      # a stubbed pin's field forms off the stub's end
+
+    def _reach(x, y):
+        """A full-width corridor from the field's start (stub end / pad centre) to the site: R313.1's
+        vias landed 5 mm out and the lobe between, cut round other pads, never joined them (esc_dbg)."""
+        L_ = math.hypot(x - _o[0], y - _o[1])
+        k_ = max(1, int(L_ / pcbnew.FromMM(0.2)))
+        half_ = pcbnew.FromMM(lobe["need"] / 2.0) + _zc
+        for i in range(1, k_):
+            sx_, sy_ = _o[0] + (x - _o[0]) * i / k_, _o[1] + (y - _o[1]) * i / k_
+            if pad.HitTest(pcbnew.VECTOR2I(int(sx_), int(sy_)), 0):
+                continue
+            if math.hypot(sx_ - _o[0], sy_ - _o[1]) < half_:
+                continue                          # a short neck at a stub's end (U205 row): WARN, not cut
+            if any(math.hypot(max(qb.GetLeft() - sx_, 0, sx_ - qb.GetRight()),
+                              max(qb.GetTop() - sy_, 0, sy_ - qb.GetBottom())) < half_ for qb in _lob):
+                return False
+            if not _off_others(sx_, sy_):
+                return False
+        return True
+    sites.sort(key=lambda q: math.hypot(q[0] - _o[0], q[1] - _o[1]))
     placed = []
+    _why = {}                                # PCBFLOW_FIELD_DEBUG: rejections by test
     for x, y in sites:
         if len(placed) >= n:
             break
@@ -4552,18 +4813,38 @@ def _spill_vias(board, pad, net, n, holes, foreign, via_d, via_drill, clr, hole_
         if pad.HitTest(pt, int(r + pcbnew.FromMM(0.05))):
             continue                                       # off the land: no paste drains
         if not inside(x, y):
+            _why[1] = _why.get(1, 0) + 1
             continue
         if any(math.hypot(x - hx, y - hy) - hr - pcbnew.FromMM(via_drill / 2.0)
                < pcbnew.FromMM(hole_gap) for hx, hy, hr in holes):
+            _why[2] = _why.get(2, 0) + 1
             continue
         if any(q.HitTest(pt, int(r + pcbnew.FromMM(clr))) for q in others
                if abs(q.GetPosition().x - x) < pcbnew.FromMM(15)
                and abs(q.GetPosition().y - y) < pcbnew.FromMM(15)):
+            _why[3] = _why.get(3, 0) + 1
             continue
         if any(tr.GetNetname() != net and tr.HitTest(pt, int(r + pcbnew.FromMM(clr)))
                for tr in foreign):
+            _why[4] = _why.get(4, 0) + 1
             continue
         if any(z.Outline().Contains(pt) for z in keep):
+            _why[5] = _why.get(5, 0) + 1
+            continue
+        if lobe and not _off_others(x, y):
+            _why[6] = _why.get(6, 0) + 1
+            continue
+        if lobe and any(math.hypot(max(qb.GetLeft() - x, 0, x - qb.GetRight()),
+                                   max(qb.GetTop() - y, 0, y - qb.GetBottom())) < _far for qb in _lob):
+            _why[7] = _why.get(7, 0) + 1
+            continue
+        if lobe and not _reach(x, y):
+            _why[9] = _why.get(9, 0) + 1
+            continue
+        if dry:
+            holes.append((x, y, pcbnew.FromMM(via_drill / 2.0)))
+            placed.append((x, y))
+            _why[8] = _why.get(8, 0) + 1
             continue
         v = pcbnew.PCB_VIA(board)
         v.SetPosition(pt)
@@ -4574,10 +4855,120 @@ def _spill_vias(board, pad, net, n, holes, foreign, via_d, via_drill, clr, hole_
         board.Add(v)
         holes.append((x, y, pcbnew.FromMM(via_drill / 2.0)))
         placed.append((x, y))
+    if os.environ.get("PCBFLOW_FIELD_DEBUG"):
+        print("    field debug %s.%s: %d site(s), placed %d, rejected %s" % (
+            pad.GetParentFootprint().GetReference(), pad.GetNumber(), len(sites), len(placed), _why))
+        for z in keep:
+            bb_ = z.GetBoundingBox()
+            if bb_.Distance(c) < pcbnew.FromMM(6) if hasattr(bb_, "Distance") else True:
+                print("      keep %r %s" % (z.GetZoneName(), [round(pcbnew.ToMM(v), 2) for v in (bb_.GetLeft(), bb_.GetTop(), bb_.GetRight(), bb_.GetBottom())]))
+        print("      holes near: %s" % [(round(pcbnew.ToMM(hx), 2), round(pcbnew.ToMM(hy), 2), round(pcbnew.ToMM(hr), 2)) for hx, hy, hr in holes
+                                       if math.hypot(hx - c.x, hy - c.y) < pcbnew.FromMM(4)][:12])
+    if dry:
+        return len(placed)
     if placed_out is not None:
         placed_out.extend(placed)
     if not placed:
         return 0
+    if lobe:
+        # the lobe: grown by width/2 round every barrel so each sits in full-width copper; a frozen
+        # outline over a foreign pad would wall in that pad's escape, so those are cut out below
+        zc = pcbnew.FromMM(float(zone_clr if zone_clr is not None else 0.5))
+        bl = lobe["band"]
+        near_ = [q for fp in board.GetFootprints() for q in fp.Pads()
+                 if q.GetNetname() != net and (q.IsOnLayer(lid) or q.IsOnLayer(bl))
+                 and abs(q.GetPosition().x - c.x) < pcbnew.FromMM(12)
+                 and abs(q.GetPosition().y - c.y) < pcbnew.FromMM(12)]
+        # full growth, then every other net's pad on that layer cut out with the zone's clearance:
+        # the shunt's own other end (R112.1 beside R112.2) must not shrink the whole lobe
+        # +0.6: a barrel exactly width/2 inside the edge measured 2.54 of 2.61 (tr_pre4), and at
+        # +0.25 the gate's 0.025 mm raster still split the full-width core from R112.2's land (tr_pre5)
+        e = max(r + pcbnew.FromMM(0.1), pcbnew.FromMM(lobe["need"] / 2.0 + 0.6))
+        # escape stubs (notes band_escapes: laid as tracks only AFTER this pass, so read from the
+        # notes): this land's stub end belongs in the lobe; other nets' stubs are cut out of it
+        key_here = "%s.%s" % (pad.GetParentFootprint().GetReference(), pad.GetNumber())
+        stub_ends, foreign_stubs = [], []
+        for e_ in lobe.get("escapes") or ():
+            a_, b_ = _to_board(*e_["pts"][0]), _to_board(*e_["pts"][1])
+            if e_["key"] == key_here:
+                stub_ends.append((b_.x, b_.y))
+            elif e_["net"] != net:
+                foreign_stubs.append((a_, b_, e_["width"], e_["layer"]))
+        hull = _hull_pts(bb, list(placed) + stub_ends, e)
+        kept_a = []
+        for L_ in ([lid, bl] if bl != lid else [lid]):
+            sp = pcbnew.SHAPE_POLY_SET()
+            sp.NewOutline()
+            for x, y in hull:
+                sp.Append(int(x), int(y))
+            cut = pcbnew.SHAPE_POLY_SET()
+            for q in near_:
+                if q.IsOnLayer(L_):
+                    q.TransformShapeToPolygon(cut, L_, int(zc), pcbnew.FromMM(0.005), pcbnew.ERROR_OUTSIDE)
+            # ...and other nets' tracks (declared escape stubs) and frozen bands on the layer: +5V_BB's
+            # lobe at U205.11 ran over VIN_CM5's stub and band at U205.7, 2 mm away, at a higher
+            # priority, and VIN_CM5 read OPEN (esc_pre6)
+            for a_, b_, w_, ly_ in foreign_stubs:
+                if _LAYERS.get(ly_) != L_:
+                    continue
+                tt = pcbnew.PCB_TRACK(board)
+                tt.SetStart(a_)
+                tt.SetEnd(b_)
+                tt.SetWidth(pcbnew.FromMM(w_))
+                tt.SetLayer(L_)
+                tt.TransformShapeToPolygon(cut, L_, int(zc), pcbnew.FromMM(0.005), pcbnew.ERROR_OUTSIDE)
+            # frozen bands come from the notes: the zones are added after this pass
+            for zz in lobe.get("bands") or ():
+                if zz["net"] == net or _LAYERS.get(zz["layer"]) != L_ or not zz.get("poly"):
+                    continue
+                zo = pcbnew.SHAPE_POLY_SET()
+                zo.NewOutline()
+                for x_, y_ in zz["poly"]:
+                    v_ = _to_board(x_, y_)
+                    zo.Append(v_.x, v_.y)
+                try:
+                    zo.Inflate(int(zc), pcbnew.CORNER_STRATEGY_ROUND_ALL_CORNERS, pcbnew.FromMM(0.005))
+                except (AttributeError, TypeError):
+                    zo.Inflate(int(zc), 16)
+                cut.Append(zo)
+            if cut.OutlineCount():
+                try:
+                    sp.BooleanSubtract(cut)
+                except TypeError:
+                    sp.BooleanSubtract(cut, pcbnew.SHAPE_POLY_SET.PM_FAST)
+            # the piece that holds the land (or the stub that leaves it) first, then the most barrels
+            best = None
+            for i in range(sp.OutlineCount()):
+                o = sp.Outline(i)
+                land = int(o.PointInside(pad.GetPosition()) or any(
+                    o.PointInside(pcbnew.VECTOR2I(int(x), int(y))) for x, y in stub_ends))
+                hit = sum(1 for x, y in placed if o.PointInside(pcbnew.VECTOR2I(int(x), int(y))))
+                key_ = (land, hit, abs(o.Area()))
+                if best is None or key_ > best[1]:
+                    best = (o, key_)
+            if best is None:
+                continue
+            o = best[0]
+            kept_a.append(pcbnew.ToMM(pcbnew.ToMM(abs(o.Area()))))
+            z = pcbnew.ZONE(board)
+            z.SetLayer(L_)
+            z.SetNet(pad.GetNet())
+            z.SetIsFilled(True)
+            z.SetPadConnection(pcbnew.ZONE_CONNECTION_FULL)
+            z.SetIslandRemovalMode(pcbnew.ISLAND_REMOVAL_MODE_ALWAYS)
+            z.SetAssignedPriority(9)
+            if lobe.get("frozen"):
+                z.SetZoneName("frozen")
+            if zone_clr is not None:
+                z.SetLocalClearance(pcbnew.FromMM(float(zone_clr)))
+            ol = z.Outline()
+            ol.NewOutline()
+            for j in range(o.PointCount()):
+                ol.Append(o.CPoint(j).x, o.CPoint(j).y)
+            board.Add(z)
+        print("    lobe %s: %d via(s) %.1f drill, grown %.2f mm, other pads cut out, %s mm2" % (
+            net, len(placed), via_drill, pcbnew.ToMM(e), "/".join("%.1f" % a for a in kept_a)))
+        return len(placed)
     # the joining pour: hull of the land's box and each via's ring
     e = r + pcbnew.FromMM(0.1)
     pts = [(bb.GetLeft(), bb.GetTop()), (bb.GetRight(), bb.GetTop()),
@@ -6077,7 +6468,8 @@ def build(stem):
         for _l in _pour_pad_vias(board, notes["pour_vias"], filled=bool(
                 (((notes.get("quality") or {}).get("fab")) or {}).get("via_in_pad")),
                 zone_clr=notes.get("zone_clearance"), outline=_outline_pts(notes),
-                small_spill=bool(notes.get("pour_spill_small"))):
+                small_spill=bool(notes.get("pour_spill_small")), escapes=notes.get("band_escapes") or (),
+                bands=[z for z in notes.get("zones", ()) if isinstance(z, dict) and z.get("frozen")]):
             print("  pour vias: " + _l)
 
 
@@ -6313,7 +6705,9 @@ def build(stem):
         _add_zone(board, nets_by_name[net_name], layer, inset,
                   *notes["outline_mm"], poly=poly, priority=prio,
                   clearance=notes.get("zone_clearance"),
-                  name="whole" if isinstance(z, dict) and z.get("whole") else None)
+                  # "frozen" before "whole": a frozen band is a wall, a whole pour only a price
+                  name=("frozen" if z.get("frozen") else "whole" if z.get("whole") else None)
+                  if isinstance(z, dict) else None)
     if notes.get("zones"):
         # ⚠ BUILD THE CONNECTIVITY GRAPH FIRST. A board assembled by script has none --
         # it is built by the editor as you work, and nothing here was ever "worked on".
@@ -6323,6 +6717,20 @@ def build(stem):
         # a pour fragmented by 153 parts it fills to exactly ZERO square millimetres,
         # and a zone that filled to nothing looks in the file just like one that
         # filled fine.
+        # ⚠ A FROZEN BAND OUTRANKS EVERY POUR THAT IS NOT ONE (brain_board rPS_fg2, 2026-11-21).
+        # Priorities come from the intent, and nothing tied them to the wall: +24V's "whole" pour
+        # (11) sat over VIN_BRAIN's F.Cu band (9) and VIN_SW's (8). Unrouted, +24V's copper there
+        # was an unconnected island, so island removal dropped it and the pregate read the band
+        # whole; the route connected it, it filled at 11 and took 10.8 of the band's 27.7 mm2,
+        # with no foreign track or via anywhere near. A frozen band is a wall, a whole pour only
+        # a price: every frozen band (lobes included) goes above the highest non-frozen pour,
+        # keeping the frozen bands' order among themselves.
+        _fz = [z_ for z_ in board.Zones() if not z_.GetIsRuleArea() and z_.GetZoneName() == "frozen"]
+        if _fz:
+            _top = max((z_.GetAssignedPriority() for z_ in board.Zones()
+                        if not z_.GetIsRuleArea() and z_.GetZoneName() != "frozen"), default=0)
+            for z_ in _fz:
+                z_.SetAssignedPriority(z_.GetAssignedPriority() + _top + 1)
         board.BuildConnectivity()
         stable_fill.fill(board, board.Zones())
         _check_stitches_landed(board, notes)

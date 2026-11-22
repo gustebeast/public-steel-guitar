@@ -358,7 +358,35 @@ def _run(script, stem):
     sys.stdout.write("    [%s %.0f s]\n" % (script, dt))
     if rc:
         raise SystemExit("%s failed on %s" % (script, stem))
+    _frozen_check(script, stem)
     return "".join(out)
+
+
+# ⚠ EVERY COPPER WRITER IS CHECKED AGAINST THE FROZEN BANDS (lead 2026-11-21): the router and
+# layout's plane reconnect each cut a frozen band on brain_board, and both showed only as a thin
+# power-gate reading two hours later. frozen_check.py records the bands' fill after layout and,
+# after each step below, refills them and compares -- a band that splits or loses area stops
+# the flow naming the band, the step and the foreign copper in it (PCBFLOW_FROZEN_CHECK=warn
+# reports and goes on; =0 skips). Per-band numbers go to the log either way.
+COPPER_STEPS = {"ownroute.py", "route.py", "unwick.py", "repair_planes.py", "close_last.py",
+                "prune_closures.py", "spent_vias.py", "power_vias.py", "return_vias.py"}
+
+
+def _frozen_check(script, stem):
+    if script != "layout.py" and script not in COPPER_STEPS:
+        return
+    stage = "layout" if script == "layout.py" else script
+    r = subprocess.run([PY, os.path.join(HERE, "frozen_check.py"), stem, stage],
+                       stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    for line in r.stdout.splitlines():
+        if "image handler" not in line:
+            sys.stdout.write("    " + line + chr(10))
+    sys.stdout.flush()
+    if r.returncode == 3:
+        raise SystemExit("finish: %s cut a frozen power band -- see the FROZEN BAND LOST line(s) above "
+                         "(frozen_check.py; PCBFLOW_FROZEN_CHECK=warn to go on)" % script)
+    if r.returncode:
+        raise SystemExit("frozen_check.py failed after %s on %s (rc %d)" % (script, stem, r.returncode))
 
 
 STEP_SECONDS = {}
@@ -499,6 +527,63 @@ def _sync_values(stem):
         os.remove(tmp)
 
 
+def _scipy_py():
+    """A python with numpy + scipy for widepath (KiCad's has none)."""
+    if os.environ.get("CADKIT_SCIPY_PY"):
+        return [os.environ["CADKIT_SCIPY_PY"]]
+    if shutil.which("py"):
+        return [shutil.which("py"), "-3.12"]
+    return [shutil.which("python3") or "python"]
+
+
+def _power_gate(stem):
+    """The widepath gate on the ROUTED board, before any finishing work (PCBFLOW_POWER_GATE=1).
+
+    ⚠ A BOARD WHOSE POWER COPPER CANNOT CARRY ITS CURRENT IS NOT WORTH FINISHING (brain_board
+    ws1, 2026-11-20): it went through close_last, the ECOs and every gate before rasterpath
+    found 29 of 48 power paths under their IPC width -- 10 A on a 0.38 mm inner track. The
+    routed board is copied, its zones refilled, its gerbers exported, and rasterpath --specs
+    judges every quality.power_paths entry with widepath (the same core close_last's
+    CLOSE_POUR_GUARD=2 uses). Any FAIL stops the run here; the report is <stem>.power_gate.txt.
+    Returns (n_fail, n_warn)."""
+    pg = stem + ".pg"
+    shutil.copy(stem + ".kicad_pcb", pg + ".kicad_pcb")
+    subprocess.run([PY, "-c",
+                    "import sys, pcbnew; sys.path.insert(0, %r); import stable_fill\n"
+                    "b = pcbnew.LoadBoard(%r); stable_fill.fill(b, b.Zones()); pcbnew.SaveBoard(%r, b)\n"
+                    "import os; os._exit(0)" % (HERE, pg + ".kicad_pcb", pg + ".kicad_pcb")],
+                   capture_output=True, text=True)
+    gd = pg + "_gerb"
+    os.makedirs(gd, exist_ok=True)
+    subprocess.run([KICAD_CLI, "pcb", "export", "gerbers", "-o", gd + os.sep, pg + ".kicad_pcb"],
+                   capture_output=True, text=True)
+    subprocess.run([KICAD_CLI, "pcb", "export", "drill", "-o", gd + os.sep, pg + ".kicad_pcb"],
+                   capture_output=True, text=True)
+    specs = stem + ".power_specs.json"
+    subprocess.run([PY, os.path.join(HERE, "power_specs.py"), stem, specs],
+                   capture_output=True, text=True)
+    r = subprocess.run(_scipy_py() + [os.path.join(HERE, "rasterpath.py"), gd,
+                                      os.path.basename(pg), "0.025", "--specs", specs,
+                                      "--open-ok"],
+                       capture_output=True, text=True)
+    lines = [ln for ln in r.stdout.splitlines() if ln[:4] in ("FAIL", "WARN", "PASS", "OPEN")
+             or ln.startswith("rasterpath:")]
+    open(stem + ".power_gate.txt", "w", encoding="utf-8").write("\n".join(lines) + "\n")
+    nf = sum(ln.startswith("FAIL") for ln in lines)
+    nw = sum(ln.startswith("WARN") for ln in lines)
+    no = sum(ln.startswith("OPEN") for ln in lines)
+    if not any(ln.startswith("rasterpath:") for ln in lines):
+        print("  ⚠ power gate DID NOT RUN: %s" % (r.stderr.strip().splitlines() or ["?"])[-1])
+        return None
+    for ln in lines:
+        if ln.startswith("FAIL"):
+            print("    " + ln)
+    print("  power gate: %d FAIL, %d OPEN (close_last's), %d WARN of %d power paths (%s)"
+          % (nf, no, nw, sum(ln[:4] in ("FAIL", "WARN", "PASS", "OPEN") for ln in lines),
+             os.path.basename(stem) + ".power_gate.txt"))
+    return nf, nw
+
+
 def finish(stem, rounds=1, keep_route=False):
     """Route `stem`; with rounds>1, retry the nets the router could not finish.
 
@@ -562,6 +647,13 @@ def finish(stem, rounds=1, keep_route=False):
     best_n, nets, best_v = _drc(stem)
     print("  %s: %d unconnected, %d violation(s)"
           % ("kept route" if keep_route else "pass 1", best_n, best_v))
+    if os.environ.get("PCBFLOW_POWER_GATE") == "1":
+        _pg = _power_gate(stem)
+        if _pg is None or _pg[0]:
+            raise SystemExit("finish: the routed board fails the power gate (%s) -- not finishing "
+                             "it; see %s.power_gate.txt"
+                             % ("did not run" if _pg is None else "%d FAIL" % _pg[0],
+                                os.path.basename(stem)))
     # ⚠ THE DRC FILE TRAVELS WITH THE BOARD, because otherwise it does not. This routine
     # keeps the BEST board but _drc overwrites .finish.drc.json on every pass, so after a
     # two-round run the board on disk was pass 1 and the DRC file beside it described
