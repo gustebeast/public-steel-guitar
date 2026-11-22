@@ -70,6 +70,8 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(os.path.dirname(HERE), "cadkit", "pcbflow"))
+from nettie import is_net_tie  # noqa: E402  (vendored cadkit: the same answer quality A16 uses)
 DEFAULT_ELEC = HERE
 OUT = os.path.join(HERE, "out", "volts")              # the report and the per-pin tables
 DECL = os.path.join(HERE, "volts")                    # what the generators load (tracked)
@@ -1023,7 +1025,7 @@ def kind_of(ref, c):
         return p["kind"]
     if ref.startswith("TP"):
         return "tp"
-    if ref.startswith("JP") or ref.startswith("NT"):
+    if ref.startswith("JP") or is_net_tie(ref):
         return "jumper"                     # a net tie is copper between two nets, like a closed jumper
     return "unknown"
 
@@ -1132,7 +1134,7 @@ class Board:
             return p["pass"]
         # a net tie (NT, the Kelvin sense ties of 2026-11-20) is copper: both nets are one level.
         # Unjoined, PA_VCC_K read 0 V and U13.23's "VCC+4" rating came out 4 V -- a false A16 FAIL
-        if ref.startswith("JP") or ref.startswith("NT"):
+        if ref.startswith("JP") or is_net_tie(ref):
             return [sorted(self.comps[ref]["pins"])]
         return []
 
