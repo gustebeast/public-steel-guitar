@@ -885,12 +885,8 @@ def brain_board():
                 # (Wurth's sheet); the 501 is 5 A, 80 V, 5.5 mOhm -- windings 1-4 / 2-3, read
                 (fl_p, "744273501", "Inductor_SMD:L_CommonModeChoke_Wuerth_WE-SL5-HC",
                  (vbus_j, vbus), (gnd_j, pgnd), "power pair: WE-SL5 HC 744273501, 5 A / 80 V"),
-                # D- on winding 1-4, D+ on 2-3 (esc13, 2026-11-22): with D+ on 1-4 the pair left the
-                # choke D+ over D- toward U17, whose pins take D- over D+ (pins 1 / 2, 3 / 4), so it
-                # crossed -- a rail-layer-change pair FAIL on every routed seed. The windings are
-                # identical; place_flow's swap plan (pin_swaps.json, FL3 / FL4) untwists 7 -> 3 hops.
                 (fl_d, "ACM2012-900-2P-T002", "Inductor_SMD:L_CommonModeChoke_Coilank_ACM2012",
-                 (dm_j, dm), (dp_j, dp), "USB 2.0 data pair: 90 ohm common mode, passes HS")):
+                 (dp_j, dp), (dm_j, dm), "USB 2.0 data pair: 90 ohm common mode, passes HS")):
             fl = Part(name="CMC", ref_prefix="FL", ref=tag, tag=tag, dest="NETLIST", tool="skidl",
                       value=value, description="port %s common-mode choke, %s; windings 1-4 and "
                       "2-3 (read off the maker's sheet, 2026-11-14)" % (side, why), footprint=fp,
@@ -2693,7 +2689,7 @@ IC_PINOUTS = {
     "ACM2012-900-2P-T002": (
         "CND-tek ACM2012-900-2P-T002 T-CND datasheet p.1 (LCSC C55213549) schematic: windings 1-4 "
         "and 2-3, no polarity; top view 1/2 one end, 4/3 the other, as KiCad's "
-        "L_CommonModeChoke_Coilank_ACM2012 -- FL3 / FL4: 1-4 D- connector -> U17, 2-3 D+ "
+        "L_CommonModeChoke_Coilank_ACM2012 -- FL3 / FL4: 1-4 D+ connector -> U17, 2-3 D- "
         "connector -> U17, each line through its own winding (read 2026-11-18; TDK's own sheet "
         "not fetched)"),
     "B0509S-1WR3": (
