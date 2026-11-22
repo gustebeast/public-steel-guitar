@@ -180,6 +180,135 @@ def part_height(ref, parts, H, notes=None):
     return H.get(parts[ref]["fpid"])
 
 
+# ── declared copper is an obstacle to other nets' pads (lead 2026-11-22) ─────────────────────
+# ⚠ A RELEASED PART CAN LAND ON DECLARED COPPER AND ONLY LAYOUT SAYS SO (brain_board sqp, 2026-11-22):
+# D213 / TP2, released by a pair corridor, sat on +5V_CM5's declared F.Cu column; placement treated
+# declared tracks and vias as nothing, the route was never started, and layout refused the board
+# ("declared copper crowds another net"). Each other net's PAD, grown by the fab's mask expansion,
+# keeps the net clearance from every declared track and via on the pad's own side (a through-hole
+# pad on every layer; a via is on every layer). Courtyards are not blocked: a body may sit over
+# copper, its pads may not.
+PAD_CU_CLEAR = 0.127        # layout._declared_copper_clear's rule (JLC 5 mil)
+PAD_MASK_EXP = 0.05         # solder-mask opening round a pad at the fab
+VIA_D = 0.6                 # layout._add_via's default diameter
+ALL_CU = "*"
+
+
+def declared_items(rules=(), notes=None):
+    """[(net, layer or ALL_CU, kind, geom, own)]: every declared track segment ("seg", (a, b, half
+    width)) and via ("via", (centre, radius)) -- `copper` rules and the notes' own tracks / vias.
+    own: the parts a rule's copper lands `on` -- drawn against those exact pins, their clearance is
+    layout's exact check (_declared_copper_clear), not a pad rectangle's."""
+    out, seen = [], set()
+    own = frozenset()
+
+    def seg(net, layer, w, pts):
+        for a, b in zip(pts[:-1], pts[1:]):
+            key = (net, layer, round(float(w), 4), tuple(map(float, a)), tuple(map(float, b)))
+            if key not in seen:
+                seen.add(key)
+                out.append((net, layer, "seg", (np.asarray(a, float), np.asarray(b, float), float(w) / 2.0), own))
+
+    def via(net, x, y, d):
+        key = (net, round(float(x), 4), round(float(y), 4))
+        if key not in seen:
+            seen.add(key)
+            out.append((net, ALL_CU, "via", (np.asarray([x, y], float), float(d) / 2.0), own))
+    for r in rules:
+        if r.get("kind") != "copper":
+            continue
+        own = frozenset(x.split(".", 1)[0] for x in r.get("on", ()))
+        for tr in r.get("tracks", ()):
+            seg(r["net"], tr["layer"], tr["width"], tr["pts"])
+        for v in r.get("vias", ()):
+            via(r["net"], v[0], v[1], v[3] if len(v) > 3 else r.get("via_d", VIA_D))
+    own = frozenset()
+    for tr in (notes or {}).get("tracks", ()) or ():
+        seg(tr[0], tr[1], tr[2], tr[3])
+    for v in (notes or {}).get("vias", ()) or ():
+        via(v[0], v[1], v[2], v[4] if len(v) > 4 else VIA_D)
+    return out
+
+
+def _seg_poly_gap(poly, a, b):
+    """Distance from segment ab to a convex polygon; 0 where they touch, cross or one holds the other."""
+    poly = np.asarray(poly, float)
+    if _inside(poly, np.stack([a, b])).any():
+        return 0.0
+    n = len(poly)
+    d = float(_seg_dist(poly, a, b).min())
+    for i in range(n):
+        e0, e1 = poly[i], poly[(i + 1) % n]
+        d = min(d, float(_seg_dist(np.stack([a, b]), e0, e1).min()))
+        # proper crossing: the two segments straddle each other
+        c1 = np.cross(b - a, e0 - a) * np.cross(b - a, e1 - a)
+        c2 = np.cross(e1 - e0, a - e0) * np.cross(e1 - e0, b - e0)
+        if c1 < 0 and c2 < 0:
+            return 0.0
+    return d
+
+
+def pad_layers(part, q):
+    """The copper layers a pad is on: ALL_CU for a through-hole pad, else its part's outer side."""
+    return ALL_CU if q.get("tht") else ("B.Cu" if part.get("side", "F") == "B" else "F.Cu")
+
+
+def pad_copper(P, items, refs=None, clr=PAD_CU_CLEAR, exp=0.0, near=0.5):
+    """[(slack, "REF.PIN", det)]: other nets' pads against declared copper, slack = gap - clr - exp
+    (< 0: the pad is inside the net clearance, or its mask opening is with exp=PAD_MASK_EXP). Only
+    pads within `near` of slack 0; a rule's own parts (`on`) are skipped.
+
+    ⚠ THE MASK BAND IS A WARNING, NOT A STOP (brain_board so_ovlo / sqahA, 2026-11-22): every declared
+    escape between U205's 0.5-pitch pins is drawn at the 0.127 rule, 0.13 from the next pin -- 34 pads
+    inside clearance + mask on boards layout accepts. place_flow stops at the net clearance (layout's
+    own rule, which catches sqp's D213 / TP2 on +5V_CM5) and says the mask band."""
+    if not items:
+        return []
+    need = clr + exp
+    boxes = []
+    for net, lay, kind, g, _own in items:
+        if kind == "seg":
+            a, b, hw = g
+            lo, hi = np.minimum(a, b) - hw, np.maximum(a, b) + hw
+        else:
+            c, rr = g
+            lo, hi = c - rr, c + rr
+        boxes.append((lo - need - near, hi + need + near))
+    out = []
+    for ref, part in P.parts.items():
+        if ref not in P.pl or (refs is not None and ref not in refs):
+            continue
+        for q in part["pads"]:
+            if not q.get("num") or not q.get("size"):
+                continue
+            pl_ = pad_layers(part, q)
+            poly = None
+            for (net, lay, kind, g, own), (lo, hi) in zip(items, boxes):
+                if net == q.get("net") or ref in own or not (pl_ == ALL_CU or lay == ALL_CU or lay == pl_):
+                    continue
+                c = P.pad(ref, q["num"])
+                rr = max(q["size"][:2]) * 0.75
+                if (c[0] + rr < lo[0] or c[0] - rr > hi[0] or c[1] + rr < lo[1] or c[1] - rr > hi[1]):
+                    continue
+                poly = poly if poly is not None else P.pad_poly(ref, q["num"])
+                if kind == "seg":
+                    a, b, hw = g
+                    gap = _seg_poly_gap(poly, a, b) - hw
+                    what = "declared %s track (%s, %.2f wide)" % (net, lay, 2 * hw)
+                else:
+                    cc, rv = g
+                    gap = (0.0 if _inside(poly, cc[None])[0] else float(min(
+                        _seg_dist(cc[None], poly[i], poly[(i + 1) % len(poly)])[0] for i in range(len(poly))))) - rv
+                    what = "declared %s via (%.2f, %.2f)" % (net, cc[0], cc[1])
+                s = gap - need
+                if s < near:
+                    out.append((s, "%s.%s" % (ref, q["num"]),
+                                "%s pad [%s] %.3f mm from %s, wants %.3f (clearance %.3f + mask %.3f)"
+                                % (pad_layers(part, q).replace(ALL_CU, "THT"), q.get("net") or "no net",
+                                   max(gap, 0.0), what, need, clr, exp)))
+    return out
+
+
 class Placed:
     """Parts at a placement: world courtyards, pads, bodies (board frame, mm)."""
 
@@ -352,7 +481,7 @@ def reach_envelope(part, rule, n=24):
 #           it), "flow" (place_flow itself), "layout" (the router model: router/model.py),
 #           "expand" (place_intent turns it into other rules or widths: auto_pour -> `pour`, current -> widths), "check" (no stage seats it: check() alone, so a hard one only refuses -- array)
 #   gate:   "broken" (place_flow's BROKEN hard rules), "near" (_near_broken), "region" (the region
-#           leak stop), None (not a placement constraint)
+#           leak stop), "pad_copper" (place_flow's PAD ON DECLARED COPPER stop), None (not gated)
 #   hard:   the default when a rule says nothing (the soft optimiser kinds are soft unless asked)
 KINDS = {
     "outline":   dict(place=("init",), gate="broken", hard=True),
@@ -367,7 +496,7 @@ KINDS = {
     "side":      dict(place=("init",), gate="broken", hard=True),
     "access":    dict(place=("init", "grow"), gate="broken", hard=True),
     "mate":      dict(place=("grow",), gate="broken", hard=True),
-    "array":     dict(place=("check",), gate="broken", hard=True),
+    "array":     dict(place=("check",), gate=None, hard=False),       # hard is refused: check() raises
     "near":      dict(place=("init",), gate="near", hard=True),
     "decap":     dict(place=("init",), gate="broken", hard=True),
     "between":   dict(place=("init",), gate="broken", hard=False),
@@ -380,7 +509,7 @@ KINDS = {
     "current":   dict(place=("expand",), gate=None, hard=False),
     "pour":      dict(place=("flow",), gate=None, hard=False),
     "auto_pour": dict(place=("expand",), gate=None, hard=False),
-    "copper":    dict(place=("flow",), gate=None, hard=False),
+    "copper":    dict(place=("flow", "init"), gate="pad_copper", hard=True),   # other nets' pads keep off it
 }
 GATE_KINDS = tuple(k for k, v in KINDS.items() if v["gate"] == "broken")
 
@@ -691,6 +820,9 @@ def check(rule, P, notes, H=None):
             n = len(pour_foreign(rule, P, poly))
             out.append((-float(n), rule["net"], "pour on %s: %d other net pad(s) inside" % (rule["layer"], n)))
     elif k == "array":
+        if rule.get("hard"):
+            raise ValueError("array %s is hard, but array has no seating stage: use soft, or seat the parts as a "
+                             "`group` (place_intent.KINDS)" % (rule.get("refs"),))
         refs = _refs(rule["refs"], parts)
         ax = 0 if rule["axis"] in ("x", "X") else 1
         pts = sorted(((np.asarray(P.at(r)[:2]), r) for r in refs), key=lambda t: t[0][ax])
