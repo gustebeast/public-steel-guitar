@@ -2321,6 +2321,11 @@ FIRMWARE_NOTES = [
 
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
+    # place_flow's channel-swap plan leaves these out (cadkit 03cb248): FL3 / FL4's winding swap lost
+    # W48k's A/B (2026-11-19) and esc13's 2-seed A/B (2026-11-22, rPS_13s1/s2 vs 13c1/c2)
+    "swap_rejected": [{"refs": ["FL3", "FL4"],
+                       "why": "esc13 2-seed route A/B: USBA / USBB_J hard FAILs 2 vs 0 (s1) and 2 vs 1 (s2); "
+                              "W48k lost too"}],
     "audio_poly": AUDIO_POLY,
     # the service port's notch in the top edge (SVC_NOTCH_*): J7 on its floor; the UI clamp's
     # notch at the +X end's top corner (UIC_NOTCH_*)
