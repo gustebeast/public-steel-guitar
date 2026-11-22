@@ -873,6 +873,13 @@ def move(stem, moves):
     pcbnew.SaveBoard(path, board)
     with open(stem + ".board.json", "w", encoding="utf-8") as fh:
         json.dump(notes, fh, indent=1)
+    # an ECO writes copper too: the frozen bands are checked like every finish step (frozen_check.py)
+    import subprocess
+    r = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "frozen_check.py"),
+                        stem, "eco"], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    print(chr(10).join(l for l in r.stdout.splitlines() if "image handler" not in l))
+    if r.returncode == 3:
+        raise SystemExit("eco: the move cut a frozen power band -- restore the board from before `move`")
     return len(gone)
 
 

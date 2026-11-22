@@ -54,6 +54,253 @@ NET_SHARE_MIN_S = float(os.environ.get("CLOSE_LAST_NET_SHARE_MIN_S", "30"))
 # times is left open for this pass: a time share alone still lets it circle its slice.
 MAX_RESTORES = int(os.environ.get("CLOSE_LAST_MAX_RESTORES", "3"))
 _RESTORES = {}
+# ⚠ A VIA TAKEN UP JOINED A PIECE ON EVERY LAYER IT TOUCHED (brain_board W48w seed 1,
+# 2026-11-20). PA_VBUS's rip took up PA_V5V's via at (47.49, 108.45), where an In2 run and a
+# B.Cu run of PA_V5V met. _pieces anchored the via on the FIRST padded piece it touched and
+# stopped, so the B.Cu piece was never queued to join again: the rip said "PA_V5V joining it
+# again" and left PA_V5V open. finish then saw 5 unconnected before and after, and put the
+# whole close_last pass back -- PA_VBUS's real closure with it. CLOSE_VIA_ANCHORS=1 anchors a
+# taken-up via on each padded piece it touched (flag while A/B'd).
+VIA_ANCHORS = os.environ.get("CLOSE_VIA_ANCHORS", "0") == "1"
+# and CLOSE_RIP_VERIFY=1 asks the board itself before a rip is kept: KiCad's unconnected
+# count, the nets the rip touched refilled, must be lower than before the rip, or that rip
+# alone is put back -- a wrong "joined" in close_last's own model then costs one net, not the
+# pass (flag while A/B'd).
+RIP_VERIFY = os.environ.get("CLOSE_RIP_VERIFY", "0") == "1"
+# ⚠ A NET THAT CARRIES STATED CURRENT IS NEVER CLOSED NARROWER THAN THAT CURRENT NEEDS
+# (brain_board W48w seed 1, 2026-11-20). PA_VBUS is FL1.4 -> R70.1 at 5 A in the board's
+# quality.power_paths (R70 is port A's 5 mR sense resistor). Its pour island at R70.1 was
+# "closed" with 3.2 mm of 0.2 mm track -- IPC-2221 asks ~2.8 mm at 5 A -- and the unconnected
+# count went down while quality's count stayed level (the open FAIL became a choke FAIL):
+# connected on paper, a fuse in practice. With CLOSE_POWER_GUARD=1 a power-path net's width
+# ladder stops at quality.required_width_mm(amps) on an outer layer, the rip-up (which lays
+# at signal width) is skipped for it, and it is left open saying it cannot carry the current
+# -- an open the board must fix in its copper, not a thin closure that hides it (flag while A/B'd).
+POWER_GUARD = os.environ.get("CLOSE_POWER_GUARD", "0") == "1"
+# ⚠ ANOTHER NET'S CLOSURE MUST NOT CUT A POWER POUR (brain_board W48w seed 1, 2026-11-20).
+# Pours are not obstacles to the search (repair_search.track_ok says why: the fill retreats
+# round whatever is laid). For a power pour that retreat IS the damage: with PA_VOUT_SNS's
+# F.Cu crossing and PA_V5V's via taken out of the PA_VBUS neck, the fill reached R70.1 in one
+# 20.7 mm2 piece -- and close_last joined PA_VOUT_SNS again straight back across the neck
+# (F.Cu 48.59,107.90 -> 47.99,107.90), cutting R70.1 off again. With CLOSE_POUR_GUARD=1 the
+# FILLED pours of every quality.power_paths net are walls, at their zone clearance, to every
+# other net's search, so a closure goes round a power pour or under it, never through it
+# (flag while A/B'd).
+POUR_GUARD = os.environ.get("CLOSE_POUR_GUARD", "0")
+_GUARD_NETS = set()
+# ⚠ v1 (=1) WALLS THE POUR AS IT IS FILLED NOW, AND THAT IS TOO MUCH (W48w seed 1, same day).
+# With PA_VBUS's neck cleared the pour refilled into the whole corner under U13 pins 20-22;
+# every via site for PA_V5V's escape then sat "inside" it and pin 20 was sealed -- the guard
+# protected overflow copper no current needs. CLOSE_POUR_GUARD=2 judges what matters: a
+# closure is laid as before, the power pours near it are refilled, and every
+# quality.power_paths entry on those nets must still carry its current (widest path >=
+# quality.required_width_mm(amps), or no narrower than it already was) -- measured by
+# widepath.py, the same core the pre-order rasterpath gate uses, so guard and gate agree. A
+# closure that cuts one is taken back and searched again with v1's walls; if that cuts one
+# too, the net is left open saying which path it would have cut.
+_PATHS = []                    # quality.power_paths entries (main fills it)
+_REQ = None                    # (required_width_mm, quality notes)
+WP_RES = float(os.environ.get("CLOSE_POUR_GUARD_RES", "0.025"))
+_CU = (("F", "F.Cu"), ("I1", "In1.Cu"), ("I2", "In2.Cu"), ("B", "B.Cu"))
+_SCALE = {}                    # inner copper -> outer-equivalent width (power_specs.specs)
+# notes["net_layers"] = {net: [layer, ...]}: the router keeps these nets to those layers
+# (router.model.net_layers, hard), and a closure must not undo it -- the brain bans its
+# power_paths nets from the 0.5 oz inner layers. An end already on another layer keeps it.
+_NET_LAYERS = {}
+
+
+def _lays(net, layers, *ends):
+    keep = _NET_LAYERS.get(net)
+    if not keep:
+        return layers
+    return [L for L in layers if L in keep or L in ends]
+
+
+def _pour_guard(m, force=False):
+    """Add the power pours' outlines to model `m` as in-plane walls (repair_search._Index
+    reads m.guard; via_ok does not, so a via may still pass through a pour as a clearance
+    hole), wide enough that a track's centre keeps w/2 + zone clearance off them."""
+    if not ((POUR_GUARD == "1" or force) and _GUARD_NETS):
+        return m
+    add = []
+    for z in m.zones:
+        if z["net"] not in _GUARD_NETS or z["net"] == m.net:
+            continue
+        h = max(z.get("clear") or 0.0, m.zone_clear) - RS.RULE_CLEAR
+        pts = z["pts"]
+        for (ax, ay), (bx, by) in zip(pts, pts[1:] + pts[:1]):
+            add.append(dict(x1=ax, y1=ay, x2=bx, y2=by, layer=z["layer"], half=h))
+    m.guard = add
+    return m
+
+
+def _scipy_py():
+    """A python with numpy + scipy for widepath (KiCad's has no scipy)."""
+    import shutil as _sh
+    if os.environ.get("CADKIT_SCIPY_PY"):
+        return [os.environ["CADKIT_SCIPY_PY"]]
+    if _sh.which("py"):
+        return [_sh.which("py"), "-3.12"]
+    return [_sh.which("python3") or "python"]
+
+
+def _path_widths(board, ents):
+    """{name: widest-path mm} for power_paths entries `ents`, on `board`'s copper as filled.
+    Each net is rasterised alone (copper of other nets never touches it) over its own bbox."""
+    import subprocess
+    import tempfile
+    import numpy as np
+    from PIL import Image, ImageDraw
+    import widepath
+    import power_specs
+    TM = pcbnew.ToMM
+    lid = {k: board.GetLayerID(L) for k, L in _CU if board.IsLayerEnabled(board.GetLayerID(L))}
+
+    def chains(ps):
+        out = []
+        for i in range(ps.OutlineCount()):
+            o = ps.Outline(i)
+            hs = [ps.Hole(i, j) for j in range(ps.HoleCount(i))]
+            out.append(([(TM(o.CPoint(j).x), TM(o.CPoint(j).y)) for j in range(o.PointCount())],
+                        [[(TM(h.CPoint(j).x), TM(h.CPoint(j).y)) for j in range(h.PointCount())]
+                         for h in hs]))
+        return out
+    out = {}
+    for net in sorted({e["net"] for e in ents}):
+        polys = {k: [] for k in lid}
+        lines = {k: [] for k in lid}
+        discs = {k: [] for k in lid}
+        holes = []
+        for z in board.Zones():
+            if z.GetNetname() != net or z.GetIsRuleArea():
+                continue
+            for k, L in lid.items():
+                if z.IsOnLayer(L):
+                    polys[k] += chains(z.GetFilledPolysList(L))
+        for t in board.GetTracks():
+            if t.GetNetname() != net:
+                continue
+            if t.GetClass() == "PCB_VIA":
+                c = (TM(t.GetPosition().x), TM(t.GetPosition().y))
+                for k, L in lid.items():
+                    if t.IsOnLayer(L):
+                        discs[k].append((c, TM(t.GetWidth(pcbnew.F_Cu)) / 2.0))
+                holes.append((c, TM(t.GetDrill())))
+            else:
+                k = [k for k, L in lid.items() if L == t.GetLayer()]
+                if k:
+                    lines[k[0]].append(((TM(t.GetStart().x), TM(t.GetStart().y)),
+                                        (TM(t.GetEnd().x), TM(t.GetEnd().y)), TM(t.GetWidth())))
+        for f in board.GetFootprints():
+            for p in f.Pads():
+                if p.GetNetname() != net:
+                    continue
+                for k, L in lid.items():
+                    if p.IsOnLayer(L):
+                        sps = pcbnew.SHAPE_POLY_SET()
+                        p.TransformShapeToPolygon(sps, L, 0, pcbnew.FromMM(0.005), pcbnew.ERROR_INSIDE)
+                        polys[k] += chains(sps)
+                if p.GetAttribute() == pcbnew.PAD_ATTRIB_PTH:
+                    d = p.GetDrillSize()
+                    holes.append(((TM(p.GetPosition().x), TM(p.GetPosition().y)), TM(min(d.x, d.y))))
+        xs, ys = [], []
+        for k in lid:
+            for o, _h in polys[k]:
+                xs += [q[0] for q in o]
+                ys += [q[1] for q in o]
+            for a, b, w in lines[k]:
+                xs += [a[0] - w, b[0] + w, a[0] + w, b[0] - w]
+                ys += [a[1] - w, b[1] + w, a[1] + w, b[1] - w]
+        if not xs:
+            continue
+        x0, y0 = min(xs) - 0.5, min(ys) - 0.5
+        Wd = int((max(xs) + 0.5 - x0) / WP_RES) + 1
+        Hd = int((max(ys) + 0.5 - y0) / WP_RES) + 1
+
+        def px(q):
+            return ((q[0] - x0) / WP_RES, (q[1] - y0) / WP_RES)
+        masks = {}
+        for k in lid:
+            im = Image.new("1", (Wd, Hd), 0)
+            d = ImageDraw.Draw(im)
+            for o, hs in polys[k]:
+                if len(o) >= 3:
+                    d.polygon([px(q) for q in o], fill=1)
+                    for h in hs:
+                        if len(h) >= 3:
+                            d.polygon([px(q) for q in h], fill=0)
+            for a, b, w in lines[k]:
+                r = w / 2 / WP_RES
+                d.line([px(a), px(b)], fill=1, width=max(1, int(round(w / WP_RES))))
+                for c in (px(a), px(b)):
+                    d.ellipse([c[0] - r, c[1] - r, c[0] + r, c[1] + r], fill=1)
+            for c, r in discs[k]:
+                c, r = px(c), r / WP_RES
+                d.ellipse([c[0] - r, c[1] - r, c[0] + r, c[1] + r], fill=1)
+            # a drilled hole stays copper in the plane (widepath; rasterpath draws it the same)
+            masks[k] = np.array(im, dtype=bool)
+        # the ends exactly as the pre-order gate builds them (power_specs.end_polys: every pad
+        # of the part on the net), so guard and gate measure the same path
+        specs = []
+        for e in ents:
+            if e["net"] != net:
+                continue
+            to = e["to"][0] if isinstance(e["to"], list) else e["to"]
+            ends = [{k: [[px(q) for q in poly] for poly in ps]
+                     for k, ps in power_specs.end_polys(board, s.split(".")[0], net, lid).items()}
+                    for s in (e["from"], to)]
+            specs.append(dict(name=e["_name"], need=_REQ[0](e["amps"], "F.Cu", _REQ[1]),
+                              a=ends[0], b=ends[1]))
+        hp = [(px(c)[0], px(c)[1], math.pi * hd * widepath.PLATING) for c, hd in holes]
+        fd, npz = tempfile.mkstemp(suffix=".npz")
+        os.close(fd)
+        js = npz[:-4] + ".json"
+        np.savez(npz, res=WP_RES, layers=np.array(list(lid)),
+                 holes=np.array(hp) if hp else np.zeros((0, 3)),
+                 scale=json.dumps(_SCALE), specs=json.dumps(specs),
+                 **{"mask_" + k: m for k, m in masks.items()})
+        subprocess.run(_scipy_py() + [os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                                   "widepath.py"), npz, js],
+                       check=True, capture_output=True, text=True)
+        out.update({n_: r_["width"] for n_, r_ in json.load(open(js)).items()})
+        for f_ in (npz, js):
+            try:
+                os.remove(f_)
+            except OSError:
+                pass
+    return out
+
+
+def _power_hurt(before_path, board, box, who):
+    """True if what is on `board` (vs the file `before_path`) leaves a power path whose pour
+    comes near `box` (x0, y0, x1, y1) narrower than its current needs AND than it was."""
+    if POUR_GUARD != "2" or not _PATHS or _REQ is None:
+        return False
+    near = set()
+    for z in board.Zones():
+        n = z.GetNetname()
+        if n not in _GUARD_NETS:
+            continue
+        bb = z.GetBoundingBox()
+        if (pcbnew.ToMM(bb.GetLeft()) <= box[2] + 1 and pcbnew.ToMM(bb.GetRight()) >= box[0] - 1
+                and pcbnew.ToMM(bb.GetTop()) <= box[3] + 1 and pcbnew.ToMM(bb.GetBottom()) >= box[1] - 1):
+            near.add(n)
+    ents = [e for e in _PATHS if e["net"] in near]
+    if not ents:
+        return False
+    before = pcbnew.LoadBoard(before_path)
+    stable_fill.fill(before, [z for z in before.Zones() if z.GetNetname() in near])
+    stable_fill.fill(board, [z for z in board.Zones() if z.GetNetname() in near])
+    wb, wa = _path_widths(before, ents), _path_widths(board, ents)
+    bad = False
+    for e in ents:
+        need = _REQ[0](e["amps"], "F.Cu", _REQ[1])
+        a, b = wa.get(e["_name"], 0.0), wb.get(e["_name"], 0.0)
+        if a < min(b, need) - WP_RES:
+            print("close_last: %s -- would leave %s at %.2f mm (was %.2f, %.1f A wants %.2f)"
+                  % (who, e["_name"], a, b, e["amps"], need))
+            bad = True
+    return bad
 
 LAYERS = ("F.Cu", "In2.Cu", "B.Cu")
 WIDTH = 0.2                   # the board's own signal width: a QFN pad row is on 0.4
@@ -269,6 +516,19 @@ def _open_count(board, net):
     caller compares counts before and after."""
     try:
         stable_fill.fill(board, [z for z in board.Zones() if z.GetNetname() == net])
+        board.BuildConnectivity()
+        try:
+            return board.GetConnectivity().GetUnconnectedCount(False)
+        except TypeError:
+            return board.GetConnectivity().GetUnconnectedCount()
+    except Exception:
+        return None
+
+
+def _count(board, nets):
+    """KiCad's unconnected count with the zones of `nets` refilled first (None on failure)."""
+    try:
+        stable_fill.fill(board, [z for z in board.Zones() if z.GetNetname() in nets])
         board.BuildConnectivity()
         try:
             return board.GetConnectivity().GetUnconnectedCount(False)
@@ -637,9 +897,11 @@ def _pieces(board, B, rip, layers, layer_id):
             continue
         pts = ([(None, mm(t.GetPosition()))] if t.GetClass() == "PCB_VIA"
                else [(t.GetLayerName(), mm(t.GetStart())), (t.GetLayerName(), mm(t.GetEnd()))])
-        for L, p in pts:
+        for L0, p in pts:
+            seen = set()
             for i, nd in enumerate(nodes):
-                if find(i) in padded and on(nd, L, p):
+                if find(i) in padded and on(nd, L0, p) and find(i) not in seen:
+                    L = L0
                     if L is None:               # a ripped via: its kept neighbour's layer
                         if nd[0] == "p":
                             L = "F.Cu" if nd[1].IsOnLayer(pcbnew.F_Cu) else "B.Cu"
@@ -648,12 +910,14 @@ def _pieces(board, B, rip, layers, layer_id):
                             L = Ls[0] if Ls else None
                     if L in layers:
                         anchors.append((find(i), L, p))
-                    break
+                        seen.add(find(i))
+                    if L0 is not None or not VIA_ANCHORS:
+                        break
     return anchors, stubs
 
 
 def _rip_one(board, stem, net, model, layers, layer_id, named, gap, tries, close_w, deadline,
-             stay=frozenset(), first=(), sc=1.0):
+             stay=frozenset(), first=(), sc=1.0, nw=None):
     """No path for `net`: find the path that crosses the fewest other nets' copper, take up
     what it runs into, lay `net`, and join each net taken up again round it. Returns
     (board, 1) on success, or the board as it was and 0.
@@ -710,10 +974,11 @@ def _rip_one(board, stem, net, model, layers, layer_id, named, gap, tries, close
         soft.segs = [s for s in m.segs if softnet(s["net"])]
         soft.vias = [v for v in m.vias if softnet(v["net"])]
         soft.pads, soft.edges, soft.keepouts = [], [], []
+        soft.frozen = []          # a frozen power band is never ripped: it stays in `hard`
         for (l1, p1), (l2, p2), step in ends:
             if _clock() > deadline:
                 return None
-            r = RS.maze3d(hard, layers, p1, l1, p2, l2, w=w, step=step, reach=REACH,
+            r = RS.maze3d(hard, _lays(net, layers, l1, l2), p1, l1, p2, l2, w=w, step=step, reach=REACH,
                           soft=soft, soft_cost=sc)
             if r is not None:
                 return r
@@ -777,11 +1042,12 @@ def _rip_one(board, stem, net, model, layers, layer_id, named, gap, tries, close
     if _clock() > deadline:
         print("close_last: %s -- out of time before the way through was looked for" % net)
         return board, 0
-    res = search(model, tries, WIDTH)
+    W_ = nw or WIDTH            # a power net (CLOSE_POWER_GUARD) is laid at the width its current needs
+    res = search(model, tries, W_)
     if res is None:
         print("close_last: %s -- no path even through other nets' track" % net)
         return board, 0
-    rip, nets = hits(res, WIDTH)
+    rip, nets = hits(res, W_)
     if len(nets) > RIP_MAX:
         print("close_last: %s -- the way through crosses %d nets (%s), more than %d"
               % (net, len(nets), ", ".join(sorted(nets)), RIP_MAX))
@@ -794,7 +1060,7 @@ def _rip_one(board, stem, net, model, layers, layer_id, named, gap, tries, close
         shutil.copy(rec, rec + ".rip")
     todo = take_up(rip, nets)
     ok, stuck = True, None
-    if too_long(net, _lay(board, stem, net, res, WIDTH, layer_id, named, gap), gap):
+    if too_long(net, _lay(board, stem, net, res, W_, layer_id, named, gap), gap):
         print("close_last: %s -- the way through is longer than A23 allows" % net)
         ok = False
     # ⚠ A NET TAKEN UP MAY ITSELF BE WALLED IN BY THE NEW ONE (output_panel RR_8, 2026-11-08):
@@ -808,7 +1074,7 @@ def _rip_one(board, stem, net, model, layers, layer_id, named, gap, tries, close
         joined = {anchors[0][0]} if anchors else set()
         while any(a[0] not in joined for a in anchors):
             board.Save(stem + ".kicad_pcb")
-            mb = RS.Board(stem, B)
+            mb = _pour_guard(RS.Board(stem, B))
             a, b = min(((a, b) for a in anchors if a[0] in joined for b in anchors
                         if b[0] not in joined),
                        key=lambda ab: math.hypot(ab[0][2][0] - ab[1][2][0], ab[0][2][1] - ab[1][2][1]))
@@ -816,7 +1082,7 @@ def _rip_one(board, stem, net, model, layers, layer_id, named, gap, tries, close
             for step in (RS.MAZE_STEP, 0.05):
                 if _clock() > deadline:
                     break
-                r2 = RS.maze3d(mb, layers, a[2], a[1], b[2], b[1], w=wb, step=step, reach=REACH)
+                r2 = RS.maze3d(mb, _lays(B, layers, a[1], b[1]), a[2], a[1], b[2], b[1], w=wb, step=step, reach=REACH)
                 if r2 is not None:
                     break
             if r2 is None and _clock() > deadline:
@@ -841,6 +1107,20 @@ def _rip_one(board, stem, net, model, layers, layer_id, named, gap, tries, close
                 stuck, ok = B, False
                 break
             joined.add(b[0])
+    if ok and RIP_VERIFY:
+        zs = {net} | set(moved)
+        after = _count(board, zs)
+        before = _count(pcbnew.LoadBoard(stem + ".rip.kicad_pcb"), zs)
+        if after is not None and before is not None and after >= before:
+            print("close_last: %s -- the board says %d unconnected after taking up %s, %d before: "
+                  "not joined" % (net, after, ", ".join(sorted(moved)), before))
+            ok = False
+    if ok and POUR_GUARD == "2":
+        _pts = [q for _L, pts in res[0] for q in pts] + list(res[1])
+        _box = (min(q[0] for q in _pts) - 3, min(q[1] for q in _pts) - 3,
+                max(q[0] for q in _pts) + 3, max(q[1] for q in _pts) + 3)
+        if _power_hurt(stem + ".rip.kicad_pcb", board, _box, net):
+            ok = False
     if ok:
         board.Save(stem + ".kicad_pcb")
         os.remove(stem + ".rip.kicad_pcb")
@@ -867,10 +1147,10 @@ def _rip_one(board, stem, net, model, layers, layer_id, named, gap, tries, close
     # if it is already first it stays where it is and the way through is looked for again
     if stuck and stuck not in first and len(first) < 3 and _clock() < deadline:
         return _rip_one(board, stem, net, model, layers, layer_id, named, gap, tries, close_w,
-                        deadline, stay, first + (stuck,), sc)
+                        deadline, stay, first + (stuck,), sc, nw=nw)
     if stuck and len(stay) < 4 and _clock() < deadline:
         return _rip_one(board, stem, net, model, layers, layer_id, named, gap, tries, close_w,
-                        deadline, stay | {stuck}, first, sc)
+                        deadline, stay | {stuck}, first, sc, nw=nw)
     return board, 0
 
 
@@ -905,7 +1185,26 @@ def main(stem):
     # {net: mm} asks for a width; if no path exists at it the search falls back to WIDTH
     # and SAYS SO, because an open net is still worse than a thin one.
     close_w = _notes.get("close_widths", {}) or {}
+    amps_of = {}
+    for _p in ((_notes.get("quality") or {}).get("power_paths") or ()):
+        amps_of[_p["net"]] = max(amps_of.get(_p["net"], 0.0), float(_p.get("amps", 0) or 0))
+    _GUARD_NETS.update(n for n, a in amps_of.items() if a > 0)
+    if POUR_GUARD == "2":
+        global _REQ
+        from quality import required_width_mm as _rw
+        _REQ = (_rw, _notes.get("quality") or {})
+        _one = _rw(1.0, "F.Cu", _REQ[1])
+        _SCALE.update({k: (1.0 if L in ("F.Cu", "B.Cu") else _one / _rw(1.0, L, _REQ[1]))
+                       for k, L in _CU})
+        for _p in ((_notes.get("quality") or {}).get("power_paths") or ()):
+            if float(_p.get("amps", 0) or 0) > 0:
+                _t = _p["to"][0] if isinstance(_p["to"], list) else _p["to"]
+                _PATHS.append(dict(_p, _name="%s %s>%s" % (_p["net"], _p["from"], _t)))
+    if POWER_GUARD and amps_of:
+        from quality import required_width_mm as _req_w
+        _qn = _notes.get("quality") or {}
     layers = [L for L in LAYERS if L in have and L not in plane]
+    _NET_LAYERS.update({n: set(v) for n, v in (_notes.get("net_layers") or {}).items()})
     made, stitched = 0, set()
     # ⚠ THE SEARCH HAS A CLOCK (optical, 2026-10-05). Ten open nets on a 188 mm board took
     # this file past an hour, silently, on a route whose real fault was a placement that
@@ -980,7 +1279,7 @@ def main(stem):
             continue
         # a fresh model per net: the copper laid for the previous one is an obstacle now
         board.Save(stem + ".kicad_pcb")
-        model = RS.Board(stem, net)
+        model = _pour_guard(RS.Board(stem, net))
         # ⚠ NO VIA IN A SMALL SOLDERED PAD OF THE NET'S OWN (output_panel PWR_GND,
         # 2026-10-04). Same-net copper is free ground to the search, so it changed layer
         # in the middle of a SOD-523 land -- quality A12's hard finding, "solder wicks down
@@ -1041,23 +1340,44 @@ def main(stem):
             _ladder.append(round((want_w + WIDTH) / 2.0, 2))
         if want_w > WIDTH:
             _ladder.append(WIDTH)
+        _need = 0.0
+        if POWER_GUARD and amps_of.get(net):
+            _need = round(_req_w(amps_of[net], "F.Cu", _qn), 2)
+            if _need <= WIDTH:          # signal width already carries it: no guard
+                _need = 0.0
+            else:
+                _ladder = [w_ for w_ in sorted(set(_ladder + [_need]), reverse=True) if w_ >= _need]
         for _i, width in enumerate(_ladder):
             for (la, pa), (lb, pb), step in tries:
                 # the clock again: one net's pairings can outlast the whole budget
                 if _clock() > _end:
                     break
-                res = RS.maze3d(model, layers, pa, la, pb, lb, w=width, step=step,
+                res = RS.maze3d(model, _lays(net, layers, la, lb), pa, la, pb, lb, w=width, step=step,
                                 reach=REACH)
                 if res is not None:
                     break
             if res is not None:
                 break
-            if width > WIDTH:
+            if width > WIDTH and _i + 1 < len(_ladder):
                 print("close_last: %s -- no path at %.2f mm, trying %.2f"
                       % (net, width, _ladder[_i + 1]))
         if res is None:
             print("close_last: %s -- no path between (%.2f, %.2f) and (%.2f, %.2f)"
                   % (net, pa[0], pa[1], pb[0], pb[1]))
+            if _need:
+                # the rip-up at the width the current needs: take up the signal nets in the way
+                # and join them again round it (PA_VBUS: PA_VOUT_SNS and PA_V5V cut the pour's
+                # neck to R70.1) -- never a signal-width closure
+                ok = 0
+                if _clock() < _end and not (MAX_RESTORES and _RESTORES.get(net, 0) >= MAX_RESTORES):
+                    board, ok = _rip_one(board, stem, net, model, layers, layer_id, named, gap,
+                                         tries[:4] + tries[-2:], close_w, _end, nw=_need)
+                made += ok
+                if not ok:
+                    print("close_last: %s -- CAN'T CARRY: %.1f A wants %.2f mm and no path is that "
+                          "wide, even taking others up; left open (fix the copper, not a thin "
+                          "closure)" % (net, amps_of[net], _need))
+                continue
             if _clock() < _end:
                 # then a way that keeps clear of other nets' track wherever it can: a longer
                 # one that takes up less leaves the nets taken up more room to join again
@@ -1071,6 +1391,31 @@ def main(stem):
                 made += ok
             continue
         _lay(board, stem, net, res, width, layer_id, named, gap)
+        if POUR_GUARD == "2" and not LAST_STRANDED:
+            # the file at stem is still the board before this closure (saved for the model)
+            for _try in (0, 1):
+                _pts = [q for _L, pts in res[0] for q in pts] + list(res[1])
+                _box = (min(q[0] for q in _pts), min(q[1] for q in _pts),
+                        max(q[0] for q in _pts), max(q[1] for q in _pts))
+                if not _power_hurt(stem + ".kicad_pcb", board, _box, net):
+                    break
+                board = pcbnew.LoadBoard(stem + ".kicad_pcb")
+                res = None
+                if _try == 0:
+                    print("close_last: %s -- searching again with the power pours as walls" % net)
+                    _pour_guard(model, force=True)
+                    for (la, pa), (lb, pb), step in tries:
+                        if _clock() > _end:
+                            break
+                        res = RS.maze3d(model, _lays(net, layers, la, lb), pa, la, pb, lb, w=width, step=step, reach=REACH)
+                        if res is not None:
+                            break
+                if res is None:
+                    print("close_last: %s -- every way found cuts a power path; left open" % net)
+                    break
+                _lay(board, stem, net, res, width, layer_id, named, gap)
+            if res is None:
+                continue
         if not LAST_STRANDED:
             made += 1
     board.Save(stem + ".kicad_pcb")

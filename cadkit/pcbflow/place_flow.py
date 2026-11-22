@@ -243,6 +243,30 @@ def _raise_widths(notes, parts, pl, keep=False):
     return out
 
 
+def _near_broken(rules, P, notes):
+    """(slack, line) for every HARD `near` rule the placement misses by more than 0.05 mm: the
+    part, the rule's index, the distance it sits at and the distance it wants."""
+    nb = []
+    for i_, r_ in enumerate(rules):
+        if r_["kind"] == "near" and r_.get("hard", True):
+            for s_, ref_, det in pi.check(r_, P, notes):
+                if s_ < -0.05:
+                    nb.append((s_, "NEAR BROKEN (hard) rule %d: %s %s, wants %g (%.2f mm) [%s]"
+                               % (i_, ref_, det, r_["max_mm"], s_, r_.get("src", ""))))
+    return nb
+
+
+def _near_gate(nb, place_only):
+    """⚠ A BROKEN HARD `near` STOPS THE FLOW (lead 2026-11-21): the placer seated C222 17.2 mm
+    from U205 against a hard 8 and C230 2.54 from U205.11 against a hard 1.5, said WARN and went
+    on to layout -- the arm was judged on a board that did not keep its own constraints. A hard
+    rule is a refusal, like BROKEN keepouts: 2 = stop. --place-only (an A/B's evidence) still
+    only reports; PCBFLOW_NEAR_BROKEN_OK=1 is for replaying an old board as it was."""
+    if not nb or place_only or os.environ.get("PCBFLOW_NEAR_BROKEN_OK", "0") == "1":
+        return None
+    return 2
+
+
 def _pours(notes, parts, pl, rules, base_zones):
     """notes["zones"] = the input's own zones + one per `pour` rule at the placed pins
     (place_intent.pour_poly), priority 1 by default so it wins its region over a board-wide
@@ -256,13 +280,36 @@ def _pours(notes, parts, pl, rules, base_zones):
     mine = {(r["net"], r["layer"]) for r in rules if r["kind"] == "pour"}
     base_zones = [z for z in base_zones if not (isinstance(z, dict) and (z.get("net"), z.get("layer")) in mine)]
     zones, out, pv = list(base_zones), [], []
+    bands = []                          # (net, layer, poly) of the around bands drawn so far
     for r in rules:
         if r["kind"] != "pour":
             continue
         poly = pi.pour_poly(r, P, notes_r, amps_of(r))
         if poly is not None and r.get("around") and not r.get("region"):
             # opt-in (auto_pour `around`): the band goes round other nets' pads (pour_around)
-            ar = pi.pour_around(r, P, notes_r, amps_of(r))
+            # ...and round the OTHER bands on its layer: their end pins (a B.Cu trunk's lands are
+            # F.Cu pads, invisible to the pad walls -- VIN_SW's band from Q202.2 took the room
+            # VIN_BRAIN's from Q202.3 needed) and the bands already drawn
+            ra = dict(r, _avoid_pins=[x for o in rules if o["kind"] == "pour" and o.get("around")
+                                      and o["layer"] == r["layer"] and o["net"] != r["net"]
+                                      for x in o.get("along", ())],
+                      _avoid_polys=[pg for n_, l_, pg in bands if l_ == r["layer"] and n_ != r["net"]])
+            ar = pi.pour_around(ra, P, notes_r, amps_of(r))
+            if ar is not None:
+                bands.append((r["net"], r["layer"], ar))
+                # fine-pitch end pins get a declared escape stub the band takes over from
+                for e_ in pi.pin_escapes(r, P, notes, band=ar):
+                    if any(x_["key"] == e_["key"] for x_ in notes.get("band_escapes", ())):
+                        continue                 # _pours runs twice: declare a stub once
+                    notes.setdefault("tracks", []).append([e_["net"], e_["layer"], e_["width"], e_["pts"]])
+                    notes.setdefault("band_escapes", []).append(e_)
+                    out.append("%s: escape stub %.2f wide, %.2f past the pad (pitch %.2f)" % (
+                        e_["key"], e_["width"], e_["beyond"], e_["pitch"]))
+                lst = getattr(pi.pour_around, "last", None)
+                if lst:
+                    out.append("%s on %s: band %.1f mm long, neck %.2f of %.2f mm wanted%s" % (
+                        r["net"], r["layer"], lst.get("length", 0), lst["neck"], lst["need"],
+                        (" -- pinched by " + " ".join(lst["pinch"][:10])) if lst.get("pinch") else ""))
             if ar is None:
                 out.append("%s on %s: no band round the other nets' pads reaches every pin -- "
                            "the hull kept" % (r["net"], r["layer"]))
@@ -273,7 +320,7 @@ def _pours(notes, parts, pl, rules, base_zones):
             area = abs(sum(poly[i][0] * poly[i - 1][1] - poly[i - 1][0] * poly[i][1]
                            for i in range(len(poly)))) / 2.0
             if ow and ol and area > r["max_frac"] * ow * ol:
-                w = pi.width_for(r["auto_amps"])
+                w = pi.width_for(r["auto_amps"], pi.design_dt(notes))
                 nw = notes.setdefault("net_widths", {})
                 nw[r["net"]] = max(nw.get(r["net"], 0.0), w)
                 out.append("%s on %s: auto pour would cover %.0f %% of the board (max %.0f %%) -- "
@@ -294,12 +341,14 @@ def _pours(notes, parts, pl, rules, base_zones):
         if "priority" not in r and pr in taken:
             pr = max(taken) + 1
         zones.append({"net": r["net"], "layer": r["layer"], "poly": poly, "priority": pr,
-                      **({"whole": True} if r.get("whole") else {})})
+                      **({"whole": True} if r.get("whole") else {}),
+                      **({"frozen": True} if r.get("frozen") else {})})
         # opt-in (`pad_vias`, set by auto_pour): the pour's big lands on another layer get a
         # via array sized to the current -- layout._pour_pad_vias
         if (r.get("pad_vias") or r.get("auto_amps") is not None) and r.get("along") and amps_of(r):
             pv.append({"net": r["net"], "layer": r["layer"], "pads": list(r["along"]),
-                       "amps": amps_of(r), "width_mm": pi.width_for(amps_of(r))})
+                       "amps": amps_of(r), "width_mm": pi.width_for(amps_of(r), pi.design_dt(notes)),
+                       **({"field": dict(r["field"], frozen=bool(r.get("frozen")))} if r.get("field") else {})})
         f = pi.pour_foreign(r, P, poly)
         out.append("%s on %s %s: %d corner(s), %s" % (
             r["net"], r["layer"], ("region " + r["region"]) if r.get("region") else "along " + "-".join(r["along"]),
@@ -544,13 +593,7 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     # ⚠ A BROKEN HARD `near` IS SAID, NOT LEFT TO A SIDE EFFECT (output_board mN, 2026-11-14):
     # "U17 within 30 of FL3" ended 39.6 mm and the report showed only a CHAIN warning about
     # it; the board went on to a 30-minute route with its USB pairs as long as before.
-    nb = []
-    for i_, r_ in enumerate(rules):
-        if r_["kind"] == "near" and r_.get("hard", True):
-            for s_, ref_, det in pi.check(r_, P_k, notes_k):
-                if s_ < -0.05:
-                    nb.append((s_, "NEAR BROKEN (hard) rule %d: %s %s, wants %g (%.2f mm) [%s]"
-                               % (i_, ref_, det, r_["max_mm"], s_, r_.get("src", ""))))
+    nb = _near_broken(rules, P_k, notes_k)
     # ⚠ A HELD PART CANNOT KEEP A HARD RULE IT WAS NEVER ASKED TO (output_board mP / mQ, 2026-11-15):
     # every part was pinned `fixed` where fin_mO left it, so C124 sat 4.6 mm from U1.62 against
     # a HARD 3 mm rule and no placer could move it -- one WARN among fourteen, and quality A2
@@ -569,6 +612,12 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
         floor.append(w_)
     if len(nb) > 12:
         floor.append("NEAR BROKEN (hard): %d more" % (len(nb) - 12))
+    if _near_gate(nb, place_only):
+        say("NEAR BROKEN hard rules -- the flow stops before layout: " + " | ".join(x[1] for x in sorted(nb)[:8]))
+        _report(fd, base, rules, init_log, [], [], None, None, None, why, T,
+                refused="intent check: NEAR BROKEN hard rules\n" + "\n".join(x[1] for x in sorted(nb)[:20]),
+                floor=floor, room=room)
+        return 2
     if place_only:
         # --place-only: a placement A/B across boards (a placer change's evidence) needs
         # NO ROOM, BROKEN and NEAR BROKEN, not a route -- minutes per board instead of an hour

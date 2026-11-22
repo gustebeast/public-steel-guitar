@@ -69,6 +69,7 @@ class Model:
         self.keepouts = _keepouts(txt)
         self.pours = _pours(txt)
         self.whole = _pours(txt, named="whole")
+        self.frozen = _pours(txt, named="frozen")
         self.zone_rule = _zone_rules(txt)
         # where each pour's copper actually IS (its fill), net by net; the outline where
         # a pour has no fill yet. Plane joins aim here (negotiate build_nets/_to_plane).
@@ -98,9 +99,18 @@ class Model:
             w = power_width(pp, q, at)
             need[pp["net"]] = max(need.get(pp["net"], 0.0), w)
         widths = notes.get("net_widths", {}) or {}
+        # ⚠ THE 1.0 mm CAP IS A DEFAULT, NOT A LAW (brain_board ws1, 2026-11-20): with it, a
+        # 6.5 A rail that IPC sizes at 4 mm was drawn at 1.0 and the widepath gate failed 29 of
+        # 48 power paths. A board that wants its power drawn at full width says so in
+        # notes["power_w_max"] (and keeps those nets on outer copper, notes["net_layers"]).
+        _wmax = float(notes.get("power_w_max", POWER_W_MAX))
+        # notes["net_layers"] = {net: [layer, ...]}: the only layers that net may be routed on,
+        # HARD -- never relaxed (negotiate.Net.layers_hard). The brain keeps every power_paths
+        # net off its 0.5 oz inner layers, where IPC asks 5.2x the outer width.
+        self.net_layers = dict(notes.get("net_layers") or {})
         self.width = {}
         for n in names:
-            w = max(default_w, min(POWER_W_MAX, need.get(n, 0.0)))
+            w = max(default_w, min(_wmax, need.get(n, 0.0)))
             self.width[n] = float(widths.get(n, w))
         # ⚠ A POWER NET'S VIA CARRIES ITS CURRENT (brain_board mV0, 2026-11-16) --
         # OWNROUTE_POWER_VIA_SIZE=1 while measured. Every layer change was one 0.3 mm via, a
@@ -307,6 +317,49 @@ class Model:
                 sub = self.whole_net[lid[L_], i0:i1, j0:j1]
                 sub[_in_poly(X, Y, pts)] = nid
         self.whole_any = bool(self.whole_net.any())
+        # ⚠ POWER FIRST: A FROZEN BAND IS A WALL, NOT A PRICE (brain_board pour arm, 2026-11-20):
+        # priced at REGION_COST, signal tracks crossed the F.Cu power bands and the refill
+        # shredded them -- VIN_SW's 3.65 mm band carried 1.09. A pour zone NAMED "frozen"
+        # (opt-in: a pour rule's `frozen`) is drawn before any signal and no other net's track
+        # or via may enter it on its layer; the router routes round fixed copper instead of
+        # fighting it. frozen_net[k] = the net a frozen band keeps each cell for (0 = none).
+        self.frozen_net = np.zeros((L, ny, nx), np.int32)
+        for net_name, polys in self.frozen.items():
+            nid = self.net_id.get(net_name, -1)
+            for L_, pts in polys:
+                if L_ not in lid:
+                    continue
+                win = self._window(min(q[0] for q in pts), min(q[1] for q in pts),
+                                   max(q[0] for q in pts), max(q[1] for q in pts), 0.0)
+                X, Y = grid(win)
+                i0, i1, j0, j1 = win
+                sub = self.frozen_net[lid[L_], i0:i1, j0:j1]
+                sub[_in_poly(X, Y, pts)] = nid
+        self.frozen_any = bool(self.frozen_net.any())
+        # ⚠ THE WALL STARTS AT THE BAND'S EDGE PLUS THE FOREIGN COPPER'S REACH (brain_board
+        # rPS_e3, 2026-11-21): walled at cell centres only, a +24V_RIB via sat ON +5V_SW's
+        # band edge -- its 0.3 radius plus the zone's 0.5 clearance knocked 0.8 mm out of a
+        # 1.3 mm band, and the refill split it 42.2 -> 20.0 + 6.7 mm2: +5V_SW PASS 0.74 on the
+        # unrouted board, OPEN routed. frozen_d[k] = mm from each cell to the nearest frozen
+        # cell on that layer, frozen_nn[k] the net that band keeps; negotiate bans a foreign
+        # track (via) wherever frozen_d < its half width (radius) + the band's zone clearance.
+        self.frozen_d = self.frozen_nn = None
+        if self.frozen_any:
+            from scipy.ndimage import distance_transform_edt
+            self.frozen_d = np.full((L, ny, nx), np.inf, np.float32)
+            self.frozen_nn = np.zeros((L, ny, nx), np.int32)
+            inv = {v: k for k, v in self.net_id.items()}
+            zc = np.zeros(max(self.net_id.values(), default=0) + 2, np.float32)
+            for n_, i_ in self.net_id.items():
+                zc[i_] = (self.zone_rule.get(n_) or (0.5,))[0] if n_ in self.frozen else 0.0
+            self.frozen_zclr = zc
+            for k in range(L):
+                if not self.frozen_net[k].any():
+                    continue
+                d, (ii, jj) = distance_transform_edt(self.frozen_net[k] == 0, return_indices=True)
+                self.frozen_d[k] = (d * self.pitch).astype(np.float32)
+                self.frozen_nn[k] = self.frozen_net[k][ii, jj]
+                del d, ii, jj
         # ⚠ A POURED LAND NEEDS ROOM TO BREATHE (optical R33.2 GND, 2026-11-08: a foreign
         # track hugging the land left the F.Cu GND pour too few thermal spokes, DRC
         # starved_thermal, and close_last would not run past it). Round every land whose net

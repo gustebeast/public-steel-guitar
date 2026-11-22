@@ -220,6 +220,15 @@ class Placed:
                 return self.world(ref, [q["xy"]])[0]
         raise KeyError("%s has no pad %s" % (ref, num))
 
+    def pad_poly(self, ref, num):
+        """That pad's rectangle (4 corners, board frame): its size turned by its own rotation."""
+        for q in self.parts[ref]["pads"]:
+            if q["num"] == str(num):
+                w, h = (q.get("size") or (0.0, 0.0))[:2]
+                c = _rot([[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]], q.get("rot", 0.0))
+                return self.world(ref, c + np.asarray(q["xy"], float))
+        raise KeyError("%s has no pad %s" % (ref, num))
+
     def pads_on(self, ref, net):
         return [self.world(ref, [q["xy"]])[0] for q in self.parts[ref]["pads"] if q["net"] == net]
 
@@ -314,6 +323,15 @@ def panel_rot(parts, ref, edge, prefer=None):
         if best is None or key < best[0]:
             best = (key, rr)
     return best[1]
+
+
+def _is_decap_rule(P, ref, target):
+    """A near rule from a capacitor (ref C<n>) to a pin whose net one of its lands is on."""
+    if not re.match(r"C[0-9]", ref) or "." not in target:
+        return False
+    ic, num = target.split(".", 1)
+    net = next((q.get("net") for q in P.parts.get(ic, {}).get("pads", ()) if q["num"] == num), None)
+    return bool(net) and any(q.get("net") == net for q in P.parts.get(ref, {}).get("pads", ()))
 
 
 def check(rule, P, notes, H=None):
@@ -474,8 +492,19 @@ def check(rule, P, notes, H=None):
             out.append((rule.get("max_mm", 1.5) - d, cap, "%.2f from %s (%s)" % (d, at, net)))
     elif k == "near":
         ref, t, m = rule["ref"], rule["target"], rule["max_mm"]
-        d = _poly_dist(P.crtyd(ref), P.target(t)) if "." not in t else \
-            float(_edge_dist_inside(P.crtyd(ref), P.target(t)).max() * -1)
+        # ⚠ A DECAP IS MEASURED TO ITS PIN'S NEAREST POINT (lead 2026-11-21): a decap at a 3.4 mm
+        # inner bar (U205.11) can never be within 1.5 of the bar's centre, and the near end is
+        # where its current enters -- C230 read 2.20 (broken) to the centre, 0.49 to the pad.
+        # A decap rule = a capacitor (ref C<n>) with a land on the target pin's net; it is
+        # measured to the nearest point of that pin's pad rectangle. Every other pin target
+        # keeps the CENTRE measure. Flipped no verdict on brain_board (14 of 18 decap rules read
+        # 1.37 -> 0.62, all kept), thresholds unchanged.
+        if "." not in t:
+            d = _poly_dist(P.crtyd(ref), P.target(t))
+        elif _is_decap_rule(P, ref, t):
+            d = _poly_dist(P.crtyd(ref), P.pad_poly(*t.split(".", 1)))
+        else:
+            d = float(_edge_dist_inside(P.crtyd(ref), P.target(t)).max() * -1)
         d = max(d, 0.0)
         out.append((m - d, ref, "%.2f from %s" % (d, t)))
     elif k == "between":
@@ -1553,7 +1582,7 @@ def pour_poly(rule, P, notes, amps=None):
         return None
     w = rule.get("width_mm")
     if w is None:
-        w = max(2.0, 1.5 * width_for(amps)) if amps else 2.0
+        w = max(2.0, 1.5 * width_for(amps, design_dt(notes))) if amps else 2.0
     r = float(w) / 2.0
     pts = np.array([(float(p[0]) + r * math.cos(a), float(p[1]) + r * math.sin(a))
                     for p in pins for a in np.linspace(0, 2 * math.pi, 16, endpoint=False)])
@@ -1710,7 +1739,7 @@ def pour_around(rule, P, notes=None, amps=None):
         return None
     w = rule.get("width_mm")
     if w is None:
-        w = max(2.0, 1.5 * width_for(amps)) if amps else 2.0
+        w = max(2.0, 1.5 * width_for(amps, design_dt(notes))) if amps else 2.0
     w = float(w)
     g = AROUND_GRID
     pa = np.array(pins)
@@ -1722,8 +1751,21 @@ def pour_around(rule, P, notes=None, amps=None):
     Y = y0 + np.arange(ny) * g
     side = "B" if rule["layer"].startswith("B.") else "F"
     inner = rule["layer"].startswith("In")
-    wall = np.zeros((ny, nx), bool)
+    # the width the band must hold where the current flows: the net's IPC width at the design
+    # rise (what the power gate wants), never under AROUND_NECK
+    need = max(AROUND_NECK, width_for(amps, design_dt(notes))) if amps else AROUND_NECK
+    # ⚠ THE WALLS KEEP THE BOARD'S ZONE CLEARANCE, NOT 0.25 (brain_board esc_pre5, 2026-11-21): the
+    # centreline ran need/2 + 0.25 off other nets' pads, the fill then kept its 0.5 off them, and
+    # +5V_SW's band came out 0.34 mm (wants 0.51) near F202 -- the fill ate what the walls left
+    clr_ = max(AROUND_CLEAR, float((notes or {}).get("zone_clearance") or 0.5))
+    m_max = clr_ + need / 2.0
+    m_own = clr_ + AROUND_NECK / 2.0        # an own pin's ring must beat its neighbours' walls
+    dfor = np.full((ny, nx), np.inf)    # distance to the nearest foreign pad (its rectangle)
+    fid = np.full((ny, nx), -1, int)    # ...and which pad that is (index into flab)
+    flab = []
     own = np.zeros((ny, nx), bool)
+    pads_ = np.zeros((ny, nx), bool)    # foreign pads + AROUND_CLEAR: never inside the band
+    lobes = {}                          # ref -> [(cx, cy, hx, hy, ca, sa)] own pads on the rule's net
     for ref, p in P.parts.items():
         if ref not in P.pl:
             continue
@@ -1733,55 +1775,174 @@ def pour_around(rule, P, notes=None, amps=None):
             on = q.get("tht") or (not inner and p.get("side", "F") == side)
             if not on:
                 continue
+            # ⚠ THE PAD'S RECTANGLE, NOT ITS CIRCUMSCRIBED CIRCLE (brain_board rPS_p1, 2026-11-20):
+            # a 0.25 x 3.40 QFN power pin's circle is 1.7 mm across, grown by the clearance it
+            # swallowed every neighbour's gap -- U205.11, U205.7, U221.7/.8 sat in 0.6-9 mm2 islands,
+            # no band reached them, and 5 of 6 F.Cu power pours fell back to a hull the fill shredded.
             cx, cy = P.world(ref, [q["xy"]])[0]
-            rp = math.hypot(*q["size"]) / 2.0
+            hx, hy = q["size"][0] / 2.0, q["size"][1] / 2.0
             mine = q["net"] == rule["net"]
-            r_ = rp if mine else rp + AROUND_CLEAR + AROUND_NECK / 2.0
+            r_ = math.hypot(hx, hy) + (m_own if mine else m_max)
             j0, j1 = max(int((cx - r_ - x0) / g), 0), min(int((cx + r_ - x0) / g) + 2, nx)
             i0, i1 = max(int((cy - r_ - y0) / g), 0), min(int((cy + r_ - y0) / g) + 2, ny)
             if j0 >= j1 or i0 >= i1:
                 continue
-            d = np.hypot(X[None, j0:j1] - cx, Y[i0:i1, None] - cy) <= r_
-            (own if mine else wall)[i0:i1, j0:j1] |= d
-    free = ~wall | own
-    # a cell costs 1, up to 3 near a wall: a wide corridor before a narrow one
-    dw = distance_transform_edt(~wall) * g
-    cost = 1.0 + 2.0 * np.clip(1.0 - dw / max(w / 2.0, g), 0.0, 1.0)
+            ang = math.radians(P.at(ref)[2] + float(q.get("rot") or 0.0))
+            ca, sa = math.cos(ang), math.sin(ang)
+            ux, uy = X[None, j0:j1] - cx, Y[i0:i1, None] - cy
+            lx, ly = np.abs(ux * ca + uy * sa), np.abs(-ux * sa + uy * ca)
+            dq = np.hypot(np.maximum(lx - hx, 0.0), np.maximum(ly - hy, 0.0))
+            if mine:
+                # an own pin's clearance ring beats the walls: a fine-pitch pin (U205.11 at 0.5 mm
+                # pitch) is fenced by its neighbours' rings, and its escape is pin-wide whatever
+                # the band does -- the gate measures the neck from the pad edge, the part's
+                # rating covers its own pins
+                own[i0:i1, j0:j1] |= dq <= m_own + 1e-9
+                lobes.setdefault(ref, []).append((cx, cy, hx, hy, ang))
+            else:
+                closer = dq < dfor[i0:i1, j0:j1]
+                fid[i0:i1, j0:j1][closer] = len(flab)
+                flab.append("%s.%s" % (ref, q["num"]))
+                dfor[i0:i1, j0:j1] = np.minimum(dfor[i0:i1, j0:j1], dq)
+                pads_[i0:i1, j0:j1] |= dq <= AROUND_CLEAR + 1e-9
+    # the other bands on this layer: their end pins (pads on any side) and their drawn outlines
+    # are walls like a foreign pad (place_flow passes them)
+    # the band's own end pins get their ring whatever side they are on: a B.Cu trunk's ends are
+    # F.Cu lands, which the side filter above skips
+    for key in rule.get("along", ()):
+        ref, num = key.split(".", 1)
+        p = P.parts.get(ref)
+        if p is None or ref not in P.pl:
+            continue
+        for q in p["pads"]:
+            if q["num"] != num:
+                continue
+            cx, cy = P.world(ref, [q["xy"]])[0]
+            hx, hy = q["size"][0] / 2.0, q["size"][1] / 2.0
+            ang = math.radians(P.at(ref)[2] + float(q.get("rot") or 0.0))
+            ca, sa = math.cos(ang), math.sin(ang)
+            ux, uy = X[None, :] - cx, Y[:, None] - cy
+            lx, ly = np.abs(ux * ca + uy * sa), np.abs(-ux * sa + uy * ca)
+            own |= np.hypot(np.maximum(lx - hx, 0.0), np.maximum(ly - hy, 0.0)) <= m_own + 1e-9
+    for key in rule.get("_avoid_pins", ()):
+        ref, num = key.split(".", 1)
+        p = P.parts.get(ref)
+        if p is None or ref not in P.pl:
+            continue
+        for q in p["pads"]:
+            if q["num"] != num:
+                continue
+            cx, cy = P.world(ref, [q["xy"]])[0]
+            hx, hy = q["size"][0] / 2.0, q["size"][1] / 2.0
+            ang = math.radians(P.at(ref)[2] + float(q.get("rot") or 0.0))
+            ca, sa = math.cos(ang), math.sin(ang)
+            ux, uy = X[None, :] - cx, Y[:, None] - cy
+            lx, ly = np.abs(ux * ca + uy * sa), np.abs(-ux * sa + uy * ca)
+            dq = np.hypot(np.maximum(lx - hx, 0.0), np.maximum(ly - hy, 0.0))
+            closer = dq < dfor
+            fid[closer] = len(flab)
+            flab.append(key)
+            dfor = np.minimum(dfor, dq)
+            pads_ |= dq <= AROUND_CLEAR + 1e-9
+    if rule.get("_avoid_polys"):
+        from matplotlib.path import Path as _Path
+        gx_, gy_ = np.meshgrid(X, Y)
+        pts_ = np.column_stack([gx_.ravel(), gy_.ravel()])
+        for pg in rule["_avoid_polys"]:
+            m_ = _Path(pg).contains_points(pts_).reshape(ny, nx)
+            if not m_.any():
+                continue
+            dq = distance_transform_edt(~m_) * g
+            closer = dq < dfor
+            fid[closer] = len(flab)
+            flab.append("band")
+            dfor = np.minimum(dfor, dq)
+            pads_ |= dq <= AROUND_CLEAR + 1e-9
+    # ⚠ THE BAND WAS 0.6 mm WHERE IT MATTERED (brain_board rPS_g1, 2026-11-21): the walls left the
+    # centreline any gap AROUND_NECK wide, so VIN_BRAIN's frozen band ran 1.15 mm (wants 2.61) past
+    # C326 and wandered 84 mm (306 mm2 of frozen copper, 55 router opens). The centreline now keeps
+    # `need` / 2 + the clearance off every foreign pad; only if no such tree exists does it accept
+    # a narrower neck (3/4, 1/2 of need, then AROUND_NECK), and it says which.
+    cost = None
     idx = np.arange(nx * ny).reshape(ny, nx)
-    rows, cols, vals = [], [], []
-    for di, dj in ((0, 1), (1, 0), (1, 1), (1, -1)):
-        ln = math.hypot(di, dj)
-        ia, ib = slice(0, ny - di), slice(di, ny)
-        if dj >= 0:
-            ja, jb = slice(0, nx - dj), slice(dj, nx)
-        else:
-            ja, jb = slice(-dj, nx), slice(0, nx + dj)
-        ok = free[ia, ja] & free[ib, jb]
-        c_ = ln * g * (cost[ia, ja] + cost[ib, jb]) / 2.0
-        rows.append(idx[ia, ja][ok])
-        cols.append(idx[ib, jb][ok])
-        vals.append(c_[ok])
-    G = coo_matrix((np.concatenate(vals), (np.concatenate(rows), np.concatenate(cols))),
-                   shape=(nx * ny, nx * ny)).tocsr()
     pc = [int(idx[min(max(int(round((py - y0) / g)), 0), ny - 1),
                   min(max(int(round((px - x0) / g)), 0), nx - 1)]) for px, py in pins]
-    line = np.zeros(nx * ny, bool)
-    line[pc[0]] = True
-    left = {c for c in pc[1:] if not line[c]}
-    while left:
-        dist, pred = dijkstra(G, directed=False, indices=np.nonzero(line)[0],
-                              return_predecessors=True, min_only=True)[:2]
-        best = min(left, key=lambda c: dist[c])
-        if not np.isfinite(dist[best]):
-            return None
-        c = best
-        while c >= 0 and not line[c]:
-            line[c] = True
-            c = pred[c]
-        left = {c for c in left if not line[c]}
+    for neck in sorted({need, max(AROUND_NECK, 0.75 * need), max(AROUND_NECK, 0.5 * need), AROUND_NECK},
+                       reverse=True):
+        wall = dfor <= clr_ + neck / 2.0 + 1e-9
+        free = ~wall | own
+        # a cell costs 1, up to 3 near a wall: a wide corridor before a narrow one
+        dw = distance_transform_edt(~wall) * g
+        cost = 1.0 + 2.0 * np.clip(1.0 - dw / max(w / 2.0, g), 0.0, 1.0)
+        rows, cols, vals = [], [], []
+        for di, dj in ((0, 1), (1, 0), (1, 1), (1, -1)):
+            ln = math.hypot(di, dj)
+            ia, ib = slice(0, ny - di), slice(di, ny)
+            if dj >= 0:
+                ja, jb = slice(0, nx - dj), slice(dj, nx)
+            else:
+                ja, jb = slice(-dj, nx), slice(0, nx + dj)
+            ok = free[ia, ja] & free[ib, jb]
+            c_ = ln * g * (cost[ia, ja] + cost[ib, jb]) / 2.0
+            rows.append(idx[ia, ja][ok])
+            cols.append(idx[ib, jb][ok])
+            vals.append(c_[ok])
+        G = coo_matrix((np.concatenate(vals), (np.concatenate(rows), np.concatenate(cols))),
+                       shape=(nx * ny, nx * ny)).tocsr()
+        line = np.zeros(nx * ny, bool)
+        line[pc[0]] = True
+        left = {c for c in pc[1:] if not line[c]}
+        while left:
+            dist, pred = dijkstra(G, directed=False, indices=np.nonzero(line)[0],
+                                  return_predecessors=True, min_only=True)[:2]
+            best = min(left, key=lambda c: dist[c])
+            if not np.isfinite(dist[best]):
+                break
+            c = best
+            while c >= 0 and not line[c]:
+                line[c] = True
+                c = pred[c]
+            left = {c for c in left if not line[c]}
+        if not left:
+            break
+    else:
+        return None
+    # where the centreline runs closer than the full width allows, and whose pads pinch it --
+    # the parts a placement corridor would have to move
+    lm = line.reshape(ny, nx)
+    pin_ = lm & (dfor <= clr_ + need / 2.0 + 1e-9) & ~own
+    ii, jj = np.nonzero(pin_)
+    pinch = sorted({flab[k] for k in fid[ii, jj] if k >= 0})
+    pour_around.last = dict(net=rule["net"], need=round(need, 3), neck=round(neck, 3),
+                            length=round(float(lm.sum()) * g, 1), pinch=pinch,
+                            pinch_xy=[[round(float(X[j]), 2), round(float(Y[i]), 2)] for i, j in zip(ii[::5], jj[::5])])
     rr = int(round(w / 2.0 / g))
     yy, xx = np.mgrid[-rr:rr + 1, -rr:rr + 1]
     band = binary_dilation(line.reshape(ny, nx), structure=(yy * yy + xx * xx) <= rr * rr)
+    # parallel pins of one part on the net (U221.7/.8, 0.5 pitch) join in one lobe at the pad
+    # edge -- the box over the group, less any foreign pad -- then the band widens from there
+    for ref, pp in lobes.items():
+        grp = []
+        for a in pp:
+            if any(math.hypot(a[0] - b[0], a[1] - b[1]) <= 2 * max(a[2], a[3], b[2], b[3]) + 1.0
+                   for b in pp if b is not a):
+                grp.append(a)
+        if len(grp) < 2:
+            continue
+        ang = grp[0][4]
+        ca, sa = math.cos(ang), math.sin(ang)
+        cx, cy = np.mean([a[0] for a in grp]), np.mean([a[1] for a in grp])
+        lo, hi = [np.inf, np.inf], [-np.inf, -np.inf]
+        for ax, ay, hx, hy, _ in grp:
+            u, v = (ax - cx) * ca + (ay - cy) * sa, -(ax - cx) * sa + (ay - cy) * ca
+            lo = [min(lo[0], u - hx), min(lo[1], v - hy)]
+            hi = [max(hi[0], u + hx), max(hi[1], v + hy)]
+        ux, uy = X[None, :] - cx, Y[:, None] - cy
+        u, v = ux * ca + uy * sa, -ux * sa + uy * ca
+        band |= (u >= lo[0]) & (u <= hi[0]) & (v >= lo[1]) & (v <= hi[1])
+    # a band never covers another net's pad or its clearance: a frozen band (a router wall)
+    # over a fine-pitch neighbour would wall in its escape
+    band &= ~pads_
     import contourpy
     z = np.zeros((ny + 2, nx + 2))
     z[1:-1, 1:-1] = band
@@ -1792,6 +1953,108 @@ def pour_around(rule, P, notes=None, amps=None):
     pts = [(x0 + (c - 1) * g, y0 + (r - 1) * g) for c, r in ring]
     pts = _simplify(pts, g / 2.0)
     return [[round(float(x), 3), round(float(y), 3)] for x, y in pts]
+
+
+def pin_escapes(rule, P, notes=None, band=None):
+    """Declared escape stubs for a band's fine-pitch end pins: [{key, net, layer, width, pts, pitch}].
+
+    ⚠ A POUR CANNOT TOUCH A 0.5 mm PITCH PIN (brain_board tr_pre1..4, 2026-11-21): +5V_BB at
+    U205.11 and VIN_CM5 at U205.7 read OPEN on frozen copper. The fill keeps the zone clearance
+    (0.5) off the neighbour pins, 0.25 away, so it stops ~0.43 short of the pin and only a router
+    stub reached it -- 0.29 mm across a 6.4 mm neck. A pin whose same-part neighbour is closer than
+    twice the zone clearance gets a stub: pin-wide, straight out along the pin's axis (away from the
+    part's centre) until it is past the neighbours' clearance, capped at 2 x pitch -- the band takes
+    over there at full width. The gate counts the stub as part of the pad (the datasheet pin rating
+    covers it, lead 2026-11-21); beyond it the full width applies. A local zone clearance under 0.5
+    at 0.5 pitch was rejected: fab DRC and slivers between the pins."""
+    zc = float((notes or {}).get("zone_clearance") or 0.5)
+    out = []
+    for key in rule.get("along", ()):
+        ref, num = key.split(".", 1)
+        p = P.parts.get(ref)
+        if p is None or ref not in P.pl:
+            continue
+        # the stub goes on the PIN's layer: a B.Cu trunk ends on F.Cu pins (+5V_BB at U205.11)
+        pin_layer = "B.Cu" if p.get("side", "F") == "B" else "F.Cu"
+        mine = [q for q in p["pads"] if q["num"] == num]
+        if not mine:
+            continue
+        q = mine[0]
+        cx, cy = P.world(ref, [q["xy"]])[0]
+        hx, hy = q["size"][0] / 2.0, q["size"][1] / 2.0
+        ang = math.radians(P.at(ref)[2] + float(q.get("rot") or 0.0))
+        ux, uy = (math.cos(ang), math.sin(ang)) if hx >= hy else (-math.sin(ang), math.cos(ang))
+        half_len, half_w = max(hx, hy), min(hx, hy)
+        if half_len < 1.5 * half_w:
+            continue                             # a land, not a pin: no axis to escape along
+        # toward the band's other end pins: a 3.4 mm power pin runs through its package, so "away
+        # from the part's centre" picked the wrong end for U205.7/.11 (esc_pre2)
+        oth = [P.pad(*k_.split(".", 1)) for k_ in rule.get("along", ()) if k_.split(".", 1)[0] != ref]
+        if oth:
+            tx, ty = sum(o_[0] for o_ in oth) / len(oth), sum(o_[1] for o_ in oth) / len(oth)
+        else:
+            tx, ty = 2 * cx - P.at(ref)[0], 2 * cy - P.at(ref)[1]
+        if (tx - cx) * ux + (ty - cy) * uy < 0:
+            ux, uy = -ux, -uy
+        # the nearest other-net pad of the same part: its lateral gap and the pitch
+        gap, pitch = None, None
+        for o in p["pads"]:
+            if o is q or not o["num"] or o["net"] == q["net"]:
+                continue
+            ox, oy = P.world(ref, [o["xy"]])[0]
+            d = math.hypot(ox - cx, oy - cy)
+            # a neighbour BESIDE the pin fences it; one in line with its axis (a resistor's other
+            # land) does not -- the escape runs away from it
+            if abs((ox - cx) * ux + (oy - cy) * uy) > abs(-(ox - cx) * uy + (oy - cy) * ux):
+                continue
+            ohw = min(o["size"]) / 2.0
+            g_ = d - half_w - ohw
+            if gap is None or g_ < gap:
+                gap, pitch = g_, d
+        if gap is None or gap >= 2 * zc:
+            continue
+        # the full 2 x pitch the gate exempts (less 0.05): at +0.3 past the neighbours' clearance the
+        # fill still met U221.7/.8's stubs in a 0.34 mm funnel between the row's end pins (esc_pre4)
+        beyond = max(min(math.sqrt(max(zc * zc - max(gap, 0.0) ** 2, 0.0)) + 0.3, 2.0 * pitch),
+                     2.0 * pitch - 0.05)
+
+        # the stub's run beyond the pad must clear every other-net pad of the part (0.2): the
+        # target-facing end of U221.7 ran across U221.9, its exposed GND pad (esc_pre3)
+        def _clear(sx, sy):
+            for o in p["pads"]:
+                if not o["num"] or o["net"] == q["net"]:
+                    continue
+                ox, oy = P.world(ref, [o["xy"]])[0]
+                oa = math.radians(P.at(ref)[2] + float(o.get("rot") or 0.0))
+                oc, os_ = math.cos(oa), math.sin(oa)
+                for s_ in np.linspace(half_len, half_len + beyond, 8):
+                    qx, qy = cx + sx * s_ - ox, cy + sy * s_ - oy
+                    lx, ly = abs(qx * oc + qy * os_), abs(-qx * os_ + qy * oc)
+                    if math.hypot(max(lx - o["size"][0] / 2.0, 0.0),
+                                  max(ly - o["size"][1] / 2.0, 0.0)) < half_w + 0.2:
+                        return False
+            return True
+        ends_ = [(sx, sy) for sx, sy in ((ux, uy), (-ux, -uy)) if _clear(sx, sy)]
+        if not ends_:
+            continue
+        if band:
+            # the end the drawn band actually reaches: VIN_CM5's band came round to U205.7's far
+            # end, the stub pointed at F201.2, and the two never met (esc_pre10)
+            from matplotlib.path import Path as _Pth
+            bp = _Pth(band)
+
+            def _miss(sx, sy):
+                tx_, ty_ = cx + sx * (half_len + beyond), cy + sy * (half_len + beyond)
+                if bp.contains_point((tx_, ty_)):
+                    return 0.0
+                return min(math.hypot(tx_ - bx_, ty_ - by_) for bx_, by_ in band)
+            ends_.sort(key=lambda e2: _miss(*e2))
+        ux, uy = ends_[0]
+        x1, y1 = cx + ux * (half_len + beyond), cy + uy * (half_len + beyond)
+        out.append(dict(key=key, net=rule["net"], layer=pin_layer, width=round(2 * half_w, 3),
+                        pts=[[round(cx, 3), round(cy, 3)], [round(x1, 3), round(y1, 3)]],
+                        pitch=round(pitch, 3), beyond=round(beyond, 3)))
+    return out
 
 
 def _simplify(pts, tol):
@@ -1818,6 +2081,17 @@ def _simplify(pts, tol):
             keep.add(i + 1 + k)
             stack += [(i, i + 1 + k), (i + 1 + k, j)]
     return [tuple(a[k]) for k in sorted(keep)]
+
+
+def design_dt(notes):
+    """The board's design temperature rise for copper sizing: quality.temp_rise_c, else 10 C.
+
+    ⚠ THE POURS SIZED AT 10 C WHATEVER THE BOARD SAID (brain_board rPS_t1, 2026-11-20): the
+    brain moved to a 20 C design rise (BRAIN_POWER_SIZING), the router and the gate read it
+    from quality.temp_rise_c, but width_for's 10 C default sized every pour band and every
+    land's via array -- a 6.5 A land asked 4 barrels for 2.61 mm where 2.61 / 0.67 is 4 but
+    3.97 / 0.67 is 6, and the bands drew wider than the layer had room for."""
+    return float(((notes or {}).get("quality") or {}).get("temp_rise_c") or 10.0)
 
 
 def width_for(amps, dT=10.0, oz=1.0, inner=False, min_mm=0.2):
@@ -1871,7 +2145,7 @@ def auto_pour(rules, parts, notes=None):
             if len(set(pp)) >= 2:
                 along = sorted(set(pp))
             layer = (a.get("layers_by_net") or {}).get(r["net"], a["layer"])
-            w = float(a.get("width_mm") or max(3.0, width_for(float(r["amps"]))))
+            w = float(a.get("width_mm") or max(3.0, width_for(float(r["amps"]), design_dt(notes))))
             # ⚠ THE BAND LOSES ITS FILL CLEARANCE ON EACH SIDE (brain_board mV0, 2026-11-16):
             # 5 A bands drawn 3.0 mm (IPC 2.77) filled 1.1-2.4 mm wide where other nets'
             # escapes ran along them -- 0.5 mm of zone clearance off each side took the IPC
@@ -1881,7 +2155,7 @@ def auto_pour(rules, parts, notes=None):
                 clr = float((notes or {}).get("zone_clearance") or 0.5)
                 # outer-layer IPC as above, on every layer: inner IPC for 10 A is 18.8 mm, a
                 # plane not a band (In2's 10 A bands closed at 7.2)
-                w = max(w, round(math.ceil((width_for(float(r["amps"])) + 2 * clr) / 0.05 - 1e-9) * 0.05, 2))
+                w = max(w, round(math.ceil((width_for(float(r["amps"]), design_dt(notes)) + 2 * clr) / 0.05 - 1e-9) * 0.05, 2))
             out.append(dict(kind="pour", net=r["net"], layer=layer, along=along, width_mm=w,
                             why="auto_pour: %s at %.1f A -- %s" % (r["net"], float(r["amps"]), r["why"]),
                             src=r.get("src", ""), hard=False, auto_amps=float(r["amps"]),

@@ -96,6 +96,7 @@ class Net:
         self.via_mult = 1.0     # a matched pair's vias cost more (its via budget)
         self.partner = None     # the other net of a pair, routed right after it
         self.layers_only = None # a same_layer pair's allowed routing layers (indices)
+        self.layers_hard = False  # layers_only from notes["net_layers"]: never relaxed
         self.same_layer = False # in a same_layer match group
         self.merge = None       # (x, y, r): a pad-merge connector's circle (match merge_at)
         self.run_layers = None  # a same_layer pair's layers OUTSIDE its merge circle
@@ -318,6 +319,12 @@ class Router(CoupledMixin):
             self.nets.sort(key=lambda n: ((n.bbox[1] - n.bbox[0]) + (n.bbox[3] - n.bbox[2]), n.name))
         # matched groups (USB pairs): vias priced to their budget, the two routed back to back
         by = {n.name: n for n in self.nets}
+        # notes["net_layers"]: a net kept to these layers whatever happens (model.net_layers)
+        _lid = {n_: k for k, n_ in enumerate(m.route_layers)}
+        for _nm, _lays in (getattr(m, "net_layers", None) or {}).items():
+            _keep = {_lid[L_] for L_ in _lays if L_ in _lid}
+            if _nm in by and _keep:
+                by[_nm].layers_only, by[_nm].layers_hard = _keep, True
         for g in m.notes.get('match', ()) or ():
             names = [x for x in g.get('nets', ()) if x in by]
             for x in names:
@@ -936,7 +943,7 @@ class Router(CoupledMixin):
         fd = np.where(np.isin(m.n1[sl], own_ids) if own_ids else m.n1[sl] == nid, m.d2[sl], m.d1[sl])
         legal = fd >= net.width / 2.0 + m.clear + m.margin
         legal &= (m.edge[i0:i1, j0:j1] >= net.width / 2.0 + m.edge_clear + m.margin)[None]
-        allowed = None if net.relaxed else net.layers_only
+        allowed = net.layers_only if net.layers_hard else (None if net.relaxed else net.layers_only)
         # ⚠ WITH NO COPPER OF ITS OWN, A same_layer PAIR'S SECOND NET FOLLOWS THE FIRST
         # (optical USB_HS, 2026-11-08: layout could not lay the pair on this placement, so
         # there was nothing to key off, and DP took B.Cu while DM stayed on F.Cu).
@@ -1127,6 +1134,22 @@ class Router(CoupledMixin):
             neck_ok &= lane[0]
             np.multiply(cell, self.BAND_COST, out=cell, where=lane[1])
         cell[~(legal | neck_ok)] = np.inf
+        if getattr(m, "frozen_any", False):
+            # a frozen power band is a wall to every other net (model.frozen_net)
+            fz = m.frozen_net[sl]
+            fz_ban = (fz != 0) & (fz != nid)
+            vz_ban = None
+            if getattr(m, "frozen_d", None) is not None:
+                # grown by the foreign copper's reach (model.frozen_d): a track's half width,
+                # a via's radius, plus the band's own zone clearance
+                fd_, fn_ = m.frozen_d[sl], m.frozen_nn[sl]
+                zc_ = m.frozen_zclr[fn_]
+                foreign = (fn_ != 0) & (fn_ != nid)
+                fz_ban = fz_ban | (foreign & (fd_ < net.width / 2.0 + zc_))
+                vz_ban = (foreign & (fd_ < m.via_d / 2.0 + zc_)).any(axis=0)
+            cell[fz_ban] = np.inf
+        else:
+            fz_ban = None
         cell = cell.astype(np.float32, copy=False)
         walls = getattr(self, "_walls", None)
         if walls:
@@ -1167,6 +1190,10 @@ class Router(CoupledMixin):
         if lane is not None:
             vlegal = vlegal & lane[2]
         vcell = np.where(vlegal, (1.0 + hv) * (1.0 + pf * occv), np.inf).astype(np.float32)
+        if fz_ban is not None:
+            vcell[fz_ban.any(axis=0)] = np.inf       # a via is on every layer, the band's too
+            if vz_ban is not None:
+                vcell[vz_ban] = np.inf
         if walls:
             for o in walls:
                 if o is net or not o.n_v:
@@ -3106,6 +3133,11 @@ class Router(CoupledMixin):
         rtn = (self.NECK_W / 2.0 + self.wref / 2.0 + m.clear + m.margin) / m.pitch
         rtvn = (self.NECK_W / 2.0 + m.via_d / 2.0 + m.clear + m.margin) / m.pitch
         for q_, path in enumerate(net.paths):
+            # ⚠ an EMPTY path stamps nothing (brain_board esc9n, 2026-11-21): a +5V_RAW piece with
+            # "no way to the plane on the whole board" left [] in net.paths, R.max() of nothing
+            # raised, and the whole route died 9 s in with the traceback in a subprocess nobody read
+            if path.size == 0:
+                continue
             k = path // (H * W)
             r = path % (H * W)
             ii, jj = r // W, r % W
@@ -3708,7 +3740,7 @@ class Router(CoupledMixin):
                     # never came to relax it). A pair still sharing after RELAX_AFTER
                     # rounds is routed on any layer from then on, partner included.
                     if ((net.run_layers or net.layers_only or net.same_layer) and not net.relaxed
-                            and net.stuck >= self.RELAX_AFTER):
+                            and not net.layers_hard and net.stuck >= self.RELAX_AFTER):
                         for x in (net, net.partner) + tuple(o for o in self.nets if o.partner is net):
                             if x is not None and not x.relaxed:
                                 x.relaxed = True
