@@ -123,6 +123,13 @@ HINT = {
     "A21": "move the via out from under the part: re-home the signal to a pin on an open "
            "side, or take it out on the top layer. Declare the part's largest slug in "
            "notes['slug_max'] and layout fences the band for the router",
+    "A31": "add the IC's datasheet supply pins to notes supply_pins (or supply_exempt, with why)",
+    "A26": "declare the net in quality.power_paths (amps at the limit, cited), or in "
+           "quality.power_exempt with a reason a rule actually checks",
+    "A27": "seat the inductor / FET at the switch pins; a switch node stays on F.Cu, no via",
+    "A28": "put the HF cap on the IC's layer against its supply and ground pins",
+    "A29": "shorten the gate drive and keep it over unbroken ground",
+    "A30": "route the sense pair side by side; seat each net tie on its shunt land",
     "A22": "put a ground way between them: order the connector power, ground, data (and "
            "its mirror on a wider housing), the same on every lead of the family",
 }
@@ -200,6 +207,11 @@ class Ctx:
         else:
             self.power = {n for n in nets if POWER.match(n) and n not in self.grounds
                           and not NOT_CONNECTED.search(n)}
+        # ⚠ A DECLARED POWER PATH IS A POWER NET, WHATEVER ITS NAME (brain_board, 2026-11-21):
+        # VSTBY, U5's 5-20 V input, did not match POWER, so A2 never judged U5's VIN and C3, its
+        # HF bypass, sat 20 mm away unseen. A switch node carries power but feeds no supply pin.
+        self.power |= {p["net"] for p in self.q.get("power_paths", ()) or ()
+                       if not p.get("switch_node") and p["net"] in nets} - self.grounds
         self.power -= set(self.q.get("not_power", ()))
 
     def waived(self, rid, subject):
@@ -2283,6 +2295,32 @@ def _pin_rating(ctx, pv, ref, num):
             spec.get("src", ""), spec.get("why", ""), where, spec.get("accepted"))
 
 
+def _tie_parent(ctx, keys, net):
+    """(key, net, [tie refs]) when `net` reaches a declared net through net ties (NT*), else None.
+
+    A net tie is copper, not a part: the nets on its two sides are one conductor and reach one
+    voltage. A Kelvin rail (PB_VCC_K) is born of a tie on its parent (PB_VCC), and asking for
+    its net_volts again would be asking the same question twice -- and every future tie would
+    FAIL A16 until someone remembered to copy the line (lead 2026-11-21). Walked breadth-first,
+    so a chain of ties inherits from the nearest declared net."""
+    seen, todo = {net}, [(net, [])]
+    while todo:
+        n, path = todo.pop(0)
+        for ref, _num, _p in ctx.by_net.get(n, ()):
+            if not re.match(r"NT\d", ref):
+                continue
+            for q in ctx.fps[ref].Pads():
+                m = q.GetNetname()
+                if not m or m in seen:
+                    continue
+                seen.add(m)
+                k = _match_key(keys, m)
+                if k is not None:
+                    return k, m, path + [ref]
+                todo.append((m, path + [ref]))
+    return None
+
+
 ACCEPT_FIELDS = ("v", "by", "date", "why")
 
 
@@ -2329,6 +2367,11 @@ def pin_voltage_ratings(ctx):
         pads = sorted({(r, n) for r, n, _p in ctx.by_net[net]},
                       key=lambda t: _nat("%s.%s" % t))
         key = _match_key(list(decl), net)
+        how = None
+        if key is None:
+            tp = _tie_parent(ctx, list(decl), net)
+            if tp is not None:
+                key, how = tp[0], "inherited from %s through net tie %s" % (tp[1], "/".join(tp[2]))
         if key is None:
             if decl:
                 out.append((net, False,
@@ -2343,7 +2386,7 @@ def pin_voltage_ratings(ctx):
             out.append((net, False, "quality.net_volts[%r] does not give a number for net "
                                     "%s: %r" % (key, net, decl[key])))
             continue
-        how = "declared" if key == net else "declared by %r" % key
+        how = how or ("declared" if key == net else "declared by %r" % key)
         if max(v, peak) <= 0.0:
             out.append((net, True, "%s at %.3g V: nothing to exceed, so its %d pin(s) are "
                                    "not graded (%s)" % (net, v, len(pads), how)))
@@ -2351,6 +2394,8 @@ def pin_voltage_ratings(ctx):
         out.append((net, True, "%s: %.4g V%s (%s)"
                     % (net, v, " steady, %.4g V transient" % peak if peak != v else "", how)))
         for ref, num in pads:
+            if re.match(r"NT\d", ref):
+                continue            # a net tie is copper (see _tie_parent): no part to rate
             priced += 1
             sub = "%s.%s" % (ref, num)
             part = ctx.fps[ref].GetValue() or ref
@@ -3070,6 +3115,278 @@ def isolation_barrier(ctx):
         rows.insert(0, (dom_gnd, True, "isolated: %d net(s) reached from %s only through %s"
                         % (len(domain), dom_gnd, ", ".join(sorted(barrier)))))
     return rows
+
+
+# ── A26-A30: power coverage, switch nodes, hot loops, gate drives, Kelvin sense pairs ──
+# (lead 2026-11-21, brain_board esc10). The switch nodes of all three converters were never in
+# power_paths: SW5_1 ran 20.7 mm of 0.2 mm track through In2, SW5_2 never routed, and nothing
+# said so for twenty arms -- A1 only judges the paths it is given.
+_SMALL_Q = re.compile(r"SOT-23|SOT-323|SOT-523|SC-70|SOT-883|SOT-363|SOT-563", re.I)
+_SHUNT = re.compile(r"^\s*\d+(\.\d+)?\s*m(R|Ohm|Ω)", re.I)
+_PWR_NAME = re.compile(r"^\+|VBUS|^VIN|VOUT|^V5|^V3|^VCC|^VDD|VSTBY|24V|_VCC$|^V\d", re.I)
+
+
+def _power_parts_on(ctx, net):
+    hits = set()
+    for ref, num, _p in ctx.by_net.get(net, ()):
+        fp = ctx.fps[ref]
+        fpid = fp.GetFPIDAsString()
+        if re.match(r"(L|FB)\d", ref):
+            hits.add("inductor %s" % ref)
+        if (re.match(r"Q\d", ref) and not _SMALL_Q.search(fpid) and "GATE" not in net.upper()
+                and not net.upper().endswith("_G")):
+            hits.add("power FET %s.%s" % (ref, num))
+        if re.match(r"R\d", ref) and _SHUNT.match(fp.GetValue() or ""):
+            hits.add("shunt %s (%s)" % (ref, fp.GetValue()))
+        if re.match(r"F\d", ref):
+            hits.add("fuse %s" % ref)
+        if re.match(r"J\d", ref) and _PWR_NAME.search(net):
+            hits.add("connector power pin %s.%s" % (ref, num))
+    return sorted(hits)
+
+
+@rule("A26")
+def power_coverage(ctx):
+    """Every net on an inductor or bead, a power FET's drain / source, a current shunt, a fuse or
+    a connector power pin is in quality.power_paths, or in quality.power_exempt with a reason."""
+    covered = {p["net"] for p in ctx.q.get("power_paths", ()) or ()}
+    exempt = dict(ctx.q.get("power_exempt", {}) or {})
+    out = []
+    for net in sorted(ctx.by_net):
+        if net in ctx.grounds or NOT_CONNECTED.search(net):
+            continue
+        hits = _power_parts_on(ctx, net)
+        if not hits:
+            continue
+        if net in covered:
+            out.append((net, True, "%s: in power_paths (%s)" % (net, "; ".join(hits[:3]))))
+        elif net in exempt:
+            ok = bool(str(exempt[net]).strip())
+            out.append((net, ok, "%s: exempt -- %s" % (net, exempt[net] or "NO REASON GIVEN")))
+        else:
+            out.append((net, False, "%s touches %s and is not in power_paths: nothing sizes its "
+                                    "copper. Declare the path (amps at the limit, cited) or exempt "
+                                    "it with a reason a rule checks" % (net, "; ".join(hits[:4]))))
+    return out
+
+
+def _net_items(ctx, net):
+    tr, vi = [], []
+    for t in ctx.board.GetTracks():
+        if t.GetNetname() == net:
+            (vi if t.GetClass() == "PCB_VIA" else tr).append(t)
+    return tr, vi
+
+
+def _pad_gap_mm(a, b):
+    """Edge-to-edge distance between two pads on F.Cu (mm), to 0.01."""
+    sa = a.GetEffectiveShape(pcbnew.F_Cu)
+    sb = b.GetEffectiveShape(pcbnew.F_Cu)
+    if sa.Collide(sb, 0):
+        return 0.0
+    lo, hi = 0, pcbnew.FromMM(100)
+    while hi - lo > pcbnew.FromMM(0.01):
+        mid = (lo + hi) // 2
+        if sa.Collide(sb, mid):
+            hi = mid
+        else:
+            lo = mid
+    return MM(hi)
+
+
+@rule("A27")
+def switch_nodes(ctx):
+    """A declared switch node (power_paths switch_node) stays on F.Cu with no via, and its ends
+    sit within quality.switch_node_mm (default 5) of each other, edge to edge: a switch node is
+    an EMI antenna, so a long one is wrong even at full width (lead 2026-11-21)."""
+    lim = float(ctx.q.get("switch_node_mm", 5.0))
+    out, seen = [], set()
+    for p in ctx.q.get("power_paths", ()) or ():
+        if not p.get("switch_node"):
+            continue
+        net = p["net"]
+        a = ctx.pads.get(p["from"])
+        for t in p["to"]:
+            b = ctx.pads.get(t)
+            if a is None or b is None:
+                out.append((net, False, "%s: %s or %s is not a pad on this board" % (net, p["from"], t)))
+                continue
+            g = _pad_gap_mm(a, b)
+            out.append(("%s %s>%s" % (net, p["from"], t), g <= lim,
+                        "%s %s > %s: %.1f mm edge to edge%s" % (
+                            net, p["from"], t, g,
+                            "" if g <= lim else " -- over %.0f mm: seat the inductor / FET at the pin" % lim)))
+        if net in seen:
+            continue
+        seen.add(net)
+        tr, vi = _net_items(ctx, net)
+        off = sorted({ctx.board.GetLayerName(t.GetLayer()) for t in tr} - {"F.Cu"})
+        zl = sorted({ctx.board.GetLayerName(z.GetFirstLayer()) for z in ctx.board.Zones()
+                     if z.GetNetname() == net and not z.GetIsRuleArea()} - {"F.Cu"})
+        ok = not vi and not off and not zl
+        out.append((net + " layers", ok, "%s: %d via(s), copper on %s%s" % (
+            net, len(vi), ", ".join(["F.Cu"] + off + zl),
+            "" if ok else " -- a switch node stays on the parts' layer with no via")))
+    return out
+
+
+@rule("A28")
+def hot_loops(ctx):
+    """quality.hot_loops [{name, cap, pins: [supply pin, ground pin], max_mm}]: the converter's
+    input / output HF cap sits on the IC's layer with each land within max_mm (default 2) of its
+    pin, edge to edge -- the hot loop as tight as the switch node (TI SLVSGT7 8.4.1)."""
+    out = []
+    for h in ctx.q.get("hot_loops", ()) or ():
+        cap, lim = h["cap"], float(h.get("max_mm", 2.0))
+        fp = ctx.fps.get(cap)
+        pins = [ctx.pads.get(x) for x in h["pins"]]
+        if fp is None or any(p_ is None for p_ in pins):
+            out.append((h["name"], False, "%s: %s or a pin of %s is not on this board"
+                        % (h["name"], cap, h["pins"])))
+            continue
+        same = fp.GetLayer() == ctx.fps[h["pins"][0].split(".")[0]].GetLayer()
+        worst = []
+        for pin in pins:
+            lands = [q for q in fp.Pads() if q.GetNetname() == pin.GetNetname()]
+            # a pin named for its net: any pad of that part on the net is the pin (a FET's three
+            # source pins are one terminal -- boost loop read Q208.1 at 4.2 with Q208.3 at 1.7)
+            sib = [q for q in pin.GetParentFootprint().Pads() if q.GetNetname() == pin.GetNetname()]
+            worst.append(min((_pad_gap_mm(q, t) for q in lands for t in sib), default=99.0))
+        ok = same and max(worst) <= lim
+        out.append((h["name"], ok, "%s: %s %s, lands %s mm from %s%s" % (
+            h["name"], cap, "same layer" if same else "OTHER LAYER", "/".join("%.1f" % w for w in worst),
+            "/".join(h["pins"]), "" if ok else " -- over %.1f mm or off the IC's layer" % lim)))
+    return out
+
+
+def _off_plane(ctx, pts, net, layer):
+    L = ctx.board.GetLayerID(layer)
+    fills = [z.GetFilledPolysList(L) for z in ctx.board.Zones()
+             if z.GetNetname() == net and z.IsOnLayer(L) and not z.GetIsRuleArea()]
+    return sum(1 for x, y in pts
+               if not any(f.Contains(pcbnew.VECTOR2I(int(x), int(y))) for f in fills))
+
+
+def _samples(tracks, step):
+    pts = []
+    for t in tracks:
+        s, e = t.GetStart(), t.GetEnd()
+        n = max(1, int(t.GetLength() / step))
+        pts += [(s.x + (e.x - s.x) * k / n, s.y + (e.y - s.y) * k / n) for k in range(n + 1)]
+    return pts
+
+
+@rule("A29")
+def gate_drives(ctx):
+    """quality.gate_drives [{net, driver, gate, max_mm, return, plane_layer}]: the drive's copper
+    is at most max_mm long and every point of it lies over an unbroken `return` plane (default
+    GND on In1.Cu) -- what makes a gate drive's power_exempt true (lead 2026-11-21)."""
+    out = []
+    for g in ctx.q.get("gate_drives", ()) or ():
+        net, lim = g["net"], float(g.get("max_mm", 10.0))
+        tr, vi = _net_items(ctx, net)
+        a, b = ctx.pads.get(g["driver"]), ctx.pads.get(g["gate"])
+        if a is None or b is None:
+            out.append((net, False, "%s: %s or %s is not a pad" % (net, g["driver"], g["gate"])))
+            continue
+        span = max(sum(MM(t.GetLength()) for t in tr), _pad_gap_mm(a, b))
+        rn, pl = g.get("return", "GND"), g.get("plane_layer", "In1.Cu")
+        # ⚠ A DRIVE'S OWN VIA CUTS ITS OWN HOLE IN THE PLANE (esc12_pre1, 2026-11-21): BST_HO's two vias
+        # read 17 of 52 points "off GND" -- every one inside the antipad In1 must leave round the barrel,
+        # so no drive with a via could pass. Points within the antipad (via radius + `antipad_mm`, 0.6)
+        # of the drive's own vias are not judged; instead each such via needs a `return` via within
+        # `return_via_mm` (1.5), the return current's way to the plane (lead 2026-11-22).
+        ap = pcbnew.FromMM(float(g.get("antipad_mm", 0.6)))
+        vpos = [(v.GetPosition(), v.GetWidth(pcbnew.F_Cu) // 2) for v in vi]
+        pts = [(x, y) for x, y in _samples(tr, pcbnew.FromMM(0.25))
+               if not any(math.hypot(x - c.x, y - c.y) <= r + ap for c, r in vpos)]
+        bad = _off_plane(ctx, pts, rn, pl)
+        rlim = float(g.get("return_via_mm", 1.5))
+        rvias = [t.GetPosition() for t in ctx.board.GetTracks() if t.GetClass() == "PCB_VIA" and t.GetNetname() == rn]
+        far = [MM(min((math.hypot(c.x - q.x, c.y - q.y) for q in rvias), default=1e9)) for c, _r in vpos]
+        far = [d for d in far if d > rlim]
+        joined = bool(tr) or a.GetEffectiveShape(pcbnew.F_Cu).Collide(b.GetEffectiveShape(pcbnew.F_Cu), 0)
+        ok = joined and span <= lim and bad == 0 and not far
+        out.append((net, ok, "%s %s > %s: %.1f mm, %d via(s)%s, %d of %d point(s) off %s on %s%s" % (
+            net, g["driver"], g["gate"], span, len(vi),
+            (" -- %d without a %s via within %.1f mm" % (len(far), rn, rlim)) if far else
+            (" each with a %s via within %.1f mm" % (rn, rlim) if vi else ""),
+            bad, len(pts), rn, pl, "" if ok else " -- keep the drive short and over unbroken ground")))
+    return out
+
+
+@rule("A30")
+def sense_pairs(ctx):
+    """quality.sense_pairs [{nets: [a, b], max_sep_mm, end_mm}]: the two rails of a Kelvin sense
+    pair run side by side -- every point of each rail, beyond end_mm of a pad, has the other rail
+    within max_sep_mm (centre to centre) -- and each rail's net tie sits ON the shunt: its other
+    pad overlaps a shunt land (an R valued in milliohms) of that pad's net (lead 2026-11-21)."""
+    out = []
+    for sp in ctx.q.get("sense_pairs", ()) or ():
+        na, nb = sp["nets"]
+        lim = float(sp.get("max_sep_mm", 0.5))
+        end = pcbnew.FromMM(float(sp.get("end_mm", 1.2)))
+        ta, _ = _net_items(ctx, na)
+        tb, _ = _net_items(ctx, nb)
+        if not ta or not tb:
+            out.append(("%s/%s" % (na, nb), False, "%s/%s: a rail has no tracks (open?)" % (na, nb)))
+        else:
+            pads = [p for n in (na, nb) for _r, _n, p in ctx.by_net.get(n, ())]
+            vias = [v for n in (na, nb) for v in _net_items(ctx, n)[1]]
+            worst = 0.0
+            for mine, other in ((ta, tb), (tb, ta)):
+                for x, y in _samples(mine, pcbnew.FromMM(0.1)):
+                    v = pcbnew.VECTOR2I(int(x), int(y))
+                    if any(p.GetEffectiveShape(pcbnew.F_Cu).Collide(v, end) for p in pads):
+                        continue
+                    if any((v - w.GetPosition()).EuclideanNorm() < end for w in vias):
+                        continue            # a layer change: the rails take their vias side by side
+                    d = min(pcbnew.SEG(t.GetStart(), t.GetEnd()).Distance(v) for t in other)
+                    worst = max(worst, MM(d))
+            ok = worst <= lim
+            out.append(("%s/%s" % (na, nb), ok, "%s/%s: rails at most %.2f mm apart%s" % (
+                na, nb, worst, "" if ok else " -- over %.2f: route the pair side by side" % lim)))
+        for n in (na, nb):
+            for r, _num, _p in ctx.by_net.get(n, ()):
+                if not r.startswith("NT"):
+                    continue
+                on = False
+                for q in ctx.fps[r].Pads():
+                    if q.GetNetname() == n:
+                        continue
+                    for r2, _n2, sp_ in ctx.by_net.get(q.GetNetname(), ()):
+                        if (re.match(r"R\d", r2) and _SHUNT.match(ctx.fps[r2].GetValue() or "")
+                                and q.GetEffectiveShape(pcbnew.F_Cu).Collide(
+                                    sp_.GetEffectiveShape(pcbnew.F_Cu), 0)):
+                            on = True
+                out.append(("%s tie" % n, on, "%s: tie %s %s a shunt land" % (
+                    n, r, "on" if on else "NOT ON -- the sense reads the pour, not the shunt")))
+    return out
+
+
+@rule("A31")
+def supply_pin_coverage(ctx):
+    """Every IC (U) with a pin on a power net has a notes supply_pins entry naming its datasheet
+    supply pins, or quality.supply_exempt {ref: reason} (lead 2026-11-21: U5, the board's 4 A
+    logic buck, had none, so A2 judged its VIN by any cap within 5 mm and C3, its HF bypass, sat
+    20 mm away unseen)."""
+    sp = ctx.notes.get("supply_pins") or {}
+    ex = ctx.q.get("supply_exempt", {}) or {}
+    out = []
+    ics = collections.defaultdict(set)
+    for net in ctx.power:
+        for ref, num, _p in ctx.by_net.get(net, ()):
+            if _prefix(ref) == "U":
+                ics[ref].add("%s(%s)" % (num, net))
+    for ref in sorted(ics, key=lambda r: (len(r), r)):
+        if ref in sp:
+            out.append((ref, True, "%s: supply pins %s" % (ref, "/".join(sorted(map(str, sp[ref]))))))
+        elif ex.get(ref):
+            out.append((ref, True, "%s: exempt -- %s" % (ref, ex[ref])))
+        else:
+            out.append((ref, False, "%s has pins on power nets (%s) but no supply_pins entry: A2 "
+                                    "cannot tell its supplies from its straps" % (ref, ", ".join(sorted(ics[ref])[:6]))))
+    return out
 
 
 @rule("A24")

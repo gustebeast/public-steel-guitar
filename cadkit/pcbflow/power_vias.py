@@ -34,6 +34,7 @@ import sys
 import pcbnew
 
 import stable_fill  # noqa: E402  (PCBFLOW_STABLE_FILL)
+import frozen_wall  # noqa: E402  (the one frozen-band wall for post-route copper)
 import wx                                       # noqa: E402  (KiCad's python ships it)
 wx.DisableAsserts()                             # NO MODAL DIALOGS IN A BUILD STEP -- see route.py
 
@@ -98,6 +99,7 @@ def plan(stem, board):
     keep = _keepouts(board)
     outline = pcbnew.SHAPE_POLY_SET()
     board.GetBoardPolygonOutlines(outline, False)
+    wall = frozen_wall.FrozenWall(board)    # extra vias stay out of other nets' frozen bands
 
     def clear_of(nc_a, nc_b):
         na, nb = board.FindNet(nc_a), board.FindNet(nc_b)
@@ -233,6 +235,8 @@ def plan(stem, board):
             for poly, layers in keep:
                 if poly.Collide(circ, 0):
                     return refuse("a keep-out")
+            if wall and not wall.via_ok_mm(x, y, nc, vr):
+                return refuse("another net's frozen band")
             return True
 
         for _d, x, y in cands:

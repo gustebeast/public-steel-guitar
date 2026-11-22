@@ -152,6 +152,7 @@ def delta_run(r, parent, iters=40, pf0=None, budget_s=900, log=None):
             pf0 = 0.5
     log("rescore: %d nets kept from the parent, %d to route (%d plane nets keep %d joins)"
         % (len(kept), len(changed), len(partial), sum(len(n.keep_paths or ()) for n in partial)))
+    r.frozen_audit("close pass, kept from the parent")
     # ⚠ A PAIR THE PARENT COULD NOT FINISH IS LOCKED, A CLEAN ONE IS NOT (2026-11-10).
     # Left free, output_panel's THRU_DP/DM -- faulted in the parent -- was dragged back into
     # the negotiation by a resistor moved 0.6 mm and its finish ran again: 140 s of a 210 s
@@ -167,6 +168,7 @@ def delta_run(r, parent, iters=40, pf0=None, budget_s=900, log=None):
             if LOCK_PAIRS else set())
     todo, pf = r._rounds(changed, pf0, iters, budget_s, locked=lock)
     r._pf_last = pf
+    r.frozen_audit("close pass, after the rounds")
     todo = r._priority_repair(todo, pf)
     r._rip(todo)
     # the finish looks at what changed: a pair kept whole from the parent is as it was
@@ -182,6 +184,7 @@ def delta_run(r, parent, iters=40, pf0=None, budget_s=900, log=None):
         r._finish_pairs()
         r._fallback_pairs()
         r._pour_islands()
+        r.frozen_audit("close pass, after the finish and island pass")
         r._no_shorts()
     finally:
         r._only = None

@@ -34,6 +34,7 @@ import sys
 
 import pcbnew
 import wx                                       # noqa: E402  (KiCad's python ships it)
+import frozen_wall  # noqa: E402  (the one frozen-band wall for post-route copper)
 wx.DisableAsserts()                             # NO MODAL DIALOGS IN A BUILD STEP -- see route.py
 
 MM = pcbnew.ToMM
@@ -58,11 +59,14 @@ def _lands(board, margin_mm):
     return out
 
 
-def _clear(board, x, y, via, lands, keep):
+def _clear(board, x, y, via, lands, keep, wall=None):
     """Is a via centred at (x, y) clear of every land, and no closer to foreign copper
     than `keep`? Measured against pads and tracks of OTHER nets, like the stitcher."""
     pt = pcbnew.VECTOR2I(int(x), int(y))
     r = via.GetWidth(pcbnew.F_Cu) / 2 + keep
+    # a moved via stays out of other nets' frozen bands (frozen_wall)
+    if wall and not wall.via_ok(x, y, via.GetNetCode(), via.GetWidth(pcbnew.F_Cu) / 2):
+        return False
     # ⚠ CLEARING THE LAND IS NOT ENOUGH; THERE HAS TO BE A MASK DAM BETWEEN THEM. A via
     # whose edge stops 0.1 mm from the pad's edge leaves no room for a strip of solder
     # mask, so the fab prints none, and the joint simply flows down the barrel sideways
@@ -125,6 +129,7 @@ def main(stem):
     keep_mm = float(q.get("via_land_keepout", 0.25))
     cap_mm = float(q.get("via_land_move_max", 1.5))
     board = pcbnew.LoadBoard(pcb)
+    wall = frozen_wall.FrozenWall(board)
 
     vias = [t for t in board.GetTracks() if t.GetClass() == "PCB_VIA"]
     if not vias:
@@ -161,7 +166,7 @@ def main(stem):
                 a = 2 * math.pi * k / 24.0
                 x = vp.x + ring * step * math.cos(a)
                 y = vp.y + ring * step * math.sin(a)
-                if _clear(board, x, y, v, lands, FM(keep_mm)):
+                if _clear(board, x, y, v, lands, FM(keep_mm), wall):
                     best = (int(x), int(y), MM(int(ring * step)))
                     break
             if best:

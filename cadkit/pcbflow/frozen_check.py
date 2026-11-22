@@ -22,6 +22,14 @@ not a thin power-gate reading two hours later.
 (an 11.8 mm +24V stub across VIN_SW, rPS_e2). Both read PASS/WARN on the unrouted board and
 OPEN at the power gate after the route. Two writers, two holes: there will be a third.
 
+THE LOST LINE NAMES THE CUT, NOT THE CROWD (lead 2026-11-22). Everything inside the grown outline
+is not the cut: on rPS_11a4 the line listed +24V_RIB tracks and five vias beside the three GND repair
+tracks that alone split +24V_LED, and the vias read as the router's fault. A lost band is re-judged on
+fresh loads of the board with intruders taken out (_blame): an item is a CUT when, left alone among
+the intruders, the band is still lost, or when taking it alone out restores the band; if none does
+alone but all together do, they are named as one joint cut. The rest go on an "also inside" line.
+Only a lost band pays for this (a load and one band refill per intruder, at most MAX_BLAME).
+
 PCBFLOW_FROZEN_CHECK=warn reports a lost band and goes on (replaying an old board as it was);
 =0 skips the check. A board with no frozen bands is never touched.
 """
@@ -38,6 +46,8 @@ LOSS_MM2 = 0.3         # ... and at least this much, before it is LOST (refill n
                        # on brain_board: k1/e3 pregate-vs-pregate refills agree to 0.0 mm2)
 ZONE_CLR_DEFAULT = 0.5
 MAX_NAMED = 10         # intruders named per lost band (the rest counted)
+MAX_BLAME = 24         # intruders re-judged one by one (beyond it, the cut is not bisected)
+_KEEP = []             # Removed items' proxies outlive their boards (finish._REMOVED says why)
 
 
 def _mm2(v):
@@ -151,6 +161,40 @@ def _intruders(board, z):
     return hit
 
 
+def _bad(b, m):
+    d = m["area"] - b["area"]
+    pct = 100.0 * d / b["area"] if b["area"] else 0.0
+    return m["pieces"] > b["pieces"] or (-d > LOSS_MM2 and -pct > LOSS_PCT)
+
+
+def _judge(stem, key, b, drop):
+    """Is the band `key` still lost on a fresh load of the board with the `drop` uuids taken out?"""
+    board = pcbnew.LoadBoard(stem + ".kicad_pcb")
+    _KEEP.append(board)
+    for t in list(board.GetTracks()):
+        if t.m_Uuid.AsString() in drop:
+            _KEEP.append(t)
+            board.Remove(t)
+    z = dict(_bands(board)).get(key)
+    if z is None:
+        return None
+    _fill(board, [z])
+    return _bad(b, _measure(board, z, b.get("polys")))
+
+
+def _blame(stem, key, b, uuids):
+    """(cuts, joint): the intruders that cut the band (see the module note), and whether the cut is
+    only the set together. ([], False) when taking them ALL out does not restore it."""
+    allu = set(uuids)
+    if _judge(stem, key, b, allu):
+        return [], False
+    cuts = []
+    for u in uuids:
+        if _judge(stem, key, b, allu - {u}) or not _judge(stem, key, b, {u}):
+            cuts.append(u)
+    return (cuts, False) if cuts else (list(uuids), True)
+
+
 def main(stem, stage):
     mode = os.environ.get("PCBFLOW_FROZEN_CHECK", "1")
     if mode == "0":
@@ -183,22 +227,35 @@ def main(stem, stage):
             continue
         d = m["area"] - b["area"]
         pct = 100.0 * d / b["area"] if b["area"] else 0.0
-        bad = m["pieces"] > b["pieces"] or (-d > LOSS_MM2 and -pct > LOSS_PCT)
+        bad = _bad(b, m)
         print("frozen_check %s: %s %s pieces %d -> %d, area %.1f -> %.1f mm2 (%+.1f %%)%s"
               % (stage, n, ly, b["pieces"], m["pieces"], b["area"], m["area"], pct, "  LOST" if bad else ""))
         if bad:
-            new = sorted((w for u, w in m["intruders"].items() if u not in b.get("intruders", {})),
-                         key=lambda w: (not w.startswith(("via", "pour")), w))   # vias, pours first: one is a whole cut
-            lost.append((n, ly, b, m, new))
+            newu = [u for u in m["intruders"] if u not in b.get("intruders", {})]
+            order = lambda w: (not w.startswith(("via", "pour")), w)   # vias, pours first: one is a whole cut
+            tracks = [u for u in newu if not u.startswith("zone:")]
+            cuts, joint, blamed = [], False, False
+            if tracks and len(tracks) <= MAX_BLAME:
+                cuts, joint = _blame(stem, k, b, tracks)
+                blamed = True
+            named = sorted((m["intruders"][u] for u in cuts), key=order)
+            rest = sorted((m["intruders"][u] for u in newu if u not in cuts), key=order)
+            lost.append((n, ly, b, m, named, rest, joint, blamed))
     if not lost:
         return 0
-    for n, ly, b, m, new in lost:
-        print("  ⚠ FROZEN BAND LOST at %s: %s on %s, %d piece(s) %.1f mm2 -> %d piece(s) %s mm2; foreign copper "
-              "inside its grown outline: %s" % (stage, n, ly, b["pieces"], b["area"], m["pieces"],
-                                                " + ".join(str(a) for a in m["biggest"]),
-                                                ("; ".join(new[:MAX_NAMED]) + (" ... and %d more" % (len(new) - MAX_NAMED)
-                                                 if len(new) > MAX_NAMED else "")) if new
-                                                else "none -- a pad, not a track, via or outranking pour"))
+    def _list(xs):
+        return "; ".join(xs[:MAX_NAMED]) + (" ... and %d more" % (len(xs) - MAX_NAMED) if len(xs) > MAX_NAMED else "")
+    for n, ly, b, m, named, rest, joint, blamed in lost:
+        if named:
+            what = ("cut by %s%s" % ("these together (no one alone): " if joint else "", _list(named)))
+        elif blamed:
+            what = "no foreign track or via cuts it (all taken out, still lost) -- a pad or an outranking pour"
+        else:
+            what = "not bisected (%d intruders); inside its grown outline" % len(rest)
+        print("  ⚠ FROZEN BAND LOST at %s: %s on %s, %d piece(s) %.1f mm2 -> %d piece(s) %s mm2; %s"
+              % (stage, n, ly, b["pieces"], b["area"], m["pieces"], " + ".join(str(a) for a in m["biggest"]), what))
+        if rest:
+            print("      also inside its grown outline (not the cut): %s" % _list(rest))
     if mode == "warn":
         print("frozen_check %s: PCBFLOW_FROZEN_CHECK=warn -- going on" % stage)
         return 0

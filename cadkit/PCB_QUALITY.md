@@ -548,6 +548,10 @@ net's steady-state worst case fails. A pin whose rating is below the net's *tran
 case — a clamp, a hot-plug ring, an inductive kick — fails separately, because the two are
 different claims. A net with no declared voltage fails, a pin with no declared rating fails,
 and a board that declares nothing is told it cannot make a claim rather than being passed.
+A net with no entry of its own that is joined to a declared net through a net tie (`NT*`,
+walked through chains of ties) inherits that net's voltage: a tie is copper, so a Kelvin rail
+reaches what its parent reaches. Its own entry, when it has one, wins; with no declared net on
+the far side it fails as undeclared (`test_quality_a16_ties.py`).
 
 **Why.** Every other rule in this file compares the board with itself. This one compares it
 with the parts' datasheets, which is where the nominal voltage stops being the number that
@@ -934,6 +938,84 @@ by a 0 R are a perfectly well-formed board. (2026-11-13, the merged output board
 **Declaration.** `quality.isolation = {"ground": "AGND", "barrier": [refs], "moat_mm": 1.0,
 "creepage_mm": optional, "why": text}`. No declaration, no rows: other boards are untouched.
 A bridge is fixed, never waived.
+
+### A26 — Every power-carrying net is declared
+
+**Rule.** Every net that touches an inductor or bead, a power FET's drain or source, a
+current shunt (an R valued in milliohms), a fuse or a connector power pin is either in
+`quality.power_paths` or in `quality.power_exempt` with a non-empty reason. Anything else
+is a FAIL naming the parts it touches.
+
+**Why.** A1 only judges the paths it is told about; a power net nobody declared is a net
+nothing sizes, and the router lays it at the signal default. (2026-11-21, brain board: the
+switch nodes SW5_1 / SW5_2 / SW were missing from power_paths and ran 0.2 mm on In2.)
+
+**Declaration.** `power_exempt = {net: reason}` -- a gate drive or a sense line that is a
+power-part net by topology only. The reason should name the rule that does check it (A29,
+A30).
+
+### A27 — A switch node is short and stays on the parts' layer
+
+**Rule.** For every `power_paths` entry marked `switch_node`, each end pad sits within
+`quality.switch_node_mm` (default 5) of the `from` pad, edge to edge, and the net has no
+via and no copper (track or zone) off F.Cu.
+
+**Why.** A switch node swings the full input voltage at the switching frequency: its area
+is an antenna and its vias are inductance in the hot loop. Width alone does not make a long
+one right.
+
+**Declaration.** None. Seat the inductor / FET at the pin.
+
+### A28 — The HF cap closes the hot loop at the pins
+
+**Rule.** `quality.hot_loops = [{name, cap, pins: [supply pin, ground pin], max_mm}]`: the
+cap is on the IC's layer and each of its lands is within `max_mm` (default 2) of the pin on
+its net, edge to edge. Any pad of the pin's part on the same net counts as the pin (a FET's
+three source pins are one terminal).
+
+**Why.** The input (buck) or output (boost) HF cap and the switch form the loop that
+carries the edge current; its area sets the ringing and the radiated noise (TI SLVSGT7
+8.4.1). A cap 4 mm away is a cap in the schematic only.
+
+**Declaration.** None beyond the hot_loops list.
+
+### A29 — A gate drive is short and over unbroken ground
+
+**Rule.** `quality.gate_drives = [{net, driver, gate, max_mm, return, plane_layer}]`: the
+drive's copper (or the pad gap, whichever is longer) is at most `max_mm` (default 10), and
+every point of it, sampled each 0.25 mm, plus every via, lies inside the `return` net's fill
+(default GND) on `plane_layer` (default In1.Cu). An unrouted drive FAILs.
+A drive that changes layer cuts its own antipads in the plane: points within the via radius
+plus `antipad_mm` (0.6) of the drive's own vias are not judged, and each such via instead needs
+a `return`-net via within `return_via_mm` (1.5), the return current's way back to the plane
+(`test_quality_a29_vias.py`).
+
+**Why.** A gate drive is an exempt power net (A26): it carries amps for nanoseconds, so its
+width does not matter but its loop does. Short and over solid ground is the condition the
+exemption rests on.
+
+### A30 — Kelvin sense pairs run together and tie at the shunt
+
+**Rule.** `quality.sense_pairs = [{nets: [a, b], max_sep_mm, end_mm}]`: every point of each
+rail, beyond `end_mm` of any pad or via, has the other rail within `max_sep_mm` centre to
+centre (sampled each 0.1 mm), and each rail's net tie sits on the shunt -- its other pad
+overlaps a shunt land of that pad's net.
+
+**Why.** A current-sense pair measures millivolts across milliohms; any loop area between
+the rails picks up the switcher's field, and a tie off the land reads the copper's drop as
+current. (2026-11-20: the VBUS-side sense pins were routed to the pour, not the pad.)
+
+**Note.** At a 45° bend the outer corner sits at offset / cos 22.5°: 0.5 mm centres read
+0.54 there. Draw declared pairs at 0.45.
+
+### A31 — Every IC's supply pins are declared
+
+**Rule.** Every IC (`U`) with a pin on a power net has a `notes.supply_pins` entry naming
+its datasheet supply pins, or `quality.supply_exempt = {ref: reason}`.
+
+**Why.** A2 judges each supply pin's decoupling; without the list it reads any cap within
+5 mm as the pin's bypass. (2026-11-21: U5, the board's 4 A logic buck, had none, and C3, its
+HF bypass, sat 20 mm away unseen.)
 
 ## Manual checks
 

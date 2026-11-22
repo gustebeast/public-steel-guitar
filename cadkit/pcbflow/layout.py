@@ -31,6 +31,7 @@ import sys
 import pcbnew
 
 import stable_fill  # noqa: E402  (PCBFLOW_STABLE_FILL)
+import frozen_wall  # noqa: E402  (the one frozen-band wall for post-route copper)
 import wx
 # ⚠ NO MODAL DIALOGS IN A BUILD STEP. KiCad's Python is a wxWidgets application, and a
 # failed internal assertion pops a GUI alert -- "Do you want to stop the program?" -- and
@@ -1175,7 +1176,11 @@ def add_missing_vias(board, eps_mm=0.05, via_d=0.6, via_drill=0.3, clr=0.14):
                          (t.GetEnd().x, t.GetEnd().y),
                          t.GetWidth() / 2.0, t.GetNetname()))
 
+    wall = frozen_wall.FrozenWall(board)     # a via is walled by a band on any layer
+
     def clear(x, y, net):
+        if wall and not wall.via_ok(x, y, net, pcbnew.FromMM(via_d / 2.0)):
+            return False
         for bb, onet in pads:
             if onet == net:
                 continue
@@ -2066,13 +2071,8 @@ def _path_clear(board, a, z, net, layer, w, step_mm=0.1):
     # refill cut it -- VIN_SW OPEN on a board whose pregate read WARN 2.57. The band's OUTLINE is
     # the wall (its fill may not be poured yet), kept off by half the stub plus the zone's own
     # clearance -- the router's rule (router.model frozen_d).
-    frz = []
-    for zn in board.Zones():
-        if zn.GetIsRuleArea() or zn.GetZoneName() != "frozen" or zn.GetNetname() == net or not zn.IsOnLayer(layer):
-            continue
-        zc = zn.GetLocalClearance()
-        zc = zc.value() if hasattr(zc, "value") else zc
-        frz.append((zn.Outline(), int(w / 2 + (zc or pcbnew.FromMM(0.5)))))
+    # (frozen_wall.FrozenWall: the one wall every post-route writer asks)
+    frz = frozen_wall.FrozenWall(board)
     for i in range(n + 1):
         p = pcbnew.VECTOR2I(int(a.x + (z.x - a.x) * i / n),
                             int(a.y + (z.y - a.y) * i / n))
@@ -2080,7 +2080,7 @@ def _path_clear(board, a, z, net, layer, w, step_mm=0.1):
             return False
         if any(pd.HitTest(p, acc) for pd in pads):
             return False
-        if any(ol.Contains(p) or ol.Collide(p, r_) for ol, r_ in frz):
+        if frz and frz.hits(p.x, p.y, net, w / 2, layer):
             return False
     return True
 
@@ -2355,8 +2355,11 @@ def _via_on_piece(board, net, uuids, zs, via_d=0.6, drill=0.3, step_mm=0.05):
     holes += [(pd.GetPosition(), max(pd.GetDrillSizeX(), pd.GetDrillSizeY()))
               for m in board.GetFootprints() for pd in m.Pads() if pd.GetDrillSizeX() > 0 and _near(pd)]
     own = [(z, l) for z in zs for l in z.GetLayerSet().CuStack()]
+    wall = frozen_wall.FrozenWall(board)    # a fill test is not a band wall (frozen_wall)
 
     def _fits(pt, tl):
+        if wall and not wall.via_ok(pt.x, pt.y, net, r):
+            return False
         for hp, hd in holes:
             if (hp - pt).EuclideanNorm() < pcbnew.FromMM(drill / 2.0) + hd / 2.0 + h2h:
                 return False
@@ -2446,10 +2449,14 @@ def _vias_on_piece(board, net, uuids, zs, n, via_d=0.6, drill=0.3, step_mm=0.05)
     cands.sort()
     got = []
     seen = set()
+    # other nets' FILL is no obstacle, but their frozen band OUTLINES are (frozen_wall)
+    wall = frozen_wall.FrozenWall(board)
     for d, x, y, tl in cands:
         if (x, y) in seen:
             continue
         seen.add((x, y))
+        if wall and not wall.via_ok(x, y, net, r):
+            continue
         pt = pcbnew.VECTOR2I(x, y)
         if any((hp - pt).EuclideanNorm() < dr / 2.0 + hd / 2.0 + h2h for hp, hd in holes):
             continue
@@ -2610,6 +2617,7 @@ def _move_plane_joins(board, vias, ends, poured, clr_mm=0.2, hole_mm=0.25):
     import math
     out = []
     F = pcbnew.FromMM
+    wall = frozen_wall.FrozenWall(board)
     for v in vias:
         nc, net = v.GetNetCode(), v.GetNetname()
         planes = [L for L in poured.get(nc, ()) if v.TopLayer() <= L <= v.BottomLayer()]
@@ -2645,6 +2653,10 @@ def _move_plane_joins(board, vias, ends, poured, clr_mm=0.2, hole_mm=0.25):
             return math.hypot(px - (ax + t * dx), py - (ay + t * dy))
 
         def clear(q):
+            # the via on any layer, the stub on its own: off other nets' frozen bands
+            if wall and (not wall.via_ok(q.x, q.y, nc, r)
+                         or not wall.seg_ok((p0.x, p0.y), (q.x, q.y), nc, w_stub / 2.0, L_stub)):
+                return False
             for (hp, hd) in holes:
                 if math.hypot(q.x - hp.x, q.y - hp.y) < (drill + hd) / 2.0 + F(hole_mm):
                     return False
@@ -2816,7 +2828,16 @@ def link_close_gaps(board, outline, max_mm=5.0, width=0.25, clr=0.2,
     for _s in segs:
         _file_seg(_s)
 
-    def clear(x, y, net, layer=None, margin=margin):
+    # ⚠ AND OFF OTHER NETS' FROZEN BANDS (brain_board rPS_11a1, 2026-11-21): this repair laid
+    # GND tracks straight through +24V_LED's frozen F.Cu band -- DRC-legal, since a zone refills
+    # round a foreign track, so `clear` saw nothing -- and the refill cut the band in two. The
+    # router's band audit cannot see copper laid after it. The band's OUTLINE is the wall, kept
+    # off by half the track plus the zone's own clearance, as the plane reconnect's stub is
+    # (_path_clear). A layer-blind ask (the surface path) is refused by a band on ANY layer:
+    # conservative, as for the tracks.
+    frozen = frozen_wall.FrozenWall(board)
+
+    def clear(x, y, net, layer=None, margin=margin, band_layer=None):
         # ⚠ `margin` IS AN ARGUMENT SO A VIA CAN ASK FOR ITS OWN (2026-11-09). The hop
         # below tests a 0.6 mm via, which needs via/2 + clr = 0.5 mm, and its callback
         # used to drop that and ask with the track's 0.325 -- a via site 0.17 mm too
@@ -2865,6 +2886,9 @@ def link_close_gaps(board, outline, max_mm=5.0, width=0.25, clr=0.2,
             t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((x - ax) * vx + (y - ay) * vy) / L2))
             if math.hypot(x - (ax + t * vx), y - (ay + t * vy)) - hw < margin:
                 return False
+        if frozen and frozen.hits(x, y, net, margin - pcbnew.FromMM(clr),
+                                  layer if layer is not None else band_layer):
+            return False
         return True
 
     # ⚠ WIDENED FROM ONE PART TO ANY TWO PADS WITHIN REACH, because the optical board's
@@ -2944,13 +2968,27 @@ def link_close_gaps(board, outline, max_mm=5.0, width=0.25, clr=0.2,
                     # which is a different net. A straight segment is the common case and
                     # not the interesting one; the interesting one turns a corner.
                     way = None
+                    # ⚠ THE BAND WALL ON THE PATH'S OWN LAYER (rPS_11a1, 2026-11-21): asked layer-blind,
+                    # a B.Cu band refused VSTBY's F.Cu join to U5 (D14.1 > U5.2 then OPEN on the gate).
+                    # The surface path is laid on the terminals' shared layer (the rule below); a pair
+                    # with none is not a surface join, and the wall then stays on every layer.
+                    def _thru0(q):
+                        return (isinstance(q, pcbnew.PAD) and q.IsOnLayer(pcbnew.F_Cu)
+                                and q.IsOnLayer(pcbnew.B_Cu))
+
+                    def _lay0(q):
+                        if isinstance(q, pcbnew.PAD) and not _thru0(q):
+                            return pcbnew.B_Cu if q.IsOnLayer(pcbnew.B_Cu) else pcbnew.F_Cu
+                        return q.GetLayer()
+                    blay = (_lay0(b) if _thru0(a) and not _thru0(b) else
+                            _lay0(a) if _thru0(b) or _lay0(a) == _lay0(b) else None)
                     for sh in _centrelines(p0, p1, detour_mm=2.0, step_mm=0.25):
                         ok = True
                         for q0, q1 in zip(sh, sh[1:]):
                             L = math.hypot(q1[0] - q0[0], q1[1] - q0[1])
                             n = max(4, int(pcbnew.ToMM(L) / 0.15) + 1)
                             if not all(clear(q0[0] + (q1[0] - q0[0]) * k / n,
-                                             q0[1] + (q1[1] - q0[1]) * k / n, net)
+                                             q0[1] + (q1[1] - q0[1]) * k / n, net, band_layer=blay)
                                        for k in range(n + 1)):
                                 ok = False
                                 break
@@ -3100,8 +3138,15 @@ def rescue_stray_stitches(board, notes, via_d=0.6, clr=0.2):
     # hard via-in-pad FAIL (and the redundant-via pass removing it orphaned the land). A
     # stitch's drill keeps off every soldered land, its own net's included.
     hole_off = pcbnew.FromMM(0.3 / 2.0 + 0.05)
+    # ⚠ AND OFF OTHER NETS' FROZEN BANDS (brain_board rPS_11a4, 2026-11-21): C136.2's GND
+    # stitch walked 0.9 mm into +24V_RIB's F.Cu band -- clear of every pad, track and via, so
+    # this saw nothing -- and the refill knocked 2.2 % out of the band. The via is walled on
+    # every layer, its feed track on the track's own (frozen_wall).
+    wall = frozen_wall.FrozenWall(board)
 
-    def clear(x, y, net, margin, via=False):
+    def clear(x, y, net, margin, via=False, layer=None):
+        if wall and wall.hits(x, y, net, margin - pcbnew.FromMM(clr), None if via else layer):
+            return False
         for bb, onet, smd in pads:
             if onet == net:
                 if smd and via:
@@ -3183,7 +3228,8 @@ def rescue_stray_stitches(board, notes, via_d=0.6, clr=0.2):
                     continue
                 n = max(4, int(pcbnew.ToMM(r) / 0.15) + 1)
                 if not all(clear(anchor.x + (x - anchor.x) * i / n,
-                                 anchor.y + (y - anchor.y) * i / n, net, t_margin)
+                                 anchor.y + (y - anchor.y) * i / n, net, t_margin,
+                                 layer=track.GetLayer())
                            for i in range(1, n + 1)):
                     continue
                 best = (x, y)
@@ -5878,14 +5924,21 @@ def _declared_copper_clear(board, items, clr=0.127):
     same way a pad with no stitch-via room stops the board: the fix is moving the part or
     the declared copper, never routing round it.
     """
+    # ⚠ DECLARED AGAINST DECLARED (brain_board esc11/esc12, 2026-11-22). This compared the new
+    # copper only with pads and with tracks laid BEFORE it, so two declared items of different
+    # nets never met: U205's BOOT5 escapes sat 0.10 mm off SW5's 1.3 mm end cap, and the port B
+    # Kelvin pair's In2 leg 0.05 mm off its partner's via, all from one intent batch. Nothing
+    # said so; the router re-laid them as given and route.py's import took all five up as
+    # "router tracks that shorted or crowded another net" (rPS_11a1, rPS_11k1), each one a net
+    # left open. Every declared item now meets every other net's copper, declared or not.
     pads = [p for fp in board.GetFootprints() for p in fp.Pads()]
-    others = [t for t in board.GetTracks() if t not in items]
+    tracks = list(board.GetTracks())
     lim = pcbnew.FromMM(clr) - 1000         # 1 um of rounding
     bad = []
     for it in items:
         net = it.GetNetCode()
-        for o in pads + others:
-            if o.GetNetCode() == net:
+        for o in pads + tracks:
+            if o.GetNetCode() == net:       # also skips `it` itself
                 continue
             for lay in _LAYERS.values():
                 if not (it.IsOnLayer(lay) and o.IsOnLayer(lay)):

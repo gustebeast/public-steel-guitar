@@ -104,6 +104,13 @@ def specs(board, notes):
                         amps=v["amps"], need=round(required_width_mm(v["amps"], "F.Cu", q), 3),
                         a=_merge(end_polys(board, ra, net, lid), _escape_polys(notes, ra, net, lid)),
                         b=_merge(end_polys(board, rb, net, lid), _escape_polys(notes, rb, net, lid))))
+    # a declared neck (place_flow._copper, intent copper `neck`) rides the path it sits on: same net,
+    # and one of its two pads' parts is one of the path's end parts
+    for sp in out:
+        ends = {x.split(".")[0] for x in sp["name"].split(" ", 1)[1].replace(">", "+").split("+")}
+        for nk in notes.get("declared_necks") or ():
+            if nk["net"] == sp["net"] and ({nk["frm"].split(".")[0], nk["to"].split(".")[0]} & ends):
+                sp["declared_neck"] = dict(nk)
     return dict(scale=scale, specs=out)
 
 
