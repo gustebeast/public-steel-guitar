@@ -2847,6 +2847,18 @@ if __name__ == "__main__":
     ERC()
     net_path = os.path.join(OUT_DIR, "brain_board.net")
     generate_netlist(file_=net_path)
+    # CHANNEL SWAPS A ROUTE A/B ACCEPTED (pcbflow swaps.py, 2026-11-22): place_flow proposes them
+    # in flow/pin_swaps.json; `swaps.py accept` records one in elec/pin_swaps_accepted.json and it
+    # is applied to the written netlist here -- never hand-carried into the code above.
+    _acc = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pin_swaps_accepted.json")
+    if os.path.exists(_acc) and (json.load(open(_acc, encoding="utf-8")) or {}).get("brain_board"):
+        try:
+            from cadkit.pcbflow.swaps import apply_accepted
+        except ImportError:
+            raise SystemExit("brain_board: elec/pin_swaps_accepted.json lists swaps but the vendored "
+                             "cadkit has no pcbflow/swaps.py -- sync cadkit")
+        for _ln in apply_accepted(net_path, "brain_board", _acc):
+            print(_ln)
     if not MERGED:
         netcheck.grounds_meet(net_path)        # R60 joins GND and PWR_GND
     netcheck.no_orphan_pins(net_path)
