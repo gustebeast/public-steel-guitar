@@ -49,6 +49,8 @@ import wx                                       # noqa: E402  (KiCad's python sh
 wx.DisableAsserts()                             # NO MODAL DIALOGS IN A BUILD STEP -- see route.py
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+from nettie import is_net_tie  # noqa: E402  (one answer for quality and elec/voltage_check.py)
 DOC = os.path.join(os.path.dirname(HERE), "PCB_QUALITY.md")
 MM = pcbnew.ToMM
 
@@ -2309,7 +2311,7 @@ def _tie_parent(ctx, keys, net):
     while todo:
         n, path = todo.pop(0)
         for ref, _num, _p in ctx.by_net.get(n, ()):
-            if not re.match(r"NT\d", ref):
+            if not is_net_tie(ref):
                 continue
             for q in ctx.fps[ref].Pads():
                 m = q.GetNetname()
@@ -2396,7 +2398,7 @@ def pin_voltage_ratings(ctx):
         out.append((net, True, "%s: %.4g V%s (%s)"
                     % (net, v, " steady, %.4g V transient" % peak if peak != v else "", how)))
         for ref, num in pads:
-            if re.match(r"NT\d", ref):
+            if is_net_tie(ref):
                 continue            # a net tie is copper (see _tie_parent): no part to rate
             priced += 1
             sub = "%s.%s" % (ref, num)
@@ -3350,7 +3352,7 @@ def sense_pairs(ctx):
                 na, nb, worst, "" if ok else " -- over %.2f: route the pair side by side" % lim)))
         for n in (na, nb):
             for r, _num, _p in ctx.by_net.get(n, ()):
-                if not r.startswith("NT"):
+                if not is_net_tie(r):
                     continue
                 on = False
                 for q in ctx.fps[r].Pads():
