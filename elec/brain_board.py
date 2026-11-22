@@ -2406,11 +2406,12 @@ _AMPS_AUDIT = [
                                     "fuse at 85 % against its 75 % derating)")),
     ("+24V_LED", None, None, (3.0, 1, "F203 3 A, split over the ribbon's four ways; load 1.70 A full white")),
     ("VIN_CM5", None, None, (2.5, 1, "U205 limited at 3.85 A (R313 13 mR) x 5.2 V / 0.9 at a 9 V contract")),
-    ("+5V_BB", None, None, (4.0, 1, "R313 13 mR: 3.85 A limit; copper to 4 A")),
-    ("+5V_RAW", None, None, (4.0, 1, "R313 13 mR: 3.85 A limit; copper to 4 A")),
+    ("+5V_BB", None, None, (4.0, 1, "R313 13 mR 1 %: U205 ISP-ISN limit 48 / 50 / 52 mV (SLVSGT7 s6.5) -> 3.69 / 3.85 / 4.04 A; 4.0 A, its max")),
+    ("+5V_RAW", None, None, (4.0, 1, "R313 13 mR 1 %: U205 ISP-ISN limit 48 / 50 / 52 mV (SLVSGT7 s6.5) -> 3.69 / 3.85 / 4.04 A; 4.0 A, its max")),
 ] + ([
-    ("+5V_CM5", None, None, (4.0, 1, "U221 TPS259470A eFuse (BRAIN_CM5_PROTECT efuse): R313 13 mR 3.85 A limit "
-                                     "governs, RILM 750 R -> ILIM 3.96 A min (SLVSFC9C s6.5); copper to 4 A; the "
+    ("+5V_CM5", None, None, (4.0, 1, "U221 TPS259470A eFuse (BRAIN_CM5_PROTECT efuse): U205's R313 limit "
+                                     "governs, 52 mV max / 12.87 mR = 4.04 A (SLVSGT7 s6.5) -- 4.0 A; RILM 750 R "
+                                     "-> ILIM 3.96 A min (SLVSFC9C s6.5) sits above the typical 3.85 A; the "
                                      "CM5 and its USB peripherals share it (16.7 W budget, motor-power-measured)")),
 ] if CM5_PROTECT == "efuse" else [
     # ⚠ +5V_SW CARRIES ALL OF +5V_CM5's CURRENT (lead 2026-11-22): U221 sits in series between
