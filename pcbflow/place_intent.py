@@ -567,6 +567,17 @@ def check(rule, P, notes, H=None):
             out.append((tol - abs(p[1 - ax] - off[0]), r, "off the row by %.3f" % (p[1 - ax] - off[0])))
     elif k in ("region", "auto_pour"):
         pass
+    elif k == "copper":
+        # declared copper (place_flow._copper): each pin it names must hold one of its track ends
+        for lnd in rule.get("on", ()):
+            ref, num = lnd.split(".", 1)
+            if ref not in P.pl:
+                continue
+            from matplotlib.path import Path as _Pth
+            pp = _Pth(np.asarray(P.pad_poly(ref, num), float))
+            ends = [e for t in rule.get("tracks", ()) for e in (t["pts"][0], t["pts"][-1])]
+            hit = any(pp.contains_point(e, radius=0.02) or pp.contains_point(e, radius=-0.02) for e in ends)
+            out.append((0.0 if hit else -1.0, rule["net"], "copper lands on %s%s" % (lnd, "" if hit else ": NO track end on the pad")))
     else:
         raise ValueError("unknown rule kind %r" % k)
     return out
@@ -1594,6 +1605,10 @@ def pour_poly(rule, P, notes, amps=None):
 def pour_amps(rule, notes):
     """The current a `pour` carries: the declared power path between its own `along` pins,
     else the net's largest (a 3.8 A J10 path sized the 2.9 A Q2-J7 pour at 3.8 mm)."""
+    # a pour may state its current (esc11_pre8, 2026-11-22): +24V's Q209.5 feeds F203 3 A AND F204 2 A,
+    # but the largest single path (3 A) sized its land vias -- 2 of 0.3 mm for 5 A
+    if rule.get("amps"):
+        return float(rule["amps"])
     paths = (notes.get("quality", {}) or {}).get("power_paths", ()) or ()
     al = set(rule.get("along", ()))
     hit = [float(p_["amps"]) for p_ in paths if p_["net"] == rule["net"] and p_["from"] in al
@@ -1743,7 +1758,7 @@ def pour_around(rule, P, notes=None, amps=None):
     w = float(w)
     g = AROUND_GRID
     pa = np.array(pins)
-    mg = w + 6.0
+    mg = w + float(rule.get("search_mm", 6.0))     # how far past the pins the band may detour
     x0, y0 = pa.min(axis=0) - mg
     x1, y1 = pa.max(axis=0) + mg
     nx, ny = int(math.ceil((x1 - x0) / g)) + 1, int(math.ceil((y1 - y0) / g)) + 1
@@ -1844,6 +1859,45 @@ def pour_around(rule, P, notes=None, amps=None):
             flab.append(key)
             dfor = np.minimum(dfor, dq)
             pads_ |= dq <= AROUND_CLEAR + 1e-9
+    # ⚠ DECLARED COPPER IS A WALL TOO (brain_board esc11_pre2, 2026-11-22): U205's FSW5 / GND
+    # escapes were declared (intent kind "copper") before the bands, but the band only walled pads,
+    # so VIN_CM5's outline ran over the FSW5 via and its stub, the fill cleared them by the zone
+    # clearance, and the band necked to 0.42 mm (wants 0.70; 0.53 without the escapes). Another
+    # net's declared track on this layer, and its via on any layer, fence the band like a pad.
+    segs_ = [(t[2] / 2.0, t[3]) for t in (notes or {}).get("tracks", ())
+             if t[0] != rule["net"] and t[1] == rule.get("layer", "F.Cu")]
+    vias_ = [(x_, y_) for n_, x_, y_ in ((v[0], v[1], v[2]) for v in (notes or {}).get("vias", ()))
+             if n_ != rule["net"]]
+    for hw_, pts_d in segs_:
+        for (ax_, ay_), (bx_, by_) in zip(pts_d[:-1], pts_d[1:]):
+            r_ = hw_ + m_max
+            j0, j1 = max(int((min(ax_, bx_) - r_ - x0) / g), 0), min(int((max(ax_, bx_) + r_ - x0) / g) + 2, nx)
+            i0, i1 = max(int((min(ay_, by_) - r_ - y0) / g), 0), min(int((max(ay_, by_) + r_ - y0) / g) + 2, ny)
+            if j0 >= j1 or i0 >= i1:
+                continue
+            ux, uy = X[None, j0:j1] - ax_, Y[i0:i1, None] - ay_
+            dx_, dy_ = bx_ - ax_, by_ - ay_
+            L2 = dx_ * dx_ + dy_ * dy_
+            t_ = np.clip((ux * dx_ + uy * dy_) / L2, 0.0, 1.0) if L2 > 0 else np.zeros_like(ux * uy)
+            dq = np.maximum(np.hypot(ux - t_ * dx_, uy - t_ * dy_) - hw_, 0.0)
+            closer = dq < dfor[i0:i1, j0:j1]
+            fid[i0:i1, j0:j1][closer] = len(flab)
+            flab.append("declared track")
+            dfor[i0:i1, j0:j1] = np.minimum(dfor[i0:i1, j0:j1], dq)
+            pads_[i0:i1, j0:j1] |= dq <= AROUND_CLEAR + 1e-9
+    VIA_R_ = 0.3
+    for vx_, vy_ in vias_:
+        r_ = VIA_R_ + m_max
+        j0, j1 = max(int((vx_ - r_ - x0) / g), 0), min(int((vx_ + r_ - x0) / g) + 2, nx)
+        i0, i1 = max(int((vy_ - r_ - y0) / g), 0), min(int((vy_ + r_ - y0) / g) + 2, ny)
+        if j0 >= j1 or i0 >= i1:
+            continue
+        dq = np.maximum(np.hypot(X[None, j0:j1] - vx_, Y[i0:i1, None] - vy_) - VIA_R_, 0.0)
+        closer = dq < dfor[i0:i1, j0:j1]
+        fid[i0:i1, j0:j1][closer] = len(flab)
+        flab.append("declared via")
+        dfor[i0:i1, j0:j1] = np.minimum(dfor[i0:i1, j0:j1], dq)
+        pads_[i0:i1, j0:j1] |= dq <= AROUND_CLEAR + 1e-9
     if rule.get("_avoid_polys"):
         from matplotlib.path import Path as _Path
         gx_, gy_ = np.meshgrid(X, Y)
@@ -1906,6 +1960,18 @@ def pour_around(rule, P, notes=None, amps=None):
         if not left:
             break
     else:
+        # say WHY (esc11_pre5: +24V on B.Cu fell back to a hull with nothing in the log): the pins
+        # the narrowest neck still could not reach, and the walls that ring them
+        from scipy.ndimage import label as _label
+        lab_, _n = _label(free)
+        home = lab_.ravel()[pc[0]]
+        names = rule.get("along", ())
+        miss = [names[k] for k, c in enumerate(pc) if lab_.ravel()[c] != home]
+        reg = (lab_ == home) if home else np.zeros_like(free)
+        rim = binary_dilation(reg, iterations=2) & wall
+        fence = sorted({flab[i] for i in np.unique(fid[rim]) if 0 <= i < len(flab)})
+        pour_around.last = dict(net=rule["net"], need=round(need, 3), neck=0.0, length=0.0, failed=True,
+                                unreached=miss, fence=fence[:40], pinch=[], pinch_xy=[])
         return None
     # where the centreline runs closer than the full width allows, and whose pads pinch it --
     # the parts a placement corridor would have to move

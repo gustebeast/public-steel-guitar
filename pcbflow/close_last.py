@@ -31,6 +31,7 @@ import sys
 import pcbnew
 
 import stable_fill  # noqa: E402  (PCBFLOW_STABLE_FILL)
+import frozen_wall  # noqa: E402  (the one frozen-band wall for post-route copper)
 import wx                                       # noqa: E402  (KiCad's python ships it)
 wx.DisableAsserts()                             # NO MODAL DIALOGS IN A BUILD STEP -- see route.py
 
@@ -585,9 +586,15 @@ def _stitch_islands(board, net, plane, clr=0.2, step=0.25):
         return all(ps.Contains(at(x + dx * rr, y + dy * rr)) for dx, dy in
                    ((0, 0), (1, 0), (-1, 0), (0, 1), (0, -1), (.7, .7), (-.7, -.7), (.7, -.7), (-.7, .7)))
 
+    # ⚠ A FILL TEST IS NOT A BAND WALL: a band's fill sits its zone clearance (0.5) inside the
+    # outline, so a via clr (0.2) off the fill still knocks the refill back (frozen_wall)
+    wall = frozen_wall.FrozenWall(board)
+
     def legal(x, y):
         p = at(x, y)
         reach = pcbnew.FromMM(r + clr)
+        if wall and not wall.via_ok_mm(x, y, code, r):
+            return False
         for h, hr in holes:
             if (pcbnew.ToMM(h.x) - x) ** 2 + (pcbnew.ToMM(h.y) - y) ** 2 < (hr + RS.VIA_DRILL / 2 + 0.3) ** 2:
                 return False

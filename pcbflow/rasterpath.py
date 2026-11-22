@@ -212,11 +212,17 @@ if sys.argv[4] == "--specs":
     for sp in data["specs"]:
         A = widepath.end_masks(shape, {k: [[gpx(q) for q in p] for p in ps] for k, ps in sp["a"].items()})
         B = widepath.end_masks(shape, {k: [[gpx(q) for q in p] for p in ps] for k, ps in sp["b"].items()})
-        r = widepath.judge(width, hole_px, A, B, RES, sp["need"], open_is_fail=open_is_fail)
+        dn = sp.get("declared_neck")
+        r = widepath.judge(width, hole_px, A, B, RES, sp["need"], open_is_fail=open_is_fail, declared=dn)
         n[r["verdict"]] += 1
-        print("%s %-44s %5.2f A  %.2f mm (wants %.2f)  neck %s" % (
+        tag = ""
+        if r.get("declared"):
+            tag = "  declared neck (>= %.2f, <= %.2f mm): %s" % (dn["min_w"], dn["max_len"], dn["key"])
+        elif r.get("declared_broken"):
+            tag = "  DECLARED NECK BROKEN (wants >= %.2f wide, <= %.2f long): %s" % (dn["min_w"], dn["max_len"], dn["key"])
+        print("%s %-44s %5.2f A  %.2f mm (wants %.2f)  neck %s%s" % (
             r["verdict"], sp["name"], sp["amps"], r["width"], sp["need"],
-            "%.2f mm" % r["neck"] if r["neck"] != float("inf") else "-"), flush=True)
+            "%.2f mm" % r["neck"] if r["neck"] != float("inf") else "-", tag), flush=True)
     print("rasterpath: %d FAIL, %s%d WARN, %d PASS of %d power paths"
           % (n["FAIL"], "" if open_is_fail else "%d OPEN, " % n["OPEN"], n["WARN"], n["PASS"],
              len(data["specs"])))

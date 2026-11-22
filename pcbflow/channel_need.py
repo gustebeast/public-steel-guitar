@@ -97,7 +97,13 @@ def bbox(g):
 
 def keepouts(intent, geom, spec, log=print):
     release = spec.get("release", {})
-    fixed = {r["ref"] for r in intent if r.get("kind") == "fixed"} - set(release)
+    fixed = {r["ref"] for r in intent if r.get("kind") == "fixed"}
+    # a rigid cell's members are fixed with their anchor (esc11_pre3, 2026-11-22: the +24V channel
+    # off Q209.5 kept 0.62 mm over Q209, a boost cell member, and the intent check called it BROKEN)
+    for r in intent:
+        if r.get("kind") == "group" and r.get("anchor") in fixed:
+            fixed |= set(r.get("members", {}))
+    fixed -= set(release)
     rules = []
     for ch in spec["channels"]:
         w = width(ch["need"])

@@ -267,11 +267,61 @@ def _near_gate(nb, place_only):
     return 2
 
 
+def _copper(notes, P, rules):
+    """Declared copper from the intent: kind "copper" {net, tracks: [{layer, width, pts}], vias:
+    [[x, y]], on: ["REF.PIN", ...], frozen, why} in the intent frame. Into notes tracks / vias (laid
+    by layout before the fill, so a frozen band is filled round it and frozen_check's baseline
+    holds it); `frozen` adds the net to notes frozen_nets. Every pin in `on` must hold a track end
+    -- a part moved off its copper is a stop, not a dangling stub.
+
+    ⚠ WHY (brain_board esc10, 2026-11-21): U205's ISP/ISN sense pins sit in the elbow between
+    its VOUT bar and +5V_BB's frozen band; the router cannot leave them without crossing the
+    band (ISN open on every seed since k1) and a coupled lay starts from the pads it cannot
+    leave. The pair is laid here, coupled by construction, as an engineer would draw it."""
+    done = notes.setdefault("copper_rules", [])
+    lines = []
+    for r in rules:
+        if r["kind"] != "copper":
+            continue
+        key = r.get("key") or json.dumps(r, sort_keys=True)
+        if key in done:
+            continue
+        for lnd in r.get("on", ()):
+            ref, num = lnd.split(".", 1)
+            poly = np.asarray(P.pad_poly(ref, num), float)
+            from matplotlib.path import Path as _Pth
+            pp = _Pth(poly)
+            ends = [e for t in r.get("tracks", ()) for e in (t["pts"][0], t["pts"][-1])]
+            if not any(pp.contains_point(e, radius=0.02) or pp.contains_point(e, radius=-0.02) for e in ends):
+                raise SystemExit("place_flow: copper for %s names %s, but no track end lands on that pad "
+                                 "(a part moved off its declared copper?)" % (r["net"], lnd))
+        done.append(key)
+        if r.get("neck"):
+            # a BOUNDED declared neck (lead 2026-11-22): the power gate accepts this net's neck only while
+            # the fabbed copper is no narrower than min_w and no longer than max_len (widepath.judge)
+            nk = r["neck"]
+            notes.setdefault("declared_necks", []).append(dict(
+                key=key, net=r["net"], frm=nk["from"], to=nk["to"], min_w=float(nk["min_w"]),
+                max_len=float(nk["max_len"]), why=nk.get("why") or r.get("why", "")))
+        for t in r.get("tracks", ()):
+            notes.setdefault("tracks", []).append([r["net"], t["layer"], float(t["width"]), t["pts"]])
+        for v in r.get("vias", ()):
+            notes.setdefault("vias", []).append([r["net"], float(v[0]), float(v[1])])
+        if r.get("frozen"):
+            fz = notes.setdefault("frozen_nets", [])
+            if r["net"] not in fz:
+                fz.append(r["net"])
+        lines.append("%s: declared copper, %d track(s), %d via(s)%s" % (
+            r["net"], len(r.get("tracks", ())), len(r.get("vias", ())), ", frozen" if r.get("frozen") else ""))
+    return lines
+
+
 def _pours(notes, parts, pl, rules, base_zones):
     """notes["zones"] = the input's own zones + one per `pour` rule at the placed pins
     (place_intent.pour_poly), priority 1 by default so it wins its region over a board-wide
     ground pour on the same layer. Returns the POUR lines for the report."""
     P = pi.Placed(parts, pl)
+    cl = _copper(notes, P, rules)
     notes_r = dict(notes, _regions={r["name"]: r["poly"] for r in rules if r["kind"] == "region"})
     amps_of = lambda r: pi.pour_amps(r, notes)
     # a notes file that is itself a flow's output already carries last run's pours: a
@@ -280,6 +330,7 @@ def _pours(notes, parts, pl, rules, base_zones):
     mine = {(r["net"], r["layer"]) for r in rules if r["kind"] == "pour"}
     base_zones = [z for z in base_zones if not (isinstance(z, dict) and (z.get("net"), z.get("layer")) in mine)]
     zones, out, pv = list(base_zones), [], []
+    out.extend(cl)
     bands = []                          # (net, layer, poly) of the around bands drawn so far
     for r in rules:
         if r["kind"] != "pour":
@@ -750,14 +801,24 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
                                               if "[" in i.get("description", "")})
         except (OSError, ValueError):
             fin = {"error": out[-600:], "rc": rc}
+        # ⚠ A QUALITY PASS THAT DID NOT RUN IS A FAIL (rPS_10a5, 2026-11-21): quality.py refused
+        # (A26-A31 in the code, not in PCB_QUALITY.md), the report's "quality:" line carried the
+        # refusal text in the middle of the summary, and five seeds were scored with no A-rule
+        # numbers before anyone noticed. No quality.json written by THIS run (a refusal writes
+        # none; a stale one from an earlier pass is older) is now `skipped` and leads the report.
+        # Not the rc: quality.py exits 1 whenever any rule FAILs, which is a pass that ran.
+        qj = stem + ".quality.json"
+        t_q = time.time()
         rc, out, T["quality"] = _run([KICAD_PY, os.path.join(HERE, "quality.py"), "--brief", stem], log)
         try:
-            q = json.load(open(stem + ".quality.json", encoding="utf-8"))
+            if os.path.getmtime(qj) < t_q - 1:
+                raise ValueError("quality.py rc %d, no quality.json from this run" % rc)
+            q = json.load(open(qj, encoding="utf-8"))
             qual = {"fail": q.get("fail"), "open": q.get("open"), "waived": q.get("waived"),
                     "failed": [r.get("id") or r.get("rule") for r in q.get("results", [])
                                if str(r.get("status", "")).upper() == "FAIL"][:20]}
-        except (OSError, ValueError):
-            qual = {"error": out[-600:]}
+        except (OSError, ValueError) as exc:
+            qual = {"skipped": True, "error": "%s: %s" % (exc, out.strip()[-600:])}
     _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T, room=room, width=wlines, pours=plines,
             floor=floor, fill=pi.region_fill(rules, parts, pl), routability=rout)
     return 0
@@ -912,6 +973,8 @@ def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, 
            "routability": routability}
     json.dump(rep, open(os.path.join(fd, "report.json"), "w"), indent=1)
     L = ["# place_flow: %s" % base, ""]
+    if qual and qual.get("skipped"):
+        L += ["**FAIL: THE QUALITY PASS DID NOT RUN -- no A-rule result on this board.**", ""]
     if refused:
         L += ["**%s**" % ("place_init found NO ROOM -- the flow stopped before layout." if refused.startswith("place_init: NO ROOM")
                           else "the intent check found BROKEN hard rules -- the flow stopped before layout."
@@ -943,7 +1006,7 @@ def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, 
             + (", %d warning(s) (%s)" % (fin["warnings"], ", ".join("%s %d" % kv for kv in sorted(fin.get("warn_by_type", {}).items())))
                if fin.get("warnings") else ""))]
     if qual:
-        L += ["quality: %s" % (qual.get("error") or "%s FAIL, %s OPEN%s" % (
+        L += ["quality: %s" % (("FAIL, DID NOT RUN -- " + qual["error"]) if qual.get("skipped") else qual.get("error") or "%s FAIL, %s OPEN%s" % (
             qual["fail"], qual["open"], (" (" + " ".join(map(str, qual["failed"])) + ")") if qual.get("failed") else ""))]
     if gates:
         L += ["", "layout notes:"] + ["  " + g for g in gates]

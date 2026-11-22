@@ -167,6 +167,17 @@ class Model:
     def ij(self, x, y):
         return int(round((y - self.y0) / self.pitch)), int(round((x - self.x0) / self.pitch))
 
+    def frozen_foreign(self, idx, nid):
+        """(distance, net) of the nearest FOREIGN frozen band at model cells `idx` (any numpy
+        index into the (L, ny, nx) fields) for net id `nid`: frozen_d / frozen_nn, except where
+        the nearest band is nid's own, which takes the next band (frozen_d2 / frozen_nn2)."""
+        fd, fn = self.frozen_d[idx], self.frozen_nn[idx]
+        own = fn == nid
+        if np.any(own):
+            fd = np.where(own, self.frozen_d2[idx], fd)
+            fn = np.where(own, self.frozen_nn2[idx], fn)
+        return fd, fn
+
     def _window(self, x0, y0, x1, y1, reach):
         j0 = max(0, int(math.floor((x0 - reach - self.x0) / self.pitch)))
         j1 = min(self.nx, int(math.ceil((x1 + reach - self.x0) / self.pitch)) + 1)
@@ -343,7 +354,7 @@ class Model:
         # unrouted board, OPEN routed. frozen_d[k] = mm from each cell to the nearest frozen
         # cell on that layer, frozen_nn[k] the net that band keeps; negotiate bans a foreign
         # track (via) wherever frozen_d < its half width (radius) + the band's zone clearance.
-        self.frozen_d = self.frozen_nn = None
+        self.frozen_d = self.frozen_nn = self.frozen_d2 = self.frozen_nn2 = None
         if self.frozen_any:
             from scipy.ndimage import distance_transform_edt
             self.frozen_d = np.full((L, ny, nx), np.inf, np.float32)
@@ -360,6 +371,34 @@ class Model:
                 self.frozen_d[k] = (d * self.pitch).astype(np.float32)
                 self.frozen_nn[k] = self.frozen_net[k][ii, jj]
                 del d, ii, jj
+            # ⚠ A NET'S OWN BAND HIDES ITS NEIGHBOUR'S (brain_board rPS_11k1 / rPS_12k5,
+            # 2026-11-22): frozen_d is the distance to the NEAREST band, of any net. Where a
+            # net's own band is nearer than a foreign one, that foreign band is invisible to
+            # it: +5V_SW ran F.Cu 0.40 mm from +5V_BB's band (it needs 0.255 + 0.5) because
+            # +5V_SW's own band was 0.35 away, and the refill cut +5V_BB -- the finish stopped
+            # on both boards at the same spot. frozen_d2 / frozen_nn2 = the nearest band of a
+            # net OTHER than frozen_nn's; frozen_foreign() hands a net the right one. Worked
+            # per band inside its box grown by twice the widest reach: a cell further out is
+            # beyond every reach anyway (inf is then the safe answer).
+            self.frozen_d2 = np.full((L, ny, nx), np.inf, np.float32)
+            self.frozen_nn2 = np.zeros((L, ny, nx), np.int32)
+            rmax = getattr(self, "reach", 3.0) + float(zc.max()) + self.pitch
+            g = int(np.ceil(2 * rmax / self.pitch)) + 1
+            for k in range(L):
+                fk = self.frozen_net[k]
+                for nid_ in np.unique(fk[fk != 0]):
+                    rr, cc = np.nonzero(fk == nid_)
+                    i0, i1 = max(rr.min() - g, 0), min(rr.max() + g + 1, ny)
+                    j0, j1 = max(cc.min() - g, 0), min(cc.max() + g + 1, nx)
+                    sub = fk[i0:i1, j0:j1]
+                    other = (sub != 0) & (sub != nid_)
+                    if not other.any():
+                        continue
+                    d, (ii, jj) = distance_transform_edt(~other, return_indices=True)
+                    mine = self.frozen_nn[k, i0:i1, j0:j1] == nid_
+                    self.frozen_d2[k, i0:i1, j0:j1][mine] = (d * self.pitch).astype(np.float32)[mine]
+                    self.frozen_nn2[k, i0:i1, j0:j1][mine] = sub[ii, jj][mine]
+                    del d, ii, jj
         # ⚠ A POURED LAND NEEDS ROOM TO BREATHE (optical R33.2 GND, 2026-11-08: a foreign
         # track hugging the land left the F.Cu GND pour too few thermal spokes, DRC
         # starved_thermal, and close_last would not run past it). Round every land whose net
@@ -420,8 +459,15 @@ class Model:
             # nudge RO_1, 2026-11-08). The track field is the true distance to the area
             # (0 inside), and the via ban grows by the via's radius.
             rv = self.via_d / 2.0 + self.margin
+            # ⚠ THE FIELD MUST REACH AS FAR AS THE WIDEST COPPER THAT ASKS IT (brain_board
+            # rPS_11a3, 2026-11-22): it was written only rv + 1.0 (~1.4 mm) out and read FAR
+            # beyond, while a 3.79 mm VIN_BUS run needs 1.9 + clearance -- the router laid it
+            # with its centre 1.38 mm off the audio moat and its edge 0.5 mm inside (DRC
+            # items_not_allowed x5, quality A25 hard, on 3 of 5 esc11 seeds). The other fixed-
+            # copper fields already use self.reach, which includes the widest net.
             win = self._window(min(q[0] for q in pts), min(q[1] for q in pts),
-                               max(q[0] for q in pts), max(q[1] for q in pts), rv + 1.0)
+                               max(q[0] for q in pts), max(q[1] for q in pts),
+                               max(rv + 1.0, self.reach))
             X, Y = grid(win)
             inside = _in_poly(X, Y, pts)
             edge = np.full(X.shape, FAR)

@@ -263,7 +263,7 @@ def _crop(width, holes, A, B, res):
     return cw, ch, {k: m[sl] for k, m in A.items()}, {k: m[sl] for k, m in B.items()}
 
 
-def judge(width, holes, A, B, res, need, open_is_fail=True):
+def judge(width, holes, A, B, res, need, open_is_fail=True, declared=None):
     """{width, neck, verdict} for one path. A, B: {layer: bool mask} of the end pads.
 
     open_is_fail: a path with NO copper between its ends is FAIL (the pre-order gate: a power
@@ -287,7 +287,16 @@ def judge(width, holes, A, B, res, need, open_is_fail=True):
     if w >= need:
         return dict(width=w, neck=0.0, verdict="PASS")
     n = neck_length(cw, ch, cA, cB, res, w, need)
-    return dict(width=w, neck=n, verdict="FAIL" if n > NECK_RATIO * w else "WARN")
+    v = "FAIL" if n > NECK_RATIO * w else "WARN"
+    # ⚠ A DECLARED NECK IS A CHECKED FACT, NOT AN EXEMPT (lead 2026-11-22, brain_board U205 VIN_CM5):
+    # a part's pinout can bound the copper (SLVSGT7 puts FSW5 between VIN and its HF cap: 0.49 mm for
+    # ~1.3 mm). The intent declares the neck's floor width and ceiling length; the path is WARN only
+    # while the measured copper is no narrower AND no longer -- routing or fill that makes it worse FAILs.
+    if v == "FAIL" and declared:
+        if w >= float(declared["min_w"]) - 1e-6 and n <= float(declared["max_len"]) + 1e-6:
+            return dict(width=w, neck=n, verdict="WARN", declared=declared.get("key", "declared"))
+        return dict(width=w, neck=n, verdict="FAIL", declared_broken=declared.get("key", "declared"))
+    return dict(width=w, neck=n, verdict=v)
 
 
 def _cli(inp, outp):
