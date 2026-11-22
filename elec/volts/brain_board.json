@@ -8958,6 +8958,12 @@
    "src": "abs max -- TPS2552DBVR (C46506): TI TPS2552 SLVS841E abs max: IN, OUT, EN, ILIM, FAULT -0.3..7 V; IN to OUT +-7 V; recommended IN 2.5-6.5 V (taken 5.5)"
   },
   "U36.6": {
+   "accepted": {
+    "by": "lead (brain board R1 review)",
+    "date": "2026-11-21",
+    "v": 10.3,
+    "why": "TPS2552 OUT (abs max 7 V, SLVS841G 6.1) on SVC_VBUS, whose 10.3 V transient is D25 (SMF6.0A) at its full 19.4 A 10/1000 us surge rating -- not a credible event on an internal service USB-C port. ESD on OUT is covered by SLVS841G 6.2 (IEC 61000-4-2 +-8 kV contact / +-15 kV air, output terminals, with external capacitance). No hardware fix exists: no TVS clamps under 7 V at that current, and a series R does not fit a 1.2 A path. Steady is 5.5 V. Supersedes the 2026-11-17 review note."
+   },
    "max": 7.0,
    "src": "abs max -- TPS2552DBVR (C46506): TI TPS2552 SLVS841E abs max: IN, OUT, EN, ILIM, FAULT -0.3..7 V; IN to OUT +-7 V; recommended IN 2.5-6.5 V (taken 5.5)"
   },

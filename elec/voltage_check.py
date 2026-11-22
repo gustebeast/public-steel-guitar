@@ -1888,6 +1888,24 @@ def run(elec, names, write):
     return "\n".join(out) + "\n", total_fail, done, stats
 
 
+# ── A16 acceptances: a PERSON's bounded decision to run one pin over its maker's number ──
+# Written into the pin's declaration as cadkit A16's `accepted` (v, by, date, why): the rule
+# stays hard, prints it every run, and fails it again past `v`. One pin each; the net's
+# conservative model stays for every other pin on it.
+ACCEPTED = {
+    "brain_board": {
+        "U36.6": {
+            "v": 10.3, "by": "lead (brain board R1 review)", "date": "2026-11-21",
+            "why": "TPS2552 OUT (abs max 7 V, SLVS841G 6.1) on SVC_VBUS, whose 10.3 V transient is D25 "
+                   "(SMF6.0A) at its full 19.4 A 10/1000 us surge rating -- not a credible event on an "
+                   "internal service USB-C port. ESD on OUT is covered by SLVS841G 6.2 (IEC 61000-4-2 "
+                   "+-8 kV contact / +-15 kV air, output terminals, with external capacitance). No hardware "
+                   "fix exists: no TVS clamps under 7 V at that current, and a series R does not fit a "
+                   "1.2 A path. Steady is 5.5 V. Supersedes the 2026-11-17 review note."},
+    },
+}
+
+
 def declare(b):
     """One board's A16 declarations (cadkit PCB_QUALITY.md A16) from a checked Board:
     {"net_volts": {...}, "pin_volts": {...}}.
@@ -1952,6 +1970,9 @@ def declare(b):
                           " -- " + r["note"] if r["note"] else "")}
         else:                                          # over: let A16 say so
             pins[key] = {"max": n3(rating), "src": "%s -- %s" % (r["rkind"], src)}
+    for key, acc in ACCEPTED.get(b.name, {}).items():
+        if key in pins:
+            pins[key] = dict(pins[key], accepted=dict(acc))
     # A4's pin roles (cadkit quality._pin_roles): each IC pin's name and ground role as its
     # rating entry reads them off the sheet, so a ground pin off ground or a VOUT on GND
     # fails by name (brain_board U221 pad 8, 2026-11-18)
