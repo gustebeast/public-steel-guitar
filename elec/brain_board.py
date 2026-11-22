@@ -1020,7 +1020,7 @@ def brain_board():
             # the cap is for the socket's edge, not bulk (lead 2026-11-21).
             _cap("C94" if side == "A" else "C95", "100nF/50V", "port %s socket VBUS HF cap, at "
                  "the connector behind the TVS; inside the cSnkBulk 10 uF budget" % side,
-                 vbus_j, gnd_j, C0603)
+                 vbus_j, gnd_j)      # 0402: C307331 (50 V X7R, basic) as C230; no 0603 100 nF is stocked in fab.py
         d = _d(d_stb, "SS34", "port %s -> VSTBY Schottky, 40 V 3 A: the logic runs from "
                "vSafe5V before any contract (LCSC C8678)" % side, "Diode_SMD:D_SMA")
         vstby += d[1]                          # pad 1 = K

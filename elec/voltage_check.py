@@ -2,7 +2,9 @@
 
     py -3.12 elec/voltage_check.py                 # all five, writes the report
     py -3.12 elec/voltage_check.py motor_ctrl      # one board, findings to stdout only
-    py -3.12 elec/voltage_check.py --declare       # ALSO write elec/volts/<board>.json
+    py -3.12 elec/voltage_check.py --declare       # ALSO write elec/volts/<board>.json; prints each
+                                                   # declared max that changes and refuses a fall
+                                                   # unless --allow-lower U13.23,... names the pin
     py -3.12 elec/voltage_check.py --elec <dir>    # another worktree's elec/
 
 Written by the pre-order review of 2026-10-06 (as research/review/voltage_check.py) and
@@ -2027,11 +2029,41 @@ def declare(b):
     return {"net_volts": nets, "pin_volts": pins, "pin_roles": roles}
 
 
+def declare_diff(old, new):
+    """[(key, line, lowered)] for every pin whose declared max changes between two pin_volts maps.
+    `lowered`: a numeric max that fell, or one that became "none" / vanished -- A16 then holds the
+    pin to less, or to nothing, and that is never a side effect.
+
+    ⚠ A DECLARED MAX FELL 33.088 -> 4.0 V AND NOBODY SAW IT (brain_board, 2026-11-22): the Kelvin
+    net ties left PA_VCC_K unresolved, U13.23's "VCC+4" resolved against 0 V, and --declare wrote
+    4.0 into volts/brain_board.json inside an unrelated commit; quality A16 then failed both PWR_EN
+    pins against 25 V. --declare prints every change and refuses a lowering unless --allow-lower
+    names the pin (check_declare_guard.py)."""
+    def num(x):
+        return float(x) if isinstance(x, (int, float)) and not isinstance(x, bool) else None
+    out = []
+    for k in sorted(set(old) | set(new)):
+        a = (old.get(k) or {}).get("max")
+        b = (new.get(k) or {}).get("max")
+        if k in old and k in new and a == b:
+            continue
+        na, nb = num(a), num(b)
+        low = na is not None and (nb is None or nb < na - 1e-9)
+        out.append((k, "%s: max %s -> %s%s" % (k, a if k in old else "absent", b if k in new else "absent",
+                                               "  (LOWER)" if low else ""), low))
+    return out
+
+
 def main(argv):
     elec = DEFAULT_ELEC
     if "--elec" in argv:
         i = argv.index("--elec")
         elec = argv[i + 1]
+        argv = argv[:i] + argv[i + 2:]
+    allow = set()
+    if "--allow-lower" in argv:
+        i = argv.index("--allow-lower")
+        allow = set(argv[i + 1].split(","))
         argv = argv[:i] + argv[i + 2:]
     names = [a for a in argv if not a.startswith("-")] or list(BOARDS)
     write = set(names) == set(BOARDS)
@@ -2042,9 +2074,22 @@ def main(argv):
             fh.write(text)
     if "--declare" in argv:
         os.makedirs(DECL, exist_ok=True)
+        decl, refused = {}, []
+        for name in names:
+            decl[name] = declare(done[name])
+            f = os.path.join(DECL, name + ".json")
+            old = json.load(io.open(f, encoding="utf-8")).get("pin_volts", {}) if os.path.exists(f) else {}
+            for key, line, low in declare_diff(old, decl[name]["pin_volts"]):
+                print("declare %s: %s%s" % (name, line, "  -- allowed" if low and key in allow else ""))
+                if low and key not in allow:
+                    refused.append("%s %s" % (name, key))
+        if refused:
+            print("declare REFUSED: %d declared max(es) would fall -- check each, then name it in "
+                  "--allow-lower PIN[,PIN]: %s" % (len(refused), ", ".join(refused)))
+            return max(fails, 1)
         for name in names:
             with io.open(os.path.join(DECL, name + ".json"), "w", encoding="utf-8", newline="\n") as fh:
-                json.dump(declare(done[name]), fh, indent=1, sort_keys=True, ensure_ascii=False)
+                json.dump(decl[name], fh, indent=1, sort_keys=True, ensure_ascii=False)
                 fh.write("\n")
     for name in names:
         b = done[name]
