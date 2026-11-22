@@ -2628,8 +2628,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2640,8 +2641,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2652,8 +2654,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2664,8 +2667,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2676,8 +2680,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2688,8 +2693,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2700,8 +2706,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2712,8 +2719,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2724,8 +2732,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2736,8 +2745,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2748,8 +2758,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2760,8 +2771,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2772,8 +2784,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2784,8 +2797,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2796,8 +2810,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2808,8 +2823,9 @@
   ],
   "rot": 270.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2820,8 +2836,9 @@
   ],
   "rot": 270.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2832,8 +2849,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2844,8 +2862,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2856,8 +2875,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2868,8 +2888,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2880,8 +2901,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2892,8 +2914,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2904,8 +2927,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2916,8 +2940,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2928,8 +2953,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2940,8 +2966,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2952,8 +2979,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2964,8 +2992,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2976,8 +3005,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -2988,8 +3018,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3000,8 +3031,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3012,8 +3044,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3024,8 +3057,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3036,8 +3070,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3048,8 +3083,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3060,8 +3096,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3072,8 +3109,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3084,8 +3122,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3096,8 +3135,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3108,8 +3148,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3120,8 +3161,9 @@
   ],
   "rot": 270.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3132,8 +3174,9 @@
   ],
   "rot": 270.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3144,8 +3187,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3156,8 +3200,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3168,8 +3213,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3180,8 +3226,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3192,8 +3239,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3204,8 +3252,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3216,8 +3265,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3228,8 +3278,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3240,8 +3291,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3252,8 +3304,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3264,8 +3317,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3276,8 +3330,9 @@
   ],
   "rot": 270.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3288,8 +3343,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3300,8 +3356,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3312,8 +3369,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3324,8 +3382,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3336,8 +3395,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3348,8 +3408,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3360,8 +3421,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3372,8 +3434,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3384,8 +3447,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3396,8 +3460,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3408,8 +3473,9 @@
   ],
   "rot": 270.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3420,8 +3486,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3432,8 +3499,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3444,8 +3512,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3456,8 +3525,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3468,8 +3538,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3480,8 +3551,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3492,8 +3564,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3504,8 +3577,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3516,8 +3590,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3528,8 +3603,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3540,8 +3616,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3552,8 +3629,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3564,8 +3642,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3576,8 +3655,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3588,8 +3668,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3600,8 +3681,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3612,8 +3694,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3624,8 +3707,9 @@
   ],
   "rot": 270.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3636,8 +3720,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3648,8 +3733,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3660,8 +3746,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3672,8 +3759,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3684,8 +3772,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3696,8 +3785,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3708,8 +3798,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3720,8 +3811,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3732,8 +3824,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3744,7 +3837,7 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "held: mate: the UI ribbon's IDC plug from the component side (was: mR: held where mP0 put it)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
@@ -3756,7 +3849,7 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "held: mate: the connector ribbon's IDC plug from the component side (was: mR: held where mP0 put it)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
@@ -3768,7 +3861,7 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "held: mate: the ribbon's IDC plug from the component side (was: mR: held where mP0 put it)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
@@ -3780,8 +3873,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3792,8 +3886,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3804,8 +3899,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3816,8 +3912,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3828,8 +3925,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3840,8 +3938,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3852,8 +3951,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3864,8 +3964,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3876,8 +3977,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3888,8 +3990,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3900,8 +4003,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3912,8 +4016,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3924,8 +4029,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3936,8 +4042,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3948,8 +4055,9 @@
   ],
   "rot": 270.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3960,8 +4068,9 @@
   ],
   "rot": 270.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3972,8 +4081,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3984,8 +4094,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -3996,8 +4107,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4008,8 +4120,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4020,8 +4133,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4032,8 +4146,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4044,8 +4159,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4056,8 +4172,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4068,8 +4185,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4080,8 +4198,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4092,8 +4211,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4104,8 +4224,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4116,8 +4237,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4128,8 +4250,9 @@
   ],
   "rot": 270.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4140,8 +4263,9 @@
   ],
   "rot": 270.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4152,8 +4276,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4164,8 +4289,9 @@
   ],
   "rot": 270.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4176,8 +4302,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4188,8 +4315,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4200,8 +4328,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4212,8 +4341,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4224,8 +4354,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4236,8 +4367,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4248,8 +4380,9 @@
   ],
   "rot": 270.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4260,8 +4393,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4272,8 +4406,9 @@
   ],
   "rot": 270.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4284,8 +4419,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4296,8 +4432,9 @@
   ],
   "rot": 270.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4308,8 +4445,9 @@
   ],
   "rot": 270.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4320,8 +4458,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4332,8 +4471,9 @@
   ],
   "rot": 270.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4344,8 +4484,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4356,8 +4497,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4368,8 +4510,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4380,8 +4523,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4392,8 +4536,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4404,8 +4549,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4416,8 +4562,9 @@
   ],
   "rot": 270.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4428,8 +4575,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4440,8 +4588,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4452,8 +4601,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4464,8 +4614,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4476,8 +4627,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4488,8 +4640,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4500,8 +4653,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4512,8 +4666,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4524,7 +4679,7 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
+  "why": "held: kelvin ties NT21/NT22 sit on its pads (was: mR: held where mP0 put it)",
   "src": "mP0 placement, bronner 2026-11-15"
  },
  {
@@ -4536,8 +4691,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4548,8 +4704,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4560,8 +4717,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4572,8 +4730,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4584,8 +4743,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4596,8 +4756,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4608,8 +4769,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4620,8 +4782,9 @@
   ],
   "rot": 270.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4632,8 +4795,9 @@
   ],
   "rot": 270.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4644,8 +4808,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4656,8 +4821,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4668,8 +4834,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4680,8 +4847,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4692,8 +4860,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4704,8 +4873,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4716,8 +4886,9 @@
   ],
   "rot": 270.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4728,8 +4899,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4740,8 +4912,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4752,8 +4925,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4764,8 +4938,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4776,8 +4951,9 @@
   ],
   "rot": 270.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4788,8 +4964,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4800,8 +4977,9 @@
   ],
   "rot": 270.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4812,8 +4990,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4824,8 +5003,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4836,8 +5016,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4848,8 +5029,9 @@
   ],
   "rot": 180.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4860,8 +5042,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it -- +16.9 with the boost to the widened +X end (2026-11-19)",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4872,8 +5055,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4884,8 +5068,9 @@
   ],
   "rot": 90.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "fixed",
@@ -4951,8 +5136,9 @@
   ],
   "rot": 0.0,
   "hard": true,
-  "why": "mR: held where mP0 put it",
-  "src": "mP0 placement, bronner 2026-11-15"
+  "why": "snapshot: where mP0 left it -- a remembered position, not a constraint; a re-place may move it under every hard gate (lead 2026-11-22)",
+  "src": "mP0 placement, bronner 2026-11-15",
+  "snapshot": true
  },
  {
   "kind": "panel",
