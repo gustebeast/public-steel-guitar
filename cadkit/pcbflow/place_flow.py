@@ -579,6 +579,18 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     if hbad_:
         raise SystemExit("place_flow: intent refused -- %d hold(s) without a reason (hold: %s, and a why):\n  %s"
                          % (len(hbad_), " / ".join(pi.HOLD_CLASSES), "\n  ".join(hbad_[:20])))
+    # a hard near / decap its regions cannot meet stops here, before placement (pi.feasibility)
+    try:
+        fbad_, fsplit_ = pi.feasibility(rules, parts, notes)
+    except (KeyError, ValueError) as e_:
+        fbad_, fsplit_ = [], ["FEASIBILITY check could not run: %r" % (e_,)]
+    # (REGION SPLIT stops too: a hot-loop cap whose only seat is the border of two regions is an
+    # intent error -- sw2's C3 / C299 / C306 -- and ended as NO ROOM after 20 minutes)
+    if fbad_ or fsplit_:
+        for l_ in fbad_ + fsplit_:
+            say(l_)
+        raise SystemExit("place_flow: intent refused -- %d hard rule(s) INFEASIBLE, %d REGION SPLIT:\n  %s"
+                         % (len(fbad_), len(fsplit_), "\n  ".join((fbad_ + fsplit_)[:20])))
     # ⚠ A RULE THAT NAMES A PART THE NETLIST NO LONGER HAS STOPS THE FLOW HERE, NOT LATER
     # (brain_board mV20a/b, 2026-11-17): a saved pour rule still ran `along` R223.2 after the
     # U5 rework removed R223; both runs placed for 20 minutes and died in _pours on a KeyError.
