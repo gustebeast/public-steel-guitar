@@ -7,7 +7,8 @@
      anchor's region are released once, the far net neighbour never
   1  a member held as mate / mechanical / user / physical -> SystemExit naming it
   2  brain_board.intent.json is current: apply_cells --check exits 0
-  3  (with the two paths) lm5122_cell.check() finds no overlap and no broken hard rule
+  3  (with the two paths) every cell in apply_cells.CELLS: check() finds no overlap and no
+     broken hard rule
 Exit 0 = PASS.
 """
 import json
@@ -65,9 +66,11 @@ if rc:
 
 if len(sys.argv) == 3:
     sys.path.insert(0, sys.argv[2])
-    import lm5122_cell  # noqa: E402
+    import importlib
     import place_intent  # noqa: E402
-    bad += ["3: " + p for p in lm5122_cell.check(json.load(open(sys.argv[1]))["parts"], place_intent)]
+    parts = json.load(open(sys.argv[1]))["parts"]
+    for mod in AC.CELLS:
+        bad += ["3: %s: %s" % (mod, p) for p in importlib.import_module(mod).check(parts, place_intent)]
 
 print("\n".join(bad) if bad else "test_apply_cells: PASS")
 sys.exit(1 if bad else 0)

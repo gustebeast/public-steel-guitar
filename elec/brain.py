@@ -429,8 +429,23 @@ def brain(merged=None):
          "Steel:L_Bourns_SRP1513CA_15.5x16.5mm", b["LMID"], b["SW"])
     _res("R109", "4mR 1W", "boost current sense, VIN side of L4 (TI's 4 mR)", vin_sw,
          b["LMID"], "Resistor_SMD:R_2512_6332Metric")
-    _res("R110", "100R", "CSP filter (TI's 100R / 100 pF)", vin_sw, b["CSPF"])
-    _res("R111", "100R", "CSN filter", b["LMID"], b["CSNF"])
+    # ⚠ CSP / CSN ARE KELVIN, AND ONLY A NET-TIE MAKES IT SO (brain_board LM5122 cell A/B,
+    # 2026-11-23). On VIN_SW / BST_LMID themselves the CSN filter R111 is one more pin of the
+    # BST_LMID pour: with R111 beside the IC (TI SNVS954H 10.1, the filter at the pins) and the
+    # shunt at the inductor, the pour split in two and R111.1 stayed open on both seeds -- no
+    # current sense. With BRAIN_KELVIN_TIES=1 each filter input has a net of its own, tied to
+    # the shunt at its pad (SNVS954H 10.1: "Kelvin connection ... to the current sense
+    # resistor"); the pair runs together to the filters.
+    if os.environ.get("BRAIN_KELVIN_TIES", "0") == "1":
+        csp_k, csn_k = Net("BST_CSP_K"), Net("BST_CSN_K")
+        _two("NT7", "NetTie", "NetTie", "U20 CSP Kelvin tie, at R109.1's pad", "NetTie:NetTie-2_SMD_Pad0.5mm",
+             vin_sw, csp_k)
+        _two("NT8", "NetTie", "NetTie", "U20 CSN Kelvin tie, at R109.2's pad", "NetTie:NetTie-2_SMD_Pad0.5mm",
+             b["LMID"], csn_k)
+    else:
+        csp_k, csn_k = vin_sw, b["LMID"]
+    _res("R110", "100R", "CSP filter (TI's 100R / 100 pF)", csp_k, b["CSPF"])
+    _res("R111", "100R", "CSN filter", csn_k, b["CSNF"])
     _cap("C104", "100pF/50V", "current-sense filter cap", b["CSPF"], b["CSNF"])
     _nfet("Q8", "boost low-side switch", b["SW"], b["LO"], gnd)
     _nfet("Q9", "boost high-side (synchronous) switch, SW to +24V", v24, b["HO"], b["SW"])

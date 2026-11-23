@@ -30,7 +30,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 INTENT = os.path.join(HERE, "brain_board.intent.json")
 NETLIST = os.path.join(HERE, "out", "brain_board.net")
-CELLS = ["lm5122_cell"]          # landed one at a time, each after its route A/B
+CELLS = ["lm5122_cell", "tps552892_cell"]   # landed one at a time, each after its route A/B
 ESC_MM = 8.0 + 20.0              # anchor-seat radius for releasing a net neighbour's snapshot
 NET_MAX = 12                     # nets with more parts than this are rails, not escape nets
 
@@ -64,9 +64,12 @@ def apply(rules, cell, nets):
     # snapshot too (c4, 2026-11-22: the output polymers C313 / C314, on the +24V rail and so
     # outside the net sweep, held their mP0 seats and left the cell NO ROOM)
     regions = {r["region"] for r in rules if r["kind"] == "in_region" and cell.ANCHOR in (r.get("refs") or ())}
+    # ...but not another IC bound there: its decaps keep their own snapshots, so a released
+    # IC walks off them (t1, 2026-11-23: the "power" region freed U203 / U206 / U211, and
+    # C234 / C65 / C241 were left 4-11 mm past their decap rules)
     for r in rules:
         if r["kind"] == "in_region" and r["region"] in regions:
-            release |= {x for x in r.get("refs") or () if x in snap}
+            release |= {x for x in r.get("refs") or () if x in snap and not x.startswith("U")}
     for n, refs in nets.items():
         if n == "GND" or len(refs) > NET_MAX or not refs & every:
             continue

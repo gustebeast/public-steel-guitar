@@ -2906,7 +2906,8 @@ if __name__ == "__main__":
              "width": 0.2, "gap": 0.2} for s, u, k in (("A", "U13", 1), ("B", "U14", 2))]
         notes["quality"]["sense_pairs"] = [
             {"nets": n, "max_sep_mm": 0.5, "end_mm": 1.2, "why": "Kelvin sense pair: coupled to the shunt"}
-            for n in (["ISP5", "ISN5"], ["PA_ISENP_K", "PA_VCC_K"], ["PB_ISENP_K", "PB_VCC_K"])]
+            for n in (["ISP5", "ISN5"], ["PA_ISENP_K", "PA_VCC_K"], ["PB_ISENP_K", "PB_VCC_K"],
+                      ["BST_CSP_K", "BST_CSN_K"])]
     # a small pour land's via array goes beside it, bridged: Q202.3 fed VIN_BRAIN's 10 A to In2 through one via (mV16)
     notes["pour_spill_small"] = True
     # The ICs' datasheet supply pins, by name (cadkit auto_decaps / quality A2, 2026-11-15): a

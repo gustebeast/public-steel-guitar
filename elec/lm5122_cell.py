@@ -60,10 +60,13 @@ its pads, as buck_cell's ORIGIN note says), in mm. rot is the member's own turn.
 """
 from __future__ import annotations
 
-import itertools
-import json
+import os
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import switcher_cell as _sc  # noqa: E402
+
+WHAT = "LM5122 boost"
 ANCHOR = "U220"
 SRC = "TI SNVS954H 10.1 / fig. 49 (LM5122); TI SNVU197 8 / figs. 12-15 (LM5122EVM-1PH)"
 CELL = {   # member -> (dx, dy, rot)
@@ -82,6 +85,12 @@ CELL = {   # member -> (dx, dy, rot)
     "R309": (8.50, 26.25, 0.0),      # current sense along L204's top, LMID pad at L204.1, VIN_SW end to -X
     "C296": (1.50, 23.25, 0.0),      # input HF bypass at R309's VIN_SW end
     "C292": (-0.25, 19.50, 0.0),     # input bulk at R309's VIN_SW end
+    # Kelvin ties on R309's pads (BRAIN_KELVIN_TIES), each on its pad's inner edge: the sense
+    # pads face each other under the resistor body, and the CSP / CSN pair leaves between them,
+    # clear of L204's LMID pad (A/B 2026-11-23: without them R311.1 sat on a split BST_LMID
+    # pour island, open on both seeds)
+    "NT207": (6.65, 26.25, 0.0),     # CSP: tie pad 1 on R309.1's inner edge (6.15), sense pad inward
+    "NT208": (10.35, 26.25, 180.0),  # CSN: tie pad 1 on R309.2's inner edge (10.85), sense pad inward
 }
 # hard rules among the members (the gate checks them; the geometry alone must meet them)
 RULES = [
@@ -114,36 +123,14 @@ GAP_MM = 0.15     # courtyard to courtyard
 
 def intent_rules():
     """The intent rules this cell adds: the group (placed whole) and its hard rules."""
-    out = [dict(kind="group", anchor=ANCHOR, members={k: list(v) for k, v in CELL.items()}, hard=True,
-                src=SRC, why="the LM5122 boost as one designed cell (elec/lm5122_cell.py)")]
-    out += [dict(r, hard=True, src=SRC) for r in RULES + OUTER]
-    return out
+    return _sc.intent_rules(sys.modules[__name__])
 
 
 def check(parts, pi):
     """[problem] for the cell alone at the origin, plus REACH: courtyard overlaps, broken hard rules."""
-    pl = {ANCHOR: [0.0, 0.0, 0.0]}
-    pl.update({k: list(v) for k, v in CELL.items()})
-    pl.update({k: list(v) for k, v in REACH.items()})
-    P = pi.Placed(parts, pl)
-    bad = []
-    for a, b in itertools.combinations(pl, 2):
-        d = pi._poly_dist(P.crtyd(a), P.crtyd(b))
-        if d < GAP_MM:
-            bad.append("courtyards %s / %s %.2f mm apart (< %.2f)" % (a, b, d, GAP_MM))
-    for r in RULES + OUTER:
-        for s, ref, det in pi.check(dict(r, hard=True), P, {}):
-            if s < -0.05:
-                bad.append("%s breaks its %s %s <= %g by %.2f (%s)" % (ref, r["kind"], r.get("pin") or r.get("target"),
-                                                                     r["max_mm"], -s, det))
-    return bad
+    return _sc.check(sys.modules[__name__], parts, pi)
 
 
 if __name__ == "__main__":
     # py -3.12 elec/lm5122_cell.py <output_board.parts.json> <cadkit/pcbflow dir>
-    sys.path.insert(0, sys.argv[2])
-    import place_intent as _pi
-    problems = check(json.load(open(sys.argv[1]))["parts"], _pi)
-    print("\n".join(problems) if problems else "lm5122_cell: PASS (%d members, %d hard rules, %d outside parts seated)"
-          % (len(CELL), len(RULES) + len(OUTER), len(REACH)))
-    sys.exit(1 if problems else 0)
+    sys.exit(_sc.main(sys.modules[__name__], sys.argv[1:]))
