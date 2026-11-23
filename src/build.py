@@ -916,7 +916,7 @@ def main() -> None:
     # ⚠ VOLUMES FIRST. report_build_regressions() ends by CLEARING the record list, so
     # writing the volumes after it wrote an empty file (found by the file being 100
     # bytes, lead 2026-09-30). Order matters here and nothing else would have said so.
-    _n = write_part_volumes()           # what the plastic costs, for tools/cost.py
+    _n = write_part_volumes(keep=set(PARTS))   # what the plastic costs, for tools/cost.py
     if _n:
         print(f"wrote tools/part_volumes.json  ({_n} parts)")
     report_build_regressions()          # ~free: flags any part whose face count grew vs baseline
