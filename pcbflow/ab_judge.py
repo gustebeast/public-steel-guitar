@@ -29,6 +29,7 @@ import hashlib
 import json
 import os
 import re
+import subprocess
 import sys
 
 RULES = (("skew", "max_skew_mm"), ("layers", "same_layer"), ("via_budget", "max_vias"),
@@ -69,6 +70,17 @@ def judge(d):
     row["unc"], row["viol"] = (int(m[-1][0]), int(m[-1][1])) if m else (None, None)
     m = re.search(r'"open": (\d+), "joins_open": (\d+)', log)
     row["open"], row["joins"] = (int(m.group(1)), int(m.group(2))) if m else (None, None)
+    # no router score in the log (place_flow --no-score): the finished board's own count of
+    # unconnected joins (unconnected.py, KiCad's ratsnest), marked * in the table
+    row["joins_board"] = False
+    pcb = os.path.join(d, "output_board.kicad_pcb")
+    if row["joins"] is None and os.path.isfile(pcb):
+        kp = os.environ.get("KICAD_PYTHON", "C:/Program Files/KiCad/10.0/bin/python.exe")
+        r_ = subprocess.run([kp, os.path.join(os.path.dirname(os.path.abspath(__file__)), "unconnected.py"), pcb],
+                            capture_output=True, text=True)
+        mm = re.search(r" (\d+)\s*$", r_.stdout or "")
+        if mm:
+            row["joins"], row["joins_board"] = int(mm.group(1)), True
     failed = set()
     lines = 0
     for g, text in re.findall(r"^    FAIL (\S+)\s+(.*)$", log, re.M):
@@ -114,7 +126,9 @@ def main(dirs):
     for r in rows:
         print("%-12s %5s %5s %8s %7s %8s %9s" % (
             r["run"], r["unc"], r["viol"], r["verify"], r["verify_lines"], r["q_judged"],
-            "%s/%s" % (r["open"], r["joins"])))
+            "%s/%s%s" % (r["open"], r["joins"], "*" if r.get("joins_board") else "")))
+    if any(r.get("joins_board") for r in rows):
+        print("* joins counted on the finished board (unconnected.py): the log has no router score")
     return rows
 
 
