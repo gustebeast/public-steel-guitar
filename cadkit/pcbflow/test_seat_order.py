@@ -6,9 +6,9 @@
    U205's hard VIN cap C218 found NO ROOM after its soft siblings took the pin's patch.
    Synthetic: U1's pin 1 has room for one cap inside 1.0 mm; two soft caps are listed
    ahead of the hard one. The hard cap must hold its rule.
-2. place_flow._sat_summary lists each stranding line once with a count line, and the
-   report's placement log leaves those lines out; --place-only and --to-routability print
-   the summary (run.log had it only on a stop, and twice).
+2. The stranding report (place_flow._sat_broken / _sat_summary): every near / decap rule by
+   its own check, held parts included, hard counted apart; the old free-only DECAP STRANDED
+   count is gone; --place-only and --to-routability print it (run.log had it only on a stop).
 Exit 0 = PASS.
 """
 import os
@@ -51,12 +51,20 @@ try:
 except SystemExit as e:
     bad.append("1: place refused: %s" % e)
 
-log = ["place_init: DECAP STRANDED: C5 seated 4 mm", "place_init: other", "place_init: DECAP STRANDED: C5 seated 4 mm",
-       "place_init: SATELLITE OFF ITS PIN: C5 1 mm past"]
-s = pf._sat_summary(log)
-if s != ["DECAP STRANDED: C5 seated 4 mm", "SATELLITE OFF ITS PIN: C5 1 mm past",
-         "PLACEMENT: 1 decap(s) stranded, 1 satellite(s) off their pins"]:
-    bad.append("2: _sat_summary gave %s" % s)
+# the stranding report: every near / decap rule by its own check, held parts included
+pl2 = {"U1": [5.0, 2.5, 0.0], "C1": [5.0, 2.5 - 0.0, 0.0], "C2": [0.9, 0.6, 0.0], "C9": [0.9, 4.4, 0.0]}
+pl2["C1"] = [2.25, 2.5, 0.0]                                   # at the pin: kept
+r2 = [dict(kind="fixed", ref="C2", xy=[0.9, 0.6], hold="snapshot", why="test"),
+      dict(kind="decap", cap="C1", pin="U1.1", max_mm=1.0, hard=False, src="a"),
+      dict(kind="decap", cap="C2", pin="U1.1", max_mm=1.0, hard=False, src="b"),
+      dict(kind="decap", cap="C9", pin="U1.1", max_mm=1.0, hard=True, src="c")]
+sat = pf._sat_broken(r2, parts, pl2)
+got = {(x[1], x[4], x[5]) for x in sat}
+if got != {("C2", False, True), ("C9", True, False)}:
+    bad.append("2: _sat_broken gave %s (want C2 soft held, C9 hard free; C1 kept)" % sorted(got))
+lines = pf._sat_summary(["place_init: DECAP STRANDED: C5 x", "place_init: TANGLE HINT t", "place_init: TANGLE HINT t"], sat)
+if lines[-2] != "PLACEMENT: 2 near/decap rule(s) broken by > 1 mm (1 hard; 1 held, 1 free)" or lines[-1] != "TANGLE HINT t"         or any("DECAP STRANDED" in l_ for l_ in lines):
+    bad.append("2: _sat_summary gave %s" % lines)
 src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "place_flow.py"), encoding="utf-8").read()
 if src.count("for l_ in _sat_summary(init_log):") < 2:
     bad.append("2: --place-only / --to-routability no longer print the stranding summary")
