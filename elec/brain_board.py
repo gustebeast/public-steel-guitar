@@ -362,6 +362,19 @@ if FOLD:
     MCU_IO.update(FOLD_IO)
     del MCU_IO["BRAIN_PG"]                      # nobody reports +24V good to itself
 
+# PIN SWAPPING (user, 2026-11-23: "make the pipeline do what the human would"): an engineer
+# picks each plain-GPIO line's pin by where its wire goes. BRAIN_PINSWAP names a json
+# {"pins": {signal: [port, pin number]}} written for a placement (scratch fz/pinswap.py: an
+# exact assignment, interrupt inputs kept on distinct EXTI lines, SWD/JTAG/RTC/clock pins
+# left alone). Only plain GPIO moves; every peripheral pin stays where its AF puts it.
+_PINSWAP = os.environ.get("BRAIN_PINSWAP")
+if _PINSWAP:
+    for _sig, (_port, _num) in json.load(open(_PINSWAP, encoding="utf-8"))["pins"].items():
+        assert _sig in MCU_IO, _sig
+        assert PIN.setdefault(_port, _num) == _num, (_port, _num)
+        MCU_IO[_sig] = _port
+    assert len(set(MCU_IO.values())) == len(MCU_IO), "two signals on one pin"
+
 
 def _circuit_parts():
     from builtins import default_circuit         # skidl 2.x keeps it there
