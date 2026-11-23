@@ -2695,3 +2695,60 @@ def main(argv):
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
+
+
+# ⚠ A HARD near / decap A REGION CANNOT MEET IS SAID BEFORE PLACEMENT (lead 2026-11-22): sw1 /
+# sw2 bound C3 (U5's VIN cap, hard 2.0 mm at U5.2) to region pd while U5 sat in power, and
+# the flow placed for 20 minutes to end in NO ROOM. feasibility() reads each hard near /
+# decap rule against the subject's region and the target's (its pin's) region -- or the
+# pin itself when the target is held -- before anything is placed:
+#   INFEASIBLE     no point of the subject's region lies within reach of the target (the
+#                  regions' gap > max_mm + both parts' half-diagonals): the flow stops
+#   REGION SPLIT   a hard rule of <= 3 mm whose subject is BOUND to a different region than
+#                  its target: feasible only along their border -- an intent error, it stops too
+def _half_diag(part):
+    c = np.asarray(part.get("crtyd") or [[0, 0], [0, 0]], float)
+    return 0.5 * float(np.hypot(*np.ptp(c, axis=0)))
+
+
+def feasibility(rules, parts, notes):
+    """(infeasible lines, region-split lines) for every hard near / decap rule."""
+    polys = {r["name"]: np.asarray(r["poly"], float) for r in rules if r["kind"] == "region"}
+    board = np.asarray(notes.get("outline_poly") or _rect(notes["outline_mm"]), float)
+    reg = {}
+    for r in rules:
+        if r["kind"] == "in_region" and r.get("region") in polys:
+            for x in _refs(r["refs"], parts):
+                reg.setdefault(x, r["region"])
+    held = {r["ref"]: [r["xy"][0], r["xy"][1], r.get("rot", 0.0)] for r in rules
+            if r["kind"] in ("fixed", "pin") and r.get("xy") is not None and r.get("ref") in parts}
+    P = Placed(parts, held)
+    bad, split = [], []
+    for i, r in enumerate(rules):
+        if r["kind"] not in ("near", "decap") or not is_hard(r):
+            continue
+        sub = r.get("cap") or r.get("ref")
+        tgt = r.get("pin") or r.get("target") or ""
+        anc = tgt.split(".", 1)[0]
+        if sub not in parts or anc not in parts or sub in held:
+            continue
+        rs, ra = reg.get(sub), reg.get(anc)
+        sp = polys.get(rs, board)
+        reach = float(r["max_mm"]) + _half_diag(parts[sub])
+        if anc in held:
+            tp = P.pad_poly(*tgt.split(".", 1)) if "." in tgt else P.crtyd(anc)
+            gap = max(0.0, _poly_dist(sp, tp)) if not _inside(sp, np.asarray(tp, float)).any() else 0.0
+        else:
+            tp = polys.get(ra, board)
+            reach += _half_diag(parts[anc])
+            gap = max(0.0, _poly_dist(sp, tp))
+        if gap > reach:
+            bad.append("INFEASIBLE rule %d: %s (region %s) can come no nearer than %.1f mm to %s (%s), "
+                       "past its hard %s %g mm + sizes (%.1f) [%s]"
+                       % (i, sub, rs or "board", gap, tgt, ("held" if anc in held else "region %s" % (ra or "board")),
+                          r["kind"], r["max_mm"], reach, r.get("src", "")))
+        elif float(r["max_mm"]) <= 3.0 and anc not in held and rs is not None and rs != ra:
+            split.append("REGION SPLIT rule %d: %s is bound to region %s but its hard %s %g mm target %s is in %s -- "
+                         "it can hold only along their border; bind it with its IC"
+                         % (i, sub, rs or "board", r["kind"], r["max_mm"], tgt, ra or "board"))
+    return bad, split
