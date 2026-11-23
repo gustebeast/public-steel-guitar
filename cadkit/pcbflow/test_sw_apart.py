@@ -8,6 +8,10 @@ crystal was crowded against its inductor.
   0  a 5-part SW node (U1 L1 Q1 Q2 C1) -> one forbid apart with the crystal Y1 on its b side
   1  a 3-part SW node (integrated buck) -> still its apart (unchanged)
   2  a 7-part net with an L and an IC  -> no apart (a rail-like net, over the bound)
+  3  the crystal's driver U4 (HUB_XI / HUB_XO) is on the SW node's b side too (c6: the hub
+     seated 1.2 mm off L204 and its hard-tied crystal had no room)
+  3  the crystal's driver U4 (HUB_XI / HUB_XO) is on the SW node's b side too (c6: the hub
+     seated 1.2 mm off L204 and its hard-tied crystal had no room)
 Exit 0 = PASS.
 """
 import os
@@ -41,5 +45,7 @@ if ("C2", "L2", "U2") not in sw:
     bad.append("1: the 3-part SW node lost its apart (got %s)" % sorted(sw))
 if any("L3" in a for a in sw):
     bad.append("2: a 7-part net got a switch-node apart")
+if a0 in sw and "U4" not in sw[a0]["b"]:
+    bad.append("3: the crystal driver U4 is not kept off the SW node (b = %s)" % sw[a0]["b"])
 print("\n".join(bad) if bad else "test_sw_apart: PASS")
 sys.exit(1 if bad else 0)
