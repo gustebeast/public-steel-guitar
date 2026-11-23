@@ -10,7 +10,7 @@
     html, body { margin: 0; height: 100%; overflow: hidden; background: #16181c;
                  color: #c9ced6; font: 14px/1.4 system-ui, sans-serif; }
     #view { position: fixed; inset: 0; }
-    .label { position: fixed; left: 16px; top: calc(14px + var(--tabs, 0px)); opacity: .9; pointer-events: none; }
+    .label { position: fixed; left: 16px; top: calc(14px + var(--tabs, 0px)); opacity: .9; }   /* (text that is not a button can be selected) */
     .label b { color: #e6eaf0; }
     .label .sub { opacity: .6; font-size: 12px; }
     #build { position: fixed; right: 16px; top: calc(14px + var(--tabs, 0px)); opacity: .5; font-variant-numeric: tabular-nums; }
@@ -95,7 +95,7 @@
                 font-variant-numeric: tabular-nums; display: none; }
     #status { position: fixed; right: 16px; top: calc(52px + var(--tabs, 0px)); font-size: 11px; opacity: .55;
               max-width: 44vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-              pointer-events: none; text-align: right; }
+              text-align: right; }
 
     /* ── tabs: one project each, on cadkit's local server only (see TABS in the script).
        The desktop app's strip (cadkit/desktop/src/tabs.html) is dressed the same. ── */
@@ -389,6 +389,45 @@
     }
   }
 
+  // A DIRECT DRIVE'S STRING (rig.strings[i].slide): its nut rides a leadscrew turned by its own
+  // motor. A string's stretch beyond slack goes as its tension, and pitch as the root of tension,
+  // so n semitones from open is open_dl * 2^(n/6) of stretch (clamped to the travel). The model is
+  // drawn at `drawn_dl`; the nut and what rides it (the yoke, the ball end, the keyplate, the
+  // collar...) SLIDE along `slide_dir` by the difference, the screw and everything turning with it
+  // (coupler, collars, motor shaft) TURN about the screw's axis at its lead, and the spring, from
+  // its fixed end at `from` to the collar, STRETCHES along the axis to follow.
+  const curDl = {};
+  const mS = new THREE.Matrix4();
+  function screwNodes(s) {
+    if (s._for !== nodes) {                                // (resolved once per model)
+      const names = Object.keys(nodes), of = re => names.filter(n => new RegExp(re).test(n));
+      s._slide = of(s.slide); s._turn = of(s.turn); s._stretch = s.stretch ? of(s.stretch.re) : [];
+      s._for = nodes;
+    }
+  }
+  function applyScrew(s, st, k) {
+    screwNodes(s);
+    const want = Math.min(Math.max(s.open_dl * Math.pow(2, st / 6), 0), s.dl_max);
+    const dl = (curDl[s.i] = curDl[s.i] === undefined ? s.drawn_dl : curDl[s.i] + (want - curDl[s.i]) * k);
+    const m = dl - s.drawn_dl, d = s.slide_dir, a = s.axis, c = s.center;
+    if (Math.abs(m) < 1e-5 && !s._moved) return;           // as drawn: left identity
+    s._moved = Math.abs(m) >= 1e-5;
+    for (const n of s._slide) translateNode(n, d[0] * m, d[1] * m, d[2] * m);
+    for (const n of s._turn) spinNode(n, c, a, s.turn_rad_per_mm * m);
+    if (s.stretch) {                                       // scaled along the axis about its fixed end
+      const L = s.stretch.len, f = (L + m * (d[0] * a[0] + d[1] * a[1] + d[2] * a[2])) / L, o = s.stretch.from;
+      const e = [];                                        // I + (f-1) a a^T, about `o`
+      for (let r = 0; r < 3; r++) for (let q = 0; q < 3; q++) e.push((r === q ? 1 : 0) + (f - 1) * a[r] * a[q]);
+      mS.set(e[0], e[1], e[2], 0, e[3], e[4], e[5], 0, e[6], e[7], e[8], 0, 0, 0, 0, 1);
+      tA.makeTranslation(o[0], o[1], o[2]); tB.makeTranslation(-o[0], -o[1], -o[2]);
+      for (const n of s._stretch) {
+        const o3 = nodes[n]; if (!o3) continue;
+        o3.matrixAutoUpdate = false;
+        o3.matrix.copy(tA).multiply(mS).multiply(tB);
+      }
+    }
+  }
+
   function applyRig(dt) {
     if (!rig) return;
     const g = rig.gains, tgtSt = targetRaise();
@@ -397,6 +436,7 @@
     applyPedals(dt, k);
     applyLevers(dt, k);
     for (const s of strings) {
+      if (s.slide) { applyScrew(s, tgtSt[s.i], k); continue; }
       // WHERE THE NUT SITS FOR A PITCH. A string's stretch from slack is proportional to
       // its tension, and pitch goes as the root of tension: open is rig.open_down below the
       // ceiling (where the string was wrapped), and n semitones from open is
@@ -490,7 +530,13 @@
   function movingNames() {
     const s = new Set();
     if (!rig) return s;
+    const res = [];
     for (const st of rig.strings) {
+      if (st.slide) {                                    // a direct drive: its parts by pattern
+        for (const k of ['slide', 'turn']) res.push(new RegExp(st[k]));
+        if (st.stretch) res.push(new RegExp(st.stretch.re));
+        continue;
+      }
       for (const n of st.carriage_nodes) s.add(n);
       s.add(st.screw_pulley.node); s.add(st.motor_pulley.node);
       for (const n of st.screw_pulley.with || []) s.add(n);
@@ -499,6 +545,10 @@
     for (const p of rig.pedals || []) for (const n of [...p.swing_nodes, ...p.piston_nodes]) s.add(n);
     for (const c of rig.copedent) if (c.lever)
       for (const n of [...c.lever.swing_nodes, ...(c.lever.piston_nodes || [])]) s.add(n);
+    if (res.length) {                                    // (a name the patterns take moves too)
+      const has = s.has.bind(s);
+      s.has = n => has(n) || res.some(r => r.test(n));
+    }
     return s;
   }
 
@@ -1562,6 +1612,10 @@
   for (const e of document.querySelectorAll('#secPanel .ax')) e.onclick = () => setSection(true, +e.dataset.a);
   $('secSlide').oninput = e => setSection(true, undefined, +e.target.value);
   $('secSlide').onchange = e => e.target.blur();       // hand the keys back to the page
+  // A SLIDER PRESSED INSIDE A TEXT SELECTION moved a touch, then the browser took the press
+  // for a drag of the selected text (the no-drop cursor) and the slider stopped. Nothing on
+  // the page is dragged that way (the tabs go by pointer events), so a control never starts one.
+  document.addEventListener('dragstart', e => { if (e.target.closest?.('input, select, textarea')) e.preventDefault(); });
   $('secVal').onchange = e => { if (isFinite(+e.target.value)) setSection(true, undefined, +e.target.value); };
   // the mouse wheel over the slider or the number moves the cut 0.1 a notch, up is +
   for (const id of ['secSlide', 'secVal'])
@@ -2097,7 +2151,6 @@
       : '';
     // the whole story of a mismatch is long: it is the line's tooltip, not the line
     $('status').title = stamp && stamp.scratch && stamp.drift ? stamp.drift : '';
-    $('status').style.pointerEvents = $('status').title ? 'auto' : 'none';
     const hiddenNames = new Set(hiddenParts().map(p => p.name));
     const wasMode = mode;
     const gltf = await new GLTFLoader().loadAsync('assembly.glb?v=' + M.key);
