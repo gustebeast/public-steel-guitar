@@ -1617,7 +1617,12 @@ def auto_floorplan(parts, sensitive=SENSITIVE, noisy=NOISY_EDGE, xtal=XTAL_NET, 
     for L in sorted(r for r in parts if re.match(r"^L\d", r) and r not in skip):
         for n in sorted(rnets[L]):
             members = nets.get(n, set())
-            if SUPPLY.search(n) or n in ground or len(members) > 4 or not any(ic(m) for m in members if m != L):
+            # ⚠ AN EXTERNAL-FET SW NODE HAS FIVE PARTS (brain_board c5, 2026-11-22): the LM5122's
+            # BST_SW joins U220, L204, Q208, Q209 and the bootstrap cap C299. The old limit of 4
+            # fitted only integrated converters, so the boost's SW node had no `apart` at all,
+            # and the USB hub's crystal Y2 was crowded against L204. Same bound as
+            # auto_switcher's sw_refs (6).
+            if SUPPLY.search(n) or n in ground or len(members) > 6 or not any(ic(m) for m in members if m != L):
                 continue
             grp = sorted(members - set(skip))
             b = sorted((sens | crystals) - set(grp) - _own(grp))
