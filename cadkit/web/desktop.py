@@ -265,7 +265,15 @@ def update():
         _stamp_path().write_text(json.dumps({"hash": _source_hash(), "time": when, "src": str(SRC)}))
         if was_running and not start_surely():
             raise SystemExit("cadkit desktop: %s was started again and never answered" % program())
-        print("cadkit desktop: up to date%s" % (", and started again" if was_running else ""))
+        if was_running:                               # (answering once is not staying up: see start)
+            time.sleep(5.0)
+            app = ping()
+            if app is None or not _alive(app.get("pid")):
+                raise SystemExit("cadkit desktop: %s was started again but is NOT running 5 s later: "
+                                 "start it by hand" % _real(program()))
+            print("cadkit desktop: up to date, and started again (pid %s, still up 5 s later)" % app.get("pid"))
+        else:
+            print("cadkit desktop: up to date")
     finally:
         lock.unlink(missing_ok=True)
 
@@ -383,13 +391,111 @@ def install():
     return True, was
 
 
+def _in_job():
+    """This process runs inside a Windows job. A tool's shell is one, and when it ends it ends every
+    process in it, a DETACHED child too; breaking away from it is refused (2026-11-22)."""
+    if os.name != "nt":
+        return False
+    try:
+        k = ctypes.windll.kernel32
+        k.GetCurrentProcess.restype = ctypes.c_void_p
+        r = ctypes.c_int(0)
+        return bool(k.IsProcessInJob(ctypes.c_void_p(k.GetCurrentProcess()), None, ctypes.byref(r))) and bool(r.value)
+    except Exception:
+        return False
+
+
+def _real(path):
+    """`path` as a process OUTSIDE this one's sandbox sees it. The desktop app's tools are shown a
+    private copy of AppData (even a Python that is not packaged): what they wrote under
+    %LOCALAPPDATA% really lives under %LOCALAPPDATA%/Packages/<package>/LocalCache/Local, and from
+    outside the plain path is not there at all. The copy that is the same file (size and time) is
+    that one; else `path` itself."""
+    path = pathlib.Path(path)
+    base = os.environ.get("LOCALAPPDATA")
+    try:
+        rel = path.relative_to(base) if base else None
+    except ValueError:
+        rel = None
+    if rel is None or rel.parts[:1] == ("Packages",) or not path.exists():
+        return path
+    want = (path.stat().st_size, int(path.stat().st_mtime))
+    for c in glob.glob(os.path.join(glob.escape(base), "Packages", "*", "LocalCache", "Local", str(rel))):
+        c = pathlib.Path(c)
+        if c.is_file() == path.is_file() and (not path.is_file() or (c.stat().st_size, int(c.stat().st_mtime)) == want):
+            return c
+    return path
+
+
+def _launch_by_shell(target):
+    """Open `target` (a program, or a file its program opens) as the user's own shell does: explorer
+    starts it as ITS child, outside any job of ours, with no console. No arguments go through it."""
+    subprocess.run(["explorer.exe", str(_real(target))], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                   stderr=subprocess.DEVNULL, timeout=60, creationflags=subprocess.CREATE_NO_WINDOW)
+
+
+def _alive(pid):
+    """The process `pid` is running."""
+    if os.name != "nt" or not pid:
+        return False
+    k = ctypes.windll.kernel32
+    k.OpenProcess.restype = ctypes.c_void_p
+    h = k.OpenProcess(0x1000, False, int(pid))         # PROCESS_QUERY_LIMITED_INFORMATION
+    if not h:
+        return False
+    code = ctypes.c_ulong(0)
+    ok = k.GetExitCodeProcess(ctypes.c_void_p(h), ctypes.byref(code))
+    k.CloseHandle(ctypes.c_void_p(h))
+    return bool(ok) and code.value == 259               # STILL_ACTIVE
+
+
 def start(*args):
-    """Start the app (it is nobody's child: what started it is free to end)."""
+    """Start the app (it is nobody's child: what started it is free to end). From inside a job --
+    a tool's shell -- a DETACHED child still died with the shell (`--update` printed "started
+    again" and no app was left, 2026-11-22), so there the user's shell starts it (`_launch_by_shell`)
+    by the program's real path (`_real`: the app finds its data from where it is). Explorer passes
+    no arguments: an --open is handed to the app once it answers (`start_surely`)."""
+    if os.name == "nt" and _in_job():
+        _launch_by_shell(program())
+        return
     flags = 0
     if os.name == "nt":
         flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
     subprocess.Popen([str(program()), *args], cwd=str(program().parent), stdin=subprocess.DEVNULL,
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=flags, close_fds=True)
+
+
+def check_launch(secs=4.0):
+    """Self-check of `start`'s way out of a job, with nothing on the screen: a script that only
+    waits 60 s, opened as start() opens the app (its program, wscript, has no window); True when it
+    is alive `secs` later. Its pid is printed: a caller in a tool's shell looks again after that
+    shell has ended -- the real test, that it outlives the job."""
+    import tempfile
+    vbs = pathlib.Path(tempfile.gettempdir()) / ("cadkit_launch_check_%d.vbs" % os.getpid())
+    vbs.write_text("WScript.Sleep 60000\n", encoding="ascii")
+    if _in_job():
+        _launch_by_shell(vbs)
+        how = "the shell (explorer)"
+    else:
+        subprocess.Popen(["wscript.exe", str(vbs)], creationflags=subprocess.DETACHED_PROCESS)
+        how = "a child"
+    pid = None
+    end = time.time() + 10
+    while pid is None and time.time() < end:
+        time.sleep(0.5)
+        out = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command",
+                              "(Get-CimInstance Win32_Process -Filter \"Name='wscript.exe'\" | Where-Object "
+                              "{ $_.CommandLine -like '*%s*' } | Select-Object -First 1).ProcessId" % vbs.name],
+                             capture_output=True, text=True, timeout=60, creationflags=subprocess.CREATE_NO_WINDOW).stdout.strip()
+        pid = int(out) if out.isdigit() else None
+    if pid is None:
+        print("cadkit desktop: launch check: the test script never started (by %s)" % how)
+        return False
+    time.sleep(secs)
+    ok = _alive(pid)
+    print("cadkit desktop: launch check: in a job: %s; started by %s, pid %d; alive after %.0f s: %s"
+          % (_in_job(), how, pid, secs, ok))
+    return ok
 
 
 def start_surely(*args, tries=3, wait=12.0):
@@ -402,6 +508,8 @@ def start_surely(*args, tries=3, wait=12.0):
         end = time.time() + wait
         while time.time() < end:
             if ping() is not None:
+                if "--open" in args and os.name == "nt" and _in_job():   # (the shell passed no arguments)
+                    _open(pathlib.Path(args[args.index("--open") + 1]), True)
                 return True
             time.sleep(0.25)
     return False
@@ -432,9 +540,13 @@ def main(argv=None):
     ap.add_argument("--build", action="store_true", help="build the program even if it is current")
     ap.add_argument("--update", action="store_true",
                     help="only bring the program up to date (a running app comes back on it; none is started)")
+    ap.add_argument("--check-launch", action="store_true",
+                    help="self-check: open a windowless 60 s script the way the app is started; see it stay up")
     a = ap.parse_args(argv)
     if os.name != "nt":
         raise SystemExit("cadkit desktop: Windows only so far")
+    if a.check_launch:
+        raise SystemExit(0 if check_launch() else "cadkit desktop: the launch check FAILED")
     if a.update:
         return update()
     if a.build or stale():
