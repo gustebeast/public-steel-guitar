@@ -1562,6 +1562,10 @@
   for (const e of document.querySelectorAll('#secPanel .ax')) e.onclick = () => setSection(true, +e.dataset.a);
   $('secSlide').oninput = e => setSection(true, undefined, +e.target.value);
   $('secSlide').onchange = e => e.target.blur();       // hand the keys back to the page
+  // A SLIDER PRESSED INSIDE A TEXT SELECTION moved a touch, then the browser took the press
+  // for a drag of the selected text (the no-drop cursor) and the slider stopped. Nothing on
+  // the page is dragged that way (the tabs go by pointer events), so a control never starts one.
+  document.addEventListener('dragstart', e => { if (e.target.closest?.('input, select, textarea')) e.preventDefault(); });
   $('secVal').onchange = e => { if (isFinite(+e.target.value)) setSection(true, undefined, +e.target.value); };
   // the mouse wheel over the slider or the number moves the cut 0.1 a notch, up is +
   for (const id of ['secSlide', 'secVal'])
