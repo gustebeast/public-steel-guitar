@@ -63,7 +63,7 @@
       "vendor": "Anker (retail)",
       "sku": "Anker 65W USB-C PD charger (715 Nano II class)",
       "date": "2026-11-12",
-      "what": "USB-C PD wall charger, 65 W (20 V 3.25 A). USER'S CHOICE 2026-11-12 for the BOM until the instrument's real draw is measured: the inlet becomes USB-C PD 9-20 V boosted to 24 V (docs/bronner-work-items.md R2-6), so any laptop charger runs it and a smaller one runs it in a reduced mode. $29.99 is the list price from search listings (Android Authority / Slickdeals, deals $21.99-25.99 through 2026), NOT a product page, hence 'm'. Bring-up uses the user's own Framework charger. A USB-C cable rated for the charger is NOT in this price (see missing.usbc_cable)."
+      "what": "USB-C PD wall charger, 65 W (20 V 3.25 A). USER'S CHOICE 2026-11-12 for the BOM until the instrument's real draw is measured: the inlet becomes USB-C PD 9-20 V boosted to 24 V (docs/bronner-work-items.md R2-6), so any laptop charger runs it and a smaller one runs it in a reduced mode. $29.99 is the list price from search listings (Android Authority / Slickdeals, deals $21.99-25.99 through 2026), NOT a product page, hence 'm'. Bring-up uses the user's own Framework charger. A USB-C cable rated for the charger is NOT in this price (see missing.usbc_cable). Shipping, tax and tariff NOT measured. The USB-C PD inlet electronics (AP33772 sinks, LM5122 boost) are on the brain board, so they are in the board line."
     },
     "psu_24v_160w": {
       "usd": 47.7,
@@ -375,6 +375,14 @@
       "verified": "m",
       "per_instrument": 1,
       "what": "one 10-string pedal steel set"
+    },
+    "hookup_wire": {
+      "usd": 21.39,
+      "verified": "m",
+      "per_instrument": 1,
+      "vendor": "McMaster-Carr",
+      "order": "3 x 8054T13 22 AWG 25 ft $3.91 + 3 x 8054T11 26 AWG 25 ft $3.22 = $21.39 per instrument",
+      "what": "Hook-up wire, two gauges (BOM.md, Hook-up wire: two gauges): six 25 ft spools per instrument, prices read 2026-10-20. 'm' because the 3/3 split of the six spools is assumed and the length was measured on the v1 harness (15.26 m over 115 runs, lever bus included) -- tools/wire_total.py left with v1, so the direct harness is not measured."
     }
   },
   "boards": {
@@ -5587,10 +5595,10 @@
       "what": "Newhaven NHD-2.7-12864WDW3-M, 2.7in 128x64 SSD1322 white OLED with a 20-way 1.0 mm FFC socket -- newhavendisplay.com $39.08 IN STOCK 2026-10-19 (DigiKey $39.08 and Mouser $44.66 both 0 in stock that day, restocking Nov 2026). Replaces the 2.42in SSD1309 line, $17 from memory, which was the display before 2026-09-25"
     },
     "ui_ribbon_lead_16p_508mm": {
-      "usd": 15.04,
+      "usd": 13.96,
       "verified": "v",
       "per_instrument": 1,
-      "what": "Samtec FFSD-08-D-20.00-01-N, 16-way 1.27 x 1.27 IDC socket-to-socket ribbon lead, 508 mm (20.00 in), gold, polarizing notch: the UI board <-> Pi cap ribbon -- DigiKey SAM9356-ND $15.04, 64 in stock, 2026-10-21. Replaces buying 500 mm of 0.635 ribbon and two loose 2x8 IDC sockets (~$2.20, never priced here) and pressing them on"
+      "what": "2026-11-23: $13.96 at 10 from samtec.com direct (was DigiKey $15.04 at 1). Samtec FFSD-08-D-20.00-01-N, 16-way 1.27 x 1.27 IDC socket-to-socket ribbon lead, 508 mm (20.00 in), gold, polarizing notch: the UI board <-> Pi cap ribbon -- DigiKey SAM9356-ND $15.04, 64 in stock, 2026-10-21. Replaces buying 500 mm of 0.635 ribbon and two loose 2x8 IDC sockets (~$2.20, never priced here) and pressing them on"
     },
     "ffc_display_20p_50mm": {
       "usd": 0.0907,
@@ -5608,6 +5616,24 @@
       "verified": "v",
       "per_instrument": 1,
       "what": "Raspberry Pi Compute Module 5, wireless, 2GB RAM, 16GB eMMC (CM5102016) -- on the brain board's DF40 pair (J201/J202). eMMC because the board has no SD socket (elec/brain.py); 2GB because the Pi 4 1GB was the plan for the same software. PiShop.us $97.50, in stock, page read 2026-11-23. Same day: CM5002016 (no wireless) $92.50, CM5104032 (4GB/32GB) $140.00; DigiKey SC1556 = CM5002000 (2GB Lite, no eMMC -- not fittable) $67.50 with a purchase limit. Replaces the Pi 4 1GB ($35), its 2x20 riser and the motor_ctrl USB lead."
+    },
+    "ribbon_brain_connector_30p": {
+      "usd": 20.62,
+      "verified": "v",
+      "per_instrument": 1,
+      "what": "Samtec FFSD-15-D-24.00-01-N, 30-way 1.27 x 1.27 Tiger Eye IDC socket-to-socket lead, 24 in (610 mm): brain J240 (instrument x ~-85) to connector_board J1 (board centre x -572), ~490 mm straight, so 24 in is the shortest stock length with routing slack -- LENGTH ASSUMED, set it when the harness is drawn. samtec.com $20.62 at 10 ($22.22 at 1), 34 at distributors, read 2026-11-23."
+    },
+    "ribbon_brain_optical_20p": {
+      "usd": 13.11,
+      "verified": "v",
+      "per_instrument": 1,
+      "what": "Samtec FFSD-10-D-12.00-01-N, 20-way 1.27 x 1.27 Tiger Eye IDC lead, 12 in (305 mm): brain J4 to the optical board at the +X end -- LENGTH ASSUMED (the optical board's pose is not in the model yet). samtec.com $13.11 at 10 ($14.13 at 1), 96 ship tomorrow, read 2026-11-23."
+    },
+    "usbc_cable_100w_2m": {
+      "usd": 16.16,
+      "verified": "v",
+      "per_instrument": 1,
+      "what": "Adafruit 6029, USB-C to USB-C, 2 m, 100 W (20 V 5 A, e-marked) with a wattage display: the charger lead, rated past the 65 W charger so a 100 W brick also works. $16.16 at 10-99 ($17.95 at 1), OUT OF STOCK at Adafruit 2026-11-23 -- the 1 m sibling is the fallback."
     }
   },
   "missing": {
@@ -5615,12 +5641,9 @@
       "KNOWN ABSENT, listed so the total is honest about its own holes. cost.py prints",
       "these under the table and refuses to call the number complete while any remain."
     ],
-    "psu": "PRICED: Anker 65W USB-C charger at $29.99 [m], see mechanical.psu_usbc_65w (the GST160A24-R7B barrel supply is kept at per_instrument 0). Shipping, tax and tariff NOT measured. The USB-C PD inlet electronics (AP33772 sinks, LM5122 boost) are on the brain board now, so they ARE in the board line.",
-    "usbc_cable": "NOT PRICED: a USB-C to USB-C cable rated for the charger (3 A for 65 W, 5 A e-marked for 100 W) -- the Anker 65W does not include one; ~$8-10 is an unread estimate.",
-    "wire": "PRICED PER SPOOL 2026-10-20, NOT PER INSTRUMENT: two gauges, six 25 ft spools of McMaster 8054T (22 AWG 8054T13 $3.91, 26 AWG 8054T11 $3.22; BOM.md, Hook-up wire: two gauges) cover one instrument above the floor. LENGTH IS MEASURED, tools/wire_total.py totals the drawn harness at 15.26 m per instrument over 115 runs (152.6 m for a ten-instrument order), which is the figure BOM.md never had.",
-    "landed_gaps": "SHIPPING AND TAX ARE MEASURED FOR FIVE VENDORS, NOT FOR THE BOM. Measured: Lace, JLCPCB, Makerbase, PiShop, Tinmorry, plus Jameco's tariff. UNMEASURED and therefore missing from the landed line: every listing-priced mechanical item (~$213/instrument of screws, bearings, belts, springs, shaft -- no vendor is even recorded for most of them, so there is nothing to check), the PCTG and TPU filament. Expect the landed line to grow, not shrink.",
-    "ribbons": "NOT PRICED: the brain board's two ribbon leads -- J240 (2x15 1.27 IDC) to the connector board's J1, and J4 (2x10 1.27) to the optical board. Lengths are not set. The UI ribbon (Samtec FFSD-08, $15.04) is the only one priced; a premade FFSD-15/-10 lead is the like part.",
-    "unmodelled_prints": "NOT IN THE PLASTIC LINE: printed parts the direct instrument needs but src.build does not build yet -- the deck / top panels (top-panels v2) and the keyhead. v1's equivalents were ~$25/instrument of filament at the same factor."
+    "landed_gaps": "SHIPPING AND TAX ARE MEASURED FOR FIVE VENDORS, NOT FOR THE BOM. Measured: Lace, JLCPCB, Makerbase, PiShop, Tinmorry, plus Jameco's tariff. UNMEASURED and therefore missing from the landed line: every listing-priced mechanical item (~$213/instrument of screws, bearings, springs, shaft -- no vendor is even recorded for most of them, so there is nothing to check), the PCTG and TPU filament. Expect the landed line to grow, not shrink.",
+    "unmodelled_prints": "NOT IN THE PLASTIC LINE: printed parts the direct instrument needs but src.build does not build yet -- the deck / top panels (top-panels v2) and the keyhead. v1's equivalents were ~$25/instrument of filament at the same factor.",
+    "mechanical_recount": "PENDING (branner, 2026-11-23): the mechanical per_instrument counts and the nut-end JLCCNC metal (datum bar, floor block, head plate, GREEN, crown and shoe plates, 96445K101 disc springs) are being recounted and priced against the direct model. The nut bars alone were $433.60 per 10 sets in the 11-20 cart (~$43/instrument), NOT in the total yet; break_dowel ($13.90) is likely a bench stand-in counted twice."
   },
   "parts_by_footprint_substring": {
     "_note": [
