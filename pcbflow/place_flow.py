@@ -660,6 +660,7 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
             pl[r_] = v
             why[r_] = "carried from input (not in parts.json: %s)" % (
                 "post_route_refs" if r_ in notes.get("post_route_refs", ()) else "no geometry")
+    _SAT[:] = _sat_broken(rules, parts, pl)
     # ⚠ THE FLOW STOPS BEFORE LAYOUT ON A PLACEMENT IT KNOWS IS BROKEN (lever_sensor holdouts
     # 1 / 1b, 2026-11-12): a part with no room was left overlapping and a connector sat wholly
     # off the board, and both went on to layout, which refused them as courtyard overlaps --
@@ -775,6 +776,7 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
         if pl.get(r_) != pc[r_]:
             why[r_] = "place_cells: cell turned / repaired by route (%s)" % why.get(r_, "")
     pl = pc
+    _SAT[:] = _sat_broken(rules, parts, pl)
     plines = _pours(notes, parts, pl, rules, base_zones)
     for p_ in plines:
         say("POUR " + p_)
@@ -1051,22 +1053,52 @@ def _rule_line(r):
 
 
 def _lifted(line):
-    """A placement-log line the report lifts to its summary (stranding, tangles, grows)."""
-    return any(k in line for k in ("TANGLE HINT", "GROW", "STRANDED", "OFF ITS PIN", "DECAP ROOM"))
+    """A placement-log line the report lifts to its summary (tangles, grows, decap room)."""
+    return any(k in line for k in ("TANGLE HINT", "GROW", "DECAP ROOM"))
 
 
-# ⚠ THE STRANDING SUMMARY IS PRINTED ONCE, EITHER WAY (lead 2026-11-22): run.log carried the
-# placement log only when the flow stopped, and then twice (the summary AND the full log), so
-# a --to-routability baseline read "0 stranded" against a stopped arm's doubled count -- the
-# rpl screen was reported as 38-48 vs 0 when it was 19-24 vs 7. _sat_summary is the one list:
-# the report prints it and leaves those lines out of its placement log; --place-only and
-# --to-routability print it, with its count line, before they return.
-def _sat_summary(init_log):
-    """The placement log's stranding / tangle / grow lines, each once, in order, then a count line."""
-    out = list(dict.fromkeys(x_.split("place_init: ", 1)[-1] for x_ in init_log if _lifted(x_)))
-    n_s = sum(1 for x_ in out if x_.startswith("DECAP STRANDED"))
-    n_o = sum(1 for x_ in out if x_.startswith("SATELLITE OFF ITS PIN"))
-    return out + ["PLACEMENT: %d decap(s) stranded, %d satellite(s) off their pins" % (n_s, n_o)]
+# ⚠ STRANDING IS EVERY near / decap RULE, JUDGED BY ITS OWN CHECK, HELD PARTS INCLUDED (lead
+# 2026-11-22). place_init's DECAP STRANDED line counted only FREE satellites, centre to pin:
+# a snapshot-held cap 26 mm off its pin (C119) never showed, and two intents that freed
+# different parts read 7 against 11 stranded with the same 8 rules broken on each. The count
+# here is the only one: each rule pi.check misses by more than STRANDED_MM, hard counted
+# apart, held / free said. (place_init's lines stay in flow.log as diagnostics -- who holds
+# the pin's patch -- and are no longer counted or lifted.)
+STRANDED_MM = 1.0
+_SAT = []          # the current placement's broken satellite rules (flow sets it, _report reads it)
+
+
+def _sat_broken(rules, parts, pl):
+    """[(mm past, ref, target, max_mm, hard, held, src)] for every near / decap rule broken by
+    more than STRANDED_MM at placement pl (rules naming an unplaced part are skipped)."""
+    held = {r["ref"] for r in rules if r["kind"] in ("fixed", "pin", "panel") and r.get("ref")}
+    P = pi.Placed(parts, pl)
+    out = []
+    for r in rules:
+        if r["kind"] not in ("near", "decap"):
+            continue
+        try:
+            res = pi.check(r, P, {})
+        except (KeyError, ValueError, TypeError):
+            continue
+        for s, ref, _det in res:
+            if s < -STRANDED_MM:
+                out.append((round(-s, 2), ref, r.get("pin") or r.get("target"), r.get("max_mm"),
+                            pi.is_hard(r), ref in held, r.get("src", "")))
+    return sorted(out, key=lambda t: -t[0])
+
+
+def _sat_summary(init_log, sat=None):
+    """The stranding list (_sat_broken, each rule once) and its count line, then the log's
+    tangle / grow lines once each."""
+    sat = _SAT if sat is None else sat
+    out = ["SATELLITE BROKEN (%s, %s): %s %.1f mm past its rule (%s <= %g) [%s]"
+           % ("HARD" if h else "soft", "held" if hd else "free", ref, mm, t, m, src)
+           for mm, ref, t, m, h, hd, src in sat]
+    out.append("PLACEMENT: %d near/decap rule(s) broken by > %g mm (%d hard; %d held, %d free)"
+               % (len(sat), STRANDED_MM, sum(1 for x in sat if x[4]), sum(1 for x in sat if x[5]),
+                  sum(1 for x in sat if not x[5])))
+    return out + list(dict.fromkeys(x_.split("place_init: ", 1)[-1] for x_ in init_log if _lifted(x_)))
 
 
 def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T, refused=None, room=(), width=(), pours=(),
