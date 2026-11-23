@@ -570,6 +570,15 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     ip = os.path.join(fd, "intent.json")
     json.dump(rules, open(ip, "w"), indent=1)
     say = lambda s: (print("place_flow: " + s), log.write("## " + s + "\n"), log.flush())
+    # ⚠ EVERY HOLD SAYS WHY (user 2026-11-22, pi.check_holds): a `fixed` rule with no hold class
+    # or no why stops here, before any placement is spent on it; the HOLDS line reports by class.
+    hc_, hbad_ = pi.check_holds(rules)
+    say("HOLDS: %d fixed -- %s" % (sum(v for k, v in hc_.items() if k != "transient"),
+                                  ", ".join(["%s %d" % (k, hc_[k]) for k in pi.HOLD_CLASSES + ("transient",) if hc_.get(k)]
+                                            + (["UNCLASSIFIED %d" % len(hbad_)] if hbad_ else []))))
+    if hbad_:
+        raise SystemExit("place_flow: intent refused -- %d hold(s) without a reason (hold: %s, and a why):\n  %s"
+                         % (len(hbad_), " / ".join(pi.HOLD_CLASSES), "\n  ".join(hbad_[:20])))
     # ⚠ A RULE THAT NAMES A PART THE NETLIST NO LONGER HAS STOPS THE FLOW HERE, NOT LATER
     # (brain_board mV20a/b, 2026-11-17): a saved pour rule still ran `along` R223.2 after the
     # U5 rework removed R223; both runs placed for 20 minutes and died in _pours on a KeyError.

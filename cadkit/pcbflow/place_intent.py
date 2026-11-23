@@ -514,6 +514,63 @@ KINDS = {
 GATE_KINDS = tuple(k for k, v in KINDS.items() if v["gate"] == "broken")
 
 
+# ⚠ EVERY HOLD SAYS WHY IT HOLDS (user 2026-11-22: "it feels like an oversight having previous
+# decisions limit us now without a clear reason"). 365 of the brain board's 393 `fixed` rules
+# were where an earlier layout or window round happened to leave a part, written as hard
+# holds with no reason and no expiry; they stacked up until no placer could act on overflow.
+# A `fixed` rule carries "hold": one of HOLD_CLASSES, and a `why` naming the specific need:
+#   mate        a connector / plug's partner sets where it is (a ribbon's IDC, a module socket)
+#   mechanical  the enclosure, a panel, a screw, a bearing or the string fan sets it
+#   user        the user ruled it (cite the ruling in src)
+#   physical    the circuit needs it there (an isolation barrier straddle, a kelvin tie, an
+#               optical sensing column)
+#   snapshot    a REMEMBERED POSITION: where an earlier layout left it -- not a constraint
+# place_flow stops on a `fixed` rule with no class or no why (check_holds), and prints the
+# HOLDS line by class on every run.
+HOLD_CLASSES = ("mate", "mechanical", "user", "physical", "snapshot")
+
+
+def hold_class(rule):
+    """A `fixed` rule's hold class ("snapshot": true is the older spelling of hold "snapshot"),
+    or None when it has none."""
+    if rule.get("kind") != "fixed":
+        return None
+    if rule.get("snapshot"):
+        return "snapshot"
+    return rule.get("hold")
+
+
+def is_snapshot(rule):
+    """A `fixed` hold of class "snapshot" is a REMEMBERED POSITION (where an earlier layout or a
+    window round left the part), not a constraint (lead 2026-11-22). place_init still seats the
+    part there, but a re-placement may move it under every hard-rule gate. Mate, mechanical,
+    user and physical holds (HOLD_CLASSES) are constraints."""
+    return hold_class(rule) == "snapshot"
+
+
+def check_holds(rules):
+    """(counts, problems) over every `fixed` rule: counts by hold class (+ "transient" for
+    window scaffolding -- transient region / in_region / keepout / fixed rules), and one line
+    per hold with no class, an unknown class, a snapshot flag contradicting its class, or no
+    `why`. A problem stops place_flow."""
+    counts, bad = {}, []
+    for i, r in enumerate(rules):
+        if r.get("transient") and r.get("kind") in ("region", "in_region", "keepout", "fixed"):
+            counts["transient"] = counts.get("transient", 0) + 1
+        if r.get("kind") != "fixed":
+            continue
+        c = hold_class(r)
+        if r.get("snapshot") and r.get("hold") not in (None, "snapshot"):
+            bad.append("rule %d: %s is snapshot=true but hold %r" % (i, r.get("ref"), r.get("hold")))
+        elif c not in HOLD_CLASSES:
+            bad.append("rule %d: %s fixed with %s" % (i, r.get("ref"), "no hold class" if c is None
+                                                       else "unknown hold class %r" % c))
+        elif not str(r.get("why", "")).strip():
+            bad.append("rule %d: %s fixed (%s) with no why" % (i, r.get("ref"), c))
+        counts[c] = counts.get(c, 0) + 1
+    return counts, bad
+
+
 def is_hard(rule):
     """A rule's hardness: its own `hard`, else its kind's default (KINDS)."""
     if "hard" in rule:

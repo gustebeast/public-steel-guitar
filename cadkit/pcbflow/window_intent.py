@@ -124,7 +124,7 @@ def build(base, src, wins, small=8, keep_nets=("OSC_IN", "OSC_OUT"), keep_prefix
             free.append(ref)
             continue
         add.append(dict(kind="fixed", ref=ref, xy=[x, y], rot=rot, hard=True, transient=True,
-                        why=why, src=by))
+                        hold="snapshot", why=why, src=by))   # a remembered position (pi.is_snapshot)
     # each freed part stays inside its OWN region too (lead 2026-11-19, W49k round 2: a window
     # straddling power / compute frees both, but a compute part may re-seat only inside compute):
     # it is bound to its window clipped to its region; unbound parts get the window alone

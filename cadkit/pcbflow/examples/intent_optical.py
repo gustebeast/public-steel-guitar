@@ -56,15 +56,15 @@ r("region", "compute section: south of the sensing strip (the strip is the analo
 # the optics: fixed by the string fan and the termination
 for n in range(1, 11):
     for ref in ("D%d" % n, "PD%dA" % n, "PD%dB" % n, "R%d" % n):
-        r("fixed", "sensing column at string %d (string_y_at SENSE_X, pitch 9.3634)" % n, "op ~578-620, 1360-1380",
+        r("fixed", "sensing column at string %d (string_y_at SENSE_X, pitch 9.3634)" % n, "op ~578-620, 1360-1380", hold="physical",
           ref=ref, xy=H[ref][:2], rot=H[ref][2])
 for j, w in (("J1", "USB-C at the -Y face, x off TAIL_X1 by the chain"), ("J2", "24 V XH: hard -X, flush with -Y face")):
-    r("fixed", w, "op ~2387-2412", ref=j, xy=H[j][:2], rot=H[j][2])
+    r("fixed", w, "op ~2387-2412", hold="mechanical", ref=j, xy=H[j][:2], rot=H[j][2])
 # converter anchors: x = O_SLOT_X1 + ADC_BUS_CH + 2.8, y = midpoint of its string pair - CELL_NEAR
 for k in range(1, 6):
     u = "U%d" % (13 + k)
     r("fixed", "converter %d: x off the comb's bus channel, y on its string pair's centre line" % k,
-      "op ~2100-2118", ref=u, xy=H[u][:2], rot=H[u][2])
+      "op ~2100-2118", hold="physical", ref=u, xy=H[u][:2], rot=H[u][2])
 
 
 # ------------------------------------------------------------------ the two designed cells
