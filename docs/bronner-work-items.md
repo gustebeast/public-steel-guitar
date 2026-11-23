@@ -1,5 +1,110 @@
 # bronner — open work items (2026-09-30)
 
+## 2026-11-19: BRAIN BOARD PLACEMENT LIST + FINISH-TOOLING DECISIONS
+
+### 14:30 update: replays are reproducible; seeds are the only variance knob
+
+- mVRP1/mVRP2 (two replays of W47, OWNROUTE_WORK_CLOCK=5.1e7 + PCBFLOW_STABLE_FILL=1):
+  both 16/0/90/24, routed boards md5-identical (uuids masked), route logs identical but
+  timing. Final boards differ only in a group member-uuid list (labeller's random silk uuids).
+- Work clock goes default-on at 5.1e7 cells/CPU-s (cadkit e50528e, landed after mVPE0/1).
+  Calibrated to the old budget, so it moves where cuts land, not how much work runs.
+- So rerun noise is gone, but ONE SEED IS STILL NOT REPRESENTATIVE: seeds swing one
+  placement 2-21 unconnected. A paired seed-1 A/B gives the effect at that net order only.
+  Opens: best-of-3 (unseeded, seed 1, seed 2) as before. Targeted effects (pin_escape
+  GADGET length / A3): if large and in the expected direction at seed 1, confirm at seed 2.
+- pin_escape arms running: mVPE0 = W48k, mVPE1 = W48k + pin_escapes ["U17.6"], seed 1.
+
+### 12:30 update: best-of-3 W47 vs W48, lead override -> U38 round on W48k
+Rechecked on identical stages (flag-on finish --keep-route, labeller running). Columns: unconnected / violations / quality / verify.
+| | unseeded | seed 1 | seed 2 |
+|---|---|---|---|
+| W47 | 7/0/84/22 | 16/0/85/17 | 21/2/95/31 |
+| W48 | 2/0/106/38 | 10/0/79/14 | 5/1/88/25 |
+- Strict rule: W47 stays. No W48 board beats W47a on unconnected without being worse on quality or verify.
+- LEAD OVERRIDE (11-19): the U38 round goes on W48k = W48 + C322 keep-out, not on W47. Reasons:
+  - unconnected is the hard part, and W48 is consistently better there (median 5 vs 16; 2 of 3 boards at 7 or under vs 1 of 3);
+  - W48's quality/verify deficit sits in W48a, with a known placement cause (the C322 pinch on +24V_LED, F203.2 -> J240.9) that the keep-out removes;
+  - medians are otherwise close.
+- Order candidate stays W47a (7/0/84/22) until U38-on-W48k best-of-3 beats it under the rule. If it doesn't, the U38 round reruns on W47.
+- W48k intent: window_intent intent47base.json scW47 --win 98,114,111,130 --keepout 105.5,114,117.3,123.4. That is intent48h plus the keep-out, nothing else (checked). Screen gate: holds near 8.80/27, and C322 sits clear of the path.
+- Landed today in canonical cadkit: stable_fill default on (e1de424), loud stages + scratch path (0139bf9, e92a1c7), ownroute.log (8dac401), WORK_CLOCK flag (77d5545, rate 5.1e7 cells/cpu-s), keepout (3117000).
+- Running: reproducibility pair mVRP1/mVRP2 (W47 unseeded, WORK_CLOCK 5.1e7 + STABLE_FILL). The boards should md5-match.
+
+### 11:00 update: reproducibility, real A17 list
+- Root cause of replay variance (non-timing): KiCad holds footprints in a different order each run, and ZONE_FILLER's output depends on that order. Fix: stable_fill (PCBFLOW_STABLE_FILL, cadkit edit branch 0139bf9). It's a content-keyed, order-free fill cache that also restores fill flags and pad/via zone-layer overrides. Gate 1 passed (layout x2 md5-identical). Gate 2 (keep-route x2 + DRC zone-fill-out-of-date) is running. Once it passes: land it and turn it on by default (hygiene, no A/B).
+- Follow-up (lead): any pcbflow loop that walks footprints, pads or tracks in board order can be a nondeterminism source too (router model lists, power_vias, repair, close_last). After stable_fill lands, run one flag-on + WORK_CLOCK-on replay pair. If the boards still differ, the first split in the ownroute.log diff names the loop. Fix by sorting on (ref, pad number). No A/B if DRC stays clean.
+- Loud stages + scratch cadkit path (same commit): the labeller now runs in scratch projects. Earlier quality counts included 9 A17 + A18 + A12 artefacts.
+- REAL A17 FAILs on brain_board (labeller run, mVW48a copy), on the brain-board list:
+  - J4 ways: its pinout is on the other face only, and quality.connector_labels doesn't record why.
+  - J201 ways: many ways unnamed on the front.
+  - J202: no designator on its own side. J202 ways: unnamed ways. J202 way-1 [hard]: nothing marks way 3 (its first way).
+  - J205 ways: ways 1-16 unnamed, no pinout block.
+  - J240 ways: unnamed ways.
+- Run-time plan: drop the score pass once finish-only is md5-proven, which needs STABLE_FILL + WORK_CLOCK.
+
+### 09:40 update: W48 judged, seeds, best-of-N
+- mVW48c (staggered, unseeded) = mVW48a byte-for-byte (md5 6ea33a4a): 2 unc / Q 110 / V 38.
+- mVW48s1 (seed 1, e4068f6d): 10 unc / Q 83 / V 14. W48 fails the old rule on both samples, so W47 stays.
+- Determinism: the router is deterministic up to its first deadline cut. W47a/b had the same inputs and split in a deadline-bounded pair re-negotiation; CPU-seconds per unit of work move with load. Fix behind a flag: OWNROUTE_WORK_CLOCK (cadkit 77d5545). Calibrate it with OWNROUTE_WORK_LOG=1.
+- Lead rule (new): order = best-of-N seeds on the chosen placement. Placement A/B = best-of-N per arm, same N on both sides. N=3 = {unseeded, seed 1, seed 2}. A win means fewer unconnected and no worse on quality or verify.
+- Queue: W47 s1 (running), W47 s2, W48 s2, then decide W47 vs W48, then a U38 round on the winner.
+- Finish-only proof: mVW48f should md5 to 6ea33a4a. If it does, replays drop the score route (~30-40 min each).
+- C322 keep-out: window_intent --keepout (cadkit 3117000, on main). Box KiCad 105.5-114 x 117.3-123.4. It's a no-op for W47, where C322 is held at 101.1.
+- Resources (user): by day 2 routes; at night ramp to the full machine once the work clock makes runs load-proof. 31 GB RAM, ~2-2.7 GB per route. Next idle work: parallel net batches inside one route; memory profile.
+
+
+Placement list (for the next placement round; things the router and finish cannot fix):
+- MCU NRST / crystal (OSC_IN/OUT): NRST only gets through by taking up OSC_OUT (mV59, mV60).
+- +3V3D / BRAIN_EN: put back 3x in close_last; +3V3D takes up DATA_SEL, I2C2_SCL, ... and cannot rejoin them.
+- GND stranded pieces: mV60 has 26 tracks in 8 pieces with no clear path to the plane. Pads that carry GND:
+  U34.4, R219.2, U211.2 (mV57a), plus mV60 sites 87.9,129.9 / 121.7,96.2 / 82.7,132.6 (KiCad coordinates).
+- VIN_BRAIN stranded: 4 tracks in 2 pieces, near 129.6,110.7-114.3 and 105.0,122.0 (KiCad coordinates).
+- R217/Q215: loosen, it is a score hot spot.
+- GADGET_DP/DM: pair split right across the board (mVW47a router opens 44 + 72 mm, ends near
+  58.6,103 / 128,85 / 170,72 KiCad coordinates).
+
+Finish-tooling decisions (lead, 2026-11-19):
+- mV60 TAKEUP_WHY: the router drew all 6 take-up pieces (1.0/1.4 mm, not widened); widen_necks drew none.
+  So delete PCBFLOW_NECK_MARGIN (cadkit pcbflow/route.py). Do it once mV61 + mVW47a/b stop importing canonical cadkit.
+- PCBFLOW_TAKEUP_WHY stays (log-only).
+- W47 window placement: judge on joins_open, with both replays agreeing, against mV59/mV61.
+  RULE CHANGE (lead, 2026-11-19): placement A/Bs are decided by the FINISHED board, not the score pass.
+  joins_open is only the cheap screening proxy; the order bar is quality/verify FAILs.
+  W47 wins (becomes the order candidate) if BOTH replays finish < 11 unconnected AND quality/verify are below
+  the baseline band (103-108 / 32-36), whatever joins_open says. Finish inside the baseline band (11-17) = tie:
+  keep mV56 and work the placement list.
+  mVW47a: finish 7 / 0 viol, quality 88, verify 22 (joins_open 26, score open 15).
+  mVW47b: finish 4 / 0 viol (+24V_RIB, SENSE_24V, SVC_DP open), quality 104, verify 31 (joins_open 21).
+  Finish + verify pass on both; quality passes on A only (B 104 is inside the band). Proposed W47 as the order
+  candidate. NECK_MARGIN deleted in cadkit 393d2b1d (main eef4daf7).
+  DECIDED (lead): W47 IS THE ORDER CANDIDATE. Placement-list changes are judged against W47's band:
+  finish 4-7, quality 88-104, verify 22-31.
+- Placement-list rounds on W47 (tool: cadkit pcbflow/window_intent.py, 9bc4c53 + window confinement):
+  - W48: windows KiCad 98-114 x 111-130 (J240/C322/F204/D201: +24V_RIB, VIN_BRAIN) and 88-100 x 76-87
+    (R220/R221: SENSE_24V). Unconfined screen scW48 11.57/30 vs W47 9.80/27 -- D201 jumped 46 mm into the
+    MCU window, R84 22.6 mm. Freed parts are now held in their own window (win<k> region); re-screening scW48c.
+    Confined two-window scW48g 11.06/30: the MCU-west window made a new hot spot (96,85 C123/R84/R220) and
+    pushed R221 7 mm from U1.50 -- dropped; SENSE_24V needs another approach. Ribbon window only (intent48h,
+    scW48h): 8.80/27, C322 7.6 / D201 2.0 / C245 2.9 mm. Replaying as mVW48a/b (src srcW48).
+    cadkit: fa1e0a5 + 8e7b526 (near-reach to courtyard / pad), 2933ee1 (windows grow over freed courtyards).
+    mVW48a/b launched together came out BYTE-IDENTICAL (one sample): finish 2 (+3V3D, GND), joins_open 1,
+    quality 110 (A3 38: USB layer changes; A1: +24V_LED F203.2->J240.9 necked 0.65 mm, needs 1.37 -- C322
+    moved into the path), verify 38. Independent samples running: mVW48c (staggered), mVW48s1 (OWNROUTE_SEED=1).
+    W48 replaces W47 only if finish <= 7 AND quality <= 104 on the independent samples.
+  - NEXT WINDOW RULE (lead): keep C322 off the +24V_LED path F203.2 -> J240.9, whichever layout wins.
+- A/B PROTOCOL (lead, 2026-11-19): an arm's two replays must differ by seed (OWNROUTE_SEED, cadkit f315668)
+  or be staggered; md5 the boards -- matching boards are ONE sample. Audit: mV14/mV14b were identical
+  (superseded verdict); mV55/mV55q identical but a re-quality copy; W47a/b and mV59/60/61 all differ.
+  - NEXT ROUND (lead): move U38 (USB part at 127,83 between J7 116,68 / U17 58.6,103 / J202 170,72) --
+    SVC_DP and GADGET_DP/DM run 205-249 mm. Bigger window than the small-part rounds.
+- TOOLING (behind a flag): J201 (CM5 connector) GND pins stranded in its pin field (mVW47b ~136.2-139.2,
+  79.6-82.8): the router joins them on F.Cu/In2.Cu with no via to the plane, and the strand repair finds no
+  clear site. Needs a planned GND escape in the pin field.
+- LATER: the score router does badly on window-freed MCU enable/boot nets (mVW47a score failed BRAIN_EN(+_MCU),
+  EN_LEV(+_MCU), EN_PED(+_MCU), CM5_MCU_BOOT, NRST, RELAY_MCU, OPT_VBUS_EN_MCU, PG_5V; the finish recovered most).
+  Worth looking into: why freeing small parts near the MCU hurts the score router.
+
 ## 2026-11-14 (late): CM5 CONNECTORS WERE SWAPPED -- fixed, re-routing (trial mM)
 
 - mMf (mM routed + finished as split jobs): 0 unconnected / 0 violations, quality 79 FAIL

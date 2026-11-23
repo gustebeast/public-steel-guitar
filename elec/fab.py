@@ -23,20 +23,18 @@ from cadkit.pcbflow import fab_package as _fab  # noqa: E402
 # SIX boards: the power board merged into motor_ctrl, and the optical pickup landed
 # (both 2026-09-15). This is now the whole instrument.
 # ...plus the two FRET LIGHTING boards (2026-09-29), which are one design in
-# elec/fret_led.py cut to two panels -- see that module. `foot_led` is the OTHER
-# lighting job, the one that fires down at the player's feet. (The single side-mount
+# elec/fret_led.py cut to two panels -- see that module. `foot_led` was the OTHER
+# lighting job, the one that fired down at the player's feet (gone with v1, 246f34fe). (The single side-mount
 # `led_strip` both replaced is gone, 2026-10-01.)
 # THE INSTRUMENT'S BOARDS (user 2026-11-13 architecture, lead's BOM swap): the output
 # board IS the brain (CM5 + H743, brain.py built onto it) and the field connectors are on
 # the passive connector board. motor_ctrl, output_panel and pi_cap left the count here;
 # their generators and fab outputs stay as the locked R1 record (r1-boards-locked).
 BOARDS = ("can_tee", "lever_sensor", "brain_board", "connector_board",
-          "optical", "ui_board", "fret_led_mid", "fret_led_key",
-          "foot_led_a", "foot_led_b",
-          # the leg's blind-mate boards (elec/leg_pogo.py, 2026-10-01): two joints, and each
-          # joint's pair is the MIRROR of the other's, so four designs
-          "leg_pogo_male_bottom", "leg_pogo_male_top",
-          "leg_pogo_female_bottom", "leg_pogo_female_top")
+          "optical", "ui_board", "fret_led_mid", "fret_led_key")
+# foot_led_a / _b left with the v1 chassis they lit (main 246f34fe): a foot light for the
+# direct instrument is re-authored against its body when it is wanted; brain J4 keeps the
+# LED_DROP socket for it.
 
 # ── SOURCING ─────────────────────────────────────────────────────────────────
 # ONLY codes the repo already recorded, keyed by the part VALUE as the netlist
@@ -143,11 +141,6 @@ LCSC = {
                                     # and pi_cap J3, 5 V + SPI out to the strip
     "S4B-XH-SM4-TB": "C161861",     # S4B-XH-SM4-TB(LF)(SN), 20,777 -- pi_cap J2/J4,
                                     # side entry so they fit UNDER the cap (see there)
-    # the leg blind-mate (elec/leg_pogo.py), read off JLCPCB's parts API 2026-10-01:
-    "YZ165615055F-04025-02": "C54799748",   # right-angle 1x4 spring-pin header, stock 1,467
-                                            # (its -01 sibling C5296819, 902, is the same drawing)
-    "YZ185115035T-04025-01": "C54930022",   # vertical 1x4 gold target, stock 210 -- THIN
-    "S4B-ZR-SM4A-TF": "C485354",            # JST S4B-ZR-SM4A-TF(LF)(SN), stock 26,844
     "YZF0002-38080-02": "C5203987", # side-mount SMD pogo, 24 V / 12 A: the fret seam, x6 a side
     "B2B-XH-A": "C158012",          # JST B2B-XH-A(LF)(SN), stock 381,008 -- sourced
                                     # 2026-09-19 by asking the catalogue, and it is the
@@ -162,6 +155,19 @@ LCSC = {
     "MX128-5.0-02P-Y": "C5188463",  # MAX MX128-5.0-02P-GN01-Cu-Y-A, slotted, stock 1,353 on 2026-10-30 -- output_panel R2 J8 (R2-3)
     "TUSB320LAIRWBR": "C132554",    # TI USB-C role detect, X2QFN-12; 2,603 on 2026-10-30 -- THIN
     "TS3USB221RSER": "C130085",     # TI USB 2:1 switch, UQFN-10; 64,390 on 2026-10-30
+    # brain_board's U205 swap and the service port / flash mode (2026-11-17)
+    "TPS552892QWRYQRQ1": "C22375748",  # TI 36 V 8 A buck-boost, VQFN-HR-21 3x5: the CM5's 5 V
+    "TPS259470ARPWR": "C3662799",   # TI eFuse, adjustable OVLO, auto-retry, RPW QFN-10 2x2: the CM5's rail (BRAIN_CM5_PROTECT efuse); 4,872 on 2026-11-22
+    "TPS22965DSGR": "C122837",      # TI 6 A load switch with QOD, WSON-8: the CM5's rail
+    "TUSB321RWBR": "C139392",       # TI USB-C CC logic, GPIO only, X2QFN-12; 2,542 on 2026-11-17
+    "TPS2552DBVR": "C46506",        # TI current-limited switch, active-low EN; 9,800 on 2026-11-17
+    "CH334P": "C5373042",           # WCH USB 2.0 4-port hub, QFN-16 3x3; 27,419 on 2026-11-17
+    "SN74LVC1G17DBVR": "C7836",     # TI Schmitt buffer, SOT-23-5; 613 on 2026-11-17 -- THIN (UMW C7394021 7,026)
+    "SN74LVC06APWR": "C7807",       # TI hex inverter, open drain, TSSOP-14; 6,879 on 2026-11-17
+    "SN74LVC2G06DBVR": "C402162",   # TI dual inverter, open drain, SOT-23-6; 8,555 on 2026-11-17
+    "TPS22918DBVR": "C131941",      # TI 2 A load switch, SOT-23-6; 66,391 on 2026-11-17
+    "X322512MSB4SI": "C9002",       # YXC 12 MHz 3225; 477,806 on 2026-11-17
+    "SMF6.0A": "C178260",           # SOD-123FL TVS, 6 V stand-off, 200 W; 182,665 on 2026-11-17
     "SMBJ22A": "C224015",           # Littelfuse SMB TVS, 22 V stand-off, 600 W: the output power half's port clamps
     "SMF24A": "C169430",            # SOD-123FL TVS, 24 V stand-off, 200 W; 99,839 on 2026-10-30
     "INA226AIDGSR": "C49851",       # TI power monitor, VSSOP-10; 42,364 on 2026-10-30
@@ -181,7 +187,13 @@ LCSC = {
     "TPS2553DBVR": "C55266",        # TI current-limited switch, SOT-23-6 (motor_ctrl U6, pi_cap U1); 58,077 in stock
                                     # 2026-10-04 -- motor_ctrl U6, bus B's 5 V
     "PZ1.27-2x8P": "C22438114",     # the same family's 2x8, for the UI board's 16-way
-    "PZ1.27-2x8P ZZ": "C22438123",  # its STRAIGHT sibling (brain J5, vertical): 1,580 on 2026-11-13
+    "PZ1.27-2x8P ZZ": "C22438123",
+    # 2026-11-17: the brain board's ribbons, SMD as their lands (the ZZ values they carried
+    # are the THROUGH-HOLE parts). JLC parts API: 1,105 / 875 in stock; no 1.27 mm shrouded
+    # header is stocked (the box-header listings read 0), so both are plain.
+    "PZ1.27-2x10P TP": "C41376042",  # HX, 2x10 1.27 SMD vertical: brain_board J4 (optical ribbon)
+    "A127M05-0B30P51-H10A40": "C41427104",  # JXTCONN 2x15 1.27 SMD vertical, 1 A: brain J240 + connector_board J1
+    "LMR33640DDDAR": "C1852154",     # TI 4 A buck, DDA HSOIC-8, 1 MHz: brain_board U5; 2,358 in stock  # its STRAIGHT sibling (brain J5, vertical): 1,580 on 2026-11-13
                                     # ribbon; 2050 in stock 2026-10-04
     "PB-22E85-S-5.7C-C-W": "C22462024",   # Legion self-locking push switch, 2P2T, THT,
                                     # 12 V 0.3 A; 2535 in stock 2026-10-04. The power button.
@@ -244,14 +256,14 @@ LCSC = {
     "LM5122PWPR": "C77241",         # TI LM5122MHX/NOPB: the HTSSOP-20 PWP reel (SNVS954H orderables;
                                     # there is no "LM5122PWPR"); 20,357 on 2026-11-13 (brain U20)
     "NCEP4090GU": "C502976",        # Wuxi NCE Power NCEP4090GU, DFN5x6-8L; 3,236 on 2026-11-13 (brain Q8/Q9)
-    "DF40C-100DS-0.4V(51)": "C3642394",  # Hirose DF40C-100DS-0.4V(58), the same part on other
-                                    # packaging: 196 on 2026-11-13 (C597931, the (51), had fallen
-                                    # to 34) -- THIN, 2 per instrument (brain J1/J2): order early
+    "DF40C-100DS-0.4V(51)": "C597931",   # Hirose DF40C-100DS-0.4V(51) itself: 21,196 on 2026-11-17
+                                    # (restocked; it was 34 on 11-13, when the (58) C3642394 stood
+                                    # in -- that one is down to 24). 2 per instrument (brain J1/J2)
     "S6B-XH-SM4-TB": "C191914",     # JST S6B-XH-SM4-TB(LF)(SN), 5,661; the bare listing
                                     # C20493992 is 0 (brain J10/J12)
     # Keyed by value, not in PASSIVES: lcsc_check.check_passives reads a chip size out of
     # the footprint name, which these two do not have.
-    "10uH 15A": "C2045568",         # Bourns SRP1770TA-100M; ZERO in stock on 2026-11-13 (brain L4)
+    "APS1513M100F": "C49261410",     # Coilank = Bourns SRP1513CA-100M clone, 10 uH 30 A; 186 on 2026-11-17 (brain L4)
     "330uF/50V": "C53120968",       # jieerrui MA50V330M10X12, SMD POLYMER D10x12.5, 50 V, 20 mohm, 3.5 A ripple; 13,181 stock (brain C113/C114 since 2026-11-14)
     "470uF/35V": "C46550472",       # jieerrui MA35V470M10X13, SMD POLYMER D10x13, 35 V, 16 mohm,
                                     # 3.8 A ripple at 100 kHz; 66,146 on 2026-11-13 (brain C113/C114).
@@ -276,6 +288,17 @@ LCSC = {
 # dielectric, tolerance. `elec/lcsc_check.py` re-reads them all and compares. Basic parts
 # wherever one exists (no extended-part fee, placed by Economic assembly).
 PASSIVES = {
+    # brain_board 2026-11-17 (U205 swap, service port)
+    ("10mR 1%", "R_1206_3216Metric"):        "C601097",  # HoLR1206-1W-10mR-1%, 1 W; 78,790 in stock
+    ("13mR 1%", "R_1206_3216Metric"):        "C201279",  # STE1206M1W0R013F, 1 W 50 ppm; 5,153 on 2026-11-20 -- brain R313 (BRAIN_POWER_SIZING)
+    ("15nF", "C_0402_1005Metric"):           "C501821",  # 0402B153K500NT, 50 V X7R; 12,937 in stock
+    ("22pF", "C_0402_1005Metric"):           "C1555",    # 0402CG220J500NT, 50 V C0G; basic
+    ("23k2 1%", "R_0402_1005Metric"):        "C25873",   # UniOhm 0402WGF2322TCE; 84,116 in stock
+    ("30k1 1%", "R_0402_1005Metric"):        "C2076806", # as "30k1"
+    ("2k2", "R_0402_1005Metric"):            "C25879",   # UniOhm 0402WGF2201TCE; basic
+    ("887k 1%", "R_0402_1005Metric"):        "C423127",  # UniOhm 0402WGF8873TCE; 7,119 in stock
+    ("4u7/10V", "C_0603_1608Metric"):        "C1705",    # Samsung CL10A475KP8NNNC, 10 V X5R; basic
+    ("4.7uF/10V", "C_0603_1608Metric"):      "C1705",
     # the brain board's PD half: each ordered as a part fab already buys, rated at least as asked
     ("10uF/35V", "C_1206_3216Metric"):       "C13585",   # the 10uF/50V 1206 below (CL31A106KBHNNNE, 50 V X5R)
     ("1uF/10V", "C_0402_1005Metric"):        "C52923",   # CL05A105KA5NQNC, 25 V X5R
@@ -321,6 +344,10 @@ PASSIVES = {
     ("5mR 1W", "R_0805_2012Metric"):         "C6351848",  # Yageo PA0805FRF870R005L, 1 %; 10,923 on 2026-10-30 -- R2 inlet shunt
     ("100k", "R_0402_1005Metric"):           "C25741",   # UniOhm 0402WGF1003TCE, 1 %; basic
     ("100k 1%", "R_0402_1005Metric"):        "C25741",
+    ("100k 0.1%", "R_0402_1005Metric"):      "C136979",  # Yageo RT0402BRE07100KL, thin film 0.1 % 50 ppm; 60,888 on 2026-11-22 (brain R120, U21 OVLO)
+    ("374k 0.1%", "R_0603_1608Metric"):      "C861356",  # Yageo RT0603BRD07374KL, thin film 0.1 % 25 ppm; 19,796 on 2026-11-22 (brain R119, U21 OVLO)
+    ("750R", "R_0402_1005Metric"):           "C25132",   # UniOhm 0402WGF7500TCE, 1 %; 963,949 on 2026-11-22 (brain R121, U21 RILM)
+    ("220R", "R_0805_2012Metric"):           "C17557",   # UniOhm 0805W8F2200T5E, 1 % 125 mW; basic (brain R122, +5V_CM5 discharge)
     ("10k", "R_0402_1005Metric"):            "C25744",   # UniOhm 0402WGF1002TCE, 1 %; basic
     ("10k 1%", "R_0402_1005Metric"):         "C25744",
     ("10k 0.1%", "R_0402_1005Metric"):       "C190095",   # Yageo RT0402BRD0710KL, thin film 0.1 % 25 ppm; 729,784 in stock

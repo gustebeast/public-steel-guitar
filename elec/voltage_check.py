@@ -2,7 +2,9 @@
 
     py -3.12 elec/voltage_check.py                 # all five, writes the report
     py -3.12 elec/voltage_check.py motor_ctrl      # one board, findings to stdout only
-    py -3.12 elec/voltage_check.py --declare       # ALSO write elec/volts/<board>.json
+    py -3.12 elec/voltage_check.py --declare       # ALSO write elec/volts/<board>.json; prints each
+                                                   # declared max that changes and refuses a fall
+                                                   # unless --allow-lower U13.23,... names the pin
     py -3.12 elec/voltage_check.py --elec <dir>    # another worktree's elec/
 
 Written by the pre-order review of 2026-10-06 (as research/review/voltage_check.py) and
@@ -68,10 +70,12 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(os.path.dirname(HERE), "cadkit", "pcbflow"))
+from nettie import is_net_tie  # noqa: E402  (vendored cadkit: the same answer quality A16 uses)
 DEFAULT_ELEC = HERE
 OUT = os.path.join(HERE, "out", "volts")              # the report and the per-pin tables
 DECL = os.path.join(HERE, "volts")                    # what the generators load (tracked)
-LEG = ("leg_pogo_male_bottom", "leg_pogo_male_top", "leg_pogo_female_bottom", "leg_pogo_female_top")
+LEG = ()      # the leg_pogo boards: removed with the v1 leg (main 762d12a8)
 BOARDS = ("can_tee", "pi_cap", "motor_ctrl", "output_panel", "optical", "lever_sensor") + LEG + ("brain", "brain_board",
                                                                                                 "connector_board")
 ORDER = ("output_panel", "motor_ctrl", "pi_cap", "optical", "can_tee", "lever_sensor") + LEG + ("brain", "brain_board",
@@ -306,12 +310,52 @@ SEEDS["brain"] = {
     "BST_CSNF": ("like", "VIN_BRAIN", 0.0, "current sense, R109's inductor side"),
     "+24V": ("abs", BRAIN_24),
     "BST_SW": ("like", "+24V", 1.0, "boost switch node: VOUT plus Q9's body diode while it commutates"),
-    "SW5": ("like", "+24V_BUCK", 0.0, "buck switch node: VIN while the high side is on"),
     "SW7": ("like", "+24V", 0.0, "buck switch node: VIN while the high side is on"),
-    "+5V_RAW": ("buck", "U5", "R10", "R11",
-                "LMR33630: VFB max x (1 + top/bot), 1 % resistors; +5 % overshoot; FAULT = U5's high "
-                "side fails short and D9 (SMBJ5.0A) clamps at its VC while F2 clears",
-                {"vf": PARTS["C83333"]["vc"]}),
+    # U5 is the TPS552892-Q1 buck-boost on VIN_BRAIN (brain.py, 2026-11-17)
+    "SW5_1": ("like", "VIN_BRAIN", 0.0, "buck-boost input switch node: VIN while its high side is on"),
+    "SW5_2": ("like", "+5V_BB", 0.7, "buck-boost output switch node: VOUT plus a body diode"),
+    **({
+        # BRAIN_CM5_PROTECT efuse (brain.py U21, lead 2026-11-22): nothing clamps +5V_BB / +5V_RAW now --
+        # a U5 high-side short puts VIN_BRAIN on them and U21 (TPS259470A, IN 28 V abs max) turns the
+        # CM5 off at its OVLO; +5V_CM5's fault is the trip plus the inductor-limited rise during tOVLO
+        "+5V_BB": ("buck", "U5", "R10", "R11",
+                   "TPS552892-Q1: VREF max x (1 + top/bot), 1 % resistors; +5 % overshoot; FAULT = U5's "
+                   "high side fails short: VIN_BRAIN on the rail (U21 opens the CM5's side)",
+                   {"vf": BRAIN_VIN["v"]}),
+        "+5V_RAW": ("like", "+5V_BB", 0.0, "behind R113, the output sense"),
+        "+5V_CM5": ("abs", dict(v=5.33, vt=5.58, vf=6.3,
+                                why="behind U21 (eFuse, RON 45 mR max): U5's 5.33 V static max (VREF 1.212 V, "
+                                    "SLVSGT7 s6.5), +5 % load release; FAULT = U21's OVLO trip 5.81 V max plus "
+                                    "~0.5 V of inductor-limited rise in 2 x tOVLO (SLVSFC9C s6.6) -- brain.py's "
+                                    "known limit")),
+        "U21_OVLO": ("ratio", "+5V_RAW", 100.0 / 474.0, "R120 / (R119 + R120): 1.2 V at the trip"),
+        "U21_ILM": ("abs", dict(v=2.0, vt=2.0, why="TPS259470 ILM: current-monitor output into RILM, driven "
+                                                    "by the part ('Internally Limited', SLVSFC9C s6.1); 2 V an "
+                                                    "assumed bound")),
+        "U21_AUXOFF": ("like", "+3V3", 0.0, "open drain, R124 to +3V3"),
+        "QOD_G": ("like", "+3V3", 0.0, "R123 to +3V3"),
+        "QOD_D": ("like", "+5V_CM5", 0.0, "R122 from +5V_CM5"),
+    } if os.environ.get("BRAIN_CM5_PROTECT", "efuse") == "efuse" else {
+        "+5V_BB": ("buck", "U5", "R10", "R11",
+                   "TPS552892-Q1: VREF max x (1 + top/bot), 1 % resistors; +5 % overshoot; FAULT = U5 "
+                   "fails short and D9 (SMBJ5.0A) clamps at its VC while F2 clears",
+                   {"vf": PARTS["C83333"]["vc"]}),
+        "+5V_RAW": ("like", "+5V_BB", 0.0, "behind R113, the 10 mR output sense"),
+        "+5V_SW": ("like", "+5V_RAW", 0.0, "behind U21, the CM5 rail's load switch"),
+    }),
+    "VCC5": ("abs", dict(v=5.5, vt=6.0, why="TPS552892 VCC: its internal LDO, ~5.2 V; 5.5 V an assumed bound, "
+                                            "the pin is rated 6 V (SLVSGT7 s6.1)")),
+    "BOOT5_1": ("like", "SW5_1", 5.5, "bootstrap: SW1 plus VCC"),
+    "BOOT5_2": ("like", "SW5_2", 5.5, "bootstrap: SW2 plus VCC"),
+    **{n: ("abs", dict(v=3.0, vt=3.0, why="driven by the TPS552892's own low-voltage circuitry; rated VCC+0.3; "
+                                         "3 V an assumed bound"))
+       for n in ("FSW5", "COMP5", "COMP5_Z")},
+    "FB5": ("ratio", "+5V_BB", 30.1 / 130.1, "R11 / (R10 + R11): the regulated 1.2 V"),
+    # EN5: R12 / R13 from VIN_SW (D21 hides the divider from the propagation) -- 21 V x
+    # 23.2 x 1.01 / (100 x 0.99 + 23.2 x 1.01) = 3.99 V; C26 (4.7 uF, tau 88 ms) filters
+    # any surge, so transient = steady. FLASH through R17 / D21 is 3.3 V, lower.
+    "EN5": ("abs", dict(v=4.0, vt=4.0, why="U5 EN: the R12 / R13 divider off VIN_SW at 21 V (3.99 V), "
+                                          "RC-filtered by C26's 88 ms; FLASH via D21 is lower")),
     "+5V_AUX": ("buck", "U7", "R14", "R15", "LMR33630: VFB max x (1 + top/bot), 1 % resistors; +5 % overshoot"),
     "+3V3": ("ldo", "U8", "AP2112K-3.3: 3.3 V +1.5 %; +3 % transient"),
     "CM5_3V3": ("abs", dict(v=3.3 * 1.05, vt=3.3 * 1.08,
@@ -566,6 +610,15 @@ RES_MODEL = {
         "R109": ("v", lambda L, R: 12.6 * R("R109"), "the boost's input shunt: 12.6 A at its worst "
                                                      "(9 V in, full load; brain.py) x 4 mohm"),
         "R108": ("i", 0.01, "the LM5122's own VIN supply current, milliamps; 10 mA allowed"),
+        "R113": ("v", lambda L, R: 5.0 * R("R113"), "U5's output sense: the TPS552892's 50 mV ISP-ISN "
+                                                    "limit holds it to 5.0 A (SLVSGT7 8.2.2.6) x 10 mohm"),
+        # BRAIN_CM5_PROTECT efuse: the +5V_CM5 discharge (Q18 + R122) conducts only while U21's AUXOFF is
+        # low, i.e. U21's FET is off or still in inrush (SLVSFC9C Table 7-4: UVP/UVLO, OVLO, inrush L;
+        # every load fault H). Off, +5V_CM5 is the CM5's own caps decaying through R122 -- zero once
+        # they are empty; in inrush the ramp (dVdt open, the fastest) is milliseconds. No steady load.
+        "R122": ("i", 0.0, "U21's discharge: carries only the decay of +5V_CM5's caps, and the inrush ramp's "
+                           "milliseconds, while AUXOFF is low (SLVSFC9C Table 7-4); 129 mW peak for "
+                           "milliseconds, inside a thick-film 0805's 2.5 x P short-time overload"),
     },
     "pi_cap": {r: ("i", 0.016, "series termination into a CMOS input; worst case the Pi pin's 16 mA "
                                "drive into a shorted line") for r in ("R1", "R2", "R3", "R4")},
@@ -762,6 +815,21 @@ CURRENTS["brain_board"] = (
     + [("L1", None, 2.64, "the 5 V buck's output: every V5_PRE load at once (U15's 1.80 A limit + "
                           "U21's 0.58 A + 0.26 A analog)")])
 REVIEW_NOTES["brain_board"] = {**REVIEW_NOTES["output_power"], **REVIEW_NOTES["output_signal"]}
+# Not carried onto the merged board (lead, 2026-11-18: a note accepting a risk must describe
+# the board it sits on): L1 is the FXL0630-4R7-M here (Isat 9 A), not the 5040 the note
+# accepted; J10 / J12 and D5 / D7 raise no SUSPECT on this board, so there is nothing to accept.
+for _k in ("J10", "J12", "L1", "D5", "D7"):
+    REVIEW_NOTES["brain_board"].pop((_k, "SUSPECT"), None)
+_QOD_NOTE = (
+    "Accepted (lead, 2026-11-22): the 6.3 V is +5V_CM5's FAULT level, U205's high side short for the ~2 us "
+    "before U221's OVLO opens (brain.py's known limit). R122 is not across it then: Q18 conducts only after "
+    "AUXOFF falls, which OVLO itself causes (SLVSFC9C Table 7-4), so R122 sees only the decay from <= 6.3 V: "
+    "6.3^2 / 220 = 0.18 W peak, falling with tau ~22 ms, on a 125 mW / 150 V 0805 with pulse headroom.")
+REVIEW_NOTES.setdefault("brain", {})[("R122", "FAULT")] = _QOD_NOTE
+REVIEW_NOTES["brain_board"][("R322", "FAULT")] = _QOD_NOTE
+REVIEW_NOTES["brain_board"][("U36", "SUSPECT")] = (
+    "Accepted (bronner, 2026-11-17): the 10.3 V is D25's clamp at its full 19.4 A surge, a hit on the service "
+    "port's VBUS; steady is 5.5 V on a 7 V part. The panel ports' USB parts take their surges the same way.")
 # ── the brain BUILT ONTO the brain board (brain_board.MERGED, 2026-11-13) ───────────────
 # brain.py's parts are renumbered +200 there (U5 -> U205), its colliding net names get a B_
 # prefix, its +5V_AUX buck is gone (V5_PRE feeds it) and, with the CH32 folded into the H743,
@@ -807,6 +875,9 @@ for _T in (RES_MODEL, CAP_ACROSS, FET_VGS, ZENER_FEED):
             _v = (_v[0], _rn(_v[1])) + _v[2:]
         _T["brain_board"][_rn(_k)] = _v
 CAP_ACROSS["brain_board"].pop("C254", None)    # brain C54: U7's bootstrap, U7 is gone
+# the service port's ideal diode (brain_board._service_port): the panel ports' pattern
+FET_VGS["brain_board"]["Q8"] = FET_VGS["output_power"]["Q6"]
+CAP_ACROSS["brain_board"]["C67"] = CAP_ACROSS["output_power"]["C85"]
 # no brain leads (J10 / J12) on the merged board; L1 carries every logic 5 V now -- brain_board's
 # U5 sum: optical 1.8 + H743 0.58 + isolated audio 0.3 + transceivers / arm switches ~0.45
 CURRENTS["brain_board"] = ([c for c in CURRENTS["brain_board"] if c[0] not in ("J10", "J12", "L1")]
@@ -850,6 +921,23 @@ SEEDS["brain_board"].update({
                                           "trigger is a slow-source figure, and no conductor in the arm cable "
                                           "is above 5 V short of the declared fault"))
        for n in ("CANB_H", "CANB_L", "PED_H", "PED_L", "LEV_H", "LEV_L")},
+    # THE SERVICE PORT AND FLASH MODE (brain_board._service_port, 2026-11-17)
+    "SVC_VBUS": ("abs", dict(v=5.5, vt=10.3, why="the service port's VBUS: a PC's 5 V (USB 2.0 / Type-C 5.5 V max) "
+                                                "or our own V5_PRE through U36; transient = D25 (SMF6.0A) at 10.3 V")),
+    "SVC_VBUS_DET": ("ratio", "SVC_VBUS", 95.0 / (887.0 + 95.0), "R41 into the TUSB321's 95 k pull-down"),
+    "SVC_VCAP": ("like", "SVC_VBUS", 13.9, "LM74700 charge pump: VCAP - ANODE turns off at 13.9 V max"),
+    "SVC_ORGATE": ("like", "SVC_VBUS", 13.9, "LM74700 GATE: from VCAP, at most ANODE + 13.9 V"),
+    "SVC_ILIM": ("abs", dict(v=1.0, vt=1.0, why="TPS2552 ILIM: the part's own current-reference node; 1 V an "
+                                               "assumed bound")),
+    **{n: ("like", "V5_PRE", 0.0, "service CC: our Rp / VCONN from U35's VDD (V5_PRE); against a PC's Rp "
+                                  "the node sits at Rd's ~0.4-2 V")
+       for n in ("SVC_CC1", "SVC_CC2")},
+    **{n: ("abs", dict(v=3.6, vt=3.6, vf=5.5, why="USB 2.0 data on the service port; FAULT = a cable's VBUS "
+                                                 "onto a data way"))
+       for n in ("SVC_DP", "SVC_DM", "HUB2_DP", "HUB2_DM")},
+    **{n: ("like", "+3V3D", 0.0, "U39 (on +3V3D) and its outputs' loads") for n in ("FLASH_MODE", "FLASH_EN_D")},
+    **{n: ("like", "+3V3D", 0.0, "the CH334P's crystal pins, on its +3V3D") for n in ("HUB_XI", "HUB_XO")},
+    "V5_ISO": ("like", "V5_PRE", 0.0, "behind U42, the audio supply's switch"),
     "RELAY_COIL": ("like", "V5_PRE", 1.25, "coil turn-off: V5_PRE (the coil is on the charger side) plus "
                                            "D4's forward drop (1.25 V max)"),
 })
@@ -880,19 +968,15 @@ SEEDS["connector_board"] = {
 }
 CODE_FALLBACK["connector_board"] = {
     # J1: PZ1.27-2x15P ZZ has no LCSC code yet: its stocked 2 x 8 sibling, as brain_board's J240
-    ("PZ1.27-2x15P ZZ", "PinHeader_2x15_P1.27mm_Vertical_SMD"): "C22438123",
+    ("A127M05-0B30P51-H10A40", "PinHeader_2x15_P1.27mm_Vertical_SMD"): "C41427104",
 }
 CODE_FALLBACK["brain_board"] = {
-    # U5, merged: the 4 A LMR33640 in the 3 A part's RNX land, no LCSC code yet (open item).
-    # Rated as the LMR33630 (C2071384): the same 1.0 V feedback reference and pin limits
-    # (the same TI family sheet's absolute-maximum table) -- confirm when the code is picked
-    ("LMR33640 (RNX, open item)", "Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm"): "C2071384",
     # J240, the connector ribbon (harness.CONN_RIBBON): no LCSC code yet; rated as its stocked
     # 2 x 8 sibling, the same HX PZ1.27 family and contacts (as J4 above)
-    ("PZ1.27-2x15P ZZ", "PinHeader_2x15_P1.27mm_Vertical_SMD"): "C22438123",
+    ("A127M05-0B30P51-H10A40", "PinHeader_2x15_P1.27mm_Vertical_SMD"): "C41427104",
     # J4, the optical ribbon: PZ1.27-2x10P ZZ has no LCSC code yet (brain_board open item);
     # rated as its stocked 2 x 8 sibling, the same HX PZ1.27 family and contacts
-    ("PZ1.27-2x10P ZZ", "PinHeader_2x10_P1.27mm_Vertical_SMD"): "C22438123",
+    ("PZ1.27-2x10P TP", "PinHeader_2x10_P1.27mm_Vertical_SMD"): "C41376042",
 }
 
 
@@ -941,8 +1025,8 @@ def kind_of(ref, c):
         return p["kind"]
     if ref.startswith("TP"):
         return "tp"
-    if ref.startswith("JP"):
-        return "jumper"
+    if ref.startswith("JP") or is_net_tie(ref):
+        return "jumper"                     # a net tie is copper between two nets, like a closed jumper
     return "unknown"
 
 
@@ -1048,7 +1132,9 @@ class Board:
         p = part_of(self.comps[ref])
         if p and p.get("pass"):
             return p["pass"]
-        if ref.startswith("JP"):
+        # a net tie (NT, the Kelvin sense ties of 2026-11-20) is copper: both nets are one level.
+        # Unjoined, PA_VCC_K read 0 V and U13.23's "VCC+4" rating came out 4 V -- a false A16 FAIL
+        if ref.startswith("JP") or is_net_tie(ref):
             return [sorted(self.comps[ref]["pins"])]
         return []
 
@@ -1845,6 +1931,24 @@ def run(elec, names, write):
     return "\n".join(out) + "\n", total_fail, done, stats
 
 
+# ── A16 acceptances: a PERSON's bounded decision to run one pin over its maker's number ──
+# Written into the pin's declaration as cadkit A16's `accepted` (v, by, date, why): the rule
+# stays hard, prints it every run, and fails it again past `v`. One pin each; the net's
+# conservative model stays for every other pin on it.
+ACCEPTED = {
+    "brain_board": {
+        "U36.6": {
+            "v": 10.3, "by": "lead (brain board R1 review)", "date": "2026-11-21",
+            "why": "TPS2552 OUT (abs max 7 V, SLVS841G 6.1) on SVC_VBUS, whose 10.3 V transient is D25 "
+                   "(SMF6.0A) at its full 19.4 A 10/1000 us surge rating -- not a credible event on an "
+                   "internal service USB-C port. ESD on OUT is covered by SLVS841G 6.2 (IEC 61000-4-2 "
+                   "+-8 kV contact / +-15 kV air, output terminals, with external capacitance). No hardware "
+                   "fix exists: no TVS clamps under 7 V at that current, and a series R does not fit a "
+                   "1.2 A path. Steady is 5.5 V. Supersedes the 2026-11-17 review note."},
+    },
+}
+
+
 def declare(b):
     """One board's A16 declarations (cadkit PCB_QUALITY.md A16) from a checked Board:
     {"net_volts": {...}, "pin_volts": {...}}.
@@ -1909,7 +2013,47 @@ def declare(b):
                           " -- " + r["note"] if r["note"] else "")}
         else:                                          # over: let A16 say so
             pins[key] = {"max": n3(rating), "src": "%s -- %s" % (r["rkind"], src)}
-    return {"net_volts": nets, "pin_volts": pins}
+    for key, acc in ACCEPTED.get(b.name, {}).items():
+        if key in pins:
+            pins[key] = dict(pins[key], accepted=dict(acc))
+    # A4's pin roles (cadkit quality._pin_roles): each IC pin's name and ground role as its
+    # rating entry reads them off the sheet, so a ground pin off ground or a VOUT on GND
+    # fails by name (brain_board U221 pad 8, 2026-11-18)
+    roles = {}
+    for ref, c in sorted(b.comps.items()):
+        p = part_of(c)
+        if not p or p.get("kind") != "ic":
+            continue
+        for pin, spec in (p.get("pins") or {}).items():
+            if pin in c["pins"] and isinstance(spec, dict) and spec.get("n"):
+                roles["%s.%s" % (ref, pin)] = dict({"n": spec["n"]},
+                                                   **({"gnd": True} if spec.get("gnd") else {}))
+    return {"net_volts": nets, "pin_volts": pins, "pin_roles": roles}
+
+
+def declare_diff(old, new):
+    """[(key, line, lowered)] for every pin whose declared max changes between two pin_volts maps.
+    `lowered`: a numeric max that fell, or one that became "none" / vanished -- A16 then holds the
+    pin to less, or to nothing, and that is never a side effect.
+
+    ⚠ A DECLARED MAX FELL 33.088 -> 4.0 V AND NOBODY SAW IT (brain_board, 2026-11-22): the Kelvin
+    net ties left PA_VCC_K unresolved, U13.23's "VCC+4" resolved against 0 V, and --declare wrote
+    4.0 into volts/brain_board.json inside an unrelated commit; quality A16 then failed both PWR_EN
+    pins against 25 V. --declare prints every change and refuses a lowering unless --allow-lower
+    names the pin (check_declare_guard.py)."""
+    def num(x):
+        return float(x) if isinstance(x, (int, float)) and not isinstance(x, bool) else None
+    out = []
+    for k in sorted(set(old) | set(new)):
+        a = (old.get(k) or {}).get("max")
+        b = (new.get(k) or {}).get("max")
+        if k in old and k in new and a == b:
+            continue
+        na, nb = num(a), num(b)
+        low = na is not None and (nb is None or nb < na - 1e-9)
+        out.append((k, "%s: max %s -> %s%s" % (k, a if k in old else "absent", b if k in new else "absent",
+                                               "  (LOWER)" if low else ""), low))
+    return out
 
 
 def main(argv):
@@ -1917,6 +2061,11 @@ def main(argv):
     if "--elec" in argv:
         i = argv.index("--elec")
         elec = argv[i + 1]
+        argv = argv[:i] + argv[i + 2:]
+    allow = set()
+    if "--allow-lower" in argv:
+        i = argv.index("--allow-lower")
+        allow = set(argv[i + 1].split(","))
         argv = argv[:i] + argv[i + 2:]
     names = [a for a in argv if not a.startswith("-")] or list(BOARDS)
     write = set(names) == set(BOARDS)
@@ -1927,9 +2076,22 @@ def main(argv):
             fh.write(text)
     if "--declare" in argv:
         os.makedirs(DECL, exist_ok=True)
+        decl, refused = {}, []
+        for name in names:
+            decl[name] = declare(done[name])
+            f = os.path.join(DECL, name + ".json")
+            old = json.load(io.open(f, encoding="utf-8")).get("pin_volts", {}) if os.path.exists(f) else {}
+            for key, line, low in declare_diff(old, decl[name]["pin_volts"]):
+                print("declare %s: %s%s" % (name, line, "  -- allowed" if low and key in allow else ""))
+                if low and key not in allow:
+                    refused.append("%s %s" % (name, key))
+        if refused:
+            print("declare REFUSED: %d declared max(es) would fall -- check each, then name it in "
+                  "--allow-lower PIN[,PIN]: %s" % (len(refused), ", ".join(refused)))
+            return max(fails, 1)
         for name in names:
             with io.open(os.path.join(DECL, name + ".json"), "w", encoding="utf-8", newline="\n") as fh:
-                json.dump(declare(done[name]), fh, indent=1, sort_keys=True, ensure_ascii=False)
+                json.dump(decl[name], fh, indent=1, sort_keys=True, ensure_ascii=False)
                 fh.write("\n")
     for name in names:
         b = done[name]

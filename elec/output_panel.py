@@ -3466,11 +3466,13 @@ BOARD_NOTES["quality"] = {
         }
     ],
     "pinouts": {
-        "TYPE-C-31-M-12": "KiCad's USB_C_Receptacle_HRO_TYPE-C-31-M-12 names each land by "
-                          "its USB Type-C contact (A1 ... B12), the names Korean Hroparts' "
-                          "drawing for the part prints beside the same lands; every net "
-                          "here is attached by that name (A4/A9/B4/B9 VBUS, A5/B5 CC, "
-                          "A6/B6 D+, A7/B7 D-, A1/A12/B1/B12 GND). Checked 2026-10-04",
+        "TYPE-C-31-M-12": (
+            "Korean Hroparts TYPE-C-31-M-12 drawing rev A (2020.12.08), sheet 1 of 1: 'Recommend "
+            "P.C.B Layout (component side)' land order A1/B12, A4/B9, B8, A5, B7, A6, A7, B6, A8,"
+            " B5, B4/A9, B1/A12 = KiCad USB_C_Receptacle_HRO_TYPE-C-31-M-12's pad x order; pin "
+            "table: A1/A12/B1/B12 GND, A4/A9/B4/B9 VBUS, A5/B5 CC, A6/B6 DP, A7/B7 DN; every "
+            "board attaches nets by those names (read 2026-11-18)"
+        ),
         "B6B-XH-A": "JST eXH.pdf p.5, Header / Top entry type: seen from the slotted wall, "
                     "No. 1 circuit is the right-hand post; KiCad's footprint has that wall "
                     "at -Y and pad 1 at -X. Way names are harness.PWR_LINK, the list "
@@ -3478,20 +3480,26 @@ BOARD_NOTES["quality"] = {
         "B4B-XH-A": "the same JST drawing and KiCad family as the 6-way (eXH.pdf p.5). "
                     "J7: 1 +24V, 2 PWR_GND, 3 and 4 empty -- the instrument's order "
                     "(harness.py) with no data ways used",
-        "NMJ6HCD2": "Neutrik NMJ6HCD2 drawing: T / R / S contacts and their normalling "
-                    "contacts TN / RN / SN. KiCad's Jack_6.35mm_Neutrik_NMJ6HCD2 names the "
-                    "lands by those letters and was checked pad by pad against the "
-                    "drawing, 2026-09-30 (note at TRS_FP). Board: T tip, R ring, S sleeve "
-                    "to GND, normals grounded or open as the jack section says",
-        "KPJX-4S-S": "Kycon KPJX-4S-S land pattern (footprint Steel:Kycon_KPJX-4S-S was "
-                     "drawn from it); the rails are Mean Well's GST160A-SPEC (2026-04-03) "
-                     "for the R7B plug: 1 +V, 2 -V, 3 -V, 4 +V, shell to -V, in MEAN WELL'S "
-                     "numbering, whose 1 and 2 are Kycon's 2 and 1 (both plug-face "
-                     "drawings read 2026-10-06). Board, Kycon's numbers: 2 and 4 "
-                     "+24V_IN, 1 and 3 PWR_GND, SH PWR_GND. The plug is metered before "
-                     "first power (docs/board-bringup-diagnostics.md)",
-        "THROW": "KiCad SolderJumper-3 bridged 1-2: pad 2 is the common. Board: 1 "
-                 "PWR_SW_UP, 2 SW_SENSE, 3 PWR_SW_DN",
+        "NMJ6HCD2": (
+            "Neutrik ST-NMJ6HCD2, Rev '-' (released 26.02.2021), sheet 1/1, view 'PCB-Layout "
+            "(component side)': T / R / S holes 16.7 / 10.35 / 4 from the panel, TN / RN / SN "
+            "16.23 below each; KiCad Jack_6.35mm_Neutrik_NMJ6HCD2 has T 0, R 6.35, S 12.7 (the "
+            "same spacing). Board: T JACK_TIP, R JACK_RING, S and TN / RN / SN on AGND / GND "
+            "(read 2026-11-18)"
+        ),
+        "KPJX-4S-S": (
+            "Kycon KPJX-4S-S drawing rev A17 (08/15/22), sheet 1, Face Detail (1 TL, 2 TR, 3 BL, "
+            "4 BR) and Recommended PCB Layout (bottom view); KPPX-4P plug rev A17 end view; Mean "
+            "Well GST160A-SPEC p.3 R7B plug table: 1 and 4 +Vo, 2 and 3 -Vo, -V to AC FG. Mean "
+            "Well's 1 and 2 are Kycon's 2 and 1, so Kycon 2 and 4 = +V. Board: 2 and 4 +24V_JACK,"
+            " 1, 3 and SH PWR_GND (read 2026-11-18)"
+        ),
+        "THROW": (
+            "KiCad 10 Jumper.pretty/SolderJumper-3_P1.3mm_Bridged12_RoundedPad1.0x1.5mm (sheet 1,"
+            " the .kicad_mod): pads 1 / 2 / 3 at -1.3 / 0 / +1.3; an F.Cu strip and "
+            "net_tie_pad_groups 1,2 bridge pads 1-2, pad 2 the common. Board: 1 PWR_SW_UP, 2 "
+            "SW_SENSE, 3 PWR_SW_DN (read 2026-11-18)"
+        ),
         "G6K-2F-Y-DC5": "Omron G6K-2F-Y datasheet p.6 (p. B-83 in the catalogue), terminal "
                         "arrangement, top view: coil 1 (+) / 8 (-); pole A COM 3, NC 2, "
                         "NO 4; pole B COM 6, NC 7, NO 5. Read 2026-09-30, re-read the "
@@ -3508,26 +3516,35 @@ BOARD_NOTES["quality"] = {
                         "18/49 VSS, 32/50/68 VDD, 25 PC5, 26 PB0, 27 PB1, 35 PB12, 36 PB13, "
                         "38 PB15, 39 PC6, 48 PA13/SWDIO, 52 PA14/SWCLK, 53 PA15, 58 PB3, 60 PB5, 61 PB6 = "
                         "USBHS_DM, 62 PB7 = USBHS_DP, 63 BOOT0, pad VSS; 20 PA4, 21 PA5 off the drawing 2026-10-07",
-        "AD8402ARZ10": "Analog Devices AD8400/AD8402/AD8403 Rev. C, and Rev. E by the order review, AD8402 pin "
-                       "configuration (SOIC-14 drawing) and pin function table: 1 AGND, "
-                       "2 B2, 3 A2, 4 W2, 5 DGND, 6 SHDN, 7 CS, 8 SDI, 9 CLK, 10 RS, "
-                       "11 VDD, 12 W1, 13 A1, 14 B1. Read 2026-10-08; the drawing and the "
-                       "table agree. Board: 1 and 5 GND, 2 and 14 VMID, 3 RING_BUF_IN, "
-                       "4 RING_GAIN, 6 and 11 +5V, 7 POT_CS, 8 POT_SDI, 9 POT_SCK, "
-                       "10 POT_RS, 12 TIP_GAIN, 13 OUT_BUF_IN",
+        "AD8402ARZ10": (
+            "ADI AD8400/AD8402/AD8403 datasheet Rev. E, p.12 of 32, Figure 7 (AD8402 pin "
+            "configuration) + Table 8 AD8402 Pin Function Descriptions: 1 AGND, 2 B2, 3 A2, 4 W2,"
+            " 5 DGND, 6 SHDN, 7 CS, 8 SDI, 9 CLK, 10 RS, 11 VDD, 12 W1, 13 A1, 14 B1; note 1: "
+            "every AGND to DGND; pads as KiCad's SOIC-14 -- U10 (output_panel, brain_board, "
+            "output_board): 1/5 ground, 2/14 VMID, 3 RING_BUF_IN, 4 RING_GAIN, 6 SHDN high, 7/8/9"
+            " POT_CS/SDI/SCK, 10 POT_RS, 11 +5V, 12 TIP_GAIN, 13 OUT_BUF_IN (read 2026-11-18, the"
+            " analog.com PDF via web.archive.org)"
+        ),
         "TLV9061IDBVR": "TI SBOS839N Table 5-1, SOT-23 (DBV) column: 1 OUT, 2 V-, 3 IN+, "
                         "4 IN-, 5 V+. Read 2026-09-30",
         "TS5A3159DCKR": "TI SCDS174 p.3 Pin Functions (DBV and DCK): 1 NO, 2 GND, 3 NC, "
                         "4 COM, 5 V+, 6 IN; IN low joins COM to NC. Board: 1 RING_GAIN "
                         "(stereo), 2 GND, 3 INV_OUT (balanced), 4 the ring buffer's "
                         "input, 5 +5V, 6 JACK_MODE. Read 2026-10-04",
-        "PCM1808PWR": "TI SLES177B Pin Functions: 1 VREF, 2 AGND, 3 VCC, 4 VDD, 5 DGND, "
-                      "6 SCKI, 7 LRCK, 8 BCK, 9 DOUT, 10 MD0, 11 MD1, 12 FMT, 13 VINL, "
-                      "14 VINR. Read 2026-09-21, re-read 2026-09-30, all 14",
-        "PCM5102APWR": "TI SLAS859C Pin Functions: 1 CPVDD, 2 CAPP, 3 CPGND, 4 CAPM, "
-                       "5 VNEG, 6 OUTL, 7 OUTR, 8 AVDD, 9 AGND, 10 DEMP, 11 FLT, 12 SCK, "
-                       "13 BCK, 14 DIN, 15 LRCK, 16 FMT, 17 XSMT, 18 LDOO, 19 DGND, "
-                       "20 DVDD. Read 2026-09-21, re-read 2026-09-30, all 20",
+        "PCM1808PWR": (
+            "TI PCM1808 datasheet SLES177B (rev. Aug 2015) p.3, PW pinout figure + Pin Functions "
+            "table: 1 VREF, 2 AGND, 3 VCC, 4 VDD, 5 DGND, 6 SCKI, 7 LRCK, 8 BCK, 9 DOUT, 10 MD0, "
+            "11 MD1, 12 FMT, 13 VINL, 14 VINR; pads as KiCad's TSSOP-14 -- U2 (output_panel, "
+            "brain_board, output_board): 3 +5V(_A), 4 +3V3(_A), 9 I2S_SDI, 10/11/12 GND (slave, "
+            "I2S), 13+14 ADC_IN (read 2026-11-18)"
+        ),
+        "PCM5102APWR": (
+            "TI PCM5102A datasheet SLAS859C (rev. May 2015) p.5 Pin Functions table (PW-20): 1 "
+            "CPVDD, 2 CAPP, 3 CPGND, 4 CAPM, 5 VNEG, 6 OUTL, 7 OUTR, 8 AVDD, 9 AGND, 10 DEMP, 11 "
+            "FLT, 12 SCK, 13 BCK, 14 DIN, 15 LRCK, 16 FMT, 17 XSMT, 18 LDOO, 19 DGND, 20 DVDD; "
+            "pads as KiCad's TSSOP-20 -- U3 (output_panel, brain_board, output_board): 1/8/17/20 "
+            "+3V3, 6 AUDIO_PROC, 7 DAC_OUT_R, 10/11/16 GND (read 2026-11-18)"
+        ),
         "CH334F": "WCH CH334 datasheet V2.5 Table 1-3, the 4F column, re-read against "
                   "V2.91 2026-09-30: 1 OVCUR#, 3 XO, 4 XI, 5 DM4, 6 DP4, 7 DM3, 8 DP3, 9 DM2, 10 DP2, 11 DM1, 12 DP1, "
                   "14 DMU, 15 DPU, 16 RESET#, 19 V5, 20 VDD33, EP GND (the figure's "
@@ -3537,13 +3554,23 @@ BOARD_NOTES["quality"] = {
         "AP2112K-3.3TRG1": "Diodes DS39724 rev. 2-2 p.1 Pin Assignments and p.2 Pin "
                            "Descriptions, SOT25: 1 VIN, 2 GND, 3 EN, 4 NC, 5 VOUT. Board: "
                            "1 and 3 +5V, 2 GND, 4 alone, 5 +3V3. Read 2026-10-04",
-        "TAXM8M4RFDCET2T": "Yajingxin TAXM8M4RFDCET2T sheet (LCSC C403948): lands 1 and 3 "
-                           "are the crystal, 2 and 4 the can. Board: 1 OSC_IN, 3 OSC_OUT, "
-                           "2 / 4 GND. Read 2026-10-04",
-        "TAXM12M4RFBCCT2T": "the same maker's 3225 four-land outline as Y1 (LCSC C133337): "
-                            "1 and 3 the crystal, 2 and 4 the can. Board: 1 HUB_XI, "
-                            "3 HUB_XO, 2 / 4 GND",
-        "PNR3015-150M": "two-pad, unpolarised",
+        "TAXM8M4RFDCET2T": (
+            "Yajingxin TAXM8M4RFDCET2T sheet (LCSC C403948, 1 page, no revision printed; page 1),"
+            " 'Connection' drawing: crystal between 1 and 3, 2 and 4 marked GND; pads 1-4 "
+            "counter-clockwise from bottom-left as KiCad Crystal_SMD_3225-4Pin. Board: 1 OSC_IN, "
+            "3 OSC_OUT, 2 / 4 GND (read 2026-11-18)"
+        ),
+        "TAXM12M4RFBCCT2T": (
+            "Yajingxin spec YJX/06 (revision page p.2: A/1 2020-5-1; issued 2026-08-26), p.7 "
+            "'Outline Dimensions' internal view: the crystal joins pads 1 and 3, 2 and 4 are the "
+            "case; pads 1-4 counter-clockwise from bottom-left as KiCad Crystal_SMD_3225-4Pin. "
+            "Board: 1 HUB_XI, 3 HUB_XO, 2 / 4 GND (read 2026-11-18)"
+        ),
+        "PNR3015-150M": (
+            "APV PNR series sheet, revised 2026-06-06, p.2 'Dimensions & Recommended Land "
+            "Pattern' (PNR3015: a 1.00, b 1.10, c 2.70): two terminals, unpolarised; "
+            "Steel:L_APV_PNR3015 has 2 pads. Board: 1 SW, 2 the output rail (read 2026-11-18)"
+        ),
     },
     # A17 (cadkit/PCB_QUALITY.md): a connector whose pinout block is on the OTHER face,
     # and why. Way 1 is marked on the connector's own side in every case.
@@ -3850,22 +3877,55 @@ if REV != 1:
         "LMR33630BRNXR": "TI LMR33630 SNVSAN3F table 6-1, RNX VQFN: 1 PGND 2 VIN 3 SW 4 BOOT 5 VCC "
                          "6 AGND 7 FB 8 PG 9 EN 10 VIN 11 PGND 12 SW; the same pins as elec/buck_cell.py "
                          "and the optical board's U13, EN on VIN",
-        "SWPA5040S4R7MT": "two-pad, unpolarised",
-        "TUSB320LAIRWBR": "TI TUSB320 SLLSEN9 pin table (RWB X2QFN-12) and drawing 4221631/B: 1 CC1 2 CC2 "
-                          "3 PORT 4 VBUS_DET 5 ADDR 6 INT_N/OUT3 7 SDA/OUT1 8 SCL/OUT2 9 ID 10 GND 11 EN_N "
-                          "12 VDD; land Steel:Texas_RWB0012A, from the same drawing",
-        "TS3USB221RSER": "TI TS3USB221 pin table (RSE UQFN-10): 1 1D+ 2 1D- 3 2D+ 4 2D- 5 GND 6 OE# 7 D- "
-                         "8 D+ 9 S 10 VCC. Board: channels used crossed, see _r2_ports",
+        "SWPA5040S4R7MT": (
+            "Sunlord SWPA Series catalogue (revised 2023/06/01; LCSC C84608's copy via "
+            "web.archive.org, C48496's own link is gone) p.2 Fig.3 + Recommended Land Pattern, "
+            "SWPA5040S row: two terminals, unpolarised, a 2.3 / b 1.4 / c 4.2. KiCad "
+            "L_Sunlord_SWPA5040S: pads 1.4 x 4.2 at +-1.85 (a 2.3 gap), the same. Board: 1 the "
+            "switch node, 2 the output rail (read 2026-11-18)"
+        ),
+        "TUSB320LAIRWBR": (
+            "TI TUSB320LAI/HAI datasheet SLLSEQ8D (rev. May 2017) p.3 RWB X2QFN-12 top view + Pin"
+            " Functions table, TUSB320LA column: 1 CC1, 2 CC2, 3 PORT, 4 VBUS_DET, 5 ADDR, 6 "
+            "INT_N/OUT3, 7 SDA/OUT1, 8 SCL/OUT2, 9 ID, 10 GND, 11 EN_N, 12 VDD; land "
+            "Steel:Texas_RWB0012A off drawing 4221631/B (pp.35-37) -- U13 (output_panel): 3 open "
+            "(DRP), 4 via R41 910k, 5 R42 up (I2C 0x67), 11 GND, 12 +3V3 (read 2026-11-18)"
+        ),
+        "TS3USB221RSER": (
+            "TI TS3USB221 datasheet SCDS220M (rev. Nov 2024) p.3 Figure 4-2 (RSE top view) + "
+            "Table 4-1 Pin Functions: 1 1D+, 2 1D-, 3 2D+, 4 2D-, 5 GND, 6 OE#, 7 D-, 8 D+, 9 S, "
+            "10 VCC; p.12 Table 7-1 truth table; pads as KiCad's Texas_UQFN-10_1.5x2mm -- U14 "
+            "(output_panel): 6 GND, 9 ROLE_ID_N, 10 +3V3; U17/U38 (brain_board), U17 "
+            "(output_board): 10 +3V3D; pairs crossed consistently (read 2026-11-18)"
+        ),
         "TPS2553DBVR": "TI SLVS841F p.5, DBV: 1 IN 2 GND 3 EN (active high on the 2553) 4 FAULT# 5 ILIM 6 OUT",
-        "INA226AIDGSR": "TI INA226 SBOS547 pin table (DGS VSSOP-10): 1 A1 2 A0 3 Alert 4 SDA 5 SCL 6 VS "
-                        "7 GND 8 VBUS 9 IN- 10 IN+",
+        "INA226AIDGSR": (
+            "TI INA226 datasheet SBOS547C (rev. Aug 2026) p.3 Figure 4-1 (DGS VSSOP-10) + Table "
+            "4-1 Pin Functions: 1 A1, 2 A0, 3 Alert, 4 SDA, 5 SCL, 6 VS, 7 GND, 8 VBUS, 9 IN-, 10"
+            " IN+; pads as Steel:MSOP-10_3x3mm_P0.5mm_Tight -- U16 (output_panel, brain_board, "
+            "output_board): 1/2/7 GND, 6 +3V3, 10 IN+ supply side (+24V_JACK / VIN_BUS), 8+9 load"
+            " side (read 2026-11-18)"
+        ),
         "CH340C": "WCH CH340DS1-EN V3C pp.3-4, SOP16: 1 GND 2 TXD 3 RXD 4 V3 5 UD+ 6 UD- 13 DTR# 14 RTS# "
                   "15 R232 16 VCC",
         "AO3401A": "AOS AO3401A Rev 3.1 p.1 SOT23: 1 G, 2 S, 3 D",
-        "2N7002": "CJ 2N7002 SOT-23: 1 G, 2 S, 3 D",
-        "MX128-5.0-02P-Y": "maker's drawing MX128-5.0-XXP 22.09.14: 5.00 pitch, O1.40 holes, pin 1 "
-                           "at the lip end; two-way, the nets are one pickup's two leads",
-        "SMF24A": "SOD-123FL, 1 cathode (bar), 2 anode",
+        "2N7002": (
+            "CJ (JSCJ) 2N7002 datasheet J, Sep 2016 (LCSC C8545) p.1 SOT-23 pin legend: 1 GATE, 2"
+            " SOURCE, 3 DRAIN; pads as KiCad's SOT-23 -- Q5/Q6 (output_panel): S GND, "
+            "cross-coupled G/D; Q210/Q212/Q214/Q215 (brain_board, output_board): S GND; Q203: G "
+            "SW_GATE, S PWR_Q3_SRC, D PWR_PULL (read 2026-11-18)"
+        ),
+        "MX128-5.0-02P-Y": (
+            "MAX (Cixi Maixu) drawing MX128-5.0-XXP, 22.09.14, sheet 1/1, 'PCB Layout' view: 5.00"
+            " pitch, O1.40 holes, first hole 3.10 from the body end; the maker numbers no pin. "
+            "Footprint pad 1 at 0, pad 2 at +5.0. Two-way: 1 GND, 2 PICKUP_HOT (read 2026-11-18)"
+        ),
+        "SMF24A": (
+            "Jingdao SMF series datasheet 2020.10 (SOD123FL-TVS-SMF5.0A~SMF440A-200W, LCSC "
+            "C169430) p.1 PINNING table: 1 cathode, 2 anode; pads as KiCad's D_SOD-123F (pad 1 = "
+            "cathode) -- D10 (output_panel): 1 +24V_IN, 2 GND; D201 (brain_board, output_board), "
+            "D1 (brain): 1 VIN_BRAIN, 2 GND (read 2026-11-18)"
+        ),
     })
     _q["waive"].update({
         "A1:+24V_JACK J6.2>R61.1": "the neck at R61's 0805 land, 3 mm long: the land sets it. "

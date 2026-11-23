@@ -162,3 +162,7 @@ routes through the same fan as `SAI_FS`.
 
 `optalt` and `usb_panel` have **21 orphaned files in `elec/out`** with no generator. `fab.py`
 flags them every run. Left alone deliberately during a validation pass; they want deleting.
+
+**DO NOT ORDER `optalt`** (2026-11-18): it is dead -- no generator, never fitted (tools/cost.py
+skips it). Its J2 also has pin 1 GND and pin 2 +24V, the reverse of every other board's power
+connector (pin 1 the 24 V way). Its files in `elec/out` are a September snapshot, not a design.

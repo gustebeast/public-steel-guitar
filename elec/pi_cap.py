@@ -855,14 +855,14 @@ BOARD_NOTES = {
                                  "closed, read as a level. Same cut, the socket's row"},
         },
         "pinouts": {
-            "2.54-2*20P": "Raspberry Pi 4B mechanical drawing + src/electronics._cap_place, "
-                          "worked through 2026-10-04: pad 1 sits at board (-24.13, -3.23), "
-                          "pad 2 at (-24.13, -5.77), numbers rising toward +X. The cap is "
-                          "placed face down (turned 180 about X) over a Pi lying ports-to-+X, its "
-                          "header on the +Y long edge, which lands pad 1 at 3.5 mm from the "
-                          "Pi's -X end on the INNER row and pad 2 on the edge row: the Pi's "
-                          "pin 1 and pin 2 seen from its component side. Pad n is header "
-                          "pin n",
+            "2.54-2*20P": (
+                "Raspberry Pi 4 Model B Datasheet Release 1.1, p.9, s5.1.1, Figure 3 'GPIO "
+                "Connector Pinout': 1 / 17 3V3, 2 / 4 5V, 6 / 9 / 14 / 20 / 25 / 30 / 34 / 39 "
+                "GND, 27 / 28 ID_SD / ID_SC. Board: 1 +3V3_PI, 2 / 4 +5V_PI, 6 / 9 / 25 / 30 / 34"
+                " / 39 GND, 14 / 17 / 20 / 27 / 28 open. The BOOMELE PY2.54-2xNA-8.5MM drawing "
+                "(C5124634) numbers no pin; pad n = Pi pin n is the cap's own 2026-10-04 geometry"
+                " (read 2026-11-18)"
+            ),
             "S4B-XH-SM4-TB": "JST eXH.pdf p.6, Header / SMT type: seen from above with the "
                              "mouth pointing away and the tails toward the viewer, No. 1 "
                              "circuit is the right-hand post. KiCad JST_XH_S4B-XH-SM4-TB "
@@ -880,12 +880,13 @@ BOARD_NOTES = {
                         "toward +Y (down the screen) -- turned mouth-up, pad 1 is on the "
                         "right: the same end. Ways are harness.LED_DROP (V24 GND SCK SDT). "
                         "Read 2026-10-04",
-            "PZ1.27-2x8P": "a plain two-row header: the maker numbers nothing, so the "
-                           "numbering is the footprint's (KiCad PinHeader_2x08 Horizontal: "
-                           "odd pads on the inner row, even on the edge row, 1 / 2 at one "
-                           "end) and the way order is harness.UI_RIBBON, asserted above -- "
-                           "the same list ui_board's J2 is built from. Which end of the "
-                           "cable is way 1 is M1's question, not this one's",
+            "PZ1.27-2x8P": (
+                "hanxia HX PZ1.27-2x8P WZ drawing rev A (2022/04/24), page 1/1 (LCSC C22438114 "
+                "PDF p.1): a plain 2x8 at 1.27, no pin numbers; numbering is KiCad "
+                "PinHeader_2x08_P1.27mm (odd one row, even the other), way order "
+                "harness.UI_RIBBON at both ends (pi_cap J5 = ui_board J2, ways 1-16 the same "
+                "nets) (read 2026-11-18)"
+            ),
             "TPS2553DBVR": "TI SLVS841 p.5, DBV package: 1 IN, 2 GND, 3 EN (active high "
                            "on the 2553), 4 FAULT, 5 ILIM, 6 OUT. Board: 1 and 3 +3V3_PI, "
                            "2 GND, 4 open, 5 UI_ILIM, 6 +3V3_UI. Read 2026-10-05",

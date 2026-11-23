@@ -109,7 +109,7 @@ def connector_board():
            "V5_PED": n["+5V_PED"], "V5_LEV": n["+5V_LEV"], "SCK": n["SCK"], "SDT": n["SDT"],
            "SCK_FOOT": n["SCK_FOOT"], "SDT_FOOT": n["SDT_FOOT"]}
     harness.check_ways_2row(harness.CONN_RIBBON, ("V24", "V24L", "V5_PED", "V5_LEV"), where="J1")
-    _ways("J1", "PZ1.27-2x15P ZZ", "the brain ribbon, 30-way 1.27 mm 2x15 IDC "
+    _ways("J1", "A127M05-0B30P51-H10A40", "the brain ribbon, 30-way 1.27 mm 2x15 IDC "
           "(harness.CONN_RIBBON; LCSC open item)", RIBBON, harness.CONN_RIBBON, rib,
           power=("V24", "V24L", "V5_PED", "V5_LEV"))
     _two("C1", "22uF/50V", "ribbon 24 V bulk at J1 -- the brain's F204 / C322 are 0.3 m away; "
@@ -153,7 +153,7 @@ def connector_board():
           "pluggable header, its MX15EDGK plug takes the wires on M2 slotted screws", TB4,
           harness.LED_DROP, {"V24": v24l, "GND": gnd, "SCK": n["SCK"], "SDT": n["SDT"]},
           power=("V24",))
-    _ways("J5", "MX15EDGRC-3.5-04P", "to foot_led_a J1 -- 24 V and SPI (harness.LED_DROP); 3.5 mm "
+    _ways("J5", "MX15EDGRC-3.5-04P", "foot light out -- 24 V and SPI (harness.LED_DROP; the v1 foot_led_a is gone, 246f34fe); 3.5 mm "
           "pluggable header, its MX15EDGK plug takes the wires on M2 slotted screws", TB4,
           harness.LED_DROP, {"V24": v24l, "GND": gnd, "SCK": n["SCK_FOOT"], "SDT": n["SDT_FOOT"]},
           power=("V24",))
@@ -241,34 +241,34 @@ BOARD_NOTES = {
         # barrel against 1.37 needed at 3 A for a 10 C rise -- power_vias' third opened a GND
         # neck and was refused. At the real 1.70 A two barrels have 2x margin
         "waive": {
-            "A1:+24V_LED J1.7>J4.1": "1.35 mm of via barrel against 1.37 at the 3 A fuse; the load "
+            "A1:+24V_LED J1.%d>J4.1" % harness.ribbon_ways("V24L")[0]: "1.35 mm of via barrel against 1.37 at the 3 A fuse; the load "
                                       "is 1.70 A at full white (docs/lighting-bus.md), 2x margin; "
                                       "a third via opened a GND neck (power_vias, reported)",
-            "A1:+24V_LED J1.7>J5.1": "the same two vias as J4: 1.35 against 1.37 at the 3 A fuse, "
+            "A1:+24V_LED J1.%d>J5.1" % harness.ribbon_ways("V24L")[0]: "the same two vias as J4: 1.35 against 1.37 at the 3 A fuse, "
                                       "1.70 A real (docs/lighting-bus.md)",
         },
         # A1. The motors' 24 V is FUSED AT THE BRAIN AT 4 A (brain_board F204, its power_paths
-        # declare the ribbon's ways 1-4 at 4.0 A split), so 4 A is the most this bus can ever
+        # declare the ribbon's four +24 V ways at 4.0 A split), so 4 A is the most this bus can ever
         # carry and every +24V track is sized for it. Not 10 x 0.8 A = 8 A: the motor bus budget
         # is <= 5 A with slewing staggered by firmware (docs/can-tee-power-tap.md; the PSU is
         # 6.5 A for the whole instrument), and the fuse caps it lower still. The 0.8 A per
         # moving motor is the DERIVED budget, not a measured peak (measured 2026-11-12: +0.9 W
         # moving, +0.65 W holding, ~20x below it). Each drop is one motor: 0.8 A.
         "power_paths": (
-            # the ribbon's four 24 V ways share the 4 A, 1 A each (a PZ1.27 contact is rated
-            # 3 A: M32 read 4 A on J1.1 alone when the trunk was declared from it), and meet at
+            # the ribbon's four 24 V ways share the 4 A, 1 A each (the JXTCONN header's contacts
+            # are rated 1 A, LCSC C41427104 -- at the limit, F4 holds 2 A: M32 read 4 A on J1.1 alone when the trunk was declared from it), and meet at
             # C1, the bulk cap beside J1; the trunk runs from there
-            [{"net": "+24V", "from": "J1.%d" % w, "to": ["C1.1"], "amps": 1.0} for w in (1, 2, 3, 4)]
+            [{"net": "+24V", "from": "J1.%d" % w, "to": ["C1.1"], "amps": 1.0} for w in harness.ribbon_ways("V24")]
             + [{"net": "+24V", "from": "C1.1", "to": ["J%d.1" % k for k in range(11, 21)],
                 "amps": 4.0, "split": True}]
             + [{"net": "+24V", "from": "C1.1", "to": ["J%d.1" % k], "amps": 0.8}
                for k in range(11, 21)]
-            # the lights: fused 3 A at the brain (F203, ways 7-8); every zone full white is 1.70 A
+            # the lights: fused 3 A at the brain (F203, four ways -- harness.CONN_RIBBON); every zone full white is 1.70 A
             # (docs/lighting-bus.md), sized here to the fuse
-            + [{"net": "+24V_LED", "from": "J1.7", "to": ["J4.1", "J5.1"], "amps": 3.0}]
+            + [{"net": "+24V_LED", "from": "J1.%d" % harness.ribbon_ways("V24L")[0], "to": ["J4.1", "J5.1"], "amps": 3.0}]
             # each arm's 5 V: the brain's limiter on each (U206 / U211) is declared 0.5 A
-            + [{"net": "+5V_PED", "from": "J1.19", "to": ["J2.1"], "amps": 0.5},
-               {"net": "+5V_LEV", "from": "J1.22", "to": ["J3.1"], "amps": 0.5}]),
+            + [{"net": "+5V_PED", "from": "J1.%d" % harness.ribbon_ways("V5_PED")[0], "to": ["J2.1"], "amps": 0.5},
+               {"net": "+5V_LEV", "from": "J1.%d" % harness.ribbon_ways("V5_LEV")[0], "to": ["J3.1"], "amps": 0.5}]),
         # A13: nothing is left open; how many nets each repeated structure is on
         "unconnected": {},
         "net_groups": [
@@ -293,21 +293,20 @@ BOARD_NOTES = {
                            "(D1): 1 CANA_H, 2 CANA_L, 3 GND -- the same assignment as motor_ctrl "
                            "D2, read 2026-10-06. KiCad SOT-23 uses the JEDEC TO-236 numbering the "
                            "drawing does",
-            "PZ1.27-2x15P ZZ": "HX PZ1.27 family drawing (as the brain's PZ1.27-2x8P ZZ, LCSC "
-                               "C22438123, p.1): a plain straight two-row header, the maker "
-                               "numbers nothing -- the numbering is the footprint's (KiCad "
+            "A127M05-0B30P51-H10A40": "JXTCONN 2x15 1.27 mm SMD vertical (LCSC C41427104; JLC lists "
+                               "no drawing -- check the land in the order preview): a plain "
+                               "straight two-row header, the maker numbers nothing -- the numbering is the footprint's (KiCad "
                                "PinHeader_2x15_P1.27mm_Vertical_SMD: odd pads one row, even the "
                                "other, 1 / 2 at one end) and the way order is "
                                "harness.CONN_RIBBON, which the brain's J240 is built from too "
                                "(IDC ribbon: wire n = pin n)",
-            "MX15EDGRC-3.5-04P": "MAX drawings MX15EDGRC-3.5-XXP / MX15EDGK-3.5-XXP (22.09.14), the "
-                                 "sheets the Steel footprint cites: four identical posts at 3.5 mm "
-                                 "in one row; a screw-terminal plug takes a bare wire at each "
-                                 "position, so the way order is this board's and the harness's "
-                                 "(harness.XH_PINOUT for the motors, LED_DROP for J4 / J5), the "
-                                 "footprint's pad 1 at its -X end, printed on the board: each "
-                                 "way's name in front of it and the way-1 dot (A17). The leads are "
-                                 "wired to those words, not to a maker's number",
+            "MX15EDGRC-3.5-04P": (
+                "MAX drawing MX15EDGRC-3.5-XXP, 22.09.14, sheet 1/1, 'PCB Layout' view: 3.50 "
+                "pitch, O1.40 holes in one row, no pin numbers; the way order is the board's, pad"
+                " 1 at -X (pads at 0 / 3.5 / 7.0 / 10.5). J11-J20: 1 +24V, 2 GND, 3 CANA_H, 4 "
+                "CANA_L (harness.XH_PINOUT); J4 / J5: 1 +24V_LED, 2 GND, 3 SCK(_FOOT), 4 "
+                "SDT(_FOOT) (harness.LED_DROP) (read 2026-11-18)"
+            ),
         },
     },
     # A17: J1's 30 ways named as a block (two columns, odd left, even right) -- 1.27 mm is too
@@ -343,7 +342,7 @@ BOARD_NOTES = {
         "J11-J20 MX15EDGRC + MX15EDGK: the mated depth (16.5 mm from the pin row, 17 courtyard) and 11.1 height are read off two drawings, not a sample -- check one pair",
         "placement intent (not written yet), J11-J20 each: mate Jn L+Y 22.6 1.0 (the plug's 10.6 past the header + the 12 mm wire bend), access Jn top 6 (the M2 screws, a 2.0 mm blade from +Z), and the body at board x >= -73.45 (open sky: the nut prism is ~41 mm above the face beyond it)",
         "instrument model: the connector board is not in src/ yet -- once placed, the overlap gate needs it at its frame with BOARDS.solid(mated=True) (src/board_geom.SIDE_PLUG_RUN carries the plug) against the nut block, the endplates and the motor cable path",
-        "J1 PZ1.27-2x15P ZZ: LCSC code and stock (the 2x8 is C22438123)",
+        "J1 (JXTCONN A127M05-0B30P51-H10A40, C41427104, 2026-11-17): JLC publishes no drawing -- confirm the SMD land against the PinHeader_2x15 footprint in the order preview; NOT shrouded (none stocked at 1.27 mm), so pin 1 must be marked on the silk and the cable stripe -- reversed, +24 V lands on CAN / SPI",
         "J4 / J5 (LED leads) are the motors' MX15 family: label the leads -- a motor plug fits an LED header (power ways agree; CAN onto SCK / SDT, no damage)",
     ],
 }

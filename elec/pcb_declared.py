@@ -53,32 +53,6 @@ def optical_declared(vtype, refs):
     return kinds == {"D", "PD"} and m[0].group(2) == m[1].group(2)
 
 
-def foot_a_declared(vtype, refs):
-    """Foot board A: its cable socket against the first LED of the row.
-
-    The side-entry XH's courtyard is 16.7 x 12.0 because it takes in the plug's approach
-    and both mounting lands; the parts themselves clear. elec/foot_led.py asserts the two
-    gaps that matter before it writes the netlist -- the socket's body ends at least
-    0.30 short of the LED's courtyard along the board, and its four signal lands at least
-    0.30 from it across -- so this accepts a courtyard and nothing else. Only this pair."""
-    return vtype == "courtyards_overlap" and set(refs) == {"J1", "D1"}
-
-
-def foot_seam_declared(board, vtype, refs):
-    """Either foot board: its last seam pogo against the LED at that end of the row.
-
-    The pogo row moved 0.40 toward the LEDs when the channel's -Y shoulder went to two
-    beads (user, 2026-10-05), which put the last pogo's land 0.10 inside the XL-5050's
-    6.10 courtyard. The parts clear: src/foot_light.check_optics holds that land at least
-    0.30 from the LED's 5.00 body (it is 0.45, and 0.69 from the LED's nearest copper).
-    One named pair a board, nothing by footprint type."""
-    pair = {"foot_led_a": {"J24", "D36"}, "foot_led_b": {"J14", "D1"}}
-    for name, refs_ok in pair.items():
-        if board.endswith(name):
-            return vtype == "courtyards_overlap" and set(refs) == refs_ok
-    return False
-
-
 def lever_declared(vtype, refs):
     """The lever sensor board's two bus connectors, J1 (in) above J2 (out), END TO END.
 
@@ -90,10 +64,6 @@ def lever_declared(vtype, refs):
 
 
 def declared(board, vtype, refs):
-    if foot_seam_declared(board, vtype, refs):
-        return True
     if board.endswith("lever_sensor"):
         return lever_declared(vtype, refs)
-    if board.endswith("foot_led_a"):
-        return foot_a_declared(vtype, refs)
     return "optical" in board and optical_declared(vtype, refs)

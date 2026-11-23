@@ -1888,9 +1888,13 @@ BOARD_NOTES["quality"] = {
                        "which is free), 3 is the common. Board (D2): 1 CANA_H, 2 CANA_L, "
                        "3 GND. KiCad SOT-23: 1 and 2 on the two-pin side, 3 alone, the "
                        "JEDEC TO-236 numbering the drawing uses. Read 2026-10-06",
-        "SN65HVD230DR": "TI SLOS346 Pin Functions (SOIC-8): 1 D, 2 GND, 3 VCC, 4 R, 5 Vref, "
-                        "6 CANL, 7 CANH, 8 RS. Board: 1 CANn_TX, 2 GND, 3 +3V3, 4 CANn_RX, "
-                        "5 open, 6 L, 7 H, 8 slope resistor. Re-read 2026-10-04",
+        "SN65HVD230DR": (
+            "TI SN65HVD230 datasheet SLOS346O (rev. Apr 2018) p.5 D-package top view + Pin "
+            "Functions table: 1 D, 2 GND, 3 VCC, 4 R, 5 Vref, 6 CANL, 7 CANH, 8 RS; pads as "
+            "KiCad's SOIC-8 -- U3 (motor_ctrl, brain), U2 (lever_sensor), U203 (brain_board, "
+            "output_board): 1 TX, 3 +3V3, 4 RX, 5 open, 8 to GND via the slope resistor (read "
+            "2026-11-18)"
+        ),
         "CH32V307WCU6": "WCH CH32V303/305/307/317 datasheet V3.4 p.21, the CH32V307WCU6 "
                         "pin drawing, read pin by pin against the placed board 2026-10-04: "
                         "1 VBAT, 5 OSC_IN, 6 OSC_OUT, 7 NRST, 12 VSSA, "
@@ -1907,11 +1911,22 @@ BOARD_NOTES["quality"] = {
         "TPS2553DBVR": "TI SLVS841F p.5, DBV package: 1 IN, 2 GND, 3 EN (active high on "
                        "the 2553), 4 FAULT, 5 ILIM, 6 OUT. Board: 1 +5V, 2 GND, 3 +5V, "
                        "4 BUSB_FAULT_N, 5 BUSB_ILIM, 6 +5V_BUSB. Read 2026-10-04",
-        "TAXM8M4RFDCET2T": "Yajingxin TAXM8M4RFDCET2T sheet (LCSC C403948), 'Connection' "
-                           "drawing: lands 1 and 3 are the crystal, 2 and 4 the can (GND). "
-                           "Board: 1 OSC_IN, 3 OSC_OUT, 2 / 4 GND. Read 2026-10-04",
-        "VLS6045EX-6R8M": "two-pad, unpolarised",
-        "PNR3015-150M": "two-pad, unpolarised",
+        "TAXM8M4RFDCET2T": (
+            "Yajingxin TAXM8M4RFDCET2T sheet (LCSC C403948, 1 page, no revision printed; page 1),"
+            " 'Connection' drawing: crystal between 1 and 3, 2 and 4 marked GND; pads 1-4 "
+            "counter-clockwise from bottom-left as KiCad Crystal_SMD_3225-4Pin. Board: 1 OSC_IN, "
+            "3 OSC_OUT, 2 / 4 GND (read 2026-11-18)"
+        ),
+        "VLS6045EX-6R8M": (
+            "TDK VLS6045EX catalogue 20230111 p.4/5, 'Shape & Dimensions' and 'Recommended Land "
+            "Pattern': two terminals, unpolarised; KiCad L_TDK_VLS6045EX_VLS6045AF has 2 pads. "
+            "Board: 1 the switch node, 2 the 5 V rail (read 2026-11-18)"
+        ),
+        "PNR3015-150M": (
+            "APV PNR series sheet, revised 2026-06-06, p.2 'Dimensions & Recommended Land "
+            "Pattern' (PNR3015: a 1.00, b 1.10, c 2.70): two terminals, unpolarised; "
+            "Steel:L_APV_PNR3015 has 2 pads. Board: 1 SW, 2 the output rail (read 2026-11-18)"
+        ),
     },
     "manual": {
         "M35": "read 2026-10-05. " + 'WCH publishes no errata sheet: its product page lists the datasheet and the reference manual (CH32FV2x_V3xRM) and nothing else, read 2026-10-05. ' + "The manual's USB "

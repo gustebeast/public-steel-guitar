@@ -148,8 +148,6 @@ ALTERNATES = {
         'Active (DigiKey, 2026-11-10); alternate: XH-4AW HCTL C2908613 -- XH-compatible 4-way side-entry THT, takes XHP-4',
     'S4B-XH-SM4-TB':
         'Active (DigiKey, 2026-11-10); alternate: HC-XH-4AWT HCTL C2845685 -- XH-compatible SMD right-angle 4-way with tabs, body 10.5x15x6.1 against 10x15x6: land pattern to be checked against our footprint',
-    'S4B-ZR-SM4A-TF':
-        "Active (DigiKey, base part number, 2026-11-10); alternate: none -- no ZR-compatible SMD right-angle header from another maker at LCSC, and JST's S4B-ZR-SM2-TF C5306725 has a different body and pads",
     'S6B-PH-SM4-TB':
         'Active (DigiKey, 2026-11-10); alternate: HC-PH-6AWT HCTL C2845446 -- PH-compatible SMD right-angle 6-way, 16x5.5x8.65 against 15.9x5.5x8.6, takes PHR-6',
     'S8B-XH-A':
@@ -208,10 +206,6 @@ ALTERNATES = {
         'Active (DigiKey, 2026-11-10); alternate: CKCSA4020-4.7uH/M CENKER C354583 -- 4x4 shielded 4.7 uH +-20 %, Isat 4.0 A (our design point), Irms 2.85 A, 110 mOhm',
     'XL-5050RGBW':
         "no maker lifecycle published (XINGLIGHT; JLC buyable, 52409, 2026-11-10); alternate: HL-5050RGBW-S1 HONGLITRONIC C917441 -- 5050 8-pin RGBW with separate anodes and cathodes; its die-to-pin map to be checked against XINGLIGHT's before it counts",
-    'YZ165615055F-04025-02':
-        'no maker lifecycle published (Xinyangze; JLC buyable, 1467, 2026-11-10); alternate: none -- a right-angle 1x4 spring-pin header whose geometry is mated to the YZ185115035T target; no second source',
-    'YZ185115035T-04025-01':
-        'no maker lifecycle published (Xinyangze; JLC buyable, only 210, 2026-11-10); alternate: none -- its only family twin, C5296825, is right-angle and does not fit the adapter',
     'YZF0002-38080-02':
         'no maker lifecycle published (Xinyangze; JLC buyable, 486 = 30 instruments at 16, 2026-11-10); alternate: none -- no other side-mount SMD pogo with this barrel and land, and above 12 V, at LCSC',
 }

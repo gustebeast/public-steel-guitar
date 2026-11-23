@@ -280,22 +280,6 @@ Not mine to change; offered because the same lens applies.
 4. **`lever_sensor` 4.1–4.2** with branner, since the outline is theirs.
 5. **`output_panel` 3.3–3.4** only as post-route pads, and only once that board routes clean under change.
 
-## Leg blind-mate boards (elec/leg_pogo.py)
-
-Four passive boards, four conductors each (on the connector: +5V, GND, CAN_H, CAN_L, `elec/harness.py` PH_PINOUT). Each carries four bare
-test pads, TP1-TP4 = GND, +5V, CAN_H, CAN_L (the PADS' order, not the connector's), so nothing has to probe a spring pin or a gold face.
-
-1. **Before fitting: each board alone.** Meter TP1-TP4 to the connector's ways 1-4. Any
-   other pairing is a wrong board, not a bad one.
-2. **The joint, mated, leg unplugged at the far end.** Meter TP-to-TP across the joint:
-   TP1 to TP1 ... TP4 to TP4, under 1 ohm each, and open between neighbours. THIS IS THE
-   TEST THAT THE MIRRORED PAIR IS THE RIGHT PAIR -- the top and bottom joints use
-   mirror-image boards, and a bottom board in a top pocket reverses the row (5 V onto
-   CAN_H). The female's notch is on opposite sides in the two, so it should not go in; the
-   meter is the proof.
-3. **Loaded.** With bus B powered, +5V at the far female's TP2 should sit within 0.1 V of
-   the near one. More than that is a contact, not copper (the boards are under 20 mOhm).
-
 ## Output panel: three things to know before the first power-up (2026-10-04)
 
 * **The two grounds meet at R60.** `GND` and `PWR_GND` are joined by one 0 ohm link beside

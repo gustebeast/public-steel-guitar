@@ -3748,6 +3748,769 @@
    "i": 8.0,
    "mpn": "MX15EDGRC-3.5-02P-GN01-Cu-A",
    "src": "MAX (Cixi Maixu) drawing MX15EDGRC-3.5-XXP (22.09.14, LCSC C5188297's PDF) NOTES1: UL 300 V / 8 A, withstanding AC 2000 V / 1 min; IEC 250 V / 7 A (pollution degree 2). Its plug MX15EDGK-3.5-XXP (C5188251): UL 300 V / 8 A, 28-16 AWG, M2.0 screw. Read 2026-11-14 -- the drawing is the series' (XX = pin count): the 2-way C5188295 carries the same 300 V / 8 A"
+  },
+  "C22375748": {
+   "mpn": "TPS552892QWRYQRQ1",
+   "kind": "ic",
+   "supply": {
+    "VIN": "7",
+    "VCC": "18",
+    "SW1": "8",
+    "SW2": "10"
+   },
+   "vfb_max": 1.212,
+   "pins": {
+    "1": {
+     "n": "EN",
+     "max": 20.0
+    },
+    "2": {
+     "n": "MODE",
+     "max": "VCC+0.3"
+    },
+    "3": {
+     "n": "PG",
+     "max": "VCC+0.3"
+    },
+    "4": {
+     "n": "CC",
+     "max": "VCC+0.3"
+    },
+    "5": {
+     "n": "DITH",
+     "max": "VCC+0.3"
+    },
+    "6": {
+     "n": "FSW",
+     "max": "VCC+0.3"
+    },
+    "7": {
+     "n": "VIN",
+     "max": 42.0,
+     "rec": 36.0
+    },
+    "8": {
+     "n": "SW1",
+     "max": 42.0
+    },
+    "9": {
+     "n": "PGND",
+     "gnd": true
+    },
+    "10": {
+     "n": "SW2",
+     "max": 25.0
+    },
+    "11": {
+     "n": "VOUT",
+     "max": 25.0
+    },
+    "12": {
+     "n": "ISP",
+     "max": 25.0
+    },
+    "13": {
+     "n": "ISN",
+     "max": 25.0
+    },
+    "14": {
+     "n": "FB",
+     "max": "VCC+0.3"
+    },
+    "15": {
+     "n": "COMP",
+     "max": "VCC+0.3"
+    },
+    "16": {
+     "n": "CDC",
+     "max": "VCC+0.3"
+    },
+    "17": {
+     "n": "AGND",
+     "gnd": true
+    },
+    "18": {
+     "n": "VCC",
+     "max": 6.0
+    },
+    "19": {
+     "n": "BOOT2",
+     "max": "SW2+6"
+    },
+    "20": {
+     "n": "BOOT1",
+     "max": "SW1+6"
+    },
+    "21": {
+     "n": "EXTVCC",
+     "max": 6.0
+    }
+   },
+   "src": "TI TPS552892-Q1 SLVSGT7 (Apr 2023) s6.1: VIN, SW1 42 V; VOUT, SW2, ISP, ISN 25 V; EN 20 V; BOOTx SWx+6; VCC, EXTVCC 6 V; PG/CC/FSW/COMP/FB/MODE/CDC/DITH VCC+0.3; s6.3 VIN 2.7-36 V; s6.5 VREF 1.188/1.2/1.212 V"
+  },
+  "C122837": {
+   "mpn": "TPS22965DSGR",
+   "kind": "ic",
+   "supply": {
+    "VBIAS": "4"
+   },
+   "supply_max": 6.0,
+   "supply_rec": 5.7,
+   "pins": {
+    "1": {
+     "n": "VIN",
+     "max": 6.0
+    },
+    "2": {
+     "n": "VIN",
+     "max": 6.0
+    },
+    "3": {
+     "n": "ON",
+     "max": 6.0
+    },
+    "4": {
+     "n": "VBIAS",
+     "max": 6.0,
+     "rec": 5.7
+    },
+    "5": {
+     "n": "GND",
+     "gnd": true
+    },
+    "6": {
+     "n": "CT",
+     "max": 6.0
+    },
+    "7": {
+     "n": "VOUT",
+     "max": 6.0
+    },
+    "8": {
+     "n": "VOUT",
+     "max": 6.0
+    },
+    "9": {
+     "n": "PAD",
+     "gnd": true
+    }
+   },
+   "src": "TI TPS22965 datasheet s7.1: VIN, VOUT, VBIAS, ON -0.3..6 V; s7.3 VBIAS 2.5-5.7 V; CT taken at 6 V (driven by the part from VBIAS); DSG pinout SLVSBJ0F p.4 s6: 7 AND 8 VOUT (pin 8 was listed GND here until 2026-11-18)"
+  },
+  "C139392": {
+   "mpn": "TUSB321RWBR",
+   "kind": "ic",
+   "supply": {
+    "VDD": "12"
+   },
+   "supply_max": 6.0,
+   "supply_rec": 5.5,
+   "pins": {
+    "1": {
+     "n": "CC1",
+     "max": "VDD+0.3"
+    },
+    "2": {
+     "n": "CC2",
+     "max": "VDD+0.3"
+    },
+    "3": {
+     "n": "CURRENT_MODE",
+     "max": "VDD+0.3"
+    },
+    "4": {
+     "n": "PORT",
+     "max": "VDD+0.3"
+    },
+    "5": {
+     "n": "VBUS_DET",
+     "max": 4.0
+    },
+    "6": {
+     "n": "VCONN_FAULT",
+     "max": "VDD+0.3"
+    },
+    "7": {
+     "n": "OUT1",
+     "max": "VDD+0.3"
+    },
+    "8": {
+     "n": "OUT2",
+     "max": "VDD+0.3"
+    },
+    "9": {
+     "n": "ID",
+     "max": "VDD+0.3"
+    },
+    "10": {
+     "n": "GND",
+     "gnd": true
+    },
+    "11": {
+     "n": "DIR",
+     "max": "VDD+0.3"
+    },
+    "12": {
+     "n": "VDD",
+     "max": 6.0,
+     "rec": 5.5
+    }
+   },
+   "src": "TI TUSB321 ZHCSDT2A s7.1: VDD 6 V; CC1, CC2, PORT, CURRENT_MODE, ID, DIR, VCONN_FAULT, OUT1, OUT2 VDD+0.3; VBUS_DET 4 V (900 k from VBUS); s7.3 VDD 4.5-5.5 V"
+  },
+  "C46506": {
+   "mpn": "TPS2552DBVR",
+   "kind": "ic",
+   "supply": {
+    "IN": "1"
+   },
+   "supply_max": 7.0,
+   "supply_rec": 5.5,
+   "pins": {
+    "1": {
+     "n": "IN",
+     "max": 7.0,
+     "rec": 5.5
+    },
+    "2": {
+     "n": "GND",
+     "gnd": true
+    },
+    "3": {
+     "n": "EN",
+     "max": 7.0
+    },
+    "4": {
+     "n": "FAULT",
+     "max": 7.0
+    },
+    "5": {
+     "n": "ILIM",
+     "max": 7.0
+    },
+    "6": {
+     "n": "OUT",
+     "max": 7.0
+    }
+   },
+   "src": "TI TPS2552 SLVS841E abs max: IN, OUT, EN, ILIM, FAULT -0.3..7 V; IN to OUT +-7 V; recommended IN 2.5-6.5 V (taken 5.5)"
+  },
+  "C5373042": {
+   "mpn": "CH334P",
+   "kind": "ic",
+   "supply": {
+    "VDD33": "16"
+   },
+   "supply_max": 4.0,
+   "supply_rec": 3.6,
+   "pins": {
+    "3": {
+     "n": "USB",
+     "max": "VDD33+0.4"
+    },
+    "4": {
+     "n": "USB",
+     "max": "VDD33+0.4"
+    },
+    "5": {
+     "n": "USB",
+     "max": "VDD33+0.4"
+    },
+    "6": {
+     "n": "USB",
+     "max": "VDD33+0.4"
+    },
+    "7": {
+     "n": "USB",
+     "max": "VDD33+0.4"
+    },
+    "8": {
+     "n": "USB",
+     "max": "VDD33+0.4"
+    },
+    "9": {
+     "n": "USB",
+     "max": "VDD33+0.4"
+    },
+    "10": {
+     "n": "USB",
+     "max": "VDD33+0.4"
+    },
+    "11": {
+     "n": "USB",
+     "max": "VDD33+0.4"
+    },
+    "12": {
+     "n": "USB",
+     "max": "VDD33+0.4"
+    },
+    "1": {
+     "n": "XO",
+     "max": "VDD33+0.4"
+    },
+    "2": {
+     "n": "XI",
+     "max": "VDD33+0.4"
+    },
+    "13": {
+     "n": "RESET#",
+     "max": "VDD33+0.4"
+    },
+    "14": {
+     "n": "PGANG",
+     "max": "VDD33+0.4"
+    },
+    "15": {
+     "n": "V5",
+     "max": 5.5
+    },
+    "16": {
+     "n": "VDD33",
+     "max": 4.0,
+     "rec": 3.6
+    },
+    "17": {
+     "n": "GND",
+     "gnd": true
+    }
+   },
+   "src": "WCH CH334/CH335 datasheet V2.91 s4.1 p.19: V5 -0.4..5.5 V; VDD33 -0.4..4.0 V; USB signal pins and other 3.3 V I/O VDD33+0.4; s4.2 external 3.3 V on V5 3.15-3.5 V"
+  },
+  "C7836": {
+   "mpn": "SN74LVC1G17DBVR",
+   "kind": "ic",
+   "supply": {
+    "VCC": "5"
+   },
+   "supply_max": 6.5,
+   "supply_rec": 3.6,
+   "pins": {
+    "1": {
+     "n": "NC",
+     "max": 6.5
+    },
+    "2": {
+     "n": "A",
+     "max": 6.5
+    },
+    "3": {
+     "n": "GND",
+     "gnd": true
+    },
+    "4": {
+     "n": "Y",
+     "max": "VCC+0.5"
+    },
+    "5": {
+     "n": "VCC",
+     "max": 6.5,
+     "rec": 3.6
+    }
+   },
+   "src": "TI SCES351V s7.1: VCC, VI, VO (off) -0.5..6.5 V; VO high/low VCC+0.5"
+  },
+  "C7807": {
+   "mpn": "SN74LVC06APWR",
+   "kind": "ic",
+   "supply": {
+    "VCC": "14"
+   },
+   "supply_max": 6.5,
+   "supply_rec": 3.6,
+   "pins": {
+    "1": {
+     "n": "A",
+     "max": 6.5
+    },
+    "3": {
+     "n": "A",
+     "max": 6.5
+    },
+    "5": {
+     "n": "A",
+     "max": 6.5
+    },
+    "9": {
+     "n": "A",
+     "max": 6.5
+    },
+    "11": {
+     "n": "A",
+     "max": 6.5
+    },
+    "13": {
+     "n": "A",
+     "max": 6.5
+    },
+    "2": {
+     "n": "Y",
+     "max": 6.5
+    },
+    "4": {
+     "n": "Y",
+     "max": 6.5
+    },
+    "6": {
+     "n": "Y",
+     "max": 6.5
+    },
+    "8": {
+     "n": "Y",
+     "max": 6.5
+    },
+    "10": {
+     "n": "Y",
+     "max": 6.5
+    },
+    "12": {
+     "n": "Y",
+     "max": 6.5
+    },
+    "7": {
+     "n": "GND",
+     "gnd": true
+    },
+    "14": {
+     "n": "VCC",
+     "max": 6.5,
+     "rec": 3.6
+    }
+   },
+   "src": "TI SCAS596N abs max: VCC, VI, VO (open drain) -0.5..6.5 V"
+  },
+  "C402162": {
+   "mpn": "SN74LVC2G06DBVR",
+   "kind": "ic",
+   "supply": {
+    "VCC": "5"
+   },
+   "supply_max": 6.5,
+   "supply_rec": 3.6,
+   "pins": {
+    "1": {
+     "n": "1A",
+     "max": 6.5
+    },
+    "2": {
+     "n": "GND",
+     "gnd": true
+    },
+    "3": {
+     "n": "2A",
+     "max": 6.5
+    },
+    "4": {
+     "n": "2Y",
+     "max": 6.5
+    },
+    "5": {
+     "n": "VCC",
+     "max": 6.5,
+     "rec": 3.6
+    },
+    "6": {
+     "n": "1Y",
+     "max": 6.5
+    }
+   },
+   "src": "TI SCES307J s6.1: VCC, VI, VO -0.5..6.5 V (open drain)"
+  },
+  "C131941": {
+   "mpn": "TPS22918DBVR",
+   "kind": "ic",
+   "supply": {
+    "VIN": "1"
+   },
+   "supply_max": 6.0,
+   "supply_rec": 5.5,
+   "pins": {
+    "1": {
+     "n": "VIN",
+     "max": 6.0,
+     "rec": 5.5
+    },
+    "2": {
+     "n": "GND",
+     "gnd": true
+    },
+    "3": {
+     "n": "ON",
+     "max": 6.0
+    },
+    "4": {
+     "n": "CT",
+     "max": 6.0
+    },
+    "5": {
+     "n": "QOD",
+     "max": 6.0
+    },
+    "6": {
+     "n": "VOUT",
+     "max": 6.0
+    }
+   },
+   "src": "TI TPS22918 SLVSD76C s6.1: VIN, VOUT, ON -0.3..6 V; s6.3 VIN 1-5.5 V; CT / QOD taken at 6 V (VOUT-side nodes)"
+  },
+  "C178260": {
+   "kind": "tvs",
+   "vrwm": 6.0,
+   "vbr_min": 6.67,
+   "vbr_max": 7.37,
+   "vc": 10.3,
+   "ipp": 19.4,
+   "bidir": false,
+   "pins": {
+    "1": "K",
+    "2": "A"
+   },
+   "mpn": "SMF6.0A",
+   "src": "JLCPCB parts API attributes for C178260 (6 V stand-off, 7.37 V breakdown, 10.3 V at 19.4 A, 200 W); vbr_min = 6.67 V the SMF series' 6.0A row (ASSUMED, the API gives one breakdown figure)"
+  },
+  "C9002": {
+   "kind": "xtal",
+   "src": "passive crystal: no voltage rating applies (drive level is a separate check, quality M24)",
+   "mpn": "X322512MSB4SI"
+  },
+  "C1705": {
+   "mpn": "CL10A475KP8NNNC",
+   "kind": "cap",
+   "v": 10.0,
+   "diel": "X5R",
+   "c": "4.7uF",
+   "case": "0603",
+   "src": "JLCPCB parts API search for C1705 (CL10A475KP8NNNC, Samsung, 10 V X5R), fetched 2026-11-17"
+  },
+  "C501821": {
+   "mpn": "0402B153K500NT",
+   "kind": "cap",
+   "v": 50.0,
+   "diel": "X7R",
+   "c": "15nF",
+   "case": "0402",
+   "src": "JLCPCB parts API search for C501821 (FH 0402B153K500NT, 50 V X7R), fetched 2026-11-17"
+  },
+  "C1555": {
+   "mpn": "0402CG220J500NT",
+   "kind": "cap",
+   "v": 50.0,
+   "diel": "C0G",
+   "c": "22pF",
+   "case": "0402",
+   "src": "JLCPCB parts API search for C1555 (FH 0402CG220J500NT, 50 V C0G), fetched 2026-11-17"
+  },
+  "C25879": {
+   "mpn": "0402WGF2201TCE",
+   "kind": "res",
+   "p": 0.0625,
+   "v": 50.0,
+   "ohm": 2200.0,
+   "case": "0402",
+   "src": "JLCPCB parts API search for C25879 (UniOhm 0402WGF2201TCE; 1/16 W, 50 V as the series), fetched 2026-11-17"
+  },
+  "C25873": {
+   "mpn": "0402WGF2322TCE",
+   "kind": "res",
+   "p": 0.0625,
+   "v": 50.0,
+   "ohm": 23200.0,
+   "case": "0402",
+   "src": "JLCPCB parts API search for C25873 (UniOhm 0402WGF2322TCE; 1/16 W, 50 V as the series), fetched 2026-11-17"
+  },
+  "C423127": {
+   "mpn": "0402WGF8873TCE",
+   "kind": "res",
+   "p": 0.0625,
+   "v": 50.0,
+   "ohm": 887000.0,
+   "case": "0402",
+   "src": "JLCPCB parts API search for C423127 (UniOhm 0402WGF8873TCE; 1/16 W, 50 V as the series), fetched 2026-11-17"
+  },
+  "C201279": {
+   "mpn": "STE1206M1W0R013F",
+   "kind": "res",
+   "p": 1.0,
+   "v": 0.114,
+   "ohm": 0.013,
+   "case": "1206",
+   "src": "fab.py's part table for C201279 (STE1206M1W0R013F, 1206 1 W 13 mohm 50 ppm, brain R313 under BRAIN_POWER_SIZING), as the C601097 entry; V = sqrt(P x R) = 0.114 V"
+  },
+  "C601097": {
+   "mpn": "HoLR1206-1W-10mR-1%-75ppm",
+   "kind": "res",
+   "p": 1.0,
+   "v": 0.1,
+   "ohm": 0.01,
+   "case": "1206",
+   "src": "JLCPCB parts API search for C601097 (Ever Ohms HoLR1206 1 W 10 mohm), fetched 2026-11-17; V = sqrt(P x R) = 0.1 V"
+  },
+  "C1852154": {
+   "kind": "ic",
+   "supply": {
+    "VIN": "2",
+    "SW": "8"
+   },
+   "vfb_max": 1.015,
+   "src": "TI LMR33640 datasheet SNVSB99C p.5 s7.1: VIN 38 V; EN VIN+0.3; PG 22 (and VIN+0.3); FB 5.5; VCC 5.5; BOOT SW+5.5; SW VIN+0.3 (38 V <100 ns), -0.3 (-3.5 V <100 ns); s7.3 VIN 3.8-36 V; p.6 s7.5 VFB 0.985/1/1.015 V; DDA HSOIC-8 pinout p.4 table 6-1 (read 2026-11-18)",
+   "pins": {
+    "1": {
+     "gnd": true,
+     "n": "PGND"
+    },
+    "2": {
+     "max": 38.0,
+     "rec": 36.0,
+     "n": "VIN"
+    },
+    "3": {
+     "max": "VIN+0.3",
+     "min": -0.3,
+     "n": "EN"
+    },
+    "4": {
+     "max": 22.0,
+     "n": "PG"
+    },
+    "5": {
+     "max": 5.5,
+     "n": "FB"
+    },
+    "6": {
+     "max": 5.5,
+     "internal": 5.0,
+     "n": "VCC"
+    },
+    "7": {
+     "max": "SW+5.5",
+     "boot": true,
+     "n": "BOOT"
+    },
+    "8": {
+     "max": "VIN+0.3",
+     "min": -0.3,
+     "n": "SW"
+    },
+    "9": {
+     "gnd": true,
+     "n": "AGND"
+    }
+   },
+   "mpn": "LMR33640DDDAR"
+  },
+  "C41427104": {
+   "kind": "conn",
+   "v": 1000,
+   "i": 1.0,
+   "src": "JLCPCB parts API attributes for C41427104 (Voltage Rating (Max) 1 kV, Current Rating 1 A), read 2026-11-18; the JXTCONN drawing gives no electrical rating",
+   "mpn": "A127M05-0B30P51-H10A40"
+  },
+  "C49261410": {
+   "kind": "ind",
+   "isat": 30.0,
+   "itemp": 19.0,
+   "src": "JLCPCB parts API attributes for C49261410 (Isat 30 A, current rating 25 A, DCR 7 mOhm), read 2026-11-18; itemp taken at the Bourns SRP1513CA-100M's Irms 19 A (20 C rise, SRP1513CA p.1), the part it clones -- the lower of the two",
+   "mpn": "APS1513M100F"
+  },
+  "C41376042": {
+   "kind": "conn",
+   "v": 500,
+   "i": 1.0,
+   "src": "JLCPCB parts API attributes for C41376042 (Voltage Rating (Max) 500 V, Current Rating 1 A), read 2026-11-18; the hanxia PZ1.27 family's rating (as C22438114)",
+   "mpn": "HX PZ1.27-2x10P TP"
+  },
+  "C3662799": {
+   "mpn": "TPS259470ARPWR",
+   "kind": "ic",
+   "supply": {
+    "IN": "5"
+   },
+   "supply_max": 28.0,
+   "supply_rec": 23.0,
+   "pins": {
+    "1": {
+     "n": "EN/UVLO",
+     "max": 6.5,
+     "rec": 5.0
+    },
+    "2": {
+     "n": "OVLO",
+     "max": 6.5,
+     "rec": 1.5
+    },
+    "3": {
+     "n": "AUXOFF",
+     "max": 6.5,
+     "rec": 5.0
+    },
+    "4": {
+     "n": "FLT",
+     "max": 6.5,
+     "rec": 5.0
+    },
+    "5": {
+     "n": "IN",
+     "max": 28.0,
+     "rec": 23.0
+    },
+    "6": {
+     "n": "OUT",
+     "max": 28.0,
+     "rec": 23.0
+    },
+    "7": {
+     "n": "DVDT",
+     "max": 6.5
+    },
+    "8": {
+     "n": "GND",
+     "gnd": true
+    },
+    "9": {
+     "n": "ILM",
+     "max": 6.5
+    },
+    "10": {
+     "n": "ITIMER",
+     "max": 6.5
+    }
+   },
+   "src": "TI TPS25947 SLVSFC9C (May 2026) s6.1: IN 28 V, OUT min(28, VIN + 21), EN/UVLO / OVLO / AUXOFF / FLT -0.3..6.5 V, DVDT / ITIMER / ILM 'Internally Limited' (taken at 6.5 V: driven by the part); s6.3: IN 2.7-23 V, EN 5 V, OVLO 0.5-1.5 V, AUXOFF / FLT 5 V; RPW pinout p.5 Fig 5-1"
+  },
+  "C861356": {
+   "mpn": "RT0603BRD07374KL",
+   "kind": "res",
+   "p": 0.1,
+   "v": 75.0,
+   "ohm": 374000.0,
+   "case": "0603",
+   "src": "JLCPCB parts API attributes for C861356 (RT0603BRD07374KL, YAGEO), fetched 2026-11-22 (100 mW; the API gives no voltage: 75 V = YAGEO RT series max working voltage for 0603)"
+  },
+  "C136979": {
+   "mpn": "RT0402BRE07100KL",
+   "kind": "res",
+   "p": 0.0625,
+   "v": 50.0,
+   "ohm": 100000.0,
+   "case": "0402",
+   "src": "JLCPCB parts API attributes for C136979 (RT0402BRE07100KL, YAGEO), fetched 2026-11-22"
+  },
+  "C25132": {
+   "mpn": "0402WGF7500TCE",
+   "kind": "res",
+   "p": 0.0625,
+   "v": 50.0,
+   "ohm": 750.0,
+   "case": "0402",
+   "src": "JLCPCB parts API attributes for C25132 (0402WGF7500TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-11-22"
+  },
+  "C17557": {
+   "mpn": "0805W8F2200T5E",
+   "kind": "res",
+   "p": 0.125,
+   "v": 150.0,
+   "ohm": 220.0,
+   "case": "0805",
+   "src": "JLCPCB parts API attributes for C17557 (0805W8F2200T5E, UNI-ROYAL(Uniroyal Elec)), fetched 2026-11-22"
   }
  }
 }

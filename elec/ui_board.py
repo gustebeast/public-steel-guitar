@@ -494,13 +494,25 @@ BOARD_NOTES = {
             "J1": "Newhaven NHD-2.7-12864WDW3-M datasheet, Serial Interface pin table; "
                   "way n is ribbon conductor n is module pin n (a same-side cable that "
                   "never turns over; see the assertion at DISP_PINS)",
-            "J2": "way n is header pin n is IDC conductor n, both ends the same family "
-                  "(HX PZ1.27-2xNP WZ); the order is harness.UI_RIBBON",
-            "SW1": "Alps RKJXT1F42001 product drawing (terminal names A-D, 5-10) and "
-                   "LCSC's symbol for C160841",
-            "SW2": "Legion PB-22E85-S-5.7C-C-W drawing, P.C.B LAYOUT and SCHEMATIC: the "
-                   "middle terminal of each row is its common. Which end is closed with "
-                   "the button out is read off the schematic, NOT metered",
+            "J2": (
+                "hanxia HX PZ1.27-2x8P WZ drawing rev A (2022/04/24), page 1/1 (LCSC C22438114): "
+                "no pin numbers; numbering is KiCad PinHeader_2x08_P1.27mm_Horizontal and way n ="
+                " header pin n = IDC conductor n, in harness.UI_RIBBON order, the same as pi_cap "
+                "J5 (read 2026-11-18)"
+            ),
+            "SW1": (
+                "Alps RKJXT1F catalogue p.455, outline 'PCB mounting hole dimensions' (from the "
+                "insertion side) and p.456 circuit diagram: all 11 holes match "
+                "Steel:Alps_RKJXT1F42001 one for one. A-D = SW_A-D, 5 Push, 6 com, 7 Encoder B, 8"
+                " Encoder A, 9 Encoder com, 10 ground lug; 6 / 9 / 10 on GND (read 2026-11-18)"
+            ),
+            "SW2": (
+                "Legion PB-22E85-S-5.7C-C-W drawing rev A (revision 2, 2015.1.20), sheet 1, P.C.B"
+                " LAYOUT (2 rows of 3 at 2.5, rows 5.4 apart) and SCHEMATIC: the hatched middle "
+                "terminal of each row is its common; no pin numbers. Board: 2 / 5 GND, 1 / 4 "
+                "PWR_SW_DN, 3 / 6 PWR_SW_UP; which throw closes with the button out is not tied "
+                "to the layout, NOT metered (read 2026-11-18)"
+            ),
         },
         # WHAT THE DESIGN MEANS, for cadkit quality A13 to hold the routed board to
         "unconnected": {

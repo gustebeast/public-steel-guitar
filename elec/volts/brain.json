@@ -1,23 +1,13 @@
 {
  "net_volts": {
   "+24V": {
-   "peak": 34.37,
-   "v": 26.4,
-   "why": "the LM5122 boost's output, 1.2 V x (1 + 50.725 / 2.67) = 24.0 V nominal; steady taken as the brick rail's 24 V +10 % (covers the reference's tolerance and load-release overshoot); transient = D3, the same SMCJ24A clamp as the brick rail"
-  },
-  "+24V_BUCK": {
-   "peak": 34.37,
-   "v": 26.4,
-   "why": "through F1"
-  },
-  "+24V_F": {
-   "peak": 34.37,
-   "v": 26.4,
-   "why": "through R23"
+   "peak": 37.614,
+   "v": 25.703,
+   "why": "the LM5122 boost's output, 1.2 V x (1 + 50.725 / 2.67) = 24.0 V nominal; steady 25.70 V = VREF 1.212 V max (SNVS954H 6.5) through the 1 % divider at its worst (24.70 V) + 1.0 V for regeneration's tail and load-release overshoot (the boost cannot sink; the motors are net consumers, so regeneration is a bump, bounded by the clamp); transient = D3, SMCJ26A, at 20 A of surge: 37.6 V (breakdown 28.9-31.9 V, VC 42.1 V at 35.7 A)"
   },
   "+24V_LED": {
-   "peak": 34.37,
-   "v": 26.4,
+   "peak": 37.614,
+   "v": 25.703,
    "why": "through F3"
   },
   "+3V3": {
@@ -35,6 +25,11 @@
    "v": 5.174,
    "why": "LMR33630: VFB max x (1 + top/bot), 1 % resistors; +5 % overshoot: 1.015 V x (1 + R14/R15) -> 5.17 V max"
   },
+  "+5V_BB": {
+   "peak": 5.586,
+   "v": 5.32,
+   "why": "TPS552892-Q1: VREF max x (1 + top/bot), 1 % resistors; +5 % overshoot; FAULT = U5's high side fails short: VIN_BRAIN on the rail (U21 opens the CM5's side): 1.212 V x (1 + R10/R11) -> 5.32 V max"
+  },
   "+5V_BUSB_LEV": {
    "peak": 5.432,
    "v": 5.174,
@@ -46,14 +41,14 @@
    "why": "U6.6 (OUT) can reach its supply +5V_AUX"
   },
   "+5V_CM5": {
-   "peak": 3.564,
-   "v": 3.465,
-   "why": "CM5 GPIO / unused pins: 3.3 V CMOS [= CM5_3V3+0]"
+   "peak": 5.58,
+   "v": 5.33,
+   "why": "behind U21 (eFuse, RON 45 mR max): U5's 5.33 V static max (VREF 1.212 V, SLVSGT7 s6.5), +5 % load release; FAULT = U21's OVLO trip 5.81 V max plus ~0.5 V of inductor-limited rise in 2 x tOVLO (SLVSFC9C s6.6) -- brain.py's known limit"
   },
   "+5V_RAW": {
-   "peak": 5.432,
-   "v": 5.174,
-   "why": "LMR33630: VFB max x (1 + top/bot), 1 % resistors; +5 % overshoot; FAULT = U5's high side fails short and D9 (SMBJ5.0A) clamps at its VC while F2 clears: 1.015 V x (1 + R10/R11) -> 5.17 V max"
+   "peak": 5.586,
+   "v": 5.32,
+   "why": "behind R113, the output sense [= +5V_BB+0]"
   },
   "ACT_LED_A": {
    "peak": 3.45,
@@ -65,14 +60,19 @@
    "v": 3.15,
    "why": "divider off CM5_MCU_BOOT: x 0.9091"
   },
-  "BOOT5": {
-   "peak": 39.87,
-   "v": 31.9,
-   "why": "bootstrap: SW5 + 5.5 V, held by U5"
+  "BOOT5_1": {
+   "peak": 42.925,
+   "v": 26.5,
+   "why": "bootstrap: SW1 plus VCC [= SW5_1+5.5]"
+  },
+  "BOOT5_2": {
+   "peak": 11.786,
+   "v": 11.52,
+   "why": "bootstrap: SW2 plus VCC [= SW5_2+5.5]"
   },
   "BOOT7": {
-   "peak": 39.87,
-   "v": 31.9,
+   "peak": 43.114,
+   "v": 31.203,
    "why": "bootstrap: SW7 + 5.5 V, held by U7"
   },
   "BRAIN_PG_N": {
@@ -81,8 +81,8 @@
    "why": "U1.65 (io) can reach its supply +3V3"
   },
   "BST_BST": {
-   "peak": 43.37,
-   "v": 35.4,
+   "peak": 46.614,
+   "v": 34.703,
    "why": "bootstrap: SW plus VCC less D17's drop [= BST_SW+8]"
   },
   "BST_COMP": {
@@ -104,18 +104,18 @@
    "why": "current sense, R109's input side [= VIN_BRAIN+0]"
   },
   "BST_FB": {
-   "peak": 1.719,
-   "v": 1.32,
+   "peak": 1.881,
+   "v": 1.285,
    "why": "R105 / (R103 + R104 + R105): the regulated 1.2 V, and the divided rail whatever it does"
   },
   "BST_FBMID": {
-   "peak": 2.25,
-   "v": 1.728,
+   "peak": 2.462,
+   "v": 1.682,
    "why": "(R104 + R105) / (R103 + R104 + R105)"
   },
   "BST_HO": {
-   "peak": 43.37,
-   "v": 35.4,
+   "peak": 46.614,
+   "v": 34.703,
    "why": "high-side gate drive: SW to BST [= BST_SW+8]"
   },
   "BST_LMID": {
@@ -145,8 +145,8 @@
    "why": "driven only by the LM5122's own low-voltage circuitry, pins rated 7 V; 5 V an assumed bound"
   },
   "BST_SW": {
-   "peak": 35.37,
-   "v": 27.4,
+   "peak": 38.614,
+   "v": 26.703,
    "why": "boost switch node: VOUT plus Q9's body diode while it commutates [= +24V+1]"
   },
   "BST_UVLO": {
@@ -819,10 +819,17 @@
    "v": 3.465,
    "why": "CM5 GPIO / unused pins: 3.3 V CMOS [= CM5_3V3+0]"
   },
+  "COMP5": {
+   "v": 3.0,
+   "why": "driven by the TPS552892's own low-voltage circuitry; rated VCC+0.3; 3 V an assumed bound"
+  },
+  "COMP5_Z": {
+   "v": 3.0,
+   "why": "driven by the TPS552892's own low-voltage circuitry; rated VCC+0.3; 3 V an assumed bound"
+  },
   "EN5": {
-   "peak": 2.338,
-   "v": 1.796,
-   "why": "divider off +24V: x 0.0680"
+   "v": 4.0,
+   "why": "U5 EN: the R12 / R13 divider off VIN_SW at 21 V (3.99 V), RC-filtered by C26's 88 ms; FLASH via D21 is lower"
   },
   "EN_LEV": {
    "peak": 3.45,
@@ -835,9 +842,9 @@
    "why": "U1.56 (io) can reach its supply +3V3; through R36"
   },
   "FB5": {
-   "peak": 1.083,
-   "v": 1.031,
-   "why": "divider off +5V_RAW: x 0.1994"
+   "peak": 1.292,
+   "v": 1.231,
+   "why": "R11 / (R10 + R11): the regulated 1.2 V"
   },
   "FB7": {
    "peak": 1.083,
@@ -852,6 +859,10 @@
    "v": 3.6,
    "why": "the flash lane's D+, joined to an arm only in USB mode (U9 / U10 S high); 5 V only with a harness fault"
   },
+  "FSW5": {
+   "v": 3.0,
+   "why": "driven by the TPS552892's own low-voltage circuitry; rated VCC+0.3; 3 V an assumed bound"
+  },
   "GADGET_DM": {
    "v": 3.6,
    "why": "USB 2.0 data to the brain board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
@@ -861,6 +872,16 @@
    "why": "USB 2.0 data to the brain board over a C-to-C lead; FAULT = a cable's VBUS onto a data way"
   },
   "GND": 0,
+  "ISN5": {
+   "peak": 5.586,
+   "v": 5.32,
+   "why": "through NT6"
+  },
+  "ISP5": {
+   "peak": 5.586,
+   "v": 5.32,
+   "why": "through NT5"
+  },
   "J10_NC_4": {
    "v": 0.0,
    "why": "not connected"
@@ -1004,6 +1025,16 @@
    "v": 10.6,
    "why": "the power button's throw, bounded as output_panel's SW_SENSE (D8 clamp)"
   },
+  "QOD_D": {
+   "peak": 5.58,
+   "v": 5.33,
+   "why": "R122 from +5V_CM5 [= +5V_CM5+0]"
+  },
+  "QOD_G": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "R123 to +3V3 [= +3V3+0]"
+  },
   "SCK": {
    "peak": 3.564,
    "v": 3.465,
@@ -1055,23 +1086,28 @@
    "why": "U1.34 (io) can reach its supply +3V3"
   },
   "SENSE_24V": {
-   "peak": 3.125,
-   "v": 2.4,
+   "peak": 3.419,
+   "v": 2.337,
    "why": "divider off +24V: x 0.0909"
   },
   "SENSE_5V": {
-   "peak": 1.782,
-   "v": 1.732,
+   "peak": 2.79,
+   "v": 2.665,
    "why": "divider off +5V_CM5: x 0.5000"
   },
-  "SW5": {
-   "peak": 34.37,
-   "v": 26.4,
-   "why": "buck switch node: VIN while the high side is on [= +24V_BUCK+0]"
+  "SW5_1": {
+   "peak": 37.425,
+   "v": 21.0,
+   "why": "buck-boost input switch node: VIN while its high side is on [= VIN_BRAIN+0]"
+  },
+  "SW5_2": {
+   "peak": 6.286,
+   "v": 6.02,
+   "why": "buck-boost output switch node: VOUT plus a body diode [= +5V_BB+0.7]"
   },
   "SW7": {
-   "peak": 34.37,
-   "v": 26.4,
+   "peak": 37.614,
+   "v": 25.703,
    "why": "buck switch node: VIN while the high side is on [= +24V+0]"
   },
   "SWCLK": {
@@ -1257,6 +1293,32 @@
    "v": 0.0,
    "why": "not connected"
   },
+  "U21_AUXOFF": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "open drain, R124 to +3V3 [= +3V3+0]"
+  },
+  "U21_ILM": {
+   "v": 2.0,
+   "why": "TPS259470 ILM: current-monitor output into RILM, driven by the part ('Internally Limited', SLVSFC9C s6.1); 2 V an assumed bound"
+  },
+  "U21_NC_DVDT": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "U21_NC_FLT": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "U21_NC_ITIMER": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "U21_OVLO": {
+   "peak": 1.178,
+   "v": 1.122,
+   "why": "R120 / (R119 + R120): 1.2 V at the trip"
+  },
   "U2_RS": {
    "v": 0.0,
    "why": "pulled to ground"
@@ -1269,6 +1331,14 @@
    "peak": 3.45,
    "v": 3.349,
    "why": "U3.5 (Vref) can reach its supply +3V3"
+  },
+  "U5_NC_CC": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "U5_NC_CDC": {
+   "v": 0.0,
+   "why": "not connected"
   },
   "U6_ILIM": {
    "peak": 5.432,
@@ -1348,8 +1418,9 @@
    "why": "CM5 GPIO / unused pins: 3.3 V CMOS [= CM5_3V3+0]"
   },
   "VCC5": {
-   "v": 5.0,
-   "why": "generated inside U5 (VCC)"
+   "peak": 6.0,
+   "v": 5.5,
+   "why": "TPS552892 VCC: its internal LDO, ~5.2 V; 5.5 V an assumed bound, the pin is rated 6 V (SLVSGT7 s6.1)"
   },
   "VCC7": {
    "v": 5.0,
@@ -1360,16 +1431,413 @@
    "v": 21.0,
    "why": "the chargers' USB PD contract, 20 V +5 % (USB PD 3.x 7.1.8); transient = D1 (SMF24A) at a live-plug's 4.3 A, the inlet's figure on output_panel"
   },
+  "VIN_CM5": {
+   "peak": 37.425,
+   "v": 21.0,
+   "why": "through F1"
+  },
   "VIN_SW": {
    "peak": 37.425,
    "v": 21.0,
    "why": "behind Q2, the power switch [= VIN_BRAIN+0]"
   }
  },
+ "pin_roles": {
+  "U1.69": {
+   "gnd": true,
+   "n": "VSS(pad)"
+  },
+  "U10.1": {
+   "n": "IO"
+  },
+  "U10.10": {
+   "n": "VCC"
+  },
+  "U10.2": {
+   "n": "IO"
+  },
+  "U10.3": {
+   "n": "IO"
+  },
+  "U10.4": {
+   "n": "IO"
+  },
+  "U10.5": {
+   "gnd": true,
+   "n": "GND"
+  },
+  "U10.6": {
+   "n": "OE"
+  },
+  "U10.7": {
+   "n": "IO"
+  },
+  "U10.8": {
+   "n": "IO"
+  },
+  "U10.9": {
+   "n": "S"
+  },
+  "U11.1": {
+   "n": "IN"
+  },
+  "U11.2": {
+   "gnd": true,
+   "n": "GND"
+  },
+  "U11.3": {
+   "n": "EN"
+  },
+  "U11.4": {
+   "n": "FAULT"
+  },
+  "U11.5": {
+   "n": "ILIM"
+  },
+  "U11.6": {
+   "n": "OUT"
+  },
+  "U12.1": {
+   "n": "IN"
+  },
+  "U12.2": {
+   "gnd": true,
+   "n": "GND"
+  },
+  "U12.3": {
+   "n": "EN"
+  },
+  "U12.4": {
+   "n": "FAULT"
+  },
+  "U12.5": {
+   "n": "ILIM"
+  },
+  "U12.6": {
+   "n": "OUT"
+  },
+  "U2.1": {
+   "n": "TXD"
+  },
+  "U2.2": {
+   "gnd": true,
+   "n": "GND"
+  },
+  "U2.3": {
+   "n": "VCC"
+  },
+  "U2.4": {
+   "n": "RXD"
+  },
+  "U2.5": {
+   "n": "VIO"
+  },
+  "U2.6": {
+   "n": "CANL"
+  },
+  "U2.7": {
+   "n": "CANH"
+  },
+  "U2.8": {
+   "n": "STB"
+  },
+  "U20.1": {
+   "n": "SYNCOUT"
+  },
+  "U20.10": {
+   "n": "FB"
+  },
+  "U20.11": {
+   "n": "COMP"
+  },
+  "U20.12": {
+   "n": "SLOPE"
+  },
+  "U20.13": {
+   "n": "MODE"
+  },
+  "U20.14": {
+   "n": "RES"
+  },
+  "U20.15": {
+   "gnd": true,
+   "n": "PGND"
+  },
+  "U20.16": {
+   "n": "LO"
+  },
+  "U20.17": {
+   "n": "VCC"
+  },
+  "U20.18": {
+   "n": "SW"
+  },
+  "U20.19": {
+   "n": "HO"
+  },
+  "U20.2": {
+   "n": "OPT"
+  },
+  "U20.20": {
+   "n": "BST"
+  },
+  "U20.21": {
+   "gnd": true,
+   "n": "EP"
+  },
+  "U20.3": {
+   "n": "CSN"
+  },
+  "U20.4": {
+   "n": "CSP"
+  },
+  "U20.5": {
+   "n": "VIN"
+  },
+  "U20.6": {
+   "n": "UVLO"
+  },
+  "U20.7": {
+   "n": "SS"
+  },
+  "U20.8": {
+   "n": "SYNCIN/RT"
+  },
+  "U20.9": {
+   "gnd": true,
+   "n": "AGND"
+  },
+  "U21.1": {
+   "n": "EN/UVLO"
+  },
+  "U21.10": {
+   "n": "ITIMER"
+  },
+  "U21.2": {
+   "n": "OVLO"
+  },
+  "U21.3": {
+   "n": "AUXOFF"
+  },
+  "U21.4": {
+   "n": "FLT"
+  },
+  "U21.5": {
+   "n": "IN"
+  },
+  "U21.6": {
+   "n": "OUT"
+  },
+  "U21.7": {
+   "n": "DVDT"
+  },
+  "U21.8": {
+   "gnd": true,
+   "n": "GND"
+  },
+  "U21.9": {
+   "n": "ILM"
+  },
+  "U3.1": {
+   "n": "D"
+  },
+  "U3.2": {
+   "gnd": true,
+   "n": "GND"
+  },
+  "U3.3": {
+   "n": "VCC"
+  },
+  "U3.4": {
+   "n": "R"
+  },
+  "U3.5": {
+   "n": "Vref"
+  },
+  "U3.6": {
+   "n": "CANL"
+  },
+  "U3.7": {
+   "n": "CANH"
+  },
+  "U3.8": {
+   "n": "Rs"
+  },
+  "U5.1": {
+   "n": "EN"
+  },
+  "U5.10": {
+   "n": "SW2"
+  },
+  "U5.11": {
+   "n": "VOUT"
+  },
+  "U5.12": {
+   "n": "ISP"
+  },
+  "U5.13": {
+   "n": "ISN"
+  },
+  "U5.14": {
+   "n": "FB"
+  },
+  "U5.15": {
+   "n": "COMP"
+  },
+  "U5.16": {
+   "n": "CDC"
+  },
+  "U5.17": {
+   "gnd": true,
+   "n": "AGND"
+  },
+  "U5.18": {
+   "n": "VCC"
+  },
+  "U5.19": {
+   "n": "BOOT2"
+  },
+  "U5.2": {
+   "n": "MODE"
+  },
+  "U5.20": {
+   "n": "BOOT1"
+  },
+  "U5.21": {
+   "n": "EXTVCC"
+  },
+  "U5.3": {
+   "n": "PG"
+  },
+  "U5.4": {
+   "n": "CC"
+  },
+  "U5.5": {
+   "n": "DITH"
+  },
+  "U5.6": {
+   "n": "FSW"
+  },
+  "U5.7": {
+   "n": "VIN"
+  },
+  "U5.8": {
+   "n": "SW1"
+  },
+  "U5.9": {
+   "gnd": true,
+   "n": "PGND"
+  },
+  "U6.1": {
+   "n": "IN"
+  },
+  "U6.2": {
+   "gnd": true,
+   "n": "GND"
+  },
+  "U6.3": {
+   "n": "EN"
+  },
+  "U6.4": {
+   "n": "FAULT"
+  },
+  "U6.5": {
+   "n": "ILIM"
+  },
+  "U6.6": {
+   "n": "OUT"
+  },
+  "U7.1": {
+   "gnd": true,
+   "n": "PGND"
+  },
+  "U7.10": {
+   "n": "VIN"
+  },
+  "U7.11": {
+   "gnd": true,
+   "n": "PGND"
+  },
+  "U7.12": {
+   "n": "SW"
+  },
+  "U7.2": {
+   "n": "VIN"
+  },
+  "U7.3": {
+   "n": "SW"
+  },
+  "U7.4": {
+   "n": "BOOT"
+  },
+  "U7.5": {
+   "n": "VCC"
+  },
+  "U7.6": {
+   "gnd": true,
+   "n": "AGND"
+  },
+  "U7.7": {
+   "n": "FB"
+  },
+  "U7.8": {
+   "n": "PG"
+  },
+  "U7.9": {
+   "n": "EN"
+  },
+  "U8.1": {
+   "n": "VIN"
+  },
+  "U8.2": {
+   "gnd": true,
+   "n": "GND"
+  },
+  "U8.3": {
+   "n": "EN"
+  },
+  "U8.4": {
+   "n": "NC"
+  },
+  "U8.5": {
+   "n": "VOUT"
+  },
+  "U9.1": {
+   "n": "IO"
+  },
+  "U9.10": {
+   "n": "VCC"
+  },
+  "U9.2": {
+   "n": "IO"
+  },
+  "U9.3": {
+   "n": "IO"
+  },
+  "U9.4": {
+   "n": "IO"
+  },
+  "U9.5": {
+   "gnd": true,
+   "n": "GND"
+  },
+  "U9.6": {
+   "n": "OE"
+  },
+  "U9.7": {
+   "n": "IO"
+  },
+  "U9.8": {
+   "n": "IO"
+  },
+  "U9.9": {
+   "n": "S"
+  }
+ },
  "pin_volts": {
   "C1.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C10.1": {
    "max": 50.0,
@@ -1408,48 +1876,36 @@
    "src": "rated V -- 0402CG101J500NT (C1546): JLCPCB parts API attributes for C1546 (0402CG101J500NT, FH (Guangdong Fenghua Advanced Tech)), fetched 2026-11-13"
   },
   "C105.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C106.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C107.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C108.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C109.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C11.1": {
    "max": 50.0,
    "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
-  "C110.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
-  },
-  "C111.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
-  },
-  "C112.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
-  },
   "C113.1": {
-   "max": 35.0,
-   "src": "rated V -- MA35V470M10X13 (C46550472): jieerrui MA series datasheet p.4 row MA35V470M10X13: 35 V, 470 uF, 16 mohm, ripple 3.8 A at 100 kHz"
+   "max": 50.0,
+   "src": "rated V -- MA50V330M10X12 (C53120968): JLCPCB parts API attributes for C53120968 (jieerrui MA50V330M10X12: polymer, 50 V, 330 uF 20 %, ESR 20 mOhm and ripple 3.5 A at 100 kHz, 12.5 mm seated), fetched 2026-11-14"
   },
   "C114.1": {
-   "max": 35.0,
-   "src": "rated V -- MA35V470M10X13 (C46550472): jieerrui MA series datasheet p.4 row MA35V470M10X13: 35 V, 470 uF, 16 mohm, ripple 3.8 A at 100 kHz"
+   "max": 50.0,
+   "src": "rated V -- MA50V330M10X12 (C53120968): JLCPCB parts API attributes for C53120968 (jieerrui MA50V330M10X12: polymer, 50 V, 330 uF 20 %, ESR 20 mOhm and ripple 3.5 A at 100 kHz, 12.5 mm seated), fetched 2026-11-14"
   },
   "C115.1": {
    "max": 50.0,
@@ -1483,6 +1939,30 @@
    "max": 50.0,
    "src": "rated V -- CL31A106KBHNNNE (C13585): JLCPCB parts API attributes for C13585 (CL31A106KBHNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
+  "C123.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C123.2": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C124.1": {
+   "max": 50.0,
+   "src": "rated V -- 0402B153K500NT (C501821): JLCPCB parts API search for C501821 (FH 0402B153K500NT, 50 V X7R), fetched 2026-11-17"
+  },
+  "C125.1": {
+   "max": 50.0,
+   "src": "rated V -- 0402CG220J500NT (C1555): JLCPCB parts API search for C1555 (FH 0402CG220J500NT, 50 V C0G), fetched 2026-11-17"
+  },
+  "C126.1": {
+   "max": 10.0,
+   "src": "rated V -- CL10A475KP8NNNC (C1705): JLCPCB parts API search for C1705 (CL10A475KP8NNNC, Samsung, 10 V X5R), fetched 2026-11-17"
+  },
+  "C129.1": {
+   "max": 25.0,
+   "src": "rated V -- CL05A105KA5NQNC (C52923): JLCPCB parts API attributes for C52923 (CL05A105KA5NQNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
   "C13.1": {
    "max": 50.0,
    "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
@@ -1508,8 +1988,8 @@
    "src": "rated V -- CL10B224KB8NNNC (C64705): JLCPCB parts API attributes for C64705 (CL10B224KB8NNNC, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
   "C19.1": {
-   "max": 25.0,
-   "src": "rated V -- CL05A105KA5NQNC (C52923): JLCPCB parts API attributes for C52923 (CL05A105KA5NQNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+   "max": 10.0,
+   "src": "rated V -- CL10A475KP8NNNC (C1705): JLCPCB parts API search for C1705 (CL10A475KP8NNNC, Samsung, 10 V X5R), fetched 2026-11-17"
   },
   "C2.1": {
    "max": 50.0,
@@ -1558,6 +2038,10 @@
   "C29.1": {
    "max": 25.0,
    "src": "rated V -- CL05A105KA5NQNC (C52923): JLCPCB parts API attributes for C52923 (CL05A105KA5NQNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C30.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
   "C31.1": {
    "max": 25.0,
@@ -1685,6 +2169,10 @@
    "max": 25.0,
    "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
+  "C59.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
   "C6.1": {
    "max": 50.0,
    "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
@@ -1702,20 +2190,12 @@
    "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
   "C92.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C93.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
-  },
-  "C94.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
-  },
-  "C95.1": {
-   "max": 35.0,
-   "src": "rated V -- GMK325BJ226MM-P (C778721): JLCPCB parts API attributes for C778721 (GMK325BJ226MM-P, Taiyo Yuden), fetched 2026-11-13"
+   "max": 50.0,
+   "src": "rated V -- FS55X226K500EHG (C784103): JLCPCB parts API attributes for C784103 (FS55X226K500EHG, PSA Prosperity Dielectrics: 22uF 50V X7R 10 % 2220), fetched 2026-11-14"
   },
   "C96.1": {
    "max": 50.0,
@@ -1791,6 +2271,18 @@
    "src": "KT-0603G (C12624): Hubei KENTO KT-0603G specification p.3 absolute maximum ratings (Pd 100 mW, IFP 60 mA, DC IF 30 mA, VR 5 V); VF 2.6 min / 3.1 max @5 mA (no typ given; min entered, the conservative side for current)",
    "why": "0.7 mA of 30 mA DC, 2 mW of 100 mW (VF typ 2.6 V)"
   },
+  "D19.1": {
+   "max": 7.2,
+   "peak": "none",
+   "src": "PESD2USB5UX (C3709087): Nexperia PESD2USB5UX datasheet (LCSC C3709087's PDF) Table 7: VRWM 5 V, VBR 7.2 / 8.7 / 11 V at 1 mA (the snapback TRIGGER, not the clamp), IRM 50 nA max at 5 V, Cd 0.47 / 0.6 pF, VCL 3.3 V at IPP 8 A TLP; Fig. 10: +8 kV IEC 61000-4-2 clamped to 4.32 V at 30 ns (Fig. 11: -3.70 V); pins 1 K1 2 K2 3 common anode. Read 2026-11-14",
+   "why": "this part IS the clamp on PED_H: it stands 5 V (where its leakage is specified) and starts to conduct at 7.2 V, the figure a steady level must stay under"
+  },
+  "D19.2": {
+   "max": 7.2,
+   "peak": "none",
+   "src": "PESD2USB5UX (C3709087): Nexperia PESD2USB5UX datasheet (LCSC C3709087's PDF) Table 7: VRWM 5 V, VBR 7.2 / 8.7 / 11 V at 1 mA (the snapback TRIGGER, not the clamp), IRM 50 nA max at 5 V, Cd 0.47 / 0.6 pF, VCL 3.3 V at IPP 8 A TLP; Fig. 10: +8 kV IEC 61000-4-2 clamped to 4.32 V at 30 ns (Fig. 11: -3.70 V); pins 1 K1 2 K2 3 common anode. Read 2026-11-14",
+   "why": "this part IS the clamp on PED_L: it stands 5 V (where its leakage is specified) and starts to conduct at 7.2 V, the figure a steady level must stay under"
+  },
   "D2.1": {
    "max": 26.2,
    "peak": "none",
@@ -1803,11 +2295,23 @@
    "src": "NUP2105LT1G (C14486): onsemi NUP2105L/D rev 5 p.2 electrical table (VRWM 24, VBR 26.2-32 @1 mA, VC 40 V @5 A and 44 V @8 A 8x20 us), p.2 max ratings (350 W 8x20 us); each line to the common pin 3, bidirectional",
    "why": "this part IS the clamp on CANA_L: it stands 24 V (where its leakage is specified) and starts to conduct at 26.2 V, the figure a steady level must stay under"
   },
-  "D3.1": {
-   "max": 26.7,
+  "D20.1": {
+   "max": 7.2,
    "peak": "none",
-   "src": "SMCJ24A (C310039): Brightking SMCJ series datasheet (LCSC C310039), electrical table row SMCJ24A: VRWM 24 V, VBR 26.7-29.5 V @1 mA, VC 38.9 V @ IPP 38.6 A (10/1000 us), 1500 W",
-   "why": "this part IS the clamp on +24V: it stands 24 V (where its leakage is specified) and starts to conduct at 26.7 V, the figure a steady level must stay under"
+   "src": "PESD2USB5UX (C3709087): Nexperia PESD2USB5UX datasheet (LCSC C3709087's PDF) Table 7: VRWM 5 V, VBR 7.2 / 8.7 / 11 V at 1 mA (the snapback TRIGGER, not the clamp), IRM 50 nA max at 5 V, Cd 0.47 / 0.6 pF, VCL 3.3 V at IPP 8 A TLP; Fig. 10: +8 kV IEC 61000-4-2 clamped to 4.32 V at 30 ns (Fig. 11: -3.70 V); pins 1 K1 2 K2 3 common anode. Read 2026-11-14",
+   "why": "this part IS the clamp on LEV_H: it stands 5 V (where its leakage is specified) and starts to conduct at 7.2 V, the figure a steady level must stay under"
+  },
+  "D20.2": {
+   "max": 7.2,
+   "peak": "none",
+   "src": "PESD2USB5UX (C3709087): Nexperia PESD2USB5UX datasheet (LCSC C3709087's PDF) Table 7: VRWM 5 V, VBR 7.2 / 8.7 / 11 V at 1 mA (the snapback TRIGGER, not the clamp), IRM 50 nA max at 5 V, Cd 0.47 / 0.6 pF, VCL 3.3 V at IPP 8 A TLP; Fig. 10: +8 kV IEC 61000-4-2 clamped to 4.32 V at 30 ns (Fig. 11: -3.70 V); pins 1 K1 2 K2 3 common anode. Read 2026-11-14",
+   "why": "this part IS the clamp on LEV_L: it stands 5 V (where its leakage is specified) and starts to conduct at 7.2 V, the figure a steady level must stay under"
+  },
+  "D3.1": {
+   "max": 28.9,
+   "peak": "none",
+   "src": "SMCJ26A (C310042): Brightking SMCJ series datasheet (Revision 21-Jul-14, LCSC C310042's PDF), electrical table row SMCJ26A (rows read against VRWM x 1.11; the PDF's text layer shifts the columns): VRWM 26 V, VBR 28.90-31.90 V @1 mA, VC 42.1 V @ IPP 35.7 A (10/1000 us), 1500 W. Read 2026-11-14",
+   "why": "this part IS the clamp on +24V: it stands 26 V (where its leakage is specified) and starts to conduct at 28.9 V, the figure a steady level must stay under"
   },
   "D4.1": {
    "max": 5.8,
@@ -1826,25 +2330,11 @@
    "src": "BZT52C10T-7 (C248313): Diodes Inc BZT52C2V0T-BZT52C36T datasheet p.2: BZT52C10T VZ 9.4-10.6 V @5 mA, PD 300 mW",
    "why": "13 mW steady, 32 mW at the transient, of 300 mW (fed from VIN_BRAIN through 9.4 k)"
   },
-  "D9.1": {
-   "max": 6.4,
-   "peak": "none",
-   "src": "SMBJ5.0A (C83333): Littelfuse SMBJ series datasheet p.2 electrical table, row SMBJ5.0A (VR 5.0, VBR 6.40-7.00 @10 mA, VC 9.2 @ 65.3 A, IR 800 uA)",
-   "why": "this part IS the clamp on +5V_CM5: it stands 5 V (where its leakage is specified) and starts to conduct at 6.4 V, the figure a steady level must stay under"
-  },
   "F1.1": {
-   "max": 63.0,
-   "src": "rated V -- JFC1206-1150FS (C136344): Shenzhen JDT JFC1206FS fast-acting fuse datasheet p.2 table (rev 05/07/20): JFC1206-1150FS 1.5 A, in the 72/63/32/24 VDC group, 240 mohm cold, pre-arc I2t 0.15 A2s"
-  },
-  "F1.2": {
-   "max": 63.0,
-   "src": "rated V -- JFC1206-1150FS (C136344): Shenzhen JDT JFC1206FS fast-acting fuse datasheet p.2 table (rev 05/07/20): JFC1206-1150FS 1.5 A, in the 72/63/32/24 VDC group, 240 mohm cold, pre-arc I2t 0.15 A2s"
-  },
-  "F2.1": {
    "max": 63.0,
    "src": "rated V -- JFC1206-1400FS (C136349): Shenzhen JDT JFC1206 fast-acting fuse datasheet p.3 table: rated voltage 63 VDC, rated current 4 A"
   },
-  "F2.2": {
+  "F1.2": {
    "max": 63.0,
    "src": "rated V -- JFC1206-1400FS (C136349): Shenzhen JDT JFC1206 fast-acting fuse datasheet p.3 table: rated voltage 63 VDC, rated current 4 A"
   },
@@ -1858,319 +2348,319 @@
   },
   "J1.10": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.100": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.11": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.12": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.15": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.16": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.17": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.18": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.19": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.20": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.21": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.24": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.25": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.26": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.27": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.28": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.29": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.3": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.30": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.31": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.34": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.35": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.36": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.37": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.38": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.39": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.4": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.40": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.41": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.44": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.45": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.46": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.47": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.48": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.49": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.5": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.50": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.51": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.54": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.55": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.56": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.57": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.58": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.6": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.61": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.62": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.63": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.64": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.67": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.68": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.69": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.70": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.72": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.73": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.75": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.76": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.77": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.78": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.79": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.80": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.81": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.82": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.83": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.84": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.85": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.86": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.87": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.88": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.89": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.9": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.90": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.91": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.92": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.93": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.94": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.95": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.96": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.97": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J1.99": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J10.1": {
    "max": 250.0,
@@ -2302,283 +2792,283 @@
   },
   "J2.1": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.10": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.100": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.11": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.12": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.15": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.16": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.17": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.18": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.2": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.21": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.22": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.23": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.24": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.27": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.28": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.29": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.3": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.30": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.33": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.34": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.35": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.36": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.39": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.4": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.40": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.41": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.42": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.43": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.45": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.46": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.47": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.48": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.49": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.5": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.51": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.52": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.53": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.54": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.57": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.58": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.59": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.6": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.60": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.63": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.64": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.65": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.66": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.69": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.70": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.71": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.72": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.75": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.76": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.77": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.78": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.81": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.82": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.83": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.84": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.87": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.88": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.89": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.9": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.90": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.93": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.94": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.95": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.96": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J2.99": {
    "max": 30.0,
-   "src": "rated V -- DF40C-100DS-0.4V(58) (C3642394): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
+   "src": "rated V -- DF40C-100DS-0.4V(51) (C597931): Hirose DF40 series catalogue (02/2020) p.2 Ratings: 'Rated Current 0.3A, Rated Voltage AC, DC 30V' (withstanding voltage test AC 100 V for 1 minute)"
   },
   "J21.1": {
    "max": 250.0,
@@ -2801,12 +3291,12 @@
   },
   "L2.1": {
    "max": "none",
-   "src": "VLS6045EX-6R8M (C415364): TDK VLS6045EX datasheet p.1 table: VLS6045EX-6R8M Isat 4.7 A, Itemp 3.6 A",
+   "src": "FXL0630-4R7-M (C167220): JLC listing C167220 (2026-11-13): '33mOhm 4.7uH 6A 9A', read as 6 A rated / 9 A saturation -- confirm on Changjiang's sheet",
    "why": "no voltage rating applies; current checked below"
   },
   "L2.2": {
    "max": "none",
-   "src": "VLS6045EX-6R8M (C415364): TDK VLS6045EX datasheet p.1 table: VLS6045EX-6R8M Isat 4.7 A, Itemp 3.6 A",
+   "src": "FXL0630-4R7-M (C167220): JLC listing C167220 (2026-11-13): '33mOhm 4.7uH 6A 9A', read as 6 A rated / 9 A saturation -- confirm on Changjiang's sheet",
    "why": "no voltage rating applies; current checked below"
   },
   "L3.1": {
@@ -2821,13 +3311,33 @@
   },
   "L4.1": {
    "max": "none",
-   "src": "SRP1770TA-100M (C2045568): Bourns SRP1770TA series datasheet p.1 table: SRP1770TA-100M DCR 8.4 typ / 9.2 max mohm, Irms 16.5 A (40 C rise), Isat1 24 A (L -20 %), Isat2 29 A (L -30 %). Isat entered is Isat1. (The catalogue's 13 mohm / 29 A disagree with the datasheet; datasheet used)",
+   "src": "APS1513M100F (C49261410): JLCPCB parts API attributes for C49261410 (Isat 30 A, current rating 25 A, DCR 7 mOhm), read 2026-11-18; itemp taken at the Bourns SRP1513CA-100M's Irms 19 A (20 C rise, SRP1513CA p.1), the part it clones -- the lower of the two",
    "why": "no voltage rating applies; current checked below"
   },
   "L4.2": {
    "max": "none",
-   "src": "SRP1770TA-100M (C2045568): Bourns SRP1770TA series datasheet p.1 table: SRP1770TA-100M DCR 8.4 typ / 9.2 max mohm, Irms 16.5 A (40 C rise), Isat1 24 A (L -20 %), Isat2 29 A (L -30 %). Isat entered is Isat1. (The catalogue's 13 mohm / 29 A disagree with the datasheet; datasheet used)",
+   "src": "APS1513M100F (C49261410): JLCPCB parts API attributes for C49261410 (Isat 30 A, current rating 25 A, DCR 7 mOhm), read 2026-11-18; itemp taken at the Bourns SRP1513CA-100M's Irms 19 A (20 C rise, SRP1513CA p.1), the part it clones -- the lower of the two",
    "why": "no voltage rating applies; current checked below"
+  },
+  "NT5.1": {
+   "max": "none",
+   "src": "NetTie (no LCSC code): no LCSC code / no rating applies",
+   "why": "bare copper"
+  },
+  "NT5.2": {
+   "max": "none",
+   "src": "NetTie (no LCSC code): no LCSC code / no rating applies",
+   "why": "bare copper"
+  },
+  "NT6.1": {
+   "max": "none",
+   "src": "NetTie (no LCSC code): no LCSC code / no rating applies",
+   "why": "bare copper"
+  },
+  "NT6.2": {
+   "max": "none",
+   "src": "NetTie (no LCSC code): no LCSC code / no rating applies",
+   "why": "bare copper"
   },
   "Q10.1": {
    "max": 20.0,
@@ -2858,6 +3368,22 @@
    "src": "VGS -- 2N7002 (C8545): CJ 2N7002 datasheet p.1 maximum ratings: VDS 60 V, VGS +/-20 V, ID 0.115 A"
   },
   "Q15.3": {
+   "max": 60.0,
+   "src": "VDS -- 2N7002 (C8545): CJ 2N7002 datasheet p.1 maximum ratings: VDS 60 V, VGS +/-20 V, ID 0.115 A"
+  },
+  "Q18.1": {
+   "max": 20.0,
+   "src": "VGS -- 2N7002 (C8545): CJ 2N7002 datasheet p.1 maximum ratings: VDS 60 V, VGS +/-20 V, ID 0.115 A"
+  },
+  "Q18.3": {
+   "max": 60.0,
+   "src": "VDS -- 2N7002 (C8545): CJ 2N7002 datasheet p.1 maximum ratings: VDS 60 V, VGS +/-20 V, ID 0.115 A"
+  },
+  "Q19.1": {
+   "max": 20.0,
+   "src": "VGS -- 2N7002 (C8545): CJ 2N7002 datasheet p.1 maximum ratings: VDS 60 V, VGS +/-20 V, ID 0.115 A"
+  },
+  "Q19.3": {
    "max": 60.0,
    "src": "VDS -- 2N7002 (C8545): CJ 2N7002 datasheet p.1 maximum ratings: VDS 60 V, VGS +/-20 V, ID 0.115 A"
   },
@@ -2995,8 +3521,8 @@
    "why": "its element V limit (0.089 V) is not one to ground: it was judged on 0.0504 V steady, 0.0504 V transient -- 635.0 mW of 2000 mW -- the boost's input shunt: 12.6 A at its worst (9 V in, full load; brain.py) x 4 mohm"
   },
   "R11.1": {
-   "max": 50.0,
-   "src": "element V -- RC0402FR-0724K9L (C138027): JLCPCB parts API attributes for C138027 (RC0402FR-0724K9L, YAGEO), fetched 2026-10-06"
+   "max": 100.0,
+   "src": "element V -- ERJ2RKF3012X (C2076806): JLCPCB parts API attributes for C2076806 (ERJ2RKF3012X, PANASONIC), fetched 2026-10-06"
   },
   "R110.1": {
    "max": 50.0,
@@ -3014,17 +3540,79 @@
    "max": 50.0,
    "src": "element V -- 0402WGF1000TCE (C25076): JLCPCB parts API attributes for C25076 (0402WGF1000TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
   },
+  "R112.1": {
+   "max": 50.0,
+   "src": "element V -- RC0402FR-0749K9L (C137969): YAGEO RC0402FR-07 series, the series C163455 / C138058 / C138027 / C138045 / C274897 / C327251 are read from (JLCPCB parts API, 2026-10-06: 50 V, 62.5 mW for every value); fab.py's R22 from 2026-11-01"
+  },
+  "R113.1": {
+   "max": "none",
+   "src": "STE1206M1W0R013F (C201279): fab.py's part table for C201279 (STE1206M1W0R013F, 1206 1 W 13 mohm 50 ppm, brain R313 under BRAIN_POWER_SIZING), as the C601097 entry; V = sqrt(P x R) = 0.114 V",
+   "why": "its element V limit (0.114 V) is not one to ground: it was judged on 0.065 V steady, 0.065 V transient -- 325.0 mW of 1000 mW -- U5's output sense: the TPS552892's 50 mV ISP-ISN limit holds it to 5.0 A (SLVSGT7 8.2.2.6) x 10 mohm"
+  },
+  "R113.2": {
+   "max": "none",
+   "src": "STE1206M1W0R013F (C201279): fab.py's part table for C201279 (STE1206M1W0R013F, 1206 1 W 13 mohm 50 ppm, brain R313 under BRAIN_POWER_SIZING), as the C601097 entry; V = sqrt(P x R) = 0.114 V",
+   "why": "its element V limit (0.114 V) is not one to ground: it was judged on 0.065 V steady, 0.065 V transient -- 325.0 mW of 1000 mW -- U5's output sense: the TPS552892's 50 mV ISP-ISN limit holds it to 5.0 A (SLVSGT7 8.2.2.6) x 10 mohm"
+  },
+  "R114.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R114.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R119.1": {
+   "max": 75.0,
+   "src": "element V -- RT0603BRD07374KL (C861356): JLCPCB parts API attributes for C861356 (RT0603BRD07374KL, YAGEO), fetched 2026-11-22 (100 mW; the API gives no voltage: 75 V = YAGEO RT series max working voltage for 0603)"
+  },
+  "R119.2": {
+   "max": 75.0,
+   "src": "element V -- RT0603BRD07374KL (C861356): JLCPCB parts API attributes for C861356 (RT0603BRD07374KL, YAGEO), fetched 2026-11-22 (100 mW; the API gives no voltage: 75 V = YAGEO RT series max working voltage for 0603)"
+  },
   "R12.1": {
    "max": 50.0,
-   "src": "element V -- RC0402FR-07137KL (C138058): JLCPCB parts API attributes for C138058 (RC0402FR-07137KL, YAGEO), fetched 2026-10-06"
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
   },
   "R12.2": {
    "max": 50.0,
-   "src": "element V -- RC0402FR-07137KL (C138058): JLCPCB parts API attributes for C138058 (RC0402FR-07137KL, YAGEO), fetched 2026-10-06"
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R120.1": {
+   "max": 50.0,
+   "src": "element V -- RT0402BRE07100KL (C136979): JLCPCB parts API attributes for C136979 (RT0402BRE07100KL, YAGEO), fetched 2026-11-22"
+  },
+  "R121.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF7500TCE (C25132): JLCPCB parts API attributes for C25132 (0402WGF7500TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-11-22"
+  },
+  "R122.1": {
+   "max": 150.0,
+   "src": "element V -- 0805W8F2200T5E (C17557): JLCPCB parts API attributes for C17557 (0805W8F2200T5E, UNI-ROYAL(Uniroyal Elec)), fetched 2026-11-22"
+  },
+  "R122.2": {
+   "max": 150.0,
+   "src": "element V -- 0805W8F2200T5E (C17557): JLCPCB parts API attributes for C17557 (0805W8F2200T5E, UNI-ROYAL(Uniroyal Elec)), fetched 2026-11-22"
+  },
+  "R123.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R123.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R124.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R124.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
   },
   "R13.1": {
    "max": 50.0,
-   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+   "src": "element V -- 0402WGF2322TCE (C25873): JLCPCB parts API search for C25873 (UniOhm 0402WGF2322TCE; 1/16 W, 50 V as the series), fetched 2026-11-17"
   },
   "R14.1": {
    "max": 50.0,
@@ -3077,14 +3665,6 @@
   "R22.1": {
    "max": 50.0,
    "src": "element V -- RC0402FR-0749K9L (C137969): YAGEO RC0402FR-07 series, the series C163455 / C138058 / C138027 / C138045 / C274897 / C327251 are read from (JLCPCB parts API, 2026-10-06: 50 V, 62.5 mW for every value); fab.py's R22 from 2026-11-01"
-  },
-  "R23.1": {
-   "max": 200.0,
-   "src": "element V -- 1206W4F0000T5E (C17888): JLCPCB parts API attributes for C17888 (1206W4F0000T5E, UNI-ROYAL: 0 ohm jumper, 250 mW, 200 V), fetched 2026-10-06; 20 mohm taken as the jumper's own resistance for the power sum"
-  },
-  "R23.2": {
-   "max": 200.0,
-   "src": "element V -- 1206W4F0000T5E (C17888): JLCPCB parts API attributes for C17888 (1206W4F0000T5E, UNI-ROYAL: 0 ohm jumper, 250 mW, 200 V), fetched 2026-10-06; 20 mohm taken as the jumper's own resistance for the power sum"
   },
   "R24.1": {
    "max": 50.0,
@@ -3777,7 +4357,7 @@
    "src": "abs max -- LM5122MHX/NOPB (C77241): TI LM5122 datasheet SNVS954H p.6 s6.1 absolute maximum (to AGND): VIN, CSP, CSN -0.3..75 V; BST-SW, FB, MODE, UVLO, OPT, VCC -0.3..15 V; SW -5..105 V; BST -0.3..115 V; SS, SLOPE, SYNCIN/RT -0.3..7 V; CSP-CSN and PGND -0.3..0.3 V; HO-SW -0.3..BST-SW+0.3; LO -0.3..VCC+0.3; COMP, RES, SYNCOUT -0.3..7 V. p.7 s6.3: VIN 4.5-65, VCC 14, BST-SW 3.8-14, CSP/CSN 3-65, SW 100 V. 20-pin PWP pinout p.4-6 (EP: no internal connection, soldered to ground). MPN on the catalogue is LM5122MHX/NOPB, the same HTSSOP-20 PWP"
   },
   "U20.19": {
-   "max": 43.67,
+   "max": 46.914,
    "src": "abs max -- LM5122MHX/NOPB (C77241): TI LM5122 datasheet SNVS954H p.6 s6.1 absolute maximum (to AGND): VIN, CSP, CSN -0.3..75 V; BST-SW, FB, MODE, UVLO, OPT, VCC -0.3..15 V; SW -5..105 V; BST -0.3..115 V; SS, SLOPE, SYNCIN/RT -0.3..7 V; CSP-CSN and PGND -0.3..0.3 V; HO-SW -0.3..BST-SW+0.3; LO -0.3..VCC+0.3; COMP, RES, SYNCOUT -0.3..7 V. p.7 s6.3: VIN 4.5-65, VCC 14, BST-SW 3.8-14, CSP/CSN 3-65, SW 100 V. 20-pin PWP pinout p.4-6 (EP: no internal connection, soldered to ground). MPN on the catalogue is LM5122MHX/NOPB, the same HTSSOP-20 PWP"
   },
   "U20.20": {
@@ -3808,6 +4388,42 @@
    "max": 7.0,
    "src": "abs max -- LM5122MHX/NOPB (C77241): TI LM5122 datasheet SNVS954H p.6 s6.1 absolute maximum (to AGND): VIN, CSP, CSN -0.3..75 V; BST-SW, FB, MODE, UVLO, OPT, VCC -0.3..15 V; SW -5..105 V; BST -0.3..115 V; SS, SLOPE, SYNCIN/RT -0.3..7 V; CSP-CSN and PGND -0.3..0.3 V; HO-SW -0.3..BST-SW+0.3; LO -0.3..VCC+0.3; COMP, RES, SYNCOUT -0.3..7 V. p.7 s6.3: VIN 4.5-65, VCC 14, BST-SW 3.8-14, CSP/CSN 3-65, SW 100 V. 20-pin PWP pinout p.4-6 (EP: no internal connection, soldered to ground). MPN on the catalogue is LM5122MHX/NOPB, the same HTSSOP-20 PWP"
   },
+  "U21.1": {
+   "max": 6.5,
+   "src": "abs max -- TPS259470ARPWR (C3662799): TI TPS25947 SLVSFC9C (May 2026) s6.1: IN 28 V, OUT min(28, VIN + 21), EN/UVLO / OVLO / AUXOFF / FLT -0.3..6.5 V, DVDT / ITIMER / ILM 'Internally Limited' (taken at 6.5 V: driven by the part); s6.3: IN 2.7-23 V, EN 5 V, OVLO 0.5-1.5 V, AUXOFF / FLT 5 V; RPW pinout p.5 Fig 5-1"
+  },
+  "U21.10": {
+   "max": 6.5,
+   "src": "abs max -- TPS259470ARPWR (C3662799): TI TPS25947 SLVSFC9C (May 2026) s6.1: IN 28 V, OUT min(28, VIN + 21), EN/UVLO / OVLO / AUXOFF / FLT -0.3..6.5 V, DVDT / ITIMER / ILM 'Internally Limited' (taken at 6.5 V: driven by the part); s6.3: IN 2.7-23 V, EN 5 V, OVLO 0.5-1.5 V, AUXOFF / FLT 5 V; RPW pinout p.5 Fig 5-1"
+  },
+  "U21.2": {
+   "max": 6.5,
+   "src": "abs max -- TPS259470ARPWR (C3662799): TI TPS25947 SLVSFC9C (May 2026) s6.1: IN 28 V, OUT min(28, VIN + 21), EN/UVLO / OVLO / AUXOFF / FLT -0.3..6.5 V, DVDT / ITIMER / ILM 'Internally Limited' (taken at 6.5 V: driven by the part); s6.3: IN 2.7-23 V, EN 5 V, OVLO 0.5-1.5 V, AUXOFF / FLT 5 V; RPW pinout p.5 Fig 5-1"
+  },
+  "U21.3": {
+   "max": 6.5,
+   "src": "abs max -- TPS259470ARPWR (C3662799): TI TPS25947 SLVSFC9C (May 2026) s6.1: IN 28 V, OUT min(28, VIN + 21), EN/UVLO / OVLO / AUXOFF / FLT -0.3..6.5 V, DVDT / ITIMER / ILM 'Internally Limited' (taken at 6.5 V: driven by the part); s6.3: IN 2.7-23 V, EN 5 V, OVLO 0.5-1.5 V, AUXOFF / FLT 5 V; RPW pinout p.5 Fig 5-1"
+  },
+  "U21.4": {
+   "max": 6.5,
+   "src": "abs max -- TPS259470ARPWR (C3662799): TI TPS25947 SLVSFC9C (May 2026) s6.1: IN 28 V, OUT min(28, VIN + 21), EN/UVLO / OVLO / AUXOFF / FLT -0.3..6.5 V, DVDT / ITIMER / ILM 'Internally Limited' (taken at 6.5 V: driven by the part); s6.3: IN 2.7-23 V, EN 5 V, OVLO 0.5-1.5 V, AUXOFF / FLT 5 V; RPW pinout p.5 Fig 5-1"
+  },
+  "U21.5": {
+   "max": 28.0,
+   "src": "abs max -- TPS259470ARPWR (C3662799): TI TPS25947 SLVSFC9C (May 2026) s6.1: IN 28 V, OUT min(28, VIN + 21), EN/UVLO / OVLO / AUXOFF / FLT -0.3..6.5 V, DVDT / ITIMER / ILM 'Internally Limited' (taken at 6.5 V: driven by the part); s6.3: IN 2.7-23 V, EN 5 V, OVLO 0.5-1.5 V, AUXOFF / FLT 5 V; RPW pinout p.5 Fig 5-1"
+  },
+  "U21.6": {
+   "max": 28.0,
+   "src": "abs max -- TPS259470ARPWR (C3662799): TI TPS25947 SLVSFC9C (May 2026) s6.1: IN 28 V, OUT min(28, VIN + 21), EN/UVLO / OVLO / AUXOFF / FLT -0.3..6.5 V, DVDT / ITIMER / ILM 'Internally Limited' (taken at 6.5 V: driven by the part); s6.3: IN 2.7-23 V, EN 5 V, OVLO 0.5-1.5 V, AUXOFF / FLT 5 V; RPW pinout p.5 Fig 5-1"
+  },
+  "U21.7": {
+   "max": 6.5,
+   "src": "abs max -- TPS259470ARPWR (C3662799): TI TPS25947 SLVSFC9C (May 2026) s6.1: IN 28 V, OUT min(28, VIN + 21), EN/UVLO / OVLO / AUXOFF / FLT -0.3..6.5 V, DVDT / ITIMER / ILM 'Internally Limited' (taken at 6.5 V: driven by the part); s6.3: IN 2.7-23 V, EN 5 V, OVLO 0.5-1.5 V, AUXOFF / FLT 5 V; RPW pinout p.5 Fig 5-1"
+  },
+  "U21.9": {
+   "max": 6.5,
+   "src": "abs max -- TPS259470ARPWR (C3662799): TI TPS25947 SLVSFC9C (May 2026) s6.1: IN 28 V, OUT min(28, VIN + 21), EN/UVLO / OVLO / AUXOFF / FLT -0.3..6.5 V, DVDT / ITIMER / ILM 'Internally Limited' (taken at 6.5 V: driven by the part); s6.3: IN 2.7-23 V, EN 5 V, OVLO 0.5-1.5 V, AUXOFF / FLT 5 V; RPW pinout p.5 Fig 5-1"
+  },
   "U3.1": {
    "max": 3.95,
    "src": "abs max -- SN65HVD230DR (C12084): TI SN65HVD230 datasheet SLOS346K p.6 absolute maximum ratings: VCC -0.3..6 V; CANH/CANL -4..16 V (transient -25..25 V through 100 ohm); D, R -0.5..VCC+0.5 V; dominant VOD max 3 V (electrical characteristics)"
@@ -3836,34 +4452,73 @@
    "max": 3.95,
    "src": "abs max -- SN65HVD230DR (C12084): TI SN65HVD230 datasheet SLOS346K p.6 absolute maximum ratings: VCC -0.3..6 V; CANH/CANL -4..16 V (transient -25..25 V through 100 ohm); D, R -0.5..VCC+0.5 V; dominant VOD max 3 V (electrical characteristics)"
   },
-  "U5.2": {
-   "max": 38.0,
-   "src": "abs max -- LMR33630ADDAR (C841384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; HSOIC (DDA) pinout p.3"
+  "U5.1": {
+   "max": 20.0,
+   "src": "abs max -- TPS552892QWRYQRQ1 (C22375748): TI TPS552892-Q1 SLVSGT7 (Apr 2023) s6.1: VIN, SW1 42 V; VOUT, SW2, ISP, ISN 25 V; EN 20 V; BOOTx SWx+6; VCC, EXTVCC 6 V; PG/CC/FSW/COMP/FB/MODE/CDC/DITH VCC+0.3; s6.3 VIN 2.7-36 V; s6.5 VREF 1.188/1.2/1.212 V"
+  },
+  "U5.10": {
+   "max": 25.0,
+   "src": "abs max -- TPS552892QWRYQRQ1 (C22375748): TI TPS552892-Q1 SLVSGT7 (Apr 2023) s6.1: VIN, SW1 42 V; VOUT, SW2, ISP, ISN 25 V; EN 20 V; BOOTx SWx+6; VCC, EXTVCC 6 V; PG/CC/FSW/COMP/FB/MODE/CDC/DITH VCC+0.3; s6.3 VIN 2.7-36 V; s6.5 VREF 1.188/1.2/1.212 V"
+  },
+  "U5.11": {
+   "max": 25.0,
+   "src": "abs max -- TPS552892QWRYQRQ1 (C22375748): TI TPS552892-Q1 SLVSGT7 (Apr 2023) s6.1: VIN, SW1 42 V; VOUT, SW2, ISP, ISN 25 V; EN 20 V; BOOTx SWx+6; VCC, EXTVCC 6 V; PG/CC/FSW/COMP/FB/MODE/CDC/DITH VCC+0.3; s6.3 VIN 2.7-36 V; s6.5 VREF 1.188/1.2/1.212 V"
+  },
+  "U5.12": {
+   "max": 25.0,
+   "src": "abs max -- TPS552892QWRYQRQ1 (C22375748): TI TPS552892-Q1 SLVSGT7 (Apr 2023) s6.1: VIN, SW1 42 V; VOUT, SW2, ISP, ISN 25 V; EN 20 V; BOOTx SWx+6; VCC, EXTVCC 6 V; PG/CC/FSW/COMP/FB/MODE/CDC/DITH VCC+0.3; s6.3 VIN 2.7-36 V; s6.5 VREF 1.188/1.2/1.212 V"
+  },
+  "U5.13": {
+   "max": 25.0,
+   "src": "abs max -- TPS552892QWRYQRQ1 (C22375748): TI TPS552892-Q1 SLVSGT7 (Apr 2023) s6.1: VIN, SW1 42 V; VOUT, SW2, ISP, ISN 25 V; EN 20 V; BOOTx SWx+6; VCC, EXTVCC 6 V; PG/CC/FSW/COMP/FB/MODE/CDC/DITH VCC+0.3; s6.3 VIN 2.7-36 V; s6.5 VREF 1.188/1.2/1.212 V"
+  },
+  "U5.14": {
+   "max": 6.3,
+   "src": "abs max -- TPS552892QWRYQRQ1 (C22375748): TI TPS552892-Q1 SLVSGT7 (Apr 2023) s6.1: VIN, SW1 42 V; VOUT, SW2, ISP, ISN 25 V; EN 20 V; BOOTx SWx+6; VCC, EXTVCC 6 V; PG/CC/FSW/COMP/FB/MODE/CDC/DITH VCC+0.3; s6.3 VIN 2.7-36 V; s6.5 VREF 1.188/1.2/1.212 V"
+  },
+  "U5.15": {
+   "max": 6.3,
+   "src": "abs max -- TPS552892QWRYQRQ1 (C22375748): TI TPS552892-Q1 SLVSGT7 (Apr 2023) s6.1: VIN, SW1 42 V; VOUT, SW2, ISP, ISN 25 V; EN 20 V; BOOTx SWx+6; VCC, EXTVCC 6 V; PG/CC/FSW/COMP/FB/MODE/CDC/DITH VCC+0.3; s6.3 VIN 2.7-36 V; s6.5 VREF 1.188/1.2/1.212 V"
+  },
+  "U5.16": {
+   "max": 6.3,
+   "src": "abs max -- TPS552892QWRYQRQ1 (C22375748): TI TPS552892-Q1 SLVSGT7 (Apr 2023) s6.1: VIN, SW1 42 V; VOUT, SW2, ISP, ISN 25 V; EN 20 V; BOOTx SWx+6; VCC, EXTVCC 6 V; PG/CC/FSW/COMP/FB/MODE/CDC/DITH VCC+0.3; s6.3 VIN 2.7-36 V; s6.5 VREF 1.188/1.2/1.212 V"
+  },
+  "U5.18": {
+   "max": 6.0,
+   "src": "abs max -- TPS552892QWRYQRQ1 (C22375748): TI TPS552892-Q1 SLVSGT7 (Apr 2023) s6.1: VIN, SW1 42 V; VOUT, SW2, ISP, ISN 25 V; EN 20 V; BOOTx SWx+6; VCC, EXTVCC 6 V; PG/CC/FSW/COMP/FB/MODE/CDC/DITH VCC+0.3; s6.3 VIN 2.7-36 V; s6.5 VREF 1.188/1.2/1.212 V"
+  },
+  "U5.19": {
+   "max": 12.286,
+   "src": "abs max -- TPS552892QWRYQRQ1 (C22375748): TI TPS552892-Q1 SLVSGT7 (Apr 2023) s6.1: VIN, SW1 42 V; VOUT, SW2, ISP, ISN 25 V; EN 20 V; BOOTx SWx+6; VCC, EXTVCC 6 V; PG/CC/FSW/COMP/FB/MODE/CDC/DITH VCC+0.3; s6.3 VIN 2.7-36 V; s6.5 VREF 1.188/1.2/1.212 V"
+  },
+  "U5.20": {
+   "max": 43.425,
+   "src": "abs max -- TPS552892QWRYQRQ1 (C22375748): TI TPS552892-Q1 SLVSGT7 (Apr 2023) s6.1: VIN, SW1 42 V; VOUT, SW2, ISP, ISN 25 V; EN 20 V; BOOTx SWx+6; VCC, EXTVCC 6 V; PG/CC/FSW/COMP/FB/MODE/CDC/DITH VCC+0.3; s6.3 VIN 2.7-36 V; s6.5 VREF 1.188/1.2/1.212 V"
+  },
+  "U5.21": {
+   "max": 6.0,
+   "src": "abs max -- TPS552892QWRYQRQ1 (C22375748): TI TPS552892-Q1 SLVSGT7 (Apr 2023) s6.1: VIN, SW1 42 V; VOUT, SW2, ISP, ISN 25 V; EN 20 V; BOOTx SWx+6; VCC, EXTVCC 6 V; PG/CC/FSW/COMP/FB/MODE/CDC/DITH VCC+0.3; s6.3 VIN 2.7-36 V; s6.5 VREF 1.188/1.2/1.212 V"
   },
   "U5.3": {
-   "max": 34.67,
-   "src": "abs max -- LMR33630ADDAR (C841384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; HSOIC (DDA) pinout p.3"
+   "max": 6.3,
+   "src": "abs max -- TPS552892QWRYQRQ1 (C22375748): TI TPS552892-Q1 SLVSGT7 (Apr 2023) s6.1: VIN, SW1 42 V; VOUT, SW2, ISP, ISN 25 V; EN 20 V; BOOTx SWx+6; VCC, EXTVCC 6 V; PG/CC/FSW/COMP/FB/MODE/CDC/DITH VCC+0.3; s6.3 VIN 2.7-36 V; s6.5 VREF 1.188/1.2/1.212 V"
   },
   "U5.4": {
-   "max": 22.0,
-   "src": "abs max -- LMR33630ADDAR (C841384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; HSOIC (DDA) pinout p.3"
-  },
-  "U5.5": {
-   "max": 5.5,
-   "src": "abs max -- LMR33630ADDAR (C841384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; HSOIC (DDA) pinout p.3"
+   "max": 6.3,
+   "src": "abs max -- TPS552892QWRYQRQ1 (C22375748): TI TPS552892-Q1 SLVSGT7 (Apr 2023) s6.1: VIN, SW1 42 V; VOUT, SW2, ISP, ISN 25 V; EN 20 V; BOOTx SWx+6; VCC, EXTVCC 6 V; PG/CC/FSW/COMP/FB/MODE/CDC/DITH VCC+0.3; s6.3 VIN 2.7-36 V; s6.5 VREF 1.188/1.2/1.212 V"
   },
   "U5.6": {
-   "max": 5.5,
-   "src": "abs max -- LMR33630ADDAR (C841384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; HSOIC (DDA) pinout p.3"
+   "max": 6.3,
+   "src": "abs max -- TPS552892QWRYQRQ1 (C22375748): TI TPS552892-Q1 SLVSGT7 (Apr 2023) s6.1: VIN, SW1 42 V; VOUT, SW2, ISP, ISN 25 V; EN 20 V; BOOTx SWx+6; VCC, EXTVCC 6 V; PG/CC/FSW/COMP/FB/MODE/CDC/DITH VCC+0.3; s6.3 VIN 2.7-36 V; s6.5 VREF 1.188/1.2/1.212 V"
   },
   "U5.7": {
-   "max": "none",
-   "src": "LMR33630ADDAR (C841384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; HSOIC (DDA) pinout p.3",
-   "why": "bootstrap node, rated SW+5.5 and set by the IC itself"
+   "max": 42.0,
+   "src": "abs max -- TPS552892QWRYQRQ1 (C22375748): TI TPS552892-Q1 SLVSGT7 (Apr 2023) s6.1: VIN, SW1 42 V; VOUT, SW2, ISP, ISN 25 V; EN 20 V; BOOTx SWx+6; VCC, EXTVCC 6 V; PG/CC/FSW/COMP/FB/MODE/CDC/DITH VCC+0.3; s6.3 VIN 2.7-36 V; s6.5 VREF 1.188/1.2/1.212 V"
   },
   "U5.8": {
-   "max": 34.67,
-   "src": "abs max -- LMR33630ADDAR (C841384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; HSOIC (DDA) pinout p.3"
+   "max": 42.0,
+   "src": "abs max -- TPS552892QWRYQRQ1 (C22375748): TI TPS552892-Q1 SLVSGT7 (Apr 2023) s6.1: VIN, SW1 42 V; VOUT, SW2, ISP, ISN 25 V; EN 20 V; BOOTx SWx+6; VCC, EXTVCC 6 V; PG/CC/FSW/COMP/FB/MODE/CDC/DITH VCC+0.3; s6.3 VIN 2.7-36 V; s6.5 VREF 1.188/1.2/1.212 V"
   },
   "U6.1": {
    "max": 7.0,
@@ -3890,7 +4545,7 @@
    "src": "abs max -- LMR33630BRNXR (C2071384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; VQFN (RNX) pinout p.2-3 table 6-1"
   },
   "U7.12": {
-   "max": 34.67,
+   "max": 37.914,
    "src": "abs max -- LMR33630BRNXR (C2071384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; VQFN (RNX) pinout p.2-3 table 6-1"
   },
   "U7.2": {
@@ -3898,7 +4553,7 @@
    "src": "abs max -- LMR33630BRNXR (C2071384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; VQFN (RNX) pinout p.2-3 table 6-1"
   },
   "U7.3": {
-   "max": 34.67,
+   "max": 37.914,
    "src": "abs max -- LMR33630BRNXR (C2071384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; VQFN (RNX) pinout p.2-3 table 6-1"
   },
   "U7.4": {
@@ -3919,7 +4574,7 @@
    "src": "abs max -- LMR33630BRNXR (C2071384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; VQFN (RNX) pinout p.2-3 table 6-1"
   },
   "U7.9": {
-   "max": 34.67,
+   "max": 37.914,
    "src": "abs max -- LMR33630BRNXR (C2071384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; VQFN (RNX) pinout p.2-3 table 6-1"
   },
   "U8.1": {

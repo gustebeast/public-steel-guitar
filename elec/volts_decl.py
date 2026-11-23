@@ -35,4 +35,6 @@ def into(notes, board):
         gen = {k: v for k, v in decl.get(key, {}).items()
                if k.split(".")[0] not in own}
         q[key] = dict(gen, **own)
+    if decl.get("pin_roles"):                       # A4: generated only, nothing to merge
+        q["pin_roles"] = decl["pin_roles"]
     return True
