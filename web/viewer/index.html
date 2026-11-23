@@ -389,6 +389,45 @@
     }
   }
 
+  // A DIRECT DRIVE'S STRING (rig.strings[i].slide): its nut rides a leadscrew turned by its own
+  // motor. A string's stretch beyond slack goes as its tension, and pitch as the root of tension,
+  // so n semitones from open is open_dl * 2^(n/6) of stretch (clamped to the travel). The model is
+  // drawn at `drawn_dl`; the nut and what rides it (the yoke, the ball end, the keyplate, the
+  // collar...) SLIDE along `slide_dir` by the difference, the screw and everything turning with it
+  // (coupler, collars, motor shaft) TURN about the screw's axis at its lead, and the spring, from
+  // its fixed end at `from` to the collar, STRETCHES along the axis to follow.
+  const curDl = {};
+  const mS = new THREE.Matrix4();
+  function screwNodes(s) {
+    if (s._for !== nodes) {                                // (resolved once per model)
+      const names = Object.keys(nodes), of = re => names.filter(n => new RegExp(re).test(n));
+      s._slide = of(s.slide); s._turn = of(s.turn); s._stretch = s.stretch ? of(s.stretch.re) : [];
+      s._for = nodes;
+    }
+  }
+  function applyScrew(s, st, k) {
+    screwNodes(s);
+    const want = Math.min(Math.max(s.open_dl * Math.pow(2, st / 6), 0), s.dl_max);
+    const dl = (curDl[s.i] = curDl[s.i] === undefined ? s.drawn_dl : curDl[s.i] + (want - curDl[s.i]) * k);
+    const m = dl - s.drawn_dl, d = s.slide_dir, a = s.axis, c = s.center;
+    if (Math.abs(m) < 1e-5 && !s._moved) return;           // as drawn: left identity
+    s._moved = Math.abs(m) >= 1e-5;
+    for (const n of s._slide) translateNode(n, d[0] * m, d[1] * m, d[2] * m);
+    for (const n of s._turn) spinNode(n, c, a, s.turn_rad_per_mm * m);
+    if (s.stretch) {                                       // scaled along the axis about its fixed end
+      const L = s.stretch.len, f = (L + m * (d[0] * a[0] + d[1] * a[1] + d[2] * a[2])) / L, o = s.stretch.from;
+      const e = [];                                        // I + (f-1) a a^T, about `o`
+      for (let r = 0; r < 3; r++) for (let q = 0; q < 3; q++) e.push((r === q ? 1 : 0) + (f - 1) * a[r] * a[q]);
+      mS.set(e[0], e[1], e[2], 0, e[3], e[4], e[5], 0, e[6], e[7], e[8], 0, 0, 0, 0, 1);
+      tA.makeTranslation(o[0], o[1], o[2]); tB.makeTranslation(-o[0], -o[1], -o[2]);
+      for (const n of s._stretch) {
+        const o3 = nodes[n]; if (!o3) continue;
+        o3.matrixAutoUpdate = false;
+        o3.matrix.copy(tA).multiply(mS).multiply(tB);
+      }
+    }
+  }
+
   function applyRig(dt) {
     if (!rig) return;
     const g = rig.gains, tgtSt = targetRaise();
@@ -397,6 +436,7 @@
     applyPedals(dt, k);
     applyLevers(dt, k);
     for (const s of strings) {
+      if (s.slide) { applyScrew(s, tgtSt[s.i], k); continue; }
       // WHERE THE NUT SITS FOR A PITCH. A string's stretch from slack is proportional to
       // its tension, and pitch goes as the root of tension: open is rig.open_down below the
       // ceiling (where the string was wrapped), and n semitones from open is
@@ -490,7 +530,13 @@
   function movingNames() {
     const s = new Set();
     if (!rig) return s;
+    const res = [];
     for (const st of rig.strings) {
+      if (st.slide) {                                    // a direct drive: its parts by pattern
+        for (const k of ['slide', 'turn']) res.push(new RegExp(st[k]));
+        if (st.stretch) res.push(new RegExp(st.stretch.re));
+        continue;
+      }
       for (const n of st.carriage_nodes) s.add(n);
       s.add(st.screw_pulley.node); s.add(st.motor_pulley.node);
       for (const n of st.screw_pulley.with || []) s.add(n);
@@ -499,6 +545,10 @@
     for (const p of rig.pedals || []) for (const n of [...p.swing_nodes, ...p.piston_nodes]) s.add(n);
     for (const c of rig.copedent) if (c.lever)
       for (const n of [...c.lever.swing_nodes, ...(c.lever.piston_nodes || [])]) s.add(n);
+    if (res.length) {                                    // (a name the patterns take moves too)
+      const has = s.has.bind(s);
+      s.has = n => has(n) || res.some(r => r.test(n));
+    }
     return s;
   }
 
