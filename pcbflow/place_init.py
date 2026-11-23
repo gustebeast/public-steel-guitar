@@ -390,7 +390,7 @@ def _place_two_sided(parts, notes, rules, keep, back):
 
     P2 = {r: _ghost(p) for r, p in front.items()}
     P2.update({r: parts[r] for r in back})
-    rb = [dict(kind="fixed", ref=r, xy=[plF[r][0], plF[r][1]], rot=plF[r][2], why="front pass",
+    rb = [dict(kind="fixed", ref=r, xy=[plF[r][0], plF[r][1]], rot=plF[r][2], hold="snapshot", why="front pass",
                src="place_init two-sided") for r in sorted(front)]
     for r in rules:
         k = r["kind"]
