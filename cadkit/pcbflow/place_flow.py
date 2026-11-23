@@ -579,6 +579,18 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     if hbad_:
         raise SystemExit("place_flow: intent refused -- %d hold(s) without a reason (hold: %s, and a why):\n  %s"
                          % (len(hbad_), " / ".join(pi.HOLD_CLASSES), "\n  ".join(hbad_[:20])))
+    # a hard near / decap its regions cannot meet stops here, before placement (pi.feasibility)
+    try:
+        fbad_, fsplit_ = pi.feasibility(rules, parts, notes)
+    except (KeyError, ValueError) as e_:
+        fbad_, fsplit_ = [], ["FEASIBILITY check could not run: %r" % (e_,)]
+    # (REGION SPLIT stops too: a hot-loop cap whose only seat is the border of two regions is an
+    # intent error -- sw2's C3 / C299 / C306 -- and ended as NO ROOM after 20 minutes)
+    if fbad_ or fsplit_:
+        for l_ in fbad_ + fsplit_:
+            say(l_)
+        raise SystemExit("place_flow: intent refused -- %d hard rule(s) INFEASIBLE, %d REGION SPLIT:\n  %s"
+                         % (len(fbad_), len(fsplit_), "\n  ".join((fbad_ + fsplit_)[:20])))
     # ⚠ A RULE THAT NAMES A PART THE NETLIST NO LONGER HAS STOPS THE FLOW HERE, NOT LATER
     # (brain_board mV20a/b, 2026-11-17): a saved pour rule still ran `along` R223.2 after the
     # U5 rework removed R223; both runs placed for 20 minutes and died in _pours on a KeyError.
@@ -660,6 +672,7 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
             pl[r_] = v
             why[r_] = "carried from input (not in parts.json: %s)" % (
                 "post_route_refs" if r_ in notes.get("post_route_refs", ()) else "no geometry")
+    _SAT[:] = _sat_broken(rules, parts, pl)
     # ⚠ THE FLOW STOPS BEFORE LAYOUT ON A PLACEMENT IT KNOWS IS BROKEN (lever_sensor holdouts
     # 1 / 1b, 2026-11-12): a part with no room was left overlapping and a connector sat wholly
     # off the board, and both went on to layout, which refused them as courtyard overlaps --
@@ -751,6 +764,8 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     if place_only:
         # --place-only: a placement A/B across boards (a placer change's evidence) needs
         # NO ROOM, BROKEN and NEAR BROKEN, not a route -- minutes per board instead of an hour
+        for l_ in _sat_summary(init_log):
+            say(l_)
         say("PLACE ONLY: %d placed, %d with no room, %d hard near rule(s) broken%s"
             % (len(pl), len(room), len(nb), (": " + " | ".join(x[1] for x in nb[:6])) if nb else ""))
         return 0
@@ -773,6 +788,7 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
         if pl.get(r_) != pc[r_]:
             why[r_] = "place_cells: cell turned / repaired by route (%s)" % why.get(r_, "")
     pl = pc
+    _SAT[:] = _sat_broken(rules, parts, pl)
     plines = _pours(notes, parts, pl, rules, base_zones)
     for p_ in plines:
         say("POUR " + p_)
@@ -819,6 +835,8 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     if to_routability:
         # --to-routability: a placement change judged by the global plan (seconds) before an
         # hour of route is spent on it -- the spreading pass's A/B (brain_board, 2026-11-17)
+        for l_ in _sat_summary(init_log):
+            say(l_)
         say("TO ROUTABILITY: stopped before the route")
         return 0
     # ⚠ THE SCORE'S ROUTE IS THE BOARD'S ROUTE (brain_board mV41 vs mV44, 2026-11-18): the finish
@@ -1046,6 +1064,55 @@ def _rule_line(r):
     return "%s(%s)" % (r["kind"], ", ".join("%s=%s" % (k, r[k]) for k in keys))
 
 
+def _lifted(line):
+    """A placement-log line the report lifts to its summary (tangles, grows, decap room)."""
+    return any(k in line for k in ("TANGLE HINT", "GROW", "DECAP ROOM"))
+
+
+# ⚠ STRANDING IS EVERY near / decap RULE, JUDGED BY ITS OWN CHECK, HELD PARTS INCLUDED (lead
+# 2026-11-22). place_init's DECAP STRANDED line counted only FREE satellites, centre to pin:
+# a snapshot-held cap 26 mm off its pin (C119) never showed, and two intents that freed
+# different parts read 7 against 11 stranded with the same 8 rules broken on each. The count
+# here is the only one: each rule pi.check misses by more than STRANDED_MM, hard counted
+# apart, held / free said. (place_init's lines stay in flow.log as diagnostics -- who holds
+# the pin's patch -- and are no longer counted or lifted.)
+STRANDED_MM = 1.0
+_SAT = []          # the current placement's broken satellite rules (flow sets it, _report reads it)
+
+
+def _sat_broken(rules, parts, pl):
+    """[(mm past, ref, target, max_mm, hard, held, src)] for every near / decap rule broken by
+    more than STRANDED_MM at placement pl (rules naming an unplaced part are skipped)."""
+    held = {r["ref"] for r in rules if r["kind"] in ("fixed", "pin", "panel") and r.get("ref")}
+    P = pi.Placed(parts, pl)
+    out = []
+    for r in rules:
+        if r["kind"] not in ("near", "decap"):
+            continue
+        try:
+            res = pi.check(r, P, {})
+        except (KeyError, ValueError, TypeError):
+            continue
+        for s, ref, _det in res:
+            if s < -STRANDED_MM:
+                out.append((round(-s, 2), ref, r.get("pin") or r.get("target"), r.get("max_mm"),
+                            pi.is_hard(r), ref in held, r.get("src", "")))
+    return sorted(out, key=lambda t: -t[0])
+
+
+def _sat_summary(init_log, sat=None):
+    """The stranding list (_sat_broken, each rule once) and its count line, then the log's
+    tangle / grow lines once each."""
+    sat = _SAT if sat is None else sat
+    out = ["SATELLITE BROKEN (%s, %s): %s %.1f mm past its rule (%s <= %g) [%s]"
+           % ("HARD" if h else "soft", "held" if hd else "free", ref, mm, t, m, src)
+           for mm, ref, t, m, h, hd, src in sat]
+    out.append("PLACEMENT: %d near/decap rule(s) broken by > %g mm (%d hard; %d held, %d free)"
+               % (len(sat), STRANDED_MM, sum(1 for x in sat if x[4]), sum(1 for x in sat if x[5]),
+                  sum(1 for x in sat if not x[5])))
+    return out + list(dict.fromkeys(x_.split("place_init: ", 1)[-1] for x_ in init_log if _lifted(x_)))
+
+
 def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T, refused=None, room=(), width=(), pours=(),
             floor=(), fill=(), routability=None):
     forbid = [l_ for l_ in init_log + cells_log if "FORBID" in l_]
@@ -1083,8 +1150,7 @@ def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, 
     if fill:
         L += ["REGION FILL (courtyards / area): " + "  ".join("%s %.2f" % (n, f) for n, _, _, f in fill)]
     L += ["WARN " + f_ for f_ in floor]
-    L += [x_.split("place_init: ", 1)[-1] for x_ in init_log if "TANGLE HINT" in x_ or "GROW" in x_
-          or "STRANDED" in x_ or "OFF ITS PIN" in x_ or "DECAP ROOM" in x_]
+    L += _sat_summary(init_log)
     if fin:
         L += ["", "finish: %s" % (fin.get("error") or "%d unconnected%s, %d violation(s)%s" % (
             fin["unconnected"], (" (" + " ".join(fin.get("unconnected_nets", ())) + ")") if fin["unconnected"] else "",
@@ -1097,7 +1163,8 @@ def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, 
             qual["fail"], qual["open"], (" (" + " ".join(map(str, qual["failed"])) + ")") if qual.get("failed") else ""))]
     if gates:
         L += ["", "layout notes:"] + ["  " + g for g in gates]
-    L += ["", "placement log:"] + ["  " + l_ for l_ in init_log + cells_log if "fixed " not in l_]
+    L += ["", "placement log (less the lines listed above):"] + [
+        "  " + l_ for l_ in init_log + cells_log if "fixed " not in l_ and not _lifted(l_)]
     L += ["", "provenance (flow/provenance.json, per ref): " + ", ".join("%s %d" % kv for kv in prov.most_common()),
           "", "seconds: " + ", ".join("%s %d" % (k, v) for k, v in T.items())]
     open(os.path.join(fd, "report.md"), "w", encoding="utf-8").write("\n".join(L) + "\n")

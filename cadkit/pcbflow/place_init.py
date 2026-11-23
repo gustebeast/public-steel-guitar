@@ -1206,8 +1206,14 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
 
     def seat(ref):
         """Seat ref's satellites at their pins; then each satellite's own (recursive)."""
+        # ⚠ A HARD SATELLITE SEATS BEFORE A SOFT ONE (brain_board sw1, 2026-11-22): U205's
+        # datasheet-hard VIN cap C218 found NO ROOM -- its own soft siblings had taken the pin's
+        # patch first, and the LM5122's soft control parts filled Q209's side before its hard
+        # loop ceramic C306. An engineer places the hot-loop / VCC / BOOT caps first and fits
+        # the control parts round them: tight nets, then hard rules, then tightest max_mm.
         for r in sorted(decaps.get(ref, ()), key=lambda r: (0 if tight_nets & pnets.get(r.get("cap") or r.get("ref"), set())
-                                                                & pnets[ref] else 1, r.get("max_mm", 9))):
+                                                                & pnets[ref] else 1, 0 if pi.is_hard(r) else 1,
+                                                                r.get("max_mm", 9))):
             c = r.get("cap") or r.get("ref")
             if c in placed_sat or c in fixed or c not in idx:
                 continue
