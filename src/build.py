@@ -516,6 +516,22 @@ _COLORS = {
     "brain_board_pcb": _BG.mask("brain_board"),
     "connector_board_pcb": _BG.mask("connector_board"),
     "brain_board_cm5": _BG.mask_rgb("green"),        # the CM5's own board, as Raspberry Pi make it
+    "brain_board_pcb_silk": (0.95, 0.95, 0.93),      # silk ink, as ui_pcb_silk
+    "connector_board_pcb_silk": (0.95, 0.95, 0.93),
+    # the rest of src.new_boards_view.boards(): without these the web view build was skipped
+    "brain_board_cm5_soc": (0.55, 0.56, 0.58),       # polished SoC lid
+    "brain_board_cm5_plug": (0.90, 0.88, 0.82),      # DF40 plug body
+    "brain_board_df40_leads": (0.83, 0.69, 0.22),    # gold leads
+    "brain_board_idc": (0.12, 0.12, 0.13),           # IDC sockets
+    "brain_board_idc_ribbon": (0.62, 0.62, 0.64),    # grey ribbon
+    "connector_board_idc": (0.12, 0.12, 0.13),
+    "connector_board_idc_ribbon": (0.62, 0.62, 0.64),
+    "connector_board_tb_plug": (0.20, 0.55, 0.30),   # MX15EDGK plug housings
+    "connector_board_tb_screws": (0.62, 0.64, 0.67),
+    "brain_board_term": (0.20, 0.55, 0.30),
+    "brain_board_term_metal": (0.62, 0.64, 0.67),
+    "connector_board_term": (0.20, 0.55, 0.30),
+    "connector_board_term_metal": (0.62, 0.64, 0.67),
     "ui_pcb_silk": (0.95, 0.95, 0.93),
     "ui_pwr_cap": (0.15, 0.15, 0.17),
     "ui_pwr_stem": (0.94, 0.94, 0.92),
