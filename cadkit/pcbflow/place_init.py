@@ -224,6 +224,12 @@ def _composite(parts, anchor, members):
     return dict(a, pads=pads, crtyd=a["crtyd"], crtyd_multi=cy, n_own=len(a["pads"]))
 
 
+def _area(part):
+    """mm^2 of the box round every courtyard a part has: a cell's members' included."""
+    pts = [p for c in [part["crtyd"]] + list(part.get("crtyd_multi") or ()) if c for p in c]
+    return float(np.prod(np.ptp(np.asarray(pts or [[0, 0], [1, 1]], float), axis=0)))
+
+
 def _pin_cap(rule, parts):
     """⚠ A CAP `near` ITS IC's SUPPLY PIN MAY STAND IN THAT IC's RING, AS A `decap` MAY
     (output_board mN, 2026-11-14). The project ruled the H743's 13 VDD caps as `near`
@@ -303,7 +309,8 @@ def place(parts, notes, rules, keep=()):
             o = pi._rot([[dx, dy]], ar)[0]
             pl[m] = [round(ax + float(o[0]), 4), round(ay + float(o[1]), 4), (ar + dr) % 360.0]
             why[m] = "group: %s's cell, placed whole (free anchor)" % a
-    log.append("free-anchor cells placed whole: %s" % " ".join("%s(+%d)" % (a, len(ms)) for a, ms in cells.items()))
+    log.append("free-anchor cells placed whole: %s" % (" ".join("%s(+%d)" % (a, len(ms)) for a, ms in cells.items()
+                                                                if a in pl) or "none"))
     return pl, log, why
 
 
@@ -1116,7 +1123,11 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
             # U7.6). An IC's `near` is a spring in the quadratic stage instead, and seating
             # below recurses, so a satellite's own satellites follow it.
             decaps.setdefault(r["target"].split(".")[0], []).append(r)
-    area = {ref: float(np.prod(np.ptp(np.asarray(parts[ref]["crtyd"] or [[0, 0], [1, 1]]), axis=0))) for ref in free}
+    # ⚠ A CELL IS AS BIG AS ITS MEMBERS (brain_board c2, 2026-11-22): a free-anchor composite
+    # keeps its anchor's own courtyard in `crtyd` and the members' in `crtyd_multi`, so the
+    # LM5122 cell (15 x 24) ranked as its 5 x 5 IC, seated after L204 and the bulk caps, and
+    # found NO ROOM in a half-empty region. Big-first ranks it by the box round every piece.
+    area = {ref: _area(parts[ref]) for ref in free}
     sat = {r_.get("cap") or r_.get("ref") for v in decaps.values() for r_ in v}
     order = sorted((r for r in free if r not in sat), key=lambda r: -area[r])
     placed_sat = set()
@@ -1169,16 +1180,13 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
     # U220's control satellites; BST_SW's pour went from 10 to 25 foreign pads, BST_LMID 1 to
     # 15. A part on a pour's net or path (the high-current stage), or more than EVICT_AREA x
     # the satellite's courtyard, holds its seat.
-    def _area(x):
-        return float(np.prod(np.ptp(np.asarray(parts[x]["crtyd"] or [[0, 0], [1, 1]], float), axis=0)))
-
     def evict(c, t, ref, r, f0):
         P = pi.Placed(parts, pl)
         mm = float(r["max_mm"])
         tp = np.asarray(t, float)[None]
         cand = sorted((pi._poly_dist(P.crtyd(x), tp), x) for x in pl
                       if x in idx and x not in sat and x != ref and x not in fixed and x not in power_held
-                      and _area(x) <= EVICT_AREA * _area(c))
+                      and _area(parts[x]) <= EVICT_AREA * _area(parts[c]))   # a cell: its members' box
         for d, x in [q for q in cand if q[0] < mm][:EVICT_TRIES]:
             pose = _lift(G, parts, pl, x)
             if _drop_sat(G, parts, c, t, rots(c, rot[c]), pl, f0, ref, r, near_mm=mm):
