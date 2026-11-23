@@ -1613,6 +1613,9 @@ def auto_floorplan(parts, sensitive=SENSITIVE, noisy=NOISY_EDGE, xtal=XTAL_NET, 
         g = set(group)
         return {r for r in sens if len(parts[r]["pads"]) == 2
                 and any(nets.get(n, set()) & g for n in rnets[r] - set(ground) if sensitive.search(n))}
+    # the ICs driving a crystal (a pin on an oscillator net): listeners to a switch node only
+    xdrivers = {r for r in parts if r not in skip and ic(r) and r not in crystals
+                and any(xtal.search(n) for n in rnets[r] - set(ground))}
     rules = []
     for L in sorted(r for r in parts if re.match(r"^L\d", r) and r not in skip):
         for n in sorted(rnets[L]):
@@ -1625,7 +1628,12 @@ def auto_floorplan(parts, sensitive=SENSITIVE, noisy=NOISY_EDGE, xtal=XTAL_NET, 
             if SUPPLY.search(n) or n in ground or len(members) > 6 or not any(ic(m) for m in members if m != L):
                 continue
             grp = sorted(members - set(skip))
-            b = sorted((sens | crystals) - set(grp) - _own(grp))
+            # ⚠ A CRYSTAL'S DRIVER LISTENS TO A SWITCH NODE (brain_board c6, 2026-11-22): the
+            # hub U37 seated 1.2 mm off the boost's L204, and its crystal Y2 (hard: <= 4 mm of
+            # U37) could not also stand 10 mm off the SW node -- NO ROOM. The driver's XI / XO
+            # pins carry the same oscillator as the crystal. It stays out of the USB-edge
+            # rules (a PHY's crystal belongs at the PHY), but not out of this one.
+            b = sorted((sens | crystals | xdrivers) - set(grp) - _own(grp))
             if b:
                 rules.append({"kind": "apart", "a": grp, "b": b, "min_mm": switch_mm, "hard": False, "weight": 1.0,
                               "forbid": True,
