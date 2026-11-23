@@ -472,7 +472,8 @@ def check_launch(secs=4.0):
     shell has ended -- the real test, that it outlives the job."""
     import tempfile
     vbs = pathlib.Path(tempfile.gettempdir()) / ("cadkit_launch_check_%d.vbs" % os.getpid())
-    vbs.write_text("WScript.Sleep 60000\n", encoding="ascii")
+    vbs.write_text("WScript.Sleep 60000\n"                    # (when done it tidies itself away)
+                   "CreateObject(\"Scripting.FileSystemObject\").DeleteFile WScript.ScriptFullName\n", encoding="ascii")
     if _in_job():
         _launch_by_shell(vbs)
         how = "the shell (explorer)"
