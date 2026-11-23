@@ -134,6 +134,8 @@ HINT = {
     "A30": "route the sense pair side by side; seat each net tie on its shunt land",
     "A32": "size the chain from its lowest ceiling: the net after a series part carries what the "
            "net before it does (a 2-pin part has nowhere else to send it)",
+    "A33": "move the neighbour off the test pad, or the pad out into open board: a probe tip "
+           "wants PROBE_CLEAR_MM clear of every other part on the pad's face",
     "A22": "put a ground way between them: order the connector power, ground, data (and "
            "its mirror on a wider housing), the same on every lead of the family",
 }
@@ -3440,6 +3442,68 @@ def series_current(ctx):
             continue
         out.append(("%s %s>%s" % (ref, ni, no), True,
                     "%s: %s %.2f A -> %s %.2f A" % (ref, ni, ai, no, ao)))
+    return out
+
+
+PROBE_CLEAR_MM = 0.75      # A33: courtyard to pad edge -- ~1.0 mm to the neighbour's body (a courtyard
+                           # grows the body 0.25), the room a probe tip or a pogo pin's barrel needs
+
+
+@rule("A33")
+def test_pad_access(ctx):
+    """A test pad keeps room for a probe: no other part's courtyard within PROBE_CLEAR_MM of the
+    pad on its own face (a through-hole part's on either face). Another test pad is flat copper,
+    not an obstacle: a cluster of pads (TP3 / TP5) is probed pad by pad.
+
+    ⚠ A RELEASED PART CAN BURY A TEST PAD AND NOTHING SAYS SO (brain_board esc14, 2026-11-22):
+    the HUB2 pair corridor released ten held parts in the column round TP2 (SWCLK), and whether
+    the placer left the pad reachable was a matter of looking. Soft: the default is to fix."""
+    tps = {r: f for r, f in ctx.fps.items() if _prefix(r) == "TP"}
+    if not tps:
+        return [("test pads", None, "no test pad on the board")]
+
+    def body(fp):
+        cy = fp.GetCourtyard(pcbnew.B_CrtYd if fp.IsFlipped() else pcbnew.F_CrtYd).BBox()
+        b = (MM(cy.GetLeft()), MM(cy.GetTop()), MM(cy.GetRight()), MM(cy.GetBottom()))
+        if b[2] - b[0] < 0.1 or b[3] - b[1] < 0.1:            # no courtyard drawn: its pads
+            bb = [q.GetBoundingBox() for q in fp.Pads()]
+            if not bb:
+                return None
+            b = (min(MM(x.GetLeft()) for x in bb), min(MM(x.GetTop()) for x in bb),
+                 max(MM(x.GetRight()) for x in bb), max(MM(x.GetBottom()) for x in bb))
+        return b
+    parts = []
+    for r, f in ctx.fps.items():
+        b = body(f)
+        if b is not None and r not in tps:
+            tht = any(q.GetAttribute() == pcbnew.PAD_ATTRIB_PTH for q in f.Pads())
+            parts.append((r, b, "B" if f.IsFlipped() else "F", tht))
+    out = []
+    for ref, fp in sorted(tps.items()):
+        for pad in fp.Pads():
+            faces = [s for s, L in (("F", pcbnew.F_Cu), ("B", pcbnew.B_Cu)) if pad.IsOnLayer(L)]
+            if not faces:
+                continue
+            bb = pad.GetBoundingBox()
+            box = (MM(bb.GetLeft()), MM(bb.GetTop()), MM(bb.GetRight()), MM(bb.GetBottom()))
+            if pad.GetShape(pcbnew.F_Cu) == pcbnew.PAD_SHAPE_CIRCLE:
+                # a round pad measures from its circle: its bounding box reads a diagonal
+                # neighbour up to r(sqrt2 - 1) closer than it is (TestPoint_Pad_D1.5: 0.31 mm)
+                c = pad.GetPosition()
+                gap = (lambda b, cx=MM(c.x), cy=MM(c.y), rr=(box[2] - box[0]) / 2.0:
+                       max(_box_gap((cx, cy, cx, cy), b) - rr, 0.0))
+            else:
+                gap = (lambda b, box=box: _box_gap(box, b))
+            near = sorted((gap(b), r) for r, b, side, tht in parts
+                          if r != ref and (tht or side in faces))
+            subj = "%s.%s" % (ref, pad.GetNumber() or "1")
+            if not near:
+                out.append((subj, True, "%s: nothing beside it" % subj))
+                continue
+            d, who = near[0]
+            out.append((subj, d >= PROBE_CLEAR_MM,
+                        "%s (%s, %s face): %s %.2f mm from the pad, wants %.2f clear for a probe"
+                        % (subj, pad.GetNetname() or "no net", "/".join(faces), who, d, PROBE_CLEAR_MM)))
     return out
 
 

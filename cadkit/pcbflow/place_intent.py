@@ -180,6 +180,135 @@ def part_height(ref, parts, H, notes=None):
     return H.get(parts[ref]["fpid"])
 
 
+# ── declared copper is an obstacle to other nets' pads (lead 2026-11-22) ─────────────────────
+# ⚠ A RELEASED PART CAN LAND ON DECLARED COPPER AND ONLY LAYOUT SAYS SO (brain_board sqp, 2026-11-22):
+# D213 / TP2, released by a pair corridor, sat on +5V_CM5's declared F.Cu column; placement treated
+# declared tracks and vias as nothing, the route was never started, and layout refused the board
+# ("declared copper crowds another net"). Each other net's PAD, grown by the fab's mask expansion,
+# keeps the net clearance from every declared track and via on the pad's own side (a through-hole
+# pad on every layer; a via is on every layer). Courtyards are not blocked: a body may sit over
+# copper, its pads may not.
+PAD_CU_CLEAR = 0.127        # layout._declared_copper_clear's rule (JLC 5 mil)
+PAD_MASK_EXP = 0.05         # solder-mask opening round a pad at the fab
+VIA_D = 0.6                 # layout._add_via's default diameter
+ALL_CU = "*"
+
+
+def declared_items(rules=(), notes=None):
+    """[(net, layer or ALL_CU, kind, geom, own)]: every declared track segment ("seg", (a, b, half
+    width)) and via ("via", (centre, radius)) -- `copper` rules and the notes' own tracks / vias.
+    own: the parts a rule's copper lands `on` -- drawn against those exact pins, their clearance is
+    layout's exact check (_declared_copper_clear), not a pad rectangle's."""
+    out, seen = [], set()
+    own = frozenset()
+
+    def seg(net, layer, w, pts):
+        for a, b in zip(pts[:-1], pts[1:]):
+            key = (net, layer, round(float(w), 4), tuple(map(float, a)), tuple(map(float, b)))
+            if key not in seen:
+                seen.add(key)
+                out.append((net, layer, "seg", (np.asarray(a, float), np.asarray(b, float), float(w) / 2.0), own))
+
+    def via(net, x, y, d):
+        key = (net, round(float(x), 4), round(float(y), 4))
+        if key not in seen:
+            seen.add(key)
+            out.append((net, ALL_CU, "via", (np.asarray([x, y], float), float(d) / 2.0), own))
+    for r in rules:
+        if r.get("kind") != "copper":
+            continue
+        own = frozenset(x.split(".", 1)[0] for x in r.get("on", ()))
+        for tr in r.get("tracks", ()):
+            seg(r["net"], tr["layer"], tr["width"], tr["pts"])
+        for v in r.get("vias", ()):
+            via(r["net"], v[0], v[1], v[3] if len(v) > 3 else r.get("via_d", VIA_D))
+    own = frozenset()
+    for tr in (notes or {}).get("tracks", ()) or ():
+        seg(tr[0], tr[1], tr[2], tr[3])
+    for v in (notes or {}).get("vias", ()) or ():
+        via(v[0], v[1], v[2], v[4] if len(v) > 4 else VIA_D)
+    return out
+
+
+def _seg_poly_gap(poly, a, b):
+    """Distance from segment ab to a convex polygon; 0 where they touch, cross or one holds the other."""
+    poly = np.asarray(poly, float)
+    if _inside(poly, np.stack([a, b])).any():
+        return 0.0
+    n = len(poly)
+    d = float(_seg_dist(poly, a, b).min())
+    for i in range(n):
+        e0, e1 = poly[i], poly[(i + 1) % n]
+        d = min(d, float(_seg_dist(np.stack([a, b]), e0, e1).min()))
+        # proper crossing: the two segments straddle each other
+        c1 = np.cross(b - a, e0 - a) * np.cross(b - a, e1 - a)
+        c2 = np.cross(e1 - e0, a - e0) * np.cross(e1 - e0, b - e0)
+        if c1 < 0 and c2 < 0:
+            return 0.0
+    return d
+
+
+def pad_layers(part, q):
+    """The copper layers a pad is on: ALL_CU for a through-hole pad, else its part's outer side."""
+    return ALL_CU if q.get("tht") else ("B.Cu" if part.get("side", "F") == "B" else "F.Cu")
+
+
+def pad_copper(P, items, refs=None, clr=PAD_CU_CLEAR, exp=0.0, near=0.5):
+    """[(slack, "REF.PIN", det)]: other nets' pads against declared copper, slack = gap - clr - exp
+    (< 0: the pad is inside the net clearance, or its mask opening is with exp=PAD_MASK_EXP). Only
+    pads within `near` of slack 0; a rule's own parts (`on`) are skipped.
+
+    ⚠ THE MASK BAND IS A WARNING, NOT A STOP (brain_board so_ovlo / sqahA, 2026-11-22): every declared
+    escape between U205's 0.5-pitch pins is drawn at the 0.127 rule, 0.13 from the next pin -- 34 pads
+    inside clearance + mask on boards layout accepts. place_flow stops at the net clearance (layout's
+    own rule, which catches sqp's D213 / TP2 on +5V_CM5) and says the mask band."""
+    if not items:
+        return []
+    need = clr + exp
+    boxes = []
+    for net, lay, kind, g, _own in items:
+        if kind == "seg":
+            a, b, hw = g
+            lo, hi = np.minimum(a, b) - hw, np.maximum(a, b) + hw
+        else:
+            c, rr = g
+            lo, hi = c - rr, c + rr
+        boxes.append((lo - need - near, hi + need + near))
+    out = []
+    for ref, part in P.parts.items():
+        if ref not in P.pl or (refs is not None and ref not in refs):
+            continue
+        for q in part["pads"]:
+            if not q.get("num") or not q.get("size"):
+                continue
+            pl_ = pad_layers(part, q)
+            poly = None
+            for (net, lay, kind, g, own), (lo, hi) in zip(items, boxes):
+                if net == q.get("net") or ref in own or not (pl_ == ALL_CU or lay == ALL_CU or lay == pl_):
+                    continue
+                c = P.pad(ref, q["num"])
+                rr = max(q["size"][:2]) * 0.75
+                if (c[0] + rr < lo[0] or c[0] - rr > hi[0] or c[1] + rr < lo[1] or c[1] - rr > hi[1]):
+                    continue
+                poly = poly if poly is not None else P.pad_poly(ref, q["num"])
+                if kind == "seg":
+                    a, b, hw = g
+                    gap = _seg_poly_gap(poly, a, b) - hw
+                    what = "declared %s track (%s, %.2f wide)" % (net, lay, 2 * hw)
+                else:
+                    cc, rv = g
+                    gap = (0.0 if _inside(poly, cc[None])[0] else float(min(
+                        _seg_dist(cc[None], poly[i], poly[(i + 1) % len(poly)])[0] for i in range(len(poly))))) - rv
+                    what = "declared %s via (%.2f, %.2f)" % (net, cc[0], cc[1])
+                s = gap - need
+                if s < near:
+                    out.append((s, "%s.%s" % (ref, q["num"]),
+                                "%s pad [%s] %.3f mm from %s, wants %.3f (clearance %.3f + mask %.3f)"
+                                % (pad_layers(part, q).replace(ALL_CU, "THT"), q.get("net") or "no net",
+                                   max(gap, 0.0), what, need, clr, exp)))
+    return out
+
+
 class Placed:
     """Parts at a placement: world courtyards, pads, bodies (board frame, mm)."""
 
@@ -284,6 +413,198 @@ def mirror_back(parts, refs):
             q["at"] = [p["at"][0], -p["at"][1], p["at"][2]]
         out[ref] = q
     return out
+
+
+def _hull2(pts):
+    """Convex hull (monotone chain) of 2-D points, counter-clockwise, as [[x, y]]."""
+    pts = sorted(set((round(x, 4), round(y, 4)) for x, y in pts))
+    if len(pts) < 3:
+        return [list(q) for q in pts]
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+    lo, hi = [], []
+    for q in pts:
+        while len(lo) >= 2 and cross(lo[-2], lo[-1], q) <= 0:
+            lo.pop()
+        lo.append(q)
+    for q in reversed(pts):
+        while len(hi) >= 2 and cross(hi[-2], hi[-1], q) <= 0:
+            hi.pop()
+        hi.append(q)
+    return [list(q) for q in lo[:-1] + hi[:-1]]
+
+
+def reach_envelope(part, rule, n=24):
+    """The local-frame points an `access` or `mate` rule reserves round its part, or None when the
+    reach cannot be stated in the part's own frame (a mate along a BOARD direction: it turns with
+    the part's rotation, which placement chooses -- the gate still checks it).
+      access: a tool_d circle round the part's pads (its courtyard centre when padless);
+      mate:   the body (fab box), swept `length` along an L-direction (or just the body for
+              "up"), grown by `clear` on every side."""
+    loc = part.get("crtyd") or []
+    if rule["kind"] == "access":
+        if "tool_d" not in rule:
+            return None
+        pads = [q["xy"] for q in part.get("pads", ()) if q.get("xy") is not None] or loc or [[0.0, 0.0]]
+        cx, cy = sum(q[0] for q in pads) / len(pads), sum(q[1] for q in pads) / len(pads)
+        rad = float(rule["tool_d"]) / 2.0 / math.cos(math.pi / n)     # the polygon circumscribes the circle
+        return [(cx + rad * math.cos(2 * math.pi * k / n), cy + rad * math.sin(2 * math.pi * k / n)) for k in range(n)]
+    if rule["kind"] == "mate":
+        d = rule.get("dir", "up")
+        if d != "up" and not d.startswith("L"):
+            return None
+        f = part.get("fab")
+        if f:
+            box = [(f[0], f[2]), (f[1], f[2]), (f[1], f[3]), (f[0], f[3])]
+        elif loc:
+            box = [tuple(q) for q in loc]
+        else:
+            return None
+        if d != "up":
+            ux, uy = DIRS[d[1:]]
+            L_ = float(rule.get("length", 0.0))
+            box = box + [(x + ux * L_, y + uy * L_) for x, y in box]
+        c = float(rule.get("clear", 0.0))
+        return [(x + sx * c, y + sy * c) for x, y in _hull2(box) for sx in (-1, 1) for sy in (-1, 1)]
+    return None
+
+
+# ── which stage honours each intent kind, and what stops a flow when a hard one breaks ─────
+# ⚠ THREE RULES THAT SILENTLY DID NOTHING IN ONE DAY (brain_board 2026-11-22): `tight` named only pin
+# satellites its stage cannot move; declared copper was no obstacle to a released part; `access`
+# (and `mate`) were only score terms, and the hard BROKEN gate listed neither. test_intent_kinds.py
+# holds this table against the code: every kind check() knows has an entry, every entry names a
+# stage that reads it, and every kind that can be hard has a gate.
+#   place:  the placement stages that honour it -- "init" (place_init seating / its quadratic and
+#           local stages, SOFT_KINDS), "cells" (place_cells), "grow" (grow_reach: the courtyard holds
+#           it), "flow" (place_flow itself), "layout" (the router model: router/model.py),
+#           "expand" (place_intent turns it into other rules or widths: auto_pour -> `pour`, current -> widths), "check" (no stage seats it: check() alone, so a hard one only refuses -- array)
+#   gate:   "broken" (place_flow's BROKEN hard rules), "near" (_near_broken), "region" (the region
+#           leak stop), "pad_copper" (place_flow's PAD ON DECLARED COPPER stop), None (not gated)
+#   hard:   the default when a rule says nothing (the soft optimiser kinds are soft unless asked)
+KINDS = {
+    "outline":   dict(place=("init",), gate="broken", hard=True),
+    "keepout":   dict(place=("init", "cells"), gate="broken", hard=True),
+    "hole":      dict(place=("init", "cells"), gate="broken", hard=True),
+    "height":    dict(place=("init",), gate="broken", hard=True),
+    "fixed":     dict(place=("init", "cells"), gate="broken", hard=True),
+    "pin":       dict(place=("init", "cells"), gate="broken", hard=True),
+    "panel":     dict(place=("init", "cells", "flow"), gate="broken", hard=True),
+    "group":     dict(place=("init", "cells"), gate="broken", hard=True),
+    "rot":       dict(place=("init",), gate="broken", hard=True),
+    "side":      dict(place=("init",), gate="broken", hard=True),
+    "access":    dict(place=("init", "grow"), gate="broken", hard=True),
+    "mate":      dict(place=("grow",), gate="broken", hard=True),
+    "array":     dict(place=("check",), gate=None, hard=False),       # hard is refused: check() raises
+    "near":      dict(place=("init",), gate="near", hard=True),
+    "decap":     dict(place=("init",), gate="broken", hard=True),
+    "between":   dict(place=("init",), gate="broken", hard=False),
+    "thermal":   dict(place=("init", "cells"), gate="broken", hard=False),
+    "apart":     dict(place=("init", "cells"), gate="broken", hard=False),
+    "chain":     dict(place=("init",), gate="broken", hard=False),
+    "tight":     dict(place=("init",), gate="broken", hard=False),
+    "in_region": dict(place=("init", "cells"), gate="region", hard=True),
+    "region":    dict(place=("init",), gate=None, hard=False),
+    "current":   dict(place=("expand",), gate=None, hard=False),
+    "pour":      dict(place=("flow",), gate=None, hard=False),
+    "auto_pour": dict(place=("expand",), gate=None, hard=False),
+    "copper":    dict(place=("flow", "init"), gate="pad_copper", hard=True),   # other nets' pads keep off it
+}
+GATE_KINDS = tuple(k for k, v in KINDS.items() if v["gate"] == "broken")
+
+
+# ⚠ EVERY HOLD SAYS WHY IT HOLDS (user 2026-11-22: "it feels like an oversight having previous
+# decisions limit us now without a clear reason"). 365 of the brain board's 393 `fixed` rules
+# were where an earlier layout or window round happened to leave a part, written as hard
+# holds with no reason and no expiry; they stacked up until no placer could act on overflow.
+# A `fixed` rule carries "hold": one of HOLD_CLASSES, and a `why` naming the specific need:
+#   mate        a connector / plug's partner sets where it is (a ribbon's IDC, a module socket)
+#   mechanical  the enclosure, a panel, a screw, a bearing or the string fan sets it
+#   user        the user ruled it (cite the ruling in src)
+#   physical    the circuit needs it there (an isolation barrier straddle, a kelvin tie, an
+#               optical sensing column)
+#   snapshot    a REMEMBERED POSITION: where an earlier layout left it -- not a constraint
+# place_flow stops on a `fixed` rule with no class or no why (check_holds), and prints the
+# HOLDS line by class on every run.
+HOLD_CLASSES = ("mate", "mechanical", "user", "physical", "snapshot")
+
+
+def hold_class(rule):
+    """A `fixed` rule's hold class ("snapshot": true is the older spelling of hold "snapshot"),
+    or None when it has none."""
+    if rule.get("kind") != "fixed":
+        return None
+    if rule.get("snapshot"):
+        return "snapshot"
+    return rule.get("hold")
+
+
+def is_snapshot(rule):
+    """A `fixed` hold of class "snapshot" is a REMEMBERED POSITION (where an earlier layout or a
+    window round left the part), not a constraint (lead 2026-11-22). place_init still seats the
+    part there, but a re-placement may move it under every hard-rule gate. Mate, mechanical,
+    user and physical holds (HOLD_CLASSES) are constraints."""
+    return hold_class(rule) == "snapshot"
+
+
+def check_holds(rules):
+    """(counts, problems) over every `fixed` rule: counts by hold class (+ "transient" for
+    window scaffolding -- transient region / in_region / keepout / fixed rules), and one line
+    per hold with no class, an unknown class, a snapshot flag contradicting its class, or no
+    `why`. A problem stops place_flow."""
+    counts, bad = {}, []
+    for i, r in enumerate(rules):
+        if r.get("transient") and r.get("kind") in ("region", "in_region", "keepout", "fixed"):
+            counts["transient"] = counts.get("transient", 0) + 1
+        if r.get("kind") != "fixed":
+            continue
+        c = hold_class(r)
+        if r.get("snapshot") and r.get("hold") not in (None, "snapshot"):
+            bad.append("rule %d: %s is snapshot=true but hold %r" % (i, r.get("ref"), r.get("hold")))
+        elif c not in HOLD_CLASSES:
+            bad.append("rule %d: %s fixed with %s" % (i, r.get("ref"), "no hold class" if c is None
+                                                       else "unknown hold class %r" % c))
+        elif not str(r.get("why", "")).strip():
+            bad.append("rule %d: %s fixed (%s) with no why" % (i, r.get("ref"), c))
+        counts[c] = counts.get(c, 0) + 1
+    return counts, bad
+
+
+def is_hard(rule):
+    """A rule's hardness: its own `hard`, else its kind's default (KINDS)."""
+    if "hard" in rule:
+        return bool(rule["hard"])
+    return KINDS.get(rule.get("kind"), {}).get("hard", True)
+
+def grow_reach(parts, rules):
+    """parts with each `access` / `mate` part's courtyard grown to hold what the rule reserves (the
+    hull of the courtyard and reach_envelope), so every placer and check keeps neighbours out of
+    a probe's or a plug's reach -- a reach rule that is only a score term is not one. Returns
+    (parts, [refs grown]); idempotent.
+
+    ⚠ `access` AND `mate` WERE ONLY SCORE TERMS (brain_board sqah, 2026-11-22): hard access on seven
+    test pads placed cell for cell like soft (sqak), 5 of 7 pads still short of quality A33; the
+    three hard IDC `mate` strokes (J4, J240, J205) had no placement consumer either."""
+    out, grown = dict(parts), []
+    for r in rules:
+        ref = r.get("ref") if r.get("kind") in ("access", "mate") else None
+        if ref not in out:
+            continue
+        p = out[ref]
+        env = reach_envelope(p, r)
+        if env is None:
+            continue
+        loc = p.get("crtyd") or []
+        hull = _hull2(list(env) + [tuple(q) for q in loc])
+        if sorted(tuple(round(v, 4) for v in q) for q in loc) != sorted(tuple(q) for q in hull):
+            out[ref] = dict(p, crtyd=hull)
+            if ref not in grown:
+                grown.append(ref)
+    return out, grown
+
+
+grow_access = grow_reach        # b702a19's name
 
 
 def panel_face(rule):
@@ -556,6 +877,9 @@ def check(rule, P, notes, H=None):
             n = len(pour_foreign(rule, P, poly))
             out.append((-float(n), rule["net"], "pour on %s: %d other net pad(s) inside" % (rule["layer"], n)))
     elif k == "array":
+        if rule.get("hard"):
+            raise ValueError("array %s is hard, but array has no seating stage: use soft, or seat the parts as a "
+                             "`group` (place_intent.KINDS)" % (rule.get("refs"),))
         refs = _refs(rule["refs"], parts)
         ax = 0 if rule["axis"] in ("x", "X") else 1
         pts = sorted(((np.asarray(P.at(r)[:2]), r) for r in refs), key=lambda t: t[0][ax])
@@ -1438,7 +1762,7 @@ def _swap_pairs(part, groups, flip=False):
     return out
 
 
-def swap_plan(parts, pl, groups, max_parts=10, flip=()):
+def swap_plan(parts, pl, groups, max_parts=10, flip=(), rejected=()):
     """The channel swaps on pass-through parts that leave the fewest twisted pair hops
     (pair_twists), fewest swaps on a tie. Each swap is free in the netlist (identical channels)
     but must be carried into the netlist's generator. Returns (twisted before, twisted after,
@@ -1446,12 +1770,16 @@ def swap_plan(parts, pl, groups, max_parts=10, flip=()):
     ⚠ THE TWISTED-HOP COUNT IS A HINT, NOT A SCORE (brain_board W48k, 2026-11-19): the plan's
     FL3/FL4 winding swaps took the count 7 -> 3 and the paired seed-1 route came out worse
     (2/0/98/32 vs 2/0/90/24; GADGET 6/9 vias, skew 30.7, new USBA / USBB_J fails). Route a
-    proposed swap against its control before carrying it into the netlist."""
+    proposed swap against its control before carrying it into the netlist.
+    ⚠ ...AND A REJECTED ONE IS NOT PROPOSED AGAIN (brain_board esc13, 2026-11-22): the same FL3 / FL4
+    swap was proposed in 24 runs after W48k; its 2-seed route A/B (rPS_13s1/s2 vs 13c1/c2) lost on the
+    USB pairs both times (USBA / USBB_J hard FAILs 2 vs 0 and 2 vs 1). `rejected` (the board notes'
+    swap_rejected refs) leaves those parts out of the plan."""
     import copy
     gsets = [frozenset(g.get("nets") or ()) for g in groups if len(g.get("nets") or ()) == 2]
     cand = {}
     for ref, v in parts.items():
-        if ref in pl:
+        if ref in pl and ref not in rejected:
             sp = _swap_pairs(v, gsets, flip=ref in flip)
             if sp:
                 cand[ref] = sp

@@ -342,13 +342,33 @@ fn feat_candidate(c: RayIntersection, o: vec3f, d: vec3f, tmin: f32, top: f32, c
   return feat_hit(fi, w2o * vec4f(o, 1.0), w2o * vec4f(d, 0.0), o, d, tmin, top, clip);
 }
 
-// A candidate hit is passed over (the ray goes on) when it lies on the cut side of the section plane, or,
-// with a clear part, most of the time. Only clear parts are non-opaque geometry; with a section on, every
-// triangle is made a candidate so the plane can be asked.
-fn trace(o: vec3f, d: vec3f, tmin: f32, tmax: f32) -> Hit {
+// THE SECTION CUTS THE RAY, NOT THE HITS. What the plane keeps of a ray is one stretch of it (a
+// half-space is convex), so the ray is shortened to that stretch before it is traced, and the query
+// never meets what is cut away. (It used to make every triangle a non-opaque candidate and ask the
+// plane of each: a ray from an eye on the cut side then tested and threw away everything between
+// the eye and the plane, one hit at a time -- down a bank of threaded screws, hundreds a pixel, and the
+// frame rate fell through the floor, user 2026-11-22.) Returns the kept (tmin, tmax), empty when
+// tmin >= tmax.
+fn clip_span(o: vec3f, d: vec3f, tmin: f32, tmax: f32) -> vec2f {
+  if ((G.flags & 2u) == 0u) { return vec2f(tmin, tmax); }
+  let s0 = dot(G.clip.xyz, o) + G.clip.w;          // kept while s0 + dn t >= 0
+  let dn = dot(G.clip.xyz, d);
+  if (abs(dn) < 1e-12) { return select(vec2f(tmin, tmax), vec2f(1.0, 0.0), s0 < 0.0); }
+  let tp = -s0 / dn;
+  if (dn > 0.0) { return vec2f(max(tmin, tp), tmax); }
+  return vec2f(tmin, min(tmax, tp));
+}
+
+// A candidate hit is passed over (the ray goes on) when it is a clear part's, most of the time. Only
+// clear parts are non-opaque geometry. (The plane tests left below only catch rounding at the cut.)
+fn trace(o: vec3f, d: vec3f, tmin0: f32, tmax0: f32) -> Hit {
   let clip = (G.flags & 2u) != 0u;
+  let span = clip_span(o, d, tmin0, tmax0);
+  let tmin = span.x;
+  let tmax = max(span.y, span.x);                    // nothing kept: a ray of no length, which meets nothing
+  // (no early return before the query: on this driver a ray query after a branch lost the device)
   var rq: ray_query;
-  rayQueryInitialize(&rq, tlas, RayDesc(select(RAY_FLAG_NONE, RAY_FLAG_FORCE_NO_OPAQUE, clip), 0xFFu, tmin, tmax, o, d));
+  rayQueryInitialize(&rq, tlas, RayDesc(RAY_FLAG_NONE, 0xFFu, tmin, tmax, o, d));
   // THE NEAREST FEATURE HIT IS KEPT HERE, not generated into the query: a hit generated over a
   // farther one already generated was at times thrown away (naga's guard on the call reads the
   // candidate's t; past that, the driver too kept the farther), so where two pieces of a string
@@ -386,13 +406,15 @@ fn trace(o: vec3f, d: vec3f, tmin: f32, tmax: f32) -> Hit {
 
 fn occluded(o: vec3f, d: vec3f) -> bool {
   let clip = (G.flags & 2u) != 0u;
+  let span = clip_span(o, d, 0.0, 30000.0);         // (as trace: the plane shortens the ray)
+  let t1 = max(span.y, span.x);
   var rq: ray_query;
-  rayQueryInitialize(&rq, tlas, RayDesc(RAY_FLAG_TERMINATE_ON_FIRST_HIT | select(RAY_FLAG_NONE, RAY_FLAG_FORCE_NO_OPAQUE, clip), 0xFFu, 0.0, 30000.0, o, d));
+  rayQueryInitialize(&rq, tlas, RayDesc(RAY_FLAG_TERMINATE_ON_FIRST_HIT, 0xFFu, span.x, t1, o, d));
   while (rayQueryProceed(&rq)) {
     let c = rayQueryGetCandidateIntersection(&rq);
     if (c.kind == RAY_QUERY_INTERSECTION_AABB) {
       // (any feature hit shades: no need to hand it to the query -- see trace)
-      if (feat_candidate(c, o, d, 0.0, 30000.0, clip) > 0.0) { rayQueryTerminate(&rq); return true; }
+      if (feat_candidate(c, o, d, span.x, t1, clip) > 0.0) { rayQueryTerminate(&rq); return true; }
       continue;
     }
     if (clip && dot(G.clip.xyz, o + d * c.t) + G.clip.w < 0.0) { continue; }

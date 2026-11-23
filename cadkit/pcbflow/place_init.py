@@ -125,6 +125,82 @@ def mask(part, rot, g=GRID):
     return m, -i0, -j0
 
 
+def cu_grids(G, items, clr=None):
+    """G.cu: {(layer, net, own): bool grid} -- each declared net's copper per layer ("F" / "B" /
+    "I" inner / "A" a via, every layer), grown by the net clearance and half a cell. Set on G."""
+    clr = pi.PAD_CU_CLEAR if clr is None else clr
+    out = {}
+    pts = np.stack([G.X.ravel(), G.Y.ravel()], axis=1)
+    grow = clr + G.g * 0.71
+    for net, lay, kind, g, own in items:
+        L = "A" if lay == pi.ALL_CU else ("F" if lay == "F.Cu" else ("B" if lay == "B.Cu" else "I"))
+        if kind == "seg":
+            a, b, hw = g
+            lo, hi = np.minimum(a, b) - hw - grow, np.maximum(a, b) + hw + grow
+            r = hw + grow
+        else:
+            a, r0 = g
+            b = a
+            lo, hi = a - r0 - grow, a + r0 + grow
+            r = r0 + grow
+        sel = ((pts[:, 0] >= lo[0]) & (pts[:, 0] <= hi[0]) & (pts[:, 1] >= lo[1]) & (pts[:, 1] <= hi[1]))
+        if not sel.any():
+            continue
+        hit = np.zeros(len(pts), bool)
+        hit[sel] = pi._seg_dist(pts[sel], a, b) <= r
+        key = (L, net, own)
+        cur = out.get(key)
+        hv = hit.reshape(G.H, G.W)
+        out[key] = hv if cur is None else (cur | hv)
+    G.cu = out
+    G.cu_any = None
+    if out:
+        G.cu_any = np.zeros((G.H, G.W), bool)
+        for v in out.values():
+            G.cu_any |= v
+    return out
+
+
+def pad_mask(part, rot, m_shape, ai, aj, keep, g=GRID):
+    """The part's pads that `keep(q)` selects, rasterised in mask()'s frame (shape m_shape, anchor
+    ai, aj), half a cell grown: None if none is selected."""
+    qs = [q for q in part["pads"] if q.get("size") and keep(q)]
+    if not qs:
+        return None
+    X, Y = np.meshgrid((np.arange(m_shape[1]) - aj) * g, (np.arange(m_shape[0]) - ai) * g)
+    pts = np.stack([X.ravel(), Y.ravel()], axis=1)
+    out = np.zeros(len(pts), bool)
+    for q in qs:
+        w, h = q["size"][:2]
+        c = pi._rot([[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]], q.get("rot", 0.0)) + np.asarray(q["xy"], float)
+        out |= pi._inside(pi._rot(c, rot), pts)
+    return binary_dilation(out.reshape(m_shape), iterations=1)
+
+
+def _cu_free(G, part, ref, a, m, ai, aj, i0, i1, j0, j1):
+    """bool (window): where the part's other-net pads keep off declared copper (all True if none)."""
+    if not getattr(G, "cu", None):
+        return None
+    if not G.cu_any[i0:i1, j0:j1].any():
+        return None
+    side = "B" if part.get("side", "F") == "B" else "F"
+    ok = None
+    for (L, net, own), grid in G.cu.items():
+        if ref in own:
+            continue
+        sub = grid[i0:i1, j0:j1]
+        if not sub.any():
+            continue
+        on = ((lambda q: True) if L == "A" else (lambda q: bool(q.get("tht"))) if L == "I" else
+              (lambda q: bool(q.get("tht")) or L == side))
+        pm = pad_mask(part, a, m.shape, ai, aj, lambda q: on(q) and q.get("net") != net)
+        if pm is None:
+            continue
+        f = _collide(sub.astype(np.float32), pm, ai, aj) < 0.5
+        ok = f if ok is None else (ok & f)
+    return ok
+
+
 def _pad_off(part, rot):
     return pi._rot([q["xy"] for q in part["pads"]], rot) if part["pads"] else np.zeros((0, 2))
 
@@ -314,7 +390,7 @@ def _place_two_sided(parts, notes, rules, keep, back):
 
     P2 = {r: _ghost(p) for r, p in front.items()}
     P2.update({r: parts[r] for r in back})
-    rb = [dict(kind="fixed", ref=r, xy=[plF[r][0], plF[r][1]], rot=plF[r][2], why="front pass",
+    rb = [dict(kind="fixed", ref=r, xy=[plF[r][0], plF[r][1]], rot=plF[r][2], hold="snapshot", why="front pass",
                src="place_init two-sided") for r in sorted(front)]
     for r in rules:
         k = r["kind"]
@@ -930,6 +1006,7 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
     G = Grid(poly, [dict(c) for c in notes.get("cutouts", ())] +
              [{"xy": r["xy"], "d": r["d"], "keepout": r.get("keepout", 0.0)} for r in rules if r["kind"] == "hole"],
              [r["poly"] for r in rules if r["kind"] == "keepout" and not r.get("except")])
+    cu_grids(G, pi.declared_items(rules, notes))   # kind "copper" + the notes' tracks / vias: other nets' pads keep off
     inreg = {}
     for r in rules:
         if r["kind"] == "in_region":
@@ -2483,6 +2560,9 @@ def _drop(G, parts, ref, t, rots, pl, forbid=None, near_mm=None):
                     and getattr(G, "out", None) is not None):
                 col3 = _collide(G.out[i0:i1, j0:j1].astype(np.float32), mg, gi, gj)
                 free &= col3 < 0.5
+            cf = _cu_free(G, parts[ref], ref, a, m, ai, aj, i0, i1, j0, j1)
+            if cf is not None:
+                free &= cf
             if not free.any():
                 continue
             fi, fj = np.nonzero(free)

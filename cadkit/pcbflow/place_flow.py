@@ -538,6 +538,14 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
         notes["back_refs"] = sorted(set(notes.get("back_refs", ())) | set(back))
         print("place_flow: two-sided: %d part(s) on the back (B.Cu)" % len(back))
         log.write("## two-sided: %s on the back\n" % " ".join(back))
+    # an `access` / `mate` part's courtyard holds its reach (tool circle, plug stroke), ON DISK like the back side above, so
+    # place_init, place_cells and every check keep neighbours out of the probe's reach
+    parts, grown_ = pi.grow_reach(parts, rules)
+    if grown_:
+        pj = json.load(open(parts_path, encoding="utf-8"))
+        pj["parts"] = parts
+        json.dump(pj, open(parts_path, "w", encoding="utf-8"), indent=0)
+        print("place_flow: access / mate: %d courtyard(s) grown to their reach: %s" % (len(grown_), " ".join(grown_)))
     # opt-in: big currents as pours, not tracks (place_intent.auto_pour)
     rules, aplines = pi.auto_pour(rules, parts, notes)
     for a_ in aplines:
@@ -562,6 +570,15 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     ip = os.path.join(fd, "intent.json")
     json.dump(rules, open(ip, "w"), indent=1)
     say = lambda s: (print("place_flow: " + s), log.write("## " + s + "\n"), log.flush())
+    # ⚠ EVERY HOLD SAYS WHY (user 2026-11-22, pi.check_holds): a `fixed` rule with no hold class
+    # or no why stops here, before any placement is spent on it; the HOLDS line reports by class.
+    hc_, hbad_ = pi.check_holds(rules)
+    say("HOLDS: %d fixed -- %s" % (sum(v for k, v in hc_.items() if k != "transient"),
+                                  ", ".join(["%s %d" % (k, hc_[k]) for k in pi.HOLD_CLASSES + ("transient",) if hc_.get(k)]
+                                            + (["UNCLASSIFIED %d" % len(hbad_)] if hbad_ else []))))
+    if hbad_:
+        raise SystemExit("place_flow: intent refused -- %d hold(s) without a reason (hold: %s, and a why):\n  %s"
+                         % (len(hbad_), " / ".join(pi.HOLD_CLASSES), "\n  ".join(hbad_[:20])))
     # ⚠ A RULE THAT NAMES A PART THE NETLIST NO LONGER HAS STOPS THE FLOW HERE, NOT LATER
     # (brain_board mV20a/b, 2026-11-17): a saved pour rule still ran `along` R223.2 after the
     # U5 rework removed R223; both runs placed for 20 minutes and died in _pours on a KeyError.
@@ -663,7 +680,7 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     P_k = pi.Placed(parts, pl)
     broken = []
     for i_, r_ in enumerate(rules):
-        if r_["kind"] in ("outline", "keepout", "hole", "fixed", "height") and r_.get("hard", True):
+        if r_["kind"] in pi.GATE_KINDS and pi.is_hard(r_):
             for s_, ref_, det in pi.check(r_, P_k, notes_k):
                 if s_ < -0.05:
                     broken.append("rule %d %s: %s %s (%.2f mm)" % (i_, r_["kind"], ref_, det, s_))
@@ -671,6 +688,25 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
         say("BROKEN hard rules -- the flow stops before layout: " + " | ".join(broken[:8]))
         _report(fd, base, rules, init_log, [], [], None, None, None, why, T,
                 refused="intent check: BROKEN hard mechanical rules\n" + "\n".join(broken[:20]), floor=floor, room=room)
+        return 2
+    # declared copper is an obstacle to other nets' pads (place_intent.pad_copper; lead 2026-11-22):
+    # a pad inside a declared track's clearance is a short layout refuses later -- say it here, with
+    # whether the part was held there (the intent must move) or placed there (the placer missed it).
+    # (the A/B against hand keep-outs, 2026-11-22: sqp 16.52 / 15.41 with the rule, 16.69 / 15.58 with the keep-out)
+    held_ = {x for r_ in rules if r_["kind"] in ("fixed", "pin", "panel") for x in (pi._refs(r_["refs"], parts) if "refs" in r_ else [r_.get("ref")])}
+    it_ = pi.declared_items(rules, notes)
+    pc_ = sorted(set(x for x in pi.pad_copper(P_k, it_) if x[0] < -0.005))
+    for v_, s_, d_ in sorted(set(pi.pad_copper(P_k, it_, exp=pi.PAD_MASK_EXP, near=0.0))):
+        if v_ < -0.005 and not any(s_ == x[1] for x in pc_):
+            w_ = "PAD BY DECLARED COPPER %s: %s -- inside the %.2f mask band" % (s_, d_, pi.PAD_MASK_EXP)
+            say("WARN " + w_)
+            floor.append(w_)
+    if pc_:
+        lines_ = ["%s%s: %s (%.3f mm short)" % (s_, " (held)" if s_.split(".")[0] in held_ else "", d_, -v_)
+                  for v_, s_, d_ in sorted(pc_)]
+        say("PAD ON DECLARED COPPER -- the flow stops before layout: " + " | ".join(lines_[:8]))
+        _report(fd, base, rules, init_log, [], [], None, None, None, why, T,
+                refused="intent check: PAD ON DECLARED COPPER\n" + "\n".join(lines_[:20]), floor=floor, room=room)
         return 2
     for w_ in _chain_warns(rules, parts, pl):
         say("WARN " + w_)
@@ -953,22 +989,28 @@ def _swap_lines(notes, parts, pl, stem, fd, apply=False):
     flow/input.net) -- the netlist's GENERATOR must then carry them, or the next export loses
     them."""
     groups = list(notes.get("match") or []) + list(notes.get("diff_pairs") or [])
+    # notes["swap_rejected"]: [{refs: [...], why: "the route A/B that rejected it"}] -- those parts
+    # are left out of the plan, and said once, so a lost A/B is not re-proposed every run
+    rej = [e for e in (notes.get("swap_rejected") or ()) if isinstance(e, dict) and e.get("refs")]
+    rejected = {r for e in rej for r in e["refs"]}
     try:
-        n0, n1, sw = pi.swap_plan(parts, pl, groups, flip=set(notes.get("pair_flip") or ()))
+        n0, n1, sw = pi.swap_plan(parts, pl, groups, flip=set(notes.get("pair_flip") or ()), rejected=rejected)
     except Exception as e:                   # feedback only: never stops the flow
         return ["SWAP check failed: %s" % e]
     json.dump(dict(twisted_before=n0, twisted_after=n1, applied=bool(apply and sw),
                    swaps=[dict(ref=r, pins=[list(x) for x in prs]) for r, prs in sw]),
               open(os.path.join(fd, "pin_swaps.json"), "w"), indent=1)
+    said = ["SWAP not proposed for %s: rejected by route A/B (%s)" % (" ".join(e["refs"]), e.get("why") or "no reason given")
+            for e in rej if set(e["refs"]) & set(parts)]
     if not sw:
-        return []
+        return said
     nets = {r: {q["num"]: q["net"] for q in parts[r]["pads"]} for r, _ in sw}
     out = ["SWAP %s: pins %s -- its channels are identical, so swapping the rails between them is free "
            "in the netlist; twisted pair hops %d -> %d%s"
            % (r, ", ".join("%s<->%s (%s/%s)" % (a, b, nets[r][a], nets[r][b]) for a, b in prs), n0, n1,
               "" if apply else " (proposed, NOT applied: --apply-swaps tries it on this run; once a route A/B "
                              "accepts it, `swaps.py accept` records it and the generator's apply_accepted "
-                             "carries it)") for r, prs in sw]
+                             "carries it; a rejected one goes in the board notes' swap_rejected)") for r, prs in sw] + said
     if apply:
         net_path = stem + ".net"
         keep = os.path.join(fd, "input.net")
