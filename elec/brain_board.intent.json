@@ -306,6 +306,7 @@
  },
  {
   "kind": "fixed",
+  "hold": "physical",
   "why": "ISO7741: rows either side of the vertical moat",
   "src": "cadkit A25; output_board BARRIER",
   "hard": true,
@@ -318,6 +319,7 @@
  },
  {
   "kind": "fixed",
+  "hold": "physical",
   "why": "ISO7740: rows either side of the vertical moat",
   "src": "cadkit A25; output_board BARRIER",
   "hard": true,
@@ -330,6 +332,7 @@
  },
  {
   "kind": "fixed",
+  "hold": "physical",
   "why": "ISO7710F: rows either side of the vertical moat",
   "src": "cadkit A25; output_board BARRIER",
   "hard": true,
@@ -342,6 +345,7 @@
  },
  {
   "kind": "fixed",
+  "hold": "physical",
   "why": "B0509S: pins 1-2 (in) charger side, 3-4 (out) audio side",
   "src": "cadkit A25; output_board BARRIER",
   "hard": true,
@@ -354,6 +358,7 @@
  },
  {
   "kind": "fixed",
+  "hold": "physical",
   "why": "relay: coil on the charger side, contacts in the audio corner",
   "src": "cadkit A25; output_board BARRIER",
   "hard": true,
@@ -366,6 +371,7 @@
  },
  {
   "kind": "fixed",
+  "hold": "mate",
   "why": "CM5 connector on its CM5IO position (module turned 90, top-right corner)",
   "src": "CM5IO RP-008099-DD-1; elec/cm5_mech.py",
   "hard": true,
@@ -378,6 +384,7 @@
  },
  {
   "kind": "fixed",
+  "hold": "mate",
   "why": "CM5 connector on its CM5IO position (module turned 90, top-right corner)",
   "src": "CM5IO RP-008099-DD-1; elec/cm5_mech.py",
   "hard": true,
@@ -3830,6 +3837,7 @@
  },
  {
   "kind": "fixed",
+  "hold": "mate",
   "ref": "J205",
   "xy": [
    30.785,
@@ -3842,6 +3850,7 @@
  },
  {
   "kind": "fixed",
+  "hold": "mate",
   "ref": "J240",
   "xy": [
    9.885,
@@ -3854,6 +3863,7 @@
  },
  {
   "kind": "fixed",
+  "hold": "mate",
   "ref": "J4",
   "xy": [
    -3.115,
@@ -4672,6 +4682,7 @@
  },
  {
   "kind": "fixed",
+  "hold": "physical",
   "ref": "R75",
   "xy": [
    -51.215,
@@ -5074,6 +5085,7 @@
  },
  {
   "kind": "fixed",
+  "hold": "mechanical",
   "ref": "J8",
   "xy": [
    -24.3,
