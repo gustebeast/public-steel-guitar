@@ -292,6 +292,12 @@ def place(parts, notes, rules, keep=()):
         R2.append(r)
     pl, log, why = _place_bus(P2, notes, R2, keep)
     for a, ms in cells.items():
+        if a not in pl:
+            # the composite found NO ROOM (its diagnosis is already in the log): its members
+            # stay unplaced with it, so the flow reports the one stop, not a KeyError (c1,
+            # 2026-11-22: the LM5122 cell's U220 was crowded out by L204 and C201)
+            log.append("NO ROOM: cell %s (+%d members) unplaced with its anchor" % (a, len(ms)))
+            continue
         ax, ay, ar = pl[a]
         for m, (dx, dy, dr) in ms.items():
             o = pi._rot([[dx, dy]], ar)[0]
