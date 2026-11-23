@@ -8,6 +8,8 @@
    contradicts its class, or no why -- and passes the classified ones, counting by class
    (+ transient window scaffolding).
 3. place_flow runs check_holds and stops on a problem; the overflow-spread flag is gone.
+5. auto_switcher: a snapshot hold does not count as the author's tie (the LM5122's 18 rules
+   were all skipped on brain_board); a mate / physical hold still does.
 4. Every writer of `fixed` rules gives a class: window_intent, place_init's two-sided front
    pass, and the optical example intent.
 Exit 0 = PASS.

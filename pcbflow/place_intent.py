@@ -1124,7 +1124,13 @@ def auto_switcher(parts, cells=(), gate_mm=8.0, ctrl_mm=5.0, small=5, sw_refs=6)
       passives (R / C) -- FB, COMP, VCC, RT, SS, UVLO, SLOPE. Each passive goes within ctrl_mm.
     The bootstrap cap (across two of its pins) is auto_decaps' pin-pair rule already. A part
     the author already ties (near / decap / fixed / pin / a group member) is left alone."""
-    ruled = {r.get("cap") or r.get("ref") for r in cells if r.get("kind") in ("near", "decap", "fixed", "pin")}
+    # ⚠ A SNAPSHOT IS NOT THE AUTHOR'S TIE (brain_board, 2026-11-22): every LM5122 control part
+    # was a snapshot hold, so none got its rule, and nothing pulled the cell together when the
+    # snapshot was released (the FETs 12-19 mm off their gate pins). A remembered position
+    # (is_snapshot) leaves the part to these rules; a mate / mechanical / user / physical hold
+    # still does not.
+    ruled = {r.get("cap") or r.get("ref") for r in cells
+             if r.get("kind") in ("near", "decap", "fixed", "pin") and not is_snapshot(r)}
     ruled |= {m for r in cells if r.get("kind") == "group" for m in r["members"]}
     on = {}                                   # net -> [(ref, num)]
     for ref, p in parts.items():

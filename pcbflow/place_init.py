@@ -736,6 +736,13 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
     for r in rules:
         if r["kind"] == "rot":
             rot_of[r["ref"]] = list(r["allowed"])
+    # every hard distance rule, by each ref it names: _drop takes no seat that breaks one
+    _HARD.clear()
+    for r in rules:
+        if r["kind"] in HARD_DIST_KINDS and pi.is_hard(r):
+            for x in _rule_refs(r):
+                if x in parts:
+                    _HARD.setdefault(x, []).append(r)
 
     def rot0(ref):
         return rot_of.get(ref, [parts[ref]["at"][2]])[0]
@@ -1898,9 +1905,12 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
             import itertools as _it
             for combo in _it.product(*[rots(g, olds[g][2]) for g in comp]):
                 placed_g, ok = [], True
+                _INFLIGHT.clear()
+                _INFLIGHT.update(group)
                 for g, rr in zip(comp, combo):
                     fz = _apart_forbid(G, parts, pl, g, rules)
                     fr = inreg.get(g) if fz is None else (fz if inreg.get(g) is None else fz | inreg.get(g))
+                    _INFLIGHT.discard(g)
                     if _drop(G, parts, g, np.asarray(olds[g][:2], float), [rr], pl, fr):
                         placed_g.append(g)
                     else:
@@ -1915,6 +1925,7 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
                             P = pi.Placed(parts, pl)
                             fc = _apart_forbid(G, parts, pl, c, rules)
                             fc = inreg.get(c) if fc is None else (fc if inreg.get(c) is None else fc | inreg.get(c))
+                            _INFLIGHT.discard(c)
                             if _drop_sat(G, parts, c, _seat(r, P, pl, g), rots(c, olds[c][2]), pl, fc, g, r):
                                 placed_g.append(c)
                             else:
@@ -1937,6 +1948,7 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
                     _unstamp(G, mg_, gi_, gj_, *G.ij(*pl[g][:2]), grow=halo(parts[g]))
                 for g in group:
                     pl[g] = list(olds[g])
+            _INFLIGHT.clear()
             take = best_ is not None and (best_[0][0] < s0_[0] or (best_[0][0] == s0_[0] and best_[0][1] < s0_[1] - 0.5))
             for g in group:
                 if take:
@@ -2026,6 +2038,8 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
             fz = _apart_forbid(G, parts, pl, ref, rules)
             fr = inreg.get(ref) if fz is None else (fz if inreg.get(ref) is None else fz | inreg.get(ref))
             for t, rr in [(t_, r_) for t_ in targets for r_ in rots(ref, a)]:
+                _INFLIGHT.clear()
+                _INFLIGHT.update(g for g in group if g != ref)
                 ok = _drop(G, parts, ref, t, [rr], pl, fr)
                 placed_g = [ref] if ok else []
                 if ok:
@@ -2035,6 +2049,7 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
                         P = pi.Placed(parts, pl)
                         fc = _apart_forbid(G, parts, pl, c, rules)
                         fc = inreg.get(c) if fc is None else (fc if inreg.get(c) is None else fc | inreg.get(c))
+                        _INFLIGHT.discard(c)
                         if _drop_sat(G, parts, c, _seat(r, P, pl, ref), rots(c, olds[c][2]), pl, fc, ref, r):
                             placed_g.append(c)
                         else:
@@ -2061,6 +2076,7 @@ def _local(G, parts, pl, refs, rots, inreg, wnet, rules=(), notes=None, sats=Non
                     _unstamp(G, mg_, gi_, gj_, *G.ij(*pl[g][:2]), grow=halo(parts[g]))
                 for g in group:
                     pl[g] = list(olds[g])
+            _INFLIGHT.clear()
             if rec_:
                 hints[ref] = rec_
             ok = best_t is not None
@@ -2514,6 +2530,30 @@ def _drop_sat(G, parts, c, t, rots, pl, forbid, anchor, rule, near_mm=None):
     return ok
 
 
+def _hard_pick(G, parts, pl, ref, a, hk, gi, gj, d):
+    """The index of the nearest candidate seat (grid gi, gj; distance d) at rotation a where
+    every one of ref's judged hard rules holds, or None."""
+    rs, reach = hk
+    xy = np.stack([G.x0 + gj * G.g, G.y0 + gi * G.g], axis=1)
+    keep = np.ones(len(d), bool)
+    for c, lim in reach:
+        keep &= np.hypot(xy[:, 0] - c[0], xy[:, 1] - c[1]) <= lim
+    cand = np.nonzero(keep)[0]
+    cand = cand[np.argsort(d[cand], kind="stable")][:HARD_TRIES]
+    old = pl.get(ref)
+    try:
+        for k in cand:
+            pl[ref] = [float(xy[k, 0]), float(xy[k, 1]), a]
+            if all(_slack(r, parts, pl) >= -0.05 for r in rs):
+                return int(k)
+    finally:
+        if old is None:
+            pl.pop(ref, None)
+        else:
+            pl[ref] = old
+    return None
+
+
 def _slack(rule, parts, pl):
     """A rule's worst slack at this placement (mm; < 0 is broken); -inf if it cannot be read."""
     try:
@@ -2522,10 +2562,48 @@ def _slack(rule, parts, pl):
         return float("-inf")
 
 
+# ⚠ A LEGALISER NEVER BREAKS A HARD DISTANCE (lead 2026-11-22): the quadratic stage met
+# U13's hard `near` J1 (14 mm, DS46176 fig. 1), legalisation dropped U13 at the nearest FREE
+# spot, 16.44 mm out, and the flow stopped 20 minutes later at the intent check. A hard
+# near / decap / tight / between rule is a constraint on the seat, not a check afterwards:
+# every _drop (first seat, satellite, local pass, re-seat) of a part such a rule names takes
+# only a spot where each of its rules whose parts are all placed holds (_slack >= -0.05),
+# nearest first; none -> False, which the callers report as NO ROOM by name.
+HARD_DIST_KINDS = ("near", "decap", "tight", "between")
+HARD_TRIES = 6000     # candidate seats tested per rotation, nearest first (prefiltered by reach)
+_HARD = {}            # ref -> its hard distance rules (_place fills it)
+# ⚠ A GROUP MOVES TOGETHER (brain_board lg_hard, 2026-11-22): the local pass unstamps an IC and
+# its satellites but leaves their old poses in pl while it tries the IC's new seats, so Y2's
+# hard 4 mm `near` U37 was judged against Y2's OLD seat, every U37 move was refused, and 29
+# parts landed differently. Parts in flight (_INFLIGHT) are skipped until they land; each is
+# judged on its own drop.
+_INFLIGHT = set()
+
+
+def _hard_ok(parts, pl, ref):
+    """ref's hard distance rules that can be judged now (every part they name is placed and
+    not in flight), or None; and the farthest a seat's centre can stand from each rule's other
+    parts' centres (max_mm + both half-diagonals; tight / between: no bound)."""
+    rs = [r for r in _HARD.get(ref, ())
+          if all(x == ref or (x in pl and x not in _INFLIGHT) for x in _rule_refs(r) if x in parts)]
+    if not rs:
+        return None
+    hd = lambda x: 0.5 * float(np.hypot(*np.ptp(np.asarray(parts[x]["crtyd"] or [[0, 0], [1, 1]], float), axis=0)))
+    reach = []
+    for r in rs:
+        if r["kind"] in ("near", "decap") and r.get("max_mm") is not None:
+            for x in _rule_refs(r) - {ref}:
+                if x in pl and x not in _INFLIGHT:
+                    reach.append((np.asarray(pl[x][:2], float), float(r["max_mm"]) + hd(ref) + hd(x) + 0.2))
+    return rs, reach
+
+
 def _drop(G, parts, ref, t, rots, pl, forbid=None, near_mm=None):
     """Put ref at the free grid spot nearest t (first rot that fits, nearer wins). near_mm:
     give up (False) rather than go further than that -- a satellite that cannot keep its
-    noise zone AND its rule takes its rule (the caller retries without the zone)."""
+    noise zone AND its rule takes its rule (the caller retries without the zone). A part a
+    HARD distance rule names takes only a seat that keeps the rule (_hard_ok)."""
+    hk = _hard_ok(parts, pl, ref)
     best = None
     rads = (WINDOW, WINDOW * 3, 1e9) if near_mm is None else (min(WINDOW, near_mm + 1.0), near_mm + 1.0)
     for rad in rads:
@@ -2567,7 +2645,12 @@ def _drop(G, parts, ref, t, rots, pl, forbid=None, near_mm=None):
                 continue
             fi, fj = np.nonzero(free)
             d = np.hypot(fi + i0 - ti, fj + j0 - tj)
-            k = int(np.argmin(d))
+            if hk is None:
+                k = int(np.argmin(d))
+            else:
+                k = _hard_pick(G, parts, pl, ref, a, hk, fi + i0, fj + j0, d)
+                if k is None:
+                    continue
             if best is None or d[k] < best[0]:
                 best = (float(d[k]), a, fi[k] + i0, fj[k] + j0, m, ai, aj)
         if best is not None:
