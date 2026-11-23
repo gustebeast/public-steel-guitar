@@ -9,6 +9,8 @@ placements, and the expansion read pl[anchor]: a KeyError instead of the flow's 
   1  anchor placed   -> members expanded from its pose (offset turned with the anchor)
   2  big-first ranks a cell by its members' box, not its anchor's courtyard (c2: the
      LM5122 cell, 15 x 24, ranked as its 5 x 5 IC and seated after L204 and the bulk caps)
+  3  a member with no courtyard and no fab box (a NetTie) adds its pads and no courtyard
+     (t1, 2026-11-23: TPS552892's Kelvin ties NT205 / NT206 raised a TypeError)
 Exit 0 = PASS.
 """
 import os
@@ -51,6 +53,16 @@ comp = pin._composite(PARTS, "U1", {"C1": [10.0, 0.0, 0.0]})     # U1 4 x 4, C1 
 if abs(pin._area(comp) - 12.5 * 4.0) > 1e-6 or abs(pin._area(PARTS["U1"]) - 16.0) > 1e-6:
     bad.append("2: cell area %.2f (want 50.00), U1 alone %.2f (want 16.00)"
                % (pin._area(comp), pin._area(PARTS["U1"])))
+nt = dict(crtyd=None, fab=None, at=[0, 0, 0], side="F",
+          pads=[dict(num="1", net="A", xy=[0.0, 0.0], size=[0.2, 0.2], rot=0.0)])
+try:
+    comp = pin._composite(dict(PARTS, NT1=nt), "U1", {"C1": [10.0, 0.0, 0.0], "NT1": [2.0, 0.0, 90.0]})
+except TypeError as e:
+    bad.append("3: a NetTie member raised %s" % e)
+else:
+    if len(comp["crtyd_multi"]) != 2 or not any(q["num"] == "NT1/1" for q in comp["pads"]):
+        bad.append("3: %d courtyards (want 2: U1, C1), pads %s"
+                   % (len(comp["crtyd_multi"]), [q["num"] for q in comp["pads"]]))
 
 print("\n".join(bad) if bad else "test_cell_noroom: PASS")
 sys.exit(1 if bad else 0)

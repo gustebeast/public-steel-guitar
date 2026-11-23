@@ -218,9 +218,13 @@ def _composite(parts, anchor, members):
             xy = off + pi._rot([q["xy"]], dr)[0]
             pads.append(dict(q, num="%s/%s" % (m, q["num"]), xy=[float(xy[0]), float(xy[1])],
                              rot=(q.get("rot", 0.0) + dr) % 360.0))
-        loc = pm["crtyd"] or [[pm["fab"][0], pm["fab"][2]], [pm["fab"][1], pm["fab"][2]],
-                              [pm["fab"][1], pm["fab"][3]], [pm["fab"][0], pm["fab"][3]]]
-        cy.append((off + pi._rot(loc, dr)).tolist())
+        # a member with neither courtyard nor fab box (a NetTie, drawn to sit on another
+        # member's pad: TPS552892's Kelvin ties on R313, brain_board t1 2026-11-23) adds its
+        # pads and no courtyard
+        f = pm.get("fab")
+        loc = pm["crtyd"] or (f and [[f[0], f[2]], [f[1], f[2]], [f[1], f[3]], [f[0], f[3]]])
+        if loc:
+            cy.append((off + pi._rot(loc, dr)).tolist())
     return dict(a, pads=pads, crtyd=a["crtyd"], crtyd_multi=cy, n_own=len(a["pads"]))
 
 
