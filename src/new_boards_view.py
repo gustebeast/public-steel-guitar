@@ -69,6 +69,7 @@ VIEW_HEIGHT = {
     "Texas_RYQ0021B_VQFN-HR-21_3x5mm_P0.5mm": 1.0,               # U205 TPS552892
     "Texas_DDA0008_HSOP-8-1EP_3.9x4.9mm_P1.27mm": 1.7,   # U5 LMR33640: DDA0008J/B "1.7 mm max height" (SNVSB99C p.38/41)
     "WCH_QFN-16-1EP_3x3mm_P0.5mm_EP1.8x1.8mm": 0.85,             # U37 CH334P
+    "Texas_RPW0010A_VQFN-HR-10_2x2mm_P0.45mm": 1.0,   # U221 TPS259470A: "VQFN-HR - 1 mm max height" (TI RPW0010A outline, datasheet p.72)
 }
 
 # built EXACTLY as src.board_geom.BOARDS (silk font, revisions), heights extended: the web export

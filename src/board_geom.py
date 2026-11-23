@@ -206,6 +206,7 @@ BODY_MATERIAL = {
     "Texas_UQFN-10_1.5x2mm_P0.5mm": ("epoxy", BLACK),
     "Texas_DSG0008A_WSON-8-1EP_2x2mm_P0.5mm_EP0.9x1.6mm": ("epoxy", BLACK),   # U221 TPS22965
     "Texas_RYQ0021B_VQFN-HR-21_3x5mm_P0.5mm": ("epoxy", BLACK),               # U205 TPS552892
+    "Texas_RPW0010A_VQFN-HR-10_2x2mm_P0.45mm": ("epoxy", BLACK),              # U221 TPS259470A
     "Texas_DDA0008_HSOP-8-1EP_3.9x4.9mm_P1.27mm": ("epoxy", BLACK),   # U5 LMR33640
     "WCH_QFN-16-1EP_3x3mm_P0.5mm_EP1.8x1.8mm": ("epoxy", BLACK),              # U37 CH334P
 }
