@@ -2207,10 +2207,15 @@ def brain_board():
 # facing +Y. It drops down -Z with the deck off, then slides +X 19 into a pocket fitted to it
 # in the +X endplate (branner). USB INSET 1.6 (user, 2026-11-13: "keeping the USB fully on
 # the PCB and then having 1.6mm of plastic, so the plug is 1.6mm inset and there is 1.6mm of
-# plastic holding the PCB in place"): the board's panel edge stops against a 1.6 wall, the
-# USB-C bodies end AT that edge (no overhang, mouths 1.6 behind the outer face), and the jack
-# J5 sits 2.4 back on the board so its shoulder meets the inside of its own 4.0 clamp wall
-# (its nut clamps it: src/board_geom.py PANEL; the board edge runs on under it in a slot).
+# plastic holding the PCB in place"): the board's panel edge stops against a 1.6 wall.
+# FLUSH PANEL (user, 2026-11-23, superseding the 1.6 inset): the USB-C shells OVERHANG that
+# edge by 1.5 (panel overhang 1.5; the front shell slots' copper stays 0.35 inside the edge,
+# over the 0.3 rule; 1.6 would leave 0.25) and pass the 1.6 wall in shell-sized openings, mouths
+# 0.15 behind the outer face. J5's stub tip sits 1.55 back on the board (overhang -1.55): its
+# shoulder 4.55 back meets a 4.0 clamp wall and the nut head sinks in a 15.6 x 2.15 face
+# counterbore, level with the USB mouths. (The 11-13 note had J5's SHOULDER 2.4 back; the
+# panel rule places the F.Fab front, the stub tip, so the shoulder was really 5.4 back.)
+# Its nut clamps it (src/board_geom.py PANEL; the board edge runs on under it in a slot).
 #   +X  FINAL instrument x 0.43 = 2.03 - 1.6 wall
 #   -X  final -167.3 (user, 2026-11-19: "it wouldn't be so bad if we had to take the endplate
 #       off to replace the brain board ... extend the board all the way to x=-168.1"). It was

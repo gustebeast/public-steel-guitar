@@ -8,7 +8,7 @@ gate, and the positions are the intents' frames, not a mount.
   * brain_board (167.73 x 100, ONE board, instrument x -167.3 .. 0.43; it drops in -Z at its FINAL x with the +X endplate
     off, then the endplate slides back on over it: user 2026-11-19): back face on the -Y side at y -87.5 (branner: +1.7 so
     unclipped 3.4 tails clear the wall at -91.7), parts facing +Y; geom x -> instrument x by OB_X (read, below), board y =
-    instrument z + 58.24. The panel (board -X edge) sits 1.6 behind the outer face (USB inset 1.6, J5 2.4 back on the board); parts in the pocket: elec/brain_board.pocket.json.
+    instrument z + 58.24. The panel (board -X edge) sits 1.6 behind the outer face; flush panel (2026-11-23): USB-C shells 1.5 past the edge, J5 stub tip 1.55 back, nut in a face counterbore; parts in the pocket: elec/brain_board.pocket.json.
   * the optical board is NOT drawn: it is being redesigned (user 2026-11-13: no forwarder MCU,
     a ribbon to the brain board).
 
