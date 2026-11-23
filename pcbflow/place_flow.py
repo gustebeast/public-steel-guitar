@@ -751,6 +751,8 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     if place_only:
         # --place-only: a placement A/B across boards (a placer change's evidence) needs
         # NO ROOM, BROKEN and NEAR BROKEN, not a route -- minutes per board instead of an hour
+        for l_ in _sat_summary(init_log):
+            say(l_)
         say("PLACE ONLY: %d placed, %d with no room, %d hard near rule(s) broken%s"
             % (len(pl), len(room), len(nb), (": " + " | ".join(x[1] for x in nb[:6])) if nb else ""))
         return 0
@@ -819,6 +821,8 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     if to_routability:
         # --to-routability: a placement change judged by the global plan (seconds) before an
         # hour of route is spent on it -- the spreading pass's A/B (brain_board, 2026-11-17)
+        for l_ in _sat_summary(init_log):
+            say(l_)
         say("TO ROUTABILITY: stopped before the route")
         return 0
     # ⚠ THE SCORE'S ROUTE IS THE BOARD'S ROUTE (brain_board mV41 vs mV44, 2026-11-18): the finish
@@ -1046,6 +1050,25 @@ def _rule_line(r):
     return "%s(%s)" % (r["kind"], ", ".join("%s=%s" % (k, r[k]) for k in keys))
 
 
+def _lifted(line):
+    """A placement-log line the report lifts to its summary (stranding, tangles, grows)."""
+    return any(k in line for k in ("TANGLE HINT", "GROW", "STRANDED", "OFF ITS PIN", "DECAP ROOM"))
+
+
+# ⚠ THE STRANDING SUMMARY IS PRINTED ONCE, EITHER WAY (lead 2026-11-22): run.log carried the
+# placement log only when the flow stopped, and then twice (the summary AND the full log), so
+# a --to-routability baseline read "0 stranded" against a stopped arm's doubled count -- the
+# rpl screen was reported as 38-48 vs 0 when it was 19-24 vs 7. _sat_summary is the one list:
+# the report prints it and leaves those lines out of its placement log; --place-only and
+# --to-routability print it, with its count line, before they return.
+def _sat_summary(init_log):
+    """The placement log's stranding / tangle / grow lines, each once, in order, then a count line."""
+    out = list(dict.fromkeys(x_.split("place_init: ", 1)[-1] for x_ in init_log if _lifted(x_)))
+    n_s = sum(1 for x_ in out if x_.startswith("DECAP STRANDED"))
+    n_o = sum(1 for x_ in out if x_.startswith("SATELLITE OFF ITS PIN"))
+    return out + ["PLACEMENT: %d decap(s) stranded, %d satellite(s) off their pins" % (n_s, n_o)]
+
+
 def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, T, refused=None, room=(), width=(), pours=(),
             floor=(), fill=(), routability=None):
     forbid = [l_ for l_ in init_log + cells_log if "FORBID" in l_]
@@ -1083,8 +1106,7 @@ def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, 
     if fill:
         L += ["REGION FILL (courtyards / area): " + "  ".join("%s %.2f" % (n, f) for n, _, _, f in fill)]
     L += ["WARN " + f_ for f_ in floor]
-    L += [x_.split("place_init: ", 1)[-1] for x_ in init_log if "TANGLE HINT" in x_ or "GROW" in x_
-          or "STRANDED" in x_ or "OFF ITS PIN" in x_ or "DECAP ROOM" in x_]
+    L += _sat_summary(init_log)
     if fin:
         L += ["", "finish: %s" % (fin.get("error") or "%d unconnected%s, %d violation(s)%s" % (
             fin["unconnected"], (" (" + " ".join(fin.get("unconnected_nets", ())) + ")") if fin["unconnected"] else "",
@@ -1097,7 +1119,8 @@ def _report(fd, base, rules, init_log, cells_log, gates, score, fin, qual, why, 
             qual["fail"], qual["open"], (" (" + " ".join(map(str, qual["failed"])) + ")") if qual.get("failed") else ""))]
     if gates:
         L += ["", "layout notes:"] + ["  " + g for g in gates]
-    L += ["", "placement log:"] + ["  " + l_ for l_ in init_log + cells_log if "fixed " not in l_]
+    L += ["", "placement log (less the lines listed above):"] + [
+        "  " + l_ for l_ in init_log + cells_log if "fixed " not in l_ and not _lifted(l_)]
     L += ["", "provenance (flow/provenance.json, per ref): " + ", ".join("%s %d" % kv for kv in prov.most_common()),
           "", "seconds: " + ", ".join("%s %d" % (k, v) for k, v in T.items())]
     open(os.path.join(fd, "report.md"), "w", encoding="utf-8").write("\n".join(L) + "\n")
