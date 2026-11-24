@@ -178,7 +178,8 @@ def _drive_y_extent():
 A_IN = tuple(Y5 + v + s for v, s in zip(_drive_y_extent(), (-1.0, 1.0)))   # the buttresses' inner
                                                  # faces: 1.0 off the plug's and housing's widest
 A_WALL = 6 * D.BEAD                              # 4.8: each buttress
-A_Y = (Y_EDGE, A_IN[1] + A_WALL)                # the -Y buttress out to the edge: flat to print on
+A_Y = (min(A_IN[0], DB.rod_yz(HOOK)[0] - DB.GUIDE_SEAT / 2 - 2 * D.BEAD) - A_WALL, A_IN[1] + A_WALL)   # a wall each
+                                                 # side (user, 2026-11-24: the -Y one out to the edge line wasted plastic)
 A_FOOT = AX1 + (A_TOP - ZB)                      # the buttresses' 45 deg foot, x
 A_BASE_X0 = AX0 - 16.0                           # the base's -X end: room for two screws
 RAIL_Y = (Y_EDGE, Y_EDGE + 16.0)                 # the rail to the endplate: along the edge
@@ -283,7 +284,8 @@ def endplate() -> cq.Workplane:
     w = w.union(_box(X_RAIL_END, XJ + 0.01, BUT_PY[0], EP_BASE_Y1, Z_PLANK, ZB))  # the +Y flange
     for y0, y1 in (BUT_PY, BUT_NY):                                          # THE BUTTRESSES
         tri = (cq.Workplane("XZ", origin=(0, y1, 0))
-               .polyline([(XJ + 0.5, ZB - 0.01), (XJ + 0.5, BUT_TOP), (BUT_FOOT_X, ZB - 0.01)])   # 0.5 into the plate:
+               .polyline([(XJ + 0.5, ZB - 0.01), (XJ + 0.5, BUT_TOP), (XJ - OB_L, BUT_TOP),
+                          (XJ - OB_L, BUT_TOP - OB_TIP), (BUT_FOOT_X, ZB - 0.01)])   # 0.5 into the plate:
                # over the band its joint face stands a few hundredths +X of XJ
                .close().extrude(y1 - y0))
         w = w.union(tri)
@@ -347,7 +349,8 @@ def keyhead() -> cq.Workplane:
     assert zf - Z_PLANK >= 2 * D.MIN_WALL_2P, "the slot's floor under the plate is too thin"
     zt = KH_AT[2] + KH_TOP
     w = _box(bx0, bx1, by0, by1, Z_PLANK, zt)
-    w = w.union(_box(bx0 - 2 * TAB, bx1 + 2 * TAB, Y_EDGE, by1, Z_PLANK, ZB))      # the base, to the edge line
+    w = w.union(_box(bx0 - 2 * TAB, bx1 + 2 * TAB, by0 - 2 * TAB, by1 + 2 * TAB, Z_PLANK, ZB))   # the base,
+                                                 # centred on the plate (user, 2026-11-24)
     w = w.cut(_box(x0 - KH_CLR_X, x1 + KH_CLR_X, y0 - KH_CLR_Y, y1 + KH_CLR_Y, zf, zt + 1.0))
     for x, y in kh_screws():
         w = w.cut(_screw(x, y, KH_PRINT_UP))
@@ -356,7 +359,7 @@ def keyhead() -> cq.Workplane:
 
 def kh_screws():
     bx0, bx1, by0, by1 = kh_box()
-    return [(x, y) for x in (bx0 - TAB, bx1 + TAB) for y in (Y_EDGE + TAB, by1 - TAB)]
+    return [(x, y) for x in (bx0 - TAB, bx1 + TAB) for y in (by0 - TAB, by1 + TAB)]
 
 
 def keyhead_hardware() -> list:
@@ -458,11 +461,11 @@ OB_TIP = 2.0                                     # the tip cut flat (no knife ed
 OS_M4_L = 10.0                                   # M4 x 10: 1.6 of board, 8.4 self-tapped into the bracket
 
 # THE ENDPLATE'S BUTTRESSES' height and the flanges' length (see THE ENDPLATE'S BUTTRESSES above)
-OPT_BELOW = 3.4                                  # the R1 board's parts under its underside (as ordered)
-OPT_FACE_GAP = 3.65                              # the board's +X edge off the joint face (opt_frame's)
-BUT_CLR = 1.5
-BUT_TOP = (D.STRING_Z + KH_DROP - OPT_GAP - 1.6 - OPT_BELOW) - BUT_CLR + OPT_FACE_GAP   # at the face
-BUT_FOOT_X = XJ - (BUT_TOP - ZB)                 # the slope reaches the base here
+# THE BUTTRESSES CARRY THE BOARD (user, 2026-11-24: "put the supports on the existing downward
+# creep-prevention supports to reuse the same material"): each rises to the board's underside, a flat
+# SEAT OB_L long under it, OB_TIP of square end, then 45 deg down to the base
+BUT_TOP = D.STRING_Z + KH_DROP - OPT_GAP - 1.6   # the board's underside (R1: 1.6 thick)
+BUT_FOOT_X = XJ - OB_L - (BUT_TOP - OB_TIP - ZB)  # the slope reaches the base here
 EP_FLANGE_L = XJ - BUT_FOOT_X + 2 * TAB          # the base's flanges, -X off the joint face
 X_RAIL_END = XJ - EP_FLANGE_L                    # the anchor's rail butts the -Y one
 
@@ -516,55 +519,18 @@ def opt_hole():
 
 
 def opt_brackets() -> cq.Workplane:
-    """The two brackets, world: a 45 deg right triangle in XZ off the joint face, OB_W wide, its top
-    the board's underside, 1 into the endplate. In the endplate's print (+X -> -X) they grow up off
-    the joint face: the top a wall, the slope facing up."""
+    """THE SCREW'S BLOCK (the board's brackets are the buttresses' seats now): the board's Ø4.4 hole
+    is over neither buttress, so a block off the +Y one runs -Y under it, the self-tap bore + 2 x
+    OB_WALL wide, OB_L along the face, down to OB_STACK_CLR over the stack (the keyplate's top)."""
     from cadkit.fasteners import M4
-    _, _, z0, _ = opt_frame()
-    w_screw = M4.tap_d((0.0, 0.0, -1.0), DB.EP_UP) + 2 * OB_WALL
-    out = None
-    for y, ow in ((opt_hole()[1], w_screw), (OB_Y2, OB_REST_W)):
-        tri = (cq.Workplane("XZ", origin=(0, y + ow / 2, 0))
-               .polyline([(XJ + 1.0, z0), (XJ - OB_L, z0), (XJ - OB_L, z0 - OB_TIP),
-                          (XJ + 1.0, z0 - OB_TIP - OB_L - 1.0)]).close()
-               .extrude(ow))
-        win = _ob_window(y, ow, z0)
-        if win is not None:
-            tri = tri.cut(win)
-        # CUT OFF FLAT OB_STACK_CLR over the stack (the string 16.6 lower, 2026-11-24, brought the
-        # brackets' roots down into the yoke and keyplate at t 0, where they run up to the face)
-        tri = tri.intersect(_box(XJ - OB_L - 1, XJ + 2, y - ow, y + ow, OB_Z_MIN, z0 + 1))
-        out = tri if out is None else out.union(tri)
-    return out
+    _, hy = opt_hole()
+    hw = M4.tap_d((0.0, 0.0, -1.0), DB.EP_UP) / 2 + OB_WALL
+    assert hy + hw <= BUT_PY[1], "the screw's block past the +Y buttress"
+    return _box(XJ - OB_L, XJ + 0.5, hy - hw, BUT_PY[0] + 0.5, OB_Z_MIN, BUT_TOP)
 
 
-# LESS MATERIAL IN THE BRACKETS (user, 2026-11-24: "the 45s that hold up the optical board are
-# overkill, we could use less material there"): each is a frame now -- the seat under the board (OB_SEAT
-# deep, and under the screw's bore past its tip), the 45 deg strut and the root on the face, OB_FRAME
-# each, a triangular window through it. As printed (+X -> -X) the window's root side is a top, its
-# strut side a 45 deg overhang, its tip a point: nothing bridges.
 OB_STACK_CLR = 2.0
 OB_Z_MIN = DB.za(I) + DB.YK_D / 2 + OB_STACK_CLR   # the keyplate's (the stack's widest) top, and the clearance
-OB_FRAME = 3 * D.BEAD                            # 2.4: the root and the strut
-OB_SEAT = 4 * D.BEAD                             # 3.2 under the board
-
-
-def _ob_window(y, ow, z0):
-    zt = z0 - OB_TIP - OB_SEAT                    # under the seat
-    if y == opt_hole()[1]:
-        zt = min(zt, z0 - OPT_TAP_L - 0.5 - OB_FRAME)    # ...and under the screw's bore
-    xr = XJ - OB_FRAME                            # off the face
-    # the strut's inner line: the outer slope (x = XJ - OB_L at z0 - OB_TIP, 45 deg down to +X) moved in
-    # OB_FRAME square to it
-    k = OB_FRAME * 2 ** 0.5
-    # outer slope: z = (z0 - OB_TIP) - (x - (XJ - OB_L)); inner: that + k
-    def z_in(x):
-        return (z0 - OB_TIP) - (x - (XJ - OB_L)) + k
-    xa = (XJ - OB_L) + ((z0 - OB_TIP) + k - zt)  # where the inner slope meets the seat's underside
-    if xa >= xr - 1.0:
-        return None                               # too small for a window
-    return (cq.Workplane("XZ", origin=(0, y + ow / 2 + 1.0, 0))
-            .polyline([(xa, zt), (xr, zt), (xr, z_in(xr))]).close().extrude(ow + 2.0))
 
 
 # SELF-TAPPED, NO INSERT (user, 2026-11-16: "use self tapping so we don't have to put in and remove
