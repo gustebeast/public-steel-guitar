@@ -136,7 +136,9 @@ def _one(solid):
 # and a measured object carries it as WHAT_ATTR, which placed() and a looked part's moves hand on --
 # a move, a turn or a mirror changes none of the three numbers.
 _WHAT = weakref.WeakKeyDictionary()
-_WHAT_BY_TAG = None
+from ..kept import Memo as _Memo   # noqa: E402
+_WHAT_BY_TAG = _Memo()              # a MEMO (kept fingerprints it as a token): a plain dict here moved
+                                    # the key of every function reaching made_of as measures were added
 WHAT_ATTR = "_cadkit_what"
 
 
@@ -146,9 +148,8 @@ def _measures_path():
 
 
 def _by_tag():
-    global _WHAT_BY_TAG
-    if _WHAT_BY_TAG is None:
-        _WHAT_BY_TAG = {}
+    if not getattr(_WHAT_BY_TAG, "loaded", False):
+        _WHAT_BY_TAG.loaded = True
         try:
             with open(_measures_path(), encoding="utf-8") as fh:
                 for ln in fh:
