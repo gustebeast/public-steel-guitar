@@ -277,3 +277,44 @@ def assembly() -> list:
     # ob_board is branner's stand-in for the brain board (the gates' courtyards): the
     # routed board drawn here replaces it
     return [p for p in DB.assembly() if p[0] != "ob_board"] + boards()
+
+
+# ── WHERE A BOARD'S HEADER IS, IN THE INSTRUMENT (lead, 2026-11-23) ───────────────────────────────
+# One answer for every board the harness wires to, read from the code that places each board in
+# the model -- never typed: tools/harness_runs.py measured three of its ends from guesses (UI J2,
+# fret J1, optical) until this.
+#   brain_board, connector_board   as boards() poses them (above)
+#   ui_board                       src.ui_panel.ui_pcb() lays the routed board unflipped at
+#                                  board_centre() / board_z0(), and src.direct_bench moves the whole
+#                                  UI station +Y by ui_parts()[1]
+#   fret_led_key, fret_led_mid     src.fret_light's own placing of the routed board (_placed: its
+#                                  x span and the ear offset), at the DIRECT deck's board height
+#                                  (src.deck_v2.BOARD_BOT): the deck draws that board as a stand-in
+#                                  slab over the same frets (deck_v2.board_x() ends at the mid
+#                                  board's +X end, -149.7), so the routed board is where the slab is
+def header_pose(board: str, ref: str) -> tuple:
+    """(x, y, z) in instrument mm of the middle of footprint `ref`'s F.Fab body on `board`, 1 mm
+    tall off the board's component face (what a lead's end is measured from)."""
+    import cadquery as cq
+    from . import board_geom as BG
+    f = BG.footprint(board, ref)
+    x0, x1, y0, y1 = f["fab"]
+    if board in ("brain_board", "connector_board"):
+        w = cq.Workplane("XY").box(x1 - x0, y1 - y0, 1).translate(((x0 + x1) / 2, (y0 + y1) / 2, 0.5))
+        w = (_facing_plus_y_mirrored(w, OB_X, OB_BACK_Y, OB_Z) if board == "brain_board"
+             else _flat_up(w, CB_X, CB_Y, CB_Z))
+        c = w.val().BoundingBox().center
+        return (c.x, c.y, c.z)
+    t = BG.load(board)["thickness_mm"]
+    up = 1.0 if f["side"] == "F" else -1.0
+    zf = t + 0.5 if up > 0 else -0.5                   # the face the part stands on, 0.5 off it
+    if board == "ui_board":
+        from . import ui_panel as U, direct_bench as DB
+        cx, cy = U.board_centre()
+        return (cx + (x0 + x1) / 2, cy + DB.ui_parts()[1] + (y0 + y1) / 2, U.board_z0() + zf)
+    if board.startswith("fret_led_"):
+        from . import fret_light as FL, deck_v2 as DK
+        panel = {v: k for k, v in FL.BOARD_NAME.items()}[board]
+        return (FL.board_cx(panel) + (x0 + x1) / 2, FL.ear_h() / 2 + (y0 + y1) / 2,
+                DK.BOARD_BOT + zf)
+    raise KeyError("header_pose: %s is not placed in the instrument" % board)

@@ -10,7 +10,8 @@ read from the shared scratch cache (cadkit.scratch: no geometry is rebuilt), and
   * the hook-up wire per gauge, in metres, for elec/prices.json mechanical.hookup_wire.
 
 THE ENDS are where each lead leaves its connector, read from the boards' footprints placed by
-src/new_boards_view (brain + connector board) and from the cached parts (motor terminals);
+src/new_boards_view.header_pose (brain, connector, UI and fret boards, each where the model places
+it) and from the cached parts (motor terminals);
 the ones the model does not hold exactly are marked INFERRED in RUNS and in the printout.
 CABLE OVER CABLE IS FINE (user, 2026-10-29): ribbons, IDC sockets and terminal plugs are
 not obstacles, only boards, printed parts, motors and metal.
@@ -41,17 +42,8 @@ SERVICE = {"fret": 100.0}   # a lead to the deck keeps a loop so the panel lifts
 
 def _ends():
     """{run name: (a, b, kind, conductors {gauge: n}, notes)} in instrument mm."""
-    import cadquery as cq
-    from src import board_geom as BG, new_boards_view as V
-
-    def hdr(board, ref):
-        f = BG.footprint(board, ref)
-        x0, x1, y0, y1 = f["fab"]
-        w = cq.Workplane("XY").box(x1 - x0, y1 - y0, 1).translate(((x0 + x1) / 2, (y0 + y1) / 2, 0.5))
-        w = (V._facing_plus_y_mirrored(w, V.OB_X, V.OB_BACK_Y, V.OB_Z) if board == "brain_board"
-             else V._flat_up(w, V.CB_X, V.CB_Y, V.CB_Z))
-        c = w.val().BoundingBox().center
-        return (c.x, c.y, c.z)
+    from src import new_boards_view as V
+    hdr = V.header_pose                 # every board's header where the model places that board
 
     runs = {}
     # the brain stands on the -Y wall, component side +Y; each IDC socket's ribbon leaves away
@@ -67,11 +59,12 @@ def _ends():
         (j4[0] + 14.0, -80.0, j4[2]), (-28.0, -50.0, -4.0), "ribbon", {},
         "brain J4 (leaves +X) to the optical board's -Y end, under deck_optical -- INFERRED "
         "(no 2x10 on the optical geometry yet), +16 through the deck piece added")
-    # UI J2 is the 2x8 horizontal header at the UI board's -X end (src/ui_panel.py), the
-    # board's own frame laid unflipped on ui_pcb (x -272..-147): INFERRED from the outline
+    # UI J2 is the 2x8 horizontal header at the UI board's -X end (src/ui_panel.py), its pins
+    # out past the edge: the IDC socket's ribbon leaves -X
+    u2 = hdr("ui_board", "J2")
     runs["ui_ribbon_lead_16p"] = (
-        (j205[0] - 14.0, -80.0, j205[2]), (-276.0, -66.0, -13.0), "ribbon", {},
-        "brain J205 (leaves -X) to the UI board's J2 at its -X end -- INFERRED pose")
+        (j205[0] - 14.0, -80.0, j205[2]), (u2[0] - 14.0, u2[1], u2[2]), "ribbon", {},
+        "brain J205 (leaves -X) to the UI board's J2 (leaves -X), as placed")
     # the ten motors: connector board J11..J20 (motor k = string k+1) to the motor's own
     # terminals on its driver's -X face; the MX15EDGK plug's wires leave it -Y
     from cadkit import scratch as S
@@ -84,11 +77,12 @@ def _ends():
             "wire", {22: 2, 26: 2},
             "connector J%d plug (wires leave -Y) to motor_terminal_%d's middle: power and CAN "
             "blocks sit %.0f apart, in END_ALLOW's fan-out" % (11 + k, k, b.ymax - b.ymin))
-    # the fret light: connector J4 (MX15, LED_DROP) to fret_led_key J1 (XH, at the board's -Y
-    # edge, -X end); the key board laid unflipped from the fret field's -X end: INFERRED
+    # the fret light: connector J4 (MX15, LED_DROP) to fret_led_key J1 (horizontal XH at the
+    # board's -Y edge, -X end: the crimp housing goes in from -Y, its wires leave -Y)
     jx, jy, jz = hdr("connector_board", "J4")
-    runs["fret"] = ((jx, jy - 17.0, -94.5), (-603.0, -37.5, -10.0), "wire", {22: 2, 26: 2},
-                    "connector J4 to fret_led_key J1 -- INFERRED pose of J1 (board unflipped)")
+    f1 = hdr("fret_led_key", "J1")
+    runs["fret"] = ((jx, jy - 17.0, -94.5), (f1[0], f1[1] - 12.0, f1[2]), "wire", {22: 2, 26: 2},
+                    "connector J4 to fret_led_key J1 (wires leave -Y), as placed")
     return runs
 
 
