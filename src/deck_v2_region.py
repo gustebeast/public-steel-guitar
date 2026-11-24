@@ -33,6 +33,7 @@ from . import pickup_mount as PM
 from .helpers import box_at, cyl, heal
 from cadkit.fasteners import M4, cut_counterbore
 from cadkit.kept import kept
+from cadkit.web.finishes import made_of
 
 GAP = DK.GAP
 TZ, PZ = DK.TZ, DK.PZ
@@ -128,7 +129,9 @@ def optical_panel() -> cq.Workplane:
     x0, x1 = optical_x()
     ya, yb = _db().ep_raised_y()
     w = _body(x1, x0)
-    return w.union(DK._box(x0, x1, ya, yb, TZ - 0.01, PLINTH_TOP))
+    w = w.union(DK._box(x0, x1, ya, yb, TZ - 0.01, PLINTH_TOP))
+    sx0, sx1, sy0, sy1 = j4_slot()
+    return w.cut(DK._box(sx0, sx1, sy0, sy1, BZ - 3.0, PLINTH_TOP + 0.01))
 
 
 def optical_board() -> cq.Workplane:
@@ -136,6 +139,138 @@ def optical_board() -> cq.Workplane:
     x0, _ = optical_x()
     ya, yb = _db().ep_raised_y()
     return DK._box(x0, x0 + OPT_BOARD_W, ya + 1.0, yb - 1.0, PLINTH_TOP, PLINTH_TOP + OP.PCB_T)
+
+
+# ── THE RIBBON'S OPTICAL END: J4, DECLARED (lead, 2026-11-23) ─────────────────────────────────────
+# The optical board is being redesigned (no MCU: the brain board's STM32H743 reads its converters
+# over a 20-way ribbon, elec/brain_board.py J4). Its shape is not decided, but where the ribbon lands
+# on it is, here, so the harness measures a real end and the redesign has a fixed interface to keep:
+#   * THE SAME PART AS THE BRAIN'S J4, a 2 x 10 1.27 mm vertical SMD header (HX PZ1.27, the socket
+#     src/ribbon_socket.py draws), and THE SAME WAY ON EVERY PIN: an IDC ribbon is wire n = pin n
+#     at both ends, so OPT_J4_PINOUT must read as brain J4's (check_j4_mirror, below).
+#   * ON THE UNDERSIDE (B), pointing -Z into a slot through the plinth: the strip's top face is
+#     under the strings (optical_pickup.PCB_TOP), with no room for 7.4 mm of header and socket.
+#     That makes the redesigned board two-sided for assembly: one part on B.
+#   * At the strip's -Y end, rows along Y, pin 1 at the -Y end. The ribbon leaves the socket +X
+#     (toward the endplate: the strip's -X side is the panel's edge) and turns down through the
+#     slot to the body cavity, then to the brain on the -Y wall.
+#   * THE SLOT IS IN THE PLINTH AND THE PANEL ONLY (lead): a MIN_WALL_2P web each side in X, and
+#     in Y it starts a web in from the plinth's -Y face. The side rails are nowhere near it
+#     (asserted); if it ever reaches one, the header moves, not the rail.
+# Plug the ribbon before the board goes down on the plinth (INSTALL_NOTES).
+OPT_J4_FP = "Connector_PinHeader_1.27mm:PinHeader_2x10_P1.27mm_Vertical_SMD"   # brain J4's footprint
+OPT_J4_N = 10                                   # ways a row
+OPT_J4_SIDE = "B"
+OPT_J4_PINOUT = ("+5V", "+5V", "GND", "SAI_SCK", "GND", "SAI_FS", "GND", "SAI_SD1", "SAI_SD2",
+                 "GND", "SAI_SD3", "SAI_SD4", "GND", "SAI_SD5", "GND", "OPT_EMIT", "GND",
+                 "I2C2_SDA", "I2C2_SCL", "GND")
+J4_BODY = (3.41, 12.70)                         # the footprint's F.Fab body, across x along the rows
+J4_PLASTIC = 1.30                               # HX PZ1.27: 5.3 off the board, 4.0 of pin past its plastic
+SLOT_WEB = D.MIN_WALL_2P                        # the plinth's wall either side of the slot
+SLOT_CLR = 0.5                                  # socket to slot, along Y
+
+
+def j4_socket_len() -> float:
+    """The IDC socket along its rows: Samtec FFSD, N x 1.27 + 4.19 (src/ribbon_socket.py)."""
+    return OPT_J4_N * 1.27 + 4.19
+
+
+def j4_slot() -> tuple:
+    """(x0, x1, y0, y1) of the ribbon slot through the plinth and the panel."""
+    x0, x1 = optical_x()
+    ya, _ = _db().ep_raised_y()
+    sx0, sx1 = x0 + SLOT_WEB, x1 - SLOT_WEB
+    sy0 = ya + SLOT_WEB
+    sy1 = sy0 + j4_socket_len() + 2.0 * SLOT_CLR
+    wl = DK.walls()
+    assert wl["b0"] + SLOT_WEB < sy0 and sy1 < wl["b1"] - SLOT_WEB, (
+        "the J4 slot reaches a side rail: move the header, not the rail", (sy0, sy1), wl)
+    return sx0, sx1, sy0, sy1
+
+
+def j4_centre() -> tuple:
+    """(x, y) of J4's body centre in instrument mm: the strip's middle in X, in the slot in Y."""
+    x0, _ = optical_x()
+    _, _, sy0, _ = j4_slot()
+    return x0 + OPT_BOARD_W / 2.0, sy0 + SLOT_CLR + j4_socket_len() / 2.0
+
+
+def j4_pose() -> tuple:
+    """(x, y, z) of J4's F.Fab body middle, 0.5 off the face it stands on (the board's underside):
+    what new_boards_view.header_pose reads, the way every other board's header is measured."""
+    cx, cy = j4_centre()
+    return cx, cy, PLINTH_TOP - 0.5
+
+
+def _j4_socket_z() -> float:
+    """The socket's mating face, down from the board's underside."""
+    from . import ribbon_socket as RS
+    return PLINTH_TOP - RS.MOUTH
+
+
+def j4_ribbon_exit() -> tuple:
+    """Where the ribbon leaves the panel's underside, down into the body cavity."""
+    from . import ui_panel as UP
+    cx, cy = j4_centre()
+    return cx + UP.IDC_BODY_R / 2.0 + 1.0 + UP.RIBBON_T / 2.0, cy, BZ
+
+
+def j4_ribbon_in_slot() -> float:
+    """The ribbon's length from the socket to the panel's underside: out +X, then down."""
+    from . import ui_panel as UP
+    cx, _ = j4_centre()
+    return (j4_ribbon_exit()[0] - (cx + UP.IDC_BODY_R / 2.0)) + (_j4_socket_z() - UP.IDC_CABLE_M - BZ)
+
+
+def j4_parts() -> list:
+    """J4's plastic under the stand-in, the IDC socket on it, and the ribbon down the slot."""
+    from . import ui_panel as UP
+    cx, cy = j4_centre()
+    bx, by = J4_BODY
+    hdr = DK._box(cx - bx / 2, cx + bx / 2, cy - by / 2, cy + by / 2, PLINTH_TOP - J4_PLASTIC, PLINTH_TOP)
+    L, r = j4_socket_len(), UP.IDC_BODY_R
+    zm = _j4_socket_z()
+    sock = DK._box(cx - r / 2, cx + r / 2, cy - L / 2, cy + L / 2, zm - UP.IDC_BODY_M, zm)
+    zc = zm - UP.IDC_BODY_M - UP.IDC_GAP
+    sock = sock.union(DK._box(cx - r / 2, cx + r / 2, cy - L / 2, cy + L / 2, zc - UP.IDC_COVER_M, zc))
+    # the ribbon: out of the body/cover gap toward +X, then straight down the slot past the panel
+    w, t = 2 * OPT_J4_N * 0.635, UP.RIBBON_T
+    zr = zm - UP.IDC_CABLE_M
+    xe = j4_ribbon_exit()[0]
+    rib = DK._box(cx + r / 2, xe + t / 2, cy - w / 2, cy + w / 2, zr - t / 2, zr + t / 2)
+    rib = rib.union(DK._box(xe - t / 2, xe + t / 2, cy - w / 2, cy + w / 2, BZ - 6.0, zr + t / 2))
+    sx0, sx1, sy0, sy1 = j4_slot()
+    assert sx0 < cx - r / 2 and xe + t / 2 < sx1 and sy0 < cy - L / 2 and cy + L / 2 < sy1, (
+        "J4's socket or ribbon does not fit its slot")
+    return [("optical_j4", hdr), ("optical_idc", sock), ("optical_idc_ribbon", rib)]
+
+
+def _j4_piece(nm: str) -> cq.Workplane:
+    return dict(j4_parts())[nm]
+
+
+def _brain_j4_pinout() -> tuple:
+    """Brain J4's ways, read off elec/brain_board.py's own pin table (as tools read elec/fab.py),
+    not imported: the generator builds a netlist on import."""
+    import os
+    import re
+    src = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                            "elec", "brain_board.py"), encoding="utf-8").read()
+    blk = src[src.index('ref="J4"'):]
+    blk = blk[blk.index("for pin, net in ("):blk.index("):")]
+    ways = re.findall(r"\((\d+),\s*(opt_5v|gnd|io\[\"(\w+)\"\])\)", blk)
+    out = {}
+    for n, net, io in ways:
+        out[int(n)] = io or {"opt_5v": "+5V", "gnd": "GND"}[net]
+    assert sorted(out) == list(range(1, 2 * OPT_J4_N + 1)), ("brain J4's pin table did not parse", out)
+    return tuple(out[n] for n in sorted(out))
+
+
+def check_j4_mirror() -> None:
+    """The optical end carries brain J4's ways pin for pin (a straight-through IDC ribbon)."""
+    b = _brain_j4_pinout()
+    bad = [(i + 1, x, y) for i, (x, y) in enumerate(zip(b, OPT_J4_PINOUT)) if x != y]
+    assert not bad, "optical J4 does not mirror brain J4 (pin, brain, optical): %s" % bad
 
 
 def filler(slot: int) -> cq.Workplane:
@@ -206,7 +341,11 @@ def _mount_hardware(pos: int = PIECE_POS) -> list:
 
 
 def parts(pos: int = PIECE_POS) -> list:
-    out = [("deck_optical", kept(optical_panel)), ("optical_board", kept(optical_board)),
+    check_j4_mirror()
+    out = [("deck_optical", kept(optical_panel)), ("optical_board", kept(optical_board))]
+    out += [(nm, made_of(kept(_j4_piece, nm), m)) for nm, m in
+            (("optical_j4", "nylon"), ("optical_idc", "nylon"), ("optical_idc_ribbon", "pvc"))]
+    out += [
            ("deck_pickup", kept(pickup_piece, pos)), ("pickup_plate", kept(pickup_plate, pos))]
     held = range(pos, pos + PIECE_SLOTS)
     k = 0

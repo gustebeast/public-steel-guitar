@@ -2761,6 +2761,19 @@ removed (git history has it); the wood bench keeps its v2 nut block.
 - **Unverified:** the spring's grip loses 21 % of its turn to the channels (4 turns left,
   ~0.5 MPa). A hang test (~110 N for a day) on one printed collar is worth doing before a set.
 
+## Optical ribbon: plug it under the board, then lay the board on the plinth (2026-11-23)
+
+The optical board's end of the brain ribbon (brain J4, 20 ways) is a 2 x 10 1.27 mm header on
+the board's UNDERSIDE, at its -Y end (src/deck_v2_region.py J4, declared ahead of the board's
+redesign). It points -Z into a slot through the optical panel's plinth; the strip's top face is
+under the strings and has no room for a header and socket.
+  1. Feed the ribbon up through the slot from the body cavity (red stripe = way 1 = the -Y end).
+  2. Press the IDC socket onto J4 with the board held above the plinth, ribbon leaving +X
+     (toward the endplate).
+  3. Lay the board on the plinth, the socket dropping into the slot; ease the ribbon down as it
+     goes. Never press a seated board down onto a socket that has not gone into the slot.
+- The redesigned board carries this one part on B: two-sided assembly at JLCPCB.
+
 ## Wood bench, dual rod: string 6 with the shared guide rods (2026-11-24)
 
 String 6's bench rebuilt for the drivetrain as the instrument has it now. String 6's collar grips
