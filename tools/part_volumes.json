@@ -27,43 +27,43 @@
   },
   "collar_0": {
    "material": "pctg",
-   "volume_mm3": 5584.1
+   "volume_mm3": 4658.9
   },
   "collar_1": {
    "material": "pctg",
-   "volume_mm3": 5584.1
+   "volume_mm3": 4658.9
   },
   "collar_2": {
    "material": "pctg",
-   "volume_mm3": 5584.1
+   "volume_mm3": 4658.9
   },
   "collar_3": {
    "material": "pctg",
-   "volume_mm3": 5584.1
+   "volume_mm3": 4658.9
   },
   "collar_4": {
    "material": "pctg",
-   "volume_mm3": 5584.1
+   "volume_mm3": 4658.9
   },
   "collar_5": {
    "material": "pctg",
-   "volume_mm3": 5584.1
+   "volume_mm3": 4658.9
   },
   "collar_6": {
    "material": "pctg",
-   "volume_mm3": 5584.1
+   "volume_mm3": 4658.9
   },
   "collar_7": {
    "material": "pctg",
-   "volume_mm3": 5584.1
+   "volume_mm3": 4658.9
   },
   "collar_8": {
    "material": "pctg",
-   "volume_mm3": 5584.1
+   "volume_mm3": 4658.9
   },
   "collar_9": {
    "material": "pctg",
-   "volume_mm3": 5584.1
+   "volume_mm3": 4658.9
   },
   "collar_a_0": {
    "material": "petg-gf",
@@ -179,7 +179,7 @@
   },
   "endplate": {
    "material": "petg-gf",
-   "volume_mm3": 351939.6
+   "volume_mm3": 350227.2
   },
   "guide_rod_saw_jig": {
    "material": null,
@@ -231,11 +231,11 @@
   },
   "key_seat_plate": {
    "material": null,
-   "volume_mm3": 1305.1
+   "volume_mm3": 1036.2
   },
   "keyhole_plate": {
    "material": null,
-   "volume_mm3": 1308.4
+   "volume_mm3": 1039.4
   },
   "lid_0": {
    "material": "petg-gf",
@@ -423,43 +423,43 @@
   },
   "yoke_0": {
    "material": "petg-gf",
-   "volume_mm3": 6727.9
+   "volume_mm3": 4812.2
   },
   "yoke_1": {
    "material": "petg-gf",
-   "volume_mm3": 6727.9
+   "volume_mm3": 4812.2
   },
   "yoke_2": {
    "material": "petg-gf",
-   "volume_mm3": 6727.9
+   "volume_mm3": 4812.2
   },
   "yoke_3": {
    "material": "petg-gf",
-   "volume_mm3": 6727.9
+   "volume_mm3": 4812.2
   },
   "yoke_4": {
    "material": "petg-gf",
-   "volume_mm3": 6727.9
+   "volume_mm3": 4812.2
   },
   "yoke_5": {
    "material": "petg-gf",
-   "volume_mm3": 6727.9
+   "volume_mm3": 4812.2
   },
   "yoke_6": {
    "material": "petg-gf",
-   "volume_mm3": 6727.9
+   "volume_mm3": 4812.2
   },
   "yoke_7": {
    "material": "petg-gf",
-   "volume_mm3": 6727.9
+   "volume_mm3": 4812.2
   },
   "yoke_8": {
    "material": "petg-gf",
-   "volume_mm3": 6727.9
+   "volume_mm3": 4812.2
   },
   "yoke_9": {
    "material": "petg-gf",
-   "volume_mm3": 6727.9
+   "volume_mm3": 4812.2
   }
  }
 }
