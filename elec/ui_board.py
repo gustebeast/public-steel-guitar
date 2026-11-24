@@ -739,6 +739,7 @@ BOARD_NOTES = {
     "mounting_hole_xy": UI.SCREW_XY,
     "single_sided": True,      # every part on the deck-facing face
     "qty_per_instrument": 1,
+    "zone_clearance": 0.5,      # inherited KiCad default, unreviewed
 }
 
 

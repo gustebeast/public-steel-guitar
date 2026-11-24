@@ -401,6 +401,7 @@ BOARD_NOTES = {
                    "termination, 1 %) and its description says so. Nothing needs a heatsink",
         },
     },
+    "zone_clearance": 0.5,      # inherited KiCad default, unreviewed
 }
 
 

@@ -345,6 +345,7 @@ BOARD_NOTES = {
         "J1 (JXTCONN A127M05-0B30P51-H10A40, C41427104, 2026-11-17): JLC publishes no drawing -- confirm the SMD land against the PinHeader_2x15 footprint in the order preview; NOT shrouded (none stocked at 1.27 mm), so pin 1 must be marked on the silk and the cable stripe -- reversed, +24 V lands on CAN / SPI",
         "J4 / J5 (LED leads) are the motors' MX15 family: label the leads -- a motor plug fits an LED header (power ways agree; CAN onto SCK / SDT, no damage)",
     ],
+    "zone_clearance": 0.5,      # inherited KiCad default, unreviewed
 }
 
 

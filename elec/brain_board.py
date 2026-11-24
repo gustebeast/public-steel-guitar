@@ -2413,6 +2413,7 @@ BOARD_NOTES = {
         "audio isolation: the board is meant to be measured (pickup into an amp: no charger / phone charger / laptop charger / two chargers / a computer on the data) against R1",
         "the UI station's clamp (to x -147) is in this board's drop path (to x -169.4): ignored for now (user 2026-11-13), it moves -X later",
     ],
+    "zone_clearance": 0.5,      # inherited KiCad default, unreviewed
 }
 
 

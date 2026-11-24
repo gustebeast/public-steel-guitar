@@ -1033,6 +1033,7 @@ BOARD_NOTES = {
                    "Nothing needs a heatsink",
         },
     },
+    "zone_clearance": 0.5,      # inherited KiCad default, unreviewed
 }
 if REV == 1:
     # R1, AS ORDERED: what the 2026-10-29 band move changed, put back (the offsets above

@@ -2685,6 +2685,7 @@ BOARD_NOTES = {
     # NEVER YET PAID"; that was measured on optical, whose failures were a congested strip.
     # Here every failure has been a SINGLE long net, which is the case the retry is for.
     "finish_rounds": 2,
+    "zone_clearance": 0.5,      # inherited KiCad default, unreviewed (R1; R2 sets 0.2 below)
 }
 
 # ── RE-CENTRE THE FRAME ON THE GROWN LAMINATE (one pass, nothing re-placed) ───────────

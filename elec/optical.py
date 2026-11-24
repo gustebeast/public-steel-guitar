@@ -4018,6 +4018,7 @@ BOARD_NOTES = {
     "single_sided": True,      # every part on F.Cu: the optics FIRE UP through it
     "qty_per_instrument": 1,
     "placements": _placements(CX, CY),
+    "zone_clearance": 0.5,      # inherited KiCad default, unreviewed
 }
 
 # ⚠⚠ THE SAI_FS POST-ROUTE REPAIR IS WITHDRAWN AS STALE (2026-09-29). Its own header says
