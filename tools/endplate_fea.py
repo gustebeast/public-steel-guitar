@@ -20,10 +20,14 @@ print('plate %d beads: x_j %.2f' % (d.EP_PLATE_N, d.ROD_PLATE[0]), flush=True)
 step = D_ + '/ep.step'
 cq.exporters.export(d.endplate_full(), step)
 T0 = [math.sqrt(2) * (f + 6) / 0.95 for f in d.SPRING_F]          # open pitch, N
+import os as _os0
+if _os0.environ.get('FEA_T'):                                      # every string at one tension (the design max, 147)
+    T0 = [float(_os0.environ['FEA_T'])] * d.N
+print('string tension %.0f..%.0f N' % (min(T0), max(T0)), flush=True)
 rows = dict(d.axle_zs())
 rowz = {0: rows['bend_axle_ra'], 1: rows['bend_axle_rb'], 2: rows['bend_axle_rc']}
 zb = rows['bridge_axle']
-xb, r_b = d.X_BEND, (d.D.BRIDGE_AXLE_D + 0.2) / 2
+xb, r_b = d.X_BEND, d.EP_AXLE_BORE / 2     # the axle fills its bore: bonded (a smaller one floated, 2026-11-22)
 xj = d.ep_x()['x_j']
 (_, _), (yo0, yo1), (zo0, _) = d.body_box()['outer']
 (_, _), (yi0, yi1), (zi0, _) = d.body_box()['inner']
@@ -31,6 +35,9 @@ pitch = abs(d.y_of(0) - d.y_of(1))
 
 import gmsh
 gmsh.initialize(); gmsh.option.setNumber('General.Terminal', 0)
+import os as _os
+for _k, _v in (('Mesh.Algorithm', float(_os.environ.get('FEA_ALG2D', 6))), ('Mesh.Algorithm3D', float(_os.environ.get('FEA_ALG3D', 10)))):
+    gmsh.option.setNumber(_k, _v)          # (2026-11-22: the default PLC failed on the current endplate)
 AX = sys.argv[4] if len(sys.argv) > 4 else 'none'
 ents = gmsh.model.occ.importShapes(step)
 cyl = []
@@ -39,6 +46,7 @@ if AX != 'none':                     # steel axles meshed in, bonded in their bo
         ya, yb = yo0 + 0.5, yo1 - 3.0
     else:
         ya, yb = d.axle_span()
+        ya, yb = ya + 0.3, yb - 0.3          # ends off the y = +-50 faces (coincident ends broke the PLC)
     for zc in list(rowz.values()) + [zb]:
         cyl.append((3, gmsh.model.occ.addCylinder(xb, ya, zc, 0, yb - ya, 0, r_b)))
     gmsh.model.occ.fragment([e_ for e_ in ents if e_[0] == 3], cyl)
@@ -50,7 +58,20 @@ for dim, tag in gmsh.model.getEntities(3):
         steel_vol.add(tag)
 print('axles: %s, %d steel volume(s)' % (AX, len(steel_vol)), flush=True)
 gmsh.option.setNumber('Mesh.MeshSizeMax', H); gmsh.option.setNumber('Mesh.MeshSizeMin', H / 4)
-gmsh.option.setNumber('Mesh.MeshSizeFromCurvature', 12)
+gmsh.option.setNumber('Mesh.MeshSizeFromCurvature', float(_os.environ.get('FEA_CURV', 12)))
+_ref = _os.environ.get('FEA_REFINE', '')                         # 'x,y,z,r,h;...': finer balls (local frame)
+if _ref:
+    _fs = []
+    for _b in _ref.split(';'):
+        _x, _y, _z, _r, _h = map(float, _b.split(','))
+        _f = gmsh.model.mesh.field.add('Ball')
+        for _k, _v in (('VIn', _h), ('VOut', H), ('Radius', _r), ('Thickness', _r), ('XCenter', _x), ('YCenter', _y), ('ZCenter', _z)):
+            gmsh.model.mesh.field.setNumber(_f, _k, _v)
+        _fs.append(_f)
+    _m = gmsh.model.mesh.field.add('Min'); gmsh.model.mesh.field.setNumbers(_m, 'FieldsList', _fs)
+    gmsh.model.mesh.field.setAsBackgroundMesh(_m)
+    gmsh.option.setNumber('Mesh.MeshSizeMin', min(H / 4, min(float(b.split(',')[4]) for b in _ref.split(';'))))
+    print('refine: %s' % _ref, flush=True)
 gmsh.model.mesh.generate(3)
 _, coords, _ = gmsh.model.mesh.getNodes()
 P = coords.reshape(-1, 3)
@@ -75,6 +96,20 @@ lam, mu = lame_parameters(E, NU)
 lam_s, mu_s = lame_parameters(200000.0, 0.29)
 b0 = ib.with_element(fem.ElementTetP0())
 LAM = np.where(is_steel, lam_s, lam); MU = np.where(is_steel, mu_s, mu)
+_sh = _os.environ.get('FEA_SHELL', '')                            # 'wall_mm,E_core': perimeters solid, core = infill
+if _sh:
+    from scipy.spatial import cKDTree
+    _w, _ec = map(float, _sh.split(','))
+    _bf = m.boundary_facets(); _bm = m.p[:, m.facets[:, _bf]].mean(axis=1).T
+    _cen = m.p[:, m.t].mean(axis=1).T
+    _dist, _ = cKDTree(_bm).query(_cen)
+    if is_steel.any():                                             # the axle bores get perimeters too
+        _sn = m.p[:, np.unique(m.t[:, is_steel])].T
+        _dist = np.minimum(_dist, cKDTree(_sn).query(_cen)[0])
+    core = (~is_steel) & (_dist > _w)
+    lam_c, mu_c = lame_parameters(_ec, 0.3)
+    LAM = np.where(core, lam_c, LAM); MU = np.where(core, mu_c, MU)
+    print('shell %.1f mm, core E %.0f MPa: %d of %d plastic tets are core' % (_w, _ec, core.sum(), (~is_steel).sum()), flush=True)
 from skfem.helpers import ddot, sym_grad as _sg, div
 @fem.BilinearForm
 def elast(u, v, w):
@@ -166,6 +201,8 @@ def solve(support_facets, name):
     st_vm = vm[is_steel].max() if is_steel.any() else 0
     print('%s: steel axle peak von Mises %.0f MPa' % (name, st_vm))
     p1 = np.where(is_steel, 0, p1); vm = np.where(is_steel, 0, vm)
+    if _sh:
+        print('%s: core elements: p1 max %.1f, vm 99.9 pct %.1f MPa' % (name, p1[core].max(), np.percentile(vm[core], 99.9)))
     cen = m.p[:, m.t].mean(axis=1)
     ux = u[ib.nodal_dofs[0]]; uz = u[ib.nodal_dofs[2]]
     order = np.argsort(-p1)

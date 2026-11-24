@@ -27,7 +27,7 @@
   },
   "anchor": {
    "material": "steel",
-   "volume_mm3": 82253.4
+   "volume_mm3": 82167.1
   },
   "bar_latch_collar": {
    "material": "petg-gf",
@@ -63,7 +63,7 @@
   },
   "body": {
    "material": "petg-gf",
-   "volume_mm3": 1185628.1
+   "volume_mm3": 1243254.6
   },
   "body_adapter": {
    "material": "petg-gf",
@@ -127,43 +127,43 @@
   },
   "collar_0": {
    "material": "pctg",
-   "volume_mm3": 5573.8
+   "volume_mm3": 5584.1
   },
   "collar_1": {
    "material": "pctg",
-   "volume_mm3": 5573.8
+   "volume_mm3": 5584.1
   },
   "collar_2": {
    "material": "pctg",
-   "volume_mm3": 5573.8
+   "volume_mm3": 5584.1
   },
   "collar_3": {
    "material": "pctg",
-   "volume_mm3": 5573.8
+   "volume_mm3": 5584.1
   },
   "collar_4": {
    "material": "pctg",
-   "volume_mm3": 5573.8
+   "volume_mm3": 5584.1
   },
   "collar_5": {
    "material": "pctg",
-   "volume_mm3": 5573.8
+   "volume_mm3": 5584.1
   },
   "collar_6": {
    "material": "pctg",
-   "volume_mm3": 5573.8
+   "volume_mm3": 5584.1
   },
   "collar_7": {
    "material": "pctg",
-   "volume_mm3": 5573.8
+   "volume_mm3": 5584.1
   },
   "collar_8": {
    "material": "pctg",
-   "volume_mm3": 5573.8
+   "volume_mm3": 5584.1
   },
   "collar_9": {
    "material": "pctg",
-   "volume_mm3": 5573.8
+   "volume_mm3": 5584.1
   },
   "collar_a_0": {
    "material": "petg-gf",
@@ -287,7 +287,7 @@
   },
   "endplate": {
    "material": "petg-gf",
-   "volume_mm3": 378898.9
+   "volume_mm3": 351899.7
   },
   "fixed_sleeve": {
    "material": "petg-gf",
@@ -345,9 +345,13 @@
    "material": "petg-gf",
    "volume_mm3": 2623.3
   },
+  "jack_nut_socket": {
+   "material": null,
+   "volume_mm3": 1820.9
+  },
   "key_seat_plate": {
    "material": null,
-   "volume_mm3": 1753.1
+   "volume_mm3": 1305.1
   },
   "keyhead_endplate": {
    "material": "petg-gf",
@@ -355,7 +359,7 @@
   },
   "keyhole_plate": {
    "material": null,
-   "volume_mm3": 1338.0
+   "volume_mm3": 1308.4
   },
   "kl_axle": {
    "material": "pctg",
@@ -603,39 +607,39 @@
   },
   "plug_0": {
    "material": "petg-gf",
-   "volume_mm3": 6104.4
+   "volume_mm3": 7929.2
   },
   "plug_1": {
    "material": "petg-gf",
-   "volume_mm3": 5616.3
+   "volume_mm3": 7562.3
   },
   "plug_2": {
    "material": "petg-gf",
-   "volume_mm3": 6659.1
+   "volume_mm3": 7621.4
   },
   "plug_3": {
    "material": "petg-gf",
-   "volume_mm3": 5807.2
+   "volume_mm3": 7430.3
   },
   "plug_4": {
    "material": "petg-gf",
-   "volume_mm3": 7601.6
+   "volume_mm3": 7843.9
   },
   "plug_5": {
    "material": "petg-gf",
-   "volume_mm3": 6522.1
+   "volume_mm3": 7484.7
   },
   "plug_6": {
    "material": "petg-gf",
-   "volume_mm3": 6477.7
+   "volume_mm3": 7430.3
   },
   "plug_7": {
    "material": "petg-gf",
-   "volume_mm3": 6046.4
+   "volume_mm3": 7251.0
   },
   "plug_8": {
    "material": "petg-gf",
-   "volume_mm3": 7977.4
+   "volume_mm3": 8098.6
   },
   "plug_9": {
    "material": "petg-gf",
@@ -839,47 +843,47 @@
   },
   "wall_bar_blank": {
    "material": null,
-   "volume_mm3": 327338.6
+   "volume_mm3": 343520.0
   },
   "yoke_0": {
    "material": "petg-gf",
-   "volume_mm3": 6301.9
+   "volume_mm3": 6727.9
   },
   "yoke_1": {
    "material": "petg-gf",
-   "volume_mm3": 6301.9
+   "volume_mm3": 6727.9
   },
   "yoke_2": {
    "material": "petg-gf",
-   "volume_mm3": 6301.9
+   "volume_mm3": 6727.9
   },
   "yoke_3": {
    "material": "petg-gf",
-   "volume_mm3": 6301.9
+   "volume_mm3": 6727.9
   },
   "yoke_4": {
    "material": "petg-gf",
-   "volume_mm3": 6301.9
+   "volume_mm3": 6727.9
   },
   "yoke_5": {
    "material": "petg-gf",
-   "volume_mm3": 6301.9
+   "volume_mm3": 6727.9
   },
   "yoke_6": {
    "material": "petg-gf",
-   "volume_mm3": 6301.9
+   "volume_mm3": 6727.9
   },
   "yoke_7": {
    "material": "petg-gf",
-   "volume_mm3": 6301.9
+   "volume_mm3": 6727.9
   },
   "yoke_8": {
    "material": "petg-gf",
-   "volume_mm3": 6301.9
+   "volume_mm3": 6727.9
   },
   "yoke_9": {
    "material": "petg-gf",
-   "volume_mm3": 6301.9
+   "volume_mm3": 6727.9
   }
  }
 }
