@@ -596,6 +596,7 @@ def _export_assembly(publish=True, gate=True, gate_full=True):
                           ("gate: sweep", lambda: _report_sweep(comps)),
                           ("gate: drive travel", lambda: _report_drive_travel(comps)),
                           ("gate: world pose", lambda: _report_world_pose(comps)),
+                          ("gate: antenna", lambda: _report_antenna(comps)),
                           ("gate: dead code", _report_dead)):
             with _stage(label):
                 rc |= fn()
@@ -681,6 +682,22 @@ def _report_drive_travel(comps) -> int:
         print(f"drive travel gate: SKIPPED ({type(e).__name__}: {e})", flush=True)
         return 0
     print(f"DRIVE TRAVEL GATE: {'green' if n == 0 else f'RED -- {n} pair(s) meet at an end of the travel'}",
+          flush=True)
+    return 1 if n else 0
+
+
+def _report_antenna(comps) -> int:
+    """THE CM5's ANTENNA KEEPS ITS MARGINS (lead, 2026-11-23): the SC0480 dipole lives inside, on
+    the body floor (src/antenna.py), >= 15 from metal and >= 10 from board copper. A motor or a
+    wall bar moved toward it fails the build here instead of quietly detuning the Wi-Fi. Exact
+    distances to the few parts within reach: about a second."""
+    try:
+        from tools.check_antenna import gate
+        n = gate([(name, wp.val() if hasattr(wp, "val") else wp) for name, wp in comps])
+    except Exception as e:               # noqa: BLE001 -- never let a gate eat the geometry
+        print(f"antenna gate: SKIPPED ({type(e).__name__}: {e})", flush=True)
+        return 0
+    print(f"ANTENNA GATE: {'green' if n == 0 else f'RED -- {n} margin(s) broken (tools/check_antenna.py --search)'}",
           flush=True)
     return 1 if n else 0
 
