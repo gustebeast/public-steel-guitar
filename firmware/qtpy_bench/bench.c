@@ -180,6 +180,17 @@ int bench_line(bench_t *b, const char *line, char *out, int n)
         return snprintf(out, n, "ok");
     }
 
+    /* setpos n: say where the motor is without moving it, e.g. after the power-up snap of the
+     * phase restore (OPENLOOP_BENCH.md gate 1 (iv)) moved it by a predicted amount */
+    if (!strcmp(c, "setpos") && ac == 2 && num(av[1], &l1)) {
+        if (snap(b).moving)
+            return snprintf(out, n, "err busy");
+        b->ops.lock(b->ops.ctx);
+        b->ax.pos = b->ax.target = (int32_t)l1;
+        b->ops.unlock(b->ops.ctx);
+        return snprintf(out, n, "ok pos=%ld", l1);
+    }
+
     if (!strcmp(c, "st")) {
         snap_t s = snap(b);
         return snprintf(out, n, "ok pos=%ld target=%ld moving=%d en=%d usteps=%u irun=%lu ihold=%lu",

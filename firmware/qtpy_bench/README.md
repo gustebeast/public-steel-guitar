@@ -23,6 +23,23 @@ Power off for every wiring change.
 | | | MS1, MS2 to GND | UART address 0 |
 | | | VM: bench 24 V, >= 100 uF at the board | VM <= 29 V |
 
+## Pin map, checked against WCH's documents
+
+The firmware uses only default mappings and never writes the remap register.
+
+| Fact | Source |
+|---|---|
+| QT Py pad to port pin: TX = PA2, RX = PA3, SCK = PA5, MI = PA6, MO = PA7 | Adafruit's QT Py CH32V203 pinout page |
+| G6/QFN28 pin 8 = PA2, default alternate function USART2_TX; pin 9 = PA3, USART2_RX; pin 12 = PA6, TIM3_CH1; pins 11 and 13 = PA5 and PA7 | CH32V203 datasheet V3.0, Table 3-1-3, PDF p23 (printed 21) |
+| PA2, PA3, PA5, PA6 and PA7 each have their own package pin. The datasheet's note 7 (PDF p29) warns that 20- and 28-pin parts bond some pins together; on the G6 that is PA10 with PA11 (pin 19, the USB D-) and BOOT0 with PB8. Neither involves our pins. PA10 is left at its reset state, floating input (GPIOx_CFGLR/CFGHR reset 0x44444444, RM p144) | same table; RM below |
+| AFIO_PCFR1 resets to 0x00000000 | CH32FV2x_V3xRM V2.5, register table, PDF p148 |
+| TIM3_RM = 00: "Default map (CH1/PA6, CH2/PA7, ...)" | RM p153, and Table 10-17, p136 |
+| USART2_RM = 0: "Default map (... TX/PA2, RX/PA3 ...)" | RM p154, and Table 10-24, p138 |
+| Timer compare output and USART TX: push-pull alternate output; USART RX: floating or pull-up input | RM Tables 10-2 and 10-3, p133 |
+
+PA2 and PA3 also carry TIM2_CH3 and TIM2_CH4 by default. Nothing here enables TIM2, so there is
+no conflict.
+
 ## Build and flash (on the Pi)
 
 ```
@@ -68,6 +85,7 @@ fields, or with `err`. Units:
 | `mv d v a` | move by `d` steps |
 | `halt` | stop at once. The target becomes wherever the motor is |
 | `zero` | call the current position 0 (only when stopped) |
+| `setpos n` | call the current position `n` without moving (only when stopped). Used after the power-up snap of gate (iv) |
 | `st` | `pos target moving en usteps irun ihold` |
 | `ms` | the driver's MSCNT beside `pos` and `per` (MSCNT counts per step). `moving=1` if it changed during the read |
 | `gstat` | read and clear GSTAT: `reset=1` means the driver lost its settings since the last read |

@@ -258,3 +258,11 @@ def test_client_raises_on_err():
     with pytest.raises(P.BenchError):
         b.do("frob")
     assert P.fields("ok drv=0x80000000 otpw=0") == {"drv": 0x80000000, "otpw": 0}
+
+
+def test_setpos_says_where_the_motor_is_without_moving():
+    q = Q.QtPy()
+    assert q.send("setpos -37") == "ok pos=-37" and q.L.sim_pos() == -37 and not q.L.sim_armed()
+    assert q.fields(q.send("st"))["target"] == "-37"
+    q.send("mv 10 1000 10000")
+    assert q.send("setpos 0") == "err busy"

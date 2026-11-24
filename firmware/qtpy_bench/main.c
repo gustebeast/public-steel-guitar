@@ -7,6 +7,13 @@
  *   SCK PA5            -> ENN    high = outputs off; set high before anything else
  *   TX  PA2  USART2_TX -> 1k -> PDN_UART   (TMC2209 datasheet p17, Fig 4.1)
  *   RX  PA3  USART2_RX -> PDN_UART direct  (so every byte sent is also heard: skipped)
+ * All default mappings; nothing here writes AFIO_PCFR1 (README.md "Pin map", with the pages):
+ *   CH32V203 datasheet V3.0, Table 3-1-3 (QFN28/G6, PDF p23): pin 8 PA2 USART2_TX, pin 9 PA3
+ *   USART2_RX, pin 12 PA6 TIM3_CH1, under "default alternate function"; PA2/3/5/6/7 each have
+ *   their own package pin.
+ *   CH32FV2x_V3xRM V2.5: AFIO_PCFR1 resets to 0x00000000 (p148), TIM3_RM 00 = CH1 on PA6 (p153,
+ *   Table 10-17 p136), USART2_RM 0 = TX PA2, RX PA3 (p154, Table 10-24 p138); compare outputs
+ *   and USART TX as alternate push-pull, RX floating or pull-up (Tables 10-2, 10-3, p133).
  * The edges come from the timer's compare output, never from code, so their timing does not
  * depend on interrupt latency; MicroPlyer needs a jitter-free STEP (datasheet 13.3). The ISR only
  * loads the next compare, which has at least AXIS_CMIN ticks (5 us) to arrive.

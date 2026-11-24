@@ -4,7 +4,9 @@ The plan (user, 2026-11-24): a raw NEMA 17 on each string, driven by 10x TMC2209
 board, with one CH32V203 making the step pulses. No encoder and no motor-side hardware. This bench
 answers the questions the datasheets can't, before any layout. The QT Py's firmware is
 `firmware/qtpy_bench` (its README has the wiring, flashing and commands), and the Pi drives it with
-`publicbench.qtpy`. The gate scripts below are still to be written on top of those.
+`publicbench.qtpy`. Gate 1 (i)-(v) runs as `python3 -m publicbench.gates i|ii|iii|iv|v|all`
+(add `--truth servo42d` for the encoder's ground truth, and `--fullsteps 200` for a 1.8 deg motor);
+its module docstring has the details. Every run is logged to `~/openloop_tmc.jsonl`.
 
 ## Kit (the user orders; nothing has been bought)
 
