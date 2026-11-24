@@ -1,6 +1,6 @@
 {
  "board": "brain_board, ONE board, 167.73 x 100 x 1.6, FINAL position: the +X endplate comes OFF for a board swap and the board drops in at its final x (no slide; user 2026-11-19)",
- "source": "trial t1p (t1d placement (unrouted) + flush panel: J1/J2 1.5 past the edge, J5 0.85 toward it; user 2026-11-23)",
+ "source": "trial t1p (t1d placement (unrouted) + flush panel: J1/J2 1.5 past the edge, J5 0.85 toward it; jack counterbore/boss for the printed nut socket; user 2026-11-23)",
  "edge_x": 0.43,
  "minus_x_edge": -167.3,
  "z": [
@@ -67,12 +67,12 @@
    "stub_tip_x": -1.12,
    "clamp": 4.0,
    "cbore": {
-    "d": 15.6,
+    "d": 16.96,
     "depth": 2.15,
     "from_x": 2.032
    },
    "nut_face_x": 1.93,
-   "wall": "4.0 clamp (Neutrik 3.0..4.7) from the shoulder at -4.12 to the counterbore floor at -0.12; stub 11.4 x 3.0 into the 11.8 hole; nut 11 AF, 2.05 head on a 9 x 3.74 shank, sunk in the 15.6 x 2.15 counterbore (turned with an 11 mm thin-wall socket); boss 18.8"
+   "wall": "4.0 clamp (Neutrik 3.0..4.7) from the shoulder at -4.12 to the counterbore floor at -0.12; stub 11.4 x 3.0 into the 11.8 hole; nut 11 AF, 2.05 head on a 9 x 3.74 shank, sunk in the 16.96 x 2.15 counterbore (turned with the printed jack nut socket, src.jack_socket); boss 20.16"
   },
   {
    "ref": "FL2",
@@ -452,5 +452,17 @@
     -85.4
    ]
   }
- ]
+ ],
+ "boss_check": {
+  "boss_d": 20.16,
+  "axis_y": -77.76,
+  "axis_z": -22.24,
+  "x": [
+   -4.12,
+   0.43
+  ],
+  "hits": [],
+  "within_1mm": [],
+  "note": "the boss is cut by the laminate slot; checked against every other part's courtyard box and height, back-side bodies and THT tails"
+ }
 }
