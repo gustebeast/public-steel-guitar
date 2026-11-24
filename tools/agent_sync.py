@@ -221,8 +221,20 @@ def cmd_submit(summary: str):
     # committing that dirt is how a merge request went out with the markers still in it
     # (2026-10-05, `sync && submit` chained -- sync used to exit 0 on conflicts).
     _refuse_conflicts("submit")
+    # UNTRACKED FILES ARE NEVER SWEPT IN. This used to be `git add -A`, which committed
+    # whatever lay in the worktree: ~150 MB of FEA output and logs plus another agent's
+    # 61 MB npz went out in one merge request (2026-11-23), the second time it bit. Stage
+    # new files by name (`git add <path>`) before submitting; tracked edits still commit.
+    untracked = [ln for ln in git("ls-files", "--others", "--exclude-standard").splitlines()
+                 if ln.strip()]
+    if untracked:
+        shown = "\n  ".join(untracked[:20]) + ("\n  ..." if len(untracked) > 20 else "")
+        raise SystemExit(f"submit refused: {len(untracked)} untracked file(s) in the worktree:\n"
+                         f"  {shown}\n"
+                         f"`git add <path>` the ones that belong in the MR (and commit), and move\n"
+                         f"the rest out of the worktree or into .gitignore. Nothing was committed.")
     if is_dirty():
-        git("add", "-A")
+        git("add", "-u")
         git("commit", "-m", summary)
     sha = git("rev-parse", "HEAD")
     name = branch[len("agent/"):]
