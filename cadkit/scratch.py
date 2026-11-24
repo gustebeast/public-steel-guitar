@@ -31,8 +31,9 @@ The loop:
 
     (bare)         your part FRESH, the rest as above; the viewer page reloads itself
     --cache-only   build nothing: the page alone, in seconds
-    --gate         the project's own gates over the same model (the scoped gate; the
-                   FULL gate runs in the lead's build)
+    --gate         the project's own gates: the live set FRESH, everything else the
+                   LEAD'S build (your kept parts too -- `--kept` gates yours instead).
+                   The scoped gate; the FULL gate runs in the lead's build
     --own          build EVERYTHING here, into your own cache (minutes): for a change
                    that moves what other parts read, or when there is no shared cache
     --lead         forget your own cache: back to the lead's build for all but the
@@ -358,19 +359,21 @@ class ScratchView:
         except Exception:
             return {}
 
-    def files(self, superseded=()) -> dict:
+    def files(self, superseded=(), own=True) -> dict:
         """{part name: BREP file} of the whole model: the lead's build, less what you
         have superseded, under what you have built yourself. A scope's `replaced` hides
         the lead's parts only once the part that replaces them HAS been built here
-        (keep() records it); `superseded` adds prefixes for a live set not kept."""
-        hidden = tuple(set(self._own().get("hidden", [])) | set(superseded))
+        (keep() records it); `superseded` adds prefixes for a live set not kept.
+        own=False leaves your own cache out entirely: the lead's build, less `superseded`."""
+        hidden = tuple((set(self._own().get("hidden", [])) if own else set()) | set(superseded))
         out = {}
         if self.manifest():
             for f in sorted(self.shared.glob("*.brep")):
                 if not (hidden and f.stem.startswith(hidden)):
                     out[f.stem] = f
-        for f in sorted(self.cache.glob("*.brep")):
-            out[f.stem] = f
+        if own:
+            for f in sorted(self.cache.glob("*.brep")):
+                out[f.stem] = f
         if self._solo is not None:
             out = {n: f for n, f in out.items() if n in self._solo}
         return out
@@ -440,9 +443,39 @@ class ScratchView:
         """What a run is showing, for the banner and the page."""
         man, own = self.manifest(), self._own()
         mine = set(own.get("parts", {})) - set(live_names)
+        stale, gone, oldest = self._stale_own(mine, man)
         return {"live": sorted(live_names), "own": len(mine), "own_names": sorted(mine),
+                "stale": stale, "gone": gone, "stale_oldest_h": oldest,
                 "build": man.get("build"), "drift": self._drift(man.get("commit")),
                 "cache_age_min": round((time.time() - man["t"]) / 60.0, 1) if man else None}
+
+    def _stale_own(self, names, man):
+        """(stale, gone, oldest hours) of your kept parts `names`: STALE = built before the
+        lead's current build (the lead's copy is newer than yours), GONE = a name the lead's
+        build no longer has at all (renamed or removed since you built it). A gone part is the
+        dangerous kind: nothing replaces it by name, so it sits in the model BESIDE whatever it
+        became -- duplicate solids, which the overlap gate then booleans against each other
+        (measured 2026-11-24: 1069 kept parts, 13031 pairs instead of 3628, one pair on one
+        worker for 47+ min, a run abandoned after 12 h)."""
+        if not names or not man:
+            return [], [], None
+        t_lead = man.get("t") or 0
+        lead = {f.stem for f in self.shared.glob("*.brep")}
+        stale, gone, oldest = [], [], None
+        for n in sorted(names):
+            try:
+                t = (self.cache / (n + ".brep")).stat().st_mtime
+            except OSError:
+                continue
+            if n not in lead:
+                gone.append(n)
+            elif t < t_lead:
+                stale.append(n)
+            else:
+                continue
+            age = (time.time() - t) / 3600.0
+            oldest = age if oldest is None or age > oldest else oldest
+        return stale, gone, oldest
 
     def _drift(self, commit) -> str:
         """'' if this worktree's code is the tree the lead built, apart from its own
@@ -467,7 +500,10 @@ class ScratchView:
         if d["live"]:
             print("   FRESH        %d part(s): %s%s" % (len(d["live"]), ", ".join(d["live"][:5]),
                                                        " ..." if len(d["live"]) > 5 else ""))
-        if d["own"]:
+        if d["own"] and d.get("gated_lead"):
+            print("   KEPT, yours  %d part(s) NOT in this gate: the lead's copies stand in "
+                  "(--kept to gate yours)" % d["own"])
+        elif d["own"]:
             print("   KEPT, yours  %d part(s) as you last built them (--lead to drop): %s%s"
                   % (d["own"], ", ".join(d["own_names"][:5]), " ..." if d["own"] > 5 else ""))
         if d["cache_age_min"] is not None:
@@ -477,6 +513,15 @@ class ScratchView:
             print("   THE REST     nothing: no shared cache (the lead's next build writes it)")
         if d.get("drift"):
             print(" !! NOT THE SAME TREE: %s" % d["drift"])
+        n_old = len(d.get("stale", ())) + len(d.get("gone", ()))
+        if n_old:
+            print(" !! STALE KEPT: %d of your %d kept part(s) are OLDER than the lead's build "
+                  "(oldest %.1f h):" % (n_old, d["own"], d["stale_oldest_h"] or 0.0))
+            print("    %d superseded by a newer lead copy, %d GONE from the lead's build "
+                  "(renamed or removed:" % (len(d["stale"]), len(d["gone"])))
+            print("    they sit BESIDE what they became). %s"
+                  % ("NOT gated: the lead's copies are (--kept to gate yours)."
+                     if d.get("gated_lead") else "`--lead` drops them."))
         print("=" * 70)
 
     def _nothing(self) -> bool:
@@ -488,7 +533,7 @@ class ScratchView:
         return True
 
     # ── inner-loop gate ─────────────────────────────────────────────────────
-    def check(self) -> int:
+    def check(self, kept=False) -> int:
         """Run the project's gates over the scratch model: the live part FRESH and
         posed exactly as the view draws it, the rest from the caches.
 
@@ -504,15 +549,26 @@ class ScratchView:
             return 1
         live = self.live_parts()
         mine = {n for n, _ in live}
+        # BY DEFAULT THE REST IS THE LEAD'S BUILD, not your own cache (2026-11-24): a kept part
+        # is whatever you built last, possibly days and renames ago, and gating against it
+        # judges your change against a model nobody has. `--kept` gates your kept parts.
         rest = [(n, read_brep(f))
-                for n, f in self.files(self.replaced).items() if n not in mine]
+                for n, f in self.files(self.replaced, own=kept).items() if n not in mine]
         comps = [(n, wp.val()) for n, wp in live] + rest
-        self._banner("INNER-LOOP GATE -- scoped", self.describe(mine))
+        d = self.describe(mine)
+        if not kept:
+            d = dict(d, gated_lead=True)
+        self._banner("INNER-LOOP GATE -- scoped", d)
         print(" Every pair of the whole model is scanned: FRESH against everything, and the")
         print(" rest among themselves (those pairs are remembered, so they cost nothing).")
-        print(" A part you KEPT is gated as YOU built it, not as the lead has it. What it")
-        print(" cannot see: something your change moved that you did not rebuild -- widen")
-        print(" the live set (or --own). The FULL gates run in the lead's build on merge;")
+        if kept:
+            print(" --kept: a part you KEPT is gated as YOU built it, not as the lead has it.")
+        elif d["own"]:
+            print(" Your %d KEPT part(s) are NOT gated: the lead's copies are (--kept to gate"
+                  % d["own"])
+            print(" yours; widen the live set to gate a change in one of them).")
+        print(" What it cannot see: something your change moved that you did not rebuild --")
+        print(" widen the live set (or --own). The FULL gates run in the lead's build on merge;")
         print(" do not run them yourself before `submit`.")
         bad = 0
         for label, fn in self.gates:
@@ -573,6 +629,9 @@ def main(view: ScratchView, argv=None) -> int:
                     help="build EVERYTHING here into your own cache (minutes), then render")
     ap.add_argument("--lead", action="store_true",
                     help="forget your own cache: the lead's build for all but the live part")
+    ap.add_argument("--kept", action="store_true",
+                    help="--gate only: gate your own kept parts as you built them (the default "
+                         "gates the lead's copies of everything outside the live set)")
     ap.add_argument("--resolve-colors", metavar="FILE",
                     help=argparse.SUPPRESS)          # the view's own background colour resolve
     ap.add_argument("--refresh", choices=("shown", "rig"),
@@ -609,5 +668,5 @@ def main(view: ScratchView, argv=None) -> int:
     if a.own:
         view.build_own()
     if a.gate:
-        return view.check()
+        return view.check(kept=a.kept)
     return view.render(live=not a.cache_only, rig=a.rig, solo=a.solo)
