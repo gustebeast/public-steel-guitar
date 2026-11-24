@@ -1094,7 +1094,8 @@
     const G = GEO(part), f = G.f[fi], m = xf(part), base = { part, face: fi };
     switch (f[0]) {
       case 'p': return { ...base, kind: 'plane', p: P(V(f, 1), m), n: D(V(f, 4), m) };
-      case 'c': return { ...base, kind: 'cyl', p: P(V(f, 1), m), d: D(V(f, 4), m), r: f[7], len: Math.abs(f[9] - f[8]) };
+      case 'c': return { ...base, kind: 'cyl', p: P(V(f, 1), m), d: D(V(f, 4), m), r: f[7], len: Math.abs(f[9] - f[8]),
+                         info: f[10] && typeof f[10] === 'object' ? f[10] : null };
       case 'k': return { ...base, kind: 'cone', p: P(V(f, 1), m), d: D(V(f, 4), m), ang: f[7] };
       case 's': return { ...base, kind: 'sphere', c: P(V(f, 1), m), r: f[4] };
       case 't': return { ...base, kind: 'torus', p: P(V(f, 1), m), d: D(V(f, 4), m), R: f[7], r: f[8] };
@@ -1177,6 +1178,21 @@
   const NAMES = { point: 'point', line: 'straight edge', circle: 'circular edge', curve: 'curved edge',
                   plane: 'flat face', cyl: 'cylinder', cone: 'cone', sphere: 'sphere', torus: 'torus',
                   surface: 'curved face' };
+  // a cylinder that stands for a thread or a spring (cadkit.mesh_parts' 11th record element) says so
+  const g = x => String(+(+x).toFixed(3));
+  function whatItIs(i) {
+    if (!i) return [];
+    const hand = i.h < 0 ? 'left-hand' : 'right-hand';
+    if (i.k === 'thread') {
+      const name = Number.isInteger(i.maj) && i.p <= 0.2 * i.maj ? `M${g(i.maj)} × ${g(i.p)}` : `Ø ${g(i.maj)} × ${g(i.p)}`;
+      return [`${i.in ? 'internal' : 'external'} thread ${name} · ${hand}`,
+              `major Ø ${f3(i.maj)} · minor Ø ${f3(i.min)} · pitch ${f3(i.p)}`];
+    }
+    if (i.k === 'coil')
+      return [`coil OD ${f3(i.od)} · wire Ø ${f3(i.w)} · ${hand}`,
+              `pitch ${f3(i.p)} · ${(+i.n).toFixed(2)} turns`];
+    return [];
+  }
   function describe(e) {
     const L = [];
     switch (e.kind) {
@@ -1188,7 +1204,7 @@
         L.push(`centre ${vec(e.c)}`); break; }
       case 'curve': L.push(`length ${f3(polyLen(e.pts))} (sampled)`); break;
       case 'plane': L.push(`normal ${vec(e.n)}`, `area ${faceArea(e.part, e.face).toFixed(2)} mm²`); break;
-      case 'cyl': L.push(`R ${f3(e.r)} · Ø ${f3(2 * e.r)}`, `axis ${vec(e.d)}` + (e.len ? ` · length ${f3(e.len)}` : '')); break;
+      case 'cyl': L.push(...whatItIs(e.info), `R ${f3(e.r)} · Ø ${f3(2 * e.r)}`, `axis ${vec(e.d)}` + (e.len ? ` · length ${f3(e.len)}` : '')); break;
       case 'cone': L.push(`half angle ${deg(Math.abs(e.ang))}`, `axis ${vec(e.d)}`); break;
       case 'sphere': L.push(`R ${f3(e.r)} · Ø ${f3(2 * e.r)}`, `centre ${vec(e.c)}`); break;
       case 'torus': L.push(`R ${f3(e.R)} · tube r ${f3(e.r)}`); break;
