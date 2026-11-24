@@ -532,7 +532,28 @@ dtparam=spi=on                      # SPI0, fret lights: GPIO10, GPIO11
 dtoverlay=spi1-1cs                  # SPI1, display: GPIO20, GPIO21, CS on GPIO18
 dtoverlay=spi5-1cs                  # SPI5, foot lights: GPIO14, GPIO15
 dtoverlay=dwc2,dr_mode=peripheral   # the USB-C port is the gadget port
+dtparam=ant2                        # CM5: Wi-Fi on the EXTERNAL antenna (U.FL), see below
 ```
+
+**The CM5's Wi-Fi uses the external antenna (2026-11-23).** `dtparam=ant2` is read once at boot
+and cannot change while running. Without it, the CM5 uses its on-module PCB antenna (`ant1`),
+and that antenna is boxed in here: it faces the drive's steel leadscrews and stainless
+springs, the steel wall bar is 9.5 mm behind it, and it sits over the brain board. That
+fails all three of Raspberry Pi's placement rules (CM5 datasheet RP-008180-DS-8, 4.1.2).
+The antenna is the Raspberry Pi Antenna Kit **SC0480**, certified for the CM5; a different
+antenna would need the instrument's own radio certification.
+
+1. Plug the cable's U.FL onto the CM5's U.FL socket (the module's corner beside the RF can)
+   **before** the brain board goes in. A U.FL is good for only a few dozen matings, so
+   plug it once and leave it.
+2. NOTHING POKES OUT (user, 2026-11-23): the antenna lives inside, on the body floor in the -Y
+   bay beside motor 8, lying along -X at (y -74, z -100) -- clear of every steel part by 15 mm and
+   of board copper by 67, its way out the plastic floor and the -Y wall's band below the wall bar.
+   Put the toothed washer on the cable's SMA and pass it -X through the D-hole in the floor's
+   antenna boss (x ~ -236), from the +X side. The flat on the thread stops it turning.
+3. On the boss's -X side: the flat washer, then the hex nut, snug. Screw the antenna's RP-SMA on
+   STRAIGHT (not turned 90 deg) so it lies along -X, and press its tip into the floor's saddle clip.
+   Dress the cable's slack down the CM5 side of the brain board.
 
 **Must NOT appear:** `enable_uart=1`, `dtoverlay=disable-bt`, `dtoverlay=miniuart-bt`
 (all three put a UART on GPIO14 / 15, the foot lights' pins), `dtoverlay=spi1-2cs` or

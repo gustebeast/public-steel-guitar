@@ -17,113 +17,13 @@
    "material": "petg-gf",
    "volume_mm3": 83194.7
   },
-  "adjust_sleeve": {
-   "material": "petg-gf",
-   "volume_mm3": 353678.5
-  },
-  "adjust_tenon": {
-   "material": "petg-gf",
-   "volume_mm3": 124982.3
-  },
   "anchor": {
    "material": "steel",
    "volume_mm3": 82167.1
   },
-  "bar_latch_collar": {
-   "material": "petg-gf",
-   "volume_mm3": 39170.4
-  },
-  "bar_latch_frame": {
-   "material": "pctg",
-   "volume_mm3": 5262.7
-  },
-  "bar_shim": {
-   "material": "petg-gf",
-   "volume_mm3": 3548.4
-  },
-  "belt_tensioner_half_a": {
-   "material": "pctg",
-   "volume_mm3": 903.3
-  },
-  "belt_tensioner_half_b": {
-   "material": "pctg",
-   "volume_mm3": 1014.2
-  },
-  "bench_deck_0": {
-   "material": "petg-gf",
-   "volume_mm3": 93487.4
-  },
-  "bench_deck_1": {
-   "material": "petg-gf",
-   "volume_mm3": 91512.8
-  },
-  "bench_deck_2": {
-   "material": "petg-gf",
-   "volume_mm3": 75620.7
-  },
   "body": {
    "material": "petg-gf",
    "volume_mm3": 1243254.6
-  },
-  "body_adapter": {
-   "material": "petg-gf",
-   "volume_mm3": 83571.9
-  },
-  "body_adapter_mx_my": {
-   "material": "petg-gf",
-   "volume_mm3": 84995.5
-  },
-  "body_adapter_px_my": {
-   "material": "petg-gf",
-   "volume_mm3": 84995.5
-  },
-  "body_adapter_px_py": {
-   "material": "petg-gf",
-   "volume_mm3": 83950.5
-  },
-  "bridge_endplate": {
-   "material": "petg-gf",
-   "volume_mm3": 340023.2
-  },
-  "cart_base": {
-   "material": "pctg",
-   "volume_mm3": 5535.7
-  },
-  "cart_piston": {
-   "material": "pctg",
-   "volume_mm3": 772.3
-  },
-  "chassis_0": {
-   "material": "petg-gf",
-   "volume_mm3": 542397.4
-  },
-  "chassis_0_light": {
-   "material": "pctg",
-   "volume_mm3": 16903.6
-  },
-  "chassis_1": {
-   "material": "petg-gf",
-   "volume_mm3": 585478.6
-  },
-  "chassis_1_light": {
-   "material": "pctg",
-   "volume_mm3": 18820.1
-  },
-  "chassis_2": {
-   "material": "petg-gf",
-   "volume_mm3": 605210.5
-  },
-  "chassis_2_light": {
-   "material": "pctg",
-   "volume_mm3": 15950.2
-  },
-  "coil_mandrel": {
-   "material": null,
-   "volume_mm3": 27757.5
-  },
-  "coil_mandrel_sleeve": {
-   "material": null,
-   "volume_mm3": 18976.2
   },
   "collar_0": {
    "material": "pctg",
@@ -169,10 +69,6 @@
    "material": "petg-gf",
    "volume_mm3": 2848.7
   },
-  "collar_a_1": {
-   "material": "petg-gf",
-   "volume_mm3": 2848.7
-  },
   "collar_a_2": {
    "material": "petg-gf",
    "volume_mm3": 2848.7
@@ -190,10 +86,6 @@
    "volume_mm3": 2848.7
   },
   "collar_a_6": {
-   "material": "petg-gf",
-   "volume_mm3": 2848.7
-  },
-  "collar_a_7": {
    "material": "petg-gf",
    "volume_mm3": 2848.7
   },
@@ -289,21 +181,9 @@
    "material": "petg-gf",
    "volume_mm3": 351899.7
   },
-  "fixed_sleeve": {
-   "material": "petg-gf",
-   "volume_mm3": 238823.8
-  },
-  "fixed_tenon": {
-   "material": "petg-gf",
-   "volume_mm3": 131898.7
-  },
   "guide_rod_saw_jig": {
    "material": null,
    "volume_mm3": 42787.7
-  },
-  "guide_rod_saw_jig_cap": {
-   "material": null,
-   "volume_mm3": 19587.9
   },
   "housing_0": {
    "material": "petg-gf",
@@ -353,81 +233,9 @@
    "material": null,
    "volume_mm3": 1305.1
   },
-  "keyhead_endplate": {
-   "material": "petg-gf",
-   "volume_mm3": 324258.2
-  },
   "keyhole_plate": {
    "material": null,
    "volume_mm3": 1308.4
-  },
-  "kl_axle": {
-   "material": "pctg",
-   "volume_mm3": 2075.4
-  },
-  "kl_axle_sprung": {
-   "material": "pctg",
-   "volume_mm3": 2153.1
-  },
-  "kl_magnet_cap": {
-   "material": "pctg",
-   "volume_mm3": 103.0
-  },
-  "kl_pcb_shim": {
-   "material": "pctg",
-   "volume_mm3": 111.7
-  },
-  "kl_spacer": {
-   "material": "pctg",
-   "volume_mm3": 52.7
-  },
-  "kl_spacer_sprung": {
-   "material": "pctg",
-   "volume_mm3": 51.5
-  },
-  "kl_spacer_sprung_n": {
-   "material": "pctg",
-   "volume_mm3": 92.3
-  },
-  "knee_housing": {
-   "material": "petg-gf",
-   "volume_mm3": 67900.0
-  },
-  "knee_housing_r": {
-   "material": "petg-gf",
-   "volume_mm3": 68468.3
-  },
-  "knee_lever": {
-   "material": "pctg",
-   "volume_mm3": 37378.4
-  },
-  "kv_housing": {
-   "material": "petg-gf",
-   "volume_mm3": 115308.0
-  },
-  "kv_lever": {
-   "material": "pctg",
-   "volume_mm3": 22587.3
-  },
-  "kv_pcb_shim": {
-   "material": "pctg",
-   "volume_mm3": 1509.2
-  },
-  "leg_foot": {
-   "material": "tpu",
-   "volume_mm3": 29153.2
-  },
-  "leg_latch_slider": {
-   "material": "pctg",
-   "volume_mm3": 4125.3
-  },
-  "lever_prog_jig": {
-   "material": null,
-   "volume_mm3": 17523.6
-  },
-  "lever_prog_jig_base": {
-   "material": null,
-   "volume_mm3": 6422.5
   },
   "lid_0": {
    "material": "petg-gf",
@@ -468,10 +276,6 @@
   "lid_9": {
    "material": "petg-gf",
    "volume_mm3": 1522.5
-  },
-  "motor_pulley": {
-   "material": "pctg",
-   "volume_mm3": 257.2
   },
   "motor_shaft_saw_jig": {
    "material": null,
@@ -516,70 +320,6 @@
   "mplate_9": {
    "material": "petg-gf",
    "volume_mm3": 6159.6
-  },
-  "nut_plate": {
-   "material": null,
-   "volume_mm3": 3065.1
-  },
-  "nut_slide_insert": {
-   "material": "pctg",
-   "volume_mm3": 2873.5
-  },
-  "nut_slide_insert_a": {
-   "material": "pctg",
-   "volume_mm3": 2114.6
-  },
-  "nut_slide_insert_b": {
-   "material": "pctg",
-   "volume_mm3": 2884.1
-  },
-  "nut_slide_insert_c": {
-   "material": "pctg",
-   "volume_mm3": 4902.0
-  },
-  "optical_guard": {
-   "material": "petg-gf",
-   "volume_mm3": 11446.3
-  },
-  "pedal_bar_a": {
-   "material": "petg-gf",
-   "volume_mm3": 417676.9
-  },
-  "pedal_bar_b": {
-   "material": "petg-gf",
-   "volume_mm3": 483610.0
-  },
-  "pedal_bar_c": {
-   "material": "petg-gf",
-   "volume_mm3": 309914.8
-  },
-  "pedal_detent_nub": {
-   "material": "tpu",
-   "volume_mm3": 50.3
-  },
-  "pedal_lever": {
-   "material": "pctg",
-   "volume_mm3": 39588.1
-  },
-  "pedal_lid_a": {
-   "material": "petg-gf",
-   "volume_mm3": 28755.5
-  },
-  "pedal_lid_b": {
-   "material": "petg-gf",
-   "volume_mm3": 28769.2
-  },
-  "pedal_pcb_shim": {
-   "material": "pctg",
-   "volume_mm3": 1779.4
-  },
-  "pi_spacer": {
-   "material": "petg-gf",
-   "volume_mm3": 61.4
-  },
-  "pickup_zplate": {
-   "material": "petg-gf",
-   "volume_mm3": 14901.6
   },
   "pin_drill_bushing_pilot": {
    "material": null,
@@ -649,10 +389,6 @@
    "material": null,
    "volume_mm3": 11720.5
   },
-  "rod_plug": {
-   "material": "pctg",
-   "volume_mm3": 33.0
-  },
   "saw_jig": {
    "material": null,
    "volume_mm3": 38046.6
@@ -661,173 +397,13 @@
    "material": null,
    "volume_mm3": 20884.7
   },
-  "screw_pulley_hi": {
-   "material": "pctg",
-   "volume_mm3": 838.1
-  },
-  "screw_pulley_lo": {
-   "material": "pctg",
-   "volume_mm3": 1475.1
-  },
   "screw_spin_jig": {
    "material": null,
    "volume_mm3": 4105.7
   },
-  "seam_bridge": {
-   "material": "petg-gf",
-   "volume_mm3": 22197.0
-  },
-  "sleeve_c_0": {
-   "material": "petg-gf",
-   "volume_mm3": 1592.3
-  },
-  "sleeve_c_1": {
-   "material": "petg-gf",
-   "volume_mm3": 1784.5
-  },
-  "sleeve_c_2": {
-   "material": "petg-gf",
-   "volume_mm3": 1784.5
-  },
-  "sleeve_c_3": {
-   "material": "petg-gf",
-   "volume_mm3": 1592.3
-  },
-  "sleeve_c_4": {
-   "material": "petg-gf",
-   "volume_mm3": 1784.5
-  },
-  "sleeve_c_5": {
-   "material": "petg-gf",
-   "volume_mm3": 1784.5
-  },
-  "sleeve_c_6": {
-   "material": "petg-gf",
-   "volume_mm3": 1592.3
-  },
-  "sleeve_c_7": {
-   "material": "petg-gf",
-   "volume_mm3": 1784.5
-  },
-  "sleeve_c_8": {
-   "material": "petg-gf",
-   "volume_mm3": 1784.5
-  },
-  "sleeve_c_9": {
-   "material": "petg-gf",
-   "volume_mm3": 1592.3
-  },
-  "sleeve_p_0": {
-   "material": "petg-gf",
-   "volume_mm3": 1289.2
-  },
-  "sleeve_p_1": {
-   "material": "petg-gf",
-   "volume_mm3": 1289.2
-  },
-  "sleeve_p_2": {
-   "material": "petg-gf",
-   "volume_mm3": 1289.2
-  },
-  "sleeve_p_3": {
-   "material": "petg-gf",
-   "volume_mm3": 1289.2
-  },
-  "sleeve_p_4": {
-   "material": "petg-gf",
-   "volume_mm3": 1289.2
-  },
-  "sleeve_p_5": {
-   "material": "petg-gf",
-   "volume_mm3": 1289.2
-  },
-  "sleeve_p_6": {
-   "material": "petg-gf",
-   "volume_mm3": 1289.2
-  },
-  "sleeve_p_7": {
-   "material": "petg-gf",
-   "volume_mm3": 1289.2
-  },
-  "sleeve_p_8": {
-   "material": "petg-gf",
-   "volume_mm3": 1289.2
-  },
-  "sleeve_p_9": {
-   "material": "petg-gf",
-   "volume_mm3": 1289.2
-  },
   "spring_saw_jig": {
    "material": null,
    "volume_mm3": 66045.5
-  },
-  "tension_fork": {
-   "material": "pctg",
-   "volume_mm3": 82.5
-  },
-  "test_belt_tensioner": {
-   "material": null,
-   "volume_mm3": 1917.4
-  },
-  "test_cover_plate": {
-   "material": null,
-   "volume_mm3": 9692.8
-  },
-  "test_cover_seat": {
-   "material": null,
-   "volume_mm3": 18770.7
-  },
-  "test_motor_bay": {
-   "material": null,
-   "volume_mm3": 17312.5
-  },
-  "test_section_mortise": {
-   "material": null,
-   "volume_mm3": 28042.8
-  },
-  "test_section_tenon": {
-   "material": null,
-   "volume_mm3": 23271.1
-  },
-  "top_plate_0": {
-   "material": "pctg",
-   "volume_mm3": 68408.0
-  },
-  "top_plate_0_color": {
-   "material": "pctg",
-   "volume_mm3": 19782.9
-  },
-  "top_plate_1": {
-   "material": "pctg",
-   "volume_mm3": 20250.3
-  },
-  "top_plate_1_color": {
-   "material": "pctg",
-   "volume_mm3": 6542.4
-  },
-  "top_plate_2": {
-   "material": "pctg",
-   "volume_mm3": 20250.3
-  },
-  "top_plate_2_color": {
-   "material": "pctg",
-   "volume_mm3": 6542.4
-  },
-  "top_plate_3": {
-   "material": "pctg",
-   "volume_mm3": 194876.8
-  },
-  "top_plate_3_color": {
-   "material": "pctg",
-   "volume_mm3": 112307.4
-  },
-  "top_plate_4": {
-   "material": "pctg",
-   "volume_mm3": 251670.6
-  },
-  "top_plate_4_color": {
-   "material": "pctg",
-   "volume_mm3": 118481.9
   },
   "ui_clamp": {
    "material": "petg-gf",

@@ -551,6 +551,11 @@ _TPU_BLACK = (0.03, 0.03, 0.03)                  # ALL TPU parts render black (u
 _TPU_BASES = tuple(sorted((k for k, v in PARTS.items() if v[1].startswith("tpu/")), key=len, reverse=True))
 
 
+class NoColour(KeyError):
+    """A part no colour table knows (_color_for). There is no default colour (user,
+    2026-11-14), so the web view cannot be drawn: the build is RED (_web_view)."""
+
+
 def _color_for(name):
     # STRIP EVERY TRAILING INDEX GROUP, not just the last one -- the same lesson
     # tools.check_overlaps.base() records, and this resolver had not learned it. A part
@@ -570,7 +575,7 @@ def _color_for(name):
     # ⚠ NO DEFAULT COLOUR (user, 2026-11-14). A name nothing here knows used to come out
     # _DEFAULT_COLOR, white -- a new board read as a white-mask PCB and nothing said so. It
     # fails the build instead: add the part to _COLORS (or its module's own table).
-    raise KeyError("build: no colour for part %r (base %r) -- add it to src/build.py _COLORS "
+    raise NoColour("build: no colour for part %r (base %r) -- add it to src/build.py _COLORS "
                    "or its module's colour table; there is no default" % (name, base))
 
 
@@ -586,7 +591,7 @@ def _export_assembly(publish=True, gate=True, gate_full=True):
     with _stage("shared cache for the scratch views"):
         from cadkit.scratch import publish_cache
         publish_cache(comps, OUT, build=build_n)
-    rc = _web_view(comps, build_n, publish)
+    rc = web_rc = _web_view(comps, build_n, publish)
     # LAST: the gate spawns a worker pool, so run it once the viewer is refreshed — a
     # gate hiccup can never cost the build.
     if gate:
@@ -595,9 +600,12 @@ def _export_assembly(publish=True, gate=True, gate_full=True):
                           ("gate: sweep", lambda: _report_sweep(comps)),
                           ("gate: drive travel", lambda: _report_drive_travel(comps)),
                           ("gate: world pose", lambda: _report_world_pose(comps)),
+                          ("gate: antenna", lambda: _report_antenna(comps)),
                           ("gate: dead code", _report_dead)):
             with _stage(label):
                 rc |= fn()
+    # the web view's result BESIDE the gates' (it ran first, and its RED scrolled away)
+    print(f"WEB VIEW: {'green' if web_rc == 0 else 'RED -- see the web view line above'}", flush=True)
     _report_stages()
     return rc
 
@@ -682,6 +690,22 @@ def _report_drive_travel(comps) -> int:
     return 1 if n else 0
 
 
+def _report_antenna(comps) -> int:
+    """THE CM5's ANTENNA KEEPS ITS MARGINS (lead, 2026-11-23): the SC0480 dipole lives inside, on
+    the body floor (src/antenna.py), >= 15 from metal and >= 10 from board copper. A motor or a
+    wall bar moved toward it fails the build here instead of quietly detuning the Wi-Fi. Exact
+    distances to the few parts within reach: about a second."""
+    try:
+        from tools.check_antenna import gate
+        n = gate([(name, wp.val() if hasattr(wp, "val") else wp) for name, wp in comps])
+    except Exception as e:               # noqa: BLE001 -- never let a gate eat the geometry
+        print(f"antenna gate: SKIPPED ({type(e).__name__}: {e})", flush=True)
+        return 0
+    print(f"ANTENNA GATE: {'green' if n == 0 else f'RED -- {n} margin(s) broken (tools/check_antenna.py --search)'}",
+          flush=True)
+    return 1 if n else 0
+
+
 def _report_dead() -> int:
     """Source drift, not geometry: module-level definitions nothing in the repo names
     any more. REPORT ONLY -- it never fails the build. Retired parts leave their
@@ -711,8 +735,26 @@ def _web_view(comps, build_n, publish=True):
     and it is neither shown nor published: the build is RED (returns 1), because a page
     of green boxes looks like a finished build to everyone but the person who knows the
     boards. The push itself is a no-op off the main branch (so agent worktrees don't
-    publish) — see tools/publish_preview.py. Returns the build's exit code."""
+    publish) — see tools/publish_preview.py. Returns the build's exit code.
+
+    A PART WITH NO COLOUR IS RED TOO (lead, 2026-11-23). _color_for raises on purpose (no
+    default colour), and the catch-all below used to turn that into one quiet "web view:
+    skipped" line: the brain and connector boards' new parts went uncoloured for several
+    merges (3729ac6f). Every component's colour is looked up FIRST, so all the missing ones
+    are named at once and nothing is written. What stays tolerated is the page's own
+    trouble: no viewer running, offline, not on main."""
     from cadkit.web import BoardsSkipped
+    missing = []
+    for name, _wp in comps:
+        try:
+            _color_for(name)
+        except NoColour:
+            missing.append(name)
+    if missing:
+        bases = sorted({re.sub(r"(_\d+)+$", "", n) for n in missing})
+        print(f"🔴 web view: {len(missing)} part(s) have NO COLOUR -- not shown, not published. "
+              f"Add to src/build.py _COLORS (or the module's own table): {', '.join(bases)}", flush=True)
+        return 1
     try:
         from cadkit.web import show_exported
         from tools.export_glb import build_glb
@@ -732,6 +774,9 @@ def _web_view(comps, build_n, publish=True):
                       "(tools.publish_preview said why, above)", flush=True)
     except BoardsSkipped as e:
         print(f"🔴 web view: BOARDS NOT DRAWN — not shown, not published. {e}", flush=True)
+        return 1
+    except NoColour as e:                # (one the check above did not see: still RED)
+        print(f"🔴 web view: {e}", flush=True)
         return 1
     except Exception as e:               # noqa: BLE001 — never let the viewer break a build
         print(f"web view: skipped ({type(e).__name__}: {e})", flush=True)
@@ -920,7 +965,7 @@ def main() -> None:
     # ⚠ VOLUMES FIRST. report_build_regressions() ends by CLEARING the record list, so
     # writing the volumes after it wrote an empty file (found by the file being 100
     # bytes, lead 2026-09-30). Order matters here and nothing else would have said so.
-    _n = write_part_volumes()           # what the plastic costs, for tools/cost.py
+    _n = write_part_volumes(keep=set(PARTS))   # what the plastic costs, for tools/cost.py
     if _n:
         print(f"wrote tools/part_volumes.json  ({_n} parts)")
     report_build_regressions()          # ~free: flags any part whose face count grew vs baseline

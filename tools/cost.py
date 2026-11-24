@@ -50,6 +50,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 PRICES = os.path.join(ROOT, "elec", "prices.json")
 VOLUMES = os.path.join(HERE, "part_volumes.json")
+V1_CONTROLS = os.path.join(HERE, "v1_controls.json")   # v1 levers / pedals / legs, until re-authored
 GEOM = os.path.join(ROOT, "elec", "geom")
 
 ORDER_INSTRUMENTS = 10          # the user's basis: order ten, divide by ten
@@ -65,6 +66,13 @@ def load_volumes():
     if not os.path.isfile(VOLUMES):
         return {}
     with open(VOLUMES, encoding="utf-8") as fh:
+        return json.load(fh).get("parts", {})
+
+
+def load_v1_controls():
+    if not os.path.isfile(V1_CONTROLS):
+        return {}
+    with open(V1_CONTROLS, encoding="utf-8") as fh:
         return json.load(fh).get("parts", {})
 
 
@@ -315,6 +323,10 @@ def main(argv=None):
     per_mat = {}
     for part, rec in vols.items():
         mat = (rec.get("material") or "?").lower()
+        if mat in ("?", "steel"):
+            continue                    # no material = a jig or bushing under tools/ (shop
+            # infrastructure), steel = a laser-cut or machined metal part, priced under
+            # mechanical (wall_bar, keyhole_plate, key_seat_plate, nut_plate = the anchor)
         if (part.startswith("test_") or part.startswith("coil_mandrel")
                 or part.endswith("_light") or part == "assembly"):
             continue                    # coupons, the viewer's lightweight chassis, and
@@ -344,6 +356,26 @@ def main(argv=None):
                   % (mat, mm3 / 1000, kg_solid, kg, factor, usd, ent["source"]))
     groups.append(("Printed parts (x%.2f material factor; solid would be $%.0f)"
                    % (factor, solid_usd), plastic))
+
+    # ---- v1 levers / pedals / legs: v1 volumes x v1 counts (tools/v1_controls.json) ----
+    v1 = load_v1_controls()
+    if v1:
+        v1_usd, v1_grp = 0.0, {}
+        for part, rec in sorted(v1.items()):
+            if part in vols:
+                notes.append("v1_controls.json still lists %r, which src.build builds again -- "
+                             "delete its v1 entry (counted twice otherwise)" % part)
+            ent = prices["filament_per_kg"].get(rec["material"])
+            if not ent or (not keep and ent.get("verified") != "v"):
+                continue
+            usd = (float(rec["volume_mm3"]) * int(rec["per_instrument"]) / 1000.0
+                   * float(ent["density_g_cm3"]) / 1000.0 * factor * float(ent["usd"]))
+            v1_usd += usd
+            v1_grp[rec["group"]] = v1_grp.get(rec["group"], 0.0) + usd
+        if a.detail:
+            print("  v1 controls: " + ", ".join("%s $%.2f" % kv for kv in sorted(v1_grp.items())))
+        groups.append(("Printed parts, v1 levers/pedals/legs (v1 volumes, x%.2f)" % factor,
+                       v1_usd))
 
     # ---- boards -------------------------------------------------------------
     parts_usd = fab_usd = asm_usd = fees_usd = 0.0

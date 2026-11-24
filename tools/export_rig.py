@@ -1,6 +1,13 @@
 """Emit docs/rig.json -- the animation manifest the web viewer plays.
 
-THE DIRECT INSTRUMENT HAS NO ANIMATION YET (lead, 2026-11-17). The rig this file used to
+THE DIRECT DRIVE MOVES (user, 2026-11-23: "update the pedal and knee buttons to move the
+drivetrains and string balls"). Each string's entry (`_screw_string`) tells the viewer how its
+drive follows a pedal or lever: the nut and everything that rides it slide along the screw, the
+screw and what turns with it turn at the screw's lead, and the spring stretches between its plug
+and the collar. Parts are named by pattern, so pieces the build numbers (m3_0_3...) come along.
+The levers and pedals themselves do not swing yet (no stations drawn).
+
+HISTORY (lead, 2026-11-17): the direct instrument had no animation at first. The rig this file used to
 write was the v1 belt drive's: each string's carriage riding its vertical leadscrew, the
 screw and motor pulleys turning, the belt clamps sliding along their runs, and the levers
 and pedals swinging at v1's stations. None of those parts are in the direct instrument, so
@@ -9,15 +16,15 @@ the git tag v1-instrument.
 
 What the viewer still uses is written: the copedent (its control panel and key map), the
 open tuning, the deck's name prefixes (the "hide the deck" toggle) and the build number.
-The per-string motion and the pedal poses are empty lists, which the viewer treats as
-"nothing to move". When the direct drive gets animated, its nut and yoke ride the screw
-along X; that is new work for cadkit/web/viewer, not a revival of the old Z carriage.
+The per-string motion was an empty list, which the viewer treats as "nothing to move", until
+the direct drive's entries above (cadkit's viewer reads them: rig.strings[i].slide).
 
   py -3.12 -m tools.export_rig
 """
 from __future__ import annotations
 
 import json
+import math
 import pathlib
 
 from src import dimensions as D
@@ -78,6 +85,38 @@ def _idx(string_no: int) -> int:
 DECK_PREFIXES = ["deck_", "ui_", "wire_ui", "fret_", "wire_fret_led", "pickup", "wire_pickup"]
 
 
+# WHAT TURNS WITH THE SCREW: the coupler and its screws, the screw's bearing collars and theirs,
+# and the motor's shaft (src.direct_bench's string parts and motor pieces)
+_TURNING = ("screw", "coupler", "cpl_m3", "cpl_insert", "collar_a", "ca_m3", "ca_ins",
+            "collar_b", "cb_m3", "cb_ins", "motor_shaft")
+
+
+def _names(prefixes, i: int) -> str:
+    """A pattern for string i's parts with these names, pieces too (yoke_3, m3_0_3)."""
+    return r"^(%s)(_\d+)?_%d$" %("|".join(sorted(prefixes)), i)
+
+
+def _screw_string(i: int) -> dict:
+    """String i's direct drive, for the viewer. Stretch beyond slack = t * T_TRAVEL (src.direct_bench
+    x_yt: the nut moves -X as t grows); the model is drawn at T_OPEN. A right-hand screw held
+    axially, turned +a about +X, drives its nut -X: a = -2 pi dx / lead (the reverse for LH)."""
+    from src import direct_bench as DB
+    assert DB.THETA == 0.0, "the drive is drawn yawed: its axis is no longer +X"
+    x0, x1 = DB.spring_span(DB.T_OPEN, i)
+    hand = 1.0 if D.SCREW_HAND == "RH" else -1.0
+    return {
+        "i": i,
+        "axis": [1.0, 0.0, 0.0], "center": [0.0, DB.y_of(i), DB.za(i)],
+        "open_dl": D.DL_OPEN, "drawn_dl": DB.T_OPEN * DB.T_TRAVEL, "dl_max": DB.T_TRAVEL,
+        "slide_dir": [-1.0, 0.0, 0.0],                    # the nut, per mm of stretch
+        "slide": _names(DB._RIGID, i),
+        "turn": _names(_TURNING, i),
+        # per mm of stretch the nut goes -X 1 mm: the screw turns +2 pi / lead (RH)
+        "turn_rad_per_mm": hand * 2 * math.pi / D.SCREW_PITCH,
+        "stretch": {"re": _names(("spring",), i), "from": [x0, DB.y_of(i), DB.za(i)], "len": x1 - x0},
+    }
+
+
 def build_rig(build_n=None, out=RIG) -> pathlib.Path:
     if build_n is None:
         from tools.export_glb import _current_build_n
@@ -97,14 +136,14 @@ def build_rig(build_n=None, out=RIG) -> pathlib.Path:
         "n_strings": D.N_STRINGS,
         "deck_prefixes": DECK_PREFIXES,
         "open_tuning": list(OPEN_TUNING),
-        "strings": [],                 # no per-string motion drawn yet (see the docstring)
+        "strings": [_screw_string(i) for i in range(D.N_STRINGS)],
         "pedals": [],
         "copedent": copedent,
     }
     out = pathlib.Path(out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(rig, indent=1))
-    print(f"wrote {out.name}  ({len(copedent)} controls, no motion yet, build #{build_n})")
+    print(f"wrote {out.name}  ({len(copedent)} controls, {len(rig['strings'])} drives, build #{build_n})")
     return out
 
 

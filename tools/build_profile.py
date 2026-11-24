@@ -142,14 +142,18 @@ def record_part(name, build_s, export_s, solid, material=None):
                            "volume_mm3": vol, "material": material})
 
 
-def write_part_volumes(path=None):
+def write_part_volumes(path=None, keep=None):
     """Dump {part: {volume_mm3, material}} for the parts built in THIS run.
 
     COMMITTED ON PURPOSE (tools/part_volumes.json), unlike the STEPs it is derived from:
     cost.py has to answer "what does the plastic cost" without anyone first paying four
     minutes for a build, and a number nobody can reproduce is worse than a slow one.
     A partial run (--part NAME) MERGES rather than truncating, so one part's rebuild does
-    not delete the other sixty."""
+    not delete the other sixty.
+
+    `keep` (a full build passes set(PARTS)) drops every entry that is no longer a part.
+    Merge-only kept 106 v1 parts (the chassis, top plates, levers...) in the file for
+    weeks after v1 left, and cost.py summed them all into the plastic line (2026-11-23)."""
     import json as _json
     path = str(path or pathlib.Path(__file__).with_name("part_volumes.json"))
     have = {}
@@ -159,6 +163,8 @@ def write_part_volumes(path=None):
                 have = _json.load(fh).get("parts", {})
         except Exception:                  # noqa: BLE001
             have = {}
+    if keep is not None:
+        have = {k: v for k, v in have.items() if k in keep}
     for r in _BUILD_RECORDS:
         if r.get("volume_mm3", -1) > 0:
             have[r["part"]] = {"volume_mm3": round(r["volume_mm3"], 1),

@@ -1,0 +1,222 @@
+{
+ "note": "v1 KNEE LEVERS, PEDALS AND LEGS, costed from the v1 model until they are re-authored for the direct instrument (user, 2026-11-23). Volumes are the solid volumes src.build recorded at tag v1-instrument; per_instrument is the v1 count (6 knee levers = 4 lateral + 2 vertical, 5 pedals, 4 legs). Their hardware and sensor boards are already in elec/prices.json and the board list. Delete an entry when its part comes back in src.build.PARTS.",
+ "parts": {
+  "adjust_sleeve": {
+   "group": "legs",
+   "material": "petg-gf",
+   "per_instrument": 4,
+   "volume_mm3": 353678.5,
+   "why": "one per leg"
+  },
+  "adjust_tenon": {
+   "group": "legs",
+   "material": "petg-gf",
+   "per_instrument": 4,
+   "volume_mm3": 124982.3,
+   "why": "one per leg"
+  },
+  "bar_latch_collar": {
+   "group": "pedals",
+   "material": "petg-gf",
+   "per_instrument": 2,
+   "volume_mm3": 39170.4,
+   "why": "one per bar-to-leg joint"
+  },
+  "bar_latch_frame": {
+   "group": "pedals",
+   "material": "pctg",
+   "per_instrument": 2,
+   "volume_mm3": 5262.7,
+   "why": "one per bar-to-leg joint"
+  },
+  "cart_base": {
+   "group": "levers",
+   "material": "pctg",
+   "per_instrument": 22,
+   "volume_mm3": 5535.7,
+   "why": "two feel cartridges per control x 11"
+  },
+  "cart_piston": {
+   "group": "levers",
+   "material": "pctg",
+   "per_instrument": 22,
+   "volume_mm3": 772.3,
+   "why": "two feel cartridges per control x 11"
+  },
+  "fixed_sleeve": {
+   "group": "legs",
+   "material": "petg-gf",
+   "per_instrument": 4,
+   "volume_mm3": 238823.8,
+   "why": "one per leg"
+  },
+  "fixed_tenon": {
+   "group": "legs",
+   "material": "petg-gf",
+   "per_instrument": 4,
+   "volume_mm3": 131898.7,
+   "why": "one per leg"
+  },
+  "kl_axle": {
+   "group": "levers",
+   "material": "pctg",
+   "per_instrument": 7,
+   "volume_mm3": 2075.4,
+   "why": "vertical levers + pedals"
+  },
+  "kl_axle_sprung": {
+   "group": "levers",
+   "material": "pctg",
+   "per_instrument": 4,
+   "volume_mm3": 2153.1,
+   "why": "lateral levers, with the preload spring"
+  },
+  "kl_magnet_cap": {
+   "group": "levers",
+   "material": "pctg",
+   "per_instrument": 11,
+   "volume_mm3": 103.0,
+   "why": "one per sensed control"
+  },
+  "kl_pcb_shim": {
+   "group": "levers",
+   "material": "pctg",
+   "per_instrument": 2,
+   "volume_mm3": 111.7,
+   "why": "left-hand lateral housings only"
+  },
+  "kl_spacer": {
+   "group": "levers",
+   "material": "pctg",
+   "per_instrument": 14,
+   "volume_mm3": 52.7,
+   "why": "two per unsprung stack (2 vertical + 5 pedals)"
+  },
+  "kl_spacer_sprung": {
+   "group": "levers",
+   "material": "pctg",
+   "per_instrument": 4,
+   "volume_mm3": 51.5,
+   "why": "+Y spacer, sprung stacks"
+  },
+  "kl_spacer_sprung_n": {
+   "group": "levers",
+   "material": "pctg",
+   "per_instrument": 4,
+   "volume_mm3": 92.3,
+   "why": "-Y spacer, sprung stacks"
+  },
+  "knee_housing": {
+   "group": "levers",
+   "material": "petg-gf",
+   "per_instrument": 2,
+   "volume_mm3": 67900.0,
+   "why": "LKL, RKL (left-hand housing)"
+  },
+  "knee_housing_r": {
+   "group": "levers",
+   "material": "petg-gf",
+   "per_instrument": 2,
+   "volume_mm3": 68468.3,
+   "why": "LKR, RKR (its X mirror)"
+  },
+  "knee_lever": {
+   "group": "levers",
+   "material": "pctg",
+   "per_instrument": 4,
+   "volume_mm3": 37378.4,
+   "why": "the four lateral levers"
+  },
+  "kv_housing": {
+   "group": "levers",
+   "material": "petg-gf",
+   "per_instrument": 2,
+   "volume_mm3": 115308.0,
+   "why": "vertical lever housings"
+  },
+  "kv_lever": {
+   "group": "levers",
+   "material": "pctg",
+   "per_instrument": 2,
+   "volume_mm3": 22587.3,
+   "why": "vertical levers VKL, VKR"
+  },
+  "kv_pcb_shim": {
+   "group": "levers",
+   "material": "pctg",
+   "per_instrument": 2,
+   "volume_mm3": 1509.2,
+   "why": "one per vertical lever"
+  },
+  "leg_foot": {
+   "group": "legs",
+   "material": "tpu",
+   "per_instrument": 4,
+   "volume_mm3": 29153.2,
+   "why": "shared TPU foot x4"
+  },
+  "leg_latch_slider": {
+   "group": "legs",
+   "material": "pctg",
+   "per_instrument": 4,
+   "volume_mm3": 4125.3,
+   "why": "the body latch, one per leg"
+  },
+  "pedal_bar_a": {
+   "group": "pedals",
+   "material": "petg-gf",
+   "per_instrument": 1,
+   "volume_mm3": 417676.9,
+   "why": "pedal bar, three print pieces"
+  },
+  "pedal_bar_b": {
+   "group": "pedals",
+   "material": "petg-gf",
+   "per_instrument": 1,
+   "volume_mm3": 483610.0,
+   "why": ""
+  },
+  "pedal_bar_c": {
+   "group": "pedals",
+   "material": "petg-gf",
+   "per_instrument": 1,
+   "volume_mm3": 309914.8,
+   "why": ""
+  },
+  "pedal_detent_nub": {
+   "group": "pedals",
+   "material": "tpu",
+   "per_instrument": 1,
+   "volume_mm3": 50.3,
+   "why": "the lid lock"
+  },
+  "pedal_lever": {
+   "group": "pedals",
+   "material": "pctg",
+   "per_instrument": 5,
+   "volume_mm3": 39588.1,
+   "why": "five pedals"
+  },
+  "pedal_lid_a": {
+   "group": "pedals",
+   "material": "petg-gf",
+   "per_instrument": 1,
+   "volume_mm3": 28755.5,
+   "why": "the bar's sliding lid, two pieces"
+  },
+  "pedal_lid_b": {
+   "group": "pedals",
+   "material": "petg-gf",
+   "per_instrument": 1,
+   "volume_mm3": 28769.2,
+   "why": ""
+  },
+  "pedal_pcb_shim": {
+   "group": "pedals",
+   "material": "pctg",
+   "per_instrument": 5,
+   "volume_mm3": 1779.4,
+   "why": "one per pedal"
+  }
+ }
+}
