@@ -1,12 +1,12 @@
 {
- "build": 1137,
- "commit": "33df45a950956788475070acb10df5d6c76a2f4b",
+ "build": 1147,
+ "commit": "8be57b9602578ad6e05bc2ed38cd3cd13f255836",
  "cut_slack": 1.15,
  "end_allow_mm": 25.0,
  "runs": {
   "ribbon_brain_connector_30p": {
-   "taut_mm": 490.8,
-   "need_mm": 579,
+   "taut_mm": 495.3,
+   "need_mm": 585,
    "stock_in": 24,
    "note": "brain J240 (ribbon leaves -Z) to connector_board J1 (leaves -Y)"
   },
@@ -17,13 +17,13 @@
    "note": "brain J4 (leaves +X) to the optical board's -Y end, under deck_optical -- INFERRED (no 2x10 on the optical geometry yet), +16 through the deck piece added"
   },
   "ui_ribbon_lead_16p": {
-   "taut_mm": 170.2,
-   "need_mm": 211,
+   "taut_mm": 172.7,
+   "need_mm": 214,
    "stock_in": 10,
-   "note": "brain J205 (leaves -X) to the UI board's J2 at its -X end -- INFERRED pose"
+   "note": "brain J205 (leaves -X) to the UI board's J2 (leaves -X), as placed"
   },
   "motor_0": {
-   "taut_mm": 171.2,
+   "taut_mm": 170.9,
    "cut_mm": 247,
    "wires": {
     "22": 2,
@@ -50,7 +50,7 @@
    "note": "connector J13 plug (wires leave -Y) to motor_terminal_2's middle: power and CAN blocks sit 16 apart, in END_ALLOW's fan-out"
   },
   "motor_3": {
-   "taut_mm": 154.3,
+   "taut_mm": 153.7,
    "cut_mm": 227,
    "wires": {
     "22": 2,
@@ -59,7 +59,7 @@
    "note": "connector J14 plug (wires leave -Y) to motor_terminal_3's middle: power and CAN blocks sit 16 apart, in END_ALLOW's fan-out"
   },
   "motor_4": {
-   "taut_mm": 77.1,
+   "taut_mm": 77.0,
    "cut_mm": 139,
    "wires": {
     "22": 2,
@@ -68,7 +68,7 @@
    "note": "connector J15 plug (wires leave -Y) to motor_terminal_4's middle: power and CAN blocks sit 16 apart, in END_ALLOW's fan-out"
   },
   "motor_5": {
-   "taut_mm": 147.0,
+   "taut_mm": 146.9,
    "cut_mm": 219,
    "wires": {
     "22": 2,
@@ -86,7 +86,7 @@
    "note": "connector J17 plug (wires leave -Y) to motor_terminal_6's middle: power and CAN blocks sit 39 apart, in END_ALLOW's fan-out"
   },
   "motor_7": {
-   "taut_mm": 268.8,
+   "taut_mm": 268.6,
    "cut_mm": 359,
    "wires": {
     "22": 2,
@@ -95,7 +95,7 @@
    "note": "connector J18 plug (wires leave -Y) to motor_terminal_7's middle: power and CAN blocks sit 16 apart, in END_ALLOW's fan-out"
   },
   "motor_8": {
-   "taut_mm": 171.2,
+   "taut_mm": 171.4,
    "cut_mm": 247,
    "wires": {
     "22": 2,
@@ -104,8 +104,8 @@
    "note": "connector J19 plug (wires leave -Y) to motor_terminal_8's middle: power and CAN blocks sit 16 apart, in END_ALLOW's fan-out"
   },
   "motor_9": {
-   "taut_mm": 99.5,
-   "cut_mm": 164,
+   "taut_mm": 99.7,
+   "cut_mm": 165,
    "wires": {
     "22": 2,
     "26": 2
@@ -113,13 +113,13 @@
    "note": "connector J20 plug (wires leave -Y) to motor_terminal_9's middle: power and CAN blocks sit 16 apart, in END_ALLOW's fan-out"
   },
   "fret": {
-   "taut_mm": 90.3,
-   "cut_mm": 254,
+   "taut_mm": 93.2,
+   "cut_mm": 257,
    "wires": {
     "22": 2,
     "26": 2
    },
-   "note": "connector J4 to fret_led_key J1 -- INFERRED pose of J1 (board unflipped)"
+   "note": "connector J4 to fret_led_key J1 (wires leave -Y), as placed"
   }
  },
  "hookup_m": {
