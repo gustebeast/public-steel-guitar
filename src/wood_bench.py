@@ -107,7 +107,10 @@ Y_EDGE = Y5 - (PB.Y_EDGE - PB.SY) - EDGE_SHIFT   # -48.35
 MM_X0 = XR - DB.M_FACE                           # the plate's -X face, on the motor's faceplate
 MM_X1 = MM_X0 + DB.PLATE_T
 MM_SQ = D.MOTOR_SQ
-MM_Y = (Y_EDGE, Y5 + MM_SQ / 2 + 6 * D.BEAD)    # out to the +Y buttress (4.8)
+# THE FIRST BENCH'S MOUNT, KEPT (user, 2026-11-24: "the motor mount didn't need to change so I'm keeping
+# my previous one"): its -Y face on the first bench's edge line, EDGE_SHIFT +Y of the others'
+MM_Y0 = Y_EDGE + EDGE_SHIFT
+MM_Y = (MM_Y0, Y5 + MM_SQ / 2 + 6 * D.BEAD)     # out to the +Y buttress (4.8)
 MM_TOP = Z5 + MM_SQ / 2                          # the plate's top, as the instrument's
 MM_BUT_TOP = Z5 + 8.0                            # the buttresses' top: over the axis
 MM_FOOT = MM_X1 + (MM_BUT_TOP - ZB)              # their 45 deg foot
@@ -117,8 +120,8 @@ MM_M3_L = 12.0                                   # M3 x 12: a SPACER's 4 and the
                                                  # the 12 bottoms in the motor's shallow holes)
 MM_SPACER_L = 4.0                                # the spacers under the heads (direct_bench's
 MM_SPACER_D = (DB.MPLATE_BOSS_D, 3.4)            # MPLATE_BOSS on the instrument)
-MM_SCREWS = [(MM_X0 - TAB, Y_EDGE + TAB), (MM_X0 - TAB, MM_Y[1] - TAB),
-             (MM_FOOT + TAB, Y_EDGE + TAB), (MM_FOOT + TAB, MM_Y[1] - TAB)]
+MM_SCREWS = [(MM_X0 - TAB, MM_Y0 + TAB), (MM_X0 - TAB, MM_Y[1] - TAB),
+             (MM_FOOT + TAB, MM_Y0 + TAB), (MM_FOOT + TAB, MM_Y[1] - TAB)]
 
 
 def motor_mount() -> cq.Workplane:
