@@ -40,7 +40,14 @@ SET_RESPOND = 0x8C          # respond u8, active u8: 1 0 answers a move when it 
 SET_ZERO = 0x92              # no parameters: the current axis position becomes 0, the encoder reading
                             # too. AFTER A POWER CYCLE THE TWO DISAGREE (2026-11-11: absolute moves
                             # landed a steady ~495 counts off the reading): zero before absolute moves
+SR_OPEN = 3                 # open loop over the bus: the encoder still reads, it no longer steers
 SR_VFOC = 5
+SET_CURRENT = 0x83          # u16 mA, the working current (SERVO42D: 0..3000). Nothing in the repo
+                            # had sent it before publicbench.openloop; the motors were left at
+                            # 1600 (motor-idle tests, 2026-11-19), taken to be the default
+SET_HOLD = 0x9B             # u8 0..8 = 10..90 % of the working current, held at standstill. Does
+                            # nothing in SR_vFOC (2026-11-19); its default is NOT known
+DEFAULT_MA = 1600
 MOVE_REL = 0xF4             # speed u16, acc u8, int24 counts, relative
 MOVE_ABS = 0xF5             # speed u16, acc u8, int24 counts, absolute
 # a move is answered twice: status 1 when it starts, 2 when it has arrived
