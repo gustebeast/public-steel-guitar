@@ -259,8 +259,10 @@ def body_ribs(ex: int, ey: int) -> cq.Workplane:
     return box_at(hi - lo, 2 * RIB_HW, top - f["z0"], x=(lo + hi) / 2, y=y, z=(f["z0"] + top) / 2)
 
 
-def adapter(k: int) -> cq.Workplane:
-    """Corner k's adapter: the v1 leg half moved here, and its two X tenons on top."""
+def adapter(k: int, _frame=None) -> cq.Workplane:
+    """Corner k's adapter: the v1 leg half moved here, and its two X tenons on top. `_frame` is
+    only kept's key (parts()): frame() is lru-cached, so kept's fingerprint never saw the joints
+    it reads -- the -X adapters stayed at the keyhead's joint after the nut endplate moved it."""
     _, ex, ey = corners()[k]
     cx, cy = centre(ex, ey)
     return _leg_half(cx, cy, frame()["z0"]).union(_tenons(ex, ey))
@@ -294,4 +296,5 @@ def end_cut(ex: int) -> cq.Workplane:
 
 def parts() -> list:
     from cadkit.kept import kept
-    return [(f"adapter_{k}", kept(adapter, k)) for k, _, _ in corners()]
+    key = tuple(sorted(frame().items()))
+    return [(f"adapter_{k}", kept(adapter, k, key)) for k, _, _ in corners()]

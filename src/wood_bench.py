@@ -234,9 +234,22 @@ def ep_axles() -> list:
 
 # ── THE KEYHEAD: THE V2 NUT BLOCK, CUT DOWN TO STRING 6, ON THE WOOD ─────────────────────────
 from . import nut_block_v2 as NB2
-from . import keyhead_v2 as KH2
-_KH_E = KH2.extents()
-KH_DROP = Z_PLANK - _KH_E["nb_z0"]               # -47.25: the block's bottom on the plank
+# ...the v2 KEYHEAD's bits this bench's block still uses (src/keyhead_v2.py retired 2026-11-22, the
+# instrument's nut is the flex clamp now; git history has it)
+KH_PRINT_UP = (1.0, 0.0, 0.0)                    # the -X face on the bed
+NB_FLOOR_W = 2 * D.MIN_WALL_2P                   # under the plates' slots
+FACE_EXTRA = 3 * D.BEAD                          # the +X face's added wall under the fretboard stack
+
+
+def _face_thickening_local() -> cq.Workplane:
+    """The block's added +X face (keyhead_v2's), nut block local frame: its bottom to just under
+    the deck stack's lowest point (deck_v2.STACK_BOT - 0.5)."""
+    from . import deck_v2 as DK
+    z0 = NB2.HS_FLOOR - NB_FLOOR_W
+    z1 = DK.STACK_BOT - 0.5 - D.STRING_Z
+    return (cq.Workplane("XY").box(FACE_EXTRA + 0.01, NB2.HW - NB2.Y_LO, z1 - z0)
+            .translate((NB2.X_FRONT + (FACE_EXTRA - 0.01) / 2, (NB2.HW + NB2.Y_LO) / 2, (z0 + z1) / 2)))
+KH_DROP = Z_PLANK - (D.STRING_Z + NB2.HS_FLOOR - NB_FLOOR_W)               # -47.25: the block's bottom on the plank
 # the band out of the endplate's fill: from 1.8 over the bend bearing's roof, |KH_DROP| tall (the
 # fill runs on to 1 under the bridge bearing; rows a and b's axle bores, not used here, go with it)
 _BAND0 = DB.z_level(DB.level(I)) + DB.R + D.BRG688_OD / 2 + DB.EP_BRG_CLR + 1.8
@@ -256,12 +269,12 @@ def keyhead() -> cq.Workplane:
     """String 6's nut block: the instrument's block from its -X face to its +X face and from its
     bottom to its top, cut with string 6's features only, standing on the plank, with a screw flange
     each side in Y. The string pulls it +X at the crown ~76 over the wood: the two -X screws take
-    the tipping. PRINTS AS THE INSTRUMENT'S, -X -> +X on its -X face (keyhead_v2.PRINT_UP)."""
+    the tipping. PRINTS AS THE INSTRUMENT'S, -X -> +X on its -X face (KH_PRINT_UP)."""
     y0, y1 = kh_y()
     x0, x1 = NB2.X_BACK, NB2.X_FRONT
-    z0 = _KH_E["nb_z0"] - D.STRING_Z
+    z0 = NB2.HS_FLOOR - NB_FLOOR_W
     w = _box(x0, x1, y0, y1, z0, NB2.NUT_TOP)
-    w = w.union(KH2.face_thickening_local().intersect(_box(x0, x1 + 10, y0, y1, z0 - 1, NB2.NUT_TOP)))
+    w = w.union(_face_thickening_local().intersect(_box(x0, x1 + 10, y0, y1, z0 - 1, NB2.NUT_TOP)))
     p0, p1 = NB2._y_span(I)
     lane = _box(NB2.X_BACK - 1.0, NB2.POCKET_X0 + 0.5, p0, p1, NB2.LANE_FLOOR, NB2.Z_SKY)
     win = NB2.plier_window().intersect(_box(x0 - 2, x1, p0, p1, NB2.WIN_LO - 1, NB2.WIN_HI + 1))
@@ -272,7 +285,7 @@ def keyhead() -> cq.Workplane:
     xa, xb = KH_AT[0] + x0, KH_AT[0] + x1
     w = w.union(_box(xa, xb, Y_EDGE, y1 + 2 * TAB, Z_PLANK, ZB))
     for x, y in KH_SCREWS():
-        w = w.cut(_screw(x, y, KH2.PRINT_UP))
+        w = w.cut(_screw(x, y, KH_PRINT_UP))
     return w
 
 
@@ -312,7 +325,7 @@ def bench_string(t: float) -> cq.Workplane:
         if math.dist(a, b) > 1e-3:
             sg = DB._seg(a, b, g)
             out = sg if out is None else out.union(sg)
-    return DB.with_string_look(out, I, t, KH_DROP)
+    return DB.with_string_look(out, I, t, KH_DROP, nut="block")
 
 
 SCALE_SPAN = DB.X_BEND - D.NUT_BLOCK_X           # crown to the bridge bearing's axle (x)
@@ -518,7 +531,7 @@ PRINTS = ("wb_motor_mount", "wb_anchor", "wb_endplate", "wb_keyhead", "wb_nut_sh
 
 # each bench print's build direction (the comments at each part say why)
 WB_PRINT_UP = {"wb_motor_mount": MM_UP, "wb_anchor": A_UP, "wb_endplate": DB.EP_UP,
-               "wb_keyhead": KH2.PRINT_UP, "wb_nut_shoe": NB2.SHOE_UP,
+               "wb_keyhead": KH_PRINT_UP, "wb_nut_shoe": NB2.SHOE_UP,
                "wb_tie_spacer": (1.0, 0.0, 0.0),           # standing, +X up
                "wb_keyplate": (-1.0, 0.0, 0.0),            # flat on its +X face: the ball's seat
                                                            # (-X face) opens on top, no bridge

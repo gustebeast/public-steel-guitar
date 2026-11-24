@@ -148,7 +148,12 @@ _TAIL: dict = {
     "Molex_52271-2079_1x20-1MP_P1.0mm_Horizontal": 0.0,  # surface mount
 }
 _THT_LEGS: dict = {}
-_PANEL: dict = {}
+# THE JACK'S COUNTERBORE AND BOSS follow the printed nut socket that ships with the instrument
+# (src.jack_socket, user 2026-11-23): sized for it, not for an 11 mm thin-wall metal socket.
+# The pocket export reads these; the endplate reads the export.
+from . import jack_socket as _JS  # noqa: E402
+from cadkit.board_geom import PANEL as _CK_PANEL  # noqa: E402
+_PANEL: dict = {n: dict(_CK_PANEL[n], cbore_d=_JS.CBORE_D, boss_d=_JS.BOSS_D) for n in _JS.JACK_FPS}
 
 # THE LETTERING'S FACE: the one the boards' silkscreen is plotted in. It is a licensed font
 # with one glyph redrawn (tools/make_silk_font.py: the underscore, which is an ornament in
@@ -206,6 +211,7 @@ BODY_MATERIAL = {
     "Texas_UQFN-10_1.5x2mm_P0.5mm": ("epoxy", BLACK),
     "Texas_DSG0008A_WSON-8-1EP_2x2mm_P0.5mm_EP0.9x1.6mm": ("epoxy", BLACK),   # U221 TPS22965
     "Texas_RYQ0021B_VQFN-HR-21_3x5mm_P0.5mm": ("epoxy", BLACK),               # U205 TPS552892
+    "Texas_RPW0010A_VQFN-HR-10_2x2mm_P0.45mm": ("epoxy", BLACK),              # U221 TPS259470A
     "Texas_DDA0008_HSOP-8-1EP_3.9x4.9mm_P1.27mm": ("epoxy", BLACK),   # U5 LMR33640
     "WCH_QFN-16-1EP_3x3mm_P0.5mm_EP1.8x1.8mm": ("epoxy", BLACK),              # U37 CH334P
 }

@@ -270,7 +270,9 @@ def board_fab_cost(geom, layers, boards_in_order, prices):
     w, h = geom["outline_mm"][0], geom["outline_mm"][1]
     area_cm2 = (w * h) / 100.0
     m = b["fab_quotes"]["model"]
-    if layers >= 4:
+    if layers >= 6 and "6" in m:
+        k = m["6"]
+    elif layers >= 4:
         k = m["4"]
     elif max(w, h) <= 100.0:
         k = m["2_small"]                 # inside JLCPCB's cheap bracket, and it shows
@@ -296,7 +298,8 @@ def guess_layers(board, geom):
     if os.path.isfile(src):
         with open(src, encoding="utf-8") as fh:
             txt = fh.read()
-        m = re.search(r'"layers"\s*:\s*(\d+)', txt) or re.search(r"^LAYERS\s*=\s*(\d+)", txt, re.M)
+        m = (re.search(r'"layers"\s*:\s*(\d+)', txt) or re.search(r"^LAYERS\s*=\s*(\d+)", txt, re.M)
+             or re.search(r'^LAYERS\s*=\s*int\(os\.environ\.get\("\w+",\s*"(\d+)"\)\)', txt, re.M))
         if m:
             return int(m.group(1))
     return 2

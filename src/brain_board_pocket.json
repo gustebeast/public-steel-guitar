@@ -1,6 +1,6 @@
 {
  "board": "brain_board, ONE board, 167.73 x 100 x 1.6, FINAL position: the +X endplate comes OFF for a board swap and the board drops in at its final x (no slide; user 2026-11-19)",
- "source": "trial mVW48ws1 (bronner 2026-11-20: W48w = W48k's placement exactly, on the widened outline (-167.3 + UI clamp notch), seed 1; the strip past W48k's old edge is empty; panel parts are pinned)",
+ "source": "trial t1p (t1d placement (unrouted) + flush panel: J1/J2 1.5 past the edge, J5 0.85 toward it; jack counterbore/boss for the printed nut socket; user 2026-11-23)",
  "edge_x": 0.43,
  "minus_x_edge": -167.3,
  "z": [
@@ -30,8 +30,8 @@
    "footprint": "Jack_6.35mm_Neutrik_NMJ6HCD2_Horizontal",
    "side": "front (+Y)",
    "x": [
-    -29.05,
-    -1.53
+    -28.19,
+    -0.67
    ],
    "z": [
     -32.35,
@@ -49,8 +49,8 @@
      -87.5
     ],
     "x": [
-     -23.22,
-     -7.52
+     -22.37,
+     -6.67
     ],
     "z": [
      -31.86,
@@ -58,11 +58,21 @@
     ],
     "note": "UNCLIPPED; x/z over the through-hole pads (pads ROTATED as their own size, conservative)"
    },
-   "protrudes": 1.9,
-   "courtyard_past_edge": 2.3,
+   "protrudes": -4.55,
+   "courtyard_past_edge": -1.05,
+   "mount": "rear",
    "opening": "round 11.8",
    "axis_off_face": 8.14,
-   "wall": "4.0 (src/board_geom.py PANEL clamp): stub 11.4 x 3.0 past the shoulder, nut 11 AF x 2.05, washer 9 x 3.74, rear mount, boss 18.8, cbore 15.6"
+   "shoulder_x": -4.12,
+   "stub_tip_x": -1.12,
+   "clamp": 4.0,
+   "cbore": {
+    "d": 16.96,
+    "depth": 2.15,
+    "from_x": 2.032
+   },
+   "nut_face_x": 1.93,
+   "wall": "4.0 clamp (Neutrik 3.0..4.7) from the shoulder at -4.12 to the counterbore floor at -0.12; stub 11.4 x 3.0 into the 11.8 hole; nut 11 AF, 2.05 head on a 9 x 3.74 shank, sunk in the 16.96 x 2.15 counterbore (turned with the printed jack nut socket, src.jack_socket); boss 20.16"
   },
   {
    "ref": "FL2",
@@ -87,11 +97,11 @@
    "footprint": "L_CommonModeChoke_Wuerth_WE-SL5-HC",
    "side": "front (+Y)",
    "x": [
-    -20.47,
-    -9.67
+    -20.56,
+    -11.17
    ],
    "z": [
-    -67.84,
+    -69.23,
     -58.45
    ],
    "h": 5.0,
@@ -105,8 +115,8 @@
    "footprint": "USB_C_Receptacle_HRO_TYPE-C-31-M-12",
    "side": "front (+Y)",
    "x": [
-    -8.53,
-    0.88
+    -7.03,
+    2.38
    ],
    "z": [
     -63.56,
@@ -124,8 +134,8 @@
      -87.5
     ],
     "x": [
-     -7.45,
-     -1.42
+     -5.95,
+     0.08
     ],
     "z": [
      -63.61,
@@ -133,9 +143,16 @@
     ],
     "note": "UNCLIPPED; x/z over the through-hole pads (pads ROTATED as their own size, conservative)"
    },
-   "protrudes": 1.55,
+   "protrudes": 0.0,
+   "body_front_past_edge": 1.5,
    "courtyard_past_edge": 2.0,
-   "opening": "stadium 12.8 x 7.0",
+   "mount": "through",
+   "opening": "stadium 9.4 x 3.7",
+   "shell": [
+    8.94,
+    3.26
+   ],
+   "mouth_x": 1.88,
    "axis_off_face": 1.65
   },
   {
@@ -143,8 +160,8 @@
    "footprint": "USB_C_Receptacle_HRO_TYPE-C-31-M-12",
    "side": "front (+Y)",
    "x": [
-    -8.53,
-    0.88
+    -7.03,
+    2.38
    ],
    "z": [
     -91.56,
@@ -162,8 +179,8 @@
      -87.5
     ],
     "x": [
-     -7.45,
-     -1.42
+     -5.95,
+     0.08
     ],
     "z": [
      -91.61,
@@ -171,9 +188,16 @@
     ],
     "note": "UNCLIPPED; x/z over the through-hole pads (pads ROTATED as their own size, conservative)"
    },
-   "protrudes": 1.55,
+   "protrudes": 0.0,
+   "body_front_past_edge": 1.5,
    "courtyard_past_edge": 2.0,
-   "opening": "stadium 12.8 x 7.0",
+   "mount": "through",
+   "opening": "stadium 9.4 x 3.7",
+   "shell": [
+    8.94,
+    3.26
+   ],
+   "mouth_x": 1.88,
    "axis_off_face": 1.65
   },
   {
@@ -199,12 +223,12 @@
    "footprint": "D_SMB",
    "side": "front (+Y)",
    "x": [
-    -14.21,
-    -9.72
+    -8.31,
+    -1.03
    ],
    "z": [
-    -55.79,
-    -48.5
+    -69.28,
+    -64.8
    ],
    "h": 2.45,
    "y": [
@@ -277,6 +301,42 @@
    "z": [
     -70.34,
     -68.53
+   ],
+   "h": 0.55,
+   "y": [
+    -85.9,
+    -85.35
+   ]
+  },
+  {
+   "ref": "C94",
+   "footprint": "C_0402_1005Metric",
+   "side": "front (+Y)",
+   "x": [
+    -10.62,
+    -9.72
+   ],
+   "z": [
+    -60.34,
+    -58.54
+   ],
+   "h": 0.55,
+   "y": [
+    -85.9,
+    -85.35
+   ]
+  },
+  {
+   "ref": "C95",
+   "footprint": "C_0402_1005Metric",
+   "side": "front (+Y)",
+   "x": [
+    -11.58,
+    -9.77
+   ],
+   "z": [
+    -87.09,
+    -86.19
    ],
    "h": 0.55,
    "y": [
@@ -361,8 +421,8 @@
    "footprint": "R_0402_1005Metric",
    "side": "front (+Y)",
    "x": [
-    -9.19,
-    -7.34
+    -9.3,
+    -7.45
    ],
    "z": [
     -79.7,
@@ -379,8 +439,8 @@
    "footprint": "R_0402_1005Metric",
    "side": "front (+Y)",
    "x": [
-    -6.89,
-    -5.05
+    -6.99,
+    -5.14
    ],
    "z": [
     -79.7,
@@ -392,5 +452,17 @@
     -85.4
    ]
   }
- ]
+ ],
+ "boss_check": {
+  "boss_d": 20.16,
+  "axis_y": -77.76,
+  "axis_z": -22.24,
+  "x": [
+   -4.12,
+   0.43
+  ],
+  "hits": [],
+  "within_1mm": [],
+  "note": "the boss is cut by the laminate slot; checked against every other part's courtyard box and height, back-side bodies and THT tails"
+ }
 }

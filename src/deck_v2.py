@@ -81,7 +81,7 @@ BOARD_BOT = LIP_BOT + LIP_LAP + LIP_CAP         # -6.95
 BOARD_TOP = BOARD_BOT + BOARD_T                 # -5.35
 LED_FACE = BOARD_TOP + FL.LED_H                 # -3.75
 LED_GAP = PZ - LED_FACE                         # 7.75: the mixing depth under the skin
-STACK_BOT = LIP_BOT                             # the LED system's lowest point (keyhead_v2 reads it)
+STACK_BOT = LIP_BOT                             # the LED system's lowest point (the wood bench's block reads it)
 # THE CELL WALLS: with this much depth a fret's light reaches its neighbours' windows, so an opaque
 # wall stands between every two lit frets (v1's comb), from the skin down to COMB_CLR over the LEDs'
 # faces -- the board slides in under them. That slot is the only leak between cells.
@@ -131,12 +131,14 @@ def walls() -> dict:
 
 
 def block_face() -> float:
-    """World x of the nut block's +X face: the board's -X stop."""
-    return D.NUT_BLOCK_X + _nb().X_FRONT
+    """World x of the nut endplate's +X face (GREEN's, the crown's tangent): the board's -X stop."""
+    return D.NUT_BLOCK_X + _db()._NF.X_FRONT
 
 
 def block_hw() -> float:
-    return _nb().HW
+    """Half the width panel 0 is notched round: the nut endplate's thick band."""
+    from .test import nut_endplate_study as E
+    return E.YB
 
 
 def deck_x() -> tuple:

@@ -8,7 +8,7 @@ gate, and the positions are the intents' frames, not a mount.
   * brain_board (167.73 x 100, ONE board, instrument x -167.3 .. 0.43; it drops in -Z at its FINAL x with the +X endplate
     off, then the endplate slides back on over it: user 2026-11-19): back face on the -Y side at y -87.5 (branner: +1.7 so
     unclipped 3.4 tails clear the wall at -91.7), parts facing +Y; geom x -> instrument x by OB_X (read, below), board y =
-    instrument z + 58.24. The panel (board -X edge) sits 1.6 behind the outer face (USB inset 1.6, J5 2.4 back on the board); parts in the pocket: elec/brain_board.pocket.json.
+    instrument z + 58.24. The panel (board -X edge) sits 1.6 behind the outer face; flush panel (2026-11-23): USB-C shells 1.5 past the edge, J5 stub tip 1.55 back, nut in a face counterbore; parts in the pocket: elec/brain_board.pocket.json.
   * the optical board is NOT drawn: it is being redesigned (user 2026-11-13: no forwarder MCU,
     a ribbon to the brain board).
 
@@ -69,6 +69,7 @@ VIEW_HEIGHT = {
     "Texas_RYQ0021B_VQFN-HR-21_3x5mm_P0.5mm": 1.0,               # U205 TPS552892
     "Texas_DDA0008_HSOP-8-1EP_3.9x4.9mm_P1.27mm": 1.7,   # U5 LMR33640: DDA0008J/B "1.7 mm max height" (SNVSB99C p.38/41)
     "WCH_QFN-16-1EP_3x3mm_P0.5mm_EP1.8x1.8mm": 0.85,             # U37 CH334P
+    "Texas_RPW0010A_VQFN-HR-10_2x2mm_P0.45mm": 1.0,   # U221 TPS259470A: "VQFN-HR - 1 mm max height" (TI RPW0010A outline, datasheet p.72)
 }
 
 # built EXACTLY as src.board_geom.BOARDS (silk font, revisions), heights extended: the web export

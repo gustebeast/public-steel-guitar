@@ -111,13 +111,17 @@ PARTS = {
     lambda: heal(_m("guide_rod_saw_jig").body()),
     "tools/guide_rod_saw_jig.step",
     "TOOL — hacksaw jig for cutting each 2 ft length of 3/16 in stainless (McMaster 89535K84) into three guide rods of direct_bench.ROD_L (202.5), with one Quick-Grip and no vise: the whole jig sits on the table; the stock rests in a short diamond-tunnel guide -X of a 1.3 saw slot (McMaster 6927A16), and the piece lies in a supported 90 deg V trough out to an end stop at ROD_L from the slot's +X face, clamped next to the slot through the LEADSCREW JIG'S CAP (saw_jig_cap: no cap of its own). 217 x 41. PETG, printed as drawn (table face on the bed)"),
+    "jack_nut_socket": (
+    lambda: heal(_m("jack_socket").body()),
+    "tools/jack_nut_socket.step",
+    "TOOL — ships with the instrument: turns the 1/4 in jack's panel nut (11 AF, sunk in the +X endplate's counterbore) with the stowed 2.5 hex key pushed through its cross hole as a T-handle. An 11.4 AF hex socket in a Ø16.4 body (1.6 at the hex's corners), 10.7 long. PETG-GF on the 0.8, printed on its closed end, the hex up (src.jack_socket)"),
     "spring_saw_jig": (
     lambda: heal(_m("spring_saw_jig").body()),
     "tools/spring_saw_jig.step",
     "TOOL — hacksaw jig for cutting each 20 in length of the nut spring stock (McMaster 9665K36) into 42-coil pieces (direct_bench.SPRING_COILS, 97.0) with one Quick-Grip and no vise or screws: one straight cut square to the axis parts the close-wound spring along one turn, its flat end butting the stop for the next piece. The guide rod jig's sibling: the stock rests in a diamond-tunnel guide -X of a 1.3 saw slot (McMaster 6927A16), the piece in a supported 90 deg V trough out to an end stop at 97.0 from the slot's +X face, clamped next to the slot through the LEADSCREW JIG'S CAP (saw_jig_cap, riding the spring on its notch's edges). PETG-GF, printed as drawn (table face on the bed)"),
-    "key_seat_plate": (lambda: _m("direct_bench").key_seat_plate(), "steel/key_seat_plate.step", "LASER-CUT 304 STAINLESS, 4 mm, x10 (JLCCNC, no finish): under the keyhole plate, on the yoke -- the same outline, hole, slit and screw holes, and a Ø4.3 hole round the slit's top that the ball sinks right into under tension (its whole 3 mm length and 1 over), so it cannot tip or slide back to its hole. Not printed"),
+    "key_seat_plate": (lambda: _m("direct_bench").key_seat_plate(), "steel/key_seat_plate.step", "LASER-CUT 304 STAINLESS, 3 mm, x10 (JLCCNC, no finish): keyhole v4's POCKET sheet, ONE per string under the 3 mm keyhole plate, on the yoke -- the outline and ear holes, the 3.2 slit, the Ø5.4 entry, and a 4.25 x 3.2 rectangle round the axis that only a hole-up ball fits. Not printed"),
     "wall_bar_blank": (lambda: _m("direct_bench").wall_bar_blank(), "steel/wall_bar.step", "LASER-CUT COLD-ROLLED STEEL, 6 mm, x2 (JLCCNC, no finish): the chassis wall bar blank, 614 x 88.9, with the anchor's M4 tap-drill holes (Ø3.3) cut through -- tap them M4. The two M3 holes in EACH END we drill and tap ourselves (drill jig), then zinc spray. Not printed"),
-    "keyhole_plate": (lambda: _m("direct_bench").keyhole_plate(layer="plate"), "steel/keyhole_plate.step", "LASER-CUT 304 STAINLESS, 3 mm, x10 (JLCCNC, no finish): the direct-drive yoke's roof, over the 4 mm key_seat_plate (3 + 4 = 7; the ball's seat is the lower sheet, 4 deep). The ball pulls on this one. The string's ball end bears on it; two EARS past the nut's flange, each with a Ø3.4 CLEAR hole (no tapping): the stack's M3 x 40s go in from +X, heads on this plate, through the yoke's ears beside the flange into inserts used as nuts in the collar's ears. Not printed"),
+    "keyhole_plate": (lambda: _m("direct_bench").key_sheet(0), "steel/keyhole_plate.step", "LASER-CUT 304 STAINLESS, 3 mm, x10 (JLCCNC, no finish): the direct-drive yoke's roof, over the 3 mm key_seat_plate (3 + 3 = 6; keyhole v4: the ball sits hole up in its pocket). The ball pulls on this one. The string's ball end bears on it; two EARS past the nut's flange, each with a Ø3.4 CLEAR hole (no tapping): the stack's M3 x 40s go in from +X, heads on this plate, through the yoke's ears beside the flange into inserts used as nuts in the collar's ears. Not printed"),
 }
 # ONE PRINT, TWO FILAMENTS, ONE FILE (user, 2026-11-03). A part named here is a body of
 # the part it maps to: the two share a STEP, each its own named product, so Bambu loads
@@ -824,7 +828,7 @@ def _direct_parts():
     # THE BODY ADAPTERS (user, 2026-11-17), one a corner, each its own STEP
     from . import body_adapter_v2 as BA
     for k, ex, ey in BA.corners():
-        out[f"adapter_{k}"] = (partial(kept, BA.adapter, k), f"petg-gf/adapter_{k}.step",
+        out[f"adapter_{k}"] = (partial(kept, BA.adapter, k, tuple(sorted(BA.frame().items()))), f"petg-gf/adapter_{k}.step",
                                f"PETG-GF -- body adapter, {'+X' if ex > 0 else '-X'}/{'+Y' if ey > 0 else '-Y'} "
                                "corner: the v1 leg half (blind mortise, latch pocket) under two X "
                                "tenons that slide into the body and the endplate. src.body_adapter_v2")
