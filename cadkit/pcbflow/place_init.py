@@ -265,8 +265,10 @@ def place(parts, notes, rules, keep=()):
     placement choice. A group needed a fixed anchor before, so a cell had to be pinned or
     dissolved into free parts that the legaliser then scattered."""
     _RELEASED.clear()
+    RELEASED_REFS.clear()
     rules, rel_ = _release_snapshots(parts, notes, rules, keep)
     _RELEASED.extend(rel_)
+    RELEASED_REFS.extend(sorted({x.split(": ", 1)[1].split(" ", 1)[0] for x in rel_}))
     back = pi.back_refs(rules)
     if back:
         return _place_two_sided(parts, notes, rules, keep, back)
@@ -793,6 +795,7 @@ def _seat_held(parts, notes, rules, keep, rot_of):
 
 
 _RELEASED = []   # SNAPSHOT RELEASED lines of the current place() call (logged by _place)
+RELEASED_REFS = []  # the refs those lines name: main writes them to the hand-off file
 
 
 def _release_snapshots(parts, notes, rules, keep=()):
@@ -2772,12 +2775,12 @@ def main(argv):
     out = a.out or stem + ".init.json"
     json.dump(pl, open(out, "w"), indent=0)
     json.dump(why, open(out[:-5] + ".why.json" if out.endswith(".json") else out + ".why", "w"), indent=0)
-    # the floorplan GROW changed, for the flow's later gates (score --intent judges regions)
-    gp = out[:-5] + ".grow.json" if out.endswith(".json") else out + ".grow"
-    if GROWN:
-        json.dump(GROWN, open(gp, "w"), indent=0)
-    elif os.path.exists(gp):
-        os.remove(gp)
+    # ⚠ THE HAND-OFF IS A FILE, NOT LOG TEXT (lead 2026-11-23): what this run changed that the
+    # flow's later gates and stages must see -- the regions a GROW widened (score --intent judges
+    # regions) and the snapshot holds released under a hard rule -- written every run, so a
+    # reworded log line can never silently drop it. place_flow._handoff reads it.
+    hp = out[:-5] + ".handoff.json" if out.endswith(".json") else out + ".handoff"
+    json.dump({"grown": GROWN, "released": list(RELEASED_REFS)}, open(hp, "w"), indent=0)
     print("place_init: %d placements -> %s (%.1f s)" % (len(pl), out, time.time() - t0))
     unmet = [line for line in log if line.startswith("FORBID NOT MET")]
     if unmet:

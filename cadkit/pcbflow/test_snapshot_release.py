@@ -13,10 +13,13 @@ U13 sat 14.74 mm from J1 against a HARD 14 -- the flow stopped before layout. A 
                                                             broken and place_flow's gate stops (2)
   4  a snapshot that already meets its rule              -> kept where it is
   5  place_init has no off-switch for it                 -> PCBFLOW_SNAPSHOT_RELEASE is gone
-  6  place_flow reads place_init's log (vip_s1: the       -> the released snapshot leaves the
+  6  place_flow takes place_init's release (vip_s1: the  -> the released snapshot leaves the
      release seated U13, the intent still held it and       intent every later gate reads; the
      the BROKEN gate stopped the flow 9.05 mm off it)       BROKEN gate passes the new seat; a
-                                                            user hold named in a forged line stays
+                                                            user hold named in the hand-off stays
+  7  place_init's main writes the hand-off FILE           -> init.handoff.json {"grown", "released"}
+     (not log text: lead 2026-11-23), every run              names U1; place_flow._handoff reads
+                                                            it; a missing file stops the flow
 
 Fails without the fix: place_init has no _release_snapshots, U1 stays at its snapshot.
 Exit 0 = PASS.
@@ -75,6 +78,8 @@ pl, log, _why = P.place(copy.deepcopy(PARTS), copy.deepcopy(NOTES), rules_with("
 d = pi.check(NEAR, pi.Placed(PARTS, pl), NOTES)[0]
 want(d[0] >= 0, "2 place() seats U1 under the rule: %s (slack %.2f)" % (d[2], d[0]))
 want(any("SNAPSHOT RELEASED" in x for x in log), "2 the release is in place()'s log")
+rel2 = list(P.RELEASED_REFS)
+want(rel2 == ["U1"], "2 place() records the released ref for the hand-off: %s" % rel2)
 nb = pf._near_broken(rules_with("snapshot"), pi.Placed(PARTS, pl), NOTES)
 want(not nb and pf._near_gate(nb, place_only=False) is None, "2 no hard near broken, the gate goes on")
 
@@ -98,16 +103,36 @@ want("PCBFLOW_SNAPSHOT_RELEASE" not in open(os.path.join(HERE, "place_init.py"),
      "5 no off-switch")
 
 # 6
-log6 = ["place_init: " + x for x in log]
-r6, rel6 = pf._drop_released(rules_with("snapshot"), log6)
+r6, rel6 = pf._drop_released(rules_with("snapshot"), rel2)
 want(rel6 == ["U1"] and len(r6) == 2, "6 place_flow drops the released hold: %s, %d rules" % (rel6, len(r6)))
 P6 = pi.Placed(PARTS, pl)
 brk = [c for r in r6 if r["kind"] in pi.GATE_KINDS and pi.is_hard(r) for c in pi.check(r, P6, NOTES) if c[0] < -0.05]
 brk0 = [c for r in rules_with("snapshot") if r["kind"] in pi.GATE_KINDS and pi.is_hard(r)
         for c in pi.check(r, P6, NOTES) if c[0] < -0.05]
 want(not brk and bool(brk0), "6 BROKEN gate: passes after the drop (%d), would stop without it (%d)" % (len(brk), len(brk0)))
-r6u, rel6u = pf._drop_released(rules_with("user"), log6)
-want(len(r6u) == 3, "6 a user hold is never dropped by a log line")
+r6u, _ = pf._drop_released(rules_with("user"), ["U1"])
+want(len(r6u) == 3, "6 a user hold is never dropped, whatever the hand-off names")
+
+# 7
+import json  # noqa: E402
+import tempfile  # noqa: E402
+td = tempfile.mkdtemp(prefix="snaprel_")
+stem = os.path.join(td, "b")
+json.dump({"parts": PARTS}, open(stem + ".parts.json", "w"))
+json.dump(NOTES, open(stem + ".board.json", "w"))
+json.dump(rules_with("snapshot"), open(os.path.join(td, "intent.json"), "w"))
+init = os.path.join(td, "init.json")
+import contextlib, io  # noqa: E401,E402
+with contextlib.redirect_stdout(io.StringIO()):
+    rc7 = P.main([stem, os.path.join(td, "intent.json"), "--out", init])
+h7 = json.load(open(init[:-5] + ".handoff.json")) if os.path.exists(init[:-5] + ".handoff.json") else None
+want(rc7 == 0 and h7 == {"grown": {}, "released": ["U1"]}, "7 place_init writes the hand-off: %s" % h7)
+want(pf._handoff(init) == ({}, ["U1"]), "7 place_flow._handoff reads it")
+try:
+    pf._handoff(os.path.join(td, "none.json"))
+    want(False, "7 a missing hand-off must stop the flow")
+except SystemExit:
+    want(True, "7 a missing hand-off stops the flow")
 
 print("PASS" if not bad else "FAIL: %d" % len(bad))
 sys.exit(1 if bad else 0)
