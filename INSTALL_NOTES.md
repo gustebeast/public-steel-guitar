@@ -1913,7 +1913,7 @@ This supersedes the "two 688s" in the notes above.
 
 ## Direct drive: guide rod held at both ends, no screw sleeves (2026-11-12)
 
-- **Guide rod:** McMaster 89535K84, 3/16" 304 stainless. Rods are **~202.5 mm**: buy **2 ft lengths** and cut each into **three equal pieces** (mark at 203.2 and 406.4, cut on the marks; no offcut, no measuring per piece; 2026-11-13). Each piece lands 202.2..203.2 and any of them fits (203.2 is the most the cap takes: if a stock length comes long, file the long end piece to 203.2): pushed home in its endplate seat (~24 deep), the rest sits in the blind cap on the housing. Four 2 ft lengths make 12 rods for 10 strings (see "Installing the guide rods and the anchor plate" below). Saw it and deburr the ends.
+- **Guide rod:** McMaster 89535K84, 3/16" 304 stainless. Rods are **~202.5 mm**: buy **2 ft lengths** and cut each into **three equal pieces** (mark at 203.2 and 406.4, cut on the marks; no offcut, no measuring per piece; 2026-11-13). Each piece lands 202.2..203.2 and any of them fits (203.2 is the most the cap takes: if a stock length comes long, file the long end piece to 203.2): pushed home in its endplate seat (~24 deep), the rest sits in the blind cap on the housing. Five 2 ft lengths make 15 rods for the 13 an instrument takes (10 own + the 3 new shared rods, all the same since 2026-11-24) (see "Installing the guide rods and the anchor plate" below). Saw it and deburr the ends.
   - It sits 15.35 mm off the screw axis at 325°, the same on every string (moved 2026-11-12, see below).
   - (Superseded 2026-11-12: it now slides in from −X through the anchor plate and the plug; see below.)
 - **Nothing on the nut touches the rod.** The collar (now **PCTG**, unfilled, so glass fibres don't scour the stainless) has a tab with a radial slot. The slot is a close fit across to stop rotation, with ±1 mm free along the radius, so a rod a little out of line never pushes the nut off the screw axis.
@@ -2608,6 +2608,17 @@ removed (git history has it); the wood bench keeps its v2 nut block.
   line). The own jaw has 0.13 play a side on its rod (0.27 at the far end of the radial float).
 - **Install:** the collars slide past each other on a shared rod; no order to keep. Fit all ten,
   then push each rod home from -X as before (new rods: from -X into the endplate seat).
+
+### Tie spacers cut from tube (2026-11-24)
+- **The anchor ties' spacers are cut from K&S 8104 aluminium tube** (3/16" OD x 0.014 wall, 12" lengths, $1.39 at Ace): 13.0 long, 20 an instrument (one 12" length with the kerfs). Cut with a fine hacksaw or a tube cutter in a stop jig so all 20 match to +-0.1, square and deburr both ends. The bore (4.05) is loose on the M3: it only carries the lip's pull to the plate.
+
+### Every guide rod the same (2026-11-24)
+- **The three new shared rods are full 202.5 rods now**, like the other ten (the 69.4 pieces are gone):
+  each runs from its endplate seat back through the anchor plate into a seat on the plug of the
+  string whose collar hooks it (strings 8-10's plugs carry a second rod boss), capped by that
+  string's housing (a second cap boss). The anchor plate has three more rod holes.
+- **Install:** as every rod: push it home from -X through the plate and plug into the
+  endplate seat, then fit the housing. Five 2 ft lengths an instrument (13 rods).
 
 ### Nut end: -X face flush, tail channels open (2026-11-22)
 - **The endplate's -X face is flush with the clamp screw heads when fully installed** (stack

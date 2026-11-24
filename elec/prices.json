@@ -415,12 +415,12 @@
       "what": "M3 flat washer, 3.2 x 7 x 0.5 (direct_bench.EP_WASHER) -- under the bar-clamp screws' heads, four at each endplate (bar_washer, nut_bar_washer)."
     },
     "tie_spacer": {
-      "usd": 0.65,
+      "usd": 0.0695,
       "verified": "v",
       "per_instrument": 20,
-      "vendor": "McMaster-Carr",
-      "sku": "94669A107",
-      "what": "Aluminium round spacer for M3, OD 4.5 / ID 3.2 / 13 long -- the anchor ties' spacers (2026-11-16), two per string, lip to plate. $0.65 each at 1-24 ($0.55 at 25-up), read off McMaster 2026-11-16. 13 long so the collars are 11 (two beads round the clamp head's pocket); 11 and 12 long are $1.77, 18-8 $1.80+."
+      "vendor": "Ace Hardware",
+      "sku": "K&S 8104 (3/16 in OD x 0.014 wall aluminium tube, 12 in)",
+      "what": "FRUGAL 2026-11-24 (user: \"the tie spacers sound pretty easy to do ourselves since aluminum is easy to cut\"): the anchor ties' spacers, two per string, lip to plate, CUT FROM TUBE to 13 (direct_bench.TIE_SPACER): one 12 in length makes the instrument's 20 with the kerfs. OD 4.76 / ID 4.05 (loose on the M3: compression only). $1.39 a length ($0.0695 a spacer, 20 a length), read off acehardware.com (5024005) 2026-11-24. Replaces McMaster 94669A107 (OD 4.5 / ID 3.2 / 13, $0.65 each, $13.00 an instrument)."
     },
     "m3_shcs_20": {
       "usd": 0.0969,
@@ -431,13 +431,13 @@
       "what": "RECOUNT 2026-11-23 against the direct model (src.build.collect_components at T_OPEN, by base name): 8 -> 4: bar_m3: the +X endplate's four (bar_screw_len(1) = 20); the nut end's four are M3 x 16 (m3_shcs_16). M3x20 socket head cap screw (18-8, ISO 4762) -- the direct-drive endplates' bar clamp, four per endplate into the tapped wall-bar ends. $9.69 per pack of 100, read off McMaster 2026-11-12."
     },
     "guide_rod_3_16": {
-      "usd": 1.292,
+      "usd": 1.2423,
       "verified": "v",
-      "per_instrument": 10,
+      "per_instrument": 13,
       "vendor": "McMaster-Carr",
       "sku": "89535K84 (2 ft)",
-      "order": "4 x $3.23 (2 ft length) = $12.92 for 12 rods, 10 needed; read off the product page and cart 2026-11-13",
-      "what": "RECOUNT 2026-11-23 against the direct model (src.build.collect_components at T_OPEN, by base name): the model has 13 rods: 10 x 202.5 (ROD_L) + 3 new shared rods x 69.4 (NEW_ROD_L), cut from the offcut of the fourth 2 ft length -- still 4 lengths an instrument, so the 10 x $1.292 here holds. 3/16in 304/304L stainless rod -- the direct drive's guide rods, one per string. Each 2 ft length is cut into THREE EQUAL pieces (~202.5, no offcut; direct_bench.ROD_L): pushed home in its endplate seat, the -X end sits in the housing's cap. 2 ft rather than 6 ft so it ships as a short parcel (user, 2026-11-13). Replaces the v1 O3.5 x 29.8 needle roller (NRB 3.5x29.8-G2), which only the v1 nut ear used."
+      "order": "5 x $3.23 (2 ft length) = $16.15 for 15 rods, 13 needed (price read off the product page and cart 2026-11-13)",
+      "what": "RECOUNT 2026-11-23 against the direct model (src.build.collect_components at T_OPEN, by base name): the model has 13 rods: 10 x 202.5 (ROD_L) + 3 new shared rods x 69.4 (NEW_ROD_L), cut from the offcut of the fourth 2 ft length -- still 4 lengths an instrument, so the 10 x $1.292 here holds. 2026-11-24 (user: all the guide rods the same length, supported the same way): the 3 new rods are ROD_L too, seated in strings 8-10's plugs and capped by their housings: 13 x 202.5, 5 lengths an instrument. 3/16in 304/304L stainless rod -- the direct drive's guide rods, one per string. Each 2 ft length is cut into THREE EQUAL pieces (~202.5, no offcut; direct_bench.ROD_L): pushed home in its endplate seat, the -X end sits in the housing's cap. 2 ft rather than 6 ft so it ships as a short parcel (user, 2026-11-13). Replaces the v1 O3.5 x 29.8 needle roller (NRB 3.5x29.8-G2), which only the v1 nut ear used."
     },
     "shaft_o8": {
       "usd": 6.184,
