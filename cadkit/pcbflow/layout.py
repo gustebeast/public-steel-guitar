@@ -6155,7 +6155,8 @@ def _add_zone(board, net, layer, inset, w, h, poly=None, priority=0, clearance=N
     # (output_panel, 2026-11-07). Nobody chose it: against a 0.127 mm track rule it cuts a
     # 1.6 mm hole round every 0.6 mm via, and seven vias by the MCU merged into a 5.2 mm
     # slot in the In1 plane that A15 failed signals for straddling. notes["zone_clearance"]
-    # (mm) sets it for every pour on the board; left out, the old 0.5 stays.
+    # (mm) sets it for every pour on the board; left out, the old 0.5 stays and
+    # zone_clearance_check says so loudly (or refuses, where the project opts in).
     if clearance is not None:
         zone.SetLocalClearance(pcbnew.FromMM(float(clearance)))
     if poly:
@@ -6238,19 +6239,50 @@ def _slug_rings(board, slug_max, via_d=0.6):
 CRTYD_MIN_MM2 = 1e-4                  # an intersection smaller than this is a rounding sliver
 
 
-def _declared_fn(stem):
-    """The project's `declared(board, vtype, refs)` (pcb_declared.py beside the generator),
-    bound to this board; else nothing is declared. finish.py reads the same file."""
+def _project_module(stem):
+    """The project's pcb_declared.py (beside the generator) as a module, or None."""
     pd = project_dir(stem)
     path = os.path.join(pd, "pcb_declared.py") if pd else ""
     if not path or not os.path.isfile(path):
-        return lambda t, r: False
+        return None
     import importlib.util
     spec = importlib.util.spec_from_file_location("pcb_declared", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
+    return mod
+
+
+def _declared_fn(stem):
+    """The project's `declared(board, vtype, refs)` (pcb_declared.py beside the generator),
+    bound to this board; else nothing is declared. finish.py reads the same file."""
+    mod = _project_module(stem)
+    if mod is None:
+        return lambda t, r: False
     name = os.path.basename(stem)
     return lambda t, r: bool(mod.declared(name, t, r))
+
+
+def zone_clearance_check(stem, notes):
+    """A board's pour clearance must be a choice, not KiCad's 0.5 mm default (lead, 2026-11-24).
+
+    ⚠ LOST IN A MERGE, AND NOTHING SAID SO (brain_board, 2026-11-24). output_panel set 0.2 with
+    its reasons (0.127 mm track rule; IPC-2221 GND vs 24 V); the merged brain_board never set it,
+    so every pour ran at 0.5. At 0.5 an other-net via cuts a 0.8 mm-radius antipad, and the
+    router's GND vias 0.77-0.82 mm from signal vias sat in voids: stranded GND on every run.
+
+    Unset: a loud warning naming the board. A project whose pcb_declared.py sets
+    REQUIRE_ZONE_CLEARANCE = True gets a refusal instead. Canonical cadkit is shared by several
+    projects, so the hard fail is opt-in and the default only warns. Returns the message, or None."""
+    if notes.get("zone_clearance") is not None:
+        return None
+    name = os.path.basename(stem)
+    msg = ("layout: %s: zone_clearance unset, KiCad 0.5 used, nobody chose it -- set "
+           "notes[\"zone_clearance\"] (mm) with the reason" % name)
+    mod = _project_module(stem)
+    if mod is not None and getattr(mod, "REQUIRE_ZONE_CLEARANCE", False):
+        raise SystemExit(msg + " (this project sets REQUIRE_ZONE_CLEARANCE in pcb_declared.py)")
+    print("!" * 78 + "\n!! " + msg + "\n" + "!" * 78, flush=True)
+    return msg
 
 
 def courtyard_overlaps(board):
@@ -6301,6 +6333,7 @@ def build(stem):
     """stem = the path prefix shared by <stem>.net and <stem>.board.json."""
     comps, nets = read_netlist(stem + ".net")
     notes = json.load(open(stem + ".board.json", encoding="utf-8"))
+    zone_clearance_check(stem, notes)
     placements = notes["placements"]
     # A NUDGE, for robustness runs on any board: PCBFLOW_NUDGE names a json {ref: [dx, dy]}
     # in this file's frame (mm; y up, as the placements). A full reroute is deterministic, so
