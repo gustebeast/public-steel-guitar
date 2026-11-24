@@ -2,8 +2,9 @@
 
 The plan (user, 2026-11-24): a raw NEMA 17 on each string, driven by 10x TMC2209 on the connector
 board, with one CH32V203 making the step pulses. No encoder and no motor-side hardware. This bench
-answers the questions the datasheets can't, before any layout. No firmware exists yet; this note
-is the procedure the firmware and the test scripts will follow.
+answers the questions the datasheets can't, before any layout. The QT Py's firmware is
+`firmware/qtpy_bench` (its README has the wiring, flashing and commands), and the Pi drives it with
+`publicbench.qtpy`. The gate scripts below are still to be written on top of those.
 
 ## Kit (the user orders; nothing has been bought)
 
