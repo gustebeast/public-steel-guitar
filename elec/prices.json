@@ -5870,6 +5870,11 @@
       "usd": 0.2706,
       "verified": "v",
       "what": "S4B-ZR-SM4A-TF(LF)(SN) (C485354) -- JST ZR 4-way side entry on the female pogo board; JLCPCB parts API at qty 20, 26844 in stock 2026-10-01"
+    },
+    "NetTie": {
+      "usd": 0.0,
+      "verified": "v",
+      "what": "KiCad net tie: copper on the board, no part placed or bought -- $0 (the brain board's Kelvin ties NT11/NT12/NT205-NT208)"
     }
   },
   "print_material_factor": {
