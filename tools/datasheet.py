@@ -5,8 +5,9 @@
     py -3.12 tools/datasheet.py C5142280 --page 23           one page's text
     py -3.12 tools/datasheet.py C2150710 --grep intpol -C 3  hits with 3 lines either side
 
-The part is an LCSC code (C...) or a keyword; a keyword takes the JLCPCB catalogue's first
-match, and says which part it took.
+The part is an LCSC code (C...) or a keyword. A keyword takes the best of the JLCPCB
+catalogue's matches (one with a datasheet link, then an exact part number, then the most
+stock), says which part it took, and lists the runners-up' codes.
 
 WHY THIS EXISTS. Every datasheet read on 2026-11-24 (TMC5240, TMC5072, TMC2209, CH32V203) took
 the same detour by hand. www.lcsc.com/datasheet links answer curl with a 9 KB HTML challenge,
@@ -39,8 +40,8 @@ UA = {"User-Agent": "Mozilla/5.0"}
 MARK = re.compile(r"^=====PAGE (\d+)=====$")
 
 
-def lookup(part: str) -> dict:
-    """The catalogue's record for an LCSC code, or its first match for a keyword."""
+def lookup(part: str) -> tuple[dict, list[dict]]:
+    """The catalogue's record for an LCSC code or keyword, and the runners-up (see pick)."""
     req = urllib.request.Request(API, data=json.dumps(
         {"keyword": part, "currentPage": 1, "pageSize": 10}).encode(),
         headers=dict(UA, **{"Content-Type": "application/json"}))
@@ -48,15 +49,25 @@ def lookup(part: str) -> dict:
     return pick(part, rows)
 
 
-def pick(part: str, rows: list[dict]) -> dict:
+def has_pdf(rec: dict) -> bool:
+    return bool(rec.get("dataManualFileAccessIdUrl") or rec.get("dataManualUrl"))
+
+
+def pick(part: str, rows: list[dict]) -> tuple[dict, list[dict]]:
+    """(chosen, runners-up). An exact LCSC code wins outright. Otherwise rows with a
+    datasheet link come first (a keyword such as "TMC2209" also matches listings with no
+    PDF, e.g. C9900017095), then an exact part-number match, then the most stock. The
+    runners-up are the other candidates in that order, so an ambiguous keyword can say so."""
     if not rows:
         raise SystemExit("no part in the JLCPCB catalogue matches %r" % part)
     exact = [r for r in rows if r.get("componentCode") == part.upper()]
     if exact:
-        return exact[0]
-    named = [r for r in rows if (r.get("componentModelEn") or "").upper() == part.upper()]
-    stocked = sorted(named or rows, key=lambda r: -(r.get("stockCount") or 0))
-    return stocked[0]
+        return exact[0], []
+    key = part.upper()
+    ranked = sorted(rows, key=lambda r: (not has_pdf(r),
+                                         (r.get("componentModelEn") or "").upper() != key,
+                                         -(r.get("stockCount") or 0)))
+    return ranked[0], ranked[1:]
 
 
 def pdf_urls(rec: dict) -> list[str]:
@@ -159,7 +170,7 @@ def main(argv=None):
             stream.reconfigure(encoding="utf-8", errors="replace")
         except (AttributeError, ValueError):
             pass
-    rec = lookup(o.part)
+    rec, others = lookup(o.part)
     pdf = fetch(rec, o.refresh)
     txt = to_text(pdf, o.refresh)
     lines = open(txt, encoding="utf-8").read().splitlines()
@@ -167,6 +178,10 @@ def main(argv=None):
     print("%s  %s  (%s, %d pages)" % (rec["componentCode"], rec.get("componentModelEn"),
                                        rec.get("componentBrandEn") or "?", pages), file=sys.stderr)
     print("  %s\n  %s" % (pdf, txt), file=sys.stderr)
+    if others:
+        print("  the keyword matched %d more; pass a code to take another: %s" % (len(others), ", ".join(
+            "%s %s%s" % (r.get("componentCode"), r.get("componentModelEn"), "" if has_pdf(r) else " (no PDF)")
+            for r in others[:5])), file=sys.stderr)
     if o.grep:
         hits = grep(lines, o.grep, o.C)
         print("\n".join(hits) if hits else "(no match)")
