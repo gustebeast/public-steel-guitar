@@ -88,7 +88,12 @@ def _screw(x, y, up=UP):
 # THE PLANK'S EDGE LINE: where the plank bench's motor block (the first motor mount here, its base
 # turned 180 deg about Z onto string 6) had its tab edge; the anchor, endplate and keyhead printed
 # to it, so it stays
-Y_EDGE = Y5 - (PB.Y_EDGE - PB.SY)                # -28.35
+# MORE CENTRED ON THE PLANK (user, 2026-11-24: "move the assembly so it's more centered on the plank,
+# that way we can give more clearance between the +x endplate 45 supports and the guide rods"): the
+# edge line every base is flush with stands EDGE_SHIFT further -Y than the first bench's (the plank
+# bench's motor block's tab edge, -28.35): the string ~centred on a 90 wide plank
+EDGE_SHIFT = 20.0
+Y_EDGE = Y5 - (PB.Y_EDGE - PB.SY) - EDGE_SHIFT   # -48.35
 
 
 # ── THE MOTOR MOUNT: THE INSTRUMENT'S PLATE, STANDING ON THE PLANK (user, 2026-11-16: "make a new
@@ -173,7 +178,8 @@ def _drive_y_extent():
 A_IN = tuple(Y5 + v + s for v, s in zip(_drive_y_extent(), (-1.0, 1.0)))   # the buttresses' inner
                                                  # faces: 1.0 off the plug's and housing's widest
 A_WALL = 6 * D.BEAD                              # 4.8: each buttress
-A_Y = (Y_EDGE, A_IN[1] + A_WALL)                # the -Y buttress out to the edge: flat to print on
+A_Y = (min(A_IN[0], DB.rod_yz(HOOK)[0] - DB.GUIDE_SEAT / 2 - 2 * D.BEAD) - A_WALL, A_IN[1] + A_WALL)   # a wall each
+                                                 # side (user, 2026-11-24: the -Y one out to the edge line wasted plastic)
 A_FOOT = AX1 + (A_TOP - ZB)                      # the buttresses' 45 deg foot, x
 A_BASE_X0 = AX0 - 16.0                           # the base's -X end: room for two screws
 RAIL_Y = (Y_EDGE, Y_EDGE + 16.0)                 # the rail to the endplate: along the edge
@@ -189,9 +195,12 @@ XJ = DB.ep_x()["x_j"]                            # -20.2: the endplate's joint f
 # (BUT_TOP and the flanges' length below, with the board's numbers).
 # in Y: the +Y one from past the optical screw bracket (y 5.9 .. 12.7) and rod 5 to the widened plate's
 # edge; the -Y one from the plank's edge line to rod 8, BUT_ROD_CLR off it
-BUT_ROD_CLR = 1.5
-BUT_PY = (14.0, 24.0)
-BUT_NY = (Y_EDGE, DB.rod_yz(HOOK)[0] - DB.GUIDE_D / 2 - BUT_ROD_CLR)
+BUT_ROD_CLR = 5.0
+BUT_W = 10.0
+BUT_PY = (DB.rod_yz(I)[0] + DB.GUIDE_D / 2 + BUT_ROD_CLR, 0.0)
+BUT_PY = (BUT_PY[0], BUT_PY[0] + BUT_W)
+BUT_NY = (DB.rod_yz(HOOK)[0] - DB.GUIDE_D / 2 - BUT_ROD_CLR - BUT_W, DB.rod_yz(HOOK)[0] - DB.GUIDE_D / 2 - BUT_ROD_CLR)
+assert BUT_NY[0] >= Y_EDGE, "the -Y buttress off the plank's edge line"
 assert BUT_NY[1] - BUT_NY[0] >= 5 * D.BEAD - 1e-6, "the -Y buttress under five beads"
 
 
@@ -248,13 +257,14 @@ def a_screws():
 E = DB.ep_x()
 EP_Y_OPT = (Y5 - 12.0, DB.rod_yz(I)[0] + DB.GUIDE_SEAT / 2 + DB.GUIDE_WALL + 3.0)   # the first bench's
                                                  # slice, -16.75 .. 15.95: the optical brackets keep to it
-EP_Y = (Y_EDGE, BUT_PY[1])                       # out to the plank's edge line: rod 8's seat (THE DUAL-ROD
-                                                 # BENCH); +Y to the +Y buttress's far side (wider is stiffer)
+EP_Y = (BUT_NY[0], BUT_PY[1])                    # buttress to buttress: rod 8's seat (THE DUAL-ROD BENCH)
+                                                 # and both buttresses' roots; the base runs on to the edge line
 assert DB.rod_yz(HOOK)[0] - DB.GUIDE_SEAT / 2 - DB.GUIDE_WALL - EP_Y[0] >= 2 * D.BEAD, "rod 8's seat off the slice"
 EP_BASE_Y1 = EP_Y[1] + 2 * TAB                   # the base: a flange each side in Y, flush
 # the -Y flange's screws: the far side of the -Y buttress, -X of the optical rest bracket (x XJ - OB_L ..
 # XJ, y -16.75 .. -13.55: a screw's access shaft beside the face would cut it)
-Y_NSCREW = BUT_NY[1] + 0.5 + 4.8
+Y_NSCREW = BUT_NY[0] - 0.5 - 4.8                 # -Y of the -Y buttress, on the flange
+assert Y_NSCREW - 4.8 >= Y_EDGE - 1e-6, "the -Y flange's screws off the edge line"
 def ep_screws():
     return ([(x, EP_BASE_Y1 - TAB) for x in (XJ + TAB, E["x_end"] - TAB, (XJ + BUT_FOOT_X) / 2,
                                              BUT_FOOT_X - TAB)]                 # the +Y base and flange
@@ -270,11 +280,12 @@ def endplate() -> cq.Workplane:
     hi = w.intersect(_box(XJ - 2, E["x_end"] + 2, EP_Y[0] - 1, EP_Y[1] + 1, EP_BAND[1], 100))
     w = lo.union(hi.translate((0.0, 0.0, KH_DROP)))
     w = w.union(_box(XJ, E["x_end"], Y_EDGE, EP_BASE_Y1, Z_PLANK, ZB))   # the base, both sides
-    w = w.union(_box(X_RAIL_END, XJ + 0.01, RAIL_Y[0], RAIL_Y[1], Z_PLANK, ZB))   # the -Y flange
+    w = w.union(_box(X_RAIL_END, XJ + 0.01, RAIL_Y[0], max(RAIL_Y[1], BUT_NY[1]), Z_PLANK, ZB))   # the -Y flange
     w = w.union(_box(X_RAIL_END, XJ + 0.01, BUT_PY[0], EP_BASE_Y1, Z_PLANK, ZB))  # the +Y flange
     for y0, y1 in (BUT_PY, BUT_NY):                                          # THE BUTTRESSES
         tri = (cq.Workplane("XZ", origin=(0, y1, 0))
-               .polyline([(XJ + 0.5, ZB - 0.01), (XJ + 0.5, BUT_TOP), (BUT_FOOT_X, ZB - 0.01)])   # 0.5 into the plate:
+               .polyline([(XJ + 0.5, ZB - 0.01), (XJ + 0.5, BUT_TOP), (XJ - OB_L, BUT_TOP),
+                          (XJ - OB_L, BUT_TOP - OB_TIP), (BUT_FOOT_X, ZB - 0.01)])   # 0.5 into the plate:
                # over the band its joint face stands a few hundredths +X of XJ
                .close().extrude(y1 - y0))
         w = w.union(tri)
@@ -292,74 +303,67 @@ def ep_axles() -> list:
             for k, (nm, _) in enumerate(DB.axle_zs()) if k in (k_bend, n)]
 
 
-# ── THE KEYHEAD: THE V2 NUT BLOCK, CUT DOWN TO STRING 6, ON THE WOOD ─────────────────────────
+# ── THE KEYHEAD: A HOLDER FOR THE STEEL NUT PLATE, ON THE WOOD (user, 2026-11-24: "the string clamping
+# system wasn't working so we can make a simple version that just holds an insert in place. Same metal
+# insert ... I have a guitar tuner holding the string so the crown is just to set the height") ──────
+# THE STRING AS LOW AS THE HARDWARE ALLOWS (user, 2026-11-24: "as low as is reasonably allowed by the
+# hardware"): the bench lowers the crown and the bridge bearing together by taking a band out of the
+# endplate's fill between the bend bearing and the bridge bearing (EP_BAND). The band is as tall as it
+# goes: from 1.8 over the bend bearing's roof to 1 under the bridge bearing's pocket -- the bridge
+# bearing then sits just over the bend bearing. (The motor, 16 under the string then, and the R1
+# board over the drive, 19, do not limit it.)
 from . import nut_block_v2 as NB2
-# ...the v2 KEYHEAD's bits this bench's block still uses (src/keyhead_v2.py retired 2026-11-22, the
-# instrument's nut is the flex clamp now; git history has it)
-KH_PRINT_UP = (1.0, 0.0, 0.0)                    # the -X face on the bed
-NB_FLOOR_W = 2 * D.MIN_WALL_2P                   # under the plates' slots
-FACE_EXTRA = 3 * D.BEAD                          # the +X face's added wall under the fretboard stack
-
-
-def _face_thickening_local() -> cq.Workplane:
-    """The block's added +X face (keyhead_v2's), nut block local frame: its bottom to just under
-    the deck stack's lowest point (deck_v2.STACK_BOT - 0.5)."""
-    from . import deck_v2 as DK
-    z0 = NB2.HS_FLOOR - NB_FLOOR_W
-    z1 = DK.STACK_BOT - 0.5 - D.STRING_Z
-    return (cq.Workplane("XY").box(FACE_EXTRA + 0.01, NB2.HW - NB2.Y_LO, z1 - z0)
-            .translate((NB2.X_FRONT + (FACE_EXTRA - 0.01) / 2, (NB2.HW + NB2.Y_LO) / 2, (z0 + z1) / 2)))
-KH_DROP = Z_PLANK - (D.STRING_Z + NB2.HS_FLOOR - NB_FLOOR_W)               # -47.25: the block's bottom on the plank
-# the band out of the endplate's fill: from 1.8 over the bend bearing's roof, |KH_DROP| tall (the
-# fill runs on to 1 under the bridge bearing; rows a and b's axle bores, not used here, go with it)
 _BAND0 = DB.z_level(DB.level(I)) + DB.R + D.BRG688_OD / 2 + DB.EP_BRG_CLR + 1.8
+_BR_POCKET = DB.BR_C[1] - D.BRG688_OD / 2 - DB.EP_BRG_CLR
+KH_DROP = -((_BR_POCKET - 1.0) - _BAND0)         # -64.0: the string at z -48
 EP_BAND = (_BAND0, _BAND0 - KH_DROP)
-assert EP_BAND[1] <= DB.BR_C[1] - D.BRG688_OD / 2 - DB.EP_BRG_CLR - 1.0, "the band runs into the bridge pocket"
+assert EP_BAND[1] <= _BR_POCKET - 1.0 + 1e-9, "the band runs into the bridge pocket"
 assert EP_BAND[0] > DB.rod_yz(I)[1] + DB.GUIDE_SEAT / 2 + DB.GUIDE_WALL, "the band cuts the rod's seat"
 KH_AT = (D.NUT_BLOCK_X, 0.0, D.STRING_Z + KH_DROP)   # nut block local -> bench world
+# THE HOLDER: a block with a SLOT the plate drops into from the top, its foot on the slot's floor (so
+# the crown stands where KH_DROP puts the string), its sides held to KH_TOP. Over that only the crown
+# arm stands: the string leaves the crown -X for the tuner over a free 24. PRINTS BASE DOWN (+Z).
+KH_PRINT_UP = (0.0, 0.0, 1.0)
+KH_CLR_X, KH_CLR_Y = 0.3, 0.2                    # the slot round the plate (a cut 304 plate: +-0.1)
+KH_WALL = 6 * D.BEAD                             # 4.8 round the slot
+KH_TOP = -24.0                                   # the walls' top, under the string top (local z)
 
 
-def kh_y():
-    """Just string 6's pocket and its walls (the neighbours' cuts are not made)."""
-    y = D.nut_y(I)
-    return y - 8.75, y + 8.75
+def _plate_box():
+    """The plate's (x0, x1, y0, y1, z0) in the world."""
+    b = NB2.plate(I).translate(KH_AT).val().BoundingBox()
+    return b.xmin, b.xmax, b.ymin, b.ymax, b.zmin
+
+
+def kh_box():
+    """The holder's block (x0, x1, y0, y1): the slot's walls (its base runs -Y to the edge line)."""
+    x0, x1, y0, y1, _ = _plate_box()
+    return (x0 - KH_CLR_X - KH_WALL, x1 + KH_CLR_X + KH_WALL, y0 - KH_CLR_Y - KH_WALL, y1 + KH_CLR_Y + KH_WALL)
 
 
 def keyhead() -> cq.Workplane:
-    """String 6's nut block: the instrument's block from its -X face to its +X face and from its
-    bottom to its top, cut with string 6's features only, standing on the plank, with a screw flange
-    each side in Y. The string pulls it +X at the crown ~76 over the wood: the two -X screws take
-    the tipping. PRINTS AS THE INSTRUMENT'S, -X -> +X on its -X face (KH_PRINT_UP)."""
-    y0, y1 = kh_y()
-    x0, x1 = NB2.X_BACK, NB2.X_FRONT
-    z0 = NB2.HS_FLOOR - NB_FLOOR_W
-    w = _box(x0, x1, y0, y1, z0, NB2.NUT_TOP)
-    w = w.union(_face_thickening_local().intersect(_box(x0, x1 + 10, y0, y1, z0 - 1, NB2.NUT_TOP)))
-    p0, p1 = NB2._y_span(I)
-    lane = _box(NB2.X_BACK - 1.0, NB2.POCKET_X0 + 0.5, p0, p1, NB2.LANE_FLOOR, NB2.Z_SKY)
-    win = NB2.plier_window().intersect(_box(x0 - 2, x1, p0, p1, NB2.WIN_LO - 1, NB2.WIN_HI + 1))
-    for neg in ([NB2.insert_pocket(I), lane, win, NB2.rod_bore()]
-                + NB2.side_screw_negatives(I) + NB2.height_screw_negatives(I)):
-        w = w.cut(neg)
-    w = w.translate(KH_AT)
-    xa, xb = KH_AT[0] + x0, KH_AT[0] + x1
-    w = w.union(_box(xa, xb, Y_EDGE, y1 + 2 * TAB, Z_PLANK, ZB))
-    for x, y in KH_SCREWS():
+    """The holder: the block from the plank to KH_TOP, its base out each side in X with the screws,
+    the slot from the plate's foot up through the top."""
+    x0, x1, y0, y1, zf = _plate_box()
+    bx0, bx1, by0, by1 = kh_box()
+    assert zf - Z_PLANK >= 2 * D.MIN_WALL_2P, "the slot's floor under the plate is too thin"
+    zt = KH_AT[2] + KH_TOP
+    w = _box(bx0, bx1, by0, by1, Z_PLANK, zt)
+    w = w.union(_box(bx0 - 2 * TAB, bx1 + 2 * TAB, by0 - 2 * TAB, by1 + 2 * TAB, Z_PLANK, ZB))   # the base,
+                                                 # centred on the plate (user, 2026-11-24)
+    w = w.cut(_box(x0 - KH_CLR_X, x1 + KH_CLR_X, y0 - KH_CLR_Y, y1 + KH_CLR_Y, zf, zt + 1.0))
+    for x, y in kh_screws():
         w = w.cut(_screw(x, y, KH_PRINT_UP))
     return w
 
 
-def KH_SCREWS():
-    y0, y1 = kh_y()
-    xa, xb = KH_AT[0] + NB2.X_BACK, KH_AT[0] + NB2.X_FRONT
-    return [(x, y) for x in (xa + TAB, xb - TAB) for y in (Y_EDGE + TAB, y1 + TAB)]
+def kh_screws():
+    bx0, bx1, by0, by1 = kh_box()
+    return [(x, y) for x in (bx0 - TAB, bx1 + TAB) for y in (by0 - TAB, by1 + TAB)]
 
 
 def keyhead_hardware() -> list:
-    out = [("wb_wrap_rod", NB2.rod().translate(KH_AT))]
-    for nm in ("plate", "shoe", "side_screw", "side_insert", "height_screw", "height_insert"):
-        out.append((f"wb_nut_{nm}", getattr(NB2, nm)(I).translate(KH_AT)))
-    return out
+    return [("wb_nut_plate", NB2.plate(I).translate(KH_AT))]
 
 
 def bench_string(t: float) -> cq.Workplane:
@@ -457,11 +461,11 @@ OB_TIP = 2.0                                     # the tip cut flat (no knife ed
 OS_M4_L = 10.0                                   # M4 x 10: 1.6 of board, 8.4 self-tapped into the bracket
 
 # THE ENDPLATE'S BUTTRESSES' height and the flanges' length (see THE ENDPLATE'S BUTTRESSES above)
-OPT_BELOW = 3.4                                  # the R1 board's parts under its underside (as ordered)
-OPT_FACE_GAP = 3.65                              # the board's +X edge off the joint face (opt_frame's)
-BUT_CLR = 1.5
-BUT_TOP = (D.STRING_Z + KH_DROP - OPT_GAP - 1.6 - OPT_BELOW) - BUT_CLR + OPT_FACE_GAP   # at the face
-BUT_FOOT_X = XJ - (BUT_TOP - ZB)                 # the slope reaches the base here
+# THE BUTTRESSES CARRY THE BOARD (user, 2026-11-24: "put the supports on the existing downward
+# creep-prevention supports to reuse the same material"): each rises to the board's underside, a flat
+# SEAT OB_L long under it, OB_TIP of square end, then 45 deg down to the base
+BUT_TOP = D.STRING_Z + KH_DROP - OPT_GAP - 1.6   # the board's underside (R1: 1.6 thick)
+BUT_FOOT_X = XJ - OB_L - (BUT_TOP - OB_TIP - ZB)  # the slope reaches the base here
 EP_FLANGE_L = XJ - BUT_FOOT_X + 2 * TAB          # the base's flanges, -X off the joint face
 X_RAIL_END = XJ - EP_FLANGE_L                    # the anchor's rail butts the -Y one
 
@@ -515,20 +519,18 @@ def opt_hole():
 
 
 def opt_brackets() -> cq.Workplane:
-    """The two brackets, world: a 45 deg right triangle in XZ off the joint face, OB_W wide, its top
-    the board's underside, 1 into the endplate. In the endplate's print (+X -> -X) they grow up off
-    the joint face: the top a wall, the slope facing up."""
+    """THE SCREW'S BLOCK (the board's brackets are the buttresses' seats now): the board's Ø4.4 hole
+    is over neither buttress, so a block off the +Y one runs -Y under it, the self-tap bore + 2 x
+    OB_WALL wide, OB_L along the face, down to OB_STACK_CLR over the stack (the keyplate's top)."""
     from cadkit.fasteners import M4
-    _, _, z0, _ = opt_frame()
-    w_screw = M4.tap_d((0.0, 0.0, -1.0), DB.EP_UP) + 2 * OB_WALL
-    out = None
-    for y, ow in ((opt_hole()[1], w_screw), (OB_Y2, OB_REST_W)):
-        tri = (cq.Workplane("XZ", origin=(0, y + ow / 2, 0))
-               .polyline([(XJ + 1.0, z0), (XJ - OB_L, z0), (XJ - OB_L, z0 - OB_TIP),
-                          (XJ + 1.0, z0 - OB_TIP - OB_L - 1.0)]).close()
-               .extrude(ow))
-        out = tri if out is None else out.union(tri)
-    return out
+    _, hy = opt_hole()
+    hw = M4.tap_d((0.0, 0.0, -1.0), DB.EP_UP) / 2 + OB_WALL
+    assert hy + hw <= BUT_PY[1], "the screw's block past the +Y buttress"
+    return _box(XJ - OB_L, XJ + 0.5, hy - hw, BUT_PY[0] + 0.5, OB_Z_MIN, BUT_TOP)
+
+
+OB_STACK_CLR = 2.0
+OB_Z_MIN = DB.za(I) + DB.YK_D / 2 + OB_STACK_CLR   # the keyplate's (the stack's widest) top, and the clearance
 
 
 # SELF-TAPPED, NO INSERT (user, 2026-11-16: "use self tapping so we don't have to put in and remove
@@ -602,7 +604,7 @@ PRINTS = ("wb_motor_mount", "wb_anchor", "wb_endplate", "wb_keyhead", "wb_nut_sh
 
 # each bench print's build direction (the comments at each part say why)
 WB_PRINT_UP = {"wb_motor_mount": MM_UP, "wb_anchor": A_UP, "wb_endplate": DB.EP_UP,
-               "wb_keyhead": KH_PRINT_UP, "wb_nut_shoe": NB2.SHOE_UP,
+               "wb_keyhead": KH_PRINT_UP,
                "wb_tie_spacer": (1.0, 0.0, 0.0),           # standing, +X up
                "wb_keyplate": (-1.0, 0.0, 0.0),            # flat on its +X face: the ball's seat
                                                            # (-X face) opens on top, no bridge
