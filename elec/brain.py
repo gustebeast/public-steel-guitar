@@ -1141,6 +1141,7 @@ BOARD_NOTES = {
         "the 21 mm under the UI station for the mated plugs",
         "CM5 variant: an eMMC part (no SD socket here); four M2.5 mounting holes for it",
     ],
+    "zone_clearance": 0.5,      # inherited KiCad default, unreviewed
 }
 
 

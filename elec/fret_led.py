@@ -1551,6 +1551,7 @@ BOARD_NOTES = {
     # 1.38 A left L1 on ONE 0.25 track and wants 0.47. The plane carries the rail the
     # length of the board -- these are the stubs that reach it.
     "net_widths": {"+24V_IN": 0.30, "+24V": 0.30, "+14V5": 0.50},
+    "zone_clearance": 0.5,      # inherited KiCad default, unreviewed
 }
 
 
