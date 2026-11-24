@@ -1,0 +1,97 @@
+"""A snapshot hold never outranks a hard rule; a real hold still stops the flow (lead 2026-11-23).
+
+    py -3.12 test_snapshot_release.py
+
+brain_board pr_s1: U13 was snapshot-held where mP0 left it, J1's panel turn moved its lands, and
+U13 sat 14.74 mm from J1 against a HARD 14 -- the flow stopped before layout. A tiny board:
+
+  1  U1 snapshot-held 30 mm from J1, hard near J1 <= 5   -> _release_snapshots drops U1's hold
+                                                            and says SNAPSHOT RELEASED
+  2  place() on that board                               -> U1 seated within 5 of J1; no hard
+                                                            near broken, place_flow's gate goes on
+  3  the same seat held "user" (and "mate")              -> kept: the hold stands, the rule is
+                                                            broken and place_flow's gate stops (2)
+  4  a snapshot that already meets its rule              -> kept where it is
+  5  place_init has no off-switch for it                 -> PCBFLOW_SNAPSHOT_RELEASE is gone
+
+Fails without the fix: place_init has no _release_snapshots, U1 stays at its snapshot.
+Exit 0 = PASS.
+"""
+import copy
+import os
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import place_flow as pf  # noqa: E402
+import place_init as P  # noqa: E402
+import place_intent as pi  # noqa: E402
+
+
+def part(w, h, pads):
+    c = [[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]]
+    return {"crtyd": c, "fab": [-w / 2, w / 2, -h / 2, h / 2], "at": [0.0, 0.0, 0.0], "side": "F",
+            "pads": [{"num": str(i + 1), "xy": xy, "size": [0.6, 0.6], "net": n}
+                     for i, (xy, n) in enumerate(pads)]}
+
+
+PARTS = {"J1": part(4.0, 4.0, [([-1.0, 0.0], "A"), ([1.0, 0.0], "B")]),
+         "U1": part(3.0, 3.0, [([-1.0, 0.0], "A"), ([1.0, 0.0], "B")])}
+NOTES = {"outline_mm": [60.0, 40.0], "placements": {}}
+NEAR = {"kind": "near", "ref": "U1", "target": "J1", "max_mm": 5.0, "hard": True, "src": "test"}
+J1_HOLD = {"kind": "fixed", "ref": "J1", "xy": [-25.0, 0.0], "rot": 0.0, "hold": "mechanical", "why": "the panel"}
+
+
+def rules_with(hold):
+    u1 = {"kind": "fixed", "ref": "U1", "xy": [10.0, 0.0], "rot": 0.0, "why": "test seat", "hold": hold}
+    return [J1_HOLD, u1, NEAR]
+
+
+bad = []
+
+
+def want(ok, msg):
+    print("%s %s" % ("PASS" if ok else "FAIL", msg))
+    if not ok:
+        bad.append(msg)
+
+
+if not hasattr(P, "_release_snapshots"):
+    want(False, "place_init has no _release_snapshots (the fix is missing)")
+    sys.exit(1)
+
+# 1
+r1, lines = P._release_snapshots(PARTS, NOTES, rules_with("snapshot"))
+want(not any(r["kind"] == "fixed" and r["ref"] == "U1" for r in r1) and len(r1) == 2,
+     "1 snapshot U1 35 mm from J1 (hard <= 5): its hold dropped")
+want(len(lines) == 1 and lines[0].startswith("SNAPSHOT RELEASED: U1"), "1 says SNAPSHOT RELEASED: %s" % lines)
+
+# 2
+pl, log, _why = P.place(copy.deepcopy(PARTS), copy.deepcopy(NOTES), rules_with("snapshot"))
+d = pi.check(NEAR, pi.Placed(PARTS, pl), NOTES)[0]
+want(d[0] >= 0, "2 place() seats U1 under the rule: %s (slack %.2f)" % (d[2], d[0]))
+want(any("SNAPSHOT RELEASED" in x for x in log), "2 the release is in place()'s log")
+nb = pf._near_broken(rules_with("snapshot"), pi.Placed(PARTS, pl), NOTES)
+want(not nb and pf._near_gate(nb, place_only=False) is None, "2 no hard near broken, the gate goes on")
+
+# 3
+for hold in ("user", "mate"):
+    r3, l3 = P._release_snapshots(PARTS, NOTES, rules_with(hold))
+    want(len(r3) == 3 and not l3, "3 a %s hold at the same seat is kept" % hold)
+    pl3, _l, _w = P.place(copy.deepcopy(PARTS), copy.deepcopy(NOTES), rules_with(hold))
+    want(abs(pl3["U1"][0] - 10.0) < 1e-6, "3 %s-held U1 stays at its seat (x %.2f)" % (hold, pl3["U1"][0]))
+    nb3 = pf._near_broken(rules_with(hold), pi.Placed(PARTS, pl3), NOTES)
+    want(bool(nb3) and pf._near_gate(nb3, place_only=False) == 2, "3 %s hold: the broken rule stops the flow" % hold)
+
+# 4
+ok4 = rules_with("snapshot")
+ok4[1] = dict(ok4[1], xy=[-21.0, 0.0])
+r4, l4 = P._release_snapshots(PARTS, NOTES, ok4)
+want(len(r4) == 3 and not l4, "4 a snapshot that meets its rule is kept")
+
+# 5
+want("PCBFLOW_SNAPSHOT_RELEASE" not in open(os.path.join(HERE, "place_init.py"), encoding="utf-8").read(),
+     "5 no off-switch")
+
+print("PASS" if not bad else "FAIL: %d" % len(bad))
+sys.exit(1 if bad else 0)
