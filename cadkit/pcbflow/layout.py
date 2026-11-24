@@ -1325,8 +1325,9 @@ def drop_redundant_pad_vias(board, notes):
     The through-hole case above is safe by construction: the barrel was already there.
     A surface land has no barrel, so a via in it MAY be the only thing carrying the net
     to another layer, and no geometric test says which. So ask the board the question
-    directly -- take the via off its net, rebuild connectivity, and count. If the count
-    of unconnected items did not rise, the via carried nothing its neighbours do not.
+    directly -- take the via off the board (off its net is not enough: see below), rebuild
+    connectivity, and count. If the count of unconnected items did not rise, the via carried
+    nothing its neighbours do not.
 
     The usual origin is a layer change the router put under the pad and then duplicated
     0.7 mm away with a second via and a stub back to the land: both are legal copper,
@@ -1394,14 +1395,34 @@ def drop_redundant_pad_vias(board, notes):
     board.BuildConnectivity()
     base = board.GetConnectivity().GetUnconnectedCount(False)
     doomed = {}
+    # ⚠ A VIA OFF ITS NET STILL CONDUCTS (brain_board vip_s1 / vip_s2, 2026-11-24): KiCad's
+    # connectivity joins copper by geometry, so a via set to net 0 still joined C39.1's land to
+    # the AUDIO_SEL track on In2 that started under it -- the count did not move (1178 either
+    # way) and the via read redundant though it was the pad's ONLY layer change. With via in pad
+    # that is the router's normal layer change, and both seeds lost 72 vias here; their nets
+    # (AUDIO_SEL, BST_VCC, BST_VIN, HUB_XO, OUT_BUF_IN, U21_OVLO, QOD_D, +24V_LED, ...) were
+    # exactly the "routed, then open" nets on the finished board. Each candidate is now moved
+    # OFF THE BOARD for its test as well as taken off its net; a needed one goes back.
+    # ...AND THE BASELINE MOVES WITH EACH REMOVAL: a removal that lowered the count (a refill
+    # dropping a dead island) left slack a later, needed via could spend. Each test compares
+    # against the count the board had just before it.
+    away = pcbnew.VECTOR2I(pcbnew.FromMM(-1000.0), pcbnew.FromMM(-1000.0))
     for t, nc, why in cand:
+        at = t.GetPosition()
         t.SetNetCode(0)
+        t.SetPosition(away)
         fill()
         board.BuildConnectivity()
-        if board.GetConnectivity().GetUnconnectedCount(False) > base:
-            t.SetNetCode(nc)                   # it was carrying the net: keep it
+        cur = board.GetConnectivity().GetUnconnectedCount(False)
+        if cur > base:
+            t.SetPosition(at)                  # it was carrying the net: keep it
+            t.SetNetCode(nc)
         else:
-            doomed[t.m_Uuid.AsString()] = why  # stays off the net for the tests that follow
+            doomed[t.m_Uuid.AsString()] = why  # stays off the board for the tests that follow
+            if cur < base:
+                print("    pad via %s: off the board the count FELL %d -> %d (the next test starts there)"
+                      % (why, base, cur))
+            base = cur                         # the next test starts from this board
     del cand, lands
     # One full walk to find them, then the removals: the rule from tidy_router_vias'
     # own docstring -- do not hold the thing you are about to delete, and do not re-walk
