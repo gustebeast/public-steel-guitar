@@ -103,6 +103,14 @@ _LOCAL = threading.local()
 _ENV_NAME = __import__("re").compile(r"^[A-Z][A-Z0-9]*_[A-Z0-9_]+$")
 
 
+class Memo(dict):
+    """A dict that is a MEMO: what is in it depends on what asked first, so it fingerprints as a
+    token, not by value (a plain dict global is hashed by its contents -- a memo filling while a
+    build runs moved the key of every function that reads it, 2026-11-23). Only for values that
+    are a pure function of their key: the code that fills it on a miss is what a key must hash,
+    and it does, since that code reads the memo (tools/check_kept_keys.py)."""
+
+
 # numpy's index helpers: module-level singletons with no state (np.c_ is a CClass)
 _NP_INDEXERS = frozenset({"CClass", "RClass", "IndexExpression", "MGridClass", "OGridClass"})
 
@@ -333,6 +341,8 @@ class _Namer:
     def val(self, x) -> str:
         if isinstance(x, _PLAIN):
             return "%s:%r" % (type(x).__name__, x)
+        if isinstance(x, Memo):
+            return "memo"
         if isinstance(x, (tuple, list)):
             return "%s[%s]" % (type(x).__name__, ",".join(self.val(v) for v in x))
         if isinstance(x, (set, frozenset)):
