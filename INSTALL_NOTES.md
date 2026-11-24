@@ -546,11 +546,14 @@ antenna would need the instrument's own radio certification.
 1. Plug the cable's U.FL onto the CM5's U.FL socket (the module's corner beside the RF can)
    **before** the brain board goes in. A U.FL is good for only a few dozen matings, so
    plug it once and leave it.
-2. Put the toothed washer on the cable's SMA, then pass the SMA out through the +X
-   endplate's D-hole (y -60, z -100) from inside. The flat on the thread stops it turning,
-   so nothing holds the hex inside.
-3. Outside: the flat washer, then the hex nut, snug. Then screw on the antenna's RP-SMA and
-   swivel it up (or flat along the endplate for transport).
+2. NOTHING POKES OUT (user, 2026-11-23): the antenna lives inside, on the body floor in the -Y
+   bay beside motor 8, lying along -X at (y -74, z -100) -- clear of every steel part by 15 mm and
+   of board copper by 67, its way out the plastic floor and the -Y wall's band below the wall bar.
+   Put the toothed washer on the cable's SMA and pass it -X through the D-hole in the floor's
+   antenna boss (x ~ -236), from the +X side. The flat on the thread stops it turning.
+3. On the boss's -X side: the flat washer, then the hex nut, snug. Screw the antenna's RP-SMA on
+   STRAIGHT (not turned 90 deg) so it lies along -X, and press its tip into the floor's saddle clip.
+   Dress the cable's slack down the CM5 side of the brain board.
 
 **Must NOT appear:** `enable_uart=1`, `dtoverlay=disable-bt`, `dtoverlay=miniuart-bt`
 (all three put a UART on GPIO14 / 15, the foot lights' pins), `dtoverlay=spi1-2cs` or
