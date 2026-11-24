@@ -314,11 +314,32 @@ def _layers(stem):
     return L2.replace("F.Cu,B.Cu", "F.Cu,%s,B.Cu" % inner)   # n == 4 gives L4 exactly
 
 
+def via_fill_unordered(notes):
+    """None when the order matches the design's vias, else why not.
+
+    ⚠ FILLED VIAS ARE A DESIGN FACT THE GERBERS DO NOT CARRY (2026-11-24). quality.fab
+    via_in_pad lets the router drop vias in solder lands, quality A12/A14 pass them and unwick
+    leaves them there -- all on the promise that the fab fills and caps them. Ordered as plain
+    tented vias, every one of those lands drains its joint. So a board that declares it must
+    also say so on the order form: an order_options value naming POFV or "filled"."""
+    if not (((notes.get("quality") or {}).get("fab")) or {}).get("via_in_pad"):
+        return None
+    opts = notes.get("order_options") or {}
+    if any(("pofv" in str(v).lower() or "filled" in str(v).lower()) for v in opts.values()):
+        return None
+    return ("quality.fab via_in_pad says the vias are ordered filled and capped, but no "
+            "order_options entry asks for it (POFV / epoxy filled & capped) -- add one, or the "
+            "vias in lands go out open")
+
+
 def fab(board):
     stem = os.path.join(OUT_DIR, board)
     pcb = stem + ".kicad_pcb"
     if not os.path.isfile(pcb):
         raise SystemExit("no routed board at %s -- run layout.py and route.py first" % pcb)
+    _why = via_fill_unordered(json.load(open(stem + ".board.json", encoding="utf-8")))
+    if _why:
+        raise SystemExit("%s: %s" % (board, _why))
     # ⚠ A PLACED BOARD IS NOT A FINISHED BOARD, and gerbers do not say so. The board
     # file exists as soon as layout.py runs; export it before route.py has been through
     # and you get a clean-looking package with no tracks in it -- which is precisely the

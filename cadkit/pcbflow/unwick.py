@@ -180,7 +180,19 @@ def main(stem):
             if p.GetBoundingBox().Contains(v.GetPosition()):
                 held[n] = held.get(n, 0.0) + math.pi * (MM(v.GetDrillValue()) / 2.0) ** 2 * THICK
                 break
-    for v in vias:
+    # ⚠ A FILLED VIA DRINKS NOTHING (lead ruling 2026-11-24, from the user's via-in-pad call): a
+    # board ordered with epoxy-filled, capped vias (quality.fab via_in_pad -- the same note the
+    # router reads to put vias in lands, quality A12/A14 read to pass them, and fab_package
+    # refuses to package without a POFV order option) has no open barrel under its paste, so
+    # this first pass has nothing to fix. On brain_board pv_s1 it moved ~30 of the router's
+    # in-land vias anyway, three of them into shorts, and reported ~40 it could not move.
+    # The second pass below (a hole drilled too near another) is a drill rule and still runs.
+    filled = bool((q.get("fab") or {}).get("via_in_pad"))
+    if filled:
+        print("  vias are ordered filled and capped (quality.fab via_in_pad): %d in a land, "
+              "none moved" % sum(1 for v in vias if any(p.GetBoundingBox().Contains(v.GetPosition())
+                                                         for p, _n in lands)))
+    for v in ([] if filled else vias):
         vp = v.GetPosition()
         hit = [(p, n) for p, n in lands if p.GetBoundingBox().Contains(vp)]
         if not hit:
