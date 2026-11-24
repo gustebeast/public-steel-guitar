@@ -1,0 +1,505 @@
+{
+ "build": 1159,
+ "n_strings": 10,
+ "deck_prefixes": [
+  "deck_",
+  "ui_",
+  "wire_ui",
+  "fret_",
+  "wire_fret_led",
+  "pickup",
+  "wire_pickup"
+ ],
+ "open_tuning": [
+  "D4",
+  "E4",
+  "C4",
+  "A3",
+  "G3",
+  "E3",
+  "C3",
+  "A2",
+  "F2",
+  "C2"
+ ],
+ "strings": [
+  {
+   "i": 0,
+   "axis": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "center": [
+    0.0,
+    42.75,
+    -32.5715
+   ],
+   "open_dl": 4.0,
+   "drawn_dl": 4.0,
+   "dl_max": 15.6,
+   "slide_dir": [
+    -1.0,
+    0.0,
+    0.0
+   ],
+   "slide": "^(ball|col_ins|collar|keyplate|keyseat|m3|nut|yoke)(_\\d+)?_0$",
+   "turn": "^(ca_ins|ca_m3|cb_ins|cb_m3|collar_a|collar_b|coupler|cpl_insert|cpl_m3|motor_shaft|screw)(_\\d+)?_0$",
+   "turn_rad_per_mm": 3.141592653589793,
+   "stretch": {
+    "re": "^(spring)(_\\d+)?_0$",
+    "from": [
+     -169.41523802139372,
+     42.75,
+     -32.5715
+    ],
+    "len": 109.56023802139372
+   }
+  },
+  {
+   "i": 1,
+   "axis": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "center": [
+    0.0,
+    33.25,
+    -58.9715
+   ],
+   "open_dl": 4.0,
+   "drawn_dl": 4.0,
+   "dl_max": 15.6,
+   "slide_dir": [
+    -1.0,
+    0.0,
+    0.0
+   ],
+   "slide": "^(ball|col_ins|collar|keyplate|keyseat|m3|nut|yoke)(_\\d+)?_1$",
+   "turn": "^(ca_ins|ca_m3|cb_ins|cb_m3|collar_a|collar_b|coupler|cpl_insert|cpl_m3|motor_shaft|screw)(_\\d+)?_1$",
+   "turn_rad_per_mm": 3.141592653589793,
+   "stretch": {
+    "re": "^(spring)(_\\d+)?_1$",
+    "from": [
+     -169.41523802139372,
+     33.25,
+     -58.9715
+    ],
+    "len": 109.56023802139372
+   }
+  },
+  {
+   "i": 2,
+   "axis": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "center": [
+    0.0,
+    23.75,
+    -85.3715
+   ],
+   "open_dl": 4.0,
+   "drawn_dl": 4.0,
+   "dl_max": 15.6,
+   "slide_dir": [
+    -1.0,
+    0.0,
+    0.0
+   ],
+   "slide": "^(ball|col_ins|collar|keyplate|keyseat|m3|nut|yoke)(_\\d+)?_2$",
+   "turn": "^(ca_ins|ca_m3|cb_ins|cb_m3|collar_a|collar_b|coupler|cpl_insert|cpl_m3|motor_shaft|screw)(_\\d+)?_2$",
+   "turn_rad_per_mm": 3.141592653589793,
+   "stretch": {
+    "re": "^(spring)(_\\d+)?_2$",
+    "from": [
+     -169.41523802139372,
+     23.75,
+     -85.3715
+    ],
+    "len": 109.56023802139372
+   }
+  },
+  {
+   "i": 3,
+   "axis": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "center": [
+    0.0,
+    14.25,
+    -32.5715
+   ],
+   "open_dl": 4.0,
+   "drawn_dl": 4.0,
+   "dl_max": 15.6,
+   "slide_dir": [
+    -1.0,
+    0.0,
+    0.0
+   ],
+   "slide": "^(ball|col_ins|collar|keyplate|keyseat|m3|nut|yoke)(_\\d+)?_3$",
+   "turn": "^(ca_ins|ca_m3|cb_ins|cb_m3|collar_a|collar_b|coupler|cpl_insert|cpl_m3|motor_shaft|screw)(_\\d+)?_3$",
+   "turn_rad_per_mm": 3.141592653589793,
+   "stretch": {
+    "re": "^(spring)(_\\d+)?_3$",
+    "from": [
+     -169.41523802139372,
+     14.25,
+     -32.5715
+    ],
+    "len": 109.56023802139372
+   }
+  },
+  {
+   "i": 4,
+   "axis": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "center": [
+    0.0,
+    4.75,
+    -58.9715
+   ],
+   "open_dl": 4.0,
+   "drawn_dl": 4.0,
+   "dl_max": 15.6,
+   "slide_dir": [
+    -1.0,
+    0.0,
+    0.0
+   ],
+   "slide": "^(ball|col_ins|collar|keyplate|keyseat|m3|nut|yoke)(_\\d+)?_4$",
+   "turn": "^(ca_ins|ca_m3|cb_ins|cb_m3|collar_a|collar_b|coupler|cpl_insert|cpl_m3|motor_shaft|screw)(_\\d+)?_4$",
+   "turn_rad_per_mm": 3.141592653589793,
+   "stretch": {
+    "re": "^(spring)(_\\d+)?_4$",
+    "from": [
+     -169.41523802139372,
+     4.75,
+     -58.9715
+    ],
+    "len": 109.56023802139372
+   }
+  },
+  {
+   "i": 5,
+   "axis": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "center": [
+    0.0,
+    -4.75,
+    -85.3715
+   ],
+   "open_dl": 4.0,
+   "drawn_dl": 4.0,
+   "dl_max": 15.6,
+   "slide_dir": [
+    -1.0,
+    0.0,
+    0.0
+   ],
+   "slide": "^(ball|col_ins|collar|keyplate|keyseat|m3|nut|yoke)(_\\d+)?_5$",
+   "turn": "^(ca_ins|ca_m3|cb_ins|cb_m3|collar_a|collar_b|coupler|cpl_insert|cpl_m3|motor_shaft|screw)(_\\d+)?_5$",
+   "turn_rad_per_mm": 3.141592653589793,
+   "stretch": {
+    "re": "^(spring)(_\\d+)?_5$",
+    "from": [
+     -169.41523802139372,
+     -4.75,
+     -85.3715
+    ],
+    "len": 109.56023802139372
+   }
+  },
+  {
+   "i": 6,
+   "axis": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "center": [
+    0.0,
+    -14.25,
+    -32.5715
+   ],
+   "open_dl": 4.0,
+   "drawn_dl": 4.0,
+   "dl_max": 15.6,
+   "slide_dir": [
+    -1.0,
+    0.0,
+    0.0
+   ],
+   "slide": "^(ball|col_ins|collar|keyplate|keyseat|m3|nut|yoke)(_\\d+)?_6$",
+   "turn": "^(ca_ins|ca_m3|cb_ins|cb_m3|collar_a|collar_b|coupler|cpl_insert|cpl_m3|motor_shaft|screw)(_\\d+)?_6$",
+   "turn_rad_per_mm": 3.141592653589793,
+   "stretch": {
+    "re": "^(spring)(_\\d+)?_6$",
+    "from": [
+     -169.41523802139372,
+     -14.25,
+     -32.5715
+    ],
+    "len": 109.56023802139372
+   }
+  },
+  {
+   "i": 7,
+   "axis": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "center": [
+    0.0,
+    -23.75,
+    -58.9715
+   ],
+   "open_dl": 4.0,
+   "drawn_dl": 4.0,
+   "dl_max": 15.6,
+   "slide_dir": [
+    -1.0,
+    0.0,
+    0.0
+   ],
+   "slide": "^(ball|col_ins|collar|keyplate|keyseat|m3|nut|yoke)(_\\d+)?_7$",
+   "turn": "^(ca_ins|ca_m3|cb_ins|cb_m3|collar_a|collar_b|coupler|cpl_insert|cpl_m3|motor_shaft|screw)(_\\d+)?_7$",
+   "turn_rad_per_mm": 3.141592653589793,
+   "stretch": {
+    "re": "^(spring)(_\\d+)?_7$",
+    "from": [
+     -169.41523802139372,
+     -23.75,
+     -58.9715
+    ],
+    "len": 109.56023802139372
+   }
+  },
+  {
+   "i": 8,
+   "axis": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "center": [
+    0.0,
+    -33.25,
+    -85.3715
+   ],
+   "open_dl": 4.0,
+   "drawn_dl": 4.0,
+   "dl_max": 15.6,
+   "slide_dir": [
+    -1.0,
+    0.0,
+    0.0
+   ],
+   "slide": "^(ball|col_ins|collar|keyplate|keyseat|m3|nut|yoke)(_\\d+)?_8$",
+   "turn": "^(ca_ins|ca_m3|cb_ins|cb_m3|collar_a|collar_b|coupler|cpl_insert|cpl_m3|motor_shaft|screw)(_\\d+)?_8$",
+   "turn_rad_per_mm": 3.141592653589793,
+   "stretch": {
+    "re": "^(spring)(_\\d+)?_8$",
+    "from": [
+     -169.41523802139372,
+     -33.25,
+     -85.3715
+    ],
+    "len": 109.56023802139372
+   }
+  },
+  {
+   "i": 9,
+   "axis": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "center": [
+    0.0,
+    -42.75,
+    -32.5715
+   ],
+   "open_dl": 4.0,
+   "drawn_dl": 4.0,
+   "dl_max": 15.6,
+   "slide_dir": [
+    -1.0,
+    0.0,
+    0.0
+   ],
+   "slide": "^(ball|col_ins|collar|keyplate|keyseat|m3|nut|yoke)(_\\d+)?_9$",
+   "turn": "^(ca_ins|ca_m3|cb_ins|cb_m3|collar_a|collar_b|coupler|cpl_insert|cpl_m3|motor_shaft|screw)(_\\d+)?_9$",
+   "turn_rad_per_mm": 3.141592653589793,
+   "stretch": {
+    "re": "^(spring)(_\\d+)?_9$",
+    "from": [
+     -169.41523802139372,
+     -42.75,
+     -32.5715
+    ],
+    "len": 109.56023802139372
+   }
+  }
+ ],
+ "pedals": [],
+ "copedent": [
+  {
+   "name": "P1",
+   "key": "1",
+   "raises": [
+    {
+     "i": 1,
+     "semitones": 1
+    },
+    {
+     "i": 5,
+     "semitones": 1
+    },
+    {
+     "i": 9,
+     "semitones": 2
+    }
+   ],
+   "pedal": 0
+  },
+  {
+   "name": "P2",
+   "key": "2",
+   "raises": [
+    {
+     "i": 4,
+     "semitones": -1
+    },
+    {
+     "i": 8,
+     "semitones": 1
+    },
+    {
+     "i": 9,
+     "semitones": 2
+    }
+   ],
+   "pedal": 1
+  },
+  {
+   "name": "P3",
+   "key": "3",
+   "raises": [
+    {
+     "i": 1,
+     "semitones": -1
+    },
+    {
+     "i": 5,
+     "semitones": -1
+    }
+   ],
+   "pedal": 2
+  },
+  {
+   "name": "P4",
+   "key": "4",
+   "raises": [
+    {
+     "i": 2,
+     "semitones": 2
+    },
+    {
+     "i": 3,
+     "semitones": 2
+    }
+   ],
+   "pedal": 3
+  },
+  {
+   "name": "P5",
+   "key": "5",
+   "raises": [
+    {
+     "i": 6,
+     "semitones": 1
+    },
+    {
+     "i": 8,
+     "semitones": -1
+    },
+    {
+     "i": 9,
+     "semitones": -3
+    }
+   ],
+   "pedal": 4
+  },
+  {
+   "name": "LKL",
+   "key": "6",
+   "raises": [
+    {
+     "i": 3,
+     "semitones": 1
+    }
+   ]
+  },
+  {
+   "name": "VKL",
+   "key": "7",
+   "raises": [
+    {
+     "i": 0,
+     "semitones": 1
+    }
+   ]
+  },
+  {
+   "name": "LKR",
+   "key": "8",
+   "raises": [
+    {
+     "i": 3,
+     "semitones": -1
+    },
+    {
+     "i": 7,
+     "semitones": -1
+    }
+   ]
+  },
+  {
+   "name": "RKL",
+   "key": "9",
+   "raises": [
+    {
+     "i": 2,
+     "semitones": -1
+    }
+   ]
+  },
+  {
+   "name": "RKR",
+   "key": "0",
+   "raises": [
+    {
+     "i": 2,
+     "semitones": 1
+    },
+    {
+     "i": 6,
+     "semitones": 1
+    }
+   ]
+  }
+ ]
+}
