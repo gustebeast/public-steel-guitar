@@ -1129,6 +1129,7 @@ BOARD_NOTES = {
                    "MCU's turn (so its bus pins face the bus parts)",
         },
     },
+    "zone_clearance": 0.5,      # inherited KiCad default, unreviewed
 }
 
 

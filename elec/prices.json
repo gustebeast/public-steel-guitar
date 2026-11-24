@@ -86,12 +86,12 @@
     "bearing_688zz": {
       "usd": 0.94,
       "verified": "v",
-      "per_instrument": 32,
+      "per_instrument": 42,
       "vendor": "123bearing (generic)",
       "sku": "688-ZZ",
       "url": "https://www.123bearing.com/bearing-housing/deep-groove-bearing/single-row/688-zz",
       "date": "2026-10-19",
-      "what": "688ZZ O8xO16x5, 123bearing's generic brand, metal shields -- 10 bridge axle + 2 per sensed control x 11 = 32. $0.94 each at 25-49 ($0.69 at 50+), 50+ in stock, page read 2026-10-19. NO LOAD RATING IS PUBLISHED, which is why the ten screw seats keep the rated part: the bridge load is radial, 208 N against the lowest rating any maker publishes for a 688 (474 N, 2.3x), and the lever and pedal axles carry almost nothing. MOVED FROM Fast Eddy TFE234 ($0.99) on 2026-10-19 to ship in the same 123bearing parcel as the rated ten and the needle rollers."
+      "what": "RECOUNT 2026-11-23 against the direct model (src.build.collect_components at T_OPEN, by base name): 32 -> 42: the model has 20 (bridge_brg 10 + bend_brg 10 -- the bend row was never counted) + the v1 controls' 22 (2 per sensed control x 11). 688ZZ O8xO16x5, 123bearing's generic brand, metal shields -- 10 bridge axle + 2 per sensed control x 11 = 32. $0.94 each at 25-49 ($0.69 at 50+), 50+ in stock, page read 2026-10-19. NO LOAD RATING IS PUBLISHED, which is why the ten screw seats keep the rated part: the bridge load is radial, 208 N against the lowest rating any maker publishes for a 688 (474 N, 2.3x), and the lever and pedal axles carry almost nothing. MOVED FROM Fast Eddy TFE234 ($0.99) on 2026-10-19 to ship in the same 123bearing parcel as the rated ten and the needle rollers. PART v1: the per-control share is v1's (levers/pedals/legs not in the direct model)."
     },
     "preload_spring_9714k29": {
       "usd": 0.8985,
@@ -102,18 +102,18 @@
       "url": "https://www.mcmaster.com/9714K29/",
       "date": "2026-10-19",
       "order": "2 x $17.97 (pack of 25) = $35.94 for 40 needed",
-      "what": "Wave disc spring, high-carbon steel, 0.459 in ID x 0.608 in OD x 0.008 in, 0.037 in free, 4 lb at 0.025 in -- the axle stack's PRELOAD spring, one per lever between the -Y outer race and its shoulder (knee_lever.SPRING_ID). Fixes the lever in Y at ~9 N preload whatever the screw torque. The horizontal knee levers only for now (4 in the model); 11 once the vertical lever and the pedals take the same stack. Read off the product page 2026-10-19, delivers next day. The purpose-made part (Hubbard WSW-608, the same envelope) is quote-only with an 8-10 week lead."
+      "what": "v1 -- LEVERS / PEDALS / LEGS (their redesign for the direct body is pending, user 2026-11-17; the direct model draws none of them, so this count is v1's, not the model's): Wave disc spring, high-carbon steel, 0.459 in ID x 0.608 in OD x 0.008 in, 0.037 in free, 4 lb at 0.025 in -- the axle stack's PRELOAD spring, one per lever between the -Y outer race and its shoulder (knee_lever.SPRING_ID). Fixes the lever in Y at ~9 N preload whatever the screw torque. The horizontal knee levers only for now (4 in the model); 11 once the vertical lever and the pedals take the same stack. Read off the product page 2026-10-19, delivers next day. The purpose-made part (Hubbard WSW-608, the same envelope) is quote-only with an 8-10 week lead."
     },
     "wall_bar": {
-      "usd": 39.2175,
+      "usd": 8.96,
       "verified": "v",
       "per_instrument": 2,
       "qty": 20,
       "vendor": "JLCCNC (sheet metal)",
       "sku": "steel/wall_bar.step",
       "date": "2026-11-20",
-      "order": "20 x laser-cut cold-rolled steel, 6 mm, no finish, untapped: parts $170.80 (instant quote 2026-11-20) + the shipping they add to the JLCCNC order of plates and nut bars, read in the cart: UPS Express Saver DDP $177.40 -> $790.95 = $613.55 (billed 88.5 kg vs 18.3 kg). $784.35 per 10 instruments. Speedy (A-36 1/4 x 3-1/2, 20 x 24-1/4 in) was $257.22 + ~$235 UPS Ground = ~$492: user 2026-11-20 chose all-JLCCNC anyway, one order and less shop time.",
-      "what": "The chassis wall bar (direct_bench._wall_bar), one per wall: 614.1 x 88.9 x 6.0 mm, the 4 anchor screw holes laser-cut at the M4 tap drill (\u00d83.3; we tap them, or upload a drawing for JLCCNC to). The two M3 holes in each END are ours to drill and tap (a laser only cuts through the face). Mild steel: zinc cold-galvanizing spray before it goes in (cold-rolled rusts bare). 304 was $369.40 for 20 before shipping."
+      "order": "20 x laser-cut cold-rolled steel, 6 mm, no finish: parts $179.20 (requote 2026-11-20 at 647.1 long; was $170.80 at 614.1) = $8.96 each. SHIPPING IS ON jlccnc_shipping (was folded in here: the walls' share was $613.55).",
+      "what": "RECOUNT 2026-11-23 against the direct model (src.build.collect_components at T_OPEN, by base name): 2 (wall_bar). Now 647.1 long (nut endplate thick band, 2026-11-20). The chassis wall bar (direct_bench._wall_bar), one per wall: 614.1 x 88.9 x 6.0 mm, the 4 anchor screw holes laser-cut at the M4 tap drill (\u00d83.3; we tap them, or upload a drawing for JLCCNC to). The two M3 holes in each END are ours to drill and tap (a laser only cuts through the face). Mild steel: zinc cold-galvanizing spray before it goes in (cold-rolled rusts bare). 304 was $369.40 for 20 before shipping."
     },
     "m4_button_8": {
       "usd": 0.5555,
@@ -122,43 +122,43 @@
       "vendor": "McMaster-Carr",
       "sku": "92095A189",
       "order": "1 x $11.11 (pack of 100) = $11.11 for 20 needed",
-      "what": "M4x8 18-8 button, 2.5 hex -- the two female pogo boards"
+      "what": "v1 -- LEVERS / PEDALS / LEGS (their redesign for the direct body is pending, user 2026-11-17; the direct model draws none of them, so this count is v1's, not the model's): M4x8 18-8 button, 2.5 hex -- the two female pogo boards"
     },
     "m4_button_10": {
       "usd": 0.0958,
       "verified": "v",
-      "per_instrument": 70,
+      "per_instrument": 78,
       "vendor": "McMaster-Carr",
       "sku": "92095A190",
       "order": "7 x $9.44 (pack of 100) = $66.08 for 700 needed",
-      "what": "M4x10 -- 10 CAN tees, 2 bay boards, 2 fret boards, 1 UI clamp (was M4x12), and per sensed control x 11: 2 position + 2 spring-tension (the feel cartridges) + 1 in the axle's -Y end"
+      "what": "RECOUNT 2026-11-23 against the direct model (src.build.collect_components at T_OPEN, by base name): 70 -> 78: +8 anchor_m4 (the anchor plate's M4 x 10 buttons, ANCHOR_SCREW_L) -- the rest as before. M4x10 -- 10 CAN tees, 2 bay boards, 2 fret boards, 1 UI clamp (was M4x12), and per sensed control x 11: 2 position + 2 spring-tension (the feel cartridges) + 1 in the axle's -Y end PART v1: the per-control share is v1's (levers/pedals/legs not in the direct model)."
     },
     "m4_button_12": {
       "usd": 0.1477,
       "verified": "v",
-      "per_instrument": 10,
+      "per_instrument": 0,
       "vendor": "McMaster-Carr",
       "sku": "92095A192",
       "order": "1 x $14.77 (pack of 100) = $14.77 for 100 needed",
-      "what": "M4x12 18-8 button, 2.5 hex -- v2 keyhead side screws (nut_block_v2.SS_SCREW_L: pin each tail to its steel nut plate; the heat-set seats full length, so x10 no longer reaches the lightest string)"
+      "what": "RECOUNT 2026-11-23 against the direct model (src.build.collect_components at T_OPEN, by base name): 10 -> 0: the v2 keyhead's screws; the keyhead is not in the direct instrument (flex-clamp nut end). M4x12 18-8 button, 2.5 hex -- v2 keyhead side screws (nut_block_v2.SS_SCREW_L: pin each tail to its steel nut plate; the heat-set seats full length, so x10 no longer reaches the lightest string)"
     },
     "m4_button_16": {
       "usd": 0.155,
       "verified": "v",
-      "per_instrument": 5,
+      "per_instrument": 0,
       "vendor": "McMaster-Carr",
       "sku": "92095A194",
       "order": "1 x $15.50 (pack of 100) = $15.50 for 50 needed",
-      "what": "M4x16 18-8 button, 2.5 hex -- v2 keyhead height screws, UPPER row (strings 1, 3, 5, 7, 9; nut_block_v2.HS_SCREW_L[0]): along +X onto each nut plate's 45 deg wedge"
+      "what": "RECOUNT 2026-11-23 against the direct model (src.build.collect_components at T_OPEN, by base name): 5 -> 0: the v2 keyhead's screws; the keyhead is not in the direct instrument (flex-clamp nut end). M4x16 18-8 button, 2.5 hex -- v2 keyhead height screws, UPPER row (strings 1, 3, 5, 7, 9; nut_block_v2.HS_SCREW_L[0]): along +X onto each nut plate's 45 deg wedge"
     },
     "m4_button_20": {
       "usd": 0.2368,
       "verified": "v",
-      "per_instrument": 8,
+      "per_instrument": 16,
       "vendor": "McMaster-Carr",
       "sku": "92095A196",
       "order": "2 x $9.47 (pack of 50) = $18.94 for 80 needed",
-      "what": "M4x20 -- 3 pickup jacks, 1 pickup -Y retention (was M4x12), 2 male pogo boards, 2 optical board through its hand guard"
+      "what": "RECOUNT 2026-11-23 against the direct model (src.build.collect_components at T_OPEN, by base name): 8 -> 16: +8 nut_tie (the nut end's M4 x 20 button ties, nut_flex_study.Z_SCREW_L, two into each of the four standoffs). M4x20 -- 3 pickup jacks, 1 pickup -Y retention (was M4x12), 2 male pogo boards, 2 optical board through its hand guard PART v1: the per-control share is v1's (levers/pedals/legs not in the direct model)."
     },
     "m3_shcs_12": {
       "usd": 0.0711,
@@ -180,11 +180,11 @@
     "m4_button_25": {
       "usd": 0.2182,
       "verified": "v",
-      "per_instrument": 5,
+      "per_instrument": 0,
       "vendor": "McMaster-Carr",
       "sku": "92095A197",
       "order": "1 x $10.91 (pack of 50) = $10.91 for 50 needed",
-      "what": "M4x25 18-8 button, 2.5 hex -- v2 keyhead height screws, LOWER row (strings 2, 4, 6, 8, 10; nut_block_v2.HS_SCREW_L[1]): along +X onto each nut plate's 45 deg wedge"
+      "what": "RECOUNT 2026-11-23 against the direct model (src.build.collect_components at T_OPEN, by base name): 5 -> 0: the v2 keyhead's screws; the keyhead is not in the direct instrument (flex-clamp nut end). M4x25 18-8 button, 2.5 hex -- v2 keyhead height screws, LOWER row (strings 2, 4, 6, 8, 10; nut_block_v2.HS_SCREW_L[1]): along +X onto each nut plate's 45 deg wedge"
     },
     "m4_button_40": {
       "usd": 0.4052,
@@ -193,16 +193,16 @@
       "vendor": "McMaster-Carr",
       "sku": "92095A200",
       "order": "4 x $10.13 (pack of 25) = $40.52 for 100 needed",
-      "what": "M4x40 -- 4 leg lock pins, 2 pedal-bar latch collars (one per bar-to-leg joint; the model draws one leg), 4 knee-lever travel stops (one per lateral lever housing: LKL, LKR, RKL, RKR -- the vertical lever has none). The latch and the stops were M4x30; both seats take the x40, which retires that length"
+      "what": "v1 -- LEVERS / PEDALS / LEGS (their redesign for the direct body is pending, user 2026-11-17; the direct model draws none of them, so this count is v1's, not the model's): M4x40 -- 4 leg lock pins, 2 pedal-bar latch collars (one per bar-to-leg joint; the model draws one leg), 4 knee-lever travel stops (one per lateral lever housing: LKL, LKR, RKL, RKR -- the vertical lever has none). The latch and the stops were M4x30; both seats take the x40, which retires that length"
     },
     "m4_insert": {
       "usd": 0.219,
       "verified": "v",
-      "per_instrument": 104,
+      "per_instrument": 84,
       "vendor": "McMaster-Carr",
       "sku": "94459A150",
       "order": "21 x $10.82 (pack of 50) = $227.22 for 1040 needed",
-      "what": "M4 brass heat-set, 4.7 installed. 20 in the v2 keyhead's -X face (10 side + 10 height screws) + 78 drawn + 4 for the eleventh control + 2 fret boards (the 10 belt clamps take an M3 insert now). AT 1040 AN ORDER THIS IS THE DEAREST FASTENER LINE ($227.22) -- $0.22 each at McMaster against a few cents from an import seller; the obvious place to save if a second vendor is acceptable."
+      "what": "RECOUNT 2026-11-23 against the direct model (src.build.collect_components at T_OPEN, by base name): 104 -> 84: less the 20 in the v2 keyhead's -X face (not in the direct instrument). M4 brass heat-set, 4.7 installed. 20 in the v2 keyhead's -X face (10 side + 10 height screws) + 78 drawn + 4 for the eleventh control + 2 fret boards (the 10 belt clamps take an M3 insert now). AT 1040 AN ORDER THIS IS THE DEAREST FASTENER LINE ($227.22) -- $0.22 each at McMaster against a few cents from an import seller; the obvious place to save if a second vendor is acceptable. PART v1: the per-control share is v1's (levers/pedals/legs not in the direct model)."
     },
     "washer_m3_9021": {
       "usd": 0.0338,
@@ -211,7 +211,7 @@
       "vendor": "McMaster-Carr",
       "sku": "91100A120",
       "order": "5 x $2.97 (pack of 100) = $14.85 for 440 needed",
-      "what": "DIN 9021 M3 washer O9 x 0.8 -- spring seat + position, 4 per control x 11"
+      "what": "v1 -- LEVERS / PEDALS / LEGS (their redesign for the direct body is pending, user 2026-11-17; the direct model draws none of them, so this count is v1's, not the model's): DIN 9021 M3 washer O9 x 0.8 -- spring seat + position, 4 per control x 11"
     },
     "washer_m4_7089": {
       "usd": 0.0715,
@@ -219,55 +219,119 @@
       "per_instrument": 11,
       "vendor": "McMaster-Carr",
       "sku": "93475A230",
-      "what": "18-8 M4 washer, 4.3 ID x 9.0 OD -- one under each knee/pedal axle screw. Page read 2026-10-01; it IS the 9.0 OD part, not a fender.",
+      "what": "v1 -- LEVERS / PEDALS / LEGS (their redesign for the direct body is pending, user 2026-11-17; the direct model draws none of them, so this count is v1's, not the model's): 18-8 M4 washer, 4.3 ID x 9.0 OD -- one under each knee/pedal axle screw. Page read 2026-10-01; it IS the 9.0 OD part, not a fender.",
       "order": "2 x $3.93 (pack of 100) = $7.86 for 110 needed"
     },
     "break_dowel": {
       "usd": 1.39,
       "verified": "v",
-      "per_instrument": 10,
+      "per_instrument": 0,
       "vendor": "McMaster-Carr",
       "sku": "91595A119",
       "order": "20 x $6.95 (pack of 5) = $139.00 for 100 needed",
-      "what": "O4 x 4 dowel pin, 4140, round/chamfer ends -- the crowns of the printed nut-plate STAND-INS (nut_block.standin), for the bench until the steel plates arrive; the steel plate's own crown replaces it (was O2 x 4 91595A018)"
+      "what": "RECOUNT 2026-11-23 against the direct model (src.build.collect_components at T_OPEN, by base name): 10 -> 0: the printed nut-plate stand-ins it crowned are gone -- the direct nut end is the flex clamp, its crowns are the steel GREEN plates (nut_green). O4 x 4 dowel pin, 4140, round/chamfer ends -- the crowns of the printed nut-plate STAND-INS (nut_block.standin), for the bench until the steel plates arrive; the steel plate's own crown replaces it (was O2 x 4 91595A018)"
     },
     "nut_plate": {
       "usd": 0.8015,
       "verified": "v",
-      "per_instrument": 10,
+      "per_instrument": 0,
       "qty": 100,
       "vendor": "JLCCNC (sheet metal)",
       "sku": "steel/nut_plate.step",
       "order": "100 x laser-cut 304 stainless, 4 mm, no finish: parts $34.00 (material $16 + cutting $18) + UPS Express Saver DDP $46.15 = $80.15, instant quote read 2026-11-03 (final price subject to their review)",
-      "what": "The keyhead nut plate (nut_block.plate), one per string: its crown is the break, its shelf pinches the one wrap under the rod, the side screw pins the tail to its -X face. 37.75 x 18.05 x 4 mm (quoted at 21.25 wide; the part shrank 3.2 when the rod moved +X, so the quote is high if anything)."
+      "what": "RECOUNT 2026-11-23 against the direct model (src.build.collect_components at T_OPEN, by base name): 10 -> 0: the v2 keyhead (nut_block_v2) is not in the direct instrument; its nut end is the flex clamp (direct_bench.nut_end_parts: nut_green / nut_shoe, priced below). The keyhead nut plate (nut_block.plate), one per string: its crown is the break, its shelf pinches the one wrap under the rod, the side screw pins the tail to its -X face. 37.75 x 18.05 x 4 mm (quoted at 21.25 wide; the part shrank 3.2 when the rod moved +X, so the quote is high if anything)."
     },
     "keyhole_plate": {
-      "usd": 0.34,
+      "usd": 0.42,
       "verified": "m",
       "per_instrument": 10,
       "qty": 100,
       "vendor": "JLCCNC (sheet metal)",
       "sku": "steel/keyhole_plate.step",
-      "order": "RE-QUOTE at 3 mm (2026-11-18: the roof is now 3 + 4 mm sheets, the ball seated its whole length in the 4). Was 100 x laser-cut 304 stainless, 4 mm, no finish, untapped: parts $34.00, instant quote read 2026-11-12. On one order with 100 nut plates ($32.00): parts $66.00 + UPS Express Saver $56.66 = $122.66, so the keyhole plates add ~$44 per 100 delivered.",
-      "what": "The direct-drive yoke's keyhole plate (direct_bench.keyhole_plate(layer='plate')), one per string: 3 mm, the Ø22 outline with a lobe round each stack screw (no ears since 2026-11-23), the ball's hole, the slit, two \u00d83.4 clearance holes; over the 4 mm key_seat_plate."
+      "order": "ESTIMATE from the 2026-11-20 cart: the four laser-cut 304 plate kinds (keyhole, seat, crown = GREEN, shoe), 100 of each, $168 together -> $0.42 a plate, split evenly (not quoted one by one). Shipping on jlccnc_shipping. Re-quote each from its STEP before ordering.",
+      "what": "The direct-drive yoke's keyhole plate (direct_bench.keyhole_plate(layer='plate')), one per string: 3 mm, the \u00d822 outline with a lobe round each stack screw (no ears since 2026-11-23), the ball's hole, the slit, two \u00d83.4 clearance holes; over the 4 mm key_seat_plate."
     },
     "key_seat_plate": {
-      "usd": 0.34,
+      "usd": 0.42,
       "verified": "m",
       "per_instrument": 10,
       "qty": 100,
       "vendor": "JLCCNC (sheet metal)",
       "sku": "steel/key_seat_plate.step",
-      "order": "ESTIMATE: the old 4 mm keyhole plate's quoted $0.34 a part -- the same 4 mm sheet and outline (4 mm sheet, the same outline and cut length plus one \u00d84.3 hole). Order on the same JLCCNC sheet-metal order as the keyhole and nut plates.",
-      "what": "The keyhole plate's 4 mm SEAT PLATE (direct_bench.key_seat_plate), one per string, between the keyhole plate and the yoke: the same outline, hole, slit and screw holes, and a \u00d84.3 hole round the slit's top the ball sinks into its whole length under tension, so it cannot tip or slide back to its hole (user, 2026-11-18)."
+      "order": "ESTIMATE from the 2026-11-20 cart: the four laser-cut 304 plate kinds (keyhole, seat, crown = GREEN, shoe), 100 of each, $168 together -> $0.42 a plate, split evenly (not quoted one by one). Shipping on jlccnc_shipping. Re-quote each from its STEP before ordering.",
+      "what": "The keyhole plate's 3 mm SEAT PLATE (direct_bench.key_seat_plate), one per string, between the keyhole plate and the yoke: the same outline, hole, slit and screw holes, and a \u00d84.3 hole round the slit's top the ball sinks into its whole length under tension, so it cannot tip or slide back to its hole (user, 2026-11-18)."
+    },
+    "nut_green": {
+      "usd": 0.42,
+      "verified": "m",
+      "per_instrument": 10,
+      "qty": 100,
+      "vendor": "JLCCNC (sheet metal)",
+      "sku": "nut_green (nut_flex_study.green)",
+      "order": "ESTIMATE from the 2026-11-20 cart: the four laser-cut 304 plate kinds (keyhole, seat, crown = GREEN, shoe), 100 of each, $168 together -> $0.42 a plate, split evenly (not quoted one by one). Shipping on jlccnc_shipping. Re-quote each from its STEP before ordering.",
+      "what": "The nut end's GREEN, one per string: the 4 mm 304 crown plate the string breaks over, rigid (no blade), its underside the 14 deg incline on the shoe; laser-cut (direct_bench.nut_end_parts)."
+    },
+    "nut_shoe": {
+      "usd": 0.42,
+      "verified": "m",
+      "per_instrument": 10,
+      "qty": 100,
+      "vendor": "JLCCNC (sheet metal)",
+      "sku": "nut_shoe (nut_flex_study.shoe)",
+      "order": "ESTIMATE from the 2026-11-20 cart: the four laser-cut 304 plate kinds (keyhole, seat, crown = GREEN, shoe), 100 of each, $168 together -> $0.42 a plate, split evenly (not quoted one by one). Shipping on jlccnc_shipping. Re-quote each from its STEP before ordering.",
+      "what": "The nut end's SHOE, one per string: the 4 mm 304 wedge the clamp screw pulls under GREEN, its square nut in a window; laser-cut (direct_bench.nut_end_parts)."
+    },
+    "nut_datum": {
+      "usd": 30.32,
+      "verified": "v",
+      "per_instrument": 1,
+      "qty": 10,
+      "vendor": "JLCCNC (CNC machining)",
+      "date": "2026-11-20",
+      "sku": "nut_datum (nut_flex_study.datum)",
+      "order": "10 x machined 304 (only 304 offered), drilled, the tie heads' counterbores: $303.20 (instant quote 2026-11-20, 19 deep; was $27.38 at 18). Shipping on jlccnc_shipping.",
+      "what": "The nut end's DATUM bar, one per instrument: 304, the jaws' fixed side, the ties' heads sunk in its top (direct_bench.nut_end_parts)."
+    },
+    "nut_floor": {
+      "usd": 28.64,
+      "verified": "v",
+      "per_instrument": 1,
+      "qty": 10,
+      "vendor": "JLCCNC (CNC machining)",
+      "date": "2026-11-20",
+      "sku": "nut_floor (nut_flex_study.floor_bar)",
+      "order": "10 x machined 304, Z holes only (the head plate has no screws: $28.61 vs $31.70 with X holes): $286.40 (instant quote 2026-11-20). Shipping on jlccnc_shipping.",
+      "what": "The nut end's FLOOR block, one per instrument: 304, the shoes ride its top, the standoffs sunk in it; the head plate bears on its -X end face (direct_bench.nut_end_parts)."
+    },
+    "nut_head_plate": {
+      "usd": 1.85,
+      "verified": "v",
+      "per_instrument": 1,
+      "qty": 10,
+      "vendor": "JLCCNC (sheet metal)",
+      "date": "2026-11-20",
+      "sku": "nut_head_plate (nut_flex_study.head_plate)",
+      "order": "10 x laser-cut 304, 6 mm: $18.50 (instant quote 2026-11-20). Shipping on jlccnc_shipping.",
+      "what": "The nut end's HEAD PLATE, one per instrument: 6 mm 304, the ten clamp screws' disc stacks push on it, GREEN's X stop; no screws, the printed endplate locates it."
+    },
+    "jlccnc_shipping": {
+      "usd": 79.095,
+      "verified": "v",
+      "per_instrument": 1,
+      "qty": 10,
+      "vendor": "JLCCNC",
+      "date": "2026-11-20",
+      "sku": "(shipping)",
+      "order": "UPS Express Saver DDP for ONE JLCCNC order of the plates, the machined nut bars and the 20 wall bars, read in the cart 2026-11-20: $790.95 per 10 instruments (plates + bars alone $177.40; the walls are weight-billed, 88.5 kg). Re-read once the order is final.",
+      "what": "JLCCNC SHIPPING, the whole metal order on one line (lead 2026-11-23): the wall bars, keyhole and seat plates, GREEN and shoe plates, datum, floor and head plate above carry parts only."
     },
     "m3_shcs_30": {
       "usd": 0.1228,
       "verified": "v",
-      "per_instrument": 20,
+      "per_instrument": 0,
       "vendor": "McMaster-Carr",
       "sku": "91292A022",
-      "what": "M3x30 socket head cap screw (18-8, ISO 4762) -- the direct-drive yokes, two per string, tapped into the keyhole plate. (The anchor ties went to M3x35 on 2026-11-16: m3_shcs_35.) $6.14 per pack of 50, read off McMaster 2026-11-12. (The 10 grip-sleeve locks of 2026-11-16 went with the sleeves on 2026-11-17.)"
+      "what": "RECOUNT 2026-11-23 against the direct model (src.build.collect_components at T_OPEN, by base name): 20 -> 0: the yokes' M3 x 30s went with the stack screws (2026-11-17), now M3 x 35 through the nut flange (m3_shcs_35); only the wood bench uses M3 x 30 (BENCH_KEY_M3_L). M3x30 socket head cap screw (18-8, ISO 4762) -- the direct-drive yokes, two per string, tapped into the keyhole plate. (The anchor ties went to M3x35 on 2026-11-16: m3_shcs_35.) $6.14 per pack of 50, read off McMaster 2026-11-12. (The 10 grip-sleeve locks of 2026-11-16 went with the sleeves on 2026-11-17.)"
     },
     "m3_shcs_35": {
       "usd": 0.2156,
@@ -285,6 +349,71 @@
       "sku": "91292A113",
       "what": "M3x10 socket head cap screw (18-8, ISO 4762) -- the anchor collars' clamp screws (2026-11-16): one per collar, head sunk in the body, across the split into the collar's M3 insert. 10 collar B + 8 collar A (stations 0's two strings use the coupler as collar A) + 10 couplers (the collar's clamp, 2026-11-16). (The 10 grip-sleeve locks of 2026-11-16 went with the sleeves on 2026-11-17.) $7.11 per pack of 100, read off McMaster 2026-11-16."
     },
+    "disc_spring_96445k101": {
+      "usd": 0.2683,
+      "verified": "v",
+      "per_instrument": 60,
+      "qty": 12,
+      "vendor": "McMaster-Carr",
+      "sku": "96445K101",
+      "date": "2026-11-23",
+      "order": "50 x $3.22 (pack of 12) = $161.00 for 600 needed; read off the product page 2026-11-23.",
+      "what": "Belleville disc spring, chrome-vanadium, DIN 2093, 3.2 ID x 6 OD x 0.3 (0.45 high, 34 lbf flat) -- the nut clamp's force: 2 x 3 nested under each clamp screw's head, 6 per string (nut_disc)."
+    },
+    "m3_shcs_25": {
+      "usd": 0.12,
+      "verified": "m",
+      "per_instrument": 10,
+      "vendor": "McMaster-Carr",
+      "sku": "TBD -- ISO 4762 M3 x 25",
+      "order": "ESTIMATE ~ the M3 x 30's $0.1228 a screw; read the page before ordering.",
+      "what": "M3 x 25 socket head cap screw (ISO 4762; nut_flex_study.SCREW_L) -- the nut clamp screws, one per string, head on its disc stack, into the shoe's square nut (nut_screw)."
+    },
+    "m3_shcs_16": {
+      "usd": 0.1,
+      "verified": "m",
+      "per_instrument": 4,
+      "vendor": "McMaster-Carr",
+      "sku": "TBD -- ISO 4762 M3 x 16",
+      "order": "ESTIMATE; read the page before ordering.",
+      "what": "M3 x 16 socket head cap screw -- the nut endplate's bar clamp, two in each tapped wall-bar end (nut_bar_m3; bar_screw_len(-1) = 16)."
+    },
+    "m3_shcs_40": {
+      "usd": 0.22,
+      "verified": "m",
+      "per_instrument": 20,
+      "vendor": "McMaster-Carr",
+      "sku": "TBD -- ISO 4762 M3 x 40",
+      "order": "ESTIMATE ~ the M3 x 35's $0.2156; read the page before ordering.",
+      "what": "M3 x 40 socket head cap screw (direct_bench.TIE_L, since 2026-11-17) -- the anchor ties, two per string: heads on the lid, through the housing's posts, the tie spacers and the plate into the plug's inserts (hb). Was counted on m3_shcs_35 until 2026-11-23."
+    },
+    "m3_square_nut": {
+      "usd": 0.1,
+      "verified": "m",
+      "per_instrument": 10,
+      "vendor": "McMaster-Carr",
+      "sku": "TBD -- DIN 562 M3 thin square nut",
+      "order": "ESTIMATE; read the page before ordering.",
+      "what": "M3 thin square nut, 5.5 across x 1.8 (DIN 562; nut_flex_study NUT_S / NUT_M) -- in each shoe's window, the clamp screw's nut (nut_sqnut)."
+    },
+    "m4_standoff_ff_40": {
+      "usd": 2.5,
+      "verified": "m",
+      "per_instrument": 4,
+      "vendor": "McMaster-Carr",
+      "sku": "TBD -- M4 F-F hex standoff, 7 hex, 40 long, steel",
+      "order": "ESTIMATE; read the page before ordering.",
+      "what": "M4 female-female hex standoff, 7 across flats, 40 long, steel (nut_flex_study SO_L, TIE_SPECS M4) -- the nut end's ties, datum to floor, two each side (nut_standoff)."
+    },
+    "washer_m3_125": {
+      "usd": 0.03,
+      "verified": "m",
+      "per_instrument": 8,
+      "vendor": "McMaster-Carr",
+      "sku": "TBD -- DIN 125 M3, 7 OD x 0.5",
+      "order": "ESTIMATE; read the page before ordering.",
+      "what": "M3 flat washer, 3.2 x 7 x 0.5 (direct_bench.EP_WASHER) -- under the bar-clamp screws' heads, four at each endplate (bar_washer, nut_bar_washer)."
+    },
     "tie_spacer": {
       "usd": 0.65,
       "verified": "v",
@@ -296,10 +425,10 @@
     "m3_shcs_20": {
       "usd": 0.0969,
       "verified": "v",
-      "per_instrument": 8,
+      "per_instrument": 4,
       "vendor": "McMaster-Carr",
       "sku": "91292A123",
-      "what": "M3x20 socket head cap screw (18-8, ISO 4762) -- the direct-drive endplates' bar clamp, four per endplate into the tapped wall-bar ends. $9.69 per pack of 100, read off McMaster 2026-11-12."
+      "what": "RECOUNT 2026-11-23 against the direct model (src.build.collect_components at T_OPEN, by base name): 8 -> 4: bar_m3: the +X endplate's four (bar_screw_len(1) = 20); the nut end's four are M3 x 16 (m3_shcs_16). M3x20 socket head cap screw (18-8, ISO 4762) -- the direct-drive endplates' bar clamp, four per endplate into the tapped wall-bar ends. $9.69 per pack of 100, read off McMaster 2026-11-12."
     },
     "guide_rod_3_16": {
       "usd": 1.292,
@@ -308,16 +437,16 @@
       "vendor": "McMaster-Carr",
       "sku": "89535K84 (2 ft)",
       "order": "4 x $3.23 (2 ft length) = $12.92 for 12 rods, 10 needed; read off the product page and cart 2026-11-13",
-      "what": "3/16in 304/304L stainless rod -- the direct drive's guide rods, one per string. Each 2 ft length is cut into THREE EQUAL pieces (~202.5, no offcut; direct_bench.ROD_L): pushed home in its endplate seat, the -X end sits in the housing's cap. 2 ft rather than 6 ft so it ships as a short parcel (user, 2026-11-13). Replaces the v1 O3.5 x 29.8 needle roller (NRB 3.5x29.8-G2), which only the v1 nut ear used."
+      "what": "RECOUNT 2026-11-23 against the direct model (src.build.collect_components at T_OPEN, by base name): the model has 13 rods: 10 x 202.5 (ROD_L) + 3 new shared rods x 69.4 (NEW_ROD_L), cut from the offcut of the fourth 2 ft length -- still 4 lengths an instrument, so the 10 x $1.292 here holds. 3/16in 304/304L stainless rod -- the direct drive's guide rods, one per string. Each 2 ft length is cut into THREE EQUAL pieces (~202.5, no offcut; direct_bench.ROD_L): pushed home in its endplate seat, the -X end sits in the housing's cap. 2 ft rather than 6 ft so it ships as a short parcel (user, 2026-11-13). Replaces the v1 O3.5 x 29.8 needle roller (NRB 3.5x29.8-G2), which only the v1 nut ear used."
     },
     "shaft_o8": {
       "usd": 6.184,
       "verified": "v",
-      "per_instrument": 5,
+      "per_instrument": 4,
       "vendor": "McMaster-Carr",
       "sku": "1272T38 (1 ft)",
       "order": "2 x $15.46 (1 ft length) = $30.92 for 6 axles, 5 needed; read off the product page and cart 2026-11-13",
-      "what": "O8 304 stainless rod, cold worked, -0.036/0, Rockwell B80 -- cut into THREE 100 mm axles per foot (user, 2026-11-13: not linear-motion duty, so not the $10.18 6459K118 420 linear shaft). Five per instrument: the three bend rows and the bridge axle in the endplate (direct_bench.AXLE_L) at 100, and the nut end's wrap rod cut to 83 (nut_block_v2.ROD_L: the block is the fretboard's 85.5 width, user 2026-11-13). Chamfer the sawn ends. Slip fit in the 688ZZ bore (up to 0.036 clear) and softer than the hardened shaft: watch for inner-race creep wear on the bench."
+      "what": "RECOUNT 2026-11-23 against the direct model (src.build.collect_components at T_OPEN, by base name): 5 -> 4: bend_axle_ra/rb/rc + bridge_axle (AXLE_L 100); the keyhead's 83 mm wrap rod went with it. O8 304 stainless rod, cold worked, -0.036/0, Rockwell B80 -- cut into THREE 100 mm axles per foot (user, 2026-11-13: not linear-motion duty, so not the $10.18 6459K118 420 linear shaft). Five per instrument: the three bend rows and the bridge axle in the endplate (direct_bench.AXLE_L) at 100, and the nut end's wrap rod cut to 83 (nut_block_v2.ROD_L: the block is the fretboard's 85.5 width, user 2026-11-13). Chamfer the sawn ends. Slip fit in the 688ZZ bore (up to 0.036 clear) and softer than the hardened shaft: watch for inner-race creep wear on the bench."
     },
     "drive_spring_9665k36": {
       "usd": 6.384,
@@ -333,7 +462,7 @@
       "qty": 20,
       "verified": "m",
       "per_instrument": 22,
-      "what": "uxcell O10x30 blue die spring, the control feel cartridge"
+      "what": "v1 -- LEVERS / PEDALS / LEGS (their redesign for the direct body is pending, user 2026-11-17; the direct model draws none of them, so this count is v1's, not the model's): uxcell O10x30 blue die spring, the control feel cartridge"
     },
     "latch_spring": {
       "usd": 0.699,
@@ -342,7 +471,7 @@
       "vendor": "Amazon (uxcell)",
       "sku": "B0GCZVQFWN",
       "order": "6 x $6.99 (pack of 10) = $41.94 for 60 needed",
-      "what": "O5 x 0.6 x 15 compression spring -- 4 leg + 2 bar latches (BOM.md). The model draws one leg, so two."
+      "what": "v1 -- LEVERS / PEDALS / LEGS (their redesign for the direct body is pending, user 2026-11-17; the direct model draws none of them, so this count is v1's, not the model's): O5 x 0.6 x 15 compression spring -- 4 leg + 2 bar latches (BOM.md). The model draws one leg, so two."
     },
     "magnet_o6": {
       "usd": 0.332,
@@ -350,7 +479,7 @@
       "per_instrument": 11,
       "vendor": "DigiKey",
       "sku": "Radial Magnets 8995",
-      "what": "O6 x 2.5 diametric N35, $0.332 at 10+ per BOM.md -- not re-read today. Was $1.00 here."
+      "what": "v1 -- LEVERS / PEDALS / LEGS (their redesign for the direct body is pending, user 2026-11-17; the direct model draws none of them, so this count is v1's, not the model's): O6 x 2.5 diametric N35, $0.332 at 10+ per BOM.md -- not re-read today. Was $1.00 here."
     },
     "leadscrew_tr8x2": {
       "usd": 2.2412,
@@ -5651,8 +5780,7 @@
       "these under the table and refuses to call the number complete while any remain."
     ],
     "landed_gaps": "SHIPPING AND TAX ARE MEASURED FOR FIVE VENDORS, NOT FOR THE BOM. Measured: Lace, JLCPCB, Makerbase, PiShop, Tinmorry, plus Jameco's tariff. UNMEASURED and therefore missing from the landed line: every listing-priced mechanical item (~$213/instrument of screws, bearings, springs, shaft -- no vendor is even recorded for most of them, so there is nothing to check), the PCTG and TPU filament. Expect the landed line to grow, not shrink.",
-    "unmodelled_prints": "NOT IN THE PLASTIC LINE: printed parts the direct instrument needs but src.build does not build yet -- the deck / top panels (top-panels v2) and the keyhead. v1's equivalents were ~$25/instrument of filament at the same factor.",
-    "mechanical_recount": "PENDING (branner, 2026-11-23): the mechanical per_instrument counts and the nut-end JLCCNC metal (datum bar, floor block, head plate, GREEN, crown and shoe plates, 96445K101 disc springs) are being recounted and priced against the direct model. The nut bars alone were $433.60 per 10 sets in the 11-20 cart (~$43/instrument), NOT in the total yet; break_dowel ($13.90) is likely a bench stand-in counted twice."
+    "unmodelled_prints": "NOT IN THE PLASTIC LINE: printed parts the direct instrument needs but src.build does not build yet -- the deck / top panels (top-panels v2) and the keyhead. v1's equivalents were ~$25/instrument of filament at the same factor."
   },
   "parts_by_footprint_substring": {
     "_note": [

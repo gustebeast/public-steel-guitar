@@ -5,6 +5,11 @@
 violation. A count is not a check -- see cadkit.pcbflow.netcheck.classify_violations.
 """
 
+# Every board here must state its pour clearance: cadkit's layout refuses one that leaves it
+# to KiCad's 0.5 mm default (layout.zone_clearance_check). brain_board lost output_panel's 0.2
+# in the merge and ran every pour at 0.5 with no word said (2026-11-24).
+REQUIRE_ZONE_CLEARANCE = True
+
 
 def optical_declared(vtype, refs):
     """The optical board's sensing cell: an IR emitter between its own two detectors.

@@ -2667,10 +2667,11 @@ _BENCHED = {"yoke", "collar", "m3", "col_ins", "nut", "plug", "hb", "insert", "l
 def string_parts(i: int, t: float, raw: bool = False, bench: bool = False) -> list:
     """String i's drive, drawn along -X at (y_of(i), za(i)), yawed into place: each part kept.
     raw: the plug before its anchor clearance (body_box's measure; see _anchor_plug). bench: the
-    wood bench's stack and plug (THE WOOD BENCH'S STACK)."""
+    wood bench's stack and plug (THE WOOD BENCH'S STACK) -- True for every _BENCHED part, or a set of
+    names: only those (the dual-rod bench keeps the bench's ties and takes the instrument's stack)."""
     out = []
     for nm, make, moves in _STRING_PARTS:
-        bx = (True,) if bench and nm in _BENCHED else ()
+        bx = (True,) if bench and nm in _BENCHED and (bench is True or nm in bench) else ()
         if raw and make is _anchor_plug:
             make = _anchor_plug_raw
         if nm in ("collar_a", "ca_m3", "ca_ins") and coupler_is_collar(i):
@@ -3290,9 +3291,11 @@ def _head_head_wall() -> float:
                for m in range(len(hs)) for n in range(len(hs)) if m != n)
 
 
-def _endplate(rods: bool = True, only: int = None, bench: bool = False) -> cq.Workplane:
+def _endplate(rods: bool = True, only: int = None, bench: bool = False,
+              extra_rods: tuple = ()) -> cq.Workplane:
     """only: draw ONE string's lane, window, rod and reliefs (the wood bench's slice); bench: the
-    heads' holes where the bench's M3 x 30s stand (HOLE_ANG["m3"])."""
+    heads' holes where the bench's M3 x 30s stand (HOLE_ANG["m3"]); extra_rods: more rods' seats
+    (the dual-rod wood bench: the rod string 6's collar hooks, whose owner is not on the bench)."""
     strings = range(N) if only is None else (only,)
     from cadkit.holes import teardrop_hole
     (_, _), (y0, y1), (z0, _) = body_box()["outer"]
@@ -3385,7 +3388,7 @@ def _endplate(rods: bool = True, only: int = None, bench: bool = False) -> cq.Wo
     # the boss's +X end faces the bed as printed (+X -> -X), so it may not end flat in a lane
     rb = GUIDE_SEAT / 2 + GUIDE_WALL               # (its old size: 2.1 of wall round EP_ROD_SEAT)
     rc = EP_ROD_SEAT / 2 + D.BEAD
-    seats = [k for i in (strings if rods else ()) for k in rods_seated(i)]
+    seats = [k for i in (strings if rods else ()) for k in rods_seated(i)] + list(extra_rods)
     for i in seats:
         ry, rz = rod_yz(i)
         xb = ROD_TIP + 0.3
@@ -3464,9 +3467,19 @@ def endplate_full():
     return kept(_endplate)
 
 
+def assembly_at(t: float, base: list) -> list:
+    """assembly(t) from `base`, an assembly (with anything appended to it) at another t: ONLY THE
+    DRIVE DEPENDS ON t (assembly() draws _drive(t) first, then parts that stand still), so the drive
+    is drawn at t and the rest of `base` is reused as it is -- the same list, in the same order, as
+    assembly(t) (the drive-travel gate's input; src.build checked it equal, 2026-11-23)."""
+    dr = [(nm, _made(nm, w)) for nm, w in _drive(t)]
+    assert [nm for nm, _ in base[:len(dr)]] == [nm for nm, _ in dr], "base does not start with the drive"
+    return dr + list(base[len(dr):])
+
+
 def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
     from .deck_layout import ghosts as _ghosts
-    out = _drive(t) + [("endplate", endplate_full())] + endplate_axles()
+    out = _drive(t) + [("endplate", endplate_full())] + endplate_axles()   # the drive FIRST (assembly_at)
     # EVERY PART THE VIEW CAN SHOW OR HIDE IS KEPT ON ITS OWN (user, 2026-11-12): an edit
     # rebuilds the parts whose code or inputs it touched, and nothing else
     out += [_compound("anchor", kept(_anchor))]

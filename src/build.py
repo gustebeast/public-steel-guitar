@@ -455,7 +455,7 @@ def _bump_build_counter() -> int:
     return n
 
 
-def collect_components(t=None):
+def collect_components(t=None, base=None):
     """EVERY placed thing in the instrument: [(name, cq.Workplane), ...].
 
     THE DIRECT-DRIVE INSTRUMENT (user, 2026-11-13: the main build is src.direct_bench's
@@ -478,6 +478,9 @@ def collect_components(t=None):
     # t: the drive's travel (the drive-travel gate redraws the instrument at each end); the
     # boards stand still, but they are in the model at every t -- that gate printed 662 of 676
     # when it drew DB.assembly(t) alone (lead, 2026-11-19)
+    # base: this list at another t -- only the drive is redrawn (DB.assembly_at), the rest reused
+    if base is not None:
+        return DB.assembly_at(DB.T_OPEN if t is None else t, base)
     return DB.assembly(DB.T_OPEN if t is None else t) + NB.boards()
 
 
@@ -675,13 +678,16 @@ def _report_drive_travel(comps) -> int:
     """THE DRIVE OVER ITS TRAVEL (replaces v1's carriage-travel gate, 2026-11-13): the overlap
     gate sees every string at T_OPEN, so this redraws the instrument with every string at
     each end of its travel (t 0 and 1) and gates that. Only the parts that move are new
-    pairs; the rest come from the pair cache. Baseline is 0."""
+    pairs; the rest come from the pair cache. Baseline is 0.
+    ONLY THE DRIVE IS REDRAWN (lead, 2026-11-23): everything else stands still, so it is taken from
+    the build's own list at T_OPEN (collect_components(t, base=comps)) -- the same components, names,
+    placements and volumes as a full redraw (checked equal at t 0 and 1: tools/check_travel_reuse.py)."""
     try:
         from tools.check_overlaps import gate
         n = 0
         for t in (0.0, 1.0):
             print(f"drive travel: every string at t = {t:.0f}", flush=True)
-            n += gate([(name, wp.val()) for name, wp in collect_components(t)], full=True)
+            n += gate([(name, wp.val()) for name, wp in collect_components(t, base=comps)], full=True)
     except Exception as e:               # noqa: BLE001 -- never let a gate eat the geometry
         print(f"drive travel gate: SKIPPED ({type(e).__name__}: {e})", flush=True)
         return 0

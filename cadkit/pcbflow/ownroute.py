@@ -124,8 +124,15 @@ def _write(stem, m, r, nets, failed, t0):
     congestion.report(r)
     congestion.pair_dives(r)
     n = emit.write(m, [x for x in nets if not x.failed], stem + ".kicad_pcb")
-    print("ownroute: wrote %d item(s); %d net(s) left open: %s (%.0f s)"
-          % (n, len(failed), ", ".join(x.name for x in failed) or "none", time.time() - t0))
+    # ⚠ A NET RIPPED IN PART IS OPEN TOO (brain_board vip_s2, 2026-11-24): the finish rips only
+    # the joins that still share (_rip), so V5_PRE, GND and +3V3D went out with joins missing
+    # but not failed -- and this line said "10 net(s) left open" where KiCad counted 121 open
+    # joins over 29 nets. Partly open nets are listed after the failed ones, with their count.
+    part = [x for x in nets if not x.failed and (getattr(x, "n_open", 0) or 0)]
+    names = [x.name for x in failed] + ["%s (%d)" % (x.name, x.n_open) for x in part]
+    print("ownroute: wrote %d item(s); %d net(s) left open (%d failed, %d in part): %s (%.0f s)"
+          % (n, len(failed) + len(part), len(failed), len(part), ", ".join(names) or "none",
+             time.time() - t0))
     wins = getattr(r, "fallback_wins", [])
     with open(stem + ".fallback.json", "w", encoding="utf-8") as fh:
         json.dump(wins, fh)

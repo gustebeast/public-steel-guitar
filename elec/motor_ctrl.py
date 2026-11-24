@@ -1631,6 +1631,7 @@ BOARD_NOTES = {
     "stitch_nets": ("GND",),
     "single_sided": True,
     "qty_per_instrument": 1,
+    "zone_clearance": 0.5,      # inherited KiCad default, unreviewed
 }
 
 # the two vias that drop the D8 link (see "tracks") onto the 2 mm B.Cu bar

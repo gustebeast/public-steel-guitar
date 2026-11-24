@@ -833,10 +833,11 @@ def _looked_cls():
     import cadquery as cq
 
     def _carry(src, out, place):
+        from .web.finishes import carry_measure
         m = mesh_of(src)
         if m is not None:
             setattr(out, ATTR, _moved(m, affine_of(place)))
-        return out
+        return carry_measure(src, out)
 
     class _Looked(cq.Workplane):
         def translate(self, vec):
@@ -891,11 +892,12 @@ def mesh_of(obj):
 def placed(part, place):
     """`place(part)` (rotates, translates: a function Workplane -> Workplane), its hung mesh
     moved with it -- what a plain `.translate` drops."""
-    out = place(part)
+    from .web.finishes import carry_measure
+    out = carry_measure(part, place(part))         # a move keeps the volume, area and faces
     m = mesh_of(part)
     if m is None or out is part:
         return out
-    return with_mesh(out, m, affine_of(place))
+    return carry_measure(part, with_mesh(out, m, affine_of(place)))
 
 
 def fused(parts):

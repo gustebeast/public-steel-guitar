@@ -103,6 +103,18 @@ _LOCAL = threading.local()
 _ENV_NAME = __import__("re").compile(r"^[A-Z][A-Z0-9]*_[A-Z0-9_]+$")
 
 
+class Memo(dict):
+    """A dict that is a MEMO: what is in it depends on what asked first, so it fingerprints as a
+    token, not by value (a plain dict global is hashed by its contents -- a memo filling while a
+    build runs moved the key of every function that reads it, 2026-11-23). Only for values that
+    are a pure function of their key: the code that fills it on a miss is what a key must hash,
+    and it does, since that code reads the memo (tools/check_kept_keys.py)."""
+
+
+# numpy's index helpers: module-level singletons with no state (np.c_ is a CClass)
+_NP_INDEXERS = frozenset({"CClass", "RClass", "IndexExpression", "MGridClass", "OGridClass"})
+
+
 class _Unkeyable(Exception):
     pass
 
@@ -329,6 +341,8 @@ class _Namer:
     def val(self, x) -> str:
         if isinstance(x, _PLAIN):
             return "%s:%r" % (type(x).__name__, x)
+        if isinstance(x, Memo):
+            return "memo"
         if isinstance(x, (tuple, list)):
             return "%s[%s]" % (type(x).__name__, ",".join(self.val(v) for v in x))
         if isinstance(x, (set, frozenset)):
@@ -358,6 +372,11 @@ class _Namer:
             return "partial(%s;%s;%s)" % (self.val(x.func), self.val(x.args), self.val(x.keywords))
         if isinstance(x, types.MethodType):
             return "method(%s;%s)" % (self.val(x.__func__), self.val(x.__self__))
+        if x is kept:
+            # a NESTED kept call (a part that keeps a piece of itself): what it returns is keyed by
+            # what it is given, and the caller's own reads hash that -- walking kept's code reached
+            # os.environ and left every such part unkeyable, redrawn each call (2026-11-23)
+            return "kept"
         if isinstance(x, types.FunctionType):
             return self._memo(x, self.function)
         if isinstance(x, (types.BuiltinFunctionType, types.BuiltinMethodType)):
@@ -377,9 +396,15 @@ class _Namer:
                 return "npfn:" + x.__name__
             if hasattr(x, "item"):                                      # a numpy scalar
                 return "np:%r" % (x.item(),)
+            if type(x).__name__ in _NP_INDEXERS:                        # np.c_, np.r_, ...: no state
+                return "np:" + type(x).__name__
         import enum
         if isinstance(x, enum.Enum):
             return "enum:%s.%s" % (self.klass(type(x)), x.name)
+        if isinstance(x, (weakref.WeakKeyDictionary, weakref.WeakValueDictionary)):
+            # a weak map is a memo by nature -- keyed by live objects, it cannot outlive them, so
+            # nothing a result depends on lives in it (cadkit.web.finishes' measure memo, 2026-11-23)
+            return "weak-memo"
         cls = type(x)
         own = getattr(cls, "__kept_key__", None)
         if own is not None:                  # the object says what it is (cadkit.board_geom.Boards)
@@ -789,16 +814,29 @@ def _prune():
         cap = float(os.environ.get("CADKIT_KEPT_MAX_GB", "20")) * 1e9
     except ValueError:
         return
-    files = []
-    total = 0
-    for f in store().glob("*/*.json"):
+    # ONE PASS WITH os.scandir (2026-11-23): a DirEntry's size and time come with the directory
+    # read on Windows -- 18k entries took 77k stat calls, 1.7 s, every 25th write; now 0.1 s
+    group = {}                                        # (dir, stem) -> [json path, json mtime, size]
+    for d in os.scandir(store()):
+        if not d.is_dir():
+            continue
         try:
-            st = f.stat()
-            size = st.st_size + sum(g.stat().st_size for g in _siblings(f)[1:] if g.exists())
+            entries = list(os.scandir(d.path))
         except OSError:
             continue
-        files.append((st.st_mtime, f, size))
-        total += size
+        for e in entries:
+            n = e.name
+            stem = n[:-len(".mesh.pkl")] if n.endswith(".mesh.pkl") else os.path.splitext(n)[0]
+            try:
+                st = e.stat()
+            except OSError:
+                continue
+            g = group.setdefault((d.path, stem), [None, 0.0, 0])
+            g[2] += st.st_size
+            if n.endswith(".json"):
+                g[0], g[1] = pathlib.Path(e.path), st.st_mtime
+    files = [(mt, f, size) for f, mt, size in group.values() if f is not None]
+    total = sum(size for _mt, _f, size in files)
     if total <= cap:
         return
     for _t, f, size in sorted(files):

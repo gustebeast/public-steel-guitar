@@ -1325,8 +1325,9 @@ def drop_redundant_pad_vias(board, notes):
     The through-hole case above is safe by construction: the barrel was already there.
     A surface land has no barrel, so a via in it MAY be the only thing carrying the net
     to another layer, and no geometric test says which. So ask the board the question
-    directly -- take the via off its net, rebuild connectivity, and count. If the count
-    of unconnected items did not rise, the via carried nothing its neighbours do not.
+    directly -- take the via off the board (off its net is not enough: see below), rebuild
+    connectivity, and count. If the count of unconnected items did not rise, the via carried
+    nothing its neighbours do not.
 
     The usual origin is a layer change the router put under the pad and then duplicated
     0.7 mm away with a second via and a stub back to the land: both are legal copper,
@@ -1336,7 +1337,8 @@ def drop_redundant_pad_vias(board, notes):
     or power pad and quality counts its barrels separately), and a via declared in the
     board file is somebody's decision, not a leaving. A via that IS needed is left in
     place for quality to report -- too strict here would trade a soldering fault for an
-    open net.
+    open net. A via on a power net (power_paths or net_widths) is never a candidate: it
+    carries current, which the count cannot see.
 
     Nothing is removed until every test is done, and the removal re-finds each via by
     UUID on a fresh walk (see tidy_router_vias for why).
@@ -1344,10 +1346,20 @@ def drop_redundant_pad_vias(board, notes):
     import math
     declared_xy = {(round(rv[1], 3), round(rv[2], 3))
                    for rv in list(notes.get("repair_vias", [])) + list(notes.get("vias", []))}
+    # ⚠ A POWER VIA IS NEVER REDUNDANT (brain_board pv_s1 / pv_s2, 2026-11-24): the count asks
+    # only "is the net still joined?", and a power net is joined many ways over -- so the test
+    # passed C224.1's +5V_CM5 via, F201.1's VIN_BRAIN via and R75.2's PB_VCC via, each carrying
+    # current its neighbours then had to (the power gate already fails +5V_CM5 at 0.38 mm
+    # against 1.33). A net the board gives a current (quality power_paths) or a width
+    # (net_widths) -- the same set the stranded-piece repair sizes vias for -- keeps them all.
+    power = set((notes.get("net_widths") or {}).keys()) | {
+        pp["net"] for pp in ((notes.get("quality") or {}).get("power_paths") or ())}
     lands = []
     for fp in board.GetFootprints():
         for pad in fp.Pads():
             if pad.GetAttribute() != pcbnew.PAD_ATTRIB_SMD or not pad.GetNetCode():
+                continue
+            if pad.GetNetname() in power:
                 continue
             if not (pad.IsOnLayer(pcbnew.F_Paste) or pad.IsOnLayer(pcbnew.B_Paste)):
                 continue
@@ -1394,14 +1406,34 @@ def drop_redundant_pad_vias(board, notes):
     board.BuildConnectivity()
     base = board.GetConnectivity().GetUnconnectedCount(False)
     doomed = {}
+    # ⚠ A VIA OFF ITS NET STILL CONDUCTS (brain_board vip_s1 / vip_s2, 2026-11-24): KiCad's
+    # connectivity joins copper by geometry, so a via set to net 0 still joined C39.1's land to
+    # the AUDIO_SEL track on In2 that started under it -- the count did not move (1178 either
+    # way) and the via read redundant though it was the pad's ONLY layer change. With via in pad
+    # that is the router's normal layer change, and both seeds lost 72 vias here; their nets
+    # (AUDIO_SEL, BST_VCC, BST_VIN, HUB_XO, OUT_BUF_IN, U21_OVLO, QOD_D, +24V_LED, ...) were
+    # exactly the "routed, then open" nets on the finished board. Each candidate is now moved
+    # OFF THE BOARD for its test as well as taken off its net; a needed one goes back.
+    # ...AND THE BASELINE MOVES WITH EACH REMOVAL: a removal that lowered the count (a refill
+    # dropping a dead island) left slack a later, needed via could spend. Each test compares
+    # against the count the board had just before it.
+    away = pcbnew.VECTOR2I(pcbnew.FromMM(-1000.0), pcbnew.FromMM(-1000.0))
     for t, nc, why in cand:
+        at = t.GetPosition()
         t.SetNetCode(0)
+        t.SetPosition(away)
         fill()
         board.BuildConnectivity()
-        if board.GetConnectivity().GetUnconnectedCount(False) > base:
-            t.SetNetCode(nc)                   # it was carrying the net: keep it
+        cur = board.GetConnectivity().GetUnconnectedCount(False)
+        if cur > base:
+            t.SetPosition(at)                  # it was carrying the net: keep it
+            t.SetNetCode(nc)
         else:
-            doomed[t.m_Uuid.AsString()] = why  # stays off the net for the tests that follow
+            doomed[t.m_Uuid.AsString()] = why  # stays off the board for the tests that follow
+            if cur < base:
+                print("    pad via %s: off the board the count FELL %d -> %d (the next test starts there)"
+                      % (why, base, cur))
+            base = cur                         # the next test starts from this board
     del cand, lands
     # One full walk to find them, then the removals: the rule from tidy_router_vias'
     # own docstring -- do not hold the thing you are about to delete, and do not re-walk
@@ -6123,7 +6155,8 @@ def _add_zone(board, net, layer, inset, w, h, poly=None, priority=0, clearance=N
     # (output_panel, 2026-11-07). Nobody chose it: against a 0.127 mm track rule it cuts a
     # 1.6 mm hole round every 0.6 mm via, and seven vias by the MCU merged into a 5.2 mm
     # slot in the In1 plane that A15 failed signals for straddling. notes["zone_clearance"]
-    # (mm) sets it for every pour on the board; left out, the old 0.5 stays.
+    # (mm) sets it for every pour on the board; left out, the old 0.5 stays and
+    # zone_clearance_check says so loudly (or refuses, where the project opts in).
     if clearance is not None:
         zone.SetLocalClearance(pcbnew.FromMM(float(clearance)))
     if poly:
@@ -6206,19 +6239,50 @@ def _slug_rings(board, slug_max, via_d=0.6):
 CRTYD_MIN_MM2 = 1e-4                  # an intersection smaller than this is a rounding sliver
 
 
-def _declared_fn(stem):
-    """The project's `declared(board, vtype, refs)` (pcb_declared.py beside the generator),
-    bound to this board; else nothing is declared. finish.py reads the same file."""
+def _project_module(stem):
+    """The project's pcb_declared.py (beside the generator) as a module, or None."""
     pd = project_dir(stem)
     path = os.path.join(pd, "pcb_declared.py") if pd else ""
     if not path or not os.path.isfile(path):
-        return lambda t, r: False
+        return None
     import importlib.util
     spec = importlib.util.spec_from_file_location("pcb_declared", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
+    return mod
+
+
+def _declared_fn(stem):
+    """The project's `declared(board, vtype, refs)` (pcb_declared.py beside the generator),
+    bound to this board; else nothing is declared. finish.py reads the same file."""
+    mod = _project_module(stem)
+    if mod is None:
+        return lambda t, r: False
     name = os.path.basename(stem)
     return lambda t, r: bool(mod.declared(name, t, r))
+
+
+def zone_clearance_check(stem, notes):
+    """A board's pour clearance must be a choice, not KiCad's 0.5 mm default (lead, 2026-11-24).
+
+    ⚠ LOST IN A MERGE, AND NOTHING SAID SO (brain_board, 2026-11-24). output_panel set 0.2 with
+    its reasons (0.127 mm track rule; IPC-2221 GND vs 24 V); the merged brain_board never set it,
+    so every pour ran at 0.5. At 0.5 an other-net via cuts a 0.8 mm-radius antipad, and the
+    router's GND vias 0.77-0.82 mm from signal vias sat in voids: stranded GND on every run.
+
+    Unset: a loud warning naming the board. A project whose pcb_declared.py sets
+    REQUIRE_ZONE_CLEARANCE = True gets a refusal instead. Canonical cadkit is shared by several
+    projects, so the hard fail is opt-in and the default only warns. Returns the message, or None."""
+    if notes.get("zone_clearance") is not None:
+        return None
+    name = os.path.basename(stem)
+    msg = ("layout: %s: zone_clearance unset, KiCad 0.5 used, nobody chose it -- set "
+           "notes[\"zone_clearance\"] (mm) with the reason" % name)
+    mod = _project_module(stem)
+    if mod is not None and getattr(mod, "REQUIRE_ZONE_CLEARANCE", False):
+        raise SystemExit(msg + " (this project sets REQUIRE_ZONE_CLEARANCE in pcb_declared.py)")
+    print("!" * 78 + "\n!! " + msg + "\n" + "!" * 78, flush=True)
+    return msg
 
 
 def courtyard_overlaps(board):
@@ -6269,6 +6333,7 @@ def build(stem):
     """stem = the path prefix shared by <stem>.net and <stem>.board.json."""
     comps, nets = read_netlist(stem + ".net")
     notes = json.load(open(stem + ".board.json", encoding="utf-8"))
+    zone_clearance_check(stem, notes)
     placements = notes["placements"]
     # A NUDGE, for robustness runs on any board: PCBFLOW_NUDGE names a json {ref: [dx, dy]}
     # in this file's frame (mm; y up, as the placements). A full reroute is deterministic, so

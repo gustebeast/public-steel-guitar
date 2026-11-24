@@ -2720,7 +2720,8 @@ removed (git history has it); the wood bench keeps its v2 nut block.
 - **Cable:** the 205 mm U.FL lead runs from the bulkhead's +X end to the CM5's U.FL connector on
   the brain board, about 105 mm straight. Leave it loose and clear of the motors.
 - The D-hole (Ø6.5, flat 6.0 across) prints sideways with its flat as the ceiling, drawn at the
-  kit's panel sizes. **Unverified: print a coupon to check the thread passes and the flat keys it.**
+  kit's panel sizes. **Unverified: print coupons/test_antenna_dhole.step (the real body round the tab, floor on the bed;
+  src/test/antenna_dhole.py) to check the thread passes and the flat keys it.**
 
 ### The stack without ears: one-piece collar, inserts down access channels (2026-11-23)
 - **No ears on the keyhole plates, the yoke or the collar.** The two stack screws are now
@@ -2761,3 +2762,50 @@ under the strings and has no room for a header and socket.
   3. Lay the board on the plinth, the socket dropping into the slot; ease the ribbon down as it
      goes. Never press a seated board down onto a socket that has not gone into the slot.
 - The redesigned board carries this one part on B: two-sided assembly at JLCPCB.
+
+## Wood bench, dual rod: string 6 with the shared guide rods (2026-11-24)
+
+String 6's bench rebuilt for the drivetrain as the instrument has it now. String 6's collar grips
+its own rod (rod 5) with its jaw and hooks rod 8 (string 9's own rod) on the far side, so the turn
+and the swing about the rod are both locked. `py -3.12 -m src.wood_bench` writes every print to
+`coupons/woodbench_dual/` with a PRINT_LIST. The first bench's `coupons/woodbench/` stays as printed.
+
+- **Rods:** two 3/16 in 304 rods, each ROD_L 202.5 (a third of a 2 ft McMaster 89535K84). The cut
+  length has not changed since 2026-11-14, so the first bench's rod is still rod 5, and a second
+  third of the same stock is rod 8.
+- **Rod 8, +X end:** pushed home into a new seat in the endplate slice, with the instrument's seat
+  and crush ribs.
+- **Rod 8, -X end:** through the anchor stand-in's web and a post on the web's -X face. The post
+  clears collar B's swept circle by 1.6.
+- **Order:** put rod 8 in before the drive, from -X through the post and web into the endplate seat.
+  The collar's hook then goes over it as the drive goes in.
+- **The stack is the instrument's** (see "The stack without ears", 2026-11-23): the one-piece
+  collar, two M3 inserts down its channels, 2 x M3 x 35 through the keyplate, yoke and nut flange,
+  and the keyplate's lobes. The keyplate is still a PETG-GF stand-in. The old ears, their 2 x M3 x 20
+  and the hold washers are gone. The plug, lid and ties are still the bench's (M3 x 30 on hand).
+- **Endplate slice:** widened -Y to the plank's edge line to take rod 8's seat.
+  - Its -Y wood screw moves onto a flange off the joint face at the plank. The old spot's access
+    shaft would have cut down through the seat.
+  - The anchor's rail is 12.8 shorter and butts that flange, so the prints still set the
+    anchor-to-endplate spacing.
+  - The anchor's -X, -Y base screw moves +Y, out from under the post.
+- **Reprint:** collar (PCTG), yoke, keyplate, plug, wb_anchor, wb_endplate.
+- **Reuse as printed:** housing, lid, coupler, clamp collars, tie spacers, motor mount and spacers,
+  keyhead, nut shoe (each STEP checked equal by volume and size).
+- **Checked:**
+  - Overlap: clean at both ends of the travel apart from designed contacts (both rods' crush ribs,
+    the self-tapped board screw, the motor's face screws).
+  - print_check: no new sites beyond rod 8's bore teardrop ledge (as rod 5's).
+
+### The wood bench endplate's buttresses (2026-11-24)
+
+The dual-rod bench's endplate bowed -X under the string. It now has two 45 deg buttresses off its
+joint face, one each side of the drive. The +Y one is 10 wide (y 14..24; the slice is widened to 24
+for it). The -Y one is 4 wide, between the plank's edge line and rod 8. Their tops at the face are at
+z -36.5, 3.5 under the R1 board, and their feet reach x -90.5.
+
+- **Flanges:** both buttresses stand on base flanges that run -X to x -103.3.
+- **Screws:** six wood screws now, four on the +Y side and two on the -Y flange. The -Y screws sit
+  -X of the optical rest bracket, because a screw's access shaft beside the face would cut it.
+- **Rail:** the anchor's rail stops at x -103.3 and butts the -Y flange.
+- **Reprint:** wb_endplate and wb_anchor.
