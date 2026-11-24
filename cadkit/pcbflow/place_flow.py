@@ -72,6 +72,19 @@ AUTO = {"auto_decaps (netlist)": "decaps", "auto_singles (netlist)": "singles",
         "auto_floorplan (netlist)": "floorplan", "auto_switcher (netlist)": "switcher"}
 
 
+def _drop_released(rules, init_log):
+    """(rules less the snapshot holds place_init released, the released refs) -- its
+    SNAPSHOT RELEASED lines (place_init._release_snapshots). A mate / mechanical / user /
+    physical hold is never dropped, whatever a log line says."""
+    rel = []
+    for line in init_log:
+        m = re.search(r"SNAPSHOT RELEASED: (\S+) --", line)
+        if m and m.group(1) not in rel:
+            rel.append(m.group(1))
+    keep = [r for r in rules if not (r["kind"] == "fixed" and r.get("ref") in rel and pi.is_snapshot(r))]
+    return keep, sorted(rel)
+
+
 def _run(cmd, log, cwd=HERE, env=None):
     t = time.time()
     p = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd,
@@ -761,6 +774,15 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
                 r["poly"] = grown[r["name"]]
         json.dump(rules, open(ip, "w"), indent=1)
         say("regions grown by place_init (GROW): " + ", ".join(sorted(grown)))
+    # ⚠ A RELEASED SNAPSHOT IS RELEASED FOR EVERY LATER STAGE (brain_board vip_s1, 2026-11-23):
+    # place_init released U13's snapshot (it broke a hard near once J1 turned) and seated it
+    # under the rule, but flow/intent.json still held the snapshot, and the BROKEN gate graded
+    # U13 9.05 mm off it -- the flow stopped anyway. Like a GROW, place_init's release is
+    # written back: the released snapshot holds leave the intent every later gate and stage reads.
+    rules, rel_ = _drop_released(rules, init_log)
+    if rel_:
+        json.dump(rules, open(ip, "w"), indent=1)
+        say("snapshot holds released by place_init (a hard rule outranks a remembered seat): " + " ".join(rel_))
     room = []
     reg = _regions_of(rules, parts)
     for line in init_log:
