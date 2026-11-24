@@ -33,12 +33,25 @@ def test_page_text():
 
 
 def test_pick_prefers_the_exact_code_then_the_exact_part_then_stock():
-    rows = [dict(componentCode="C1", componentModelEn="TMC2209-BOB", stockCount=0),
-            dict(componentCode="C2150710", componentModelEn="TMC2209-LA-T", stockCount=25000),
-            dict(componentCode="C3", componentModelEn="TMC2209", stockCount=5)]
-    assert D.pick("c2150710", rows)["componentCode"] == "C2150710"
-    assert D.pick("TMC2209", rows)["componentCode"] == "C3"
-    assert D.pick("tmc22", rows)["componentCode"] == "C2150710"
+    pdf = dict(dataManualUrl="https://www.lcsc.com/datasheet/x.pdf")
+    rows = [dict(componentCode="C1", componentModelEn="TMC2209-BOB", stockCount=0, **pdf),
+            dict(componentCode="C2150710", componentModelEn="TMC2209-LA-T", stockCount=25000, **pdf),
+            dict(componentCode="C3", componentModelEn="TMC2209", stockCount=5, **pdf)]
+    assert D.pick("c2150710", rows) == (rows[1], [])
+    best, others = D.pick("TMC2209", rows)
+    assert best["componentCode"] == "C3" and [r["componentCode"] for r in others] == ["C2150710", "C1"]
+    assert D.pick("tmc22", rows)[0]["componentCode"] == "C2150710"
+
+
+def test_pick_skips_a_listing_with_no_datasheet():
+    # bronner, 2026-11-24: "TMC2209" took C9900017095, an exact-name listing with no PDF
+    rows = [dict(componentCode="C9900017095", componentModelEn="TMC2209", stockCount=900),
+            dict(componentCode="C2150710", componentModelEn="TMC2209-LA-T", stockCount=25000,
+                 dataManualFileAccessIdUrl="https://jlc.example/x.pdf?sig=1")]
+    best, others = D.pick("TMC2209", rows)
+    assert best["componentCode"] == "C2150710"
+    assert [r["componentCode"] for r in others] == ["C9900017095"]
+    assert D.pick("C9900017095", rows)[0]["componentCode"] == "C9900017095"   # a code is obeyed
 
 
 def test_pdf_links_try_the_signed_one_then_lcscs_pdf_host():
