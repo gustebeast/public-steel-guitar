@@ -13,6 +13,10 @@ U13 sat 14.74 mm from J1 against a HARD 14 -- the flow stopped before layout. A 
                                                             broken and place_flow's gate stops (2)
   4  a snapshot that already meets its rule              -> kept where it is
   5  place_init has no off-switch for it                 -> PCBFLOW_SNAPSHOT_RELEASE is gone
+  6  place_flow reads place_init's log (vip_s1: the       -> the released snapshot leaves the
+     release seated U13, the intent still held it and       intent every later gate reads; the
+     the BROKEN gate stopped the flow 9.05 mm off it)       BROKEN gate passes the new seat; a
+                                                            user hold named in a forged line stays
 
 Fails without the fix: place_init has no _release_snapshots, U1 stays at its snapshot.
 Exit 0 = PASS.
@@ -92,6 +96,18 @@ want(len(r4) == 3 and not l4, "4 a snapshot that meets its rule is kept")
 # 5
 want("PCBFLOW_SNAPSHOT_RELEASE" not in open(os.path.join(HERE, "place_init.py"), encoding="utf-8").read(),
      "5 no off-switch")
+
+# 6
+log6 = ["place_init: " + x for x in log]
+r6, rel6 = pf._drop_released(rules_with("snapshot"), log6)
+want(rel6 == ["U1"] and len(r6) == 2, "6 place_flow drops the released hold: %s, %d rules" % (rel6, len(r6)))
+P6 = pi.Placed(PARTS, pl)
+brk = [c for r in r6 if r["kind"] in pi.GATE_KINDS and pi.is_hard(r) for c in pi.check(r, P6, NOTES) if c[0] < -0.05]
+brk0 = [c for r in rules_with("snapshot") if r["kind"] in pi.GATE_KINDS and pi.is_hard(r)
+        for c in pi.check(r, P6, NOTES) if c[0] < -0.05]
+want(not brk and bool(brk0), "6 BROKEN gate: passes after the drop (%d), would stop without it (%d)" % (len(brk), len(brk0)))
+r6u, rel6u = pf._drop_released(rules_with("user"), log6)
+want(len(r6u) == 3, "6 a user hold is never dropped by a log line")
 
 print("PASS" if not bad else "FAIL: %d" % len(bad))
 sys.exit(1 if bad else 0)
