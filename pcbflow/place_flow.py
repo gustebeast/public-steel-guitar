@@ -72,17 +72,22 @@ AUTO = {"auto_decaps (netlist)": "decaps", "auto_singles (netlist)": "singles",
         "auto_floorplan (netlist)": "floorplan", "auto_switcher (netlist)": "switcher"}
 
 
-def _drop_released(rules, init_log):
-    """(rules less the snapshot holds place_init released, the released refs) -- its
-    SNAPSHOT RELEASED lines (place_init._release_snapshots). A mate / mechanical / user /
-    physical hold is never dropped, whatever a log line says."""
-    rel = []
-    for line in init_log:
-        m = re.search(r"SNAPSHOT RELEASED: (\S+) --", line)
-        if m and m.group(1) not in rel:
-            rel.append(m.group(1))
+def _handoff(init):
+    """place_init's hand-off beside its --out (init.handoff.json): {"grown": {region: poly},
+    "released": [ref, ...]}. A missing file is an error -- every place_init run writes one."""
+    hp = init[:-5] + ".handoff.json"
+    if not os.path.exists(hp):
+        raise SystemExit("place_flow: place_init wrote no hand-off (%s)" % hp)
+    h = json.load(open(hp))
+    return dict(h.get("grown") or {}), list(h.get("released") or ())
+
+
+def _drop_released(rules, released):
+    """(rules less the snapshot holds of the refs place_init released, those refs). A mate /
+    mechanical / user / physical hold is never dropped, whatever the hand-off names."""
+    rel = sorted(set(released))
     keep = [r for r in rules if not (r["kind"] == "fixed" and r.get("ref") in rel and pi.is_snapshot(r))]
-    return keep, sorted(rel)
+    return keep, rel
 
 
 def _run(cmd, log, cwd=HERE, env=None):
@@ -760,15 +765,14 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     init = os.path.join(fd, "init.json")
     rc, out, T["place_init"] = _run_cached("place_init", [sys.executable, "place_init.py", stem, ip, "--out", init], log, d,
                                          [stem + ".net", stem + ".board.json", parts_path, ip],
-                                         [init, init[:-5] + ".why.json", init[:-5] + ".grow.json"], ok=(0, 3),
+                                         [init, init[:-5] + ".why.json", init[:-5] + ".handoff.json"], ok=(0, 3),
                                          seed_free=True)
     if rc not in (0, 3):
         raise SystemExit("place_flow: place_init failed (see flow/flow.log)\n" + out[-800:])
     init_log = [line for line in out.splitlines() if line.startswith("place_init:")]
     # a GROW is the floorplan the board was placed in: every later gate judges that one
-    gp = init[:-5] + ".grow.json"
-    if os.path.exists(gp):
-        grown = json.load(open(gp))
+    grown, released = _handoff(init)
+    if grown:
         for r in rules:
             if r["kind"] == "region" and r["name"] in grown:
                 r["poly"] = grown[r["name"]]
@@ -778,8 +782,9 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     # place_init released U13's snapshot (it broke a hard near once J1 turned) and seated it
     # under the rule, but flow/intent.json still held the snapshot, and the BROKEN gate graded
     # U13 9.05 mm off it -- the flow stopped anyway. Like a GROW, place_init's release is
-    # written back: the released snapshot holds leave the intent every later gate and stage reads.
-    rules, rel_ = _drop_released(rules, init_log)
+    # written back (its hand-off file): the released snapshot holds leave the intent every later
+    # gate and stage reads.
+    rules, rel_ = _drop_released(rules, released)
     if rel_:
         json.dump(rules, open(ip, "w"), indent=1)
         say("snapshot holds released by place_init (a hard rule outranks a remembered seat): " + " ".join(rel_))
