@@ -2706,3 +2706,18 @@ removed (git history has it); the wood bench keeps its v2 nut block.
   src.jack_socket and passed to the board's panel spec; the +X endplate follows once the brain
   board's pocket export is regenerated.
 - Hand-tight is the goal: the socket grips the nut's 2.05 head.
+
+### Wi-Fi antenna: inside the body, on a floor tab (2026-11-23)
+- **The CM5's external Wi-Fi antenna (Raspberry Pi Antenna Kit SC0480) mounts INSIDE the body.**
+  Nothing sticks out of the instrument. It sits on the floor of the -Y bay beside motor 8, the
+  dipole lying along -X (src/antenna.py holds the placement; the build's ANTENNA gate keeps it
+  15 mm from metal and 10 mm from board copper).
+- **Bulkhead:** push the SMA bulkhead through the D-hole in the floor tab from its +X side, flat
+  up, toothed washer between the hex and the tab. On the -X side: the nut, finger-tight plus a
+  little. The flat keys the thread, so no spanner is needed on the hex.
+- **Dipole:** screw it onto the bulkhead, then press it down into the saddle clip near its tip
+  (it snaps past a 7.2 mouth).
+- **Cable:** the 205 mm U.FL lead runs from the bulkhead's +X end to the CM5's U.FL connector on
+  the brain board, about 105 mm straight. Leave it loose and clear of the motors.
+- The D-hole (Ø6.5, flat 6.0 across) prints sideways with its flat as the ceiling, drawn at the
+  kit's panel sizes. **Unverified: print a coupon to check the thread passes and the flat keys it.**
