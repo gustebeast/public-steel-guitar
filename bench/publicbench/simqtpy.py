@@ -3,7 +3,7 @@ natively against a pretend TMC2209 and a pretend step timer, so its planner and 
 can be tested with no board. Proves the code's arithmetic and protocol; says nothing about the
 real timer, UART or motor.
 
-The compiler is $NATIVE_CC if set (e.g. "python -m ziglang cc"), else gcc or cc on the PATH.
+The compiler comes from publicbench.nativecc.
 """
 from __future__ import annotations
 
@@ -11,11 +11,10 @@ import ctypes
 import hashlib
 import math
 import os
-import shlex
-import shutil
-import subprocess
 import sys
 import tempfile
+
+from .nativecc import build_shared, compiler
 
 FW = os.path.join(os.path.dirname(__file__), "..", "..", "firmware", "qtpy_bench")
 SRCS = ("axis.c", "tmc.c", "bench.c")
@@ -100,17 +99,6 @@ EXPORT uint32_t sim_chop(int code, int dedge) { return tmc_chopconf(code, dedge)
 """
 
 
-def compiler() -> list[str] | None:
-    env = os.environ.get("NATIVE_CC")
-    if env:
-        return shlex.split(env, posix=os.name != "nt")
-    for name in ("gcc", "cc"):
-        p = shutil.which(name)
-        if p:
-            return [p]
-    return None
-
-
 _LIB = None
 TICK_HZ = 8_000_000
 
@@ -130,10 +118,7 @@ def lib():
         os.makedirs(d, exist_ok=True)
         shim = os.path.join(d, "shim.c")
         open(shim, "w").write(SHIM)
-        subprocess.run(cc + ["-O2", "-Wall", "-Wextra", "-Werror", "-shared", "-fPIC", "-I", FW,
-                             *[os.path.join(FW, s) for s in SRCS], shim, "-o", so + ".tmp"],
-                       check=True)
-        os.replace(so + ".tmp", so)
+        build_shared([*[os.path.join(FW, s) for s in SRCS], shim], so, FW)
     L = ctypes.CDLL(so)
     U32, I32, P = ctypes.c_uint32, ctypes.c_int32, ctypes.c_char_p
     B = ctypes.POINTER(ctypes.c_uint8)

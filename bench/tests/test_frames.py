@@ -1,12 +1,11 @@
 """motor_ctrl R2's link frames: the host codec, and the firmware's own frame.c against it."""
 import os
 import random
-import shutil
 import subprocess
 
 import pytest
 
-from publicbench import frames
+from publicbench import frames, nativecc
 
 FW = os.path.join(os.path.dirname(__file__), "..", "..", "firmware", "motor_ctrl")
 
@@ -112,18 +111,28 @@ def test_framed_serial_is_a_line_stream():
     assert frames.Deframer().feed(bytes(f.ser.tx)) == [b"T\n"]
 
 
-@pytest.mark.skipif(not shutil.which("gcc"), reason="no native gcc")
+@pytest.mark.skipif(not nativecc.compiler(), reason="no native C compiler")
 def test_firmware_frame_c_matches(tmp_path):
     """frame.c, compiled for this computer: it encodes as the host does, and decodes the host's
     frames (good ones back whole, every corrupted one dropped and counted)."""
     harness = tmp_path / "h.c"
     harness.write_text(r'''
 #include <stdio.h>
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#endif
 #include "frame.h"
 static uint8_t in[4096], out[FRAME_WIRE], pay[FRAME_MAX];
 int main(void) {
     /* stdin: mode byte 'E' then a payload -> its wire; 'D' then wire -> each payload as
        "len hex\n", then "bad N\n" */
+#ifdef _WIN32
+    _setmode(_fileno(stdin), _O_BINARY);    /* Windows' text mode would turn 
+ into 
+ */
+    _setmode(_fileno(stdout), _O_BINARY);
+#endif
     size_t n = fread(in, 1, sizeof in, stdin);
     if (in[0] == 'E') {
         uint32_t w = frame_encode(in + 1, (uint32_t)(n - 1), out);
@@ -139,9 +148,8 @@ int main(void) {
     return 0;
 }
 ''')
-    exe = tmp_path / "h"
-    subprocess.run(["gcc", "-O2", "-Wall", "-Werror", "-I", FW, str(harness),
-                    os.path.join(FW, "frame.c"), "-o", str(exe)], check=True)
+    exe = nativecc.exe_name(str(tmp_path / "h"))
+    nativecc.build(["-O2", "-Wall", "-Werror", "-I", FW, str(harness), os.path.join(FW, "frame.c")], exe)
 
     def run(data):
         return subprocess.run([str(exe)], input=data, capture_output=True, check=True).stdout

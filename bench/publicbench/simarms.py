@@ -6,10 +6,9 @@ import ctypes
 import hashlib
 import os
 import re
-import subprocess
 import tempfile
 
-from .simlever import compiler
+from .nativecc import build_shared, compiler
 
 FW = os.path.join(os.path.dirname(__file__), "..", "..", "firmware", "motor_ctrl")
 ARMS_H = os.path.join(FW, "arms.h")
@@ -49,9 +48,7 @@ def lib():
     if not os.path.exists(so):
         os.makedirs(d, exist_ok=True)
         open(os.path.join(d, "shim.c"), "w").write(shim)
-        subprocess.run([cc, "-O2", "-Wall", "-Wextra", "-Werror", "-shared", "-fPIC", "-I", FW,
-                        srcs[0], os.path.join(d, "shim.c"), "-o", so + ".tmp"], check=True)
-        os.replace(so + ".tmp", so)
+        build_shared([srcs[0], os.path.join(d, "shim.c")], so, FW)
     L = ctypes.CDLL(so)
     P, U, U32 = ctypes.POINTER(ArmsT), ctypes.c_uint, ctypes.c_uint32
     for name, args, res in (("sim_arms_size", [], ctypes.c_size_t),
