@@ -39,9 +39,20 @@ A mesh is export's dict: {"pos": float32 (n, 3), "tri": uint32 (m, 3), "verts": 
 thread's helical sheet, a coil's wire), each with its frame, its numbers and the triangle range
 that draws it -- so a ray tracer can solve the surface itself, to any detail, in place of those
 triangles (cadkit.web.export carries them into the GLB; the desktop viewer traces them). Every
-move and merge here carries them. A closed-form piece is ONE face of kind "o" (other): the
-measure tool snaps to its triangles, not to a radius. A tessellated piece (swap_bore, fused)
-keeps the kernel's face records, so its flats and holes still measure as flats and holes.
+move and merge here carries them.
+
+WHAT THE MEASURE TOOL SEES (user, 2026-11-23: "the measure tool can no longer select faces ...
+could we get back proper faces/edges/corners"). Each closed-form sheet carries the face record
+the kernel would have given the part it stands for (cadkit.web.export._face_record's kinds), so
+a click measures a flat as a flat and a round as a radius on its axis: a screw's head top,
+side, chamfer and underside, the six flats of its socket and the drill point's cone; a thread
+as the CYLINDER ON ITS NOMINAL DIAMETER (a click on an M3 reads Ø3 on the screw's axis, not the
+flank it landed on); an insert's ends, groove and knurl (the knurl as its OD) and its bore;
+a spring as the cylinder on its OD. The edges where they meet (circles, the socket's lines)
+and the socket's corners ride along, and every move carries faces, edges and corners alike.
+A piece with nothing better to say (a tube along a path) stays ONE face of kind "o": the
+measure tool snaps to its triangles. A tessellated piece (swap_bore, fused) keeps the kernel's
+face records, so its flats and holes still measure as flats and holes.
 """
 from __future__ import annotations
 
@@ -61,6 +72,45 @@ def _pack(pos, tri) -> dict:
     tri = np.ascontiguousarray(tri, dtype=np.uint32)
     return {"pos": pos, "tri": tri, "verts": np.zeros((0, 3), dtype=np.float32),
             "geo": {"f": [["o"]], "r": [0, int(len(tri))], "e": [], "fe": [[]]}}
+
+
+def _rd(v, n=4):
+    return [round(float(x), n) for x in v]
+
+
+def _plane(p, n):
+    """A face record: a plane through p with outward normal n (export._face_record's "p")."""
+    return ["p"] + _rd(p) + _rd(n, 6)
+
+
+def _cyl(o, d, r, v0, v1):
+    """A face record: a cylinder of radius r on the axis through o along unit d, from v0 to v1
+    along it ("c")."""
+    return ["c"] + _rd(o) + _rd(d, 6) + [round(float(r), 4), round(float(v0), 4), round(float(v1), 4)]
+
+
+def _cone(apex, d, semi):
+    """A face record: a cone with its apex, axis d (opening that way) and half-angle (rad) ("k")."""
+    return ["k"] + _rd(apex) + _rd(d, 6) + [round(float(semi), 6)]
+
+
+def _circle(z, r):
+    """An edge record: the full circle of radius r about +Z at height z ("c")."""
+    return ["c", 0.0, 0.0, round(float(z), 4), 0.0, 0.0, 1.0, round(float(r), 4),
+            round(float(r), 4), 0.0, round(float(z), 4), round(2 * math.pi, 6)]
+
+
+def _line(a, b):
+    return ["l"] + _rd(a) + _rd(b)
+
+
+def _face(m: dict, rec, edges=(), verts=None) -> dict:
+    """The piece `m` as ONE face of record `rec`, bounded by `edges` (records)."""
+    out = dict(m, geo={"f": [rec], "r": [0, int(len(m["tri"]))], "e": list(edges),
+                       "fe": [list(range(len(edges)))]})
+    if verts is not None:
+        out["verts"] = np.asarray(verts, dtype=np.float32).reshape(-1, 3)
+    return out
 
 
 def _feats(meshes):
@@ -100,7 +150,8 @@ def _merge(meshes) -> dict:
         verts.append(m["verts"])
         ne = len(e)
         f += g["f"]
-        r += [r[-1] + (b - a) for a, b in zip(g["r"], g["r"][1:])]
+        for a, b in zip(g["r"], g["r"][1:]):          # cumulative (a comprehension reading
+            r.append(r[-1] + (b - a))                  # r[-1] froze it: lengths, not offsets)
         e += g["e"]
         fe += [[k + ne for k in ids] for ids in g["fe"]]
     return _with_feats({"pos": np.concatenate(pos).astype(np.float32),
@@ -122,8 +173,10 @@ def _moved(mesh: dict, matrix) -> dict:
         out["feat"] = [_moved_feat(f, R, t) for f in mesh["feat"]]
     g = mesh["geo"]
     if any(f != ["o"] for f in g["f"]) or g["e"]:
-        out["geo"] = dict(g, f=[_moved_face(f, R, t) for f in g["f"]], e=[None] * 0)
-        out["geo"]["fe"] = [[] for _ in g["f"]]       # edges are not carried through a move
+        # faces AND edges carried (edges were dropped here until 2026-11-23, so a placed screw or
+        # a moved nut measured with no edges at all)
+        out["geo"] = dict(g, f=[_moved_face(f, R, t) for f in g["f"]],
+                          e=[_moved_edge(e, R, t) for e in g["e"]], fe=[list(x) for x in g["fe"]])
     return out
 
 
@@ -137,6 +190,25 @@ def _moved_feat(f, R, t):
     if np.linalg.det(R) < 0:
         out["h"] = -f["h"]
     return out
+
+
+def _moved_edge(e, R, t):
+    def P(v):
+        return [round(float(x), 4) for x in R @ np.asarray(v, float) + t]
+
+    def V(v):
+        return [round(float(x), 6) for x in R @ np.asarray(v, float)]
+    if e is None:
+        return e
+    k = e[0]
+    if k == "l":
+        return ["l"] + P(e[1:4]) + P(e[4:7])
+    if k == "c":
+        return ["c"] + P(e[1:4]) + V(e[4:7]) + [e[7]] + P(e[8:11]) + list(e[11:])
+    if k == "o":
+        pts = np.asarray(e[1], float).reshape(-1, 3)
+        return ["o", [round(float(x), 4) for x in (pts @ R.T + t).ravel()]]
+    return e
 
 
 def _moved_face(f, R, t):
@@ -347,11 +419,18 @@ def threaded_rod_mesh(length: float, major: float, minor: float, pitch: float,
     `seg` facets a turn."""
     rod, r_end = _thread(length, major / 2, minor / 2, pitch, flank_deg, hand, seg)
     n = 4 * seg
-    out = [rod]
+    R = major / 2
+    c0, c1 = _circle(0.0, R), _circle(length, R)
+    # the thread measures as the cylinder on its nominal (major) Ø; an end that is left open
+    # gives its circle to the thread
+    out = [_face(rod, _cyl((0, 0, 0), (0, 0, 1), R, 0.0, length),
+                 [e for e, shut in ((c0, ends[0]), (c1, ends[1])) if not shut])]
     if ends[0]:
-        out.append(_end(0.0, 0.0, lambda p: r_end(0.0, p), n, up=False))
+        out.append(_face(_end(0.0, 0.0, lambda p: r_end(0.0, p), n, up=False),
+                         _plane((0, 0, 0), (0, 0, -1)), [c0]))
     if ends[1]:
-        out.append(_end(length, 0.0, lambda p: r_end(length, p), n, up=True))
+        out.append(_face(_end(length, 0.0, lambda p: r_end(length, p), n, up=True),
+                         _plane((0, 0, length), (0, 0, 1)), [c1]))
     return _creased(_merge(out))
 
 
@@ -379,8 +458,54 @@ def screw_mesh(d: float, pitch: float, length: float, head_d: float, head_h: flo
     # edge, down the side, in under the head
     head = _rings([(0.0, -depth - tip), (hexr, -depth), (hexr, 0.0), (rh - ch, 0.0),
                    (rh, -ch), (rh, -head_h), (rr, -head_h)], head_seg)
+    head = _head_faces(_creased(_orient(head, +1)), head_seg, socket_af, depth, tip, rh, ch,
+                       head_h, rr)
     shank = threaded_rod_mesh(length, d, 2 * rr, pitch, 30.0, seg=seg, ends=(True, False))
-    return _merge([_creased(_orient(head, +1)), _moved(shank, _translate(0, 0, -head_h - length))])
+    return _merge([head, _moved(shank, _translate(0, 0, -head_h - length))])
+
+
+def _head_faces(head, n, af, depth, tip, rh, ch, head_h, rr):
+    """The screw head's one sheet (_rings: 2n triangles a band, in ring order) told as the faces
+    it is: the drill point's cone, the socket's six flats, the top, the chamfer, the side, the
+    underside -- with the circles and lines where they meet and the socket's corners."""
+    tri = head["tri"]
+    band = lambda i: np.arange(2 * n * i, 2 * n * (i + 1))      # noqa: E731
+    # the socket's band in its six flats: corners on 0, 60, ... deg (_hex_r), so flat k spans
+    # 60k..60(k+1) deg; each triangle goes by the angle of its middle
+    hx = band(1)
+    cen = head["pos"].astype(np.float64)[tri[hx]].mean(axis=1)
+    sector = np.floor(np.mod(np.arctan2(cen[:, 1], cen[:, 0]), 2 * math.pi) / (math.pi / 3)).astype(int) % 6
+    hx = hx[np.argsort(sector, kind="stable")]
+    counts = np.bincount(sector, minlength=6)
+    order = np.concatenate([band(0), hx] + [band(i) for i in range(2, 6)])
+    rc = af / math.sqrt(3.0)                                   # the hex's corner radius
+    ang = [math.pi / 3 * k for k in range(6)]
+    top = [(rc * math.cos(a), rc * math.sin(a), 0.0) for a in ang]
+    bot = [(x, y, -depth) for x, y, _ in top]
+    edges = ([_circle(0.0, rh - ch), _circle(-ch, rh), _circle(-head_h, rh)]
+             + [_line(top[k], top[(k + 1) % 6]) for k in range(6)]          # 3..8
+             + [_line(bot[k], bot[(k + 1) % 6]) for k in range(6)]          # 9..14
+             + [_line(bot[k], top[k]) for k in range(6)])                   # 15..20
+    faces = [_cone((0, 0, -depth - tip), (0, 0, 1), math.radians(59.0))]
+    fe = [list(range(9, 15))]
+    runs = [0, 2 * n]
+    for k in range(6):
+        a = math.pi / 3 * k + math.pi / 6                      # the flat's middle
+        faces.append(_plane(((af / 2) * math.cos(a), (af / 2) * math.sin(a), -depth / 2),
+                            (-math.cos(a), -math.sin(a), 0.0)))  # faces into the socket
+        fe.append([3 + k, 9 + k, 15 + k, 15 + (k + 1) % 6])
+        runs.append(runs[-1] + int(counts[k]))
+    faces += [_plane((0.5 * (rc + rh - ch), 0.0, 0.0), (0, 0, 1)),                       # top
+              _cone((0, 0, rh - ch), (0, 0, -1), math.pi / 4),                             # chamfer
+              _cyl((0, 0, -head_h), (0, 0, 1), rh, 0.0, head_h - ch),                      # side
+              _plane((0.5 * (rh + rr), 0.0, -head_h), (0, 0, -1))]                         # underside
+    fe += [[0] + list(range(3, 9)), [0, 1], [1, 2], [2]]
+    for _ in range(4):
+        runs.append(runs[-1] + 2 * n)
+    assert runs[-1] == len(tri)
+    return dict(head, tri=np.ascontiguousarray(tri[order]),
+                verts=np.asarray(top + bot + [(0.0, 0.0, -depth - tip)], dtype=np.float32),
+                geo={"f": faces, "r": runs, "e": edges, "fe": fe})
 
 
 @_owned
@@ -407,19 +532,28 @@ def insert_mesh(d: float, pitch: float, od: float, length: float, seg: int = 8,
     # every height and the teeth run straight up the sheet (a fixed grid saws them)
     out = []
     bands = [(-0.45 * length, 0.0, +1), (-length, -0.55 * length, -1)]
+    Z = (0, 0, 1)
     for z0, z1, sg in bands:
         zs = np.linspace(z0, z1, max(2, int(math.ceil((z1 - z0) / 0.5)) + 1))
-        out.append(_orient(_rings([(knurl(z, sg), z, tw(z, sg)) for z in zs], n), +1))
+        out.append(_face(_orient(_rings([(knurl(z, sg), z, tw(z, sg)) for z in zs], n), +1),
+                         _cyl((0, 0, z0), Z, ro, 0.0, z1 - z0)))          # the knurl, as its OD
     z0, z1 = bands[0][0], bands[1][1]
-    out.append(_end(z0, rg, knurl(z0, +1), n, up=False, phase=tw(z0, +1)))   # the groove's roof
-    out.append(_end(z1, rg, knurl(z1, -1), n, up=True, phase=tw(z1, -1)))    # ... and floor
-    out.append(_orient(_rings([(rg, z1), (rg, z0)], n), +1))
+    out.append(_face(_end(z0, rg, knurl(z0, +1), n, up=False, phase=tw(z0, +1)),   # the groove's roof
+                     _plane((0.5 * (rg + ro), 0, z0), (0, 0, -1)), [_circle(z0, ro)]))
+    out.append(_face(_end(z1, rg, knurl(z1, -1), n, up=True, phase=tw(z1, -1)),    # ... and floor
+                     _plane((0.5 * (rg + ro), 0, z1), (0, 0, 1)), [_circle(z1, ro)]))
+    out.append(_face(_orient(_rings([(rg, z1), (rg, z0)], n), +1),
+                     _cyl((0, 0, z1), Z, rg, 0.0, z0 - z1), [_circle(z1, rg), _circle(z0, rg)]))
     hole, r_end = _thread(length, d / 2, iso_minor(d, pitch) / 2, pitch, 30.0, seg=seg,
                           inward=True)
-    out.append(_moved(hole, _translate(0, 0, -length)))
-    out.append(_end(0.0, lambda p: r_end(length, p), knurl(0.0, +1), n, up=True, phase=tw(0.0, +1)))
-    out.append(_end(-length, lambda p: r_end(0.0, p), knurl(-length, -1), n, up=False,
-                    phase=tw(-length, -1)))
+    out.append(_face(_moved(hole, _translate(0, 0, -length)),               # the bore, as its Ø
+                     _cyl((0, 0, -length), Z, d / 2, 0.0, length),
+                     [_circle(0.0, d / 2), _circle(-length, d / 2)]))
+    out.append(_face(_end(0.0, lambda p: r_end(length, p), knurl(0.0, +1), n, up=True, phase=tw(0.0, +1)),
+                     _plane((0.5 * (d / 2 + ro), 0, 0.0), (0, 0, 1)), [_circle(0.0, ro)]))
+    out.append(_face(_end(-length, lambda p: r_end(0.0, p), knurl(-length, -1), n, up=False,
+                          phase=tw(-length, -1)),
+                     _plane((0.5 * (d / 2 + ro), 0, -length), (0, 0, -1)), [_circle(-length, ro)]))
     return _creased(_merge(out))
 
 
@@ -465,8 +599,12 @@ def swap_bore(shape, d: float, pitch: float, axis_pt, axis_dir, flank_deg: float
     hole, r_end = _thread(L, d / 2, (minor or iso_minor(d, pitch)) / 2, pitch, flank_deg,
                           hand, seg, inward=True)
     n = 4 * seg
-    local = _merge([hole, _end(0.0, lambda p: r_end(0.0, p), d / 2, n, up=False),
-                    _end(L, lambda p: r_end(L, p), d / 2, n, up=True)])
+    R = d / 2
+    local = _merge([_face(hole, _cyl((0, 0, 0), (0, 0, 1), R, 0.0, L), [_circle(0.0, R), _circle(L, R)]),
+                    _face(_end(0.0, lambda p: r_end(0.0, p), d / 2, n, up=False),
+                          _plane((R, 0, 0.0), (0, 0, -1))),
+                    _face(_end(L, lambda p: r_end(L, p), d / 2, n, up=True),
+                          _plane((R, 0, L), (0, 0, 1)))])
     return _merge([_sub_faces(m, keep), _moved(local, _frame(o + t0 * ax, ax))])
 
 
@@ -540,7 +678,8 @@ def coil_mesh(pieces, coil_r: float, wire_d: float, seg: int = 24, ring: int = 8
         m["feat"] = [{"k": "c", "o": [0.0, 0.0, 0.0], "z": [0.0, 0.0, 1.0], "x": [1.0, 0.0, 0.0],
                       "z0": float(z0), "p": float(pitch), "H": float(height), "R": float(coil_r),
                       "w": float(R), "h": int(sgn), "tri": [0, int(len(tri))]}]
-        out.append(m)
+        # the measure tool's view of it: the cylinder on the spring's OD, over the piece
+        out.append(_face(m, _cyl((0, 0, z0 - R), (0, 0, 1), coil_r + R, 0.0, height + 2 * R)))
     return _merge(out)
 
 
