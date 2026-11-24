@@ -3,6 +3,8 @@ its open-loop bus mode (SR_OPEN, mode 3), on string 1 through motor_ctrl (user, 
 
     python3 -m publicbench.openloop                     the automatic tests (below), ~10 min
     python3 -m publicbench.openloop --only speed,lag    some of them
+    python3 -m publicbench.openloop --only speed --speed-ma 1400,1000
+                                                        gate 2 at a TMC2209's current
     python3 -m publicbench.openloop --reenable 20       + 20 coils-off/on cycles, power left on
     python3 -m publicbench.openloop --powercycle 5      + 5 power cycles: it asks you to switch the
                                                         motor's 24 V off and on, and waits
@@ -60,7 +62,8 @@ T = servo.COUNTS_PER_TURN
 STEP = T / 200.0                        # one full step of a 1.8 deg motor: 81.92 counts
 LOG = os.path.expanduser("~/openloop.jsonl")
 SEMITONES = 2.0                         # a whole tone: the widest pedaldrive throws
-CURRENTS = (1600, 1200, 800, 500, 300, 200)     # mA, down from the default
+CURRENTS = (1600, 1400, 1200, 1000, 800, 500, 300, 200)   # mA, down from the default; 1400 and 1000
+                                        # bracket what a TMC2209 holds on a board (lead, 11-24)
 LAG_RPM, LAG_ACC = 600, 230             # the current/lag moves: a ramp open loop can follow
 SPEEDS = ((300, 230), (600, 230), (1000, 230), (1500, 230), (600, 0), (1200, 0))
 TESTS = ("current", "lag", "speed")
@@ -182,16 +185,21 @@ class Rig:
         self.current(servo.DEFAULT_MA)
         return rows
 
-    def t_speed(self, reps):
+    def t_speed(self, reps, currents=(servo.DEFAULT_MA,)):
+        """Whole tones per rpm/acc at each working current in `currents`: gate 2 has to pass at
+        the current the production driver can hold, not at the motor's rating."""
         rows = []
+        for ma in currents:
+            self.current(ma)
+            time.sleep(0.3)
+            for rpm, acc in SPEEDS:
+                r = [dict(x, ma=ma) for x in self.tone(rpm, acc, reps)]
+                rows += r
+                t9 = [x["t90"] for x in r if x["t90"] is not None]
+                print("  %4d mA %4d rpm acc %3d: t90 %s ms, %d step(s) lost"
+                      % (ma, rpm, acc, "%.1f" % (1e3 * st.mean(t9)) if t9 else "-",
+                         sum(abs(x["steps_lost"]) for x in r)), flush=True)
         self.current(servo.DEFAULT_MA)
-        for rpm, acc in SPEEDS:
-            r = [dict(x, ma=servo.DEFAULT_MA) for x in self.tone(rpm, acc, reps)]
-            rows += r
-            t9 = [x["t90"] for x in r if x["t90"] is not None]
-            print("  %4d rpm acc %3d: t90 %s ms, %d step(s) lost"
-                  % (rpm, acc, "%.1f" % (1e3 * st.mean(t9)) if t9 else "-",
-                     sum(abs(x["steps_lost"]) for x in r)), flush=True)
         return rows
 
     def t_reenable(self, n):
@@ -316,8 +324,8 @@ def run(o, link=None) -> dict:
             print("current / lag: whole tones at %d rpm acc %d" % (LAG_RPM, LAG_ACC), flush=True)
             rec["current"] = rig.t_current(o.reps)
         if "speed" in only:
-            print("speed: whole tones, %d mA" % servo.DEFAULT_MA, flush=True)
-            rec["speed"] = rig.t_speed(o.reps)
+            print("speed: whole tones at %s mA" % ",".join(map(str, o.speed_ma)), flush=True)
+            rec["speed"] = rig.t_speed(o.reps, o.speed_ma)
         if o.reenable:
             print("reenable: coils off/on, power on", flush=True)
             rec["reenable"] = rig.t_reenable(o.reenable)
@@ -362,12 +370,13 @@ def summary(rec):
             print("  %4d  %3d/%-3d     %-16s %-16s" % (ma, sum(abs(r["steps_lost"]) for r in rs),
                                                       len(rs), f(up), f(dn)))
     if rec.get("speed"):
-        print("  rpm  acc   t90 ms mean/max   lost")
-        for rpm, acc in SPEEDS:
-            rs = [r for r in rec["speed"] if r["rpm"] == rpm and r["acc"] == acc]
+        print("    mA  rpm  acc   t90 ms mean/max   lost")
+        for ma, rpm, acc in sorted({(r.get("ma", servo.DEFAULT_MA), r["rpm"], r["acc"]) for r in rec["speed"]},
+                                   key=lambda k: (-k[0], k[1], -k[2])):
+            rs = [r for r in rec["speed"] if r.get("ma", servo.DEFAULT_MA) == ma and r["rpm"] == rpm and r["acc"] == acc]
             t9 = [r["t90"] for r in rs if r["t90"] is not None]
             if rs:
-                print("  %4d %3d   %s   %d" % (rpm, acc, "%6.1f / %6.1f" % (1e3 * st.mean(t9), 1e3 * max(t9))
+                print("  %4d %4d %3d   %s   %d" % (ma, rpm, acc, "%6.1f / %6.1f" % (1e3 * st.mean(t9), 1e3 * max(t9))
                                               if t9 else "     -        ", sum(abs(r["steps_lost"]) for r in rs)))
     for k in ("reenable", "powercycle"):
         if rec.get(k):
@@ -384,6 +393,8 @@ def parser():
     a.add_argument("--label", default="run")
     a.add_argument("--only", default="", help="comma list of %s" % ",".join(TESTS))
     a.add_argument("--reps", type=int, default=3)
+    a.add_argument("--speed-ma", type=lambda v: [int(x) for x in v.split(",")], default=[servo.DEFAULT_MA],
+                   metavar="MA[,MA]", help="working current(s) for the speed test, e.g. 1400,1000")
     a.add_argument("--reenable", type=int, default=0, metavar="N")
     a.add_argument("--powercycle", type=int, default=0, metavar="N")
     a.add_argument("--listen", action="store_true")

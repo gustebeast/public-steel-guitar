@@ -72,3 +72,11 @@ def test_travel_is_a_whole_tone_each_way():
     flip = OL.Rig(link=None, raise_sign=-1)
     assert (flip.lo, flip.hi) == (-rig.hi, -rig.lo)
     assert abs(OL.cents(OL.throw_counts(2.0)) - 200.0) < 0.5
+
+
+def test_speed_runs_at_each_asked_current_then_puts_it_back(sim):
+    s, link, log = sim
+    rec = OL.run(opts(log, "--only", "speed", "--speed-ma", "1400,1000"), link)
+    assert not rec.get("stopped"), rec.get("stopped")
+    assert {r["ma"] for r in rec["speed"]} == {1400, 1000}
+    assert s.ma == servo.DEFAULT_MA and s.mode == servo.SR_VFOC
