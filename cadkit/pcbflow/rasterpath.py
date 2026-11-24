@@ -38,7 +38,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import widepath  # noqa: E402  (the shared core: close_last's CLOSE_POUR_GUARD=2 judges with it too)
 
 GD, NAME, RES = sys.argv[1], sys.argv[2], float(sys.argv[3])
-FILES = {"F": "F_Cu.gtl", "I1": "In1_Cu.g1", "I2": "In2_Cu.g2", "B": "B_Cu.gbl"}
+FILES = {"F": "F_Cu.gtl", "I1": "In1_Cu.g1", "I2": "In2_Cu.g2", "I3": "In3_Cu.g3", "I4": "In4_Cu.g4", "B": "B_Cu.gbl"}
 PLATING = widepath.PLATING
 
 

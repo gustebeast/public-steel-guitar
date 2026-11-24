@@ -52,6 +52,7 @@ from __future__ import annotations
 import _nowindow  # noqa: F401  (no console windows on Windows: _nowindow.py)
 import argparse
 import collections
+import hashlib
 import json
 import numpy as np
 import math
@@ -79,6 +80,105 @@ def _run(cmd, log, cwd=HERE, env=None):
     log.write("$ %s\n%s\n[rc %d, %.0f s]\n\n" % (" ".join(cmd), out, p.returncode, time.time() - t))
     log.flush()
     return p.returncode, out, time.time() - t
+
+
+# PCBFLOW_STAGE_CACHE=<dir> (opt-in, bronner 2026-11-23): place_init and place_cells are
+# deterministic in their inputs -- two seeds of one A/B arm placed all 455 brain_board parts
+# identically (abB/abC 2026-11-22) -- yet each route re-ran them, ~63 min of a ~2.5 h route.
+# A stage is keyed on its command (the trial dir masked), the BYTES of its input files, the
+# pcbflow + router sources, and the PCBFLOW_/OWNROUTE_/CLOSE_/PLACE_ environment, less
+# PCBFLOW_PROJECT (a scratch KiCad project path). OWNROUTE_SEED is left out ONLY for a
+# seed_free stage (place_init: no route in it).
+# ⚠ PLACE_CELLS IS SEED-DEPENDENT (tpC_s1 / tpC_s2, 2026-11-23): abB/abC agreed only because
+# every cell turn there had no room. With U205 free, the two seeds' 900 s parent routes ended
+# 82 v 59 open and kept U205 at 90 v 270 -- the cell choice samples route noise, so sharing it
+# across seeds would make an A/B's two samples one. place_cells is cached per seed (a re-run).
+_KEY_ENV_SKIP = {"PCBFLOW_PROJECT"}
+_SRC_HASH = []
+
+
+def _src_hash():
+    if not _SRC_HASH:
+        h = hashlib.sha256()
+        for root, dirs, files in os.walk(HERE):
+            dirs[:] = sorted(x for x in dirs if not x.startswith((".", "__")))
+            for f in sorted(files):
+                if f.endswith(".py"):
+                    h.update(f.encode())
+                    h.update(open(os.path.join(root, f), "rb").read())
+        _SRC_HASH.append(h.hexdigest())
+    return _SRC_HASH[0]
+
+
+def _key_bytes(f):
+    """A key input's bytes. A parts file's courtyards enter as their bounding boxes at 0.05 mm.
+    ⚠ KICAD'S COURTYARD CHAIN IS NOT DETERMINISTIC (sc_b / sc_c, 2026-11-23): place_geom's
+    GetCourtyard().Outline(0) of the stock QSOP-16 (U32: 20 um steps, 2.675 / 2.695) came out
+    as two different 12-point chains on identical runs, one with a spurious (-2.205, 2.6949)
+    vertex -- so a parts file never matched byte for byte and the cache never hit. Placement from
+    either was identical (init.json byte-equal)."""
+    if not os.path.exists(f):
+        return b"<none>"
+    if not f.endswith(".parts.json"):
+        return open(f, "rb").read()
+    pj = json.load(open(f, encoding="utf-8"))
+    for p in (pj.get("parts") or {}).values():
+        c = p.get("crtyd")
+        if c:
+            xs, ys = [v[0] for v in c], [v[1] for v in c]
+            p["crtyd"] = [round(round(min(xs) / 0.05) * 0.05, 2), round(round(max(xs) / 0.05) * 0.05, 2),
+                          round(round(min(ys) / 0.05) * 0.05, 2), round(round(max(ys) / 0.05) * 0.05, 2)]
+    return json.dumps(pj, sort_keys=True).encode()
+
+
+def _run_cached(name, cmd, log, d, inputs, outputs, ok=(0,), seed_free=False):
+    """_run, memoised under PCBFLOW_STAGE_CACHE: outputs (files or directories) are restored
+    on a hit and stored after a run whose rc is in ok. Without the variable it is _run."""
+    root = os.environ.get("PCBFLOW_STAGE_CACHE")
+    if not root:
+        return _run(cmd, log)
+    h = hashlib.sha256()
+    h.update(name.encode())
+    h.update("\0".join(c.replace(d, "<D>") for c in cmd).encode())
+    for f in inputs:
+        h.update(os.path.basename(f).encode())
+        h.update(_key_bytes(f))
+    h.update(_src_hash().encode())
+    for k in sorted(os.environ):
+        if (k.startswith(("PCBFLOW_", "OWNROUTE_", "CLOSE_", "PLACE_")) and k not in _KEY_ENV_SKIP
+                and not (seed_free and k == "OWNROUTE_SEED")):
+            h.update(("%s=%s\0" % (k, os.environ[k])).encode())
+    key = h.hexdigest()[:20]
+    c = os.path.join(root, name + "_" + key)
+    if os.path.exists(os.path.join(c, "done.json")):
+        meta = json.load(open(os.path.join(c, "done.json"), encoding="utf-8"))
+        for i, o in enumerate(outputs):
+            src = os.path.join(c, "o%d" % i)
+            if os.path.isdir(src):
+                shutil.rmtree(o, ignore_errors=True)
+                shutil.copytree(src, o)
+            elif os.path.exists(src):
+                shutil.copy(src, o)
+        log.write("$ %s\n[STAGE CACHE HIT %s: %s, first run %.0f s]\n%s\n\n" % (" ".join(cmd), name, key, meta["s"],
+                                                                              meta["out"]))
+        log.flush()
+        print("place_flow: stage cache hit: %s %s (saves %.0f s)" % (name, key, meta["s"]))
+        return meta["rc"], meta["out"], 0.0
+    rc, out, s = _run(cmd, log)
+    if rc in ok:
+        tmp = c + ".tmp%d" % os.getpid()
+        os.makedirs(tmp, exist_ok=True)
+        for i, o in enumerate(outputs):
+            if os.path.isdir(o):
+                shutil.copytree(o, os.path.join(tmp, "o%d" % i))
+            elif os.path.exists(o):
+                shutil.copy(o, os.path.join(tmp, "o%d" % i))
+        json.dump({"rc": rc, "out": out, "s": s, "cmd": cmd}, open(os.path.join(tmp, "done.json"), "w", encoding="utf-8"))
+        try:
+            os.rename(tmp, c)           # first writer wins; a concurrent twin's copy is left as .tmp
+        except OSError:
+            pass
+    return rc, out, s
 
 
 def _intent(rules, parts, notes, net_path, auto, singles=False):
@@ -645,7 +745,10 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
 
     # 2. place_init, place_cells
     init = os.path.join(fd, "init.json")
-    rc, out, T["place_init"] = _run([sys.executable, "place_init.py", stem, ip, "--out", init], log)
+    rc, out, T["place_init"] = _run_cached("place_init", [sys.executable, "place_init.py", stem, ip, "--out", init], log, d,
+                                         [stem + ".net", stem + ".board.json", parts_path, ip],
+                                         [init, init[:-5] + ".why.json", init[:-5] + ".grow.json"], ok=(0, 3),
+                                         seed_free=True)
     if rc not in (0, 3):
         raise SystemExit("place_flow: place_init failed (see flow/flow.log)\n" + out[-800:])
     init_log = [line for line in out.splitlines() if line.startswith("place_init:")]
@@ -779,7 +882,8 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
     # place_cells keeps its own work in <dir>/cells; a stale parent route there would be a
     # different placement's
     shutil.rmtree(os.path.join(d, "cells"), ignore_errors=True)
-    rc, out, T["place_cells"] = _run(cmd, log)
+    rc, out, T["place_cells"] = _run_cached("place_cells", cmd, log, d, [stem + ".net", stem + ".board.json", parts_path, ip],
+                                          [stem + ".cells.json", os.path.join(d, "cells")])
     if rc != 0:
         raise SystemExit("place_flow: place_cells failed (see flow/flow.log)\n" + out[-800:])
     cells_log = [line for line in out.splitlines() if line.startswith("place_cells:")]

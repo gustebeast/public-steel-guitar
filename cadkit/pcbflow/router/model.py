@@ -225,6 +225,16 @@ class Model:
         # An engineer drops the via beside the land, so this is a distance to every land.
         pad_near = np.full((ny, nx), FAR, np.float32)
         hole_extra = self.hole_clear - self.clear
+        # VIA IN PAD (opt-in, bronner 2026-11-23): with filled-and-capped vias ordered (JLC does
+        # it free on 6+ layers: POFV), a net may drop a via INSIDE its own SMD land when the via's
+        # disc fits in the land. vip_depth = how far inside a land a cell sits, vip_net = whose.
+        # The ban below stays for every OTHER land; holes, drills and keep-outs stay for all.
+        fab = ((self.notes.get("quality") or {}).get("fab") or {})
+        self.via_in_pad = os.environ.get("OWNROUTE_VIA_IN_PAD", "1" if fab.get("via_in_pad") else "0") == "1"
+        self.vip_depth = self.vip_net = None
+        if self.via_in_pad:
+            self.vip_depth = np.full((ny, nx), -FAR, np.float32)
+            self.vip_net = np.full((ny, nx), -1, np.int32)
         for p in self.pads:
             net = self.net_id.get(p["net"], -1)
             # ⚠ A FOOTPRINT'S OWN CLEARANCE IS A RULE TOO (output_board mL2 U220, 2026-11-14:
@@ -240,6 +250,17 @@ class Model:
             d = pad_dist(p, X, Y).astype(np.float32)
             i0, i1, j0, j1 = win
             np.minimum(pad_near[i0:i1, j0:j1], d, out=pad_near[i0:i1, j0:j1])
+            if (self.via_in_pad and net >= 0 and not p.get("drill") and not p.get("circles")
+                    and not p.get("polys") and p["cu"] is not None and len(p["cu"]) == 1):
+                dx, dy = X - p["gx"], Y - p["gy"]
+                u = np.abs(dx * p["ca"] + dy * p["sa"]) - p["ihx"]
+                v = np.abs(-dx * p["sa"] + dy * p["ca"]) - p["ihy"]
+                out_ = np.hypot(np.maximum(u, 0), np.maximum(v, 0))
+                dep = np.where((u <= 0) & (v <= 0), p["cr"] + np.minimum(-u, -v), p["cr"] - out_).astype(np.float32)
+                sub_d, sub_n = self.vip_depth[i0:i1, j0:j1], self.vip_net[i0:i1, j0:j1]
+                take = dep > sub_d
+                sub_d[take] = dep[take]
+                sub_n[take] = net
             if extra > 0.0:
                 d = d - np.float32(extra)
             for L_ in self.route_layers:
@@ -486,7 +507,9 @@ class Model:
             if z["vias"] or (z["tracks"] and names & set(self.layers)):
                 i0, i1, j0, j1 = win
                 self.via_ban[i0:i1, j0:j1] |= dist < rv
-        self.via_ban |= pad_near < self.via_d / 2.0 + self.clear + self.margin
+        self.via_ban_pad = pad_near < self.via_d / 2.0 + self.clear + self.margin
+        self.via_ban_hard = self.via_ban.copy()          # keep-outs, then (below) holes and vias
+        self.via_ban |= self.via_ban_pad
         # ⚠ AND NO NEW DRILL INSIDE AN OLD ONE'S HOLE-TO-HOLE, OF ANY NET: a layer change
         # beside a declared via of the SAME net drilled a second hole 0.0 mm from it
         # (HUB_DN4_DM at R52, 2026-11-08). At the net's own via the router changes layer
@@ -504,14 +527,16 @@ class Model:
                                p["gx"] + abs(hx), p["gy"] + abs(hy), reach_h + 0.1)
             X, Y = grid(win)
             i0, i1, j0, j1 = win
-            self.via_ban[i0:i1, j0:j1] |= (_d_pts_seg(X, Y, p["gx"] - hx, p["gy"] - hy,
-                                                      p["gx"] + hx, p["gy"] + hy) < reach_h)
+            _hb = (_d_pts_seg(X, Y, p["gx"] - hx, p["gy"] - hy, p["gx"] + hx, p["gy"] + hy) < reach_h)
+            self.via_ban[i0:i1, j0:j1] |= _hb
+            self.via_ban_hard[i0:i1, j0:j1] |= _hb
         for v in self.vias:
             win = self._window(v["x"], v["y"], v["x"], v["y"], self.via_drill + self.hole_to_hole + 0.1)
             X, Y = grid(win)
             i0, i1, j0, j1 = win
-            self.via_ban[i0:i1, j0:j1] |= (np.hypot(X - v["x"], Y - v["y"])
-                                           < self.via_drill + self.hole_to_hole + self.margin)
+            _hb = (np.hypot(X - v["x"], Y - v["y"]) < self.via_drill + self.hole_to_hole + self.margin)
+            self.via_ban[i0:i1, j0:j1] |= _hb
+            self.via_ban_hard[i0:i1, j0:j1] |= _hb
 
     VOID_MIN_MM = 2.0      # a reference-plane void this wide or more is priced (a via's antipad is not)
 
@@ -667,6 +692,17 @@ def power_width(pp, q, at):
         r_max = DROP_SHARE * float(limit) / 1000.0 / amps            # ohm
         w = max(w, 1.72e-5 * L / (r_max * oz * 0.035))               # mm, as quality's
     return round(w, 2)
+
+def via_ban_for(m, net_id, win, via_d):
+    """The via-centre ban in window win for net net_id with a via of via_d: m.via_ban, less the
+    net's OWN SMD lands where the whole via disc fits inside (model.via_in_pad)."""
+    i0, i1, j0, j1 = win
+    ban = m.via_ban[i0:i1, j0:j1]
+    if getattr(m, "vip_net", None) is None:
+        return ban
+    own = (m.vip_net[i0:i1, j0:j1] == net_id) & (m.vip_depth[i0:i1, j0:j1] >= via_d / 2.0 + m.margin)
+    return ban & ~(own & ~m.via_ban_hard[i0:i1, j0:j1])
+
 
 def pad_reach(p):
     """Radius round the pad's centre that holds all of its copper."""

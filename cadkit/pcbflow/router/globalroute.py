@@ -28,6 +28,7 @@ locally and are left out; their stubs are short and the detailed router places t
 from __future__ import annotations
 
 import math
+import os
 import time
 
 import numpy as np
@@ -48,8 +49,16 @@ SCORE_UTIL = 0.8
 
 class GlobalRouter:
     UTIL = 1.0                 # of a square's track count a real route can use (calibrated below)
-    def __init__(self, router, gc_mm=GC_MM, log=print, util=None):
+    def __init__(self, router, gc_mm=GC_MM, log=print, util=None, width_weight=None):
         self.r = router
+        # WIDTH WEIGHT (opt-in, bronner 2026-11-23; GLOBALROUTE_WIDTH_WEIGHT=1 or width_weight=True):
+        # a net uses (its width + clearance) / (signal width + clearance) TRACKS of a square, not
+        # one. Without it a 1 mm power track reads as one 0.15 mm signal -- and ~65 of the 75 opens
+        # of brain_board abC_s1 were power nets in squares the plan called fine. Off by default:
+        # SCORE_UTIL was calibrated without it.
+        if width_weight is None:
+            width_weight = os.environ.get("GLOBALROUTE_WIDTH_WEIGHT") == "1"
+        self.width_weight = width_weight
         self.m = m = router.m
         self.log = log
         self.L, self.H, self.W = router.L, router.H, router.W
@@ -83,6 +92,7 @@ class GlobalRouter:
         self.hist = np.zeros((L, gh, gw), np.float32)
         self.plans = {}            # net name -> list of coarse flat-index paths
         self.terms = {}            # net name -> set of coarse flat indices its lands stand in
+        self._wt = {n.name: max(1.0, ((n.width or wref) + m.clear) / (wref + m.clear)) for n in router.nets}
         self.t_setup = time.time() - t0
 
     # ------------------------------------------------------------------ helpers
@@ -109,6 +119,8 @@ class GlobalRouter:
 
     def _mark(self, name, sign):
         term = self.terms[name]
+        if self.width_weight:
+            sign = sign * self._wt.get(name, 1.0)
         for p in self.plans.get(name, ()):
             q = np.unique(p) if self.COUNT_TERMS else np.setdiff1d(np.unique(p), term)
             np.add.at(self.use.reshape(-1), q, sign)
