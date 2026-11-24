@@ -181,8 +181,18 @@ XJ = DB.ep_x()["x_j"]                            # -20.2: the endplate's joint f
 # THE ENDPLATE'S -Y FLANGE (THE DUAL-ROD BENCH): the slice now runs to the edge line over rod 8's seat,
 # so its -Y screw can no longer stand beside it (a screw's access shaft ran down through the seat);
 # it goes on a flange off the joint face at the plank, and the rail stops short and butts THAT
-EP_FLANGE_L = 2 * TAB
-X_RAIL_END = XJ - EP_FLANGE_L
+# THE ENDPLATE'S BUTTRESSES (user, 2026-11-24: "it was bowing towards -x due to the string tension. Can
+# you add 45 supports going towards -x"): two 45 deg buttresses off the joint face, one each side of the
+# drive in Y, standing on flanges the plate's base runs -X on, screwed to the plank. Their top at the
+# joint face is as high as the R1 board over them allows: the slope stays BUT_CLR under the board's
+# lowest (its underside, less the parts under it) where the board begins, OPT_FACE_GAP off the face
+# (BUT_TOP and the flanges' length below, with the board's numbers).
+# in Y: the +Y one from past the optical screw bracket (y 5.9 .. 12.7) and rod 5 to the widened plate's
+# edge; the -Y one from the plank's edge line to rod 8, BUT_ROD_CLR off it
+BUT_ROD_CLR = 1.5
+BUT_PY = (14.0, 24.0)
+BUT_NY = (Y_EDGE, DB.rod_yz(HOOK)[0] - DB.GUIDE_D / 2 - BUT_ROD_CLR)
+assert BUT_NY[1] - BUT_NY[0] >= 5 * D.BEAD - 1e-6, "the -Y buttress under five beads"
 
 
 def anchor() -> cq.Workplane:
@@ -216,7 +226,7 @@ def anchor() -> cq.Workplane:
                             axis_dir=(1, 0, 0), print_up=pu, fit=True))
     for dy, dz in DB.tie_offsets(I):
         w = w.cut(hole(3.5, Y5 + dy, Z5 + dz))
-    for x, y in A_SCREWS:
+    for x, y in a_screws():
         w = w.cut(_screw(x, y, pu))
     return w
 
@@ -227,21 +237,28 @@ A_UP = (0.0, 0.0, 1.0)
 HOOK_POST_X0 = DB.ROD_END + 0.3
 HOOK_POST_R = DB.GUIDE_SEAT / 2 + 2 * D.BEAD
 # the base's -X, -Y screw moves +Y out from under the post (the anchor goes down before the drive)
-A_SCREWS = [(A_BASE_X0 + TAB, DB.rod_yz(HOOK)[0] + HOOK_POST_R + TAB), (A_BASE_X0 + TAB, A_Y[1] - TAB),
-            (A_FOOT + TAB, Y_EDGE + TAB), (A_FOOT + TAB, A_Y[1] - TAB),
-            ((A_FOOT + X_RAIL_END) / 2, (RAIL_Y[0] + RAIL_Y[1]) / 2),
-            (X_RAIL_END - 2 * TAB, (RAIL_Y[0] + RAIL_Y[1]) / 2)]
+def a_screws():
+    return [(A_BASE_X0 + TAB, DB.rod_yz(HOOK)[0] + HOOK_POST_R + TAB), (A_BASE_X0 + TAB, A_Y[1] - TAB),
+                (A_FOOT + TAB, Y_EDGE + TAB), (A_FOOT + TAB, A_Y[1] - TAB),
+                ((A_FOOT + X_RAIL_END) / 2, (RAIL_Y[0] + RAIL_Y[1]) / 2),
+                (X_RAIL_END - 2 * TAB, (RAIL_Y[0] + RAIL_Y[1]) / 2)]   # the rail's: X_RAIL_END is set below
 
 
 # ── THE +X ENDPLATE, CUT DOWN TO STRING 6 ────────────────────────────────────────────────────
 E = DB.ep_x()
 EP_Y_OPT = (Y5 - 12.0, DB.rod_yz(I)[0] + DB.GUIDE_SEAT / 2 + DB.GUIDE_WALL + 3.0)   # the first bench's
                                                  # slice, -16.75 .. 15.95: the optical brackets keep to it
-EP_Y = (Y_EDGE, EP_Y_OPT[1])                     # out to the plank's edge line: rod 8's seat (THE DUAL-ROD BENCH)
+EP_Y = (Y_EDGE, BUT_PY[1])                       # out to the plank's edge line: rod 8's seat (THE DUAL-ROD
+                                                 # BENCH); +Y to the +Y buttress's far side (wider is stiffer)
 assert DB.rod_yz(HOOK)[0] - DB.GUIDE_SEAT / 2 - DB.GUIDE_WALL - EP_Y[0] >= 2 * D.BEAD, "rod 8's seat off the slice"
 EP_BASE_Y1 = EP_Y[1] + 2 * TAB                   # the base: a flange each side in Y, flush
-EP_SCREWS = ([(x, EP_BASE_Y1 - TAB) for x in (XJ + TAB, E["x_end"] - TAB)]    # the +Y flange
-             + [(XJ - TAB, Y_EDGE + TAB)])                                     # the -Y flange
+# the -Y flange's screws: the far side of the -Y buttress, -X of the optical rest bracket (x XJ - OB_L ..
+# XJ, y -16.75 .. -13.55: a screw's access shaft beside the face would cut it)
+Y_NSCREW = BUT_NY[1] + 0.5 + 4.8
+def ep_screws():
+    return ([(x, EP_BASE_Y1 - TAB) for x in (XJ + TAB, E["x_end"] - TAB, (XJ + BUT_FOOT_X) / 2,
+                                             BUT_FOOT_X - TAB)]                 # the +Y base and flange
+            + [(x, Y_NSCREW) for x in (XJ - OB_L - 9.0, BUT_FOOT_X - TAB)])       # the -Y flange
 
 
 def endplate() -> cq.Workplane:
@@ -254,7 +271,14 @@ def endplate() -> cq.Workplane:
     w = lo.union(hi.translate((0.0, 0.0, KH_DROP)))
     w = w.union(_box(XJ, E["x_end"], Y_EDGE, EP_BASE_Y1, Z_PLANK, ZB))   # the base, both sides
     w = w.union(_box(X_RAIL_END, XJ + 0.01, RAIL_Y[0], RAIL_Y[1], Z_PLANK, ZB))   # the -Y flange
-    for x, y in EP_SCREWS:
+    w = w.union(_box(X_RAIL_END, XJ + 0.01, BUT_PY[0], EP_BASE_Y1, Z_PLANK, ZB))  # the +Y flange
+    for y0, y1 in (BUT_PY, BUT_NY):                                          # THE BUTTRESSES
+        tri = (cq.Workplane("XZ", origin=(0, y1, 0))
+               .polyline([(XJ + 0.5, ZB - 0.01), (XJ + 0.5, BUT_TOP), (BUT_FOOT_X, ZB - 0.01)])   # 0.5 into the plate:
+               # over the band its joint face stands a few hundredths +X of XJ
+               .close().extrude(y1 - y0))
+        w = w.union(tri)
+    for x, y in ep_screws():
         w = w.cut(_screw(x, y, DB.EP_UP))
     return _opt_anchor(w.union(opt_brackets()))   # the optical board's two brackets (below)
 
@@ -431,6 +455,15 @@ OB_REST_W = 4 * D.BEAD                           # 3.2 (user, 2026-11-18), AT TH
 OB_Y2 = EP_Y_OPT[0] + OB_REST_W / 2              # the resting bracket, where the first bench had it
 OB_TIP = 2.0                                     # the tip cut flat (no knife edge on the print's top)
 OS_M4_L = 10.0                                   # M4 x 10: 1.6 of board, 8.4 self-tapped into the bracket
+
+# THE ENDPLATE'S BUTTRESSES' height and the flanges' length (see THE ENDPLATE'S BUTTRESSES above)
+OPT_BELOW = 3.4                                  # the R1 board's parts under its underside (as ordered)
+OPT_FACE_GAP = 3.65                              # the board's +X edge off the joint face (opt_frame's)
+BUT_CLR = 1.5
+BUT_TOP = (D.STRING_Z + KH_DROP - OPT_GAP - 1.6 - OPT_BELOW) - BUT_CLR + OPT_FACE_GAP   # at the face
+BUT_FOOT_X = XJ - (BUT_TOP - ZB)                 # the slope reaches the base here
+EP_FLANGE_L = XJ - BUT_FOOT_X + 2 * TAB          # the base's flanges, -X off the joint face
+X_RAIL_END = XJ - EP_FLANGE_L                    # the anchor's rail butts the -Y one
 
 
 def _opt_geom() -> dict:
