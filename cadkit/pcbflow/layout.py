@@ -1337,7 +1337,8 @@ def drop_redundant_pad_vias(board, notes):
     or power pad and quality counts its barrels separately), and a via declared in the
     board file is somebody's decision, not a leaving. A via that IS needed is left in
     place for quality to report -- too strict here would trade a soldering fault for an
-    open net.
+    open net. A via on a power net (power_paths or net_widths) is never a candidate: it
+    carries current, which the count cannot see.
 
     Nothing is removed until every test is done, and the removal re-finds each via by
     UUID on a fresh walk (see tidy_router_vias for why).
@@ -1345,10 +1346,20 @@ def drop_redundant_pad_vias(board, notes):
     import math
     declared_xy = {(round(rv[1], 3), round(rv[2], 3))
                    for rv in list(notes.get("repair_vias", [])) + list(notes.get("vias", []))}
+    # ⚠ A POWER VIA IS NEVER REDUNDANT (brain_board pv_s1 / pv_s2, 2026-11-24): the count asks
+    # only "is the net still joined?", and a power net is joined many ways over -- so the test
+    # passed C224.1's +5V_CM5 via, F201.1's VIN_BRAIN via and R75.2's PB_VCC via, each carrying
+    # current its neighbours then had to (the power gate already fails +5V_CM5 at 0.38 mm
+    # against 1.33). A net the board gives a current (quality power_paths) or a width
+    # (net_widths) -- the same set the stranded-piece repair sizes vias for -- keeps them all.
+    power = set((notes.get("net_widths") or {}).keys()) | {
+        pp["net"] for pp in ((notes.get("quality") or {}).get("power_paths") or ())}
     lands = []
     for fp in board.GetFootprints():
         for pad in fp.Pads():
             if pad.GetAttribute() != pcbnew.PAD_ATTRIB_SMD or not pad.GetNetCode():
+                continue
+            if pad.GetNetname() in power:
                 continue
             if not (pad.IsOnLayer(pcbnew.F_Paste) or pad.IsOnLayer(pcbnew.B_Paste)):
                 continue

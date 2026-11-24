@@ -8,7 +8,7 @@ HUB_XO, ...) were open on the finished board. The pass took each via off its NET
 but KiCad joins copper by geometry, so a net-0 via still bridged its land to the inner track and
 never read as needed. (It also judged every via against the count before ANY removal, so a
 removal that lowered the count left slack a needed via could spend.)
-Fails without the fix (cadkit e81df41): cases 1 and 2.
+Fails without the fix: cases 1 and 2 on cadkit e81df41, case 4 on 4a60013.
 
 On a scratch copy of vip_s2 stripped to AUDIO_SEL's tracks and vias (zones kept), the
 via the pass removed is put back at (64.935, 82.900) in C39.1's land: the In2 track starts there,
@@ -18,6 +18,9 @@ so it is the pad's ONLY layer change.
      count by one (modelled: the board's count
      drops by one once that via is off its net)
   3  a second via in R15.1, joined only to F.Cu  -> removed: the pass still tidies
+  4  the same board, AUDIO_SEL named a power net    -> the R15.1 via is KEPT: a power via carries
+     (quality power_paths; then net_widths)            current the count cannot see (pv_s1/s2 lost
+                                                       C224.1 +5V_CM5, F201.1 VIN_BRAIN, R75.2 PB_VCC)
 Exit 0 = PASS. The run dir is not written.
 """
 import os
@@ -140,6 +143,13 @@ def main(run):
     layout.drop_redundant_pad_vias(b, {})
     v = left(b)
     want(NEED in v, "2 the needed in-land via survives when an earlier removal lowered the count")
+
+    for how, notes in (("power_paths", {"quality": {"power_paths": [{"net": "AUDIO_SEL"}]}}),
+                       ("net_widths", {"net_widths": {"AUDIO_SEL": 0.5}})):
+        b = board(run, slack=False)
+        layout.drop_redundant_pad_vias(b, notes)
+        v = left(b)
+        want(EXTRA in v and NEED in v, "4 a power net (%s) keeps its in-land vias, redundant or not" % how)
     b.BuildConnectivity()
     return bad
 
