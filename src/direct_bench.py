@@ -739,8 +739,14 @@ BOSS_BORE = 8.8                                     # drawn: the formed thread's
 # tie's insert and the rod's seat (scratch ear_per_string5.py). (a1, a2, r)
 TIES = {0: (152.0, 282.0, 16.15), 1: (152.0, 350.0, 16.45), 2: (32.0, 302.0, 16.35),
         3: (304.0, 150.0, 16.45), 4: (152.0, 282.0, 16.45), 5: (152.0, 302.0, 16.45),
-        6: (304.0, 150.0, 16.45), 7: (304.0, 138.0, 16.45), 8: (104.0, 194.0, 16.45),
+        6: (304.0, 150.0, 16.45), 7: (304.0, 138.0, 16.45), 8: (143.0, 233.0, 16.45),
         9: (152.0, 242.0, 16.45)}
+# STRING 8 RE-PACKED (2026-11-24, every guide rod the same length): rod 10 (string 7 hooks it) now runs
+# back through the anchor to string 7's plug, 2.6 off string 8's old tie at 104 deg, and string 8's
+# plug seats rod 11, whose seat broke into the old 194 deg tie's insert bore (5.0 apart, 5.1 of holes).
+# 143 / 233 (scratch tie8.py, the same rings and margins): 2.2 to rod 10's boss, 1.0 between the
+# 233 tie's insert bore and rod 11's seat (7.1 apart), 0.94 over the tray's
+# bottom fold (a 1-bead ear there)
 # the ears' walls round a tie's hole or insert: 1.2 (user, 2026-11-16: "spots between 1.6 and 0.8
 # will likely print fine"), which is what lets the rings pass their neighbours
 EAR_WALL = 1.2
@@ -789,7 +795,11 @@ TIE_BOSS = M3H.CLR_PRINTED_D / 2 + EAR_WALL         # the lip's and lid's bosses
 # are $1.77, 18-8 $1.80+), standing from the lip to the plate --
 # the strings' pull goes lip -> spacers -> plate. Its stock length sets the room collar B
 # turns in.
-TIE_SPACER = (4.5, 3.2, 13.0)                       # OD, ID, length
+# CUT FROM TUBE (user, 2026-11-24, frugal: "the tie spacers sound pretty easy to do ourselves since
+# aluminum is easy to cut"): K&S 8104, 3/16 in OD x 0.014 wall aluminium, 12 in for $1.39 -- cut to 13
+# (a 12 in tube makes 20 with the kerfs). Its 4.05 bore is loose on the M3 (it only carries the lip's
+# compression to the plate); its 4.76 face still lands round the plate's 3.5 tie hole.
+TIE_SPACER = (4.7625, 4.0513, 13.0)                 # OD, ID, length
 PLATE_HOLE_D = 10.0                                 # the plate's hole: the screw only
 NEMA17_HOLES = 31.0                                 # the faceplate's M3 square
 SLOT_STATIONS = (0,)                                # the +X-most motors: oversized (slotted) holes
@@ -1191,6 +1201,13 @@ def rod_yz(i: int):
 def rods_seated(i: int) -> list:
     """The rods string i's endplate seats take: its own, and the new rod its collar hooks."""
     return [i] + ([i + SHARE_NB] if i + SHARE_NB >= N else [])
+
+
+def rod_off(i: int, k: int):
+    """(angle deg, radius) of rod k off string i's axis (at_ang's convention)."""
+    ry, rz = rod_yz(k)
+    dy, dz = ry - y_of(i), rz - za(i)
+    return math.degrees(math.atan2(dz, dy)), math.hypot(dy, dz)
 
 
 def rod_hooker_axis(k: int):
@@ -1805,7 +1822,7 @@ def _anchor_plug(i: int, bench: bool = False) -> cq.Workplane:
 # the ties would make room there. The overlap gate checks the result.
 _PLUG_EAR_ROOM = {0: (4.94, 5.43), 1: (3.65, 10.66), 2: (7.08, 19.92), 3: (3.40, 5.66),
                   4: (3.60, 5.35), 5: (3.60, 13.08), 6: (3.33, 7.03), 7: (3.33, 3.55),
-                  8: (5.92, 28.53), 9: (25.59, 11.31)}
+                  8: (5.65, 4.1), 9: (25.59, 11.31)}
 PLUG_EAR_HW_MAX = INS_HEAT_D / 2 + 2 * D.BEAD       # 4.0: two beads round the pocket
 PLUG_EAR_GAP = 0.3                                  # left to the neighbouring plug
 
@@ -1823,7 +1840,7 @@ def plug_ear_hw(i: int) -> tuple:
 # built; the half-plane through the boss's axis keeps every new point at least the room away from a
 # flat neighbour. Keyed by tie_offsets' order; every narrow boss must be listed.
 _PLUG_EAR_NEIGHBOUR = {1: {0: 46.0}, 3: {0: -118.0}, 4: {0: 46.0}, 5: {0: 46.0}, 6: {0: -118.0},
-                       7: {0: -118.0, 1: 55.0}}
+                       7: {0: -118.0, 1: 55.0}, 8: {1: 270.0}}
 
 
 def _ear_sides(i: int, x0: float, x1: float):
@@ -1867,9 +1884,14 @@ def _anchor_plug_raw(i: int, bench: bool = False) -> cq.Workplane:
     out = out.union(_wall_plug(i))                                                  # outer wall
     # the guide rod's -X SEAT: a boss at GUIDE_R on the plate, its web back to the neck -- FROM THE
     # AXIS (user, 2026-11-17: begun just inside the neck, its corners left a notch each side)
-    dy, dz = at_ang(guide_ang(i), GUIDE_R)
-    out = out.union(cyl_x(GUIDE_SEAT + 2 * GUIDE_WALL, f1 - a0, a0, y=y + dy, z=z + dz))
-    out = out.union(_radial_box(i, a0, f1, 0.0, GUIDE_R, GUIDE_SEAT + 2 * GUIDE_WALL))
+    # EVERY ROD THE SAME (user, 2026-11-24: "all the guide rods be the same length and be supported in
+    # a similar manner"): strings 8-10's plugs seat the new rod their collar hooks the same way, a boss
+    # on a web from the axis
+    for k in rods_seated(i):
+        a, r = rod_off(i, k)
+        ry, rz = rod_yz(k)
+        out = out.union(cyl_x(GUIDE_SEAT + 2 * GUIDE_WALL, f1 - a0, a0, y=ry, z=rz))
+        out = out.union(_radial_box_at(i, a0, f1, 0.0, r, GUIDE_SEAT + 2 * GUIDE_WALL, a))
     # ---- holes, last ----
     out = out.cut(cyl_x(SCREW_CLR, s1 - a0 + 2, a0 - 1, y=y, z=z))                 # the screw's way
     x_end = out.val().BoundingBox().xmax
@@ -1884,7 +1906,9 @@ def _anchor_plug_raw(i: int, bench: bool = False) -> cq.Workplane:
                                            depth=INS_POCKET_L, overshoot=1.0, print_up=PLUG_UP))
         out = out.cut(cyl_x(M3H.CLR_PRINTED_D, x_end + 1 - (a0 + INS_POCKET_L), a0 + INS_POCKET_L,
                             y=y + ty, z=z + tz))
-    out = out.cut(cyl_x(PLUG_GUIDE_SEAT, f1 - a0 + 2, a0 - 1, y=y + dy, z=z + dz))  # the rod's seat
+    for k in rods_seated(i):                                                        # the rods' seats
+        ry, rz = rod_yz(k)
+        out = out.cut(cyl_x(PLUG_GUIDE_SEAT, f1 - a0 + 2, a0 - 1, y=ry, z=rz))
     return out
 
 
@@ -1940,9 +1964,11 @@ def _housing(i: int) -> cq.Workplane:
     l0, l1 = x_lip()
     rb = GUIDE_SEAT / 2 + GUIDE_WALL
     out = cyl_x(HOUSE_D, l1 - h0, h0, y=y, z=z).union(_ears(i, h0, l1, TIE_BOSS))
-    out = out.union(_radial_box(i, h0, l1, 0.0, GUIDE_R, 2 * rb))
-    dy, dz = at_ang(guide_ang(i), GUIDE_R)
-    out = out.union(cyl_x(2 * rb, l1 - h0, h0, y=y + dy, z=z + dz))
+    for k in rods_seated(i):                         # each rod's cap (strings 8-10: the new rod's too)
+        a, r = rod_off(i, k)
+        ry, rz = rod_yz(k)
+        out = out.union(_radial_box_at(i, h0, l1, 0.0, r, 2 * rb, a))
+        out = out.union(cyl_x(2 * rb, l1 - h0, h0, y=ry, z=rz))
     out = out.cut(cyl_x(HOUSE_POCKET_D, l0 - RACE_CRUSH / 2 + POCKET_FLOOR_SAG - (h0 - 1), h0 - 1, y=y, z=z))  # the pocket, open -X
     out = out.cut(_bay_world(bayonet().mortise(drop=1.0), i))                   # the bayonet's groove
     out = out.cut(cyl_x(RACE_OUT_D, l1 - l0 + 2, l0 - 1, y=y, z=z))            # the lip's hole
@@ -2407,8 +2433,9 @@ def _anchor() -> cq.Workplane:
     for i in range(N):                               # the screw's hole, the two ties, and
         y, z = y_of(i), za(i)                        # the rod's way in
         w = w.cut(cyl_x(PLATE_HOLE_D, 20, x0 - 10, y=y, z=z))
-        ry, rz = rod_yz(i)
-        w = w.cut(cyl_x(GUIDE_SEAT + 0.4, 20, x0 - 10, y=ry, z=rz))
+        for k in rods_seated(i):
+            ry, rz = rod_yz(k)
+            w = w.cut(cyl_x(GUIDE_SEAT + 0.4, 20, x0 - 10, y=ry, z=rz))
         for dy, dz in tie_offsets(i):
             w = w.cut(cyl_x(3.5, 20, x0 - 10, y=y + dy, z=z + dz))   # the ties (M3)
     return w
@@ -2581,16 +2608,10 @@ def _ball(i: int, t: float) -> cq.Workplane:
     return cyl_z(D.STRING_NUT_D, D.STRING_NUT_L, za(i) - D.STRING_NUT_L / 2, x=_ball_x(t), y=y_of(i))
 
 
-# THE NEW RODS (shared guide rods): seated in the endplate like the rest, and reaching -X just past
-# the hooks' furthest travel (no plug or anchor plate behind them): NEW_ROD_L, from the offcut.
-NEW_ROD_BACK = 3.0
-
-
-def new_rod_x0() -> float:
-    return x_collar(1.0)[0] - TAB_L - NEW_ROD_BACK
-
-
-NEW_ROD_L = round(ROD_TIP - new_rod_x0(), 1)
+# THE NEW RODS (shared guide rods) ARE LIKE THE REST (user, 2026-11-24: "all the guide rods be the same
+# length and be supported in a similar manner"): ROD_L, seated in the endplate, through the anchor
+# plate into a seat on string i's plug and capped by string i's housing (strings 8-10: the string
+# whose collar hooks it).
 
 
 def _rod(i: int):
@@ -2599,7 +2620,7 @@ def _rod(i: int):
     if i + SHARE_NB < N:
         return own
     ry, rz = rod_yz(i + SHARE_NB)
-    return [own, cyl_x(GUIDE_D, NEW_ROD_L, ROD_TIP - NEW_ROD_L, y=ry, z=rz)]
+    return [own, cyl_x(GUIDE_D, ROD_L, ROD_END, y=ry, z=rz)]
 
 
 # THE SCREW'S MOTOR END sits SCREW_END_MARGIN past where the coupler first grips (SCREW_X0): the tip is
@@ -3036,7 +3057,7 @@ def _body() -> cq.Workplane:
         za0, za1 = c0, _anchor_z()[1]
         w = w.union(box_at(rw, ro, za1 - za0, x=ANCHOR[0] - rg - rw / 2, y=yin + sg * ro / 2,
                            z=(za0 + za1) / 2))
-        for i in range(N):                           # the guide rods' way past it, and their
+        for i in range(N_RODS):                      # the guide rods' way past it, and their
             ry, rz = rod_yz(i)                       # caps on the housings (string 1's meets it)
             w = w.cut(cyl_x(2 * (GUIDE_SEAT / 2 + GUIDE_WALL) + 2.0, rw + 2, ANCHOR[0] - rg - rw - 1,
                             y=ry, z=rz))

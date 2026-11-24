@@ -19,7 +19,7 @@
   },
   "anchor": {
    "material": "steel",
-   "volume_mm3": 82167.1
+   "volume_mm3": 81896.1
   },
   "body": {
    "material": "petg-gf",
@@ -215,15 +215,15 @@
   },
   "housing_7": {
    "material": "petg-gf",
-   "volume_mm3": 2533.2
+   "volume_mm3": 3157.0
   },
   "housing_8": {
    "material": "petg-gf",
-   "volume_mm3": 2622.0
+   "volume_mm3": 3177.4
   },
   "housing_9": {
    "material": "petg-gf",
-   "volume_mm3": 2623.3
+   "volume_mm3": 3240.0
   },
   "jack_nut_socket": {
    "material": null,
@@ -375,15 +375,15 @@
   },
   "plug_7": {
    "material": "petg-gf",
-   "volume_mm3": 7251.0
+   "volume_mm3": 9633.2
   },
   "plug_8": {
    "material": "petg-gf",
-   "volume_mm3": 8098.6
+   "volume_mm3": 9984.4
   },
   "plug_9": {
    "material": "petg-gf",
-   "volume_mm3": 8098.6
+   "volume_mm3": 10231.1
   },
   "ream_jig": {
    "material": null,
