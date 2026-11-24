@@ -319,6 +319,9 @@ MCU_IO = {
 # THE BRAIN BOARD IS THE BRAIN (user, 2026-11-13): brain.py's circuit is built onto this one
 # (its field connectors replaced by the connector-board ribbon). False = the two-board design.
 MERGED = True
+# copper layers: 6 since 2026-11-23 (user); BRAIN_LAYERS=4 rebuilds the 4-layer board to compare
+LAYERS = int(os.environ.get("BRAIN_LAYERS", "6"))
+assert LAYERS in (4, 6), LAYERS
 
 
 # THE H743 TAKES THE CH32's JOB (user, 2026-11-13: "unify more work onto a single processor").
@@ -358,6 +361,19 @@ if FOLD:
     PIN.update(FOLD_PINS)
     MCU_IO.update(FOLD_IO)
     del MCU_IO["BRAIN_PG"]                      # nobody reports +24V good to itself
+
+# PIN SWAPPING (user, 2026-11-23: "make the pipeline do what the human would"): an engineer
+# picks each plain-GPIO line's pin by where its wire goes. BRAIN_PINSWAP names a json
+# {"pins": {signal: [port, pin number]}} written for a placement (scratch fz/pinswap.py: an
+# exact assignment, interrupt inputs kept on distinct EXTI lines, SWD/JTAG/RTC/clock pins
+# left alone). Only plain GPIO moves; every peripheral pin stays where its AF puts it.
+_PINSWAP = os.environ.get("BRAIN_PINSWAP")
+if _PINSWAP:
+    for _sig, (_port, _num) in json.load(open(_PINSWAP, encoding="utf-8"))["pins"].items():
+        assert _sig in MCU_IO, _sig
+        assert PIN.setdefault(_port, _num) == _num, (_port, _num)
+        MCU_IO[_sig] = _port
+    assert len(set(MCU_IO.values())) == len(MCU_IO), "two signals on one pin"
 
 
 def _circuit_parts():
@@ -2342,17 +2358,27 @@ BOARD_NOTES = {
               "component_face_y": -85.9, "faces": "+Y", "by": "branner 2026-11-13",
               "install": "+X endplate OFF (user 2026-11-19): drop -Z at the final x, 0.8 clear of the anchor screws' printed spacer bosses (to -168.1; branner), endplate back on (it was: drop at x - 19, slide +X 19)",
               "x_extent_instrument": [-167.3, 0.43]},
-    "layers": 4,
+    # SIX LAYERS (user, 2026-11-23): JLC quoted 168 x 100 x10 at $45.80 on 4 layers, $54.70 on 6
+    # (standard build), and the routes stall on room, not rules. Stackup:
+    #   F.Cu  parts, signals, the power_paths (1 oz outer; net_layers keeps power off the inners)
+    #   In1   GND / AGND reference plane (as on 4 layers)
+    #   In2   signals + the In2 power pours (as on 4 layers)
+    #   In3   signals, referenced to In4
+    #   In4   GND / AGND reference plane: In3's return, and a second plane for the stitching
+    #   B.Cu  signals + GND / AGND pours (as on 4 layers)
+    # BRAIN_LAYERS=4 builds the old board for comparison.
+    "layers": LAYERS,
     # In1 IS A SOLID REFERENCE PLANE, NO SIGNALS (2026-11-16): routed, U1's and J201's fan-out
     # cut its GND pour into fragments and the tightened decaps' join vias landed in them --
     # mS0 router-alone 0 open / 5 pairs / 19 islands, 13 of them GND. The same placement with
     # In1 a plane: 0 / 6 / 4, no GND island left (the 4 are VIN_BUS's, as on mP0), and the
     # USB HS pairs and the audio get an unbroken return path under them.
-    "plane_layers": ["In1.Cu"],
+    "plane_layers": ["In1.Cu"] + (["In4.Cu"] if LAYERS == 6 else []),
     "zones": [*([] if MERGED else [{"net": "PWR_GND", "layer": "In1.Cu", "inset": 0.3, "poly": POWER_POLY, "priority": 1}]),
-              {"net": "GND", "layer": "In1.Cu", "inset": 0.3, "poly": GND_POLY},
+              *[z for L in (["In1.Cu"] + (["In4.Cu"] if LAYERS == 6 else []))
+                for z in ({"net": "GND", "layer": L, "inset": 0.3, "poly": GND_POLY},
+                          {"net": "AGND", "layer": L, "inset": 0.3, "poly": AUDIO_POLY})],
               {"net": "GND", "layer": "B.Cu", "inset": 0.3, "poly": GND_POLY},
-              {"net": "AGND", "layer": "In1.Cu", "inset": 0.3, "poly": AUDIO_POLY},
               {"net": "AGND", "layer": "B.Cu", "inset": 0.3, "poly": AUDIO_POLY}],
     "stitch_nets": ("GND", "AGND") if MERGED else ("PWR_GND", "GND", "AGND"),
     # exposed pads only before routing; the router takes the rest (cadkit 72d70a5: brain 14 -> 1 open)
