@@ -2783,3 +2783,16 @@ and the swing about the rod are both locked. `py -3.12 -m src.wood_bench` writes
   - Overlap: clean at both ends of the travel apart from designed contacts (both rods' crush ribs,
     the self-tapped board screw, the motor's face screws).
   - print_check: no new sites beyond rod 8's bore teardrop ledge (as rod 5's).
+
+### The wood bench endplate's buttresses (2026-11-24)
+
+The dual-rod bench's endplate bowed -X under the string. It now has two 45 deg buttresses off its
+joint face, one each side of the drive. The +Y one is 10 wide (y 14..24; the slice is widened to 24
+for it). The -Y one is 4 wide, between the plank's edge line and rod 8. Their tops at the face are at
+z -36.5, 3.5 under the R1 board, and their feet reach x -90.5.
+
+- **Flanges:** both buttresses stand on base flanges that run -X to x -103.3.
+- **Screws:** six wood screws now, four on the +Y side and two on the -Y flange. The -Y screws sit
+  -X of the optical rest bracket, because a screw's access shaft beside the face would cut it.
+- **Rail:** the anchor's rail stops at x -103.3 and butts the -Y flange.
+- **Reprint:** wb_endplate and wb_anchor.
