@@ -2901,6 +2901,16 @@ if __name__ == "__main__":
     notes = dict(BOARD_NOTES)
     q, match = quality_notes(net_path)
     notes["match"], notes["quality"] = match, q
+    if LAYERS == 6:
+        # VIA IN PAD (user decision 2026-11-23): the pins' congestion is decongested by dropping
+        # each pin's via INTO its own land and spreading the escapes over the layers. JLC fills and
+        # caps vias (POFV) free on 6+ layer boards, so a via in a land no longer wicks paste --
+        # quality's via-in-pad checks accept it under fab.via_in_pad, and the router lifts the
+        # own-land via ban from this same note (router.model via_in_pad).
+        q["fab"] = dict(q.get("fab") or {}, via_in_pad=True)
+        notes["order_options"] = dict(notes.get("order_options") or {},
+                                      via_covering="Epoxy Filled & Capped (POFV) -- REQUIRED: vias in pads "
+                                                   "(free on 6+ layers at JLC)")
     if POWER_SIZING:
         # ⚠ THE DESIGN RISE IS 20 C, NOT THE 10 C DEFAULT (lead 2026-11-20): the audited amps are
         # PD-contract and fuse CEILINGS, not continuous draw (the motors measure ~1 W), and a

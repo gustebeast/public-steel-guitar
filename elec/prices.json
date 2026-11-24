@@ -508,7 +508,8 @@
           "layers": 6,
           "qty": 10,
           "usd": 54.7,
-          "board": "brain_board (2026-11-23, 7-8 day standard build; expedite +$132.40 / +$198.50)"
+          "board": "brain_board (2026-11-23, 7-8 day standard build; expedite +$132.40 / +$198.50)",
+          "via_covering": "Epoxy Filled & Capped (POFV), $0 extra: JLC upgrades 6+ layer boards to it free (jlcpcb.com/6-layer-pcb, blog Free-Via-in-Pad-on-6-20-Layer-PCBs-with-POFV); the board REQUIRES it from c89c884e (via in pad, user 2026-11-23) and its ORDER.txt says so. Re-check on the quote page before ordering."
         }
       ],
       "model": {
