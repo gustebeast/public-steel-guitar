@@ -8,8 +8,6 @@ from __future__ import annotations
 import ctypes
 import hashlib
 import os
-import shutil
-import subprocess
 import tempfile
 import threading
 import time
@@ -56,8 +54,7 @@ class Cfg(ctypes.Structure):
                 ("full", ctypes.c_uint16), ("crc", ctypes.c_uint32)]
 
 
-def compiler() -> str | None:
-    return shutil.which("gcc") or shutil.which("cc")
+from .nativecc import build_shared, compiler  # noqa: E402,F401  (tests ask SL.compiler())
 
 
 _LIB = None
@@ -81,9 +78,7 @@ def lib():
         os.makedirs(d, exist_ok=True)
         shim = os.path.join(d, "shim.c")
         open(shim, "w").write(SHIM)
-        subprocess.run([cc, "-O2", "-Wall", "-Wextra", "-Werror", "-shared", "-fPIC", "-I", FW,
-                        srcs[0], srcs[1], shim, "-o", so + ".tmp"], check=True)
-        os.replace(so + ".tmp", so)
+        build_shared([srcs[0], srcs[1], shim], so, FW)
     L = ctypes.CDLL(so)
     P, F, C = ctypes.c_void_p, ctypes.POINTER(Frame), ctypes.POINTER(Cfg)
     U = ctypes.c_uint

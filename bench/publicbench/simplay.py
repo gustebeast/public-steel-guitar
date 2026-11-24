@@ -8,12 +8,11 @@ from __future__ import annotations
 import ctypes
 import hashlib
 import os
-import subprocess
 import tempfile
 import threading
 import time
 
-from .simlever import compiler
+from .nativecc import build_shared, compiler
 
 FW = os.path.join(os.path.dirname(__file__), "..", "..", "firmware", "motor_ctrl")
 
@@ -53,9 +52,7 @@ def lib():
         os.makedirs(d, exist_ok=True)
         shim = os.path.join(d, "shim.c")
         open(shim, "w").write(SHIM)
-        subprocess.run([cc, "-O2", "-Wall", "-Wextra", "-Werror", "-shared", "-fPIC", "-I", FW,
-                        srcs[0], shim, "-o", so + ".tmp"], check=True)
-        os.replace(so + ".tmp", so)
+        build_shared([srcs[0], shim], so, FW)
     L = ctypes.CDLL(so)
     P, F, U, I = ctypes.c_void_p, ctypes.POINTER(Frame), ctypes.c_uint, ctypes.c_int
     for name, args, res in (
