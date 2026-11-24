@@ -83,10 +83,25 @@ def _plane(p, n):
     return ["p"] + _rd(p) + _rd(n, 6)
 
 
-def _cyl(o, d, r, v0, v1):
+def _cyl(o, d, r, v0, v1, info=None):
     """A face record: a cylinder of radius r on the axis through o along unit d, from v0 to v1
-    along it ("c")."""
-    return ["c"] + _rd(o) + _rd(d, 6) + [round(float(r), 4), round(float(v0), 4), round(float(v1), 4)]
+    along it ("c"). `info` (a dict, _thread_info / _coil_info) rides as an 11th element: what the
+    cylinder stands for, which the measure tool shows under its radius (the kernel's records have
+    10, and every reader takes those by index, so the 11th is invisible to them)."""
+    rec = ["c"] + _rd(o) + _rd(d, 6) + [round(float(r), 4), round(float(v0), 4), round(float(v1), 4)]
+    return rec + [info] if info else rec
+
+
+def _thread_info(major, minor, pitch, hand, inward=False):
+    """What a thread is, for the measure tool: "M3 x 0.5", a leadscrew's 8 x 2."""
+    return {"k": "thread", "maj": round(float(major), 4), "min": round(float(minor), 4),
+            "p": round(float(pitch), 4), "h": 1 if hand == "RH" else -1, "in": int(bool(inward))}
+
+
+def _coil_info(coil_r, wire_r, pitch, height, sgn):
+    """What a spring's piece is, for the measure tool: OD, wire, pitch, turns, hand."""
+    return {"k": "coil", "od": round(2 * float(coil_r + wire_r), 4), "w": round(2 * float(wire_r), 4),
+            "p": round(float(pitch), 4), "n": round(float(height) / float(pitch), 3), "h": int(sgn)}
 
 
 def _cone(apex, d, semi):
@@ -219,7 +234,10 @@ def _moved_face(f, R, t):
         return [round(float(x), 6) for x in R @ np.asarray(v, float)]
     k = f[0]
     if k in ("p", "c", "k", "t"):
-        return [k] + P(f[1:4]) + V(f[4:7]) + list(f[7:])
+        tail = list(f[7:])
+        if tail and isinstance(tail[-1], dict) and "h" in tail[-1] and np.linalg.det(R) < 0:
+            tail[-1] = dict(tail[-1], h=-tail[-1]["h"])     # a mirror turns a thread's hand
+        return [k] + P(f[1:4]) + V(f[4:7]) + tail
     if k == "s":
         return [k] + P(f[1:4]) + list(f[4:])
     return f
@@ -423,7 +441,8 @@ def threaded_rod_mesh(length: float, major: float, minor: float, pitch: float,
     c0, c1 = _circle(0.0, R), _circle(length, R)
     # the thread measures as the cylinder on its nominal (major) Ø; an end that is left open
     # gives its circle to the thread
-    out = [_face(rod, _cyl((0, 0, 0), (0, 0, 1), R, 0.0, length),
+    out = [_face(rod, _cyl((0, 0, 0), (0, 0, 1), R, 0.0, length,
+                           _thread_info(major, minor, pitch, hand)),
                  [e for e, shut in ((c0, ends[0]), (c1, ends[1])) if not shut])]
     if ends[0]:
         out.append(_face(_end(0.0, 0.0, lambda p: r_end(0.0, p), n, up=False),
@@ -547,7 +566,8 @@ def insert_mesh(d: float, pitch: float, od: float, length: float, seg: int = 8,
     hole, r_end = _thread(length, d / 2, iso_minor(d, pitch) / 2, pitch, 30.0, seg=seg,
                           inward=True)
     out.append(_face(_moved(hole, _translate(0, 0, -length)),               # the bore, as its Ø
-                     _cyl((0, 0, -length), Z, d / 2, 0.0, length),
+                     _cyl((0, 0, -length), Z, d / 2, 0.0, length,
+                          _thread_info(d, iso_minor(d, pitch), pitch, "RH", inward=True)),
                      [_circle(0.0, d / 2), _circle(-length, d / 2)]))
     out.append(_face(_end(0.0, lambda p: r_end(length, p), knurl(0.0, +1), n, up=True, phase=tw(0.0, +1)),
                      _plane((0.5 * (d / 2 + ro), 0, 0.0), (0, 0, 1)), [_circle(0.0, ro)]))
@@ -600,7 +620,8 @@ def swap_bore(shape, d: float, pitch: float, axis_pt, axis_dir, flank_deg: float
                           hand, seg, inward=True)
     n = 4 * seg
     R = d / 2
-    local = _merge([_face(hole, _cyl((0, 0, 0), (0, 0, 1), R, 0.0, L), [_circle(0.0, R), _circle(L, R)]),
+    info = _thread_info(d, minor or iso_minor(d, pitch), pitch, hand, inward=True)
+    local = _merge([_face(hole, _cyl((0, 0, 0), (0, 0, 1), R, 0.0, L, info), [_circle(0.0, R), _circle(L, R)]),
                     _face(_end(0.0, lambda p: r_end(0.0, p), d / 2, n, up=False),
                           _plane((R, 0, 0.0), (0, 0, -1))),
                     _face(_end(L, lambda p: r_end(L, p), d / 2, n, up=True),
@@ -679,7 +700,8 @@ def coil_mesh(pieces, coil_r: float, wire_d: float, seg: int = 24, ring: int = 8
                       "z0": float(z0), "p": float(pitch), "H": float(height), "R": float(coil_r),
                       "w": float(R), "h": int(sgn), "tri": [0, int(len(tri))]}]
         # the measure tool's view of it: the cylinder on the spring's OD, over the piece
-        out.append(_face(m, _cyl((0, 0, z0 - R), (0, 0, 1), coil_r + R, 0.0, height + 2 * R)))
+        out.append(_face(m, _cyl((0, 0, z0 - R), (0, 0, 1), coil_r + R, 0.0, height + 2 * R,
+                                 _coil_info(coil_r, R, pitch, height, sgn))))
     return _merge(out)
 
 
