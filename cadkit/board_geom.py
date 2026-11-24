@@ -193,6 +193,11 @@ THT_LEGS = {
 #   nut     (head A/F, head thickness, shank d, shank length)
 #   clamp   the panel thickness the nut clamps
 #   boss_d / cbore_d   the pad behind the panel, and the face counterbore for the nut
+# A through-mount part may also carry:
+#   past_edge  "stadium": what stands PAST the board's outline is drawn as the shell's
+#           rounded section (body width x height, ends of radius height / 2), not the fab
+#           box -- the box's square corners would collide with a panel's stadium opening
+#           that the real shell clears
 PANEL = {
     # Neutrik NMJ4HCD2, off Neutrik's STEP and drawing ST-NMJ4HCD2: bore axis 8.14 above
     # the PCB; a 3.0 mm O11.4 stub in front of the shoulder, which F.Fab draws as the last
@@ -212,7 +217,7 @@ PANEL = {
     # 12.35 x 6.50), so a plug can follow a receptacle that sits back from the face.
     "USB_C_Receptacle_HRO_TYPE-C-31-M-12": dict(
         mouth=(0.0, 1.0), axis_h=1.65, nose=None,
-        opening=("stadium", 12.8, 7.0), mount="through"),
+        opening=("stadium", 12.8, 7.0), mount="through", past_edge="stadium"),
     # Kycon KPJX-4S-S, drawing rev A17: body 16.0 x 13.4 x 14.4 (15.0 over the top boss),
     # axis 7.1 above the PCB, and a O12.9 x 4.0 nose in front of the body. Mouth = +Y.
     "Kycon_KPJX-4S-S": dict(
@@ -595,6 +600,32 @@ class Boards:
         return ax, lo, hi, o, (hi - o > o - lo)
 
 
+    def _stadium_past_edge(self, board, g, f, box, z0, h):
+        """(x0, x1, y0, y1, nose): the fab box cut back to the board's outline along the
+        part's mouth, and what stood past it as the shell's rounded section (None if the
+        body does not pass the outline). The geom is centred on the outline's box."""
+        x0, x1, y0, y1 = box
+        d = self.mouth(board, f["ref"])["dir"]
+        w, l = g["outline_mm"][0], g["outline_mm"][1]
+        along_x = abs(d[0]) > 0.5
+        sg = 1.0 if (d[0] if along_x else d[1]) > 0 else -1.0
+        edge = sg * (w if along_x else l) / 2.0
+        lo, hi = (x0, x1) if along_x else (y0, y1)
+        a, b = (edge, hi) if sg > 0 else (lo, edge)
+        if b - a < 1e-6:
+            return x0, x1, y0, y1, None
+        across = (y1 - y0) if along_x else (x1 - x0)
+        zc = z0 + h / 2.0
+        if along_x:
+            nose = (cq.Workplane("YZ").slot2D(across, min(h, across)).extrude(b - a)
+                    .translate((a, (y0 + y1) / 2.0, zc)))
+            x0, x1 = (x0, edge) if sg > 0 else (edge, x1)
+        else:
+            nose = (cq.Workplane("XZ").slot2D(across, min(h, across)).extrude(b - a)
+                    .translate(((x0 + x1) / 2.0, b, zc)))
+            y0, y1 = (y0, edge) if sg > 0 else (edge, y1)
+        return x0, x1, y0, y1, nose
+
     def _side_run(self, name):
         """The mated plug's run past the mouth for footprint `name`, by the LONGEST
         registered prefix (a footprint-specific key beats the series'), or None."""
@@ -917,6 +948,10 @@ class Boards:
                     x1 = sg * u_sh
                 else:
                     x0 = sg * u_sh
+            if spec and spec.get("past_edge") == "stadium":
+                x0, x1, y0, y1, nose = self._stadium_past_edge(board, g, f, (x0, x1, y0, y1), z0, h)
+                if nose is not None:
+                    out = out.union(nose)
             out = out.union(_box(x1 - x0, y1 - y0, h, x=(x0 + x1) / 2.0,
                                  y=(y0 + y1) / 2.0, z=z0 + h / 2.0))
             if spec and spec["nose"]:

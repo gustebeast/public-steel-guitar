@@ -7,7 +7,7 @@ belt-drive instrument is at the git tag v1-instrument. The main modules:
   helpers         — geometric helpers (cyl, cyl_y, box_at, heal, ...)
   components      — purchased-part DUMMIES for the assembly; never exported as prints
   direct_bench    — the instrument: body, endplates, drives, and its own gate rules
-  keyhead_v2, nut_block_v2, motor_coupler — the keyhead and the drive's printed parts
+  nut_block_v2, motor_coupler — the wood bench's nut block and the drive's printed parts (the nut end: src/test/nut_endplate_study)
   deck_v2, deck_v2_region, deck_layout, fret_light, ui_panel, optical_pickup — the deck,
                     its lights, the UI station and the optical pickup board
   build           — composes everything into a colour-coded assembly, writes

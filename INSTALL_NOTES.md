@@ -532,7 +532,28 @@ dtparam=spi=on                      # SPI0, fret lights: GPIO10, GPIO11
 dtoverlay=spi1-1cs                  # SPI1, display: GPIO20, GPIO21, CS on GPIO18
 dtoverlay=spi5-1cs                  # SPI5, foot lights: GPIO14, GPIO15
 dtoverlay=dwc2,dr_mode=peripheral   # the USB-C port is the gadget port
+dtparam=ant2                        # CM5: Wi-Fi on the EXTERNAL antenna (U.FL), see below
 ```
+
+**The CM5's Wi-Fi uses the external antenna (2026-11-23).** `dtparam=ant2` is read once at boot
+and cannot change while running. Without it, the CM5 uses its on-module PCB antenna (`ant1`),
+and that antenna is boxed in here: it faces the drive's steel leadscrews and stainless
+springs, the steel wall bar is 9.5 mm behind it, and it sits over the brain board. That
+fails all three of Raspberry Pi's placement rules (CM5 datasheet RP-008180-DS-8, 4.1.2).
+The antenna is the Raspberry Pi Antenna Kit **SC0480**, certified for the CM5; a different
+antenna would need the instrument's own radio certification.
+
+1. Plug the cable's U.FL onto the CM5's U.FL socket (the module's corner beside the RF can)
+   **before** the brain board goes in. A U.FL is good for only a few dozen matings, so
+   plug it once and leave it.
+2. NOTHING POKES OUT (user, 2026-11-23): the antenna lives inside, on the body floor in the -Y
+   bay beside motor 8, lying along -X at (y -74, z -100) -- clear of every steel part by 15 mm and
+   of board copper by 67, its way out the plastic floor and the -Y wall's band below the wall bar.
+   Put the toothed washer on the cable's SMA and pass it -X through the D-hole in the floor's
+   antenna boss (x ~ -236), from the +X side. The flat on the thread stops it turning.
+3. On the boss's -X side: the flat washer, then the hex nut, snug. Screw the antenna's RP-SMA on
+   STRAIGHT (not turned 90 deg) so it lies along -X, and press its tip into the floor's saddle clip.
+   Dress the cable's slack down the CM5 side of the brain board.
 
 **Must NOT appear:** `enable_uart=1`, `dtoverlay=disable-bt`, `dtoverlay=miniuart-bt`
 (all three put a UART on GPIO14 / 15, the foot lights' pins), `dtoverlay=spi1-2cs` or
@@ -2531,3 +2552,172 @@ from 6 mm cold-rolled sheet (`steel/wall_bar.step`), not 1/4" A-36 bar from Spee
   as with the A-36.
 - **Why:** user, 2026-11-20. JLCCNC costs about $29 more per instrument than Speedy, mostly
   express shipping on 51 kg of steel. One order and less shop time were judged worth it.
+
+## Nut end: the flex-clamp endplate replaces the keyhead (2026-11-22)
+
+The -X end of the instrument is now the nut flex-clamp endplate (`src/test/nut_endplate_study.py`)
+round its steel clamp (`src/test/nut_flex_study.py`). The v2 keyhead is retired and its code
+removed (git history has it); the wood bench keeps its v2 nut block.
+
+- **The chassis is 33 mm longer at -X.** The endplate's bed face sits 28.3 further -X than the
+  keyhead's, and its thin band is only the 8 mm the load needs. The body, both wall bars
+  (647.1 long, was 614.1), the top panels and the -X leg adapters all run to the new joint
+  (x -657.3). Reprint and reorder them.
+- **String channels.** Across the string area (y -45.7 to +45.0) the endplate's walls between
+  the slots stand up to 0.2 under the datum's ground underside, 4.96 above the top panels.
+  String 1 (.012 = 0.30) cannot slip over a wall into the next slot when you thread it.
+  Outside the string area the endplate stays flush with the top panels.
+- **Fit the datum straight down** onto its standoffs. If the walls touch its underside (print
+  error), let the tie screws pull it down. Do not shim it up: the datum's height sets every
+  string's clamp.
+- **Bar screws at -X:** M3 x 16, head and washer flush in the bed face, as at +X.
+
+### Nut end: datum 12 mm, four tightening passes (2026-11-22)
+- **Datum bar 32 x 12** (was 19). It is sized by the bar now: at the strongest clamp the
+  middle strings sit at most 51 um high at fret 1, and a bar needs 1.34 N extra to press all ten
+  level -- under a bar's own ~2 N weight (study check `bar_level_force`, limit 1.5 N).
+- **Tie screws: M4 x 20 button, top and bottom** (were x 25): 10.4 into the standoff from the
+  datum, 7.8 from the floor.
+- **Clamp the strings in FOUR passes, 1 -> 10, each key turned until it stops (flat).** Every
+  string tightened bends both bars and unloads its neighbours; the weakest clamp is 462 N
+  after three passes and 524 N after four (slip 447). The fourth pass barely turns the keys.
+- **Floor bar 14** (was 16; the study now bends it at its real 37.3 width, not 20): 95 MPa,
+  same four passes; 12 would leave 498 N, 10 never settles. A bent-sheet channel floor was
+  rejected: the shoes load its web mid-span between the flanges (4 mm 573 MPa, 6 mm 239 MPa).
+
+### Keyplate: keyhole v4, three laser sheets (2026-11-22)
+- **Stack, +X to -X: the 3 mm keyhole plate (load sheet), then TWO 2 mm pocket sheets** (one
+  outline, `steel/key_seat_plate.step` x 20), on the yoke. Same 7 mm, outline, ears and M3 x 40s.
+  The old 4 mm seat sheet is gone.
+- **The ball seats HOLE UP only**, in a 4.25 x 3.2 pocket round the axis, bearing on the load
+  sheet. A sideways ball falls through the 3.2 slit; it cannot hang half-seated.
+- **To string:** drop the ball through the Ø5.4 entry (any roll), let it fall behind the plate,
+  pull the string: it rolls hole up into the pocket. If it comes back out the entry, it was not
+  hole up -- drop it again.
+- **The slit is 3.2** (was 2.3): it takes a .080 and its swell at the ball.
+- The yoke's ball pocket behind the plate is now 4.6 deep and 5.4 wide (a ball in any roll).
+
+### Shared guide rods, one collar part (2026-11-22)
+- **13 rods, not 20.** Each collar grips its own rod (a jaw: the tab and slot, trimmed back) and
+  HOOKS the rod of the string three over (-Y, same row). Strings 8-10 hook three NEW rods, 69.4
+  long, seated in the endplate only (cut them from the rod offcut).
+- **All ten collars are ONE part** (same print, any position). Every screw axis now sits where
+  the middle of the .010-.080 envelope leaves its bend (`direct_bench.DRIVE_GAUGE`), not where the
+  demo set's string does, so every shared pair sits exactly 28.5 apart at one height.
+- **Clearance between collars sharing a rod: 0.9-1.0** (each jaw stops 0.6 short of the split
+  line). The own jaw has 0.13 play a side on its rod (0.27 at the far end of the radial float).
+- **Install:** the collars slide past each other on a shared rod; no order to keep. Fit all ten,
+  then push each rod home from -X as before (new rods: from -X into the endplate seat).
+
+### Nut end: -X face flush, tail channels open (2026-11-22)
+- **The endplate's -X face is flush with the clamp screw heads when fully installed** (stack
+  flat). A loose head stands up to 0.3 proud: expected. 2.7 shorter than before.
+- **The tail channels run out through the -X face** (no 1.6 end wall): push each string's tail
+  straight through.
+
+### Nut end: standoffs clocked flat to +X (2026-11-23)
+- **Each tie standoff sits with a FLAT facing +X** (corners on +-Y). The string load bears on the
+  pocket's flat face (about 4 x 36 mm a standoff, under 2.5 MPa at 10 x 147 N), not on two
+  corner lines that had to sink ~0.3 mm into the plastic first.
+- **Install:** turn each hex until a flat faces the +X end before dropping it in; it only goes in
+  that way (or at 60 deg steps, which are the same).
+- The standoff pair is 0.57 further out in Y (the pocket's corner now points that way); the
+  floor and datum hole positions move with it.
+- In the print (+X up) the flat is a short ~4.2 mm bridge; any sag squashes flat at first load.
+
+### Stack ears nearly opposite: 50 / 232 deg (2026-11-23)
+- **The two long M3 stack screws now sit 178 deg apart** (50 and 232 deg, was 160 / 275), on
+  the keyhole plate, yoke and collar alike. The stack clamps near square. 232, not 230: at full
+  slack the 230 head ran into the +X endplate beside the shared rod's seat. Turning both ears met
+  the next string's stack; no pair nearer 180 than ~30 deg kept 1.6 walls AND cleared the
+  neighbours, and the user chose 2 deg off with the thin walls below.
+- **+X endplate head holes sized to the stack's real float** (0.06 in / 0.4 out along its rod's
+  radius: the hook on the shared rod stops it inward), not the old +-0.4. Where a head's hole is
+  within two beads of a rod's seat (1.26 beside the hooked rod's) the two are cut as ONE opening
+  over the hole's depth; the rod is still gripped deeper in its seat. Head to head: 1.83.
+- **Collar:** the ear's washer pocket sits 1.52 from the hook's bore (kept, user 2026-11-23).
+- **Collar:** the insert's bore starts at the ear's end (it ran 1 past and nicked the sleeve).
+- **The pin (M3 x 10) moves to the flange's 135 deg hole** (was 45, now beside an ear).
+- **Steel keyhole plates:** their two ear holes move. Nothing was bought (user, 2026-11-23: no
+  metal since the v1 inserts), so the plates are simply quoted from the new drawing.
+- Adjacent strings' stacks stay 1.18 apart (collars) and 1.41 (yokes, plates).
+
+### Print settings: endplates (2026-11-23)
+- **+X endplate: 4 walls (3.2 mm on the 0.8 nozzle), top AND bottom shells 3.2 mm (8 layers at
+  0.4), 15 % infill.** 2 walls is not enough. The FEA put 3.2 mm of solid on EVERY face; the slicer
+  only gives that with all three set. The endplate prints +X -> -X, so the strings pull each axle
+  into its bore's roof, which the slicer lays as BOTTOM skin over the hole, and the bending
+  stress peaks in the two end faces (first / last layers): default shells (~1.2-2 mm) leave the
+  axles bearing on thin skin over sparse infill, where creep keeps going.
+  FEA at 147 N on every string (tools/endplate_fea.py, FEA_SHELL): solid 0.44 mm deflection /
+  18 MPa (99.9 % of the part); 4 walls + 15 % 0.59 mm / 22.5 MPa; 2 walls + 15 % 1.01 mm / 32 MPa.
+- **Other parts:** collars and anchor plugs (53 N spring load, always on) also 4 walls; they are
+  thin enough to print nearly solid. Default (2 walls) elsewhere, including the -X nut endplate:
+  its string load stays in the steel clamp loop and the standoff flats bear < 2.5 MPa on it.
+  Re-snug the wall-bar screws once after the first few weeks (preload settles in the plastic).
+- The sharp notch where the J5 opening meets the 1.2 skin in front of the brain board's edge is
+  the one peak that grows with the mesh (a singular corner): round it before it is relied on.
+
+### Assist springs: one force, 53 N, every string (2026-11-23)
+- **Every string's spring is set to 53 N at open pitch** (was 53-68 N by position), so any set's
+  strings, at their intended tension, work in any slot.
+- **All ten anchor plugs are now the same part** (one neck length). The spring piece is unchanged
+  (42 coils of 9665K36).
+- **Leadscrews: one cut length per motor station**, not per string: 185.8 (strings 2, 8),
+  263.8 (1, 3, 7, 9), 340.8 (4, 6, 10), 417.8 (5). Every tip sets to the same x.
+- Margin: the lightest common wound strings (~19 lbf open, e.g. E9 light D3 .028w) stay 7.5 N
+  over the spring even lowered a full 3 semitones.
+
+### Keyplate: 3 + 3 mm, one pocket sheet (2026-11-23)
+- **The stack is the 3 mm keyhole plate plus ONE 3 mm pocket sheet** (`steel/key_seat_plate.step`,
+  now 3 mm x 10), 6 mm in all (was 3 + 2 + 2). JLCCNC, 304, 10 instruments: $64 against $90.
+- The yoke's spacer is 1 mm longer, so the stack's length, the travel and the M3 x 40s are unchanged.
+- A seated ball (hole up) now stands about 1 mm behind the stack, into the yoke's pocket. Seating is
+  unchanged: a misrolled ball still stops outside the pocket, a sideways one still drops through.
+- **Setting each leadscrew: thread it in until the tip touches the keyplate's back face (spring
+  closed, no string), then BACK IT OFF HALF A TURN** (1 mm on Tr8 x 2). That keeps 0.94 between the
+  tip and a seated ball at full travel. Cut lengths are as listed above.
+
+### Nut endplate: top raised to the thick band's full width (2026-11-23)
+- Over the thick band (the +X block) the top now rises to just under the datum across the band's
+  full width (+-46.26, read from the steel + wall, not typed). It had stopped at the string area
+  (-45.7..45.0) and left a 0.565 / 1.26 shelf at deck height on each side.
+
+### Shared-rod collars: even split (2026-11-23)
+- **The collar's own jaw and its neighbour's hook now split their shared guide rod evenly**: the
+  split line through the rod bisects the directions to the two collars, so each grips the half
+  facing it (was square to the owner's radius, a full half on one side, a thin hook on the other).
+  Every collar is still one identical part.
+
+### +X endplate: flush brain-board panel (2026-11-23)
+- **The brain board's ports look out through a 1.6 mm cover; the board itself is hidden.** Openings
+  and the J5 counterbore are read from src/brain_board_pocket.json (bronner's export), not typed.
+- **USB-C:** two 9.4 x 3.7 stadium openings; the shells stand 1.5 past the board edge, 0.43 behind
+  the outer face.
+- **J5 (1/4" jack):** its nut sits in a 15.6 mm counterbore in the face, clamping a 4 mm boss.
+  **Tool: a thin-wall 11 mm socket** reaches the nut.
+
+### Jack nut socket: a printed tool, turned with the hex key (2026-11-23)
+- **The 1/4" jack's panel nut is turned with a small printed socket that ships with the instrument**
+  (tools/jack_nut_socket.step, src.jack_socket): an 11.4 AF hex in a Ø16.4 body, 10.7 long. Push the
+  stowed 2.5 hex key through its cross hole and use it as a T-handle. No 11 mm metal socket needed.
+- **The endplate's counterbore grows to 16.96 (was 15.6) and the boss behind it to 20.16 (was
+  18.8)**, so the socket fits with 1.6 of plastic round it. Both are derived from the socket in
+  src.jack_socket and passed to the board's panel spec; the +X endplate follows once the brain
+  board's pocket export is regenerated.
+- Hand-tight is the goal: the socket grips the nut's 2.05 head.
+
+### Wi-Fi antenna: inside the body, on a floor tab (2026-11-23)
+- **The CM5's external Wi-Fi antenna (Raspberry Pi Antenna Kit SC0480) mounts INSIDE the body.**
+  Nothing sticks out of the instrument. It sits on the floor of the -Y bay beside motor 8, the
+  dipole lying along -X (src/antenna.py holds the placement; the build's ANTENNA gate keeps it
+  15 mm from metal and 10 mm from board copper).
+- **Bulkhead:** push the SMA bulkhead through the D-hole in the floor tab from its +X side, flat
+  up, toothed washer between the hex and the tab. On the -X side: the nut, finger-tight plus a
+  little. The flat keys the thread, so no spanner is needed on the hex.
+- **Dipole:** screw it onto the bulkhead, then press it down into the saddle clip near its tip
+  (it snaps past a 7.2 mouth).
+- **Cable:** the 205 mm U.FL lead runs from the bulkhead's +X end to the CM5's U.FL connector on
+  the brain board, about 105 mm straight. Leave it loose and clear of the motors.
+- The D-hole (Ø6.5, flat 6.0 across) prints sideways with its flat as the ceiling, drawn at the
+  kit's panel sizes. **Unverified: print a coupon to check the thread passes and the flat keys it.**

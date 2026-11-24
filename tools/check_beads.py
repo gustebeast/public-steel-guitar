@@ -2,7 +2,7 @@
 
   py -3.12 -m tools.check_beads             # report off-grid constants
   py -3.12 -m tools.check_beads --all       # also list what is exempt, and why
-  py -3.12 -m tools.check_beads --only direct_bench,keyhead_v2
+  py -3.12 -m tools.check_beads --only direct_bench,deck_v2
   py -3.12 tools/check_beads.py            # the same, run as a script
 
 WHY: this build runs a 0.8 mm nozzle. A wall of 1.75 mm is 2.19 beads -- the

@@ -377,12 +377,12 @@
       "what": "one 10-string pedal steel set"
     },
     "hookup_wire": {
-      "usd": 21.39,
+      "usd": 5.7,
       "verified": "m",
       "per_instrument": 1,
       "vendor": "McMaster-Carr",
-      "order": "3 x 8054T13 22 AWG 25 ft $3.91 + 3 x 8054T11 26 AWG 25 ft $3.22 = $21.39 per instrument",
-      "what": "Hook-up wire, two gauges (BOM.md, Hook-up wire: two gauges): six 25 ft spools per instrument, prices read 2026-10-20. 'm' because the 3/3 split of the six spools is assumed and the length was measured on the v1 harness (15.26 m over 115 runs, lever bus included) -- tools/wire_total.py left with v1, so the direct harness is not measured."
+      "order": "at 10 instruments: 4 spools each of black + red 22 AWG (8054T13, 25 ft, $3.91) and yellow + green 26 AWG (8054T11, 25 ft, $3.22) = $57.04, $5.70 an instrument",
+      "what": "Hook-up wire, two gauges, four colours (black GND / red 24 V in 22 AWG, yellow CAN_H or SCK / green CAN_L or SDT in 26 AWG). MEASURED 2026-11-23 on the direct instrument (tools/harness_runs.py, build #1137; elec/harness_runs.json): ten motor leads (connector J11-J20 to each SERVO42D's terminals, 139-359 mm cut) and the fret light lead (connector J4 to fret_led_key J1, 254 mm cut, 100 of it a service loop) -- 5.52 m of 22 AWG and 5.52 m of 26 AWG per instrument, 2.76 m per colour. Cut = taut x 1.15 + 25 mm a end. Not counted: the bus B leg harness (28 AWG, its own line) and connector J5's foot light (no foot light in the direct instrument). Priced at 10 instruments (27.6 m a colour = 4 x 25 ft spools a colour): 8 x 8054T13 22 AWG 25 ft $3.91 + 8 x 8054T11 26 AWG 25 ft $3.22 = $57.04 / 10 = $5.70 an instrument. 'm': McMaster's colour suffixes and prices are as read 2026-10-20 (McMaster cannot be read automatically; confirm at order)."
     }
   },
   "boards": {
@@ -5594,11 +5594,11 @@
       "per_instrument": 1,
       "what": "Newhaven NHD-2.7-12864WDW3-M, 2.7in 128x64 SSD1322 white OLED with a 20-way 1.0 mm FFC socket -- newhavendisplay.com $39.08 IN STOCK 2026-10-19 (DigiKey $39.08 and Mouser $44.66 both 0 in stock that day, restocking Nov 2026). Replaces the 2.42in SSD1309 line, $17 from memory, which was the display before 2026-09-25"
     },
-    "ui_ribbon_lead_16p_508mm": {
-      "usd": 13.96,
+    "ui_ribbon_lead_16p_254mm": {
+      "usd": 12.19,
       "verified": "v",
       "per_instrument": 1,
-      "what": "2026-11-23: $13.96 at 10 from samtec.com direct (was DigiKey $15.04 at 1). Samtec FFSD-08-D-20.00-01-N, 16-way 1.27 x 1.27 IDC socket-to-socket ribbon lead, 508 mm (20.00 in), gold, polarizing notch: the UI board <-> Pi cap ribbon -- DigiKey SAM9356-ND $15.04, 64 in stock, 2026-10-21. Replaces buying 500 mm of 0.635 ribbon and two loose 2x8 IDC sockets (~$2.20, never priced here) and pressing them on"
+      "what": "Samtec FFSD-08-D-10.00-01-N, 16-way 1.27 x 1.27 IDC socket-to-socket ribbon lead, 254 mm (10.00 in), gold, polarizing notch: the UI board's J2 to the brain board's J205 (there is no Pi cap any more). MEASURED 2026-11-23 (tools/harness_runs.py, build #1137): taut 170 mm, 211 mm with dress, so 10 in (8 in = 203 is short); the UI end's pose is INFERRED (J2 at the board's -X end, unflipped). samtec.com $12.19 at 10 ($13.13 at 1), 357 at distributors (DigiKey SAM9355-ND 150), read 2026-11-23. Was FFSD-08-D-20.00 (508 mm, $13.96) for the v1 Pi cap run."
     },
     "ffc_display_20p_50mm": {
       "usd": 0.0907,
@@ -5617,17 +5617,25 @@
       "per_instrument": 1,
       "what": "Raspberry Pi Compute Module 5, wireless, 2GB RAM, 16GB eMMC (CM5102016) -- on the brain board's DF40 pair (J201/J202). eMMC because the board has no SD socket (elec/brain.py); 2GB because the Pi 4 1GB was the plan for the same software. PiShop.us $97.50, in stock, page read 2026-11-23. Same day: CM5002016 (no wireless) $92.50, CM5104032 (4GB/32GB) $140.00; DigiKey SC1556 = CM5002000 (2GB Lite, no eMMC -- not fittable) $67.50 with a purchase limit. Replaces the Pi 4 1GB ($35), its 2x20 riser and the motor_ctrl USB lead."
     },
+    "antenna_kit_sc0480": {
+      "usd": 6.95,
+      "verified": "v",
+      "per_instrument": 1,
+      "vendor": "PiShop.us",
+      "sku": "Raspberry Pi SC0480 (PiShop SKU 1273-1)",
+      "what": "Raspberry Pi Antenna Kit SC0480 -- the CM5's EXTERNAL Wi-Fi antenna (lead + user, 2026-11-23: Wi-Fi is required, and the on-module PCB antenna fails all three of RP-008180-DS-8 4.1.2's placement rules here: it faces the drive's steel screws and stainless springs, the steel wall bar is 9.5 mm behind it, and it sits over the brain board). Certified for CM4/CM5 -- any other antenna needs the product's own certification. 205 mm U.FL to SMA-bulkhead cable + YH2400-5800-SMA-108 2 dBi 2.4/5 GHz RP-SMA swivel dipole (108.5 straight, 87.5 turned 90 deg); mounted INSIDE (user: nothing pokes out) on a body-floor boss in the -Y bay beside motor 8, the dipole straight along -X at (y -74, z -100); D-hole 6.5 with a flat at 6.0 (product brief RP-008179-DS-3, Figure 1). Selected by dtparam=ant2 in config.txt (INSTALL_NOTES.md, The Pi). PiShop.us $6.95, in stock, page read 2026-11-23; RP list price $5."
+    },
     "ribbon_brain_connector_30p": {
       "usd": 20.62,
       "verified": "v",
       "per_instrument": 1,
-      "what": "Samtec FFSD-15-D-24.00-01-N, 30-way 1.27 x 1.27 Tiger Eye IDC socket-to-socket lead, 24 in (610 mm): brain J240 (instrument x ~-85) to connector_board J1 (board centre x -572), ~490 mm straight, so 24 in is the shortest stock length with routing slack -- LENGTH ASSUMED, set it when the harness is drawn. samtec.com $20.62 at 10 ($22.22 at 1), 34 at distributors, read 2026-11-23."
+      "what": "Samtec FFSD-15-D-24.00-01-N, 30-way 1.27 x 1.27 Tiger Eye IDC socket-to-socket lead, 24 in (610 mm): brain J240 to connector_board J1. LENGTH MEASURED 2026-11-23 (tools/harness_runs.py on build #1137): taut run 491 mm, 579 mm with 15 % dress and the two sockets' turns, so 24 in is the shortest that covers it (20 in = 508 is short). samtec.com $20.62 at 10 ($22.22 at 1), 34 at distributors, read 2026-11-23."
     },
     "ribbon_brain_optical_20p": {
-      "usd": 13.11,
+      "usd": 12.05,
       "verified": "v",
       "per_instrument": 1,
-      "what": "Samtec FFSD-10-D-12.00-01-N, 20-way 1.27 x 1.27 Tiger Eye IDC lead, 12 in (305 mm): brain J4 to the optical board at the +X end -- LENGTH ASSUMED (the optical board's pose is not in the model yet). samtec.com $13.11 at 10 ($14.13 at 1), 96 ship tomorrow, read 2026-11-23."
+      "what": "Samtec FFSD-10-D-06.00-01-N, 20-way 1.27 x 1.27 Tiger Eye IDC lead, 6 in (152 mm): brain J4 to the optical board. MEASURED 2026-11-23 (tools/harness_runs.py, build #1137) to the model's optical stand-in on deck_optical: taut 68 mm + 16 through the deck piece, 93 mm with dress -- 4 in would cover it, 6 in is taken because the optical end is INFERRED (no 2x10 header on the optical geometry yet; re-run harness_runs when it has one). samtec.com $12.05 at 10 ($12.98 at 1), 15,230 at distributors (DigiKey SAM8224-ND 4,175), read 2026-11-23. Was FFSD-10-D-12.00 $13.11, length assumed."
     },
     "usbc_cable_100w_2m": {
       "usd": 16.16,

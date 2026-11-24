@@ -725,14 +725,6 @@ def height_insert(i: int) -> cq.Workplane:
     return seated_insert(M4, (HS_MOUTH_X[hs_row(i)], y, z), (1.0, 0.0, 0.0))
 
 
-def all_height_screw_negatives() -> cq.Workplane:
-    out = None
-    for i in range(D.N_STRINGS):
-        for k in height_screw_negatives(i):
-            out = k if out is None else out.union(k)
-    return out
-
-
 # ── THE CUTS ───────────────────────────────────────────────────────────────────
 Z_SKY = NUT_TOP + 1.0
 
@@ -806,14 +798,6 @@ def plier_window() -> cq.Workplane:
     return win.cut(ramp)
 
 
-def all_side_screw_negatives() -> cq.Workplane:
-    out = None
-    for i in range(D.N_STRINGS):
-        for k in side_screw_negatives(i):
-            out = k if out is None else out.union(k)
-    return out
-
-
 # ── THE ROD AND THE BLOCK'S Y EXTENT ──────────────────────────────────────────────
 # The rod is whole in the block, flush with its -Y face, to ROD_END_W of wall at +Y, its stop. The
 # wall has a hole on its axis for the 2.5 key, pushed in from +Y to send the rod back out.
@@ -877,4 +861,4 @@ def rod_bore() -> cq.Workplane:
                       axis_dir=(0.0, 1.0, 0.0), print_up=PRINT_UP))
 
 
-# (no module-level build: keyhead_v2 builds it, kept)
+# (no module-level build: the wood bench builds it, kept)

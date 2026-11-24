@@ -111,13 +111,17 @@ PARTS = {
     lambda: heal(_m("guide_rod_saw_jig").body()),
     "tools/guide_rod_saw_jig.step",
     "TOOL — hacksaw jig for cutting each 2 ft length of 3/16 in stainless (McMaster 89535K84) into three guide rods of direct_bench.ROD_L (202.5), with one Quick-Grip and no vise: the whole jig sits on the table; the stock rests in a short diamond-tunnel guide -X of a 1.3 saw slot (McMaster 6927A16), and the piece lies in a supported 90 deg V trough out to an end stop at ROD_L from the slot's +X face, clamped next to the slot through the LEADSCREW JIG'S CAP (saw_jig_cap: no cap of its own). 217 x 41. PETG, printed as drawn (table face on the bed)"),
+    "jack_nut_socket": (
+    lambda: heal(_m("jack_socket").body()),
+    "tools/jack_nut_socket.step",
+    "TOOL — ships with the instrument: turns the 1/4 in jack's panel nut (11 AF, sunk in the +X endplate's counterbore) with the stowed 2.5 hex key pushed through its cross hole as a T-handle. An 11.4 AF hex socket in a Ø16.4 body (1.6 at the hex's corners), 10.7 long. PETG-GF on the 0.8, printed on its closed end, the hex up (src.jack_socket)"),
     "spring_saw_jig": (
     lambda: heal(_m("spring_saw_jig").body()),
     "tools/spring_saw_jig.step",
     "TOOL — hacksaw jig for cutting each 20 in length of the nut spring stock (McMaster 9665K36) into 42-coil pieces (direct_bench.SPRING_COILS, 97.0) with one Quick-Grip and no vise or screws: one straight cut square to the axis parts the close-wound spring along one turn, its flat end butting the stop for the next piece. The guide rod jig's sibling: the stock rests in a diamond-tunnel guide -X of a 1.3 saw slot (McMaster 6927A16), the piece in a supported 90 deg V trough out to an end stop at 97.0 from the slot's +X face, clamped next to the slot through the LEADSCREW JIG'S CAP (saw_jig_cap, riding the spring on its notch's edges). PETG-GF, printed as drawn (table face on the bed)"),
-    "key_seat_plate": (lambda: _m("direct_bench").key_seat_plate(), "steel/key_seat_plate.step", "LASER-CUT 304 STAINLESS, 4 mm, x10 (JLCCNC, no finish): under the keyhole plate, on the yoke -- the same outline, hole, slit and screw holes, and a Ø4.3 hole round the slit's top that the ball sinks right into under tension (its whole 3 mm length and 1 over), so it cannot tip or slide back to its hole. Not printed"),
+    "key_seat_plate": (lambda: _m("direct_bench").key_seat_plate(), "steel/key_seat_plate.step", "LASER-CUT 304 STAINLESS, 3 mm, x10 (JLCCNC, no finish): keyhole v4's POCKET sheet, ONE per string under the 3 mm keyhole plate, on the yoke -- the outline and ear holes, the 3.2 slit, the Ø5.4 entry, and a 4.25 x 3.2 rectangle round the axis that only a hole-up ball fits. Not printed"),
     "wall_bar_blank": (lambda: _m("direct_bench").wall_bar_blank(), "steel/wall_bar.step", "LASER-CUT COLD-ROLLED STEEL, 6 mm, x2 (JLCCNC, no finish): the chassis wall bar blank, 614 x 88.9, with the anchor's M4 tap-drill holes (Ø3.3) cut through -- tap them M4. The two M3 holes in EACH END we drill and tap ourselves (drill jig), then zinc spray. Not printed"),
-    "keyhole_plate": (lambda: _m("direct_bench").keyhole_plate(layer="plate"), "steel/keyhole_plate.step", "LASER-CUT 304 STAINLESS, 3 mm, x10 (JLCCNC, no finish): the direct-drive yoke's roof, over the 4 mm key_seat_plate (3 + 4 = 7; the ball's seat is the lower sheet, 4 deep). The ball pulls on this one. The string's ball end bears on it; two EARS past the nut's flange, each with a Ø3.4 CLEAR hole (no tapping): the stack's M3 x 40s go in from +X, heads on this plate, through the yoke's ears beside the flange into inserts used as nuts in the collar's ears. Not printed"),
+    "keyhole_plate": (lambda: _m("direct_bench").key_sheet(0), "steel/keyhole_plate.step", "LASER-CUT 304 STAINLESS, 3 mm, x10 (JLCCNC, no finish): the direct-drive yoke's roof, over the 3 mm key_seat_plate (3 + 3 = 6; keyhole v4: the ball sits hole up in its pocket). The ball pulls on this one. The string's ball end bears on it; two EARS past the nut's flange, each with a Ø3.4 CLEAR hole (no tapping): the stack's M3 x 40s go in from +X, heads on this plate, through the yoke's ears beside the flange into inserts used as nuts in the collar's ears. Not printed"),
 }
 # ONE PRINT, TWO FILAMENTS, ONE FILE (user, 2026-11-03). A part named here is a body of
 # the part it maps to: the two share a STEP, each its own named product, so Bambu loads
@@ -547,6 +551,11 @@ _TPU_BLACK = (0.03, 0.03, 0.03)                  # ALL TPU parts render black (u
 _TPU_BASES = tuple(sorted((k for k, v in PARTS.items() if v[1].startswith("tpu/")), key=len, reverse=True))
 
 
+class NoColour(KeyError):
+    """A part no colour table knows (_color_for). There is no default colour (user,
+    2026-11-14), so the web view cannot be drawn: the build is RED (_web_view)."""
+
+
 def _color_for(name):
     # STRIP EVERY TRAILING INDEX GROUP, not just the last one -- the same lesson
     # tools.check_overlaps.base() records, and this resolver had not learned it. A part
@@ -566,7 +575,7 @@ def _color_for(name):
     # ⚠ NO DEFAULT COLOUR (user, 2026-11-14). A name nothing here knows used to come out
     # _DEFAULT_COLOR, white -- a new board read as a white-mask PCB and nothing said so. It
     # fails the build instead: add the part to _COLORS (or its module's own table).
-    raise KeyError("build: no colour for part %r (base %r) -- add it to src/build.py _COLORS "
+    raise NoColour("build: no colour for part %r (base %r) -- add it to src/build.py _COLORS "
                    "or its module's colour table; there is no default" % (name, base))
 
 
@@ -582,7 +591,7 @@ def _export_assembly(publish=True, gate=True, gate_full=True):
     with _stage("shared cache for the scratch views"):
         from cadkit.scratch import publish_cache
         publish_cache(comps, OUT, build=build_n)
-    rc = _web_view(comps, build_n, publish)
+    rc = web_rc = _web_view(comps, build_n, publish)
     # LAST: the gate spawns a worker pool, so run it once the viewer is refreshed — a
     # gate hiccup can never cost the build.
     if gate:
@@ -591,9 +600,12 @@ def _export_assembly(publish=True, gate=True, gate_full=True):
                           ("gate: sweep", lambda: _report_sweep(comps)),
                           ("gate: drive travel", lambda: _report_drive_travel(comps)),
                           ("gate: world pose", lambda: _report_world_pose(comps)),
+                          ("gate: antenna", lambda: _report_antenna(comps)),
                           ("gate: dead code", _report_dead)):
             with _stage(label):
                 rc |= fn()
+    # the web view's result BESIDE the gates' (it ran first, and its RED scrolled away)
+    print(f"WEB VIEW: {'green' if web_rc == 0 else 'RED -- see the web view line above'}", flush=True)
     _report_stages()
     return rc
 
@@ -678,6 +690,22 @@ def _report_drive_travel(comps) -> int:
     return 1 if n else 0
 
 
+def _report_antenna(comps) -> int:
+    """THE CM5's ANTENNA KEEPS ITS MARGINS (lead, 2026-11-23): the SC0480 dipole lives inside, on
+    the body floor (src/antenna.py), >= 15 from metal and >= 10 from board copper. A motor or a
+    wall bar moved toward it fails the build here instead of quietly detuning the Wi-Fi. Exact
+    distances to the few parts within reach: about a second."""
+    try:
+        from tools.check_antenna import gate
+        n = gate([(name, wp.val() if hasattr(wp, "val") else wp) for name, wp in comps])
+    except Exception as e:               # noqa: BLE001 -- never let a gate eat the geometry
+        print(f"antenna gate: SKIPPED ({type(e).__name__}: {e})", flush=True)
+        return 0
+    print(f"ANTENNA GATE: {'green' if n == 0 else f'RED -- {n} margin(s) broken (tools/check_antenna.py --search)'}",
+          flush=True)
+    return 1 if n else 0
+
+
 def _report_dead() -> int:
     """Source drift, not geometry: module-level definitions nothing in the repo names
     any more. REPORT ONLY -- it never fails the build. Retired parts leave their
@@ -707,8 +735,26 @@ def _web_view(comps, build_n, publish=True):
     and it is neither shown nor published: the build is RED (returns 1), because a page
     of green boxes looks like a finished build to everyone but the person who knows the
     boards. The push itself is a no-op off the main branch (so agent worktrees don't
-    publish) — see tools/publish_preview.py. Returns the build's exit code."""
+    publish) — see tools/publish_preview.py. Returns the build's exit code.
+
+    A PART WITH NO COLOUR IS RED TOO (lead, 2026-11-23). _color_for raises on purpose (no
+    default colour), and the catch-all below used to turn that into one quiet "web view:
+    skipped" line: the brain and connector boards' new parts went uncoloured for several
+    merges (3729ac6f). Every component's colour is looked up FIRST, so all the missing ones
+    are named at once and nothing is written. What stays tolerated is the page's own
+    trouble: no viewer running, offline, not on main."""
     from cadkit.web import BoardsSkipped
+    missing = []
+    for name, _wp in comps:
+        try:
+            _color_for(name)
+        except NoColour:
+            missing.append(name)
+    if missing:
+        bases = sorted({re.sub(r"(_\d+)+$", "", n) for n in missing})
+        print(f"🔴 web view: {len(missing)} part(s) have NO COLOUR -- not shown, not published. "
+              f"Add to src/build.py _COLORS (or the module's own table): {', '.join(bases)}", flush=True)
+        return 1
     try:
         from cadkit.web import show_exported
         from tools.export_glb import build_glb
@@ -728,6 +774,9 @@ def _web_view(comps, build_n, publish=True):
                       "(tools.publish_preview said why, above)", flush=True)
     except BoardsSkipped as e:
         print(f"🔴 web view: BOARDS NOT DRAWN — not shown, not published. {e}", flush=True)
+        return 1
+    except NoColour as e:                # (one the check above did not see: still RED)
+        print(f"🔴 web view: {e}", flush=True)
         return 1
     except Exception as e:               # noqa: BLE001 — never let the viewer break a build
         print(f"web view: skipped ({type(e).__name__}: {e})", flush=True)
@@ -779,7 +828,7 @@ def _direct_parts():
     # THE BODY ADAPTERS (user, 2026-11-17), one a corner, each its own STEP
     from . import body_adapter_v2 as BA
     for k, ex, ey in BA.corners():
-        out[f"adapter_{k}"] = (partial(kept, BA.adapter, k), f"petg-gf/adapter_{k}.step",
+        out[f"adapter_{k}"] = (partial(kept, BA.adapter, k, tuple(sorted(BA.frame().items()))), f"petg-gf/adapter_{k}.step",
                                f"PETG-GF -- body adapter, {'+X' if ex > 0 else '-X'}/{'+Y' if ey > 0 else '-Y'} "
                                "corner: the v1 leg half (blind mortise, latch pocket) under two X "
                                "tenons that slide into the body and the endplate. src.body_adapter_v2")
