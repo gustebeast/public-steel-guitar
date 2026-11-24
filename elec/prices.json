@@ -5591,6 +5591,14 @@
       "per_instrument": 1,
       "what": "Raspberry Pi Compute Module 5, wireless, 2GB RAM, 16GB eMMC (CM5102016) -- on the brain board's DF40 pair (J201/J202). eMMC because the board has no SD socket (elec/brain.py); 2GB because the Pi 4 1GB was the plan for the same software. PiShop.us $97.50, in stock, page read 2026-11-23. Same day: CM5002016 (no wireless) $92.50, CM5104032 (4GB/32GB) $140.00; DigiKey SC1556 = CM5002000 (2GB Lite, no eMMC -- not fittable) $67.50 with a purchase limit. Replaces the Pi 4 1GB ($35), its 2x20 riser and the motor_ctrl USB lead."
     },
+    "antenna_kit_sc0480": {
+      "usd": 6.95,
+      "verified": "v",
+      "per_instrument": 1,
+      "vendor": "PiShop.us",
+      "sku": "Raspberry Pi SC0480 (PiShop SKU 1273-1)",
+      "what": "Raspberry Pi Antenna Kit SC0480 -- the CM5's EXTERNAL Wi-Fi antenna (lead + user, 2026-11-23: Wi-Fi is required, and the on-module PCB antenna fails all three of RP-008180-DS-8 4.1.2's placement rules here: it faces the drive's steel screws and stainless springs, the steel wall bar is 9.5 mm behind it, and it sits over the brain board). Certified for CM4/CM5 -- any other antenna needs the product's own certification. 205 mm U.FL to SMA-bulkhead cable + YH2400-5800-SMA-108 2 dBi 2.4/5 GHz RP-SMA swivel dipole (108.5 straight, 87.5 turned 90 deg); bulkhead in the +X endplate at (y -60, z -100), D-hole 6.5 with a flat at 6.0 (product brief RP-008179-DS-3, Figure 1). Selected by dtparam=ant2 in config.txt (INSTALL_NOTES.md, The Pi). PiShop.us $6.95, in stock, page read 2026-11-23; RP list price $5."
+    },
     "ribbon_brain_connector_30p": {
       "usd": 20.62,
       "verified": "v",

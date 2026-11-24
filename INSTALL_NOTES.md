@@ -532,7 +532,25 @@ dtparam=spi=on                      # SPI0, fret lights: GPIO10, GPIO11
 dtoverlay=spi1-1cs                  # SPI1, display: GPIO20, GPIO21, CS on GPIO18
 dtoverlay=spi5-1cs                  # SPI5, foot lights: GPIO14, GPIO15
 dtoverlay=dwc2,dr_mode=peripheral   # the USB-C port is the gadget port
+dtparam=ant2                        # CM5: Wi-Fi on the EXTERNAL antenna (U.FL), see below
 ```
+
+**The CM5's Wi-Fi uses the external antenna (2026-11-23).** `dtparam=ant2` is read once at boot
+and cannot change while running. Without it, the CM5 uses its on-module PCB antenna (`ant1`),
+and that antenna is boxed in here: it faces the drive's steel leadscrews and stainless
+springs, the steel wall bar is 9.5 mm behind it, and it sits over the brain board. That
+fails all three of Raspberry Pi's placement rules (CM5 datasheet RP-008180-DS-8, 4.1.2).
+The antenna is the Raspberry Pi Antenna Kit **SC0480**, certified for the CM5; a different
+antenna would need the instrument's own radio certification.
+
+1. Plug the cable's U.FL onto the CM5's U.FL socket (the module's corner beside the RF can)
+   **before** the brain board goes in. A U.FL is good for only a few dozen matings, so
+   plug it once and leave it.
+2. Put the toothed washer on the cable's SMA, then pass the SMA out through the +X
+   endplate's D-hole (y -60, z -100) from inside. The flat on the thread stops it turning,
+   so nothing holds the hex inside.
+3. Outside: the flat washer, then the hex nut, snug. Then screw on the antenna's RP-SMA and
+   swivel it up (or flat along the endplate for transport).
 
 **Must NOT appear:** `enable_uart=1`, `dtoverlay=disable-bt`, `dtoverlay=miniuart-bt`
 (all three put a UART on GPIO14 / 15, the foot lights' pins), `dtoverlay=spi1-2cs` or
