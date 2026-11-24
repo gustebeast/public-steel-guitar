@@ -2910,6 +2910,91 @@ def _bar_washers() -> list:
             for yc in bar_y() for zc in EP_SCREW_Z]
 
 
+# THE WI-FI ANTENNA'S MOUNT (lead, 2026-11-23; brenner's spot, src.antenna): the SC0480 kit's dipole
+# lies INSIDE the body (user: nothing sticks out), along -X from its base at src.antenna.BASE in the
+# floor's -Y bay beside motor 8; tools/check_antenna.py gates its 15 mm to metal and 10 to copper.
+# Everything here is READ from src.antenna, so the mount follows the dipole wherever it is put.
+#   TAB    a tombstone standing up off the floor, its -X face at BOSS_X, PANEL_T thick, carrying
+#          the kit's D-hole (Ø6.5, one flat 6.0 across -- the bulkhead's thread is keyed by it, so
+#          the nut tightens with no spanner on the hex) on the dipole's axis; round over the axis,
+#          ANT_TAB_R = the nut's corners + two beads. Two ribs on its +X side, at its edges (clear
+#          of the bulkhead's hex and its cable), to the floor. Hex + toothed washer +X, nut -X.
+#   CLIP   one saddle ANT_CLIP_FROM_TIP from the tip, so a stomp cannot wag the dipole: a Ø8 bore
+#          (ANT_CLIP_CLR over the body) open on top to ANT_SNAP_W, a 45 deg lead-in over that.
+# PRINTED with the body, -Z -> +Z: the D-hole is SIDEWAYS, its FLAT ON TOP (+Z) -- the flat is the
+# hole's ceiling, a 3.5 mm bridge, so it needs no teardrop; drawn at the brief's sizes (a sideways
+# hole prints near its drawn size: memory teardrop-hole-oversize) -- UNVERIFIED, a coupon decides.
+ANT_TAB_R = 9.24 / 2 + 2 * D.BEAD                 # the nut's corners (S8) + two beads round them
+ANT_RIB = (2 * D.BEAD, 6.0)                       # the tab's ribs: thick (y), out along +X at the floor
+ANT_CLIP_FROM_TIP = 26.5                          # the saddle's centre from the dipole's tip (lead: x ~ -320)
+ANT_CLIP_L = 8.0                                  # its length along the dipole
+ANT_CLIP_CLR = 0.2                                # its bore over the dipole's Ø8
+ANT_SNAP_W = 7.2                                  # its mouth: the Ø8 jacket squeezes through
+ANT_LEAD = 0.8                                    # the mouth's 45 deg lead-in
+
+
+def _antenna_mount() -> tuple:
+    """(solids, cuts) for the body: the antenna's tab with its ribs and the saddle clip; the
+    D-hole and the saddle's bore and mouth."""
+    from . import antenna as A
+    bx, by, bz = A.BASE
+    assert A.AXIS == (-1.0, 0.0, 0.0), "the mount is drawn for a dipole lying along -X"
+    c0 = body_box()["inner"][2][0]                  # the floor's top
+    x0, x1 = A.BOSS_X, A.BOSS_X + A.PANEL_T
+    r = ANT_TAB_R
+    tab = box_at(x1 - x0, 2 * r, bz - c0 + 0.01, x=(x0 + x1) / 2, y=by, z=(c0 + bz) / 2 - 0.005)
+    tab = tab.union(cyl_x(2 * r, x1 - x0, x0, y=by, z=bz))
+    rl, rt = ANT_RIB[1], ANT_RIB[0]
+    for sg in (-1, 1):                              # ribs: a right triangle (XZ) at each edge
+        yc = by + sg * (r - rt / 2)
+        rib = (cq.Workplane("XZ", origin=(0, yc + rt / 2, 0))
+               .polyline([(x1 - 0.01, c0 - 0.01), (x1 + rl, c0 - 0.01), (x1 - 0.01, bz)]).close()
+               .extrude(rt))
+        tab = tab.union(rib)
+    # the saddle clip
+    tip = bx - A.DIPOLE_L
+    cx = tip + ANT_CLIP_FROM_TIP
+    rb = A.DIPOLE_R + ANT_CLIP_CLR
+    zt = bz + math.sqrt(rb * rb - (ANT_SNAP_W / 2) ** 2)     # the mouth: the bore's chord = ANT_SNAP_W
+    hw = rb + D.MIN_WALL_2P
+    clip = box_at(ANT_CLIP_L, 2 * hw, zt + ANT_LEAD - c0 + 0.01, x=cx, y=by,
+                  z=(c0 + zt + ANT_LEAD) / 2 - 0.005)
+    # the hole: Ø D_HOLE_D with its flat on +Z, D_HOLE_FLAT across from the far side
+    hd = A.D_HOLE_D
+    flat = A.D_HOLE_FLAT - hd / 2                   # the flat's distance from the axis
+    hole = cyl_x(hd, x1 - x0 + 2, x0 - 1, y=by, z=bz).cut(
+        box_at(x1 - x0 + 4, hd + 1, hd, x=(x0 + x1) / 2, y=by, z=bz + flat + hd / 2))
+    bore = cyl_x(2 * rb, ANT_CLIP_L + 2, cx - ANT_CLIP_L / 2 - 1, y=by, z=bz)
+    mouth = (cq.Workplane("YZ", origin=(cx - ANT_CLIP_L / 2 - 1, 0, 0))
+             .polyline([(by - ANT_SNAP_W / 2, zt), (by + ANT_SNAP_W / 2, zt),
+                        (by + ANT_SNAP_W / 2 + ANT_LEAD + 0.01, zt + ANT_LEAD + 0.01),
+                        (by - ANT_SNAP_W / 2 - ANT_LEAD - 0.01, zt + ANT_LEAD + 0.01)]).close()
+             .extrude(ANT_CLIP_L + 2))
+    mouth = mouth.union(box_at(ANT_CLIP_L + 2, ANT_SNAP_W, zt - bz + 0.01, x=cx, y=by,
+                               z=(bz + zt) / 2))       # the bore's top half up to the mouth
+    return [tab, clip], [hole, bore, mouth]
+
+
+def _antenna_parts() -> list:
+    """The kit as drawn (names start 'antenna': tools/check_antenna.py skips them): the dipole
+    (its Ø10 base and Ø8 body, src.antenna.solids) and the bulkhead -- its D-keyed 1/4-36 thread
+    through the tab, the hex flange on a toothed washer +X of it, the nut -X, the cable's boot."""
+    from . import antenna as A
+    bx, by, bz = A.BASE
+    dip = cq.Workplane(obj=A.solids()[0]).union(cq.Workplane(obj=A.solids()[1]))
+    x0, x1 = A.BOSS_X, A.BOSS_X + A.PANEL_T
+    thr_flat = 5.85 - 6.35 / 2                     # the thread's flat (brief: 5.85 across)
+    hx0 = x1 + 0.5                                  # the toothed washer between the tab and the hex
+    thread = cyl_x(6.35, hx0 - bx, bx, y=by, z=bz).cut(
+        box_at(hx0 - bx + 2, 8, 6, x=(bx + hx0) / 2, y=by, z=bz + thr_flat + 3))
+
+    def hexp(xa, xb):
+        return cq.Workplane("YZ", origin=(xa, by, bz)).polygon(6, 9.24).extrude(xb - xa)
+    bulk = thread.union(hexp(hx0, hx0 + 2.0)).union(hexp(bx + 0.01, x0 - 0.01))   # hex flange, nut
+    bulk = bulk.union(cyl_x(8.0, bx + A.CONN_L - (hx0 + 2.0), hx0 + 2.0, y=by, z=bz))  # the boot
+    return [("antenna_dipole", dip), ("antenna_bulkhead", bulk)]
+
+
 def _body() -> cq.Workplane:
     """The walls and floor up to the endplate, all ending at x_j: one print, so one flat face the
     endplate bears on. The floor carries the strings' pull across the middle (2026-11-12:
@@ -2965,6 +3050,11 @@ def _body() -> cq.Workplane:
     bx, by, bt = CB_BOSS
     w = w.union(cyl_z(M4.boss_od, bt - c0 + 0.01, c0 - 0.01, x=bx, y=by))
     w = cut_pocket(M4, w, (bx, by, bt), (0, 0, -1), overshoot=0.5, print_up=(0, 0, 1))
+    adds, cuts = _antenna_mount()                   # the Wi-Fi antenna's tab and saddle (src.antenna)
+    for a in adds:
+        w = w.union(a)
+    for c in cuts:
+        w = w.cut(c)
     from . import deck_v2 as _DK                    # the walls stop at the deck panels' underside,
     w = w.cut(_DK.wall_cutter())                     # a groove down each for the panels' tongues
     # THE BODY ADAPTERS' SOCKETS (user, 2026-11-17: the legs' adapters slide in along X), and the
@@ -3374,6 +3464,7 @@ def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
     out = [(nm, _made(nm, w)) for nm, w in out] + list(ui_parts()[0])
     out.append(("ob_board", _made("ob_board", kept(_ob_board))))   # bronner's, a stand-in
     out.append(("body", _made("body", kept(_body))))   # opaque PETG-GF, as the lead's chassis
+    out += [(nm, _made(nm, w)) for nm, w in _antenna_parts()]   # the Wi-Fi kit, inside (src.antenna)
     from . import body_adapter_v2 as _BA              # the legs' adapters, one a corner
     out += [(nm, _made(nm, w)) for nm, w in _BA.parts()]
     out += [g for g in _ghosts(y_hi=RAIL_HI)
@@ -3454,6 +3545,7 @@ MATERIAL = {
     "yoke": "petg-gf", "keyplate": "steel", "keyseat": "steel", "collar": "pctg", "block": "petg-gf", "mplate": "petg-gf",
     "endplate": "petg-gf", "bar_m3": "steel", "bar_washer": "steel", "bridge_axle": "steel", "bridge_brg": "polished", "anchor": "stainless", "anchor_m4": "steel",
     "body": "petg-gf", "adapter": "petg-gf", "wall_bar": "steel", "ob_board": "board",
+    "antenna_dipole": "pvc", "antenna_bulkhead": "brass",
     "nut_endplate": "petg-gf", "nut_datum": "stainless", "nut_floor": "stainless", "nut_head_plate": "stainless",
     "nut_standoff": "steel", "nut_tie": "steel", "nut_green": "stainless", "nut_shoe": "stainless",
     "nut_screw": "steel", "nut_sqnut": "steel", "nut_disc": "steel", "nut_bar_m3": "steel",
@@ -3529,6 +3621,7 @@ COLORS = {
     "nut_head_plate": "nut_plate", "nut_standoff": "set_screw", "nut_tie": "set_screw",
     "nut_green": "nut_plate", "nut_shoe": "nut_plate", "nut_screw": "set_screw", "nut_sqnut": "set_screw",
     "nut_disc": "leg_latch_spring", "nut_bar_m3": "set_screw", "nut_bar_washer": "set_screw",
+    "antenna_dipole": (0.10, 0.10, 0.12), "antenna_bulkhead": "nut",
     "body": "chassis", "wall_bar": "nut_plate", "keyplate": "nut_plate", "keyseat": "nut_plate", "ob_board": _mask_rgb("green"),
     "deck": (0.16, 0.16, 0.18), "deck_white": (0.95, 0.95, 0.92), "fret_board": _mask_rgb("green"),
     "optical_board": _mask_rgb("green"),        # the stand-in: no mask ordered yet, the fab default
