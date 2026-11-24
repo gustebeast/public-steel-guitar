@@ -179,7 +179,7 @@
   },
   "endplate": {
    "material": "petg-gf",
-   "volume_mm3": 351899.7
+   "volume_mm3": 351939.6
   },
   "guide_rod_saw_jig": {
    "material": null,
