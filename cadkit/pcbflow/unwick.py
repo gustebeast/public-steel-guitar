@@ -125,6 +125,28 @@ def _clear(board, x, y, via, lands, keep, wall=None):
     return True
 
 
+def _drag_clear(board, via, x, y):
+    """Do the track ends that come WITH the via stay clear of other nets at (x, y)?
+
+    ⚠ THE VIA WAS CHECKED AND THE COPPER IT DRAGS WAS NOT (brain_board pv_s1, 2026-11-24): the
+    via out of Q202.3 moved 1.00 mm to a spot clear for a 0.6 mm disc, and the 2.61 mm VIN_BRAIN
+    F.Cu stub that followed it now lay over C306.2 (GND) and a PWR_GATE track -- two shorts; the
+    one out of C297.2 dragged a GND track across a BST_VIN via -- a third. A board with no shorts
+    left unwick with three. Each attached track, from the end that stays to the new spot, is
+    held to layout._path_clear: its own half width plus the board's clearance, pads, tracks,
+    vias and frozen bands of every other net."""
+    import layout                       # here, not at the top: layout imports this module
+    vp, net = via.GetPosition(), via.GetNetname()
+    np_ = pcbnew.VECTOR2I(int(x), int(y))
+    for t in board.GetTracks():
+        if t.GetClass() == "PCB_VIA" or t.GetNetCode() != via.GetNetCode():
+            continue
+        for end, other in ((t.GetStart(), t.GetEnd()), (t.GetEnd(), t.GetStart())):
+            if end == vp and not layout._path_clear(board, other, np_, net, t.GetLayer(), t.GetWidth()):
+                return False
+    return True
+
+
 def main(stem):
     pcb = stem + ".kicad_pcb"
     if not os.path.isfile(pcb):
@@ -182,7 +204,7 @@ def main(stem):
                 a = 2 * math.pi * k / 24.0
                 x = vp.x + ring * step * math.cos(a)
                 y = vp.y + ring * step * math.sin(a)
-                if _clear(board, x, y, v, lands, FM(keep_mm), wall):
+                if _clear(board, x, y, v, lands, FM(keep_mm), wall) and _drag_clear(board, v, x, y):
                     best = (int(x), int(y), MM(int(ring * step)))
                     break
             if best:
