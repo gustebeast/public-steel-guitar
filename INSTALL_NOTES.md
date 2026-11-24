@@ -2720,7 +2720,8 @@ removed (git history has it); the wood bench keeps its v2 nut block.
 - **Cable:** the 205 mm U.FL lead runs from the bulkhead's +X end to the CM5's U.FL connector on
   the brain board, about 105 mm straight. Leave it loose and clear of the motors.
 - The D-hole (Ø6.5, flat 6.0 across) prints sideways with its flat as the ceiling, drawn at the
-  kit's panel sizes. **Unverified: print a coupon to check the thread passes and the flat keys it.**
+  kit's panel sizes. **Unverified: print coupons/test_antenna_dhole.step (the real body round the tab, floor on the bed;
+  src/test/antenna_dhole.py) to check the thread passes and the flat keys it.**
 
 ### The stack without ears: one-piece collar, inserts down access channels (2026-11-23)
 - **No ears on the keyhole plates, the yoke or the collar.** The two stack screws are now
