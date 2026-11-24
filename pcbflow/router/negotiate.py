@@ -38,7 +38,7 @@ if _WORK_RATE > 0.0:
 import numpy as np
 
 from . import search as S
-from .model import GROUND_RE
+from .model import GROUND_RE, via_ban_for
 from .coupled import CoupledMixin
 
 W_REF = 0.2          # the narrowest track: a wide net's necked width at its lands
@@ -1031,7 +1031,7 @@ class Router(CoupledMixin):
         nvd = getattr(net, "via_d", None) or m.via_d     # a power net's via is its own size (model.via_size)
         vlegal = np.all(fd >= nvd / 2.0 + m.clear + m.margin, axis=0)
         vlegal &= m.edge[i0:i1, j0:j1] >= nvd / 2.0 + m.edge_clear + m.margin
-        vlegal &= ~m.via_ban[i0:i1, j0:j1]
+        vlegal &= ~via_ban_for(m, net.id, (i0, i1, j0, j1), nvd)
         ve = getattr(net, "via_erode", 0.0)     # a pair's centreline: room for both vias
         if ve > 0 and vlegal.any():
             # ⚠ ERODED ONCE PER WINDOW, BY DISTANCE (optical, 2026-11-10): scipy's
@@ -2767,7 +2767,7 @@ class Router(CoupledMixin):
                 legal &= circle[None]
                 vl = np.all(fd >= m.via_d / 2.0 + m.clear + m.margin, axis=0)
                 vl &= m.edge[i0:i1, j0:j1] >= m.via_d / 2.0 + m.edge_clear + m.margin
-                vl &= ~m.via_ban[i0:i1, j0:j1] & circle
+                vl &= ~via_ban_for(m, net.id, (i0, i1, j0, j1), m.via_d) & circle
                 return fd, legal, vl
 
             def route(net, legal, vl, fd):

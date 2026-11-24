@@ -102,7 +102,7 @@ _GUARD_NETS = set()
 _PATHS = []                    # quality.power_paths entries (main fills it)
 _REQ = None                    # (required_width_mm, quality notes)
 WP_RES = float(os.environ.get("CLOSE_POUR_GUARD_RES", "0.025"))
-_CU = (("F", "F.Cu"), ("I1", "In1.Cu"), ("I2", "In2.Cu"), ("B", "B.Cu"))
+_CU = (("F", "F.Cu"), ("I1", "In1.Cu"), ("I2", "In2.Cu"), ("I3", "In3.Cu"), ("I4", "In4.Cu"), ("B", "B.Cu"))
 _SCALE = {}                    # inner copper -> outer-equivalent width (power_specs.specs)
 # notes["net_layers"] = {net: [layer, ...]}: the router keeps these nets to those layers
 # (router.model.net_layers, hard), and a closure must not undo it -- the brain bans its
@@ -303,7 +303,7 @@ def _power_hurt(before_path, board, box, who):
             bad = True
     return bad
 
-LAYERS = ("F.Cu", "In2.Cu", "B.Cu")
+LAYERS = ("F.Cu", "In2.Cu", "In3.Cu", "In4.Cu", "B.Cu")   # In1 stays out (4-layer behaviour unchanged); a layer the board lacks drops out below
 WIDTH = 0.2                   # the board's own signal width: a QFN pad row is on 0.4
 REACH = 6.0                   # mm of margin round the two ends' bounding box
 
@@ -1313,7 +1313,7 @@ def main(stem):
         # so the search from the pin is the one most likely to spend its time failing.
         # The fine grid is for a pin in a 0.4 mm row and is tried on that pairing alone --
         # sixteen pairings at nine times the cells was a quarter of an hour of "no path".
-        pref = {L: i for i, L in enumerate(("In2.Cu", "B.Cu", "F.Cu"))}
+        pref = {L: i for i, L in enumerate(("In2.Cu", "In3.Cu", "In4.Cu", "B.Cu", "F.Cu"))}
         via_a = sorted(_via_starts(board, net, pa, layers), key=lambda c: pref.get(c[0], 9))
         via_b = sorted(_via_starts(board, net, pb, layers), key=lambda c: pref.get(c[0], 9))
         named = ((la, pa), (lb, pb))

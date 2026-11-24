@@ -78,7 +78,12 @@ def _legal(r, net, paths, necks):
             fdv = np.where(m.n1[:, vi, vj] == net.id, m.d2[:, vi, vj], m.d1[:, vi, vj])
             if (fdv < (getattr(net, "via_d", None) or m.via_d) / 2.0 + m.clear + m.margin - 1e-6).any():
                 return False
-            if m.via_ban[vi, vj].any():
+            ban = m.via_ban[vi, vj]
+            if getattr(m, "vip_net", None) is not None:       # its own land, via in pad (model.via_in_pad)
+                vd = getattr(net, "via_d", None) or m.via_d
+                ban = ban & ~((m.vip_net[vi, vj] == net.id) & (m.vip_depth[vi, vj] >= vd / 2.0 + m.margin)
+                              & ~m.via_ban_hard[vi, vj])
+            if ban.any():
                 return False
     return True
 

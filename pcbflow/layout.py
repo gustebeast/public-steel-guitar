@@ -5896,7 +5896,7 @@ def _rules(board, notes):
 
 
 _LAYERS = {"F.Cu": pcbnew.F_Cu, "B.Cu": pcbnew.B_Cu,
-           "In1.Cu": pcbnew.In1_Cu, "In2.Cu": pcbnew.In2_Cu}
+           "In1.Cu": pcbnew.In1_Cu, "In2.Cu": pcbnew.In2_Cu, "In3.Cu": pcbnew.In3_Cu, "In4.Cu": pcbnew.In4_Cu}
 
 
 def _add_track(board, net, layer, width, pts):

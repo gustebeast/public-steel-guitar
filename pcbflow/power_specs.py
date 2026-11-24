@@ -19,7 +19,7 @@ import pcbnew
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from quality import required_width_mm  # noqa: E402
 
-_CU = (("F", "F.Cu"), ("I1", "In1.Cu"), ("I2", "In2.Cu"), ("B", "B.Cu"))
+_CU = (("F", "F.Cu"), ("I1", "In1.Cu"), ("I2", "In2.Cu"), ("I3", "In3.Cu"), ("I4", "In4.Cu"), ("B", "B.Cu"))
 
 
 def _to_b(x, y):

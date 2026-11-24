@@ -76,6 +76,42 @@ def _score(stem, intent, parts_path, parent=None, save=False, budget=900):
     return {"error": (p.stderr or p.stdout)[-600:]}
 
 
+# PCBFLOW_CELLS_BY_PLAN (opt-in, bronner 2026-11-23, lead-approved): a cell's turns ranked by the
+# GLOBAL PLAN (router.globalroute: seconds a board), not by 900 s routes.
+# ⚠ WHY: one 900 s route is a noise-level judge -- tpC_s1 / tpC_s2 routed the SAME parent to 82 v
+# 59 open and kept U205 at 90 v 270 -- and a cell with one legal turn cost three of them (7486-8712
+# s of a 12600 s run). The plan is the placement protocol's screen (placement-ab-protocol).
+#   =1        keep the plan's leader when it beats the parent's plan by PLAN_MARGIN; no route at all
+#   =confirm  the parent and the plan's leader only are full-routed; the route decides, as before
+BY_PLAN = os.environ.get("PCBFLOW_CELLS_BY_PLAN", "")
+PLAN_MARGIN = 0.05           # overflow fraction a turn must win by (and at least 0.5 track)
+# The PLAIN plan ranks the turns. A width-weighted plan (globalroute width_weight) was tried and
+# dropped (calibration 2026-11-23, 183 finished brain_board trials: it picked the better-routing
+# placement in 4/16 clear pairs where the plain plan picked 12/16) -- it is a diagnostic
+# (router/bottleneck.py), not a score. Kept out of these plans explicitly.
+
+
+def _plan(stem):
+    env = dict(os.environ, PYTHONIOENCODING="utf-8")
+    env.pop("GLOBALROUTE_WIDTH_WEIGHT", None)
+    p = subprocess.run([sys.executable, "-m", "router.globalroute", stem], capture_output=True, text=True,
+                       cwd=HERE, env=env)
+    for line in reversed((p.stdout or "").strip().splitlines()):
+        try:
+            return json.loads(line)
+        except ValueError:
+            continue
+    return {"error": "globalroute: " + ((p.stderr or p.stdout) or "")[-400:]}
+
+
+def _pkey(s):
+    return (s["overflow"], s["squares_over"], s["length_mm"], s["vias"])
+
+
+def _plan_better(a, b):
+    return a["overflow"] <= b["overflow"] - max(0.5, PLAN_MARGIN * b["overflow"])
+
+
 def _write(d, src, stem, pl):
     """A board directory d holding src's netlist and notes with placements pl."""
     os.makedirs(d, exist_ok=True)
@@ -218,12 +254,26 @@ def cells(d, intent, parts_path=None, jobs=4, soft=False, log=print):
         ok, msg = _layout(pstem)
         if not ok:
             raise SystemExit("place_cells: the starting board does not lay out:\n" + msg)
-        s = _score(pstem, intent, parts_path, save=True)
+        s = ({"by_plan": True} if BY_PLAN == "1" else _score(pstem, intent, parts_path, save=True))
         json.dump(s, open(pstem + ".score.json", "w"))
     parent = json.load(open(pstem + ".score.json"))
+    pplan = None
+    if BY_PLAN:
+        if not os.path.exists(pstem + ".kicad_pcb"):
+            ok, msg = _layout(pstem)
+            if not ok:
+                raise SystemExit("place_cells: the starting board does not lay out:\n" + msg)
+        pplan = _plan(pstem)
+        if "error" in pplan:
+            raise SystemExit("place_cells: the parent's global plan failed: " + pplan["error"])
+        log("place_cells: BY PLAN (%s): parent plan %s" % (BY_PLAN, {k: pplan.get(k) for k in
+                                                                      ("overflow", "squares_over", "length_mm", "vias")}))
+        if BY_PLAN == "1":
+            parent = {"by_plan": True, "plan": {k: pplan.get(k) for k in ("overflow", "squares_over", "length_mm", "vias")}}
     if "error" in parent:
         raise SystemExit("place_cells: the parent did not route: " + parent["error"])
-    log("place_cells: parent %s" % {k: parent.get(k) for k in ("open", "pairs", "uncoupled", "vias", "length_mm", "floor")})
+    if BY_PLAN != "1":
+        log("place_cells: parent %s" % {k: parent.get(k) for k in ("open", "pairs", "uncoupled", "vias", "length_mm", "floor")})
     for g in todo:
         a, members = g["anchor"], g["members"]
         cands = []
@@ -242,6 +292,8 @@ def cells(d, intent, parts_path=None, jobs=4, soft=False, log=print):
             ok, msg = _layout(cs)
             if not ok:
                 return tag, q, {"error": "layout: " + msg[-300:]}
+            if BY_PLAN:
+                return tag, q, _plan(cs)
             return tag, q, _score(cs, intent, parts_path, parent=pstem + ".route.pkl")
 
         with ThreadPoolExecutor(jobs) as ex:
@@ -250,7 +302,8 @@ def cells(d, intent, parts_path=None, jobs=4, soft=False, log=print):
             rec.append({"cell": a, "cand": tag, "score": s})
             log("place_cells:   %-10s %s" % (tag, s.get("error") or {k: s.get(k) for k in
                                                                     ("open", "pairs", "uncoupled", "vias", "length_mm",
-                                                                     "floor", "failed")}))
+                                                                     "floor", "failed", "overflow",
+                                                                     "squares_over") if k in s}))
         good = [(tag, q, s) for tag, q, s in res if "error" not in s]
         # A FORBID ZONE IS HARD (lead ruling 2026-11-11): a turn that breaks more zones than
         # its parent gets ONE repair -- the unit breaking it (not this cell) re-dropped clear
@@ -278,6 +331,8 @@ def cells(d, intent, parts_path=None, jobs=4, soft=False, log=print):
             ok, msg = _layout(cs)
             if not ok:
                 return tag, q, {"error": "layout: " + msg[-300:]}, unit
+            if BY_PLAN:
+                return tag, q, _plan(cs), unit
             return tag, q, _score(cs, intent, parts_path, parent=pstem + ".route.pkl"), unit
 
         with ThreadPoolExecutor(jobs) as ex:
@@ -295,11 +350,24 @@ def cells(d, intent, parts_path=None, jobs=4, soft=False, log=print):
         # ⚠ ONE RE-SCORE IS ONE SAMPLE (optical, 2026-11-11): U7_90 re-scored 2.34 mm uncoupled,
         # best of the four, and full-routed at 5.52; opt6 had kept U7_0 (re-score 6.35, full
         # 3.11). The ranking between close candidates is noise, so the runner-up is routed too.
-        ranked = sorted([t for t in good if _better(t[2], parent)], key=lambda t: _key(t[2]))[:CONFIRM_TOP]
+        if BY_PLAN:
+            ranked = sorted([t for t in good if _plan_better(t[2], pplan)], key=lambda t: _pkey(t[2]))[:1]
+        else:
+            ranked = sorted([t for t in good if _better(t[2], parent)], key=lambda t: _key(t[2]))[:CONFIRM_TOP]
         if not ranked:
             log("place_cells: %s stays at %g" % (a, pl[a][2]))
             continue
         won = None
+        if BY_PLAN == "1":
+            tag, q, s = ranked[0]
+            was = pplan["overflow"]
+            pl, pplan, pstem = q, s, os.path.join(work, tag, os.path.basename(stem))
+            json.dump({"by_plan": True, "plan": s}, open(pstem + ".score.json", "w"))
+            rec.append({"cell": a, "cand": tag, "kept_by_plan": s})
+            log("place_cells: %s turned to %g by the plan (overflow %.1f v parent %.1f; no route)"
+                % (a, pl[a][2], s["overflow"], was))
+            parent = {"by_plan": True, "plan": s}
+            continue
         for tag, q, s in ranked:
             cs = os.path.join(work, tag, os.path.basename(stem))
             full = _score(cs, intent, parts_path, save=True)
@@ -310,13 +378,15 @@ def cells(d, intent, parts_path=None, jobs=4, soft=False, log=print):
                 won = (q, full, cs)
         if won is not None:
             pl, parent, pstem = won
+            if BY_PLAN:
+                pplan = _plan(pstem)
             json.dump(parent, open(pstem + ".score.json", "w"))
             log("place_cells: %s turned to %g (kept)" % (a, pl[a][2]))
         else:
             log("place_cells: %s's best turns lost their full-route confirm; stays at %g" % (a, pl[a][2]))
     json.dump(rec, open(os.path.join(work, "cells.json"), "w"), indent=1)
     json.dump(pl, open(stem + ".cells.json", "w"), indent=0)
-    log("place_cells: best %s -> %s" % ({k: parent.get(k) for k in ("open", "pairs", "uncoupled", "vias", "floor")},
+    log("place_cells: best %s -> %s" % (parent.get("plan") or {k: parent.get(k) for k in ("open", "pairs", "uncoupled", "vias", "floor")},
                                        stem + ".cells.json"))
     return pl, rec
 

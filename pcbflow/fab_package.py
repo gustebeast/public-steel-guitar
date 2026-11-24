@@ -307,7 +307,11 @@ def _parts(stem):
 
 
 def _layers(stem):
-    return L4 if json.load(open(stem + ".board.json", encoding="utf-8"))["layers"] == 4 else L2
+    n = int(json.load(open(stem + ".board.json", encoding="utf-8"))["layers"])
+    if n == 2:
+        return L2
+    inner = ",".join("In%d.Cu" % i for i in range(1, n - 1))
+    return L2.replace("F.Cu,B.Cu", "F.Cu,%s,B.Cu" % inner)   # n == 4 gives L4 exactly
 
 
 def fab(board):
