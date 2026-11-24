@@ -130,26 +130,87 @@ def _one(solid):
 # (a bare TopoDS_Shape) is measured every time, as before.
 # A kept() result carries its content's name (cadkit.kept's provenance tag), so the same content
 # met as a fresh object -- the next assembly's copy of an unmoved part -- is measured once too.
+# THE MEASURE OUTLIVES THE PROCESS AND RIDES MOVES (2026-11-23, public-steel-guitar: 415 measures
+# an assembly, ~17 s of a warm 48 s one, three assemblies a build): a tag's measure is kept on disk
+# beside the kept store (MEASURES, one line a tag: a tag names its content, so it never goes stale),
+# and a measured object carries it as WHAT_ATTR, which placed() and a looked part's moves hand on --
+# a move, a turn or a mirror changes none of the three numbers.
 _WHAT = weakref.WeakKeyDictionary()
-_WHAT_BY_TAG = {}
+_WHAT_BY_TAG = None
+WHAT_ATTR = "_cadkit_what"
+
+
+def _measures_path():
+    from ..kept import store
+    return store() / "measures.tsv"
+
+
+def _by_tag():
+    global _WHAT_BY_TAG
+    if _WHAT_BY_TAG is None:
+        _WHAT_BY_TAG = {}
+        try:
+            with open(_measures_path(), encoding="utf-8") as fh:
+                for ln in fh:
+                    p = ln.rstrip("\n").split("\t")
+                    if len(p) == 4:
+                        try:
+                            _WHAT_BY_TAG[p[0]] = (int(p[1]), float(p[2]), float(p[3]))
+                        except ValueError:          # a torn line from a crashed writer
+                            pass
+        except OSError:
+            pass
+    return _WHAT_BY_TAG
+
+
+def _keep_measure(tag, w):
+    _by_tag()[tag] = w
+    if w is None or "\t" in tag or "\n" in tag:
+        return
+    try:                                            # one short append: whole lines, any writer
+        p = _measures_path()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with open(p, "a", encoding="utf-8") as fh:
+            fh.write("%s\t%d\t%r\t%r\n" % (tag, w[0], w[1], w[2]))
+    except OSError:                                 # a cache, never a failure
+        pass
 
 
 def _what_of(solid):
+    w = getattr(solid, WHAT_ATTR, None)
+    if w is not None:
+        return w
     tag = getattr(solid, "_cadkit_kept", None)
-    if tag and tag in _WHAT_BY_TAG:
-        return _WHAT_BY_TAG[tag]
-    try:
-        return _WHAT[solid]
-    except (KeyError, TypeError):
-        pass
-    w = _what(_one(solid))
-    if tag:
-        _WHAT_BY_TAG[tag] = w
+    if tag and tag in _by_tag():
+        w = _by_tag()[tag]
+    else:
+        try:
+            w = _WHAT[solid]
+        except (KeyError, TypeError):
+            w = _what(_one(solid))
+            if tag:
+                _keep_measure(tag, w)
     try:
         _WHAT[solid] = w
     except TypeError:
         pass
+    if w is not None:
+        try:
+            setattr(solid, WHAT_ATTR, w)
+        except (AttributeError, TypeError):
+            pass
     return w
+
+
+def carry_measure(src, out):
+    """`out` (src moved, turned or mirrored) takes src's measure, if src has one."""
+    w = getattr(src, WHAT_ATTR, None)
+    if w is not None and out is not src:
+        try:
+            setattr(out, WHAT_ATTR, w)
+        except (AttributeError, TypeError):
+            pass
+    return out
 
 
 def made_of(solid, material):
