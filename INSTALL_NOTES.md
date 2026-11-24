@@ -2625,7 +2625,7 @@ removed (git history has it); the wood bench keeps its v2 nut block.
   floor and datum hole positions move with it.
 - In the print (+X up) the flat is a short ~4.2 mm bridge; any sag squashes flat at first load.
 
-### Stack ears nearly opposite: 50 / 232 deg (2026-11-23)
+### Stack ears nearly opposite: 50 / 232 deg (2026-11-23) -- SUPERSEDED: the stack without ears, below
 - **The two long M3 stack screws now sit 178 deg apart** (50 and 232 deg, was 160 / 275), on
   the keyhole plate, yoke and collar alike. The stack clamps near square. 232, not 230: at full
   slack the 230 head ran into the +X endplate beside the shared rod's seat. Turning both ears met
@@ -2721,3 +2721,30 @@ removed (git history has it); the wood bench keeps its v2 nut block.
   the brain board, about 105 mm straight. Leave it loose and clear of the motors.
 - The D-hole (Ø6.5, flat 6.0 across) prints sideways with its flat as the ceiling, drawn at the
   kit's panel sizes. **Unverified: print a coupon to check the thread passes and the flat keys it.**
+
+### The stack without ears: one-piece collar, inserts down access channels (2026-11-23)
+- **No ears on the keyhole plates, the yoke or the collar.** The two stack screws are now
+  **M3 x 35** through the nut flange's OWN holes (the nut is turned 45 deg, so two holes sit at
+  +Y and -Y). The washers (20) and the M3 x 10 pin (10) are gone: the screws through the flange
+  keep the nut from turning. Adjacent collars go from 0.215 apart to 2.4 (strings 1-2).
+- **Collar:** one piece, PCTG, printed +X face down (builds +X -> -X), on the 0.8 nozzle. Two
+  Ø5.5 ACCESS CHANNELS run from its -X end through the spring's grip and the stop flange to a
+  pocket in the solid band. They split the inner post in two halves; the outer sleeve has a bump
+  over each channel instead of a slot. The lip under each pocket is 1.9 thick.
+- **Assembly, per string:**
+  1. Drop an M3 brass insert (the usual 4.7 x 4.3) down each channel by hand -- it is used as a
+     NUT, never heat-set. It stops on the lip.
+  2. Stack the nut (on the leadscrew), the yoke and the two keyhole sheets on the collar's +X face,
+     the nut's holes lined up with the channels.
+  3. From the keyhole plate's +X face, an M3 x 35 through each hole, the plates, the yoke, the
+     flange and the lip into its insert. If it spins while the screw starts, press it onto the
+     lip with a rod down the channel; snug the screws (the spring holds the joint).
+  4. Thread the spring on as before. Its grip crosses the two channels each turn (the split's
+     edges are chamfered 45 deg so the wire does not catch).
+- **Yoke:** a boss over each screw (the Ø22 yoke left one bead outside a hole at r 8); the wall
+  between each screw and the nut-lip register inside is 0.75 (one bead, as the collar's lip).
+- **Steel keyhole sheets:** no ears; a lobe (R 4.7, a 3 mm web) round each Ø3.4 hole. Nothing
+  was bought, so the plates are simply quoted from the new drawing.
+- The +X endplate's head holes move with the heads (r 8, +-Y); 5.2 of plastic between them.
+- **Unverified:** the spring's grip loses 21 % of its turn to the channels (4 turns left,
+  ~0.5 MPa). A hang test (~110 N for a day) on one printed collar is worth doing before a set.

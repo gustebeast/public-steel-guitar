@@ -61,13 +61,8 @@ X_FACE = -T                         # the ball side
 def _blank() -> cq.Workplane:
     """The plate's outline and M3 holes, as the two laser sheets had them, in one 7 mm body."""
     w = B.cyl_x(B.YK_D, T, -T, y=0, z=0)
-    for a in B.HOLD_ANG:
-        dy, dz = B.at_ang(a, B.HOLD_R)
-        b = B.box_at(T, 2 * B.HOLD_EAR_R, B.HOLD_R - D.NUT_FLANGE_L / 2 + 2.0, x=-T / 2, y=0,
-                     z=(B.HOLD_R + D.NUT_FLANGE_L / 2 - 2.0) / 2).rotate((0, 0, 0), (1, 0, 0), a - 90)
-        w = w.union(B.cyl_x(2 * B.HOLD_EAR_R, T, -T, y=dy, z=dz)).union(b)
-    for a in B.HOLD_ANG:
-        dy, dz = B.at_ang(a, B.HOLD_R)
+    for a in B.STACK_ANG:                       # no ears since 2026-11-23 (the stack without ears)
+        dy, dz = B.at_ang(a, B.STACK_R)
         w = w.cut(B.cyl_x(3.4, T + 2, -T - 1, y=dy, z=dz))
     return w
 

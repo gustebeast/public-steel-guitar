@@ -1026,54 +1026,21 @@ def _tube_x(od, idd, x0, x1, y, z):
     return cyl_x(od, x1 - x0, x0, y=y, z=z).cut(cyl_x(idd, x1 - x0 + 2, x0 - 1, y=y, z=z))
 
 
-YOKE_UP = (-1.0, 0.0, 0.0)                          # prints +X -> -X: the plate's face on the bed, so
-                                                    # the ears' FEET (THE FEET BESIDE THE FLANGE) grow
-                                                    # up off them last (user, 2026-11-17: "Why can't
-                                                    # we fuse it with the yoke"); the register only
-                                                    # widens going up, the pin's slot opens on top.
-                                                    # Was -X -> +X (user, 2026-11-14).
+YOKE_UP = (-1.0, 0.0, 0.0)                          # prints +X -> -X: the plate's face on the bed;
+                                                    # the register only widens going up (the ears'
+                                                    # feet it was turned for went 2026-11-23). Was
+                                                    # -X -> +X (user, 2026-11-14).
 BENCH_YOKE_UP = (1.0, 0.0, 0.0)                     # the bench's (no feet): -X -> +X, as before, so
                                                     # its inserts' notches open on top
 
 
-def _hold_ear(i: int, a: float, x0: float, x1: float, r: float = None) -> cq.Workplane:
-    """A hold ear, x0..x1: round HOLD_EAR_R about the screw at (r, a) (HOLD_R; the bench's
-    BENCH_HOLD_R), joined to the body."""
-    r = HOLD_R if r is None else r
+def _hold_ear(i: int, a: float, x0: float, x1: float, r: float) -> cq.Workplane:
+    """The wood bench's hold ear, x0..x1: round HOLD_EAR_R about the screw at (r, a), joined to
+    the body."""
     y, z = y_of(i), za(i)
     dy, dz = at_ang(a, r)
     ear = cyl_x(2 * HOLD_EAR_R, x1 - x0, x0, y=y + dy, z=z + dz)
     return ear.union(_radial_box_at(i, x0, x1, D.NUT_FLANGE_L / 2 - 2.0, r, 2 * HOLD_EAR_R, a))
-
-
-def _hold_foot(i: int, t: float, a: float) -> cq.Workplane:
-    """A yoke ear's FOOT (THE FEET BESIDE THE FLANGE): from the yoke's face down to the collar's,
-    round the screw, clear of the flange's rim, open toward the axis (a closed ring would leave a
-    sliver between the screw's hole and the rim)."""
-    y, z = y_of(i), za(i)
-    pb, ft = x_collar(t)[0], x_ft(t)
-    dy, dz = at_ang(a, HOLD_R)
-    w = cyl_x(2 * HOLD_EAR_R, ft - pb + 0.01, pb, y=y + dy, z=z + dz)
-    w = w.cut(cyl_x(D.NUT_FLANGE_L + 0.6, ft - pb + 2, pb - 1, y=y, z=z))           # the rim
-    w = w.cut(_radial_box_at(i, pb - 1, ft + 0.5, D.NUT_FLANGE_L / 2 - 2.0, HOLD_R,
-                             M3H.CLR_PRINTED_D, a))                                    # the C's mouth
-    return w
-
-
-def _hold_washers(i: int, t: float, bench: bool = False) -> list:
-    """The stack's washers, one under each insert in the collar's pockets (the bench has none).
-    One part each."""
-    if bench:
-        return []
-    y, z = y_of(i), za(i)
-    pb = x_collar(t)[0]
-    od, idd, th = HOLD_WSH
-    out = []
-    for a in HOLD_ANG:
-        dy, dz = at_ang(a, HOLD_R)
-        x0 = pb - HOLD_INS_X
-        out.append(cyl_x(od, th, x0, y=y + dy, z=z + dz).cut(cyl_x(idd, th + 2, x0 - 1, y=y + dy, z=z + dz)))
-    return out
 
 
 def _yoke(i: int, t: float, bench: bool = False) -> cq.Workplane:
@@ -1081,11 +1048,11 @@ def _yoke(i: int, t: float, bench: bool = False) -> cq.Workplane:
     y, z = y_of(i), za(i)
     ft, yt = x_ft(t), x_yt(t)
     out = cyl_x(YK_D, YK_H - YK_ROOF, ft, y=y, z=z)                                 # the spacer
-    for a in HOLD_ANG:                                                                # the ears
-        out = out.union(_hold_ear(i, a, ft, ft + (BENCH_YOKE_L if bench else YK_H - YK_ROOF),
-                                  BENCH_HOLD_R if bench else HOLD_R))
-        if not bench:                                                                 # ... their feet
-            out = out.union(_hold_foot(i, t, a))
+    for a in (BENCH_HOLD_ANG if bench else ()):                                       # the bench's ears
+        out = out.union(_hold_ear(i, a, ft, ft + BENCH_YOKE_L, BENCH_HOLD_R))
+    for a in (() if bench else STACK_ANG):                                            # the screws' bosses
+        dy, dz = at_ang(a, STACK_R)
+        out = out.union(cyl_x(STACK_YOKE_BOSS_D, YK_H - YK_ROOF, ft, y=y + dy, z=z + dz))
     out = out.cut(cyl_x(D.SCREW_OD + 0.8, yt - YK_ROOF - ft + 1, ft - 1, y=y, z=z))   # tip + ball
     out = out.cut(cyl_x(NUT_LIP_REG_D, D.NUT_LIP_L + 1.3, ft - 1, y=y, z=z))          # lip register
     rl, rb = NUT_LIP_REG_D / 2, (D.SCREW_OD + 0.8) / 2                                # ... its roof
@@ -1097,7 +1064,7 @@ def _yoke(i: int, t: float, bench: bool = False) -> cq.Workplane:
         for a in HOLE_ANG["m3"]:                                                      # the M3 x 30s
             dy, dz = at_ang(a)
             out = out.cut(cyl_x(M3H.CLR_PRINTED_D, YK_H + 2, ft - 1, y=y + dy, z=z + dz))
-        for a in HOLD_ANG:            # the ear screws: their way, the insert's slot from outside
+        for a in BENCH_HOLD_ANG:      # the ear screws: their way, the insert's slot from outside
             dy, dz = at_ang(a, BENCH_HOLD_R)
             xs0 = ft + BENCH_FLOOR
             xs1 = xs0 + BENCH_SEAT_L
@@ -1106,14 +1073,9 @@ def _yoke(i: int, t: float, bench: bool = False) -> cq.Workplane:
             out = out.cut(_radial_box_at(i, xs0, xs1 + 1.0, BENCH_HOLD_R, BENCH_HOLD_R + HOLD_EAR_R + 2.0,
                                          2 * HOLD_EAR_R + 1.0, a))
     else:
-        for a in HOLD_ANG:                                                            # the stack's
-            dy, dz = at_ang(a, HOLD_R)
-            xb = ft - D.NUT_FLANGE_T
-            out = out.cut(cyl_x(M3H.CLR_PRINTED_D, YK_H + D.NUT_FLANGE_T + 2, xb - 1, y=y + dy, z=z + dz))
-        dy, dz = at_ang(PIN_ANG)                                                      # the pin's head:
-        hh = M3_HEAD[1] + 0.4                          # a slot right across, from the register out
-        out = out.cut(cyl_x(PIN_HEAD_D, hh + 1.0, ft - 1.0, y=y + dy, z=z + dz))    # through the side
-        out = out.cut(_radial_box_at(i, ft - 1.0, ft + hh, 0.0, YK_D / 2 + 1.0, PIN_HEAD_D, PIN_ANG))
+        for a in STACK_ANG:                                                           # the stack's
+            dy, dz = at_ang(a, STACK_R)
+            out = out.cut(cyl_x(M3H.CLR_PRINTED_D, YK_H + 2, ft - 1, y=y + dy, z=z + dz))
     # behind the plate, a pocket the ball slides up in (its 3 along the axis, Ø4 across)
     rx0 = yt - YK_ROOF
     pk = D.STRING_NUT_D + 0.6                     # v4: a ball in any roll is its Ø along X
@@ -1139,17 +1101,14 @@ def _yoke(i: int, t: float, bench: bool = False) -> cq.Workplane:
 def keyhole_plate(m3_d: float = 3.4, bench: bool = False, seat: bool = False,
                   layer: str = None, slit_w: float = None) -> cq.Workplane:
     """The keyhole plate in its own frame (+X face at x = 0, axis on y = z = 0), as cut from the
-    YK_ROOF (3 + 4 mm sheets): a Ø YK_D disc with the stack's two EARS (HOLD_ANG), the ball's hole KEY_DROP over (KEY_SIGN)
-    the axis, the slit up to a round end on the axis, and the stack screws' clearance holes in the
-    ears (Ø3.4 laser cut: the heads sit on its +X face). A PRINTED stand-in passes the printed
+    YK_ROOF (3 + 4 mm sheets): a Ø YK_D disc, the ball's hole KEY_DROP over (KEY_SIGN)
+    the axis, the slit up to a round end on the axis, and the stack screws' clearance holes at
+    STACK_ANG / STACK_R (Ø3.4 laser cut: the heads sit on its +X face). A PRINTED stand-in passes the printed
     clearance as m3_d; bench=True: the wood bench's, no ears, its M3 x 30s at HOLE_ANG["m3"]."""
     w = cyl_x(YK_D, YK_ROOF, -YK_ROOF, y=0, z=0)
-    if not bench:
-        for a in HOLD_ANG:
-            dy, dz = at_ang(a, HOLD_R)
-            b = box_at(YK_ROOF, 2 * HOLD_EAR_R, HOLD_R - D.NUT_FLANGE_L / 2 + 2.0, x=-YK_ROOF / 2, y=0,
-                       z=(HOLD_R + D.NUT_FLANGE_L / 2 - 2.0) / 2).rotate((0, 0, 0), (1, 0, 0), a - 90)
-            w = w.union(cyl_x(2 * HOLD_EAR_R, YK_ROOF, -YK_ROOF, y=dy, z=dz)).union(b)
+    for a in (() if bench else STACK_ANG):                       # the screws' lobes
+        dy, dz = at_ang(a, STACK_R)
+        w = w.union(cyl_x(2 * STACK_LOBE_R, YK_ROOF, -YK_ROOF, y=dy, z=dz))
     sw = slit_w or SLIT_W                                        # a printed stand-in passes its own
     w = w.cut(cyl_x(KEY_D, YK_ROOF + 2, -YK_ROOF - 1, y=0, z=KEY_Z))
     w = w.cut(box_at(YK_ROOF + 2, sw, KEY_DROP, x=-YK_ROOF / 2, y=0, z=KEY_Z / 2))
@@ -1157,7 +1116,7 @@ def keyhole_plate(m3_d: float = 3.4, bench: bool = False, seat: bool = False,
     if seat:                                                     # THE BALL'S SEAT (printed)
         w = w.cut(cyl_x(KEY_SEAT[0], KEY_SEAT[1] + 1, -YK_ROOF - 1, y=0, z=0))
     for dy, dz in ((at_ang(a) for a in HOLE_ANG["m3"]) if bench
-                   else (at_ang(a, HOLD_R) for a in HOLD_ANG)):
+                   else (at_ang(a, STACK_R) for a in STACK_ANG)):
         w = w.cut(cyl_x(m3_d, YK_ROOF + 2, -YK_ROOF - 1, y=dy, z=dz))
     return w
 
@@ -1182,13 +1141,11 @@ def key_sheet(k: int) -> cq.Workplane:
     it), k 1 the 3 mm POCKET sheet under it (x -6..-3)."""
     x0, x1 = ((-KEY_LOAD_T, 0.0), (-KEY_LOAD_T - KEY_POCKET_SHEET, -KEY_LOAD_T))[k]
     w = cyl_x(YK_D, x1 - x0, x0, y=0, z=0)
-    for a in HOLD_ANG:
-        dy, dz = at_ang(a, HOLD_R)
-        b = box_at(x1 - x0, 2 * HOLD_EAR_R, HOLD_R - D.NUT_FLANGE_L / 2 + 2.0, x=(x0 + x1) / 2, y=0,
-                   z=(HOLD_R + D.NUT_FLANGE_L / 2 - 2.0) / 2).rotate((0, 0, 0), (1, 0, 0), a - 90)
-        w = w.union(cyl_x(2 * HOLD_EAR_R, x1 - x0, x0, y=dy, z=dz)).union(b)
-    for a in HOLD_ANG:
-        dy, dz = at_ang(a, HOLD_R)
+    for a in STACK_ANG:                                          # the screws' lobes, then their holes
+        dy, dz = at_ang(a, STACK_R)
+        w = w.union(cyl_x(2 * STACK_LOBE_R, x1 - x0, x0, y=dy, z=dz))
+    for a in STACK_ANG:
+        dy, dz = at_ang(a, STACK_R)
         w = w.cut(cyl_x(3.4, x1 - x0 + 2, x0 - 1, y=dy, z=dz))
     return w.cut(_key_v4_cuts(k > 0, x0, x1))
 
@@ -1349,80 +1306,49 @@ _s = COLLAR_SLIT_W / 2
 assert (NUT_PCD / 2 - math.sqrt((INS_HEAT_D / 2) ** 2 - _s ** 2)
         - math.sqrt((COLLAR_NUT_D / 2) ** 2 - _s ** 2)) >= D.BEAD - 1e-9, "the slot's edges: a bead"
 assert COLLAR_SLIT_W < COL_INS[0] - 1.0, "the slot lets the insert out"
-# THE COLLAR AND THE YOKE: ONE STACK ON TWO LONG SCREWS (user, 2026-11-17: "the collar isn't
-# attached to the nut" -- the collar's inserts sat in loose pockets that only stopped them turning,
-# so the spring could slide the collar off the yoke's M3s; "keep one small screw embedded to keep the
-# nut from rotating, but don't give it any X holding force, just a pin essentially. Then for all
-# the holding force we add the ears to each piece in the stack, the metal keyplate, the yoke and the
-# collar and run two long screws through everything"). Two EARS past the flange's rim on the keyhole
-# plate, the yoke and the collar, at HOLD_ANG / HOLD_R (opposite; see HOLD_ANG for the
-# scan, 2026-11-23). Through each, an M3 x 40
-# (STACK_M3_L): the head on the plate's +X face, the shank -X through the plate, the yoke's ear,
-# beside the flange, and the collar ear's FLOOR (HOLD_FLOOR) into an insert USED AS A NUT on a
-# WASHER in a slot from the collar ear's outer side. Tightened, the stack sandwiches the flange
-# between the yoke's face and the collar's. The flange's own holes now carry only the PIN: an
-# M3 x 10 at PIN_ANG, its head in a pocket in the yoke's face, its shank through the flange into a
-# blind hole in the collar -- it keeps the nut from turning in the stack and holds nothing along X.
-# LOADS: the string pulls the plate +X and the spring pulls the collar -X; both only stretch the
-# screws and press the collar's floor onto the washer -- plastic in COMPRESSION, on the washer's O7,
-# never in shear round a heat-set's knurl. The spring never lets go (31 N at least), so the joint
-# never goes slack. Snug the screws.
-# THE EARS ARE OPPOSITE (user, 2026-11-23: "closer to 180 degrees ... it would be stronger", collars
-# kept identical, nothing nearer the pickup plate): 50/230 (was 160/275, 115 apart, so the faces
-# across from them took a moment). 3D scan of the real stacks (collars as one part) then the gate:
-# adjacent stacks 1.18 (collars) / 1.41 (yokes, keyplates) apart, the top row 5.3 under the
-# pickup plate, the yoke ears 2.27 off their own rod. 235/45 and 235/40 met the next collar; 225
-# met the hooked rod; 53/233 met the next string's ears.
-# 50/232, 178 apart (2026-11-23, the full build's drive-travel gate): at t 0 the 230 ear's head runs
-# into the +X endplate beside the HOOKED rod's seat, and cut there it left 0.54 of plastic to that
-# seat (under MIN_WALL); 232 leaves 0.95. Turning BOTH (52/232 and on) met the next stack: only
-# the 230 ear moves.
-HOLD_ANG = (50.0, 232.0)
-HOLD_R = 13.4                                       # off the axis
-HOLD_WSH = (7.0, 3.2, 0.5)                          # DIN 125 M3 washer: OD, ID, thickness
-HOLD_WSH_POCKET = HOLD_WSH[0] + 0.3                 # its pocket across
-HOLD_EAR_R = HOLD_WSH_POCKET / 2 + D.BEAD           # 4.45: the ears round the screw, one bead wall
-STACK_M3_L = 40.0                                   # M3 x 40, the ties' (user, 2026-11-17: "the 35
-                                                    # seems unnecessary, we can just use 40 there")
-HOLD_WSH_SLOT = HOLD_WSH[2] + 0.2                   # the washer's slot along x: it slides in sideways
-HOLD_INS_SLOT = INS.insert_l + NUT_END_SLIP         # 4.6: the insert's notch along x
-# THE INSERT AT THE SCREW'S END, ALL THE PLASTIC +X OF IT A SOLID BASE (user, 2026-11-17: a slot with
-# a lid over it "isn't printable and also isn't efficient use of plastic ... use all the plastic +x
-# of the insert (up to the collar's print bed) to form a solid base ... no need to have a lid that is
-# -x of the insert"). A NOTCH at the ear's -X end, open -X (the top as it prints) and out the side:
-# the washer and insert slide in from the side (from -X the wall round the spring, Ø STOP_D, stands
-# over the inner side of the mouth).
-# THE M3 x 40 REACHES PAST THE COLLAR'S BODY: each ear runs on -X beside the wall round the spring
-# (fused to it), HOLD_EAR_EXT past the stop flange's face. The WASHER sits in the body's last
-# HOLD_WSH_SLOT (its Ø7.3 slot would cut the wall round the spring to a sliver), the INSERT in the
-# extension under it, in a Ø5.5 nut notch that leaves that wall a bead and more.
-HOLD_FLOOR = (COLLAR_L + STOP_T) - HOLD_WSH_SLOT    # 7.8: the base, the collar's face to the washer
-HOLD_INS_X = HOLD_FLOOR + HOLD_WSH[2]               # the insert's mouth, -X of the collar's face
-HOLD_EAR_EXT = HOLD_INS_SLOT                        # 4.6: the ear past the stop flange's face
-HOLD_EAR_IN = SLEEVE_OD / 2 - 1.0                   # the extension's inner edge: inside the wall,
-                                                    # clear of the spring's bore and its grooves
-HOLD_NUT_D = INS.insert_pocket_d(NUT, (-1.0, 0.0, 0.0), (-1.0, 0.0, 0.0))   # 5.5
-HOLD_TIP = STACK_M3_L - (YK_H + D.NUT_FLANGE_T + HOLD_INS_X)   # 5.3: the tip past the insert's mouth
-assert HOLD_TIP >= INS.insert_l, "the stack screw's bite: the whole insert"
-assert HOLD_FLOOR >= 4 * D.BEAD - 1e-9, "the base under the washer"
-assert HOLD_TIP <= HOLD_WSH[2] + HOLD_INS_SLOT + 1.5, "the stack screw's tip far past its insert"
-assert HOLD_R - HOLD_NUT_D / 2 - (SPRING_OD / 2 + 0.1) >= D.BEAD, "the insert's notch on the spring's wall"
-assert HOLD_R - HOLD_WSH_POCKET / 2 >= SPRING_OD / 2 + 0.2, "the washer's pocket on the spring's end"
-assert HOLD_R - 1.5 >= STOP_D / 2 + 0.5, "the screw's tip on the collar's wall"
-assert HOLD_R - M3H.CLR_PRINTED_D / 2 >= D.NUT_FLANGE_L / 2 + 0.5, "the shank on the flange's rim"
-# THE FEET BESIDE THE FLANGE (2026-11-17, creep): the collar ear's base takes each screw's whole
-# pull -- the string's AND the spring's, times the pair's tilt, ~150 N on the heaviest string --
-# 2.4 past the flange's rim, over the gap the screw crosses beside it: unbacked, a cantilever at
-# 20-30 MPa in PCTG that would sag over the years and let the stack go loose. Each yoke ear runs on
-# down beside the rim to the collar's face (the flange's thickness, as measured), so keyhole plate
-# -> yoke ear -> its foot -> collar base -> washer is one column in compression (~3-5 MPa), nothing
-# in bending. (A separate spacer first; user, 2026-11-17: "Why can't we fuse it with the yoke" --
-# it can, printed +X -> -X, YOKE_UP.)
-PIN_ANG = 135.0                                     # one of the flange's four holes, clear of the 50 ear
-PIN_L = COLLAR_M3_L                                 # M3 x 10
-PIN_HOLE_D = 3.4                                    # its blind hole in the collar: snug
-PIN_HEAD_D = M3_HEAD[0] + 0.6                       # its head's pocket in the yoke's face
-assert PIN_L - D.NUT_FLANGE_T + 0.5 <= COLLAR_L + STOP_T - D.BEAD, "the pin's hole through the collar"
+# THE STACK WITHOUT EARS (user, 2026-11-23: the ears cost collar-to-collar room -- 0.215 between
+# strings 1 and 2; src/test/stack_retainer_study.py, "channel"): ONE-PIECE COLLAR, two M3 x 35
+# (STACK_M3_L) through the NUT FLANGE'S OWN HOLES. The nut is clocked NUT_CLOCK so two of its four
+# holes stand at STACK_ANG (+-Y, across the slit, clear of the ball's way in): the head on the
+# keyhole plate's +X face, the shank -X through the plates, the yoke, the flange and the collar's
+# LIP into a FITTED INSERT USED AS A NUT (cadkit NUT mode, never melted), its whole face on the lip.
+# The insert goes in by hand down an ACCESS CHANNEL (its Ø the NUT pocket's, 5.5) from the collar's
+# -X end, through the spring's grip and the stop flange, to its pocket in the solid band:
+#   * the channels split the inner POST in two halves -- a radial WEDGE from the axis, tangent to
+#     each channel (no knife edges), and a 45 deg CHAMFER down each edge in the grip, so the groove's
+#     tooth ramps out of the split (print_check, 2026-11-23: a square cut left stubs of crest);
+#   * the SLEEVE is not slotted: a BUMP of CH_SKIN over each channel (to the +X face, the bed, so
+#     it hangs over nothing);
+#   * the LIP (CH_LIP, 1.9) under each insert stays whole, 0.8 from the screw's hole to the nut's
+#     bore (user, 2026-11-23: "we can keep that 0.8 wall").
+# The channels take 77 of 360 deg of the grip (21 %) off post and sleeve; 4 turns are left ~0.5 MPa.
+# LOADS: the string pulls the plate +X and the spring the collar -X (~100 N a screw worst case);
+# they stretch the screws and press the insert onto the lip, ~15 MPa at its face but a thin layer
+# confined on the steel nut's flange 1.9 away (~2 MPa there): its creep is bounded at tens of um.
+# The flange's holes keep the nut from turning: no pin. The yoke and the plates carry only the
+# screws' holes at STACK_R (no ears, no feet).
+NUT_CLOCK = 45.0                                    # the nut's holes at 0/90/180/270 (from 45/135/...)
+STACK_ANG = (0.0, 180.0)                            # the two used
+STACK_R = NUT_PCD / 2                               # 8.0: the flange's own holes
+STACK_M3_L = 35.0                                   # M3 x 35: through the whole insert
+CH_SKIN = D.MIN_WALL_2P                             # the sleeve's bump outside each channel
+CH_DIR = (1.0, 0.0, 0.0)                            # the insert slides +X, onto the lip
+CH_D = INS.insert_pocket_d(NUT, CH_DIR, COLLAR_UP)  # 5.5: the channel = the NUT pocket
+CH_LIP = COLLAR_L - (INS.insert_l + NUT_END_SLIP)  # the lip: the pocket (from the stop flange) to the +X face
+CH_WEDGE_R_GRIP = R_COIL + SLEEVE_CLR - 0.08        # the split in the grip: inside the sleeve's bore
+CH_POST_CREST = R_COIL - post_in(POST_GROOVE_C)     # the post's crest
+CH_CHAMFER = 1.0                                    # the split's edges, at the crest (> the tooth)
+CH_TH = math.degrees(math.asin(CH_D / 2 / STACK_R))  # the channel's half-angle from the axis
+# the yoke and the plates are Ø22 (the flange's), so a hole at r 8 leaves one bead outside it
+# (print_check, 2026-11-23: 1.15, single-bead): a BOSS on the yoke round each screw, its wall
+# MIN_WALL_2P; a LOBE on each laser sheet, its web the sheet's thickness (the laser rule)
+STACK_YOKE_BOSS_D = M3H.CLR_PRINTED_D + 2 * D.MIN_WALL_2P
+STACK_LOBE_R = 3.4 / 2 + max(KEY_LOAD_T, KEY_POCKET_SHEET)
+assert STACK_R - M3H.CLR_PRINTED_D / 2 - COLLAR_NUT_D / 2 >= D.BEAD - 0.01, "the lip: screw hole to nut bore"
+assert STACK_R - INS.insert_od / 2 >= D.NUT_BOSS_D / 2 + 0.3, "the insert clear of the nut's boss"
+assert CH_LIP >= 2 * D.BEAD, "the lip under the insert"
+assert STACK_M3_L >= YK_H + D.NUT_FLANGE_T + CH_LIP + INS.insert_l, "the screw through the whole insert"
+assert STACK_M3_L <= YK_H + D.NUT_FLANGE_T + COLLAR_L + STOP_T + SEAT_GRIP, "the tip inside the collar"
 # THE WOOD BENCH'S STACK (user, 2026-11-17: "build it without waiting for new screws ... a
 # workaround for 30mm screws ... okay if the workaround has potential to creep"; "use our earlier
 # idea where we have multiple clamping screws connecting different pieces in the stack"): the
@@ -1430,6 +1356,11 @@ assert PIN_L - D.NUT_FLANGE_T + 0.5 <= COLLAR_L + STOP_T - D.BEAD, "the pin's ho
 # collar's inserts (flush on the flange's back), and the ears joined by an M3 x 20 each (the bar
 # clamps'): head on the collar ear's -X face, shank +X beside the flange into an insert as a nut
 # in a slot in the yoke's ear. No washers. bench=True draws it.
+# its ears' angles and washers (the instrument's ears until 2026-11-23)
+BENCH_HOLD_ANG = (50.0, 232.0)
+HOLD_WSH = (7.0, 3.2, 0.5)                          # DIN 125 M3 washer: OD, ID, thickness
+HOLD_WSH_POCKET = HOLD_WSH[0] + 0.3                 # its pocket across
+HOLD_EAR_R = HOLD_WSH_POCKET / 2 + D.BEAD           # 4.45: the ears round the screw, one bead wall
 BENCH_KEY_M3_L = KEY_M3_L                           # M3 x 30
 BENCH_HOLD_M3_L = 20.0
 BENCH_COLLAR_L = 5.0                                # the collar ear along x, from its face
@@ -1463,16 +1394,16 @@ def _collar(i: int, t: float, bench: bool = False) -> cq.Workplane:
     out = out.union(_radial_box(i, pb - TAB_L, pb, D.NUT_FLANGE_L / 2 - 2.0, hi, w))
     dy, dz = at_ang(guide_ang(i), hi)
     out = out.union(cyl_x(w, TAB_L, pb - TAB_L, y=y + dy, z=z + dz))
-    for a in HOLD_ANG:                                                              # the ears
-        out = out.union(_hold_ear(i, a, pb - (BENCH_COLLAR_L if bench else pb - f0), pb,
-                                  BENCH_HOLD_R if bench else HOLD_R))
-        if not bench:                          # ... on past the stop flange, fused to the wall
-            ext = _hold_ear(i, a, f0 - HOLD_EAR_EXT, f0 + 0.01)
-            ext = ext.cut(cyl_x(2 * HOLD_EAR_IN, HOLD_EAR_EXT + 2, f0 - HOLD_EAR_EXT - 1, y=y, z=z))
-            out = out.union(ext)
+    for a in (BENCH_HOLD_ANG if bench else ()):                                     # the bench's ears
+        out = out.union(_hold_ear(i, a, pb - BENCH_COLLAR_L, pb, BENCH_HOLD_R))
     out = out.union(_hook_solid(i, t))                                              # shared rod
-    # ---- holes, last ----
     x_lo = out.val().BoundingBox().xmin
+    if not bench:                              # the channels' BUMPS, outside the sleeve, to the bed
+        for a in STACK_ANG:
+            dy, dz = at_ang(a, STACK_R)
+            bump = cyl_x(CH_D + 2 * CH_SKIN, pb - x_lo, x_lo, y=y + dy, z=z + dz)
+            out = out.union(bump.cut(cyl_x(SLEEVE_OD - 0.02, pb - x_lo + 2, x_lo - 1, y=y, z=z)))
+    # ---- holes, last ----
     out = out.cut(cyl_x(SCREW_CLR, pb - x_lo + 2, x_lo - 1, y=y, z=z))             # the screw's way
     nb = D.NUT_H - D.NUT_FLANGE_T + 1.0                                            # the boss's length
     out = out.cut(cyl_x(COLLAR_NUT_D, nb + 1.0, pb - nb, y=y, z=z))                # ... and its bore
@@ -1486,31 +1417,12 @@ def _collar(i: int, t: float, bench: bool = False) -> cq.Workplane:
                                                depth=INS_POCKET_L, overshoot=1.0, print_up=COLLAR_UP))
             out = out.cut(_radial_box_at(i, pb - INS_POCKET_L, pb + 1.0, COLLAR_NUT_D / 2 - 0.5,
                                          NUT_PCD / 2, COLLAR_SLIT_W, a))            # ... its slot
-        for a in HOLD_ANG:                # the ear screws' way: the heads stand clear of the wall
+        for a in BENCH_HOLD_ANG:          # the ear screws' way: the heads stand clear of the wall
             dy, dz = at_ang(a, BENCH_HOLD_R)
             xe = pb - BENCH_COLLAR_L
             out = out.cut(cyl_x(M3H.CLR_PRINTED_D, BENCH_COLLAR_L + 2.0, xe - 1.0, y=y + dy, z=z + dz))
     else:
-        for a in HOLD_ANG:      # the stack screws: right through, and the washer + insert's notch at
-            dy, dz = at_ang(a, HOLD_R)                       # the ear's -X end, open -X and out the side
-            xe = f0 - HOLD_EAR_EXT
-            out = out.cut(cyl_x(M3H.CLR_PRINTED_D, pb - xe + 2.0, xe - 1.0, y=y + dy, z=z + dz))
-            xw1 = pb - HOLD_FLOOR                                   # the washer's slot
-            xw0 = xw1 - HOLD_WSH_SLOT
-            out = out.cut(cyl_x(HOLD_WSH_POCKET, HOLD_WSH_SLOT, xw0, y=y + dy, z=z + dz))
-            out = out.cut(_radial_box_at(i, xw0, xw1, HOLD_R, HOLD_R + HOLD_EAR_R + 2.0,
-                                         2 * HOLD_EAR_R + 1.0, a))   # the ear's whole width: no
-                                                                     # slivers where it rounds off
-            # the insert's bore, from the ear's -X end (NOT 1 past it, 2026-11-23: that nicked the
-            # sleeve's outside, 0.6 deep, and left the collar an unorientable solid at the 230 ear)
-            out = out.cut(cyl_x(HOLD_NUT_D, xw0 - xe, xe, y=y + dy, z=z + dz))   # the
-            out = out.cut(_radial_box_at(i, xe - 1.0, xw0 + 0.01, HOLD_R,     # insert's notch, open
-                                         HOLD_R + HOLD_EAR_R + 2.0, 2 * HOLD_EAR_R + 1.0, a))   # -X
-        dy, dz = at_ang(PIN_ANG)                       # the pin's blind hole, its end a 45 deg cone
-        hd = PIN_L - D.NUT_FLANGE_T + 0.5
-        out = out.cut(cyl_x(PIN_HOLE_D, hd + 1.0, pb - hd, y=y + dy, z=z + dz))
-        out = out.cut(_cone_x(0.01, PIN_HOLE_D / 2 + 0.01, pb - hd - PIN_HOLE_D / 2, pb - hd + 0.01,
-                              y + dy, z + dz))
+        out = _stack_channels(i, t, out, x_lo)
     out = out.cut(_radial_box(i, pb - TAB_L - 1, pb + 1, lo, hi, GUIDE_SLOT))
     for r in (lo, hi):                                                              # round ends
         dy, dz = at_ang(guide_ang(i), r)
@@ -1518,8 +1430,53 @@ def _collar(i: int, t: float, bench: bool = False) -> cq.Workplane:
     return _share_cuts(i, t, out)
 
 
+def _stack_channels(i: int, t: float, out: cq.Workplane, x_lo: float) -> cq.Workplane:
+    """THE STACK WITHOUT EARS' holes in the collar: each channel, its insert's pocket and the screw's
+    hole through the lip; the post's split (a radial wedge, tangent to the channels) and its
+    edges' chamfers in the grip."""
+    y, z = y_of(i), za(i)
+    pb, (f0, f1), _ = x_collar(t)
+    mouth, floor = f1, pb - CH_LIP
+    for a in STACK_ANG:
+        dy, dz = at_ang(a, STACK_R)
+        py, pz = y + dy, z + dz
+        out = out.cut(cyl_x(CH_D, mouth - x_lo + 1.01, x_lo - 1, y=py, z=pz))          # the channel
+        out = out.cut(fitted_insert_cutter(INS, (mouth, py, pz), CH_DIR, NUT, print_up=COLLAR_UP,
+                                           roof=False))                               # its pocket
+        out = out.cut(cyl_x(M3H.CLR_PRINTED_D, CH_LIP + 2, floor - 1, y=py, z=pz))     # the lip
+    # THE SPLIT: in the grip to CH_WEDGE_R_GRIP (only the spring's room past the post); through the
+    # stop flange and the band to the tangent points (no notch in the solid); to the pockets' floor
+    r_tan = math.sqrt(STACK_R ** 2 - (CH_D / 2) ** 2)
+    for (x0, x1, rc) in ((x_lo - 1, f0, CH_WEDGE_R_GRIP), (f0 - 0.01, floor, r_tan)):
+        for a in STACK_ANG:
+            out = out.cut(_sector_x(i, x0, x1, a - CH_TH, a + CH_TH, rc))
+    for a in STACK_ANG:                        # the split's edges in the grip: 45 deg
+        for e, sg in ((a + CH_TH, 1.0), (a - CH_TH, -1.0)):
+            out = out.cut(_split_chamfer(i, x_lo - 1, f0, e, sg, CH_POST_CREST - CH_CHAMFER,
+                                         CH_WEDGE_R_GRIP))
+    return out
+
+
+def _sector_x(i: int, x0: float, x1: float, a0: float, a1: float, r: float) -> cq.Workplane:
+    """A sector of string i's section from angle a0 to a1, radius r, x0..x1."""
+    pts = [(0.0, 0.0)] + [at_ang(a0 + (a1 - a0) * k / 16, r) for k in range(17)]
+    return cq.Workplane("YZ", origin=(x0, y_of(i), za(i))).polyline(pts).close().extrude(x1 - x0)
+
+
+def _split_chamfer(i: int, x0: float, x1: float, e: float, sg: float, r1: float, r2: float) -> cq.Workplane:
+    """A 45 deg chamfer along the split's radial side at angle e (the material toward sg), from r1
+    on that side out to r2 (clipped there: the sleeve's bore is past it), x0..x1."""
+    u, n = at_ang(e, 1.0), at_ang(e + sg * 90, 1.0)
+    rr = r2 + 0.3
+    pts = [(u[0] * r1 - n[0] * 0.01, u[1] * r1 - n[1] * 0.01),        # 0.01 into the split
+           (u[0] * rr - n[0] * 0.01, u[1] * rr - n[1] * 0.01),
+           (u[0] * rr + n[0] * (rr - r1), u[1] * rr + n[1] * (rr - r1))]
+    tri = cq.Workplane("YZ", origin=(x0, y_of(i), za(i))).polyline(pts).close().extrude(x1 - x0)
+    return tri.intersect(cyl_x(2 * r2, x1 - x0, x0, y=y_of(i), z=za(i)))
+
+
 def _collar_inserts(i: int, t: float, bench: bool = False) -> list:
-    """The stack's two inserts, as nuts on their washers in the collar ears' pockets (the bench: the
+    """The stack's two inserts, as nuts on the collar's lip at the channels' pockets (the bench: the
     M3 x 30s' two, flush on the flange's back, and the ear screws' two in the yoke's slots): ONE
     PART EACH (user, 2026-11-17: only multi-material prints and boards are several pieces)."""
     y, z = y_of(i), za(i)
@@ -1528,24 +1485,23 @@ def _collar_inserts(i: int, t: float, bench: bool = False) -> list:
         return ([fitted_insert(INS, (pb, y + dy, z + dz), (-1.0, 0.0, 0.0))
                  for dy, dz in (at_ang(a) for a in HOLE_ANG["m3"])]
                 + [fitted_insert(INS, (ft + BENCH_FLOOR, y + dy, z + dz), (1.0, 0.0, 0.0))
-                   for dy, dz in (at_ang(a, BENCH_HOLD_R) for a in HOLD_ANG)])
-    return [fitted_insert(INS, (pb - HOLD_INS_X, y + dy, z + dz), (-1.0, 0.0, 0.0))
-            for dy, dz in (at_ang(a, HOLD_R) for a in HOLD_ANG)]
+                   for dy, dz in (at_ang(a, BENCH_HOLD_R) for a in BENCH_HOLD_ANG)])
+    mouth = x_collar(t)[1][1]
+    return [fitted_insert(INS, (mouth, y + dy, z + dz), CH_DIR)
+            for dy, dz in (at_ang(a, STACK_R) for a in STACK_ANG)]
 
 
 def _m3s(i: int, t: float, bench: bool = False) -> list:
-    """The stack's screws and the pin (the bench: the M3 x 30s and the ear screws); one part each."""
+    """The stack's screws (the bench: the M3 x 30s and the ear screws); one part each."""
     y, z = y_of(i), za(i)
     if bench:
         xh = x_collar(t)[0] - BENCH_COLLAR_L                 # the ear screws' heads, on the collar
         return ([_cap("m3", BENCH_KEY_M3_L, (x_yt(t) + M3_HEAD[1], y + dy, z + dz), (-1, 0, 0))
                  for dy, dz in (at_ang(a) for a in HOLE_ANG["m3"])]
                 + [_cap("m3", BENCH_HOLD_M3_L, (xh - M3_HEAD[1], y + dy, z + dz), (1, 0, 0))
-                   for dy, dz in (at_ang(a, BENCH_HOLD_R) for a in HOLD_ANG)])
-    dy, dz = at_ang(PIN_ANG)
-    return ([_cap("m3", STACK_M3_L, (x_yt(t) + M3_HEAD[1], y + dy2, z + dz2), (-1, 0, 0))
-             for dy2, dz2 in (at_ang(a, HOLD_R) for a in HOLD_ANG)]
-            + [_cap("m3", PIN_L, (x_ft(t) + M3_HEAD[1], y + dy, z + dz), (-1, 0, 0))])
+                   for dy, dz in (at_ang(a, BENCH_HOLD_R) for a in BENCH_HOLD_ANG)])
+    return [_cap("m3", STACK_M3_L, (x_yt(t) + M3_HEAD[1], y + dy, z + dz), (-1, 0, 0))
+            for dy, dz in (at_ang(a, STACK_R) for a in STACK_ANG)]
 
 
 def _cap(kind: str, length: float, top, shank_dir) -> cq.Workplane:
@@ -1731,21 +1687,79 @@ HULL_N = 24
 
 def _hull_prism_x(circles: list, corners: list, x0: float, x1: float) -> cq.Workplane:
     """A prism along X, x0..x1, over the convex hull of circles (y, z, r) and points (y, z) in YZ --
-    true arcs and lines (cadquery.hull), not a polygon of many tiny facets (2026-11-18: those meshed
-    with open edges in the slicer)."""
-    from cadquery.hull import find_hull
-    edges = [cq.Edge.makeCircle(r, cq.Vector(y, z, 0)) for y, z, r in circles]
-    if corners:
-        edges += cq.Wire.makePolygon([cq.Vector(y, z, 0) for y, z in corners], close=True).Edges()
-    try:
-        wire = find_hull(edges)
-    except ValueError:                       # (a circle crossing the polygon) -- a coarse polygon
-        pts = [(y + r * math.cos(2 * math.pi * k / HULL_N), z + r * math.sin(2 * math.pi * k / HULL_N))
-               for y, z, r in circles for k in range(HULL_N)] + list(corners)
-        wire = cq.Wire.makePolygon([cq.Vector(a, b, 0) for a, b in _hull2d(pts)], close=True)
+    true arcs and lines, not a polygon of many tiny facets (2026-11-18: those meshed with open
+    edges in the slicer).
+    ⚠ NOT cadquery.hull.find_hull (2026-11-23, the stack without ears: on the +X endplate's head
+    holes beside the windows it LOOPED until the build died of MemoryError after half an hour, on
+    11 of 20 inputs; gave an invalid solid on 6 and a null curve on 2). _hull_wire: the hull's
+    elements found from a dense sampling, then drawn exactly; its area checked against the samples."""
+    wire = _hull_wire([(y, z, r) for y, z, r in circles] + [(y, z, 0.0) for y, z in corners])
     prism = cq.Solid.extrudeLinear(cq.Face.makeFromWires(wire), cq.Vector(0, 0, x1 - x0))
     return cq.Workplane(obj=prism.rotate(cq.Vector(0, 0, 0), cq.Vector(1, 1, 1), 120)
                         .translate(cq.Vector(x0, 0, 0)))
+
+
+def _hull_wire(elems: list, n: int = 720) -> cq.Wire:
+    """The convex hull of circles and points (y, z, r; r 0 = a point) as one closed wire in the
+    XY plane: lines along the outer tangents, arcs on the circles between them. WHICH elements
+    the hull touches, and in what order, come from a monotone-chain hull of the circles sampled
+    n round (exact for the points); the geometry itself is exact."""
+    pts, owner = [], {}
+    for k, (y, z, r) in enumerate(elems):
+        ring = ([(y + r * math.cos(2 * math.pi * j / n), z + r * math.sin(2 * math.pi * j / n))
+                 for j in range(n)] if r > 0 else [(y, z)])
+        for q in ring:
+            key = (round(q[0], 6), round(q[1], 6))
+            owner.setdefault(key, k)
+            pts.append(q)
+    hull = _hull2d(pts)                                     # counter-clockwise
+    seq = [owner[q] for q in hull]
+    order = [k for j, k in enumerate(seq) if k != seq[j - 1]] or seq[:1]   # runs, cyclic
+    if len(order) > 1 and order[0] == order[-1]:
+        order.pop()
+    if len(order) == 1:                                     # one circle holds everything
+        y, z, r = elems[order[0]]
+        return cq.Wire.assembleEdges([cq.Edge.makeCircle(r, cq.Vector(y, z, 0))])
+
+    def tangent(a, b):
+        """The outward normal of the outer tangent from element a to b (hull on the left)."""
+        (ya, za_, ra), (yb, zb, rb) = elems[a], elems[b]
+        dy, dz = yb - ya, zb - za_
+        L = math.hypot(dy, dz)
+        uy, uz = dy / L, dz / L
+        sn = (ra - rb) / L
+        c = math.sqrt(max(0.0, 1.0 - sn * sn))
+        return uy * sn + uz * c, uz * sn - uy * c
+
+    m = len(order)
+    norms = [tangent(order[j], order[(j + 1) % m]) for j in range(m)]   # pair j: order[j] -> next
+    edges = []
+    for j in range(m):
+        a, b = order[j], order[(j + 1) % m]
+        ny, nz = norms[j]
+        (ya, za_, ra), (yb, zb, rb) = elems[a], elems[b]
+        pa = cq.Vector(ya + ra * ny, za_ + ra * nz, 0)
+        pb = cq.Vector(yb + rb * ny, zb + rb * nz, 0)
+        if (pb - pa).Length > 1e-7:
+            edges.append(cq.Edge.makeLine(pa, pb))
+        if rb > 0:                                           # the arc on b, to the next tangent
+            oy, oz = norms[(j + 1) % m]
+            t0, t1 = math.atan2(nz, ny), math.atan2(oz, oy)
+            span = (t1 - t0) % (2 * math.pi)
+            if span > 1e-7:
+                tm = t0 + span / 2
+                edges.append(cq.Edge.makeThreePointArc(
+                    cq.Vector(yb + rb * math.cos(t0), zb + rb * math.sin(t0), 0),
+                    cq.Vector(yb + rb * math.cos(tm), zb + rb * math.sin(tm), 0),
+                    cq.Vector(yb + rb * math.cos(t1), zb + rb * math.sin(t1), 0)))
+    wire = cq.Wire.assembleEdges(edges)
+    area = cq.Face.makeFromWires(wire).Area()
+    ref = 0.5 * abs(sum(hull[j - 1][0] * hull[j][1] - hull[j][0] * hull[j - 1][1] for j in range(len(hull))))
+    rmax = max(r for _, _, r in elems)
+    per = sum(math.dist(hull[j - 1], hull[j]) for j in range(len(hull)))
+    assert wire.IsClosed() and ref <= area <= ref + per * rmax * (1 - math.cos(math.pi / n)) + 1e-6, \
+        "the hull's wire disagrees with its samples (%.4f vs %.4f)" % (area, ref)
+    return wire
 
 
 def _hull2d(pts: list) -> list:
@@ -2252,15 +2266,16 @@ def _collar_b_m3(i: int) -> cq.Workplane:
     return _collar_m3(i, "b")
 
 
-def _nut(i: int, t: float) -> cq.Workplane:
-    """The round Tr8x2 flange nut, axis along -X: lip on the flange's +X face, boss behind."""
+def _nut(i: int, t: float, bench: bool = False) -> cq.Workplane:
+    """The round Tr8x2 flange nut, axis along -X: lip on the flange's +X face, boss behind; its
+    holes NUT_CLOCK round (the bench's at 45/135/..: its M3 x 30s at HOLE_ANG["m3"])."""
     y, z, ft = y_of(i), za(i), x_ft(t)
     out = cyl_x(D.NUT_FLANGE_L, D.NUT_FLANGE_T, ft - D.NUT_FLANGE_T, y=y, z=z)
     out = out.union(cyl_x(D.NUT_LIP_D, D.NUT_LIP_L, ft, y=y, z=z))
     out = out.union(cyl_x(D.NUT_BOSS_D, D.NUT_H - D.NUT_FLANGE_T, ft - D.NUT_H, y=y, z=z))
     out = out.cut(cyl_x(D.SCREW_OD, 30, ft - 20, y=y, z=z))
     for a in (45.0, 135.0, 225.0, 315.0):
-        dy, dz = at_ang(a)
+        dy, dz = at_ang(a + (0.0 if bench else NUT_CLOCK))
         out = out.cut(cyl_x(3.5, 10, ft - 5, y=y + dy, z=z + dz))
     if swap_bore is None:
         return out
@@ -2624,7 +2639,7 @@ _STRING_PARTS = (
     ("yoke", _yoke, True), ("keyplate", _keyplate_at, True), ("keyseat", _keyseat_at, True),
     ("ball", _ball, True),
     ("nut", _nut, True), ("collar", _collar, True), ("m3", _m3s, True),
-    ("col_ins", _collar_inserts, True), ("hold_wsh", _hold_washers, True),
+    ("col_ins", _collar_inserts, True),
     ("spring", _spring, True), ("plug", _anchor_plug, False),
     ("rod", _rod, False), ("screw", _screw_at, False), ("coupler", _coupler, False),
     ("cpl_m3", _cpl_m3, False), ("cpl_insert", _cpl_insert, False),
@@ -2642,11 +2657,11 @@ _STRING_PARTS = (
 _MESH_ONLY = {"screw", "spring"}
 # the parts that ride the nut AS ONE RIGID BODY: built once, at t = 0, and moved along x to t
 # (2026-11-15: the gate's three t's, and every view at another t, read one build of each)
-_RIGID = {"yoke", "keyplate", "keyseat", "ball", "nut", "collar", "m3", "col_ins", "hold_wsh"}
+_RIGID = {"yoke", "keyplate", "keyseat", "ball", "nut", "collar", "m3", "col_ins"}
 
 
 # the parts the WOOD BENCH draws its own way (bench=True: its screws, THE WOOD BENCH'S STACK)
-_BENCHED = {"yoke", "collar", "m3", "col_ins", "hold_wsh", "plug", "hb", "insert", "lid"}
+_BENCHED = {"yoke", "collar", "m3", "col_ins", "nut", "plug", "hb", "insert", "lid"}
 
 
 def string_parts(i: int, t: float, raw: bool = False, bench: bool = False) -> list:
@@ -2840,7 +2855,7 @@ def kh_x() -> dict:
 # bar: 1.5 d -- in steel that already outlasts the screw, and every mm more is drilling and
 # tapping the bar end (user, 2026-11-12: only as deep as a firm, lasting grip needs); the tapped
 # hole goes EP_TAP_EXTRA past the tip
-M3_STOCK = (16.0, 20.0, 22.0, 25.0, 30.0)
+M3_STOCK = (16.0, 20.0, 22.0, 25.0, 30.0, 35.0, 40.0)
 EP_ENGAGE, EP_TAP_EXTRA = 1.5 * 3.0, 2.0
 
 
@@ -3260,9 +3275,9 @@ def _seg_dist(p, a, b) -> float:
 
 
 def _head_ends(i: int, a: float) -> list:
-    """String i's stack head at ear angle a: its float's two ends (YZ), from stack_float."""
+    """String i's stack head at angle a: its float's two ends (YZ), from stack_float."""
     uy, uz = at_ang(guide_ang(i), 1.0)
-    dy, dz = at_ang(a, HOLD_R)
+    dy, dz = at_ang(a, STACK_R)
     fin, fout = stack_float(i)
     return [(y_of(i) + dy - fin * uy, za(i) + dz - fin * uz),
             (y_of(i) + dy + fout * uy, za(i) + dz + fout * uz)]
@@ -3270,7 +3285,7 @@ def _head_ends(i: int, a: float) -> list:
 
 def _head_head_wall() -> float:
     """The least plastic between two stack heads' holes in the +X endplate."""
-    hs = [_head_ends(i, a) for i in range(N) for a in HOLD_ANG]
+    hs = [_head_ends(i, a) for i in range(N) for a in STACK_ANG]
     return min(min(_seg_dist(p, *hs[n]) for p in hs[m]) - EP_HEAD_HOLE
                for m in range(len(hs)) for n in range(len(hs)) if m != n)
 
@@ -3338,7 +3353,7 @@ def _endplate(rods: bool = True, only: int = None, bench: bool = False) -> cq.Wo
         hd = EP_HEAD_HOLE
         fin, fout = (GUIDE_FLOAT, GUIDE_FLOAT) if bench else stack_float(i)   # the stack's real float
         for dy, dz in ((at_ang(a) for a in HOLE_ANG["m3"]) if bench
-                       else (at_ang(a, HOLD_R) for a in HOLD_ANG)):     # the stack's heads
+                       else (at_ang(a, STACK_R) for a in STACK_ANG)):   # the stack's heads
             ends = [(y_of(i) + dy - fin * uy, za_i + dz - fin * uz),
                     (y_of(i) + dy + fout * uy, za_i + dz + fout * uz)]
             yc, zc = (ends[0][0] + ends[1][0]) / 2, (ends[0][1] + ends[1][1]) / 2
@@ -3553,7 +3568,7 @@ MATERIAL = {
     "nut": "brass", "ball": "brass", "screw": "steel", "rod": "steel", "string": "polished",
     "brg": "polished", "bend_brg": "polished", "bridge_bearings": "polished",
     "bend_axle_ra": "steel", "bend_axle_rb": "steel", "bend_axle_rc": "steel",
-    "spring": "stainless", "plug": "petg-gf", "m3": "steel", "col_ins": "brass", "hold_wsh": "steel",
+    "spring": "stainless", "plug": "petg-gf", "m3": "steel", "col_ins": "brass",
     "coupler": "petg-gf",
     "cpl_m3": "steel", "cpl_insert": "brass", "housing": "petg-gf", "hb": "steel", "insert": "brass",
     "collar_a": "petg-gf", "collar_b": "petg-gf", "ca_m3": "steel", "cb_m3": "steel", "ca_ins": "brass", "cb_ins": "brass", "lid": "petg-gf", "tie_spacer": "aluminium",
@@ -3610,7 +3625,7 @@ COLORS = {
     "bend_axle_rc": "leadscrew",
     "yoke": (0.39, 0.58, 0.93), "collar": (0.85, 0.45, 0.15),
     "spring": "leg_latch_spring", "plug": (0.85, 0.45, 0.15), "adapter": (0.36, 0.42, 0.46),
-    "m3": "set_screw", "col_ins": "nut", "hold_wsh": "set_screw",
+    "m3": "set_screw", "col_ins": "nut",
     "coupler": (0.85, 0.45, 0.15), "cpl_m3": "set_screw", "cpl_insert": "nut",
     "housing": (0.30, 0.36, 0.42), "hb": "set_screw", "insert": "nut",
     "collar_a": (0.85, 0.45, 0.15), "collar_b": (0.85, 0.45, 0.15), "ca_m3": "set_screw",
