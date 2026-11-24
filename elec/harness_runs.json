@@ -1,6 +1,6 @@
 {
- "build": 1147,
- "commit": "8be57b9602578ad6e05bc2ed38cd3cd13f255836",
+ "build": 1157,
+ "commit": "25068539575f552da4e0bd86ff553f92fc8501bc",
  "cut_slack": 1.15,
  "end_allow_mm": 25.0,
  "runs": {
@@ -11,10 +11,10 @@
    "note": "brain J240 (ribbon leaves -Z) to connector_board J1 (leaves -Y)"
   },
   "ribbon_brain_optical_20p": {
-   "taut_mm": 68.0,
-   "need_mm": 93,
+   "taut_mm": 69.5,
+   "need_mm": 95,
    "stock_in": 4,
-   "note": "brain J4 (leaves +X) to the optical board's -Y end, under deck_optical -- INFERRED (no 2x10 on the optical geometry yet), +16 through the deck piece added"
+   "note": "brain J4 (leaves +X) to the optical board's J4 (DECLARED, under the strip at y -39.5): +7.4 in the plinth slot added"
   },
   "ui_ribbon_lead_16p": {
    "taut_mm": 172.7,
