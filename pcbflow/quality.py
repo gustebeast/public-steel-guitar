@@ -2225,6 +2225,11 @@ def via_in_land(ctx):
     if not found:
         return [("via in land", True, "no via sits in a pasted land, %d land(s) checked"
                  % len(lands))]
+    # filled and capped vias ordered (quality.fab via_in_pad; fab_package refuses to package
+    # the board without a POFV order option): a capped barrel holds no paste
+    if (ctx.q.get("fab") or {}).get("via_in_pad"):
+        return [("via in land", True, "%d via(s) sit in a pasted land, all filled and capped "
+                 "(quality.fab via_in_pad): none can drink a joint" % len(found))]
     found.sort(reverse=True)
     r, name, barrel, paste = found[0]
     bad = [f for f in found if f[0] >= 0.5]
