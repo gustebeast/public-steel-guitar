@@ -33,6 +33,7 @@ class SimServo(threading.Thread):
         self.code = 0
         self.enabled = False
         self.active = True                              # 0x8C's second byte: report arrival
+        self.mode, self.ma, self.hold = S.SR_VFOC, S.DEFAULT_MA, None   # 0x82, 0x83, 0x9B as last set
         self.history: list[tuple[float, float]] = []    # (time.monotonic(), counts)
         self._run = True
 
@@ -49,6 +50,18 @@ class SimServo(threading.Thread):
             self._reply(bytes([code, 1]))
         elif code == S.SET_RESPOND:
             self.active = bool(d[2])
+            self._reply(bytes([code, 1]))
+        elif code == S.SET_MODE:
+            self.mode = d[1]
+            self._reply(bytes([code, 1]))
+        elif code == S.SET_CURRENT:
+            self.ma = int.from_bytes(d[1:3], "big")
+            self._reply(bytes([code, 1]))
+        elif code == S.SET_HOLD:
+            self.hold = d[1]
+            self._reply(bytes([code, 1]))
+        elif code == S.SET_ZERO:
+            self.pos, self.target = 0.0, None
             self._reply(bytes([code, 1]))
         elif code == S.READ_ENCODER:
             self._reply(bytes([code]) + int(round(self.pos)).to_bytes(6, "big", signed=True))
