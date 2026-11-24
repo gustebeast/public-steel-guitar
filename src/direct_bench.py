@@ -3464,9 +3464,19 @@ def endplate_full():
     return kept(_endplate)
 
 
+def assembly_at(t: float, base: list) -> list:
+    """assembly(t) from `base`, an assembly (with anything appended to it) at another t: ONLY THE
+    DRIVE DEPENDS ON t (assembly() draws _drive(t) first, then parts that stand still), so the drive
+    is drawn at t and the rest of `base` is reused as it is -- the same list, in the same order, as
+    assembly(t) (the drive-travel gate's input; src.build checked it equal, 2026-11-23)."""
+    dr = [(nm, _made(nm, w)) for nm, w in _drive(t)]
+    assert [nm for nm, _ in base[:len(dr)]] == [nm for nm, _ in dr], "base does not start with the drive"
+    return dr + list(base[len(dr):])
+
+
 def assembly(t: float = T_OPEN, all_ghosts: bool = False) -> list:
     from .deck_layout import ghosts as _ghosts
-    out = _drive(t) + [("endplate", endplate_full())] + endplate_axles()
+    out = _drive(t) + [("endplate", endplate_full())] + endplate_axles()   # the drive FIRST (assembly_at)
     # EVERY PART THE VIEW CAN SHOW OR HIDE IS KEPT ON ITS OWN (user, 2026-11-12): an edit
     # rebuilds the parts whose code or inputs it touched, and nothing else
     out += [_compound("anchor", kept(_anchor))]
