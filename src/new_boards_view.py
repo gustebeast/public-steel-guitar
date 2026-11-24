@@ -287,6 +287,8 @@ def assembly() -> list:
 #   ui_board                       src.ui_panel.ui_pcb() lays the routed board unflipped at
 #                                  board_centre() / board_z0(), and src.direct_bench moves the whole
 #                                  UI station +Y by ui_parts()[1]
+#   optical                        DECLARED, not routed: src.deck_v2_region's J4 (j4_pose), the
+#                                  interface the redesigned board keeps (2 x 10 under the strip)
 #   fret_led_key, fret_led_mid     src.fret_light's own placing of the routed board (_placed: its
 #                                  x span and the ear offset), at the DIRECT deck's board height
 #                                  (src.deck_v2.BOARD_BOT): the deck draws that board as a stand-in
@@ -296,6 +298,13 @@ def header_pose(board: str, ref: str) -> tuple:
     """(x, y, z) in instrument mm of the middle of footprint `ref`'s F.Fab body on `board`, 1 mm
     tall off the board's component face (what a lead's end is measured from)."""
     import cadquery as cq
+    if board == "optical":
+        # no routed board yet (being redesigned): its J4 is DECLARED by the panel it sits on
+        from . import deck_v2_region as R
+        if ref != "J4":
+            raise KeyError("header_pose: the optical board declares J4 only, not %s" % ref)
+        R.check_j4_mirror()
+        return R.j4_pose()
     from . import board_geom as BG
     f = BG.footprint(board, ref)
     x0, x1, y0, y1 = f["fab"]

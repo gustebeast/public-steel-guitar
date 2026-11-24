@@ -11,7 +11,7 @@ read from the shared scratch cache (cadkit.scratch: no geometry is rebuilt), and
 
 THE ENDS are where each lead leaves its connector, read from the boards' footprints placed by
 src/new_boards_view.header_pose (brain, connector, UI and fret boards, each where the model places
-it) and from the cached parts (motor terminals);
+it; the optical board's J4 DECLARED by src/deck_v2_region.py) and from the cached parts (motor terminals);
 the ones the model does not hold exactly are marked INFERRED in RUNS and in the printout.
 CABLE OVER CABLE IS FINE (user, 2026-10-29): ribbons, IDC sockets and terminal plugs are
 not obstacles, only boards, printed parts, motors and metal.
@@ -40,6 +40,9 @@ RIBBON_ALLOW = 15.0         # per ribbon: the IDC socket bodies and the turn out
 SERVICE = {"fret": 100.0}   # a lead to the deck keeps a loop so the panel lifts with it plugged
 
 
+IN_SLOT = {}                                     # run -> ribbon mm inside a slot, added to the route
+
+
 def _ends():
     """{run name: (a, b, kind, conductors {gauge: n}, notes)} in instrument mm."""
     from src import new_boards_view as V
@@ -53,12 +56,16 @@ def _ends():
     runs["ribbon_brain_connector_30p"] = (
         (j240[0], -80.0, j240[2] - 14.0), (c1[0], c1[1] - 15.0, c1[2] + 7.0), "ribbon", {},
         "brain J240 (ribbon leaves -Z) to connector_board J1 (leaves -Y)")
-    # the optical board is the model's stand-in strip on deck_optical (x -32..-23, y -49..52,
-    # z 12): INFERRED end at its -Y end, under the deck piece it sits on (a slot through it)
+    # the optical board's J4 is DECLARED (src/deck_v2_region.py: the redesign keeps it): a 2 x 10
+    # under the stand-in strip, its ribbon down a slot through the plinth and the optical panel.
+    # The run starts where the ribbon leaves the panel's underside; its length in the slot is added.
+    from src import deck_v2_region as R
+    o4, ox = hdr("optical", "J4"), R.j4_ribbon_exit()
+    IN_SLOT["ribbon_brain_optical_20p"] = R.j4_ribbon_in_slot()
     runs["ribbon_brain_optical_20p"] = (
-        (j4[0] + 14.0, -80.0, j4[2]), (-28.0, -50.0, -4.0), "ribbon", {},
-        "brain J4 (leaves +X) to the optical board's -Y end, under deck_optical -- INFERRED "
-        "(no 2x10 on the optical geometry yet), +16 through the deck piece added")
+        (j4[0] + 14.0, -80.0, j4[2]), ox, "ribbon", {},
+        "brain J4 (leaves +X) to the optical board's J4 (DECLARED, under the strip at y %.1f): "
+        "+%.1f in the plinth slot added" % (o4[1], R.j4_ribbon_in_slot()))
     # UI J2 is the 2x8 horizontal header at the UI board's -X end (src/ui_panel.py), its pins
     # out past the edge: the IDC socket's ribbon leaves -X
     u2 = hdr("ui_board", "J2")
@@ -146,7 +153,7 @@ def main() -> int:
             L, pts = None, []
             print("  %-28s NO ROUTE (%s): %s" % (name, type(e).__name__, e))
             continue
-        L += 16.0 if name == "ribbon_brain_optical_20p" else 0.0
+        L += IN_SLOT.get(name, 0.0)               # ribbon inside a part the router cannot enter
         if kind == "ribbon":
             need = L * CUT_SLACK + RIBBON_ALLOW
             stock = next((s for s in RIBBON_STEPS_IN if s * INCH >= need), None)
