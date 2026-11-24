@@ -2749,3 +2749,37 @@ removed (git history has it); the wood bench keeps its v2 nut block.
 - The +X endplate's head holes move with the heads (r 8, +-Y); 5.2 of plastic between them.
 - **Unverified:** the spring's grip loses 21 % of its turn to the channels (4 turns left,
   ~0.5 MPa). A hang test (~110 N for a day) on one printed collar is worth doing before a set.
+
+## Wood bench, dual rod: string 6 with the shared guide rods (2026-11-24)
+
+String 6's bench rebuilt for the drivetrain as the instrument has it now. String 6's collar grips
+its own rod (rod 5) with its jaw and hooks rod 8 (string 9's own rod) on the far side, so the turn
+and the swing about the rod are both locked. `py -3.12 -m src.wood_bench` writes every print to
+`coupons/woodbench_dual/` with a PRINT_LIST. The first bench's `coupons/woodbench/` stays as printed.
+
+- **Rods:** two 3/16 in 304 rods, each ROD_L 202.5 (a third of a 2 ft McMaster 89535K84). The cut
+  length has not changed since 2026-11-14, so the first bench's rod is still rod 5, and a second
+  third of the same stock is rod 8.
+- **Rod 8, +X end:** pushed home into a new seat in the endplate slice, with the instrument's seat
+  and crush ribs.
+- **Rod 8, -X end:** through the anchor stand-in's web and a post on the web's -X face. The post
+  clears collar B's swept circle by 1.6.
+- **Order:** put rod 8 in before the drive, from -X through the post and web into the endplate seat.
+  The collar's hook then goes over it as the drive goes in.
+- **The stack is the instrument's** (see "The stack without ears", 2026-11-23): the one-piece
+  collar, two M3 inserts down its channels, 2 x M3 x 35 through the keyplate, yoke and nut flange,
+  and the keyplate's lobes. The keyplate is still a PETG-GF stand-in. The old ears, their 2 x M3 x 20
+  and the hold washers are gone. The plug, lid and ties are still the bench's (M3 x 30 on hand).
+- **Endplate slice:** widened -Y to the plank's edge line to take rod 8's seat.
+  - Its -Y wood screw moves onto a flange off the joint face at the plank. The old spot's access
+    shaft would have cut down through the seat.
+  - The anchor's rail is 12.8 shorter and butts that flange, so the prints still set the
+    anchor-to-endplate spacing.
+  - The anchor's -X, -Y base screw moves +Y, out from under the post.
+- **Reprint:** collar (PCTG), yoke, keyplate, plug, wb_anchor, wb_endplate.
+- **Reuse as printed:** housing, lid, coupler, clamp collars, tie spacers, motor mount and spacers,
+  keyhead, nut shoe (each STEP checked equal by volume and size).
+- **Checked:**
+  - Overlap: clean at both ends of the travel apart from designed contacts (both rods' crush ribs,
+    the self-tapped board screw, the motor's face screws).
+  - print_check: no new sites beyond rod 8's bore teardrop ledge (as rod 5's).

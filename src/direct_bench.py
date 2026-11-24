@@ -2667,10 +2667,11 @@ _BENCHED = {"yoke", "collar", "m3", "col_ins", "nut", "plug", "hb", "insert", "l
 def string_parts(i: int, t: float, raw: bool = False, bench: bool = False) -> list:
     """String i's drive, drawn along -X at (y_of(i), za(i)), yawed into place: each part kept.
     raw: the plug before its anchor clearance (body_box's measure; see _anchor_plug). bench: the
-    wood bench's stack and plug (THE WOOD BENCH'S STACK)."""
+    wood bench's stack and plug (THE WOOD BENCH'S STACK) -- True for every _BENCHED part, or a set of
+    names: only those (the dual-rod bench keeps the bench's ties and takes the instrument's stack)."""
     out = []
     for nm, make, moves in _STRING_PARTS:
-        bx = (True,) if bench and nm in _BENCHED else ()
+        bx = (True,) if bench and nm in _BENCHED and (bench is True or nm in bench) else ()
         if raw and make is _anchor_plug:
             make = _anchor_plug_raw
         if nm in ("collar_a", "ca_m3", "ca_ins") and coupler_is_collar(i):
@@ -3290,9 +3291,11 @@ def _head_head_wall() -> float:
                for m in range(len(hs)) for n in range(len(hs)) if m != n)
 
 
-def _endplate(rods: bool = True, only: int = None, bench: bool = False) -> cq.Workplane:
+def _endplate(rods: bool = True, only: int = None, bench: bool = False,
+              extra_rods: tuple = ()) -> cq.Workplane:
     """only: draw ONE string's lane, window, rod and reliefs (the wood bench's slice); bench: the
-    heads' holes where the bench's M3 x 30s stand (HOLE_ANG["m3"])."""
+    heads' holes where the bench's M3 x 30s stand (HOLE_ANG["m3"]); extra_rods: more rods' seats
+    (the dual-rod wood bench: the rod string 6's collar hooks, whose owner is not on the bench)."""
     strings = range(N) if only is None else (only,)
     from cadkit.holes import teardrop_hole
     (_, _), (y0, y1), (z0, _) = body_box()["outer"]
@@ -3385,7 +3388,7 @@ def _endplate(rods: bool = True, only: int = None, bench: bool = False) -> cq.Wo
     # the boss's +X end faces the bed as printed (+X -> -X), so it may not end flat in a lane
     rb = GUIDE_SEAT / 2 + GUIDE_WALL               # (its old size: 2.1 of wall round EP_ROD_SEAT)
     rc = EP_ROD_SEAT / 2 + D.BEAD
-    seats = [k for i in (strings if rods else ()) for k in rods_seated(i)]
+    seats = [k for i in (strings if rods else ()) for k in rods_seated(i)] + list(extra_rods)
     for i in seats:
         ry, rz = rod_yz(i)
         xb = ROD_TIP + 0.3
