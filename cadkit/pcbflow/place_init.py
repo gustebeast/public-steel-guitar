@@ -264,6 +264,9 @@ def place(parts, notes, rules, keep=()):
     its pins, a PHY with its decap column -- is the design; only WHERE it goes is a
     placement choice. A group needed a fixed anchor before, so a cell had to be pinned or
     dissolved into free parts that the legaliser then scattered."""
+    _RELEASED.clear()
+    rules, rel_ = _release_snapshots(parts, notes, rules, keep)
+    _RELEASED.extend(rel_)
     back = pi.back_refs(rules)
     if back:
         return _place_two_sided(parts, notes, rules, keep, back)
@@ -745,26 +748,13 @@ def _near_reach(parts, rules, pl):
                          "or relax the rule:\n  " + "\n  ".join(bad))
 
 
-def _place(parts, notes, rules, keep=(), hint_out=None):
-    pl = {}
-    log = []
-    why = {}                     # provenance: which rule (or stage) set each coordinate
-    rot_of = {}
-    for r in rules:
-        if r["kind"] == "rot":
-            rot_of[r["ref"]] = list(r["allowed"])
-    # every hard distance rule, by each ref it names: _drop takes no seat that breaks one
-    _HARD.clear()
-    for r in rules:
-        if r["kind"] in HARD_DIST_KINDS and pi.is_hard(r):
-            for x in _rule_refs(r):
-                if x in parts:
-                    _HARD.setdefault(x, []).append(r)
+def _seat_held(parts, notes, rules, keep, rot_of):
+    """Stage 1 of _place: the keep / fixed / pin / panel parts seated -> (pl, why, log)."""
+    pl, why, log = {}, {}, []
 
     def rot0(ref):
         return rot_of.get(ref, [parts[ref]["at"][2]])[0]
 
-    # ---- 1. fixed
     for ref in keep:
         pl[ref] = list(notes["placements"][ref])
         why[ref] = "keep (hand)"
@@ -799,6 +789,80 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
                 pl[ref] = [pl[ref][0] + ux * sl[0][0], pl[ref][1] + uy * sl[0][0], rot]
                 log.append("panel %s pulled in %.2f mm: %s" % (ref, -sl[0][0], sl[0][2]))
                 why[ref] += " -- pulled in %.2f for pad-to-edge copper clearance" % -sl[0][0]
+    return pl, why, log
+
+
+_RELEASED = []   # SNAPSHOT RELEASED lines of the current place() call (logged by _place)
+
+
+def _release_snapshots(parts, notes, rules, keep=()):
+    """⚠ A REMEMBERED POSITION NEVER OUTRANKS A HARD RULE (brain_board pr_s1, 2026-11-23): U13
+    was snapshot-held where mP0 left it; the panel rule turned J1 to face -X, its lands moved,
+    and U13 ended 14.74 mm from J1 against a HARD 14 -- the flow stopped before layout with
+    "HELD PARTS BREAK HARD RULES" after a 12-minute place_init. A snapshot is where an earlier
+    layout left a part, "a re-place may move it under every hard gate" (lead 2026-11-22). So
+    the held parts are seated first, and a snapshot-held part that misses one of its hard
+    distance rules there is RELEASED: its fixed rule dropped, the placer seats it under the
+    rule. Holds of every other class (mate, mechanical, user, physical) are kept and still
+    stop the flow. -> (rules, lines)."""
+    snap = {r["ref"]: i for i, r in enumerate(rules) if r["kind"] == "fixed" and pi.is_snapshot(r)}
+    if not snap:
+        return rules, []
+    anchors = {r.get("anchor") for r in rules if r["kind"] == "group"}
+    rot_of = {r["ref"]: list(r["allowed"]) for r in rules if r["kind"] == "rot"}
+    pl, _w, _l = _seat_held(parts, notes, rules, keep, rot_of)
+    P = pi.Placed(parts, pl)
+    drop, lines = set(), []
+    for r in rules:
+        if r["kind"] not in HARD_DIST_KINDS or not pi.is_hard(r):
+            continue
+        refs = [x for x in _rule_refs(r) if x in parts]
+        if not refs or any(x not in pl for x in refs):
+            continue                      # a free side: the placer answers it
+        held = [x for x in refs if x in snap and x not in anchors and x not in keep]
+        if not held:
+            continue
+        try:
+            bad = [c for c in pi.check(r, P, notes) if c[0] < 0]
+        except (KeyError, ValueError):
+            continue
+        if not bad:
+            continue
+        for x in held:
+            if x not in drop:
+                drop.add(x)
+                lines.append("SNAPSHOT RELEASED: %s -- its remembered seat breaks hard %s rule (%s, %.2f mm) "
+                             "[%s]; the placer seats it under the rule" % (x, r["kind"], bad[0][2], bad[0][0],
+                                                                         r.get("src", "")))
+    if not drop:
+        return rules, []
+    return [r for i, r in enumerate(rules) if not (r["kind"] == "fixed" and r["ref"] in drop
+                                                    and snap.get(r["ref"]) == i)], lines
+
+
+def _place(parts, notes, rules, keep=(), hint_out=None):
+    pl = {}
+    log = []
+    why = {}                     # provenance: which rule (or stage) set each coordinate
+    rot_of = {}
+    for r in rules:
+        if r["kind"] == "rot":
+            rot_of[r["ref"]] = list(r["allowed"])
+    # every hard distance rule, by each ref it names: _drop takes no seat that breaks one
+    _HARD.clear()
+    for r in rules:
+        if r["kind"] in HARD_DIST_KINDS and pi.is_hard(r):
+            for x in _rule_refs(r):
+                if x in parts:
+                    _HARD.setdefault(x, []).append(r)
+
+    def rot0(ref):
+        return rot_of.get(ref, [parts[ref]["at"][2]])[0]
+
+    # ---- 1. fixed
+    pl, why, log1 = _seat_held(parts, notes, rules, keep, rot_of)
+    log += _RELEASED + log1
+
     # a rigid cell follows its anchor (the anchor fixed above; a free-anchor cell -- moved
     # whole by the legaliser -- is not built yet: say so rather than scatter the cell)
     for i_r, r in enumerate(rules):
