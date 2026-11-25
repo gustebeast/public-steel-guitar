@@ -4569,7 +4569,8 @@ def _inside_many(outline, X, Y, margin):
 
 
 def _pour_pad_vias(board, specs, via_d=0.6, via_drill=0.3, clr=0.2, hole_gap=0.45, filled=False,
-                   zone_clr=None, outline=None, small_spill=False, escapes=(), bands=()):
+                   zone_clr=None, outline=None, small_spill=False, escapes=(), bands=(),
+                   declared_vias=(), declared_tracks=()):
     """A via ARRAY in each big land that feeds a current-carrying pour on another layer.
 
     ⚠ ONE VIA IS A CHOKE POINT (output_power, 2026-11-13). auto_pour moved the 5-10 A nets
@@ -4613,6 +4614,27 @@ def _pour_pad_vias(board, specs, via_d=0.6, via_drill=0.3, clr=0.2, hole_gap=0.4
         if tr.GetClass() == "PCB_VIA":
             holes.append((tr.GetPosition().x, tr.GetPosition().y, tr.GetDrillValue() / 2.0))
         foreign.append(tr)
+    # ⚠ DECLARED COPPER IS LAID AFTER THIS PASS, SO IT MUST BE SEEN HERE (brain_board ec2, lead
+    # 2026-11-25): eco_d's three declared vias in R112.2 went down 0.2 mm from the four this pass had
+    # put in the same land -- overlapping 0.3 mm holes. The notes' vias are holes and the notes'
+    # tracks are foreign copper to every site below (and to _spill_vias, which shares both lists);
+    # the tracks are built off-board, never added. declared_hole_faults stays as the backstop.
+    nets_ = {n.GetNetname(): n for n in board.GetNetInfo().NetsByName().values()}
+    decl_ = []                     # (net, IU point): a declared via in a land counts toward its array
+    for v_ in declared_vias:
+        q_ = _to_board(v_[1], v_[2])
+        decl_.append((v_[0], q_))
+        holes.append((q_.x, q_.y, pcbnew.FromMM(float(v_[3]) if len(v_) > 3 else 0.3) / 2.0))
+    for net_, layer_, width_, pts_ in declared_tracks:
+        for a_, b_ in zip(pts_, pts_[1:]):
+            t_ = pcbnew.PCB_TRACK(board)
+            t_.SetStart(_to_board(*a_))
+            t_.SetEnd(_to_board(*b_))
+            t_.SetWidth(pcbnew.FromMM(width_))
+            t_.SetLayer(_LAYERS[layer_])
+            if net_ in nets_:
+                t_.SetNet(nets_[net_])
+            foreign.append(t_)
     fps = {fp.GetReference(): fp for fp in board.GetFootprints()}
     thick = pcbnew.ToMM(board.GetDesignSettings().GetBoardThickness()) or 1.6
     one = math.pi * (via_drill / 2.0) ** 2 * thick         # mm3 one barrel holds
@@ -4699,7 +4721,7 @@ def _pour_pad_vias(board, specs, via_d=0.6, via_drill=0.3, clr=0.2, hole_gap=0.4
             y0 = bb.GetCenter().y - (ny - 1) * pitch / 2.0
             sites = sorted(((x0 + i * pitch, y0 + j * pitch) for i in range(nx) for j in range(ny)),
                            key=lambda q: math.hypot(q[0] - c.x, q[1] - c.y))
-            made = 0
+            made = sum(1 for n_, q_ in decl_ if n_ == s["net"] and pad.HitTest(q_, 0))
             for x, y in sites:
                 if made >= min(want, cap):
                     break
@@ -5943,6 +5965,83 @@ def _add_track(board, net, layer, width, pts):
         board.Add(t)
 
 
+def _hole_d_seg(px, py, ax, ay, bx, by):
+    dx, dy = bx - ax, by - ay
+    L = dx * dx + dy * dy
+    t = 0.0 if L == 0 else max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / L))
+    return math.hypot(px - (ax + t * dx), py - (ay + t * dy))
+
+
+def declared_hole_faults(board, vias):
+    """[str] for each declared via whose drill breaks the board's own fab rules (the
+    .kicad_pro design settings DRC uses): hole_to_hole (m_HoleToHoleMin) against EVERY other
+    drill -- the flow's vias (pour, stitch, escape), the other declared vias, PTH/NPTH holes --
+    and hole_clearance (m_HoleClearance) against other nets' pad copper on any copper layer.
+
+    ⚠ WHY (brain_board ec2, lead 2026-11-25): eco_d declared three vias in R112.2's land 0.2 mm
+    from the four pour vias layout had already put there (pour vias run BEFORE declared copper
+    and never see it). 0.3 mm drills, centres 0.2 apart: overlapping holes, on a routed board.
+    No flag, no off-switch: a declared hole that the fab rejects stops the run."""
+    if not vias:
+        return []
+    ds = board.GetDesignSettings()
+    h2h = ds.m_HoleToHoleMin or pcbnew.FromMM(0.25)
+    hclr = ds.m_HoleClearance or pcbnew.FromMM(0.25)
+    mine = {v.m_Uuid.AsString() for v in vias}
+    holes = []            # (who, ax, ay, bx, by, radius) in IU
+    for t in board.GetTracks():
+        if t.GetClass() == "PCB_VIA":
+            p = t.GetPosition()
+            holes.append((t.m_Uuid.AsString(), "via %s (%.2f, %.2f)" % (t.GetNetname(), p.x / 1e6, p.y / 1e6),
+                          p.x, p.y, p.x, p.y, t.GetDrillValue() / 2.0))
+    for fp in board.GetFootprints():
+        for pd in fp.Pads():
+            if pd.GetAttribute() not in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH):
+                continue
+            h = pd.GetEffectiveHoleShape()
+            s = h.GetSeg()
+            holes.append(("pad", "hole %s.%s" % (fp.GetReference(), pd.GetNumber()),
+                          s.A.x, s.A.y, s.B.x, s.B.y, h.GetWidth() / 2.0))
+    cu = list(board.GetEnabledLayers().CuStack())
+    out, seen = [], set()
+    for v in vias:
+        c, r, uid = v.GetPosition(), v.GetDrillValue() / 2.0, v.m_Uuid.AsString()
+        here = "declared via %s (%.2f, %.2f) drill %.2f" % (v.GetNetname(), c.x / 1e6, c.y / 1e6, 2 * r / 1e6)
+        for hid, who, ax, ay, bx, by, hr in holes:
+            if hid == uid:
+                continue
+            gap = _hole_d_seg(c.x, c.y, ax, ay, bx, by) - r - hr
+            if gap < h2h - 1000:              # 1 um: the fab's number, not a hair under it
+                key = tuple(sorted((uid, hid))) if hid in mine else (uid, hid)
+                if key in seen:
+                    continue
+                seen.add(key)
+                out.append("%s: hole_to_hole %.3f mm to %s (min %.3f)"
+                           % (here, gap / 1e6, who, h2h / 1e6))
+        circ = pcbnew.SHAPE_CIRCLE(c, int(r))
+        for fp in board.GetFootprints():
+            for pd in fp.Pads():
+                if pd.GetNetname() == v.GetNetname() and pd.GetNetname():
+                    continue
+                for L in cu:
+                    if pd.IsOnLayer(L) and pd.GetEffectiveShape(L).Collide(circ, int(hclr) - 1000):
+                        out.append("%s: hole_clearance under %.3f mm to %s.%s (%s) on %s"
+                                   % (here, hclr / 1e6, fp.GetReference(), pd.GetNumber(),
+                                      pd.GetNetname() or "no net", board.GetLayerName(L)))
+                        break
+    return out
+
+
+def _declared_hole_check(board, vias):
+    faults = declared_hole_faults(board, vias)
+    if faults:
+        raise SystemExit("layout: %d declared via hole fault(s) against the fab rules -- move the "
+                         "declared via (intent `copper` / notes vias), the fab will not drill this:\n  %s"
+                         % (len(faults), "\n  ".join(faults)))
+    if vias:
+        print("      declared via holes: %d checked, hole_to_hole and hole_clearance clear" % len(vias))
+
+
 def _declared_copper_clear(board, items, clr=0.127):
     """Refuse the board if declared copper touches or crowds a pad of another net.
 
@@ -6588,7 +6687,8 @@ def build(stem):
                 (((notes.get("quality") or {}).get("fab")) or {}).get("via_in_pad")),
                 zone_clr=notes.get("zone_clearance"), outline=_outline_pts(notes),
                 small_spill=bool(notes.get("pour_spill_small")), escapes=notes.get("band_escapes") or (),
-                bands=[z for z in notes.get("zones", ()) if isinstance(z, dict) and z.get("frozen")]):
+                bands=[z for z in notes.get("zones", ()) if isinstance(z, dict) and z.get("frozen")],
+                declared_vias=notes.get("vias", ()), declared_tracks=notes.get("tracks", ())):
             print("  pour vias: " + _l)
 
 
@@ -6634,8 +6734,9 @@ def build(stem):
         _add_via(board, nets_by_name[_net], _vx, _vy, _drill, _dia)
     if notes.get("vias"):
         print("      placed %d explicit via(s)" % len(notes["vias"]))
-    _declared_copper_clear(board, [t for t in board.GetTracks()
-                                   if t.m_Uuid.AsString() not in _before])
+    _new = [t for t in board.GetTracks() if t.m_Uuid.AsString() not in _before]
+    _declared_hole_check(board, [t for t in _new if t.GetClass() == "PCB_VIA"])
+    _declared_copper_clear(board, _new)
 
     if notes.get("local_nets"):
         # NOT `skipped` -- that name already holds the single-pad net count this
