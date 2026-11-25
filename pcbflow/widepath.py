@@ -37,6 +37,7 @@ IN.npz: res, layers, mask_<layer> (bool HxW), holes (N x 3: cx, cy, barrel_mm), 
 OUT.json: {name: {width, neck, verdict}}.
 """
 import json
+import math
 import sys
 
 import numpy as np
@@ -225,6 +226,101 @@ def neck_length(width, holes, A, B, res, t, need):
     return float(np.min(d[dst]))
 
 
+_CROP_OFF = (0, 0)          # _crop's (x0, y0): locate() reports in the caller's full-board pixels
+
+
+def locate(width, holes, A, B, res, w, dt=0.05, most=3):
+    """WHERE a path's bottleneck is: [dict] of what parts A from B at w + dt.
+
+    ⚠ WHY (brain_board ec2/ec3, 2026-11-25): VIN_BRAIN read WARN 1.33-1.44 mm on six routes,
+    and two guesses at the cause each cost a 100-minute reroute; replaying this logic found it in
+    a minute (eco_c's vias sat 0.6 mm off a 2.61 track's axis, so 2 of 7 barrels counted). A gate
+    that only says HOW narrow sends people rerouting to learn WHERE. Two kinds:
+      {"kind": "vias", "layers": (k1, k2), "barrels": s, "t": t, "at": [(px, py), ...]}
+        a hole field that would join an A-side piece to a B-side piece but sums under t -- the
+        holes whose copper is under t on either layer do not count (widths at each are given);
+      {"kind": "copper", "layer": k, "at": (px, py), "px": n, "w": width}
+        a stretch of the copper's ridge (its local-max width) at the bottleneck width, in
+        copper that joins A to B just below w: the narrowest point along that layer's path.
+    Pixel coordinates in the arrays given (judge adds _crop's offset)."""
+    from scipy import ndimage
+    t, t2 = w + dt, max(res, w - dt)
+    lab = {k: ndimage.label(v >= t)[0] for k, v in width.items()}
+    uf = _UF()
+    fields = _fields(lab, holes)
+    for (a, b), sm in fields.items():
+        if sm >= t:
+            uf.u(a, b)
+
+    def side(E):
+        out = set()
+        for k, m in E.items():
+            if k in lab:
+                out |= {uf.f((k, int(v))) for v in np.unique(lab[k][m]) if v}
+        return out
+    sa, sb = side(A), side(B)
+    found = []
+    # HOLES BETWEEN THE SIDES: a hole in copper on two layers where one layer's copper (any width)
+    # holds A-side pieces and the other's B-side pieces. It counts (its barrel) only where its
+    # copper is >= t on both layers; those under t are what the bottleneck is made of.
+    any_cu = {k: ndimage.label(v > 0)[0] for k, v in width.items()}
+    tags = {}
+    for k, L in lab.items():
+        for v in range(1, int(L.max()) + 1):
+            r_ = uf.f((k, v))
+            tg = "A" if r_ in sa else "B" if r_ in sb else None
+            if tg:
+                ys, xs = np.nonzero(L == v)
+                c0 = any_cu[k][ys[0], xs[0]]
+                tags.setdefault((k, int(c0)), set()).add(tg)
+    hits = []
+    for (cx, cy, bar) in holes:
+        ix, iy = int(round(cx)), int(round(cy))
+        on = [k for k in width if 0 <= iy < width[k].shape[0] and 0 <= ix < width[k].shape[1]
+              and any_cu[k][iy, ix]]
+        for i1 in range(len(on)):
+            for i2 in range(i1 + 1, len(on)):
+                k1, k2 = on[i1], on[i2]
+                t1 = tags.get((k1, int(any_cu[k1][iy, ix])), set())
+                t2_ = tags.get((k2, int(any_cu[k2][iy, ix])), set())
+                if ("A" in t1 and "B" in t2_) or ("B" in t1 and "A" in t2_):
+                    wmin = float(min(width[k1][iy, ix], width[k2][iy, ix]))
+                    hits.append(((k1, k2), (cx, cy), bar, round(wmin, 2)))
+    near = 3.0 / res
+    while hits:                    # cluster by place (chained within 3 mm): one finding per via field
+        grp = [hits.pop(0)]
+        grew = True
+        while grew:
+            grew = False
+            for hh in list(hits):
+                if hh[0] == grp[0][0] and any(math.hypot(hh[1][0] - g[1][0], hh[1][1] - g[1][1]) < near for g in grp):
+                    grp.append(hh)
+                    hits.remove(hh)
+                    grew = True
+        ly = grp[0][0]
+        got = sum(bar for _, _, bar, wm in grp if wm >= t)
+        if got >= t:
+            continue
+        found.append(dict(kind="vias", layers=ly, barrels=round(got, 2), t=round(t, 2),
+                          at=[p for _, p, _, wm in grp if wm >= t],
+                          lost=[(p, wm) for _, p, _, wm in grp if wm < t]))
+    # copper: ridge pixels at the bottleneck width
+    for k, v in width.items():
+        mx = ndimage.maximum_filter(v, size=3)
+        ridge = (v >= mx - 1e-6) & (v >= t2) & (v < t)
+        if not ridge.any():
+            continue
+        cl, n = ndimage.label(ndimage.binary_dilation(ridge, iterations=2))
+        for i in range(1, n + 1):
+            ys, xs = np.nonzero(ridge & (cl == i))
+            if len(xs) < 3:
+                continue
+            found.append(dict(kind="copper", layer=k, at=(float(xs.mean()), float(ys.mean())),
+                              px=int(len(xs)), w=round(float(v[ys, xs].mean()), 2)))
+    found.sort(key=lambda f: (f["kind"] != "vias", -f.get("px", 0)))
+    return found[:most]
+
+
 def _crop(width, holes, A, B, res):
     """Everything judge needs, cut down to the copper joined to A at the lowest threshold.
 
@@ -233,6 +329,8 @@ def _crop(width, holes, A, B, res):
     search built its graph over whole pours. A path lives in the copper its ends touch, so the
     arrays are cut to that copper's bounding box (all layers, joined through holes) first."""
     from scipy import ndimage
+    global _CROP_OFF
+    _CROP_OFF = (0, 0)
     lab = {k: ndimage.label(w >= res)[0] for k, w in width.items()}
     uf = _UF()
     for (a, b), s in _fields(lab, holes).items():
@@ -257,13 +355,14 @@ def _crop(width, holes, A, B, res):
     H, W = next(iter(width.values())).shape
     y0, x0, y1, x1 = max(0, y0 - 2), max(0, x0 - 2), min(H, y1 + 3), min(W, x1 + 3)
     sl = (slice(y0, y1), slice(x0, x1))
+    _CROP_OFF = (x0, y0)
     cw = {k: w[sl].copy() for k, w in width.items()}
     ch = [(cx - x0, cy - y0, b) for (cx, cy, b) in holes
           if x0 <= int(round(cx)) < x1 and y0 <= int(round(cy)) < y1]
     return cw, ch, {k: m[sl] for k, m in A.items()}, {k: m[sl] for k, m in B.items()}
 
 
-def judge(width, holes, A, B, res, need, open_is_fail=True, declared=None):
+def judge(width, holes, A, B, res, need, open_is_fail=True, declared=None, where=True):
     """{width, neck, verdict} for one path. A, B: {layer: bool mask} of the end pads.
 
     open_is_fail: a path with NO copper between its ends is FAIL (the pre-order gate: a power
@@ -292,11 +391,24 @@ def judge(width, holes, A, B, res, need, open_is_fail=True, declared=None):
     # a part's pinout can bound the copper (SLVSGT7 puts FSW5 between VIN and its HF cap: 0.49 mm for
     # ~1.3 mm). The intent declares the neck's floor width and ceiling length; the path is WARN only
     # while the measured copper is no narrower AND no longer -- routing or fill that makes it worse FAILs.
+    out = dict(width=w, neck=n, verdict=v)
     if v == "FAIL" and declared:
         if w >= float(declared["min_w"]) - 1e-6 and n <= float(declared["max_len"]) + 1e-6:
-            return dict(width=w, neck=n, verdict="WARN", declared=declared.get("key", "declared"))
-        return dict(width=w, neck=n, verdict="FAIL", declared_broken=declared.get("key", "declared"))
-    return dict(width=w, neck=n, verdict=v)
+            out = dict(width=w, neck=n, verdict="WARN", declared=declared.get("key", "declared"))
+        else:
+            out = dict(width=w, neck=n, verdict="FAIL", declared_broken=declared.get("key", "declared"))
+    if where:
+        # WHERE, in the caller's pixels (see locate) -- no flag: a WARN / FAIL always says it
+        ox, oy = _CROP_OFF
+        loc = locate(cw, ch, cA, cB, res, w)
+        for f in loc:
+            if f["kind"] == "vias":
+                f["at"] = [(x + ox, y + oy) for x, y in f["at"]]
+                f["lost"] = [((x + ox, y + oy), w_) for (x, y), w_ in f["lost"]]
+            else:
+                f["at"] = (f["at"][0] + ox, f["at"][1] + oy)
+        out["where"] = loc
+    return out
 
 
 def _cli(inp, outp):

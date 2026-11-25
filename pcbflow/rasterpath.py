@@ -198,6 +198,28 @@ def layerset(s):
     return re.findall(r"I1|I2|F|B", s)
 
 
+def _mm(c, r):
+    """A pixel (col, row) as board mm (KiCad y down): gerber y is -board y."""
+    return (x0 + c * RES, -(y1 - r * RES))
+
+
+def _where(loc):
+    """widepath.locate's findings on the verdict line, in board mm: the bottleneck's place."""
+    if not loc:
+        return ""
+    out = []
+    for f in loc:
+        if f["kind"] == "vias":
+            pts = ",".join("(%.2f,%.2f)" % _mm(*p) for p in f["at"][:6])
+            lost = ",".join("(%.2f,%.2f) w%.2f" % (_mm(*p) + (w_,)) for p, w_ in f["lost"][:6])
+            out.append("vias %s-%s %.2f mm of barrel < %.2f at %s%s" % (
+                f["layers"][0], f["layers"][1], f["barrels"], f["t"], pts,
+                "; not counted (copper under t): " + lost if lost else ""))
+        else:
+            out.append("copper %s w %.2f at (%.2f,%.2f)" % ((f["layer"], f["w"]) + _mm(*f["at"])))
+    return "  WHERE: " + " | ".join(out)
+
+
 if sys.argv[4] == "--specs":
     data = json.load(open(sys.argv[5], encoding="utf-8"))
     width = widepath.widths(masks, RES)
@@ -220,9 +242,9 @@ if sys.argv[4] == "--specs":
             tag = "  declared neck (>= %.2f, <= %.2f mm): %s" % (dn["min_w"], dn["max_len"], dn["key"])
         elif r.get("declared_broken"):
             tag = "  DECLARED NECK BROKEN (wants >= %.2f wide, <= %.2f long): %s" % (dn["min_w"], dn["max_len"], dn["key"])
-        print("%s %-44s %5.2f A  %.2f mm (wants %.2f)  neck %s%s" % (
+        print("%s %-44s %5.2f A  %.2f mm (wants %.2f)  neck %s%s%s" % (
             r["verdict"], sp["name"], sp["amps"], r["width"], sp["need"],
-            "%.2f mm" % r["neck"] if r["neck"] != float("inf") else "-", tag), flush=True)
+            "%.2f mm" % r["neck"] if r["neck"] != float("inf") else "-", tag, _where(r.get("where"))), flush=True)
     print("rasterpath: %d FAIL, %s%d WARN, %d PASS of %d power paths"
           % (n["FAIL"], "" if open_is_fail else "%d OPEN, " % n["OPEN"], n["WARN"], n["PASS"],
              len(data["specs"])))
