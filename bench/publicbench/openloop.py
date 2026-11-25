@@ -67,6 +67,7 @@ CURRENTS = (1600, 1400, 1200, 1000, 800, 500, 300, 200)   # mA, down from the de
 LAG_RPM, LAG_ACC = 600, 230             # the current/lag moves: a ramp open loop can follow
 SPEEDS = ((300, 230), (600, 230), (1000, 230), (1500, 230), (600, 0), (1200, 0))
 TESTS = ("current", "lag", "speed")
+HOME_TOL_CENTS = 0.5                    # a home this close is home (lead, 11-25): in counts below
 WINDOW, SETTLE = 0.6, 0.4                # s: polled through a move, then left to settle
 
 
@@ -266,6 +267,11 @@ class Rig:
         return notes
 
 
+def home_tol() -> float:
+    """HOME_TOL_CENTS in counts at open pitch, by pedaldrive's string model (~9.5 counts)."""
+    return T * DL_OPEN / LEAD * (2.0 ** (HOME_TOL_CENTS / 600.0) - 1.0)
+
+
 def home_closed(rig: Rig, tries: int = 4):
     """Back to home by the encoder, in closed loop (after mode 5). Unlike move(), this starts
     from OUTSIDE the travel too, up to a whole travel beyond it: that is where a lowering move that
@@ -277,7 +283,7 @@ def home_closed(rig: Rig, tries: int = 4):
         raise Abort("the shaft is at %+d counts from home: too far to bring back blind" % (e - rig.home))
     axis = e
     for _ in range(tries):
-        if abs(e - rig.home) <= 3:
+        if abs(e - rig.home) <= home_tol():
             return
         axis += rig.home - e
         rig.m.move_abs(int(axis), 100, 230)
@@ -289,8 +295,8 @@ def home_closed(rig: Rig, tries: int = 4):
             if last is not None and abs(e - last) <= 1:
                 break
             last = e
-    if abs(e - rig.home) > 3:
-        raise Abort("home missed by %+d counts" % (e - rig.home))
+    if abs(e - rig.home) > home_tol():
+        raise Abort("home missed by %+d counts (%.2f cents)" % (e - rig.home, cents(e - rig.home)))
 
 
 def restore(rig: Rig):
