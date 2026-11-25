@@ -61,21 +61,57 @@ The 17HM19 is rated 2.0 A. A TMC2209 on a board holds roughly 1.4 A RMS, about 7
    1. Hold the motor energised at 1.0, 1.2 and 1.4 A RMS for 10 minutes each, with no heatsink.
    2. Log the board temperature and any overtemperature flag (`otpw`, `ot`).
    3. The highest current with no flag, minus 10 %, is **I_run**.
-2. **On the SERVO42D first, today, before any TMC2209 arrives:**
+2. **What the SERVO42D said (2026-11-25), driving itself open loop.** String 1 at pitch, 1400 mA,
+   20 whole tones each way per setting, encoder as truth (`publicbench.openloop`,
+   `publicbench.rampsweep`):
+   - Torque: 0 steps lost from 1600 down to 500 mA at 600 rpm; 300 mA lost 3, 200 mA stalled.
+   - Open-loop lag: about +-0.3 cent at 1000-1400 mA, the same raising and lowering.
+   - Ramp: its own `acc` setting (higher = steeper, 0 = none) gave t90 183 ms at 230, 89 ms at
+     250 and **49 ms at 254 with 0 lost**; 255 lost steps. Raising and lowering within 1 ms.
+     acc 254 is about 400 rev/s^2 (a 0.233-turn triangle in 48 ms).
+   - **It cannot go further.** Its open-loop modes are capped at 400 rpm, by the bus and from
+     STEP pulses alike (MKS manual V1.0.9, 3.2), and 4 microsteps to lift the cap is a firmware
+     artefact (every move ~75 % short by a fixed amount). Its ramp also rises in audible
+     speed steps (a steady tone, 160-770 Hz with `acc`).
+   - So gate 2 proper needs **~1370 rev/s^2 peaking at 1600 rpm** (0.52 turn in 39 ms as a
+     triangle, lead 11-25), and only the TMC2209 kit can show it.
+3. **On the TMC2209: the ramp sweep.** The QT Py's planner is the constant-acceleration profile
+   (`firmware/qtpy_bench/axis.c`: settable vmax and acceleration, integer AVR446 recurrence,
+   per-step intervals from a timer, no speed staircase). Keep the SERVO42D board mounted on CAN
+   as the encoder (Wiring, above): gate 2 refuses to run without it, because a stall shows on
+   the shaft, not in MSCNT.
 
    ```
-   python3 -m publicbench.openloop --only current,speed --speed-ma 1400,1000
+   python3 -m publicbench.gates 2 --truth servo42d --ma 1400 --accs 400,800,1200,1600
+   python3 -m publicbench.gates 2 --truth servo42d --fullsteps 400 ...   the 0.9 deg 17HM19
    ```
 
-   The current sweep includes 1400 and 1000 mA, bracketing I_run. The SERVO42D's mA setting may
-   be peak, not RMS, which is not documented; read its numbers as a bracket, not a match.
-3. **On the TMC2209:**
-   1. At I_run, run whole tones out and back at each `SPEEDS` row from `openloop.py`, 3 repetitions.
-   2. Log t90 (the time to 90 % of the move) and lost steps, the latter from the encoder, or from
-      pitch if the encoder is unavailable.
-   3. **Pass:** no lost steps, and t90 <= 45 ms at some row.
-   4. Repeat with the 17HM19 when it arrives. Its 4.0 mH slows it at 24 V, so a SERVO42D pass is
-      encouraging but not sufficient.
+   1. **Thermal first** (step 1): run gate 2 at I_run if it comes out under 1.4 A.
+   2. It learns which way raises pitch from a small move and the encoder, then for each
+      acceleration (400, 800, 1200, 1600 rev/s^2; vmax 1600 rpm):
+      - **tone**: 20 whole tones each way on this rig (0.233 turn, -2..+2 semitones);
+      - **long**: 20 moves each way of 0.52 turn, from -2 semitones to +2.36 (D4 to about F4,
+        user 11-25; `--raise-st 2.4` is the ceiling), so the time compares directly with the
+        closed loop's 39 ms.
+   3. Per move it logs the encoder curve (polled while the QT Py reports moving), t90 from the
+      command, the shaft's error, full steps lost (error / microsteps per full step) and the
+      MSCNT check. **The first lost step ends that acceleration** (the shaft is re-aligned with
+      `setpos` and sent home): the next moves would carry the offset past the travel.
+   4. **Pass:** 0 lost over the 40 moves of each kind, at the acceleration whose t90 meets the
+      target: <= 45 ms on 0.52 turn (the closed loop's 39 ms plus margin); on the 0.233-turn tone
+      that is about 2 x sqrt(0.233 / 1370) = 26 ms.
+   5. Planner time for the WHOLE move (a triangle; only 1600 rev/s^2 on 0.52 turn reaches the
+      1600 rpm vmax and cruises). t90 comes in under these, plus the USB command latency:
+
+      | rev/s^2 | 0.233 turn | 0.52 turn |
+      |---|---|---|
+      | 400 | 48 ms | 72 ms |
+      | 800 | 34 ms | 51 ms |
+      | 1200 | 28 ms | 42 ms |
+      | 1600 | 24 ms | 36 ms (vmax-capped) |
+
+   6. Repeat with the 17HM19 when it arrives. Its 4.0 mH slows it at 24 V, so a SERVO42D-motor
+      pass is encouraging but not sufficient.
 
 ## Gate 1: phase restore at power-up (items i-v)
 

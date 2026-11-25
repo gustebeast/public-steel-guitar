@@ -21,7 +21,8 @@ def rig(**kw):
 
 def test_setup_learns_the_sign_and_starts_at_zero():
     r, g = rig()
-    assert g.sign == 1 and g.tone == round(0.52 * 800) and g.per == 64
+    assert g.sign == 1 and g.tone == round(G.TONE_TURNS * 800) and g.per == 64
+    assert 0.2 < G.TONE_TURNS < 0.21                # this rig's +-2 st (was 0.52 turn: +3.6/-6.4 st)
     assert r.L.sim_pos() == 0 and g.agrees()
 
 
@@ -114,3 +115,39 @@ def test_a_dead_uart_stops_the_run_cleanly(tmp_path):
     o = G.parser().parse_args(["i", "--log", str(tmp_path / "g.jsonl")])
     rec = G.run(o, b=QtPyBench(ser=r), prompt=r.power_cycle, sleep=lambda s: None)
     assert "stopped" in rec and (tmp_path / "g.jsonl").exists()
+
+
+def test_gate_2_sweeps_inside_the_travel_and_loses_nothing():
+    r, g = rig()
+    out = g.gate_2(accs=(400, 1600), reps=4)
+    assert out["up"] in (1, -1)
+    for kind in ("tone", "long"):
+        rows = out["kinds"][kind]
+        assert len(rows) == 2 * 2 * 4               # two accelerations, reps each way
+        assert all(r_["lost"] == 0 and r_["mscnt_ok"] for r_ in rows)
+        assert all(out["lo"] - 1 <= r_["target"] <= max(out["hi"], out["top"]) + 1 for r_ in rows)
+    long_ = out["kinds"]["long"]
+    assert max(x["target"] for x in long_) - min(x["target"] for x in long_) == round(0.52 * 800) or \
+        abs((max(x["target"] for x in long_) - min(x["target"] for x in long_)) - 0.52 * 800) <= 1
+    assert r.L.sim_pos() == 0                       # home afterwards
+
+
+def test_gate_2_stops_at_the_first_acceleration_that_loses_steps():
+    r, g = rig()
+    calls = {"n": 0}
+
+    def truth():                                    # the shaft slips a full step after a while
+        calls["n"] += 1
+        return r.truth() - (5 if calls["n"] > 40 else 0)
+    g.truth = truth
+    out = g.gate_2(accs=(400, 800, 1200), kinds=("tone",), reps=4)
+    accs = {x["acc"] for x in out["kinds"]["tone"]}
+    assert max(accs) < 1200 and any(x["lost"] for x in out["kinds"]["tone"])
+
+
+def test_gate_2_needs_the_encoder():
+    r = Q.SimRig()
+    g = G.Gate(QtPyBench(ser=r), truth=None, sleep=lambda s: None)
+    g.setup()
+    with pytest.raises(G.Abort):
+        g.gate_2()
