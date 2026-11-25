@@ -266,19 +266,55 @@ class Rig:
         return notes
 
 
+def home_closed(rig: Rig, tries: int = 4):
+    """Back to home by the encoder, in closed loop (after mode 5). Unlike move(), this starts
+    from OUTSIDE the travel too, up to a whole travel beyond it: that is where a lowering move that
+    lost steps leaves the shaft (the string pulls the nut on, 2026-11-25: -3724 past -3380). The
+    axis and the encoder differ by an offset, so the target is corrected from each reading."""
+    span = rig.hi - rig.lo
+    e = rig.enc()
+    if not rig.lo - span <= e - rig.home <= rig.hi + span:
+        raise Abort("the shaft is at %+d counts from home: too far to bring back blind" % (e - rig.home))
+    axis = e
+    for _ in range(tries):
+        if abs(e - rig.home) <= 3:
+            return
+        axis += rig.home - e
+        rig.m.move_abs(int(axis), 100, 230)
+        end = time.monotonic() + 3.0 + abs(rig.home - e) / (100 * T / 60.0)
+        last = None
+        while time.monotonic() < end:              # until the shaft stands still
+            time.sleep(0.15)
+            e = rig.enc()
+            if last is not None and abs(e - last) <= 1:
+                break
+            last = e
+    if abs(e - rig.home) > 3:
+        raise Abort("home missed by %+d counts" % (e - rig.home))
+
+
 def restore(rig: Rig):
-    """Back to how the motor is run everywhere else. Every step tried even if one fails."""
-    steps = (("home", lambda: rig.home is not None and rig.move(0, 300, 230)),
-             ("mode 5", lambda: rig.mode(servo.SR_VFOC)),
+    """Back to how the motor is run everywhere else. Every step tried even if one fails, except
+    the zero: zeroing where the shaft is only makes sense AT home. After a failed homing the zero
+    is skipped and the shaft's place from home printed, so the start can still be found
+    (2026-11-25: a zero at -3724 lost it)."""
+    homed = []
+    steps = (("mode 5", lambda: rig.mode(servo.SR_VFOC)),
              ("current", lambda: rig.current(servo.DEFAULT_MA)),
              ("enable", lambda: rig.enable(True)),
-             ("zero", lambda: rig.m.set_zero()))
+             ("home", lambda: rig.home is not None and (home_closed(rig), homed.append(1))),
+             ("zero", lambda: homed and rig.m.set_zero()))
     bad = []
     for name, fn in steps:
         try:
             fn()
         except BaseException as e:                     # a second Ctrl-C must not skip mode 5
             bad.append("%s: %r" % (name, e))
+    if rig.home is not None and not homed:
+        try:
+            bad.append("NOT zeroed: the shaft is %+d counts from the start" % (rig.enc() - rig.home))
+        except BaseException as e:
+            bad.append("NOT zeroed; the encoder did not answer (%r)" % e)
     print("motor restored: SR_vFOC, %d mA, enabled%s" % (servo.DEFAULT_MA,
           "" if not bad else " -- BUT: " + "; ".join(bad)))
     return bad
@@ -409,6 +445,9 @@ def parser():
 def main(argv=None):
     o = parser().parse_args(argv)
     if o.report:
+        if not os.path.exists(o.log):
+            print("no runs logged yet (%s)" % o.log)
+            return 0
         for line in open(o.log):
             summary(json.loads(line))
         return 0
