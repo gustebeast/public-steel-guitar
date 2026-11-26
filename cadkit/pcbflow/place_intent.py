@@ -2402,15 +2402,16 @@ def pour_around(rule, P, notes=None, amps=None):
     return [[round(float(x), 3), round(float(y), 3)] for x, y in pts]
 
 
-def pin_escapes(rule, P, notes=None, band=None):
+def pin_escapes(rule, P, notes=None):
     """Declared escape stubs for a band's fine-pitch end pins: [{key, net, layer, width, pts, pitch}].
 
     ⚠ A POUR CANNOT TOUCH A 0.5 mm PITCH PIN (brain_board tr_pre1..4, 2026-11-21): +5V_BB at
     U205.11 and VIN_CM5 at U205.7 read OPEN on frozen copper. The fill keeps the zone clearance
     (0.5) off the neighbour pins, 0.25 away, so it stops ~0.43 short of the pin and only a router
     stub reached it -- 0.29 mm across a 6.4 mm neck. A pin whose same-part neighbour is closer than
-    twice the zone clearance gets a stub: pin-wide, straight out along the pin's axis (away from the
-    part's centre) until it is past the neighbours' clearance, capped at 2 x pitch -- the band takes
+    twice the zone clearance gets a stub: pin-wide, straight out along the pin's axis (from the
+    end nearest the band's next pin; none if that end crosses a foreign pad) until it is past the
+    neighbours' clearance, capped at 2 x pitch -- the band takes
     over there at full width. The gate counts the stub as part of the pad (the datasheet pin rating
     covers it, lead 2026-11-21); beyond it the full width applies. A local zone clearance under 0.5
     at 0.5 pitch was rejected: fab DRC and slivers between the pins."""
@@ -2441,11 +2442,20 @@ def pin_escapes(rule, P, notes=None, band=None):
         half_len, half_w = max(hx, hy), min(hx, hy)
         if half_len < 1.5 * half_w:
             continue                             # a land, not a pin: no axis to escape along
-        # toward the band's other end pins: a 3.4 mm power pin runs through its package, so "away
-        # from the part's centre" picked the wrong end for U205.7/.11 (esc_pre2)
-        oth = [P.pad(*k_.split(".", 1)) for k_ in rule.get("along", ()) if k_.split(".", 1)[0] != ref]
-        if oth:
-            tx, ty = sum(o_[0] for o_ in oth) / len(oth), sum(o_[1] for o_ in oth) / len(oth)
+        # ⚠ THE STUB LEAVES FROM THE END NEAREST THE BAND'S NEXT PIN, OR NOT AT ALL (brain_board
+        # fold8, 2026-11-26): U221.6's target-facing (east) end was fenced by U221.10's corner pad,
+        # so the stub fell back to the WEST end and ran into U221.5's +5V_RAW foot -- a stub out of
+        # the far end leads away from the band's other pins on every board. The end is the one
+        # whose tip is nearer the band's next pin (the following `along` pin of another part, else
+        # the one before); "away from the part's centre" picked the wrong end of a 3.4 mm power pin
+        # that runs through its package (U205.7/.11, esc_pre2). If that end would cross a foreign
+        # pad, the pin gets no stub: the band (or the router) meets the pin itself.
+        al_ = list(rule.get("along", ()))
+        i_ = al_.index(key)
+        nxt = ([k_ for k_ in al_[i_ + 1:] if k_.split(".", 1)[0] != ref]
+               + [k_ for k_ in reversed(al_[:i_]) if k_.split(".", 1)[0] != ref])
+        if nxt:
+            tx, ty = P.pad(*nxt[0].split(".", 1))
         else:
             tx, ty = 2 * cx - P.at(ref)[0], 2 * cy - P.at(ref)[1]
         if (tx - cx) * ux + (ty - cy) * uy < 0:
@@ -2488,22 +2498,8 @@ def pin_escapes(rule, P, notes=None, band=None):
                                   max(ly - o["size"][1] / 2.0, 0.0)) < half_w + 0.2:
                         return False
             return True
-        ends_ = [(sx, sy) for sx, sy in ((ux, uy), (-ux, -uy)) if _clear(sx, sy)]
-        if not ends_:
+        if not _clear(ux, uy):
             continue
-        if band:
-            # the end the drawn band actually reaches: VIN_CM5's band came round to U205.7's far
-            # end, the stub pointed at F201.2, and the two never met (esc_pre10)
-            from matplotlib.path import Path as _Pth
-            bp = _Pth(band)
-
-            def _miss(sx, sy):
-                tx_, ty_ = cx + sx * (half_len + beyond), cy + sy * (half_len + beyond)
-                if bp.contains_point((tx_, ty_)):
-                    return 0.0
-                return min(math.hypot(tx_ - bx_, ty_ - by_) for bx_, by_ in band)
-            ends_.sort(key=lambda e2: _miss(*e2))
-        ux, uy = ends_[0]
         x1, y1 = cx + ux * (half_len + beyond), cy + uy * (half_len + beyond)
         out.append(dict(key=key, net=rule["net"], layer=pin_layer, width=round(2 * half_w, 3),
                         pts=[[round(cx, 3), round(cy, 3)], [round(x1, 3), round(y1, 3)]],

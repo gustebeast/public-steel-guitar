@@ -547,7 +547,7 @@ def _pours(notes, parts, pl, rules, base_zones):
             if ar is not None:
                 bands.append((r["net"], r["layer"], ar))
                 # fine-pitch end pins get a declared escape stub the band takes over from
-                for e_ in pi.pin_escapes(r, P, notes, band=ar):
+                for e_ in pi.pin_escapes(r, P, notes):
                     if any(x_["key"] == e_["key"] for x_ in notes.get("band_escapes", ())):
                         continue                 # _pours runs twice: declare a stub once
                     notes.setdefault("tracks", []).append([e_["net"], e_["layer"], e_["width"], e_["pts"]])
