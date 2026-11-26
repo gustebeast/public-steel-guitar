@@ -2526,14 +2526,13 @@ def design_dt(notes):
 
 
 def width_for(amps, dT=10.0, min_mm=0.2, q=None):
-    """Outer-layer track width (mm) for a current at a dT C rise: copper.required_width_mm (the
-    one width model quality and the power gate judge with; q = the board's quality notes for
-    its foil), rounded up to 0.05 mm, never under min_mm."""
+    """Outer-layer track width (mm) to DRAW for a current at a dT C rise: copper.drawn_width_mm
+    -- the need quality and the power gate judge with (q = the board's quality notes, for its
+    foil), plus one raster step, rounded up to 0.05 mm, never under min_mm."""
     if _HERE not in sys.path:
         sys.path.insert(0, _HERE)
-    from copper import required_width_mm
-    w = required_width_mm(amps, "F.Cu", dict(q or {}, temp_rise_c=dT))
-    return round(max(min_mm, math.ceil(w / 0.05 - 1e-9) * 0.05), 2)
+    from copper import drawn_width_mm
+    return drawn_width_mm(amps, "F.Cu", dict(q or {}, temp_rise_c=dT), min_mm)
 
 
 def auto_pour(rules, parts, notes=None):
