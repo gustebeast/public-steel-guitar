@@ -17,15 +17,15 @@ src = open(os.path.join(HERE, "close_last.py"), encoding="utf-8").read()
 bad = []
 if "CLOSE_POWER_GUARD" in src or re.search(r"\bPOWER_GUARD\b", src):
     bad.append("the guard is behind a switch again (CLOSE_POWER_GUARD / POWER_GUARD)")
-if "        if amps_of.get(net):\n" not in src.replace("\r\n", "\n"):
-    bad.append("the width ladder is not cut for every net with amps")
+if "        if _amps:\n" not in src.replace("\r\n", "\n") or "brk_amps = _break_amps(" not in src:
+    bad.append("the width ladder is not cut for every break with stated current")
 if "w_ >= _need]" not in src:
     bad.append("the ladder no longer stops at the drawn width (_need)")
 if "CAN'T CARRY" not in src:
     bad.append("a power net with no wide path is no longer left open as CAN'T CARRY")
 if "nw=_need_all)" not in src:
     bad.append("the rip-up is not sized for the widest layer it may use (nw=_need_all)")
-if '_out = [L_ for L_ in layers if L_ in ("F.Cu", "B.Cu")]' not in src or "_drawn_w(amps_of[net], L_, _qn)" not in src:
+if '_out = [L_ for L_ in layers if L_ in ("F.Cu", "B.Cu")]' not in src or "_drawn_w(_amps, L_, _qn)" not in src:
     bad.append("a power closure is not searched outer-first, then at every layer's own need")
 for b_ in bad:
     print("  FAIL:", b_)
