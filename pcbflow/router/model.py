@@ -97,7 +97,7 @@ class Model:
         at = {p["name"]: (p["gx"], p["gy"]) for p in self.pads if p.get("name")}
         need = {}
         for pp in q.get("power_paths", ()) or ():
-            w = power_width(pp, q, at)
+            w = power_width(pp, q, at, ndigits=None)     # unrounded: copper.draw_mm rounds up
             need[pp["net"]] = max(need.get(pp["net"], 0.0), w)
         widths = notes.get("net_widths", {}) or {}
         # ⚠ THE 1.0 mm CAP IS A DEFAULT, NOT A LAW (brain_board ws1, 2026-11-20): with it, a
@@ -109,9 +109,19 @@ class Model:
         # HARD -- never relaxed (negotiate.Net.layers_hard). The brain keeps every power_paths
         # net off its 0.5 oz inner layers, where IPC asks 5.2x the outer width.
         self.net_layers = dict(notes.get("net_layers") or {})
+        # ⚠ POWER COPPER IS DRAWN AT copper.draw_mm, NOT AT ITS NEED (lead ruling 2026-11-26,
+        # after the 11-25 one for every other drawn power width). The gate rasterises at
+        # 0.025 mm and reads a track ~0.02-0.05 under nominal, so a track routed AT its need is
+        # a WARN, and at a 45-degree joint or a via land under it, a FAIL: brain_board
+        # rRE_on2's +24V Q209 > F203 leg was 0.90 tracks for a 0.898 need, and with its vias
+        # sized it still read 0.78 at a joint. The router draws and keeps clear at the drawn
+        # width (self.width); the bare need stays in self.need for what judges a net by its
+        # current (the rails-early rail set, negotiate._rail_w).
+        # (a net with a stated width, net_widths, is judged on that, as before: no entry here)
+        self.need = {n: min(_wmax, round(w, 2)) for n, w in need.items() if w > 0 and n not in widths}
         self.width = {}
         for n in names:
-            w = max(default_w, min(_wmax, need.get(n, 0.0)))
+            w = max(default_w, min(_wmax, copper.draw_mm(need[n]))) if need.get(n, 0.0) > 0 else default_w
             self.width[n] = float(widths.get(n, w))
         # ⚠ A POWER NET'S VIA CARRIES ITS CURRENT (brain_board mV0, 2026-11-16) --
         # OWNROUTE_POWER_VIA_SIZE=1 while measured. Every layer change was one 0.3 mm via, a
@@ -664,7 +674,7 @@ def _rail_volts(net):
 POWER_VIA_DRILL_MAX = 0.8     # mm: the largest drill a power net's via takes (OWNROUTE_POWER_VIA_SIZE)
 
 
-def power_width(pp, q, at):
+def power_width(pp, q, at, ndigits=2):
     """The track width one power_paths entry needs, judged as quality judges it.
 
     The larger of IPC-2221's heating width (outer layer, quality.temp_rise_c, copper_oz)
@@ -672,14 +682,13 @@ def power_width(pp, q, at):
     budget (max_drop_mv on the path or board, else max_drop_pct of the rail's named
     volts, else 50 mV -- quality's rule). Length is Manhattan from the source to each
     load, times DETOUR. Outer copper is assumed: a power net the router puts inside runs
-    on half the copper, and quality says so if that costs the budget."""
+    on half the copper, and quality says so if that costs the budget. Rounded to ndigits
+    (None: unrounded, as the router's own sizing takes it before copper.draw_mm)."""
     amps = float(pp.get("amps", 0.0))
     if amps <= 0:
         return 0.0
     oz = float(q.get("copper_oz", 1.0))
-    dt = float(q.get("temp_rise_c", 10.0))
-    area_mil2 = (amps / (0.048 * dt ** 0.44)) ** (1.0 / 0.725)
-    w = area_mil2 / (oz * 1.378) * 0.0254
+    w = copper.required_width_mm(amps, "F.Cu", q)                  # the gate's need (copper.py)
     limit = pp.get("max_drop_mv", q.get("max_drop_mv"))
     if limit is None:
         volts = _rail_volts(pp["net"])
@@ -692,7 +701,7 @@ def power_width(pp, q, at):
         L = (abs(at[d][0] - src[0]) + abs(at[d][1] - src[1])) * DETOUR
         r_max = DROP_SHARE * float(limit) / 1000.0 / amps            # ohm
         w = max(w, 1.72e-5 * L / (r_max * oz * 0.035))               # mm, as quality's
-    return round(w, 2)
+    return w if ndigits is None else round(w, ndigits)
 
 def via_ban_for(m, net_id, win, via_d):
     """The via-centre ban in window win for net net_id with a via of via_d: m.via_ban, less the

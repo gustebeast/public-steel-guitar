@@ -3,6 +3,7 @@ planner, the router, quality and the power gate all import it).
 
     required_width_mm(amps, layer, q)   the NEED: width (mm) on `layer` at quality.temp_rise_c
     drawn_width_mm(amps, layer, q)      the width to DRAW: the need + RASTER_MARGIN_MM, up to 0.05
+    draw_mm(need_mm)                     the same rule for a need already in mm (the router's)
     foil_mm(layer, q)                    finished copper thickness (mm) of `layer` on the order
     via_barrel_mm(drill)                 the track width a via's plated barrel counts as
     via_drill_mm(amps, q)                the smallest drill (0.05 steps) whose barrel carries `amps`
@@ -68,8 +69,15 @@ def drawn_width_mm(amps, layer="F.Cu", q=None, min_mm=0.0):
     under its nominal width, so a track at the need is a WARN, and a long one a FAIL: +24V_LED
     0.89 / 0.90, SW 1.30 / 1.34, SVC_VBUS 0.34 / 0.34, VIN_CM5's 0.70 trunk a 3.55 mm "neck".
     The copper gets one raster step over; the judge stays strict."""
+    return draw_mm(required_width_mm(amps, layer, q), min_mm)
+
+
+def draw_mm(need_mm, min_mm=0.0):
+    """The width to DRAW copper whose bare need is need_mm: need + RASTER_MARGIN_MM, rounded
+    up to 0.05 mm, never under min_mm (drawn_width_mm's rule, for a need already worked out --
+    the router's power_width adds the drop budget to IPC's heating width)."""
     import math
-    w = required_width_mm(amps, layer, q) + RASTER_MARGIN_MM
+    w = float(need_mm) + RASTER_MARGIN_MM
     return round(max(min_mm, math.ceil(w / 0.05 - 1e-9) * 0.05), 2)
 
 

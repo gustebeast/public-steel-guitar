@@ -3320,12 +3320,19 @@ class Router(CoupledMixin):
                         " (OWNROUTE_WORK_CLOCK=%g on)" % _WORK_RATE if _WORK_RATE > 0 else ""))
         return [n for n in self.nets if n.failed] + list(getattr(self, "unreachable", ()))
 
+    def _rail_w(self, n):
+        """A net's width as a rail: its bare current need (model.need) where it has one, else its
+        drawn width. Power copper is drawn a raster step over its need (copper.draw_mm); which
+        nets are rails, and their order, is judged on the need."""
+        need = getattr(getattr(self, "m", None), "need", None) or {}
+        return need.get(n.name, n.width)
+
     def _rails_early(self, pf0, iters, budget_s):
         """Rails early (default; OWNROUTE_RAILS_EARLY=0 off): rails alone, then signals round the held rails, then everyone.
         Returns what _rounds returns for the whole board."""
         span = lambda n: (n.bbox[1] - n.bbox[0]) + (n.bbox[3] - n.bbox[2])
-        rails = sorted((n for n in self.nets if not n.plane and n.width >= self.RAIL_W_MIN - 1e-6),
-                       key=lambda n: (-n.width, span(n), n.name))
+        rails = sorted((n for n in self.nets if not n.plane and self._rail_w(n) >= self.RAIL_W_MIN - 1e-6),
+                       key=lambda n: (-self._rail_w(n), span(n), n.name))
         if not rails:
             return self._rounds(list(self.nets), pf0, iters, budget_s)
         self.log("  RAILS_EARLY: %d rail(s) >= %.2f mm first: %s"

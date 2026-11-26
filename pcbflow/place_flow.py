@@ -357,7 +357,10 @@ def _raise_widths(notes, parts, pl, keep=False):
                        "power_width)%s" % (n, nw[n], src, ",".join(live[:3]) + ("..." if len(live) > 3 else ""), amps, w,
                                            " -- kept (--keep-widths)" if keep else " -- raised"))
             if not keep:
-                nw[n] = w
+                # raised to the DRAWN width, a raster step over the need (copper.draw_mm), as
+                # the router draws a power net it sizes itself (lead ruling 2026-11-26)
+                import copper
+                nw[n] = min(POWER_W_MAX, copper.draw_mm(w))
     return out
 
 
