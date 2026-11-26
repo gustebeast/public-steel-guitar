@@ -464,7 +464,10 @@ def _copper(notes, P, rules):
         for t in r.get("tracks", ()):
             notes.setdefault("tracks", []).append([r["net"], t["layer"], float(t["width"]), t["pts"]])
         for v in r.get("vias", ()):
-            notes.setdefault("vias", []).append([r["net"], float(v[0]), float(v[1])])
+            # [x, y] or [x, y, drill, d] -> notes [net, x, y(, drill, d)], what layout lays.
+            # ⚠ The size went missing here (brain_board 2026-11-25): every declared via was laid
+            # at 0.3 / 0.6, so +24V_LED's 0.8 / 0.5 ECO vias could not be declared.
+            notes.setdefault("vias", []).append([r["net"]] + [float(e) for e in v[:4]])
         if r.get("frozen"):
             fz = notes.setdefault("frozen_nets", [])
             if r["net"] not in fz:
