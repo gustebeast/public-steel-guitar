@@ -4197,6 +4197,8 @@ def run(stem, verbose=True, brief=False):
     results, fails, waived = [], 0, 0
     say = print if verbose else (lambda *a, **k: None)
     say("%s: quality pass (cadkit/PCB_QUALITY.md)" % ctx.name)
+    import build_stamp
+    built = build_stamp.check(stem, say=print)       # loud even when not verbose
     for rid in sorted(RULES, key=lambda r: int(r[1:])):
         try:
             rows = RULES[rid](ctx)
@@ -4296,10 +4298,11 @@ def run(stem, verbose=True, brief=False):
         say("        -> what each OPEN item asks for is in cadkit/PCB_QUALITY.md (or run "
             "quality.py without --brief); sign each in quality.manual with the evidence")
     with open(stem + ".quality.json", "w", encoding="utf-8") as fh:
-        json.dump({"board": ctx.name, "fail": fails, "open": opens, "waived": waived,
+        json.dump({"board": ctx.name, "fail": fails, "open": opens, "waived": waived, "built": built,
                    "results": results}, fh, indent=1)
-    say("%s: quality %d FAIL, %d OPEN manual item(s)%s"
-        % (ctx.name, fails, opens, (", %d waived" % waived) if waived else ""))
+    say("%s: quality %d FAIL, %d OPEN manual item(s)%s%s"
+        % (ctx.name, fails, opens, (", %d waived" % waived) if waived else "",
+           "" if built == "current" else "  [%s BOARD]" % built.upper()))
     return fails, opens
 
 
