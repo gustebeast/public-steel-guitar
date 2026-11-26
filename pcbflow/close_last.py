@@ -73,11 +73,14 @@ RIP_VERIFY = os.environ.get("CLOSE_RIP_VERIFY", "0") == "1"
 # quality.power_paths (R70 is port A's 5 mR sense resistor). Its pour island at R70.1 was
 # "closed" with 3.2 mm of 0.2 mm track -- IPC-2221 asks ~2.8 mm at 5 A -- and the unconnected
 # count went down while quality's count stayed level (the open FAIL became a choke FAIL):
-# connected on paper, a fuse in practice. With CLOSE_POWER_GUARD=1 a power-path net's width
-# ladder stops at quality.required_width_mm(amps) on an outer layer, the rip-up (which lays
-# at signal width) is skipped for it, and it is left open saying it cannot carry the current
-# -- an open the board must fix in its copper, not a thin closure that hides it (flag while A/B'd).
-POWER_GUARD = os.environ.get("CLOSE_POWER_GUARD", "0") == "1"
+# connected on paper, a fuse in practice. A power-path net's width ladder stops at its drawn
+# width (copper.drawn_width_mm(amps) on an outer layer), the rip-up (which lays at signal
+# width) is skipped for it, and it is left open saying it cannot carry the current -- an open
+# the board must fix in its copper, not a thin closure that hides it.
+# ALWAYS ON (brain_board fold7c, 2026-11-26): it was a flag, off by default, and the fold runs
+# never set it -- +24V Q209>F203 (3 A) was "closed" with 6.78 mm of 0.20 mm track on In2,
+# KiCad read the net as connected and the power gate read it OPEN. A fake connection is a
+# correctness bug, not a tuning choice, so there is no switch.
 # ⚠ ANOTHER NET'S CLOSURE MUST NOT CUT A POWER POUR (brain_board W48w seed 1, 2026-11-20).
 # Pours are not obstacles to the search (repair_search.track_ok says why: the fill retreats
 # round whatever is laid). For a power pour that retreat IS the damage: with PA_VOUT_SNS's
@@ -1049,7 +1052,7 @@ def _rip_one(board, stem, net, model, layers, layer_id, named, gap, tries, close
     if _clock() > deadline:
         print("close_last: %s -- out of time before the way through was looked for" % net)
         return board, 0
-    W_ = nw or WIDTH            # a power net (CLOSE_POWER_GUARD) is laid at the width its current needs
+    W_ = nw or WIDTH            # a power net is laid at the width its current needs
     res = search(model, tries, W_)
     if res is None:
         print("close_last: %s -- no path even through other nets' track" % net)
@@ -1207,7 +1210,7 @@ def main(stem):
             if float(_p.get("amps", 0) or 0) > 0:
                 _t = _p["to"][0] if isinstance(_p["to"], list) else _p["to"]
                 _PATHS.append(dict(_p, _name="%s %s>%s" % (_p["net"], _p["from"], _t)))
-    if POWER_GUARD and amps_of:
+    if amps_of:
         from copper import drawn_width_mm as _drawn_w     # the need + one raster step (copper.py)
         _qn = _notes.get("quality") or {}
     layers = [L for L in LAYERS if L in have and L not in plane]
@@ -1348,7 +1351,7 @@ def main(stem):
         if want_w > WIDTH:
             _ladder.append(WIDTH)
         _need = 0.0
-        if POWER_GUARD and amps_of.get(net):
+        if amps_of.get(net):
             _need = _drawn_w(amps_of[net], "F.Cu", _qn)
             if _need <= WIDTH:          # signal width already carries it: no guard
                 _need = 0.0

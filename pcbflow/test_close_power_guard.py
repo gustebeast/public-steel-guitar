@@ -1,0 +1,28 @@
+"""close_last's power guard is always on: a net with stated current is never closed narrower
+than its drawn width (brain_board fold7c, 2026-11-26: +24V "closed" with 0.20 mm on In2).
+
+    py -3.12 test_close_power_guard.py
+
+Source checks (the ladder is inline in close_last's main loop): no CLOSE_POWER_GUARD switch,
+the ladder is cut at the drawn width for every net with amps, and the CAN'T CARRY open stays.
+Exit 0 = PASS.
+"""
+import os
+import re
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+src = open(os.path.join(HERE, "close_last.py"), encoding="utf-8").read()
+bad = []
+if "CLOSE_POWER_GUARD" in src or re.search(r"\bPOWER_GUARD\b", src):
+    bad.append("the guard is behind a switch again (CLOSE_POWER_GUARD / POWER_GUARD)")
+if "        if amps_of.get(net):\n" not in src.replace("\r\n", "\n"):
+    bad.append("the width ladder is not cut for every net with amps")
+if "w_ >= _need]" not in src:
+    bad.append("the ladder no longer stops at the drawn width (_need)")
+if "CAN'T CARRY" not in src:
+    bad.append("a power net with no wide path is no longer left open as CAN'T CARRY")
+for b_ in bad:
+    print("  FAIL:", b_)
+print("PASS" if not bad else "FAIL")
+sys.exit(1 if bad else 0)
