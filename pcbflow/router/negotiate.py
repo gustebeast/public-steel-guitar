@@ -686,6 +686,16 @@ class Router(CoupledMixin):
     COUPLE_WALLS = True              # a coupled centreline goes round pairs already to the rules
     PAIR_WALL = True                 # in a pair attempt the mate's copper is a wall (_pair_try)
     PLANE_MAIN = True                # plane joins aim at the main body's fill as it stands (_rounds)
+    # OWNROUTE_RAILS_EARLY=1 (A/B, lead 2026-11-25; the EE order, power before signals): rails --
+    # non-plane nets drawn at least RAIL_W_MIN wide -- are negotiated alone on the empty board,
+    # widest first, then held RAILS_HOLD_ROUNDS signal rounds before everything negotiates.
+    # ⚠ WHY: brain_board q6c's 12 power OPENs (V5_PRE L1 > U36, +24V Q209 > F203, +5V_OPT U15 > J4)
+    # all fit at width on the board with only pads and frozen copper; the routed signals boxed
+    # them in (trunk_probe, F.Cu: 0.15 / -0.05 / 0.35 against 0.44 / 0.25 / 0.90 wanted).
+    RAIL_W_MIN = 0.40
+    RAILS_ROUNDS = 6
+    RAILS_HOLD_ROUNDS = 3
+    RAILS_BUDGET = 0.2               # share of the run's budget each early stage may spend
     NOPATH_RETRY = 3                 # rounds a net may find no path before _rounds stops searching it
     PAIR_RENEG_S = 120.0             # a pair refinish's re-negotiation budget (_pair_renegotiate)
     PLANE_KEEP = True                # a sharing plane net re-joins only its sharing pieces (_rounds)
@@ -3273,7 +3283,10 @@ class Router(CoupledMixin):
             from .globalroute import GlobalRouter
             self._gr = GlobalRouter(self, log=self.log).run()
             self._gr.report()
-        todo, pf = self._rounds(list(self.nets), pf0, iters, budget_s)
+        if os.environ.get("OWNROUTE_RAILS_EARLY") == "1":
+            todo, pf = self._rails_early(pf0, iters, budget_s)
+        else:
+            todo, pf = self._rounds(list(self.nets), pf0, iters, budget_s)
         self._pf_last = pf
         self.frozen_audit("after the rounds")
         todo = self._priority_repair(todo, pf)
@@ -3302,6 +3315,27 @@ class Router(CoupledMixin):
                      % (_WORK[0], cpu, _WORK[0] / max(cpu, 1e-9),
                         " (OWNROUTE_WORK_CLOCK=%g on)" % _WORK_RATE if _WORK_RATE > 0 else ""))
         return [n for n in self.nets if n.failed] + list(getattr(self, "unreachable", ()))
+
+    def _rails_early(self, pf0, iters, budget_s):
+        """OWNROUTE_RAILS_EARLY: rails alone, then signals round the held rails, then everyone.
+        Returns what _rounds returns for the whole board."""
+        span = lambda n: (n.bbox[1] - n.bbox[0]) + (n.bbox[3] - n.bbox[2])
+        rails = sorted((n for n in self.nets if not n.plane and n.width >= self.RAIL_W_MIN - 1e-6),
+                       key=lambda n: (-n.width, span(n), n.name))
+        if not rails:
+            return self._rounds(list(self.nets), pf0, iters, budget_s)
+        self.log("  RAILS_EARLY: %d rail(s) >= %.2f mm first: %s"
+                 % (len(rails), self.RAIL_W_MIN, " ".join("%s %.2f" % (n.name, n.width) for n in rails)))
+        left, pf = self._rounds(rails, pf0, self.RAILS_ROUNDS, self.RAILS_BUDGET * budget_s)
+        self.log("  RAILS_EARLY: rails alone left %d sharing or failed" % len(left))
+        held = set(rails)
+        sig = [n for n in self.nets if n not in held]
+        left, pf = self._rounds(sig, pf, self.RAILS_HOLD_ROUNDS, self.RAILS_BUDGET * budget_s, locked=held)
+        self.log("  RAILS_EARLY: %d signal round(s) round the held rails left %d sharing or failed"
+                 % (self.RAILS_HOLD_ROUNDS, len(left)))
+        # everyone negotiates from here; copper that shares nothing keeps its place
+        todo = [n for n in self.nets if n.failed or not n.paths or any(c.size for c in self._conflicts(n))]
+        return self._rounds(todo, pf, iters, budget_s)
 
     def _frozen_hits(self, net):
         """Path indices whose copper enters a FOREIGN frozen band's reach (model.frozen_d):
