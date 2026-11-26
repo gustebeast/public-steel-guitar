@@ -63,7 +63,40 @@ powered: an opened coil under current can destroy the driver.**
 
 The 42CM06 is rated 2.5 A. A TMC2209 on a board holds roughly 1.4 A RMS (lead, 2026-11-24), about
 56 % of the rated current and so, roughly, of the torque; its 1.6 mH winding is what keeps that
-torque at speed (about 0.24 N·m at 1600 rpm on the phasor model, ~5x the rotor's need). So gate 2 runs at the driver's thermal current, not at the motor's rating.
+torque at speed. So gate 2 runs at the driver's thermal current, not at the motor's rating.
+
+**Torque budget at the gate's peak (lead, 2026-11-25): 42CM06, 1600 rpm, 24 V.** Phasor model per
+phase: back-EMF constant ke = 0.6 N·m / (sqrt2 x 2.5 A) = 0.17 V·s/rad, so the back-EMF is 28.4 V
+peak at 1600 rpm, over the supply. With 0.9 ohm and 13.4 ohm reactance (1.6 mH at 1333 Hz), the
+pull-out torque is the best the 24 V bridge can drive, the current leading the back-EMF (the load
+angle open loop settles at):
+
+| Set current (RMS) | Low speed | 1600 rpm, 24 V |
+|---|---|---|
+| 1.0 A | 0.24 N·m | 0.19 N·m |
+| **1.4 A** (TMC2209 on a board) | 0.34 N·m | **0.25 N·m** |
+| 1.8 A (ceiling) | 0.43 N·m | 0.28 N·m |
+
+At 1.4 A it falls off as 0.31 / 0.28 / 0.25 / 0.23 / 0.21 N·m at 1200 / 1400 / 1600 / 1800 / 2000 rpm.
+The model takes the bridge's fundamental as 24 V peak; R and L are the 11-24 report's (JLCMC's
+page shows neither), so the whole table is a model, not a measurement.
+
+What the move needs, all ESTIMATES:
+- Rotor inertia: 0.52 turn in 39 ms as a triangle is 8,600 rad/s^2. The 42CM06's rotor inertia
+  was not read. Typical 40-48 mm motors have 54-82 g·cm^2: **0.046-0.070 N·m**.
+- String and screw: the SERVO42D's motor held whole tones at 600 rpm on a gentle ramp at 500 mA
+  and lost steps at 300 mA (2026-11-25). Scaled from a typical 0.40-0.48 N·m / 2 A motor (its own
+  is unpublished), the load is between **0.06 and 0.12 N·m**. That is pessimistic: the motor's
+  torque at 600 rpm is below its low-speed figure, so the real load is lower. Raising carries it;
+  lowering is helped by it.
+- Pulley, belt and screw inertia: not counted.
+
+So the move needs roughly **0.11-0.19 N·m** against 0.25 at 1.4 A: a margin of **1.3-2.3x**
+(1.5-2.5x at 1.8 A). The worst case is under 2x. Gate 2 on the real motor is what settles it.
+Two cheap readings would narrow it before then: the 42CM06's rotor inertia from its JLCMC SPEC
+sheet, and the string load from the SERVO42D's phase current during a loaded raise (closed loop).
+More supply voltage is the lever if it is short: the same model gives 0.30 N·m at 1.4 A with
+about 31 V of fundamental.
 
 1. **Thermal limit first.**
    1. Hold the motor energised at 1.0, 1.2 and 1.4 A RMS for 10 minutes each, with no heatsink.
