@@ -184,14 +184,31 @@ def neck_length(width, holes, A, B, res, t, need):
         base += n
     if base == 0:
         return float("inf")
+    # ⚠ 8-CONNECTED, DIAGONALS AT sqrt(2) (lead 2026-11-25, brain_board SW5_2). On the old
+    # 4-connected grid a neck's length was its MANHATTAN length: SW5_2's pin-10 exit rises 0.4 mm
+    # while it runs 0.8, read 1.13 mm (Euclidean ~0.95) and FAILed 2 x 0.54 -- a measurement
+    # error, up to 1.41x on a 45 deg neck. A diagonal step is taken only where both orthogonal
+    # neighbours are in the graph too, so it never cuts a corner between pieces that touch at a
+    # point. (8-connected still reads up to ~8 % long between the axes and the diagonals.)
     rows, cols, ws = [], [], []
+    AL, HI, LO = slice(None), slice(1, None), slice(None, -1)
     for k, ix in idx.items():
         c = cost[k]
-        for sl_a, sl_b in (((slice(None), slice(None, -1)), (slice(None), slice(1, None))),
-                           ((slice(None, -1), slice(None)), (slice(1, None), slice(None)))):
+        for sl_a, sl_b, side in (((AL, LO), (AL, HI), None), ((LO, AL), (HI, AL), None),
+                                 ((LO, LO), (HI, HI), ((LO, HI), (HI, LO))),     # (r, c) -> (r+1, c+1)
+                                 ((LO, HI), (HI, LO), ((LO, LO), (HI, HI)))):    # (r, c+1) -> (r+1, c)
             a, b = ix[sl_a], ix[sl_b]
             ok = (a >= 0) & (b >= 0)
-            ca, cb = c[sl_a][ok], c[sl_b][ok]
+            if side is None:
+                ca, cb = c[sl_a][ok], c[sl_b][ok]
+            else:
+                ok &= (ix[side[0]] >= 0) & (ix[side[1]] >= 0)
+                # ⚠ a diagonal step passes BETWEEN its two orthogonal neighbours: it costs the
+                # narrow rate if either is narrow. Free, it hopped a one-pixel line of narrow
+                # pixels across a pinch (motor_ctrl +24V_LED, brain SW read neck 0.00 under need)
+                sd = np.maximum(c[side[0]], c[side[1]])[ok]
+                r2 = np.float32(np.sqrt(2.0))
+                ca, cb = np.maximum(c[sl_a][ok], sd) * r2, np.maximum(c[sl_b][ok], sd) * r2
             a, b = a[ok], b[ok]
             rows += [a, b]
             cols += [b, a]
