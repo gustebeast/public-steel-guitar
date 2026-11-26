@@ -85,23 +85,27 @@ def specs(board, notes):
     # pad of the part on the net (end_polys), so the two were the same path counted twice: the
     # parallel pins are one pad-group end, and the current through them is the path's, not each
     # pin's. Same net + same two parts -> one path at the largest declared current.
+    # ⚠ EVERY DESTINATION, NOT THE FIRST (2026-11-26): an entry's `to` list was cut to its first
+    # pad, so +3V3D U21.2 > [U17.10, U1.23 ... U202.5] judged U21>U17 alone and nothing reached
+    # U1, U16 or U202 -- 34 brain_board fold10 A1 rows had no gate verdict once A1 took its width
+    # from here. Each destination PART is a path; its pads on the net are one end.
     by = {}
     for e in q.get("power_paths") or ():
         amps = float(e.get("amps", 0) or 0)
         if amps <= 0:
             continue
-        to = e["to"][0] if isinstance(e["to"], list) else e["to"]
-        k = (e["net"], e["from"].split(".")[0], to.split(".")[0])
-        if k not in by:
-            by[k] = dict(net=e["net"], amps=amps, frm=[e["from"]], to=[to])
-        else:
-            by[k]["amps"] = max(by[k]["amps"], amps)
-            by[k]["frm"] += [x for x in [e["from"]] if x not in by[k]["frm"]]
-            by[k]["to"] += [x for x in [to] if x not in by[k]["to"]]
+        for to in (e["to"] if isinstance(e["to"], list) else [e["to"]]):
+            k = (e["net"], e["from"].split(".")[0], to.split(".")[0])
+            if k not in by:
+                by[k] = dict(net=e["net"], amps=amps, frm=[e["from"]], to=[to])
+            else:
+                by[k]["amps"] = max(by[k]["amps"], amps)
+                by[k]["frm"] += [x for x in [e["from"]] if x not in by[k]["frm"]]
+                by[k]["to"] += [x for x in [to] if x not in by[k]["to"]]
     out = []
     for (net, ra, rb), v in by.items():
         out.append(dict(name="%s %s>%s" % (net, "+".join(v["frm"]), "+".join(v["to"])), net=net,
-                        amps=v["amps"], need=round(required_width_mm(v["amps"], "F.Cu", q), 3),
+                        frm=list(v["frm"]), to=list(v["to"]), amps=v["amps"], need=round(required_width_mm(v["amps"], "F.Cu", q), 3),
                         a=_merge(end_polys(board, ra, net, lid), _escape_polys(notes, ra, net, lid)),
                         b=_merge(end_polys(board, rb, net, lid), _escape_polys(notes, rb, net, lid))))
     # a declared neck (place_flow._copper, intent copper `neck`) rides the path it sits on: same net,

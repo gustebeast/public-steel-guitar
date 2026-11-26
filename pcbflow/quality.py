@@ -549,13 +549,10 @@ class _Net:
         v = np.linalg.solve(A, rhs)
         return {d: float(-v[ix[k]]) for d, k in zip(dsts, keys)}
 
-    def widest(self, src, dst, lift=()):
+    def widest(self, src, dst):
         """The path from pad `src` to pad `dst` whose NARROWEST edge is widest:
-        (bottleneck width, kind, layer, (x, y), runs through a pour?) or None.
-
-        `lift`: track segments (pcbnew objects) whose edges do not count as the bottleneck
-        -- the pin entries _pin_entry found -- so what is measured is the copper BEYOND
-        them."""
+        (bottleneck width, kind, layer, (x, y)) or None. A1 uses it for connectivity only;
+        the width verdict is the power gate's (power_gate.py)."""
         s, d = self.pad_keys.get(src), self.pad_keys.get(dst)
         if s is None or d is None:
             return None
@@ -569,11 +566,6 @@ class _Net:
             if u == d:
                 break
             for v, w, kind, layer, at in self.g[u]:
-                if lift and kind == "track" and any(
-                        t_.GetLayerName() == layer and t_.HitTest(pcbnew.VECTOR2I(
-                            pcbnew.FromMM(at[0]), pcbnew.FromMM(at[1])), pcbnew.FromMM(0.01))
-                        for t_ in lift):
-                    w = 1e2
                 cand = min(-negw, w)
                 if cand > best.get(v, (-1.0, None))[0]:
                     info = (w, kind, layer, at) if w <= -negw else best[u][1]
@@ -594,149 +586,15 @@ def _rail_volts(net):
     return 5.0 if net.upper().startswith("VBUS") else None
 
 
-def _ends(b, a, z):
-    """The board positions of two "REF.PAD" names, or None if either is not found."""
-    out = []
-    for nm in (a, z):
-        ref, num = nm.split(".", 1)
-        fp = b.FindFootprintByReference(ref)
-        q = next((q for q in fp.Pads() if q.GetNumber() == num), None) if fp is not None else None
-        if q is None:
-            return None
-        out.append((q.GetPosition().x, q.GetPosition().y))
-    return tuple(out)
-
-
-def _pour_narrowest(b, net, layer, between=None):
-    """(mm, x, y) of the narrowest axis-aligned cut through this net's fill on `layer`.
-
-    between = ((x0, y0), (x1, y1)) in board units, the path's two ends: only the cuts
-    BETWEEN them count, across the axis they are separated along, stepped 0.5 mm off each
-    land. ⚠ WITHOUT IT A POUR'S OWN END WAS ITS CHOKE POINT (output_panel +24V, 2026-11-11):
-    the scan ran over the fill's whole extent, and a cut across a rounded tip -- past the
-    pad the current enters by -- read 0.20 mm and failed a 3.8 mm pour carrying 2.9 A.
-
-    Sums the covered span along each scanline rather than taking the outer extent, so a
-    pour in two lobes with a gap between them reports the copper it HAS and not the
-    distance across the hole. Returns None when the net has no filled polygon there.
-    """
-    import pcbnew
-    lid = b.GetLayerID(layer) if isinstance(layer, str) else layer
-    if lid is None or lid < 0:
-        return None
-    polys = []
-    for z in b.Zones():
-        if z.GetIsRuleArea() or (z.GetNetname() or "") != net or not z.IsOnLayer(lid):
-            continue
-        try:
-            polys.append(z.GetFilledPolysList(lid))
-        except Exception:                      # noqa: BLE001 -- shape API varies
-            continue
-    segs = []
-    for poly in polys:
-        for o in range(poly.OutlineCount()):
-            ol = poly.Outline(o)
-            n = ol.PointCount()
-            for i in range(n):
-                p, q = ol.CPoint(i), ol.CPoint((i + 1) % n)
-                segs.append((p.x, p.y, q.x, q.y))
-    if not segs:
-        return None
-    xs = [v for s4 in segs for v in (s4[0], s4[2])]
-    ys = [v for s4 in segs for v in (s4[1], s4[3])]
-    best = None
-    STEPS = 400
-    for axis in (0, 1):
-        lo, hi = (min(ys), max(ys)) if axis == 0 else (min(xs), max(xs))
-        if between is not None:
-            a_, b_ = between
-            k_ = 1 if axis == 0 else 0
-            u0, u1 = sorted((a_[k_], b_[k_]))
-            off = pcbnew.FromMM(0.5)
-            if u1 - u0 < 2 * off + pcbnew.FromMM(0.5):
-                continue                       # the ends are not separated along this axis
-            lo, hi = max(lo, u0 + off), min(hi, u1 - off)
-        if hi <= lo:
-            continue
-        for k in range(1, STEPS):
-            t = lo + (hi - lo) * k / float(STEPS)
-            hits = []
-            for (ax, ay, bx, by) in segs:
-                u, v = (ay, by) if axis == 0 else (ax, bx)
-                if (u - t) * (v - t) >= 0:
-                    continue                   # no crossing (ties skipped: a vertex)
-                f = (t - u) / float(v - u)
-                hits.append((ax + (bx - ax) * f) if axis == 0 else (ay + (by - ay) * f))
-            if len(hits) < 2:
-                continue
-            hits.sort()
-            span = sum(hits[i + 1] - hits[i] for i in range(0, len(hits) - 1, 2))
-            if span <= 0:
-                continue
-            if best is None or span < best[0]:
-                mid = (hits[0] + hits[1]) / 2.0
-                best = (span, mid if axis == 0 else t, t if axis == 0 else mid)
-    if best is None:
-        return None
-    return MM(best[0]), MM(best[1]), MM(best[2])
-
-
-PIN_ENTRY_MM = 1.0
-
-
-def _pin_entry(ctx, net, layer, at, w, need, ends):
-    """The neck at `at` as a PIN ENTRY, or None: (length mm, "REF.PAD", pad mm across,
-    [segments]).
-
-    ⚠ A TRACK CANNOT BE WIDER THAN THE PIN IT LANDS ON (output_power VSTBY, 2026-11-13):
-    the LMR33630's VIN pins sit on a 0.4 mm pitch and buck_cell lays each in copper as wide
-    as that allows, 0.40 mm, while 1.5 A asks 0.53 -- so A1 graded the pin itself a choke
-    point. Over a millimetre or less the temperature rise is set by the pad and the bulk
-    copper either side, not by the neck: the neck has nowhere to be hotter than the pad it
-    ends on. So a neck is graded against the pad, and only when ALL of these hold (lead
-    ruling, bounded so it cannot hide a real neck):
-      * its run of under-width copper is at most PIN_ENTRY_MM long;
-      * that run ends ON a pad of the path's own ends (`ends`);
-      * it is no narrower than the pad across the entry -- the pad, not the copper, is
-        then the narrowest point;
-      * and the copper beyond it meets the full required width (the caller re-grades
-        the path with the run lifted)."""
-    b = ctx.board
-    lid = b.GetLayerID(layer)
-    tol = pcbnew.FromMM(0.005)
-    thin = [t for t in b.GetTracks() if t.GetNetname() == net and t.GetClass() != "PCB_VIA"
-            and t.GetLayer() == lid and MM(t.GetWidth()) + 0.005 < need]
-    pt = pcbnew.VECTOR2I(pcbnew.FromMM(at[0]), pcbnew.FromMM(at[1]))
-    run = [t for t in thin if t.HitTest(pt, pcbnew.FromMM(0.02))]
-    if not run:
-        return None
-    grow = True
-    while grow:                                   # the connected under-width run
-        grow = False
-        for t in thin:
-            if t in run:
-                continue
-            if any(o.HitTest(t.GetStart(), tol) or o.HitTest(t.GetEnd(), tol)
-                   or t.HitTest(o.GetStart(), tol) or t.HitTest(o.GetEnd(), tol) for o in run):
-                run.append(t)
-                grow = True
-    length = sum(MM(t.GetLength()) for t in run)
-    if length > PIN_ENTRY_MM + 1e-6:
-        return None
-    narrow = min(MM(t.GetWidth()) for t in run)
-    for ref, num, pad in ctx.by_net.get(net, ()):
-        key = "%s.%s" % (ref, num)
-        if key not in ends or not pad.IsOnLayer(lid):
-            continue
-        for t in run:
-            for e, o in ((t.GetStart(), t.GetEnd()), (t.GetEnd(), t.GetStart())):
-                if not pad.HitTest(e, pcbnew.FromMM(0.01)):   # ON the land, its edge included
-                    continue
-                bb = pad.GetBoundingBox()
-                dx, dy = abs(o.x - e.x), abs(o.y - e.y)
-                across = MM(bb.GetHeight()) if dx >= dy else MM(bb.GetWidth())
-                if narrow + 0.005 >= across:
-                    return length, key, across, run
+def _gate_row(gate, net, frm, dst):
+    """The power gate's verdict for the A1 row net frm>dst, else None. power_specs makes one
+    path per net and PART pair (every pad of each part on the net is that end), so the row is
+    matched by net and the two parts."""
+    fr, dr = frm.split(".")[0], dst.split(".")[0]
+    for row in (gate or {}).get("paths", ()):
+        if (row["net"] == net and fr in {x.split(".")[0] for x in row.get("frm") or ()}
+                and dr in {x.split(".")[0] for x in row.get("to") or ()}):
+            return row
     return None
 
 
@@ -744,6 +602,8 @@ def _pin_entry(ctx, net, layer, at, w, need, ends):
 def power_paths(ctx):
     out = []
     paths = ctx.q.get("power_paths", []) or []
+    import power_gate
+    gate = power_gate.verdicts(ctx.stem) if paths else None
     declared = {p["net"] for p in paths}
     for net in sorted(ctx.power - declared):
         loads = len(ctx.by_net.get(net, ()))
@@ -774,84 +634,36 @@ def power_paths(ctx):
                     out.append((subject, False, "no copper joins %s to %s on %s"
                                 % (p["from"], dst, net)))
                     continue
-                w, kind, layer, at = r
-                if kind in ("pour", "pad") or w >= _Net.POUR:
-                    # ⚠ A POUR USED TO END THE CHECK HERE, AND THAT EMPTIED THIS RULE
-                    # ON EXACTLY THE PATHS IT EXISTS FOR. A pour edge is built with
-                    # width POUR (1e3 mm) and zero ohms, so "widest" returns it and the
-                    # IPC width test below was skipped. On the board that found this, 12
-                    # of A1's 20 rows said "through a pour the whole way" -- INCLUDING
-                    # ALL ELEVEN 7.5 A ROWS. The rule is titled "supply paths carry
-                    # their current, with no choke point" and it had measured no
-                    # cross-section on any path the board exists to carry. A pour can be
-                    # one island, fill perfectly, satisfy every connectivity check, and
-                    # still neck to half a millimetre between two lobes.
-                    #
-                    # ⚠ WHAT IS MEASURED IS AN UPPER BOUND, AND THE ASYMMETRY IS THE
-                    # POINT. Scanning axis-aligned cuts finds the narrowest HORIZONTAL or
-                    # VERTICAL section; a neck lying on a diagonal is narrower than any
-                    # of them. So passing this is a NECESSARY condition and not a
-                    # sufficient one, while failing it is proof. That is still infinitely
-                    # more than the previous answer, and the text says which it is rather
-                    # than letting a reader take it for a minimum.
-                    need = required_width_mm(amps, layer, ctx.q)
-                    cut = _pour_narrowest(ctx.board, net, layer, _ends(ctx.board, p["from"], dst))
-                    if cut is None:
-                        out.append((subject, None,
-                                    "%.2f A through a pour, and no filled polygon for %s "
-                                    "on %s could be read: NO claim is made about its "
-                                    "cross-section" % (amps, net, layer)))
-                        continue
-                    cw, cx, cy = cut
-                    ok = cw + 1e-6 >= need
-                    out.append((subject, ok,
-                                "%.2f A through a pour; its narrowest axis-aligned cut is "
-                                "%.2f mm at (%.2f, %.2f) and IPC-2221 asks %.2f mm%s. A "
-                                "diagonal neck can be tighter than any axis-aligned one, "
-                                "so this bounds the pour from ABOVE: failing is proof, "
-                                "passing is a necessary condition"
-                                % (amps, cw, cx, cy, need,
-                                   "" if ok else " -- UNDER by %.2f mm" % (need - cw))))
-                    continue
-                need = (required_width_mm(amps, layer, ctx.q) if kind == "track"
-                        else required_width_mm(amps, "F.Cu", ctx.q))
-                # ⚠ HALF A HUNDREDTH OF SLACK: track widths are drawn to 0.01 mm, and
-                # router.model.power_width rounds its figure to the nearest one, so a track
-                # sized for 1.0612 mm is laid at 1.06 and failed here for 1 um (output_power
-                # VBUS, 2026-11-13). Within half that step is the width that was asked for.
-                ok = w + 0.005 >= need
-                # ...unless the neck is a PIN ENTRY (_pin_entry): graded against its pad,
-                # and the path re-graded beyond it -- at most one entry at each end
-                entries, lifted = [], []
-                while not ok and kind == "track" and len(entries) < 2:
-                    # a split path's ends are its whole pin group (one IC's pins, one load)
-                    pe = _pin_entry(ctx, net, layer, at, w, need,
-                                    {p["from"], dst} | (set(dsts) if p.get("split") else set()))
-                    if pe is None:
-                        break
-                    entries.append(pe)
-                    lifted += pe[3]
-                    r2 = g.widest(p["from"], dst, lift=lifted)
-                    if r2 is None:
-                        break
-                    w2, kind2, layer2, at2 = r2
-                    if kind2 in ("pour", "pad") or w2 >= 1e2:
-                        ok = True                 # pours are graded on their own rows
-                        break
-                    need2 = (required_width_mm(amps, layer2, ctx.q) if kind2 == "track"
-                             else required_width_mm(amps, "F.Cu", ctx.q))
-                    w, kind, layer, at, need = w2, kind2, layer2, at2, need2
-                    ok = w + 0.005 >= need
-                if entries and not ok:
-                    # the copper beyond did not meet the width: report the path as it was
-                    w, kind, layer, at = r
-                    need = (required_width_mm(amps, layer, ctx.q) if kind == "track"
-                            else required_width_mm(amps, "F.Cu", ctx.q))
-                    entries = []
-                pin_note = "".join(
-                    "; a %.2f mm pin entry %.2f mm long onto %s (pad %.2f mm across) is "
-                    "graded against the pad" % (min(MM(t.GetWidth()) for t in e_[3]), e_[0],
-                                                e_[1], e_[2]) for e_ in entries)
+                # ⚠ THE WIDTH IS THE POWER GATE'S, NOT A1's OWN (lead, 2026-11-26; power_gate.py
+                # says why). A1 measured one layer's pour by axis-aligned cuts and graded pin
+                # entries by its own rule; the gate rasterises the fabbed copper on every layer,
+                # joins the layers through the plated holes and reads declared necks. Two judges
+                # of one quantity disagreed (brain_board fold10 +24V: A1 0.08 mm, gate 0.95 PASS),
+                # so there is one.
+                gr = _gate_row(gate, net, p["from"], dst)
+                if gate is None:
+                    width_ok, width_txt = None, ("its width is NOT judged: the power gate did not "
+                                                 "run on this board (power_gate.py)")
+                elif gr is None:
+                    width_ok, width_txt = False, ("the power gate has no verdict for this path "
+                                                  "(power_specs did not build it)")
+                elif gr["verdict"] in ("PASS", "WARN"):
+                    width_ok = True
+                    width_txt = "power gate %s: narrowest %.2f mm outer-equivalent (wants %.2f)" % (
+                        gr["verdict"], gr["width"], gr["need"])
+                    if gr["verdict"] == "WARN":
+                        width_txt += (", a %.2f mm neck %s" % (
+                            gr["neck"] or 0.0,
+                            "within its declaration (%s)" % gr["declared"] if gr.get("declared")
+                            else "no longer than %.1f x its width" % float(gate.get("neck_ratio", 2.0))))
+                else:
+                    width_ok = False
+                    width_txt = "power gate %s: narrowest %.2f mm outer-equivalent, %.2f mm needed%s%s -- CHOKE POINT" % (
+                        gr["verdict"], gr["width"], gr["need"],
+                        "; a %.2f mm neck" % gr["neck"] if gr.get("neck") else "",
+                        "; DECLARED NECK BROKEN (%s)" % gr["declared_broken"] if gr.get("declared_broken") else "")
+                    if gr.get("where"):
+                        width_txt += "; " + gr["where"]
                 # ...and the DROP: a path can be wide enough not to heat and still be long
                 # and thin enough to starve the load
                 ohm = g.resistance(p["from"], dst) or 0.0
@@ -869,15 +681,9 @@ def power_paths(ctx):
                                 % (net, p["from"], dst, amps,
                                    " shared by %d pads" % len(dsts) if shared else "",
                                    ohm * 1000.0, drop_mv, limit_mv)))
-                out.append((subject, ok,
-                            "%s %s -> %s, %.2f A: narrowest point is a %.2f mm %s on %s "
-                            "%s; %.2f mm needed for %.0f C rise%s"
-                            % (net, p["from"], dst, amps, w,
-                               "via barrel (equivalent)" if kind == "via" else kind,
-                               layer, _where(ctx, at), need,
-                               float(ctx.q.get("temp_rise_c", 10.0)),
-                               (" (%.0f mOhm, %.0f mV)" % (ohm * 1000.0, drop_mv)
-                                + pin_note) if ok else " -- CHOKE POINT")))
+                out.append((subject, width_ok,
+                            "%s %s -> %s, %.2f A: %s (track %.0f mOhm, %.0f mV)"
+                            % (net, p["from"], dst, amps, width_txt, ohm * 1000.0, drop_mv)))
     return out
 
 
