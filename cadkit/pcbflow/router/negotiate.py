@@ -686,12 +686,16 @@ class Router(CoupledMixin):
     COUPLE_WALLS = True              # a coupled centreline goes round pairs already to the rules
     PAIR_WALL = True                 # in a pair attempt the mate's copper is a wall (_pair_try)
     PLANE_MAIN = True                # plane joins aim at the main body's fill as it stands (_rounds)
-    # OWNROUTE_RAILS_EARLY=1 (A/B, lead 2026-11-25; the EE order, power before signals): rails --
-    # non-plane nets drawn at least RAIL_W_MIN wide -- are negotiated alone on the empty board,
-    # widest first, then held RAILS_HOLD_ROUNDS signal rounds before everything negotiates.
+    # RAILS EARLY (DEFAULT; OWNROUTE_RAILS_EARLY=0 turns it off; the EE order, power before
+    # signals): rails -- non-plane nets drawn at least RAIL_W_MIN wide -- are negotiated alone on
+    # the empty board, widest first, then held RAILS_HOLD_ROUNDS signal rounds before everything
+    # negotiates.
     # ⚠ WHY: brain_board q6c's 12 power OPENs (V5_PRE L1 > U36, +24V Q209 > F203, +5V_OPT U15 > J4)
     # all fit at width on the board with only pads and frozen copper; the routed signals boxed
     # them in (trunk_probe, F.Cu: 0.15 / -0.05 / 0.35 against 0.44 / 0.25 / 0.90 wanted).
+    # A/B 2026-11-25 (brain_board fold5_s2, one placed board, 2 seeds): joins_open 49 / 41 on
+    # against 58 / 59 off, power gate 2F/8O and 2F/6O against 3F/9O and 4F/7O (PB_VBUS_J clears);
+    # time a wash (every arm over 1 h; seed 2 on +28 % cpu, seed 1 even). Ruled a win, made default.
     RAIL_W_MIN = 0.40
     RAILS_ROUNDS = 6
     RAILS_HOLD_ROUNDS = 3
@@ -3283,7 +3287,7 @@ class Router(CoupledMixin):
             from .globalroute import GlobalRouter
             self._gr = GlobalRouter(self, log=self.log).run()
             self._gr.report()
-        if os.environ.get("OWNROUTE_RAILS_EARLY") == "1":
+        if os.environ.get("OWNROUTE_RAILS_EARLY", "1") != "0":
             todo, pf = self._rails_early(pf0, iters, budget_s)
         else:
             todo, pf = self._rounds(list(self.nets), pf0, iters, budget_s)
@@ -3317,7 +3321,7 @@ class Router(CoupledMixin):
         return [n for n in self.nets if n.failed] + list(getattr(self, "unreachable", ()))
 
     def _rails_early(self, pf0, iters, budget_s):
-        """OWNROUTE_RAILS_EARLY: rails alone, then signals round the held rails, then everyone.
+        """Rails early (default; OWNROUTE_RAILS_EARLY=0 off): rails alone, then signals round the held rails, then everyone.
         Returns what _rounds returns for the whole board."""
         span = lambda n: (n.bbox[1] - n.bbox[0]) + (n.bbox[3] - n.bbox[2])
         rails = sorted((n for n in self.nets if not n.plane and n.width >= self.RAIL_W_MIN - 1e-6),
