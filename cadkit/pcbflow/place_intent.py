@@ -2293,7 +2293,16 @@ def pour_around(rule, P, notes=None, amps=None):
     idx = np.arange(nx * ny).reshape(ny, nx)
     pc = [int(idx[min(max(int(round((py - y0) / g)), 0), ny - 1),
                   min(max(int(round((px - x0) / g)), 0), nx - 1)]) for px, py in pins]
-    for neck in sorted({need, max(AROUND_NECK, 0.75 * need), max(AROUND_NECK, 0.5 * need), AROUND_NECK},
+    # ⚠ THE BARE NEED IS A RUNG (brain_board sa_away, 2026-11-26): `need` is the DRAWN width
+    # (copper.drawn_width_mm, the need + one raster step), and the ladder went straight from it to
+    # 3/4 of it -- +5V_RAW's corridor holds 1.37 (the gate's reading), short of the drawn 1.40, so
+    # the band fell to 1.05 where the need (1.33) fitted: asking for the margin cost the width.
+    # The bare need comes before the fractions (close_last's guard ladder stops there too).
+    if _HERE not in sys.path:
+        sys.path.insert(0, _HERE)
+    from copper import required_width_mm
+    bare = max(AROUND_NECK, min(need, required_width_mm(amps, "F.Cu", {"temp_rise_c": design_dt(notes)})))         if amps else need
+    for neck in sorted({need, bare, max(AROUND_NECK, 0.75 * need), max(AROUND_NECK, 0.5 * need), AROUND_NECK},
                        reverse=True):
         wall = dfor <= clr_ + neck / 2.0 + 1e-9
         free = ~wall | own
