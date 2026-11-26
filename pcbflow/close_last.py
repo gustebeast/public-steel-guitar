@@ -1350,27 +1350,44 @@ def main(stem):
             _ladder.append(round((want_w + WIDTH) / 2.0, 2))
         if want_w > WIDTH:
             _ladder.append(WIDTH)
-        _need = 0.0
+        _need = _need_all = 0.0
+        _steps = [(w_, None) for w_ in _ladder]      # (width, layers): None = _lays as asked
         if amps_of.get(net):
             _need = _drawn_w(amps_of[net], "F.Cu", _qn)
             if _need <= WIDTH:          # signal width already carries it: no guard
                 _need = 0.0
             else:
                 _ladder = [w_ for w_ in sorted(set(_ladder + [_need]), reverse=True) if w_ >= _need]
-        for _i, width in enumerate(_ladder):
+                # ⚠ AN INNER LAYER CARRIES LESS AT THE SAME WIDTH (brain_board fold7d, 2026-11-26):
+                # the guard sized +24V's closure for F.Cu (0.95 mm at 3 A) and the search laid it
+                # on In2, where 0.95 mm reads 0.41 mm outer-equivalent -- the gate's FAIL at 0.39 /
+                # 0.90. maze3d takes one width for every layer, so a power net is searched on the
+                # outer layers at the outer need first, then on every layer at the widest need any
+                # of them has (the rip-up likewise): never narrower than the layer it lands on.
+                _out = [L_ for L_ in layers if L_ in ("F.Cu", "B.Cu")]
+                _need_all = max([_need] + [_drawn_w(amps_of[net], L_, _qn) for L_ in layers])
+                _steps = [(w_, _out) for w_ in _ladder] if _out else []
+                if _need_all > _need or not _out:
+                    _steps.append((max(_ladder[-1], _need_all), None))
+        for _i, (width, _only) in enumerate(_steps):
             for (la, pa), (lb, pb), step in tries:
                 # the clock again: one net's pairings can outlast the whole budget
                 if _clock() > _end:
                     break
-                res = RS.maze3d(model, _lays(net, layers, la, lb), pa, la, pb, lb, w=width, step=step,
-                                reach=REACH)
+                if _only is not None and (la not in _only or lb not in _only):
+                    continue
+                _ls = _lays(net, layers, la, lb)
+                if _only is not None:
+                    _ls = [L_ for L_ in _ls if L_ in _only]
+                res = RS.maze3d(model, _ls, pa, la, pb, lb, w=width, step=step, reach=REACH)
                 if res is not None:
                     break
             if res is not None:
                 break
-            if width > WIDTH and _i + 1 < len(_ladder):
-                print("close_last: %s -- no path at %.2f mm, trying %.2f"
-                      % (net, width, _ladder[_i + 1]))
+            if width > WIDTH and _i + 1 < len(_steps):
+                print("close_last: %s -- no path at %.2f mm%s, trying %.2f%s"
+                      % (net, width, " (outer layers)" if _only is not None else "", _steps[_i + 1][0],
+                         " (outer layers)" if _steps[_i + 1][1] is not None else ""))
         if res is None:
             print("close_last: %s -- no path between (%.2f, %.2f) and (%.2f, %.2f)"
                   % (net, pa[0], pa[1], pb[0], pb[1]))
@@ -1381,12 +1398,12 @@ def main(stem):
                 ok = 0
                 if _clock() < _end and not (MAX_RESTORES and _RESTORES.get(net, 0) >= MAX_RESTORES):
                     board, ok = _rip_one(board, stem, net, model, layers, layer_id, named, gap,
-                                         tries[:4] + tries[-2:], close_w, _end, nw=_need)
+                                         tries[:4] + tries[-2:], close_w, _end, nw=_need_all)
                 made += ok
                 if not ok:
-                    print("close_last: %s -- CAN'T CARRY: %.1f A wants %.2f mm and no path is that "
+                    print("close_last: %s -- CAN'T CARRY: %.1f A wants %.2f mm (%.2f on an inner layer) and no path is that "
                           "wide, even taking others up; left open (fix the copper, not a thin "
-                          "closure)" % (net, amps_of[net], _need))
+                          "closure)" % (net, amps_of[net], _need, _need_all))
                 continue
             if _clock() < _end:
                 # then a way that keeps clear of other nets' track wherever it can: a longer
