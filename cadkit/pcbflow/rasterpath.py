@@ -5,7 +5,8 @@
 pads on the net, the width the current needs, inner layers scaled to outer-equivalent) and
 prints PASS / WARN / FAIL per path from widepath.judge -- the model is described there. Exit 1
 on any FAIL. --open-ok (finish's pre-close gate only) reports a path with no copper at all as
-OPEN, not FAIL (widepath.judge open_is_fail); the pre-order gate never passes it.
+OPEN, not FAIL (widepath.judge open_is_fail); the pre-order gate never passes it. --json PATH
+also writes every verdict as JSON (power_gate.py; quality A1 grades widths from it).
 
 Widest (maximin) copper path between two points on ORDERED gerbers, no nets needed.
 Each copper layer is rasterised exactly as fabbed (traces, flashes, pour regions); layers
@@ -230,7 +231,9 @@ if sys.argv[4] == "--specs":
     # KiCad y runs down the board, gerber y up: a board point (x, y) is gerber (x, -y)
     gpx = lambda q: px(q[0], -q[1])
     open_is_fail = "--open-ok" not in sys.argv[6:]
+    json_out = sys.argv[sys.argv.index("--json") + 1] if "--json" in sys.argv[6:] else None
     n = {"PASS": 0, "WARN": 0, "FAIL": 0, "OPEN": 0}
+    rows = []
     for sp in data["specs"]:
         A = widepath.end_masks(shape, {k: [[gpx(q) for q in p] for p in ps] for k, ps in sp["a"].items()})
         B = widepath.end_masks(shape, {k: [[gpx(q) for q in p] for p in ps] for k, ps in sp["b"].items()})
@@ -245,6 +248,15 @@ if sys.argv[4] == "--specs":
         print("%s %-44s %5.2f A  %.2f mm (wants %.2f)  neck %s%s%s" % (
             r["verdict"], sp["name"], sp["amps"], r["width"], sp["need"],
             "%.2f mm" % r["neck"] if r["neck"] != float("inf") else "-", tag, _where(r.get("where"))), flush=True)
+        rows.append(dict(name=sp["name"], net=sp["net"], frm=sp.get("frm"), to=sp.get("to"),
+                         amps=sp["amps"], need=sp["need"], verdict=r["verdict"],
+                         width=round(r["width"], 3),
+                         neck=None if r["neck"] == float("inf") else round(r["neck"], 3),
+                         declared=r.get("declared"), declared_broken=r.get("declared_broken"),
+                         where=_where(r.get("where")).replace("  WHERE: ", "")))
+    if json_out:
+        json.dump(dict(neck_ratio=widepath.NECK_RATIO, res=RES, paths=rows),
+                  open(json_out, "w", encoding="utf-8"), indent=1)
     print("rasterpath: %d FAIL, %s%d WARN, %d PASS of %d power paths"
           % (n["FAIL"], "" if open_is_fail else "%d OPEN, " % n["OPEN"], n["WARN"], n["PASS"],
              len(data["specs"])))

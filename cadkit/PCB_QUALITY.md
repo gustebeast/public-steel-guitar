@@ -107,27 +107,35 @@ the default width, and a post-route repair can join two halves of a rail with a 
 one board's analog rail was "0 unconnected" through 62 mm of 0.127 mm track, 0.6 Ω to its
 converters. Another's trunk carried half the fleet's current through 0.25 mm.
 
-**How it is checked.** The net's copper becomes a graph (track segments by width, vias as
-their barrel's equivalent width, pours as unlimited) and the widest-bottleneck path from
-`from` to each `to` is found. The report names the narrowest point and the pad it is
-nearest. The drop is the least-resistance path's track resistance (pours counted as zero).
-Parallel vias and parallel tracks are not summed — add them up yourself and waive with
-the arithmetic if that is the design.
+**How it is checked.** The **width** is the power gate's (`pcbflow/power_gate.py`, the
+same judge finish runs on the finished board): the board's copper is rasterised as fabbed on
+every layer, layers join through the plated holes (each barrel as its equivalent width,
+parallel vias summed), inner copper is scaled to outer-equivalent, and the widest-bottleneck
+path between the two parts' pads on the net is measured (`widepath.judge`). Copper under the
+need is PASS-able only as a neck: no longer than 2 × its own width, or inside a **declared
+neck** (intent copper `neck`: a floor width and a ceiling length, with the reason) — a neck
+past its declaration fails as DECLARED NECK BROKEN. A1 reuses the gate's verdict for the
+board file as saved (matched by its hash) and runs the gate itself when there is none.
+One judge, because two disagreed (brain_board fold10: an axis cut through one layer's pour
+read 0.08 mm where the current ran in an inner band the gate measured at 0.95).
+**Connectivity and drop** are A1's own: the net's copper becomes a graph (tracks by width,
+vias, pours as zero-ohm links); a `to` pad no copper reaches is a hard fail, and the drop is
+the least-resistance path's track resistance (pours counted as zero).
 A path may say `"split": true` when its `amps` is what the listed pads draw **together**
 (the supply pins of one IC): the drop is then solved on the whole copper network with the
 current shared equally between those pads, so a trunk is charged with what is downstream
-of it and no more. The narrowest-point check still uses the full figure.
+of it and no more. The width check still uses the full figure.
 
 **Fix.** Size the net in `net_widths`, or lay the path as declared copper (`tracks`), or
 pour it. Then check **M3** (the return path).
 
 **How strict.** **Hard:** a rail with no declared path (declare it, or list the net in `not_power` if
 it carries no current); a path whose ends are not pads on the net; a path with no copper.
-**Soft:** the width and the drop. *Break it when:* (a) the narrow point is a neck no
-longer than about 2 mm between wide copper — IPC-2221 is a long-trace figure and a short
-neck sheds its heat into the copper either side: waive with the neck's length; (b) the
-current is shared by parallel tracks or vias the script does not sum: waive with the
-arithmetic; (c) the current is a brief peak, not continuous: declare the continuous
+**Soft:** the width and the drop. *Break it when:* (a) the narrow point is a longer neck
+a package forces (a pin pitch, a land) — do not waive it: declare it as intent copper `neck`
+with its floor width, its ceiling length and the datasheet reason, so the gate and A1 both
+hold it to the declaration; (b) the current is shared by parallel tracks the gate does not
+see as one (it sums vias, not separate routes): waive with the arithmetic; (c) the current is a brief peak, not continuous: declare the continuous
 figure and say what the peak is; (d) the load tolerates the drop: set `max_drop_mv` on
 that path with the load's minimum voltage. *Do not break it* for a rail feeding a
 regulator's input near its dropout, an analog reference, or anything whose current you

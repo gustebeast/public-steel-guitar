@@ -527,15 +527,6 @@ def _sync_values(stem):
         os.remove(tmp)
 
 
-def _scipy_py():
-    """A python with numpy + scipy for widepath (KiCad's has none)."""
-    if os.environ.get("CADKIT_SCIPY_PY"):
-        return [os.environ["CADKIT_SCIPY_PY"]]
-    if shutil.which("py"):
-        return [shutil.which("py"), "-3.12"]
-    return [shutil.which("python3") or "python"]
-
-
 def _power_gate(stem, report=".power_gate.txt"):
     """The widepath gate on the ROUTED board (PCBFLOW_POWER_GATE=1): once before close_last
     (report <stem>.power_gate.pre.txt) and once on the finished board (<stem>.power_gate.txt,
@@ -546,7 +537,7 @@ def _power_gate(stem, report=".power_gate.txt"):
     found 29 of 48 power paths under their IPC width -- 10 A on a 0.38 mm inner track. The
     routed board is copied, its zones refilled, its gerbers exported, and rasterpath --specs
     judges every quality.power_paths entry with widepath (the same core close_last's
-    CLOSE_POUR_GUARD=2 uses). Returns (n_fail, n_warn), None if it did not run.
+    CLOSE_POUR_GUARD=2 uses; power_gate.py). Returns (n_fail, n_warn), None if it did not run.
 
     ⚠ THE PRE-CLOSE GATE REPORTS, IT DOES NOT STOP (lead, 2026-11-26): brain_board fold9 routed
     for 2 h and stopped here on two router-thin paths (V5_PRE 0.28, +5V_CM5 0.45), so close_last
@@ -555,43 +546,8 @@ def _power_gate(stem, report=".power_gate.txt"):
     after every report is written."""
     import build_stamp
     build_stamp.check(stem)
-    pg = stem + ".pg"
-    shutil.copy(stem + ".kicad_pcb", pg + ".kicad_pcb")
-    subprocess.run([PY, "-c",
-                    "import sys, pcbnew; sys.path.insert(0, %r); import stable_fill\n"
-                    "b = pcbnew.LoadBoard(%r); stable_fill.fill(b, b.Zones()); pcbnew.SaveBoard(%r, b)\n"
-                    "import os; os._exit(0)" % (HERE, pg + ".kicad_pcb", pg + ".kicad_pcb")],
-                   capture_output=True, text=True)
-    gd = pg + "_gerb"
-    os.makedirs(gd, exist_ok=True)
-    subprocess.run([KICAD_CLI, "pcb", "export", "gerbers", "-o", gd + os.sep, pg + ".kicad_pcb"],
-                   capture_output=True, text=True)
-    subprocess.run([KICAD_CLI, "pcb", "export", "drill", "-o", gd + os.sep, pg + ".kicad_pcb"],
-                   capture_output=True, text=True)
-    specs = stem + ".power_specs.json"
-    subprocess.run([PY, os.path.join(HERE, "power_specs.py"), stem, specs],
-                   capture_output=True, text=True)
-    r = subprocess.run(_scipy_py() + [os.path.join(HERE, "rasterpath.py"), gd,
-                                      os.path.basename(pg), "0.025", "--specs", specs,
-                                      "--open-ok"],
-                       capture_output=True, text=True)
-    lines = [ln for ln in r.stdout.splitlines() if ln[:4] in ("FAIL", "WARN", "PASS", "OPEN")
-             or ln.startswith("rasterpath:")]
-    open(stem + report, "w", encoding="utf-8").write("\n".join(lines) + "\n")
-    nf = sum(ln.startswith("FAIL") for ln in lines)
-    nw = sum(ln.startswith("WARN") for ln in lines)
-    no = sum(ln.startswith("OPEN") for ln in lines)
-    if not any(ln.startswith("rasterpath:") for ln in lines):
-        print("  ⚠ power gate DID NOT RUN: %s" % (r.stderr.strip().splitlines() or ["?"])[-1])
-        return None
-    for ln in lines:
-        if ln.startswith("FAIL"):
-            print("    " + ln)
-    print("  power gate%s: %d FAIL, %d OPEN, %d WARN of %d power paths (%s)"
-          % (" (pre-close)" if report != ".power_gate.txt" else "", nf, no, nw,
-             sum(ln[:4] in ("FAIL", "WARN", "PASS", "OPEN") for ln in lines),
-             os.path.basename(stem) + report))
-    return nf, nw
+    import power_gate      # the one judge of width: quality A1 grades from its verdicts too
+    return power_gate.run(stem, report)
 
 
 def finish(stem, rounds=1, keep_route=False):
