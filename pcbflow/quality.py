@@ -254,7 +254,7 @@ def _prefix(ref):
 
 # ── A1: supply paths carry their current, with no choke point ────────────────────────
 # the width model lives in copper.py (no pcbnew): one copy for quality, the planner and the gate
-from copper import INNER_FOIL_MM, OUTER_FOIL_MM, foil_mm, required_width_mm  # noqa: E402,F401
+from copper import INNER_FOIL_MM, OUTER_FOIL_MM, foil_mm, required_width_mm, via_barrel_mm  # noqa: E402,F401
 
 
 def _layout():
@@ -291,7 +291,7 @@ class _Net:
                 vias_at[p] = t
                 # a via's barrel as an equivalent track width: its circumference, derated
                 # for plating (~25 um) against 35 um foil. Parallel vias are NOT summed.
-                w = math.pi * MM(t.GetDrillValue()) * 25.0 / 35.0
+                w = via_barrel_mm(MM(t.GetDrillValue()))
                 for a, c in zip(layers, layers[1:]):
                     self._edge((a,) + p, (c,) + p, w, "via", "all", p, self.VIA_OHM)
             else:
@@ -424,7 +424,7 @@ class _Net:
                                 if vias_at[p].IsOnLayer(b.GetLayerID(la))
                                 and vias_at[p].IsOnLayer(b.GetLayerID(lb)))
                 if len(common) >= 2:
-                    w = sum(math.pi * MM(vias_at[p].GetDrillValue()) * 25.0 / 35.0 for p in common)
+                    w = sum(via_barrel_mm(MM(vias_at[p].GetDrillValue())) for p in common)
                     self._edge(na, nb, w, "via", "all", common[0], self.VIA_OHM / len(common))
         # ⚠ ...AND SO DO PARALLEL VIAS BETWEEN TWO TRACKS (power_vias.py, 2026-11-15). A wide
         # net's layer change laid as a via array -- each via standing in the SAME track copper
@@ -472,7 +472,7 @@ class _Net:
             if len(grp) < 2:
                 continue
             grp.sort()
-            w = sum(math.pi * MM(vias_at[p].GetDrillValue()) * 25.0 / 35.0 for p in grp)
+            w = sum(via_barrel_mm(MM(vias_at[p].GetDrillValue())) for p in grp)
             p0 = grp[0]
             for a, c in zip(layers, layers[1:]):
                 if (a,) + p0 in self.g and (c,) + p0 in self.g:

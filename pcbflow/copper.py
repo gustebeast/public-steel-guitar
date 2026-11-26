@@ -4,6 +4,8 @@ planner, the router, quality and the power gate all import it).
     required_width_mm(amps, layer, q)   the NEED: width (mm) on `layer` at quality.temp_rise_c
     drawn_width_mm(amps, layer, q)      the width to DRAW: the need + RASTER_MARGIN_MM, up to 0.05
     foil_mm(layer, q)                    finished copper thickness (mm) of `layer` on the order
+    via_barrel_mm(drill)                 the track width a via's plated barrel counts as
+    via_drill_mm(amps, q)                the smallest drill (0.05 steps) whose barrel carries `amps`
 
 quality.required_width_mm / foil_mm and place_intent.width_for are this; there is no second
 copy of the IPC curve to drift (lead 2026-11-25: place_intent carried 2221's inner k after
@@ -17,6 +19,8 @@ quality had dropped it).
 # A weight not in the table is taken as oz x 0.035.
 OUTER_FOIL_MM = {1.0: 0.035, 2.0: 0.070}
 INNER_FOIL_MM = {0.5: 0.0152}
+PLATING = 25.0 / 35.0     # a via barrel's derating: 25 um plating against 35 um outer foil (quality A1)
+VIA_DRILL_STEP = 0.05     # drills are sized in these steps
 K = 0.048            # IPC-2221's external-conductor k, used on EVERY layer (see required_width_mm)
 RASTER_MARGIN_MM = 0.05   # drawn power copper is this much over its need (drawn_width_mm)
 
@@ -67,3 +71,28 @@ def drawn_width_mm(amps, layer="F.Cu", q=None, min_mm=0.0):
     import math
     w = required_width_mm(amps, layer, q) + RASTER_MARGIN_MM
     return round(max(min_mm, math.ceil(w / 0.05 - 1e-9) * 0.05), 2)
+
+
+def via_barrel_mm(drill_mm):
+    """The track width (mm) a via's plated barrel counts as: pi x drill x PLATING (quality A1).
+    The power gate (widepath / rasterpath), power_vias and the router all read it here."""
+    import math
+    return math.pi * float(drill_mm) * PLATING
+
+
+def via_drill_mm(amps, q, step=VIA_DRILL_STEP, max_mm=None):
+    """The smallest drill, in `step`s, whose barrel (via_barrel_mm) is at least the NEED for
+    `amps` (required_width_mm on an outer layer, as the gate grades a via), capped at max_mm.
+
+    ⚠ THE ROUTER AND THE GATE TAKE A VIA'S NEED FROM HERE (lead ruling, 2026-11-26). The
+    router's own copy of the IPC curve (1 oz = 1.378 mil) put +24V's 3 A at 20 C at 0.89757 mm,
+    6 um under the gate's 0.89760; a 0.40 drill's barrel is 0.89760 -- enough by the router's
+    sum, short by the gate's -- so it drew 0.40 vias and the gate FAILed the path. One need,
+    and a barrel checked against it after the rounding, so the two can't disagree."""
+    import math
+    need = required_width_mm(amps, "F.Cu", q)
+    n = max(1, int(math.ceil(need / via_barrel_mm(step) - 1e-9)))
+    while via_barrel_mm(n * step) < need:     # floating point at a step boundary
+        n += 1
+    d = round(n * step, 3)
+    return min(d, max_mm) if max_mm is not None else d

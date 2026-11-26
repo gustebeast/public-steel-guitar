@@ -38,7 +38,7 @@ import frozen_wall  # noqa: E402  (the one frozen-band wall for post-route coppe
 import wx                                       # noqa: E402  (KiCad's python ships it)
 wx.DisableAsserts()                             # NO MODAL DIALOGS IN A BUILD STEP -- see route.py
 
-PLATING = 25.0 / 35.0       # quality._Net's via derating: 25 um barrel plating against 35 um foil
+from copper import PLATING, via_barrel_mm  # noqa: E402  (quality._Net's via derating, copper.py)
 STEP = 0.05                 # candidate grid, mm
 NEAR_MM = 3.0               # past the search disc by more than this, nothing can refuse a candidate
 MM = pcbnew.ToMM
@@ -46,7 +46,7 @@ IU = pcbnew.FromMM
 
 
 def barrel_mm(drill_mm):
-    return math.pi * drill_mm * PLATING
+    return via_barrel_mm(drill_mm)
 
 
 def _rules(stem):

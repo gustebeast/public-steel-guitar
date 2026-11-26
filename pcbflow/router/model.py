@@ -15,6 +15,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import repair_search as RS  # noqa: E402  (the battle-tested parsers: pads, tracks, edges)
+import copper  # noqa: E402  (the one copper width / via need model)
 
 FAR = np.float32(1e3)
 SIGNAL_W = 0.2           # a signal's track width (wide nets neck to it at their lands)
@@ -124,17 +125,18 @@ class Model:
         # the annulus the board's default via has. via_size[net] = (diameter, drill).
         self.via_size = {}
         if os.environ.get("OWNROUTE_POWER_VIA_SIZE") == "1":
-            ipc = {}
-            dt_ = float(q.get("temp_rise_c", 10.0))
-            oz_ = float(q.get("copper_oz", 1.0))
+            # the need and the drill come from copper.py, as the gate's do (copper.via_drill_mm)
+            amps = {}
             for pp in q.get("power_paths", ()) or ():
                 a_ = float(pp.get("amps", 0.0))
                 if a_ > 0:
-                    w_ = (a_ / (0.048 * dt_ ** 0.44)) ** (1.0 / 0.725) / (oz_ * 1.378) * 0.0254
-                    ipc[pp["net"]] = max(ipc.get(pp["net"], 0.0), w_)
+                    amps[pp["net"]] = max(amps.get(pp["net"], 0.0), a_)
             ann = self.via_d - self.via_drill
-            for n, w_ in ipc.items():
-                if n not in self.width or w_ <= math.pi * self.via_drill * 25.0 / 35.0 + 0.005:
+            for n, a_ in amps.items():
+                if n not in self.width:
+                    continue
+                d_ = copper.via_drill_mm(a_, q, max_mm=POWER_VIA_DRILL_MAX)
+                if d_ <= self.via_drill + 1e-6:
                     continue
                 # ⚠ NOT A POURED NET (mV3, 2026-11-16): sized on +24V, VIN_* and the USB-C stage
                 # too, 115 vias up to 0.8 mm drill -- each a 2 mm hole in every plane it passed:
@@ -144,7 +146,6 @@ class Model:
                 # lays as TRACK gets a bigger via.
                 if n in getattr(self, "pours", {}):
                     continue
-                d_ = min(POWER_VIA_DRILL_MAX, math.ceil(w_ / (math.pi * 25.0 / 35.0) / 0.05 - 1e-6) * 0.05)
                 self.via_size[n] = (round(d_ + ann, 3), round(d_, 3))
 
         # ---- grid over the outline
