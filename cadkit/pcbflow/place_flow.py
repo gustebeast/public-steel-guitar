@@ -480,10 +480,44 @@ def _copper(notes, P, rules):
     return lines
 
 
+def pour_priorities(zones):
+    """Number the pours that declared no priority (priority None), in place; return
+    [(layer, [(net, priority), ...] lowest first)] for the report.
+
+    ⚠ A DECLARED PRIORITY IS A FIXED POINT (brain_board fold6, 2026-11-26). The old rule put
+    each undeclared pour one above the highest taken on its layer, so BST_LMID's declared 11
+    ("above +24V's 10") pushed the later BST_SW to 12 and +24V to 13: +24V filled over the boost
+    input again (gate FAIL 0.79/2.63) with nothing in the intent saying so. Now, per layer:
+    the undeclared pours keep their relative (rule) order and are numbered 1, 2, ... BELOW the
+    lowest declared priority -- 1 and up so each still wins its region over a board-wide plane
+    at 0, one number per net so two rails meeting at a fuse never share one (motor_ctrl
+    +5V_RAW/+5V, 2026-11-11: DRC zones_intersect). If they do not fit under it, the declared
+    pours rise as one block, keeping their order and gaps."""
+    report = []
+    for lyr in sorted({z["layer"] for z in zones}, key=str):
+        on = [z for z in zones if z["layer"] == lyr]
+        auto = []                                   # undeclared nets in rule order
+        for z in on:
+            if z["priority"] is None and z["net"] not in auto:
+                auto.append(z["net"])
+        decl = [z["priority"] for z in on if z["priority"] is not None]
+        lift = max(0, len(auto) + 1 - min(decl)) if decl and auto else 0
+        num = {n: i + 1 for i, n in enumerate(auto)}
+        for z in on:
+            z["priority"] = num[z["net"]] if z["priority"] is None else z["priority"] + lift
+        seen, order = set(), []
+        for z in sorted(on, key=lambda z: z["priority"]):
+            if (z["net"], z["priority"]) not in seen:
+                seen.add((z["net"], z["priority"]))
+                order.append((z["net"], z["priority"]))
+        report.append((lyr, order))
+    return report
+
+
 def _pours(notes, parts, pl, rules, base_zones):
     """notes["zones"] = the input's own zones + one per `pour` rule at the placed pins
-    (place_intent.pour_poly), priority 1 by default so it wins its region over a board-wide
-    ground pour on the same layer. Returns the POUR lines for the report."""
+    (place_intent.pour_poly); a pour that declares no priority is numbered by pour_priorities
+    (1 and up, below every declared one on its layer). Returns the POUR lines for the report."""
     P = pi.Placed(parts, pl)
     cl = _copper(notes, P, rules)
     notes_r = dict(notes, _regions={r["name"]: r["poly"] for r in rules if r["kind"] == "region"})
@@ -546,15 +580,8 @@ def _pours(notes, parts, pl, rules, base_zones):
             out.append("%s on %s: NO OUTLINE (region %r unknown, no pins along) -- not poured"
                        % (r["net"], r["layer"], r.get("region")))
             continue
-        # ⚠ TWO POURS OF DIFFERENT NETS ON ONE LAYER NEED DIFFERENT PRIORITIES (motor_ctrl,
-        # 2026-11-11): +5V_RAW (L2-F2) and +5V (F2-J5) both on F.Cu at priority 1 met at F2:
-        # DRC zones_intersect, and the fill gave neither a clean edge. A later pour on a layer
-        # that already holds one goes a step above it; KiCad fills the higher first and keeps
-        # clearance, which is what two rails meeting at a fuse want.
-        pr = int(r.get("priority", 1))
-        taken = [z["priority"] for z in zones[len(base_zones):] if z["layer"] == r["layer"] and z["net"] != r["net"]]
-        if "priority" not in r and pr in taken:
-            pr = max(taken) + 1
+        # priority: declared, or None = numbered by pour_priorities() once every pour is in
+        pr = int(r["priority"]) if "priority" in r else None
         zones.append({"net": r["net"], "layer": r["layer"], "poly": poly, "priority": pr,
                       **({"whole": True} if r.get("whole") else {}),
                       **({"frozen": True} if r.get("frozen") else {})})
@@ -569,6 +596,9 @@ def _pours(notes, parts, pl, rules, base_zones):
             r["net"], r["layer"], ("region " + r["region"]) if r.get("region") else "along " + "-".join(r["along"]),
             len(poly), ("%d other net pad(s) inside -- the layer may not have room: %s" % (len(f), " ".join(f[:8])))
             if f else "no other net's pad inside"))
+    mine_z = zones[len(base_zones):]
+    for lyr, order in pour_priorities(mine_z):
+        out.append("pour order on %s (fills first last): %s" % (lyr, " < ".join("%s %d" % o for o in order)))
     notes["zones"] = zones
     if pv:
         notes["pour_vias"] = pv
