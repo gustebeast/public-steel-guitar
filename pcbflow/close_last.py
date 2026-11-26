@@ -1208,7 +1208,7 @@ def main(stem):
                 _t = _p["to"][0] if isinstance(_p["to"], list) else _p["to"]
                 _PATHS.append(dict(_p, _name="%s %s>%s" % (_p["net"], _p["from"], _t)))
     if POWER_GUARD and amps_of:
-        from quality import required_width_mm as _req_w
+        from copper import drawn_width_mm as _drawn_w     # the need + one raster step (copper.py)
         _qn = _notes.get("quality") or {}
     layers = [L for L in LAYERS if L in have and L not in plane]
     _NET_LAYERS.update({n: set(v) for n, v in (_notes.get("net_layers") or {}).items()})
@@ -1349,7 +1349,7 @@ def main(stem):
             _ladder.append(WIDTH)
         _need = 0.0
         if POWER_GUARD and amps_of.get(net):
-            _need = round(_req_w(amps_of[net], "F.Cu", _qn), 2)
+            _need = _drawn_w(amps_of[net], "F.Cu", _qn)
             if _need <= WIDTH:          # signal width already carries it: no guard
                 _need = 0.0
             else:

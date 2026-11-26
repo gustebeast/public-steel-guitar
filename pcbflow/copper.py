@@ -1,7 +1,8 @@
 """The ONE copper width model: how wide a track must be for a current (no pcbnew, so the
 planner, the router, quality and the power gate all import it).
 
-    required_width_mm(amps, layer, q)   width (mm) on `layer` at quality.temp_rise_c
+    required_width_mm(amps, layer, q)   the NEED: width (mm) on `layer` at quality.temp_rise_c
+    drawn_width_mm(amps, layer, q)      the width to DRAW: the need + RASTER_MARGIN_MM, up to 0.05
     foil_mm(layer, q)                    finished copper thickness (mm) of `layer` on the order
 
 quality.required_width_mm / foil_mm and place_intent.width_for are this; there is no second
@@ -17,6 +18,7 @@ quality had dropped it).
 OUTER_FOIL_MM = {1.0: 0.035, 2.0: 0.070}
 INNER_FOIL_MM = {0.5: 0.0152}
 K = 0.048            # IPC-2221's external-conductor k, used on EVERY layer (see required_width_mm)
+RASTER_MARGIN_MM = 0.05   # drawn power copper is this much over its need (drawn_width_mm)
 
 
 def foil_mm(layer, q):
@@ -49,3 +51,19 @@ def required_width_mm(amps, layer, q):
     dt = float((q or {}).get("temp_rise_c", 10.0))
     area_mil2 = (amps / (K * dt ** 0.44)) ** (1.0 / 0.725)
     return area_mil2 / (foil_mm(layer, q) / 0.0254) * 0.0254
+
+
+def drawn_width_mm(amps, layer="F.Cu", q=None, min_mm=0.0):
+    """The width to DRAW power copper at: required_width_mm + RASTER_MARGIN_MM, rounded up to
+    0.05 mm, never under min_mm. Every drawn power width goes through here -- declared bands,
+    auto_pour tracks, net_widths (place_intent.width_for) and close_last's power ladder -- and
+    the judges (quality A1, rasterpath / widepath, close_last's pour guard) keep the bare need.
+
+    ⚠ COPPER DRAWN AT EXACTLY ITS NEED MEASURES UNDER IT (brain_board fixq3f, 2026-11-25; lead
+    ruling). The gate rasterises the ordered gerbers at 0.025 mm and reads a track ~0.02-0.05
+    under its nominal width, so a track at the need is a WARN, and a long one a FAIL: +24V_LED
+    0.89 / 0.90, SW 1.30 / 1.34, SVC_VBUS 0.34 / 0.34, VIN_CM5's 0.70 trunk a 3.55 mm "neck".
+    The copper gets one raster step over; the judge stays strict."""
+    import math
+    w = required_width_mm(amps, layer, q) + RASTER_MARGIN_MM
+    return round(max(min_mm, math.ceil(w / 0.05 - 1e-9) * 0.05), 2)
