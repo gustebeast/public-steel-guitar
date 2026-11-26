@@ -392,8 +392,11 @@ class Model:
         # passed r 0.3 + zc 0.5 at 0.778 mm from +5V_CM5's B.Cu outline; the refill knocked the
         # band back 0.022 there, and a 1.45 band drawn 0.115 over its 1.335 need read a 2.25 mm
         # neck at the gate (FAIL against its 1.70 declaration; 1.60 on the unrouted board).
-        # frozen_d / frozen_d2 are lower bounds on the distance to the edge: one pitch less.
-        _edge_d = lambda d: np.where(d > 0, np.maximum(d - 1.0, 0.0), 0.0)
+        # frozen_d / frozen_d2 are lower bounds on the distance to the edge: sqrt(2) pitch less.
+        # Not one pitch: at a band's corner the nearest band cell centre can sit half a cell
+        # diagonal off the corner point (one pitch left 0.012 mm over on the 30-degree band of
+        # testdata/frozen_bands).
+        _edge_d = lambda d: np.where(d > 0, np.maximum(d - math.sqrt(2.0), 0.0), 0.0)
         self.frozen_d = self.frozen_nn = self.frozen_d2 = self.frozen_nn2 = None
         if self.frozen_any:
             from scipy.ndimage import distance_transform_edt
