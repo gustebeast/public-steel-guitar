@@ -39,7 +39,7 @@ import widepath  # noqa: E402  (the shared core: close_last's CLOSE_POUR_GUARD=2
 
 GD, NAME, RES = sys.argv[1], sys.argv[2], float(sys.argv[3])
 FILES = {"F": "F_Cu.gtl", "I1": "In1_Cu.g1", "I2": "In2_Cu.g2", "I3": "In3_Cu.g3", "I4": "In4_Cu.g4", "B": "B_Cu.gbl"}
-PLATING = widepath.PLATING
+from copper import via_barrel_mm  # noqa: E402  (the one via barrel: copper.py)
 
 
 def macro_poly(name, params, macros):
@@ -191,7 +191,7 @@ for k, ops in layers.items():
     masks[k] = np.array(im, dtype=bool)
     print("  %s rasterised: %.1f %% copper" % (k, 100.0 * masks[k].mean()), flush=True)
 
-hole_px = [(px(hx, hy)[0], px(hx, hy)[1], math.pi * hd * PLATING) for hx, hy, hd in holes]
+hole_px = [(px(hx, hy)[0], px(hx, hy)[1], via_barrel_mm(hd)) for hx, hy, hd in holes]
 
 
 def layerset(s):

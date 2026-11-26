@@ -42,7 +42,7 @@ import sys
 
 import numpy as np
 
-PLATING = 25.0 / 35.0          # quality's barrel derating: a hole of d carries pi*d*PLATING mm
+from copper import PLATING  # noqa: E402  (quality's barrel derating: a hole of d carries pi*d*PLATING mm; copper.py)
 NECK_RATIO = 2.0               # FAIL only a neck longer than this x its own width
 VIA_LEN = 1.6                  # mm: a via field under the need is a neck this long
 INF_W = 1e3
