@@ -50,7 +50,8 @@ def main(d):
         other = (fk != 0) & (fk != nid)
         if not other.any():
             continue
-        dt = distance_transform_edt(~other) * m.pitch
+        dt = distance_transform_edt(~other)
+        dt = np.where(dt > 0, np.maximum(dt - 1.0, 0.0), 0.0) * m.pitch   # to the edge (model._edge_d)
         near = mine & (dt < 3.0)                 # within any reach that matters
         fd, _ = m.frozen_foreign((k,) + np.nonzero(near), nid)
         err = np.abs(fd - dt[near]).max() if near.any() else 0.0

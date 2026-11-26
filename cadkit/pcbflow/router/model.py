@@ -386,6 +386,14 @@ class Model:
         # unrouted board, OPEN routed. frozen_d[k] = mm from each cell to the nearest frozen
         # cell on that layer, frozen_nn[k] the net that band keeps; negotiate bans a foreign
         # track (via) wherever frozen_d < its half width (radius) + the band's zone clearance.
+        # ⚠ TO THE BAND'S EDGE, NOT ITS NEAREST CELL CENTRE (brain_board fold10, 2026-11-26): a band
+        # cell is one whose centre lies in the outline, so the outline itself can sit up to one
+        # pitch nearer than the nearest band cell. Measured cell to cell, two CM5_PWRBTN vias
+        # passed r 0.3 + zc 0.5 at 0.778 mm from +5V_CM5's B.Cu outline; the refill knocked the
+        # band back 0.022 there, and a 1.45 band drawn 0.115 over its 1.335 need read a 2.25 mm
+        # neck at the gate (FAIL against its 1.70 declaration; 1.60 on the unrouted board).
+        # frozen_d / frozen_d2 are lower bounds on the distance to the edge: one pitch less.
+        _edge_d = lambda d: np.where(d > 0, np.maximum(d - 1.0, 0.0), 0.0)
         self.frozen_d = self.frozen_nn = self.frozen_d2 = self.frozen_nn2 = None
         if self.frozen_any:
             from scipy.ndimage import distance_transform_edt
@@ -400,7 +408,7 @@ class Model:
                 if not self.frozen_net[k].any():
                     continue
                 d, (ii, jj) = distance_transform_edt(self.frozen_net[k] == 0, return_indices=True)
-                self.frozen_d[k] = (d * self.pitch).astype(np.float32)
+                self.frozen_d[k] = (_edge_d(d) * self.pitch).astype(np.float32)
                 self.frozen_nn[k] = self.frozen_net[k][ii, jj]
                 del d, ii, jj
             # ⚠ A NET'S OWN BAND HIDES ITS NEIGHBOUR'S (brain_board rPS_11k1 / rPS_12k5,
@@ -428,7 +436,7 @@ class Model:
                         continue
                     d, (ii, jj) = distance_transform_edt(~other, return_indices=True)
                     mine = self.frozen_nn[k, i0:i1, j0:j1] == nid_
-                    self.frozen_d2[k, i0:i1, j0:j1][mine] = (d * self.pitch).astype(np.float32)[mine]
+                    self.frozen_d2[k, i0:i1, j0:j1][mine] = (_edge_d(d) * self.pitch).astype(np.float32)[mine]
                     self.frozen_nn2[k, i0:i1, j0:j1][mine] = sub[ii, jj][mine]
                     del d, ii, jj
         # ⚠ A POURED LAND NEEDS ROOM TO BREATHE (optical R33.2 GND, 2026-11-08: a foreign
