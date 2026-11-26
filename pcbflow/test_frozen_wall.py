@@ -60,6 +60,8 @@ ALLOW = {
     # post-route, but cannot enter a band
     ("layout.py", "tidy_router_vias"): "merges two overlapping vias of one net: the joining track lies inside their own pads",
     ("layout.py", "snap_hairline_gaps"): "closes a sub-eps gap between two ends of one net on one layer",
+    ("layout.py", "drop_redundant_pad_vias"): "only deletes vias; its SetPosition parks a candidate off the "
+                                              "board for the connectivity test and puts it back where it was",
     ("layout.py", "_hop_via_inner"): "every site and leg is asked through its caller's clear (link_close_gaps), which asks the wall",
     ("route.py", "_resite_post_pads"): "footprints, not copper",
     ("route.py", "post_route"): "places post-route footprints, not copper",
