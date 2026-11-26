@@ -4,7 +4,8 @@ than its drawn width (brain_board fold7c, 2026-11-26: +24V "closed" with 0.20 mm
     py -3.12 test_close_power_guard.py
 
 Source checks (the ladder is inline in close_last's main loop): no CLOSE_POWER_GUARD switch,
-the ladder is cut at the drawn width for every net with amps, and the CAN'T CARRY open stays.
+the ladder is cut at the drawn width for every net with amps, outer layers first and then
+every layer at its own (wider, inner) need, and the CAN'T CARRY open stays.
 Exit 0 = PASS.
 """
 import os
@@ -22,6 +23,10 @@ if "w_ >= _need]" not in src:
     bad.append("the ladder no longer stops at the drawn width (_need)")
 if "CAN'T CARRY" not in src:
     bad.append("a power net with no wide path is no longer left open as CAN'T CARRY")
+if "nw=_need_all)" not in src:
+    bad.append("the rip-up is not sized for the widest layer it may use (nw=_need_all)")
+if '_out = [L_ for L_ in layers if L_ in ("F.Cu", "B.Cu")]' not in src or "_drawn_w(amps_of[net], L_, _qn)" not in src:
+    bad.append("a power closure is not searched outer-first, then at every layer's own need")
 for b_ in bad:
     print("  FAIL:", b_)
 print("PASS" if not bad else "FAIL")
