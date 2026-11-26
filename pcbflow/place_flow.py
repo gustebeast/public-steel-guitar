@@ -417,6 +417,35 @@ def _near_broken(rules, P, notes):
     return nb
 
 
+def _snapshot_broken(rules, P, notes):
+    """[line] for every SNAPSHOT hold (pi.is_snapshot) whose own part breaks a near / decap /
+    in_region rule by more than STRANDED_MM on this placement, the hold and the rule named.
+
+    ⚠ A SNAPSHOT IS A WARM START, NOT A REASON (lead 2026-11-22 / 11-23 / 11-26). brain_board p11:
+    U5's four input caps (C2 C3 C17 C18) were snapshot-held where mP0 left them, 15-19 mm from U5
+    after U5 moved, and quality A2 / A28 failed the laid-out board. A snapshot that keeps its part
+    off the part's own rule is a stale memory holding the board against its design; the author
+    removes the hold (the rule then places the part)."""
+    snap = {r["ref"]: r for r in rules if pi.is_snapshot(r) and r.get("ref")}
+    out = []
+    for r in rules:
+        if r["kind"] not in ("near", "decap", "in_region"):
+            continue
+        try:
+            res = pi.check(r, P, notes)
+        except (KeyError, ValueError, TypeError):
+            continue
+        for s, ref, det in res:
+            if ref in snap and s < -STRANDED_MM:
+                h = snap[ref]
+                what = ("decap %s at %s <= %g" % (r["cap"], r["pin"], r.get("max_mm", 1.5)) if r["kind"] == "decap"
+                        else "near %s to %s <= %g" % (r["ref"], r["target"], r["max_mm"]) if r["kind"] == "near"
+                        else "in_region %s" % r.get("region"))
+                out.append("%s held by a snapshot at (%.2f, %.2f) [%s] breaks %s by %.1f mm (%s) [%s]"
+                           % (ref, h["xy"][0], h["xy"][1], h.get("src", "?"), what, -s, det, r.get("src", "?")))
+    return out
+
+
 def _near_gate(nb, place_only):
     """⚠ A BROKEN HARD `near` STOPS THE FLOW (lead 2026-11-21): the placer seated C222 17.2 mm
     from U205 against a hard 8 and C230 2.54 from U205.11 against a hard 1.5, said WARN and went
@@ -921,6 +950,16 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
         floor.append(w_)
     if len(nb) > 12:
         floor.append("NEAR BROKEN (hard): %d more" % (len(nb) - 12))
+    sb = _snapshot_broken(rules, P_k, dict(notes_k, _regions={r_["name"]: r_["poly"] for r_ in rules
+                                                              if r_["kind"] == "region"}))
+    for w_ in sb:
+        say("SNAPSHOT BROKEN " + w_)
+        floor.append("SNAPSHOT BROKEN " + w_)
+    if sb and not place_only:
+        say("SNAPSHOT HOLDS BREAK RULES -- the flow stops before layout: remove these holds")
+        _report(fd, base, rules, init_log, [], [], None, None, None, why, T,
+                refused="intent check: SNAPSHOT BROKEN\n" + "\n".join(sb[:20]), floor=floor, room=room)
+        return 2
     if _near_gate(nb, place_only):
         say("NEAR BROKEN hard rules -- the flow stops before layout: " + " | ".join(x[1] for x in sorted(nb)[:8]))
         _report(fd, base, rules, init_log, [], [], None, None, None, why, T,

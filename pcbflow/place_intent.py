@@ -1225,6 +1225,11 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
     sp = {u: {str(n) for n in v} for u, v in sp_raw.items()}
     sp_name = {u: {str(n): str(nm).upper() for n, nm in v.items()} for u, v in sp_raw.items() if isinstance(v, dict)}
     is_sup = lambda u, num: u not in sp or str(num) in sp[u]
+    # ⚠ A DECLARED SUPPLY PIN MAKES ITS NET A SUPPLY, WHATEVER ITS NAME (brain_board p11,
+    # 2026-11-26): VSTBY, U5's input, matched no SUPPLY pattern, so its four caps got no rule
+    # at all, and snapshot holds kept them 15-19 mm off U5.2 with nothing said until quality A2.
+    declared_sup = {q["net"] for u, pins in sp.items() if u in parts
+                    for q in parts[u]["pads"] if q["net"] and str(q["num"]) in pins}
     rules = []
     pinpair = []                 # caps across two pins of one IC: kept out of the supply passes
     ics = [r for r in parts if re.match(r"^(U|FB|L)\d", r)]
@@ -1270,7 +1275,7 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
         if not (nets & set(ground)) or len(nets) != 2:
             continue
         sup = (nets - set(ground)).pop()
-        if not SUPPLY.search(sup):
+        if not (SUPPLY.search(sup) or sup in declared_sup):
             continue
         cands = []
         for u in ics:
