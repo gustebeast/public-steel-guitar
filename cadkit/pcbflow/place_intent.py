@@ -96,6 +96,8 @@ import sys
 
 import numpy as np
 
+_HERE = os.path.dirname(os.path.abspath(__file__))
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 DIRS = {"+X": (1.0, 0.0), "-X": (-1.0, 0.0), "+Y": (0.0, 1.0), "-Y": (0.0, -1.0)}
 
@@ -2523,12 +2525,14 @@ def design_dt(notes):
     return float(((notes or {}).get("quality") or {}).get("temp_rise_c") or 10.0)
 
 
-def width_for(amps, dT=10.0, oz=1.0, inner=False, min_mm=0.2):
-    """IPC-2221 track width (mm) for a current: I = k dT^0.44 A^0.725, A in mil^2, k 0.048
-    outer / 0.024 inner, 1 oz = 1.378 mil. Rounded up to 0.05 mm, never under min_mm."""
-    k = 0.024 if inner else 0.048
-    area = (amps / (k * dT ** 0.44)) ** (1.0 / 0.725)          # mil^2
-    w = area / (1.378 * oz) * 0.0254                            # mm
+def width_for(amps, dT=10.0, min_mm=0.2, q=None):
+    """Outer-layer track width (mm) for a current at a dT C rise: copper.required_width_mm (the
+    one width model quality and the power gate judge with; q = the board's quality notes for
+    its foil), rounded up to 0.05 mm, never under min_mm."""
+    if _HERE not in sys.path:
+        sys.path.insert(0, _HERE)
+    from copper import required_width_mm
+    w = required_width_mm(amps, "F.Cu", dict(q or {}, temp_rise_c=dT))
     return round(max(min_mm, math.ceil(w / 0.05 - 1e-9) * 0.05), 2)
 
 
@@ -2603,11 +2607,10 @@ def auto_pour(rules, parts, notes=None):
     return out, lines
 
 
-def widths(rules, inner=False, **kw):
+def widths(rules):
     """{net: width mm} from the intent's `current` rules -- what a generator writes into
-    notes["net_widths"]. The OUTER curve by default: IPC-2221's inner k (half the outer)
-    is the chart IPC-2152 found far too conservative -- an inner track in a board with
-    planes runs about as cool as an outer one -- and at 3 A it asks 3.6 mm against 1.4.
+    notes["net_widths"]: the outer-copper width (width_for; inner copper is judged by its
+    thinner foil in copper.required_width_mm, IPC-2152, not by 2221's halved inner k).
 
     ⚠ WHY (output_panel, 2026-11-11): +3V3 as a signal tree took 27 vias and 189 mm; as a
     pour on In2 (the only inner signal layer) 51 vias, one per pin, and it pushed 450 mm of
@@ -2616,7 +2619,7 @@ def widths(rules, inner=False, **kw):
     out = {}
     for r in rules:
         if r["kind"] == "current":
-            out[r["net"]] = width_for(float(r["amps"]), r.get("dT", 10.0), inner=inner, **kw)
+            out[r["net"]] = width_for(float(r["amps"]), r.get("dT", 10.0))
     return out
 
 
