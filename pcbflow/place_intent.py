@@ -2416,7 +2416,14 @@ def pin_escapes(rule, P, notes=None, band=None):
     at 0.5 pitch was rejected: fab DRC and slivers between the pins."""
     zc = float((notes or {}).get("zone_clearance") or 0.5)
     out = []
+    # ⚠ A PIN THAT HAS ITS OWN DECLARED EXIT TAKES NO STUB (brain_board fold8, 2026-11-26): U221.6's
+    # stub went out of the pin's WEST end, into U221.5's declared +5V_RAW foot, while +5V_CM5's own
+    # stepped foot leaves its east end -- layout refused the placement. A rule names such pins in
+    # `no_escape`; the declared copper on them is the joint, and the band takes over from it.
+    skip_ = set(rule.get("no_escape") or ())
     for key in rule.get("along", ()):
+        if key in skip_:
+            continue
         ref, num = key.split(".", 1)
         p = P.parts.get(ref)
         if p is None or ref not in P.pl:
