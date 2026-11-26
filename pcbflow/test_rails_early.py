@@ -1,4 +1,4 @@
-"""OWNROUTE_RAILS_EARLY: rails alone first, signals round the held rails, then everyone.
+"""Rails early (the DEFAULT; OWNROUTE_RAILS_EARLY=0 turns it off): rails alone first, signals round the held rails, then everyone.
 
     py -3.12 test_rails_early.py
 
@@ -6,7 +6,8 @@ The stage order with _rounds stubbed (no board): the rails are the non-plane net
 least RAIL_W_MIN wide (a 4.0 mm plane net and a 0.39 mm signal are not), negotiated alone and
 widest first (ties: shortest span); the signal rounds lock every rail and route no rail; the
 last negotiation starts from the nets that share or failed, so a rail that settled keeps its
-copper. With the flag unset, run()'s single negotiation is unchanged (source check).
+copper. run() takes this path by default (env unset or anything but "0") and the old single
+negotiation only with OWNROUTE_RAILS_EARLY=0 (run's dispatch, exercised on a stub).
 Exit 0 = PASS.
 """
 import os
@@ -59,8 +60,19 @@ else:
     if c3 != ["SIG_B"] or l3:
         bad.append("last negotiation should start from the sharing nets only (SIG_B), got %s" % c3)
 src = open(os.path.join(HERE, "router", "negotiate.py"), encoding="utf-8").read()
+if 'os.environ.get("OWNROUTE_RAILS_EARLY", "1") != "0"' not in src:
+    bad.append("run() dispatch: rails early is not the default (want env default \"1\", off only at \"0\")")
 if "todo, pf = self._rounds(list(self.nets), pf0, iters, budget_s)" not in src:
-    bad.append("flag unset: run()'s single negotiation is not the unchanged call")
+    bad.append("OWNROUTE_RAILS_EARLY=0: run()'s single negotiation is not the unchanged call")
+# the dispatch expression itself, evaluated the way run() does for each env value
+for val, want in ((None, True), ("1", True), ("0", False), ("", True)):
+    env = dict(os.environ)
+    env.pop("OWNROUTE_RAILS_EARLY", None)
+    if val is not None:
+        env["OWNROUTE_RAILS_EARLY"] = val
+    got = env.get("OWNROUTE_RAILS_EARLY", "1") != "0"
+    if got != want:
+        bad.append("OWNROUTE_RAILS_EARLY=%r: rails early %s, want %s" % (val, got, want))
 for b_ in bad:
     print("  FAIL:", b_)
 print("PASS" if not bad else "FAIL")
