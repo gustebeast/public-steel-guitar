@@ -96,6 +96,8 @@ import sys
 
 import numpy as np
 
+from nettie import is_net_tie  # noqa: E402  (NT<n>: one answer for every reader)
+
 _HERE = os.path.dirname(os.path.abspath(__file__))
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -280,13 +282,18 @@ def pad_copper(P, items, refs=None, clr=PAD_CU_CLEAR, exp=0.0, near=0.5):
     for ref, part in P.parts.items():
         if ref not in P.pl or (refs is not None and ref not in refs):
             continue
+        # ⚠ A NET TIE'S PADS ARE ONE CONDUCTOR (brain_board fold4, 2026-11-25): NT206 joins +5V_RAW
+        # to ISN5, and the declared +5V_RAW track ran 0.088 from its ISN5 pad -- the q6c board it was
+        # lifted from is DRC clean there, because KiCad waives clearance between a tie's own nets.
+        # Copper on any net the tie joins is not foreign to any of its pads.
+        tied = {x.get("net") for x in part["pads"]} if is_net_tie(ref) else ()
         for q in part["pads"]:
             if not q.get("num") or not q.get("size"):
                 continue
             pl_ = pad_layers(part, q)
             poly = None
             for (net, lay, kind, g, own), (lo, hi) in zip(items, boxes):
-                if net == q.get("net") or ref in own or not (pl_ == ALL_CU or lay == ALL_CU or lay == pl_):
+                if net == q.get("net") or net in tied or ref in own or not (pl_ == ALL_CU or lay == ALL_CU or lay == pl_):
                     continue
                 c = P.pad(ref, q["num"])
                 rr = max(q["size"][:2]) * 0.75

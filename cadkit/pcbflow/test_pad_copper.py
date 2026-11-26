@@ -47,6 +47,15 @@ if not any(s < 0 for s, _n, _d in pi.pad_copper(P, via)):
 far = pi.Placed({"R1": R}, {"R1": [3.0, 0.0, 0]})
 if any(s < 0 for s, _n, _d in pi.pad_copper(far, items)):
     bad.append("1: R1 3 mm off the track still reported")
+# 7: a net tie's pads are one conductor -- a track on net A beside NT1's net-B pad is not foreign
+# (brain_board fold4: NT206.2 [ISN5] 0.088 from declared +5V_RAW, DRC clean on the source board)
+tie = pi.declared_items([{"kind": "copper", "net": "A", "tracks": [{"layer": "F.Cu", "width": 0.4, "pts": [[0.5, -5.0], [0.5, 5.0]]}]}])
+if any(s < 0 for s, _n, _d in pi.pad_copper(pi.Placed({"NT1": R}, {"NT1": [0.0, 0.0, 0]}), tie)):
+    bad.append("7: a net tie's pad was reported against copper on the net it ties")
+if not any(s < 0 and n == "R9.2" for s, n, _d in pi.pad_copper(pi.Placed({"R9": R}, {"R9": [0.0, 0.0, 0]}), tie)):
+    bad.append("7: the same pads on a plain part (R9) were not reported")
+if not any(s < 0 for s, _n, _d in pi.pad_copper(pi.Placed({"NT1": R}, {"NT1": [0.0, 0.0, 0]}), items)):
+    bad.append("7: a net tie across a THIRD net's track was not reported")
 # 5: _drop
 poly = [[-10, -10], [10, -10], [10, 10], [-10, 10]]
 G = pin.Grid(poly, [], [])
