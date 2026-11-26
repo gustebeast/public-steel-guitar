@@ -8,6 +8,13 @@ answers the questions the datasheets can't, before any layout. The QT Py's firmw
 (add `--truth servo42d` for the encoder's ground truth, and `--fullsteps 200` for a 1.8 deg motor);
 its module docstring has the details. Every run is logged to `~/openloop_tmc.jsonl`.
 
+**The motor (user, 2026-11-25): the Leadshine 42CM06 from JLCMC is the official motor.** It is
+1.8 deg, so the scripts' default `--fullsteps 200` fits. The SERVO42D stays only as the stand-in on
+the user's own instrument, and as this bench's encoder. The 0.9 deg 17HM19 is dropped: 91 in
+stock, about 1.2x torque margin at 1600 rpm on the model, and twice the step rate.
+**A tune is recommended after every boot** (user, 2026-11-25), so gate 1's restore has to land
+within the tuner's reach, not exactly; gate 1 still says how far off a boot starts.
+
 ## Kit (the user orders; nothing has been bought)
 
 | Part | Where | Price | Note |
@@ -16,7 +23,7 @@ its module docstring has the details. Every run is logged to `~/openloop_tmc.jso
 | Adafruit QT Py CH32V203G6 | Digi-Key `5996` | $4.95 | USB-C; the Pi flashes it with wchisp (USB-only flashing rule) |
 | Bulk capacitor, >= 100 uF / 35 V | stock | - | across VM/GND at the driver board |
 | Motor, first round | the SERVO42D already on string 1 | - | its coil wires moved to the TMC2209 (below) |
-| Motor, second round | StepperOnline 17HM19-2004S | $11.41 | 0.9 deg, 1.45 ohm, 4.0 mH. China stock only; US backordered |
+| Motor, second round | **Leadshine 42CM06**, JLCMC (BR1841) | $8.78 | THE official motor. 1.8 deg, 42 mm, 47 mm long, 2.5 A, 0.9 ohm / 1.6 mH, 0.6 N·m. In stock at 100 on 2026-11-25 ($878.26, one price at every quantity), ships within 7 days; add a few to the next JLC order |
 
 ## Wiring
 
@@ -54,8 +61,9 @@ powered: an opened coil under current can destroy the driver.**
 
 ## Gate 2: a whole tone in ~40 ms, at the current a TMC2209 can hold
 
-The 17HM19 is rated 2.0 A. A TMC2209 on a board holds roughly 1.4 A RMS, about 70 % of the torque
-(lead, 2026-11-24). So gate 2 runs at the driver's thermal current, not at the motor's rating.
+The 42CM06 is rated 2.5 A. A TMC2209 on a board holds roughly 1.4 A RMS (lead, 2026-11-24), about
+56 % of the rated current and so, roughly, of the torque; its 1.6 mH winding is what keeps that
+torque at speed (about 0.24 N·m at 1600 rpm on the phasor model, ~5x the rotor's need). So gate 2 runs at the driver's thermal current, not at the motor's rating.
 
 1. **Thermal limit first.**
    1. Hold the motor energised at 1.0, 1.2 and 1.4 A RMS for 10 minutes each, with no heatsink.
@@ -83,7 +91,6 @@ The 17HM19 is rated 2.0 A. A TMC2209 on a board holds roughly 1.4 A RMS, about 7
 
    ```
    python3 -m publicbench.gates 2 --truth servo42d --ma 1400 --accs 400,800,1200,1600
-   python3 -m publicbench.gates 2 --truth servo42d --fullsteps 400 ...   the 0.9 deg 17HM19
    ```
 
    1. **Thermal first** (step 1): run gate 2 at I_run if it comes out under 1.4 A.
@@ -110,8 +117,8 @@ The 17HM19 is rated 2.0 A. A TMC2209 on a board holds roughly 1.4 A RMS, about 7
       | 1200 | 28 ms | 42 ms |
       | 1600 | 24 ms | 36 ms (vmax-capped) |
 
-   6. Repeat with the 17HM19 when it arrives. Its 4.0 mH slows it at 24 V, so a SERVO42D-motor
-      pass is encouraging but not sufficient.
+   6. **Repeat with the 42CM06** when it arrives: it is the one that has to pass. A pass on the
+      SERVO42D's own motor (winding unpublished) is encouraging but not sufficient.
 
 ## Gate 1: phase restore at power-up (items i-v)
 
