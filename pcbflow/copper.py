@@ -1,0 +1,51 @@
+"""The ONE copper width model: how wide a track must be for a current (no pcbnew, so the
+planner, the router, quality and the power gate all import it).
+
+    required_width_mm(amps, layer, q)   width (mm) on `layer` at quality.temp_rise_c
+    foil_mm(layer, q)                    finished copper thickness (mm) of `layer` on the order
+
+quality.required_width_mm / foil_mm and place_intent.width_for are this; there is no second
+copy of the IPC curve to drift (lead 2026-11-25: place_intent carried 2221's inner k after
+quality had dropped it).
+"""
+
+# Finished foil thickness (mm) by ordered copper weight (oz), as the fab states it. JLCPCB's
+# multilayer stackups (jlcpcb.com/impedance: JLC06161H-3313, -7628, ...) list 0.035 mm outer
+# (1 oz) and 0.0152 mm inner -- the 0.5 oz default ("Finished copper weight of inner layer is
+# 0.5oz by default", jlcpcb.com/capabilities/pcb-capabilities), thinner than 0.5 x 0.035.
+# A weight not in the table is taken as oz x 0.035.
+OUTER_FOIL_MM = {1.0: 0.035, 2.0: 0.070}
+INNER_FOIL_MM = {0.5: 0.0152}
+K = 0.048            # IPC-2221's external-conductor k, used on EVERY layer (see required_width_mm)
+
+
+def foil_mm(layer, q):
+    """Finished copper thickness (mm) of `layer` on this order: quality.copper_mm / inner_mm
+    when given, else quality.copper_oz (outer, default 1) / inner_oz (inner, default 0.5)
+    through the fab's table above."""
+    q = q or {}
+    outer = layer in ("F.Cu", "B.Cu")
+    mm = q.get("copper_mm") if outer else q.get("inner_mm")
+    if mm:
+        return float(mm)
+    oz = float(q.get("copper_oz", 1.0)) if outer else float(q.get("inner_oz", 0.5))
+    return (OUTER_FOIL_MM if outer else INNER_FOIL_MM).get(oz, oz * 0.035)
+
+
+def required_width_mm(amps, layer, q):
+    """Track width (mm) for `amps` at the declared temperature rise (quality.temp_rise_c,
+    default 10 C).
+
+    I = k * dT^0.44 * A^0.725, A in square mils, k = 0.048 ON EVERY LAYER; the width is A over
+    the layer's finished foil (foil_mm). An inner track differs from an outer one only by its
+    thinner copper.
+
+    ⚠ NO IPC-2221 INNER HALVING (lead ruling, 2026-11-25). 2221's inner k (0.024) is the chart
+    IPC-2152 (2009) replaced: 2152's data has inner conductors in a board with planes at or
+    below an external conductor's rise. Together with the 0.5 oz foil it made an inner track
+    worth 0.192 of an outer one, and brain_board's VIN_BUS legs FAILed on the In2 pour; at the
+    foil ratio alone (0.0152 / 0.035 = 0.434) they pass. Outer widths are unchanged.
+    """
+    dt = float((q or {}).get("temp_rise_c", 10.0))
+    area_mil2 = (amps / (K * dt ** 0.44)) ** (1.0 / 0.725)
+    return area_mil2 / (foil_mm(layer, q) / 0.0254) * 0.0254
