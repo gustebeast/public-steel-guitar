@@ -536,16 +536,23 @@ def _scipy_py():
     return [shutil.which("python3") or "python"]
 
 
-def _power_gate(stem):
-    """The widepath gate on the ROUTED board, before any finishing work (PCBFLOW_POWER_GATE=1).
+def _power_gate(stem, report=".power_gate.txt"):
+    """The widepath gate on the ROUTED board (PCBFLOW_POWER_GATE=1): once before close_last
+    (report <stem>.power_gate.pre.txt) and once on the finished board (<stem>.power_gate.txt,
+    the verdict).
 
     ⚠ A BOARD WHOSE POWER COPPER CANNOT CARRY ITS CURRENT IS NOT WORTH FINISHING (brain_board
     ws1, 2026-11-20): it went through close_last, the ECOs and every gate before rasterpath
     found 29 of 48 power paths under their IPC width -- 10 A on a 0.38 mm inner track. The
     routed board is copied, its zones refilled, its gerbers exported, and rasterpath --specs
     judges every quality.power_paths entry with widepath (the same core close_last's
-    CLOSE_POUR_GUARD=2 uses). Any FAIL stops the run here; the report is <stem>.power_gate.txt.
-    Returns (n_fail, n_warn)."""
+    CLOSE_POUR_GUARD=2 uses). Returns (n_fail, n_warn), None if it did not run.
+
+    ⚠ THE PRE-CLOSE GATE REPORTS, IT DOES NOT STOP (lead, 2026-11-26): brain_board fold9 routed
+    for 2 h and stopped here on two router-thin paths (V5_PRE 0.28, +5V_CM5 0.45), so close_last
+    never ran and the fold gave no read of the work it was testing. The pre-close gate says what
+    the router left; the gate on the finished board is the verdict, and a FAIL there fails the run
+    after every report is written."""
     import build_stamp
     build_stamp.check(stem)
     pg = stem + ".pg"
@@ -570,7 +577,7 @@ def _power_gate(stem):
                        capture_output=True, text=True)
     lines = [ln for ln in r.stdout.splitlines() if ln[:4] in ("FAIL", "WARN", "PASS", "OPEN")
              or ln.startswith("rasterpath:")]
-    open(stem + ".power_gate.txt", "w", encoding="utf-8").write("\n".join(lines) + "\n")
+    open(stem + report, "w", encoding="utf-8").write("\n".join(lines) + "\n")
     nf = sum(ln.startswith("FAIL") for ln in lines)
     nw = sum(ln.startswith("WARN") for ln in lines)
     no = sum(ln.startswith("OPEN") for ln in lines)
@@ -580,9 +587,10 @@ def _power_gate(stem):
     for ln in lines:
         if ln.startswith("FAIL"):
             print("    " + ln)
-    print("  power gate: %d FAIL, %d OPEN (close_last's), %d WARN of %d power paths (%s)"
-          % (nf, no, nw, sum(ln[:4] in ("FAIL", "WARN", "PASS", "OPEN") for ln in lines),
-             os.path.basename(stem) + ".power_gate.txt"))
+    print("  power gate%s: %d FAIL, %d OPEN, %d WARN of %d power paths (%s)"
+          % (" (pre-close)" if report != ".power_gate.txt" else "", nf, no, nw,
+             sum(ln[:4] in ("FAIL", "WARN", "PASS", "OPEN") for ln in lines),
+             os.path.basename(stem) + report))
     return nf, nw
 
 
@@ -650,12 +658,10 @@ def finish(stem, rounds=1, keep_route=False):
     print("  %s: %d unconnected, %d violation(s)"
           % ("kept route" if keep_route else "pass 1", best_n, best_v))
     if os.environ.get("PCBFLOW_POWER_GATE") == "1":
-        _pg = _power_gate(stem)
+        _pg = _power_gate(stem, ".power_gate.pre.txt")
         if _pg is None or _pg[0]:
-            raise SystemExit("finish: the routed board fails the power gate (%s) -- not finishing "
-                             "it; see %s.power_gate.txt"
-                             % ("did not run" if _pg is None else "%d FAIL" % _pg[0],
-                                os.path.basename(stem)))
+            print("  power gate before close_last: %s -- finishing anyway; the gate on the finished "
+                  "board is the verdict" % ("did not run" if _pg is None else "%d FAIL" % _pg[0]))
     # ⚠ THE DRC FILE TRAVELS WITH THE BOARD, because otherwise it does not. This routine
     # keeps the BEST board but _drc overwrites .finish.drc.json on every pass, so after a
     # two-round run the board on disk was pass 1 and the DRC file beside it described
@@ -956,6 +962,8 @@ def finish(stem, rounds=1, keep_route=False):
     # board whose THRU pair was split across layers with one via too many was committed AND
     # submitted on the strength of that line. The count rides on the summary now, so a
     # script (or a person) reading only the summary cannot miss it.
+    # the power gate on the FINISHED board: the verdict (see _power_gate)
+    power_final = _power_gate(stem) if os.environ.get("PCBFLOW_POWER_GATE") == "1" else False
     verify_fails = 0
     try:
         proc = subprocess.run([PY, os.path.join(HERE, "verify.py"), stem],
@@ -1080,6 +1088,10 @@ def finish(stem, rounds=1, keep_route=False):
              "" if os.path.isfile(_gen) else
              " | NO PROJECT: %s does not exist, so the silk and quality figures are the "
              "defaults; set PCBFLOW_PROJECT" % _gen))
+    if power_final is None or (power_final and power_final[0]):
+        raise SystemExit("finish: the finished board fails the power gate (%s); see %s.power_gate.txt"
+                         % ("did not run" if power_final is None else "%d FAIL" % power_final[0],
+                            os.path.basename(stem)))
     return best_n, best_v
 
 
