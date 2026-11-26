@@ -546,6 +546,8 @@ def _power_gate(stem):
     judges every quality.power_paths entry with widepath (the same core close_last's
     CLOSE_POUR_GUARD=2 uses). Any FAIL stops the run here; the report is <stem>.power_gate.txt.
     Returns (n_fail, n_warn)."""
+    import build_stamp
+    build_stamp.check(stem)
     pg = stem + ".pg"
     shutil.copy(stem + ".kicad_pcb", pg + ".kicad_pcb")
     subprocess.run([PY, "-c",

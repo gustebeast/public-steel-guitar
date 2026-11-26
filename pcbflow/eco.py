@@ -873,6 +873,8 @@ def move(stem, moves):
     pcbnew.SaveBoard(path, board)
     with open(stem + ".board.json", "w", encoding="utf-8") as fh:
         json.dump(notes, fh, indent=1)
+    import build_stamp                  # the ECO's own notes write is part of the build, not staleness
+    build_stamp.restamp(stem, "notes")
     # an ECO writes copper too: the frozen bands are checked like every finish step (frozen_check.py)
     import subprocess
     r = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "frozen_check.py"),

@@ -6980,6 +6980,10 @@ def build(stem):
             print("  could not preserve the previous board: %s" % _e)
     board.Save(out)
     _canonical_uuids(out)
+    # what this board was built FROM, by hash: quality and the power gate say STALE BOARD when
+    # those inputs move on (build_stamp.py; lead 2026-11-25, the A34 audit on 7-week-old boards)
+    import build_stamp
+    build_stamp.stamp(stem)
     print("%s: %d parts, %d nets%s, %.1f x %.1f mm"
           % (os.path.basename(out), len(comps), len(nets) - skipped,
              (" (+%d single-pad, not placed)" % skipped) if skipped else "",
