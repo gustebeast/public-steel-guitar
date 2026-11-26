@@ -99,6 +99,26 @@ The supply cannot rise: the +24 V stack is held at or below 28 V for the TMC2209
   firmware (40H reports 1.0.9, hardware S42D_CAN; motor_ctrl passes every frame), and its motor's
   torque constant is unpublished. `publicbench.loadprobe` is ready for a board that answers.
 
+*The floor under the load: self-locking (lead, 2026-11-25).* The Tr8x2 must hold the string with
+the power off, so the nut thread may not be smoother than self-locking allows: friction
+mu >= tan(lead angle) x cos(15°) = 0.091 x 0.966 = **0.088**, whatever the tension (both sides
+scale with it; the thrust bearing adds nothing, it rolls). A screw that self-locks runs at 50 %
+efficiency or less, so raising always takes at least F x lead / pi at the screw:
+
+| Nut friction | String at +2 st (128 N) | at +4 st, the raise budget (158 N) | t90 39 ms margin, 128 / 158 N |
+|---|---|---|---|
+| 0.088 (exactly self-locking) | 0.085 N·m | 0.105 N·m | 2.3x / 2.0x |
+| 0.110 (1.25x) | 0.095 | 0.118 | 2.2x / 1.9x |
+| **0.132 (1.5x, a sane safety factor)** | **0.106** | **0.131** | **2.0x / 1.7x** |
+| 0.176 (2x) | 0.128 | 0.158 | 1.7x / 1.5x |
+
+(1:1 belt at ~97 %; 50 ms triangle at 1.4 A, rotor + ~10 g·cm^2.) **So the 0.07 end of the
+estimate below is impossible**: the real range is about 0.085-0.16 N·m. With any safety factor on
+self-locking (vibration, a slipping motor already back-drove it once), the 39 ms t90 sits at
+**about 2x for a whole tone from open, and under it (1.7x) near the top of the raise budget**.
+"Less screw friction" is therefore not a fallback: the only one left is a slower t90 (or a
+holding means other than the thread, which is a design change).
+
 *Margin at 1.4 A* (pull-out torque at the move's peak speed / need):
 
 | Move | String load 0.07 | 0.12 | 0.16 N·m |
@@ -115,8 +135,8 @@ So matching the closed loop's 39 ms clears 2x only at the light end of the load 
 - **The drive ratio is not a lever.** Gearing the motor down makes it spin faster into the
   voltage limit (1.5:1 drops the margin below 1x). A step-up (the motor turning 0.75 turn per
   screw turn) gains about 10-15 %.
-- **Less thread friction.** The load is mostly screw friction. But the screw must stay
-  self-locking (friction above about 0.09), and it is already near that.
+- ~~Less thread friction~~: ruled out by self-locking (above); at best it recovers the gap between
+  the measured friction and 0.088 x the safety factor.
 
 **Measure the margin directly on the 42CM06** in gate 2: after the 1.4 A sweep passes at an
 acceleration, re-run that one acceleration at 1.2, 1.0, 0.8 ... A until it loses a step. The
