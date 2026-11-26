@@ -65,38 +65,62 @@ The 42CM06 is rated 2.5 A. A TMC2209 on a board holds roughly 1.4 A RMS (lead, 2
 56 % of the rated current and so, roughly, of the torque; its 1.6 mH winding is what keeps that
 torque at speed. So gate 2 runs at the driver's thermal current, not at the motor's rating.
 
-**Torque budget at the gate's peak (lead, 2026-11-25): 42CM06, 1600 rpm, 24 V.** Phasor model per
-phase: back-EMF constant ke = 0.6 N·m / (sqrt2 x 2.5 A) = 0.17 V·s/rad, so the back-EMF is 28.4 V
-peak at 1600 rpm, over the supply. With 0.9 ohm and 13.4 ohm reactance (1.6 mH at 1333 Hz), the
-pull-out torque is the best the 24 V bridge can drive, the current leading the back-EMF (the load
-angle open loop settles at):
+**Torque budget (lead, 2026-11-25), 42CM06 on 24 V.**
 
-| Set current (RMS) | Low speed | 1600 rpm, 24 V |
-|---|---|---|
-| 1.0 A | 0.24 N·m | 0.19 N·m |
-| **1.4 A** (TMC2209 on a board) | 0.34 N·m | **0.25 N·m** |
-| 1.8 A (ceiling) | 0.43 N·m | 0.28 N·m |
+*What the motor gives.* Leadshine's own spec (leadshine.com, 42CM06, read 2026-11-25): 0.6 N·m,
+2.5 A, **0.9 ohm, 1.6 mH, rotor inertia 72 g·cm^2**, 47 mm, Ø5 shaft. Phasor model per phase:
+ke = 0.6 / (sqrt2 x 2.5) = 0.17 V·s/rad. **Checked against Leadshine's published 24 V / 2.5 A
+speed-torque curve: within 5 % from 500 to 2400 rpm** (0.30 N·m read at 1500 rpm, model 0.297).
+Pull-out torque on 24 V:
 
-At 1.4 A it falls off as 0.31 / 0.28 / 0.25 / 0.23 / 0.21 N·m at 1200 / 1400 / 1600 / 1800 / 2000 rpm.
-The model takes the bridge's fundamental as 24 V peak; R and L are the 11-24 report's (JLCMC's
-page shows neither), so the whole table is a model, not a measurement.
+| Set current (RMS) | 1000 rpm | 1250 rpm | 1600 rpm |
+|---|---|---|---|
+| 1.0 A | | | 0.19 N·m |
+| **1.4 A** (TMC2209 on a board) | 0.33 | 0.30 | **0.25** |
+| 1.8 A (ceiling) | | | 0.28 |
 
-What the move needs, all ESTIMATES:
-- Rotor inertia: 0.52 turn in 39 ms as a triangle is 8,600 rad/s^2. The 42CM06's rotor inertia
-  was not read. Typical 40-48 mm motors have 54-82 g·cm^2: **0.046-0.070 N·m**.
-- String and screw: the SERVO42D's motor held whole tones at 600 rpm on a gentle ramp at 500 mA
-  and lost steps at 300 mA (2026-11-25). Scaled from a typical 0.40-0.48 N·m / 2 A motor (its own
-  is unpublished), the load is between **0.06 and 0.12 N·m**. That is pessimistic: the motor's
-  torque at 600 rpm is below its low-speed figure, so the real load is lower. Raising carries it;
-  lowering is helped by it.
-- Pulley, belt and screw inertia: not counted.
+The supply cannot rise: the +24 V stack is held at or below 28 V for the TMC2209 (lead).
 
-So the move needs roughly **0.11-0.19 N·m** against 0.25 at 1.4 A: a margin of **1.3-2.3x**
-(1.5-2.5x at 1.8 A). The worst case is under 2x. Gate 2 on the real motor is what settles it.
-Two cheap readings would narrow it before then: the 42CM06's rotor inertia from its JLCMC SPEC
-sheet, and the string load from the SERVO42D's phase current during a loaded raise (closed loop).
-More supply voltage is the lever if it is short: the same model gives 0.30 N·m at 1.4 A with
-about 31 V of fundamental.
+*What the move needs.*
+- **The target, restated.** The closed loop's "39 ms" is a t90 (90 % of a whole tone, 0.52 turn,
+  11-02). A constant-acceleration triangle reaches 90 % at 0.776 of its length, so the same t90
+  is a **50 ms move: about 820 rev/s^2, peaking at about 1250 rpm**, not 39 ms at 1370 rev/s^2
+  and 1600 rpm.
+- Rotor: 72 g·cm^2 (measured by Leadshine), plus about 10 g·cm^2 for the pulleys, belt and screw
+  *(estimate)*: 0.042 N·m at 820 rev/s^2.
+- **String and screw: ~0.07-0.16 N·m, estimated, not measured.** String 1 is about 100 N at D4
+  and about 128 N two semitones up (615 mm scale). Through the Tr8x2 (5.2° lead angle) at the
+  1:1 belt, raising takes F·lead / (2 pi efficiency): about **0.07-0.09 N·m with thread friction
+  ~0.1**, up to 0.16 at 0.25. Friction near 0.1 fits what the bench saw (11-25: a slipping motor
+  let the string pull the nut on, so the screw is only just self-locking, which it stops being
+  below about 0.09). Today's bracket from the SERVO42D's motor (held at 500 mA, lost steps at
+  300 mA, 600 rpm) gives 0.06-0.12 N·m on the same footing.
+  The SERVO42D can't measure it directly: its current read (38H) does not answer on our board's
+  firmware (40H reports 1.0.9, hardware S42D_CAN; motor_ctrl passes every frame), and its motor's
+  torque constant is unpublished. `publicbench.loadprobe` is ready for a board that answers.
+
+*Margin at 1.4 A* (pull-out torque at the move's peak speed / need):
+
+| Move | String load 0.07 | 0.12 | 0.16 N·m |
+|---|---|---|---|
+| **t90 39 ms** (50 ms triangle, ~1250 rpm) | **2.6x** | **1.8x** | **1.5x** |
+| t90 30 ms (39 ms triangle, 1600 rpm) | 1.8x | 1.3x | 1.1x |
+| t90 47 ms (60 ms triangle, ~1040 rpm) | 3.3x | 2.2x | 1.7x |
+
+So matching the closed loop's 39 ms clears 2x only at the light end of the load estimate.
+**Fallbacks**, if the kit shows it short:
+- **A slower t90.** This is the strong lever: 2x needs t90 about 33 ms at a 0.07 N·m load and
+  about 43 ms at 0.12. At 0.16 no speed reaches 2x: the load alone is half the motor's low-speed
+  torque at 1.4 A (0.33 N·m), so there the only cure is less screw friction.
+- **The drive ratio is not a lever.** Gearing the motor down makes it spin faster into the
+  voltage limit (1.5:1 drops the margin below 1x). A step-up (the motor turning 0.75 turn per
+  screw turn) gains about 10-15 %.
+- **Less thread friction.** The load is mostly screw friction. But the screw must stay
+  self-locking (friction above about 0.09), and it is already near that.
+
+**Measure the margin directly on the 42CM06** in gate 2: after the 1.4 A sweep passes at an
+acceleration, re-run that one acceleration at 1.2, 1.0, 0.8 ... A until it loses a step. The
+pull-out ratio between 1.4 A and that current (this table's model) is the measured margin.
 
 1. **Thermal limit first.**
    1. Hold the motor energised at 1.0, 1.2 and 1.4 A RMS for 10 minutes each, with no heatsink.
