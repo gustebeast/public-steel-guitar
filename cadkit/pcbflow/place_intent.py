@@ -1949,7 +1949,8 @@ def pour_poly(rule, P, notes, amps=None):
         return None
     w = rule.get("width_mm")
     if w is None:
-        w = max(2.0, 1.5 * width_for(amps, design_dt(notes))) if amps else 2.0
+        w = max(2.0, 1.5 * width_for(amps, design_dt(notes), q=(notes or {}).get("quality"),
+                                     layer=rule["layer"])) if amps else 2.0
     r = float(w) / 2.0
     pts = np.array([(float(p[0]) + r * math.cos(a), float(p[1]) + r * math.sin(a))
                     for p in pins for a in np.linspace(0, 2 * math.pi, 16, endpoint=False)])
@@ -2110,7 +2111,8 @@ def pour_around(rule, P, notes=None, amps=None):
         return None
     w = rule.get("width_mm")
     if w is None:
-        w = max(2.0, 1.5 * width_for(amps, design_dt(notes))) if amps else 2.0
+        w = max(2.0, 1.5 * width_for(amps, design_dt(notes), q=(notes or {}).get("quality"),
+                                     layer=rule["layer"])) if amps else 2.0
     w = float(w)
     g = AROUND_GRID
     pa = np.array(pins)
@@ -2124,7 +2126,11 @@ def pour_around(rule, P, notes=None, amps=None):
     inner = rule["layer"].startswith("In")
     # the width the band must hold where the current flows: the net's IPC width at the design
     # rise (what the power gate wants), never under AROUND_NECK
-    need = max(AROUND_NECK, width_for(amps, design_dt(notes))) if amps else AROUND_NECK
+    # ⚠ ON ITS OWN LAYER (brain_board fold10 pre-check, 2026-11-26): an In3 +24V band at 3 A drew
+    # "neck 0.95 of 0.95 wanted" -- the outer width -- where the gate, scaling inner copper by its
+    # foil, wants 2.15 drawn: the band would have passed here and FAILed at the gate
+    need = (max(AROUND_NECK, width_for(amps, design_dt(notes), q=(notes or {}).get("quality"),
+                                       layer=rule["layer"])) if amps else AROUND_NECK)
     # ⚠ THE WALLS KEEP THE BOARD'S ZONE CLEARANCE, NOT 0.25 (brain_board esc_pre5, 2026-11-21): the
     # centreline ran need/2 + 0.25 off other nets' pads, the fill then kept its 0.5 off them, and
     # +5V_SW's band came out 0.34 mm (wants 0.51) near F202 -- the fill ate what the walls left
@@ -2282,6 +2288,27 @@ def pour_around(rule, P, notes=None, amps=None):
             closer = dq < dfor
             fid[closer] = len(flab)
             flab.append("band")
+            dfor = np.minimum(dfor, dq)
+            pads_ |= dq <= AROUND_CLEAR + 1e-9
+    # ⚠ A KEEP-OUT RULE AREA IS A WALL (brain_board fold10 pre-check, 2026-11-26): +5V_OPT's and
+    # VIN_BUS's B.Cu bands cut the corner of the audio corner's 1 mm moat (notes rule_areas, no
+    # fills on any layer) at (-13, 5); the fill split there into two pieces and the gate read both
+    # OPEN on frozen copper. A rule area that keeps fills off this layer fences the band like a pad.
+    ras_ = [ra_["poly"] for ra_ in (notes or {}).get("rule_areas", ()) or ()
+            if not ra_.get("fills", False)
+            and (ra_.get("layers", "all") == "all" or rule.get("layer", "F.Cu") in ra_.get("layers", ()))]
+    if ras_:
+        from matplotlib.path import Path as _Path
+        gx_, gy_ = np.meshgrid(X, Y)
+        pts_ = np.column_stack([gx_.ravel(), gy_.ravel()])
+        for pg in ras_:
+            m_ = _Path(pg).contains_points(pts_).reshape(ny, nx)
+            if not m_.any():
+                continue
+            dq = distance_transform_edt(~m_) * g
+            closer = dq < dfor
+            fid[closer] = len(flab)
+            flab.append("rule area")
             dfor = np.minimum(dfor, dq)
             pads_ |= dq <= AROUND_CLEAR + 1e-9
     # ⚠ THE BAND WAS 0.6 mm WHERE IT MATTERED (brain_board rPS_g1, 2026-11-21): the walls left the
@@ -2544,14 +2571,14 @@ def design_dt(notes):
     return float(((notes or {}).get("quality") or {}).get("temp_rise_c") or 10.0)
 
 
-def width_for(amps, dT=10.0, min_mm=0.2, q=None):
-    """Outer-layer track width (mm) to DRAW for a current at a dT C rise: copper.drawn_width_mm
-    -- the need quality and the power gate judge with (q = the board's quality notes, for its
-    foil), plus one raster step, rounded up to 0.05 mm, never under min_mm."""
+def width_for(amps, dT=10.0, min_mm=0.2, q=None, layer="F.Cu"):
+    """Track width (mm) to DRAW on `layer` (outer by default) for a current at a dT C rise:
+    copper.drawn_width_mm -- the need quality and the power gate judge with (q = the board's
+    quality notes, for its foil), plus one raster step, rounded up to 0.05 mm, never under min_mm."""
     if _HERE not in sys.path:
         sys.path.insert(0, _HERE)
     from copper import drawn_width_mm
-    return drawn_width_mm(amps, "F.Cu", dict(q or {}, temp_rise_c=dT), min_mm)
+    return drawn_width_mm(amps, layer, dict(q or {}, temp_rise_c=dT), min_mm)
 
 
 def auto_pour(rules, parts, notes=None):
