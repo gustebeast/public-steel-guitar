@@ -136,6 +136,9 @@ HINT = {
            "net before it does (a 2-pin part has nowhere else to send it)",
     "A33": "move the neighbour off the test pad, or the pad out into open board: a probe tip "
            "wants PROBE_CLEAR_MM clear of every other part on the pad's face",
+    "A34": "move the part apart: to the medium-density spacing always (JLC will not assemble "
+           "high density); to JLC's recommended figure unless a datasheet places it at the pin, "
+           "then waive that pair citing the IC's layout section",
     "A22": "put a ground way between them: order the connector power, ground, data (and "
            "its mirror on a wider housing), the same on every lead of the family",
 }
@@ -166,6 +169,7 @@ HARD = {
     "A21": ("",),
     "A24": ("",),
     "A25": ("",),
+    "A34": ("medium density",),
     "A16": ("steady-state worst case", "can make NO CLAIM",
             "no worst-case voltage is declared", "NO voltage rating is declared",
             "states no `max`", "with no `src`", "gives no `why`"),
@@ -3496,6 +3500,129 @@ def test_pad_access(ctx):
             out.append((subj, d >= PROBE_CLEAR_MM,
                         "%s (%s, %s face): %s %.2f mm from the pad, wants %.2f clear for a probe"
                         % (subj, pad.GetNetname() or "no net", "/".join(faces), who, d, PROBE_CLEAR_MM)))
+    return out
+
+
+# A34: assembly spacing between neighbouring parts, extent to extent (pads and body, as JLC's
+# own drawing measures it: jlcpcb.com/help/article/minimum-spacing-for-smd-components).
+#  HARD: JLC's assembly terms ("placement and gap of the components must comply with medium
+#   density or low density standards listed in IPC-7351B", jlcpcb.com/help/article/
+#   terms-and-conditions-of-jlcpcb-assembly-service): two parts' extents at least the sum of
+#   their IPC-7351B Level B (medium) courtyard excesses apart -- 0.15 for a chip under 0603,
+#   0.25 for anything else (KiCad KLC F5.3, the library's courtyards).
+#  SOFT: JLC's RECOMMENDED minimums (the table on the first page, updated 2026-09-09) for the
+#   package pairs it lists; a datasheet "cap at the pin" layout may be waived, with its cite.
+ASM_EXCESS = {"chip_small": 0.15}
+ASM_EXCESS_DEFAULT = 0.25
+ASM_TOL = 0.02     # geometry, not slack: arcs to polygons and Fab line widths read two parts seated
+                   # courtyard to courtyard ~0.01 under the excess sum (optical PD / U: 0.49 of 0.50)
+_ASM_CLASS = [("chip_small", r"_(01005|0201|0402)_"), ("chip0603", r"_0603_"), ("chip0805", r"_0805_"),
+              ("chip1206", r"_1206_"), ("BGA", r"BGA"), ("QFN", r"QFN|DFN|[^O]SON|X2SON|LGA"),
+              ("QFP", r"QFP"), ("SOP", r"SOIC|SSOP|TSSOP|MSOP|SOP"), ("SOT", r"SOT|SC-70|SC70")]
+# JLC recommended minimum (mm) by package pair; chip_small is the table's 0402 row (0201 has its own
+# values in the table but no 0201 on our boards). Pairs not listed: no recommendation.
+_ASM_REC = {}
+for _a, _row in {"chip_small": {"chip_small": 0.15, "chip0603": 0.18, "chip0805": 0.18, "chip1206": 0.25,
+                                "QFN": 1.0, "QFP": 0.5, "SOP": 0.4, "SOT": 0.2, "BGA": 1.0},
+                 "chip0603": {"chip0603": 0.18, "chip0805": 0.18, "chip1206": 0.25, "QFN": 1.0, "QFP": 0.5,
+                              "SOP": 0.4, "SOT": 0.2, "BGA": 1.0},
+                 "QFN": {"QFN": 1.0, "QFP": 1.0, "SOP": 1.0, "SOT": 1.0, "BGA": 1.5}}.items():
+    for _b, _v in _row.items():
+        _ASM_REC[(_a, _b)] = _ASM_REC[(_b, _a)] = _v
+
+
+def _asm_class(fp):
+    fpid = fp.GetFPIDAsString().split(":")[-1].upper()
+    for name, rx in _ASM_CLASS:
+        if re.search(rx.upper(), fpid):
+            return name
+    return None
+
+
+def _asm_extent(fp):
+    """(bbox, segs) of the part's pads and body (Fab outline), as polygons: bbox (x0, y0, x1, y1)
+    mm and segs an (N, 4) array of their outline edges. None for a part with no courtyard (a net
+    tie, drawn ON another part's pad). Polygons, not boxes: a 10 x 10 can's box covers the corner
+    a 0603 sits in (brain_board C314 / R308 read 0.00 by boxes)."""
+    import numpy as np
+    crt = fp.GetCourtyard(pcbnew.B_CrtYd if fp.IsFlipped() else pcbnew.F_CrtYd)
+    if crt.OutlineCount() == 0:
+        return None
+    cb = crt.BBox()
+    ps = pcbnew.SHAPE_POLY_SET()
+    cu = pcbnew.B_Cu if fp.IsFlipped() else pcbnew.F_Cu
+    fab = pcbnew.B_Fab if fp.IsFlipped() else pcbnew.F_Fab
+    for q in fp.Pads():
+        q.TransformShapeToPolygon(ps, cu, 0, pcbnew.FromMM(0.005), pcbnew.ERROR_INSIDE)
+    for g in fp.GraphicalItems():
+        # the body, not the Fab layer's markers: a pin-1 arrow drawn past the courtyard (optical U14's
+        # WQFN read 5.4 mm wide) is not part of the part
+        if g.GetLayer() == fab and g.GetClass() == "PCB_SHAPE" and cb.Contains(g.GetBoundingBox()):
+            g.TransformShapeToPolygon(ps, fab, 0, pcbnew.FromMM(0.005), pcbnew.ERROR_INSIDE)
+    segs = []
+    for i in range(ps.OutlineCount()):
+        o = ps.Outline(i)
+        pts = [(MM(o.CPoint(k).x), MM(o.CPoint(k).y)) for k in range(o.PointCount())]
+        segs += [(x0, y0, x1, y1) for (x0, y0), (x1, y1) in zip(pts, pts[1:] + pts[:1])]
+    if not segs:
+        return None
+    a = np.asarray(segs, float)
+    xs, ys = a[:, [0, 2]], a[:, [1, 3]]
+    return (float(xs.min()), float(ys.min()), float(xs.max()), float(ys.max())), a, ps
+
+
+def _asm_gap(ea, eb):
+    """Least distance (mm) between two parts' outlines; 0 where they touch or overlap."""
+    import numpy as np
+    if _box_gap(ea[0], eb[0]) > 2.0:
+        return _box_gap(ea[0], eb[0])
+    x = ea[2].CloneDropTriangulation() if hasattr(ea[2], "CloneDropTriangulation") else pcbnew.SHAPE_POLY_SET(ea[2])
+    x.BooleanIntersection(eb[2])
+    if x.OutlineCount() and x.Area() > 0:
+        return 0.0
+
+    def pt_seg(p, s):            # every point of p (M, 2) to every segment of s (N, 4): least distance
+        a, b = s[None, :, :2], s[None, :, 2:]
+        d = b - a
+        t = np.clip(((p[:, None, :] - a) * d).sum(-1) / np.maximum((d * d).sum(-1), 1e-12), 0.0, 1.0)
+        q = a + t[..., None] * d
+        return float(np.sqrt(((p[:, None, :] - q) ** 2).sum(-1)).min())
+    A, B = ea[1], eb[1]
+    return min(pt_seg(A[:, :2], B), pt_seg(B[:, :2], A))
+
+
+@rule("A34")
+def assembly_spacing(ctx):
+    """Neighbouring SMD parts on one face keep the assembler's room, extent to extent: HARD at
+    IPC-7351B medium density (JLC's assembly terms), SOFT at JLC's recommended table (lead
+    2026-11-25: brain_board's datasheet-close decaps sit under JLC's 1.0 mm 0402-QFN figure by
+    ruling, each waived with its layout cite; the medium-density floor has no exception)."""
+    parts = []
+    for r, f in ctx.fps.items():
+        if any(q.GetAttribute() == pcbnew.PAD_ATTRIB_PTH for q in f.Pads()) or not f.Pads():
+            continue
+        e = _asm_extent(f)
+        if e is not None:
+            parts.append((r, e, f.IsFlipped(), _asm_class(f)))
+    out = []
+    for i, (a, ea, fa, ca) in enumerate(parts):
+        for b, eb, fb, cb in parts[i + 1:]:
+            if fa != fb:
+                continue
+            d = _asm_gap(ea, eb)
+            hard = ASM_EXCESS.get(ca, ASM_EXCESS_DEFAULT) + ASM_EXCESS.get(cb, ASM_EXCESS_DEFAULT)
+            rec = _ASM_REC.get((ca, cb))
+            if d >= max(hard - ASM_TOL, rec or 0.0) - 1e-6 or d > 2.0:
+                continue
+            subj = "/".join(sorted((a, b), key=_nat))
+            if d < hard - ASM_TOL - 1e-6:
+                out.append((subj, False, "%s %.2f mm apart (%s / %s), under IPC-7351B medium density %.2f "
+                                         "(JLC's assembly terms; no exception)" % (subj, d, ca or "part", cb or "part", hard)))
+            else:
+                out.append((subj, False, "%s %.2f mm apart (%s / %s), under JLC's recommended %.2f "
+                                         "(AOI / rework room)" % (subj, d, ca, cb, rec)))
+    if not out:
+        out.append(("parts", True, "%d SMD parts: every neighbour at or over its spacing" % len(parts)))
     return out
 
 

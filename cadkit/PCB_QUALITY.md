@@ -1041,6 +1041,26 @@ a pair corridor released ten held parts in the column round TP2, SWCLK's pad, an
 stayed reachable was checked by eye.) Soft: a pad that is only ever probed before the
 neighbour is fitted may be waived, with that reason.
 
+### A34 — Neighbouring parts keep the assembler's spacing
+
+**Rule.** Every two SMD parts on one face, measured extent to extent (pads and body, as polygons
+-- JLC's own drawing measures from the outermost edge of each part):
+- **HARD, no exception:** at least the sum of their IPC-7351B **Level B** (medium density)
+  courtyard excesses -- 0.15 mm for a chip under 0603, 0.25 mm for anything else (KiCad KLC
+  F5.3, which the library's courtyards follow). JLC's assembly terms: "the placement and gap of
+  the components must comply with 'medium density' or 'low density' standards listed in
+  IPC-7351B"; high density is not assembled.
+- **SOFT:** JLC's **recommended** minimum for the package pair (jlcpcb.com/help/article/
+  minimum-spacing-for-smd-components, 2026-09-09): 0402-0402 0.15, 0402/0603-QFN 1.0, chip-QFP
+  0.5, chip-SOP 0.4, chip-SOT 0.2, QFN-QFN / QFP / SOP / SOT 1.0, QFN-BGA 1.5. A no-lead SON / DFN
+  power package counts as QFN.
+
+**Why.** The recommendation is room for AOI and hand rework; the medium-density floor is what JLC
+assembles at all. A datasheet that places a cap at the pin (an HF loop, a bootstrap cap) outranks
+the recommendation: waive the pair (`waive["A34:C230/U205"]`) citing the IC's layout section, and
+JLC's DFM review is the check -- a part it flags moves (lead 2026-11-25, brain_board: 14 decaps /
+FETs in their datasheet places at 0.56-0.84 from a QFN). The floor is never waived.
+
 ## Manual checks
 
 Sign each in `quality["manual"]` with what you checked against. If a rule does not apply
