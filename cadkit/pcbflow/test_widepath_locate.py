@@ -42,5 +42,22 @@ r = widepath.judge(w, h, A, B, RES, 1.9)       # 3 on-axis barrels = 2.02
 ok = r["verdict"] == "PASS"
 print("ok " if ok else "BAD", "on-axis vias in a wider track:", r["verdict"], "%.2f" % r["width"])
 bad += not ok
+# a foreign strip just as wide, inside the path's crop box, unconnected (2026-11-25: +24V_LED's
+# FAIL named the +24V tracks beside its fuse): never the neck; the path's own pinch is
+H, W_ = 200, 400
+Fm = np.zeros((H, W_), bool)
+Fm[90:108, 20:380] = True          # own strip, 0.90 mm
+Fm[90:108, 200:220] = False        # ... with a notch: 0.60 mm at x 10-11 mm
+Fm[93:105, 200:220] = True
+Fm[90:190, 362:380] = True         # ... turning down the right edge, so the box spans y 4.5-9.5 mm
+Fm[150:162, 60:340] = True         # foreign strip as wide as the pinch (0.60), inside that box
+w = widepath.widths({"F": Fm}, RES)
+A = {"F": np.zeros((H, W_), bool)}; A["F"][90:108, 20:40] = True
+Bm = {"F": np.zeros((H, W_), bool)}; Bm["F"][175:190, 362:380] = True
+r = widepath.judge(w, [], A, Bm, RES, 0.9)
+cu = [f for f in r.get("where", ()) if f["kind"] == "copper"]
+ok = r["verdict"] != "PASS" and cu and all(f["at"][1] < 130 for f in cu)
+print("ok " if ok else "BAD", "foreign strip in the box is not named:", r["verdict"], "%.2f" % r["width"], cu)
+bad += not ok
 print("widepath locate:", "FAIL %d" % bad if bad else "PASS")
 raise SystemExit(1 if bad else 0)

@@ -304,10 +304,23 @@ def locate(width, holes, A, B, res, w, dt=0.05, most=3):
         found.append(dict(kind="vias", layers=ly, barrels=round(got, 2), t=round(t, 2),
                           at=[p for _, p, _, wm in grp if wm >= t],
                           lost=[(p, wm) for _, p, _, wm in grp if wm < t]))
-    # copper: ridge pixels at the bottleneck width
+    # copper: ridge pixels at the bottleneck width, in THIS path's copper only -- the pieces that
+    # join A to B at t2 (2026-11-25: the crop box is a bounding box, so +24V_LED's 0.89 mm FAIL
+    # named the 0.90 mm +24V tracks beside its fuse; another net's copper is never the neck)
+    lab2 = {k: ndimage.label(v >= t2)[0] for k, v in width.items()}
+    uf2 = _UF()
+    for (a, b), sm in _fields(lab2, holes).items():
+        if sm >= t2:
+            uf2.u(a, b)
+    own = set()
+    for E in (A, B):
+        for k, m in E.items():
+            if k in lab2:
+                own |= {uf2.f((k, int(v))) for v in np.unique(lab2[k][m]) if v}
     for k, v in width.items():
         mx = ndimage.maximum_filter(v, size=3)
-        ridge = (v >= mx - 1e-6) & (v >= t2) & (v < t)
+        mine = np.isin(lab2[k], [x for x in range(1, int(lab2[k].max()) + 1) if uf2.f((k, x)) in own])
+        ridge = (v >= mx - 1e-6) & (v >= t2) & (v < t) & mine
         if not ridge.any():
             continue
         cl, n = ndimage.label(ndimage.binary_dilation(ridge, iterations=2))
