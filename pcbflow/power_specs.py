@@ -6,7 +6,7 @@ rasterpath pre-order gate (and the same ends close_last's CLOSE_POUR_GUARD=2 bui
 Each END is every pad of the named part on the path's net (a USB-C socket's four VBUS pins, a
 FET's four drain pins), as polygons in BOARD mm (y down) per copper layer; `need` is
 quality.required_width_mm(amps) on an outer layer; `scale` turns inner-layer width into
-outer-equivalent width (IPC-2221: k 0.024 vs 0.048 and the inner copper weight), so one `need`
+outer-equivalent width (the inner foil over the outer, quality.foil_mm: 0.434 on JLC 0.5 oz), so one `need`
 judges every layer.
 """
 import json
