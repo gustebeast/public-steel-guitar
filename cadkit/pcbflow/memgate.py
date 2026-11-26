@@ -8,11 +8,15 @@ Replaces a fixed "at most N routes" rule. Before launching CMD it waits until
     available physical RAM  -  RAM still owed to running gated jobs  >=  need + margin
 
 where a running job is owed (its need - what it uses now), so a job that has not ramped up
-yet still holds its share. `need` defaults to the largest RAM peak recorded for KIND (x1.15),
-or 4 GB before any record exists. `margin` is what stays free for everything else on the
-machine (viewer, browser, KiCad, builds): by day (08:00-22:00) max(6 GB, the recorded
-peak of a full CAD build x1.15) -- builds start ungated whenever an MR lands, so one may
-begin after a route was admitted -- and 3 GB at night. Record a build peak once with
+yet still holds its share. `need` defaults to the largest RAM peak recorded for this KIND
+*and stage* (x1.15); a stage with no clean run yet takes the kind's largest peak (x1.15), and
+a kind with none takes 4 GB. The stage is read off
+CMD: the script it runs (first *.py / *.sh token) plus its --flags, so `ownroute.py --post`,
+`finish.py --keep-route` and `close_ab_ck.sh` are judged on their own peaks. `margin` is what
+stays free for everything else on the machine (viewer, browser, KiCad, builds): by day
+(08:00-22:00) the RAM one full CAD build needs (its recorded peak x1.15; 6 GB before a record)
+-- builds start ungated whenever an MR lands, so one may begin after a route was admitted --
+and 3 GB at night. Record a build peak once with
     memgate.py --name build --need 0 --margin 0 -- <the build command>
 
 CMD and every process it starts run inside one Windows job object that
@@ -24,6 +28,14 @@ CMD and every process it starts run inside one Windows job object that
 On exit the job's peak RAM (sum of its processes' working sets, sampled every 5 s, and
 never below any one process's own peak) and peak commit are appended to peaks.json, so the
 next launch of KIND asks for what that work really used.
+
+A job that waits more than WHY_S (10 min) with NO gated job running prints why, every
+WHY_S: the shortfall, where its need and margin came from, and the machine's biggest RAM users.
+
+!! ONE PEAK PER KIND STARVED A FINISH FOR 4 h 37 min (brain_board fixq3f, 2026-11-25). "finish"
+held a 9.81 GB close_ab_ck.sh peak, so an `ownroute.py --post` that used 0.93 GB asked for
+11.3 + 6.1 GB margin with 14-17 GB free and nothing running -- it could never start, and said
+so once.
 
 State lives in %LOCALAPPDATA%/cadkit/memgate (running.json, peaks.json, lock), or $MEMGATE_STATE.
 
@@ -39,6 +51,7 @@ import ctypes.wintypes as wt
 import json
 import msvcrt
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -53,6 +66,8 @@ DEFAULT_NEED_GB = 4.0
 NEED_FACTOR = 1.15
 MIN_CAP_GB = 12.0
 MIN_NEED_GB = 0.5
+DAY_MARGIN_GB = 6.0              # by day, before any build peak is recorded
+WHY_S = 600                      # waiting this long with 0 jobs running -> say why
 
 k32 = ctypes.WinDLL("kernel32", use_last_error=True)
 
@@ -184,21 +199,70 @@ def owed(jobs):
 
 def default_margin():
     """By day, room for one ungated full CAD build to start after we admit (11-17: 4 routes
-    + a build ran the machine out of RAM): max(6 GB, recorded build peak x1.15). Night 3 GB."""
+    + a build ran the machine out of RAM): what one build needs -- its recorded peak x1.15,
+    no more -- or 6 GB before a build is recorded. Night 3 GB."""
     if not 8 <= time.localtime().tm_hour < 22:
         return 3.0
     h = [r["peak_ram_gb"] for r in history("build") if r["rc"] == 0][-8:]
-    return max(6.0, round(max(h) * NEED_FACTOR, 1)) if h else 6.0
+    return round(max(h) * NEED_FACTOR, 1) if h else DAY_MARGIN_GB
 
 
-def history(kind):
-    return [r for r in _load("peaks.json", []) if r.get("name") == kind]
+def stage_of(cmd):
+    """What CMD runs: its first *.py / *.sh script's name plus every --flag, e.g.
+    'ownroute.py --post'. Works on a stored record's joined, 300-char 'cmd' string too."""
+    toks = cmd.split() if isinstance(cmd, str) else list(cmd)
+    script = next((os.path.basename(t.replace("\\", "/")) for t in toks
+                   if t.lower().endswith((".py", ".sh"))), "")
+    return " ".join([script] + sorted({t for t in toks if t.startswith("--")})).strip()
 
 
-def need_for(kind):
+def history(kind, stage=None):
+    return [r for r in _load("peaks.json", []) if r.get("name") == kind
+            and (stage is None or r.get("stage", stage_of(r.get("cmd", ""))) == stage)]
+
+
+def _need_peaks(kind, stage):
     # only clean finishes: a job that failed early or hit its cap never reached its real peak
-    h = [r["peak_ram_gb"] for r in history(kind) if r["rc"] == 0 and not r["cap_hit"]][-8:]
+    return [r["peak_ram_gb"] for r in history(kind, stage) if r["rc"] == 0 and not r["cap_hit"]][-8:]
+
+
+def need_for(kind, stage=None):
+    # a stage not seen yet takes the kind's largest peak (safe: the 11-17 OOM was physical
+    # RAM); its own peak takes over after one clean run
+    h = _need_peaks(kind, stage) or _need_peaks(kind, None)
     return max(MIN_NEED_GB, round(max(h) * NEED_FACTOR, 2)) if h else DEFAULT_NEED_GB
+
+
+def top_ram(n=5):
+    """The machine's n biggest working sets as 'name pid GB', for the stuck-wait log."""
+    try:
+        out = subprocess.run(["tasklist", "/fo", "csv", "/nh"], capture_output=True, text=True,
+                             timeout=20).stdout
+    except (OSError, subprocess.SubprocessError):
+        return []
+    rows = []
+    for line in out.splitlines():
+        f = line.strip().strip('"').split('","')
+        if len(f) >= 5:
+            kb = re.sub(r"[^0-9]", "", f[4])
+            if kb:
+                rows.append((int(kb) / (1 << 20), f[0], f[1]))
+    return ["%s %s %.1f GB" % (nm, pid, gb) for gb, nm, pid in sorted(rows, reverse=True)[:n]]
+
+
+def why_waiting(kind, stage, need, margin, free, need_fixed):
+    """Why a job with nothing else running is still not admitted."""
+    h = _need_peaks(kind, stage)
+    src = ("--need given" if need_fixed else
+           "%d clean %r run(s), max %.2f GB x%.2f" % (len(h), stage, max(h), NEED_FACTOR) if h
+           else "no clean %r run yet: the kind's max" % stage if _need_peaks(kind, None)
+           else "no clean %s run recorded: default" % kind)
+    msrc = "--margin given" if margin_fixed else (
+        "night" if not 8 <= time.localtime().tm_hour < 22 else "day: one build's need")
+    return ("memgate: %s STILL WAITING with 0 jobs running -- %.1f GB free < need %.1f (%s) "
+            "+ margin %.1f (%s): short %.1f GB. Biggest RAM users: %s" % (
+                kind, free, need, src, margin, msrc, need + margin - free,
+                "; ".join(top_ram()) or "?"))
 
 
 def cap_for(kind):
@@ -238,8 +302,9 @@ def job_commit_peak(job):
     return info.PeakJobMemoryUsed
 
 
-def admit(kind, need, margin, max_jobs):
+def admit(kind, need, margin, max_jobs, stage="", need_fixed=False):
     told = False
+    last_why = time.time()
     while True:
         with Lock():
             jobs = running()
@@ -258,12 +323,18 @@ def admit(kind, need, margin, max_jobs):
                 kind, free, need, margin,
                 "" if max_jobs is None else ", %d/%d jobs" % (len(jobs), max_jobs)), flush=True)
             told = True
+        if not jobs and time.time() - last_why >= WHY_S:
+            print(why_waiting(kind, stage, need, margin, free, need_fixed), flush=True)
+            last_why = time.time()
         time.sleep(WAIT_S)
         margin = margin if margin_fixed else default_margin()
 
 
-def run(kind, need, cap, margin, max_jobs, cmd):
-    admit(kind, need, margin, max_jobs)
+def run(kind, need, cap, margin, max_jobs, cmd, need_fixed=False):
+    stage = stage_of(cmd)
+    if need is None:
+        need = need_for(kind, stage)
+    admit(kind, need, margin, max_jobs, stage, need_fixed)
     job = make_job(cap)
     # memgate joins the job first so everything CMD spawns inherits it; closing memgate
     # (normally or killed) closes the last handle and KILL_ON_JOB_CLOSE ends the tree
@@ -290,7 +361,7 @@ def run(kind, need, cap, margin, max_jobs, cmd):
                 _save("running.json", jobs)
         time.sleep(SAMPLE_S)
     commit = job_commit_peak(job)
-    rec = {"name": kind, "end": time.strftime("%Y-%m-%d %H:%M"), "rc": p.returncode,
+    rec = {"name": kind, "stage": stage, "end": time.strftime("%Y-%m-%d %H:%M"), "rc": p.returncode,
            "minutes": round((time.time() - t0) / 60, 1), "peak_ram_gb": round(peak / GB, 2),
            "peak_commit_gb": round(commit / GB, 2), "cap_gb": cap,
            "cap_hit": commit >= 0.98 * cap * GB, "cmd": " ".join(cmd)[:300]}
@@ -317,8 +388,11 @@ def status():
     kinds = sorted({r["name"] for r in _load("peaks.json", [])})
     for k in kinds:
         h = history(k)
-        print("  %-10s %d run(s), need next %.1f GB, cap %.0f GB, last peak RAM %.2f commit %.2f"
-              % (k, len(h), need_for(k), cap_for(k), h[-1]["peak_ram_gb"], h[-1]["peak_commit_gb"]))
+        print("  %-10s %d run(s), cap %.0f GB, last peak RAM %.2f commit %.2f"
+              % (k, len(h), cap_for(k), h[-1]["peak_ram_gb"], h[-1]["peak_commit_gb"]))
+        for st in sorted({r.get("stage", stage_of(r.get("cmd", ""))) for r in h}):
+            print("      %-40s %d run(s), need next %.1f GB" % (
+                st[:40] or "?", len(history(k, st)), need_for(k, st)))
 
 
 margin_fixed = False
@@ -335,8 +409,8 @@ if __name__ == "__main__":
     kind = o.get("--name", "job")
     margin_fixed = "--margin" in o
     sys.exit(run(kind,
-                 float(o["--need"]) if "--need" in o else need_for(kind),
+                 float(o["--need"]) if "--need" in o else None,
                  float(o["--cap"]) if "--cap" in o else cap_for(kind),
                  float(o["--margin"]) if margin_fixed else default_margin(),
                  int(o["--max"]) if "--max" in o else None,
-                 cmd))
+                 cmd, need_fixed="--need" in o))
