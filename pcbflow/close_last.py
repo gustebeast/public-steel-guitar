@@ -1164,9 +1164,97 @@ def _rip_one(board, stem, net, model, layers, layer_id, named, gap, tries, close
     return board, 0
 
 
+# ⚠ THE GUARD SIZES A BREAK BY THE CURRENT THAT CROSSES IT, NOT THE NET'S BIGGEST PATH
+# (brain_board fold7d, 2026-11-26). Sized by the net's max, VIN_BRAIN's 6.5 A asked 2.70 mm
+# of every joint, and six were left open as CAN'T CARRY -- C202.1, C97.1, C248.1 (caps),
+# U16.8/9 (sense), D201.1 / D212.1 (TVS): branches no stated current flows through, while
+# the 6.5 A trunk R112.2>Q202.3 was already joined. DRC's unconnected pairs are the
+# ratsnest, a tree over the net's copper islands, so the current through one break is the
+# sum of the quality.power_paths whose ends fall on opposite sides of that tree edge. A
+# break with an end that cannot be placed on an island keeps the net's max (unjudged).
+def _island_pads(board, conn, net, it):
+    p = pcbnew.VECTOR2I(pcbnew.FromMM(it["pos"]["x"]), pcbnew.FromMM(it["pos"]["y"]))
+    tol = pcbnew.FromMM(0.005)
+    o = None
+    for f in board.GetFootprints():
+        for q in f.Pads():
+            if q.GetNetname() == net and q.HitTest(p):
+                o = q
+                break
+        if o is not None:
+            break
+    if o is None:
+        for t in board.GetTracks():
+            if t.GetNetname() != net:
+                continue
+            ends = (t.GetPosition(),) if t.GetClass() == "PCB_VIA" else (t.GetStart(), t.GetEnd())
+            if any((e - p).EuclideanNorm() <= tol for e in ends):
+                o = t
+                break
+    if o is None:
+        for z in board.Zones():
+            if z.GetNetname() == net and any(z.HitTestFilledArea(L_, p) for L_ in z.GetLayerSet().Seq()):
+                o = z
+                break
+    if o is None:
+        return None
+    seen, todo, pads = {o.m_Uuid.AsString()}, [o], set()
+    while todo:
+        x = todo.pop()
+        if x.GetClass() == "PAD":
+            pads.add("%s.%s" % (x.GetParentFootprint().GetReference(), x.GetNumber()))
+        for y in conn.GetConnectedItems(x):
+            k = y.m_Uuid.AsString()
+            if k not in seen and y.GetNetname() == net:
+                seen.add(k)
+                todo.append(y)
+    return frozenset(pads) or None
+
+
+def _break_amps(board, todo, raw, paths):
+    """The stated current through each todo break (None = unjudged: use the net's max)."""
+    paths = [p_ for p_ in paths if float(p_.get("amps", 0) or 0) > 0]
+    pnets = {p_["net"] for p_ in paths}
+    out = [None] * len(todo)
+    if not pnets:
+        return out
+    board.BuildConnectivity()
+    conn = board.GetConnectivity()
+    sides = {}
+    for k, (t, (ia, ib)) in enumerate(zip(todo, raw)):
+        if t[0] in pnets:
+            a, b = _island_pads(board, conn, t[0], ia), _island_pads(board, conn, t[0], ib)
+            if a and b:
+                sides[k] = (a, b)
+    del conn
+    for k, (A, B) in sides.items():
+        net = todo[k][0]
+        es = [(j, s_) for j, s_ in sides.items() if todo[j][0] == net and j != k]
+        comp, grow = {A}, True
+        while grow:
+            grow = False
+            for _j, (X, Y) in es:
+                for P_, Q_ in ((X, Y), (Y, X)):
+                    if P_ in comp and Q_ not in comp:
+                        comp.add(Q_)
+                        grow = True
+        left = set().union(*comp)
+        amps = 0.0
+        for p_ in paths:
+            if p_["net"] != net:
+                continue
+            ends = [p_["from"]] + (p_["to"] if isinstance(p_["to"], list) else [p_["to"]])
+            if any(e in left for e in ends) and any(e not in left for e in ends):
+                amps += float(p_["amps"])
+        out[k] = amps
+        print("close_last: %s break %s | %s carries %.2f A of stated current"
+              % (net, ",".join(sorted(A))[:40], ",".join(sorted(B))[:40], amps))
+    return out
+
+
 def main(stem):
     d = json.load(open(stem + ".finish.drc.json", encoding="utf-8"))
-    todo = []
+    todo, raw = [], []
     for u in d.get("unconnected_items", []):
         if len(u.get("items", [])) != 2:
             continue
@@ -1174,12 +1262,14 @@ def main(stem):
         if na and na == nb:
             za, zb = (i["description"].startswith("Zone") for i in u["items"][:2])
             todo.append((na, la, pa, ta, lb, pb, tb, za, zb))
+            raw.append(u["items"][:2])
     # nets finish.py asks to leave alone on this attempt: a closure of theirs broke a rule
     # last time, and one bad closure must not cost the board the good ones (see finish.py)
     skip = {s for s in os.environ.get("CLOSE_LAST_SKIP", "").split(",") if s}
     if skip:
         print("close_last: leaving %s open on this attempt" % ", ".join(sorted(skip)))
-        todo = [t for t in todo if t[0] not in skip]
+        keep = [k for k, t in enumerate(todo) if t[0] not in skip]
+        todo, raw = [todo[k] for k in keep], [raw[k] for k in keep]
     if not todo:
         print("close_last: nothing to close")
         return 0
@@ -1199,6 +1289,7 @@ def main(stem):
     for _p in ((_notes.get("quality") or {}).get("power_paths") or ()):
         amps_of[_p["net"]] = max(amps_of.get(_p["net"], 0.0), float(_p.get("amps", 0) or 0))
     _GUARD_NETS.update(n for n, a in amps_of.items() if a > 0)
+    brk_amps = _break_amps(board, todo, raw, (_notes.get("quality") or {}).get("power_paths") or ())
     if POUR_GUARD == "2":
         global _REQ
         from quality import required_width_mm as _rw
@@ -1352,8 +1443,9 @@ def main(stem):
             _ladder.append(WIDTH)
         _need = _need_all = 0.0
         _steps = [(w_, None) for w_ in _ladder]      # (width, layers): None = _lays as asked
-        if amps_of.get(net):
-            _need = _drawn_w(amps_of[net], "F.Cu", _qn)
+        _amps = brk_amps[_i] if brk_amps[_i] is not None else amps_of.get(net, 0.0)
+        if _amps:
+            _need = _drawn_w(_amps, "F.Cu", _qn)
             if _need <= WIDTH:          # signal width already carries it: no guard
                 _need = 0.0
             else:
@@ -1365,7 +1457,7 @@ def main(stem):
                 # outer layers at the outer need first, then on every layer at the widest need any
                 # of them has (the rip-up likewise): never narrower than the layer it lands on.
                 _out = [L_ for L_ in layers if L_ in ("F.Cu", "B.Cu")]
-                _need_all = max([_need] + [_drawn_w(amps_of[net], L_, _qn) for L_ in layers])
+                _need_all = max([_need] + [_drawn_w(_amps, L_, _qn) for L_ in layers])
                 _steps = [(w_, _out) for w_ in _ladder] if _out else []
                 if _need_all > _need or not _out:
                     _steps.append((max(_ladder[-1], _need_all), None))
@@ -1403,7 +1495,7 @@ def main(stem):
                 if not ok:
                     print("close_last: %s -- CAN'T CARRY: %.1f A wants %.2f mm (%.2f on an inner layer) and no path is that "
                           "wide, even taking others up; left open (fix the copper, not a thin "
-                          "closure)" % (net, amps_of[net], _need, _need_all))
+                          "closure)" % (net, _amps, _need, _need_all))
                 continue
             if _clock() < _end:
                 # then a way that keeps clear of other nets' track wherever it can: a longer
