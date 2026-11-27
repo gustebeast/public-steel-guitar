@@ -32,6 +32,7 @@ import pcbnew
 
 import stable_fill  # noqa: E402  (PCBFLOW_STABLE_FILL)
 import frozen_wall  # noqa: E402  (the one frozen-band wall for post-route copper)
+import outline_room  # noqa: E402  (the board edge, for post-route copper)
 import wx
 # ⚠ NO MODAL DIALOGS IN A BUILD STEP. KiCad's Python is a wxWidgets application, and a
 # failed internal assertion pops a GUI alert -- "Do you want to stop the program?" -- and
@@ -1177,9 +1178,12 @@ def add_missing_vias(board, eps_mm=0.05, via_d=0.6, via_drill=0.3, clr=0.14):
                          t.GetWidth() / 2.0, t.GetNetname()))
 
     wall = frozen_wall.FrozenWall(board)     # a via is walled by a band on any layer
+    room = outline_room.OutlineRoom(board)
 
     def clear(x, y, net):
         if wall and not wall.via_ok(x, y, net, pcbnew.FromMM(via_d / 2.0)):
+            return False
+        if not room.via_ok(x, y, pcbnew.FromMM(via_d / 2.0)):
             return False
         for bb, onet in pads:
             if onet == net:
@@ -2105,6 +2109,9 @@ def _path_clear(board, a, z, net, layer, w, step_mm=0.1):
     # clearance -- the router's rule (router.model frozen_d).
     # (frozen_wall.FrozenWall: the one wall every post-route writer asks)
     frz = frozen_wall.FrozenWall(board)
+    # ...nor come nearer the board edge than its copper-to-edge rule (outline_room, fold11)
+    if not outline_room.for_board(board).seg_ok((a.x, a.y), (z.x, z.y), w / 2.0):
+        return False
     for i in range(n + 1):
         p = pcbnew.VECTOR2I(int(a.x + (z.x - a.x) * i / n),
                             int(a.y + (z.y - a.y) * i / n))
@@ -2388,9 +2395,12 @@ def _via_on_piece(board, net, uuids, zs, via_d=0.6, drill=0.3, step_mm=0.05):
               for m in board.GetFootprints() for pd in m.Pads() if pd.GetDrillSizeX() > 0 and _near(pd)]
     own = [(z, l) for z in zs for l in z.GetLayerSet().CuStack()]
     wall = frozen_wall.FrozenWall(board)    # a fill test is not a band wall (frozen_wall)
+    room = outline_room.OutlineRoom(board)
 
     def _fits(pt, tl):
         if wall and not wall.via_ok(pt.x, pt.y, net, r):
+            return False
+        if not room.via_ok(pt.x, pt.y, r):
             return False
         for hp, hd in holes:
             if (hp - pt).EuclideanNorm() < pcbnew.FromMM(drill / 2.0) + hd / 2.0 + h2h:
@@ -2483,11 +2493,14 @@ def _vias_on_piece(board, net, uuids, zs, n, via_d=0.6, drill=0.3, step_mm=0.05)
     seen = set()
     # other nets' FILL is no obstacle, but their frozen band OUTLINES are (frozen_wall)
     wall = frozen_wall.FrozenWall(board)
+    room = outline_room.OutlineRoom(board)
     for d, x, y, tl in cands:
         if (x, y) in seen:
             continue
         seen.add((x, y))
         if wall and not wall.via_ok(x, y, net, r):
+            continue
+        if not room.via_ok(x, y, r):
             continue
         pt = pcbnew.VECTOR2I(x, y)
         if any((hp - pt).EuclideanNorm() < dr / 2.0 + hd / 2.0 + h2h for hp, hd in holes):
@@ -2650,6 +2663,7 @@ def _move_plane_joins(board, vias, ends, poured, clr_mm=0.2, hole_mm=0.25):
     out = []
     F = pcbnew.FromMM
     wall = frozen_wall.FrozenWall(board)
+    room = outline_room.OutlineRoom(board)
     for v in vias:
         nc, net = v.GetNetCode(), v.GetNetname()
         planes = [L for L in poured.get(nc, ()) if v.TopLayer() <= L <= v.BottomLayer()]
@@ -2688,6 +2702,8 @@ def _move_plane_joins(board, vias, ends, poured, clr_mm=0.2, hole_mm=0.25):
             # the via on any layer, the stub on its own: off other nets' frozen bands
             if wall and (not wall.via_ok(q.x, q.y, nc, r)
                          or not wall.seg_ok((p0.x, p0.y), (q.x, q.y), nc, w_stub / 2.0, L_stub)):
+                return False
+            if not (room.via_ok(q.x, q.y, r) and room.seg_ok((p0.x, p0.y), (q.x, q.y), w_stub / 2.0)):
                 return False
             for (hp, hd) in holes:
                 if math.hypot(q.x - hp.x, q.y - hp.y) < (drill + hd) / 2.0 + F(hole_mm):
@@ -3175,9 +3191,12 @@ def rescue_stray_stitches(board, notes, via_d=0.6, clr=0.2):
     # this saw nothing -- and the refill knocked 2.2 % out of the band. The via is walled on
     # every layer, its feed track on the track's own (frozen_wall).
     wall = frozen_wall.FrozenWall(board)
+    room = outline_room.OutlineRoom(board)
 
     def clear(x, y, net, margin, via=False, layer=None):
         if wall and wall.hits(x, y, net, margin - pcbnew.FromMM(clr), None if via else layer):
+            return False
+        if not room.via_ok(x, y, margin - pcbnew.FromMM(clr)):     # the copper's own radius
             return False
         for bb, onet, smd in pads:
             if onet == net:

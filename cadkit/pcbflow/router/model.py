@@ -64,6 +64,7 @@ class Model:
         _attach_custom(txt, self.pads)
         _attach_drills(txt, self.pads)
         _attach_clearance(txt, self.pads)
+        self.fp_cu = _fp_copper(txt)
         self.segs = RS._segments(txt)
         self.vias = RS._vias(txt)
         self.edges = RS._edges(txt)
@@ -287,6 +288,26 @@ class Model:
                      - hr - hole_extra).astype(np.float32)
                 for k in range(L):
                     put(k, win, d, -1 if p.get("npth") else net)
+        # ⚠ A FOOTPRINT'S OWN COPPER IS COPPER (brain_board fold11, 2026-11-26): NT22's
+        # net-tie bridge is an fp_poly on F.Cu, not a pad, and the model read pads only, so a
+        # PB_VCC via went down with its hole 0.12 mm from the bridge (DRC hole_clearance, wants
+        # 0.25) and its copper over it. Each cell of the graphic belongs to the net of the
+        # footprint's nearest pad -- a tie's two nets each reach their own pad across it -- and
+        # to no net (-1) on a footprint with no netted pad. Vias keep off it below.
+        for g in self.fp_cu:
+            if g["layer"] not in lid:
+                continue
+            xs_, ys_ = [q[0] for q in g["pts"]], [q[1] for q in g["pts"]]
+            win = self._window(min(xs_), min(ys_), max(xs_), max(ys_), reach)
+            X, Y = grid(win)
+            d = _poly_dist(X, Y, g["pts"]).astype(np.float32)
+            owners = [(self.net_id.get(n, -1), x_, y_) for n, x_, y_ in g["pads"]]
+            if not owners:
+                put(lid[g["layer"]], win, d, -1)
+                continue
+            near = np.argmin(np.stack([np.hypot(X - x_, Y - y_) for _n, x_, y_ in owners]), axis=0)
+            for k_, (nid_, _x, _y) in enumerate(owners):
+                put(lid[g["layer"]], win, np.where(near == k_, d, FAR).astype(np.float32), nid_)
         for s in self.segs:
             if s["layer"] not in lid:
                 continue
@@ -529,7 +550,19 @@ class Model:
             if z["vias"] or (z["tracks"] and names & set(self.layers)):
                 i0, i1, j0, j1 = win
                 self.via_ban[i0:i1, j0:j1] |= dist < rv
+        # ...and no via over or beside footprint copper, of any net (NT22, above): its hole
+        # holds the hole rule off the graphic, its pad the copper rule (a tie is both nets).
+        rg = max(self.via_d / 2.0 + self.clear, self.via_drill / 2.0 + self.hole_clear) + self.margin
+        fp_ban = np.zeros((ny, nx), bool)
+        for g in self.fp_cu:
+            xs_, ys_ = [q[0] for q in g["pts"]], [q[1] for q in g["pts"]]
+            win = self._window(min(xs_), min(ys_), max(xs_), max(ys_), rg + 0.1)
+            X, Y = grid(win)
+            i0, i1, j0, j1 = win
+            _hb = _poly_dist(X, Y, g["pts"]) < rg
+            fp_ban[i0:i1, j0:j1] |= _hb
         self.via_ban_pad = pad_near < self.via_d / 2.0 + self.clear + self.margin
+        self.via_ban |= fp_ban
         self.via_ban_hard = self.via_ban.copy()          # keep-outs, then (below) holes and vias
         self.via_ban |= self.via_ban_pad
         # ⚠ AND NO NEW DRILL INSIDE AN OLD ONE'S HOLE-TO-HOLE, OF ANY NET: a layer change
@@ -792,6 +825,69 @@ def _attach_custom(txt, pads):
                 if len(pts) >= 3:
                     polys.append(pts)
             p["circles"], p["polys"] = circles, polys
+
+
+def _fp_copper(txt):
+    """Every footprint's copper GRAPHIC -- fp_poly / fp_rect / fp_circle on a copper layer (a
+    net tie's bridge, a shield's printed land) -- in board coordinates: [{"layer", "pts",
+    "pads": [(net, x, y), ...] the footprint's netted pads on that layer}]. Pads are read by
+    repair_search._pads; this is the copper they leave out. A circle is a 24-gon."""
+    out = []
+    for f in re.findall(r"\(footprint\b(.*?)\n\t\)", txt, re.S):
+        if not re.search(r"\n\t\t\(fp_(?:poly|rect|circle)\b", f):
+            continue
+        at = re.search(r"\(at ([-\d.]+) ([-\d.]+)(?: ([-\d.]+))?\)", f)
+        if not at:
+            continue
+        fx, fy = float(at.group(1)), float(at.group(2))
+        rot = -math.radians(float(at.group(3)) if at.group(3) else 0.0)
+        ca, sa = math.cos(rot), math.sin(rot)
+        world = lambda u, v: (fx + u * ca - v * sa, fy + u * sa + v * ca)
+        pads = []
+        for m in re.finditer(r'\(pad "[^"]*"(.*?)\n\t\t\)', f, re.S):
+            body = m.group(1)
+            pa = re.search(r"\(at ([-\d.]+) ([-\d.]+)", body)
+            nt = re.search(r'\(net (?:\d+ )?"([^"]*)"\)', body)
+            ly = re.search(r"\(layers ([^)]*)\)", body)
+            if pa and nt and nt.group(1):
+                pads.append((nt.group(1), ly.group(1) if ly else "",
+                             world(float(pa.group(1)), float(pa.group(2)))))
+        for g in re.finditer(r"\n\t\t\((fp_poly|fp_rect|fp_circle)\b(.*?)\n\t\t\)", f, re.S):
+            kind, body = g.group(1), g.group(2)
+            ly = re.search(r'\(layer "([^"]*\.Cu)"\)', body)
+            if not ly:
+                continue
+            if kind == "fp_poly":
+                pts = [world(float(a), float(b))
+                       for a, b in re.findall(r"\(xy ([-\d.]+) ([-\d.]+)\)", body)]
+            elif kind == "fp_rect":
+                st = re.search(r"\(start ([-\d.]+) ([-\d.]+)\)", body)
+                en = re.search(r"\(end ([-\d.]+) ([-\d.]+)\)", body)
+                (x1, y1), (x2, y2) = map(float, st.groups()), map(float, en.groups())
+                pts = [world(x1, y1), world(x2, y1), world(x2, y2), world(x1, y2)]
+            else:
+                c = re.search(r"\(center ([-\d.]+) ([-\d.]+)\)", body)
+                en = re.search(r"\(end ([-\d.]+) ([-\d.]+)\)", body)
+                u, v = map(float, c.groups())
+                r_ = math.hypot(float(en.group(1)) - u, float(en.group(2)) - v)
+                pts = [world(u + r_ * math.cos(math.radians(15 * k)),
+                             v + r_ * math.sin(math.radians(15 * k))) for k in range(24)]
+            if len(pts) < 3:
+                continue
+            L_ = ly.group(1)
+            on = [(n, x_, y_) for n, lys, (x_, y_) in pads
+                  if L_ in lys or "*.Cu" in lys or ("F&B.Cu" in lys and L_ in ("F.Cu", "B.Cu"))]
+            out.append({"layer": L_, "pts": pts, "pads": on})
+    return out
+
+
+def _poly_dist(X, Y, pts):
+    """Distance from each (X, Y) to the filled polygon pts: 0 inside."""
+    edge = np.full(np.shape(X), FAR)
+    for k in range(len(pts)):
+        (xa, ya), (xb, yb) = pts[k], pts[(k + 1) % len(pts)]
+        np.minimum(edge, _d_pts_seg(X, Y, xa, ya, xb, yb), out=edge)
+    return np.where(_in_poly(X, Y, pts), 0.0, edge)
 
 
 def _attach_clearance(txt, pads):
