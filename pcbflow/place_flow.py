@@ -543,6 +543,148 @@ def pour_priorities(zones):
     return report
 
 
+def _seg_x(p, q, a, b):
+    """The parameter t on p->q where it properly crosses a->b, or None."""
+    rx, ry, sx, sy = q[0] - p[0], q[1] - p[1], b[0] - a[0], b[1] - a[1]
+    den = rx * sy - ry * sx
+    if abs(den) < 1e-12:
+        return None
+    t = ((a[0] - p[0]) * sy - (a[1] - p[1]) * sx) / den
+    u = ((a[0] - p[0]) * ry - (a[1] - p[1]) * rx) / den
+    return t if (1e-9 < t < 1 - 1e-9 and -1e-9 <= u <= 1 + 1e-9) else None
+
+
+def _inside(pt, poly):
+    """Even-odd point in polygon."""
+    x, y, c = pt[0], pt[1], False
+    for i in range(len(poly)):
+        (x1, y1), (x2, y2) = poly[i - 1], poly[i]
+        if (y1 > y) != (y2 > y) and x < x1 + (y - y1) * (x2 - x1) / (y2 - y1):
+            c = not c
+    return c
+
+
+def _ccw(poly):
+    a = sum(poly[i - 1][0] * poly[i][1] - poly[i][0] * poly[i - 1][1] for i in range(len(poly)))
+    return poly if a > 0 else poly[::-1]
+
+
+def poly_union(pa, pb):
+    """The outline of two overlapping simple polygons as one, or None when they do not overlap
+    or the union is not one simple outline (it would enclose a hole). Board mm, [[x, y], ...].
+    Two legs round one shared pin share that pin's circle corners exactly, which the edge walk
+    cannot order: then the second is grown by 0.2 um about its centre and walked again."""
+    u = _union_walk(pa, pb)
+    if u is None:
+        cx = sum(p[0] for p in pb) / len(pb)
+        cy = sum(p[1] for p in pb) / len(pb)
+        for k in (2e-4, 5e-4):
+            g = [(cx + (p[0] - cx) * (1 + k / max(math.hypot(p[0] - cx, p[1] - cy), 1e-9)),
+                  cy + (p[1] - cy) * (1 + k / max(math.hypot(p[0] - cx, p[1] - cy), 1e-9))) for p in pb]
+            u = _union_walk(pa, g)
+            if u is not None:
+                break
+    return u
+
+
+def _union_walk(pa, pb):
+    A, B = _ccw([tuple(map(float, p)) for p in pa]), _ccw([tuple(map(float, p)) for p in pb])
+
+    def pieces(P, Q):
+        out = []
+        for i in range(len(P)):
+            p, q = P[i - 1], P[i]
+            ts = sorted({t for j in range(len(Q)) for t in [_seg_x(p, q, Q[j - 1], Q[j])] if t is not None})
+            pts = [p] + [(p[0] + t * (q[0] - p[0]), p[1] + t * (q[1] - p[1])) for t in ts] + [q]
+            out.extend(zip(pts, pts[1:]))
+        return out
+    pa_, pb_ = pieces(A, B), pieces(B, A)
+    crosses = len(pa_) > len(A)
+    if not crosses:
+        if all(_inside(p, B) for p in A):
+            return [list(p) for p in B]
+        if all(_inside(p, A) for p in B):
+            return [list(p) for p in A]
+        return None                                   # apart
+    keep = [e for e in pa_ if not _inside(((e[0][0] + e[1][0]) / 2, (e[0][1] + e[1][1]) / 2), B)]
+    keep += [e for e in pb_ if not _inside(((e[0][0] + e[1][0]) / 2, (e[0][1] + e[1][1]) / 2), A)]
+    key = lambda p: (round(p[0], 6), round(p[1], 6))
+    nxt = {}
+    for s, e in keep:
+        if key(s) in nxt:
+            return None                               # two edges leave one point: not simple
+        nxt[key(s)] = (s, e)
+    s0 = keep[0][0]
+    loop, k = [s0], key(keep[0][1])
+    while k != key(s0):
+        if k not in nxt or len(loop) > len(keep):
+            return None
+        s, e = nxt[k]
+        loop.append(s)
+        k = key(e)
+    if len(loop) != len(keep):
+        return None                                   # a second loop: the union has a hole
+    out = []
+    for x, y in loop:
+        q = [round(x, 3), round(y, 3)]
+        if not out or q != out[-1]:
+            out.append(q)
+    while len(out) > 1 and out[0] == out[-1]:
+        out.pop()
+    return out
+
+
+def merge_same_net_pours(zones):
+    """One zone per net, layer and priority where pours overlap: (zones, report lines).
+
+    ⚠ TWO LEGS OF ONE RAIL ARE ONE POUR (brain_board fold13, 2026-11-27). A long rail is
+    written as legs -- a hull round distant pins covers everything between them -- and p20's
+    V5_PRE north leg (U211.1-U36.5-R98.1) met its In3 leg (L1.2-U211.1-U215.3) at U211.1.
+    pour_priorities numbers one priority per net, so both were In3.Cu priority 3, and KiCad
+    DRC failed them (zones_intersect: two zones of one net, one priority, overlapping) --
+    and close_last then left V5_PRE alone as a net "touched by a violation", so four of its
+    branches stayed open. Overlapping pours of one net that agree on priority, whole and
+    frozen are now one outline; ones that differ are refused by name here, not found by DRC."""
+    out, res = [], []
+    for z in zones:
+        if not isinstance(z, dict) or not z.get("poly"):
+            res.append(z)
+            continue
+        for i, y in enumerate(res):
+            if not (isinstance(y, dict) and y.get("poly") and y["net"] == z["net"] and y["layer"] == z["layer"]):
+                continue
+            if not _touch(y["poly"], z["poly"]):
+                continue                              # apart: two pours, no conflict
+            u = poly_union(y["poly"], z["poly"])
+            same = (y.get("priority"), bool(y.get("whole")), bool(y.get("frozen"))) == \
+                   (z.get("priority"), bool(z.get("whole")), bool(z.get("frozen")))
+            if not same or u is None:
+                raise SystemExit(
+                    "POUR OVERLAP: two %s pours on %s overlap and cannot be one zone (%s) -- "
+                    "KiCad DRC would fail them as zones_intersect. Give them one priority and "
+                    "the same whole / frozen, or move one leg off the other." % (
+                        z["net"], z["layer"],
+                        "priority %s vs %s, whole %s vs %s, frozen %s vs %s" % (
+                            y.get("priority"), z.get("priority"), bool(y.get("whole")), bool(z.get("whole")),
+                            bool(y.get("frozen")), bool(z.get("frozen"))) if not same
+                        else "their union is not one simple outline"))
+            res[i] = dict(y, poly=u)
+            out.append("%s on %s: overlapping legs joined into one pour (%d corners)" % (z["net"], z["layer"], len(u)))
+            break
+        else:
+            res.append(z)
+    if out and len(res) > 1:                          # a joined pour may now meet another
+        res, more = merge_same_net_pours(res)
+        out += more
+    return res, out
+
+
+def _touch(pa, pb):
+    """Any edge of one crosses the other's, or a corner of one lies inside the other."""
+    return (any(_seg_x(pa[i - 1], pa[i], pb[j - 1], pb[j]) is not None for i in range(len(pa)) for j in range(len(pb)))
+            or any(_inside(p, pb) for p in pa) or any(_inside(p, pa) for p in pb))
+
+
 def _pours(notes, parts, pl, rules, base_zones):
     """notes["zones"] = the input's own zones + one per `pour` rule at the placed pins
     (place_intent.pour_poly); a pour that declares no priority is numbered by pour_priorities
@@ -628,6 +770,9 @@ def _pours(notes, parts, pl, rules, base_zones):
     mine_z = zones[len(base_zones):]
     for lyr, order in pour_priorities(mine_z):
         out.append("pour order on %s (fills first last): %s" % (lyr, " < ".join("%s %d" % o for o in order)))
+    mine_z, merged = merge_same_net_pours(mine_z)
+    out.extend(merged)
+    zones = zones[:len(base_zones)] + mine_z
     notes["zones"] = zones
     if pv:
         notes["pour_vias"] = pv
