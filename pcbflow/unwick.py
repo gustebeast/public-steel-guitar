@@ -35,6 +35,7 @@ import sys
 import pcbnew
 import wx                                       # noqa: E402  (KiCad's python ships it)
 import frozen_wall  # noqa: E402  (the one frozen-band wall for post-route copper)
+import outline_room  # noqa: E402  (the board edge, for post-route copper)
 wx.DisableAsserts()                             # NO MODAL DIALOGS IN A BUILD STEP -- see route.py
 
 MM = pcbnew.ToMM
@@ -160,6 +161,7 @@ def main(stem):
     cap_mm = float(q.get("via_land_move_max", 1.5))
     board = pcbnew.LoadBoard(pcb)
     wall = frozen_wall.FrozenWall(board)
+    room = outline_room.OutlineRoom(board)
 
     vias = [t for t in board.GetTracks() if t.GetClass() == "PCB_VIA"]
     if not vias:
@@ -216,7 +218,8 @@ def main(stem):
                 a = 2 * math.pi * k / 24.0
                 x = vp.x + ring * step * math.cos(a)
                 y = vp.y + ring * step * math.sin(a)
-                if _clear(board, x, y, v, lands, FM(keep_mm), wall) and _drag_clear(board, v, x, y):
+                if (_clear(board, x, y, v, lands, FM(keep_mm), wall) and _drag_clear(board, v, x, y)
+                        and room.via_ok(x, y, v.GetWidth(pcbnew.F_Cu) / 2.0)):
                     best = (int(x), int(y), MM(int(ring * step)))
                     break
             if best:
