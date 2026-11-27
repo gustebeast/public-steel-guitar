@@ -2489,6 +2489,29 @@ def _vias_on_piece(board, net, uuids, zs, n, via_d=0.6, drill=0.3, step_mm=0.05)
                 if d <= reach:
                     cands.append((d, x, y, t.GetLayer()))
     cands.sort()
+    # ⚠ BUCKET THE OBSTACLES (brain_board fold12, 2026-11-27): a 102-track V5_PRE piece spanned
+    # half the board, and every 0.05 mm candidate was tested against every other-net shape in
+    # that box -- repair_planes ran 2159 s twice (fold11: 37 s) and found no site. Each obstacle
+    # is filed under the 1 mm cells its reach covers; a candidate asks only its own cell's.
+    # Same answers: the reach is each test's own interaction distance.
+    G = pcbnew.FromMM(1.0)
+
+    def _grid(items, bbox_of, reach_of):
+        g = {}
+        for it in items:
+            bb, rr = bbox_of(it), reach_of(it)
+            for gx in range(int((bb[0] - rr) // G), int((bb[2] + rr) // G) + 1):
+                for gy in range(int((bb[1] - rr) // G), int((bb[3] + rr) // G) + 1):
+                    g.setdefault((gx, gy), []).append(it)
+        return lambda q: g.get((int(q.x // G), int(q.y // G)), ())
+
+    def _sbb(t):
+        b_ = t[2].BBox()
+        return (b_.GetLeft(), b_.GetTop(), b_.GetRight(), b_.GetBottom())
+    others_at = _grid(others, _sbb, lambda t: r + clr + 2)
+    lands_at = _grid(lands, _sbb, lambda t: dr / 2.0 + pcbnew.FromMM(0.05) + 2)
+    holes_at = _grid(holes, lambda h: (h[0].x, h[0].y, h[0].x, h[0].y),
+                     lambda h: dr / 2.0 + h[1] / 2.0 + h2h + 2)
     got = []
     seen = set()
     # other nets' FILL is no obstacle, but their frozen band OUTLINES are (frozen_wall)
@@ -2503,17 +2526,17 @@ def _vias_on_piece(board, net, uuids, zs, n, via_d=0.6, drill=0.3, step_mm=0.05)
         if not room.via_ok(x, y, r):
             continue
         pt = pcbnew.VECTOR2I(x, y)
-        if any((hp - pt).EuclideanNorm() < dr / 2.0 + hd / 2.0 + h2h for hp, hd in holes):
+        if any((hp - pt).EuclideanNorm() < dr / 2.0 + hd / 2.0 + h2h for hp, hd in holes_at(pt)):
             continue
         if any((g - pt).EuclideanNorm() < dr + h2h for g in got):
             continue
         circ = pcbnew.SHAPE_CIRCLE(pt, r)
-        if any(sh.Collide(circ, clr) for _o, _L, sh in others):
+        if any(sh.Collide(circ, clr) for _o, _L, sh in others_at(pt)):
             continue
         # quality's test is the HOLE in the land (pad.HitTest(pos, drill/2)); a ring that only
         # touches a land is allowed there, so the hole is kept 0.05 mm clear of every land
         hole = pcbnew.SHAPE_CIRCLE(pt, int(dr / 2))
-        if any(sh.Collide(hole, pcbnew.FromMM(0.05)) for _o, _L, sh in lands):
+        if any(sh.Collide(hole, pcbnew.FromMM(0.05)) for _o, _L, sh in lands_at(pt)):
             continue
         landed = False
         for z, L in own:
