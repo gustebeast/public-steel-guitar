@@ -1202,6 +1202,7 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
     sat = {r_.get("cap") or r_.get("ref") for v in decaps.values() for r_ in v}
     order = sorted((r for r in free if r not in sat), key=lambda r: -area[r])
     placed_sat = set()
+    sat_of = {}         # satellite -> the anchor it was seated for (turn_for_hard lifts the group)
     miss = []
     # ⚠ A TIGHT LOOP'S PATH IS RESERVED BEFORE THE DECAPS TAKE IT (motor_ctrl from
     # footprints, 2026-11-11): satellites seated by radius, so U4's decaps (1.5 mm) went
@@ -1312,10 +1313,130 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
                                               fb if f0 is None else (fb | f0), ref, r, near_mm=nm_))
                     or (nm_ is not None and _drop_sat(G, parts, c, t, rots(c, rot[c]), pl, f0, ref, r, near_mm=nm_))
                     or (nm_ is not None and evict(c, t, ref, r, f0))
+                    or (nm_ is not None and pi.is_hard(r) and evict_soft(c, t, ref, r, f0))
                     or stranded(c, t, ref, r, f0)):
                 placed_sat.add(c)
+                sat_of[c] = ref
                 why[c] = "%s at %s [%s]" % (r["kind"], r.get("pin") or r.get("target"), r.get("src", ""))
                 seat(c)
+
+    # ⚠ A HARD SATELLITE MOVES WHAT HOLDS ITS ROOM (brain_board po18, 2026-11-26): C3 (U5's VIN
+    # HF cap, hard 2.55 mm to U5.2 AND U5.1, quality A28) found NO ROOM. U5 was first dropped
+    # turned 90 with pins 1/2 2.3 mm off the board's -Y edge: no seat within 2.55 of both, so C3
+    # was skipped -- and never tried again after the local pass turned U5 to 180, where its
+    # soft sibling C18 (3.0) then held the one seat. A hard rule is the datasheet's; a soft
+    # neighbour or the anchor's first turn is only a guess. So, for a hard satellite with no
+    # room: (1) a placed SOFT-only satellite on its pin's patch is lifted, the hard one seated,
+    # and the soft one re-seated by its own rule (evict_soft); (2) failing that, its free
+    # anchor is lifted with its satellites and tried at its other turns, kept at the first
+    # where every hard satellite seats (turn_for_hard). Neither found: the old NO ROOM.
+    def evict_soft(c, t, ref, r, f0):
+        P = pi.Placed(parts, pl)
+        mm = float(r["max_mm"])
+        tp = np.asarray(t, float)[None]
+        soft = {}
+        for rs_ in decaps.values():
+            for q in rs_:
+                x = q.get("cap") or q.get("ref")
+                if x in placed_sat and x in pl and x not in fixed and x != c and not _HARD.get(x):
+                    soft.setdefault(x, q)
+        cand = sorted((pi._poly_dist(P.crtyd(x), tp), x) for x in soft)
+        for d, x in [q for q in cand if q[0] < mm][:EVICT_TRIES]:
+            pose = _lift(G, parts, pl, x)
+            placed_sat.discard(x)
+            if _drop_sat(G, parts, c, t, rots(c, rot[c]), pl, f0, ref, r, near_mm=mm):
+                rx = soft[x]
+                ax = (rx.get("pin") or rx.get("target")).split(".")[0]
+                tx = _seat(rx, pi.Placed(parts, pl), pl, ax) if ax in pl else pose[:2]
+                if _drop_sat(G, parts, x, tx, rots(x, pose[2]), pl, inreg.get(x), ax, rx):
+                    placed_sat.add(x)
+                    s_ = _slack(rx, parts, pl)
+                    log.append("HARD SATELLITE ROOM: %s (soft) lifted off %s's pin patch for hard %s; "
+                               "re-seated by its rule, slack %.2f" % (x, ref, c, s_))
+                    why[x] = (why.get(x, "") + "; moved for hard %s" % c).lstrip("; ")
+                    return True
+                _lift(G, parts, pl, c)
+            _put_back(G, parts, pl, x, pose)
+            placed_sat.add(x)
+        return False
+
+    def hard_left(ref):
+        return [r for r in decaps.get(ref, ()) if pi.is_hard(r)
+                and (r.get("cap") or r.get("ref")) in idx
+                and (r.get("cap") or r.get("ref")) not in placed_sat
+                and (r.get("cap") or r.get("ref")) not in fixed]
+
+    def group(ref):
+        out = []
+        for c, a in list(sat_of.items()):
+            if a == ref and c in pl and c in placed_sat:
+                out += [c] + group(c)
+        return out
+
+    def turn_for_hard(ref):
+        # ...with its HARD PARTNERS (po18 diagnosis): L1, a part placed before U5 and held by a
+        # hard `near` to U5.8, pinned U5's turn -- at 0 / 180 / 270 no seat kept U5.8 within 3
+        # mm of where L1 already stood ("no seat" at every turn). The free parts a hard rule ties
+        # to the anchor (outside its satellite group) are lifted too and re-dropped round each
+        # new turn, nearest their old seat, under their own hard rules.
+        left = sorted({r.get("cap") or r.get("ref") for r in hard_left(ref)})
+        g0 = group(ref)
+        mates = sorted({x for r in _HARD.get(ref, ()) for x in _rule_refs(r)
+                        if x != ref and x in pl and x in idx and x not in fixed and x not in g0})
+        old = {x: list(pl[x]) for x in [ref] + g0 + mates}
+        old_of = {x: sat_of[x] for x in g0}
+
+        def undo():
+            for x in group(ref):
+                _lift(G, parts, pl, x)
+                placed_sat.discard(x)
+                sat_of.pop(x, None)
+            for x in mates:
+                if x in pl:
+                    _lift(G, parts, pl, x)
+            if ref in pl:
+                _lift(G, parts, pl, ref)
+
+        undo()
+        f0 = inreg.get(ref)
+        tried = []
+        # each other turn, first round the anchor's own seat (its neighbourhood already fits it),
+        # then round its net-graph target
+        turns = [a for a in rots(ref, rot[ref]) if abs((a - old[ref][2] + 180.0) % 360.0 - 180.0) > 0.5]
+        for a, t0, at in [(a, t0, at) for a in turns for t0, at in ((old[ref][:2], "its seat"), (target[ref], "target"))]:
+            fb = _apart_forbid(G, parts, pl, ref, rules)
+            if not ((fb is not None and _drop(G, parts, ref, t0, [a], pl, fb if f0 is None else (fb | f0)))
+                    or _drop(G, parts, ref, t0, [a], pl, f0)):
+                tried.append("%g by %s: no seat" % (a, at))
+                continue
+            lost = [x for x in mates if not _drop(G, parts, x, old[x][:2], rots(x, old[x][2]), pl, inreg.get(x))]
+            if lost:
+                tried.append("%g by %s: no seat for %s" % (a, at, " ".join(lost)))
+                undo()
+                continue
+            seat(ref)
+            tried.append("%g by %s at (%.1f, %.1f): %s still without room" % (
+                a, at, pl[ref][0], pl[ref][1], " ".join(sorted({r.get("cap") or r.get("ref") for r in hard_left(ref)})) or "none"))
+            if not hard_left(ref):
+                log.append("HARD SATELLITE ROOM: %s turned %g -> %g (%.1f mm from its first seat%s) so its hard "
+                           "satellite(s) %s seat at their pins" % (ref, old[ref][2], a,
+                                                                   math.dist(old[ref][:2], pl[ref][:2]),
+                                                                   ", re-seated with " + " ".join(mates) if mates else "",
+                                                                   " ".join(left)))
+                why[ref] = why.get(ref, "") + "; turned %g -> %g for hard %s" % (old[ref][2], a, " ".join(left))
+                rot[ref] = a
+                return True
+            undo()
+        log.append("HARD SATELLITE NO ROOM: %s (at %g) turned for %s -- %s" % (ref, old[ref][2], " ".join(left),
+                                                                             "; ".join(tried) or "no other turn allowed"))
+        _put_back(G, parts, pl, ref, old[ref])
+        for x in mates:
+            _put_back(G, parts, pl, x, old[x])
+        for x in g0:
+            _put_back(G, parts, pl, x, old[x])
+            placed_sat.add(x)
+            sat_of[x] = old_of[x]
+        return False
 
     for ref in sorted(fixed) + order:
         if ref not in fixed:
@@ -1341,6 +1462,8 @@ def _place(parts, notes, rules, keep=(), hint_out=None):
             if ref in promoted:
                 why[ref] += " (constrained: placed before the satellites)"
         seat(ref)
+        if ref not in fixed and ref in pl and hard_left(ref):
+            turn_for_hard(ref)
     for c in sorted(sat - placed_sat - fixed):
         if c in idx:
             if _drop(G, parts, c, target[c], rots(c, rot[c]), pl, inreg.get(c)):
