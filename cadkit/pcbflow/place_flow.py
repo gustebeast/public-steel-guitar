@@ -823,6 +823,15 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
         say("REGION LEAK -- the flow stops before placement (PCBFLOW_REGION_LEAK_STOP=1)")
         return 2
     say("intent: %d rules%s" % (len(rules), (" (+ " + ", ".join(added) + ")") if added else ""))
+    # ⚠ A GUESSED PART IS SAID BY NAME (lead 2026-11-26, brain_board C65 / C119): every cap
+    # auto_decaps assigned by fallback -- no part named in its description -- with the part it
+    # picked, so a wrong guess shows on the first run, not 27 mm off on a laid-out board
+    _desc = pi.read_descriptions(stem + ".net") or {}
+    for r_ in rules:
+        if str(r_.get("assigned", "")).startswith("fallback"):
+            c_ = r_.get("cap") or r_.get("ref")
+            say("auto_decaps FALLBACK %s -> %s (%s; description %r)"
+                % (c_, r_.get("pin") or r_.get("target"), r_["assigned"], _desc.get(c_, "")))
     if widened:
         say("net widths from `current`: " + ", ".join(widened))
 

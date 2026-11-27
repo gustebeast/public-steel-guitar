@@ -1270,6 +1270,7 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
                 n_ = min(sorted(nets), key=lambda x: npads[x])
                 pinpair.append({"kind": "decap", "cap": c, "pin": "%s.%s" % (u, on[u][n_]), "max_mm": max_mm,
                               "hard": False, "weight": 1.0, "src": "auto_decaps (netlist)",
+                              "assigned": "across two pins of %s" % u,
                               "why": "%s across %s and %s, both pins of %s: at them" % ((c,) + tuple(sorted(nets)) + (u,))})
             continue
         if not (nets & set(ground)) or len(nets) != 2:
@@ -1304,8 +1305,17 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
                     except (KeyError, ValueError):
                         d = 0.0
                     named_c.append((d, "%s.%s" % (x, q["num"])))
+        how = None
         if named_c and not any(t[1].split(".")[0] in named_parts for t in cands):
             cands = named_c
+            how = "named %s" % ",".join(sorted({t[1].split(".")[0] for t in named_c}))
+        # ...and a named part that IS a candidate decides it, whatever its prefix (brain_board C65
+        # "U5 buck output HF bypass, at L1": L1 is a source on V5_PRE, but only U-names counted
+        # below, so the nearest pin -- U211.1, 26.8 mm off -- took it)
+        named_in = [t for t in cands if t[1].split(".")[0] in named_parts]
+        if how is None and named_in:
+            cands = named_in
+            how = "named %s" % ",".join(sorted({t[1].split(".")[0] for t in named_in}))
         if not cands:
             continue
         # ⚠ THE SCHEMATIC SAYS WHOSE IT IS (motor_ctrl trial, 2026-11-11): "U8 switch
@@ -1323,6 +1333,7 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
             said = said if len(said) == 1 else []
         if said:
             cands = [t for t in cands if t[1].split(".")[0] == said[0]]
+            how = how or "said %s" % said[0]
         if sp_name:
             # the description names the pin: "DAC CPVDD" -> the declared CPVDD pin (of the IC
             # it names, if it names one), whatever is nearest today
@@ -1330,6 +1341,7 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
             named = [t for t in cands if sp_name.get(t[1].split(".")[0], {}).get(t[1].split(".", 1)[1]) in words]
             if named:
                 cands = named
+                how = how or "pin named"
         if not placed:
             # ⚠ A FRESH BOARD HAS NO DISTANCES (motor_ctrl trial, 2026-11-11): every pin read
             # 0 mm and the "nearest" was the first in sort order -- all eleven +3V3 caps to
@@ -1353,14 +1365,22 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
                                                    pload[t[1]], _pin_key(t[1])))
         else:
             d, pin = min(cands)
+        # ⚠ SAY WHEN THE PART WAS A GUESS (lead 2026-11-26, brain_board C65 / C119): a cap whose
+        # description names no part on its rail goes to the nearest supply pin (placed) or is dealt
+        # out (unplaced). C65 "buck output HF bypass" went to U211.1 on V5_PRE and sat 26.8 mm off
+        # it under a snapshot before anyone saw. `assigned` says how each cap's part was chosen;
+        # "fallback ..." is printed by place_flow on the first run, with the part it picked.
+        how = how or ("fallback: nearest of %d %s pin(s)" % (len(cands), sup) if placed
+                      else "fallback: dealt out among %d %s pin(s), unplaced" % (len(cands), sup))
         f = _farads((values or {}).get(c))
         if f is not None and f >= bulk_f:
             rules.append({"kind": "near", "ref": c, "target": pin.split(".")[0], "max_mm": bulk_mm, "hard": False,
-                          "why": "%s, bulk on %s: beside the IC it feeds" % (c, sup), "src": "auto_decaps (netlist)"})
+                          "why": "%s, bulk on %s: beside the IC it feeds" % (c, sup), "src": "auto_decaps (netlist)",
+                          "assigned": how})
         else:
             rules.append({"kind": "decap", "cap": c, "pin": pin, "max_mm": max_mm, "hard": False, "weight": 1.0,
                           "why": "%s across %s and ground: at its supply pin" % (c, sup), "src": "auto_decaps (netlist)",
-                          "_f": f if f is not None else 0.0, "_rail": sup})
+                          "_f": f if f is not None else 0.0, "_rail": sup, "assigned": how})
     # ⚠ EVERY IC ON A RAIL GETS ONE (optical fold, 2026-11-11). Nearest-pin assignment let
     # U6's eight +3V3D pins take every +3V3D cap, and the LDO U8 whose OUTPUT is +3V3D got
     # none: quality A2 failed U8.2 (nearest cap 5.4 mm). And on a fresh board, with no
@@ -1436,6 +1456,7 @@ def auto_decaps(parts, notes, values=None, max_mm=3.0, bulk_mm=8.0, bulk_f=1.5e-
                 num = wp if wp is not None else next(q["num"] for q in parts[u]["pads"] if q["net"] == net and q["num"])
                 give["pin"] = "%s.%s" % (u, num)
                 give["why"] = "%s across %s and ground: %s's own (it had none; given by %s)" % (give["cap"], net, u, d)
+                give["assigned"] = "given to %s by %s (every IC on a rail gets one)" % (u, d)
                 by.setdefault(u, []).append(give)
                 have.add((u, net))
     # ⚠ ONE TIGHT CAP PER SUPPLY PIN; EXTRA CAPS GO LOOSE (lead ruling, motor_ctrl from
