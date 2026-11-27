@@ -1758,23 +1758,40 @@ def pair_twists(parts, pl, groups):
                          key=lambda ab: float(np.hypot(*(mid[ab[0]] - mid[ab[1]]))))
             hops.append((ra, rb))
             inn.append(rb)
+        def lands(r, other):
+            """Every pin pair the pair can leave r from towards `other`: the closest-spaced
+            pairs (within 25 %) of the land nearest the other end (within 1 mm).
+            ⚠ A LAND CAN OFFER BOTH PIN ORDERS (brain_board fold13, 2026-11-27): a USB-C
+            receptacle carries D+ / D- as A6 / A7 and again as B6 / B7, mirrored, so A6-A7,
+            A6-B7 and B6-A7 are all 0.5 mm pairs of opposite order. Judging one of them read
+            J2 (USBB_J FL4 -> J2) twisted and the identical J1 straight, by which pair a
+            0.1 mm rounding put first. The router can leave on either; judge them all."""
+            def far(ab):
+                return float(np.hypot(*((P.pad(r, ab[0]["num"]) + P.pad(r, ab[1]["num"])) / 2.0 - mid[other])))
+
+            def gap(ab):
+                return float(np.hypot(*(P.pad(r, ab[0]["num"]) - P.pad(r, ab[1]["num"]))))
+            f0 = min(far(ab) for ab in on[r])
+            near = [ab for ab in on[r] if far(ab) <= f0 + 1.0]
+            g0 = min(gap(ab) for ab in near)
+            return [ab for ab in near if gap(ab) <= 1.25 * g0 + 1e-6]
+
         for ra, rb in hops:
-            if True:
-                def pick(r, other):          # the pin pair nearest the other end, then the closest-spaced
-                    return min(on[r], key=lambda ab: (
-                        round(float(np.hypot(*((P.pad(r, ab[0]["num"]) + P.pad(r, ab[1]["num"])) / 2.0 - mid[other]))), 1),
-                        float(np.hypot(*(P.pad(r, ab[0]["num"]) - P.pad(r, ab[1]["num"]))))))
-                (qa, qa2), (qb, qb2) = pick(ra, rb), pick(rb, ra)
-                na, wa = end(ra, qa, qa2)
-                nb, wb = end(rb, qb, qb2)
-                if na is None or nb is None:
-                    out.append((g.get("name") or pn, ra, rb, "unknown: " + (wa or wb)))
-                    continue
-                da = P.pad(ra, qa["num"]) - P.pad(ra, qa2["num"])
-                db = P.pad(rb, qb["num"]) - P.pad(rb, qb2["num"])
-                sa = np.sign(na[0] * da[1] - na[1] * da[0])
-                sb = np.sign(-nb[0] * db[1] + nb[1] * db[0])
-                out.append((g.get("name") or pn, ra, rb, "twisted" if sa != sb else "straight"))
+            verdicts, why = set(), ""
+            for qa, qa2 in lands(ra, rb):
+                for qb, qb2 in lands(rb, ra):
+                    na, wa = end(ra, qa, qa2)
+                    nb, wb = end(rb, qb, qb2)
+                    if na is None or nb is None:
+                        why = why or wa or wb
+                        continue
+                    da = P.pad(ra, qa["num"]) - P.pad(ra, qa2["num"])
+                    db = P.pad(rb, qb["num"]) - P.pad(rb, qb2["num"])
+                    sa = np.sign(na[0] * da[1] - na[1] * da[0])
+                    sb = np.sign(-nb[0] * db[1] + nb[1] * db[0])
+                    verdicts.add("twisted" if sa != sb else "straight")
+            out.append((g.get("name") or pn, ra, rb,
+                        "straight" if "straight" in verdicts else "twisted" if verdicts else "unknown: " + why))
     return out
 
 
