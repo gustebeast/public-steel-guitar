@@ -448,8 +448,16 @@ def _zone_point(board, net, layer, toward, inset=0.35):
 
 
 def _island_retarget(board, net, layer, p, inset=0.35):
-    """((layer, start), (layer, target)) joining the pour island at `p` on `layer` to the
-    nearest same-net copper outside it, or None when `p` is in no piece of the net's pour."""
+    """((layer, start), (layer, target), pads) joining the pour island at `p` on `layer` to the
+    nearest same-net copper outside it, or None when `p` is in no piece of the net's pour.
+    `pads` are the island's own pads ("U220.18"), for the current the join must carry.
+
+    ⚠ THE JOIN STARTS AT THE ISLAND'S COPPER NEAREST THE REST, NOT AT ITS FIRST PAD
+    (brain_board fold12, 2026-11-27). BST_SW's pour broke into the switch node (115.7 mm2:
+    L204, Q208/Q209, C299) and a 0.8 mm2 sliver on U220.18, 0.2 mm below it. The piece
+    nearest DRC's point was the big one and the join started at its first pad, 15.1 mm from
+    the sliver: a ROUTER OPEN over a 0.2 mm gap. The start is now the island point (pad or
+    inset fill vertex) nearest any outside copper."""
     lid = board.GetLayerID(layer)
     P = pcbnew.VECTOR2I(pcbnew.FromMM(p[0]), pcbnew.FromMM(p[1]))
     pieces = []
@@ -470,35 +478,42 @@ def _island_retarget(board, net, layer, p, inset=0.35):
     isl = pieces[min(near)[1]]
     others = [pc for i, pc in enumerate(pieces) if i != min(near)[1]]
     inside = lambda q: isl.Contains(q) or isl.Collide(q, pcbnew.FromMM(0.05))
-    start = None
+    pads, starts = [], []
     for f in board.GetFootprints():
         for q in f.Pads():
             if q.GetNetname() == net and q.IsOnLayer(lid) and inside(q.GetPosition()):
-                start = (layer, (pcbnew.ToMM(q.GetPosition().x), pcbnew.ToMM(q.GetPosition().y)))
+                pads.append("%s.%s" % (f.GetReference(), q.GetNumber()))
+                starts.append(q.GetPosition())
+    d = pcbnew.FromMM(inset)
+    o = isl.Outline(0)
+    for i in range(o.PointCount()):
+        v = o.CPoint(i)
+        for dx, dy in ((d, 0), (-d, 0), (0, d), (0, -d)):
+            q = pcbnew.VECTOR2I(v.x + dx, v.y + dy)
+            if isl.Contains(q):
+                starts.append(q)
                 break
-        if start:
-            break
-    if start is None:
-        start = (layer, _zone_point(board, net, layer, p, inset) or p)
-    sx, sy = pcbnew.FromMM(start[1][0]), pcbnew.FromMM(start[1][1])
+    if not starts:
+        P0 = pcbnew.VECTOR2I(*[pcbnew.FromMM(c) for c in (_zone_point(board, net, layer, p, inset) or p)])
+        starts.append(P0)
     cands = []
     for f in board.GetFootprints():
         for q in f.Pads():
             c = q.GetPosition()
-            if q.GetNetname() == net and not inside(c):
+            if q.GetNetname() == net and not isl.Collide(c, pcbnew.FromMM(0.3)):
                 L = layer if q.IsOnLayer(lid) else ("F.Cu" if q.IsOnLayer(pcbnew.F_Cu) else "B.Cu")
                 cands.append((L, c))
     for t in board.GetTracks():
         if t.GetNetname() != net:
             continue
+        # copper touching the island is the island's own (0.3 mm: a track end on its edge)
         if t.GetClass() == "PCB_VIA":
-            if not inside(t.GetPosition()):
+            if not isl.Collide(t.GetPosition(), pcbnew.FromMM(0.3)):
                 cands.append((layer, t.GetPosition()))
         else:
             for c in (t.GetStart(), t.GetEnd()):
-                if not inside(c):
+                if not isl.Collide(c, pcbnew.FromMM(0.3)):
                     cands.append((board.GetLayerName(t.GetLayer()), c))
-    d = pcbnew.FromMM(inset)
     for piece in others:
         o = piece.Outline(0)
         for i in range(o.PointCount()):
@@ -510,8 +525,10 @@ def _island_retarget(board, net, layer, p, inset=0.35):
                     break
     if not cands:
         return None
-    L, c = min(cands, key=lambda lc: (lc[1].x - sx) ** 2 + (lc[1].y - sy) ** 2)
-    return start, (L, (pcbnew.ToMM(c.x), pcbnew.ToMM(c.y)))
+    S, (L, c) = min(((s_, lc) for s_ in starts for lc in cands),
+                    key=lambda t: (t[1][1].x - t[0].x) ** 2 + (t[1][1].y - t[0].y) ** 2)
+    mm = lambda v: (pcbnew.ToMM(v.x), pcbnew.ToMM(v.y))
+    return (layer, mm(S)), (L, mm(c)), pads
 
 
 def _open_count(board, net):
@@ -1211,6 +1228,46 @@ def _island_pads(board, conn, net, it):
     return frozenset(pads) or None
 
 
+def _cut_amps(board, net, pads, paths):
+    """The stated current between a pour island (its pads, and those its tracks reach) and the
+    rest of the net: the quality.power_paths with an end on each side.
+
+    ⚠ A ZONE-TO-ZONE BREAK WAS SIZED AT THE NET'S BIGGEST CURRENT (brain_board fold11/12,
+    2026-11-27). DRC names both ends of an island break by one zone corner, _island_pads
+    finds no copper there, and the break kept the net's max: BST_SW's 6.5 A asked 2.70 mm
+    (6.15 inner) to join U220.18 -- the LM5122's SW pin, the high-side gate drive's return,
+    which carries the driver's gate charge, not switch current -- and it was left open as
+    CAN'T CARRY. The island is placed by _island_retarget, so its current is judged too."""
+    board.BuildConnectivity()
+    conn = board.GetConnectivity()
+    by = {"%s.%s" % (f.GetReference(), q.GetNumber()): q for f in board.GetFootprints()
+          for q in f.Pads() if q.GetNetname() == net}
+    todo = [by[k] for k in pads if k in by]
+    seen = {x.m_Uuid.AsString() for x in todo}
+    left = set()
+    while todo:
+        x = todo.pop()
+        if x.GetClass() == "PAD":
+            left.add("%s.%s" % (x.GetParentFootprint().GetReference(), x.GetNumber()))
+        for y in conn.GetConnectedItems(x):
+            k = y.m_Uuid.AsString()      # pads, tracks and vias only: the pour is what is split
+            if k not in seen and y.GetNetname() == net and y.GetClass() != "ZONE":
+                seen.add(k)
+                todo.append(y)
+    del conn
+    amps = 0.0
+    for p_ in paths:
+        if p_["net"] != net or not float(p_.get("amps", 0) or 0) > 0:
+            continue
+        ends = [p_["from"]] + (p_["to"] if isinstance(p_["to"], list) else [p_["to"]])
+        ends = [e for x in ends for e in x.split("+")]
+        if any(e in left for e in ends) and any(e not in left for e in ends):
+            amps += float(p_["amps"])
+    print("close_last: %s island %s carries %.2f A of stated current"
+          % (net, ",".join(sorted(left))[:40], amps))
+    return amps
+
+
 def _break_amps(board, todo, raw, paths):
     """The stated current through each todo break (None = unjudged: use the net's max)."""
     paths = [p_ for p_ in paths if float(p_.get("amps", 0) or 0) > 0]
@@ -1346,8 +1403,11 @@ def main(stem):
         if za and zb and abs(pa[0] - pb[0]) + abs(pa[1] - pb[1]) < 0.05:
             rt = _island_retarget(board, net, la, pa)
             if rt:
-                (la, pa), (lb, pb) = rt
+                (la, pa), (lb, pb), _ipads = rt
                 za = zb = ta = tb = False
+                if brk_amps[_i] is None and _ipads:
+                    brk_amps[_i] = _cut_amps(board, net, _ipads,
+                                             (_notes.get("quality") or {}).get("power_paths") or ())
                 print("close_last: %s -- pour island at (%.2f, %.2f): joining it from (%.2f, %.2f) "
                       "to the net's copper at (%.2f, %.2f) on %s" % (net, rt[0][1][0], rt[0][1][1],
                                                                        pa[0], pa[1], pb[0], pb[1], lb))
