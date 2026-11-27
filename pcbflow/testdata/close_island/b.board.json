@@ -1,0 +1,15 @@
+{
+ "plane_layers": [],
+ "quality": {
+  "power_paths": [
+   {
+    "net": "SW",
+    "from": "L1.2",
+    "to": [
+     "Q1.1"
+    ],
+    "amps": 6.5
+   }
+  ]
+ }
+}
