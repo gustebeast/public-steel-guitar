@@ -525,6 +525,17 @@ def _island_retarget(board, net, layer, p, inset=0.35):
                     break
     if not cands:
         return None
+    # the island's own copper nearest each candidate: its outline's nearest point, stepped
+    # `inset` into the fill (a rectangle's corners alone left a 0.2 mm gap joined from 6 mm off)
+    oc = isl.Outline(0)
+    for _L, c in cands:
+        e = oc.NearestPoint(c)
+        dx, dy = e.x - c.x, e.y - c.y
+        h = math.hypot(dx, dy)
+        if h > 0:
+            q = pcbnew.VECTOR2I(int(e.x + dx / h * d), int(e.y + dy / h * d))
+            if isl.Contains(q):
+                starts.append(q)
     S, (L, c) = min(((s_, lc) for s_ in starts for lc in cands),
                     key=lambda t: (t[1][1].x - t[0].x) ** 2 + (t[1][1].y - t[0].y) ** 2)
     mm = lambda v: (pcbnew.ToMM(v.x), pcbnew.ToMM(v.y))
