@@ -66,6 +66,8 @@ def main(run, plain, swapped):
 
 
 if __name__ == "__main__":
+    import _testargs  # noqa: E402
+    _testargs.need(3, 'RUN_DIR PLAIN.net SWAPPED.net')
     bad = main(*[os.path.abspath(x) for x in sys.argv[1:4]])
     for x in bad[:20]:
         print("  FAIL:", x)

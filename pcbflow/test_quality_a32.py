@@ -18,6 +18,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import quality as Q  # noqa: E402
 
+import _testargs  # noqa: E402
+_testargs.need(1, '<stem> of an esc12 brain_board run, e.g. rPS_12a2/output_board')
 ctx = Q.Ctx(sys.argv[1])
 orig = copy.deepcopy(ctx.q.get("power_paths"))
 bad = []

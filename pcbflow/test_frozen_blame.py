@@ -20,6 +20,8 @@ except Exception:
     pass
 import frozen_check  # noqa: E402
 
+import _testargs  # noqa: E402
+_testargs.need(1, "<dir> holding rPS_11a4's routed board as b.kicad_pcb / b.kicad_pro / b.frozen_base.json")
 src = os.path.abspath(sys.argv[1])
 tmp = tempfile.mkdtemp(prefix="fzb-")
 for ext in (".kicad_pcb", ".kicad_pro", ".frozen_base.json"):
