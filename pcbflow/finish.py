@@ -747,7 +747,12 @@ def finish(stem, rounds=1, keep_route=False):
             _left = CLOSE_TOTAL_S - _close_spent(_close_cpu0)
             os.environ["CLOSE_LAST_BUDGET_S"] = "%.0f" % max(30.0, min(CLOSE_ATTEMPT_S, _left, _user_budget))
             try:
-                _run("close_last.py", stem)
+                # close_last's own children (widepath, the pour guard) are its CPU too: it says
+                # how much, and the total budget counts it (close_last CHILD_CPU, 2026-11-27)
+                _cl = _run("close_last.py", stem)
+                _cc = re.findall(r"CHILD_CPU ([0-9.]+) s", _cl)
+                if _cc:
+                    STEP_CPU["close_last.py"] = STEP_CPU.get("close_last.py", 0.0) + float(_cc[-1])
                 if not _attempt:
                     _drc(stem)
                     _close_order(stem)

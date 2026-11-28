@@ -866,6 +866,21 @@ def flow(d, intent_path, auto=True, soft=False, skip_finish=False, fold=False, k
         notes["back_refs"] = sorted(set(notes.get("back_refs", ())) | set(back))
         print("place_flow: two-sided: %d part(s) on the back (B.Cu)" % len(back))
         log.write("## two-sided: %s on the back\n" % " ".join(back))
+    # a kelvin tie sits on its shunt's land (place_intent.kelvin_seats): seated as a group member
+    # when no rule places it, refused when a rule holds it off the land; then no two held parts
+    # may overlap (place_intent.hold_overlaps) -- both before any placement is spent
+    _vals = pi.read_values(stem + ".net") if os.path.exists(stem + ".net") else {}
+    rules, klines_, kbad_ = pi.kelvin_seats(rules, parts, _vals)
+    for k_ in klines_:
+        print("place_flow: KELVIN " + k_)
+        log.write("## kelvin: %s\n" % k_)
+    if kbad_:
+        raise SystemExit("place_flow: intent refused -- %d kelvin tie(s) not on their shunt land:\n  %s"
+                         % (len(kbad_), "\n  ".join(kbad_)))
+    hov_ = pi.hold_overlaps(rules, parts, _vals)
+    if hov_:
+        raise SystemExit("place_flow: intent refused -- %d pair(s) of held parts overlap (two holds the "
+                         "placer seats as told):\n  %s" % (len(hov_), "\n  ".join(hov_[:20])))
     # an `access` / `mate` part's courtyard holds its reach (tool circle, plug stroke), ON DISK like the back side above, so
     # place_init, place_cells and every check keep neighbours out of the probe's reach
     parts, grown_ = pi.grow_reach(parts, rules)

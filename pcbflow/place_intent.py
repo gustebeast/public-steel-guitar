@@ -2856,3 +2856,202 @@ def feasibility(rules, parts, notes):
                          "it can hold only along their border; bind it with its IC"
                          % (i, sub, rs or "board", r["kind"], r["max_mm"], tgt, ra or "board"))
     return bad, split
+
+
+# ----------------------------------------------------------------------------- kelvin ties
+# ⚠ A KELVIN TIE IS SEATED ON ITS SHUNT'S LAND, NOT BY THE NET GRAPH (brain_board fold12-14,
+# 2026-11-27): NT11 / NT12 / NT21 / NT22 (PA/PB sense ties) have no courtyard, the net graph
+# put each one at the quadratic optimum of its nets -- NT11 in the middle of the FL1.4 -> R70.1
+# path, its PA_ISENP_K pad carving the PA_VBUS pour to 0.60 mm -- and quality A30 read all four
+# NOT ON a shunt land for three folds. A tie with one pad on a shunt's net is now a member of a
+# hard group on that shunt (kelvin_seats): its pad centred on the land's edge, the tie pointing
+# away from the shunt square to the current axis, both ties of one shunt on the same side. A
+# rule that already places the tie is kept and checked instead (refused off the land).
+SHUNT_VALUE = re.compile(r"^\s*\d+(\.\d+)?\s*m(R|Ohm|Ω)", re.I)
+
+
+def kelvin_ties(parts, values):
+    """({tie: (shunt, land pad num, tie pad num on the land)}, [(tie, why)]) -- every two-pad net
+    tie whose pad shares a net with a pad of a two-pad milliohm resistor; a tie that touches more
+    than one shunt land is ambiguous and listed, not guessed."""
+    shunt_pads = {}
+    for r, p in parts.items():
+        if re.match(r"R\d", r) and SHUNT_VALUE.match(values.get(r, "") or "") and len(p["pads"]) == 2:
+            for q in p["pads"]:
+                if q.get("net"):
+                    shunt_pads.setdefault(q["net"], []).append((r, q["num"]))
+    out, amb = {}, []
+    for t, p in sorted(parts.items()):
+        if not is_net_tie(t) or len(p["pads"]) != 2:
+            continue
+        hits = [(s, n, q["num"]) for q in p["pads"] for s, n in shunt_pads.get(q.get("net"), ())]
+        if len(hits) == 1:
+            out[t] = hits[0]
+        elif len(hits) > 1:
+            amb.append((t, "touches %s" % ", ".join("%s.%s" % (s, n) for s, n, _ in hits)))
+    return out, amb
+
+
+def _pad(part, num):
+    return next(q for q in part["pads"] if q["num"] == num)
+
+
+def kelvin_seat(parts, tie, shunt, land, tpad):
+    """[dx, dy, rot] of the tie in the shunt's frame: the tie's land pad centred on the land's
+    edge square to the shunt's axis (its pad 1 -> pad 2 turned +90 degrees), its other pad
+    pointing outward."""
+    S, T = parts[shunt], parts[tie]
+    L = _pad(S, land)
+    other = next(q for q in S["pads"] if q["num"] != land)
+    p1, p2 = sorted((L, other), key=lambda q: _pin_key("R." + q["num"]))
+    ax = np.subtract(p2["xy"], p1["xy"], dtype=float)
+    ax /= max(float(np.hypot(*ax)), 1e-9)
+    n = np.array([-ax[1], ax[0]])
+    c = _rot([[L["size"][0] / 2.0, L["size"][1] / 2.0], [L["size"][0] / 2.0, -L["size"][1] / 2.0]],
+             L.get("rot", 0.0))
+    h = float(np.abs(c @ n).max())
+    a = _pad(T, tpad)
+    b = next(q for q in T["pads"] if q["num"] != tpad)
+    d = np.subtract(b["xy"], a["xy"], dtype=float)
+    dr = round(math.degrees(math.atan2(n[1], n[0]) - math.atan2(d[1], d[0])), 6) % 360.0
+    off = np.asarray(L["xy"], float) + h * n - _rot([a["xy"]], dr)[0]
+    return [round(float(off[0]), 4), round(float(off[1]), 4), dr]
+
+
+def _group_of(rules, ref):
+    """(rule, as_anchor) for the group that holds ref, or (None, None)."""
+    for r in rules:
+        if r.get("kind") == "group":
+            if r["anchor"] == ref:
+                return r, True
+            if ref in r["members"]:
+                return r, False
+    return None, None
+
+
+def _on_land(parts, shunt, spose, land, tie, tpose, tpad):
+    """True when the tie's land pad centre lies on the shunt land (inside it or on its edge)."""
+    L = _pad(parts[shunt], land)
+    w, h = L["size"][0] / 2.0, L["size"][1] / 2.0
+    box = _rot([[-w, -h], [w, -h], [w, h], [-w, h]], L.get("rot", 0.0)) + np.asarray(L["xy"], float)
+    box = np.asarray(spose[:2], float) + _rot(box, spose[2])
+    pt = (np.asarray(tpose[:2], float) + _rot([_pad(parts[tie], tpad)["xy"]], tpose[2])[0])[None]
+    if _inside(box, pt)[0]:
+        return True
+    return min(float(_seg_dist(pt, box[i], box[(i + 1) % 4])[0]) for i in range(4)) < 2e-3
+
+
+def kelvin_seats(rules, parts, values):
+    """(rules, lines, refused): every kelvin tie no rule places joins a hard group on its shunt
+    (the shunt's own group when it has one, as anchor or member). A tie a rule already places is
+    checked instead: off its land -- or held while its shunt is placed apart, so its land cannot
+    be known before placement -- it is refused."""
+    ties, amb = kelvin_ties(parts, values)
+    rules = [dict(r, members=dict(r["members"])) if r.get("kind") == "group" else r for r in rules]
+    fixed = {r["ref"]: (r["xy"][0], r["xy"][1], float(r.get("rot", 0.0)))
+             for r in rules if r.get("kind") == "fixed"}
+    placed = {r["ref"] for r in rules if r.get("kind") in ("fixed", "pin", "panel")}
+    lines, bad = [], ["%s %s -- name its shunt with a group rule" % a for a in amb]
+    for t, (s, land, tpad) in sorted(ties.items()):
+        if parts[t].get("side", "F") != parts[s].get("side", "F"):
+            bad.append("%s is on %s, its shunt %s on %s" % (t, parts[t].get("side", "F"), s,
+                                                          parts[s].get("side", "F")))
+            continue
+        g, g_anchor = _group_of(rules, t)
+        if t in placed or g is not None:
+            if g is not None and (g["anchor"] == s or s in g["members"]):
+                spose = (0.0, 0.0, 0.0) if g["anchor"] == s else tuple(g["members"][s])
+                tpose = (0.0, 0.0, 0.0) if g_anchor else tuple(g["members"][t])
+            elif t in fixed and s in fixed:
+                spose, tpose = fixed[s], fixed[t]
+            else:
+                bad.append("%s: held by a rule while its shunt %s is placed apart -- its land cannot be "
+                           "checked; drop the tie's rule (it is seated on %s.%s automatically)" % (t, s, s, land))
+                continue
+            if _on_land(parts, s, spose, land, t, tpose, tpad):
+                lines.append("%s on %s.%s (by its own rule)" % (t, s, land))
+            else:
+                bad.append("%s: pad %s is NOT ON %s.%s -- the sense would read the pour, not the shunt; drop "
+                           "the tie's rule (it is seated automatically) or put the pad on the land"
+                           % (t, tpad, s, land))
+            continue
+        off = kelvin_seat(parts, t, s, land, tpad)
+        sg, s_anchor = _group_of(rules, s)
+        if sg is None:
+            sg = dict(kind="group", anchor=s, members={}, hard=True, src="kelvin_seats (netlist)",
+                      why="kelvin ties on %s's lands (place_intent.kelvin_seats)" % s)
+            rules.append(sg)
+            s_anchor = True
+        if s_anchor:
+            sg["members"][t] = off
+        else:
+            mx, my, mr = sg["members"][s]
+            o = _rot([off[:2]], mr)[0]
+            sg["members"][t] = [round(mx + float(o[0]), 4), round(my + float(o[1]), 4), (mr + off[2]) % 360.0]
+        lines.append("%s seated on %s.%s at [%.3f, %.3f, %.0f] in %s's frame" % (t, s, land, off[0], off[1], off[2], s))
+    return rules, lines, bad
+
+
+# ----------------------------------------------------------------------------- fixed-hold overlaps
+# ⚠ TWO HOLDS ARE CHECKED AGAINST EACH OTHER HERE, OR BY NOBODY (brain_board fold15_s2,
+# 2026-11-27): p22's NT21 / NT22 physical holds sat under D20's mP0 snapshot; place_init seats
+# a fixed part where it is told, and the clash first showed as a 0.0015 mm DRC clearance on a
+# routed board 5 hours later. Every pair of parts the intent pins (fixed, and the members of a
+# group on a fixed anchor) is checked before placement: by courtyard, a part with none (a net
+# tie) by its fab box, else by its pads. A kelvin tie against its own shunt, and two parts of
+# one group, are drawn together and not checked.
+def _shapes(part):
+    if part.get("crtyd"):
+        return [part["crtyd"]]
+    f = part.get("fab")
+    if f:
+        return [[[f[0], f[2]], [f[1], f[2]], [f[1], f[3]], [f[0], f[3]]]]
+    out = []
+    for q in part["pads"]:
+        w, h = q["size"][0] / 2.0, q["size"][1] / 2.0
+        out.append((_rot([[-w, -h], [w, -h], [w, h], [-w, h]], q.get("rot", 0.0))
+                    + np.asarray(q["xy"], float)).tolist())
+    return out
+
+
+def held_poses(rules):
+    """{ref: (x, y, rot)} of every part the intent pins: fixed, and the members of a group on a
+    fixed anchor."""
+    pose = {r["ref"]: (r["xy"][0], r["xy"][1], float(r.get("rot", 0.0))) for r in rules if r.get("kind") == "fixed"}
+    for r in rules:
+        if r.get("kind") == "group" and r["anchor"] in pose:
+            ax, ay, ar = pose[r["anchor"]]
+            for m, (dx, dy, dr) in r["members"].items():
+                o = _rot([[dx, dy]], ar)[0]
+                pose.setdefault(m, (ax + float(o[0]), ay + float(o[1]), (ar + dr) % 360.0))
+    return pose
+
+
+def hold_overlaps(rules, parts, values=None, tol=0.01):
+    """['A x B: ...'] for every two held parts on one side whose shapes overlap by more than tol mm."""
+    pose = {r: p for r, p in held_poses(rules).items() if r in parts}
+    same = set()
+    for r in rules:
+        if r.get("kind") == "group":
+            g = [r["anchor"]] + list(r["members"])
+            same |= {(a, b) for a in g for b in g}
+    for t, (s, _l, _p) in kelvin_ties(parts, values or {})[0].items():
+        same |= {(t, s), (s, t)}
+    W = {r: [np.asarray([x, y]) + _rot(p, a) for p in _shapes(parts[r])] for r, (x, y, a) in pose.items()}
+    W = {r: v for r, v in W.items() if v}
+    refs = sorted(W)
+    box = {r: (min(p[:, 0].min() for p in W[r]), max(p[:, 0].max() for p in W[r]),
+               min(p[:, 1].min() for p in W[r]), max(p[:, 1].max() for p in W[r])) for r in refs}
+    out = []
+    for i, a in enumerate(refs):
+        for b in refs[i + 1:]:
+            if (a, b) in same or parts[a].get("side", "F") != parts[b].get("side", "F"):
+                continue
+            A, B = box[a], box[b]
+            if A[0] >= B[1] or B[0] >= A[1] or A[2] >= B[3] or B[2] >= A[3]:
+                continue
+            dep = max(-_poly_dist(pa, pb) for pa in W[a] for pb in W[b])
+            if dep > tol:
+                c = np.mean(np.concatenate(W[a] + W[b]), axis=0)
+                out.append("%s x %s: held shapes overlap %.2f mm near (%.2f, %.2f)" % (a, b, dep, c[0], c[1]))
+    return out
