@@ -18,6 +18,8 @@ POUR_UN / POUR_RO (rPS_fg2, laid before frozen bands outranked every pour): +24V
 """
 import os, shutil, subprocess, sys, tempfile
 here = os.path.dirname(os.path.abspath(__file__)); fc = os.path.join(here, "frozen_check.py")
+import _testargs  # noqa: E402
+_testargs.need(2, 'UNROUTED ROUTED: one placement before and after a route that cut a band (brain_board rPS_e3)')
 un, ro = sys.argv[1], sys.argv[2]
 extra = sys.argv[3:]
 tmp = tempfile.mkdtemp(prefix="frozen_check_"); stem = os.path.join(tmp, "b"); ok = True

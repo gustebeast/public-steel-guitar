@@ -18,6 +18,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from router.model import Model  # noqa: E402
 from router.negotiate import Router  # noqa: E402
 
+import _testargs  # noqa: E402
+_testargs.need(1, '<stem>: an unrouted board with frozen bands (brain_board rPS_10a1)')
 m = Model(sys.argv[1])
 r = Router(m)
 r.log = print

@@ -17,6 +17,8 @@ import tempfile
 
 here = os.path.dirname(os.path.abspath(__file__))
 fc = os.path.join(here, "frozen_check.py")
+import _testargs  # noqa: E402
+_testargs.need(1, 'RUN_DIR: a routed run directory (output_board.unrouted.kicad_pcb / output_board.kicad_pcb)')
 run_dir = os.path.abspath(sys.argv[1])
 tmp = tempfile.mkdtemp(prefix="frozen_pierce_")
 stem = os.path.join(tmp, "b")

@@ -21,6 +21,8 @@ sys.path.insert(0, HERE)
 from router.model import Model  # noqa: E402
 from router.negotiate import Router  # noqa: E402
 
+import _testargs  # noqa: E402
+_testargs.need(1, '<dir> holding a placed brain board as b.kicad_pcb / b.kicad_pro')
 m = Model(os.path.join(os.path.abspath(sys.argv[1]), "b"))
 r = Router(m)
 nets = {n.name: n for n in r.build_nets(pours=m.fills)}

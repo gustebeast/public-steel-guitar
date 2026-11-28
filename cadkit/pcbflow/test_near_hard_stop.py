@@ -105,4 +105,6 @@ def main(d):
 
 
 if __name__ == "__main__":
+    import _testargs  # noqa: E402
+    _testargs.need(1, 'RUN_DIR: a place_flow output whose placement breaks a hard near rule (esc_pre16)')
     sys.exit(main(sys.argv[1]))
