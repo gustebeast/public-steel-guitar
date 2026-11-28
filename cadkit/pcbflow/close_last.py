@@ -42,9 +42,52 @@ import time as _time_mod    # noqa: E402
 # 2026-11-18): with three jobs on the machine close_last ran out of its 1200 s after half its
 # list -- 16 nets left open that a quiet run would have tried. The router moved to CPU time
 # for the same reason (negotiate._clock, 2026-11-14): the same board does the same work
-# whatever runs beside it. Nothing here runs in a subprocess, so CPU time is its own work.
-# CLOSE_LAST_CPU_CLOCK=0 restores the wall clock.
-_clock = _time_mod.process_time if os.environ.get("CLOSE_LAST_CPU_CLOCK", "1") == "1" else _time_mod.time
+# whatever runs beside it. CLOSE_LAST_CPU_CLOCK=0 restores the wall clock.
+# ⚠ AND ITS CHILDREN'S CPU IS ITS WORK TOO (brain_board fold13 / fold15_s1, 2026-11-27): the
+# pour guard measures power paths in widepath.py, a subprocess (KiCad's python has no scipy),
+# and process_time never saw it -- "out of time after 600 s" on an attempt that ran 1268 s,
+# the other 668 s in widepath. Every child close_last runs goes through _run_child, which adds
+# the child's own CPU seconds to the clock (CHILD_CPU), and main says the split at the end so
+# finish's CLOSE_TOTAL_S counts it as well.
+CHILD_CPU = [0.0]
+
+
+def _child_seconds(proc):
+    """User + kernel CPU seconds of a finished subprocess (0.0 where it cannot be read)."""
+    try:
+        if os.name == "nt":
+            import ctypes
+            from ctypes import wintypes
+            ft = [wintypes.FILETIME() for _ in range(4)]
+            if not ctypes.windll.kernel32.GetProcessTimes(
+                    wintypes.HANDLE(int(proc._handle)), *[ctypes.byref(f) for f in ft]):
+                return 0.0
+            return sum((f.dwHighDateTime << 32 | f.dwLowDateTime) for f in ft[2:]) / 1e7
+        import resource                     # posix: children's totals, as a delta
+        r = resource.getrusage(resource.RUSAGE_CHILDREN)
+        tot = r.ru_utime + r.ru_stime
+        d, _child_seconds.last = tot - getattr(_child_seconds, "last", 0.0), tot
+        return d
+    except Exception:
+        return 0.0
+
+
+def _run_child(cmd):
+    """subprocess.run(cmd, check=True) whose CPU seconds go on close_last's clock."""
+    import subprocess
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    out, err = proc.communicate()
+    CHILD_CPU[0] += _child_seconds(proc)
+    if proc.returncode:
+        raise subprocess.CalledProcessError(proc.returncode, cmd, out, err)
+    return out
+
+
+def _cpu_clock():
+    return _time_mod.process_time() + CHILD_CPU[0]
+
+
+_clock = _cpu_clock if os.environ.get("CLOSE_LAST_CPU_CLOCK", "1") == "1" else _time_mod.time
 # ⚠ ONE NET MUST NOT EAT THE CLOCK (brain_board mV40, 2026-11-18): UI_ENC_B was taken up and
 # put back 25 times through _rip_one's first/stay retries, 600 s spent, and ten nets later
 # in the list were never tried at all. With CLOSE_LAST_NET_SHARE=k a net's search ends at
@@ -144,14 +187,19 @@ def _scipy_py():
     if os.environ.get("CADKIT_SCIPY_PY"):
         return [os.environ["CADKIT_SCIPY_PY"]]
     if _sh.which("py"):
-        return [_sh.which("py"), "-3.12"]
+        # ⚠ THE INTERPRETER ITSELF, NOT THE LAUNCHER: py.exe starts python.exe as ITS child, so
+        # the CPU _run_child reads off the process it started was the launcher's -- ~0 s
+        if not getattr(_scipy_py, "exe", None):
+            import subprocess
+            _scipy_py.exe = subprocess.run([_sh.which("py"), "-3.12", "-c", "import sys; print(sys.executable)"],
+                                           capture_output=True, text=True, check=True).stdout.strip()
+        return [_scipy_py.exe]
     return [_sh.which("python3") or "python"]
 
 
 def _path_widths(board, ents):
     """{name: widest-path mm} for power_paths entries `ents`, on `board`'s copper as filled.
     Each net is rasterised alone (copper of other nets never touches it) over its own bbox."""
-    import subprocess
     import tempfile
     import numpy as np
     from PIL import Image, ImageDraw
@@ -263,9 +311,7 @@ def _path_widths(board, ents):
                  holes=np.array(hp) if hp else np.zeros((0, 3)),
                  scale=json.dumps(_SCALE), specs=json.dumps(specs),
                  **{"mask_" + k: m for k, m in masks.items()})
-        subprocess.run(_scipy_py() + [os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                                   "widepath.py"), npz, js],
-                       check=True, capture_output=True, text=True)
+        _run_child(_scipy_py() + [os.path.join(os.path.dirname(os.path.abspath(__file__)), "widepath.py"), npz, js])
         out.update({n_: r_["width"] for n_, r_ in json.load(open(js)).items()})
         for f_ in (npz, js):
             try:
@@ -1613,4 +1659,9 @@ def main(stem):
 
 
 if __name__ == "__main__":
-    main(os.path.abspath(sys.argv[1]))
+    try:
+        main(os.path.abspath(sys.argv[1]))
+    finally:
+        # finish adds the CHILD_CPU figure to close_last.py's own (its CLOSE_TOTAL_S)
+        print("close_last: CPU %.0f s own, CHILD_CPU %.1f s in child processes"
+              % (_time_mod.process_time(), CHILD_CPU[0]), flush=True)
