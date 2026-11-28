@@ -6996,6 +6996,16 @@ def build(stem):
         board.BuildConnectivity()
         stable_fill.fill(board, board.Zones())
         _check_stitches_landed(board, notes)
+        # every declared pour leg's pins in one copper body, before the router (pour_gate.py;
+        # brain_board fold15/16: V5_PRE cut by +24V's In3 band and a frozen +5V_RAW track, pre-route,
+        # bridged by luck in one fold and lost in the next)
+        import pour_gate
+        _cuts = pour_gate.check(board, pour_gate.legs(notes))
+        if _cuts:
+            raise SystemExit("layout: %d pour leg(s) cut before routing:\n      %s\n"
+                             "    Move or bridge the copper that cuts it (declared copper), or give the "
+                             "leg a layer of its own -- the router's bridges are luck, not a joint."
+                             % (len(_cuts), "\n      ".join(_cuts)))
 
     n_junk = drop_degenerate(board)
     if n_junk:
