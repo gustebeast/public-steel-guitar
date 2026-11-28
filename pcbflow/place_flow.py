@@ -669,6 +669,8 @@ def merge_same_net_pours(zones):
                             bool(y.get("frozen")), bool(z.get("frozen"))) if not same
                         else "their union is not one simple outline"))
             res[i] = dict(y, poly=u)
+            if y.get("legs") or z.get("legs"):
+                res[i]["legs"] = list(y.get("legs") or []) + list(z.get("legs") or [])
             out.append("%s on %s: overlapping legs joined into one pour (%d corners)" % (z["net"], z["layer"], len(u)))
             break
         else:
@@ -754,6 +756,8 @@ def _pours(notes, parts, pl, rules, base_zones):
         # priority: declared, or None = numbered by pour_priorities() once every pour is in
         pr = int(r["priority"]) if "priority" in r else None
         zones.append({"net": r["net"], "layer": r["layer"], "poly": poly, "priority": pr,
+                      # the pins this pour must join, for layout's pre-route pour gate (pour_gate.py)
+                      **({"legs": [list(r["along"])]} if len(r.get("along") or ()) >= 2 else {}),
                       **({"whole": True} if r.get("whole") else {}),
                       **({"frozen": True} if r.get("frozen") else {})})
         # opt-in (`pad_vias`, set by auto_pour): the pour's big lands on another layer get a
